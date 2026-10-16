@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/bill/bill_recurrence.dart';
-import '../../../../core/category/category_visuals.dart';
-import '../../../../core/database/app_database.dart';
+import '../../domain/bill_recurrence.dart';
+import '../../../category/presentation/widgets/category_visuals.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../transaction/domain/khoan_lap.dart';
@@ -42,7 +42,7 @@ class TheKhoanLap extends StatefulWidget {
 
 class _TheKhoanLapState extends State<TheKhoanLap> {
   List<KhoanLap>? _ds;
-  Map<String, Category> _danhMuc = const {};
+  Map<String, CategoryEntity> _danhMuc = const {};
 
   @override
   void initState() {
@@ -168,7 +168,7 @@ class _Dong extends StatelessWidget {
   });
 
   final KhoanLap khoan;
-  final Category? danhMuc;
+  final CategoryEntity? danhMuc;
   final VoidCallback onTao;
   final VoidCallback onBoQua;
 

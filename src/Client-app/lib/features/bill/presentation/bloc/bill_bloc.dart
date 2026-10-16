@@ -1,5 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/database/app_database.dart';
+import '../../data/models/bill_entity.dart';
 import '../../data/repositories/bill_repository.dart';
 import '../../domain/bill_status.dart';
 import 'bill_event.dart';
@@ -45,7 +45,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     // nhận `done`, `asyncMap` (kể cả map đồng bộ) thì không.
     var luot = 0;
     var dangDoc = Future<void>.value();
-    await emit.onEach<List<Bill>>(
+    await emit.onEach<List<BillEntity>>(
       repository.watchBills(event.idaccount),
       onData: (bills) {
         final luotNay = ++luot;
@@ -82,7 +82,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     Emitter<BillState> emit,
   ) async {
     try {
-      await repository.addBill(event.bill);
+      await repository.addBill(event.draft, id: event.id, idaccount: event.idaccount, now: event.now);
       emit(BillOperationSuccess('Tạo hóa đơn thành công'));
     } catch (e) {
       emit(BillError('Không thể tạo hóa đơn: $e'));
@@ -94,7 +94,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     Emitter<BillState> emit,
   ) async {
     try {
-      await repository.editBill(event.bill);
+      await repository.editBill(event.draft, id: event.id, idaccount: event.idaccount, now: event.now);
       emit(BillOperationSuccess('Cập nhật hóa đơn thành công'));
     } catch (e) {
       emit(BillError('Không thể cập nhật hóa đơn: $e'));

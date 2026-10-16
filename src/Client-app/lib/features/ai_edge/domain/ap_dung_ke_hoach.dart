@@ -3,14 +3,12 @@
 /// Sheet kế hoạch (`ke_hoach_tai_phan_bo_sheet.dart`) gom quyết định của người
 /// dùng thành `soTienDaChon` (id ngân sách nguồn bù → số tiền cắt, chỉ dòng
 /// được tick) rồi hỏi hai hàm này: [hanMucMoi] cho `updateBudget`, [phanHoiTu]
-/// cho `AiFeedbackDao.ghi`. Tách khỏi widget để **tổng hạn mức không đổi** là
+/// cho `TaiPhanBoNguon.ghiPhanHoi`. Tách khỏi widget để **tổng hạn mức không đổi** là
 /// một tính chất kiểm được bằng test thuần — đó là lý do luật D5 bỏ được.
 library;
 
-import 'package:drift/drift.dart' show Value;
 import 'package:uuid/uuid.dart';
 
-import '../../../core/database/app_database.dart';
 import '../../budget/data/models/budget_entity.dart';
 import 'tai_phan_bo.dart';
 
@@ -46,11 +44,50 @@ List<(BudgetEntity, double)> hanMucMoi(
   return ra;
 }
 
+/// Một hàng phản hồi về đề xuất cân đối — Dart thuần, 11 trường khớp **tên cột** bảng `AiRebalancingFeedbacks`
+/// (spec Entity Danh mục 2026-10-15 mục 7). Phép dựng `AiRebalancingFeedbacksCompanion` nằm ở `TaiPhanBoNguonImpl.ghiPhanHoi`
+/// (`budget/data`) — chỗ DUY NHẤT; `tai_phan_bo_nguon_ghi_test` đếm cột bảng để canh.
+class PhanHoiTaiPhanBo {
+  final String id;
+  final int idaccount;
+
+  /// Lúc người dùng quyết, không phải lúc kế hoạch được tính.
+  final DateTime createdAt;
+  final String deficitBudgetId;
+  final String donorBudgetId;
+  final String donorCategoryId;
+  final double suggestedAmount;
+
+  /// Bằng [suggestedAmount] khi `accepted`, số họ sửa khi `modified`, `0` khi `rejected`.
+  final double actualAmount;
+
+  /// `accepted` | `rejected` | `modified`.
+  final String action;
+
+  /// Kỳ của ngân sách **nguồn bù** lúc bị cắt, biên `[from, to)`.
+  final DateTime periodFrom;
+  final DateTime periodTo;
+
+  const PhanHoiTaiPhanBo({
+    required this.id,
+    required this.idaccount,
+    required this.createdAt,
+    required this.deficitBudgetId,
+    required this.donorBudgetId,
+    required this.donorCategoryId,
+    required this.suggestedAmount,
+    required this.actualAmount,
+    required this.action,
+    required this.periodFrom,
+    required this.periodTo,
+  });
+}
+
 /// Một hàng phản hồi cho **mỗi** dòng kế hoạch: `accepted` khi tick giữ số đề
 /// xuất, `modified` khi tick nhưng đổi số (`actualAmount` = số mới), `rejected`
 /// khi không tick — và mọi dòng `rejected` khi [boQua]. Kỳ ghi vào hàng là kỳ
 /// **của ngân sách nguồn** tại [now] (luật C3 đếm bằng cặp ấy).
-List<AiRebalancingFeedbacksCompanion> phanHoiTu(
+List<PhanHoiTaiPhanBo> phanHoiTu(
   KeHoachTaiPhanBo kh,
   Map<String, double> soTienDaChon, {
   required int idaccount,
@@ -70,18 +107,18 @@ List<AiRebalancingFeedbacksCompanion> phanHoiTu(
                 ? 'accepted'
                 : 'modified';
         final ky = b.currentPeriod(now);
-        return AiRebalancingFeedbacksCompanion(
-          id: Value(uuid.v4()),
-          idaccount: Value(idaccount),
-          createdAt: Value(now),
-          deficitBudgetId: Value(kh.thieu.budget.id),
-          donorBudgetId: Value(b.id),
-          donorCategoryId: Value(b.categoryId ?? ''),
-          suggestedAmount: Value(d.soTien),
-          actualAmount: Value(chon ? x : 0),
-          action: Value(action),
-          periodFrom: Value(ky.from),
-          periodTo: Value(ky.to),
+        return PhanHoiTaiPhanBo(
+          id: uuid.v4(),
+          idaccount: idaccount,
+          createdAt: now,
+          deficitBudgetId: kh.thieu.budget.id,
+          donorBudgetId: b.id,
+          donorCategoryId: b.categoryId ?? '',
+          suggestedAmount: d.soTien,
+          actualAmount: chon ? x : 0,
+          action: action,
+          periodFrom: ky.from,
+          periodTo: ky.to,
         );
       }(),
   ];

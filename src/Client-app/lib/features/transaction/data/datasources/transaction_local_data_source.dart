@@ -9,6 +9,12 @@ abstract class TransactionLocalDataSource {
     DateTime from,
     DateTime to,
   );
+
+  /// Mọi giao dịch của tài khoản (bỏ hàng `deletedAt`, mới nhất trước) — `transactionDao.getAll`.
+  Future<List<TransactionEntity>> getAll(int idaccount);
+
+  /// Như [getAll], dạng stream — `transactionDao.watchAll`.
+  Stream<List<TransactionEntity>> watchAll(int idaccount);
   Future<void> addTransaction(TransactionEntity entity);
 
   /// A5 mục 11.4 — N hàng trong MỘT giao tác: hỏng giữa chừng thì không hàng nào được ghi.
@@ -32,6 +38,15 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
           (list) => list.map((t) => TransactionEntity.fromDrift(t)).toList(),
         );
   }
+
+  @override
+  Future<List<TransactionEntity>> getAll(int idaccount) async =>
+      (await db.transactionDao.getAll(idaccount)).map(TransactionEntity.fromDrift).toList();
+
+  @override
+  Stream<List<TransactionEntity>> watchAll(int idaccount) => db.transactionDao
+      .watchAll(idaccount)
+      .map((list) => list.map(TransactionEntity.fromDrift).toList());
 
   @override
   Future<void> addTransaction(TransactionEntity entity) async {

@@ -11,10 +11,11 @@
 library;
 
 import 'package:drift/drift.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
@@ -45,7 +46,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  Future<Bill> seedBill({bool autoPay = false}) async {
+  Future<BillEntity> seedBill({bool autoPay = false}) async {
     await db.billDao.insert(BillsCompanion.insert(
       id: 'bill-1',
       idaccount: accountId,
@@ -64,7 +65,7 @@ void main() {
       syncStatus: const Value('synced'),
       updatedAt: DateTime(2025, 9, 1),
     ));
-    return (await db.billDao.getById('bill-1'))!;
+    return BillEntity.fromDrift((await db.billDao.getById('bill-1'))!);
   }
 
   Future<Transaction> khoanChi() async =>

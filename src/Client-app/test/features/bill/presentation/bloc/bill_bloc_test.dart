@@ -1,3 +1,4 @@
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart';
@@ -80,7 +81,7 @@ void main() {
     );
     final bill = (await db.billDao.getAll(1)).single;
 
-    bloc.add(PayBillEvent(bill: bill, walletId: 'w1', idaccount: 1));
+    bloc.add(PayBillEvent(bill: BillEntity.fromDrift(bill), walletId: 'w1', idaccount: 1));
 
     final state = await bloc.stream.firstWhere((s) => s is BillError) as BillError;
     expect(

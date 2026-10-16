@@ -10,6 +10,7 @@
 /// SQLite → payload mà SyncEngine gửi đi.
 library;
 
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -19,13 +20,14 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/api/dio_client.dart';
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
 import 'package:flowmoney/features/bill/domain/bill_draft.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _Online implements Connectivity {
   @override
@@ -94,7 +96,7 @@ void main() {
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     client = _Client();
-    engine = SyncEngine(dioClient: client, db: db, connectivity: _Online());
+    engine = taoSyncEngineThu(dioClient: client, db: db, connectivity: _Online());
     repository =
         BillRepositoryImpl(dataSource: BillLocalDataSource(db), db: db);
 
@@ -137,11 +139,11 @@ void main() {
       note: '',
     );
 
-    await repository.addBill(draft.toInsertCompanion(
+    await repository.addBill(draft,
       id: '33333333-3333-4333-8333-333333333333',
       idaccount: accountId,
       now: DateTime(2026, 9, 4),
-    ));
+    );
 
     final payload = await pushedBillPayload();
 
@@ -172,12 +174,12 @@ void main() {
       timeRecurrence: kBillCycleMonth,
       note: '',
     );
-    await repository.addBill(draft.toInsertCompanion(
+    await repository.addBill(draft,
       id: '44444444-4444-4444-8444-444444444444',
       idaccount: accountId,
       now: DateTime(2026, 9, 4),
-    ));
-    final bill = (await db.billDao.getAll(accountId)).single;
+    );
+    final bill = BillEntity.fromDrift((await db.billDao.getAll(accountId)).single);
     await repository.payBill(
         bill: bill, walletId: walletId, idaccount: accountId);
 

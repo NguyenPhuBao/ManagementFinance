@@ -224,7 +224,7 @@ TDD, viết trước:
 
 ## 8. Nghiệm thu máy thật (OnePlus)
 
-`flutter test` không thấy Kotlin, engine headless hay WorkManager.
+`flutter test` không thấy Kotlin, engine headless hay WorkManager. Kết quả đo thật ở **§8.1** (2026-10-11, Realme + máy ảo).
 
 1. Hoá đơn tự trả hạn hôm nay, giờ nhắc = vài phút sau. **Vuốt app khỏi Recents.** Thông báo *"đã tự trả"* hiện; mở app
    — số dư đúng; PostgreSQL có khoản chi (đã đẩy ở nền).
@@ -234,6 +234,41 @@ TDD, viết trước:
 5. Ép chạy ngay: `adb shell cmd jobscheduler run -f com.flowmoney.flowmoney <jobId>` (đọc jobId bằng
    `dumpsys jobscheduler`).
 6. Bản **release** một lượt (R8 — khuôn `proguard-rules.pro`; entrypoint phải có `@pragma('vm:entry-point')`).
+
+### 8.1 Kết quả đo 2026-10-11 tối — Realme + máy ảo, KHÔNG phải OnePlus
+
+> Đo trên **Realme RMX2205** `4DRWEAHIWCW8V879` (Android 13, ColorOS, 360 × 800 dp) và máy ảo **`FlowMoney_16G`** cho (f),
+> (g) — OnePlus không cắm được trong phiên. APK debug `bd365248…` và release `26c101bc…`, cả hai dựng từ `aa95e0d3` với base
+> URL **tạm** trỏ `127.0.0.1` (`adb reverse tcp:3000 tcp:3000`); mã nguồn trả lại ngay, không commit. Tài khoản 10 (`dat`,
+> Premium). Cả buổi dùng **một mục tiêu thử** *"Thu nen"* (trích 1.000 đ/ngày từ ví *Tiết kiệm*, ví đích *tiết kiệm mua
+> nhà*). ⚠️ **Ca hoá đơn tự trả ở nền (mục 1 ở trên) CHƯA đo trên máy** — chung vòng `NotificationScanner.scan()` nhưng không
+> có ca riêng. Nhãn (a)–(h) theo Task 10 của kế hoạch (gitignore).
+
+| Ca | Cách đo | Kết quả |
+|---|---|---|
+| (a) Dart → Kotlin | lưu mục tiêu, mốc 20:57 | ✅ logcat `Hẹn lượt nền: mốc 1791727020000` (= 20:57); chẩn đoán WorkManager thấy `tu_chuyen_tien_mot_lan` + `tu_chuyen_tien_dinh_ky` ENQUEUED; app nằm trong danh sách miễn tối ưu pin (do người dùng đặt) |
+| (b) app đang mở, tự nổ | để app mở tới 20:57, **không** ép | ✅ worker bắt đầu 20:57:00.085 → `quetNgay trong engine của app`, **không** có `[Nen]` → trích → đẩy 4 thao tác; thông báo *"Đã trích tiền tự động — Đã chuyển 1 nghìn từ Tiết kiệm vào mục tiêu Thu nen."*; PostgreSQL đúng **một** hàng `cd8f307c-453d-53e8-…` (UUID v5) lúc 13:57:00Z, mục tiêu `Current` 1.000, `last_run` 13:57Z. Ghi chú: lượt quét của app hẹn lại bằng `REPLACE` nên WorkManager huỷ chính worker đang chờ (`WorkerStoppedException`) **sau** khi quét xong — vô hại, `TuChuyenTienWorker.kt` đã đón ca *"bị huỷ — app vừa hẹn lại"* |
+| (c) + (d) app đóng, tự nổ | sửa giờ trích 21:08, `am crash` (giết tiến trình, **không** force-stop — job còn), tắt màn, **không** ép | ✅ 21:08:11 ColorOS khởi tiến trình cho `SystemJobService` → engine nền → đồng bộ → quét *"1 hàng mới"* → đẩy 4/4 → `[Nen] Xong — mốc kế 08:00`; thông báo *"Đã trích…"* 21:08:18; PostgreSQL hàng `333662d4-9d8b-54ac-…` (v5), `Current` 2.000. Gộp (c) vào (d): lượt **tự nổ** khi app đóng chứng minh cả đường mã lẫn hẹn giờ, nên không cần ca ép riêng |
+| (e) tài khoản Basic | — | ⏭️ **Bỏ qua, người dùng chọn** — tài khoản 10 là Premium, dựng Basic phải hạ gói qua Admin. Ca này chỉ có test canh (⭐ Basic của `chayNenTuChuyenTien`, mục 7) |
+| (f) hai máy | Realme + máy ảo cùng tài khoản, cùng hẹn 21:24, cả hai `am crash` | ✅ PostgreSQL đúng **một** hàng `c5e027ec-…-5ee3-…` (v5). ⚠️ **Không phải đua thật**: Realme nổ 21:24:00, máy ảo nổ trễ tới 21:25:38 và **kéo về trước khi quét** nên thấy kỳ đã trích (*"0 hàng mới"*). Đường id tất định cho một cuộc đua thật — cả hai máy cùng ghi khoản trích trước khi đẩy — vẫn **chỉ có unit test** canh (`idKhoanTrichTuDong`, `KyDaTrichException`, mục 7). Máy ảo đẩy thêm 2 thao tác sau kéo về (nhiều khả năng hai ví tính lại số dư) |
+| (g) bản release | máy ảo, APK release `26c101bc…` (R8), sửa giờ 21:36, `am crash` | ✅ 21:38:12 tự nổ, `[Nen] Xong`, đẩy 4/4, PostgreSQL `dcb16059-08ee-5549-…` (v5), `Current` 4.000 — entrypoint `@pragma` sống qua R8 |
+| (h) vuốt Recents | Realme: mở app → Recents → vuốt thẻ | Lần này **không** force-stop: thẻ biến khỏi Recents, tiến trình sống (dịch vụ nghe thông báo D1 giữ), 3 job WorkManager còn nguyên, `stopped=false`. Câu *"ColorOS force-stop khi vuốt Recents huỷ cả WorkManager"* ở §3.1 vẫn **có thể** xảy ra — hành vi OEM đổi theo trạng thái app (CLAUDE.md đã ghi từ lần đo 2026-10-03) |
+
+**Ghi nhận trong buổi (không phải ca):**
+
+- **Ép lượt một-lần** khi app đang mở mà chưa tới hạn (`cmd jobscheduler run -f`, mục 5): lịch một-lần bị **tiêu**, app
+  không hẹn lại vì `_daHen` của `LichNen` (`lib/core/nen/lich_nen.dart`) không đổi → chỉ còn lượt định kỳ tới khi lịch đổi.
+  Chỉ xảy ra khi ép tay.
+- **Ép lượt định kỳ:** WorkManager từ chối (*"executed before schedule"*) — `run -f` không dùng được cho job định kỳ.
+- **Giết tiến trình trên Realme:** `am kill` bị ColorOS bỏ qua (dịch vụ nghe thông báo D1 giữ tiến trình), `run-as kill` bị
+  SELinux chặn → dùng **`am crash`** (không force-stop, job còn). Cách `am kill` của Task 10 không dùng được trên máy này.
+- Thông báo *"Số dư ví sắp cạn — tiết kiệm mua nhà chỉ còn 1 nghìn"* bắn ngay khi ví đích vừa được **nạp** từ 0 lên 1.000 đ
+  — UX lạ (ví tăng mà báo sắp cạn) nhưng đúng luật ngưỡng hiện hành; chưa mở mục G.
+- Lộ **G90** (máy ảo, khi đặt giờ trích): bảng chọn giờ chế độ gõ chữ từ chối mọi giờ > 12 khi máy đặt định dạng 12 giờ —
+  `docs/CLIENT_APP_KNOWN_GAPS.md`. ✅ Đóng 2026-10-12 (`9bc57c63`, ép đồng hồ 24 giờ ở `MaterialApp.builder`).
+
+**Còn chưa đo:** hoá đơn tự trả ở nền (mục 1); tài khoản Basic (e); đua thật hai máy (f) — lần đo máy sau dựng bằng cách
+**ngắt `adb reverse` của một máy** trước giờ trích để nó trích cục bộ, để máy kia trích và đẩy, rồi nối lại; OnePlus.
 
 ## 9. Tài liệu phải sửa
 

@@ -12,8 +12,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
-import 'package:flowmoney/features/analytics/data/bao_cao_repository_impl.dart';
+import 'package:flowmoney/features/analytics/data/repositories/bao_cao_repository.dart';
+import 'package:flowmoney/features/analytics/data/repositories/bao_cao_repository_impl.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/budget/data/datasources/budget_local_data_source.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';

@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/domain/bill_schedule.dart';
 
@@ -25,13 +26,13 @@ void main() {
 
   // Không đặt tên gạch dưới đầu cho hàm cục bộ: lint
   // `no_leading_underscores_for_local_identifiers` sẽ đội số issue của analyze.
-  Bill hoaDonMau({
+  BillEntity hoaDonMau({
     required DateTime start,
     required DateTime due,
     DateTime? periodEnd,
     int? anchorDay,
   }) =>
-      Bill(
+      BillEntity(
         id: 'b',
         idaccount: 7,
         name: 'Tiền điện',
@@ -51,7 +52,6 @@ void main() {
         note: '',
         isDeleted: false,
         syncStatus: 'synced',
-        syncRetryCount: 0,
         updatedAt: DateTime(2026, 9, 1),
       );
 
@@ -126,7 +126,7 @@ void main() {
     setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
     tearDown(() async => db.close());
 
-    Future<Bill> seed({
+    Future<BillEntity> seed({
       required DateTime start,
       required DateTime due,
       required bool isRecurrence,
@@ -143,7 +143,7 @@ void main() {
         timeRecurrence: Value(timeRecurrence),
         updatedAt: DateTime.now(),
       ));
-      return (await db.billDao.getAll(7)).single;
+      return BillEntity.fromDrift((await db.billDao.getAll(7)).single);
     }
 
     test('hoá đơn khớp chu kỳ mở ra bình thường, không cảnh báo', () async {
@@ -239,12 +239,12 @@ void main() {
   });
 
   group('form SỬA không được đổi hạn của hoá đơn đang đúng', () {
-    Bill hoaDon({
+    BillEntity hoaDon({
       required DateTime start,
       required DateTime han,
       int? goc,
     }) {
-      return Bill(
+      return BillEntity(
         id: 'b1',
         idaccount: 1,
         name: 'Tiền nhà',
@@ -263,7 +263,6 @@ void main() {
         autoPayEnabled: false,
         isDeleted: false,
         syncStatus: 'synced',
-        syncRetryCount: 0,
         updatedAt: DateTime(2026, 2, 28),
       );
     }

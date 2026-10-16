@@ -1,9 +1,10 @@
+import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
@@ -43,6 +44,7 @@ void main() {
       await sl.unregister<AppDatabase>();
     }
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
     await db.walletDao.insert(WalletsCompanion.insert(
       id: 'w1',
       idaccount: 10,

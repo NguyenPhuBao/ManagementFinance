@@ -5,11 +5,12 @@
 /// tiền lần thứ hai cho một kỳ đã có kỳ trùng được trả.
 library;
 
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
@@ -114,7 +115,7 @@ void main() {
 
   test('payBill TỪ CHỐI kỳ có kỳ trùng đã trả — không trừ tiền lần hai, không đẻ kỳ', () async {
     await netflixTruoc0810();
-    final k2 = (await db.billDao.getById('k2'))!;
+    final k2 = BillEntity.fromDrift((await db.billDao.getById('k2'))!);
 
     await expectLater(
       repo.payBill(bill: k2, walletId: 'w1', idaccount: tk, occurredAt: h0510),

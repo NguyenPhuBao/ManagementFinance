@@ -10,12 +10,15 @@
 /// dùng mất luôn đường sửa.
 library;
 
+import '../../../../helpers/nguon_doc_gia.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
@@ -25,6 +28,7 @@ import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_edit_page.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 
 class _StubAuthRepository implements AuthRepository {
   @override
@@ -40,12 +44,12 @@ class _FixedAuthBloc extends AuthBloc {
 
 class _StubBillRepository implements BillRepository {
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => const Stream.empty();
+  Stream<List<BillEntity>> watchBills(int idaccount) => const Stream.empty();
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _hoaDon({DateTime? dueDate, DateTime? periodEnd}) => Bill(
+BillEntity _hoaDon({DateTime? dueDate, DateTime? periodEnd}) => BillEntity(
       id: 'b1',
       idaccount: 10,
       walletId: 'w1',
@@ -67,7 +71,6 @@ Bill _hoaDon({DateTime? dueDate, DateTime? periodEnd}) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 4),
     );
 
@@ -80,6 +83,7 @@ void main() {
       await sl.unregister<AppDatabase>();
     }
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
   });
 
   tearDown(() async {
@@ -87,7 +91,7 @@ void main() {
     await db.close();
   });
 
-  Future<void> dungTrangSua(WidgetTester tester, {Bill? bill}) async {
+  Future<void> dungTrangSua(WidgetTester tester, {BillEntity? bill}) async {
     tester.view.physicalSize = const Size(411, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -130,6 +134,24 @@ void main() {
         reason: 'Màn Sửa là đường thứ hai ghi `bill.Name`. Chặn ở màn Thêm '
             'mà quên màn này là người dùng đổi tên thành chuỗi dài và hoá đơn '
             'kẹt hàng đợi đẩy y như cũ.');
+  });
+
+  testWidgets('danh sách danh mục KHÔNG có hàng nhóm; hoá đơn đang gắn nhóm → phải chọn lại (2026-10-10)',
+      (tester) async {
+    final moc = DateTime(2026, 9, 1);
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+        id: 'c1', idaccount: 10, name: 'Dien nuoc', classify: 'chi', updatedAt: moc));
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+        id: 'gNha', idaccount: 10, name: 'Nha cua', classify: 'chi',
+        isGroup: const Value(true), updatedAt: moc));
+    final hd = _hoaDon();
+    await dungTrangSua(tester, bill: hd.copyWith(categoryId: 'gNha'));
+    final dd = tester.widget<DropdownButton<CategoryEntity>>(find.byType(DropdownButton<CategoryEntity>));
+    final ids = dd.items!.map((m) => m.value!.id).toList();
+    expect(ids, ['c1'],
+        reason: 'Người dùng chốt 2026-10-10: form hoá đơn không cho chọn nhóm danh mục.');
+    expect(dd.value, isNull,
+        reason: 'Hoá đơn cũ gắn vào nhóm: ô trống, nút Lưu đã chặn "Vui lòng chọn danh mục" — không lưu lặng lẽ.');
   });
 
   testWidgets('không tràn bố cục ở 411dp', (tester) async {

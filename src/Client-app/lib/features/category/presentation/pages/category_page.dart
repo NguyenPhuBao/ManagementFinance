@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/auth/current_account.dart';
-import '../../../../core/category/category_classify.dart';
-import '../../../../core/category/category_visuals.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
+import '../../domain/category_classify.dart';
+import '../widgets/category_visuals.dart';
+import '../../data/models/category_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/category_tree.dart';
@@ -212,7 +212,7 @@ class _CategoryPageState extends State<CategoryPage> {
     );
   }
 
-  Widget _childRow(BuildContext context, Category category,
+  Widget _childRow(BuildContext context, CategoryEntity category,
           {bool nested = false}) =>
       Card(
         margin: EdgeInsets.only(bottom: 8, left: nested ? 8 : 0),
@@ -228,7 +228,7 @@ class _CategoryPageState extends State<CategoryPage> {
         ),
       );
 
-  Widget _defaultRow(BuildContext context, Category category) => Card(
+  Widget _defaultRow(BuildContext context, CategoryEntity category) => Card(
         margin: const EdgeInsets.only(bottom: 8),
         child: ListTile(
           leading: _CategoryAvatar(category: category),
@@ -328,7 +328,7 @@ class _EmptySection extends StatelessWidget {
 
 class _CategoryAvatar extends StatelessWidget {
   const _CategoryAvatar({required this.category, this.folder = false});
-  final Category category;
+  final CategoryEntity category;
   final bool folder;
 
   @override

@@ -22,11 +22,11 @@ import 'package:flowmoney/features/goal/presentation/pages/goal_add_page.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 import 'package:flowmoney/features/wallet/presentation/bloc/wallet_cubit.dart';
-import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
-import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
 class _StubAuthRepository implements AuthRepository {

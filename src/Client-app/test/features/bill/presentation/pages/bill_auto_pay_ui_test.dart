@@ -7,29 +7,33 @@
 /// dòng danh sách cho biết hoá đơn nào đang tự trả.
 library;
 
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
+import 'package:flowmoney/features/bill/domain/bill_draft.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_event.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_add_page.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_edit_page.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_page.dart';
-import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
-import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 
 class _StubAuthRepository implements AuthRepository {
   @override
@@ -43,28 +47,28 @@ class _FixedAuthBloc extends AuthBloc {
   AuthState get state => _fixed;
 }
 
-/// Ghi lại companion mà form gửi lên, để test đọc được cờ.
+/// Ghi lại BillDraft mà form gửi lên, để test đọc được cờ.
 class _GhiLaiRepository implements BillRepository {
   _GhiLaiRepository([this.bills = const []]);
-  final List<Bill> bills;
-  BillsCompanion? daSua;
+  final List<BillEntity> bills;
+  BillDraft? daSua;
 
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
+  Stream<List<BillEntity>> watchBills(int idaccount) => Stream.value(bills);
 
   // Bloc đọc bản đồ khoản chi cùng lúc với danh sách; để rơi vào
   // `noSuchMethod` là trang không bao giờ tới `BillLoaded`.
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => const {};
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => const {};
 
   @override
-  Future<void> editBill(BillsCompanion bill) async => daSua = bill;
+  Future<void> editBill(BillDraft draft, {required String id, required int idaccount, required DateTime now}) async => daSua = draft;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _hoaDon({required bool tuTra, DateTime? dueDate}) => Bill(
+BillEntity _hoaDon({required bool tuTra, DateTime? dueDate}) => BillEntity(
       id: 'b1',
       idaccount: 10,
       walletId: 'w1',
@@ -85,7 +89,6 @@ Bill _hoaDon({required bool tuTra, DateTime? dueDate}) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 4),
     );
 
@@ -99,6 +102,7 @@ void main() {
       await sl.unregister<AppDatabase>();
     }
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
 
     await db.walletDao.insert(WalletsCompanion.insert(
       id: 'w1',
@@ -225,7 +229,7 @@ void main() {
       await tester.tap(find.text('Cập nhật'));
       await tester.pumpAndSettle();
       tester.takeException(); // pop không có GoRouter — như ca Sửa ở dưới
-      expect(repo.daSua!.autoPayEnabled.value, isTrue,
+      expect(repo.daSua!.autoPayEnabled, isTrue,
           reason: 'chốt "dừng chạy, giữ công tắc" — hạ cấp không sửa dữ liệu người dùng');
     });
 
@@ -257,12 +261,11 @@ void main() {
       await tester.pumpAndSettle();
       // Form gửi sự kiện lên bloc RỒI mới `context.pop()`; harness không có
       // GoRouter nên bước pop ném assertion. Nuốt nó ở đây: thứ cần canh là
-      // companion đã tới repository, không phải điều hướng.
+      // draft đã tới repository, không phải điều hướng.
       tester.takeException();
 
       expect(repo.daSua, isNotNull, reason: 'Form phải lưu được.');
-      expect(repo.daSua!.autoPayEnabled.present, isTrue);
-      expect(repo.daSua!.autoPayEnabled.value, isFalse,
+      expect(repo.daSua!.autoPayEnabled, isFalse,
           reason: 'Form Sửa là đường DUY NHẤT để tắt. Tắt mà không ăn xuống '
               'CSDL là app tiếp tục trừ tiền — lỗi tệ nhất ở vùng này.');
     });

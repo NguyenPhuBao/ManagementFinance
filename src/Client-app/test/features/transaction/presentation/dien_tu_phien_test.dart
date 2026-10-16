@@ -6,8 +6,8 @@
 /// 3. **Lưu / Bỏ qua xoá cứng dòng** — không thì dòng nhắc còn đó sau khi đã ghi.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/notification/phien_ngan_hang.dart';
+import 'package:flowmoney/features/notification/domain/phien_ngan_hang.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/vi_theo_nguon_store.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
@@ -47,7 +47,7 @@ void main() {
 
   Widget app() {
     final bloc = TransactionBloc(transactionRepository: repo);
-    CategoryTree cay(List<Category> c) =>
+    CategoryTree cay(List<CategoryEntity> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     final danhMuc = FakeCategoryRepository(
       trees: {'chi': cay([anUong]), 'thu': cay([luong]), 'vay_no': cay(const [])},

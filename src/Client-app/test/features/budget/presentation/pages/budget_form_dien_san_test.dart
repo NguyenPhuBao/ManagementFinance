@@ -14,11 +14,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/presentation/pages/budget_form.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 
-Category _cat(String id, String ten) => Category(
+CategoryEntity _cat(String id, String ten) => CategoryEntity(
       id: id,
       idaccount: 7,
       name: ten,
@@ -27,11 +27,9 @@ Category _cat(String id, String ten) => Category(
       colour: '#F25F5C',
       isDefault: false,
       isGroup: false,
-      isLocalOnly: false,
       aiCoDinh: false,
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 

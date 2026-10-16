@@ -20,7 +20,7 @@ thẳng vào thư mục Tải về** của máy. Xem mục 7.
 |---|---|
 | Bất cứ việc gì | Mục 3 (quyết định) và mục 4 (bẫy) |
 | Sửa phép tính | `domain/thong_ke_thang.dart` và test của nó — **không** có CSDL, kiểm bằng danh sách |
-| Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/analytics_repository_impl.dart` |
+| Sửa cách gộp dữ liệu | Mục 3.3 (mốc tra ngân sách) trước, rồi `data/repositories/analytics_repository_impl.dart` (dời từ `data/` 2026-10-10) |
 | Đụng giao diện | **Chín** màn Stitch còn dùng được (đếm lại 2026-09-17, sau khi thêm **`b0a3344924d246f9b6322fb75a3309e4`** *"Thống kê - Tổng tài sản 6 tháng gần đây"* cho mục **3.30** — lượt gọi ấy cũng **trả về `timeout`** mà màn vẫn được tạo, **lần thứ ba** xác nhận; mốc **Tám** là của 2026-09-16, sau khi thêm **`9020ff8b5c5d49c4914442dcd02fa540`** *"Thống kê - Lịch chi tiêu Heatmap"* cho mục **3.29** — lượt gọi ấy **trả về `timeout`** mà màn vẫn được tạo, và ⚠️ nó vẽ lưới **xanh lá** trong khi bản thi công dùng **đỏ**; và trước đó **`6333b8e24aab4f92bd73b1282c56b17c`** *"Thống kê - Mốc so sánh kỳ"* cho hàng chip của mục **3.28** — ⚠️ màn ấy cũng mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, và lượt gọi **không** timeout; mốc "Sáu" là của 2026-09-15, đừng cộng dồn mà hãy đếm lại): `c8567243…` *"Thống kê - Cơ cấu danh mục & Xu hướng 6 tháng"* (2026-09-14) cho thân trang, **`83993fc9f5de4c5f8fba6940480c164a`** *"Thống kê - Chọn phạm vi thời gian"* (2026-09-15) cho bộ chọn phạm vi, **`6e9007f7653749a893c88e3de535afa5`** *"Thống kê - Biểu đồ Cho vay & Đi vay"* (đo được 2026-09-15) cho hai biểu đồ vay/nợ, và **`afe1c3fdee43464c90ddadc508eaa599`** *"Thống kê - 4 Thẻ Dòng Tiền & Kế Toán"* (đo được 2026-09-15) cho bốn khối của P2, **`52450ac549df42aea9f31d5ee1347ceb`** *"Thống kê - Biểu đồ thác nước Tiền đi đâu"* (đo được 2026-09-15) cho khối A8 #10, và **`212befc8f9a24d25ab027c7302e2e122`** *"Thống kê - Biểu đồ Dòng tiền tự do"* (đo được 2026-09-15) cho khối A8 #8 — ⚠️ màn thứ tư mang `deviceType: DESKTOP` dù lượt gọi truyền `MOBILE`, xem mục **3.21** — ⚠️ màn thứ ba vẽ thêm **hai thẻ tổng** mà bản thi công **cố ý không có**, xem mục 3.22 — ⚠️ **hai** màn cũ đã lỗi thời và vẫn còn trong dự án: `c2a2b615…` (tả A8 #2 đã bỏ: mức gốc ba lát + dropdown) và `a228fa69…` "FlowMoney Analytics Dashboard"; và mục 4.4 về font của bộ test |
 | Đụng biểu đồ | Mục **3.11** (vì sao `fl_chart`, vì sao ghim phiên bản), **3.12** (khối xu hướng từng lệch Stitch, nay hết), **3.19** (đường một danh mục), **3.30** (trục co theo dữ liệu — và vì sao `daiTrucDuBao` phải kiểm điều kiện thật thay vì trừ hao), bẫy **4.21** (khi nào trục từ 0, khi nào co, và bước phải tròn), và bẫy **4.9** (tooltip tràn — thứ duy nhất phải kiểm bằng mắt) |
 | Sinh tệp PDF/CSV | Mục **3.17** (vì sao nhúng font, vì sao `MediaStore` chứ không phải quyền ghi bộ nhớ), **3.18** (ba luật của CSV cho Excel tiếng Việt), **3.31** (ba khối cuối vào tệp — và ⚠️ **Roboto nhúng không có mũi tên lẫn hình học**, nên `→ ▲ ▼` bị bỏ đi im lặng), **3.32** (⚠️ kỳ rỗng chở gì — `inKhoiTheoKy` là định nghĩa duy nhất, và ca test cho PDF phải so **độ dài tệp** vì PDF nén luồng nội dung), bẫy **4.15**–**4.16** |
@@ -634,7 +634,7 @@ lướt qua bốn đơn vị không phải đi một vòng cubit.
    dải. Xem thêm bẫy **4.22**.
 
 **Biên tuần dùng chung với thông báo Tổng kết tuần**: `bienTuan` tách khỏi thân
-`tuanTruoc` ở `core/notification/tuan_iso.dart`, và có một ca canh hai hàm không
+`tuanTruoc` ở `core/utils/tuan_iso.dart`, và có một ca canh hai hàm không
 trôi khỏi nhau. Nhờ đó số tuần đúng ở ca tuần vắt qua giao thừa (31/12/2025
 thuộc `2026-W01`).
 
@@ -1237,7 +1237,7 @@ chắn.
 Toàn bộ phép tính ở **`analytics/domain/du_bao_dong_tien.dart`** (hàm thuần
 `duBaoCua`); repository chỉ nối nguồn, widget chỉ vẽ.
 
-- **Kỳ tương lai của hoá đơn** mượn **`kyKeTiepCua(Bill)`** — hàm thuần **mới**
+- **Kỳ tương lai của hoá đơn** mượn **`kyKeTiepCua(BillEntity)`** — hàm thuần **mới**
   ở `features/bill/domain/bill_ky_ke_tiep.dart`, tách nguyên văn phép tính ngày
   khỏi `BillRepositoryImpl._nextPeriodOf`, và `_nextPeriodOf` **gọi lại** nó.
   Một định nghĩa, nên hàng thật sinh ra khi trả tiền không bao giờ lệch với kỳ
@@ -1246,7 +1246,7 @@ Toàn bộ phép tính ở **`analytics/domain/du_bao_dong_tien.dart`** (hàm th
   `goal_auto_deposit.dart`, kèm **ba chốt bỏ qua** của `GoalAutoDepositRunner`.
 - **Tầng 2** mượn `budgetPaceOf`: đóng góp `suggestedPerDay × min(daysLeft, 30)`
   — ngân sách quý còn 60 ngày chỉ tính nửa phần còn lại.
-- **Số dư** đọc `wallets.balance` qua `viTinhVaoTong`, cùng luật Trang chủ.
+- **Số dư** đọc `wallets.balance` qua `viTinhVaoTong`, cùng luật Trang chủ. *(Từ 2026-10-14, đợt Entity Giao dịch + Ví: nguồn ví của `watchKy` map `→ WalletEntity.fromDrift` ngay tại luồng đọc để `du_bao_dong_tien` nhận Entity; giao dịch Drift của nguồn chỉ đổi qua `TransactionEntity.fromDrift` ở chỗ gọi `khoaNhomCua` — hàm domain không biết hàng Drift.)*
 
 **Luật chuyển ví**: hoá đơn trừ ví trả; trích tự động trừ ví nguồn và **cộng**
 ví đích — nên tác động lên *tổng* thường bằng 0, trừ khi ví đích không tính vào

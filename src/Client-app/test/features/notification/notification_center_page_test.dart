@@ -12,7 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
+import 'package:flowmoney/features/notification/data/repositories/thong_bao_repository_impl.dart';
+import 'package:flowmoney/features/notification/domain/notification_prefs.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_center_page.dart';
 
 import '../../helpers/bat_thong_bao.dart';
@@ -100,7 +101,7 @@ void main() {
       builder: bocToast(batThongBao()),
       home: NotificationCenterPage(
         idaccount: accountId,
-        dao: db.notificationDao,
+        nguon: ThongBaoRepositoryImpl(db.notificationDao),
       ),
     ));
     await nhip(tester);
@@ -228,7 +229,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: NotificationCenterPage(
           idaccount: accountId,
-          dao: db.notificationDao,
+          nguon: ThongBaoRepositoryImpl(db.notificationDao),
           nhomBanDau: NotificationGroup.bienDong,
         ),
       ));
@@ -247,7 +248,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: NotificationCenterPage(
           idaccount: accountId,
-          dao: db.notificationDao,
+          nguon: ThongBaoRepositoryImpl(db.notificationDao),
           nhomBanDau: NotificationGroup.bienDong,
         ),
       ));
@@ -265,7 +266,7 @@ void main() {
         builder: bocToast(batThongBao()),
         home: NotificationCenterPage(
           idaccount: accountId,
-          dao: db.notificationDao,
+          nguon: ThongBaoRepositoryImpl(db.notificationDao),
           nhomBanDau: NotificationGroup.bienDong,
         ),
       ));
@@ -289,7 +290,7 @@ void main() {
 
   testWidgets('chưa đăng nhập thì không đọc gì cả', (tester) async {
     await tester.pumpWidget(MaterialApp(
-      home: NotificationCenterPage(idaccount: null, dao: db.notificationDao),
+      home: NotificationCenterPage(idaccount: null, nguon: ThongBaoRepositoryImpl(db.notificationDao)),
     ));
     await nhip(tester);
 

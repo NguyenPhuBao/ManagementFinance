@@ -21,7 +21,7 @@
 /// liệu sau lưng nó đổi một nẻo, mà người dùng không có cách nào biết.
 library;
 
-import '../../analytics/data/analytics_repository.dart';
+import '../../analytics/data/repositories/analytics_repository.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 import '../../bill/data/repositories/bill_repository.dart';
 import '../../budget/data/models/budget_entity.dart';

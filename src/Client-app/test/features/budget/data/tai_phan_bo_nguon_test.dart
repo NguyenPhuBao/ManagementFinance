@@ -5,6 +5,7 @@ library;
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/ai_edge/domain/ap_dung_ke_hoach.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/budget/data/tai_phan_bo_nguon.dart';
@@ -241,7 +242,7 @@ void main() {
 class _NguonCo implements TaiPhanBoNguon {
   _NguonCo(this.d);
   @override
-  Future<void> ghiPhanHoi(AiRebalancingFeedbacksCompanion e) => throw UnimplementedError();
+  Future<void> ghiPhanHoi(PhanHoiTaiPhanBo p) => throw UnimplementedError();
   final DuLieuTaiPhanBo d;
   @override
   Future<DuLieuTaiPhanBo> nap(

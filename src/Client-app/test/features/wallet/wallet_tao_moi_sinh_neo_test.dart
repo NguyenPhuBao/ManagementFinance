@@ -11,7 +11,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/features/wallet/data/datasources/wallet_local_data_source.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository_impl.dart';
-import 'package:flowmoney/features/wallet/data/services/so_du_vi_service.dart';
+import 'package:flowmoney/features/wallet/data/so_du_vi_service.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 class _SyncEngineGia implements SyncEngine {
@@ -32,7 +32,6 @@ void main() {
       localDataSource: WalletLocalDataSourceImpl(db: db),
       syncEngine: _SyncEngineGia(),
       soDuVi: SoDuViService(db: db),
-      walletDao: db.walletDao,
     );
   });
 

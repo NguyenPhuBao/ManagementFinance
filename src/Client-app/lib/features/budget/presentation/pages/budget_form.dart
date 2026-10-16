@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
@@ -49,7 +49,7 @@ class BudgetDraft {
 /// đường đi của mốc neo — thứ hỏng trong im lặng nếu tính sai — kiểm được bằng
 /// widget test thuần.
 class BudgetForm extends StatefulWidget {
-  final List<Category> categories;
+  final List<CategoryEntity> categories;
 
   /// null = đang tạo mới.
   final BudgetEntity? editing;

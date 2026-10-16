@@ -5388,7 +5388,7 @@ class Bill extends DataClass implements Insertable<Bill> {
   /// họ muốn ngày 28 hàng tháng và nhận về 31/03. Người dùng báo 2026-09-08.
   ///
   /// Lưu ngày gốc là thay một phép đoán bằng một sự kiện. Xem
-  /// `core/bill/bill_recurrence.dart`.
+  /// `features/bill/domain/bill_recurrence.dart`.
   ///
   /// ✅ **Đi qua đồng bộ từ 2026-09-12** — khoá payload `anchor_day`, ánh xạ
   /// tới `bill.Anchor_day`. Trước đó hàng kéo từ server luôn để trống, và khi

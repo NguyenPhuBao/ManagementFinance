@@ -8,15 +8,15 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/notification/data/models/notification_entity.dart';
 import 'package:flowmoney/features/notification/presentation/widgets/notification_panel.dart';
 
 void main() {
   // Mốc GHIM: ca "10 phút trước" từng đọc giờ thật và đỏ trong 00:00–00:10.
   final now = DateTime(2026, 10, 6, 10);
 
-  AppNotification mau(String id, {String body = 'Sắp vượt ngân sách Ăn uống'}) {
-    return AppNotification(
+  NotificationEntity mau(String id, {String body = 'Sắp vượt ngân sách Ăn uống'}) {
+    return NotificationEntity(
       id: id,
       idaccount: 7,
       kind: 'budgetNearLimit',
@@ -29,7 +29,7 @@ void main() {
     );
   }
 
-  Future<void> dung(WidgetTester tester, List<AppNotification> items) async {
+  Future<void> dung(WidgetTester tester, List<NotificationEntity> items) async {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: NotificationPanel(

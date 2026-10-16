@@ -6,8 +6,8 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/nhac_het_han.dart';
 import '../../domain/trang_thai_goi.dart';
-import '../an_nhac_het_han.dart';
-import '../cubit/goi_cubit.dart';
+import '../state/an_nhac_het_han.dart';
+import '../bloc/goi_cubit.dart';
 
 /// Dòng nhắc "Premium còn N ngày" ở Trang chủ (spec Premium 2026-10-06 mục 9.5)
 /// — khuôn `DongNhacViTrungTen`: khoảng 24 phía trên nằm TRONG widget, không có

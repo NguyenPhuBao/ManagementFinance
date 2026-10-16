@@ -4,8 +4,9 @@ import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/gan_danh_muc_nguon.dart';
 import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
-import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
+import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
 import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
@@ -142,7 +143,7 @@ void main() {
       await db.transactionDao.updateRow(id, const TransactionsCompanion(note: Value('grab (sửa ở máy khác)')));
       final repo = _RepoGhiLai();
 
-      await apDungGan(db: db, repo: repo, dong: DongGanDanhMuc(giaoDich: anhChup), categoryId: 'c-dc');
+      await apDungGan(db: db, repo: repo, dong: DongGanDanhMuc(giaoDich: TransactionEntity.fromDrift(anhChup)), categoryId: 'c-dc');
 
       expect(repo.lanGoi, hasLength(1));
       final (before, after) = repo.lanGoi.single;
@@ -161,7 +162,7 @@ void main() {
       final repo = _RepoGhiLai();
 
       await expectLater(
-        apDungGan(db: db, repo: repo, dong: DongGanDanhMuc(giaoDich: anhChup), categoryId: 'c-dc'),
+        apDungGan(db: db, repo: repo, dong: DongGanDanhMuc(giaoDich: TransactionEntity.fromDrift(anhChup)), categoryId: 'c-dc'),
         throwsStateError,
       );
       expect(repo.lanGoi, isEmpty, reason: 'không được đè danh mục người dùng vừa gắn ở chỗ khác');
@@ -170,14 +171,14 @@ void main() {
 
   test('ghiPhanHoiGan ghi nguồn học, khoá cụm + danh mục đoán, kết quả và danh mục cuối', () async {
     final store = _StoreGhiLai();
-    final duDoan = (await db.categoryDao.getById('c-dc'))!;
+    final duDoan = CategoryEntity.fromDrift((await db.categoryDao.getById('c-dc'))!);
     const doan = DoanDanhMuc(categoryId: 'c-dc', xacSuat: 0.9, cumBoDau: 'grab', soLanCung: 6, soLanTong: 7);
     final gd = (await db.transactionDao.getById(await them('grab')))!;
 
     await ghiPhanHoiGan(
       store: store,
       idaccount: 7,
-      dong: DongGanDanhMuc(giaoDich: gd, doan: doan, lyDo: 'x'),
+      dong: DongGanDanhMuc(giaoDich: TransactionEntity.fromDrift(gd), doan: doan, lyDo: 'x'),
       duDoan: duDoan,
       ketQua: kKetQuaGoiYKhac,
       chonCategoryId: 'c-an',

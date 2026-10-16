@@ -95,6 +95,8 @@ nơi đoán sai chỉ tốn một cú chạm để sửa. Dựng thống kê tr�
 tên là báo cáo sai mà không ai biết — cùng loại sai lầm với việc dùng
 `removeVietnameseTones()` cho quy tắc trùng tên (quy tắc 7 `CLAUDE.md`).
 
+*(📍 2026-10-10: `category_classify.dart` đã dời sang `features/category/domain/` — spec dọn vị trí tệp cùng ngày.)*
+
 ---
 
 ## 2. Luật phân loại — định nghĩa duy nhất

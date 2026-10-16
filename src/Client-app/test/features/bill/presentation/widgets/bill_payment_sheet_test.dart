@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/bill/presentation/widgets/bill_payment_sheet.dart';
 
 /// Bảng thanh toán hoá đơn (người dùng chốt 2026-09-06): bấm "Thanh toán" là
@@ -11,7 +12,7 @@ import 'package:flowmoney/features/bill/presentation/widgets/bill_payment_sheet.
 void main() {
   final homNay = DateTime(2026, 9, 6, 10);
 
-  Wallet vi(String id, String ten, {bool macDinh = false}) => Wallet(
+  WalletEntity vi(String id, String ten, {bool macDinh = false}) => WalletEntity(
         id: id,
         idaccount: 10,
         name: ten,
@@ -25,21 +26,20 @@ void main() {
         includeInTotal: true,
         status: 'active',
         syncStatus: 'synced',
-        syncRetryCount: 0,
         updatedAt: DateTime(2026, 9, 1),
       
         allowNegative: false,
         biTuChoiTrungTen: false,
       );
 
-  Bill hoaDon({
+  BillEntity hoaDon({
     String walletId = 'w1',
     DateTime? dueDate,
     String note = '',
     bool tuTra = false,
     DateTime? periodEnd,
   }) =>
-      Bill(
+      BillEntity(
         id: 'a',
         idaccount: 10,
         walletId: walletId,
@@ -62,16 +62,15 @@ void main() {
         note: note,
         isDeleted: false,
         syncStatus: 'synced',
-        syncRetryCount: 0,
         updatedAt: DateTime(2026, 9, 1),
       );
 
   /// Mở bảng qua modal thật để `Navigator.pop` bên trong có chỗ mà pop.
   Future<void> moBang(
     WidgetTester tester, {
-    required void Function(Wallet, double, DateTime, String?) onConfirmed,
-    List<Wallet>? wallets,
-    Bill? bill,
+    required void Function(WalletEntity, double, DateTime, String?) onConfirmed,
+    List<WalletEntity>? wallets,
+    BillEntity? bill,
   }) async {
     tester.view.physicalSize = const Size(411, 1000);
     tester.view.devicePixelRatio = 1.0;
@@ -135,7 +134,7 @@ void main() {
 
   testWidgets('bấm nút chính → callback nhận ví của hoá đơn, số tiền, hôm nay',
       (tester) async {
-    Wallet? viNhan;
+    WalletEntity? viNhan;
     double? soTienNhan;
     DateTime? ngayNhan;
     String? ghiChu = 'chưa gọi';
@@ -161,7 +160,7 @@ void main() {
   testWidgets(
       'Chọn ví khác → danh sách → chọn Ví phụ → nút đổi tên, trả bằng ví ấy',
       (tester) async {
-    Wallet? viNhan;
+    WalletEntity? viNhan;
     await moBang(tester, onConfirmed: (w, __, ___, ____) => viNhan = w);
 
     await tester.tap(find.byKey(const ValueKey('bill-pay-other-wallet')));

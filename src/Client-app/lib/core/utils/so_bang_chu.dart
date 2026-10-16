@@ -1,7 +1,8 @@
 /// Số viết bằng CHỮ trong một câu tiếng Việt — **định nghĩa duy nhất** (C2 task 1, spec
 /// `2026-09-28-c2-nhap-giao-dich-bang-cau-design.md` §2.6).
 ///
-/// Ba nơi đọc: ô *Nhập nhanh* của màn Thêm giao dịch (`docCauGiaoDich`), bộ kiểm số của Trợ lý AI (`kiem_so.dart` —
+/// Bốn nơi đọc: ô *Nhập nhanh* của màn Thêm giao dịch (`docCauGiaoDich`), ngày nêu trong câu (`ngay_trong_cau.dart`,
+/// qua [docSoNhoBangChu]), bộ kiểm số của Trợ lý AI (`kiem_so.dart` —
 /// số chữ cũng là con số, bẫy 4.42) và bộ chỉnh tham số (`chinh_tham_so.dart` — ngưỡng tiền của câu hỏi). Trước
 /// 2026-09-29 hai tệp sau mỗi tệp một bộ đọc riêng, và **cả hai mù hàng chục**: *"năm mươi nghìn"* ra rỗng, nên
 /// *"dưới năm mươi nghìn"* không thành ngưỡng nào trong khi *"dưới 50k"* thì có.
@@ -69,6 +70,15 @@ const Map<String, _Tu> _coDau = {
   'tỷ': _Tu(_Loai.bac, 1000000000),
   'tỉ': _Tu(_Loai.bac, 1000000000),
   'rưỡi': _Tu(_Loai.ruoi),
+};
+
+/// Mọi dạng CÓ DẤU của chữ số đơn 1–9 (*một, hai, … bẩy, bảy, … chín*) cùng chữ số đứng sau hàng chục / bậc (*mốt, tư,
+/// lăm, nhăm*) — dẫn xuất từ bảng [_coDau] (định nghĩa duy nhất) để chỗ khác không chép tay một bảng thứ hai: thêm dạng
+/// mới vào bảng thì ở đây tự có. Không gồm *nửa · vài · mấy · dăm* (không phải một chữ số xác định).
+final Set<String> chuSoDonCoDau = {
+  for (final e in _coDau.entries)
+    if ((e.value.loai == _Loai.so && e.value.giaTri >= 1 && e.value.giaTri <= 9) || e.value.loai == _Loai.soSauChuc)
+      e.key,
 };
 
 /// Dạng không dấu của [_coDau]. Hai từ trùng dạng không dấu thì từ ĐẦU thắng: *một* trước *mốt* (nên `mot` đứng đầu
@@ -222,4 +232,47 @@ List<CumSoChu> timSoBangChu(String cau, {bool batBuocDonVi = true}) {
     truoc = loai;
   }
   return tot;
+}
+
+/// Số nhỏ 1–99 bằng chữ bắt đầu ở token [i] của [tu] (mỗi token một từ, đã NFC + chữ thường) — cho chỗ cần đọc *ngày* /
+/// *tháng* (*năm*, *mười lăm*, *hai mươi mốt*, *ba mươi*), khác [timSoBangChu] ở chỗ KHÔNG đòi đơn vị. Cùng phép khớp từ
+/// (`_nghiaCua`: có dấu hoặc không dấu hoàn toàn). Trả `(giá trị, chỉ số token kế tiếp)` hoặc `null`.
+///
+/// ⚠️ Chữ hàng đơn vị đứng ngay sau hàng chục KHÔNG được nhận khi token kế là *trăm · nghìn · ngàn · triệu · tỷ · tỉ*
+/// hoặc *mươi / chục*: *"mười hai trăm nghìn"* là tiền, *"mười hai mươi nghìn"* là mười + hai mươi nghìn — chỉ đọc
+/// *mười*. [choPhepTu]: nhận *tư* / *tu* đứng một mình là 4 (tên chuẩn của tháng 4, *"tháng tư"*); ngoài chỗ ấy *tư*
+/// chỉ là chữ số đứng sau hàng chục.
+(int, int)? docSoNhoBangChu(List<String> tu, int i, {bool choPhepTu = false}) {
+  _Tu? nghia(int k) => k < tu.length ? _nghiaCua(tu[k]) : null;
+  bool laDonViLon(int k) {
+    final l = nghia(k)?.loai;
+    return l == _Loai.tram || l == _Loai.bac;
+  }
+
+  int? donViSau(int k) {
+    final n = nghia(k);
+    if (n == null || (n.loai != _Loai.so && n.loai != _Loai.soSauChuc)) return null;
+    final g = n.giaTri;
+    if (g.isNaN || g < 1 || g > 9 || laDonViLon(k + 1)) return null;
+    final ke = nghia(k + 1)?.loai;
+    if (ke == _Loai.chuc || ke == _Loai.muoiKhongDau) return null; // "mười hai mươi nghìn": chữ "hai" thuộc "hai mươi"
+
+    return g.toInt();
+  }
+
+  final dau = nghia(i);
+  if (dau == null) return null;
+  if (dau.loai == _Loai.muoi || dau.loai == _Loai.muoiKhongDau) {
+    final u = donViSau(i + 1);
+    return u == null ? (10, i + 1) : (10 + u, i + 2);
+  }
+  if (choPhepTu && dau.loai == _Loai.soSauChuc && dau.giaTri == 4) return (4, i + 1);
+  final g = dau.giaTri;
+  if (dau.loai != _Loai.so || g.isNaN || g < 1 || g > 9) return null;
+  final tiep = nghia(i + 1);
+  if (tiep != null && (tiep.loai == _Loai.chuc || tiep.loai == _Loai.muoiKhongDau)) {
+    final u = donViSau(i + 2);
+    return u == null ? (g.toInt() * 10, i + 2) : (g.toInt() * 10 + u, i + 3);
+  }
+  return (g.toInt(), i + 1);
 }

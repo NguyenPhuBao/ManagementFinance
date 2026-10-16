@@ -8,7 +8,7 @@ import '../domain/chuyen_huong_theo_goi.dart';
 import '../domain/quyen_tinh_nang.dart';
 import '../domain/tran_goi.dart';
 import 'dem_dang_hoat_dong.dart';
-import 'goi_repository.dart';
+import 'repositories/goi_repository.dart';
 
 /// Cửa chặn DUY NHẤT của trần Basic (spec Premium 2026-10-06 mục 7.1): gắn vào
 /// `redirect` của `/wallets/add` · `/budget/rules` · `/goals/add`, nên mọi lối
@@ -16,6 +16,11 @@ import 'goi_repository.dart';
 /// đây. Premium → qua không đếm (rẻ); Basic → đếm → `conTaoDuoc` →
 /// `chuyenHuongTheoGoi` (đường sửa `?id=` tự cho qua). Đếm ném → qua: một lỗi
 /// đọc CSDL không được biến thành một màn Nâng cấp sai chỗ.
+///
+/// Chờ kho gói của phiên nạp xong TRƯỚC khi đọc (G92): router chạy lại
+/// `redirect` khi `AuthSuccess` tới, đúng lúc tài khoản vừa gán mà kho chưa
+/// trả lời — đọc ngay là thấy Basic mặc định, Premium mở lạnh deeplink
+/// `/goals/add` rơi vào `/premium`.
 Future<String?> chanTheoGoi(
   Uri uri,
   LoaiTran loai, {
@@ -23,6 +28,7 @@ Future<String?> chanTheoGoi(
   required NguonDemDangHoatDong dem,
   DateTime Function()? clock,
 }) async {
+  await goi.choNapKho();
   final now = (clock ?? DateTime.now)();
   final id = goi.idaccount;
   if (id == null) return null;
@@ -52,12 +58,14 @@ FutureOr<String?> Function(BuildContext, GoRouterState) redirectTaoTheoGoi(
         );
 
 /// Cửa chặn route theo QUYỀN bật/tắt (spec phân quyền 2026-10-08 mục 4.3) — hiện chỉ `/export-report`. Không có
-/// quyền → `/premium?quyen=<maServer>`; chưa có phiên → qua (không đoán khi chưa biết tài khoản).
-String? chanTheoQuyen(
+/// quyền → `/premium?quyen=<maServer>`; chưa có phiên → qua (không đoán khi chưa biết tài khoản). Chờ kho như
+/// [chanTheoGoi] (G92) — ở đây chiều hỏng là ngược lại: Basic mặc định không mang khoá nào nên quyền rơi về *mở*.
+Future<String?> chanTheoQuyen(
   MaQuyen ma, {
   required GoiRepository goi,
   DateTime Function()? clock,
-}) {
+}) async {
+  await goi.choNapKho();
   if (goi.idaccount == null) return null;
   return duocDung(ma, goi.hienTai, (clock ?? DateTime.now)())
       ? null

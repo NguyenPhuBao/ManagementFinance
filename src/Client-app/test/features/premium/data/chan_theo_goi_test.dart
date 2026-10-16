@@ -4,9 +4,11 @@
 /// một màn Nâng cấp sai chỗ); chưa có phiên → qua.
 library;
 
+import 'dart:async';
+
 import 'package:flowmoney/features/premium/data/chan_theo_goi.dart';
 import 'package:flowmoney/features/premium/data/dem_dang_hoat_dong.dart';
-import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
@@ -39,6 +41,20 @@ class ApiIm implements PaymentApi {
   @override
   Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20}) =>
       throw UnimplementedError();
+}
+
+/// Kho mà lượt `doc` treo tới khi test gọi [tra] — dựng lại khoảnh khắc khởi động nguội: `noiPhien` đã gán tài khoản,
+/// secure storage chưa trả lời.
+class KhoCho implements GoiStore {
+  final _cho = Completer<TrangThaiGoi?>();
+  void tra(TrangThaiGoi? t) => _cho.complete(t);
+
+  @override
+  Future<TrangThaiGoi?> doc(int idaccount) => _cho.future;
+  @override
+  Future<void> ghi(int idaccount, TrangThaiGoi trangThai) async {}
+  @override
+  Future<void> xoa(int idaccount) async {}
 }
 
 void main() {
@@ -90,8 +106,8 @@ void main() {
   });
 
   test('chưa có phiên (idaccount null) → cho qua', () async {
-    final r = GoiRepository(
-        api: ApiIm(), kho: InMemoryGoiStore(), clock: () => now);
+    final r =
+        GoiRepository(api: ApiIm(), kho: InMemoryGoiStore(), clock: () => now);
     expect(
         await chanTheoGoi(Uri.parse('/wallets/add'), LoaiTran.vi,
             goi: r, dem: DemGia(9), clock: () => now),
@@ -109,7 +125,8 @@ void main() {
   group('chanTheoQuyen (spec phân quyền 2026-10-08 mục 4.3)', () {
     Future<GoiRepository> repoBasic(Map<String, bool> q) async {
       final kho = InMemoryGoiStore();
-      await kho.ghi(10, TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: now, quyenTinhNang: q));
+      await kho.ghi(10,
+          TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: now, quyenTinhNang: q));
       final r = GoiRepository(api: ApiIm(), kho: kho, clock: () => now);
       await r.datTaiKhoan(10);
       return r;
@@ -117,23 +134,110 @@ void main() {
 
     test('Basic bị tắt → /premium?quyen=export_reports', () async {
       final r = await repoBasic(const {'export_reports': false});
-      expect(chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now),
+      expect(
+          await chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now),
           '/premium?quyen=export_reports');
     });
 
     test('Basic thiếu khoá → qua (mặc định mở)', () async {
       final r = await repoBasic(const {});
-      expect(chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now), isNull);
+      expect(
+          await chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now),
+          isNull);
     });
 
     test('Premium → qua', () async {
       final r = await repo(premium: true);
-      expect(chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now), isNull);
+      expect(
+          await chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now),
+          isNull);
     });
 
-    test('chưa có phiên → qua', () {
-      final r = GoiRepository(api: ApiIm(), kho: InMemoryGoiStore(), clock: () => now);
-      expect(chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now), isNull);
+    test('chưa có phiên → qua', () async {
+      final r = GoiRepository(
+          api: ApiIm(), kho: InMemoryGoiStore(), clock: () => now);
+      expect(
+          await chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now),
+          isNull);
+    });
+  });
+
+  // G92: router chạy lại `redirect` khi `AuthSuccess` tới — cùng lúc `noiPhien` gán tài khoản rồi mới đọc kho. Cửa đọc
+  // `hienTai` ngay thì thấy Basic mặc định: Premium mở lạnh deeplink `/goals/add` rơi vào `/premium`.
+  group('G92 — kho gói chưa nạp xong lúc cửa chặn chạy', () {
+    final premium = TrangThaiGoi(
+        loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5), nhanLuc: now);
+    final basicTatXuat = TrangThaiGoi(
+        loai: LoaiGoi.basic,
+        nhanLuc: now,
+        quyenTinhNang: const {'export_reports': false});
+
+    GoiRepository dangNap(KhoCho kho) {
+      final r = GoiRepository(api: ApiIm(), kho: kho, clock: () => now);
+      unawaited(r.datTaiKhoan(
+          10)); // như `noiPhien`: tài khoản có ngay, kho còn đang đọc
+      return r;
+    }
+
+    test('⭐ chanTheoGoi: kho là Premium → chờ nạp xong rồi cho qua, KHÔNG đếm',
+        () async {
+      final kho = KhoCho();
+      final r = dangNap(kho);
+      final d = DemGia(3);
+      final ketQua = chanTheoGoi(Uri.parse('/goals/add'), LoaiTran.mucTieu,
+          goi: r, dem: d, clock: () => now);
+      kho.tra(premium);
+      expect(await ketQua, isNull,
+          reason:
+              'G92: đọc hienTai trước khi kho nạp xong là đọc Basic mặc định — Premium bị đẩy sang /premium');
+      expect(d.lanGoi, 0);
+    });
+
+    test(
+        'chanTheoGoi: kho là Basic chạm trần → vẫn chặn (không "cho qua lúc đang nạp")',
+        () async {
+      final kho = KhoCho();
+      final r = dangNap(kho);
+      final ketQua = chanTheoGoi(Uri.parse('/goals/add'), LoaiTran.mucTieu,
+          goi: r, dem: DemGia(3), clock: () => now);
+      kho.tra(null); // kho trống, phiên không nói Premium → Basic
+      expect(await ketQua, '/premium?tran=${maTran(LoaiTran.mucTieu)}');
+    });
+
+    test(
+        'chanTheoGoi: đăng xuất trong lúc chờ kho → coi như chưa có phiên, cho qua, KHÔNG đếm',
+        () async {
+      final kho = KhoCho();
+      final r = dangNap(kho);
+      final d = DemGia(3);
+      final ketQua = chanTheoGoi(Uri.parse('/goals/add'), LoaiTran.mucTieu,
+          goi: r, dem: d, clock: () => now);
+      r.xoaPhien();
+      kho.tra(premium);
+      expect(await ketQua, isNull);
+      expect(d.lanGoi, 0);
+    });
+
+    test('⭐ chanTheoQuyen: kho là Basic TẮT quyền → chờ nạp xong rồi chặn',
+        () async {
+      final kho = KhoCho();
+      final r = dangNap(kho);
+      final ketQua =
+          chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now);
+      kho.tra(basicTatXuat);
+      expect(await ketQua, '/premium?quyen=export_reports',
+          reason:
+              'G92, cùng gốc nhưng chiều NGƯỢC: Basic mặc định không mang khoá `export_reports` nên rơi về '
+              'macDinhKhiThieu = mở — Basic bị tắt quyền lọt vào Xuất báo cáo khi mở lạnh deeplink');
+    });
+
+    test('chanTheoQuyen: kho là Premium → chờ nạp xong rồi cho qua', () async {
+      final kho = KhoCho();
+      final r = dangNap(kho);
+      final ketQua =
+          chanTheoQuyen(MaQuyen.exportReports, goi: r, clock: () => now);
+      kho.tra(premium);
+      expect(await ketQua, isNull);
     });
   });
 }

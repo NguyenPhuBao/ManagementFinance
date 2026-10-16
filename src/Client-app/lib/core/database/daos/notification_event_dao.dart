@@ -8,7 +8,7 @@ part 'notification_event_dao.g.dart';
 /// Nhật ký thông báo (B5a) — chỉ thêm hàng, B5b mới đọc để học.
 ///
 /// ⚠️ Chuỗi `'dat_lich'` ở đây là chữ thô vì DAO nằm ở tầng CSDL và không được
-/// import `core/notification/`: cùng lý lẽ với `watchFeed` nhận `List<String>`
+/// import `features/notification/`: cùng lý lẽ với `watchFeed` nhận `List<String>`
 /// thay cho `NotificationGroup`. Ca test `schema_v26_test` canh để hai phía
 /// không lệch.
 @DriftAccessor(tables: [AppNotificationEvents])

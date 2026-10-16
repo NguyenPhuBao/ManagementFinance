@@ -3,8 +3,8 @@
 /// tập hoá đơn (bẫy của gói hoá đơn 1.3).
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_tra_cuu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_hoa_don.dart';
@@ -12,7 +12,7 @@ import 'package:flowmoney/features/ai_edge/domain/kiem_cau_tra_loi.dart';
 import 'package:flowmoney/features/bill/domain/bill_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Bill _bill({
+BillEntity _bill({
   String id = 'b1',
   required DateTime dueDate,
   double amount = 100000,
@@ -24,7 +24,7 @@ Bill _bill({
   String chuKy = kBillCycleMonth,
   String? sinhTu,
 }) =>
-    Bill(
+    BillEntity(
       id: id,
       idaccount: 10,
       walletId: 'w1',
@@ -46,7 +46,6 @@ Bill _bill({
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 

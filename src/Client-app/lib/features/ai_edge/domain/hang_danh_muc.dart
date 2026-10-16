@@ -10,9 +10,9 @@
 /// đây (test quét 14).
 library;
 
-import '../../../core/category/category_classify.dart';
+import '../../category/domain/category_classify.dart';
 import '../../../core/category/category_name.dart';
-import '../../../core/database/app_database.dart';
+import '../../category/data/models/category_entity.dart';
 import 'goi_so.dart';
 import 'hang_so_lieu.dart';
 import 'loi_tham_so.dart';
@@ -37,7 +37,7 @@ String _chuLoai(String classify) {
 /// [danhMuc]: danh mục CON chọn được của tài khoản (đã bỏ hàng xoá mềm, bỏ
 /// nhóm). [coNganSach]: id danh mục đang có ngân sách chạy.
 KetQuaCongCu hangDanhMuc(
-  List<Category> danhMuc, {
+  List<CategoryEntity> danhMuc, {
   required Set<String> coNganSach,
   String loai = kLoaiDanhMucMacDinh,
 }) {

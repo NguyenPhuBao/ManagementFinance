@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_event.dart';
@@ -15,7 +15,7 @@ class _GhiLaiRepository implements BillRepository {
 
   @override
   Future<void> payBill({
-    required Bill bill,
+    required BillEntity bill,
     required String walletId,
     required int idaccount,
     double? amount,
@@ -32,7 +32,7 @@ class _GhiLaiRepository implements BillRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _bill() => Bill(
+BillEntity _bill() => BillEntity(
       id: 'a',
       idaccount: 10,
       walletId: 'w1',
@@ -53,7 +53,6 @@ Bill _bill() => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 

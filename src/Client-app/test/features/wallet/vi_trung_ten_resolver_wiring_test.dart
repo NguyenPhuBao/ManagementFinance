@@ -9,7 +9,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const tepDinhNghia = 'features/wallet/data/services/vi_trung_ten_resolver.dart';
+  const tepDinhNghia = 'features/wallet/application/vi_trung_ten_resolver.dart';
 
   test('chỉ MỘT chỗ trong lib/ dựng ViTrungTenResolver', () {
     final choDung = <String>[];
@@ -22,7 +22,7 @@ void main() {
   });
 
   test('hàm nối chung BẮT ĐẦU NGHE pushResultStream bằng ViTrungTenResolver', () {
-    final main = File('lib/core/sync/noi_bo_nghe_ket_qua_day.dart').readAsStringSync();
+    final main = File('lib/core/di/injection_container.dart').readAsStringSync();
     expect(
         RegExp(r'sl<ViTrungTenResolver>\(\)\s*\.batDauNghe\(\s*sl<SyncEngine>\(\)\.pushResultStream\s*\)')
             .hasMatch(main),

@@ -1,4 +1,4 @@
-/// Đọc con số tiền trong một dòng chữ lấy từ ảnh. Hàm thuần. Dời từ `features/ai_chat/spike/spike_c4.dart` ngày
+/// Đọc con số tiền trong một dòng chữ lấy từ ảnh. Hàm thuần. Dời từ spike C4 (spike gỡ 2026-10-12) ngày
 /// 2026-10-02 (`docSoHoaDon`, `_tienTrenDong`) để bộ đọc biên lai dùng chung.
 library;
 

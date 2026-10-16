@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/category/category_classify.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../category/domain/category_classify.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../features/category/data/models/category_tree.dart';
@@ -93,7 +93,7 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
     });
   }
 
-  List<Category> _matchingChildren(Iterable<Category> children) {
+  List<CategoryEntity> _matchingChildren(Iterable<CategoryEntity> children) {
     final query = _searchQuery.trim().toLowerCase();
     return children
         .where((child) =>
@@ -245,7 +245,7 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
     return Column(children: sections);
   }
 
-  Widget _buildGroup(CategoryGroupNode node, List<Category> children) {
+  Widget _buildGroup(CategoryGroupNode node, List<CategoryEntity> children) {
     final isExpanded = _expandedGroups.contains(node.group.id);
     final searchActive = _searchQuery.trim().isNotEmpty;
     final showChildren = isExpanded || searchActive;
@@ -280,7 +280,7 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
     );
   }
 
-  Widget _buildLeafSection(String title, List<Category> children) => Card(
+  Widget _buildLeafSection(String title, List<CategoryEntity> children) => Card(
         margin: const EdgeInsets.only(bottom: 12),
         elevation: 0,
         color: Colors.white,
@@ -300,10 +300,10 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
   // Hàng lá trần theo màn Stitch "Chọn danh mục": không chevron (chevron nói
   // "còn cấp con" mà lá thì không), không icon tag xanh chung cho mọi danh
   // mục (UX 2026-09-19, C5).
-  Widget _buildChildTile(Category child) => ListTile(
+  Widget _buildChildTile(CategoryEntity child) => ListTile(
         key: Key('category-child-${child.id}'),
         contentPadding: const EdgeInsets.only(left: 32, right: 16),
         title: Text(child.name),
-        onTap: () => context.pop<Category>(child),
+        onTap: () => context.pop<CategoryEntity>(child),
       );
 }

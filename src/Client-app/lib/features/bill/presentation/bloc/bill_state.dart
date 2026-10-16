@@ -1,4 +1,5 @@
-import '../../../../core/database/app_database.dart';
+import '../../../transaction/data/models/transaction_entity.dart';
+import '../../data/models/bill_entity.dart';
 import '../../domain/bill_status.dart';
 
 abstract class BillState {}
@@ -8,7 +9,7 @@ class BillInitial extends BillState {}
 class BillLoading extends BillState {}
 
 class BillLoaded extends BillState {
-  final List<Bill> bills;
+  final List<BillEntity> bills;
 
   /// Số liệu của **kỳ này** cho thẻ tổng đầu trang — xem [summarizeBills].
   final BillSummary summary;
@@ -16,7 +17,7 @@ class BillLoaded extends BillState {
   /// Khoản chi của từng hoá đơn đã trả, theo `billId`. Hoá đơn không có mục
   /// ở đây là "không biết ngày trả" (hàng kéo về từ server, hoặc trả bằng bản
   /// app trước v16) — trang không được đoán.
-  final Map<String, Transaction> payments;
+  final Map<String, TransactionEntity> payments;
 
   BillLoaded({
     required this.bills,

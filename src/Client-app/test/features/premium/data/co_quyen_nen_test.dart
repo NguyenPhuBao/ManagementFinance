@@ -1,5 +1,5 @@
 import 'package:flowmoney/features/premium/data/co_quyen_nen.dart';
-import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';

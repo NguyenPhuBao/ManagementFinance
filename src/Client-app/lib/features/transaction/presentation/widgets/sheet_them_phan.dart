@@ -8,8 +8,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/category/category_visuals.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../category/presentation/widgets/category_visuals.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -19,7 +19,7 @@ import '../../domain/tach_giao_dich.dart';
 
 Future<PhanTach?> moSheetThemPhan(
   BuildContext context, {
-  required List<Category> chonDuoc,
+  required List<CategoryEntity> chonDuoc,
   required Set<String> daDung,
   PhanTach? dangSua,
   List<MonHang> mon = const [],
@@ -48,7 +48,7 @@ class _SheetThemPhan extends StatefulWidget {
     required this.monCuaPhanKhac,
   });
 
-  final List<Category> chonDuoc;
+  final List<CategoryEntity> chonDuoc;
   final Set<String> daDung;
   final PhanTach? dangSua;
   final List<MonHang> mon;

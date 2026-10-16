@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../models/budget_entity.dart';
 
 /// Một khoản CHI có thuộc ngân sách của [categoryIdNganSach] không — vế danh mục
@@ -46,14 +47,14 @@ abstract class BudgetLocalDataSource {
   Stream<void> watchTransactionChanges(int idaccount);
 
   /// Danh mục chi còn dùng được, để chọn khi tạo ngân sách.
-  Future<List<Category>> getExpenseCategories(int idaccount);
+  Future<List<CategoryEntity>> getExpenseCategories(int idaccount);
 
   /// Mọi danh mục của tài khoản, để tra tên/biểu tượng cho danh sách ngân sách.
   ///
   /// Tách khỏi [getExpenseCategories] vì hàm kia khử trùng lặp theo tên và lọc
   /// theo `classify` — tra cứu thì cần đủ hàng, kể cả danh mục thu đã từng gắn
   /// vào một ngân sách cũ.
-  Future<List<Category>> getAllCategories(int idaccount);
+  Future<List<CategoryEntity>> getAllCategories(int idaccount);
 
   /// Ví của tài khoản, để tra tên ví cho dòng giao dịch.
   Future<List<Wallet>> getWallets(int idaccount);
@@ -165,18 +166,18 @@ class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
   }
 
   @override
-  Future<List<Category>> getExpenseCategories(int idaccount) {
+  Future<List<CategoryEntity>> getExpenseCategories(int idaccount) async {
     // `classify` ở SQLite lưu dạng chuẩn hoá chữ thường ('chi'/'thu'/'vay_no'),
     // không phải 'Chi' như backend — xem `SyncPayloadNormalizer`.
-    return db.categoryDao.getCategoryRows(idaccount, 'chi');
+    return (await db.categoryDao.getCategoryRows(idaccount, 'chi')).map(CategoryEntity.fromDrift).toList();
   }
 
   @override
-  Future<List<Category>> getAllCategories(int idaccount) {
+  Future<List<CategoryEntity>> getAllCategories(int idaccount) async {
     // Chỉ nuôi `lookupFor` — bảng TRA TÊN, không phải danh sách để chọn: phải
     // giữ hàng mặc định toàn cục (idaccount = 0) và hàng đã xoá mềm, nếu không
     // ngân sách trên danh mục ấy hiện "Danh mục đã xoá" (họ G41; E8 2026-09-19).
-    return db.categoryDao.getBangTraTen(idaccount);
+    return (await db.categoryDao.getBangTraTen(idaccount)).map(CategoryEntity.fromDrift).toList();
   }
 
   @override

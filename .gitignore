@@ -7,9 +7,14 @@ node_modules/
 Documents/
 SRS_FinanceManagement/
 
-# Test
+# Test — script test cục bộ của backend ở GỐC repo (Test/, scratch/).
+# ⚠️ Phải NEO `/Test/` vào gốc: repo đặt core.ignorecase=true nên `Test/` trần khớp
+# luôn `src/Client-app/test/` — tệp test client mới biến mất khỏi `git status`
+# (đo 2026-10-11 bằng `git check-ignore`; lặp lại đúng lỗi đã gỡ ngày 2026-09-21,
+# xem khối "Test Suites" cuối tệp). Kiểm sau mỗi lần gộp:
+#   git check-ignore --no-index -v src/Client-app/test/x_test.dart   → phải KHÔNG khớp
 scratch/
-Test/
+/Test/
 
 # Build output
 dist/

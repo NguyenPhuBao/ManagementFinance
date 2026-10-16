@@ -4,12 +4,12 @@
 /// rộng vô hạn, nút trần trong `Row` làm trắng cả trang (bẫy 4.11).
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/utils/currency_formatter.dart';
 import 'package:flowmoney/features/bill/data/de_xuat_hoa_don_nguon.dart';
 import 'package:flowmoney/features/bill/domain/dien_san_hoa_don.dart';
 import 'package:flowmoney/features/bill/presentation/widgets/the_khoan_lap.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/transaction/domain/khoan_lap.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -45,7 +45,7 @@ class _NguonGia implements DeXuatHoaDonNguon {
   }
 
   @override
-  Future<Map<String, Category>> bangDanhMuc(int idaccount) async => const {};
+  Future<Map<String, CategoryEntity>> bangDanhMuc(int idaccount) async => const {};
 
   @override
   Future<void> boQua(int idaccount, String khoaNhom) async {

@@ -159,6 +159,8 @@ Giữ id dạng slug thì giao dịch kẹt y như cũ, chỉ đổi nguyên nh�
 
 ## 5. Thay đổi 4 — ID cố định (✅ backend đã làm, 2026-09-07)
 
+> Từ 2026-10-15 kiểu dữ liệu danh mục từ repository trở lên là `CategoryEntity` (spec Entity Danh mục) — bốn cơ chế gợi ý / học (mục 5d–5g) nhận Entity, luật không đổi.
+
 > ✅ **Đã xong 2026-09-07.** `seed.js` nay đóng băng **13 stable UUID**, hết
 > `crypto.randomUUID()` cho danh mục; backend còn cấp thêm
 > `GET /api/sync/default-categories`. Phần dưới giữ làm hồ sơ vì nó ghi *vì sao*
@@ -514,7 +516,7 @@ cả lượt; lưu giao dịch mà không bấm gì thì **không** ghi gì.
 - **Một định nghĩa "thường ghi"** — hàm thuần `deXuatTuKhoa` (`category/domain/de_xuat_tu_khoa.dart`)
   dùng `kToiThieuMauDanhMuc` / `kNguongXacSuat` của B1 và mẫu `mauHocTu` của B1 (ghi chú máy sinh
   không đếm). Hàm **tự cộng lần đang nhập**; người gọi truyền mẫu **đã trừ** giao dịch đang sửa
-  (`_mauDeXuat` của màn), nếu không đường sửa đếm một giao dịch hai lần.
+  (`_mauDeXuat` của `ThemGiaoDichCubit`), nếu không đường sửa đếm một giao dịch hai lần.
 - **Chọn cụm dài nhất TRƯỚC, rồi mới áp luật chặn** (đã phủ bởi từ khoá của danh mục · cặp đang tắt
   · xung đột ≥ 2). Áp trong vòng lặp là ✕ *"trà sữa"* xong nhận ngay đề xuất *"trà"* — bản sai ấy
   có ca test đỏ.
@@ -652,7 +654,7 @@ Luật thuần ở `category/domain/phan_loai_so_tien.dart`: Naive Bayes trên *
 dưới đoạn Chi là *Nhà cửa*). Phản hồi Chọn / Bỏ qua ghi vào bảng sẵn có `GoiYDanhMucPhanHois` với `nguon = 'so_tien'`,
 khoá là **mã bậc** (`20000-50000`). Không đổi schema, không đồng bộ, không gọi Gemma.
 
-⚠️ **Không có giờ**: giờ lưu trong giao dịch là giờ NHẬP (`_selectedDate = DateTime.now()`, `showDatePicker` trả 00:00).
+⚠️ **Không có giờ**: giờ lưu trong giao dịch là giờ NHẬP (`ngay` của `ThemGiaoDichState` = `DateTime.now()`, `showDatePicker` trả 00:00).
 
 ### ⭐ Phép đo lật thiết kế — và ba quyết định người dùng chốt sau đó
 
@@ -684,7 +686,7 @@ chứng minh thẻ đúng khi nó lên tiếng. **Đo lại khi sổ có vài th
 - **Giá trị LẠ của một đặc trưng thì bỏ đặc trưng ấy** (ví mới tạo, ví chưa chọn, nhóm thứ chưa có mẫu). Tính nó thì mọi
   danh mục đếm 0 và phép làm trơn `1/(N(c)+K)` phạt danh mục **đông mẫu** — kéo hậu nghiệm của chính danh mục đáng tin
   nhất xuống. Kế hoạch viết sai chỗ này (`max(2, K)`); bản sai có chủ ý lộ ra.
-- **Có ghi chú thì số tiền / ví / ngày / đoạn KHÔNG hẹn tính lại** (`_henGoiYTheoForm`). Hẹn là đổi hành vi B1: đổi đoạn
+- **Có ghi chú thì số tiền / ví / ngày / đoạn KHÔNG hẹn tính lại** (`_henGoiYTheoForm` của `ThemGiaoDichCubit`). Hẹn là đổi hành vi B1: đổi đoạn
   Chi ↔ Thu vốn gỡ thẻ B1 cho tới khi ghi chú đổi, và luật *"đổi đoạn → không ghi phản hồi"* dựa vào đó.
 - **`_choPhanXu` của nguồn số tiền huỷ khi bậc đổi** — kể cả khi người dùng đã chọn danh mục qua bảng rồi mới đổi số
   tiền; không thì lúc lưu ghi `khac` cho một khoản ở bậc khác hẳn.

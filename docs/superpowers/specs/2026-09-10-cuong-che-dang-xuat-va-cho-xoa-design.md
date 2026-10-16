@@ -592,6 +592,7 @@ ngayXoa      = ngàyVN(countdownNhanLuc) + countdown ngày
 - Trừ ngày bằng `DateTime.utc(y, m, d)` để khỏi lệch do múi giờ của máy.
 - `countdown == null` → không có số, chỉ hiện câu chung (mục 5.2, 5.3).
 - Đặt ở `lib/core/auth/dem_nguoc_xoa.dart`.
+  *(📍 2026-10-10: tệp đã dời sang `lib/features/auth/domain/dem_nguoc_xoa.dart` — spec dọn vị trí tệp cùng ngày.)*
 
 ### 4.3. Trạng thái đến từ đâu
 

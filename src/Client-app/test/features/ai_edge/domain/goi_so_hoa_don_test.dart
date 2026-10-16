@@ -5,15 +5,15 @@
 /// `billDisplayStatusOf`); lớp `ai_edge/` không tính — test quét thứ 14 canh.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/goi_so_hoa_don.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Bill _bill({
+BillEntity _bill({
   String id = 'b1',
   required DateTime dueDate,
   double amount = 100000,
@@ -21,7 +21,7 @@ Bill _bill({
   String payStatus = 'Pending',
   String ten = 'Tiền điện',
 }) =>
-    Bill(
+    BillEntity(
       id: id,
       idaccount: 10,
       walletId: 'w1',
@@ -42,7 +42,6 @@ Bill _bill({
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 
@@ -146,7 +145,7 @@ void main() {
     // ⚠️ Ca BẮT BUỘC của mọi gói số (bẫy 4.1): mẫu câu phải tự qua `kiemSo`.
     // Thiếu nó thì tới P3 mô hình sẽ rơi về một câu mà chính bộ kiểm cũng
     // chặn — và khối hiện ra trống trong im lặng.
-    final caTest = <String, List<Bill>>{
+    final caTest = <String, List<BillEntity>>{
       'kỳ rỗng': const [],
       'còn nợ': [_bill(dueDate: DateTime(2026, 9, 20))],
       'có quá hạn': [

@@ -44,7 +44,15 @@ jobs:
       - name: Số cảnh báo không vượt mức nền
         run: |
           MUC_NEN=20   # Giảm dần, KHÔNG tăng. Đổi cùng lúc với "mức nền" ở CLAUDE.md.
-          N=$(grep -oE '[0-9]+ issues? found' analyze.txt | grep -oE '^[0-9]+' || echo 0)
+          if grep -q 'No issues found' analyze.txt; then
+            N=0
+          else
+            N=$(grep -oE '[0-9]+ issues? found' analyze.txt | grep -oE '^[0-9]+' | head -1 || true)
+            if [ -z "$N" ]; then
+              echo "::error::không đọc được số cảnh báo từ analyze.txt"
+              exit 1
+            fi
+          fi
           echo "issues=$N muc_nen=$MUC_NEN"
           test "$N" -le "$MUC_NEN"
 

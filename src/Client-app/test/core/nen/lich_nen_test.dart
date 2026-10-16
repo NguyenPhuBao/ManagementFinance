@@ -1,21 +1,26 @@
 /// Mốc lượt nền kế tiếp của hai bộ tự chuyển tiền (spec 2026-10-10-tu-chuyen-tien-chay-nen-design.md mục 3.1).
+/// Từ 2026-10-15 (G88 gạch 4) phép tính của từng phần ở `features/bill/domain/moc_tu_tra_nen.dart` + `features/goal/domain/moc_trich_nen.dart` (ca riêng ở test của hai mảng); tệp này canh phép GỘP, chỗ DI chọn phần theo quyền, và lớp `LichNen`.
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'dart:io';
+
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import 'package:flowmoney/features/bill/domain/moc_tu_tra_nen.dart';
 import 'package:flowmoney/core/nen/kenh_tu_chuyen_tien.dart';
 import 'package:flowmoney/core/nen/lich_nen.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
+import 'package:flowmoney/features/goal/domain/moc_trich_nen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Bill _hoaDon({
+BillEntity _hoaDon({
   required DateTime han,
   bool tuTra = true,
   bool daTra = false,
   String? viId = 'w1',
   bool daXoa = false,
 }) =>
-    Bill(
+    BillEntity(
       id: 'b1',
       idaccount: 7,
       walletId: viId,
@@ -36,7 +41,6 @@ Bill _hoaDon({
       note: '',
       isDeleted: daXoa,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 5),
     );
 
@@ -73,69 +77,41 @@ class _KenhGhi implements KenhTuChuyenTien {
 void main() {
   final now = DateTime(2026, 10, 10, 10);
 
-  group('lichNenKeTiep', () {
-    test('hoá đơn tự trả hạn ngày mai → mốc = ngày mai lúc giờ nhắc chung', () {
-      final l = lichNenKeTiep(
-          bills: [_hoaDon(han: DateTime(2026, 10, 11, 23))], goals: const [], now: now, gioNhac: 8, phutNhac: 30);
-      expect(l.moc, DateTime(2026, 10, 11, 8, 30));
-      expect(l.coTuDong, isTrue);
-    });
-
-    test('hạn HÔM NAY mà giờ nhắc đã qua → không hẹn (lượt định kỳ thử lại), coTuDong vẫn true', () {
-      final l =
-          lichNenKeTiep(bills: [_hoaDon(han: DateTime(2026, 10, 10))], goals: const [], now: now, gioNhac: 8, phutNhac: 0);
-      expect(l.moc, isNull, reason: 'hẹn "ngay" khi ví không đủ là lượt một-lần tự hẹn lại ngay — vòng lặp tốn pin');
-      expect(l.coTuDong, isTrue, reason: 'còn hoá đơn tự trả thì phải giữ lượt định kỳ');
-    });
-
-    test('hạn hôm nay, giờ nhắc CHƯA tới → hẹn hôm nay', () {
-      final l = lichNenKeTiep(
-          bills: [_hoaDon(han: DateTime(2026, 10, 10))], goals: const [], now: now, gioNhac: 20, phutNhac: 0);
-      expect(l.moc, DateTime(2026, 10, 10, 20));
-    });
-
-    test('tắt tự trả / đã trả / thiếu ví / đã xoá → bỏ hẳn', () {
-      for (final b in [
-        _hoaDon(han: DateTime(2026, 10, 11), tuTra: false),
-        _hoaDon(han: DateTime(2026, 10, 11), daTra: true),
-        _hoaDon(han: DateTime(2026, 10, 11), viId: null),
-        _hoaDon(han: DateTime(2026, 10, 11), daXoa: true),
-      ]) {
-        final l = lichNenKeTiep(bills: [b], goals: const [], now: now, gioNhac: 8, phutNhac: 0);
-        expect(l, (moc: null, coTuDong: false));
-      }
-    });
-
-    test('mục tiêu → kỳ kế (kyKeTiep); lấy mốc SỚM NHẤT giữa hoá đơn và mục tiêu', () {
-      final l = lichNenKeTiep(
-        bills: [_hoaDon(han: DateTime(2026, 10, 20))],
-        goals: [_mucTieu()],
-        now: now,
-        gioNhac: 8,
-        phutNhac: 0,
-      );
+  group('gopLichNen', () {
+    test('tổ hợp hoá đơn + mục tiêu → mốc SỚM NHẤT (hành vi của lichNenKeTiep trước 2026-10-15)', () {
+      final l = gopLichNen([
+        mocTuTraNen([_hoaDon(han: DateTime(2026, 10, 20))], now: now, gioNhac: 8, phutNhac: 0),
+        mocTrichNen([_mucTieu()], now: now),
+      ]);
       expect(l.moc, DateTime(2026, 10, 15, 7));
       expect(l.coTuDong, isTrue);
     });
 
-    test('mục tiêu đã xong / tắt trích → bỏ', () {
-      expect(lichNenKeTiep(bills: const [], goals: [_mucTieu(xong: true)], now: now, gioNhac: 8, phutNhac: 0),
-          (moc: null, coTuDong: false));
-      expect(lichNenKeTiep(bills: const [], goals: [_mucTieu(soTien: null)], now: now, gioNhac: 8, phutNhac: 0),
-          (moc: null, coTuDong: false));
+    test('không phần nào (không quyền gói cả hai — DI không đưa phần vào) → (null, false): Basic không cần đánh thức máy', () {
+      expect(gopLichNen(const []), (moc: null, coTuDong: false));
     });
 
-    test('không quyền gói → loại cả hai vế (Basic không cần đánh thức máy)', () {
-      final l = lichNenKeTiep(
-        bills: [_hoaDon(han: DateTime(2026, 10, 11))],
-        goals: [_mucTieu()],
-        now: now,
-        gioNhac: 8,
-        phutNhac: 0,
-        traDuoc: false,
-        trichDuoc: false,
-      );
-      expect(l, (moc: null, coTuDong: false));
+    test('mốc = nhỏ nhất trong các mốc khác null; coTuDong = còn phần nào bật', () {
+      final m = DateTime(2026, 10, 12, 8);
+      expect(gopLichNen([(moc: null, coTuDong: true), (moc: m, coTuDong: false)]), (moc: m, coTuDong: true));
+      expect(gopLichNen([(moc: DateTime(2026, 10, 13), coTuDong: true), (moc: m, coTuDong: true)]),
+          (moc: m, coTuDong: true));
+      expect(gopLichNen([(moc: m, coTuDong: true), (moc: DateTime(2026, 10, 13), coTuDong: false)]), (moc: m, coTuDong: true),
+          reason: 'mốc sớm hơn đứng TRƯỚC vẫn phải thắng — DI đặt phần hoá đơn trước phần mục tiêu');
+      expect(gopLichNen([(moc: null, coTuDong: false), (moc: null, coTuDong: false)]), (moc: null, coTuDong: false),
+          reason: 'không phần nào bật tự động thì không giữ lượt định kỳ — không đánh thức máy vô cớ');
+    });
+
+    test('DI chỉ đưa phần có quyền gói vào (thay ca traDuoc / trichDuoc của lichNenKeTiep cũ — điều kiện nằm ở DI)', () {
+      final di = File('lib/core/di/injection_container.dart').readAsStringSync();
+      expect(RegExp(r'if \(coQuyenNen\(MaQuyen\.billAutoPay\)\)\s*mocTuTraNen\(').hasMatch(di), isTrue,
+          reason: 'không quyền tự trả mà vẫn góp phần hoá đơn là đánh thức máy cho Basic');
+      expect(RegExp(r'if \(coQuyenNen\(MaQuyen\.goalAutoDeposit\)\)\s*mocTrichNen\(').hasMatch(di), isTrue,
+          reason: 'không quyền trích mục tiêu mà vẫn góp phần mục tiêu là đánh thức máy cho Basic');
+      for (final h in ['mocTuTraNen(', 'mocTrichNen(']) {
+        expect(h.allMatches(di).length, 1,
+            reason: '$h phải được gọi ĐÚNG MỘT lần trong DI (và dưới `if` quyền gói) — gọi thêm không điều kiện là phần ấy luôn góp mốc');
+      }
     });
   });
 

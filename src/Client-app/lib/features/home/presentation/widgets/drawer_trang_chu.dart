@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/theme/app_colors.dart';
-import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
+import '../../../auth/presentation/widgets/xac_nhan_dang_xuat.dart';
 
 /// Một mục trong drawer: nhãn, icon, và route đích.
 class MucDrawer {

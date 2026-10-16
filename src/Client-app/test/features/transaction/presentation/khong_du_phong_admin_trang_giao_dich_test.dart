@@ -21,7 +21,7 @@
 /// Nặng nhất là `AddTransactionPage`: đó là đường **GHI**, nên giao dịch tạo
 /// trong lúc phiên chưa sẵn sàng mang chủ sở hữu sai, rồi đẩy lên và vỡ
 /// "Ownership mismatch" — đúng kịch bản mà docstring của
-/// `core/auth/current_account.dart` mô tả khi G4 được đóng.
+/// `features/auth/presentation/bloc/current_account.dart` mô tả khi G4 được đóng.
 library;
 
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
@@ -50,7 +50,7 @@ void main() {
         selectable: const [],
       );
 
-  /// ⚠️ Phải đi HẾT chuỗi chốt của `_saveTransaction` thì mới chạm được chốt
+  /// ⚠️ Phải đi HẾT chuỗi chốt của `chuanBiLuu` thì mới chạm được chốt
   /// tài khoản — nó đứng cuối. Bản đầu của tệp này bỏ bước chọn danh mục, nên
   /// bài kiểm dừng ở chốt "Vui lòng chọn danh mục" và **xanh vì lý do sai**.
   Future<void> dienDuForm(WidgetTester tester) async {

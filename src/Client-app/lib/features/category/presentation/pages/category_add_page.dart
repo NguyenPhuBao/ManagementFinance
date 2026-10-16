@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/auth/current_account.dart';
-import '../../../../core/category/category_classify.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
+import '../../domain/category_classify.dart';
+import '../../data/models/category_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/category_tree.dart';
@@ -54,7 +54,7 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
   final _nameController = TextEditingController();
   final _keywordController = TextEditingController();
   final List<String> _keywords = [];
-  List<Category> _groups = [];
+  List<CategoryEntity> _groups = [];
   String _classify = 'chi';
   String? _parentId;
   String _icon = 'restaurant';
@@ -110,8 +110,8 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
       (classify) =>
           _repository.loadTree(accountId: accountId, classify: classify),
     ));
-    final categories = <Category>[];
-    final groups = <Category>[];
+    final categories = <CategoryEntity>[];
+    final groups = <CategoryEntity>[];
     for (final tree in trees) {
       groups.addAll(tree.groups.map((node) => node.group));
       categories

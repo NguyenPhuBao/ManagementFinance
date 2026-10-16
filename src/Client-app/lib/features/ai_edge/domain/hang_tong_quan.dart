@@ -15,7 +15,7 @@
 ///   giảm`) — cùng lý lẽ `hang_du_bao.dart`.
 library;
 
-import '../../analytics/data/analytics_repository.dart';
+import '../../analytics/data/models/thong_ke_ky.dart';
 import '../../analytics/domain/dong_tien_tu_do.dart';
 import '../../analytics/domain/tong_tai_san.dart';
 import '../../analytics/domain/vai_vay_no.dart';

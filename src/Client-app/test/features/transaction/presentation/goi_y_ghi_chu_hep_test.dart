@@ -11,7 +11,13 @@
 /// theo nội dung, để nó đo cả bản cũ lẫn bản mới.
 library;
 
+import 'dart:typed_data';
+
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
+import 'package:flowmoney/features/transaction/data/datasources/ghi_am.dart';
+import 'package:flowmoney/features/transaction/data/datasources/kenh_micro.dart';
+import 'package:flowmoney/features/transaction/data/datasources/nghe_android.dart';
+import 'package:flowmoney/features/transaction/data/nguon_giong_noi.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
@@ -27,7 +33,7 @@ void main() {
 
   setUp(napFontThat);
 
-  Future<void> dung(WidgetTester tester, double rong, {bool laPremium = true}) async {
+  Future<void> dung(WidgetTester tester, double rong, {bool laPremium = true, NguonGiongNoi? giongNoi}) async {
     tester.view.physicalSize = Size(rong, 900);
     tester.view.devicePixelRatio = 1.0;
     // Roboto (font test) hẹp hơn Inter thật — phóng ×1,1 để chừa biên (như G80).
@@ -52,6 +58,7 @@ void main() {
         idaccount: 1,
         budgetLookup: (_, __) async => null,
         laPremium: laPremium,
+        giongNoi: giongNoi,
       ),
     ));
     await tester.pumpAndSettle();
@@ -90,16 +97,21 @@ void main() {
     }
   }
 
-  testWidgets('G84: ví dụ Nhập nhanh vẫn nêu số tiền và ví — thứ câu ví dụ sinh ra để chỉ',
-      (tester) async {
-    await dung(tester, 411);
-    final hint = tester
-        .widget<TextField>(find.byKey(const Key('nhap-nhanh-o')))
-        .decoration!
-        .hintText!;
-    expect(hint, contains('45k'), reason: 'ví dụ phải có số tiền');
-    expect(hint, contains('tiền mặt'), reason: 'ví dụ phải nêu ví');
-  });
+  for (final coMicro in [false, true]) {
+    testWidgets(
+        'G84: ví dụ Nhập nhanh vẫn nêu số tiền và ví — thứ câu ví dụ sinh ra để chỉ (${coMicro ? 'CÓ' : 'không'} micro)',
+        (tester) async {
+      // I2: Android Premium luôn có micro — cấu hình phát hành phải được đo, không chỉ cấu hình không micro.
+      await dung(tester, 411, giongNoi: coMicro ? _nguonGia() : null);
+      expect(find.byKey(const Key('nhap-nhanh-micro')), coMicro ? findsOneWidget : findsNothing);
+      final hint = tester
+          .widget<TextField>(find.byKey(const Key('nhap-nhanh-o')))
+          .decoration!
+          .hintText!;
+      expect(hint, contains('45k'), reason: 'ví dụ phải có số tiền');
+      expect(hint, contains('tiền mặt'), reason: 'ví dụ phải nêu ví');
+    });
+  }
 
   testWidgets('G84: chữ ô ghi chú thẳng cột với nhãn "Ngày" (theme đệm ngang 16)',
       (tester) async {
@@ -132,4 +144,57 @@ void main() {
               '`border: none` bằng enabledBorder / focusedBorder riêng)');
     }
   });
+
+  // C4 Task 14 (vòng sửa 1, Q2): micro 36 dp chen vào hàng ô · Điền → ô hẹp lại ~36 dp; chữ gợi ý phải vẫn vừa.
+  for (final rong in [320.0, 300.0]) {
+    testWidgets('C4 · $rong dp · CÓ micro: chữ gợi ý ô Nhập nhanh hiện trọn', (tester) async {
+      await dung(tester, rong, giongNoi: _nguonGia());
+      expect(find.byKey(const Key('nhap-nhanh-micro')), findsOneWidget, reason: 'tiền đề: micro hiện');
+      vuaO(goiY(tester, const Key('nhap-nhanh-o')), '$rong dp có micro: chữ gợi ý ô Nhập nhanh');
+    });
+  }
 }
+
+class _AndroidGia implements NgheAndroid {
+  @override
+  Future<bool> khoiTao() async => true;
+  @override
+  Future<void> nghe({
+    required bool trenMay,
+    required void Function(String chu, bool xong) onChu,
+    required void Function(String ma) onLoi,
+    required void Function() onDung,
+  }) async {}
+  @override
+  Future<void> dung() async {}
+  @override
+  Future<void> huy() async {}
+}
+
+class _GhiAmGia implements GhiAm {
+  @override
+  Future<bool> coQuyen() async => true;
+  @override
+  Future<void> batDau(String duongTep, {required void Function(double dbfs) onBienDo}) async {}
+  @override
+  Future<String?> dung() async => null;
+  @override
+  Future<void> huy() async {}
+}
+
+class _MicroGia implements KenhMicro {
+  @override
+  Future<bool> biChan() async => false;
+  @override
+  Future<void> moCaiDat() async {}
+}
+
+NguonGiongNoi _nguonGia() => NguonGiongNoi(
+      android: _AndroidGia(),
+      ghiAm: _GhiAmGia(),
+      micro: _MicroGia(),
+      coMang: () async => true,
+      tepTam: () async => '/tam/a.wav',
+      docTep: (_) async => Uint8List(4),
+      xoaTep: (_) async {},
+    );

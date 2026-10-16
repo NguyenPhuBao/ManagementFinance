@@ -18,13 +18,22 @@ import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/api/interceptors/auth_interceptor.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
-import 'package:flowmoney/core/notification/notification_scanner.dart';
+import 'package:flowmoney/features/notification/application/notification_scanner.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
+import 'package:flowmoney/core/auth/phien_dieu_phoi_that.dart';
+import 'package:flowmoney/features/transaction/data/datasources/kho_anh_quet.dart';
+import 'package:flowmoney/features/auth/presentation/state/an_the_cho_xoa.dart';
+import 'package:flowmoney/features/category/application/default_category_seeder.dart';
+import 'package:flowmoney/features/category/application/personal_default_categories.dart';
+import 'package:flowmoney/features/wallet/application/default_account_data_initializer.dart';
+import 'package:flowmoney/features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
+import 'package:flowmoney/core/realtime/realtime_channel.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _FakeDioClient implements DioClient {
   @override
@@ -45,7 +54,8 @@ class _Offline implements Connectivity {
 /// Ghi lại việc SyncEngine có bị khởi động / dừng hay không, và cho phép test
 /// tự phát tín hiệu "phiên chết" như engine thật sẽ làm.
 class _SpySyncEngine extends SyncEngine {
-  _SpySyncEngine({required super.dioClient, required super.db, super.connectivity});
+  _SpySyncEngine({required super.dioClient, required super.db, super.connectivity})
+      : super(soDuVi: congSoDuViThat(db), viBiGiu: congViBiGiuThat(db));
 
   final List<int> startedWith = [];
   int stopCalls = 0;
@@ -153,11 +163,45 @@ void main() {
     await db.close();
   });
 
+  /// Bộ điều phối THẬT dựng từ chính các spy đang đăng ký — mỗi hook gác bằng `sl.isRegistered` y như AuthBloc cũ, nên
+  /// kỳ vọng thứ tự khởi động của các ca cũ còn nguyên giá trị. Đọc `sl` lúc DỰNG: đăng ký dịch vụ TRƯỚC khi gọi `phien()`.
+  PhienDieuPhoiThat phien() {
+    final p = PhienDieuPhoiThat(
+      dongBo: sl.isRegistered<SyncEngine>() ? sl<SyncEngine>() : null,
+      thoiGianThuc: sl.isRegistered<RealtimeChannel>() ? sl<RealtimeChannel>() : null,
+      boQuet: sl.isRegistered<NotificationScanner>() ? sl<NotificationScanner>() : null,
+      interceptor: sl.isRegistered<AuthInterceptor>() ? sl<AuthInterceptor>() : null,
+      donTaiKhoanKhac: db.purgeDataForOtherAccounts,
+      xoaBanSao: db.purgeDataForAccount,
+      xoaCacheSlm: () async {
+        if (sl.isRegistered<SlmCache>()) await sl<SlmCache>().xoaHet();
+      },
+      chuyenHangSeedCu: sl.isRegistered<PersonalDefaultCategories>()
+          ? (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id)
+          : null,
+      taoBanSaoDanhMuc: sl.isRegistered<DefaultCategorySeeder>()
+          ? (id) => sl<DefaultCategorySeeder>().seedForAccount(id)
+          : null,
+      seedTaiKhoanMoi: sl.isRegistered<DefaultAccountDataInitializer>()
+          ? (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id)
+          : null,
+      xoaAnhQuet: () async {
+        if (sl.isRegistered<KhoAnhQuet>()) await sl<KhoAnhQuet>().xoaHet();
+      },
+      datLaiCoGiaoDien: () {
+        if (sl.isRegistered<AnTheChoXoa>()) sl<AnTheChoXoa>().value = false;
+        if (sl.isRegistered<AnNhacViTrungTen>()) sl<AnNhacViTrungTen>().value = false;
+      },
+    );
+    addTearDown(p.dispose);
+    return p;
+  }
+
   /// Trạng thái CUỐI của lượt mở app. Từ 2026-10-09 lượt ấy phát `AuthSuccess`
   /// từ bộ nhớ đệm TRƯỚC khi hỏi server, nên chờ `AuthSuccess` đầu tiên là đọc
   /// trạng thái giữa chừng — đợi hàng sự kiện cạn rồi mới đọc.
   Future<AuthState> checkAuth(_FakeAuthRepository repo) async {
-    final bloc = AuthBloc(authRepository: repo);
+    final bloc = AuthBloc(authRepository: repo, phien: phien());
     addTearDown(bloc.close);
     bloc.add(AuthCheckRequested());
     await pumpEventQueue();
@@ -316,7 +360,7 @@ void main() {
         session: SessionStatus.valid,
         cachedUser: _user('9'),
       );
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       final loggedIn = bloc.stream.where((s) => s is AuthSuccess).first;
       bloc.add(AuthCheckRequested());
@@ -340,7 +384,7 @@ void main() {
         session: SessionStatus.valid,
         cachedUser: _user('10'),
       );
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       final loggedIn = bloc.stream.where((s) => s is AuthSuccess).first;
       bloc.add(AuthCheckRequested());
@@ -364,7 +408,7 @@ void main() {
         session: SessionStatus.valid,
         cachedUser: _user('9'),
       );
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       final loggedIn = bloc.stream.where((s) => s is AuthSuccess).first;
       bloc.add(AuthCheckRequested());
@@ -391,7 +435,7 @@ void main() {
         session: SessionStatus.valid,
         cachedUser: _user('10'),
       );
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       final loggedIn = bloc.stream.where((s) => s is AuthSuccess).first;
       bloc.add(AuthCheckRequested());
@@ -421,7 +465,7 @@ void main() {
       ));
 
       // Engine thật (không phải spy) nhưng CHƯA gọi start().
-      final engine = SyncEngine(
+      final engine = taoSyncEngineThu(
         dioClient: _FakeDioClient(),
         db: db,
         connectivity: _Offline(),
@@ -503,7 +547,7 @@ void main() {
         () async {
       final cho = Completer<SessionStatus>();
       final repo = _RepoCho(cho, _user('10'));
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       bloc.add(AuthCheckRequested());
       await pumpEventQueue();
@@ -527,7 +571,7 @@ void main() {
       sl.registerSingleton<NotificationScanner>(scanner);
       final cho = Completer<SessionStatus>();
       final repo = _RepoCho(cho, _user('10'));
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       bloc.add(AuthCheckRequested());
       await pumpEventQueue();
@@ -548,7 +592,7 @@ void main() {
         () async {
       final cho = Completer<SessionStatus>();
       final repo = _RepoCho(cho, _user('10'));
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       final states = <AuthState>[];
       final sub = bloc.stream.listen(states.add);
@@ -568,7 +612,7 @@ void main() {
         () async {
       final cho = Completer<SessionStatus>();
       final repo = _RepoCho(cho, _user('10'));
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       bloc.add(AuthCheckRequested());
       await pumpEventQueue();
@@ -588,7 +632,7 @@ void main() {
         () async {
       final cho = Completer<SessionStatus>();
       final repo = _RepoCho(cho, _user('10'));
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       bloc.add(AuthCheckRequested());
       await pumpEventQueue();

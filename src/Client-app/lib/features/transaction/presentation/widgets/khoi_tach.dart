@@ -7,8 +7,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/category/category_visuals.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../category/presentation/widgets/category_visuals.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/tach_giao_dich.dart';
@@ -26,12 +26,12 @@ class KhoiTach extends StatelessWidget {
   });
 
   /// Danh mục đang chọn trên form — `null` khi chưa chọn.
-  final Category? chinh;
+  final CategoryEntity? chinh;
   final double tong;
   final List<PhanTach> phan;
 
   /// Tra tên / màu theo id.
-  final Map<String, Category> danhMuc;
+  final Map<String, CategoryEntity> danhMuc;
   final void Function(PhanTach p) onSua;
   final void Function(PhanTach p) onBo;
   final VoidCallback onThem;

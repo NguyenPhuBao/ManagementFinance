@@ -7,7 +7,7 @@ import '../../domain/wallet_status.dart';
 import '../../domain/wallet_type.dart';
 import '../widgets/the_vi_trung_ten.dart';
 import '../widgets/wallet_type_icon.dart';
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -32,7 +32,7 @@ class WalletListPage extends StatelessWidget {
     final user = (authState is AuthSuccess) ? authState.user : null;
 
     // Phép suy mã tài khoản có ĐÚNG MỘT định nghĩa, ở
-    // `core/auth/current_account.dart` (bài học G4). Trang này từng chép tay
+    // `features/auth/presentation/bloc/current_account.dart` (bài học G4). Trang này từng chép tay
     // `int.tryParse(user?.id ?? '') ?? 0` — bản chép tay cuối cùng còn sót.
     final idaccount = currentAccountIdOrNull(context) ?? 0;
 

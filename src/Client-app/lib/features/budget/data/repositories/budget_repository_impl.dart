@@ -2,10 +2,11 @@ import 'dart:async';
 
 import 'package:uuid/uuid.dart';
 
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../domain/budget_history.dart';
 import '../../domain/cua_so_nhin_lai.dart';
 import '../../domain/nhip_chi.dart';
@@ -188,7 +189,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
   @override
   Future<TransactionLookup> lookupFor(int idaccount) async {
     return TransactionLookup(
-      wallets: await localDataSource.getWallets(idaccount),
+      wallets: (await localDataSource.getWallets(idaccount)).map(WalletEntity.fromDrift),
       categories: await localDataSource.getAllCategories(idaccount),
     );
   }
@@ -423,7 +424,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
   }
 
   @override
-  Future<List<Category>> getExpenseCategories(int idaccount) {
+  Future<List<CategoryEntity>> getExpenseCategories(int idaccount) {
     return localDataSource.getExpenseCategories(idaccount);
   }
 }

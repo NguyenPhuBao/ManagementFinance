@@ -4,8 +4,10 @@
 /// nút **Tạo** của thẻ khoản lặp mở ra một form trống, im lặng.
 library;
 
+import '../../../../helpers/nguon_doc_gia.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
-import 'package:flowmoney/core/constants/app_router.dart';
+import 'package:flowmoney/core/router/app_router.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
@@ -17,7 +19,7 @@ import 'package:flowmoney/features/bill/presentation/pages/bill_add_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flowmoney/features/premium/data/dem_dang_hoat_dong.dart';
-import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/tran_goi.dart';
@@ -37,7 +39,7 @@ class _AuthCoDinh extends AuthBloc {
 
 class _BillRepoGia implements BillRepository {
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => const Stream.empty();
+  Stream<List<BillEntity>> watchBills(int idaccount) => const Stream.empty();
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -48,6 +50,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     if (sl.isRegistered<AppDatabase>()) await sl.unregister<AppDatabase>();
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
     if (sl.isRegistered<BillBloc>()) await sl.unregister<BillBloc>();
     sl.registerFactory<BillBloc>(() => BillBloc(repository: _BillRepoGia()));
     // `/bills/add` nay có cửa chặn trần hoá đơn (spec phân quyền 2026-10-08) đọc `sl<GoiRepository>` lúc chạy. Chưa

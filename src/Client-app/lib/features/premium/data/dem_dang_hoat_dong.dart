@@ -1,5 +1,7 @@
 import '../../../core/database/app_database.dart';
+import '../../category/data/models/category_entity.dart';
 import '../../bill/domain/bill_pay_status.dart';
+import '../../bill/data/models/bill_entity.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../category/domain/ban_sao_mac_dinh.dart';
 import '../../goal/data/models/goal_entity.dart';
@@ -38,13 +40,13 @@ class DemDangHoatDong implements NguonDemDangHoatDong {
       case LoaiTran.hoaDon:
         // Một chuỗi hoá đơn lặp có đúng một kỳ còn phải trả; kỳ `Skipped` / `Payed` không tính (spec phân quyền
         // 2026-10-08 mục 4.2). `conPhaiTra` là định nghĩa duy nhất — không so chuỗi trạng thái ở đây.
-        return (await db.billDao.getAll(idaccount)).where(conPhaiTra).length;
+        return (await db.billDao.getAll(idaccount)).map(BillEntity.fromDrift).where(conPhaiTra).length;
       case LoaiTran.danhMucRieng:
         // Bản sao bộ mặc định (seeder, `isDefault: false`) KHÔNG tính — nếu không, 13 bản sao của mọi tài khoản đã
         // vượt trần 5 và Basic không tạo được danh mục nào.
-        final khuon = await db.categoryDao.getBackendDefaults();
+        final khuon = (await db.categoryDao.getBackendDefaults()).map(CategoryEntity.fromDrift).toList();
         return (await db.categoryDao.getAll(idaccount)) // đã lọc deletedAt
-            .where((r) => !r.isDefault && !r.isDeleted && !laBanSaoMacDinh(r, khuon))
+            .where((r) => !r.isDefault && !r.isDeleted && !laBanSaoMacDinh(CategoryEntity.fromDrift(r), khuon))
             .length;
     }
   }

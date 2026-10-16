@@ -13,15 +13,15 @@
 /// Hàm thuần, không Drift truy vấn, không đồng hồ.
 library;
 
-import '../../../core/database/app_database.dart';
+import '../data/models/bill_entity.dart';
 import 'bill_chain.dart';
 import 'bill_pay_status.dart';
 
-bool _song(Bill b) => !b.isDeleted && b.deletedAt == null;
+bool _song(BillEntity b) => !b.isDeleted && b.deletedAt == null;
 
 /// Gốc chuỗi của [bill]: đi ngược `generatedFromBillId` qua [theoId] — gồm cả hàng **đã xoá** (cha của một kỳ có
 /// thể đã bị gỡ). Cha chưa có trên máy thì id cha ấy là gốc; lượt Pull sau sẽ mang nó về và mọi máy hội tụ.
-String _gocCua(Bill bill, Map<String, Bill> theoId) {
+String _gocCua(BillEntity bill, Map<String, BillEntity> theoId) {
   final truoc = kyTruocCua(bill, theoId);
   final dinh = truoc.isEmpty ? bill : truoc.last;
   // Đỉnh còn trỏ tới một cha không có trên máy → id cha ấy là gốc (khác `chuoiKyCua`, nơi đỉnh là kỳ cuối nhìn thấy):
@@ -32,14 +32,14 @@ String _gocCua(Bill bill, Map<String, Bill> theoId) {
 
 /// Khoá gộp: gốc chuỗi + ngày hạn (so theo NGÀY — cùng quy ước `markOverdue`). Gộp theo **cha** là sai: năm kỳ
 /// 12/10 của Netflix nằm dưới ba cha khác nhau (chính các kỳ trùng 05/10).
-String _khoa(Bill bill, Map<String, Bill> theoId) {
+String _khoa(BillEntity bill, Map<String, BillEntity> theoId) {
   final d = bill.dueDate;
   return '${_gocCua(bill, theoId)}|${d.year}-${d.month}-${d.day}';
 }
 
-Map<String, List<Bill>> _nhomSong(Iterable<Bill> tatCa) {
+Map<String, List<BillEntity>> _nhomSong(Iterable<BillEntity> tatCa) {
   final theoId = {for (final b in tatCa) b.id: b};
-  final nhom = <String, List<Bill>>{};
+  final nhom = <String, List<BillEntity>>{};
   for (final b in tatCa) {
     if (!_song(b)) continue;
     nhom.putIfAbsent(_khoa(b, theoId), () => []).add(b);
@@ -57,7 +57,7 @@ Map<String, List<Bill>> _nhomSong(Iterable<Bill> tatCa) {
 ///
 /// ⚠️ Vì sao các máy hội tụ mà không cần biết nhau: máy thấy tập con S của nhóm chỉ gỡ những hàng ≠ min(S), nên
 /// min **toàn cục** không bao giờ bị máy nào gỡ. Giới hạn: sửa tay (số tiền, ghi chú) trên một kỳ trùng bị gỡ thì mất.
-Set<String> kyTrungCanGo(Iterable<Bill> tatCa) {
+Set<String> kyTrungCanGo(Iterable<BillEntity> tatCa) {
   final go = <String>{};
   for (final nhom in _nhomSong(tatCa).values) {
     if (nhom.length < 2) continue;
@@ -74,7 +74,7 @@ Set<String> kyTrungCanGo(Iterable<Bill> tatCa) {
 
 /// Kỳ [bill] có một kỳ trùng (cùng gốc, cùng ngày hạn) **đã đóng** không — chốt của `payBill`: trả nó là trừ tiền
 /// lần thứ hai cho cùng một kỳ mà server không chặn được (khác `Idbill`).
-bool kyCungKyDaDong(Bill bill, Iterable<Bill> tatCa) {
+bool kyCungKyDaDong(BillEntity bill, Iterable<BillEntity> tatCa) {
   final theoId = {for (final b in tatCa) b.id: b};
   final khoa = _khoa(bill, theoId);
   return tatCa.any((b) => b.id != bill.id && _song(b) && !conPhaiTra(b) && _khoa(b, theoId) == khoa);

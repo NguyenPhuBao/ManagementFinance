@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/vi_trung_ten_nguon.dart';
-import '../an_nhac_vi_trung_ten.dart';
+import '../state/an_nhac_vi_trung_ten.dart';
 
 /// Dòng nhắc "N ví trùng tên đang chờ bạn xử lý" ở Trang chủ (G63) — spec
 /// 2026-10-05 mục 5.5, màn Stitch `5dd90541f4cc4be398a8f2840bcec9d6`

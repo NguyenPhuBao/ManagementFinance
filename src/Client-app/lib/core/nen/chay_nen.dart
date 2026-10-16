@@ -13,12 +13,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import '../../features/auth/data/repositories/auth_repository.dart';
-import '../../features/premium/data/goi_repository.dart';
+import '../../features/premium/data/repositories/goi_repository.dart';
 import '../constants/app_constants.dart';
 import '../di/injection_container.dart';
-import '../notification/nhat_ky_thong_bao.dart';
-import '../notification/notification_scanner.dart';
-import '../sync/noi_bo_nghe_ket_qua_day.dart';
+import '../../features/notification/data/datasources/nhat_ky_thong_bao.dart';
+import '../../features/notification/application/notification_scanner.dart';
 import '../sync/sync_engine.dart';
 import 'kenh_tu_chuyen_tien.dart';
 import 'lich_nen.dart';

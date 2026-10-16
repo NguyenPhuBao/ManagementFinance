@@ -34,7 +34,7 @@
 /// thường → gom khoảng trắng.
 library;
 
-import '../../../core/category/category_classify.dart';
+import '../../category/domain/category_classify.dart';
 import '../../../core/category/category_name.dart';
 import 'khoan_vao_thong_ke.dart';
 import 'pham_vi_ky.dart';

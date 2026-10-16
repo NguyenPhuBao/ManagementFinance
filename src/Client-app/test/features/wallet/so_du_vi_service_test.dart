@@ -6,7 +6,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/features/wallet/data/services/so_du_vi_service.dart';
+import 'package:flowmoney/features/wallet/data/so_du_vi_service.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {

@@ -1,27 +1,30 @@
+import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'dart:async';
 import '../../../../core/utils/currency_formatter.dart';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import '../../../../core/database/app_database.dart';
-import '../../../../core/auth/current_account.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../transaction/data/models/transaction_entity.dart';
 import '../../data/models/goal_entity.dart';
 import '../../data/repositories/goal_repository.dart';
 import '../../domain/goal_deposit_wallets.dart';
-import '../../domain/goal_deposit_warning.dart';
-import '../../domain/goal_forecast.dart';
 import '../../domain/goal_history_direction.dart';
 import '../../domain/goal_wallet_shortfall.dart';
 import '../../domain/goal_history_filter.dart';
 import '../widgets/goal_config_card.dart';
 import '../widgets/goal_history_sheet.dart';
 import '../widgets/goal_progress.dart';
-import '../widgets/goal_progress_chart.dart';
-import '../widgets/goal_stats_card.dart';
-import '../widgets/nhan_tu_dong.dart';
+import '../widgets/chi_tiet_muc_tieu/ghi_chu_muc_tieu.dart';
+import '../widgets/chi_tiet_muc_tieu/khoi_lich_su_muc_tieu.dart';
+import '../widgets/chi_tiet_muc_tieu/khoi_nhan_dinh_muc_tieu.dart';
+import '../widgets/chi_tiet_muc_tieu/khoi_so_tien_muc_tieu.dart';
+import '../widgets/chi_tiet_muc_tieu/nut_duoi_muc_tieu.dart';
+import '../widgets/chi_tiet_muc_tieu/phieu_nap_tien.dart';
+import '../widgets/chi_tiet_muc_tieu/phieu_rut_tien.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
 class GoalDetailPage extends StatefulWidget {
@@ -50,18 +53,9 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   String? _tenViTichLuy;
   String? _tenViNguonTrich;
 
-  /// Số dòng lịch sử dựng ngay trên trang. Phần còn lại nằm ở bảng đầy đủ.
-  ///
-  /// Năm là con số vừa đủ để thấy *nhịp gần đây* mà không kéo trang dài thêm
-  /// một màn hình. Bỏ trần đi thì trang tăng tuyến tính không giới hạn, và
-  /// danh sách ở đây **không ảo hoá** (`shrinkWrap` + `NeverScrollable`) nên
-  /// mọi dòng được dựng cùng lúc, mỗi lượt đồng bộ.
-  static const int _soDongLichSuToiDa = 5;
-
   /// Toàn bộ lịch sử đã rút gọn, giữ lại để mở bảng đầy đủ mà không phải mở
   /// một dòng dữ liệu thứ hai.
   List<KhoanTichLuy> _khoanLichSu = const [];
-  int get _soKhoanLichSu => _khoanLichSu.length;
 
   /// Đăng ký với dòng dữ liệu mục tiêu — **bẫy 4.5 đã đóng 2026-09-08**.
   ///
@@ -146,7 +140,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     });
   }
 
-  /// Đổi hàng Drift sang dạng rút gọn cho tầng lọc.
+  /// Đổi `TransactionEntity` sang dạng rút gọn cho tầng lọc.
   ///
   /// Chiều tiền đọc từ **tiền tố ghi chú** qua `laKhoanRutKhoiMucTieu` — đúng
   /// một nơi quyết định, cùng hàm mà dòng trên trang đang dùng. Tự so ví ở đây
@@ -154,15 +148,15 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   ///
   /// Nhãn "tự động" đọc từ **hậu tố** cùng ghi chú ấy, qua `laKhoanTuDong` —
   /// cùng lối, cùng lý do.
-  List<KhoanTichLuy> _doiSangKhoan(List<dynamic> txs) => [
+  List<KhoanTichLuy> _doiSangKhoan(List<TransactionEntity> txs) => [
         for (final tx in txs)
-          for (final ghiChu in [(tx.note as String?) ?? ''])
+          for (final ghiChu in [tx.note])
             KhoanTichLuy(
-              ngay: tx.date as DateTime,
-              soTien: tx.amount as double,
+              ngay: tx.date,
+              soTien: tx.amount,
               laKhoanRut: laKhoanRutKhoiMucTieu(
                 ghiChu: ghiChu,
-                viCuaHang: tx.walletId as String,
+                viCuaHang: tx.walletId,
                 viTichLuy: _goal?.walletId,
               ),
               laTuDong: laKhoanTuDong(ghiChu),
@@ -192,10 +186,9 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// (cùng lý do với `walletTransfer`, bẫy 4.1) nên không có gì ở tầng CSDL
   /// bảo đảm nó còn tồn tại.
   Future<(String?, String?)> _tenCacVi(GoalEntity goal) async {
-    final db = sl<AppDatabase>();
     Future<String?> ten(String? id) async {
       if (id == null || id.isEmpty) return null;
-      final w = await db.walletDao.getById(id);
+      final w = await sl<WalletRepository>().getById(id);
       return w?.name;
     }
 
@@ -210,11 +203,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final viId = goal.walletId;
     if (viId == null) return null;
 
-    final db = sl<AppDatabase>();
-    final vi = await db.walletDao.getById(viId);
+    final vi = await sl<WalletRepository>().getById(viId);
     if (vi == null) return null;
 
-    final tatCa = await db.goalDao.getAll(goal.idaccount);
+    final tatCa = await _goalRepository.getGoals(goal.idaccount);
     final tong = tatCa
         .where((g) => g.walletId == viId)
         .fold<double>(0.0, (t, g) => t + g.currentAmount);
@@ -235,8 +227,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   void _xacNhanDoiViNhan() async {
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
-        ? <Wallet>[]
-        : await sl<AppDatabase>().walletDao.getActive(accountId);
+        ? <WalletEntity>[]
+        : await sl<WalletRepository>().getActive(accountId);
     if (!mounted) return;
 
     if (wallets.isEmpty) {
@@ -328,11 +320,10 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// chọn ví **nhận**.
   void _showWithdrawDialog() async {
     if (_goal == null) return;
-    final db = sl<AppDatabase>();
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
-        ? <Wallet>[]
-        : await db.walletDao.getActive(accountId);
+        ? <WalletEntity>[]
+        : await sl<WalletRepository>().getActive(accountId);
     if (!mounted) return;
 
     final viTichLuy =
@@ -352,180 +343,46 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       return;
     }
 
-    final amountController = TextEditingController();
-    final viNhanKhaDung =
-        wallets.where((w) => w.id != viTichLuy.id).toList();
-    Wallet selectedTargetWallet =
-        viNhanKhaDung.firstWhere((w) => w.id == idNhanMacDinh);
-
-    showModalBottomSheet(
+    moPhieuRutTien(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Rút khỏi ${_goal!.name}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Mục tiêu đang giữ ${CurrencyFormatter.format(_goal!.currentAmount)} '
-                'trong ví "${viTichLuy.name}".',
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.error,
-                ),
-                decoration: InputDecoration(
-                  labelText: 'Số tiền muốn rút (VNĐ)',
-                  filled: true,
-                  fillColor: AppColors.surfaceContainerLow,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Chuyển về ví nào',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<Wallet>(
-                    value: selectedTargetWallet,
-                    isExpanded: true,
-                    icon: const Icon(Icons.expand_more,
-                        color: AppColors.primary),
-                    items: viNhanKhaDung
-                        .map((w) => DropdownMenuItem<Wallet>(
-                              value: w,
-                              child: Text(
-                                '${w.name} (Số dư: ${CurrencyFormatter.format(w.balance)})',
-                                style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500),
-                              ),
-                            ))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val == null) return;
-                      setModalState(() => selectedTargetWallet = val);
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  final raw =
-                      amountController.text.replaceAll(RegExp(r'[^\d]'), '');
-                  final soTien = double.tryParse(raw) ?? 0.0;
-                  if (soTien <= 0) {
-                    baoNhanh('Vui lòng nhập số tiền hợp lệ', loai: LoaiThongBao.loi);
-                    return;
-                  }
-                  if (soTien > _goal!.currentAmount) {
-                    baoNhanh('Mục tiêu chỉ đang giữ '
-                          '${CurrencyFormatter.format(_goal!.currentAmount)}.', loai: LoaiThongBao.loi);
-                    return;
-                  }
-
-                  try {
-                    await _goalRepository.withdrawFromGoal(
-                      goalId: widget.id,
-                      goalName: _goal!.name,
-                      amount: soTien,
-                      walletId: selectedTargetWallet.id,
-                      idaccount: accountId,
-                    );
-                  } catch (e) {
-                    // Repository còn một trần nữa mà giao diện không thấy: số
-                    // dư THẬT của ví tích lũy, vốn có thể thấp hơn tiến độ.
-                    baoNhanh(e is StateError ? e.message : '$e', loai: LoaiThongBao.loi);
-                    return;
-                  }
-
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  if (!mounted) return;
-                  baoNhanh('Đã rút ${CurrencyFormatter.format(soTien)} khỏi mục '
-                        'tiêu về "${selectedTargetWallet.name}".', loai: LoaiThongBao.xong);
-                  _loadGoal();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Xác nhận rút tiền',
-                    style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ),
-      ),
+      layMucTieu: () => _goal!,
+      wallets: wallets,
+      viTichLuy: viTichLuy,
+      idNhanMacDinh: idNhanMacDinh,
+      onXacNhan: (ctx, soTien, vi) => _rutTien(ctx, soTien, vi, accountId),
     );
+  }
+
+  Future<void> _rutTien(
+      BuildContext ctx, double soTien, WalletEntity vi, int accountId) async {
+    try {
+      await _goalRepository.withdrawFromGoal(
+        goalId: widget.id,
+        goalName: _goal!.name,
+        amount: soTien,
+        walletId: vi.id,
+        idaccount: accountId,
+      );
+    } catch (e) {
+      // Repository còn một trần nữa mà giao diện không thấy: số
+      // dư THẬT của ví tích lũy, vốn có thể thấp hơn tiến độ.
+      baoNhanh(e is StateError ? e.message : '$e', loai: LoaiThongBao.loi);
+      return;
+    }
+
+    if (ctx.mounted) Navigator.pop(ctx);
+    if (!mounted) return;
+    baoNhanh('Đã rút ${CurrencyFormatter.format(soTien)} khỏi mục '
+          'tiêu về "${vi.name}".', loai: LoaiThongBao.xong);
+    _loadGoal();
   }
 
   void _showDepositDialog() async {
     if (_goal == null) return;
-    final db = sl<AppDatabase>();
     final accountId = currentAccountIdOrNull(context);
     final wallets = accountId == null
-        ? <Wallet>[]
-        : await db.walletDao.getActive(accountId);
+        ? <WalletEntity>[]
+        : await sl<WalletRepository>().getActive(accountId);
 
     if (!mounted) return;
     if (accountId == null || wallets.isEmpty) {
@@ -557,246 +414,44 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       return;
     }
 
-
-    final amountController = TextEditingController();
-    // Chỉ còn MỘT ô chọn: ví nguồn. Ví nhận đã cố định ở trên.
-    final viNguonKhaDung =
-        wallets.where((w) => w.id != viNhan.id).toList();
-    Wallet selectedSourceWallet =
-        viNguonKhaDung.firstWhere((w) => w.id == idNguonMacDinh);
-
-    showModalBottomSheet(
+    moPhieuNapTien(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                top: 20,
-                left: 20,
-                right: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Gửi thêm tiền vào ${_goal!.name}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Số tiền hiện tại: ${CurrencyFormatter.format(_goal!.currentAmount)} / ${CurrencyFormatter.format(_goal!.targetAmount)}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Còn thiếu ${CurrencyFormatter.format(_goal!.remainingAmount)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2E6B27),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: amountController,
-                    onChanged: (_) => setModalState(() {}),
-                    keyboardType: TextInputType.number,
-                    autofocus: true,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.income,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: 'Nhập số tiền muốn tích lũy thêm (VNĐ)',
-                      hintText: 'e.g. 1.000.000',
-                      filled: true,
-                      fillColor: AppColors.surfaceContainerLow,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Chọn ví nguồn thanh toán (Trừ tiền)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<Wallet>(
-                        value: selectedSourceWallet,
-                        isExpanded: true,
-                        icon: const Icon(Icons.expand_more, color: AppColors.primary),
-                        items: viNguonKhaDung.map((w) {
-                          return DropdownMenuItem<Wallet>(
-                            value: w,
-                            child: Text(
-                              '${w.name} (Số dư: ${CurrencyFormatter.format(w.balance)})',
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val == null) return;
-                          setModalState(() => selectedSourceWallet = val);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Ví nhận CHỈ để xem — nó là thuộc tính của mục tiêu, đổi qua
-                  // nút "Đổi ví nhận" ở thanh trên chứ không phải mỗi lần nạp.
-                  Row(
-                    children: [
-                      const Icon(Icons.arrow_downward,
-                          size: 16, color: AppColors.onSurfaceVariant),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Chuyển vào ví tích lũy: ${viNhan.name}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF2E6B27),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (canhBaoNapVuot(
-                        _goal!,
-                        double.tryParse(amountController.text
-                                .replaceAll(RegExp(r'[^\d]'), '')) ??
-                            0.0,
-                      ) !=
-                      null) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.info_outline,
-                            size: 16, color: AppColors.onSurfaceVariant),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            canhBaoNapVuot(
-                                  _goal!,
-                                  double.tryParse(amountController.text
-                                          .replaceAll(RegExp(r'[^\d]'), '')) ??
-                                      0.0,
-                                ) ??
-                                '',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final raw = amountController.text.replaceAll(RegExp(r'[^\d]'), '');
-                      final deposit = double.tryParse(raw) ?? 0.0;
-                      if (deposit <= 0) {
-                        baoNhanh('Vui lòng nhập số tiền hợp lệ', loai: LoaiThongBao.loi);
-                        return;
-                      }
-
-                      // Kiểm tra số dư ví nguồn
-                      if (deposit > selectedSourceWallet.balance) {
-                        baoNhanh('Số dư ví "${selectedSourceWallet.name}" không đủ. '
-                              'Hiện có: ${CurrencyFormatter.format(selectedSourceWallet.balance)}', loai: LoaiThongBao.loi);
-                        return;
-                      }
-
-                      // Nạp vượt mục tiêu KHÔNG bị chặn — tiết kiệm dư là
-                      // chuyện bình thường. Câu nhắc đã hiện ngay dưới ô nhập
-                      // từ trước khi bấm.
-                      await _goalRepository.depositToGoal(
-                        goalId: widget.id,
-                        goalName: _goal!.name,
-                        depositAmount: deposit,
-                        walletId: selectedSourceWallet.id,
-                        idaccount: accountId,
-                      );
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (!mounted) return;
-                      // KHÔNG gọi `context.read<WalletCubit>().loadWallets()`
-                      // ở đây. Route `/goals/:id` không có provider nào cho
-                      // `WalletCubit`, nên lệnh ấy ném
-                      // `ProviderNotFoundError`. Mã cũ đặt nó SAU khi nạp
-                      // xong nên sự cố chỉ nổ ở đường thành công và không lộ
-                      // ra trong bộ test.
-                      //
-                      // Và kể cả khi có provider thì nó cũng vô nghĩa:
-                      // `WalletCubit` đăng ký kiểu **factory**, mỗi nơi gọi
-                      // nhận một instance riêng. Trang danh sách ví tự tạo
-                      // cubit của nó và `loadWallets` ngay khi dựng, nên số dư
-                      // vẫn đúng khi người dùng mở lại trang ấy.
-                      baoNhanh('Đã gửi thêm ${CurrencyFormatter.format(deposit)} vào mục tiêu!', loai: LoaiThongBao.xong);
-                      _loadGoal();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Xác nhận gửi tiết kiệm',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      layMucTieu: () => _goal!,
+      wallets: wallets,
+      viNhan: viNhan,
+      idNguonMacDinh: idNguonMacDinh,
+      onXacNhan: (ctx, soTien, vi) => _napTien(ctx, soTien, vi, accountId),
     );
+  }
+
+  Future<void> _napTien(
+      BuildContext ctx, double deposit, WalletEntity vi, int accountId) async {
+    // Nạp vượt mục tiêu KHÔNG bị chặn — tiết kiệm dư là
+    // chuyện bình thường. Câu nhắc đã hiện ngay dưới ô nhập
+    // từ trước khi bấm.
+    await _goalRepository.depositToGoal(
+      goalId: widget.id,
+      goalName: _goal!.name,
+      depositAmount: deposit,
+      walletId: vi.id,
+      idaccount: accountId,
+    );
+    if (ctx.mounted) Navigator.pop(ctx);
+    if (!mounted) return;
+    // KHÔNG gọi `context.read<WalletCubit>().loadWallets()`
+    // ở đây. Route `/goals/:id` không có provider nào cho
+    // `WalletCubit`, nên lệnh ấy ném
+    // `ProviderNotFoundError`. Mã cũ đặt nó SAU khi nạp
+    // xong nên sự cố chỉ nổ ở đường thành công và không lộ
+    // ra trong bộ test.
+    //
+    // Và kể cả khi có provider thì nó cũng vô nghĩa:
+    // `WalletCubit` đăng ký kiểu **factory**, mỗi nơi gọi
+    // nhận một instance riêng. Trang danh sách ví tự tạo
+    // cubit của nó và `loadWallets` ngay khi dựng, nên số dư
+    // vẫn đúng khi người dùng mở lại trang ấy.
+    baoNhanh('Đã gửi thêm ${CurrencyFormatter.format(deposit)} vào mục tiêu!', loai: LoaiThongBao.xong);
+    _loadGoal();
   }
 
   @override
@@ -875,16 +530,16 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                   children: [
                     GoalProgressRing(goal: _goal!),
                     const SizedBox(height: 32),
-                    _buildAmountInfo(remaining),
+                    KhoiSoTienMucTieu(goal: _goal!, remaining: remaining),
                     if (_goal!.note.trim().isNotEmpty) ...[
                       const SizedBox(height: 16),
-                      _buildGhiChu(_goal!.note.trim()),
+                      GhiChuMucTieu(_goal!.note.trim()),
                     ],
                     const SizedBox(height: 24),
-                    _buildInsightBox(),
+                    KhoiNhanDinhMucTieu(goal: _goal!),
                     if (_canhBaoVi != null) ...[
                       const SizedBox(height: 12),
-                      _buildCanhBaoVi(_canhBaoVi!),
+                      CanhBaoViMucTieu(_canhBaoVi!),
                     ],
                     // Khối "Cấu hình" — thêm 2026-09-08 sau khi người dùng
                     // báo trang này thiếu nội dung. Cả bốn dòng của nó đều là
@@ -906,223 +561,21 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
                 ),
               ),
             ),
-            _buildBottomButtons(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAmountInfo(double remaining) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              CurrencyFormatter.format(_goal!.currentAmount),
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
-                color: AppColors.primary,
-                letterSpacing: -1,
-              ),
-            ),
-            Text(
-              ' / ${CurrencyFormatter.format(_goal!.targetAmount)}',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
-                fontWeight: FontWeight.w500,
-              ),
+            NutDuoiMucTieu(
+              goal: _goal!,
+              onVongMoi: _xacNhanVongMoi,
+              onNap: _showDepositDialog,
+              onRut: _showWithdrawDialog,
+              // Trang này không nghe dòng dữ liệu (bẫy 4.5) nên phải tự nạp lại
+              // sau khi trang sửa đóng, nếu không tên và số tiền vừa đổi vẫn là
+              // số cũ trên màn hình.
+              onSua: () async {
+                await context.push('/goals/${widget.id}/edit');
+                if (mounted) _loadGoal();
+              },
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        RichText(
-          text: TextSpan(
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
-            ),
-            children: [
-              const TextSpan(text: 'Còn lại '),
-              TextSpan(
-                text: CurrencyFormatter.format(remaining),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
-              ),
-              const TextSpan(text: ' để đạt mục tiêu'),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Ghi chú của người dùng — cái **lý do** đằng sau mục tiêu.
-  ///
-  /// Đặt ngay dưới con số, trước hộp dự báo: khi mở mục tiêu ra để cân nhắc có
-  /// nên tiêu vào tiền tích luỹ hay không, câu tự mình viết ra là thứ đáng đọc
-  /// trước cả tốc độ tiết kiệm.
-  ///
-  /// Không có khung viền, không có nhãn "GHI CHÚ": nó là chữ của người dùng
-  /// chứ không phải một trường dữ liệu cần gắn mác.
-  Widget _buildGhiChu(String noiDung) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.format_quote_rounded,
-            size: 18, color: AppColors.textSecondary.withValues(alpha: 0.6)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            noiDung,
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.5,
-              color: AppColors.textSecondary,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCanhBaoVi(String noiDung) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: .07),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.error.withValues(alpha: .3)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.warning_amber_rounded,
-              size: 20, color: AppColors.error),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              noiDung,
-              style: const TextStyle(fontSize: 13, height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInsightBox() {
-    final now = DateTime.now();
-    final duBao = duBaoHoanThanh(_goal!, now);
-    final thucTe = tocDoThucTe(_goal!, now);
-    final keHoach = tocDoKeHoach(_goal!, now: now);
-    // Dòng đầu: dự báo THẬT thay cho câu lặp lại hạn chót.
-    //
-    // `targetDate` được tính một lần lúc tạo từ chu kỳ người dùng nhập, rồi
-    // đóng băng. Không có bộ lập lịch nào trích tiền, nên nhịp thật do chính
-    // các lần nạp tay quyết định — và đó mới là thứ đáng hiển thị.
-    final String tieuDe;
-    if (_goal!.isCompleted || _goal!.remainingAmount <= 0) {
-      tieuDe = 'ĐÃ ĐẠT MỤC TIÊU';
-    } else if (duBao == null) {
-      tieuDe = 'CHƯA ĐỦ DỮ LIỆU ĐỂ DỰ BÁO';
-    } else {
-      tieuDe =
-          'DỰ BÁO HOÀN THÀNH: THÁNG ${DateFormat('MM/yyyy').format(duBao)}';
-    }
-
-    final nhipLabel = switch (_goal!.cycleTakeMoney) {
-      'Day' => 'mỗi ngày',
-      'Week' => 'mỗi tuần',
-      'Quarter' => 'mỗi quý',
-      'Year' => 'mỗi năm',
-      _ => 'mỗi tháng',
-    };
-
-    final String mota;
-    if (_goal!.isCompleted || _goal!.remainingAmount <= 0) {
-      mota = 'Không cần tích thêm đồng nào.';
-    } else if (thucTe == null) {
-      // Lý do là CHƯA ĐỦ THỜI GIAN, không phải chưa đủ số lần nạp — xem
-      // `_duCuaSo` ở `goal_forecast.dart`. Câu cũ ("gửi thêm vài lần") sai
-      // hướng: người dùng nạp thêm mười lần trong cùng ngày vẫn không mở được
-      // hộp này, và họ sẽ tưởng tính năng hỏng.
-      mota = 'Cần theo dõi thêm ít lâu để app ước lượng được nhịp tích lũy. '
-          'Nhịp $nhipLabel chỉ có nghĩa khi đã qua ít nhất nửa chu kỳ.';
-    } else if (duBao == null) {
-      mota = 'Chưa tích được đồng nào $nhipLabel, nên chưa ước lượng được '
-          'ngày đạt mục tiêu.';
-    } else {
-      final canThem = keHoach == null
-          ? ''
-          : ' · cần ${CurrencyFormatter.format(keHoach)} để kịp hạn '
-              '${DateFormat('MM/yyyy').format(_goal!.targetDate)}';
-      mota = 'Đang tích ${CurrencyFormatter.format(thucTe)} $nhipLabel$canThem.';
-    }
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.4)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFC3EBBB),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.lightbulb,
-              color: Color(0xFF2E6B27),
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tieuDe,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  mota,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.onSurfaceVariant.withValues(alpha: 0.9),
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1133,7 +586,7 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     // đây chỗ này rơi về 1 và lấy giao dịch của tài khoản admin.
     if (accountId == null) return const SizedBox.shrink();
 
-    return StreamBuilder<dynamic>(
+    return StreamBuilder<List<TransactionEntity>>(
       stream: _goalRepository.watchGoalTransactions(
           accountId, widget.id, _goal?.name ?? ''),
       builder: (context, snapshot) {
@@ -1148,179 +601,18 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
         // hiện lại. Trông y như vừa mất dữ liệu.
         final dangTai = !snapshot.hasData &&
             snapshot.connectionState == ConnectionState.waiting;
-        final txs = (snapshot.data as List<dynamic>?) ?? [];
+        final txs = snapshot.data ?? const <TransactionEntity>[];
         // Ghi lại để nhãn phía dưới biết có nên hiện nút "Xem tất cả" không,
         // và để bảng đầy đủ có sẵn dữ liệu mà không phải mở một dòng dữ liệu
         // thứ hai.
         if (!dangTai) _khoanLichSu = _doiSangKhoan(txs);
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Biểu đồ đứng NGAY TRÊN lịch sử vì hai khối đọc cùng một dữ
-            // liệu: một cái vẽ hình dáng của cả quãng đường, một cái liệt kê
-            // từng khoản. Khối tự biến mất khi chưa có khoản nào.
-            if (!dangTai) ...[
-              GoalProgressChart(goal: _goal!, khoan: _khoanLichSu),
-              if (_khoanLichSu.isNotEmpty) const SizedBox(height: 12),
-              // Thẻ ba con số tóm tắt đúng chuỗi mà biểu đồ vừa vẽ ra, nên nó
-              // đứng ngay dưới chứ không phải một chỗ khác trên trang.
-              GoalStatsCard(goal: _goal!, khoan: _khoanLichSu),
-              if (_khoanLichSu.isNotEmpty) const SizedBox(height: 32),
-            ],
-            // Nút "Xem tất cả" từng bị GỠ ngày 2026-09-06 vì nó có
-            // `onPressed: () {}` trong khi danh sách bên dưới đã hiện toàn bộ
-            // — vừa không làm gì vừa ngụ ý sai rằng có phần bị giấu.
-            //
-            // Nay nó **quay lại và làm thật** (2026-09-08). Lý lẽ cũ nói về
-            // một nút rỗng, không nói rằng danh sách phải hiện hết mãi mãi:
-            // danh sách không có trần, và một mục tiêu trích hàng ngày chạy
-            // hai năm là 730 dòng dựng cùng lúc trên một trang nay vẽ lại mỗi
-            // lượt đồng bộ.
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'LỊCH SỬ TÍCH LŨY',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.onSurfaceVariant,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                if (_soKhoanLichSu > _soDongLichSuToiDa)
-                  TextButton(
-                    onPressed: _moBangLichSu,
-                    child: const Text('Xem tất cả'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (dangTai)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-              )
-            else if (txs.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(
-                  child: Text(
-                    'Chưa có khoản tích lũy nào.',
-                    style:
-                        TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                  ),
-                ),
-              )
-            else
-              _danhSachLichSu(txs),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Năm dòng lịch sử gần nhất.
-  ///
-  /// Chỉ dựng tối đa [_soDongLichSuToiDa] dòng ở đây. Phần còn lại nằm trong
-  /// bảng đầy đủ, nơi có vùng cuộn RIÊNG nên `ListView` ảo hoá thật sự.
-  Widget _danhSachLichSu(List<dynamic> txs) {
-    final hienThi = txs.take(_soDongLichSuToiDa).toList();
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: hienThi.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
-      itemBuilder: (context, index) {
-        final tx = hienThi[index];
-        final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(tx.date as DateTime);
-        final amount = (tx.amount as double);
-        // Chiều tiền đọc từ tiền tố ghi chú do chính app sinh ra, KHÔNG
-        // từ vị trí ví — so ví là diễn giải hàng cũ bằng cấu hình hiện
-        // tại của mục tiêu, nên đổi ví một lần là lịch sử đọc sai hết.
-        // Xem `goal_history_direction.dart`.
-        final ghiChu = (tx.note as String?) ?? '';
-        final laKhoanRut = laKhoanRutKhoiMucTieu(
-          ghiChu: ghiChu,
-          viCuaHang: tx.walletId as String,
-          viTichLuy: _goal!.walletId,
-        );
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: laKhoanRut
-                    ? const Color(0xFFFBEDEC)
-                    : const Color(0xFFF0F5EE),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.savings_outlined,
-                color: Color(0xFF2E6B27),
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          // Cắt hậu tố: chip ngay bên cạnh đã nói
-                          // "Tự động" rồi, để nguyên là dòng mang
-                          // đúng ba chữ ấy hai lần.
-                          ghiChuKhongHauTo(ghiChu),
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                      if (laKhoanTuDong(ghiChu)) ...[
-                        const SizedBox(width: 6),
-                        const NhanTuDong(),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    dateStr,
-                    style: TextStyle(
-                      color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              '${laKhoanRut ? '−' : '+'}'
-              '${CurrencyFormatter.format(amount)}',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: laKhoanRut
-                    ? AppColors.error
-                    : const Color(0xFF2E6B27),
-              ),
-            ),
-          ],
+        return KhoiLichSuMucTieu(
+          goal: _goal!,
+          dangTai: dangTai,
+          txs: txs,
+          khoan: _khoanLichSu,
+          onXemTatCa: _moBangLichSu,
         );
       },
     );
@@ -1369,115 +661,5 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
       if (!mounted) return;
       baoNhanh(e.toString(), loai: LoaiThongBao.loi);
     }
-  }
-
-  Widget _buildBottomButtons() {
-    return Container(
-      padding: const EdgeInsets.all(24.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: AppColors.outlineVariant.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Nút vòng mới chỉ hiện khi mục tiêu ĐÃ XONG và CÓ bật lặp lại — và
-          // nó đứng đầu, trên cả "Gửi thêm tiết kiệm": với một mục tiêu đã
-          // hoàn thành thì nạp thêm không còn là việc muốn làm nhất.
-          //
-          // Ẩn nút không phải là phép chặn. `batDauVongMoi` kiểm lại cả hai
-          // điều kiện ở tầng repository, vì đặt lại một mục tiêu đang dở là
-          // xoá tiến độ và không có gì hoàn tác.
-          if (_goal!.daHoanThanh && _goal!.recurrence) ...[
-            ElevatedButton.icon(
-              onPressed: _xacNhanVongMoi,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.income,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 56),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(Icons.restart_alt_rounded),
-              label: const Text(
-                'Bắt đầu vòng mới',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          ElevatedButton(
-            onPressed: _showDepositDialog,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 56),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Gửi thêm tiết kiệm',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          // Chỉ hiện khi có gì để rút. Nút mờ suốt đời với mục tiêu chưa nạp
-          // đồng nào chỉ làm rối chỗ.
-          if (_goal!.currentAmount > 0) ...[
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: _showWithdrawDialog,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                minimumSize: const Size(double.infinity, 48),
-                side: BorderSide(
-                    color: AppColors.outlineVariant.withValues(alpha: .8)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                'Rút khỏi mục tiêu',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          OutlinedButton(
-            // Trang này không nghe dòng dữ liệu (bẫy 4.5) nên phải tự nạp lại
-            // sau khi trang sửa đóng, nếu không tên và số tiền vừa đổi vẫn là
-            // số cũ trên màn hình.
-            onPressed: () async {
-              await context.push('/goals/${widget.id}/edit');
-              if (mounted) _loadGoal();
-            },
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              minimumSize: const Size(double.infinity, 48),
-              side: BorderSide(
-                  color: AppColors.outlineVariant.withValues(alpha: .8)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Chỉnh sửa mục tiêu',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

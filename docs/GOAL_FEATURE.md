@@ -282,7 +282,7 @@ như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
 
 > ✅ **2026-10-10 — chạy nền (Android), mở lại G22** (spec `docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md`).
 > Vòng quét bên dưới vẫn là **nơi duy nhất** chạy bộ trích; cái mới là **ai gọi vòng quét**: WorkManager hẹn một lượt
-> vào kỳ trích kế (`lichNenKeTiep` ở `lib/core/nen/lich_nen.dart`) cộng một lượt định kỳ 6 giờ, và lượt ấy chạy
+> vào kỳ trích kế (`mocTrichNen` ở `lib/features/goal/domain/moc_trich_nen.dart`, gộp với phần hoá đơn ở `gopLichNen` — `lib/core/nen/lich_nen.dart`; từ 2026-10-16, trước đó là hàm `lichNenKeTiep`) cộng một lượt định kỳ 6 giờ, và lượt ấy chạy
 > `NotificationScanner.scan()` trong engine headless khi app đóng (`lib/core/nen/chay_nen.dart`), hoặc trong engine của
 > app khi app đang mở (`quetNgay`). Lượt nền **đồng bộ** trước và sau khi quét (`SyncEngine.syncMotLuot`, không làm mới
 > token). **Năm chốt, phá cái nào cũng hỏng im lặng:**
@@ -295,7 +295,8 @@ như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
 > 3. **`autoDepositLastRun` ghi cùng giao tác** với khoản nạp (`depositToGoal(mocChayMoi:)`) — trước đó ghi rời sau
 >    vòng lặp, app sập giữa vòng thì kỳ đã trích bị trích lại.
 > 4. **Gói đặt TRƯỚC khi quét** ở nền (`GoiRepository.datTaiKhoan`) — `coQuyenNen` trả `true` khi gói chưa có tài
->    khoản, thiếu bước này là Basic được tự trích ở nền.
+>    khoản, thiếu bước này là Basic được tự trích ở nền. ⚠️ Đường **trong app** cũng phải vậy: lượt quét đầu của
+>    `moPhienCucBo` chạy trước `AuthSuccess` — hook `datGoi` của `PhienDieuPhoiThat` (G93, 2026-10-14).
 > 5. Kỳ đã quá hạn mà ví không đủ **không** được hẹn "ngay" — lượt một-lần tự hẹn lại ngay là vòng lặp tốn pin; nó chờ
 >    lượt định kỳ.
 >
@@ -303,6 +304,12 @@ như vừa mất dữ liệu. Đã phân biệt bằng `connectionState`.
 > còn thiếu** với hai số tiền khác → server giữ một số tiền theo LWW, tiến độ một máy lệch tới lượt kéo về sau. Khoản
 > trích có từ trước (id v4) không đổi. Giờ chạy không chính xác tới phút (WorkManager lùi khi máy ngủ sâu); Realme
 > force-stop khi vuốt Recents huỷ WorkManager. **iOS** không có lượt nền — đoạn dưới vẫn đúng ở đó.
+>
+> ✅ **Nghiệm thu Realme + máy ảo 2026-10-11:** đạt (a)(b)(c)(d)(f)(g)(h), (e) tài khoản Basic bỏ qua (người dùng chọn) —
+> bảng ở §8.1 spec trên. Trích tự nổ cả khi app mở lẫn khi app đóng (giết bằng `am crash`, không ép), bản release qua R8,
+> hai máy ra **một** hàng v5 (⚠️ chưa phải đua thật — máy ảo nổ trễ, kéo về trước khi quét). Vuốt Recents lần ấy **không**
+> force-stop (dịch vụ nghe thông báo D1 giữ tiến trình, job còn) — câu Realme ở trên là *có thể*, không phải *luôn*. Ca
+> hoá đơn tự trả ở nền chưa đo trên máy.
 
 
 Trước bản này, khối "Tự động trích tiền định kỳ" thu **ba** thông tin và lưu
@@ -1309,7 +1316,7 @@ trên Admin-web. Không có việc gì phải làm — nó nằm ngoài `CAN-LAM
 
 **376 test** riêng cho mục tiêu, trên tổng **1587** của dự án (đếm lại
 2026-09-08 sau đợt bộ lọc nguồn "Tay / Tự động", bằng cách chạy thật `flutter test
-test/features/goal test/core/notification/notification_rules_goal_wallet_test.dart`;
+test/features/goal test/features/notification/domain/notification_rules_goal_wallet_test.dart`;
 hai con số ghi ở đây trước đó là 222/893 rồi 351/1513, đều đã lạc hậu —
 **đừng chép lại từ trí nhớ**).
 
@@ -1332,9 +1339,9 @@ hai con số ghi ở đây trước đó là 222/893 rồi 351/1513, đều đã
 | `goal_priority_test.dart` | **Mục 3.22.** Hai chế độ của `uuTienSauKhiKeo` (ghi một hàng / đánh số lại), giá trị luôn dương và không trùng, vị trí ngoài dải không ném *(nhóm `viTriThaThucTe` bỏ 2026-10-09 — `onReorderItem` của SDK đã chỉnh chỉ số)* |
 | `goal_grouping_test.dart` | Hai tab, và từ 2026-09-08 canh **thứ tự ưu tiên**: ưu tiên thắng hạn định, `NULL` xếp cuối, trùng số rơi về hạn định, và tab đã hoàn thành **không** dùng ưu tiên |
 | `goal_auto_deposit_test.dart` | Bước kỳ (tháng ngắn, **năm nhuận**), **mốc neo**, trần số kỳ, quyết định trích. Từ 2026-09-08 canh thêm: **nhịp neo vào mốc gốc, không trôi** — ngày 31 kẹp ở tháng ngắn rồi **quay lại** 31, ngày 30 không bị kéo lên cuối tháng, `kyKeTiep` dùng chung nhịp, và mục tiêu chưa có mốc neo vẫn chạy như trước |
-| `goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản. Từ 2026-09-08 canh **hậu tố "(tự động)"** đi trọn vòng qua CSDL rồi quay về, và chiều tiền vẫn đọc đúng trên chính chuỗi ấy |
-| `core/notification/reminder_scheduler_test.dart` | Lịch nhắc kỳ trích: đúng mốc kỳ, trùng khoá thông báo, và **không huỷ lịch hoá đơn** |
-| `core/notification/notification_rules_goal_wallet_test.dart` | Hai luật thông báo. Từ 2026-09-08 canh thêm **cột mốc** (mục 3.21): mốc cao nhất, ba khoá riêng, khoá gắn `startDate` cho mục tiêu lặp lại, và ca **vừa ở cột mốc vừa chậm tiến độ** — ca duy nhất bắt được việc đặt luật sai chỗ |
+| `features/goal/application/goal_auto_deposit_runner_test.dart` | Trích bù nhiều kỳ, ví cạn giữa chừng, cấu hình hỏng, cách ly tài khoản. Từ 2026-09-08 canh **hậu tố "(tự động)"** đi trọn vòng qua CSDL rồi quay về, và chiều tiền vẫn đọc đúng trên chính chuỗi ấy |
+| `features/notification/application/reminder_scheduler_test.dart` | Lịch nhắc kỳ trích: đúng mốc kỳ, trùng khoá thông báo, và **không huỷ lịch hoá đơn** |
+| `features/notification/domain/notification_rules_goal_wallet_test.dart` | Hai luật thông báo. Từ 2026-09-08 canh thêm **cột mốc** (mục 3.21): mốc cao nhất, ba khoá riêng, khoá gắn `startDate` cho mục tiêu lặp lại, và ca **vừa ở cột mốc vừa chậm tiến độ** — ca duy nhất bắt được việc đặt luật sai chỗ |
 
 ### ⚠️ Ba thứ bộ test **không** bắt được ở vùng này
 

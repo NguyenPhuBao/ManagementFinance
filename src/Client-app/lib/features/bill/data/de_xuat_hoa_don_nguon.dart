@@ -14,8 +14,11 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../category/data/models/category_entity.dart';
+import '../../transaction/data/models/transaction_entity.dart';
 import '../../transaction/domain/khoan_lap.dart';
 import '../domain/de_xuat_hoa_don.dart';
+import 'models/bill_entity.dart';
 
 class DeXuatHoaDonNguon {
   DeXuatHoaDonNguon({
@@ -40,9 +43,14 @@ class DeXuatHoaDonNguon {
       final now = clock();
       final tu = DateTime(now.year, now.month, now.day)
           .subtract(const Duration(days: kCuaSoKhoanLapNgay));
-      final giaoDich = await db.transactionDao.getByDateRange(idaccount, tu, now);
-      final hoaDon = await db.billDao.getAll(idaccount);
-      final phanHoi = await db.goiYHoaDonDao.getAll(idaccount);
+      final giaoDich = [
+        for (final t in await db.transactionDao.getByDateRange(idaccount, tu, now)) TransactionEntity.fromDrift(t),
+      ];
+      final hoaDon = [for (final b in await db.billDao.getAll(idaccount)) BillEntity.fromDrift(b)];
+      final phanHoi = [
+        for (final p in await db.goiYHoaDonDao.getAll(idaccount))
+          (khoaNhom: p.khoaNhom, ketQua: p.ketQua, createdAt: p.createdAt),
+      ];
       return chonDeXuatHoaDon(
         ds: timKhoanLap(giaoDich, now: now),
         hoaDon: hoaDon,
@@ -59,11 +67,11 @@ class DeXuatHoaDonNguon {
   /// Bảng tra danh mục cho biểu tượng / màu của từng dòng — qua
   /// `getBangTraTen`, định nghĩa duy nhất của bảng tra (giữ cả hàng mặc định
   /// toàn cục, G41). Hỏng thì bảng rỗng: dòng rơi về biểu tượng mặc định.
-  Future<Map<String, Category>> bangDanhMuc(int idaccount) async {
+  Future<Map<String, CategoryEntity>> bangDanhMuc(int idaccount) async {
     if (idaccount <= 0) return const {};
     try {
       final ds = await db.categoryDao.getBangTraTen(idaccount);
-      return {for (final c in ds) c.id: c};
+      return {for (final c in ds) c.id: CategoryEntity.fromDrift(c)};
     } catch (e) {
       debugPrint('[KhoanLap] nạp bảng danh mục hỏng: $e');
       return const {};

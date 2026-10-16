@@ -6,7 +6,7 @@
 /// câu cổng F đã đo trên máy thật.
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/ai_edge/domain/lenh_tao.dart';
 import 'package:flutter_test/flutter_test.dart';
 

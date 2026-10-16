@@ -2,7 +2,7 @@
 ///
 /// `wallet_list_page.dart` **tự chép tay** phép suy mã tài khoản
 /// (`int.tryParse(user?.id ?? '') ?? 0`) thay vì gọi `currentAccountIdOrNull`.
-/// Đó đúng là bản chép tay mà `core/auth/current_account.dart` được tạo ra để
+/// Đó đúng là bản chép tay mà `features/auth/presentation/bloc/current_account.dart` được tạo ra để
 /// xoá bỏ, và nó sót lại.
 ///
 /// Cộng thêm: `context.read<AuthBloc>()` không đăng ký gì, còn

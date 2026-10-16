@@ -47,7 +47,7 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 | `transaction/domain/doc_anh_gemma.dart` | `kPromptMonTong` (câu hỏi ĐÃ ĐO — đổi là đo lại), `docJsonGemmaAnh` (số `"75,700"` và `39,000` không ngoặc) |
 | `transaction/data/doc_danh_muc_bang_ai.dart` | `DocDanhMucBangAi` — Gemma lần hai (chữ) chọn MỘT danh mục chi; tên soát lại với danh sách |
 | `transaction/data/doc_anh_bang_gemma.dart` | `DocAnhBangGemma` — chỗ DUY NHẤT ảnh quét gọi mô hình; đi qua `SlmDocAnh` (`slm_runtime.dart`: nạp lại bản có ảnh, ĐÓNG sau khi đọc) |
-| `core/ocr/kho_anh_quet.dart` | `KhoAnhQuet` — ảnh + `<tên>.mon.json` |
+| `features/transaction/data/datasources/kho_anh_quet.dart` (dời từ `core/ocr/` 2026-10-16) | `KhoAnhQuet` — ảnh + `<tên>.mon.json` |
 | `transaction/domain/dien_san_bien_dong.dart` | khoá `quet:`, `kNguonAnhQuet`, `DienSanBienDong.laQuet/ai`, `deeplinkQuet` |
 | `transaction/presentation/pages/quet_anh_page.dart` | `moQuet`, `QuetAnhPage` — tệp DUY NHẤT import `image_picker` |
 | `transaction/domain/tach_giao_dich.dart` | `PhanTach`, `conLai`, `kiemTach`, `gopKhiDoiDanhMucChinh`, `dungGiaoDichTach` |
@@ -57,8 +57,9 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 
 1. **Khoá `quet:` KHÔNG đi đường nguồn → ví của D1** — ảnh quét không gắn ngân hàng; giữ ví mặc định. Chép nhầm đường
    D1 là ví trống ở mọi lần quét. Gợi ý chuyển khoản và nhắc trùng của D1 cũng bỏ (spec 5.6).
-2. **Ảnh xoá trong `dispose()` của form** — một chỗ cho mọi đường thoát (Lưu, Bỏ qua, ←, Back hệ thống); `_dongBienDong`
-   với khoá `quet:` chỉ xoá ảnh, **không** gọi `xoaBienDong` (không có hàng loại 20).
+2. **Ảnh xoá trong `close()` của `ThemGiaoDichCubit`** (trang gọi `close()` từ `dispose()` của nó) — một chỗ cho mọi
+   đường thoát (Lưu, Bỏ qua, ←, Back hệ thống); `_dongBienDong` (cũng ở Cubit) với khoá `quet:` chỉ xoá ảnh, **không**
+   gọi `xoaBienDong` (không có hàng loại 20).
 2b. **Bản sao `image_picker` trong `cache/` xoá trong `dispose()` của `/quet`** (`xoaTepTamChonAnh`,
    `core/ocr/tep_tam_chon_anh.dart`): `cache/scaled_<tên>` + bản chép `cache/<uuid>/<tên>` — gói không tự dọn
    (nghiệm thu OnePlus 2026-10-08: 45 thư mục, 13 MB). Chỉ xoá tệp nằm thẳng trong thư mục tên `cache`. Bản sao từ
@@ -116,12 +117,12 @@ từ ảnh quét loại hoá đơn, không thì nhập số) → khối *TÁCH T
 Chốt:
 1. **Ghi hết hoặc không gì** — `addTransactions` một giao tác Drift; neo số dư đặt một lần TRƯỚC khi ghi sổ.
 2. **Một `actionSuccess`** — `AddTransactionsEvent`; hai lượt là form pop hai lần. Toast *"Đã lưu N giao dịch"*
-   (`_soGiaoDichVuaLuu`), kèm tên ngân sách khi có ngân sách *Cảnh báo* bị vượt.
+   (`_soGiaoDichVuaLuu` của `ThemGiaoDichCubit`), kèm tên ngân sách khi có ngân sách *Cảnh báo* bị vượt.
 3. **Ngân sách từng phần**, ngân sách *Chặn* bị vượt → **một** hộp liệt kê mọi phần, *Huỷ* / *Vẫn ghi* cho cả lô.
 4. Đổi danh mục chính sang danh mục đang tách → phần ấy **gộp**; đổi sang Thu / Chuyển → bỏ hết phần; đường lưu chỉ
    tách khi `type == 'chi'` (lưới thứ hai).
 5. Món một phần (`kiemTach` → `monHaiPhan`); món của phần khác mờ, không tick được.
-6. Phản hồi gợi ý B1 chỉ cho danh mục chính (`_ghiPhanHoiKhiLuu`).
+6. Phản hồi gợi ý B1 chỉ cho danh mục chính (`_ghiPhanHoiKhiLuu` của `ThemGiaoDichCubit`).
 7. Tên danh mục dài **xuống dòng**, không "…" (test bố cục 320 / 360 dp font thật bắt được lúc thi công).
 8. Các phần không nối với nhau — không cột, không schema mới; payload đồng bộ không đổi.
 

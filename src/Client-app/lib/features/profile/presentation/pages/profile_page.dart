@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../../core/auth/current_account.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../notification/data/repositories/thong_bao_repository.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../../../auth/presentation/xac_nhan_dang_xuat.dart';
+import '../../../auth/presentation/widgets/xac_nhan_dang_xuat.dart';
 import '../../../premium/presentation/widgets/the_goi_tai_khoan.dart';
 import '../widgets/noi_dung_cai_dat.dart';
 
@@ -33,7 +33,7 @@ class ProfilePage extends StatelessWidget {
           NotificationBell(
             unreadCount: currentAccountIdOrNull(context) == null
                 ? null
-                : sl<AppDatabase>().notificationDao.watchUnreadCount(
+                : sl<ThongBaoRepository>().watchUnreadCount(
                     currentAccountIdOrNull(context)!),
             onTap: () => context.push('/notifications'),
           ),

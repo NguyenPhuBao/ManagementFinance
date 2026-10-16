@@ -1,4 +1,4 @@
-import '../../../../core/database/app_database.dart';
+import 'category_entity.dart';
 import '../../domain/phan_loai_ghi_chu.dart';
 
 class CategorySuggestion {
@@ -11,7 +11,7 @@ class CategorySuggestion {
   })  : _lyDo = lyDo,
         _amTietChinh = amTietChinh;
 
-  final Category category;
+  final CategoryEntity category;
   final String matchedKeyword;
 
   /// [kNguonGoiYHoc] | [kNguonGoiYTuKhoa] — cũng là cột `nguon` của bảng phản hồi (B1).
@@ -34,6 +34,6 @@ class CategoryKeywordCandidate {
     required this.keyword,
   });
 
-  final Category category;
+  final CategoryEntity category;
   final String keyword;
 }

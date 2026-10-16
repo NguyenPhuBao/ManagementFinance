@@ -6,7 +6,7 @@
 /// bộ lọc** của `summarizeBills` — xem chú thích ở [GoiSoHoaDon.tu].
 library;
 
-import '../../../core/database/app_database.dart';
+import '../../bill/data/models/bill_entity.dart';
 import '../../bill/domain/bill_pay_status.dart';
 import '../../bill/domain/bill_status.dart';
 import 'goi_so.dart';
@@ -30,7 +30,7 @@ class GoiSoHoaDon extends GoiSo {
     required this.soLieu,
   });
 
-  factory GoiSoHoaDon.tu(List<Bill> bills, {required DateTime now}) {
+  factory GoiSoHoaDon.tu(List<BillEntity> bills, {required DateTime now}) {
     final tom = summarizeBills(bills, now);
 
     // ⚠️ Phải lọc đúng như `summarizeBills`, nếu không con số quá hạn nói về

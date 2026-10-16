@@ -1,4 +1,5 @@
-import '../../../../core/database/app_database.dart';
+import '../../data/models/bill_entity.dart';
+import '../../domain/bill_draft.dart';
 
 abstract class BillEvent {}
 
@@ -8,13 +9,19 @@ class LoadBillsEvent extends BillEvent {
 }
 
 class AddBillEvent extends BillEvent {
-  final BillsCompanion bill;
-  AddBillEvent({required this.bill});
+  final BillDraft draft;
+  final String id;
+  final int idaccount;
+  final DateTime now;
+  AddBillEvent({required this.draft, required this.id, required this.idaccount, required this.now});
 }
 
 class EditBillEvent extends BillEvent {
-  final BillsCompanion bill;
-  EditBillEvent({required this.bill});
+  final BillDraft draft;
+  final String id;
+  final int idaccount;
+  final DateTime now;
+  EditBillEvent({required this.draft, required this.id, required this.idaccount, required this.now});
 }
 
 class DeleteBillEvent extends BillEvent {
@@ -23,7 +30,7 @@ class DeleteBillEvent extends BillEvent {
 }
 
 class PayBillEvent extends BillEvent {
-  final Bill bill;
+  final BillEntity bill;
   final String walletId;
   final int idaccount;
 

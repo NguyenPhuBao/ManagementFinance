@@ -10,6 +10,9 @@
 /// trang hoá đơn trống cho tới khi thoát ra vào lại.
 library;
 
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -40,13 +43,13 @@ class _SpyBillRepository implements BillRepository {
   final List<int> daHoi = [];
 
   @override
-  Stream<List<Bill>> watchBills(int idaccount) {
+  Stream<List<BillEntity>> watchBills(int idaccount) {
     daHoi.add(idaccount);
-    return Stream.value(const <Bill>[]);
+    return Stream.value(const <BillEntity>[]);
   }
 
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => {};
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => {};
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -63,6 +66,7 @@ void main() {
       await sl.unregister<AppDatabase>();
     }
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
   });
 
   tearDown(() async {

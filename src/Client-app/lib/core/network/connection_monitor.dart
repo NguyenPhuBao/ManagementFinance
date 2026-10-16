@@ -90,6 +90,16 @@ class ConnectionMonitor {
     });
   }
 
+  /// Có mạng NGAY lúc hỏi — trạng thái tức thời, không chờ ổn định như [events]. C4 (spec 2026-10-12 §2.2) chọn lối nghe
+  /// theo nó. Không đọc được → `true`: lối Android sẽ tự báo lỗi mạng nếu sai.
+  Future<bool> coMangNgay() async {
+    try {
+      return _coMang(await _connectivity.checkConnectivity());
+    } catch (_) {
+      return true;
+    }
+  }
+
   static bool _coMang(List<ConnectivityResult> results) =>
       results.any((r) => r != ConnectivityResult.none);
 

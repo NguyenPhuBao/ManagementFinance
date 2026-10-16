@@ -1,9 +1,11 @@
-import '../../../../core/database/app_database.dart';
+import '../../../transaction/data/models/transaction_entity.dart';
+import '../../domain/bill_draft.dart';
+import '../models/bill_entity.dart';
 
 /// Ném ra khi [BillRepository.payBill] được gọi trên một hoá đơn mà CSDL đã
 /// ghi nhận là đã thanh toán.
 ///
-/// Cần một ngoại lệ riêng vì UI truyền vào đối tượng `Bill` nó đang giữ — một
+/// Cần một ngoại lệ riêng vì UI truyền vào đối tượng `BillEntity` nó đang giữ — một
 /// ảnh chụp có thể đã cũ. Bấm nút hai lần thì lần thứ hai vẫn mang `isPaid =
 /// false`, nên trạng thái thật phải đọc lại từ CSDL chứ không tin tham số.
 class BillAlreadyPaidException implements Exception {
@@ -93,16 +95,19 @@ class BillSkippedCannotPayException implements Exception {
 }
 
 abstract class BillRepository {
-  Stream<List<Bill>> watchBills(int idaccount);
-  Future<List<Bill>> getBills(int idaccount);
+  Stream<List<BillEntity>> watchBills(int idaccount);
+  Future<List<BillEntity>> getBills(int idaccount);
 
   /// Khoản chi của từng hoá đơn đã trả, theo `billId`.
   ///
   /// Chỉ có với khoản trả ghi từ v16 trên chính máy này; hàng kéo về từ
   /// server vắng mặt và nơi gọi phải hiện "không biết" chứ không đoán.
-  Future<Map<String, Transaction>> paymentsOf(int idaccount);
-  Future<void> addBill(BillsCompanion bill);
-  Future<void> editBill(BillsCompanion bill);
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount);
+  /// Tạo hoá đơn từ giá trị form. Repository tự dựng companion (`companionTaoTu`) — ánh xạ Drift không ra khỏi `data/`.
+  Future<void> addBill(BillDraft draft, {required String id, required int idaccount, required DateTime now});
+
+  /// Sửa hoá đơn [id]: chỉ ghi cột form sở hữu (`companionSuaTu`); `updateFields` giữ cột vắng mặt.
+  Future<void> editBill(BillDraft draft, {required String id, required int idaccount, required DateTime now});
   Future<void> deleteBill(String id);
 
   /// Thanh toán [bill] bằng ví [walletId].
@@ -121,7 +126,7 @@ abstract class BillRepository {
   /// ghi chú cố định trên hoá đơn. Được nối vào SAU tiền tố `kGhiChuTraHoaDon`
   /// — tiền tố là thứ sổ giao dịch dùng để nhận diện khoản của hoá đơn.
   Future<void> payBill({
-    required Bill bill,
+    required BillEntity bill,
     required String walletId,
     required int idaccount,
     double? amount,
@@ -167,6 +172,12 @@ abstract class BillRepository {
   /// sinh. **Không** có bước hoàn tiền — chưa từng trừ tiền.
   Future<void> undoSkip({required String billId});
 
+  /// Hoá đơn tới hạn trong [days] ngày kể từ [now] — bộ quét thông báo và lịch đặt trước (`billDao.getUpcoming`).
+  Future<List<BillEntity>> getUpcoming(int idaccount, {required int days, required DateTime now});
+
+  /// Mọi hàng của tài khoản, KỂ CẢ đã xoá mềm — cho `kyTrungCanGo` / `kyCungKyDaDong` lần gốc chuỗi (`billDao.getTatCaKeCaDaXoa`).
+  Future<List<BillEntity>> getAllIncludingDeleted(int idaccount);
+
   /// Một hàng hoá đơn (trang Chi tiết hoá đơn). `billDao.getById`.
-  Future<Bill?> getById(String id);
+  Future<BillEntity?> getById(String id);
 }

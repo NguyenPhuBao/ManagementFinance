@@ -7,10 +7,11 @@
 library;
 
 import 'package:drift/drift.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
@@ -40,7 +41,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  Future<Bill> seed({
+  Future<BillEntity> seed({
     required DateTime start,
     required DateTime due,
     DateTime? periodEnd,
@@ -65,11 +66,11 @@ void main() {
       syncStatus: const Value('synced'),
       updatedAt: DateTime(2026, 1, 1),
     ));
-    return (await db.billDao.getById(id))!;
+    return BillEntity.fromDrift((await db.billDao.getById(id))!);
   }
 
-  Future<Bill> kySauCua(Bill b) async => (await db.billDao.getAll(accountId))
-      .firstWhere((x) => x.generatedFromBillId == b.id);
+  Future<BillEntity> kySauCua(BillEntity b) async => BillEntity.fromDrift((await db.billDao.getAll(accountId))
+      .firstWhere((x) => x.generatedFromBillId == b.id));
 
   test('trả kỳ có ân hạn 15: kỳ sau nối từ ngày kết thúc kỳ, giữ 15 ngày',
       () async {

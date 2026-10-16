@@ -9,12 +9,12 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/budget/domain/budget_history.dart';
 import 'package:flowmoney/features/budget/domain/nhip_chi.dart';
 import 'package:flowmoney/features/budget/presentation/bloc/budget_cubit.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
 
@@ -26,7 +26,7 @@ class _FakeRepository implements BudgetRepository {
 
   /// Danh mục chi mà `getExpenseCategories` trả về, và mức tháng gợi ý cho
   /// từng danh mục — hai thứ nuôi thẻ "Chưa đặt ngân sách".
-  List<Category> categories = const [];
+  List<CategoryEntity> categories = const [];
   Map<String, double?> goiY = const {};
   Object? throwOnAdd;
 
@@ -86,7 +86,7 @@ class _FakeRepository implements BudgetRepository {
   }
 
   @override
-  Future<List<Category>> getExpenseCategories(int idaccount) async {
+  Future<List<CategoryEntity>> getExpenseCategories(int idaccount) async {
     calls.add('getExpenseCategories($idaccount)');
     return categories;
   }
@@ -230,7 +230,7 @@ void main() {
   });
 
   group('Đề xuất tạo ngân sách', () {
-    Category cat(String id, String ten) => Category(
+    CategoryEntity cat(String id, String ten) => CategoryEntity(
           id: id,
           idaccount: 7,
           name: ten,
@@ -240,9 +240,7 @@ void main() {
           aiCoDinh: false,
           icon: '',
           colour: '',
-          isLocalOnly: false,
           syncStatus: 'synced',
-          syncRetryCount: 0,
           updatedAt: _bayGio,
           isDeleted: false,
         );

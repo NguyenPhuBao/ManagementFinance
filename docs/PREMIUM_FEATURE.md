@@ -10,6 +10,12 @@ và phần tài liệu này. Spec: `docs/superpowers/specs/2026-10-06-premium-pa
 dưới đây. Từ lượt ấy bảng ở mục 1 chỉ là **mặc định khi server không trả khoá**; con số và công tắc thật do admin đặt ở
 Admin-web `/permissions`.
 
+**⚠️ Đối soát chuyển thừa / thiếu (2026-10-16, gộp `main` @ `d72ccd45`) — client CHƯA làm, G94 (hoãn — làm cùng lượt G89 khi backend đóng đơn 43):** backend thêm ba trạng
+thái đơn `WAITING_CONFIRMATION` · `REFUND_PENDING` · `REFUNDED`, `POST /payment/confirm-upgrade` và ba sự kiện
+`payment.*`, và rút hạn đơn còn **10 phút** (`docs/Payment/PAYMENT_WORKFLOW_SPEC.md` v2.0.0). Client đọc ba trạng thái
+mới là `pending`, nên người chuyển thừa / thiếu thấy *"Đơn đã hết hạn"*. Chi tiết và năm chỗ chữ *30 phút* đã sai:
+G94 `CLIENT_APP_KNOWN_GAPS.md`. Việc backend: đơn 44 `CAN-LAM/SOAT_SAU_GOP_D72CCD45.md`.
+
 > Tài liệu là ảnh chụp — đối chiếu với mã trước khi kết luận. Mọi con số đếm bằng máy, kèm ngày.
 
 ---
@@ -59,11 +65,11 @@ domain/  trang_thai_goi.dart (TrangThaiGoi · laPremium(now) · soNgayConLai · 
          tran_goi.dart (TranGoi.macDinh 3/3/3 · conTaoDuoc · maTran) · chuyen_huong_theo_goi.dart (?id = sửa → qua)
          don_thanh_toan.dart (DonThanhToan · TrangThaiDon, chuỗi lạ = pending) · cau_loi_thanh_toan.dart (không URL)
          nhac_het_han.dart (0..3 ngày) · dong_lich_su.dart
-data/    goi_store.dart (secure storage `goi_tai_khoan_<id>`) · payment_api.dart (Dio, bocData) · goi_repository.dart
+data/    goi_store.dart (secure storage `goi_tai_khoan_<id>`) · payment_api.dart (Dio, bocData) · repositories/goi_repository.dart
          (kho thắng type · lamMoi không ném · resumed giãn 5' · socket hỏi ngay) · dem_dang_hoat_dong.dart
          (NguonDemDangHoatDong) · chan_theo_goi.dart (redirectTaoTheoGoi) · bo_hoi_trang_thai_don.dart (3 s) ·
          mo_lien_ket.dart (tệp DUY NHẤT import url_launcher — test quét 18)
-presentation/ cubit/goi_cubit.dart (singleton, gốc cây) · phien_goi_tu_auth.dart · an_nhac_het_han.dart ·
+presentation/ bloc/goi_cubit.dart (singleton, gốc cây) · bloc/phien_goi_tu_auth.dart · bloc/co_quyen.dart · state/an_nhac_het_han.dart ·
          pages/nang_cap_page · cho_thanh_toan_page · lich_su_mua_page · widgets/nut_nang_cap · the_goi_tai_khoan ·
          dong_nhac_het_han
 ```
@@ -171,15 +177,23 @@ nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
   hạn → `true`; bảng đã lưu là **của Basic** (`!goi.laPremium(goi.nhanLuc)`) và có khoá → theo khoá; còn lại →
   `MaQuyen.macDinhKhiThieu`. `enum MaQuyen` mang `maServer`, `ten` (chữ trên thẻ khoá và màn Nâng cấp), `macDinhKhiThieu`.
 - **Trong cây widget:** `GoiCubit.coQuyen(MaQuyen)`, extension `context.coQuyen` (watch) / `context.coQuyenDoc` (read)
-  ở `premium/presentation/co_quyen.dart` — không provider thì **không khoá** (test cũ). Widget ở
+  ở `premium/presentation/bloc/co_quyen.dart` — không provider thì **không khoá** (test cũ). Widget ở
   `premium/presentation/widgets/the_khoa_quyen.dart`: `TheKhoaQuyen` (thẻ 🔒 + `NutNangCap(quyen:)`), `KhoaTheoQuyen`
   (bọc con), `DongKhoaQuyen` (dòng khoá trong khối Nhận xét), `DongKhoaCongTac` (*"Cần Premium"* / *"Tạm dừng — cần
   Premium"* khi giá trị đang lưu là bật).
 - **Ngoài cây widget:** `coQuyenNen(MaQuyen)` (`premium/data/co_quyen_nen.dart`) đọc `GoiRepository.hienTai`; chưa có
   phiên → `true`. DI bọc `runAutoPays` · `runAutoDeposits` · `loadKeHoach` · `NhapBienDong.batBienDong` ·
-  `NhapBienLai.coQuyen`. Không quyền → bỏ lượt, **không ghi gì, không đổi mốc**.
+  `NhapBienLai.coQuyen`. Không quyền → bỏ lượt, **không ghi gì, không đổi mốc**. ⚠️ Vế *"chưa có phiên → `true`"* buộc
+  **mọi** lượt quét phải đặt gói trước: đường nền qua `datGoi` của `LuotNen`; đường trong app qua hook `datGoi` của
+  `PhienDieuPhoiThat.moPhienCucBo` (**G93**, 2026-10-14 — từ G86 lượt quét đầu mỗi phiên chạy **trước** `AuthSuccess`, và
+  trước khi có hook thì Basic bị tự trả / tự trích ở lượt ấy). Vì tài khoản đã đặt sẵn, `noiPhien` so với **phiên đã nối
+  của nó** chứ không với `idaccount` — không thì mất `lamMoi` và `loaiPhien` ở `AuthSuccess`.
 - **Route:** `redirectTaoTheoGoi(LoaiTran)` (trần) và `redirectTheoQuyen(MaQuyen)` (bật/tắt) ở `premium/data/chan_theo_goi.dart`;
-  màn Nâng cấp nhận `?tran=` hoặc `?quyen=<maServer>` (`duongNangCap`), mã lạ → như không có tham số.
+  màn Nâng cấp nhận `?tran=` hoặc `?quyen=<maServer>` (`duongNangCap`), mã lạ → như không có tham số. Cả hai **chờ kho gói
+  nạp xong** (`GoiRepository.choNapKho()`) rồi mới đọc `idaccount` + `hienTai` (G92, 2026-10-14): router chạy lại `redirect`
+  lúc `AuthSuccess`, đúng khi `noiPhien` vừa gán tài khoản mà secure storage chưa trả lời — đọc ngay là Basic mặc định.
+  Chỉ chờ **kho**, không chờ `lamMoi` (mạng). Hai chiều hỏng: cửa trần chặn nhầm Premium; cửa quyền thả Basic bị tắt quyền
+  (Basic mặc định không mang khoá → `macDinhKhiThieu` = mở).
 
 ### 8.4 Ba lỗi của mã backend viết sẵn — đã đóng
 

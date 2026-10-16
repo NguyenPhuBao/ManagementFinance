@@ -6,6 +6,10 @@ void main() {
     expect(docSoTrenAnh('150.000'), 150000);
     expect(docSoTrenAnh('1,250,000'), 1250000);
     expect(docSoTrenAnh('191.862,50'), 191862);
+    expect(docSoTrenAnh('191.862'), 191862);
+    expect(docSoTrenAnh('45.000,00'), 45000);
+    expect(docSoTrenAnh('45000'), 45000);
+    expect(docSoTrenAnh('12.5'), 12);
     expect(docSoTrenAnh('abc'), isNull);
   });
 

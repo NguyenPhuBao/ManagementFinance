@@ -6,7 +6,7 @@
 /// còn lại); số tiền chốt bằng `chotTongQuet`: khớp → điền, lệch → ô trống + hai chip trên form. Biên lai chỉ luật
 /// (Gemma chưa đo trên biên lai). Không ghi gì — người dùng bấm Lưu trên form (bất biến ④).
 ///
-/// ⚠️ Tệp DUY NHẤT của `lib/` (ngoài màn spike C4) import `image_picker` — test quét thứ 20
+/// ⚠️ Tệp DUY NHẤT của `lib/` import `image_picker` — test quét thứ 20
 /// (`chi_mot_noi_import_image_picker_test.dart`).
 library;
 
@@ -20,14 +20,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/ocr/doc_chu_anh.dart';
 import '../../../../core/ocr/dong_ocr.dart';
-import '../../../../core/ocr/kho_anh_quet.dart';
+import '../../data/datasources/kho_anh_quet.dart';
 import '../../../../core/ocr/tep_tam_chon_anh.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
-import '../../../../features/premium/presentation/cubit/goi_cubit.dart';
+import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../../category/data/repositories/category_management_repository.dart';
 import '../../../category/domain/gan_hang_loat.dart';
 import '../../data/doc_anh_bang_gemma.dart';

@@ -15,10 +15,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/notification/cham_hdh.dart';
-import 'package:flowmoney/core/notification/os/os_notifier.dart';
-import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
-import 'package:flowmoney/core/notification/prefs/notification_prefs_store.dart';
+import 'package:flowmoney/features/notification/domain/cham_hdh.dart';
+import 'package:flowmoney/features/notification/data/datasources/os_notifier.dart';
+import 'package:flowmoney/features/notification/domain/notification_prefs.dart';
+import 'package:flowmoney/features/notification/data/notification_prefs_store.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_settings_page.dart';
 
 class _OsGia implements OsNotifier {

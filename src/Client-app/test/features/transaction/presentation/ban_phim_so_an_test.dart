@@ -162,7 +162,7 @@ void main() {
 
     await tester.tap(luuTieuDe);
     await tester.pumpAndSettle();
-    expect(repo.updated.single.after.amount, 55000, reason: 'cùng `_saveTransaction` — không đường lưu thứ hai');
+    expect(repo.updated.single.after.amount, 55000, reason: 'cùng `chuanBiLuu` — không đường lưu thứ hai');
   });
 
   testWidgets('Nhập nhanh điền được số tiền → bàn phím ẩn, ✓ lên thanh tiêu đề', (tester) async {

@@ -1,11 +1,15 @@
 /// C1 — nguồn dữ liệu và đường ghi mặc định của màn *Gắn danh mục nhanh* (spec
-/// `2026-09-28-c1-gan-danh-muc-hang-loat-design.md` §4–§5). Tách khỏi trang để thử được bằng CSDL bộ nhớ; trang nhận
-/// chúng qua tham số tiêm, đúng khuôn `viHayDung` / `boPhanLoai` của màn Thêm giao dịch.
+/// `2026-09-28-c1-gan-danh-muc-hang-loat-design.md` §4–§5). Tách khỏi trang để thử được bằng CSDL bộ nhớ.
+///
+/// Trang KHÔNG gọi thẳng hai hàm tự do [taiDuLieuGan] / [apDungGan] (chúng cần `AppDatabase`, mà tầng giao diện không
+/// được cầm CSDL — test quét 22): nó gọi lớp bọc [GanDanhMucNguon] đăng ký ở DI, hoặc hàm tiêm qua tham số
+/// `taiDuLieu` / `apDung` của trang khi test. Hai hàm giữ nguyên làm phần thân vì test của chúng dựng thẳng CSDL bộ nhớ (spec bịt điểm rò 2026-10-10, 4.5).
 library;
 
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../../../core/database/app_database.dart';
+import 'models/category_entity.dart';
 import '../../transaction/data/models/transaction_entity.dart';
 import '../../transaction/data/repositories/transaction_repository.dart';
 import '../domain/gan_hang_loat.dart';
@@ -17,7 +21,7 @@ import 'repositories/category_management_repository.dart';
 /// Thứ màn duyệt cần để dựng: các dòng, danh mục chọn được (cho chip và bảng chọn), và tên ví (dòng phụ).
 class DuLieuGanDanhMuc {
   final List<DongGanDanhMuc> dong;
-  final List<Category> chonDuoc;
+  final List<CategoryEntity> chonDuoc;
   final Map<String, String> tenVi;
   const DuLieuGanDanhMuc({required this.dong, required this.chonDuoc, required this.tenVi});
 }
@@ -33,7 +37,7 @@ Future<DuLieuGanDanhMuc> taiDuLieuGan({
   required GoiYPhanHoiStore? phanHoi,
   required int idaccount,
 }) async {
-  final txs = await db.transactionDao.getAll(idaccount);
+  final txs = [for (final t in await db.transactionDao.getAll(idaccount)) TransactionEntity.fromDrift(t)];
   final chonDuoc = await danhMuc.selectableChildrenAll(accountId: idaccount);
   BoPhanLoaiGhiChu? mo;
   try {
@@ -74,10 +78,10 @@ Future<void> apDungGan({
   required String categoryId,
 }) async {
   final hienTai = await db.transactionDao.getById(dong.giaoDich.id);
-  if (hienTai == null || !xetGan(hienTai)) {
+  final before = hienTai == null ? null : TransactionEntity.fromDrift(hienTai);
+  if (before == null || !xetGan(before)) {
     throw StateError('Giao dịch ${dong.giaoDich.id} đã đổi từ lúc mở màn');
   }
-  final before = TransactionEntity.fromDrift(hienTai);
   await repo.updateTransaction(before, before.copyWith(categoryId: categoryId));
 }
 
@@ -87,7 +91,7 @@ Future<void> ghiPhanHoiGan({
   required GoiYPhanHoiStore store,
   required int idaccount,
   required DongGanDanhMuc dong,
-  required Category duDoan,
+  required CategoryEntity duDoan,
   required String ketQua,
   required String chonCategoryId,
 }) {
@@ -103,4 +107,21 @@ Future<void> ghiPhanHoiGan({
     ketQua: ketQua,
     chonCategoryId: chonCategoryId,
   );
+}
+
+/// Lớp bọc cho tầng giao diện (spec bịt điểm rò 2026-10-10, mục 4.5): trang `GanDanhMucPage` cầm đúng lớp này qua DI
+/// thay cho `AppDatabase`. Hai hàm tự do ở trên giữ nguyên để test gọi thẳng; lớp chỉ gom phụ thuộc.
+class GanDanhMucNguon {
+  GanDanhMucNguon({required this.db, required this.danhMuc, required this.giaoDich, this.phanHoi});
+
+  final AppDatabase db;
+  final CategoryManagementRepository danhMuc;
+  final TransactionRepository giaoDich;
+  final GoiYPhanHoiStore? phanHoi;
+
+  Future<DuLieuGanDanhMuc> tai(int idaccount) =>
+      taiDuLieuGan(db: db, danhMuc: danhMuc, phanHoi: phanHoi, idaccount: idaccount);
+
+  Future<void> apDung(DongGanDanhMuc dong, String categoryId) =>
+      apDungGan(db: db, repo: giaoDich, dong: dong, categoryId: categoryId);
 }

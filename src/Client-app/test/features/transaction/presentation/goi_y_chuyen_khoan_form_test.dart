@@ -1,7 +1,7 @@
 /// Gợi ý Chuyển khoản trên form mở từ biến động số dư (spec `2026-09-30-goi-y-chuyen-khoan-bien-dong-design.md` §4–5).
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/vi_theo_nguon_store.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
@@ -53,7 +53,7 @@ void main() {
 
   Widget app(DienSanBienDong d, {List<DienSanBienDong>? cho}) {
     final bloc = TransactionBloc(transactionRepository: repo);
-    CategoryTree cay(List<Category> c) => CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
+    CategoryTree cay(List<CategoryEntity> c) => CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     final router = GoRouter(
       initialLocation: '/start/add',
       routes: [
@@ -141,7 +141,7 @@ void main() {
 
     expect(repo.added.single.transaction.walletTransfer, 'mb');
     expect(store.values[1]!['$kNguonMb|262'], 'mb',
-        reason: 'nhớ `_selectedWallet` (Ví MoMo) cho MB · 262 là mọi tin MB sau đó chọn sẵn sai ví, im lặng');
+        reason: 'nhớ `viNguon` (Ví MoMo) cho MB · 262 là mọi tin MB sau đó chọn sẵn sai ví, im lặng');
   });
 
   testWidgets('tin trần "TRAN QUANG DAT chuyen tien" → không thẻ', (tester) async {

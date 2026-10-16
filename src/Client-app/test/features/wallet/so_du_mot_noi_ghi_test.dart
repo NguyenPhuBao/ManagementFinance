@@ -22,7 +22,7 @@ void main() {
     // datasource chỉ chuyển tiếp xuống DAO.
     const duocPhep = [
       'core/database/daos/wallet_dao.dart',
-      'features/wallet/data/services/so_du_vi_service.dart',
+      'features/wallet/data/so_du_vi_service.dart',
       'features/wallet/data/datasources/wallet_local_data_source.dart',
     ];
 

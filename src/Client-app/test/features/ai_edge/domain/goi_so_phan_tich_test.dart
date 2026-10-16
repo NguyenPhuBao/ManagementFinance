@@ -9,7 +9,7 @@ import 'package:flowmoney/features/ai_edge/domain/kiem_cau_tra_loi.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_nhan.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
-import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/data/models/thong_ke_ky.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/chi_bat_thuong.dart';
 import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';

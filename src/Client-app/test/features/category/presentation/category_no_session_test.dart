@@ -5,7 +5,7 @@
 /// (quy tắc 2 `CLAUDE.md`). Nên khi phiên đăng nhập chưa cho ra id, ba màn này
 /// đọc cây danh mục của admin và ghi danh mục mới dưới danh nghĩa admin — im
 /// lặng, không một dòng báo lỗi. Khuôn đúng là khuôn G4
-/// (`core/auth/current_account.dart`): chưa có phiên thì không đọc, không ghi,
+/// (`features/auth/presentation/bloc/current_account.dart`): chưa có phiên thì không đọc, không ghi,
 /// và nói rõ lý do.
 ///
 /// Đường đọc KHÔNG được dùng `?? 0` như trang ví: `idaccount = 0` là bộ khuôn

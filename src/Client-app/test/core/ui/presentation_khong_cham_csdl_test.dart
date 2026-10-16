@@ -1,0 +1,73 @@
+/// Test quét `lib/` thứ **22** (spec bịt điểm rò 2026-10-10, mục 4.7): tầng giao diện không được cầm CSDL.
+///
+/// Trước đợt này 17 tệp `presentation` gọi `sl<AppDatabase>()` rồi đi thẳng xuống DAO, đi vòng repository. Không lỗi
+/// nào lộ ra: trang vẫn chạy, chỉ là luật đọc (ví lưu trữ, hàng đã xoá, tài khoản) nằm rải ở trang thay vì một chỗ.
+/// Hai mẫu bị cấm: `sl<AppDatabase>` / `sl.isRegistered<AppDatabase>` và mọi lối `.‹tên›Dao`. **Không** cấm import kiểu
+/// hàng Drift (quyết định 10 của spec). Tệp còn vi phạm phải nằm trong [conCho] kèm số dòng và chỉ được GIẢM; sạch rồi
+/// mà quên rút khỏi danh sách thì test cũng đỏ (khuôn `khong_co_nut_chet_test`).
+library;
+
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  // Tiền tố từng DAO (`wallet` -> `walletDao`). Ca tiền đề dưới đếm lớp DAO thật để danh sách này không cũ.
+  const tenDao = [
+    'wallet', 'transaction', 'category', 'budget', 'bill', 'goal', 'notification', 'notificationEvent', 'aiFeedback',
+    'goiYPhanHoi', 'goiYHoaDon', 'thuTuKhoi', 'khoaTuChuyenTien',
+  ];
+  final cam = <RegExp>[
+    RegExp(r'\bsl(\.isRegistered)?<AppDatabase>'),
+    // Trang nhận `AppDatabase` qua constructor / trường cũng là cầm CSDL.
+    RegExp(r'\bAppDatabase\b'),
+    RegExp('\\.(${tenDao.join('|')})Dao\\b'),
+  ];
+
+  test('tiền đề: số lớp DAO thật bằng số DAO mà luật cấm liệt kê', () {
+    var soDao = 0;
+    for (final f in Directory('lib/core/database/daos').listSync().whereType<File>()) {
+      soDao += RegExp(r'extends DatabaseAccessor<AppDatabase>').allMatches(f.readAsStringSync()).length;
+    }
+    expect(soDao, tenDao.length,
+        reason: 'Thêm/bớt DAO thì phải cập nhật `tenDao`, nếu không trang gọi DAO mới lọt qua luật quét.');
+  });
+
+  /// Tệp (tương đối `lib/`) → số dòng còn vi phạm. Điền từ lượt chạy đầu (Step 3); Task 7, 8, 10 rút về rỗng.
+  const conCho = <String, int>{};
+
+  test('presentation/ và shared/ không cầm AppDatabase hay DAO, trừ danh sách rút dần', () {
+    final thay = <String, int>{};
+    var soTep = 0;
+    for (final goc in [Directory('lib/features'), Directory('lib/shared')]) {
+      expect(goc.existsSync(), isTrue, reason: 'Chạy từ src/Client-app.');
+      for (final f in goc.listSync(recursive: true).whereType<File>()) {
+        final duong = f.path.replaceAll('\\', '/');
+        if (!duong.endsWith('.dart')) continue;
+        if (duong.contains('/features/') && !duong.contains('/presentation/')) continue;
+        soTep++;
+        var n = 0;
+        for (final d in f.readAsLinesSync()) {
+          if (d.trimLeft().startsWith('//')) continue;
+          if (cam.any((r) => r.hasMatch(d))) n++;
+        }
+        if (n > 0) thay[duong.replaceFirst(RegExp(r'^lib/'), '')] = n;
+      }
+    }
+    expect(soTep, greaterThan(100), reason: 'Phép quét phải thấy tệp presentation — đang quét sai thư mục.');
+
+    final loi = <String>[];
+    for (final e in thay.entries) {
+      final tran = conCho[e.key];
+      if (tran == null) {
+        loi.add('${e.key}: ${e.value} dòng cầm CSDL — đi qua repository của mảng hoặc ThongBaoRepository (spec mục 4.2; cổng đổi tên 2026-10-15).');
+      } else if (e.value > tran) {
+        loi.add('${e.key}: ${e.value} dòng, danh sách cho phép $tran — chỉ được giảm.');
+      }
+    }
+    for (final e in conCho.entries) {
+      if (!thay.containsKey(e.key)) loi.add('${e.key}: đã sạch — rút khỏi conCho.');
+    }
+    expect(loi, isEmpty, reason: loi.join('\n'));
+  });
+}

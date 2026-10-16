@@ -8,17 +8,23 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/notification/kenh_bien_dong.dart';
-import 'package:flowmoney/core/notification/kenh_phien_ngan_hang.dart';
-import 'package:flowmoney/core/notification/moc_phien_store.dart';
-import 'package:flowmoney/core/notification/os/os_notifier.dart';
-import 'package:flowmoney/core/notification/phien_ngan_hang.dart';
-import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
-import 'package:flowmoney/core/notification/prefs/notification_prefs_store.dart';
+import 'package:flowmoney/features/notification/data/datasources/kenh_bien_dong.dart';
+import 'package:flowmoney/features/notification/data/datasources/kenh_phien_ngan_hang.dart';
+import 'package:flowmoney/features/notification/data/moc_phien_store.dart';
+import 'package:flowmoney/features/notification/data/datasources/os_notifier.dart';
+import 'package:flowmoney/features/notification/domain/phien_ngan_hang.dart';
+import 'package:flowmoney/features/notification/domain/notification_prefs.dart';
+import 'package:flowmoney/features/notification/data/notification_prefs_store.dart';
 import 'package:flowmoney/features/notification/presentation/pages/dong_y_nhac_sau_ngan_hang_page.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_settings_page.dart';
+import 'package:flowmoney/features/premium/data/goi_store.dart';
+import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
+import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/transaction/domain/doc_tin_bien_dong.dart';
 
 class _KenhPhienGia implements KenhPhienNganHang {
@@ -58,6 +64,8 @@ class _OsGia extends Fake implements OsNotifier {
   @override
   Future<bool> daCoQuyen() async => true;
 }
+
+class _ApiGoiIm extends Fake implements PaymentApi {}
 
 void main() {
   group('màn đồng ý', () {
@@ -141,8 +149,9 @@ void main() {
 
     const khoa = NotificationSettingsPage.khoaCongTacNhacSauNganHang;
 
-    Future<void> moTrang(WidgetTester tester) async {
-      await tester.pumpWidget(MaterialApp(
+    /// [quyen] khác `null` → bọc trang trong `GoiCubit` Basic mang đúng bảng quyền ấy (không provider = không khoá).
+    Future<void> moTrang(WidgetTester tester, {Map<String, bool>? quyen}) async {
+      final trang = MaterialApp(
         home: NotificationSettingsPage(
           key: UniqueKey(), // dựng lại STATE mỗi lần — trang đọc tuỳ chọn ở initState
           idaccount: id,
@@ -152,7 +161,19 @@ void main() {
           kenhPhienNganHang: kenh,
           mocPhien: moc,
         ),
-      ));
+      );
+      if (quyen == null) {
+        await tester.pumpWidget(trang);
+      } else {
+        final repo = GoiRepository(api: _ApiGoiIm(), kho: InMemoryGoiStore());
+        final goi = GoiCubit(repo);
+        goi.emit(TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: DateTime.now(), quyenTinhNang: quyen));
+        addTearDown(() async {
+          await goi.close();
+          await repo.dispose();
+        });
+        await tester.pumpWidget(BlocProvider<GoiCubit>.value(value: goi, child: trang));
+      }
       await tester.pumpAndSettle();
     }
 
@@ -288,6 +309,24 @@ void main() {
       expect(find.byKey(NotificationSettingsPage.khoaMoCaiDatPin), findsOneWidget,
           reason: 'hai hàng pin = hai nút cùng khoá — Flutter ném lỗi trùng khoá');
       expect(find.text(kTieuDeTreNenNhac), findsNothing);
+    });
+
+    testWidgets('⭐ G91: Basic còn docBienDong bật (thẻ D1 khoá) → hàng pin hiện ở KHỐI NHẮC, đúng một hàng',
+        (tester) async {
+      kenh.quyen = true;
+      kenhBienDong.quyen = true;
+      kenhBienDong.chayNen = false;
+      await store.write(
+          id,
+          const NotificationPrefs(
+              nhacSauNganHang: true, dongYNhacSauNganHang: true, docBienDong: true, dongYBienDong: true));
+      await moTrang(tester, quyen: const {'bank_notification_parser': false});
+      expect(find.byKey(const Key('dong-khoa-cong-tac-bank_notification_parser')), findsOneWidget,
+          reason: 'tiền đề: thẻ D1 đang khoá (DongKhoaCongTac), không dựng hàng pin');
+      expect(find.byKey(NotificationSettingsPage.khoaMoCaiDatPin), findsOneWidget,
+          reason: 'G91: d1DangHienPin không xét quyền gói — khối nhắc tưởng D1 đang hiện hàng pin nên giấu hàng của '
+              'mình, màn không còn hàng gợi ý pin nào');
+      expect(find.text(kTieuDeTreNenNhac), findsOneWidget);
     });
 
     testWidgets('360 × 640: hai tính năng cùng bật, cùng thiếu quyền → không tràn', (tester) async {

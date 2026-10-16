@@ -6,7 +6,7 @@
 /// thứ ai cũng gõ tay được.
 library;
 
-import '../../../core/bill/bill_recurrence.dart';
+import 'bill_recurrence.dart';
 import '../../transaction/domain/khoan_lap.dart';
 
 typedef DienSanHoaDon = ({

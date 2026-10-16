@@ -12,6 +12,11 @@
 /// giả sống sót lâu như vậy.
 library;
 
+import '../../../../helpers/nguon_doc_gia.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,7 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
@@ -27,6 +32,7 @@ import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
+import 'package:flowmoney/features/bill/domain/bill_draft.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/domain/dien_san_hoa_don.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_add_page.dart';
@@ -46,18 +52,19 @@ class _FixedAuthBloc extends AuthBloc {
 
 class _StubBillRepository implements BillRepository {
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => const Stream.empty();
+  Stream<List<BillEntity>> watchBills(int idaccount) => const Stream.empty();
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-/// Ghi lại companion mà form gửi lên (B2 — kiểm giá trị điền sẵn đi tới CSDL).
+/// Ghi lại BillDraft mà form gửi lên (B2 — kiểm giá trị điền sẵn đi tới repository).
 class _GhiThemRepository implements BillRepository {
-  BillsCompanion? daThem;
+  BillDraft? daThem;
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => const Stream.empty();
+  Stream<List<BillEntity>> watchBills(int idaccount) => const Stream.empty();
   @override
-  Future<void> addBill(BillsCompanion bill) async => daThem = bill;
+  Future<void> addBill(BillDraft draft, {required String id, required int idaccount, required DateTime now}) async =>
+      daThem = draft;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -71,6 +78,7 @@ void main() {
       await sl.unregister<AppDatabase>();
     }
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
   });
 
   tearDown(() async {
@@ -294,9 +302,9 @@ void main() {
     }
 
     String? viDangChon(WidgetTester tester) =>
-        tester.widget<DropdownButton<Wallet>>(find.byType(DropdownButton<Wallet>)).value?.id;
+        tester.widget<DropdownButton<WalletEntity>>(find.byType(DropdownButton<WalletEntity>)).value?.id;
     String? danhMucDangChon(WidgetTester tester) =>
-        tester.widget<DropdownButton<Category>>(find.byType(DropdownButton<Category>)).value?.id;
+        tester.widget<DropdownButton<CategoryEntity>>(find.byType(DropdownButton<CategoryEntity>)).value?.id;
     final oTen = find.byWidgetPredicate(
         (w) => w is TextField && w.decoration?.hintText == 'e.g. Netflix Premium');
 
@@ -316,6 +324,25 @@ void main() {
       expect(viDangChon(tester), 'wB');
       expect(danhMucDangChon(tester), 'cNha');
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('danh sách danh mục KHÔNG có hàng nhóm — giống màn Thêm giao dịch (2026-10-10)',
+        (tester) async {
+      await gieo();
+      // Nhóm xếp ĐẦU theo tên ("A …") — nếu lọt vào danh sách, nó thành lựa chọn mặc định.
+      await db.into(db.categories).insert(CategoriesCompanion.insert(
+          id: 'gChiTieu', idaccount: 10, name: 'A nhom chi tieu', classify: 'chi',
+          isGroup: const Value(true), updatedAt: moc));
+      await dung(tester, null);
+      final ids = tester
+          .widget<DropdownButton<CategoryEntity>>(find.byType(DropdownButton<CategoryEntity>))
+          .items!
+          .map((m) => m.value!.id)
+          .toList();
+      expect(ids, isNot(contains('gChiTieu')),
+          reason: 'Hoá đơn gắn vào danh mục lá; người dùng chốt 2026-10-10: form hoá đơn không cho chọn nhóm.');
+      expect(ids, containsAll(['cAn', 'cNha']));
+      expect(danhMucDangChon(tester), 'cAn');
     });
 
     testWidgets('ví / danh mục điền sẵn không tồn tại → rơi về lựa chọn mặc định, không ném',
@@ -382,7 +409,7 @@ void main() {
         return (ketQua: ketQua, repo: repo);
       }
 
-      testWidgets('bấm Lưu → pop(true), companion mang đúng giá trị điền sẵn', (tester) async {
+      testWidgets('bấm Lưu → pop(true), draft mang đúng giá trị điền sẵn', (tester) async {
         final r = await quaRouter(tester);
         await tester.tap(find.text('Lưu'));
         await tester.pumpAndSettle();
@@ -390,12 +417,12 @@ void main() {
             reason: 'thẻ khoản lặp chỉ ghi da_tao khi form báo đã gửi — '
                 'pop() trần là thẻ không bao giờ ẩn');
         final c = r.repo.daThem!;
-        expect(c.name.value, 'Tiền nhà');
-        expect(c.amount.value, 3100000);
-        expect(c.walletId.value, 'wB');
-        expect(c.categoryId.value, 'cNha');
-        expect(c.anchorDay.value, 31);
-        expect(c.startDate.value, DateTime(2026, 11, 30));
+        expect(c.name, 'Tiền nhà');
+        expect(c.amount, 3100000);
+        expect(c.walletId, 'wB');
+        expect(c.categoryId, 'cNha');
+        expect(c.anchorDayHieuLuc, 31);
+        expect(c.startDate, DateTime(2026, 11, 30));
       });
 
       testWidgets('bấm Quay lại → không trả true', (tester) async {

@@ -6,6 +6,7 @@
 /// **im lặng**.
 library;
 
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
@@ -16,7 +17,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
-import 'package:flowmoney/features/bill/data/services/bill_payment_conflict_resolver.dart';
+import 'package:flowmoney/features/bill/application/bill_payment_conflict_resolver.dart';
 
 /// Chỉ ghi lại lời gọi và ném thứ được dặn — đủ để đo hành vi của resolver mà
 /// không phải dựng cả `BillRepositoryImpl`.
@@ -221,7 +222,7 @@ void main() {
     await themKhoanChi();
     await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
 
-    final b = (await db.billDao.getById(idBill))!;
+    final b = BillEntity.fromDrift((await db.billDao.getById(idBill))!);
     expect(daCoKhoanChi(b), isTrue,
         reason: 'VÒNG LẶP ĐÃ VẤP THẬT trên hai máy ảo ngày 2026-09-13: '
             '`undoPayment` kéo hoá đơn về `Pending` — đúng cho ca người dùng tự '
@@ -254,7 +255,7 @@ void main() {
         () async {
       await themKhoanChi();
       await phat(ketQuaVoi(code: ma));
-      final b = (await db.billDao.getById(idBill))!;
+      final b = BillEntity.fromDrift((await db.billDao.getById(idBill))!);
       expect(conPhaiTra(b), isTrue,
           reason: 'Khác `BILL_ALREADY_PAID`: server KHÔNG có khoản chi cho '
               'hoá đơn NÀY, mà cho kỳ trùng của nó. Đánh dấu nó đã trả thì '

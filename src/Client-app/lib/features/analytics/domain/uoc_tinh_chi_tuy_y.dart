@@ -14,7 +14,7 @@
 /// Spec `docs/superpowers/specs/2026-09-28-b4-uoc-tinh-chi-tuy-y-design.md`.
 library;
 
-import '../../../core/notification/tuan_iso.dart';
+import '../../../core/utils/tuan_iso.dart';
 import '../../budget/domain/cua_so_nhin_lai.dart';
 import 'khoan_vao_thong_ke.dart';
 import 'nguong_co_nghia.dart';

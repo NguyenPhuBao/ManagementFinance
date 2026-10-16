@@ -1,0 +1,816 @@
+import 'dart:async';
+// Lấy thẳng từ `dart:ui` với `show` thay vì import `package:flutter/widgets.dart`:
+// widgets kéo theo `Category` của foundation, trùng tên với data class Drift mà
+// `app_database.dart` phơi ra — đúng vết `sync_engine.dart` đã phải `hide`.
+import 'dart:ui' show AppLifecycleState;
+
+import 'package:drift/drift.dart' show Value;
+// `show debugPrint` chứ không import trần: foundation phơi ra `Category`, trùng
+// tên với data class Drift mà `app_database.dart` mang theo — đúng vết
+// `sync_engine.dart` đã phải `hide`.
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:uuid/uuid.dart';
+
+import '../../../core/database/app_database.dart';
+import '../../../core/database/daos/notification_dao.dart';
+import '../../../core/database/daos/notification_event_dao.dart';
+import '../../../core/sync/sync_models.dart';
+import '../../ai_edge/domain/tai_phan_bo.dart';
+import '../../budget/data/models/budget_entity.dart';
+import '../../goal/data/models/goal_entity.dart';
+import '../../goal/domain/goal_auto_deposit.dart';
+import '../../bill/domain/bill_auto_pay.dart';
+import '../../bill/data/models/bill_entity.dart';
+import '../../wallet/data/models/wallet_entity.dart';
+import '../data/models/notification_entity.dart';
+import 'badge_updater.dart';
+import '../data/datasources/hang_cho_su_kien.dart';
+import 'nhap_bien_dong.dart';
+import 'nhap_bien_lai.dart';
+import 'nhap_phien_ngan_hang.dart';
+import '../data/datasources/nhat_ky_thong_bao.dart';
+import '../domain/notification_rules.dart';
+import '../data/datasources/os_notifier.dart';
+import '../domain/os_scheduled_id.dart';
+import '../../../core/utils/tuan_iso.dart';
+import '../domain/notification_prefs.dart';
+import '../data/notification_prefs_store.dart';
+
+/// Nạp ngân sách kèm số đã chi cho một tài khoản tại một mốc thời gian.
+///
+/// Cố ý là closure chứ không phải cả `BudgetRepository`: scanner chỉ cần đúng
+/// một phép đọc, và thu hẹp phụ thuộc thì test không phải giả lập chục phương
+/// thức không liên quan.
+typedef BudgetViewsLoader = Future<List<BudgetView>> Function(
+    int idaccount, DateTime now);
+
+/// Nạp hoá đơn tới hạn trong cửa sổ nhắc. Cùng lý do như trên: closure thay vì
+/// cả một repository.
+typedef BillsLoader = Future<List<BillEntity>> Function(int idaccount, DateTime now);
+
+/// Khoảng `[from, to)` có giao dịch nào không.
+///
+/// Trả `bool` chứ không phải một bản tổng hợp, cùng kỷ luật thu hẹp phụ thuộc
+/// với các loader khác: câu chữ của Tổng kết tuần không nêu số nào.
+typedef WeekActivityLoader = Future<bool> Function(
+  int idaccount,
+  DateTime from,
+  DateTime to,
+);
+
+/// Dựng kế hoạch tái phân bổ (tầng 2 Edge-SLM) cho loại thông báo
+/// `budgetRebalance`. `null` = không ngân sách nào thâm hụt đủ ngưỡng.
+///
+/// ⚠️ Nhận **[budgets] đã nạp** chứ không tự đi hỏi lại, khác mọi loader trên.
+/// Vòng quét vừa đọc đúng danh sách ấy cho bộ luật ngân sách, nên đọc lần thứ hai
+/// là hai **ảnh chụp khác nhau** của cùng dữ liệu — thông báo "dự kiến vượt" sẽ
+/// nói về một trạng thái khác với thông báo "sắp vượt" sinh cùng lượt, và cả hai
+/// đều trông hợp lý.
+typedef KeHoachTaiPhanBoLoader = Future<KeHoachTaiPhanBo?> Function(
+  int idaccount,
+  List<BudgetView> budgets,
+  DateTime now,
+);
+
+/// Nạp các giao dịch từ [from] trở đi để soi "khoản chi lớn" (#7,
+/// 2026-09-17).
+///
+/// Trả [KhoanChiLon] chứ không phải hàng Drift, cùng kỷ luật thu hẹp phụ
+/// thuộc với [WeekActivityLoader]: bộ luật không nhận kiểu của tầng CSDL.
+typedef LargeExpenseLoader = Future<List<KhoanChiLon>> Function(
+  int idaccount,
+  DateTime from,
+);
+
+/// Nạp mục tiêu của một tài khoản. Cùng lý do closure như trên.
+typedef GoalsLoader = Future<List<GoalEntity>> Function(
+    int idaccount, DateTime now);
+
+/// Nạp ví của một tài khoản. Cùng lý do closure như trên.
+typedef WalletsLoader = Future<List<WalletEntity>> Function(
+    int idaccount, DateTime now);
+
+/// Id các ví đã có ít nhất một giao dịch — cho luật "sắp cạn" (ví chưa từng dùng thì im).
+typedef ViDaDungLoader = Future<Set<String>> Function(int idaccount);
+
+/// Id các ví đã xoá mềm của tài khoản (G71) — để gỡ thông báo số dư của chúng.
+typedef ViDaXoaLoader = Future<Set<String>> Function(int idaccount);
+
+/// Ví đang âm → id giao dịch mở đợt âm (E6). Nhận đúng các ví đang âm để chỉ đọc sổ của chúng.
+typedef DotAmLoader = Future<Map<String, String>> Function(int idaccount, List<String> viAm);
+
+/// Đánh dấu hoá đơn đã quá hạn. Trả về số hàng đổi.
+typedef OverdueMarker = Future<int> Function(int idaccount, DateTime now);
+
+/// Chạy bộ luật rồi ghi kết quả xuống bảng thông báo.
+///
+/// ## Khi nào quét
+///
+/// Chỉ hai mốc, **không có `Timer.periodic`**: dữ liệu ngân sách/hoá đơn/mục
+/// tiêu chỉ đổi khi có ghi cục bộ hoặc pull về, mà cả hai đều kết thúc bằng một
+/// trạng thái `isTerminal` trên `SyncEngine.statusStream`. Quét đúng lúc dữ
+/// liệu vừa đổi là rẻ nhất và đúng nhất; một bộ đếm giờ 15 phút trong một app
+/// mở vài phút mỗi ngày gần như không bao giờ nổ lần thứ hai.
+class NotificationScanner {
+  final NotificationDao dao;
+  final BudgetViewsLoader loadBudgets;
+  final BillsLoader loadBills;
+
+  /// Bỏ trống thì không sinh thông báo mục tiêu / ví. Tuỳ chọn để những nơi chỉ
+  /// cần một phần của bộ luật không phải dựng cả chuỗi phụ thuộc.
+  final GoalsLoader? loadGoals;
+  final WalletsLoader? loadWallets;
+
+  /// Bỏ trống thì bộ luật nhận `viDaDung: null` = **không biết** → luật "sắp cạn" giữ cách cũ (báo theo số
+  /// dư, kể cả ví mới tạo 0 đ). Chỉ gọi khi ngưỡng số dư thấp > 0.
+  final ViDaDungLoader? loadViDaDung;
+
+  /// Bỏ trống thì luật "ví âm" khoá theo NGÀY như cũ. Chỉ gọi khi có ví đang âm (E6).
+  final DotAmLoader? loadDotAm;
+
+  /// Bỏ trống thì thông báo số dư của ví đã xoá **không** tự gỡ (hành vi trước G71). Chỉ đọc khi còn hàng
+  /// thông báo ví chưa gỡ.
+  final ViDaXoaLoader? loadViDaXoa;
+
+  /// Bỏ trống thì Tổng kết tuần **tắt hẳn** — cùng khuôn với `loadGoals` và
+  /// `loadWallets`.
+  final WeekActivityLoader? loadWeekActivity;
+
+  /// Bỏ trống thì luật **Khoản chi lớn** tắt hẳn — cùng khuôn với
+  /// `loadWeekActivity`.
+  final LargeExpenseLoader? loadChiLon;
+
+  /// Bỏ trống thì luật **Đề xuất cân đối ngân sách** tắt hẳn — cùng khuôn
+  /// với `loadChiLon`.
+  final KeHoachTaiPhanBoLoader? loadKeHoach;
+
+  /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
+  final OverdueMarker? markOverdue;
+
+  /// Gỡ kỳ hoá đơn TRÙNG (cùng gốc chuỗi, cùng hạn — `BillRepository.gopKyTrung`, G87). Chạy ĐẦU lượt quét, trước
+  /// `markOverdue` và bộ tự trả: lượt quét chạy sau mọi chu kỳ đồng bộ, nên kỳ trùng mà bước Pull vừa làm sống lại
+  /// bị gỡ trước khi bộ tự trả kịp trừ tiền cho nó. KHÔNG gác bằng quyền gói — đây là vệ sinh dữ liệu.
+  final Future<int> Function(int idaccount)? gopKyTrung;
+
+  /// Số lần kéo về thành công (`SyncEngine.soLanKeoVeXong`). `gopKyTrung` chỉ chạy khi con số này **vừa tăng**: lượt
+  /// quét lúc mở app chạy TRƯỚC khi kéo về, dữ liệu có thể cũ — đo Realme 2026-10-09: máy giữ hai kỳ trùng ở "Quá hạn"
+  /// trong khi server đã "Đã trả"; gộp lúc ấy là xoá hai hoá đơn đã trả, lệnh xoá mới hơn nên thắng trên server.
+  /// Bỏ trống thì không bao giờ gộp.
+  final int Function()? soLanKeoVe;
+  int _daGopOLanKeoVe = 0;
+
+  /// Chạy các kỳ trích tiền tự động đã tới hạn, trả về những gì vừa xảy ra.
+  ///
+  /// Là closure chứ không phải cả `GoalAutoDepositRunner`, cùng lý do với
+  /// `loadBudgets`. Bỏ trống thì tính năng trích tự động **tắt hẳn** — dùng cho
+  /// test của bảy luật còn lại, để chúng không phải dựng CSDL chỉ vì bộ chạy
+  /// cần một.
+  final Future<List<GoalAutoDepositEvent>> Function(int idaccount, DateTime now)?
+      runAutoDeposits;
+
+  /// Chạy các hoá đơn bật tự động thanh toán đã tới hạn, trả về những gì vừa
+  /// xảy ra. Cùng hình dạng và cùng lý do tồn tại với [runAutoDeposits].
+  final Future<List<BillAutoPayEvent>> Function(int idaccount, DateTime now)?
+      runAutoPays;
+
+  /// Khoá thuê của hai bộ tự chuyển tiền (`KhoaTuChuyenTienDao`, spec tự chuyển
+  /// tiền chạy nền mục 3.4). Engine nền của WorkManager và engine của app có
+  /// thể cùng tiến trình — `_dangQuet` chỉ chặn trong MỘT isolate. Không lấy
+  /// được (hoặc lấy ném lỗi) thì bỏ qua cả hai bộ chạy, phần thông báo vẫn
+  /// chạy. Bỏ trống = luôn lấy được (test, web).
+  final Future<bool> Function()? layKhoa;
+  final Future<void> Function()? nhaKhoa;
+
+  /// Hẹn lượt nền kế tiếp (Android — `LichNen.henNeuDoi`, spec tự chuyển tiền
+  /// chạy nền mục 3.1). Chạy CUỐI mỗi lượt quét: bộ tự trả / trích vừa đổi kỳ.
+  /// Bỏ trống ở engine nền (lượt nền trả mốc qua `nenXong`), trên test và web.
+  final Future<void> Function(int idaccount)? henLichNen;
+
+  /// Huỷ lượt nền khi đăng xuất / phiên chết.
+  final Future<void> Function()? huyLichNen;
+
+  /// Tuỳ chọn: bỏ trống thì chỉ có trung tâm thông báo trong app (web).
+  final OsNotifier? osNotifier;
+
+  /// Giữ badge trên icon app khớp với số chưa đọc. Bỏ trống thì không có badge.
+  ///
+  /// Scanner **sở hữu** vòng đời của nó thay vì để nơi gọi tự lo: `auth_bloc`
+  /// đã có bốn chỗ gọi `start`/`stop`, và một lối song song nghĩa là bốn chỗ
+  /// nữa phải nhớ. Chỗ bị quên sẽ hỏng **âm thầm** — badge của người vừa đăng
+  /// xuất tiếp tục cập nhật bằng dữ liệu người mới. Badge cũng chỉ có nghĩa khi
+  /// vòng thông báo đang chạy, nên hai vòng đời vốn đã là một.
+  final BadgeUpdater? badgeUpdater;
+
+  /// Tuỳ chọn: bỏ trống thì chạy như `NotificationPrefs.macDinh` — bật hết.
+  /// Thiếu kho tuỳ chọn tuyệt đối không được làm tính năng im lặng.
+  final NotificationPrefsStore? prefsStore;
+
+  /// Đồng bộ lại lịch nhắc đặt trước với hệ điều hành, chạy sau mỗi lượt quét.
+  ///
+  /// Là closure chứ không phải cả `ReminderScheduler` vì cùng lý do như
+  /// `loadBudgets`: thu hẹp phụ thuộc thì test không phải giả lập một lớp
+  /// không liên quan tới thứ đang được canh.
+  final Future<void> Function(int idaccount)? resyncLich;
+
+  /// Nhật ký B5a — cú *Hoãn* nằm trong tệp hàng chờ (isolate nền không có CSDL);
+  /// nhập MỘT lần mỗi [start]. `null` thì bỏ qua (test không cần tệp).
+  final NhapHangCho? nhapHangCho;
+
+  /// D1 — tin biến động số dư nằm trong tệp hàng chờ do dịch vụ Kotlin ghi; nhập
+  /// ở mỗi [start] **và** mỗi lần app quay lại từ nền (trước lượt quét — người
+  /// dùng vừa chạm thông báo tóm tắt là đang chờ thấy dòng ấy). `null` thì bỏ qua.
+  final NhapBienDong? nhapBienDong;
+
+  /// Chia sẻ biên lai (2026-10-02): ghi cờ *"máy đang có tài khoản đăng nhập"* phía native (`KenhBienDong.datCoPhien`)
+  /// — `true` ở [start], `false` ở [stop]. `NhanBienLaiActivity` chỉ nhận ảnh khi cờ bật: hàng chờ biên lai gắn MÁY,
+  /// không có phiên thì không biết biên lai thuộc về ai. `null` thì bỏ qua.
+  final Future<void> Function(bool co)? datCoPhien;
+
+  /// Chia sẻ biên lai — ảnh người dùng chia sẻ từ app ngân hàng nằm trong hàng chờ do `NhanBienLaiActivity` ghi; nhập
+  /// ở mỗi [start] và mỗi lần quay lại từ nền, NGAY SAU [nhapBienDong] (tin ngân hàng thành hàng trước, biên lai của
+  /// cùng giao dịch gắn ảnh vào hàng ấy). [stop] gọi `donKhiDangXuat`. `null` thì bỏ qua.
+  final NhapBienLai? nhapBienLai;
+
+  /// Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): xét phiên dùng app ngân hàng SAU tin và biên lai. `null` thì bỏ qua.
+  final NhapPhienNganHang? nhapPhien;
+
+  /// Hàng biến động số dư (D1) mang nội dung tin ngân hàng nên chỉ giữ **30**
+  /// ngày (spec D1 §3.3), ngắn hơn [giuThongBao] của mọi loại khác.
+  static const Duration giuBienDong = Duration(days: 30);
+
+  /// Nhật ký B5a: `huy_lich` lúc [stop] cho lịch còn chờ. `null` thì bỏ qua.
+  final NhatKyThongBao? nhatKy;
+
+  /// Nhật ký B5a: tra `dat_lich` còn chờ lúc [stop], và dọn hàng cũ ở [start].
+  final NotificationEventDao? eventDao;
+
+  /// Nhật ký B5a sống lâu hơn thông báo ([giuThongBao]) vì B5b học trên nhiều
+  /// quý — lịch sử phản ứng phải sống lâu hơn chính thông báo.
+  static const Duration giuSuKien = Duration(days: 180);
+
+  final Stream<SyncStatus> syncStatus;
+
+  /// Sự kiện vòng đời app. Bỏ trống thì chỉ còn hai mốc kích hoạt kia.
+  ///
+  /// Nhận qua tham số chứ không tự đi hỏi `WidgetsBinding`, đúng khuôn
+  /// [syncStatus]: nhờ vậy test bơm được một `StreamController` mà không phải
+  /// dựng binding, và **một** file duy nhất trong dự án chạm tới vòng đời của
+  /// hệ điều hành (`app_lifecycle_stream.dart`).
+  ///
+  /// Đây là mốc duy nhất bắt được quãng app nằm trong nền — quãng mà hạn hoá
+  /// đơn trôi qua, ngày đổi, và kỳ trích tới nơi.
+  final Stream<AppLifecycleState>? appLifecycle;
+
+  final DateTime Function() clock;
+  final String Function() idGenerator;
+
+  StreamSubscription<SyncStatus>? _sub;
+  StreamSubscription<AppLifecycleState>? _subVongDoi;
+  int? _idaccount;
+
+  /// Chặn hai lượt quét chồng nhau: một lượt đang chạy mà sự kiện đồng bộ tiếp
+  /// theo nổ thì lượt sau bị bỏ, không xếp hàng. Kết quả không mất gì — lượt
+  /// đang chạy đọc trạng thái mới nhất, và `insertOrIgnore` lo phần còn lại.
+  bool _dangQuet = false;
+
+  /// Lượt đồng bộ gần nhất kết thúc ở trạng thái lỗi.
+  bool _dongBoHong = false;
+
+  /// Thông báo cũ hơn mốc này bị xoá hẳn khi `start()`.
+  ///
+  /// Bảng thông báo **chỉ lớn lên**: hàng đã xoá mềm phải giữ lại vì chính nó
+  /// là bản ghi chống trùng. Không dọn thì sau một năm màn danh sách tải hàng
+  /// nghìn hàng. An toàn vì mọi `dedupeKey` quá 90 ngày đều đã hết ý nghĩa.
+  static const Duration giuThongBao = Duration(days: 90);
+
+  /// Sự kiện cũ hơn mốc này không được sinh thông báo.
+  ///
+  /// Chặn cơn lũ ở lần bật tính năng đầu tiên: không có nó thì lượt quét đầu
+  /// nhìn thấy mọi hoá đơn quá hạn của mấy tháng trước và bắn hàng chục thông
+  /// báo cùng lúc. Ba mươi ngày cũng là ngưỡng hợp lý cho việc "còn đáng nhắc
+  /// nữa không" — quá hạn hai tháng thì người dùng đã biết rồi.
+  static const Duration cuaSoSuKien = Duration(days: 30);
+
+  NotificationScanner({
+    required this.dao,
+    required this.loadBudgets,
+    required this.loadBills,
+    this.runAutoDeposits,
+    this.runAutoPays,
+    this.layKhoa,
+    this.nhaKhoa,
+    this.henLichNen,
+    this.huyLichNen,
+    this.loadGoals,
+    this.loadWallets,
+    this.loadViDaDung,
+    this.loadDotAm,
+    this.loadViDaXoa,
+    this.loadWeekActivity,
+    this.loadChiLon,
+    this.loadKeHoach,
+    required this.syncStatus,
+    this.appLifecycle,
+    this.markOverdue,
+    this.gopKyTrung,
+    this.soLanKeoVe,
+    this.osNotifier,
+    this.badgeUpdater,
+    this.prefsStore,
+    this.resyncLich,
+    this.nhapHangCho,
+    this.nhapBienDong,
+    this.datCoPhien,
+    this.nhapBienLai,
+    this.nhapPhien,
+    this.nhatKy,
+    this.eventDao,
+    DateTime Function()? clock,
+    String Function()? idGenerator,
+  })  : clock = clock ?? DateTime.now,
+        idGenerator = idGenerator ?? _uuid;
+
+  /// Bắt đầu theo dõi cho [idaccount].
+  ///
+  /// **Luỹ đẳng theo listener**: huỷ subscription cũ trước khi tạo mới, đúng
+  /// như `SyncEngine.start()` làm với `_connectivitySub`. Không có bước huỷ đó
+  /// thì mỗi lần gọi lại là thêm một listener, và một sự kiện đồng bộ sẽ kích
+  /// hoạt n lượt quét.
+  Future<void> start(int idaccount) async {
+    await _sub?.cancel();
+    await _subVongDoi?.cancel();
+    _idaccount = idaccount;
+
+    // Dọn trước khi nghe: một lần mỗi phiên là đủ, và làm ở đây thì không phải
+    // trả giá ở mỗi lượt quét. Nuốt lỗi — dọn dẹp thất bại chỉ tốn dung lượng.
+    try {
+      await dao.purgeOlderThan(clock().subtract(giuThongBao));
+      await dao.purgeKindOlderThan(
+          NotificationKind.bienDongSoDu.name, clock().subtract(giuBienDong));
+      await eventDao?.purgeOlderThan(clock().subtract(giuSuKien));
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+
+    // Nhật ký B5a: cú Hoãn nằm trong tệp hàng chờ. Nhập TRƯỚC lượt quét đầu;
+    // nuốt lỗi như mọi bước dọn dẹp ở đây.
+    try {
+      await nhapHangCho?.nhap(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+    // Chia sẻ biên lai: từ đây máy có phiên — activity nhận ảnh được phép cất biên lai.
+    try {
+      await datCoPhien?.call(true);
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+    await _nhapBienDong(idaccount);
+
+    // Trước khi nghe: badge phải đúng ngay từ lúc mở app, không chờ lượt quét
+    // đầu. Người dùng đọc hết rồi đóng app thì lần mở sau chấm phải đã tắt.
+    // Nuốt lỗi — `start()` nằm trên đường đăng nhập.
+    try {
+      await badgeUpdater?.start(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+
+    _sub = syncStatus.listen((s) {
+      if (!s.isTerminal) return;
+      final id = _idaccount;
+      if (id == null) return;
+      // Ghi nhớ để bộ luật biết có nên báo "đồng bộ hỏng" không. Phải đặt lại
+      // về false khi lượt sau thành công, nếu không mỗi lượt quét về sau đều
+      // báo lại một sự cố đã qua.
+      _dongBoHong = s == SyncStatus.error;
+      // Bỏ qua lỗi ở đây: quét thất bại không được làm hỏng vòng đồng bộ.
+      unawaited(scan(id).catchError((_) => 0));
+    });
+
+    // Chỉ `resumed`, không phải mọi trạng thái: `paused` và `detached` là lúc
+    // hệ điều hành sắp đóng băng hoặc giết tiến trình, và quét ở đó nghĩa là
+    // khởi động hai bộ tự chuyển tiền đúng vào lúc chúng dễ bị cắt ngang nhất.
+    _subVongDoi = appLifecycle?.listen((s) {
+      if (s != AppLifecycleState.resumed) return;
+      final id = _idaccount;
+      if (id == null) return;
+      unawaited(_nhapBienDong(id).then((_) => scan(id)).catchError((_) => 0));
+    });
+
+    // Quét NGAY, không chờ sự kiện đồng bộ nào.
+    //
+    // Không có bước này thì vòng quét bị buộc vào một sự kiện **mạng** trong
+    // một app offline-first: khi không có kết nối, `SyncEngine` thoát sớm ở
+    // `SyncStatus.pending` — một trạng thái **không** phải `isTerminal` — nên
+    // cả phiên offline không có lượt quét nào. Mất theo: mọi thông báo,
+    // `markOverdue`, và cả hai bộ tự chuyển tiền chạy bên trong `scan()`
+    // (hoá đơn bật tự trả sẽ không được trả).
+    //
+    // Nuốt lỗi: `start()` nằm trên đường đăng nhập, một lượt quét hỏng không
+    // được phép chặn nó.
+    try {
+      await scan(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý — xem chú thích trên.
+    }
+  }
+
+  /// D1: nhập tệp hàng chờ biến động số dư. `NhapBienDong.nhap` không bao giờ
+  /// ném, nhưng đường này nằm trên lối đăng nhập và lối quay lại từ nền — nuốt
+  /// lỗi như mọi bước phụ ở đây.
+  Future<void> _nhapBienDong(int idaccount) async {
+    try {
+      await nhapBienDong?.nhap(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+    // SAU tin ngân hàng — thứ tự này quyết định biên lai gắn ảnh vào hàng tin hay đẻ hàng thứ hai.
+    try {
+      await nhapBienLai?.nhap(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+    // SAU tin và biên lai — chúng là bằng chứng của phiên; xét trước là nhắc oan đúng phiên vừa có tin.
+    try {
+      await nhapPhien?.nhap(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý.
+    }
+  }
+
+  /// Dừng hẳn. Gọi khi đăng xuất hoặc khi phiên chết.
+  ///
+  /// **Phải huỷ cả lịch phía hệ điều hành**, không chỉ cắt subscription. Lịch
+  /// nằm trong AlarmManager (Android) / UNUserNotificationCenter (iOS) chứ
+  /// không trong SQLite, nên `purgeDataForOtherAccounts` không chạm tới được:
+  /// thiếu bước này thì nhắc hoá đơn của người đăng nhập trước vẫn nổ **trên
+  /// màn hình khoá** sau khi người khác đăng nhập — dữ liệu tài chính ra khỏi
+  /// app hoàn toàn.
+  Future<void> stop() async {
+    await _sub?.cancel();
+    _sub = null;
+    await _subVongDoi?.cancel();
+    _subVongDoi = null;
+    final id = _idaccount;
+    _idaccount = null;
+    // TRƯỚC `cancelAll()`: updater còn sống mà khay vừa bị dọn sạch thì lượt
+    // đẩy cuối cùng sẽ dựng lại đúng bản tóm tắt vừa gỡ đi — và nó mang tên
+    // app của người vừa đăng xuất.
+    try {
+      await badgeUpdater?.stop();
+    } catch (_) {}
+    // Nhật ký B5a: lịch còn chờ sắp bị cancelAll cuốn đi. Không ghi huy_lich thì
+    // lần đăng nhập lại B5b đọc chúng thành "đã tới máy". TRƯỚC cancelAll.
+    if (id != null) {
+      try {
+        final con = await eventDao?.datLichSau(id, clock()) ?? const [];
+        for (final l in con) {
+          await nhatKy?.ghi(l.dedupeKey, SuKienThongBao.huyLich,
+              idaccount: id, osId: l.osId);
+        }
+      } catch (_) {}
+    }
+    // D1: cờ đọc biến động phía Kotlin gắn MÁY — không còn ai đăng nhập thì
+    // không còn ai đã đồng ý, dịch vụ phải thôi đọc và thôi bắn tóm tắt.
+    try {
+      await nhapBienDong?.tatDocMay();
+    } catch (_) {}
+    // Nhắc ghi: đặt mốc về lúc đăng xuất (phiên lúc không ai đăng nhập không thành dòng của ai) và tắt cờ máy.
+    try {
+      await nhapPhien?.dongKhiDangXuat(id);
+    } catch (_) {}
+    // Chia sẻ biên lai: hết phiên thì activity nhận ảnh từ chối — không cất biên lai không biết của ai.
+    try {
+      await datCoPhien?.call(false);
+    } catch (_) {}
+    // SAU khi tắt cờ (không còn biên lai mới nào được cất): xoá ảnh, hàng chờ và các hàng đang mang ảnh — người
+    // đăng nhập sau không được thấy biên lai của người trước.
+    try {
+      await nhapBienLai?.donKhiDangXuat(id);
+    } catch (_) {}
+    // Tự chuyển tiền chạy nền: không ai đăng nhập thì không ai uỷ quyền chuyển tiền.
+    try {
+      await huyLichNen?.call();
+    } catch (_) {}
+    // Nuốt lỗi: đăng xuất không được phép thất bại vì hệ điều hành trở chứng.
+    try {
+      await osNotifier?.cancelAll();
+    } catch (_) {}
+  }
+
+  /// Trả về **số hàng thật sự được ghi** — tín hiệu duy nhất để quyết định có
+  /// bắn thông báo ra hệ điều hành hay không.
+  Future<int> scan(int idaccount, {DateTime? now, bool? syncFailed}) async {
+    if (_dangQuet) return 0;
+    _dangQuet = true;
+    try {
+      final at = now ?? clock();
+
+      // G87: gỡ kỳ trùng TRƯỚC mọi thứ, chỉ trên dữ liệu vừa kéo về — xem `gopKyTrung`, `soLanKeoVe`. Nuốt lỗi: vệ
+      // sinh dữ liệu hỏng không được chặn lượt quét.
+      final lanKeoVe = soLanKeoVe?.call() ?? 0;
+      if (gopKyTrung != null && lanKeoVe > _daGopOLanKeoVe) {
+        _daGopOLanKeoVe = lanKeoVe;
+        try {
+          await gopKyTrung!(idaccount);
+        } catch (_) {
+          // Bỏ qua có chủ ý.
+        }
+      }
+
+      // Chạy TRƯỚC khi nạp: hoá đơn đọc lên phải mang trạng thái mới nhất, nếu
+      // không thì thông báo nói "quá hạn" trong khi bản ghi vẫn ghi 'Pending'.
+      await markOverdue?.call(idaccount, at);
+
+      // Tự trả hoá đơn: SAU `markOverdue` (trạng thái hoá đơn phải mới nhất)
+      // và TRƯỚC khi nạp hoá đơn cho bộ luật — nếu không thông báo "quá hạn"
+      // nổ cho đúng hoá đơn vừa được tự trả xong. Chạy trước trích mục tiêu
+      // để số dư ví mà bộ trích nhìn thấy là số dư SAU khi trả hoá đơn.
+      // Nuốt lỗi, cùng lý do với `runAutoDeposits` bên dưới.
+      List<BillAutoPayEvent> autoPays = const [];
+      List<GoalAutoDepositEvent> autoDeposits = const [];
+
+      // Khoá thuê (spec tự chuyển tiền chạy nền mục 3.4): engine nền và engine
+      // của app có thể quét CÙNG LÚC. Không lấy được → bỏ qua cả hai bộ chạy;
+      // lượt đang giữ khoá làm việc này. Lấy ném lỗi cũng coi là không lấy được.
+      var coKhoa = false;
+      try {
+        coKhoa = await (layKhoa?.call() ?? Future.value(true));
+      } catch (_) {
+        coKhoa = false;
+      }
+      if (coKhoa) {
+        try {
+          try {
+            autoPays = await runAutoPays?.call(idaccount, at) ?? const [];
+          } catch (_) {
+            // Bỏ qua có chủ ý — xem chú thích trên.
+          }
+
+          // Chạy TRƯỚC khi nạp mục tiêu, cùng lý do với `markOverdue`: một kỳ vừa
+          // trích xong đổi `currentAmount` và có thể bật cờ hoàn thành, nên đọc
+          // trước là bộ luật nhìn thấy trạng thái đã cũ — thông báo "chậm tiến độ"
+          // cho đúng mục tiêu vừa được nạp đầy.
+          //
+          // Nuốt lỗi: đây là chỗ DUY NHẤT trong app tự chuyển tiền, nhưng một sự cố
+          // ở đó không được phép giết cả trung tâm thông báo. `depositToGoal` là
+          // khối nguyên tử nên hỏng thì không để lại gì dở dang.
+          try {
+            autoDeposits = await runAutoDeposits?.call(idaccount, at) ?? const [];
+          } catch (_) {
+            // Bỏ qua có chủ ý — xem chú thích trên.
+          }
+        } finally {
+          try {
+            await nhaKhoa?.call();
+          } catch (_) {
+            // Bỏ qua có chủ ý — khoá tự hết hạn sau 2 phút.
+          }
+        }
+      }
+
+      final budgets = await loadBudgets(idaccount, at);
+      final bills = await loadBills(idaccount, at);
+      final goals = await loadGoals?.call(idaccount, at) ?? const [];
+      final wallets = await loadWallets?.call(idaccount, at) ?? const [];
+
+      // Đọc tuỳ chọn theo ĐÚNG tài khoản đang quét. Đọc nhầm tài khoản khác là
+      // người dùng thấy thông báo bật/tắt ngẫu nhiên trên máy dùng chung.
+      final prefs =
+          await prefsStore?.read(idaccount) ?? NotificationPrefs.macDinh;
+
+      // Chỉ HỎI khi người dùng đã bật. Công tắc mặc định tắt, nên với phần lớn
+      // bản cài đây là một truy vấn không bao giờ chạy — và bộ luật nhận
+      // `false`, đúng nghĩa "không có căn cứ để báo".
+      var tuanQuaCoGiaoDich = false;
+      final docTuan = loadWeekActivity;
+      if (docTuan != null && prefs.tongKetTuanBat) {
+        final tuan = tuanTruoc(at);
+        tuanQuaCoGiaoDich = await docTuan(idaccount, tuan.from, tuan.to);
+      }
+
+      // Cùng khuôn với Tổng kết tuần ngay trên: chỉ HỎI khi người dùng đã
+      // bật. Ngưỡng mặc định là 0, nên với phần lớn bản cài đây là một truy vấn
+      // không bao giờ chạy — và bộ luật nhận danh sách rỗng, đúng nghĩa "không
+      // có căn cứ để báo".
+      //
+      // Cửa sổ đọc dùng lại **đúng** `cuaSoSuKien` mà `silenceBefore` dùng: đọc
+      // rộng hơn là tốn công cho những hàng bộ luật chắc chắn lọc bỏ, còn đọc
+      // hẹp hơn là bỏ sót đúng những khoản vẫn còn nằm trong cửa sổ ấy.
+      // Cùng kỷ luật "chỉ hỏi khi có thể dùng tới": ngưỡng mặc định 0 = tắt.
+      Set<String>? viDaDung;
+      final docViDaDung = loadViDaDung;
+      if (docViDaDung != null && prefs.nguongSoDuThap > 0) {
+        viDaDung = await docViDaDung(idaccount);
+      }
+
+      // E6: chỉ đọc sổ khi có ví đang âm — phần lớn lượt quét không có ví nào.
+      Map<String, String>? dotAm;
+      final docDotAm = loadDotAm;
+      final viAm = [
+        for (final v in wallets)
+          if (!v.isDeleted && !v.allowNegative && v.balance < 0) v.id,
+      ];
+      if (docDotAm != null && viAm.isNotEmpty) {
+        dotAm = await docDotAm(idaccount, viAm);
+      }
+
+      var chiLon = const <KhoanChiLon>[];
+      final docChi = loadChiLon;
+      if (docChi != null && prefs.nguongChiLon > 0) {
+        chiLon = await docChi(idaccount, at.subtract(cuaSoSuKien));
+      }
+
+      // Cùng kỷ luật "chỉ hỏi khi có thể dùng tới", nhưng điều kiện là công tắc
+      // **nhóm** chứ không phải một ngưỡng riêng: loại này không có công tắc của
+      // riêng nó. Tắt nhóm Ngân sách thì ứng viên sẽ bị lọc bỏ ngay sau đây, nên
+      // dựng kế hoạch là trả giá một lượt đọc toàn bộ sổ giao dịch cho một kết
+      // quả chắc chắn bị vứt đi.
+      //
+      // Ngân sách rỗng cũng bỏ qua: `taiPhanBoCua` sẽ trả `null`, nhưng nguồn dữ
+      // liệu thì đã kịp đọc cả bảng giao dịch để tính thu nhập ba tháng.
+      KeHoachTaiPhanBo? keHoach;
+      final docKeHoach = loadKeHoach;
+      if (docKeHoach != null &&
+          budgets.isNotEmpty &&
+          prefs.chapNhan(NotificationKind.budgetRebalance)) {
+        keHoach = await docKeHoach(idaccount, budgets, at);
+      }
+
+      final ungVien = buildNotificationCandidates(
+        NotificationRuleInput(
+          now: at,
+          budgets: budgets,
+          bills: bills,
+          goals: goals,
+          wallets: wallets,
+          autoDeposits: autoDeposits,
+          autoPays: autoPays,
+          syncFailed: syncFailed ?? _dongBoHong,
+          silenceBefore: at.subtract(cuaSoSuKien),
+          defaultBillLeadDays: prefs.soNgayNhacHoaDon,
+          lowBalanceThreshold: prefs.nguongSoDuThap,
+          viDaDung: viDaDung,
+          dotAm: dotAm,
+          tuanQuaCoGiaoDich: tuanQuaCoGiaoDich,
+          chiLon: chiLon,
+          nguongChiLon: prefs.nguongChiLon,
+          keHoachTaiPhanBo: keHoach,
+        ),
+        // Lọc ở đây chứ không ở bước bắn: tắt một nhóm nghĩa là không sinh
+        // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông
+        // báo vẫn đầy những mục người dùng đã nói là không muốn thấy.
+      ).where((c) => prefs.chapNhan(c.kind)).toList();
+
+      // Gỡ hàng "sắp cạn" đã lỗi thời (ví đã hồi, hoặc đã âm — G81) — ở MỌI lượt quét, nên đứng trước nhánh thoát sớm "không có gì mới"
+      // bên dưới. `BadgeUpdater` nghe bảng và huỷ thông báo của hàng đã gỡ khỏi khay.
+      // G71: cả hàng của ví ĐÃ XOÁ — chạy kể cả khi danh sách ví rỗng (xoá đúng ví duy nhất).
+      final docViDaXoa = loadViDaXoa;
+      if (wallets.isNotEmpty || docViDaXoa != null) {
+        final hang = (await dao.getAll(idaccount)).map(NotificationEntity.fromDrift).toList();
+        final conHangVi = hang.any((h) => h.subjectType == 'wallet' && h.dismissedAt == null);
+        final viDaXoa = (docViDaXoa != null && conHangVi) ? await docViDaXoa(idaccount) : const <String>{};
+        // E6 ◐ (2026-10-07): hàng "ví âm" tự gỡ vì ví HỒI thì NHẢ khoá — ví âm lại cùng đợt (người dùng
+        // xoá khoản nạp) phải báo lại. Huỷ thông báo trên khay theo khoá CŨ trước khi đổi khoá.
+        final amDaHoi = hangAmDaHoi(hang, wallets).toSet();
+        final theoId = {for (final h in hang) h.id: h};
+        for (final id in amDaHoi) {
+          final khoa = theoId[id]!.dedupeKey;
+          await osNotifier?.cancel(osScheduledId(khoa));
+          await dao.goVaNhaKhoa(id, khoa);
+        }
+        for (final id in {
+          ...hangSapCanLoiThoi(hang, wallets, prefs.nguongSoDuThap),
+          ...hangCuaViDaXoa(hang, viDaXoa),
+        }) {
+          if (!amDaHoi.contains(id)) await dao.dismiss(id);
+        }
+      }
+
+      if (ungVien.isEmpty) {
+        // Vẫn phải đồng bộ lịch: "không có gì mới để báo" và "lịch tương lai
+        // đã đúng chưa" là hai chuyện khác nhau. Một hoá đơn vừa bị xoá không
+        // sinh thông báo nào nhưng vẫn phải gỡ lịch của nó.
+        await _dongBoLich(idaccount);
+        await _henLichNen(idaccount);
+        _ghiNhat(idaccount, 0);
+        return 0;
+      }
+
+      final moi = await dao.insertAllIfAbsent([
+        for (final c in ungVien) _toCompanion(c, idaccount),
+      ]);
+
+      // Bắn theo danh sách VỪA GHI, không phải danh sách ứng viên: `ungVien`
+      // chứa lại đúng những sự kiện cũ ở mọi lượt quét, và quét chạy sau mỗi
+      // lần đồng bộ. Bắn theo ứng viên là người dùng nhận lại cùng một thông
+      // báo mỗi lần mở app.
+      // Công tắc OS là "đừng làm phiền tôi", không phải "đừng ghi lại gì":
+      // hàng đã nằm trong CSDL rồi, chỉ bỏ bước bắn ra ngoài. Giờ im lặng
+      // cũng chặn đúng ở đây, cùng một ngữ nghĩa — người dùng ngủ dậy mở app
+      // vẫn phải thấy đủ những gì đã xảy ra đêm qua.
+      if (prefs.osBat && !prefs.dangImLang(at)) {
+        await _banRaHeDieuHanh(moi, idaccount);
+      }
+      await _dongBoLich(idaccount);
+      await _henLichNen(idaccount);
+
+      _ghiNhat(idaccount, moi.length);
+      return moi.length;
+    } finally {
+      _dangQuet = false;
+    }
+  }
+
+  /// Một dòng nhật ký cho mỗi lượt quét, cùng kiểu `SyncEngine` vẫn ghi.
+  ///
+  /// Trước khi có nó, vòng quét hoàn toàn **im lặng**: chạy trên máy thật thì
+  /// không có cách nào phân biệt "đã quét, không có gì mới" với "không quét lần
+  /// nào". Đúng câu hỏi cần trả lời khi kiểm mốc kích hoạt lúc mất mạng — và
+  /// `flutter test` không trả lời hộ được, vì nó không có vòng đời app thật.
+  void _ghiNhat(int idaccount, int soHangMoi) {
+    debugPrint('[NotificationScanner] Quét xong cho tài khoản $idaccount — '
+        '$soHangMoi hàng mới');
+  }
+
+  /// Đồng bộ lại lịch nhắc đặt trước.
+  ///
+  /// Nuốt lỗi: hàng đã ghi vào CSDL rồi, để một trục trặc của AlarmManager nổi
+  /// lên là mất cả trung tâm thông báo trong app.
+  Future<void> _dongBoLich(int idaccount) async {
+    try {
+      await resyncLich?.call(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý — xem chú thích trên.
+    }
+  }
+
+  /// Hẹn lượt nền kế tiếp. Nuốt lỗi: lịch nền hỏng không được giết trung tâm
+  /// thông báo.
+  Future<void> _henLichNen(int idaccount) async {
+    try {
+      await henLichNen?.call(idaccount);
+    } catch (_) {
+      // Bỏ qua có chủ ý — xem chú thích trên.
+    }
+  }
+
+  /// Đẩy các hàng vừa ghi ra hệ điều hành.
+  ///
+  /// Mọi lỗi bị nuốt **từng cái một**: người dùng từ chối quyền thông báo là
+  /// chuyện thường, và để lỗi đó nổi lên là mất luôn trung tâm thông báo trong
+  /// app — tức là mất phần vẫn còn dùng được. Nuốt riêng từng cái để một thông
+  /// báo hỏng không chặn những cái sau.
+  Future<void> _banRaHeDieuHanh(
+    List<AppNotificationsCompanion> moi,
+    int idaccount,
+  ) async {
+    final os = osNotifier;
+    if (os == null || moi.isEmpty) return;
+
+    // Nhật ký B5a: chỉ ghi `osDeliveredAt` khi quyền đang bật — Android 13+ nhận
+    // `show` im lặng mà không hiện gì khi quyền tắt. Hỏi MỘT lần cho cả lô.
+    var coQuyen = false;
+    try {
+      coQuyen = await os.daCoQuyen();
+    } catch (_) {}
+
+    for (final e in moi) {
+      try {
+        await os.show(
+          id: osScheduledId(e.dedupeKey.value),
+          title: e.title.value,
+          body: e.body.value,
+          payload: e.dedupeKey.value,
+        );
+        if (coQuyen) {
+          await dao.danhDauDaBan(idaccount, e.dedupeKey.value, clock());
+        }
+      } catch (_) {
+        // Bỏ qua có chủ ý — xem chú thích trên.
+      }
+    }
+  }
+
+  AppNotificationsCompanion _toCompanion(
+    NotificationCandidate c,
+    int idaccount,
+  ) {
+    return AppNotificationsCompanion.insert(
+      id: idGenerator(),
+      idaccount: idaccount,
+      kind: c.kind.name,
+      dedupeKey: c.dedupeKey,
+      title: c.title,
+      body: c.body,
+      severity: c.severity.name,
+      subjectType: Value(c.subjectType),
+      subjectId: Value(c.subjectId),
+      deeplink: Value(c.deeplink),
+      createdAt: c.createdAt,
+    );
+  }
+}
+
+String _uuid() => const Uuid().v4();

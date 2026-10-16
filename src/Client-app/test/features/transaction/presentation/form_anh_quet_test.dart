@@ -7,8 +7,8 @@ library;
 
 import 'dart:io';
 
-import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/ocr/kho_anh_quet.dart';
+import 'package:flowmoney/features/transaction/data/datasources/kho_anh_quet.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
 import 'package:flowmoney/features/transaction/domain/doc_anh_quet.dart';
@@ -78,7 +78,7 @@ void main() {
 
   Widget app({bool ai = false, List<double> chon = const [], String? dm, String note = 'PHO 24'}) {
     final bloc = TransactionBloc(transactionRepository: repo);
-    CategoryTree cay(List<Category> c) =>
+    CategoryTree cay(List<CategoryEntity> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     final router = GoRouter(
       initialLocation: '/start/add',

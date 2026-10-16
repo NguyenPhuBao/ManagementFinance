@@ -23,7 +23,7 @@ import '../../../goal/presentation/widgets/goal_progress.dart';
 /// tự rơi sang tab kia thay vì hiện trên trang chủ dưới dạng một thẻ 100%.
 ///
 /// Thuần Dart, tách khỏi widget để test bằng `expect` thường — cùng lối với
-/// `pickHomeBudget`.
+/// `pickHomeBudget` (nay ở `budget/domain/pick_home_budget.dart`).
 GoalEntity? chonMucTieuTrangChu(List<GoalEntity> goals) {
   final nhom = chiaMucTieu(goals);
   return nhom.dangTheoDuoi.isEmpty ? null : nhom.dangTheoDuoi.first;

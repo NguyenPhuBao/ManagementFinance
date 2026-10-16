@@ -8,7 +8,7 @@
 /// bị từ chối kèm ví dụ — quy đổi là việc của mô hình (và của bộ chỉnh, luật 4).
 library;
 
-import '../../analytics/data/bao_cao_repository.dart';
+import '../../analytics/data/repositories/bao_cao_repository.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../goal/data/repositories/goal_repository.dart';

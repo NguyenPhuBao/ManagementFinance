@@ -1,12 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
+import 'package:flowmoney/features/bill/domain/bill_draft.dart';
 import 'package:flowmoney/features/bill/domain/bill_note.dart';
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 void main() {
@@ -39,12 +41,13 @@ void main() {
   });
 
   /// Một hoá đơn đầy đủ thuộc tính như hàng kéo về từ backend.
-  Future<Bill> seedBill({
+  Future<BillEntity> seedBill({
     String id = 'bill-1',
     DateTime? dueDate,
     bool isRecurrence = true,
     String timeRecurrence = kBillCycleMonth,
     bool isPaid = false,
+    bool autoPayEnabled = false,
   }) async {
     await db.billDao.insert(
       BillsCompanion.insert(
@@ -67,28 +70,35 @@ void main() {
         icon: const Value('bolt'),
         colour: const Value('#FF0000'),
         note: const Value('Ghi chú cũ'),
+        autoPayEnabled: Value(autoPayEnabled),
         updatedAt: DateTime.now(),
       ),
     );
-    return (await db.billDao.getAll(accountId)).firstWhere((b) => b.id == id);
+    return BillEntity.fromDrift((await db.billDao.getAll(accountId)).firstWhere((b) => b.id == id));
   }
 
   group('editBill', () {
     test('không đụng tới các cột vắng mặt trong companion', () async {
       await seedBill(isPaid: true);
 
-      // Đúng companion mà bill_edit_page.dart dựng: chỉ những trường trên form.
+      // Đúng BillDraft mà bill_edit_page.dart dựng: chỉ những trường trên form.
       await repository.editBill(
-        BillsCompanion(
-          id: const Value('bill-1'),
-          idaccount: const Value(accountId),
-          name: const Value('Tiền điện tháng 9'),
-          amount: const Value(250000.0),
-          dueDate: Value(DateTime(2026, 9, 20)),
-          note: const Value('Ghi chú mới'),
-          syncStatus: const Value('pending'),
-          updatedAt: Value(DateTime.now()),
+        BillDraft(
+          name: 'Tiền điện tháng 9',
+          amount: 250000.0,
+          // Giữ đúng giá trị đã seed: ca này kiểm "cột form không hỏi (isPaid, payStatus, icon, colour) KHÔNG bị đụng".
+          startDate: DateTime(2026, 1, 20),
+          dueDate: DateTime(2026, 9, 20),
+          walletId: walletId,
+          categoryId: categoryId,
+          isRecurring: true,
+          timeRecurrence: kBillCycleMonth,
+          timeNotification: '3',
+          note: 'Ghi chú mới',
         ),
+        id: 'bill-1',
+        idaccount: accountId,
+        now: DateTime.now(),
       );
 
       final after = (await db.billDao.getAll(accountId)).single;
@@ -118,20 +128,55 @@ void main() {
       expect(after.startDate, DateTime(2026, 1, 20));
     });
 
+    test('tắt công tắc tự trả ở màn Sửa thì autoPayEnabled xuống CSDL là false',
+        () async {
+      await seedBill(autoPayEnabled: true);
+
+      await repository.editBill(
+        BillDraft(
+          name: 'Tiền điện',
+          amount: 200000.0,
+          startDate: DateTime(2026, 1, 20),
+          dueDate: DateTime(2026, 8, 20),
+          walletId: walletId,
+          categoryId: categoryId,
+          isRecurring: true,
+          timeRecurrence: kBillCycleMonth,
+          timeNotification: '3',
+          note: 'Ghi chú cũ',
+          autoPayEnabled: false,
+        ),
+        id: 'bill-1',
+        idaccount: accountId,
+        now: DateTime.now(),
+      );
+
+      final row = (await db.billDao.getAll(accountId)).single;
+      expect(row.autoPayEnabled, isFalse,
+          reason: 'Tắt công tắc tự trả ở màn Sửa phải xuống CSDL; vắng cột là '
+              '"giữ nguyên" và app tiếp tục trừ tiền (lỗi tệ nhất vùng này).');
+    });
+
     test('sửa hoá đơn không làm nó sống lại sau khi đã xoá mềm', () async {
       await seedBill();
       await repository.deleteBill('bill-1');
 
       await repository.editBill(
-        BillsCompanion(
-          id: const Value('bill-1'),
-          idaccount: const Value(accountId),
-          name: const Value('Tên mới'),
-          amount: const Value(1.0),
-          dueDate: Value(DateTime(2026, 9, 20)),
-          syncStatus: const Value('pending'),
-          updatedAt: Value(DateTime.now()),
+        BillDraft(
+          name: 'Tên mới',
+          amount: 1.0,
+          startDate: DateTime(2026, 1, 20),
+          dueDate: DateTime(2026, 9, 20),
+          walletId: walletId,
+          categoryId: categoryId,
+          isRecurring: true,
+          timeRecurrence: kBillCycleMonth,
+          timeNotification: '3',
+          note: '',
         ),
+        id: 'bill-1',
+        idaccount: accountId,
+        now: DateTime.now(),
       );
 
       final row = await (db.select(db.bills)
@@ -258,7 +303,7 @@ void main() {
           updatedAt: DateTime.now(),
         ),
       );
-      final bill = (await db.billDao.getAll(accountId)).single;
+      final bill = BillEntity.fromDrift((await db.billDao.getAll(accountId)).single);
       expect(bill.recurrence, 'monthly',
           reason: 'Đây chính là trạng thái mà nhánh pull để lại.');
 

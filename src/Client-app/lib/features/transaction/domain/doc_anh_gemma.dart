@@ -10,7 +10,7 @@ import '../../../core/ocr/so_tien_tren_anh.dart';
 
 /// ⚠️ Câu hỏi đã ĐO — Gemma tất định nhưng rất nhạy với câu hỏi: bản này đúng tổng 6/6 hoá đơn trên GPU OnePlus, thêm
 /// ba trường cửa hàng / ngày / giờ thì tụt 5/6, câu hỏi không liệt kê món thì một tờ ra gấp mười (757.000). Đổi một chữ
-/// là phải đo lại cả bộ ảnh (nút *Lô* của màn spike C4).
+/// là phải đo lại cả bộ ảnh (màn đo spike C4 đã gỡ 2026-10-12 — dựng lại phép đo khi cần).
 const String kPromptMonTong = 'Đây là ảnh một hoá đơn bán hàng. Liệt kê MỌI món hàng in trên hoá đơn. Trả về DUY '
     'NHẤT một JSON: {"mon": [{"ten": "<tên món>", "tien": <thành tiền, số nguyên đồng>}], "tong": <tổng phải trả, số '
     'nguyên đồng>}. Không giải thích.';

@@ -318,9 +318,9 @@ sửa tên danh mục lặng lẽ **tắt cờ**; có ca test canh (*"sửa tên
 | `test/features/ai_edge/presentation/the_ke_hoach_test.dart` | 4 | Task 15 — thẻ: biến thể đủ nguồn bù (chip "Dự kiến vượt", `cauTomTat`, "Nguồn bù: …", nút gọi `onXem`), thiếu một phần (nhãn đỏ, chip số thiếu, dòng gợi ý, link phân tích), không nguồn nào → không nút, không `onXemPhanTich` → không link; **không** có "Tăng hạn mức" | 2026-09-19 |
 | `test/features/ai_edge/presentation/ke_hoach_sheet_test.dart` | 9 | Task 15 — sheet thật qua `showModalBottomSheet`: tiêu đề/thâm hụt/hai dòng/100 %, cao **cố định 70 %**, bỏ tick và sửa số đổi tổng bù, ô tiền có `GioiHanSoChuSo`, Áp dụng → 2 `updateBudget` đúng hạn mức + 2 hàng (`modified`, `rejected`) + đóng, Bỏ qua → 0 update + 2 `rejected`, chạm nền → **0 hàng**, không tick → nút tắt, vượt dư địa → lỗi + nút tắt (bản sai bỏ `_hopLe` làm đúng ca này đỏ) | 2026-09-19 |
 
-| `test/core/notification/notification_rules_rebalance_test.dart` | 13 | Task 16 — luật `budgetRebalance`: kế hoạch `null` thì im; khoá **chỉ có tuần ISO** (cùng tuần khác ngày → cùng khoá; sang tuần → khác; 31/12/2025 → `2026-W01`); `body` **không chứa chữ số** nhưng có tên; hết nguồn bù → câu khác, không mời "Xem kế hoạch"; nhóm `budget` và **chịu** công tắc; `silenceBefore`; cold start → `/budget` | 2026-09-20 |
-| `test/core/notification/notification_scanner_test.dart` (+4) | 4 | Task 16 — **chỗ nối**: có kế hoạch → một hàng; hai lượt cùng tuần → một hàng; **loader không được gọi** khi tắt nhóm Ngân sách hoặc không có ngân sách — hai ca này **xanh ngay từ đầu** nên đã kiểm bằng bản sai có chủ ý (bỏ cả hai điều kiện → cả hai đỏ) | 2026-09-20 |
-| `test/core/notification/notification_deeplink_test.dart` (sửa) | — | Task 16 — phép canh "đủ mọi loại" **tự đỏ** khi enum thêm giá trị: phải dựng thêm `keHoachTaiPhanBo` cho `tatCaUngVien()`. Đúng cách lưới ấy sinh ra để làm việc | 2026-09-20 |
+| `test/features/notification/domain/notification_rules_rebalance_test.dart` | 13 | Task 16 — luật `budgetRebalance`: kế hoạch `null` thì im; khoá **chỉ có tuần ISO** (cùng tuần khác ngày → cùng khoá; sang tuần → khác; 31/12/2025 → `2026-W01`); `body` **không chứa chữ số** nhưng có tên; hết nguồn bù → câu khác, không mời "Xem kế hoạch"; nhóm `budget` và **chịu** công tắc; `silenceBefore`; cold start → `/budget` | 2026-09-20 |
+| `test/features/notification/application/notification_scanner_test.dart` (+4) | 4 | Task 16 — **chỗ nối**: có kế hoạch → một hàng; hai lượt cùng tuần → một hàng; **loader không được gọi** khi tắt nhóm Ngân sách hoặc không có ngân sách — hai ca này **xanh ngay từ đầu** nên đã kiểm bằng bản sai có chủ ý (bỏ cả hai điều kiện → cả hai đỏ) | 2026-09-20 |
+| `test/features/notification/domain/notification_deeplink_test.dart` (sửa) | — | Task 16 — phép canh "đủ mọi loại" **tự đỏ** khi enum thêm giá trị: phải dựng thêm `keHoachTaiPhanBo` cho `tatCaUngVien()`. Đúng cách lưới ấy sinh ra để làm việc | 2026-09-20 |
 | `test/features/ai_edge/domain/kiem_nhan_test.dart` | 12 | việc số 1 — bộ kiểm NHÃN: ⭐ câu đo trên máy thật *"Tỉ lệ phân bổ là 85,4%"* bị chặn; đúng nhãn qua; số khớp hai nhãn ở hai gói đủ một nhãn; nhãn nhiều âm tiết đòi đủ; so theo **âm tiết** ("chiều" ≠ "chi"); `tuKhoaNhan` bỏ âm tiết chung | 2026-09-22 |
 | `test/features/ai_edge/domain/kiem_cau_tra_loi_test.dart` | 9 | việc số 1 — định nghĩa duy nhất "một câu được hiện": `mucTongHop` (một gói cảnh báo → cả câu cảnh báo); ⭐ trấn an khi có gói cảnh báo bị chặn (điểm 5 cổng A, trước đó **chưa nối**); số bịa / sai nhãn / báo động khi bình thường bị chặn; phủ định ba từ giữ nguyên | 2026-09-22 |
 | `test/features/ai_edge/domain/gac_cau_test.dart` | 11 | việc số 1 — gác theo câu: ⭐ **cuối bộ đệm chưa phải kết câu** và **token cắt ngay sau dấu chấm** (hai ca từ lỗi máy thật, bẫy 4.18); `tachCauHoanChinh` không cắt ở chấm ngăn nghìn; ⭐ câu trượt → `BiChan`, huỷ **một** lần, câu sau **không** hiện (dựng `StreamController` thật); hết luồng không dấu kết vẫn kiểm phần đuôi; luồng rỗng không phát gì | 2026-09-22 |
@@ -2104,13 +2104,13 @@ thẳng SQLite*; người dùng chốt đo trước khi chọn. Máy tính khôn
 `llama_cpp`, không GPU) nên spike chạy **trên chính app**, cùng mô hình, cùng máy, cùng bản lượng tử hoá với đường tool.
 
 **Cách dựng** (người dùng chốt ba điều: giữ trong repo sau cờ build · prompt có lược đồ + luật ngầm + hai ví dụ · đo 7 câu
-chưa đạt + 5 câu đạt tiêu biểu): `lib/features/ai_chat/spike/spike_sql.dart`, chỉ sống khi build
+chưa đạt + 5 câu đạt tiêu biểu): `lib/features/ai_chat/spike/spike_sql.dart` *(mã đo **đã gỡ 2026-10-10**, đợt dọn vị trí tệp — xem lại bằng `git log --all -- src/Client-app/lib/features/ai_chat/spike/spike_sql.dart`; bảng đo dưới đây vẫn là kết luận)*, chỉ sống khi build
 `--dart-define=SPIKE_SQL=true` (hằng `kSpikeSql`, bản thường loại cả nhánh lúc biên dịch); câu bắt đầu `sql:` trong chat
 đi thẳng — không chặn chủ đề, không bậc tool, không lớp chắn — vào `SlmRuntime.sinh(prompt)`; chữ trả về qua hàng rào
 chỉ-đọc `trichSelect` (bỏ rào markdown, lấy từ `SELECT`, từ chối câu thứ hai sau `;` và mọi từ khoá ghi / `PRAGMA` /
 `pragma_`, ép `LIMIT 20`), rồi `AppDatabase.customSelect` và hiện nguyên hàng. Prompt ~2.500 ký tự: sáu bảng với đúng tên cột
 Drift, luật `amount` luôn dương / chiều ở `type` / bỏ điều chỉnh số dư / epoch giây, **mốc kỳ tính sẵn** (hôm nay, tuần,
-tháng, tháng trước, quý, năm), hai ví dụ (tổng chi tháng này, số dư một ví). 6 ca đơn vị ở `test/features/ai_chat/spike_sql_test.dart`.
+tháng, tháng trước, quý, năm), hai ví dụ (tổng chi tháng này, số dư một ví). 6 ca đơn vị từng ở `test/features/ai_chat/spike_sql_test.dart` (gỡ cùng mã).
 APK `14bb5668…`, 15:58–16:07, mỗi câu **10–21 s** (nhanh hơn đường tool 27–37 s vì chỉ một lượt sinh, không có lượt tool).
 
 | # | Câu | SQL mô hình viết (rút gọn) | Kết quả | Chấm |
@@ -3421,7 +3421,9 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
 - `flutter test` **5156/5156** (4 skip), analyze 26. Ca trần `tools_json` ba tool **đã bỏ `skip`**
   (`kNenToolsJsonLenhDaDo` = 1759 — mô tả / tham số dài thêm thì đo lại trên máy rồi mới nâng).
 
-### 9.44 Spike C4 — giọng nói và chụp hoá đơn (2026-10-01) — 🚧 màn đo chạy được cả bốn đường, CHƯA có bảng đo
+### 9.44 Spike C4 — giọng nói và chụp hoá đơn (2026-10-01) — ✅ chốt lối 2026-10-12 (Android trước, Gemma dự phòng), mã spike đã gỡ; bảng đo giọng thật CHƯA có
+
+> ✅ **2026-10-12 — spike CHỐT LỐI, MÃ SPIKE ĐÃ GỠ.** Người dùng chốt **Android trước, Gemma chép lời dự phòng** (C4, `docs/GIONG_NOI_FEATURE.md`; spec `specs/2026-10-12-c4-giong-noi-nhap-giao-dich-design.md`). Đã xoá `ai_chat/spike/`, route `/spike-c4`, nhánh `kSpikeC4`, `spikeDaPhuongThuc`, `spike_c4_test`; `chepLoi` thay `spikeDaPhuongThuc` ở `SlmRuntime` (một bản mô hình mang cả cờ ảnh lẫn âm thanh, đóng ≤ 1 lần). `speech_to_text` + `record` + `image_picker` + `google_mlkit_text_recognition` đều là gói chính thức. Bảng đo giọng thật của hai lối vẫn **chưa có** (checklist mục 9 tài liệu giọng nói). Phần mô tả bên dưới là lịch sử của spike.
 
 Kế hoạch `plans/2026-09-28-c4-spike-giong-noi-chup-hoa-don.md` (gitignore). Mục này mới ghi **chạy thử** (Bước 2b,
 2c); hai bảng đo — 20 câu **đọc thật** và 15 ảnh hoá đơn **chụp thật** — chờ người dùng (Bước 3–4). Mã spike sống
@@ -4451,7 +4453,7 @@ ngày."* và một thẻ số liệu cùng tên.
 
 ⚠️ **ĐÍNH CHÍNH (cùng ngày, trước khi push):** bản đầu của mục này — và commit đầu của
 chặng 1.4 — viết rằng hàm ấy *"không có một chỗ gọi nào trong `lib/`"*. **Sai.** Nó đang
-chạy ở `goal_detail_page.dart:1082`, dựng hộp *"DỰ BÁO HOÀN THÀNH: THÁNG MM/yyyy"*. Câu
+chạy ở `goal_detail_page.dart:1082` (nay `KhoiNhanDinhMucTieu`, `widgets/chi_tiet_muc_tieu/khoi_nhan_dinh_muc_tieu.dart:21`), dựng hộp *"DỰ BÁO HOÀN THÀNH: THÁNG MM/yyyy"*. Câu
 đúng là: **gói số của AI** chưa dùng nó, chứ không phải app chưa dùng. Nguồn của sai lầm:
 một lệnh `grep` trả về **rỗng** và tôi tin vào cái rỗng ấy — đúng cái bẫy mục "Ghi chú vận
 hành" `CLAUDE.md` đã ghi (*"lần trước là `grep` qua rtk"*). Bài học lặp lại: **một phép đo
@@ -4483,9 +4485,9 @@ thành **một** việc là "gói số cho `goal`". Đo bằng mã thì chúng *
 
 | Hàm | Cần gì | Trang **danh sách** có chưa | App đã dùng ở đâu |
 |---|---|---|---|
-| `duBaoHoanThanh` | chính `GoalEntity` | ✅ → **đã làm** | `goal_detail_page.dart:1082` |
+| `duBaoHoanThanh` | chính `GoalEntity` | ✅ → **đã làm** | `widgets/chi_tiet_muc_tieu/khoi_nhan_dinh_muc_tieu.dart:21` (đo 2026-10-13; trước đợt tách trang là `goal_detail_page.dart:1021` tại `9ff249ab`, đo `git show`; mốc `:1082` ghi lúc viết mục này) |
 | `thongKeMucTieu` | danh sách `KhoanTichLuy` | ❌ phải nghe thêm `watchGoalTransactions` | `goal_stats_card.dart:34` |
-| `canhBaoViKhongDu` | tên ví, số dư ví, tổng mọi mục tiêu trỏ vào ví ấy | ❌ `GoalLoaded` không mang ví nào | `goal_detail_page.dart:221` |
+| `canhBaoViKhongDu` | tên ví, số dư ví, tổng mọi mục tiêu trỏ vào ví ấy | ❌ `GoalLoaded` không mang ví nào | `goal_detail_page.dart:213` (đo 2026-10-13; trước đợt tách trang là `:221`) |
 
 ⚠️ **Cột cuối đổi hẳn ý nghĩa của việc này.** Cả ba hàm **đã là tính năng sống** trên
 trang **Chi tiết mục tiêu**. Đưa chúng vào khối Nhận xét của trang **danh sách** không

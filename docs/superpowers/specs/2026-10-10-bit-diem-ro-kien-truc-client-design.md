@@ -145,7 +145,7 @@ Mục tiêu / Cá nhân đọc qua `sl<ThongBaoNguon>()`. Đây là cổng mỏn
 - **Phản hồi kế hoạch cân đối.** `TaiPhanBoNguon` (đã có interface + `TaiPhanBoNguonImpl` cầm `db`) thêm `ghiPhanHoi`;
   `budget_page` truyền `sl<TaiPhanBoNguon>().ghiPhanHoi`. Bốn lớp giả `implements TaiPhanBoNguon` thêm stub.
 - **Spike SQL.** `chaySpikeSql` bỏ tham số `db`, tự lấy `sl<AppDatabase>()` bên trong `ai_chat/spike/spike_sql.dart`
-  (thư mục `spike/` không phải `presentation`). Mã này chỉ sống sau `--dart-define=SPIKE_SQL=true`.
+  (thư mục `spike/` không phải `presentation`). Mã này chỉ sống sau `--dart-define=SPIKE_SQL=true`. *(📍 spike_sql gỡ 2026-10-10 — spec dọn vị trí tệp.)*
 
 ### 4.6 Chi phí thật: 3 lớp giả ở 2 tệp (đo lại 2026-10-10)
 
@@ -218,6 +218,13 @@ widget nhận giá trị + callback, đặt ở `lib/features/transaction/presen
 Phần dời đi khoảng 1.300 dòng; trang còn khoảng **1.800 dòng toàn logic**. Xuống nữa cần controller riêng, là hướng B
 người dùng để lại; ghi là **nợ có tên** (mục 10).
 
+> ✅ **Số đo sau thi công (2026-10-10, Task 13, `259ce6e8`):** trang **3.107 → 2.007 dòng** (đếm như test quét 23,
+> `readAsLinesSync().length`), bảy tệp `widgets/them_giao_dich/` cộng **1.383** dòng. Lệch ước lượng ~200 dòng vì phần
+> dời đi là đúng bảy khối giao diện trên, còn những gì *ở lại* — `setState`, chọn ví, phản hồi gợi ý, chiều tiền, mở
+> `/add/category`, ghi phản hồi — là logic trạng thái. Hạ thêm nghĩa là dời logic ấy ra ngoài trang, trái quyết định 6
+> (trạng thái ở lại trang); phán quyết R15 của đợt chấp nhận 2.007 và đặt trần quét 23 đúng bằng số ấy. Con số 3.105
+> ở đầu mục là số đo **trước** Task 8 (Task 8 thêm 2 dòng khi chuyển trang sang `ThongBaoNguon`).
+
 ### 5.3 Quy tắc dời mã
 
 - Dời **nguyên văn** thân widget; chỉ đổi tham chiếu trường `_x` thành tham số. Không "sửa tiện tay" bố cục hay chữ.
@@ -238,14 +245,18 @@ người dùng để lại; ghi là **nợ có tên** (mục 10).
 
 | Tệp | Trần sau đợt này |
 |---|---|
-| `transaction/presentation/pages/add_transaction_page.dart` | 1.800 |
+| `transaction/presentation/pages/add_transaction_page.dart` | ~~1.800~~ **2.007** (R15) |
 | `notification/presentation/pages/notification_settings_page.dart` | 1.615 |
 | `goal/presentation/pages/goal_add_page.dart` | 1.570 |
-| `goal/presentation/pages/goal_detail_page.dart` | 1.483 |
+| `goal/presentation/pages/goal_detail_page.dart` | ~~1.483~~ **1.480** |
 | `analytics/presentation/pages/report_preview_page.dart` | 1.270 |
 
 Số trần của bốn tệp cuối là số dòng đo ngày 2026-10-10; ai làm chúng dài hơn là test đỏ. Tách xong tệp nào thì rút
 tên khỏi danh sách.
+
+> ✅ **Đã thi công (Task 11–13):** trần trong test là số đo thật lúc điền, không phải ước lượng của bảng gốc —
+> `goal_detail_page` 1.480 (Task 7 rút 3 dòng khi trang thôi cầm CSDL), `add_transaction_page` **2.007** (mục 5.2,
+> phán quyết R15). `analytics_page` đã rút khỏi danh sách sau Task 12 (339 dòng); danh sách còn **năm** tệp.
 
 ## 6. Việc 3 — Rút điều phối phiên khỏi `AuthBloc`
 
@@ -419,7 +430,7 @@ cùng mười màn.
 | Tên lớp công khai mới trùng lớp có sẵn | đã kiểm 2026-10-10: không trùng; kiểm lại bằng grep trước khi đặt tên tệp mới |
 | CI đỏ vì môi trường Linux | task dò riêng; sửa test hoặc ghi loại trừ có lý do |
 | `wallet_picker_sources_test` đỏ vì chỗ đọc ví mới | phân loại tay 11 chỗ trong bảng của nó |
-| Trang Thêm giao dịch vẫn 1.800 dòng | ghi nợ có tên; trần ratchet trong test quét 23 chặn phình thêm |
+| Trang Thêm giao dịch vẫn ~~1.800~~ 2.007 dòng (đo sau Task 13) | ghi nợ có tên; trần ratchet trong test quét 23 chặn phình thêm |
 
 **Hoàn tác:** bốn việc độc lập, mỗi việc một chuỗi commit riêng; hỏng việc nào revert việc ấy. Không có migration, không
 có thay đổi payload, nên không có bước hoàn tác dữ liệu.
@@ -430,7 +441,7 @@ có thay đổi payload, nên không có bước hoàn tác dữ liệu.
   `PhienDieuPhoi`, trần dòng và danh sách miễn trừ; mốc test / analyze mới; dòng CI.
 - `docs/PROJECT_CONTEXT.md` mục 9 (cấu trúc app) và mục 14 (khối *Bịt điểm rò kiến trúc 2026-10-10*).
 - `docs/CLIENT_APP_KNOWN_GAPS.md` mục 1: một mục **G88 — nợ kiến trúc còn lại sau đợt 2026-10-10**, sáu gạch đầu dòng:
-  Thêm giao dịch ~1.800 dòng (cần controller, hướng B); năm tệp miễn trừ trần dòng; UI còn cầm kiểu hàng Drift, Entity chỉ
+  Thêm giao dịch ~~1.800~~ **2.007** dòng đo sau Task 13 (cần controller, hướng B); năm tệp miễn trừ trần dòng; UI còn cầm kiểu hàng Drift, Entity chỉ
   ở 4/14 mảng; 36 dòng hạ tầng (`notification_rules`, `sync_engine`, `notification_scanner`, DAO) import `features/`;
   `core/notification` (34 tệp) là một mảng nghiệp vụ nằm trong `core`, chỗ đúng là `features/notification/{data,domain}`;
   `data/services/` ở ví, hoá đơn, danh mục thực chất là tầng application chưa có tên — nếu cần tầng thứ tư thì đổi tên

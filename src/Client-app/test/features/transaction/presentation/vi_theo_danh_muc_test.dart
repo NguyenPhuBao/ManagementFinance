@@ -5,7 +5,7 @@
 /// giành quyền khỏi tay người dùng không.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -24,7 +24,7 @@ void main() {
   final tienMat = makeWallet();
   final nganHang = makeWallet(id: 'bank', name: 'Ngân hàng');
 
-  CategoryTree treeOf(List<Category> defaults) => CategoryTree(
+  CategoryTree treeOf(List<CategoryEntity> defaults) => CategoryTree(
         groups: const [],
         ungroupedChildren: const [],
         defaultChildren: defaults,
@@ -158,9 +158,9 @@ void main() {
       updatedAt: DateTime(2026, 9, 21),
     );
     // ⚠️ Bảng trỏ 'shop' chứ không 'food': ca phải ĐỔI danh mục thì mới đi qua
-    // `_apDungViHayDung`. Bản đầu của ca này chỉ mở trang rồi xem ví — nó xanh
+    // `_viHayDungCho` của `ThemGiaoDichCubit`. Bản đầu của ca này chỉ mở trang rồi xem ví — nó xanh
     // cả khi bỏ sạch hai chốt, vì ở chế độ sửa danh mục đặt thẳng trong
-    // `initState` chứ không qua `_chonDanhMuc`. Cùng họ bẫy G43.
+    // `_dauTien` của Cubit chứ không qua `_chonDanhMuc`. Cùng họ bẫy G43.
     await tester.pumpWidget(app(
       viHayDung: {'shop': 'bank'},
       initial: EditTransactionArgs(transaction: goc, category: anUong),

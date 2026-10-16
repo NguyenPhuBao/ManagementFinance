@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flowmoney/core/constants/app_router.dart';
+import 'package:flowmoney/core/router/app_router.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/auth/presentation/pages/login_page.dart';

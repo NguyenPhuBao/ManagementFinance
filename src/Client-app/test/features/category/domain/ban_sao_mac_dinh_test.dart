@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/domain/ban_sao_mac_dinh.dart';
 
 /// Một định nghĩa của "hàng này là bản sao danh mục mặc định" — seeder dùng để không tạo trùng, phép đếm danh mục
 /// riêng (Premium) dùng để không tính bản sao (spec phân quyền 2026-10-08 mục 4.2).
 void main() {
   final now = DateTime(2026, 10, 8);
-  Category dm(String ten, {String classify = 'chi', bool macDinh = false}) => Category(
+  CategoryEntity dm(String ten, {String classify = 'chi', bool macDinh = false}) => CategoryEntity(
         id: ten,
         idaccount: macDinh ? 0 : 10,
         name: ten,
@@ -18,9 +18,7 @@ void main() {
         colour: '#000000',
         isGroup: false,
         isDeleted: false,
-        isLocalOnly: false,
         syncStatus: 'synced',
-        syncRetryCount: 0,
         aiCoDinh: false,
       );
   final khuon = [dm('Ăn uống', macDinh: true), dm('Cho vay', classify: 'Vay/no', macDinh: true)];

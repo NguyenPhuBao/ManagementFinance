@@ -25,7 +25,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/category/category_name.dart';
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/features/category/data/services/personal_default_categories.dart';
+import 'package:flowmoney/features/category/application/personal_default_categories.dart';
 
 void main() {
   late AppDatabase db;

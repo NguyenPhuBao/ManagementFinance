@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/bill/bill_recurrence.dart';
-import '../../../../core/database/app_database.dart';
+import '../../domain/bill_recurrence.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
+import '../../data/models/bill_entity.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/bill_status.dart';
@@ -22,15 +23,15 @@ import 'bill_status_visuals.dart';
 /// lại sau (trả hôm qua, hôm nay mới mở app); không cho chọn tương lai —
 /// repository cũng chặn.
 class BillPaymentSheet extends StatefulWidget {
-  final Bill bill;
-  final List<Wallet> wallets;
+  final BillEntity bill;
+  final List<WalletEntity> wallets;
 
   /// Tên danh mục của hoá đơn để hiện trong khối thông tin; `null` = không có.
   final String? categoryName;
 
   /// Gọi khi bấm nút thanh toán: ví đã chọn, số tiền đã nhập, ngày trả (chỉ
   /// phần ngày) và ghi chú riêng của lần trả (`null` nếu để trống).
-  final void Function(Wallet wallet, double amount, DateTime date, String? note)
+  final void Function(WalletEntity wallet, double amount, DateTime date, String? note)
       onConfirmed;
 
   /// "Hôm nay" cho phép tiêm — mặc định của ô ngày và trần của bộ chọn.
@@ -54,7 +55,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
   final _ghiChu = TextEditingController();
   late DateTime _homNay;
   late DateTime _ngay;
-  Wallet? _vi;
+  WalletEntity? _vi;
   bool _dangChonVi = false;
   String? _loi;
 
@@ -80,7 +81,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
   }
 
   /// Ví của hoá đơn → ví có cờ mặc định → ví đầu danh sách → không có.
-  Wallet? _viMacDinh() {
+  WalletEntity? _viMacDinh() {
     final ws = widget.wallets;
     if (ws.isEmpty) return null;
     for (final w in ws) {
@@ -249,7 +250,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
   /// 06/09: "hiện khá ít, muốn nhiều hơn"): trạng thái, đến hạn kèm còn/quá
   /// bao nhiêu ngày, khoảng kỳ, chu kỳ, danh mục, ví của hoá đơn, nhắc
   /// trước, tự động trả, ghi chú cố định của hoá đơn (khác ghi chú lần trả).
-  Widget _khoiThongTin(Bill b) {
+  Widget _khoiThongTin(BillEntity b) {
     final status = billDisplayStatusOf(b, _homNay);
     final nhac = b.timeNotification;
     String tenVi = 'Ví đã xoá';
@@ -384,7 +385,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
         ),
       );
 
-  Widget _dongVi(Wallet vi) {
+  Widget _dongVi(WalletEntity vi) {
     final laViCuaHoaDon = vi.id == widget.bill.walletId;
     return Row(
       children: [

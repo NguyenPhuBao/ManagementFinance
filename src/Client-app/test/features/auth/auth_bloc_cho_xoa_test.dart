@@ -3,12 +3,13 @@ library;
 
 import 'dart:async';
 
+import 'package:flowmoney/core/auth/phien_dieu_phoi_that.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
-import 'package:flowmoney/features/auth/presentation/an_the_cho_xoa.dart';
+import 'package:flowmoney/features/auth/presentation/state/an_the_cho_xoa.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:flowmoney/features/wallet/presentation/an_nhac_vi_trung_ten.dart';
+import 'package:flowmoney/features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 UserModel _user({String status = 'Active', int? countdown}) => UserModel(
@@ -64,8 +65,26 @@ class _RepoGia implements AuthRepository {
 void main() {
   tearDown(() async => sl.reset());
 
+  /// Bộ điều phối THẬT, chỉ nối hai cờ giao diện (mỗi cờ gác riêng như AuthBloc cũ); không có SyncEngine nên không dọn / quét.
+  PhienDieuPhoiThat phien() {
+    final p = PhienDieuPhoiThat(
+      dongBo: null,
+      thoiGianThuc: null,
+      boQuet: null,
+      interceptor: null,
+      donTaiKhoanKhac: (_) async => 0,
+      xoaBanSao: (_) async => 0,
+      datLaiCoGiaoDien: () {
+        if (sl.isRegistered<AnTheChoXoa>()) sl<AnTheChoXoa>().value = false;
+        if (sl.isRegistered<AnNhacViTrungTen>()) sl<AnNhacViTrungTen>().value = false;
+      },
+    );
+    addTearDown(p.dispose);
+    return p;
+  }
+
   Future<AuthBloc> moApp(_RepoGia repo) async {
-    final bloc = AuthBloc(authRepository: repo);
+    final bloc = AuthBloc(authRepository: repo, phien: phien());
     addTearDown(bloc.close);
     bloc.add(AuthCheckRequested());
     // Lượt mở app phát `AuthSuccess` từ bộ nhớ đệm TRƯỚC khi hỏi server
@@ -94,7 +113,7 @@ void main() {
 
   test('ThongTinTaiKhoanThayDoi khi chưa đăng nhập thì bỏ qua', () async {
     final repo = _RepoGia(_user());
-    final bloc = AuthBloc(authRepository: repo);
+    final bloc = AuthBloc(authRepository: repo, phien: phien());
     addTearDown(bloc.close);
     bloc.add(ThongTinTaiKhoanThayDoi());
     await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -106,7 +125,7 @@ void main() {
     final anThe = AnTheChoXoa()..value = true;
     sl.registerSingleton<AnTheChoXoa>(anThe);
     final repo = _RepoGia(_user());
-    final bloc = AuthBloc(authRepository: repo);
+    final bloc = AuthBloc(authRepository: repo, phien: phien());
     addTearDown(bloc.close);
     final xong = bloc.stream.firstWhere((s) => s is AuthSuccess);
     bloc.add(const LoginSubmitted(email: 'dat', password: 'mat-khau-thu'));
@@ -119,7 +138,7 @@ void main() {
     final an = AnNhacViTrungTen()..value = true;
     sl.registerSingleton<AnNhacViTrungTen>(an);
     final repo = _RepoGia(_user());
-    final bloc = AuthBloc(authRepository: repo);
+    final bloc = AuthBloc(authRepository: repo, phien: phien());
     addTearDown(bloc.close);
     final xong = bloc.stream.firstWhere((s) => s is AuthSuccess);
     bloc.add(const LoginSubmitted(email: 'dat', password: 'mat-khau-thu'));

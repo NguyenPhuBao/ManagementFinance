@@ -1,3 +1,4 @@
+import '../../../transaction/data/models/transaction_entity.dart';
 import '../models/goal_entity.dart';
 
 /// Lỗi do **người dùng nhập sai**, không phải lỗi lập trình.
@@ -211,7 +212,8 @@ abstract class GoalRepository {
     required int idaccount,
   });
 
-  Stream<dynamic> watchGoalTransactions(
+  /// Khoản tích luỹ của một mục tiêu — `TransactionEntity` từ 2026-10-15 (trước là `Stream<dynamic>` chở hàng Drift, lỗ quét 27).
+  Stream<List<TransactionEntity>> watchGoalTransactions(
     int idaccount,
     String goalId,
     String goalName,

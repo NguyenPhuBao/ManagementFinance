@@ -3,7 +3,7 @@
 /// Vì sao cần: `markOverdue` chỉ có một chiều `Pending → Overdue`. Không có gì
 /// đưa ngược lại, trong khi form Sửa đổi được ngày bắt đầu và ngày đến hạn
 /// tính lại theo chu kỳ — đẩy hạn ra tương lai thì cờ `'Overdue'` ở lại vĩnh
-/// viễn. `toUpdateCompanion` cố ý không đụng `payStatus` (form không hỏi gì về
+/// viễn. `companionSuaTu` (`bill/data/models/bill_draft_companion.dart`) cố ý không đụng `payStatus` (form không hỏi gì về
 /// nó), nên đường sửa không tự chữa được.
 ///
 /// Client không lộ ra vì danh sách tự tính lại từ `dueDate`, nhưng cột này
@@ -16,7 +16,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 
 void main() {

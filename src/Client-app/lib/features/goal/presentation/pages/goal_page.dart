@@ -1,3 +1,4 @@
+import '../../../notification/data/repositories/thong_bao_repository.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../../core/database/app_database.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../data/models/goal_entity.dart';
 import '../../../ai_edge/domain/goi_so_muc_tieu.dart';
@@ -15,7 +15,7 @@ import '../widgets/goal_progress.dart';
 import '../../domain/goal_grouping.dart';
 import '../../domain/goal_priority.dart';
 import '../bloc/goal_cubit.dart';
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/ui/do_chu.dart';
 
@@ -166,9 +166,7 @@ class _GoalPageContent extends StatelessWidget {
           NotificationBell(
             unreadCount: currentAccountIdOrNull(context) == null
                 ? null
-                : sl<AppDatabase>()
-                    .notificationDao
-                    .watchUnreadCount(currentAccountIdOrNull(context)!),
+                : sl<ThongBaoRepository>().watchUnreadCount(currentAccountIdOrNull(context)!),
             onTap: () => context.push('/notifications'),
           ),
         ],

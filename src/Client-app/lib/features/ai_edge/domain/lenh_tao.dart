@@ -10,7 +10,7 @@ library;
 
 import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
-import '../../../core/bill/bill_recurrence.dart';
+import '../../bill/domain/bill_recurrence.dart';
 import '../../../core/category/category_name.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/khop_ten.dart';

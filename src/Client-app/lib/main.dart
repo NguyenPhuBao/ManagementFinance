@@ -9,31 +9,30 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_localization.dart';
-import 'core/constants/app_router.dart';
+import 'core/router/app_router.dart';
 import 'core/di/injection_container.dart';
 import 'core/network/connection_monitor.dart';
-import 'core/auth/current_account.dart';
-import 'core/notification/cham_hdh.dart';
-import 'core/notification/nhat_ky_thong_bao.dart';
-import 'core/notification/notification_deeplink.dart';
-import 'core/notification/app_lifecycle_watcher.dart';
-import 'core/notification/kenh_bien_dong.dart';
-import 'core/notification/mo_tu_tom_tat_bien_dong.dart';
-import 'core/notification/notification_tap_router.dart';
-import 'core/notification/os/os_notifier.dart';
+import 'features/auth/presentation/bloc/current_account.dart';
+import 'features/notification/domain/cham_hdh.dart';
+import 'features/notification/data/datasources/nhat_ky_thong_bao.dart';
+import 'features/notification/domain/notification_deeplink.dart';
+import 'core/nen/app_lifecycle_watcher.dart';
+import 'features/notification/data/datasources/kenh_bien_dong.dart';
+import 'features/notification/application/mo_tu_tom_tat_bien_dong.dart';
+import 'features/notification/application/notification_tap_router.dart';
+import 'features/notification/data/datasources/os_notifier.dart';
 import 'core/realtime/realtime_channel.dart';
 import 'core/realtime/realtime_wakeup.dart';
-import 'core/sync/noi_bo_nghe_ket_qua_day.dart';
 import 'core/sync/sync_engine.dart';
 import 'core/nen/chay_nen.dart';
 import 'core/nen/kenh_tu_chuyen_tien.dart';
 import 'core/nen/mui_gio.dart';
-import 'core/notification/notification_scanner.dart';
+import 'features/notification/application/notification_scanner.dart';
 import 'core/ui/thong_bao_nhanh.dart';
 import 'features/ai_edge/domain/canary_cong_cu.dart';
-import 'features/premium/data/goi_repository.dart';
-import 'features/premium/presentation/cubit/goi_cubit.dart';
-import 'features/premium/presentation/phien_goi_tu_auth.dart';
+import 'features/premium/data/repositories/goi_repository.dart';
+import 'features/premium/presentation/bloc/goi_cubit.dart';
+import 'features/premium/presentation/bloc/phien_goi_tu_auth.dart';
 import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
@@ -208,13 +207,17 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
         routerConfig: _router,
         debugShowCheckedModeBanner: false,
         // Toast bọc NGOÀI router nên phủ mọi trang mà không trang nào phải
-        // biết đến nó.
-        builder: (context, child) => AppToast(
-          connectionEvents: sl<ConnectionMonitor>().events,
-          pushResults: sl<SyncEngine>().pushResultStream,
-          realtimeEvents: sl<RealtimeChannel>().events,
-          thongBaoNhanh: sl<ThongBaoNhanh>().stream,
-          child: child ?? const SizedBox.shrink(),
+        // biết đến nó. Lớp ngoài cùng ép đồng hồ 24 giờ cho mọi bảng chọn giờ
+        // (G90 — xem `bocDongHo24Gio`).
+        builder: (context, child) => bocDongHo24Gio(
+          context,
+          AppToast(
+            connectionEvents: sl<ConnectionMonitor>().events,
+            pushResults: sl<SyncEngine>().pushResultStream,
+            realtimeEvents: sl<RealtimeChannel>().events,
+            thongBaoNhanh: sl<ThongBaoNhanh>().stream,
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );

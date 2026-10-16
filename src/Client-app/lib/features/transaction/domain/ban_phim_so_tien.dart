@@ -40,9 +40,10 @@ String themPhimSoTien(String hienTai, String phim) {
   }
 
   // ⚠️ `'.'` KHÔNG đổi gì (A12, 2026-09-19). Phím ấy đã bị bỏ khỏi lưới, nhưng
-  // nhánh vô hiệu thì giữ: nó từng sinh ra một chuỗi mà `_saveTransaction`
-  // strip dấu chấm rồi đọc tiếp, nên `12.5` lưu thành **125** — sai gấp mười,
-  // im lặng. Giữ nhánh ở đây để phím có quay lại lưới cũng không phá được.
+  // nhánh vô hiệu thì giữ: nó từng sinh ra một chuỗi mà phép lưu cũ (`_saveTransaction`
+  // của trang, nay là `ThemGiaoDichCubit.chuanBiLuu`) strip dấu chấm rồi đọc tiếp,
+  // nên `12.5` lưu thành **125** — sai gấp mười, im lặng. Giữ nhánh ở đây để phím
+  // có quay lại lưới cũng không phá được.
   if (phim == 'done' || phim == '.') return hienTai;
 
   if (phim == kToanTuCong || phim == kToanTuTru) {
@@ -116,7 +117,7 @@ String _chuoiSoNguyen(double v) => v.toInt().toString();
 /// **không** nằm trong danh sách trắng `_permanentCodes`; giao dịch bị gửi lại
 /// ở mọi chu kỳ đồng bộ, im lặng. Cùng vòng lặp G31/G14/G46.
 ///
-/// ⚠️ **Hiệu được phép ÂM** và không kẹp về 0: `_saveTransaction` đã có chốt
+/// ⚠️ **Hiệu được phép ÂM** và không kẹp về 0: `ThemGiaoDichCubit.chuanBiLuu` đã có chốt
 /// `amount <= 0` báo thẳng ra màn hình, còn kẹp ở đây thì `30000-50000` lặng
 /// lẽ thành 0 rồi bị chốt kia từ chối với một lời nhắn chẳng ăn nhập. (Phía
 /// âm không cần kẹp: hai vế đều không âm nên hiệu nhỏ nhất đúng bằng âm trần.)

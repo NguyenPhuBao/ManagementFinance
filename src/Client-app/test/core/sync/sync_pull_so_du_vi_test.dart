@@ -23,10 +23,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
-import 'package:flowmoney/features/wallet/data/services/so_du_vi_service.dart';
+import 'package:flowmoney/features/wallet/data/so_du_vi_service.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 const accountId = 7;
 const idVi = '11111111-1111-4111-8111-111111111111';
@@ -136,7 +136,7 @@ void main() {
   tearDown(() => db.close());
 
   Future<void> chayMotChuKy(_Adapter adapter) async {
-    final engine = SyncEngine(
+    final engine = taoSyncEngineThu(
       dioClient: _Client(adapter),
       db: db,
       connectivity: _Online(),
@@ -227,6 +227,35 @@ void main() {
     expect((await db.walletDao.getById(idVi))!.balance, -33000.0,
         reason: 'Vá neo sau khi ghi sổ là neo +22.000 nuốt khoản chi của máy '
             'kia — đo thật trên hai máy ảo.');
+  });
+
+  // Ca đòi KẾT QUẢ cho bước neo của engine (`_soDuVi.datNeoNhieuVi`): các ca
+  // trên hoặc tự đặt neo trước khi chạy engine, hoặc dựng sổ đã khớp sẵn, nên
+  // một cổng làm rỗng vẫn xanh hết (review toàn nhánh G88, I-2).
+  test('⭐ ví đã có, sổ RỖNG, chưa neo: engine tự đặt neo trước khi ghi khoản kéo về',
+      () async {
+    await (db.update(db.wallets)..where((w) => w.id.equals(idVi)))
+        .write(const WalletsCompanion(balance: Value(100000)));
+
+    await chayMotChuKy(_Adapter(coVi: false, giaoDichTuMayKhac: {
+      'idtran': 'tx-may-khac',
+      'idaccount': accountId,
+      'idwallet': idVi,
+      'amount': -20000,
+      'type': 'Transaction',
+      'DateTransaction': DateTime(2026, 10, 8).toIso8601String(),
+      'update_at': DateTime.now().toIso8601String(),
+    }));
+
+    final neo = await db.transactionDao.getById(idKhoanMoSo(idVi));
+    expect(neo, isNotNull,
+        reason: 'Số dư 100.000 mà sổ rỗng: engine phải tự đặt khoản "Số dư ban '
+            'đầu" trước khi ghi khoản chi kéo về. Thiếu neo thì sổ chỉ còn '
+            '−20.000 và số dư tụt theo.');
+    expect(neo!.amount, 100000.0);
+    expect((await db.walletDao.getById(idVi))!.balance, 80000.0,
+        reason: 'Neo +100.000 rồi chi 20.000 = 80.000. Cổng rỗng cho −20.000; '
+            'vá neo SAU khi ghi sổ cho neo +120.000 và số dư 100.000.');
   });
 
   test('khoản CHUYỂN từ máy khác về: ví ĐÍCH cũng được tính lại', () async {
@@ -330,7 +359,7 @@ class _AdapterViMoi implements HttpClientAdapter {
 /// Chạy một chu kỳ với adapter bất kỳ.
 Future<void> chayMotChuKy2(AppDatabase db, HttpClientAdapter adapter) async {
   final client = _ClientChung(adapter);
-  final engine = SyncEngine(
+  final engine = taoSyncEngineThu(
     dioClient: client,
     db: db,
     connectivity: _Online(),

@@ -48,6 +48,9 @@ bản này theo **mã**.
 - 5 route `api/payment.routes.js`: `POST /create-order` · `GET /order-status/:orderCode` · `GET /subscription-info` ·
   `GET /history` · `POST /webhook`. Giá **49.000 đ / 30 ngày**; mua khi còn hạn thì **cộng dồn** 30 ngày
   (`payment.service.js:111-117`). Đơn hết hạn sau **30 phút** (`:16`).
+  ⚠️ *(2026-10-16, gộp `main` @ `d72ccd45`)* hạn đơn nay **10 phút**. Backend thêm `POST /confirm-upgrade` và ba trạng
+  thái đơn `WAITING_CONFIRMATION` · `REFUND_PENDING` · `REFUNDED` mà spec này chưa biết — **G94**
+  `CLIENT_APP_KNOWN_GAPS.md`.
 - Scheduler 0h: cảnh báo trước 3 ngày và hạ về Basic khi hết hạn — **chỉ đi EventBus** (`payment.expiring_soon`,
   `payment.expired`), app không nhận gì.
 - `/auth/login`, `/auth/profile` và JWT **đã trả `type`** (`Basic` | `Premium`) — không kèm hạn. Hạn chỉ có ở
@@ -277,6 +280,10 @@ GoRoute(path: '/goals/add',   redirect: (_, s) => _chanTheoGoi(s.uri, LoaiTran.m
 `_chanTheoGoi` (async, trong `app_router.dart`, mỏng): `hienTai` của `sl<GoiRepository>()` → Premium thì trả `null`
 **không đếm** (rẻ) → Basic thì `DemDangHoatDong.dem(loai)` → `conTaoDuoc` → `chuyenHuongTheoGoi`. Đếm hỏng (ném) →
 `null`, cho qua — một lỗi đọc CSDL không được biến thành một màn Nâng cấp sai chỗ.
+
+> 🔧 **Mã lệch thân spec từ 2026-10-14 (G92):** cửa (nay `chanTheoGoi` ở `premium/data/chan_theo_goi.dart`, không ở
+> `app_router.dart`) **`await goi.choNapKho()`** trước khi đọc `hienTai` — router chạy lại `redirect` lúc `AuthSuccess`, đúng
+> khi tài khoản vừa gán mà kho chưa trả lời; đọc ngay là Basic mặc định và Premium mở lạnh bị đẩy sang `/premium`.
 
 Mọi lối vào form đi qua cửa này: nút + trên ba trang danh sách, thẻ *Chưa đặt ngân sách* (`/budget/rules?category=…`),
 thẻ *Có vẻ là khoản lặp* (`/bills/add` — **hoá đơn không có trần**, không chặn), lệnh tạo C3 (mở `/budget/rules`,

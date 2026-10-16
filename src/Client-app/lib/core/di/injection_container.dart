@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
@@ -5,16 +7,19 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/api/interceptors/auth_interceptor.dart';
 import '../../core/api/dio_client.dart';
+import '../../core/auth/phien_dieu_phoi.dart';
+import '../../core/auth/phien_dieu_phoi_that.dart';
 import '../../core/database/app_database.dart';
-import '../notification/thong_bao_nguon.dart';
+import '../../features/notification/data/repositories/thong_bao_repository.dart';
+import '../../features/notification/data/repositories/thong_bao_repository_impl.dart';
 import '../../core/realtime/realtime_channel.dart';
 import '../../core/sync/sync_checkpoint_store.dart';
 import '../../core/sync/sync_engine.dart';
-import '../../features/analytics/data/analytics_repository.dart';
-import '../../features/analytics/data/analytics_repository_impl.dart';
+import '../../features/analytics/data/repositories/analytics_repository.dart';
+import '../../features/analytics/data/repositories/analytics_repository_impl.dart';
 import '../../features/analytics/data/thu_tu_khoi_nguon.dart';
-import '../../features/analytics/data/bao_cao_repository.dart';
-import '../../features/analytics/data/bao_cao_repository_impl.dart';
+import '../../features/analytics/data/repositories/bao_cao_repository.dart';
+import '../../features/analytics/data/repositories/bao_cao_repository_impl.dart';
 import '../../features/analytics/data/xuat_tep_service.dart';
 import '../../features/analytics/data/xuat_tep_service_impl.dart';
 import '../../features/analytics/presentation/bloc/analytics_cubit.dart';
@@ -24,12 +29,16 @@ import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
-import '../../features/auth/presentation/an_the_cho_xoa.dart';
+import '../../features/auth/presentation/state/an_the_cho_xoa.dart';
 import '../../features/goal/data/datasources/goal_local_data_source.dart';
 import '../../features/goal/data/models/goal_entity.dart';
 import '../../features/goal/data/repositories/goal_repository.dart';
-import '../../features/goal/domain/goal_auto_deposit_runner.dart';
-import '../../features/bill/domain/bill_auto_pay_runner.dart';
+import '../../features/goal/domain/goal_auto_deposit.dart';
+import '../../features/goal/domain/moc_trich_nen.dart';
+import '../../features/goal/application/goal_auto_deposit_runner.dart';
+import '../../features/bill/application/bill_auto_pay_runner.dart';
+import '../../features/bill/domain/bill_auto_pay.dart';
+import '../../features/bill/domain/moc_tu_tra_nen.dart';
 import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
@@ -53,65 +62,74 @@ import '../../features/budget/presentation/bloc/budget_cubit.dart';
 import '../../features/budget/presentation/bloc/budget_detail_cubit.dart';
 import '../../features/wallet/data/datasources/wallet_local_data_source.dart';
 import '../../features/wallet/data/repositories/wallet_repository.dart';
-import '../../features/wallet/data/services/dieu_chinh_so_du_service.dart';
-import '../../features/wallet/data/services/so_du_vi_service.dart';
-import '../../features/wallet/data/services/vi_trung_ten_resolver.dart';
-import '../../features/wallet/data/services/gop_vi_service.dart';
+import '../../features/wallet/application/dieu_chinh_so_du_service.dart';
+import '../../features/wallet/data/so_du_vi_service.dart';
+import '../../features/wallet/application/vi_trung_ten_resolver.dart';
+import '../../features/wallet/application/gop_vi_service.dart';
+import '../../features/wallet/data/vi_bi_giu_dong_bo.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
-import '../../features/wallet/presentation/an_nhac_vi_trung_ten.dart';
+import '../../features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
-import '../../features/premium/data/goi_repository.dart';
+import '../../features/premium/data/repositories/goi_repository.dart';
 import '../../features/premium/data/goi_store.dart';
 import '../../features/premium/data/payment_api.dart';
 import '../../features/premium/domain/quyen_tinh_nang.dart';
-import '../../features/premium/presentation/an_nhac_het_han.dart';
-import '../../features/premium/presentation/cubit/goi_cubit.dart';
+import '../../features/premium/presentation/state/an_nhac_het_han.dart';
+import '../../features/premium/presentation/bloc/goi_cubit.dart';
 import '../../features/wallet/data/repositories/wallet_repository_impl.dart';
-import '../../features/wallet/data/services/default_account_data_initializer.dart';
+import '../../features/wallet/application/default_account_data_initializer.dart';
 import '../../features/wallet/domain/dot_am.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
+import '../../features/transaction/data/chep_loi_bang_gemma.dart';
+import '../../features/transaction/data/datasources/ghi_am.dart';
+import '../../features/transaction/data/datasources/kenh_micro.dart';
+import '../../features/transaction/data/datasources/nghe_android.dart';
 import '../../features/transaction/data/doc_anh_bang_gemma.dart';
+import '../../features/transaction/data/nguon_giong_noi.dart';
 import '../../features/transaction/data/doc_danh_muc_bang_ai.dart';
 import '../../features/transaction/data/doc_cau_bang_ai.dart';
 import '../../features/transaction/data/repositories/transaction_repository.dart';
+import '../../features/transaction/data/repositories/transaction_repository_impl.dart';
 import '../../features/transaction/presentation/bloc/transaction_bloc.dart';
 import '../../features/bill/data/datasources/bill_local_datasource.dart';
 import '../../features/bill/data/repositories/bill_repository.dart';
-import '../../features/bill/data/services/bill_payment_conflict_resolver.dart';
+import '../../features/bill/application/bill_payment_conflict_resolver.dart';
 import '../../features/bill/data/repositories/bill_repository_impl.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/bill/data/de_xuat_hoa_don_nguon.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
-import '../../features/category/data/services/default_category_seeder.dart';
-import '../../features/category/data/services/personal_default_categories.dart';
-import '../../features/category/data/services/category_suggestion_engine.dart';
+import '../../features/category/data/repositories/category_management_repository_impl.dart';
+import '../../features/category/application/default_category_seeder.dart';
+import '../../features/category/application/personal_default_categories.dart';
+import '../../features/category/domain/category_suggestion_engine.dart';
+import '../../features/category/data/gan_danh_muc_nguon.dart';
 import '../../features/category/data/goi_y_phan_hoi_store.dart';
 import '../network/connection_monitor.dart';
 import '../ui/thong_bao_nhanh.dart';
-import '../notification/reminder_scheduler.dart';
-import '../notification/app_lifecycle_watcher.dart';
-import '../notification/badge_updater.dart';
-import '../notification/de_xuat_thong_bao_nguon.dart';
-import '../notification/hang_cho_su_kien.dart';
-import '../notification/kenh_bien_dong.dart';
-import '../notification/kenh_phien_ngan_hang.dart';
+import '../../features/notification/application/reminder_scheduler.dart';
+import '../nen/app_lifecycle_watcher.dart';
+import '../../features/notification/application/badge_updater.dart';
+import '../../features/notification/data/de_xuat_thong_bao_nguon.dart';
+import '../../features/notification/data/datasources/hang_cho_su_kien.dart';
+import '../../features/notification/data/datasources/kenh_bien_dong.dart';
+import '../../features/notification/data/datasources/kenh_phien_ngan_hang.dart';
 import '../nen/co_chay_nen.dart';
 import '../nen/kenh_tu_chuyen_tien.dart';
 import '../nen/lich_nen.dart';
-import '../notification/kho_bien_lai.dart';
-import '../notification/moc_phien_store.dart';
-import '../notification/nhap_bien_dong.dart';
-import '../notification/nhap_bien_lai.dart';
-import '../notification/nhap_phien_ngan_hang.dart';
-import '../notification/nhat_ky_thong_bao.dart';
-import '../notification/notification_scanner.dart';
-import '../notification/os/os_notifier.dart';
-import '../notification/os/os_notifier_factory.dart';
-import '../notification/prefs/notification_prefs_store.dart';
-import '../ocr/kho_anh_quet.dart';
+import '../../features/notification/data/datasources/kho_bien_lai.dart';
+import '../../features/notification/data/moc_phien_store.dart';
+import '../../features/notification/application/nhap_bien_dong.dart';
+import '../../features/notification/application/nhap_bien_lai.dart';
+import '../../features/notification/application/nhap_phien_ngan_hang.dart';
+import '../../features/notification/data/datasources/nhat_ky_thong_bao.dart';
+import '../../features/notification/application/notification_scanner.dart';
+import '../../features/notification/data/datasources/os_notifier.dart';
+import '../../features/notification/data/datasources/os_notifier_factory.dart';
+import '../../features/notification/data/notification_prefs_store.dart';
+import '../../features/transaction/data/datasources/kho_anh_quet.dart';
 import '../ocr/doc_chu_anh.dart';
 import '../ocr/doc_chu_anh_mlkit.dart';
 
@@ -137,7 +155,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
   // ── 3. Core: DioClient ─────────────────────────────────────────────────────
-  // AuthInterceptor đăng ký riêng: AuthBloc cần nghe `sessionExpiredStream`
+  // AuthInterceptor đăng ký riêng: PhienDieuPhoiThat cần nghe `sessionExpiredStream`
   // của ĐÚNG instance đang nằm trên đường request.
   sl.registerLazySingleton<AuthInterceptor>(
     () => AuthInterceptor(secureStorage: sl(), cheDoNen: cheDoNen),
@@ -151,6 +169,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     () => SyncEngine(
       dioClient: sl(),
       db: sl(),
+      // Hai cổng BẮT BUỘC (G88 gạch 4): engine ở `core` không biết mảng ví — DI nối bản thật. Đừng thêm bản rỗng
+      // "cho tiện": bỏ bước neo số dư / thả ví là hỏng im lặng (spec 2026-10-15 mục 9).
+      soDuVi: sl<SoDuViService>(),
+      viBiGiu: ViBiGiuDongBo(db: sl()),
       checkpointStore: const SecureStorageSyncCheckpointStore(
         FlutterSecureStorage(),
       ),
@@ -180,12 +202,33 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<AnTheChoXoa>(AnTheChoXoa.new);
 
   // BLoC (factory → tạo mới mỗi lần gọi sl<AuthBloc>())
-  sl.registerFactory<AuthBloc>(
-    () => AuthBloc(
-      authRepository: sl(),
-      defaultAccountDataInitializer: sl(),
+  // Bộ điều phối phiên (spec bịt điểm rò 2026-10-10, mục 6): bốn dịch vụ core + hook sang các mảng. Đây là chỗ DUY NHẤT
+  // nối SlmCache / seeder / initializer / hai cờ giao diện với vòng đời phiên; AuthBloc không biết chúng (test quét 24).
+  // Mọi dịch vụ dưới đây đăng ký vô điều kiện (kể cả chế độ nền) và lazy nên không cần gác `isRegistered`.
+  sl.registerLazySingleton<PhienDieuPhoi>(
+    () => PhienDieuPhoiThat(
+      dongBo: sl<SyncEngine>(),
+      thoiGianThuc: sl<RealtimeChannel>(),
+      boQuet: sl<NotificationScanner>(),
+      interceptor: sl<AuthInterceptor>(),
+      donTaiKhoanKhac: sl<AppDatabase>().purgeDataForOtherAccounts,
+      xoaBanSao: sl<AppDatabase>().purgeDataForAccount,
+      xoaCacheSlm: () => sl<SlmCache>().xoaHet(),
+      chuyenHangSeedCu: (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id),
+      taoBanSaoDanhMuc: (id) => sl<DefaultCategorySeeder>().seedForAccount(id),
+      seedTaiKhoanMoi: (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id),
+      xoaAnhQuet: () => sl<KhoAnhQuet>().xoaHet(),
+      datLaiCoGiaoDien: () {
+        sl<AnTheChoXoa>().value = false;
+        sl<AnNhacViTrungTen>().value = false;
+      },
+      // G93: chờ kho gói nạp xong trước lượt quét đầu — cùng chốt "gói đặt TRƯỚC khi quét" của đường nền
+      // (`chay_nen.dart`). `loaiPhien` chưa có ở đây: kho trống thì `noiPhien` áp nó lúc `AuthSuccess`.
+      datGoi: (id) => sl<GoiRepository>().datTaiKhoan(id),
     ),
+    dispose: (p) => p.dispose(),
   );
+  sl.registerFactory<AuthBloc>(() => AuthBloc(authRepository: sl(), phien: sl<PhienDieuPhoi>()));
 
   // ── 5. Features — Wallet ──────────────────────────────────────────────────
   sl.registerLazySingleton<WalletLocalDataSource>(
@@ -195,8 +238,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     () => WalletRepositoryImpl(
         localDataSource: sl(),
         syncEngine: sl(),
-        soDuVi: sl(),
-        walletDao: sl<AppDatabase>().walletDao),
+        soDuVi: sl()),
   );
   // Năm danh mục mà bộ mặc định của backend không có được tạo riêng cho từng
   // tài khoản (xem PersonalDefaultCategories) — danh mục người dùng thì đồng bộ
@@ -205,7 +247,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // dịch, không còn là giá trị tuyệt đối đồng bộ theo LWW (G37).
   sl.registerLazySingleton<SoDuViService>(() => SoDuViService(db: sl()));
   // G63: đặt cờ cho ví bị server từ chối vì trùng tên. Chỉ ĐĂNG KÝ ở đây;
-  // `batDauNghe` gọi MỘT lần ở `main.dart`, cùng lý do với bộ nghe hoá đơn.
+  // `batDauNghe` gọi MỘT lần qua `noiBoNgheKetQuaDay` (cuối tệp này), cùng lý do với bộ nghe hoá đơn.
   sl.registerLazySingleton<ViTrungTenResolver>(
     () => ViTrungTenResolver(db: sl()),
   );
@@ -220,7 +262,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     ),
   );
   // G63: chỗ đọc ví trùng tên cho thẻ ở Quản lý ví và dòng nhắc ở Trang chủ.
-  // (SyncEngine tự dựng bản của nó — lớp này không giữ trạng thái.)
+  // (SyncEngine đọc qua `ViBiGiuDongBo`, bản riêng của nó — lớp này không giữ trạng thái.)
   sl.registerLazySingleton<ViTrungTenNguon>(
     () => ViTrungTenNguonImpl(db: sl()),
   );
@@ -263,8 +305,6 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<TransactionRepository>(
     () => TransactionRepositoryImpl(
       localDataSource: sl(),
-      walletDao: sl<AppDatabase>().walletDao,
-      transactionDao: sl<AppDatabase>().transactionDao,
       syncEngine: sl(),
       soDuVi: sl(),
     ),
@@ -293,8 +333,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     ),
   );
   // Gỡ khoản trả mà server từ chối bằng `BILL_ALREADY_PAID` — máy khác đã trả
-  // hoá đơn ấy trước. Chỉ ĐĂNG KÝ ở đây; `batDauNghe` được gọi một lần lúc app
-  // khởi động (`main.dart`), vì lớp phải sống suốt vòng đời chứ không theo màn.
+  // hoá đơn ấy trước. Chỉ ĐĂNG KÝ ở đây; `batDauNghe` được gọi một lần mỗi engine qua
+  // `noiBoNgheKetQuaDay` (cuối tệp này), vì lớp phải sống suốt vòng đời chứ không theo màn.
   sl.registerLazySingleton<BillPaymentConflictResolver>(
     () => BillPaymentConflictResolver(
       db: sl<AppDatabase>(),
@@ -323,6 +363,15 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // B1: phản hồi thẻ gợi ý danh mục — bảng cục bộ v25, không đồng bộ.
   sl.registerLazySingleton<GoiYPhanHoiStore>(
     () => GoiYPhanHoiStoreDrift(sl<AppDatabase>()),
+  );
+  // C1 — nguồn màn Gắn danh mục nhanh gom phụ thuộc, để trang không cầm AppDatabase (spec bịt điểm rò mục 4.5).
+  sl.registerLazySingleton<GanDanhMucNguon>(
+    () => GanDanhMucNguon(
+      db: sl<AppDatabase>(),
+      danhMuc: sl<CategoryManagementRepository>(),
+      giaoDich: sl<TransactionRepository>(),
+      phanHoi: sl<GoiYPhanHoiStore>(),
+    ),
   );
 
   // ── 10. Features — Budget ─────────────────────────────────────────────────
@@ -422,10 +471,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
-  // Cổng bảng thông báo cho TRANG (spec bịt điểm rò 2026-10-10, mục 4.4). Chỉ chuyển tiếp; hạ tầng
-  // (BadgeUpdater, NotificationScanner) vẫn cầm DAO. Đăng ký cả chế độ nền (cùng `setupDependencies`, không gate
-  // theo `cheDoNen`). Đăng ký lazy — không dựng gì khi không ai gọi.
-  sl.registerLazySingleton<ThongBaoNguon>(() => ThongBaoNguonDrift(sl<AppDatabase>().notificationDao));
+  // Repository của mảng Thông báo cho TRANG và nguồn Thêm giao dịch (spec Entity Thông báo 2026-10-15 mục 4.2; trước là cổng
+  // ThongBaoNguon — spec bịt điểm rò 2026-10-10, mục 4.4). Chỉ chuyển tiếp; các bộ điều phối ở `application/` và nguồn B5b vẫn cầm DAO. Đăng ký cả
+  // chế độ nền (cùng `setupDependencies`, không gate theo `cheDoNen`). Lazy — không dựng gì khi không ai gọi.
+  sl.registerLazySingleton<ThongBaoRepository>(() => ThongBaoRepositoryImpl(sl<AppDatabase>().notificationDao));
 
   // Nhật ký thông báo (B5a) — cửa ghi duy nhất. Nguồn phiên để RỖNG ở đây và
   // `main.dart` gán lại (`datNguonPhien`): `AuthBloc` đăng ký dạng FACTORY, nên
@@ -482,11 +531,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       ],
       // Cùng cửa sổ với scanner, để hai đường không nói hai chuyện khác nhau
       // về việc "còn đáng nhắc hay chưa".
-      loadBills: (idaccount, now) => sl<AppDatabase>().billDao.getUpcoming(
-            idaccount,
-            days: ReminderScheduler.cuaSo.inDays,
-            now: now,
-          ),
+      loadBills: (idaccount, now) => sl<BillRepository>().getUpcoming(idaccount, days: ReminderScheduler.cuaSo.inDays, now: now),
       // Nguồn thứ ba: lời nhắc ghi chép hằng ngày. Đi chung bộ đặt lịch vì
       // cùng lý do như mục tiêu — `resync()` huỷ mọi lịch chờ không nằm trong
       // tập nó muốn, nên một bộ đặt lịch riêng sẽ xoá sạch lịch của bộ kia.
@@ -529,18 +574,18 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       kenh: sl<KenhTuChuyenTien>(),
       tinh: (idaccount, now) async {
         final prefs = await sl<NotificationPrefsStore>().read(idaccount);
-        return lichNenKeTiep(
-          bills: await sl<AppDatabase>().billDao.getAll(idaccount),
-          goals: [
-            for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
-              GoalEntity.fromDrift(g),
-          ],
-          now: now,
-          gioNhac: prefs.gioNhac,
-          phutNhac: prefs.phutNhac,
-          traDuoc: coQuyenNen(MaQuyen.billAutoPay),
-          trichDuoc: coQuyenNen(MaQuyen.goalAutoDeposit),
-        );
+        // Quyền gói chọn phần (`coQuyenNen`): không quyền thì phần ấy không góp mốc lẫn `coTuDong` — Basic không cần đánh
+        // thức máy. Ca đọc nguồn ở `test/core/nen/lich_nen_test.dart` canh hai dòng `if` dưới đây.
+        return gopLichNen([
+          if (coQuyenNen(MaQuyen.billAutoPay))
+            mocTuTraNen(await sl<BillRepository>().getBills(idaccount),
+                now: now, gioNhac: prefs.gioNhac, phutNhac: prefs.phutNhac),
+          if (coQuyenNen(MaQuyen.goalAutoDeposit))
+            mocTrichNen([
+              for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
+                GoalEntity.fromDrift(g),
+            ], now: now),
+        ]);
       },
     ),
   );
@@ -562,11 +607,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
           sl<BudgetRepository>().getBudgets(idaccount, now: now),
       // Cửa sổ 30 ngày khớp `NotificationScanner.cuaSoSuKien`: nạp rộng hơn là
       // đọc thừa, hẹp hơn là bỏ sót hoá đơn quá hạn còn đáng nhắc.
-      loadBills: (idaccount, now) => sl<AppDatabase>().billDao.getUpcoming(
-            idaccount,
-            days: NotificationScanner.cuaSoSuKien.inDays,
-            now: now,
-          ),
+      loadBills: (idaccount, now) => sl<BillRepository>().getUpcoming(idaccount, days: NotificationScanner.cuaSoSuKien.inDays, now: now),
       // Trích tiền tự động chạy trong chính vòng quét, không phải một bộ lập
       // lịch nền riêng. Xem chú thích ở `GoalAutoDepositRunner`.
       //
@@ -600,15 +641,16 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       // WorkManager huỷ nó giữa chừng — mốc kế đi trong `nenXong`.
       henLichNen: cheDoNen ? null : (id) => sl<LichNen>().henNeuDoi(id),
       huyLichNen: cheDoNen ? null : () => sl<LichNen>().huy(),
-      // Mục tiêu và ví đọc thẳng từ DAO chứ không qua repository: scanner chỉ
-      // cần đúng một phép đọc mỗi loại, và thu hẹp phụ thuộc thì vòng quét
-      // không kéo theo cả chuỗi cubit/repository không liên quan.
+      // Mục tiêu đọc thẳng từ DAO chứ không qua repository: scanner chỉ cần đúng
+      // một phép đọc, và thu hẹp phụ thuộc thì vòng quét không kéo theo cả chuỗi
+      // cubit/repository không liên quan. Ví đọc qua `WalletRepository.getAll`
+      // (Entity, G88 gạch 3 đợt 2 — 2026-10-14): cùng tập hàng với `walletDao.getAll`
+      // (bỏ ví `deletedAt`, gồm ví lưu trữ).
       loadGoals: (idaccount, now) async => [
         for (final g in await sl<AppDatabase>().goalDao.getAll(idaccount))
           GoalEntity.fromDrift(g),
       ],
-      loadWallets: (idaccount, now) =>
-          sl<AppDatabase>().walletDao.getAll(idaccount),
+      loadWallets: (idaccount, now) => sl<WalletRepository>().getAll(idaccount),
       // Luật "sắp cạn" im với ví chưa từng dùng (tạo mới 0 đ) — chỉ gọi khi ngưỡng > 0.
       loadViDaDung: (idaccount) =>
           sl<AppDatabase>().transactionDao.viDaDung(idaccount),
@@ -833,6 +875,40 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     ),
   );
 
+  // C4 — giọng nói nhập giao dịch (spec 2026-10-12): Android trước, Gemma chép lời khi mất mạng.
+  sl.registerLazySingleton<SlmChepLoi>(() => sl<SlmRuntime>() as SlmChepLoi);
+  sl.registerLazySingleton<ChepLoiBangGemma>(
+    () => ChepLoiBangGemma(
+      moHinh: sl<SlmChepLoi>(),
+      sanSang: () async => await sl<MoHinhTaiVe>().daCo() && await sl<CongTacAi>().doc(),
+      duongTep: () => sl<MoHinhTaiVe>().duongTep(),
+    ),
+  );
+  // Web không có micro: không đăng ký → trang không hiện nút micro (`sl.isRegistered<NguonGiongNoi>()`).
+  if (!kIsWeb) {
+    sl.registerLazySingleton<NguonGiongNoi>(
+      () => NguonGiongNoi(
+        android: NgheAndroidThat(),
+        ghiAm: GhiAmThat(),
+        micro: const KenhMicroAndroid(),
+        coMang: sl<ConnectionMonitor>().coMangNgay,
+        gemma: sl<ChepLoiBangGemma>(),
+        tepTam: () async {
+          final thuMuc = await getTemporaryDirectory();
+          // Dọn WAV sót của lượt trước (tiến trình bị giết) rồi mới xin tệp mới — xem `donTepGiongNoiSot`.
+          await donTepGiongNoiSot(thuMuc);
+          return tepGiongNoiMoi(thuMuc.path);
+        },
+        docTep: (p) => File(p).readAsBytes(),
+        xoaTep: (p) async {
+          try {
+            await File(p).delete();
+          } catch (_) {}
+        },
+      ),
+    );
+  }
+
   // C3 §8 — lệnh tạo hoá đơn / mục tiêu / ngân sách ở màn Trợ lý AI đọc bằng mô hình (người dùng chốt 2026-09-30):
   // phiên RIÊNG ba tool. Cùng hai điều kiện sẵn sàng với ô Nhập nhanh.
   sl.registerLazySingleton<DocLenhBangAi>(
@@ -911,4 +987,20 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // }
 
   await sl.allReady();
+}
+
+/// Nối các bộ nghe kết quả đẩy vào `SyncEngine.pushResultStream` — gọi ĐÚNG MỘT LẦN cho mỗi engine Dart:
+/// `main.dart` (engine của app) và `core/nen/chay_nen.dart` (engine nền của WorkManager).
+///
+/// - `BillPaymentConflictResolver` gỡ khoản trả mà server từ chối bằng `BILL_ALREADY_PAID` / `BILL_PERIOD_ALREADY_PAID`
+///   (máy khác trả trước). Lượt nền đẩy mà không nối thì khoản chi lỗi vĩnh viễn, không ai gỡ (spec tự chuyển tiền
+///   chạy nền mục 4).
+/// - `ViTrungTenResolver` (G63): ví bị từ chối vì trùng tên thì đặt cờ — engine giữ nó lại.
+///
+/// `pushResultStream` là broadcast và singleton, nên nối hai lần trong CÙNG engine là hoàn tác chạy hai lượt cho cùng
+/// một khoản chi. Ở DI (điểm ghép) từ 2026-10-15 — trước ở `core/sync/noi_bo_nghe_ket_qua_day.dart`, hạ tầng `core` phải
+/// import hai mảng (G88 gạch 4). KHÔNG gọi trong `registerLazySingleton` (chạy lại mỗi lần dựng).
+void noiBoNgheKetQuaDay() {
+  sl<BillPaymentConflictResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
+  sl<ViTrungTenResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
 }

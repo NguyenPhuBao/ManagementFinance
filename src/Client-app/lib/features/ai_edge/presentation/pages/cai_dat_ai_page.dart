@@ -23,7 +23,7 @@ import '../../data/cong_tac_ai.dart';
 import '../../data/mo_hinh_tai_ve.dart';
 import '../../domain/hoi_dung_4g.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
-import '../../../premium/presentation/co_quyen.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 /// Dung lượng theo GiB, dấu **phẩy** thập phân.

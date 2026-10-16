@@ -2,10 +2,10 @@
 ///
 /// ## Lỗi này canh chừng điều gì
 ///
-/// `_amountString` là chuỗi **thô** người dùng đang gõ, không phải chuỗi đã
-/// định dạng — phép ngăn nghìn chỉ áp ở `_getFormattedAmount`. Nhưng
-/// `_saveTransaction` lại đọc nó bằng
-/// `double.tryParse(_amountString.replaceAll('.', ''))`, tức **coi dấu chấm là
+/// `chuoiSoTien` (state của `ThemGiaoDichCubit`) là chuỗi **thô** người dùng đang gõ, không phải chuỗi đã
+/// định dạng — phép ngăn nghìn chỉ áp ở `_getFormattedAmount` của trang. Nhưng
+/// `chuanBiLuu` (trước đây `_saveTransaction`) lại đọc nó bằng
+/// `double.tryParse(chuoiSoTien.replaceAll('.', ''))`, tức **coi dấu chấm là
 /// dấu ngăn nghìn** theo thói quen Việt Nam. Hậu quả: một chuỗi có dấu thập
 /// phân bị mất dấu chấm rồi đọc tiếp, nên `12.5` lưu xuống thành **125** —
 /// sai gấp mười, không exception, không log.
@@ -16,12 +16,12 @@
 ///    mới. Đóng bằng cách bỏ phím ấy (người dùng chốt 2026-09-19 — app làm
 ///    tròn về đồng chẵn ở mọi chỗ hiển thị, xem `CurrencyFormatter.format`),
 ///    và `themPhimSoTien` giữ nhánh vô hiệu cho `.`.
-/// 2. ⚠️ **Chế độ sửa**: `initState` điền `_amountString` bằng
+/// 2. ⚠️ **Chế độ sửa**: `_dauTien` của Cubit điền `chuoiSoTien` bằng
 ///    `editing.amount.toString()` khi số tiền **không tròn đồng**, nên chuỗi có
 ///    dấu chấm vẫn vào được dù bàn phím đã hết phím `.`. Và số lẻ tồn tại
 ///    thật: `transaction."Amount"` là `numeric(15,2)`, còn
 ///    `dieu_chinh_so_du_service` sinh khoản bù với ngưỡng nửa đồng. Cửa này
-///    **chỉ đóng được ở `_saveTransaction`** — bỏ phím thôi là chưa đủ, và đây
+///    **chỉ đóng được ở `chuanBiLuu`** — bỏ phím thôi là chưa đủ, và đây
 ///    là cửa nặng hơn vì nó nhân mười một khoản **đã có thật** trong sổ.
 library;
 
@@ -102,7 +102,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('.'), findsNothing,
-        reason: 'Phím `.` sinh ra một chuỗi mà `_saveTransaction` đọc sai gấp '
+        reason: 'Phím `.` sinh ra một chuỗi mà `chuanBiLuu` đọc sai gấp '
             'mười. App làm tròn về đồng chẵn ở mọi chỗ hiển thị nên phím này '
             'không có việc gì để làm (người dùng chốt 2026-09-19).');
     expect(find.text('00'), findsOneWidget,
@@ -129,10 +129,11 @@ void main() {
     expect(repo.updated, hasLength(1),
         reason: 'Bấm ✓ ở chế độ sửa phải phát UpdateTransactionEvent.');
     expect(repo.updated.single.after.amount, 12.5,
-        reason: '`_saveTransaction` strip dấu chấm vì tưởng nó là dấu ngăn '
-            'nghìn, nên 12.5 thành 125 — người dùng mở một khoản cũ ra xem rồi '
-            'bấm lưu là số tiền tự nhân mười, im lặng. Bỏ phím `.` KHÔNG đóng '
-            'được cửa này: chuỗi có dấu chấm đến từ `initState`.');
+        reason: 'Lỗi cũ: `chuanBiLuu` (trước đây `_saveTransaction`) strip dấu '
+            'chấm vì tưởng nó là dấu ngăn nghìn, nên 12.5 thành 125 — người '
+            'dùng mở một khoản cũ ra xem rồi bấm lưu là số tiền tự nhân mười, '
+            'im lặng. Bỏ phím `.` KHÔNG đóng được cửa này: chuỗi có dấu chấm '
+            'đến từ `_dauTien` của Cubit.');
   });
 
   testWidgets('⚠️ khoản có phần lẻ hiện bằng DẤU PHẨY, qua CurrencyFormatter',
@@ -167,6 +168,6 @@ void main() {
 
     expect(repo.updated.single.after.amount, 50000,
         reason: 'Đường thường không được đổi hành vi: khoản tròn đồng vào '
-            '`_amountString` dưới dạng "50000", không dấu chấm nào.');
+            '`chuoiSoTien` dưới dạng "50000", không dấu chấm nào.');
   });
 }

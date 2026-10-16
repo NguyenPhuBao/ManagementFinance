@@ -1,5 +1,5 @@
 import '../../../core/category/category_name.dart';
-import '../../../core/database/app_database.dart';
+import '../data/models/category_entity.dart';
 import '../../../core/sync/sync_payload_normalizer.dart';
 
 /// Hàng [c] có phải **bản sao** của một danh mục khuôn trong [khuon] không — cùng tên chuẩn hoá
@@ -8,7 +8,7 @@ import '../../../core/sync/sync_payload_normalizer.dart';
 /// Một định nghĩa cho hai chỗ: `DefaultCategorySeeder` (đã có bản sao thì không tạo nữa — luật đếm cả hàng đã xoá
 /// mềm) và phép đếm *danh mục riêng* của trần Premium (bản sao do seeder tạo mang `isDefault: false` nhưng không phải
 /// thứ người dùng tự tạo — spec phân quyền 2026-10-08 mục 4.2).
-bool laBanSaoMacDinh(Category c, List<Category> khuon) {
+bool laBanSaoMacDinh(CategoryEntity c, List<CategoryEntity> khuon) {
   final ten = normalizeCategoryName(c.name);
   for (final mau in khuon) {
     if (normalizeCategoryName(mau.name) != ten) continue;

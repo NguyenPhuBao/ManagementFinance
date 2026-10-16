@@ -6,20 +6,20 @@
 /// kỳ 12/10 dưới BA cha khác nhau. Nên khoá gộp là GỐC CHUỖI + ngày, không phải cha.
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/features/bill/domain/bill_ky_trung.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Bill _ky(
+BillEntity _ky(
   String id, {
   String? cha,
   required DateTime han,
   String trangThai = kBillPending,
   bool daXoa = false,
 }) =>
-    Bill(
+    BillEntity(
       id: id,
       idaccount: 10,
       walletId: 'w1',
@@ -42,7 +42,6 @@ Bill _ky(
       isDeleted: daXoa,
       deletedAt: daXoa ? DateTime(2026, 10, 3) : null,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 10, 1),
     );
 

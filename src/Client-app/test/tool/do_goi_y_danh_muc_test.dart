@@ -24,8 +24,8 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
-import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
-import 'package:flowmoney/features/category/data/services/category_suggestion_engine.dart';
+import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
+import 'package:flowmoney/features/category/domain/category_suggestion_engine.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -58,7 +58,7 @@ void main() {
         for (final c in await db.select(db.categories).get())
           if (c.idaccount == idaccount || (c.isDefault && c.idaccount == 0)) c.id: c.name,
       };
-      // Ứng viên đi ĐÚNG đường của màn Thêm giao dịch (`_loadSuggestion`): `selectableChildrenAll` + `loadAllKeywords`.
+      // Ứng viên đi ĐÚNG đường của màn Thêm giao dịch (`ThemGiaoDichCubit._napGoiY`): `selectableChildrenAll` + `loadAllKeywords`.
       // ⚠️ Bản đầu (`8bee5d7`) lấy ứng viên từ bảng tra tên ở trên, tức CẢ hàng toàn cục — mà hàng toàn cục mang
       // cùng từ khoá với bản sao của tài khoản (seed: Ăn uống ↔ `grab`), nên hai danh mục cùng khớp một từ khoá cùng độ
       // dài → bộ từ khoá coi là HOÀ và im. Đo trên Realme 2026-09-29: từ khoá "phủ 0 %" trong khi thẻ trên máy vẫn gợi ý

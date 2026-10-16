@@ -1,7 +1,8 @@
 // C1 — gắn danh mục hàng loạt: chọn giao dịch chưa phân loại và đoán theo chiều tiền (spec
 // `2026-09-28-c1-gan-danh-muc-hang-loat-design.md` §2).
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/bill/domain/bill_note.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
@@ -13,7 +14,7 @@ import '../presentation/category_test_fakes.dart';
 
 var _dem = 0;
 
-Transaction _gd(
+TransactionEntity _gd(
   String note, {
   String type = 'chi',
   String? cat,
@@ -22,20 +23,16 @@ Transaction _gd(
   DateTime? deletedAt,
 }) {
   final d = ngay ?? DateTime(2026, 9, 10);
-  return Transaction(
+  return TransactionEntity(
     id: 'gd-${_dem++}',
     walletId: 'v1',
     idaccount: 10,
     categoryId: cat,
     amount: 50000,
     type: type,
-    status: 'completed',
-    provider: 'Manual',
     note: note,
     date: d,
-    images: '',
     syncStatus: 'synced',
-    syncRetryCount: 0,
     updatedAt: d,
     isDeleted: isDeleted,
     deletedAt: deletedAt,
@@ -115,7 +112,22 @@ void main() {
     });
 
     test('bỏ danh mục đã xoá và nhóm', () {
-      final xoa = makeCategory(id: 'c-xoa', name: 'Cũ').copyWith(isDeleted: true);
+      final goc = makeCategory(id: 'c-xoa', name: 'Cũ');
+      final xoa = CategoryEntity(
+        id: goc.id,
+        idaccount: goc.idaccount,
+        name: goc.name,
+        classify: goc.classify,
+        icon: goc.icon,
+        colour: goc.colour,
+        isDefault: goc.isDefault,
+        isDeleted: true,
+        parentId: goc.parentId,
+        isGroup: goc.isGroup,
+        aiCoDinh: goc.aiCoDinh,
+        syncStatus: goc.syncStatus,
+        updatedAt: goc.updatedAt,
+      );
       final nhom = makeCategory(id: 'c-nhom', name: 'Nhóm', isGroup: true);
       expect(hopLeTheoChieu('chi', [..._chonDuoc, xoa, nhom]), {'c-dc', 'c-an', 'c-vay'});
     });

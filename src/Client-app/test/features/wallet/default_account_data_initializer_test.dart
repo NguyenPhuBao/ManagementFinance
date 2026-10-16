@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
-import 'package:flowmoney/features/wallet/data/services/default_account_data_initializer.dart';
+import 'package:flowmoney/features/wallet/application/default_account_data_initializer.dart';
 
 class _WalletRepositoryStub implements WalletRepository {
   _WalletRepositoryStub(this.wallets);

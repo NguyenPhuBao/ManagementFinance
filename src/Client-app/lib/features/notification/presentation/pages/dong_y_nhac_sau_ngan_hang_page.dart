@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../transaction/domain/doc_tin_bien_dong.dart';
 import 'man_dong_y.dart';
-
-/// Tên tính năng — tiêu đề khối ở Cài đặt thông báo (ở đó chữ xuống dòng được).
-const String kTenNhacSauNganHang = 'Nhắc ghi sau khi dùng app ngân hàng';
+export '../../domain/cau_chu_dong_y.dart' show kTenNhacSauNganHang, kNhacThuHoiQuyenSuDung;
 
 /// Thanh tiêu đề màn đồng ý. ⚠️ Không dùng [kTenNhacSauNganHang]: thanh tiêu đề một dòng, và ở 360 dp (Realme,
 /// 2026-10-03) tên đầy đủ cụt thành "…app ngân h…" — người dùng chọn rút gọn. Giữ không dài hơn "Đọc biến động số dư"
@@ -18,10 +16,6 @@ const List<String> kCamKetNhacSauNganHang = [
   'Nhắc im lặng, bạn ghi hay bỏ qua — app không tự tạo giao dịch',
   'Không gửi ra ngoài, không liên kết tài khoản ngân hàng',
 ];
-
-/// Dòng nhắc ở Cài đặt khi TẮT tính năng mà quyền hệ thống vẫn còn — app không tự thu hồi được.
-const String kNhacThuHoiQuyenSuDung =
-    'Muốn thu hồi hẳn quyền thì tắt FlowMoney trong Cài đặt hệ thống → Truy cập dữ liệu sử dụng.';
 
 /// Màn đồng ý trước khi dẫn người dùng tới *Truy cập dữ liệu sử dụng* (spec 2026-10-03 §3.1; Stitch: màn đồng ý mới
 /// người dùng xác nhận 2026-10-03 — xem Nhật ký thi công Task 4 của kế hoạch). Danh sách app là [nguonDangDoc] — một

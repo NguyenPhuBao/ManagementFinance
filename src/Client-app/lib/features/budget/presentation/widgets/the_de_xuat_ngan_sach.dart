@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/category/category_visuals.dart';
+import '../../../category/presentation/widgets/category_visuals.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/cua_so_nhin_lai.dart';

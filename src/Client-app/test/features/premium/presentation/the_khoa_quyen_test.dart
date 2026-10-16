@@ -1,9 +1,9 @@
-import 'package:flowmoney/features/premium/data/goi_repository.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
-import 'package:flowmoney/features/premium/presentation/cubit/goi_cubit.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/premium/presentation/widgets/the_khoa_quyen.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
