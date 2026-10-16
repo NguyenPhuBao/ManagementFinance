@@ -49,6 +49,7 @@ async function createOrder(data) {
       checkout_url: data.checkoutUrl || null,
       payment_link_id: data.paymentLinkId || null,
       expired_at: data.expiredAt || null,
+      is_template: data.isTemplate ?? false,
     },
   });
   return sanitizeOrderData(created);
@@ -411,6 +412,7 @@ async function findOrdersForAdmin({
   packageType,
   fromDate,
   toDate,
+  excludeTemplate = false,
 } = {}) {
   const currentPage = Math.max(1, parseInt(page, 10) || 1);
   const take = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
@@ -423,7 +425,15 @@ async function findOrdersForAdmin({
   }
 
   if (packageType && packageType !== 'ALL') {
-    where.package_type = packageType;
+    if (packageType.toUpperCase() === 'PREMIUM') {
+      where.package_type = { startsWith: 'PREMIUM', mode: 'insensitive' };
+    } else {
+      where.package_type = packageType;
+    }
+  }
+
+  if (excludeTemplate === 'true' || excludeTemplate === true) {
+    where.is_template = false;
   }
 
   if (fromDate || toDate) {
@@ -523,8 +533,11 @@ async function findOrdersForAdmin({
  * Lấy thống kê tổng quan doanh thu và đơn hàng cho Admin
  * @param {object} options
  */
-async function getPaymentSummaryStats({ fromDate, toDate } = {}) {
+async function getPaymentSummaryStats({ fromDate, toDate, excludeTemplate = false } = {}) {
   const where = {};
+  if (excludeTemplate === 'true' || excludeTemplate === true) {
+    where.is_template = false;
+  }
   if (fromDate || toDate) {
     where.created_at = {};
     if (fromDate) {
@@ -686,6 +699,7 @@ async function getOrCreatePayosQr({ amount = 49000, packageType = 'PREMIUM_1_MON
           payment_link_id: paymentLinkId,
           created_at: now,
           expired_at: expiredAt,
+          is_template: true,
         },
       });
     } catch (dbErr) {
@@ -758,9 +772,12 @@ async function createSampleOrder({
       status: isPaid ? 'PAID' : 'PENDING',
       checkout_url: payosInfo.checkoutUrl,
       payment_link_id: payosInfo.paymentLinkId,
+      recognition_code: payosInfo.recognitionCode || null,
+      transfer_content: payosInfo.transferContent || null,
       created_at: now,
       paid_at: isPaid ? now : null,
-      expired_at: new Date(now.getTime() + 30 * 60 * 1000),
+      expired_at: new Date(now.getTime() + 10 * 60 * 1000),
+      is_template: true,
     },
     include: {
       account: {
@@ -822,6 +839,29 @@ async function deleteSampleOrders() {
   return { deletedCount: deleted.count };
 }
 
+/**
+ * Lấy danh sách các gói cước từ CSDL (account_type_permission)
+ */
+async function getPackageTypes() {
+  const permissions = await prisma.account_type_permission.findMany({
+    select: { account_type: true },
+    distinct: ['account_type'],
+    orderBy: { account_type: 'asc' },
+  });
+  let types = permissions.map((p) => p.account_type).filter(Boolean);
+  if (types.length === 0) {
+    types = ['Basic', 'Premium'];
+  }
+  if (!types.includes('Basic')) types.unshift('Basic');
+  if (!types.includes('Premium')) types.push('Premium');
+
+  return types.map((type) => ({
+    id: type,
+    name: type === 'Basic' ? 'Gói Basic' : 'Gói Premium',
+    isDefault: type === 'Basic',
+  }));
+}
+
 module.exports = {
   createOrder,
   findOrderByCode,
@@ -839,6 +879,7 @@ module.exports = {
   findOrdersForAdmin,
   getPaymentSummaryStats,
   getOrderDetailForAdmin,
+  getPackageTypes,
   createSampleOrder,
   deleteSampleOrders,
   getOrCreatePayosQr,

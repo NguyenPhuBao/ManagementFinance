@@ -434,6 +434,7 @@ model payment_order {
   refunded_amount     Decimal?              @db.Decimal(15, 2) @map("refunded_amount")
   refund_reason       String?               @db.Text @map("refund_reason")
   refund_proof        String?               @db.Text @map("refund_proof")
+  is_template         Boolean               @default(false) @map("is_template")
 
   account             account               @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_order_account")
   payment_transaction payment_transaction[]
@@ -442,6 +443,7 @@ model payment_order {
   @@index([status], map: "idx_payment_order_status")
   @@index([order_code], map: "idx_payment_order_code")
   @@index([recognition_code], map: "idx_payment_order_recognition_code")
+  @@index([is_template], map: "idx_payment_order_is_template")
   @@map("payment_order")
 }
 

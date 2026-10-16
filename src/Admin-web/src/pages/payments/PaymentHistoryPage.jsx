@@ -75,6 +75,8 @@ const PaymentHistoryPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [packageFilter, setPackageFilter] = useState('ALL');
+  const [packageTypes, setPackageTypes] = useState(['Basic', 'Premium']);
+  const [excludeTemplate, setExcludeTemplate] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
@@ -99,12 +101,30 @@ const PaymentHistoryPage = () => {
 
   // Refund Processing Modal State
   const [refundTargetOrder, setRefundTargetOrder] = useState(null);
+  const [refundProofFile, setRefundProofFile] = useState(null);
+  const [refundProofPreview, setRefundProofPreview] = useState(null);
   const [refundForm, setRefundForm] = useState({
     refunded_amount: '',
     refund_reason: 'Chuyển thiếu tiền, hoàn trả khách hàng',
     refund_proof: '',
   });
   const [refundSubmitting, setRefundSubmitting] = useState(false);
+
+  // Fetch package types from DB on mount
+  useEffect(() => {
+    const fetchPackageTypes = async () => {
+      try {
+        const res = await paymentApi.getPackageTypes();
+        const types = res?.data || res;
+        if (Array.isArray(types) && types.length > 0) {
+          setPackageTypes(types);
+        }
+      } catch (err) {
+        console.error('[PAYMENT_PAGE] Lỗi khi tải danh sách gói cước:', err);
+      }
+    };
+    fetchPackageTypes();
+  }, []);
 
   // Countdown Timer for Sandbox Modal (10 mins)
   useEffect(() => {
@@ -131,16 +151,18 @@ const PaymentHistoryPage = () => {
       const res = await paymentApi.getStats({
         ...(fromDate && { fromDate }),
         ...(toDate && { toDate }),
+        ...(excludeTemplate && { excludeTemplate: 'true' }),
       });
-      if (res.data?.success && res.data?.data) {
-        setStats(res.data.data);
+      const data = res?.data?.data || res?.data || res;
+      if (data && data.totalOrders !== undefined) {
+        setStats(data);
       }
     } catch (err) {
       console.error('[PAYMENT_PAGE] Lỗi khi tải thống kê:', err);
     } finally {
       setStatsLoading(false);
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, excludeTemplate]);
 
   // Fetch Orders List
   const loadOrders = useCallback(async () => {
@@ -154,9 +176,10 @@ const PaymentHistoryPage = () => {
         ...(packageFilter !== 'ALL' && { packageType: packageFilter }),
         ...(fromDate && { fromDate }),
         ...(toDate && { toDate }),
+        ...(excludeTemplate && { excludeTemplate: 'true' }),
       };
       const res = await paymentApi.getOrders(params);
-      const data = res.data?.data || res.data;
+      const data = res?.data?.data || res?.data || res;
       setOrders(data.items || []);
       setTotal(data.total || 0);
     } catch (err) {
@@ -166,7 +189,7 @@ const PaymentHistoryPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter, packageFilter, fromDate, toDate]);
+  }, [page, pageSize, search, statusFilter, packageFilter, fromDate, toDate, excludeTemplate]);
 
   // Socket.IO Real-time Events
   useEffect(() => {
@@ -222,9 +245,10 @@ const PaymentHistoryPage = () => {
   const loadPayosQr = useCallback(async (amount = selectedSampleAmount, packageType = selectedSamplePackage) => {
     setPayosLoading(true);
     try {
-      const res = await paymentApi.getPayosQr({ amount, packageType });
-      if (res.data?.success && res.data?.data) {
-        setPayosData(res.data.data);
+      const res = await paymentApi.getPayosQr({ amount, packageType, persistOrder: false });
+      const data = res?.data?.data || res?.data || res;
+      if (data && data.qrUrl) {
+        setPayosData(data);
       }
     } catch (err) {
       console.error('[PAYMENT_PAGE] Lỗi khi tải mã QR PayOS:', err);
@@ -259,6 +283,7 @@ const PaymentHistoryPage = () => {
     setPackageFilter('ALL');
     setFromDate('');
     setToDate('');
+    setExcludeTemplate(false);
     setPage(1);
   };
 
@@ -266,8 +291,9 @@ const PaymentHistoryPage = () => {
     setModalLoading(true);
     try {
       const res = await paymentApi.getOrderDetail(orderId);
-      if (res.data?.success && res.data?.data) {
-        setSelectedOrder(res.data.data);
+      const data = res?.data?.data || res?.data || res;
+      if (data && (data.id || data.order_code)) {
+        setSelectedOrder(data);
       }
     } catch (err) {
       console.error('[PAYMENT_PAGE] Lỗi khi tải chi tiết đơn hàng:', err);
@@ -285,7 +311,8 @@ const PaymentHistoryPage = () => {
         packageType: selectedSamplePackage,
         amount: selectedSampleAmount,
       });
-      if (res.data?.success) {
+      const data = res?.data?.data || res?.data || res;
+      if (res?.success || res?.data?.success || data?.order_code) {
         setFeedbackMsg(t('payments.createSampleSuccess'));
         await Promise.all([loadStats(), loadOrders()]);
         setTimeout(() => setFeedbackMsg(null), 3500);
@@ -301,7 +328,7 @@ const PaymentHistoryPage = () => {
     setActionLoading(true);
     try {
       const res = await paymentApi.deleteSampleOrders();
-      if (res.data?.success) {
+      if (res?.success || res?.data?.success) {
         setFeedbackMsg(t('payments.cleanSampleSuccess'));
         await Promise.all([loadStats(), loadOrders()]);
         setTimeout(() => setFeedbackMsg(null), 3500);
@@ -323,8 +350,8 @@ const PaymentHistoryPage = () => {
         amount: simulatedAmount,
         recognitionCode: payosData.recognitionCode,
       });
-      if (res.data?.success) {
-        const data = res.data.data;
+      const data = res?.data?.data || res?.data || res;
+      if (res?.success || res?.data?.success || data?.status) {
         if (data.status === 'WAITING_CONFIRMATION') {
           setSandboxConfirmation({
             orderCode: data.orderCode,
@@ -356,7 +383,7 @@ const PaymentHistoryPage = () => {
     setActionLoading(true);
     try {
       const res = await paymentApi.confirmUpgrade({ orderCode, accept });
-      if (res.data?.success) {
+      if (res?.success || res?.data?.success) {
         setSandboxConfirmation(null);
         setFeedbackMsg(
           accept
@@ -379,10 +406,12 @@ const PaymentHistoryPage = () => {
   // Open Refund Modal
   const handleOpenRefundModal = (order) => {
     setRefundTargetOrder(order);
+    setRefundProofFile(null);
+    setRefundProofPreview(null);
     setRefundForm({
       refunded_amount: order.amount_received || order.amount || '',
-      refund_reason: 'Chuyển thiếu tiền, hoàn trả khách hàng',
-      refund_proof: '',
+      refund_reason: order.refund_reason || 'Chuyển thiếu tiền, hoàn trả khách hàng',
+      refund_proof: order.refund_proof || '',
     });
   };
 
@@ -392,13 +421,18 @@ const PaymentHistoryPage = () => {
     if (!refundTargetOrder) return;
     setRefundSubmitting(true);
     try {
-      const res = await paymentApi.processRefund(refundTargetOrder.id, {
-        refunded_amount: Number(refundForm.refunded_amount),
-        refund_reason: refundForm.refund_reason,
-        refund_proof: refundForm.refund_proof,
-        refunded_at: new Date().toISOString(),
-      });
-      if (res.data?.success) {
+      const formData = new FormData();
+      formData.append('refunded_amount', Number(refundForm.refunded_amount));
+      formData.append('refund_reason', refundForm.refund_reason);
+      formData.append('refunded_at', new Date().toISOString());
+      if (refundProofFile) {
+        formData.append('proofFile', refundProofFile);
+      } else if (refundForm.refund_proof) {
+        formData.append('refund_proof', refundForm.refund_proof);
+      }
+
+      const res = await paymentApi.processRefund(refundTargetOrder.id, formData);
+      if (res?.success || res?.data?.success) {
         setRefundTargetOrder(null);
         setFeedbackMsg(t('payments.refundModal.successMsg'));
         if (selectedOrder && selectedOrder.id === refundTargetOrder.id) {
@@ -430,9 +464,6 @@ const PaymentHistoryPage = () => {
             <span className="material-symbols-outlined text-primary text-3xl">receipt_long</span>
             {t('payments.title')}
           </h1>
-          <p className="text-sm text-on-surface-variant mt-1">
-            {t('payments.subtitle')}
-          </p>
         </div>
         <div className="flex items-center gap-3">
           {feedbackMsg && (
@@ -588,9 +619,11 @@ const PaymentHistoryPage = () => {
               className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary transition-colors cursor-pointer"
             >
               <option value="ALL">{t('payments.filter.packageAll')}</option>
-              <option value="PREMIUM_1_MONTH">{t('payments.filter.packageMonth')}</option>
-              <option value="PREMIUM_6_MONTHS">{t('payments.filter.package6Months')}</option>
-              <option value="PREMIUM_1_YEAR">{t('payments.filter.packageYear')}</option>
+              {packageTypes.map((pkg) => (
+                <option key={pkg} value={pkg}>
+                  {pkg === 'Basic' ? 'Basic (Mặc định)' : pkg === 'PREMIUM_1_MONTH' ? t('payments.filter.packageMonth') : pkg}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -607,31 +640,46 @@ const PaymentHistoryPage = () => {
         </div>
 
         {/* Date Filters Row */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-outline-variant/40 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-on-surface-variant">{t('payments.filter.fromDate')}:</span>
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-outline-variant/40 text-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-on-surface-variant">Từ ngày (Ngày tạo):</span>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  setPage(1);
+                }}
+                className="px-2.5 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-on-surface-variant">Đến ngày (Ngày tạo):</span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => {
+                  setToDate(e.target.value);
+                  setPage(1);
+                }}
+                className="px-2.5 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary"
+              />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-on-surface select-none bg-surface-container-high px-3 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container-highest transition-colors">
             <input
-              type="date"
-              value={fromDate}
+              type="checkbox"
+              id="excludeTemplateCheckbox"
+              checked={excludeTemplate}
               onChange={(e) => {
-                setFromDate(e.target.value);
+                setExcludeTemplate(e.target.checked);
                 setPage(1);
               }}
-              className="px-2.5 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary"
+              className="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary cursor-pointer accent-primary"
             />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-on-surface-variant">{t('payments.filter.toDate')}:</span>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => {
-                setToDate(e.target.value);
-                setPage(1);
-              }}
-              className="px-2.5 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary"
-            />
-          </div>
+            <span>Loại bỏ mẫu</span>
+          </label>
         </div>
       </div>
 
@@ -685,7 +733,14 @@ const PaymentHistoryPage = () => {
                     >
                       <td className="py-3.5 px-4 font-mono font-bold text-on-surface">
                         <div className="flex flex-col">
-                          <span>#{order.order_code}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span>#{order.order_code}</span>
+                            {order.is_template && (
+                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                Mẫu
+                              </span>
+                            )}
+                          </div>
                           {order.recognition_code && (
                             <span className="text-[11px] font-mono text-primary font-normal">
                               Mã: {order.recognition_code}
@@ -744,11 +799,20 @@ const PaymentHistoryPage = () => {
                             <span className="material-symbols-outlined text-sm">visibility</span>
                             {t('common.details')}
                           </button>
-                          {order.status === 'REFUND_PENDING' && (
+                          {order.status === 'REFUND_PENDING' ? (
                             <button
                               onClick={() => handleOpenRefundModal(order)}
                               className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-orange-700 hover:text-white bg-orange-100 hover:bg-orange-600 rounded-lg transition-colors cursor-pointer border border-orange-300"
                               title={t('payments.table.refundBtn')}
+                            >
+                              <span className="material-symbols-outlined text-sm">currency_exchange</span>
+                              {t('payments.table.refundBtn')}
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-400 bg-slate-100/70 rounded-lg cursor-not-allowed border border-slate-200 opacity-40"
+                              title="Chỉ khả dụng khi đơn hàng cần hoàn trả (REFUND_PENDING)"
                             >
                               <span className="material-symbols-outlined text-sm">currency_exchange</span>
                               {t('payments.table.refundBtn')}
@@ -885,7 +949,31 @@ const PaymentHistoryPage = () => {
                       {selectedOrder.refund_proof && (
                         <div className="col-span-2">
                           <span className="text-on-surface-variant text-xs">{t('payments.detailModal.refundProof')}:</span>
-                          <p className="font-mono text-xs text-primary break-all">{selectedOrder.refund_proof}</p>
+                          <div className="mt-1 flex items-center gap-3">
+                            {(selectedOrder.refund_proof.match(/\.(jpg|jpeg|png|webp|gif)$/i) || selectedOrder.refund_proof.startsWith('/assets/Refunds/')) && (
+                              <a
+                                href={selectedOrder.refund_proof.startsWith('http') ? selectedOrder.refund_proof : `http://localhost:5000${selectedOrder.refund_proof}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group block"
+                              >
+                                <img
+                                  src={selectedOrder.refund_proof.startsWith('http') ? selectedOrder.refund_proof : `http://localhost:5000${selectedOrder.refund_proof}`}
+                                  alt="Minh chứng hoàn tiền"
+                                  className="w-24 h-16 object-cover rounded-lg border border-outline-variant group-hover:scale-105 transition-transform"
+                                />
+                              </a>
+                            )}
+                            <a
+                              href={selectedOrder.refund_proof.startsWith('http') ? selectedOrder.refund_proof : `http://localhost:5000${selectedOrder.refund_proof}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-xs text-primary underline break-all flex items-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-sm">open_in_new</span>
+                              {selectedOrder.refund_proof}
+                            </a>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1101,15 +1189,39 @@ const PaymentHistoryPage = () => {
 
               <div>
                 <label className="block text-xs font-bold text-on-surface uppercase mb-1">
-                  {t('payments.refundModal.proofLabel')}
+                  Tải lên ảnh minh chứng / Ủy nhiệm chi
                 </label>
                 <input
-                  type="text"
-                  placeholder={t('payments.refundModal.proofPlaceholder')}
-                  value={refundForm.refund_proof}
-                  onChange={(e) => setRefundForm({ ...refundForm, refund_proof: e.target.value })}
-                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary"
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setRefundProofFile(file);
+                      setRefundProofPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="w-full text-xs text-on-surface-variant file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
                 />
+                {refundProofPreview && (
+                  <div className="mt-2 relative w-32 h-20 rounded-lg overflow-hidden border border-outline-variant">
+                    <img src={refundProofPreview} alt="Xem trước minh chứng" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                {!refundProofFile && (
+                  <div className="mt-2">
+                    <label className="block text-[11px] text-on-surface-variant mb-1">
+                      Hoặc nhập đường dẫn ảnh (URL):
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={t('payments.refundModal.proofPlaceholder')}
+                      value={refundForm.refund_proof}
+                      onChange={(e) => setRefundForm({ ...refundForm, refund_proof: e.target.value })}
+                      className="w-full px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg text-xs text-on-surface focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-outline-variant">
@@ -1147,9 +1259,6 @@ const PaymentHistoryPage = () => {
                   <h3 className="text-lg font-bold text-on-surface">
                     {t('payments.sandbox.title')}
                   </h3>
-                  <p className="text-xs text-on-surface-variant">
-                    {t('payments.sandbox.subtitle')}
-                  </p>
                 </div>
               </div>
               <button
@@ -1161,23 +1270,6 @@ const PaymentHistoryPage = () => {
             </div>
 
             <div className="p-6 space-y-5">
-              {/* Banner Warning / Badge */}
-              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3.5 flex items-start gap-3 text-emerald-900 dark:text-emerald-100">
-                <span className="material-symbols-outlined text-emerald-600 text-xl flex-shrink-0 mt-0.5">
-                  verified
-                </span>
-                <div className="text-xs space-y-1">
-                  <div className="font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
-                    <span>{t('payments.sampleModal.warningBadge')}</span>
-                    <span className="px-1.5 py-0.2 bg-emerald-600 text-white rounded text-[10px] lowercase font-normal">
-                      live gateway
-                    </span>
-                  </div>
-                  <p className="leading-relaxed opacity-90">
-                    {t('payments.sampleModal.warningDesc')}
-                  </p>
-                </div>
-              </div>
 
               {/* Overpaid Confirmation Modal Prompt in Sandbox */}
               {sandboxConfirmation && (
@@ -1415,7 +1507,7 @@ const PaymentHistoryPage = () => {
                   <div className="space-y-2 pt-1">
                     <p className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm">terminal</span>
-                      {t('payments.sandbox.subtitle')}:
+                      Giả lập Webhook:
                     </p>
 
                     <button
@@ -1445,20 +1537,14 @@ const PaymentHistoryPage = () => {
                       <span>{t('payments.sandbox.simulateUnderpaidBtn')}</span>
                     </button>
 
-                    <div className="pt-2 border-t border-outline-variant/50 flex gap-2">
+                    <div className="pt-2 border-t border-outline-variant/50">
                       <button
                         onClick={() => handleCreateSampleOrder(false)}
                         disabled={actionLoading}
-                        className="flex-1 py-1.5 px-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg text-[11px] font-semibold border border-outline-variant cursor-pointer disabled:opacity-50"
+                        className="w-full py-2 px-3 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-xl text-xs font-bold border border-outline-variant cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                       >
-                        + Đơn PENDING
-                      </button>
-                      <button
-                        onClick={handleCleanSampleOrders}
-                        disabled={actionLoading}
-                        className="py-1.5 px-2 text-rose-600 hover:bg-rose-50 rounded-lg text-[11px] font-semibold border border-rose-200 cursor-pointer disabled:opacity-50"
-                      >
-                        {t('payments.sampleModal.cleanBtn')}
+                        <span className="material-symbols-outlined text-sm">add_circle</span>
+                        <span>+ Đơn PENDING</span>
                       </button>
                     </div>
                   </div>

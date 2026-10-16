@@ -99,7 +99,7 @@ async function getOrderHistory(req, res, next) {
  */
 async function getOrdersForAdmin(req, res, next) {
   try {
-    const { page, limit, search, status, packageType, fromDate, toDate } = req.query;
+    const { page, limit, search, status, packageType, fromDate, toDate, excludeTemplate } = req.query;
     const result = await paymentService.getOrdersForAdmin({
       page,
       limit,
@@ -108,6 +108,7 @@ async function getOrdersForAdmin(req, res, next) {
       packageType,
       fromDate,
       toDate,
+      excludeTemplate,
     });
     return ResponseHandler.success(res, result, 'Lấy danh sách đơn hàng thành công');
   } catch (error) {
@@ -120,8 +121,8 @@ async function getOrdersForAdmin(req, res, next) {
  */
 async function getPaymentStatsForAdmin(req, res, next) {
   try {
-    const { fromDate, toDate } = req.query;
-    const stats = await paymentService.getPaymentStatsForAdmin({ fromDate, toDate });
+    const { fromDate, toDate, excludeTemplate } = req.query;
+    const stats = await paymentService.getPaymentStatsForAdmin({ fromDate, toDate, excludeTemplate });
     return ResponseHandler.success(res, stats, 'Lấy thống kê thanh toán thành công');
   } catch (error) {
     return next(error);
@@ -180,11 +181,11 @@ async function deleteSampleOrders(req, res, next) {
  */
 async function getPayosQr(req, res, next) {
   try {
-    const { amount, packageType } = req.query;
+    const { amount, packageType, persistOrder } = req.query;
     const qrData = await paymentService.getOrCreatePayosQr({
       amount,
       packageType,
-      persistOrder: true,
+      persistOrder: persistOrder === 'true', // Mặc định FALSE: Không tự ý sinh pending order rác khi mở modal
       idaccount: req.user?.idaccount,
     });
     return ResponseHandler.success(res, qrData, 'Lấy mã QR PayOS thành công');
@@ -218,10 +219,16 @@ async function confirmUpgrade(req, res, next) {
 async function processRefund(req, res, next) {
   try {
     const { id } = req.params;
-    const { refundedAmount, refundProof, refundReason, refundedAt } = req.body;
+    let { refundedAmount, refundProof, refundReason, refundedAt } = req.body;
     if (!refundedAmount) {
       return ResponseHandler.badRequest(res, 'Số tiền hoàn trả là bắt buộc');
     }
+
+    // Nếu có file upload từ multer, lưu đường dẫn tương đối phục vụ static
+    if (req.file) {
+      refundProof = `/assets/Refunds/${req.file.filename}`;
+    }
+
     const result = await paymentService.processOrderRefund(id, {
       refundedAmount,
       refundProof,
@@ -251,6 +258,18 @@ async function simulateWebhook(req, res, next) {
   }
 }
 
+/**
+ * Lấy danh mục các gói cước từ CSDL
+ */
+async function getPackageTypes(req, res, next) {
+  try {
+    const packages = await paymentService.getPackageTypes();
+    return ResponseHandler.success(res, packages, 'Lấy danh mục gói cước thành công');
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   createOrder,
   handleWebhook,
@@ -263,6 +282,7 @@ module.exports = {
   getOrdersForAdmin,
   getPaymentStatsForAdmin,
   getOrderDetailForAdmin,
+  getPackageTypes,
   createSampleOrder,
   deleteSampleOrders,
   getPayosQr,

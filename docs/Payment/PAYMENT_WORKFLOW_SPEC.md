@@ -98,10 +98,11 @@ Toàn bộ dữ liệu đơn hàng được lưu tại bảng `payment_order` v�
 | `created_at` | `TIMESTAMP(6)`| `DEFAULT now()` | Thời điểm tạo đơn hàng. |
 | `paid_at` | `TIMESTAMP(6)`| `NULLABLE` | Thời điểm thanh toán thành công. |
 | `expired_at` | `TIMESTAMP(6)`| `NULLABLE` | Thời điểm hết hạn đơn (Mặc định: `created_at + 10 phút`). |
+| `is_template` | `BOOLEAN` | `DEFAULT false, INDEX` | Đánh dấu đơn hàng là đơn mẫu thử nghiệm của Admin (`true`) hay đơn hàng thật của người dùng (`false`). |
 | `refunded_at` | `TIMESTAMP(6)`| `NULLABLE` | Thời điểm Admin thực hiện hoàn tiền cho khách. |
 | `refunded_amount`| `DECIMAL(15,2)`| `NULLABLE` | Số tiền thực tế Admin đã hoàn trả. |
 | `refund_reason` | `TEXT` | `NULLABLE` | Lý do hoàn trả: *"Do người dùng từ chối nâng cấp gói"* hoặc *"Số tiền thanh toán không hợp lệ"*. |
-| `refund_proof` | `TEXT` | `NULLABLE` | Minh chứng hoàn tiền (URL ảnh chụp ủy nhiệm chi / biên lai chuyển khoản ngân hàng). |
+| `refund_proof` | `TEXT` | `NULLABLE` | Minh chứng hoàn tiền (Đường dẫn tĩnh `/assets/Refunds/...` hoặc URL ảnh chụp ủy nhiệm chi / biên lai chuyển khoản ngân hàng). |
 
 ### 3.2. Bảng `payment_transaction` (Nhật ký đối soát Webhook ngân hàng)
 
@@ -166,15 +167,22 @@ stateDiagram-v2
 
 ### 5.2. Dành cho Admin-Web (Mô phỏng Sandbox & Đối soát Realtime)
 1. **Mô phỏng Giao dịch Client-app (Admin Roleplay / Sandbox Mode):**
-   - Tại nút "Mã QR mẫu thử nghiệm" trên trang Quản lý thanh toán: Admin đóng vai người dùng cuối.
-   - Popup hiển thị giao diện y hệt Client-app (Mã QR thật, mã nhận diện 6 ký tự, đếm ngược 10 phút).
-   - Có thêm bộ công cụ giả lập kiểm thử tức thì (Dev Sandbox Actions):
-     - Nút *"Giả lập chuyển đúng tiền (49k)"* $\rightarrow$ Kích hoạt luồng 6.1.
-     - Nút *"Giả lập chuyển thừa tiền (70k)"* $\rightarrow$ Kích hoạt luồng 6.2a (hiện prompt xác nhận ngay trên modal).
-     - Nút *"Giả lập chuyển thiếu tiền (20k)"* $\rightarrow$ Kích hoạt luồng 6.2b (chuyển sang hàng đợi hoàn tiền).
-2. **Trang Quản lý & Thực hiện Hoàn tiền (Refund Processing):**
-   - Danh sách đơn hàng có thêm tab lọc: `Tất cả` | `Đã thanh toán` | `Chờ xác nhận` | `Cần hoàn trả` | `Đã hoàn trả`.
-   - Với đơn `REFUND_PENDING` (Cần hoàn trả):
-     - Hiển thị nút "Hoàn tiền cho khách".
-     - Modal Hoàn tiền cho phép Admin: Nhập số tiền hoàn trả thực tế, chọn thời gian hoàn trả, và Upload ảnh biên lai chuyển tiền (Ủy nhiệm chi).
-     - Sau khi lưu: Đơn chuyển sang `REFUNDED` và bắn Socket.IO thông báo cho khách hàng.
+   - Tại nút "Mã QR mẫu thử nghiệm" trên trang Quản lý thanh toán: Mở modal xem thông tin mã QR PayOS trực tiếp.
+   - **Chỉ tạo đơn mẫu khi nhấn nút `+ Đơn PENDING`**: Khi mở modal, Backend chỉ truy vấn thông tin QR từ PayOS mà không chèn đơn pending vào CSDL (`persistOrder: false`). Chỉ khi bấm nút `+ Đơn PENDING`, hệ thống mới ghi nhận đơn hàng mẫu với cờ `is_template: true`.
+   - Giao diện được tinh gọn: Lược bỏ các nhãn roleplay dư thừa, loại bỏ banner live gateway tĩnh và loại bỏ nút "Xóa các đơn mẫu".
+   - Bộ công cụ giả lập kiểm thử Webhook tức thì:
+     - Nút *"Giả lập chuyển đúng tiền (49k)"* $\rightarrow$ Kích hoạt luồng 6.1 (status `PAID`).
+     - Nút *"Giả lập chuyển thừa tiền (70k)"* $\rightarrow$ Kích hoạt luồng 6.2a (hiện prompt xác nhận ngay trên modal, status `WAITING_CONFIRMATION`).
+     - Nút *"Giả lập chuyển thiếu tiền (20k)"* $\rightarrow$ Kích hoạt luồng 6.2b (chuyển sang hàng đợi hoàn tiền, status `REFUND_PENDING`).
+2. **Bộ lọc, Phân loại đơn mẫu & Tra cứu đa chiều:**
+   - **Dropdown gói cước (LOV):** Truy vấn động từ CSDL qua endpoint `GET /admin/payments/packages` (Basic mặc định, Premium).
+   - **Cột Đơn hàng & Badge `[Mẫu]`:** Các đơn hàng thử nghiệm mang cờ `is_template: true` được gắn badge nhận diện `[Mẫu]` màu hổ phách bên cạnh mã đơn.
+   - **Checkbox "Loại bỏ mẫu":** Nằm trên thanh công cụ lọc; khi tích chọn, loại bỏ hoàn toàn các đơn mẫu (`is_template: false`) khỏi cả bảng dữ liệu và 4 thẻ thống kê doanh thu KPI.
+   - **Bộ lọc ngày (Từ ngày - Đến ngày):** Lọc chính xác theo ngày tạo đơn (`created_at`).
+3. **Trang Quản lý & Thực hiện Hoàn tiền (Refund Processing):**
+   - Nút "Hoàn tiền" trên từng dòng: Luôn hiển thị ở cột Thao tác, sáng rõ và tương tác được đối với các đơn `REFUND_PENDING`; tự động làm mờ và vô hiệu hóa (disabled) với các trạng thái khác.
+   - **Modal Hoàn tiền & Lưu trữ Minh chứng:**
+     - Cho phép Admin nhập số tiền hoàn trả thực tế, lý do hoàn trả, và trực tiếp upload file ảnh minh chứng (Ủy nhiệm chi / Biên lai chuyển khoản ngân hàng).
+     - File ảnh được lưu trữ an toàn tại thư mục tĩnh `src/Backend/Assets/Refunds` với đường dẫn public `/assets/Refunds/{filename}`.
+     - Sau khi xác nhận hoàn tiền: CSDL cập nhật `status = 'REFUNDED'`, `refunded_at = now()`, `refunded_amount`, `refund_proof = '/assets/Refunds/...'`, và phát sự kiện Socket.IO thông báo cho Client-app.
+   - **Modal Chi tiết Đơn hàng:** Xem đầy đủ thông tin giao dịch, nhật ký đối soát Webhook, và hiển thị ảnh thumbnail minh chứng kèm link xem trực tiếp toàn màn hình.
