@@ -8,7 +8,7 @@
 library;
 
 import '../data/models/bill_entity.dart';
-import '../../notification/domain/notification_rules.dart';
+import 'bill_nhac_truoc.dart';
 import 'bill_pay_status.dart';
 
 /// Năm trạng thái một hoá đơn có thể mang trên danh sách.
@@ -30,8 +30,8 @@ DateTime _dauNgay(DateTime t) => DateTime(t.year, t.month, t.day);
 /// So theo **NGÀY**, cùng quy ước với `BillDao.markOverdue`: hoá đơn đến hạn
 /// đúng hôm nay chưa phải quá hạn, người dùng vẫn còn cả ngày để trả.
 ///
-/// Ngưỡng "sắp đến hạn" lấy từ [billLeadDays] — **cùng một định nghĩa** với bộ
-/// luật thông báo. Hai mốc riêng thì dải nhắc và nhãn trên danh sách nói hai
+/// Ngưỡng "sắp đến hạn" lấy từ [billLeadDays] (`bill_nhac_truoc.dart`) —
+/// **cùng một định nghĩa** bộ luật thông báo dùng cho dải nhắc. Hai mốc riêng thì dải nhắc và nhãn trên danh sách nói hai
 /// chuyện khác nhau về cùng một hoá đơn.
 BillDisplayStatus billDisplayStatusOf(BillEntity bill, DateTime now) {
   if (daCoKhoanChi(bill)) return BillDisplayStatus.paid;

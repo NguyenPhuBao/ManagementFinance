@@ -4,6 +4,7 @@ import '../../goal/data/models/goal_entity.dart';
 import '../../goal/domain/goal_auto_deposit.dart';
 import '../../bill/domain/bill_auto_pay.dart';
 import '../../bill/domain/bill_pay_status.dart';
+import '../../bill/domain/bill_nhac_truoc.dart';
 import '../../budget/domain/budget_health.dart';
 import '../../analytics/domain/khoan_vao_thong_ke.dart';
 import '../../ai_edge/domain/tai_phan_bo.dart';
@@ -518,19 +519,6 @@ List<NotificationCandidate> _largeExpenseCandidates(
 }
 
 // ── Hoá đơn ──────────────────────────────────────────────────────────────────
-
-/// Số ngày nhắc trước hạn khi cả hoá đơn lẫn tuỳ chọn đều không nói gì.
-///
-/// Khớp `@default("3")` của cột `Time_notification` phía backend, để một hoá
-/// đơn tạo ở client và một hoá đơn tạo ở nơi khác hành xử như nhau.
-const int mocNhacMacDinh = 3;
-
-/// Số ngày nhắc trước hạn thật sự dùng cho [bill].
-///
-/// Giá trị đặt riêng cho một hoá đơn **thắng** giá trị mặc định chung: nó là
-/// lựa chọn cụ thể hơn.
-int billLeadDays(BillEntity bill, {int fallback = mocNhacMacDinh}) =>
-    int.tryParse(bill.timeNotification ?? '') ?? fallback;
 
 /// Khoá chống trùng của thông báo "hoá đơn sắp đến hạn".
 ///

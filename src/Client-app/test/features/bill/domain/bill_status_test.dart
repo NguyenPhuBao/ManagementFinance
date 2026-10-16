@@ -83,8 +83,8 @@ void main() {
       expect(
         billDisplayStatusOf(bayNgay, now),
         BillDisplayStatus.dueSoon,
-        reason: 'Dùng lại `billLeadDays` của bộ luật thông báo thay vì tự đặt '
-            'một mốc thứ hai — hai mốc lệch nhau thì dải nhắc và nhãn trên '
+        reason: 'Dùng lại `billLeadDays` (`bill_nhac_truoc.dart`, cũng là mốc '
+            'của dải nhắc) thay vì tự đặt một mốc thứ hai — hai mốc lệch nhau thì dải nhắc và nhãn trên '
             'danh sách nói hai chuyện khác nhau về cùng một hoá đơn.',
       );
     });
