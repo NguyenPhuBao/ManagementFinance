@@ -170,7 +170,7 @@ class _BillPageState extends State<BillPage> {
             // Hai nhóm thay cho một danh sách phẳng: mỗi kỳ của hoá đơn lặp là
             // một hàng mới, nên lịch sử đã trả trôi lẫn vào giữa những hoá đơn
             // đang chờ — hoá đơn tuần sinh 52 hàng mỗi năm.
-            final sections = splitBills(state.bills);
+            final sections = splitBills(state.bills, now);
 
             return DefaultTabController(
               length: 2,
@@ -231,6 +231,9 @@ class _BillPageState extends State<BillPage> {
                           unselectedLabelColor: AppColors.textSecondary,
                           indicatorColor: AppColors.primary,
                           tabs: [
+                            // Đếm KỲ NÀY (`thuocKyNay`) — cùng con số với dòng
+                            // "N hóa đơn chưa thanh toán" của thẻ tổng. Kỳ các
+                            // tháng sau nằm dưới tiêu đề nhóm, không vào số.
                             Tab(
                                 text:
                                     'Cần thanh toán (${sections.chuaDong.length})'),
@@ -249,6 +252,7 @@ class _BillPageState extends State<BillPage> {
                     _danhSach(
                       context,
                       sections.chuaDong,
+                      cacThangSau: sections.chuaDongCacThangSau,
                       now: now,
                       dateFormatter: dateFormatter,
                       khiTrong: 'Không còn hoá đơn nào phải trả.',
@@ -274,15 +278,29 @@ class _BillPageState extends State<BillPage> {
     );
   }
 
-  /// Một tab của danh sách.
+  /// Một tab của danh sách. [cacThangSau] chỉ tab thứ nhất có: kỳ còn phải trả
+  /// mà hạn từ đầu tháng sau — dưới tiêu đề nhóm riêng, sau nhóm kỳ này.
   Widget _danhSach(
     BuildContext context,
     List<BillEntity> bills, {
+    List<BillEntity> cacThangSau = const [],
     required DateTime now,
     required DateFormat dateFormatter,
     required String khiTrong,
     required Map<String, TransactionEntity> payments,
   }) {
+    Widget nhom(List<BillEntity> ds, EdgeInsets dem) => SliverPadding(
+          padding: dem,
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (_, i) => _dongHoaDon(context, ds[i],
+                  now: now, dateFormatter: dateFormatter, payments: payments),
+              childCount: ds.length,
+            ),
+          ),
+        );
+    final coThangSau = cacThangSau.isNotEmpty;
+
     // Mỗi tab là một `CustomScrollView` mở đầu bằng `SliverOverlapInjector` —
     // cặp với absorber quanh hàng tab ghim (xem `build`). `Builder` để lấy một
     // context NẰM DƯỚI `NestedScrollView`, nơi tra được handle. `PageStorageKey`
@@ -294,7 +312,44 @@ class _BillPageState extends State<BillPage> {
           SliverOverlapInjector(
             handle: NestedScrollView.sliverOverlapAbsorberHandleFor(ctx),
           ),
-          if (bills.isEmpty)
+          if (coThangSau) ...[
+            if (bills.isEmpty)
+              // Tháng này đã trả hết nhưng còn kỳ tháng sau: nói rõ "trong
+              // tháng này" — câu trống chung "không còn hoá đơn nào phải trả"
+              // sẽ nói ngược với nhóm ngay bên dưới.
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+                  child: Text(
+                    'Không còn hoá đơn nào phải trả trong tháng này.',
+                    key: ValueKey('bill-thang-nay-trong'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
+              )
+            else
+              nhom(bills, const EdgeInsets.fromLTRB(16, 16, 16, 0)),
+            SliverToBoxAdapter(
+              child: Padding(
+                // Thẻ phía trên đã có đệm đáy 16 → cách tiêu đề 24 (Stitch).
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Text(
+                  'CÁC THÁNG SAU (${cacThangSau.length})',
+                  key: const ValueKey('bill-nhom-cac-thang-sau'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.6,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+            nhom(cacThangSau, const EdgeInsets.fromLTRB(16, 0, 16, 24)),
+          ] else if (bills.isEmpty)
             // Trạng thái rỗng cuộn cùng cả trang — chặng 1.3 từng tràn 73 px
             // khi nó còn là `Column` trần trong `Expanded`.
             SliverToBoxAdapter(
@@ -315,19 +370,8 @@ class _BillPageState extends State<BillPage> {
               ),
             )
           else
-            SliverPadding(
-              // Đáy 24: không còn nút cố định nào đè lên cuối danh sách (G57).
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (_, i) => _dongHoaDon(context, bills[i],
-                      now: now,
-                      dateFormatter: dateFormatter,
-                      payments: payments),
-                  childCount: bills.length,
-                ),
-              ),
-            ),
+            // Đáy 24: không còn nút cố định nào đè lên cuối danh sách (G57).
+            nhom(bills, const EdgeInsets.fromLTRB(16, 16, 16, 24)),
         ],
       ),
     );

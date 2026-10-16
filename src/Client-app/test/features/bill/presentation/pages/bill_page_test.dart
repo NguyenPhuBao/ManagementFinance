@@ -150,10 +150,11 @@ void main() {
     WidgetTester tester,
     List<BillEntity> bills, {
     bool seed = false,
+    Size kho = const Size(411, 2000),
   }) async {
     if (seed) await gieoViVaDanhMuc();
 
-    tester.view.physicalSize = const Size(411, 2000);
+    tester.view.physicalSize = kho;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -543,6 +544,95 @@ void main() {
               'người dùng chỉ nợ 50.000 đ.');
       expect(find.textContaining('1 hóa đơn chưa thanh toán'), findsOneWidget,
           reason: 'Số đếm cũng chỉ tính kỳ còn phải trả.');
+    });
+  });
+
+  // Người dùng chốt 2026-10-16: tab "Cần thanh toán (N)" đếm KỲ NÀY, cùng con
+  // số với thẻ tổng; kỳ các tháng sau (thường là kỳ `payBill` vừa sinh) vẫn
+  // hiện trong tab, dưới tiêu đề nhóm "CÁC THÁNG SAU (n)".
+  group('tab Cần thanh toán đếm theo kỳ này', () {
+    testWidgets('số trên tab bằng số trên thẻ; kỳ tháng sau dưới tiêu đề nhóm',
+        (tester) async {
+      await dungTrang(tester, [
+        _bill(id: 'a', dueDate: DateTime(2026, 9, 11), amount: 50000),
+        _bill(id: 'b', dueDate: DateTime(2026, 9, 23), amount: 10000),
+        _bill(id: 'c', dueDate: DateTime(2026, 10, 4), amount: 123000),
+      ]);
+
+      expect(find.text('Cần thanh toán (2)'), findsOneWidget,
+          reason: 'Tab từng đếm cả kỳ 04/10 nên nói (3) trong khi thẻ ngay trên '
+              'nói "2 hóa đơn chưa thanh toán" — hai con số cho một câu hỏi.');
+      expect(find.text('2 hóa đơn chưa thanh toán'), findsOneWidget);
+
+      final tieuDe = find.byKey(const ValueKey('bill-nhom-cac-thang-sau'));
+      expect(tester.widget<Text>(tieuDe).data, 'CÁC THÁNG SAU (1)');
+      final yTieuDe = tester.getTopLeft(tieuDe).dy;
+      expect(tester.getTopLeft(find.byKey(const ValueKey('bill-accent-b'))).dy,
+          lessThan(yTieuDe),
+          reason: 'Kỳ này đứng TRÊN tiêu đề nhóm.');
+      expect(tester.getTopLeft(find.byKey(const ValueKey('bill-accent-c'))).dy,
+          greaterThan(yTieuDe),
+          reason: 'Kỳ 04/10 vẫn phải hiện — người dùng trả trước được — nhưng '
+              'nằm DƯỚI tiêu đề nhóm.');
+    });
+
+    testWidgets('tháng này trả hết, còn kỳ tháng sau: nói "trong tháng này"',
+        (tester) async {
+      await dungTrang(tester, [
+        _bill(
+            id: 'a',
+            dueDate: DateTime(2026, 9, 4),
+            isPaid: true,
+            payStatus: 'Payed'),
+        _bill(id: 'b', dueDate: DateTime(2026, 10, 4)),
+      ]);
+
+      expect(find.text('Cần thanh toán (0)'), findsOneWidget);
+      expect(find.byKey(const ValueKey('bill-thang-nay-trong')), findsOneWidget,
+          reason: 'Câu trống chung "Không còn hoá đơn nào phải trả." sẽ nói '
+              'ngược với nhóm các tháng sau ngay bên dưới.');
+      expect(find.text('Không còn hoá đơn nào phải trả.'), findsNothing);
+      expect(find.text('CÁC THÁNG SAU (1)'), findsOneWidget);
+      expect(find.byKey(const ValueKey('bill-accent-b')), findsOneWidget);
+    });
+
+    testWidgets('không còn gì phải trả: trạng thái rỗng cũ, không tiêu đề nhóm',
+        (tester) async {
+      await dungTrang(tester, [
+        _bill(
+            id: 'a',
+            dueDate: DateTime(2026, 9, 4),
+            isPaid: true,
+            payStatus: 'Payed'),
+      ]);
+
+      expect(find.text('Không còn hoá đơn nào phải trả.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('bill-nhom-cac-thang-sau')), findsNothing);
+      expect(find.byKey(const ValueKey('bill-thang-nay-trong')), findsNothing);
+    });
+
+    testWidgets('không tràn ở 360 dp khi có nhóm các tháng sau', (tester) async {
+      await dungTrang(
+        tester,
+        [
+          _bill(
+              id: 'a',
+              dueDate: DateTime(2026, 9, 4),
+              amount: 123456789,
+              name: 'Hoá đơn có cái tên rất dài để thử tràn bố cục'),
+          for (var i = 1; i <= 12; i++)
+            _bill(
+                id: 'sau$i',
+                dueDate: DateTime(2026, 9 + i, 4),
+                amount: 9999999999999,
+                name: 'Kỳ sau có cái tên rất dài số $i'),
+        ],
+        kho: const Size(360, 2400),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('CÁC THÁNG SAU (12)'), findsOneWidget,
+          reason: 'Ca phải dựng được nhóm thật, không chỉ "không lỗi".');
     });
   });
 }
