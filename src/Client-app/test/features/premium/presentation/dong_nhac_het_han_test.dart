@@ -24,6 +24,8 @@ class _ApiIm implements PaymentApi {
   Future<Map<String, Object?>> trangThaiDon(int orderCode) => throw UnimplementedError();
   @override
   Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20}) => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> xacNhanNangCap({required int orderCode, required bool accept}) => throw UnimplementedError();
 }
 
 void main() {

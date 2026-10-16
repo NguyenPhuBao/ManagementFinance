@@ -38,6 +38,9 @@ List<DongLichSu> dongLichSuTu(List<Map<String, Object?>> items) {
 String chuTrangThaiDon(TrangThaiDon t) => switch (t) {
       TrangThaiDon.paid => 'Đã thanh toán',
       TrangThaiDon.pending => 'Chờ thanh toán',
+      TrangThaiDon.waitingConfirmation => 'Chờ xác nhận',
+      TrangThaiDon.refundPending => 'Cần hoàn tiền',
+      TrangThaiDon.refunded => 'Đã hoàn tiền',
       TrangThaiDon.cancelled => 'Đã huỷ',
       TrangThaiDon.expired => 'Hết hạn',
     };

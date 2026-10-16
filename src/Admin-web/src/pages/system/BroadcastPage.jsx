@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import adminApi from '../../api/admin.api';
 import notificationApi from '../../api/notification.api';
 import useSocket from '../../hooks/useSocket';
@@ -45,6 +45,7 @@ const BroadcastPage = () => {
   };
 
   // Form Bật/Tắt tức thì (MẶC ĐỊNH LUÔN LÀ BẢO TRÌ KHẨN CẤP)
+  const isActionInitiatorRef = useRef(false);
   const [instantReason, setInstantReason] = useState('');
 
   const [scheduleDatetime, setScheduleDatetime] = useState('');
@@ -165,7 +166,12 @@ const BroadcastPage = () => {
         if (mState.reason && mState.active) {
           setInstantReason(mState.reason);
         }
-        if (alert) {
+
+        // Nếu chính admin tại tab này vừa nhấn nút thao tác, setMaintenanceFeedback đã báo toast thành công
+        // -> Không kích hoạt thêm toast từ socket để chống lặp thông báo
+        if (isActionInitiatorRef.current) {
+          isActionInitiatorRef.current = false;
+        } else if (alert) {
           if (mState.active) {
             alert.warning(
               mState.reason || t('broadcast.feedback.emergencyActivated', 'Hệ thống đã chuyển sang chế độ BẢO TRÌ KHẨN CẤP!'),
@@ -183,12 +189,11 @@ const BroadcastPage = () => {
       }
     };
 
+    // CHỈ lắng nghe kênh admin.maintenance_changed (bỏ system.maintenance_changed dành cho client-app)
     socket.on('admin.maintenance_changed', handleMaintenanceChanged);
-    socket.on('system.maintenance_changed', handleMaintenanceChanged);
 
     return () => {
       socket.off('admin.maintenance_changed', handleMaintenanceChanged);
-      socket.off('system.maintenance_changed', handleMaintenanceChanged);
     };
   }, [socket, fetchHistory, historyPage, historyLimit]);
 
@@ -210,6 +215,7 @@ const BroadcastPage = () => {
 
   // Xử lý Bật/Tắt bảo trì khẩn cấp
   const handleToggleMaintenance = async (nextActive) => {
+    isActionInitiatorRef.current = true;
     setActionLoading(true);
     setMaintenanceFeedback(null);
     try {
@@ -266,6 +272,7 @@ const BroadcastPage = () => {
 
     setActionLoading(true);
     setMaintenanceFeedback(null);
+    isActionInitiatorRef.current = true;
     try {
       const payload = {
         scheduledAt: new Date(scheduleDatetime).toISOString(),
@@ -302,6 +309,7 @@ const BroadcastPage = () => {
     if (!window.confirm(t('broadcast.schedule.cancelConfirm'))) return;
     setActionLoading(true);
     setMaintenanceFeedback(null);
+    isActionInitiatorRef.current = true;
     try {
       const res = await adminApi.cancelScheduledMaintenance();
       const data = res?.data || res;
@@ -324,6 +332,7 @@ const BroadcastPage = () => {
   const handleConfirmEmergencyMaintenance = async () => {
     setActionLoading(true);
     setMaintenanceFeedback(null);
+    isActionInitiatorRef.current = true;
     try {
       const payload = {
         active: true,

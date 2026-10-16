@@ -19,14 +19,11 @@ import '../../domain/don_thanh_toan.dart';
 import '../cubit/goi_cubit.dart';
 
 /// Màn Đang chờ thanh toán `/premium/cho-thanh-toan` (spec Premium 2026-10-06
-/// mục 9.3). Màn Stitch *"Đang chờ thanh toán - FlowMoney"* `b05060e3…` (chờ)
-/// và *"Thanh toán Premium - Thành công"* `8586dc34…` (thành công + hết hạn;
-/// Stitch vẽ thêm danh sách đặc quyền ở màn thành công — bản thi công không
-/// chép, lệch có chủ ý).
+/// & Quy trình đối soát thanh toán 2026-10-15).
 ///
-/// Ba vế "đang hiện" như `TheoDoiXem`: `TickerMode` · `ModalRoute.isCurrent` ·
-/// vòng đời `resumed` — chỉ khi đủ ba mới hỏi theo nhịp. Hỏi NGAY khi app
-/// quay lại, khi socket `account.upgraded` tới, khi bấm *Tôi đã chuyển khoản*.
+/// Hiển thị mã QR VietQR động kèm mã nhận diện 6 ký tự sinh tự động.
+/// Hỗ trợ xử lý chuyển thừa tiền (xác nhận kích hoạt / hoàn tiền),
+/// chuyển thiếu tiền (thông báo hoàn trả), và đếm ngược 10-30 phút.
 class ChoThanhToanPage extends StatefulWidget {
   const ChoThanhToanPage({
     super.key,
@@ -57,7 +54,7 @@ class ChoThanhToanPage extends StatefulWidget {
   State<ChoThanhToanPage> createState() => _ChoThanhToanPageState();
 }
 
-enum _Man { cho, thanhCong, hetHan, daHuy }
+enum _Man { cho, thanhCong, choXacNhanThua, canHoanTien, daHoanTien, hetHan, daHuy }
 
 class _ChoThanhToanPageState extends State<ChoThanhToanPage>
     with WidgetsBindingObserver {
@@ -71,6 +68,8 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
 
   _Man _man = _Man.cho;
   bool _moHong = false;
+  bool _daChepMa = false;
+  bool _dangXuLyXacNhan = false;
   Duration _conLai = Duration.zero;
 
   PaymentApi get _api => widget.api ?? sl<PaymentApi>();
@@ -164,12 +163,46 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
         await _goi.lamMoi();
         if (!mounted) return;
         setState(() => _man = _Man.thanhCong);
+      case TrangThaiDon.waitingConfirmation:
+        _bo.dung();
+        setState(() => _man = _Man.choXacNhanThua);
+      case TrangThaiDon.refundPending:
+        _bo.dung();
+        setState(() => _man = _Man.canHoanTien);
+      case TrangThaiDon.refunded:
+        _bo.dung();
+        setState(() => _man = _Man.daHoanTien);
       case TrangThaiDon.expired:
         _bo.dung();
         setState(() => _man = _Man.hetHan);
       case TrangThaiDon.cancelled:
         _bo.dung();
         setState(() => _man = _Man.daHuy);
+    }
+  }
+
+  void _chepMa(String ma) {
+    Clipboard.setData(ClipboardData(text: ma));
+    setState(() => _daChepMa = true);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _daChepMa = false);
+    });
+  }
+
+  Future<void> _xacNhanNangCap(bool accept) async {
+    setState(() => _dangXuLyXacNhan = true);
+    try {
+      await _api.xacNhanNangCap(orderCode: widget.don.orderCode, accept: accept);
+      if (accept) {
+        await _goi.lamMoi();
+        if (mounted) setState(() => _man = _Man.thanhCong);
+      } else {
+        if (mounted) setState(() => _man = _Man.canHoanTien);
+      }
+    } catch (e) {
+      debugPrint('[Payment] Lỗi xác nhận nâng cấp: $e');
+    } finally {
+      if (mounted) setState(() => _dangXuLyXacNhan = false);
     }
   }
 
@@ -210,8 +243,11 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
           child: switch (_man) {
             _Man.cho => _thanCho(),
             _Man.thanhCong => _thanThanhCong(),
+            _Man.choXacNhanThua => _thanChoXacNhanThua(),
+            _Man.canHoanTien => _thanCanHoanTien(),
+            _Man.daHoanTien => _thanDaHoanTien(),
             _Man.hetHan => _thanKetThuc('Đơn đã hết hạn',
-                'Đơn thanh toán chỉ có hiệu lực 30 phút.'),
+                'Đơn thanh toán chỉ có hiệu lực trong thời hạn quy định.'),
             _Man.daHuy =>
               _thanKetThuc('Đơn đã huỷ', 'Đơn thanh toán này đã bị huỷ.'),
           },
@@ -261,6 +297,64 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
           Text('Mã đơn #${don.orderCode}',
               style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           const SizedBox(height: 12),
+
+          // Mã nhận diện 6 ký tự
+          if (don.recognitionCode != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3E5F5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFCE93D8)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'MÃ NHẬN DIỆN CHUYỂN KHOẢN',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF7B1FA2),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          don.recognitionCode!,
+                          key: const Key('cho-ma-nhan-dien'),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                            color: Color(0xFF4A148C),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton.icon(
+                    key: const Key('cho-chep-ma'),
+                    onPressed: () => _chepMa(don.recognitionCode!),
+                    icon: Icon(_daChepMa ? Icons.check : Icons.copy, size: 16),
+                    label: Text(_daChepMa ? 'Đã chép' : 'Sao chép'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF7B1FA2),
+                      minimumSize: Size.zero,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           Text(
             'Còn ${_mmss(_conLai)}',
             key: const Key('cho-dem-nguoc'),
@@ -268,7 +362,20 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
                 fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFE65100)),
           ),
           const SizedBox(height: 12),
-          // `Flexible` cho chữ: ở 360 dp hàng này tràn 155 px khi để trần (test bắt).
+
+          if (don.qrUrl != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                don.qrUrl.toString(),
+                height: 160,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -329,6 +436,63 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
     );
   }
 
+  Widget _thanChoXacNhanThua() => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _the([
+            const Icon(Icons.help_outline, size: 48, color: Color(0xFF7B1FA2)),
+            const SizedBox(height: 12),
+            const Text(
+              'Xác nhận chuyển thừa tiền',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Hệ thống ghi nhận bạn đã chuyển nhiều hơn số tiền gói cước yêu cầu. Bạn có đồng ý sử dụng số tiền này để kích hoạt gói dịch vụ Premium không?',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            if (widget.don.amountReceived != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Số tiền đã chuyển: ${CurrencyFormatter.format(widget.don.amountReceived!.toDouble())}',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF7B1FA2)),
+              ),
+            ],
+          ]),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            key: const Key('cho-dong-y-thua'),
+            onPressed: _dangXuLyXacNhan ? null : () => _xacNhanNangCap(true),
+            style: _nutChinh,
+            child: _dangXuLyXacNhan
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Text('Đồng ý kích hoạt gói'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            key: const Key('cho-tu-choi-thua'),
+            onPressed: _dangXuLyXacNhan ? null : () => _xacNhanNangCap(false),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Từ chối & Yêu cầu hoàn tiền'),
+          ),
+        ],
+      );
+
+  Widget _thanCanHoanTien() => _thanKetThuc(
+        'Cần xử lý hoàn tiền',
+        'Số tiền bạn chuyển không khớp hoặc bạn đã từ chối kích hoạt. Đơn hàng đã được chuyển sang danh sách hoàn tiền. Quản trị viên sẽ liên hệ và hoàn trả lại số tiền cho bạn.',
+      );
+
+  Widget _thanDaHoanTien() => _thanKetThuc(
+        'Đã hoàn tiền',
+        'Đơn hàng này đã được Quản trị viên hoàn trả số tiền thành công.',
+      );
+
   Widget _thanThanhCong() {
     final hetHan = _goi.state.hetHan;
     return Column(
@@ -357,8 +521,6 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
         const SizedBox(height: 16),
         ElevatedButton(
           key: const Key('cho-xong'),
-          // Về màn TRƯỚC Nâng cấp (hai lớp). Đến từ cửa chặn thì người dùng tự
-          // bấm + lần nữa — không tự mở form (spec 9.3).
           onPressed: () {
             context.pop();
             if (context.canPop()) context.pop();

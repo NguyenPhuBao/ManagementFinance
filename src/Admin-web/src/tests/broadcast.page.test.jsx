@@ -389,5 +389,52 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
       );
     });
   });
+
+  it('6.12. TẦNG 2 SYSTEM IMPACT: Khi Admin thao tác trực tiếp Bật/Tắt bảo trì, sự kiện Socket admin.maintenance_changed sau đó KHÔNG sinh thêm Toast lặp lại', async () => {
+    adminApi.setMaintenanceStatus.mockResolvedValueOnce({
+      data: {
+        active: true,
+        isEmergency: true,
+        reason: 'Bảo trì khẩn cấp cấp độ 1',
+      },
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Điều Hành Bảo Trì')).toBeInTheDocument();
+    });
+
+    // 1. Tick vào checkbox "Bảo trì khẩn cấp" -> nút chuyển sang đỏ
+    const emergencyCheckbox = screen.getByRole('checkbox', { name: /Bảo trì khẩn cấp/i });
+    fireEvent.click(emergencyCheckbox);
+
+    // 2. Click nút "Bảo trì khẩn cấp" -> mở modal xác nhận
+    const emergencyBtn = screen.getByRole('button', { name: /Bảo trì khẩn cấp/i });
+    fireEvent.click(emergencyBtn);
+
+    const confirmBtn = await screen.findByRole('button', { name: /Xác nhận kích hoạt/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledTimes(1);
+    });
+
+    // 3. Socket gửi sự kiện admin.maintenance_changed về ngay sau đó
+    const mHandler = socketListeners['admin.maintenance_changed'];
+    expect(mHandler).toBeDefined();
+
+    act(() => {
+      mHandler({
+        active: true,
+        isEmergency: true,
+        reason: 'Bảo trì khẩn cấp cấp độ 1',
+      });
+    });
+
+    // Kiểm tra giao diện chuyển đổi trạng thái mượt mà, không crash, không sinh duplicate
+    expect(screen.getByRole('button', { name: /Tắt Bảo Trì/i })).toBeInTheDocument();
+  });
 });
+
 

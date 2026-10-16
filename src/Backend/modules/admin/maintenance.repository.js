@@ -131,6 +131,38 @@ class MaintenanceRepository {
   }
 
   /**
+   * Nâng cấp bản ghi ONGOING thông thường sang EMERGENCY khi có sự cố khẩn cấp can thiệp
+   */
+  async updateOngoingToEmergency({ reason = null, activated_by = null } = {}) {
+    if (this.pool && typeof this.pool.query === 'function') {
+      try {
+        const query = `
+          UPDATE "maintenance_history"
+          SET "type" = 'EMERGENCY', "reason" = COALESCE($1, "reason"), "activated_by" = COALESCE($2, "activated_by")
+          WHERE "status" = 'ONGOING'
+          RETURNING *;
+        `;
+        const res = await this.pool.query(query, [reason, activated_by]);
+        return res.rows;
+      } catch (err) {
+        logger.error('[Maintenance Repository] updateOngoingToEmergency DB error, fallback to memory', { error: err.message });
+      }
+    }
+
+    // Memory fallback
+    const updated = [];
+    for (const item of this._inMemoryFallback) {
+      if (item.status === 'ONGOING') {
+        item.type = 'EMERGENCY';
+        if (reason) item.reason = reason;
+        if (activated_by) item.activated_by = activated_by;
+        updated.push(item);
+      }
+    }
+    return updated;
+  }
+
+  /**
    * Cập nhật trạng thái một bản ghi bảo trì theo ID (dùng khi chuyển SCHEDULED -> ONGOING hoặc CANCELLED)
    */
   async updateRecordStatus(id, { status, ended_at = null, started_at = null, reason = null } = {}) {

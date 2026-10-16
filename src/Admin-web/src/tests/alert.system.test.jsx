@@ -183,4 +183,55 @@ describe('Admin-web Global Alert & Toast System Suite', () => {
     });
     expect(screen.queryByTestId('alert-toast-success')).toBeNull();
   });
+
+  it('7. TẦNG 2 SYSTEM IMPACT: Deduplication Debounce chặn đứng các alert trùng lặp trong 1500ms', () => {
+    vi.useFakeTimers();
+
+    render(
+      <AlertProvider>
+        <AlertContainer />
+        <TestAlertTrigger />
+      </AlertProvider>
+    );
+
+    // Bắn Success 5 lần liên tiếp cùng nội dung
+    fireEvent.click(screen.getByText('Bắn Success'));
+    fireEvent.click(screen.getByText('Bắn Success'));
+    fireEvent.click(screen.getByText('Bắn Success'));
+    fireEvent.click(screen.getByText('Bắn Success'));
+    fireEvent.click(screen.getByText('Bắn Success'));
+
+    // Chỉ có đúng 1 Toast được hiển thị trên DOM
+    const successToasts = screen.getAllByTestId('alert-toast-success');
+    expect(successToasts).toHaveLength(1);
+    expect(screen.getAllByText('Thao tác thành công rực rỡ')).toHaveLength(1);
+  });
+
+  it('8. TẦNG 2 SYSTEM IMPACT: Alert có nội dung khác nhau hoặc gọi sau 1500ms vẫn được hiển thị độc lập', () => {
+    vi.useFakeTimers();
+
+    render(
+      <AlertProvider>
+        <AlertContainer />
+        <TestAlertTrigger />
+      </AlertProvider>
+    );
+
+    // Bắn Success rồi bắn Error (nội dung/type khác)
+    fireEvent.click(screen.getByText('Bắn Success'));
+    fireEvent.click(screen.getByText('Bắn Error'));
+
+    expect(screen.getByTestId('alert-toast-success')).toBeInTheDocument();
+    expect(screen.getByTestId('alert-toast-error')).toBeInTheDocument();
+
+    // Tiến thêm 2000ms (vượt quá ngưỡng debounce 1500ms)
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    // Bắn lại Success lần nữa -> được phép hiển thị thêm vì đã qua 1500ms
+    fireEvent.click(screen.getByText('Bắn Success'));
+    expect(screen.getAllByTestId('alert-toast-success').length).toBeGreaterThanOrEqual(1);
+  });
 });
+

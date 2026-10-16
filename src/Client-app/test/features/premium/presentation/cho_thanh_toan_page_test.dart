@@ -1,8 +1,10 @@
-/// Màn Đang chờ thanh toán `/premium/cho-thanh-toan` (spec Premium 9.3): mở
-/// link ngay khi vào; hỏi trạng thái mỗi 3 s khi đang hiện, hỏi ngay khi bấm
-/// "Tôi đã chuyển khoản" / khi socket báo lên gói; PAID → làm mới gói + Thành
-/// công + Xong pop hai lớp; EXPIRED / đếm ngược về 0 → Tạo đơn mới; rời màn
-/// thì dừng hỏi; mở link hỏng thì hiện link chép được.
+/// Màn Đang chờ thanh toán `/premium/cho-thanh-toan` (spec Premium 9.3 & Payment spec):
+/// mở link ngay khi vào; hiển thị mã nhận diện 6 ký tự; hỏi trạng thái mỗi 3 s khi đang hiện;
+/// hỏi ngay khi bấm "Tôi đã chuyển khoản" / khi socket báo lên gói;
+/// PAID → làm mới gói + Thành công + Xong pop hai lớp;
+/// WAITING_CONFIRMATION → Xác nhận thừa tiền + gọi API xacNhanNangCap;
+/// REFUND_PENDING → Cần xử lý hoàn tiền;
+/// EXPIRED / đếm ngược về 0 → Tạo đơn mới; rời màn thì dừng hỏi; mở link hỏng thì hiện link chép được.
 library;
 
 import 'dart:async';
@@ -27,6 +29,8 @@ class _ApiGia implements PaymentApi {
   final List<String> trangThai = [];
   int soLanHoiDon = 0;
   int soLanHoiGoi = 0;
+  int soLanXacNhan = 0;
+  bool? xacNhanChapNhan;
 
   @override
   Future<Map<String, Object?>> trangThaiDon(int orderCode) async {
@@ -47,6 +51,13 @@ class _ApiGia implements PaymentApi {
   }
 
   @override
+  Future<Map<String, Object?>> xacNhanNangCap({required int orderCode, required bool accept}) async {
+    soLanXacNhan++;
+    xacNhanChapNhan = accept;
+    return {'success': true};
+  }
+
+  @override
   Future<Map<String, Object?>> taoDon() => throw UnimplementedError();
   @override
   Future<List<Map<String, Object?>>> lichSu({int page = 1, int limit = 20}) =>
@@ -59,6 +70,7 @@ void main() {
     orderCode: 200370869,
     checkoutUrl: Uri.parse('https://pay.payos.vn/web/abc'),
     soTien: 49000,
+    recognitionCode: 'A8K9M2',
     hetHanLuc: DateTime(2026, 10, 6, 10, 30),
   );
 
@@ -113,7 +125,7 @@ void main() {
     await tester.pumpAndSettle();
     router.push('/premium/cho-thanh-toan', extra: d ?? don);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 400));
   }
 
   /// Trôi [giay] giây: đồng hồ giả lẫn timer của Flutter cùng tiến.
@@ -124,13 +136,28 @@ void main() {
     }
   }
 
-  testWidgets('chờ: số tiền, mã đơn, đếm ngược; mở link đúng MỘT lần khi vào', (tester) async {
+  testWidgets('chờ: số tiền, mã đơn, mã nhận diện 6 ký tự, đếm ngược; mở link đúng MỘT lần khi vào', (tester) async {
     await dung(tester);
     expect(find.text('49.000 đ'), findsOneWidget);
     expect(find.text('Mã đơn #200370869'), findsOneWidget);
+    expect(find.text('A8K9M2'), findsOneWidget);
     expect(find.textContaining('Đang chờ xác nhận'), findsOneWidget);
     expect(find.text('Còn 30:00'), findsOneWidget);
     expect(daMo, [don.checkoutUrl]);
+
+    // Thao tác chép mã nhận diện
+    final goi = <MethodCall>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (c) async {
+      goi.add(c);
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+
+    await tester.tap(find.byKey(const Key('cho-chep-ma')));
+    await tester.pump();
+    expect(goi.map((c) => c.method), contains('Clipboard.setData'));
+    expect(find.text('Đã chép'), findsOneWidget);
+
     await troi(tester, 61);
     expect(find.text('Còn 28:59'), findsOneWidget);
     expect(daMo.length, 1);
@@ -145,9 +172,6 @@ void main() {
     await troi(tester, 3);
     expect(api.soLanHoiDon, 1);
     await troi(tester, 3);
-    // Vòng xoay quay mãi nên KHÔNG `pumpAndSettle` khi còn ở trạng thái chờ —
-    // nó vừa không lắng vừa làm timer nổ thêm; hai `pump()` cho microtask của
-    // lamMoi() là đủ.
     await tester.pump();
     await tester.pump();
     expect(api.soLanHoiDon, 2);
@@ -160,6 +184,36 @@ void main() {
     await tester.tap(find.text('Xong'));
     await tester.pumpAndSettle();
     expect(find.text('TRƯỚC'), findsOneWidget, reason: 'pop hai lớp — về màn trước Nâng cấp');
+  });
+
+  testWidgets('WAITING_CONFIRMATION → hiện giao diện xác nhận thừa tiền; bấm Đồng ý gọi xacNhanNangCap(accept: true)', (tester) async {
+    api.trangThai.addAll(['WAITING_CONFIRMATION']);
+    await dung(tester);
+    await troi(tester, 3);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Xác nhận chuyển thừa tiền'), findsOneWidget);
+    expect(find.text('Đồng ý kích hoạt gói'), findsOneWidget);
+    expect(find.text('Từ chối & Yêu cầu hoàn tiền'), findsOneWidget);
+
+    await tester.tap(find.text('Đồng ý kích hoạt gói'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(api.soLanXacNhan, 1);
+    expect(api.xacNhanChapNhan, isTrue);
+    expect(find.text('Nâng cấp Premium thành công'), findsOneWidget);
+  });
+
+  testWidgets('REFUND_PENDING → hiện giao diện Cần xử lý hoàn tiền', (tester) async {
+    api.trangThai.addAll(['REFUND_PENDING']);
+    await dung(tester);
+    await troi(tester, 3);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cần xử lý hoàn tiền'), findsOneWidget);
+    expect(find.text('Tạo đơn mới'), findsOneWidget);
   });
 
   testWidgets('EXPIRED → câu hết hạn + Tạo đơn mới pop về Nâng cấp', (tester) async {

@@ -7,6 +7,7 @@ const AlertContext = createContext(null);
 export const AlertProvider = ({ children }) => {
   const [alerts, setAlerts] = useState([]);
   const timersRef = useRef({});
+  const recentAlertsRef = useRef(new Map());
   const settingsCtx = useSettingsSafe();
   const settingsRef = useRef(settingsCtx?.settings);
   settingsRef.current = settingsCtx?.settings;
@@ -22,6 +23,24 @@ export const AlertProvider = ({ children }) => {
 
   // Thêm mới một Alert
   const showAlert = useCallback(({ type = 'info', title = '', message = '', duration }) => {
+    // 1. Chống lặp thông báo (Deduplication debounce 1500ms)
+    const alertKey = `${type}:${title}:${message}`;
+    const now = Date.now();
+    const lastTime = recentAlertsRef.current.get(alertKey);
+    if (lastTime && (now - lastTime < 1500)) {
+      return null;
+    }
+    recentAlertsRef.current.set(alertKey, now);
+
+    // Tự dọn dẹp cache
+    if (recentAlertsRef.current.size > 20) {
+      for (const [k, t] of recentAlertsRef.current.entries()) {
+        if (now - t > 5000) {
+          recentAlertsRef.current.delete(k);
+        }
+      }
+    }
+
     const defaultDuration = settingsRef.current?.toastDuration !== undefined ? settingsRef.current.toastDuration : 4500;
     const finalDuration = duration !== undefined ? duration : defaultDuration;
 
