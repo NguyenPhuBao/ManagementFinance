@@ -151,8 +151,22 @@ class GoiSoTraCuu extends GoiSo {
         : 'Không có giao dịch nào khớp: ${tienTo.join('; ')}.';
   }
 
+  /// Câu về phần danh sách bị cắt ở trần — *"Còn 9 giao dịch khác chưa kể."*
+  /// (`KetQuaCongCu.soChuaKe`). `null` khi không lượt nào bị cắt. Mẫu câu kết bằng
+  /// nó; vòng lặp nối nó sau câu của mô hình.
+  String? get cauChuaKe {
+    final cau = <String>{
+      for (final kq in _luot)
+        if (kq.soChuaKe > 0) 'Còn ${kq.soChuaKe} ${kq.danhTuChuaKe} khác chưa kể.',
+    };
+    return cau.isEmpty ? null : cau.join(' ');
+  }
+
   /// Mọi câu phải nói thêm sau các câu đã hiện — lượt rỗng và lời từ chối chưa
   /// gỡ, câu của loại xảy ra TRƯỚC đứng trước. `null` khi không có gì.
+  ///
+  /// ⚠️ KHÔNG gồm [cauChuaKe]: vòng lặp đọc `null` ở đây là "rơi về mẫu câu";
+  /// gộp câu chưa kể vào là biến ca ấy thành một câu "còn N mục" trơ trọi.
   String? get cauNoiThem {
     final cau = [
       for (final loai in _thuTuNoiThem)
@@ -226,8 +240,8 @@ class GoiSoTraCuu extends GoiSo {
         muc: MucNhanXet.thieuDuLieu,
       );
     }
-    final ghiChu = cauChuaTraDuoc;
-    String noi(String cau) => ghiChu == null ? cau : '$cau $ghiChu';
+    final ghiChu = [cauChuaTraDuoc, cauChuaKe].whereType<String>().join(' ');
+    String noi(String cau) => ghiChu.isEmpty ? cau : '$cau $ghiChu';
     if (hang.isEmpty && tongHop.isEmpty) {
       // Mọi lượt THÀNH CÔNG đều rỗng — lúc này câu ấy đúng nghĩa.
       return NhanXet(

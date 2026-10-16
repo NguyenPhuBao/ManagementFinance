@@ -14,7 +14,7 @@
 /// Trang chủ) thì đoạn ấy được chọn ngay.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart';
@@ -26,7 +26,7 @@ import 'package:go_router/go_router.dart';
 import '../../category/presentation/category_test_fakes.dart';
 
 void main() {
-  CategoryTree treeOf(List<Category> defaults) => CategoryTree(
+  CategoryTree treeOf(List<CategoryEntity> defaults) => CategoryTree(
         groups: const [],
         ungroupedChildren: const [],
         defaultChildren: defaults,

@@ -1,9 +1,11 @@
 package com.flowmoney.flowmoney
 
+import android.Manifest
 import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -44,10 +46,20 @@ import java.io.IOException
  * (vào / ra màn hình của các app trong danh sách D1), `boDen` (mốc nút "Không có
  * giao dịch"), `datBat` (cờ máy + mốc + lịch WorkManager), `huyNhac`. Xem
  * `lib/core/notification/kenh_phien_ngan_hang.dart` và `PhienNganHang.kt`.
+ *
+ * Kênh `flowmoney/tu_chuyen_tien` — tự chuyển tiền chạy nền (2026-10-10):
+ * `henNen` (lượt WorkManager một-lần theo mốc + định kỳ 6 giờ); chiều ngược lại
+ * worker gọi `quetNgay` vào engine này khi app đang mở. Engine được gắn vào
+ * [TuChuyenTien] ở `configureFlutterEngine` và GỠ ở `cleanUpFlutterEngine`.
+ * Xem `lib/core/nen/kenh_tu_chuyen_tien.dart` và `TuChuyenTien.kt`.
+ *
+ * Kênh `flowmoney/micro` — giọng nói C4 (2026-10-12): `biChan` (quyền micro đã bị chặn hẳn chưa — gọi sau một lần
+ * xin bị từ chối), `moCaiDat` (trang thông tin ứng dụng). Xem `lib/features/transaction/data/datasources/kenh_micro.dart`.
  */
 class MainActivity : FlutterActivity() {
     private val kenhLuuTep = "flowmoney/luu_tep"
     private val kenhLyDoThoat = "flowmoney/ly_do_thoat"
+    private val kenhMicro = "flowmoney/micro"
     private val kenhBienDong = "flowmoney/bien_dong"
     private val kenhPhienNganHang = "flowmoney/phien_ngan_hang"
 
@@ -72,6 +84,26 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        TuChuyenTien.ganEngineApp(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TuChuyenTien.KENH)
+            .setMethodCallHandler { call, ket ->
+                try {
+                    when (call.method) {
+                        "henNen" -> {
+                            TuChuyenTien.hen(
+                                this,
+                                (call.argument<Number>("moc") ?: 0).toLong(),
+                                call.argument<Boolean>("coTuDong") ?: false,
+                            )
+                            ket.success(null)
+                        }
+                        else -> ket.notImplemented()
+                    }
+                } catch (e: Exception) {
+                    ket.error("loi_tu_chuyen_tien", e.message, null)
+                }
+            }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, kenhBienDong)
             .setMethodCallHandler { call, ket ->
@@ -189,6 +221,37 @@ class MainActivity : FlutterActivity() {
                     ket.error("loi_doc", e.message, null)
                 }
             }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, kenhMicro)
+            .setMethodCallHandler { call, ket ->
+                try {
+                    when (call.method) {
+                        // Chưa cấp mà Android thôi giải thích → người dùng đã chặn hẳn ("Không hỏi lại"): hộp xin quyền
+                        // không hiện nữa, chỉ còn trang thông tin ứng dụng. Dưới API 23 quyền cấp lúc cài → không chặn.
+                        "biChan" -> ket.success(
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                                checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED &&
+                                !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
+                        )
+                        "moCaiDat" -> {
+                            startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                            ket.success(null)
+                        }
+                        else -> ket.notImplemented()
+                    }
+                } catch (e: Exception) {
+                    ket.error("loi_micro", e.message, null)
+                }
+            }
+    }
+
+    /** Engine sắp bị huỷ — worker không được gửi `quetNgay` vào engine đã chết (sẽ chờ hết 3 phút). */
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        TuChuyenTien.ganEngineApp(null)
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     /**

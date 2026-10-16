@@ -9,7 +9,16 @@ abstract class TransactionLocalDataSource {
     DateTime from,
     DateTime to,
   );
+
+  /// Mọi giao dịch của tài khoản (bỏ hàng `deletedAt`, mới nhất trước) — `transactionDao.getAll`.
+  Future<List<TransactionEntity>> getAll(int idaccount);
+
+  /// Như [getAll], dạng stream — `transactionDao.watchAll`.
+  Stream<List<TransactionEntity>> watchAll(int idaccount);
   Future<void> addTransaction(TransactionEntity entity);
+
+  /// A5 mục 11.4 — N hàng trong MỘT giao tác: hỏng giữa chừng thì không hàng nào được ghi.
+  Future<void> addTransactions(List<TransactionEntity> entities);
   Future<void> updateTransaction(TransactionEntity entity);
   Future<void> deleteTransaction(String id);
 }
@@ -31,9 +40,25 @@ class TransactionLocalDataSourceImpl implements TransactionLocalDataSource {
   }
 
   @override
+  Future<List<TransactionEntity>> getAll(int idaccount) async =>
+      (await db.transactionDao.getAll(idaccount)).map(TransactionEntity.fromDrift).toList();
+
+  @override
+  Stream<List<TransactionEntity>> watchAll(int idaccount) => db.transactionDao
+      .watchAll(idaccount)
+      .map((list) => list.map(TransactionEntity.fromDrift).toList());
+
+  @override
   Future<void> addTransaction(TransactionEntity entity) async {
     await db.transactionDao.insert(entity.toCompanion());
   }
+
+  @override
+  Future<void> addTransactions(List<TransactionEntity> entities) => db.transaction(() async {
+        for (final e in entities) {
+          await db.transactionDao.insert(e.toCompanion());
+        }
+      });
 
   @override
   Future<void> updateTransaction(TransactionEntity entity) async {

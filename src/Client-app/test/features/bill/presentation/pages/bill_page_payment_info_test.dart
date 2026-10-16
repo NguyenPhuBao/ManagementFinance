@@ -6,6 +6,9 @@
 /// "Đã trả ngày…" và cho mở thẳng giao dịch từ hoá đơn.
 library;
 
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
@@ -39,20 +42,21 @@ class _FixedAuthBloc extends AuthBloc {
 
 class _FixedBillRepository implements BillRepository {
   _FixedBillRepository(this.bills, this.payments);
-  final List<Bill> bills;
+  final List<BillEntity> bills;
   final Map<String, Transaction> payments;
 
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
+  Stream<List<BillEntity>> watchBills(int idaccount) => Stream.value(bills);
 
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => payments;
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async =>
+      {for (final e in payments.entries) e.key: TransactionEntity.fromDrift(e.value)};
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _bill({required String id, required bool paid, DateTime? dueDate}) => Bill(
+BillEntity _bill({required String id, required bool paid, DateTime? dueDate}) => BillEntity(
       id: id,
       idaccount: 10,
       walletId: 'w1',
@@ -73,7 +77,6 @@ Bill _bill({required String id, required bool paid, DateTime? dueDate}) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 
@@ -87,6 +90,7 @@ void main() {
       await sl.unregister<AppDatabase>();
     }
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
     await db.walletDao.insert(WalletsCompanion.insert(
       id: 'w1',
       idaccount: 10,
@@ -129,7 +133,7 @@ void main() {
 
   Future<void> dungTrang(
     WidgetTester tester,
-    List<Bill> bills,
+    List<BillEntity> bills,
     Map<String, Transaction> payments,
   ) async {
     tester.view.physicalSize = const Size(411, 2000);
@@ -223,7 +227,7 @@ void main() {
         path: '/bills/:id',
         builder: (_, s) => Scaffold(
           body: Text('chi tiết ${s.pathParameters['id']} '
-              '${(s.extra as Bill?)?.name}'),
+              '${(s.extra as BillEntity?)?.name}'),
         ),
       ),
     ]);

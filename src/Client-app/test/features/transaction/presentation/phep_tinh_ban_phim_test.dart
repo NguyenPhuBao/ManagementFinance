@@ -3,7 +3,7 @@
 /// Văn phạm và các phép kẹp nằm ở `domain/ban_phim_so_tien.dart` và có tệp
 /// test riêng; ở đây chỉ canh **ba mối nối** mà tầng domain không với tới:
 ///
-/// 1. `_saveTransaction` phải **rút gọn** biểu thức, không `double.tryParse`
+/// 1. `ThemGiaoDichCubit.chuanBiLuu` phải **rút gọn** biểu thức, không `double.tryParse`
 ///    thẳng — `"50000+30000"` parse thẳng ra `null` rồi rơi về `0`, và chốt
 ///    `amount <= 0` báo *"Vui lòng nhập số tiền hợp lệ"* cho một con số người
 ///    dùng vừa gõ đúng.

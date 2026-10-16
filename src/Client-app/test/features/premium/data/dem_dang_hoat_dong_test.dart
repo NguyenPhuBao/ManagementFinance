@@ -143,6 +143,70 @@ void main() {
     expect(await dem().dem(LoaiTran.danhMucRieng, 10), 1);
   });
 
+  // ── Spec phân quyền client 2026-10-08 mục 4.2 — đóng lỗi 2 và 3 của mã backend viết sẵn ──
+
+  Future<void> danhMuc(String id, String ten,
+          {int idaccount = 10, bool macDinh = false, String classify = 'chi', bool xoa = false}) =>
+      db.categoryDao.insert(CategoriesCompanion.insert(
+        id: id,
+        idaccount: idaccount,
+        name: ten,
+        classify: classify,
+        isDefault: Value(macDinh),
+        deletedAt: xoa ? Value(now) : const Value.absent(),
+        updatedAt: now,
+      ));
+
+  test('⭐ 13 bản sao danh mục mặc định KHÔNG tính là danh mục riêng (lỗi 2)', () async {
+    const ten = [
+      'Ăn uống', 'Di chuyển', 'Giáo dục', 'Giải trí', 'Hóa đơn', 'Mua sắm', 'Nhà cửa',
+      'Y tế', 'Lương', 'Thưởng', 'Đầu tư', 'Cho vay', 'Đi vay',
+    ];
+    for (var i = 0; i < ten.length; i++) {
+      await danhMuc('khuon_$i', ten[i], idaccount: 0, macDinh: true);
+      await danhMuc('sao_$i', ten[i]); // seeder: bản sao isDefault = false
+    }
+    await danhMuc('rieng_1', 'Nuôi mèo');
+    await danhMuc('rieng_2', 'Cà phê sáng');
+    expect(await dem().dem(LoaiTran.danhMucRieng, 10), 2,
+        reason: 'Đếm cả 13 bản sao thì trần 5 chặn mọi tài khoản Basic tạo danh mục nào.');
+  });
+
+  test('danh mục cùng tên khuôn nhưng KHÁC phân loại là danh mục riêng; đã xoá mềm không tính',
+      () async {
+    await danhMuc('khuon', 'Ăn uống', idaccount: 0, macDinh: true);
+    await danhMuc('thu_an_uong', 'Ăn uống', classify: 'thu');
+    await danhMuc('da_xoa', 'Xe máy', xoa: true);
+    expect(await dem().dem(LoaiTran.danhMucRieng, 10), 1);
+  });
+
+  Future<void> hoaDon(String id, {String pay = 'Pending', bool daTra = false, String? truoc}) =>
+      db.billDao.insert(BillsCompanion.insert(
+        id: id,
+        idaccount: 10,
+        name: 'HĐ $id',
+        amount: 100,
+        dueDate: now,
+        isPaid: Value(daTra),
+        payStatus: Value(pay),
+        generatedFromBillId: truoc == null ? const Value.absent() : Value(truoc),
+        updatedAt: now,
+      ));
+
+  test('⭐ kỳ Skipped (bỏ qua) KHÔNG tính là hoá đơn đang mở (lỗi 3)', () async {
+    await hoaDon('bo_qua', pay: 'Skipped');
+    await hoaDon('ky_sau', truoc: 'bo_qua');
+    expect(await dem().dem(LoaiTran.hoaDon, 10), 1);
+  });
+
+  test('chuỗi hoá đơn lặp đã trả kỳ cũ, kỳ mới mở → 1', () async {
+    await hoaDon('ky_1', pay: 'Payed', daTra: true);
+    await hoaDon('ky_2', truoc: 'ky_1');
+    await hoaDon('qua_han', pay: 'Overdue');
+    expect(await dem().dem(LoaiTran.hoaDon, 10), 2,
+        reason: 'quá hạn vẫn còn phải trả — vẫn chiếm chỗ');
+  });
+
   test('DemDangHoatDong là một NguonDemDangHoatDong (để router tiêm bản giả)',
       () {
     expect(dem(), isA<NguonDemDangHoatDong>());

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/auth/dem_nguoc_xoa.dart';
+import '../../../auth/domain/dem_nguoc_xoa.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../../../auth/data/repositories/auth_repository.dart';
-import '../../../auth/presentation/an_the_cho_xoa.dart';
-import '../../../auth/presentation/huy_yeu_cau_xoa.dart';
+import '../../../auth/presentation/state/an_the_cho_xoa.dart';
+import '../../../auth/presentation/widgets/huy_yeu_cau_xoa.dart';
 
 /// Thẻ nhắc "Tài khoản đang chờ xoá" ở Trang chủ — sửa G33.
 ///

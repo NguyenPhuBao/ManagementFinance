@@ -9,9 +9,15 @@
 /// Dòng `// A2` là câu A2 (2026-09-29) đưa về phiên một tool — mỗi câu đổi sang
 /// đúng tool mà mô hình đã tự chọn ở mốc 72 câu, và cả 18 câu khi ấy đều ✅.
 ///
+/// Dòng `// B8` (2026-10-07): câu xin N khoản / giao dịch — luật định tuyến về tool
+/// giao dịch (mô hình học chỉ được p=0,63 cho "3 khoản thu mới nhất"). C16 trước đó
+/// cũng đã về tool giao dịch qua mô hình (định tuyến MỀM); nay nguồn là luật nên tool
+/// được ÉP chạy và câu đi đường nhanh. Đã đo lại trên máy — xem mục B8 `AI_EDGE_FEATURE.md`.
+///
 /// Từ dự án B (2026-10-02) bảng còn canh ĐƯỜNG GHÉP luật → mô hình nhỏ (nhóm
-/// cuối tệp): 31 câu theo luật không đổi đường, bốn câu ngoài phạm vi không bị
-/// định tuyến, 37 câu giao dịch chỉ đi phiên sáu tool hoặc tool giao dịch.
+/// cuối tệp): 32 câu theo luật không đổi đường, bốn câu ngoài phạm vi không bị
+/// định tuyến, 36 câu giao dịch chỉ đi phiên sáu tool hoặc tool giao dịch (31 / 37
+/// trước B8 — C16 sang cột luật).
 ///
 /// Câu nguyên văn từ buổi đo trọn 72 câu (Realme, 2026-09-28, `congF_tron.sh`);
 /// ba chữ gõ gấp đôi vì bàn phím Telex (`muaxxe`, `tesst`, `Netfflix` — bẫy 4.41)
@@ -61,7 +67,7 @@ const Map<String, (String, String?, String)> kBang72Cau = {
   'C13': ('vi tien mat thang nay chi nhung gi', null, 'truy_van_giao_dich'),
   'C14': ('thang nay toi chi gi cho mua sam tu vi tien mat', null, 'truy_van_giao_dich'),
   'C15': ('lan gan nhat toi chi cho di chuyen la ngay nao', null, 'truy_van_giao_dich'),
-  'C16': ('5 khoan chi gan day nhat cua toi', null, 'truy_van_giao_dich'),
+  'C16': ('5 khoan chi gan day nhat cua toi', 'truy_van_giao_dich', 'truy_van_giao_dich'), // B8
   'C17': ('tim cac giao dich co ghi chu hoa don', null, 'truy_van_giao_dich'),
   'C18': ('khoan chi lon nhat thang nay la gi', null, 'truy_van_giao_dich'),
   'C19': ('cac khoan chi cho giao duc tu vi test', null, 'truy_van_giao_dich'),
@@ -110,12 +116,12 @@ const Map<String, (String, String?, String)> kBang72Cau = {
 void main() {
   test('đủ 72 câu', () => expect(kBang72Cau.length, 72));
 
-  test('cột nhãn: 31 câu theo luật · 37 câu giao dịch · 4 câu không định tuyến', () {
+  test('cột nhãn: 32 câu theo luật · 36 câu giao dịch · 4 câu không định tuyến', () {
     final v = kBang72Cau.values;
-    expect(v.where((x) => x.$2 != null), hasLength(31));
+    expect(v.where((x) => x.$2 != null), hasLength(32));
     expect(v.where((x) => x.$2 != null && x.$3 != x.$2), isEmpty,
         reason: 'câu luật đã định tuyến thì nhãn chính là tool của luật');
-    expect(v.where((x) => x.$2 == null && x.$3 == kTenCongCuTruyVan), hasLength(37));
+    expect(v.where((x) => x.$2 == null && x.$3 == kTenCongCuTruyVan), hasLength(36));
     expect(
         kBang72Cau.entries.where((e) => e.value.$3 == kNhanKhongDinhTuyen).map((e) => e.key),
         ['DC1', 'E21', 'E22', 'F16']);
@@ -134,7 +140,7 @@ void main() {
   // một câu đã đo bị kéo sang tool khác thì đỏ), KHÔNG đo khả năng tổng quát —
   // phép đo ấy là bộ đo khoá `test/tool/dinh_tuyen/bo_do.tsv`.
   group('đường ghép luật → mô hình', () {
-    test('⭐ 31 câu theo luật KHÔNG đổi đường: vẫn tool của luật, nguồn luật', () {
+    test('⭐ 32 câu theo luật KHÔNG đổi đường: vẫn tool của luật, nguồn luật', () {
       for (final e in kBang72Cau.entries.where((e) => e.value.$2 != null)) {
         final r = dinhTuyenCauHoi(e.value.$1);
         expect((r.ten, r.nguon), (e.value.$2, NguonDinhTuyen.luat), reason: e.key);
@@ -149,7 +155,7 @@ void main() {
       }
     });
 
-    test('⭐ 37 câu giao dịch: phiên sáu tool HOẶC tool giao dịch — không bao giờ tool khác', () {
+    test('⭐ 36 câu giao dịch: phiên sáu tool HOẶC tool giao dịch — không bao giờ tool khác', () {
       final cau = kBang72Cau.entries
           .where((e) => e.value.$2 == null && e.value.$3 == kTenCongCuTruyVan)
           .toList();
@@ -176,7 +182,7 @@ void main() {
   // nhanh khi đường ghép định tuyến về tool giao dịch VÀ luật đọc đủ tham số. Ghim
   // vế LUẬT — đổi luật là đổi đường của câu đã đo; vế mô hình đổi theo mỗi lần huấn
   // luyện lại (không phải lỗi) nên chỉ in, như ca bên trên.
-  test('⭐ đường nhanh: luật đọc đủ 34/37 câu giao dịch — C12 ("khoản" trơn), C20 · E6 ("nạp tiền") thì không', () {
+  test('⭐ đường nhanh: luật đọc đủ 33/36 câu giao dịch — C12 ("khoản" trơn), C20 · E6 ("nạp tiền") thì không', () {
     final cau = kBang72Cau.entries.where((e) => e.value.$2 == null && e.value.$3 == kTenCongCuTruyVan);
     final khongDu = {
       for (final e in cau)

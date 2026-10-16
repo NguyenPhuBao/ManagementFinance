@@ -33,6 +33,7 @@ import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 const accountId = 7;
 const idVi = '11111111-1111-4111-8111-111111111111';
@@ -127,7 +128,7 @@ void main() {
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     client = _Client();
-    engine = SyncEngine(dioClient: client, db: db, connectivity: _Online());
+    engine = taoSyncEngineThu(dioClient: client, db: db, connectivity: _Online());
 
     await db.walletDao.insert(WalletsCompanion(
       id: const Value(idVi),

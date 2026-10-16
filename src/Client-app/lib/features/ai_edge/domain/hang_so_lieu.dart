@@ -110,6 +110,17 @@ class KetQuaCongCu {
   /// `kiemKy`: câu nói đúng chữ ấy thì không bị chắn oan. KHÔNG vào [json].
   final List<String> kyTuongDuong;
 
+  /// Số đối tượng KHỚP câu hỏi mà không vào [hang] vì trần `kToiDaMucMoiGoi`
+  /// (2026-10-09, đo OnePlus: C9 kể 4/13 khoản, F11 kể 4 hoá đơn rồi nói một
+  /// tổng lớn hơn — người đọc tưởng cộng sai). `GoiSoTraCuu.cauChuaKe` dựng câu
+  /// *"Còn N [danhTuChuaKe] khác chưa kể."* cho mẫu câu và cho vòng lặp nối sau
+  /// câu của mô hình. **Không** vào [json]: mô hình không biết N nên không tự nói
+  /// nó, và câu nối thêm không bao giờ lặp lại câu của mô hình.
+  final int soChuaKe;
+
+  /// Danh từ của câu chưa kể: *giao dịch · hoá đơn · ví · mục tiêu · ngân sách*.
+  final String danhTuChuaKe;
+
   const KetQuaCongCu({
     required this.hang,
     required this.tongHop,
@@ -121,6 +132,8 @@ class KetQuaCongCu {
     this.doiTuongRong = 'giao dịch',
     this.chiMauCau = false,
     this.kyTuongDuong = const [],
+    this.soChuaKe = 0,
+    this.danhTuChuaKe = '',
   })  : loi = null,
         choNguoiDung = null,
         thamSoGo = const [];
@@ -141,6 +154,8 @@ class KetQuaCongCu {
         doiTuongRong = 'giao dịch',
         chiMauCau = false,
         kyTuongDuong = const [],
+        soChuaKe = 0,
+        danhTuChuaKe = '',
         loi = vi;
 
   /// Bản sao có THÊM: bộ lọc (đầu / cuối), số liệu bộ lọc, tổng hợp, chữ kèm,
@@ -155,6 +170,8 @@ class KetQuaCongCu {
     List<String> tenLienQuanThem = const [],
     bool chiMauCauThem = false,
     List<String> kyTuongDuongThem = const [],
+    int? soChuaKeMoi,
+    String? danhTuChuaKeMoi,
   }) {
     if (loi != null) return this;
     return KetQuaCongCu(
@@ -168,6 +185,8 @@ class KetQuaCongCu {
       doiTuongRong: doiTuongRong,
       chiMauCau: chiMauCau || chiMauCauThem,
       kyTuongDuong: [...kyTuongDuong, ...kyTuongDuongThem],
+      soChuaKe: soChuaKeMoi ?? soChuaKe,
+      danhTuChuaKe: danhTuChuaKeMoi ?? danhTuChuaKe,
     );
   }
 

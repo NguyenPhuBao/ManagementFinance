@@ -15,7 +15,7 @@ class Categories extends Table {
   // ── Business fields ──────────────────────────────────────────────────────
   TextColumn get name      => text()();
   TextColumn get classify  => text()();
-  // 'chi' | 'thu' | 'vay_no' — xem `kCategoryClassifies` (core/category).
+  // 'chi' | 'thu' | 'vay_no' — xem `kCategoryClassifies` (features/category/domain/category_classify.dart).
   // Không có 'transfer': khoản chuyển ví là LOẠI giao dịch, không có danh mục.
 
   TextColumn get icon    => text().withDefault(const Constant('category'))();

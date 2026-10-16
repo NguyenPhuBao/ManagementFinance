@@ -177,6 +177,8 @@ Stream<SuKienGac> hoiBangCongCu(
         if (soCauQua == 0) {
           log('[SLM][tool] lượt $luot: câu trượt kiểm khi chưa câu nào hiện → mẫu câu (L2)');
           yield CauQua(goi.mauCau().cau);
+        } else if (goi.cauChuaKe case final c?) {
+          yield CauQua(c);
         }
         return;
       }
@@ -209,8 +211,11 @@ Stream<SuKienGac> hoiBangCongCu(
           final nhan = _nhanLui(goi);
           log('[SLM][tool] lượt $luot: ${_viSaoDong(goi)} → '
               '${soCauQua == 0 ? 'mẫu câu' : 'nối câu phải nói thêm'} ($nhan)');
+          final noiThem = goi.cauNoiThem;
           yield CauQua(
-            soCauQua == 0 ? goi.mauCau().cau : (goi.cauNoiThem ?? goi.mauCau().cau),
+            soCauQua == 0 || noiThem == null
+                ? goi.mauCau().cau
+                : [noiThem, goi.cauChuaKe].whereType<String>().join(' '),
           );
           log('[SLM][tool] xong sau ${dongHo.elapsedMilliseconds} ms: $soLanGoi lời gọi, $soCauQua câu');
           return;
@@ -218,6 +223,11 @@ Stream<SuKienGac> hoiBangCongCu(
         if (soCauQua == 0) {
           log('[SLM][tool] lượt $luot: trả lời rỗng → mẫu câu (L2)');
           yield CauQua(goi.mauCau().cau);
+        } else if (goi.cauChuaKe case final c?) {
+          // Câu của mô hình kể từ ≤ 4 hàng mà không biết còn hàng nào (N không
+          // vào JSON) — nói thay nó (C9, F11 đo OnePlus 2026-10-09).
+          log('[SLM][tool] lượt $luot: danh sách bị cắt trần → nối câu chưa kể');
+          yield CauQua(c);
         }
         log('[SLM][tool] xong sau ${dongHo.elapsedMilliseconds} ms: $soLanGoi lời gọi, $soCauQua câu');
         return;
@@ -324,7 +334,11 @@ Stream<SuKienGac> _vietCauDuongNhanh(
       yield CauQua(goi.mauCau().cau);
     } else {
       yield* Stream.fromIterable(daGiu);
+      if (goi.cauChuaKe case final c?) yield CauQua(c);
     }
+  } else if (soCau > 0 && goi.cauChuaKe != null) {
+    log('[SLM][tool] đường nhanh: danh sách bị cắt trần → nối câu chưa kể');
+    yield CauQua(goi.cauChuaKe!);
   }
   if (soCau == 0) {
     log('[SLM][tool] đường nhanh: chưa câu nào qua kiểm → mẫu câu (L2)');

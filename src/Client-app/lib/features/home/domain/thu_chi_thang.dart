@@ -1,4 +1,4 @@
-import '../../../core/database/app_database.dart';
+import '../../transaction/data/models/transaction_entity.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 import '../../analytics/domain/thong_ke_thang.dart';
 
@@ -18,7 +18,7 @@ import '../../analytics/domain/thong_ke_thang.dart';
 /// 15.135.000 đ. Người dùng chốt con số của Phân tích là con số đúng.
 /// ⚠️ Đừng viết lại vòng cộng ở đây — một vòng thứ hai là định nghĩa thứ hai.
 ({double thu, double chi}) thuChiThangCua(
-  Iterable<Transaction> ds,
+  Iterable<TransactionEntity> ds,
   DateTime now,
 ) {
   final thang = Ky.thang(now.year, now.month);

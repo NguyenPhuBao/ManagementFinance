@@ -36,7 +36,8 @@ class TrangThaiGoi {
   final int gia;
   final int soNgayGoi;
 
-  /// Bảng phân quyền tính năng động (TOGGLE: ai_assistant, ai_quick_input...)
+  /// Bảng quyền bật/tắt server trả (`features`) cho gói HIỆU LỰC lúc [nhanLuc]. Chỉ đọc qua `duocDung`
+  /// (`quyen_tinh_nang.dart`) — đọc thẳng là bỏ qua phép xét hạn (test quét 21).
   final Map<String, bool> quyenTinhNang;
 
   static TrangThaiGoi basicMacDinh(DateTime nhanLuc) =>
@@ -44,15 +45,6 @@ class TrangThaiGoi {
 
   bool laPremium(DateTime now) =>
       loai == LoaiGoi.premium && (hetHan == null || hetHan!.isAfter(now));
-
-  /// Kiểm tra quyền được dùng của một tính năng cụ thể.
-  /// Ưu tiên cấu hình động trong [quyenTinhNang], fallback theo [fallback] hoặc [laPremium].
-  bool duocDung(String maTinhNang, {bool Function()? fallback}) {
-    if (quyenTinhNang.containsKey(maTinhNang)) {
-      return quyenTinhNang[maTinhNang] == true;
-    }
-    return fallback != null ? fallback() : laPremium(DateTime.now());
-  }
 
   /// Số ngày LỊCH còn lại (giờ địa phương); `0` = hết hạn trong hôm nay.
   /// `null` khi không còn Premium hoặc chưa biết hạn — không bao giờ âm.

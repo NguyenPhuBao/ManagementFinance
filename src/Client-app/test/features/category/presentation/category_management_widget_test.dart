@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/presentation/pages/category_add_page.dart';
 import 'package:flowmoney/features/category/presentation/pages/category_group_page.dart';
@@ -18,7 +18,7 @@ import 'category_test_fakes.dart';
 void main() {
   final now = DateTime(2026, 8, 21);
 
-  Category category({
+  CategoryEntity category({
     required String id,
     required String name,
     int idaccount = 1,
@@ -27,7 +27,7 @@ void main() {
     bool isDefault = false,
     String? parentId,
   }) =>
-      Category(
+      CategoryEntity(
         id: id,
         idaccount: idaccount,
         name: name,
@@ -38,10 +38,8 @@ void main() {
         isGroup: isGroup,
         isDefault: isDefault,
         isDeleted: false,
-        isLocalOnly: !isDefault,
         aiCoDinh: false,
         syncStatus: 'pending',
-        syncRetryCount: 0,
         updatedAt: now,
       );
 
@@ -387,7 +385,7 @@ void main() {
         defaultChildren: const [],
       ),
     );
-    Category? returned;
+    CategoryEntity? returned;
     final router = GoRouter(
       initialLocation: '/start',
       routes: [
@@ -397,7 +395,7 @@ void main() {
             body: Center(
               child: ElevatedButton(
                 onPressed: () async {
-                  returned = await context.push<Category>('/category');
+                  returned = await context.push<CategoryEntity>('/category');
                 },
                 child: const Text('Mở chọn danh mục'),
               ),
@@ -472,7 +470,7 @@ void main() {
   testWidgets('ignores a delayed suggestion after the transaction type changes',
       (tester) async {
     final food = category(id: 'food', name: 'Ăn uống');
-    final expenseCategories = Completer<List<Category>>();
+    final expenseCategories = Completer<List<CategoryEntity>>();
     final repository = FakeCategoryRepository(
       selectableLoader: (_, classify) =>
           classify == 'chi' ? expenseCategories.future : Future.value(const []),

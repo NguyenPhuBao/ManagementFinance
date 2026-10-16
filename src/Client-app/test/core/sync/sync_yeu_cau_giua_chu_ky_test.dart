@@ -27,8 +27,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _Online implements Connectivity {
   @override
@@ -119,7 +119,7 @@ void main() {
   test('yêu cầu đến giữa chu kỳ đang chạy được NỢ lại và chạy bù, '
       'không bị nuốt', () async {
     final adapter = _ChamAdapter();
-    final engine = SyncEngine(
+    final engine = taoSyncEngineThu(
       dioClient: _Client(adapter),
       db: db,
       connectivity: _Online(),
@@ -161,7 +161,7 @@ void main() {
 
   test('nhiều yêu cầu dồn vào giữa một chu kỳ chỉ nợ MỘT lần chạy bù', () async {
     final adapter = _ChamAdapter();
-    final engine = SyncEngine(
+    final engine = taoSyncEngineThu(
       dioClient: _Client(adapter),
       db: db,
       connectivity: _Online(),

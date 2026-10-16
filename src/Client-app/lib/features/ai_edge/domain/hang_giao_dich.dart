@@ -17,6 +17,7 @@ import 'goi_so.dart';
 import 'hang_so_lieu.dart';
 import 'loi_tham_so.dart';
 import 'ma_ky.dart';
+import 'ten_ngan_giao_dich.dart';
 
 /// Mã tham số `chieu` của mô hình → chiều. ⚠️ Không dùng chữ trần của cột
 /// `type` làm mã — test quét 14 cấm chúng trong `ai_edge/`.
@@ -97,15 +98,16 @@ KetQuaCongCu hangGiaoDich(
     hang: [
       for (final d in kq.dong)
         HangSoLieu(
-          ten: d.tieuDe,
+          // B8 ◐: tên ngắn — tin ngân hàng bỏ mã giao dịch (`ten_ngan_giao_dich.dart`).
+          ten: tenNganGiaoDich(d.tieuDe),
           trangThai: chuChon == null ? _trangThai(d) : '$chuChon · ${_trangThai(d)}',
           canhBao: false,
           soLieu: [
             soTien('Số tiền', d.soTien,
-                ten: d.tieuDe,
+                ten: tenNganGiaoDich(d.tieuDe),
                 nhanKhac: _nhanChieu(d.chieu),
                 nhanXungDot: _nhanChieu(_nguoc(d.chieu))),
-            soNgayThang('Ngày', d.ngay, ten: d.tieuDe, now: now),
+            soNgayThang('Ngày', d.ngay, ten: tenNganGiaoDich(d.tieuDe), now: now),
           ],
         ),
     ],

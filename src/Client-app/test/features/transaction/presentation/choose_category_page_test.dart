@@ -1,4 +1,4 @@
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/choose_category_page.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +11,7 @@ import '../../category/presentation/category_test_fakes.dart';
 /// chỉ có hai — bốn danh mục vay/nợ mặc định vì thế tạo được mà không gán
 /// được vào giao dịch nào (0 giao dịch ở cả server lẫn máy thật, 2026-09-05).
 void main() {
-  CategoryTree treeOf(List<Category> defaults) => CategoryTree(
+  CategoryTree treeOf(List<CategoryEntity> defaults) => CategoryTree(
         groups: const [],
         ungroupedChildren: const [],
         defaultChildren: defaults,

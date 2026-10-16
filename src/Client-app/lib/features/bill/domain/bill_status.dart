@@ -7,8 +7,8 @@
 /// tháng sau.
 library;
 
-import '../../../core/database/app_database.dart';
-import '../../../core/notification/notification_rules.dart';
+import '../data/models/bill_entity.dart';
+import '../../notification/domain/notification_rules.dart';
 import 'bill_pay_status.dart';
 
 /// Năm trạng thái một hoá đơn có thể mang trên danh sách.
@@ -33,7 +33,7 @@ DateTime _dauNgay(DateTime t) => DateTime(t.year, t.month, t.day);
 /// Ngưỡng "sắp đến hạn" lấy từ [billLeadDays] — **cùng một định nghĩa** với bộ
 /// luật thông báo. Hai mốc riêng thì dải nhắc và nhãn trên danh sách nói hai
 /// chuyện khác nhau về cùng một hoá đơn.
-BillDisplayStatus billDisplayStatusOf(Bill bill, DateTime now) {
+BillDisplayStatus billDisplayStatusOf(BillEntity bill, DateTime now) {
   if (daCoKhoanChi(bill)) return BillDisplayStatus.paid;
   // TRƯỚC mọi phép so ngày: một kỳ bỏ qua đã trễ hạn vẫn là kỳ bỏ qua, không
   // phải kỳ quá hạn. Đặt nhánh này sau là hiện nhãn đỏ "QUÁ HẠN" cho một
@@ -57,14 +57,14 @@ BillDisplayStatus billDisplayStatusOf(Bill bill, DateTime now) {
 /// Hai nhóm của danh sách hoá đơn, tương ứng hai tab.
 class BillSections {
   /// Còn phải trả — hạn gần nhất lên đầu, nên hoá đơn quá hạn nằm trên cùng.
-  final List<Bill> chuaDong;
+  final List<BillEntity> chuaDong;
 
   /// Đã đóng sổ: kỳ đã trả **và** kỳ đã bỏ qua. Kỳ mới nhất lên đầu.
   ///
   /// Tên trường cố ý **không** phải `paid`: từ 2026-09-12 nhóm này chứa cả kỳ
   /// chưa hề được trả đồng nào. Tab hiển thị nó cũng đổi tên theo, từ "Đã
   /// thanh toán" sang "Lịch sử", vì cùng lý do.
-  final List<Bill> daDong;
+  final List<BillEntity> daDong;
 
   const BillSections({this.chuaDong = const [], this.daDong = const []});
 }
@@ -78,9 +78,9 @@ class BillSections {
 ///
 /// **Không sắp xếp tại chỗ**: danh sách đến từ stream của bloc và nhiều nơi
 /// khác đang đọc chung nó.
-BillSections splitBills(List<Bill> bills) {
-  final chuaDong = <Bill>[];
-  final daDong = <Bill>[];
+BillSections splitBills(List<BillEntity> bills) {
+  final chuaDong = <BillEntity>[];
+  final daDong = <BillEntity>[];
   for (final b in bills) {
     (conPhaiTra(b) ? chuaDong : daDong).add(b);
   }
@@ -128,7 +128,7 @@ class BillSummary {
 ///
 /// Vì sao **không** chặn ở đầu tháng: nợ cũ chưa trả vẫn là tiền phải trả.
 /// Cắt nó ra khỏi thẻ là giấu đúng khoản đáng lo nhất.
-BillSummary summarizeBills(List<Bill> bills, DateTime now) {
+BillSummary summarizeBills(List<BillEntity> bills, DateTime now) {
   // Đầu tháng SAU. `DateTime(y, m + 1, 1)` tự sang năm mới khi m = 12.
   final cuoiKy = DateTime(now.year, now.month + 1, 1);
 

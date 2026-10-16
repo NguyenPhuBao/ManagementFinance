@@ -92,17 +92,25 @@ void main() {
     );
   });
 
-  testWidgets('⚠️ chấm ngày đầu/cuối không bị cắt nửa — không cắt trái/phải (G55)',
+  testWidgets('⚠️ chấm ngày đầu/cuối không bị cắt nửa — trục ngang nới hai đầu (G79)',
       (t) async {
     await dung(t, goal: mt(batDau: DateTime(2026, 3, 1)), khoan: khoanMau);
 
-    final c = t.widget<LineChart>(find.byType(LineChart)).data.clipData;
-    expect((c.left, c.right), (false, false),
-        reason: 'Chấm của khoản đầu và điểm cuối nằm đúng minX/maxX — cắt '
-            'trái/phải là mất một nửa chấm (Realme 2026-09-29).');
-    expect((c.top, c.bottom), (true, true),
-        reason: 'Trục dọc giữ phòng thủ bẫy 4.17: điểm âm từng kéo đường tràn '
-            'khỏi thẻ ngay ở biểu đồ này (2026-09-09).');
+    final data = t.widget<LineChart>(find.byType(LineChart)).data;
+    final xs = [
+      for (final b in data.lineBarsData)
+        for (final s in b.spots) s.x,
+    ];
+    expect(data.minX, lessThan(xs.reduce((a, b) => a < b ? a : b)),
+        reason: 'Chấm của khoản đầu nằm đúng minX là mất nửa chấm: `vertical()` '
+            'của fl_chart 1.2.0 vẫn cắt mép trái/phải (G55 tưởng là không; '
+            'Realme 2026-10-07).');
+    expect(data.maxX, greaterThan(xs.reduce((a, b) => a > b ? a : b)),
+        reason: 'Chấm điểm cuối nằm đúng maxX là mất nửa chấm (G79).');
+    final c = data.clipData;
+    expect((c.left, c.right, c.top, c.bottom), (true, true, true, true),
+        reason: 'Giữ phòng thủ bẫy 4.17: điểm âm từng kéo đường tràn khỏi thẻ '
+            'ngay ở biểu đồ này (2026-09-09).');
   });
 
   testWidgets('chậm hơn kế hoạch thì chú thích nói rõ thiếu bao nhiêu tiền',

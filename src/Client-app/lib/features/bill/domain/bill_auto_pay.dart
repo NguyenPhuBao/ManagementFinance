@@ -18,13 +18,17 @@
 /// - Trả bù nhiều kỳ là trả hàng này, rồi nhìn kỳ kế tiếp vừa sinh ra.
 library;
 
-import '../../../core/database/app_database.dart';
+import '../data/models/bill_entity.dart';
 import 'bill_pay_status.dart';
 
 /// Dòng phụ hiện dưới công tắc khi bật, dùng chung cho form Thêm và Sửa.
 ///
-/// Ba điều người dùng cần biết trước khi uỷ quyền: trừ ví nào, lúc nào (bộ
-/// chạy chỉ chạy khi app mở), và chuyện gì xảy ra khi họ dùng nhiều máy.
+/// Ba điều người dùng cần biết trước khi uỷ quyền: trừ ví nào, lúc nào, và
+/// chuyện gì xảy ra khi họ dùng nhiều máy.
+///
+/// [chayNen] (`coChayNen` — Android, spec 2026-10-10-tu-chuyen-tien-chay-nen
+/// mục 6): lượt nền tự trả vào ngày đến hạn kể cả khi app đóng. Nơi khác bộ tự
+/// trả chỉ chạy khi app mở — câu cũ.
 ///
 /// ⚠️ Câu cuối đổi ngày **2026-09-13** (bước 12). Bản trước dặn *"Chỉ nên bật
 /// trên một thiết bị"* vì hai lý do nay đã hết:
@@ -37,8 +41,9 @@ import 'bill_pay_status.dart';
 ///
 /// Điều người dùng thật sự cần biết nay là **chuyện gì xảy ra** khi hai máy
 /// cùng trả, chứ không phải một lời dặn họ không thi hành được.
-const String kBillAutoPayHint =
-    'Khi bạn mở app vào ngày đến hạn, hoá đơn được trả từ ví thanh toán ở '
+String goiYTuTra({required bool chayNen}) =>
+    '${chayNen ? 'Vào ngày đến hạn' : 'Khi bạn mở app vào ngày đến hạn'}, '
+    'hoá đơn được trả từ ví thanh toán ở '
     'trên và ghi thành một khoản chi. Kỳ bỏ lỡ được trả bù, tối đa 3 kỳ mỗi '
     'lần. Cài đặt này áp cho hoá đơn trên mọi thiết bị; nếu hai máy cùng trả '
     'một kỳ thì chỉ một khoản chi được giữ lại.';
@@ -65,7 +70,7 @@ DateTime _dauNgay(DateTime t) => DateTime(t.year, t.month, t.day);
 ///
 /// Thiếu ví hoặc danh mục thì không chạy: khoản chi sinh ra sẽ bị `/sync/push`
 /// từ chối ở mọi chu kỳ và kẹt hàng đợi đẩy (quy tắc 4 `CLAUDE.md`).
-bool denLuotTuTra(Bill bill, DateTime now) {
+bool denLuotTuTra(BillEntity bill, DateTime now) {
   if (!bill.autoPayEnabled) return false;
   if (bill.isDeleted) return false;
   if (!conPhaiTra(bill)) return false;
@@ -124,3 +129,36 @@ String khoaKyTuTra(String billId, DateTime dueDate) =>
     '$billId:${dueDate.year.toString().padLeft(4, '0')}-'
     '${dueDate.month.toString().padLeft(2, '0')}-'
     '${dueDate.day.toString().padLeft(2, '0')}';
+
+/// Kết quả của **một** kỳ tự trả, để nơi gọi dựng thông báo.
+///
+/// Cố ý không mang câu chữ: nội dung thông báo nằm trọn trong
+/// `notification_rules.dart` cùng các luật còn lại — cùng lối với
+/// `GoalAutoDepositEvent`.
+///
+/// Dời từ tệp runner về domain 2026-10-15 (spec Entity Thông báo mục 7.1) để `notification_rules` ở `domain/` không import `application/`.
+class BillAutoPayEvent {
+  const BillAutoPayEvent({
+    required this.billId,
+    required this.billName,
+    required this.ky,
+    required this.loai,
+    required this.soTien,
+    this.tenVi,
+  });
+
+  final String billId;
+  final String billName;
+
+  /// Ngày đến hạn của kỳ. Đi vào khoá chống trùng của thông báo.
+  final DateTime ky;
+
+  final LoaiTuTra loai;
+
+  /// Số tiền thật sự đã trả. 0 với mọi nhánh không trả được.
+  final double soTien;
+
+  /// Tên ví đã trừ, để câu thông báo nói rõ tiền đi từ đâu. `null` khi ví
+  /// không còn.
+  final String? tenVi;
+}

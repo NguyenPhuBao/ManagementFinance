@@ -41,7 +41,8 @@ class BillStatusHeader extends StatelessWidget {
 
   /// Dòng thứ ba: "Danh mục • Ví". Tách khỏi [subtitle] chứ không nối vào,
   /// vì gộp một dòng thì ở 411dp phần ví bị `ellipsis` nuốt mất — đúng thứ
-  /// người dùng cần biết trước khi bấm Thanh toán.
+  /// người dùng cần biết trước khi bấm Thanh toán. Chip cùng hàng thì dòng
+  /// này trải rộng dưới cả chip (G52); [_vuaMotHang] vì thế không đo nó.
   final String? meta;
 
   static const _kieuTen = TextStyle(fontSize: 14, fontWeight: FontWeight.w600);
@@ -56,7 +57,7 @@ class BillStatusHeader extends StatelessWidget {
 
   /// Một hàng có đủ chỗ cho cột chữ **và** chip không — đo bề rộng thật ở cỡ
   /// chữ đang dùng (G74, 2026-10-07). Cột chữ cần chỗ cho dòng **dài nhất**
-  /// của tên và hạn trả; dòng "danh mục • ví" được `ellipsis` nên không tính.
+  /// của tên và hạn trả; dòng "danh mục • ví" trải rộng dưới chip (G52) nên không tính.
   bool _vuaMotHang(BuildContext context, double rong) {
     var cot = doRongChu(context, title, _kieuTen);
     for (final dong in subtitle.split('\n')) {
@@ -76,7 +77,8 @@ class BillStatusHeader extends StatelessWidget {
     // vừa, chip xuống dưới cột chữ (người dùng chọn); màn đủ chỗ giữ dáng cũ.
     return LayoutBuilder(builder: (context, rang) {
       final motHang = _vuaMotHang(context, rang.maxWidth);
-      return Row(
+      final coMeta = meta != null && meta!.isNotEmpty;
+      final hang = Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -112,17 +114,9 @@ class BillStatusHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: _kieuHan,
                 ),
-                if (meta != null && meta!.isNotEmpty) ...[
+                if (coMeta && !motHang) ...[
                   const SizedBox(height: 2),
-                  Text(
-                    meta!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF6B6B72),
-                    ),
-                  ),
+                  _dongMeta(),
                 ],
                 if (!motHang) ...[
                   const SizedBox(height: 8),
@@ -137,7 +131,34 @@ class BillStatusHeader extends StatelessWidget {
           ],
         ],
       );
+      if (!motHang || !coMeta) return hang;
+      // G52 (2026-10-09): chip cùng hàng thì dòng "danh mục • ví • Tự trả" RA
+      // KHỎI cột chữ và trải hết bề ngang dưới cả tên lẫn chip (người dùng
+      // chọn). Ở 360 dp tên + hạn vừa cạnh chip nhưng dòng này chỉ còn 108 dp
+      // trong khi cần ~150 — "Nhà cửa • Tiền…" mất tên ví và chữ "Tự trả". Chip
+      // thấp hơn hai dòng tên + hạn nên dòng này không đè chip, thẻ không cao
+      // thêm. Khi chip đã xếp chồng (G74) dòng này ở lại trong cột chữ, trên chip.
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          hang,
+          const SizedBox(height: 2),
+          Padding(
+            padding: EdgeInsets.only(left: _rongBieuTuong),
+            child: _dongMeta(),
+          ),
+        ],
+      );
     });
+  }
+
+  Widget _dongMeta() {
+    return Text(
+      meta!,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(fontSize: 12, color: Color(0xFF6B6B72)),
+    );
   }
 
   Widget _chip() {

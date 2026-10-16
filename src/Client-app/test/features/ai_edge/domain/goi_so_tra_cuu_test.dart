@@ -548,4 +548,44 @@ void main() {
       expect(g.mauCau().cau, endsWith('Tổng chi tháng trước: 0 đ.'));
     });
   });
+
+  group('còn N mục chưa kể (trần 4 hàng — C9, F11, 2026-10-09)', () {
+    KetQuaCongCu cat(int n, String danhTu) => KetQuaCongCu(
+          hang: _hoaDonQuaHan().hang,
+          tongHop: [soTien('Còn phải trả', 3720000)],
+          soChuaKe: n,
+          danhTuChuaKe: danhTu,
+        );
+
+    test('⭐ lượt bị cắt trần → câu "Còn N … khác chưa kể." và mẫu câu kết bằng nó', () {
+      final g = GoiSoTraCuu()..them('danh_sach_hoa_don', cat(2, 'hoá đơn'));
+      expect(g.cauChuaKe, 'Còn 2 hoá đơn khác chưa kể.',
+          reason: 'F11 đo OnePlus 09/10: kể 4 hoá đơn (cộng 3.155.000) rồi nói "tổng 3.720.000" — '
+              'người đọc tưởng cộng sai, vì không câu nào nói danh sách bị cắt.');
+      expect(g.mauCau().cau, endsWith('Còn 2 hoá đơn khác chưa kể.'));
+    });
+
+    test('con số N KHÔNG vào JSON gửi mô hình — câu nối thêm không bị lặp', () {
+      final kq = cat(9, 'giao dịch');
+      expect(kq.json.values.map((v) => '$v').any((v) => v == '9'), isFalse);
+    });
+
+    test('không bị cắt → null, mẫu câu không nhắc "chưa kể"', () {
+      final g = GoiSoTraCuu()..them('danh_sach_hoa_don', _hoaDonQuaHan());
+      expect(g.cauChuaKe, isNull);
+      expect(g.mauCau().cau, isNot(contains('chưa kể')));
+    });
+
+    test('cauNoiThem KHÔNG gồm câu chưa kể — null vẫn nghĩa là "rơi về mẫu câu"', () {
+      final g = GoiSoTraCuu()..them('truy_van_giao_dich', cat(9, 'giao dịch'));
+      expect(g.cauChuaKe, 'Còn 9 giao dịch khác chưa kể.');
+      expect(g.cauNoiThem, isNull);
+    });
+
+    test('boSung giữ nguyên số chưa kể', () {
+      final kq = cat(3, 'ví').boSung(chiMauCauThem: true);
+      expect(kq.soChuaKe, 3);
+      expect(kq.danhTuChuaKe, 'ví');
+    });
+  });
 }

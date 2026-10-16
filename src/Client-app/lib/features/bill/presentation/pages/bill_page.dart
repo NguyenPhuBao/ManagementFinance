@@ -1,10 +1,12 @@
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/database/app_database.dart';
-import '../../../../core/auth/current_account.dart';
+import '../../data/models/bill_entity.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -20,7 +22,7 @@ import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/presentation/pages/add_transaction_page.dart'
     show EditTransactionArgs;
 import '../../../transaction/presentation/widgets/transaction_detail_sheet.dart';
-import '../../../../core/category/category_visuals.dart';
+import '../../../category/presentation/widgets/category_visuals.dart';
 import '../widgets/bill_actions.dart';
 import '../widgets/bill_status_visuals.dart';
 import '../widgets/the_khoan_lap.dart';
@@ -85,10 +87,9 @@ class _BillPageState extends State<BillPage> {
   /// và quay lại trang này là nạp lại. Đổi lấy: không đăng ký nào phải huỷ,
   /// nên không có `dispose` nào để quên.
   Future<void> _napTenGoi(int accountId) async {
-    final db = sl<AppDatabase>();
-    final vi = await db.walletDao.getAll(accountId);
+    final vi = await sl<WalletRepository>().getAll(accountId);
     // Bảng TRA TÊN — giữ hàng mặc định toàn cục và hàng đã xoá mềm (G41/E8).
-    final dm = await db.categoryDao.getBangTraTen(accountId);
+    final dm = await sl<CategoryManagementRepository>().loadBangTraTen(accountId: accountId);
     if (!mounted) return;
     setState(() => _lookup = TransactionLookup(wallets: vi, categories: dm));
   }
@@ -276,11 +277,11 @@ class _BillPageState extends State<BillPage> {
   /// Một tab của danh sách.
   Widget _danhSach(
     BuildContext context,
-    List<Bill> bills, {
+    List<BillEntity> bills, {
     required DateTime now,
     required DateFormat dateFormatter,
     required String khiTrong,
-    required Map<String, Transaction> payments,
+    required Map<String, TransactionEntity> payments,
   }) {
     // Mỗi tab là một `CustomScrollView` mở đầu bằng `SliverOverlapInjector` —
     // cặp với absorber quanh hàng tab ghim (xem `build`). `Builder` để lấy một
@@ -335,10 +336,10 @@ class _BillPageState extends State<BillPage> {
   /// Một dòng hoá đơn của danh sách.
   Widget _dongHoaDon(
     BuildContext context,
-    Bill bill, {
+    BillEntity bill, {
     required DateTime now,
     required DateFormat dateFormatter,
-    required Map<String, Transaction> payments,
+    required Map<String, TransactionEntity> payments,
   }) {
     // Bốn trạng thái, một định nghĩa duy nhất ở `domain/bill_status.dart`.
     // Trước đây trang này tự suy ra hai trạng thái ngay trong `build` và
@@ -485,7 +486,7 @@ class _BillPageState extends State<BillPage> {
 
   Widget _buildBillItem({
     required BuildContext context,
-    required Bill bill,
+    required BillEntity bill,
     required String title,
     required String subtitle,
     required String amount,
@@ -577,8 +578,7 @@ class _BillPageState extends State<BillPage> {
   /// khoản chi. Dùng đúng bảng chi tiết của sổ để hai nơi không kể hai
   /// chuyện khác nhau về cùng một giao dịch. Xoá ở đây bị từ chối như ở sổ
   /// (khoản của hoá đơn) — đường đúng là nút Hoàn tác trên dòng.
-  void _moKhoanChi(BuildContext context, Transaction tx) {
-    final entity = TransactionEntity.fromDrift(tx);
+  void _moKhoanChi(BuildContext context, TransactionEntity entity) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -674,7 +674,7 @@ class _HangSoTien extends StatelessWidget {
     required this.daBoQua,
   });
 
-  final Bill bill;
+  final BillEntity bill;
   final String amount;
   final bool isPaid;
   final bool daBoQua;

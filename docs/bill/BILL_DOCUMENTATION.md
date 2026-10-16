@@ -10,7 +10,7 @@
 > (v20 thu loại ví về ba, không đụng gì tới hoá đơn; cột `Bills.anchorDay` của
 > hoá đơn vào ở **v18**; v19 là cột `priority` của
 > mục tiêu, không đụng bảng `Bills`)
-> **Phạm vi:** `src/Client-app/lib/features/bill` + phần bill của `core/sync`, `core/database`, `core/bill`
+> **Phạm vi:** `src/Client-app/lib/features/bill` + phần bill của `core/sync`, `core/database`
 
 > ✅ **Tài liệu này ĐÃ nằm trong repo từ 2026-09-21.** Trước đó thư mục
 > `docs/bill/` bị `.gitignore` chặn và tệp chỉ có trên máy đã dựng — trong khi
@@ -59,16 +59,16 @@ Những gì **chưa** làm được nằm ở mục 8 — đọc trước khi h�
 ## 2. Cấu trúc mã nguồn
 
 ```
-lib/core/bill/
-└── bill_recurrence.dart        # Chu kỳ lặp: nextBillDueDate + quy đổi hai
-                                # cách biểu diễn. Đặt ở core (không phải
-                                # features) vì sync_engine cũng dùng — một
-                                # định nghĩa duy nhất, giống
-                                # core/category/category_name.dart
-
 lib/features/bill/
 ├── domain/
-│   ├── bill_draft.dart         # Giá trị form → BillsCompanion.
+│   ├── bill_recurrence.dart    # Chu kỳ lặp: nextBillDueDate + quy đổi hai
+│   │                           # cách biểu diễn. Từ 2026-10-10 ở domain của
+│   │                           # mảng (trước đó ở core/bill/); sync_engine
+│   │                           # import nó như bill_pay_status — một định
+│   │                           # nghĩa duy nhất
+│   ├── bill_draft.dart         # Giá trị form (Dart thuần, từ 2026-10-14 không
+│   │                           # còn import drift; companion dựng ở
+│   │                           # data/models/bill_draft_companion.dart).
 │   │                           # Tách khỏi widget để test được
 │   ├── bill_schedule.dart      # Hai trục chu kỳ + hai mốc ngày; suy ngược
 │   │                           # chế độ khi mở form Sửa
@@ -81,7 +81,8 @@ lib/features/bill/
 │   │                           # thẻ tổng — hàm thuần
 │   ├── bill_auto_pay.dart      # (06/09, v17) Quyết định thuần của tự động
 │   │                           # thanh toán: đến lượt?, trả bao nhiêu?, khoá kỳ
-│   ├── bill_auto_pay_runner.dart # Bộ chạy, gọi từ NotificationScanner
+│   │                           # (bộ chạy bill_auto_pay_runner.dart ở
+│   │                           # application/, dời 2026-10-14 ra data/services/, 2026-10-15 sang application/)
 │   ├── bill_chain.dart         # (06/09 tối) chuoiKyCua: chuỗi kỳ theo
 │   │                           # generatedFromBillId, mới nhất đứng đầu
 │   └── bill_note.dart          # kGhiChuTraHoaDon + ghiChuTraHoaDon(tên,
@@ -89,10 +90,19 @@ lib/features/bill/
 ├── data/
 │   ├── datasources/
 │   │   └── bill_local_datasource.dart
+│   ├── models/                 # (2026-10-14, G88 gạch 3)
+│   │   ├── bill_entity.dart    # BillEntity — kiểu DUY NHẤT từ repository trở
+│   │   │                       # lên (25 trường, đúng tên cột Drift)
+│   │   └── bill_draft_companion.dart # companionTaoTu / companionSuaTu:
+│   │                           # BillDraft → BillsCompanion (hàm công khai)
+│   ├── de_xuat_hoa_don_nguon.dart # Nguồn dữ liệu thẻ "Có vẻ là khoản lặp"
 │   └── repositories/
 │       ├── bill_repository.dart        # Interface + 4 ngoại lệ (mục 6)
 │       └── bill_repository_impl.dart   # payBill, undoPayment, _nextPeriodOf
 │   └── domain/bill_ky_ke_tiep.dart      # kyKeTiepCua — ĐỊNH NGHĨA DUY NHẤT của kỳ kế tiếp
+├── application/                # (bill/application/, 2026-10-15, G88 gạch 6 — trước là data/services/)
+│   ├── bill_auto_pay_runner.dart # Bộ chạy, gọi từ NotificationScanner
+│   └── bill_payment_conflict_resolver.dart # Cuộc đua hai máy (mục 6.8)
 └── presentation/
     ├── bloc/                   # BillBloc + event + state
     ├── pages/
@@ -123,7 +133,7 @@ Bảng và DAO: `core/database/tables/other_tables.dart` (`Bills`) và
 khoản chi cho cả trang).
 
 Route: `/bills`, `/bills/add`, `/bills/:id/edit`, `/bills/:id` (đặt SAU hai
-route trên, ngoài shell) trong `core/constants/app_router.dart`. `BillBloc` đăng ký `registerFactory` nên mỗi
+route trên, ngoài shell) trong `core/router/app_router.dart`. `BillBloc` đăng ký `registerFactory` nên mỗi
 route dựng một instance riêng.
 
 ---
@@ -159,7 +169,7 @@ Copilot chỉ có một mốc "đến hạn"; PocketSmith có *grace period* the
 (sau hạn vẫn chưa "quá hạn") — nên mặc định là **0** để ai không cần thì không
 phải nghĩ.
 
-⚠️ **Từ 2026-09-16 phép tính NGÀY của kỳ kế tiếp là `kyKeTiepCua(Bill)` ở
+⚠️ **Từ 2026-09-16 phép tính NGÀY của kỳ kế tiếp là `kyKeTiepCua(BillEntity)` ở
 `features/bill/domain/bill_ky_ke_tiep.dart` — định nghĩa duy nhất.**
 `_nextPeriodOf` **gọi lại** nó (và chỉ còn việc dựng `BillsCompanion`), còn khối
 **Dự báo 30 ngày tới** của trang Phân tích chiếu kỳ tương lai bằng đúng hàm ấy —
@@ -289,7 +299,7 @@ bản mặc định còn sống là **thao tác dữ liệu**, xem mục 8. Cùn
 
 ## 5. Chu kỳ lặp
 
-`core/bill/bill_recurrence.dart` giữ **định nghĩa duy nhất**.
+`features/bill/domain/bill_recurrence.dart` giữ **định nghĩa duy nhất**.
 
 ```dart
 DateTime nextBillDueDate(DateTime current, String timeRecurrence)
@@ -416,7 +426,7 @@ tháng Hai — hoá đơn biến mất. Lý lẽ đầy đủ ở mục 5 tài l
 
 ### 6.2. `payBill({bill, walletId, idaccount, amount, occurredAt, note})`
 
-1. **Đọc lại hoá đơn từ CSDL** theo id. UI truyền vào ảnh chụp `Bill` nó đang
+1. **Đọc lại hoá đơn từ CSDL** theo id. UI truyền vào ảnh chụp `BillEntity` nó đang
    giữ; bấm nút hai lần thì lần thứ hai vẫn mang `isPaid = false`, nên không
    được tin tham số. CSDL nói đã trả (đọc cả hai cột) ⇒ `BillAlreadyPaidException`.
 2. **Số tiền thật của kỳ** `soTien = amount ?? current.amount`, kiểm `> 0`
@@ -571,12 +581,20 @@ trích tiền mục tiêu, mục 3.12–3.14 `GOAL_FEATURE.md`). Thiết kế đ
 `docs/superpowers/specs/2026-09-06-bill-auto-pay-design.md`; đây là bản tóm
 tắt và các bẫy.
 
+> ✅ **Từ 2026-10-10 tự trả chạy cả khi app đóng (Android)** — spec
+> `docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md`. WorkManager hẹn một
+> lượt vào **ngày đến hạn lúc giờ nhắc chung** (`prefs.gioNhac:phutNhac`, `mocTuTraNen` ở `lib/features/bill/domain/moc_tu_tra_nen.dart`, gộp ở `gopLichNen` — từ 2026-10-16, trước đó là hàm `lichNenKeTiep`) cộng một
+> lượt định kỳ 6 giờ; lượt ấy chạy chính `NotificationScanner.scan()` (bộ chạy bên dưới không đổi)
+> rồi đồng bộ, nên máy thắng cuộc đua trả hai lần đẩy sớm hơn. Ngày đến hạn đã qua mà chưa trả (ví
+> không đủ) **không** hẹn lại "ngay" — chờ lượt định kỳ. Câu nhắc và `goiYTuTra(chayNen:)` (thay
+> hằng `kBillAutoPayHint`) thôi bảo "Mở app" trên Android; iOS giữ câu cũ.
+
 | Phần | Ở đâu |
 |---|---|
 | Cột `bills.autoPayEnabled` (bool, mặc định false) — ✅ **đồng bộ** từ 2026-09-13, khoá `auto_pay` | `other_tables.dart`, migration `from < 17` không bật cho hoá đơn cũ |
-| Gỡ khoản trả bị server từ chối (`BILL_ALREADY_PAID`) | `data/services/bill_payment_conflict_resolver.dart` — mục **6.8** |
-| Quyết định thuần: `denLuotTuTra`, `quyetDinhTuTra`, `khoaKyTuTra`, `tranKyTuTraMoiLuot = 3`, `kBillAutoPayHint` | `domain/bill_auto_pay.dart` |
-| Bộ chạy `BillAutoPayRunner.chay(idaccount, now)` → `List<BillAutoPayEvent>` | `domain/bill_auto_pay_runner.dart`, gọi từ `NotificationScanner.scan()` qua closure `runAutoPays` (DI) |
+| Gỡ khoản trả bị server từ chối (`BILL_ALREADY_PAID`) | `application/bill_payment_conflict_resolver.dart` — mục **6.8** |
+| Quyết định thuần: `denLuotTuTra`, `quyetDinhTuTra`, `khoaKyTuTra`, `tranKyTuTraMoiLuot = 3`, `goiYTuTra` (2026-10-10, thay `kBillAutoPayHint`) | `domain/bill_auto_pay.dart` |
+| Bộ chạy `BillAutoPayRunner.chay(idaccount, now)` → `List<BillAutoPayEvent>` | `application/bill_auto_pay_runner.dart` (dời từ `domain/` 2026-10-14, từ `data/services/` 2026-10-15), gọi từ `NotificationScanner.scan()` qua closure `runAutoPays` (DI); **bỏ qua im lặng** kỳ có kỳ trùng đã đóng, và lượt quét gọi `gopKyTrung` **trước** nó (G87, mục 6.8) |
 | Hai loại thông báo `billAutoPaid` / `billAutoPayFailed`, nhóm `bill` | `notification_rules.dart`, `notification_prefs.dart` |
 | Lịch nhắc hệ điều hành đổi thân câu ("Mở app để hoá đơn được tự trả"), **cùng khoá** | `reminder_scheduler.dart` |
 | Công tắc **tắt sẵn** trên form Thêm và Sửa, dòng "Tự trả" trên danh sách | ba trang |
@@ -818,7 +836,7 @@ là bằng chứng **CAN-LAM 17 B**, không phải lỗi của tính năng này.
 ### 6.8. Gỡ khoản trả bị server từ chối (`BILL_ALREADY_PAID`) — 2026-09-13
 
 Mảnh thứ ba của bước 12, cùng với `auto_pay` qua đồng bộ (6.5) và chốt
-`chanTraHaiLan` phía server. Mã: `bill/data/services/bill_payment_conflict_resolver.dart`.
+`chanTraHaiLan` phía server. Mã: `bill/application/bill_payment_conflict_resolver.dart`.
 
 Chốt của server cho **máy nào đẩy trước thì thắng**: khoản chi thứ hai mang cùng
 `Idbill` bị từ chối. Không có lớp này, máy thua giữ một khoản chi mà server không
@@ -862,6 +880,36 @@ chi hợp lệ nhưng số dư ví lại là con số của server, vốn **khô
 thay đổi số dư cục bộ thua một lần xung đột đều biến mất như vậy, không riêng hoá
 đơn. Xem `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
+> 🛑 **Kỳ kế tiếp của máy thua KHÔNG được gỡ trên thực tế — G87, mở và đóng 2026-10-09.** Câu *"`undoPayment` gỡ kỳ
+> kế tiếp"* đúng trên máy, sai trên server: hoá đơn đẩy **trước** giao dịch (khoá ngoại), nên kỳ con máy thua tự sinh
+> **lên server trót lọt** rồi khoản chi mới bị từ chối; bộ gỡ xoá mềm kỳ con ở máy, nhưng bước **Pull ngay sau trong
+> cùng chu kỳ** ghi đè lệnh xoá bằng bản sống của server (`billDao.upsertAll` không xét hàng đang chờ đẩy) và gắn
+> `synced` — lệnh xoá không bao giờ lên. Đo trên PostgreSQL dev (tài khoản 10, Netflix tự trả tuần): kỳ 20/9 có **ba**
+> kỳ con 05/10 (mốc khoản chi bị gỡ trên Realme 02:06:54 UTC, kỳ con vào server 02:06:55); OnePlus tự trả nốt hai kỳ
+> trùng ngày 08/10 — kỳ 05/10 **trừ 3 × 100.000 đ** (`chanTraHaiLan` chỉ chặn cùng `Idbill`) — và đẻ **năm** kỳ 12/10
+> dưới ba cha. *Ba máy offline cùng tự trả kỳ 20/9 là **suy luận** từ dấu vết (log đã trôi); hai mốc thời gian là đo được.*
+>
+> Sửa (người dùng chọn): **không** đổi luật Pull cho mọi bảng. Thay vào đó (1) hàm thuần `kyTrungCanGo`
+> (`domain/bill_ky_trung.dart`) gộp kỳ theo **gốc chuỗi + ngày hạn** — không theo cha — có kỳ đã đóng thì gỡ mọi kỳ còn
+> phải trả, chưa kỳ nào đóng thì giữ id nhỏ nhất (máy thấy một phần nhóm không bao giờ gỡ min toàn cục → các máy hội
+> tụ); kỳ đã trả **không bao giờ** bị gỡ. (2) `BillRepository.gopKyTrung` xoá mềm chúng (`pending` → lên server), gọi ở
+> **đầu** lượt quét `NotificationScanner.scan`, trước `markOverdue` và bộ tự trả, không gác quyền gói — nên lệnh
+> xoá bị Pull nuốt thì lượt quét ngay sau xoá lại. ⚠️ **Chỉ khi vừa kéo về thành công** (`SyncEngine.soLanKeoVeXong`
+> tăng — Pull nuốt lỗi nên trạng thái "chu kỳ xong" không đủ): lượt quét lúc mở app chạy trước khi kéo về, và Realme
+> lúc ấy giữ hai kỳ trùng ở *Quá hạn* trong khi server đã *Đã trả* — gộp trên dữ liệu ấy là xoá hai hoá đơn đã trả, lệnh
+> xoá mới hơn nên thắng trên server (bản đầu của G87 có lỗ này; bắt được lúc tính trước kết quả nghiệm thu). (3)
+> `payBill` ném `BillAlreadyPaidException` khi kỳ có kỳ trùng đã đóng (`kyCungKyDaDong`), và `BillAutoPayRunner` bỏ
+> qua kỳ ấy **im lặng** (không sự kiện *"không tự trả được"*). Giới hạn còn lại: một máy kéo về xong rồi mới tới lượt
+> máy khác trả kỳ trùng thì cửa sổ ấy vẫn hở — hẹp, chưa đo; ✉️ client xin backend đóng nó ở server (2026-10-09, **đơn 41**
+> `CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md`: chặn khoản chi cho kỳ anh em cùng `Previous_bill_id` + `Due_date`, mã riêng
+> `BILL_PERIOD_ALREADY_PAID` — ✅ client đã sẵn cùng ngày: mã trong `_permanentCodes`, và
+> `BillPaymentConflictResolver.maKyTrungDaTra` gỡ khoản trả như `BILL_ALREADY_PAID` nhưng **không** `danhDauDaTra` —
+> đánh dấu kỳ trùng là đã trả thì `kyTrungCanGo` thấy hai kỳ đã đóng và giữ cả hai mãi; đo CSDL dev cùng ngày: tài khoản
+> 17, 19 cũng có kỳ trùng bật tự trả). `gopKyTrung` gọi `scheduleSync()` khi có gỡ (bản đầu để lệnh
+> xoá nằm chờ tới 15 phút). ✅ **Nghiệm thu 2026-10-09** (Realme rồi OnePlus, cả hai nối backend dev): server xoá mềm đúng
+> bốn kỳ 12/10 trùng, giữ `65ece89a`; kỳ 05/10 đã trả và khoản chi không đổi; OnePlus tự tính ra cùng tập với Realme. Khoản chi đã trả thừa **không** tự gỡ — người dùng bấm Hoàn tác, kỳ ấy về còn phải trả và lượt
+> gộp sau gỡ nó.
+
 ### 6.9. Gợi ý tạo hoá đơn từ khoản lặp (B2) — 2026-09-29
 
 Spec `docs/superpowers/specs/2026-09-28-b2-khoan-lap-goi-y-hoa-don-design.md`
@@ -900,6 +948,10 @@ tài khoản xoá cả bảng này. ⚠️ *(2026-09-29, B4)* Bảng có **ngư�
 `GoiYHoaDonDao.watchAll`) coi mọi giao dịch có `khoaNhomCua` nằm trong tập `da_tao` là
 **lịch sử của một hoá đơn** và bỏ khỏi ước tính chi tuỳ ý — đổi nghĩa `da_tao` hay
 đổi khoá nhóm là đổi cả con số ấy (mục 3.27 `ANALYTICS_FEATURE.md`).
+⚠️ *(2026-10-14, đợt Entity Giao dịch + Ví)* `de_xuat_hoa_don.dart` (domain) **không còn import Drift**: nó nhận
+phản hồi bằng record `PhanHoiGoiYHoaDon` (`({String khoaNhom, String ketQua, DateTime createdAt})`) và giao dịch
+bằng `TransactionEntity`; nguồn `de_xuat_hoa_don_nguon` (`bill/data/`) đọc `GoiYHoaDonPhanHoi` rồi dựng record. Bảng vẫn
+cục bộ, không đồng bộ.
 
 **Điền sẵn — `bill/domain/dien_san_hoa_don.dart`.** `queryTuKhoanLap` / 
 `dienSanTuQuery` dịch qua lại `KhoanLap` ↔ query `name · amount · cycle · anchor ·
@@ -1040,7 +1092,7 @@ hằng số `0.66`.
 `NotificationScanner`): `Pending → Overdue` khi hạn đã qua, **và**
 `Overdue → Pending` khi hạn ≥ hôm nay. Chiều thứ hai cần vì form Sửa đổi được
 ngày bắt đầu, hạn tính lại theo chu kỳ đẩy ra tương lai thì cờ ở lại vĩnh
-viễn (`toUpdateCompanion` cố ý không đụng `payStatus`). Client không lộ vì
+viễn (`companionSuaTu` — `bill/data/models/bill_draft_companion.dart`, trước 2026-10-14 là `BillDraft.toUpdateCompanion` — cố ý không đụng `payStatus`). Client không lộ vì
 danh sách tính lại từ `dueDate`, nhưng cột này **có đi đồng bộ** nên Admin-web
 đọc sai — dữ liệu thật 06/09 có hai hoá đơn như thế, và chúng tự về `Pending`
 khi bản vá chạy trên máy ảo. **Mỗi chiều vẫn giữ điều kiện trạng thái** (chỉ
@@ -1118,7 +1170,7 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 
 | Tệp | Canh chừng điều gì |
 |---|---|
-| `test/core/bill/bill_recurrence_test.dart` | Kẹp ngày cuối tháng, năm nhuận, chu kỳ quý, vắt qua năm, giữ giờ/phút, quy đổi hai cách biểu diễn |
+| `test/features/bill/domain/bill_recurrence_test.dart` | Kẹp ngày cuối tháng, năm nhuận, chu kỳ quý, vắt qua năm, giữ giờ/phút, quy đổi hai cách biểu diễn |
 | `test/core/database/bill_overdue_test.dart` | Cờ `Overdue` **hai chiều**; đến hạn hôm nay chưa quá hạn; gỡ cờ cũng đánh dấu `pending`; đã trả không bị lôi về; **chạy hai lần thì lần hai không đổi gì** (chống vòng lặp đẩy); không đụng tài khoản khác |
 | `test/core/database/bill_upcoming_test.dart` | `getUpcoming` lọc cả hai cột trạng thái |
 | `test/features/bill/domain/bill_schedule_test.dart` | Ngày đến hạn suy từ chu kỳ ở cả bốn chu kỳ; bất biến bắt đầu < đến hạn; công tắc lặp lại không đụng cách tính hạn; `fromBill` phát hiện hạn cũ lệch và cảnh báo |
@@ -1148,10 +1200,12 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/features/bill/domain/bill_draft_auto_pay_test.dart` | Cờ mặc định tắt; companion TẠO và SỬA đều **có mặt** cờ (vắng mặt là "giữ nguyên" và tắt không có tác dụng) |
 | `test/features/bill/data/repositories/bill_pay_occurred_at_test.dart` | Kỳ sau kế thừa cờ; `occurredAt` vào `date` không vào `updatedAt`; tương lai bị chặn |
 | `test/features/bill/domain/bill_auto_pay_test.dart` | Đến lượt: đúng ngày, không sớm, đã trả (cả hai cột)/xoá/thiếu ví/danh mục bị loại; quyết định đủ/thiếu/0; khoá theo ngày; trần 3 |
-| `test/features/bill/domain/bill_auto_pay_runner_test.dart` | Trả đúng kỳ, giao dịch mang ngày hạn, sinh kỳ sau kế thừa cờ; đúng ngày bất kỳ giờ; chưa tới thì không đụng; hai lượt không trả hai lần; **trả bù đúng trần 3**, lượt sau trả tiếp; dừng ngay khi ví thiếu; ví thiếu không đổi gì và lượt sau trả được; ví bị xoá; mỗi hoá đơn độc lập; không đụng tài khoản khác; hoàn tác vẫn được |
-| `test/core/notification/notification_rules_bill_auto_pay_test.dart` | Hai loại, khoá theo kỳ, câu nêu tên/số tiền/ví, cửa sổ im lặng không nuốt, nhóm `bill` |
-| `test/core/notification/notification_scanner_auto_pay_test.dart` | Sự kiện thành hàng thông báo; nhận đúng tài khoản/mốc; **chạy sau `markOverdue`, trước `loadBills`**; ném lỗi thì vòng quét vẫn sống |
-| `test/core/notification/reminder_scheduler_auto_pay_test.dart` | Thân câu "mở app để được tự trả"; hoá đơn thường như cũ; **cùng khoá lịch** |
+| `test/features/bill/application/bill_auto_pay_runner_test.dart` | Trả đúng kỳ, giao dịch mang ngày hạn, sinh kỳ sau kế thừa cờ; đúng ngày bất kỳ giờ; chưa tới thì không đụng; hai lượt không trả hai lần; **trả bù đúng trần 3**, lượt sau trả tiếp; dừng ngay khi ví thiếu; ví thiếu không đổi gì và lượt sau trả được; ví bị xoá; mỗi hoá đơn độc lập; không đụng tài khoản khác; hoàn tác vẫn được |
+| `test/features/notification/domain/notification_rules_bill_auto_pay_test.dart` | Hai loại, khoá theo kỳ, câu nêu tên/số tiền/ví, cửa sổ im lặng không nuốt, nhóm `bill` |
+| `test/features/bill/domain/bill_ky_trung_test.dart` | **G87** — kỳ trùng gộp theo **gốc chuỗi + ngày hạn** (năm kỳ 12/10 dưới ba cha → giữ một); kỳ đã trả không bao giờ bị gỡ; máy thấy một phần nhóm vẫn hội tụ; lần gốc qua hàng đã xoá, cha chưa kéo về; vòng không treo; `kyCungKyDaDong` |
+| `test/features/bill/bill_ky_trung_repository_test.dart` | **G87** — `gopKyTrung` xoá mềm + `pending`; cơ chế Pull ghi đè lệnh xoá rồi lượt gộp xoá lại; `payBill` từ chối kỳ có kỳ trùng đã trả; có gỡ thì hẹn đồng bộ |
+| `test/features/notification/application/notification_scanner_auto_pay_test.dart` | Sự kiện thành hàng thông báo; nhận đúng tài khoản/mốc; **chạy sau `markOverdue`, trước `loadBills`**; **G87**: gộp kỳ trùng chạy đầu tiên, chỉ khi `soLanKeoVe` vừa tăng; ném lỗi thì vòng quét vẫn sống |
+| `test/features/notification/application/reminder_scheduler_auto_pay_test.dart` | Thân câu "mở app để được tự trả"; hoá đơn thường như cũ; **cùng khoá lịch** |
 | `test/features/bill/presentation/bloc/bill_bloc_payments_test.dart` | Bản đồ khoản chi theo `billId` vào `BillLoaded`; hoàn tác gỡ mục; tính lại sau khi trả |
 | `test/features/bill/presentation/pages/bill_page_payment_info_test.dart` | Dòng đã trả ghi "Trả dd/MM/yyyy" từ khoản chi; không có khoản chi thì chỉ ghi hạn; chạm dòng đã trả mở `TransactionDetailSheet`; chạm dòng chưa trả `push('/bills/:id', extra: bill)` (dựng `GoRouter` thật) |
 | `test/features/bill/presentation/widgets/bill_payment_sheet_test.dart` | Khối thông tin đủ hàng (trạng thái, "(còn 2 ngày)"/"(quá hạn 3 ngày)"/"(hôm nay)" theo ngày, kỳ, chu kỳ, danh mục, ví, nhắc trước, tự trả, ghi chú chỉ khi có) + nút "Thanh toán bằng <ví của hoá đơn>", danh sách ví chỉ mở khi bấm "Chọn ví khác" rồi gập lại, ví của hoá đơn mất thì rơi về ví có cờ mặc định; số ≤ 0 không đóng bảng; ô ngày mặc định hôm nay, chặn tương lai, ngày chọn vào callback; ô ghi chú có gõ thì nhận, trống thì `null`; không tràn 411dp |

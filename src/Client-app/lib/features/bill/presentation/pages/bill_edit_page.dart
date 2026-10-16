@@ -1,14 +1,19 @@
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/bill/bill_recurrence.dart';
-import '../../../../core/database/app_database.dart';
+import '../../domain/bill_recurrence.dart';
+import '../../../category/data/models/category_entity.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
+import '../../data/models/bill_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
-import '../../../../core/auth/current_account.dart';
-import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
+import '../../../auth/presentation/bloc/current_account.dart';
+import '../../../../core/nen/co_chay_nen.dart';
+import '../../domain/bill_auto_pay.dart' show goiYTuTra;
 import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
@@ -16,10 +21,13 @@ import '../widgets/bill_grace_selector.dart';
 import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 class BillEditPage extends StatefulWidget {
   final String id;
-  final Bill? bill;
+  final BillEntity? bill;
 
   const BillEditPage({
     super.key,
@@ -45,10 +53,10 @@ class _BillEditPageState extends State<BillEditPage> {
   /// Form Sửa là đường DUY NHẤT để tắt tự động thanh toán.
   bool _tuTra = false;
 
-  List<Wallet> _wallets = [];
-  Wallet? _selectedWallet;
-  List<Category> _categories = [];
-  Category? _selectedCategory;
+  List<WalletEntity> _wallets = [];
+  WalletEntity? _selectedWallet;
+  List<CategoryEntity> _categories = [];
+  CategoryEntity? _selectedCategory;
 
   @override
   void initState() {
@@ -78,9 +86,11 @@ class _BillEditPageState extends State<BillEditPage> {
   Future<void> _loadPickers() async {
     final accountId = currentAccountIdOrNull(context);
     if (accountId == null) return;
-    final db = sl<AppDatabase>();
-    final wallets = await db.walletDao.getActive(accountId);
-    final categories = await db.categoryDao.getCategoryRows(accountId, 'chi');
+    final wallets = await sl<WalletRepository>().getActive(accountId);
+    // Chỉ danh mục LÁ (người dùng chốt 2026-10-10). Hoá đơn cũ đang gắn vào nhóm
+    // thì ô danh mục để trống và nút Lưu đòi chọn lại — không lưu lặng lẽ.
+    final categories =
+        await sl<CategoryManagementRepository>().selectableChildren(accountId: accountId, classify: 'chi');
     if (!mounted) return;
     setState(() {
       _wallets = wallets;
@@ -171,13 +181,7 @@ class _BillEditPageState extends State<BillEditPage> {
     );
 
     context.read<BillBloc>().add(
-          EditBillEvent(
-            bill: draft.toUpdateCompanion(
-              id: widget.id,
-              idaccount: accountId,
-              now: DateTime.now(),
-            ),
-          ),
+          EditBillEvent(draft: draft, id: widget.id, idaccount: accountId, now: DateTime.now()),
         );
     context.pop();
   }
@@ -412,20 +416,26 @@ class _BillEditPageState extends State<BillEditPage> {
                         Switch(
                           key: const ValueKey('bill-autopay-switch'),
                           value: _tuTra,
-                          onChanged: (v) => setState(() => _tuTra = v),
+                          // Quyền `bill_auto_pay`: không có → khoá; giá trị đang lưu GIỮ NGUYÊN khi Lưu (chốt "dừng
+                          // chạy, giữ công tắc").
+                          onChanged: context.coQuyen(MaQuyen.billAutoPay)
+                              ? (v) => setState(() => _tuTra = v)
+                              : null,
                         ),
                       ],
                     ),
+                    if (!context.coQuyen(MaQuyen.billAutoPay))
+                      DongKhoaCongTac(ma: MaQuyen.billAutoPay, dangBat: _tuTra),
                     if (_tuTra) ...[
                       const SizedBox(height: 4),
-                      const Text(
-                        kBillAutoPayHint,
-                        style: TextStyle(
+                      Text(
+                        goiYTuTra(chayNen: coChayNen),
+                        style: const TextStyle(
                             fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<Wallet>(
+                    DropdownButtonFormField<WalletEntity>(
                       initialValue: _selectedWallet,
                       decoration: const InputDecoration(
                         labelText: 'Ví thanh toán',
@@ -440,7 +450,7 @@ class _BillEditPageState extends State<BillEditPage> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<Category>(
+                    DropdownButtonFormField<CategoryEntity>(
                       initialValue: _selectedCategory,
                       decoration: const InputDecoration(
                         labelText: 'Danh mục',

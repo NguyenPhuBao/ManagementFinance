@@ -398,4 +398,13 @@ void main() {
     expect(kiemSo(cau, goi), isTrue, reason: cau);
     expect(kiemNhan(cau, [goi]), isTrue, reason: cau);
   });
+
+  test('quá trần 4 mục tiêu → báo số mục tiêu chưa kể (2026-10-09)', () {
+    final ds = [for (var i = 1; i <= 6; i++) _mt(id: 'g$i', ten: 'MT$i')];
+    final kq = hangMucTieu(ds, now: now);
+    expect(kq.hang, hasLength(4));
+    expect(kq.soChuaKe, 2);
+    expect(kq.danhTuChuaKe, 'mục tiêu');
+    expect(hangMucTieu([ds.first], now: now).soChuaKe, 0);
+  });
 }

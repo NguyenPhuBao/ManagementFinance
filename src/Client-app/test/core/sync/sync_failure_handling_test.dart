@@ -18,6 +18,7 @@ import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _Online implements Connectivity {
   @override
@@ -116,7 +117,7 @@ void main() {
 
   Future<_Run> runWith(String message) async {
     final adapter = _FailingAdapter(message);
-    final engine = SyncEngine(
+    final engine = taoSyncEngineThu(
       dioClient: _Client(adapter),
       db: db,
       connectivity: _Online(),
@@ -232,7 +233,7 @@ void main() {
     await seedPendingCategory();
 
     final adapter = _ConflictAdapter();
-    final engine = SyncEngine(
+    final engine = taoSyncEngineThu(
       dioClient: _ConflictClient(adapter),
       db: db,
       connectivity: _Online(),
@@ -275,7 +276,7 @@ void main() {
     setUp(() => clock = DateTime(2026, 9, 3, 8, 0, 0));
 
     Future<SyncEngine> failingEngine(_FailingAdapter adapter) async {
-      final engine = SyncEngine(
+      final engine = taoSyncEngineThu(
         dioClient: _Client(adapter),
         db: db,
         connectivity: _Online(),
@@ -458,7 +459,7 @@ void main() {
     setUp(() => clock = DateTime(2026, 9, 3, 8, 0, 0));
 
     Future<SyncEngine> runOnce(HttpClientAdapter adapter) async {
-      final engine = SyncEngine(
+      final engine = taoSyncEngineThu(
         dioClient: _AdapterClient(adapter),
         db: db,
         connectivity: _Online(),
@@ -708,6 +709,26 @@ void main() {
       );
     });
 
+    test('Mã BILL_PERIOD_ALREADY_PAID là lỗi vĩnh viễn (đơn 41, thêm TRƯỚC '
+        'khi backend lên)', () async {
+      await seedPendingCategory();
+
+      await runOnce(_CodedFailureAdapter(
+        code: 'BILL_PERIOD_ALREADY_PAID',
+        message: 'Kỳ hoá đơn này đã được thanh toán ở một kỳ trùng',
+      ));
+
+      final row = await db.categoryDao.getById(catId);
+      expect(
+        row?.syncBlockedUntil,
+        clock.add(const Duration(seconds: 30)),
+        reason: 'Đơn 41 (`CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md`) xin server từ '
+            'chối khoản chi cho kỳ trùng bằng mã này. Tập mã vĩnh viễn là danh '
+            'sách trắng: backend lên trước mà client chưa biết mã thì khoản chi '
+            'bị gửi lại ở MỌI chu kỳ, và ví máy này bị trừ mà không ai hoàn.',
+      );
+    });
+
     test('Mã BILL_ALREADY_PAID là lỗi vĩnh viễn', () async {
       await seedPendingCategory();
 
@@ -819,7 +840,7 @@ void main() {
     setUp(() => clock = DateTime(2026, 9, 3, 9, 0, 0));
 
     Future<_Probe> runWithAdapter(HttpClientAdapter adapter) async {
-      final engine = SyncEngine(
+      final engine = taoSyncEngineThu(
         dioClient: _AdapterClient(adapter),
         db: db,
         connectivity: _Online(),

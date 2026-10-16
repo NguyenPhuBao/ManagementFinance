@@ -4,7 +4,7 @@
 /// tay như cũ. Điền sẵn từ D1 / biên lai / C3 không qua ô này nên không đổi.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart';
@@ -20,7 +20,7 @@ void main() {
   final tienMat = makeWallet(id: 'cash', name: 'Tiền mặt');
 
   Widget app({required bool? laPremium}) {
-    CategoryTree cay(List<Category> c) =>
+    CategoryTree cay(List<CategoryEntity> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     final bloc = TransactionBloc(transactionRepository: FakeTransactionRepository());
     final router = GoRouter(
@@ -54,7 +54,7 @@ void main() {
     await tester.pumpAndSettle();
     final o = oNhapNhanh(tester);
     expect(o.enabled, isFalse);
-    expect(o.decoration?.hintText, 'Tính năng Premium');
+    expect(o.decoration?.hintText, 'Chỉ Premium');
     expect(find.byKey(const Key('nhap-nhanh-dien')), findsNothing);
     expect(find.byKey(const Key('nut-nang-cap')), findsOneWidget);
     expect(find.text('Nâng cấp để đọc câu bằng AI'), findsOneWidget);

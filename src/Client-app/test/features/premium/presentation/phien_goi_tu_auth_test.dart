@@ -4,7 +4,7 @@ library;
 
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:flowmoney/features/premium/presentation/phien_goi_tu_auth.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/phien_goi_tu_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

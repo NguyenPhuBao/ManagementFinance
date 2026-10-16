@@ -9,14 +9,14 @@
 /// Trang chủ nói số kia. Người dùng chốt con số của Phân tích là con số đúng.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/home/domain/thu_chi_thang.dart';
 import 'package:flowmoney/features/wallet/domain/dieu_chinh_so_du.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Transaction _gd(
+TransactionEntity _gd(
   String id, {
   required String loai,
   required double soTien,
@@ -24,20 +24,16 @@ Transaction _gd(
   String? danhMuc,
   String ghiChu = '',
 }) =>
-    Transaction(
+    TransactionEntity(
       id: id,
       walletId: 'w1',
       idaccount: 10,
       categoryId: danhMuc,
       amount: soTien,
       type: loai,
-      status: 'completed',
-      provider: 'Manual',
       note: ghiChu,
       date: ngay,
-      images: '',
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: ngay,
       isDeleted: false,
     );

@@ -78,4 +78,12 @@ void main() {
     expect(viDangAm(_vi('không đáng kể', -0.4)), isFalse,
         reason: 'ngưỡng nửa đồng: đuôi lẻ của double không phải ví âm');
   });
+
+  test('quá trần 4 ví → báo số ví chưa kể (C9/F11, 2026-10-09)', () {
+    final kq = hangVi([for (var i = 1; i <= 6; i++) _vi('Ví $i', i * 1000.0)]);
+    expect(kq.hang, hasLength(4));
+    expect(kq.soChuaKe, 2);
+    expect(kq.danhTuChuaKe, 'ví');
+    expect(hangVi([_vi('A', 1), _vi('B', 2)]).soChuaKe, 0);
+  });
 }

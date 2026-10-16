@@ -796,6 +796,10 @@ String? congCuTheoCauHoi(String cauHoi) {
   if (_laCauMucTieu(q)) return kTenCongCuMucTieu;
   if (_co(q, 'muc tieu')) return null;
   if (_laCauHoaDon(q)) return kTenCongCuHoaDon;
+  // B8 ◐ (Realme 2026-10-06): câu xin N khoản / giao dịch là câu LIỆT KÊ giao dịch —
+  // "3 khoản thu mới nhất" chỉ được mô hình học p=0,63 nên rơi về phiên sáu tool (58 s).
+  // Đứng SAU khối ngân sách / mục tiêu / hoá đơn: câu nhắc các loại ấy giữ đường cũ.
+  if (soDongYeuCau(cauHoi) != null) return kTenCongCuTruyVan;
   if (!_co(q, 'nhat') &&
       (_mauDanhMuc.any((m) => m.hasMatch(q)) ||
           (_mauDanhMucTheoLoai.hasMatch(q) && !_coSoHoacKy(q)))) {

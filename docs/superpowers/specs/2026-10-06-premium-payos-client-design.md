@@ -48,6 +48,9 @@ bản này theo **mã**.
 - 5 route `api/payment.routes.js`: `POST /create-order` · `GET /order-status/:orderCode` · `GET /subscription-info` ·
   `GET /history` · `POST /webhook`. Giá **49.000 đ / 30 ngày**; mua khi còn hạn thì **cộng dồn** 30 ngày
   (`payment.service.js:111-117`). Đơn hết hạn sau **30 phút** (`:16`).
+  ⚠️ *(2026-10-16, gộp `main` @ `d72ccd45`)* hạn đơn nay **10 phút**. Backend thêm `POST /confirm-upgrade` và ba trạng
+  thái đơn `WAITING_CONFIRMATION` · `REFUND_PENDING` · `REFUNDED` mà spec này chưa biết — **G94**
+  `CLIENT_APP_KNOWN_GAPS.md`.
 - Scheduler 0h: cảnh báo trước 3 ngày và hạ về Basic khi hết hạn — **chỉ đi EventBus** (`payment.expiring_soon`,
   `payment.expired`), app không nhận gì.
 - `/auth/login`, `/auth/profile` và JWT **đã trả `type`** (`Basic` | `Premium`) — không kèm hạn. Hạn chỉ có ở
@@ -83,7 +86,7 @@ bản này theo **mã**.
 |---|---|---|
 | 1 | Premium khác Basic ở đâu | *Theo đúng đặc quyền backend ghi* — rồi đo từng đặc quyền ở câu 3–4 |
 | 2 | Trần Basic | **3 ví · 3 ngân sách đang hoạt động**; người đã vượt **giữ nguyên**, chỉ **không tạo thêm**; đủ trần thì nút Tạo dẫn sang màn Nâng cấp |
-| 3 | "Báo cáo tài chính AI chuyên sâu" là gì | **Màn Trợ lý AI** (kể cả lệnh tạo C3 — cùng ô nhập) **và ô Nhập nhanh** của màn Thêm giao dịch (khoá cả ô). Khối Nhận xét (luật + mẫu câu), gợi ý danh mục, xuất báo cáo, OCR biên lai, D1 **giữ cho mọi người** |
+| 3 | "Báo cáo tài chính AI chuyên sâu" là gì | **Màn Trợ lý AI** (kể cả lệnh tạo C3 — cùng ô nhập) **và ô Nhập nhanh** của màn Thêm giao dịch (khoá cả ô). Khối Nhận xét (luật + mẫu câu), gợi ý danh mục, xuất báo cáo, OCR biên lai, D1 **giữ cho mọi người**. *(Thêm 2026-10-08, A5: nút **Quét** — phần luật mở cho mọi người, AI lấp ô thiếu chỉ Premium; spec `2026-10-07-a5-quet-hoa-don-bien-lai-design.md` mục 5.9.)* |
 | 4 | "Đồng bộ đa thiết bị tức thì" | **Không tách gì** — đồng bộ giữ nguyên cho mọi tài khoản; màn Nâng cấp **không quảng cáo** đặc quyền này; xin backend sửa chữ |
 | 4b | Số đặc quyền | **Bốn**: thêm **mục tiêu tiết kiệm Basic ≤ 3 đang hoạt động**, cùng khuôn ví / ngân sách |
 | 5 | Premium khi offline | **Cache hạn theo tài khoản, so giờ máy**; làm mới khi đăng nhập · mở app · socket · sau khi trả; `/payment/*` hỏng thì rơi về `type` của phiên. Lùi giờ máy khi offline kéo dài được Premium — **chấp nhận** |
@@ -278,6 +281,10 @@ GoRoute(path: '/goals/add',   redirect: (_, s) => _chanTheoGoi(s.uri, LoaiTran.m
 **không đếm** (rẻ) → Basic thì `DemDangHoatDong.dem(loai)` → `conTaoDuoc` → `chuyenHuongTheoGoi`. Đếm hỏng (ném) →
 `null`, cho qua — một lỗi đọc CSDL không được biến thành một màn Nâng cấp sai chỗ.
 
+> 🔧 **Mã lệch thân spec từ 2026-10-14 (G92):** cửa (nay `chanTheoGoi` ở `premium/data/chan_theo_goi.dart`, không ở
+> `app_router.dart`) **`await goi.choNapKho()`** trước khi đọc `hienTai` — router chạy lại `redirect` lúc `AuthSuccess`, đúng
+> khi tài khoản vừa gán mà kho chưa trả lời; đọc ngay là Basic mặc định và Premium mở lạnh bị đẩy sang `/premium`.
+
 Mọi lối vào form đi qua cửa này: nút + trên ba trang danh sách, thẻ *Chưa đặt ngân sách* (`/budget/rules?category=…`),
 thẻ *Có vẻ là khoản lặp* (`/bills/add` — **hoá đơn không có trần**, không chặn), lệnh tạo C3 (mở `/budget/rules`,
 `/goals/add`), deeplink thông báo. Route **sửa** (`/wallets/:id/edit`, `/budget/rules?id=`, `/goals/:id/edit`) không chặn.
@@ -306,7 +313,7 @@ dẫn sang Nâng cấp cho tới khi số đang hoạt động < trần. Không 
 
 ### 8.2 Ô Nhập nhanh (màn Thêm giao dịch)
 
-- Basic: `TextField` `nhap-nhanh-o` `enabled: false`, chữ gợi ý *"Tính năng Premium"*; dưới ô một dòng *"Nâng cấp để
+- Basic: `TextField` `nhap-nhanh-o` `enabled: false`, chữ gợi ý *"Tính năng Premium"* (⚠️ từ 2026-10-07 là *"Chỉ Premium"* — câu cũ bị cắt ở 320 dp, G84 `CLIENT_APP_KNOWN_GAPS.md`); dưới ô một dòng *"Nâng cấp để
   đọc câu bằng AI"* có nút → `push('/premium')`. Nút *Điền* không hiện.
 - Phần còn lại của form (bàn phím số, danh mục, ví, ghi chú, thẻ gợi ý B1 / theo số tiền, đề xuất từ khoá) **không đổi**.
 - Điền sẵn từ D1 / biên lai / thẻ hoá đơn / C3 **không** qua ô này → không ảnh hưởng.

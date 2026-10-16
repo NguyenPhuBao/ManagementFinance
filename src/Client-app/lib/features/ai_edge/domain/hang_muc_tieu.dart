@@ -178,6 +178,8 @@ KetQuaCongCu hangMucTieu(
     // Câu trả lời nằm ở MỘT số đích (nhóm) hay ở chữ kết luận (không bật trích):
     // mẫu câu nói đúng thứ ấy, chữ mô hình thì không đáng tin (B1, F14 lần 2).
     chiMauCau: khop.isNotEmpty && (nhomSo != null || khongBatTrich),
+    soChuaKe: khop.length > kToiDaMucMoiGoi ? khop.length - kToiDaMucMoiGoi : 0,
+    danhTuChuaKe: 'mục tiêu',
   );
 }
 

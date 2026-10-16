@@ -7,11 +7,12 @@
 /// ghi 01/11. Không exception, không log.
 library;
 
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
@@ -57,7 +58,7 @@ void main() {
       syncStatus: const Value('synced'),
       updatedAt: DateTime(2026, 1, 1),
     ));
-    final goc = (await db.billDao.getById('bill-goc'))!;
+    final goc = BillEntity.fromDrift((await db.billDao.getById('bill-goc'))!);
     final mongDoi = kyKeTiepCua(goc);
 
     await repository.payBill(

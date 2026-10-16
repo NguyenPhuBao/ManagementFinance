@@ -5,14 +5,15 @@
 /// cùng bộ này nên tách ra để hai bên không chép lại nhau.
 library;
 
-import 'package:flowmoney/core/category/category_classify.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
+import 'package:flowmoney/features/category/domain/category_classify.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 
-Category makeCategory({
+CategoryEntity makeCategory({
   required String id,
   required String name,
   int idaccount = 1,
@@ -22,7 +23,7 @@ Category makeCategory({
   String? parentId,
   DateTime? updatedAt,
 }) =>
-    Category(
+    CategoryEntity(
       id: id,
       idaccount: idaccount,
       name: name,
@@ -33,19 +34,17 @@ Category makeCategory({
       isGroup: isGroup,
       isDefault: isDefault,
       isDeleted: false,
-      isLocalOnly: !isDefault,
       aiCoDinh: false,
       syncStatus: 'pending',
-      syncRetryCount: 0,
       updatedAt: updatedAt ?? DateTime(2026, 8, 21),
     );
 
-Wallet makeWallet({
+WalletEntity makeWallet({
   String id = 'cash',
   String name = 'Tiền mặt',
   double balance = 100000,
 }) =>
-    Wallet(
+    WalletEntity(
       id: id,
       idaccount: 1,
       name: name,
@@ -56,24 +55,27 @@ Wallet makeWallet({
       colour: '#10B981',
       isDefault: true,
       isDeleted: false,
-      // Hai trường bắt buộc được thêm ở schema v5/v6 (includeInTotal, status)
-      // — thiếu chúng thì cả file test này không biên dịch được.
       includeInTotal: true,
       status: 'active',
       syncStatus: 'pending',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 8, 21),
-    
       allowNegative: false,
       biTuChoiTrungTen: false,
     );
 
 class FakeCategoryRepository implements CategoryManagementRepository {
+  @override
+  Future<List<CategoryEntity>> loadBangTraTen({required int accountId}) => throw UnimplementedError();
+  @override
+  Stream<List<CategoryEntity>> watchAll({required int accountId}) => throw UnimplementedError();
+  @override
+  Future<CategoryEntity?> getById(String id) => throw UnimplementedError();
+
   FakeCategoryRepository(
       {CategoryTree? tree,
       Map<String, CategoryTree>? trees,
-      List<Category> selectable = const [],
-      Future<List<Category>> Function(int accountId, String classify)?
+      List<CategoryEntity> selectable = const [],
+      Future<List<CategoryEntity>> Function(int accountId, String classify)?
           selectableLoader,
       Map<String, List<String>> keywords = const {}})
       : _trees = trees ?? {'chi': tree ?? _emptyTree},
@@ -89,8 +91,8 @@ class FakeCategoryRepository implements CategoryManagementRepository {
   );
 
   final Map<String, CategoryTree> _trees;
-  final List<Category> _selectable;
-  final Future<List<Category>> Function(int accountId, String classify)?
+  final List<CategoryEntity> _selectable;
+  final Future<List<CategoryEntity>> Function(int accountId, String classify)?
       _selectableLoader;
   final Map<String, List<String>> _keywords;
   List<String>? savedKeywords;
@@ -186,7 +188,7 @@ class FakeCategoryRepository implements CategoryManagementRepository {
   }) async {}
 
   @override
-  Future<List<Category>> selectableChildren({
+  Future<List<CategoryEntity>> selectableChildren({
     required int accountId,
     required String classify,
   }) {
@@ -201,7 +203,7 @@ class FakeCategoryRepository implements CategoryManagementRepository {
   }
 
   @override
-  Future<List<Category>> selectableChildrenAll({required int accountId}) async {
+  Future<List<CategoryEntity>> selectableChildrenAll({required int accountId}) async {
     // Một lượt gợi ý = MỘT lần đếm, dù bên dưới hỏi từng classify.
     accountIdsDoc.add(accountId);
     soLanDocDanhMuc++;
@@ -217,6 +219,11 @@ class FakeCategoryRepository implements CategoryManagementRepository {
 /// Ghi lại những gì trang gửi xuống, để test kiểm được entity đã dựng ra
 /// (loại, danh mục, ví đích) thay vì chỉ kiểm giao diện.
 class FakeTransactionRepository implements TransactionRepository {
+  @override
+  Future<List<TransactionEntity>> getAll(int idaccount) => throw UnimplementedError();
+  @override
+  Stream<List<TransactionEntity>> watchAll(int idaccount) => throw UnimplementedError();
+
   final List<({TransactionEntity transaction, String? destinationWalletId})>
       added = [];
   final List<({TransactionEntity transaction, String? destinationWalletId})>
@@ -239,6 +246,17 @@ class FakeTransactionRepository implements TransactionRepository {
   }) async {
     added.add(
         (transaction: transaction, destinationWalletId: destinationWalletId));
+  }
+
+  /// A5 mục 11.4 — số giao dịch của mỗi lượt `addTransactions` (một lượt = một lần Lưu khoản đã tách).
+  final List<int> luotThemNhieu = [];
+
+  @override
+  Future<void> addTransactions(List<TransactionEntity> transactions) async {
+    luotThemNhieu.add(transactions.length);
+    for (final t in transactions) {
+      added.add((transaction: t, destinationWalletId: null));
+    }
   }
 
   @override

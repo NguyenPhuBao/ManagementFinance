@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/database/daos/notification_dao.dart';
-import 'package:flowmoney/core/notification/notification_rules.dart';
+import 'package:flowmoney/features/notification/domain/notification_rules.dart';
 
 void main() {
   late AppDatabase db;

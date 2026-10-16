@@ -7,6 +7,7 @@
 /// timers").
 library;
 
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,7 +63,7 @@ void main() {
 
   test('hoá đơn đã trả có khoản chi kèm theo, hoá đơn chưa trả thì không',
       () async {
-    final bill = (await db.billDao.getById('b-tra'))!;
+    final bill = BillEntity.fromDrift((await db.billDao.getById('b-tra'))!);
     await repository.payBill(
       bill: bill,
       walletId: 'w1',
@@ -81,7 +82,7 @@ void main() {
   });
 
   test('khoản chi đã xoá mềm không được tính là lần trả', () async {
-    final bill = (await db.billDao.getById('b-tra'))!;
+    final bill = BillEntity.fromDrift((await db.billDao.getById('b-tra'))!);
     await repository.payBill(bill: bill, walletId: 'w1', idaccount: accountId);
     await repository.undoPayment(billId: 'b-tra');
 
@@ -98,7 +99,7 @@ void main() {
     final truoc = await bloc.stream.firstWhere((s) => s is BillLoaded) as BillLoaded;
     expect(truoc.payments, isEmpty);
 
-    final bill = (await db.billDao.getById('b-tra'))!;
+    final bill = BillEntity.fromDrift((await db.billDao.getById('b-tra'))!);
     // ⚠️ Đăng ký chờ TRƯỚC khi gọi `payBill`, không phải sau.
     //
     // `watchBills` có thể phát trạng thái mới **trước khi** `payBill` trả về —

@@ -3,7 +3,7 @@
 /// khi hỏi `suggestAmount` (16 danh mục = 16 truy vấn cộng).
 library;
 
-import '../../../core/database/app_database.dart';
+import '../../category/data/models/category_entity.dart';
 import '../../../core/utils/khop_ten.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../budget/domain/cua_so_nhin_lai.dart';
@@ -51,7 +51,7 @@ class CongCuGoiYHanMuc implements CongCu {
     // Giá trị giữ chỗ ("tất cả") = không lọc — spike S3 của bước 2 (bẫy 4.43).
     final hoi = thamSoTen(args['danh_muc']);
     if (hoi != null) {
-      switch (khopTheoTen<Category>(hoi, danhMuc, (c) => c.name)) {
+      switch (khopTheoTen<CategoryEntity>(hoi, danhMuc, (c) => c.name)) {
         case KhopMot(:final muc):
           danhMuc = [muc];
           tenDaKhop = muc.name;

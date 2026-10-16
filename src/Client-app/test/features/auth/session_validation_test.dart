@@ -18,12 +18,22 @@ import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/api/interceptors/auth_interceptor.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
+import 'package:flowmoney/features/notification/application/notification_scanner.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
+import 'package:flowmoney/core/auth/phien_dieu_phoi_that.dart';
+import 'package:flowmoney/features/transaction/data/datasources/kho_anh_quet.dart';
+import 'package:flowmoney/features/auth/presentation/state/an_the_cho_xoa.dart';
+import 'package:flowmoney/features/category/application/default_category_seeder.dart';
+import 'package:flowmoney/features/category/application/personal_default_categories.dart';
+import 'package:flowmoney/features/wallet/application/default_account_data_initializer.dart';
+import 'package:flowmoney/features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
+import 'package:flowmoney/core/realtime/realtime_channel.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _FakeDioClient implements DioClient {
   @override
@@ -44,7 +54,8 @@ class _Offline implements Connectivity {
 /// Ghi lại việc SyncEngine có bị khởi động / dừng hay không, và cho phép test
 /// tự phát tín hiệu "phiên chết" như engine thật sẽ làm.
 class _SpySyncEngine extends SyncEngine {
-  _SpySyncEngine({required super.dioClient, required super.db, super.connectivity});
+  _SpySyncEngine({required super.dioClient, required super.db, super.connectivity})
+      : super(soDuVi: congSoDuViThat(db), viBiGiu: congViBiGiuThat(db));
 
   final List<int> startedWith = [];
   int stopCalls = 0;
@@ -152,14 +163,49 @@ void main() {
     await db.close();
   });
 
+  /// Bộ điều phối THẬT dựng từ chính các spy đang đăng ký — mỗi hook gác bằng `sl.isRegistered` y như AuthBloc cũ, nên
+  /// kỳ vọng thứ tự khởi động của các ca cũ còn nguyên giá trị. Đọc `sl` lúc DỰNG: đăng ký dịch vụ TRƯỚC khi gọi `phien()`.
+  PhienDieuPhoiThat phien() {
+    final p = PhienDieuPhoiThat(
+      dongBo: sl.isRegistered<SyncEngine>() ? sl<SyncEngine>() : null,
+      thoiGianThuc: sl.isRegistered<RealtimeChannel>() ? sl<RealtimeChannel>() : null,
+      boQuet: sl.isRegistered<NotificationScanner>() ? sl<NotificationScanner>() : null,
+      interceptor: sl.isRegistered<AuthInterceptor>() ? sl<AuthInterceptor>() : null,
+      donTaiKhoanKhac: db.purgeDataForOtherAccounts,
+      xoaBanSao: db.purgeDataForAccount,
+      xoaCacheSlm: () async {
+        if (sl.isRegistered<SlmCache>()) await sl<SlmCache>().xoaHet();
+      },
+      chuyenHangSeedCu: sl.isRegistered<PersonalDefaultCategories>()
+          ? (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id)
+          : null,
+      taoBanSaoDanhMuc: sl.isRegistered<DefaultCategorySeeder>()
+          ? (id) => sl<DefaultCategorySeeder>().seedForAccount(id)
+          : null,
+      seedTaiKhoanMoi: sl.isRegistered<DefaultAccountDataInitializer>()
+          ? (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id)
+          : null,
+      xoaAnhQuet: () async {
+        if (sl.isRegistered<KhoAnhQuet>()) await sl<KhoAnhQuet>().xoaHet();
+      },
+      datLaiCoGiaoDien: () {
+        if (sl.isRegistered<AnTheChoXoa>()) sl<AnTheChoXoa>().value = false;
+        if (sl.isRegistered<AnNhacViTrungTen>()) sl<AnNhacViTrungTen>().value = false;
+      },
+    );
+    addTearDown(p.dispose);
+    return p;
+  }
+
+  /// Trạng thái CUỐI của lượt mở app. Từ 2026-10-09 lượt ấy phát `AuthSuccess`
+  /// từ bộ nhớ đệm TRƯỚC khi hỏi server, nên chờ `AuthSuccess` đầu tiên là đọc
+  /// trạng thái giữa chừng — đợi hàng sự kiện cạn rồi mới đọc.
   Future<AuthState> checkAuth(_FakeAuthRepository repo) async {
-    final bloc = AuthBloc(authRepository: repo);
+    final bloc = AuthBloc(authRepository: repo, phien: phien());
     addTearDown(bloc.close);
-    final done = bloc.stream
-        .where((s) => s is AuthSuccess || s is AuthUnauthenticated)
-        .first;
     bloc.add(AuthCheckRequested());
-    return done.timeout(const Duration(seconds: 5));
+    await pumpEventQueue();
+    return bloc.state;
   }
 
   group('Khôi phục phiên lúc mở app', () {
@@ -314,7 +360,7 @@ void main() {
         session: SessionStatus.valid,
         cachedUser: _user('9'),
       );
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       final loggedIn = bloc.stream.where((s) => s is AuthSuccess).first;
       bloc.add(AuthCheckRequested());
@@ -338,7 +384,7 @@ void main() {
         session: SessionStatus.valid,
         cachedUser: _user('10'),
       );
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       final loggedIn = bloc.stream.where((s) => s is AuthSuccess).first;
       bloc.add(AuthCheckRequested());
@@ -362,7 +408,7 @@ void main() {
         session: SessionStatus.valid,
         cachedUser: _user('9'),
       );
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       final loggedIn = bloc.stream.where((s) => s is AuthSuccess).first;
       bloc.add(AuthCheckRequested());
@@ -389,7 +435,7 @@ void main() {
         session: SessionStatus.valid,
         cachedUser: _user('10'),
       );
-      final bloc = AuthBloc(authRepository: repo);
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
       addTearDown(bloc.close);
       final loggedIn = bloc.stream.where((s) => s is AuthSuccess).first;
       bloc.add(AuthCheckRequested());
@@ -419,7 +465,7 @@ void main() {
       ));
 
       // Engine thật (không phải spy) nhưng CHƯA gọi start().
-      final engine = SyncEngine(
+      final engine = taoSyncEngineThu(
         dioClient: _FakeDioClient(),
         db: db,
         connectivity: _Offline(),
@@ -490,4 +536,157 @@ void main() {
       expect(await db.purgeDataForOtherAccounts(-1), 0);
     });
   });
+
+  // ── Mở app không chờ mạng (2026-10-09) ──────────────────────────────────
+  // Trước đây mọi trang đợi `verifySession()` (GET /auth/profile, trần 30 s)
+  // xong mới có `AuthSuccess`: server chậm / Render đang ngủ / Wi-Fi không ra
+  // Internet là 30 s vòng xoay, còn Trang chủ in "0 đ" và "Người dùng". Người
+  // dùng chọn: hiện dữ liệu trên máy ngay, hỏi server ở nền.
+  group('Mở app không chờ mạng', () {
+    test('server chưa trả lời → AuthSuccess từ bộ nhớ đệm ĐÃ phát, đồng bộ CHƯA khởi động',
+        () async {
+      final cho = Completer<SessionStatus>();
+      final repo = _RepoCho(cho, _user('10'));
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
+      addTearDown(bloc.close);
+      bloc.add(AuthCheckRequested());
+      await pumpEventQueue();
+
+      expect(bloc.state, isA<AuthSuccess>(),
+          reason: 'dữ liệu nằm sẵn trong SQLite — không được đợi một lượt gọi mạng');
+      expect((bloc.state as AuthSuccess).user!.id, '10');
+      expect(sync.startedWith, isEmpty,
+          reason: 'chốt cũ giữ nguyên: không khởi động đồng bộ trước khi biết phiên còn sống');
+
+      cho.complete(SessionStatus.valid);
+      await pumpEventQueue();
+      expect(sync.startedWith, [10]);
+      expect(bloc.state, isA<AuthSuccess>());
+    });
+
+    test(
+        'bộ quét cục bộ (nhập biến động D1, chuông, nhắc, tự trả) chạy NGAY, không đợi '
+        'server; phiên chết thì bị dừng', () async {
+      final scanner = _SpyScanner(db);
+      sl.registerSingleton<NotificationScanner>(scanner);
+      final cho = Completer<SessionStatus>();
+      final repo = _RepoCho(cho, _user('10'));
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
+      addTearDown(bloc.close);
+      bloc.add(AuthCheckRequested());
+      await pumpEventQueue();
+
+      expect(scanner.startedWith, [10],
+          reason: 'chạm thông báo "Có N biến động số dư mới" lúc mất mạng phải thấy đủ '
+              'mục chờ ghi ngay — người dùng chọn 2026-10-09');
+      expect(sync.startedWith, isEmpty, reason: 'đồng bộ vẫn đợi server');
+
+      cho.complete(SessionStatus.invalid);
+      await pumpEventQueue();
+      expect(scanner.stopCalls, greaterThan(0),
+          reason: 'phiên chết: dừng bộ quét (stop() huỷ cả lịch nhắc trong AlarmManager)');
+      expect(bloc.state, isA<AuthUnauthenticated>());
+    });
+
+    test('server trả lời phiên chết SAU khi đã hiện dữ liệu → đăng xuất, không đồng bộ',
+        () async {
+      final cho = Completer<SessionStatus>();
+      final repo = _RepoCho(cho, _user('10'));
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
+      addTearDown(bloc.close);
+      final states = <AuthState>[];
+      final sub = bloc.stream.listen(states.add);
+      addTearDown(sub.cancel);
+      bloc.add(AuthCheckRequested());
+      await pumpEventQueue();
+      cho.complete(SessionStatus.invalid);
+      await pumpEventQueue();
+
+      expect(states.map((s) => s.runtimeType).toList(),
+          [AuthChecking, AuthSuccess, AuthUnauthenticated]);
+      expect(repo.logoutCalls, 1);
+      expect(sync.startedWith, isEmpty);
+    });
+
+    test('đăng xuất trong lúc chờ server → server trả lời hợp lệ cũng KHÔNG khởi động gì',
+        () async {
+      final cho = Completer<SessionStatus>();
+      final repo = _RepoCho(cho, _user('10'));
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
+      addTearDown(bloc.close);
+      bloc.add(AuthCheckRequested());
+      await pumpEventQueue();
+      bloc.add(LogoutRequested());
+      await pumpEventQueue();
+      expect(bloc.state, isA<AuthUnauthenticated>());
+
+      cho.complete(SessionStatus.valid);
+      await pumpEventQueue();
+      expect(bloc.state, isA<AuthUnauthenticated>(),
+          reason: 'lượt mở app về muộn không được phát lại AuthSuccess đè lên đăng xuất');
+      expect(sync.startedWith, isEmpty,
+          reason: 'đồng bộ cho phiên vừa đăng xuất là ghi dữ liệu dưới danh nghĩa người đã rời đi');
+    });
+
+    test('server báo tài khoản đang chờ xoá → phát lại AuthSuccess mang trạng thái mới',
+        () async {
+      final cho = Completer<SessionStatus>();
+      final repo = _RepoCho(cho, _user('10'));
+      final bloc = AuthBloc(authRepository: repo, phien: phien());
+      addTearDown(bloc.close);
+      bloc.add(AuthCheckRequested());
+      await pumpEventQueue();
+      expect((bloc.state as AuthSuccess).user!.dangChoXoa, isFalse);
+
+      // verifySession đồng bộ `status` từ /auth/profile vào bộ nhớ đệm.
+      repo.cached = _user('10').voiTrangThai(status: 'PendingDelete');
+      cho.complete(SessionStatus.valid);
+      await pumpEventQueue();
+      expect((bloc.state as AuthSuccess).user!.dangChoXoa, isTrue,
+          reason: 'thẻ "chờ xoá" ở Trang chủ phải theo câu trả lời của server');
+    });
+  });
+}
+
+/// `verifySession` treo tới khi test `complete()` — mô phỏng server chậm.
+class _RepoCho implements AuthRepository {
+  _RepoCho(this.cho, this.cached);
+
+  final Completer<SessionStatus> cho;
+  UserModel? cached;
+  int logoutCalls = 0;
+
+  @override
+  Future<bool> checkAuthStatus() async => true;
+
+  @override
+  Future<UserModel?> getCurrentUser() async => cached;
+
+  @override
+  Future<SessionStatus> verifySession() => cho.future;
+
+  @override
+  Future<void> logout() async => logoutCalls++;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _SpyScanner extends NotificationScanner {
+  _SpyScanner(AppDatabase db)
+      : super(
+          dao: db.notificationDao,
+          loadBudgets: (id, at) async => [],
+          loadBills: (id, at) async => [],
+          syncStatus: const Stream.empty(),
+        );
+
+  final List<int> startedWith = [];
+  int stopCalls = 0;
+
+  @override
+  Future<void> start(int idaccount) async => startedWith.add(idaccount);
+
+  @override
+  Future<void> stop() async => stopCalls++;
 }

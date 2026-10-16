@@ -13,6 +13,9 @@
 /// ⚠️ `napFontThat` nạp font cho cả isolate — tệp này chỉ chứa ca đo font thật.
 library;
 
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +23,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
@@ -49,16 +52,17 @@ class _FixedAuthBloc extends AuthBloc {
 
 class _FixedBillRepository implements BillRepository {
   _FixedBillRepository(this.bills);
-  final List<Bill> bills;
+  final List<BillEntity> bills;
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
+  Stream<List<BillEntity>> watchBills(int idaccount) => Stream.value(bills);
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => const {};
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => const {};
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _bill({double amount = 100000, bool daTra = false}) => Bill(
+BillEntity _bill({double amount = 100000, bool daTra = false, bool tuTra = false}) =>
+    BillEntity(
       id: 'b1',
       idaccount: 10,
       walletId: 'w1',
@@ -69,7 +73,7 @@ Bill _bill({double amount = 100000, bool daTra = false}) => Bill(
       dueDate: DateTime(2026, 9, 25),
       payStatus: daTra ? kBillPayed : kBillPending,
       isPaid: daTra,
-      autoPayEnabled: false,
+      autoPayEnabled: tuTra,
       timeNotification: '3',
       isRecurrence: true,
       timeRecurrence: kBillCycleMonth,
@@ -79,7 +83,6 @@ Bill _bill({double amount = 100000, bool daTra = false}) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 
@@ -92,11 +95,19 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     if (sl.isRegistered<AppDatabase>()) await sl.unregister<AppDatabase>();
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
     await db.walletDao.insert(WalletsCompanion.insert(
       id: 'w1',
       idaccount: 10,
       name: 'Tiền mặt',
       balance: const drift.Value(5000000),
+      updatedAt: DateTime(2026, 9, 1),
+    ));
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'c1',
+      idaccount: 10,
+      name: 'Nhà cửa',
+      classify: 'chi',
       updatedAt: DateTime(2026, 9, 1),
     ));
   });
@@ -106,7 +117,7 @@ void main() {
     await db.close();
   });
 
-  Future<void> moTrang(WidgetTester tester, Bill bill, double rong) async {
+  Future<void> moTrang(WidgetTester tester, BillEntity bill, double rong) async {
     tester.view.physicalSize = Size(rong, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -208,5 +219,53 @@ void main() {
     expect(tester.takeException(), isNull);
     final nut = tester.getRect(find.widgetWithText(ElevatedButton, 'Thanh toán'));
     expect(nut.right, lessThanOrEqualTo(300));
+  });
+
+  // ── G52 (2026-10-09) ────────────────────────────────────────────────────
+  // Ở 360 dp tên + ngày hạn VỪA cạnh chip nên G74 giữ chip cùng hàng, nhưng dòng
+  // thứ ba "danh mục • ví • Tự trả" (G74 cố ý không đo) chỉ còn 108 dp trong khi
+  // cần ~150: "Nhà cửa • Tiền…" — mất tên ví và dấu hiệu tự trả. Người dùng chọn:
+  // dòng ấy ra khỏi cột chữ, trải rộng dưới cả tên lẫn chip.
+  const meta = 'Nhà cửa • Tiền mặt • Tự trả';
+
+  for (final daTra in [false, true]) {
+    testWidgets('G52 · 360 dp${daTra ? ', đã trả' : ''}: dòng danh mục • ví • Tự trả vẽ trọn',
+        (tester) async {
+      await moTrang(tester, _bill(daTra: daTra, tuTra: true), 360);
+      if (daTra) {
+        await tester.tap(find.textContaining('Lịch sử'));
+        await tester.pumpAndSettle();
+      }
+      expect(tester.takeException(), isNull);
+      veTron(tester, meta, '360 dp');
+      final ten = tester.getRect(trongThe('Kiem tra dien'));
+      final chip = tester.getRect(trongThe(daTra ? 'ĐÃ THANH TOÁN' : 'CHƯA THANH TOÁN'));
+      expect(chip.top, lessThan(ten.bottom),
+          reason: 'chip vẫn ở góc phải, ngang hàng tên (dáng 360 dp giữ nguyên)');
+      final dong = tester.getRect(trongThe(meta));
+      expect(dong.left, closeTo(ten.left, 1), reason: 'dòng ví thẳng lề với tên');
+      expect(dong.right, greaterThan(chip.left),
+          reason: 'dòng ví trải rộng dưới chip — đó là chỗ nó lấy thêm bề ngang');
+      expect(dong.top, greaterThanOrEqualTo(chip.bottom),
+          reason: 'dòng ví nằm dưới chip, không đè lên nó');
+    });
+  }
+
+  testWidgets('G52 · 360 dp: thẻ không cao thêm so với khi chưa bật tự trả', (tester) async {
+    await moTrang(tester, _bill(), 360);
+    final thuong = tester.getSize(find.byKey(const ValueKey('bill-row-b1'))).height;
+    await moTrang(tester, _bill(tuTra: true), 360);
+    final tuTra = tester.getSize(find.byKey(const ValueKey('bill-row-b1'))).height;
+    expect(tuTra, thuong, reason: 'dòng ví dài hơn không được đẩy thẻ cao thêm');
+  });
+
+  testWidgets('G52 · 320 dp: khi chip đã xếp chồng, dòng ví vẫn đứng trên chip', (tester) async {
+    await moTrang(tester, _bill(tuTra: true), 320);
+    expect(tester.takeException(), isNull);
+    veTron(tester, meta, '320 dp');
+    final dong = tester.getRect(trongThe(meta));
+    final chip = tester.getRect(trongThe('CHƯA THANH TOÁN'));
+    expect(dong.bottom, lessThanOrEqualTo(chip.top),
+        reason: 'thứ tự cột chữ khi chật giữ như G74: tên · hạn · ví · chip');
   });
 }

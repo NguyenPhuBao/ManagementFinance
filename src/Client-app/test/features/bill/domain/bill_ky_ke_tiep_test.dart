@@ -8,18 +8,18 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/bill/domain/bill_ky_ke_tiep.dart';
 
-Bill _hoaDon({
+BillEntity _hoaDon({
   required DateTime dueDate,
   DateTime? periodEnd,
   int? anchorDay,
   String chuKy = kBillCycleMonth,
 }) =>
-    Bill(
+    BillEntity(
       id: 'b1',
       idaccount: 7,
       walletId: 'w1',
@@ -42,7 +42,6 @@ Bill _hoaDon({
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 

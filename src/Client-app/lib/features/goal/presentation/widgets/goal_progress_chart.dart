@@ -3,6 +3,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/ui/bieu_do_cham.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../analytics/domain/thong_ke_thang.dart' show rutGon;
 import '../../data/models/goal_entity.dart';
@@ -119,8 +120,10 @@ class GoalProgressChart extends StatelessWidget {
             height: 180,
             child: LineChart(
               LineChartData(
-                minX: minX,
-                maxX: maxX,
+                // Nới hai đầu để chấm khoản đầu và điểm cuối nằm trọn trong
+                // vùng vẽ (G79); nhãn biên vẫn in đúng ngày đầu/cuối thật.
+                minX: trucNgangCoCham(minX, maxX).min,
+                maxX: trucNgangCoCham(minX, maxX).max,
                 minY: 0,
                 maxY: chuoi.dinhY,
                 // **Bắt buộc.** `clipData` mặc định của fl_chart là
@@ -135,11 +138,10 @@ class GoalProgressChart extends StatelessWidget {
                 // một hình dáng dữ liệu chưa lường tới cũng không thể vẽ ra
                 // ngoài khung nữa.
                 //
-                // Chỉ cắt TRÊN/DƯỚI (G55, 2026-09-29): chấm của khoản đầu và
-                // điểm cuối nằm đúng `minX`/`maxX`, cắt trái/phải là mất nửa
-                // chấm. Trục ngang không thoát khung được: dải X là đúng mốc
-                // đầu/cuối của chuỗi.
-                clipData: const FlClipData.vertical(),
+                // Cắt cả bốn mép; chấm khoản đầu/điểm cuối không mất nửa nhờ
+                // trục ngang đã nới (G79 — `FlClipData.vertical()` của G55 vẫn
+                // cắt trái/phải trong fl_chart 1.2.0).
+                clipData: const FlClipData.all(),
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
@@ -185,16 +187,19 @@ class GoalProgressChart extends StatelessWidget {
                       interval: buocX,
                       reservedSize: 26,
                       getTitlesWidget: (v, meta) {
+                        // fl_chart hỏi nhãn ở hai biên ĐÃ NỚI (G79): kẹp về
+                        // ngày đầu/cuối thật để nhãn biên vẫn nói đúng ngày.
+                        final moc = v.clamp(minX, maxX).toDouble();
                         // Bỏ mốc ngoài dải, và mốc sát biên (nơi nhãn biên đã
                         // chiếm chỗ) — luật ở tầng thuần, có test riêng.
-                        if (!hienNhanTruc(v: v, min: minX, max: maxX)) {
+                        if (!hienNhanTruc(v: moc, min: minX, max: maxX)) {
                           return const SizedBox.shrink();
                         }
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             dinhDangNgay.format(
-                              DateTime.fromMillisecondsSinceEpoch(v.round()),
+                              DateTime.fromMillisecondsSinceEpoch(moc.round()),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

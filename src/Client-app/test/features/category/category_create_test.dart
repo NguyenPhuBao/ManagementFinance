@@ -12,6 +12,8 @@ import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
+import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _FakeDioClient implements DioClient {
   @override
@@ -87,7 +89,8 @@ class _OnlineOnce implements Connectivity {
 
 /// Đếm số lần SyncEngine được yêu cầu đồng bộ, không chạy sync thật.
 class _SpySyncEngine extends SyncEngine {
-  _SpySyncEngine({required super.dioClient, required super.db, super.connectivity});
+  _SpySyncEngine({required super.dioClient, required super.db, super.connectivity})
+      : super(soDuVi: congSoDuViThat(db), viBiGiu: congViBiGiuThat(db));
 
   int scheduleCount = 0;
 
@@ -192,7 +195,7 @@ void main() {
     await repo.saveChild(draft(parentId: group.id));
 
     final capturingDio = _CapturingDioClient();
-    final realSync = SyncEngine(
+    final realSync = taoSyncEngineThu(
       dioClient: capturingDio,
       db: db,
       connectivity: _OnlineOnce(),
@@ -244,7 +247,7 @@ void main() {
           },
         ],
       };
-    final realSync = SyncEngine(
+    final realSync = taoSyncEngineThu(
       dioClient: pullDio,
       db: db,
       connectivity: _OnlineOnce(),
@@ -287,7 +290,7 @@ void main() {
           },
         ],
       };
-    final realSync = SyncEngine(
+    final realSync = taoSyncEngineThu(
       dioClient: pullDio,
       db: db,
       connectivity: _OnlineOnce(),
@@ -338,7 +341,7 @@ void main() {
     ));
 
     final capturingDio = _CapturingDioClient();
-    final realSync = SyncEngine(
+    final realSync = taoSyncEngineThu(
       dioClient: capturingDio,
       db: db,
       connectivity: _OnlineOnce(),

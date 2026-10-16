@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../../core/database/app_database.dart';
+import '../../data/tai_phan_bo_nguon.dart';
 import '../../../ai_edge/presentation/pages/ke_hoach_tai_phan_bo_sheet.dart';
 import '../../data/models/budget_entity.dart';
 import '../../data/repositories/budget_repository.dart';
@@ -27,7 +27,7 @@ class BudgetPage extends StatelessWidget {
     context.watch<AuthBloc>();
 
     // `null` khi chưa có phiên đăng nhập dùng được. Cubit sẽ **không đọc gì**
-    // thay vì đoán một mã tài khoản — xem `core/auth/current_account.dart`.
+    // thay vì đoán một mã tài khoản — xem `features/auth/presentation/bloc/current_account.dart`.
     final idaccount = currentAccountIdOrNull(context);
 
     return BlocProvider<BudgetCubit>(
@@ -84,7 +84,7 @@ class _BudgetPageContent extends StatelessWidget {
                 keHoach: kh,
                 idaccount: idaccount,
                 budgets: sl<BudgetRepository>(),
-                ghiPhanHoi: sl<AppDatabase>().aiFeedbackDao.ghi,
+                ghiPhanHoi: sl<TaiPhanBoNguon>().ghiPhanHoi,
               );
             },
           ),

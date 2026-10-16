@@ -2,11 +2,12 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/category/category_name.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../wallet/data/services/so_du_vi_service.dart';
+import '../../../wallet/data/so_du_vi_service.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../datasources/goal_local_data_source.dart';
 import '../../domain/goal_history_direction.dart';
 import '../../domain/goal_recurrence.dart';
+import '../../../transaction/data/models/transaction_entity.dart';
 import '../models/goal_entity.dart';
 import 'goal_repository.dart';
 
@@ -346,6 +347,8 @@ class GoalRepositoryImpl implements GoalRepository {
     required String walletId,
     DateTime? occurredAt,
     bool tuDong = false,
+    String? transactionId,
+    DateTime? mocChayMoi,
   }) async {
     // Một lần nạp là bốn thao tác ghi: tăng tiến độ mục tiêu, có thể đánh dấu
     // hoàn thành, đổi số dư hai ví, và chèn MỘT giao dịch chuyển khoản. Chạy
@@ -369,6 +372,16 @@ class GoalRepositoryImpl implements GoalRepository {
           'depositAmount',
           'Số tiền nạp phải lớn hơn 0.',
         );
+      }
+
+      // Khoản trích tự động (spec tự chuyển tiền chạy nền mục 5): đã có hàng
+      // mang id tất định — máy khác trích rồi kéo về, hoặc người dùng đã xoá —
+      // thì không ghi gì. Kiểm TRONG khối nguyên tử; `getById` cố ý không lọc
+      // xoá mềm. Không kiểm thì `insert` (insertOrReplace) đè lên hàng ấy.
+      if (transactionId != null &&
+          db != null &&
+          await db!.transactionDao.getById(transactionId) != null) {
+        throw KyDaTrichException(transactionId);
       }
 
       final goal = await localDataSource.getGoalById(goalId);
@@ -477,7 +490,7 @@ class GoalRepositoryImpl implements GoalRepository {
       // đây là chỗ Goal làm đầy đủ hơn, không phải chỗ lệch.
       await db!.transactionDao.insert(
         TransactionsCompanion.insert(
-          id: const Uuid().v4(),
+          id: transactionId ?? const Uuid().v4(),
           idaccount: idaccount,
           walletId: walletId,
           walletTransfer: Value(viNhan),
@@ -500,6 +513,13 @@ class GoalRepositoryImpl implements GoalRepository {
           updatedAt: now,
         ),
       );
+
+      // Mốc trích ghi CÙNG khối nguyên tử: tiền đã chuyển ⇔ mốc đã đẩy. Hàng
+      // mục tiêu đã `pending` (updateGoalAmount) nên cột này đi kèm lượt đẩy.
+      if (mocChayMoi != null) {
+        await (db!.update(db!.goals)..where((t) => t.id.equals(goalId)))
+            .write(GoalsCompanion(autoDepositLastRun: Value(mocChayMoi)));
+      }
     }
 
     if (db != null) {
@@ -643,15 +663,17 @@ class GoalRepositoryImpl implements GoalRepository {
   }
 
   @override
-  Stream<dynamic> watchGoalTransactions(
+  Stream<List<TransactionEntity>> watchGoalTransactions(
     int idaccount,
     String goalId,
     String goalName,
   ) {
     if (db != null) {
-      return db!.transactionDao.watchByGoal(idaccount, goalId, goalName);
+      return db!.transactionDao
+          .watchByGoal(idaccount, goalId, goalName)
+          .map((rows) => rows.map(TransactionEntity.fromDrift).toList());
     }
-    return Stream.value([]);
+    return Stream.value(const <TransactionEntity>[]);
   }
 
   @override

@@ -27,7 +27,7 @@
 /// 2. **Kết quả cũng phải kẹp trần**: hai vế 13 chữ số cộng lại ra **14** chữ
 ///    số, vượt `numeric(15,2)` — đúng cái bẫy G31/G14/G46, giao dịch kẹt hàng
 ///    đợi đẩy vĩnh viễn, im lặng.
-/// 3. **Hiệu được phép ÂM** và không kẹp về 0: `_saveTransaction` đã có chốt
+/// 3. **Hiệu được phép ÂM** và không kẹp về 0: `ThemGiaoDichCubit.chuanBiLuu` đã có chốt
 ///    `amount <= 0` báo ra màn hình, còn kẹp ở đây thì `30000-50000` lặng lẽ
 ///    thành 0 rồi bị chốt kia từ chối với một lời nhắn chẳng ăn nhập.
 library;
@@ -115,7 +115,7 @@ void main() {
 
     test('⚠️ hiệu ÂM giữ nguyên dấu, không kẹp về 0', () {
       expect(ketQuaBieuThuc('30000-50000'), -20000,
-          reason: '`_saveTransaction` đã có chốt `amount <= 0` báo ra màn '
+          reason: '`chuanBiLuu` đã có chốt `amount <= 0` báo ra màn '
               'hình. Kẹp về 0 ở đây thì lời nhắn ấy chẳng ăn nhập với thứ '
               'người dùng vừa gõ.');
     });

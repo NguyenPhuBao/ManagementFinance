@@ -6,7 +6,6 @@
 /// `action` đúng quyết định của người dùng.
 library;
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flowmoney/features/ai_edge/domain/ap_dung_ke_hoach.dart';
 import 'package:flowmoney/features/ai_edge/domain/tai_phan_bo.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
@@ -116,25 +115,25 @@ void main() {
         boQua: false,
       );
       expect(ra, hasLength(2));
-      final theoDonor = {for (final r in ra) r.donorBudgetId.value: r};
-      expect(theoDonor['giaiTri']!.action.value, 'accepted');
-      expect(theoDonor['giaiTri']!.actualAmount.value, 500000);
-      expect(theoDonor['giaiTri']!.suggestedAmount.value, 500000);
-      expect(theoDonor['muaSam']!.action.value, 'rejected');
-      expect(theoDonor['muaSam']!.actualAmount.value, 0);
+      final theoDonor = {for (final r in ra) r.donorBudgetId: r};
+      expect(theoDonor['giaiTri']!.action, 'accepted');
+      expect(theoDonor['giaiTri']!.actualAmount, 500000);
+      expect(theoDonor['giaiTri']!.suggestedAmount, 500000);
+      expect(theoDonor['muaSam']!.action, 'rejected');
+      expect(theoDonor['muaSam']!.actualAmount, 0);
 
       final sua = phanHoiTu(_keHoach(), {'giaiTri': 300000},
           idaccount: 7, now: _now, boQua: false);
-      final r = sua.firstWhere((x) => x.donorBudgetId.value == 'giaiTri');
-      expect(r.action.value, 'modified');
-      expect(r.actualAmount.value, 300000);
+      final r = sua.firstWhere((x) => x.donorBudgetId == 'giaiTri');
+      expect(r.action, 'modified');
+      expect(r.actualAmount, 300000);
     });
 
     test('boQua → mọi dòng rejected dù có số', () {
       final ra = phanHoiTu(_keHoach(), {'giaiTri': 500000, 'muaSam': 100000},
           idaccount: 7, now: _now, boQua: true);
-      expect(ra.every((r) => r.action.value == 'rejected'), isTrue);
-      expect(ra.every((r) => r.actualAmount.value == 0), isTrue);
+      expect(ra.every((r) => r.action == 'rejected'), isTrue);
+      expect(ra.every((r) => r.actualAmount == 0), isTrue);
     });
 
     test('hàng mang đủ khoá C3: deficit, donor, danh mục nguồn, kỳ của NGUỒN',
@@ -142,18 +141,18 @@ void main() {
       final ra = phanHoiTu(_keHoach(), {'giaiTri': 500000},
           idaccount: 7, now: _now, boQua: false);
       final r = ra.first;
-      expect(r.idaccount.value, 7);
-      expect(r.deficitBudgetId.value, 'an');
-      expect(r.donorCategoryId.value, 'c-giaiTri');
-      expect(r.createdAt.value, _now);
+      expect(r.idaccount, 7);
+      expect(r.deficitBudgetId, 'an');
+      expect(r.donorCategoryId, 'c-giaiTri');
+      expect(r.createdAt, _now);
       // Kỳ tháng 9 của nguồn bù — luật C3 đếm "hai kỳ liền trước" bằng cặp này,
       // qua chính `currentPeriod` của ngân sách nguồn.
       final ky = _d1.budget.currentPeriod(_now);
-      expect(r.periodFrom.value, ky.from);
-      expect(r.periodTo.value, ky.to);
-      expect(r.id, isA<Value<String>>());
-      expect(r.id.value, isNotEmpty);
-      expect(ra.map((x) => x.id.value).toSet(), hasLength(ra.length),
+      expect(r.periodFrom, ky.from);
+      expect(r.periodTo, ky.to);
+      expect(r.id, isA<String>());
+      expect(r.id, isNotEmpty);
+      expect(ra.map((x) => x.id).toSet(), hasLength(ra.length),
           reason: 'Mỗi hàng một id — khoá chính.');
     });
   });

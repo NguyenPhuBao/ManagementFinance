@@ -295,7 +295,7 @@ Chín cái đầu **đã tồn tại và đã có test** — chữ ký lấy t�
 | `budgetPaceOf` | `BudgetPace budgetPaceOf(BudgetEntity, DateTime)` | `budget/domain/budget_pace.dart:72` |
 | `duBaoCua` | `DuBaoDongTien? duBaoCua({…})` | `analytics/domain/du_bao_dong_tien.dart:181` |
 | `thongKeMucTieu` | `ThongKeMucTieu? thongKeMucTieu({…})` | `goal/domain/goal_stats.dart:42` |
-| `summarizeBills` | `BillSummary summarizeBills(List<Bill>, DateTime)` | `bill/domain/bill_status.dart:131` |
+| `summarizeBills` | `BillSummary summarizeBills(List<BillEntity>, DateTime)` | `bill/domain/bill_status.dart:131` |
 | `dongTienTuDo` | `List<DiemTuDo> dongTienTuDo(…)` | `analytics/domain/dong_tien_tu_do.dart:88` |
 | `thuNhapCua` | `double thuNhapCua({…})` | `analytics/domain/dong_tien_tu_do.dart:57` |
 | `topKhoanChi` | `List<DongGiaoDich> topKhoanChi(…)` | `analytics/domain/bao_cao_xuat.dart:403` |

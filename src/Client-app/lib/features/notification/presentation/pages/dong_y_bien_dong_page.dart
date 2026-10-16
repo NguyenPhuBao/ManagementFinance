@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../transaction/domain/doc_tin_bien_dong.dart';
 import 'man_dong_y.dart';
+export '../../domain/cau_chu_dong_y.dart' show kNhacThuHoiQuyen;
 
 /// Bốn cam kết của màn xin đồng ý — spec D1 §3.4, đơn backend
 /// `DA-XONG/CLIENT_DOC_BIEN_DONG_SO_DU_TREN_MAY.md` câu 4 (Nghị định 13: mục đích, danh sách trắng,
@@ -12,11 +13,6 @@ const List<String> kCamKetBienDong = [
   'Xoá khi bạn đã ghi hoặc bỏ qua, tối đa 30 ngày',
   'Không gửi ra ngoài, không liên kết tài khoản ngân hàng',
 ];
-
-/// Dòng nhắc ở trang Cài đặt thông báo khi người dùng TẮT tính năng mà quyền hệ thống vẫn còn:
-/// tắt trong app chỉ dừng đọc, còn quyền *Truy cập thông báo* thì app không tự thu hồi được.
-const String kNhacThuHoiQuyen =
-    'Muốn thu hồi hẳn quyền thì tắt FlowMoney trong Cài đặt hệ thống → Truy cập thông báo.';
 
 /// D1 Task 6 — màn giải thích + xin đồng ý trước khi dẫn người dùng tới Cài đặt *Truy cập thông
 /// báo* của Android. **Backend bắt buộc** (Nghị định 13/2023) — không được bỏ hay rút gọn.

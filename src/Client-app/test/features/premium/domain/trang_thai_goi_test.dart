@@ -156,39 +156,13 @@ void main() {
     });
   });
 
-  group('quyenTinhNang / duocDung', () {
+  group('quyenTinhNang', () {
     test('trangThaiTuJson đọc trường features từ backend', () {
       final g = trangThaiTuJson({
         'accountType': 'Basic',
-        'features': {
-          'ai_assistant': true,
-          'ai_quick_input': false,
-        },
+        'features': {'ai_assistant': true, 'ai_quick_input': false},
       }, nhanLuc: now);
-
-      expect(g.duocDung('ai_assistant'), isTrue);
-      expect(g.duocDung('ai_quick_input'), isFalse);
-    });
-
-    test('duocDung ưu tiên map cấu hình, fallback theo laPremium nếu không có', () {
-      final basicCoAi = TrangThaiGoi(
-        loai: LoaiGoi.basic,
-        nhanLuc: now,
-        quyenTinhNang: const {'ai_assistant': true},
-      );
-      expect(basicCoAi.duocDung('ai_assistant'), isTrue,
-          reason: 'Admin bật riêng cho Basic');
-      expect(basicCoAi.duocDung('chua_co_trong_map'), isFalse,
-          reason: 'Fallback về laPremium = false');
-
-      final premiumBiKhoaAi = TrangThaiGoi(
-        loai: LoaiGoi.premium,
-        hetHan: DateTime(2026, 11, 5),
-        nhanLuc: now,
-        quyenTinhNang: const {'ai_assistant': false},
-      );
-      expect(premiumBiKhoaAi.duocDung('ai_assistant'), isFalse,
-          reason: 'Admin chủ động tắt');
+      expect(g.quyenTinhNang, {'ai_assistant': true, 'ai_quick_input': false});
     });
 
     test('tuJsonKho lưu và phục hồi quyenTinhNang', () {
@@ -197,9 +171,7 @@ void main() {
         nhanLuc: now,
         quyenTinhNang: const {'ai_assistant': true, 'ai_quick_input': false},
       );
-      final lai = TrangThaiGoi.tuJsonKho(g.toJson())!;
-      expect(lai.duocDung('ai_assistant'), isTrue);
-      expect(lai.duocDung('ai_quick_input'), isFalse);
+      expect(TrangThaiGoi.tuJsonKho(g.toJson())!.quyenTinhNang, g.quyenTinhNang);
     });
   });
 }

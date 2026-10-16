@@ -62,4 +62,17 @@ void main() {
               'vừa bỏ. Mất chúng là Trang chủ chỉ còn FAB.');
     }
   });
+
+  test('C4: nút Nói nối dây — có quyền thì /add?noi=1, Basic thì màn Nâng cấp (duongNutNoi)', () {
+    // Quét nguồn (khuôn của cả tệp này): dựng HomePage thật đòi nửa cái app. Phần chọn đường đã có ca thuần ở
+    // `presentation/widgets/hang_nut_nhanh_test.dart`; ở đây canh HomePage gọi đúng hàm đó với đúng quyền.
+    expect(nguon.contains("Key('nut-nhanh-noi')"), isTrue);
+    expect(
+      nguon.contains('context.push(duongNutNoi(coQuyen: context.coQuyenDoc(MaQuyen.aiQuickInput)))'),
+      isTrue,
+      reason: 'C4 2026-10-12: nút Nói phải xét quyền aiQuickInput (cùng quyền với ô Nhập nhanh).',
+    );
+    expect(nguon.contains('HangNutNhanh('), isTrue);
+    expect(nguon.contains('_buildActionItem'), isFalse, reason: 'C4 2026-10-12: đã tách thành HangNutNhanh.');
+  });
 }

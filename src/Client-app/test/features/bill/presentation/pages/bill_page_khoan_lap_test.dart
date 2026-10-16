@@ -6,6 +6,10 @@
 /// sách; khối Nhận xét từng làm trạng thái rỗng tràn 73 px.
 library;
 
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +17,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
@@ -41,11 +45,11 @@ class _FixedAuthBloc extends AuthBloc {
 
 class _FixedBillRepository implements BillRepository {
   _FixedBillRepository(this.bills);
-  final List<Bill> bills;
+  final List<BillEntity> bills;
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
+  Stream<List<BillEntity>> watchBills(int idaccount) => Stream.value(bills);
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => const {};
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => const {};
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -56,7 +60,7 @@ class _NguonGia implements DeXuatHoaDonNguon {
   @override
   Future<List<KhoanLap>?> tai(int idaccount) async => ds;
   @override
-  Future<Map<String, Category>> bangDanhMuc(int idaccount) async => const {};
+  Future<Map<String, CategoryEntity>> bangDanhMuc(int idaccount) async => const {};
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -73,7 +77,7 @@ KhoanLap _kl(String ten) => KhoanLap(
       soLan: 3,
     );
 
-Bill _bill(String id, DateTime dueDate) => Bill(
+BillEntity _bill(String id, DateTime dueDate) => BillEntity(
       id: id,
       idaccount: 10,
       walletId: 'w1',
@@ -94,7 +98,6 @@ Bill _bill(String id, DateTime dueDate) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 
@@ -106,6 +109,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     if (sl.isRegistered<AppDatabase>()) await sl.unregister<AppDatabase>();
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
     await db.walletDao.insert(WalletsCompanion.insert(
       id: 'w1',
       idaccount: 10,
@@ -120,7 +124,7 @@ void main() {
     await db.close();
   });
 
-  Future<void> moTrang(WidgetTester tester, List<Bill> bills, List<KhoanLap>? ds,
+  Future<void> moTrang(WidgetTester tester, List<BillEntity> bills, List<KhoanLap>? ds,
       {Size khoMan = const Size(411, 2400), bool coRouter = false}) async {
     tester.view.physicalSize = khoMan;
     tester.view.devicePixelRatio = 1.0;

@@ -1,3 +1,4 @@
+import '../../../notification/data/repositories/thong_bao_repository.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../../core/database/app_database.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../data/models/goal_entity.dart';
 import '../../../ai_edge/domain/goi_so_muc_tieu.dart';
@@ -15,7 +15,7 @@ import '../widgets/goal_progress.dart';
 import '../../domain/goal_grouping.dart';
 import '../../domain/goal_priority.dart';
 import '../bloc/goal_cubit.dart';
-import '../../../../core/auth/current_account.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/ui/do_chu.dart';
 
@@ -166,9 +166,7 @@ class _GoalPageContent extends StatelessWidget {
           NotificationBell(
             unreadCount: currentAccountIdOrNull(context) == null
                 ? null
-                : sl<AppDatabase>()
-                    .notificationDao
-                    .watchUnreadCount(currentAccountIdOrNull(context)!),
+                : sl<ThongBaoRepository>().watchUnreadCount(currentAccountIdOrNull(context)!),
             onTap: () => context.push('/notifications'),
           ),
         ],
@@ -237,12 +235,16 @@ class _GoalPageContent extends StatelessWidget {
                   child: _theMucTieu(context, goals[i]),
                 ),
               ),
-              onReorder: (cu, moi) {
+              // `onReorderItem` (Flutter 3.47) trả vị trí THẬT: SDK đã trừ một khi
+              // kéo xuống (danh sách ngắn đi khi gỡ phần tử ở vị trí cũ) và bỏ
+              // qua lần thả không đổi chỗ. `onReorder` cũ trả chỉ số trên danh
+              // sách còn nguyên — dùng thẳng là rơi lệch một ô, nên trước đây có
+              // hàm tự trừ `viTriThaThucTe` (bỏ 2026-10-09, cùng phép với SDK).
+              onReorderItem: (cu, moi) {
                 final ra = uuTienSauKhiKeo(
                   dangHien: goals,
                   tuViTri: cu,
-                  // ⚠️ Không dùng thẳng `moi`. Xem `viTriThaThucTe`.
-                  toiViTri: viTriThaThucTe(cu: cu, moi: moi),
+                  toiViTri: moi,
                 );
                 if (ra.isEmpty) return;
                 context.read<GoalCubit>().sapLaiUuTien(ra);

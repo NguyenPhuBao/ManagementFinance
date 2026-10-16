@@ -13,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flowmoney/core/database/app_database.dart';
+import '../../../helpers/nguon_doc_gia.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
@@ -78,6 +79,7 @@ void main() {
     await initializeDateFormatting('vi');
     db = AppDatabase.forTesting(NativeDatabase.memory());
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
     sl.registerFactory<TransactionBloc>(
       () => TransactionBloc(transactionRepository: _MotNgayRepository()),
     );

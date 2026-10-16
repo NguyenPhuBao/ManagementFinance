@@ -6,7 +6,7 @@ import 'dart:async';
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
-import 'package:flowmoney/features/wallet/data/services/vi_trung_ten_resolver.dart';
+import 'package:flowmoney/features/wallet/application/vi_trung_ten_resolver.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

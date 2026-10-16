@@ -10,13 +10,16 @@
 /// tên**. Bảng tra tên có một định nghĩa duy nhất: `CategoryDao.getBangTraTen`.
 library;
 
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
@@ -42,20 +45,20 @@ class _FixedAuthBloc extends AuthBloc {
 
 class _FixedBillRepository implements BillRepository {
   _FixedBillRepository(this.bills);
-  final List<Bill> bills;
+  final List<BillEntity> bills;
 
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => Stream.value(bills);
+  Stream<List<BillEntity>> watchBills(int idaccount) => Stream.value(bills);
 
   @override
-  Future<Map<String, Transaction>> paymentsOf(int idaccount) async => const {};
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => const {};
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Bill _bill({required String id, required String categoryId, required String name}) =>
-    Bill(
+BillEntity _bill({required String id, required String categoryId, required String name}) =>
+    BillEntity(
       id: id,
       idaccount: 10,
       walletId: 'w1',
@@ -76,7 +79,6 @@ Bill _bill({required String id, required String categoryId, required String name
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 
@@ -90,6 +92,7 @@ void main() {
       await sl.unregister<AppDatabase>();
     }
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
     await db.walletDao.insert(WalletsCompanion.insert(
       id: 'w1',
       idaccount: 10,

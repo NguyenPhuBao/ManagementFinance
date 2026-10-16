@@ -13,7 +13,7 @@ class DioClient {
   final Dio _dio;
 
   /// [authInterceptor] được tiêm từ DI để cả app dùng chung ĐÚNG MỘT instance:
-  /// AuthBloc nghe `sessionExpiredStream` của nó, và tín hiệu đó chỉ có nghĩa
+  /// PhienDieuPhoiThat nghe (rồi chuyển cho AuthBloc quyết định) `sessionExpiredStream` của nó, và tín hiệu đó chỉ có nghĩa
   /// khi phát ra từ chính interceptor đang nằm trên đường request.
   ///
   /// Cố ý KHÔNG lộ interceptor thành thuộc tính public: nơi cần nó đã lấy qua

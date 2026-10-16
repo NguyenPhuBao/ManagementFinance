@@ -2,34 +2,29 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/api/interceptors/auth_interceptor.dart';
 import '../../../../core/auth/buoc_dang_xuat.dart';
-import '../../../ai_edge/data/slm_cache.dart';
-import '../../../category/data/services/default_category_seeder.dart';
-import '../../../category/data/services/personal_default_categories.dart';
-import '../../../../core/database/app_database.dart';
-import '../../../../core/di/injection_container.dart';
-import '../../../../core/sync/sync_engine.dart';
-import '../../../../core/notification/notification_scanner.dart';
-import '../../../../core/realtime/realtime_channel.dart';
+import '../../../../core/auth/phien_dieu_phoi.dart';
+import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
-import '../an_the_cho_xoa.dart';
-import '../../../wallet/data/services/default_account_data_initializer.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
-import '../../../wallet/presentation/an_nhac_vi_trung_ten.dart';
 
 export 'auth_event.dart';
 export 'auth_state.dart';
 
+/// Trạng thái đăng nhập của app: **chỉ trạng thái và thứ tự emit**; vòng đời phiên ở [PhienDieuPhoi].
+///
+/// Từ đợt bịt điểm rò kiến trúc 2026-10-10 Bloc không còn gọi service locator (test quét 24) và không biết tên dịch
+/// vụ nào sống theo phiên — dọn tài khoản khác, bộ quét thông báo, socket, đồng bộ, seed đều nằm sau các bước của
+/// [PhienDieuPhoi] (bản thật `PhienDieuPhoiThat`, nối ở DI). Thứ ở lại đây là quyết định về PHIÊN: thứ tự emit, các
+/// phép kiểm `_vanLaPhien` sau mỗi `await`, cờ cưỡng chế đăng xuất, và điều kiện *không xoá dữ liệu khi nguồn là
+/// `lamMoi`* (G36). `phien == null` (widget test dựng Bloc trần) nghĩa là không điều phối gì.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository authRepository;
-  final DefaultAccountDataInitializer? defaultAccountDataInitializer;
+  final PhienDieuPhoi? _phien;
 
-  StreamSubscription<void>? _sessionInvalidSub;
-  StreamSubscription<void>? _tokenClearedSub;
-  StreamSubscription<ThongBaoBuocDangXuat>? _buocDangXuatSocketSub;
-  StreamSubscription<ThongBaoBuocDangXuat>? _buocDangXuatHttpSub;
+  StreamSubscription<void>? _phienChetSub;
+  StreamSubscription<ThongBaoBuocDangXuat>? _buocDangXuatSub;
 
   /// Một lượt cưỡng chế đăng xuất đang chạy.
   ///
@@ -57,10 +52,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   void _phatChuaDangNhap(Emitter<AuthState> emit) =>
       emit(AuthUnauthenticated(thongBao: _thongBaoBuocDangXuat));
 
-  AuthBloc({
-    required this.authRepository,
-    this.defaultAccountDataInitializer,
-  }) : super(AuthInitial()) {
+  /// [phien] `null` = không điều phối gì — đúng hành vi cũ khi `sl` chưa đăng ký dịch vụ; widget test dựng Bloc trần.
+  AuthBloc({required this.authRepository, PhienDieuPhoi? phien})
+      : _phien = phien,
+        super(AuthInitial()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<LoginSubmitted>(_onLoginSubmitted);
     on<LogoutRequested>(_onLogoutRequested);
@@ -70,68 +65,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<RegisterVerifyOtpSubmitted>(_onRegisterVerifyOtpSubmitted);
     on<TaiKhoanBiBuocDangXuat>(_onTaiKhoanBiBuocDangXuat);
 
-    // SyncEngine phát tín hiệu khi phát hiện phiên trỏ tới tài khoản không còn
-    // tồn tại, để không phải chờ tới lần mở app kế tiếp mới xử lý.
-    if (sl.isRegistered<SyncEngine>()) {
-      _sessionInvalidSub = sl<SyncEngine>()
-          .sessionInvalidStream
-          .listen((_) => add(SessionInvalidated()));
-    }
-
-    // AuthInterceptor xoá token khi không thể làm mới phiên. Trước đây việc đó
-    // diễn ra trong im lặng: bloc vẫn ở AuthSuccess với kho token rỗng, còn app
-    // quay vòng 401 → refresh hỏng → xoá token. Nối vào cùng một đường xử lý
-    // với tín hiệu của SyncEngine — vẫn hỏi lại server trước khi đăng xuất.
-    if (sl.isRegistered<AuthInterceptor>()) {
-      _tokenClearedSub = sl<AuthInterceptor>()
-          .sessionExpiredStream
-          .listen((_) => add(SessionInvalidated()));
-    }
-
-    // Ba nguồn, một cửa vào (§3.5). Cùng khuôn với `sessionExpiredStream` ngay
-    // trên — khác ở chỗ luồng này mang theo LÝ DO, nên không hỏi lại server:
-    // server vừa nói xong, không còn gì để hỏi.
-    if (sl.isRegistered<RealtimeChannel>()) {
-      _buocDangXuatSocketSub = sl<RealtimeChannel>()
-          .buocDangXuat
-          .listen((tb) => add(TaiKhoanBiBuocDangXuat(tb)));
-    }
-    if (sl.isRegistered<AuthInterceptor>()) {
-      _buocDangXuatHttpSub = sl<AuthInterceptor>()
-          .taiKhoanBiTuChoi
-          .listen((tb) => add(TaiKhoanBiBuocDangXuat(tb)));
-    }
+    // Hai luồng gộp thay cho bốn subscription qua `sl`: phiên có thể chết → hỏi lại server (không tin ngay tín hiệu,
+    // nó khớp chuỗi tên constraint); lời từ chối mang LÝ DO → không hỏi lại, server vừa nói xong (§3.5).
+    _phienChetSub = phien?.phienCoTheChet.listen((_) => add(SessionInvalidated()));
+    _buocDangXuatSub = phien?.buocDangXuat.listen((tb) => add(TaiKhoanBiBuocDangXuat(tb)));
   }
 
   @override
   Future<void> close() async {
-    await _sessionInvalidSub?.cancel();
-    await _tokenClearedSub?.cancel();
-    await _buocDangXuatSocketSub?.cancel();
-    await _buocDangXuatHttpSub?.cancel();
+    await _phienChetSub?.cancel();
+    await _buocDangXuatSub?.cancel();
     return super.close();
-  }
-
-  /// Dừng mọi thứ sống theo vòng đời của phiên đăng nhập.
-  ///
-  /// Socket còn sống sau khi đăng xuất nghĩa là máy vẫn nằm trong room
-  /// `account_<id>` của người vừa rời đi — lỗi bảo mật, không phải lỗi giao
-  /// diện. Bộ quét thông báo còn sống thì nhắc hoá đơn của người trước nổ trên
-  /// màn hình khoá của người sau (`NotificationScanner.stop()` gọi `cancelAll`
-  /// bên trong, vì lịch nằm trong AlarmManager chứ không trong SQLite).
-  ///
-  /// Chuỗi này từng được chép ở `_onSessionInvalidated` và `_onLogoutRequested`;
-  /// lần thứ ba là lúc gom về một chỗ.
-  Future<void> _dungMoiThuCuaPhien() async {
-    if (sl.isRegistered<SyncEngine>()) {
-      sl<SyncEngine>().stop();
-    }
-    if (sl.isRegistered<NotificationScanner>()) {
-      await sl<NotificationScanner>().stop();
-    }
-    if (sl.isRegistered<RealtimeChannel>()) {
-      await sl<RealtimeChannel>().stop();
-    }
   }
 
   /// Server nói tài khoản này không được dùng nữa — spec §3.5.
@@ -165,7 +109,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // này dù về trước hay về sau.
     _thongBaoBuocDangXuat = thongBao;
 
-    await _dungMoiThuCuaPhien();
+    await _phien?.dongPhien();
 
     // Dọn bản sao cục bộ CHỈ khi tài khoản thật sự đã bị xoá, và chỉ khi lời ấy
     // không đến từ nhánh làm mới token — ở đó một lỗi lược đồ phía server từng
@@ -191,9 +135,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final idTuPhien =
           int.tryParse((await authRepository.getCurrentUser())?.id ?? '');
       final id = idTuThongBao ?? idTuPhien;
-      if (id != null && id > 0 && sl.isRegistered<AppDatabase>()) {
-        await sl<AppDatabase>().purgeDataForAccount(id);
-      }
+      if (id != null && id > 0) await _phien?.xoaDuLieu(id);
     }
 
     // KHÔNG gọi `logout()`: route `/auth/logout` đi qua `authenticate` và sẽ
@@ -216,7 +158,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final session = await authRepository.verifySession();
     if (session != SessionStatus.invalid) return;
 
-    await _dungMoiThuCuaPhien();
+    await _phien?.dongPhien();
     await authRepository.logout();
     _phatChuaDangNhap(emit);
   }
@@ -247,21 +189,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         return;
       }
 
-      // Hỏi server xem phiên còn trỏ tới tài khoản CÓ THẬT không.
-      // Trước đây bước này không tồn tại: client chỉ thấy "có chuỗi token" là
-      // coi như đăng nhập hợp lệ. Nếu tài khoản đã bị xoá khỏi CSDL mà JWT còn
-      // hạn, SyncEngine vẫn khởi động và mọi lần đẩy dữ liệu đều vỡ khoá ngoại
-      // fk_category_account / fk_transaction_account — lặp lại vô hạn.
-      final session = await authRepository.verifySession();
-      if (session == SessionStatus.invalid) {
-        await authRepository.logout();
-        _phatChuaDangNhap(emit);
-        return; // KHÔNG khởi động SyncEngine với phiên đã chết
-      }
-      // valid hoặc unknown (mất mạng / lỗi 5xx) → giữ phiên, đúng offline-first.
-
-      // Đọc người dùng SAU khi xác minh: `verifySession` đồng bộ `status` chờ xoá
-      // từ `/auth/profile` vào bộ nhớ đệm (spec cưỡng chế đăng xuất §4.3).
+      // ── Phần không chạm mạng: hiện dữ liệu trên máy NGAY (2026-10-09). ──
+      // Trước đây `AuthSuccess` chỉ phát sau `verifySession()` (GET
+      // /auth/profile, trần 30 s): server chậm, Render đang ngủ, Wi-Fi không ra
+      // Internet là mọi trang quay vòng tới 30 s và Trang chủ in "0 đ" /
+      // "Người dùng" — trong khi dữ liệu nằm sẵn trong SQLite (offline-first).
       final user = await authRepository.getCurrentUser();
 
       // Không còn fallback `?? 1`: id hỏng mà mặc định thành 1 nghĩa là ghi dữ
@@ -273,43 +205,62 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         return;
       }
 
-      if (sl.isRegistered<SyncEngine>()) {
-        // Dọn dữ liệu tài khoản khác Ở ĐÂY NỮA, không chỉ ở luồng đăng nhập:
-        // người dùng mở lại app mà không đăng xuất/đăng nhập lại thì dữ liệu
-        // rác của tài khoản cũ vẫn nằm nguyên trong máy.
-        await _donDuLieuTaiKhoanKhac(idAcc);
-        final personal = sl.isRegistered<PersonalDefaultCategories>()
-            ? sl<PersonalDefaultCategories>()
-            : null;
-        // Chuyển dữ liệu trỏ vào hàng seed `cat_*` cũ. Chạy TRƯỚC start(): việc
-        // này phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
-        await personal?.convertLegacyRows(idAcc);
-        final engine = sl<SyncEngine>();
-        // Không await ở đường mở app: chờ một vòng mạng ở đây làm màn hình đầu
-        // tiên đứng hình. Nối phần tạo danh mục vào sau bằng `then`.
-        // Bám đúng vòng đời của SyncEngine. Cố ý KHÔNG gắn ở home_page.dart —
-        // chỗ đó gọi start() ngay trong build(), tức mỗi lần Home rebuild là
-        // một lời gọi nữa.
-        if (sl.isRegistered<NotificationScanner>()) {
-          await sl<NotificationScanner>().start(idAcc);
-        }
-        // Kênh thời gian thực sống đúng bằng vòng đời của phiên đăng nhập, y
-        // như bộ quét thông báo ngay trên.
-        if (sl.isRegistered<RealtimeChannel>()) {
-          await sl<RealtimeChannel>().start(idaccount: idAcc);
-        }
-        unawaited(engine.start(idaccount: idAcc).then((_) async {
-          // Pull hỏng (mất mạng, server lỗi) thì CSDL cục bộ chưa đáng tin.
-          // Bộ mặc định của backend chưa chắc đã về, mà thiếu nó thì không có
-          // khuôn để sao chép — bỏ qua, lần mở app sau thử lại.
-          if (!engine.hasCompletedPull) return;
-          await _taoBanSaoDanhMuc(idAcc);
-        }));
-      }
+      // Dọn tài khoản khác (cả khi mở lại app không đăng nhập lại), chuyển hàng seed `cat_*` cũ TRƯỚC start(), rồi bộ quét
+      // (nhập hàng chờ D1, số trên chuông, nhắc, quá hạn, tự trả/trích) — TRƯỚC `AuthSuccess` (2026-10-09):
+      // `MoTuTomTatBienDong` điều hướng ngay khi thấy `AuthSuccess`, danh sách chờ ghi phải đủ kể cả khi server không tới được.
+      await _phien?.moPhienCucBo(idAcc);
       emit(AuthSuccess(user: user));
+
+      // ── Phần chạm mạng: hỏi server xem phiên còn trỏ tới tài khoản CÓ THẬT. ──
+      // Trước khi có bước này client chỉ thấy "có chuỗi token" là coi như đăng
+      // nhập hợp lệ. Nếu tài khoản đã bị xoá khỏi CSDL mà JWT còn hạn,
+      // SyncEngine vẫn khởi động và mọi lần đẩy dữ liệu đều vỡ khoá ngoại
+      // fk_category_account / fk_transaction_account — lặp lại vô hạn.
+      final session = await authRepository.verifySession();
+
+      // Trong lúc chờ, các handler khác chạy đồng thời (mặc định của
+      // flutter_bloc): người dùng đã đăng xuất, bị cưỡng chế đăng xuất, hoặc
+      // phiên bị báo chết — lượt mở app về muộn KHÔNG được khởi động gì, cũng
+      // không được phát lại AuthSuccess đè lên (ca test "đăng xuất trong lúc
+      // chờ server" — lỗi có sẵn trước bản này).
+      if (!_vanLaPhien(user)) return;
+
+      if (session == SessionStatus.invalid) {
+        await _phien?.dongPhien(); // bộ quét đã chạy từ phần không chạm mạng
+        await authRepository.logout();
+        _phatChuaDangNhap(emit);
+        return; // KHÔNG khởi động SyncEngine với phiên đã chết
+      }
+      // valid hoặc unknown (mất mạng / lỗi 5xx) → giữ phiên, đúng offline-first.
+
+      // Đọc lại SAU khi xác minh: `verifySession` đồng bộ `status` chờ xoá từ
+      // `/auth/profile` vào bộ nhớ đệm (spec cưỡng chế đăng xuất §4.3).
+      final moi = await authRepository.getCurrentUser();
+      if (!_vanLaPhien(user)) return;
+      // `UserModel` không có `==`: so bằng dạng lưu, chỉ phát khi thật sự đổi.
+      if (moi != null &&
+          moi.id == user!.id &&
+          !mapEquals(moi.toJson(), user.toJson())) {
+        emit(AuthSuccess(user: moi));
+      }
+
+      // Kênh thời gian thực sống đúng bằng vòng đời phiên; đồng bộ KHÔNG await ở đường mở app (chờ một vòng mạng làm
+      // màn đầu đứng hình) — bản sao danh mục nối vào sau chu kỳ đầu, pull hỏng thì lần mở app sau thử lại.
+      final phien = _phien;
+      if (phien != null) {
+        await phien.batThoiGianThuc(idAcc);
+        if (!_vanLaPhien(user)) return;
+        await phien.batDongBo(idAcc, cho: false);
+      }
     } catch (e) {
       _phatChuaDangNhap(emit);
     }
+  }
+
+  /// Bloc còn đang ở phiên của [user] không — sau mỗi `await` của lượt mở app.
+  bool _vanLaPhien(UserModel? user) {
+    final s = state;
+    return s is AuthSuccess && s.user?.id == user?.id;
   }
 
   Future<void> _onLoginSubmitted(
@@ -332,45 +283,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             message: 'Máy chủ không trả về mã tài khoản hợp lệ.'));
         return;
       }
-      if (sl.isRegistered<SyncEngine>()) {
-        // Dọn dữ liệu cục bộ của các tài khoản KHÁC trước khi bật đồng bộ:
-        // dòng dữ liệu sót lại từ tài khoản cũ sẽ bị đẩy đi dưới id cũ và
-        // luôn thất bại (Ownership mismatch hoặc vỡ khoá ngoại).
-        await _donDuLieuTaiKhoanKhac(idAcc);
-        final personal = sl.isRegistered<PersonalDefaultCategories>()
-            ? sl<PersonalDefaultCategories>()
-            : null;
-        // Chuyển dữ liệu trỏ vào hàng seed `cat_*` cũ. Chạy TRƯỚC start(): việc
-        // này phải xong trước khi chu kỳ đồng bộ đầu tiên chạm vào.
-        await personal?.convertLegacyRows(idAcc);
-        final engine = sl<SyncEngine>();
-        if (sl.isRegistered<NotificationScanner>()) {
-          await sl<NotificationScanner>().start(idAcc);
-        }
-        // Kênh thời gian thực sống đúng bằng vòng đời của phiên đăng nhập, y
-        // như bộ quét thông báo ngay trên.
-        if (sl.isRegistered<RealtimeChannel>()) {
-          await sl<RealtimeChannel>().start(idaccount: idAcc);
-        }
-        await engine.start(idaccount: idAcc);
-        // Tạo bản sao riêng của bộ danh mục mặc định, SAU khi đã pull — bộ
-        // mặc định chỉ có mặt ở máy này sau khi pull mang nó về. Chưa có thì
-        // hàm không tạo gì, đúng như G14 dạy: đừng quyết định về danh mục khi
-        // CSDL cục bộ chưa đáng tin.
-        if (engine.hasCompletedPull) {
-          await _taoBanSaoDanhMuc(idAcc);
-        }
-        await defaultAccountDataInitializer?.ensureForAccount(idAcc);
-      }
-      // Lựa chọn "Để sau" của thẻ chờ xoá chỉ sống trong một phiên app; người
-      // đăng nhập kế tiếp không được thừa hưởng nó (spec §5.2).
-      if (sl.isRegistered<AnTheChoXoa>()) {
-        sl<AnTheChoXoa>().value = false;
-      }
-      // G63: ✕ của dòng nhắc ví trùng tên cũng chỉ sống trong một phiên app.
-      if (sl.isRegistered<AnNhacViTrungTen>()) {
-        sl<AnNhacViTrungTen>().value = false;
-      }
+      // Dọn tài khoản khác TRƯỚC khi bật đồng bộ (dòng sót lại bị đẩy dưới id cũ và luôn thất bại).
+      await _phien?.moPhienCucBo(idAcc);
+      await _phien?.batThoiGianThuc(idAcc);
+      // Đợi chu kỳ đầu rồi mới tạo bản sao danh mục (G14: đừng quyết định về danh mục khi CSDL cục bộ chưa đáng tin).
+      await _phien?.batDongBo(idAcc, cho: true);
+      // Seed hai ví tài khoản mới; cờ "Để sau" và ✕ ví trùng tên chỉ sống một phiên app (spec §5.2, G63).
+      await _phien?.sauDangNhap(idAcc);
       emit(AuthSuccess(user: user));
     } catch (e) {
       emit(AuthError(message: e.toString().replaceAll('Exception: ', '')));
@@ -382,7 +301,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
-    await _dungMoiThuCuaPhien();
+    await _phien?.dongPhien();
     await authRepository.logout();
     emit(const AuthUnauthenticated());
   }
@@ -453,63 +372,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           registration: registration,
         ),
       );
-    }
-  }
-
-  /// Tạo bản sao riêng của bộ danh mục mặc định cho [idAcc].
-  ///
-  /// ⚠️ **Cố ý KHÔNG bọc `try/catch`.** Bản mặc định toàn cục đã bị ẩn khỏi mọi
-  /// danh sách, nên một lượt seed hỏng trong im lặng nghĩa là người dùng mở app
-  /// ra thấy danh sách danh mục **rỗng** và không ghi nổi một giao dịch, mà
-  /// không ai biết vì sao. Trước đây bộ mặc định toàn cục chính là tấm lưới đỡ
-  /// cho tình huống ấy; nay không còn.
-  ///
-  /// Luật trong `DefaultCategorySeeder` vốn luỹ đẳng nên lần mở app sau tự thử
-  /// lại — đó mới là cơ chế phục hồi, không phải việc nuốt lỗi ở đây.
-  Future<void> _taoBanSaoDanhMuc(int idAcc) async {
-    final seeder = sl.isRegistered<DefaultCategorySeeder>()
-        ? sl<DefaultCategorySeeder>()
-        : null;
-    final daTao = await seeder?.seedForAccount(idAcc) ?? 0;
-    if (daTao > 0) {
-      debugPrint('[Category] Đã tạo $daTao bản sao danh mục mặc định.');
-      // ⚠️ Phải hẹn một chu kỳ đẩy. Bước seed chạy SAU chu kỳ đồng bộ vừa xong
-      // (nó nằm trong `.then()` của `engine.start()`), nên những hàng vừa tạo
-      // không có ai đẩy đi: chúng nằm ở `pending` cho tới lần khởi động nguội
-      // kế tiếp. Đo được trên emulator-5554 ngày 2026-09-07 — 13 bản sao được
-      // tạo, app quay lại tiền cảnh, và không một chu kỳ đồng bộ nào chạy.
-      //
-      // Cùng khuôn với `CategoryManagementRepositoryImpl`: mọi đường ghi danh
-      // mục đều kết thúc bằng `scheduleSync()`.
-      if (sl.isRegistered<SyncEngine>()) {
-        sl<SyncEngine>().scheduleSync();
-      }
-    }
-  }
-
-  /// Dọn dữ liệu cục bộ của **các tài khoản khác**, rồi dọn theo những thứ
-  /// cục bộ khác bám vào cùng một câu hỏi "máy này vừa đổi người dùng?".
-  ///
-  /// ⚠️ Điều kiện là **chính số hàng `purgeDataForOtherAccounts` vừa xoá**,
-  /// không phải một phép so `idaccount` thứ hai. Hai lý do: một luật ở hai chỗ
-  /// thì sẽ có ngày nói hai chuyện khác nhau; và câu hỏi cần trả lời đúng là
-  /// *"trên máy này vừa có dữ liệu của người khác"* — `removed > 0` **là** câu
-  /// trả lời ấy.
-  ///
-  /// Hệ quả cố ý: **đăng xuất rồi đăng nhập lại cùng tài khoản thì cache câu
-  /// SLM được GIỮ** (không hàng nào bị xoá → `removed == 0`). Vứt nó đi là vứt
-  /// tới 200 câu, mỗi câu đã trả 2,3 giây chạy mô hình để có.
-  Future<void> _donDuLieuTaiKhoanKhac(int idAcc) async {
-    final daDon = await sl<AppDatabase>().purgeDataForOtherAccounts(idAcc);
-    if (daDon <= 0) return;
-
-    // Câu trong cache SLM nói về số liệu tài chính của MỘT tài khoản. Trên máy
-    // dùng chung, người sau không được thấy câu của người trước. Dấu vân gần
-    // như chắc chắn khác nhau — nhưng "gần như" không phải cơ chế cô lập, và
-    // đó đúng là lý do `purgeDataForOtherAccounts` tồn tại dù mọi truy vấn
-    // SQLite đã lọc theo `idaccount`.
-    if (sl.isRegistered<SlmCache>()) {
-      await sl<SlmCache>().xoaHet();
     }
   }
 }

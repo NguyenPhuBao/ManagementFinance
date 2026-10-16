@@ -46,4 +46,8 @@ abstract class WalletRepository {
   /// nó lọc cả cờ `includeInTotal` lẫn ví đã lưu trữ (ví đã xoá thì không có
   /// mặt từ đầu).
   Future<double> getTotalBalance(int idaccount);
+
+  /// Ví đang hoạt động cho **bộ chọn ví** (không ví lưu trữ, không ví đã xoá) — `walletDao.getActive` qua datasource.
+  /// Bảng tra tên, Quản lý ví, gói số: dùng [getAll] / [watchAll]. Phân loại chỗ gọi ở `wallet_picker_sources_test`.
+  Future<List<WalletEntity>> getActive(int idaccount);
 }

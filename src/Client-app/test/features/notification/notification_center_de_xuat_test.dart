@@ -15,8 +15,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/notification/hoc_gio_thong_bao.dart';
-import 'package:flowmoney/core/notification/prefs/notification_prefs.dart';
+import 'package:flowmoney/features/notification/data/repositories/thong_bao_repository_impl.dart';
+import 'package:flowmoney/features/notification/domain/hoc_gio_thong_bao.dart';
+import 'package:flowmoney/features/notification/domain/notification_prefs.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_center_page.dart';
 
 void main() {
@@ -56,7 +57,7 @@ void main() {
           path: '/notifications',
           builder: (_, __) => NotificationCenterPage(
             idaccount: id,
-            dao: db.notificationDao,
+            nguon: ThongBaoRepositoryImpl(db.notificationDao),
             taiDeXuat: (i) async {
               taiGoi.add(i);
               final r = lanNap[lan < lanNap.length ? lan : lanNap.length - 1];
@@ -129,7 +130,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: NotificationCenterPage(
         idaccount: id,
-        dao: db.notificationDao,
+        nguon: ThongBaoRepositoryImpl(db.notificationDao),
         taiDeXuat: (_) async => throw StateError('hỏng'),
       ),
     ));

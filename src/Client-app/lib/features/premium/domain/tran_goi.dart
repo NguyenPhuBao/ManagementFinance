@@ -20,14 +20,9 @@ class TranGoi {
   final int? hoaDon;
   final int? danhMucRieng;
 
-  /// 3/3/3/3/5 — Server đè bằng `limits` của `/payment/subscription-info`.
-  static const macDinh = TranGoi(
-    vi: 3,
-    nganSach: 3,
-    mucTieu: 3,
-    hoaDon: 3,
-    danhMucRieng: 5,
-  );
+  /// 3/3/3 — server đè bằng `limits` của `/payment/subscription-info`. Hoá đơn và danh mục riêng: thiếu khoá = không
+  /// giới hạn (spec phân quyền 2026-10-08 mục 2 #1 — server cũ không trả hai khoá ấy thì giữ chốt 06/10 *"Mở"*).
+  static const macDinh = TranGoi(vi: 3, nganSach: 3, mucTieu: 3);
 
   int? cua(LoaiTran loai) => switch (loai) {
         LoaiTran.vi => vi,
@@ -140,3 +135,18 @@ String tenTran(LoaiTran loai) => switch (loai) {
       LoaiTran.hoaDon => 'hóa đơn định kỳ',
       LoaiTran.danhMucRieng => 'danh mục riêng',
     };
+
+/// Dòng phụ của thẻ Gói (tab Cá nhân): mọi trần có số, `null` (không giới hạn) bị bỏ — *"3 ví · 3 ngân sách · 3 mục
+/// tiêu · 3 hoá đơn · 5 danh mục riêng"*. Tên ngắn hơn [tenTran] vì thẻ chật; trong mỗi mục là dấu cách KHÔNG
+/// ngắt nên chữ chỉ xuống dòng ở dấu `·` (nghiệm thu OnePlus: *"3 mục / tiêu"*).
+String tomTatTran(TranGoi tran) => [
+      for (final l in LoaiTran.values)
+        if (tran.cua(l) case final n?)
+          '$n ${switch (l) {
+            LoaiTran.vi => 'ví',
+            LoaiTran.nganSach => 'ngân sách',
+            LoaiTran.mucTieu => 'mục tiêu',
+            LoaiTran.hoaDon => 'hoá đơn',
+            LoaiTran.danhMucRieng => 'danh mục riêng',
+          }}'.replaceAll(' ', '\u00A0'),
+    ].join(' · ');

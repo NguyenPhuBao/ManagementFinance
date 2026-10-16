@@ -45,7 +45,7 @@ class BudgetCubit extends Cubit<BudgetState> {
   ///
   /// [idaccount] phải là mã của phiên đăng nhập hiện tại. Nơi gọi truyền `null`
   /// khi chưa đăng nhập thì cubit **không đọc gì cả** thay vì đoán một mã tài
-  /// khoản — xem `core/auth/current_account.dart`.
+  /// khoản — xem `features/auth/presentation/bloc/current_account.dart`.
   void watchBudgets(int? idaccount) {
     if (idaccount == null || idaccount <= 0) {
       emit(const BudgetError('Chưa đăng nhập — không đọc được ngân sách.'));

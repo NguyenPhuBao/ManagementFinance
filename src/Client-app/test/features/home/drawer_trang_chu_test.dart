@@ -14,8 +14,8 @@ library;
 
 import 'dart:io';
 
-import 'package:flowmoney/core/constants/app_router.dart';
-import 'package:flowmoney/core/notification/notification_deeplink.dart';
+import 'package:flowmoney/core/router/app_router.dart';
+import 'package:flowmoney/features/notification/domain/notification_deeplink.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/home/presentation/widgets/drawer_trang_chu.dart';
@@ -123,7 +123,7 @@ void main() {
 
   test('tiêu đề trang Phân tích khớp nhãn tab', () {
     final nguon = File(
-            'lib/features/analytics/presentation/pages/analytics_page.dart')
+            'lib/features/analytics/presentation/widgets/phan_tich/header_phan_tich.dart')
         .readAsStringSync();
     // Từ G2 (2026-10-06) tiêu đề là hằng của `_TieuDeTrang` — header có hai
     // bố cục (một hàng / hai hàng) dùng chung một chữ.

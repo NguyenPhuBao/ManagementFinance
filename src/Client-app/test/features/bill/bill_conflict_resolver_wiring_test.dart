@@ -21,8 +21,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
+import '../../helpers/sync_engine_thu.dart';
 
 class _Online implements Connectivity {
   @override
@@ -48,7 +48,7 @@ void main() {
     // xanh mà app chết trên máy thật.
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     final engine =
-        SyncEngine(dioClient: _Client(), db: db, connectivity: _Online());
+        taoSyncEngineThu(dioClient: _Client(), db: db, connectivity: _Online());
     addTearDown(() async {
       engine.dispose();
       await db.close();
@@ -76,7 +76,7 @@ void main() {
       if (!f.path.endsWith('.dart')) continue;
       // Chính tệp định nghĩa lớp thì không tính.
       if (f.path.replaceAll(r'\', '/').endsWith(
-          'features/bill/data/services/bill_payment_conflict_resolver.dart')) {
+          'features/bill/application/bill_payment_conflict_resolver.dart')) {
         continue;
       }
       final noiDung = f.readAsStringSync();
@@ -104,8 +104,8 @@ void main() {
       // `test/features/wallet/vi_trung_ten_resolver_wiring_test.dart`.
       final p = f.path.replaceAll(r'\', '/');
       if (p.endsWith(
-              'features/bill/data/services/bill_payment_conflict_resolver.dart') ||
-          p.endsWith('features/wallet/data/services/vi_trung_ten_resolver.dart')) {
+              'features/bill/application/bill_payment_conflict_resolver.dart') ||
+          p.endsWith('features/wallet/application/vi_trung_ten_resolver.dart')) {
         continue;
       }
       if (f.readAsStringSync().contains('batDauNghe(')) choGoi.add(f.path);

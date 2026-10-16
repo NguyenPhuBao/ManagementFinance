@@ -10,9 +10,10 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';
 import 'package:flowmoney/features/analytics/domain/thong_ke_thang.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
@@ -21,7 +22,7 @@ import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 /// Hôm nay 08/09/2026 trưa. Tầm nhìn tới hết 08/10.
 final now = DateTime(2026, 9, 8, 12);
 
-Wallet vi(
+WalletEntity vi(
   String id,
   String ten, {
   double soDu = 10000000,
@@ -29,7 +30,7 @@ Wallet vi(
   String status = 'active',
   bool daXoa = false,
 }) =>
-    Wallet(
+    WalletEntity(
       id: id,
       idaccount: 1,
       name: ten,
@@ -43,14 +44,13 @@ Wallet vi(
       includeInTotal: tinhVaoTong,
       status: status,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 1, 1),
     
       allowNegative: false,
       biTuChoiTrungTen: false,
     );
 
-Bill hoaDon(
+BillEntity hoaDon(
   String id, {
   required DateTime han,
   DateTime? ketThucKy,
@@ -65,7 +65,7 @@ Bill hoaDon(
   String? sinhTu,
   String ten = 'Tiền điện',
 }) =>
-    Bill(
+    BillEntity(
       id: id,
       idaccount: 1,
       walletId: vi,
@@ -89,7 +89,6 @@ Bill hoaDon(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 1, 1),
     );
 
@@ -147,14 +146,14 @@ BudgetView nganSach(
     );
 
 /// Tên khác `vi` để không đụng tham số cùng tên của [duBao].
-Wallet vi_(String id, String ten, {double soDu = 10000000}) =>
+WalletEntity vi_(String id, String ten, {double soDu = 10000000}) =>
     vi(id, ten, soDu: soDu);
 
 DuBaoDongTien duBao({
-  List<Bill> hoaDon = const [],
+  List<BillEntity> hoaDon = const [],
   List<GoalEntity> mucTieu = const [],
   List<BudgetView> nganSach = const [],
-  List<Wallet>? vi,
+  List<WalletEntity>? vi,
   DateTime? luc,
 }) =>
     duBaoCua(

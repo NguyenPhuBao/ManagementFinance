@@ -13,6 +13,9 @@ import 'package:flutter_test/flutter_test.dart';
 class _RepoGia implements WalletRepository {
   _RepoGia(this._vi);
 
+  @override
+  Future<List<WalletEntity>> getActive(int idaccount) => throw UnimplementedError();
+
   final List<WalletEntity> _vi;
 
   @override

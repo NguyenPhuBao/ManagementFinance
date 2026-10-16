@@ -2,11 +2,11 @@
 /// CHẠY (đã lọc hết hạn) → `hangDanhMuc`.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/ai_edge/data/cong_cu_danh_muc.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -15,7 +15,7 @@ import '../../category/presentation/category_test_fakes.dart';
 class _DanhMuc implements CategoryManagementRepository {
   final daHoi = <int>[];
   @override
-  Future<List<Category>> selectableChildrenAll({required int accountId}) async {
+  Future<List<CategoryEntity>> selectableChildrenAll({required int accountId}) async {
     daHoi.add(accountId);
     return [
       makeCategory(id: 'c1', name: 'Ăn uống'),

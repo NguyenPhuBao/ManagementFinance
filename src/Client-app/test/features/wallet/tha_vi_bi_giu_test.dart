@@ -9,7 +9,7 @@ library;
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/features/wallet/data/services/tha_vi_bi_giu.dart';
+import 'package:flowmoney/features/wallet/data/tha_vi_bi_giu.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

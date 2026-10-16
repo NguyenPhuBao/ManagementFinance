@@ -1,6 +1,6 @@
 // C1 — màn Gắn danh mục nhanh (spec `2026-09-28-c1-gan-danh-muc-hang-loat-design.md` §4–§5, Stitch `5023f081…`).
 // Bất biến ④ nhóm C: mô hình chỉ ĐIỀN SẴN; không có gì được ghi trước khi người dùng bấm Áp dụng.
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
 import 'package:flowmoney/features/category/data/gan_danh_muc_nguon.dart';
@@ -14,19 +14,15 @@ import 'package:go_router/go_router.dart';
 
 import 'category_test_fakes.dart';
 
-Transaction _gd(String id, String note, {String type = 'chi', double amount = 45000}) => Transaction(
+TransactionEntity _gd(String id, String note, {String type = 'chi', double amount = 45000}) => TransactionEntity(
       id: id,
       walletId: 'v1',
       idaccount: 7,
       amount: amount,
       type: type,
-      status: 'completed',
-      provider: 'Manual',
       note: note,
       date: DateTime(2026, 9, 12),
-      images: '',
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 12),
       isDeleted: false,
     );

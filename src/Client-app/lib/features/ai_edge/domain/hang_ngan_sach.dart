@@ -116,6 +116,8 @@ KetQuaCongCu hangNganSach(
     rongTheoBoLoc: chon != null && khop.isEmpty && !khongSapHet,
     doiTuongRong: 'ngân sách',
     chiMauCau: khongSapHet,
+    soChuaKe: khop.length - hang.length,
+    danhTuChuaKe: 'ngân sách',
   );
 }
 

@@ -43,8 +43,21 @@ class PhienMotLoiGoi {
   var _luot = 0;
 
   /// Nạp mô hình. MỘT `Future` dùng chung: gọi chồng nhau thì chờ chính nó. `false` = không dùng được AI; nạp lỗi thì
-  /// lần sau thử lại.
-  Future<bool> chuanBi() => _nap ??= () async {
+  /// lần sau thử lại. Mô hình bị nơi khác ĐÓNG sau một lần nạp thành công (màn Quét đóng sau khi đọc ảnh) → nạp lại.
+  Future<bool> chuanBi() {
+    final cu = _nap;
+    if (cu != null && !runtime.dangSan) {
+      // Đang nạp dở cũng có `dangSan == false` — chỉ bỏ Future đã XONG với kết quả `true`.
+      return cu.then((ok) {
+        if (!ok || runtime.dangSan) return ok;
+        if (identical(_nap, cu)) _nap = null;
+        return _napMoi();
+      });
+    }
+    return _napMoi();
+  }
+
+  Future<bool> _napMoi() => _nap ??= () async {
         try {
           if (!await sanSang()) {
             _nap = null;
@@ -82,7 +95,8 @@ class PhienMotLoiGoi {
             .cast<GoiCongCu>()
             .first
             .timeout(thoiHan);
-        debugPrint('$nhan ${dongHo.elapsedMilliseconds} ms: ${goi.ten} ${goi.args}');
+        // Tham số mang dữ liệu người dùng (số tiền, ghi chú, danh mục) — bản release chỉ in thời gian + tên tool.
+        debugPrint('$nhan ${dongHo.elapsedMilliseconds} ms: ${goi.ten}${kDebugMode ? ' ${goi.args}' : ''}');
         return luot == _luot ? goi : null;
       } finally {
         await phien.huy();

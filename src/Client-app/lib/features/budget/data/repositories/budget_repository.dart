@@ -1,4 +1,4 @@
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../domain/budget_history.dart';
@@ -91,7 +91,7 @@ abstract class BudgetRepository {
   Future<void> deleteBudget(String id);
 
   /// Danh mục chi để chọn khi tạo/sửa ngân sách.
-  Future<List<Category>> getExpenseCategories(int idaccount);
+  Future<List<CategoryEntity>> getExpenseCategories(int idaccount);
 
   /// Nhịp chi riêng của từng ngân sách trong [budgets] (khoá `budget.id`), học từ
   /// tối đa `kSoKyHocToiDa` kỳ đã đóng — lùi cả về trước ngày tạo (`kyDaDongTruoc`);

@@ -7,7 +7,8 @@ library;
 import 'package:flowmoney/features/ai_edge/data/cong_cu_truy_van.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/ma_ky.dart';
-import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
+import 'package:flowmoney/features/analytics/data/repositories/bao_cao_repository.dart';
+import 'package:flowmoney/features/analytics/data/models/lua_chon_loc.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
@@ -565,5 +566,22 @@ void main() {
     expect((await hoi('10 giao dịch mới nhất')).hang, hasLength(4),
         reason: 'N lớn hơn trần thì vẫn trần — trần là giới hạn độ dài prompt');
     expect((await hoi('giao dịch mới nhất của tôi')).hang, hasLength(4));
+  });
+
+  test('⭐ còn N giao dịch chưa kể (C9 đo OnePlus 09/10: kể 4/13 không nói còn 9)', () async {
+    hoi(String cau, [Map<String, dynamic> them = const {}]) => cc.chay(
+        {'ky': 'thang_nay', ...them},
+        idaccount: 10, now: now, cauHoi: cau);
+    final tron = await hoi('liet ke giao dich thang nay');
+    expect(tron.hang, hasLength(4));
+    expect(tron.soChuaKe, 1, reason: '5 khoản khớp, trần 4 hàng');
+    expect(tron.danhTuChuaKe, 'giao dịch');
+    expect((await hoi('3 giao dịch mới nhất')).soChuaKe, 0,
+        reason: 'B8: người dùng xin 3 dòng và nhận đủ 3 — không có gì "chưa kể"');
+    expect((await hoi('10 giao dịch mới nhất')).soChuaKe, 1,
+        reason: 'xin 10, có 5, trần 4 → còn 1');
+    expect((await hoi('khoan chi lon nhat', {'chieu': 'khoan_chi', 'chon': 'nhieu_nhat'})).soChuaKe, 0,
+        reason: 'câu chọn một khoản: phần còn lại không phải thứ bị cắt');
+    expect((await hoi('chi theo danh muc', {'gop': 'danh_muc'})).soChuaKe, 0);
   });
 }

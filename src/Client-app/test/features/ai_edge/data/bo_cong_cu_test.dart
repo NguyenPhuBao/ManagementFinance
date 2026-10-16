@@ -3,17 +3,19 @@
 /// để một hàm mới lỡ gọi thêm sẽ ném thay vì im lặng (nếp `nguon_goi_so_test`).
 library;
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import 'package:flowmoney/features/ai_edge/domain/ap_dung_ke_hoach.dart';
 import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/chon.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
-import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
-import 'package:flowmoney/features/analytics/data/bao_cao_repository.dart';
+import 'package:flowmoney/features/analytics/data/repositories/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/data/repositories/bao_cao_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/budget/data/tai_phan_bo_nguon.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
@@ -42,7 +44,7 @@ class _NganSach implements BudgetRepository {
   @override
   Future<int?> soNgayCuaSoNhinLai(int idaccount, {DateTime? now}) async => 25;
   @override
-  Future<List<Category>> getExpenseCategories(int idaccount) async => [
+  Future<List<CategoryEntity>> getExpenseCategories(int idaccount) async => [
         makeCategory(id: 'c-gd', name: 'Giáo dục'),
         makeCategory(id: 'c-cv', name: 'Cho vay'),
         makeCategory(id: 'c-gt', name: 'Giải trí'),
@@ -73,13 +75,12 @@ class _Vi implements WalletRepository {
   dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
 }
 
-Bill _bill(String ten, DateTime dueDate) => Bill(
+BillEntity _bill(String ten, DateTime dueDate) => BillEntity(
       id: ten, idaccount: 10, walletId: 'w1', categoryId: 'c1', name: ten, amount: 45000,
       startDate: dueDate.subtract(const Duration(days: 30)), dueDate: dueDate,
       payStatus: 'Pending', isPaid: false, autoPayEnabled: false, timeNotification: '3',
       isRecurrence: true, timeRecurrence: kBillCycleMonth, recurrence: 'monthly',
-      icon: 'receipt', colour: '#4CAF50', note: '', isDeleted: false, syncStatus: 'synced',
-      syncRetryCount: 0, updatedAt: DateTime(2026, 9, 1),
+      icon: 'receipt', colour: '#4CAF50', note: '', isDeleted: false, syncStatus: 'synced', updatedAt: DateTime(2026, 9, 1),
     );
 
 // Ba fake cho ba tool bước 2 — tệp này chỉ kiểm khai báo, không chạy chúng,
@@ -113,6 +114,8 @@ class _DanhMuc implements CategoryManagementRepository {
 class _TaiPhanBo implements TaiPhanBoNguon {
   final daHoi = <List<String>>[];
   @override
+  Future<void> ghiPhanHoi(PhanHoiTaiPhanBo p) => throw UnimplementedError();
+  @override
   Future<DuLieuTaiPhanBo> nap(int idaccount, List<BudgetView> dangChay, DateTime now) async {
     daHoi.add([for (final v in dangChay) v.displayName]);
     return DuLieuTaiPhanBo.rong;
@@ -122,7 +125,7 @@ class _TaiPhanBo implements TaiPhanBoNguon {
 class _HoaDon implements BillRepository {
   final daHoi = <int>[];
   @override
-  Stream<List<Bill>> watchBills(int idaccount) {
+  Stream<List<BillEntity>> watchBills(int idaccount) {
     daHoi.add(idaccount);
     return Stream.value([_bill('Kiem', DateTime(2026, 9, 1)), _bill('Điện', DateTime(2026, 9, 25))]);
   }

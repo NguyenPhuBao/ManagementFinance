@@ -362,3 +362,36 @@ String khoaKyTrich(String goalId, DateTime ky) =>
     '${ky.day.toString().padLeft(2, '0')}'
     'T${ky.hour.toString().padLeft(2, '0')}'
     ':${ky.minute.toString().padLeft(2, '0')}';
+
+/// Kết quả của **một** kỳ trích, để nơi gọi dựng thông báo.
+///
+/// Cố ý không mang câu chữ: nội dung thông báo nằm trọn trong
+/// `notification_rules.dart` cùng bảy luật còn lại. Hai nơi cùng viết câu thông
+/// báo là hai giọng khác nhau trong cùng một trung tâm thông báo.
+///
+/// Dời từ tệp runner về domain 2026-10-15 (spec Entity Thông báo mục 7.1) để `notification_rules` ở `domain/` không import `application/`.
+class GoalAutoDepositEvent {
+  const GoalAutoDepositEvent({
+    required this.goalId,
+    required this.goalName,
+    required this.ky,
+    required this.loai,
+    required this.soTien,
+    this.tenViNguon,
+  });
+
+  final String goalId;
+  final String goalName;
+
+  /// Mốc của kỳ. Đi vào khoá chống trùng của thông báo.
+  final DateTime ky;
+
+  final LoaiTrich loai;
+
+  /// Số tiền thật sự đã chuyển. 0 với mọi nhánh không trích được.
+  final double soTien;
+
+  /// Tên ví nguồn, để câu thông báo nói rõ tiền đi từ đâu. `null` khi ví đã
+  /// không còn.
+  final String? tenViNguon;
+}

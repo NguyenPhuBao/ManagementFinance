@@ -31,7 +31,7 @@ class AuthInterceptor extends Interceptor {
   /// ở cấp gốc (spec cưỡng chế đăng xuất §3.3).
   ///
   /// Khác hẳn [sessionExpiredStream]: luồng kia nói *phiên hỏng, hỏi lại server
-  /// đi* và `AuthBloc` sẽ gọi `verifySession()` trước khi quyết định. Luồng này
+  /// đi* và `PhienDieuPhoiThat` nghe và chuyển cho `AuthBloc` gọi `verifySession()` trước khi quyết định. Luồng này
   /// mang sẵn **lý do**, nên không còn gì để hỏi — đưa người dùng ra kèm câu
   /// giải thích.
   final _taiKhoanBiTuChoiController =
@@ -50,8 +50,18 @@ class AuthInterceptor extends Interceptor {
   /// interceptor này (tránh vòng lặp). Test tiêm một Dio có adapter giả.
   final Dio _refreshDio;
 
-  AuthInterceptor({required this.secureStorage, Dio? dioLamMoi})
-      : _refreshDio = dioLamMoi ??
+  /// Lượt nền của WorkManager (spec tự chuyển tiền chạy nền mục 4.2): 401 → trả
+  /// lỗi lên, KHÔNG làm mới token, KHÔNG xoá token, KHÔNG phát gì. App và nền
+  /// cùng làm mới một refresh token là backend đếm *dùng lại token* (AIOps);
+  /// một lượt nền gặp sự cố cũng không được đăng xuất người dùng trong im lặng.
+  /// App mở lần sau tự xử lý.
+  final bool cheDoNen;
+
+  AuthInterceptor({
+    required this.secureStorage,
+    Dio? dioLamMoi,
+    this.cheDoNen = false,
+  }) : _refreshDio = dioLamMoi ??
             Dio(
               BaseOptions(
                 baseUrl: AppConstants.baseUrl,
@@ -91,6 +101,9 @@ class AuthInterceptor extends Interceptor {
     if (err.response?.statusCode != 401) {
       return handler.next(err);
     }
+
+    // Lượt nền: không làm mới, không xoá, không phát — xem [cheDoNen].
+    if (cheDoNen) return handler.next(err);
 
     // §3.3 chỗ 1 — 401 của một request thường mang mã trạng thái tài khoản.
     // Làm mới token lúc này là vô ích (server đã thu hồi refresh token ở
@@ -319,13 +332,13 @@ class AuthInterceptor extends Interceptor {
 
   // ─── Xóa toàn bộ tokens khi phiên chết ──────────────────────────────────
   /// [phatTinHieu] đặt `false` khi đã có một lời từ chối **mang lý do** đi ra
-  /// bằng [taiKhoanBiTuChoi]: `AuthBloc` sắp đăng xuất kèm hộp thoại, và một
+  /// bằng [taiKhoanBiTuChoi]: `AuthBloc` (qua `PhienDieuPhoiThat`) sắp đăng xuất kèm hộp thoại, và một
   /// lượt `sessionExpiredStream` song song chỉ tạo ra một lượt đăng xuất trơn
   /// chạy đua với nó (spec §3.3).
   Future<void> _clearTokens({bool phatTinHieu = true}) async {
     // Chỉ coi là "phiên vừa chết" khi thật sự có token để mất. Sau lần xoá đầu
     // tiên, mọi request tiếp theo vẫn nhận 401 và vẫn chạy qua đây; phát tín
-    // hiệu mỗi lần sẽ dội sự kiện vào AuthBloc — mà chính lời gọi
+    // hiệu mỗi lần sẽ dội sự kiện vào bộ điều phối phiên (rồi AuthBloc) — mà chính lời gọi
     // verifySession() của nó cũng đi qua Dio này, nên vòng lặp sẽ tự nuôi nhau.
     final hadSession =
         (await secureStorage.read(key: AppConstants.accessTokenKey))
@@ -336,7 +349,7 @@ class AuthInterceptor extends Interceptor {
             true;
 
     // `finally`: kho token hỏng thì lệnh xoá ném, nhưng tín hiệu VẪN phải phát.
-    // Không xoá được token càng là lúc `AuthBloc` cần biết — nó không đăng xuất
+    // Không xoá được token càng là lúc bộ điều phối phiên và `AuthBloc` cần biết — nó không đăng xuất
     // ngay mà hỏi lại server bằng `verifySession()`, nên phát ở đây không tự nó
     // đăng xuất ai; im lặng thì mới đúng hình dạng G12 (app quay vòng
     // 401 → refresh → 401). Lỗi xoá vẫn thoát ra cho `_lamMoi()`, nơi phán

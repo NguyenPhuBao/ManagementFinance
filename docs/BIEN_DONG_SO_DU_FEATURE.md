@@ -41,13 +41,13 @@ App ngân hàng / ví hiện thông báo
       → notify(ID 20260930, kênh flowmoney_bien_dong, tóm tắt không số, extra bien_dong=1)
   → NotificationScanner.start / resumed → NhapBienDong.nhap(idaccount)   (Dart)
       datBat(docBienDong của tài khoản) → rename .dang_nhap → docTinBienDong theo nguồn
-      → gộp trùng (mã GD | vân tay số dư khác → KHÔNG trùng | hai TIN cùng app không phân biệt được: khoá thông báo
+      → gộp trùng (mã GD | hai TÀI KHOẢN khác nhau → KHÔNG trùng | vân tay số dư khác → KHÔNG trùng | hai TIN cùng app không phân biệt được: khoá thông báo
         khác → KHÔNG trùng, cùng khoá ≤ 10 giây → trùng | còn lại cùng tiền + chiều ≤ 5 phút)
       → AppNotifications loại 20 (deeplink /add?…&vt=…&kt=…&khoa=…)
       → xoá tệp (kể cả khi cờ tắt) → huyTomTat()
   → Sổ giao dịch: TheBienDongChuaGhi (watchDemBienDong) → /notifications?nhom=bienDong
   → MoTuTomTatBienDong (main.dart): moTuThongBao() lúc start + resumed → cùng route, chờ phiên nếu chưa đăng nhập
-  → /add?… → dienSanBienDongTuQuery → ketQuaTuBienDong → _dienKetQua (đường điền của C2)
+  → /add?… → dienSanBienDongTuQuery → ketQuaTuBienDong → ThemGiaoDichCubit.dienKetQua (đường điền của C2)
       → Lưu / Bỏ qua → NotificationDao.xoaCung (+ nhớ ví theo nguồn ở lần Lưu đầu)
 ```
 
@@ -55,10 +55,10 @@ App ngân hàng / ví hiện thông báo
 |---|---|
 | `android/…/BienDongListenerService.kt` | lọc thô, hàng chờ, tóm tắt, `DANH_SACH_TRANG`, chế độ thu mẫu (debug, đã che) |
 | `android/…/MainActivity.kt` | kênh `flowmoney/bien_dong`: `coQuyen · moCaiDat · moCaiDatPin · duocChayNen · moTuThongBao · huyTomTat · datBat` |
-| `lib/core/notification/kenh_bien_dong.dart` | bọc kênh; `KenhBienDongTrong` cho web / test |
+| `lib/features/notification/data/datasources/kenh_bien_dong.dart` | bọc kênh; `KenhBienDongTrong` cho web / test |
 | `lib/features/transaction/domain/doc_tin_bien_dong.dart` | **nơi DUY NHẤT** đọc số tiền trong tin; `kNguonTheoGoi`, `nguonDangDoc` |
-| `lib/core/notification/nhap_bien_dong.dart` | nhập hàng chờ, gộp trùng, `datBat` theo tài khoản, `tatDocMay` |
-| `lib/core/notification/mo_tu_tom_tat_bien_dong.dart` | cú chạm tóm tắt Kotlin → trung tâm lọc sẵn |
+| `lib/features/notification/application/nhap_bien_dong.dart` | nhập hàng chờ, gộp trùng, `datBat` theo tài khoản, `tatDocMay` |
+| `lib/features/notification/application/mo_tu_tom_tat_bien_dong.dart` | cú chạm tóm tắt Kotlin → trung tâm lọc sẵn |
 | `lib/features/notification/presentation/pages/dong_y_bien_dong_page.dart` | màn xin đồng ý |
 | `lib/features/transaction/domain/dien_san_bien_dong.dart` | query → `KetQuaDocCau`, dòng nguồn, `khoanCoTheDaGhi` |
 | `lib/features/transaction/data/vi_theo_nguon_store.dart` | bảng *nguồn + đuôi TK → ví* (`bien_dong_vi:<id>`) |
@@ -101,6 +101,15 @@ App ngân hàng / ví hiện thông báo
   tin với `id=0` nhưng **tag riêng từng tin** (mốc thời gian + mã), nên khoá thông báo luôn khác nhau giữa hai giao
   dịch — kể cả cách < 10 giây. Hai lần nhận 10.000 đ cách 31 giây → **hai** mục chờ ghi (người dùng xác nhận).
   Bản tóm tắt nhóm của MoMo mang tag `…|g:Aggregate_AlertingSection` và nội dung rỗng — bộ lọc thô đã bỏ.
+- ✅ **2026-10-08 — hai TÀI KHOẢN khác nhau thôi gộp bằng cửa sổ 5 phút** (nghiệm thu OnePlus, người dùng chuyển
+  MoMo → MB 10.000 rồi MB → MoMo 10.000): MB báo +10.000 lúc 16:53, MoMo báo nhận +10.000 lúc 16:54:40 — cùng tiền,
+  cùng chiều, khác nguồn, cách 100 giây → `trungBienDong` gộp tin MoMo vào hàng MB, khoản vào MoMo **mất im lặng**.
+  Luật mới: hai nguồn đều chỉ một tài khoản cụ thể (MB Bank, MoMo, ZaloPay…) và khác nhau → KHÔNG trùng; *SMS* và
+  *Biên lai* (app gửi không rõ) là nguồn **chung** (`_nguonChung`) nên vẫn gộp với tin ngân hàng trong 5 phút. Cùng
+  lượt đo: biên lai chia sẻ từ app MB cho lần MB → MoMo (MB không báo khi chuyển trong app) thành hàng −10.000 kèm
+  ảnh ✅. ✅ **Đo lại trên OnePlus 2026-10-08 tối** (bản debug `5df0537a…`): MoMo → MB 10.000 (MB báo +10.000 lúc 21:01)
+  rồi MB → MoMo 10.000 (MoMo báo +10.000 lúc 21:02:02, cách 47 giây) → **hai** mục chờ ghi riêng, `bienDong:MB Bank|…` và
+  `bienDong:MoMo|…` — đạt.
 - **Gợi ý cho phép chạy nền** (Stitch `2ff589c7…`, người dùng duyệt): hàng *"Tin có thể đến trễ khi app chạy nền"* +
   *Mở cài đặt* → trang thông tin ứng dụng. Chỉ hiện khi đang đọc **và** `isIgnoringBatteryOptimizations` = false; đọc
   lại khi quay về. Không dùng hộp thoại xin miễn tối ưu pin (quyền Play giới hạn). Câu chữ theo tên mục thật trên Realme
@@ -167,7 +176,7 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
 ## 6. Việc sau D1 (người dùng chốt 2026-09-30)
 
 1. ✅ **Bàn phím số ẩn khi màn Thêm giao dịch mở với số tiền đã có** (xong 2026-09-30 tối, Stitch `b52c0651…`, nghiệm
-   thu Realme). Cờ `_hienBanPhimSo` của `add_transaction_page.dart`: tắt khi mở với số tiền (sửa · biến động có
+   thu Realme). Cờ `hienBanPhimSo` của `ThemGiaoDichState` (trước 2026-10-11: `_hienBanPhimSo` của `add_transaction_page.dart`): tắt khi mở với số tiền (sửa · biến động có
    `soTien`) hoặc khi ô Nhập nhanh điền được số tiền; chạm khối số tiền để đảo — bàn phím **hệ thống** đang mở thì
    chạm là đóng nó và **mở** 16 phím (đảo cờ lúc ấy là tắt phím mà không thấy gì đổi). **Một luật cho nút lưu:** 16 phím
    không trên màn — theo cờ **hoặc** vì bàn phím hệ thống mở (G58) — thì ✓ ở thanh tiêu đề (*Bỏ qua · ✓* ở form biến
@@ -180,7 +189,7 @@ Bản debug `39a2d86d…` rồi các bản sửa (`8abfd661…`, `deafeb66…`).
    → im) rồi nội dung (tin nhắc **đúng một** nguồn khác — `MOMO149…` nhận, `mb` trần không). Thẻ *"Có vẻ là chuyển khoản ·
    Từ MoMo sang MB Bank"* trên form biến động → bấm đổi sang Chuyển khoản, ví phía tin theo luật D1, phía kia đã nhớ →
    ví duy nhất trùng tên nguồn → trống. Lưu: nhớ ví **theo phía** (tin thu thì ví của nguồn tin là ví ĐÍCH — nhớ
-   `_selectedWallet` là chọn sẵn sai mãi), xoá cả hàng cặp. Giới hạn: tin MB chiều trừ đã mất phần `DEN: … PSP…` nên
+   `viNguon` là chọn sẵn sai mãi), xoá cả hàng cặp. Giới hạn: tin MB chiều trừ đã mất phần `DEN: … PSP…` nên
    chuyển **sang** MoMo không nhận ra (3/5 hàng thật được gợi ý). Ca test `goi_y_chuyen_khoan_test.dart`,
    `goi_y_chuyen_khoan_form_test.dart`.
 3. ✅ **Chia sẻ biên lai** vào FlowMoney → đọc chữ trên máy → điền sẵn — **mã xong Task 1–10, nghiệm thu Realme với
@@ -243,10 +252,10 @@ App ngân hàng: Chia sẻ → "Ghi vào FlowMoney"
 | `android/…/NhanBienLaiActivity.kt` | nhận `SEND image/*`, chép ảnh, hàng chờ, Toast, tóm tắt; log thu mẫu bản debug (gói, kiểu, kích thước, kiểu lỗi) |
 | `lib/core/ocr/` | `DongOcr` + `ghepDongTheoHang`, `tienTrenDong` (dời từ spike C4) · `DocChuAnh` + `DocChuAnhMlKit` · `cheHinhDang` |
 | `lib/features/transaction/domain/doc_bien_lai.dart` | chữ trên ảnh → `BienLaiDoc`; mẫu riêng MB Bank, luật chung cho phần còn lại |
-| `lib/core/notification/nhap_bien_lai.dart` | `docDongBienLai`, `thuMauBienLai`, lớp `NhapBienLai` |
-| `lib/core/notification/kho_bien_lai.dart` | thư mục ảnh: xoá, dọn mồ côi, xoá hết |
-| `lib/core/notification/ten_tep_bien_lai.dart` | hằng tên tệp + `tenTepBienLaiHopLe` (Dart thuần) |
-| `lib/core/notification/nhap_bien_dong.dart` | `deeplinkBienDong(anh, cachDoc)`, `deeplinkBienLaiChuaDoc`, `anhTuDeeplink`, `gioBienLaiTuDeeplink`, `themAnhVaoDeeplink` |
+| `lib/features/notification/application/nhap_bien_lai.dart` | `docDongBienLai`, `thuMauBienLai`, lớp `NhapBienLai` |
+| `lib/features/notification/data/datasources/kho_bien_lai.dart` | thư mục ảnh: xoá, dọn mồ côi, xoá hết |
+| `lib/core/ocr/ten_tep_bien_lai.dart` | hằng tên tệp + `tenTepBienLaiHopLe` (Dart thuần) |
+| `lib/features/notification/application/nhap_bien_dong.dart` | `deeplinkBienDong(anh, cachDoc)`, `deeplinkBienLaiChuaDoc`, `anhTuDeeplink`, `gioBienLaiTuDeeplink`, `themAnhVaoDeeplink` |
 | `lib/features/transaction/domain/dien_san_bien_dong.dart` | `anh`, `cachDoc`, `dongNguonBienDong`, `dongPhuBienLai` |
 | `lib/features/transaction/presentation/widgets/xem_anh_bien_lai.dart` | xem ảnh to |
 
@@ -459,13 +468,13 @@ Kotlin (không chạm SQLite): PhienNganHang.kiem ← NhacGhiWorker (WorkManager
 
 | Tệp | Vai |
 |---|---|
-| `lib/core/notification/phien_ngan_hang.dart` | hằng (khớp tay với Kotlin), `SuKienSuDung`, `phienTuSuKien`, `phienCanXet`, `mocSauKhiXet`, `phienCanNhac`, khoá / deeplink / tiêu đề — Dart thuần |
-| `lib/core/notification/kenh_phien_ngan_hang.dart` | kênh `flowmoney/phien_ngan_hang` + bản trống (web / test) |
-| `lib/core/notification/moc_phien_store.dart` | `daXetDen` theo tài khoản (`nhac_phien:<id>`) + cờ máy `nhac_phien_dang_xuat` |
-| `lib/core/notification/nhap_phien_ngan_hang.dart` | lượt nhập + `dongKhiDangXuat` |
-| `lib/core/notification/notification_scanner.dart` | bước thứ ba của `_nhapBienDong`, `stop()` |
+| `lib/features/notification/domain/phien_ngan_hang.dart` | hằng (khớp tay với Kotlin), `SuKienSuDung`, `phienTuSuKien`, `phienCanXet`, `mocSauKhiXet`, `phienCanNhac`, khoá / deeplink / tiêu đề — Dart thuần |
+| `lib/features/notification/data/datasources/kenh_phien_ngan_hang.dart` | kênh `flowmoney/phien_ngan_hang` + bản trống (web / test) |
+| `lib/features/notification/data/moc_phien_store.dart` | `daXetDen` theo tài khoản (`nhac_phien:<id>`) + cờ máy `nhac_phien_dang_xuat` |
+| `lib/features/notification/application/nhap_phien_ngan_hang.dart` | lượt nhập + `dongKhiDangXuat` |
+| `lib/features/notification/application/notification_scanner.dart` | bước thứ ba của `_nhapBienDong`, `stop()` |
 | `lib/features/transaction/…` | `DienSanBienDong.phien`, `dongNguonBienDong`, `ViTheoNguonStore.docTheoNguon`, chữ thẻ |
-| `lib/features/notification/presentation/pages/` | `man_dong_y.dart` (khung dùng chung với D1) · `dong_y_nhac_sau_ngan_hang_page.dart` · khối ở `notification_settings_page.dart` |
+| `lib/features/notification/presentation/pages/` | `man_dong_y.dart` (khung dùng chung với D1) · `dong_y_nhac_sau_ngan_hang_page.dart` · `KhoiNhacSauNganHang` ở `presentation/widgets/cai_dat_thong_bao/khoi_nhac_sau_ngan_hang.dart` (trang `notification_settings_page.dart` giữ `_dongQuyenPhien`) |
 | `android/…/PhienNganHang.kt` · `NhacGhiWorker.kt` · `NhacGhiReceiver.kt` | đọc sử dụng, dựng phiên, thông báo, lịch · worker · nút |
 | `android/…/BienDongListenerService.kt` · `MainActivity.kt` · `AndroidManifest.xml` · `build.gradle.kts` | móc kiểm · kênh · quyền + receiver · `work-runtime-ktx:2.11.0` |
 
@@ -501,7 +510,9 @@ Kotlin (không chạm SQLite): PhienNganHang.kiem ← NhacGhiWorker (WorkManager
 - ⚠️ **Sự kiện dùng app là của MÁY** — mọi mốc theo tài khoản phải chặn được phiên lúc không ai đăng nhập (`8deeeb5`).
 - ⚠️ **Hằng Dart ↔ Kotlin khớp tay**; `phien_ngan_hang_noi_day_test` đọc tệp Kotlin để so.
 - ⚠️ **Không dùng `laGhiChuMay` làm bằng chứng** — nó loại chuyển khoản tự ghi (8.4).
-- ⚠️ **Hàng gợi ý pin** của D1 và của khối này cùng điều kiện — D1 đã hiện thì khối này không lặp.
+- ⚠️ **Hàng gợi ý pin** của D1 và của khối này cùng điều kiện — D1 đã hiện thì khối này không lặp. *"D1 đã hiện"* (`d1DangHienPin`)
+  phải lặp **đủ** điều kiện dựng hàng của thẻ D1, kể cả quyền gói `bank_notification_parser`: Basic còn `docBienDong` bật thì thẻ
+  D1 chỉ hiện dòng khoá, và quên vế ấy là màn không còn hàng pin nào (G91, đóng 2026-10-14).
 - ⚠️ **WorkManager chạy lượt ĐẦU ngay lúc `enqueueUniquePeriodicWork`**, không đợi 15 phút.
 - ⚠️ **Cắm cáp USB = đang sạc → Android không vào Doze** — đo tắt màn phải rút cáp.
 - ⚠️ `appops set … GET_USAGE_STATS` bị ColorOS từ chối — người dùng tự bật ở `USAGE_ACCESS_SETTINGS -d package:…`.

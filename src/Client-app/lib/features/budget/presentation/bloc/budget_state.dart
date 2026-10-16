@@ -1,7 +1,7 @@
 import '../../../ai_edge/domain/tai_phan_bo.dart';
 import 'package:equatable/equatable.dart';
 
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
 import '../../data/models/budget_entity.dart';
 import '../../domain/de_xuat_ngan_sach.dart';
 
@@ -109,7 +109,7 @@ class BudgetLoaded extends BudgetState {
 /// dựng được khi có cả hai, tách ra sẽ đẻ thêm một trạng thái trung gian mà
 /// giao diện phải xử lý mà không mang lại gì.
 class BudgetEditorReady extends BudgetState {
-  final List<Category> categories;
+  final List<CategoryEntity> categories;
 
   /// null = đang tạo mới.
   final BudgetEntity? editing;

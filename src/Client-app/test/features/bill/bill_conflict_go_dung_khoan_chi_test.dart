@@ -31,7 +31,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
-import 'package:flowmoney/features/bill/data/services/bill_payment_conflict_resolver.dart';
+import 'package:flowmoney/features/bill/application/bill_payment_conflict_resolver.dart';
 
 void main() {
   const accountId = 7;

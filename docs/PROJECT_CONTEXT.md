@@ -260,7 +260,7 @@ Response:
 | Sau mỗi lần ghi dữ liệu | `scheduleSync()` — debounce **2 giây**, được gọi từ **19 vị trí** trong tầng feature |
 
 `start()` luôn huỷ listener/timer cũ trước khi cài mới nên gọi nhiều lần không nhân đôi trigger.
-`start(idaccount:)` được gọi từ **2** nơi, đều trong `AuthBloc`: lúc khôi phục phiên và sau đăng nhập. Chỗ thứ ba — `HomePage.build()` — **gỡ 2026-09-12**: nó chạy lại ở mỗi rebuild và mỗi lần xoá giãn cách lùi + thêm một chu kỳ đồng bộ; `test/core/sync/sync_engine_start_owner_test.dart` quét `lib/` để không ai gắn lại.
+`start(idaccount:)` được gọi từ **2** nơi, đều trong `AuthBloc`: lúc khôi phục phiên và sau đăng nhập (từ 2026-10-10: `PhienDieuPhoiThat` là chủ sở hữu duy nhất). Chỗ thứ ba — `HomePage.build()` — **gỡ 2026-09-12**: nó chạy lại ở mỗi rebuild và mỗi lần xoá giãn cách lùi + thêm một chu kỳ đồng bộ; `test/core/sync/sync_engine_start_owner_test.dart` quét `lib/` để không ai gắn lại.
 
 ### Kiến trúc
 
@@ -318,7 +318,7 @@ Dù nhận diện bằng cách nào, đó cũng chỉ là **tín hiệu**; quy�
 
 ### Mốc đồng bộ (checkpoint)
 
-Lưu bền vững qua `flutter_secure_storage`, khoá theo từng `idaccount` (`sync_checkpoint_store.dart`). Mốc mới lấy theo `update_at` lớn nhất trong dữ liệu nhận được — **không** dùng `DateTime.now()` của client, vì backend lọc `update_at > since` bằng đồng hồ của nó.
+Lưu bền vững qua `flutter_secure_storage`, khoá theo từng `idaccount` (`sync_checkpoint_store.dart`). Mốc mới lấy theo `update_at` lớn nhất trong dữ liệu nhận được — **không** dùng `DateTime.now()` của client, vì backend lọc `update_at > since` bằng đồng hồ của nó. ⚠️ **Đổi từ G67 (2026-10-08):** server (migration 20 + 21) lọc theo giờ-server `Server_update_at` và trả `maxSince` từng bảng; mốc nay là `mocTuMaxSince` (`core/sync/moc_keo_ve.dart`) — **lớn nhất** giữa các bảng, kẹp về `pulledAt − 2 phút` khi còn nóng, +1 ms khi đã nguội (giờ-server lưu µs, JSON mang ms). `update_at` lớn nhất chỉ còn là đường lùi khi phản hồi không có khoá `maxSince`. Khoá lưu đổi sang `sync_last_pull_v2_<id>` để mỗi máy kéo lại toàn bộ đúng một lần (hàng G67 từng bỏ sót nằm dưới mốc cũ).
 
 ### `_resolveCategoryId(categoryId)` — logic quan trọng
 ```
@@ -424,21 +424,33 @@ Backend `mapEntityFields()` chuyển từ camelCase payload → DB field names:
 
 ## 9. Flutter App Structure
 
-### Features
+> **Tài liệu kiến trúc đầy đủ: `docs/KIEN_TRUC_CLIENT_APP.md`** (2026-10-10 — cây có số tệp, ba tầng, tám luồng, ba
+> chữ ký, bảng test quét, **luật vị trí tệp**). Mục này chỉ giữ bản tóm tắt; số đếm 2026-10-10.
+
+### Features (14 mảng, 402 tệp)
 ```
 features/
-├── auth/           ← Đăng nhập / đăng ký
+├── auth/           ← Đăng nhập / đăng ký; AuthBloc CHỈ giữ trạng thái + thứ tự emit
 ├── home/           ← Dashboard (tổng quan tài chính)
-├── transaction/    ← Thêm/sửa/xóa giao dịch
-├── wallet/         ← Quản lý ví
+├── transaction/    ← Thêm/sửa/xóa giao dịch; presentation/widgets/them_giao_dich/ (7 khối của trang Thêm giao dịch)
+├── wallet/         ← Quản lý ví; application/ (gop_vi_service, vi_trung_ten_resolver, dieu_chinh_so_du_service, default_account_data_initializer), `so_du_vi_service` + `tha_vi_bi_giu` ở data/
 ├── budget/         ← Ngân sách
-├── bill/           ← Hóa đơn định kỳ
-├── goal/           ← Mục tiêu tiết kiệm
-├── category/       ← Quản lý danh mục
-├── analytics/      ← Báo cáo & thống kê
-├── ai_chat/        ← Chat với AI
+├── bill/           ← Hóa đơn định kỳ; application/ (bill_auto_pay_runner, bill_payment_conflict_resolver)
+├── goal/           ← Mục tiêu tiết kiệm; application/goal_auto_deposit_runner.dart; presentation/widgets/them_muc_tieu/ (7 tệp) · widgets/chi_tiet_muc_tieu/ (7 tệp)
+├── category/       ← Quản lý danh mục; application/ (default_category_seeder, personal_default_categories) · domain/category_suggestion_engine.dart; data/gan_danh_muc_nguon.dart (lớp GanDanhMucNguon cho màn Gắn danh mục)
+├── analytics/      ← Báo cáo & thống kê; presentation/widgets/phan_tich/ (14 tệp khối của trang Phân tích) · widgets/xem_truoc_bao_cao/ (10 tệp khối của Xem trước báo cáo)
+├── ai_edge/        ← AI trên máy: luật + gói số, tool, SLM runtime, lớp chắn
+├── ai_chat/        ← Màn Trợ lý AI (+ spike/ — mã đo sau cờ dart-define)
+├── notification/   ← Mảng thông báo đủ ba tầng + application/ (từ 2026-10-15, dời từ core/notification): domain/ (20 luật, deeplink, tuỳ chọn) · data/ (NotificationEntity, ThongBaoRepository, OsNotifier, nhật ký) · application/ (bộ quét, nhắc, bộ nhập D1 / biên lai / phiên ngân hàng); presentation/widgets/cai_dat_thong_bao/ (6 tệp)
+├── premium/        ← Gói, quyền theo gói, thanh toán PayOS
 └── profile/        ← Hồ sơ người dùng
 ```
+
+`core/` (92 tệp, đếm 2026-10-15; 15 chủ đề) là hạ tầng + **điểm ghép**: `core/di/injection_container.dart`, `core/router/app_router.dart`,
+`core/nen/chay_nen.dart`, và từ 2026-10-10 `core/auth/phien_dieu_phoi.dart` + `phien_dieu_phoi_that.dart` (vòng đời
+phiên, nhận hook hàm cho mọi mảng khác; chỉ import bộ quét thông báo — điểm ghép thứ tư, quét 25). `features/notification/data/repositories/thong_bao_repository.dart` (trước là `ThongBaoNguon` ở `core/notification`) là cổng đọc / ghi bảng
+thông báo cho tầng giao diện. Tầng `presentation/` **không** cầm `AppDatabase` / DAO (test quét 22), tệp ≤ 1.200 dòng
+(quét 23; `mienTru` rỗng từ 2026-10-13, cơ chế giữ cho tệp dài sau này).
 
 ### DI (GetIt)
 File: `core/di/injection_container.dart`
@@ -452,7 +464,9 @@ Các singleton quan trọng:
 1. Login → nhận `accessToken` + `refreshToken` → lưu vào `FlutterSecureStorage`
 2. `DioClient` tự động đính kèm `Authorization: Bearer <token>` vào mọi request
 3. Khi token hết hạn → auto-refresh qua `/api/auth/refresh` (⚠️ 2026-09-11: theo mã backend sau gộp `main` @ `cc65f4f`, endpoint này từ chối mọi tài khoản nên người dùng bị đăng xuất khi access token hết hạn — CAN-LAM 17 A; ✅ backend sửa, gộp `cbbeeb4` 2026-09-12 — đo đầu-cuối chiều cùng ngày: 200 kèm token mới; sau khi khoá tài khoản thử → 401 + `code: ACCOUNT_INACTIVE` ở cấp gốc)
-4. `AuthBloc` quản lý trạng thái đăng nhập
+4. `AuthBloc` quản lý trạng thái đăng nhập; từ 2026-10-10 mọi thứ sống theo phiên (dọn tài khoản khác, bộ quét thông
+   báo, socket, đồng bộ, seed) đi qua `PhienDieuPhoi` — `moPhienCucBo` trước `AuthSuccess`, rồi `batThoiGianThuc` · kiểm
+   `_vanLaPhien` · `batDongBo`; `dongPhien` / `xoaDuLieu` khi đăng xuất. `auth_bloc.dart` không gọi service locator (quét 24).
 
 ---
 
@@ -547,7 +561,7 @@ src/Backend/
 ### 11.11 Tab Chuyển khoản của màn thêm giao dịch chưa bao giờ đồng bộ được
 **Nguyên nhân** (phát hiện 2026-09-05, khi chuyển sang mô hình hai loại giao dịch): `AddTransactionPage` gán `categoryId = 'cat_transfer'` — một id **chưa từng được seed** — cho mọi khoản chuyển. `_resolveCategoryId` trả `null`, `_collectPendingOps` hoãn "chờ danh mục về" **vĩnh viễn**, không báo lỗi, trong khi số dư hai ví vẫn lên server. Cùng lúc `TransactionEntity` không có trường `walletTransfer` nên ví đích không xuống SQLite, và đường xoá không hoàn tiền ví đích. Dữ liệu thật xác nhận: 13 hàng `Transfer` trên server đều đến từ Goal, tab này chưa từng tạo được hàng nào.
 
-**Giải pháp**: khoản chuyển có `categoryId = null` + `walletTransfer` = ví đích (cùng quy ước với Goal); `_collectPendingOps` **không** hoãn khoản chuyển vì danh mục (giải kẹt cả hàng cũ mang `'cat_transfer'`); `TransactionRepositoryImpl` đọc ví đích từ entity ở cả thêm lẫn xoá. Test canh: `test/features/transaction/presentation/add_transaction_page_test.dart`, `test/transaction_repository_test.dart`, và ca "transfer mang categoryId không phân giải được vẫn được đẩy" trong `sync_payload_contract_test.dart`.
+**Giải pháp**: khoản chuyển có `categoryId = null` + `walletTransfer` = ví đích (cùng quy ước với Goal); `_collectPendingOps` **không** hoãn khoản chuyển vì danh mục (giải kẹt cả hàng cũ mang `'cat_transfer'`); `TransactionRepositoryImpl` đọc ví đích từ entity ở cả thêm lẫn xoá. Test canh: `test/features/transaction/presentation/add_transaction_page_test.dart`, `test/features/transaction/data/repositories/transaction_repository_test.dart`, và ca "transfer mang categoryId không phân giải được vẫn được đẩy" trong `sync_payload_contract_test.dart`.
 
 ### 11.12 Mốc `Update_at` ở tương lai, và lỗi múi giờ do chính cách sửa tay
 **Lỗi gốc** (phát hiện 2026-09-05, commit `a677c0f`): 15 hàng của tài khoản 10 trên PostgreSQL (2 ví, 10 giao dịch, 1 mục tiêu, 2 hoá đơn) mang `Update_at` ở **tương lai**, xa nhất 10/11/2026. `_newestUpdateAt()` lấy `update_at` **lớn nhất** trong payload làm mốc pull, mốc chỉ tiến không lùi, nên một hàng hỏng là đủ đẩy mốc vọt lên; backend lọc `update_at > since` trả rỗng → máy ấy **không nhận dữ liệu mới nào trong hai tháng, hoàn toàn im lặng**. Đã chữa ở client **hai đầu** với ngữ nghĩa khác nhau có chủ ý: đường **ghi** *kẹp* mốc về hiện tại (vừa nhận xong, không có khoảng nào bị bỏ lỡ), đường **đọc** *vứt* mốc tương lai và full pull (mốc hỏng che đúng khoảng đã bỏ lỡ, kẹp là mất). Gộp hai hàm là hỏng một trong hai. Test: `test/core/sync/sync_checkpoint_test.dart`.
@@ -594,7 +608,434 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-06)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-16)
+
+### 🔀 Gộp `main` @ `d72ccd45` (2026-10-16, commit gộp `e49100ed`) — Payment premium: đối soát chuyển thừa / thiếu, hoàn tiền có minh chứng, mã nhận diện 6 ký tự, hạn đơn 10 phút; client đặt đơn 44, mở G94
+
+- **Không xung đột** (`git merge-tree` sạch, không tệp nào cả hai bên cùng đổi). 8 commit `main` (PR #138, NPBao), chỉ
+  chạm `src/Backend`, `src/Admin-web`, `docs/Payment/`. Cây `src/Client-app` **không đổi hash** (`2b3b5ecb…` trước và
+  sau) → không chạy lại `flutter test` (mốc vẫn 7.085 / 10 skip). `CAN-LAM/` không đổi (backend chưa trả lời đơn 41, 42,
+  43). `git check-ignore --no-index` trên `src/Client-app/test/x_test.dart` **không khớp**. Client không `npm install`,
+  không `prisma generate`, không áp migration.
+- ⚠️ **Backend dev KHÔNG khởi động được ngay sau gộp:** `api/admin.routes.js` require `middleware/upload.middleware.js`
+  → `multer`, mà `node_modules` dev chưa có. `npm install` sẽ tự `prisma generate` (bẫy *Ghi chú vận hành*). Lúc ấy
+  `schema.prisma` mang 9 cột mới của `payment_order` mà CSDL dev **chưa có**: đo 2026-10-16 bảng có 12 cột, 0 cột mới,
+  `status varchar(20)`; `Server_update_at` vẫn đủ 6 bảng. Mọi truy vấn `payment_order` sẽ vỡ `P2022`. Chạy lại backend
+  dev cần **ba việc, mỗi việc một phép đích danh** (quy tắc 1): `npm install`; áp
+  `database/20_add_payment_reconciliation_and_refund_fields.sql` + `24_add_is_template_to_payment_order.sql`; khởi động.
+- **Thứ chạm client** (đọc mã ở `d72ccd45`): ba trạng thái đơn mới `WAITING_CONFIRMATION` · `REFUND_PENDING` ·
+  `REFUNDED`, `POST /api/payment/confirm-upgrade` `{ orderCode, accept }`, ba sự kiện tới phòng tài khoản
+  (`payment.overpaid_confirmation`, `payment.underpaid_warning`, `payment.refunded`). Hạn đơn 30 → **10 phút**.
+  `order-status` trả thêm `amountReceived`, `recognitionCode`, `transferContent`. `create-order` thêm `recognitionCode`,
+  `transferContent` (`description` = nội dung chuyển khoản). Endpoint cũ giữ hình dạng. Client đọc ba trạng thái mới là
+  `pending` → **G94** (`CLIENT_APP_KNOWN_GAPS.md`): người chuyển thừa / thiếu thấy *"Đơn đã hết hạn"*, không có lối gọi
+  `confirm-upgrade`, lịch sử ghi đơn đã hoàn tiền là *"Chờ thanh toán"*, năm chỗ chữ *30 phút* nay sai. Người dùng
+  chốt: làm **cùng lượt G89**, sau khi backend đóng đơn 43.
+- **Đơn 44** `CAN-LAM/SOAT_SAU_GOP_D72CCD45.md`:
+  - **A (cao):** tệp thanh toán số 20 và 24 **trùng số** với `20_add_server_update_at_sync_tables.sql` /
+    `24_add_actor_role_to_aiops_incident.sql`; `apply_migration_20.js` bị viết đè sang tệp thanh toán, nên migration
+    đồng bộ `Server_update_at` không còn script áp (`git grep`: 0 chỗ nhắc).
+  - **B (vừa):** webhook chỉ chặn xử lý lại khi `PAID` → `REFUNDED` lùi về `REFUND_PENDING`, `amount_received` bị ghi đè.
+  - **C (vừa):** `/([A-Z0-9]{6})/` bắt `CSCYDE` (tiền tố PayOS) thay mã nhận diện (chạy thử `node -e`).
+  - **D (vừa):** `schema.prisma` `status VarChar(25)` mà không SQL nào nới (`WAITING_CONFIRMATION` đúng 20 ký tự).
+  - **E (thấp):** `confirm-upgrade` thiếu `accept` thì mặc định kích hoạt.
+  - **F (thấp):** hợp đồng mới chưa vào `Event-Notification-to-ClientApp.md`.
+  
+  **Đơn 43 B vẫn mở:** `findOrCreateOrderByCode` giống hệt từng dòng; đơn tự tạo lấy `amount` từ webhook nên luôn đi
+  nhánh PAID, hậu quả không đổi.
+- Nhánh **đã push** cùng lượt này (người dùng chọn 2026-10-16): `fce511a1..22b09b8e` (đo `git rev-parse` remote = HEAD).
+  Commit ghi lựa chọn G94 sau đó chưa push.
+
+### 🧱 G88 gạch 4 + quét 28 — G88 ĐÓNG (2026-10-16, chín commit mã `48bba881` → `4b7740a3` (đếm bằng `git rev-list --count`) + commit test sau review toàn nhánh `36180d62`, đã push 2026-10-16 cùng lượt gộp `d72ccd45`; nghiệm thu máy ảo ✅ đạt 2026-10-16)
+
+Spec `docs/superpowers/specs/2026-10-15-g88-gach-4-va-quet-28-design.md` (khối ✅ đầu tệp); kế hoạch 9 task `plans/2026-10-15-g88-gach-4-va-quet-28.md` (gitignore). Thi công bằng agent con mỗi task (Fable preflight · Sonnet thực thi · Opus soát). Đợt cuối của G88: 18 dòng / 7 tệp hạ tầng `core` → `features/` còn **8** dòng / 4 tệp, cả tám trỏ vào **năm tệp domain thuần** hợp thức hoá bằng danh sách cố định.
+
+- **Commit:** T1 `48bba881` quét 28 (`core/ui/domain_khong_import_tang_tren_test.dart`) · T2 `592cc0f4` `pickHomeBudget` → `budget/domain/pick_home_budget.dart` · T3 `ee05046e` `DongDanhMuc` / `ThongKeKy` / `DongChiBatThuong` → `analytics/data/models/thong_ke_ky.dart`, `LuaChonLoc` → `analytics/data/models/lua_chon_loc.dart` · T4 `62392229` `KhoAnhQuet` → `features/transaction/data/datasources/kho_anh_quet.dart` · T5 `8368815f` `noiBoNgheKetQuaDay` về cuối `core/di/injection_container.dart` (tệp `core/sync/noi_bo_nghe_ket_qua_day.dart` xoá) · T6 `9e9df270` hai cổng `CongSoDuVi` · `CongViBiGiu` / `BanGhiGiuKhoiDay` ở `core/sync/`, bản thật `SoDuViService implements CongSoDuVi` · `ViBiGiuDongBo` (`features/wallet/data/vi_bi_giu_dong_bo.dart`), `SyncEngine` nhận hai cổng **bắt buộc**, helper test `taoSyncEngineThu` (`test/helpers/sync_engine_thu.dart`) · T7 `9f0c4960` + `e56d22ef` lịch nền tách theo mảng: `mocTuTraNen` (`bill/domain`), `mocTrichNen` (`goal/domain`), `gopLichNen` (`core/nen/lich_nen.dart`, thay `lichNenKeTiep`), DI chọn phần theo quyền gói · T8 `4b7740a3` quét 25 luật 5 từ ratchet `conChoCoreImport` → danh sách cố định `domainThuanChoCore` (`wallet_status` · `wallet_type` · `bill_pay_status` · `bill_recurrence` · `uu_tien_hop_le`) + luật 5b canh chúng thuần.
+- **Test quét:** quét 25 nay **tám** luật; **quét 28** mới (hai luật: `features/*/domain/` không import `presentation/`; đường `data/` phải là `data/models/`; `conCho` rỗng); số quét kế tiếp **29**.
+- **Đo bằng máy 2026-10-16 (HEAD `4b7740a3`):** `lib/core` import `features/` **178** = điểm ghép **170** (DI 111 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **8** (`sync_engine` 4 · `sync_payload_normalizer` 2 · `wallet_dao` 1 · `other_daos` 1); trước đợt 184 = 166 + 18. Domain → `presentation/` / `data/` ngoài `data/models/` **0**; 178 tệp domain. `flutter test` 7.075 → **7.085** pass / **10** skip (đo ở `36180d62` — lượt sửa sau review toàn nhánh thêm 3 ca; tại `4b7740a3` là 7.082), `flutter analyze` **20**.
+- ✅ **Nghiệm thu máy ảo** (APK `006ea8b0…`, `lastUpdateTime` 2026-10-16 01:06:11; 15 ảnh trước/sau, cắt 100 px thanh trạng thái): 3 cặp giống hệt (01 · 08 · 10), phần còn lại lệch giải thích được — ngày 15 → 16/10 (số ngày còn lại, nhịp chi, ngày hoá đơn, danh sách cam kết 30 ngày), toast đồng bộ khi backend tắt (09), cuộn lệch vài px, con trỏ nhấp nháy (11); vàng `#FFFF00` **0** ở 15 ảnh; `E/flutter` **0**; `SyncEngine` khởi động (17 dòng); app không chết lúc mở. ⚠️ **Lỗ:** đẩy / kéo thật với máy chủ (backend tắt — phủ bằng bộ test đồng bộ engine thật); lượt nền WorkManager thật; điều kiện quyền gói của lịch nền ở DI chỉ canh bằng ca đọc nguồn; Trợ lý AI trên máy ảo rơi về *"Chưa có mô hình"* (gói số `hang_tong_quan` phủ bằng test). Bước neo số dư của engine (cổng `datNeoNhieuVi`) có thêm ca đòi kết quả từ `36180d62` (`sync_pull_so_du_vi_test` — bắt cả bản "vá neo sau khi ghi" và ví chỉ chạm qua giao dịch kéo về; cổng làm rỗng thì ca *"pull KHÔNG ghi đè số dư"* vốn đã đỏ).
+- **Nợ còn giữ có tên, không thuộc G88:** vòng phụ thuộc `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart`; regex quét 27 còn hở. Các khối bên dưới là lịch sử có ngày — `lichNenKeTiep`, `core/sync/noi_bo_nghe_ket_qua_day`, `conChoCoreImport` trong chúng là đường / tên **tại thời điểm ấy**.
+
+### 🧱 Entity Thông báo + gạch 5 + gạch 6 — G88 gạch 3 đợt 4/4 ĐÓNG (2026-10-15, bảy commit mã `73429f46` → `08effea7`, đã push tới `fce511a1`; nghiệm thu máy ảo ✅ đạt 2026-10-15)
+
+Spec `docs/superpowers/specs/2026-10-15-entity-thong-bao-application-design.md` (khối ✅ *"Số đo sau thi công"* và *"Nghiệm thu máy ảo"* đầu tệp); kế hoạch 8 task `plans/2026-10-15-entity-thong-bao-application.md` (gitignore). Thi công bằng agent con mỗi task (Fable preflight · Sonnet thực thi · Opus soát), mọi task qua soát không lỗi Quan trọng. Một đợt xong **ba gạch** của G88: gạch 3 (Entity Thông báo — đợt cuối), gạch 5 (`core/notification` dời hết) và gạch 6 (`data/services/` → `application/`).
+
+- **Commit:** T1 `73429f46` quét 27 (luật 4: interface repository không import Drift; `conChoKieu` bắt `AppNotificationEvent`) · T2 `362ae94a` `NotificationEntity` (`notification/data/models/notification_entity.dart`, 92 dòng, 14 trường — bỏ cột chết `osScheduledId`) + `companionTu` · T3 `2cb1c00f` `ThongBaoRepository` + `ThongBaoRepositoryImpl` (`data/repositories/`) thay `ThongBaoNguon`, hai trang nhận Entity, `chenLai(Entity)` thay `insertIfAbsent(Companion)` · T4 `5e19895d` ba hàm `hang*` và `deXuatThongBao` nhận Entity, record `SuKienNhatKy` (`domain/hoc_gio_thong_bao.dart`) thay hàng sự kiện · T5 `28d0a2f3` chiều import đúng trước khi có `application/`: `GoalAutoDepositEvent` / `BillAutoPayEvent` về `goal/domain/goal_auto_deposit.dart` · `bill/domain/bill_auto_pay.dart` (**theo spec 7.1 — runner không `export` lại**), `budget_health` → `budget/domain/`, `category_suggestion_engine` → `category/domain/`, `so_du_vi_service` → `wallet/data/` · T6 `d95674ef` gạch 5: 34 tệp `core/notification` dời bằng `git mv` (31 về `features/notification/{domain, data, data/datasources, application}`, 3 về `core/nen` · `core/ocr` · `core/utils`), 39 test soi gương · T7 `08effea7` gạch 6: `data/services/` → `application/` ở ví · danh mục · hoá đơn · mục tiêu (9 tệp + 3 test), quét 25 luật 7.
+- **Cây sau đợt:** `core/notification` **không còn**; `lib/core` **15** chủ đề; `features/notification` **48** tệp (domain 11 · data 17 · application 8 · presentation 12); `features/<x>/application/` có ở **năm** mảng — **17** tệp (thông báo 8 · ví 4 · danh mục 2 · hoá đơn 2 · mục tiêu 1); `tha_vi_bi_giu` ở `wallet/data/` (datasource gọi — luật 7, phán quyết preflight C2). Bảng thông báo vẫn **cục bộ** (quy tắc 9) — Entity chỉ là kiểu của repository, không đụng `SyncEntityType`.
+- **Test quét:** quét 27 **bốn** luật, `conChoKieu` **rỗng** (ba danh sách chờ đều rỗng); quét 25 **bảy** luật (luật 7: `data/` và `domain/` không import `application/`; `tangMang` có `application`; `diemGhep` có `phien_dieu_phoi_that.dart`). Ratchet `conChoCoreImport` đo **43 → 47 (T4, Luật tăng) → 45 (T5) → 18 (T6)**, 7 mục; TOTAL `lib/core` import `features/` **184** = điểm ghép **166** (DI 107 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **18** — nợ gạch 4.
+- Đo bằng máy 2026-10-15 (HEAD `08effea7`): `find lib/features -path "*/data/services/*"` **0**; `ThongBaoNguon` **0** dòng mã (ba dòng chú thích *"trước là …"*); tệp `data/` · `domain/` import `application/` **0**; 11 tệp `*_repository.dart` không import Drift; Entity **7/14** mảng. `flutter test` 7.069 → **7.075** pass / **10** skip, `flutter analyze` **20** (`MUC_NEN` không đổi).
+- ✅ **Nghiệm thu máy ảo `FlowMoney_16G`:** APK trước `d3b7b908…`, sau `adedaef848dfc4a321b663945e948abe023a0607` (`lastUpdateTime` 15:51:49 → 19:45:37); 18 ảnh, cắt 100 px thanh trạng thái: **11/18 cặp cùng SHA-1 (0 px)**, 7 cặp lệch đều giải thích được (số chuông 26 → 25 vì ảnh trước chụp trước một lần gỡ mềm; giờ tương đối thẻ đầu *"4 → 8 giờ trước"*; toast ở khung mờ khác; form Thêm giao dịch cuộn lệch do toạ độ chạm khác); vàng thuần `#FFFF00` 0; logcat 0 `E/flutter`. ⚠️ **Lỗ** (máy ảo không có dữ liệu): *Hoàn tác* xoá cứng hàng D1 (`chenLai`) · nhập biến động / biên lai / phiên ngân hàng · chạy nền — phủ bằng `thong_bao_repository_test` (4 ca) + `notification_entity_companion_test` (2) · `nhap_bien_dong_test` (32) · `nhap_bien_lai_test` (25) · `nhap_phien_ngan_hang_test` (16) · `notification_scanner_lich_nen_test` (3).
+- ⚠️ **Tham chiếu cũ biết và để nguyên:** chú thích Kotlin `MainActivity.kt:42` · `:48` và `PhienNganHang.kt:43` còn nêu `lib/core/notification/…` (các `*_noi_day_test` chỉ so hằng, không hỏng im lặng). Các khối 🧱 / 🧩 / 🗂️ bên dưới là lịch sử có ngày — đường dẫn `core/notification/…` và `data/services/…` trong chúng là đường **tại thời điểm ấy**.
+- Đợt kế của G88: **gạch 4** (18 dòng `core` → `features`).
+
+### 🧱 Entity Danh mục — G88 gạch 3, đợt 3/4 ĐÓNG (2026-10-15, 6 commit mã `f443a647` → `811e1ea8`, đã push tới `fce511a1`; nghiệm thu máy ảo ✅ đạt 2026-10-15)
+
+Spec `docs/superpowers/specs/2026-10-15-entity-danh-muc-design.md` (khối ✅ *"Số đo sau thi công"* và *"Nghiệm thu máy ảo"* đầu tệp); kế hoạch 7 task `plans/2026-10-15-entity-danh-muc.md` (gitignore); thi công bằng **agent con mỗi task**, mọi task qua soát (không lỗi Quan trọng). Gộp ba việc: Danh mục + hai nợ Mục tiêu + `ghiPhanHoi`.
+
+- **Commit:** T1 `f443a647` quét 27 mở rộng · T2 `34f54ec9` `CategoryEntity` (13 trường chỉ đọc, `Equatable`) · T3 `2e04954d` đổi kiểu trục Danh mục (87 tệp: 41 `lib` + 46 `test`; `watchAllRows → watchAll`, `getRowById → getById`, `loadBangTraTen` giữ tên) · T4 `3cfaed55` `PhanHoiTaiPhanBo` + `ghiPhanHoi` · T5 `406c20c6` `watchGoalTransactions → Stream<List<TransactionEntity>>` (bỏ 9 phép ép + 2 `?? ''`) · T6 `811e1ea8` `goal_auto_deposit_runner` dời `goal/data/services/`.
+- **Test quét 27** nay **ba luật**: luật 1 quét cả `features/*/domain/` theo tên kiểu (ba sàn đếm), luật 2 `domain/` không import `core/database` / `package:drift`, luật 3 `features/*/data` không khai `<dynamic>` trần. `conChoDomain` **rỗng**, `conChoDynamic` **rỗng**, `conChoKieu` chỉ còn `AppNotification` (9 tệp).
+- Đo bằng máy 2026-10-15 (HEAD `811e1ea8`): lối chuyển tiếp trả hàng Drift **4 → 0**; Entity **6/14** mảng; ratchet quét 25 **43 giữ**, TOTAL import `features/` trong `core` **185**; `AiRebalancingFeedbacksCompanion` dựng duy nhất ở `budget/data/tai_phan_bo_nguon.dart` (tên còn trong một docstring `ai_edge/domain/ap_dung_ke_hoach.dart`).
+- `flutter test` 7.065 → **7.069** pass / **10** skip, `flutter analyze` **20**. ✅ **Nghiệm thu máy ảo `FlowMoney_16G`:** APK trước `94394e4c…`, sau `d3b7b9083a981c80110e8228eba5f200d4354562` (`lastUpdateTime` 2026-10-15 12:09:02); 27/29 cặp ảnh 0 px, hai cặp (`17`, `18` — Thêm hoá đơn) lệch do cuộn dừng lệch 1 px; vàng thuần 0; chip lọc danh mục ở Sổ, thẻ gợi ý danh mục (`food`) và `pop<CategoryEntity>` của form đạt; logcat sạch. ⚠️ Lỗ còn mở: *Đề xuất cân đối ngân sách* (không hiện, dữ liệu không đủ) và C1 (`demChuaGan` = 0; phủ bằng test).
+- Đợt kế: **Thông báo** (gạch 3 còn 1/4, cùng gạch 4–5 `core/notification`).
+
+### 🧩 Entity Giao dịch + Ví — G88 gạch 3, đợt 2/4 ĐÓNG (2026-10-14, mã `54a6efd1` → `3252db88`, đã push tới `fce511a1`; nghiệm thu máy ảo ✅ đạt 2026-10-14, `14e9284c` tài liệu + `692c7091` tệp đo)
+
+Spec `docs/superpowers/specs/2026-10-14-entity-giao-dich-vi-design.md` (khối ✅ *"Số đo sau thi công"* đầu tệp; duyệt `c2c723cb`); kế hoạch 9 task `plans/2026-10-14-entity-giao-dich-vi.md` (gitignore); thi công bằng **agent con mỗi task** (Task 1 `54a6efd1` + `2b0922bd` · Task 2 `a8deac2a` · Task 3 `3bbb988e` · Task 4 `d89d79c4` · Task 5 `08014289` · Task 6 `908b99ec` + `92d39914` · Task 7 `3252db88`). Thuần đổi kiểu, cùng khuôn đợt Hoá đơn.
+
+- `WalletEntity` / `TransactionEntity` (`wallet|transaction/data/models/`) là kiểu **duy nhất** từ repository trở lên (trừ `goal/domain/goal_auto_deposit_runner.dart`, nằm nhầm tầng — cầm hàng Drift qua DAO, spec mục 11; và `GoalRepository.watchGoalTransactions` — `Stream<dynamic>` chở hàng Drift `Transaction`, nợ có tên, quét 27 không bắt được `dynamic`): domain, Bloc, trang, `shared/`, `lib/core` (trừ `database`, `sync`). `WalletEntity.fromDrift` (dời từ `_toEntity`, 6 chỗ gọi); `TransactionEntity` mang thêm `billId` và `deletedAt` **chỉ đọc**. Repository gộp tên: `WalletRepository.getActive` / `getAll` / `watchAll`, `TransactionRepository.getAll` / `watchAll`; sáu lối `…Rows` đã bỏ. Phản hồi B2 vào `bill/domain/de_xuat_hoa_don.dart` bằng record `PhanHoiGoiYHoaDon`, nguồn `de_xuat_hoa_don_nguon` dựng.
+- **Test quét 27** mở rộng sang `lib/core` (trừ `database`, `sync`; ba điểm ghép **không** miễn trừ), mẫu thêm `;` / `.fromJson`, luật 2 cấm cả `package:drift`; `Wallet` và `Transaction` không còn khoá trong `conChoKieu`. **Quét 2** phân loại thêm 6 chỗ đọc mọi ví. **Ratchet quét 25** hạ tầng 40 → **43**, câu luật tăng viết lại: *tăng chỉ khi thay một kiểu Drift bằng Entity trong lộ trình G88 gạch 3; không bao giờ vì ghép một mảng mới vào `core`*. Test quét mới lấy số **28**.
+- Đo bằng máy 2026-10-14: tệp `domain/` import `core/database` **12 → 8** (`bill/domain` = 0); `Wallet` / `Transaction` Drift ở `presentation/` + `shared/` + `lib/core` **0**; lối chuyển tiếp trả hàng Drift **10 → 4** (`loadBangTraTen` · `watchAllRows` · `getRowById` của Danh mục + `TaiPhanBoNguon.ghiPhanHoi`); hạ tầng `core` import `features/` **43** (`notification_rules` 12 · `notification_scanner` 7 · `de_xuat_thong_bao_nguon` 1); `wallet_entity.dart` 147 dòng, `transaction_entity.dart` 153; Entity **5/14**; thống nhất xong Hoá đơn, Ví, Giao dịch; Mục tiêu / Ngân sách ngoài lộ trình, còn nợ (`goal_auto_deposit_runner`, `watchGoalTransactions`).
+- `flutter test` 7.057 → **7.065** (9 skip, 0 fail ở `3252db88`; **10** skip từ `692c7091` — tệp đo `do_from_drift_test` chạy tay), `flutter analyze` **20**. ✅ **Nghiệm thu máy ảo 2026-10-14 ĐẠT** (`FlowMoney_16G`, `-gpu host`, demo mode 12:00, backend dev tắt — không có máy thật cắm): bản trước `b0164475…` (`lastUpdateTime` 14:05:48) ↔ bản sau `94394e4c88b237b2010a04b7c4a82a51cc73c7d9` (HEAD `84628ee1`, `lastUpdateTime` 21:29:25); **24 cặp ảnh**, cắt 100 px thanh trạng thái: **22/24 cặp 0 px khác**; 2 cặp lệch, không cặp nào do mã — (1) `20_ns_chi_tiet` 997 px, do thời gian: số *"Theo thời gian đã trôi"* tính theo `DateTime.now()` (22.403 đ lúc 21:21, 22.416 đ lúc 21:33 = 50.000 × ngày trôi / 31; +13 đ ≈ 11,5 phút × 1,12 đ/phút); (2) `22_pt_du_bao` 2 px, nhiễu vẽ: hai điểm khử răng cưa trên nét đứt *"Theo ngân sách"*, mọi px khác kể cả số cuối đường bằng 0. Vàng thuần `#FFFF00` **0** trên cả 24 ảnh sau. Nhập nhanh (đo lại có ảnh `nn2_1…3`): chọn **Ví MoMo** ở bảng chọn ví (ảnh xác nhận ví ≠ Tiền mặt), gõ `45k tien mat` (ví vẫn MoMo, số tiền 0 đ), bấm Điền → ví **Tiền mặt**, số tiền 45.000 đ, dòng *"Đã điền: 45.000 đ · Tiền mặt"*; KHÔNG Lưu, thoát bằng Back. `fromDrift` toàn sổ (`test/tool/do_from_drift_test.dart`, `692c7091`): **92 hàng · trung vị 0,028 ms** / 20 lượt (nhỏ nhất 0,026, lớn nhất 0,652) ≈ 0,3 µs mỗi hàng — không đáng tối ưu. Hai lỗ: màn Gắn danh mục (C1) không chụp được — 4 hàng sống không danh mục (ngoài chuyển khoản) đều là ghi chú máy (*Tích lũy…*, *Điều chỉnh số dư*, *Số dư ban đầu*) nên `demChuaGan` = 0, muốn có màn phải ghi dữ liệu (cấm); thẻ gợi ý danh mục ở màn Thêm giao dịch không có ảnh. Ảnh ở scratchpad, không vào repo. Commit: tệp đo `692c7091`, tài liệu `14e9284c` + vòng sửa sau.
+- Đợt kế: **Danh mục** → Thông báo (gạch 3 còn 2/4). ✅ Danh mục đã đóng 2026-10-15 — xem khối 🧱 Entity Danh mục ngay trên.
+
+### 🧱 Entity Hoá đơn — G88 gạch 3, đợt 1/4 ĐÓNG (2026-10-14, 6 commit mã `2a912871` → `a085deb0`, đã push tới `fce511a1`)
+
+Spec `docs/superpowers/specs/2026-10-14-entity-hoa-don-design.md` (khối ✅ *"Số đo sau thi công"* đầu tệp); kế hoạch 7 task `plans/2026-10-14-entity-hoa-don.md` (gitignore); thi công bằng **agent con mỗi task**. Thuần đổi kiểu: thân hàm domain / widget / luật thông báo không đổi.
+
+- `BillEntity` (`bill/data/models/bill_entity.dart`) là kiểu **duy nhất** từ repository trở lên — domain, Bloc, trang, và 9 tệp ngoài mảng (thông báo, Phân tích, AI Edge, `reminder_scheduler`…). Ghi qua `BillDraft` (Dart thuần) → `companionTaoTu` / `companionSuaTu` (`bill/data/models/bill_draft_companion.dart`). `BillAutoPayRunner` về `bill/data/services/`. `paymentsOf` trả `TransactionEntity`. `BillRepository` thêm `getUpcoming`, `getAllIncludingDeleted`.
+- **Test quét 27** `core/ui/presentation_domain_khong_kieu_drift_test.dart`: `presentation/` + `shared/` không nhắc kiểu hàng Drift (danh sách chờ theo kiểu, chỉ giảm — `Bill` không còn khoá); `domain/` không import `core/database` (danh sách chờ chỉ giảm). Ratchet quét 25 nâng +1 ở ba tệp thông báo (về 0 ở gạch 5). Test quét mới lấy số **28**.
+- Đo bằng máy 2026-10-14: tệp `domain/` import `core/database` **24 → 12** (Hoá đơn 11 → **1**: `de_xuat_hoa_don.dart` cần `Transaction` + `GoiYHoaDonPhanHoi` — tháo ở đợt Giao dịch); `Bill` Drift ở `presentation/` + `shared/` **0**; lối chuyển tiếp trả hàng Drift **11 → 10**; Entity **5/14**. `bill_entity.dart` 192 dòng, `bill_draft_companion.dart` 78, `bill_repository_impl.dart` 426.
+- `flutter test` 7.047 → **7.057** (+9 skip), `flutter analyze` **20**. Máy ảo `FlowMoney_16G` (APK debug trước `7af9d631…`, sau `b0164475…`): **15/15 cặp ảnh giống hệt SHA-1**; trả → hoàn tác và bỏ qua → hoàn tác đạt. Trang Hoá đơn có **hai** tab (kế hoạch ghi ba). Thẻ *"Có vẻ là khoản lặp"* (B2) không hiện ở cả hai bản — không kiểm được bằng ảnh. Bằng chứng đổi bản chỉ là `Success` của adb + hai APK khác SHA-1.
+- ⚠️ Còn **một** `Iterable<Bill>` (hàng Drift) ở `wallet/data/vi_trung_ten_nguon.dart` — **cố ý** (spec mục 7: cổng đọc của ví, không phải sót). Đừng "dọn".
+- Đợt kế: **Giao dịch + Ví** → Danh mục → Thông báo (gạch 3 còn 3/4).
+
+### 🩹 G91 + G92 + G93 đóng (2026-10-14, chưa push)
+
+Hai lỗi có sẵn ghi ở lượt soát đợt tách bốn trang, cộng một lỗi cùng gốc tìm ra khi điều tra G92; người dùng chọn sửa cả ba (TDD). Chi tiết ở thân từng mục `CLIENT_APP_KNOWN_GAPS.md`.
+
+- **G91** (`95ca2ccf`): `d1DangHienPin` của `KhoiNhacSauNganHang` thêm vế `context.coQuyen(MaQuyen.bankNotificationParser)` — Basic còn `docBienDong` bật không còn mất cả hai hàng gợi ý pin. Ca ⭐ G91 ở `nhac_sau_ngan_hang_cai_dat_test.dart`.
+- **G92**: `GoiRepository.choNapKho()` (future của lượt nạp kho gần nhất, không gồm `lamMoi`); `chanTheoGoi` và `chanTheoQuyen` (nay `Future`) chờ nó rồi mới đọc gói. Cửa trần chặn nhầm Premium mở lạnh deeplink; cửa quyền hỏng **chiều ngược** (Basic bị tắt `export_reports` lọt qua vì Basic mặc định thiếu khoá). 5 ca ở `chan_theo_goi_test.dart`; máy ảo `FlowMoney_16G` (APK debug `3654946f…`): mã cũ mở lạnh `/goals/add` → màn Premium, mã mới 3/3 → form, mở nóng + `/export-report` + mở thường đạt.
+- **G93**: từ G86, `moPhienCucBo` quét **trước** `AuthSuccess`, lúc `GoiRepository` chưa có tài khoản → `coQuyenNen` trả `true` → Basic có bảng `features` khoá tắt vẫn được tự trả / tự trích ở lượt quét đầu mỗi phiên (đường nền đã chặn từ trước). Sửa: hook `datGoi` của `PhienDieuPhoiThat` (DI → `GoiRepository.datTaiKhoan`) chạy trước bộ quét; `noiPhien` so với phiên đã nối của nó (biến `daNoi`) thay vì `idaccount`, để `AuthSuccess` vẫn `lamMoi` + áp `loaiPhien`. Bốn ca test đỏ trên mã cũ (`phien_dieu_phoi_that_test` ×3, `goi_repository_test` ×1). Không đo được trên máy (cần Basic hạ cấp); máy ảo chỉ kiểm hồi quy.
+- ⚠️ Bẫy nghiệm thu: form mở bằng `am start -n … -d` là trang gốc — mũi tên *Quay lại* đứng yên. Không phải lỗi (app không khai deeplink); người dùng chốt để nguyên.
+- Máy ảo `FlowMoney_16G` (APK debug `c71c957d…`, tài khoản Premium, backend tắt) — chỉ kiểm hồi quy: mở lạnh `/goals/add` → form; logcat có `[NotificationScanner] Quét xong` rồi 30 s sau `[Premium] lamMoi hỏng … DioException` (tức `noiPhien` vẫn làm mới ở `AuthSuccess` dù tài khoản đã đặt sẵn); mở thường → Trang chủ. Lượt `am start` ngay sau `adb install` có lần bị nuốt (không tạo tiến trình, không exit-info) — chờ vài giây sau khi cài.
+- `flutter test` 7.039 → **7.047** (+9 skip; G91 +1, G92 +5, G93 +2), `flutter analyze` **20**.
+- **Cùng ngày, trưa — Entity Hoá đơn (G88 gạch 3, đợt 1/4): spec + kế hoạch xong, chưa thi công.** Spec
+  `specs/2026-10-14-entity-hoa-don-design.md` (người dùng duyệt 6 phần, `f45e6f4f`); kế hoạch 7 task theo đơn vị biên dịch
+  (gitignore), preflight xong. Người dùng chọn bàn giao thay vì thi công ngay — phiên sau hỏi lối (agent con / inline). ✅ **Đã thi công và đóng cùng ngày — xem khối 🧱 Entity Hoá đơn ngay trên.**
+
+### 🪚 Tách bốn trang lớn — G88 gạch 2 đóng (2026-10-13, 9 commit mã `ecd01990` → `c4ea8437`, chưa push)
+
+Spec `docs/superpowers/specs/2026-10-13-tach-bon-trang-lon-design.md` (khối 🔧 và ✅ đầu tệp); kế hoạch 11 task `plans/2026-10-13-tach-bon-trang-lon.md` (gitignore); thi công bằng **agent con mỗi task** (người dùng chốt). Cùng loại việc với đợt tách trang Phân tích: widget theo khối, trạng thái và mọi `sl<…>` ở lại trang, dời nguyên văn, giữ `Key` và chữ.
+
+- Đo `wc -l` 2026-10-13, trước → sau: `goal_add_page` 1.570 → **791** · `goal_detail_page` 1.480 → **664** · `notification_settings_page` 1.615 → **866** · `report_preview_page` 1.270 → **243**. 30 tệp widget mới (`goal/presentation/widgets/them_muc_tieu/` 7 · `chi_tiet_muc_tieu/` 7 · `notification/presentation/widgets/cai_dat_thong_bao/` 6 · `analytics/presentation/widgets/xem_truoc_bao_cao/` 10) + 2 tệp `domain/` (`goal/domain/chu_ky_muc_tieu.dart`, `notification/domain/cau_chu_dong_y.dart`). `mienTru` của quét 23 **rỗng**.
+- **Thay đổi hành vi duy nhất:** hai ô số tiền của phiếu Nạp / Rút (Chi tiết mục tiêu) nay có **trần 13 chữ số**; lưới `o_nhap_tien_co_tran_test` (quét 8) nhận cả `controller: tên,` không gạch dưới (tham số widget) — bản cũ mù im lặng khi ô dời ra widget.
+- `flutter test` 7.037 → **7.039** (+9 skip; +2 ca `goal_detail_phieu_tran_test`), `flutter analyze` **20**. Máy ảo `FlowMoney_16G`: 32 cặp ảnh trước / sau **0 px khác**, vàng thuần 0 (APK debug SHA-1 trước `bf59ba5b…`, sau `7af9d631…`). Chưa chụp: Cài đặt thông báo khi D1 bật / khối nhắc sau ngân hàng bật (cần quyền hệ điều hành) và dòng gợi ý giờ — các ca widget test dựng trang ở trạng thái ấy xanh.
+- Chỗ khác bản viết của spec: xem khối 🔧 của spec (thứ tự phiếu Nạp / Rút trước lưới ô tiền; `_dongQuyenBienDong` / `_dongQuyenPhien` và `_buildHistorySection` ở lại trang vì đọc kênh nền tảng / repository; ba hằng chuỗi đồng ý sang `cau_chu_dong_y.dart`; `DaiDuDoanMucTieu` / `DauBaoCao` nhận thêm tham số).
+- ⚠️ Các khối lịch sử cũ hơn của mục 14 còn gọi hàm riêng tư của bốn trang theo tên lúc viết (`_showDepositDialog` → `moPhieuNapTien`, `_theBienDong` → `TheBienDong`, `_khoiDongTien` → `KhoiDongTienBaoCao`…): đọc tên mới trong thư mục `widgets/<tên trang>/`.
+- Lỗi có sẵn, không sửa: `TextEditingController` của hai phiếu Nạp / Rút không `dispose` (spec mục 9).
+
+### 🎙️ C4 giọng nói — MÃ XONG 2026-10-12, CHƯA kiểm thử trên máy
+
+Task 1–15 của kế hoạch xong (39 commit, `f992ecac` → `e5809642`); `flutter test` **7037** ca (+9 skip, sau đợt sửa review toàn nhánh 2026-10-12; mốc trước 7032), `flutter analyze` 20, Cubit form 1.132 dòng (trần quét 23: 1.200). Tài liệu đầy đủ: **`docs/GIONG_NOI_FEATURE.md`** (người dùng thấy gì, chọn lối, luật N1/N2/ngày/ví gọi tắt, kiểm chéo, Gemma một bản hai cờ, bảng tệp + test, chốt hỏng-im-lặng, lệch Stitch, checklist đo máy). Tóm tắt: micro ở ô Nhập nhanh + nút **Nói** Trang chủ (`/add?noi=1`); **Android trước, Gemma chép lời dự phòng**; nói xong tự Điền qua `dienTuCau`; số tiền đọc bằng dạng nói mới được Gemma kiểm chéo, lệch thì hai chip. Spike gỡ hết (miễn trừ quét 25 rỗng), thêm test quét **26**. Người dùng chốt giữa chừng: N1 chỉ khi Y ở chỗ tiền (lối A, đổi thân spec §3.2); *"ngày X tháng này"* không lùi. 🚧 **Phần kiểm thử trên máy (spec mục 9) chưa làm** — chuỗi mã lỗi `speech_to_text`, ngưỡng −35 dBFS, `kChoLoiSauDone`, RAM bản hai cờ, giọng thật cả hai lối, hộp quyền ColorOS, 320 dp thật. Hai màn Stitch lệch bản thi công (`d696e81e…`, `c8f09f19…`) chờ người dùng quyết. **Chưa push.**
+
+### 📝 (lịch sử) C4 giọng nói — spec duyệt + kế hoạch 16 task (2026-10-12), nay đã thi công
+
+Spec `docs/superpowers/specs/2026-10-12-c4-giong-noi-nhap-giao-dich-design.md` (khối 🔧 *Soát với mã* đầu spec thắng thân
+spec), kế hoạch `docs/superpowers/plans/2026-10-12-c4-giong-noi-nhap-giao-dich.md` (gitignore). Người dùng chốt: **Android
+nghe trước, Gemma chép lời khi mất mạng** · micro ở **ô Nhập nhanh** + nút **Nói** ở Trang chủ (`/add?noi=1`) · luật học
+thêm dạng nói tiền (*một triệu hai*, *năm chục*, *ba trăm rưỡi* — chỉ CHỌN trong tập `cachDocSoTien`), ngày (*ngày năm tháng
+chín*, *mùng X*), ví gọi tắt (*bằng MB Bank*) · **Gemma kiểm chéo số đọc bằng dạng nói, lệch thì hai chip** · nói xong tự
+Điền qua `ThemGiaoDichCubit.dienTuCau`. Lúc lập kế hoạch lộ **ba lỗi sẵn có** cùng vùng: *"1 triệu 2"* đọc 1.000.000 im
+lặng; *"từ"* bỏ dấu thành *"tư"* (4) làm câu chuyển ví bằng chữ mất số tiền; *"quả"* bỏ dấu trùng *"qua"*. Phạm vi lần thi
+công: **dừng trước kiểm thử trên máy** (spec mục 9). Cách thi công **chưa chọn** — hỏi người dùng. Bàn giao:
+`C:/Users/tadd1/AppData/Local/Temp/flowmoney-handoff-2026-10-12-c4-ke-hoach.md`.
+
+### 🕗 G90 đóng 2026-10-12 — bảng chọn giờ dùng đồng hồ 24 giờ trên máy đặt 12 giờ
+
+**Gốc lỗi** (đo bằng widget test thăm dò, rồi đối chứng trên máy ảo): bảng chọn giờ của Flutter lấy **kiểu hiển thị** từ
+ngôn ngữ (`vi` = HH:mm, không có nút SA/CH) nhưng **đọc giờ gõ vào** theo `MediaQuery.alwaysUse24HourFormat`, tức cài đặt
+đồng hồ của máy. Máy 12 giờ thì hai bên lệch: ô giờ chỉ nhận 1–12 rồi ghép với SA/CH **ẩn** của giờ đang chọn. Nặng hơn mô
+tả lúc mở: ngoài lời từ chối (gõ `20`, `0` → *"Nhập thời gian hợp lệ"*) còn **hai ca sai im lặng** — từ 20:00 gõ `8` lưu
+**20:00**, từ 08:00 gõ `12` lưu **00:00**. Chế độ mặt đồng hồ không lỗi (vẽ 00–23 hai vòng).
+
+**Sửa** (`9bc57c63`): `bocDongHo24Gio` ở `core/constants/app_localization.dart` ép `alwaysUse24HourFormat: true`; `main.dart`
+gọi nó ở lớp **ngoài cùng** `builder` của `MaterialApp.router` (bọc `AppToast`). Đặt ở tầng app chứ không ở năm chỗ gọi
+`showTimePicker`: bảng chọn giờ thêm sau tự đúng, không ai phải nhớ — cùng lý lẽ với việc ghim `locale`. Không chỗ nào khác
+trong `lib/` đọc cờ ấy hay gọi `TimeOfDay.format` (đo 2026-10-12) nên không đổi gì nhìn thấy được ngoài bảng chọn giờ. Test:
+nhóm *G90* ở `test/core/constants/app_localization_test.dart` — ca tiền đề (không bọc thì máy 12 giờ từ chối `20`), bốn ca
+hành vi, ca nối dây `main.dart`. ⚠️ `platformDispatcher.alwaysUse24HourFormatTestValue = true` **không** tới được `MediaQuery`
+của `MaterialApp` trong `flutter test` (đo: vẫn `false`) — môi trường test là máy 12 giờ; trục 24 giờ nghiệm thu trên máy.
+
+**Nghiệm thu máy ảo** `FlowMoney_16G` (`time_12_24 = 12`, mở lại app; bản debug trỏ `10.0.2.2`, backend tắt — app mở từ phiên
+lưu sẵn): Cài đặt thông báo, *Giờ nhắc trong ngày* 08:00 → gõ `20` ra 20:00 · từ 20:00 gõ `8` ra 08:00 · từ 08:00 gõ `12` ra
+12:00; *Giờ nhắc* (ghi chép) 20:00 → gõ `0` ra 00:00, trả lại 20:00; form Thêm mục tiêu, giờ trích gõ `21` ra 21:00 (rời
+form, không lưu); mặt đồng hồ hiện 00–23. **Đối chứng**: dựng tạm `main.dart` của `HEAD~1` (không bọc), cùng máy cùng cài
+đặt → gõ `20` báo *"Nhập thời gian hợp lệ"* — chứng minh cài đặt 12 giờ tới được app; rồi dựng lại bản sửa (`bd0d16c6…`), đo
+lại `20` / `8` đạt. Hai ô giờ trả về 08:00 / 20:00, `time_12_24` trả về **chưa đặt** (như trước lượt đo). Máy ảo nay cài bản
+**debug** `bd0d16c6…` (trước là release `26c101bc…`); nó vẫn hiện mục tiêu *Thu nen* vì chưa kéo về lệnh xoá (backend tắt).
+Đo **ba trong năm** chỗ gọi; ô giờ Tổng kết tuần (`notification_settings_page.dart:508`, nay `:504`) và hai mốc Giờ im lặng (`:1279`, nay `HangGioImLang` ở `widgets/cai_dat_thong_bao/khung_cai_dat.dart`;
+phải bật công tắc) chưa chạm — cùng một lớp bọc, không có đường riêng. Chưa đo trên Realme / OnePlus (không máy nào cắm).
+`flutter test` **6696/6696** + 9 skip, analyze **20**.
+
+### 📱 Nghiệm thu Realme 2026-10-11 tối — chạy nền (Task 10), mười màn, Thêm giao dịch sau tách; mở G90
+
+Realme RMX2205 `4DRWEAHIWCW8V879` (Android 13, ColorOS, 360 × 800 dp) + máy ảo `FlowMoney_16G` cho hai ca chạy nền. APK debug
+`bd365248…` và release `26c101bc…`, dựng từ `aa95e0d3` với base URL **tạm** trỏ `127.0.0.1` (`adb reverse`), mã nguồn trả lại,
+không commit; tài khoản 10 (`dat`, Premium). OnePlus không cắm — việc *"nghiệm thu OnePlus"* của các đợt 2026-10-10/11 đo trên Realme.
+
+- **Chạy nền** — bảng đủ ở §8.1 spec `2026-10-10-tu-chuyen-tien-chay-nen-design.md`: đạt (a) Dart → Kotlin · (b) app mở,
+  tự nổ (`quetNgay`, không `[Nen]`) · (c)+(d) app đóng, tự nổ, không ép (giết bằng `am crash`) · (f) hai máy ra **một** hàng
+  v5 (⚠️ không phải đua thật — máy ảo nổ trễ 1,5 phút, kéo về trước khi quét) · (g) release R8 trên máy ảo · (h) vuốt Recents
+  lần này **không** force-stop; (e) Basic bỏ qua (người dùng chọn). Ca **hoá đơn tự trả ở nền chưa đo** — cả buổi dùng một
+  mục tiêu thử. Ghi nhận: *"Số dư ví sắp cạn"* bắn ngay khi ví đích vừa được **nạp** từ 0 lên 1.000 đ (đúng luật ngưỡng, UX
+  lạ — chưa mở mục G).
+- **Mười màn sau hai đợt tái cấu trúc 2026-10-10** (bản debug): 18 ảnh (Trang chủ đầu / cuối, Sổ, Phân tích 6 vị trí, Hoá đơn
+  danh sách / thêm / thêm-cuộn dưới, Mục tiêu danh sách / chi tiết, Ngân sách, Thông báo, Cá nhân 2) — **vàng thuần 0** cả 18,
+  xem bằng mắt không cắt chữ / chồng; Hoá đơn chi tiết, bảng thanh toán, trang sửa mở / đóng bình thường. Màn Gắn danh mục
+  không chụp — không có giao dịch chưa gắn (không tạo thêm).
+- **Form hoá đơn không cho chọn nhóm** đo trên máy: nhóm `TESTTT` (`is_group = 1`) vắng ở cả form Thêm lẫn Sửa, con `test`,
+  `test1` có (đối chiếu SQLite máy).
+- **Thêm giao dịch sau khi tách sang `ThemGiaoDichCubit`:** bàn phím `51.000 + 1.000 − 2.000` → `52.000 − 2.000 = 50.000 đ`;
+  chạm số tiền ẩn / hiện 16 phím (✓ lên thanh tiêu đề); Nhập nhanh *"chuyen 500k tu tien mat sang tiet kiem"* → *"Đã điền:
+  500.000 đ · Chuyển ví · Tiền mặt → Tiết kiệm"*, nguồn *"Đọc bằng luật"*; lưu khoản chi 1.000 đ *Giải trí* → toast *"Thêm
+  giao dịch thành công!"* + về Trang chủ, chi tháng 310k → 311k; sửa thành 10.000 đ → *"Đã lưu thay đổi"*; xoá → hộp *"Xoá
+  giao dịch? Số dư ví sẽ được hoàn lại"* → chi về 310k. Lần đẩy sau khi lưu có một xung đột danh mục (server mới hơn, LWW lấy
+  bản server — vô hại).
+- **Trợ lý AI**, câu chào *"xin chao"* (CPU): mô hình đáp tự nhiên, sinh xong **7.543 ms** (token đầu 4.435 ms) — trước ghi ~23 s.
+- **Mở G90** (máy ảo): bảng chọn giờ, chế độ gõ chữ, từ chối mọi giờ > 12 khi máy đặt định dạng 12 giờ — năm chỗ
+  `showTimePicker`, chưa sửa (`CLIENT_APP_KNOWN_GAPS.md`) → ✅ **đóng 2026-10-12**, khối 🕗 ngay trên.
+- **Dọn** (qua giao diện): khoản chi thử xoá mềm; mục tiêu *"Thu nen"* rút 4.000 đ về *Tiết kiệm* rồi xoá (PostgreSQL
+  `Delete_at` 14:57Z) — bốn khoản trích + một khoản rút **ở lại** làm lịch sử (khoản trích mục tiêu không xoá được từ sổ);
+  thứ tự MuaXe → MuaDT khôi phục sau một cú vuốt nhầm thành kéo thả. Máy ảo đang cài bản release `26c101bc…` (trỏ
+  `127.0.0.1`), `time_12_24` trả về mặc định.
+- ⚠️ Khi nối lại backend, **phiên Realme cũ bị server từ chối** → app về màn Đăng nhập **không hộp thoại** (người dùng đăng
+  nhập lại). Chỉ ghi nhận, chưa tìm nguyên nhân.
+
+### 🧩 Tách trang Thêm giao dịch ra Cubit + lớp nguồn — G88 gạch 1 đóng (2026-10-11 tối, 6 task xong, chưa push)
+
+Người dùng chốt 2026-10-11 làm **trước C4** (C4 giọng nói chạm đúng màn này, như C2, C3, A5, D1 đã chạm). Spec `docs/superpowers/specs/2026-10-11-tach-trang-them-giao-dich-cubit-design.md` (bốn quyết định ở mục 0; khối *"Chỗ bản thi công KHÁC bản viết"* ở đầu tệp); kế hoạch 7 task `plans/2026-10-11-tach-trang-them-giao-dich-cubit.md` (gitignore), thi công bằng **agent con mỗi task** (người dùng chọn), commit `21d4c594` → `18ae5749` + commit đóng sổ, sổ theo dõi `.superpowers/sdd/2026-10-11-tach-trang-them-giao-dich-cubit/` (gitignore). **Không đổi hành vi**: màn, chữ, `Key`, schema, payload, `pubspec` giữ nguyên; 24 tệp test dựng trang không sửa kỳ vọng nào (chỉ chú thích / chữ `reason:` còn trỏ tên cũ được trỏ lại).
+
+- Trạng thái 61 trường và mọi logic của form (chọn ví, gợi ý ba nguồn, đề xuất từ khoá, chiều tiền, điền sẵn, tách khoản, lưu) ở **`ThemGiaoDichCubit`** + `ThemGiaoDichState` (`presentation/bloc/`; không import `material` / `widgets`, không `BuildContext`); mọi đọc / ghi dữ liệu qua **`ThemGiaoDichNguon`** (`data/`, cổng tiêm được, bản thật dùng `sl` lúc cần — hai dòng `sl<WalletRepository>().getActive(` và `sl<TransactionRepository>().getAll(` (tên cũ `…Rows`, đổi 2026-10-14 đợt Entity Giao dịch + Ví) vẫn nằm trên **một** dòng). Trang còn ô nhập chữ và focus, hộp thoại xác nhận, mở trang chọn danh mục, toast, `pop`, nghe `TransactionBloc`.
+- **Cửa điền sẵn chung cho mọi nguồn — Nhập nhanh (C2), D1, biên lai, quét ảnh (A5) và C4 giọng nói sắp tới — là `ThemGiaoDichCubit.dienKetQua(KetQuaDocCau, chonDuoc:)`** (`dienTuCau` cho câu chữ). C4 cắm vào đó, không cắm vào trang.
+- Số đo `wc -l` 2026-10-11: trang **2.007 → 779**, Cubit **1.097**, state **184**, nguồn **352** (spec ước ~700 / ~800 / ~200 / ~250 — Cubit lớn hơn vì thân hàm dời nguyên văn kèm chú thích ⚠️, vẫn dưới trần 1.200); `mienTru` của quét 23 còn **4** tệp. Test mới **64 ca** (Cubit 52 + nguồn 12; helper `test/helpers/them_giao_dich_nguon_gia.dart`): `flutter test` **6.681** (+9 skip; 6.617 trước đợt), `flutter analyze` **20**.
+- Máy ảo `FlowMoney_16G` (APK debug SHA-1 `d3488de6…`, tài khoản 10): 5 cặp ảnh trước / sau **0 px khác**, vàng thuần 0; 12 luồng làm tay **11 ✅ · 1 ◐** — thẻ gợi ý theo số tiền ở 360 × 640 dp cuộn hết cỡ mà đầu thẻ vẫn bị cắt (giới hạn G58 có từ trước; không có APK cũ để đối chứng đúng khổ ấy; ở 360 × 800 và 411 dp thì ổn). Câu thử *"chuyen 500k tu tien mat sang techcombank"* không dựng được ví đích vì tài khoản 10 không có ví Techcombank — thay bằng ví có thật (*Tiết kiệm*), đạt. Nghiệm thu OnePlus chưa làm, gộp vào lượt nghiệm thu kế (việc 1 của thứ tự).
+- ⚠️ Các khối cũ hơn của mục 14 còn gọi hàm riêng tư của trang theo tên lúc viết. Bảng đổi tên: `_saveTransaction` + `_luuTach` → `ThemGiaoDichCubit.chuanBiLuu` · `_loadSuggestion` → `_napGoiY` · `_dienKetQua` → `dienKetQua` · `_dienTuCau` / `_onNoteChanged` (trang còn hàm chuyển tiếp cùng tên) → logic ở `dienTuCau` / `ghiChuDoi` · `_amountString` → `chuoiSoTien` · `_huong` → `huong` · `_selectedWallet` → `viNguon` · `_hienBanPhimSo` → `hienBanPhimSo` (đều ở `ThemGiaoDichState` / Cubit); `_henGoiYTheoForm`, `_goiYSoTien`, `_choPhanXu` giữ tên (riêng tư trong Cubit).
+
+### 📝 Trợ lý online (hỗn hợp: có mạng hỏi backend Gemini, hỏng / mất mạng rơi về mô hình trên máy) — spec duyệt + kế hoạch viết, CHƯA thi công (2026-10-11 chiều, người dùng chốt để sau)
+
+- Đảo quyết định treo từ 2026-09-26 (🛑 *chatbot trực tuyến chưa nhận*): người dùng chốt **"kết nối AI chatbox ở backend vào, khi
+  có mạng dùng ở backend, không có thì offline"** và **"tuân thủ cấu trúc hệ thống, tránh sau này phải sửa lại"**. Brainstorm sáu phần,
+  11 quyết định (lối A *thử online từng câu, thang rơi*; mở kiến thức nhưng giữ chặn dữ liệu sống; tờ thông tin một lần; lịch sử trong
+  phiên màn; không thẻ FHS; không huy hiệu header; Dừng chỉ cho online; cờ gắn máy; bất biến số chỉ còn cho AI trên máy; không chờ
+  đồng bộ). Spec `docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` (`5e7240a7`); kế hoạch 13
+  task `plans/2026-10-11-tro-ly-online-backend-fallback-tren-may.md` (gitignore) — **0 dòng mã đổi**, thi công **để sau**, vị trí
+  trong thứ tự việc chưa xếp (sau nghiệm thu OnePlus → tách Thêm giao dịch → C4 → … theo bàn giao).
+- Vị trí tệp đã soát với bảng luật mục 8 `KIEN_TRUC_CLIENT_APP.md` và lộ trình G88 (gạch 1–6 không bị cản): datasource SSE ở
+  `ai_chat/data/datasources/`, bộ tách SSE ở `core/api/`, hàm thuần ở `ai_chat/domain` + `chuDeBiChanOnline` cạnh `chuDeBiChan`,
+  công tắc theo khuôn `CongTacAi`, thẻ lệnh tạo C3 dời ra `widgets/tro_ly_ai/` để trang < 1.200 dòng; đọc mạng qua
+  `ConnectionMonitor.coMangLucNay()` (mới), không gọi `Connectivity()` ở trang.
+- Backend đo thật cùng ngày: mô-đun chatbot đủ, route gắn, unit 28/28 + integration 3/3; `thug63` (Basic) → 403 `FEATURE_DISABLED`;
+  **`.env` dev không có `GEMINI_API_KEY` / `GEMINI_MODEL`** → mọi câu online về `done.fallback` (thang rơi phủ ca này). Khoá là việc
+  của người dùng/backend. Khi thi công: Task 0 là Stitch 3 màn; tài liệu phải đổi gồm bất biến ① ② `AI_AGENT_ARCHITECTURE.md`,
+  hàng *Bảo mật* mục 7 `KIEN_TRUC`, khối *Riêng tư* màn Cài đặt AI, đơn CAN-LAM thông báo backend (số **kế tiếp** — 43 đã dùng
+  cho đơn soát sau gộp `cd2ee572`, 2026-10-15).
+
+### 🔀 Gộp `main` @ `cd2ee572` (2026-10-15, commit gộp `12104082`) — hợp đồng sự kiện tới client-app, PayOS VietQR + đối soát webhook, phong toả AIOps lưu CSDL; client đặt đơn 43
+
+- **Không xung đột** (`git merge-tree` sạch); 13 commit `main` (PR #131–#134, NPBao). Cây `src/Client-app` **không đổi hash**
+  (`368a28f3…` trước và sau) → không chạy lại `flutter test`; `CAN-LAM/` không đổi (backend chưa trả lời đơn 41, 42 — mã chưa có
+  `BILL_PERIOD_ALREADY_PAID`, module sync không đổi); `git check-ignore --no-index` trên `src/Client-app/test/x_test.dart`
+  **không khớp**. `package.json` / `schema.prisma` đổi phía backend — client không `npm install`, không `prisma generate`.
+- Thứ chạm client: (1) tài liệu mới **`docs/Admin-web/Event-Notification-to-ClientApp.md`** (NPBao, *"PO đã phê duyệt"*) —
+  19 sự kiện socket / mã HTTP client phải xử lý, tự chấm client *"bỏ sót"* 11 mục. Đối chiếu mã hai phía 2026-10-15: 8 mục
+  client đã làm đúng; `user.notification` là **mã chết** phía backend; `FEATURE_DISABLED` client không chạm được (không gọi
+  `/api/ai/*`); đếm ngược chờ xoá và hạ gói theo hạn đã tự chạy ở máy; 503 quá tải / 429 đã được giãn cách ≥ 30 s phủ. Thiếu thật:
+  `connect_error` có `data.code` (client nối lại mỗi 60 s mãi mãi), `account.downgraded` (hạ gói trước hạn không thấy ngay),
+  dải bảo trì / phong toả (G89). (2) PayOS: endpoint client (`create-order`, `order-status/:orderCode`, `subscription-info`)
+  **không đổi** hình dạng; webhook thêm nhánh tự tạo đơn khi `orderCode` lạ. (3) Phong toả AIOps nay **lưu CSDL** (ba bảng
+  `aiops_*quarantine*` — `database/26`, backend tạo bằng DDL `IF NOT EXISTS` lúc khởi động; **chưa có** trên CSDL dev vì backend
+  chưa chạy từ khi gộp — đo: chỉ `aiops_incident`, `aiops_setting`) → khởi động lại backend **không còn** xoá danh sách;
+  loopback vẫn không thể bị đưa vào.
+- **Đơn 43** `CAN-LAM/SOAT_SAU_GOP_CD2EE572.md` (mức cao): **A** AIOps khoá tài khoản ghi `Status = 'Locked'` — CSDL dev **không
+  có** `ck_account_status` (đo: bảng `account` 0 CHECK) nên ghi được — `auth.js` trả `ACCOUNT_DELETED` → client **xoá SQLite**
+  (mất phần chưa đồng bộ); kích hoạt bằng 15 lần đăng nhập sai cho tên của người khác. **B** webhook `orderCode` lạ → đơn gắn
+  tài khoản `idaccount` nhỏ nhất → nâng Premium nhầm. **C** 503 đăng nhập lúc bảo trì mất `code`. **D** 12 chỗ hợp đồng lệch mã.
+  Hiện CSDL dev không hàng nào mang `'Locked'` (chỉ `Active`, `Deleted`).
+- **Người dùng chốt 2026-10-15:** phần client (xét lại xoá SQLite khi `ACCOUNT_DELETED` từ request thường · `connect_error` →
+  dừng nối lại + đăng xuất · `account.downgraded` → làm mới gói · dải bảo trì / phong toả đọc mã HTTP + `code`) làm **một lượt
+  sau khi backend đóng đơn 43**. Nhận broadcast qua socket vẫn theo quyết định 2026-09-30 (không nhận).
+
+### 🔀 Gộp `main` @ `79e46225` (2026-10-11) — Admin-web v1.0.0 + chuyển ngữ, AIOps `actor_role`, `maintenance_history`; backend chưa trả lời đơn 41, 42
+
+- Commit gộp `a02d8607`, **không xung đột** (`git merge-tree` sạch; không tệp nào cả hai bên cùng đổi), cây `src/Client-app`
+  **không đổi hash** (`17adfa32…` trước và sau) → không chạy lại `flutter test`. Năm commit `main` (PR #128–#130, NPBao):
+  Admin-web **50** tệp (Version 1.0.0, chuyển ngữ EN/VI — `Project.md` §17), Backend **31** tệp, `docs/Admin-web` 6,
+  `docs/Rule_Project/testing-guidelines.md` mới. PR #129 là `origin/TranQuangDat` @ `5e4b6686` gộp vào `main`; **46 commit**
+  sau mốc ấy của nhánh này vẫn chưa push (người dùng dặn).
+- Backend, chỗ chạm client: **AIOps quarantine thôi cô lập loopback ở MỌI môi trường** (`isProtectedIp` — loopback,
+  `ADMIN_TRUSTED_IPS` ở `.env`, IP phiên admin đăng ký lúc đăng nhập; trước chỉ miễn khi `NODE_ENV=development`) → bàn
+  `adb reverse` không còn ăn 403 dù môi trường nào; `/auth/login` và `/auth/me` trả thêm **`currentClientIp`** (client không
+  đọc, bỏ qua); `maintenance.manager` ghi lịch sử bảo trì vào bảng mới và **bảo trì tức thì mặc định là KHẨN CẤP** (phát
+  broadcast tới client); `.env.example` thêm `ADMIN_TRUSTED_IPS` (có mặc định, không bắt buộc). `package.json` **không đổi**
+  → không `npm install`. Phần còn lại là AIOps (`anomaly.detector`, `feature.collector`), admin, test backend.
+- Migration **`database/24`** (`aiops_incident.actor_role`) và **`25`** (bảng `maintenance_history`): **chính backend tự áp
+  qua `initTable()` lúc khởi động** (`ALTER … ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`) — client **không chạy
+  SQL nào**; đo CSDL dev ngay sau `npm run dev` (chạy nền theo lựa chọn người dùng): cột và bảng **có**, 0 hàng. `schema.prisma`
+  thêm `actor_role` nhưng `grep` **0** chỗ dùng `prisma.aiops_incident` (AIOps đi qua `pool`) → **không `prisma generate`**
+  (người dùng chốt; client Prisma cũ thiếu một cột không ai truy vấn — vô hại).
+- ⚠️ **`.gitignore` gốc của `main` thêm lại `Test/` trần** (dòng 12; ý backend: ẩn `Test/` ở gốc repo — **25** script của
+  NPBao từ `b147feeb`, cộng 3 ở `scratch/` cùng commit; đếm tách bằng `git ls-tree` 2026-10-11 — nhưng chúng **đang được
+  theo dõi** nên ignore không có tác dụng gì với họ). Hai tệp AIOps lớn (`anomaly.detector` +356, `feature.collector` +121)
+  chỉ `grep` dòng chạm client: vector auth nay **loại 401 ở `/auth/refresh`** khỏi phép đếm (đường bình thường của client,
+  từng gây 403 cả bàn thử 2026-10-03); không đọc trọn. Vì `core.ignorecase=true`,
+  dòng ấy khớp lại `src/Client-app/test/…` (`git check-ignore --no-index` trả `.gitignore:12:Test/`) — đúng lỗi client đã gỡ
+  2026-09-21, tái phát theo đường gộp. Client neo thành **`/Test/`** cùng ngày (người dùng chốt; `scratch/` giữ nguyên) kèm
+  chú thích và câu kiểm; quy tắc 6 `CLAUDE.md` cập nhật. ⚠️ Trên NTFS `src/Client-app/Test` và `test` là **một** thư mục —
+  `ls -d src/*/Test` in ra nó không phải thư mục lạ.
+- `Project.md`: §3.3 (dòng 377–389) **nguyên** → đơn 42 chưa trả lời, `Project.md:1961` vẫn `core/constants/app_router.dart`
+  (đã thêm vào phụ lục đơn 42 cùng ngày); §16 mới *Quy chuẩn kiểm thử 2 tầng* (nguồn `docs/Rule_Project/testing-guidelines.md`,
+  tự nhận phạm vi cả `src/Client-app`, ví dụ toàn React) — đọc, **chưa cần đổi gì** phía client; §17 i18n Admin-web. `ls CAN-LAM/`
+  vẫn **41 · 42** · `CLIENT_INTEGRATION_GUIDE.md` + README.
+- Cùng ngày, trước gộp: đơn 42 sửa *28 → 29 test quét* + phụ lục ba chỗ (`3a929cb6`); xoá `src/Client-app/analyze_output.txt`
+  (`bb60b0c0`, người dùng chốt). Nghiệm thu OnePlus (việc 1 của thứ tự 2026-10-11) **chưa làm** — không máy nào cắm lúc đó.
+- **Ba quyết định người dùng sau lượt soát (2026-10-11 trưa):** (1) `testing-guidelines.md` §4.3 tả client có *"huy hiệu Premium
+  trên AppBar đổi màu vàng khi nhận socket"* — **không có** trong mã → thêm **hàng thứ tư** phụ lục đơn 42 kèm câu thay thế;
+  (2) **bảo trì khẩn cấp**: backend phát `user.notification` (client cố ý không nghe từ 2026-09-30) + `system.broadcast`
+  (`io.emit` tới mọi socket, client không dịch) rồi trả **503 `code: MAINTENANCE_MODE`** + `Retry-After: 60` cho mọi request
+  người dùng (middleware không đổi ở lượt này; `/auth/login` đi qua rồi `auth.service` từ chối người dùng thường) — client hiện:
+  đăng nhập hiện đúng `message` của server, đồng bộ rơi `transportFailed` (im lặng, giãn cách), không dải báo → **để nguyên**,
+  ghi mục ngỏ **G89** `CLIENT_APP_KNOWN_GAPS.md`; (3) `Project.md` §16 kiểm thử 2 tầng → **không phản hồi**, chỉ ghi nhận.
+
+### 🗂️ Dọn vị trí tệp theo luật mục 8 + test quét 25 (2026-10-10 khuya, 12 task xong, chưa push)
+
+Trả nợ **G88 gạch 7** (+ ba chỗ cùng luật đo thêm). Spec `docs/superpowers/specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`
+(bốn quyết định của người dùng ở mục 0); kế hoạch 12 task `plans/2026-10-10-don-vi-tri-tep-theo-luat.md` (gitignore), thi công
+bằng **agent con mỗi task** (người dùng chọn), commit `b1a8cbd7` → `e2ab224c` + commit tài liệu.
+**Không đổi hành vi, không nghiệm thu máy thật riêng.** 19 tệp dời + 2 tách + 11 test dời, `git mv` một commit mỗi nhóm;
+import tính lại bằng script (lib dùng import tương đối 100 %). `spike_sql` gỡ (bảng đo 9.30 giữ), `spike_c4` miễn trừ tới sau C4.
+`buoc_dang_xuat` ở lại `core/auth` thành hàng luật *"kiểu thuần hạ tầng core cần"*; `bill_recurrence` về `features/bill/domain`
+(tiền lệ `bill_pay_status`; `sync_engine` import features 6 → 7). **Test quét 25** `test/core/ui/vi_tri_tep_theo_luat_test.dart`:
+sáu luật + ratchet `core → features` (`conChoCoreImport` 12 tệp / **37** dòng hạ tầng; điểm ghép **138** không trần — DI 82 ·
+router 54 · `chay_nen` 2; tổng **175**. Spec / kế hoạch đoán 172 / 135 vì đếm thiếu hai import `_impl` của DI và import
+`current_account` của router, nay trỏ vào `features/`). `flutter test` **6617/6617** (+9 skip — −6 `spike_sql_test` ·
+−1 `widget_test` placeholder · +3 quét 25; trùng số với mốc 6617 của đợt bịt điểm rò dưới là tình cờ) · analyze **20**.
+Cây mới đếm ở mục 3 `docs/KIEN_TRUC_CLIENT_APP.md` (lib 546 · test 595 · core 124 · features 408).
+
+### 🧱 Bịt điểm rò kiến trúc Client-app (2026-10-10, 15 task xong, chưa push)
+
+Sau bản đánh giá kiến trúc cùng ngày, người dùng chọn **giữ** feature-first ba tầng + hàm thuần + test quét và chỉ bịt bốn
+chỗ méo đo được. Spec `docs/superpowers/specs/2026-10-10-bit-diem-ro-kien-truc-client-design.md` (duyệt từng phần);
+kế hoạch 15 task `plans/2026-10-10-bit-diem-ro-kien-truc-client.md` (gitignore), thi công bằng **agent con mỗi task**
+(người dùng chọn), sổ theo dõi `.superpowers/sdd/2026-10-10-bit-diem-ro-kien-truc-client/progress.md` (gitignore, các
+phán quyết R1–R16). **Người dùng không thấy gì khác** — so ảnh 23 màn trước/sau trên máy ảo: 18 ảnh khác 0 px, phần còn
+lại giải thích được (chữ "N phút trước", lệch cuộn); OnePlus chưa đo. Tài liệu mới: **`docs/KIEN_TRUC_CLIENT_APP.md`**.
+
+| Việc | Đã làm | Chốt bằng |
+|---|---|---|
+| 1. UI thôi gọi CSDL | 17 tệp `presentation` đọc qua repository (11 lối chuyển tiếp `*Rows` / `getById` / `ghiPhanHoi` — còn 10 sau đợt Hoá đơn 2026-10-14, `BillRepository.getById` nay trả `BillEntity`; còn **4** từ đợt Entity Giao dịch + Ví 2026-10-14; **0** từ đợt Entity Danh mục 2026-10-15, đếm bằng máy), cổng `ThongBaoRepository` (`features/notification/data/repositories/`; trước 2026-10-15 là `ThongBaoNguon` ở `core/notification/`), lớp `GanDanhMucNguon` | **test quét 22** `test/core/ui/presentation_khong_cham_csdl_test.dart`, `conCho` rỗng |
+| 2. Tách hai trang | `analytics_page` 4.208 → **339** dòng + 14 tệp `widgets/phan_tich/`; `add_transaction_page` 3.107 → **2.007** + 7 tệp `widgets/them_giao_dich/` (spec ước ~1.800 — R15) | **test quét 23** `tep_presentation_khong_qua_dai_test.dart`, trần 1.200, `mienTru` 5 tệp chỉ giảm |
+| 3. Rút điều phối phiên | `PhienDieuPhoi` / `PhienDieuPhoiThat` (`core/auth/`, hook hàm); `AuthBloc` 560 → **377** dòng (kể docstring đầu lớp), `sl<` 23 → **0**; bỏ tham số `defaultAccountDataInitializer` (R3) | **test quét 24** `test/features/auth/auth_bloc_khong_sl_test.dart`; chủ sở hữu `start()` (quét 4) chuyển sang `phien_dieu_phoi_that.dart` |
+| 4. CI + tài liệu | `.github/workflows/client-app.yml` — analyze + đếm ≤ `MUC_NEN` 20 + toàn bộ `flutter test`, Ubuntu, `TZ=Asia/Ho_Chi_Minh`, test đỏ in thành annotation; xanh trên GitHub lượt 3. Tài liệu kiến trúc, đơn **CAN-LAM 42** (`Project.md` §3.3), **G88** | lượt CI xanh |
+
+Số đo trước → sau (cùng cách đếm): `sl<AppDatabase>` ở `presentation/` **29 → 0**; tệp `presentation` > 1.200 dòng
+**6 → 5**; `flutter test` **6587 → 6617** (+9 skip; +3 ca tiền đề ở đợt sửa cuối; **6618** sau khi form hoá đơn thôi cho chọn nhóm danh mục; **6621** sau gói dọn nợ nhỏ: +3 ca), `flutter analyze` **20 → 20**; workflow CI **0 → 1**. `core` import
+`features/` 172 dòng, 36 ở hạ tầng — **không đổi** (nợ G88 (4)). *(Sau đợt dọn vị trí tệp cùng ngày: 175 / 37 — khối 🗂️ trên.)*
+
+- ⚠️ **Hai số thứ tự test quét bị dùng hai lần ở số 14** (`ai_edge_khong_tinh_test`, `dau_tien_mot_noi_test` — cả hai
+  docstring ghi *"thứ mười bốn"*), nên dãy 1–24 phủ **25** tệp (1–25 phủ **26** từ đợt dọn vị trí tệp; 1–26 phủ **27** từ C4; 1–27 phủ **28** từ 2026-10-14), cộng **3** tệp cùng khuôn không đánh số, tổng **31** (đếm 2026-10-14); bảng đủ ở mục 6
+  `docs/KIEN_TRUC_CLIENT_APP.md`. Test quét mới thì lấy số **28** trở đi (27 là `presentation_domain_khong_kieu_drift_test`, 2026-10-14; 26 là test quét C4, 25 là `vi_tri_tep_theo_luat_test`, 2026-10-10), và đếm lại bảng.
+- ⚠️ **Trang đọc ví phải viết trên một dòng** `sl<WalletRepository>().getActive(…)` / `.getAll(` /
+  `.watchAll(` (đổi tên từ `…Rows` ngày 2026-10-14, đợt Entity Giao dịch + Ví) — `wallet_picker_sources_test` nhận diện theo chuỗi; tệp nhắc `WalletRepository` mà có dòng `.getAll(` / `.watchAll(` thì `tepDocViQuaTruong` của quét 2 bắt.
+- ⚠️ **Test dựng trang có đọc qua DI** phải gọi `dangKyNguonDocGia(db)` (`test/helpers/nguon_doc_gia.dart`); test AuthBloc
+  muốn kiểm thứ tự mở phiên phải dựng `PhienDieuPhoiThat` (helper `phien()`), `AuthBloc` trần = không điều phối gì.
+- ✅ Form hoá đơn từng **giữ** danh sách danh mục gồm cả hàng **nhóm** (R8); người dùng chốt cùng ngày: **không** cho chọn
+  nhóm — hai form đọc `selectableChildren`, lối `getCategoryRows` gỡ, hoá đơn cũ gắn nhóm phải chọn lại khi sửa.
+- Còn mở: ~~nghiệm thu OnePlus của đợt~~ (✅ mười màn đo trên **Realme** 2026-10-11 — khối 📱 đầu mục 14); minor hoãn ghi trong sổ theo dõi (thứ tự import, `ignore_for_file:
+  use_key_in_widget_constructors` ở 14 tệp `phan_tich/` — R13, regex quét 22/24 không bắt `GetIt.I`).
+
+### ⚡ Tự chuyển tiền chạy nền — mở lại G22 (2026-10-10)
+
+Người dùng mở lại G22: **tự trả hoá đơn và trích mục tiêu chạy cả khi app đóng** (Android), lượt nền **đồng bộ** luôn.
+Spec `docs/superpowers/specs/2026-10-10-tu-chuyen-tien-chay-nen-design.md` (duyệt từng phần); kế hoạch 10 task
+`plans/2026-10-10-tu-chuyen-tien-chay-nen.md` (gitignore). Giao dịch vốn đã ghi theo mốc kỳ, nên thứ người dùng thấy
+khác là **thông báo đúng lúc** và **máy khác thấy ngay**.
+
+- **Luồng:** cuối mỗi lượt quét, `LichNen.henNeuDoi` (`lib/core/nen/lich_nen.dart`) tính lịch kế — từ 2026-10-16 (G88 gạch 4) **gộp** hai phần bằng `gopLichNen`: `mocTuTraNen` (`features/bill/domain/moc_tu_tra_nen.dart`; hoá đơn tự trả: ngày đến hạn lúc **giờ nhắc chung**) và `mocTrichNen` (`features/goal/domain/moc_trich_nen.dart`; kỳ trích: `kyKeTiep`), DI chọn phần theo quyền gói; trước đó là một hàm `lichNenKeTiep` ở `core/nen` — mốc **tương
+  lai** gần nhất (sớm nhất giữa các phần) + cờ `coTuDong` — và chỉ khi
+  lịch **đổi** mới gửi `henNen` qua kênh `flowmoney/tu_chuyen_tien`. `TuChuyenTien.kt` hẹn WorkManager một-lần (theo mốc)
+  + định kỳ 6 giờ. `TuChuyenTienWorker`: app đang mở → `quetNgay` vào engine của app và **chờ**; app đóng → `FlutterEngine`
+  headless chạy `chayNenTuChuyenTien` (`main.dart`, `@pragma`) → `chayNen()` (`lib/core/nen/chay_nen.dart`) →
+  `setupDependencies(cheDoNen: true)` → `LuotNen` (gói → nhật ký → `syncMotLuot` → `scan` → `syncMotLuot`) → `nenXong`
+  kèm mốc kế; worker hẹn lượt kế bằng **APPEND_OR_REPLACE**.
+- **Năm chốt hỏng im lặng:** (1) `GoiRepository.datTaiKhoan` **trước** khi quét ở nền — `coQuyenNen` trả `true` khi gói
+  chưa có tài khoản, thiếu là Basic được tự trả (đường trong app: hook `datGoi` của `moPhienCucBo`, G93 2026-10-14); (2) lượt nền **không tự `henNen`** — `REPLACE` lên chính công việc
+  đang chạy là WorkManager huỷ nó; (3) `noiBoNgheKetQuaDay()` (nay ở cuối `lib/core/di/injection_container.dart`, từ 2026-10-16; trước đó `lib/core/sync/`) gọi ở **cả** `main.dart` lẫn
+  `chay_nen.dart` — thiếu ở nền là `BILL_ALREADY_PAID` về không ai gỡ; (4) ở nền `AuthInterceptor(cheDoNen: true)`
+  **không** làm mới / xoá token — app và nền cùng làm mới một refresh token là backend đếm dùng lại token; (5) khoá thuê
+  `khoa_tu_chuyen_tiens` (schema **v30**, cục bộ) lấy bằng **một câu `UPDATE`** — khoá tệp không chặn hai isolate cùng
+  tiến trình; `busy_timeout = 5000` ở `connection/native.dart`.
+- **Hai máy cùng trích một kỳ:** khoản trích mang id tất định `idKhoanTrichTuDong` (UUID v5 của mục tiêu + mốc **UTC**)
+  → server một hàng; hàng cùng id đã có (kể cả xoá mềm) → `KyDaTrichException`, không trừ tiền, không sự kiện, chỉ đẩy
+  mốc. `autoDepositLastRun` nay ghi **cùng giao tác** với khoản nạp (`depositToGoal(mocChayMoi:)`). Không cần backend.
+- **Chữ (chỉ Android, `coChayNen`):** bỏ lời nhắc *"Đến kỳ trích tự động… Mở app"*; nhắc tự trả *"…sẽ được tự trả"*;
+  `goiYTuTra(chayNen:)` thay hằng `kBillAutoPayHint`; ô giờ trích *"Tiền được chuyển gần giờ này; máy đang ngủ sâu thì
+  có thể muộn hơn"*. iOS giữ nguyên.
+- **Giới hạn:** giờ không chính xác tới phút; Realme force-stop huỷ WorkManager; ca *trích phần còn thiếu* ở hai máy có
+  số liệu khác nhau → LWW giữ một số tiền.
+- ✅ **Nghiệm thu Realme + máy ảo 2026-10-11** — khối 📱 đầu mục 14, bảng ở §8.1 spec.
+
+### ⚡ Mở app không chờ mạng — G86 · thẻ hoá đơn 360 dp — G52 · kỳ hoá đơn trùng — G87 (2026-10-09)
+
+C4 giọng nói **hoãn** (người dùng: *"làm phần khác trước đi"*) — ba lối còn treo: đo 20 câu trước · lối A Android ·
+lối B Gemma nghe; xem bàn giao.
+
+- **G86** — người dùng báo *"khi vào phải đợi vài giây mới hiện thông tin"*. `AuthBloc._onAuthCheckRequested` nay chạy
+  phần **không chạm mạng** trước (người dùng đã lưu → `idaccount` → dọn tài khoản khác → `cat_*` → **bộ quét thông báo**,
+  gồm nhập hàng chờ D1 / biên lai / phiên ngân hàng, chuông, quá hạn, tự trả, tự trích) rồi **phát `AuthSuccess`**; sau đó
+  mới `verifySession()`: phiên chết → `_dungMoiThuCuaPhien` + đăng xuất; hợp lệ / không rõ → đọc lại người dùng (thẻ chờ
+  xoá, phát lại khi đổi) → socket → SyncEngine. Sau mỗi `await` kiểm `_vanLaPhien(user)` (lỗi có sẵn: đăng xuất lúc đang
+  chờ server bị đè lại). ⚠️ Đổi so với trước: phiên chết vẫn **dọn dữ liệu tài khoản khác** và **chạy một lượt quét cục
+  bộ** trước khi bị đẩy ra (trước đây không làm gì) — người dùng chấp nhận. Nhánh `verifySession` ở các spec viết trước
+  2026-10-09 (vd. §4.3 / dòng *"Mở app"* spec cưỡng chế đăng xuất) tả thứ tự cũ: *xác minh rồi mới `AuthSuccess`*.
+- **G52** — dòng *danh mục • ví • Tự trả* của thẻ hoá đơn bị cắt ở 360 dp (chip cùng hàng); nay trải rộng dưới chip.
+- **G87** — kỳ hoá đơn trùng (cùng gốc chuỗi, cùng hạn) sống lại sau xung đột `BILL_ALREADY_PAID` vì Pull cùng chu kỳ
+  ghi đè lệnh xoá; bộ tự trả trừ tiền từng kỳ trùng (Netflix 05/10 trừ 3 lần trên server dev). Nay `gopKyTrung` chạy
+  đầu lượt quét **chỉ sau một lần kéo về thành công** (`soLanKeoVeXong`) + chốt trong `payBill` + bộ tự trả bỏ qua kỳ trùng. Mục 6.8 `BILL_DOCUMENTATION.md`.
+
+
+### 🔒 Phân quyền tính năng theo gói — phía client (2026-10-08 khuya, mã xong, nghiệm thu OnePlus đạt)
+
+Bước 5 của đơn 39. Spec `docs/superpowers/specs/2026-10-08-phan-quyen-tinh-nang-client-design.md` (người dùng duyệt),
+kế hoạch 10 task (gitignore), tài liệu **`docs/PREMIUM_FEATURE.md` mục 8**. Client nay thi hành đủ **11 quyền + 5 trần**
+của `/payment/subscription-info` (bản backend viết sẵn: 2 quyền, 3 trần, ba lỗi). Một định nghĩa **`duocDung`**
+(`premium/domain/quyen_tinh_nang.dart`, `enum MaQuyen`): Premium còn hạn → mở; bảng là của Basic
+(`!laPremium(nhanLuc)` — ⚠️ **không** xét `loai`, server trả gói gốc) và có khoá → theo khoá; còn lại → mặc định
+(**mở**, trừ ba quyền AI). Bốn cửa: `GoiCubit.coQuyen` / `context.coQuyen` trong cây widget; `coQuyenNen` cho bộ chạy
+nền + cửa nhập (bỏ lượt, không ghi gì); `redirectTaoTheoGoi` thêm `/bills/add`, `/categories/*/new`;
+`redirectTheoQuyen` ở `/export-report`; màn Nâng cấp nhận `?quyen=`. Widget khoá `the_khoa_quyen.dart` theo ba màn
+Stitch người dùng xác nhận. Ba lỗi đóng: bảng không xét hạn offline · đếm danh mục riêng tính 13 bản sao mặc định
+(`laBanSaoMacDinh`) · đếm hoá đơn tính kỳ `Skipped` (`conPhaiTra`). Test quét `lib/` thứ **21**. Không đổi schema,
+không đổi payload. ✅ **Nghiệm thu OnePlus đạt** (tài khoản Basic mới `thuquyen1`, bảng mục 8.7 `PREMIUM_FEATURE.md`): trần hoá đơn / danh mục riêng, sáu chỗ khoá, admin gạt `cashflow_forecast` → khối mở trong ≤ 2 s qua socket, gạt lại khoá trong ≤ 3 s. Lượt đo bắt **hai lỗi, đã sửa**: nút tải trang Phân tích đi route thứ hai `/analytics/export` không có cửa quyền (`7b180f8d`), thẻ khoá giãn hết màn ở Cài đặt AI (`154f3963`).
+
+### 🔀 Gộp `main` @ `0eb4a05f` · áp `database/21–23` · G67 mốc theo giờ-server (2026-10-08 tối)
+
+- Gộp PR #127 không xung đột (backend đóng đơn 39 — phân quyền tính năng động, và đơn 40 — migration 21). Backend tự sửa
+  7 tệp `src/Client-app` (Premium: trần hoá đơn / danh mục riêng, `quyenTinhNang`, `GoiCubit.duocDung…`). Chi tiết
+  (chuyển từ hàng *Việc thuộc backend* `CLAUDE.md` khi dọn tệp ấy 2026-10-13): đơn 39 = bảng `feature` +
+  `account_type_permission`, Admin-web `/permissions`, socket `account.permissions_updated` = `RealtimeEvent.taiKhoanNangCap`;
+  đơn 40 = `database/21` (trigger + DEFAULT `Server_update_at` về UTC); `DA-XONG/` khi ấy 58 tệp. Bảy tệp backend sửa:
+  `TranGoi` thêm `hoaDon` (3) · `danhMucRieng` (5), trần thành `int?` (`null` từ server = không giới hạn);
+  `TrangThaiGoi.quyenTinhNang` đọc `features`; sáu getter `GoiCubit.duocDung…` khi ấy chưa chặn gì và `redirectTaoTheoGoi`
+  chưa có route hoá đơn / danh mục — ✅ client làm trọn khuya cùng ngày (getter bỏ hết, thay bằng `duocDung` + `MaQuyen`).
+  ⚠️ Tệp 23 ghi `created_at` / `updated_at` bảng phân quyền bằng `NOW()` = giờ phiên `Asia/Bangkok` (chỉ cột kiểm toán, vô hại).
+- CSDL dev áp `database/21–23` (cho phép đích danh) + `prisma generate`; `/subscription-info` trả `limits` + `features`.
+- ✅ **G67 đóng:** mốc kéo về nay từ `maxSince` của server (`core/sync/moc_keo_ve.dart`), khoá lưu
+  `sync_last_pull_v2_<id>` ép kéo toàn bộ một lần. Nghiệm thu hai máy ảo (tài khoản 27) đạt hai lượt; lượt một lộ mốc
+  "nhỏ nhất" neo vào bảng lâu không đổi (đổi sang lớn nhất + kẹp) và **G85** — vá neo sau khi ghi sổ làm neo nuốt giao
+  dịch của máy kia ở ví seed (nay vá trước). Mục G67, G85 `CLIENT_APP_KNOWN_GAPS.md`.
+- Bản release thôi in số tiền / tham số mô hình ra logcat (`[Quet][Gemma]`, `PhienMotLoiGoi`).
+
+### 📷 A5 — nút Quét đọc hoá đơn / biên lai + tách khoản chi theo danh mục (2026-10-08, mã xong, chờ nghiệm thu)
+
+Spec `docs/superpowers/specs/2026-10-07-a5-quet-hoa-don-bien-lai-design.md` (người dùng duyệt; thêm mục 11 tách +
+11.2b chọn món cùng ngày), kế hoạch 14 task `plans/2026-10-08-a5-quet-va-tach-danh-muc.md` (gitignore), tài liệu
+`docs/QUET_ANH_FEATURE.md`. Nút **Quét** Trang chủ (thôi toast *đang phát triển*) → sheet Chụp / Chọn ảnh
+(`image_picker`, gói chính thức) → màn `/quet` *Đang đọc ảnh…* (ML Kit → `docAnhQuet`, AI lấp ô thiếu khi Premium) →
+form điền sẵn khoá `quet:`. Form Thêm giao dịch có thêm **tách khoản chi theo danh mục** (mọi khoản chi mới) và, với
+ảnh hoá đơn, **tick từng món**; Lưu ghi N giao dịch trong **một** giao tác, một toast. Không đổi schema (v29), không đổi
+payload. Test quét `lib/` thứ **20** (`image_picker` một nơi). Bản `--release` dựng được (224,9 MB). Còn: nghiệm thu
+Realme với ≥ 5 hoá đơn giấy người dùng chụp (Task 14); A5b (app đoán danh mục từng món) sau bảng đo.
+
 
 ### 🔀 Gộp `main` @ `8bbdd97` (2026-09-27, **fast-forward** — không có commit gộp) — backend đóng đơn chatbot, banner Module Bank, `gemini-3.8-flash`
 
@@ -639,7 +1080,7 @@ sang `DA-XONG/` (nay **43** tệp + mục lục, đếm 2026-09-27). Client soá
   đến hạn), ba lỗi định tuyến/tham số, chắn oan 0. `npm install`, build release từ HEAD (`006cb1b6…`) và cài lên Realme
   cùng lượt — bản trên máy trước đó là của lần 13. Rồi ✅ **spike E2B sinh SQL** (mục **9.30**) trên 12 câu: **0 đúng
   hẳn · 2 do may · 10 sai, 6 sai im lặng**; đường đo giữ trong repo sau `--dart-define=SPIKE_SQL=true`
-  (`ai_chat/spike/spike_sql.dart` + 6 ca test), bản thường không mang. Người dùng chốt: không SQL, sửa hai lỗi (a) trước
+  (`ai_chat/spike/spike_sql.dart` + 6 ca test) *(gỡ 2026-10-10)*, bản thường không mang. Người dùng chốt: không SQL, sửa hai lỗi (a) trước
   → ✅ **mục 9.31**: hàng hoá đơn mang *Đến hạn* (E8 ✅), tổng kết trả danh mục ít nhất + nhãn hai đầu + *Số danh mục*
   (E3 hết lỗi tool, còn lỗi mô hình chọn sai đầu). Kế: spec **tool truy vấn tổng quát có hàng rào** (có tham số *chọn*).
 - ✅ **Tool truy vấn giao dịch — mã xong cùng ngày, 🛑 cổng E chưa đo** (mục **9.32** `AI_EDGE_FEATURE.md`; spec
@@ -790,7 +1231,7 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   `52450ac5…` (bản A8 #10 lệch Stitch không ghi lý do), đầu phải neo tâm cột, cắt ở 72 dp; Realme bản release
   `d8c10019…`: chín nhãn không chạm nhau, *"Chưa phân loại"* đủ chữ.
 - ✅ **Rồi ba chỗ nhỏ có từ trước, người dùng chọn sửa trước B4** (hỏi bằng câu chọn, mỗi chỗ một lối): **G55** — chấm kỳ
-  đầu/cuối của bốn biểu đồ đường bị `FlClipData.all()` cắt nửa → `FlClipData.vertical()` (giữ phòng thủ bẫy 4.17 cho
+  đầu/cuối của bốn biểu đồ đường bị `FlClipData.all()` cắt nửa → `FlClipData.vertical()` (⚠️ không có tác dụng — sửa thật ở G79, 2026-10-07; giữ phòng thủ bẫy 4.17 cho
   trục dọc — chấm giá trị 0 ở đáy khối Xu hướng vẫn cắt nửa, cố ý); **G56** — *"chi vượt thu nhập 26360,0%"* → từ 2 lần
   thu nhập nói *"chi gấp N lần thu nhập"*, một hàm `soLanChiGapThuNhap` cho thẻ Số dư còn lại, khối Nhận xét và tool
   tổng quan, loại số mới `LoaiSo.soLan` cho `kiemSo`; **G57** — nút rộng *"Tạo hóa đơn lặp lại mới"* đè hàng tab ở 360 dp
@@ -913,7 +1354,7 @@ Thi công kế hoạch `docs/superpowers/plans/2026-09-27-mo-rong-tool-tro-ly-ai
   **4988/4988** (4 skip).
 - ✅ **Bàn phím số ẩn khi màn Thêm giao dịch đã có số tiền (2026-09-30 tối, việc sau D1 số 1)** — Stitch `b52c0651…`,
   nghiệm thu Realme 360 dp (màn 0 đ · Nhập nhanh điền · chạm hiện / ẩn · chạm lúc bàn phím hệ thống mở · form biến
-  động *Bỏ qua · ✓*). Cờ `_hienBanPhimSo` tắt khi mở với số tiền (sửa · biến động có `soTien`) hoặc khi Nhập nhanh điền
+  động *Bỏ qua · ✓*). Cờ `_hienBanPhimSo` (nay `hienBanPhimSo` của `ThemGiaoDichState`) tắt khi mở với số tiền (sửa · biến động có `soTien`) hoặc khi Nhập nhanh điền
   được số tiền; chạm khối số tiền để đảo. **Một luật cho nút lưu:** 16 phím không trên màn (theo cờ, hoặc bàn phím hệ
   thống mở — G58) thì ✓ ở thanh tiêu đề — trước đó lúc gõ ghi chú **không có nút lưu nào**. Chi tiết mục 6
   `BIEN_DONG_SO_DU_FEATURE.md`; ca test `ban_phim_so_an_test.dart`. Không đổi schema, không đổi payload. `flutter test`
@@ -1002,6 +1443,20 @@ chi tiết thi công ở mục 11.5 (3) `AI_EDGE_FEATURE.md`.
   **hàng riêng dưới chip** (`8eb5b93`). Trang chi tiết ngân sách chưa có màn Stitch; lượt `generate_screen_from_text` trả
   `timeout` — ✅ người dùng xác nhận tối cùng ngày: màn **có**, `414e3e01cd43401ea7be9217b5cb09f5`.
 - `flutter test` **5615/5615**, 8 skip (thêm công cụ đo `test/tool/do_nhip_chi_test.dart`), analyze 26.
+
+### 🔀 Gộp `main` @ `b38367e` (2026-10-05, commit gộp `9abb785`) — CORS động, sửa socket, làn ưu tiên Admin; backend đóng đơn 35
+
+> Chuyển từ `CLAUDE.md` ngày 2026-10-13 (đợt dọn `CLAUDE.md`) — trước đó khối này chỉ nằm ở hàng *Việc thuộc backend*. Chi
+> tiết soát: `docs/superpowers/backend/DA-XONG/SOAT_SAU_GOP_B38367E.md`.
+
+- **Không xung đột**, cây `src/Client-app` không đổi hash `850866c4…`. PR #119–#120: CORS động `config/cors.js`, sửa kết nối
+  socket, sửa làn ưu tiên Admin + chặn IP, bỏ ngoại lệ `isAdmin` ở `authLimiter`.
+- Backend **đóng đơn 35** và chuyển sang `DA-XONG/` — `ls CAN-LAM/` khi ấy còn **đơn 34** `CLIENT_NHAC_SAU_APP_NGAN_HANG.md` + README.
+- Client soát cùng ngày (đọc mã + `node --test` **166/166**): đơn 35 đạt cả bốn mục, nhưng đặt **đơn 36**
+  `CAN-LAM/SOAT_SAU_GOP_B38367E.md` — lớp bảo trì cho qua mọi URL **chứa** `/auth/login` kể cả trong query (đo:
+  `/api/sync/push?x=/auth/login` lọt khi bảo trì BẬT) + bốn chỗ nhẹ (khoá dự phòng `'secret'`, `/api/admin/*` ưu tiên trước xác
+  thực, cắt tải nhận môi trường test theo đường dẫn chứa `test` — dính ở máy dev `D:\test_kltn`, CORS mọi project Vercel cùng
+  tiền tố); client không phải sửa gì; nodemon nạp lại được (`index.js` tạo lại 09:40:30), OnePlus nối lại socket ngay.
 
 ### 🔀 Gộp `main` @ `f44ee8b` (2026-10-04, commit gộp `b5648b9`) — backend đóng đơn 31–33, AIOps bốn vector
 
@@ -1209,7 +1664,7 @@ viết); mục G63 `CLIENT_APP_KNOWN_GAPS.md`.
 - **Lõi** (Task 1–8): schema **v28** — cột **cục bộ** `wallets.bi_tu_choi_trung_ten` (payload ví vẫn 13 trường);
   `ViTrungTenResolver` là bộ nghe thứ **hai** của `pushResultStream` (đặt cờ khi `WALLET_NAME_DUPLICATE` /
   `UNIQUE_VIOLATION` trên ví); *bị giữ* = cờ ∧ còn ví sống khác cùng tên không mang cờ — **một** định nghĩa `capViTrungTen`
-  (`wallet/domain/vi_trung_ten.dart`), đọc qua `ViTrungTenNguon`; `_collectPendingOps` mục **0** giữ ví ấy cùng hoá đơn /
+  (`wallet/domain/vi_trung_ten.dart`), đọc qua `ViTrungTenNguon` (engine hỏi qua cổng `CongViBiGiu` → `ViBiGiuDongBo` từ 2026-10-16); `_collectPendingOps` mục **0** giữ ví ấy cùng hoá đơn /
   mục tiêu / giao dịch dính tới nó; Sửa ví chỉ kiểm trùng tên khi tên đổi; kéo về có ví mặc định → máy chỉ còn một;
   `GopViService` + kế hoạch thuần `keHoachGop` (một nguồn cho hộp xác nhận và thi hành).
 - **Giao diện** (Task 9–12, bốn màn Stitch người dùng xác nhận): thẻ **"VÍ TRÙNG TÊN"** đầu màn Quản lý ví
@@ -1960,7 +2415,8 @@ phải lỗi của mã P3** — chúng nằm sẵn trong dự án từ trước 
 2. Thông báo lỗi tải in **nguyên URL ký hàng nghìn ký tự** → hàm thuần `cauLoiTai`.
 3. ⭐ Câu *"Mô hình trên máy không chạy được"* hiện ra **khi mô hình hoàn toàn bình thường** —
    nguyên nhân thật là `AuthBloc` chưa vào `AuthSuccess` (vì `verifySession()` là lời gọi mạng,
-   phải đợi hết timeout 30 s). Trớ trêu: nó rơi đúng vào ca **mất mạng**. Nay có câu riêng
+   phải đợi hết timeout 30 s — ✅ hết từ G86, 2026-10-09: `AuthSuccess` nay phát trước `verifySession()`).
+   Trớ trêu: nó rơi đúng vào ca **mất mạng**. Nay có câu riêng
    `kChuaSanSangPhien` và `debugPrint` ở cả hai nhánh — trước đó `catch` nuốt lỗi **không log gì**.
 4. Tải 2,41 GB **không resume, không chạy nền** — hạng mục riêng, người dùng chốt làm sau P3.
 
@@ -2783,7 +3239,7 @@ lặng. (2) Avatar là **vòng đen trống**: chữ cái đầu tô `AppColors.
 nền `AppColors.primaryContainer` mà hai hằng ấy cùng là `#1A1A19` — nay
 `onPrimaryContainer`, có ca test đòi màu chữ **khác** màu nền. (3) Thiếu "Đăng
 xuất" ở đáy dù màn Stitch *"Home with Side Menu Drawer"* có — nay có, đi qua
-**`xacNhanDangXuat`** (`auth/presentation/xac_nhan_dang_xuat.dart`), hộp thoại
+**`xacNhanDangXuat`** (`auth/presentation/widgets/xac_nhan_dang_xuat.dart`), hộp thoại
 xác nhận tách từ tab Cá nhân để hai chỗ dùng chung một định nghĩa. 5 ca ở
 `drawer_trang_chu_test.dart`. **Schema không đổi, payload không đổi.**
 
@@ -2887,9 +3343,9 @@ cố định, thẻ form cuộn ở giữa, 16 phím neo đáy, ✓ là nút lư
 "Lưu giao dịch"). Bản Flutter: (1) `body` là `Column` — thanh chọn + số tiền
 **cố định**, `Expanded(SingleChildScrollView(thẻ form))`, bàn phím **neo đáy**
 với `mainAxisExtent: 50` (không `childAspectRatio`: ở khung test 800dp tỉ lệ
-cho phím cao gấp đôi, nuốt hết chỗ thẻ form); (2) phím ✓ gọi `_saveTransaction`
+cho phím cao gấp đôi, nuốt hết chỗ thẻ form); (2) phím ✓ gọi `_saveTransaction` (nay `ThemGiaoDichCubit.chuanBiLuu`)
 — **từng là phím chết**, `themPhimSoTien` trả nguyên chuỗi với `'done'`; nút
-"Lưu giao dịch" bỏ; (3) `_selectedSegment` (0/1) thành **`_huong`**
+"Lưu giao dịch" bỏ; (3) `_selectedSegment` (0/1) thành **`_huong`** (nay `ThemGiaoDichState.huong`)
 `'chi'|'thu'|'transfer'`, key `transaction-type-<huong>`, màu đoạn theo Stitch
 (đỏ/xanh/đen). ⚠️ **Luật 2026-09-05 giữ nguyên**: `type` vẫn suy từ danh mục;
 đoạn Chi/Thu chỉ là **lối vào** — đặt tab bảng danh mục mở, bỏ danh mục đang
@@ -3015,7 +3471,7 @@ B3, sửa ở lượt sau. `_amountString` là chuỗi **thô** đang gõ — ph
 chỉ áp ở `_getFormattedAmount` — nhưng `_saveTransaction` đọc nó bằng
 `double.tryParse(_amountString.replaceAll('.', ''))`, tức **coi dấu chấm là dấu
 ngăn nghìn** theo thói quen Việt Nam. Một chuỗi có dấu thập phân mất dấu chấm
-rồi đọc tiếp: `12.5` lưu xuống thành **125**, không exception, không log.
+rồi đọc tiếp: `12.5` lưu xuống thành **125**, không exception, không log. (Từ 2026-10-11 chuỗi ấy là `chuoiSoTien` của `ThemGiaoDichState`, còn `_saveTransaction` là `ThemGiaoDichCubit.chuanBiLuu`.)
 
 ⚠️ **Lỗi này có HAI cửa, và quyết định "bỏ phím `.`" chỉ đóng một.** Cửa thứ
 hai là **chế độ sửa**: `initState` điền `_amountString` bằng
@@ -3024,7 +3480,7 @@ vào được **dù bàn phím đã hết phím `.`** — và số lẻ có th�
 là `numeric(15,2)` còn `dieu_chinh_so_du_service` sinh khoản bù với ngưỡng nửa
 đồng. Cửa ấy **nặng hơn** vì nó nhân mười một khoản **đã có trong sổ**: người
 dùng mở một giao dịch cũ ra xem rồi bấm lưu là số tiền tự đổi. Nên chốt nằm ở
-**`_saveTransaction`** (`double.tryParse(_amountString)`, thôi strip), còn bỏ
+**`_saveTransaction`** (nay `ThemGiaoDichCubit.chuanBiLuu`; `double.tryParse(_amountString)`, thôi strip), còn bỏ
 phím là lớp thứ hai.
 
 Ba chỗ đổi: (1) `themPhimSoTien` giữ nhánh **vô hiệu** cho `'.'` cùng họ với
@@ -3154,10 +3610,10 @@ chuỗi thì vế trước đã ăn hết suất và vế sau bị chặn sớm 
 (2) **kết quả cũng phải kẹp trần** — hai vế 13 chữ số cộng lại ra **14**, vượt
 `numeric(15,2)`, đúng vòng lặp G31/G14/G46; trần suy thẳng từ
 `kSoChuSoToiDaSoTien` chứ không ghi cứng; (3) **hiệu được phép ÂM**, không kẹp
-về 0 — `_saveTransaction` đã có chốt `amount <= 0` báo ra màn hình, kẹp ở đây
+về 0 — `ThemGiaoDichCubit.chuanBiLuu` đã có chốt `amount <= 0` báo ra màn hình, kẹp ở đây
 thì lời nhắn ấy chẳng ăn nhập với thứ người dùng vừa gõ (phía âm **không** cần
 kẹp: hai vế đều không âm nên hiệu nhỏ nhất đúng bằng âm trần — ghi lại để đừng
-ai thêm phép kẹp thứ hai chẳng chặn được gì); (4) `_saveTransaction` phải **rút
+ai thêm phép kẹp thứ hai chẳng chặn được gì); (4) `ThemGiaoDichCubit.chuanBiLuu` phải **rút
 gọn**, vì `double.tryParse("50000+30000")` trả `null` rồi rơi về 0 và chốt
 `amount <= 0` từ chối một con số vừa gõ đúng; (5) **`coToanTu` và
 `coPhepToanDangCho` không thay nhau được** — với `"50000+"` thì cái đầu đúng,
@@ -4092,7 +4548,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
 - Việc phân loại lỗi nằm ở **repository**, không phải bloc, vì dự án có **hai class `NetworkException` trùng tên** ở hai file khác nhau — bắt lỗi theo kiểu ở tầng trên rất dễ import nhầm.
 - Hai đường phát hiện phiên chết: **lúc mở app** (`_onAuthCheckRequested`) và **đang chạy** (tín hiệu `sessionInvalidStream` từ SyncEngine khi đẩy dữ liệu vỡ khoá ngoại `fk_*_account`).
 - `purgeDataForOtherAccounts(idAcc)` xoá dữ liệu cục bộ của tài khoản khác (giữ nguyên danh mục mặc định `idaccount = 0`). Chạy ở **cả hai** đường vào: đăng nhập (`auth_bloc.dart:106`) và khôi phục phiên lúc mở app (`auth_bloc.dart:134`).
-- **Không còn fallback `?? 1` ở bất kỳ đâu** *(⚠️ sai tới 2026-09-11 — còn ba chỗ ở màn quản lý danh mục; gỡ nốt cùng ngày, G35, kèm test quét `lib/`)* — `idaccount = 1` là tài khoản admin THẬT, không phải giá trị "chưa biết". Đã gỡ khỏi AuthBloc, `sync_engine.dart` (6 chỗ, G8) và 4 trang UI của bill/goal (G4, nay dùng `core/auth/current_account.dart` trả `int?`).
+- **Không còn fallback `?? 1` ở bất kỳ đâu** *(⚠️ sai tới 2026-09-11 — còn ba chỗ ở màn quản lý danh mục; gỡ nốt cùng ngày, G35, kèm test quét `lib/`)* — `idaccount = 1` là tài khoản admin THẬT, không phải giá trị "chưa biết". Đã gỡ khỏi AuthBloc, `sync_engine.dart` (6 chỗ, G8) và 4 trang UI của bill/goal (G4, nay dùng `core/auth/current_account.dart` *(nay ở `features/auth/presentation/bloc/current_account.dart`, dời 2026-10-10)* trả `int?`).
 
 ### ✅ Đã hoàn thành
 - Schema PostgreSQL aligned với New_Database.md (migration đã apply)
@@ -4104,7 +4560,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
 - `repairPendingTransactionsCategoryId` (cat_food → UUID) — **chạy TRƯỚC** dedup
 - **Đồng bộ nhóm danh mục hai chiều** (`isGroup` / `idgroup`)
 - **Pull không còn ghi đè nguyên hàng**: cả 6 DAO dùng `insertAllOnConflictUpdate`
-- **Checkpoint đồng bộ bền vững** giữa các lần mở app, lấy theo `update_at` lớn nhất
+- **Checkpoint đồng bộ bền vững** giữa các lần mở app, lấy theo `update_at` lớn nhất *(từ G67, 2026-10-08: theo `maxSince` giờ-server)*
 - **Đồng bộ định kỳ 15 phút**
 - **Phân loại lỗi đẩy dữ liệu** + phát hiện phiên chết
 - **Dọn dữ liệu tài khoản khác chạy cả khi khôi phục phiên** *(G6)*
@@ -4112,7 +4568,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
 - **Trạng thái kết thúc phản ánh kết quả thật**: thêm `SyncStatus.authExpired`; chu kỳ còn thao tác hỏng kết thúc ở `error` *(G1)*
 - **Giãn cách luỹ tiến** 30s → 1p → 5p → 15p → 60p sau các chu kỳ hỏng liên tiếp *(G2)*
 - **Trạng thái thất bại theo từng bản ghi**: `syncRetryCount` / `syncError` / `syncBlockedUntil` trên cả 6 bảng; lỗi vĩnh viễn bị chặn theo THỜI GIAN chứ không loại vĩnh viễn *(G3)*
-- **Không còn `?? 1` ở bất kỳ đâu** *(⚠️ sai tới 2026-09-11 — còn ba chỗ ở màn quản lý danh mục; gỡ nốt cùng ngày, G35, kèm test quét `lib/`)*: `_collectPendingOps` dùng thẳng tham số `idaccount` *(G8)*, và 4 trang UI đổi sang `core/auth/current_account.dart` trả `int?` *(G4)*
+- **Không còn `?? 1` ở bất kỳ đâu** *(⚠️ sai tới 2026-09-11 — còn ba chỗ ở màn quản lý danh mục; gỡ nốt cùng ngày, G35, kèm test quét `lib/`)*: `_collectPendingOps` dùng thẳng tham số `idaccount` *(G8)*, và 4 trang UI đổi sang `core/auth/current_account.dart` *(nay ở `features/auth/presentation/bloc/current_account.dart`, dời 2026-10-10)* trả `int?` *(G4)*
 - **Bỏ mọi nhánh đọc không lọc tài khoản ở tầng UI** và `isLocalDbEmpty` tính theo tài khoản hiện tại *(G4/G5)*
 - **`conflict` được giải quyết**: LWW đã phân xử, server thắng → đánh dấu đã đồng bộ thay vì đẩy lại vô hạn *(G9)*
 - **Migration `isLocalOnly`** (v7→v8): nhóm danh mục tạo trước 2026-09-02 quay lại được hàng đợi đẩy *(G11)*
@@ -4125,13 +4581,13 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
 - **Bộ gợi ý danh mục so khớp được tiếng Việt không dấu** (2026-09-04) — NFC + vòng dự phòng bỏ dấu, khớp còn dấu luôn thắng
 - **Vi phạm ràng buộc UNIQUE (23505) là lỗi vĩnh viễn** (2026-09-04) *(G16)* — trước đây rơi vào `transient` và đẩy lại ở mọi chu kỳ
 - **Ô ghi chú có debounce 300ms và đọc từ khoá bằng một truy vấn gộp** (2026-09-04) — trước đây mỗi ký tự gõ sinh 1+N truy vấn SQLite
-- **Hai loại giao dịch (Giao dịch / Chuyển khoản) + tab Vay/nợ ở bảng chọn danh mục** (2026-09-05; ⚠️ thanh đầu màn trở lại **ba đoạn Chi tiêu · Thu nhập · Chuyển khoản** ngày 2026-09-19 theo Stitch — nhưng chỉ là lối vào, luật "chiều tiền suy từ danh mục" dưới đây **giữ nguyên**, xem mục C1–C5 đầu mục 14) — chiều tiền suy từ `classify` của danh mục thay vì từ segment; danh mục vay/nợ có hàng "Chiều tiền" trên form, gợi sẵn theo tên (`suggestDebtDirection`). SQLite **vẫn** lưu `type = chi/thu/transfer` nên hợp đồng đồng bộ, DAO và thống kê không đổi; vay/nợ tính vào tổng thu/chi như thu/chi thường (quyết định có chủ ý, tách ra để dành cho Analytics). Danh sách classify gom về `core/category/category_classify.dart` thay cho 5 bản chép tay. Kèm sửa 11.11
+- **Hai loại giao dịch (Giao dịch / Chuyển khoản) + tab Vay/nợ ở bảng chọn danh mục** (2026-09-05; ⚠️ thanh đầu màn trở lại **ba đoạn Chi tiêu · Thu nhập · Chuyển khoản** ngày 2026-09-19 theo Stitch — nhưng chỉ là lối vào, luật "chiều tiền suy từ danh mục" dưới đây **giữ nguyên**, xem mục C1–C5 đầu mục 14) — chiều tiền suy từ `classify` của danh mục thay vì từ segment; danh mục vay/nợ có hàng "Chiều tiền" trên form, gợi sẵn theo tên (`suggestDebtDirection`). SQLite **vẫn** lưu `type = chi/thu/transfer` nên hợp đồng đồng bộ, DAO và thống kê không đổi; vay/nợ tính vào tổng thu/chi như thu/chi thường (quyết định có chủ ý, tách ra để dành cho Analytics). Danh sách classify gom về `core/category/category_classify.dart` *(nay ở `features/category/domain/category_classify.dart`, dời 2026-10-10)* thay cho 5 bản chép tay. Kèm sửa 11.11
 - **Sổ giao dịch chặn vuốt xoá khoản của mục tiêu và hoá đơn** (2026-09-06) — nguyên tắc: chỉ xoá được ở sổ khi giao dịch là nguồn sự thật duy nhất của hệ quả nó gây ra; khoản nạp/rút mục tiêu còn `current_amount`, khoản trả hoá đơn còn cờ Payed + kỳ kế tiếp, xoá rời chỉ hoàn ví (đã thấy tiến độ MuaXe đứng nguyên sau khi xoá hai khoản nạp). Nhận diện ở `features/transaction/domain/transaction_owner.dart` (`goalId` cục bộ, hoặc tiền tố ghi chú vì hàng kéo từ server không có `goalId`; kể cả dạng cũ "Tích lũy nhận từ …"); hàng tách thành `TransactionListRow` với `confirmDismiss` + SnackBar chỉ đường. Hoá đơn chưa có luồng hoàn tác thanh toán — muốn cho xoá thì phải làm luồng ấy trước
-- **Sổ giao dịch hiện danh mục + tên ví** (2026-09-06) — theo bố cục Stitch màn Home: tiêu đề = ghi chú (không có thì tên danh mục), dòng phụ "Danh mục • Ví" hoặc "Ví nguồn → Ví đích" với khoản chuyển, icon/màu của danh mục. Trước đó dòng phụ in thẳng UUID ví và không có danh mục ở đâu. Nội dung dòng tính ở hàm thuần `buildTransactionRowContent()` (`transaction_row_content.dart`), tên tra qua `TransactionLookup` dựng từ `walletDao.watchAll` + `categoryDao.watchAll`. **Phát hiện kèm:** seed backend lưu tên icon ngữ nghĩa (`food`, `bill`, `lend`…) còn ba mapper client chỉ hiểu tên Material → danh mục mặc định kéo về toàn rơi về icon mặc định; nay gom về **một** mapper `core/category/category_visuals.dart` hiểu cả hai bộ tên, `budget_visuals` và `category_page` uỷ quyền về đó (`category_add_page` còn bản riêng cho bộ chọn icon, chưa gộp)
+- **Sổ giao dịch hiện danh mục + tên ví** (2026-09-06) — theo bố cục Stitch màn Home: tiêu đề = ghi chú (không có thì tên danh mục), dòng phụ "Danh mục • Ví" hoặc "Ví nguồn → Ví đích" với khoản chuyển, icon/màu của danh mục. Trước đó dòng phụ in thẳng UUID ví và không có danh mục ở đâu. Nội dung dòng tính ở hàm thuần `buildTransactionRowContent()` (`transaction_row_content.dart`), tên tra qua `TransactionLookup` dựng từ `walletDao.watchAll` + `categoryDao.watchAll`. **Phát hiện kèm:** seed backend lưu tên icon ngữ nghĩa (`food`, `bill`, `lend`…) còn ba mapper client chỉ hiểu tên Material → danh mục mặc định kéo về toàn rơi về icon mặc định; nay gom về **một** mapper `core/category/category_visuals.dart` *(nay ở `features/category/presentation/widgets/category_visuals.dart`, dời 2026-10-10)* hiểu cả hai bộ tên, `budget_visuals` và `category_page` uỷ quyền về đó (`category_add_page` còn bản riêng cho bộ chọn icon, chưa gộp)
 - **Sổ giao dịch: chi tiết + sửa + lọc/tìm** (2026-09-06). Bấm dòng → `TransactionDetailSheet` (đọc đủ; Sửa/Xoá chỉ với giao dịch thường, khoản mục tiêu/hoá đơn chỉ đọc theo cùng quy tắc `transactionOwnerOf`). Sửa dùng lại `AddTransactionPage` với `initial: EditTransactionArgs` qua `extra` của route `/add` (cùng `id`, `UpdateTransactionEvent`); `TransactionRepositoryImpl.updateTransaction` = hoàn trọn hệ quả cũ rồi áp trọn hệ quả mới lên ví (một đường `_applyBalances(sign)` dùng chung cho thêm/xoá/sửa), ghi đè hàng và đặt lại `pending` + `updatedAt` (LWW server). Lọc: `TransactionFilter` + `applyTransactionFilter` thuần Dart trên danh sách **của kỳ đang xem** (loại, ví — khoản chuyển khớp cả nguồn lẫn đích —, danh mục, tìm ghi chú bỏ dấu, và **khoảng số tiền** từ 2026-09-21); `TransactionFilterBar` chỉ phát filter, trang giữ trạng thái; thẻ tổng tính trên tập đã lọc. ⚠️ Câu này từng ghi *"danh sách tháng của bloc"* — đúng tới 2026-09-21, khi trang bỏ phép buộc-theo-tháng và nguồn dữ liệu thành `watchKhoang(from, to)` với biên `[from, to)`; xem khối đầu mục 14. Trang chủ "Giao dịch gần đây" dùng chung `buildTransactionRowContent`
 - **Ngân sách: nhịp chi, trang chi tiết riêng, lịch sử sáu kỳ** (2026-09-06, `0467ffd`). Thẻ trong danh sách thêm dòng "Nên chi X/ngày · còn N ngày" (`domain/budget_pace.dart`: ngày còn lại làm tròn **lên**, tối thiểu 1 khi còn trong kỳ; nhịp chi so với thời gian đã trôi, biên ±5 điểm phần trăm; mọi mốc lấy từ `currentPeriod` nên tháng ngắn và năm nhuận đúng theo). Trang **`/budget/detail/:id`** thay bottom sheet cũ: nhịp chi, sáu cột lịch sử (`domain/budget_history.dart` — `recentPeriods` đi lại đúng phép cắt của `currentPeriod`, kỳ cuối trùng kỳ hiện tại, các kỳ liền nhau không hở), và các khoản chi của kỳ dùng lại `buildTransactionRowContent` + `TransactionDetailSheet` của sổ (Sửa/Xoá đi qua `TransactionBloc`, **không** có đường xoá thứ hai). Đường dẫn là `/budget/detail/` chứ không phải `/budget/:id` vì `/budget/rules` sẽ bị tham số nuốt; đặt **ngoài** shell như trang cấu hình. Kèm sửa lỗi biên: `getExpenses` cắt `date < to` (biên **mở**) dù DAO lấy `<= to`, vì bộ chọn ngày trả 00:00 và khoản ghi ngày đầu kỳ sau từng bị đếm vào cả kỳ trước — đừng "tối ưu" bằng cách gọi DAO trực tiếp
 - **Thẻ ngân sách trang chủ đọc dữ liệu thật** (2026-09-06, `13bbd9f`) — trước là placeholder cứng "Ăn uống · Chưa thiết lập". Theo Stitch màn Home: **một** ngân sách, đã dùng / hạn mức, phần trăm, thanh bốn màu, dòng nên chi/ngày. `pickHomeBudget` (hàm thuần, test riêng) chọn ngân sách **đang chạy** có **tỉ lệ** đã chi cao nhất — so tỉ lệ chứ không so số tiền, và bỏ qua ngân sách hết hạn. Bấm thẻ `go('/budget')` vì cùng shell. `home_budget_card_test.dart` là test **đầu tiên** của feature `home`, dựng ở 411dp và bắt tràn bằng `takeException`
-- **Lựa chọn "Chặn" (`OverSpending = Stop`) có tác dụng thật** (2026-09-06, `91bde24`) — tồn tại trên form từ 03/09 nhưng không nơi nào đọc. Người dùng chốt: "Chặn" = **hỏi xác nhận** trước khi ghi khoản làm vượt, **không bao giờ từ chối ghi** (tiền đã tiêu thật, không ghi thì ví lệch); "Cảnh báo" = ghi luôn rồi báo. `domain/budget_impact.dart` là nơi **duy nhất** đọc `OverSpending`; ở chế độ sửa trừ số cũ ra trước, không thì báo vượt oan; khoản ngoài kỳ hiện tại không tính. `_saveTransaction` của form thêm giao dịch nay **async** (tra `budgetLookup` tiêm được, DI chưa có hoặc tra hỏng thì vẫn ghi) — widget test phải `pumpAndSettle`. Hộp thoại xác nhận nêu số vượt; snackbar sau lưu **không có con số** (banner tối giản)
+- **Lựa chọn "Chặn" (`OverSpending = Stop`) có tác dụng thật** (2026-09-06, `91bde24`) — tồn tại trên form từ 03/09 nhưng không nơi nào đọc. Người dùng chốt: "Chặn" = **hỏi xác nhận** trước khi ghi khoản làm vượt, **không bao giờ từ chối ghi** (tiền đã tiêu thật, không ghi thì ví lệch); "Cảnh báo" = ghi luôn rồi báo. `domain/budget_impact.dart` là nơi **duy nhất** đọc `OverSpending`; ở chế độ sửa trừ số cũ ra trước, không thì báo vượt oan; khoản ngoài kỳ hiện tại không tính. `chuanBiLuu` của `ThemGiaoDichCubit` (trước 2026-10-11: `_saveTransaction` của form) nay **async** (tra `budgetLookup` tiêm được, DI chưa có hoặc tra hỏng thì vẫn ghi) — widget test phải `pumpAndSettle`. Hộp thoại xác nhận nêu số vượt; snackbar sau lưu **không có con số** (banner tối giản)
 - **Gợi ý hạn mức** (2026-09-06, `f746a32`; **đổi cửa sổ 2026-09-21**) — form hiện "Bạn chi trung bình X mỗi tháng" dưới ô hạn mức sau khi chọn danh mục, nút "Dùng số này" điền số thô. `BudgetRepository.suggestAmount`: mức chi trung bình **mỗi tháng** của danh mục, suy từ `cuaSoNhinLai` (cửa sổ **cuộn** ≤ 90 ngày, ngắn lại theo tuổi dữ liệu), làm tròn lên bội 10.000; `null` khi cửa sổ không có khoản chi nào **hoặc** tài khoản trẻ hơn 14 ngày — và `null` thì **không hiện gì** vì "trung bình 0 đ" tệ hơn không gợi ý. 🛑 **Bản đầu cắt ba tháng dương lịch đã đóng, và nó CHƯA TỪNG hiện một con số nào trên dữ liệu thật**: giao dịch sớm nhất trong toàn bộ CSDL là 02/09/2026, nên cửa sổ ấy rỗng trên mọi tài khoản suốt từ 2026-09-06. ⚠️ Nhãn cũng đổi theo — nó từng nói *"3 tháng gần nhất"*, câu ấy **đúng trước** lượt sửa và thành lời nói dối ngay sau, và **không ca test nào canh** (chỉ có một ca canh vắng mặt); máy ảo bắt được trên một tài khoản 20 ngày tuổi. Nay nhãn không nêu cửa sổ cố định nào — và từ Task 6 nó còn **nói ra số ngày thật** khi cửa sổ ngắn hơn 90 ngày (*"…mỗi tháng, suy từ 19 ngày gần nhất"*), vì thẻ "Chưa đặt ngân sách" đã hứa đúng câu ấy; cả hai vế đều có ca canh. Form nhận `suggestFor` là callback (form không đọc cubit), có số thứ tự `_generation` chống hai lần tra chồng nhau; `BudgetCubit.suggestAmount` không đổi state để lỗi nhỏ không thay cả trang bằng `BudgetError`
 - **Hai giới hạn có chủ ý của đợt ngân sách 06/09:** (1) **Lịch sử kỳ dùng hạn mức HIỆN TẠI cho cả kỳ cũ** (`BudgetPeriodSummary.amount`) — không có nơi nào lưu hạn mức cũ, muốn đúng phải có bảng lịch sử hạn mức ở backend; đổi hạn mức là các cột cũ đổi vạch theo. (2) **Stitch chưa có** màn chi tiết ngân sách, và màn Home lẫn màn danh sách cũng chưa vẽ dòng "nên chi/ngày" — người dùng chọn làm theo design system trước, vẽ Stitch sau; không tạo màn Stitch bằng MCP
 - **Hoá đơn: gỡ lời hứa suông, bốn nhãn trạng thái đúng nghĩa, hai tab** (2026-09-06). Form Thêm có công tắc "Tự động tạo giao dịch — Thanh toán khi đến hạn" **bật sẵn** gắn vào một biến không lưu ở đâu: không cột, không bộ chạy nền — đã gỡ hẳn (làm thật là quyết định sản phẩm, không phải việc dọn lỗi). Danh sách sai bốn chỗ cùng lúc: hoá đơn **đã quá hạn** mang nhãn "SẮP ĐẾN HẠN" với vạch màu **xanh lá của khoản thu**, hoá đơn thật sự sắp đến hạn không có nhãn nào, thanh tiến độ là hằng số `0.66`, và tổng tiền gộp cả kỳ tháng sau (máy thật hiện 183.000 đ trong khi tháng này chỉ nợ 60.000 đ). Bốn trạng thái suy ở `domain/bill_status.dart`, ngưỡng "sắp đến hạn" **dùng lại `billLeadDays`** của bộ luật thông báo (⚠️ từ 2026-09-12 là **năm** — thêm `skipped`; xem khối "Bỏ qua kỳ hoá đơn" bên dưới). Thêm hai tab (mỗi kỳ là một hàng mới nên lịch sử đã trả trôi lẫn vào giữa hoá đơn đang chờ), dòng "Danh mục • Ví" kèm icon danh mục, và ví của hoá đơn được gợi sẵn khi trả
@@ -4469,7 +4925,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
   > **Mức nền:** `flutter test` **2339/2339**, `flutter analyze` **25 issue / 0 error**.
 
 - **Bước 12 — `Auto_pay` qua đồng bộ, và bốn lỗi im lặng mà nghiệm thu hai máy ảo bắt được** (2026-09-13, **schema không đổi**). Bước cuối của chuỗi hoá đơn. Spec: `docs/superpowers/specs/2026-09-13-auto-pay-dong-bo-design.md`; chi tiết: mục **6.5** và **6.8** `docs/bill/BILL_DOCUMENTATION.md`. Payload hoá đơn **20 → 21 trường**; công tắc tự trả nay là thuộc tính của *hoá đơn* chứ không của *máy*, nên dòng phụ "chỉ nên bật trên một thiết bị" đã bỏ.
-  > **Rủi ro đóng bằng BA mảnh khớp nhau, thiếu mảnh nào cũng vô hiệu cả ba:** `auto_pay` đi qua đồng bộ (client) + `chanTraHaiLan` ở `upsertTransaction` (backend, `7779999`) + `BillPaymentConflictResolver` (client) — máy thua một cuộc đua nhận `BILL_ALREADY_PAID` thì tự gỡ khoản trả của chính nó và hoàn tiền.
+  > **Rủi ro đóng bằng BA mảnh khớp nhau, thiếu mảnh nào cũng vô hiệu cả ba:** `auto_pay` đi qua đồng bộ (client) + `chanTraHaiLan` ở `upsertTransaction` (backend, `7779999`) + `BillPaymentConflictResolver` (client) — máy thua một cuộc đua nhận `BILL_ALREADY_PAID` thì tự gỡ khoản trả của chính nó và hoàn tiền. ⚠️ *(2026-10-09, G87: ba mảnh ấy chỉ chặn cùng `Idbill` — hai máy cùng trả một kỳ vẫn đẻ hai **kỳ con trùng** và bộ tự trả trừ tiền cho từng kỳ; client gộp kỳ trùng sau mỗi lần kéo về, khe còn lại xin server ở **đơn 41** `CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md`.)*
   > ⚠️ **Task 9 (nghiệm thu hai máy ảo) bắt được BỐN lỗi im lặng mà 2296 ca test đều không thấy** — đây là toàn bộ lý do task ấy tồn tại, và cả bốn đều thuộc loại "không lỗi, không log, chỉ dữ liệu sai":
   > 1. **Vòng lặp tự trả.** `undoPayment` kéo hoá đơn về `Pending` — đúng cho người dùng bấm tay, **sai ở đây**: `BILL_ALREADY_PAID` nghĩa là server ĐÃ có khoản chi. Bộ tự trả tin theo và trả lại ở chu kỳ sau → tạo → bị từ chối → gỡ → hoàn tiền → lặp. Đo **5 vòng trong 3 phút**, ví phình 350.000 mỗi vòng. Sửa: `BillDao.danhDauDaTra` (ghi **cả hai** cột `payStatus` + `isPaid`), gọi **trước** `markSynced`.
   > 2. **Gỡ nhầm khoản chi của máy thắng.** `undoPayment` tự tìm khoản chi bằng `getByBill`, một `LIMIT 1` **không `ORDER BY`** — mà trên máy thua thì *chắc chắn* có hai khoản chi sống cùng `billId` (của nó và của máy thắng, đã pull về từ 2026-09-12). Đo trên PostgreSQL: hoá đơn `d2332790` còn `Payed` nhưng khoản chi **duy nhất** của nó mang `Deleted_at`, và một kỳ kế tiếp bị xoá **17 ms** sau — dấu vân tay của một `db.transaction`. Sửa: `undoPayment` nhận thêm `transactionId`, resolver truyền `localId` server vừa từ chối.

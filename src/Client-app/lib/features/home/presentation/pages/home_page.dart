@@ -3,16 +3,17 @@ import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../category/data/models/category_entity.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../widgets/hang_nut_nhanh.dart';
 import '../widgets/home_budget_card.dart';
 import '../widgets/home_goal_card.dart';
 import '../widgets/the_cho_xoa_trang_chu.dart';
 import '../widgets/drawer_trang_chu.dart';
 import '../widgets/the_so_lieu_thang.dart';
 import '../../domain/thu_chi_thang.dart';
-import '../../../ai_chat/spike/spike_c4.dart';
 import '../../../ai_edge/domain/goi_so_trang_chu.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
 import '../../../budget/data/models/budget_entity.dart';
@@ -22,19 +23,25 @@ import '../../../goal/data/repositories/goal_repository.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
+import '../../../transaction/data/repositories/transaction_repository.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../notification/data/repositories/thong_bao_repository.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../../transaction/presentation/widgets/transaction_row_content.dart';
 import '../../../wallet/domain/vi_tinh_vao_tong.dart';
 import '../../../wallet/presentation/widgets/dong_nhac_vi_trung_ten.dart';
 import '../../../premium/presentation/widgets/dong_nhac_het_han.dart';
-import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../transaction/presentation/pages/quet_anh_page.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final db = sl<AppDatabase>();
     final authState = context.watch<AuthBloc>().state;
     // Chỉ đọc mã tài khoản để lọc dữ liệu. KHÔNG khởi động SyncEngine ở đây:
     // build() chạy lại ở mỗi AuthSuccess re-emit và mỗi lần quay về tab, mà
@@ -103,10 +110,10 @@ class HomePage extends StatelessWidget {
                   }
 
                   final walletStream = (currentUserId != null)
-                      ? db.walletDao.watchAll(currentUserId)
-                      : Stream<List<Wallet>>.value([]);
+                      ? sl<WalletRepository>().watchAll(currentUserId)
+                      : Stream<List<WalletEntity>>.value([]);
 
-                  return StreamBuilder<List<Wallet>>(
+                  return StreamBuilder<List<WalletEntity>>(
                     stream: walletStream,
                     builder: (context, snapshot) {
                       final wallets = snapshot.data ?? [];
@@ -143,18 +150,18 @@ class HomePage extends StatelessWidget {
                   }
 
                   final txStream = (currentUserId != null)
-                      ? db.transactionDao.watchAll(currentUserId)
-                      : Stream<List<Transaction>>.value([]);
+                      ? sl<TransactionRepository>().watchAll(currentUserId)
+                      : Stream<List<TransactionEntity>>.value([]);
                   // Tên ví/danh mục cho "Giao dịch gần đây" — cùng nội dung
                   // dòng với sổ giao dịch (`buildTransactionRowContent`).
                   final walletStream = (currentUserId != null)
-                      ? db.walletDao.watchAll(currentUserId)
-                      : Stream<List<Wallet>>.value(const []);
+                      ? sl<WalletRepository>().watchAll(currentUserId)
+                      : Stream<List<WalletEntity>>.value(const []);
                   final categoryStream = (currentUserId != null)
-                      ? db.categoryDao.watchAll(currentUserId)
-                      : Stream<List<Category>>.value(const []);
+                      ? sl<CategoryManagementRepository>().watchAll(accountId: currentUserId)
+                      : Stream<List<CategoryEntity>>.value(const []);
 
-                  return StreamBuilder<List<Transaction>>(
+                  return StreamBuilder<List<TransactionEntity>>(
                     stream: txStream,
                     builder: (context, snapshot) {
                       final transactions = snapshot.data ?? [];
@@ -176,10 +183,10 @@ class HomePage extends StatelessWidget {
                         children: [
                           TheSoLieuThang(thu: thang.thu, chi: thang.chi),
                           const SizedBox(height: 32),
-                          StreamBuilder<List<Wallet>>(
+                          StreamBuilder<List<WalletEntity>>(
                             stream: walletStream,
                             builder: (_, wallets) =>
-                                StreamBuilder<List<Category>>(
+                                StreamBuilder<List<CategoryEntity>>(
                               stream: categoryStream,
                               builder: (_, categories) =>
                                   _buildRecentTransactions(
@@ -249,7 +256,7 @@ class HomePage extends StatelessWidget {
           child: NotificationBell(
             unreadCount: idaccount == null
                 ? null
-                : sl<AppDatabase>().notificationDao.watchUnreadCount(idaccount),
+                : sl<ThongBaoRepository>().watchUnreadCount(idaccount),
             onTap: () => context.push('/notifications'),
           ),
         ),
@@ -347,98 +354,52 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildActionItem(
-          context: context,
-          icon: Icons.account_balance_wallet_outlined,
-          label: 'Thêm thu',
-          isDark: true,
+  Widget _buildQuickActions(BuildContext context) => HangNutNhanh(nut: [
+        NutNhanh(
+          bieuTuong: Icons.account_balance_wallet_outlined,
+          nhan: 'Thêm thu',
+          dam: true,
           onTap: () => context.push('/add', extra: 'thu'),
         ),
-        _buildActionItem(
-          context: context,
-          icon: Icons.payments_outlined,
-          label: 'Thêm chi',
-          isDark: true,
+        NutNhanh(
+          bieuTuong: Icons.payments_outlined,
+          nhan: 'Thêm chi',
+          dam: true,
           onTap: () => context.push('/add', extra: 'chi'),
         ),
-        _buildActionItem(
-          context: context,
-          icon: Icons.sync_alt,
-          label: 'Chuyển',
-          isDark: false,
+        NutNhanh(
+          bieuTuong: Icons.sync_alt,
+          nhan: 'Chuyển',
+          dam: false,
           onTap: () => context.push('/add', extra: 'transfer'),
         ),
-        _buildActionItem(
-          context: context,
-          icon: Icons.qr_code_scanner,
-          label: 'Quét',
-          isDark: false,
+        NutNhanh(
+          bieuTuong: Icons.document_scanner_outlined,
+          nhan: 'Quét',
+          dam: false,
           onTap: () {
-            // Spike C4: bản build có `--dart-define=SPIKE_C4=true` mở màn đo; bản thường giữ nguyên hành vi cũ.
-            if (kSpikeC4) {
-              context.push('/spike-c4');
+            // Quyền `ocr_receipt` (spec phân quyền 2026-10-08): không có → màn Nâng cấp mở đầu bằng tên tính năng.
+            if (!context.coQuyenDoc(MaQuyen.ocrReceipt)) {
+              context.push(duongNangCap(quyen: MaQuyen.ocrReceipt));
               return;
             }
-            baoNhanh('Tính năng Quét QR đang phát triển');
+            // A5: chụp / chọn ảnh hoá đơn hoặc biên lai → form điền sẵn.
+            moQuet(context);
           },
         ),
-      ],
-    );
-  }
-
-  Widget _buildActionItem({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark ? AppColors.primary : Colors.white,
-              border: isDark ? null : Border.all(color: Colors.black12),
-              gradient: isDark
-                  ? const LinearGradient(
-                      colors: [Color(0xFF1A1A19), Color(0xFF374151)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-            ),
-            child: Icon(
-              icon,
-              color: isDark ? Colors.white : AppColors.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.primary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        NutNhanh(
+          khoa: const Key('nut-nhanh-noi'),
+          bieuTuong: Icons.mic_none,
+          nhan: 'Nói',
+          dam: false,
+          // C4 §2.3: có quyền → mở form và nghe ngay; Basic → màn Nâng cấp.
+          onTap: () => context.push(duongNutNoi(coQuyen: context.coQuyenDoc(MaQuyen.aiQuickInput))),
+        ),
+      ]);
 
   Widget _buildRecentTransactions(
     BuildContext context,
-    List<Transaction> transactions,
+    List<TransactionEntity> transactions,
     TransactionLookup lookup,
   ) {
     return Column(
@@ -495,10 +456,7 @@ class HomePage extends StatelessWidget {
         else
           ...transactions.map((tx) {
             // Cùng nội dung dòng với sổ giao dịch: danh mục, ví, icon/màu.
-            final content = buildTransactionRowContent(
-              TransactionEntity.fromDrift(tx),
-              lookup,
-            );
+            final content = buildTransactionRowContent(tx, lookup);
             return _buildTransactionItem(
               content,
               '${content.subtitle} • ${DateFormat('dd/MM').format(tx.date)}',
@@ -610,7 +568,7 @@ class HomePage extends StatelessWidget {
   /// nào được cộng vào tổng". Bản trước là `fold` trần trên mọi ví (cộng cả ví
   /// đã tắt "Tính vào tổng tài sản"), lệch với màn Quản lý ví — im lặng.
   /// Tách thành hàm vì thẻ tài sản và khối Nhận xét cùng đọc nó.
-  static double _tongTaiSan(List<Wallet> wallets) => wallets
+  static double _tongTaiSan(List<WalletEntity> wallets) => wallets
       .where((w) => viTinhVaoTong(
           includeInTotal: w.includeInTotal, status: w.status))
       .fold<double>(0.0, (sum, w) => sum + w.balance);
@@ -626,19 +584,18 @@ class HomePage extends StatelessWidget {
   /// Mục tiêu và Ngân sách, mà hai thẻ ấy không nên dựng lại theo mỗi giao
   /// dịch.
   Widget _buildNhanXet(BuildContext context, int? idaccount) {
-    final db = sl<AppDatabase>();
     final txStream = idaccount != null
-        ? db.transactionDao.watchAll(idaccount)
-        : Stream<List<Transaction>>.value(const []);
+        ? sl<TransactionRepository>().watchAll(idaccount)
+        : Stream<List<TransactionEntity>>.value(const []);
     final walletStream = idaccount != null
-        ? db.walletDao.watchAll(idaccount)
-        : Stream<List<Wallet>>.value(const []);
+        ? sl<WalletRepository>().watchAll(idaccount)
+        : Stream<List<WalletEntity>>.value(const []);
     final budgetStream = idaccount != null
         ? sl<BudgetRepository>().watchBudgets(idaccount)
         : Stream<List<BudgetView>>.value(const []);
-    return StreamBuilder<List<Transaction>>(
+    return StreamBuilder<List<TransactionEntity>>(
       stream: txStream,
-      builder: (_, tx) => StreamBuilder<List<Wallet>>(
+      builder: (_, tx) => StreamBuilder<List<WalletEntity>>(
         stream: walletStream,
         builder: (_, wallets) => StreamBuilder<List<BudgetView>>(
           stream: budgetStream,

@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/goi_so.dart';
 
-/// Thẻ số liệu đối soát (luật G3): hàng chip "nhãn chuỗi", mỗi chip là một
+/// Thẻ số liệu đối soát (luật G3): hàng chip "nhãn chuỗi" — "tên · nhãn chuỗi"
+/// khi mục mang tên đối tượng (G82) — mỗi chip là một
 /// [SoLieu] của gói — đúng chuỗi mà bộ kiểm số cho phép, nên số trên thẻ
 /// **bằng** số trong câu (điều kiện 12).
 class TheSoLieu extends StatelessWidget {
@@ -34,8 +35,11 @@ class TheSoLieu extends StatelessWidget {
             ),
             child: Text.rich(
               TextSpan(children: [
+                // Mục mang tên đối tượng in tên trước nhãn — cùng quy ước thẻ
+                // của Trợ lý AI (`the_cua_cau.dart`). Thiếu nó, ba ngân sách
+                // khác nhau hiện ba chip "Tỉ lệ 0,0%" y hệt (G82).
                 TextSpan(
-                  text: '${s.nhan} ',
+                  text: s.ten == null ? '${s.nhan} ' : '${s.ten} · ${s.nhan} ',
                   style: TextStyle(fontSize: 11, color: nhan),
                 ),
                 TextSpan(

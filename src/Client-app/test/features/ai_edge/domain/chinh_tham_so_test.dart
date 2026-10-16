@@ -961,10 +961,12 @@ void main() {
         'lan cuoi toi nap tien cho muc tieu muaxe la ngay nao',
         'Nhung lan toi nap tien vao muc tieu MuaDT',
         'thang nay toi chi bao nhieu',
-        '5 khoan chi gan day nhat cua toi',
       ]) {
         expect(congCuTheoCauHoi(c), isNull, reason: c);
       }
+      // B8 (2026-10-07): câu xin N khoản về ĐÚNG tool giao dịch, nguồn luật — ý của phản
+      // ví dụ này (không bị năm họ A2 kéo sang tool khác) vẫn giữ.
+      expect(congCuTheoCauHoi('5 khoan chi gan day nhat cua toi'), kTenCongCuTruyVan);
     });
 
     test('⚠️ "trung bình mỗi tháng" của THU NHẬP là câu tổng quan, không phải gợi ý hạn mức', () {
@@ -1225,6 +1227,25 @@ void main() {
     test('câu nói cả thu lẫn chi (E15) đủ; câu rỗng không', () {
       expect(docDuThamSoGiaoDich('Toi da cho vay bao nhieu va thu ve duoc bao nhieu?'), isTrue);
       expect(docDuThamSoGiaoDich('  '), isFalse);
+    });
+  });
+
+  group('25. B8 ◐ — câu xin N khoản / giao dịch → tool giao dịch, nguồn LUẬT (2026-10-07)', () {
+    // Realme 2026-10-06: "3 khoản thu mới nhất" — mô hình học p=0,63 < 0,76 nên phiên
+    // sáu tool, 58 s, dù luật đọc đủ tham số cho đường nhanh.
+    test('⭐ "3 khoản thu mới nhất" (có dấu và không dấu) → truy_van_giao_dich', () {
+      for (final c in ['3 khoản thu mới nhất', '3 khoan thu moi nhat', 'hai khoản chi gần nhất',
+          'cho tôi xem 5 giao dịch gần đây']) {
+        expect(congCuTheoCauHoi(c), kTenCongCuTruyVan, reason: c);
+        expect(docDuThamSoGiaoDich(c), isTrue, reason: '$c — phải đi được đường nhanh');
+      }
+    });
+    test('không cướp câu của khối ngân sách / mục tiêu / hoá đơn', () {
+      expect(congCuTheoCauHoi('3 khoản chi của ngân sách ăn uống'), isNot(kTenCongCuTruyVan));
+      expect(congCuTheoCauHoi('3 khoản nạp vào mục tiêu gần nhất'), isNull);
+    });
+    test('số sau "tháng" là mốc thời gian, không phải số dòng → luật không quyết', () {
+      expect(congCuTheoCauHoi('tháng 3 khoản chi nào lớn nhất'), isNull);
     });
   });
 }

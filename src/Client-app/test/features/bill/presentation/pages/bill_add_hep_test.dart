@@ -9,6 +9,8 @@
 /// ⚠️ `napFontThat` nạp font cho cả isolate — tệp này chỉ chứa ca đo font thật.
 library;
 
+import '../../../../helpers/nguon_doc_gia.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -42,7 +44,7 @@ class _FixedAuthBloc extends AuthBloc {
 
 class _StubBillRepository implements BillRepository {
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => const Stream.empty();
+  Stream<List<BillEntity>> watchBills(int idaccount) => const Stream.empty();
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -55,6 +57,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     if (sl.isRegistered<AppDatabase>()) await sl.unregister<AppDatabase>();
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
   });
 
   tearDown(() async {

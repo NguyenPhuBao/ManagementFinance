@@ -3,14 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/database/app_database.dart';
-import '../../../../core/database/daos/notification_dao.dart';
-import '../../../../core/notification/de_xuat_thong_bao_nguon.dart';
-import '../../../../core/notification/hoc_gio_thong_bao.dart';
-import '../../../../core/notification/nhat_ky_thong_bao.dart';
-import '../../../../core/notification/notification_deeplink.dart';
-import '../../../../core/notification/notification_rules.dart';
-import '../../../../core/notification/prefs/notification_prefs.dart';
+import '../../data/models/notification_entity.dart';
+import '../../data/repositories/thong_bao_repository.dart';
+import '../../data/de_xuat_thong_bao_nguon.dart';
+import '../../domain/hoc_gio_thong_bao.dart';
+import '../../data/datasources/nhat_ky_thong_bao.dart';
+import '../../domain/notification_deeplink.dart';
+import '../../domain/notification_rules.dart';
+import '../../domain/notification_prefs.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/relative_time.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -24,7 +24,7 @@ class NotificationCenterPage extends StatefulWidget {
   const NotificationCenterPage({
     super.key,
     this.idaccount,
-    this.dao,
+    this.nguon,
     this.nhatKy,
     this.taiDeXuat,
     this.nhomBanDau,
@@ -50,9 +50,9 @@ class NotificationCenterPage extends StatefulWidget {
   /// ngay giữa `build`.
   final int? idaccount;
 
-  /// Bỏ trống thì lấy từ chỗ dựng phụ thuộc. Ở đây `??` là an toàn: một DAO
+  /// Cổng đọc / ghi thông báo — tiêm cho test; mặc định `sl<ThongBaoRepository>()`. Ở đây `??` là an toàn: một nguồn
   /// không bao giờ mang nghĩa "cố ý để trống".
-  final NotificationDao? dao;
+  final ThongBaoRepository? nguon;
 
   /// Nhật ký thông báo (B5a) — tiêm cho test; mặc định `sl<NhatKyThongBao>()`.
   /// Chưa đăng ký thì trang vẫn chạy, chỉ không ghi nhật ký.
@@ -132,7 +132,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
   @override
   Widget build(BuildContext context) {
     final idaccount = widget.idaccount;
-    final dao = widget.dao ?? sl<AppDatabase>().notificationDao;
+    final dao = widget.nguon ?? sl<ThongBaoRepository>();
     final nhatKy = widget.nhatKy ??
         (sl.isRegistered<NhatKyThongBao>() ? sl<NhatKyThongBao>() : null);
 
@@ -205,8 +205,8 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
     );
   }
 
-  Widget _danhSach(NotificationDao dao, int idaccount, NhatKyThongBao? nhatKy) {
-    return StreamBuilder<List<AppNotification>>(
+  Widget _danhSach(ThongBaoRepository dao, int idaccount, NhatKyThongBao? nhatKy) {
+    return StreamBuilder<List<NotificationEntity>>(
       stream: dao.watchFeed(
         idaccount,
         limit: _gioiHan,
@@ -508,8 +508,8 @@ class _NutTaiThem extends StatelessWidget {
 /// người dùng biết vừa xảy ra chuyện gì.
 Future<void> _doiTrangThaiDoc(
   BuildContext context,
-  NotificationDao dao,
-  AppNotification item,
+  ThongBaoRepository dao,
+  NotificationEntity item,
 ) async {
   final daDoc = item.readAt != null;
 
@@ -530,8 +530,8 @@ Future<void> _doiTrangThaiDoc(
 /// vuốt nhầm làm thông báo biến mất khỏi giao diện vĩnh viễn.
 Future<void> _xoaCoHoanTac(
   BuildContext context,
-  NotificationDao dao,
-  AppNotification item,
+  ThongBaoRepository dao,
+  NotificationEntity item,
   NhatKyThongBao? nhatKy,
   int idaccount,
 ) async {
@@ -555,7 +555,7 @@ Future<void> _xoaCoHoanTac(
     bieuTuong: Icons.delete_outline, // Stitch `fb68baba…`
     hanhDong: HanhDongToast('Hoàn tác', () {
       if (laBienDong) {
-        dao.insertIfAbsent(item.toCompanion(true));
+        dao.chenLai(item);
       } else {
         dao.khoiPhuc(item.id);
       }
@@ -567,7 +567,7 @@ Future<void> _xoaCoHoanTac(
 }
 
 class _ThongBaoTile extends StatelessWidget {
-  final AppNotification item;
+  final NotificationEntity item;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final VoidCallback onDismiss;

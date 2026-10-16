@@ -9,7 +9,7 @@ library;
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
-import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
+import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
 import 'package:flowmoney/features/category/presentation/pages/category_add_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

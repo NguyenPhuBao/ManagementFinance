@@ -3,8 +3,8 @@
 /// kèm danh sách tên thật, không `them` vào gói.
 library;
 
-import '../../analytics/data/analytics_repository.dart';
-import '../../analytics/data/bao_cao_repository.dart';
+import '../../analytics/data/repositories/analytics_repository.dart';
+import '../../analytics/data/repositories/bao_cao_repository.dart';
 import '../../bill/data/repositories/bill_repository.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../budget/data/tai_phan_bo_nguon.dart';

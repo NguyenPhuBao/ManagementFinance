@@ -29,11 +29,16 @@ class KhoiNhanXet extends StatefulWidget {
   /// `true` cho thẻ nền tối của Trang chủ (thay thẻ "Insight AI" cũ).
   final bool nenToi;
 
+  /// Một dòng đặt TRONG khối, dưới vạch mảnh — dòng khoá chi bất thường của trang Phân tích (spec phân quyền
+  /// 2026-10-08, Stitch `595529bf…`).
+  final Widget? chanDuoi;
+
   const KhoiNhanXet({
     super.key,
     required this.goi,
     this.boDienGiai,
     this.nenToi = false,
+    this.chanDuoi,
   });
 
   @override
@@ -158,6 +163,10 @@ class _KhoiNhanXetState extends State<KhoiNhanXet> {
           if (_nhanXet.theSoLieu.isNotEmpty) ...[
             const SizedBox(height: 10),
             TheSoLieu(ds: _nhanXet.theSoLieu, nenToi: toi),
+          ],
+          if (widget.chanDuoi case final chan?) ...[
+            const Divider(height: 21, color: AppColors.outlineVariant),
+            chan,
           ],
         ],
       ),

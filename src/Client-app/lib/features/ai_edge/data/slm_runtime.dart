@@ -14,7 +14,13 @@ import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
 import '../domain/canary_cong_cu.dart';
 import '../domain/canary_gpu.dart';
 import '../domain/cong_cu.dart';
+import '../domain/nap_da_phuong_thuc.dart';
+import 'bo_nap_mo_hinh.dart';
 import 'phien_cong_cu.dart';
+
+/// Hạn chờ `stopGeneration()` native. Nếu nó treo, `huy()` vẫn trả về (nuốt lỗi + log) — nếu không, hàng đợi chép lời
+/// (singleton), Huỷ của Cubit và `close()` đều kẹt vĩnh viễn (review toàn nhánh C4, I1).
+const Duration kHanDungSinh = Duration(seconds: 2);
 
 /// Runtime mô hình. Ba trạng thái: chưa nạp, đang sẵn, đã đóng.
 abstract class SlmRuntime {
@@ -49,7 +55,28 @@ abstract class SlmRuntime {
   Future<void> dong();
 }
 
-class SlmRuntimeThat implements SlmRuntime {
+/// Mô hình NHÌN ẢNH (A5 mục 13 — đọc hoá đơn). Giao diện riêng, không gộp vào [SlmRuntime]: chỉ màn Quét cần, và bản
+/// giả của [SlmRuntime] trong test không phải mang thêm một hàm.
+abstract class SlmDocAnh {
+  /// Sinh MỘT câu từ [prompt] kèm [anh]. Cần bản CÓ CẢ cờ ảnh lẫn âm thanh (`quyetDinhNap`): đang nạp bản thiếu cờ thì
+  /// đóng một lần rồi nạp bản đủ cờ, GIỮ bản ấy (đóng / nạp lại nhiều lần làm driver GPU sập native, xem thân hàm).
+  /// Ném khi máy không chạy được, hoặc [LuotNapBiHuy] nếu huỷ lúc đang nạp.
+  Future<String> docAnh(String duongTep, String prompt, Uint8List anh);
+
+  /// Dừng lượt đọc đang chạy — lượt ấy trả về phần chữ đã sinh (thường rỗng); đang nạp mô hình thì lượt ấy bị bỏ.
+  Future<void> huy();
+}
+
+/// Mô hình NGHE âm thanh (C4 — chép lời khi mất mạng). Giao diện riêng như [SlmDocAnh]: bản giả của [SlmRuntime] trong
+/// test không phải mang thêm một hàm.
+abstract class SlmChepLoi {
+  /// Chép lời [wav] (WAV 16 kHz mono) theo [prompt]. Nạp bản đa phương thức nếu cần, rồi GIỮ. Ném khi máy không chạy được.
+  Future<String> chepLoi(String duongTep, String prompt, Uint8List wav);
+
+  Future<void> huy();
+}
+
+class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
   /// Dấu canary GPU — `null` chỉ trong test; đường thật luôn có (DI).
   final CanaryGpu? canary;
 
@@ -67,39 +94,65 @@ class SlmRuntimeThat implements SlmRuntime {
   @override
   bool get dangSan => _model != null;
 
-  /// Mô hình đang nạp có cờ ảnh / âm thanh không — chỉ đường spike C4 bật ([spikeDaPhuongThuc]).
-  bool _coAnh = false;
-  bool _coAm = false;
+  /// Tuần tự hoá + huỷ trong pha nạp + cờ ảnh / âm của bản đang nạp; luật nạp ở `quyetDinhNap`.
+  late final BoNapMoHinh _boNap = BoNapMoHinh(
+    coMoHinh: () => _model != null,
+    dong: dong,
+    nap: (duongTep, {required anh, required am}) => _nap(duongTep, anh: anh, am: am),
+  );
 
   @override
-  Future<void> moHinhSan(String duongTep) async {
-    if (_model != null) return;
-    await _nap(duongTep);
+  Future<void> moHinhSan(String duongTep) => _boNap.can(CanMoHinh.chu, duongTep);
+
+  @override
+  Future<String> docAnh(String duongTep, String prompt, Uint8List anh) async {
+    // ⚠️ KHÔNG đóng mô hình sau khi đọc: OnePlus 13R (Adreno, GPU) 2026-10-08 SẬP NATIVE (SIGSEGV trong
+    // `gl_release_context` ← `LiteRtDestroyEnvironment`) ở lần ĐÓNG thứ hai trong cùng một tiến trình — quét lần 1
+    // nạp bản ảnh rồi đóng, lần chọn danh mục nạp bản chữ, quét lần 2 đóng bản chữ để nạp bản ảnh → sập. Nên bản có
+    // ảnh được GIỮ: lần chọn danh mục (phiên chữ có tool) và các đường chữ khác dùng luôn nó; một tiến trình đóng
+    // nhiều nhất một lần (khi bản đang nạp là bản chữ của Trợ lý / Nhập nhanh).
+    // Luật chung với chepLoi: `quyetDinhNap` (C4).
+    final moc = _boNap.moc;
+    await _boNap.can(CanMoHinh.anh, duongTep, moc: moc);
+    final dongHo = Stopwatch()..start();
+    // Nhiệt độ 0,2 như lượt đo (Gemma ra y hệt 3/3 lần mỗi ảnh) — đổi là phải đo lại.
+    final chat = await _model!.createChat(temperature: 0.2, supportImage: true);
+    _chatDangSinh = chat;
+    await chat.addQueryChunk(Message.withImage(text: prompt, imageBytes: anh, isUser: true));
+    final cau = StringBuffer();
+    try {
+      // Đường dần (không `generateChatResponse`) để `huy()` có `stopGeneration` mà gọi.
+      await for (final r in chat.generateChatResponseAsync()) {
+        if (r is TextResponse) cau.write(r.token);
+      }
+    } finally {
+      if (identical(_chatDangSinh, chat)) _chatDangSinh = null;
+    }
+    debugPrint('[SLM][anh] đọc ảnh xong sau ${dongHo.elapsedMilliseconds} ms '
+        '(ảnh ${anh.length} byte → ${cau.length} ký tự)');
+    return cau.toString().trim();
   }
 
-  /// ⚠️ SPIKE C4 (2026-10-01) — đường ĐO TẠM, chỉ màn `spike_c4_page.dart` (sau cờ `SPIKE_C4`) gọi. Nạp LẠI mô hình
-  /// với `supportImage` / `supportAudio` khi cờ đang nạp khác thứ cần (đóng mô hình cũ trước — mỗi lần một mô hình),
-  /// rồi sinh một câu từ [prompt] kèm ảnh hoặc WAV 16 kHz mono. Nằm ở đây vì tệp này là chỗ duy nhất được import gói
-  /// (test quét 16). Màn spike gọi [dong] khi rời đi để đường chữ thường nạp lại bản không cờ.
-  Future<String> spikeDaPhuongThuc(String duongTep, String prompt, {Uint8List? anh, Uint8List? wav}) async {
-    final canAnh = anh != null;
-    final canAm = wav != null;
-    if (_model == null || _coAnh != canAnh || _coAm != canAm) {
-      await dong();
-      await _nap(duongTep, anh: canAnh, am: canAm);
-    }
+  @override
+  Future<String> chepLoi(String duongTep, String prompt, Uint8List wav) async {
+    final moc = _boNap.moc;
+    await _boNap.can(CanMoHinh.am, duongTep, moc: moc);
     final dongHo = Stopwatch()..start();
-    final chat = await _model!.createChat(temperature: 0.2, supportImage: canAnh, supportAudio: canAm);
-    await chat.addQueryChunk(canAnh
-        ? Message.withImage(text: prompt, imageBytes: anh, isUser: true)
-        : canAm
-            ? Message.withAudio(text: prompt, audioBytes: wav, isUser: true)
-            : Message.text(text: prompt, isUser: true));
-    final r = await chat.generateChatResponse();
-    final cau = (r is TextResponse ? r.token : r.toString()).trim();
-    debugPrint('[SLM][C4] sinh xong sau ${dongHo.elapsedMilliseconds} ms '
-        '(${canAnh ? 'ảnh ${anh.length} byte' : canAm ? 'âm ${wav.length} byte' : 'chữ'} → ${cau.length} ký tự)');
-    return cau;
+    // Nhiệt độ 0,2 như spike C4 (2026-10-01) — đổi là phải đo lại.
+    final chat = await _model!.createChat(temperature: 0.2, supportAudio: true);
+    _chatDangSinh = chat;
+    await chat.addQueryChunk(Message.withAudio(text: prompt, audioBytes: wav, isUser: true));
+    final cau = StringBuffer();
+    try {
+      await for (final r in chat.generateChatResponseAsync()) {
+        if (r is TextResponse) cau.write(r.token);
+      }
+    } finally {
+      if (identical(_chatDangSinh, chat)) _chatDangSinh = null;
+    }
+    debugPrint('[SLM][am] chép lời xong sau ${dongHo.elapsedMilliseconds} ms '
+        '(âm ${wav.length} byte → ${cau.length} ký tự)');
+    return cau.toString().trim();
   }
 
   Future<void> _nap(String duongTep, {bool anh = false, bool am = false}) async {
@@ -148,7 +201,7 @@ class SlmRuntimeThat implements SlmRuntime {
         // đích danh cho vượt (2026-09-23). Hạ trần lại là tái hiện lỗi trên.
         maxTokens: 4096,
         preferredBackend: dungCpu ? PreferredBackend.cpu : PreferredBackend.gpu,
-        // Spike C4: hai cờ dưới chỉ khác `null` khi màn spike gọi; đường thường giữ nguyên lời gọi cũ.
+        // Hai cờ đa phương thức chỉ khác `null` khi docAnh / chepLoi nạp; đường chữ giữ nguyên lời gọi cũ.
         supportImage: anh ? true : null,
         supportAudio: am ? true : null,
         maxNumImages: anh ? 1 : null,
@@ -159,8 +212,6 @@ class SlmRuntimeThat implements SlmRuntime {
       // mới để dấu lại.
       await canary?.thuXong();
     }
-    _coAnh = anh;
-    _coAm = am;
     debugPrint('[SLM] nạp mô hình xong sau ${dongHo.elapsedMilliseconds} ms '
         '(${dungCpu ? 'CPU — GPU máy này từng sập' : 'GPU'}${anh ? ' · ảnh' : ''}${am ? ' · âm thanh' : ''})');
   }
@@ -259,10 +310,12 @@ class SlmRuntimeThat implements SlmRuntime {
 
   @override
   Future<void> huy() async {
+    // Huỷ cả lúc đang nạp (chưa có chat): lượt đang chờ nạp sẽ bỏ khi nạp xong.
+    _boNap.huy();
     final chat = _chatDangSinh;
     if (chat == null) return;
     try {
-      await chat.stopGeneration();
+      await chat.stopGeneration().timeout(kHanDungSinh);
       debugPrint('[SLM] đã huỷ lượt sinh giữa chừng');
     } catch (e) {
       debugPrint('[SLM] huỷ lượt sinh hỏng: $e');
@@ -333,7 +386,7 @@ class _PhienThat implements PhienCongCu {
   @override
   Future<void> huy() async {
     try {
-      await _chat.stopGeneration();
+      await _chat.stopGeneration().timeout(kHanDungSinh);
     } catch (e) {
       debugPrint('[SLM][tool] huỷ lượt sinh hỏng: $e');
     }

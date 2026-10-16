@@ -3,7 +3,7 @@ library;
 
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
-import 'package:flowmoney/features/auth/presentation/an_the_cho_xoa.dart';
+import 'package:flowmoney/features/auth/presentation/state/an_the_cho_xoa.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/home/presentation/widgets/the_cho_xoa_trang_chu.dart';
 import 'package:flowmoney/shared/theme/app_colors.dart';

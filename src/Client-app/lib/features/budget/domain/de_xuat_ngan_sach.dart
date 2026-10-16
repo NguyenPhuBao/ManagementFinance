@@ -26,7 +26,7 @@ class DeXuatNganSach {
   final double mucThang;
 
   /// Tên biểu tượng và mã màu của danh mục, **nguyên văn cột** — phép đổi
-  /// sang thứ vẽ được nằm ở `core/category/category_visuals.dart`, nơi duy
+  /// sang thứ vẽ được nằm ở `features/category/presentation/widgets/category_visuals.dart`, nơi duy
   /// nhất hiểu cả tên Material lẫn tên seed backend. Mang chuỗi thô lên
   /// đây giữ tệp này là Dart thuần, test được mà không cần `flutter_test`.
   final String? icon;

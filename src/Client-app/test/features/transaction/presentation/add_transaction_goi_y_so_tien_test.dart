@@ -6,8 +6,9 @@
 /// thứ là ca test đổi kết quả theo hôm chạy.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
+import 'package:flowmoney/features/notification/application/nhap_bien_dong.dart';
 import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
@@ -138,7 +139,7 @@ void main() {
   final diChuyen = makeCategory(id: 'move', name: 'Di chuyển', isDefault: true);
   final luong = makeCategory(id: 'luong', name: 'Lương', classify: 'thu', isDefault: true);
 
-  CategoryTree treeOf(List<Category> c) =>
+  CategoryTree treeOf(List<CategoryEntity> c) =>
       CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
 
   FakeCategoryRepository categories({Map<String, List<String>> keywords = const {}}) => FakeCategoryRepository(
@@ -150,7 +151,7 @@ void main() {
   Widget app({
     bool coMoHinhSoTien = true,
     List<MauSoTien>? mauSoTien,
-    List<Wallet>? wallets,
+    List<WalletEntity>? wallets,
     BoPhanLoaiGhiChu? boPhanLoai,
     Map<String, List<String>> keywords = const {},
     EditTransactionArgs? initial,
@@ -312,7 +313,7 @@ void main() {
 
     testWidgets('⭐ thẻ B1 đang hiện → đổi đoạn Thu rồi về Chi → thẻ B1 KHÔNG tự bật lại (hành vi trước dự án C)',
         (tester) async {
-      // Số tiền / ví / ngày / đoạn không phải tín hiệu của B1: có mô hình số tiền cũng không được hẹn lại `_loadSuggestion`
+      // Số tiền / ví / ngày / đoạn không phải tín hiệu của B1: có mô hình số tiền cũng không được hẹn lại `_napGoiY`
       // cho một ghi chú có chữ — luật "đổi đoạn → thẻ bị huỷ, không ghi phản hồi" của B1 dựa vào đó.
       await mo(tester, app(boPhanLoai: BoPhanLoaiGhiChu.hoc(_muoiMauChu)));
       await goGhiChu(tester, 'grab tối');

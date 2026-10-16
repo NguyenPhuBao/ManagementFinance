@@ -14,13 +14,12 @@
 ///   thêm. Hàng cũ (`periodEnd` NULL) thì hai mốc trùng nhau.
 /// - **Ngày gốc** (`anchorDay`) đi theo cả chuỗi và **không cộng dồn**: kỳ
 ///   31/01 kẹp về 28/02 rồi bước tiếp *từ 28* là nhịp tụt xuống 28 vĩnh viễn.
-///   Xem `core/bill/bill_recurrence.dart`.
+///   Xem `features/bill/domain/bill_recurrence.dart`.
 library;
 
-import 'package:drift/drift.dart' show Value;
 
-import '../../../core/bill/bill_recurrence.dart';
-import '../../../core/database/app_database.dart';
+import 'bill_recurrence.dart';
+import '../data/models/bill_entity.dart';
 import 'bill_an_han.dart';
 
 /// Ba mốc của kỳ kế tiếp, cộng ngày gốc để kỳ sau nữa neo tiếp.
@@ -47,7 +46,7 @@ class KyKeTiep {
 }
 
 /// Kỳ kế tiếp của [current]. Không đọc đồng hồ, không ghi gì.
-KyKeTiep kyKeTiepCua(Bill current) {
+KyKeTiep kyKeTiepCua(BillEntity current) {
   // Kỳ sau bắt đầu tại NGÀY KẾT THÚC KỲ, không phải hạn trả — bẫy §4.4 tài
   // liệu xin backend. Hàng cũ (periodEnd NULL) thì hai mốc trùng nhau, kết quả
   // y hệt trước v21.
@@ -78,11 +77,11 @@ const int kTranKyChieu = 12;
 /// theo ngày) — chỉ tính, không sinh hàng. Hai nơi dùng: dự báo 30 ngày và tool
 /// `danh_sach_hoa_don` (kỳ tới); tách ra 2026-09-28 để tool không chép vòng lặp.
 ///
-/// Mỗi vòng dựng lại một `Bill` từ kỳ vừa chiếu để `anchorDay` đi theo chuỗi —
+/// Mỗi vòng dựng lại một `BillEntity` từ kỳ vừa chiếu để `anchorDay` đi theo chuỗi —
 /// cộng dồn từ kỳ trước là "ngày 31" tụt về 28 vĩnh viễn. Hoá đơn không lặp →
 /// rỗng. ⚠️ Người gọi tự lo việc [b] có phải HÀNG CUỐI CHUỖI không (hàng đã
 /// sinh kỳ sau thì kỳ sau là hàng thật, chiếu nữa là đếm đôi).
-List<KyKeTiep> cacKyChieuCua(Bill b, {required DateTime denHetNgay}) {
+List<KyKeTiep> cacKyChieuCua(BillEntity b, {required DateTime denHetNgay}) {
   final ra = <KyKeTiep>[];
   if (!b.isRecurrence) return ra;
   final cuoi = DateTime(denHetNgay.year, denHetNgay.month, denHetNgay.day);
@@ -96,10 +95,10 @@ List<KyKeTiep> cacKyChieuCua(Bill b, {required DateTime denHetNgay}) {
     if (han.isAfter(cuoi)) break;
     ra.add(ky);
     hienTai = hienTai.copyWith(
-      startDate: Value(ky.batDau),
-      periodEnd: Value(ky.ketThuc),
+      startDate: ky.batDau,
+      periodEnd: ky.ketThuc,
       dueDate: ky.hanTra,
-      anchorDay: Value(ky.anchorDay),
+      anchorDay: ky.anchorDay,
     );
   }
   return ra;

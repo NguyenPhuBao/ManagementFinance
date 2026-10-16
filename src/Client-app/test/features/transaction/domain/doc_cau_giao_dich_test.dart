@@ -2,7 +2,7 @@
 /// Hàm thuần, chỉ luật: ô nào không đọc được thì `null` và form GIỮ NGUYÊN ô ấy — không bao giờ bịa số.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/transaction/domain/doc_cau_giao_dich.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -197,7 +197,7 @@ void main() {
     final tcb = makeWallet(id: 'w-tcb', name: 'Techcombank').copyWith(type: 'bank');
     final chinh = makeWallet(id: 'w-cash', name: 'Ví chính');
     final mb = makeWallet(id: 'w-mb', name: 'MB').copyWith(type: 'bank');
-    KetQuaDocCau docVi(String cau, List<Wallet> vi) =>
+    KetQuaDocCau docVi(String cau, List<WalletEntity> vi) =>
         docCauGiaoDich(cau, now: now, vi: vi, chonDuoc: const []);
 
     test('tên ví nêu trong câu → ví ấy; ghi chú bỏ "ví / bằng / bằng ví" + tên', () {
@@ -247,7 +247,7 @@ void main() {
       ...mau('luong thang', 'c-luong', 3),
       ...mau('me gui', 'c-thu', 3),
     ]);
-    KetQuaDocCau docDm(String cau, {List<Wallet> vi = const [], BoPhanLoaiGhiChu? m}) =>
+    KetQuaDocCau docDm(String cau, {List<WalletEntity> vi = const [], BoPhanLoaiGhiChu? m}) =>
         docCauGiaoDich(cau, now: now, vi: vi, chonDuoc: chonDuoc, mo: m);
 
     test('tên danh mục nêu trong câu → danh mục ấy; không phải B1; ghi chú GIỮ tên', () {
@@ -359,9 +359,10 @@ void main() {
       expect(KetQuaAi.tuThamSo({'so_tien': 0}).soTien, isNull);
     });
 
-    test('⭐ số tiền AI là một cách đọc hợp lệ → dùng; luật không đọc được "ba chục"', () {
-      final r = docAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000));
-      expect(r.soTien, 30000);
+    test('⭐ số tiền AI là một cách đọc hợp lệ → dùng; luật không đọc được "45" (không ở chỗ của tiền)', () {
+      // C4 2026-10-12: luật chọn N2 — "ba chục" cuối câu nay luật tự đọc nên câu phương tiện là "45 ở quán".
+      final r = docAi('cà phê 45 ở quán', const KetQuaAi(soTien: 45000));
+      expect(r.soTien, 45000);
       expect(r.quaAi, isTrue);
     });
 
@@ -370,12 +371,15 @@ void main() {
       expect(docAi('mua 2 ly trà sữa', const KetQuaAi(soTien: 2000)).soTien, isNull);
     });
 
-    test('"một triệu hai": luật không điền (mơ hồ), AI chọn 1.200.000 → dùng, bỏ cảnh báo số chữ', () {
+    test('"một triệu hai": luật đọc N1 = 1.200.000, AI khớp → không cảnh báo, không đánh dấu AI', () {
+      // C4 2026-10-12: luật chọn N1 khi Y ở chỗ của tiền (trước: luật bỏ trống, AI chọn).
       final luat = docCauGiaoDich('tiền điện một triệu hai', now: now, vi: const [], chonDuoc: const []);
-      expect(luat.soTien, isNull, reason: 'tiền đề');
+      expect(luat.soTien, 1200000, reason: 'C4 2026-10-12: luật chọn N1');
       final r = docAi('tiền điện một triệu hai', const KetQuaAi(soTien: 1200000));
       expect(r.soTien, 1200000);
       expect(r.canhBao, isNot(contains(kCanhBaoSoChuChuaRo)));
+      expect(r.quaAi, isFalse, reason: 'luật thắng AI ở ô luật đã đọc được');
+      expect(luat.soTienCanKiem, isTrue);
     });
 
     test('loại: AI "chi" / "thu" được dùng; câu có nợ / vay → null như luật', () {
@@ -503,9 +507,10 @@ void main() {
     });
 
     test('số tiền thiếu: luật không đọc được mà câu có số / số chữ đọc được thành tiền', () {
-      expect(luat('cà phê với Nam mất ba chục').oThieu, {OThieu.soTien, OThieu.ghiChu},
-          reason: 'số chưa đọc được còn nằm trong ghi chú');
-      expect(luat('tiền điện một triệu hai').oThieu, {OThieu.soTien, OThieu.ghiChu});
+      expect(luat('cà phê ba chục ở quán').oThieu, {OThieu.soTien, OThieu.ghiChu},
+          reason: 'C4 2026-10-12: luật chọn N2 — câu "mất ba chục" đổi sang "45 ở quán"; số chưa đọc được còn nằm trong ghi chú');
+      // C4 2026-10-12: "một triệu hai" nay luật đọc được (N1) nên không còn là ví dụ ô thiếu; "45" trơ trọi vẫn chưa đọc.
+      expect(luat('cà phê 45 ở quán').oThieu, {OThieu.soTien, OThieu.ghiChu});
     });
 
     test('ngày thiếu: luật không đọc được mà câu có chữ thời gian; "tôi" không phải chữ thời gian', () {
@@ -563,15 +568,15 @@ void main() {
     });
 
     test('ô thiếu tính SAU khi AI lấp: lấp được thì hết thiếu, AI bị chặn thì vẫn thiếu', () {
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000, ghiChu: 'cà phê với Nam')).oThieu, isEmpty);
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000)).oThieu, {OThieu.ghiChu},
-          reason: 'AI lấp số tiền mà không dọn ghi chú — "mất ba chục" vẫn nằm đó');
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 300000)).oThieu, {OThieu.soTien, OThieu.ghiChu});
+      expect(voiAi('cà phê với bạn 45 ở quán', const KetQuaAi(soTien: 45000, ghiChu: 'cà phê với bạn')).oThieu, isEmpty);
+      expect(voiAi('cà phê với bạn 45 ở quán', const KetQuaAi(soTien: 45000)).oThieu, {OThieu.ghiChu},
+          reason: 'AI lấp số tiền mà không dọn ghi chú — "45" vẫn nằm đó');
+      expect(voiAi('cà phê với bạn 45 ở quán', const KetQuaAi(soTien: 450000)).oThieu, {OThieu.soTien, OThieu.ghiChu});
     });
 
     test('ghi chú khi AI lấp số tiền: ghi chú AI được dùng nếu chỉ BỚT chữ (người dùng chốt §8 câu 9)', () {
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000, ghiChu: 'cà phê với Nam')).ghiChu,
-          'cà phê với Nam');
+      expect(voiAi('cà phê với bạn 45 ở quán', const KetQuaAi(soTien: 45000, ghiChu: 'cà phê với bạn')).ghiChu,
+          'cà phê với bạn');
     });
 
     test('ngày: "đầu tháng" luật đọc được → không thiếu; AI tính lệch thì luật thắng (§8 câu 4)', () {
@@ -648,7 +653,7 @@ void main() {
 
     test('quaAi = AI THẬT SỰ lấp ít nhất một ô (dòng nguồn); AI bị chặn hết → "Đọc bằng luật"', () {
       expect(voiAi('ăn phở 45k', const KetQuaAi(soTien: 450000)).quaAi, isFalse);
-      expect(voiAi('cà phê với Nam mất ba chục', const KetQuaAi(soTien: 30000)).quaAi, isTrue);
+      expect(voiAi('cà phê với bạn 45 ở quán', const KetQuaAi(soTien: 45000)).quaAi, isTrue);
       expect(voiAi('hôm qua ăn phở với bạn 45k', const KetQuaAi(ghiChu: 'ăn phở')).quaAi, isTrue,
           reason: 'ghi chú của AI được dùng');
     });
@@ -665,7 +670,7 @@ void main() {
     final tcb = makeWallet(id: 'w-tcb', name: 'Techcombank').copyWith(type: 'bank');
     final an = makeCategory(id: 'c-an', name: 'Ăn uống');
     final vi = [tienMat, test_, tietKiem, muaNha, tcb];
-    KetQuaDocCau cv(String cau, {KetQuaAi? ai, List<Wallet>? dsVi}) =>
+    KetQuaDocCau cv(String cau, {KetQuaAi? ai, List<WalletEntity>? dsVi}) =>
         docCauGiaoDich(cau, now: now, vi: dsVi ?? vi, chonDuoc: [an], ai: ai);
 
     test('⭐ "chuyển 500k từ tiền mặt sang tiết kiệm" → chuyển ví Tiền mặt → Tiết kiệm, không danh mục, ghi chú rỗng', () {

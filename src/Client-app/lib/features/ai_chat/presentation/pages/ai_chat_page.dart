@@ -33,8 +33,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/auth/current_account.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../ai_edge/data/bo_cong_cu.dart';
@@ -44,6 +43,7 @@ import '../../../ai_edge/data/nguon_goi_so.dart';
 import '../../../ai_edge/data/slm_runtime.dart';
 import '../../../ai_edge/data/vong_lap_cong_cu.dart';
 import '../../../ai_edge/domain/bo_markdown.dart';
+import '../../../ai_edge/domain/cau_chao.dart';
 import '../../../ai_edge/domain/chu_de_chan.dart';
 import '../../../ai_edge/domain/cong_cu.dart';
 import '../../../ai_edge/domain/gac_cau.dart';
@@ -53,11 +53,11 @@ import '../../../ai_edge/domain/kiem_cau_tra_loi.dart';
 import '../../../ai_edge/domain/lenh_tao.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
 import '../../../ai_edge/domain/the_cua_cau.dart';
-import '../../../premium/presentation/cubit/goi_cubit.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 import '../../data/doc_lenh_bang_ai.dart';
 import '../../data/nguon_lenh_tao.dart';
-import '../../spike/spike_sql.dart';
 
 /// Bốn câu mở sẵn (spec mục 4.6). Chúng là **câu hỏi thật**, gửi đi y như khi
 /// người dùng tự gõ — không phải bốn nhánh mã riêng.
@@ -179,6 +179,7 @@ class AiChatPage extends StatefulWidget {
     this.coMoHinh,
     this.onHoi,
     this.onHoiBac1,
+    this.onChao,
     this.traLoiMau,
     this.theSoLieuMau,
     this.doTrangThai,
@@ -206,6 +207,10 @@ class AiChatPage extends StatefulWidget {
   /// Khe tiêm cho test: đường BẬC 1 (sáu gói dựng sẵn) mà màn rơi về khi vòng
   /// lặp tool phát [KhongTraCuu]. `null` = đường thật.
   final Stream<SuKienGac> Function(String cauHoi)? onHoiBac1;
+
+  /// Khe tiêm cho test: đường CÂU CHÀO (`cau_chao.dart`) — luồng đã gác. `null` =
+  /// đường thật (một lượt sinh không tool).
+  final Stream<SuKienGac> Function(String cau)? onChao;
 
   /// Khe tiêm cho test: hội thoại dựng sẵn.
   final List<String>? traLoiMau;
@@ -257,7 +262,7 @@ class _AiChatPageState extends State<AiChatPage> {
     try {
       // `context.read` (provider) ném `ProviderNotFoundException`;
       // `BlocProvider.of` bọc nó thành `FlutterError` — không bắt được.
-      return context.read<GoiCubit>().duocDungAiAssistant;
+      return context.read<GoiCubit>().coQuyen(MaQuyen.aiAssistant);
     } on ProviderNotFoundException {
       return true;
     }
@@ -344,14 +349,6 @@ class _AiChatPageState extends State<AiChatPage> {
     _oNhap.clear();
     _cuonXuong();
 
-    // Spike "E2B tự viết SQL" (mục 9.29): chỉ có trong bản build với
-    // `--dart-define=SPIKE_SQL=true`; bản thường hằng là `false` nên nhánh này
-    // bị loại lúc biên dịch. Đi thẳng, không qua chặn chủ đề lẫn bậc tool.
-    if (kSpikeSql && c.toLowerCase().startsWith(kTienToSpikeSql)) {
-      await _spikeSql(c.substring(kTienToSpikeSql.length).trim());
-      return;
-    }
-
     // C3 §8 — cổng rộng TRƯỚC mọi thứ khác (chặn chủ đề, định tuyến, phiên sáu tool): có mô hình thì AI đọc và luật
     // kiểm từng ô; không thì bộ luật dự phòng. Kết quả là thẻ mở form điền sẵn — không lưu gì.
     if (coVeLenhTao(c, now: DateTime.now())) {
@@ -385,6 +382,17 @@ class _AiChatPageState extends State<AiChatPage> {
     }
 
     try {
+      // Câu chào (2026-10-09, người dùng chọn "mô hình đáp, không tra cứu"): đo
+      // OnePlus, "xin chao ban" vào phiên sáu tool, mô hình gọi nhầm tool giao
+      // dịch và đáp "Tôi đã tìm thấy các giao dịch…" sau 15 s. Nay Gemma đáp
+      // trong một lượt sinh không tool, câu bị kiểm trên gói rỗng (mọi chữ số bị
+      // chặn); không câu nào qua thì câu dự phòng.
+      if (laCauChao(c)) {
+        final luongChao =
+            widget.onChao != null ? widget.onChao!(c) : _luongChao(c);
+        await _nhanTungCau(kemDuPhongChao(luongChao), const <GoiSo>[]);
+        return;
+      }
       final (luong, goi) = widget.onHoi != null
           ? (widget.onHoi!(c), const <GoiSo>[])
           : await _luongThat(c) ?? (null, const <GoiSo>[]);
@@ -407,30 +415,6 @@ class _AiChatPageState extends State<AiChatPage> {
       // 9) vấp đúng thế: câu ấy hiện lên sau khi cài đè APK, logcat sạch
       // trơn, và phải sửa mã rồi cài lại mới biết chuyện gì xảy ra.
       debugPrint('[SLM] hỏi đáp hỏng: $e\n$st');
-      _themCuaAi(const _TinNhan.cuaAi(_kHong));
-    }
-  }
-
-  /// Đường đo tạm của spike SQL — xem `spike/spike_sql.dart`.
-  Future<void> _spikeSql(String cauHoi) async {
-    try {
-      final id = currentAccountIdOrNull(context);
-      final moHinh = sl<MoHinhTaiVe>();
-      if (id == null || id <= 0 || !await moHinh.daCo()) {
-        _themCuaAi(const _TinNhan.cuaAi(kChuaSanSangPhien));
-        return;
-      }
-      final runtime = sl<SlmRuntime>();
-      if (!runtime.dangSan) await runtime.moHinhSan(await moHinh.duongTep());
-      final chu = await chaySpikeSql(
-        cauHoi,
-        runtime: runtime,
-        db: sl<AppDatabase>(),
-        idaccount: id,
-      );
-      _themCuaAi(_TinNhan.cuaAi(chu));
-    } catch (e, st) {
-      debugPrint('[SLM][spike] hỏng: $e\n$st');
       _themCuaAi(const _TinNhan.cuaAi(_kHong));
     }
   }
@@ -532,6 +516,25 @@ class _AiChatPageState extends State<AiChatPage> {
         now: DateTime.now(),
       ),
       <GoiSo>[goi],
+    );
+  }
+
+  /// Câu chào: một lượt sinh KHÔNG tool; `kiemCauChao` chặn mọi câu có chữ số,
+  /// vì lời chào không được mang số liệu (`cau_chao.dart`).
+  ///
+  /// ⚠️ Phải NẠP mô hình như `_luongThat`: `sinhDan` ném *"Mô hình chưa nạp"* khi
+  /// câu chào là câu đầu tiên của phiên (nghiệm thu OnePlus 2026-10-09 — đường bậc
+  /// 1 cũng gọi thẳng `sinhDan` nhưng chỉ chạy SAU vòng lặp tool, khi mô hình đã
+  /// nạp, nên chưa từng vấp).
+  Stream<SuKienGac> _luongChao(String cau) async* {
+    final runtime = sl<SlmRuntime>();
+    if (!runtime.dangSan) {
+      await runtime.moHinhSan(await sl<MoHinhTaiVe>().duongTep());
+    }
+    yield* gacTheoCau(
+      runtime.sinhDan(promptTroChuyen(cau), tranToken: 120),
+      kiem: kiemCauChao,
+      huy: runtime.huy,
     );
   }
 

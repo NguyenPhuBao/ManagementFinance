@@ -3,16 +3,21 @@ import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/category/category_classify.dart';
-import '../../../../core/database/app_database.dart';
+import '../../../category/domain/category_classify.dart';
+import '../../../category/data/models/category_entity.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
-import '../../../../core/notification/mo_tu_tom_tat_bien_dong.dart';
+import '../../../notification/application/mo_tu_tom_tat_bien_dong.dart';
+import '../../../notification/data/repositories/thong_bao_repository.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../analytics/domain/pham_vi_ky.dart';
 import '../../../analytics/presentation/widgets/chon_pham_vi_sheet.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../category/data/repositories/category_management_repository.dart';
 import '../../../category/domain/gan_hang_loat.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
+import '../../data/repositories/transaction_repository.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_filter.dart';
 import '../../domain/transaction_lookup.dart';
@@ -41,7 +46,7 @@ class TransactionPage extends StatefulWidget {
   final String? initialWalletId;
 
   /// Số giao dịch chưa có danh mục của tài khoản, dạng **stream** — nuôi thẻ lối vào C1. `null` → đếm bằng
-  /// `demChuaGan` trên `transactionDao.watchAll` (toàn bộ sổ, không theo kỳ). Ca test tiêm thẳng.
+  /// `demChuaGan` trên `TransactionRepository.watchAll` (toàn bộ sổ, không theo kỳ). Ca test tiêm thẳng.
   final Stream<int> Function(int idaccount)? nguonChuaGan;
 
   /// D1 — số hàng biến động số dư chưa ghi, dạng **stream** — nuôi thẻ *"Có N mục chờ ghi"*. `null` →
@@ -80,8 +85,8 @@ class _TransactionPageState extends State<TransactionPage> {
   // khoản và giữ lại: tạo trong build là mỗi lần đổi tháng lại đăng ký lại,
   // danh sách chớp trắng một nhịp.
   int? _lookupAccount;
-  Stream<List<Wallet>>? _wallets;
-  Stream<List<Category>>? _categories;
+  Stream<List<WalletEntity>>? _wallets;
+  Stream<List<CategoryEntity>>? _categories;
 
   /// Số khoản chưa có danh mục (C1) — cùng nếp tạo MỘT lần mỗi tài khoản như hai stream tra tên.
   Stream<int>? _chuaGan;
@@ -130,13 +135,12 @@ class _TransactionPageState extends State<TransactionPage> {
   void _ensureLookupStreams(int idaccount) {
     if (_lookupAccount == idaccount) return;
     _lookupAccount = idaccount;
-    final db = sl<AppDatabase>();
-    _wallets = db.walletDao.watchAll(idaccount);
-    _categories = db.categoryDao.watchAll(idaccount);
+    _wallets = sl<WalletRepository>().watchAll(idaccount);
+    _categories = sl<CategoryManagementRepository>().watchAll(accountId: idaccount);
     _chuaGan = widget.nguonChuaGan?.call(idaccount) ??
-        db.transactionDao.watchAll(idaccount).map(demChuaGan);
+        sl<TransactionRepository>().watchAll(idaccount).map(demChuaGan);
     _bienDong = widget.nguonBienDong?.call(idaccount) ??
-        db.notificationDao.watchDemBienDong(idaccount);
+        sl<ThongBaoRepository>().watchDemBienDong(idaccount);
   }
 
   /// Đổi kỳ đang xem. [soKy] **dương là lùi**, âm là tiến — cùng chiều với
@@ -248,14 +252,14 @@ class _TransactionPageState extends State<TransactionPage> {
                               applyTransactionFilter(state.giaoDich, _filter);
                           final summary = summarizeTransactions(txs);
 
-                          return StreamBuilder<List<Wallet>>(
+                          return StreamBuilder<List<WalletEntity>>(
                             stream: _wallets,
                             builder: (_, wallets) =>
-                                StreamBuilder<List<Category>>(
+                                StreamBuilder<List<CategoryEntity>>(
                               stream: _categories,
                               builder: (_, categories) {
                                 final walletList =
-                                    wallets.data ?? const <Wallet>[];
+                                    wallets.data ?? const <WalletEntity>[];
                                 final lookup = TransactionLookup(
                                   wallets: walletList,
                                   categories: categories.data ?? const [],
@@ -269,7 +273,7 @@ class _TransactionPageState extends State<TransactionPage> {
                                       onChanged: (f) =>
                                           setState(() => _filter = f),
                                       pickCategory: () =>
-                                          context.push<Category>(
+                                          context.push<CategoryEntity>(
                                         '/add/category',
                                         extra: kCategoryClassifies.first,
                                       ),

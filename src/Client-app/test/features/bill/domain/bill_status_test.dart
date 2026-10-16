@@ -8,12 +8,12 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/bill/domain/bill_status.dart';
 
-Bill _bill({
+BillEntity _bill({
   String id = 'b1',
   required DateTime dueDate,
   double amount = 100000,
@@ -21,7 +21,7 @@ Bill _bill({
   String payStatus = 'Pending',
   String? timeNotification = '3',
 }) =>
-    Bill(
+    BillEntity(
       id: id,
       idaccount: 10,
       walletId: 'w1',
@@ -42,7 +42,6 @@ Bill _bill({
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 

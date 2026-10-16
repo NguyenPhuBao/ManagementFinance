@@ -2,8 +2,8 @@
 /// `8ca1338e…`) — chỉ kiểm CHỖ NỐI; phép chọn cụm có bộ test riêng (`category/domain/de_xuat_tu_khoa_test.dart`).
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
@@ -52,7 +52,7 @@ void main() {
   final anUong = makeCategory(id: 'food', name: 'Ăn uống', isDefault: true);
   final diChuyen = makeCategory(id: 'move', name: 'Di chuyển', isDefault: true);
 
-  CategoryTree treeOf(List<Category> defaults) =>
+  CategoryTree treeOf(List<CategoryEntity> defaults) =>
       CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: defaults);
 
   late FakeCategoryRepository repo;

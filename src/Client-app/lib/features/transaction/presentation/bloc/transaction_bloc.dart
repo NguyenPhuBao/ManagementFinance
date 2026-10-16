@@ -20,6 +20,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     on<LoadTransactionsEvent>(_onLoadTransactions);
     on<TransactionsUpdatedEvent>(_onTransactionsUpdated);
     on<AddTransactionEvent>(_onAddTransaction);
+    on<AddTransactionsEvent>(_onAddTransactions);
     on<UpdateTransactionEvent>(_onUpdateTransaction);
     on<DeleteTransactionEvent>(_onDeleteTransaction);
     on<ChonKyEvent>(_onChonKy);
@@ -67,6 +68,25 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
   Future<void> _onAddTransaction(
     AddTransactionEvent event,
     Emitter<TransactionState> emit,
+  ) =>
+      _them(
+        emit,
+        () => transactionRepository.addTransaction(
+          event.transaction,
+          destinationWalletId: event.destinationWalletId,
+        ),
+      );
+
+  Future<void> _onAddTransactions(
+    AddTransactionsEvent event,
+    Emitter<TransactionState> emit,
+  ) =>
+      _them(emit, () => transactionRepository.addTransactions(event.transactions));
+
+  /// Một lần thêm (một hay nhiều giao dịch) → đúng MỘT `actionSuccess`.
+  Future<void> _them(
+    Emitter<TransactionState> emit,
+    Future<void> Function() ghi,
   ) async {
     final currState = state is TransactionLoadedState ? (state as TransactionLoadedState) : null;
     if (currState != null) {
@@ -74,10 +94,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     }
 
     try {
-      await transactionRepository.addTransaction(
-        event.transaction,
-        destinationWalletId: event.destinationWalletId,
-      );
+      await ghi();
       syncEngine?.scheduleSync();
 
       if (state is TransactionLoadedState) {

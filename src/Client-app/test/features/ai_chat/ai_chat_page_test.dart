@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:flowmoney/features/ai_chat/data/doc_lenh_bang_ai.dart';
 import 'package:flowmoney/features/ai_chat/presentation/pages/ai_chat_page.dart';
+import 'package:flowmoney/features/ai_edge/domain/cau_chao.dart';
 import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
 import 'package:flowmoney/features/ai_edge/domain/lenh_tao.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
@@ -100,6 +101,58 @@ void main() {
     expect(soLanGoi, 0,
         reason: 'Chặn TRƯỚC khi gọi mô hình: 2,3 giây cho một câu chắc chắn '
             'bị vứt đi là lãng phí, và mô hình không nên thấy câu hỏi ấy.');
+  });
+
+  group('câu chào (2026-10-09 — mô hình đáp, không tra cứu)', () {
+    testWidgets('⭐ "xin chào" đi đường chào, KHÔNG vào vòng lặp tool', (t) async {
+      var soLanHoi = 0;
+      var daChao = '';
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        onHoi: (_) {
+          soLanHoi++;
+          return Stream.value(const CauQua('Tôi đã tìm thấy các giao dịch trong kỳ tháng này.'));
+        },
+        onChao: (c) {
+          daChao = c;
+          return Stream.value(const CauQua('Chào bạn! Bạn muốn xem chi tiêu hay ngân sách?'));
+        },
+      )));
+      await t.enterText(find.byType(TextField), 'xin chào');
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pumpAndSettle();
+      expect(daChao, 'xin chào');
+      expect(soLanHoi, 0,
+          reason: 'Đo OnePlus 09/10: câu chào vào phiên sáu tool, mô hình gọi nhầm tool giao dịch, 15 s');
+      expect(find.textContaining('Bạn muốn xem chi tiêu'), findsOneWidget);
+    });
+
+    testWidgets('mọi câu Gemma bị chặn → câu chào dự phòng, không phải "không chắc chắn"', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        onChao: (_) => Stream.value(const BiChan('Bạn đã chi 500.000 đ.')),
+      )));
+      await t.enterText(find.byType(TextField), 'cảm ơn bạn');
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pumpAndSettle();
+      expect(find.text(kCauChaoDuPhong), findsOneWidget);
+    });
+
+    testWidgets('chào kèm câu hỏi → vẫn vòng lặp tool', (t) async {
+      var soLanChao = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        onHoi: (_) => Stream.value(const CauQua('xong')),
+        onChao: (_) {
+          soLanChao++;
+          return Stream.value(const CauQua('chào'));
+        },
+      )));
+      await t.enterText(find.byType(TextField), 'chào, tháng này tôi chi bao nhiêu');
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pumpAndSettle();
+      expect(soLanChao, 0);
+    });
   });
 
   testWidgets('câu hỏi hợp lệ thì CÓ gọi mô hình và hiện câu trả lời',

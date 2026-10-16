@@ -258,3 +258,14 @@ const String _chiDanVietCau =
     'Chỉ dùng tên và số có trong kết quả, chép nguyên chuỗi số và ngày tháng (kể cả "đ", '
     'dấu phẩy và dấu gạch chéo), nêu tên đối tượng trước con số, không tự tính toán hay '
     'suy đoán. Kết quả không có giao dịch nào thì nói rõ là không có.';
+
+/// Câu chào ở màn Trợ lý AI (`cau_chao.dart`, 2026-10-09): một lượt sinh KHÔNG tool, không số liệu. ⚠️ Chỉ dẫn không
+/// chứa chữ số — màn kiểm câu trả lời trên gói RỖNG, nên mọi chữ số mô hình viết đều bị chặn.
+String promptTroChuyen(String cau) => '$_chiDanTroChuyen\n'
+    'Câu của người dùng: $cau\n'
+    'Trả lời:';
+
+const String _chiDanTroChuyen =
+    'Bạn là trợ lý tài chính của ứng dụng FlowMoney. Người dùng vừa chào, cảm ơn hoặc hỏi bạn là ai. Đáp lại thân '
+    'thiện bằng tiếng Việt trong một hoặc hai câu ngắn, xưng "mình", và gợi ý họ có thể hỏi về chi tiêu, ngân sách, '
+    'hoá đơn, mục tiêu tiết kiệm hoặc ví của họ. Không nêu bất kỳ con số nào, không bịa số liệu.';

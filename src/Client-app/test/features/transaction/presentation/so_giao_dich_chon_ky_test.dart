@@ -19,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
+import '../../../helpers/nguon_doc_gia.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/analytics/presentation/widgets/chon_pham_vi_sheet.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
@@ -70,6 +71,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     repo = _GhiKhoangRepository();
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
     sl.registerFactory<TransactionBloc>(
       () => TransactionBloc(transactionRepository: repo),
     );

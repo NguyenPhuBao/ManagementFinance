@@ -10,7 +10,7 @@ library;
 
 import 'package:intl/intl.dart';
 
-import '../../../core/database/app_database.dart';
+import '../data/models/bill_entity.dart';
 
 /// Trần ân hạn, chặn gõ nhầm (ô nhập lọc 3 chữ số).
 const int kAnHanToiDa = 365;
@@ -30,7 +30,7 @@ int anHanTuMoc({required DateTime ketThucKy, required DateTime hanTra}) {
 }
 
 /// Ân hạn của một hàng. `periodEnd` NULL = hàng cũ, kết thúc kỳ trùng hạn trả → 0.
-int anHanCua(Bill b) {
+int anHanCua(BillEntity b) {
   final ketThuc = b.periodEnd;
   if (ketThuc == null) return 0;
   return anHanTuMoc(ketThucKy: ketThuc, hanTra: b.dueDate);

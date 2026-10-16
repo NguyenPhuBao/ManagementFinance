@@ -155,4 +155,25 @@ void main() {
         reason: 'Đăng xuất xong mà bộ theo dõi còn sống là banner của phiên cũ '
             'hiện trên màn hình phiên mới.');
   });
+
+  test('coMangNgay đọc trạng thái TỨC THỜI — không chờ ổn định 3 giây (C4 chọn lối nghe)', () async {
+    final c = _ConnectivityGia()..hienTai = [ConnectivityResult.none];
+    final m = ConnectionMonitor(connectivity: c);
+    expect(await m.coMangNgay(), isFalse);
+    c.hienTai = [ConnectivityResult.mobile];
+    expect(await m.coMangNgay(), isTrue);
+  });
+
+  test('coMangNgay: checkConnectivity NÉM → true (lối Android tự báo lỗi mạng nếu sai)', () async {
+    final m = ConnectionMonitor(connectivity: _ConnectivityNem());
+    expect(await m.coMangNgay(), isTrue);
+  });
+}
+
+class _ConnectivityNem implements Connectivity {
+  @override
+  Future<List<ConnectivityResult>> checkConnectivity() async => throw StateError('hỏng');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

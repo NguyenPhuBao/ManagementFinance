@@ -9,7 +9,7 @@ import 'package:flowmoney/features/ai_edge/domain/kiem_cau_tra_loi.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_nhan.dart';
 import 'package:flowmoney/features/ai_edge/domain/kiem_so.dart';
 import 'package:flowmoney/features/ai_edge/domain/nhan_xet.dart';
-import 'package:flowmoney/features/analytics/data/analytics_repository.dart';
+import 'package:flowmoney/features/analytics/data/models/thong_ke_ky.dart';
 import 'package:flowmoney/features/analytics/domain/bao_cao_xuat.dart';
 import 'package:flowmoney/features/analytics/domain/chi_bat_thuong.dart';
 import 'package:flowmoney/features/analytics/domain/du_bao_dong_tien.dart';
@@ -280,6 +280,14 @@ void main() {
         );
     final motDong = [bt('Ăn uống', 2400000, 900000)];
     final danhMuc = [dmB3('Ăn uống', 2400000), dmB3('Di chuyển', 355000)];
+
+    test('boChiBatThuong (không có quyền anomaly_spending_insights) → câu không nhắc danh mục bất thường', () {
+      final n = GoiSoPhanTich.tu(_tk(chiBatThuong: motDong, danhMuc: danhMuc), boChiBatThuong: true)
+          .mauCau();
+      expect(n.cau, isNot(contains('thường lệ')),
+          reason: 'spec phân quyền 2026-10-08: thay bằng dòng khoá ở trang, không lộ số trong câu');
+      expect(n.cau, isNot(contains('2.400.000')));
+    });
 
     test('một dòng → câu nêu tên + hai số, mức cảnh báo', () {
       final n = GoiSoPhanTich.tu(_tk(chiBatThuong: motDong, danhMuc: danhMuc)).mauCau();

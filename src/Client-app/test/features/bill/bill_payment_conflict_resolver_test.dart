@@ -6,6 +6,7 @@
 /// **im lặng**.
 library;
 
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
@@ -16,7 +17,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
-import 'package:flowmoney/features/bill/data/services/bill_payment_conflict_resolver.dart';
+import 'package:flowmoney/features/bill/application/bill_payment_conflict_resolver.dart';
 
 /// Chỉ ghi lại lời gọi và ném thứ được dặn — đủ để đo hành vi của resolver mà
 /// không phải dựng cả `BillRepositoryImpl`.
@@ -221,7 +222,7 @@ void main() {
     await themKhoanChi();
     await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
 
-    final b = (await db.billDao.getById(idBill))!;
+    final b = BillEntity.fromDrift((await db.billDao.getById(idBill))!);
     expect(daCoKhoanChi(b), isTrue,
         reason: 'VÒNG LẶP ĐÃ VẤP THẬT trên hai máy ảo ngày 2026-09-13: '
             '`undoPayment` kéo hoá đơn về `Pending` — đúng cho ca người dùng tự '
@@ -232,6 +233,53 @@ void main() {
             'phút, ví phình thêm 350.000 mỗi vòng.\n'
             'Và `markSynced` (ca dưới) chặn luôn đường tự sửa: hoá đơn trên '
             'server không đổi nữa nên chu kỳ pull sau không mang `Payed` về.');
+  });
+
+  group('BILL_PERIOD_ALREADY_PAID — kỳ TRÙNG đã được trả (đơn 41)', () {
+    const ma = 'BILL_PERIOD_ALREADY_PAID';
+
+    test('gỡ khoản trả và cho khoản chi thoát hàng đợi', () async {
+      await themKhoanChi();
+      await phat(ketQuaVoi(code: ma));
+      expect(bills.daGoiUndo, [idBill],
+          reason: 'Server có khoản chi cho một kỳ trùng của hoá đơn này — khoản '
+              'trả của máy này là lần trả thứ hai cho cùng một kỳ, phải gỡ và '
+              'hoàn tiền về ví.');
+      expect((await db.transactionDao.getById(idKhoanChi))!.syncStatus,
+          'synced',
+          reason: 'Server chưa bao giờ có khoản chi này; để nó mang cờ xoá vào '
+              'hàng đợi là vòng lặp `Record not found`.');
+    });
+
+    test('KHÔNG đánh dấu hoá đơn đã trả — để lượt gộp kỳ trùng gỡ nó',
+        () async {
+      await themKhoanChi();
+      await phat(ketQuaVoi(code: ma));
+      final b = BillEntity.fromDrift((await db.billDao.getById(idBill))!);
+      expect(conPhaiTra(b), isTrue,
+          reason: 'Khác `BILL_ALREADY_PAID`: server KHÔNG có khoản chi cho '
+              'hoá đơn NÀY, mà cho kỳ trùng của nó. Đánh dấu nó đã trả thì '
+              '`kyTrungCanGo` thấy hai kỳ cùng đã đóng và giữ cả hai mãi — một '
+              'kỳ "đã trả" không có khoản chi nào.');
+    });
+
+    test('sinh thông báo, cùng khoá chống trùng với BILL_ALREADY_PAID',
+        () async {
+      await themKhoanChi();
+      await phat(ketQuaVoi(code: ma));
+      await phat(ketQuaVoi(code: 'BILL_ALREADY_PAID'));
+      final ds = await db.notificationDao.getAll(accountId);
+      expect(ds, hasLength(1));
+      expect(ds.single.kind, 'billPaidOnOtherDevice');
+      expect(ds.single.subjectId, idBill);
+    });
+
+    test('BỎ QUA mã này ở entity khác transaction', () async {
+      await themKhoanChi();
+      await phat(ketQuaVoi(
+          code: ma, entity: SyncEntityType.bill, localId: idBill));
+      expect(bills.daGoiUndo, isEmpty);
+    });
   });
 
   group('thông báo', () {

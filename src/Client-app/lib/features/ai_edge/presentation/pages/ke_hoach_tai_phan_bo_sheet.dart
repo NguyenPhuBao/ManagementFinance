@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../core/database/app_database.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -9,9 +8,9 @@ import '../../../budget/data/repositories/budget_repository.dart';
 import '../../domain/ap_dung_ke_hoach.dart';
 import '../../domain/tai_phan_bo.dart';
 
-/// Kiểu của hàm ghi một hàng phản hồi — `AiFeedbackDao.ghi` ngoài đời, một
+/// Kiểu của hàm ghi một hàng phản hồi — `TaiPhanBoNguon.ghiPhanHoi` ngoài đời, một
 /// closure gom hàng trong test.
-typedef GhiPhanHoi = Future<void> Function(AiRebalancingFeedbacksCompanion);
+typedef GhiPhanHoi = Future<void> Function(PhanHoiTaiPhanBo);
 
 /// Mở sheet kế hoạch tái phân bổ (màn Stitch `f02861d9…`, khối 2).
 ///

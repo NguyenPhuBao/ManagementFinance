@@ -167,6 +167,15 @@ Các tài liệu sau đây đã được giải quyết trọn vẹn và chuyể
 
 Thư mục này nay **58** tệp + mục lục (đếm bằng máy 2026-10-07).
 
+## 4h. Client soát và chuyển 2026-10-09 (mục 39)
+
+| Tài liệu | Kết quả soát |
+|---|---|
+| [PHAN_QUYEN_THEO_GOI_KHAO_SAT.md](./PHAN_QUYEN_THEO_GOI_KHAO_SAT.md) | ✅ **Mục 39** (đơn khảo sát + đề xuất hợp đồng của client). Backend làm bước 3–4 ở `0eb4a05f` (bảng `feature` + `account_type_permission`, `/subscription-info` trả `limits` + `features` theo gói **hiệu lực**, `null` = không giới hạn, socket `account.permissions_updated`); client làm bước 5 ngày 2026-10-08. Đối chiếu từng yêu cầu ở banner đầu tệp. Đường vòng qua trần (mục 5 của đơn) **cố ý chưa chặn** phía client. |
+
+Thư mục này nay **58** tệp + mục lục (đếm bằng máy 2026-10-09, sau khi chuyển mục 39). ⚠️ Mốc *"58"* ngay trên (2026-10-07)
+đếm **không khớp** phép đếm hôm nay (57 trước khi chuyển) — **đừng cộng dồn, hãy đếm lại**.
+
 ---
 
 ## 5. Hai chỗ dễ đọc nhầm

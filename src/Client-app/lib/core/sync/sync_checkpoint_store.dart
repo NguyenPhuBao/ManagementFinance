@@ -22,7 +22,16 @@ class SecureStorageSyncCheckpointStore implements SyncCheckpointStore {
 
   final FlutterSecureStorage _storage;
 
-  static String _keyFor(int idaccount) => 'sync_last_pull_$idaccount';
+  /// ⚠️ **`_v2` là cố ý** (G67, 2026-10-08): mốc nay theo giờ-server
+  /// (`Server_update_at`), mốc cũ theo giờ ghi của máy. Những hàng G67 từng bỏ
+  /// sót mang giờ-server cũ (migration 20 chép `Update_at` sang), nằm DƯỚI mốc cũ
+  /// — chỉ đổi luật lấy mốc thì chúng vẫn không bao giờ về. Đổi tên khoá làm mốc
+  /// cũ vô hình → `since = 1970`, kéo toàn bộ **đúng một lần** cho mỗi tài khoản
+  /// trên mỗi máy. Đừng đổi lại tên cũ; đổi tiếp lên `_v3` là ép thêm một lần.
+  static String _keyFor(int idaccount) => 'sync_last_pull_v2_$idaccount';
+
+  /// Khoá trước G67 — chỉ còn để dọn.
+  static String _keyCuFor(int idaccount) => 'sync_last_pull_$idaccount';
 
   @override
   Future<DateTime?> read(int idaccount) async {
@@ -51,6 +60,7 @@ class SecureStorageSyncCheckpointStore implements SyncCheckpointStore {
   Future<void> clear(int idaccount) async {
     try {
       await _storage.delete(key: _keyFor(idaccount));
+      await _storage.delete(key: _keyCuFor(idaccount));
     } catch (_) {
       // Bỏ qua — xem chú thích ở đầu lớp.
     }

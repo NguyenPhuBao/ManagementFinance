@@ -8,7 +8,7 @@
 /// tháng chứa `now`. Không tham số; tham số mô hình điền thừa bị bỏ qua.
 library;
 
-import '../../analytics/data/analytics_repository.dart';
+import '../../analytics/data/repositories/analytics_repository.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 import '../domain/cong_cu.dart';
 import '../domain/hang_du_bao.dart';

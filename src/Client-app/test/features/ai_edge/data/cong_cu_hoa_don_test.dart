@@ -3,9 +3,8 @@
 /// hàm mới lỡ gọi thêm sẽ ném.
 library;
 
-import 'package:drift/drift.dart' show Value;
-import 'package:flowmoney/core/bill/bill_recurrence.dart';
-import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/ai_edge/data/cong_cu_hoa_don.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_hoa_don.dart';
@@ -13,7 +12,7 @@ import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Bill _bill(String ten, DateTime dueDate, {bool tuTra = false}) => Bill(
+BillEntity _bill(String ten, DateTime dueDate, {bool tuTra = false}) => BillEntity(
       id: ten,
       idaccount: 10,
       walletId: 'w1',
@@ -34,14 +33,13 @@ Bill _bill(String ten, DateTime dueDate, {bool tuTra = false}) => Bill(
       note: '',
       isDeleted: false,
       syncStatus: 'synced',
-      syncRetryCount: 0,
       updatedAt: DateTime(2026, 9, 1),
     );
 
 class _HoaDon implements BillRepository {
   final daHoi = <int>[];
   @override
-  Stream<List<Bill>> watchBills(int idaccount) {
+  Stream<List<BillEntity>> watchBills(int idaccount) {
     daHoi.add(idaccount);
     return Stream.value([
       _bill('Kiem', DateTime(2026, 9, 1)),
@@ -133,12 +131,12 @@ void main() {
 
 class _HoaDonKyDaTra implements BillRepository {
   @override
-  Stream<List<Bill>> watchBills(int idaccount) => Stream.value([
+  Stream<List<BillEntity>> watchBills(int idaccount) => Stream.value([
         _bill('Kiem', DateTime(2026, 9, 1)),
         _bill('Netflix', DateTime(2026, 9, 28), tuTra: true)
             .copyWith(id: 'netflix-28-09', payStatus: kBillPayed, isPaid: true),
         _bill('Netflix', DateTime(2026, 10, 5), tuTra: true)
-            .copyWith(id: 'netflix-05-10', generatedFromBillId: const Value('netflix-28-09')),
+            .copyWith(id: 'netflix-05-10', generatedFromBillId: 'netflix-28-09'),
       ]);
 
   @override

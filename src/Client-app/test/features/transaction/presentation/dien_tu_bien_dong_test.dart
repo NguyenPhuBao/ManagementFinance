@@ -9,8 +9,8 @@
 /// 4. **Nhắc trùng chỉ nhắc**, không chặn lưu.
 library;
 
-import 'package:flowmoney/core/database/app_database.dart';
-import 'package:flowmoney/core/notification/nhap_bien_dong.dart';
+import 'package:flowmoney/features/notification/application/nhap_bien_dong.dart';
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/vi_theo_nguon_store.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
@@ -52,7 +52,7 @@ void main() {
 
   Widget app({List<KhoanSo> so = const []}) {
     final bloc = TransactionBloc(transactionRepository: repo);
-    CategoryTree cay(List<Category> c) =>
+    CategoryTree cay(List<CategoryEntity> c) =>
         CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: c);
     final router = GoRouter(
       initialLocation: '/start/add',

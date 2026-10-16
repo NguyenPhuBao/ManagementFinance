@@ -1,4 +1,46 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (0 mục tồn đọng — ĐÃ HOÀN TẤT 100%)
+# Backend & Client — DANH SÁCH CẦN LÀM (4 mục chờ backend — mục 41, 42, 43, 44)
+
+> ✉️ **Client đặt mục 44, 2026-10-16 (sau gộp `main` @ `d72ccd45`):** [`SOAT_SAU_GOP_D72CCD45.md`](./SOAT_SAU_GOP_D72CCD45.md)
+> — có một mục mức **cao**. **(A)** `database/20_add_payment_reconciliation…` và `24_add_is_template…` **trùng số** với
+> `20_add_server_update_at_sync_tables.sql` và `24_add_actor_role_to_aiops_incident.sql`. `apply_migration_20.js` bị viết
+> đè sang tệp thanh toán, nên migration đồng bộ `Server_update_at` (đơn 37) **không còn script áp**. Dựng CSDL mới là hỏng
+> `/sync/pull`. **(B)** webhook chỉ chặn xử lý lại khi `PAID`: đơn `REFUNDED` lùi về `REFUND_PENDING` (có thể hoàn tiền hai
+> lần), `amount_received` bị ghi đè. **(C)** regex mã nhận diện bắt `CSCYDE` (tiền tố PayOS) thay cho mã 6 ký tự. **(D)**
+> `schema.prisma` `status VarChar(25)` mà CSDL vẫn `varchar(20)`, không SQL nào nới. **(E)** `confirm-upgrade` thiếu
+> `accept` thì mặc định kích hoạt. **(F)** hợp đồng thanh toán mới (3 sự kiện, 1 endpoint, 3 trạng thái, hạn 10 phút)
+> chưa vào `Event-Notification-to-ClientApp.md`. Mục 43 B vẫn mở (`findOrCreateOrderByCode` không đổi). CSDL dev đo
+> 2026-10-16: hai tệp thanh toán **chưa áp**. `DA-XONG/` đếm bằng máy 2026-10-16: **58** tệp + mục lục. `ls CAN-LAM/`
+> nay: **41 · 42 · 43 · 44** · `CLIENT_INTEGRATION_GUIDE.md` + README.
+>
+> ✉️ **Client đặt mục 43, 2026-10-15 (sau gộp `main` @ `cd2ee572`):** [`SOAT_SAU_GOP_CD2EE572.md`](./SOAT_SAU_GOP_CD2EE572.md)
+> — mức **cao**. Đối chiếu hợp đồng `docs/Admin-web/Event-Notification-to-ClientApp.md` với mã hai phía gặp: **(A)**
+> AIOps khoá tài khoản ghi `Status = 'Locked'` (ngoài `ck_account_status`, mà CSDL dev **không có** ràng buộc ấy — đo:
+> 0 CHECK) → `auth.js` trả `ACCOUNT_DELETED` → client **xoá dữ liệu trên máy**, kể cả phần chưa đồng bộ; ai gõ sai mật
+> khẩu 15 lần cho tên đăng nhập của người khác cũng kích hoạt được. **(B)** webhook PayOS gặp `orderCode` lạ tạo đơn cho
+> tài khoản `idaccount` nhỏ nhất và nâng Premium nhầm. **(C)** đăng nhập lúc bảo trì trả 503 **không `code`**. **(D)**
+> mười hai chỗ tài liệu hợp đồng lệch mã (đếm bằng máy) (body `FEATURE_DISABLED` phẳng, `sync.completed` `summary`, `user.notification`
+> là mã chết…) + đính chính bảng hiện trạng client. Client làm phần của mình một lượt sau khi đơn đóng (người dùng chốt).
+> `DA-XONG/` đếm bằng máy 2026-10-15: **58** tệp + mục lục. `ls CAN-LAM/` nay: **41 · 42 · 43** ·
+> `CLIENT_INTEGRATION_GUIDE.md` + README.
+>
+> ✉️ **Client đặt mục 42, 2026-10-10:** [`TAI_LIEU_KIEN_TRUC_CLIENT_APP.md`](./TAI_LIEU_KIEN_TRUC_CLIENT_APP.md) — mức
+> **thấp**, chỉ **sửa chữ**. `Project.md` §3.3 ghi *"Mỗi màn hình có BLoC riêng"* trong khi app có 3 Bloc + 7 Cubit cho
+> màn có luồng ghi, 289 `setState`, màn đọc dùng stream Drift; dòng *Repository* cũng tả nguồn local/remote không có. Đơn
+> kèm câu thay thế từng dòng, ba dòng thêm (test quét kiến trúc, cổng nền tảng, chạy nền WorkManager) và một câu hỏi có
+> mặc định (§3.3 **trỏ** sang `docs/KIEN_TRUC_CLIENT_APP.md`). Không đổi mã, lược đồ, payload. `DA-XONG/` đếm bằng máy
+> 2026-10-10: **58** tệp + mục lục. `ls CAN-LAM/` nay: **41 · 42** · `CLIENT_INTEGRATION_GUIDE.md` + README.
+>
+> ✉️ **Client đặt mục 41, 2026-10-09:** [`CHAN_TRA_HAI_LAN_THEO_KY.md`](./CHAN_TRA_HAI_LAN_THEO_KY.md) — mức **cao**.
+> Chốt `chanTraHaiLan` chỉ chặn khoản chi thứ hai cùng `Idbill`; hai máy cùng trả một kỳ thì sinh hai **kỳ con trùng**
+> (khác `Idbill`) và bộ tự trả trừ tiền cho từng kỳ — đo CSDL dev: tài khoản 10 bị trừ **3 × 100.000 đ** cho kỳ 05/10;
+> tài khoản 17 và 19 đang có kỳ trùng bật tự trả, hạn 13/10. Xin mở rộng chốt sang **kỳ anh em** (cùng
+> `Previous_bill_id` + `Due_date`) với mã riêng `BILL_PERIOD_ALREADY_PAID`. Không đổi lược đồ, payload, LWW.
+> `DA-XONG/` đếm bằng máy 2026-10-09: **58** tệp + mục lục.
+>
+> ✅ **Client soát mục 39 bằng mã 2026-10-09 và chuyển sang `DA-XONG/`** (mục 4h mục lục): năm yêu cầu hợp đồng đều có
+> trong mã backend; đường vòng qua trần (§5 của đơn) phía client cố ý chưa chặn. `ls CAN-LAM/` nay: **41** ·
+> `CLIENT_INTEGRATION_GUIDE.md` + README.
+
 
 **Cập nhật:** 2026-10-07 tối — Toàn bộ chuỗi 5 bước phát triển tính năng **Phân quyền tính năng động theo loại tài khoản** (Mục 39) đã hoàn tất 100% trên cả 3 phân hệ: CSDL Supabase (Migration 22), Backend Node.js (`permission.repository.js`, API `/permissions`, API `/subscription-info`), Admin-web (trang `/permissions`), và Client-app Flutter (`TranGoi`, `TrangThaiGoi`, UI guards AI Chat & Nhập nhanh). Hiện tại **0 mục tồn đọng**.
 
@@ -8,17 +50,29 @@
 - **Mục 38 (`CLIENT_PREMIUM_PAYOS.md`):** ĐÃ XONG. `GET /api/payment/subscription-info` trả thêm `limits`, `price`, `packageDays`. Đã lưu trữ sang `DA-XONG/`.
 - **Mục 34 (`CLIENT_NHAC_SAU_APP_NGAN_HANG.md`):** ĐÃ ĐÓNG & LƯU TRỮ (`DA-XONG/`).
 
+> ✉️ **Client soát mục 39, 2026-10-08:** câu *"Client-app … 100%"* ở trên chỉ đúng với phần mã backend tự viết vào
+> `src/Client-app` — khi gộp `0eb4a05f` nó thi hành **2/11** quyền (Trợ lý AI, Nhập nhanh), không trần nào trong hai
+> trần mới (`bills`, `custom_categories`), và mang **ba lỗi** (bảng quyền không xét hạn khi offline; đếm danh mục riêng
+> tính cả 13 bản sao mặc định → Basic không tạo được danh mục nào; đếm hoá đơn tính kỳ `Skipped`). **Bước 5 phía client
+> xong mã 2026-10-08** (spec `specs/2026-10-08-phan-quyen-tinh-nang-client-design.md`; `docs/PREMIUM_FEATURE.md` mục 8):
+> đủ 11 quyền + 5 trần, ba lỗi đóng; ✅ **nghiệm thu OnePlus đạt cùng đêm** (kể cả admin gạt quyền → app mở / khoá qua socket trong vài giây). Backend **không phải làm gì thêm**; tệp
+> `PHAN_QUYEN_THEO_GOI_KHAO_SAT.md` để backend chuyển sang `DA-XONG/` khi muốn. `DA-XONG/` đếm bằng máy 2026-10-08:
+> **57** tệp + mục lục.
+>
 > 📌 **HIỆN TRẠNG 2026-10-07:**
 > - Toàn bộ các yêu cầu tích hợp giữa Backend, Admin-web và Client-app đã được hoàn tất và thẩm định thực tế.
 > - `CLIENT_INTEGRATION_GUIDE.md` trong thư mục này là **hướng dẫn** của Backend, không phải đơn xin.
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **0** mục)
+## 0. Còn phải làm (Hiện tại: **4** mục — đếm bằng `ls` 2026-10-16, sau gộp `main` @ `d72ccd45`: backend chưa trả lời mục 41, 42, 43)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
-| — | Không còn mục tồn đọng | — | Toàn bộ 40 mục kỹ thuật đã hoàn thành | ✅ ĐÃ HOÀN TẤT |
+| **41** | [CHAN_TRA_HAI_LAN_THEO_KY.md](./CHAN_TRA_HAI_LAN_THEO_KY.md) | Backend | Mở rộng `chanTraHaiLan` (`upsertTransaction`) sang kỳ anh em cùng `Previous_bill_id` + `Due_date`; mã mới `BILL_PERIOD_ALREADY_PAID` qua phép ánh xạ lỗi của `sync.service.js`. Phía client **đã sẵn** (2026-10-09): mã nằm trong danh sách lỗi vĩnh viễn + bộ xử lý riêng — backend triển khai lúc nào cũng được. | ⏳ Chờ backend |
+| **42** | [TAI_LIEU_KIEN_TRUC_CLIENT_APP.md](./TAI_LIEU_KIEN_TRUC_CLIENT_APP.md) | Backend (chữ) | Sửa bảng `Project.md` §3.3 *Kiến trúc Client-app* cho khớp mã: dòng *State Management* (3 Bloc + 7 Cubit, màn đọc dùng stream Drift, trạng thái màn trong widget), dòng *Repository* (interface ở tầng data, trả Entity hoặc hàng Drift), thêm *Test quét kiến trúc* · *Cổng nền tảng* · *Chạy nền WorkManager*. Mặc định: §3.3 trỏ sang `docs/KIEN_TRUC_CLIENT_APP.md`. Không đổi mã. | ⏳ Chờ |
+| **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | **A (cao)** AIOps khoá tài khoản ghi `'Inactive'` thay `'Locked'`; `accountRejection` mặc định `ACCOUNT_INACTIVE`, chỉ `Deleted` mới `ACCOUNT_DELETED`; áp lại `ck_account_status` (`database/N`). **B (cao)** webhook `orderCode` lạ → 2xx, không tạo đơn / không nâng gói. **C (vừa)** 503 lúc đăng nhập bảo trì mang `code` + `Retry-After`. **D (thấp)** sửa `Event-Notification-to-ClientApp.md` theo bảng của đơn. Client làm phần mình (connect_error, `account.downgraded`, dải bảo trì / phong toả) **sau khi** đơn đóng. *(Soát ở `d72ccd45`: B vẫn mở — `findOrCreateOrderByCode` không đổi.)* | ⏳ Chờ backend |
+| **44** | [SOAT_SAU_GOP_D72CCD45.md](./SOAT_SAU_GOP_D72CCD45.md) | Backend | **A (cao)** đánh số lại hai tệp migration thanh toán (trùng 20, 24); trả `apply_migration_20.js` về migration `Server_update_at`. **B (vừa)** webhook chỉ xử lý đơn còn `PENDING` (`EXPIRED` tuỳ chọn), khử trùng theo `reference`. **C (vừa)** tra mã nhận diện theo token cuối của nội dung. **D (vừa)** nới `payment_order.status` lên 25 bằng SQL, hoặc đưa `schema.prisma` về 20. **E (thấp)** `accept` bắt buộc boolean. **F (thấp)** thêm hợp đồng thanh toán mới vào `Event-Notification-to-ClientApp.md`. Không chặn client (G94). | ⏳ Chờ backend |
 
 ---
 
@@ -26,7 +80,7 @@
 
 | # | Tài liệu gốc | Nội dung & Kết quả xử lý | Trạng thái |
 |---|---|---|---|
-| **39** | [PHAN_QUYEN_THEO_GOI_KHAO_SAT.md](./PHAN_QUYEN_THEO_GOI_KHAO_SAT.md) | Phân quyền tính năng động theo loại tài khoản: CSDL Migration 22, API Admin, Trang `/permissions` Admin-web, Ràng buộc Client-app (`TranGoi`, `TrangThaiGoi`, AI Chat & Nhập nhanh). | ✅ Đã xong 100% |
+| **39** | [PHAN_QUYEN_THEO_GOI_KHAO_SAT.md](../DA-XONG/PHAN_QUYEN_THEO_GOI_KHAO_SAT.md) | Phân quyền tính năng động theo loại tài khoản: CSDL Migration 22, API Admin, Trang `/permissions` Admin-web, Ràng buộc Client-app (`TranGoi`, `TrangThaiGoi`, AI Chat & Nhập nhanh). | ✅ Đã xong 100% |
 | **38** | [CLIENT_PREMIUM_PAYOS.md](../DA-XONG/CLIENT_PREMIUM_PAYOS.md) | Thêm `limits, price, packageDays` vào `/subscription-info`; đính chính 5 điểm lệch mã PayOS; bỏ chữ đồng bộ tức thì. Test PASS 100%. | ✅ Đã xong 100% |
 | **37** | [KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md](../DA-XONG/KEO_VE_BO_SOT_BAN_GHI_DAY_MUON.md) | Thêm cột `Server_update_at`, index và trigger cho 6 bảng đồng bộ (Migration 20); `/sync/pull` và `maxSince` dùng `Server_update_at`; giữ LWW theo `update_at`. Test PASS 100%. | ✅ Đã xong 100% |
 | **34** | [CLIENT_NHAC_SAU_APP_NGAN_HANG.md](../DA-XONG/CLIENT_NHAC_SAU_APP_NGAN_HANG.md) | Nhắc ghi sau khi dùng app ngân hàng $\ge$ 20s (100% on-device offline, tuân thủ NĐ 13/2023/NĐ-CP). Đã hoàn tất và lưu trữ. | ✅ Đã xong 100% |

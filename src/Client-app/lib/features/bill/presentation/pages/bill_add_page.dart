@@ -1,3 +1,5 @@
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,13 +7,15 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../core/bill/bill_recurrence.dart';
-import '../../../../core/database/app_database.dart';
-import '../../../../core/auth/current_account.dart';
+import '../../domain/bill_recurrence.dart';
+import '../../../category/data/models/category_entity.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
-import '../../domain/bill_auto_pay.dart' show kBillAutoPayHint;
+import '../../../../core/nen/co_chay_nen.dart';
+import '../../domain/bill_auto_pay.dart' show goiYTuTra;
 import '../../domain/bill_draft.dart';
 import '../../domain/dien_san_hoa_don.dart';
 import '../../domain/bill_schedule.dart';
@@ -21,6 +25,9 @@ import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../core/ui/do_chu.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 class BillAddPage extends StatefulWidget {
   const BillAddPage({super.key, this.dienSan});
@@ -55,11 +62,11 @@ class _BillAddPageState extends State<BillAddPage> {
   /// dựa trên một lựa chọn người dùng chưa từng đưa ra.
   bool _autoPayEnabled = false;
 
-  List<Wallet> _wallets = [];
-  Wallet? _selectedWallet;
+  List<WalletEntity> _wallets = [];
+  WalletEntity? _selectedWallet;
 
-  List<Category> _categories = [];
-  Category? _selectedCategory;
+  List<CategoryEntity> _categories = [];
+  CategoryEntity? _selectedCategory;
 
   @override
   void initState() {
@@ -91,19 +98,18 @@ class _BillAddPageState extends State<BillAddPage> {
 
   Future<void> _loadPickers() async {
     final accountId = currentAccountIdOrNull(context);
-    final db = sl<AppDatabase>();
     // KHÔNG còn nhánh `getAllNonDeleted()` khi danh sách rỗng: nhánh đó bỏ bộ
     // lọc tài khoản, nên một tài khoản chưa có ví lại nhìn thấy ví của tài
     // khoản khác từng đăng nhập trên cùng máy — và hoá đơn tạo ra sẽ trỏ vào
     // một ví không thuộc về mình.
     final wallets = accountId == null
-        ? <Wallet>[]
-        : await db.walletDao.getActive(accountId);
-    // Hoá đơn luôn là khoản chi nên chỉ lấy danh mục 'chi', giống trang ngân
-    // sách. `getCategoryRows` gồm cả danh mục mặc định (idaccount = 0).
+        ? <WalletEntity>[]
+        : await sl<WalletRepository>().getActive(accountId);
+    // Hoá đơn luôn là khoản chi nên chỉ lấy danh mục 'chi'. Chỉ danh mục LÁ — hàng
+    // nhóm không chọn được, giống màn Thêm giao dịch (người dùng chốt 2026-10-10).
     final categories = accountId == null
-        ? <Category>[]
-        : await db.categoryDao.getCategoryRows(accountId, 'chi');
+        ? <CategoryEntity>[]
+        : await sl<CategoryManagementRepository>().selectableChildren(accountId: accountId, classify: 'chi');
     if (mounted) {
       // Ví / danh mục điền sẵn (B2) chỉ thắng khi còn trong danh sách vừa nạp —
       // đã xoá hoặc đã lưu trữ thì rơi về lựa chọn mặc định như khi mở thường.
@@ -196,13 +202,7 @@ class _BillAddPageState extends State<BillAddPage> {
     );
 
     context.read<BillBloc>().add(
-          AddBillEvent(
-            bill: draft.toInsertCompanion(
-              id: const Uuid().v4(),
-              idaccount: accountId,
-              now: DateTime.now(),
-            ),
-          ),
+          AddBillEvent(draft: draft, id: const Uuid().v4(), idaccount: accountId, now: DateTime.now()),
         );
     // `true` = đã gửi `AddBillEvent` (ghi SQLite cục bộ nên đã gửi ≈ đã lưu).
     // Thẻ khoản lặp (B2) chờ đúng giá trị này mới ghi `da_tao`; nút Quay lại
@@ -502,7 +502,7 @@ class _BillAddPageState extends State<BillAddPage> {
   ///
   /// Công tắc **TẮT sẵn**, và có dòng phụ nói rõ ba điều người dùng cần biết
   /// trước khi uỷ quyền: trừ ví nào, lúc nào, và chuyện gì xảy ra khi họ dùng
-  /// nhiều máy — xem [kBillAutoPayHint].
+  /// nhiều máy — xem [goiYTuTra].
   Widget _buildAutoPaySwitch() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -542,17 +542,22 @@ class _BillAddPageState extends State<BillAddPage> {
             Switch(
               key: const ValueKey('bill-autopay-switch'),
               value: _autoPayEnabled,
-              onChanged: (val) => setState(() => _autoPayEnabled = val),
+              // Quyền `bill_auto_pay` (spec phân quyền 2026-10-08): không có → công tắc khoá, băng Nâng cấp dưới.
+              onChanged: context.coQuyen(MaQuyen.billAutoPay)
+                  ? (val) => setState(() => _autoPayEnabled = val)
+                  : null,
               activeThumbColor: Colors.white,
               activeTrackColor: AppColors.primary,
             ),
           ],
         ),
+        if (!context.coQuyen(MaQuyen.billAutoPay))
+          DongKhoaCongTac(ma: MaQuyen.billAutoPay, dangBat: _autoPayEnabled),
         if (_autoPayEnabled) ...[
           const SizedBox(height: 8),
-          const Text(
-            kBillAutoPayHint,
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          Text(
+            goiYTuTra(chayNen: coChayNen),
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
         ],
       ],
@@ -622,21 +627,21 @@ class _BillAddPageState extends State<BillAddPage> {
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButtonHideUnderline(
-              child: DropdownButton<Wallet>(
+              child: DropdownButton<WalletEntity>(
                 value: _selectedWallet,
                 icon: const Icon(Icons.expand_more, color: AppColors.outline),
                 isExpanded: true,
                 style: const TextStyle(fontSize: 16, color: AppColors.primary),
                 dropdownColor: Colors.white,
-                onChanged: (Wallet? newValue) {
+                onChanged: (WalletEntity? newValue) {
                   if (newValue != null) {
                     setState(() {
                       _selectedWallet = newValue;
                     });
                   }
                 },
-                items: _wallets.map<DropdownMenuItem<Wallet>>((Wallet wallet) {
-                  return DropdownMenuItem<Wallet>(
+                items: _wallets.map<DropdownMenuItem<WalletEntity>>((WalletEntity wallet) {
+                  return DropdownMenuItem<WalletEntity>(
                     value: wallet,
                     child: Text(
                         '${wallet.name} - ${CurrencyFormatter.format(wallet.balance)}'),
@@ -664,20 +669,20 @@ class _BillAddPageState extends State<BillAddPage> {
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButtonHideUnderline(
-              child: DropdownButton<Category>(
+              child: DropdownButton<CategoryEntity>(
                 value: _selectedCategory,
                 icon: const Icon(Icons.expand_more, color: AppColors.outline),
                 isExpanded: true,
                 style: const TextStyle(fontSize: 16, color: AppColors.primary),
                 dropdownColor: Colors.white,
                 hint: const Text('Chọn danh mục'),
-                onChanged: (Category? newValue) {
+                onChanged: (CategoryEntity? newValue) {
                   if (newValue != null) {
                     setState(() => _selectedCategory = newValue);
                   }
                 },
-                items: _categories.map<DropdownMenuItem<Category>>((category) {
-                  return DropdownMenuItem<Category>(
+                items: _categories.map<DropdownMenuItem<CategoryEntity>>((category) {
+                  return DropdownMenuItem<CategoryEntity>(
                     value: category,
                     child: Text(category.name),
                   );

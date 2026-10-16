@@ -5,17 +5,17 @@ import 'package:flutter/foundation.dart' hide Category;
 import 'package:drift/drift.dart';
 
 import '../api/dio_client.dart';
-import '../bill/bill_recurrence.dart';
+import '../../features/bill/domain/bill_recurrence.dart';
 import '../database/app_database.dart';
-import '../../features/wallet/data/services/so_du_vi_service.dart';
-import '../../features/wallet/data/services/tha_vi_bi_giu.dart';
-import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/domain/wallet_status.dart';
 import '../../features/bill/domain/bill_pay_status.dart';
 import 'backend_bool.dart';
+import 'cong_so_du_vi.dart';
+import 'cong_vi_bi_giu.dart';
 import 'sync_models.dart';
 import 'category_icon_registry.dart';
 import 'sync_checkpoint_store.dart';
+import 'moc_keo_ve.dart';
 import 'sync_payload_normalizer.dart';
 import '../../features/goal/domain/uu_tien_hop_le.dart';
 
@@ -50,12 +50,12 @@ class SyncEngine {
   // ignore: unused_field — sẽ dùng ở Plan 6 khi backend có sync API
   final DioClient _dioClient;
 
-  /// Nơi duy nhất ghi `wallets.balance`. Dùng ở cuối mỗi lần kéo về.
-  final SoDuViService _soDuVi;
+  /// Nơi duy nhất ghi `wallets.balance` — `SoDuViService`, qua cổng (G88 gạch 4). Dùng ở cuối mỗi lần kéo về.
+  final CongSoDuVi _soDuVi;
 
-  /// Ví nào đang bị giữ vì trùng tên (G63). Engine KHÔNG đọc cột cờ trực tiếp —
-  /// test quét `vi_trung_ten_cuc_bo_test` canh tên cột không xuất hiện ở tệp này.
-  final ViTrungTenNguon _viTrungTen;
+  /// Ví nào đang bị giữ vì trùng tên (G63) — qua cổng, bản thật `ViBiGiuDongBo` (`features/wallet/data/`). Engine KHÔNG đọc
+  /// cột cờ trực tiếp — test quét `vi_trung_ten_cuc_bo_test` canh tên cột không xuất hiện ở tệp này.
+  final CongViBiGiu _viBiGiu;
   final AppDatabase _db;
   final Connectivity _connectivity;
 
@@ -239,6 +239,12 @@ class SyncEngine {
   /// liệu trả về, nên tài khoản mới toanh sẽ mãi trông như chưa pull lần nào.
   bool get hasCompletedPull => _hasCompletedPull;
 
+  /// Số lần kéo về THÀNH CÔNG trong đời engine này. Bước Pull nuốt lỗi nên trạng thái "chu kỳ xong" không nói được
+  /// dữ liệu đã mới chưa; `NotificationScanner` đọc con số này để chỉ gộp kỳ hoá đơn trùng (G87) trên dữ liệu vừa
+  /// làm mới — gộp trên dữ liệu cũ là xoá hoá đơn máy khác đã trả.
+  int get soLanKeoVeXong => _soLanKeoVeXong;
+  int _soLanKeoVeXong = 0;
+
   /// Nơi lưu mốc pull gần nhất. Null (thường là trong test) → chỉ giữ trong RAM
   /// như hành vi cũ.
   final SyncCheckpointStore? _checkpointStore;
@@ -246,13 +252,13 @@ class SyncEngine {
   SyncEngine({
     required DioClient dioClient,
     required AppDatabase db,
+    required CongSoDuVi soDuVi,
+    required CongViBiGiu viBiGiu,
     Connectivity? connectivity,
     SyncCheckpointStore? checkpointStore,
     DateTime Function()? now,
-    SoDuViService? soDuVi,
-    ViTrungTenNguon? viTrungTen,
-  })  : _soDuVi = soDuVi ?? SoDuViService(db: db),
-        _viTrungTen = viTrungTen ?? ViTrungTenNguonImpl(db: db),
+  })  : _soDuVi = soDuVi,
+        _viBiGiu = viBiGiu,
         _dioClient = dioClient,
         _db = db,
         _checkpointStore = checkpointStore,
@@ -325,6 +331,27 @@ class SyncEngine {
   Future<void> syncNow() async {
     _debounceTimer?.cancel();
     await _runSync();
+  }
+
+  /// MỘT lượt đồng bộ cho lượt nền của WorkManager (spec tự chuyển tiền chạy
+  /// nền mục 3.3).
+  ///
+  /// Không đi qua [start]: `start()` dựng hẹn giờ 15 phút và bộ nghe mạng — thứ
+  /// lượt nền không được để lại — và chỉ `auth_bloc.dart` được gọi nó (test quét
+  /// thứ tư). Đặt `_currentIdaccount` cho riêng lượt này rồi TRẢ LẠI giá trị cũ,
+  /// nên một `scheduleSync()` sau đó không chạy nhầm cho tài khoản này.
+  Future<void> syncMotLuot(int idaccount) async {
+    final cu = _currentIdaccount;
+    _currentIdaccount = idaccount;
+    _lastPullTime ??= mocPullConDungKhong(
+      await _checkpointStore?.read(idaccount),
+      DateTime.now().toUtc(),
+    );
+    try {
+      await _runSync();
+    } finally {
+      _currentIdaccount = cu;
+    }
   }
 
   /// Đặt lịch sync với debounce — gọi liên tiếp chỉ trigger 1 lần.
@@ -536,8 +563,8 @@ class SyncEngine {
                   as List<dynamic>? ??
               [];
 
-          // Ví đã có TRƯỚC lượt kéo về này. Chỉ chúng mới được vá neo ở cuối
-          // hàm — xem lý do ở đó.
+          // Ví đã có TRƯỚC lượt kéo về này. Chỉ chúng mới được vá neo — xem
+          // `viDungToi` ngay trước khi ghi giao dịch.
           final viDaCoTruocPull = {
             for (final w in await _db.walletDao.getAll(accountId)) w.id,
           };
@@ -630,6 +657,35 @@ class SyncEngine {
           final transactions = (payloadData['transactions'] ??
                   payloadData['transaction']) as List<dynamic>? ??
               [];
+          // Ví mà lượt kéo này đụng tới: ví vừa về, ví của giao dịch vừa về, và
+          // ví ĐÍCH của khoản chuyển vừa về (`tongTheoVi` cộng khoản chuyển đến).
+          final viDungToi = <String>{
+            for (final t in transactions)
+              if (t is Map) ...[
+                if ((t['idwallet'] ?? t['wallet_id']) != null)
+                  (t['idwallet'] ?? t['wallet_id']).toString(),
+                if ((t['idwallet_transfer'] ?? t['wallet_transfer']) != null)
+                  (t['idwallet_transfer'] ?? t['wallet_transfer']).toString(),
+              ],
+            for (final w in wallets)
+              if (w is Map && (w['idwallet'] ?? w['id']) != null)
+                (w['idwallet'] ?? w['id']).toString(),
+          };
+          // Vá neo cho ví đã có trên máy nhưng chưa có khoản mở sổ (ví tạo bằng
+          // bản app trước 2026-09-13, **và ví server tự tạo khi đăng ký** — hai
+          // ví seed không bao giờ có neo) — **TRƯỚC khi ghi giao dịch vừa kéo
+          // vào sổ**. Neo tính bằng `balance − Σ sổ`; vá SAU khi ghi là neo nuốt
+          // luôn giao dịch của máy kia, đúng bẫy "thời điểm đặt neo" của G37.
+          // Đo thật hai máy ảo 2026-10-08 (nghiệm thu G67): ví Tiết kiệm seed,
+          // B −11.000 offline, kéo về −22.000 của A → neo +22.000, số dư cả hai
+          // máy −11.000 thay vì −33.000.
+          //
+          // ⚠️ Ví VỪA về không được vá, và đây là chốt chặn bắt buộc. Ví vừa
+          // INSERT mang `balance = 0` (nhánh trên thôi đọc cột ấy) trong khi sổ
+          // của nó đầy đủ; vá nó là sinh một khoản chi bằng cả tổng sổ (đo thật
+          // 2026-09-13: ví 2.000.000 hiện thành `Total balance: 0đ`). Neo của ví
+          // vừa về — nếu có — là một giao dịch, về cùng lượt.
+          await _soDuVi.datNeoNhieuVi(viDungToi.intersection(viDaCoTruocPull));
           if (transactions.isNotEmpty) {
             final companions = transactions.map((t) {
               return TransactionsCompanion(
@@ -1056,17 +1112,24 @@ class SyncEngine {
                 '[SyncEngine] Pulled & Saved ${goals.length} goals into SQLite local.');
           }
 
-          // Mốc mới = `update_at` LỚN NHẤT trong dữ liệu vừa nhận, KHÔNG phải
-          // DateTime.now() của client: backend lọc `update_at > since` theo
-          // đồng hồ của nó, nên lấy giờ client sẽ bỏ sót bản ghi khi hai đồng
-          // hồ lệch nhau. Không nhận được bản ghi nào thì giữ nguyên mốc cũ
-          // (cùng lắm là pull lại một ít, không bao giờ mất dữ liệu).
-          // Kẹp về hiện tại: chỉ cần MỘT hàng mang `update_at` tương lai là
-          // mốc bị đẩy vọt lên, và vì mốc chỉ tiến chứ không lùi nên tài khoản
-          // ấy không nhận được gì nữa cho tới khi thời gian thật đuổi kịp — hỏng
-          // hoàn toàn im lặng. Kẹp chứ không vứt bỏ: dữ liệu vừa nhận đã là tất
-          // cả những gì server có tính tới lúc này.
-          final newest = _kepVeHienTai(_newestUpdateAt(payloadData));
+          // Mốc mới — **G67**. Server từ migration 20 trả `maxSince` (giờ-server
+          // `Server_update_at` lớn nhất từng bảng) và lọc theo chính cột ấy, nên
+          // mốc lấy từ đó (`mocTuMaxSince`: lớn nhất giữa các bảng, kẹp về
+          // `pulledAt − 2 phút`). KHÔNG lấy `update_at` của từng hàng: đó là giờ ghi của
+          // MÁY, và bản ghi lên server muộn hơn giờ ghi (máy offline lâu) rơi dưới
+          // mốc ấy mãi mãi. Server cũ (không có khoá `maxSince`) thì rơi về
+          // `update_at` lớn nhất như trước. Không nhận được bản ghi nào thì giữ
+          // nguyên mốc cũ (cùng lắm là pull lại một ít, không bao giờ mất dữ liệu).
+          // Kẹp về hiện tại: chỉ cần MỘT hàng mang giờ tương lai là mốc bị đẩy
+          // vọt lên, và vì mốc chỉ tiến chứ không lùi nên tài khoản ấy không nhận
+          // được gì nữa cho tới khi thời gian thật đuổi kịp — hỏng hoàn toàn im
+          // lặng. Kẹp chứ không vứt bỏ: dữ liệu vừa nhận đã là tất cả những gì
+          // server có tính tới lúc này.
+          final newest = _kepVeHienTai(
+              topData != null && topData.containsKey('maxSince')
+                  ? mocTuMaxSince(topData['maxSince'],
+                      pulledAt: topData['pulledAt'])
+                  : _newestUpdateAt(payloadData));
           if (newest != null) {
             _lastPullTime = newest;
             await _checkpointStore?.write(accountId, newest);
@@ -1081,34 +1144,15 @@ class SyncEngine {
           //
           // Gồm cả ví MỚI về: neo của chúng cũng là một giao dịch, cũng vừa
           // được kéo về, nên tổng sổ ra đúng số dù cột `balance` khởi tạo bằng 0.
-          final viCanTinhLai = <String>{
-            for (final t in transactions)
-              if (t is Map && t['idwallet'] != null) t['idwallet'].toString(),
-            for (final w in wallets)
-              if (w is Map && (w['idwallet'] ?? w['id']) != null)
-                (w['idwallet'] ?? w['id']).toString(),
-          };
-          if (viCanTinhLai.isNotEmpty) {
-            // Vá neo cho ví tạo bằng bản app trước 2026-09-13 — và **chỉ**
-            // cho ví đã có trên máy này TRƯỚC lượt kéo về.
-            //
-            // ⚠️ Ví VỪA về không được vá, và đây là chốt chặn bắt buộc. Neo
-            // tính bằng `balance − Σ sổ`, mà ví vừa INSERT mang `balance = 0`
-            // (nhánh trên thôi đọc cột ấy) trong khi sổ của nó đã đầy đủ. Vá
-            // nó là sinh một khoản **chi** đúng bằng cả tổng sổ, và số dư về
-            // 0. Đo thật trên hai máy ảo ngày 2026-09-13: ví 2.000.000 hiện
-            // thành `Total balance: 0đ` ngay sau lần pull đầu.
-            //
-            // Ví vừa về **không cần vá**: neo của nó là một giao dịch, do máy
-            // tạo ví sinh ra, nên nó cũng vừa được kéo về cùng lượt.
-            await _soDuVi
-                .datNeoNhieuVi(viCanTinhLai.intersection(viDaCoTruocPull));
-            await _soDuVi.tinhLaiNhieuVi(viCanTinhLai);
+          // Neo đã vá ở trên, TRƯỚC khi ghi sổ — xem `viDungToi`.
+          if (viDungToi.isNotEmpty) {
+            await _soDuVi.tinhLaiNhieuVi(viDungToi);
           }
           // Cờ RIÊNG, không suy ra từ `_lastPullTime`: mốc đó chỉ được đặt khi
           // có dữ liệu trả về, nên một tài khoản mới toanh (chưa có gì trên
           // server) sẽ mãi mãi trông như "chưa pull lần nào".
           _hasCompletedPull = true;
+          _soLanKeoVeXong++;
         }
       }
     } catch (e) {
@@ -1140,6 +1184,9 @@ class SyncEngine {
   }
 
   /// Tìm `update_at` mới nhất trong toàn bộ payload pull (mọi loại thực thể).
+  ///
+  /// Chỉ còn là đường lùi cho server **chưa** trả `maxSince` (trước migration 20)
+  /// — xem [mocTuMaxSince] và G67.
   static DateTime? _newestUpdateAt(Map<String, dynamic> payloadData) {
     DateTime? newest;
     for (final value in payloadData.values) {
@@ -1171,16 +1218,16 @@ class SyncEngine {
     //
     // Ví mang cờ mà không còn cặp (ví kia bị xoá / đổi tên ở máy khác) thì THẢ
     // trước khi đọc hàng chờ: gỡ cờ + mốc chặn, làm mới giờ sửa của nó và bản
-    // ghi từng bị giữ — giờ ghi cũ nằm dưới mốc kéo về của máy khác, đẩy nguyên
-    // là máy khác không bao giờ kéo được (nghiệm thu 2026-10-05).
-    for (final id in await _viTrungTen.viCanTha(idaccount)) {
-      await ThaViBiGiu(db: _db).tha(id);
-    }
+    // ghi từng bị giữ. Lý do gốc (nghiệm thu 2026-10-05): khi mốc kéo về còn
+    // theo giờ ghi của máy, giờ ghi cũ nằm dưới mốc của máy khác và không bao giờ
+    // được kéo. Từ G67 (2026-10-08) mốc theo giờ-server nên ca ấy đã hết; việc
+    // làm mới giờ sửa vẫn giữ — với server chưa có `maxSince` nó vẫn cần.
+    await _viBiGiu.thaViKhongConCap(idaccount);
     final pendingGoals = await _db.goalDao.getPending(idaccount);
     final pendingBills = await _db.billDao.getPending(idaccount);
     final pendingTx = await _db.transactionDao.getPending(idaccount);
-    final giu = ViTrungTenNguonImpl.banGhiBiGiuTuHang(
-      viBiGiu: await _viTrungTen.viDangBiGiu(idaccount),
+    final giu = await _viBiGiu.banGhiGiuKhoiDay(
+      idaccount,
       hoaDon: pendingBills,
       mucTieu: pendingGoals,
       giaoDich: pendingTx,
@@ -1906,6 +1953,10 @@ class SyncEngine {
     // làm thao tác bị từ chối chạy được. Chốt từ chối nhầm — như bản `7675b35`
     // chặn cả hoàn tác thanh toán — thì việc sửa thuộc backend.
     'BILL_ALREADY_PAID',
+    // Đơn 41 (`CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md`, 2026-10-09): server từ
+    // chối khoản chi cho một kỳ TRÙNG đã được trả. Thêm trước khi backend lên —
+    // danh sách trắng, mã lạ là gửi lại mãi.
+    'BILL_PERIOD_ALREADY_PAID',
   };
 
   /// Khoá ngoại trỏ tới bảng `account` bị vỡ nghĩa là `idaccount` đang dùng

@@ -6,7 +6,8 @@
 /// mục 2–4.
 library;
 
-import '../../../core/database/app_database.dart';
+import '../../transaction/data/models/transaction_entity.dart';
+import '../data/models/bill_entity.dart';
 import '../../transaction/domain/khoan_lap.dart';
 import 'bill_pay_status.dart';
 
@@ -20,11 +21,15 @@ const String kGoiYDaTao = 'da_tao';
 /// Số khoản mới (sau lần Bỏ qua cuối) để mở lại một nhóm — cùng luật B1.
 const int kKhoanMoiMoLai = 3;
 
+/// Một dòng phản hồi của bảng cục bộ `GoiYHoaDonPhanHois` — ba trường hàm này đọc. Nguồn (`de_xuat_hoa_don_nguon`)
+/// dựng từ hàng DAO; domain không cầm hàng Drift của bảng phụ (spec Entity Giao dịch + Ví 2026-10-14, 4.5).
+typedef PhanHoiGoiYHoaDon = ({String khoaNhom, String ketQua, DateTime createdAt});
+
 List<KhoanLap>? chonDeXuatHoaDon({
   required List<KhoanLap> ds,
-  required List<Bill> hoaDon,
-  required List<GoiYHoaDonPhanHoi> phanHoi,
-  required List<Transaction> giaoDich,
+  required List<BillEntity> hoaDon,
+  required List<PhanHoiGoiYHoaDon> phanHoi,
+  required List<TransactionEntity> giaoDich,
   required DateTime now,
   int toiDa = kToiDaKhoanLap,
 }) {

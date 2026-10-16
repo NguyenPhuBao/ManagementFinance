@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
-import '../../../core/bill/bill_recurrence.dart';
-import '../../../core/database/app_database.dart';
+import 'bill_recurrence.dart';
+import '../data/models/bill_entity.dart';
 import 'bill_an_han.dart';
 
 /// Lịch của một hoá đơn.
@@ -135,7 +135,7 @@ class BillSchedule {
         : moi;
   }
 
-  static BillSchedule fromBill(Bill bill) {
+  static BillSchedule fromBill(BillEntity bill) {
     final batDau = bill.startDate ?? bill.dueDate;
     // Ngày gốc của **bản ghi**, không suy lại từ ngày bắt đầu: với kỳ thứ ba
     // của một chuỗi ngày 31, ngày bắt đầu là 28/02 nhưng ngày gốc vẫn là 31.

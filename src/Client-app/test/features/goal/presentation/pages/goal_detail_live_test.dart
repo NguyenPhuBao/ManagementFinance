@@ -12,6 +12,7 @@
 /// nhiều hơn trước.
 library;
 
+import '../../../../helpers/nguon_doc_gia.dart';
 import 'dart:async';
 
 import 'package:drift/native.dart';
@@ -28,6 +29,7 @@ import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/goal/data/repositories/goal_repository.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
 import 'package:flowmoney/features/goal/presentation/pages/goal_detail_page.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 
 class _StubAuthRepository implements AuthRepository {
   @override
@@ -79,39 +81,42 @@ class _LiveGoalRepository implements GoalRepository {
   @override
   Future<GoalEntity?> getGoalById(String id) async => hienTai;
 
+  @override
+  Future<List<GoalEntity>> getGoals(int idaccount) async => const [];
+
   /// Các hàng lịch sử trang sẽ dựng. Mặc định rỗng — chỉ nhóm test nhãn "Tự
   /// động" mới đặt giá trị.
-  List<dynamic> khoanLichSu = const [];
+  List<TransactionEntity> khoanLichSu = const [];
 
   @override
-  Stream<dynamic> watchGoalTransactions(
+  Stream<List<TransactionEntity>> watchGoalTransactions(
     int idaccount,
     String goalId,
     String goalName,
   ) =>
-      Stream<List<dynamic>>.value(khoanLichSu);
+      Stream<List<TransactionEntity>>.value(khoanLichSu);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Một hàng giao dịch đủ dùng cho phần lịch sử của trang chi tiết.
-///
-/// Trang đọc bốn trường qua ép kiểu trên `dynamic` (`date`, `amount`, `note`,
-/// `walletId`), nên không cần dựng cả một hàng Drift thật.
-class _HangGiaoDich {
-  final DateTime date;
-  final double amount;
-  final String note;
-  final String walletId;
-
-  const _HangGiaoDich({
-    required this.date,
-    required this.amount,
-    required this.note,
-    required this.walletId,
-  });
-}
+TransactionEntity _hangGiaoDich({
+  required DateTime date,
+  required double amount,
+  required String note,
+  required String walletId,
+}) =>
+    TransactionEntity(
+      id: 'tx-${date.millisecondsSinceEpoch}',
+      walletId: walletId,
+      idaccount: 1,
+      amount: amount,
+      type: 'chi',
+      note: note,
+      date: date,
+      updatedAt: date,
+    );
 
 void main() {
   late _LiveGoalRepository repo;
@@ -122,6 +127,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     if (sl.isRegistered<AppDatabase>()) await sl.unregister<AppDatabase>();
     sl.registerSingleton<AppDatabase>(db);
+    dangKyNguonDocGia(db);
     if (sl.isRegistered<GoalRepository>()) {
       await sl.unregister<GoalRepository>();
     }
@@ -211,13 +217,13 @@ void main() {
   /// dựng được trang chi tiết thật.
   group('nhãn "Tự động" trên dòng lịch sử', () {
     final khoan = [
-      _HangGiaoDich(
+      _hangGiaoDich(
         date: DateTime(2026, 9, 5, 9),
         amount: 100000,
         note: 'Tích lũy mục tiêu: MuaXe$kHauToTuDong',
         walletId: 'w_nguon',
       ),
-      _HangGiaoDich(
+      _hangGiaoDich(
         date: DateTime(2026, 9, 3, 20),
         amount: 200000,
         note: 'Tích lũy mục tiêu: MuaXe',
