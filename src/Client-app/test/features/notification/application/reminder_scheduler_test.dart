@@ -234,14 +234,21 @@ void main() {
       expect(os.lich.values.single.when, DateTime(2026, 9, 24, 8, 0));
     });
 
-    test('hoá đơn không tự đặt thì theo tuỳ chọn chung', () async {
+    test('hoá đơn TẮT nhắc (NULL) thì không đặt lịch, kể cả có tuỳ chọn chung',
+        () async {
       await prefs.write(
           accountId, const NotificationPrefs(soNgayNhacHoaDon: 7));
 
-      await dung([hoaDon(denHan: DateTime(2026, 9, 25), nhacTruoc: null)])
-          .resync(accountId);
+      final soLich =
+          await dung([hoaDon(denHan: DateTime(2026, 9, 25), nhacTruoc: null)])
+              .resync(accountId);
 
-      expect(os.lich.values.single.when, DateTime(2026, 9, 18, 8, 0));
+      expect(soLich, 0,
+          reason: 'NULL là tắt nhắc (mục 7b BILL_DOCUMENTATION; màn Chi tiết '
+              'hiện "Không nhắc"). Trước 2026-10-16 bộ đặt lịch lấp NULL bằng '
+              'tuỳ chọn chung và đặt lịch lên màn hình khoá cho một hoá đơn '
+              'người dùng đã tắt nhắc.');
+      expect(os.lich, isEmpty);
     });
   });
 
@@ -330,6 +337,19 @@ void main() {
           reason: 'Nhắc một hoá đơn đã trả rồi là lỗi khó chịu nhất của loại '
               'tính năng này. Lịch nằm trong AlarmManager, không tự biến mất '
               'khi bản ghi đổi.');
+      expect(os.lich, isEmpty);
+    });
+
+    test('tắt nhắc một hoá đơn đã có lịch thì lịch cũ bị huỷ', () async {
+      await dung([hoaDon(denHan: DateTime(2026, 9, 20))]).resync(accountId);
+      final idCu = os.lich.keys.single;
+
+      await dung([hoaDon(denHan: DateTime(2026, 9, 20), nhacTruoc: null)])
+          .resync(accountId);
+
+      expect(os.daHuy, contains(idCu),
+          reason: 'Người dùng sửa hoá đơn, tắt nhắc. Lịch cũ nằm trong '
+              'AlarmManager — không huỷ là nó vẫn nổ trên màn hình khoá.');
       expect(os.lich, isEmpty);
     });
 

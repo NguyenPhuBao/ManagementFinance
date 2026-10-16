@@ -649,7 +649,6 @@ class NotificationScanner {
           autoPays: autoPays,
           syncFailed: syncFailed ?? _dongBoHong,
           silenceBefore: at.subtract(cuaSoSuKien),
-          defaultBillLeadDays: prefs.soNgayNhacHoaDon,
           lowBalanceThreshold: prefs.nguongSoDuThap,
           viDaDung: viDaDung,
           dotAm: dotAm,

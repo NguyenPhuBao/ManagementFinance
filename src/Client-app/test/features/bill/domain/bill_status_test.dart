@@ -89,6 +89,28 @@ void main() {
       );
     });
 
+    test('hoá đơn TẮT nhắc: ngưỡng "sắp đến hạn" là mặc định nơi gọi truyền vào',
+        () {
+      // Hạn 11/09, hôm nay 06/09 ⇒ còn 5 ngày.
+      final tatNhac = _bill(dueDate: DateTime(2026, 9, 11), timeNotification: null);
+
+      expect(billDisplayStatusOf(tatNhac, now, macDinh: 7),
+          BillDisplayStatus.dueSoon,
+          reason: 'Trang truyền tuỳ chọn "Nhắc trước" của Cài đặt thông báo. '
+              'Nhãn bỏ qua tuỳ chọn ấy thì người đặt 7 ngày thấy hoá đơn còn 5 '
+              'ngày vẫn "chưa tới lượt".');
+      expect(billDisplayStatusOf(tatNhac, now), BillDisplayStatus.pending,
+          reason: 'Không truyền gì thì vẫn mốc 3 ngày như trước.');
+    });
+
+    test('hoá đơn đặt số ngày riêng thì mặc định truyền vào KHÔNG đè lên', () {
+      final motNgay = _bill(dueDate: DateTime(2026, 9, 11), timeNotification: '1');
+
+      expect(billDisplayStatusOf(motNgay, now, macDinh: 7),
+          BillDisplayStatus.pending,
+          reason: 'Cùng luật với bộ nhắc: số ngày riêng của hoá đơn thắng.');
+    });
+
     test('đã trả thì luôn là "đã trả", kể cả khi đã quá hạn', () {
       expect(
         billDisplayStatusOf(

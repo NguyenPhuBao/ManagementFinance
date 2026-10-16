@@ -877,12 +877,13 @@ void main() {
               'định là bật hết.');
     });
 
-    test('số ngày nhắc trong tuỳ chọn được dùng thật', () async {
+    test('hoá đơn TẮT nhắc: tuỳ chọn "nhắc trước" chung không bật lại lời nhắc',
+        () async {
       final prefs = InMemoryNotificationPrefsStore();
       await prefs.write(
           accountId, const NotificationPrefs(soNgayNhacHoaDon: 7));
 
-      // Hoá đơn KHÔNG tự đặt số ngày, còn 5 ngày nữa tới hạn.
+      // Hoá đơn tắt nhắc (NULL), còn 5 ngày nữa tới hạn.
       final hd = hoaDon(denHan: DateTime(2026, 9, 20), nhacTruoc: null);
 
       final moi = await dungScanner(
@@ -891,12 +892,13 @@ void main() {
         bills: [hd],
       ).scan(accountId);
 
-      expect(moi, 1,
-          reason: 'Tuỳ chọn "nhắc trước 7 ngày" phải tới được bộ luật. Lưu mà '
-              'không ai đọc thì công tắc trông như có tác dụng mà thật ra '
-              'không — kiểu hỏng không ai báo lỗi.');
-      expect((await db.notificationDao.getAll(accountId)).single.kind,
-          'billDueSoon');
+      expect(moi, 0,
+          reason: 'NULL là tắt nhắc (mục 7b BILL_DOCUMENTATION). Trước '
+              '2026-10-16 vòng quét truyền tuỳ chọn "nhắc trước 7 ngày" vào bộ '
+              'luật và nó lấp chỗ NULL — hoá đơn đã tắt nhắc vẫn nhận "Hoá đơn '
+              'sắp đến hạn". Tuỳ chọn chung nay chỉ còn là ngưỡng nhãn "Sắp '
+              'đến hạn" của hoá đơn tắt nhắc trên trang Hoá đơn.');
+      expect(await db.notificationDao.getAll(accountId), isEmpty);
     });
 
     test('đọc tuỳ chọn theo ĐÚNG tài khoản đang quét', () async {

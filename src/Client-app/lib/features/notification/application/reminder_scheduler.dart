@@ -156,7 +156,11 @@ class ReminderScheduler {
         // SQLite, nên đặt nhầm thì thông báo vẫn nổ trên màn hình khoá.
         if (!conPhaiTra(b)) continue;
 
-        final leadDays = billLeadDays(b, fallback: prefs.soNgayNhacHoaDon);
+        // Hoá đơn tắt nhắc (NULL) không có lịch. Bỏ TRƯỚC `khongHuy.add` để
+        // lịch cũ của nó — đặt lúc hoá đơn còn bật nhắc — bị huỷ ở lượt này.
+        // Trước 2026-10-16 chỗ này lấp NULL bằng tuỳ chọn chung.
+        final leadDays = soNgayNhacRieng(b);
+        if (leadDays == null) continue;
         final hanTra = DateTime(b.dueDate.year, b.dueDate.month, b.dueDate.day);
         final khoa = billDueDedupeKey(
           billId: b.id,

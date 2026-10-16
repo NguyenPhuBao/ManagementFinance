@@ -30,10 +30,12 @@ DateTime _dauNgay(DateTime t) => DateTime(t.year, t.month, t.day);
 /// So theo **NGÀY**, cùng quy ước với `BillDao.markOverdue`: hoá đơn đến hạn
 /// đúng hôm nay chưa phải quá hạn, người dùng vẫn còn cả ngày để trả.
 ///
-/// Ngưỡng "sắp đến hạn" lấy từ [billLeadDays] (`bill_nhac_truoc.dart`) —
-/// **cùng một hàm** bộ luật thông báo dùng cho dải nhắc, nhưng với mặc định [mocNhacMacDinh]; bộ luật và bộ đặt lịch
-/// truyền tuỳ chọn người dùng, nên người đổi mặc định nhắc sẽ thấy nhãn và dải nhắc lệch (có từ trước, chưa sửa).
-BillDisplayStatus billDisplayStatusOf(BillEntity bill, DateTime now) {
+/// Ngưỡng "sắp đến hạn" lấy từ [billLeadDays] (`bill_nhac_truoc.dart`): hoá đơn
+/// đặt số ngày riêng dùng đúng số bộ nhắc dùng; hoá đơn tắt nhắc dùng [macDinh] —
+/// trang truyền tuỳ chọn "Nhắc trước" của Cài đặt thông báo. Không truyền thì
+/// [mocNhacMacDinh]; chỗ chỉ hỏi "quá hạn chưa" không cần truyền.
+BillDisplayStatus billDisplayStatusOf(BillEntity bill, DateTime now,
+    {int macDinh = mocNhacMacDinh}) {
   if (daCoKhoanChi(bill)) return BillDisplayStatus.paid;
   // TRƯỚC mọi phép so ngày: một kỳ bỏ qua đã trễ hạn vẫn là kỳ bỏ qua, không
   // phải kỳ quá hạn. Đặt nhánh này sau là hiện nhãn đỏ "QUÁ HẠN" cho một
@@ -45,7 +47,7 @@ BillDisplayStatus billDisplayStatusOf(BillEntity bill, DateTime now) {
 
   if (han.isBefore(homNay)) return BillDisplayStatus.overdue;
 
-  final soNgay = billLeadDays(bill);
+  final soNgay = billLeadDays(bill, fallback: macDinh);
   // `DateTime(y, m, d + n)` tự chuẩn hoá qua biên tháng, khỏi phải cộng
   // `Duration` rồi lo chuyện giờ.
   final motNguong = DateTime(homNay.year, homNay.month, homNay.day + soNgay);
