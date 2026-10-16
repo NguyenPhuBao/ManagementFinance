@@ -1,4 +1,3 @@
-import '../../bill/domain/bill_note.dart';
 import '../../goal/domain/goal_history_direction.dart';
 import '../data/models/transaction_entity.dart';
 
@@ -17,6 +16,22 @@ enum TransactionOwner { transaction, goal, bill }
 /// còn được sinh ra, nhưng vẫn nằm trong dữ liệu thật. Chỉ để nhận diện,
 /// KHÔNG dùng để ghi.
 const String kGhiChuNapMucTieuCu = 'Tích lũy nhận từ ';
+
+/// Tiền tố ghi chú của giao dịch chi do luồng trả hoá đơn sinh ra.
+///
+/// Dùng chung cho nơi ghi (`BillRepositoryImpl.payBill`) và nơi nhận diện
+/// (`transactionOwnerOf` — để sổ giao dịch không cho vuốt xoá rời khoản này,
+/// vì trả hoá đơn là bốn bước trong một transaction và xoá một bước thì ba
+/// bước kia còn nguyên). Cột cục bộ `transactions.billId` có từ v16, nhưng
+/// `transactionOwnerOf` không đọc nó (`TransactionEntity` không mang trường ấy,
+/// và hàng kéo từ server luôn để trống cột) nên ở đó tiền tố vẫn là mối nối
+/// duy nhất; người dùng tự gõ trùng tiền tố thì bị nhận nhầm — chấp nhận, vì
+/// hậu quả chỉ là không vuốt xoá được.
+///
+/// Ở đây từ 2026-10-16 (trước ở `bill/domain/bill_note.dart`, quét 29): hằng là cách MÃ HOÁ ghi chú của hàng sổ.
+/// Bill đọc sổ giao dịch (B2 — `bill/domain/khoan_lap.dart`) nên không làm được nơi cấp hằng một chiều cho
+/// transaction như goal (`goal_history_direction.dart` — goal không đọc sổ).
+const String kGhiChuTraHoaDon = 'Thanh toán hóa đơn: ';
 
 TransactionOwner transactionOwnerOf(TransactionEntity transaction) {
   if (transaction.goalId != null) return TransactionOwner.goal;

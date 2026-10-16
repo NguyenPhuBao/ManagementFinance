@@ -7,7 +7,7 @@ import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.d
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
 import 'package:flowmoney/features/bill/domain/bill_draft.dart';
-import 'package:flowmoney/features/bill/domain/bill_note.dart';
+import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 

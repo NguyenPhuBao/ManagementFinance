@@ -22,6 +22,7 @@
 /// sách chờ của quét 22 / 25 / 27 / 28.
 /// Lát 1 của spec `2026-10-16-go-vong-mang-domain-design.md` (2026-10-16) rút năm cạnh — `khoan_vao_thong_ke` và
 /// `LuaChonLoc` về transaction, analytics ra khỏi vòng.
+/// Lát 2 rút ba — `kGhiChuTraHoaDon` về `transaction_owner`, `khoan_lap` về bill; bill ra khỏi vòng.
 library;
 
 import 'dart:io';
@@ -32,10 +33,7 @@ import '../../helpers/chi_thi_dart.dart';
 
 /// Cạnh `'nguồn->đích'` còn nằm trên vòng. Đo gốc 2026-10-16 (sau gỡ vòng `bill`/`notification`).
 const conCho = <String>{
-  'bill->transaction',
-  'category->bill',
   'category->transaction',
-  'transaction->bill',
   'transaction->category',
 };
 

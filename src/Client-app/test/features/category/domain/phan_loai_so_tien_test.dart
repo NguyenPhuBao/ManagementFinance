@@ -2,7 +2,7 @@
 /// Luật thuần; chỗ nối trên màn ở `transaction/presentation/add_transaction_goi_y_so_tien_test.dart`.
 library;
 
-import 'package:flowmoney/features/bill/domain/bill_note.dart';
+import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_so_tien.dart';
 import 'package:flutter_test/flutter_test.dart';

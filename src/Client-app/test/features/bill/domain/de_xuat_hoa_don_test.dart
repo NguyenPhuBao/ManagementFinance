@@ -10,7 +10,7 @@ import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
 import 'package:flowmoney/features/bill/domain/de_xuat_hoa_don.dart';
-import 'package:flowmoney/features/transaction/domain/khoan_lap.dart';
+import 'package:flowmoney/features/bill/domain/khoan_lap.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final _now = DateTime(2026, 11, 20);

@@ -7,7 +7,7 @@ library;
 
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
-import 'package:flowmoney/features/transaction/domain/khoan_lap.dart';
+import 'package:flowmoney/features/bill/domain/khoan_lap.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 TransactionEntity _gd(

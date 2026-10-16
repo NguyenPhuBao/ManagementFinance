@@ -1,7 +1,7 @@
 // C1 — gắn danh mục hàng loạt: chọn giao dịch chưa phân loại và đoán theo chiều tiền (spec
 // `2026-09-28-c1-gan-danh-muc-hang-loat-design.md` §2).
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
-import 'package:flowmoney/features/bill/domain/bill_note.dart';
+import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';

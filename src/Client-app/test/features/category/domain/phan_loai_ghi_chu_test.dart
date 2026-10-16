@@ -2,7 +2,7 @@
 /// được: bộ mười mẫu, hai danh mục, xem khối chú thích của `muoiMau`.
 library;
 
-import 'package:flowmoney/features/bill/domain/bill_note.dart';
+import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
 import 'package:flutter_test/flutter_test.dart';

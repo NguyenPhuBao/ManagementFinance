@@ -10,14 +10,18 @@
 /// ⚠️ [khoaNhomCua] là định nghĩa **duy nhất** của khoá nhóm: `timKhoanLap`
 /// gom theo nó, và `chonDeXuatHoaDon` đếm "khoản mới sau lần Bỏ qua" theo nó.
 /// Chép luật chuẩn hoá ra chỗ thứ hai là hai định nghĩa khoá lệch nhau, im lặng.
+///
+/// Ở `bill/domain/` từ 2026-10-16 (trước ở `transaction/domain/`, quét 29): đầu ra là khái niệm của hoá đơn
+/// (`chuKy` = `kBillCycle*`, `ngayGoc` cho `anchorDay`), và mọi nơi dùng đều thuộc mảng hoá đơn — trừ
+/// `analytics_repository_impl` (`khoaNhomCua`); analytics đọc bill là chiều xuôi.
 library;
 
 import 'dart:math' as math;
 
-import '../../bill/domain/bill_recurrence.dart';
+import 'bill_recurrence.dart';
 import '../../../core/category/category_name.dart';
-import '../data/models/transaction_entity.dart';
-import 'khoan_vao_thong_ke.dart';
+import '../../transaction/data/models/transaction_entity.dart';
+import '../../transaction/domain/khoan_vao_thong_ke.dart';
 
 /// Số lần tối thiểu của một chuỗi — người dùng chốt 3.
 const int kSoLanToiThieu = 3;

@@ -13,7 +13,6 @@ import 'dart:math' as math;
 
 import '../../../core/category/category_name.dart';
 import '../../transaction/domain/khoan_vao_thong_ke.dart';
-import '../../bill/domain/bill_note.dart';
 import '../../goal/domain/goal_history_direction.dart';
 import '../../transaction/domain/transaction_owner.dart';
 
