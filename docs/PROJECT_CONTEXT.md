@@ -624,9 +624,10 @@ src/Backend/
   `bill_page.dart` dựng thêm tiêu đề nhóm (key `bill-nhom-cac-thang-sau`) và dòng *"trong tháng này"*
   (key `bill-thang-nay-trong`). Còn **chép tay** phép chặn cuối tháng, chưa chuyển sang `thuocKyNay`:
   `ai_edge/domain/goi_so_hoa_don.dart:43–46, 62`, `hang_hoa_don.dart:118–121`.
-- **Test:** +11 ca (7 domain, gồm ca bất biến *số trên tab = số trên thẻ* trên bốn mốc; 4 widget, gồm 360 dp). Mỗi
-  ca canh đều đỏ với ít nhất một bản sai có chủ ý (luật cũ của `splitBills`, biên ngày đóng, số tab cộng cả các tháng
-  sau). `flutter test` **7.096 / 10 skip / 0 fail**, `flutter analyze` **20**.
+- **Test:** +11 ca (7 domain, gồm ca bất biến *số trên tab = số trên thẻ* trên bốn mốc; 4 widget, gồm 360 dp). Bảy
+  bản sai có chủ ý làm đỏ **10/11** ca mới: luật cũ của `splitBills`, biên đóng, biên 00:00 ngày cuối tháng, so cùng
+  tháng (bỏ nợ cũ), chia kỳ trước khi xét đã trả, số tab cộng cả các tháng sau, luôn dựng nhóm. Ca *không tràn ở
+  360 dp* chưa thử với bản sai nào; nó chỉ đòi dựng được nhóm thật (*"CÁC THÁNG SAU (12)"*). `flutter test` **7.096 / 10 skip / 0 fail**, `flutter analyze` **20**.
 - **Nghiệm thu máy ảo** (`FlowMoney_16G`, `-gpu host`, APK debug 13:36): thẻ *"4 hóa đơn chưa thanh toán"* =
   tab *(4)*. Nhóm *"CÁC THÁNG SAU"* hiện dưới kỳ quá hạn cuối, đếm đúng sau khi thêm rồi xoá mềm một hoá đơn thử hạn
   16/11 (2 → 1). Ở 360 dp (`wm density 480`) có 0 điểm ảnh vàng thuần; mật độ đã trả về 420.
