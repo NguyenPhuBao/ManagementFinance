@@ -657,6 +657,156 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
     assert.strictEqual(sanitized.qr_url, null);
     assert.strictEqual(sanitized.checkout_url, null);
   });
+
+  await t.test('19. Tầng 2: getPaymentSummaryStats mặc định LUÔN áp dụng where.is_template = false loại trừ đơn mẫu', async () => {
+    const origCount = prisma.payment_order.count;
+    const origAggregate = prisma.payment_order.aggregate;
+    let capturedWhereCount = null;
+    let capturedWhereAggregate = null;
+
+    prisma.payment_order.count = async ({ where }) => {
+      capturedWhereCount = where;
+      return 5;
+    };
+
+    prisma.payment_order.aggregate = async ({ where }) => {
+      capturedWhereAggregate = where;
+      return {
+        _sum: { amount: { toNumber: () => 245000 } },
+      };
+    };
+
+    try {
+      // Gọi getPaymentSummaryStats mà không truyền options gì cả
+      const stats = await paymentRepository.getPaymentSummaryStats();
+
+      // Xác minh System Impact: Query bắt buộc phải gán where.is_template = false
+      assert.strictEqual(capturedWhereCount.is_template, false, 'Prisma count where phải lọc is_template = false');
+      assert.strictEqual(capturedWhereAggregate.is_template, false, 'Prisma aggregate where phải lọc is_template = false');
+      assert.strictEqual(stats.totalRevenue, 245000);
+    } finally {
+      prisma.payment_order.count = origCount;
+      prisma.payment_order.aggregate = origAggregate;
+    }
+  });
+
+  await t.test('20. Tầng 2: findOrdersByAccount chỉ lấy đơn thật của người dùng (where.is_template = false)', async () => {
+    const origCount = prisma.payment_order.count;
+    const origFindMany = prisma.payment_order.findMany;
+    let capturedCountWhere = null;
+    let capturedFindManyWhere = null;
+
+    prisma.payment_order.count = async ({ where }) => {
+      capturedCountWhere = where;
+      return 2;
+    };
+
+    prisma.payment_order.findMany = async ({ where }) => {
+      capturedFindManyWhere = where;
+      return [
+        {
+          id: 'ord-real-1',
+          idaccount: 10,
+          order_code: BigInt(1001),
+          amount: { toNumber: () => 49000 },
+          status: 'PAID',
+          is_template: false,
+          created_at: new Date(),
+        },
+      ];
+    };
+
+    try {
+      const res = await paymentRepository.findOrdersByAccount(10, { page: 1, limit: 10 });
+      assert.strictEqual(capturedCountWhere.idaccount, 10);
+      assert.strictEqual(capturedCountWhere.is_template, false, 'count phải lọc is_template = false');
+      assert.strictEqual(capturedFindManyWhere.idaccount, 10);
+      assert.strictEqual(capturedFindManyWhere.is_template, false, 'findMany phải lọc is_template = false');
+      assert.strictEqual(res.items.length, 1);
+      assert.strictEqual(res.items[0].is_template, false);
+    } finally {
+      prisma.payment_order.count = origCount;
+      prisma.payment_order.findMany = origFindMany;
+    }
+  });
+
+  await t.test('21. Tầng 2: handlePayOSWebhook với đơn mẫu cập nhật PAID nhưng TUYỆT ĐỐI KHÔNG gia hạn Premium', async () => {
+    const origFindUnique = prisma.payment_order.findUnique;
+    const origRecordTx = paymentRepository.recordTransaction;
+    const origUpdateStatus = paymentRepository.updateOrderPaymentStatus;
+    const origActivate = paymentRepository.activatePremiumSubscription;
+
+    let recordedTx = false;
+    let updatedStatus = false;
+    let activatedPremium = false;
+
+    // Giả lập đơn hàng mẫu is_template = true
+    paymentRepository.findOrderByCode = async () => ({
+      id: 'ord-sample-999',
+      idaccount: 5,
+      order_code: 999999,
+      amount: 2000,
+      status: 'PENDING',
+      is_template: true,
+      account: { type: 'Basic', premium_expires_at: null },
+    });
+
+    paymentRepository.recordTransaction = async () => {
+      recordedTx = true;
+      return { id: 'tx-sample-1' };
+    };
+
+    paymentRepository.updateOrderPaymentStatus = async ({ status }) => {
+      if (status === 'PAID') updatedStatus = true;
+      return { id: 'ord-sample-999', status: 'PAID' };
+    };
+
+    paymentRepository.activatePremiumSubscription = async () => {
+      activatedPremium = true;
+      return {};
+    };
+
+    const mockWebhookPayload = {
+      code: '00',
+      desc: 'success',
+      data: {
+        orderCode: 999999,
+        amount: 2000,
+        description: 'Test chuyen khoan mau 2000d',
+        accountNumber: '0000',
+        reference: 'REF-SAMPLE-999',
+        transactionDateTime: new Date().toISOString(),
+        currency: 'VND',
+        paymentLinkId: 'plink-sample-999',
+        code: '00',
+        desc: 'success',
+        counterAccountBankId: 'MB',
+        counterAccountBankName: 'MB Bank',
+        counterAccountName: 'NGUYEN PHU BAO',
+        counterAccountNumber: '9999',
+        virtualAccountName: 'FINANCE TEST',
+        virtualAccountNumber: '8888',
+      },
+      signature: 'dummy_valid_sig',
+    };
+
+    const payosClient = require('../../modules/payment/payos.client');
+    const origVerify = payosClient.verifyWebhookData;
+    payosClient.verifyWebhookData = () => mockWebhookPayload.data;
+
+    try {
+      const res = await paymentService.handlePayOSWebhook(mockWebhookPayload);
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(recordedTx, true, 'Phải ghi nhận transaction để đối soát');
+      assert.strictEqual(updatedStatus, true, 'Phải cập nhật status đơn mẫu sang PAID');
+      assert.strictEqual(activatedPremium, false, 'TUYỆT ĐỐI KHÔNG gia hạn Premium cho đơn mẫu');
+    } finally {
+      paymentRepository.recordTransaction = origRecordTx;
+      paymentRepository.updateOrderPaymentStatus = origUpdateStatus;
+      paymentRepository.activatePremiumSubscription = origActivate;
+      payosClient.verifyWebhookData = origVerify;
+    }
+  });
 });
 
 

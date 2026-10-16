@@ -162,6 +162,49 @@ async function handlePayOSWebhook(webhookPayload) {
   };
 
   // -------------------------------------------------------------
+  // ĐƠN HÀNG MẪU THỬ NGHIỆM (is_template = true)
+  // Mục đích chính: Kiểm tra đường truyền và xác nhận chuyển khoản PayOS thành công.
+  // Tuyệt đối không kích hoạt gói Premium và không tính vào doanh thu kinh doanh.
+  // -------------------------------------------------------------
+  if (order.is_template) {
+    await paymentRepository.recordTransaction(txData);
+    await paymentRepository.updateOrderPaymentStatus({
+      orderId: order.id,
+      status: 'PAID',
+      amountReceived: receivedAmount,
+      paidAt: txTime,
+      transferContent: description || order.transfer_content,
+    });
+
+    try {
+      const { getIO } = require('../../core/socket');
+      const io = getIO();
+      if (io) {
+        io.to('admin_room').emit('payment.success', {
+          orderId: order.id,
+          orderCode: Number(order.order_code || orderCode),
+          amount: order.amount,
+          amountReceived: receivedAmount,
+          status: 'PAID',
+          paidAt: txTime,
+          isTemplate: true,
+        });
+      }
+    } catch (_) {}
+
+    logger.info('[PAYMENT_WEBHOOK] Đơn hàng mẫu đã xác nhận chuyển khoản thành công qua PayOS (không kích hoạt Premium)', {
+      orderCode,
+      amount: receivedAmount,
+    });
+
+    return {
+      success: true,
+      isTemplate: true,
+      message: 'Giao dịch mẫu đã đối soát thành công qua PayOS',
+    };
+  }
+
+  // -------------------------------------------------------------
   // PHÂN LUỒNG 6.1 VS 6.2 THEO ĐẶC TẢ TÀI CHÍNH
   // -------------------------------------------------------------
 
