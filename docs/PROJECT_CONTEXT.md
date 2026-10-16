@@ -632,6 +632,8 @@ nên không đi qua vòng ấy. Client không đổi thêm; backend sửa là t�
 - Commit tài liệu cùng đợt: mục 7b / 7c `BILL_DOCUMENTATION.md` (kèm sửa câu cũ *"cột không nằm trong payload đẩy"* —
   sai, payload 21 trường có `time_notification`), `NOTIFICATION_FEATURE.md`, câu phụ hàng "Nhắc trước" ở Cài đặt thông
   báo (`hang_nguong.dart`: câu cũ hứa nhắc cho hoá đơn không tự đặt số ngày).
+- **Người dùng chốt thêm:** hoá đơn bật **tự trả** mà tắt nhắc cũng **không** nhận lời báo trước "Hoá đơn sắp được tự trả"
+  (`reminder_scheduler.dart`) — tắt là tắt hết; thông báo "đã tự trả" sau khi trả vẫn có.
 - **Còn để:** tuỳ chọn "Nhắc trước" chỉ còn là ngưỡng nhãn của hoá đơn tắt nhắc — đổi thành *mặc định cho hoá đơn mới*
   hay gỡ hàng là việc người dùng **chưa chọn**; tool AI `danh_sach_hoa_don` (`hang_hoa_don.dart`) gọi
   `billDisplayStatusOf` không truyền `macDinh` (mốc 3).
