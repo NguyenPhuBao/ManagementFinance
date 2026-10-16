@@ -151,7 +151,10 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
   beforeEach(() => {
     vi.clearAllMocks();
     paymentApi.getPackageTypes.mockResolvedValue({
-      data: { success: true, data: ['Basic', 'Premium'] },
+      data: [
+        { id: 'Basic', name: 'Gói Basic', isDefault: true },
+        { id: 'Premium', name: 'Gói Premium', isDefault: false },
+      ],
     });
     paymentApi.getStats.mockResolvedValue({
       data: { success: true, data: mockStats },
