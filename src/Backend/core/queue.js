@@ -1,15 +1,20 @@
 const { Queue, Worker } = require('bullmq');
 const logger = require('./logger');
-
 const Redis = require('ioredis');
+const { resolveRedisUrl } = require('../config/redis.resolver');
 
-const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const redisUrl = resolveRedisUrl();
+const connection = new Redis(redisUrl, {
   maxRetriesPerRequest: null,
+});
+
+connection.on('connect', () => {
+  logger.info(`[Redis Queue Connection] Connected to Redis [${process.env.REDIS_PROVIDER || 'default'}]`);
 });
 
 connection.on('error', (err) => {
   if (err?.message?.includes('max requests limit exceeded')) {
-    logger.error('[Redis Queue Connection] Quota limit exceeded: Upstash 500k commands limit reached.', {
+    logger.error('[Redis Queue Connection] Quota limit exceeded: Upstash commands limit reached.', {
       error: err.message,
     });
     // Chủ động ngắt kết nối tạm thời để tránh ioredis/BullMQ retry liên tục làm ngập log

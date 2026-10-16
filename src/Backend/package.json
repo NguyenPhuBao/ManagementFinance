@@ -19,7 +19,8 @@
     "prisma:studio": "node scripts/db-guard.js studio",
     "db:verify-indexes": "node scripts/verify-db-indexes.js",
     "payos:test": "node scripts/test_payos_connection.js",
-    "payos:confirm-webhook": "node scripts/confirm_payos_webhook.js"
+    "payos:confirm-webhook": "node scripts/confirm_payos_webhook.js",
+    "redis:test": "node scripts/test_redis_connection.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
