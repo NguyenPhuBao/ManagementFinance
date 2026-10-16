@@ -198,6 +198,29 @@ const PaymentHistoryPage = () => {
       loadOrders();
       setFeedbackMsg(`🎉 ${t('payments.sandbox.successTitle')} (#${data.orderCode || data.order_code})`);
       setTimeout(() => setFeedbackMsg(null), 4000);
+
+      const incomingCode = String(data.orderCode || data.order_code || '');
+      setSelectedOrder((prev) => {
+        if (!prev) return prev;
+        if (String(prev.order_code) === incomingCode || prev.id === data.orderId) {
+          return {
+            ...prev,
+            status: 'PAID',
+            paid_at: new Date().toISOString(),
+            qr_url: null,
+            checkout_url: null,
+          };
+        }
+        return prev;
+      });
+
+      setPayosData((prev) => {
+        if (!prev) return prev;
+        if (String(prev.orderCode) === incomingCode) {
+          return null;
+        }
+        return prev;
+      });
     };
 
     const onOverpaidConfirmation = (data) => {
@@ -233,11 +256,17 @@ const PaymentHistoryPage = () => {
       setTimeout(() => setFeedbackMsg(null), 3500);
     };
 
+    const onOrderExpired = () => {
+      loadStats();
+      loadOrders();
+    };
+
     socket.on('payment.order_created', onOrderCreated);
     socket.on('payment.success', onPaymentSuccess);
     socket.on('payment.overpaid_confirmation', onOverpaidConfirmation);
     socket.on('payment.underpaid_warning', onUnderpaidWarning);
     socket.on('payment.refunded', onRefunded);
+    socket.on('payment.order_expired', onOrderExpired);
 
     return () => {
       socket.off('payment.order_created', onOrderCreated);
@@ -245,6 +274,7 @@ const PaymentHistoryPage = () => {
       socket.off('payment.overpaid_confirmation', onOverpaidConfirmation);
       socket.off('payment.underpaid_warning', onUnderpaidWarning);
       socket.off('payment.refunded', onRefunded);
+      socket.off('payment.order_expired', onOrderExpired);
     };
   }, [socket, loadStats, loadOrders, t]);
 
@@ -264,13 +294,26 @@ const PaymentHistoryPage = () => {
       return Math.max(0, Math.floor((targetTime - Date.now()) / 1000));
     };
 
-    setDetailCountdown(calcRemaining());
+    const initialRemaining = calcRemaining();
+    setDetailCountdown(initialRemaining);
+    if (initialRemaining === 0 && selectedOrder.status === 'PENDING') {
+      setSelectedOrder((prev) => (prev ? { ...prev, status: 'EXPIRED', qr_url: null, checkout_url: null } : null));
+      loadOrders();
+      loadStats();
+    }
+
     const interval = setInterval(() => {
-      setDetailCountdown(calcRemaining());
+      const remaining = calcRemaining();
+      setDetailCountdown(remaining);
+      if (remaining === 0 && selectedOrder.status === 'PENDING') {
+        setSelectedOrder((prev) => (prev ? { ...prev, status: 'EXPIRED', qr_url: null, checkout_url: null } : null));
+        loadOrders();
+        loadStats();
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [selectedOrder]);
+  }, [selectedOrder, loadOrders, loadStats]);
 
   useEffect(() => {
     loadStats();
@@ -689,7 +732,9 @@ const PaymentHistoryPage = () => {
                 </tr>
               ) : (
                 orders.map((order) => {
-                  const cfg = STATUS_CONFIG[order.status] || {
+                  const isExpiredOrder = order.status === 'EXPIRED' || (order.status === 'PENDING' && order.expired_at && new Date(order.expired_at) <= new Date());
+                  const effectiveStatus = isExpiredOrder ? 'EXPIRED' : order.status;
+                  const cfg = STATUS_CONFIG[effectiveStatus] || {
                     bg: 'bg-slate-100',
                     text: 'text-slate-600',
                     border: 'border-slate-300',
@@ -749,7 +794,7 @@ const PaymentHistoryPage = () => {
                           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}
                         >
                           <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
-                          {getStatusLabel(order.status, t)}
+                          {getStatusLabel(effectiveStatus, t)}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-on-surface-variant font-mono text-xs whitespace-nowrap">
@@ -844,115 +889,182 @@ const PaymentHistoryPage = () => {
 
                 {/* QR Code & Payment Countdown for Order */}
                 {selectedOrder && (
-                  <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-outline-variant/60">
-                      <span className="text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-primary text-base">qr_code_2</span>
-                        Mã QR Thanh toán VietQR (MB Bank)
-                      </span>
-                      {selectedOrder.status === 'PENDING' && (
-                        <div className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 ${
-                          detailCountdown !== null && detailCountdown > 0
-                            ? 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-700'
-                            : 'bg-red-100 text-red-900 border border-red-300 dark:bg-red-950/50 dark:text-red-200 dark:border-red-700'
-                        }`}>
-                          <span className="material-symbols-outlined text-sm">
-                            {detailCountdown !== null && detailCountdown > 0 ? 'timer' : 'error'}
-                          </span>
-                          <span>
-                            {detailCountdown !== null && detailCountdown > 0
-                              ? `Thời gian còn lại: ${formatCountdown(detailCountdown)}`
-                              : 'Đã hết hạn thanh toán'}
-                          </span>
-                        </div>
-                      )}
-                      {selectedOrder.status === 'PAID' && (
-                        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-700 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">verified</span>
-                          Đã thanh toán thành công
-                        </span>
-                      )}
-                      {selectedOrder.status === 'REFUNDED' && (
-                        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-700 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">history</span>
-                          Đã hoàn tiền
-                        </span>
-                      )}
-                    </div>
+                  (() => {
+                    const isPendingActive = selectedOrder.status === 'PENDING' &&
+                      (!selectedOrder.expired_at || new Date(selectedOrder.expired_at) > new Date()) &&
+                      Boolean(selectedOrder.qr_url);
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                      {/* QR Image */}
-                      <div className="flex flex-col items-center justify-center p-2 bg-white rounded-xl border border-slate-200 text-center">
-                        <img
-                          src={
-                            selectedOrder.qr_url ||
-                            `https://img.vietqr.io/image/970422-2512070399999-compact2.png?amount=${selectedOrder.amount}&addInfo=${encodeURIComponent(selectedOrder.transfer_content || selectedOrder.recognition_code || '')}&accountName=NGUYEN%20PHU%20BAO`
-                          }
-                          alt="VietQR MB Bank"
-                          className="w-40 h-auto object-contain rounded"
-                          loading="lazy"
-                        />
-                        <span className="text-[10px] text-slate-500 font-medium mt-1">Quét bằng App Ngân hàng / MoMo</span>
-                      </div>
-
-                      {/* Bank & Transfer Info */}
-                      <div className="md:col-span-2 space-y-2 text-xs">
-                        <div className="flex justify-between py-1 border-b border-outline-variant/30">
-                          <span className="text-on-surface-variant">Ngân hàng:</span>
-                          <span className="font-semibold text-on-surface">MB Bank (Quân Đội)</span>
-                        </div>
-                        <div className="flex justify-between items-center py-1 border-b border-outline-variant/30">
-                          <span className="text-on-surface-variant">Số tài khoản:</span>
-                          <div className="flex items-center gap-1">
-                            <span className="font-mono font-bold text-on-surface">2512070399999</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyRecognitionCode('2512070399999')}
-                              className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
-                              title="Sao chép STK"
-                            >
-                              <span className="material-symbols-outlined text-sm">content_copy</span>
-                            </button>
-                          </div>
-                        </div>
-                        <div className="flex justify-between py-1 border-b border-outline-variant/30">
-                          <span className="text-on-surface-variant">Chủ tài khoản:</span>
-                          <span className="font-bold text-on-surface">NGUYEN PHU BAO</span>
-                        </div>
-                        <div className="flex justify-between items-center py-1 border-b border-outline-variant/30">
-                          <span className="text-on-surface-variant">Nội dung CK:</span>
-                          <div className="flex items-center gap-1">
-                            <span className="font-mono font-bold text-primary bg-surface-container px-2 py-0.5 rounded break-all">
-                              {selectedOrder.transfer_content || selectedOrder.recognition_code || '—'}
+                    if (isPendingActive) {
+                      return (
+                        <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-outline-variant/60">
+                            <span className="text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-primary text-base">qr_code_2</span>
+                              Mã QR Thanh toán VietQR (MB Bank)
                             </span>
-                            {(selectedOrder.transfer_content || selectedOrder.recognition_code) && (
-                              <button
-                                type="button"
-                                onClick={() => handleCopyRecognitionCode(selectedOrder.transfer_content || selectedOrder.recognition_code)}
-                                className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
-                                title="Sao chép nội dung CK"
-                              >
-                                <span className="material-symbols-outlined text-sm">content_copy</span>
-                              </button>
-                            )}
+                            <div className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 ${
+                              detailCountdown !== null && detailCountdown > 0
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-700'
+                                : 'bg-red-100 text-red-900 border border-red-300 dark:bg-red-950/50 dark:text-red-200 dark:border-red-700'
+                            }`}>
+                              <span className="material-symbols-outlined text-sm">
+                                {detailCountdown !== null && detailCountdown > 0 ? 'timer' : 'error'}
+                              </span>
+                              <span>
+                                {detailCountdown !== null && detailCountdown > 0
+                                  ? `Thời gian còn lại: ${formatCountdown(detailCountdown)}`
+                                  : 'Đã hết hạn thanh toán'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                            {/* QR Image */}
+                            <div className="flex flex-col items-center justify-center p-2 bg-white rounded-xl border border-slate-200 text-center">
+                              <img
+                                src={selectedOrder.qr_url}
+                                alt="VietQR MB Bank"
+                                className="w-40 h-auto object-contain rounded"
+                                loading="lazy"
+                              />
+                              <span className="text-[10px] text-slate-500 font-medium mt-1">Quét bằng App Ngân hàng / MoMo</span>
+                            </div>
+
+                            {/* Bank & Transfer Info */}
+                            <div className="md:col-span-2 space-y-2 text-xs">
+                              <div className="flex justify-between py-1 border-b border-outline-variant/30">
+                                <span className="text-on-surface-variant">Ngân hàng:</span>
+                                <span className="font-semibold text-on-surface">MB Bank (Quân Đội)</span>
+                              </div>
+                              <div className="flex justify-between items-center py-1 border-b border-outline-variant/30">
+                                <span className="text-on-surface-variant">Số tài khoản:</span>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-mono font-bold text-on-surface">2512070399999</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyRecognitionCode('2512070399999')}
+                                    className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
+                                    title="Sao chép STK"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">content_copy</span>
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="flex justify-between py-1 border-b border-outline-variant/30">
+                                <span className="text-on-surface-variant">Chủ tài khoản:</span>
+                                <span className="font-bold text-on-surface">NGUYEN PHU BAO</span>
+                              </div>
+                              <div className="flex justify-between items-center py-1 border-b border-outline-variant/30">
+                                <span className="text-on-surface-variant">Nội dung CK:</span>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-mono font-bold text-primary bg-surface-container px-2 py-0.5 rounded break-all">
+                                    {selectedOrder.transfer_content || selectedOrder.recognition_code || '—'}
+                                  </span>
+                                  {(selectedOrder.transfer_content || selectedOrder.recognition_code) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyRecognitionCode(selectedOrder.transfer_content || selectedOrder.recognition_code)}
+                                      className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
+                                      title="Sao chép nội dung CK"
+                                    >
+                                      <span className="material-symbols-outlined text-sm">content_copy</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              {selectedOrder.checkout_url && (
+                                <div className="pt-1">
+                                  <a
+                                    href={selectedOrder.checkout_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">open_in_new</span>
+                                    <span>Mở Cổng Thanh Toán PayOS</span>
+                                  </a>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        {selectedOrder.checkout_url && (
-                          <div className="pt-1">
-                            <a
-                              href={selectedOrder.checkout_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-all active:scale-95 cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-sm">open_in_new</span>
-                              <span>Mở Cổng Thanh Toán PayOS</span>
-                            </a>
+                      );
+                    }
+
+                    if (selectedOrder.status === 'PAID') {
+                      return (
+                        <div className="p-4 rounded-xl border border-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/30 dark:border-emerald-800 flex items-center gap-3.5">
+                          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-700 dark:text-emerald-300 shrink-0">
+                            <span className="material-symbols-outlined text-2xl">verified</span>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-emerald-900 dark:text-emerald-100">
+                              Đã thanh toán thành công
+                            </h4>
+                            <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
+                              Đơn hàng đã được đối soát hoàn tất. Mã QR và liên kết thanh toán đã được đóng vĩnh viễn trên hệ thống nhằm bảo vệ an toàn giao dịch và ngăn chặn chuyển khoản trùng lặp.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (selectedOrder.status === 'EXPIRED' || (selectedOrder.status === 'PENDING' && detailCountdown === 0)) {
+                      return (
+                        <div className="p-4 rounded-xl border border-rose-300 bg-rose-50/80 dark:bg-rose-950/30 dark:border-rose-800 flex items-center gap-3.5">
+                          <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center text-rose-700 dark:text-rose-300 shrink-0">
+                            <span className="material-symbols-outlined text-2xl">timer_off</span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-rose-900 dark:text-rose-100">
+                              Đơn hàng đã hết hạn thanh toán
+                            </h4>
+                            <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
+                              Thời hạn 10 phút của đơn hàng đã kết thúc. Mã QR thanh toán đã bị vô hiệu hóa và xóa khỏi hệ thống để tránh người dùng chuyển khoản nhầm lẫn.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (selectedOrder.status === 'REFUNDED') {
+                      return (
+                        <div className="p-4 rounded-xl border border-purple-300 bg-purple-50/80 dark:bg-purple-950/30 dark:border-purple-800 flex items-center gap-3.5">
+                          <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-purple-700 dark:text-purple-300 shrink-0">
+                            <span className="material-symbols-outlined text-2xl">history</span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-purple-900 dark:text-purple-100">
+                              Đơn hàng đã hoàn tiền thành công
+                            </h4>
+                            <p className="text-xs text-purple-700 dark:text-purple-300 mt-0.5">
+                              Khoản tiền giao dịch đã được hoàn trả theo quy định tài chính. Kênh thanh toán QR đã đóng.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (selectedOrder.status === 'CANCELLED') {
+                      return (
+                        <div className="p-4 rounded-xl border border-slate-300 bg-slate-100 dark:bg-slate-800/40 dark:border-slate-700 flex items-center gap-3.5">
+                          <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0">
+                            <span className="material-symbols-outlined text-2xl">cancel</span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                              Đơn hàng đã bị hủy
+                            </h4>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                              Đơn hàng này không còn hiệu lực. Mã QR thanh toán đã được vô hiệu hóa.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })()
                 )}
 
                 {/* Section 1: Order Information */}
@@ -967,7 +1079,25 @@ const PaymentHistoryPage = () => {
                     </div>
                     <div>
                       <span className="text-on-surface-variant text-xs">{t('payments.detailModal.status')}:</span>
-                      <p className="font-semibold text-on-surface">{selectedOrder.status}</p>
+                      <div className="mt-1">
+                        {(() => {
+                          const isExp = selectedOrder.status === 'EXPIRED' ||
+                            (selectedOrder.status === 'PENDING' && selectedOrder.expired_at && new Date(selectedOrder.expired_at) <= new Date());
+                          const effStatus = isExp ? 'EXPIRED' : selectedOrder.status;
+                          const scfg = STATUS_CONFIG[effStatus] || {
+                            bg: 'bg-slate-100',
+                            text: 'text-slate-600',
+                            border: 'border-slate-300',
+                            icon: 'help',
+                          };
+                          return (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${scfg.bg} ${scfg.text} ${scfg.border}`}>
+                              <span className="material-symbols-outlined text-[13px]">{scfg.icon}</span>
+                              {getStatusLabel(effStatus, t)}
+                            </span>
+                          );
+                        })()}
+                      </div>
                     </div>
                     <div>
                       <span className="text-on-surface-variant text-xs">{t('payments.detailModal.amount')}:</span>
@@ -1459,6 +1589,18 @@ const PaymentHistoryPage = () => {
                           progress_activity
                         </span>
                         <p className="text-xs">{t('common.loading')}</p>
+                      </div>
+                    ) : countdownSeconds === 0 ? (
+                      <div className="py-12 px-4 text-center space-y-2">
+                        <span className="material-symbols-outlined text-4xl text-rose-500 block mx-auto">
+                          timer_off
+                        </span>
+                        <h5 className="text-sm font-bold text-rose-700 dark:text-rose-300">
+                          Đơn hàng mẫu đã hết hạn
+                        </h5>
+                        <p className="text-xs text-on-surface-variant max-w-xs mx-auto leading-relaxed">
+                          Mã QR đã bị vô hiệu hóa để bảo vệ an toàn giao dịch. Vui lòng nhấn nút <strong className="font-semibold text-primary">"Tạo đơn Pending & Sinh mã QR"</strong> phía trên để tiếp tục thử nghiệm.
+                        </p>
                       </div>
                     ) : (
                       <>

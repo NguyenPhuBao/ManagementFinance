@@ -2,6 +2,7 @@ import React from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { LanguageProvider } from './store/language.context';
 import { AuthProvider } from './store/auth.context';
+import { SocketProvider } from './store/socket.context';
 import { SettingsProvider } from './store/settings.context';
 import { AlertProvider } from './store/alert.context';
 import AlertContainer from './components/common/AlertToast';
@@ -12,10 +13,12 @@ const App = () => {
     <LanguageProvider>
       <SettingsProvider>
         <AuthProvider>
-          <AlertProvider>
-            <AlertContainer />
-            <RouterProvider router={router} />
-          </AlertProvider>
+          <SocketProvider>
+            <AlertProvider>
+              <AlertContainer />
+              <RouterProvider router={router} />
+            </AlertProvider>
+          </SocketProvider>
         </AuthProvider>
       </SettingsProvider>
     </LanguageProvider>
