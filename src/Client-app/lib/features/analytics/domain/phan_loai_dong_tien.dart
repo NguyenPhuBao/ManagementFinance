@@ -18,7 +18,7 @@
 library;
 
 import '../../category/domain/category_classify.dart';
-import 'khoan_vao_thong_ke.dart';
+import '../../transaction/domain/khoan_vao_thong_ke.dart';
 import 'thong_ke_thang.dart';
 
 /// Phân loại của một khoản: `classify` của danh mục nó gắn, rơi về [loai] khi
@@ -28,7 +28,7 @@ import 'thong_ke_thang.dart';
 /// 2026-09-10 có 17 hàng giao dịch trống danh mục thật trên server, và giao
 /// dịch kéo về có thể trỏ vào một danh mục chưa đồng bộ tới máy này. Loại chúng
 /// khỏi thống kê là giấu mất chi tiêu thật — cùng lý lẽ với
-/// `khoan_vao_thong_ke.dart`.
+/// `transaction/domain/khoan_vao_thong_ke.dart`.
 ///
 /// Giá trị `classify` lạ cũng rơi về [loai]: một lát thứ tư mang tên vô nghĩa
 /// tệ hơn là xếp nhầm vào lát đúng chiều tiền.

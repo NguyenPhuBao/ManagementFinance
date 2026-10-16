@@ -12,7 +12,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/features/analytics/domain/khoan_vao_thong_ke.dart';
+import 'package:flowmoney/features/transaction/domain/khoan_vao_thong_ke.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';

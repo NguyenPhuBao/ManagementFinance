@@ -17,7 +17,7 @@ import 'dart:math' as math;
 import '../../bill/domain/bill_recurrence.dart';
 import '../../../core/category/category_name.dart';
 import '../data/models/transaction_entity.dart';
-import '../../analytics/domain/khoan_vao_thong_ke.dart';
+import 'khoan_vao_thong_ke.dart';
 
 /// Số lần tối thiểu của một chuỗi — người dùng chốt 3.
 const int kSoLanToiThieu = 3;

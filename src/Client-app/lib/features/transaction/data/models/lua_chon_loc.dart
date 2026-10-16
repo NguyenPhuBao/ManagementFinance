@@ -1,5 +1,6 @@
 /// `LuaChonLoc` — dời nguyên văn từ `data/repositories/bao_cao_repository.dart` 2026-10-15 (quét 28:
-/// `transaction/domain/tim_giao_dich.dart` dùng nó). Không `export` lại từ tệp repository.
+/// `transaction/domain/tim_giao_dich.dart` dùng nó), rồi từ `analytics/data/models/` về `transaction/data/models/`
+/// 2026-10-16 (quét 29: analytics đọc transaction, không ngược lại). Không `export` lại.
 library;
 
 /// Một lựa chọn của bộ lọc trên trang Xuất báo cáo — dùng chung cho chip ví và

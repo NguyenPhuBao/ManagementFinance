@@ -20,6 +20,8 @@
 /// (`analytics|category`, `analytics|transaction`, `bill|transaction`, `category|transaction`) và hai cạnh một chiều trong
 /// cùng cụm (`analytics->bill`, `category->bill`). Chỉ được giảm; thêm vào là mở lại nợ (phải có lý do + ngày). Khuôn danh
 /// sách chờ của quét 22 / 25 / 27 / 28.
+/// Lát 1 của spec `2026-10-16-go-vong-mang-domain-design.md` (2026-10-16) rút năm cạnh — `khoan_vao_thong_ke` và
+/// `LuaChonLoc` về transaction, analytics ra khỏi vòng.
 library;
 
 import 'dart:io';
@@ -30,14 +32,9 @@ import '../../helpers/chi_thi_dart.dart';
 
 /// Cạnh `'nguồn->đích'` còn nằm trên vòng. Đo gốc 2026-10-16 (sau gỡ vòng `bill`/`notification`).
 const conCho = <String>{
-  'analytics->bill',
-  'analytics->category',
-  'analytics->transaction',
   'bill->transaction',
-  'category->analytics',
   'category->bill',
   'category->transaction',
-  'transaction->analytics',
   'transaction->bill',
   'transaction->category',
 };

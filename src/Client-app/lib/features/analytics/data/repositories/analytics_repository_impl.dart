@@ -17,7 +17,7 @@ import '../../../goal/data/models/goal_entity.dart';
 import '../../domain/bao_cao_xuat.dart';
 import '../../domain/chi_bat_thuong.dart';
 import '../../domain/du_bao_dong_tien.dart';
-import '../../domain/khoan_vao_thong_ke.dart';
+import '../../../transaction/domain/khoan_vao_thong_ke.dart';
 import '../../domain/lich_chi_tieu.dart';
 import '../../domain/nguong_co_nghia.dart';
 import '../../domain/pham_vi_ky.dart';

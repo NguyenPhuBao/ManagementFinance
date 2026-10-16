@@ -1,9 +1,12 @@
 import '../../goal/domain/goal_history_direction.dart';
-import '../../transaction/domain/transaction_owner.dart';
+import 'transaction_owner.dart';
 import '../../wallet/domain/dieu_chinh_so_du.dart';
 import '../../wallet/domain/so_du_mo_so.dart';
 
 /// "Hàng này có được tính vào thống kê không" — **định nghĩa duy nhất**.
+///
+/// Ở `transaction/domain/` từ 2026-10-16 (trước ở `analytics/domain/`): luật của HÀNG SỔ, mà category, notification và
+/// chính transaction đều cần — để ở analytics là kéo cả ba vào vòng với analytics (quét 29).
 ///
 /// ## Nó thay cái gì
 ///

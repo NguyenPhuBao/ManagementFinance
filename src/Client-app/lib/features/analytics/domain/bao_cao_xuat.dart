@@ -14,7 +14,7 @@ library;
 
 import 'lich_chi_tieu.dart';
 import 'thong_ke_thang.dart';
-import 'khoan_vao_thong_ke.dart';
+import '../../transaction/domain/khoan_vao_thong_ke.dart';
 import 'pham_vi_ky.dart';
 
 export 'thong_ke_thang.dart' show TongThuChi, rutGon;

@@ -6,7 +6,7 @@ import '../../bill/domain/bill_auto_pay.dart';
 import '../../bill/domain/bill_pay_status.dart';
 import '../../bill/domain/bill_nhac_truoc.dart';
 import '../../budget/domain/budget_health.dart';
-import '../../analytics/domain/khoan_vao_thong_ke.dart';
+import '../../transaction/domain/khoan_vao_thong_ke.dart';
 import '../../ai_edge/domain/tai_phan_bo.dart';
 import '../../bill/data/models/bill_entity.dart';
 import '../../wallet/data/models/wallet_entity.dart';
