@@ -10,11 +10,16 @@
 /// Luật 5 từ 2026-10-15 không còn danh sách chờ: [domainThuanChoCore] là danh sách CỐ ĐỊNH các tệp thuần core được đọc
 /// (G88 gạch 4 đóng), luật 5b canh chúng thuần. Miễn trừ đích danh có lý do ở [mienTru]; thư mục miễn trừ không còn
 /// tồn tại thì test cũng đỏ để rút dòng miễn trừ.
+///
+/// Chỉ thị (luật 5, 5b, 7) đọc qua `test/helpers/chi_thi_dart.dart` — thấy `part`, import có điều kiện, chỉ thị nhiều dòng
+/// (từ 2026-10-16).
 library;
 
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../helpers/chi_thi_dart.dart';
 
 /// Thư mục được phép ngay dưới `lib/features/<x>/` — `application/` từ 2026-10-15 (spec Entity Thông báo mục 8).
 const tangMang = {'data', 'domain', 'presentation', 'application'};
@@ -61,31 +66,6 @@ const domainThuanChoCore = {
   'lib/features/bill/domain/bill_recurrence.dart',
   'lib/features/goal/domain/uu_tien_hop_le.dart',
 };
-
-/// `import` / `export` + đường trong nháy; dòng đầu có thể mang BOM (U+FEFF — `readAsLinesSync` giữ nó). Dựng BOM bằng mã
-/// ký tự, không gõ ký tự thật vào mã nguồn.
-final _dongImport = RegExp('^${String.fromCharCode(0xFEFF)}?(?:import|export)\\s*[\'"]([^\'"]+)[\'"]');
-
-/// Chuẩn hoá `a/b/../c` → `a/c` (dấu `/`).
-String _chuan(String p) {
-  final ra = <String>[];
-  for (final s in p.replaceAll('\\', '/').split('/')) {
-    if (s.isEmpty || s == '.') continue;
-    if (s == '..') {
-      if (ra.isNotEmpty) ra.removeLast();
-      continue;
-    }
-    ra.add(s);
-  }
-  return ra.join('/');
-}
-
-/// Đích (tương đối `src/Client-app`) của đường [duong] trong dòng import của tệp [tep]; `null` = `dart:` / gói ngoài.
-String? _dich(String tep, String duong) {
-  if (duong.startsWith('package:flowmoney/')) return _chuan('lib/${duong.substring('package:flowmoney/'.length)}');
-  if (duong.contains(':')) return null;
-  return _chuan('${tep.substring(0, tep.lastIndexOf('/'))}/$duong');
-}
 
 String _duong(FileSystemEntity e) => e.path.replaceAll('\\', '/');
 String _ten(FileSystemEntity e) => _duong(e).split('/').last;
@@ -197,16 +177,15 @@ void main() {
     for (final f in Directory('lib/core').listSync(recursive: true).whereType<File>()) {
       final d = _duong(f);
       if (!d.endsWith('.dart')) continue;
-      for (final l in f.readAsLinesSync()) {
-        final m = _dongImport.firstMatch(l);
-        if (m == null || !m.group(1)!.contains('features/')) continue;
+      for (final duong in duongChiThi(f.readAsStringSync())) {
+        if (!duong.contains('features/')) continue;
         tong++;
         if (diemGhep.contains(d)) continue;
-        final dich = _dich(d, m.group(1)!);
+        final dich = dichTrongLib(d, duong);
         if (dich != null && domainThuanChoCore.contains(dich)) {
           docDuoc.add(dich);
         } else {
-          loi.add("$d: import '${m.group(1)}' — hạ tầng core chỉ được đọc hằng / hàm thuần trong domainThuanChoCore "
+          loi.add("$d: chỉ thị '$duong' — hạ tầng core chỉ được đọc hằng / hàm thuần trong domainThuanChoCore "
               '(mục 4 kiến trúc); thứ có trạng thái hay I/O → cổng ở core/<chủ đề>/ + DI truyền bản thật, hoặc dời về features/<x>/.');
         }
       }
@@ -227,14 +206,11 @@ void main() {
     for (final t in domainThuanChoCore) {
       if (!File(t).existsSync()) continue; // luật 5 đã báo
       final mang = t.split('/')[2]; // lib/features/<mang>/…
-      for (final l in File(t).readAsLinesSync()) {
-        final m = _dongImport.firstMatch(l);
-        if (m == null) continue;
-        final duong = m.group(1)!;
+      for (final duong in duongChiThi(File(t).readAsStringSync())) {
         if (duong.startsWith('dart:')) continue;
-        final dich = _dich(t, duong);
+        final dich = dichTrongLib(t, duong);
         if (dich != null && dich.startsWith('lib/features/$mang/data/models/')) continue;
-        loi.add("$t: import '$duong' — core đọc tệp này, mọi phụ thuộc của nó thành phụ thuộc của hạ tầng; giữ tệp thuần "
+        loi.add("$t: chỉ thị '$duong' — core đọc tệp này, mọi phụ thuộc của nó thành phụ thuộc của hạ tầng; giữ tệp thuần "
             '(dart: hoặc data/models/ của mảng), dời phần nặng ra tệp khác.');
       }
     }
@@ -242,16 +218,16 @@ void main() {
   });
 
   test('luật 7: data/ và domain/ không import application/ — chiều một hướng (spec Entity Thông báo 2026-10-15 mục 8)', () {
-    // `import` / `export`, nháy đơn / kép, BOM như luật 5. Bắt cả đường tương đối (`../application/x.dart`) lẫn `package:`.
-    final importApplication =
-        RegExp('^${String.fromCharCode(0xFEFF)}?(?:import|export)\\s*[\'"][^\'"]*/application/');
+    // `import` / `export` / `part` (kể cả vế có điều kiện) qua `duongChiThi`. Đích chuẩn hoá qua `dichTrongLib`: bắt cả
+    // đường tương đối (`../application/x.dart`) lẫn `package:flowmoney/`; gói ngoài (null) bỏ qua.
+    bool chamApplication(String tep, String duong) => (dichTrongLib(tep, duong) ?? '').contains('/application/');
     final loi = <String>[];
     var soTep = 0;
     for (final f in Directory('lib/features').listSync(recursive: true).whereType<File>()) {
       final d = _duong(f);
       if (!d.endsWith('.dart') || !(d.contains('/data/') || d.contains('/domain/'))) continue;
       soTep++;
-      if (f.readAsLinesSync().any(importApplication.hasMatch)) {
+      if (duongChiThi(f.readAsStringSync()).any((duong) => chamApplication(d, duong))) {
         loi.add('$d: import application/ — data/ và domain/ nằm DƯỚI application (mục 4 kiến trúc); '
             'dời luật thuần về domain/, hoặc để application gọi xuống.');
       }
