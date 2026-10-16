@@ -143,13 +143,14 @@ const PaymentHistoryPage = () => {
   };
 
   // Fetch KPI Stats
+  // Fetch Summary Stats (Luôn luôn loại trừ đơn mẫu khỏi doanh thu và thông số kinh doanh)
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
     try {
       const res = await paymentApi.getStats({
         ...(fromDate && { fromDate }),
         ...(toDate && { toDate }),
-        ...(excludeTemplate && { excludeTemplate: 'true' }),
+        excludeTemplate: 'true',
       });
       const data = res?.data?.data || res?.data || res;
       if (data && data.totalOrders !== undefined) {
@@ -160,7 +161,7 @@ const PaymentHistoryPage = () => {
     } finally {
       setStatsLoading(false);
     }
-  }, [fromDate, toDate, excludeTemplate]);
+  }, [fromDate, toDate]);
 
   // Fetch Orders List
   const loadOrders = useCallback(async () => {
@@ -508,6 +509,9 @@ const PaymentHistoryPage = () => {
             <h3 className="text-xl font-bold text-emerald-600 mt-1">
               {statsLoading ? '...' : formatVnd(stats.totalRevenue)}
             </h3>
+            <p className="text-[10px] text-on-surface-variant/70 mt-0.5">
+              *{t('payments.stats.realRevenueNote')}
+            </p>
           </div>
           <div className="w-11 h-11 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
             <span className="material-symbols-outlined text-2xl">payments</span>

@@ -1251,6 +1251,7 @@ export default {
       totalOrders: 'Tổng số đơn hàng',
       paidOrders: 'Thanh toán thành công',
       successRate: 'Tỷ lệ thành công',
+      realRevenueNote: 'Chỉ số thực tế (đã loại trừ đơn mẫu)',
     },
     filter: {
       searchPlaceholder: 'Tìm theo mã đơn, username, email...',

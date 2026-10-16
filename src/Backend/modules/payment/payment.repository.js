@@ -192,10 +192,11 @@ async function findOrderById(orderId) {
 async function findOrdersByAccount(idaccount, { page = 1, limit = 20 } = {}) {
   await autoExpirePendingOrders();
   const skip = (Math.max(1, page) - 1) * limit;
+  const where = { idaccount, is_template: false };
   const [total, items] = await Promise.all([
-    prisma.payment_order.count({ where: { idaccount } }),
+    prisma.payment_order.count({ where }),
     prisma.payment_order.findMany({
-      where: { idaccount },
+      where,
       orderBy: { created_at: 'desc' },
       skip,
       take: limit,
@@ -613,12 +614,12 @@ async function findOrdersForAdmin({
  * Lấy thống kê tổng quan doanh thu và đơn hàng cho Admin
  * @param {object} options
  */
-async function getPaymentSummaryStats({ fromDate, toDate, excludeTemplate = false } = {}) {
+async function getPaymentSummaryStats({ fromDate, toDate, excludeTemplate = true } = {}) {
   await autoExpirePendingOrders();
-  const where = {};
-  if (excludeTemplate === 'true' || excludeTemplate === true) {
-    where.is_template = false;
-  }
+  // Giao dịch mẫu không tính vào doanh thu và ghi nhận thông số kinh doanh
+  const where = {
+    is_template: false,
+  };
   if (fromDate || toDate) {
     where.created_at = {};
     if (fromDate) {

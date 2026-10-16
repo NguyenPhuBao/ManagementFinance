@@ -633,11 +633,15 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       });
     });
 
-    it('2.9. Checkbox "Loại bỏ mẫu" kích hoạt gọi API getOrders và getStats kèm tham số excludeTemplate', async () => {
+    it('2.9. Thống kê KPI luôn loại trừ đơn mẫu, và Checkbox "Loại bỏ mẫu" kích hoạt lọc getOrders kèm excludeTemplate', async () => {
       render(<PaymentHistoryPage />);
 
       await waitFor(() => {
         expect(screen.getByText('#1001')).toBeInTheDocument();
+        // Tầng 2: getStats luôn luôn được gọi với excludeTemplate = 'true' bảo vệ doanh thu kinh doanh
+        expect(paymentApi.getStats).toHaveBeenCalledWith(
+          expect.objectContaining({ excludeTemplate: 'true' })
+        );
       });
 
       const checkbox = screen.getByLabelText(/Loại bỏ mẫu/i);
@@ -649,9 +653,6 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       await waitFor(() => {
         expect(paymentApi.getOrders).toHaveBeenCalledWith(
           expect.objectContaining({ excludeTemplate: 'true', page: 1 })
-        );
-        expect(paymentApi.getStats).toHaveBeenCalledWith(
-          expect.objectContaining({ excludeTemplate: 'true' })
         );
       });
     });
