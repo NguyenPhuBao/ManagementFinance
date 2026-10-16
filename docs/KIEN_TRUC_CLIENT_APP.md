@@ -270,7 +270,7 @@ trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng
 ## 9. Ưu điểm, nhược điểm, nợ có tên
 
 **Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (33 tệp test quét, CI — đếm 2026-10-16). Ranh
-giới nền tảng thay được bằng bản giả, nên **7.133** ca test (đo 2026-10-16 sau đợt nợ kiến trúc nhỏ + quét 29, +10 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
+giới nền tảng thay được bằng bản giả, nên **7.146** ca test (đo 2026-10-16 khuya sau đợt nợ kiến trúc nhỏ + quét 29 + lượt "tắt nhắc là tắt thật", +10 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 
 **Nhược điểm còn lại.** Entity 7/14 mảng; giao diện không còn cầm kiểu hàng Drift ở mảng nào (G88 gạch 3 xong: Hoá đơn, Ví, Giao dịch 2026-10-14, Danh mục + Thông báo 2026-10-15; gạch 5 và 6 đóng cùng đợt). Gạch 4 đóng 2026-10-16 (`core` → `features` chỉ còn năm tệp domain thuần, quét 25 luật 5 / 5b), G88 đóng. Ba lệch `domain` → `data/repositories` và hai chỗ `ai_edge/domain` → `presentation` (`pickHomeBudget`) từng nằm ở đây đã trả cùng đợt, nay canh bằng quét 28. Vòng `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart` **đã gỡ 2026-10-16** (`billLeadDays` + `mocNhacMacDinh` về `bill/domain/bill_nhac_truoc.dart`); cạnh `bill/application/bill_payment_conflict_resolver.dart` → `notification_rules.dart` còn, cố ý (bộ điều phối phát thông báo; quét 29 chỉ đọc nguồn `domain/`). Còn nợ có tên: bốn cặp hai chiều của cụm {analytics, bill, category, transaction}, mười cạnh chờ của quét 29 (chỉ được giảm). `SyncEngine` 2.163 dòng một tệp (đo 2026-10-16).
@@ -299,6 +299,6 @@ Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): 
 2. **Gọi đúng tên.** Feature-first ba tầng + `application/` (bộ điều phối), offline-first. Không nhận là Clean Architecture; nói vì sao không (mục 1).
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
-4. **Con số.** 14 mảng, 615 tệp `lib/` (đếm 2026-10-16), 33 tệp test quét, 7.133 ca test (đo 2026-10-16), CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
+4. **Con số.** 14 mảng, 616 tệp `lib/` (đếm 2026-10-16 khuya), 33 tệp test quét, 7.146 ca test (đo 2026-10-16 khuya), CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
 5. **Tự nêu nhược điểm trước khi bị hỏi.** Entity 7/14 mảng; thống nhất xong Hoá đơn, Ví, Giao dịch (2026-10-14), Danh mục, Thông báo (2026-10-15); G88 đóng 2026-10-16 (gạch 4: `core` → `features` chỉ còn năm tệp domain thuần), còn bốn cặp hai chiều của cụm {analytics, bill, category, transaction} (vòng `bill_status` ↔ `notification_rules` đã gỡ 2026-10-16), `SyncEngine` một tệp (bốn trang trên 1.200 dòng đã tách xong 2026-10-13) — và nói các vòng ấy
    là nợ có tên ngoài G88 (G88 đóng 2026-10-16), tức là đã biết, không phải chưa nhìn thấy.

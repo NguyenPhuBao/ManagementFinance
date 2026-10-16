@@ -615,8 +615,12 @@ src/Backend/
 Lượt soát toàn đợt 🧹 phát hiện `bill.timeNotification` NULL bị **ba nơi hiểu ba cách**: form Thêm hoá đơn ghi NULL khi
 tắt công tắc "Nhắc trước hạn" và màn Chi tiết / bảng Thanh toán hiện "Không nhắc"; bộ luật thông báo và bộ đặt lịch hệ
 điều hành lấp NULL bằng tuỳ chọn "Nhắc trước" chung (**tắt mà vẫn bị nhắc** — cả thông báo trong app lẫn lịch màn hình
-khoá); nhãn "Sắp đến hạn" dùng mốc 3 cố định. Người dùng chọn "Sửa luôn" rồi "tắt là tắt thật". Đo PostgreSQL dev cùng
-ngày (chỉ đọc): 37 hoá đơn sống, **0** mang NULL — dữ liệu hiện có không đổi hành vi.
+khoá); nhãn "Sắp đến hạn" dùng mốc 3 cố định. Người dùng chọn "Sửa luôn" rồi "tắt là tắt thật".
+
+⚠️ **Chờ backend — đơn CAN-LAM 45** (lượt soát Opus bắt): `/sync/push` ép NULL thành `'3'` khi tạo (`|| '3'`) và giữ số cũ
+khi cập nhật (`?? existing`), pull trả về và client ghi đè — **tắt nhắc chỉ sống tới vòng đồng bộ đầu tiên**. Đo PostgreSQL
+dev (chỉ đọc): 37 hoá đơn sống, **0** mang NULL — hệ quả của phép ép. Nghiệm thu máy ảo bên dưới chạy khi backend dev tắt
+nên không đi qua vòng ấy. Client không đổi thêm; backend sửa là tính năng tự đúng.
 
 - `d657b065` — `soNgayNhacRieng(bill)` (`bill/domain/bill_nhac_truoc.dart`; NULL / chuỗi không đọc được → `null` = tắt).
   Bộ luật bỏ hoá đơn tắt nhắc **sau** nhánh quá hạn (quá hạn vẫn báo); bộ đặt lịch bỏ nó **trước** `khongHuy.add` (lịch

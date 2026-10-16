@@ -211,6 +211,9 @@ void main() {
       expect(find.text('SẮP ĐẾN HẠN'), findsNothing,
           reason: 'Nhắc trước 1 ngày, còn 5 ngày — cùng số bộ nhắc dùng cho '
               'hoá đơn ấy, nhãn và dải nhắc nói cùng một chuyện.');
+      expect(find.text('CHƯA THANH TOÁN'), findsOneWidget,
+          reason: 'Đòi kết quả, không chỉ đòi vắng mặt — một bản sai bỏ hẳn '
+              'nhãn cũng làm vế trên xanh (G43).');
     });
   });
 

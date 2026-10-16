@@ -347,8 +347,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     () => BillBloc(repository: sl<BillRepository>()),
   );
   // Ngưỡng nhãn "Sắp đến hạn" cho hoá đơn tắt nhắc = tuỳ chọn "Nhắc trước" của Cài
-  // đặt thông báo. Hàm đọc đặt ở đây (điểm ghép) để `bill/` không import
-  // `notification/` (quét 29). Đọc lúc gọi nên đăng ký trước kho tuỳ chọn vẫn được.
+  // đặt thông báo. Hàm đọc đặt ở đây (điểm ghép) để `bill/data` và
+  // `bill/presentation` không import `notification/`. Đọc lúc gọi nên đăng ký
+  // trước kho tuỳ chọn vẫn được.
   sl.registerLazySingleton<SoNgayNhacNguon>(
     () => SoNgayNhacNguon((id) async =>
         (await sl<NotificationPrefsStore>().read(id)).soNgayNhacHoaDon),

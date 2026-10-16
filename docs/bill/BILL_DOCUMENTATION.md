@@ -1060,11 +1060,18 @@ lịch trên màn hình khoá. Nay một định nghĩa `soNgayNhacRieng` (`bill
 NULL hoặc chuỗi không đọc được → `null` = tắt): bộ luật bỏ hoá đơn tắt nhắc **sau**
 nhánh quá hạn (nợ quá hạn vẫn báo), bộ đặt lịch bỏ nó **trước** `khongHuy.add` (lịch
 cũ bị huỷ ở lượt `resync` kế). Tuỳ chọn "Nhắc trước" chung nay chỉ còn là ngưỡng
-nhãn "Sắp đến hạn" của hoá đơn tắt nhắc (mục 7c). Đo PostgreSQL dev cùng ngày: 37 hoá
-đơn sống, 0 mang NULL.
+nhãn "Sắp đến hạn" của hoá đơn tắt nhắc (mục 7c).
+
+⚠️ **Chờ backend — đơn CAN-LAM 45** (`TAT_NHAC_HOA_DON_QUA_DONG_BO.md`): `/sync/push` ép
+NULL thành `'3'` khi **tạo** (`|| '3'`) và giữ giá trị cũ khi **cập nhật** (`?? existing`),
+rồi `/sync/pull` trả hàng ấy về và client ghi đè — **tắt nhắc chỉ giữ được trên máy chưa
+đồng bộ hàng ấy**; sau một vòng đồng bộ hoá đơn trở lại "3 ngày" (hoặc số cũ). Đo PostgreSQL
+dev 2026-10-16: 37 hoá đơn sống, 0 mang NULL — **hệ quả** của phép ép, không phải dấu hiệu
+chưa ai tắt nhắc. Client không đổi gì thêm; khi backend sửa, tính năng tự đúng.
 
 Cột đi qua đồng bộ (`time_notification`, payload hoá đơn **21 trường**) — câu cũ ở đây
-nói nó *"không nằm trong payload đẩy"* đã sai từ khi payload hoá đơn mở rộng.
+nói nó *"không nằm trong payload đẩy"* đã sai ít nhất từ 2026-09-04 (đính chính ở
+`NOTIFICATION_FEATURE.md`).
 
 Trên form Thêm, bốn chip số ngày nằm trong `Wrap` — chip '7 ngày' thêm ngày
 04/09 là giọt nước làm hàng cũ tràn 115px ở 411dp.

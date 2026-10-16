@@ -256,7 +256,10 @@ void main() {
             chayHD([hoaDon(denHan: DateTime(2026, 9, 10), nhacTruoc: null)]);
         expect(ra.single.kind, NotificationKind.billOverdue,
             reason: 'Tắt là tắt lời nhắc TRƯỚC hạn; nợ quá hạn vẫn là thứ '
-                'người dùng phải biết (người dùng chốt 2026-10-16).');
+                'người dùng phải biết (người dùng chốt 2026-10-16). Ca canh VỊ '
+                'TRÍ: phép bỏ hoá đơn tắt nhắc phải đứng SAU nhánh quá hạn — '
+                'đặt trước là ca này đỏ (xanh sẵn trên mã cũ vì mã cũ không bỏ '
+                'gì).');
       });
 
       test("mốc '7' được tôn trọng", () {
