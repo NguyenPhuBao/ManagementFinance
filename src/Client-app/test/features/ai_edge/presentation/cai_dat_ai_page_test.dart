@@ -342,7 +342,7 @@ void main() {
 
   group('công tắc Trợ lý online (spec 2026-10-11 §3.5 c)', () {
     testWidgets('thẻ thứ hai đọc cờ, gạt thì ghi', (t) async {
-      final kho = KhoGia({'ai_online_bat': 'true'});
+      final kho = KhoGia({'ai_online_bat': 'false'});
       await t.pumpWidget(boc(CaiDatAiPage(
           daCoMoHinh: true, congTacOnline: CongTacOnline(kho))));
       await t.pumpAndSettle();
@@ -350,12 +350,38 @@ void main() {
       expect(find.text('Có mạng thì hỏi máy chủ; tắt thì chỉ dùng AI trên máy'),
           findsOneWidget);
       final sw = find.byKey(const Key('cong-tac-online'));
-      expect(t.widget<Switch>(sw).value, isTrue);
+      expect(t.widget<Switch>(sw).value, isFalse,
+          reason: 'đọc cờ từ kho, không phải mặc định');
       await t.tap(sw);
       await t.pumpAndSettle();
-      expect(kho.ban['ai_online_bat'], 'false',
+      expect(kho.ban['ai_online_bat'], 'true',
           reason: 'gạt công tắc phải ghi cờ xuống kho, không chỉ đổi state');
-      expect(t.widget<Switch>(sw).value, isFalse);
+      expect(t.widget<Switch>(sw).value, isTrue);
+    });
+
+    testWidgets('có ai_assistant, không ai_edge_model → thẻ online vẫn hiện cạnh thẻ khoá mô hình', (t) async {
+      final goi = _goiBasic(const {'ai_edge_model': false, 'ai_assistant': true});
+      await t.pumpWidget(BlocProvider<GoiCubit>.value(
+          value: goi,
+          child: boc(CaiDatAiPage(
+              daCoMoHinh: false, congTacOnline: CongTacOnline(KhoGia())))));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('cong-tac-online')), findsOneWidget,
+          reason: 'công tắc online phải bật lại được dù thiếu quyền mô hình');
+      expect(find.byKey(const Key('the-khoa-ai_edge_model')), findsOneWidget);
+      expect(find.textContaining('Google Gemini'), findsOneWidget);
+    });
+
+    testWidgets('Basic (không cả hai quyền) → không thẻ online, có thẻ khoá, Riêng tư vẫn hiện', (t) async {
+      final goi = _goiBasic(const {'ai_edge_model': false, 'ai_assistant': false});
+      await t.pumpWidget(BlocProvider<GoiCubit>.value(
+          value: goi,
+          child: boc(CaiDatAiPage(
+              daCoMoHinh: false, congTacOnline: CongTacOnline(KhoGia())))));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('cong-tac-online')), findsNothing);
+      expect(find.byKey(const Key('the-khoa-ai_edge_model')), findsOneWidget);
+      expect(find.textContaining('Google Gemini'), findsOneWidget);
     });
 
     testWidgets(
