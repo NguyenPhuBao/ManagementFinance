@@ -1037,7 +1037,8 @@ trong danh sách chờ của quét 11).
 - ⚠️ **Bẫy có sẵn, chưa sửa — đầu vào spec 4c**: xoá một kỳ **đã trả** thì hoá đơn và nút Hoàn tác biến mất cùng
   nhau, còn khoản chi ở sổ vẫn bị **khoá** (`transactionOwnerOf` nhận nó là của hoá đơn qua tiền tố ghi chú) —
   không xoá được ở sổ, không hoàn tác được ở trang Hoá đơn. Câu phụ báo trước điều này; gỡ hẳn thuộc lượt
-  `transactionOwnerOf` đọc `billId` (bàn giao việc 4c).
+  `transactionOwnerOf` đọc `billId` — spec `docs/superpowers/specs/2026-10-17-chu-so-huu-khoan-tra-hoa-don-design.md`
+  (đã duyệt, chưa thi công): khoản mồ côi và khoản kiểu cũ mở khoá có cảnh báo ở Sổ giao dịch.
 - **Lệch Stitch có chủ ý**: ô ảnh là biểu tượng + màu danh mục (hoá đơn không có ảnh); ngày `Hạn dd/MM/yyyy` như
   thẻ danh sách và trang chi tiết (Stitch: *"Hẹn: 25 thg 10"*); dòng hạn màu trung tính (xanh của Stitch đọc như
   "ổn" cả với kỳ quá hạn); nền trang `surface-bright` của Stitch (khối minh hoạ chìm trên nền chung của app).
