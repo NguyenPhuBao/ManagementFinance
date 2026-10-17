@@ -130,4 +130,44 @@ void main() {
       test('lọt: "$c"', () => expect(chuDeBiChan(c), isFalse));
     }
   });
+
+  group('chuDeBiChanOnline — chỉ nhóm DỮ LIỆU SỐNG (spec trợ lý online 2026-10-11 §0 q2, §3.1)', () {
+    for (final c in [
+      'giá vàng hôm nay bao nhiêu',
+      'gia vang hom nay',
+      'giá xăng tuần này',
+      'tỷ giá usd',
+      'ti gia hom nay',
+      'lãi suất ngân hàng nào cao nhất',
+      'thời tiết mai thế nào',
+      'tin tức tài chính hôm nay',
+      'kết quả xổ số',
+      'bóng đá tối nay',
+      // Câu hỏi GIÁ của tài sản: Gemini không có dữ liệu sống, sẽ bịa số cũ.
+      'giá bitcoin hiện tại',
+      'bitcoin gia bao nhieu',
+      'cổ phiếu VNM giá bao nhiêu tiền',
+    ]) {
+      test('online vẫn chặn: "$c"', () => expect(chuDeBiChanOnline(c), isTrue));
+    }
+    for (final c in [
+      'quỹ khẩn cấp là gì',
+      'quy tac 50 30 20 la gi',
+      'bitcoin là gì',
+      'nên đầu tư thế nào với 10 triệu',
+      'chứng khoán có rủi ro gì',
+      'thuế thu nhập cá nhân tính thế nào',
+      'tôi có nên vay ngân hàng mua xe không',
+      'tháng này tôi chi nhiều nhất cho gì',
+    ]) {
+      test('online MỞ: "$c"', () => expect(chuDeBiChanOnline(c), isFalse));
+    }
+
+    test('ca canh: chuDeBiChan (trên máy) KHÔNG đổi — nhóm tư vấn và định nghĩa vẫn chặn', () {
+      for (final c in ['bitcoin là gì', 'nên đầu tư thế nào', 'thuế thu nhập cá nhân tính thế nào', 'giá vàng hôm nay']) {
+        expect(chuDeBiChan(c), isTrue, reason: c);
+      }
+      expect(chuDeBiChan('tháng này tôi chi nhiều nhất cho gì'), isFalse);
+    });
+  });
 }

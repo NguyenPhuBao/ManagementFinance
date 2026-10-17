@@ -15,21 +15,12 @@ import '../../../core/category/category_name.dart';
 const String kCauTuChoi =
     'Mình chỉ nhận xét được trên số liệu của bạn trong app.';
 
-const List<String> _tuKhoaChan = [
-  'đầu tư',
-  'chứng khoán',
-  'cổ phiếu',
-  'trái phiếu',
-  'tiền mã hoá',
-  'tiền mã hóa',
-  'tiền ảo',
-  'bitcoin',
-  'crypto',
-  'vay ngân hàng',
+/// Nhóm **dữ liệu sống** — thứ không mô hình nào có số đúng hôm nay (giá, tỉ giá,
+/// thời tiết, kết quả): chặn ở CẢ hai đường. Spec trợ lý online 2026-10-11 §3.1.
+const List<String> _tuKhoaSong = [
   'lãi suất ngân hàng',
   // H2 cổng F lần 2 (DC1): app không lưu lãi suất của ví hay mục tiêu nào.
   'lãi suất',
-  'thuế',
   // Lát 2 spec mở rộng tool (2026-09-27 §6; E22 cổng E: câu ngoài phạm vi bị ép
   // vào tool). App không có nguồn nào cho những thứ này.
   'giá vàng',
@@ -42,10 +33,26 @@ const List<String> _tuKhoaChan = [
   'bóng đá',
 ];
 
-/// Bản KHÔNG DẤU của nhóm lát 2 — người dùng (và buổi đo qua adb) gõ không dấu.
-/// Chỉ những cụm bỏ dấu mà vẫn một nghĩa; nhóm cũ KHÔNG có bản này vì "dau tu"
+/// Nhóm **tư vấn chung** — mô hình trên máy không biết gì ngoài sổ nên chặn; đường
+/// online (Gemini + RAG backend) trả lời được → `chuDeBiChanOnline` KHÔNG chặn.
+const List<String> _tuKhoaTuVan = [
+  'đầu tư',
+  'chứng khoán',
+  'cổ phiếu',
+  'trái phiếu',
+  'tiền mã hoá',
+  'tiền mã hóa',
+  'tiền ảo',
+  'bitcoin',
+  'crypto',
+  'vay ngân hàng',
+  'thuế',
+];
+
+/// Bản KHÔNG DẤU của nhóm sống — người dùng (và buổi đo qua adb) gõ không dấu.
+/// Chỉ những cụm bỏ dấu mà vẫn một nghĩa; nhóm tư vấn KHÔNG có bản này vì "dau tu"
 /// trùng "đầu tư" với "đấu từ", "thue" trùng "thuế" với "thuê".
-const List<String> _tuKhoaChanKhongDau = [
+const List<String> _tuKhoaSongKhongDau = [
   'lai suat',
   'gia vang',
   'gia xang',
@@ -55,6 +62,17 @@ const List<String> _tuKhoaChanKhongDau = [
   'xo so',
   'bong da',
 ];
+
+/// Câu hỏi GIÁ của một tài sản (chữ giá hoặc "bao nhiêu tiền" cùng tên tài sản
+/// trong một câu), so không dấu.
+final RegExp _mauChuGia = RegExp(r'(?<![a-z0-9])(?:gia|bao nhieu tien)(?![a-z0-9])');
+final RegExp _mauTaiSan = RegExp(
+    r'(?<![a-z0-9])(?:vang|co phieu|chung khoan|bitcoin|crypto|tien ao|tien ma hoa|usd|do la|dola)(?![a-z0-9])');
+
+bool _laCauHoiGiaTaiSan(String cauHoi) {
+  final q = removeVietnameseTones(normalizeCategoryName(cauHoi));
+  return _mauChuGia.hasMatch(q) && _mauTaiSan.hasMatch(q);
+}
 
 /// Họ D (2026-10-04, người dùng chốt): câu ĐỊNH NGHĨA / CÁCH TÍNH chung — *"dòng
 /// tiền tự do là gì"*, *"thuế thu nhập cá nhân tính thế nào"*. Đo Realme: không
@@ -81,9 +99,21 @@ bool _laCauDinhNghiaChung(String cauHoi) {
   return m != null && !_mauSoLieuRieng.hasMatch(q.substring(0, m.start));
 }
 
+/// Đường TRÊN MÁY: chặn nhóm sống + nhóm tư vấn + câu định nghĩa chung (như trước
+/// 2026-10-11 — hành vi không đổi, có ca canh).
 bool chuDeBiChan(String cauHoi) {
   final s = cauHoi.toLowerCase();
-  return _tuKhoaChan.any(s.contains) ||
-      _tuKhoaChanKhongDau.any(s.contains) ||
+  return _tuKhoaSong.any(s.contains) ||
+      _tuKhoaTuVan.any(s.contains) ||
+      _tuKhoaSongKhongDau.any(s.contains) ||
       _laCauDinhNghiaChung(cauHoi);
+}
+
+/// Đường ONLINE: chỉ chặn dữ liệu sống và câu hỏi giá tài sản. Kiến thức / tư vấn
+/// chung và câu định nghĩa đi Gemini (người dùng chốt 2026-10-11, câu 2).
+bool chuDeBiChanOnline(String cauHoi) {
+  final s = cauHoi.toLowerCase();
+  return _tuKhoaSong.any(s.contains) ||
+      _tuKhoaSongKhongDau.any(s.contains) ||
+      _laCauHoiGiaTaiSan(cauHoi);
 }
