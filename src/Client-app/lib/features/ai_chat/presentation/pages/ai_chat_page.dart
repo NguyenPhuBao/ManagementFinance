@@ -97,17 +97,25 @@ enum LyDoKhoaHoiDap { goiBasic, chuaCoMoHinh, congTacTat }
 
 /// ⚠️ Basic xét TRƯỚC: không mời người không dùng được đi tải 2,41 GB. Hai lý
 /// do còn lại giữ nguyên bài học ở [cauKhoaHoiDap] (hai câu khác nhau, không
-/// gộp). `null` = không khoá.
+/// gộp). Từ 2026-10-11 (trợ lý online §3.5): có đường online thì ô mở dù máy
+/// chưa sẵn — mất mạng lúc hỏi mới nói [kKhongMangKhongMoHinh]. `null` = không khoá.
 LyDoKhoaHoiDap? lyDoKhoa({
   required bool laPremium,
   required bool coTep,
   required bool congTacBat,
+  bool onlineBat = false,
 }) {
   if (!laPremium) return LyDoKhoaHoiDap.goiBasic;
+  if (onlineBat) return null;
   if (!coTep) return LyDoKhoaHoiDap.chuaCoMoHinh;
   if (!congTacBat) return LyDoKhoaHoiDap.congTacTat;
   return null;
 }
+
+const String kKhongMangKhongMoHinh =
+    'Đang không có mạng, và AI trên máy chưa sẵn (chưa tải / đang tắt). Nối mạng hoặc mở Cài đặt AI.';
+
+const String kDangHoiOnline = 'Đang hỏi trợ lý online…';
 
 String cauKhoa(LyDoKhoaHoiDap ly) => switch (ly) {
       LyDoKhoaHoiDap.goiBasic => kGoiBasic,

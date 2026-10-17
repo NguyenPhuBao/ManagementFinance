@@ -84,6 +84,8 @@ import '../../features/wallet/domain/dot_am.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
+import '../../features/ai_chat/data/cong_tac_online.dart';
+import '../../features/ai_chat/data/datasources/tro_ly_online_remote_data_source.dart';
 import '../../features/transaction/data/chep_loi_bang_gemma.dart';
 import '../../features/transaction/data/datasources/ghi_am.dart';
 import '../../features/transaction/data/datasources/kenh_micro.dart';
@@ -869,6 +871,12 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   );
 
   sl.registerLazySingleton<CongTacAi>(CongTacAi.new);
+  // Trợ lý online (spec 2026-10-11): câu hỏi đi backend qua SSE khi có mạng; cùng `Dio` của
+  // `DioClient` để `AuthInterceptor` gắn Bearer / làm mới token. Công tắc + cờ tờ gắn máy.
+  sl.registerLazySingleton<TroLyOnlineRemoteDataSource>(
+    () => TroLyOnlineRemoteDataSourceImpl(sl<DioClient>().dio),
+  );
+  sl.registerLazySingleton<CongTacOnline>(CongTacOnline.new);
 
   // Ô Nhập nhanh của màn Thêm giao dịch đọc câu bằng mô hình (C2 §2.8, người dùng chọn "AI đọc mọi câu" 2026-09-30) —
   // chỗ THỨ HAI dùng mô hình sau màn Trợ lý AI (lối B mở rộng). Cùng hai điều kiện của màn ấy: tệp đủ và công tắc bật.
