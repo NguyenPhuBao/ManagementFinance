@@ -422,3 +422,9 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
     `_theCongTacChung` (Task 11).
 17. Test — ca *"thẻ thứ hai đọc cờ"* seed `'false'` (seed `'true'` trùng mặc định nên không canh vế đọc); fixture kho trống
     `KhoGia({})` ở ba ca tờ thông tin để canh §3.5 a (máy mới → câu đầu đi online + tờ hiện) (Task 10, Task 11).
+18. §3.7 — gọi bất biến ① / ② theo số **của spec**; `docs/AI_AGENT_ARCHITECTURE.md` §6 đánh số khác: §6 ① *Mô hình không bao giờ
+    tính*, ② *Mọi tool trả `List<SoLieu>`*, ③ *Luôn có đường lùi về mẫu câu*, ④ *Chiều ghi luôn qua tay người dùng*. ① của spec
+    (*dữ liệu không rời máy*) ở tài liệu ấy là **ràng buộc 1** bảng §1, không phải bất biến §6; ② của spec (*mọi con số trong câu
+    phải có trong gói*) ứng với ràng buộc 6 §1 + §6 ①–② + bộ kiểm số §7; ④ hai bên trùng số. Tiêu đề §6 **giữ nguyên**; phần thu
+    hạn đặt đúng chỗ câu cũ đứng (§0, §1 hàng 1 và 6, đầu §6, §10.1) — vì tài liệu khác đã dẫn theo số của §6 (*"Bất biến ②"*
+    ở cùng tệp; *"bất biến ④"* ở 7 tệp `docs/*.md` — grep 2026-10-17), đánh số lại là làm lạc các chỗ dẫn ấy (Task 12).
