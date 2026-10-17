@@ -48,6 +48,7 @@ import '../../features/ai_edge/domain/canary_cong_cu.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
 import '../../features/ai_edge/data/nguon_ly_do_thoat.dart';
 import '../../features/transaction/data/vi_theo_nguon_store.dart';
+import '../../features/transaction/data/hoa_don_da_xoa_nguon.dart';
 import '../../features/transaction/domain/doc_tin_bien_dong.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
@@ -354,6 +355,14 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<SoNgayNhacNguon>(
     () => SoNgayNhacNguon((id) async =>
         (await sl<NotificationPrefsStore>().read(id)).soNgayNhacHoaDon),
+  );
+  // Việc 4c (2026-10-17): Sổ giao dịch và Chi tiết ngân sách hỏi "hoá đơn của khoản này đã xoá chưa" lúc vuốt / mở
+  // bảng chi tiết, để mở khoá có cảnh báo cho khoản chi mồ côi. Hàm đọc đặt ở đây (điểm ghép) — mảng transaction
+  // không import bill. `getById` đọc cả hàng đã xoá mềm (ca canh ở `bill_repository_impl_test.dart`); hàng chưa
+  // kéo về → `null` → `false` (khoá).
+  sl.registerLazySingleton<HoaDonDaXoaNguon>(
+    () => HoaDonDaXoaNguon((id) async =>
+        (await sl<BillRepository>().getById(id))?.isDeleted ?? false),
   );
   // Thẻ "Có vẻ là khoản lặp" trên trang Hoá đơn (B2) — trang tự lấy nguồn này
   // khi đã đăng ký, không thì không dựng thẻ.

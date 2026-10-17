@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
@@ -364,6 +364,25 @@ void main() {
           reason: 'Giao dịch trùng làm sai toàn bộ báo cáo chi tiêu.');
       expect((await db.billDao.getAll(accountId)).length, 2,
           reason: 'Chỉ được sinh đúng một hoá đơn kỳ sau.');
+    });
+  });
+
+  group('getById — cổng HoaDonDaXoaNguon (việc 4c) đứng trên phép này', () {
+    test('đọc CẢ hàng đã xoá mềm, mang isDeleted = true', () async {
+      await seedBill(id: 'da-xoa', isPaid: true);
+      await repository.deleteBill('da-xoa');
+
+      final hoaDon = await repository.getById('da-xoa');
+      expect(hoaDon, isNotNull,
+          reason: 'DI nối HoaDonDaXoaNguon vào getById(id)?.isDeleted. Lọc hàng '
+              'đã xoá ở đây là cổng luôn trả false — khoản chi mồ côi khoá vĩnh '
+              'viễn, im lặng, mà test cổng với hàm giả vẫn xanh.');
+      expect(hoaDon!.isDeleted, isTrue);
+    });
+
+    test('hoá đơn chưa có trên máy → null (cổng đọc là chưa biết → khoá)',
+        () async {
+      expect(await repository.getById('chua-keo-ve'), isNull);
     });
   });
 }
