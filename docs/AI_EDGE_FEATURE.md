@@ -4571,8 +4571,8 @@ xác nhận bài học ở mục "Ghi chú vận hành" `CLAUDE.md`: **timeout k
 §6): cần backend dev chạy được — `npm install` + áp `database/20`, `database/24` thanh toán, ba việc **cần phép đích danh** (đơn
 44) — và `.env` có khoá Gemini (có từ 2026-10-17; tên `GEMINI_MODEL` chưa ai kiểm — đơn CAN-LAM **47**). Tới khi ấy **mọi câu
 online rơi về AI trên máy**, người dùng chỉ thấy nhãn *máy chủ không phản hồi*. Spec
-`docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` — **mục 10** ghi 17 chỗ mã khác bản viết
-(mục 15.5 dưới đây tóm tắt); kế hoạch 13 task `plans/2026-10-11-tro-ly-online-backend-fallback-tren-may.md` (gitignore). Stitch
+`docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` — **mục 10** ghi 18 chỗ khác bản viết (đếm 2026-10-17; 17 của mã / test,
+dòng 18 là lệch đánh số bất biến với `AI_AGENT_ARCHITECTURE.md` §6 — mục 15.5 dưới đây tóm tắt); kế hoạch 13 task `plans/2026-10-11-tro-ly-online-backend-fallback-tren-may.md` (gitignore). Stitch
 ba màn `1896d02b…` *bong bóng online* · `7a6519d6…` *tờ thông tin* · `b320f4b9…` *Cài đặt AI — công tắc* (người dùng chưa xác
 nhận). Hợp đồng backend: `docs/AI/ChatbotAI_Moblie.md` (tài liệu backend, chỉ đọc) với năm chỗ cố ý không làm — đơn 47.
 
