@@ -164,4 +164,48 @@ void main() {
             'là khoản trả mất khoá ở Sổ giao dịch (việc 4c) và Hoàn tác mất '
             'đường lần về.');
   });
+
+  test('server gửi "idbill": null TƯỜNG MINH → billId cục bộ GIỮ NGUYÊN', () async {
+    final cu = DateTime(2026, 10, 1);
+    await db.walletDao.insert(WalletsCompanion.insert(
+      id: viId,
+      idaccount: accountId,
+      name: 'Ví',
+      syncStatus: const Value('synced'),
+      updatedAt: cu,
+    ));
+    await db.transactionDao.insert(TransactionsCompanion.insert(
+      id: txId,
+      walletId: viId,
+      idaccount: accountId,
+      amount: 120000,
+      type: 'chi',
+      date: cu,
+      note: const Value('Thanh toán hóa đơn: Internet'),
+      billId: const Value(billId),
+      syncStatus: const Value('synced'),
+      updatedAt: cu,
+    ));
+
+    client.adapter.pullData = {
+      'transactions': [
+        {
+          ...giaoDich(note: 'Thanh toán hóa đơn: Internet — sửa ở máy kia'),
+          'idbill': null,
+        },
+      ],
+    };
+    await runSync();
+
+    final hang = await db.transactionDao.getById(txId);
+    expect(hang?.note, 'Thanh toán hóa đơn: Internet — sửa ở máy kia',
+        reason: 'Đòi kết quả: hàng PHẢI đã được ghi đè bởi lượt kéo — nếu không, '
+            'vế billId dưới xanh mà chẳng canh gì.');
+    expect(hang?.billId, billId,
+        reason: 'Server thật (Prisma findMany không select) gửi "idbill": null '
+            'tường minh cho hàng ghi trước 2026-09-12, không phải vắng khoá. '
+            'Viết lại phép đọc thành containsKey là ghi NULL đè billId → khoản '
+            'trả mất khoá ở Sổ giao dịch (việc 4c), mà ca vắng-khoá ở trên '
+            'vẫn xanh.');
+  });
 }

@@ -152,7 +152,7 @@ void main() {
     await tester.tap(find.text('Xoá giao dịch'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Hoá đơn của khoản này đã xoá'), findsOneWidget,
-        reason: 'Khoản mồ côi mở khoá nhưng phải kèm câu cảnh báo trong bảng.');
+        reason: 'Khoản mồ côi mở khoá nhưng phải kèm câu cảnh báo trong hộp xác nhận.');
     expect(find.textContaining('Số dư ví sẽ được hoàn lại'), findsOneWidget,
         reason: 'Câu chung vẫn đứng sau câu cảnh báo.');
 
