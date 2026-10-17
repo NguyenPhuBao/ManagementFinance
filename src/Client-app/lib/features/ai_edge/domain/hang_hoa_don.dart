@@ -26,6 +26,7 @@ library;
 import '../../bill/domain/bill_recurrence.dart';
 import '../../bill/data/models/bill_entity.dart';
 import '../../bill/domain/bill_ky_ke_tiep.dart';
+import '../../bill/domain/bill_nhac_truoc.dart';
 import '../../bill/domain/bill_pay_status.dart';
 import '../../bill/domain/bill_status.dart';
 import 'goi_so.dart';
@@ -100,6 +101,8 @@ List<BillEntity> _tapTheoTen(List<BillEntity> bills, String ten, DateTime now) {
   return [cua.reduce((x, y) => y.dueDate.isAfter(x.dueDate) ? y : x)];
 }
 
+/// [soNgayNhac]: tuỳ chọn "Nhắc trước" của Cài đặt thông báo — ngưỡng "sắp đến hạn" của hoá đơn tắt nhắc, cùng số
+/// trang Hoá đơn dùng (2026-10-17; trước đó tool dùng mốc 3 cố định nên có thể nói khác trang).
 KetQuaCongCu hangHoaDon(
   List<BillEntity> bills, {
   required DateTime now,
@@ -107,6 +110,7 @@ KetQuaCongCu hangHoaDon(
   String ky = kKyHoaDonMacDinh,
   String? ten,
   bool tuTra = false,
+  int soNgayNhac = mocNhacMacDinh,
 }) {
   if (!kTrangThaiHoaDon.contains(trangThai)) {
     return tuChoiGiaTri('trang_thai', trangThai, kTrangThaiHoaDon);
@@ -157,7 +161,7 @@ KetQuaCongCu hangHoaDon(
   if (tuTra) tap = [for (final m in tap) if (m.b.autoPayEnabled) m];
   final tom = summarizeBills([for (final m in tap) m.b], mocTom);
 
-  BillDisplayStatus trangThaiCua(_Muc m) => billDisplayStatusOf(m.b, now);
+  BillDisplayStatus trangThaiCua(_Muc m) => billDisplayStatusOf(m.b, now, macDinh: soNgayNhac);
   var quaHan = 0;
   var soTuTra = 0;
   for (final m in tap) {

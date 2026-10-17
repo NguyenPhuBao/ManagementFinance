@@ -346,10 +346,11 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerFactory<BillBloc>(
     () => BillBloc(repository: sl<BillRepository>()),
   );
-  // Ngưỡng nhãn "Sắp đến hạn" cho hoá đơn tắt nhắc = tuỳ chọn "Nhắc trước" của Cài
-  // đặt thông báo. Hàm đọc đặt ở đây (điểm ghép) để `bill/data` và
-  // `bill/presentation` không import `notification/`. Đọc lúc gọi nên đăng ký
-  // trước kho tuỳ chọn vẫn được.
+  // Tuỳ chọn "Nhắc trước" của Cài đặt thông báo: mặc định cho hoá đơn mới (form
+  // Thêm chọn sẵn chip, 2026-10-17) và ngưỡng nhãn "Sắp đến hạn" cho hoá đơn tắt
+  // nhắc (trang Hoá đơn, tool AI `danh_sach_hoa_don`). Hàm đọc đặt ở đây (điểm
+  // ghép) để `bill/data` và `bill/presentation` không import `notification/`. Đọc
+  // lúc gọi nên đăng ký trước kho tuỳ chọn vẫn được.
   sl.registerLazySingleton<SoNgayNhacNguon>(
     () => SoNgayNhacNguon((id) async =>
         (await sl<NotificationPrefsStore>().read(id)).soNgayNhacHoaDon),
@@ -962,6 +963,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       phanTich: sl<AnalyticsRepository>(),
       danhMuc: sl<CategoryManagementRepository>(),
       taiPhanBo: sl<TaiPhanBoNguon>(),
+      soNgayNhac: sl<SoNgayNhacNguon>(),
     ),
   );
 

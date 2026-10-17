@@ -896,8 +896,9 @@ void main() {
           reason: 'NULL là tắt nhắc (mục 7b BILL_DOCUMENTATION). Trước '
               '2026-10-16 vòng quét truyền tuỳ chọn "nhắc trước 7 ngày" vào bộ '
               'luật và nó lấp chỗ NULL — hoá đơn đã tắt nhắc vẫn nhận "Hoá đơn '
-              'sắp đến hạn". Tuỳ chọn chung nay chỉ còn là ngưỡng nhãn "Sắp '
-              'đến hạn" của hoá đơn tắt nhắc trên trang Hoá đơn.');
+              'sắp đến hạn". Tuỳ chọn chung không sinh lời nhắc: nó là mặc '
+              'định cho hoá đơn mới và ngưỡng nhãn "Sắp đến hạn" của hoá đơn '
+              'tắt nhắc.');
       expect(await db.notificationDao.getAll(accountId), isEmpty);
     });
 

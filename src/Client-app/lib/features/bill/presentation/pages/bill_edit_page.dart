@@ -15,6 +15,7 @@ import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/nen/co_chay_nen.dart';
 import '../../domain/bill_auto_pay.dart' show goiYTuTra;
 import '../../domain/bill_draft.dart';
+import '../../domain/bill_nhac_truoc.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
 import '../widgets/bill_actions.dart';
@@ -364,13 +365,11 @@ class _BillEditPageState extends State<BillEditPage> {
                         labelText: 'Nhắc trước hạn',
                         border: OutlineInputBorder(),
                       ),
-                      items: const [
-                        DropdownMenuItem(
+                      items: [
+                        const DropdownMenuItem(
                             value: null, child: Text('Không nhắc')),
-                        DropdownMenuItem(value: '1', child: Text('1 ngày')),
-                        DropdownMenuItem(value: '3', child: Text('3 ngày')),
-                        DropdownMenuItem(value: '5', child: Text('5 ngày')),
-                        DropdownMenuItem(value: '7', child: Text('7 ngày')),
+                        for (final n in kMucNhacTruoc)
+                          DropdownMenuItem(value: '$n', child: Text('$n ngày')),
                       ],
                       onChanged: (v) => setState(() => _nhacTruoc = v),
                     ),

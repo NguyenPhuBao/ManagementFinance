@@ -20,6 +20,7 @@ import 'package:flowmoney/features/notification/data/datasources/os_notifier.dar
 import 'package:flowmoney/features/notification/domain/notification_prefs.dart';
 import 'package:flowmoney/features/notification/data/notification_prefs_store.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_settings_page.dart';
+import 'package:flowmoney/features/notification/presentation/widgets/cai_dat_thong_bao/hang_nguong.dart';
 
 class _OsGia implements OsNotifier {
   int soLanXinQuyen = 0;
@@ -272,6 +273,50 @@ void main() {
 
       expect(find.text('21:30'), findsOneWidget);
       expect(find.textContaining('7 ngày'), findsWidgets);
+    });
+
+    // Người dùng chốt 2026-10-17: hàng "Nhắc trước" là MẶC ĐỊNH cho hoá đơn mới (form Thêm chọn sẵn chip theo nó),
+    // và vẫn là ngưỡng "Sắp đến hạn" của hoá đơn đã tắt nhắc.
+    group('hàng "Nhắc trước" — mặc định cho hoá đơn mới', () {
+      const khoa = ValueKey('nhac-truoc-hoa-don');
+
+      testWidgets('chỉ bốn mức 1 · 3 · 5 · 7 — đúng các chip của form Thêm hoá đơn', (tester) async {
+        await moTrang(tester);
+        final o = tester.widget<DropdownButton<int>>(find.byKey(khoa));
+        expect(o.items!.map((m) => m.value).toList(), [1, 3, 5, 7],
+            reason: '"Đúng ngày" (0) và 2 ngày không có chip ở form — chọn ở đây là mặc định form không chọn sẵn được.');
+        expect(o.value, 3);
+      });
+
+      testWidgets('câu phụ nói cả hai nghĩa của số này', (tester) async {
+        await moTrang(tester);
+        expect(find.textContaining('Chọn sẵn khi tạo hoá đơn mới'), findsOneWidget);
+        expect(find.textContaining('hoá đơn đã tắt nhắc'), findsOneWidget,
+            reason: 'Số này vẫn là ngưỡng nhãn "Sắp đến hạn" của hoá đơn tắt nhắc — giấu vế ấy là hàng lại mù nghĩa.');
+      });
+
+      testWidgets('giá trị cũ ngoài bốn mức (2) vẫn hiện, không ném', (tester) async {
+        await store.write(accountId, const NotificationPrefs(soNgayNhacHoaDon: 2));
+        await moTrang(tester);
+        expect(tester.widget<DropdownButton<int>>(find.byKey(khoa)).value, isNull);
+        expect(find.text('2 ngày'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
+      // Dựng RIÊNG hàng này: cả trang ở 320 dp còn tràn ở hai hàng ngưỡng tiền (có sẵn, ngoài phạm vi lượt này).
+      testWidgets('320 dp: câu phụ hai vế không tràn', (tester) async {
+        tester.view.physicalSize = const Size(320, 800);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+            body: HangSoNgay(prefs: const NotificationPrefs(soNgayNhacHoaDon: 7), onGhi: (_) async {}),
+          ),
+        ));
+        expect(find.byKey(khoa), findsOneWidget);
+        expect(find.textContaining('hoá đơn đã tắt nhắc'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
     });
   });
 

@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../domain/notification_prefs.dart';
+import '../../../../bill/domain/bill_nhac_truoc.dart';
 import '../../../../../core/utils/currency_formatter.dart';
 import 'khung_cai_dat.dart';
 
@@ -18,17 +19,21 @@ class HangSoNgay extends StatelessWidget {
   Widget build(BuildContext context) {
     // Danh sách rời chứ không phải ô nhập số: nhập tay mở đường cho những giá
     // trị vô nghĩa (âm, 400) mà `NotificationPrefs` sẽ lặng lẽ quy về mặc định
-    // — người dùng gõ xong thấy số nhảy về 3 và không hiểu vì sao.
-    const luaChon = [0, 1, 2, 3, 5, 7];
+    // — người dùng gõ xong thấy số nhảy về 3 và không hiểu vì sao. Đúng các
+    // chip của form Thêm hoá đơn (`kMucNhacTruoc`); giá trị cũ 0 · 2 hiện bằng
+    // `hint`, form chọn sẵn chip 3 cho chúng (`mucNhacChonSan`).
+    const luaChon = kMucNhacTruoc;
 
     return KhungCaiDat(
       icon: Icons.event_outlined,
       nhan: 'Nhắc trước',
-      // Từ 2026-10-16 hoá đơn tắt nhắc không được nhắc nữa (tắt là tắt thật);
-      // số này chỉ còn là ngưỡng nhãn "Sắp đến hạn" của chúng trên trang Hoá
-      // đơn. Câu cũ "Dùng cho hoá đơn không tự đặt số ngày" hứa một lời nhắc.
-      phu: 'Ngưỡng "Sắp đến hạn" cho hoá đơn đã tắt nhắc.',
+      // Hai nghĩa, nói cả hai (người dùng chốt 2026-10-17): mặc định cho hoá đơn
+      // MỚI (form Thêm chọn sẵn chip), và ngưỡng nhãn "Sắp đến hạn" của hoá đơn
+      // đã tắt nhắc — những hoá đơn ấy không được nhắc (tắt là tắt thật, 2026-10-16).
+      phu: 'Chọn sẵn khi tạo hoá đơn mới; cũng là ngưỡng "Sắp đến hạn" của '
+          'hoá đơn đã tắt nhắc.',
       trailing: DropdownButton<int>(
+        key: const ValueKey('nhac-truoc-hoa-don'),
         value: luaChon.contains(prefs.soNgayNhacHoaDon)
             ? prefs.soNgayNhacHoaDon
             : null,
@@ -36,10 +41,7 @@ class HangSoNgay extends StatelessWidget {
         underline: const SizedBox.shrink(),
         items: [
           for (final n in luaChon)
-            DropdownMenuItem(
-              value: n,
-              child: Text(n == 0 ? 'Đúng ngày' : '$n ngày'),
-            ),
+            DropdownMenuItem(value: n, child: Text('$n ngày')),
         ],
         onChanged: (v) {
           if (v == null) return;

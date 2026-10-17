@@ -185,11 +185,12 @@ class NotificationPrefs {
   final int gioNhac;
   final int phutNhac;
 
-  /// Ngưỡng nhãn "Sắp đến hạn" cho hoá đơn **tắt nhắc** trên trang Hoá đơn (qua
-  /// `SoNgayNhacNguon`). Từ 2026-10-16 **không** sinh lời nhắc nào: hoá đơn tắt
-  /// nhắc (`timeNotification` NULL) không được nhắc, hoá đơn đặt số ngày riêng
-  /// dùng số ấy. Đừng lấp NULL bằng số này ở bộ luật / bộ đặt lịch — đó là lỗi
-  /// "tắt mà vẫn bị nhắc" vừa gỡ.
+  /// Tuỳ chọn "Nhắc trước" — hai nghĩa, đọc qua `SoNgayNhacNguon`: **mặc định cho
+  /// hoá đơn mới** (form Thêm chọn sẵn chip, 2026-10-17) và ngưỡng nhãn "Sắp đến
+  /// hạn" cho hoá đơn **tắt nhắc** (trang Hoá đơn, tool AI). Từ 2026-10-16
+  /// **không** sinh lời nhắc nào: hoá đơn tắt nhắc (`timeNotification` NULL) không
+  /// được nhắc, hoá đơn đặt số ngày riêng dùng số ấy. Đừng lấp NULL bằng số này ở
+  /// bộ luật / bộ đặt lịch — đó là lỗi "tắt mà vẫn bị nhắc" đã gỡ.
   final int soNgayNhacHoaDon;
 
   /// Có bật khoảng giờ không bắn thông báo ra hệ điều hành không.

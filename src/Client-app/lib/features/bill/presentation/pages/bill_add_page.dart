@@ -17,7 +17,9 @@ import '../../../../shared/widgets/segmented_choice.dart';
 import '../../../../core/nen/co_chay_nen.dart';
 import '../../domain/bill_auto_pay.dart' show goiYTuTra;
 import '../../domain/bill_draft.dart';
+import '../../domain/bill_nhac_truoc.dart';
 import '../../domain/dien_san_hoa_don.dart';
+import '../../data/so_ngay_nhac_nguon.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
 import '../widgets/bill_grace_selector.dart';
@@ -30,12 +32,17 @@ import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 class BillAddPage extends StatefulWidget {
-  const BillAddPage({super.key, this.dienSan});
+  const BillAddPage({super.key, this.dienSan, this.soNgayNhac});
 
   /// Giá trị điền sẵn từ thẻ "Có vẻ là khoản lặp" (B2) — route `/bills/add`
   /// đọc query qua `dienSanTuQuery`. `null` = form trống như cũ. Chỉ có ở đường
   /// TẠO MỚI: form Sửa không nhận, kẻo đè lên hoá đơn đang có.
   final DienSanHoaDon? dienSan;
+
+  /// Tuỳ chọn "Nhắc trước" của Cài đặt thông báo — mặc định cho hoá đơn mới
+  /// (người dùng chốt 2026-10-17), cùng cổng với nhãn "Sắp đến hạn" của trang
+  /// danh sách. `null` thì lấy từ DI nếu đã đăng ký, không thì chip 3.
+  final SoNgayNhacNguon? soNgayNhac;
 
   @override
   State<BillAddPage> createState() => _BillAddPageState();
@@ -55,7 +62,11 @@ class _BillAddPageState extends State<BillAddPage> {
 
   /// Bật/tắt nhắc trước hạn. Tắt thì ghi `timeNotification = null`.
   bool _pushNotificationsEnabled = true;
-  String _selectedReminderDay = '3';
+
+  /// Chip "nhắc trước" đang chọn; chọn sẵn theo tuỳ chọn "Nhắc trước" khi đọc
+  /// xong (`_napNhacMacDinh`), trừ khi người dùng đã tự bấm một chip.
+  String _selectedReminderDay = '$mocNhacMacDinh';
+  bool _daChonNhacTay = false;
 
   /// TẮT sẵn. Bản trước có công tắc cùng tên bật sẵn mà không lưu ở đâu (gỡ
   /// 06/09); nay có cột và bộ chạy thật, nhưng bật sẵn vẫn là chuyển tiền
@@ -93,7 +104,20 @@ class _BillAddPageState extends State<BillAddPage> {
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadPickers();
+      _napNhacMacDinh();
     });
+  }
+
+  /// Chọn sẵn chip theo tuỳ chọn "Nhắc trước" (mặc định cho hoá đơn mới). Đọc
+  /// về muộn hơn cú bấm chip của người dùng thì lựa chọn tay thắng.
+  Future<void> _napNhacMacDinh() async {
+    final accountId = currentAccountIdOrNull(context);
+    final nguon = widget.soNgayNhac ??
+        (sl.isRegistered<SoNgayNhacNguon>() ? sl<SoNgayNhacNguon>() : null);
+    if (accountId == null || nguon == null) return;
+    final soNgay = await nguon.doc(accountId);
+    if (!mounted || _daChonNhacTay) return;
+    setState(() => _selectedReminderDay = '${mucNhacChonSan(soNgay)}');
   }
 
   Future<void> _loadPickers() async {
@@ -476,13 +500,10 @@ class _BillAddPageState extends State<BillAddPage> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
+              // Bốn mức `kMucNhacTruoc` — cùng danh sách với hàng "Nhắc trước" ở
+              // Cài đặt thông báo. (Mốc 7 từng thiếu ở UI dù CSDL hai đầu cho phép.)
               children: [
-                _buildReminderDayChip('1 ngày', '1'),
-                _buildReminderDayChip('3 ngày', '3'),
-                _buildReminderDayChip('5 ngày', '5'),
-                // Mốc '7' được CSDL cho phép ở cả hai đầu nhưng UI trước đây
-                // thiếu — người dùng không đặt được nhắc trước một tuần.
-                _buildReminderDayChip('7 ngày', '7'),
+                for (final n in kMucNhacTruoc) _buildReminderDayChip('$n ngày', '$n'),
               ],
             ),
           ],
@@ -786,7 +807,10 @@ class _BillAddPageState extends State<BillAddPage> {
   Widget _buildReminderDayChip(String label, String value) {
     final isSelected = _selectedReminderDay == value;
     return GestureDetector(
-      onTap: () => setState(() => _selectedReminderDay = value),
+      onTap: () => setState(() {
+        _selectedReminderDay = value;
+        _daChonNhacTay = true;
+      }),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(

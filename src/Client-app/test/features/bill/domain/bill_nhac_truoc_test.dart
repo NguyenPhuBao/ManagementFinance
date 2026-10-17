@@ -73,4 +73,26 @@ void main() {
               'nhắc phải nói cùng một chuyện.');
     });
   });
+
+  // Người dùng chốt 2026-10-17: tuỳ chọn "Nhắc trước" ở Cài đặt thông báo là MẶC ĐỊNH cho hoá đơn mới.
+  group('kMucNhacTruoc / mucNhacChonSan (mặc định cho hoá đơn mới)', () {
+    test('bốn mức 1 · 3 · 5 · 7 — chip của form Thêm và danh sách của Cài đặt', () {
+      expect(kMucNhacTruoc, [1, 3, 5, 7]);
+      expect(kMucNhacTruoc, contains(mocNhacMacDinh),
+          reason: 'Mốc rơi về phải là một chip có thật, không thì form không chọn sẵn chip nào.');
+    });
+
+    test('tuỳ chọn nằm trong bốn mức → form chọn sẵn đúng mức ấy', () {
+      for (final n in kMucNhacTruoc) {
+        expect(mucNhacChonSan(n), n);
+      }
+    });
+
+    test('giá trị cũ ngoài bốn mức (0, 2 — trước 2026-10-17 Cài đặt cho chọn) → mốc mặc định, không đoán mức gần',
+        () {
+      expect(mucNhacChonSan(0), mocNhacMacDinh);
+      expect(mucNhacChonSan(2), mocNhacMacDinh);
+      expect(mucNhacChonSan(30), mocNhacMacDinh);
+    });
+  });
 }

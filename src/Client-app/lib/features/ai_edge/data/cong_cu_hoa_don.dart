@@ -3,6 +3,8 @@
 library;
 
 import '../../bill/data/repositories/bill_repository.dart';
+import '../../bill/data/so_ngay_nhac_nguon.dart';
+import '../../bill/domain/bill_nhac_truoc.dart';
 import '../../../core/utils/khop_ten.dart';
 import '../domain/chinh_tham_so.dart';
 import '../domain/cong_cu.dart';
@@ -10,8 +12,12 @@ import '../domain/hang_hoa_don.dart';
 import '../domain/hang_so_lieu.dart';
 
 class CongCuHoaDon implements CongCu {
-  CongCuHoaDon(this.hoaDon, {this.log = print});
+  CongCuHoaDon(this.hoaDon, {this.soNgayNhac, this.log = print});
   final BillRepository hoaDon;
+
+  /// Tuỳ chọn "Nhắc trước" (cổng của mảng hoá đơn) — ngưỡng "sắp đến hạn" của hoá đơn tắt nhắc, cùng số với trang
+  /// Hoá đơn. `null` thì mốc 3.
+  final SoNgayNhacNguon? soNgayNhac;
 
   /// Log khi bộ chỉnh tham số đổi gì đó — `print`, không `debugPrint` (bẫy 4.31).
   final void Function(String) log;
@@ -58,6 +64,8 @@ class CongCuHoaDon implements CongCu {
     // G3 cổng F (E8): câu nêu tên một hoá đơn → tập của riêng nó, mọi trạng thái.
     final ten = tenNeuTrongCau(cauHoi, [for (final b in bills) b.name], tuLoai: 'hoá đơn');
     if (ten != null) log('[SLM][tool] câu hỏi nêu hoá đơn → chỉ "$ten", mọi trạng thái');
+    final nguon = soNgayNhac;
+    final soNgay = nguon == null ? mocNhacMacDinh : await nguon.doc(idaccount);
     return hangHoaDon(
       bills,
       now: now,
@@ -66,6 +74,7 @@ class CongCuHoaDon implements CongCu {
       ky: chinh.args['ky']?.toString() ?? kKyHoaDonMacDinh,
       ten: ten,
       tuTra: chinh.args['tu_tra'] == true,
+      soNgayNhac: soNgay,
     );
   }
 }

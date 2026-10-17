@@ -23,6 +23,7 @@ BillEntity _bill({
   bool lap = true,
   String chuKy = kBillCycleMonth,
   String? sinhTu,
+  String? nhac = '3',
 }) =>
     BillEntity(
       id: id,
@@ -36,7 +37,7 @@ BillEntity _bill({
       payStatus: payStatus,
       isPaid: isPaid,
       autoPayEnabled: tuTra,
-      timeNotification: '3',
+      timeNotification: nhac,
       isRecurrence: lap,
       timeRecurrence: chuKy,
       generatedFromBillId: sinhTu,
@@ -371,5 +372,16 @@ void main() {
     expect(kq.soChuaKe, 2);
     expect(kq.danhTuChuaKe, 'hoá đơn');
     expect(hangHoaDon([dien, kiem], now: now).soChuaKe, 0);
+  });
+
+  test('hoá đơn TẮT nhắc: "sắp đến hạn" theo số ngày "Nhắc trước" của Cài đặt — cùng ngưỡng với trang Hoá đơn '
+      '(2026-10-17)', () {
+    // Hạn 11/09, hôm nay 06/09 → còn 5 ngày.
+    final tatNhac = _bill(id: 't', ten: 'Internet', dueDate: DateTime(2026, 9, 11), nhac: null);
+
+    expect(hangHoaDon([tatNhac], now: now, soNgayNhac: 7).hang.single.trangThai, 'sắp đến hạn',
+        reason: 'Trang Hoá đơn hiện "Sắp đến hạn" với tuỳ chọn 7 — tool nói khác là hai nơi nói hai chuyện.');
+    expect(hangHoaDon([tatNhac], now: now).hang.single.trangThai, isNot('sắp đến hạn'),
+        reason: 'Không truyền thì mốc 3 ngày — còn 5 ngày chưa tới ngưỡng.');
   });
 }
