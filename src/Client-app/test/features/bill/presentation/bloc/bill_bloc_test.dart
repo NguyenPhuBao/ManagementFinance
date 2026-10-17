@@ -91,4 +91,37 @@ void main() {
           'kỹ thuật, trong khi đây là tình huống bình thường: bấm nút hai lần.',
     );
   });
+
+  test('hoàn tác khoản trả kiểu cũ (không billId) chỉ đường sang Sổ giao dịch',
+      () async {
+    // Kỳ đã trả mà KHÔNG có khoản chi nào mang billId — khoản trả ghi trước
+    // 2026-09-12 (tiền tố ghi chú, cột nối trống) → undoPayment ném
+    // BillUndoUnavailableException.
+    await db.billDao.insert(
+      BillsCompanion.insert(
+        id: 'kieu-cu',
+        idaccount: 1,
+        name: 'Internet',
+        amount: 100000.0,
+        dueDate: DateTime.now(),
+        payStatus: const Value('Payed'),
+        isPaid: const Value(true),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    bloc.add(UndoPaymentEvent(billId: 'kieu-cu'));
+
+    final state =
+        await bloc.stream.firstWhere((s) => s is BillError) as BillError;
+    expect(
+      state.message,
+      'Không hoàn tác được: khoản chi của lần thanh toán này được ghi bằng bản '
+      'ứng dụng cũ. Xoá nó ở Sổ giao dịch để trả tiền về ví — kỳ này vẫn ghi là '
+      'đã trả.',
+      reason: 'Trước việc 4c câu này bảo "xoá thủ công ở sổ giao dịch" trong khi '
+          'sổ khoá đúng khoản ấy. Nay lối đi có thật — và xoá ở sổ không đổi '
+          'trạng thái kỳ, nên câu phải nói kỳ vẫn ghi là đã trả.',
+    );
+  });
 }

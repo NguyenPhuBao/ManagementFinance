@@ -153,10 +153,13 @@ class BillBloc extends Bloc<BillEvent, BillState> {
       emit(BillError('Hóa đơn này chưa được thanh toán.'));
     } on BillUndoUnavailableException {
       // Lý do cụ thể, không phải lỗi chung chung: khoản chi được ghi bằng bản
-      // app cũ nên không có sợi dây `billId` để lần về.
+      // app cũ nên không có sợi dây `billId` để lần về. Từ việc 4c sổ mở khoá
+      // khoản kiểu cũ (có cảnh báo), nên lối "xoá ở Sổ giao dịch" là có thật;
+      // xoá ở sổ không đổi trạng thái kỳ — câu nói đúng điều ấy.
       emit(BillError(
           'Không hoàn tác được: khoản chi của lần thanh toán này được ghi '
-          'bằng bản ứng dụng cũ. Hãy xoá nó thủ công ở sổ giao dịch.'));
+          'bằng bản ứng dụng cũ. Xoá nó ở Sổ giao dịch để trả tiền về ví — '
+          'kỳ này vẫn ghi là đã trả.'));
     } catch (e) {
       emit(BillError('Hoàn tác thất bại: $e'));
     }
