@@ -445,3 +445,5 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
 22. §3.1 bước 4 — hằng **`kMayChuHongTuChoi`** (*"Máy chủ không phản hồi; AI trên máy chỉ nhận xét được trên số liệu của bạn trong
     app."*): online bật mà máy chủ hỏng, câu thuộc chủ đề AI trên máy từ chối (định nghĩa / tư vấn) → câu này thay `kCauTuChoi` trần;
     câu hệ thống nên không nhãn nguồn, không ghi chú. Người dùng chốt 2026-10-17 khuya: lý do rơi phải hiện cho người dùng.
+23. §3.4 `boDanhDauMarkdown` — nghiệm thu OnePlus 2026-10-18: câu Gemini lộ `###` / `> -` / `---` → hàm gỡ thêm tiêu đề, trích
+    dẫn, dòng kẻ ngang (người dùng chốt làm ngay); luật bẫy 4.36 giữ nguyên.

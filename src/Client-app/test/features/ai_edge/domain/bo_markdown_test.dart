@@ -41,4 +41,52 @@ void main() {
     const c = 'Ví test đang âm với số dư là -100.000 đ.';
     expect(boDanhDauMarkdown(c), c);
   });
+
+  // Nghiệm thu OnePlus 2026-10-18, đường online: Gemini dùng `###`, `>`, `---`.
+  group('tiêu đề, trích dẫn, dòng kẻ ngang (đường online)', () {
+    test('tiêu đề `#` ×1–6 đầu dòng bị gỡ', () {
+      expect(boDanhDauMarkdown('### 2. Ba yếu tố'), '2. Ba yếu tố',
+          reason: 'Gemini mở đầu mục bằng `###` — chữ trần không được lộ dấu.');
+      expect(boDanhDauMarkdown('a\n## b'), 'a\nb',
+          reason: 'Tiêu đề sau xuống dòng cũng gỡ.');
+      expect(boDanhDauMarkdown('   # c'), 'c',
+          reason: 'Khoảng trắng đứng trước `#` vẫn là tiêu đề.');
+    });
+
+    test('`#` không có khoảng trắng sau, hoặc giữa câu, giữ nguyên', () {
+      expect(boDanhDauMarkdown('#1 ưu tiên'), '#1 ưu tiên',
+          reason: 'Bẫy 4.36: dấu đứng sát chữ số không phải dấu markdown.');
+      expect(boDanhDauMarkdown('mã #5 và #6'), 'mã #5 và #6',
+          reason: '`#` giữa câu không phải tiêu đề.');
+    });
+
+    test('trích dẫn `>` bị gỡ, kể cả lồng và kèm gạch đầu dòng', () {
+      expect(boDanhDauMarkdown('> - Năm 30: Tài sản tăng'),
+          'Năm 30: Tài sản tăng',
+          reason: 'Thứ tự áp dụng: `>` trước rồi mới gạch đầu dòng.');
+      expect(boDanhDauMarkdown('> > a'), 'a', reason: 'Trích dẫn lồng.');
+      expect(boDanhDauMarkdown('x > 5 triệu'), 'x > 5 triệu',
+          reason: '`>` giữa câu là so sánh, không phải trích dẫn.');
+    });
+
+    test('dòng kẻ ngang bị bỏ cả dòng, không để dòng trống kép', () {
+      expect(boDanhDauMarkdown('a\n---\nb'), 'a\nb');
+      expect(boDanhDauMarkdown('a\n***\n'), 'a\n');
+      expect(boDanhDauMarkdown('- - -\nb'), 'b',
+          reason: 'Kẻ ngang xen khoảng trắng — không bị gạch đầu dòng ăn dở.');
+      expect(boDanhDauMarkdown('--- abc'), '--- abc',
+          reason: 'Dòng có chữ không phải kẻ ngang.');
+      expect(boDanhDauMarkdown('-100.000 đ'), '-100.000 đ',
+          reason: 'Số âm vẫn nguyên (bẫy 4.36).');
+    });
+
+    test('⭐ tổ hợp thật từ máy OnePlus', () {
+      expect(
+        boDanhDauMarkdown(
+            '### 2. Ba yếu tố\n> - **Năm 30**: Tài sản\n---\n1. Thời gian'),
+        '2. Ba yếu tố\nNăm 30: Tài sản\n1. Thời gian',
+        reason: 'Đúng chuỗi Gemini trả trên máy thật 2026-10-18.',
+      );
+    });
+  });
 }
