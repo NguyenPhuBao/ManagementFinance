@@ -2563,7 +2563,10 @@ làm** — người dùng dặn dừng sau phần này. `flutter test` **4074/40
 
 - `danh_sach_hoa_don` nhận `ky`: `ky_nay` (mặc định — kết quả của câu hỏi cũ giữ nguyên từng ký tự) · `ky_toi` ·
   `tat_ca`. Hàng, số đếm và tổng tiền luôn tính trên **cùng một tập**; tổng vẫn do `summarizeBills` cộng, tool chỉ
-  đổi tập và mốc đưa vào.
+  đổi tập và mốc đưa vào. *(Thêm 2026-10-17: nhãn "sắp đến hạn" của hoá đơn **tắt nhắc** theo tuỳ chọn "Nhắc
+  trước" — `CongCuHoaDon(soNgayNhac:)` đọc cổng `SoNgayNhacNguon`, `hangHoaDon(soNgayNhac:)` truyền vào
+  `billDisplayStatusOf(…, macDinh:)` — cùng ngưỡng với trang Hoá đơn; trước đó mốc 3 cố định. Khai báo tool không
+  đổi.)*
 - `ky_toi` = hàng thật có hạn trong tháng dương lịch kế tiếp **cộng** kỳ *dự kiến* chiếu từ hàng còn phải trả ở cuối
   chuỗi. Vòng chiếu nay là hàm thuần **`cacKyChieuCua`** (`bill/domain/bill_ky_ke_tiep.dart`), dự báo 30 ngày gọi lại
   nó — một định nghĩa, tool không chép vòng lặp.

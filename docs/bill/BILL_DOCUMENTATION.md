@@ -125,7 +125,8 @@ lib/features/bill/
     │   │                           # + trả/hoàn tác/sửa/xoá (mục 6.6)
     │   ├── bill_add_page.dart  # Chu kỳ là thanh chọn phân đoạn ngang
     │   ├── bill_edit_page.dart # Cùng SegmentedChoice với form Thêm
-    │   └── bill_delete_page.dart   # ⚠️ CHƯA nối vào router — code chết
+    │   └── bill_delete_page.dart   # (17/10) màn xác nhận xoá /bills/:id/delete
+    │                               # — chỉ HỎI, trả true/false (mục 6.10)
     └── widgets/
         ├── bill_payment_sheet.dart   # (06/09 tối) khối thông tin hoá đơn +
         │                             # số tiền/ngày trả/ghi chú + nút
@@ -1015,6 +1016,34 @@ khoản lặp tháng tới khoảng tháng 11/2026 — đúng hành vi; người
 không bao giờ được gợi ý; hai khoản lặp khác nhau cùng ghi chú, cùng danh mục gộp
 làm một và thường phá luật số tiền nên im.
 
+### 6.10. Xoá hoá đơn qua màn xác nhận — 2026-10-17
+
+Ba lối xoá — thùng rác trên thẻ danh sách, nút xoá ở trang Chi tiết, nút "Xóa hóa đơn" ở form Sửa — đều gọi
+**một** hàm `xacNhanXoaHoaDon(context, billId, bill:)` (`presentation/widgets/bill_actions.dart`), hàm ấy `push`
+route `/bills/:id/delete` (`BillDeletePage`, Stitch *"Xác nhận xóa hóa đơn"* `124611f0…`). Trước đó cả ba dùng
+`AlertDialog` mặc định và `bill_delete_page.dart` là màn mockup chết (Netflix, ảnh mạng, "260.000đ" — từng nằm
+trong danh sách chờ của quét 11).
+
+- **Trang chỉ HỎI**: *Xác nhận Xóa* `pop(true)`, *Hủy bỏ* `pop(false)`, Back `pop()`. Chỗ gọi tự gửi
+  `DeleteBillEvent` vào `BillBloc` **của nó**, nên toast *"Xóa hóa đơn thành công"* và việc trang Chi tiết tự đóng
+  (`message.startsWith('Xóa')`) đi đúng đường cũ; route không cấp `BillBloc`. Form Sửa đóng khi hàm trả `true`.
+  Trang đọc lại hoá đơn theo id (ảnh chụp `extra` chỉ để vẽ ngay); ví / danh mục đọc bằng `getById` — lấy được cả
+  hàng đã lưu trữ / xoá mềm, nên không phải phân loại ở quét 2.
+- **Xoá gỡ đúng MỘT hàng** (`deleteBill` → `softDeleteBill`, không lan sang giao dịch). Câu phụ vì thế đổi theo
+  trạng thái kỳ (`cauXacNhanXoaHoaDon`, người dùng chốt; bỏ qua xét trước như `billDisplayStatusOf`):
+  - **còn phải trả** — câu Stitch, cộng *"và không tạo kỳ kế tiếp"* nếu lặp (kỳ kế tiếp chỉ sinh khi trả / bỏ qua);
+  - **đã trả** — chỉ gỡ khỏi danh sách, khoản chi ở lại sổ, số dư không đổi, *"hãy Hoàn tác trước khi xoá"*;
+  - **bỏ qua** — chỉ gỡ khỏi danh sách.
+- ⚠️ **Bẫy có sẵn, chưa sửa — đầu vào spec 4c**: xoá một kỳ **đã trả** thì hoá đơn và nút Hoàn tác biến mất cùng
+  nhau, còn khoản chi ở sổ vẫn bị **khoá** (`transactionOwnerOf` nhận nó là của hoá đơn qua tiền tố ghi chú) —
+  không xoá được ở sổ, không hoàn tác được ở trang Hoá đơn. Câu phụ báo trước điều này; gỡ hẳn thuộc lượt
+  `transactionOwnerOf` đọc `billId` (bàn giao việc 4c).
+- **Lệch Stitch có chủ ý**: ô ảnh là biểu tượng + màu danh mục (hoá đơn không có ảnh); ngày `Hạn dd/MM/yyyy` như
+  thẻ danh sách và trang chi tiết (Stitch: *"Hẹn: 25 thg 10"*); dòng hạn màu trung tính (xanh của Stitch đọc như
+  "ổn" cả với kỳ quá hạn); nền trang `surface-bright` của Stitch (khối minh hoạ chìm trên nền chung của app).
+- Số tiền co bằng `FittedBox` trong cột có trần 45 % — `maxLines: 1` trần **cắt chữ số im lặng** (ca 320 dp đo
+  `didExceedMaxLines`).
+
 ---
 
 ## 7. Hai thứ ĐỪNG khôi phục
@@ -1062,8 +1091,10 @@ báo và bộ đặt lịch hệ điều hành lấp NULL bằng tuỳ chọn "N
 lịch trên màn hình khoá. Nay một định nghĩa `soNgayNhacRieng` (`bill/domain/bill_nhac_truoc.dart`:
 NULL hoặc chuỗi không đọc được → `null` = tắt): bộ luật bỏ hoá đơn tắt nhắc **sau**
 nhánh quá hạn (nợ quá hạn vẫn báo), bộ đặt lịch bỏ nó **trước** `khongHuy.add` (lịch
-cũ bị huỷ ở lượt `resync` kế). Tuỳ chọn "Nhắc trước" chung nay chỉ còn là ngưỡng
-nhãn "Sắp đến hạn" của hoá đơn tắt nhắc (mục 7c).
+cũ bị huỷ ở lượt `resync` kế). Tuỳ chọn "Nhắc trước" chung không sinh lời nhắc nào;
+nó có hai nghĩa: **mặc định cho hoá đơn mới** (form Thêm chọn sẵn chip qua
+`mucNhacChonSan`, người dùng chốt 2026-10-17) và ngưỡng nhãn "Sắp đến hạn" của hoá
+đơn tắt nhắc (mục 7c — cả trang Hoá đơn lẫn tool AI `danh_sach_hoa_don`).
 
 ⚠️ **Chờ backend — đơn CAN-LAM 45** (`TAT_NHAC_HOA_DON_QUA_DONG_BO.md`): `/sync/push` ép
 NULL thành `'3'` khi **tạo** (`|| '3'`) và giữ giá trị cũ khi **cập nhật** (`?? existing`),
@@ -1077,7 +1108,12 @@ nói nó *"không nằm trong payload đẩy"* đã sai ít nhất từ 2026-09-
 `NOTIFICATION_FEATURE.md`).
 
 Trên form Thêm, bốn chip số ngày nằm trong `Wrap` — chip '7 ngày' thêm ngày
-04/09 là giọt nước làm hàng cũ tràn 115px ở 411dp.
+04/09 là giọt nước làm hàng cũ tràn 115px ở 411dp. Bốn mức là **một** hằng
+`kMucNhacTruoc` (`bill_nhac_truoc.dart`: 1 · 3 · 5 · 7) dùng chung cho chip form
+Thêm, danh sách form Sửa và hàng "Nhắc trước" ở Cài đặt thông báo (trước 2026-10-17
+Cài đặt cho chọn cả 0 · 2). Form Thêm chọn sẵn chip theo tuỳ chọn qua cổng
+`SoNgayNhacNguon` khi đọc xong; người dùng đã tự bấm chip thì không bị đè; giá trị
+cũ ngoài bốn mức → chip 3.
 
 ---
 
@@ -1189,7 +1225,7 @@ chip bị đẩy ra ngoài — Chrome 1280px không bao giờ thấy.
 | **Ân hạn (kỳ tính tiền ≠ hạn trả)** | ✅ **Xong 2026-09-12 tối, schema v21** (mục 2b). Cột `periodEnd` đồng bộ lên `bill.Period_end`; nhập theo số ngày; kỳ sau nối từ `periodEnd`; `NULL` = hàng cũ, ân hạn 0. Kiểm máy ảo: xem khối mục 14 `PROJECT_CONTEXT.md` |
 | **Hoàn tác trên máy khác / sau cài lại** | ✅ **Đường đồng bộ đã mở 2026-09-12** — client gửi/đọc `idbill`, `previous_bill_id`, `anchor_day`; đo trên backend thật thấy cả ba tới nơi đúng giá trị. ⚠️ Chỉ chạy với hàng ghi **từ ngày ấy trở đi**: hàng cũ trên server vẫn mang `NULL` cho tới khi được sửa lại, vì client chỉ đẩy hàng `pending`. ✅ Hoàn tác lần trả đã đồng bộ **lên được server** từ 2026-09-12 (backend bỏ chốt ở `upsertBill`, gộp `cbbeeb4`; đo thật với hàng `3c90acfa…`) — trước đó bị từ chối, CAN-LAM 17 B (mục 6.3) |
 | **Form Sửa: chu kỳ còn là `DropdownButton`** | ✅ Xong 2026-09-06 — cả hai form dùng `SegmentedChoice` ở `shared/widgets` (chung với ngân sách và mục tiêu), giữ key `bill-cycle-<value>` |
-| **Màn xác nhận xoá** | `bill_delete_page.dart` (293 dòng) chưa nối vào router. Stitch có màn "Xác nhận xóa hóa đơn" đúng cho nó; app đang dùng `AlertDialog` mặc định |
+| **Màn xác nhận xoá** | ✅ **Xong 2026-10-17** (mục 6.10) — `/bills/:id/delete` theo Stitch, ba lối xoá qua `xacNhanXoaHoaDon`, câu phụ theo trạng thái kỳ. ⚠️ Còn bẫy khoản chi bị khoá sau khi xoá kỳ đã trả (đầu vào spec 4c) |
 | **Lọc theo trạng thái trong tab** | Chưa có gì ngoài hai tab |
 | **Lịch sử theo chuỗi hoá đơn** | ✅ Trang chi tiết có "Lịch sử các kỳ" theo `generatedFromBillId` (mục 6.6). Chỉ đủ trên máy đã trả; hàng kéo về từ server một mình một chuỗi cho tới khi client đồng bộ `previous_bill_id` (server có cột từ 2026-09-11) |
 | **Ngày trả trên tab, ngày trả tuỳ chọn, ghi chú lần trả, trang chi tiết** | ✅ Xong 2026-09-06 tối (mục 6.6) |
@@ -1215,7 +1251,10 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/features/bill/domain/bill_schedule_test.dart` | Ngày đến hạn suy từ chu kỳ ở cả bốn chu kỳ; bất biến bắt đầu < đến hạn; công tắc lặp lại không đụng cách tính hạn; `fromBill` phát hiện hạn cũ lệch và cảnh báo |
 | `test/features/bill/domain/bill_draft_test.dart` | Companion mang ví/danh mục; ghi chu kỳ khớp ở cả hai cột; companion SỬA không đụng `isPaid`/`payStatus`/`startDate`/cờ xoá |
 | `test/features/bill/domain/bill_status_test.dart` | **Năm** trạng thái (quá hạn ≠ sắp đến hạn, hôm nay chưa quá hạn, `billLeadDays` riêng thắng chung, đã trả thắng quá hạn, đọc cả hai cột; **kỳ bỏ qua thắng quá hạn** và không phải "đã thanh toán"); `splitBills` sắp xếp đúng chiều, không đụng danh sách gốc, **đẩy kỳ bỏ qua sang nhóm `daDong`**, tách **nhóm các tháng sau** khỏi số trên tab (2026-10-16); `thuocKyNay` biên mở ở đầu tháng sau, tháng 12 → tháng 1; ca bất biến *số trên tab = số trên thẻ* trên bốn mốc; `summarizeBills` chặn cuối tháng, giữ nợ cũ, tiến độ không phải hằng số, không chia 0, tháng 12 không tràn năm, 29/02 năm nhuận, **kỳ bỏ qua không vào CẢ HAI vế** |
-| `test/features/bill/data/repositories/bill_repository_impl_test.dart` | `payBill(note:)` nối ghi chú SAU tiền tố, rỗng thì như cũ; `editBill` không xoá cột vắng mặt và không hồi sinh hàng đã xoá; `payBill` đặt cả hai cột trạng thái, gắn danh mục vào giao dịch, kế thừa đủ thuộc tính cho kỳ sau, đọc chu kỳ từ `isRecurrence`, chặn thanh toán lần hai |
+| `test/features/bill/data/repositories/bill_repository_impl_test.dart` | `payBill(note:)` nối ghi chú SAU tiền tố, rỗng thì như cũ; `editBill` không xoá cột vắng mặt và không hồi sinh hàng đã xoá; `payBill` đặt cả hai cột trạng thái, gắn danh mục vào giao dịch, kế thừa đủ thuộc tính cho kỳ sau, đọc chu kỳ từ `isRecurrence`, chặn thanh toán lần hai; **`deleteBill` kỳ đã trả chỉ gỡ đúng hàng ấy** — khoản chi, số dư, kỳ kế tiếp còn nguyên (canh câu phụ mục 6.10) |
+| `test/features/bill/presentation/pages/bill_delete_page_test.dart` | (2026-10-17, mục 6.10) Ba biến thể câu phụ (`cauXacNhanXoaHoaDon`: còn phải trả lặp / không lặp, đã trả, bỏ qua); thẻ hiện dữ liệu thật, không còn mockup; *Xác nhận Xóa* trả `true` mà **không tự xoá**, *Hủy bỏ* trả `false`; không tìm thấy hoá đơn thì không có nút xác nhận; 320 dp tên dài + 13 chữ số không tràn, số tiền **không bị cắt** (`didExceedMaxLines`) |
+| `test/features/bill/presentation/widgets/xac_nhan_xoa_hoa_don_test.dart` | Ba lối xoá qua màn xác nhận: hàm chung (xác nhận → xoá mềm, huỷ → không); trang Chi tiết (không còn `AlertDialog`, xoá xong tự đóng); form Sửa (xoá xong đóng form, huỷ thì ở lại); route thật của app `/bills/:id/delete` |
+| `test/features/bill/presentation/pages/bill_add_nhac_mac_dinh_test.dart` | (2026-10-17) Chip "nhắc trước" chọn sẵn theo tuỳ chọn "Nhắc trước" (7 → lưu `'7'`); không nguồn → `'3'`; giá trị cũ 2 → `'3'`; người dùng bấm chip trước khi tuỳ chọn đọc xong thì **không bị đè** |
 | `test/features/bill/data/repositories/bill_payment_test.dart` | Số tiền truyền vào thắng số đã lưu; hoá đơn ghi lại số thật; kỳ sau kế thừa số vừa trả; số ≤ 0 bị từ chối **không ghi gì**; hoàn tác: về chưa trả, hoàn đúng ví đúng số, xoá mềm khoản chi và kỳ sau, hoá đơn không lặp không có gì để gỡ, chưa trả bị từ chối, **khoản trả cũ không có `billId` thì từ chối KHÔNG đoán**, hoàn tác rồi trả lại chỉ sinh đúng một kỳ |
 | `test/features/bill/domain/bill_pay_status_test.dart` | **Định nghĩa duy nhất** của trạng thái trả: ba vị từ trên cả bốn giá trị; hàng lệch hai cột theo **cả hai** chiều; giá trị lạ đọc là *còn phải trả* và **không** đọc là *bỏ qua* |
 | `test/features/bill/data/repositories/bill_skip_test.dart` | `skipBill` không trừ ví và không sinh giao dịch nào; đặt `Skipped` giữ `isPaid` false và vào hàng đợi đẩy; sinh kỳ kế tiếp đúng ngày/số tiền/trạng thái; hoá đơn **không lặp** thì không sinh; từ chối kỳ đã trả và kỳ đã bỏ qua (**chống sinh kỳ trùng**); `payBill` từ chối kỳ `Skipped` **TRƯỚC khi trừ ví**; `undoSkip` về `Pending` + xoá mềm kỳ sau, **KHÔNG cộng tiền vào ví**, từ chối kỳ chưa bỏ qua và kỳ đã trả |

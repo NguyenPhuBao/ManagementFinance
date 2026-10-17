@@ -1456,10 +1456,12 @@ hạn" và lịch trên màn hình khoá. Nay bộ luật và `reminder_schedule
 `soNgayNhacRieng(bill)` (`bill/domain/bill_nhac_truoc.dart`; `null` = tắt): bộ luật bỏ
 hoá đơn tắt nhắc **sau** nhánh quá hạn (quá hạn vẫn báo), bộ đặt lịch bỏ nó **trước**
 `khongHuy.add` nên lịch cũ bị huỷ. `NotificationRuleInput.defaultBillLeadDays` gỡ (không
-còn người đọc). Tuỳ chọn "Nhắc trước" nay chỉ còn là ngưỡng nhãn "Sắp đến hạn" của hoá
-đơn tắt nhắc trên trang Hoá đơn (cổng `bill/data/so_ngay_nhac_nguon.dart`, DI nối kho
-tuỳ chọn) — đổi nó thành "mặc định cho hoá đơn mới" hay gỡ hàng là việc người dùng
-chưa chọn. Hàm và hằng ở mảng hoá đơn (dời khỏi `notification_rules.dart` 2026-10-16:
+còn người đọc). Tuỳ chọn "Nhắc trước" không sinh lời nhắc nào; từ 2026-10-17 (người dùng
+chốt) nó là **mặc định cho hoá đơn mới** — form Thêm chọn sẵn chip (`mucNhacChonSan`;
+danh sách mức là một hằng `kMucNhacTruoc` 1 · 3 · 5 · 7, dùng chung với hàng ở Cài đặt) —
+và vẫn là ngưỡng nhãn "Sắp đến hạn" của hoá đơn tắt nhắc trên trang Hoá đơn lẫn tool AI
+`danh_sach_hoa_don` (cổng `bill/data/so_ngay_nhac_nguon.dart`, DI nối kho tuỳ chọn). Câu
+phụ của hàng nói cả hai nghĩa. Hàm và hằng ở mảng hoá đơn (dời khỏi `notification_rules.dart` 2026-10-16:
 luật thuần nằm ở mảng của dữ liệu nó đọc; để ở thông báo là `bill/domain` ↔
 `notification/domain` thành vòng — gỡ 2026-10-16, quét 29 canh).
 

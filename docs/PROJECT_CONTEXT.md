@@ -608,7 +608,34 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-16)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-17)
+
+### 🗑️ Màn xác nhận xoá hoá đơn; "Nhắc trước" là mặc định cho hoá đơn mới (2026-10-17, người dùng chốt)
+
+Người dùng chọn bốn việc từ danh sách bàn giao: **1** màn xác nhận xoá hoá đơn, **4b** hàng "Nhắc trước", **4** đơn CAN-LAM
+về tài liệu thông báo, **4c** spec `transactionOwnerOf` đọc `billId`. Hai việc mã làm inline, TDD; mỗi ca canh chính thử
+bằng bản sai có chủ ý.
+
+- **Việc 1** (`9f9125e4`, mục 6.10 `BILL_DOCUMENTATION.md`): ba lối xoá (thẻ danh sách, trang Chi tiết, form Sửa) qua
+  **`xacNhanXoaHoaDon`** → route `/bills/:id/delete` (Stitch `124611f0…`), thay ba `AlertDialog`. Trang chỉ hỏi
+  (`pop(true/false)`); chỗ gọi gửi `DeleteBillEvent`. `bill_delete_page.dart` viết lại bằng dữ liệu thật (mockup cũ rút
+  khỏi danh sách chờ quét 11). Câu phụ theo trạng thái kỳ (người dùng chốt) vì xoá chỉ gỡ **một** hàng: còn phải trả —
+  câu Stitch + "không tạo kỳ kế tiếp" nếu lặp; đã trả — "hãy Hoàn tác trước khi xoá"; bỏ qua — chỉ gỡ khỏi danh sách.
+  ⚠️ Bẫy có sẵn, chưa sửa: xoá kỳ đã trả thì khoản chi ở lại sổ và bị khoá (owner theo tiền tố) mà nút Hoàn tác mất —
+  đầu vào spec 4c.
+- **Việc 4b** (`96ae06fb`): người dùng chọn *mặc định cho hoá đơn mới* (không gỡ hàng). Một hằng `kMucNhacTruoc`
+  (1 · 3 · 5 · 7) cho chip form Thêm, danh sách form Sửa, hàng Cài đặt; form Thêm chọn sẵn chip qua `SoNgayNhacNguon` +
+  `mucNhacChonSan` (ngoài bốn mức → 3; lựa chọn tay không bị đè); câu phụ hàng Cài đặt nói cả hai nghĩa; tool AI
+  `danh_sach_hoa_don` đọc cùng ngưỡng (`CongCuHoaDon(soNgayNhac:)`, DI truyền một chỗ).
+- **Nghiệm thu máy ảo** `FlowMoney_16G` (`-gpu host`, 411 dp, tài khoản 10): màn xác nhận từ thẻ danh sách (kỳ đang mở
+  của hoá đơn lặp — câu "không tạo kỳ kế tiếp"), từ tab Lịch sử (kỳ đã trả — câu "Hoàn tác trước khi xoá"), từ trang Chi
+  tiết (Hủy bỏ quay về Chi tiết); Cài đặt: bốn mức, câu phụ ba dòng không tràn; đặt 7 → form Thêm chọn sẵn chip **7
+  ngày**; tạo hoá đơn thử *Thu xoa 1710* rồi xoá qua *Xác nhận Xóa* → biến khỏi danh sách, **một** toast. Dọn: hoá đơn
+  thử **xoá mềm** qua giao diện (chờ đẩy khi backend chạy), tuỳ chọn trả về **3**.
+- **Số đo**: `flutter test` **7.178 pass / 10 skip** (trước 7.146; +32 ca, ba tệp test mới — `_test.dart` 632);
+  `flutter analyze` 20 (mức nền). Schema v31 không đổi.
+- **Còn để** (ngoài phạm vi, báo người dùng): ở 320 dp hai hàng ngưỡng tiền của Cài đặt thông báo (`HangNguongSoDu`,
+  `HangNguongChiLon`) tràn 12 / 28 px dưới font Ahem của `flutter test` — có từ trước, chưa đo trên máy hẹp thật.
 
 ### 🔗 Gỡ vòng cụm {analytics, bill, category, transaction} ở tầng domain — quét 29 `conCho` rỗng (2026-10-16, người dùng chốt)
 
@@ -655,9 +682,8 @@ nên không đi qua vòng ấy. Client không đổi thêm; backend sửa là t�
   báo (`hang_nguong.dart`: câu cũ hứa nhắc cho hoá đơn không tự đặt số ngày).
 - **Người dùng chốt thêm:** hoá đơn bật **tự trả** mà tắt nhắc cũng **không** nhận lời báo trước "Hoá đơn sắp được tự trả"
   (`reminder_scheduler.dart`) — tắt là tắt hết; thông báo "đã tự trả" sau khi trả vẫn có.
-- **Còn để:** tuỳ chọn "Nhắc trước" chỉ còn là ngưỡng nhãn của hoá đơn tắt nhắc — đổi thành *mặc định cho hoá đơn mới*
-  hay gỡ hàng là việc người dùng **chưa chọn**; tool AI `danh_sach_hoa_don` (`hang_hoa_don.dart`) gọi
-  `billDisplayStatusOf` không truyền `macDinh` (mốc 3).
+- **Còn để (lúc ấy):** tuỳ chọn "Nhắc trước" chỉ là ngưỡng nhãn của hoá đơn tắt nhắc; tool AI `danh_sach_hoa_don`
+  dùng mốc 3. ✅ Cả hai làm 2026-10-17 — người dùng chọn *mặc định cho hoá đơn mới* (khối 🗑️ ngay đầu mục 14).
 
 ### 🧹 Nợ kiến trúc nhỏ — gỡ vòng `bill` ↔ `notification` ở tầng domain, quét 29, bịt lỗ quét 25 / 27 / 28 (2026-10-16, người dùng chốt)
 
