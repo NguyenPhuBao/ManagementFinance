@@ -5,6 +5,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -40,7 +41,7 @@ class _MayChuSse implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-TroLyOnlineRemoteDataSourceImpl _dung(_MayChuSse may) {
+TroLyOnlineRemoteDataSourceImpl _dung(HttpClientAdapter may) {
   final dio = Dio(BaseOptions(baseUrl: 'http://localhost:3000/api'))..httpClientAdapter = may;
   return TroLyOnlineRemoteDataSourceImpl(dio);
 }
@@ -97,17 +98,42 @@ void main() {
     expect(sk.whereType<XongOnline>(), isEmpty);
   });
 
-  test('done mang khoá error (luồng dự phòng của server ném) → LoiOnline, KHÔNG XongOnline', () async {
+  test('done mang khoá error (luồng dự phòng của server ném) → DuPhongOnline, không XongOnline / LoiOnline', () async {
     const than = 'event: delta\ndata: {"text":"⚠️ Sự cố kết nối…"}\n\n'
         'event: done\ndata: {"error":"Sự cố kết nối tới AI"}\n\n';
     final sk = await _gom(_dung(_MayChuSse(than: than)));
-    expect(sk.last, isA<LoiOnline>());
-    expect((sk.last as LoiOnline).http, 200);
-    expect((sk.last as LoiOnline).lyDo, contains('Sự cố'));
+    expect(sk.last, isA<DuPhongOnline>());
+    expect((sk.last as DuPhongOnline).reason, contains('Sự cố'));
+    expect(sk.whereType<XongOnline>(), isEmpty);
+    expect(sk.whereType<LoiOnline>(), isEmpty,
+        reason: 'chatbot.service.js:229-237 → chatbot.controller.js:53: server phát chunk báo lỗi TRƯỚC done{error} '
+            'nên daCoChu = true; LoiOnline sẽ đi nhánh giữ chữ và câu báo lỗi của server ở lại màn. '
+            'DuPhongOnline luôn rơi về máy (luật rơi Task 4).');
+  });
+
+  test('done trống {} → XongOnline(null), không đoán thêm', () async {
+    final sk = await _gom(_dung(_MayChuSse(than: 'event: done\ndata: {}\n\n')));
+    expect((sk.single as XongOnline).responseTimeMs, isNull);
+  });
+
+  test('luồng ném HttpException giữa chừng (mất mạng) sau delta → [ChuOnline, LoiOnline(http null)], không ném', () async {
+    final may = _MayChuNem(
+        'event: delta\ndata: {"text":"nửa chừng"}\n\n', const HttpException('Connection closed while receiving data'));
+    final sk = await _gom(_dung(may));
+    expect(sk.map((e) => e.runtimeType).toList(), [ChuOnline, LoiOnline]);
+    expect((sk.last as LoiOnline).http, isNull);
     expect(sk.whereType<XongOnline>(), isEmpty,
-        reason: 'chatbot.service.js:229-237 → chatbot.controller.js:53: khi luồng dự phòng của server ném, '
-            'backend phát chunk báo lỗi rồi done chỉ có error (không fallback); coi là XongOnline thì câu '
-            'báo lỗi của server thành câu trả lời');
+        reason: 'quyetDinhSauOnline có nhánh LoiOnline + daCoChu → giữ phần đã có (gián đoạn); '
+            'lỗi không phải DioException mà lọt khỏi async* là nhánh ấy không bao giờ tới');
+  });
+
+  test('thân cụt giữa ký tự UTF-8, luồng đóng sạch → sự kiện cuối là LoiOnline, không ném', () async {
+    final cut = utf8.encode(thanThuong).sublist(0, 195);
+    final may = _MayChuNem('', null, rawBytes: cut);
+    final sk = await _gom(_dung(may));
+    expect(sk.last, isA<LoiOnline>(),
+        reason: 'utf8.decoder ném FormatException ở close khi thân cụt giữa ký tự nhiều byte');
+    expect(sk.whereType<XongOnline>(), isEmpty);
   });
 
   test('event error → LoiOnline(http 200, lyDo = message)', () async {
@@ -153,4 +179,25 @@ void main() {
     expect(sk.single, isA<LoiOnline>());
     expect((sk.single as LoiOnline).lyDo.toLowerCase(), contains('cancel'));
   });
+}
+
+/// Adapter giả: phát [phan] (hoặc [rawBytes]) rồi ném [loi] (nếu có) từ chính luồng thân.
+class _MayChuNem implements HttpClientAdapter {
+  _MayChuNem(this.phan, this.loi, {this.rawBytes});
+  final String phan;
+  final Object? loi;
+  final List<int>? rawBytes;
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    Stream<Uint8List> luong() async* {
+      yield Uint8List.fromList(rawBytes ?? utf8.encode(phan));
+      if (loi != null) throw loi!;
+    }
+
+    return ResponseBody(luong(), 200, headers: {Headers.contentTypeHeader: ['text/event-stream']});
+  }
+
+  @override
+  void close({bool force = false}) {}
 }

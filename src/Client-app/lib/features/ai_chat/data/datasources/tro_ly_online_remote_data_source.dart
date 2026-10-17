@@ -65,27 +65,42 @@ class TroLyOnlineRemoteDataSourceImpl implements TroLyOnlineRemoteDataSource {
         return;
       }
       await for (final doan in than.stream.cast<List<int>>().transform(utf8.decoder)) {
-        for (final k in boTach.nhan(doan)) {
-          final sk = _dich(k);
-          if (sk == null) continue;
+        for (final sk in _dichCac(boTach.nhan(doan))) {
           yield sk;
-          if (sk is! ChuOnline) {
-            debugPrint('[Online] kết ${sk.runtimeType} sau ${DateTime.now().difference(batDau).inMilliseconds} ms');
-            return;
-          }
+          if (_laKet(sk, batDau)) return;
         }
       }
-      for (final k in boTach.dong()) {
-        final sk = _dich(k);
-        if (sk == null) continue;
+      for (final sk in _dichCac(boTach.dong())) {
         yield sk;
-        if (sk is! ChuOnline) return;
+        if (_laKet(sk, batDau)) return;
       }
       yield const LoiOnline(http: 200, lyDo: 'luồng đóng không done');
     } on DioException catch (e) {
       debugPrint('[Online] lỗi ${e.type.name} http=${e.response?.statusCode} sau ${DateTime.now().difference(batDau).inMilliseconds} ms');
       yield LoiOnline(http: e.response?.statusCode, lyDo: '${e.type.name}: ${e.message ?? ''}');
+    } catch (e) {
+      // Mất mạng giữa luồng (HttpException), thân cụt giữa ký tự UTF-8
+      // (FormatException)…: không ném ra ngoài; chỉ ghi kiểu lỗi, không nội dung.
+      debugPrint('[Online] lỗi ${e.runtimeType} sau ${DateTime.now().difference(batDau).inMilliseconds} ms');
+      yield LoiOnline(http: null, lyDo: '${e.runtimeType}');
     }
+  }
+
+  /// Khung → sự kiện, dừng sau sự kiện kết đầu tiên.
+  Iterable<SuKienOnline> _dichCac(Iterable<KhungSse> khung) sync* {
+    for (final k in khung) {
+      final sk = _dich(k);
+      if (sk == null) continue;
+      yield sk;
+      if (sk is! ChuOnline) return;
+    }
+  }
+
+  /// `true` (và log) khi [sk] là sự kiện kết — ở cả hai đường `nhan` và `dong`.
+  bool _laKet(SuKienOnline sk, DateTime batDau) {
+    if (sk is ChuOnline) return false;
+    debugPrint('[Online] kết ${sk.runtimeType} sau ${DateTime.now().difference(batDau).inMilliseconds} ms');
+    return true;
   }
 
   /// Khung SSE → sự kiện; `meta` chỉ log; JSON hỏng → `null` (bỏ qua, luồng đi tiếp).
@@ -103,11 +118,12 @@ class TroLyOnlineRemoteDataSourceImpl implements TroLyOnlineRemoteDataSource {
         return ChuOnline((json['text'] ?? json['content'] ?? '').toString());
       case 'done':
         if (json['fallback'] == true) return DuPhongOnline((json['reason'] ?? '').toString());
-        // Luồng dự phòng của server tự ném: chunk báo lỗi rồi `done` chỉ có `error`
-        // (không `fallback`) — đó là lỗi, không phải câu trả lời.
+        // `done` chỉ có `error` (không `fallback`): luồng dự phòng của server tự ném, sau chunk
+        // báo lỗi. Là rơi về máy (DuPhongOnline), không phải lời đáp. `done {}` trống → XongOnline
+        // (cố ý không đoán thêm).
         final loi = json['error'];
         if (loi != null && loi.toString().isNotEmpty) {
-          return LoiOnline(http: 200, lyDo: loi.toString());
+          return DuPhongOnline(loi.toString());
         }
         final ms = json['responseTimeMs'];
         return XongOnline(responseTimeMs: ms is num ? ms.toInt() : null);
