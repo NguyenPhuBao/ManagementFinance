@@ -303,30 +303,24 @@ class AuthInterceptor extends Interceptor {
       );
 
   // ─── Thử lại request gốc với token mới ──────────────────────────────────
-  /// ⚠️ `Options` dựng lại ở đây chỉ mang `method` + `headers`, nên lượt thử
-  /// lại MẤT `responseType`, `contentType`, `sendTimeout`, `validateStatus`,
-  /// `extra`, `cancelToken`, `onSendProgress`/`onReceiveProgress` của request
-  /// gốc. Hôm nay vô hại — quét cả `lib/` không có chỗ nào dùng `ResponseType`,
-  /// `FormData`, `CancelToken`, `validateStatus` hay `on*Progress`. Nhưng chốt
-  /// "token cũ" ở `onError` vừa thêm **đường phát lại thứ hai** vào đây, nên ai
-  /// thêm tải/gửi tệp về sau phải chép đủ `Options` từ `requestOptions`.
+  /// Phát lại **trọn** request gốc (`copyWith` trên [RequestOptions]) chỉ đổi
+  /// `Authorization`: giữ `responseType`, `receiveTimeout`, `sendTimeout`,
+  /// `cancelToken`, `extra`, `contentType`, `validateStatus`, `on*Progress`…
+  /// Dựng `Options` chỉ với `method` + `headers` từng làm lượt phát lại của
+  /// một request SSE (`ResponseType.stream`, trợ lý online) đọc dồn cả luồng
+  /// thành chuỗi, mất nút Dừng và hạn 45 s. Chạy qua `_refreshDio` nên không
+  /// lặp lại interceptor này (không vòng 401).
   Future<Response<dynamic>> _retryRequest(
     RequestOptions requestOptions,
     String newToken,
-  ) async {
-    final options = Options(
-      method: requestOptions.method,
-      headers: {
-        ...requestOptions.headers,
-        'Authorization': 'Bearer $newToken',
-      },
-    );
-
-    return _refreshDio.request<dynamic>(
-      requestOptions.path,
-      data: requestOptions.data,
-      queryParameters: requestOptions.queryParameters,
-      options: options,
+  ) {
+    return _refreshDio.fetch<dynamic>(
+      requestOptions.copyWith(
+        headers: {
+          ...requestOptions.headers,
+          'Authorization': 'Bearer $newToken',
+        },
+      ),
     );
   }
 

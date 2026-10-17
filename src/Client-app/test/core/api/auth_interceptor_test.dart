@@ -111,6 +111,9 @@ class _MayChuGia implements HttpClientAdapter {
   int maSauThuLai = 200;
   final List<String?> bearerDaThay = [];
 
+  /// `RequestOptions` của mọi request thường (không phải `/auth/refresh`) nhận được.
+  final List<RequestOptions> optionsDaNhan = [];
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -140,6 +143,7 @@ class _MayChuGia implements HttpClientAdapter {
     }
     final bearer = options.headers['Authorization'] as String?;
     bearerDaThay.add(bearer);
+    optionsDaNhan.add(options);
     if (bearer != 'Bearer $tokenMoi') {
       return _json('{"success":false,"message":"Unauthorized"}', 401);
     }
@@ -397,6 +401,34 @@ void main() {
       expect(await storage.read(key: AppConstants.accessTokenKey), 'access-moi');
       expect(await storage.read(key: AppConstants.refreshTokenKey), 'refresh-moi',
           reason: 'token rotation: server thu hồi refresh token cũ (auth.service.js:421)');
+    });
+
+    test('thử lại sau 401 giữ responseType stream, receiveTimeout và cancelToken của request gốc', () async {
+      final storage = _khoCoPhien();
+      final server = _MayChuGia();
+      final (:dio, :interceptor) = _dungVoiMayChu(storage, server);
+      addTearDown(interceptor.dispose);
+      final cancel = CancelToken();
+
+      final res = await dio.post<ResponseBody>(
+        '/ai/chatbot/chat/stream',
+        data: {'message': 'x'},
+        options: Options(
+          responseType: ResponseType.stream,
+          receiveTimeout: const Duration(seconds: 45),
+        ),
+        cancelToken: cancel,
+      );
+
+      expect(res.statusCode, 200);
+      expect(server.optionsDaNhan, hasLength(2), reason: 'lượt gốc (401) + lượt phát lại');
+      final lai = server.optionsDaNhan.last;
+      expect(lai.responseType, ResponseType.stream,
+          reason: 'SSE: mất stream thì lượt phát lại đọc dồn cả câu trả lời thành chuỗi rồi mới trả về');
+      expect(lai.receiveTimeout, const Duration(seconds: 45));
+      expect(identical(lai.cancelToken, cancel), isTrue,
+          reason: 'mất cancelToken thì nút Dừng của trợ lý online vô hiệu sau lượt làm mới token');
+      expect(lai.headers['Authorization'], 'Bearer access-moi');
     });
 
     test('thử lại hỏng (500) sau khi làm mới thành công → giữ token mới, không tín hiệu', () async {
