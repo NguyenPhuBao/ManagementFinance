@@ -490,18 +490,56 @@ void main() {
         name: 'Da tra',
         isPaid: true,
         payStatus: 'Payed');
-    await dungTrang(tester, [daTra],
-        repo: _FixedBillRepository([daTra], payments: {'b': _khoanTra('b')}));
-    await tester.tap(find.text('Lịch sử (1)'));
+    final kySau = _bill(
+        id: 'c', dueDate: DateTime(2026, 10, 4), name: 'Da tra', tu: 'b');
+    await dungTrang(tester, [daTra, kySau],
+        repo: _FixedBillRepository([daTra, kySau],
+            payments: {'b': _khoanTra('b')}));
+    await tester.tap(find.textContaining('Lịch sử ('));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('bill-undo-b')));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Hoàn 100.000 đ về ví'), findsOneWidget);
-    expect(find.textContaining('gỡ kỳ kế tiếp'), findsOneWidget,
+    expect(
+        find.textContaining(
+            'và gỡ kỳ kế tiếp (hạn 04/10/2026, chưa trả)'),
+        findsOneWidget,
         reason: 'Hoàn tác đụng tới ba thứ (ví, khoản chi, kỳ sau) nên phải '
             'nói trước, không im lặng làm.');
+  });
+
+  testWidgets(
+      'hoàn tác khi kỳ sau ĐÃ TRẢ: hộp hoàn tiền KHÔNG hứa gỡ kỳ sau '
+      '(2026-10-17)', (tester) async {
+    final daTra = _bill(
+        id: 'b',
+        dueDate: DateTime(2026, 9, 4),
+        name: 'Da tra',
+        isPaid: true,
+        payStatus: 'Payed');
+    final kySauDaTra = _bill(
+        id: 'c',
+        dueDate: DateTime(2026, 10, 4),
+        name: 'Da tra',
+        tu: 'b',
+        isPaid: true,
+        payStatus: 'Payed');
+    await dungTrang(tester, [daTra, kySauDaTra],
+        repo: _FixedBillRepository([daTra, kySauDaTra],
+            payments: {'b': _khoanTra('b'), 'c': _khoanTra('c')}));
+    await tester.tap(find.textContaining('Lịch sử ('));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const ValueKey('bill-undo-b')));
+    await tester.tap(find.byKey(const ValueKey('bill-undo-b')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Hoàn 100.000 đ về ví'), findsOneWidget);
+    expect(find.textContaining('gỡ kỳ kế tiếp'), findsNothing,
+        reason: 'undoPayment chỉ gỡ kỳ sau còn phải trả — kỳ sau đã trả ở lại; '
+            'nhắc "gỡ kỳ kế tiếp" là hứa sai.');
   });
 
   testWidgets(

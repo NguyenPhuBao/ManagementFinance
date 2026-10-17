@@ -77,8 +77,11 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, BillEntity bill,
 /// không bao giờ chứa khoản kiểu cũ (nó không có `billId`), nên rẽ theo nó
 /// không phải đoán.
 ///
-/// [kySau]: kỳ sau mà lần đưa về chưa trả sẽ gỡ — `kySauConPhaiTra` trên danh
-/// sách hoá đơn của trang; `null` thì hộp không nhắc kỳ sau.
+/// [kySau]: kỳ sau mà thao tác sẽ gỡ — `kySauConPhaiTra` trên danh sách hoá
+/// đơn của trang; `null` thì hộp không nhắc kỳ sau. `undoPayment` và
+/// `datLaiChuaTra` cùng chỉ gỡ kỳ sau **nối chuỗi** còn phải trả (2026-10-17),
+/// nên cả hai hộp nhắc theo đúng nó — nhắc theo `isRecurrence` là hứa gỡ cả
+/// tháng sau đã trả, thứ repository nay để nguyên.
 void hoiHoanTacHoaDon(BuildContext context, BillEntity bill,
     {required bool coKhoanTra, BillEntity? kySau}) {
   if (!coKhoanTra) {
@@ -91,7 +94,7 @@ void hoiHoanTacHoaDon(BuildContext context, BillEntity bill,
       title: const Text('Hoàn tác thanh toán'),
       content: Text(
         'Hoàn ${CurrencyFormatter.format(bill.amount)} về ví, xoá khoản chi '
-        'đã ghi${bill.isRecurrence ? ' và gỡ kỳ kế tiếp' : ''}. '
+        'đã ghi${_veKySau(kySau)}. '
         'Hoá đơn "${bill.name}" quay lại trạng thái chưa thanh toán.',
       ),
       actions: [
@@ -111,6 +114,14 @@ void hoiHoanTacHoaDon(BuildContext context, BillEntity bill,
   );
 }
 
+/// Vế *"và gỡ kỳ kế tiếp (hạn …, chưa trả)"* của hai hộp Hoàn tác; rỗng khi
+/// không có [kySau] nào sẽ bị gỡ. Nêu hạn để người dùng biết đúng kỳ nào sẽ mất
+/// khỏi tab Cần thanh toán.
+String _veKySau(BillEntity? kySau) => kySau == null
+    ? ''
+    : ' và gỡ kỳ kế tiếp (hạn '
+        '${DateFormat('dd/MM/yyyy').format(kySau.dueDate)}, chưa trả)';
+
 /// Hộp của kỳ không còn khoản chi gắn `billId`: về chưa trả, không đụng ví.
 ///
 /// Câu "hãy xoá nó ở đó trước" là chốt duy nhất cho khoản kiểu cũ còn sống ở
@@ -123,10 +134,7 @@ void hoiHoanTacHoaDon(BuildContext context, BillEntity bill,
 /// kế đó không phải "kỳ sau" của nó và vẫn còn sau khi bấm; nhắc vế ấy cho mọi
 /// hoá đơn lặp là hứa sai (máy ảo 2026-10-17, người dùng chốt).
 void _hoiDuaVeChuaTra(BuildContext context, BillEntity bill, BillEntity? kySau) {
-  final veKySau = kySau == null
-      ? ''
-      : ' và gỡ kỳ kế tiếp (hạn '
-          '${DateFormat('dd/MM/yyyy').format(kySau.dueDate)}, chưa trả)';
+  final veKySau = _veKySau(kySau);
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(

@@ -251,8 +251,13 @@ class BillRepositoryImpl implements BillRepository {
 
       // 2. Gỡ kỳ kế tiếp mà lần trả đã sinh ra. Để lại thì người dùng có hai
       //    kỳ cùng mở, và trả lại lần nữa sẽ đẻ thêm một kỳ trùng.
+      //    ⚠️ CHỈ khi kỳ ấy còn phải trả — cùng luật với `datLaiChuaTra`
+      //    (2026-10-17). Tab Lịch sử bày Hoàn tác cho mọi kỳ đã trả; gỡ vô điều
+      //    kiện là hoàn tác tháng 9 xoá luôn tháng 10 đã trả, khoản chi của nó
+      //    thành mồ côi. Bên gỡ xung đột (`BillPaymentConflictResolver`) không
+      //    đổi gì: kỳ sau máy thua vừa sinh luôn còn phải trả.
       final kySau = await db.billDao.getGeneratedFrom(billId);
-      if (kySau != null) {
+      if (kySau != null && conPhaiTra(BillEntity.fromDrift(kySau))) {
         await dataSource.softDeleteBill(kySau.id);
       }
 

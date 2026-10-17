@@ -247,6 +247,47 @@ void main() {
       );
     });
 
+    test('kỳ kế tiếp ĐÃ trả thì GIỮ NGUYÊN, cùng khoản chi của nó (2026-10-17)',
+        () async {
+      // Tab Lịch sử bày Hoàn tác cho MỌI kỳ đã trả — hoàn tác tháng 9 khi
+      // tháng 10 đã trả là chuyện bấm được.
+      final bill = await seedBill();
+      await repository.payBill(
+          bill: bill, walletId: walletId, idaccount: accountId);
+      final kySau = BillEntity.fromDrift(
+          (await db.billDao.getGeneratedFrom('bill-1'))!);
+      await repository.payBill(
+          bill: kySau, walletId: walletId, idaccount: accountId);
+
+      await repository.undoPayment(billId: 'bill-1');
+
+      final sau = (await db.billDao.getById(kySau.id))!;
+      expect(sau.isDeleted, isFalse,
+          reason: 'Gỡ vô điều kiện là xoá luôn tháng sau đã trả — khoản chi '
+              'của nó thành mồ côi, tiền vẫn mất, chuỗi sau đó đứt.');
+      expect(sau.payStatus, 'Payed');
+      expect((await db.transactionDao.getByBill(kySau.id))?.isDeleted, isFalse,
+          reason: 'Khoản chi của tháng sau còn sống.');
+      expect((await db.billDao.getById('bill-1'))!.payStatus, 'Pending');
+      expect(await soDu(walletId), soDuBanDau - 200000,
+          reason: 'Chỉ hoàn khoản của kỳ được hoàn tác; kỳ sau vẫn trả.');
+    });
+
+    test('kỳ kế tiếp ĐÃ BỎ QUA cũng giữ nguyên', () async {
+      final bill = await seedBill();
+      await repository.payBill(
+          bill: bill, walletId: walletId, idaccount: accountId);
+      final kySau = (await db.billDao.getGeneratedFrom('bill-1'))!;
+      await repository.skipBill(billId: kySau.id);
+
+      await repository.undoPayment(billId: 'bill-1');
+
+      final sau = (await db.billDao.getById(kySau.id))!;
+      expect(sau.isDeleted, isFalse,
+          reason: 'Kỳ bỏ qua đã sinh kỳ của riêng nó — gỡ nó là đứt chuỗi.');
+      expect(sau.payStatus, 'Skipped');
+    });
+
     test('hoá đơn không lặp thì không có kỳ nào để gỡ', () async {
       final bill = await seedBill(isRecurrence: false);
       await repository.payBill(

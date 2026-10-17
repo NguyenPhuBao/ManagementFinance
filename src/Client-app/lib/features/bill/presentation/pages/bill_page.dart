@@ -469,8 +469,8 @@ class _BillPageState extends State<BillPage> {
         // Kỳ đã trả mà không có khoản chi gắn `billId` → nút Hoàn tác hỏi đưa
         // kỳ về chưa trả, không hứa hoàn tiền (`hoiHoanTacHoaDon`).
         coKhoanTra: khoanChi != null,
-        // Chỉ hộp ấy dùng; tính cho mọi dòng đã trả không khoản chi là rẻ.
-        kySau: status == BillDisplayStatus.paid && khoanChi == null
+        // Kỳ sau mà Hoàn tác sẽ gỡ — hai hộp Hoàn tác nhắc theo đúng nó.
+        kySau: status == BillDisplayStatus.paid
             ? kySauConPhaiTra(tatCa, bill.id)
             : null,
       ),
