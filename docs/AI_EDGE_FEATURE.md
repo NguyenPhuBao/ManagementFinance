@@ -4576,7 +4576,7 @@ xác nhận bài học ở mục "Ghi chú vận hành" `CLAUDE.md`: **timeout k
 44) — và `.env` có khoá Gemini (có từ 2026-10-17; tên `GEMINI_MODEL` chưa ai kiểm — đơn CAN-LAM **47**). Tới khi ấy **mọi câu
 online rơi về AI trên máy**, người dùng chỉ thấy nhãn *máy chủ không phản hồi*. Spec
 `docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` — **mục 10** ghi 19 chỗ khác bản viết (đếm 2026-10-17; 17 của mã / test,
-dòng 18 là lệch đánh số bất biến với `AI_AGENT_ARCHITECTURE.md` §6, dòng 19 tách tiêu chí ca Dừng của §6 — mục 15.5 dưới đây
+dòng 18 là lệch đánh số bất biến với `AI_AGENT_ARCHITECTURE.md` §6, dòng 19 tách tiêu chí ca 5 §6 của **spec** (Dừng) — mục 15.5 dưới đây
 tóm tắt); kế hoạch 13 task `plans/2026-10-11-tro-ly-online-backend-fallback-tren-may.md` (gitignore). Stitch
 ba màn `1896d02b…` *bong bóng online* · `7a6519d6…` *tờ thông tin* · `b320f4b9…` *Cài đặt AI — công tắc* (người dùng chưa xác
 nhận). Hợp đồng backend: `docs/AI/ChatbotAI_Moblie.md` (tài liệu backend, chỉ đọc) với năm chỗ cố ý không làm — đơn 47.
@@ -4722,7 +4722,9 @@ này). Tệp test mới: **8** `_test.dart` + helper `test/helpers/kho_gia.dart`
   tờ một lần, Basic, câu giá vàng, máy chưa có mô hình. Đo cả `receiveTimeout` 45 s với `ResponseType.stream` có đúng là khoảng
   lặng giữa hai gói không (spec §9) — sai thì chuyển sang `Stream.timeout` trong datasource. ⚠️ Ca **Dừng** có hai vế (spec mục 10
   dòng 19): tiêu chí đạt của client là *giữ chữ đã hiện + nhãn đã dừng*; dòng log ngắt kết nối phía server chỉ **đo xem có
-  không** — backend nghe `req.on('close')`, trên Node ≥ 16 có thể không nổ nên Gemini có thể chạy tới hết (đơn 47 việc 5).
+  không**. Lượt Gemini có thể chạy tới hết vì **hai** mảnh phía backend: `req.on('close')` (`chatbot.controller.js:33`) trên
+  Node ≥ 16 có thể không nổ, **và** `sendMessageStream` (`chatbot.service.js:168`, `:186`) không nhận `{ signal }` nên SDK không
+  huỷ fetch dù `abort()` có chạy — đơn 47 việc 5 xin cả hai.
 - Tin `user` mồ côi trong `history` (4.54) — sửa ở `xepHistory`, bỏ theo cặp.
 - Ba câu hỏi người dùng (spec mục 10 dòng 14): câu định nghĩa / tư vấn khi máy chủ hỏng trả `kCauTuChoi` trần không ghi chú; hàng
   *Đang nghĩ…* sau tờ thông tin đang mở; nhánh `catch` khi đã có chữ chưa có ca phủ.

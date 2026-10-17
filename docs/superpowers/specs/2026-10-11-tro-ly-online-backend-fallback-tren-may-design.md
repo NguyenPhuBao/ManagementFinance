@@ -361,7 +361,7 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
    vì backend `_streamFallbackResponse` (`chatbot.service.js:44-65`) luôn chẻ câu thông báo ⚠️ thành `delta` rồi mới
    `done {fallback}`, nên "chữ đã có" là thông báo của server; trang gỡ bong bóng đang hiện rồi hỏi máy với cùng câu.
    `LoiOnline` sau chữ vẫn `GiuPhanDaCo(kGhiChuGianDoan)`. Luồng đóng không `done`: datasource thật phát
-   `LoiOnline(http: 200, 'luồng đóng không done')` (`tro_ly_online_remote_data_source.dart:77`); `ChuOnline` làm sự kiện cuối
+   `LoiOnline(http: 200, lyDo: 'luồng đóng không done')` (`tro_ly_online_remote_data_source.dart:77`); `ChuOnline` làm sự kiện cuối
    chỉ tới qua khe tiêm `onHoiOnline` của test — luật rơi vẫn xử nó như `LoiOnline`. `HoanTat()` / `GiuPhanDaCo(ghiChu)` dùng tham số vị trí, không `nguon:` / `ghiChu:` (Task 4).
 4. §3.3 `xepHistory` — thêm hai luật: (a) sau khi cắt cửa sổ 6, **gọt tin đầu cho tới tin `user`** — vì `@google/generative-ai`
    0.24.1 `validateChatHistory` ném *First content should be with role 'user'*, mà trang gieo lời chào AI ở `initState` → câu
@@ -433,4 +433,6 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
     tiêu chí đạt của ca) và phía **server** (dòng log *"Client … đã ngắt kết nối stream"* + Gemini dừng — **đo xem có không**, không
     phải tiêu chí đạt của client) — vì backend nghe `req.on('close')` (`chatbot.controller.js:33`) sau khi body đã đọc xong, và trên
     Node ≥ 16 (dev v22.19.0) listener ấy có thể không nổ (reviewer thử nhanh với express của `src/Backend/node_modules`: chỉ `res`
-    'close' nổ); chưa đo trên backend thật — đơn CAN-LAM 47 việc 5 xin `res.on('close')` (Task 12, vòng review).
+    'close' nổ); **và** kể cả khi `abort()` chạy, `sendMessageStream` (`chatbot.service.js:168`, `:186`) không nhận `{ signal }` nên
+    SDK không huỷ fetch tới Gemini. Chưa đo trên backend thật — đơn CAN-LAM 47 việc 5 xin `res.on('close')` **và** `{ signal }`
+    (Task 12, vòng review).

@@ -33,8 +33,11 @@ hành vi dưới đây đo bằng test client với máy chủ giả.
   `req.on('close')` (`chatbot.controller.js:33`) — ⚠️ **cần kiểm**: trên Node ≥ 16 (máy dev: v22.19.0) `req` đã `closed` sau khi
   body được đọc (`express.json`, `app.js:36`, rồi `authenticate` bất đồng bộ) nên listener có thể **không nổ** — reviewer client
   thử nhanh với express của chính `src/Backend/node_modules` + middleware giả bất đồng bộ: chỉ `res` 'close' nổ. Khi ấy
-  `abortController.abort()` không chạy, `signal.aborted` (`chatbot.service.js:173`, `:196`) không bao giờ đúng và Gemini chạy tới
-  hết. **Chưa đo trên backend thật** — việc 5.
+  `abortController.abort()` không chạy và `signal.aborted` (`chatbot.service.js:173`, `:196`) không bao giờ đúng. Và **kể cả khi**
+  `abort()` chạy, lượt Gemini vẫn không bị huỷ: hai lời gọi `chatSession.sendMessageStream(…)` (`:168`, `:186`) không truyền
+  `requestOptions`, mà SDK chỉ huỷ fetch khi có `requestOptions.signal` (`@google/generative-ai` `dist/index.js:441-455`,
+  `buildFetchOptions`); `processStream` còn `tee()` luồng (`:684-690`) và đọc trọn phản hồi dù vòng `for await` đã `break`. **Chưa
+  đo trên backend thật** — việc 5.
 - Client **không** gọi online cho câu dữ liệu sống (giá vàng · giá xăng · tỷ giá · lãi suất · thời tiết · tin tức · xổ số · bóng
   đá, và câu hỏi *giá* một tài sản) và lệnh tạo hoá đơn / mục tiêu / ngân sách — những câu ấy đi AI trên máy như cũ.
 - Log `[Online]` chỉ loại sự kiện, mã HTTP, thời gian — không in câu hỏi / câu trả lời.
@@ -83,10 +86,16 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
    400). Client đã tự làm, nhưng Admin-web hay một client cũ gửi `history` bắt đầu bằng `model` vẫn mở breaker **cho mọi tài khoản**
    sau 5 lần.
 4. **(thấp, chữ) Tả nhánh `done {error}`** ở §2.1 `ChatbotAI_Moblie.md` và mục tương ứng của `ChatbotAI.md`.
-5. **(vừa, kiểm trước) Nghe đóng kết nối ở `res`, không chỉ `req`.** `chatbot.controller.js:33` gắn `req.on('close')` sau khi body
-   đã đọc xong; trên Node ≥ 16 sự kiện ấy có thể đã qua (xem *Client gọi gì*, gạch Dừng). Xin đổi sang `res.on('close')` (hoặc nghe
-   cả hai, và chỉ `abort()` khi `!res.writableEnded`) để `abortController.abort()` chạy khi client bấm Dừng / thoát màn — không thì
-   mỗi lượt bị dừng vẫn sinh trọn câu trả lời ở Gemini (tốn hạn mức khoá API) cho một kết nối không còn ai đọc.
+5. **(vừa, kiểm trước) Dừng phải huỷ được lượt Gemini — cần HAI mảnh, thiếu mảnh nào cũng không đạt.**
+   (a) **Nghe đóng kết nối ở `res`**: `chatbot.controller.js:33` gắn `req.on('close')` sau khi body đã đọc xong; trên Node ≥ 16 sự
+   kiện ấy có thể đã qua (xem *Client gọi gì*, gạch Dừng). Đổi sang `res.on('close')` (hoặc nghe cả hai, và chỉ `abort()` khi
+   `!res.writableEnded`) để `signal.aborted` đúng và vòng ghi `delta` thoát.
+   (b) **Truyền `{ signal }` cho SDK**: tham số thứ hai của `chatSession.sendMessageStream(…, { signal })` ở **cả** `:168` lẫn `:186`
+   — không có nó, (a) chỉ làm server thôi ghi `delta` lên kết nối chết, còn fetch tới Gemini vẫn chạy và tải trọn câu trả lời
+   (SDK `buildFetchOptions` chỉ gắn `AbortController` khi `requestOptions.signal` có mặt; `processStream` đọc trọn luồng qua
+   `tee()`). Làm (a) mà thiếu (b) thì phép kiểm log vẫn xanh trong khi lượt Gemini vẫn tiêu — hỏng im lặng.
+   ⚠️ Google có ngừng tính token khi fetch bị huỷ giữa chừng hay không — **chưa đo**; (b) ít nhất thôi giữ kết nối và thôi đọc
+   phần còn lại.
 
 ## Kiểm lại
 
@@ -96,9 +105,13 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
 - Việc 3: cùng request với `"history": [{"role": "model", "text": "Chào bạn"}]` trả câu trả lời thật, không `done.fallback`, và log
   không có `[CircuitBreaker] Ghi nhận lỗi LLM`.
 - Việc 4: `grep -n "error" docs/AI/ChatbotAI_Moblie.md` có dòng tả `done {error}`.
-- Việc 5: mở `chat/stream` cho một câu dài, ngắt kết nối giữa dòng (client bấm Dừng, hoặc `curl -N … ` rồi Ctrl+C) → log backend có
-  dòng *"[SSE Controller] Client idaccount: … đã ngắt kết nối stream"* **và** *"[ChatbotService] Client đã ngắt kết nối — hủy luồng
-  streaming"*; không có dòng nào của lượt ấy sau thời điểm ngắt. Đo trước khi sửa để biết `req` 'close' có nổ thật không.
+- Việc 5: mở `chat/stream` cho một câu dài, ngắt kết nối giữa dòng (client bấm Dừng, hoặc `curl -N …` rồi Ctrl+C) → log backend có
+  dòng *"[SSE Controller] Client idaccount: … đã ngắt kết nối stream"* (controller `:34`); sau dòng ấy **không** còn
+  `[Chatbot Function Call]` nào của lượt ấy và không `delta` nào được ghi. Dòng *"[ChatbotService] Hoàn tất phiên chat streaming…"*
+  (`:214`) và `onDone` (`:216-218`) vẫn chạy sau khi thoát vòng — **bình thường**, không phải dấu hỏng; dòng *"Client đã ngắt kết
+  nối — hủy luồng streaming"* (`:174`) chỉ có khi Dừng rơi vào vòng ngoài (Dừng sau một tool call thì vòng trong `:196` thoát im
+  lặng). Với vế (b): xin thêm một dòng log ở chỗ fetch bị huỷ (bắt `AbortError` của `sendMessageStream` / vòng đọc) để quan sát
+  được fetch tới Gemini đã dừng. Đo trước khi sửa để biết `req` 'close' có nổ thật không.
 - Phía client sau khi có việc 1: nghiệm thu máy thật (spec client §6, chín ca — chữ chạy, nhãn nguồn, rơi về máy, Dừng, tờ thông
   tin, Basic, câu giá vàng, máy chưa có mô hình).
 

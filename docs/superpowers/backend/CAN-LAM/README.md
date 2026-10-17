@@ -7,9 +7,10 @@
 > `GET /snapshot`, bảng `LocalChatMessages`, mẫu `Dio()` trần, `conversationId` vẫn gửi) và ba hành vi client phải bù (`delta`
 > thông báo trước `done.fallback`; `done {error}` tài liệu không tả; `history` mở đầu vai `model` làm SDK Gemini ném và mở circuit
 > breaker dùng chung). Xin: tên `GEMINI_MODEL` đã kiểm (dev nay có khoá, tên `gemini-3.8-flash` chưa ai chạy thật), giữ
-> `history.slice(-6)`, cân nhắc kiểm vai tin đầu ở server, tả `done {error}`, và nghe `res.on('close')` thay vì chỉ
-> `req.on('close')` — trên Node ≥ 16 listener ở `req` có thể không nổ nên nút Dừng không huỷ được lượt Gemini (dấu hiệu từ thử
-> nhanh, **chưa đo trên backend thật**). Không đổi lược đồ, payload; không chặn client.
+> `history.slice(-6)`, cân nhắc kiểm vai tin đầu ở server, tả `done {error}`, và để nút Dừng huỷ được lượt Gemini — cần **hai**
+> mảnh: nghe `res.on('close')` (trên Node ≥ 16 listener ở `req` có thể không nổ — dấu hiệu từ thử nhanh, **chưa đo trên backend
+> thật**) **và** truyền `{ signal }` cho `sendMessageStream` ở `chatbot.service.js:168`, `:186` (không có nó SDK không huỷ fetch,
+> Gemini vẫn tải trọn câu). Không đổi lược đồ, payload; không chặn client.
 > `DA-XONG/` đếm bằng máy 2026-10-17: **58** tệp + mục lục. `ls CAN-LAM/` nay: **41 · 42 · 43 · 44 · 45 · 46 · 47** ·
 > `CLIENT_INTEGRATION_GUIDE.md` + README.
 
@@ -102,7 +103,7 @@
 | **44** | [SOAT_SAU_GOP_D72CCD45.md](./SOAT_SAU_GOP_D72CCD45.md) | Backend | **A (cao)** đánh số lại hai tệp migration thanh toán (trùng 20, 24); trả `apply_migration_20.js` về migration `Server_update_at`. **B (vừa)** webhook chỉ xử lý đơn còn `PENDING` (`EXPIRED` tuỳ chọn), khử trùng theo `reference`. **C (vừa)** tra mã nhận diện theo token cuối của nội dung. **D (vừa)** nới `payment_order.status` lên 25 bằng SQL, hoặc đưa `schema.prisma` về 20. **E (thấp)** `accept` bắt buộc boolean. **F (thấp)** thêm hợp đồng thanh toán mới vào `Event-Notification-to-ClientApp.md`. Không chặn client (G94). | ⏳ Chờ backend |
 | **45** | [TAT_NHAC_HOA_DON_QUA_DONG_BO.md](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) | Backend | `sync.repository.js`: hoá đơn `time_notification` — tạo ~:471 `\|\| '3'` và cập nhật ~:497 `?? existing` nuốt NULL (= tắt nhắc ở client); ~:98 `String(null)` thành `"null"`. Đổi sang `!== undefined ? … : …`. Đo dev: 37 hoá đơn sống, 0 NULL (hệ quả của phép ép). Client đã làm phần mình (`d657b065`, tắt là tắt thật); tới khi sửa, tắt nhắc bị đảo sau một vòng đồng bộ. | ⏳ Chờ backend |
 | **46** | [NOTIFICATION_CLIENT_APP_LECH_MA.md](./NOTIFICATION_CLIENT_APP_LECH_MA.md) | Backend (chữ) | Sửa `docs/Notification/Notification_Client-app.md` theo bảng của đơn (~30 chỗ, bốn nhóm: đường dẫn · hàm / route · con số · hành vi; nhãn [cũ] / [mới]); phần phía backend ghi riêng, ngắn. Kiểm lại bằng một câu `grep` ra 0 dòng. Không đổi mã; không chặn client. | ⏳ Chờ |
-| **47** | [CLIENT_TRO_LY_ONLINE.md](./CLIENT_TRO_LY_ONLINE.md) | Backend | Thông báo client đã tích hợp `chat/stream` (hỗn hợp, tự rơi về AI trên máy). **(vừa)** chạy một lượt Gemini thật, ghi tên `GEMINI_MODEL` đã kiểm vào `ChatbotAI.md` và đặt trên cloud (`gemini-3.8-flash` chưa ai kiểm). **(thấp)** giữ `history.slice(-6)`; cân nhắc bỏ tin đầu không phải `user` trước `startChat` (SDK ném → breaker dùng chung mở cho mọi tài khoản); tả `done {error}` trong `ChatbotAI_Moblie.md` §2.1. **(vừa, kiểm trước)** `chatbot.controller.js:33` nghe `req.on('close')` — trên Node ≥ 16 có thể không nổ, Dừng không huỷ Gemini; xin `res.on('close')`. Không đổi lược đồ / payload; không chặn client (thiếu khoá thì client rơi về máy). | ⏳ Chờ backend |
+| **47** | [CLIENT_TRO_LY_ONLINE.md](./CLIENT_TRO_LY_ONLINE.md) | Backend | Thông báo client đã tích hợp `chat/stream` (hỗn hợp, tự rơi về AI trên máy). **(vừa)** chạy một lượt Gemini thật, ghi tên `GEMINI_MODEL` đã kiểm vào `ChatbotAI.md` và đặt trên cloud (`gemini-3.8-flash` chưa ai kiểm). **(thấp)** giữ `history.slice(-6)`; cân nhắc bỏ tin đầu không phải `user` trước `startChat` (SDK ném → breaker dùng chung mở cho mọi tài khoản); tả `done {error}` trong `ChatbotAI_Moblie.md` §2.1. **(vừa, kiểm trước)** Dừng không huỷ được lượt Gemini vì hai mảnh: `chatbot.controller.js:33` nghe `req.on('close')` (trên Node ≥ 16 có thể không nổ) và `sendMessageStream` ở `chatbot.service.js:168`, `:186` không nhận `{ signal }` (SDK không huỷ fetch); xin `res.on('close')` **và** `{ signal }`. Không đổi lược đồ / payload; không chặn client (thiếu khoá thì client rơi về máy). | ⏳ Chờ backend |
 
 ---
 
