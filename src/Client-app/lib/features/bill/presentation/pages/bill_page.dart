@@ -16,6 +16,7 @@ import '../bloc/bill_event.dart';
 import '../bloc/bill_state.dart';
 import '../../../ai_edge/domain/goi_so_hoa_don.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
+import '../../domain/bill_chain.dart';
 import '../../domain/bill_status.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
@@ -273,6 +274,7 @@ class _BillPageState extends State<BillPage> {
                       dateFormatter: dateFormatter,
                       khiTrong: 'Không còn hoá đơn nào phải trả.',
                       payments: state.payments,
+                      tatCa: state.bills,
                     ),
                     _danhSach(
                       context,
@@ -281,6 +283,7 @@ class _BillPageState extends State<BillPage> {
                       dateFormatter: dateFormatter,
                       khiTrong: 'Chưa có kỳ nào đã đóng.',
                       payments: state.payments,
+                      tatCa: state.bills,
                     ),
                   ],
                 ),
@@ -304,13 +307,17 @@ class _BillPageState extends State<BillPage> {
     required DateFormat dateFormatter,
     required String khiTrong,
     required Map<String, TransactionEntity> payments,
+    required List<BillEntity> tatCa,
   }) {
     Widget nhom(List<BillEntity> ds, EdgeInsets dem) => SliverPadding(
           padding: dem,
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (_, i) => _dongHoaDon(context, ds[i],
-                  now: now, dateFormatter: dateFormatter, payments: payments),
+                  now: now,
+                  dateFormatter: dateFormatter,
+                  payments: payments,
+                  tatCa: tatCa),
               childCount: ds.length,
             ),
           ),
@@ -404,6 +411,7 @@ class _BillPageState extends State<BillPage> {
     required DateTime now,
     required DateFormat dateFormatter,
     required Map<String, TransactionEntity> payments,
+    required List<BillEntity> tatCa,
   }) {
     // Bốn trạng thái, một định nghĩa duy nhất ở `domain/bill_status.dart`.
     // Trước đây trang này tự suy ra hai trạng thái ngay trong `build` và
@@ -461,6 +469,10 @@ class _BillPageState extends State<BillPage> {
         // Kỳ đã trả mà không có khoản chi gắn `billId` → nút Hoàn tác hỏi đưa
         // kỳ về chưa trả, không hứa hoàn tiền (`hoiHoanTacHoaDon`).
         coKhoanTra: khoanChi != null,
+        // Chỉ hộp ấy dùng; tính cho mọi dòng đã trả không khoản chi là rẻ.
+        kySau: status == BillDisplayStatus.paid && khoanChi == null
+            ? kySauConPhaiTra(tatCa, bill.id)
+            : null,
       ),
     );
   }
@@ -564,6 +576,7 @@ class _BillPageState extends State<BillPage> {
     bool isPaid = false,
     bool daBoQua = false,
     bool coKhoanTra = false,
+    BillEntity? kySau,
     String? meta,
     IconData? icon,
     Color? iconColor,
@@ -630,6 +643,7 @@ class _BillPageState extends State<BillPage> {
                       isPaid: isPaid,
                       daBoQua: daBoQua,
                       coKhoanTra: coKhoanTra,
+                      kySau: kySau,
                       soNgayNhac: _soNgayNhac,
                     ),
                   ],
@@ -743,6 +757,7 @@ class _HangSoTien extends StatelessWidget {
     required this.isPaid,
     required this.daBoQua,
     required this.coKhoanTra,
+    required this.kySau,
     required this.soNgayNhac,
   });
 
@@ -753,6 +768,9 @@ class _HangSoTien extends StatelessWidget {
 
   /// Kỳ có khoản chi gắn `billId` trong bản đồ của trang — chọn hộp Hoàn tác.
   final bool coKhoanTra;
+
+  /// Kỳ sau mà "Đưa về chưa trả" sẽ gỡ (`kySauConPhaiTra`), để hộp nêu đúng nó.
+  final BillEntity? kySau;
 
   /// Ngưỡng nhãn "Sắp đến hạn" của trang, chuyển cho bảng Thanh toán.
   final int soNgayNhac;
@@ -874,7 +892,7 @@ class _HangSoTien extends StatelessWidget {
       return TextButton.icon(
         key: ValueKey('bill-undo-${bill.id}'),
         onPressed: () =>
-            hoiHoanTacHoaDon(context, bill, coKhoanTra: coKhoanTra),
+            hoiHoanTacHoaDon(context, bill, coKhoanTra: coKhoanTra, kySau: kySau),
         icon: const Icon(Icons.undo, size: 16),
         label: const FittedBox(
           fit: BoxFit.scaleDown,

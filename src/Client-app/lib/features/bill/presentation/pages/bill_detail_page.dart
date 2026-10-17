@@ -461,7 +461,8 @@ class _BillDetailPageState extends State<BillDetailPage> {
         key: const ValueKey('bill-detail-undo'),
         // Không có khoản chi gắn `billId` (kiểu cũ) → hộp đưa về chưa trả.
         onPressed: () => hoiHoanTacHoaDon(context, b,
-            coKhoanTra: _khoanChi.containsKey(b.id)),
+            coKhoanTra: _khoanChi.containsKey(b.id),
+            kySau: kySauConPhaiTra(_chuoi, b.id)),
         icon: const Icon(Icons.undo, size: 18),
         label: const Text('Hoàn tác thanh toán'),
         style: _vien,

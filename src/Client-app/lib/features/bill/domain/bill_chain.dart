@@ -1,4 +1,5 @@
 import '../data/models/bill_entity.dart';
+import 'bill_pay_status.dart';
 
 /// Các kỳ TRƯỚC của [bill] theo `generatedFromBillId`, gần nhất đứng đầu — định nghĩa duy nhất của phép lần ngược
 /// chuỗi kỳ (dùng ở [chuoiKyCua] và phép gộp kỳ trùng `kyTrungCanGo`). Dừng khi cha không có trong [theoId] hoặc gặp
@@ -14,6 +15,24 @@ List<BillEntity> kyTruocCua(BillEntity bill, Map<String, BillEntity> theoId) {
     hienTai = cha;
   }
   return truoc;
+}
+
+/// Kỳ sau của [id] mà `BillRepository.datLaiChuaTra` sẽ gỡ: kỳ **nối chuỗi**
+/// (`generatedFromBillId == id`, chưa xoá mềm) và **còn phải trả**; không có
+/// thì `null`.
+///
+/// Cùng luật với repository (`getGeneratedFrom` rồi `conPhaiTra`) để hộp "Đưa về
+/// chưa trả" chỉ nhắc kỳ sau khi thật sự có (người dùng chốt 2026-10-17). Hàng
+/// cũ hơn cột nối (trước 2026-09-06) không nối chuỗi — kỳ cùng tên kế đó **không**
+/// được đoán là kỳ sau (xem [chuoiKyCua]). Có hai kỳ sau (kỳ trùng — G87) thì
+/// lấy cái đầu tiên, như [chuoiKyCua].
+BillEntity? kySauConPhaiTra(List<BillEntity> all, String id) {
+  for (final b in all) {
+    if (b.generatedFromBillId == id && !b.isDeleted) {
+      return conPhaiTra(b) ? b : null;
+    }
+  }
+  return null;
 }
 
 /// Chuỗi kỳ chứa hoá đơn [id], **kỳ mới nhất đứng đầu**.

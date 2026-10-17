@@ -87,10 +87,12 @@ BillEntity _bill({
   bool isPaid = false,
   String payStatus = 'Pending',
   String? timeNotification = '3',
+  String? tu,
 }) =>
     BillEntity(
       id: id,
       idaccount: 10,
+      generatedFromBillId: tu,
       walletId: 'w1',
       categoryId: 'c1',
       name: name,
@@ -527,11 +529,12 @@ void main() {
     expect(find.textContaining('hãy xoá nó ở đó trước'), findsOneWidget,
         reason: 'Đưa về chưa trả khi khoản kiểu cũ còn ở sổ rồi trả lại là hai '
             'khoản chi cho một kỳ — phải nói trước.');
-    expect(
-        find.textContaining(
-            'Đưa kỳ "Da tra" về chưa thanh toán và gỡ kỳ kế tiếp nếu kỳ ấy chưa '
-            'trả?'),
+    expect(find.textContaining('Đưa kỳ "Da tra" về chưa thanh toán?'),
         findsOneWidget);
+    expect(find.textContaining('gỡ kỳ kế tiếp'), findsNothing,
+        reason: 'Không có kỳ sau NỐI CHUỖI còn phải trả thì datLaiChuaTra không '
+            'gỡ gì — nhắc "gỡ kỳ kế tiếp" là hứa sai (máy ảo 2026-10-17: di h0c '
+            '16/09 → 23/09 không nối chuỗi, kỳ 23/09 vẫn còn).');
 
     await tester.tap(find.widgetWithText(ElevatedButton, 'Đưa về chưa trả'));
     await tester.pumpAndSettle();
@@ -539,6 +542,33 @@ void main() {
     expect(repo.datLai, ['b'],
         reason: 'Nút phải gửi DatLaiChuaTraEvent, không phải UndoPaymentEvent '
             '(đi đường ấy là thông báo lỗi "không tìm thấy khoản chi").');
+  });
+
+  testWidgets(
+      'hộp "đưa về chưa trả" nêu kỳ sau KÈM HẠN khi kỳ ấy nối chuỗi và còn '
+      'phải trả', (tester) async {
+    final daTra = _bill(
+        id: 'b',
+        dueDate: DateTime(2026, 9, 4),
+        name: 'Da tra',
+        isPaid: true,
+        payStatus: 'Payed');
+    final kySau = _bill(
+        id: 'c', dueDate: DateTime(2026, 10, 4), name: 'Da tra', tu: 'b');
+    await dungTrang(tester, [daTra, kySau],
+        repo: _FixedBillRepository([daTra, kySau]));
+    await tester.tap(find.textContaining('Lịch sử ('));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('bill-undo-b')));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.textContaining('Đưa kỳ "Da tra" về chưa thanh toán và gỡ kỳ kế '
+            'tiếp (hạn 04/10/2026, chưa trả)?'),
+        findsOneWidget,
+        reason: 'Nêu hạn để người dùng biết đúng kỳ nào sẽ mất khỏi tab Cần '
+            'thanh toán.');
   });
 
   testWidgets('báo lỗi KHÔNG được làm trắng cả trang', (tester) async {

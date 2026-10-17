@@ -61,4 +61,40 @@ void main() {
     final chuoi = chuoiKyCua([a, b], 'a');
     expect(chuoi.length, 2);
   });
+
+  /// Kỳ sau mà `BillRepository.datLaiChuaTra` sẽ gỡ — hộp "Đưa về chưa trả"
+  /// chỉ nhắc kỳ sau khi hàm này trả một kỳ (người dùng chốt 2026-10-17).
+  group('kySauConPhaiTra', () {
+    test('kỳ sau nối chuỗi và còn phải trả → trả kỳ ấy', () {
+      expect(kySauConPhaiTra([k1, k2, k3, khac], 'k2')?.id, 'k3');
+    });
+
+    test('kỳ sau ĐÃ trả → null (datLaiChuaTra không gỡ nó)', () {
+      expect(kySauConPhaiTra([k1, k2, k3], 'k1'), isNull,
+          reason: 'Nhắc "gỡ kỳ kế tiếp" khi kỳ ấy đã trả là hứa một việc '
+              'repository cố ý không làm.');
+    });
+
+    test('kỳ sau BỎ QUA → null', () {
+      final boQua = _bill('s', DateTime(2026, 8, 6), tu: 'k1')
+          .copyWith(payStatus: 'Skipped');
+      expect(kySauConPhaiTra([k1, boQua], 'k1'), isNull);
+    });
+
+    test('kỳ cùng tên KHÔNG nối chuỗi → null, không đoán theo tên', () {
+      // di h0c 16/09 → 23/09 trên máy ảo 2026-10-17: kỳ 23/09 cùng tên, chưa
+      // trả, nhưng tạo trước cột generatedFromBillId.
+      final cu = _bill('cu', DateTime(2026, 9, 16), paid: true);
+      final roi = _bill('roi', DateTime(2026, 9, 23));
+      expect(kySauConPhaiTra([cu, roi], 'cu'), isNull,
+          reason: 'Đoán theo tên + hạn là phép so cột nối sinh ra để thay — '
+              'hai hoá đơn trùng tên là gỡ nhầm.');
+    });
+
+    test('kỳ sau đã xoá mềm → null', () {
+      final daXoa = _bill('d', DateTime(2026, 10, 6), tu: 'k3')
+          .copyWith(isDeleted: true);
+      expect(kySauConPhaiTra([k3, daXoa], 'k3'), isNull);
+    });
+  });
 }

@@ -249,6 +249,8 @@ void main() {
     expect(find.textContaining('Hoàn 250.000 đ về ví'), findsNothing,
         reason: 'Trước lượt này hộp này hứa hoàn tiền, bấm xong chỉ nhận lỗi '
             '"bản ứng dụng cũ" — và kỳ không bao giờ về chưa trả.');
+    expect(find.textContaining('gỡ kỳ kế tiếp'), findsNothing,
+        reason: 'Chuỗi không có kỳ sau — không có gì để gỡ.');
     await tester.tap(find.widgetWithText(ElevatedButton, 'Đưa về chưa trả'));
     await tester.pumpAndSettle();
 
@@ -257,6 +259,26 @@ void main() {
     expect(find.byKey(const ValueKey('bill-detail-pay')), findsOneWidget,
         reason: 'Trang nạp lại sau BillOperationSuccess: kỳ chưa trả có nút '
             'Thanh toán.');
+  });
+
+  testWidgets(
+      'kiểu cũ có kỳ sau nối chuỗi còn phải trả: hộp nêu kỳ ấy kèm hạn, bấm '
+      'xong kỳ sau bị gỡ', (tester) async {
+    await hoaDon('k2', DateTime(2026, 8, 6), paid: true);
+    await hoaDon('k3', DateTime(2026, 9, 6), tu: 'k2');
+    await dungTrang(tester, 'k2');
+
+    await tester.tap(find.byKey(const ValueKey('bill-detail-undo')));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.textContaining('và gỡ kỳ kế tiếp (hạn 06/09/2026, chưa trả)?'),
+        findsOneWidget);
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Đưa về chưa trả'));
+    await tester.pumpAndSettle();
+
+    expect((await db.billDao.getById('k3'))!.isDeleted, isTrue,
+        reason: 'Hộp đã hứa gỡ kỳ ấy — repository phải làm đúng điều ấy.');
   });
 
   testWidgets('trả xong thì trang nạp lại: trạng thái đổi, kỳ mới vào lịch sử',

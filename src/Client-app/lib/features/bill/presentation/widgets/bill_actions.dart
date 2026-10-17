@@ -3,6 +3,7 @@ import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../data/models/bill_entity.dart';
@@ -75,10 +76,13 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, BillEntity bill,
 /// hỏi đưa kỳ về chưa trả **không hoàn tiền** (`DatLaiChuaTraEvent`). Bản đồ
 /// không bao giờ chứa khoản kiểu cũ (nó không có `billId`), nên rẽ theo nó
 /// không phải đoán.
+///
+/// [kySau]: kỳ sau mà lần đưa về chưa trả sẽ gỡ — `kySauConPhaiTra` trên danh
+/// sách hoá đơn của trang; `null` thì hộp không nhắc kỳ sau.
 void hoiHoanTacHoaDon(BuildContext context, BillEntity bill,
-    {required bool coKhoanTra}) {
+    {required bool coKhoanTra, BillEntity? kySau}) {
   if (!coKhoanTra) {
-    _hoiDuaVeChuaTra(context, bill);
+    _hoiDuaVeChuaTra(context, bill, kySau);
     return;
   }
   showDialog(
@@ -112,9 +116,17 @@ void hoiHoanTacHoaDon(BuildContext context, BillEntity bill,
 /// Câu "hãy xoá nó ở đó trước" là chốt duy nhất cho khoản kiểu cũ còn sống ở
 /// Sổ — app không đoán được khoản nào (tiền tố ghi chú + số tiền + ngày là
 /// phép so `billId` sinh ra để thay), và để nó sống rồi trả lại là hai khoản
-/// chi cho một kỳ. Vế kỳ kế tiếp có điều kiện vì `datLaiChuaTra` chỉ gỡ kỳ
-/// sau còn phải trả — kỳ kiểu cũ là kỳ cũ, tháng sau thường đã trả.
-void _hoiDuaVeChuaTra(BuildContext context, BillEntity bill) {
+/// chi cho một kỳ.
+///
+/// Vế kỳ kế tiếp chỉ có khi [kySau] có — `datLaiChuaTra` chỉ gỡ kỳ sau **nối
+/// chuỗi** còn phải trả. Kỳ kiểu cũ thường tạo trước cột nối, nên kỳ cùng tên
+/// kế đó không phải "kỳ sau" của nó và vẫn còn sau khi bấm; nhắc vế ấy cho mọi
+/// hoá đơn lặp là hứa sai (máy ảo 2026-10-17, người dùng chốt).
+void _hoiDuaVeChuaTra(BuildContext context, BillEntity bill, BillEntity? kySau) {
+  final veKySau = kySau == null
+      ? ''
+      : ' và gỡ kỳ kế tiếp (hạn '
+          '${DateFormat('dd/MM/yyyy').format(kySau.dueDate)}, chưa trả)';
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -123,8 +135,7 @@ void _hoiDuaVeChuaTra(BuildContext context, BillEntity bill) {
         'Không tìm thấy khoản chi của lần trả này — nó được ghi bằng bản ứng '
         'dụng cũ. Nếu khoản ấy còn ở Sổ giao dịch, hãy xoá nó ở đó trước; bước '
         'này không đổi số dư ví.\n\n'
-        'Đưa kỳ "${bill.name}" về chưa thanh toán'
-        '${bill.isRecurrence ? ' và gỡ kỳ kế tiếp nếu kỳ ấy chưa trả' : ''}?',
+        'Đưa kỳ "${bill.name}" về chưa thanh toán$veKySau?',
       ),
       actions: [
         TextButton(
