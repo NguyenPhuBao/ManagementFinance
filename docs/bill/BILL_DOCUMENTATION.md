@@ -56,7 +56,9 @@ Quản lý các khoản chi định kỳ (điện, nước, internet, thuê nhà
   Thanh toán / Hoàn tác, Sửa / Xoá. Tab *Đã thanh toán* ghi "Trả dd/MM/yyyy"
   và chạm vào mở thẳng khoản chi.
 - **Hoàn tác thanh toán**: trả tiền về đúng ví, xoá mềm khoản chi, gỡ kỳ kế
-  tiếp, đưa hoá đơn về chưa trả — trong một transaction.
+  tiếp, đưa hoá đơn về chưa trả — trong một transaction. Kỳ **không còn khoản
+  chi gắn `billId`** (trả bằng bản app cũ) thì nút ấy hỏi **đưa kỳ về chưa trả
+  không hoàn tiền** (`datLaiChuaTra`, mục 6.3, 2026-10-17).
 - Cờ quá hạn đi **hai chiều** (`Pending` ⇄ `Overdue`) theo hạn thật.
 - Đồng bộ hai chiều với backend qua `SyncEngine`.
 
@@ -427,14 +429,15 @@ tháng Hai — hoá đơn biến mất. Lý lẽ đầy đủ ở mục 5 tài l
 **Không áp cho chu kỳ tuần** — tuần không có khái niệm ngày trong tháng.
 ## 6. Luồng thanh toán và hoàn tác
 
-### 6.1. Bốn ngoại lệ của `BillRepository`
+### 6.1. Năm ngoại lệ của `BillRepository` (luồng trả / hoàn tác)
 
 | Ngoại lệ | Khi nào | Thông báo trên UI |
 |---|---|---|
 | `BillAlreadyPaidException` | `payBill` trên hoá đơn CSDL nói đã trả | "Hóa đơn này đã được thanh toán rồi." |
 | `BillInvalidAmountException` | số tiền trả ≤ 0 | báo số tiền không hợp lệ |
-| `BillNotPaidException` | `undoPayment` trên hoá đơn chưa trả | — |
-| `BillUndoUnavailableException` | không lần được khoản chi (mục 6.4) | "Không hoàn tác được: khoản chi của lần thanh toán này được ghi bằng bản ứng dụng cũ. Xoá nó ở Sổ giao dịch để trả tiền về ví — kỳ này vẫn ghi là đã trả." — từ việc 4c (2026-10-17) Sổ giao dịch mở khoá khoản kiểu cũ có cảnh báo (mục 6.10), nên lối chỉ sang là có thật |
+| `BillNotPaidException` | `undoPayment` / `datLaiChuaTra` trên hoá đơn chưa trả | "Hóa đơn này chưa được thanh toán." |
+| `BillUndoUnavailableException` | không lần được khoản chi (mục 6.4) | "Không tìm thấy khoản chi của lần thanh toán này. Mở lại trang rồi bấm Hoàn tác để đưa kỳ về chưa trả." — **lưới an toàn** từ 2026-10-17: trang chỉ gửi `UndoPaymentEvent` khi bản đồ khoản chi của nó có khoản gắn `billId`; tới đây là bản đồ cũ hơn CSDL, và trang không nạp lại sau `BillError` nên phải mở lại trang. (Câu trước đó — *"Xoá nó ở Sổ giao dịch… kỳ này vẫn ghi là đã trả"* — là ngõ cụt: kỳ không bao giờ về chưa trả.) |
+| `BillPaymentStillLinkedException` | `datLaiChuaTra` trên kỳ còn khoản chi sống gắn `billId` | "Kỳ này còn khoản chi của lần thanh toán. Mở lại trang rồi bấm Hoàn tác để trả tiền về ví." |
 
 ### 6.2. `payBill({bill, walletId, idaccount, amount, occurredAt, note})`
 
@@ -515,6 +518,76 @@ tiếp thì đã sinh ra rồi.
 UI: nút "Hoàn tác" chỉ hiện trên dòng **đã trả**, và **hỏi xác nhận** nêu rõ
 ba hệ quả trước khi gửi `UndoPaymentEvent`. Test `bill_payment_test.dart` có
 ca "hoàn tác rồi trả lại được, và chỉ sinh đúng một kỳ mới".
+
+#### Kỳ không còn khoản chi gắn `billId` — `datLaiChuaTra({billId})` (2026-10-17)
+
+Kỳ trả bằng bản app cũ (tiền tố ghi chú, cột nối trống) làm `undoPayment` ném
+`BillUndoUnavailableException`. Từ việc 4c người dùng xoá được khoản ấy ở Sổ —
+tiền về ví, nhưng kỳ vẫn `Payed` và trước lượt này **không còn lối nào** về chưa
+trả (Hoàn tác lặp lại đúng câu bảo xoá ở Sổ). Nay:
+
+- **Rẽ ở trang, theo bản đồ khoản chi** (`hoiHoanTacHoaDon(context, bill,
+  coKhoanTra:)`, `widgets/bill_actions.dart`): trang Hoá đơn truyền
+  `payments[bill.id] != null`, trang Chi tiết `_khoanChi.containsKey(b.id)`. Có →
+  hộp hoàn tiền cũ. Không → hộp *"Không tìm thấy khoản chi của lần trả này — nó
+  được ghi bằng bản ứng dụng cũ. Nếu khoản ấy còn ở Sổ giao dịch, hãy xoá nó ở
+  đó trước; bước này không đổi số dư ví. Đưa kỳ "…" về chưa thanh toán [và gỡ kỳ
+  kế tiếp (hạn dd/MM/yyyy, chưa trả)]?"* — nút **Đưa về chưa trả** gửi
+  `DatLaiChuaTraEvent` (toast *"Đã đưa kỳ về chưa thanh toán"*). Rẽ theo bản đồ
+  **không phải đoán**: khoản kiểu cũ không có `billId` nên không bao giờ ở trong
+  bản đồ. Chữ hộp người dùng duyệt; hộp là biến thể chữ của hộp Hoàn tác sẵn có,
+  không đưa lên Stitch (người dùng đồng ý).
+- ⚠️ **Vế kỳ kế tiếp chỉ hiện khi kỳ ấy THẬT SỰ bị gỡ** — `kySauConPhaiTra(all,
+  id)` (`domain/bill_chain.dart`): kỳ sau **nối chuỗi** (`generatedFromBillId ==
+  id`), chưa xoá mềm, `conPhaiTra`; cùng luật với repository. Trang Hoá đơn tính
+  trên `state.bills`, trang Chi tiết trên `_chuoi`. Bản đầu (theo `isRecurrence`)
+  hứa sai — máy ảo 2026-10-17 bắt: kỳ kiểu cũ *di h0c* 16/09 **không nối chuỗi**
+  với kỳ *di h0c* 23/09 đang chờ (tạo trước cột nối), nên kỳ 23/09 **vẫn còn** sau
+  khi bấm; người dùng chốt *"chỉ nhắc kỳ sau khi thật sự có"* và **không** đoán kỳ
+  sau theo tên + hạn. Hệ quả chấp nhận: kỳ kiểu cũ không nối chuỗi đưa về chưa trả
+  là có **hai** kỳ cùng mở; trả lại kỳ cũ sinh thêm một kỳ trùng hạn với kỳ không
+  nối (khác gốc chuỗi nên G87 không gộp) — người dùng tự xoá kỳ thừa.
+- **Repository tự kiểm lại** (bản đồ của trang có thể cũ hơn CSDL): kỳ chưa trả →
+  `BillNotPaidException`; còn khoản chi sống gắn `billId` →
+  `BillPaymentStillLinkedException` (về `Pending` mà để khoản ấy sống thì sổ vẫn
+  khoá nó — tiền không còn lối về ví, trả lại là hai khoản chi).
+- Trong một `db.transaction`: `payStatus = kBillPending` **và** `isPaid = false`,
+  `syncStatus = 'pending'`. **Không** đụng sổ giao dịch, **không** gọi
+  `SoDuViService` — không có khoản chi nào lần được về kỳ này. Khoản kiểu cũ còn
+  sống ở sổ **không** bị đoán ra và xoá (đúng lý do của
+  `BillUndoUnavailableException`); câu *"hãy xoá nó ở đó trước"* là chốt duy nhất.
+- ⚠️ **Kỳ kế tiếp chỉ bị gỡ khi nó còn phải trả** (`conPhaiTra`) — **khác**
+  `undoPayment`. Kỳ kiểu cũ là kỳ cũ: tháng sau của nó thường đã trả hoặc bỏ qua,
+  gỡ nó là xoá một kỳ đã đóng và bỏ khoản chi của nó thành mồ côi. Kỳ còn phải
+  trả thì chưa sinh kỳ nào, nên một phép kiểm phủ cả chuỗi.
+- ⚠️ **Khoảng trống đã biết (chưa sửa):** `undoPayment` gỡ kỳ kế tiếp **vô điều
+  kiện**. Tab Lịch sử bày nút Hoàn tác cho **mọi** kỳ đã trả, nên hoàn tác một kỳ
+  cũ có khoản chi gắn `billId` khi tháng sau **đã trả** là xoá mềm luôn tháng sau
+  — khoản chi của nó thành mồ côi (mở khoá có cảnh báo ở Sổ), tiền vẫn mất, chuỗi
+  sau đó đứt. **Suy từ mã** khi làm lượt này (2026-10-17: `undoPayment` bước 2
+  không kiểm trạng thái `kySau`), chưa tái hiện bằng test hay trên máy; chờ người
+  dùng quyết.
+- Test: `bill_payment_test.dart` nhóm *"đưa kỳ kiểu cũ về chưa trả"* (7 ca —
+  hai cột + hàng đợi; ví không đổi và khoản kiểu cũ còn sống; từ chối khi còn
+  khoản gắn `billId`; từ chối kỳ chưa trả; gỡ kỳ sau `Pending`; **giữ** kỳ sau
+  `Payed` cùng khoản chi; **giữ** kỳ sau `Skipped`), `bill_bloc_test.dart`
+  (thành công · `BillPaymentStillLinkedException` · câu lưới an toàn),
+  `bill_page_test.dart` + `bill_detail_page_test.dart` (hộp nào theo bản đồ;
+  vế kỳ sau chỉ khi có, kèm hạn; trang Chi tiết đi trọn tới `Pending`, ví không
+  đổi, nút Thanh toán hiện lại, kỳ sau được hứa thì bị gỡ), `bill_chain_test.dart`
+  (`kySauConPhaiTra`: còn phải trả → có; đã trả / bỏ qua / xoá mềm / cùng tên
+  không nối → `null`).
+- ✅ **Nghiệm thu máy ảo** `FlowMoney_16G` (411 dp, tài khoản 10, 2026-10-17):
+  ba kỳ kiểu cũ ở tab Lịch sử (*di h0c* 16/09, *Kiem* 11/09, *TestAuto* 06/09 —
+  không có dòng "Trả dd/MM") mở hộp mới, kỳ có khoản gắn `billId` (*Netflix*
+  28/09) vẫn hộp hoàn tiền; trang Chi tiết như vậy. Trọn luồng trên *TestAuto*
+  (người dùng cho phép): xoá khoản kiểu cũ ở Sổ → ví *test* −100.000 → −90.000 đ,
+  kỳ vẫn *Đã thanh toán* → Hoàn tác → hộp không có vế kỳ sau (không nối chuỗi) →
+  **Đưa về chưa trả** → tab *Cần thanh toán (5) · Lịch sử (8)*, ví không đổi →
+  Thanh toán lại (ngày trả 06/09) → ví −100.000 đ, tổng −3.256.000 đ như lúc đầu,
+  dòng có *"Trả 06/09/2026"*, Hoàn tác về hộp hoàn tiền. Kỳ *TestAuto* 13/09 do
+  lần trả sinh ra (hoá đơn hàng tuần) còn lại, quá hạn. Danh sách cập nhật chậm
+  ~1–2 s sau cú bấm trên máy ảo (lỡ chụp toast *"Đã đưa kỳ…"*).
 
 ⚠️ **2026-09-11 — hoàn tác một lần trả ĐÃ ĐỒNG BỘ không lên được server** (suy từ
 mã, chưa tái hiện đầu-cuối). Từ `main` @ `cc65f4f`, nhánh cập nhật của
@@ -1044,7 +1117,9 @@ trong danh sách chờ của quét 11).
   - Khoản **mồ côi** (`billId` + hoá đơn đã xoá mềm) và khoản **kiểu cũ** (tiền tố, không `billId` — Hoàn tác ném
     `BillUndoUnavailableException`) mở khoá **có cảnh báo** (`canhBaoXoaTaiSo`): vuốt xoá ở Sổ giao dịch hỏi xác nhận;
     bảng chi tiết (Sổ giao dịch, Chi tiết ngân sách) hiện Sửa · Xoá, hộp xoá ghép câu cảnh báo trước câu chung
-    (`cauXacNhanXoaGiaoDich`). Xoá ở sổ chỉ trả tiền về ví — kỳ vẫn `Payed`, câu cảnh báo nói đúng điều ấy.
+    (`cauXacNhanXoaGiaoDich`). Xoá ở sổ chỉ trả tiền về ví — kỳ vẫn `Payed`, câu cảnh báo nói đúng điều ấy. Từ
+    2026-10-17 kỳ ấy **có lối về**: nút Hoàn tác thấy không còn khoản chi gắn `billId` thì hỏi đưa kỳ về chưa trả
+    không hoàn tiền (`datLaiChuaTra`, mục 6.3).
   - "Hoá đơn đã xoá chưa" hỏi **lúc thao tác** qua cổng `HoaDonDaXoaNguon` (`transaction/data/`); DI nối vào
     `BillRepository.getById(id)?.isDeleted` — `getById` đọc **cả** hàng đã xoá mềm (ca canh ở
     `bill_repository_impl_test.dart`). Hoá đơn chưa kéo về / kho lỗi / trang chưa đăng ký cổng → khoá.
@@ -1268,18 +1343,18 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/features/bill/presentation/pages/bill_delete_page_test.dart` | (2026-10-17, mục 6.10) Ba biến thể câu phụ (`cauXacNhanXoaHoaDon`: còn phải trả lặp / không lặp, đã trả, bỏ qua); thẻ hiện dữ liệu thật, không còn mockup; *Xác nhận Xóa* trả `true` mà **không tự xoá**, *Hủy bỏ* trả `false`; không tìm thấy hoá đơn thì không có nút xác nhận; 320 dp tên dài + 13 chữ số không tràn, số tiền **không bị cắt** (`didExceedMaxLines`) |
 | `test/features/bill/presentation/widgets/xac_nhan_xoa_hoa_don_test.dart` | Ba lối xoá qua màn xác nhận: hàm chung (xác nhận → xoá mềm, huỷ → không); trang Chi tiết (không còn `AlertDialog`, xoá xong tự đóng); form Sửa (xoá xong đóng form, huỷ thì ở lại); route thật của app `/bills/:id/delete` |
 | `test/features/bill/presentation/pages/bill_add_nhac_mac_dinh_test.dart` | (2026-10-17) Chip "nhắc trước" chọn sẵn theo tuỳ chọn "Nhắc trước" (7 → lưu `'7'`); không nguồn → `'3'`; giá trị cũ 2 → `'3'`; người dùng bấm chip trước khi tuỳ chọn đọc xong thì **không bị đè** |
-| `test/features/bill/data/repositories/bill_payment_test.dart` | Số tiền truyền vào thắng số đã lưu; hoá đơn ghi lại số thật; kỳ sau kế thừa số vừa trả; số ≤ 0 bị từ chối **không ghi gì**; hoàn tác: về chưa trả, hoàn đúng ví đúng số, xoá mềm khoản chi và kỳ sau, hoá đơn không lặp không có gì để gỡ, chưa trả bị từ chối, **khoản trả cũ không có `billId` thì từ chối KHÔNG đoán**, hoàn tác rồi trả lại chỉ sinh đúng một kỳ |
+| `test/features/bill/data/repositories/bill_payment_test.dart` | Số tiền truyền vào thắng số đã lưu; hoá đơn ghi lại số thật; kỳ sau kế thừa số vừa trả; số ≤ 0 bị từ chối **không ghi gì**; hoàn tác: về chưa trả, hoàn đúng ví đúng số, xoá mềm khoản chi và kỳ sau, hoá đơn không lặp không có gì để gỡ, chưa trả bị từ chối, **khoản trả cũ không có `billId` thì từ chối KHÔNG đoán**, hoàn tác rồi trả lại chỉ sinh đúng một kỳ; **`datLaiChuaTra`** (2026-10-17, mục 6.3): hai cột + hàng đợi, ví không đổi và khoản kiểu cũ còn sống, từ chối khi còn khoản gắn `billId` / kỳ chưa trả, gỡ kỳ sau `Pending`, **giữ** kỳ sau `Payed` (cùng khoản chi) và `Skipped` |
 | `test/features/bill/domain/bill_pay_status_test.dart` | **Định nghĩa duy nhất** của trạng thái trả: ba vị từ trên cả bốn giá trị; hàng lệch hai cột theo **cả hai** chiều; giá trị lạ đọc là *còn phải trả* và **không** đọc là *bỏ qua* |
 | `test/features/bill/data/repositories/bill_skip_test.dart` | `skipBill` không trừ ví và không sinh giao dịch nào; đặt `Skipped` giữ `isPaid` false và vào hàng đợi đẩy; sinh kỳ kế tiếp đúng ngày/số tiền/trạng thái; hoá đơn **không lặp** thì không sinh; từ chối kỳ đã trả và kỳ đã bỏ qua (**chống sinh kỳ trùng**); `payBill` từ chối kỳ `Skipped` **TRƯỚC khi trừ ví**; `undoSkip` về `Pending` + xoá mềm kỳ sau, **KHÔNG cộng tiền vào ví**, từ chối kỳ chưa bỏ qua và kỳ đã trả |
 | `test/features/bill/presentation/pages/bill_detail_page_test.dart` | Ba nhánh nút ở 411dp (chưa trả có **cả** Thanh toán lẫn Bỏ qua kỳ này; kỳ bỏ qua **chỉ** có Hoàn tác bỏ qua; đã trả không có nút Bỏ qua); dòng lịch sử ghi "Bỏ qua"; hộp thoại nói đủ **ba** hệ quả |
 | `test/features/bill/bill_push_payload_test.dart` | Đi hết đường **form → SQLite → payload đẩy**: `idwallet`/`idcategory` không null, `recurrence` là bool, `pay_status` đổi sang `'Payed'` sau khi trả |
 | `test/core/sync/sync_pull_bill_recurrence_test.dart` | Pull ghi chu kỳ vào cả hai cột, khớp nhau |
 | `test/core/sync/sync_payload_contract_test.dart` | **Hợp đồng tên trường** của payload đẩy. Đỏ nếu `billId`/`generatedFromBillId` lọt vào — chủ ý. Thêm trường mới cho bill thì phải cập nhật ở đây cùng lúc |
-| `test/features/bill/presentation/bloc/bill_bloc_test.dart` | Tổng tiền chưa thanh toán; thông báo riêng khi hoá đơn đã trả |
+| `test/features/bill/presentation/bloc/bill_bloc_test.dart` | Tổng tiền chưa thanh toán; thông báo riêng khi hoá đơn đã trả; câu lưới an toàn của `BillUndoUnavailableException`; `DatLaiChuaTraEvent` thành công / còn khoản gắn `billId` |
 | `test/features/bill/e2e_bill_flow_test.dart` | Vòng đời Tạo → Tải → Thanh toán → còn `pending` cho SyncEngine |
 | `test/features/bill/presentation/pages/bill_add_page_test.dart` | Không còn công tắc tự động thanh toán; không tràn 411dp; **bốn chu kỳ trên một hàng** (mốc trên trùng, bề rộng bằng nhau, đúng thứ tự, không tràn mép); chạm chu kỳ đổi được ngày đến hạn; còn đủ các khối thật |
 | `test/features/bill/presentation/pages/bill_edit_page_test.dart` | Không tràn 411dp; nạp sẵn giá trị; cảnh báo hạn lệch chu kỳ |
-| `test/features/bill/presentation/pages/bill_page_test.dart` | "QUÁ HẠN" không phải "SẮP ĐẾN HẠN"; vạch quá hạn là màu lỗi; ba nhãn còn lại; đã trả theo `payStatus` cũng là đã trả; thẻ tổng chặn cuối tháng; tiến độ không phải 0,66; hai tab tách đúng; dòng có danh mục và ví; "đã xoá" ≠ "chưa có"; ví của hoá đơn lên đầu; bảng thanh toán điền sẵn và sửa được; chỉ đã trả mới có Hoàn tác; hoàn tác hỏi xác nhận nêu ba hệ quả; **báo lỗi không làm trắng trang**; không tràn 411dp; **tab thứ hai tên "Lịch sử", kỳ bỏ qua đếm vào đó và không cộng vào tổng nợ, dòng của nó KHÔNG bày nút Thanh toán** |
+| `test/features/bill/presentation/pages/bill_page_test.dart` | "QUÁ HẠN" không phải "SẮP ĐẾN HẠN"; vạch quá hạn là màu lỗi; ba nhãn còn lại; đã trả theo `payStatus` cũng là đã trả; thẻ tổng chặn cuối tháng; tiến độ không phải 0,66; hai tab tách đúng; dòng có danh mục và ví; "đã xoá" ≠ "chưa có"; ví của hoá đơn lên đầu; bảng thanh toán điền sẵn và sửa được; chỉ đã trả mới có Hoàn tác; hoàn tác hỏi xác nhận nêu ba hệ quả; **kỳ không có khoản chi gắn `billId` đi hộp "đưa về chưa trả"** (không hứa hoàn tiền, nút gửi `DatLaiChuaTraEvent`; vế kỳ sau chỉ khi có kỳ sau nối chuỗi còn phải trả, kèm hạn); **báo lỗi không làm trắng trang**; không tràn 411dp; **tab thứ hai tên "Lịch sử", kỳ bỏ qua đếm vào đó và không cộng vào tổng nợ, dòng của nó KHÔNG bày nút Thanh toán** |
 | `test/core/database/bill_schema_v18_test.dart` | Migration v17→v18: ngày gốc suy từ **ngày đến hạn** chứ không phải ngày bắt đầu (hàng `bắt đầu 28/02, hạn 31/03` phải ra gốc **31**); ngày một chữ số không bị đọc thành chuỗi; không đẩy hàng cũ vào hàng đợi đồng bộ |
 | `test/features/bill/data/repositories/bill_anchor_day_test.dart` | Chuỗi ngày 31 **quay lại được** ngày 31 sau tháng Hai; chuỗi ngày 28 **không bị kéo lên** cuối tháng; hai chuỗi cùng đi qua 28/02 vẫn tách được nhau; hoá đơn chưa có ngày gốc thì neo vào ngày đến hạn hiện tại |
 | `test/features/bill/domain/bill_an_han_test.dart` | **Định nghĩa duy nhất** của ân hạn (v21): `anHanCua` NULL → 0, tính theo ngày lịch không lệch vì giờ, âm → 0; `hanTraTu` giữ giờ với 0 ngày, qua cuối tháng/năm, năm nhuận; `loiAnHan` ba luật, biên đúng bằng kỳ kế tiếp bị từ chối, tuần tối đa 6 |
@@ -1301,8 +1376,8 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/features/bill/presentation/pages/bill_page_payment_info_test.dart` | Dòng đã trả ghi "Trả dd/MM/yyyy" từ khoản chi; không có khoản chi thì chỉ ghi hạn; chạm dòng đã trả mở `TransactionDetailSheet`; chạm dòng chưa trả `push('/bills/:id', extra: bill)` (dựng `GoRouter` thật) |
 | `test/features/bill/presentation/widgets/bill_payment_sheet_test.dart` | Khối thông tin đủ hàng (trạng thái, "(còn 2 ngày)"/"(quá hạn 3 ngày)"/"(hôm nay)" theo ngày, kỳ, chu kỳ, danh mục, ví, nhắc trước, tự trả, ghi chú chỉ khi có) + nút "Thanh toán bằng <ví của hoá đơn>", danh sách ví chỉ mở khi bấm "Chọn ví khác" rồi gập lại, ví của hoá đơn mất thì rơi về ví có cờ mặc định; số ≤ 0 không đóng bảng; ô ngày mặc định hôm nay, chặn tương lai, ngày chọn vào callback; ô ghi chú có gõ thì nhận, trống thì `null`; không tràn 411dp |
 | `test/features/bill/presentation/bloc/bill_bloc_pay_date_test.dart` | `PayBillEvent.occurredAt`/`note` đi thẳng xuống `payBill`; không truyền thì `null` |
-| `test/features/bill/domain/bill_chain_test.dart` | Chuỗi kỳ: ngược gốc + xuôi mới nhất, mới nhất đứng đầu; trùng tên không lẫn; id lạ → rỗng; vòng lặp không treo |
-| `test/features/bill/presentation/pages/bill_detail_page_test.dart` | Đủ thông tin và không tràn 411dp; lịch sử theo chuỗi kèm ngày trả, hoá đơn trùng tên không lẫn; nút Thanh toán/Hoàn tác theo trạng thái; bấm Thanh toán mở bảng; trả xong trang nạp lại và kỳ mới vào lịch sử; id lạ → "Không tìm thấy" |
+| `test/features/bill/domain/bill_chain_test.dart` | Chuỗi kỳ: ngược gốc + xuôi mới nhất, mới nhất đứng đầu; trùng tên không lẫn; id lạ → rỗng; vòng lặp không treo; **`kySauConPhaiTra`** (2026-10-17): kỳ sau nối chuỗi còn phải trả → có; đã trả / bỏ qua / xoá mềm / cùng tên không nối → `null` |
+| `test/features/bill/presentation/pages/bill_detail_page_test.dart` | Đủ thông tin và không tràn 411dp; lịch sử theo chuỗi kèm ngày trả, hoá đơn trùng tên không lẫn; nút Thanh toán/Hoàn tác theo trạng thái; bấm Thanh toán mở bảng; trả xong trang nạp lại và kỳ mới vào lịch sử; id lạ → "Không tìm thấy"; Hoàn tác có khoản gắn `billId` hứa hoàn tiền, không có thì **đưa về chưa trả** đi trọn tới `Pending`, ví không đổi |
 | `test/features/bill/presentation/pages/bill_auto_pay_ui_test.dart` | Công tắc tắt sẵn; form Sửa nạp và ghi được cờ tắt. Dòng phụ nay khẳng định **"mọi thiết bị"** và cấm chuỗi **"một thiết bị"** xuất hiện — lời khuyên cũ *"chỉ nên bật trên một thiết bị"* vừa sai vừa không làm theo được từ khi `auto_pay` đi qua đồng bộ (2026-09-13) |
 | `test/features/bill/bill_payment_conflict_resolver_test.dart` | Resolver lọc đúng `entity` + `code`; hai bản ghi thoát hàng đợi (khoản chi `synced`, **hoá đơn thì KHÔNG**); hoá đơn phải ở trạng thái **đã trả**, không được về `Pending`; thông báo sinh đúng một lần và không nêu số tiền |
 | `test/features/bill/bill_conflict_go_dung_khoan_chi_test.dart` | Dựng `BillRepositoryImpl` **thật** vì fake không thấy được lỗi: gỡ **đúng** khoản mang `localId` bị từ chối bất kể thứ tự hàng, không hoàn tiền hai lần khi phát lại, hoàn vào **đúng ví**, và vẫn gỡ được khi pull đã kéo hoá đơn về `Pending` |

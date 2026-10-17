@@ -610,6 +610,44 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-17)
 
+### ↩️ Hoàn tác kỳ trả kiểu cũ: đưa kỳ về chưa trả, không hoàn tiền (2026-10-17 tối, người dùng chốt)
+
+Gỡ điểm chờ của việc 4c (khối 🔓 bên dưới, *Còn để* dòng đầu): xoá khoản trả kiểu cũ ở Sổ xong thì kỳ vẫn `Payed`, Hoàn
+tác lặp lại câu bảo xoá ở Sổ — kỳ không còn lối về chưa trả. Người dùng chọn *"hỏi rồi đưa kỳ về chưa trả"*, duyệt chữ
+hộp và luật kỳ kế tiếp; việc nhỏ nên thiết kế trong chat (không spec), inline, TDD — mỗi ca canh chính thử bằng bản sai
+có chủ ý. Mục 6.1 · 6.3 · 6.10 `BILL_DOCUMENTATION.md`.
+
+- **Rẽ ở trang theo bản đồ khoản chi**: `hoiHoanTacHoaDon(context, bill, coKhoanTra:)` — trang Hoá đơn
+  `payments[bill.id] != null` (đi qua `_buildBillItem` → `_HangSoTien`), trang Chi tiết `_khoanChi.containsKey(b.id)`.
+  Không có khoản → hộp *"Không tìm thấy khoản chi của lần trả này… hãy xoá nó ở đó trước; bước này không đổi số dư ví.
+  Đưa kỳ "…" về chưa thanh toán [và gỡ kỳ kế tiếp nếu kỳ ấy chưa trả]?"* → **Đưa về chưa trả** →
+  `DatLaiChuaTraEvent`. Khoản kiểu cũ không có `billId` nên không bao giờ ở trong bản đồ — rẽ không phải đoán. Không đưa
+  lên Stitch (biến thể chữ của hộp sẵn có; người dùng đồng ý).
+- **Vế kỳ sau chỉ khi thật sự có** (`01c54fe5`, người dùng chốt sau khi máy ảo bắt): *"và gỡ kỳ kế tiếp (hạn dd/MM/yyyy,
+  chưa trả)"* theo `kySauConPhaiTra` (`bill_chain.dart` — kỳ sau nối chuỗi, chưa xoá mềm, `conPhaiTra`; trang Hoá đơn trên
+  `state.bills`, Chi tiết trên `_chuoi`). Bản đầu nhắc theo `isRecurrence`: kỳ kiểu cũ *di h0c* 16/09 không nối chuỗi với
+  kỳ 23/09 (tạo trước cột nối) nên kỳ 23/09 vẫn còn — hứa sai. Không đoán kỳ sau theo tên + hạn; hệ quả chấp nhận: hai kỳ
+  cùng mở, trả lại kỳ cũ sinh kỳ trùng hạn với kỳ không nối (G87 không gộp, khác gốc chuỗi).
+- **`BillRepository.datLaiChuaTra`**: tự kiểm lại (chưa trả → `BillNotPaidException`; còn khoản gắn `billId` →
+  `BillPaymentStillLinkedException` mới); `Pending` + `isPaid false` + `pending`; không đụng sổ, không đụng số dư. ⚠️
+  **Kỳ kế tiếp chỉ gỡ khi `conPhaiTra`** — kỳ kiểu cũ là kỳ cũ, tháng sau thường đã trả / bỏ qua.
+- Câu lưới an toàn của `BillUndoUnavailableException` đổi thành *"Không tìm thấy khoản chi của lần thanh toán này. Mở lại
+  trang rồi bấm Hoàn tác để đưa kỳ về chưa trả."* — **"mở lại trang"** vì hai trang không nạp lại bản đồ sau
+  `BillError` (thiết kế duyệt ghi *"bấm Hoàn tác lại"*; đổi sau khi đọc listener của hai trang).
+- **Số đo**: `flutter test` **7.232 pass / 10 skip** (trước 7.213; +19 — `9971a26b` +12: repository 7, bloc 2, trang Hoá
+  đơn 1, trang Chi tiết 2; `01c54fe5` +7: `kySauConPhaiTra` 5, mỗi trang 1; ca cũ *"hoàn tác hỏi xác nhận"* / *"báo lỗi
+  không làm trắng"* nhận một khoản gắn `billId` để vẫn canh nhánh hoàn tiền); `flutter analyze` 20 (mức nền, 0 trong tệp
+  lượt này).
+- ✅ **Nghiệm thu máy ảo** `FlowMoney_16G` (`-gpu host`, 411 dp, tài khoản 10): ba kỳ kiểu cũ (*di h0c* 16/09, *Kiem*
+  11/09, *TestAuto* 06/09) mở hộp mới ở cả hai trang, kỳ có khoản gắn `billId` vẫn hộp hoàn tiền. Trọn luồng trên
+  *TestAuto* (người dùng cho phép): xoá khoản kiểu cũ ở Sổ (ví *test* −100.000 → −90.000 đ) → Hoàn tác → Đưa về chưa trả
+  (tab *Cần thanh toán (5) · Lịch sử (8)*, ví không đổi) → trả lại, ngày 06/09 (ví −100.000 đ, tổng −3.256.000 đ như lúc
+  đầu, dòng có *"Trả 06/09/2026"*). Để lại: kỳ *TestAuto* 13/09 do lần trả sinh ra (hàng tuần), quá hạn; khoản kiểu cũ
+  xoá mềm + khoản mới + hai hàng hoá đơn chờ đẩy khi backend chạy. Danh sách cập nhật chậm ~1–2 s trên máy ảo.
+- ⚠️ **Phát hiện, chưa sửa (chờ người dùng quyết)**: `undoPayment` gỡ kỳ kế tiếp **vô điều kiện**, mà tab Lịch sử bày
+  Hoàn tác cho mọi kỳ đã trả → hoàn tác một kỳ cũ khi tháng sau đã trả là xoá mềm luôn tháng sau, khoản chi của nó thành
+  mồ côi. Suy từ mã, chưa tái hiện.
+
 ### 🔓 Việc 4c — khoản trả hoá đơn khoá theo `billId`; khoản kiểu cũ / mồ côi mở khoá có cảnh báo (2026-10-17, người dùng chốt)
 
 Spec `docs/superpowers/specs/2026-10-17-chu-so-huu-khoan-tra-hoa-don-design.md`; kế hoạch 8 task (gitignore) thi công bằng
@@ -635,8 +673,8 @@ nhánh). Mục 6.10 `BILL_DOCUMENTATION.md`.
   đúng −3.256.000 đ như trước lúc thử (dữ liệu thử đã dọn; hoá đơn thử xoá mềm chờ đẩy khi backend chạy). Khoản của hoá
   đơn còn (*Kiem t…* 19/09) vuốt → thông báo khoá. Chi tiết ngân sách Ăn uống: giao dịch thường có Sửa · Xoá, hộp chỉ câu
   chung.
-- **Còn để** (báo người dùng): xoá khoản kiểu cũ ở Sổ xong, kỳ vẫn `Payed`; bấm Hoàn tác lại vẫn hiện câu bảo xoá ở Sổ
-  (lỗi của spec mục 4 — không đổi trạng thái kỳ; review toàn nhánh xếp Important, không chặn gộp; chờ người dùng quyết).
+- **Còn để** (báo người dùng): ✅ ~~xoá khoản kiểu cũ ở Sổ xong, kỳ vẫn `Payed`; bấm Hoàn tác lại vẫn hiện câu bảo xoá
+  ở Sổ~~ — **gỡ cùng ngày** (khối ↩️ bên trên: Hoàn tác hỏi đưa kỳ về chưa trả không hoàn tiền).
   `khoaNhomCua` (B2) vẫn chỉ loại theo `billId` (spec mục 4). `app_database.g.dart` còn docstring cũ của cột `billId`
   (không chạy `build_runner` lượt này) — lần sinh kế ra một khối diff chỉ là chú thích.
 

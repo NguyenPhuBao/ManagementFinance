@@ -120,6 +120,10 @@ class HoaDonDaXoaNguon {
 - `BillBloc._onUndoPayment` nhánh `BillUndoUnavailableException`: đổi câu cho khớp lối đi nay có thật —
   *"Không hoàn tác được: khoản chi của lần thanh toán này được ghi bằng bản ứng dụng cũ. Xoá nó ở Sổ giao dịch để trả
   tiền về ví — kỳ này vẫn ghi là đã trả."*
+  > ⚠️ **Đã thay cùng ngày (2026-10-17 tối)** — câu này là ngõ cụt (kỳ không bao giờ về chưa trả; review toàn nhánh bắt).
+  > Nay nút Hoàn tác rẽ theo bản đồ khoản chi của trang: không có khoản gắn `billId` thì hỏi **đưa kỳ về chưa trả không
+  > hoàn tiền** (`BillRepository.datLaiChuaTra`); ngoại lệ này chỉ còn là lưới an toàn với câu *"Không tìm thấy khoản
+  > chi của lần thanh toán này. Mở lại trang rồi bấm Hoàn tác để đưa kỳ về chưa trả."* — mục 6.3 `BILL_DOCUMENTATION.md`.
 - `BillPaymentConflictResolver` bắt cùng ngoại lệ nhưng chỉ `debugPrint` — không đổi.
 
 ### 3.6 Chú thích lỗi thời phải sửa cùng lượt
