@@ -182,6 +182,22 @@ void main() {
               reason: 'đó là/vâng/vắng/vang/tiền áo/có phiếu bỏ dấu trùng tên tài sản'));
     }
 
+    for (final c in [
+      'giáo viên dạy về vàng có tốn tiền không',
+      'học phí giáo dục của tôi bao nhiêu',
+      'mua đôi giày hết giá bao nhiêu',
+      'giá vé xe đôi hôm nay',
+    ]) {
+      test('online MỞ (ranh giới từ): "$c"',
+          () => expect(chuDeBiChanOnline(c), isFalse,
+              reason: 'canh ranh giới từ của RegExp có dấu: giá/đô nằm TRONG từ khác (giáo, đôi)'));
+    }
+    for (final c in ['giá vàng?', 'mua vàng, giá bao nhiêu tiền?', '(giá) usd.']) {
+      test('online chặn (dấu câu dính): "$c"',
+          () => expect(chuDeBiChanOnline(c), isTrue,
+              reason: 'canh ranh giới từ của RegExp có dấu: dấu câu là ranh giới, không phải chữ/số'));
+    }
+
     test('ranh giới cố ý: số liệu của chính người dùng — online chặn, trên máy mở', () {
       for (final c in ['tháng này tôi mua vàng hết bao nhiêu tiền', 'ví USD còn bao nhiêu tiền']) {
         expect(chuDeBiChanOnline(c), isTrue,
