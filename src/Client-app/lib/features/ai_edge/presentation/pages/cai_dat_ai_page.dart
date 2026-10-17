@@ -19,6 +19,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../ai_chat/data/cong_tac_online.dart';
 import '../../data/cong_tac_ai.dart';
 import '../../data/mo_hinh_tai_ve.dart';
 import '../../domain/hoi_dung_4g.dart';
@@ -47,7 +48,11 @@ class CaiDatAiPage extends StatefulWidget {
     this.moHinh,
     this.congTac,
     this.coWifi,
+    this.congTacOnline,
   });
+
+  /// Công tắc *Trợ lý online*. `null` = lấy từ `sl` nếu đã đăng ký, không thì kho thật.
+  final CongTacOnline? congTacOnline;
 
   /// Ép sẵn trạng thái *đã có mô hình hay chưa*.
   ///
@@ -79,10 +84,17 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
   String? _loi;
   bool _bat = true;
 
+  late final CongTacOnline _congTacOnline;
+  bool _onlineBat = true;
+
   @override
   void initState() {
     super.initState();
     _congTac = widget.congTac ?? const CongTacAi();
+    _congTacOnline = widget.congTacOnline ??
+        (sl.isRegistered<CongTacOnline>()
+            ? sl<CongTacOnline>()
+            : const CongTacOnline());
 
     if (widget.daCoMoHinh != null) {
       // Trạng thái ép sẵn: không hỏi DI, không nghe stream nào.
@@ -108,6 +120,19 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
     }
 
     unawaited(_docCongTac());
+    unawaited(_docCongTacOnline());
+  }
+
+  Future<void> _docCongTacOnline() async {
+    final b = await _congTacOnline.docBat();
+    if (!mounted) return;
+    setState(() => _onlineBat = b);
+  }
+
+  Future<void> _doiCongTacOnline(bool v) async {
+    await _congTacOnline.ghiBat(v);
+    if (!mounted) return;
+    setState(() => _onlineBat = v);
   }
 
   Future<void> _doTrangThai() async {
@@ -275,6 +300,8 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
             _nhanMuc('TUỲ CHỌN'),
             const SizedBox(height: 10),
             _theCongTac(),
+            const SizedBox(height: 12),
+            _theCongTacOnline(),
             const SizedBox(height: 16),
             _khoiRiengTu(),
           ],
@@ -604,6 +631,50 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
         ),
       );
 
+  Widget _theCongTacOnline() => Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _doiCongTacOnline(!_onlineBat),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: AppColors.outlineVariant.withValues(alpha: 0.6)),
+            ),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Trợ lý online',
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Có mạng thì hỏi máy chủ; tắt thì chỉ dùng AI trên máy',
+                        style: TextStyle(
+                            fontSize: 13, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  key: const Key('cong-tac-online'),
+                  value: _onlineBat,
+                  onChanged: _doiCongTacOnline,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
   Widget _khoiRiengTu() => Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -619,8 +690,9 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Mô hình chạy hoàn toàn trên máy bạn. Không có số liệu nào '
-                'rời khỏi thiết bị.',
+                'AI trên máy không gửi gì rời khỏi thiết bị. Trợ lý online '
+                '(khi bật và có mạng) gửi câu hỏi và bản tóm tắt tài chính '
+                'tới máy chủ FlowMoney và Google Gemini.',
                 style: TextStyle(
                     fontSize: 13,
                     height: 1.45,
