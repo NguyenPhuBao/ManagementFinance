@@ -1,7 +1,8 @@
 # Trợ lý AI hỗn hợp: có mạng hỏi backend (Gemini), mất mạng hỏi mô hình trên máy — thiết kế
 
 **Ngày:** 2026-10-11 · **Mảng:** `features/ai_chat` (+ `ai_edge/domain`, `core/api`, `core/network`, màn Cài đặt AI) · **Trạng thái:** thiết kế duyệt
-từng phần trong chat, **chưa thi công**.
+từng phần trong chat; ✅ **thi công 2026-10-17** (Task 1, 3–12; Task 2 bỏ — mục 10 dòng 1; `core/network` không đổi), 🚧 **chưa
+nghiệm thu máy thật** (Task 13, mục 6 — cần backend chạy được và `.env` có khoá Gemini). Chỗ mã khác thân spec: **mục 10**.
 
 > Đảo quyết định treo từ 2026-09-26 (*chatbot trực tuyến của backend — 🛑 chưa nhận, chờ người dùng quyết*, mục 10.1
 > `docs/AI_AGENT_ARCHITECTURE.md`): người dùng chốt ngày 2026-10-11 — **"kết nối AI chatbox ở backend vào, khi có mạng dùng ở
@@ -343,3 +344,81 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
 ## 10. Chỗ bản thi công KHÁC bản viết
 
 *(Điền trong lúc thi công — kế hoạch và mã thắng spec ở những dòng ghi tại đây.)*
+
+**Thi công 2026-10-17** trên nhánh `TranQuangDat`, base `909ae016`: **22** commit `80d9dee8` → `fb92c16d` (21 commit mã + test,
+`b6eb9975` ghi id Stitch) và commit tài liệu Task 12. Task 2 bỏ; Task 13 (nghiệm thu máy thật) chưa làm. Số đo 2026-10-17:
+`flutter test` **7.368 pass / 10 skip** (trước 7.240; +128), `flutter analyze` **20** (mức nền), `ai_chat_page.dart` **1.141** dòng,
+`cai_dat_ai_page.dart` **694** dòng. Khuôn mỗi dòng: *§ — bản viết → bản thi công — vì … (task)*.
+
+1. §3.1 bước 3 / §3.6 hàng `connection_monitor` — `ConnectionMonitor.coMangLucNay()` (mới) → dùng **`coMangNgay()`** có sẵn từ
+   C4 (2026-10-12; cùng nghĩa, cùng thân, đã đăng ký DI và có test) — vì nếp *một định nghĩa*; Task 2 **bỏ**, không commit,
+   `core/network` không đổi (Task 2, Task 9).
+2. §3.2 / §3.6 hàng DI / §4.3 gạch 4 — "DI đưa `sl<Dio>()`" → **`TroLyOnlineRemoteDataSourceImpl(sl<DioClient>().dio)`** — vì
+   GetIt không đăng ký `Dio` (`grep "registerLazySingleton<Dio>"` = 0), chỉ `DioClient`; đăng ký lazy nên `flutter test` lẫn
+   `flutter analyze` đều mù, sai tên là lỗi lúc chạy app. Docstring sai cùng gốc ở `core/api/dio_client.dart:11` sửa ở Task 12
+   (Task 7, Task 12).
+3. §3.3 bảng, dòng *"`DuPhongOnline` khi đã có chữ → `GiuPhanDaCo`"* → **`DuPhongOnline` LUÔN `RoiVeMay(reason)` bất kể chữ** —
+   vì backend `_streamFallbackResponse` (`chatbot.service.js:44-66`) luôn chẻ câu thông báo ⚠️ thành `delta` rồi mới
+   `done {fallback}`, nên "chữ đã có" là thông báo của server; trang gỡ bong bóng đang hiện rồi hỏi máy với cùng câu.
+   `LoiOnline` sau chữ vẫn `GiuPhanDaCo(kGhiChuGianDoan)`; `ChuOnline` làm sự kiện cuối (luồng đóng không `done`) đi như
+   `LoiOnline`. `HoanTat()` / `GiuPhanDaCo(ghiChu)` dùng tham số vị trí, không `nguon:` / `ghiChu:` (Task 4).
+4. §3.3 `xepHistory` — thêm hai luật: (a) sau khi cắt cửa sổ 6, **gọt tin đầu cho tới tin `user`** — vì `@google/generative-ai`
+   0.24.1 `validateChatHistory` ném *First content should be with role 'user'*, mà trang gieo lời chào AI ở `initState` → câu
+   online đầu mọi phiên hỏng và đếm vào circuit breaker dùng chung (một instance cho mọi tài khoản, ngưỡng 5 lỗi, mở 30 s —
+   `resilience/circuit-breaker.js:113`); (b) **không gửi câu cố định của hệ thống** (tin AI `nguon == null`: `kCauTuChoi`,
+   `kChuaCoMoHinh`…) — chúng không phải lời của mô hình nào. ⚠️ **Còn để** (giới hạn đã biết, chưa sửa): bỏ câu hệ thống để lại
+   tin `user` mồ côi — *"Giá vàng hôm nay?"* bị chặn ở client vẫn vào `history` của lượt online sau, Gemini có thể trả lời; hướng
+   sửa: bỏ theo cặp ở `xepHistory`. `toiDa = 6` gắn với `history.slice(-6)` của backend (`chatbot.service.js:152`) — không nâng
+   (Task 4, Task 9).
+5. §4.2 — thêm hàng: `done` có khoá **`error`** (chính luồng dự phòng của server ném — `chatbot.service.js:229-237`,
+   `chatbot.controller.js:53`) → **`DuPhongOnline(error)`** — vì server đã phát chunk *"⚠️ Sự cố kết nối…"* trước đó, `LoiOnline`
+   sẽ giữ câu báo lỗi dưới nhãn *Trợ lý online*; `done {}` (không `fallback`, không `error`) → `XongOnline(responseTimeMs: null)`,
+   cố ý không đoán — đoán sai là mọi câu trả lời rơi về máy, hỏng im lặng (Task 5).
+6. §4.1 — `message ≤ 2000`: client **không cắt, không chặn**; câu dài → 400 (`chatbot.validation.js`) → `LoiOnline(400)` → rơi
+   về máy — vì một câu hiếm đi đường chậm rẻ hơn một luật cắt câu (phán quyết D19, Task 12).
+7. §3.4 — nút Dừng *"trong hàng `_dangSoan`"* → vẽ theo **`_huyOnline != null && !_daDungOnline` bất kể `_traLoiDangDen`** (hàng
+   chờ khi chưa có chữ; hàng dưới bong bóng đang đến khi đã có chữ; cùng `Key('dung-online')`) — vì `itemBuilder` thay hàng chờ
+   bằng bong bóng ngay chữ đầu, đặt trong `_dangSoan` là nút biến mất, ngược §0 q8. Hàng chờ có nút: chữ `Flexible(fit:
+   FlexFit.tight)`, bỏ `Spacer` — ở 360 dp chữ *Đang hỏi trợ lý online…* bị ép xuống hai dòng (Task 10).
+8. §3.1 bước 4 — thêm hằng **`kMayChuHongKhongMoHinh`** (*"Máy chủ không phản hồi, và AI trên máy chưa sẵn (chưa tải / đang tắt).
+   Thử lại sau hoặc mở Cài đặt AI."*); cổng máy-chưa-sẵn chọn câu theo **nguyên nhân thật**: vừa rơi từ online →
+   `kMayChuHongKhongMoHinh`; mất mạng (`matMang`) → `kKhongMangKhongMoHinh`; chủ đề bị chặn (`chuDeBiChan`) → `kCauTuChoi`; còn
+   lại `cauKhoaHoiDap`. Tách vị từ **`_maySan`** (có tệp ∧ công tắc trên máy) khỏi `_coMoHinh` (ô mở) — vì với
+   `lyDoKhoa(onlineBat: true)` = `null` thì `_coMoHinh` true dù không có mô hình, nhánh `kKhongMangKhongMoHinh` của bản viết
+   không bao giờ chạy; và *"Đang không có mạng"* sai sự thật khi mạng có mà máy chủ hỏng (Task 9).
+9. §3.1 `chuDeBiChanOnline` — *"so trên bản đã bỏ dấu"* → so **HAI lượt**: (A) có dấu, từ trọn — vế giá `giá` | `bao nhiêu tiền`
+   × tài sản vàng · cổ phiếu · chứng khoán · tiền ảo · tiền mã hoá / hóa · đô la · **đô** · usd · bitcoin · crypto; (B) bỏ dấu CHỈ
+   với từ một nghĩa — `gia` | `bao nhieu tien` × bitcoin · crypto · usd · dola · chung khoan — vì bỏ dấu gộp *đó là* / *vâng* /
+   *tiền áo* / *có phiếu* vào tên tài sản, đẩy câu nối tiếp hội thoại sang máy. Bất đối xứng cố ý: *"tháng này tôi mua vàng hết
+   bao nhiêu tiền"*, *"ví USD còn bao nhiêu tiền"* bị chặn ONLINE (đi máy, tool trả lời từ sổ) nhưng mở trên máy. Giới hạn chấp
+   nhận: câu giá **gõ không dấu** của đô la / tiền ảo / cổ phiếu (*"gia do la hom nay"*) nay đi Gemini (vàng / xăng / tỉ giá
+   không dấu vẫn chặn); `đô` từ trọn chặn oan *thủ đô* / *đô thị* (đi máy). Danh sách chặn cũ tách thành `_tuKhoaSong` **10** mục
+   + `_tuKhoaTuVan` **11** mục (đếm 2026-10-17; `_tuKhoaSongKhongDau` 8); `chuDeBiChan` = cả hai + câu định nghĩa, hành vi không
+   đổi (Task 3).
+10. §3.5 — chữ khối Riêng tư: bản **kế hoạch** *"AI trên máy không gửi gì rời khỏi thiết bị. Trợ lý online (khi bật và có mạng)
+    gửi câu hỏi và bản tóm tắt tài chính tới máy chủ FlowMoney và Google Gemini."* — vì `+` của spec là ký hiệu tóm tắt, không
+    phải chữ giao diện, và cụm *rời khỏi thiết bị* giữ liên tục với ca test cũ (Task 11).
+11. §3.4 nhãn nguồn — thêm **chấm tròn 6 px** trước chữ (Stitch `1896d02b…`): xanh `#006E1C` online không ghi chú · đỏ
+    `AppColors.error` khi có ghi chú · xám khi trên máy không ghi chú; chữ 12 px màu hằng cục bộ **`Color(0xFF454743)`** — KHÔNG
+    `AppColors.onSurfaceVariant` (= `#767872`, 3,8:1 trên nền trang ở 12 px, dưới AA — số của lượt review Task 8, 2026-10-17) —
+    khuôn `hop_thoai_bi_day_ra.dart` / `bill_page.dart` / `the_cho_xoa_trang_chu.dart` (Task 8).
+12. §3.6 — ngoài danh sách tệp: **`core/api/interceptors/auth_interceptor.dart` `_retryRequest`** phát lại sau 401 **giữ**
+    `responseType` / `receiveTimeout` / `cancelToken` / header (`fetch(requestOptions.copyWith(headers:))`) — đo: bản cũ đọc dồn SSE
+    thành `String` rồi `DioException(unknown)` (câu online đầu sau khi token hết hạn chờ trọn câu, Dừng vô hiệu, rồi vẫn rơi về máy
+    dù server đã tốn một lượt Gemini). Datasource bắt **mọi** lỗi giữa luồng (`catch (e)` chung sau `on DioException`) →
+    `LoiOnline` — đo: `HttpException` khi đứt mạng, `FormatException` khi UTF-8 cụt; lỗi lập trình cũng thành `LoiOnline`, chỉ lộ
+    qua log `[Online] lỗi <kiểu>` (Task 5).
+13. §3.6 hàng `ai_chat_page.dart` (ước ≈ 1.070 dòng) → trang **1.164** dòng sau Task 9; dời thêm **`DongKhoa`** (`dong_khoa.dart`)
+    và **`HangChip`** (`hang_chip.dart`) ra `widgets/tro_ly_ai/` (kế hoạch, rủi ro 4) → **1.141** dòng (`wc -l` 2026-10-17); không
+    `mienTru` (Task 10).
+14. **Chưa quyết — hỏi người dùng khi nghiệm thu:** (a) câu định nghĩa / tư vấn khi máy chủ hỏng → AI trên máy trả `kCauTuChoi`
+    trần, không ghi chú *máy chủ không phản hồi*; (b) khi tờ thông tin đang mở, hàng phía sau hiện *Đang nghĩ…*; (c) `_hoiOnline`
+    `catch` khi đã có chữ → `GiuPhanDaCo` (đúng §3.3) nhưng datasource không bao giờ ném nên nhánh ấy chưa có ca phủ.
+15. §7 — id ba màn Stitch đã ghi (commit `b6eb9975`); người dùng chưa xác nhận trên Stitch (Task 0).
+16. §3.5 c — thẻ *Trợ lý online* và khối Riêng tư đặt **ngoài** cổng quyền `ai_edge_model` của màn Cài đặt AI (thẻ online chỉ khi
+    `coQuyen(ai_assistant)`; Riêng tư luôn hiện; khối mô hình + *Dùng AI trên máy* vẫn trong cổng) — vì gói có `ai_assistant` mà
+    không `ai_edge_model` sẽ kẹt sau khi bấm *Chỉ dùng AI trên máy* (cờ gắn máy, không bật lại được), trái lời hứa *"Đổi lại được
+    ở Cài đặt AI"*; mặc định Basic / Premium không gặp, chỉ cấu hình admin tách khoá. Hai thẻ công tắc gom vào helper
+    `_theCongTacChung` (Task 11).
+17. Test — ca *"thẻ thứ hai đọc cờ"* seed `'false'` (seed `'true'` trùng mặc định nên không canh vế đọc); fixture kho trống
+    `KhoGia({})` ở ba ca tờ thông tin để canh §3.5 a (máy mới → câu đầu đi online + tờ hiện) (Task 10, Task 11).

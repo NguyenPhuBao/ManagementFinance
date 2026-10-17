@@ -1,4 +1,15 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (6 mục chờ backend — mục 41, 42, 43, 44, 45, 46)
+# Backend & Client — DANH SÁCH CẦN LÀM (7 mục chờ backend — mục 41, 42, 43, 44, 45, 46, 47)
+
+> ✉️ **Client đặt mục 47, 2026-10-17 tối:** [`CLIENT_TRO_LY_ONLINE.md`](./CLIENT_TRO_LY_ONLINE.md) — mức **vừa**, đơn
+> **thông báo + xin**. Client đã tích hợp `POST /api/ai/chatbot/chat/stream` theo lối **hỗn hợp** (có mạng hỏi backend, hỏng /
+> mất mạng thì AI trên máy trả lời cùng câu; 22 commit `80d9dee8` → `fb92c16d`, chưa nghiệm thu đầu-cuối vì backend dev chưa
+> khởi động được — đơn 44). Đơn nêu năm chỗ cố ý không làm theo `ChatbotAI_Moblie.md` (huy hiệu / nút chuyển chế độ, thẻ FHS +
+> `GET /snapshot`, bảng `LocalChatMessages`, mẫu `Dio()` trần, `conversationId` vẫn gửi) và ba hành vi client phải bù (`delta`
+> thông báo trước `done.fallback`; `done {error}` tài liệu không tả; `history` mở đầu vai `model` làm SDK Gemini ném và mở circuit
+> breaker dùng chung). Xin: tên `GEMINI_MODEL` đã kiểm (dev nay có khoá, tên `gemini-3.8-flash` chưa ai chạy thật), giữ
+> `history.slice(-6)`, cân nhắc kiểm vai tin đầu ở server, tả `done {error}`. Không đổi lược đồ, payload; không chặn client.
+> `DA-XONG/` đếm bằng máy 2026-10-17: **58** tệp + mục lục. `ls CAN-LAM/` nay: **41 · 42 · 43 · 44 · 45 · 46 · 47** ·
+> `CLIENT_INTEGRATION_GUIDE.md` + README.
 
 > ✉️ **Client đặt mục 46, 2026-10-17:** [`NOTIFICATION_CLIENT_APP_LECH_MA.md`](./NOTIFICATION_CLIENT_APP_LECH_MA.md) —
 > mức **thấp**, chỉ **sửa chữ**. `docs/Notification/Notification_Client-app.md` (commit cuối `10ab14c3`) tả client lệch mã
@@ -79,7 +90,7 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **6** mục — đếm bằng `ls` 2026-10-17: backend chưa trả lời mục 41, 42, 43, 44, 45; client vừa đặt 46)
+## 0. Còn phải làm (Hiện tại: **7** mục — đếm bằng `ls` 2026-10-17 tối: backend chưa trả lời mục 41, 42, 43, 44, 45, 46; client vừa đặt 47)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
@@ -89,6 +100,7 @@
 | **44** | [SOAT_SAU_GOP_D72CCD45.md](./SOAT_SAU_GOP_D72CCD45.md) | Backend | **A (cao)** đánh số lại hai tệp migration thanh toán (trùng 20, 24); trả `apply_migration_20.js` về migration `Server_update_at`. **B (vừa)** webhook chỉ xử lý đơn còn `PENDING` (`EXPIRED` tuỳ chọn), khử trùng theo `reference`. **C (vừa)** tra mã nhận diện theo token cuối của nội dung. **D (vừa)** nới `payment_order.status` lên 25 bằng SQL, hoặc đưa `schema.prisma` về 20. **E (thấp)** `accept` bắt buộc boolean. **F (thấp)** thêm hợp đồng thanh toán mới vào `Event-Notification-to-ClientApp.md`. Không chặn client (G94). | ⏳ Chờ backend |
 | **45** | [TAT_NHAC_HOA_DON_QUA_DONG_BO.md](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) | Backend | `sync.repository.js`: hoá đơn `time_notification` — tạo ~:471 `\|\| '3'` và cập nhật ~:497 `?? existing` nuốt NULL (= tắt nhắc ở client); ~:98 `String(null)` thành `"null"`. Đổi sang `!== undefined ? … : …`. Đo dev: 37 hoá đơn sống, 0 NULL (hệ quả của phép ép). Client đã làm phần mình (`d657b065`, tắt là tắt thật); tới khi sửa, tắt nhắc bị đảo sau một vòng đồng bộ. | ⏳ Chờ backend |
 | **46** | [NOTIFICATION_CLIENT_APP_LECH_MA.md](./NOTIFICATION_CLIENT_APP_LECH_MA.md) | Backend (chữ) | Sửa `docs/Notification/Notification_Client-app.md` theo bảng của đơn (~30 chỗ, bốn nhóm: đường dẫn · hàm / route · con số · hành vi; nhãn [cũ] / [mới]); phần phía backend ghi riêng, ngắn. Kiểm lại bằng một câu `grep` ra 0 dòng. Không đổi mã; không chặn client. | ⏳ Chờ |
+| **47** | [CLIENT_TRO_LY_ONLINE.md](./CLIENT_TRO_LY_ONLINE.md) | Backend | Thông báo client đã tích hợp `chat/stream` (hỗn hợp, tự rơi về AI trên máy). **(vừa)** chạy một lượt Gemini thật, ghi tên `GEMINI_MODEL` đã kiểm vào `ChatbotAI.md` và đặt trên cloud (`gemini-3.8-flash` chưa ai kiểm). **(thấp)** giữ `history.slice(-6)`; cân nhắc bỏ tin đầu không phải `user` trước `startChat` (SDK ném → breaker dùng chung mở cho mọi tài khoản); tả `done {error}` trong `ChatbotAI_Moblie.md` §2.1. Không đổi lược đồ / payload; không chặn client (thiếu khoá thì client rơi về máy). | ⏳ Chờ backend |
 
 ---
 

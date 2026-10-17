@@ -24,7 +24,9 @@ nhóm A (dự báo gộp kỳ quá hạn, toast đồng bộ, định tuyến n�
 (**9.41**); ✅ **đổi lần hai** thi công cùng ngày (*luật trước, AI là lớp cuối — chỉ khi còn ô số tiền / ngày / ví / danh mục / ghi chú thiếu*) + **chuyển ví**
 · **C3** lệnh tạo hoá đơn / mục tiêu / ngân sách, bản luật rồi bản đọc bằng AI (**9.42–9.43**) · spike **C4** giọng nói + chụp
 hoá đơn, còn dở (**9.44**) · dự án huấn luyện **A** — spike tra cứu (**10.6**) · ✅ dự án **B** — bộ định tuyến HỌC: câu giao
-dịch đi phiên một tool, kèm hai bản sửa `kiemKy` / bộ chỉnh (**9.45**, 2026-10-02) · ✅ **đường nhanh** câu giao dịch — tool chạy trước, Gemma chỉ viết câu, lưới kể tên C6; chờ ~28 → 3,9 s, 35/35 không tụt (**9.46**, 2026-10-05).
+dịch đi phiên một tool, kèm hai bản sửa `kiemKy` / bộ chỉnh (**9.45**, 2026-10-02) · ✅ **đường nhanh** câu giao dịch — tool chạy trước, Gemma chỉ viết câu, lưới kể tên C6; chờ ~28 → 3,9 s, 35/35 không tụt (**9.46**, 2026-10-05) ·
+✅ **trợ lý online hỗn hợp** — màn Trợ lý AI có mạng thì hỏi chatbot backend (Gemini, SSE), hỏng / mất mạng thì Gemma trả lời cùng
+câu; mã xong 2026-10-17, 🚧 chưa nghiệm thu máy thật (**mục 15**).
 
 ✅ **CỔNG A ĐÃ QUA — đo trên máy thật tối 2026-09-22** (mục **9.9**). ⚠️ Nhưng giữ nguyên bài học
 đã phải trả giá một lần: **"P3 xong" KHÔNG đồng nghĩa "cổng A xong"** — hai thứ khác nhau, và
@@ -102,7 +104,8 @@ hậu theo mã** — đổi mã vùng nào thì `grep` vùng ấy trong cả `CA
   mọi con số trong câu phải có trong gói (bộ kiểm số), sai thì rơi về mẫu câu. Máy yếu, máy ảo,
   chưa tải mô hình → mẫu câu, không toast lỗi.
 - **KHÔNG phải:** không học thống kê (CV, elasticity, EMA) vì dữ liệu thật chưa đủ; không bảng cache
-  đặc trưng; không gửi giao dịch thô đi đâu; **không đổi schema đồng bộ, không thêm trường payload**.
+  đặc trưng; không gửi giao dịch thô đi đâu *(tầng Edge; trợ lý online của màn Trợ lý AI từ 2026-10-17 gửi tóm tắt + kết quả
+  tool tới backend khi bật và có mạng — mục 15)*; **không đổi schema đồng bộ, không thêm trường payload**.
   ⚠️ **Vế "không học thống kê" là ảnh chụp của P0–P3, và người dùng đã chốt ngược lại ngày
   2026-09-20**: bốn việc học ở **tầng số** sẽ làm (mục **11.4**), với điều kiện mỗi luật có **ngưỡng
   mẫu tối thiểu, dưới ngưỡng thì im**. Vế **không huấn luyện mô hình ngôn ngữ** thì vẫn đứng nguyên và
@@ -203,7 +206,7 @@ lib/features/transaction/data/doc_cau_bang_ai.dart — (C2 §2.8) DocCauBangAi: 
 test/tool/dinh_tuyen/                             — (dự án B) KHÔNG vào bản app: du_lieu.dart (đọc TSV, mười nhãn, mã băm) · huan_luyen.dart (hocNaiveBayes · hocLogistic · kiemCheo · phanLuatBoLai · danhGia · chonNguong · sinhTepTrongSo) · bo_huan_luyen.tsv · bo_do.tsv (KHOÁ bằng mã băm) · huan_luyen_dinh_tuyen_test.dart và do_bo_do_test.dart (`skip`, chạy tay)
 lib/core/database/tables/ai_feedback_table.dart   — bảng AiRebalancingFeedbacks (cục bộ)
 lib/core/database/daos/ai_feedback_dao.dart
-lib/features/ai_chat/                             — màn Trợ lý AI (P3), đọc ai_edge
+lib/features/ai_chat/                             — màn Trợ lý AI (P3), đọc ai_edge; từ 2026-10-17 thêm trợ lý online (domain/ · data/datasources/ · widgets/tro_ly_ai/ — mục 15.3)
 ```
 
 ## 4. Bẫy — đọc trước khi sửa
@@ -3896,6 +3899,11 @@ hình ngoan. Nói gọn: *nó không thông minh, nhưng nó đúng — và vớ
 | **Vận hành** | API LLM tính tiền theo token; mô hình trên máy tốn 0 đồng sau khi tải |
 
 Cái giá: mô hình yếu hơn hẳn server, tốn 2,41 GB máy người dùng, chỉ chạy arm64.
+
+⚠️ **Từ 2026-10-11 (thi công 2026-10-17) màn Trợ lý AI CÓ gọi API server — có điều kiện.** Người dùng chốt **trợ lý online
+hỗn hợp**: khi bật và có mạng, câu hỏi + bản tóm tắt tài chính + kết quả tool (số tiền giao dịch, ghi chú đã che PII) đi tới máy
+chủ FlowMoney và Google Gemini; mất mạng / máy chủ hỏng thì mô hình trên máy trả lời cùng câu. Bảng trên vẫn là lý do của
+**đường trên máy** (và của mọi khối Nhận xét, Nhập nhanh, lệnh tạo — không cái nào đi online). Mục **15**.
 Chấp nhận được **vì ba dòng đầu là ràng buộc, không phải sở thích**.
 
 ### 10.3 ⚠️ Vì sao KHÔNG huấn luyện mô hình để cá nhân hoá
@@ -4555,3 +4563,160 @@ cuối trang ấy**.
 ⚠️ **Lời gọi Stitch trả về `timeout` nhưng màn VẪN được tạo** (`6adf2ad1…`) — lần thứ ba
 xác nhận bài học ở mục "Ghi chú vận hành" `CLAUDE.md`: **timeout không phải thất bại, và
 đừng gọi lại**.
+
+## 15. Trợ lý online — hỗn hợp: có mạng hỏi backend (Gemini), hỏng / mất mạng rơi về mô hình trên máy (chốt 2026-10-11 · thi công 2026-10-17)
+
+**Trạng thái:** ✅ **mã xong 2026-10-17** — 22 commit `80d9dee8` → `fb92c16d` (nhánh `TranQuangDat`, base `909ae016`; Task 1,
+3–11, Task 2 bỏ; `b6eb9975` ghi id Stitch) + commit tài liệu Task 12. 🚧 **CHƯA nghiệm thu máy thật** (Task 13, chín ca ở spec
+§6): cần backend dev chạy được — `npm install` + áp `database/20`, `database/24` thanh toán, ba việc **cần phép đích danh** (đơn
+44) — và `.env` có khoá Gemini (có từ 2026-10-17; tên `GEMINI_MODEL` chưa ai kiểm — đơn CAN-LAM **47**). Tới khi ấy **mọi câu
+online rơi về AI trên máy**, người dùng chỉ thấy nhãn *máy chủ không phản hồi*. Spec
+`docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` — **mục 10** ghi 17 chỗ mã khác bản viết
+(mục 15.5 dưới đây tóm tắt); kế hoạch 13 task `plans/2026-10-11-tro-ly-online-backend-fallback-tren-may.md` (gitignore). Stitch
+ba màn `1896d02b…` *bong bóng online* · `7a6519d6…` *tờ thông tin* · `b320f4b9…` *Cài đặt AI — công tắc* (người dùng chưa xác
+nhận). Hợp đồng backend: `docs/AI/ChatbotAI_Moblie.md` (tài liệu backend, chỉ đọc) với năm chỗ cố ý không làm — đơn 47.
+
+### 15.1 Quyết định (spec §0, người dùng chốt 2026-10-11, mỗi câu một lượt chọn)
+
+| # | Chốt |
+|---|---|
+| 1 | Online hỏng **trước chữ đầu** (mạng chập, 403, 429, 503, `done.fallback`, hết giờ) → **cùng câu** tự rơi về AI trên máy; hỏng giữa dòng → giữ phần đã hiện + ghi chú. Mô hình trên máy nạp khi cần, không nạp sẵn |
+| 2 | Online **mở kiến thức / tư vấn chung** (quỹ khẩn cấp, 50/30/20, thuế, vay, đầu tư nói chung) nhưng **vẫn chặn dữ liệu sống** (giá vàng · giá xăng · tỷ giá · lãi suất · thời tiết · tin tức · xổ số · bóng đá · câu hỏi *giá* một tài sản) |
+| 3 | **Tờ thông tin một lần** trước câu online đầu tiên; mỗi bong bóng AI ghi nguồn |
+| 4 | Lịch sử hội thoại **trong phiên màn**; gửi ≤ 6 tin làm `history`; không bảng SQLite |
+| 5 | Không thẻ FHS từ `meta` |
+| 6 | **Lối A** — thử online **từng câu**, thang rơi; không "chế độ", không huy hiệu header, không nút chọn tay trên màn chat; nút chỉnh duy nhất là công tắc *Trợ lý online* ở Cài đặt AI |
+| 7 | Vị trí tệp theo mục 8 `KIEN_TRUC_CLIENT_APP.md`; đọc mạng qua `ConnectionMonitor` |
+| 8 | Nút **Dừng** chỉ cho đường online |
+| 9 | Cờ công tắc **gắn máy** (khuôn `CongTacAi`) |
+| 10 | Bất biến *"mọi con số trong câu phải có trong gói"* thu hạn về **AI trên máy**; câu online tin grounding phía server |
+| 11 | **Không chờ đồng bộ** trước câu online; nhãn nguồn là lời giải thích cho lệch số |
+
+### 15.2 Luồng một câu (`ai_chat_page.dart` `_hoi`)
+
+1. Basic → khoá cả ô (như cũ; cả hai đường đều đòi `ai_assistant`, server cũng 403).
+2. Lệnh tạo C3 (`coVeLenhTao`) → đường trên máy **bất kể mạng** (backend không điền form được).
+3. **Cổng online**: `CongTacOnline.docBat()` ∧ `ConnectionMonitor.coMangNgay()` ∧ `!chuDeBiChanOnline(câu)` — gói ở hàm thuần
+   `nenHoiOnline`; ghi cờ cục bộ `matMang = công tắc bật ∧ không mạng`. Đúng thì `_xinDongYOnline`: máy chưa đọc tờ →
+   `moToThongTinOnline` — *Đã hiểu* → ghi cờ đã đọc, câu đi online; *Chỉ dùng AI trên máy* → tắt công tắc + ghi cờ, câu này
+   đi máy; vuốt tắt → câu này đi máy, **lần sau hỏi lại**.
+4. `_hoiOnline`: `xepHistory` (≤ 6 tin chữ, tin đầu luôn `user`, bỏ thẻ lệnh và câu cố định của hệ thống) → datasource SSE →
+   chunk **nối thẳng** vào `_traLoiDangDen` (không chèn khoảng trắng, **không gác theo câu**, không thẻ số liệu; gỡ markdown lúc
+   hiện bằng `boDanhDauMarkdown`) → `quyetDinhSauOnline` → `_chotOnline`. Hàng chờ *Đang hỏi trợ lý online…* kèm nút **Dừng**
+   (`Key('dung-online')`), nút còn ở dưới bong bóng khi chữ đã chảy. 403 → `GoiRepository.lamMoi()` để băng khoá cập nhật.
+5. Rơi về máy (`RoiVeMay`) → gỡ bong bóng đang hiện, nhớ ghi chú *máy chủ không phản hồi* cho câu kế tiếp của đường trên máy.
+6. Máy chưa sẵn (`!_maySan` — chưa tải hoặc công tắc trên máy tắt) → câu cố định theo **nguyên nhân thật**: vừa rơi từ online →
+   `kMayChuHongKhongMoHinh`; `matMang` → `kKhongMangKhongMoHinh`; `chuDeBiChan` → `kCauTuChoi`; còn lại `cauKhoaHoiDap`.
+7. Máy sẵn → đường trên máy **y như trước** (`chuDeBiChan` → câu chào → vòng tool → bậc 1); câu mô hình mang nhãn *AI trên
+   máy* (kèm *· máy chủ không phản hồi* nếu vừa rơi).
+
+**Luật rơi** (`quyetDinhSauOnline`, hàm thuần):
+
+| Sự kiện cuối | Chưa có chữ | Đã có chữ |
+|---|---|---|
+| `XongOnline` | `RoiVeMay('rỗng')` | `HoanTat()` — nhãn *Trợ lý online* |
+| `DuPhongOnline` (`done.fallback` **hoặc** `done.error`) | `RoiVeMay` | `RoiVeMay` — chữ đã có là thông báo của server |
+| `LoiOnline` (HTTP ≠ 200, `event: error`, hết 45 s, mất mạng, mọi lỗi giữa luồng) | `RoiVeMay` | `GiuPhanDaCo('kết nối gián đoạn')` |
+| `ChuOnline` (luồng đóng không `done`) | `RoiVeMay` | `GiuPhanDaCo('kết nối gián đoạn')` |
+| người dùng bấm Dừng | không bong bóng | `GiuPhanDaCo('đã dừng')` |
+
+**Nhãn nguồn** (`NhanNguon`, chấm 6 px + chữ 12 px `#454743`): *Trợ lý online* · *AI trên máy* · *AI trên máy · máy chủ không
+phản hồi* · *Trợ lý online · kết nối gián đoạn* · *Trợ lý online · đã dừng*. Câu cố định của hệ thống (`kCauTuChoi`,
+`kChuaCoMoHinh`, `kKhongMangKhongMoHinh`, `kMayChuHongKhongMoHinh`…) và thẻ lệnh tạo **không** có nhãn — không AI nào nói chúng.
+Băng khoá: `lyDoKhoa(…, onlineBat:)` — online bật thì ô **mở** dù máy chưa có mô hình (Basic vẫn khoá trước).
+
+### 15.3 Vị trí mã
+
+```
+lib/core/api/khung_sse.dart                         — BoTachSse / KhungSse: tách khung SSE thuần (đệm qua chunk, CRLF, dòng ':', data nhiều dòng)
+lib/core/api/interceptors/auth_interceptor.dart     — _retryRequest phát lại sau 401 bằng fetch(copyWith(headers:)) — giữ responseType / receiveTimeout / cancelToken
+lib/features/ai_chat/domain/su_kien_online.dart     — SuKienOnline { ChuOnline · XongOnline · DuPhongOnline · LoiOnline }, TinLichSu
+lib/features/ai_chat/domain/duong_hoi.dart          — nenHoiOnline · quyetDinhSauOnline (HoanTat / RoiVeMay / GiuPhanDaCo) · xepHistory · năm hằng nhãn
+lib/features/ai_chat/data/datasources/tro_ly_online_remote_data_source.dart — POST /ai/chatbot/chat/stream, receiveTimeout 45 s, khung → sự kiện
+lib/features/ai_chat/data/cong_tac_online.dart      — CongTacOnline: khoá ai_online_bat (mặc định BẬT), ai_online_da_doc_to (mặc định chưa); nuốt lỗi
+lib/features/ai_chat/presentation/widgets/tro_ly_ai/ — the_lenh_tao (dời nguyên văn) · nhan_nguon · to_thong_tin_online · dong_khoa · hang_chip
+lib/features/ai_edge/domain/chu_de_chan.dart         — chuDeBiChanOnline cạnh chuDeBiChan; hai nhóm _tuKhoaSong / _tuKhoaTuVan
+lib/features/ai_edge/presentation/pages/cai_dat_ai_page.dart — thẻ công tắc "Trợ lý online" + khối Riêng tư, NGOÀI cổng ai_edge_model
+lib/core/di/injection_container.dart                — TroLyOnlineRemoteDataSourceImpl(sl<DioClient>().dio) · CongTacOnline (lazy)
+```
+
+Số dòng (`wc -l` 2026-10-17): `ai_chat_page.dart` **1.141** (trần quét 23 = 1.200; trước lượt 1.079), `cai_dat_ai_page.dart`
+**694**. Khe tiêm test của `AiChatPage`: `onHoiOnline`, `coMang`, `congTacOnline` (`null` = đường thật qua DI).
+
+### 15.4 Giới hạn độ tươi (spec §3.7)
+
+Câu online trả lời từ **PostgreSQL** — thao tác còn `pending` trên máy chưa có ở đó — cộng snapshot tài chính cache **Redis 120 s**
+(`financial.snapshot.service.js`, `SNAPSHOT_CACHE_TTL_SECONDS`). Cùng một câu, hai đường có thể ra **hai con số** lệch vài phút.
+Client **không** chờ `syncNow()` trước câu online (quyết định 11); nhãn nguồn là lời giải thích. Chưa đo trên máy (ca 2 của
+nghiệm thu). Câu online **không** qua sáu lớp chắn của mục 4 — sai số là trách nhiệm grounding phía server.
+
+### 15.5 Chỗ mã khác spec (tóm tắt — đầy đủ, kèm lý do đo được: spec mục 10)
+
+`coMangNgay()` có sẵn thay `coMangLucNay()` mới (Task 2 bỏ) · DI `sl<DioClient>().dio`, không `sl<Dio>()` · `DuPhongOnline` luôn
+rơi bất kể chữ · `xepHistory` gọt tới tin `user` + bỏ câu hệ thống · `done {error}` → `DuPhongOnline`, `done {}` → `XongOnline` ·
+câu > 2000 ký tự không cắt ở client (400 → rơi) · nút Dừng theo `_huyOnline != null && !_daDungOnline` · hằng
+`kMayChuHongKhongMoHinh` + vị từ `_maySan` tách khỏi `_coMoHinh` · `chuDeBiChanOnline` so hai lượt (có dấu từ trọn / bỏ dấu chỉ từ
+một nghĩa) · chữ khối Riêng tư theo kế hoạch · chấm 6 px + màu `#454743` · `_retryRequest` giữ `responseType` + datasource bắt mọi
+lỗi · trang 1.141 dòng sau khi dời `DongKhoa`, `HangChip` · id Stitch · thẻ online + Riêng tư ngoài cổng `ai_edge_model` · hai
+chỉnh fixture test.
+
+### 15.6 Bẫy mới (đánh số tiếp chuỗi 4.x)
+
+- **4.53 — `DuPhongOnline` sau chữ KHÔNG phải câu trả lời.** `_streamFallbackResponse` của backend chẻ câu thông báo ⚠️ thành
+  `delta` rồi mới `done {fallback}`; nếu luật rơi xét *"đã có chữ"* như bảng gốc của spec thì câu thông báo của server ở lại màn
+  dưới nhãn *Trợ lý online* và không bao giờ rơi về máy. `done {error}` (luồng dự phòng của server tự ném) cũng là rơi.
+  Ca canh: `duong_hoi_test`, datasource test (*"done mang khoá error …"*), ca widget *"⭐ done.fallback SAU câu thông báo ⚠️ →
+  chữ thông báo không ở lại, cùng câu đi trên máy đúng một lần"*.
+- **4.54 — `history` mở đầu bằng vai `model` làm hỏng lượt và mở circuit breaker cho MỌI tài khoản.** SDK
+  `@google/generative-ai` 0.24.1 `validateChatHistory` ném *First content should be with role 'user'*; trang gieo lời chào AI
+  ở `initState`. `xepHistory` cắt cửa sổ 6 rồi `skipWhile(!cuaToi)`; `toiDa = 6` gắn với `history.slice(-6)` phía server — **đừng
+  nâng**. Câu cố định của hệ thống (tin AI `nguon == null`) không gửi. ⚠️ Còn để: tin `user` đứng trước một câu hệ thống bị bỏ
+  vẫn đi (*"Giá vàng hôm nay?"* lọt vào `history` lượt sau) — sửa bằng bỏ theo cặp.
+- **4.55 — phát lại sau 401 phải giữ nguyên request.** Bản `_retryRequest` cũ dựng `Options` mới → mất `responseType: stream`, SSE
+  bị đọc dồn thành `String` rồi `DioException(unknown)`: câu online đầu sau khi token hết hạn chờ trọn câu, Dừng vô hiệu, rồi vẫn
+  rơi về máy. Nay `fetch(requestOptions.copyWith(headers: {...requestOptions.headers, 'Authorization': …}))` — ⚠️ `copyWith(headers:)`
+  **thay cả map**, quên trải header cũ là mất `Accept: text/event-stream`. Ca canh ở `auth_interceptor_test.dart` (chưa đòi
+  `Accept` — ghi chú review Task 5).
+- **4.56 — DI lazy tên sai là lỗi lúc chạy, `flutter test` lẫn `flutter analyze` đều mù.** GetIt chỉ đăng ký `DioClient`; một
+  `sl<Dio>()` trong lambda `registerLazySingleton` biên dịch được, mọi widget test tiêm `onHoiOnline` nên không chạm, và app thật
+  ném lúc lấy datasource — `_hoiOnline` bọc `try` nên lỗi ấy thành `RoiVeMay('exception')`: **mọi** câu online âm thầm đi máy,
+  chỉ log `[Online] hỏng: …` lộ ra. Đường đúng: `sl<DioClient>().dio`.
+- **4.57 — `break` trong `await for` treo FakeAsync của widget test.** `break` huỷ đăng ký luồng; dưới FakeAsync chuỗi `await`
+  phía sau chỉ chạy tiếp **sau khi test kết thúc**, nên `pumpAndSettle` hết giờ (đo Task 9: 5 ca đỏ, gồm ca 503). `_hoiOnline` dùng
+  cờ `chot` + `continue` — không mất gì vì datasource cam kết phát đúng một sự kiện cuối.
+- **4.58 — danh sách chặn nay là HAI nhóm.** Danh sách cũ (21 mục) tách thành `_tuKhoaSong` **10** (chặn ở cả hai đường) +
+  `_tuKhoaTuVan` **11** (chỉ chặn trên máy) — đếm 2026-10-17; `_tuKhoaSongKhongDau` 8. Thêm từ mới phải chọn nhóm: để nhầm vào
+  nhóm tư vấn là câu dữ liệu sống lọt sang Gemini (bịa giá); để nhầm vào nhóm sống là câu kiến thức bị kéo về máy. Câu hỏi *giá*
+  tài sản đi riêng qua `_laCauHoiGiaTaiSan` (hai lượt — spec mục 10 dòng 9).
+
+### 15.7 Kiểm thử (đếm bằng `flutter test --reporter json` trên 13 tệp, 2026-10-17)
+
+| Tệp (dưới `test/`) | Ca | Ghi chú |
+|---|---|---|
+| `core/api/khung_sse_test.dart` | 8 | mới |
+| `core/api/auth_interceptor_test.dart` | 18 | +1 (17 cũ) — phát lại sau 401 giữ `responseType` / `receiveTimeout` / `cancelToken` |
+| `features/ai_chat/data/datasources/tro_ly_online_remote_data_source_test.dart` | 16 | mới — adapter Dio giả; 403 / 429 / 503, `done.fallback`, `done.error`, đứt giữa luồng, thân cụt UTF-8 |
+| `features/ai_chat/data/cong_tac_online_test.dart` | 3 | mới |
+| `features/ai_chat/domain/duong_hoi_test.dart` | 16 | mới — ma trận `nenHoiOnline`, đủ hàng luật rơi, `xepHistory` |
+| `features/ai_chat/ly_do_khoa_test.dart` | 7 | +4 (3 cũ) — bảng chân trị với `onlineBat` |
+| `features/ai_chat/ai_chat_page_test.dart` | 74 | +24 (50 cũ) — nhóm *trợ lý online (spec 2026-10-11)* |
+| `features/ai_chat/presentation/widgets/tro_ly_ai/` (4 tệp) | 9 | mới — `nhan_nguon` 3 · `to_thong_tin_online` 3 · `hang_chip` 2 · `dong_khoa` 1 |
+| `features/ai_edge/domain/chu_de_chan_test.dart` | 87 | +43 (44 cũ — suy từ tổng) — `chuDeBiChanOnline`, ranh giới từ có dấu, bộ huấn luyện không bị chặn oan |
+| `features/ai_edge/presentation/cai_dat_ai_page_test.dart` | 23 | +4 (19 cũ) — thẻ thứ hai đọc / ghi cờ, chữ Riêng tư, hai ca quyền |
+
+Cộng **+128** ca: `flutter test` **7.368 pass / 10 skip** (trước 7.240), `flutter analyze` **20** (mức nền, 0 trong tệp lượt
+này). Tệp test mới: **8** `_test.dart` + helper `test/helpers/kho_gia.dart` (`KhoGia` — kho secure storage giả dùng chung);
+**5** tệp test sửa. Ca canh chính đã thử bằng bản sai có chủ ý: bỏ ghi chú rơi (`_ghiChuRoi = null`) → 4 ca đỏ gồm ca ⭐ 503
+(Task 9); nút Dừng chỉ khi chưa có chữ → ca Dừng đỏ (Task 10); bỏ lệnh ghi / lệnh đọc cờ công tắc online → ca Cài đặt AI đỏ
+(Task 11); regex từ trọn không thoát `\p` → 3 ca đỏ (Task 3).
+
+### 15.8 Còn để / chưa quyết
+
+- **Nghiệm thu máy thật** (Task 13, spec §6 chín ca; OnePlus 13R ưu tiên, tài khoản 10 Premium, `adb reverse`): chữ chạy và
+  thời gian tới chữ đầu, lệch số hai đường (ca 2), rơi khi backend tắt, máy bay (không request `[Online]` nào), Dừng giữa dòng,
+  tờ một lần, Basic, câu giá vàng, máy chưa có mô hình. Đo cả `receiveTimeout` 45 s với `ResponseType.stream` có đúng là khoảng
+  lặng giữa hai gói không (spec §9) — sai thì chuyển sang `Stream.timeout` trong datasource.
+- Tin `user` mồ côi trong `history` (4.54) — sửa ở `xepHistory`, bỏ theo cặp.
+- Ba câu hỏi người dùng (spec mục 10 dòng 14): câu định nghĩa / tư vấn khi máy chủ hỏng trả `kCauTuChoi` trần không ghi chú; hàng
+  *Đang nghĩ…* sau tờ thông tin đang mở; nhánh `catch` khi đã có chữ chưa có ca phủ.
+- Người dùng chưa xác nhận ba màn Stitch.

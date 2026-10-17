@@ -23,6 +23,11 @@
 Lõi của nó: **máy tính số, mô hình kể chuyện**. Hệ luật tất định tính ra mọi con
 số; mô hình chỉ viết lại thành câu; một bộ kiểm chặn mọi con số mô hình tự nghĩ ra.
 
+⚠️ **Từ 2026-10-11 (thi công 2026-10-17) câu trên tả ĐƯỜNG TRÊN MÁY.** Màn Trợ lý AI có thêm **trợ lý online hỗn hợp**: có
+mạng thì hỏi chatbot của backend (Gemini, SSE), hỏng / mất mạng thì đường trên máy trả lời cùng câu — quyết định và hệ quả ở
+**10.1**, mã và bẫy ở mục **15** `AI_EDGE_FEATURE.md`. Kiến trúc trong tài liệu này (ba vòng, bốn bất biến, bộ kiểm số) là
+kiến trúc của đường trên máy; đường online không đi qua nó.
+
 ---
 
 ## 1. Vì sao là kiến trúc này — bảy ràng buộc đã khoá
@@ -32,15 +37,16 @@ dưới đây, phần lớn có trước, cộng lại chỉ còn đúng một h
 
 | # | Ràng buộc | Nguồn | Loại |
 |---|---|---|---|
-| 1 | Dữ liệu giao dịch **không rời thiết bị** | F1 đặc tả Edge-SLM + Nghị định 13/2023/NĐ-CP | pháp lý — cứng nhất |
+| 1 | Dữ liệu giao dịch **không rời thiết bị**. ⚠️ **Thu hạn 2026-10-11** (người dùng chốt): **AI trên máy** không gửi gì; **trợ lý online** (khi bật và có mạng) gửi câu hỏi + bản tóm tắt tài chính + kết quả tool (số tiền giao dịch, ghi chú đã che PII) tới máy chủ FlowMoney và Google Gemini — 10.1 | F1 đặc tả Edge-SLM + Nghị định 13/2023/NĐ-CP | pháp lý — cứng nhất |
 | 2 | Backend là **vùng chỉ đọc** với nhóm client | Quy tắc 1 `CLAUDE.md` | tổ chức |
 | 3 | **Gemma 4 E2B cho mọi máy**, bỏ hẳn E4B | người dùng chốt 2026-09-20 sau phép đo P1 | đo được |
 | 4 | **Lối B** — mô hình phục vụ **một chỗ**: màn Trợ lý AI. Sáu khối Nhận xét giữ mẫu câu. ⚠️ **Từ 2026-09-30 thêm chỗ thứ hai**: ô *Nhập nhanh* màn Thêm giao dịch (C2, mục 4.3) | người dùng chốt 2026-09-20; mở rộng 2026-09-30 | sản phẩm |
 | 5 | **Lớp AI không tính** — mọi số từ hàm domain đã có | test quét `lib/` thứ **14** | kiến trúc |
-| 6 | `kiemSo` là lớp chắn **duy nhất**, **không nới** vì mô hình lớn hơn | spec Edge-SLM mục 4.4 | kiến trúc |
+| 6 | `kiemSo` là lớp chắn **duy nhất**, **không nới** vì mô hình lớn hơn — ⚠️ cho **AI trên máy**; câu online tin grounding phía server, client không kiểm số (2026-10-11, 10.1) | spec Edge-SLM mục 4.4 | kiến trúc |
 | 7 | Dữ liệu AI là **cục bộ**, không vào `SyncEntityType` | test quét `lib/` thứ **15** | kiến trúc |
 
-Ràng buộc 1 loại bỏ mọi kiến trúc gọi API ngoài. Ràng buộc 2 loại bỏ mọi kiến trúc
+Ràng buộc 1 loại bỏ mọi kiến trúc gọi API ngoài *(cho đường trên máy; từ 2026-10-11 đường online là ngoại lệ có tên, do
+người dùng chốt — 10.1)*. Ràng buộc 2 loại bỏ mọi kiến trúc
 đòi backend làm thêm. Ràng buộc 5 và 6 quyết định hình dạng bên trong. Ràng buộc 4
 quyết định mô hình được cắm vào **đâu**.
 
@@ -623,6 +629,12 @@ Với những gì đo được ngày 2026-09-22, khả năng ấy thấp.
 Sơ đồ chỉ là hình. Thứ định nghĩa hệ thống là bốn luật không được phá. Phá cái nào
 cũng hỏng **im lặng**.
 
+⚠️ **Phạm vi từ 2026-10-11 (thi công 2026-10-17): ①–③ và bộ kiểm số mục 7 là luật của ĐƯỜNG TRÊN MÁY.** Câu của trợ lý
+online không qua `kiemSo` hay lớp chắn nào ở client — *"mọi con số trong câu phải có trong gói"* chỉ còn cho AI trên máy; câu
+online tin grounding phía server (Strict Grounding + Privacy Shield, `ChatbotAI.md` §3), client không kiểm số, không chặn câu
+online, chỉ ghi **nhãn nguồn** dưới bong bóng để người dùng biết đang nghe ai. **④ giữ ở cả hai đường**: tool của backend chỉ
+đọc, lệnh tạo (C3) vẫn đi trên máy và chỉ điền sẵn form. Quyết định ở 10.1.
+
 ### ① Mô hình không bao giờ tính
 
 Mọi con số đến từ hàm domain đã có test. Thi hành bằng **test quét `lib/` thứ 14**.
@@ -774,7 +786,7 @@ cần sửa đi qua `docs/superpowers/backend/CAN-LAM/`.
 | Cross-Encoder Reranker | ⚠️ **không áp** — không có danh sách ứng viên để xếp lại |
 | Ragas benchmark | ⬜ đáng cân nhắc cho vòng 3, chưa có |
 
-### 10.1 Hai mâu thuẫn — ① đã chốt 2026-09-22, rồi quay lại ở dạng mới 2026-09-26
+### 10.1 Hai mâu thuẫn — ① đã chốt 2026-09-22, rồi quay lại ở dạng mới 2026-09-26; dạng mới người dùng chốt 2026-10-11, thi công 2026-10-17
 
 > ✅ **① đã chốt ngày 2026-09-22** (`Standard_RAG.md` §6, đóng ở `b147fee`): dữ liệu tài chính của người dùng **không**
 > index lên server; số liệu cá nhân đi bằng gói số hoặc function-calling. Hai đoạn dưới là **ảnh chụp 2026-09-21**,
@@ -789,6 +801,20 @@ cần sửa đi qua `docs/superpowers/backend/CAN-LAM/`.
 > định ấy kèm ngày → `eceb6c9` ghi ở §1 `ChatbotAI.md`: *"nguyên tắc F1, PO chốt ngày 2026-09-23"*, và tả đúng rằng
 > số tiền + ghi chú sau che PII được gửi khi Gemini gọi tool. Người dùng chốt **để backend tự quyết**; client chỉ nêu. ② vẫn đúng như dưới: `.env` dev tới
 > 2026-09-26 vẫn không có `GEMINI_API_KEY`, nên tầng 3 và chatbot trực tuyến chưa từng chạy đường Gemini trên máy này.
+>
+> ✅ **2026-10-11 — người dùng chốt dạng mới của F1: tích hợp HỖN HỢP.** Nguyên văn: *"kết nối AI chatbox ở backend vào, khi có
+> mạng dùng ở backend, không có thì offline"*, và *"tuân thủ cấu trúc hệ thống, tránh sau này phải sửa lại"*. Mỗi câu ở màn Trợ
+> lý AI thử chatbot online của backend trước (công tắc *Trợ lý online* bật ∧ có mạng lúc gửi ∧ câu không thuộc nhóm dữ liệu sống),
+> hỏng thì AI trên máy trả lời **cùng câu**; tờ thông tin một lần trước câu online đầu tiên, nhãn nguồn dưới mỗi bong bóng. Hệ
+> quả cho kiến trúc này: ràng buộc 1 (mục 1) **thu hạn** — *AI trên máy không gửi gì; trợ lý online gửi câu hỏi + bản tóm tắt tài
+> chính + kết quả tool (số tiền giao dịch, ghi chú đã che PII) tới máy chủ FlowMoney và Google Gemini*; bất biến *"mọi con số
+> trong câu phải có trong gói"* chỉ còn cho AI trên máy (mục 6); ④ giữ. Spec
+> `docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` (11 quyết định ở §0).
+>
+> ✅ **2026-10-17 — thi công xong** (22 commit `80d9dee8` → `fb92c16d`, nhánh `TranQuangDat`; chỗ mã khác spec: spec mục 10).
+> 🚧 **Chưa nghiệm thu máy thật**: cần backend dev chạy được (`npm install` + `database/20`, `database/24` — phép đích danh, đơn
+> 44) và một tên `GEMINI_MODEL` đã kiểm (`.env` dev có khoá từ 2026-10-17; đơn 47). Tới khi ấy mọi câu online rơi về AI trên máy.
+> ② (tầng 3 của classifier) không đổi.
 
 **① Dữ liệu cá nhân có được rời thiết bị không?**
 Ma trận §6 xếp *Financial Chatbot* cần truy xuất *"toàn bộ dữ liệu tài chính của
@@ -858,7 +884,8 @@ mô hình **không nói "không có"** mà chọn tool gần nghĩa nhất (mụ
 *"Edge AI"* đúng từ khi mô hình chạy on-device; *"RAG"* thì **cố ý không làm ở client** (mục
 **5.5** đo được là không khả thi) — nó thuộc backend, cho kiến thức chung, không cho số của
 người dùng. *(Backend dựng nó ngày 2026-09-26, bên trong chatbot trực tuyến; chatbot ấy **có** dùng số của người dùng
-— snapshot gộp và kết quả tool gửi sang Gemini — xem 10.1.)*
+— snapshot gộp và kết quả tool gửi sang Gemini — xem 10.1. Từ 2026-10-17 màn Trợ lý AI gọi chatbot ấy khi có mạng — trợ lý
+online hỗn hợp, chưa nghiệm thu máy thật; câu trả lời online không qua sáu lớp chắn ở trên.)*
 
 ⚠️ Cổng D đạt trên **34 câu do chính nhóm soạn**, và ví dụ định tuyến cùng các danh sách từ được tinh chỉnh trên đúng
 bộ ấy — nên nó là điều kiện **cần**. Người dùng cho biết đã hỏi nhiều câu trong phạm vi app mà trợ lý không trả lời

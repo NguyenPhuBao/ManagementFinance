@@ -610,6 +610,49 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-17)
 
+### 🌐 Trợ lý online hỗn hợp: có mạng hỏi backend (Gemini), hỏng / mất mạng rơi về mô hình trên máy — mã xong, CHƯA nghiệm thu máy thật (2026-10-17 tối; người dùng chốt 2026-10-11)
+
+Thi công khối 📝 2026-10-11 bên dưới. Spec `docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md`
+(**mục 10**: 17 chỗ mã khác bản viết); kế hoạch 13 task (gitignore) thi công bằng agent con — Fable soát kế hoạch (5 chặn, áp
+thử Task 1–6), Sonnet làm, Opus soát từng task (mỗi task ≤ 1 vòng sửa); Task 2 **bỏ**. **22** commit `80d9dee8` → `fb92c16d`
+(21 mã + test, `b6eb9975` id Stitch) + commit tài liệu Task 12. Mục **15** `AI_EDGE_FEATURE.md`; đơn CAN-LAM **47**
+(`CLIENT_TRO_LY_ONLINE.md`).
+
+- **Luồng** (`_hoi`): Basic khoá → lệnh tạo C3 trên máy (bất kể mạng) → cổng online `nenHoiOnline` (công tắc `CongTacOnline`
+  bật ∧ `ConnectionMonitor.coMangNgay()` ∧ `!chuDeBiChanOnline`) → tờ thông tin một lần → `_hoiOnline` (SSE `POST
+  /ai/chatbot/chat/stream`, chunk nối thẳng, nhãn nguồn, nút Dừng) → luật rơi thuần `quyetDinhSauOnline`: hỏng **trước chữ
+  đầu** thì **cùng câu** đi đường trên máy (nhãn *AI trên máy · máy chủ không phản hồi*); đứt giữa dòng giữ chữ + *kết nối gián
+  đoạn*; máy chưa sẵn thì câu cố định theo nguyên nhân thật (`kMayChuHongKhongMoHinh` · `kKhongMangKhongMoHinh` · `kCauTuChoi` ·
+  `cauKhoaHoiDap`).
+- **Ba chốt hỏng im lặng** (đo trên mã backend + SDK, không có trong spec): `DuPhongOnline` **luôn** rơi về máy — server chẻ câu
+  thông báo ⚠️ thành `delta` trước `done.fallback`, và `done {error}` cũng là rơi; `xepHistory` gọt tin đầu tới tin `user` + bỏ
+  câu cố định của hệ thống — SDK `@google/generative-ai` 0.24.1 ném *First content should be with role 'user'* và lỗi ấy mở
+  circuit breaker **dùng chung mọi tài khoản**; `toiDa = 6` = `history.slice(-6)` phía server, đừng nâng; `AuthInterceptor`
+  phát lại sau 401 bằng `fetch(copyWith(headers:))` — bản cũ mất `responseType: stream`, SSE đọc dồn thành `String`.
+- **Phán quyết khác** (spec mục 10): DI `sl<DioClient>().dio` (GetIt không đăng ký `Dio`; docstring `dio_client.dart:11` sửa
+  cùng lượt); `coMangNgay()` có sẵn thay `coMangLucNay()`; `chuDeBiChanOnline` so **hai lượt** (có dấu từ trọn / bỏ dấu chỉ từ
+  một nghĩa — câu giá gõ không dấu của đô la / tiền ảo / cổ phiếu nay đi Gemini, chấp nhận); vị từ `_maySan` tách khỏi
+  `_coMoHinh`; nút Dừng vẽ theo `_huyOnline` (còn sau chữ đầu); thẻ *Trợ lý online* + khối Riêng tư ở Cài đặt AI đặt **ngoài**
+  cổng `ai_edge_model`; datasource bắt mọi lỗi giữa luồng thành `LoiOnline`.
+- **Tệp**: `core/api/khung_sse.dart` (mới) · `core/api/interceptors/auth_interceptor.dart` · `ai_chat/domain/{su_kien_online,
+  duong_hoi}.dart` (thư mục mới) · `ai_chat/data/datasources/tro_ly_online_remote_data_source.dart` · `ai_chat/data/cong_tac_online.dart`
+  · `ai_chat/presentation/widgets/tro_ly_ai/` 5 tệp (`the_lenh_tao` dời nguyên văn, `dong_khoa` + `hang_chip` dời để trang dưới
+  trần) · `ai_edge/domain/chu_de_chan.dart` · `ai_edge/presentation/pages/cai_dat_ai_page.dart` · DI; helper test
+  `test/helpers/kho_gia.dart`. `lib/` 10 tệp mới, 5 tệp sửa (+ một dòng docstring `core/api/dio_client.dart` ở commit tài liệu);
+  `core/network` không đổi.
+- **Số đo** (2026-10-17): `flutter test` **7.368 pass / 10 skip** (trước 7.240; **+128** — 52 ở 8 tệp test mới: `khung_sse` 8 ·
+  datasource 16 · `duong_hoi` 16 · `cong_tac_online` 3 · bốn widget 9; 76 ở 5 tệp sửa: `chu_de_chan` +43 · `ai_chat_page` +24 ·
+  `ly_do_khoa` +4 · `cai_dat_ai_page` +4 · `auth_interceptor` +1); chạy một mình 7 phút 43 giây. `flutter analyze` **20** (mức
+  nền, 0 trong tệp lượt này). `ai_chat_page.dart` 1.079 → **1.141** dòng (đỉnh 1.164 sau Task 9, `mienTru` vẫn rỗng);
+  `cai_dat_ai_page.dart` 633 → **694**; `injection_container.dart` 1.031 → 1.039.
+- **Stitch** ba màn (`list_screens` 129 → 132; ba lượt gọi đều `timeout`, màn có sau ~25 phút): `1896d02b…` bong bóng online ·
+  `7a6519d6…` tờ thông tin · `b320f4b9…` Cài đặt AI công tắc — **người dùng chưa xác nhận**.
+- **Còn để**: 🚧 **nghiệm thu máy thật** (Task 13, chín ca spec §6) — cần backend dev chạy được: `npm install` + áp `database/20`,
+  `database/24` thanh toán (ba phép **đích danh**, quy tắc 1 — đơn 44), `.env` dev đã có `GEMINI_API_KEY` + `GEMINI_MODEL`
+  (người dùng chép 2026-10-17) nhưng tên `gemini-3.8-flash` chưa ai kiểm (đơn 47); tin `user` mồ côi trong `history` (câu bị chặn ở
+  client vẫn vào lượt online sau — sửa bằng bỏ theo cặp); ba câu hỏi người dùng (câu định nghĩa khi máy chủ hỏng trả `kCauTuChoi`
+  trần · hàng *Đang nghĩ…* sau tờ thông tin · nhánh `catch` có chữ chưa có ca phủ); xác nhận Stitch.
+
 ### ↩️ Hoàn tác kỳ trả kiểu cũ: đưa kỳ về chưa trả, không hoàn tiền (2026-10-17 tối, người dùng chốt)
 
 Gỡ điểm chờ của việc 4c (khối 🔓 bên dưới, *Còn để* dòng đầu): xoá khoản trả kiểu cũ ở Sổ xong thì kỳ vẫn `Payed`, Hoàn
@@ -1057,6 +1100,9 @@ Người dùng chốt 2026-10-11 làm **trước C4** (C4 giọng nói chạm đ
 - ⚠️ Các khối cũ hơn của mục 14 còn gọi hàm riêng tư của trang theo tên lúc viết. Bảng đổi tên: `_saveTransaction` + `_luuTach` → `ThemGiaoDichCubit.chuanBiLuu` · `_loadSuggestion` → `_napGoiY` · `_dienKetQua` → `dienKetQua` · `_dienTuCau` / `_onNoteChanged` (trang còn hàm chuyển tiếp cùng tên) → logic ở `dienTuCau` / `ghiChuDoi` · `_amountString` → `chuoiSoTien` · `_huong` → `huong` · `_selectedWallet` → `viNguon` · `_hienBanPhimSo` → `hienBanPhimSo` (đều ở `ThemGiaoDichState` / Cubit); `_henGoiYTheoForm`, `_goiYSoTien`, `_choPhanXu` giữ tên (riêng tư trong Cubit).
 
 ### 📝 Trợ lý online (hỗn hợp: có mạng hỏi backend Gemini, hỏng / mất mạng rơi về mô hình trên máy) — spec duyệt + kế hoạch viết, CHƯA thi công (2026-10-11 chiều, người dùng chốt để sau)
+
+> ✅ **Ảnh chụp 2026-10-11 — thi công xong 2026-10-17**, khối 🌐 đầu mục 14. Hai chỗ dưới đây khác mã: `coMangLucNay()` **không
+> làm** (dùng `coMangNgay()` có sẵn từ C4), và DI dùng `sl<DioClient>().dio` — spec mục 10 dòng 1–2.
 
 - Đảo quyết định treo từ 2026-09-26 (🛑 *chatbot trực tuyến chưa nhận*): người dùng chốt **"kết nối AI chatbox ở backend vào, khi
   có mạng dùng ở backend, không có thì offline"** và **"tuân thủ cấu trúc hệ thống, tránh sau này phải sửa lại"**. Brainstorm sáu phần,
@@ -2211,6 +2257,8 @@ vẫn ghi 0, vì client không sửa tệp ấy) *(đóng ở `eceb6c9` ngày h�
   (SSE `POST /api/ai/chatbot/chat/stream`, thẻ FHS, bảng cục bộ `LocalChatMessages`, nút đổi Online/Offline, 6 tiêu chí
   AC-MOB). Client **chưa nhận**: người dùng chọn AI trên máy để dùng được khi mất mạng, và chế độ này gửi số liệu sang
   Google. ⚠️ Hợp đồng API trong tệp ấy **lệch mã** ở `meta`, `done`, mã lỗi 503 và giới hạn `history` — đơn mới mục 3.
+  *(Ảnh chụp 2026-09-26. Người dùng đảo ngày 2026-10-11 — tích hợp **hỗn hợp**, thi công 2026-10-17: khối 🌐 đầu mục 14;
+  năm chỗ cố ý không làm theo tệp ấy ở đơn CAN-LAM 47.)*
 - 🛑 **Lỗi mã backend đo được 2026-09-26** (đơn mới mục 7; không chặn client vì client chưa gọi): khoản chi lưu **âm** trên
   PostgreSQL (truy vấn đọc: **23/23** hàng `Chi` âm, **6/6** hàng `Thu` dương) mà mã FHS cộng như số dương — quỹ khẩn cấp
   luôn **0**, 50/30/20 **âm**, top danh mục chi đảo, `compare_spending_periods` báo chi **giảm** khi chi tăng; test backend
