@@ -68,7 +68,19 @@ Future<void> moBangThanhToanHoaDon(BuildContext context, BillEntity bill,
 
 /// Hỏi trước khi hoàn tác: thao tác này trả tiền lại ví, xoá khoản chi và
 /// gỡ kỳ kế tiếp — ba hệ quả, nên phải nói rõ trước.
-void hoiHoanTacHoaDon(BuildContext context, BillEntity bill) {
+///
+/// [coKhoanTra]: kỳ có khoản chi gắn `billId` trong bản đồ khoản chi của trang
+/// (`paymentsOf`). Không có — khoản trả ghi bằng bản app cũ, có thể đã xoá ở
+/// Sổ — thì hoàn tiền là không làm được (`BillUndoUnavailableException`), nên
+/// hỏi đưa kỳ về chưa trả **không hoàn tiền** (`DatLaiChuaTraEvent`). Bản đồ
+/// không bao giờ chứa khoản kiểu cũ (nó không có `billId`), nên rẽ theo nó
+/// không phải đoán.
+void hoiHoanTacHoaDon(BuildContext context, BillEntity bill,
+    {required bool coKhoanTra}) {
+  if (!coKhoanTra) {
+    _hoiDuaVeChuaTra(context, bill);
+    return;
+  }
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -89,6 +101,42 @@ void hoiHoanTacHoaDon(BuildContext context, BillEntity bill) {
             context.read<BillBloc>().add(UndoPaymentEvent(billId: bill.id));
           },
           child: const Text('Hoàn tác'),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Hộp của kỳ không còn khoản chi gắn `billId`: về chưa trả, không đụng ví.
+///
+/// Câu "hãy xoá nó ở đó trước" là chốt duy nhất cho khoản kiểu cũ còn sống ở
+/// Sổ — app không đoán được khoản nào (tiền tố ghi chú + số tiền + ngày là
+/// phép so `billId` sinh ra để thay), và để nó sống rồi trả lại là hai khoản
+/// chi cho một kỳ. Vế kỳ kế tiếp có điều kiện vì `datLaiChuaTra` chỉ gỡ kỳ
+/// sau còn phải trả — kỳ kiểu cũ là kỳ cũ, tháng sau thường đã trả.
+void _hoiDuaVeChuaTra(BuildContext context, BillEntity bill) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Hoàn tác thanh toán'),
+      content: Text(
+        'Không tìm thấy khoản chi của lần trả này — nó được ghi bằng bản ứng '
+        'dụng cũ. Nếu khoản ấy còn ở Sổ giao dịch, hãy xoá nó ở đó trước; bước '
+        'này không đổi số dư ví.\n\n'
+        'Đưa kỳ "${bill.name}" về chưa thanh toán'
+        '${bill.isRecurrence ? ' và gỡ kỳ kế tiếp nếu kỳ ấy chưa trả' : ''}?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Huỷ'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(ctx);
+            context.read<BillBloc>().add(DatLaiChuaTraEvent(billId: bill.id));
+          },
+          child: const Text('Đưa về chưa trả'),
         ),
       ],
     ),

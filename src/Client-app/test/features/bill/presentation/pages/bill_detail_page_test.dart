@@ -222,6 +222,43 @@ void main() {
     expect(find.text('ĐÃ THANH TOÁN'), findsOneWidget);
   });
 
+  testWidgets(
+      'đã trả có khoản chi gắn billId: Hoàn tác hứa hoàn tiền về ví',
+      (tester) async {
+    await hoaDon('k2', DateTime(2026, 8, 6), paid: true);
+    await khoanChi('k2', DateTime(2026, 8, 6));
+    await dungTrang(tester, 'k2');
+
+    await tester.tap(find.byKey(const ValueKey('bill-detail-undo')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Hoàn 250.000 đ về ví'), findsOneWidget);
+    expect(find.widgetWithText(ElevatedButton, 'Hoàn tác'), findsOneWidget);
+  });
+
+  testWidgets(
+      'đã trả KHÔNG có khoản chi gắn billId (kiểu cũ): hộp đưa về chưa trả, '
+      'bấm xong kỳ về chưa trả và ví không đổi (2026-10-17)', (tester) async {
+    await hoaDon('k2', DateTime(2026, 8, 6), paid: true);
+    final soDuTruoc = (await db.walletDao.getById('w1'))!.balance;
+    await dungTrang(tester, 'k2');
+
+    await tester.tap(find.byKey(const ValueKey('bill-detail-undo')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Hoàn 250.000 đ về ví'), findsNothing,
+        reason: 'Trước lượt này hộp này hứa hoàn tiền, bấm xong chỉ nhận lỗi '
+            '"bản ứng dụng cũ" — và kỳ không bao giờ về chưa trả.');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Đưa về chưa trả'));
+    await tester.pumpAndSettle();
+
+    expect((await db.billDao.getById('k2'))!.payStatus, 'Pending');
+    expect((await db.walletDao.getById('w1'))!.balance, soDuTruoc);
+    expect(find.byKey(const ValueKey('bill-detail-pay')), findsOneWidget,
+        reason: 'Trang nạp lại sau BillOperationSuccess: kỳ chưa trả có nút '
+            'Thanh toán.');
+  });
+
   testWidgets('trả xong thì trang nạp lại: trạng thái đổi, kỳ mới vào lịch sử',
       (tester) async {
     await hoaDon('k3', DateTime(2026, 9, 8));

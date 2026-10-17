@@ -458,6 +458,9 @@ class _BillPageState extends State<BillPage> {
         // chối nó). Bày nút Thanh toán cho nó là dẫn người dùng
         // thẳng tới một thông báo lỗi.
         daBoQua: status == BillDisplayStatus.skipped,
+        // Kỳ đã trả mà không có khoản chi gắn `billId` → nút Hoàn tác hỏi đưa
+        // kỳ về chưa trả, không hứa hoàn tiền (`hoiHoanTacHoaDon`).
+        coKhoanTra: khoanChi != null,
       ),
     );
   }
@@ -560,6 +563,7 @@ class _BillPageState extends State<BillPage> {
     required Color accentColor,
     bool isPaid = false,
     bool daBoQua = false,
+    bool coKhoanTra = false,
     String? meta,
     IconData? icon,
     Color? iconColor,
@@ -625,6 +629,7 @@ class _BillPageState extends State<BillPage> {
                       amount: amount,
                       isPaid: isPaid,
                       daBoQua: daBoQua,
+                      coKhoanTra: coKhoanTra,
                       soNgayNhac: _soNgayNhac,
                     ),
                   ],
@@ -737,6 +742,7 @@ class _HangSoTien extends StatelessWidget {
     required this.amount,
     required this.isPaid,
     required this.daBoQua,
+    required this.coKhoanTra,
     required this.soNgayNhac,
   });
 
@@ -744,6 +750,9 @@ class _HangSoTien extends StatelessWidget {
   final String amount;
   final bool isPaid;
   final bool daBoQua;
+
+  /// Kỳ có khoản chi gắn `billId` trong bản đồ của trang — chọn hộp Hoàn tác.
+  final bool coKhoanTra;
 
   /// Ngưỡng nhãn "Sắp đến hạn" của trang, chuyển cho bảng Thanh toán.
   final int soNgayNhac;
@@ -864,7 +873,8 @@ class _HangSoTien extends StatelessWidget {
     if (isPaid) {
       return TextButton.icon(
         key: ValueKey('bill-undo-${bill.id}'),
-        onPressed: () => hoiHoanTacHoaDon(context, bill),
+        onPressed: () =>
+            hoiHoanTacHoaDon(context, bill, coKhoanTra: coKhoanTra),
         icon: const Icon(Icons.undo, size: 16),
         label: const FittedBox(
           fit: BoxFit.scaleDown,

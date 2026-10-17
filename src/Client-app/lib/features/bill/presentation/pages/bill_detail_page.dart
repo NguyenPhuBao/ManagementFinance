@@ -459,7 +459,9 @@ class _BillDetailPageState extends State<BillDetailPage> {
     if (status == BillDisplayStatus.paid) {
       return OutlinedButton.icon(
         key: const ValueKey('bill-detail-undo'),
-        onPressed: () => hoiHoanTacHoaDon(context, b),
+        // Không có khoản chi gắn `billId` (kiểu cũ) → hộp đưa về chưa trả.
+        onPressed: () => hoiHoanTacHoaDon(context, b,
+            coKhoanTra: _khoanChi.containsKey(b.id)),
         icon: const Icon(Icons.undo, size: 18),
         label: const Text('Hoàn tác thanh toán'),
         style: _vien,

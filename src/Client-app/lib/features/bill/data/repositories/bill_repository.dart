@@ -42,7 +42,9 @@ class BillNotPaidException implements Exception {
 /// Sợi dây ấy là cột `transactions.billId`, có từ schema v16 (2026-09-06), đi
 /// qua đồng bộ (`idbill`) từ 2026-09-12. Khoản trả ghi trước ngày ấy (bản app
 /// cũ, hoặc kéo về từ server khi cột chưa đồng bộ) để trống nó — sổ giao dịch
-/// mở khoá những khoản ấy có cảnh báo (việc 4c), nên người dùng gỡ được ở đó.
+/// mở khoá những khoản ấy có cảnh báo (việc 4c), nên người dùng gỡ được ở đó,
+/// và kỳ về chưa trả qua [BillRepository.datLaiChuaTra] (trang rẽ sang hộp ấy
+/// khi bản đồ khoản chi không có kỳ này — ngoại lệ này chỉ còn là lưới an toàn).
 /// Từ chối có thông báo rõ thay vì đoán theo tiền tố ghi chú
 /// cộng số tiền cộng ngày: đoán trượt ở đây nghĩa là hoàn tiền vào ví bằng một
 /// khoản chi **khác** của người dùng.
@@ -54,6 +56,21 @@ class BillUndoUnavailableException implements Exception {
   String toString() =>
       'Không hoàn tác được hoá đơn $billId: khoản chi tương ứng được ghi bằng '
       'bản ứng dụng cũ nên không lần lại được.';
+}
+
+/// Ném ra khi đưa kỳ [billId] về chưa trả **không hoàn tiền**
+/// ([BillRepository.datLaiChuaTra]) mà kỳ vẫn còn khoản chi sống gắn `billId`.
+///
+/// Kỳ như thế phải đi [BillRepository.undoPayment]: về `Pending` mà để khoản
+/// chi ấy sống thì sổ giao dịch vẫn khoá nó (`transactionOwnerOf` theo
+/// `billId`) — tiền không còn lối về ví, và trả lại là hai khoản chi cho một kỳ.
+class BillPaymentStillLinkedException implements Exception {
+  final String billId;
+  const BillPaymentStillLinkedException(this.billId);
+
+  @override
+  String toString() =>
+      'Hoá đơn $billId còn khoản chi gắn với lần trả; hãy hoàn tác thanh toán.';
 }
 
 /// Ném ra khi bỏ qua một kỳ mà CSDL đã ghi nhận là bỏ qua rồi.
@@ -154,6 +171,20 @@ abstract class BillRepository {
   /// gỡ nhầm khoản của máy thắng và đẩy cờ xoá ấy lên server, đo được trên
   /// PostgreSQL ngày 2026-09-13.
   Future<void> undoPayment({required String billId, String? transactionId});
+
+  /// Đưa kỳ đã trả [billId] về chưa trả mà **không** hoàn tiền — cho kỳ không
+  /// còn khoản chi sống nào gắn `billId` (khoản trả ghi bằng bản app cũ, có thể
+  /// người dùng đã xoá nó ở Sổ giao dịch), nơi [undoPayment] ném
+  /// [BillUndoUnavailableException].
+  ///
+  /// Về `Pending`; gỡ kỳ kế tiếp **chỉ khi kỳ ấy còn phải trả** (`conPhaiTra`)
+  /// — kỳ kiểu cũ là kỳ cũ, tháng sau của nó thường đã trả hoặc bỏ qua, gỡ nó
+  /// là xoá một kỳ đã đóng và bỏ khoản chi của nó thành mồ côi. **Không** đụng
+  /// sổ giao dịch, không đụng số dư ví.
+  ///
+  /// Từ chối kỳ chưa trả ([BillNotPaidException]) và kỳ còn khoản chi gắn
+  /// `billId` ([BillPaymentStillLinkedException]).
+  Future<void> datLaiChuaTra({required String billId});
 
   /// Xoá mềm các kỳ TRÙNG (cùng gốc chuỗi, cùng ngày hạn) theo `kyTrungCanGo` — G87. Trả số kỳ đã gỡ.
   ///

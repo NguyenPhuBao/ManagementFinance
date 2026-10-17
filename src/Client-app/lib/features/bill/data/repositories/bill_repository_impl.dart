@@ -275,6 +275,48 @@ class BillRepositoryImpl implements BillRepository {
     syncEngine?.scheduleSync();
   }
 
+  @override
+  Future<void> datLaiChuaTra({required String billId}) async {
+    final current = await dataSource.getBillById(billId);
+    if (current == null) {
+      throw StateError('Không tìm thấy hoá đơn $billId');
+    }
+    if (!daCoKhoanChi(BillEntity.fromDrift(current))) {
+      throw BillNotPaidException(billId);
+    }
+    // Còn khoản chi gắn `billId` thì đây là việc của `undoPayment` — xem
+    // `BillPaymentStillLinkedException`. Hộp hỏi chỉ mở khi trang không thấy
+    // khoản nào, nhưng bản đồ của trang có thể cũ hơn CSDL.
+    if (await db.transactionDao.getByBill(billId) != null) {
+      throw BillPaymentStillLinkedException(billId);
+    }
+
+    final now = DateTime.now();
+
+    await db.transaction(() async {
+      // Chỉ gỡ kỳ kế tiếp khi nó còn phải trả — khác `undoPayment`. Kỳ kiểu cũ
+      // là kỳ cũ: tháng sau của nó thường đã trả hoặc bỏ qua, gỡ nó là xoá một
+      // kỳ đã đóng (khoản chi của nó thành mồ côi). Kỳ còn phải trả thì chưa
+      // sinh kỳ nào, nên một phép kiểm là đủ cho cả chuỗi.
+      final kySau = await db.billDao.getGeneratedFrom(billId);
+      if (kySau != null && conPhaiTra(BillEntity.fromDrift(kySau))) {
+        await dataSource.softDeleteBill(kySau.id);
+      }
+
+      // Đặt CẢ HAI cột, cùng lý do với `undoPayment`. Không đụng sổ, không
+      // đụng số dư: không có khoản chi nào lần được về kỳ này.
+      await dataSource.updateBill(BillsCompanion(
+        id: Value(billId),
+        payStatus: const Value(kBillPending),
+        isPaid: const Value(false),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
+    });
+
+    syncEngine?.scheduleSync();
+  }
+
   /// Khoản chi [id] nếu nó **còn sống**.
   ///
   /// ⚠️ `TransactionDao.getById` **cố ý** đọc cả hàng đã xoá mềm — resolver cần

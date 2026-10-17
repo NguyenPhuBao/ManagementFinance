@@ -1,8 +1,9 @@
 /// Cổng "hoá đơn của khoản này đã xoá chưa" (việc 4c) — mặc định an toàn là KHOÁ.
 ///
 /// Vì sao cần: sổ chỉ mở khoá khoản trả hoá đơn khi biết CHẮC hoá đơn đã xoá mềm. Hàm đọc lỗi, hay hoá đơn chưa kéo
-/// về máy, mà trả `true` là mở khoá một khoản trả của hoá đơn còn sống — xoá rời ở sổ thì kỳ vẫn `Payed`, Hoàn tác
-/// hết đường lần về.
+/// về máy, mà trả `true` là mở khoá một khoản trả của hoá đơn còn sống — xoá rời ở sổ thì kỳ vẫn `Payed` và Hoàn tác
+/// mất sợi dây `billId`: chỉ còn lối đưa kỳ về chưa trả không hoàn tiền (`datLaiChuaTra`, 2026-10-17), không còn hoàn
+/// tác trọn vẹn.
 library;
 
 import 'package:flowmoney/features/transaction/data/hoa_don_da_xoa_nguon.dart';
