@@ -14,12 +14,18 @@ import '../../category/presentation/category_test_fakes.dart';
 /// `TransactionPage` nối thẳng vào `sl` và `AuthBloc`, không dựng được trong
 /// test.
 void main() {
-  TransactionEntity tx({String? goalId, String note = '', String type = 'chi'}) =>
+  TransactionEntity tx({
+    String? goalId,
+    String? billId,
+    String note = '',
+    String type = 'chi',
+  }) =>
       TransactionEntity(
         id: 'tx-$note-$goalId',
         walletId: 'w',
         idaccount: 1,
         goalId: goalId,
+        billId: billId,
         amount: 25000,
         type: type,
         note: note,
@@ -69,8 +75,9 @@ void main() {
     expect(bat.cuoi!.loai, LoaiThongBao.loi);
   });
 
-  testWidgets('khoản trả hoá đơn: KHÔNG xoá, báo lý do', (tester) async {
-    final khoanTra = tx(note: 'Thanh toán hóa đơn: Tiền điện');
+  testWidgets('khoản trả hoá đơn còn (có billId): KHÔNG xoá, báo lý do',
+      (tester) async {
+    final khoanTra = tx(billId: 'b1', note: 'Thanh toán hóa đơn: Tiền điện');
     final deleted = await vuotXoa(tester, khoanTra);
 
     expect(deleted, 0,
@@ -78,6 +85,8 @@ void main() {
             'dịch, trừ ví, kỳ kế tiếp); xoá một bước thì ba bước kia còn nguyên.');
     expect(find.byKey(Key(khoanTra.id)), findsOneWidget);
     expect(bat.cau.single, contains('hoá đơn'));
+    expect(bat.cau.single, contains('không xoá được từ sổ giao dịch'),
+        reason: 'Chưa có cổng (dòng đơn lẻ) thì khoản có billId mặc định khoá.');
   });
 
   testWidgets('hàng không ghi chú hiện nhãn theo loại', (tester) async {
