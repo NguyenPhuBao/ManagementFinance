@@ -1,4 +1,13 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (5 mục chờ backend — mục 41, 42, 43, 44, 45)
+# Backend & Client — DANH SÁCH CẦN LÀM (6 mục chờ backend — mục 41, 42, 43, 44, 45, 46)
+
+> ✉️ **Client đặt mục 46, 2026-10-17:** [`NOTIFICATION_CLIENT_APP_LECH_MA.md`](./NOTIFICATION_CLIENT_APP_LECH_MA.md) —
+> mức **thấp**, chỉ **sửa chữ**. `docs/Notification/Notification_Client-app.md` (commit cuối `10ab14c3`) tả client lệch mã
+> ở khoảng 30 chỗ: đường dẫn `core/notification/` đã dời sang `features/notification/`, mã mẫu REST không biên dịch và gọi
+> `/api/api/notifications`, hàm / route không tồn tại (`markAsRead`, `insertServerNotification`, `/profile/account-security`),
+> "19 loại" / 7 chip (thật: 20 / 8), và hành vi tả sai (quét "định kỳ", người dùng chờ xoá "không thấy" đếm ngược, chuông
+> có số đã xong mà §3.5 vẫn ghi là việc chưa làm). Mỗi hàng gắn **[cũ]** (đã báo ở B350D40 / A7C03B7 mà vẫn sai) hoặc
+> **[mới]**. Không đổi mã, lược đồ, payload. `DA-XONG/` đếm bằng máy 2026-10-17: **58** tệp + mục lục. `ls CAN-LAM/` nay:
+> **41 · 42 · 43 · 44 · 45 · 46** · `CLIENT_INTEGRATION_GUIDE.md` + README.
 
 > ✉️ **Client đặt mục 45, 2026-10-16 khuya:** [`TAT_NHAC_HOA_DON_QUA_DONG_BO.md`](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) —
 > mức **vừa**. `/sync/push` ép `time_notification = NULL` của hoá đơn thành `'3'` khi tạo (`|| '3'`) và giữ giá trị cũ khi
@@ -70,7 +79,7 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **5** mục — đếm bằng `ls` 2026-10-16 khuya: backend chưa trả lời mục 41, 42, 43, 44; client vừa đặt 45)
+## 0. Còn phải làm (Hiện tại: **6** mục — đếm bằng `ls` 2026-10-17: backend chưa trả lời mục 41, 42, 43, 44, 45; client vừa đặt 46)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
@@ -79,6 +88,7 @@
 | **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | **A (cao)** AIOps khoá tài khoản ghi `'Inactive'` thay `'Locked'`; `accountRejection` mặc định `ACCOUNT_INACTIVE`, chỉ `Deleted` mới `ACCOUNT_DELETED`; áp lại `ck_account_status` (`database/N`). **B (cao)** webhook `orderCode` lạ → 2xx, không tạo đơn / không nâng gói. **C (vừa)** 503 lúc đăng nhập bảo trì mang `code` + `Retry-After`. **D (thấp)** sửa `Event-Notification-to-ClientApp.md` theo bảng của đơn. Client làm phần mình (connect_error, `account.downgraded`, dải bảo trì / phong toả) **sau khi** đơn đóng. *(Soát ở `d72ccd45`: B vẫn mở — `findOrCreateOrderByCode` không đổi.)* | ⏳ Chờ backend |
 | **44** | [SOAT_SAU_GOP_D72CCD45.md](./SOAT_SAU_GOP_D72CCD45.md) | Backend | **A (cao)** đánh số lại hai tệp migration thanh toán (trùng 20, 24); trả `apply_migration_20.js` về migration `Server_update_at`. **B (vừa)** webhook chỉ xử lý đơn còn `PENDING` (`EXPIRED` tuỳ chọn), khử trùng theo `reference`. **C (vừa)** tra mã nhận diện theo token cuối của nội dung. **D (vừa)** nới `payment_order.status` lên 25 bằng SQL, hoặc đưa `schema.prisma` về 20. **E (thấp)** `accept` bắt buộc boolean. **F (thấp)** thêm hợp đồng thanh toán mới vào `Event-Notification-to-ClientApp.md`. Không chặn client (G94). | ⏳ Chờ backend |
 | **45** | [TAT_NHAC_HOA_DON_QUA_DONG_BO.md](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) | Backend | `sync.repository.js`: hoá đơn `time_notification` — tạo ~:471 `\|\| '3'` và cập nhật ~:497 `?? existing` nuốt NULL (= tắt nhắc ở client); ~:98 `String(null)` thành `"null"`. Đổi sang `!== undefined ? … : …`. Đo dev: 37 hoá đơn sống, 0 NULL (hệ quả của phép ép). Client đã làm phần mình (`d657b065`, tắt là tắt thật); tới khi sửa, tắt nhắc bị đảo sau một vòng đồng bộ. | ⏳ Chờ backend |
+| **46** | [NOTIFICATION_CLIENT_APP_LECH_MA.md](./NOTIFICATION_CLIENT_APP_LECH_MA.md) | Backend (chữ) | Sửa `docs/Notification/Notification_Client-app.md` theo bảng của đơn (~30 chỗ, bốn nhóm: đường dẫn · hàm / route · con số · hành vi; nhãn [cũ] / [mới]); phần phía backend ghi riêng, ngắn. Kiểm lại bằng một câu `grep` ra 0 dòng. Không đổi mã; không chặn client. | ⏳ Chờ |
 
 ---
 
