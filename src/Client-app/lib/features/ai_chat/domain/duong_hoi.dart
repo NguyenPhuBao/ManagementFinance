@@ -23,13 +23,15 @@ class HoanTat extends KetQuaOnline {
   const HoanTat();
 }
 
-/// Chưa có chữ nào mà lượt online hỏng → cùng câu đi đường trên máy.
+/// Lượt online hỏng, hoặc server báo dự phòng (`DuPhongOnline` — bất kể đã có chữ) → cùng câu đi
+/// đường trên máy.
 class RoiVeMay extends KetQuaOnline {
   const RoiVeMay(this.lyDo);
   final String lyDo;
 }
 
-/// Đã có chữ (hoặc người dùng tự dừng) → giữ phần đã hiện, kèm ghi chú.
+/// Đã có chữ mà luồng đứt / đóng không `done`, hoặc người dùng bấm Dừng → giữ phần đã hiện,
+/// kèm ghi chú.
 class GiuPhanDaCo extends KetQuaOnline {
   const GiuPhanDaCo(this.ghiChu);
   final String ghiChu;
@@ -58,13 +60,28 @@ KetQuaOnline quyetDinhSauOnline({
 
 typedef MucHoiThoai = ({bool cuaToi, String cau, bool laThe});
 
-/// ≤ [toiDa] tin CHỮ gần nhất (bỏ thẻ lệnh tạo), vai `user` / `model`, thứ tự cũ → mới.
-/// Tin đầu luôn là `user` (hoặc rỗng). Không gồm câu đang hỏi — người gọi truyền hội thoại TRƯỚC khi thêm nó.
+/// History gửi Gemini, ghép theo CẶP trên hội thoại CHƯA lọc (cũ → mới): một cặp = tin của
+/// người dùng đứng NGAY TRƯỚC một lời đáp của AI (cả hai là chữ thật, không phải thẻ lệnh /
+/// câu cố định của hệ thống). Lấy ≤ `toiDa ~/ 2` cặp cuối; tin không thuộc cặp nào bị bỏ.
+///
+/// Vì sao theo cặp: tin `user` mà lời đáp là câu hệ thống (câu bị chặn ở client, lệnh tạo C3) hay
+/// bị Dừng không chữ là tin MỒ CÔI — để lọt lên Gemini thì lách được `chuDeBiChanOnline`; còn
+/// SDK Gemini đòi tin đầu là `user` và ném lỗi (mở circuit breaker dùng chung) nếu không. Kết quả
+/// luôn xen kẽ user/model, bắt đầu `user`, kết bằng `model`, độ dài chẵn ≤ [toiDa].
+/// Không gồm câu đang hỏi — người gọi truyền hội thoại TRƯỚC khi thêm nó.
 List<TinLichSu> xepHistory(Iterable<MucHoiThoai> hoiThoai, {int toiDa = 6}) {
-  final chu = hoiThoai.where((m) => !m.laThe && m.cau.isNotEmpty).toList();
-  final tu = chu.length > toiDa ? chu.length - toiDa : 0;
-  // SDK Gemini (`validateChatHistory`) đòi tin đầu là `user`: sau khi cắt cửa sổ, bỏ các tin
-  // đầu cho tới tin của người dùng đầu tiên (lời chào AI gieo sẵn cũng bị gọt ở đây).
-  final cat = chu.sublist(tu).skipWhile((m) => !m.cuaToi);
-  return [for (final m in cat) (role: m.cuaToi ? 'user' : 'model', text: m.cau)];
+  final tin = hoiThoai.toList();
+  final cap = <TinLichSu>[];
+  for (var i = 0; i + 1 < tin.length; i++) {
+    final h = tin[i], d = tin[i + 1];
+    final hopLe = h.cuaToi && !h.laThe && h.cau.isNotEmpty && !d.cuaToi && !d.laThe && d.cau.isNotEmpty;
+    if (!hopLe) continue;
+    cap
+      ..add((role: 'user', text: h.cau))
+      ..add((role: 'model', text: d.cau));
+    i++;
+  }
+  final toiDaCap = toiDa ~/ 2;
+  final tu = cap.length > toiDaCap * 2 ? cap.length - toiDaCap * 2 : 0;
+  return cap.sublist(tu);
 }

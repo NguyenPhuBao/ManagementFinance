@@ -139,6 +139,9 @@ void main() {
       'tỷ giá usd',
       'ti gia hom nay',
       'lãi suất ngân hàng nào cao nhất',
+      'Lãi suất hôm nay bao nhiêu?',
+      'lai suat hien nay la bao nhieu',
+      'Lãi suất ngân hàng hôm nay?',
       'thời tiết mai thế nào',
       'tin tức tài chính hôm nay',
       'kết quả xổ số',
@@ -160,6 +163,10 @@ void main() {
       'thuế thu nhập cá nhân tính thế nào',
       'tôi có nên vay ngân hàng mua xe không',
       'tháng này tôi chi nhiều nhất cho gì',
+      // Người dùng chốt 2026-10-17 khuya: chỉ lãi suất ngân hàng / hôm nay / hiện nay là dữ liệu sống.
+      'Lãi suất kép là gì?',
+      'Vay trả góp lãi suất 10%/năm thì mỗi tháng trả bao nhiêu?',
+      'lai suat kep la gi',
     ]) {
       test('online MỞ: "$c"', () => expect(chuDeBiChanOnline(c), isFalse));
     }
@@ -215,6 +222,10 @@ void main() {
           if (m.nhan != kNhanKhongDinhTuyen && chuDeBiChanOnline(m.cau)) m.toString(),
       ];
       expect(oan, isEmpty, reason: 'câu tool trả lời được mà bị chặn online');
+    });
+
+    test('chuDeBiChan (trên máy) vẫn chặn "lãi suất" trần — đổi online không được đổi đường máy', () {
+      expect(chuDeBiChan('Lãi suất kép là gì?'), isTrue, reason: 'cổng F: H2 lần 2 đã đo');
     });
 
     test('ca canh: chuDeBiChan (trên máy) KHÔNG đổi — nhóm tư vấn và định nghĩa vẫn chặn', () {

@@ -4,7 +4,7 @@ import '../../../../../shared/theme/app_colors.dart';
 
 const String kTieuDeToOnline = 'Trợ lý online';
 const String kThanToOnline =
-    'Khi có mạng, câu hỏi của bạn cùng bản tóm tắt tài chính (tỉ lệ chi theo nhóm, điểm sức khoẻ tài chính; khi cần, số tiền một vài giao dịch với ghi chú đã che thông tin cá nhân) được gửi tới máy chủ FlowMoney và Google Gemini để trả lời. Mất mạng thì AI trên máy trả lời, không gửi gì. Đổi lại được ở Cài đặt AI.';
+    'Khi có mạng, câu hỏi của bạn cùng bản tóm tắt tài chính (tỉ lệ chi theo nhóm, điểm sức khoẻ tài chính; khi cần, số tiền một vài giao dịch với ghi chú đã che thông tin cá nhân) và vài tin gần nhất của cuộc trò chuyện được gửi tới máy chủ FlowMoney và Google Gemini để trả lời. Mất mạng thì AI trên máy trả lời, không gửi gì. Đổi lại được ở Cài đặt AI.';
 
 /// Stitch `7a6519d6…` dùng #454743 cho thân; `AppColors.onSurfaceVariant` là #767872 (không đủ tương phản).
 const Color _mauThan = Color(0xFF454743);

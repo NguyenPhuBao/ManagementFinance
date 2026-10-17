@@ -7,8 +7,9 @@ import '../../../domain/duong_hoi.dart';
 /// của hệ thống không có nhãn — chúng không đến từ AI nào.
 enum NguonTraLoi { trenMay, online }
 
-/// Stitch `1896d02b…` dùng #454743; `_mauChu` là #767872 (3,8:1 trên nền trang,
-/// dưới AA 4,5 cho chữ 12 px) — cùng lý do với `hop_thoai_bi_day_ra.dart`, `bill_page.dart`.
+/// Stitch `1896d02b…` dùng #454743 cho chữ nhãn — không dùng `AppColors.onSurfaceVariant`
+/// (#767872: 3,8:1 trên nền trang, dưới AA 4,5 cho chữ 12 px) — cùng lý do với
+/// `hop_thoai_bi_day_ra.dart`, `bill_page.dart`.
 const Color _mauChu = Color(0xFF454743);
 
 /// Nhãn dưới bong bóng (Stitch `1896d02b…`): chấm 6 px + chữ 12 px. Chấm xanh = online êm,

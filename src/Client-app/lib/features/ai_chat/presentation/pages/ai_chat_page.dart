@@ -129,6 +129,12 @@ const String kKhongMangKhongMoHinh =
 const String kMayChuHongKhongMoHinh =
     'Máy chủ không phản hồi, và AI trên máy chưa sẵn (chưa tải / đang tắt). Thử lại sau hoặc mở Cài đặt AI.';
 
+/// Máy chủ hỏng giữa chừng mà câu thuộc chủ đề AI trên máy từ chối (định nghĩa / tư vấn — Gemini trả lời
+/// được): nói rõ lý do rơi, không để người dùng thấy câu từ chối trần (người dùng chốt 2026-10-17: lý do
+/// rơi phải hiện cho người dùng, không chỉ trong log).
+const String kMayChuHongTuChoi =
+    'Máy chủ không phản hồi; AI trên máy chỉ nhận xét được trên số liệu của bạn trong app.';
+
 const String kDangHoiOnline = 'Đang hỏi trợ lý online…';
 
 String cauKhoa(LyDoKhoaHoiDap ly) => switch (ly) {
@@ -466,14 +472,17 @@ class _AiChatPageState extends State<AiChatPage> {
       }
     }
 
-    // Không phải lệnh mà máy chưa sẵn: câu cố định theo NGUYÊN NHÂN thật (vừa rơi từ online · mất mạng · chủ đề bị từ chối ·
-    // chưa tải / tắt mô hình) — băng nhắc tải vẫn ở đó.
+    // Không phải lệnh mà máy chưa sẵn: câu cố định theo NGUYÊN NHÂN thật (vừa rơi từ online · dữ liệu sống · mất mạng ·
+    // chủ đề máy từ chối · chưa tải / tắt mô hình) — băng nhắc tải vẫn ở đó. Dữ liệu sống đứng TRƯỚC mất mạng: nối mạng
+    // cũng không trả lời được câu ấy.
     if (!_maySan) {
       final vuaRoi = _ghiChuRoi != null;
       _ghiChuRoi = null;
       final String cau;
       if (vuaRoi) {
         cau = kMayChuHongKhongMoHinh;
+      } else if (chuDeBiChanOnline(c)) {
+        cau = kCauTuChoi;
       } else if (matMang) {
         cau = kKhongMangKhongMoHinh;
       } else if (chuDeBiChan(c)) {
@@ -488,7 +497,9 @@ class _AiChatPageState extends State<AiChatPage> {
     // ⚠️ Chặn TRƯỚC khi gọi mô hình: 2,3 giây cho một câu chắc chắn bị vứt đi
     // là lãng phí, và mô hình không nên thấy câu hỏi ấy.
     if (chuDeBiChan(c)) {
-      _themCuaAi(const _TinNhan.cuaAi(kCauTuChoi));
+      final vuaRoi = _ghiChuRoi != null;
+      _ghiChuRoi = null;
+      _themCuaAi(_TinNhan.cuaAi(vuaRoi ? kMayChuHongTuChoi : kCauTuChoi));
       return;
     }
 
@@ -652,6 +663,7 @@ class _AiChatPageState extends State<AiChatPage> {
       await for (final sk in luong) {
         if (!mounted) return const HoanTat();
         if (chot) continue;
+        if (_daDungOnline) continue; // khung tới sau Dừng không được nối vào bong bóng
         cuoi = sk;
         if (sk is! ChuOnline) {
           chot = true; // KHÔNG `break`: huỷ đăng ký giữa chừng treo trong test và thừa với datasource (đúng một sự kiện cuối)

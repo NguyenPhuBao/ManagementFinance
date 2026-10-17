@@ -28,6 +28,7 @@ void main() {
     expect(find.text(kTieuDeToOnline), findsOneWidget);
     expect(find.text(kThanToOnline), findsOneWidget);
     expect(find.textContaining('Google Gemini'), findsOneWidget);
+    expect(find.textContaining('vài tin gần nhất của cuộc trò chuyện'), findsOneWidget);
     expect(find.textContaining('không gửi gì'), findsOneWidget);
     expect(find.byKey(const Key('to-da-hieu')), findsOneWidget);
     expect(find.byKey(const Key('to-chi-tren-may')), findsOneWidget);

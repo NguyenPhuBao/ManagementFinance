@@ -13,7 +13,9 @@
 ///
 /// Tệp phục vụ hai đường: `chuDeBiChan` (mô hình trên máy: chặn cả tư vấn chung)
 /// và `chuDeBiChanOnline` (Gemini: mở tư vấn chung, chỉ chặn dữ liệu sống và câu
-/// hỏi giá tài sản).
+/// hỏi giá tài sản). Hai đường CHUNG nhóm dữ liệu sống (giá vàng, tỉ giá, thời tiết…)
+/// nhưng KHÁC nhau ở "lãi suất": trên máy chặn cụm trần, online chỉ chặn lãi suất
+/// ngân hàng / hôm nay / hiện nay.
 library;
 
 import '../../../core/category/category_name.dart';
@@ -21,12 +23,10 @@ import '../../../core/category/category_name.dart';
 const String kCauTuChoi =
     'Mình chỉ nhận xét được trên số liệu của bạn trong app.';
 
-/// Nhóm **dữ liệu sống** — thứ không mô hình nào có số đúng hôm nay (giá, tỉ giá,
-/// thời tiết, kết quả): chặn ở CẢ hai đường. Spec trợ lý online 2026-10-11 §3.1.
-const List<String> _tuKhoaSong = [
-  'lãi suất ngân hàng',
-  // H2 cổng F lần 2 (DC1): app không lưu lãi suất của ví hay mục tiêu nào.
-  'lãi suất',
+/// Nhóm **dữ liệu sống** DÙNG CHUNG — thứ không mô hình nào có số đúng hôm nay (giá,
+/// tỉ giá, thời tiết, kết quả): chặn ở CẢ hai đường. Spec trợ lý online 2026-10-11 §3.1.
+/// Riêng "lãi suất" tách ra hai danh sách bên dưới (mỗi đường một độ rộng).
+const List<String> _tuKhoaSongChung = [
   // Lát 2 spec mở rộng tool (2026-09-27 §6; E22 cổng E: câu ngoài phạm vi bị ép
   // vào tool). App không có nguồn nào cho những thứ này.
   'giá vàng',
@@ -37,6 +37,19 @@ const List<String> _tuKhoaSong = [
   'tin tức',
   'xổ số',
   'bóng đá',
+];
+
+/// "Lãi suất" của đường TRÊN MÁY: cụm trần. H2 cổng F lần 2 (DC1): app không lưu lãi suất của
+/// ví hay mục tiêu nào, mô hình từng gọi tool mục tiêu rồi kể tiến độ cho câu này — đã đo, giữ.
+const List<String> _tuKhoaLaiSuatTrenMay = ['lãi suất ngân hàng', 'lãi suất'];
+
+/// "Lãi suất" của đường ONLINE: chỉ lãi suất ngân hàng / hôm nay / hiện nay là dữ liệu sống
+/// (spec trợ lý online §0 q2; người dùng chốt 2026-10-17 khuya). *"Lãi suất kép là gì?"*,
+/// *"vay trả góp lãi suất 10%/năm…"* là kiến thức / tính toán — Gemini trả lời được.
+const List<String> _tuKhoaLaiSuatOnline = [
+  'lãi suất ngân hàng',
+  'lãi suất hôm nay',
+  'lãi suất hiện nay',
 ];
 
 /// Nhóm **tư vấn chung** — mô hình trên máy không biết gì ngoài sổ nên chặn; đường
@@ -59,7 +72,6 @@ const List<String> _tuKhoaTuVan = [
 /// Chỉ những cụm bỏ dấu mà vẫn một nghĩa; nhóm tư vấn KHÔNG có bản này vì "dau tu"
 /// trùng "đầu tư" với "đấu từ", "thue" trùng "thuế" với "thuê".
 const List<String> _tuKhoaSongKhongDau = [
-  'lai suat',
   'gia vang',
   'gia xang',
   'ty gia',
@@ -67,6 +79,14 @@ const List<String> _tuKhoaSongKhongDau = [
   'thoi tiet',
   'xo so',
   'bong da',
+];
+
+/// Bản không dấu của "lãi suất" — hai đường, như hai danh sách có dấu ở trên.
+const List<String> _tuKhoaLaiSuatTrenMayKhongDau = ['lai suat'];
+const List<String> _tuKhoaLaiSuatOnlineKhongDau = [
+  'lai suat ngan hang',
+  'lai suat hom nay',
+  'lai suat hien nay',
 ];
 
 /// Câu hỏi GIÁ của một tài sản — hai lượt so, chặn khi MỘT lượt khớp cả hai vế.
@@ -118,9 +138,11 @@ bool _laCauDinhNghiaChung(String cauHoi) {
 /// 2026-10-11 — hành vi không đổi, có ca canh).
 bool chuDeBiChan(String cauHoi) {
   final s = cauHoi.toLowerCase();
-  return _tuKhoaSong.any(s.contains) ||
+  return _tuKhoaSongChung.any(s.contains) ||
+      _tuKhoaLaiSuatTrenMay.any(s.contains) ||
       _tuKhoaTuVan.any(s.contains) ||
       _tuKhoaSongKhongDau.any(s.contains) ||
+      _tuKhoaLaiSuatTrenMayKhongDau.any(s.contains) ||
       _laCauDinhNghiaChung(cauHoi);
 }
 
@@ -128,7 +150,9 @@ bool chuDeBiChan(String cauHoi) {
 /// chung và câu định nghĩa đi Gemini (người dùng chốt 2026-10-11, câu 2).
 bool chuDeBiChanOnline(String cauHoi) {
   final s = cauHoi.toLowerCase();
-  return _tuKhoaSong.any(s.contains) ||
+  return _tuKhoaSongChung.any(s.contains) ||
+      _tuKhoaLaiSuatOnline.any(s.contains) ||
       _tuKhoaSongKhongDau.any(s.contains) ||
+      _tuKhoaLaiSuatOnlineKhongDau.any(s.contains) ||
       _laCauHoiGiaTaiSan(cauHoi);
 }

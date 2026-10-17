@@ -94,7 +94,7 @@ void main() {
       expect(
           xepHistory([(cuaToi: true, cau: 'a', laThe: false), (cuaToi: false, cau: 'b', laThe: false)], toiDa: 1),
           isEmpty,
-          reason: 'cửa sổ 1 tin chỉ còn lượt AI; SDK Gemini đòi tin đầu là user nên gọt hết');
+          reason: 'nửa cặp không gửi: toiDa 1 không chứa nổi một cặp');
     });
     test('chỉ có lời chào AI → rỗng', () {
       expect(xepHistory([(cuaToi: false, cau: 'Xin chào!', laThe: false)]), isEmpty,
@@ -109,18 +109,41 @@ void main() {
           ]),
           [(role: 'user', text: 'u1'), (role: 'model', text: 'a1')]);
     });
-    test('cửa sổ cắt bắt đầu ở lượt AI thì gọt tới tin user', () {
-      final h = xepHistory([
-        (cuaToi: true, cau: 'u0', laThe: false),
-        (cuaToi: false, cau: 'a0', laThe: false),
-        (cuaToi: true, cau: 'u1', laThe: false),
-        (cuaToi: false, cau: 'a1', laThe: false),
-        (cuaToi: true, cau: 'u2', laThe: false),
-        (cuaToi: false, cau: 'a2', laThe: false),
-        (cuaToi: true, cau: 'u3', laThe: false),
-      ]);
-      expect(h.length, 5);
-      expect(h.first, (role: 'user', text: 'u1'));
+    MucHoiThoai u(String c) => (cuaToi: true, cau: c, laThe: false);
+    MucHoiThoai a(String c) => (cuaToi: false, cau: c, laThe: false);
+    const MucHoiThoai the = (cuaToi: false, cau: '', laThe: true);
+    TinLichSu tu(String c) => (role: 'user', text: c);
+    TinLichSu tm(String c) => (role: 'model', text: c);
+
+    test('7 tin u0 a0 u1 a1 u2 a2 u3 → u3 không có lời đáp nên bỏ, còn 3 cặp', () {
+      final h = xepHistory([u('u0'), a('a0'), u('u1'), a('a1'), u('u2'), a('a2'), u('u3')]);
+      expect(h, [tu('u0'), tm('a0'), tu('u1'), tm('a1'), tu('u2'), tm('a2')],
+          reason: 'tin user cuối chưa có lời đáp là nửa cặp, không gửi');
+    });
+    test('4 cặp → chỉ 3 cặp cuối', () {
+      final h = xepHistory([u('u0'), a('a0'), u('u1'), a('a1'), u('u2'), a('a2'), u('u3'), a('a3')]);
+      expect(h, [tu('u1'), tm('a1'), tu('u2'), tm('a2'), tu('u3'), tm('a3')]);
+    });
+    test('câu bị chặn ở client (lời đáp là câu hệ thống) không lên Gemini qua history', () {
+      final h = xepHistory([u('Giá vàng hôm nay?'), the, u('Quỹ khẩn cấp là gì?'), a('Là quỹ dự phòng.')]);
+      expect(h, [tu('Quỹ khẩn cấp là gì?'), tm('Là quỹ dự phòng.')],
+          reason: 'câu bị chặn ở client không được lên Gemini qua history (lách chuDeBiChanOnline)');
+    });
+    test('Dừng không chữ để lại user cuối → bỏ', () {
+      expect(xepHistory([u('u1'), a('a1'), u('u2')]), [tu('u1'), tm('a1')]);
+    });
+    test('lệnh tạo C3: user + thẻ không thành cặp', () {
+      expect(xepHistory([u('tạo hoá đơn điện 500k'), the, u('u3'), a('a3')]), [tu('u3'), tm('a3')]);
+    });
+    test('dãy trộn → xen kẽ, đầu user, cuối model, độ dài chẵn', () {
+      final h = xepHistory([a('chào'), u('u1'), a('a1'), u('mồ côi'), the, u('u2'), a('a2'), u('u3')]);
+      expect(h, [tu('u1'), tm('a1'), tu('u2'), tm('a2')]);
+      expect(h.length.isEven, isTrue);
+      expect(h.first.role, 'user');
+      expect(h.last.role, 'model');
+      for (var i = 0; i < h.length; i++) {
+        expect(h[i].role, i.isEven ? 'user' : 'model');
+      }
     });
   });
 }

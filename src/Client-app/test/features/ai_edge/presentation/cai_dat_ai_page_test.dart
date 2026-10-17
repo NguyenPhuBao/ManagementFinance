@@ -392,6 +392,7 @@ void main() {
       expect(find.textContaining('không gửi gì rời khỏi thiết bị'),
           findsOneWidget);
       expect(find.textContaining('Google Gemini'), findsOneWidget);
+      expect(find.textContaining('vài tin gần nhất của cuộc trò chuyện'), findsOneWidget);
     });
   });
 }

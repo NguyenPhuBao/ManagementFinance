@@ -27,6 +27,7 @@ import 'package:flowmoney/features/ai_edge/domain/cau_chao.dart';
 import 'package:flowmoney/features/ai_edge/domain/chu_de_chan.dart';
 import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
 import 'package:flowmoney/features/ai_edge/domain/lenh_tao.dart';
+import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
 import '../../helpers/kho_gia.dart';
@@ -1082,9 +1083,92 @@ void main() {
       await hoi(t, 'Giá vàng hôm nay?');
       expect(find.textContaining('chỉ nhận xét được trên số liệu'), findsOneWidget);
       await hoi(t, 'Quỹ khẩn cấp là gì?');
-      expect(historyNhan, isNotNull);
-      expect(historyNhan!.any((h) => h.text == kCauTuChoi), isFalse,
-          reason: 'câu từ chối là câu hệ thống, không phải lời mô hình');
+      expect(historyNhan, isEmpty,
+          reason: 'câu bị chặn + câu từ chối là một cặp không hợp lệ, không được để lại user mồ côi (lách chuDeBiChanOnline)');
+    });
+
+    testWidgets('history sau câu bị chặn: chỉ cặp hợp lệ (ánh xạ laThe của trang đi đúng vào luật cặp)', (t) async {
+      List<TinLichSu>? historyNhan;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, h) {
+          historyNhan = h;
+          return Stream.fromIterable(const [ChuOnline('Xong.'), XongOnline()]);
+        },
+      )));
+      await hoi(t, 'Giá vàng hôm nay?');
+      await hoi(t, 'Quỹ khẩn cấp là gì?');
+      await hoi(t, 'Quy tắc 50/30/20 là gì?');
+      expect(historyNhan, [(role: 'user', text: 'Quỹ khẩn cấp là gì?'), (role: 'model', text: 'Xong.')],
+          reason: 'câu "Giá vàng" bị chặn ở client không được lên Gemini qua history');
+    });
+
+    testWidgets('máy chưa sẵn + mất mạng + dữ liệu sống → kCauTuChoi, KHÔNG bảo nối mạng', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: false,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => false,
+        onHoiOnline: (_, __) => const Stream.empty(),
+      )));
+      await hoi(t, 'Giá vàng hôm nay?');
+      expect(find.text(kCauTuChoi), findsOneWidget);
+      expect(find.text(kKhongMangKhongMoHinh), findsNothing,
+          reason: 'nối mạng cũng không trả lời được câu dữ liệu sống');
+    });
+
+    testWidgets('online rơi (DuPhongOnline) + câu định nghĩa máy từ chối → kMayChuHongTuChoi, không nhãn nguồn', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) => Stream.value(const DuPhongOnline('x')),
+      )));
+      await hoi(t, 'Quỹ khẩn cấp là gì?');
+      expect(find.text(kMayChuHongTuChoi), findsOneWidget);
+      expect(find.text(kCauTuChoi), findsNothing, reason: 'lý do rơi phải hiện cho người dùng, không chỉ câu từ chối trần');
+      expect(find.byType(NhanNguon), findsNothing, reason: 'câu cố định của hệ thống không nhãn nguồn');
+    });
+
+    testWidgets('online TẮT + câu định nghĩa → kCauTuChoi trần như cũ', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(bat: false),
+        coMang: () async => true,
+        onHoiOnline: (_, __) => const Stream.empty(),
+      )));
+      await hoi(t, 'Quỹ khẩn cấp là gì?');
+      expect(find.text(kCauTuChoi), findsOneWidget);
+      expect(find.text(kMayChuHongTuChoi), findsNothing);
+    });
+
+    testWidgets('403 từ máy chủ → GoiRepository.lamMoi() một lần (và vẫn rơi về máy); 503 thì không', (t) async {
+      final goi = _GoiGia();
+      sl.registerSingleton<GoiRepository>(goi);
+      addTearDown(() => sl.unregister<GoiRepository>());
+      Future<void> mot(int http) async {
+        await t.pumpWidget(boc(AiChatPage(
+          key: UniqueKey(),
+          coMoHinh: true,
+          laPremium: true,
+          congTacOnline: daDoc(),
+          coMang: () async => true,
+          onHoiOnline: (_, __) => Stream.value(LoiOnline(http: http, lyDo: 'FEATURE_DISABLED')),
+          onHoi: (_) => Stream.value(const CauQua('Có 2 ngân sách.')),
+        )));
+        await hoi(t, 'Tình hình ngân sách');
+        expect(find.text('$kNguonTrenMay · $kGhiChuRoiVeMay'), findsOneWidget);
+      }
+
+      await mot(403);
+      expect(goi.lamMoiDem, 1, reason: 'gói hết hạn giữa phiên → băng khoá phải được cập nhật');
+      await mot(503);
+      expect(goi.lamMoiDem, 1, reason: '503 không phải chuyện gói — không đọc lại gói');
     });
 
     testWidgets('onHoiOnline ném → không kẹt _dangHoi, rơi về máy', (t) async {
@@ -1225,6 +1309,30 @@ void main() {
       await t.pumpAndSettle();
     });
 
+    testWidgets('khung chữ tới SAU Dừng không được nối vào bong bóng', (t) async {
+      final nguon = _NguonOnlineGia();
+      sl.registerSingleton<TroLyOnlineRemoteDataSource>(nguon);
+      addTearDown(() => sl.unregister<TroLyOnlineRemoteDataSource>());
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true, laPremium: true, congTacOnline: daDoc(), coMang: () async => true,
+      )));
+      await t.enterText(find.byType(TextField), 'Quỹ khẩn cấp là gì?');
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pump(const Duration(milliseconds: 50));
+      await t.pump(const Duration(milliseconds: 50));
+      await t.tap(find.byKey(const Key('dung-online')));
+      await t.pump();
+      nguon.dieuKhien.add(const ChuOnline(' thêm'));
+      await t.pump();
+      nguon.dieuKhien.add(const LoiOnline(http: null, lyDo: 'cancel'));
+      await nguon.dieuKhien.close();
+      await t.pumpAndSettle();
+      expect(find.textContaining('thêm'), findsNothing,
+          reason: 'token bị huỷ chưa chứng minh chữ dừng: khung còn trong chunk tới sau Dừng không được nối vào bong bóng');
+      expect(find.text('Nửa đầu'), findsOneWidget);
+      expect(find.text('$kNguonOnline · $kGhiChuDaDung'), findsOneWidget);
+    });
+
     testWidgets('360x800: "Đang hỏi trợ lý online…" không xuống dòng khi có nút Dừng', (t) async {
       t.view.physicalSize = const Size(360, 800);
       t.view.devicePixelRatio = 1;
@@ -1310,6 +1418,15 @@ class _DocLenhGia implements DocLenh {
 
   void tha() {
     if (!(_cho?.isCompleted ?? true)) _cho!.complete();
+  }
+}
+
+class _GoiGia extends Fake implements GoiRepository {
+  int lamMoiDem = 0;
+
+  @override
+  Future<void> lamMoi() async {
+    lamMoiDem++;
   }
 }
 

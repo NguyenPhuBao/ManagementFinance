@@ -680,8 +680,9 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
             Expanded(
               child: Text(
                 'AI trên máy không gửi gì rời khỏi thiết bị. Trợ lý online '
-                '(khi bật và có mạng) gửi câu hỏi và bản tóm tắt tài chính '
-                'tới máy chủ FlowMoney và Google Gemini.',
+                '(khi bật và có mạng) gửi câu hỏi, bản tóm tắt tài chính '
+                'và vài tin gần nhất của cuộc trò chuyện tới máy chủ '
+                'FlowMoney và Google Gemini.',
                 style: TextStyle(
                     fontSize: 13,
                     height: 1.45,
