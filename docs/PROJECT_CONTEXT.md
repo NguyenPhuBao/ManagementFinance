@@ -639,10 +639,14 @@ có chủ ý. Mục 6.1 · 6.3 · 6.10 `BILL_DOCUMENTATION.md`.
   10, khoản chi của nó thành mồ côi (suy từ mã khi làm lượt này; ca canh đỏ với bản cũ). Hộp hoàn tiền nhắc kỳ sau theo
   `kySauConPhaiTra` (chung vế `_veKySau` với hộp "Đưa về chưa trả"; trước theo `isRecurrence`). Bộ gỡ xung đột không đổi
   hành vi. Hệ quả chấp nhận: trả lại kỳ vừa hoàn tác sinh kỳ trùng hạn với kỳ sau đã trả — `payBill` từ chối nó, lượt gộp
-  G87 sau lần kéo về gỡ nó. ⚠️ **Còn mở:** `undoSkip` vẫn gỡ kỳ sau vô điều kiện (cùng lớp lỗi, chờ người dùng).
-- **Số đo**: `flutter test` **7.235 pass / 10 skip** (trước 7.213; +22 — `9971a26b` +12: repository 7, bloc 2, trang Hoá
+  G87 sau lần kéo về gỡ nó.
+- ✅ **`undoSkip` (Hoàn tác bỏ qua) cùng luật** (`53e6d15a`, người dùng duyệt *"ok sửa"*): chỉ gỡ kỳ sau còn phải trả; hộp nói *", và
+  kỳ kế tiếp (hạn …, chưa trả) sẽ bị gỡ"* theo `kySauConPhaiTra` (`_nhanKySau` chung cho ba hộp Hoàn tác). Ca canh đỏ với
+  bản cũ: repository 2 (kỳ sau đã trả / bỏ qua giữ nguyên), trang Hoá đơn 2, trang Chi tiết 1 (đi trọn trên CSDL thật).
+  Chưa nghiệm thu máy ảo: máy ảo không có kỳ nào đang bỏ qua — thử phải *Bỏ qua kỳ* rồi hoàn tác (đổi dữ liệu thử).
+- **Số đo**: `flutter test` **7.240 pass / 10 skip** (trước 7.213; +27 — `9971a26b` +12: repository 7, bloc 2, trang Hoá
   đơn 1, trang Chi tiết 2; `01c54fe5` +7: `kySauConPhaiTra` 5, mỗi trang 1; `bad1c077` +3: `undoPayment` giữ kỳ sau đã trả
-  / bỏ qua, hộp hoàn tiền khi kỳ sau đã trả; ca cũ *"hoàn tác hỏi xác nhận"* / *"báo lỗi không làm trắng"* nhận một khoản
+  / bỏ qua, hộp hoàn tiền khi kỳ sau đã trả; `53e6d15a` +5: `undoSkip` 2, trang Hoá đơn 2, trang Chi tiết 1; ca cũ *"hoàn tác hỏi xác nhận"* / *"báo lỗi không làm trắng"* nhận một khoản
   gắn `billId` để vẫn canh nhánh hoàn tiền); `flutter analyze` 20 (mức nền, 0 trong tệp lượt này).
 - ✅ **Nghiệm thu máy ảo** `FlowMoney_16G` (`-gpu host`, 411 dp, tài khoản 10): ba kỳ kiểu cũ (*di h0c* 16/09, *Kiem*
   11/09, *TestAuto* 06/09) mở hộp mới ở cả hai trang, kỳ có khoản gắn `billId` vẫn hộp hoàn tiền. Trọn luồng trên

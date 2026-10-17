@@ -575,10 +575,9 @@ trả (Hoàn tác lặp lại đúng câu bảo xoá ở Sổ). Nay:
   sau của nó thường đã trả hoặc bỏ qua, gỡ nó là xoá một kỳ đã đóng và bỏ khoản
   chi của nó thành mồ côi. Kỳ còn phải trả thì chưa sinh kỳ nào, nên một phép kiểm
   phủ cả chuỗi.
-- ⚠️ **Còn mở — `undoSkip` (Hoàn tác bỏ qua) vẫn gỡ kỳ kế tiếp vô điều kiện**
-  (mục 6.7; hộp của nó nói *"và kỳ kế tiếp đã tạo sẽ bị gỡ"* theo
-  `isRecurrence`). Cùng lớp lỗi: hoàn tác bỏ qua một kỳ cũ khi kỳ sau đã trả là
-  xoá luôn kỳ sau. Suy từ mã 2026-10-17, chưa sửa — chờ người dùng.
+- ✅ **`undoSkip` (Hoàn tác bỏ qua) cùng luật** (2026-10-17, người dùng duyệt):
+  chỉ gỡ kỳ sau còn phải trả; hộp nói *", và kỳ kế tiếp (hạn …, chưa trả) sẽ bị
+  gỡ"* theo `kySauConPhaiTra` (trước theo `isRecurrence`). Mục 6.7.
 - Test: `bill_payment_test.dart` nhóm *"đưa kỳ kiểu cũ về chưa trả"* (7 ca —
   hai cột + hàng đợi; ví không đổi và khoản kiểu cũ còn sống; từ chối khi còn
   khoản gắn `billId`; từ chối kỳ chưa trả; gỡ kỳ sau `Pending`; **giữ** kỳ sau
@@ -846,7 +845,11 @@ thật. Đếm lại 2026-09-12: **0** bản chép tay còn sót.
 **không** sinh giao dịch, nhưng vẫn gọi chính `_nextPeriodOf` của `payBill` để
 chuỗi không đứt. `undoSkip` về `Pending` và xoá mềm kỳ kế tiếp đã sinh —
 **không** có bước hoàn tiền; chép nguyên `undoPayment` sang là **tặng tiền cho
-ví**, có test canh đúng chỗ đó.
+ví**, có test canh đúng chỗ đó. ⚠️ Từ 2026-10-17 kỳ kế tiếp **chỉ bị gỡ khi còn
+phải trả** (`conPhaiTra`) — cùng luật với `undoPayment` / `datLaiChuaTra` (mục
+6.3); bản trước gỡ vô điều kiện, nên hoàn tác bỏ qua tháng 9 xoá luôn tháng 10 đã
+trả. Hộp *Hoàn tác bỏ qua* nói *", và kỳ kế tiếp (hạn …, chưa trả) sẽ bị gỡ"*
+theo `kySauConPhaiTra` (trước theo `isRecurrence`).
 
 **Ba cái bẫy, cả ba đều hỏng im lặng nếu phá:**
 
@@ -1357,8 +1360,8 @@ tràn chưa ai từng thấy vì bộ test và skill `chay-app` đều chạy Ch
 | `test/features/bill/presentation/pages/bill_add_nhac_mac_dinh_test.dart` | (2026-10-17) Chip "nhắc trước" chọn sẵn theo tuỳ chọn "Nhắc trước" (7 → lưu `'7'`); không nguồn → `'3'`; giá trị cũ 2 → `'3'`; người dùng bấm chip trước khi tuỳ chọn đọc xong thì **không bị đè** |
 | `test/features/bill/data/repositories/bill_payment_test.dart` | Số tiền truyền vào thắng số đã lưu; hoá đơn ghi lại số thật; kỳ sau kế thừa số vừa trả; số ≤ 0 bị từ chối **không ghi gì**; hoàn tác: về chưa trả, hoàn đúng ví đúng số, xoá mềm khoản chi và kỳ sau, hoá đơn không lặp không có gì để gỡ, chưa trả bị từ chối, **khoản trả cũ không có `billId` thì từ chối KHÔNG đoán**, hoàn tác rồi trả lại chỉ sinh đúng một kỳ; **`datLaiChuaTra`** (2026-10-17, mục 6.3): hai cột + hàng đợi, ví không đổi và khoản kiểu cũ còn sống, từ chối khi còn khoản gắn `billId` / kỳ chưa trả, gỡ kỳ sau `Pending`, **giữ** kỳ sau `Payed` (cùng khoản chi) và `Skipped` |
 | `test/features/bill/domain/bill_pay_status_test.dart` | **Định nghĩa duy nhất** của trạng thái trả: ba vị từ trên cả bốn giá trị; hàng lệch hai cột theo **cả hai** chiều; giá trị lạ đọc là *còn phải trả* và **không** đọc là *bỏ qua* |
-| `test/features/bill/data/repositories/bill_skip_test.dart` | `skipBill` không trừ ví và không sinh giao dịch nào; đặt `Skipped` giữ `isPaid` false và vào hàng đợi đẩy; sinh kỳ kế tiếp đúng ngày/số tiền/trạng thái; hoá đơn **không lặp** thì không sinh; từ chối kỳ đã trả và kỳ đã bỏ qua (**chống sinh kỳ trùng**); `payBill` từ chối kỳ `Skipped` **TRƯỚC khi trừ ví**; `undoSkip` về `Pending` + xoá mềm kỳ sau, **KHÔNG cộng tiền vào ví**, từ chối kỳ chưa bỏ qua và kỳ đã trả |
-| `test/features/bill/presentation/pages/bill_detail_page_test.dart` | Ba nhánh nút ở 411dp (chưa trả có **cả** Thanh toán lẫn Bỏ qua kỳ này; kỳ bỏ qua **chỉ** có Hoàn tác bỏ qua; đã trả không có nút Bỏ qua); dòng lịch sử ghi "Bỏ qua"; hộp thoại nói đủ **ba** hệ quả |
+| `test/features/bill/data/repositories/bill_skip_test.dart` | `skipBill` không trừ ví và không sinh giao dịch nào; đặt `Skipped` giữ `isPaid` false và vào hàng đợi đẩy; sinh kỳ kế tiếp đúng ngày/số tiền/trạng thái; hoá đơn **không lặp** thì không sinh; từ chối kỳ đã trả và kỳ đã bỏ qua (**chống sinh kỳ trùng**); `payBill` từ chối kỳ `Skipped` **TRƯỚC khi trừ ví**; `undoSkip` về `Pending` + xoá mềm kỳ sau, **KHÔNG cộng tiền vào ví**, từ chối kỳ chưa bỏ qua và kỳ đã trả; **giữ** kỳ sau đã trả (cùng khoản chi) / đã bỏ qua (2026-10-17) |
+| `test/features/bill/presentation/pages/bill_detail_page_test.dart` | Ba nhánh nút ở 411dp (chưa trả có **cả** Thanh toán lẫn Bỏ qua kỳ này; kỳ bỏ qua **chỉ** có Hoàn tác bỏ qua; đã trả không có nút Bỏ qua); dòng lịch sử ghi "Bỏ qua"; hộp thoại nói đủ **ba** hệ quả; hoàn tác bỏ qua khi kỳ sau đã trả: hộp không hứa gỡ, kỳ sau còn nguyên (2026-10-17) |
 | `test/features/bill/bill_push_payload_test.dart` | Đi hết đường **form → SQLite → payload đẩy**: `idwallet`/`idcategory` không null, `recurrence` là bool, `pay_status` đổi sang `'Payed'` sau khi trả |
 | `test/core/sync/sync_pull_bill_recurrence_test.dart` | Pull ghi chu kỳ vào cả hai cột, khớp nhau |
 | `test/core/sync/sync_payload_contract_test.dart` | **Hợp đồng tên trường** của payload đẩy. Đỏ nếu `billId`/`generatedFromBillId` lọt vào — chủ ý. Thêm trường mới cho bill thì phải cập nhật ở đây cùng lúc |
