@@ -1032,6 +1032,20 @@ void main() {
       expect(find.text(kChuaCoMoHinh), findsNothing, reason: 'băng khoá không hiện khi online bật');
     });
 
+    testWidgets('online rơi về máy (503) mà máy chưa sẵn → câu "máy chủ không phản hồi", KHÔNG nói mất mạng', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: false,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) => Stream.value(const LoiOnline(http: 503, lyDo: 'MAINTENANCE_MODE')),
+      )));
+      await hoi(t, 'Tình hình ngân sách');
+      expect(find.text(kMayChuHongKhongMoHinh), findsOneWidget);
+      expect(find.text(kKhongMangKhongMoHinh), findsNothing, reason: 'mạng có, server hỏng — nói "không có mạng" là sai sự thật');
+      expect(find.text(kNguonTrenMay), findsNothing, reason: 'câu cố định không nhãn');
+    });
+
     testWidgets('onHoiOnline ném → không kẹt _dangHoi, rơi về máy', (t) async {
       await t.pumpWidget(boc(AiChatPage(
         coMoHinh: true,

@@ -124,6 +124,7 @@ LyDoKhoaHoiDap? lyDoKhoa({
 
 const String kKhongMangKhongMoHinh =
     'Đang không có mạng, và AI trên máy chưa sẵn (chưa tải / đang tắt). Nối mạng hoặc mở Cài đặt AI.';
+const String kMayChuHongKhongMoHinh =    'Máy chủ không phản hồi, và AI trên máy chưa sẵn (chưa tải / đang tắt). Thử lại sau hoặc mở Cài đặt AI.';
 
 const String kDangHoiOnline = 'Đang hỏi trợ lý online…';
 
@@ -463,8 +464,7 @@ class _AiChatPageState extends State<AiChatPage> {
     // Không phải lệnh mà máy chưa sẵn: câu cố định (băng nhắc tải vẫn ở đó). Online bật mà tới đây là mất mạng / chủ
     // đề dữ liệu sống — câu khác với "chưa tải mô hình".
     if (!_maySan) {
-      _themCuaAi(_TinNhan.cuaAi(_onlineBat ? kKhongMangKhongMoHinh : cauKhoaHoiDap(coTep: _coTep)));
-      return;
+final vuaRoi = _ghiChuRoi != null;      _ghiChuRoi = null;      _themCuaAi(_TinNhan.cuaAi(vuaRoi          ? kMayChuHongKhongMoHinh          : (_onlineBat ? kKhongMangKhongMoHinh : cauKhoaHoiDap(coTep: _coTep))));      return;
     }
 
     // ⚠️ Chặn TRƯỚC khi gọi mô hình: 2,3 giây cho một câu chắc chắn bị vứt đi
