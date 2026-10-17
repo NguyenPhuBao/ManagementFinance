@@ -1,5 +1,7 @@
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/transaction/data/hoa_don_da_xoa_nguon.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
+import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
 import 'package:flowmoney/features/transaction/presentation/widgets/transaction_list_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -36,29 +38,96 @@ void main() {
   /// Câu phản hồi đi qua `ThongBaoNhanh` (E4) — gom ở [bat].
   late BatThongBao bat;
 
-  Future<int> vuotXoa(WidgetTester tester, TransactionEntity transaction) async {
+  /// Số lần `onDelete` được gọi trong lượt dựng gần nhất.
+  var soLanXoa = 0;
+
+  /// Dựng một dòng rồi vuốt trái hết cỡ. Có hộp xác nhận thì dừng ở hộp (chưa bấm gì).
+  Future<void> vuot(
+    WidgetTester tester,
+    TransactionEntity transaction, {
+    HoaDonDaXoaNguon? nguon,
+  }) async {
     bat = batThongBao();
-    var deleted = 0;
+    soLanXoa = 0;
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: TransactionListRow(
           transaction: transaction,
-          onDelete: () => deleted++,
+          onDelete: () => soLanXoa++,
+          nguonHoaDonDaXoa: nguon,
         ),
       ),
     ));
     // Tìm theo key chứ không theo kiểu (từ hồi SnackBar — cũng là một Dismissible).
     await tester.drag(find.byKey(Key(transaction.id)), const Offset(-600, 0));
     await tester.pumpAndSettle();
-    return deleted;
+  }
+
+  Future<int> vuotXoa(WidgetTester tester, TransactionEntity transaction) async {
+    await vuot(tester, transaction);
+    return soLanXoa;
   }
 
   testWidgets('giao dịch thường: vuốt là xoá và báo đã xoá', (tester) async {
     final deleted = await vuotXoa(tester, tx(note: 'Cà phê'));
 
     expect(deleted, 1);
+    expect(find.byType(AlertDialog), findsNothing,
+        reason: 'Giao dịch thường giữ nguyên vuốt-là-xoá — việc 4c không thêm '
+            'hộp thoại cho nó (spec mục 4).');
     expect(bat.cau, ['Đã xóa giao dịch']);
     expect(bat.cuoi!.loai, LoaiThongBao.xong);
+  });
+
+  group('việc 4c — khoản trả hoá đơn đã mở khoá: hỏi xác nhận kèm cảnh báo', () {
+    const ghiChuTra = '${kGhiChuTraHoaDon}Tiền điện';
+
+    testWidgets('kiểu cũ (tiền tố, không billId): hộp mang câu "bản cũ" — Hủy thì KHÔNG xoá',
+        (tester) async {
+      final khoan = tx(note: ghiChuTra);
+      await vuot(tester, khoan);
+
+      expect(find.text('Xoá giao dịch?'), findsOneWidget);
+      expect(find.textContaining('ghi bằng bản cũ'), findsOneWidget,
+          reason: 'Người dùng phải biết hoá đơn vẫn ghi là đã trả.');
+
+      await tester.tap(find.widgetWithText(TextButton, 'Hủy'));
+      await tester.pumpAndSettle();
+      expect(soLanXoa, 0);
+      expect(find.byKey(Key(khoan.id)), findsOneWidget,
+          reason: 'Huỷ thì hàng phải bật lại.');
+    });
+
+    testWidgets('kiểu cũ: bấm Xóa thì xoá và báo đã xoá', (tester) async {
+      await vuot(tester, tx(note: ghiChuTra));
+
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Xóa'));
+      await tester.pumpAndSettle();
+      expect(soLanXoa, 1,
+          reason: 'Trước 4c khoản này khoá vĩnh viễn — Hoàn tác không lần được.');
+      expect(bat.cau, ['Đã xóa giao dịch']);
+    });
+
+    testWidgets('mồ côi (cổng nói hoá đơn đã xoá): hộp mang câu "đã xoá"',
+        (tester) async {
+      await vuot(tester, tx(billId: 'b1', note: ghiChuTra),
+          nguon: HoaDonDaXoaNguon((_) async => true));
+
+      expect(find.textContaining('Hoá đơn của khoản này đã xoá'), findsOneWidget);
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Xóa'));
+      await tester.pumpAndSettle();
+      expect(soLanXoa, 1);
+    });
+
+    testWidgets('có billId, cổng nói hoá đơn còn: khoá như cũ, không hộp thoại',
+        (tester) async {
+      await vuot(tester, tx(billId: 'b1', note: ghiChuTra),
+          nguon: HoaDonDaXoaNguon((_) async => false));
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(soLanXoa, 0);
+      expect(bat.cau.single, contains('không xoá được từ sổ giao dịch'));
+    });
   });
 
   testWidgets('khoản của mục tiêu: KHÔNG xoá, hàng bật lại, chỉ sang trang mục tiêu',
