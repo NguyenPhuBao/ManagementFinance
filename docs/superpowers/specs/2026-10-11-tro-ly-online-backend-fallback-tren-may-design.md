@@ -433,5 +433,5 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
     tiêu chí đạt của ca) và phía **server** (dòng log *"Client … đã ngắt kết nối stream"* + Gemini dừng — **đo xem có không**, không
     phải tiêu chí đạt của client) — vì đọc mã backend + SDK thấy Dừng phía client chưa làm server dừng lượt Gemini (chưa đo trên
     backend thật). Đơn CAN-LAM 47 việc 5 xin backend theo **mục tiêu**: khi client ngắt kết nối thì thôi ghi `delta`, không gọi thêm
-    tool / Gemini, huỷ lời gọi Gemini đang chạy, không đếm vào circuit breaker / không chạy fallback — kèm tiêu chí nghiệm thu đo
-    bằng log và ghi chú các bẫy đã đọc (Task 12, vòng review).
+    tool / Gemini, huỷ lời gọi Gemini đang chạy hoặc bỏ lời gọi kế (service ghi log ngay tại lời gọi Gemini), không đếm vào circuit
+    breaker / không chạy fallback — kèm tiêu chí nghiệm thu đo bằng log và ghi chú các bẫy đã đọc (Task 12, vòng review).

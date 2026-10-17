@@ -4723,8 +4723,8 @@ này). Tệp test mới: **8** `_test.dart` + helper `test/helpers/kho_gia.dart`
   lặng giữa hai gói không (spec §9) — sai thì chuyển sang `Stream.timeout` trong datasource. ⚠️ Ca **Dừng** có hai vế (spec mục 10
   dòng 19): tiêu chí đạt của client là *giữ chữ đã hiện + nhãn đã dừng*; dòng log ngắt kết nối phía server chỉ **đo xem có
   không**. Dừng phía client chưa làm server dừng lượt Gemini (đọc mã backend, chưa đo) — đơn 47 việc 5 xin backend: thôi ghi
-  `delta`, không gọi thêm tool / Gemini, huỷ lời gọi Gemini đang chạy, không đếm vào circuit breaker / không chạy fallback; tiêu chí
-  nghiệm thu và các bẫy đã đọc ở chính đơn.
+  `delta`, không gọi thêm tool / Gemini, huỷ lời gọi Gemini đang chạy hoặc bỏ lời gọi kế (service ghi log ngay tại lời gọi
+  Gemini), không đếm vào circuit breaker / không chạy fallback; tiêu chí nghiệm thu và các bẫy đã đọc ở chính đơn.
 - Tin `user` mồ côi trong `history` (4.54) — sửa ở `xepHistory`, bỏ theo cặp.
 - Ba câu hỏi người dùng (spec mục 10 dòng 14): câu định nghĩa / tư vấn khi máy chủ hỏng trả `kCauTuChoi` trần không ghi chú; hàng
   *Đang nghĩ…* sau tờ thông tin đang mở; nhánh `catch` khi đã có chữ chưa có ca phủ.

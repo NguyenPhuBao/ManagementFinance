@@ -80,16 +80,26 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
    400). Client đã tự làm, nhưng Admin-web hay một client cũ gửi `history` bắt đầu bằng `model` vẫn mở breaker **cho mọi tài khoản**
    sau 5 lần.
 4. **(thấp, chữ) Sửa tài liệu cho khớp mã.** (a) Tả nhánh `done {error}` ở §2.1 `ChatbotAI_Moblie.md` và mục tương ứng của
-   `ChatbotAI.md`. (b) `docs/AI/ChatbotAI.md` nói Dừng huỷ được Gemini: `:286` *"Lắng nghe sự kiện `req.on('close')`: Khi người dùng
-   tắt app hoặc bấm "Dừng", Backend lập tức ngắt stream của Gemini để tiết kiệm token và giải phóng RAM máy chủ."*, `:420` *"Bắt sự
-   kiện `req.on('close')` hủy stream của Gemini sạch sẽ khi người dùng ngắt kết nối."*, `:443` (bảng tệp) *"… bắt
-   `req.on('close')`"* — mã hiện tại không làm được điều ấy (xem việc 5); sửa ba chỗ cho khớp mã sau khi làm việc 5.
+   `ChatbotAI.md`. (b) `docs/AI/ChatbotAI.md` có **bốn** chỗ nhắc việc bắt ngắt kết nối, chia hai lớp. Hai chỗ **khẳng định**
+   Dừng ngắt được Gemini / tiết kiệm token — mã hiện tại không làm được điều ấy (xem việc 5): `:286` *"Lắng nghe sự kiện
+   `req.on('close')`: Khi người dùng tắt app hoặc bấm "Dừng", Backend lập tức ngắt stream của Gemini để tiết kiệm token và giải
+   phóng RAM máy chủ."*, `:420` *"Bắt sự kiện `req.on('close')` hủy stream của Gemini sạch sẽ khi người dùng ngắt kết nối."* Hai
+   chỗ **chỉ nêu tên hook** controller bắt — đúng chữ với mã hôm nay (`chatbot.controller.js:33`), phải đổi theo nếu việc 5 đổi
+   cách bắt ngắt kết nối: `:296` (cây thư mục) *"… bắt req.on('close')"*, `:443` (bảng tệp) *"… bắt `req.on('close')`"*. Sửa cả
+   bốn chỗ cho khớp mã sau khi làm việc 5.
 5. **(vừa) Khi client đóng kết nối giữa một lượt, lượt ấy phải dừng ở server.** Viết theo **mục tiêu + tiêu chí nghiệm thu**;
    cách làm là của backend.
    - **Mục tiêu.** Khi client đóng kết nối giữa một lượt `chat/stream` (bấm Dừng, thoát màn): (1) server thôi ghi `delta`; (2)
-     không gọi thêm tool hay `sendMessageStream` nào của lượt ấy; (3) lời gọi Gemini đang chạy bị huỷ, có một dòng log quan sát
-     được ở chỗ huỷ; (4) việc dừng **không** đếm vào circuit breaker và **không** chạy nhánh fallback.
-   - **Tiêu chí nghiệm thu** — đo bằng log, ở *Kiểm lại*.
+     không gọi thêm tool hay `sendMessageStream` nào của lượt ấy (dấu hiệu quan sát: dòng log *bị bỏ qua* của (3)); (3) lời gọi
+     Gemini đang chạy bị huỷ, hoặc lời gọi kế tiếp bị **bỏ qua** — và mỗi lần như thế **service** ghi một dòng log **ngay tại lời
+     gọi Gemini**: khi `sendMessageStream` hoặc vòng đọc luồng của nó đang chạy kết thúc vì `signal.aborted`, hoặc khi lời gọi kế
+     tiếp bị bỏ qua vì cờ ấy; dòng log nêu rõ lời gọi nào — lời gọi đầu (`sendMessageStream(safeUserMessage)`, hôm nay
+     `chatbot.service.js:168`) hay lời gọi sau tool (`functionResponse`, `:186`). **Không** tính là dòng log huỷ: dòng ngắt kết
+     nối của controller (`chatbot.controller.js:34`), dòng sẵn có *"[ChatbotService] Client đã ngắt kết nối — hủy luồng
+     streaming."* + `break` (`chatbot.service.js:174-175`) và `break` im ở `:196` — cả ba in / thoát được trong khi fetch tới
+     Gemini vẫn đọc trọn luồng (xem ghi chú `tee()` dưới đây); (4) việc dừng **không** đếm vào circuit breaker và **không** chạy
+     nhánh fallback.
+   - **Tiêu chí nghiệm thu** — đo bằng log backend + quan sát ở client, ở *Kiểm lại*.
    - **Ghi chú cho người sửa** (client đọc mã backend + SDK ngày 2026-10-17, **chưa đo** trên backend chạy thật; là bẫy để tránh,
      không phải yêu cầu cách làm):
      - `chatbot.controller.js:33` gắn `req.on('close')` sau khi body đã đọc (`express.json` `app.js:36`, rồi `authenticate`
@@ -109,9 +119,10 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
      - `break` ở `:196` chỉ thoát vòng đọc trong; `for (const call of functionCalls)` (`:181`) vẫn chạy tool kế.
      - Google có ngừng tính token khi fetch bị huỷ giữa chừng hay không — **chưa đo**.
      - Quan sát ngoài việc 5: `circuit-breaker.js:84` gán `this.lastFailureTime = now` **trước** phép so `now - this.lastFailureTime
-       > this.windowMs` ở `:95`, nên nhánh đặt lại bộ đếm về 1 trong `handleFailure` không bao giờ chạy; bộ đếm chỉ về 0 khi có một
-       lượt **thành công** cách lỗi cuối hơn `windowMs` (60 s, `:66-67`) — không có lượt thành công xen giữa thì lỗi cách nhau bao
-       lâu cũng cộng dồn tới ngưỡng.
+       > this.windowMs` ở `:95`, nên nhánh đặt lại bộ đếm về 1 trong `handleFailure` không bao giờ chạy; ở trạng thái **CLOSED**, bộ
+       đếm chỉ về 0 khi có một lượt **thành công** cách lỗi cuối hơn `windowMs` (60 s, `:64-68`) — không có lượt thành công xen
+       giữa thì lỗi cách nhau bao lâu cũng cộng dồn tới ngưỡng. (Nhánh HALF-OPEN → CLOSED, `:59-63`, cũng đặt bộ đếm về 0 — nhưng
+       chỉ sau khi mạch đã mở.)
 
 ## Kiểm lại
 
@@ -120,13 +131,18 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
   khẩn cấp 3-6 tháng", "history": []}` trả các `event: delta` rồi `event: done` có `responseTimeMs`, **không** có `fallback`.
 - Việc 3: cùng request với `"history": [{"role": "model", "text": "Chào bạn"}]` trả câu trả lời thật, không `done.fallback`, và log
   không có `[CircuitBreaker] Ghi nhận lỗi LLM`.
-- Việc 4: `grep -n "error" docs/AI/ChatbotAI_Moblie.md` có dòng tả `done {error}`; ba chỗ `ChatbotAI.md` (`:286`, `:420`, `:443`
-  theo số dòng hôm nay) tả đúng điều mã làm khi client ngắt kết nối.
+- Việc 4: `grep -n "error" docs/AI/ChatbotAI_Moblie.md` có dòng tả `done {error}`; bốn chỗ `ChatbotAI.md` (theo số dòng hôm
+  nay) khớp mã sau việc 5 — `:286`, `:420` chỉ khẳng định điều log tiêu chí việc 5 đã cho thấy (vế *tiết kiệm token* chỉ giữ khi
+  đã đo — ghi chú việc 5); `:296`, `:443` nêu đúng tên hook controller đang bắt (`grep -n "on('close'" src/Backend/modules/ai/features/chatbot/chatbot.controller.js`).
 - Việc 5 — **tiêu chí nghiệm thu**: mở `chat/stream` cho một câu dài, ngắt kết nối giữa dòng (client bấm Dừng, hoặc `curl -N …` rồi
   Ctrl+C) ở **hai** thời điểm — lúc đang stream câu đầu, và lúc đang chạy tool (câu hỏi buộc Gemini gọi tool). Mỗi lần, log backend:
   có dòng ngắt kết nối của controller (*"[SSE Controller] Client idaccount: … đã ngắt kết nối stream"*); **sau** dòng ấy **không**
-  có `[Chatbot Function Call]`, không `delta` nào được ghi, không `[CircuitBreaker] Ghi nhận lỗi LLM`, không `Kích hoạt Fallback
-  Notice Stream`; **có** dòng log huỷ lời gọi Gemini (chữ do backend đặt). Đo cả trước khi sửa để có mốc.
+  có `[Chatbot Function Call]`, không `[CircuitBreaker] Ghi nhận lỗi LLM`, không `Kích hoạt Fallback Notice Stream`; không `delta`
+  nào được ghi (không có log sẵn — quan sát ở client: không chữ mới hiện sau Dừng); và **có** dòng log huỷ do **service** phát
+  ngay tại lời gọi Gemini (chữ do backend đặt), nêu rõ lời gọi nào — Dừng lúc stream câu đầu: lời gọi đầu (`:168` hôm nay) bị
+  **huỷ**; Dừng lúc đang chạy tool (`executeTool`, `:183`): lời gọi sau tool (`:186`) bị **bỏ qua**. Dòng ngắt kết nối của
+  controller (`chatbot.controller.js:34`), dòng sẵn có *"[ChatbotService] Client đã ngắt kết nối — hủy luồng streaming."*
+  (`chatbot.service.js:174`) và `break` im ở `:196` **không** tính là dòng log huỷ. Đo cả trước khi sửa để có mốc.
 - Phía client sau khi có việc 1: nghiệm thu máy thật (spec client §6, chín ca — chữ chạy, nhãn nguồn, rơi về máy, Dừng, tờ thông
   tin, Basic, câu giá vàng, máy chưa có mô hình).
 
