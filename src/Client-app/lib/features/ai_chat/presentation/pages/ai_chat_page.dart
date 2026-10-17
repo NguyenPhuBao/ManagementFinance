@@ -54,11 +54,11 @@ import '../../../ai_edge/domain/lenh_tao.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
 import '../../../ai_edge/domain/the_cua_cau.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
-import '../widgets/tro_ly_ai/the_lenh_tao.dart';
 import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 import '../../data/doc_lenh_bang_ai.dart';
 import '../../data/nguon_lenh_tao.dart';
+import '../widgets/tro_ly_ai/the_lenh_tao.dart';
 
 /// Bốn câu mở sẵn (spec mục 4.6). Chúng là **câu hỏi thật**, gửi đi y như khi
 /// người dùng tự gõ — không phải bốn nhánh mã riêng.

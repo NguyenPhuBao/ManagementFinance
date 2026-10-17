@@ -54,8 +54,11 @@ void main() {
     expect(kq, isNull);
   });
 
-  testWidgets('khổ thấp 360×640 không tràn (bẫy G60: bottom sheet nhiều dòng phải cuộn)', (t) async {
-    await mo(t, khung: const Size(360, 640));
+  testWidgets('khổ thấp 360×480 không tràn (bẫy G60: bottom sheet nhiều dòng phải cuộn)', (t) async {
+    await mo(t, khung: const Size(360, 480));
     expect(t.takeException(), isNull);
+    final cuon = t.state<ScrollableState>(find.descendant(of: find.byType(BottomSheet), matching: find.byType(Scrollable)).last);
+    expect(cuon.position.maxScrollExtent, greaterThan(0),
+        reason: 'Bẫy G60: tờ nhiều dòng ở khổ thấp phải CUỘN được; bỏ SingleChildScrollView là ca này đỏ');
   });
 }

@@ -7,6 +7,10 @@ import '../../../domain/duong_hoi.dart';
 /// của hệ thống không có nhãn — chúng không đến từ AI nào.
 enum NguonTraLoi { trenMay, online }
 
+/// Stitch `1896d02b…` dùng #454743; `_mauChu` là #767872 (3,8:1 trên nền trang,
+/// dưới AA 4,5 cho chữ 12 px) — cùng lý do với `hop_thoai_bi_day_ra.dart`, `bill_page.dart`.
+const Color _mauChu = Color(0xFF454743);
+
 /// Nhãn dưới bong bóng (Stitch `1896d02b…`): chấm 6 px + chữ 12 px. Chấm xanh = online êm,
 /// đỏ = có ghi chú (rơi / gián đoạn / đã dừng), xám = trên máy bình thường.
 class NhanNguon extends StatelessWidget {
@@ -19,7 +23,7 @@ class NhanNguon extends StatelessWidget {
     final ten = nguon == NguonTraLoi.online ? kNguonOnline : kNguonTrenMay;
     final Color mauCham = ghiChu != null
         ? AppColors.error
-        : (nguon == NguonTraLoi.online ? const Color(0xFF006E1C) : AppColors.onSurfaceVariant);
+        : (nguon == NguonTraLoi.online ? const Color(0xFF006E1C) : _mauChu);
     return Padding(
       padding: const EdgeInsets.only(top: 4, left: 4),
       child: Row(
@@ -36,7 +40,7 @@ class NhanNguon extends StatelessWidget {
             child: Text(
               ghiChu == null ? ten : '$ten · $ghiChu',
               key: const Key('nhan-nguon'),
-              style: const TextStyle(fontSize: 12, color: AppColors.onSurfaceVariant),
+              style: const TextStyle(fontSize: 12, color: _mauChu),
             ),
           ),
         ],
