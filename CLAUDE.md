@@ -215,6 +215,11 @@ công việc vừa làm nhiều hơn trong tài liệu cũ**.
   hoặc `git add -f`; một tệp chưa vào index thì mất hẳn. Nếu buộc phải dùng
   script: dựng xong chuỗi, `s.encode('utf-8')` để thử, rồi mới mở file ghi.
 
+- ⚠️ **Thử bản sai trên tệp CHƯA commit thì sao lưu ra scratchpad rồi `cp` trả — đừng khôi phục bằng
+  `git checkout -- <tệp>`.** Lệnh ấy trả về bản **đã commit**, không phải bản trước khi cấy lỗi: ngày 2026-10-17 nó đưa
+  `bill_delete_page.dart` về trang mockup cũ và xoá sạch bản viết lại chưa commit (cứu được chỉ vì nội dung còn trong
+  phiên). `git checkout` chỉ an toàn cho tệp không có thay đổi nào ngoài chính bản sai.
+
 - **Truy vấn PostgreSQL: máy này không có `psql`,** nhưng chạy được qua Prisma.
   Phải chạy **từ `src/Backend`** thì Node mới phân giải được `@prisma/client` —
   đặt script ở `/tmp` sẽ báo `MODULE_NOT_FOUND`:
