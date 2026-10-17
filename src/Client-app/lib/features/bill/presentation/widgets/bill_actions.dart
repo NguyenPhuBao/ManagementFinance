@@ -2,6 +2,7 @@ import '../../../category/data/repositories/category_management_repository.dart'
 import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../data/models/bill_entity.dart';
@@ -154,26 +155,14 @@ void hoiHoanTacBoQua(BuildContext context, BillEntity bill) {
   );
 }
 
-void hoiXoaHoaDon(BuildContext context, String billId) {
-  showDialog(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Xóa hóa đơn'),
-      content: const Text('Bạn có chắc chắn muốn xóa hóa đơn này?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text('Hủy'),
-        ),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-          onPressed: () {
-            Navigator.pop(ctx);
-            context.read<BillBloc>().add(DeleteBillEvent(id: billId));
-          },
-          child: const Text('Xóa', style: TextStyle(color: Colors.white)),
-        ),
-      ],
-    ),
-  );
+/// Hỏi qua màn xác nhận xoá (`/bills/:id/delete`, `BillDeletePage`) — lối chung của ba chỗ xoá: thùng rác trên thẻ
+/// danh sách, nút xoá ở trang Chi tiết, nút "Xóa hóa đơn" ở form Sửa. Trang chỉ hỏi; xác nhận thì gửi
+/// `DeleteBillEvent` vào `BillBloc` của [context]. Trả `true` khi đã gửi — form Sửa dựa vào đó để tự đóng.
+///
+/// [bill] là ảnh chụp để trang vẽ ngay; trang vẫn đọc lại theo [billId].
+Future<bool> xacNhanXoaHoaDon(BuildContext context, String billId, {BillEntity? bill}) async {
+  final dongY = await context.push<bool>('/bills/$billId/delete', extra: bill);
+  if (dongY != true || !context.mounted) return false;
+  context.read<BillBloc>().add(DeleteBillEvent(id: billId));
+  return true;
 }

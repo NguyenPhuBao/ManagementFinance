@@ -52,6 +52,7 @@ import '../../features/bill/domain/dien_san_hoa_don.dart';
 import '../../features/bill/presentation/pages/bill_add_page.dart';
 import '../../features/bill/presentation/pages/bill_edit_page.dart';
 import '../../features/bill/presentation/pages/bill_detail_page.dart';
+import '../../features/bill/presentation/pages/bill_delete_page.dart';
 import '../../features/goal/presentation/pages/goal_page.dart';
 import '../../features/goal/presentation/pages/goal_add_page.dart';
 import '../../features/goal/presentation/pages/goal_detail_page.dart';
@@ -370,6 +371,15 @@ class AppRouter {
                 id: s.pathParameters['id']!,
                 bill: s.extra as BillEntity?,
               ),
+            ),
+          ),
+          // Màn xác nhận xoá (Stitch "Xác nhận xóa hóa đơn"). Chỉ HỎI — trả `true` / `false`; chỗ gọi
+          // (`xacNhanXoaHoaDon`) gửi `DeleteBillEvent` vào BillBloc của nó, nên route không cấp BillBloc.
+          GoRoute(
+            path: '/bills/:id/delete',
+            builder: (_, s) => BillDeletePage(
+              id: s.pathParameters['id']!,
+              bill: s.extra as BillEntity?,
             ),
           ),
           // Chi tiết một hoá đơn. Ngoài shell như các route hoá đơn khác, nên

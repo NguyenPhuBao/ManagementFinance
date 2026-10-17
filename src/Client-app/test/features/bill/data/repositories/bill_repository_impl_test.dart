@@ -189,6 +189,27 @@ void main() {
     });
   });
 
+  group('deleteBill', () {
+    // Màn xác nhận xoá (2026-10-17) nói với kỳ ĐÃ trả: "chỉ gỡ nó khỏi danh sách… khoản chi vẫn ở sổ giao dịch và
+    // số dư ví không đổi". Ca này canh câu ấy còn đúng.
+    test('xoá kỳ ĐÃ trả: chỉ gỡ đúng hàng ấy — khoản chi, số dư, kỳ kế tiếp còn nguyên', () async {
+      final bill = await seedBill();
+      await repository.payBill(bill: bill, walletId: walletId, idaccount: accountId);
+      final kySau = (await repository.getBills(accountId)).singleWhere((b) => b.id != 'bill-1');
+
+      await repository.deleteBill('bill-1');
+
+      final conLai = await repository.getBills(accountId);
+      expect(conLai.map((b) => b.id), [kySau.id],
+          reason: 'Mỗi kỳ là một hàng; xoá kỳ đã trả không đụng kỳ kế tiếp.');
+      final khoanChi = await giaoDichThat(db, accountId);
+      expect(khoanChi, hasLength(1), reason: 'Khoản chi đã ghi vẫn ở sổ.');
+      expect(khoanChi.single.billId, 'bill-1');
+      expect((await db.walletDao.getById(walletId))!.balance, 800000.0,
+          reason: 'Xoá không hoàn tiền — hoàn tiền là việc của Hoàn tác.');
+    });
+  });
+
   group('payBill', () {
     test('đặt cả isPaid lẫn payStatus', () async {
       final bill = await seedBill();

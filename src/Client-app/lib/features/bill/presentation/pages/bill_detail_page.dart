@@ -173,7 +173,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
                     tooltip: 'Xoá',
                     icon: const Icon(Icons.delete_outline,
                         color: AppColors.error),
-                    onPressed: () => hoiXoaHoaDon(context, b.id),
+                    onPressed: () => xacNhanXoaHoaDon(context, b.id, bill: b),
                   ),
                 ],
         ),

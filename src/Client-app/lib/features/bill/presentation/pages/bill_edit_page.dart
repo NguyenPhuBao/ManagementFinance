@@ -17,6 +17,7 @@ import '../../domain/bill_auto_pay.dart' show goiYTuTra;
 import '../../domain/bill_draft.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
+import '../widgets/bill_actions.dart';
 import '../widgets/bill_grace_selector.dart';
 import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
@@ -186,29 +187,9 @@ class _BillEditPageState extends State<BillEditPage> {
     context.pop();
   }
 
-  void _delete() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xóa hóa đơn'),
-        content: const Text('Bạn có chắc chắn muốn xóa hóa đơn này?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<BillBloc>().add(DeleteBillEvent(id: widget.id));
-              context.pop();
-            },
-            child: const Text('Xóa', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+  Future<void> _delete() async {
+    final daGui = await xacNhanXoaHoaDon(context, widget.id, bill: widget.bill);
+    if (daGui && mounted) context.pop();
   }
 
   Future<void> _pickStartDate() async {

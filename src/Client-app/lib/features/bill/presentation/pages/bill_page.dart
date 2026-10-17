@@ -847,7 +847,7 @@ class _HangSoTien extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         InkWell(
-          onTap: () => hoiXoaHoaDon(context, bill.id),
+          onTap: () => xacNhanXoaHoaDon(context, bill.id, bill: bill),
           child: Icon(
             Icons.delete_outline,
             size: 16,
