@@ -653,10 +653,9 @@ thử Task 1–6), Sonnet làm, Opus soát từng task (mỗi task ≤ 1 vòng s
   (người dùng chép 2026-10-17) nhưng tên `gemini-3.8-flash` chưa ai kiểm (đơn 47); tin `user` mồ côi trong `history` (câu bị chặn ở
   client vẫn vào lượt online sau — sửa bằng bỏ theo cặp); ba câu hỏi người dùng (câu định nghĩa khi máy chủ hỏng trả `kCauTuChoi`
   trần · hàng *Đang nghĩ…* sau tờ thông tin · nhánh `catch` có chữ chưa có ca phủ); xác nhận Stitch. ⚠️ Nút Dừng phía server
-  **chưa đo**. Lượt Gemini có thể chạy tới hết vì **hai** mảnh: backend nghe `req.on('close')` (`chatbot.controller.js:33`), trên
-  Node ≥ 16 có thể không nổ (reviewer thử nhanh với express của backend: chỉ `res` 'close' nổ), **và** `sendMessageStream`
-  (`chatbot.service.js:168`, `:186`) không nhận `{ signal }` nên SDK không huỷ fetch dù `abort()` có chạy; đơn 47 việc 5 xin
-  `res.on('close')` **và** `{ signal }`; tiêu chí ca Dừng của client chỉ là giữ chữ + nhãn *đã dừng* (spec mục 10 dòng 19).
+  **chưa đo**: đọc mã thấy Dừng phía client chưa làm server dừng lượt Gemini — đơn 47 việc 5 xin backend (viết theo mục tiêu +
+  tiêu chí nghiệm thu đo bằng log): thôi ghi `delta`, không gọi thêm tool / Gemini, huỷ lời gọi Gemini đang chạy, không đếm vào
+  circuit breaker / không chạy fallback; tiêu chí ca Dừng của client chỉ là giữ chữ + nhãn *đã dừng* (spec mục 10 dòng 19).
 
 ### ↩️ Hoàn tác kỳ trả kiểu cũ: đưa kỳ về chưa trả, không hoàn tiền (2026-10-17 tối, người dùng chốt)
 

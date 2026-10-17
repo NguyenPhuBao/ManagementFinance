@@ -431,8 +431,7 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
     ở cùng tệp; *"bất biến ④"* ở 7 tệp `docs/*.md` — grep 2026-10-17), đánh số lại là làm lạc các chỗ dẫn ấy (Task 12).
 19. §6 ca 5 (*Dừng giữa dòng*) — một tiêu chí → **tách hai**: phía **client** (phần đã hiện giữ lại, nhãn *đã dừng* — đo được, là
     tiêu chí đạt của ca) và phía **server** (dòng log *"Client … đã ngắt kết nối stream"* + Gemini dừng — **đo xem có không**, không
-    phải tiêu chí đạt của client) — vì backend nghe `req.on('close')` (`chatbot.controller.js:33`) sau khi body đã đọc xong, và trên
-    Node ≥ 16 (dev v22.19.0) listener ấy có thể không nổ (reviewer thử nhanh với express của `src/Backend/node_modules`: chỉ `res`
-    'close' nổ); **và** kể cả khi `abort()` chạy, `sendMessageStream` (`chatbot.service.js:168`, `:186`) không nhận `{ signal }` nên
-    SDK không huỷ fetch tới Gemini. Chưa đo trên backend thật — đơn CAN-LAM 47 việc 5 xin `res.on('close')` **và** `{ signal }`
-    (Task 12, vòng review).
+    phải tiêu chí đạt của client) — vì đọc mã backend + SDK thấy Dừng phía client chưa làm server dừng lượt Gemini (chưa đo trên
+    backend thật). Đơn CAN-LAM 47 việc 5 xin backend theo **mục tiêu**: khi client ngắt kết nối thì thôi ghi `delta`, không gọi thêm
+    tool / Gemini, huỷ lời gọi Gemini đang chạy, không đếm vào circuit breaker / không chạy fallback — kèm tiêu chí nghiệm thu đo
+    bằng log và ghi chú các bẫy đã đọc (Task 12, vòng review).
