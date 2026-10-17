@@ -626,8 +626,8 @@ thử Task 1–6), Sonnet làm, Opus soát từng task (mỗi task ≤ 1 vòng s
   đoạn*; máy chưa sẵn thì câu cố định theo nguyên nhân thật (`kMayChuHongKhongMoHinh` · `kKhongMangKhongMoHinh` · `kCauTuChoi` ·
   `cauKhoaHoiDap`).
 - **Ba chốt hỏng im lặng** (đo trên mã backend + SDK, không có trong spec): `DuPhongOnline` **luôn** rơi về máy — server chẻ câu
-  thông báo ⚠️ thành `delta` trước `done.fallback`, và `done {error}` cũng là rơi; `xepHistory` gọt tin đầu tới tin `user` + bỏ
-  câu cố định của hệ thống — SDK `@google/generative-ai` 0.24.1 ném *First content should be with role 'user'* và lỗi ấy mở
+  thông báo ⚠️ thành `delta` trước `done.fallback`, và `done {error}` cũng là rơi; `xepHistory` ghép history theo **cặp** (tin
+  `user` + lời đáp AI ngay sau, ≤ 3 cặp cuối; tin mồ côi — câu bị chặn, Dừng không chữ, lệnh C3 — không lên Gemini) — SDK `@google/generative-ai` 0.24.1 ném *First content should be with role 'user'* và lỗi ấy mở
   circuit breaker **dùng chung mọi tài khoản**; `toiDa = 6` = `history.slice(-6)` phía server, đừng nâng; `AuthInterceptor`
   phát lại sau 401 bằng `fetch(copyWith(headers:))` — bản cũ mất `responseType: stream`, SSE đọc dồn thành `String`.
 - **Phán quyết khác** (spec mục 10): DI `sl<DioClient>().dio` (GetIt không đăng ký `Dio`; docstring `dio_client.dart:11` sửa

@@ -345,9 +345,8 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
 
 *(Đã điền sau thi công — kế hoạch và mã thắng thân spec ở những dòng ghi tại đây.)*
 
-**Thi công 2026-10-17** trên nhánh `TranQuangDat`, base `909ae016`: **22** commit `80d9dee8` → `fb92c16d` (21 commit mã + test,
-`b6eb9975` ghi id Stitch) và commit tài liệu Task 12. Task 2 bỏ; Task 13 (nghiệm thu máy thật) chưa làm. Số đo 2026-10-17:
-`flutter test` **7.368 pass / 10 skip** (trước 7.240; +128), `flutter analyze` **20** (mức nền), `ai_chat_page.dart` **1.141** dòng,
+**Thi công 2026-10-17** trên nhánh `TranQuangDat`, base `909ae016`: **23** commit mã + test `80d9dee8` → `1ddb90aa` (tính tới đợt sửa 2026-10-17 khuya; đếm `git log --oneline 909ae016..HEAD -- src/Client-app/lib src/Client-app/test | wc -l` ngày 2026-10-17 khuya) và commit tài liệu Task 12. Task 2 bỏ; Task 13 (nghiệm thu máy thật) chưa làm. Số đo 2026-10-17:
+`flutter test` **7.386 pass / 10 skip** (đo lại sau đợt sửa 2026-10-17 khuya; trước 7.368 / 7.240), `flutter analyze` **20** (mức nền), `ai_chat_page.dart` **1.153** dòng,
 `cai_dat_ai_page.dart` **694** dòng. Khuôn mỗi dòng: *§ — bản viết → bản thi công — vì … (task)*.
 
 1. §3.1 bước 3 / §3.6 hàng `connection_monitor` — `ConnectionMonitor.coMangLucNay()` (mới) → dùng **`coMangNgay()`** có sẵn từ
@@ -367,9 +366,9 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
    0.24.1 `validateChatHistory` ném *First content should be with role 'user'*, mà trang gieo lời chào AI ở `initState` → câu
    online đầu mọi phiên hỏng và đếm vào circuit breaker dùng chung (một instance cho mọi tài khoản, ngưỡng 5 lỗi, mở 30 s —
    `resilience/circuit-breaker.js:113`); (b) **không gửi câu cố định của hệ thống** (tin AI `nguon == null`: `kCauTuChoi`,
-   `kChuaCoMoHinh`…) — chúng không phải lời của mô hình nào. ⚠️ **Còn để** (giới hạn đã biết, chưa sửa): bỏ câu hệ thống để lại
-   tin `user` mồ côi — *"Giá vàng hôm nay?"* bị chặn ở client vẫn vào `history` của lượt online sau, Gemini có thể trả lời; hướng
-   sửa: bỏ theo cặp ở `xepHistory`. `toiDa = 6` gắn với `history.slice(-6)` của backend (`chatbot.service.js:152`) — không nâng
+   `kChuaCoMoHinh`…) — chúng không phải lời của mô hình nào. ✅ **Sửa 2026-10-17 khuya** (bản đầu để lại tin `user` mồ côi — *"Giá vàng hôm nay?"* bị
+   chặn ở client vẫn vào `history` của lượt online sau): `xepHistory` **ghép theo cặp** — tin `user` + lời đáp của AI ngay sau, ≤ 3
+   cặp cuối; luôn xen kẽ, đầu `user`, cuối `model`; thay luật (a) gọt-tới-`user` và (b) bỏ-câu-hệ-thống ở trên. `toiDa = 6` gắn với `history.slice(-6)` của backend (`chatbot.service.js:152`) — không nâng
    (Task 4, Task 9).
 5. §4.2 — thêm hàng: `done` có khoá **`error`** (chính luồng dự phòng của server ném — `chatbot.service.js:229-237`,
    `chatbot.controller.js:53`) → **`DuPhongOnline(error)`** — vì server đã phát chunk *"⚠️ Sự cố kết nối…"* trước đó, `LoiOnline`
@@ -383,8 +382,9 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
    FlexFit.tight)`, bỏ `Spacer` — ở 360 dp chữ *Đang hỏi trợ lý online…* bị ép xuống hai dòng (Task 10).
 8. §3.1 bước 4 — thêm hằng **`kMayChuHongKhongMoHinh`** (*"Máy chủ không phản hồi, và AI trên máy chưa sẵn (chưa tải / đang tắt).
    Thử lại sau hoặc mở Cài đặt AI."*); cổng máy-chưa-sẵn chọn câu theo **nguyên nhân thật**: vừa rơi từ online →
-   `kMayChuHongKhongMoHinh`; mất mạng (`matMang`) → `kKhongMangKhongMoHinh`; chủ đề bị chặn (`chuDeBiChan`) → `kCauTuChoi`; còn
-   lại `cauKhoaHoiDap`. Tách vị từ **`_maySan`** (có tệp ∧ công tắc trên máy) khỏi `_coMoHinh` (ô mở) — vì với
+   `kMayChuHongKhongMoHinh`; dữ liệu sống (`chuDeBiChanOnline`) → `kCauTuChoi` (✅ thêm 2026-10-17 khuya, đứng **trước**
+   `matMang` — nối mạng cũng không trả lời được); mất mạng (`matMang`) → `kKhongMangKhongMoHinh`; chủ đề bị chặn (`chuDeBiChan`)
+   → `kCauTuChoi`; còn lại `cauKhoaHoiDap`. Tách vị từ **`_maySan`** (có tệp ∧ công tắc trên máy) khỏi `_coMoHinh` (ô mở) — vì với
    `lyDoKhoa(onlineBat: true)` = `null` thì `_coMoHinh` true dù không có mô hình, nhánh `kKhongMangKhongMoHinh` của bản viết
    không bao giờ chạy; và *"Đang không có mạng"* sai sự thật khi mạng có mà máy chủ hỏng (Task 9).
 9. §3.1 `chuDeBiChanOnline` — *"so trên bản đã bỏ dấu"* → so **HAI lượt**: (A) có dấu, từ trọn — vế giá `giá` | `bao nhiêu tiền`
@@ -393,12 +393,13 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
    *tiền áo* / *có phiếu* vào tên tài sản, đẩy câu nối tiếp hội thoại sang máy. Bất đối xứng cố ý: *"tháng này tôi mua vàng hết
    bao nhiêu tiền"*, *"ví USD còn bao nhiêu tiền"* bị chặn ONLINE (đi máy, tool trả lời từ sổ) nhưng mở trên máy. Giới hạn chấp
    nhận: câu giá **gõ không dấu** của đô la / tiền ảo / cổ phiếu (*"gia do la hom nay"*) nay đi Gemini (vàng / xăng / tỉ giá
-   không dấu vẫn chặn); `đô` từ trọn chặn oan *thủ đô* / *đô thị* (đi máy). Danh sách chặn cũ tách thành `_tuKhoaSong` **10** mục
-   + `_tuKhoaTuVan` **11** mục (đếm 2026-10-17; `_tuKhoaSongKhongDau` 8); `chuDeBiChan` = cả hai + câu định nghĩa, hành vi không
+   không dấu vẫn chặn); `đô` từ trọn chặn oan *thủ đô* / *đô thị* (đi máy). Danh sách chặn cũ tách thành `_tuKhoaSongChung` **8** mục
+   + `_tuKhoaTuVan` **11** mục (đếm 2026-10-17 khuya; `_tuKhoaSongKhongDau` 7); riêng *lãi suất* hai đường hai danh sách (dòng 20); `chuDeBiChan` = cả hai + câu định nghĩa, hành vi không
    đổi (Task 3).
 10. §3.5 — chữ khối Riêng tư: bản **kế hoạch** *"AI trên máy không gửi gì rời khỏi thiết bị. Trợ lý online (khi bật và có mạng)
     gửi câu hỏi và bản tóm tắt tài chính tới máy chủ FlowMoney và Google Gemini."* — vì `+` của spec là ký hiệu tóm tắt, không
-    phải chữ giao diện, và cụm *rời khỏi thiết bị* giữ liên tục với ca test cũ (Task 11).
+    phải chữ giao diện, và cụm *rời khỏi thiết bị* giữ liên tục với ca test cũ (Task 11). Chữ hiện hành (dòng 21): thêm vế *và vài tin
+    gần nhất của cuộc trò chuyện*.
 11. §3.4 nhãn nguồn — thêm **chấm tròn 6 px** trước chữ (Stitch `1896d02b…`): xanh `#006E1C` online không ghi chú · đỏ
     `AppColors.error` khi có ghi chú · xám khi trên máy không ghi chú; chữ 12 px màu hằng cục bộ **`Color(0xFF454743)`** — KHÔNG
     `AppColors.onSurfaceVariant` (= `#767872`, 3,8:1 trên nền trang ở 12 px, dưới AA — số của lượt review Task 8, 2026-10-17) —
@@ -412,10 +413,10 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
 13. §3.6 hàng `ai_chat_page.dart` (ước ≈ 1.070 dòng) → trang **1.164** dòng sau Task 9; dời thêm **`DongKhoa`** (`dong_khoa.dart`)
     và **`HangChip`** (`hang_chip.dart`) ra `widgets/tro_ly_ai/` (kế hoạch, rủi ro 4) → **1.141** dòng (`wc -l` 2026-10-17); không
     `mienTru` (Task 10).
-14. **Chưa quyết — hỏi người dùng khi nghiệm thu:** (a) câu định nghĩa / tư vấn khi máy chủ hỏng → AI trên máy trả `kCauTuChoi`
-    trần, không ghi chú *máy chủ không phản hồi*; (b) khi tờ thông tin đang mở, hàng phía sau hiện *Đang nghĩ…*; (c) `_hoiOnline`
-    `catch` khi đã có chữ → `GiuPhanDaCo` (đúng §3.3) nhưng datasource không bao giờ ném nên nhánh ấy chưa có ca phủ.
-15. §7 — id ba màn Stitch đã ghi (commit `b6eb9975`); người dùng chưa xác nhận trên Stitch (Task 0).
+14. **Đã chốt 2026-10-17 khuya:** (a) câu định nghĩa / tư vấn khi máy chủ hỏng → AI trên máy trả **`kMayChuHongTuChoi`** (dòng 22);
+    (b) khi tờ thông tin đang mở, hàng phía sau hiện *Đang nghĩ…* — **giữ**; (c) `_hoiOnline` `catch` khi đã có chữ →
+    `GiuPhanDaCo` (đúng §3.3) nhưng datasource không bao giờ ném nên nhánh ấy chưa có ca phủ — **giữ nguyên, vẫn để**.
+15. §7 — id ba màn Stitch đã ghi (commit `b6eb9975`); người dùng đã xác nhận trên Stitch (2026-10-17 tối).
 16. §3.5 c — thẻ *Trợ lý online* và khối Riêng tư đặt **ngoài** cổng quyền `ai_edge_model` của màn Cài đặt AI (thẻ online chỉ khi
     `coQuyen(ai_assistant)`; Riêng tư luôn hiện; khối mô hình + *Dùng AI trên máy* vẫn trong cổng) — vì gói có `ai_assistant` mà
     không `ai_edge_model` sẽ kẹt sau khi bấm *Chỉ dùng AI trên máy* (cờ gắn máy, không bật lại được), trái lời hứa *"Đổi lại được
@@ -435,3 +436,12 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
     backend thật). Đơn CAN-LAM 47 việc 5 xin backend theo **mục tiêu**: khi client ngắt kết nối thì thôi ghi `delta`, không gọi thêm
     tool / Gemini, huỷ lời gọi Gemini đang chạy hoặc bỏ lời gọi kế (service ghi log ngay tại lời gọi Gemini), không đếm vào circuit
     breaker / không chạy fallback — kèm tiêu chí nghiệm thu đo bằng log và ghi chú các bẫy đã đọc (Task 12, vòng review).
+20. §0 q2 / §3.1 — `'lãi suất'` ở đường **online** hẹp lại (người dùng chốt 2026-10-17 khuya): chỉ *lãi suất ngân hàng / hôm nay / hiện
+    nay* (+ bản không dấu) bị chặn; *"lãi suất kép là gì"*, *"vay trả góp lãi suất 10%/năm…"* đi Gemini. Đường **trên máy** giữ cụm
+    trần (H2 cổng F lần 2 đã đo). Hai danh sách riêng (`_tuKhoaLaiSuatTrenMay`, `_tuKhoaLaiSuatOnline` + bản không dấu), nhóm sống
+    chung `_tuKhoaSongChung` 8 mục.
+21. §3.5 a / c — chữ tờ thông tin (`kThanToOnline`) và khối Riêng tư thêm vế *và vài tin gần nhất của cuộc trò chuyện* (client gửi
+    ≤ 3 cặp history mà chữ cũ chưa nói). Lệch Stitch `7a6519d6…` / `b320f4b9…` đúng một vế — người dùng chốt, **không vẽ lại**.
+22. §3.1 bước 4 — hằng **`kMayChuHongTuChoi`** (*"Máy chủ không phản hồi; AI trên máy chỉ nhận xét được trên số liệu của bạn trong
+    app."*): online bật mà máy chủ hỏng, câu thuộc chủ đề AI trên máy từ chối (định nghĩa / tư vấn) → câu này thay `kCauTuChoi` trần;
+    câu hệ thống nên không nhãn nguồn, không ghi chú. Người dùng chốt 2026-10-17 khuya: lý do rơi phải hiện cho người dùng.

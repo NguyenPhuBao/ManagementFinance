@@ -4605,13 +4605,18 @@ nhận). Hợp đồng backend: `docs/AI/ChatbotAI_Moblie.md` (tài liệu backe
    `nenHoiOnline`; ghi cờ cục bộ `matMang = công tắc bật ∧ không mạng`. Đúng thì `_xinDongYOnline`: máy chưa đọc tờ →
    `moToThongTinOnline` — *Đã hiểu* → ghi cờ đã đọc, câu đi online; *Chỉ dùng AI trên máy* → tắt công tắc + ghi cờ, câu này
    đi máy; vuốt tắt → câu này đi máy, **lần sau hỏi lại**.
-4. `_hoiOnline`: `xepHistory` (≤ 6 tin chữ, tin đầu luôn `user`, bỏ thẻ lệnh và câu cố định của hệ thống) → datasource SSE →
+4. `_hoiOnline`: `xepHistory` (ghép theo **cặp** `user` + lời đáp AI ngay sau, ≤ 3 cặp cuối = ≤ 6 tin; luôn xen kẽ, đầu `user`, cuối
+   `model`; thẻ lệnh, câu cố định của hệ thống và tin không có lời đáp bị bỏ) → datasource SSE →
    chunk **nối thẳng** vào `_traLoiDangDen` (không chèn khoảng trắng, **không gác theo câu**, không thẻ số liệu; gỡ markdown lúc
    hiện bằng `boDanhDauMarkdown`) → `quyetDinhSauOnline` → `_chotOnline`. Hàng chờ *Đang hỏi trợ lý online…* kèm nút **Dừng**
    (`Key('dung-online')`), nút còn ở dưới bong bóng khi chữ đã chảy. 403 → `GoiRepository.lamMoi()` để băng khoá cập nhật.
 5. Rơi về máy (`RoiVeMay`) → gỡ bong bóng đang hiện, nhớ ghi chú *máy chủ không phản hồi* cho câu kế tiếp của đường trên máy.
 6. Máy chưa sẵn (`!_maySan` — chưa tải hoặc công tắc trên máy tắt) → câu cố định theo **nguyên nhân thật**: vừa rơi từ online →
-   `kMayChuHongKhongMoHinh`; `matMang` → `kKhongMangKhongMoHinh`; `chuDeBiChan` → `kCauTuChoi`; còn lại `cauKhoaHoiDap`.
+   `kMayChuHongKhongMoHinh`; `chuDeBiChanOnline` (dữ liệu sống — nối mạng cũng không trả lời được) → `kCauTuChoi`, đứng **trước**
+   `matMang`; `matMang` → `kKhongMangKhongMoHinh`; `chuDeBiChan` → `kCauTuChoi`; còn lại `cauKhoaHoiDap`.
+   Máy sẵn mà online vừa rơi và câu thuộc chủ đề máy từ chối (định nghĩa / tư vấn) → `kMayChuHongTuChoi` thay `kCauTuChoi` trần
+   (lý do rơi hiện cho người dùng; người dùng chốt 2026-10-17 khuya). Chủ đề `'lãi suất'` ở online hẹp lại: chỉ *lãi suất ngân
+   hàng / hôm nay / hiện nay* bị chặn (*"lãi suất kép là gì"* đi Gemini); trên máy vẫn chặn cụm trần.
 7. Máy sẵn → đường trên máy **y như trước** (`chuDeBiChan` → câu chào → vòng tool → bậc 1); câu mô hình mang nhãn *AI trên
    máy* (kèm *· máy chủ không phản hồi* nếu vừa rơi).
 
@@ -4658,7 +4663,7 @@ nghiệm thu). Câu online **không** qua sáu lớp chắn của mục 4 — sa
 ### 15.5 Chỗ mã khác spec (tóm tắt — đầy đủ, kèm lý do đo được: spec mục 10)
 
 `coMangNgay()` có sẵn thay `coMangLucNay()` mới (Task 2 bỏ) · DI `sl<DioClient>().dio`, không `sl<Dio>()` · `DuPhongOnline` luôn
-rơi bất kể chữ · `xepHistory` gọt tới tin `user` + bỏ câu hệ thống · `done {error}` → `DuPhongOnline`, `done {}` → `XongOnline` ·
+rơi bất kể chữ · `xepHistory` ghép theo cặp (tin mồ côi không lên Gemini) · `done {error}` → `DuPhongOnline`, `done {}` → `XongOnline` ·
 câu > 2000 ký tự không cắt ở client (400 → rơi) · nút Dừng theo `_huyOnline != null && !_daDungOnline` · hằng
 `kMayChuHongKhongMoHinh` + vị từ `_maySan` tách khỏi `_coMoHinh` · `chuDeBiChanOnline` so hai lượt (có dấu từ trọn / bỏ dấu chỉ từ
 một nghĩa) · chữ khối Riêng tư theo kế hoạch · chấm 6 px + màu `#454743` · `_retryRequest` giữ `responseType` + datasource bắt mọi
@@ -4674,9 +4679,10 @@ chỉnh fixture test.
   chữ thông báo không ở lại, cùng câu đi trên máy đúng một lần"*.
 - **4.54 — `history` mở đầu bằng vai `model` làm hỏng lượt và mở circuit breaker cho MỌI tài khoản.** SDK
   `@google/generative-ai` 0.24.1 `validateChatHistory` ném *First content should be with role 'user'*; trang gieo lời chào AI
-  ở `initState`. `xepHistory` cắt cửa sổ 6 rồi `skipWhile(!cuaToi)`; `toiDa = 6` gắn với `history.slice(-6)` phía server — **đừng
-  nâng**. Câu cố định của hệ thống (tin AI `nguon == null`) không gửi. ⚠️ Còn để: tin `user` đứng trước một câu hệ thống bị bỏ
-  vẫn đi (*"Giá vàng hôm nay?"* lọt vào `history` lượt sau) — sửa bằng bỏ theo cặp.
+  ở `initState`. `xepHistory` ghép theo **cặp** (tin `user` + lời đáp AI ngay sau, ≤ 3 cặp cuối) trên hội thoại chưa lọc; `toiDa = 6` gắn
+  với `history.slice(-6)` phía server — **đừng nâng**. Câu cố định của hệ thống (tin AI `nguon == null`), lệnh tạo C3 và Dừng không
+  chữ làm tin `user` thành mồ côi → bỏ; ✅ sửa 2026-10-17 khuya (bản đầu `skipWhile(!cuaToi)` để *"Giá vàng hôm nay?"* lọt vào
+  `history` lượt sau, lách `chuDeBiChanOnline`).
 - **4.55 — phát lại sau 401 phải giữ nguyên request.** Bản `_retryRequest` cũ dựng `Options` mới → mất `responseType: stream`, SSE
   bị đọc dồn thành `String` rồi `DioException(unknown)`: câu online đầu sau khi token hết hạn chờ trọn câu, Dừng vô hiệu, rồi vẫn
   rơi về máy. Nay `fetch(requestOptions.copyWith(headers: {...requestOptions.headers, 'Authorization': …}))` — ⚠️ `copyWith(headers:)`
@@ -4725,7 +4731,7 @@ này). Tệp test mới: **8** `_test.dart` + helper `test/helpers/kho_gia.dart`
   không**. Dừng phía client chưa làm server dừng lượt Gemini (đọc mã backend, chưa đo) — đơn 47 việc 5 xin backend: thôi ghi
   `delta`, không gọi thêm tool / Gemini, huỷ lời gọi Gemini đang chạy hoặc bỏ lời gọi kế (service ghi log ngay tại lời gọi
   Gemini), không đếm vào circuit breaker / không chạy fallback; tiêu chí nghiệm thu và các bẫy đã đọc ở chính đơn.
-- Tin `user` mồ côi trong `history` (4.54) — sửa ở `xepHistory`, bỏ theo cặp.
-- Ba câu hỏi người dùng (spec mục 10 dòng 14): câu định nghĩa / tư vấn khi máy chủ hỏng trả `kCauTuChoi` trần không ghi chú; hàng
-  *Đang nghĩ…* sau tờ thông tin đang mở; nhánh `catch` khi đã có chữ chưa có ca phủ.
-- Người dùng chưa xác nhận ba màn Stitch.
+- ✅ Tin `user` mồ côi trong `history` (4.54) — đã sửa 2026-10-17 khuya: `xepHistory` ghép theo cặp.
+- ✅ Ba câu hỏi người dùng (spec mục 10 dòng 14) đã chốt 2026-10-17 khuya: (a) câu định nghĩa / tư vấn khi máy chủ hỏng →
+  `kMayChuHongTuChoi`; (b) hàng *Đang nghĩ…* sau tờ thông tin đang mở — giữ; (c) nhánh `catch` khi đã có chữ chưa có ca phủ — vẫn để.
+- ✅ Người dùng đã xác nhận ba màn Stitch (2026-10-17 tối — spec mục 7).
