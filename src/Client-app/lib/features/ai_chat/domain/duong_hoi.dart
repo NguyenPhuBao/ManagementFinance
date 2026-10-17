@@ -45,7 +45,9 @@ KetQuaOnline quyetDinhSauOnline({
     case XongOnline():
       return daCoChu ? const HoanTat() : const RoiVeMay('rỗng');
     case DuPhongOnline(:final reason):
-      return daCoChu ? const GiuPhanDaCo(kGhiChuGianDoan) : RoiVeMay(reason);
+      // Server luôn chẻ câu thông báo thành delta rồi mới done.fallback: chữ đã có không phải
+      // câu trả lời thật, nên bỏ nó và rơi về máy bất kể daCoChu.
+      return RoiVeMay(reason);
     case LoiOnline(:final http, :final lyDo):
       return daCoChu ? const GiuPhanDaCo(kGhiChuGianDoan) : RoiVeMay('http=$http $lyDo');
     case ChuOnline():
@@ -57,9 +59,12 @@ KetQuaOnline quyetDinhSauOnline({
 typedef MucHoiThoai = ({bool cuaToi, String cau, bool laThe});
 
 /// ≤ [toiDa] tin CHỮ gần nhất (bỏ thẻ lệnh tạo), vai `user` / `model`, thứ tự cũ → mới.
-/// Không gồm câu đang hỏi — người gọi truyền hội thoại TRƯỚC khi thêm nó.
+/// Tin đầu luôn là `user` (hoặc rỗng). Không gồm câu đang hỏi — người gọi truyền hội thoại TRƯỚC khi thêm nó.
 List<TinLichSu> xepHistory(Iterable<MucHoiThoai> hoiThoai, {int toiDa = 6}) {
   final chu = hoiThoai.where((m) => !m.laThe && m.cau.isNotEmpty).toList();
   final tu = chu.length > toiDa ? chu.length - toiDa : 0;
-  return [for (final m in chu.sublist(tu)) (role: m.cuaToi ? 'user' : 'model', text: m.cau)];
+  // SDK Gemini (`validateChatHistory`) đòi tin đầu là `user`: sau khi cắt cửa sổ, bỏ các tin
+  // đầu cho tới tin của người dùng đầu tiên (lời chào AI gieo sẵn cũng bị gọt ở đây).
+  final cat = chu.sublist(tu).skipWhile((m) => !m.cuaToi);
+  return [for (final m in cat) (role: m.cuaToi ? 'user' : 'model', text: m.cau)];
 }

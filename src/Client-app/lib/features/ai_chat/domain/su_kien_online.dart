@@ -19,7 +19,7 @@ class XongOnline extends SuKienOnline {
 }
 
 /// `event: done` với `fallback: true` — server không có câu trả lời thật (thiếu khoá
-/// Gemini, circuit breaker mở…); chữ trước đó (nếu có) là câu thông báo của server.
+/// Gemini, circuit breaker mở…); chữ trước đó (nếu có) là câu thông báo của server, vì thế luật rơi bỏ phần ấy.
 class DuPhongOnline extends SuKienOnline {
   const DuPhongOnline(this.reason);
   final String reason;

@@ -8,6 +8,9 @@ import 'package:flowmoney/features/ai_chat/domain/su_kien_online.dart';
 
 void main() {
   group('nenHoiOnline', () {
+    test('câu chào cũng đi online (spec §3.1)', () {
+      expect(nenHoiOnline(congTacBat: true, coMang: true, cauHoi: 'xin chào'), isTrue);
+    });
     test('công tắc bật ∧ có mạng ∧ không phải dữ liệu sống → online', () {
       expect(nenHoiOnline(congTacBat: true, coMang: true, cauHoi: 'quỹ khẩn cấp là gì'), isTrue);
     });
@@ -40,7 +43,17 @@ void main() {
         expect(k, isA<RoiVeMay>(), reason: '$sk');
       }
     });
-    test('DuPhong / Loi khi ĐÃ có chữ → giữ, ghi chú gián đoạn', () {
+    test('DuPhong khi ĐÃ có chữ → vẫn RoiVeMay', () {
+      final k = quyetDinhSauOnline(daCoChu: true, cuoi: const DuPhongOnline('thiếu khoá'), daDung: false);
+      expect(k, isA<RoiVeMay>(),
+          reason: 'server luôn chẻ câu thông báo thành delta rồi mới done.fallback; chữ ấy không phải câu trả lời');
+      expect((k as RoiVeMay).lyDo, 'thiếu khoá');
+    });
+    test('ChuOnline là sự kiện cuối (đóng không done)', () {
+      expect(quyetDinhSauOnline(daCoChu: true, cuoi: const ChuOnline('x'), daDung: false), isA<GiuPhanDaCo>());
+      expect(quyetDinhSauOnline(daCoChu: false, cuoi: const ChuOnline('x'), daDung: false), isA<RoiVeMay>());
+    });
+    test('Loi khi ĐÃ có chữ → giữ, ghi chú gián đoạn', () {
       final k = quyetDinhSauOnline(daCoChu: true, cuoi: const LoiOnline(http: null, lyDo: 'đứt'), daDung: false);
       expect(k, isA<GiuPhanDaCo>());
       expect((k as GiuPhanDaCo).ghiChu, kGhiChuGianDoan);
@@ -50,10 +63,11 @@ void main() {
       expect(k, isA<GiuPhanDaCo>());
       expect((k as GiuPhanDaCo).ghiChu, kGhiChuDaDung);
     });
-    test('Dừng khi chưa có chữ → RoiVeMay? KHÔNG — là HoanTat rỗng: người dùng tự dừng thì không hỏi máy thay', () {
+    test('Dừng khi chưa có chữ → GiuPhanDaCo("đã dừng"): người dùng tự dừng thì không hỏi máy thay', () {
       // Spec §3.3 hàng cuối: "chưa có chữ → bong bóng rỗng không tạo, chỉ huỷ lượt".
       final k = quyetDinhSauOnline(daCoChu: false, cuoi: const LoiOnline(http: null, lyDo: 'cancel'), daDung: true);
       expect(k, isA<GiuPhanDaCo>());
+      expect((k as GiuPhanDaCo).ghiChu, kGhiChuDaDung);
     });
   });
 
@@ -77,7 +91,36 @@ void main() {
     });
     test('rỗng → rỗng; toiDa tuỳ chỉnh', () {
       expect(xepHistory(const []), isEmpty);
-      expect(xepHistory([(cuaToi: true, cau: 'a', laThe: false), (cuaToi: false, cau: 'b', laThe: false)], toiDa: 1).single.text, 'b');
+      expect(
+          xepHistory([(cuaToi: true, cau: 'a', laThe: false), (cuaToi: false, cau: 'b', laThe: false)], toiDa: 1),
+          isEmpty,
+          reason: 'cửa sổ 1 tin chỉ còn lượt AI; SDK Gemini đòi tin đầu là user nên gọt hết');
+    });
+    test('chỉ có lời chào AI → rỗng', () {
+      expect(xepHistory([(cuaToi: false, cau: 'Xin chào!', laThe: false)]), isEmpty,
+          reason: 'history bắt đầu bằng model làm backend ném lỗi và đếm vào circuit breaker');
+    });
+    test('[chào, u1, a1] → bỏ chào', () {
+      expect(
+          xepHistory([
+            (cuaToi: false, cau: 'chào', laThe: false),
+            (cuaToi: true, cau: 'u1', laThe: false),
+            (cuaToi: false, cau: 'a1', laThe: false),
+          ]),
+          [(role: 'user', text: 'u1'), (role: 'model', text: 'a1')]);
+    });
+    test('cửa sổ cắt bắt đầu ở lượt AI thì gọt tới tin user', () {
+      final h = xepHistory([
+        (cuaToi: true, cau: 'u0', laThe: false),
+        (cuaToi: false, cau: 'a0', laThe: false),
+        (cuaToi: true, cau: 'u1', laThe: false),
+        (cuaToi: false, cau: 'a1', laThe: false),
+        (cuaToi: true, cau: 'u2', laThe: false),
+        (cuaToi: false, cau: 'a2', laThe: false),
+        (cuaToi: true, cau: 'u3', laThe: false),
+      ]);
+      expect(h.length, 5);
+      expect(h.first, (role: 'user', text: 'u1'));
     });
   });
 }
