@@ -1055,14 +1055,16 @@ class _AiChatPageState extends State<AiChatPage> {
             ),
           ),
           const SizedBox(width: 12),
+          // Có nút Dừng: chữ chiếm hết phần trống (tight) để không bị Spacer chia đôi và xuống dòng ở 360 dp.
           Flexible(
+            fit: _hienNutDung ? FlexFit.tight : FlexFit.loose,
             child: Text(
               _dangTraCuu ?? 'Đang nghĩ…',
               style: const TextStyle(
                   color: AppColors.onSurfaceVariant, fontSize: 13),
             ),
           ),
-          if (_hienNutDung) ...[const Spacer(), _nutDung()],
+          if (_hienNutDung) ...[_nutDung()],
           // Chỉ lượt đọc lệnh tạo (C3 §8) huỷ được: nó là lượt chờ THÊM trước vòng hỏi đáp, và có đường lùi là luật.
           if (_dangDocLenh && !_dangHuyLenh)
             TextButton(

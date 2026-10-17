@@ -9,12 +9,15 @@ library;
 
 import 'dart:async';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flowmoney/features/ai_chat/data/cong_tac_online.dart';
 import 'package:flowmoney/features/ai_chat/data/doc_lenh_bang_ai.dart';
+import 'package:flowmoney/features/ai_chat/data/datasources/tro_ly_online_remote_data_source.dart';
+import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/ai_chat/domain/duong_hoi.dart';
 import 'package:flowmoney/features/ai_chat/domain/su_kien_online.dart';
 import 'package:flowmoney/features/ai_chat/presentation/pages/ai_chat_page.dart';
@@ -805,6 +808,7 @@ void main() {
 
   group('trợ lý online (spec 2026-10-11)', () {
     // Kho giả: đã đọc tờ, công tắc bật — tờ thông tin có test riêng ở Task 10.
+    // Cờ bật ghi tường minh dù mặc định khoá vắng đã là bật (docBat() = true) — cho ca đọc rõ ý.
     CongTacOnline daDoc({bool bat = true}) =>
         CongTacOnline(KhoGia({'ai_online_bat': '$bat', 'ai_online_da_doc_to': 'true'}));
 
@@ -1114,7 +1118,7 @@ void main() {
 
     testWidgets('lần đầu: tờ hiện; "Đã hiểu" → đi online + ghi cờ', (t) async {
       await khoCaoDeTo(t);
-      final kho = KhoGia({'ai_online_bat': 'true'});
+      final kho = KhoGia({});
       var soLanOnline = 0;
       await t.pumpWidget(boc(AiChatPage(
         coMoHinh: true, laPremium: true, congTacOnline: CongTacOnline(kho), coMang: () async => true,
@@ -1133,7 +1137,7 @@ void main() {
 
     testWidgets('"Chỉ dùng AI trên máy" → tắt công tắc, câu đi trên máy, lần sau không hỏi lại', (t) async {
       await khoCaoDeTo(t);
-      final kho = KhoGia({'ai_online_bat': 'true'});
+      final kho = KhoGia({});
       var soLanOnline = 0;
       await t.pumpWidget(boc(AiChatPage(
         coMoHinh: true, laPremium: true, congTacOnline: CongTacOnline(kho), coMang: () async => true,
@@ -1154,11 +1158,15 @@ void main() {
       expect(find.text(kTieuDeToOnline), findsNothing);
     });
 
-    testWidgets('vuốt tắt tờ → câu này trên máy, cờ chưa ghi (lần sau hỏi lại)', (t) async {
-      final kho = KhoGia({'ai_online_bat': 'true'});
+    testWidgets('vuốt tắt tờ → câu này trên máy, cờ chưa ghi; câu sau tờ hiện LẠI', (t) async {
+      final kho = KhoGia({});
+      var soLanOnline = 0;
       await t.pumpWidget(boc(AiChatPage(
         coMoHinh: true, laPremium: true, congTacOnline: CongTacOnline(kho), coMang: () async => true,
-        onHoiOnline: (_, __) => const Stream.empty(),
+        onHoiOnline: (_, __) {
+          soLanOnline++;
+          return const Stream.empty();
+        },
         onHoi: (_) => Stream.value(const CauQua('Có 2 ngân sách.')),
       )));
       await guiRoiCho(t, 'Tình hình ngân sách');
@@ -1166,6 +1174,11 @@ void main() {
       await t.pumpAndSettle();
       expect(find.textContaining('Có 2 ngân sách'), findsOneWidget);
       expect(kho.ban.containsKey('ai_online_da_doc_to'), isFalse);
+      await guiRoiCho(t, 'Tình hình ngân sách');
+      expect(find.text(kTieuDeToOnline), findsOneWidget, reason: 'chưa quyết thì lần sau hỏi lại');
+      expect(soLanOnline, 0);
+      await t.tapAt(const Offset(10, 10));
+      await t.pumpAndSettle();
     });
 
     testWidgets('nút Dừng chỉ khi online đang chạy (cả SAU chữ đầu); bấm → giữ phần đã hiện + "đã dừng"', (t) async {
@@ -1191,6 +1204,49 @@ void main() {
       expect(find.text('Nửa đầu'), findsOneWidget);
       expect(find.text('$kNguonOnline · $kGhiChuDaDung'), findsOneWidget);
       expect(find.byKey(const Key('dung-online')), findsNothing);
+    });
+
+    testWidgets('Dừng cắt CancelToken thật của datasource (không chỉ đổi nhãn)', (t) async {
+      final nguon = _NguonOnlineGia();
+      sl.registerSingleton<TroLyOnlineRemoteDataSource>(nguon);
+      addTearDown(() => sl.unregister<TroLyOnlineRemoteDataSource>());
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true, laPremium: true, congTacOnline: daDoc(), coMang: () async => true,
+      )));
+      await t.enterText(find.byType(TextField), 'Quỹ khẩn cấp là gì?');
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pump(const Duration(milliseconds: 50));
+      await t.pump(const Duration(milliseconds: 50));
+      await t.tap(find.byKey(const Key('dung-online')));
+      await t.pump();
+      expect(nguon.token!.isCancelled, isTrue, reason: 'Dừng phải cắt luồng thật, không chỉ đổi nhãn');
+      nguon.dieuKhien.add(const LoiOnline(http: null, lyDo: 'cancel'));
+      await nguon.dieuKhien.close();
+      await t.pumpAndSettle();
+    });
+
+    testWidgets('360x800: "Đang hỏi trợ lý online…" không xuống dòng khi có nút Dừng', (t) async {
+      t.view.physicalSize = const Size(360, 800);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      final dieuKhien = StreamController<SuKienOnline>();
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true, laPremium: true, congTacOnline: daDoc(), coMang: () async => true,
+        onHoiOnline: (_, __) => dieuKhien.stream,
+      )));
+      await t.enterText(find.byType(TextField), 'Quỹ khẩn cấp là gì?');
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pump(const Duration(milliseconds: 50));
+      expect(find.byKey(const Key('dung-online')), findsOneWidget);
+      // Font test (Ahem) rộng hơn font thật nên chiều cao không đo được; đo CHỖ cấp: chữ phải được cấp trọn phần
+      // trống tới sát nút Dừng. Có Spacer chia đôi thì mép phải của chữ cách nút cả trăm px.
+      final chu = t.getTopRight(find.text(kDangHoiOnline)).dx;
+      final nut = t.getTopLeft(find.byKey(const Key('dung-online'))).dx;
+      expect(nut - chu, lessThan(1),
+          reason: 'ca canh chữ chờ online không bị ép hẹp khi có nút Dừng (Spacer chia đôi chỗ trống làm nó xuống dòng ở 360 dp)');
+      dieuKhien.add(const LoiOnline(http: null, lyDo: 'cancel'));
+      await dieuKhien.close();
+      await t.pumpAndSettle();
     });
 
     testWidgets('đường trên máy KHÔNG có nút Dừng (như cũ)', (t) async {
@@ -1254,5 +1310,22 @@ class _DocLenhGia implements DocLenh {
 
   void tha() {
     if (!(_cho?.isCompleted ?? true)) _cho!.complete();
+  }
+}
+
+class _NguonOnlineGia implements TroLyOnlineRemoteDataSource {
+  CancelToken? token;
+  final dieuKhien = StreamController<SuKienOnline>();
+
+  @override
+  Stream<SuKienOnline> hoi({
+    required String cauHoi,
+    required String conversationId,
+    required List<TinLichSu> history,
+    required CancelToken cancel,
+  }) async* {
+    token = cancel;
+    yield const ChuOnline('Nửa đầu');
+    yield* dieuKhien.stream;
   }
 }

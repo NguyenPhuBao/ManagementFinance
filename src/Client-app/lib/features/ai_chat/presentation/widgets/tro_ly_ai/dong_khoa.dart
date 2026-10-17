@@ -1,5 +1,5 @@
 /// Băng khoá của màn Trợ lý AI — một câu + một nút (dời nguyên văn khỏi `ai_chat_page.dart`).
-/// Trạng thái ở lại trang: widget nhận câu, cờ gói Basic và hai callback.
+/// Trạng thái ở lại trang: widget nhận câu, cờ gói Basic và một callback (`onCaiDatAi`).
 library;
 
 import 'package:flutter/material.dart';

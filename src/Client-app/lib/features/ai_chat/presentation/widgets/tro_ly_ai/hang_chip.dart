@@ -38,7 +38,7 @@ class HangChip extends StatelessWidget {
     );
   }
 
-  Widget _chip(String nhan) {
+  Widget _chip(String chu) {
     return Material(
       color: bat
           ? AppColors.secondaryContainer
@@ -46,9 +46,9 @@ class HangChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        // ⚠️ `null` khi chưa có mô hình: ô nhập đã khoá mà chip vẫn hỏi được
+        // ⚠️ `null` khi [bat] = false (chưa có đường nào hỏi được): ô nhập đã khoá mà chip vẫn hỏi được
         // thì có một đường vòng quanh chính cái khoá ấy.
-        onTap: bat ? () => onChon(nhan) : null,
+        onTap: bat ? () => onChon(chu) : null,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
@@ -56,7 +56,7 @@ class HangChip extends StatelessWidget {
             border: Border.all(color: AppColors.outlineVariant),
           ),
           child: Text(
-            nhan,
+            chu,
             style: TextStyle(
               color: bat ? AppColors.onSurfaceVariant : AppColors.outline,
               fontSize: 12,

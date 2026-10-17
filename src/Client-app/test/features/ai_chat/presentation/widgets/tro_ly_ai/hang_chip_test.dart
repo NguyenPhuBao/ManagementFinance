@@ -16,6 +16,6 @@ void main() {
     final chon = <String>[];
     await t.pumpWidget(boc(HangChip(nhan: const ['A'], bat: false, onChon: chon.add)));
     await t.tap(find.text('A'));
-    expect(chon, isEmpty, reason: 'chưa có mô hình thì chip không là đường vòng quanh khoá');
+    expect(chon, isEmpty, reason: 'cờ bat tắt (chưa có đường nào hỏi được) thì chip không là đường vòng quanh khoá');
   });
 }
