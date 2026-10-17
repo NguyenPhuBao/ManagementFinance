@@ -33,8 +33,9 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 /// luồng trả / hoàn tác / xoá với trang danh sách.
 ///
 /// "Lịch sử các kỳ" lần theo `generatedFromBillId` — cột v16, đồng bộ
-/// (`previous_bill_id`) từ 2026-09-12; hoá đơn ghi trước ngày ấy chỉ có một
-/// dòng lịch sử; đừng đoán theo tên.
+/// (`previous_bill_id`) từ 2026-09-12; kỳ ghi trước ngày ấy rồi kéo về máy
+/// khác không nối được với kỳ trước nó, nên lịch sử có thể chỉ một dòng;
+/// đừng đoán theo tên.
 class BillDetailPage extends StatefulWidget {
   final String id;
 

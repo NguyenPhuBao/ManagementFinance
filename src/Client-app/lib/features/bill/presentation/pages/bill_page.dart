@@ -410,7 +410,7 @@ class _BillPageState extends State<BillPage> {
     // gán nhãn "SẮP ĐẾN HẠN" cho đúng nhánh ĐÃ QUÁ HẠN.
     final status = billDisplayStatusOf(bill, now, macDinh: _soNgayNhac);
     final danhMuc = _lookup.category(bill.categoryId);
-    // Khoản chi của lần trả — chỉ có với khoản ghi từ v16 trên máy này.
+    // Khoản chi của lần trả — chỉ thiếu với khoản trả ghi trước 2026-09-12.
     // Không có thì KHÔNG đoán ngày trả; chỉ ghi hạn như cũ.
     final khoanChi = payments[bill.id];
 

@@ -147,7 +147,8 @@ void main() {
     await moTrang(tester);
     await chamDong(tester);
 
-    expect(find.text('Xoá giao dịch'), findsNothing);
+    expect(find.text('Xoá giao dịch'), findsNothing,
+        reason: 'Không có cổng thì khoản có billId vẫn khoá: không có nút Xoá.');
     expect(find.textContaining('không xoá được từ sổ giao dịch'), findsOneWidget,
         reason: 'sl.isRegistered → null → mặc định an toàn là khoá.');
     await dongTrang(tester);
