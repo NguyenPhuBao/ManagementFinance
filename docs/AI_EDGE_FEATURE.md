@@ -26,7 +26,7 @@ nhóm A (dự báo gộp kỳ quá hạn, toast đồng bộ, định tuyến n�
 hoá đơn, còn dở (**9.44**) · dự án huấn luyện **A** — spike tra cứu (**10.6**) · ✅ dự án **B** — bộ định tuyến HỌC: câu giao
 dịch đi phiên một tool, kèm hai bản sửa `kiemKy` / bộ chỉnh (**9.45**, 2026-10-02) · ✅ **đường nhanh** câu giao dịch — tool chạy trước, Gemma chỉ viết câu, lưới kể tên C6; chờ ~28 → 3,9 s, 35/35 không tụt (**9.46**, 2026-10-05) ·
 ✅ **trợ lý online hỗn hợp** — màn Trợ lý AI có mạng thì hỏi chatbot backend (Gemini, SSE), hỏng / mất mạng thì Gemma trả lời cùng
-câu; mã xong 2026-10-17, 🚧 chưa nghiệm thu máy thật (**mục 15**).
+câu; mã xong 2026-10-17, ✅ nghiệm thu OnePlus 2026-10-18 (**mục 15**; ba giới hạn phía backend ở G96 `CLIENT_APP_KNOWN_GAPS.md`).
 
 ✅ **CỔNG A ĐÃ QUA — đo trên máy thật tối 2026-09-22** (mục **9.9**). ⚠️ Nhưng giữ nguyên bài học
 đã phải trả giá một lần: **"P3 xong" KHÔNG đồng nghĩa "cổng A xong"** — hai thứ khác nhau, và
@@ -248,7 +248,7 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.33 | ⭐ **Phiên có tool là phiên GIẢI MÃ CÓ RÀNG BUỘC — và với gói 1.7.0 nó sập NATIVE ngay lượt giải mã đầu, trên CẢ HAI máy** (2026-09-23, spike lát 4b) | `flutter_gemma_litertlm` 1.7.0 gắn cứng `enable_constrained_decoding = true` khi có tool (`litert_lm_client.dart:1083`), không tham số tắt; `CompositeLogitMask::Apply` nhảy qua một con trỏ hàm rác vào `libGemmaModelConstraintProvider.so` — Realme (CPU) `SIGSEGV`/`SEGV_ACCERR` **3/3**, OnePlus 13R (GPU) `SIGBUS`/`BUS_ADRALN` **2/2** — kể cả câu không cần tool. `try/catch` vô dụng, app văng; `flutter test` mù hoàn toàn vì x86_64 không chạy engine. Đường không tool trên cùng APK chạy bình thường. ✅ **Chữa bằng nâng lên `flutter_gemma` 1.9.0 + `flutter_gemma_litertlm` 1.8.0** (`af2aa81`, người dùng duyệt đích danh): đo lại **6/6 không sập** trên hai máy. ⚠️ Rủi ro còn lại: máy khác **chưa đo**, và một cú sập native ở đây là app văng **mỗi lần** người dùng hỏi — một canary kiểu 4.24 quanh lượt giải mã đầu của phiên có tool sẽ chặn được — ✅ **làm xong 2026-09-23 tối** (bước 1b, lối B: canary **cộng** lý do thoát của Android, mục **9.15**). Đừng hạ gói về 1.7.x | *(đo máy thật — mục 9.13)* |
 | 4.34 | ⭐ **Thẻ số liệu xét "câu nhắc tới" trên CẢ tin nhắn** — cổng C, OnePlus 2026-09-23, ✅ sửa cùng ngày (`ace9a53`) | tool ngân sách trả Di chuyển (**hạn mức 450.000**) trước Ăn uống (**còn lại 450.000**); câu trả lời nhắc hai tên ở **hai câu khác nhau**, nên với luật 4.27 cả hai mục đều "được nhắc" và mục đứng trước thắng — thẻ in *"Di chuyển · Hạn mức 450.000 đ"* dưới câu *"Ăn uống: … Còn lại 450.000 đ"*. Câu thì đúng, chỉ thẻ sai, nên không chốt nào đỏ. Nay `theCuaCau` tách câu bằng đúng `tachCauHoanChinh` của `gacTheoCau` rồi xét từng câu — cùng đơn vị với `kiemNhan`; khử trùng theo giá trị vẫn trên cả tin nhắn | `the_cua_cau_test.dart` nhóm *"xét theo TỪNG CÂU — bẫy 4.34"* |
 | 4.35 | ⭐ **Mẫu câu bậc tool sau NHIỀU lời gọi lặp hàng và mất nhãn kỳ** — cổng C, OnePlus 2026-09-23, ✅ sửa cùng ngày | câu ĐC1 (*"lãi suất tiết kiệm"*): E2B gọi `chi_tieu_theo_ky` cho *tháng này* → *năm nay* → *tháng trước* rồi đòi lần thứ tư → L3 → `mauCau()`. Bản phẳng in cả bộ hàng **hai lần** và *"Tổng chi: 2.141.000 đ … Tổng chi: 0 đ"* không nói kỳ nào — không số nào bịa, nhưng câu tự mâu thuẫn trước mắt người đọc. Nay `GoiSoTraCuu` nhớ từng lượt; mỗi nhóm một câu mở bằng **chữ kỳ**, lượt cùng nội dung gộp nhãn: *"Tháng này, năm nay — …. Tháng trước — …"*. `hang` / `tongHop` / `soLieu` không đổi, nên ba lớp chắn không đổi | `goi_so_tra_cuu_test.dart` nhóm *"mẫu câu sau NHIỀU lời gọi — bẫy 4.35"* |
-| 4.36 | **Câu trả lời bậc tool có thể là MARKDOWN** — cổng C, OnePlus 2026-09-23, ✅ sửa cùng ngày | *"Danh sách ngân sách sắp hết:\n*   Giáo dục: …  *   Di chuyển: …"* — màn hiện chữ trần nên dấu `*` lộ giữa câu. Bậc 1 chưa từng thấy (prompt có few-shot văn xuôi); lượt trả lời bậc tool thì không. `boDanhDauMarkdown` gỡ `* ` / `- ` / `• ` đầu dòng và `**` **lúc hiện**, sau khi câu đã qua kiểm; ⚠️ dấu gạch chỉ là dấu khi **theo sau bởi khoảng trắng** — `-100.000 đ` đầu câu là số âm. Từ 2026-10-18 gỡ cả `#` tiêu đề, `>` trích dẫn, dòng `---` (đường online — Gemini dùng chúng) | `bo_markdown_test.dart` *"⭐ số ÂM ở đầu câu KHÔNG bị gỡ dấu"*; `ai_chat_page_test.dart` *"câu markdown hiện KHÔNG còn dấu `*`"* |
+| 4.36 | **Câu trả lời bậc tool có thể là MARKDOWN** — cổng C, OnePlus 2026-09-23, ✅ sửa cùng ngày | *"Danh sách ngân sách sắp hết:\n*   Giáo dục: …  *   Di chuyển: …"* — màn hiện chữ trần nên dấu `*` lộ giữa câu. Bậc 1 chưa từng thấy (prompt có few-shot văn xuôi); lượt trả lời bậc tool thì không. `boDanhDauMarkdown` gỡ `* ` / `- ` / `• ` đầu dòng và `**` **lúc hiện**, sau khi câu đã qua kiểm; ⚠️ dấu gạch chỉ là dấu khi **theo sau bởi khoảng trắng** — `-100.000 đ` đầu câu là số âm. Từ 2026-10-18 gỡ cả `#` tiêu đề, `>` trích dẫn, dòng `---` (đường online — Gemini dùng chúng; `>` trước con số / dấu so sánh không gỡ — ⚠️ còn sót số ÂM sau `>`: `> -100.000 đ` mất dấu `>`, re-review 2026-10-18 park; sửa là `[-+]?` trong lookahead + một ca) | `bo_markdown_test.dart` *"⭐ số ÂM ở đầu câu KHÔNG bị gỡ dấu"*; `ai_chat_page_test.dart` *"câu markdown hiện KHÔNG còn dấu `*`"* |
 | 4.37 | **Huỷ một luồng `async*` đang chờ `await for` KHÔNG chạy `finally` ngay** — bước 1b, 2026-09-23 | `sub.cancel()` chỉ có hiệu lực khi luồng **bên trong** phát sự kiện hoặc đóng; trước đó `cancel()` trả về một future **không bao giờ hoàn tất** — ca test đầu của `quaCanary` treo tới hết thời hạn mà không có dòng lỗi nào. Mã không sai: trong app, lượt bị huỷ luôn kèm `stopGeneration` nên luồng của engine đóng lại và `finally` gỡ dấu. Cùng lượt, một cái bẫy sinh đôi: `sub.asFuture()` gắn **sau** khi luồng đã đóng cũng không bao giờ hoàn tất — gắn nó ngay sau `listen` | `canary_cong_cu_test.dart` *"lượt rỗng, lượt ném lỗi, lượt bị huỷ — đều gỡ dấu"* — ca huỷ gọi `cancel()`, **rồi** đóng luồng trong, **rồi** mới chờ |
 | 4.38 | ⭐ **Tên đối tượng có CHỮ SỐ không bao giờ qua được lớp chắn** — bước 1c, 2026-09-23, ✅ sửa cùng ngày | `trichSo` đọc "9" của *"Tiền nhà T9"* là một con số không có trong gói → `kiemSo` chặn; `amTietCua` tách câu ở mọi ký tự không phải chữ nên âm tiết "t9" của tên không bao giờ có trong câu → `kiemNhan` chặn; `theCuaCau` lấy "9" khớp nhầm *"Còn 9 ngày"* của gói khác → thẻ sai. Hỏng theo chiều **an toàn** (rơi về mẫu câu), nên không ai thấy: cổng C đo bằng hoá đơn tên `Kiem`, không có chữ số — trong khi **5/9** hoá đơn thật của tài khoản 10 có. Cùng lượt lộ một lỗ sinh đôi: tên tách theo khoảng trắng còn câu tách theo mọi ký tự lạ, nên tên có dấu gạch (`Điện/Nước`) cũng không bao giờ khớp. ⚠️ Khi bỏ tên khỏi câu, bốn chốt giữ lớp chắn không bị nới: tên có chữ cái · khớp **trọn từ** ở hai đầu (*"an 5"* nằm trong *"Ban 5"*; *"Quỹ 9"* nằm trong *"Quỹ 95"*) · không phân biệt hoa thường · tên **dài** trước. ⚠️ Thêm một member vào `GoiSo` làm lớp giả nào **`implements GoiSo`** gãy biên dịch — ba lớp giả trong test đổi sang `extends` | `kiem_so_test.dart` nhóm *"tên đối tượng có chữ số (bước 1c)"* (8 ca, **11** bản sai có chủ ý qua hai tệp đều bị bắt); `kiem_nhan_test.dart` nhóm *"tên có chữ số hoặc dấu câu (bước 1c)"*; `the_cua_cau_test.dart` *"⭐ chữ số trong TÊN không đẻ ra thẻ…"*; `goi_so_tra_cuu_test.dart` *"⭐ câu đúng nêu tên hoá đơn CÓ CHỮ SỐ → qua cả ba lớp"* |
 | 4.39 | ⭐ **Vượt trần token ở phiên có tool mang CHUỖI LỖI KHÁC bẫy 4.29** — bước 2, Realme 2026-09-23 | bảy khai báo tool (`tools_json` 4.393 ký tự) + phiên hai lời gọi ở `maxTokens` 2048 → `FAILED_PRECONDITION: Prefill input length exceeds available state entries (remaining capacity: 133)`, **không** phải `INVALID_ARGUMENT … too long`. Kế hoạch dặn grep chuỗi của 4.29 — grep ấy **mù** lỗi này. Màn hiện *"Mô hình trên máy không chạy được"* dù tool đã chạy xong. Chữa: `maxTokens` 4096 (RAM +0,71 GiB, swap +1,1 GB trên Realme — người dùng duyệt vượt ngưỡng). **Mỗi tool thêm vào phải đo lại** — trần là của **tổng** khai báo + kết quả tool + câu trả lời | *(đo máy thật — mục 9.17)* |
@@ -4571,22 +4571,23 @@ xác nhận bài học ở mục "Ghi chú vận hành" `CLAUDE.md`: **timeout k
 ## 15. Trợ lý online — hỗn hợp: có mạng hỏi backend (Gemini), hỏng / mất mạng rơi về mô hình trên máy (chốt 2026-10-11 · thi công 2026-10-17)
 
 **Trạng thái:** ✅ **mã xong 2026-10-17** — 22 commit `80d9dee8` → `fb92c16d` (nhánh `TranQuangDat`, base `909ae016`; Task 1,
-3–11, Task 2 bỏ; `b6eb9975` ghi id Stitch) + commit tài liệu Task 12. 🚧 **CHƯA nghiệm thu máy thật** (Task 13, chín ca ở spec
-§6): cần backend dev chạy được — `npm install` + áp `database/20`, `database/24` thanh toán, ba việc **cần phép đích danh** (đơn
-44) — và `.env` có khoá Gemini (có từ 2026-10-17; tên `GEMINI_MODEL` chưa ai kiểm — đơn CAN-LAM **47**). Tới khi ấy **mọi câu
-online rơi về AI trên máy**, người dùng chỉ thấy nhãn *máy chủ không phản hồi*. Spec
-`docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` — **mục 10** ghi 19 chỗ khác bản viết (đếm 2026-10-17; 17 của mã / test,
+3–11, Task 2 bỏ; `b6eb9975` ghi id Stitch) + commit tài liệu Task 12. Đợt sửa sau review toàn nhánh + ba quyết định người dùng
+2026-10-17 khuya (`1ddb90aa` · `0e52d591` · `418b9e2d`) và F4 `f88137f7` + vòng sửa 1 `1c6ab600` (giữ `>` trước con số). ✅ **Nghiệm thu OnePlus 13R 2026-10-18** trên backend dev
+chạy thật (`gemini-3.8-flash` + khoá dev trả lời thật) — kết quả từng ca ở spec §6; ba hiện tượng thuộc backend ở **G96**
+`CLIENT_APP_KNOWN_GAPS.md` (đơn 47 việc 5–7: Dừng không tới server · server im > 45 s khi Gemini suy nghĩ → `receiveTimeout` ·
+`maxOutputTokens: 1024` gồm token suy nghĩ → câu cụt), G95 cổng C3 bắt nhầm câu hỏi. Spec
+`docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` — **mục 10** ghi 23 chỗ khác bản viết (đếm 2026-10-18; 21 của mã / test — 20–23 là ba quyết định người dùng + F4,
 dòng 18 là lệch đánh số bất biến với `AI_AGENT_ARCHITECTURE.md` §6, dòng 19 tách tiêu chí ca 5 §6 của **spec** (Dừng) — mục 15.5 dưới đây
 tóm tắt); kế hoạch 13 task `plans/2026-10-11-tro-ly-online-backend-fallback-tren-may.md` (gitignore). Stitch
-ba màn `1896d02b…` *bong bóng online* · `7a6519d6…` *tờ thông tin* · `b320f4b9…` *Cài đặt AI — công tắc* (người dùng chưa xác
-nhận). Hợp đồng backend: `docs/AI/ChatbotAI_Moblie.md` (tài liệu backend, chỉ đọc) với năm chỗ cố ý không làm — đơn 47.
+ba màn `1896d02b…` *bong bóng online* · `7a6519d6…` *tờ thông tin* · `b320f4b9…` *Cài đặt AI — công tắc* (người dùng xác nhận đạt
+2026-10-17 tối; chữ tờ + Riêng tư nay thêm vế history — lệch một vế, không vẽ lại). Hợp đồng backend: `docs/AI/ChatbotAI_Moblie.md` (tài liệu backend, chỉ đọc) với năm chỗ cố ý không làm — đơn 47.
 
 ### 15.1 Quyết định (spec §0, người dùng chốt 2026-10-11, mỗi câu một lượt chọn)
 
 | # | Chốt |
 |---|---|
 | 1 | Online hỏng **trước chữ đầu** (mạng chập, 403, 429, 503, `done.fallback`, hết giờ) → **cùng câu** tự rơi về AI trên máy; hỏng giữa dòng → giữ phần đã hiện + ghi chú. Mô hình trên máy nạp khi cần, không nạp sẵn |
-| 2 | Online **mở kiến thức / tư vấn chung** (quỹ khẩn cấp, 50/30/20, thuế, vay, đầu tư nói chung) nhưng **vẫn chặn dữ liệu sống** (giá vàng · giá xăng · tỷ giá · lãi suất · thời tiết · tin tức · xổ số · bóng đá · câu hỏi *giá* một tài sản) |
+| 2 | Online **mở kiến thức / tư vấn chung** (quỹ khẩn cấp, 50/30/20, thuế, vay, đầu tư nói chung) nhưng **vẫn chặn dữ liệu sống** (giá vàng · giá xăng · tỷ giá · lãi suất ngân hàng / hôm nay / hiện nay (hẹp lại 2026-10-17 khuya, mục 10 dòng 20 — trần `lãi suất` chỉ còn ở đường máy) · thời tiết · tin tức · xổ số · bóng đá · câu hỏi *giá* một tài sản) |
 | 3 | **Tờ thông tin một lần** trước câu online đầu tiên; mỗi bong bóng AI ghi nguồn |
 | 4 | Lịch sử hội thoại **trong phiên màn**; gửi ≤ 6 tin làm `history`; không bảng SQLite |
 | 5 | Không thẻ FHS từ `meta` |
@@ -4650,7 +4651,7 @@ lib/features/ai_edge/presentation/pages/cai_dat_ai_page.dart — thẻ công t�
 lib/core/di/injection_container.dart                — TroLyOnlineRemoteDataSourceImpl(sl<DioClient>().dio) · CongTacOnline (lazy)
 ```
 
-Số dòng (`wc -l` 2026-10-17): `ai_chat_page.dart` **1.141** (trần quét 23 = 1.200; trước lượt 1.079), `cai_dat_ai_page.dart`
+Số dòng (`wc -l` 2026-10-18, sau đợt sửa): `ai_chat_page.dart` **1.153** (trần quét 23 = 1.200; trước lượt 1.079, 1.141 lúc xong Task 12), `cai_dat_ai_page.dart`
 **694**. Khe tiêm test của `AiChatPage`: `onHoiOnline`, `coMang`, `congTacOnline` (`null` = đường thật qua DI).
 
 ### 15.4 Giới hạn độ tươi (spec §3.7)
@@ -4708,29 +4709,31 @@ chỉnh fixture test.
 | `core/api/auth_interceptor_test.dart` | 18 | +1 (17 cũ) — phát lại sau 401 giữ `responseType` / `receiveTimeout` / `cancelToken` |
 | `features/ai_chat/data/datasources/tro_ly_online_remote_data_source_test.dart` | 16 | mới — adapter Dio giả; 403 / 429 / 503, `done.fallback`, `done.error`, đứt giữa luồng, thân cụt UTF-8 |
 | `features/ai_chat/data/cong_tac_online_test.dart` | 3 | mới |
-| `features/ai_chat/domain/duong_hoi_test.dart` | 16 | mới — ma trận `nenHoiOnline`, đủ hàng luật rơi, `xepHistory` |
+| `features/ai_chat/domain/duong_hoi_test.dart` | 21 | mới — ma trận `nenHoiOnline`, đủ hàng luật rơi, `xepHistory`; +5 đợt sửa (luật cặp: câu bị chặn, Dừng không chữ, C3, 4 cặp → 3, trộn) |
 | `features/ai_chat/ly_do_khoa_test.dart` | 7 | +4 (3 cũ) — bảng chân trị với `onlineBat` |
-| `features/ai_chat/ai_chat_page_test.dart` | 74 | +24 (50 cũ) — nhóm *trợ lý online (spec 2026-10-11)* |
+| `features/ai_chat/ai_chat_page_test.dart` | 80 | +24 (50 cũ) — nhóm *trợ lý online (spec 2026-10-11)*; +6 đợt sửa (history rỗng / một cặp, M4, `kMayChuHongTuChoi` + đối chứng, 403 → `lamMoi` / 503, không nối chữ sau Dừng) |
 | `features/ai_chat/presentation/widgets/tro_ly_ai/` (4 tệp) | 9 | mới — `nhan_nguon` 3 · `to_thong_tin_online` 3 · `hang_chip` 2 · `dong_khoa` 1 |
-| `features/ai_edge/domain/chu_de_chan_test.dart` | 87 | +43 (44 cũ — suy từ tổng) — `chuDeBiChanOnline`, ranh giới từ có dấu, bộ huấn luyện không bị chặn oan |
-| `features/ai_edge/presentation/cai_dat_ai_page_test.dart` | 23 | +4 (19 cũ) — thẻ thứ hai đọc / ghi cờ, chữ Riêng tư, hai ca quyền |
+| `features/ai_edge/domain/chu_de_chan_test.dart` | 94 (+7 đợt sửa: `'lãi suất'` online mở / chặn, trên máy vẫn chặn) | +43 (44 cũ — suy từ tổng) — `chuDeBiChanOnline`, ranh giới từ có dấu, bộ huấn luyện không bị chặn oan |
+| `features/ai_edge/presentation/cai_dat_ai_page_test.dart` | 23 | +4 (19 cũ) — thẻ thứ hai đọc / ghi cờ, chữ Riêng tư, hai ca quyền (đợt sửa thêm assertion vế history vào ca có sẵn) |
+| `features/ai_edge/domain/bo_markdown_test.dart` | 12 | +6 F4 2026-10-18 (6 cũ; `f88137f7` + vòng sửa 1 `1c6ab600`) — tiêu đề `#`, trích dẫn `>`, dòng kẻ ngang, tổ hợp thật từ máy, `>` trước con số / dấu so sánh giữ nguyên (4.36), dòng trống kép quanh `---`; bản sai `#` không cần khoảng trắng và bản sai bỏ vế loại trừ `>` đều đỏ |
 
-Cộng **+128** ca: `flutter test` **7.368 pass / 10 skip** (trước 7.240), `flutter analyze` **20** (mức nền, 0 trong tệp lượt
-này). Tệp test mới: **8** `_test.dart` + helper `test/helpers/kho_gia.dart` (`KhoGia` — kho secure storage giả dùng chung);
+Đo lại 2026-10-18 khuya tại `1c6ab600` (sau đợt sửa + F4 + vòng sửa 1): `flutter test` **7.392 pass / 10 skip / 0 fail** (6 ph
+29 s; +18 đợt sửa, +6 F4 — `bo_markdown_test.dart` 12 ca), `flutter analyze` **20**; các hàng ghi *đợt sửa* / *F4* ở bảng trên đếm lại cùng lúc bằng
+`--reporter json`. Lúc xong Task 12 (2026-10-17): cộng **+128** ca: `flutter test` **7.368 pass / 10 skip** (trước 7.240),
+`flutter analyze` **20** (mức nền, 0 trong tệp lượt này). Tệp test mới: **8** `_test.dart` + helper `test/helpers/kho_gia.dart` (`KhoGia` — kho secure storage giả dùng chung);
 **5** tệp test sửa. Ca canh chính đã thử bằng bản sai có chủ ý: bỏ ghi chú rơi (`_ghiChuRoi = null`) → 4 ca đỏ gồm ca ⭐ 503
 (Task 9); nút Dừng chỉ khi chưa có chữ → ca Dừng đỏ (Task 10); bỏ lệnh ghi / lệnh đọc cờ công tắc online → ca Cài đặt AI đỏ
 (Task 11); regex từ trọn không thoát `\p` → 3 ca đỏ (Task 3).
 
 ### 15.8 Còn để / chưa quyết
 
-- **Nghiệm thu máy thật** (Task 13, spec §6 chín ca; OnePlus 13R ưu tiên, tài khoản 10 Premium, `adb reverse`): chữ chạy và
-  thời gian tới chữ đầu, lệch số hai đường (ca 2), rơi khi backend tắt, máy bay (không request `[Online]` nào), Dừng giữa dòng,
-  tờ một lần, Basic, câu giá vàng, máy chưa có mô hình. Đo cả `receiveTimeout` 45 s với `ResponseType.stream` có đúng là khoảng
-  lặng giữa hai gói không (spec §9) — sai thì chuyển sang `Stream.timeout` trong datasource. ⚠️ Ca **Dừng** có hai vế (spec mục 10
-  dòng 19): tiêu chí đạt của client là *giữ chữ đã hiện + nhãn đã dừng*; dòng log ngắt kết nối phía server chỉ **đo xem có
-  không**. Dừng phía client chưa làm server dừng lượt Gemini (đọc mã backend, chưa đo) — đơn 47 việc 5 xin backend: thôi ghi
-  `delta`, không gọi thêm tool / Gemini, huỷ lời gọi Gemini đang chạy hoặc bỏ lời gọi kế (service ghi log ngay tại lời gọi
-  Gemini), không đếm vào circuit breaker / không chạy fallback; tiêu chí nghiệm thu và các bẫy đã đọc ở chính đơn.
+- ✅ **Nghiệm thu máy thật 2026-10-18** (OnePlus 13R, backend dev chạy thật) — bảng kết quả ở spec §6: 7 ca đạt trọn, ca 5 đạt
+  nửa client (Dừng lúc chờ: cancel 5 s, socket đóng thật; *giữa dòng* không bắt được vì chữ chảy < 2,4 s), ca 9 + M4 bỏ (người
+  dùng chốt không xoá mô hình). `receiveTimeout` 45 s với `ResponseType.stream` **đúng là khoảng lặng giữa hai gói** (đo: nổ ở
+  49,9 s sau `meta` khi server im) — nhưng Gemini suy nghĩ lâu hơn 45 s nên câu dài rơi về máy trong khi server chạy tới cùng;
+  người dùng chốt **giữ 45 s**, xin backend keep-alive `: ping` (đơn 47 việc 6, **G96**). Dừng phía server: client đóng socket
+  thật nhưng `req.on('close')` không nổ (Node 22) — đơn 47 việc 5 nay có mốc đo. Câu dài cụt vì `maxOutputTokens: 1024` gồm
+  token suy nghĩ — đơn 47 việc 7. Cổng C3 bắt nhầm *"hãy viết 15 lời khuyên tiết kiệm…"* — **G95**.
 - ✅ Tin `user` mồ côi trong `history` (4.54) — đã sửa 2026-10-17 khuya: `xepHistory` ghép theo cặp.
 - ✅ Ba câu hỏi người dùng (spec mục 10 dòng 14) đã chốt 2026-10-17 khuya: (a) câu định nghĩa / tư vấn khi máy chủ hỏng →
   `kMayChuHongTuChoi`; (b) hàng *Đang nghĩ…* sau tờ thông tin đang mở — giữ; (c) nhánh `catch` khi đã có chữ chưa có ca phủ — vẫn để.

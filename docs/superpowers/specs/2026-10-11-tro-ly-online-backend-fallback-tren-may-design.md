@@ -301,6 +301,28 @@ phải việc của client). Thiếu → chỉ nghiệm thu được thang rơi 
 
 Chấm theo **câu hiện trên màn** (bản ghi `uiautomator` / ảnh), không theo log.
 
+**Kết quả 2026-10-18 00:08–00:40 — OnePlus 13R (CPH2691, Android 16, 1264×2780 @560 ≈ 361 dp), bản debug `418b9e2d` +
+`baseUrl` đổi tạm `127.0.0.1` (không commit), backend dev Node v22.19.0, `gemini-3.8-flash` + khoá dev; tài khoản `quangdat` (id
+18) nâng Premium tạm trên CSDL dev (người dùng cho phép đích danh) rồi trả về Basic cho ca 7 — tài khoản 10 trên dev không Premium,
+`thug63` không tồn tại:**
+
+| # | Kết quả |
+|---|---|
+| 1 | ✅ Gemini trả lời thật, nhãn *● Trợ lý online* (chấm xanh), không chip; chữ đầu ≈ 19 s (Gemini suy nghĩ rồi mới phát — xem G96) |
+| 2 | ✅ online 40 s và trên máy đều *chưa có khoản chi tháng này* (dữ liệu tài khoản thử trống) — không lệch |
+| 3 | ✅ chặn đường bằng gỡ `adb reverse` (không tắt backend của người dùng): *connection refused* 31 ms → nhãn đỏ *AI trên máy · máy chủ không phản hồi*; cùng luật khi Google 503 (`done.fallback`): câu ⚠️ của server không hiện |
+| 4 | ✅ `svc wifi/data disable`: câu số liệu đi máy 3 s, 0 dòng `[Online]`, 0 request |
+| 5 | ◐ nửa client đạt: Dừng lúc đang chờ → `[Online] lỗi cancel` 5 s, socket đóng thật (ESTABLISHED tới :3000 trên host 4 → 2 trong 1 s), không bong bóng, không hàng chờ. *Giữa dòng* **không bắt được** (chữ chảy < 2,4 s — chu kỳ `uiautomator dump`). Server log **không có** dòng ngắt kết nối, *"Hoàn tất 14590ms"* 12 s sau → đơn 47 việc 5 có mốc |
+| 6 | ✅ tờ hiện một lần (chữ mới có vế history), *Đã hiểu* → online; công tắc Cài đặt AI tắt → câu định nghĩa đi máy (0 request), bật lại OK. Nhánh *Chỉ dùng AI trên máy* của tờ không đo (cờ đã ghi) — ca widget |
+| 7 | ✅ `quangdat` Basic: băng khoá *Trợ lý AI là tính năng Premium…*, ô *Tính năng Premium*, 0 request |
+| 8 | ✅ từ chối tức thì, 0 request; câu online ngay sau đó chạy trọn (history ghép cặp — không lỗi `validateChatHistory`, không breaker) |
+| 9 | ⏭️ bỏ — người dùng chốt không xoá mô hình 2,41 GB (M4 cũng bỏ) |
+| + | ✅ A3 `kMayChuHongTuChoi` · A4 *lãi suất kép* đi Gemini, *lãi suất ngân hàng hôm nay* từ chối · A5 chữ tờ + Riêng tư, không tràn 361 dp · F4 lộ markdown `###` / `> -` / `---` → sửa (mục 10 dòng 23) |
+
+Ba hiện tượng thuộc backend ghi ở **G96** `CLIENT_APP_KNOWN_GAPS.md` (Dừng không tới server · im > 45 s khi Gemini suy nghĩ →
+`receiveTimeout` · `maxOutputTokens: 1024` gồm token suy nghĩ → câu cụt) — đơn 47 việc 5–7; **G95** cổng C3 bắt nhầm câu hỏi dạng
+*"hãy viết 15 lời khuyên…"*.
+
 ---
 
 ## 7. Stitch (vẽ trước khi làm giao diện; người dùng xác nhận — công cụ có độ trễ, không gọi lại)
@@ -345,8 +367,8 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
 
 *(Đã điền sau thi công — kế hoạch và mã thắng thân spec ở những dòng ghi tại đây.)*
 
-**Thi công 2026-10-17** trên nhánh `TranQuangDat`, base `909ae016`: **23** commit mã + test `80d9dee8` → `1ddb90aa` (tính tới đợt sửa 2026-10-17 khuya; đếm `git log --oneline 909ae016..HEAD -- src/Client-app/lib src/Client-app/test | wc -l` ngày 2026-10-17 khuya) và commit tài liệu Task 12. Task 2 bỏ; Task 13 (nghiệm thu máy thật) chưa làm. Số đo 2026-10-17:
-`flutter test` **7.386 pass / 10 skip** (đo lại sau đợt sửa 2026-10-17 khuya; trước 7.368 / 7.240), `flutter analyze` **20** (mức nền), `ai_chat_page.dart` **1.153** dòng,
+**Thi công 2026-10-17** trên nhánh `TranQuangDat`, base `909ae016`: **24** commit mã + test `80d9dee8` → `1c6ab600` (đếm 2026-10-18: `git log --oneline 909ae016..HEAD -- src/Client-app/lib src/Client-app/test | wc -l` = 25, trừ `c88d990e` chỉ chạm một docstring — 21 lúc xong Task 12 + `1ddb90aa` đợt sửa + `f88137f7` F4 + `1c6ab600` vòng sửa 1 F4), cùng `b6eb9975` (id Stitch), `c88d990e` (tài liệu Task 12), `0e52d591` · `418b9e2d` (đợt sửa: đơn 47, tài liệu). Task 2 bỏ; Task 13 nghiệm thu OnePlus 2026-10-18 — kết quả ở §6. Số đo 2026-10-18 (sau F4):
+`flutter test` **7.392 pass / 10 skip / 0 fail** (6 ph 29 s tại `1c6ab600`; trước 7.391 / 7.386 sau đợt sửa / 7.368 / 7.240), `flutter analyze` **20** (mức nền), `ai_chat_page.dart` **1.153** dòng,
 `cai_dat_ai_page.dart` **694** dòng. Khuôn mỗi dòng: *§ — bản viết → bản thi công — vì … (task)*.
 
 1. §3.1 bước 3 / §3.6 hàng `connection_monitor` — `ConnectionMonitor.coMangLucNay()` (mới) → dùng **`coMangNgay()`** có sẵn từ
@@ -446,4 +468,4 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
     app."*): online bật mà máy chủ hỏng, câu thuộc chủ đề AI trên máy từ chối (định nghĩa / tư vấn) → câu này thay `kCauTuChoi` trần;
     câu hệ thống nên không nhãn nguồn, không ghi chú. Người dùng chốt 2026-10-17 khuya: lý do rơi phải hiện cho người dùng.
 23. §3.4 `boDanhDauMarkdown` — nghiệm thu OnePlus 2026-10-18: câu Gemini lộ `###` / `> -` / `---` → hàm gỡ thêm tiêu đề, trích
-    dẫn, dòng kẻ ngang (người dùng chốt làm ngay); luật bẫy 4.36 giữ nguyên.
+    dẫn, dòng kẻ ngang (người dùng chốt làm ngay); luật bẫy 4.36 giữ nguyên (`>` trước con số / dấu so sánh không gỡ).

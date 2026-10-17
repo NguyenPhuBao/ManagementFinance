@@ -610,13 +610,15 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-17)
 
-### 🌐 Trợ lý online hỗn hợp: có mạng hỏi backend (Gemini), hỏng / mất mạng rơi về mô hình trên máy — mã xong, CHƯA nghiệm thu máy thật (2026-10-17 tối; người dùng chốt 2026-10-11)
+### 🌐 Trợ lý online hỗn hợp: có mạng hỏi backend (Gemini), hỏng / mất mạng rơi về mô hình trên máy — ✅ mã + đợt sửa sau review xong, NGHIỆM THU OnePlus 13R trên backend dev 2026-10-18 (người dùng chốt 2026-10-11)
 
 Thi công khối 📝 2026-10-11 bên dưới. Spec `docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md`
-(**mục 10**: 19 chỗ khác bản viết, đếm 2026-10-17 — 17 của mã / test, dòng 18 là lệch đánh số bất biến với
+(**mục 10**: 23 chỗ khác bản viết, đếm 2026-10-18 — 21 của mã / test (20–23 là ba quyết định người dùng + F4), dòng 18 là lệch đánh số bất biến với
 `AI_AGENT_ARCHITECTURE.md` §6, dòng 19 tách tiêu chí ca 5 §6 của **spec** — Dừng); kế hoạch 13 task (gitignore) thi công bằng agent con — Fable soát kế hoạch (5 chặn, áp
 thử Task 1–6), Sonnet làm, Opus soát từng task (mỗi task ≤ 1 vòng sửa); Task 2 **bỏ**. **22** commit `80d9dee8` → `fb92c16d`
-(21 mã + test, `b6eb9975` id Stitch) + commit tài liệu Task 12. Mục **15** `AI_EDGE_FEATURE.md`; đơn CAN-LAM **47**
+(21 mã + test, `b6eb9975` id Stitch) + commit tài liệu Task 12; rồi đợt sửa sau review `1ddb90aa` (mã) · `0e52d591` (đơn 47) ·
+`418b9e2d` (tài liệu) và F4 `f88137f7` + vòng sửa 1 `1c6ab600` (2026-10-18 — `boDanhDauMarkdown` gỡ `#` / `>` / `---`, giữ `>` trước
+con số / dấu so sánh theo bẫy 4.36). Mục **15** `AI_EDGE_FEATURE.md`; đơn CAN-LAM **47**
 (`CLIENT_TRO_LY_ONLINE.md`).
 
 - **Luồng** (`_hoi`): Basic khoá → lệnh tạo C3 trên máy (bất kể mạng) → cổng online `nenHoiOnline` (công tắc `CongTacOnline`
@@ -641,21 +643,43 @@ thử Task 1–6), Sonnet làm, Opus soát từng task (mỗi task ≤ 1 vòng s
   trần) · `ai_edge/domain/chu_de_chan.dart` · `ai_edge/presentation/pages/cai_dat_ai_page.dart` · DI; helper test
   `test/helpers/kho_gia.dart`. `lib/` 10 tệp mới, 5 tệp sửa (+ một dòng docstring `core/api/dio_client.dart` ở commit tài liệu);
   `core/network` không đổi.
-- **Số đo** (2026-10-17): `flutter test` **7.368 pass / 10 skip** (trước 7.240; **+128** — 52 ở 8 tệp test mới: `khung_sse` 8 ·
+- **Đợt sửa sau review toàn nhánh + ba quyết định người dùng (2026-10-17 khuya; một lượt Sonnet `1ddb90aa` mã · `0e52d591` đơn
+  47 · `418b9e2d` tài liệu, re-review Opus 11/12 addressed, phần dư chữ gộp vào commit khép phiên)**: I1 `xepHistory` ghép theo
+  **cặp** (tin `user` + lời đáp AI ngay sau, ≤ 3 cặp cuối — tin mồ côi không lên Gemini); M4 cổng máy-chưa-sẵn xét
+  `chuDeBiChanOnline` TRƯỚC `matMang`; hằng mới **`kMayChuHongTuChoi`** (*"Máy chủ không phản hồi; AI trên máy chỉ nhận xét được
+  trên số liệu của bạn trong app."*) cho câu định nghĩa / tư vấn khi vừa rơi từ online; `chuDeBiChanOnline` thôi chặn `'lãi suất'`
+  trần — chỉ *ngân hàng / hôm nay / hiện nay* (+ không dấu), đường trên máy không đổi; chữ tờ thông tin + Riêng tư thêm vế history;
+  ca 403 → `lamMoi`; M1 không nối chữ sau Dừng; hai docstring sai. Ba câu hỏi còn lại người dùng chốt: *Đang nghĩ…* sau tờ **giữ**;
+  nhánh `catch` có chữ vẫn chưa có ca phủ (để). Đơn 47: lớp lỗi huỷ *tuỳ thời điểm* (nhận diện bằng `signal.aborted`), tiêu chí
+  Dừng đo **ba** thời điểm.
+- **Số đo** (2026-10-18 khuya tại `1c6ab600`, sau đợt sửa + F4): `flutter test` **7.392 pass / 10 skip / 0 fail** (6 phút 29
+  giây, một mình; +18 đợt sửa, +6 F4), `flutter analyze` **20** (mức nền), `ai_chat_page.dart` **1.153** dòng. Lúc xong Task 12 (2026-10-17):
+  `flutter test` **7.368 pass / 10 skip** (trước 7.240; **+128** — 52 ở 8 tệp test mới: `khung_sse` 8 ·
   datasource 16 · `duong_hoi` 16 · `cong_tac_online` 3 · bốn widget 9; 76 ở 5 tệp sửa: `chu_de_chan` +43 · `ai_chat_page` +24 ·
   `ly_do_khoa` +4 · `cai_dat_ai_page` +4 · `auth_interceptor` +1); chạy một mình 7 phút 43 giây. `flutter analyze` **20** (mức
   nền, 0 trong tệp lượt này). `ai_chat_page.dart` 1.079 → **1.141** dòng (đỉnh 1.164 sau Task 9, `mienTru` vẫn rỗng);
   `cai_dat_ai_page.dart` 633 → **694**; `injection_container.dart` 1.031 → 1.039.
 - **Stitch** ba màn (`list_screens` 129 → 132; ba lượt gọi đều `timeout`, màn có sau ~25 phút): `1896d02b…` bong bóng online ·
-  `7a6519d6…` tờ thông tin · `b320f4b9…` Cài đặt AI công tắc — **người dùng chưa xác nhận**.
-- **Còn để**: 🚧 **nghiệm thu máy thật** (Task 13, chín ca spec §6) — cần backend dev chạy được: `npm install` + áp `database/20`,
-  `database/24` thanh toán (ba phép **đích danh**, quy tắc 1 — đơn 44), `.env` dev đã có `GEMINI_API_KEY` + `GEMINI_MODEL`
-  (người dùng chép 2026-10-17) nhưng tên `gemini-3.8-flash` chưa ai kiểm (đơn 47); tin `user` mồ côi trong `history` (câu bị chặn ở
-  client vẫn vào lượt online sau — sửa bằng bỏ theo cặp); ba câu hỏi người dùng (câu định nghĩa khi máy chủ hỏng trả `kCauTuChoi`
-  trần · hàng *Đang nghĩ…* sau tờ thông tin · nhánh `catch` có chữ chưa có ca phủ); xác nhận Stitch. ⚠️ Nút Dừng phía server
-  **chưa đo**: đọc mã thấy Dừng phía client chưa làm server dừng lượt Gemini — đơn 47 việc 5 xin backend (viết theo mục tiêu +
-  tiêu chí nghiệm thu đo bằng log): thôi ghi `delta`, không gọi thêm tool / Gemini, huỷ lời gọi Gemini đang chạy hoặc bỏ lời gọi
-  kế (service ghi log ngay tại lời gọi Gemini), không đếm vào circuit breaker / không chạy fallback; tiêu chí ca Dừng của client chỉ là giữ chữ + nhãn *đã dừng* (spec mục 10 dòng 19).
+  `7a6519d6…` tờ thông tin · `b320f4b9…` Cài đặt AI công tắc — người dùng xác nhận **đạt** 2026-10-17 tối (spec §7). Chữ tờ +
+  Riêng tư nay thêm vế *"và vài tin gần nhất của cuộc trò chuyện"* (người dùng chốt 2026-10-18 khuya) — lệch Stitch đúng một vế,
+  không vẽ lại.
+- **Nghiệm thu OnePlus 13R (CPH2691, Android 16, ≈ 361 dp) — 2026-10-18 00:08–00:40**, bản debug `418b9e2d` với `baseUrl` đổi tạm
+  `127.0.0.1` qua `adb reverse` (không commit), backend dev Node v22.19.0 chạy thật, `gemini-3.8-flash` + khoá dev; tài khoản thử
+  `quangdat` (id 18) nâng Premium **tạm** trên CSDL dev bằng một câu `UPDATE` (người dùng cho phép đích danh) rồi trả về Basic cho ca
+  7. **Cổng G0 đạt**: Gemini trả lời thật (15–40 s / lượt). **Đạt** theo chữ trên màn: ca 1 (nhãn *Trợ lý online* chấm xanh, không
+  chip) · ca 2 (Gemini và máy đều *chưa có khoản chi*) · ca 3 (gỡ `adb reverse` → nhãn đỏ *AI trên máy · máy chủ không phản hồi*) ·
+  ca 4 (máy bay: 0 dòng `[Online]`) · ca 6 (tờ một lần với chữ mới; công tắc tắt → đi máy, 0 request) · ca 7 (Basic: băng khoá, 0
+  request) · ca 8 (từ chối tức thì) · ba quyết định người dùng (A3 `kMayChuHongTuChoi` · *lãi suất kép* đi Gemini, *lãi suất ngân
+  hàng hôm nay* từ chối · chữ history, không tràn 361 dp) · I1 (câu online ngay sau câu bị chặn: không lỗi history, không breaker)
+  · `DuPhongOnline` (Google 503 "high demand" ×4 trong 15 phút) rơi về máy, câu ⚠️ không hiện. **Ca 5** đo được nửa client: Dừng lúc
+  đang chờ → `[Online] lỗi cancel` 5 s, socket đóng thật, không bong bóng; *"giữa dòng"* không bắt được (chữ chảy trong < 2,4 s —
+  chu kỳ `uiautomator dump` trên máy). **Bỏ, người dùng chốt**: ca 9 + M4 (không xoá mô hình 2,41 GB).
+- **Còn để** (cả ba thuộc backend — **G96**, đơn 47 việc 5–7 có số đo): (1) Dừng không tới server — client đóng socket (ESTABLISHED
+  tới :3000 4 → 2 trong 1 s) nhưng backend không ghi dòng ngắt kết nối, *"Hoàn tất 14590ms"* 12 s sau → `req.on('close')` không nổ;
+  (2) sau `meta` server im > 45 s khi Gemini suy nghĩ (49,9 s; curl 91 s) → client `receiveTimeout` rơi về máy trong khi server
+  chạy tới cùng — người dùng chốt **giữ 45 s**, xin keep-alive `: ping`; (3) `maxOutputTokens: 1024` gồm token suy nghĩ → câu dài cụt
+  ở điểm ngẫu nhiên, client hiện phần cụt không cảnh báo (đúng hợp đồng `done {}`). Ngoài phạm vi: **G95** `coVeLenhTao` bắt nhầm
+  *"Hãy viết 15 lời khuyên tiết kiệm tiền…"* thành lệnh tạo (Gemma đọc ~5 s rồi câu mới đi online).
 
 ### ↩️ Hoàn tác kỳ trả kiểu cũ: đưa kỳ về chưa trả, không hoàn tiền (2026-10-17 tối, người dùng chốt)
 

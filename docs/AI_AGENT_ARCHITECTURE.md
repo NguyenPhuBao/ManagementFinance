@@ -885,7 +885,7 @@ mô hình **không nói "không có"** mà chọn tool gần nghĩa nhất (mụ
 **5.5** đo được là không khả thi) — nó thuộc backend, cho kiến thức chung, không cho số của
 người dùng. *(Backend dựng nó ngày 2026-09-26, bên trong chatbot trực tuyến; chatbot ấy **có** dùng số của người dùng
 — snapshot gộp và kết quả tool gửi sang Gemini — xem 10.1. Từ 2026-10-17 màn Trợ lý AI gọi chatbot ấy khi có mạng — trợ lý
-online hỗn hợp, chưa nghiệm thu máy thật; câu trả lời online không qua sáu lớp chắn ở trên.)*
+online hỗn hợp, nghiệm thu OnePlus 2026-10-18 đạt — ba giới hạn phía backend ở G96 `CLIENT_APP_KNOWN_GAPS.md`; câu trả lời online không qua sáu lớp chắn ở trên.)*
 
 ⚠️ Cổng D đạt trên **34 câu do chính nhóm soạn**, và ví dụ định tuyến cùng các danh sách từ được tinh chỉnh trên đúng
 bộ ấy — nên nó là điều kiện **cần**. Người dùng cho biết đã hỏi nhiều câu trong phạm vi app mà trợ lý không trả lời

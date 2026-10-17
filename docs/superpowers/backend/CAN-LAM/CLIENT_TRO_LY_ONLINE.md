@@ -1,11 +1,13 @@
 # Client đã tích hợp trợ lý online (`POST /api/ai/chatbot/chat/stream`) — năm chỗ cố ý không làm theo `ChatbotAI_Moblie.md`, ba điều client phải bù, và việc xin backend (mục 47)
 
-**Ngày:** 2026-10-17 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat`
-**Loại:** đơn **thông báo + xin** — mức **vừa** (thiếu một tên mô hình Gemini đã kiểm thì đường online chưa bao giờ trả lời
-thật; client tự rơi về AI trên máy nên không chặn ai). **Không** đổi lược đồ, **không** đổi payload `/sync/*`, **không** cần
-migration. Mọi khẳng định về backend dưới đây đo bằng **đọc mã** (HEAD `fb92c16d`; ba tệp
-`modules/ai/features/chatbot/chatbot.{service,controller,validation}.js` đổi lần cuối ở `e497695e`, 2026-09-27; gói
-`@google/generative-ai` khai `^0.24.1` trong `package.json`). Client không chạy backend, không sửa `src/Backend`.
+**Ngày:** 2026-10-17 · **cập nhật 2026-10-18** (nghiệm thu máy thật OnePlus 13R trên backend dev chạy thật, Node v22.19.0 —
+các số đo ghi *"đo 2026-10-18"*) · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat`
+**Loại:** đơn **thông báo + xin** — mức **vừa** (ba việc mức vừa: 5 · 6 · 7 — Dừng không tới server, server im lặng quá 45 s
+khi Gemini suy nghĩ, câu trả lời cụt vì trần token; client tự rơi về AI trên máy nên không chặn ai). **Không** đổi lược đồ,
+**không** đổi payload `/sync/*`, **không** cần migration. Khẳng định về backend dưới đây đo bằng **đọc mã** (HEAD `418b9e2d`; ba
+tệp `modules/ai/features/chatbot/chatbot.{service,controller,validation}.js` đổi lần cuối ở `e497695e`, 2026-09-27 — bản ấy đã
+có `AbortController` ở controller và `signal?.aborted` ở service; gói `@google/generative-ai` khai `^0.24.1` trong `package.json`)
+**và** bằng log của backend dev khi chạy thật (2026-10-18). Client không sửa `src/Backend`.
 
 ## Vì sao client gửi đơn này
 
@@ -29,9 +31,16 @@ hành vi dưới đây đo bằng test client với máy chủ giả.
   `done {}` khác → xong; `error` → lỗi; `meta` → chỉ log `snapshotLoaded`, `healthScore` (bỏ `snapshot`).
 - HTTP 403 `FEATURE_DISABLED` → rơi về máy + client đọc lại gói; 429, 503, 5xx, mất mạng, hết 45 s → rơi về máy. Rơi **trước chữ
   đầu**: cùng câu đi Gemma, nhãn *"AI trên máy · máy chủ không phản hồi"*; đứt **giữa dòng**: giữ phần đã hiện, nhãn *"Trợ lý online
-  · kết nối gián đoạn"*. Nút **Dừng**: client huỷ `CancelToken` (đóng kết nối), giữ chữ đã hiện + nhãn *"đã dừng"*. Phía server,
-  đọc mã thấy lượt Gemini nhiều khả năng **không** dừng theo — **chưa đo trên backend thật**; mục tiêu, tiêu chí và các chỗ đã đọc
-  được ở **việc 5**.
+  · kết nối gián đoạn"*. Nút **Dừng**: client huỷ `CancelToken` (đóng kết nối), giữ chữ đã hiện + nhãn *"đã dừng"*. ⚠️ **Đo
+  2026-10-18 00:34 trên backend dev:** client bấm Dừng 5 s sau khi gửi → socket đóng **thật** (số kết nối ESTABLISHED tới cổng 3000
+  trên host 4 → 2 trong vòng 1 s), nhưng log backend **không có** dòng *"[SSE Controller] Client idaccount: 18 đã ngắt kết nối
+  stream"* và service vẫn ghi *"Hoàn tất phiên chat streaming trong 14590ms"* 12 s sau khi socket đã đóng — `req.on('close')`
+  **không nổ**, lượt Gemini chạy tới cùng trên kết nối chết. Mục tiêu, tiêu chí ở **việc 5**.
+- ⚠️ **Đo 2026-10-18 — hai giới hạn của backend mà client thấy trên màn** (xin ở **việc 6** và **7**): (a) `gemini-3.8-flash` có
+  bước *suy nghĩ*: sau `meta` server im lặng tới token đầu — ba lượt im **quá 45 s** (49,9 s; một lượt curl tổng 91 s) → client
+  `receiveTimeout` → rơi về máy trong khi server vẫn chạy Gemini tới cùng; (b) câu trả lời **cụt ở chỗ ngẫu nhiên** (172 ký tự sau
+  33 s · 1.851 ký tự dừng ở *"Bước 4"* của câu hỏi 12 bước · một lượt chỉ còn câu mở đầu) vì `maxOutputTokens: 1024` gồm cả token
+  suy nghĩ; server vẫn kết `done {}` nên client hiện phần cụt với nhãn *Trợ lý online*, không cảnh báo (đúng hợp đồng).
 - Client **không** gọi online cho câu dữ liệu sống (giá vàng · giá xăng · tỷ giá · lãi suất ngân hàng / hôm nay / hiện nay · thời tiết · tin tức · xổ số · bóng
   đá, và câu hỏi *giá* một tài sản) và lệnh tạo hoá đơn / mục tiêu / ngân sách — những câu ấy đi AI trên máy như cũ.
 - Log `[Online]` chỉ loại sự kiện, mã HTTP, thời gian — không in câu hỏi / câu trả lời.
@@ -70,11 +79,12 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
 
 ## Xin làm
 
-1. **(vừa) Một tên mô hình Gemini đã kiểm, cho dev và cloud.** `.env` dev (người dùng chép 2026-10-17) **có** `GEMINI_API_KEY` và
-   `GEMINI_MODEL`; giá trị `GEMINI_MODEL` trùng mặc định của mã `gemini-3.8-flash` (`chatbot.service.js:137`) — tên này **chưa
-   ai kiểm** với Google (trước 2026-10-17 dev không có khoá). Sai tên → Gemini 404 → breaker → `done.fallback` → client rơi về máy;
-   người dùng chỉ thấy *"máy chủ không phản hồi"*, hỏng im lặng. Xin: chạy một lượt `chat/stream` thật với khoá, ghi tên mô hình đã
-   chạy được vào `docs/AI/ChatbotAI.md` (kèm ngày), và đặt cùng tên ấy trên môi trường cloud.
+1. **(thấp — đã kiểm trên dev) Ghi tên mô hình Gemini đã kiểm vào tài liệu và đặt cho cloud.** ✅ Đo 2026-10-18 00:14 trên
+   backend dev với khoá trong `.env`: `GEMINI_MODEL=gemini-3.8-flash` **trả lời thật** (`delta` rồi `done {responseTimeMs}`, không
+   `fallback`; 15–40 s một lượt). Còn xin: ghi tên ấy vào `docs/AI/ChatbotAI.md` (kèm ngày kiểm) và đặt cùng tên trên môi trường
+   cloud — sai tên ở cloud thì Gemini 404 → breaker → `done.fallback` → client rơi về máy, người dùng chỉ thấy *"máy chủ không
+   phản hồi"*, hỏng im lặng. Ghi chú: trong 15 phút đo, Google trả **503 "high demand"** bốn lần (00:20 · 00:23 · 00:24 · 00:32)
+   — mỗi lần một lượt rơi về máy và breaker đếm thêm một (tới 2/5); không phải lỗi mã hai phía.
 2. **(thấp) Xác nhận giữ `history.slice(-6)`.** Client gửi tối đa 6 tin (`xepHistory`, `toiDa = 6`) đúng theo số ấy; đổi cửa sổ
    phía server thì báo client (client ghép theo cặp nên tin đầu luôn `user`, tin cuối `model` — điều 3).
 3. **(thấp, cân nhắc) Kiểm vai tin đầu ở server.** Sau `slice(-6)`, bỏ các tin đầu không phải `user` trước `startChat` (hoặc trả
@@ -103,6 +113,12 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
      (`chatbot.service.js:174-175`), và `break` im ở `:196`; (4) việc dừng **không** đếm vào circuit breaker và **không** chạy
      nhánh fallback.
    - **Tiêu chí nghiệm thu** — đo bằng log backend + quan sát ở client, ở *Kiểm lại*.
+   - **Mốc trước khi sửa — đo 2026-10-18 00:34 (backend dev Node v22.19.0, mã `e497695e`):** Dừng lúc server đang chờ Gemini
+     (5 s sau khi gửi) → client đóng socket thật (ESTABLISHED 4 → 2 trong 1 s) nhưng **không** dòng `[SSE Controller] … đã ngắt kết
+     nối stream`, **không** dòng `[ChatbotService] Client đã ngắt kết nối`, và *"Hoàn tất phiên chat streaming trong 14590ms"* ghi
+     12 s sau khi socket đóng. Tức `req.on('close')` (`chatbot.controller.js:32`) **không nổ** trên Node 22 khi body đã đọc xong
+     trước đó — khớp phép thử nhanh của reviewer client 2026-10-17 (chỉ `res` 'close' nổ). Không có `signal.abort()` nào được gọi
+     nên mọi thứ phía sau (`signal?.aborted`, SDK) chưa bao giờ chạy tới; mục tiêu (1)–(4) hiện **không** đạt ở mọi thời điểm Dừng.
    - **Ghi chú cho người sửa** (client đọc mã backend + SDK ngày 2026-10-17, **chưa đo** trên backend chạy thật; là bẫy để tránh,
      không phải yêu cầu cách làm):
      - `chatbot.controller.js:33` gắn `req.on('close')` sau khi body đã đọc (`express.json` `app.js:36`, rồi `authenticate`
@@ -130,11 +146,32 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
        định `:21`, instance Gemini `:116`) — không có lượt thành công xen giữa thì lỗi cách nhau bao lâu cũng cộng dồn tới ngưỡng.
        (Nhánh HALF-OPEN → CLOSED, `:59-63`, cũng đặt bộ đếm về 0 — nhưng chỉ sau khi mạch đã mở.)
 
+6. **(vừa) Keep-alive SSE trong lúc chờ Gemini.** `gemini-3.8-flash` suy nghĩ trước khi phát token đầu; từ sau `meta` tới
+   `delta` đầu server **im lặng hoàn toàn** — đo 2026-10-18 ba lượt im quá 45 s (49,9 s; một lượt curl tổng 91 s). Client giữ
+   `receiveTimeout` 45 s (khoảng lặng giữa hai gói — người dùng chốt giữ, 2026-10-18) vì không có cách nào khác phân biệt *"đang
+   nghĩ"* với *"máy chủ chết"*; hệ quả: câu suy nghĩ lâu rơi về máy ở giây 45 trong khi server vẫn chạy Gemini tới cùng (token
+   bị đốt, kết quả vứt). Xin: trong mọi khoảng chờ (sau `meta` tới `delta` đầu; trong lúc chạy tool; giữa hai lời gọi Gemini) ghi
+   một dòng **chú thích SSE** `: ping\n\n` mỗi ≤ 15 s (chuẩn SSE; client đã bỏ qua dòng bắt đầu bằng `:` ở `core/api/khung_sse.dart`
+   — **không** cần đổi client). Đừng thay bằng `delta` rỗng — client đếm `delta` là "đã có chữ".
+7. **(vừa) Trần token gồm cả token suy nghĩ → câu trả lời cụt.** `generationConfig.maxOutputTokens: 1024`
+   (`chatbot.service.js:144`) với mô hình có bước suy nghĩ: phần suy nghĩ ăn trước, phần chữ còn lại dài ngắn tuỳ lượt — đo
+   2026-10-18: 172 ký tự (33 s) · 1.851 ký tự dừng ở *"### **Bước 4: Thiết lập"* của câu 12 bước (91 s) · một lượt chỉ còn câu mở
+   đầu *"Dưới đây là 12 nguyên tắc…:"* (14,6 s). Server vẫn kết `done {responseTimeMs}` nên client không biết câu bị cắt. Xin: (a)
+   nâng `maxOutputTokens` (hoặc giới hạn phần suy nghĩ bằng cấu hình thinking của SDK/model — cách nào là của backend); (b) *cân
+   nhắc*: khi Gemini trả `finishReason` khác `STOP`, gửi nó trong `done` (`{responseTimeMs, finishReason}`) — client hôm nay bỏ qua
+   khoá lạ nên không vỡ; có thì client mới hiện được ghi chú *"câu trả lời bị cắt"* (chưa làm, sẽ xin spec riêng).
+
 ## Kiểm lại
 
 - `grep -n "slice(-6)" src/Backend/modules/ai/features/chatbot/chatbot.service.js` → còn một dòng (việc 2), hoặc đơn ghi cửa sổ mới.
-- Việc 1: với khoá dev, `POST /api/ai/chatbot/chat/stream` (tài khoản Premium, ví dụ tài khoản 10) với `{"message": "Giải thích quỹ
-  khẩn cấp 3-6 tháng", "history": []}` trả các `event: delta` rồi `event: done` có `responseTimeMs`, **không** có `fallback`.
+- Việc 1: ✅ dev đã đo 2026-10-18 (lệnh giữ cho cloud): `POST /api/ai/chatbot/chat/stream` (tài khoản Premium) với `{"message":
+  "Giải thích quỹ khẩn cấp 3-6 tháng", "history": []}` trả các `event: delta` rồi `event: done` có `responseTimeMs`, **không** có
+  `fallback`; `docs/AI/ChatbotAI.md` có dòng ghi tên mô hình + ngày kiểm.
+- Việc 6: `curl -N` một câu dài, thấy dòng `: ping` trong khoảng lặng trước `delta` đầu (cách nhau ≤ 15 s); trên máy thật, câu
+  *"Hãy kể 12 nguyên tắc quản lý tiền cá nhân, mỗi nguyên tắc 3 câu"* không còn rơi về máy ở giây 45 (log client không có
+  `[Online] lỗi receiveTimeout`).
+- Việc 7: cùng câu 12 nguyên tắc trả về **đủ 12** mục (hôm nay dừng ở câu mở đầu hoặc mục 4); nếu làm (b), `done` của một lượt bị cắt
+  có `finishReason` khác `STOP`.
 - Việc 3: cùng request với `"history": [{"role": "model", "text": "Chào bạn"}]` trả câu trả lời thật, không `done.fallback`, và log
   không có `[CircuitBreaker] Ghi nhận lỗi LLM`.
 - Việc 4: `grep -n "error" docs/AI/ChatbotAI_Moblie.md` có dòng tả `done {error}`; bốn chỗ `ChatbotAI.md` (theo số dòng hôm

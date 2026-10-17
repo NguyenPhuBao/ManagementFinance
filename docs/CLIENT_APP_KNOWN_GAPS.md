@@ -1684,6 +1684,43 @@ Realme / OnePlus. Chi tiết: khối 🕗 đầu mục 14 `PROJECT_CONTEXT.md`.
 
 ---
 
+### G96 — Đường Trợ lý online phụ thuộc ba việc backend: Dừng không tới server, server im lặng quá 45 s khi Gemini suy nghĩ, câu trả lời cụt vì trần token · ⏳ CHỜ BACKEND (đơn 47 việc 5–7; mở 2026-10-18 sau nghiệm thu OnePlus)
+
+**Nguồn.** Nghiệm thu máy thật 2026-10-18 00:08–00:40 (OnePlus 13R, backend dev chạy thật, Node v22.19.0, `gemini-3.8-flash`
+với khoá dev) — khối 🌐 mục 14 `PROJECT_CONTEXT.md`, spec §6, đơn 47 (`CAN-LAM/CLIENT_TRO_LY_ONLINE.md`, phần *đo 2026-10-18*).
+
+**Ba hiện tượng người dùng thấy, cả ba do backend:**
+
+1. **Dừng không làm server dừng.** Bấm *Dừng* → client đóng socket thật (số kết nối ESTABLISHED tới cổng 3000 trên host 4 → 2
+   trong 1 s), màn về trạng thái đúng (không bong bóng, không hàng chờ), nhưng backend không ghi dòng ngắt kết nối nào và vẫn
+   *"Hoàn tất phiên chat streaming trong 14590ms"* 12 s sau — `req.on('close')` không nổ trên Node 22. Token Gemini bị đốt, kết
+   quả vứt. Client **đúng** theo spec (tiêu chí ca 5 của client là giữ chữ + nhãn *đã dừng*); đơn 47 việc 5.
+2. **Câu suy nghĩ lâu rơi về máy ở giây 45.** Mô hình có bước suy nghĩ; sau `meta` server im lặng hoàn toàn — đo 49,9 s, một lượt
+   curl 91 s. `receiveTimeout` 45 s của client nổ → *"AI trên máy · máy chủ không phản hồi"* trong khi server vẫn chạy tới cùng.
+   Người dùng chốt 2026-10-18 **giữ 45 s** (không có cách phân biệt *đang nghĩ* với *máy chủ chết*) và xin backend keep-alive
+   `: ping` (đơn 47 việc 6; bộ tách SSE của client đã bỏ qua dòng `:`, không cần đổi client).
+3. **Câu trả lời cụt ở điểm ngẫu nhiên** (172 ký tự · 1.851 ký tự dừng ở *"Bước 4"* của 12 bước · chỉ còn câu mở đầu) vì
+   `maxOutputTokens: 1024` gồm cả token suy nghĩ; server kết `done {}` bình thường nên client hiện phần cụt với nhãn *Trợ lý
+   online*, không cảnh báo — đúng hợp đồng. Đơn 47 việc 7 (nâng trần / giới hạn suy nghĩ; cân nhắc `finishReason` trong `done` —
+   có thì client mới hiện được ghi chú *bị cắt*, việc ấy sẽ cần spec riêng).
+
+**Bán kính.** Chỉ màn Trợ lý AI khi online bật. Không đổi mã client cho tới khi backend trả lời; khi có `finishReason` thì mở một
+lát nhỏ ở `quyetDinhSauOnline` / `NhanNguon` (ghi chú mới) — chưa làm.
+
+### G95 — Cổng lệnh tạo C3 bắt nhầm câu hỏi dạng *"Hãy viết 15 lời khuyên tiết kiệm tiền…"*: Gemma đọc lệnh ~5 s rồi câu mới đi online · ⏳ MỞ 2026-10-18 (nghiệm thu OnePlus, ngoài phạm vi lát trợ lý online)
+
+**Nguồn.** Nghiệm thu 2026-10-18 00:19: câu *"Hay viet 15 loi khuyen tiet kiem tien cho sinh vien, moi loi khuyen 2 cau giai
+thich"* (online bật, có mạng) hiện *"Đang đọc lệnh bằng AI… Huỷ"* trước — `coVeLenhTao` (cổng C3, chạy TRƯỚC cổng online theo
+§3.1) đoán là lệnh tạo mục tiêu (có *tiết kiệm* + số), Gemma đọc tham số (`[SLM][tool] goi_y_han_muc {danh_muc: học phí}` → từ
+chối) rồi câu mới đi online. Người dùng chờ thêm ~5 s và thấy một hàng chờ sai nghĩa; không mất dữ liệu.
+
+**Vì sao chưa sửa.** Luật `coVeLenhTao` thuộc lát C3 (2026-10-04) với bộ đo riêng; nới nó (vd. loại câu bắt đầu bằng *hãy viết /
+liệt kê / kể*, hay câu có *mỗi … câu*) là đổi hành vi đã đo trên hai máy — cần đo lại bộ câu C3 trước. Spec trợ lý online §3.1 cố ý
+đặt C3 trước online nên lát này không chạm.
+
+**Hướng sửa.** Thêm vế loại trừ trong `coVeLenhTao` cho câu hỏi tri thức (động từ yêu cầu viết / liệt kê + số đếm lớn + không có
+số tiền), kèm ca test và chạy lại bộ đo C3 (`docs/AI_EDGE_FEATURE.md` mục 9.4x). Nhỏ, nhưng là lát riêng.
+
 ### G94 — Chuyển thừa / thiếu tiền khi nâng Premium: client không biết ba trạng thái đơn mới, màn chờ báo "hết hạn" · ⏳ HOÃN — LÀM CÙNG LƯỢT G89 SAU KHI BACKEND ĐÓNG ĐƠN 43 (mở 2026-10-16, người dùng chốt cùng ngày)
 
 **Nguồn.** Gộp `main` @ `d72ccd45` (2026-10-16, PR #138, NPBao): `docs/Payment/PAYMENT_WORKFLOW_SPEC.md` v2.0.0 + mã
