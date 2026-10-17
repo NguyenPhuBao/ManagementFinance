@@ -343,7 +343,7 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
 
 ## 10. Chỗ bản thi công KHÁC bản viết
 
-*(Điền trong lúc thi công — kế hoạch và mã thắng spec ở những dòng ghi tại đây.)*
+*(Đã điền sau thi công — kế hoạch và mã thắng thân spec ở những dòng ghi tại đây.)*
 
 **Thi công 2026-10-17** trên nhánh `TranQuangDat`, base `909ae016`: **22** commit `80d9dee8` → `fb92c16d` (21 commit mã + test,
 `b6eb9975` ghi id Stitch) và commit tài liệu Task 12. Task 2 bỏ; Task 13 (nghiệm thu máy thật) chưa làm. Số đo 2026-10-17:
@@ -358,10 +358,11 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
    `flutter analyze` đều mù, sai tên là lỗi lúc chạy app. Docstring sai cùng gốc ở `core/api/dio_client.dart:11` sửa ở Task 12
    (Task 7, Task 12).
 3. §3.3 bảng, dòng *"`DuPhongOnline` khi đã có chữ → `GiuPhanDaCo`"* → **`DuPhongOnline` LUÔN `RoiVeMay(reason)` bất kể chữ** —
-   vì backend `_streamFallbackResponse` (`chatbot.service.js:44-66`) luôn chẻ câu thông báo ⚠️ thành `delta` rồi mới
+   vì backend `_streamFallbackResponse` (`chatbot.service.js:44-65`) luôn chẻ câu thông báo ⚠️ thành `delta` rồi mới
    `done {fallback}`, nên "chữ đã có" là thông báo của server; trang gỡ bong bóng đang hiện rồi hỏi máy với cùng câu.
-   `LoiOnline` sau chữ vẫn `GiuPhanDaCo(kGhiChuGianDoan)`; `ChuOnline` làm sự kiện cuối (luồng đóng không `done`) đi như
-   `LoiOnline`. `HoanTat()` / `GiuPhanDaCo(ghiChu)` dùng tham số vị trí, không `nguon:` / `ghiChu:` (Task 4).
+   `LoiOnline` sau chữ vẫn `GiuPhanDaCo(kGhiChuGianDoan)`. Luồng đóng không `done`: datasource thật phát
+   `LoiOnline(http: 200, 'luồng đóng không done')` (`tro_ly_online_remote_data_source.dart:77`); `ChuOnline` làm sự kiện cuối
+   chỉ tới qua khe tiêm `onHoiOnline` của test — luật rơi vẫn xử nó như `LoiOnline`. `HoanTat()` / `GiuPhanDaCo(ghiChu)` dùng tham số vị trí, không `nguon:` / `ghiChu:` (Task 4).
 4. §3.3 `xepHistory` — thêm hai luật: (a) sau khi cắt cửa sổ 6, **gọt tin đầu cho tới tin `user`** — vì `@google/generative-ai`
    0.24.1 `validateChatHistory` ném *First content should be with role 'user'*, mà trang gieo lời chào AI ở `initState` → câu
    online đầu mọi phiên hỏng và đếm vào circuit breaker dùng chung (một instance cho mọi tài khoản, ngưỡng 5 lỗi, mở 30 s —
@@ -428,3 +429,8 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
     phải có trong gói*) ứng với ràng buộc 6 §1 + §6 ①–② + bộ kiểm số §7; ④ hai bên trùng số. Tiêu đề §6 **giữ nguyên**; phần thu
     hạn đặt đúng chỗ câu cũ đứng (§0, §1 hàng 1 và 6, đầu §6, §10.1) — vì tài liệu khác đã dẫn theo số của §6 (*"Bất biến ②"*
     ở cùng tệp; *"bất biến ④"* ở 7 tệp `docs/*.md` — grep 2026-10-17), đánh số lại là làm lạc các chỗ dẫn ấy (Task 12).
+19. §6 ca 5 (*Dừng giữa dòng*) — một tiêu chí → **tách hai**: phía **client** (phần đã hiện giữ lại, nhãn *đã dừng* — đo được, là
+    tiêu chí đạt của ca) và phía **server** (dòng log *"Client … đã ngắt kết nối stream"* + Gemini dừng — **đo xem có không**, không
+    phải tiêu chí đạt của client) — vì backend nghe `req.on('close')` (`chatbot.controller.js:33`) sau khi body đã đọc xong, và trên
+    Node ≥ 16 (dev v22.19.0) listener ấy có thể không nổ (reviewer thử nhanh với express của `src/Backend/node_modules`: chỉ `res`
+    'close' nổ); chưa đo trên backend thật — đơn CAN-LAM 47 việc 5 xin `res.on('close')` (Task 12, vòng review).

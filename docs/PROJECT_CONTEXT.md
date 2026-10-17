@@ -613,8 +613,8 @@ src/Backend/
 ### 🌐 Trợ lý online hỗn hợp: có mạng hỏi backend (Gemini), hỏng / mất mạng rơi về mô hình trên máy — mã xong, CHƯA nghiệm thu máy thật (2026-10-17 tối; người dùng chốt 2026-10-11)
 
 Thi công khối 📝 2026-10-11 bên dưới. Spec `docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md`
-(**mục 10**: 18 chỗ khác bản viết, đếm 2026-10-17 — 17 của mã / test, dòng 18 là lệch đánh số bất biến với
-`AI_AGENT_ARCHITECTURE.md` §6); kế hoạch 13 task (gitignore) thi công bằng agent con — Fable soát kế hoạch (5 chặn, áp
+(**mục 10**: 19 chỗ khác bản viết, đếm 2026-10-17 — 17 của mã / test, dòng 18 là lệch đánh số bất biến với
+`AI_AGENT_ARCHITECTURE.md` §6, dòng 19 tách tiêu chí ca Dừng của §6); kế hoạch 13 task (gitignore) thi công bằng agent con — Fable soát kế hoạch (5 chặn, áp
 thử Task 1–6), Sonnet làm, Opus soát từng task (mỗi task ≤ 1 vòng sửa); Task 2 **bỏ**. **22** commit `80d9dee8` → `fb92c16d`
 (21 mã + test, `b6eb9975` id Stitch) + commit tài liệu Task 12. Mục **15** `AI_EDGE_FEATURE.md`; đơn CAN-LAM **47**
 (`CLIENT_TRO_LY_ONLINE.md`).
@@ -652,7 +652,10 @@ thử Task 1–6), Sonnet làm, Opus soát từng task (mỗi task ≤ 1 vòng s
   `database/24` thanh toán (ba phép **đích danh**, quy tắc 1 — đơn 44), `.env` dev đã có `GEMINI_API_KEY` + `GEMINI_MODEL`
   (người dùng chép 2026-10-17) nhưng tên `gemini-3.8-flash` chưa ai kiểm (đơn 47); tin `user` mồ côi trong `history` (câu bị chặn ở
   client vẫn vào lượt online sau — sửa bằng bỏ theo cặp); ba câu hỏi người dùng (câu định nghĩa khi máy chủ hỏng trả `kCauTuChoi`
-  trần · hàng *Đang nghĩ…* sau tờ thông tin · nhánh `catch` có chữ chưa có ca phủ); xác nhận Stitch.
+  trần · hàng *Đang nghĩ…* sau tờ thông tin · nhánh `catch` có chữ chưa có ca phủ); xác nhận Stitch. ⚠️ Nút Dừng phía server
+  **chưa đo**: backend nghe `req.on('close')` (`chatbot.controller.js:33`), trên Node ≥ 16 có thể không nổ (reviewer thử nhanh với
+  express của backend: chỉ `res` 'close' nổ) → Gemini chạy tới hết; đơn 47 việc 5 xin `res.on('close')`; tiêu chí ca Dừng của
+  client chỉ là giữ chữ + nhãn *đã dừng* (spec mục 10 dòng 19).
 
 ### ↩️ Hoàn tác kỳ trả kiểu cũ: đưa kỳ về chưa trả, không hoàn tiền (2026-10-17 tối, người dùng chốt)
 

@@ -25,8 +25,8 @@ số; mô hình chỉ viết lại thành câu; một bộ kiểm chặn mọi c
 
 ⚠️ **Từ 2026-10-11 (thi công 2026-10-17) câu trên tả ĐƯỜNG TRÊN MÁY.** Màn Trợ lý AI có thêm **trợ lý online hỗn hợp**: có
 mạng thì hỏi chatbot của backend (Gemini, SSE), hỏng / mất mạng thì đường trên máy trả lời cùng câu — quyết định và hệ quả ở
-**10.1**, mã và bẫy ở mục **15** `AI_EDGE_FEATURE.md`. Kiến trúc trong tài liệu này (ba vòng, bốn bất biến, bộ kiểm số) là
-kiến trúc của đường trên máy; đường online không đi qua nó.
+**10.1**, mã và bẫy ở mục **15** `AI_EDGE_FEATURE.md`. Ba vòng, bất biến ①–③ và bộ kiểm số trong tài liệu này là kiến trúc
+của đường trên máy — đường online không đi qua chúng; bất biến ④ (*chiều ghi qua tay người dùng*) giữ ở **cả hai** đường (mục 6).
 
 ---
 

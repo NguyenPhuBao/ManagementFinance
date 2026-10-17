@@ -14,7 +14,7 @@ tích hợp **hỗn hợp**: có mạng thì hỏi backend, hỏng hoặc mất 
 xong 2026-10-17** (22 commit `80d9dee8` → `fb92c16d`; spec
 `docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md`, mục 10 ghi chỗ mã khác spec). Đơn này
 (1) báo hình dạng client đang gọi để backend đổi gì thì biết đụng ai, (2) nêu năm chỗ client cố ý không làm theo tài liệu bàn
-giao, (3) nêu ba hành vi của mã backend client đã phải bù, (4) xin ba việc. ⚠️ **Chưa nghiệm thu đầu-cuối**: backend dev chưa
+giao, (3) nêu ba hành vi của mã backend client đã phải bù, (4) xin năm việc. ⚠️ **Chưa nghiệm thu đầu-cuối**: backend dev chưa
 khởi động được sau lượt gộp `d72ccd45` (đơn 44 — cần `npm install` và hai tệp `database/20`, `database/24` thanh toán), nên mọi
 hành vi dưới đây đo bằng test client với máy chủ giả.
 
@@ -29,7 +29,12 @@ hành vi dưới đây đo bằng test client với máy chủ giả.
   `done {}` khác → xong; `error` → lỗi; `meta` → chỉ log `snapshotLoaded`, `healthScore` (bỏ `snapshot`).
 - HTTP 403 `FEATURE_DISABLED` → rơi về máy + client đọc lại gói; 429, 503, 5xx, mất mạng, hết 45 s → rơi về máy. Rơi **trước chữ
   đầu**: cùng câu đi Gemma, nhãn *"AI trên máy · máy chủ không phản hồi"*; đứt **giữa dòng**: giữ phần đã hiện, nhãn *"Trợ lý online
-  · kết nối gián đoạn"*. Nút **Dừng** huỷ `CancelToken` → server log *"Client … đã ngắt kết nối stream"*.
+  · kết nối gián đoạn"*. Nút **Dừng**: client huỷ `CancelToken` (đóng kết nối), giữ chữ đã hiện + nhãn *"đã dừng"*. Backend nghe
+  `req.on('close')` (`chatbot.controller.js:33`) — ⚠️ **cần kiểm**: trên Node ≥ 16 (máy dev: v22.19.0) `req` đã `closed` sau khi
+  body được đọc (`express.json`, `app.js:36`, rồi `authenticate` bất đồng bộ) nên listener có thể **không nổ** — reviewer client
+  thử nhanh với express của chính `src/Backend/node_modules` + middleware giả bất đồng bộ: chỉ `res` 'close' nổ. Khi ấy
+  `abortController.abort()` không chạy, `signal.aborted` (`chatbot.service.js:173`, `:196`) không bao giờ đúng và Gemini chạy tới
+  hết. **Chưa đo trên backend thật** — việc 5.
 - Client **không** gọi online cho câu dữ liệu sống (giá vàng · giá xăng · tỷ giá · lãi suất · thời tiết · tin tức · xổ số · bóng
   đá, và câu hỏi *giá* một tài sản) và lệnh tạo hoá đơn / mục tiêu / ngân sách — những câu ấy đi AI trên máy như cũ.
 - Log `[Online]` chỉ loại sự kiện, mã HTTP, thời gian — không in câu hỏi / câu trả lời.
@@ -50,7 +55,7 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
 
 ## Ba điều đo trên mã backend mà client phải bù
 
-1. **Dự phòng phát câu thông báo qua `delta` trước `done {fallback}`.** `_streamFallbackResponse` (`chatbot.service.js:44-66`)
+1. **Dự phòng phát câu thông báo qua `delta` trước `done {fallback}`.** `_streamFallbackResponse` (`chatbot.service.js:44-65`)
    chẻ câu *"⚠️ Thông báo từ Hệ thống Trợ lý Tài chính AI…"* thành từng `delta` (15 ms một từ) rồi mới `done {fallback: true,
    reason}`. Với client, "đã có chữ" vì thế **không** chứng minh có câu trả lời thật → client coi `done.fallback` là rơi về máy
    **bất kể** đã nhận bao nhiêu chữ, và gỡ bong bóng thông báo.
@@ -78,6 +83,10 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
    400). Client đã tự làm, nhưng Admin-web hay một client cũ gửi `history` bắt đầu bằng `model` vẫn mở breaker **cho mọi tài khoản**
    sau 5 lần.
 4. **(thấp, chữ) Tả nhánh `done {error}`** ở §2.1 `ChatbotAI_Moblie.md` và mục tương ứng của `ChatbotAI.md`.
+5. **(vừa, kiểm trước) Nghe đóng kết nối ở `res`, không chỉ `req`.** `chatbot.controller.js:33` gắn `req.on('close')` sau khi body
+   đã đọc xong; trên Node ≥ 16 sự kiện ấy có thể đã qua (xem *Client gọi gì*, gạch Dừng). Xin đổi sang `res.on('close')` (hoặc nghe
+   cả hai, và chỉ `abort()` khi `!res.writableEnded`) để `abortController.abort()` chạy khi client bấm Dừng / thoát màn — không thì
+   mỗi lượt bị dừng vẫn sinh trọn câu trả lời ở Gemini (tốn hạn mức khoá API) cho một kết nối không còn ai đọc.
 
 ## Kiểm lại
 
@@ -87,6 +96,9 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
 - Việc 3: cùng request với `"history": [{"role": "model", "text": "Chào bạn"}]` trả câu trả lời thật, không `done.fallback`, và log
   không có `[CircuitBreaker] Ghi nhận lỗi LLM`.
 - Việc 4: `grep -n "error" docs/AI/ChatbotAI_Moblie.md` có dòng tả `done {error}`.
+- Việc 5: mở `chat/stream` cho một câu dài, ngắt kết nối giữa dòng (client bấm Dừng, hoặc `curl -N … ` rồi Ctrl+C) → log backend có
+  dòng *"[SSE Controller] Client idaccount: … đã ngắt kết nối stream"* **và** *"[ChatbotService] Client đã ngắt kết nối — hủy luồng
+  streaming"*; không có dòng nào của lượt ấy sau thời điểm ngắt. Đo trước khi sửa để biết `req` 'close' có nổ thật không.
 - Phía client sau khi có việc 1: nghiệm thu máy thật (spec client §6, chín ca — chữ chạy, nhãn nguồn, rơi về máy, Dừng, tờ thông
   tin, Basic, câu giá vàng, máy chưa có mô hình).
 

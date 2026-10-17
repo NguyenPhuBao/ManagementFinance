@@ -263,6 +263,10 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.48 | ⭐ **Câu KHÔNG có số nêu TÊN BỊA lọt cả ba lớp chắn** — cổng D lần 10 B1, 2026-09-25 | *"Bạn có thể đặt mục tiêu mua xe hoặc **mua nhà**."* — mục tiêu thật là MuaXe và MuaDT (mua điện thoại). `kiemSo` và `kiemNhan` chỉ kiểm **khi câu có con số** (câu không số thì lọt — "không có gì để bịa"), `kiemGiong` chỉ kiểm giọng theo mức; không lớp nào kiểm **tên**. Lần 4–9 B1 nêu tên thật nên không lộ. ✅ **ĐÓNG `ec13fdf`** (mục 9.27): lớp chắn thứ tư `kiemTen` — sau từ loại (*mục tiêu / danh mục / ví / hoá đơn / ngân sách*) cụm tên phải khớp một `tenDoiTuong` của gói bất kỳ (bỏ khoảng trắng, chứa nhau), *và/hoặc* nối cụm kế, "không" trước từ loại thì bỏ qua; lần đo 11 mô hình viết y hệt câu ấy và bị chặn → mẫu câu | `kiem_ten_test` (⭐ câu B1 nguyên văn; hai bản sai bị bắt); `kiem_cau_tra_loi_test` *"lớp thứ tư đã NỐI"*; *(đo máy thật — mục 9.26, 9.27)* |
 | 4.4 | **Luật "đã bị cắt hai kỳ liền trước" (C3) chỉ kích hoạt khi ngân sách đã tồn tại ≥ 3 kỳ** — `recentPeriods` trả một kỳ cho ngân sách tạo tháng này, và luật im lặng | không lỗi; chỉ là trần 25 % thay vì 15 % | `tai_phan_bo_test.dart` *"đã bị cắt hai kỳ liền trước → trần 15 %"* có cả hai fixture |
 
+⚠️ **Bảng dừng ở 4.48 — các bẫy sau đánh số tiếp nhưng nằm ở mục của lát sinh ra chúng:** 4.49 · 4.50 ở mục **9.32**
+(`truy_van_giao_dich`), 4.51 · 4.52 ở mục **9.33**, 4.53–4.58 (trợ lý online) ở mục **15.6** (đếm 2026-10-17). Bẫy mới lấy số
+**4.59**.
+
 ## 5. Màn Stitch
 
 | Màn | Id | Ngày | Nghiệm thu |
@@ -4571,8 +4575,9 @@ xác nhận bài học ở mục "Ghi chú vận hành" `CLAUDE.md`: **timeout k
 §6): cần backend dev chạy được — `npm install` + áp `database/20`, `database/24` thanh toán, ba việc **cần phép đích danh** (đơn
 44) — và `.env` có khoá Gemini (có từ 2026-10-17; tên `GEMINI_MODEL` chưa ai kiểm — đơn CAN-LAM **47**). Tới khi ấy **mọi câu
 online rơi về AI trên máy**, người dùng chỉ thấy nhãn *máy chủ không phản hồi*. Spec
-`docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` — **mục 10** ghi 18 chỗ khác bản viết (đếm 2026-10-17; 17 của mã / test,
-dòng 18 là lệch đánh số bất biến với `AI_AGENT_ARCHITECTURE.md` §6 — mục 15.5 dưới đây tóm tắt); kế hoạch 13 task `plans/2026-10-11-tro-ly-online-backend-fallback-tren-may.md` (gitignore). Stitch
+`docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md` — **mục 10** ghi 19 chỗ khác bản viết (đếm 2026-10-17; 17 của mã / test,
+dòng 18 là lệch đánh số bất biến với `AI_AGENT_ARCHITECTURE.md` §6, dòng 19 tách tiêu chí ca Dừng của §6 — mục 15.5 dưới đây
+tóm tắt); kế hoạch 13 task `plans/2026-10-11-tro-ly-online-backend-fallback-tren-may.md` (gitignore). Stitch
 ba màn `1896d02b…` *bong bóng online* · `7a6519d6…` *tờ thông tin* · `b320f4b9…` *Cài đặt AI — công tắc* (người dùng chưa xác
 nhận). Hợp đồng backend: `docs/AI/ChatbotAI_Moblie.md` (tài liệu backend, chỉ đọc) với năm chỗ cố ý không làm — đơn 47.
 
@@ -4616,8 +4621,8 @@ nhận). Hợp đồng backend: `docs/AI/ChatbotAI_Moblie.md` (tài liệu backe
 |---|---|---|
 | `XongOnline` | `RoiVeMay('rỗng')` | `HoanTat()` — nhãn *Trợ lý online* |
 | `DuPhongOnline` (`done.fallback` **hoặc** `done.error`) | `RoiVeMay` | `RoiVeMay` — chữ đã có là thông báo của server |
-| `LoiOnline` (HTTP ≠ 200, `event: error`, hết 45 s, mất mạng, mọi lỗi giữa luồng) | `RoiVeMay` | `GiuPhanDaCo('kết nối gián đoạn')` |
-| `ChuOnline` (luồng đóng không `done`) | `RoiVeMay` | `GiuPhanDaCo('kết nối gián đoạn')` |
+| `LoiOnline` (HTTP ≠ 200, `event: error`, hết 45 s, mất mạng, mọi lỗi giữa luồng, luồng đóng không `done`) | `RoiVeMay` | `GiuPhanDaCo('kết nối gián đoạn')` |
+| `ChuOnline` làm sự kiện cuối (chỉ qua khe tiêm test `onHoiOnline` — datasource thật phát `LoiOnline` *"luồng đóng không done"*) | `RoiVeMay` | `GiuPhanDaCo('kết nối gián đoạn')` |
 | người dùng bấm Dừng | không bong bóng | `GiuPhanDaCo('đã dừng')` |
 
 **Nhãn nguồn** (`NhanNguon`, chấm 6 px + chữ 12 px `#454743`): *Trợ lý online* · *AI trên máy* · *AI trên máy · máy chủ không
@@ -4715,7 +4720,9 @@ này). Tệp test mới: **8** `_test.dart` + helper `test/helpers/kho_gia.dart`
 - **Nghiệm thu máy thật** (Task 13, spec §6 chín ca; OnePlus 13R ưu tiên, tài khoản 10 Premium, `adb reverse`): chữ chạy và
   thời gian tới chữ đầu, lệch số hai đường (ca 2), rơi khi backend tắt, máy bay (không request `[Online]` nào), Dừng giữa dòng,
   tờ một lần, Basic, câu giá vàng, máy chưa có mô hình. Đo cả `receiveTimeout` 45 s với `ResponseType.stream` có đúng là khoảng
-  lặng giữa hai gói không (spec §9) — sai thì chuyển sang `Stream.timeout` trong datasource.
+  lặng giữa hai gói không (spec §9) — sai thì chuyển sang `Stream.timeout` trong datasource. ⚠️ Ca **Dừng** có hai vế (spec mục 10
+  dòng 19): tiêu chí đạt của client là *giữ chữ đã hiện + nhãn đã dừng*; dòng log ngắt kết nối phía server chỉ **đo xem có
+  không** — backend nghe `req.on('close')`, trên Node ≥ 16 có thể không nổ nên Gemini có thể chạy tới hết (đơn 47 việc 5).
 - Tin `user` mồ côi trong `history` (4.54) — sửa ở `xepHistory`, bỏ theo cặp.
 - Ba câu hỏi người dùng (spec mục 10 dòng 14): câu định nghĩa / tư vấn khi máy chủ hỏng trả `kCauTuChoi` trần không ghi chú; hàng
   *Đang nghĩ…* sau tờ thông tin đang mở; nhánh `catch` khi đã có chữ chưa có ca phủ.
