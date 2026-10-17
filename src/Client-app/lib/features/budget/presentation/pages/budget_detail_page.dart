@@ -6,8 +6,10 @@ import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
+import '../../../transaction/data/hoa_don_da_xoa_nguon.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
+import '../../../transaction/domain/transaction_owner.dart';
 import '../../../transaction/presentation/bloc/transaction_bloc.dart';
 import '../../../transaction/presentation/bloc/transaction_event.dart';
 import '../../../transaction/presentation/pages/add_transaction_page.dart';
@@ -25,7 +27,8 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 /// Bấm một giao dịch mở đúng bảng chi tiết của sổ (`TransactionDetailSheet`),
 /// và Sửa/Xoá đi cùng đường với sổ qua `TransactionBloc` — không tự viết một
 /// đường xoá thứ hai, vì đường của sổ mới biết hoàn ví và chặn khoản thuộc
-/// mục tiêu/hoá đơn.
+/// mục tiêu/hoá đơn. Khoản trả hoá đơn kiểu cũ / mồ côi mở khoá có cảnh báo như
+/// ở sổ (việc 4c) — trang hỏi `HoaDonDaXoaNguon` trước khi mở bảng.
 class BudgetDetailPage extends StatelessWidget {
   final String budgetId;
 
@@ -98,6 +101,12 @@ class _BudgetDetailContent extends StatelessWidget {
     TransactionEntity tx,
     TransactionLookup lookup,
   ) async {
+    // Việc 4c — hỏi TRƯỚC khi mở; cổng chưa đăng ký (test) → khoá như cũ.
+    final daXoa = await hoaDonDaXoaCua(
+      tx,
+      sl.isRegistered<HoaDonDaXoaNguon>() ? sl<HoaDonDaXoaNguon>() : null,
+    );
+    if (!blocContext.mounted) return;
     await showModalBottomSheet<void>(
       context: blocContext,
       backgroundColor: Colors.transparent,
@@ -105,6 +114,7 @@ class _BudgetDetailContent extends StatelessWidget {
       builder: (sheetContext) => TransactionDetailSheet(
         transaction: tx,
         lookup: lookup,
+        hoaDonDaXoa: daXoa,
         onEdit: () {
           Navigator.of(sheetContext).pop();
           // Trang này theo dõi stream nên tự làm mới sau khi sửa xong; không
@@ -121,7 +131,7 @@ class _BudgetDetailContent extends StatelessWidget {
           final ok = await ConfirmDialog.show(
             sheetContext,
             title: 'Xoá giao dịch?',
-            message: 'Số dư ví sẽ được hoàn lại. Không hoàn tác được.',
+            message: cauXacNhanXoaGiaoDich(tx, hoaDonDaXoa: daXoa),
           );
           if (!ok || !sheetContext.mounted) return;
           Navigator.of(sheetContext).pop();

@@ -17,9 +17,11 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../category/data/repositories/category_management_repository.dart';
 import '../../domain/gan_hang_loat.dart';
 import '../../../wallet/data/repositories/wallet_repository.dart';
+import '../../data/hoa_don_da_xoa_nguon.dart';
 import '../../data/repositories/transaction_repository.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_filter.dart';
+import '../../domain/transaction_owner.dart';
 import '../../domain/transaction_lookup.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
@@ -142,6 +144,11 @@ class _TransactionPageState extends State<TransactionPage> {
     _bienDong = widget.nguonBienDong?.call(idaccount) ??
         sl<ThongBaoRepository>().watchDemBienDong(idaccount);
   }
+
+  /// Việc 4c — cổng "hoá đơn của khoản này đã xoá chưa" cho vuốt xoá và bảng chi tiết. Chưa đăng ký (test dựng trang
+  /// không cần) → `null` → khoản có `billId` vẫn khoá.
+  HoaDonDaXoaNguon? get _nguonHoaDonDaXoa =>
+      sl.isRegistered<HoaDonDaXoaNguon>() ? sl<HoaDonDaXoaNguon>() : null;
 
   /// Đổi kỳ đang xem. [soKy] **dương là lùi**, âm là tiến — cùng chiều với
   /// `lui()`, để không đẻ ra quy ước dấu thứ hai.
@@ -340,12 +347,15 @@ class _TransactionPageState extends State<TransactionPage> {
   }
 
   /// Bảng chi tiết của một dòng: Sửa → mở `/add` ở chế độ sửa rồi tải lại
-  /// tháng; Xoá → hỏi xác nhận rồi đi cùng đường với vuốt xoá.
+  /// tháng; Xoá → hỏi xác nhận rồi đi cùng đường với vuốt xoá. Khoản có `billId`
+  /// thì hỏi cổng TRƯỚC khi mở (việc 4c) — bảng là widget thuần, không tự hỏi.
   Future<void> _showDetail(
     BuildContext blocContext,
     TransactionEntity tx,
     TransactionLookup lookup,
   ) async {
+    final daXoa = await hoaDonDaXoaCua(tx, _nguonHoaDonDaXoa);
+    if (!blocContext.mounted) return;
     await showModalBottomSheet<void>(
       context: blocContext,
       backgroundColor: Colors.transparent,
@@ -353,6 +363,7 @@ class _TransactionPageState extends State<TransactionPage> {
       builder: (sheetContext) => TransactionDetailSheet(
         transaction: tx,
         lookup: lookup,
+        hoaDonDaXoa: daXoa,
         onEdit: () async {
           Navigator.of(sheetContext).pop();
           final result = await context.push(
@@ -370,7 +381,7 @@ class _TransactionPageState extends State<TransactionPage> {
           final ok = await ConfirmDialog.show(
             sheetContext,
             title: 'Xoá giao dịch?',
-            message: 'Số dư ví sẽ được hoàn lại. Không hoàn tác được.',
+            message: cauXacNhanXoaGiaoDich(tx, hoaDonDaXoa: daXoa),
           );
           if (!ok || !sheetContext.mounted) return;
           Navigator.of(sheetContext).pop();
@@ -685,11 +696,13 @@ class _TransactionPageState extends State<TransactionPage> {
                     ],
                   ),
                 ),
-                // Day Items — vuốt xoá; khoản của mục tiêu/hoá đơn bị chặn
-                // ngay trong widget (xem `TransactionListRow`).
+                // Day Items — vuốt xoá; khoản của mục tiêu / hoá đơn còn sống bị
+                // chặn, khoản trả hoá đơn kiểu cũ / mồ côi hỏi xác nhận kèm cảnh
+                // báo — ngay trong widget (xem `TransactionListRow`).
                 ...dayTxs.map((tx) => TransactionListRow(
                       transaction: tx,
                       lookup: lookup,
+                      nguonHoaDonDaXoa: _nguonHoaDonDaXoa,
                       onTap: () => _showDetail(blocContext, tx, lookup),
                       onDelete: () => blocContext.read<TransactionBloc>().add(
                             DeleteTransactionEvent(tx),
