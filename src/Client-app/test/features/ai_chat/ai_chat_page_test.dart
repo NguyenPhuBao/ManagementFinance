@@ -18,7 +18,9 @@ import 'package:flowmoney/features/ai_chat/data/doc_lenh_bang_ai.dart';
 import 'package:flowmoney/features/ai_chat/domain/duong_hoi.dart';
 import 'package:flowmoney/features/ai_chat/domain/su_kien_online.dart';
 import 'package:flowmoney/features/ai_chat/presentation/pages/ai_chat_page.dart';
+import 'package:flowmoney/features/ai_chat/presentation/widgets/tro_ly_ai/nhan_nguon.dart';
 import 'package:flowmoney/features/ai_edge/domain/cau_chao.dart';
+import 'package:flowmoney/features/ai_edge/domain/chu_de_chan.dart';
 import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
 import 'package:flowmoney/features/ai_edge/domain/lenh_tao.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
@@ -1030,6 +1032,7 @@ void main() {
       )));
       await t.pumpAndSettle();
       expect(find.text(kChuaCoMoHinh), findsNothing, reason: 'băng khoá không hiện khi online bật');
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue);
     });
 
     testWidgets('online rơi về máy (503) mà máy chưa sẵn → câu "máy chủ không phản hồi", KHÔNG nói mất mạng', (t) async {
@@ -1042,8 +1045,41 @@ void main() {
       )));
       await hoi(t, 'Tình hình ngân sách');
       expect(find.text(kMayChuHongKhongMoHinh), findsOneWidget);
-      expect(find.text(kKhongMangKhongMoHinh), findsNothing, reason: 'mạng có, server hỏng — nói "không có mạng" là sai sự thật');
-      expect(find.text(kNguonTrenMay), findsNothing, reason: 'câu cố định không nhãn');
+      expect(find.byType(NhanNguon), findsNothing, reason: 'câu cố định không nhãn nguồn (textContaining kNguonTrenMay sẽ trùng chữ trong chính câu)');
+    });
+
+    testWidgets('chủ đề dữ liệu sống + CÓ mạng + máy chưa sẵn → câu từ chối, KHÔNG nói mất mạng', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: false,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) => const Stream.empty(),
+      )));
+      await hoi(t, 'Giá vàng hôm nay?');
+      expect(find.textContaining('chỉ nhận xét được trên số liệu'), findsOneWidget);
+      expect(find.text(kKhongMangKhongMoHinh), findsNothing,
+          reason: 'nenHoiOnline false vì chủ đề, không vì mạng — "không có mạng" là sai sự thật');
+    });
+
+    testWidgets('history KHÔNG gồm câu cố định của hệ thống (câu từ chối)', (t) async {
+      List<TinLichSu>? historyNhan;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, h) {
+          historyNhan = h;
+          return Stream.fromIterable(const [ChuOnline('Xong.'), XongOnline()]);
+        },
+      )));
+      await hoi(t, 'Giá vàng hôm nay?');
+      expect(find.textContaining('chỉ nhận xét được trên số liệu'), findsOneWidget);
+      await hoi(t, 'Quỹ khẩn cấp là gì?');
+      expect(historyNhan, isNotNull);
+      expect(historyNhan!.any((h) => h.text == kCauTuChoi), isFalse,
+          reason: 'câu từ chối là câu hệ thống, không phải lời mô hình');
     });
 
     testWidgets('onHoiOnline ném → không kẹt _dangHoi, rơi về máy', (t) async {

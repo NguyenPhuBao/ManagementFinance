@@ -124,7 +124,8 @@ LyDoKhoaHoiDap? lyDoKhoa({
 
 const String kKhongMangKhongMoHinh =
     'Đang không có mạng, và AI trên máy chưa sẵn (chưa tải / đang tắt). Nối mạng hoặc mở Cài đặt AI.';
-const String kMayChuHongKhongMoHinh =    'Máy chủ không phản hồi, và AI trên máy chưa sẵn (chưa tải / đang tắt). Thử lại sau hoặc mở Cài đặt AI.';
+const String kMayChuHongKhongMoHinh =
+    'Máy chủ không phản hồi, và AI trên máy chưa sẵn (chưa tải / đang tắt). Thử lại sau hoặc mở Cài đặt AI.';
 
 const String kDangHoiOnline = 'Đang hỏi trợ lý online…';
 
@@ -443,10 +444,12 @@ class _AiChatPageState extends State<AiChatPage> {
 
     // Cổng 3 (spec trợ lý online §3.1): công tắc bật ∧ có mạng lúc gửi ∧ không phải dữ liệu sống.
     final ct = _congTacOnline;
+    var matMang = false;
     if (ct != null && _coDuongOnline()) {
       final congTacBat = await ct.docBat();
       if (!mounted) return;
       final coMang = congTacBat && await _coMang();
+      matMang = congTacBat && !coMang;
       if (!mounted) return;
       if (nenHoiOnline(congTacBat: congTacBat, coMang: coMang, cauHoi: c)) {
         final diOnline = await _xinDongYOnline(ct);
@@ -461,10 +464,23 @@ class _AiChatPageState extends State<AiChatPage> {
       }
     }
 
-    // Không phải lệnh mà máy chưa sẵn: câu cố định (băng nhắc tải vẫn ở đó). Online bật mà tới đây là mất mạng / chủ
-    // đề dữ liệu sống — câu khác với "chưa tải mô hình".
+    // Không phải lệnh mà máy chưa sẵn: câu cố định theo NGUYÊN NHÂN thật (vừa rơi từ online · mất mạng · chủ đề bị từ chối ·
+    // chưa tải / tắt mô hình) — băng nhắc tải vẫn ở đó.
     if (!_maySan) {
-final vuaRoi = _ghiChuRoi != null;      _ghiChuRoi = null;      _themCuaAi(_TinNhan.cuaAi(vuaRoi          ? kMayChuHongKhongMoHinh          : (_onlineBat ? kKhongMangKhongMoHinh : cauKhoaHoiDap(coTep: _coTep))));      return;
+      final vuaRoi = _ghiChuRoi != null;
+      _ghiChuRoi = null;
+      final String cau;
+      if (vuaRoi) {
+        cau = kMayChuHongKhongMoHinh;
+      } else if (matMang) {
+        cau = kKhongMangKhongMoHinh;
+      } else if (chuDeBiChan(c)) {
+        cau = kCauTuChoi; // chủ đề bị từ chối bất kể mô hình — trung thực hơn mời tải mô hình
+      } else {
+        cau = cauKhoaHoiDap(coTep: _coTep);
+      }
+      _themCuaAi(_TinNhan.cuaAi(cau));
+      return;
     }
 
     // ⚠️ Chặn TRƯỚC khi gọi mô hình: 2,3 giây cho một câu chắc chắn bị vứt đi
@@ -571,10 +587,14 @@ final vuaRoi = _ghiChuRoi != null;      _ghiChuRoi = null;      _themCuaAi(_TinN
   /// Một lượt online: nối chunk vào `_traLoiDangDen`, kết bằng luật rơi §3.3. Không bao giờ ném — hỏng thì [RoiVeMay].
   Future<KetQuaOnline> _hoiOnline(String c) async {
     final cancel = CancelToken();
+    var daCoChu = false;
+    final chu = StringBuffer();
     try {
       final history = xepHistory([
-        // Bỏ câu vừa thêm (`_hoi` đã add `cuaToi`): history không gồm câu đang hỏi.
-        for (final t in _tinNhan.take(_tinNhan.length - 1)) (cuaToi: t.cuaToi, cau: t.cau, laThe: t.lenh != null),
+        // Bỏ câu vừa thêm (`_hoi` đã add `cuaToi`): history không gồm câu đang hỏi. Tin AI không nguồn là câu cố
+        // định của hệ thống (từ chối, lời chào gieo sẵn…), không phải lời mô hình — không gửi lên server.
+        for (final t in _tinNhan.take(_tinNhan.length - 1))
+          (cuaToi: t.cuaToi, cau: t.cau, laThe: t.lenh != null || (!t.cuaToi && t.nguon == null)),
       ]);
       setState(() {
         _huyOnline = cancel;
@@ -587,8 +607,6 @@ final vuaRoi = _ghiChuRoi != null;      _ghiChuRoi = null;      _themCuaAi(_TinN
           : sl<TroLyOnlineRemoteDataSource>()
               .hoi(cauHoi: c, conversationId: _conversationId, history: history, cancel: cancel);
       SuKienOnline cuoi = const LoiOnline(http: null, lyDo: 'không sự kiện');
-      var daCoChu = false;
-      final chu = StringBuffer();
       var chot = false;
       await for (final sk in luong) {
         if (!mounted) return const HoanTat();
@@ -609,39 +627,41 @@ final vuaRoi = _ghiChuRoi != null;      _ghiChuRoi = null;      _themCuaAi(_TinN
       if (cuoi case LoiOnline(http: 403)) {
         if (sl.isRegistered<GoiRepository>()) unawaited(sl<GoiRepository>().lamMoi());
       }
-      if (!mounted) return kq;
-      switch (kq) {
-        case HoanTat():
-          _themCuaAi(_TinNhan.cuaAi(boDanhDauMarkdown(chu.toString()), nguon: NguonTraLoi.online));
-        case GiuPhanDaCo(:final ghiChu):
-          if (chu.isNotEmpty) {
-            _themCuaAi(_TinNhan.cuaAi(boDanhDauMarkdown(chu.toString()), nguon: NguonTraLoi.online, ghiChu: ghiChu));
-          } else {
-            setState(() {
-              _dangHoi = false;
-              _traLoiDangDen = null;
-              _dangTraCuu = null;
-            });
-          }
-        case RoiVeMay():
-          // Gỡ bong bóng đang hiện (kể cả câu thông báo ⚠️ của server) — câu đi tiếp trên máy.
-          setState(() {
-            _traLoiDangDen = null;
-            _dangTraCuu = null;
-          });
-      }
+      _chotOnline(kq, chu.toString());
       return kq;
     } catch (e) {
       debugPrint('[Online] hỏng: ${e.runtimeType}');
-      if (mounted) {
+      // Bảng §3.3: đã có chữ thì giữ phần đã hiện; chưa có thì rơi về máy.
+      final KetQuaOnline kq = daCoChu ? const GiuPhanDaCo(kGhiChuGianDoan) : const RoiVeMay('exception');
+      _chotOnline(kq, chu.toString());
+      return kq;
+    } finally {
+      _huyOnline = null;
+    }
+  }
+
+  /// Chốt bong bóng online theo [kq]: hoàn tất / giữ phần đã có (kèm ghi chú) thành tin nhắn; rơi về máy thì gỡ bong bóng
+  /// đang hiện (kể cả câu thông báo ⚠️ của server) để câu đi tiếp trên máy.
+  void _chotOnline(KetQuaOnline kq, String chu) {
+    if (!mounted) return;
+    switch (kq) {
+      case HoanTat():
+        _themCuaAi(_TinNhan.cuaAi(boDanhDauMarkdown(chu), nguon: NguonTraLoi.online));
+      case GiuPhanDaCo(:final ghiChu):
+        if (chu.isNotEmpty) {
+          _themCuaAi(_TinNhan.cuaAi(boDanhDauMarkdown(chu), nguon: NguonTraLoi.online, ghiChu: ghiChu));
+        } else {
+          setState(() {
+            _dangHoi = false;
+            _traLoiDangDen = null;
+            _dangTraCuu = null;
+          });
+        }
+      case RoiVeMay():
         setState(() {
           _traLoiDangDen = null;
           _dangTraCuu = null;
         });
-      }
-      return const RoiVeMay('exception');
-    } finally {
-      _huyOnline = null;
     }
   }
 
