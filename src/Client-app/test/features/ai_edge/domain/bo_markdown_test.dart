@@ -69,9 +69,29 @@ void main() {
           reason: '`>` giữa câu là so sánh, không phải trích dẫn.');
     });
 
+    test('⭐ `>` đứng trước con số / dấu so sánh KHÔNG bị gỡ (bẫy 4.36)', () {
+      const r = 'Bẫy 4.36: không đổi nghĩa con số — `>` là so sánh, số thắng '
+          'trích dẫn.';
+      expect(boDanhDauMarkdown('>= 5 triệu'), '>= 5 triệu', reason: r);
+      expect(boDanhDauMarkdown('> 5 triệu có 2 khoản.'),
+          '> 5 triệu có 2 khoản.',
+          reason: r);
+      expect(boDanhDauMarkdown('>5 triệu: 2 khoản'), '>5 triệu: 2 khoản',
+          reason: r);
+      expect(boDanhDauMarkdown('a\n>5 triệu'), 'a\n>5 triệu', reason: r);
+      expect(boDanhDauMarkdown('> 1. Thời gian'), '> 1. Thời gian',
+          reason: 'Hành vi cố ý: trích dẫn bọc danh sách số giữ dấu — $r');
+    });
+
     test('dòng kẻ ngang bị bỏ cả dòng, không để dòng trống kép', () {
-      expect(boDanhDauMarkdown('a\n---\nb'), 'a\nb');
-      expect(boDanhDauMarkdown('a\n***\n'), 'a\n');
+      expect(boDanhDauMarkdown('a\n---\nb'), 'a\nb',
+          reason: 'Bỏ cả dòng `---` kèm đúng một xuống dòng.');
+      expect(boDanhDauMarkdown('a\n***\n'), 'a\n',
+          reason: 'Kẻ ngang `***` ở cuối chuỗi cũng bỏ.');
+      expect(boDanhDauMarkdown('đoạn 1.\n\n---\n\nđoạn 2.'),
+          'đoạn 1.\n\nđoạn 2.',
+          reason: 'Gemini đệm dòng trống quanh `---` (sát đoạn văn là gạch '
+              'chân tiêu đề theo CommonMark) — gỡ xong không để ba `\\n`.');
       expect(boDanhDauMarkdown('- - -\nb'), 'b',
           reason: 'Kẻ ngang xen khoảng trắng — không bị gạch đầu dòng ăn dở.');
       expect(boDanhDauMarkdown('--- abc'), '--- abc',
