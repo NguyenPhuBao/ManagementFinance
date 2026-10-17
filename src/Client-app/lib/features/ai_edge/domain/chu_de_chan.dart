@@ -7,7 +7,13 @@
 /// chủ đề ấy gây thiệt hại thật.
 ///
 /// ⚠️ So **có dấu** (quy tắc 7 `CLAUDE.md`): bỏ dấu gộp "đầu tư" với "đầu
-/// tuần" và từ chối một câu hỏi hợp lệ. (Ngoại lệ có lý do: câu định nghĩa, họ D.)
+/// tuần" và từ chối một câu hỏi hợp lệ. (Ngoại lệ có lý do: câu định nghĩa, họ D;
+/// bản không dấu của nhóm dữ liệu sống; và lượt B của `_laCauHoiGiaTaiSan`, chỉ
+/// cho từ bỏ dấu vẫn một nghĩa.)
+///
+/// Tệp phục vụ hai đường: `chuDeBiChan` (mô hình trên máy: chặn cả tư vấn chung)
+/// và `chuDeBiChanOnline` (Gemini: mở tư vấn chung, chỉ chặn dữ liệu sống và câu
+/// hỏi giá tài sản).
 library;
 
 import '../../../core/category/category_name.dart';
@@ -63,15 +69,24 @@ const List<String> _tuKhoaSongKhongDau = [
   'bong da',
 ];
 
-/// Câu hỏi GIÁ của một tài sản (chữ giá hoặc "bao nhiêu tiền" cùng tên tài sản
-/// trong một câu), so không dấu.
-final RegExp _mauChuGia = RegExp(r'(?<![a-z0-9])(?:gia|bao nhieu tien)(?![a-z0-9])');
-final RegExp _mauTaiSan = RegExp(
-    r'(?<![a-z0-9])(?:vang|co phieu|chung khoan|bitcoin|crypto|tien ao|tien ma hoa|usd|do la|dola)(?![a-z0-9])');
+/// Câu hỏi GIÁ của một tài sản — hai lượt so, chặn khi MỘT lượt khớp cả hai vế.
+/// Lượt A so CÓ DẤU, từ trọn: bỏ dấu gộp "vàng" với "vâng / vắng / rượu vang",
+/// "đô la" với "đó là", "tiền ảo" với "tiền áo", "cổ phiếu" với "có phiếu".
+/// Lượt B so bản bỏ dấu, CHỈ với từ không trùng nghĩa khi bỏ dấu.
+RegExp _tuTron(String alt) =>
+    RegExp('(?<![\\p{L}\\p{N}])(?:$alt)(?![\\p{L}\\p{N}])', unicode: true);
+
+final RegExp _giaCoDau = _tuTron('giá|bao nhiêu tiền');
+final RegExp _taiSanCoDau = _tuTron(
+    'vàng|cổ phiếu|chứng khoán|tiền ảo|tiền mã hoá|tiền mã hóa|đô la|đô|usd|bitcoin|crypto');
+final RegExp _giaKhongDau = _tuTron('gia|bao nhieu tien');
+final RegExp _taiSanKhongDau = _tuTron('bitcoin|crypto|usd|dola|chung khoan');
 
 bool _laCauHoiGiaTaiSan(String cauHoi) {
-  final q = removeVietnameseTones(normalizeCategoryName(cauHoi));
-  return _mauChuGia.hasMatch(q) && _mauTaiSan.hasMatch(q);
+  final q = normalizeCategoryName(cauHoi);
+  if (_giaCoDau.hasMatch(q) && _taiSanCoDau.hasMatch(q)) return true;
+  final k = removeVietnameseTones(q);
+  return _giaKhongDau.hasMatch(k) && _taiSanKhongDau.hasMatch(k);
 }
 
 /// Họ D (2026-10-04, người dùng chốt): câu ĐỊNH NGHĨA / CÁCH TÍNH chung — *"dòng
