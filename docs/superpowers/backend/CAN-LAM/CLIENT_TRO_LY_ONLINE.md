@@ -90,14 +90,16 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
 5. **(vừa) Khi client đóng kết nối giữa một lượt, lượt ấy phải dừng ở server.** Viết theo **mục tiêu + tiêu chí nghiệm thu**;
    cách làm là của backend.
    - **Mục tiêu.** Khi client đóng kết nối giữa một lượt `chat/stream` (bấm Dừng, thoát màn): (1) server thôi ghi `delta`; (2)
-     không gọi thêm tool hay `sendMessageStream` nào của lượt ấy (dấu hiệu quan sát: dòng log *bị bỏ qua* của (3)); (3) lời gọi
-     Gemini đang chạy bị huỷ, hoặc lời gọi kế tiếp bị **bỏ qua** — và mỗi lần như thế **service** ghi một dòng log **ngay tại lời
-     gọi Gemini**: khi `sendMessageStream` hoặc vòng đọc luồng của nó đang chạy kết thúc vì `signal.aborted`, hoặc khi lời gọi kế
-     tiếp bị bỏ qua vì cờ ấy; dòng log nêu rõ lời gọi nào — lời gọi đầu (`sendMessageStream(safeUserMessage)`, hôm nay
-     `chatbot.service.js:168`) hay lời gọi sau tool (`functionResponse`, `:186`). **Không** tính là dòng log huỷ: dòng ngắt kết
-     nối của controller (`chatbot.controller.js:34`), dòng sẵn có *"[ChatbotService] Client đã ngắt kết nối — hủy luồng
-     streaming."* + `break` (`chatbot.service.js:174-175`) và `break` im ở `:196` — cả ba in / thoát được trong khi fetch tới
-     Gemini vẫn đọc trọn luồng (xem ghi chú `tee()` dưới đây); (4) việc dừng **không** đếm vào circuit breaker và **không** chạy
+     không gọi thêm tool hay `sendMessageStream` nào của lượt ấy (dấu hiệu quan sát: dòng log *bị bỏ qua* của (3)); (3) lệnh huỷ
+     **tới chính lời gọi Gemini**: lời gọi đang chạy (hoặc luồng nó trả về) kết thúc bằng **lỗi huỷ của SDK**
+     (`GoogleGenerativeAIAbortError`, SDK `dist/index.js:410`, `:760`) — **không** phải vòng `for await` tự `break` khi thấy cờ —
+     hoặc lời gọi kế tiếp **bị bỏ qua** (không được gửi) vì `signal.aborted`; mỗi lần như thế **service** ghi một dòng log ngay tại
+     lời gọi Gemini, nêu rõ lời gọi nào — lời gọi đầu (`sendMessageStream(safeUserMessage)`, hôm nay `chatbot.service.js:168`) hay
+     lời gọi sau tool (`functionResponse`, `:186`). **Luật loại trừ:** dòng nào in được trong khi fetch tới Gemini của lượt ấy vẫn
+     đọc tiếp đều **không** tính là dòng log huỷ (đọc mã SDK, chưa đo — ghi chú `tee()` dưới đây), kể cả một dòng log mới đặt cạnh
+     `break` theo cờ khi lời gọi không mang `signal`. Ví dụ trong mã hôm nay: dòng ngắt kết nối của controller
+     (`chatbot.controller.js:34`), dòng sẵn có *"[ChatbotService] Client đã ngắt kết nối — hủy luồng streaming."* + `break`
+     (`chatbot.service.js:174-175`), và `break` im ở `:196`; (4) việc dừng **không** đếm vào circuit breaker và **không** chạy
      nhánh fallback.
    - **Tiêu chí nghiệm thu** — đo bằng log backend + quan sát ở client, ở *Kiểm lại*.
    - **Ghi chú cho người sửa** (client đọc mã backend + SDK ngày 2026-10-17, **chưa đo** trên backend chạy thật; là bẫy để tránh,
@@ -120,9 +122,9 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
      - Google có ngừng tính token khi fetch bị huỷ giữa chừng hay không — **chưa đo**.
      - Quan sát ngoài việc 5: `circuit-breaker.js:84` gán `this.lastFailureTime = now` **trước** phép so `now - this.lastFailureTime
        > this.windowMs` ở `:95`, nên nhánh đặt lại bộ đếm về 1 trong `handleFailure` không bao giờ chạy; ở trạng thái **CLOSED**, bộ
-       đếm chỉ về 0 khi có một lượt **thành công** cách lỗi cuối hơn `windowMs` (60 s, `:64-68`) — không có lượt thành công xen
-       giữa thì lỗi cách nhau bao lâu cũng cộng dồn tới ngưỡng. (Nhánh HALF-OPEN → CLOSED, `:59-63`, cũng đặt bộ đếm về 0 — nhưng
-       chỉ sau khi mạch đã mở.)
+       đếm chỉ về 0 khi có một lượt **thành công** cách lỗi cuối hơn `windowMs` (nhánh CLOSED `:64-68`; `windowMs` 60 s — mặc
+       định `:21`, instance Gemini `:116`) — không có lượt thành công xen giữa thì lỗi cách nhau bao lâu cũng cộng dồn tới ngưỡng.
+       (Nhánh HALF-OPEN → CLOSED, `:59-63`, cũng đặt bộ đếm về 0 — nhưng chỉ sau khi mạch đã mở.)
 
 ## Kiểm lại
 
@@ -139,10 +141,12 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
   có dòng ngắt kết nối của controller (*"[SSE Controller] Client idaccount: … đã ngắt kết nối stream"*); **sau** dòng ấy **không**
   có `[Chatbot Function Call]`, không `[CircuitBreaker] Ghi nhận lỗi LLM`, không `Kích hoạt Fallback Notice Stream`; không `delta`
   nào được ghi (không có log sẵn — quan sát ở client: không chữ mới hiện sau Dừng); và **có** dòng log huỷ do **service** phát
-  ngay tại lời gọi Gemini (chữ do backend đặt), nêu rõ lời gọi nào — Dừng lúc stream câu đầu: lời gọi đầu (`:168` hôm nay) bị
-  **huỷ**; Dừng lúc đang chạy tool (`executeTool`, `:183`): lời gọi sau tool (`:186`) bị **bỏ qua**. Dòng ngắt kết nối của
-  controller (`chatbot.controller.js:34`), dòng sẵn có *"[ChatbotService] Client đã ngắt kết nối — hủy luồng streaming."*
-  (`chatbot.service.js:174`) và `break` im ở `:196` **không** tính là dòng log huỷ. Đo cả trước khi sửa để có mốc.
+  ngay tại lời gọi Gemini (chữ do backend đặt), nêu rõ lời gọi nào — Dừng lúc stream câu đầu: lời gọi đầu (`:168` hôm nay)
+  kết thúc bằng **lỗi huỷ của SDK** (không phải vòng đọc tự `break` theo cờ); Dừng lúc đang chạy tool (`executeTool`, `:183`):
+  lời gọi sau tool (`:186`) bị **bỏ qua** — không được gửi. Luật loại trừ ở mục tiêu (3): dòng nào in được trong khi fetch tới
+  Gemini của lượt ấy vẫn đọc tiếp đều **không** tính là dòng log huỷ — ví dụ dòng ngắt kết nối của controller
+  (`chatbot.controller.js:34`), dòng sẵn có *"[ChatbotService] Client đã ngắt kết nối — hủy luồng streaming."*
+  (`chatbot.service.js:174`), `break` im ở `:196`. Đo cả trước khi sửa để có mốc.
 - Phía client sau khi có việc 1: nghiệm thu máy thật (spec client §6, chín ca — chữ chạy, nhãn nguồn, rơi về máy, Dừng, tờ thông
   tin, Basic, câu giá vàng, máy chưa có mô hình).
 
