@@ -114,13 +114,16 @@ void hoiHoanTacHoaDon(BuildContext context, BillEntity bill,
   );
 }
 
-/// Vế *"và gỡ kỳ kế tiếp (hạn …, chưa trả)"* của hai hộp Hoàn tác; rỗng khi
-/// không có [kySau] nào sẽ bị gỡ. Nêu hạn để người dùng biết đúng kỳ nào sẽ mất
-/// khỏi tab Cần thanh toán.
-String _veKySau(BillEntity? kySau) => kySau == null
-    ? ''
-    : ' và gỡ kỳ kế tiếp (hạn '
-        '${DateFormat('dd/MM/yyyy').format(kySau.dueDate)}, chưa trả)';
+/// Vế *"và gỡ kỳ kế tiếp (hạn …, chưa trả)"* của hai hộp Hoàn tác thanh toán;
+/// rỗng khi không có [kySau] nào sẽ bị gỡ.
+String _veKySau(BillEntity? kySau) =>
+    kySau == null ? '' : ' và gỡ ${_nhanKySau(kySau)}';
+
+/// *"kỳ kế tiếp (hạn dd/MM/yyyy, chưa trả)"* — nêu hạn để người dùng biết đúng
+/// kỳ nào sẽ mất khỏi tab Cần thanh toán. Chung cho ba hộp Hoàn tác.
+String _nhanKySau(BillEntity kySau) =>
+    'kỳ kế tiếp (hạn ${DateFormat('dd/MM/yyyy').format(kySau.dueDate)}, chưa '
+    'trả)';
 
 /// Hộp của kỳ không còn khoản chi gắn `billId`: về chưa trả, không đụng ví.
 ///
@@ -196,14 +199,18 @@ void hoiBoQuaKyHoaDon(BuildContext context, BillEntity bill) {
 
 /// Hỏi trước khi hoàn tác việc bỏ qua. Không có bước hoàn tiền nào để nói —
 /// lần bỏ qua chưa từng trừ tiền.
-void hoiHoanTacBoQua(BuildContext context, BillEntity bill) {
+///
+/// [kySau]: kỳ sau mà `undoSkip` sẽ gỡ (`kySauConPhaiTra`) — cùng luật với hai
+/// hộp Hoàn tác thanh toán (2026-10-17); `null` thì không nhắc kỳ sau.
+void hoiHoanTacBoQua(BuildContext context, BillEntity bill,
+    {BillEntity? kySau}) {
   showDialog(
     context: context,
     builder: (ctx) => AlertDialog(
       title: const Text('Hoàn tác bỏ qua'),
       content: Text(
         'Hoá đơn "${bill.name}" quay lại trạng thái chưa thanh toán'
-        '${bill.isRecurrence ? ', và kỳ kế tiếp đã tạo sẽ bị gỡ' : ''}.',
+        '${kySau == null ? '' : ', và ${_nhanKySau(kySau)} sẽ bị gỡ'}.',
       ),
       actions: [
         TextButton(

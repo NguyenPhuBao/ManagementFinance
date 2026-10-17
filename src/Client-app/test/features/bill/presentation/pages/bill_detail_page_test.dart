@@ -340,6 +340,28 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets(
+        'hoàn tác bỏ qua khi kỳ sau ĐÃ TRẢ: hộp không hứa gỡ, bấm xong kỳ sau '
+        'còn nguyên (2026-10-17)', (tester) async {
+      await hoaDon('k1', DateTime(2026, 9, 20), boQua: true);
+      await hoaDon('k2', DateTime(2026, 10, 20), tu: 'k1', paid: true);
+      await khoanChi('k2', DateTime(2026, 10, 20));
+      await dungTrang(tester, 'k1');
+
+      await tester.tap(find.byKey(const ValueKey('bill-detail-undo-skip')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('kỳ kế tiếp'), findsNothing);
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Hoàn tác'));
+      await tester.pumpAndSettle();
+
+      expect((await db.billDao.getById('k1'))!.payStatus, 'Pending');
+      final kySau = (await db.billDao.getById('k2'))!;
+      expect(kySau.isDeleted, isFalse,
+          reason: 'Hoàn tác bỏ qua tháng 9 không được xoá tháng 10 đã trả.');
+      expect(kySau.payStatus, 'Payed');
+    });
+
     testWidgets('kỳ đã trả: không có nút Bỏ qua', (tester) async {
       await hoaDon('k1', DateTime(2026, 9, 20), paid: true);
       await dungTrang(tester, 'k1');

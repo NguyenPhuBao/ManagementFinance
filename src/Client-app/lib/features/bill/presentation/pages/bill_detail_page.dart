@@ -475,7 +475,8 @@ class _BillDetailPageState extends State<BillDetailPage> {
       // một giao diện nói dối.
       return OutlinedButton.icon(
         key: const ValueKey('bill-detail-undo-skip'),
-        onPressed: () => hoiHoanTacBoQua(context, b),
+        onPressed: () =>
+            hoiHoanTacBoQua(context, b, kySau: kySauConPhaiTra(_chuoi, b.id)),
         icon: const Icon(Icons.undo, size: 18),
         label: const Text('Hoàn tác bỏ qua'),
         style: _vien,

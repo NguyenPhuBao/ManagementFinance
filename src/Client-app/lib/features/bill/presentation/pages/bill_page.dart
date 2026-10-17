@@ -469,8 +469,10 @@ class _BillPageState extends State<BillPage> {
         // Kỳ đã trả mà không có khoản chi gắn `billId` → nút Hoàn tác hỏi đưa
         // kỳ về chưa trả, không hứa hoàn tiền (`hoiHoanTacHoaDon`).
         coKhoanTra: khoanChi != null,
-        // Kỳ sau mà Hoàn tác sẽ gỡ — hai hộp Hoàn tác nhắc theo đúng nó.
-        kySau: status == BillDisplayStatus.paid
+        // Kỳ sau mà Hoàn tác (thanh toán / bỏ qua) sẽ gỡ — ba hộp nhắc theo
+        // đúng nó.
+        kySau: status == BillDisplayStatus.paid ||
+                status == BillDisplayStatus.skipped
             ? kySauConPhaiTra(tatCa, bill.id)
             : null,
       ),
@@ -769,7 +771,8 @@ class _HangSoTien extends StatelessWidget {
   /// Kỳ có khoản chi gắn `billId` trong bản đồ của trang — chọn hộp Hoàn tác.
   final bool coKhoanTra;
 
-  /// Kỳ sau mà "Đưa về chưa trả" sẽ gỡ (`kySauConPhaiTra`), để hộp nêu đúng nó.
+  /// Kỳ sau mà Hoàn tác (thanh toán / bỏ qua / đưa về chưa trả) sẽ gỡ
+  /// (`kySauConPhaiTra`), để hộp nêu đúng nó.
   final BillEntity? kySau;
 
   /// Ngưỡng nhãn "Sắp đến hạn" của trang, chuyển cho bảng Thanh toán.
@@ -908,7 +911,7 @@ class _HangSoTien extends StatelessWidget {
     if (daBoQua) {
       return TextButton.icon(
         key: ValueKey('bill-undo-skip-${bill.id}'),
-        onPressed: () => hoiHoanTacBoQua(context, bill),
+        onPressed: () => hoiHoanTacBoQua(context, bill, kySau: kySau),
         icon: const Icon(Icons.undo, size: 16),
         label: const FittedBox(
           fit: BoxFit.scaleDown,

@@ -696,6 +696,51 @@ void main() {
           reason: 'Thay bằng lối hoàn tác, đối xứng với dòng đã trả.');
     });
 
+    testWidgets(
+        'hoàn tác bỏ qua: nêu kỳ sau KÈM HẠN khi kỳ ấy còn phải trả '
+        '(2026-10-17)', (tester) async {
+      final boQua =
+          _bill(id: 'b', dueDate: DateTime(2026, 9, 10), payStatus: 'Skipped');
+      final kySau = _bill(id: 'c', dueDate: DateTime(2026, 10, 10), tu: 'b');
+      await dungTrang(tester, [boQua, kySau]);
+      await tester.tap(find.textContaining('Lịch sử ('));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('bill-undo-skip-b')));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.textContaining(
+              ', và kỳ kế tiếp (hạn 10/10/2026, chưa trả) sẽ bị gỡ.'),
+          findsOneWidget);
+    });
+
+    testWidgets(
+        'hoàn tác bỏ qua khi kỳ sau ĐÃ TRẢ: hộp KHÔNG hứa gỡ kỳ sau '
+        '(2026-10-17)', (tester) async {
+      final boQua =
+          _bill(id: 'b', dueDate: DateTime(2026, 9, 10), payStatus: 'Skipped');
+      final kySauDaTra = _bill(
+          id: 'c',
+          dueDate: DateTime(2026, 10, 10),
+          tu: 'b',
+          isPaid: true,
+          payStatus: 'Payed');
+      await dungTrang(tester, [boQua, kySauDaTra]);
+      await tester.tap(find.textContaining('Lịch sử ('));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(const ValueKey('bill-undo-skip-b')));
+      await tester.tap(find.byKey(const ValueKey('bill-undo-skip-b')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('quay lại trạng thái chưa thanh toán'),
+          findsOneWidget);
+      expect(find.textContaining('kỳ kế tiếp'), findsNothing,
+          reason: 'undoSkip chỉ gỡ kỳ sau còn phải trả — kỳ sau đã trả ở lại; '
+              'nhắc "kỳ kế tiếp … sẽ bị gỡ" là hứa sai.');
+    });
+
     testWidgets('kỳ bỏ qua KHÔNG cộng vào tổng tiền cần thanh toán',
         (tester) async {
       await dungTrang(tester, [

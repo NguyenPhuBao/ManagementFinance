@@ -407,9 +407,11 @@ class BillRepositoryImpl implements BillRepository {
     await db.transaction(() async {
       // Gỡ kỳ kế tiếp mà lần bỏ qua đã sinh ra — cùng lý do với `undoPayment`:
       // để lại thì người dùng có hai kỳ cùng mở, và bỏ qua lần nữa sẽ đẻ thêm
-      // một kỳ trùng.
+      // một kỳ trùng. ⚠️ CHỈ khi kỳ ấy còn phải trả — cùng luật với
+      // `undoPayment` / `datLaiChuaTra` (2026-10-17): gỡ vô điều kiện là hoàn
+      // tác bỏ qua tháng 9 xoá luôn tháng 10 đã trả.
       final kySau = await db.billDao.getGeneratedFrom(billId);
-      if (kySau != null) {
+      if (kySau != null && conPhaiTra(BillEntity.fromDrift(kySau))) {
         await dataSource.softDeleteBill(kySau.id);
       }
 
