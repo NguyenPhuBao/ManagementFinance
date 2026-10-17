@@ -32,7 +32,7 @@ hành vi dưới đây đo bằng test client với máy chủ giả.
   · kết nối gián đoạn"*. Nút **Dừng**: client huỷ `CancelToken` (đóng kết nối), giữ chữ đã hiện + nhãn *"đã dừng"*. Phía server,
   đọc mã thấy lượt Gemini nhiều khả năng **không** dừng theo — **chưa đo trên backend thật**; mục tiêu, tiêu chí và các chỗ đã đọc
   được ở **việc 5**.
-- Client **không** gọi online cho câu dữ liệu sống (giá vàng · giá xăng · tỷ giá · lãi suất · thời tiết · tin tức · xổ số · bóng
+- Client **không** gọi online cho câu dữ liệu sống (giá vàng · giá xăng · tỷ giá · lãi suất ngân hàng / hôm nay / hiện nay · thời tiết · tin tức · xổ số · bóng
   đá, và câu hỏi *giá* một tài sản) và lệnh tạo hoá đơn / mục tiêu / ngân sách — những câu ấy đi AI trên máy như cũ.
 - Log `[Online]` chỉ loại sự kiện, mã HTTP, thời gian — không in câu hỏi / câu trả lời.
 
@@ -64,8 +64,9 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
    (`chatbot.service.js:152`) rồi `model.startChat({history})`; SDK `@google/generative-ai` 0.24.1 `validateChatHistory` ném
    *"First content should be with role 'user', got model"*. Lỗi ấy đi vào `geminiCircuitBreaker` — **một** instance cho mọi tài khoản
    (`resilience/circuit-breaker.js:113`, ngưỡng 5 lỗi, mở 30 s). Màn client gieo sẵn một lời chào của AI, nên nếu gửi thẳng thì câu
-   online đầu tiên của **mọi** phiên hỏng. Client nay: cắt cửa sổ 6 rồi bỏ các tin đầu cho tới tin `user` đầu tiên, và không gửi
-   câu cố định của hệ thống (câu từ chối, câu *chưa có mô hình*…).
+   online đầu tiên của **mọi** phiên hỏng. Client nay: ghép `history` theo **cặp** (tin `user` + lời đáp của AI ngay
+   sau nó), lấy ≤ 3 cặp cuối — history luôn xen kẽ, bắt đầu `user`, kết bằng `model`; câu cố định của hệ thống và câu không có lời
+   đáp (bị chặn, Dừng không chữ, lệnh tạo) không gửi.
 
 ## Xin làm
 
@@ -75,7 +76,7 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
    người dùng chỉ thấy *"máy chủ không phản hồi"*, hỏng im lặng. Xin: chạy một lượt `chat/stream` thật với khoá, ghi tên mô hình đã
    chạy được vào `docs/AI/ChatbotAI.md` (kèm ngày), và đặt cùng tên ấy trên môi trường cloud.
 2. **(thấp) Xác nhận giữ `history.slice(-6)`.** Client gửi tối đa 6 tin (`xepHistory`, `toiDa = 6`) đúng theo số ấy; đổi cửa sổ
-   phía server thì báo client (client cắt trước để tin đầu luôn là `user` — xem điều 3 ở trên).
+   phía server thì báo client (client ghép theo cặp nên tin đầu luôn `user`, tin cuối `model` — điều 3).
 3. **(thấp, cân nhắc) Kiểm vai tin đầu ở server.** Sau `slice(-6)`, bỏ các tin đầu không phải `user` trước `startChat` (hoặc trả
    400). Client đã tự làm, nhưng Admin-web hay một client cũ gửi `history` bắt đầu bằng `model` vẫn mở breaker **cho mọi tài khoản**
    sau 5 lần.
@@ -91,8 +92,8 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
    cách làm là của backend.
    - **Mục tiêu.** Khi client đóng kết nối giữa một lượt `chat/stream` (bấm Dừng, thoát màn): (1) server thôi ghi `delta`; (2)
      không gọi thêm tool hay `sendMessageStream` nào của lượt ấy (dấu hiệu quan sát: dòng log *bị bỏ qua* của (3)); (3) lệnh huỷ
-     **tới chính lời gọi Gemini**: lời gọi đang chạy (hoặc luồng nó trả về) kết thúc bằng **lỗi huỷ của SDK**
-     (`GoogleGenerativeAIAbortError`, SDK `dist/index.js:410`, `:760`) — **không** phải vòng `for await` tự `break` khi thấy cờ —
+     **tới chính lời gọi Gemini**: lời gọi đang chạy (hoặc luồng nó trả về) kết thúc bằng **lỗi do SDK ném vì
+     fetch bị huỷ** (lớp lỗi tuỳ thời điểm — nhận diện bằng `signal.aborted`, **không** bằng lớp lỗi) — **không** phải vòng `for await` tự `break` khi thấy cờ —
      hoặc lời gọi kế tiếp **bị bỏ qua** (không được gửi) vì `signal.aborted`; mỗi lần như thế **service** ghi một dòng log ngay tại
      lời gọi Gemini, nêu rõ lời gọi nào — lời gọi đầu (`sendMessageStream(safeUserMessage)`, hôm nay `chatbot.service.js:168`) hay
      lời gọi sau tool (`functionResponse`, `:186`). **Luật loại trừ:** dòng nào in được trong khi fetch tới Gemini của lượt ấy vẫn
@@ -111,8 +112,11 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
        truyền `requestOptions`. `buildFetchOptions` (`:441-455`) chỉ gắn `AbortController` khi có `requestOptions.signal`; thiếu nó
        thì fetch không huỷ, và `processStream` `tee()` luồng (`:684-692`) — nhánh `getResponsePromise` đọc trọn dù vòng `for await`
        đã `break`.
-     - Có `signal` thì SDK ném `GoogleGenerativeAIAbortError` (`:288`, `:410`, `:760`) — lớp này không đặt `name` (kế thừa `Error`,
-       `name` không phải `'AbortError'`), nhận diện bằng `signal.aborted`. Lỗi ấy ném **bên trong** `geminiCircuitBreaker.execute`
+     - Có `signal` thì SDK ném lỗi khi fetch bị huỷ — **lớp lỗi tuỳ thời điểm** (đo 2026-10-17 trên máy chủ SSE giả, Node 22.19,
+       SDK 0.24.1): huỷ **trước header** → `GoogleGenerativeAIAbortError` (`:410`); huỷ **giữa luồng** → `GoogleGenerativeAIError`
+       *"Error reading from the stream"* (`pump()` `:754`, `.catch` `:756-766` bọc lại). Cả hai đều không đặt `name = 'AbortError'`;
+       nhận diện bằng `signal.aborted` — `instanceof` một lớp bỏ lọt lớp kia. Dòng `console.error` của SDK (`ChatSession`,
+       `:1263-1270`) in kèm mỗi lượt huỷ giữa luồng — **không** tính là dòng log huỷ. Lỗi ấy ném **bên trong** `geminiCircuitBreaker.execute`
        (`chatbot.service.js:136`) → thành một lỗi của breaker **dùng chung mọi tài khoản** (ngưỡng 5, mở 30 s,
        `circuit-breaker.js:113-117`) và chạy nhánh `catch` `:219-228` (snapshot + `_streamFallbackResponse` ghi lên kết nối chết) —
        trái mục tiêu (4).
@@ -137,13 +141,15 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
   nay) khớp mã sau việc 5 — `:286`, `:420` chỉ khẳng định điều log tiêu chí việc 5 đã cho thấy (vế *tiết kiệm token* chỉ giữ khi
   đã đo — ghi chú việc 5); `:296`, `:443` nêu đúng tên hook controller đang bắt (`grep -n "on('close'" src/Backend/modules/ai/features/chatbot/chatbot.controller.js`).
 - Việc 5 — **tiêu chí nghiệm thu**: mở `chat/stream` cho một câu dài, ngắt kết nối giữa dòng (client bấm Dừng, hoặc `curl -N …` rồi
-  Ctrl+C) ở **hai** thời điểm — lúc đang stream câu đầu, và lúc đang chạy tool (câu hỏi buộc Gemini gọi tool). Mỗi lần, log backend:
+  Ctrl+C) ở **ba** thời điểm — lúc đang stream câu đầu · lúc đang chạy tool (câu hỏi buộc Gemini gọi tool) · lúc đang stream câu trả lời
+  **sau tool**. Mỗi lần, log backend:
   có dòng ngắt kết nối của controller (*"[SSE Controller] Client idaccount: … đã ngắt kết nối stream"*); **sau** dòng ấy **không**
   có `[Chatbot Function Call]`, không `[CircuitBreaker] Ghi nhận lỗi LLM`, không `Kích hoạt Fallback Notice Stream`; không `delta`
   nào được ghi (không có log sẵn — quan sát ở client: không chữ mới hiện sau Dừng); và **có** dòng log huỷ do **service** phát
   ngay tại lời gọi Gemini (chữ do backend đặt), nêu rõ lời gọi nào — Dừng lúc stream câu đầu: lời gọi đầu (`:168` hôm nay)
-  kết thúc bằng **lỗi huỷ của SDK** (không phải vòng đọc tự `break` theo cờ); Dừng lúc đang chạy tool (`executeTool`, `:183`):
-  lời gọi sau tool (`:186`) bị **bỏ qua** — không được gửi. Luật loại trừ ở mục tiêu (3): dòng nào in được trong khi fetch tới
+  kết thúc bằng **lỗi do SDK ném vì fetch bị huỷ** (không phải vòng đọc tự `break` theo cờ); Dừng lúc đang chạy tool (`executeTool`, `:183`):
+  lời gọi sau tool (`:186`) bị **bỏ qua** — không được gửi; Dừng lúc stream câu trả lời sau tool: lời gọi sau tool (`:186`) kết thúc bằng
+  **lỗi do SDK ném vì fetch bị huỷ** (backend chỉ truyền `signal` cho `:168` thì ca này đỏ — đó là mục đích). Luật loại trừ ở mục tiêu (3): dòng nào in được trong khi fetch tới
   Gemini của lượt ấy vẫn đọc tiếp đều **không** tính là dòng log huỷ — ví dụ dòng ngắt kết nối của controller
   (`chatbot.controller.js:34`), dòng sẵn có *"[ChatbotService] Client đã ngắt kết nối — hủy luồng streaming."*
   (`chatbot.service.js:174`), `break` im ở `:196`. Đo cả trước khi sửa để có mốc.
