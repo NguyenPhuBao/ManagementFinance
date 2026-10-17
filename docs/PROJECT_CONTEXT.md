@@ -610,6 +610,36 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-17)
 
+### 🔓 Việc 4c — khoản trả hoá đơn khoá theo `billId`; khoản kiểu cũ / mồ côi mở khoá có cảnh báo (2026-10-17, người dùng chốt)
+
+Spec `docs/superpowers/specs/2026-10-17-chu-so-huu-khoan-tra-hoa-don-design.md`; kế hoạch 8 task (gitignore) thi công bằng
+agent con (Fable soát kế hoạch — 2 lỗi chặn ở test, chạy thử trên worktree tạm; Sonnet làm; Opus soát từng task + toàn
+nhánh). Mục 6.10 `BILL_DOCUMENTATION.md`.
+
+- **Luật** (`a385bd4a`): `transactionOwnerOf(tx, {hoaDonDaXoa = false})` khoá theo `billId`, không theo tiền tố — ghi chú
+  hỏng lúc kéo về không làm mất khoá; khoản **kiểu cũ** (tiền tố, không `billId`) và **mồ côi** (`billId` + hoá đơn đã xoá
+  mềm) thành của chính nó; `canhBaoXoaTaiSo` + `cauXacNhanXoaGiaoDich` giữ câu chữ một chỗ.
+- **Cổng** (`44a4c2e2`): `HoaDonDaXoaNguon` + `hoaDonDaXoaCua` ở `transaction/data/`; DI nối
+  `BillRepository.getById(id)?.isDeleted` (ca canh `getById` đọc cả hàng xoá mềm); không cạnh `transaction → bill`.
+- **Widget** (`6afbac40`): vuốt xoá hỏi xác nhận kèm cảnh báo cho khoản đã mở khoá (giao dịch thường vẫn vuốt là xoá);
+  bảng chi tiết nhận `bool hoaDonDaXoa`. **Trang** (`5da7f908`): Sổ giao dịch + Chi tiết ngân sách hỏi cổng trước khi mở
+  bảng, ghép câu cảnh báo vào hộp xoá; trang Hoá đơn không đổi.
+- **Câu Hoàn tác** kiểu cũ chỉ sang Sổ giao dịch, nói kỳ vẫn ghi đã trả (`b55d8906`); ca canh kéo về `idbill` có / thiếu
+  (`f1a405e7`) và `"idbill": null` tường minh — hình dạng server thật gửi (`8e1e1e2d`, sau review toàn nhánh); chú thích
+  lỗi thời về `billId` / `goalId` "cục bộ, kéo về luôn trống" (`7baeb3a6`, `ec7aff16`).
+- **Số đo**: `flutter test` **7.213 pass / 10 skip** (trước 7.178; +35 — preflight ước +34, lượt sửa cuối +1);
+  `flutter analyze` 20 (mức nền, 0 trong tệp 4c).
+- **Nghiệm thu máy ảo** `FlowMoney_16G` (`-gpu host`, 411 dp, tài khoản 10): khoản kiểu cũ *di h0c* (06/09) vuốt → hộp
+  "bản cũ" → Hủy, còn nguyên; bảng có Sửa · Xoá, hộp ghép cảnh báo + câu chung. Khoản mồ côi: hoá đơn thử *Thu mo coi
+  1710* (12.000 đ, không lặp) trả → xoá kỳ đã trả → ở Sổ vuốt → hộp "Hoá đơn của khoản này đã xoá" → Xóa → tổng số dư về
+  đúng −3.256.000 đ như trước lúc thử (dữ liệu thử đã dọn; hoá đơn thử xoá mềm chờ đẩy khi backend chạy). Khoản của hoá
+  đơn còn (*Kiem t…* 19/09) vuốt → thông báo khoá. Chi tiết ngân sách Ăn uống: giao dịch thường có Sửa · Xoá, hộp chỉ câu
+  chung.
+- **Còn để** (báo người dùng): xoá khoản kiểu cũ ở Sổ xong, kỳ vẫn `Payed`; bấm Hoàn tác lại vẫn hiện câu bảo xoá ở Sổ
+  (lỗi của spec mục 4 — không đổi trạng thái kỳ; review toàn nhánh xếp Important, không chặn gộp; chờ người dùng quyết).
+  `khoaNhomCua` (B2) vẫn chỉ loại theo `billId` (spec mục 4). `app_database.g.dart` còn docstring cũ của cột `billId`
+  (không chạy `build_runner` lượt này) — lần sinh kế ra một khối diff chỉ là chú thích.
+
 ### 🗑️ Màn xác nhận xoá hoá đơn; "Nhắc trước" là mặc định cho hoá đơn mới (2026-10-17, người dùng chốt)
 
 Người dùng chọn bốn việc từ danh sách bàn giao: **1** màn xác nhận xoá hoá đơn, **4b** hàng "Nhắc trước", **4** đơn CAN-LAM
@@ -621,8 +651,8 @@ bằng bản sai có chủ ý.
   (`pop(true/false)`); chỗ gọi gửi `DeleteBillEvent`. `bill_delete_page.dart` viết lại bằng dữ liệu thật (mockup cũ rút
   khỏi danh sách chờ quét 11). Câu phụ theo trạng thái kỳ (người dùng chốt) vì xoá chỉ gỡ **một** hàng: còn phải trả —
   câu Stitch + "không tạo kỳ kế tiếp" nếu lặp; đã trả — "hãy Hoàn tác trước khi xoá"; bỏ qua — chỉ gỡ khỏi danh sách.
-  ⚠️ Bẫy có sẵn, chưa sửa: xoá kỳ đã trả thì khoản chi ở lại sổ và bị khoá (owner theo tiền tố) mà nút Hoàn tác mất —
-  đầu vào spec 4c.
+  Bẫy có sẵn lúc ấy: xoá kỳ đã trả thì khoản chi ở lại sổ và bị khoá (owner theo tiền tố) mà nút Hoàn tác mất —
+  ✅ gỡ ở việc 4c (khối 🔓 bên trên).
 - **Việc 4b** (`96ae06fb`): người dùng chọn *mặc định cho hoá đơn mới* (không gỡ hàng). Một hằng `kMucNhacTruoc`
   (1 · 3 · 5 · 7) cho chip form Thêm, danh sách form Sửa, hàng Cài đặt; form Thêm chọn sẵn chip qua `SoNgayNhacNguon` +
   `mucNhacChonSan` (ngoài bốn mức → 3; lựa chọn tay không bị đè); câu phụ hàng Cài đặt nói cả hai nghĩa; tool AI
@@ -655,8 +685,8 @@ Không màn hình, số liệu, hành vi nào đổi.
   `flutter test` **7.146 pass / 10 skip** không đổi qua ba lát; `flutter analyze` 20.
 - Đo sau đợt: 14 mảng, 180 tệp domain, 26 cạnh mảng (trước: 14 · 179 · 32). Số tệp `.dart` (`git ls-files`, 2026-10-16):
   `lib/` 618 · `features/` 508 · `core` 96 · analytics 61 · transaction 76 · bill 39 · category 22 · tệp `*_test.dart` 629.
-- Còn để: chú thích của `kGhiChuTraHoaDon` (dời nguyên văn) nói `TransactionEntity` không mang `billId` — đã cũ, chưa sửa
-  (ngoài phạm vi, báo người dùng).
+- Còn để lúc ấy: chú thích của `kGhiChuTraHoaDon` (dời nguyên văn) nói `TransactionEntity` không mang `billId` — ✅ sửa
+  ở việc 4c (2026-10-17, khối 🔓).
 
 ### 🔕 Hoá đơn tắt nhắc là tắt THẬT; nhãn "Sắp đến hạn" theo tuỳ chọn "Nhắc trước" (2026-10-16, người dùng chốt)
 

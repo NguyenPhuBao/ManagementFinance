@@ -434,7 +434,7 @@ tháng Hai — hoá đơn biến mất. Lý lẽ đầy đủ ở mục 5 tài l
 | `BillAlreadyPaidException` | `payBill` trên hoá đơn CSDL nói đã trả | "Hóa đơn này đã được thanh toán rồi." |
 | `BillInvalidAmountException` | số tiền trả ≤ 0 | báo số tiền không hợp lệ |
 | `BillNotPaidException` | `undoPayment` trên hoá đơn chưa trả | — |
-| `BillUndoUnavailableException` | không lần được khoản chi (mục 6.4) | "khoản chi này được ghi bằng bản ứng dụng cũ…", chỉ sang sổ giao dịch |
+| `BillUndoUnavailableException` | không lần được khoản chi (mục 6.4) | "Không hoàn tác được: khoản chi của lần thanh toán này được ghi bằng bản ứng dụng cũ. Xoá nó ở Sổ giao dịch để trả tiền về ví — kỳ này vẫn ghi là đã trả." — từ việc 4c (2026-10-17) Sổ giao dịch mở khoá khoản kiểu cũ có cảnh báo (mục 6.10), nên lối chỉ sang là có thật |
 
 ### 6.2. `payBill({bill, walletId, idaccount, amount, occurredAt, note})`
 
@@ -452,7 +452,8 @@ tháng Hai — hoá đơn biến mất. Lý lẽ đầy đủ ở mục 5 tài l
      thì khoản chi nằm ngoài mọi thống kê theo danh mục và mọi ngân sách),
      ghi chú `ghiChuTraHoaDon(tên, note)` = tiền tố `kGhiChuTraHoaDon` + tên,
      nối thêm ` — <ghi chú lần trả>` nếu người dùng gõ (tiền tố phải đứng
-     TRƯỚC: `transactionOwnerOf` nhận diện bằng `startsWith`), `date =
+     TRƯỚC: `laGhiChuMay` và phép nhận khoản kiểu cũ dùng `startsWith`; khoá ở
+     Sổ giao dịch đọc `billId` từ việc 4c), `date =
      occurredAt ?? now` (mục 6.6), và **`billId = current.id`** (cột v16, đi
      qua đồng bộ từ 2026-09-12 — mục 6.4).
    - Ví **không** bị trừ ở đây nữa (đổi 2026-09-13, G37): số dư nay suy từ sổ,
@@ -1034,11 +1035,22 @@ trong danh sách chờ của quét 11).
   - **còn phải trả** — câu Stitch, cộng *"và không tạo kỳ kế tiếp"* nếu lặp (kỳ kế tiếp chỉ sinh khi trả / bỏ qua);
   - **đã trả** — chỉ gỡ khỏi danh sách, khoản chi ở lại sổ, số dư không đổi, *"hãy Hoàn tác trước khi xoá"*;
   - **bỏ qua** — chỉ gỡ khỏi danh sách.
-- ⚠️ **Bẫy có sẵn, chưa sửa — đầu vào spec 4c**: xoá một kỳ **đã trả** thì hoá đơn và nút Hoàn tác biến mất cùng
-  nhau, còn khoản chi ở sổ vẫn bị **khoá** (`transactionOwnerOf` nhận nó là của hoá đơn qua tiền tố ghi chú) —
-  không xoá được ở sổ, không hoàn tác được ở trang Hoá đơn. Câu phụ báo trước điều này; gỡ hẳn thuộc lượt
-  `transactionOwnerOf` đọc `billId` — spec `docs/superpowers/specs/2026-10-17-chu-so-huu-khoan-tra-hoa-don-design.md`
-  (đã duyệt, chưa thi công): khoản mồ côi và khoản kiểu cũ mở khoá có cảnh báo ở Sổ giao dịch.
+- ✅ **Bẫy khoản chi bị khoá sau khi xoá kỳ đã trả — đã gỡ (việc 4c, 2026-10-17)**, spec
+  `docs/superpowers/specs/2026-10-17-chu-so-huu-khoan-tra-hoa-don-design.md`. Trước đó xoá một kỳ **đã trả** thì hoá
+  đơn và nút Hoàn tác biến mất cùng nhau, còn khoản chi ở sổ vẫn **khoá** (`transactionOwnerOf` nhận theo tiền tố ghi
+  chú) — không lối nào gỡ. Nay:
+  - `transactionOwnerOf(tx, {hoaDonDaXoa})` (`transaction/domain/transaction_owner.dart`) khoá theo **`billId`**, không
+    theo tiền tố — ghi chú hỏng lúc kéo về (`enc:…`) không làm mất khoá. Mặc định `hoaDonDaXoa = false` = khoá.
+  - Khoản **mồ côi** (`billId` + hoá đơn đã xoá mềm) và khoản **kiểu cũ** (tiền tố, không `billId` — Hoàn tác ném
+    `BillUndoUnavailableException`) mở khoá **có cảnh báo** (`canhBaoXoaTaiSo`): vuốt xoá ở Sổ giao dịch hỏi xác nhận;
+    bảng chi tiết (Sổ giao dịch, Chi tiết ngân sách) hiện Sửa · Xoá, hộp xoá ghép câu cảnh báo trước câu chung
+    (`cauXacNhanXoaGiaoDich`). Xoá ở sổ chỉ trả tiền về ví — kỳ vẫn `Payed`, câu cảnh báo nói đúng điều ấy.
+  - "Hoá đơn đã xoá chưa" hỏi **lúc thao tác** qua cổng `HoaDonDaXoaNguon` (`transaction/data/`); DI nối vào
+    `BillRepository.getById(id)?.isDeleted` — `getById` đọc **cả** hàng đã xoá mềm (ca canh ở
+    `bill_repository_impl_test.dart`). Hoá đơn chưa kéo về / kho lỗi / trang chưa đăng ký cổng → khoá.
+  - Trang Hoá đơn (`_moKhoanChi`) **không đổi**: chỉ mở khoản của hoá đơn còn hiện, `onDelete` vẫn chỉ đường Hoàn tác.
+  - Câu phụ của màn xoá *"hãy Hoàn tác trước khi xoá"* **giữ** — vẫn là lối gọn nhất (gỡ cả kỳ kế tiếp và đưa kỳ về
+    `Pending`).
 - **Lệch Stitch có chủ ý**: ô ảnh là biểu tượng + màu danh mục (hoá đơn không có ảnh); ngày `Hạn dd/MM/yyyy` như
   thẻ danh sách và trang chi tiết (Stitch: *"Hẹn: 25 thg 10"*); dòng hạn màu trung tính (xanh của Stitch đọc như
   "ổn" cả với kỳ quá hạn); nền trang `surface-bright` của Stitch (khối minh hoạ chìm trên nền chung của app).
@@ -1226,7 +1238,7 @@ chip bị đẩy ra ngoài — Chrome 1280px không bao giờ thấy.
 | **Ân hạn (kỳ tính tiền ≠ hạn trả)** | ✅ **Xong 2026-09-12 tối, schema v21** (mục 2b). Cột `periodEnd` đồng bộ lên `bill.Period_end`; nhập theo số ngày; kỳ sau nối từ `periodEnd`; `NULL` = hàng cũ, ân hạn 0. Kiểm máy ảo: xem khối mục 14 `PROJECT_CONTEXT.md` |
 | **Hoàn tác trên máy khác / sau cài lại** | ✅ **Đường đồng bộ đã mở 2026-09-12** — client gửi/đọc `idbill`, `previous_bill_id`, `anchor_day`; đo trên backend thật thấy cả ba tới nơi đúng giá trị. ⚠️ Chỉ chạy với hàng ghi **từ ngày ấy trở đi**: hàng cũ trên server vẫn mang `NULL` cho tới khi được sửa lại, vì client chỉ đẩy hàng `pending`. ✅ Hoàn tác lần trả đã đồng bộ **lên được server** từ 2026-09-12 (backend bỏ chốt ở `upsertBill`, gộp `cbbeeb4`; đo thật với hàng `3c90acfa…`) — trước đó bị từ chối, CAN-LAM 17 B (mục 6.3) |
 | **Form Sửa: chu kỳ còn là `DropdownButton`** | ✅ Xong 2026-09-06 — cả hai form dùng `SegmentedChoice` ở `shared/widgets` (chung với ngân sách và mục tiêu), giữ key `bill-cycle-<value>` |
-| **Màn xác nhận xoá** | ✅ **Xong 2026-10-17** (mục 6.10) — `/bills/:id/delete` theo Stitch, ba lối xoá qua `xacNhanXoaHoaDon`, câu phụ theo trạng thái kỳ. ⚠️ Còn bẫy khoản chi bị khoá sau khi xoá kỳ đã trả (đầu vào spec 4c) |
+| **Màn xác nhận xoá** | ✅ **Xong 2026-10-17** (mục 6.10) — `/bills/:id/delete` theo Stitch, ba lối xoá qua `xacNhanXoaHoaDon`, câu phụ theo trạng thái kỳ. Bẫy khoản chi bị khoá sau khi xoá kỳ đã trả ✅ gỡ ở việc 4c (mục 6.10) |
 | **Lọc theo trạng thái trong tab** | Chưa có gì ngoài hai tab |
 | **Lịch sử theo chuỗi hoá đơn** | ✅ Trang chi tiết có "Lịch sử các kỳ" theo `generatedFromBillId` (mục 6.6). Chỉ đủ trên máy đã trả; hàng kéo về từ server một mình một chuỗi cho tới khi client đồng bộ `previous_bill_id` (server có cột từ 2026-09-11) |
 | **Ngày trả trên tab, ngày trả tuỳ chọn, ghi chú lần trả, trang chi tiết** | ✅ Xong 2026-09-06 tối (mục 6.6) |
