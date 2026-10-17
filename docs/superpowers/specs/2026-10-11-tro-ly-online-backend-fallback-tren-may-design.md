@@ -314,8 +314,8 @@ Chấm theo **câu hiện trên màn** (bản ghi `uiautomator` / ảnh), không
 `1896d02b79b64053af4dd56ea9895b51` *Trợ lý AI - Bong bóng online* · `7a6519d69cce49f1b64692f677af6193` *Trợ lý AI - Tờ thông tin
 online* · `b320f4b91f9d425d8bc74da1d0234ca0` *Cài đặt AI - Công tắc Trợ lý online*. Chữ ba màn đối chiếu từng câu với §3.4–3.5:
 khớp. Lệch nhỏ so với §0 q6: nền phía sau tờ thông tin Stitch tự vẽ huy hiệu *Trực tuyến* trên thanh tiêu đề — app **không** làm.
-Nhãn nguồn Stitch vẽ kèm chấm tròn 6 px (xanh `#006E1C` online · đỏ `#BA1A1A` khi có ghi chú) — app theo. *Người dùng chưa xác
-nhận trên Stitch lúc ghi dòng này; Task 8–11 thi công theo bản đã vẽ, góp ý sau sửa ở đợt review cuối.*
+Nhãn nguồn Stitch vẽ kèm chấm tròn 6 px (xanh `#006E1C` online · đỏ `#BA1A1A` khi có ghi chú) — app theo. **Người dùng xác
+nhận 2026-10-17 tối: "Đã xem, đạt"** (sau khi Task 8–11 đã thi công theo bản vẽ).
 
 ---
 
