@@ -19,6 +19,7 @@ import 'package:flowmoney/features/ai_chat/domain/duong_hoi.dart';
 import 'package:flowmoney/features/ai_chat/domain/su_kien_online.dart';
 import 'package:flowmoney/features/ai_chat/presentation/pages/ai_chat_page.dart';
 import 'package:flowmoney/features/ai_chat/presentation/widgets/tro_ly_ai/nhan_nguon.dart';
+import 'package:flowmoney/features/ai_chat/presentation/widgets/tro_ly_ai/to_thong_tin_online.dart';
 import 'package:flowmoney/features/ai_edge/domain/cau_chao.dart';
 import 'package:flowmoney/features/ai_edge/domain/chu_de_chan.dart';
 import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
@@ -1093,6 +1094,127 @@ void main() {
       )));
       await hoi(t, 'Tình hình ngân sách');
       expect(find.text('$kNguonTrenMay · $kGhiChuRoiVeMay'), findsOneWidget);
+    });
+
+    // ---- Task 10: tờ thông tin một lần, nút Dừng, băng khoá mở ----
+    // Tờ cao hơn khung 800x600 mặc định: nút nằm ngoài màn thì tap trượt (chỉ cảnh báo).
+    Future<void> khoCaoDeTo(WidgetTester t) async {
+      t.view.physicalSize = const Size(800, 1600);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+    }
+
+    // Tờ đang mở thì vòng xoay «đang hỏi» còn quay: pumpAndSettle sẽ hết giờ — chỉ pump có thời lượng.
+    Future<void> guiRoiCho(WidgetTester t, String cau) async {
+      await t.enterText(find.byType(TextField), cau);
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pump(const Duration(milliseconds: 400));
+      await t.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('lần đầu: tờ hiện; "Đã hiểu" → đi online + ghi cờ', (t) async {
+      await khoCaoDeTo(t);
+      final kho = KhoGia({'ai_online_bat': 'true'});
+      var soLanOnline = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true, laPremium: true, congTacOnline: CongTacOnline(kho), coMang: () async => true,
+        onHoiOnline: (_, __) {
+          soLanOnline++;
+          return Stream.fromIterable(const [ChuOnline('ok'), XongOnline()]);
+        },
+      )));
+      await guiRoiCho(t, 'Quỹ khẩn cấp là gì?');
+      expect(find.text(kTieuDeToOnline), findsOneWidget, reason: 'tờ hiện trước câu online đầu tiên');
+      await t.tap(find.byKey(const Key('to-da-hieu')));
+      await t.pumpAndSettle();
+      expect(soLanOnline, 1);
+      expect(kho.ban['ai_online_da_doc_to'], 'true');
+    });
+
+    testWidgets('"Chỉ dùng AI trên máy" → tắt công tắc, câu đi trên máy, lần sau không hỏi lại', (t) async {
+      await khoCaoDeTo(t);
+      final kho = KhoGia({'ai_online_bat': 'true'});
+      var soLanOnline = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true, laPremium: true, congTacOnline: CongTacOnline(kho), coMang: () async => true,
+        onHoiOnline: (_, __) {
+          soLanOnline++;
+          return const Stream.empty();
+        },
+        onHoi: (_) => Stream.value(const CauQua('Có 2 ngân sách.')),
+      )));
+      await guiRoiCho(t, 'Tình hình ngân sách');
+      await t.tap(find.byKey(const Key('to-chi-tren-may')));
+      await t.pumpAndSettle();
+      expect(soLanOnline, 0);
+      expect(kho.ban['ai_online_bat'], 'false');
+      expect(kho.ban['ai_online_da_doc_to'], 'true');
+      expect(find.textContaining('Có 2 ngân sách'), findsOneWidget);
+      await hoi(t, 'Tình hình ngân sách');
+      expect(find.text(kTieuDeToOnline), findsNothing);
+    });
+
+    testWidgets('vuốt tắt tờ → câu này trên máy, cờ chưa ghi (lần sau hỏi lại)', (t) async {
+      final kho = KhoGia({'ai_online_bat': 'true'});
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true, laPremium: true, congTacOnline: CongTacOnline(kho), coMang: () async => true,
+        onHoiOnline: (_, __) => const Stream.empty(),
+        onHoi: (_) => Stream.value(const CauQua('Có 2 ngân sách.')),
+      )));
+      await guiRoiCho(t, 'Tình hình ngân sách');
+      await t.tapAt(const Offset(10, 10));
+      await t.pumpAndSettle();
+      expect(find.textContaining('Có 2 ngân sách'), findsOneWidget);
+      expect(kho.ban.containsKey('ai_online_da_doc_to'), isFalse);
+    });
+
+    testWidgets('nút Dừng chỉ khi online đang chạy (cả SAU chữ đầu); bấm → giữ phần đã hiện + "đã dừng"', (t) async {
+      final dieuKhien = StreamController<SuKienOnline>();
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true, laPremium: true, congTacOnline: daDoc(), coMang: () async => true,
+        onHoiOnline: (_, __) => dieuKhien.stream,
+      )));
+      await t.enterText(find.byType(TextField), 'Quỹ khẩn cấp là gì?');
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pump(const Duration(milliseconds: 50));
+      expect(find.text(kDangHoiOnline), findsOneWidget);
+      expect(find.byKey(const Key('dung-online')), findsOneWidget);
+      dieuKhien.add(const ChuOnline('Nửa đầu'));
+      await t.pump(const Duration(milliseconds: 50));
+      expect(find.byKey(const Key('dung-online')), findsOneWidget,
+          reason: 'bong bóng đang đến thay hàng đang soạn; nút Dừng vẫn phải còn (spec §0 q8)');
+      await t.tap(find.byKey(const Key('dung-online')));
+      await t.pump();
+      dieuKhien.add(const LoiOnline(http: null, lyDo: 'cancel'));
+      await dieuKhien.close();
+      await t.pumpAndSettle();
+      expect(find.text('Nửa đầu'), findsOneWidget);
+      expect(find.text('$kNguonOnline · $kGhiChuDaDung'), findsOneWidget);
+      expect(find.byKey(const Key('dung-online')), findsNothing);
+    });
+
+    testWidgets('đường trên máy KHÔNG có nút Dừng (như cũ)', (t) async {
+      final dieuKhien = StreamController<SuKienGac>();
+      await t.pumpWidget(boc(AiChatPage(coMoHinh: true, laPremium: true, onHoi: (_) => dieuKhien.stream)));
+      await t.enterText(find.byType(TextField), 'Chi tiêu tháng này');
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pump();
+      expect(find.byKey(const Key('dung-online')), findsNothing);
+      await dieuKhien.close();
+      await t.pumpAndSettle();
+    });
+
+    testWidgets('chưa có mô hình + online bật → ô nhập và chip MỞ; mất mạng lúc hỏi → câu kKhongMangKhongMoHinh', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: false, laPremium: true, congTacOnline: daDoc(), coMang: () async => false,
+        onHoiOnline: (_, __) => const Stream.empty(),
+      )));
+      await t.pumpAndSettle();
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+      expect(find.textContaining('Chưa có mô hình trên máy'), findsNothing, reason: 'băng khoá cũ không hiện khi có đường online');
+      await t.tap(find.text('Chi tiêu tháng này'));
+      await t.pumpAndSettle();
+      expect(find.text(kKhongMangKhongMoHinh), findsOneWidget);
     });
   });
 }

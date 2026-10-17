@@ -69,6 +69,7 @@ import '../widgets/tro_ly_ai/dong_khoa.dart';
 import '../widgets/tro_ly_ai/hang_chip.dart';
 import '../widgets/tro_ly_ai/nhan_nguon.dart';
 import '../widgets/tro_ly_ai/the_lenh_tao.dart';
+import '../widgets/tro_ly_ai/to_thong_tin_online.dart';
 
 /// Bốn câu mở sẵn (spec mục 4.6). Chúng là **câu hỏi thật**, gửi đi y như khi
 /// người dùng tự gõ — không phải bốn nhánh mã riêng.
@@ -582,8 +583,47 @@ class _AiChatPageState extends State<AiChatPage> {
     unawaited(_docLenh?.huy());
   }
 
-  // TODO Task 10: hỏi đồng ý lần đầu (tờ thông tin online); Task 9 tạm cho đi.
-  Future<bool> _xinDongYOnline(CongTacOnline ct) async => true;
+  /// Tờ thông tin một lần (§3.5 b). `true` = đi online; `false` = câu này trên máy.
+  Future<bool> _xinDongYOnline(CongTacOnline ct) async {
+    if (await ct.daDocTo()) return true;
+    if (!mounted) return false;
+    final chon = await moToThongTinOnline(context);
+    if (!mounted) return false;
+    switch (chon) {
+      case LuaChonToThongTin.daHieu:
+        await ct.ghiDaDocTo();
+        return true;
+      case LuaChonToThongTin.chiTrenMay:
+        await ct.ghiBat(false);
+        await ct.ghiDaDocTo();
+        if (mounted) setState(() => _onlineBat = false);
+        return false;
+      case null:
+        return false; // chưa quyết (vuốt tắt): lần sau hỏi lại, không ghi gì
+    }
+  }
+
+  /// Dừng lượt online: huỷ yêu cầu; datasource phát `LoiOnline(cancel)` và
+  /// `quyetDinhSauOnline(daDung: true)` giữ phần đã hiện kèm ghi chú "đã dừng".
+  void _dungOnline() {
+    _daDungOnline = true;
+    _huyOnline?.cancel('người dùng dừng');
+    setState(() {});
+  }
+
+  bool get _hienNutDung => _huyOnline != null && !_daDungOnline;
+
+  Widget _nutDung() => TextButton(
+        key: const Key('dung-online'),
+        onPressed: _dungOnline,
+        child: const Text(
+          'Dừng',
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary),
+        ),
+      );
 
   /// Một lượt online: nối chunk vào `_traLoiDangDen`, kết bằng luật rơi §3.3. Không bao giờ ném — hỏng thì [RoiVeMay].
   Future<KetQuaOnline> _hoiOnline(String c) async {
@@ -839,7 +879,17 @@ class _AiChatPageState extends State<AiChatPage> {
                   final dangDen = _traLoiDangDen;
                   return dangDen == null
                       ? _dangSoan()
-                      : _boCuaAi(_TinNhan.cuaAi(boDanhDauMarkdown(dangDen)));
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _boCuaAi(_TinNhan.cuaAi(boDanhDauMarkdown(dangDen))),
+                            if (_hienNutDung)
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: _nutDung(),
+                              ),
+                          ],
+                        );
                 }
                 final t = _tinNhan[i];
                 if (t.lenh case final l?) return TheLenhTao(lenh: l);
@@ -1012,6 +1062,7 @@ class _AiChatPageState extends State<AiChatPage> {
                   color: AppColors.onSurfaceVariant, fontSize: 13),
             ),
           ),
+          if (_hienNutDung) ...[const Spacer(), _nutDung()],
           // Chỉ lượt đọc lệnh tạo (C3 §8) huỷ được: nó là lượt chờ THÊM trước vòng hỏi đáp, và có đường lùi là luật.
           if (_dangDocLenh && !_dangHuyLenh)
             TextButton(
