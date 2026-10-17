@@ -1,0 +1,15 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/features/ai_chat/presentation/widgets/tro_ly_ai/dong_khoa.dart';
+
+void main() {
+  Widget boc(Widget w) => MaterialApp(home: Scaffold(body: w));
+
+  testWidgets('không phải Basic → câu + nút Cài đặt AI', (t) async {
+    var n = 0;
+    await t.pumpWidget(boc(DongKhoa(cau: 'Câu khoá', goiBasic: false, onCaiDatAi: () => n++)));
+    expect(find.text('Câu khoá'), findsOneWidget);
+    await t.tap(find.text('Cài đặt AI'));
+    expect(n, 1);
+  });
+}

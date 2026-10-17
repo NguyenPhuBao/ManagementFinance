@@ -59,13 +59,14 @@ import '../../../ai_edge/domain/the_cua_cau.dart';
 import '../../../premium/data/repositories/goi_repository.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../premium/presentation/bloc/goi_cubit.dart';
-import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 import '../../data/cong_tac_online.dart';
 import '../../data/datasources/tro_ly_online_remote_data_source.dart';
 import '../../data/doc_lenh_bang_ai.dart';
 import '../../data/nguon_lenh_tao.dart';
 import '../../domain/duong_hoi.dart';
 import '../../domain/su_kien_online.dart';
+import '../widgets/tro_ly_ai/dong_khoa.dart';
+import '../widgets/tro_ly_ai/hang_chip.dart';
 import '../widgets/tro_ly_ai/nhan_nguon.dart';
 import '../widgets/tro_ly_ai/the_lenh_tao.dart';
 
@@ -822,7 +823,11 @@ class _AiChatPageState extends State<AiChatPage> {
       appBar: _thanhTren(context),
       body: Column(
         children: [
-          _hangChip(),
+          HangChip(
+            nhan: kChipGoiY,
+            bat: _coMoHinh && !_dangHoi,
+            onChon: _hoi,
+          ),
           Expanded(
             child: ListView.separated(
               controller: _cuon,
@@ -842,7 +847,12 @@ class _AiChatPageState extends State<AiChatPage> {
               },
             ),
           ),
-          if (_lyDoKhoa case final ly?) _dongKhoa(ly),
+          if (_lyDoKhoa case final ly?)
+            DongKhoa(
+              cau: cauKhoa(ly),
+              goiBasic: ly == LyDoKhoaHoiDap.goiBasic,
+              onCaiDatAi: _moCaiDatAi,
+            ),
           _thanhNhap(),
         ],
       ),
@@ -879,58 +889,6 @@ class _AiChatPageState extends State<AiChatPage> {
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
         child: Container(color: AppColors.outlineVariant, height: 1),
-      ),
-    );
-  }
-
-  Widget _hangChip() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      color: AppColors.background.withValues(alpha: 0.95),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            for (final c in kChipGoiY) ...[
-              _chip(c),
-              const SizedBox(width: 8),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _chip(String nhan) {
-    final bat = _coMoHinh && !_dangHoi;
-    return Material(
-      color: bat
-          ? AppColors.secondaryContainer
-          : AppColors.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        // ⚠️ `null` khi chưa có mô hình: ô nhập đã khoá mà chip vẫn hỏi được
-        // thì có một đường vòng quanh chính cái khoá ấy.
-        onTap: bat ? () => _hoi(nhan) : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.outlineVariant),
-          ),
-          child: Text(
-            nhan,
-            style: TextStyle(
-              color: bat
-                  ? AppColors.onSurfaceVariant
-                  : AppColors.outline,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -1063,40 +1021,6 @@ class _AiChatPageState extends State<AiChatPage> {
             ),
         ],
       );
-
-  /// Băng khoá — một câu + một nút theo lý do ([lyDoKhoa]). Basic → *Nâng cấp*
-  /// (spec Premium 8.1; màn Stitch *"Trợ lý AI - Khoá Premium (Basic)"*
-  /// `2b3fa0f69486498584fdf3a243f30147`); hai lý do cũ → *Cài đặt AI* như trước.
-  Widget _dongKhoa(LyDoKhoaHoiDap ly) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-        child: Row(
-          children: [
-            Icon(
-              ly == LyDoKhoaHoiDap.goiBasic
-                  ? Icons.workspace_premium_outlined
-                  : Icons.info_outline,
-              size: 16,
-              color: AppColors.onSurfaceVariant,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                cauKhoa(ly),
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.onSurfaceVariant),
-              ),
-            ),
-            if (ly == LyDoKhoaHoiDap.goiBasic)
-              const NutNangCap()
-            else
-              TextButton(
-                onPressed: _moCaiDatAi,
-                child: const Text('Cài đặt AI'),
-              ),
-          ],
-        ),
-      );
-
   Widget _thanhNhap() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
