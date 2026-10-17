@@ -11,8 +11,9 @@ import '../../../helpers/bat_thong_bao.dart';
 
 import '../../category/presentation/category_test_fakes.dart';
 
-/// Hàng trong sổ giao dịch: vuốt trái để xoá, NHƯNG khoản thuộc mục tiêu hay
-/// hoá đơn thì bật lại và chỉ đường thay vì xoá. Tách thành widget riêng vì
+/// Hàng trong sổ giao dịch: vuốt trái để xoá, NHƯNG khoản thuộc mục tiêu, hay
+/// khoản trả của hoá đơn còn sống, thì bật lại và chỉ đường thay vì xoá; khoản
+/// trả hoá đơn kiểu cũ / mồ côi (việc 4c) hỏi xác nhận kèm câu cảnh báo. Tách thành widget riêng vì
 /// `TransactionPage` nối thẳng vào `sl` và `AuthBloc`, không dựng được trong
 /// test.
 void main() {

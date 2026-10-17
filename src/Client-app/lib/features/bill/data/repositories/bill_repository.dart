@@ -39,9 +39,11 @@ class BillNotPaidException implements Exception {
 
 /// Ném ra khi không lần được từ hoá đơn về khoản chi mà lần trả đã sinh ra.
 ///
-/// Sợi dây ấy là cột **cục bộ** `transactions.billId`, có từ schema v16
-/// (2026-09-06). Khoản trả ghi bằng bản app cũ, và mọi hàng kéo về từ server,
-/// đều để trống nó. Từ chối có thông báo rõ thay vì đoán theo tiền tố ghi chú
+/// Sợi dây ấy là cột `transactions.billId`, có từ schema v16 (2026-09-06), đi
+/// qua đồng bộ (`idbill`) từ 2026-09-12. Khoản trả ghi trước ngày ấy (bản app
+/// cũ, hoặc kéo về từ server khi cột chưa đồng bộ) để trống nó — sổ giao dịch
+/// mở khoá những khoản ấy có cảnh báo (việc 4c), nên người dùng gỡ được ở đó.
+/// Từ chối có thông báo rõ thay vì đoán theo tiền tố ghi chú
 /// cộng số tiền cộng ngày: đoán trượt ở đây nghĩa là hoàn tiền vào ví bằng một
 /// khoản chi **khác** của người dùng.
 class BillUndoUnavailableException implements Exception {
@@ -100,8 +102,8 @@ abstract class BillRepository {
 
   /// Khoản chi của từng hoá đơn đã trả, theo `billId`.
   ///
-  /// Chỉ có với khoản trả ghi từ v16 trên chính máy này; hàng kéo về từ
-  /// server vắng mặt và nơi gọi phải hiện "không biết" chứ không đoán.
+  /// Chỉ thiếu với khoản trả ghi trước 2026-09-12 (cột `billId` chưa đồng
+  /// bộ); nơi gọi phải hiện "không biết" chứ không đoán.
   Future<Map<String, TransactionEntity>> paymentsOf(int idaccount);
   /// Tạo hoá đơn từ giá trị form. Repository tự dựng companion (`companionTaoTu`) — ánh xạ Drift không ra khỏi `data/`.
   Future<void> addBill(BillDraft draft, {required String id, required int idaccount, required DateTime now});
@@ -124,7 +126,8 @@ abstract class BillRepository {
   ///
   /// [note] là ghi chú **của lần trả này** (số công tơ, mã giao dịch…), khác
   /// ghi chú cố định trên hoá đơn. Được nối vào SAU tiền tố `kGhiChuTraHoaDon`
-  /// — tiền tố là thứ sổ giao dịch dùng để nhận diện khoản của hoá đơn.
+  /// — tiền tố là dấu ghi chú do máy viết (`laGhiChuMay`) và cách nhận khoản
+  /// kiểu cũ; khoá ở sổ đọc `billId` (việc 4c).
   Future<void> payBill({
     required BillEntity bill,
     required String walletId,

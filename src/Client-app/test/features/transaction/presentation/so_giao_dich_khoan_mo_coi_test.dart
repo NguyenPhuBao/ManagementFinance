@@ -132,7 +132,8 @@ void main() {
         reason: 'Trang phải hỏi cổng TRƯỚC khi mở và truyền kết quả vào bảng.');
     await tester.tap(find.text('Xoá giao dịch'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Hoá đơn của khoản này đã xoá'), findsOneWidget);
+    expect(find.textContaining('Hoá đơn của khoản này đã xoá'), findsOneWidget,
+        reason: 'Khoản mồ côi mở khoá nhưng phải kèm câu cảnh báo trong bảng.');
     expect(find.textContaining('Số dư ví sẽ được hoàn lại'), findsOneWidget,
         reason: 'Câu chung vẫn đứng sau câu cảnh báo (cauXacNhanXoaGiaoDich).');
 
@@ -162,7 +163,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Xoá giao dịch?'), findsOneWidget,
         reason: 'Trang phải truyền cổng xuống TransactionListRow.');
-    expect(find.textContaining('Hoá đơn của khoản này đã xoá'), findsOneWidget);
+    expect(find.textContaining('Hoá đơn của khoản này đã xoá'), findsOneWidget,
+        reason: 'Vuốt xoá khoản mồ côi phải hỏi xác nhận kèm câu cảnh báo, '
+            'không xoá thẳng.');
 
     await tester.tap(find.widgetWithText(TextButton, 'Hủy'));
     await tester.pumpAndSettle();

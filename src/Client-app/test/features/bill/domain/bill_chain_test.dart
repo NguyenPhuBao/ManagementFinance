@@ -4,7 +4,7 @@ import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/bill/domain/bill_chain.dart';
 
 /// Chuỗi kỳ của một hoá đơn lặp: mỗi kỳ là **một hàng mới**, nối với kỳ trước
-/// bằng `generatedFromBillId` (cột cục bộ v16). Trang chi tiết cần cả chuỗi để
+/// bằng `generatedFromBillId` (cột v16, đồng bộ `previous_bill_id` từ 2026-09-12). Trang chi tiết cần cả chuỗi để
 /// hiện "Lịch sử các kỳ" — từ kỳ đang mở lần ngược về gốc và xuôi tới kỳ mới
 /// nhất, không kể hoá đơn khác trùng tên.
 BillEntity _bill(String id, DateTime due, {String? tu, bool paid = false}) => BillEntity(

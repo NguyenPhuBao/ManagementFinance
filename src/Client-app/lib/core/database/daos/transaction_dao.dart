@@ -314,7 +314,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
 
   /// Khoản chi sinh ra khi trả hoá đơn [billId], nếu còn.
   ///
-  /// Dùng cột **cục bộ** `billId` (v16) chứ không dò tiền tố ghi chú: người
+  /// Dùng cột `billId` (v16, đồng bộ `idbill` từ 2026-09-12) chứ không dò tiền tố ghi chú: người
   /// dùng gõ trùng tiền tố là hoàn nhầm tiền vào ví bằng một khoản chi khác
   /// của chính họ. Trả `null` với khoản trả ghi bằng bản app trước 2026-09-06
   /// — nơi gọi phải từ chối hoàn tác chứ không được đoán.
@@ -343,8 +343,8 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   /// Mọi khoản trả hoá đơn còn sống của [idaccount], theo `billId`.
   ///
   /// Một truy vấn cho cả trang hoá đơn thay vì gọi [getByBill] cho từng dòng.
-  /// Hoá đơn kéo về từ server không có mục ở đây (cột `billId` cục bộ) — nơi
-  /// gọi phải coi đó là "không biết ngày trả", không được đoán.
+  /// Chỉ khoản trả ghi trước 2026-09-12 (cột `billId` chưa đồng bộ) là không
+  /// có mục ở đây — nơi gọi phải coi đó là "không biết ngày trả", không được đoán.
   Future<Map<String, Transaction>> getBillPayments(int idaccount) async {
     final rows = await (select(transactions)
           ..where((t) =>

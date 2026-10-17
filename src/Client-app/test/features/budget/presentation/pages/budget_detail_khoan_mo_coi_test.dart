@@ -151,8 +151,10 @@ void main() {
         reason: 'Trang phải hỏi cổng TRƯỚC khi mở và truyền kết quả vào bảng.');
     await tester.tap(find.text('Xoá giao dịch'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Hoá đơn của khoản này đã xoá'), findsOneWidget);
-    expect(find.textContaining('Số dư ví sẽ được hoàn lại'), findsOneWidget);
+    expect(find.textContaining('Hoá đơn của khoản này đã xoá'), findsOneWidget,
+        reason: 'Khoản mồ côi mở khoá nhưng phải kèm câu cảnh báo trong bảng.');
+    expect(find.textContaining('Số dư ví sẽ được hoàn lại'), findsOneWidget,
+        reason: 'Câu chung vẫn đứng sau câu cảnh báo.');
 
     await tester.tap(find.widgetWithText(TextButton, 'Hủy'));
     await tester.pumpAndSettle();
@@ -161,7 +163,9 @@ void main() {
   testWidgets('cổng chưa đăng ký: khoản có billId vẫn KHOÁ', (tester) async {
     await moTrangVaChamKhoan(tester);
 
-    expect(find.text('Xoá giao dịch'), findsNothing);
-    expect(find.textContaining('không xoá được từ sổ giao dịch'), findsOneWidget);
+    expect(find.text('Xoá giao dịch'), findsNothing,
+        reason: 'Không có cổng thì khoản có billId vẫn khoá: không có nút Xoá.');
+    expect(find.textContaining('không xoá được từ sổ giao dịch'), findsOneWidget,
+        reason: 'Đòi câu lý do khoá, không chỉ vắng nút Xoá.');
   });
 }

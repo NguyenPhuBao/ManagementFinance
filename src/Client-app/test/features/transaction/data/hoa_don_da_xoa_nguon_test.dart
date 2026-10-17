@@ -23,11 +23,14 @@ void main() {
 
   group('daXoa', () {
     test('hàm đọc nói đã xoá → true', () async {
-      expect(await HoaDonDaXoaNguon((_) async => true).daXoa('b1'), isTrue);
+      expect(await HoaDonDaXoaNguon((_) async => true).daXoa('b1'), isTrue,
+          reason: 'Hàm đọc nói hoá đơn đã xoá mềm thì cổng phải nói đã xoá — '
+              'đó là điều kiện duy nhất mở khoá khoản mồ côi.');
     });
 
-    test('hàm đọc nói còn (hoặc không có hàng) → false', () async {
-      expect(await HoaDonDaXoaNguon((_) async => false).daXoa('b1'), isFalse);
+    test('hàm đọc nói còn → false', () async {
+      expect(await HoaDonDaXoaNguon((_) async => false).daXoa('b1'), isFalse,
+          reason: 'Hoá đơn còn sống thì khoản trả của nó vẫn khoá.');
     });
 
     test('hàm đọc ném → false (khoá), không ném ra chỗ gọi', () async {
@@ -50,7 +53,9 @@ void main() {
     });
 
     test('trang chưa có cổng → false (khoá như cũ)', () async {
-      expect(await hoaDonDaXoaCua(tx(billId: 'b1'), null), isFalse);
+      expect(await hoaDonDaXoaCua(tx(billId: 'b1'), null), isFalse,
+          reason: 'Không có cổng nghĩa là chưa biết hoá đơn đã xoá chưa — '
+              'mặc định an toàn là khoá.');
     });
 
     test('có billId → hỏi đúng hoá đơn ấy', () async {
@@ -59,8 +64,11 @@ void main() {
         daHoi = id;
         return true;
       });
-      expect(await hoaDonDaXoaCua(tx(billId: 'b-42'), nguon), isTrue);
-      expect(daHoi, 'b-42');
+      expect(await hoaDonDaXoaCua(tx(billId: 'b-42'), nguon), isTrue,
+          reason: 'Kết quả của cổng được chuyển nguyên cho chỗ gọi.');
+      expect(daHoi, 'b-42',
+          reason: 'Phải hỏi đúng hoá đơn mà khoản trỏ tới (billId), không '
+              'hoá đơn nào khác.');
     });
   });
 }

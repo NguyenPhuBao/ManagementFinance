@@ -8,8 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../category/presentation/category_test_fakes.dart';
 
 /// Bảng chi tiết mở khi bấm một dòng trong sổ: đọc đủ thông tin, và là nơi
-/// duy nhất có nút Sửa. Khoản thuộc mục tiêu/hoá đơn chỉ đọc — cùng quy tắc
-/// với chặn xoá (xem `transactionOwnerOf`).
+/// duy nhất có nút Sửa. Khoản thuộc mục tiêu, hay khoản trả của hoá đơn còn
+/// sống, chỉ đọc — cùng quy tắc với chặn xoá (xem `transactionOwnerOf`); khoản
+/// trả hoá đơn kiểu cũ / mồ côi (việc 4c) có Sửa · Xoá.
 void main() {
   final lookup = TransactionLookup(
     wallets: [

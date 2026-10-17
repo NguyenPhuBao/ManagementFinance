@@ -269,7 +269,7 @@ class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
 
   /// Kỳ kế tiếp được sinh ra khi trả hoá đơn [billId], nếu còn.
   ///
-  /// Dùng cột **cục bộ** `generatedFromBillId` (v16) chứ không so tên và ngày:
+  /// Dùng cột `generatedFromBillId` (v16, đồng bộ `previous_bill_id` từ 2026-09-12) chứ không so tên và ngày:
   /// so tên là đúng phép so mà cột này sinh ra để thay thế. Trả `null` khi hoá
   /// đơn không lặp, hoặc kỳ ấy đã bị xoá.
   ///

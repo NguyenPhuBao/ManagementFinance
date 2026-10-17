@@ -178,12 +178,12 @@ void main() {
             'dùng hỏi "tôi trả hôm nào" thì đây là câu trả lời.');
   });
 
-  testWidgets('không có khoản chi (hàng kéo về từ server) thì chỉ ghi hạn',
+  testWidgets('không có khoản chi mang billId (khoản trả ghi trước 2026-09-12) thì chỉ ghi hạn',
       (tester) async {
     await dungTrang(tester, [_bill(id: 'a', paid: true)], const {});
 
     expect(find.textContaining('Trả '), findsNothing,
-        reason: 'Hàng kéo về không có `billId` — không đoán ngày trả.');
+        reason: 'Hàng không có `billId` (ghi trước 2026-09-12) — không đoán ngày trả.');
     expect(find.textContaining('Hạn 06/09/2026'), findsOneWidget);
   });
 

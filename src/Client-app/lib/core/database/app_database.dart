@@ -345,8 +345,9 @@ class AppDatabase extends _$AppDatabase {
 
         if (from < 16) {
           // Hai đầu của một sợi dây cho luồng HOÀN TÁC thanh toán hoá đơn:
-          // khoản chi đã sinh ra, và kỳ kế tiếp đã sinh ra. Cả hai CỤC BỘ,
-          // không đi qua đồng bộ — xem chú thích ở `Transactions`/`Bills`.
+          // khoản chi đã sinh ra, và kỳ kế tiếp đã sinh ra. Cả hai CỤC BỘ
+          // lúc thêm (2026-09-06); đi qua đồng bộ từ 2026-09-12 (`idbill`,
+          // `previous_bill_id`) — xem chú thích ở `Transactions`/`Bills`.
           //
           // Không có bước suy dữ liệu cũ: khoản trả hoá đơn cũ chỉ nhận ra
           // được bằng tiền tố ghi chú, và suy ngược từ đó ra ID chính là phép

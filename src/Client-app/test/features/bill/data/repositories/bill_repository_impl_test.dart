@@ -259,9 +259,9 @@ void main() {
 
       final tx = (await giaoDichThat(db, accountId)).single;
       expect(tx.note, '${kGhiChuTraHoaDon}Tiền điện — Kỳ 8, số công tơ 1234',
-          reason: 'Sổ giao dịch nhận diện khoản của hoá đơn bằng tiền tố '
-              '(`transactionOwnerOf` dùng startsWith). Ghi chú người dùng '
-              'phải nối vào SAU, nếu không mất lớp chặn vuốt xoá.');
+          reason: 'Tiền tố ở ĐẦU là dấu ghi chú do máy viết (`laGhiChuMay`, '
+              'startsWith) và cách nhận khoản kiểu cũ ở sổ giao dịch. Ghi chú '
+              'người dùng phải nối vào SAU.');
     });
 
     test('ghi chú rỗng hoặc toàn khoảng trắng thì ghi chú như cũ', () async {
@@ -377,7 +377,9 @@ void main() {
           reason: 'DI nối HoaDonDaXoaNguon vào getById(id)?.isDeleted. Lọc hàng '
               'đã xoá ở đây là cổng luôn trả false — khoản chi mồ côi khoá vĩnh '
               'viễn, im lặng, mà test cổng với hàm giả vẫn xanh.');
-      expect(hoaDon!.isDeleted, isTrue);
+      expect(hoaDon!.isDeleted, isTrue,
+          reason: 'Hoá đơn đã xoá mềm phải đọc ra được kèm cờ xoá — đó là thứ '
+              'cổng HoaDonDaXoaNguon hỏi để mở khoá khoản mồ côi.');
     });
 
     test('hoá đơn chưa có trên máy → null (cổng đọc là chưa biết → khoá)',

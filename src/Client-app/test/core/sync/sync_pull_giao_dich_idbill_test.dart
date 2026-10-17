@@ -122,7 +122,9 @@ void main() {
     await runSync();
 
     final hang = await db.transactionDao.getById(txId);
-    expect(hang?.billId, billId);
+    expect(hang?.billId, billId,
+        reason: 'Server gửi idbill thì phải ghi vào billId — thiếu là khoản '
+            'trả kéo về máy thứ hai không khoá ở Sổ giao dịch (việc 4c).');
   });
 
   test('server im lặng về idbill → billId cục bộ GIỮ NGUYÊN', () async {

@@ -149,10 +149,11 @@ class BillRepositoryImpl implements BillRepository {
           categoryId: Value(current.categoryId),
           amount: soTien,
           type: 'chi',
-          // Tiền tố đứng TRƯỚC — `transactionOwnerOf` nhận diện bằng
+          // Tiền tố đứng TRƯỚC — `laGhiChuMay` và nhận diện khoản kiểu cũ dùng
           // startsWith; ghi chú của lần trả (nếu có) nối sau bằng gạch dài.
           note: Value(ghiChuTraHoaDon(current.name, note)),
-          // Sợi dây để hoàn tác lần được ngược về đây. Cột CỤC BỘ (v16) —
+          // Sợi dây để hoàn tác lần được ngược về đây, và là khoá của sổ giao
+          // dịch (việc 4c). Cột v16, đồng bộ `idbill` từ 2026-09-12 —
           // tiền tố ghi chú ở trên KHÔNG đủ: người dùng gõ trùng tiền tố là
           // hoàn nhầm tiền vào ví bằng một khoản chi khác của họ.
           billId: Value(current.id),
@@ -395,7 +396,7 @@ class BillRepositoryImpl implements BillRepository {
     return BillsCompanion.insert(
       id: const Uuid().v4(),
       idaccount: current.idaccount,
-      // Sợi dây để hoàn tác gỡ đúng kỳ này. Cột CỤC BỘ (v16).
+      // Sợi dây để hoàn tác gỡ đúng kỳ này. Cột v16, đồng bộ `previous_bill_id` từ 2026-09-12.
       generatedFromBillId: Value(current.id),
       walletId: Value(current.walletId),
       categoryId: Value(current.categoryId),

@@ -32,8 +32,9 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 /// thái cho một hoá đơn. Thao tác thì vẫn đi qua `BillBloc` để dùng chung ba
 /// luồng trả / hoàn tác / xoá với trang danh sách.
 ///
-/// "Lịch sử các kỳ" lần theo `generatedFromBillId` — cột **cục bộ** (v16),
-/// nên hoá đơn kéo về từ server chỉ có một dòng lịch sử; đừng đoán theo tên.
+/// "Lịch sử các kỳ" lần theo `generatedFromBillId` — cột v16, đồng bộ
+/// (`previous_bill_id`) từ 2026-09-12; hoá đơn ghi trước ngày ấy chỉ có một
+/// dòng lịch sử; đừng đoán theo tên.
 class BillDetailPage extends StatefulWidget {
   final String id;
 
