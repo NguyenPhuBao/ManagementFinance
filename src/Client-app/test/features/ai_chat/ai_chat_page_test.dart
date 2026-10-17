@@ -13,12 +13,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:flowmoney/features/ai_chat/data/cong_tac_online.dart';
 import 'package:flowmoney/features/ai_chat/data/doc_lenh_bang_ai.dart';
+import 'package:flowmoney/features/ai_chat/domain/duong_hoi.dart';
+import 'package:flowmoney/features/ai_chat/domain/su_kien_online.dart';
 import 'package:flowmoney/features/ai_chat/presentation/pages/ai_chat_page.dart';
 import 'package:flowmoney/features/ai_edge/domain/cau_chao.dart';
 import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
 import 'package:flowmoney/features/ai_edge/domain/lenh_tao.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
+
+import '../../helpers/kho_gia.dart';
 
 void main() {
   Widget boc(Widget w) => MaterialApp(theme: AppTheme.lightTheme, home: w);
@@ -792,6 +797,252 @@ void main() {
       await t.pumpWidget(boc(const AiChatPage(coMoHinh: true, laPremium: false)));
       await t.pumpAndSettle();
       expect(t.takeException(), isNull);
+    });
+  });
+
+  group('trợ lý online (spec 2026-10-11)', () {
+    // Kho giả: đã đọc tờ, công tắc bật — tờ thông tin có test riêng ở Task 10.
+    CongTacOnline daDoc({bool bat = true}) =>
+        CongTacOnline(KhoGia({'ai_online_bat': '$bat', 'ai_online_da_doc_to': 'true'}));
+
+    Future<void> hoi(WidgetTester t, String cau) async {
+      await t.enterText(find.byType(TextField), cau);
+      await t.testTextInput.receiveAction(TextInputAction.send);
+      await t.pumpAndSettle();
+    }
+
+    testWidgets('có mạng + công tắc bật → câu đi online; chunk NỐI THẲNG; nhãn "Trợ lý online"; không thẻ số liệu',
+        (t) async {
+      var soLanTrenMay = 0;
+      List<TinLichSu>? historyNhan;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoi: (_) {
+          soLanTrenMay++;
+          return Stream.value(const CauQua('không tới đây'));
+        },
+        onHoiOnline: (cau, h) {
+          historyNhan = h;
+          return Stream.fromIterable(const [
+            ChuOnline('Quỹ khẩn '),
+            ChuOnline('cấp là 3–6 tháng chi.'),
+            XongOnline(responseTimeMs: 500),
+          ]);
+        },
+      )));
+      await hoi(t, 'Quỹ khẩn cấp là gì?');
+      expect(find.text('Quỹ khẩn cấp là 3–6 tháng chi.'), findsOneWidget, reason: 'chunk nối thẳng, không chèn khoảng trắng');
+      expect(find.text(kNguonOnline), findsOneWidget);
+      expect(soLanTrenMay, 0);
+      expect(historyNhan, isEmpty,
+          reason: 'trước câu đầu chỉ có lời chào của AI; xepHistory gọt tin đầu không phải user (SDK Gemini đòi tin đầu là user)');
+    });
+
+    testWidgets('chủ đề dữ liệu sống → KHÔNG gọi online, câu từ chối cũ', (t) async {
+      var soLanOnline = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) {
+          soLanOnline++;
+          return const Stream.empty();
+        },
+      )));
+      await hoi(t, 'Giá vàng hôm nay?');
+      expect(soLanOnline, 0);
+      expect(find.textContaining('chỉ nhận xét được trên số liệu'), findsOneWidget);
+    });
+
+    testWidgets('mất mạng → đi trên máy như cũ, nhãn "AI trên máy"', (t) async {
+      var soLanOnline = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => false,
+        onHoiOnline: (_, __) {
+          soLanOnline++;
+          return const Stream.empty();
+        },
+        onHoi: (_) => Stream.value(const CauQua('Tháng này bạn đã chi 2.141.000 đ.')),
+      )));
+      await hoi(t, 'Tháng này chi bao nhiêu?');
+      expect(soLanOnline, 0);
+      expect(find.textContaining('2.141.000'), findsWidgets);
+      expect(find.text(kNguonTrenMay), findsOneWidget);
+    });
+
+    testWidgets('⭐ online hỏng TRƯỚC chữ đầu (503) → cùng câu đi trên máy, nhãn "AI trên máy · máy chủ không phản hồi"',
+        (t) async {
+      final cauTrenMay = <String>[];
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) => Stream.value(const LoiOnline(http: 503, lyDo: 'MAINTENANCE_MODE')),
+        onHoi: (c) {
+          cauTrenMay.add(c);
+          return Stream.value(const CauQua('Tháng này bạn đã chi 2.141.000 đ.'));
+        },
+      )));
+      await hoi(t, 'Tháng này chi bao nhiêu?');
+      expect(cauTrenMay, ['Tháng này chi bao nhiêu?']);
+      expect(find.text('$kNguonTrenMay · $kGhiChuRoiVeMay'), findsOneWidget);
+      expect(find.textContaining('2.141.000'), findsWidgets);
+    });
+
+    testWidgets('done.fallback trước chữ đầu (thiếu khoá Gemini) → rơi về máy', (t) async {
+      var soLanTrenMay = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) => Stream.value(const DuPhongOnline('Hệ thống chưa thiết lập API Key Google Gemini')),
+        onHoi: (_) {
+          soLanTrenMay++;
+          return Stream.value(const CauQua('Có 3 hoá đơn sắp tới.'));
+        },
+      )));
+      await hoi(t, 'Hoá đơn sắp tới');
+      expect(soLanTrenMay, 1);
+      expect(find.text('$kNguonTrenMay · $kGhiChuRoiVeMay'), findsOneWidget);
+    });
+
+    testWidgets('⭐ done.fallback SAU câu thông báo ⚠️ → chữ thông báo không ở lại, cùng câu đi trên máy đúng một lần',
+        (t) async {
+      final cauTrenMay = <String>[];
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) => Stream.fromIterable(const [
+          ChuOnline('⚠️ Thông báo từ máy chủ'),
+          DuPhongOnline('thiếu khoá'),
+        ]),
+        onHoi: (c) {
+          cauTrenMay.add(c);
+          return Stream.value(const CauQua('Có 3 hoá đơn sắp tới.'));
+        },
+      )));
+      await hoi(t, 'Hoá đơn sắp tới');
+      expect(find.textContaining('Thông báo từ máy chủ'), findsNothing,
+          reason: 'server luôn phát câu thông báo qua delta rồi mới done.fallback — chữ ấy không phải câu trả lời');
+      expect(cauTrenMay, ['Hoá đơn sắp tới']);
+      expect(find.text('$kNguonTrenMay · $kGhiChuRoiVeMay'), findsOneWidget);
+    });
+
+    testWidgets('hỏng GIỮA dòng → giữ phần đã hiện + "kết nối gián đoạn", KHÔNG hỏi lại trên máy', (t) async {
+      var soLanTrenMay = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) =>
+            Stream.fromIterable(const [ChuOnline('Một nửa câu'), LoiOnline(http: null, lyDo: 'đứt')]),
+        onHoi: (_) {
+          soLanTrenMay++;
+          return const Stream.empty();
+        },
+      )));
+      await hoi(t, 'Quỹ khẩn cấp là gì?');
+      expect(soLanTrenMay, 0);
+      expect(find.text('Một nửa câu'), findsOneWidget);
+      expect(find.text('$kNguonOnline · $kGhiChuGianDoan'), findsOneWidget);
+    });
+
+    testWidgets('markdown của Gemini gỡ lúc hiện', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) =>
+            Stream.fromIterable(const [ChuOnline('**Ba** bước:\n* Một\n* Hai'), XongOnline()]),
+      )));
+      await hoi(t, 'Làm sao tiết kiệm?');
+      expect(find.text('Ba bước:\nMột\nHai'), findsOneWidget);
+    });
+
+    testWidgets('lệnh tạo C3 đi TRƯỚC online — thẻ lệnh tạo, không request', (t) async {
+      var soLanOnline = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: false,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) {
+          soLanOnline++;
+          return const Stream.empty();
+        },
+        nguonLenhTao: () async => (vi: const <MucChon>[], danhMucChi: const <MucChon>[]),
+      )));
+      await hoi(t, 'tạo hoá đơn Netflix 100k mỗi tháng');
+      expect(find.byKey(const Key('the-lenh-tao')), findsOneWidget);
+      expect(soLanOnline, 0);
+    });
+
+    testWidgets('công tắc online TẮT → trên máy dù có mạng', (t) async {
+      var soLanOnline = 0;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(bat: false),
+        coMang: () async => true,
+        onHoiOnline: (_, __) {
+          soLanOnline++;
+          return const Stream.empty();
+        },
+        onHoi: (_) => Stream.value(const CauQua('Có 2 ngân sách.')),
+      )));
+      await hoi(t, 'Tình hình ngân sách');
+      expect(soLanOnline, 0);
+    });
+
+    testWidgets('máy chưa sẵn + mất mạng (online bật) → kKhongMangKhongMoHinh, không nhãn', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: false,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => false,
+        onHoiOnline: (_, __) => const Stream.empty(),
+      )));
+      await hoi(t, 'Tình hình ngân sách');
+      expect(find.text(kKhongMangKhongMoHinh), findsOneWidget);
+      expect(find.text(kNguonTrenMay), findsNothing);
+    });
+
+    testWidgets('online bật → ô mở dù máy chưa có mô hình (lyDoKhoa nhận onlineBat)', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: false,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) => const Stream.empty(),
+      )));
+      await t.pumpAndSettle();
+      expect(find.text(kChuaCoMoHinh), findsNothing, reason: 'băng khoá không hiện khi online bật');
+    });
+
+    testWidgets('onHoiOnline ném → không kẹt _dangHoi, rơi về máy', (t) async {
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (_, __) => throw StateError('hỏng'),
+        onHoi: (_) => Stream.value(const CauQua('Có 2 ngân sách.')),
+      )));
+      await hoi(t, 'Tình hình ngân sách');
+      expect(find.text('$kNguonTrenMay · $kGhiChuRoiVeMay'), findsOneWidget);
     });
   });
 }

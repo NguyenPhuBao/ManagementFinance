@@ -29,12 +29,15 @@ library;
 
 import 'dart:async';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/network/connection_monitor.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../ai_edge/data/bo_cong_cu.dart';
 import '../../../ai_edge/data/cong_tac_ai.dart';
@@ -53,11 +56,17 @@ import '../../../ai_edge/domain/kiem_cau_tra_loi.dart';
 import '../../../ai_edge/domain/lenh_tao.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
 import '../../../ai_edge/domain/the_cua_cau.dart';
+import '../../../premium/data/repositories/goi_repository.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../../premium/presentation/widgets/nut_nang_cap.dart';
+import '../../data/cong_tac_online.dart';
+import '../../data/datasources/tro_ly_online_remote_data_source.dart';
 import '../../data/doc_lenh_bang_ai.dart';
 import '../../data/nguon_lenh_tao.dart';
+import '../../domain/duong_hoi.dart';
+import '../../domain/su_kien_online.dart';
+import '../widgets/tro_ly_ai/nhan_nguon.dart';
 import '../widgets/tro_ly_ai/the_lenh_tao.dart';
 
 /// Bốn câu mở sẵn (spec mục 4.6). Chúng là **câu hỏi thật**, gửi đi y như khi
@@ -161,8 +170,10 @@ class _TinNhan {
   const _TinNhan.cuaToi(this.cau)
       : cuaToi = true,
         the = const [],
-        lenh = null;
-  const _TinNhan.cuaAi(this.cau, {this.the = const []})
+        lenh = null,
+        nguon = null,
+        ghiChu = null;
+  const _TinNhan.cuaAi(this.cau, {this.the = const [], this.nguon, this.ghiChu})
       : cuaToi = false,
         lenh = null;
 
@@ -170,9 +181,15 @@ class _TinNhan {
   const _TinNhan.lenhTao(LenhTao this.lenh)
       : cuaToi = false,
         cau = '',
-        the = const [];
+        the = const [],
+        nguon = null,
+        ghiChu = null;
 
   final LenhTao? lenh;
+
+  /// Nguồn của câu AI (nhãn dưới bong bóng); `null` = câu cố định của hệ thống, không nhãn.
+  final NguonTraLoi? nguon;
+  final String? ghiChu;
 
   final bool cuaToi;
   final String cau;
@@ -195,7 +212,20 @@ class AiChatPage extends StatefulWidget {
     this.nguonLenhTao,
     this.docLenh,
     this.laPremium,
+    this.onHoiOnline,
+    this.coMang,
+    this.congTacOnline,
   });
+
+  /// Khe tiêm cho test: luồng sự kiện của nhánh online (spec trợ lý online 2026-10-11). `null` = đường thật qua
+  /// `TroLyOnlineRemoteDataSource` (DI); chưa đăng ký → online tắt.
+  final Stream<SuKienOnline> Function(String cauHoi, List<TinLichSu> history)? onHoiOnline;
+
+  /// Khe tiêm cho test: có mạng lúc gửi? `null` = `ConnectionMonitor.coMangNgay`.
+  final Future<bool> Function()? coMang;
+
+  /// Khe tiêm cho test: công tắc Trợ lý online. `null` = qua DI nếu đã đăng ký.
+  final CongTacOnline? congTacOnline;
 
   /// `null` = hỏi thật (`MoHinhTaiVe` + `CongTacAi` qua DI). Khác `null` =
   /// **không chạm DI**, để widget test dựng được cả hai trạng thái.
@@ -277,14 +307,42 @@ class _AiChatPageState extends State<AiChatPage> {
     }
   }
 
-  LyDoKhoaHoiDap? get _lyDoKhoa =>
-      lyDoKhoa(laPremium: _laPremium, coTep: _coTep, congTacBat: _batCongTac);
+  // ── Trợ lý online (spec 2026-10-11) ──
+  late final String _conversationId = const Uuid().v4();
+  CancelToken? _huyOnline;
+  bool _daDungOnline = false;
+
+  /// Công tắc online bật ∧ có đường online (khe tiêm hoặc DI). Đọc vô điều kiện ở `initState` / `_moCaiDatAi`.
+  bool _onlineBat = false;
+
+  /// Ghi chú gắn vào câu TRÊN MÁY kế tiếp khi vừa rơi từ online (`kGhiChuRoiVeMay`).
+  String? _ghiChuRoi;
+
+  CongTacOnline? get _congTacOnline =>
+      widget.congTacOnline ?? (sl.isRegistered<CongTacOnline>() ? sl<CongTacOnline>() : null);
+  Future<bool> _coMang() => (widget.coMang ?? _coMangThat)();
+  Future<bool> _coMangThat() =>
+      sl.isRegistered<ConnectionMonitor>() ? sl<ConnectionMonitor>().coMangNgay() : Future.value(false);
+  bool _coDuongOnline() => widget.onHoiOnline != null || sl.isRegistered<TroLyOnlineRemoteDataSource>();
+
+  Future<void> _docOnlineBat() async {
+    final bat = (await _congTacOnline?.docBat() ?? false) && _coDuongOnline();
+    if (!mounted || bat == _onlineBat) return;
+    setState(() => _onlineBat = bat);
+  }
+
+  LyDoKhoaHoiDap? get _lyDoKhoa => lyDoKhoa(
+      laPremium: _laPremium, coTep: _coTep, congTacBat: _batCongTac, onlineBat: _onlineBat);
 
   /// Chỉ Basic khoá CẢ ô (kể cả lệnh tạo C3 — người dùng chốt câu 3); hai lý do
   /// cũ vẫn để ô mở cho lệnh tạo (chốt 2026-09-30).
   bool get _khoaCaO => _lyDoKhoa == LyDoKhoaHoiDap.goiBasic;
 
+  /// Ô nhập mở (chip, hint, băng khoá). Khi online bật, ô mở dù máy chưa có mô hình — xem [_maySan].
   bool get _coMoHinh => _lyDoKhoa == null;
+
+  /// Mô hình trên máy thật sự sẵn: có tệp ∧ công tắc "Dùng AI trên máy" bật.
+  bool get _maySan => _coTep && _batCongTac;
 
   @override
   void initState() {
@@ -302,6 +360,7 @@ class _AiChatPageState extends State<AiChatPage> {
     } else {
       _doMoHinh();
     }
+    unawaited(_docOnlineBat());
   }
 
   Future<void> _doMoHinh() async {
@@ -331,12 +390,15 @@ class _AiChatPageState extends State<AiChatPage> {
   /// ngày 2026-09-22; `flutter test` mù với nó, cùng họ với **G48**.
   Future<void> _moCaiDatAi() async {
     await context.push('/ai-settings');
+    if (!mounted) return;
+    await _docOnlineBat();
     if (!mounted || widget.coMoHinh != null) return;
     await _doMoHinh();
   }
 
   @override
   void dispose() {
+    _huyOnline?.cancel('rời màn');
     _oNhap.dispose();
     _cuon.dispose();
     super.dispose();
@@ -356,6 +418,7 @@ class _AiChatPageState extends State<AiChatPage> {
       _dangTraCuu = null;
     });
     _oNhap.clear();
+    _ghiChuRoi = null; // ghi chú "rơi về máy" chỉ sống trong MỘT lượt hỏi
     _cuonXuong();
 
     // C3 §8 — cổng rộng TRƯỚC mọi thứ khác (chặn chủ đề, định tuyến, phiên sáu tool): có mô hình thì AI đọc và luật
@@ -377,9 +440,30 @@ class _AiChatPageState extends State<AiChatPage> {
       // Lọt cổng mà mô hình không gọi tool nào (hoặc hỏng) và câu không theo mẫu: không phải lệnh — đi tiếp như cũ.
     }
 
-    // Không phải lệnh mà chưa có mô hình: câu cố định (băng nhắc tải vẫn ở đó).
-    if (!_coMoHinh) {
-      _themCuaAi(_TinNhan.cuaAi(cauKhoaHoiDap(coTep: _coTep)));
+    // Cổng 3 (spec trợ lý online §3.1): công tắc bật ∧ có mạng lúc gửi ∧ không phải dữ liệu sống.
+    final ct = _congTacOnline;
+    if (ct != null && _coDuongOnline()) {
+      final congTacBat = await ct.docBat();
+      if (!mounted) return;
+      final coMang = congTacBat && await _coMang();
+      if (!mounted) return;
+      if (nenHoiOnline(congTacBat: congTacBat, coMang: coMang, cauHoi: c)) {
+        final diOnline = await _xinDongYOnline(ct);
+        if (!mounted) return;
+        if (diOnline) {
+          final kq = await _hoiOnline(c);
+          if (!mounted || kq is! RoiVeMay) return;
+          debugPrint('[Online] rơi về máy: ${kq.lyDo}');
+          _ghiChuRoi = kGhiChuRoiVeMay;
+          // đi tiếp đường trên máy bên dưới với CÙNG câu
+        }
+      }
+    }
+
+    // Không phải lệnh mà máy chưa sẵn: câu cố định (băng nhắc tải vẫn ở đó). Online bật mà tới đây là mất mạng / chủ
+    // đề dữ liệu sống — câu khác với "chưa tải mô hình".
+    if (!_maySan) {
+      _themCuaAi(_TinNhan.cuaAi(_onlineBat ? kKhongMangKhongMoHinh : cauKhoaHoiDap(coTep: _coTep)));
       return;
     }
 
@@ -447,7 +531,7 @@ class _AiChatPageState extends State<AiChatPage> {
     final nguon = await _napNguonLenh();
     final now = DateTime.now();
     final doc = _docLenh;
-    if (_coMoHinh && doc != null && mounted) {
+    if (_maySan && doc != null && mounted) {
       setState(() {
         _dangDocLenh = true;
         _dangTraCuu = kDangDocLenh;
@@ -479,6 +563,86 @@ class _AiChatPageState extends State<AiChatPage> {
       _dangTraCuu = kDangHuyLenh;
     });
     unawaited(_docLenh?.huy());
+  }
+
+  // TODO Task 10: hỏi đồng ý lần đầu (tờ thông tin online); Task 9 tạm cho đi.
+  Future<bool> _xinDongYOnline(CongTacOnline ct) async => true;
+
+  /// Một lượt online: nối chunk vào `_traLoiDangDen`, kết bằng luật rơi §3.3. Không bao giờ ném — hỏng thì [RoiVeMay].
+  Future<KetQuaOnline> _hoiOnline(String c) async {
+    final cancel = CancelToken();
+    try {
+      final history = xepHistory([
+        // Bỏ câu vừa thêm (`_hoi` đã add `cuaToi`): history không gồm câu đang hỏi.
+        for (final t in _tinNhan.take(_tinNhan.length - 1)) (cuaToi: t.cuaToi, cau: t.cau, laThe: t.lenh != null),
+      ]);
+      setState(() {
+        _huyOnline = cancel;
+        _daDungOnline = false;
+        _dangTraCuu = kDangHoiOnline;
+        _traLoiDangDen = null;
+      });
+      final luong = widget.onHoiOnline != null
+          ? widget.onHoiOnline!(c, history)
+          : sl<TroLyOnlineRemoteDataSource>()
+              .hoi(cauHoi: c, conversationId: _conversationId, history: history, cancel: cancel);
+      SuKienOnline cuoi = const LoiOnline(http: null, lyDo: 'không sự kiện');
+      var daCoChu = false;
+      final chu = StringBuffer();
+      var chot = false;
+      await for (final sk in luong) {
+        if (!mounted) return const HoanTat();
+        if (chot) continue;
+        cuoi = sk;
+        if (sk is! ChuOnline) {
+          chot = true; // KHÔNG `break`: huỷ đăng ký giữa chừng treo trong test và thừa với datasource (đúng một sự kiện cuối)
+          continue;
+        }
+        daCoChu = daCoChu || sk.text.isNotEmpty;
+        chu.write(sk.text);
+        setState(() => _traLoiDangDen = chu.toString());
+        _cuonXuong();
+      }
+      debugPrint('[Online] kết thúc: ${cuoi.runtimeType}');
+      final kq = quyetDinhSauOnline(daCoChu: daCoChu, cuoi: cuoi, daDung: _daDungOnline);
+      // Gói hết hạn giữa phiên: server 403 → đọc lại gói để băng khoá cập nhật.
+      if (cuoi case LoiOnline(http: 403)) {
+        if (sl.isRegistered<GoiRepository>()) unawaited(sl<GoiRepository>().lamMoi());
+      }
+      if (!mounted) return kq;
+      switch (kq) {
+        case HoanTat():
+          _themCuaAi(_TinNhan.cuaAi(boDanhDauMarkdown(chu.toString()), nguon: NguonTraLoi.online));
+        case GiuPhanDaCo(:final ghiChu):
+          if (chu.isNotEmpty) {
+            _themCuaAi(_TinNhan.cuaAi(boDanhDauMarkdown(chu.toString()), nguon: NguonTraLoi.online, ghiChu: ghiChu));
+          } else {
+            setState(() {
+              _dangHoi = false;
+              _traLoiDangDen = null;
+              _dangTraCuu = null;
+            });
+          }
+        case RoiVeMay():
+          // Gỡ bong bóng đang hiện (kể cả câu thông báo ⚠️ của server) — câu đi tiếp trên máy.
+          setState(() {
+            _traLoiDangDen = null;
+            _dangTraCuu = null;
+          });
+      }
+      return kq;
+    } catch (e) {
+      debugPrint('[Online] hỏng: ${e.runtimeType}');
+      if (mounted) {
+        setState(() {
+          _traLoiDangDen = null;
+          _dangTraCuu = null;
+        });
+      }
+      return const RoiVeMay('exception');
+    } finally {
+      _huyOnline = null;
+    }
   }
 
   void _themCuaAi(_TinNhan t) {
@@ -597,7 +761,9 @@ class _AiChatPageState extends State<AiChatPage> {
       return false;
     }
     final vanBan = cauDaQua.join(' ');
-    _themCuaAi(_TinNhan.cuaAi(vanBan, the: _theChoCau(vanBan, goi)));
+    final ghiChu = _ghiChuRoi;
+    _ghiChuRoi = null;
+    _themCuaAi(_TinNhan.cuaAi(vanBan, the: _theChoCau(vanBan, goi), nguon: NguonTraLoi.trenMay, ghiChu: ghiChu));
     return false;
   }
 
@@ -648,7 +814,7 @@ class _AiChatPageState extends State<AiChatPage> {
                   final dangDen = _traLoiDangDen;
                   return dangDen == null
                       ? _dangSoan()
-                      : _boCuaAi(_TinNhan.cuaAi(dangDen));
+                      : _boCuaAi(_TinNhan.cuaAi(boDanhDauMarkdown(dangDen)));
                 }
                 final t = _tinNhan[i];
                 if (t.lenh case final l?) return TheLenhTao(lenh: l);
@@ -786,6 +952,7 @@ class _AiChatPageState extends State<AiChatPage> {
                   ),
                 ),
               ),
+              if (t.nguon != null) NhanNguon(nguon: t.nguon!, ghiChu: t.ghiChu),
               if (t.the.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Wrap(
