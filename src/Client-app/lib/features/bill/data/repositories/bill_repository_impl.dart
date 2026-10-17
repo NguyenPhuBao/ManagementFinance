@@ -299,7 +299,8 @@ class BillRepositoryImpl implements BillRepository {
     final now = DateTime.now();
 
     await db.transaction(() async {
-      // Chỉ gỡ kỳ kế tiếp khi nó còn phải trả — khác `undoPayment`. Kỳ kiểu cũ
+      // Chỉ gỡ kỳ kế tiếp khi nó còn phải trả — cùng luật với `undoPayment`
+      // (từ 2026-10-17; trước đó `undoPayment` gỡ vô điều kiện). Kỳ kiểu cũ
       // là kỳ cũ: tháng sau của nó thường đã trả hoặc bỏ qua, gỡ nó là xoá một
       // kỳ đã đóng (khoản chi của nó thành mồ côi). Kỳ còn phải trả thì chưa
       // sinh kỳ nào, nên một phép kiểm là đủ cho cả chuỗi.

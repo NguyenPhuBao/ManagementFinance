@@ -510,14 +510,28 @@ tiếp thì đã sinh ra rồi.
      khoản chi, **không** từ hoá đơn: người dùng có thể đã trả bằng ví khác và
      số khác số ghi trên hoá đơn. Đọc nhầm nguồn là hoàn sai tiền vào sai ví.
    - Xoá mềm khoản chi (quy tắc 5 `CLAUDE.md`).
-   - `billDao.getGeneratedFrom(billId)` ⇒ xoá mềm kỳ kế tiếp. Để lại thì người
-     dùng có hai kỳ cùng mở, và trả lại lần nữa sẽ đẻ thêm một kỳ trùng.
+   - `billDao.getGeneratedFrom(billId)` ⇒ xoá mềm kỳ kế tiếp **khi kỳ ấy còn
+     phải trả** (`conPhaiTra`). Để lại kỳ còn mở thì người dùng có hai kỳ cùng
+     mở, và trả lại lần nữa sẽ đẻ thêm một kỳ trùng. ⚠️ **Kỳ sau đã trả / bỏ qua
+     thì giữ nguyên** (từ 2026-10-17, `bad1c077`, người dùng chốt): tab Lịch sử
+     bày Hoàn tác cho **mọi** kỳ đã trả, và bản trước gỡ vô điều kiện — hoàn tác
+     tháng 9 khi tháng 10 đã trả là xoá mềm luôn tháng 10, khoản chi của nó thành
+     mồ côi, tiền vẫn mất, chuỗi sau đứt (suy từ mã khi làm `datLaiChuaTra`, ca
+     canh *"kỳ kế tiếp ĐÃ trả thì GIỮ NGUYÊN"* đỏ với bản cũ). Hệ quả chấp nhận:
+     trả lại kỳ vừa hoàn tác sinh một kỳ trùng hạn với kỳ sau đã trả (cùng gốc
+     chuỗi) — `payBill` từ chối trả kỳ ấy (`kyCungKyDaDong`) và lượt gộp G87
+     (`kyTrungCanGo`, chạy sau lần kéo về kế tiếp) gỡ nó; kỳ đã trả không bao giờ
+     bị gỡ. `BillPaymentConflictResolver` không đổi hành vi: kỳ sau máy thua vừa
+     sinh luôn còn phải trả.
    - Đặt lại **cả** `isPaid = false` **và** `payStatus = 'Pending'`.
 4. `scheduleSync()`.
 
 UI: nút "Hoàn tác" chỉ hiện trên dòng **đã trả**, và **hỏi xác nhận** nêu rõ
-ba hệ quả trước khi gửi `UndoPaymentEvent`. Test `bill_payment_test.dart` có
-ca "hoàn tác rồi trả lại được, và chỉ sinh đúng một kỳ mới".
+các hệ quả trước khi gửi `UndoPaymentEvent` — vế *"và gỡ kỳ kế tiếp (hạn …, chưa
+trả)"* chỉ khi `kySauConPhaiTra` tìm thấy kỳ sẽ bị gỡ (2026-10-17; trước đó theo
+`isRecurrence`). Test `bill_payment_test.dart` có ca "hoàn tác rồi trả lại được,
+và chỉ sinh đúng một kỳ mới", "kỳ kế tiếp ĐÃ trả thì GIỮ NGUYÊN", "kỳ kế tiếp ĐÃ
+BỎ QUA cũng giữ nguyên".
 
 #### Kỳ không còn khoản chi gắn `billId` — `datLaiChuaTra({billId})` (2026-10-17)
 
@@ -556,17 +570,15 @@ trả (Hoàn tác lặp lại đúng câu bảo xoá ở Sổ). Nay:
   `SoDuViService` — không có khoản chi nào lần được về kỳ này. Khoản kiểu cũ còn
   sống ở sổ **không** bị đoán ra và xoá (đúng lý do của
   `BillUndoUnavailableException`); câu *"hãy xoá nó ở đó trước"* là chốt duy nhất.
-- ⚠️ **Kỳ kế tiếp chỉ bị gỡ khi nó còn phải trả** (`conPhaiTra`) — **khác**
-  `undoPayment`. Kỳ kiểu cũ là kỳ cũ: tháng sau của nó thường đã trả hoặc bỏ qua,
-  gỡ nó là xoá một kỳ đã đóng và bỏ khoản chi của nó thành mồ côi. Kỳ còn phải
-  trả thì chưa sinh kỳ nào, nên một phép kiểm phủ cả chuỗi.
-- ⚠️ **Khoảng trống đã biết (chưa sửa):** `undoPayment` gỡ kỳ kế tiếp **vô điều
-  kiện**. Tab Lịch sử bày nút Hoàn tác cho **mọi** kỳ đã trả, nên hoàn tác một kỳ
-  cũ có khoản chi gắn `billId` khi tháng sau **đã trả** là xoá mềm luôn tháng sau
-  — khoản chi của nó thành mồ côi (mở khoá có cảnh báo ở Sổ), tiền vẫn mất, chuỗi
-  sau đó đứt. **Suy từ mã** khi làm lượt này (2026-10-17: `undoPayment` bước 2
-  không kiểm trạng thái `kySau`), chưa tái hiện bằng test hay trên máy; chờ người
-  dùng quyết.
+- ⚠️ **Kỳ kế tiếp chỉ bị gỡ khi nó còn phải trả** (`conPhaiTra`) — **cùng luật**
+  với `undoPayment` (bước 3 bên trên, sửa cùng ngày). Kỳ kiểu cũ là kỳ cũ: tháng
+  sau của nó thường đã trả hoặc bỏ qua, gỡ nó là xoá một kỳ đã đóng và bỏ khoản
+  chi của nó thành mồ côi. Kỳ còn phải trả thì chưa sinh kỳ nào, nên một phép kiểm
+  phủ cả chuỗi.
+- ⚠️ **Còn mở — `undoSkip` (Hoàn tác bỏ qua) vẫn gỡ kỳ kế tiếp vô điều kiện**
+  (mục 6.7; hộp của nó nói *"và kỳ kế tiếp đã tạo sẽ bị gỡ"* theo
+  `isRecurrence`). Cùng lớp lỗi: hoàn tác bỏ qua một kỳ cũ khi kỳ sau đã trả là
+  xoá luôn kỳ sau. Suy từ mã 2026-10-17, chưa sửa — chờ người dùng.
 - Test: `bill_payment_test.dart` nhóm *"đưa kỳ kiểu cũ về chưa trả"* (7 ca —
   hai cột + hàng đợi; ví không đổi và khoản kiểu cũ còn sống; từ chối khi còn
   khoản gắn `billId`; từ chối kỳ chưa trả; gỡ kỳ sau `Pending`; **giữ** kỳ sau

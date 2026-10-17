@@ -459,7 +459,8 @@ void main() {
 
       final kySau = (await db.billDao.getById('bill-2'))!;
       expect(kySau.isDeleted, isFalse,
-          reason: 'Gỡ vô điều kiện như `undoPayment` là xoá luôn tháng sau đã '
+          reason: 'Gỡ vô điều kiện (như `undoPayment` trước 2026-10-17) là xoá '
+              'luôn tháng sau đã '
               'trả — khoản chi của nó thành mồ côi, tiền vẫn mất.');
       expect(kySau.payStatus, 'Payed');
       expect((await db.transactionDao.getById('tx-2'))!.isDeleted, isFalse);

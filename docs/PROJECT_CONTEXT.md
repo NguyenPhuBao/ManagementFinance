@@ -620,7 +620,7 @@ có chủ ý. Mục 6.1 · 6.3 · 6.10 `BILL_DOCUMENTATION.md`.
 - **Rẽ ở trang theo bản đồ khoản chi**: `hoiHoanTacHoaDon(context, bill, coKhoanTra:)` — trang Hoá đơn
   `payments[bill.id] != null` (đi qua `_buildBillItem` → `_HangSoTien`), trang Chi tiết `_khoanChi.containsKey(b.id)`.
   Không có khoản → hộp *"Không tìm thấy khoản chi của lần trả này… hãy xoá nó ở đó trước; bước này không đổi số dư ví.
-  Đưa kỳ "…" về chưa thanh toán [và gỡ kỳ kế tiếp nếu kỳ ấy chưa trả]?"* → **Đưa về chưa trả** →
+  Đưa kỳ "…" về chưa thanh toán [và gỡ kỳ kế tiếp (hạn dd/MM/yyyy, chưa trả)]?"* → **Đưa về chưa trả** →
   `DatLaiChuaTraEvent`. Khoản kiểu cũ không có `billId` nên không bao giờ ở trong bản đồ — rẽ không phải đoán. Không đưa
   lên Stitch (biến thể chữ của hộp sẵn có; người dùng đồng ý).
 - **Vế kỳ sau chỉ khi thật sự có** (`01c54fe5`, người dùng chốt sau khi máy ảo bắt): *"và gỡ kỳ kế tiếp (hạn dd/MM/yyyy,
@@ -634,19 +634,25 @@ có chủ ý. Mục 6.1 · 6.3 · 6.10 `BILL_DOCUMENTATION.md`.
 - Câu lưới an toàn của `BillUndoUnavailableException` đổi thành *"Không tìm thấy khoản chi của lần thanh toán này. Mở lại
   trang rồi bấm Hoàn tác để đưa kỳ về chưa trả."* — **"mở lại trang"** vì hai trang không nạp lại bản đồ sau
   `BillError` (thiết kế duyệt ghi *"bấm Hoàn tác lại"*; đổi sau khi đọc listener của hai trang).
-- **Số đo**: `flutter test` **7.232 pass / 10 skip** (trước 7.213; +19 — `9971a26b` +12: repository 7, bloc 2, trang Hoá
-  đơn 1, trang Chi tiết 2; `01c54fe5` +7: `kySauConPhaiTra` 5, mỗi trang 1; ca cũ *"hoàn tác hỏi xác nhận"* / *"báo lỗi
-  không làm trắng"* nhận một khoản gắn `billId` để vẫn canh nhánh hoàn tiền); `flutter analyze` 20 (mức nền, 0 trong tệp
-  lượt này).
+- ✅ **`undoPayment` cũng chỉ gỡ kỳ sau còn phải trả** (`bad1c077`, người dùng chốt *"sửa ngay, cùng luật"*): bản trước gỡ
+  vô điều kiện, mà tab Lịch sử bày Hoàn tác cho mọi kỳ đã trả → hoàn tác tháng 9 khi tháng 10 đã trả là xoá mềm luôn tháng
+  10, khoản chi của nó thành mồ côi (suy từ mã khi làm lượt này; ca canh đỏ với bản cũ). Hộp hoàn tiền nhắc kỳ sau theo
+  `kySauConPhaiTra` (chung vế `_veKySau` với hộp "Đưa về chưa trả"; trước theo `isRecurrence`). Bộ gỡ xung đột không đổi
+  hành vi. Hệ quả chấp nhận: trả lại kỳ vừa hoàn tác sinh kỳ trùng hạn với kỳ sau đã trả — `payBill` từ chối nó, lượt gộp
+  G87 sau lần kéo về gỡ nó. ⚠️ **Còn mở:** `undoSkip` vẫn gỡ kỳ sau vô điều kiện (cùng lớp lỗi, chờ người dùng).
+- **Số đo**: `flutter test` **7.235 pass / 10 skip** (trước 7.213; +22 — `9971a26b` +12: repository 7, bloc 2, trang Hoá
+  đơn 1, trang Chi tiết 2; `01c54fe5` +7: `kySauConPhaiTra` 5, mỗi trang 1; `bad1c077` +3: `undoPayment` giữ kỳ sau đã trả
+  / bỏ qua, hộp hoàn tiền khi kỳ sau đã trả; ca cũ *"hoàn tác hỏi xác nhận"* / *"báo lỗi không làm trắng"* nhận một khoản
+  gắn `billId` để vẫn canh nhánh hoàn tiền); `flutter analyze` 20 (mức nền, 0 trong tệp lượt này).
 - ✅ **Nghiệm thu máy ảo** `FlowMoney_16G` (`-gpu host`, 411 dp, tài khoản 10): ba kỳ kiểu cũ (*di h0c* 16/09, *Kiem*
   11/09, *TestAuto* 06/09) mở hộp mới ở cả hai trang, kỳ có khoản gắn `billId` vẫn hộp hoàn tiền. Trọn luồng trên
   *TestAuto* (người dùng cho phép): xoá khoản kiểu cũ ở Sổ (ví *test* −100.000 → −90.000 đ) → Hoàn tác → Đưa về chưa trả
   (tab *Cần thanh toán (5) · Lịch sử (8)*, ví không đổi) → trả lại, ngày 06/09 (ví −100.000 đ, tổng −3.256.000 đ như lúc
-  đầu, dòng có *"Trả 06/09/2026"*). Để lại: kỳ *TestAuto* 13/09 do lần trả sinh ra (hàng tuần), quá hạn; khoản kiểu cũ
-  xoá mềm + khoản mới + hai hàng hoá đơn chờ đẩy khi backend chạy. Danh sách cập nhật chậm ~1–2 s trên máy ảo.
-- ⚠️ **Phát hiện, chưa sửa (chờ người dùng quyết)**: `undoPayment` gỡ kỳ kế tiếp **vô điều kiện**, mà tab Lịch sử bày
-  Hoàn tác cho mọi kỳ đã trả → hoàn tác một kỳ cũ khi tháng sau đã trả là xoá mềm luôn tháng sau, khoản chi của nó thành
-  mồ côi. Suy từ mã, chưa tái hiện.
+  đầu, dòng có *"Trả 06/09/2026"*). Kỳ *TestAuto* 13/09 do lần trả sinh ra (hàng tuần) **đã xoá** qua màn xác nhận xoá
+  theo lựa chọn của người dùng — tab về *Cần thanh toán (4) · Lịch sử (9)* như đầu phiên. Chờ đẩy khi backend chạy: khoản
+  kiểu cũ xoá mềm, khoản mới, kỳ 06/09, kỳ 13/09 xoá mềm. Sau `bad1c077`: hộp hoàn tiền của *Netflix* 28/09 (kỳ 05/10 đã
+  trả) **không** hứa gỡ kỳ sau; của *TestAuto* 06/09 (lúc kỳ 13/09 còn) nêu *"(hạn 13/09/2026, chưa trả)"*. Danh sách cập
+  nhật chậm ~1–2 s trên máy ảo.
 
 ### 🔓 Việc 4c — khoản trả hoá đơn khoá theo `billId`; khoản kiểu cũ / mồ côi mở khoá có cảnh báo (2026-10-17, người dùng chốt)
 
