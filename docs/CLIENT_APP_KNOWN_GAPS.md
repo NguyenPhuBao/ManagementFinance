@@ -1850,6 +1850,12 @@ cả hai cần phép đích danh) và PayOS sandbox (việc tồn chưa làm).
 > cho ba trang, bộ hỏi sang `presentation/state/`, cửa chặn route sang `presentation/bloc/`. Năm commit, mỗi commit test
 > toàn phần xanh; `flutter test` 7.406 / 10 skip, analyze 20. Chi tiết: khối 🧱 đầu mục 14 `PROJECT_CONTEXT.md`. Các việc
 > 2, 4–10 ở trên chưa đụng — lát 2 (kế hoạch viết sau khi người dùng xác nhận màn Stitch, spec mục 9).
+>
+> 🚧 **Lát 2 đang làm (dừng 2026-10-18 tối):** năm màn Stitch có mã (spec mục 9; người dùng xác nhận bốn, màn *Chờ
+> xác nhận + Hộp hỏi lại* `408de0af…` chưa). Xong Task 1–5 của kế hoạch: dòng lịch sử đủ số liệu + luật đơn cần xử lý
+> + nhãn *Chờ hoàn tiền*; `timDon`; `RealtimeEvent.donThanhToanDoi` (sáu tên `payment.*`, im lặng); cổng `LuuAnhQr` +
+> kênh Kotlin `flowmoney/luu_anh` (bản release dựng đạt); `ChiTietDonCubit` + nhãn trạng thái dùng chung. Chưa có
+> **màn nào** đổi — người dùng chưa thấy gì mới; việc 1–10 ở trên vẫn mở tới Task 6–9. 7.424 / 10 skip, analyze 20.
 
 ---
 

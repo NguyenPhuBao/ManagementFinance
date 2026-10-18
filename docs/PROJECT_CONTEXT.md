@@ -613,6 +613,25 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-18)
 
+### 🚧 G94 lát 2 — tính năng đơn thanh toán, xong Task 1–5 / 10 (2026-10-18 tối, dừng theo lời người dùng)
+
+Kế hoạch `docs/superpowers/plans/2026-10-18-g94-lat-2-tinh-nang-don-thanh-toan.md` (gitignore). Màn Stitch: Màn Chờ
+`95b2774f…` · Chi tiết đơn chờ xác nhận + hộp hỏi lại `408de0af…` (chưa xác nhận bằng mắt) · bốn trạng thái `d3b59018…` ·
+Lịch sử mua `04c4aa7d…` · Nâng cấp `5c629d0a…`.
+
+- **Xong (nền, chưa đổi màn nào):** `DongLichSu` đọc thêm số đã chuyển / đã hoàn / ngày hoàn / ngày tạo, `luc` thành
+  getter; `domain/don_can_xu_ly.dart` (`donChoXacNhan`, `donChoHoanTien`, `soTienLech`, `lyDoHoanTien` ba nhánh); nhãn
+  *Chờ hoàn tiền*; `DonThanhToanRepository.timDon`; `RealtimeEvent.donThanhToanDoi` ← sáu tên `payment.*` (im lặng,
+  không kéo đồng bộ, `GoiRepository` không làm mới theo nó); cổng `LuuAnhQr` (Dio trần tải ảnh + kênh Kotlin
+  `flowmoney/luu_anh` ghi `MediaStore.Images` ở `Pictures/FlowMoney`, không xin quyền Android 10+) — bản `--release`
+  dựng đạt 226,3 MB; `ChiTietDonCubit` + `NhanTrangThaiDon` / `mauTrangThaiDon`. Commit `073920e6` → `026e221a`.
+- **Đo:** `flutter test` **7.424 / 10 skip / 0 fail** (+18 từ đầu lát 2), analyze **20**.
+- **Còn:** Task 6 trang Chi tiết đơn + route `/premium/don/:orderCode` · Task 7 màn Chờ đủ thông tin + model
+  `DonThanhToan` (bỏ URL tự dựng / tên ghi cứng) · Task 8 Lịch sử mua bấm được · Task 9 thẻ Nâng cấp + khoá ·
+  Task 10 tài liệu + release.
+- **Soát kiến trúc toàn app (chỉ đọc) đã chạy** — `docs/superpowers/specs/2026-10-18-bao-cao-soat-kien-truc-toan-app.md`:
+  14 lệch rõ · 7 chưa chắc · 11 để biết; sửa SAU lượt G94, người dùng chọn lát; hai việc cần người dùng chốt.
+
 ### 🧱 G94 lát 1 — dọn kiến trúc mảng Premium, không đổi hành vi (2026-10-18 tối)
 
 Spec `docs/superpowers/specs/2026-10-18-g94-don-thanh-toan-premium-design.md` mục 4; kế hoạch

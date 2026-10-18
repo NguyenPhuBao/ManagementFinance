@@ -9,6 +9,13 @@ ngày** — câu hỏi mở mục 12 giữ mặc định (đơn `PENDING` chỉ 
 > 7.406 / 10 skip, analyze 20. Thi công đúng mục 4, một chỗ chi tiết hơn bản viết: thêm `loaiLoiCua(Object)` ở
 > `domain/cau_loi_thanh_toan.dart` để ba trang lấy loại lỗi từ `LoiThanhToan` mà không lặp phép `is`. Lát 2: kế hoạch
 > viết sau khi người dùng xác nhận năm màn Stitch.
+>
+> 🚧 **Lát 2 đang làm (dừng 2026-10-18 tối theo lời người dùng, viết bàn giao):** kế hoạch
+> `plans/2026-10-18-g94-lat-2-tinh-nang-don-thanh-toan.md` (gitignore, 10 task). **Xong Task 1–5:** `073920e6` dòng lịch
+> sử đủ số liệu + `don_can_xu_ly` + nhãn *Chờ hoàn tiền* · `ed190dde` `timDon` · `af7351fe` `RealtimeEvent.donThanhToanDoi` ·
+> `072d7d9b` cổng `LuuAnhQr` + kênh Kotlin `flowmoney/luu_anh` (bản `--release` dựng đạt) · `026e221a` `ChiTietDonCubit` +
+> `NhanTrangThaiDon`. `flutter test` 7.424 / 10 skip, analyze 20. **Còn Task 6–10:** trang Chi tiết đơn + route, màn Chờ
+> + model `DonThanhToan`, Lịch sử mua, Nâng cấp, tài liệu + release.
 Mở lượt **G89 + G94** — đợt đầu của lượt (sửa hai lỗi đang chạy, `a52f9181`) đã xong trước bản này. G89 (bảo trì /
 phong toả AIOps) là phân hệ độc lập, **spec riêng**, làm sau.
 
@@ -348,6 +355,20 @@ Mã màn ghi vào bảng mục 5 `PREMIUM_FEATURE.md`.
 > 5. *"Nâng cấp Premium - Có đơn cần xử lý (khoá Thanh toán) - FlowMoney"*
 >
 > Mã màn và xác nhận bằng mắt của người dùng: điền khi có.
+>
+> **Cập nhật 2026-10-18 tối** (người dùng báo *"đã có màn trên stitch"*): `list_screens` thấy **4 / 5** màn (136 màn) —
+> nội dung đối chiếu HTML khớp spec từng dòng chữ:
+> | Màn | Mã | Ghi chú |
+> |---|---|---|
+> | 1. Màn Chờ (QR + Lưu mã) | `95b2774f085747fa8777aea3505bb6ee` | đủ khối; Stitch xếp khung DESKTOP 2560 px (một khung điện thoại bên trong) |
+> | 3. Chi tiết đơn — bốn trạng thái | `d3b59018c7624f1a902eba125243130f` | đủ bốn thân |
+> | 4. Lịch sử mua — dòng bấm được | `04c4aa7dda504cc4922290ea79ef3e63` | thêm dòng chân *"Giao dịch thanh toán bảo mật FlowMoney"* — trang trí, không chép |
+> | 5. Nâng cấp — có đơn cần xử lý | `5c629d0af67e4c6fbda1c85de896fa8d` | đủ hai thẻ + nút khoá |
+>
+> Màn 2 (*Chi tiết đơn - Chờ xác nhận chuyển thừa + Hộp hỏi lại*) chưa thấy trong API — người dùng không thấy trên
+> canvas, chọn tạo lại (một lượt, cũng `timeout`); sau đó hiện: **`408de0af0d8a4fb796d3997580120d7a`**, nội dung khớp mục
+> 5.5 từng dòng chữ (thẻ đầu · *BẠN ĐÃ CHUYỂN THỪA* 60.000 / 49.000 / thừa 11.000 · hai nút · dòng phụ · hộp *Yêu cầu
+> hoàn tiền?* với Huỷ / Yêu cầu hoàn tiền). Người dùng **đã xác nhận bằng mắt bốn màn 1, 3, 4, 5**; màn 2 **chưa**.
 
 ## 10. Nghiệm thu máy thật (OnePlus 13R)
 
