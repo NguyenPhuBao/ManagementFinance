@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'dart:ui' show AppLifecycleState;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart' show AppLifecycleState;
 
 import '../../../../core/realtime/realtime_event.dart';
 import '../models/trang_thai_goi.dart';

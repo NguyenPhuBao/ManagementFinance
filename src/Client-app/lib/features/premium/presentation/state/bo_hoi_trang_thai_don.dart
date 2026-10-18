@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../domain/trang_thai_don.dart';
+import '../../domain/trang_thai_don.dart';
 
 /// Hỏi trạng thái đơn theo nhịp (spec Premium 2026-10-06 mục 9.3). Hỏi hỏng →
 /// im, lượt sau thử — không giãn cách: màn chỉ hỏi khi đang hiện và dừng khi
