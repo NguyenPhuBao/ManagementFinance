@@ -10,7 +10,8 @@ import 'package:flowmoney/core/realtime/realtime_event.dart';
 import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
-import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 

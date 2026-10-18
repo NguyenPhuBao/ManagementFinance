@@ -1,4 +1,4 @@
-import 'trang_thai_goi.dart';
+import 'hang_goi.dart';
 
 /// Đơn vừa tạo (`POST /payment/create-order`) — chứa thông tin thanh toán VietQR,
 /// mã nhận diện 6 ký tự, số tiền, và thời hạn (spec Premium 5.4 & Payment spec).

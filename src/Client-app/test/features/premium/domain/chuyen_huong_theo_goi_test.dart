@@ -4,6 +4,7 @@ library;
 
 import 'package:flowmoney/features/premium/domain/chuyen_huong_theo_goi.dart';
 import 'package:flowmoney/features/premium/domain/tran_goi.dart';
+import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

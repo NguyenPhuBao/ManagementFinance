@@ -36,6 +36,7 @@ import '../../features/premium/data/chan_theo_goi.dart';
 import '../../features/premium/domain/don_thanh_toan.dart';
 import '../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../features/premium/domain/tran_goi.dart';
+import '../../features/premium/domain/hang_goi.dart';
 import '../../features/premium/presentation/pages/cho_thanh_toan_page.dart';
 import '../../features/premium/presentation/pages/lich_su_mua_page.dart';
 import '../../features/premium/presentation/pages/nang_cap_page.dart';

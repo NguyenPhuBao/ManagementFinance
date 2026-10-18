@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 
 import '../../../../core/realtime/realtime_event.dart';
-import '../../domain/trang_thai_goi.dart';
+import '../models/trang_thai_goi.dart';
 import '../goi_store.dart';
 import '../payment_api.dart';
 

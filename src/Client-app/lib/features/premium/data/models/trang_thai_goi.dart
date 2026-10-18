@@ -1,12 +1,5 @@
+import '../../domain/hang_goi.dart';
 import 'tran_goi.dart';
-
-/// Giá và số ngày mặc định của gói — server đè bằng `price` / `packageDays`
-/// của `/payment/subscription-info` khi backend thêm hai trường ấy (đơn
-/// CAN-LAM); tới lúc đó đây là con số của `.env` backend ngày 2026-10-06.
-const int kGiaPremium = 49000;
-const int kSoNgayGoi = 30;
-
-enum LoaiGoi { basic, premium }
 
 /// Trạng thái gói của tài khoản đang đăng nhập (spec Premium 2026-10-06 mục
 /// 5.1).

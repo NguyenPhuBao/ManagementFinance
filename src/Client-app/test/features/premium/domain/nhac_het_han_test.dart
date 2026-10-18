@@ -3,7 +3,8 @@
 library;
 
 import 'package:flowmoney/features/premium/domain/nhac_het_han.dart';
-import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

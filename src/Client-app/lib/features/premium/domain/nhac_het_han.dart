@@ -1,4 +1,4 @@
-import 'trang_thai_goi.dart';
+import '../data/models/trang_thai_goi.dart';
 
 /// Còn bao nhiêu ngày để nhắc ở Trang chủ (spec Premium 9.5): `0..3` → nhắc,
 /// `null` → im. Hết hạn rồi thì im — không nhắc người đã về Basic; chưa biết

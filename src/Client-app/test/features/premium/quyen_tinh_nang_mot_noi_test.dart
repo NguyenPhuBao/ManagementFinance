@@ -12,7 +12,7 @@ import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 void main() {
   const choPhepDoc = {
     'lib/features/premium/domain/quyen_tinh_nang.dart',
-    'lib/features/premium/domain/trang_thai_goi.dart', // đọc / ghi kho và JSON server
+    'lib/features/premium/data/models/trang_thai_goi.dart', // đọc / ghi kho và JSON server
   };
   const noiMaQuyen = 'lib/features/premium/domain/quyen_tinh_nang.dart';
 

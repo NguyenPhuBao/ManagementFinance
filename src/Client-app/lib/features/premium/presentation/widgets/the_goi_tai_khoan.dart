@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/tran_goi.dart';
-import '../../domain/trang_thai_goi.dart';
+import '../../data/models/trang_thai_goi.dart';
 import '../bloc/goi_cubit.dart';
 import 'nut_nang_cap.dart';
 

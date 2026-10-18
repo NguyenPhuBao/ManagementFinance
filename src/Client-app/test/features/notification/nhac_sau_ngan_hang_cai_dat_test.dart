@@ -23,7 +23,8 @@ import 'package:flowmoney/features/notification/presentation/pages/notification_
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/payment_api.dart';
 import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
-import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/transaction/domain/doc_tin_bien_dong.dart';
 

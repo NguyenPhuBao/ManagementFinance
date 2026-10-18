@@ -11,7 +11,9 @@ import '../../domain/cau_loi_thanh_toan.dart';
 import '../../domain/don_thanh_toan.dart';
 import '../../domain/quyen_tinh_nang.dart';
 import '../../domain/tran_goi.dart';
-import '../../domain/trang_thai_goi.dart';
+import '../../data/models/tran_goi.dart';
+import '../../domain/hang_goi.dart';
+import '../../data/models/trang_thai_goi.dart';
 import '../bloc/goi_cubit.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
