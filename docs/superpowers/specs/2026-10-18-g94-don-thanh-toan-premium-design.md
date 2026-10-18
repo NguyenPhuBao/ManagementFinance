@@ -10,12 +10,28 @@ ngày** — câu hỏi mở mục 12 giữ mặc định (đơn `PENDING` chỉ 
 > `domain/cau_loi_thanh_toan.dart` để ba trang lấy loại lỗi từ `LoiThanhToan` mà không lặp phép `is`. Lát 2: kế hoạch
 > viết sau khi người dùng xác nhận năm màn Stitch.
 >
-> 🚧 **Lát 2 đang làm (dừng 2026-10-18 tối theo lời người dùng, viết bàn giao):** kế hoạch
-> `plans/2026-10-18-g94-lat-2-tinh-nang-don-thanh-toan.md` (gitignore, 10 task). **Xong Task 1–5:** `073920e6` dòng lịch
-> sử đủ số liệu + `don_can_xu_ly` + nhãn *Chờ hoàn tiền* · `ed190dde` `timDon` · `af7351fe` `RealtimeEvent.donThanhToanDoi` ·
-> `072d7d9b` cổng `LuuAnhQr` + kênh Kotlin `flowmoney/luu_anh` (bản `--release` dựng đạt) · `026e221a` `ChiTietDonCubit` +
-> `NhanTrangThaiDon`. `flutter test` 7.424 / 10 skip, analyze 20. **Còn Task 6–10:** trang Chi tiết đơn + route, màn Chờ
-> + model `DonThanhToan`, Lịch sử mua, Nâng cấp, tài liệu + release.
+> ✅ **Lát 2 — mã xong 2026-10-18 tối** (kế hoạch `plans/2026-10-18-g94-lat-2-tinh-nang-don-thanh-toan.md`, gitignore,
+> 10 task, inline; mỗi task ca đỏ trước + bản sai có chủ ý đỏ đúng ca, `flutter test` toàn phần xanh). Task 1–5:
+> `073920e6` · `ed190dde` · `af7351fe` · `072d7d9b` · `026e221a`. Task 6–9: `463fcf0c` Chi tiết đơn + route · `7f231cc6`
+> màn Chờ + model `DonThanhToan` · `cc098628` Lịch sử mua · `01e0d630` Nâng cấp. Số đo cuối: `flutter test` **7.463 /
+> 10 skip**, analyze **20**, `flutter build apk --release` đạt (226,4 MB). 🚧 **Chưa nghiệm thu máy thật** (mục 10 — cần
+> khoá PayOS sandbox + phép `npm install` backend).
+>
+> **Chỗ thi công khác bản viết** (đọc khi đối chiếu mã):
+> 1. `chuyenHuongChiTietDon` ở `domain/chuyen_huong_theo_goi.dart` (cạnh `chuyenHuongTheoGoi` — tiền lệ hàm thuần của
+>    `redirect`), không ở trang.
+> 2. **Giá gói không ở thẻ đầu** Chi tiết đơn (mục 5.5 nói *luôn có*): hai màn Stitch người dùng duyệt không vẽ — giá ở thân
+>    (dòng *Giá gói* của khối đối soát, *Đã thanh toán X*, dòng *Giá gói X* ở ba thân một dòng). Thẻ đầu theo bố cục
+>    `d3b59018…` cho mọi trạng thái (dòng phụ xuống hàng riêng; `408de0af…` để cạnh viên — chật ở 320 dp).
+> 3. `refundPending` lý do *không rõ* là thẻ kết quả *"Đang chờ hoàn tiền"* + câu chung (mục 5.5 chỉ nói câu chung).
+> 4. `paid` mở từ Lịch sử (không vừa đồng ý): *"Đã thanh toán X"* + *"Ngày dd/MM/yyyy"*, không nút *Xong* (Back là đủ).
+> 5. Lịch sử mua nạp lại **ngầm** khi đã có dòng (không chớp vòng xoay mỗi lần quay về / có tín hiệu).
+> 6. Thẻ ở Nâng cấp: lượt đọc hỏng **sau** một lượt đọc được thì **giữ** kết quả cũ (mục 5.7 chỉ nói *hỏng → không thẻ*,
+>    đúng cho lượt đầu); lý do: không mở khoá *Thanh toán* vì mạng chập chờn. Nút *Lịch sử mua* cũng đọc lại khi quay về.
+> 7. Màn Nâng cấp không chép dòng Stitch *"Tự động gia hạn · Hủy bất cứ lúc nào"* (gói không tự gia hạn) và không đổi thẻ
+>    gói hiện tại sang kiểu *Tình trạng tài khoản* của Stitch `5c629d0a…` (ngoài phạm vi 5.7).
+> 8. Màn Chờ bỏ ô *Mã nhận diện* riêng (Stitch `95b2774f…` không có; mã nằm cuối *Nội dung*, chép cả nội dung).
+> 9. Ảnh QR dựng **một lần** ở `initState` (mục 5.4 chỉ nói khe `nguonAnhQr`).
 Mở lượt **G89 + G94** — đợt đầu của lượt (sửa hai lỗi đang chạy, `a52f9181`) đã xong trước bản này. G89 (bảo trì /
 phong toả AIOps) là phân hệ độc lập, **spec riêng**, làm sau.
 
@@ -369,6 +385,7 @@ Mã màn ghi vào bảng mục 5 `PREMIUM_FEATURE.md`.
 > canvas, chọn tạo lại (một lượt, cũng `timeout`); sau đó hiện: **`408de0af0d8a4fb796d3997580120d7a`**, nội dung khớp mục
 > 5.5 từng dòng chữ (thẻ đầu · *BẠN ĐÃ CHUYỂN THỪA* 60.000 / 49.000 / thừa 11.000 · hai nút · dòng phụ · hộp *Yêu cầu
 > hoàn tiền?* với Huỷ / Yêu cầu hoàn tiền). Người dùng **đã xác nhận bằng mắt bốn màn 1, 3, 4, 5**; màn 2 **chưa**.
+> ✅ Màn 2 người dùng xác nhận bằng mắt đầu phiên kế (cùng tối 2026-10-18) — đủ năm màn.
 
 ## 10. Nghiệm thu máy thật (OnePlus 13R)
 

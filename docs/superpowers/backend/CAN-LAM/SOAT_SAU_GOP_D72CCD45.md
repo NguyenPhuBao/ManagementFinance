@@ -33,6 +33,11 @@
 > nằm ở đó mãi. **Mặc định client theo:** không có hạn chờ; client sẽ thêm lối xác nhận ở trang Lịch sử mua, vì
 > `GET /payment/history` đã trả đủ mã đơn và trạng thái (G94 phía client). Backend chỉ cần ghi lựa chọn ấy vào spec. Nếu
 > backend muốn có hạn chờ, xin ghi hạn và trạng thái đích vào spec để client hiện đúng câu.
+>
+> ✅ **Client đã làm phần của mình (mã xong 2026-10-18 tối, G94 lát 2; chưa nghiệm thu sandbox):** mọi dòng Lịch sử mua
+> mở màn Chi tiết đơn `/premium/don/:orderCode` — nơi gọi `confirm-upgrade`; màn Nâng cấp có thẻ đơn chờ xác nhận và khoá
+> *Thanh toán* tới khi người dùng chọn. Client tìm đơn trong `GET /payment/history` trang 1 (20 dòng) — đơn chờ xác nhận
+> cũ hơn 20 đơn sẽ không có lối vào; với gói 30 ngày đây là ca hiếm, client không xin thêm API.
 
 **Ngày:** 2026-10-16 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat` (commit gộp `e49100ed`)
 **Loại:** đơn xin — **một lỗi mức cao** (A), **ba lỗi mức vừa** (B, C, D), **hai việc mức thấp** (E, F). Không đổi lược đồ

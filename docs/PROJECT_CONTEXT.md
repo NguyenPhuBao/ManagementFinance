@@ -613,11 +613,33 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-18)
 
-### 🚧 G94 lát 2 — tính năng đơn thanh toán, xong Task 1–5 / 10 (2026-10-18 tối, dừng theo lời người dùng)
+### ✅ G94 lát 2 — tính năng đơn thanh toán, mã xong 10 / 10 task (2026-10-18 tối) · 🚧 chờ nghiệm thu sandbox
 
-Kế hoạch `docs/superpowers/plans/2026-10-18-g94-lat-2-tinh-nang-don-thanh-toan.md` (gitignore). Màn Stitch: Màn Chờ
-`95b2774f…` · Chi tiết đơn chờ xác nhận + hộp hỏi lại `408de0af…` (chưa xác nhận bằng mắt) · bốn trạng thái `d3b59018…` ·
-Lịch sử mua `04c4aa7d…` · Nâng cấp `5c629d0a…`.
+Kế hoạch `docs/superpowers/plans/2026-10-18-g94-lat-2-tinh-nang-don-thanh-toan.md` (gitignore), thi công **inline**, người
+dùng cho *"làm hết khỏi chờ duyệt"*. Màn Stitch (người dùng xác nhận bằng mắt cả năm): Màn Chờ `95b2774f…` · Chi tiết đơn
+chờ xác nhận + hộp hỏi lại `408de0af…` · bốn trạng thái `d3b59018…` · Lịch sử mua `04c4aa7d…` · Nâng cấp `5c629d0a…`.
+
+- **Người dùng thấy khác (Task 6–9, `463fcf0c` → `01e0d630`):**
+  - **Màn Chờ thanh toán** không tự mở trang PayOS nữa; có ảnh VietQR to + *Lưu mã QR* (vào `Pictures/FlowMoney`), khối
+    *Thông tin chuyển khoản* (số TK, chủ TK, số tiền, nội dung — chép được), ba bước, nút phụ *Mở trang thanh toán PayOS*.
+    Ô *Mã nhận diện* riêng bỏ (mã nằm cuối nội dung). Server trả `WAITING_CONFIRMATION` / `REFUND_PENDING` / `REFUNDED` →
+    màn được **thay** bằng Chi tiết đơn.
+  - **Chi tiết đơn** `/premium/don/:orderCode` (mới): thẻ đầu (gói, mã đơn + giờ tạo, nhãn); chờ xác nhận → *BẠN ĐÃ CHUYỂN
+    THỪA* (đã chuyển / giá / thừa) + *Đồng ý kích hoạt gói* / *Yêu cầu hoàn tiền* (hộp hỏi lại); chờ hoàn tiền (thiếu / đã
+    chọn hoàn / không rõ); đã hoàn (số + ngày); đã thanh toán; vừa kích hoạt → hạn mới + *Xong*. Mã rác → Lịch sử mua.
+  - **Lịch sử mua**: mọi dòng có › và mở Chi tiết đơn; quay về nạp lại ngầm; nhãn + màu dùng chung.
+  - **Nâng cấp**: thẻ *"Bạn đã chuyển thừa cho đơn #…"* đầu màn + **khoá** *Thanh toán* / *Gia hạn* kèm lý do; thẻ nhỏ
+    *"Đơn #… đang chờ hoàn tiền"* (không khoá).
+- **Chỗ thi công khác bản viết:** chín điểm ở banner đầu spec G94 (giá gói ở thân không ở thẻ đầu; thẻ Nâng cấp giữ kết quả
+  cũ khi lượt đọc sau hỏng; Lịch sử nạp lại ngầm; không chép *"Tự động gia hạn"* của Stitch…).
+- **Đo:** `flutter test` **7.463 / 10 skip / 0 fail** (+39 so với đầu phiên 7.424; +57 cả lát 2), analyze **20**, HEAD
+  `01e0d630`; `flutter build apk --release` đạt **226,4 MB**. Mỗi task: ca đỏ trước + bản sai có chủ ý (16 bản) làm đúng
+  ca ấy đỏ.
+- **Còn:** nghiệm thu OnePlus — tám bước ở spec mục 10, cần khoá PayOS sandbox + phép đích danh `npm install` ở
+  `src/Backend`. Ngoài phạm vi, ghi lại: `premium/presentation/widgets/the_khoa_quyen.dart` còn 10 `Color(0x…)` (client viết
+  2026-10-08, theo giá trị Stitch) — vào đợt soát toàn app.
+
+Task 1–5 (phiên trước, cùng tối):
 
 - **Xong (nền, chưa đổi màn nào):** `DongLichSu` đọc thêm số đã chuyển / đã hoàn / ngày hoàn / ngày tạo, `luc` thành
   getter; `domain/don_can_xu_ly.dart` (`donChoXacNhan`, `donChoHoanTien`, `soTienLech`, `lyDoHoanTien` ba nhánh); nhãn
@@ -626,9 +648,7 @@ Lịch sử mua `04c4aa7d…` · Nâng cấp `5c629d0a…`.
   `flowmoney/luu_anh` ghi `MediaStore.Images` ở `Pictures/FlowMoney`, không xin quyền Android 10+) — bản `--release`
   dựng đạt 226,3 MB; `ChiTietDonCubit` + `NhanTrangThaiDon` / `mauTrangThaiDon`. Commit `073920e6` → `026e221a`.
 - **Đo:** `flutter test` **7.424 / 10 skip / 0 fail** (+18 từ đầu lát 2), analyze **20**.
-- **Còn:** Task 6 trang Chi tiết đơn + route `/premium/don/:orderCode` · Task 7 màn Chờ đủ thông tin + model
-  `DonThanhToan` (bỏ URL tự dựng / tên ghi cứng) · Task 8 Lịch sử mua bấm được · Task 9 thẻ Nâng cấp + khoá ·
-  Task 10 tài liệu + release.
+- ~~**Còn:** Task 6–10~~ — xong cùng tối, khối trên.
 - **Soát kiến trúc toàn app (chỉ đọc) đã chạy** — `docs/superpowers/specs/2026-10-18-bao-cao-soat-kien-truc-toan-app.md`:
   14 lệch rõ · 7 chưa chắc · 11 để biết; sửa SAU lượt G94, người dùng chọn lát; hai việc cần người dùng chốt.
 

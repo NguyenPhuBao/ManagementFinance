@@ -43,8 +43,8 @@ canh bằng test quét mã nguồn (mục 6).
 
 ## 3. Cây thư mục
 
-`lib/` có **634** tệp `.dart`, **126.253** dòng (kể 14 tệp `.g.dart` do Drift sinh) — `git ls-files lib | grep '\.dart$'`
-và `… | xargs cat | wc -l`. `test/` có **647** tệp `*_test.dart` (659 tệp `.dart` kể cả helper), **130.633** dòng (đếm lại **2026-10-18 sau G94 lát 1** — dọn kiến trúc Premium, +5 tệp `lib/`, +3 tệp test — HEAD `cc300f61`). (Trước đó 2026-10-17 sau trợ lý online, HEAD `fb92c16d`: `lib/` 629 tệp, 125.809 dòng; `test/` 644 `_test` (656 `.dart`), 129.998 dòng. Trước đó 2026-10-16 sau gỡ cụm, HEAD `f702a884`: `lib/` 618 tệp, 124.393 dòng; `test/` 629 `_test` (640 `.dart`), 126.455 dòng. 2026-10-15: 626 tệp `.dart` (617 `_test`), 124.875 dòng; 2026-10-13, sau tách bốn trang lớn: 596 / 616 tệp, 122.667 / 123.486 dòng.)
+`lib/` có **644** tệp `.dart`, **127.513** dòng (kể 14 tệp `.g.dart` do Drift sinh) — `git ls-files lib | grep '\.dart$'`
+và `… | xargs cat | wc -l`. `test/` có **652** tệp `*_test.dart` (664 tệp `.dart` kể cả helper), **131.765** dòng (đếm lại **2026-10-18 tối sau G94 lát 2** — tính năng đơn thanh toán, +10 tệp `lib/`, +5 tệp test — HEAD `01e0d630`). (Trước đó 2026-10-18 sau G94 lát 1, HEAD `cc300f61`: `lib/` 634 tệp, 126.253 dòng; `test/` 647 `_test` (659 `.dart`), 130.633 dòng. Trước đó 2026-10-17 sau trợ lý online, HEAD `fb92c16d`: `lib/` 629 tệp, 125.809 dòng; `test/` 644 `_test` (656 `.dart`), 129.998 dòng. Trước đó 2026-10-16 sau gỡ cụm, HEAD `f702a884`: `lib/` 618 tệp, 124.393 dòng; `test/` 629 `_test` (640 `.dart`), 126.455 dòng. 2026-10-15: 626 tệp `.dart` (617 `_test`), 124.875 dòng; 2026-10-13, sau tách bốn trang lớn: 596 / 616 tệp, 122.667 / 123.486 dòng.)
 
 ```
 lib/
@@ -65,7 +65,7 @@ lib/
 │   ├── sync/          9      SyncEngine, normalizer, checkpoint, hai cổng `CongSoDuVi` · `CongViBiGiu` (2026-10-16; `noiBoNgheKetQuaDay` đã về DI)
 │   ├── ui/            4      thong_bao_nhanh (toast), bieu_do_cham, do_chu, bao_che_day_toast
 │   └── utils/         9      CurrencyFormatter, gioi_han_do_dai, so_bang_chu, ngay_trong_cau, khop_ten, `tuan_iso`, `dung_sai_tien` (hàm thuần dùng chung — tiền lệ cho `domain/` mục 4)…
-├── features/        523 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation (+ `application/` ở năm mảng: ví · danh mục · hoá đơn · mục tiêu · thông báo)
+├── features/        533 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation (+ `application/` ở năm mảng: ví · danh mục · hoá đơn · mục tiêu · thông báo)
 │   ├── ai_edge/      83      data 23 · domain 55 · presentation 5 — luật, gói số, tool, SLM runtime, lớp chắn
 │   ├── transaction/  77      data 20 · domain 28 · presentation 29 (bloc/ 5 kể `ThemGiaoDichCubit` + state · widgets/them_giao_dich/ 7 tệp)
 │   ├── analytics/    61      data 9 · domain 18 · presentation 34 (widgets/phan_tich/ 14 tệp · widgets/xem_truoc_bao_cao/ 10 tệp)
@@ -73,7 +73,7 @@ lib/
 │   ├── goal/         49      data 4 · domain 18 · application 1 · presentation 26 (widgets/them_muc_tieu/ 7 tệp · widgets/chi_tiet_muc_tieu/ 7 tệp)
 │   ├── wallet/       33      data 8 · domain 9 · application 4 · presentation 12 (state/ 1)
 │   ├── budget/       30      data 8 · domain 9 · presentation 13
-│   ├── premium/      32      data 12 (models/ 4 · datasources/ 1 · repositories/ 3) · domain 7 · presentation 13 (bloc/ 4 · state/ 2) — dọn kiến trúc G94 lát 1, đếm 2026-10-18 (trước 27: data 8 · domain 8 · presentation 11)
+│   ├── premium/      42      data 13 (models/ 4 · datasources/ 1 · repositories/ 3) · domain 8 · presentation 21 (bloc/ 5 · state/ 2 · pages/ 4 · widgets/ 10) — G94 lát 2, đếm 2026-10-18 tối (lát 1: 32 — data 12 · domain 7 · presentation 13; trước lát 1: 27)
 │   ├── auth/         21      data 5 · domain 1 · presentation 15 (bloc/ 4 kể AuthBloc + current_account · pages/ 6 · state/ 1 · widgets/ 4)
 │   ├── category/     22      data 8 · domain 6 · application 2 · presentation 6
 │   ├── profile/       8      presentation 8
@@ -228,7 +228,7 @@ tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đ�
 **(3) Cổng + bộ chuyển.** Mọi ranh giới với nền tảng hay gói bên ngoài là một interface Dart thuần có một bản thi hành
 thật và bản giả trong test: `OsNotifier` (thông báo hệ điều hành), `DocChuAnh` (OCR), `SlmRuntime` / `PhienCongCu` (mô
 hình), `RealtimeSocket`, `NguonTaiNen` (tải mô hình), `MoLienKet` (khe hàm bọc `url_launcher`), `KenhTuChuyenTien` /
-`KenhBienDong` / `KenhPhienNganHang` / `NguonLyDoThoat` / `LuuTepPlatform` (sáu kênh `flowmoney/*` sang Kotlin, mỗi
+`KenhBienDong` / `KenhPhienNganHang` / `NguonLyDoThoat` / `LuuTepPlatform` / `LuuAnhQr` (bảy kênh `flowmoney/*` sang Kotlin — `flowmoney/luu_anh` thêm 2026-10-18, G94 —, mỗi
 kênh đứng sau một lớp Dart riêng; `tu_chuyen_tien_nen` dùng chung tệp với `KenhTuChuyenTien`). Đợt 2026-10-10 thêm hai cổng **bên trong** app theo cùng khuôn:
 `ThongBaoNguon` (giao diện ↔ bảng thông báo; từ 2026-10-15 là `ThongBaoRepository`) và `PhienDieuPhoi` (Bloc ↔ vòng đời phiên).
 
