@@ -14,7 +14,7 @@ class AppConstants {
       // (2026-09-22): nó không cần hai máy cùng Wi-Fi, thứ hoá ra không đúng
       // ngay cả khi hai máy nối Wi-Fi **trùng tên** — chúng nằm ở hai dải
       // khác nhau (192.168.1.x và 192.168.98.x) vì là hai thiết bị phát.
-      return 'https://managementfinance.onrender.com/api'; // Android emulator → host machine
+      return 'http://10.0.2.2:3000/api'; // Android emulator → host machine
     }
     // Dùng 127.0.0.1 chứ KHÔNG dùng `localhost`: trên Windows, `localhost`
     // thường phân giải thành ::1 (IPv6) trước, trong khi backend Express nghe
@@ -25,12 +25,11 @@ class AppConstants {
     //
     // Vẫn MỞ TRANG bằng http://localhost:9090 — CORS_ORIGIN phía backend đang
     // là `http://localhost:9090`, mở bằng 127.0.0.1:9090 sẽ bị CORS chặn thật.
-    return 'https://managementfinance.onrender.com/api'; // Web / Desktop
+    return 'http://127.0.0.1:3000/api'; // Web / Desktop
 
     // ── CLOUD (Render) — bỏ comment khi deploy ──────────────────────────
     // ignore: dead_code
     // return 'https://managementfinance.onrender.com/api';
-    // return 'http://127.0.0.1:3000/api';
   }
 
   static const Duration connectionTimeout = Duration(seconds: 30);
