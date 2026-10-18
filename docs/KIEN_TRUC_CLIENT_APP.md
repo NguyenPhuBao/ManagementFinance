@@ -43,8 +43,8 @@ canh bằng test quét mã nguồn (mục 6).
 
 ## 3. Cây thư mục
 
-`lib/` có **629** tệp `.dart`, **125.809** dòng (kể 14 tệp `.g.dart` do Drift sinh) — `git ls-files lib | grep '\.dart$'`
-và `… | xargs cat | wc -l`. `test/` có **644** tệp `*_test.dart` (656 tệp `.dart` kể cả helper), **129.998** dòng (đếm lại **2026-10-17 sau trợ lý online**, HEAD `fb92c16d`). (Trước đó 2026-10-16 sau gỡ cụm, HEAD `f702a884`: `lib/` 618 tệp, 124.393 dòng; `test/` 629 `_test` (640 `.dart`), 126.455 dòng. 2026-10-15: 626 tệp `.dart` (617 `_test`), 124.875 dòng; 2026-10-13, sau tách bốn trang lớn: 596 / 616 tệp, 122.667 / 123.486 dòng.)
+`lib/` có **634** tệp `.dart`, **126.253** dòng (kể 14 tệp `.g.dart` do Drift sinh) — `git ls-files lib | grep '\.dart$'`
+và `… | xargs cat | wc -l`. `test/` có **647** tệp `*_test.dart` (659 tệp `.dart` kể cả helper), **130.633** dòng (đếm lại **2026-10-18 sau G94 lát 1** — dọn kiến trúc Premium, +5 tệp `lib/`, +3 tệp test — HEAD `cc300f61`). (Trước đó 2026-10-17 sau trợ lý online, HEAD `fb92c16d`: `lib/` 629 tệp, 125.809 dòng; `test/` 644 `_test` (656 `.dart`), 129.998 dòng. Trước đó 2026-10-16 sau gỡ cụm, HEAD `f702a884`: `lib/` 618 tệp, 124.393 dòng; `test/` 629 `_test` (640 `.dart`), 126.455 dòng. 2026-10-15: 626 tệp `.dart` (617 `_test`), 124.875 dòng; 2026-10-13, sau tách bốn trang lớn: 596 / 616 tệp, 122.667 / 123.486 dòng.)
 
 ```
 lib/
@@ -65,7 +65,7 @@ lib/
 │   ├── sync/          9      SyncEngine, normalizer, checkpoint, hai cổng `CongSoDuVi` · `CongViBiGiu` (2026-10-16; `noiBoNgheKetQuaDay` đã về DI)
 │   ├── ui/            4      thong_bao_nhanh (toast), bieu_do_cham, do_chu, bao_che_day_toast
 │   └── utils/         9      CurrencyFormatter, gioi_han_do_dai, so_bang_chu, ngay_trong_cau, khop_ten, `tuan_iso`, `dung_sai_tien` (hàm thuần dùng chung — tiền lệ cho `domain/` mục 4)…
-├── features/        518 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation (+ `application/` ở năm mảng: ví · danh mục · hoá đơn · mục tiêu · thông báo)
+├── features/        523 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation (+ `application/` ở năm mảng: ví · danh mục · hoá đơn · mục tiêu · thông báo)
 │   ├── ai_edge/      83      data 23 · domain 55 · presentation 5 — luật, gói số, tool, SLM runtime, lớp chắn
 │   ├── transaction/  77      data 20 · domain 28 · presentation 29 (bloc/ 5 kể `ThemGiaoDichCubit` + state · widgets/them_giao_dich/ 7 tệp)
 │   ├── analytics/    61      data 9 · domain 18 · presentation 34 (widgets/phan_tich/ 14 tệp · widgets/xem_truoc_bao_cao/ 10 tệp)
