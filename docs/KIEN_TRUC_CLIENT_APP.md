@@ -73,7 +73,7 @@ lib/
 │   ├── goal/         49      data 4 · domain 18 · application 1 · presentation 26 (widgets/them_muc_tieu/ 7 tệp · widgets/chi_tiet_muc_tieu/ 7 tệp)
 │   ├── wallet/       33      data 8 · domain 9 · application 4 · presentation 12 (state/ 1)
 │   ├── budget/       30      data 8 · domain 9 · presentation 13
-│   ├── premium/      27      data 8 · domain 8 · presentation 11 (bloc/ thay cubit/; state/ 1)
+│   ├── premium/      32      data 12 (models/ 4 · datasources/ 1 · repositories/ 3) · domain 7 · presentation 13 (bloc/ 4 · state/ 2) — dọn kiến trúc G94 lát 1, đếm 2026-10-18 (trước 27: data 8 · domain 8 · presentation 11)
 │   ├── auth/         21      data 5 · domain 1 · presentation 15 (bloc/ 4 kể AuthBloc + current_account · pages/ 6 · state/ 1 · widgets/ 4)
 │   ├── category/     22      data 8 · domain 6 · application 2 · presentation 6
 │   ├── profile/       8      presentation 8

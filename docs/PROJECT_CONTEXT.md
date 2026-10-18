@@ -613,6 +613,31 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-18)
 
+### 🧱 G94 lát 1 — dọn kiến trúc mảng Premium, không đổi hành vi (2026-10-18 tối)
+
+Spec `docs/superpowers/specs/2026-10-18-g94-don-thanh-toan-premium-design.md` mục 4; kế hoạch
+`docs/superpowers/plans/2026-10-18-g94-lat-1-don-kien-truc-premium.md` (gitignore). Người dùng chốt cùng ngày: mọi phần mới
+hay cũ phải khớp `KIEN_TRUC_CLIENT_APP.md`, và lượt G94 mở đầu bằng việc đưa **cả mảng Premium** về khớp.
+
+- **Chín chỗ lệch đã sửa** (mục 1.3 spec): model + bộ đọc JSON (`TrangThaiGoi`, `TranGoi`, `DonThanhToan`, `DongLichSu`)
+  `domain/` → `data/models/`; hằng / enum gói → `domain/hang_goi.dart`, trạng thái đơn → `domain/trang_thai_don.dart`;
+  vòng import `trang_thai_goi` ↔ `tran_goi` gỡ; `domain/cau_loi_thanh_toan.dart` hết import Dio (câu theo
+  `LoaiLoiThanhToan`, phép đọc Dio → `loaiLoiThanhToanTu` ở `data/datasources/payment_api.dart`); `PaymentApi` →
+  `data/datasources/`; `DonThanhToanRepository` (interface + `_impl`) — Nâng cấp, Lịch sử mua, Chờ thanh toán thôi gọi
+  thẳng API, nhận lỗi đã phân loại `LoiThanhToan`; bộ hỏi theo nhịp → `presentation/state/`; cửa chặn route
+  `chan_theo_goi` → `presentation/bloc/`; `goi_repository` lấy `AppLifecycleState` từ `dart:ui`.
+- **Không lệch, giữ chỗ** (tiền lệ toàn app — store / nguồn / cổng nền tảng ở `data/` gốc): `goi_store`,
+  `dem_dang_hoat_dong`, `mo_lien_ket`, `co_quyen_nen`.
+- **Cách làm:** năm commit mã (`a99dd4b2` · `a32b056c` · `61da10b0` · `9d9c134b` · `a0f3e3c2`), mỗi commit `flutter test`
+  toàn phần xanh. ~85 lượt sửa import do một script dò ký hiệu (scratchpad, không vào repo). Lớp `TranGoi` chép sang tệp
+  mới được đối chiếu bằng máy (trùng 71 dòng). Chuỗi thoát ` ` của `tomTatTran` giữ nguyên. Danh sách cho phép của
+  quét 21 trỏ đường mới.
+- **Đo:** `flutter test` **7.406 pass / 10 skip / 0 fail** (+8: bộ đọc lỗi Dio 4, repository 4; câu-theo-loại 4 thay 4 ca
+  cũ), `flutter analyze` **20**. Kiểm bằng `grep`: `data/` + `domain/` của Premium 0 import `flutter/widgets` ·
+  `material` · `go_router`; `domain/` 0 import Dio; `presentation/` 0 `sl<PaymentApi>`. Mảng Premium nay **32** tệp.
+- **Kế tiếp:** lát 2 (tính năng G94) viết kế hoạch sau khi người dùng xác nhận năm màn Stitch (spec mục 9 — năm lượt
+  `generate_screen_from_text` trả `timeout`, chưa thấy màn). Sau lượt G94: soát kiến trúc toàn client-app (spec mục 13).
+
 ### 🩹 Mở lượt G89 + G94: đợt sửa hai lỗi đang chạy ở màn Chờ thanh toán (2026-10-18 tối)
 
 Thứ tự người dùng chốt chiều cùng ngày: đầu lượt chỉ sửa hai lỗi ở mã backend viết vào màn Chờ thanh toán, mỗi lỗi có ca

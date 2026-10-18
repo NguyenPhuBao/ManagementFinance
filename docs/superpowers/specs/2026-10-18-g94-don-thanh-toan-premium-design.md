@@ -3,6 +3,12 @@
 **Ngày:** 2026-10-18. **Trạng thái:** thiết kế người dùng duyệt trong chat (ba phần, cùng các câu hỏi về lối xác nhận,
 cấu trúc màn, thẻ Nâng cấp, ảnh QR, màn Chờ, trang PayOS, phạm vi dọn kiến trúc); bản viết **người dùng duyệt cùng
 ngày** — câu hỏi mở mục 12 giữ mặc định (đơn `PENDING` chỉ một dòng trạng thái). Màn Stitch: mục 9.
+
+> ✅ **Lát 1 XONG 2026-10-18 tối** — năm commit mã `a99dd4b2` → `a0f3e3c2` (kế hoạch
+> `plans/2026-10-18-g94-lat-1-don-kien-truc-premium.md`, gitignore), mỗi commit `flutter test` toàn phần xanh; cuối lát
+> 7.406 / 10 skip, analyze 20. Thi công đúng mục 4, một chỗ chi tiết hơn bản viết: thêm `loaiLoiCua(Object)` ở
+> `domain/cau_loi_thanh_toan.dart` để ba trang lấy loại lỗi từ `LoiThanhToan` mà không lặp phép `is`. Lát 2: kế hoạch
+> viết sau khi người dùng xác nhận năm màn Stitch.
 Mở lượt **G89 + G94** — đợt đầu của lượt (sửa hai lỗi đang chạy, `a52f9181`) đã xong trước bản này. G89 (bảo trì /
 phong toả AIOps) là phân hệ độc lập, **spec riêng**, làm sau.
 

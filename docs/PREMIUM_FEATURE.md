@@ -67,18 +67,28 @@ quyền của server; khi server không trả khoá thì chúng **mở**, nên t
 
 ## 3. Kiến trúc & tệp (`lib/features/premium/`)
 
+Cây sau đợt **dọn kiến trúc G94 lát 1** (2026-10-18, spec `specs/2026-10-18-g94-don-thanh-toan-premium-design.md` mục 4 —
+khớp `KIEN_TRUC_CLIENT_APP.md` mục 4 · 5 · 8):
+
 ```
-domain/  trang_thai_goi.dart (TrangThaiGoi · laPremium(now) · soNgayConLai · trangThaiTuJson accountType??type)
-         tran_goi.dart (TranGoi.macDinh 3/3/3 · conTaoDuoc · maTran) · chuyen_huong_theo_goi.dart (?id = sửa → qua)
-         don_thanh_toan.dart (DonThanhToan · TrangThaiDon, chuỗi lạ = pending) · cau_loi_thanh_toan.dart (không URL)
-         nhac_het_han.dart (0..3 ngày) · dong_lich_su.dart
-data/    goi_store.dart (secure storage `goi_tai_khoan_<id>`) · payment_api.dart (Dio, bocData) · repositories/goi_repository.dart
-         (kho thắng type · lamMoi không ném · resumed giãn 5' · socket hỏi ngay) · dem_dang_hoat_dong.dart
-         (NguonDemDangHoatDong) · chan_theo_goi.dart (redirectTaoTheoGoi) · bo_hoi_trang_thai_don.dart (3 s) ·
-         mo_lien_ket.dart (tệp DUY NHẤT import url_launcher — test quét 18)
-presentation/ bloc/goi_cubit.dart (singleton, gốc cây) · bloc/phien_goi_tu_auth.dart · bloc/co_quyen.dart · state/an_nhac_het_han.dart ·
-         pages/nang_cap_page · cho_thanh_toan_page · lich_su_mua_page · widgets/nut_nang_cap · the_goi_tai_khoan ·
-         dong_nhac_het_han
+domain/  hang_goi.dart (kGiaPremium · kSoNgayGoi · LoaiGoi · LoaiTran — không import gì)
+         tran_goi.dart (conTaoDuoc · KetQuaTran · maTran · tenTran · tomTatTran) · chuyen_huong_theo_goi.dart (?id = sửa → qua)
+         trang_thai_don.dart (TrangThaiDon · trangThaiDonTuChuoi, chuỗi lạ = pending · chuTrangThaiDon)
+         cau_loi_thanh_toan.dart (LoaiLoiThanhToan · LoiThanhToan · loaiLoiCua · câu theo loại, không URL — Dart thuần)
+         quyen_tinh_nang.dart (duocDung) · nhac_het_han.dart (0..3 ngày)
+data/    models/trang_thai_goi.dart (TrangThaiGoi · laPremium(now) · soNgayConLai · trangThaiTuJson accountType??type · kho)
+         models/tran_goi.dart (TranGoi.macDinh 3/3/3) · models/don_thanh_toan.dart (DonThanhToan · donTuJson)
+         models/dong_lich_su.dart (DongLichSu · dongLichSuTu)
+         datasources/payment_api.dart (Dio, bocData · loaiLoiThanhToanTu: DioException → loại)
+         repositories/goi_repository.dart (kho thắng type · lamMoi không ném · resumed giãn 5' · socket hỏi ngay)
+         repositories/don_thanh_toan_repository.dart (+ _impl: taoDon · trangThaiDon · lichSu · xacNhan; lỗi → LoiThanhToan)
+         goi_store.dart (secure storage `goi_tai_khoan_<id>`) · dem_dang_hoat_dong.dart (NguonDemDangHoatDong) ·
+         co_quyen_nen.dart · mo_lien_ket.dart (tệp DUY NHẤT import url_launcher — test quét 18)
+presentation/ bloc/goi_cubit.dart (singleton, gốc cây) · bloc/phien_goi_tu_auth.dart · bloc/co_quyen.dart ·
+         bloc/chan_theo_goi.dart (redirectTaoTheoGoi · chanTheoGoi · chanTheoQuyen) ·
+         state/an_nhac_het_han.dart · state/bo_hoi_trang_thai_don.dart (3 s) ·
+         pages/nang_cap_page · cho_thanh_toan_page · lich_su_mua_page (đọc / ghi đơn qua DonThanhToanRepository) ·
+         widgets/nut_nang_cap · the_goi_tai_khoan · dong_nhac_het_han
 ```
 
 Sửa nơi khác: `RealtimeEvent.taiKhoanNangCap` (`account.upgraded`, `canDongBoLai false`, `loiNhan null`) ·
@@ -195,7 +205,7 @@ nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
   `PhienDieuPhoiThat.moPhienCucBo` (**G93**, 2026-10-14 — từ G86 lượt quét đầu mỗi phiên chạy **trước** `AuthSuccess`, và
   trước khi có hook thì Basic bị tự trả / tự trích ở lượt ấy). Vì tài khoản đã đặt sẵn, `noiPhien` so với **phiên đã nối
   của nó** chứ không với `idaccount` — không thì mất `lamMoi` và `loaiPhien` ở `AuthSuccess`.
-- **Route:** `redirectTaoTheoGoi(LoaiTran)` (trần) và `redirectTheoQuyen(MaQuyen)` (bật/tắt) ở `premium/data/chan_theo_goi.dart`;
+- **Route:** `redirectTaoTheoGoi(LoaiTran)` (trần) và `redirectTheoQuyen(MaQuyen)` (bật/tắt) ở `premium/presentation/bloc/chan_theo_goi.dart` (trước 2026-10-18: `data/`);
   màn Nâng cấp nhận `?tran=` hoặc `?quyen=<maServer>` (`duongNangCap`), mã lạ → như không có tham số. Cả hai **chờ kho gói
   nạp xong** (`GoiRepository.choNapKho()`) rồi mới đọc `idaccount` + `hienTai` (G92, 2026-10-14): router chạy lại `redirect`
   lúc `AuthSuccess`, đúng khi `noiPhien` vừa gán tài khoản mà secure storage chưa trả lời — đọc ngay là Basic mặc định.
@@ -218,7 +228,7 @@ Backend tự sửa 7 tệp client (`TranGoi` thêm `hoaDon` · `danhMucRieng`, `
 1. ⚠️ **Đừng xét bảng bằng `goi.loai`.** Server trả `accountType` là gói **gốc** (`'Premium'` cả khi đã hết hạn) còn
    `features` / `limits` là của gói **hiệu lực** (`payment.service.js`, `effectiveType`).
 2. **Test quét `lib/` thứ 21** — `test/features/premium/quyen_tinh_nang_mot_noi_test.dart`: `quyenTinhNang` chỉ được đọc ở
-   `quyen_tinh_nang.dart` (và kho ở `trang_thai_goi.dart`); chuỗi mã quyền server chỉ nằm ở `MaQuyen`.
+   `quyen_tinh_nang.dart` (và kho ở `data/models/trang_thai_goi.dart`); chuỗi mã quyền server chỉ nằm ở `MaQuyen`.
 3. `redirectTaoTheoGoi` đọc `sl<GoiRepository>()` **và** `sl<NguonDemDangHoatDong>()` lúc chạy — test dựng `AppRouter`
    thật rồi đi qua route tạo (nay thêm `/bills/add`, `/categories/*/new`) phải đăng ký cả hai.
 4. `context.watch<GoiCubit>()` — một `emit` cần **hai** nhịp `pump` mới tới widget trong test.
