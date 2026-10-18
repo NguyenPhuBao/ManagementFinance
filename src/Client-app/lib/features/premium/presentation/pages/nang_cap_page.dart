@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../data/payment_api.dart';
+import '../../data/datasources/payment_api.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
 import '../../data/models/don_thanh_toan.dart';
 import '../../domain/quyen_tinh_nang.dart';
@@ -70,7 +70,7 @@ class _NangCapPageState extends State<NangCapPage> {
       await context.push('/premium/cho-thanh-toan', extra: don);
     } catch (e) {
       if (!mounted) return;
-      baoNhanh(cauLoiThanhToan(e), loai: LoaiThongBao.loi);
+      baoNhanh(cauLoiThanhToan(loaiLoiThanhToanTu(e)), loai: LoaiThongBao.loi);
     } finally {
       if (mounted) setState(() => _dangTao = false);
     }

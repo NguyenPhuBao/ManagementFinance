@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../data/payment_api.dart';
+import '../../data/datasources/payment_api.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
 import '../../domain/trang_thai_don.dart';
 import '../../data/models/dong_lich_su.dart';
@@ -51,7 +51,7 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _loi = cauLoiThanhToan(e);
+        _loi = cauLoiThanhToan(loaiLoiThanhToanTu(e));
         _dangNap = false;
       });
     }

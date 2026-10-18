@@ -21,7 +21,7 @@ import 'package:flowmoney/features/notification/data/notification_prefs_store.da
 import 'package:flowmoney/features/notification/presentation/pages/dong_y_nhac_sau_ngan_hang_page.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_settings_page.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
-import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
 import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
 import 'package:flowmoney/features/premium/domain/hang_goi.dart';

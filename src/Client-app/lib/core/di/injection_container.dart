@@ -74,7 +74,7 @@ import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
 import '../../features/premium/data/repositories/goi_repository.dart';
 import '../../features/premium/data/goi_store.dart';
-import '../../features/premium/data/payment_api.dart';
+import '../../features/premium/data/datasources/payment_api.dart';
 import '../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../features/premium/presentation/state/an_nhac_het_han.dart';
 import '../../features/premium/presentation/bloc/goi_cubit.dart';

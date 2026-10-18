@@ -15,7 +15,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/bo_hoi_trang_thai_don.dart';
 import '../../data/mo_lien_ket.dart';
-import '../../data/payment_api.dart';
+import '../../data/datasources/payment_api.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
 import '../../data/models/don_thanh_toan.dart';
 import '../../domain/trang_thai_don.dart';
@@ -209,7 +209,7 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
       // (G94 việc 3 — trước đây chỉ `debugPrint`).
       if (mounted) {
         baoNhanh(
-          cauLoiThanhToan(e, cauTuChoi: 'Không xác nhận được đơn này. Thử lại sau.'),
+          cauLoiThanhToan(loaiLoiThanhToanTu(e), cauTuChoi: 'Không xác nhận được đơn này. Thử lại sau.'),
           loai: LoaiThongBao.loi,
         );
       }
