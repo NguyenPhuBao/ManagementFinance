@@ -178,7 +178,10 @@ const syncService = {
         let code = 'DB_ERROR';
         let friendlyMessage = 'Dữ liệu không hợp lệ hoặc vi phạm ràng buộc cơ sở dữ liệu';
 
-        if (err.code === 'BILL_ALREADY_PAID' || /BILL_ALREADY_PAID/i.test(rawMsg)) {
+        if (err.code === 'BILL_PERIOD_ALREADY_PAID' || /BILL_PERIOD_ALREADY_PAID/i.test(rawMsg)) {
+          code = 'BILL_PERIOD_ALREADY_PAID';
+          friendlyMessage = err.message || 'Kỳ hoá đơn này đã được thanh toán ở một kỳ trùng';
+        } else if (err.code === 'BILL_ALREADY_PAID' || /BILL_ALREADY_PAID/i.test(rawMsg)) {
           code = 'BILL_ALREADY_PAID';
           friendlyMessage = err.message || 'Hóa đơn đã được thanh toán, không thể thay đổi trạng thái';
         } else if (/fk_\w+_account/i.test(rawMsg) || /Foreign key.*account/i.test(rawMsg)) {

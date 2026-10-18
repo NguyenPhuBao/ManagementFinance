@@ -31,6 +31,9 @@ class _ApiGia implements PaymentApi {
   Future<Map<String, Object?>> taoDon() => throw UnimplementedError();
   @override
   Future<Map<String, Object?>> trangThaiDon(int orderCode) => throw UnimplementedError();
+  @override
+  Future<Map<String, Object?>> xacNhanNangCap({required int orderCode, required bool accept}) =>
+      throw UnimplementedError();
 }
 
 void main() {

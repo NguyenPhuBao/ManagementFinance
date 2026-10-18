@@ -497,21 +497,112 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       });
     });
 
-    it('2.7. Xem chi tiết đơn hàng (Modal Chi tiết) hiển thị kèm mã VietQR và thông tin thanh toán', async () => {
+    it('2.7. Xem chi tiết đơn hàng (Modal Chi tiết): Đơn đã PAID xóa mã QR và hiển thị banner hoàn tất; Đơn PENDING hiển thị mã QR', async () => {
       render(<PaymentHistoryPage />);
 
       await waitFor(() => {
         expect(screen.getByText('#1001')).toBeInTheDocument();
       });
 
-      // Click xem chi tiết đơn #1001
+      // Click xem chi tiết đơn #1001 (PAID)
       const detailButtons = screen.getAllByTitle(/Xem chi tiết/i);
       fireEvent.click(detailButtons[0]);
 
       await waitFor(() => {
         expect(paymentApi.getOrderDetail).toHaveBeenCalledWith('ord-uuid-1');
+        expect(screen.getByText(/Đã thanh toán thành công/i)).toBeInTheDocument();
+        expect(screen.queryByAltText(/VietQR MB Bank/i)).not.toBeInTheDocument();
+      });
+
+      // Đóng modal
+      const closeButtons = screen.getAllByRole('button');
+      const closeBtn = closeButtons.find(b => b.innerHTML.includes('close'));
+      if (closeBtn) fireEvent.click(closeBtn);
+
+      // Mock getOrderDetail cho đơn #1002 (PENDING còn hạn)
+      paymentApi.getOrderDetail.mockResolvedValueOnce({
+        id: 'ord-uuid-2',
+        order_code: 1002,
+        package_type: 'PREMIUM_6_MONTHS',
+        amount: 270000,
+        amount_received: 0,
+        recognition_code: 'XYZ123',
+        status: 'PENDING',
+        qr_url: 'https://img.vietqr.io/image/test-qr.png',
+        created_at: new Date().toISOString(),
+        expired_at: new Date(Date.now() + 600000).toISOString(),
+      });
+
+      // Click xem chi tiết đơn #1002 (PENDING)
+      fireEvent.click(detailButtons[1]);
+
+      await waitFor(() => {
         expect(screen.getByText(/Mã QR Thanh toán VietQR \(MB Bank\)/i)).toBeInTheDocument();
         expect(screen.getByAltText(/VietQR MB Bank/i)).toBeInTheDocument();
+        expect(screen.getByText(/Thời gian còn lại/i)).toBeInTheDocument();
+      });
+    });
+
+    it('2.7b. Đơn hàng EXPIRED: Modal chi tiết và Bảng ngoài đồng bộ hiển thị "Đã hết hạn", xóa QR hoàn toàn', async () => {
+      paymentApi.getOrders.mockResolvedValue({
+        data: {
+          success: true,
+          data: {
+            items: [
+              {
+                id: 'ord-uuid-expired',
+                order_code: 9999,
+                package_type: 'PREMIUM_1_MONTH',
+                amount: 49000,
+                status: 'PENDING',
+                created_at: new Date(Date.now() - 3600000).toISOString(),
+                expired_at: new Date(Date.now() - 3000000).toISOString(),
+                account: { username: 'testuser', email: 'test@example.com' },
+              },
+            ],
+            total: 1,
+            page: 1,
+            limit: 10,
+          },
+        },
+      });
+
+      paymentApi.getOrderDetail.mockResolvedValue({
+        data: {
+          success: true,
+          data: {
+            id: 'ord-uuid-expired',
+            order_code: 9999,
+            package_type: 'PREMIUM_1_MONTH',
+            amount: 49000,
+            status: 'EXPIRED',
+            qr_url: null,
+            created_at: new Date(Date.now() - 3600000).toISOString(),
+            expired_at: new Date(Date.now() - 3000000).toISOString(),
+            account: { username: 'testuser', email: 'test@example.com' },
+          },
+        },
+      });
+
+      render(<PaymentHistoryPage />);
+
+      // Bảng ngoài hiển thị "Đã hết hạn" (đồng bộ)
+      await waitFor(() => {
+        expect(screen.getByText('#9999')).toBeInTheDocument();
+        expect(screen.getAllByText(/Đã hết hạn/i).length).toBeGreaterThanOrEqual(2);
+      });
+
+      // Mở modal chi tiết
+      const detailBtn = screen.getByTitle(/Xem chi tiết/i);
+      fireEvent.click(detailBtn);
+
+      await waitFor(() => {
+        // Modal bên trong cũng hiển thị banner "Đơn hàng đã hết hạn thanh toán"
+        expect(screen.getByText(/Đơn hàng đã hết hạn thanh toán/i)).toBeInTheDocument();
+        // Huy hiệu trạng thái trong modal cũng là "Đã hết hạn"
+        expect(screen.getAllByText(/Đã hết hạn/i).length).toBeGreaterThanOrEqual(3);
+        // Không có ảnh QR
+        expect(screen.queryByAltText(/VietQR MB Bank/i)).not.toBeInTheDocument();
       });
     });
 
@@ -542,11 +633,15 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       });
     });
 
-    it('2.9. Checkbox "Loại bỏ mẫu" kích hoạt gọi API getOrders và getStats kèm tham số excludeTemplate', async () => {
+    it('2.9. Thống kê KPI luôn loại trừ đơn mẫu, và Checkbox "Loại bỏ mẫu" kích hoạt lọc getOrders kèm excludeTemplate', async () => {
       render(<PaymentHistoryPage />);
 
       await waitFor(() => {
         expect(screen.getByText('#1001')).toBeInTheDocument();
+        // Tầng 2: getStats luôn luôn được gọi với excludeTemplate = 'true' bảo vệ doanh thu kinh doanh
+        expect(paymentApi.getStats).toHaveBeenCalledWith(
+          expect.objectContaining({ excludeTemplate: 'true' })
+        );
       });
 
       const checkbox = screen.getByLabelText(/Loại bỏ mẫu/i);
@@ -558,9 +653,6 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       await waitFor(() => {
         expect(paymentApi.getOrders).toHaveBeenCalledWith(
           expect.objectContaining({ excludeTemplate: 'true', page: 1 })
-        );
-        expect(paymentApi.getStats).toHaveBeenCalledWith(
-          expect.objectContaining({ excludeTemplate: 'true' })
         );
       });
     });

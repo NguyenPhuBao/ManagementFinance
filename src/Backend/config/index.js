@@ -1,5 +1,6 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+const { resolveRedisUrl } = require('./redis.resolver');
 
 const config = {
   env: process.env.NODE_ENV || 'development',
@@ -11,7 +12,7 @@ const config = {
   },
 
   redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    url: resolveRedisUrl(),
   },
 
   jwt: {
@@ -49,6 +50,17 @@ const config = {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
     from: process.env.SMTP_FROM || '"FlowMoney" <no-reply@flowmoney.app>',
+  },
+
+  resend: {
+    apiKey: process.env.RESEND_API_KEY,
+    from: process.env.RESEND_FROM || 'FlowMoney <onboarding@resend.dev>',
+  },
+
+  brevo: {
+    apiKey: process.env.BREVO_API_KEY,
+    senderEmail: process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || 'phubao12as@gmail.com',
+    senderName: process.env.BREVO_SENDER_NAME || 'FlowMoney',
   },
 
   casso: {

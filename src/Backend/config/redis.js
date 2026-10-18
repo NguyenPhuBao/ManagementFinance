@@ -1,7 +1,9 @@
 const Redis = require('ioredis');
 const logger = require('../core/logger');
+const { resolveRedisUrl } = require('./redis.resolver');
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const redisUrl = resolveRedisUrl();
+const redis = new Redis(redisUrl, {
   maxRetriesPerRequest: null,
   retryStrategy(times) {
     if (times > 10) return null;
@@ -11,7 +13,7 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
 });
 
 redis.on('connect', () => {
-  logger.info('Redis connected');
+  logger.info(`Redis connected [${process.env.REDIS_PROVIDER || 'default'}]`);
 });
 
 redis.on('error', (err) => {

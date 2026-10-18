@@ -87,12 +87,10 @@ const AppLayout = () => {
     socket.on('admin.security_alert', handleSocketAlert);
     socket.on('admin.security_blocked', handleSecurityBlocked);
     socket.on('admin.maintenance_changed', handleMaintenanceChanged);
-    socket.on('system.maintenance_changed', handleMaintenanceChanged);
     return () => {
       socket.off('admin.security_alert', handleSocketAlert);
       socket.off('admin.security_blocked', handleSecurityBlocked);
       socket.off('admin.maintenance_changed', handleMaintenanceChanged);
-      socket.off('system.maintenance_changed', handleMaintenanceChanged);
     };
   }, [socket]);
 

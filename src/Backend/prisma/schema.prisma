@@ -426,6 +426,7 @@ model payment_order {
   currency            String                @default("VND") @db.VarChar(3) @map("currency")
   status              String                @default("PENDING") @db.VarChar(25) @map("status")
   checkout_url        String?               @db.Text @map("checkout_url")
+  qr_url              String?               @db.Text @map("qr_url")
   payment_link_id     String?               @db.VarChar(100) @map("payment_link_id")
   created_at          DateTime              @default(now()) @db.Timestamp(6) @map("created_at")
   paid_at             DateTime?             @db.Timestamp(6) @map("paid_at")

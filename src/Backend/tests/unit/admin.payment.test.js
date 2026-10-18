@@ -330,7 +330,7 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       assert.ok(sample);
       assert.strictEqual(sample.status, 'PAID');
       assert.strictEqual(sample.amount, 49000);
-      assert.ok(sample.qr_url.includes('vietqr.io'));
+      assert.strictEqual(sample.qr_url, null); // Theo yêu cầu bảo vệ CSDL: Đơn đã thanh toán (PAID) phải xóa QR tránh chuyển khoản trùng
       assert.ok(createdTxData);
       assert.strictEqual(createdTxData.bank_code, 'MBBANK');
       assert.strictEqual(createdTxData.signature_verified, true);
@@ -547,6 +547,264 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       assert.strictEqual(capturedData.refundProof, '/assets/Refunds/refund-proof-123.png');
     } finally {
       paymentService.processOrderRefund = origProcessOrderRefund;
+    }
+  });
+
+  await t.test('16. Tầng 1 & 2: paymentRepository.autoExpirePendingOrders quét các đơn quá hạn, chuyển sang EXPIRED và xóa qr_url, checkout_url', async () => {
+    const origUpdateMany = prisma.payment_order.updateMany;
+    let capturedWhere = null;
+    let capturedData = null;
+
+    try {
+      prisma.payment_order.updateMany = async (args) => {
+        capturedWhere = args.where;
+        capturedData = args.data;
+        return { count: 3 };
+      };
+
+      const expiredCount = await paymentRepository.autoExpirePendingOrders();
+
+      // Tầng 1: Đếm số lượng đơn hết hạn thành công
+      assert.strictEqual(expiredCount, 3);
+
+      // Tầng 2 (Tác động CSDL thực tế):
+      // Đảm bảo chỉ quét các đơn PENDING có expired_at <= now
+      assert.strictEqual(capturedWhere.status, 'PENDING');
+      assert.ok(Array.isArray(capturedWhere.OR));
+
+      // Đảm bảo cập nhật status thành EXPIRED và xóa vĩnh viễn qr_url, checkout_url
+      assert.strictEqual(capturedData.status, 'EXPIRED');
+      assert.strictEqual(capturedData.qr_url, null);
+      assert.strictEqual(capturedData.checkout_url, null);
+    } finally {
+      prisma.payment_order.updateMany = origUpdateMany;
+    }
+  });
+
+  await t.test('17. Tầng 1 & 2: paymentService.getOrderDetailForAdmin triệt tiêu QR khi đơn đã PAID hoặc EXPIRED; giữ QR khi PENDING còn hạn', async () => {
+    const origGetDetail = paymentRepository.getOrderDetailForAdmin;
+
+    try {
+      // Case A: Đơn đã PAID -> Không còn QR, checkout_url = null
+      paymentRepository.getOrderDetailForAdmin = async (id) => ({
+        id,
+        order_code: 1001,
+        status: 'PAID',
+        qr_url: null,
+        checkout_url: null,
+        amount: 49000,
+      });
+
+      const paidDetail = await paymentService.getOrderDetailForAdmin('ord-paid-1');
+      assert.strictEqual(paidDetail.status, 'PAID');
+      assert.strictEqual(paidDetail.qr_url, null);
+      assert.strictEqual(paidDetail.checkout_url, null);
+
+      // Case B: Đơn đã EXPIRED -> Không còn QR, checkout_url = null
+      paymentRepository.getOrderDetailForAdmin = async (id) => ({
+        id,
+        order_code: 1002,
+        status: 'EXPIRED',
+        qr_url: null,
+        checkout_url: null,
+        amount: 49000,
+      });
+
+      const expiredDetail = await paymentService.getOrderDetailForAdmin('ord-exp-2');
+      assert.strictEqual(expiredDetail.status, 'EXPIRED');
+      assert.strictEqual(expiredDetail.qr_url, null);
+      assert.strictEqual(expiredDetail.checkout_url, null);
+
+      // Case C: Đơn PENDING còn hạn -> Bảo toàn QR để thanh toán
+      paymentRepository.getOrderDetailForAdmin = async (id) => ({
+        id,
+        order_code: 1003,
+        status: 'PENDING',
+        qr_url: 'https://img.vietqr.io/image/970422-2512070399999-compact2.png',
+        checkout_url: 'https://pay.payos.vn/web/test',
+        amount: 49000,
+        expired_at: new Date(Date.now() + 600000),
+      });
+
+      const pendingDetail = await paymentService.getOrderDetailForAdmin('ord-pending-3');
+      assert.strictEqual(pendingDetail.status, 'PENDING');
+      assert.ok(pendingDetail.qr_url.includes('vietqr.io'));
+      assert.strictEqual(pendingDetail.checkout_url, 'https://pay.payos.vn/web/test');
+    } finally {
+      paymentRepository.getOrderDetailForAdmin = origGetDetail;
+    }
+  });
+
+  await t.test('18. Tầng 1 & 2: paymentRepository.sanitizeOrderData tự động ép status=EXPIRED và xóa qr_url khi đơn PENDING đã quá hạn', async () => {
+    // Đơn PENDING nhưng expired_at ở quá khứ
+    const expiredRawOrder = {
+      order_code: BigInt(8888),
+      amount: { toNumber: () => 49000 },
+      status: 'PENDING',
+      expired_at: new Date(Date.now() - 60000),
+      qr_url: 'https://img.vietqr.io/image/test.png',
+      checkout_url: 'https://pay.payos.vn/test',
+    };
+
+    const sanitized = paymentRepository.sanitizeOrderData(expiredRawOrder);
+
+    // Tầng 1: Chuyển đổi kiểu dữ liệu BigInt & Decimal thành Number
+    assert.strictEqual(sanitized.order_code, 8888);
+    assert.strictEqual(sanitized.amount, 49000);
+
+    // Tầng 2: Tác động logic an toàn - chuyển EXPIRED và triệt tiêu QR
+    assert.strictEqual(sanitized.status, 'EXPIRED');
+    assert.strictEqual(sanitized.qr_url, null);
+    assert.strictEqual(sanitized.checkout_url, null);
+  });
+
+  await t.test('19. Tầng 2: getPaymentSummaryStats mặc định LUÔN áp dụng where.is_template = false loại trừ đơn mẫu', async () => {
+    const origCount = prisma.payment_order.count;
+    const origAggregate = prisma.payment_order.aggregate;
+    let capturedWhereCount = null;
+    let capturedWhereAggregate = null;
+
+    prisma.payment_order.count = async ({ where }) => {
+      capturedWhereCount = where;
+      return 5;
+    };
+
+    prisma.payment_order.aggregate = async ({ where }) => {
+      capturedWhereAggregate = where;
+      return {
+        _sum: { amount: { toNumber: () => 245000 } },
+      };
+    };
+
+    try {
+      // Gọi getPaymentSummaryStats mà không truyền options gì cả
+      const stats = await paymentRepository.getPaymentSummaryStats();
+
+      // Xác minh System Impact: Query bắt buộc phải gán where.is_template = false
+      assert.strictEqual(capturedWhereCount.is_template, false, 'Prisma count where phải lọc is_template = false');
+      assert.strictEqual(capturedWhereAggregate.is_template, false, 'Prisma aggregate where phải lọc is_template = false');
+      assert.strictEqual(stats.totalRevenue, 245000);
+    } finally {
+      prisma.payment_order.count = origCount;
+      prisma.payment_order.aggregate = origAggregate;
+    }
+  });
+
+  await t.test('20. Tầng 2: findOrdersByAccount chỉ lấy đơn thật của người dùng (where.is_template = false)', async () => {
+    const origCount = prisma.payment_order.count;
+    const origFindMany = prisma.payment_order.findMany;
+    let capturedCountWhere = null;
+    let capturedFindManyWhere = null;
+
+    prisma.payment_order.count = async ({ where }) => {
+      capturedCountWhere = where;
+      return 2;
+    };
+
+    prisma.payment_order.findMany = async ({ where }) => {
+      capturedFindManyWhere = where;
+      return [
+        {
+          id: 'ord-real-1',
+          idaccount: 10,
+          order_code: BigInt(1001),
+          amount: { toNumber: () => 49000 },
+          status: 'PAID',
+          is_template: false,
+          created_at: new Date(),
+        },
+      ];
+    };
+
+    try {
+      const res = await paymentRepository.findOrdersByAccount(10, { page: 1, limit: 10 });
+      assert.strictEqual(capturedCountWhere.idaccount, 10);
+      assert.strictEqual(capturedCountWhere.is_template, false, 'count phải lọc is_template = false');
+      assert.strictEqual(capturedFindManyWhere.idaccount, 10);
+      assert.strictEqual(capturedFindManyWhere.is_template, false, 'findMany phải lọc is_template = false');
+      assert.strictEqual(res.items.length, 1);
+      assert.strictEqual(res.items[0].is_template, false);
+    } finally {
+      prisma.payment_order.count = origCount;
+      prisma.payment_order.findMany = origFindMany;
+    }
+  });
+
+  await t.test('21. Tầng 2: handlePayOSWebhook với đơn mẫu cập nhật PAID nhưng TUYỆT ĐỐI KHÔNG gia hạn Premium', async () => {
+    const origFindUnique = prisma.payment_order.findUnique;
+    const origRecordTx = paymentRepository.recordTransaction;
+    const origUpdateStatus = paymentRepository.updateOrderPaymentStatus;
+    const origActivate = paymentRepository.activatePremiumSubscription;
+
+    let recordedTx = false;
+    let updatedStatus = false;
+    let activatedPremium = false;
+
+    // Giả lập đơn hàng mẫu is_template = true
+    paymentRepository.findOrderByCode = async () => ({
+      id: 'ord-sample-999',
+      idaccount: 5,
+      order_code: 999999,
+      amount: 2000,
+      status: 'PENDING',
+      is_template: true,
+      account: { type: 'Basic', premium_expires_at: null },
+    });
+
+    paymentRepository.recordTransaction = async () => {
+      recordedTx = true;
+      return { id: 'tx-sample-1' };
+    };
+
+    paymentRepository.updateOrderPaymentStatus = async ({ status }) => {
+      if (status === 'PAID') updatedStatus = true;
+      return { id: 'ord-sample-999', status: 'PAID' };
+    };
+
+    paymentRepository.activatePremiumSubscription = async () => {
+      activatedPremium = true;
+      return {};
+    };
+
+    const mockWebhookPayload = {
+      code: '00',
+      desc: 'success',
+      data: {
+        orderCode: 999999,
+        amount: 2000,
+        description: 'Test chuyen khoan mau 2000d',
+        accountNumber: '0000',
+        reference: 'REF-SAMPLE-999',
+        transactionDateTime: new Date().toISOString(),
+        currency: 'VND',
+        paymentLinkId: 'plink-sample-999',
+        code: '00',
+        desc: 'success',
+        counterAccountBankId: 'MB',
+        counterAccountBankName: 'MB Bank',
+        counterAccountName: 'NGUYEN PHU BAO',
+        counterAccountNumber: '9999',
+        virtualAccountName: 'FINANCE TEST',
+        virtualAccountNumber: '8888',
+      },
+      signature: 'dummy_valid_sig',
+    };
+
+    const payosClient = require('../../modules/payment/payos.client');
+    const origVerify = payosClient.verifyWebhookData;
+    payosClient.verifyWebhookData = () => mockWebhookPayload.data;
+
+    try {
+      const res = await paymentService.handlePayOSWebhook(mockWebhookPayload);
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(recordedTx, true, 'Phải ghi nhận transaction để đối soát');
+      assert.strictEqual(updatedStatus, true, 'Phải cập nhật status đơn mẫu sang PAID');
+      assert.strictEqual(activatedPremium, false, 'TUYỆT ĐỐI KHÔNG gia hạn Premium cho đơn mẫu');
+    } finally {
+      paymentRepository.recordTransaction = origRecordTx;
+      paymentRepository.updateOrderPaymentStatus = origUpdateStatus;
+      paymentRepository.activatePremiumSubscription = origActivate;
+      payosClient.verifyWebhookData = origVerify;
     }
   });
 });

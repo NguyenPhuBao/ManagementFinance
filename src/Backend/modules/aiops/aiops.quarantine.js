@@ -393,9 +393,9 @@ class AIOpsQuarantine {
       });
     }
 
-    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Khóa tài khoản trong database
+    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Vô hiệu hóa tài khoản trong database
     if (cleanUser && cleanUser !== 'all' && cleanUser !== 'N/A') {
-      this._syncAccountStatusToDatabase(idaccount || cleanUser, 'Locked', reason || 'Cách ly tự động do phát hiện vi phạm an ninh').catch(() => { });
+      this._syncAccountStatusToDatabase(idaccount || cleanUser, 'Inactive', reason || 'Cách ly tự động do phát hiện vi phạm an ninh').catch(() => { });
     }
 
     this._emitQuarantineEvents(record);
@@ -749,11 +749,11 @@ class AIOpsQuarantine {
       }
     }
 
-    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Khóa vĩnh viễn tài khoản
+    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Vô hiệu hóa tài khoản
     await this._syncAccountStatusToDatabase(
       usernameOrId,
-      'Locked',
-      'Quản trị viên khóa vĩnh viễn tài khoản qua AIOps Sentinel do phát hiện vi phạm an ninh'
+      'Inactive',
+      'Quản trị viên vô hiệu hóa tài khoản qua AIOps Sentinel do phát hiện vi phạm an ninh'
     );
 
     this._emitUpdatedEvent();
@@ -835,10 +835,10 @@ class AIOpsQuarantine {
       }
     }
 
-    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Tạm khóa tài khoản
+    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Vô hiệu hóa tài khoản tạm thời
     await this._syncAccountStatusToDatabase(
       usernameOrId,
-      'Locked',
+      'Inactive',
       reason || `Quản trị viên tạm khóa tài khoản (${Math.round(dur / 3600000)} giờ) qua AIOps Sentinel`
     );
 

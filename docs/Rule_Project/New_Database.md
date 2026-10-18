@@ -442,3 +442,31 @@ Toàn bộ 13 bảng (171 cột — đếm bằng câu truy vấn thông tin sch
 | **8** | **Thời hạn lưu trữ & Tự động thanh lọc (Data Retention & Purge)** | • Purge OTP cũ sau 24 giờ.<br>• Purge RefreshToken hết hạn/thu hồi sau 30 ngày.<br>• Trigger CSDL khóa lệnh `DELETE` vật lý bảng `transaction` và `audit_log`. | **✅ ĐÃ TRIỂN KHAI** (Scheduler & Migration 10) |
 | **9** | **Quy trình Ẩn danh hóa triệt để khi xóa tài khoản** | • Soft Delete 30 ngày cho phép khôi phục.<br>• Sau 30 ngày: Ẩn danh hóa toàn bộ Họ tên, Email, SĐT, Địa chỉ, Ghi chú, Ảnh biên lai.<br>• Bảo toàn số dư và số tiền giao dịch cho tính toàn vẹn hệ thống tài chính. | **✅ ĐÃ TRIỂN KHAI** |
 
+---
+
+# 5. Phụ Lục Các Bảng CSDL Mở Rộng & Cơ Chế DB Guard
+
+Tuân thủ nghiêm ngặt **Rule 10 (DB Guard)**: Toàn bộ bảng và cột mới được tạo qua script SQL DDL trong thư mục `database/` và thực thi trên Supabase SQL Editor. CẤM TUYỆT ĐỐI chạy `prisma migrate dev` hay `prisma db push` trên Cloud Supabase để không làm mất Partial Indexes (`WHERE "Delete_at" IS NULL`) và các Triggers bảo mật.
+
+### 5.1. Bảng `payment_order` (Đơn hàng thanh toán PayOS - Migration 15, 19, 28)
+- **PK**: `id` (`VARCHAR(36)` UUID)
+- **FK**: `idaccount` $\rightarrow$ `Account(Idaccount)` (`ON DELETE CASCADE`)
+- **UK**: `order_code` (`BIGINT`) - Mã đơn hàng duy nhất gửi sang PayOS
+- **Cột**: `package_type` (`VARCHAR(30)`), `amount` (`DECIMAL(15,2)`), `amount_received` (`DECIMAL(15,2)`), `fee` (`DECIMAL(15,2)`), `recognition_code` (`VARCHAR(10)`), `transfer_content` (`VARCHAR(100)`), `currency` (`VARCHAR(3)`), `status` (`VARCHAR(25)`: `PENDING`, `PAID`, `CANCELLED`, `EXPIRED`, `WAITING_CONFIRMATION`, `REFUND_PENDING`, `REFUNDED`), `checkout_url` (`TEXT`), `payment_link_id` (`VARCHAR(100)`), `is_template` (`BOOLEAN`), `refunded_at` (`TIMESTAMP(6)`), `refunded_amount` (`DECIMAL(15,2)`), `refund_reason` (`TEXT`), `refund_proof` (`TEXT`), `created_at`, `paid_at`, `expired_at`.
+- **Index**: `idaccount`, `status`, `order_code`, `recognition_code`, `is_template`.
+
+### 5.2. Bảng `payment_transaction` (Nhật ký đối soát Webhook - Migration 15)
+- **PK**: `id` (`VARCHAR(36)` UUID)
+- **FK**: `order_id` $\rightarrow$ `payment_order(id)` (`ON DELETE CASCADE`), `idaccount` $\rightarrow$ `Account(Idaccount)`
+- **Cột**: `payos_transaction_id` (`VARCHAR(100)`), `amount` (`DECIMAL(15,2)`), `bank_code` (`VARCHAR(50)`), `transaction_time` (`TIMESTAMP(6)`), `signature_verified` (`BOOLEAN`), `raw_webhook_hash` (`VARCHAR(256)`), `created_at`.
+- **Index**: `order_id`, `idaccount`.
+
+### 5.3. Bảng `maintenance_history` (Nhật ký lịch sử bảo trì hệ thống)
+- **PK**: `id` (Serial / Integer hoặc UUID)
+- **Cột**: `type` (`VARCHAR(20)`: `EMERGENCY` / `SCHEDULED`), `reason` (`TEXT`), `activated_by` (`VARCHAR(100)`), `start_time` (`TIMESTAMP(6)`), `end_time` (`TIMESTAMP(6)`), `status` (`VARCHAR(20)`: `SCHEDULED`, `ONGOING`, `COMPLETED`, `CANCELLED`), `created_at`.
+- **Index**: `status`, `start_time`, `end_time`.
+
+### 5.4. Cột mở rộng bảng `account`
+- `premium_expires_at` (`TIMESTAMP(6)` NULL): Thời điểm hết hạn gói Premium của tài khoản. Quản lý bởi Payment Service và Scheduler hạ cấp tự động 0h00 hàng ngày.
+
+

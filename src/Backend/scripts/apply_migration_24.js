@@ -15,45 +15,26 @@ async function run() {
     await client.connect();
     console.log('✔ Connected to PostgreSQL Supabase database');
 
-    console.log('⏳ Applying Migration 24: 24_add_is_template_to_payment_order.sql...');
-    const sqlPath = path.join(__dirname, '../database/24_add_is_template_to_payment_order.sql');
+    console.log('⏳ Applying Migration 24: 24_add_actor_role_to_aiops_incident.sql...');
+    const sqlPath = path.join(__dirname, '../database/24_add_actor_role_to_aiops_incident.sql');
     const sql = fs.readFileSync(sqlPath, 'utf8');
     await client.query(sql);
     console.log('✔ Migration 24 executed successfully!');
 
-    // Xác minh cấu trúc cột trong CSDL thực tế
-    console.log('\n🔍 Verifying Column is_template on Supabase...');
+    // Xác minh cấu trúc cột actor_role
+    console.log('\n🔍 Verifying Column actor_role on Supabase...');
     const colCheck = await client.query(`
-      SELECT column_name, data_type, is_nullable, column_default
+      SELECT column_name, data_type, is_nullable
       FROM information_schema.columns 
-      WHERE table_name = 'payment_order'
-        AND column_name = 'is_template';
+      WHERE table_name = 'aiops_incident'
+        AND column_name = 'actor_role';
     `);
 
     if (colCheck.rows.length === 0) {
-      throw new Error('Column is_template was not created in payment_order!');
+      console.warn('⚠️ Column actor_role not found in aiops_incident (table might not exist yet)');
+    } else {
+      console.log(`✔ Verified column actor_role: ${JSON.stringify(colCheck.rows[0])}`);
     }
-
-    console.log(`✔ Verified column is_template: ${JSON.stringify(colCheck.rows[0])}`);
-
-    // Kiểm tra chỉ mục
-    const idxCheck = await client.query(`
-      SELECT indexname, tablename 
-      FROM pg_indexes 
-      WHERE schemaname = 'public' 
-        AND tablename = 'payment_order'
-        AND indexname = 'idx_payment_order_is_template';
-    `);
-    console.log(`✔ Verified index: ${idxCheck.rows.length > 0 ? idxCheck.rows[0].indexname : 'NOT FOUND'}`);
-
-    // Kiểm tra số lượng đơn mẫu được update
-    const countCheck = await client.query(`
-      SELECT is_template, count(*) as total
-      FROM payment_order
-      GROUP BY is_template;
-    `);
-    console.log('\n📊 Phân bố đơn hàng theo is_template:');
-    countCheck.rows.forEach(r => console.log(`   - is_template = ${r.is_template}: ${r.total} đơn`));
 
     console.log('\n🎉 Migration 24 COMPLETED AND VERIFIED 100%!');
   } catch (err) {

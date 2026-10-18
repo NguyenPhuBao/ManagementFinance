@@ -11,11 +11,13 @@
 
 Chức năng **Quản Trị Chế Độ Bảo Trì & Cứu Hộ Khẩn Cấp** là công tắc ngắt mạch trung tâm (Circuit Breaker) của toàn bộ nền tảng. Khi hệ thống cần nâng cấp phiên bản, thực hiện migrate cơ sở dữ liệu lớn hoặc đối mặt với sự cố an ninh nghiêm trọng, chức năng này cho phép quản trị viên cách ly an toàn máy chủ khỏi lưu lượng người dùng di động.
 
-Đặc biệt, hệ thống triển khai **Quy Tắc Quản Trị Bảo Trì Chuẩn Hóa**:
-1. **Chặn kích hoạt lặp:** Khi hệ thống đã đang ở trạng thái bảo trì (`active === true`), tuyệt đối **không cho phép kích hoạt thêm phiên bảo trì khẩn cấp** đè lên. Quản trị viên phải tắt phiên hiện tại trước khi bắt đầu phiên mới.
-2. **Bảo toàn lịch hẹn tương lai:** Kích hoạt bảo trì khẩn cấp **không hủy bỏ toàn bộ các lịch bảo trì đã cài đặt trước**. Chỉ các lịch bảo trì bị vướng vào trong suốt thời gian bảo trì khẩn cấp (`scheduled.start_time <= emergency.end_time`) mới bị hủy bỏ tự động. Các lịch xa hơn trong tương lai được bảo toàn nguyên vẹn.
-3. **Lưu trữ CSDL & Vòng đời 4 trạng thái:** Mọi lịch bảo trì đều được lưu trực tiếp vào CSDL PostgreSQL (`maintenance_history`) ngay khi tạo lịch với trạng thái `SCHEDULED`, sau đó chuyển tiếp qua `ONGOING`, `COMPLETED` hoặc `CANCELLED`.
-4. **Giao diện tinh gọn 1 Form:** Loại bỏ box bảo trì khẩn cấp riêng biệt và tag thừa; tích hợp Checkbox "Bảo trì khẩn cấp" trực tiếp vào form lập lịch, tự động đổi nút bấm sang chế độ khẩn cấp (màu đỏ) kèm popup modal xác nhận.
+Đặc biệt, hệ thống triển khai **Quy Tắc Quản Trị Bảo Trì Chuẩn Hóa (Nghiệp vụ Mục 43)**:
+1. **Đặc quyền Cứu hộ Khẩn cấp (Emergency Override):** Duy nhất **Bảo trì khẩn cấp** có quyền kích hoạt đè khi hệ thống đang trong phiên bảo trì thông thường nhằm xử lý ngay lập tức các tình huống rủi ro bảo mật hoặc thảm họa máy chủ. Ngược lại, nếu hệ thống đã đang ở chế độ khẩn cấp thì không cho phép kích hoạt khẩn cấp đè lần 2.
+2. **CẤM TUYỆT ĐỐI bảo trì theo lịch đè nhau (No Overlapping Schedules):** Nếu hệ thống đang trong phiên bảo trì hoặc đã có một lịch bảo trì tương lai đang chờ kích hoạt (`SCHEDULED`), hệ thống từ chối mọi yêu cầu lên lịch mới để loại trừ xung đột thời gian. Quản trị viên phải hủy lịch cũ trước khi đặt lịch mới.
+3. **Bảo toàn lịch hẹn tương lai:** Khi kích hoạt bảo trì khẩn cấp, hệ thống **không hủy toàn bộ lịch tương lai**. Chỉ những lịch bị giao thoa (`scheduled.start_time <= emergency.end_time`) mới bị hủy tự động (`CANCELLED`). Các lịch xa hơn trong tương lai được bảo toàn nguyên vẹn.
+4. **Khử trùng lặp thông báo (Broadcast De-duplication):** Tích hợp bộ lọc khử trùng lặp thông minh trong `NotificationService` và Socket.IO, ngăn chặn hoàn toàn hiện tượng gửi lặp lại thông báo bảo trì gây spam người dùng.
+5. **Lưu trữ CSDL & Vòng đời 4 trạng thái:** Mọi lịch bảo trì đều được lưu trực tiếp vào CSDL PostgreSQL (`maintenance_history`) ngay khi tạo lịch với trạng thái `SCHEDULED`, sau đó chuyển tiếp qua `ONGOING`, `COMPLETED` hoặc `CANCELLED`.
+6. **Giao diện phân định 2 Cột Độc Lập:** Cột Trái dành riêng cho **Kích Hoạt Bảo Trì Khẩn Cấp** (Nút đỏ trực tiếp kèm popup modal xác nhận); Cột Phải dành riêng cho **Lên Lịch Thời Điểm Bảo Trì** (Form datetime-local chuẩn xác).
 
 ---
 
@@ -24,16 +26,18 @@ Chức năng **Quản Trị Chế Độ Bảo Trì & Cứu Hộ Khẩn Cấp** l
 ```mermaid
 graph TD
     subgraph "Admin-web Điều Hành (BroadcastPage.jsx)"
-        A1[Form Điều Hành Duy Nhất]
-        A2[Tick Checkbox: Bảo trì khẩn cấp]
-        A3[Nút bấm đổi sang: Bảo trì khẩn cấp - Đỏ]
-        A4[Popup Modal Xác Nhận Kích Hoạt]
-        A5[Lên Lịch Bảo Trì Bình Thường - Xanh]
+        A1[Cột Trái: Bật Bảo Trì Khẩn Cấp - Đỏ]
+        A2[Popup Modal Xác Nhận Kích Hoạt Khẩn Cấp]
+        A3[Cột Phải: Lên Lịch Thời Điểm Bảo Trì - Xanh]
     end
 
     subgraph "Động Cơ Bảo Trì Backend (maintenance.manager.js)"
         B0{Hệ thống đang bảo trì active?}
-        B0_ERR[Ném lỗi 400: Không cho kích hoạt đè]
+        B_EMERG_CHECK{Đang khẩn cấp hay thường?}
+        B_ERR_DUP[Ném lỗi 400: Đã trong bảo trì khẩn cấp]
+        B_OVERRIDE[EMERGENCY OVERRIDE: Đè phiên thường, nâng lên Khẩn cấp]
+        B_SCHED_CHECK{Đã có lịch chờ hoặc đang active?}
+        B_SCHED_ERR[Ném lỗi 400: Không cho phép lịch đè lịch]
         B1{Có lịch hẹn trước?}
         B2{Lịch hẹn vướng vào thời gian khẩn cấp?}
         B2_YES[Hủy lịch bị vướng & set CANCELLED trong CSDL]
@@ -42,30 +46,35 @@ graph TD
         B4[Lưu CSDL SCHEDULED & Hẹn Timer delayMs]
     end
 
-    subgraph "Socket.io Hub"
+    subgraph "Socket.io & Broadcast Hub"
+        S0[Bộ lọc De-duplication: Chống phát thông báo lặp]
         S1[Phát system.maintenance_changed tới Toàn Bộ Client]
         S2[Phát admin.maintenance_changed tới admin_room]
     end
 
-    A2 --> A3 --> A4 --> B0
-    B0 -- "Đang active" --> B0_ERR
+    A1 --> A2 --> B0
+    B0 -- "Đang active" --> B_EMERG_CHECK
+    B_EMERG_CHECK -- "Đang là Khẩn cấp" --> B_ERR_DUP
+    B_EMERG_CHECK -- "Đang là Thường" --> B_OVERRIDE --> B1
     B0 -- "Chưa active" --> B1
     B1 -- "Có lịch" --> B2
     B2 -- "start_time <= end_time" --> B2_YES --> B3
     B2 -- "start_time > end_time" --> B2_NO --> B3
     B1 -- "Không có" --> B3
-    B3 --> S1 & S2
+    B3 --> S0 --> S1 & S2
 
-    A5 --> B4 --> S2
+    A3 --> B_SCHED_CHECK
+    B_SCHED_CHECK -- "Đang active hoặc đã có lịch" --> B_SCHED_ERR
+    B_SCHED_CHECK -- "Hợp lệ" --> B4 --> S2
 ```
 
 ### 2.1. Hai Loại Bảo Trì & Vòng Đời Trạng Thái CSDL
 1. **Bảo trì Khẩn Cấp (Emergency Maintenance):**
-   - Kích hoạt thông qua Checkbox "Bảo trì khẩn cấp" trên form điều hành.
-   - Nút hành động đổi thành màu ĐỎ với nhãn **"Bảo trì khẩn cấp"**, yêu cầu xác nhận qua Popup Modal trước khi gửi lệnh.
-   - Nếu hệ thống đang trong phiên bảo trì, Backend từ chối kích hoạt lần 2 nhằm ngăn chặn xung đột thời gian và ghi đè trạng thái.
+   - Kích hoạt tại Cột Trái qua nút **"Bật Bảo Trì Khẩn Cấp"** màu ĐỎ (`bg-red-600`), yêu cầu xác nhận qua Popup Modal trước khi gửi lệnh.
+   - Có đặc quyền ghi đè (Emergency Override) nếu hệ thống đang trong phiên bảo trì thông thường.
    - Chỉ hủy những lịch bảo trì tương lai bị giao thoa (vướng) vào khoảng thời gian khẩn cấp; giữ nguyên các lịch bảo trì sau khoảng thời gian đó.
 2. **Bảo trì Theo Lịch (Scheduled Maintenance):**
+   - Lên lịch tại Cột Phải; tự động từ chối nếu hệ thống đang có lịch hẹn hoặc đang trong bảo trì (Cấm lịch đè lịch).
    - Được lưu vào bảng `maintenance_history` của CSDL PostgreSQL ngay khi tạo với trạng thái ban đầu là `SCHEDULED`.
    - Vòng đời trạng thái:
      - `SCHEDULED`: Đã lên lịch, lưu CSDL, đang đếm ngược timer.

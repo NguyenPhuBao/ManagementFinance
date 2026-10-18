@@ -61,15 +61,16 @@ function accountRejection(info, idaccount) {
   // Tài khoản hợp lệ thì không có lý do từ chối. Nơi gọi phải xử lý
   // `errorType === 'SCHEMA_ERROR'` TRƯỚC khi gọi hàm này — xem authenticate.
   if (info?.valid) return null;
-  const inactive = info?.status?.toLowerCase() === 'inactive';
+  const isDeleted = !info?.status || info?.status?.toLowerCase() === 'deleted' || (info?.delete_at && new Date(info.delete_at) <= new Date());
+  const isInactive = !isDeleted;
   return {
-    message: inactive
+    message: isInactive
       ? (info?.reason_inactive
           ? `Tài khoản đã bị vô hiệu hóa. Lý do: ${info.reason_inactive}`
           : 'Tài khoản đã bị vô hiệu hóa')
       : 'Account no longer exists or has been deleted',
     data: {
-      code: inactive ? 'ACCOUNT_INACTIVE' : 'ACCOUNT_DELETED',
+      code: isInactive ? 'ACCOUNT_INACTIVE' : 'ACCOUNT_DELETED',
       idaccount: Number(idaccount),
       reason_inactive: info?.reason_inactive || null,
     },

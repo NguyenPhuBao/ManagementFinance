@@ -1,18 +1,196 @@
 const nodemailer = require('nodemailer');
+const axios = require('axios');
+const { Resend } = require('resend');
 const config = require('../config');
 const logger = require('./logger');
 
-const transporter = nodemailer.createTransport({
-  host: config.smtp.host,
-  port: config.smtp.port,
-  secure: config.smtp.port === 465, // true nếu port 465, false cho 587
-  auth: {
-    user: config.smtp.user,
-    pass: config.smtp.pass,
-  },
-});
+// Khởi tạo transporter cho SMTP fallback
+let smtpTransporter = null;
+function getSmtpTransporter() {
+  if (!smtpTransporter && config.smtp && config.smtp.user) {
+    smtpTransporter = nodemailer.createTransport({
+      host: config.smtp.host,
+      port: config.smtp.port,
+      secure: config.smtp.port === 465,
+      auth: {
+        user: config.smtp.user,
+        pass: config.smtp.pass,
+      },
+      // Giới hạn timeout cho SMTP socket để chống treo nghẽn trên môi trường Cloud
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 7000,
+    });
+  }
+  return smtpTransporter;
+}
+
+// Khởi tạo Resend client (Kênh dự phòng)
+let resendClient = null;
+function getResendClient() {
+  if (!resendClient && config.resend && config.resend.apiKey) {
+    resendClient = new Resend(config.resend.apiKey);
+  }
+  return resendClient;
+}
+
+/**
+ * Bọc timeout cho Promise (Fail-safe, ngăn chặn treo quá thời gian cho phép)
+ */
+function withTimeout(promise, ms, errorMsg) {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(errorMsg || `Thao tác quá thời gian chờ (${ms}ms)`));
+    }, ms);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timer);
+  });
+}
 
 const emailService = {
+  /**
+   * Gửi email qua Brevo REST API v3 (Port 443 HTTPS)
+   * Không bị chặn cổng mạng, gửi được cho bất kỳ email người nhận nào mà không cần Custom Domain.
+   */
+  async sendViaBrevo({ to, subject, html }) {
+    const recipients = (Array.isArray(to) ? to : [to]).map((email) => ({
+      email: typeof email === 'string' ? email.trim() : email.email,
+    }));
+
+    const senderEmail = config.brevo.senderEmail || config.smtp.user || 'phubao12as@gmail.com';
+    const senderName = config.brevo.senderName || 'FlowMoney';
+
+    const payload = {
+      sender: {
+        name: senderName,
+        email: senderEmail,
+      },
+      to: recipients,
+      subject,
+      htmlContent: html,
+    };
+
+    const response = await axios.post('https://api.brevo.com/v3/smtp/email', payload, {
+      headers: {
+        'api-key': config.brevo.apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      timeout: 8000,
+    });
+
+    return response.data;
+  },
+
+  /**
+   * Phương thức gửi email cốt lõi đa kênh:
+   * 1. Brevo HTTP REST API (Cổng 443 HTTPS - Gửi mọi email, khuyên dùng nhất)
+   * 2. Resend HTTP REST API (Cổng 443 HTTPS - Dự phòng)
+   * 3. Nodemailer SMTP (Cổng 587 - Khi chạy máy cục bộ)
+   * 4. Mock Email (Môi trường test / dev không cấu hình)
+   */
+  async sendMail({ from, to, subject, html }) {
+    // 1. Ưu tiên 1: Brevo HTTP REST API (Cổng 443 HTTPS - gửi được mọi email)
+    if (config.brevo && config.brevo.apiKey) {
+      try {
+        const data = await this.sendViaBrevo({ to, subject, html });
+        logger.info('Email sent successfully via Brevo API', {
+          messageId: data?.messageId,
+          to,
+          subject,
+        });
+        return { success: true, provider: 'brevo', messageId: data?.messageId };
+      } catch (err) {
+        const errorDetail = err.response?.data?.message || err.message;
+        logger.error('Failed to send email via Brevo API, attempting fallback', {
+          error: errorDetail,
+          to,
+        });
+      }
+    }
+
+    // 2. Ưu tiên 2: Resend HTTP REST API (Cổng 443 HTTPS - Kênh dự phòng)
+    const resend = getResendClient();
+    if (resend) {
+      try {
+        const sender = from || config.resend.from || 'FlowMoney <onboarding@resend.dev>';
+        const recipients = Array.isArray(to) ? to : [to];
+
+        const sendPromise = resend.emails.send({
+          from: sender,
+          to: recipients,
+          subject,
+          html,
+        });
+
+        const response = await withTimeout(
+          sendPromise,
+          8000,
+          'Resend API không phản hồi trong 8s'
+        );
+
+        if (response.error) {
+          throw new Error(response.error.message || 'Lỗi gửi email qua Resend');
+        }
+
+        logger.info('Email sent successfully via Resend API', {
+          id: response.data?.id,
+          to,
+          subject,
+        });
+        return { success: true, provider: 'resend', id: response.data?.id };
+      } catch (err) {
+        logger.error('Failed to send email via Resend API, attempting fallback', {
+          error: err.message,
+          to,
+        });
+      }
+    }
+
+    // 3. Ưu tiên 3: Nodemailer SMTP (Chạy trên local hoặc server mở port SMTP)
+    const hasSmtpConfig =
+      config.smtp.user &&
+      config.smtp.user !== 'your-email@gmail.com' &&
+      config.smtp.pass;
+
+    if (hasSmtpConfig) {
+      try {
+        const transporter = getSmtpTransporter();
+        const mailOptions = {
+          from: from || config.smtp.from,
+          to,
+          subject,
+          html,
+        };
+
+        await withTimeout(
+          transporter.sendMail(mailOptions),
+          7000,
+          'Kết nối SMTP quá thời gian (Render có thể đang chặn port 587)'
+        );
+
+        logger.info('Email sent successfully via SMTP', { to, subject });
+        return { success: true, provider: 'smtp' };
+      } catch (err) {
+        logger.error('Failed to send email via SMTP', {
+          error: err.message,
+          to,
+        });
+        throw new Error('Không thể gửi email. Vui lòng thử lại sau.');
+      }
+    }
+
+    // 4. Ưu tiên 4: Mock email (Khi không có cấu hình thật, môi trường dev/test)
+    logger.info(`[MOCK EMAIL] To: ${to} | Subject: ${subject}`);
+    return { success: true, provider: 'mock' };
+  },
+
+  /**
+   * Gửi OTP xác thực (Đăng ký, Quên mật khẩu, Đổi email)
+   */
   async sendOtp(email, otp, purpose) {
     let subject = 'Mã OTP xác thực — FlowMoney';
     if (purpose === 'register') {
@@ -36,24 +214,11 @@ const emailService = {
       </div>
     `;
 
-    try {
-      // Bỏ qua việc gửi email thật nếu chưa có cấu hình SMTP thật (tránh crash)
-      if (config.smtp.user === 'your-email@gmail.com' || !config.smtp.user) {
-        logger.info(`[MOCK EMAIL] To: ${email} | Subject: ${subject} | OTP: ${otp}`);
-        return;
-      }
-
-      await transporter.sendMail({
-        from: config.smtp.from,
-        to: email,
-        subject,
-        html,
-      });
-      logger.info('OTP email sent', { email, purpose });
-    } catch (err) {
-      logger.error('Failed to send OTP email', { email, error: err.message });
-      throw new Error('Không thể gửi email. Vui lòng thử lại sau.');
-    }
+    return await this.sendMail({
+      to: email,
+      subject,
+      html,
+    });
   },
 
   /**
@@ -79,26 +244,12 @@ const emailService = {
       </div>
     `;
 
-    try {
-      if (config.smtp.user === 'your-email@gmail.com' || !config.smtp.user) {
-        logger.info(`[MOCK SECURITY EMAIL] To: ${email} | Title: ${title}`);
-        return { success: true, mock: true };
-      }
-
-      await transporter.sendMail({
-        from: config.smtp.from,
-        to: email,
-        subject: title,
-        html,
-      });
-      logger.info('Security alert email sent', { email, title });
-      return { success: true };
-    } catch (err) {
-      logger.error('Failed to send security alert email', { email, error: err.message });
-      throw new Error('Không thể gửi email cảnh báo bảo mật.');
-    }
+    return await this.sendMail({
+      to: email,
+      subject: title,
+      html,
+    });
   },
 };
 
 module.exports = emailService;
-

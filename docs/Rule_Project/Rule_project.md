@@ -11,16 +11,18 @@
 ## ⚡ 1. KHẨU HIỆU & QUY TẮC CỐT LÕI (TL;DR)
 
 ```
-RTK | CODEGRAPH | PROJECT.MD | DATA_SECURITY | SKILL→PHASE | KARPATHY | SELF-CHECK
+RTK | CODEGRAPH | PROJECT.MD | DATA_SECURITY | DB_GUARD | 2-TIER TEST | SKILL→PHASE | KARPATHY | SELF-CHECK
 ```
 
 * **RTK mọi lệnh CLI:** Mọi lệnh terminal bắt buộc có tiền tố `rtk` (ví dụ: `rtk npm test`, `rtk git status`).
 * **CodeGraph kiểm tra tác động:** Dùng `brief`, `deps`, `context`, `impact` trước khi sửa mã nguồn.
 * **Project.md nắm ngữ cảnh:** Đọc `Project.md` để nắm kiến trúc, tech stack và quy ước trước khi bắt đầu.
 * **Data_Security.md tuân thủ pháp luật:** Bắt buộc tuân thủ 100% nguyên tắc bảo vệ dữ liệu nhạy cảm theo `docs/Rule_Project/Data_Security.md` (Nghị định 13/2023/NĐ-CP, PCI-DSS, OWASP).
+* **DB_Guard bảo vệ CSDL:** Tuyệt đối cấm chạy `prisma migrate dev` hoặc `prisma db push` trên CSDL Cloud Supabase / Production để tránh xóa Partial Index và Trigger an ninh.
+* **2-Tier Test (Kiểm thử 2 Tầng):** Bắt buộc kiểm thử cả Tầng 1 (Hiển thị & Thao tác giao diện) và Tầng 2 (Tác động đo lường được đến toàn bộ hệ thống).
 * **Đúng Skill $\rightarrow$ Đúng Phase:** Tuân thủ 4 Phase tuần tự (Scope $\rightarrow$ TDD $\rightarrow$ Systematic Debug $\rightarrow$ Verify & Ship).
 * **Karpathy Guidelines:** Think before coding, Simplicity first, Plan then execute, Test everything.
-* **Self-Check trước khi "Done":** Chỉ bàn giao khi kiểm thử 100% PASS, tài liệu và CodeGraph đã cập nhật.
+* **Self-Check trước khi "Done":** Chỉ bàn giao khi kiểm thử 100% PASS (2 tầng), tài liệu và CodeGraph đã cập nhật.
 
 ---
 
@@ -207,7 +209,47 @@ Toàn bộ quy trình xử lý, lưu trữ, truyền tải dữ liệu bắt bu�
 
 ---
 
-## 📋 7. QUY ĐỊNH KẾT THÚC NHIỆM VỤ (RULE 8)
+## 🛡️ 7. BẢO VỆ CƠ SỞ DỮ LIỆU & QUY TRÌNH MIGRATION AN TOÀN (RULE 10 - DB GUARD)
+
+Tuyệt đối tuân thủ quy tắc bảo vệ cấu trúc CSDL PostgreSQL Supabase, chống làm hỏng cơ chế Soft-Delete và Triggers bảo vệ dữ liệu:
+
+1. **CẤM TUYỆT ĐỐI chạy `prisma migrate dev` hoặc `prisma db push` trên CSDL Cloud Supabase / Production:**
+   - **Lý do kỹ thuật:** Prisma schema hiện tại không hỗ trợ native mệnh đề Partial Index (`WHERE "Delete_at" IS NULL`). Khi chạy `prisma migrate dev` hoặc `prisma db push`, Prisma sẽ tự động xóa (DROP) và tái tạo (CREATE) các unique index thông thường không có điều kiện lọc, dẫn đến xung đột dữ liệu đã soft-delete và làm mất các Triggers bảo mật pháp lý (`trg_protect_auditlog`, `trg_protect_transaction`, `trg_check_phone_encrypted`, `trg_check_bank_account_encrypted`).
+2. **Cơ chế Hàng rào bảo vệ (DB Guard):**
+   - Mọi thao tác Prisma trong `package.json` đã được bọc qua script `src/Backend/scripts/db-guard.js`. Guard sẽ tự động chặn đứng (exit code 1) và phát cảnh báo đỏ nếu phát hiện lệnh phá hủy chạy trên Supabase Cloud.
+3. **Quy trình Migration chuẩn 4 bước:**
+   - **Bước 1:** Viết file script SQL DDL vào thư mục `database/` hoặc `scripts/`.
+   - **Bước 2:** Chạy SQL trên Supabase Dashboard SQL Editor hoặc qua script migration được kiểm soát.
+   - **Bước 3:** Chạy `rtk npm run prisma:generate` để cập nhật Prisma Client cho Backend.
+   - **Bước 4:** Chạy `rtk npm run db:verify-indexes` để thẩm tra toàn bộ Partial Indexes và Triggers.
+
+---
+
+## 🧪 8. NGUYÊN TẮC VIẾT TEST 2 TẦNG (RULE 11 - 2-TIER TESTING ARCHITECTURE)
+
+Áp dụng bắt buộc cho toàn bộ các module trong dự án (`src/Backend`, `src/Admin-web`, `src/Client-app`).
+Mỗi tính năng, màn hình, hoặc logic mới khi triển khai và kiểm thử **bắt buộc phải có cả 2 tầng kiểm thử**:
+
+### 🧱 TẦNG 1: KIỂM THỬ HIỂN THỊ & THAO TÁC TẠI GIAO DIỆN (UI Rendering & Interaction)
+- **Mục tiêu:** Xác nhận giao diện hiển thị đầy đủ, không crash và người dùng có thể tương tác được.
+- **Tiêu chí:**
+  1. **Hiển thị đầy đủ phần tử:** Kiểm tra render của tất cả các controls (input, select, checkbox, toggle, button, table, badge, modal, alert).
+  2. **Thao tác tương tác:** Click nút, nhập chữ, switch tab, thay đổi dropdown không bị throw runtime error.
+  3. **Trạng thái nội bộ:** Loading spinner, active state, disabled state theo đúng tương tác.
+
+### ⚡ TẦNG 2: KIỂM THỬ HOẠT ĐỘNG THỰC TẾ & TÁC ĐỘNG HỆ THỐNG (Real System Impact & Behavioral Verification)
+- **Mục tiêu:** Xác nhận tính năng **thực sự hoạt động và tạo ra tác động đo lường được đến toàn bộ hệ thống**, không phải là bản mockup trá hình hay chỉ đổi state giả lập cục bộ.
+- **NGUYÊN TẮC BẤT DI BẤT DỊCH (CRITICAL RULE):**
+  > **"Nếu thao tác được trên giao diện nhưng không tạo ra tác động thực sự đến hệ thống như mong muốn thì bài test BẮT BUỘC ĐÁNH RỚT (FAIL)."**
+- **Tiêu chí kiểm thử bắt buộc (Ít nhất 1 assertion về System Impact):**
+  1. **Tác động Dữ liệu & Persistence:** CSDL, LocalStorage, SecureStorage, hoặc Global State Store phải được cập nhật giá trị mới; khi đọc lại phải bảo toàn dữ liệu.
+  2. **Tác động DOM & Môi trường Root:** Các thiết lập giao diện (Dark Mode, Table Density) phải kiểm tra class/thuộc tính trên Root DOM (`document.documentElement`, `document.body`).
+  3. **Tác động Luồng Logic & API Call:** Endpoint API được gọi đúng tham số, headers, payload; nhận phản hồi thực tế.
+  4. **Tác động Liên module & Event Bus (Side-effects):** Đổi thời gian Toast (ví dụ `3000ms`) -> Toast tự đóng sau đúng `3000ms`; Kích hoạt bảo trì -> HTTP 503 cho client; Thanh toán thành công -> Nâng cấp gói cước.
+
+---
+
+## 📋 9. QUY ĐỊNH KẾT THÚC NHIỆM VỤ (RULE 8)
 
 Khi kết thúc một nhiệm vụ kỹ thuật, AI **bắt buộc** phải hoàn thành 2 công việc cuối cùng trước khi báo cáo hoàn tất cho PO:
 
@@ -223,17 +265,19 @@ Khi kết thúc một nhiệm vụ kỹ thuật, AI **bắt buộc** phải hoà
 
 ---
 
-## ✅ 8. BẢNG TỰ KIỂM TRA TRƯỚC KHI BÁO "DONE" (SELF-CHECKLIST)
+## ✅ 10. BẢNG TỰ KIỂM TRA TRƯỚC KHI BÁO "DONE" (SELF-CHECKLIST)
 
-Trước khi gửi câu trả lời hoàn thành tới PO, hãy tự kiểm tra 7 câu hỏi sau:
+Trước khi gửi câu trả lời hoàn thành tới PO, hãy tự kiểm tra 9 câu hỏi sau:
 
 - [ ] **RTK?** Mọi lệnh CLI đã chạy có tiền tố `rtk` chưa?
 - [ ] **CodeGraph?** Đã dùng `context`/`deps`/`brief`/`impact` để phân tích tác động chưa?
 - [ ] **Project.md?** Đã đọc và nắm vững ngữ cảnh dự án chưa?
 - [ ] **Data Security?** Đã tuân thủ nguyên tắc bảo mật dữ liệu & pháp luật trong `Data_Security.md` chưa?
+- [ ] **DB Guard?** Đã tuân thủ Rule 10, tuyệt đối không chạy `prisma migrate dev`/`push` trên Supabase?
+- [ ] **2-Tier Test?** Bài kiểm thử đã thỏa mãn cả Tầng 1 (Giao diện) và Tầng 2 (Tác động hệ thống thực sự)?
 - [ ] **Skill & Phase?** Đã tuân thủ quy trình 4-Phase và dùng đúng skill chưa?
 - [ ] **Test?** Toàn bộ bài kiểm thử đã chạy và đạt 100% PASS chưa?
-- [ ] **Tài liệu & CodeGraph?** Đã cập nhật `Project.md` và chạy `rtk npx codegraph build` chưa?
+- [ ] **Tài liệu & CodeGraph?** Đã cập nhật tài liệu và chạy `rtk npx codegraph build` chưa?
 
 ---
 ---

@@ -1251,6 +1251,7 @@ export default {
       totalOrders: 'Total Orders',
       paidOrders: 'Paid Orders',
       successRate: 'Success Rate',
+      realRevenueNote: 'Actual business stats (excludes sample orders)',
     },
     filter: {
       searchPlaceholder: 'Search order code, username, email...',

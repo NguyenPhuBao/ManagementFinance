@@ -14,9 +14,10 @@ const socketService = require('../core/socket');
 const { hashBlindIndex, encrypt } = require('../utils/crypto.util');
 const { maskAccountNumber } = require('../utils/masking.util');
 const { filterSensitiveNote } = require('../utils/content-filter.util');
+const { resolveRedisUrl } = require('../config/redis.resolver');
 
 const Redis = require('ioredis');
-const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+const connection = new Redis(resolveRedisUrl(), {
   maxRetriesPerRequest: null,
 });
 

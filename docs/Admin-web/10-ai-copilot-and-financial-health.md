@@ -147,7 +147,9 @@ $$\text{Emergency Fund Months} = \frac{\text{Tổng Tiền Mặt \& Tiết Kiệ
 - **Đến Backend:**
   - Nhờ xử lý SSE Streaming, kết nối giữa máy chủ và client được duy trì mượt mà, không gây nghẽn hàng đợi request như kiểu polling truyền thống.
 - **Đến Mobile App (Client-app):**
-  - Giao diện và thuật toán tính điểm FHS tại Admin-web hoàn toàn đồng nhất với màn hình Chatbot AI trên Mobile App Flutter, đảm bảo người dùng di động và quản trị viên luôn nhìn thấy cùng một bộ chỉ số tài chính chuẩn xác.
+  - **Phân định Kiến trúc AI:** Client-app sử dụng mô hình **Edge AI SLM (Google Gemma 4 E2B)** chạy 100% On-Device (ngoại tuyến qua `flutter_gemma` và LiteRT), tuyệt đối không gửi nhật ký giao dịch tài chính người dùng lên máy chủ (tuân thủ nguyên tắc Tối thiểu hóa dữ liệu - Data Minimization của Nghị định 13/2023/NĐ-CP).
+  - Ngược lại, Admin-web sử dụng **Cloud AI Copilot** thông qua Backend REST & SSE endpoint (`/api/ai/chatbot/chat/stream`, `/api/ai/chatbot/snapshot`), kết hợp LangChain RAG và PostgreSQL.
+  - Bộ công thức chuẩn hóa tính điểm Sức khỏe Tài chính (Financial Health Score - FHS) và quy tắc ngân sách 50/30/20 được định nghĩa thống nhất tại tầng tính toán nghiệp vụ (`financialHealth.calculator.js`), đảm bảo tính nhất quán về mặt phân tích tài chính giữa các nền tảng.
 
 ---
 

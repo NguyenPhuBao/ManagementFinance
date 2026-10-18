@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration 24: Bổ sung trường is_template vào bảng payment_order
+-- Migration 29: Bổ sung trường is_template vào bảng payment_order
 -- Phục vụ phân biệt đơn hàng mẫu (thử nghiệm) và đơn hàng thật của người dùng
 -- ============================================================================
 
