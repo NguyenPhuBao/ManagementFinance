@@ -11,7 +11,7 @@ dưới đây. Từ lượt ấy bảng ở mục 1 chỉ là **mặc định kh
 Admin-web `/permissions`.
 
 **⚠️ Đối soát chuyển thừa / thiếu (2026-10-16, gộp `main` @ `d72ccd45`; soát lại 2026-10-18 sau gộp `e7570e16`) — G94
-HOÃN, làm cùng lượt G89:** backend thêm ba trạng thái đơn `WAITING_CONFIRMATION` · `REFUND_PENDING` · `REFUNDED`,
+ĐANG LÀM, lượt G89 + G94 mở 2026-10-18 tối:** backend thêm ba trạng thái đơn `WAITING_CONFIRMATION` · `REFUND_PENDING` · `REFUNDED`,
 `POST /payment/confirm-upgrade` và ba sự kiện `payment.*`, và rút hạn đơn còn **10 phút**
 (`docs/Payment/PAYMENT_WORKFLOW_SPEC.md` v2.0.0).
 - **Phía backend:** đơn 44 đạt A, C, D, E, F khi client soát 2026-10-18. Mục B còn hai vế (đơn đang chờ xác nhận / chờ
