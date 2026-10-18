@@ -1,7 +1,8 @@
 # G94 — Đơn thanh toán Premium: dọn kiến trúc mảng + chuyển thừa / thiếu — phía client — thiết kế
 
 **Ngày:** 2026-10-18. **Trạng thái:** thiết kế người dùng duyệt trong chat (ba phần, cùng các câu hỏi về lối xác nhận,
-cấu trúc màn, thẻ Nâng cấp, ảnh QR, màn Chờ, trang PayOS, phạm vi dọn kiến trúc); bản viết **chờ người dùng đọc**.
+cấu trúc màn, thẻ Nâng cấp, ảnh QR, màn Chờ, trang PayOS, phạm vi dọn kiến trúc); bản viết **người dùng duyệt cùng
+ngày** — câu hỏi mở mục 12 giữ mặc định (đơn `PENDING` chỉ một dòng trạng thái). Màn Stitch: mục 9.
 Mở lượt **G89 + G94** — đợt đầu của lượt (sửa hai lỗi đang chạy, `a52f9181`) đã xong trước bản này. G89 (bảo trì /
 phong toả AIOps) là phân hệ độc lập, **spec riêng**, làm sau.
 
@@ -329,6 +330,18 @@ Theo thứ tự người dùng chốt (spec → Stitch → màn mới), trước
 4. Nâng cấp — thẻ chờ xác nhận + nút khoá, thẻ chờ hoàn tiền.
 
 Mã màn ghi vào bảng mục 5 `PREMIUM_FEATURE.md`.
+
+> **Lượt gọi 2026-10-18 tối** (dự án `5106367939423432838`, design system *Kinetic Finance* `assets/7a3b24ea…`, mô hình
+> `GEMINI_3_8_FLASH`, khung điện thoại): mục 2 tách thành hai màn, nên **năm** lượt `generate_screen_from_text`. Cả năm
+> trả `timeout`; theo tiền lệ, timeout không phải thất bại, nên không gọi lại. Ngay sau đó `list_screens` chưa thấy màn
+> nào mới (132 màn). Tên năm màn, dùng để dò:
+> 1. *"Thanh toán Premium - Đang chờ (mã QR + Lưu mã) - FlowMoney"*
+> 2. *"Chi tiết đơn - Chờ xác nhận chuyển thừa + Hộp hỏi lại - FlowMoney"*
+> 3. *"Chi tiết đơn - Bốn trạng thái (chờ hoàn tiền / đã hoàn tiền / đã kích hoạt) - FlowMoney"*
+> 4. *"Lịch sử mua Premium - Dòng bấm được (có Chờ xác nhận) - FlowMoney"*
+> 5. *"Nâng cấp Premium - Có đơn cần xử lý (khoá Thanh toán) - FlowMoney"*
+>
+> Mã màn và xác nhận bằng mắt của người dùng: điền khi có.
 
 ## 10. Nghiệm thu máy thật (OnePlus 13R)
 
