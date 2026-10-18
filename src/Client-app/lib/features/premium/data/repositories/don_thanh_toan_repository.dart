@@ -14,6 +14,10 @@ abstract class DonThanhToanRepository {
   /// `GET /payment/history`, trang 1 (20 dòng).
   Future<List<DongLichSu>> lichSu();
 
+  /// Một đơn theo mã, tìm trong lịch sử trang 1 — mọi lối vào Chi tiết đơn đều chạm đơn trong 20 đơn mới nhất (spec
+  /// G94 2026-10-18 mục 5.2). Không thấy → `null`.
+  Future<DongLichSu?> timDon(int orderCode);
+
   /// `POST /payment/confirm-upgrade`.
   Future<void> xacNhan({required int orderCode, required bool accept});
 }

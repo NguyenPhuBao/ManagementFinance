@@ -76,6 +76,19 @@ void main() {
     expect(ds.single.trangThai, TrangThaiDon.paid);
   });
 
+  test('timDon: thấy trong lịch sử trang 1 → dòng ấy; không thấy → null; lỗi → LoiThanhToan', () async {
+    api.lichSuTho = [
+      {'order_code': 5, 'amount': 49000, 'status': 'WAITING_CONFIRMATION', 'amount_received': 60000},
+      {'order_code': 6, 'amount': 49000, 'status': 'PAID'},
+    ];
+    final d = await repo.timDon(5);
+    expect(d?.trangThai, TrangThaiDon.waitingConfirmation);
+    expect(d?.soDaChuyen, 60000);
+    expect(await repo.timDon(99), isNull);
+    api.loi = StateError('x');
+    await expectLater(repo.timDon(5), throwsA(isA<LoiThanhToan>()));
+  });
+
   test('xacNhan chuyển đúng mã đơn và lựa chọn', () async {
     await repo.xacNhan(orderCode: 7, accept: false);
     expect(api.xacNhanMa, 7);

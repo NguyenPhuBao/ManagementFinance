@@ -39,6 +39,14 @@ class DonThanhToanRepositoryImpl implements DonThanhToanRepository {
   Future<List<DongLichSu>> lichSu() => _boc(() async => dongLichSuTu(await _api.lichSu()));
 
   @override
+  Future<DongLichSu?> timDon(int orderCode) => _boc(() async {
+        for (final d in dongLichSuTu(await _api.lichSu())) {
+          if (d.orderCode == orderCode) return d;
+        }
+        return null;
+      });
+
+  @override
   Future<void> xacNhan({required int orderCode, required bool accept}) => _boc(() async {
         await _api.xacNhanNangCap(orderCode: orderCode, accept: accept);
       });
