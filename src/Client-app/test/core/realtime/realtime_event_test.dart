@@ -84,6 +84,23 @@ void main() {
             'này chỉ kéo về, không hiện gì.');
   });
 
+  test('sáu tên payment.* → donThanhToanDoi: tín hiệu im, không kéo đồng bộ, không đọc payload', () {
+    for (final ten in const [
+      'payment.overpaid_confirmation',
+      'payment.underpaid_warning',
+      'payment.refunded',
+      'payment.success',
+      'payment.order_expired',
+      'payment.order_cancelled',
+    ]) {
+      expect(realtimeEventFromName(ten), RealtimeEvent.donThanhToanDoi, reason: ten);
+    }
+    expect(RealtimeEvent.donThanhToanDoi.canDongBoLai, isFalse,
+        reason: 'trạng thái đơn không phải dữ liệu đồng bộ — màn đang mở tự hỏi lại server');
+    expect(RealtimeEvent.donThanhToanDoi.loiNhan, isNull,
+        reason: 'người dùng chốt không viên thông báo (spec G94 mục 2 câu 1); màn đang mở tự đổi theo server');
+  });
+
   test('account.upgraded & account.permissions_updated → taiKhoanNangCap: tín hiệu im, không kéo đồng bộ',
       () {
     expect(realtimeEventFromName('account.upgraded'),

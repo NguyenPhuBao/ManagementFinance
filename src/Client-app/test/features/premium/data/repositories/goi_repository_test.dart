@@ -205,6 +205,10 @@ void main() {
       sk.add(RealtimeEvent.dongBoXong);
       await _nghi();
       expect(api.soLanHoi, 1);
+      sk.add(RealtimeEvent.donThanhToanDoi);
+      await _nghi();
+      expect(api.soLanHoi, 1,
+          reason: 'gói chỉ làm mới theo account.upgraded — trạng thái đơn đổi không phải gói đổi (spec G94 mục 5.8)');
       sk.add(RealtimeEvent.taiKhoanNangCap);
       await _nghi();
       expect(api.soLanHoi, 2);
