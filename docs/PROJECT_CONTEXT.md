@@ -640,6 +640,8 @@ src/Backend/
     và chưa khử trùng theo `reference`.
   - **45, 46, 47** backend chưa đụng.
   - Chi tiết kèm số dòng: banner đầu hai tệp 43, 44 và banner đầu `CAN-LAM/README.md`.
+  - **Người dùng chốt cùng ngày:** phần dư của đơn 43 không chặn — lượt **G89 + G94** bắt đầu từ phiên sau, mở bằng
+    brainstorm → spec → Stitch. Phần gộp + tài liệu push cùng ngày.
 - **Backend dev chạy lại cần `npm install`** (gói mới `resend`), mà `npm install` tự `prisma generate` — phép đích danh
   (quy tắc 1). CSDL dev đo 2026-10-18 đã khớp `schema.prisma` mới: `payment_order` 22 cột (có `qr_url` của
   `database/27`), `status` dài 25. Lần generate này vì thế không vỡ `P2022`. Redis chỉ đổi cách chọn địa chỉ
