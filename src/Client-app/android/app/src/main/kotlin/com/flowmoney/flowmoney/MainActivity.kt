@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.PowerManager
 import android.provider.MediaStore
 import android.provider.Settings
@@ -58,6 +59,7 @@ import java.io.IOException
  */
 class MainActivity : FlutterActivity() {
     private val kenhLuuTep = "flowmoney/luu_tep"
+    private val kenhLuuAnh = "flowmoney/luu_anh"
     private val kenhLyDoThoat = "flowmoney/ly_do_thoat"
     private val kenhMicro = "flowmoney/micro"
     private val kenhBienDong = "flowmoney/bien_dong"
@@ -209,6 +211,27 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, kenhLuuAnh)
+            .setMethodCallHandler { call, ket ->
+                if (call.method != "luuAnh") {
+                    ket.notImplemented()
+                    return@setMethodCallHandler
+                }
+                // RELATIVE_PATH cần Android 10: máy cũ trả false → Dart báo "Hãy chụp màn hình".
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                    ket.success(false)
+                    return@setMethodCallHandler
+                }
+                try {
+                    val ten = call.argument<String>("ten")!!
+                    val bytes = call.argument<ByteArray>("bytes")!!
+                    luuAnhVaoThuVien(ten, bytes)
+                    ket.success(true)
+                } catch (e: Exception) {
+                    ket.error("loi_ghi", e.message, null)
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, kenhLyDoThoat)
             .setMethodCallHandler { call, ket ->
                 if (call.method != "thongTin") {
@@ -286,6 +309,28 @@ class MainActivity : FlutterActivity() {
                 null
             }
         return mapOf("phienBan" to phienBan, "lanThoat" to lanThoat)
+    }
+
+    /**
+     * Ghi ảnh mã VietQR vào Thư viện ảnh (`Pictures/FlowMoney`) qua MediaStore — app ngân hàng chọn được ảnh ở
+     * *Quét từ ảnh*. `IS_PENDING` như [luuVaoTaiVe]; không xin quyền trên Android 10+ (spec G94 2026-10-18 mục 5.3).
+     */
+    private fun luuAnhVaoThuVien(ten: String, bytes: ByteArray) {
+        val gt = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, ten)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/FlowMoney")
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, gt)
+            ?: throw IOException("Không tạo được ảnh trong Thư viện")
+        contentResolver.openOutputStream(uri).use { luong ->
+            luong ?: throw IOException("Không mở được ảnh để ghi")
+            luong.write(bytes)
+        }
+        gt.clear()
+        gt.put(MediaStore.Images.Media.IS_PENDING, 0)
+        contentResolver.update(uri, gt, null, null)
     }
 
     /**

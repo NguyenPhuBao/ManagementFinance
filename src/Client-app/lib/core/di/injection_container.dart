@@ -72,6 +72,7 @@ import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
+import '../../features/premium/data/luu_anh_qr.dart';
 import '../../features/premium/data/repositories/don_thanh_toan_repository.dart';
 import '../../features/premium/data/repositories/don_thanh_toan_repository_impl.dart';
 import '../../features/premium/data/repositories/goi_repository.dart';
@@ -491,6 +492,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // Ba trang Premium đọc / ghi đơn qua repository, không gọi thẳng API (spec G94 2026-10-18 mục 4.2).
   sl.registerLazySingleton<DonThanhToanRepository>(
       () => DonThanhToanRepositoryImpl(api: sl()));
+  // Lưu ảnh mã VietQR vào Thư viện ảnh (kênh flowmoney/luu_anh — spec G94 mục 5.3).
+  sl.registerLazySingleton<LuuAnhQr>(() => LuuAnhQr());
   sl.registerLazySingleton<GoiStore>(
       () => SecureStorageGoiStore(sl<FlutterSecureStorage>()));
   sl.registerLazySingleton<GoiRepository>(
