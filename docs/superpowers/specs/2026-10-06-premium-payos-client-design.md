@@ -353,6 +353,12 @@ lại, **không rời màn**; nút Thanh toán khoá trong lúc chờ (chống b
   (từ `GoiCubit`, không từ `order-status`), nút **Xong** → `pop` **hai** lớp (về màn trước Nâng cấp). Đến từ cửa chặn thì
   người dùng tự bấm + lần nữa; **không** tự mở form.
 - `expired` / `cancelled`, hoặc đếm ngược về 0 → dừng hỏi → câu tương ứng + nút **Tạo đơn mới** (`pop` về Nâng cấp).
+
+  > 🔧 **Mã lệch thân spec từ 2026-10-18 (G94 việc 1):** bỏ vế *"hoặc đếm ngược về 0"*. Đồng hồ trên máy chỉ để hiện số
+  > giây; màn sang hết hạn duy nhất khi `order-status` trả `EXPIRED` — server tự trả `EXPIRED` cho đơn `PENDING` quá
+  > `expired_at` ngay lúc đọc. Lý do: từ gộp `d72ccd45` đơn có thể nằm ở `WAITING_CONFIRMATION` (không bao giờ hết hạn),
+  > và trạng thái hết hạn theo đồng hồ máy chặn mọi câu trả lời sau đó, nên người chuyển thừa quay lại sau hạn không bao
+  > giờ thấy hộp xác nhận. Vế *"màn này sống tối đa 30 phút"* ở gạch hỏi `order-status` cũng thôi đúng.
 - Rời màn (Back) → dừng hỏi. Socket `account.upgraded` vẫn làm `lamMoi()` ở tầng repository nên trả xong sau khi đã rời
   màn thì thẻ Cá nhân vẫn đổi.
 

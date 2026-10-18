@@ -5,7 +5,9 @@ import 'package:flutter/foundation.dart';
 import '../domain/don_thanh_toan.dart';
 
 /// Hỏi trạng thái đơn theo nhịp (spec Premium 2026-10-06 mục 9.3). Hỏi hỏng →
-/// im, lượt sau thử — không giãn cách, màn sống tối đa 30 phút. Ai bật / tắt là
+/// im, lượt sau thử — không giãn cách: màn chỉ hỏi khi đang hiện và dừng khi
+/// server trả trạng thái khác `PENDING` (đơn quá hạn thì server trả `EXPIRED`
+/// ngay lúc đọc). Ai bật / tắt là
 /// việc của màn (ba vế "đang hiện" như `TheoDoiXem`). Lượt đang chờ chưa về
 /// thì nhịp kế không hỏi chồng.
 class BoHoiTrangThaiDon {

@@ -34,6 +34,27 @@ void main() {
         'Không tạo được đơn thanh toán. Thử lại sau.');
   });
 
+  test('cauTuChoi chỉ thay câu 4xx — 401, 5xx, mất mạng giữ câu của chúng', () {
+    DioException loi(int code) => DioException(
+        requestOptions: req,
+        type: DioExceptionType.badResponse,
+        response: Response(requestOptions: req, statusCode: code));
+    const cau = 'Không xác nhận được đơn này. Thử lại sau.';
+    expect(cauLoiThanhToan(loi(400), cauTuChoi: cau), cau,
+        reason: 'confirm-upgrade trả 400 khi đơn không còn chờ xác nhận — "Không tạo được đơn" là sai');
+    expect(cauLoiThanhToan(loi(404), cauTuChoi: cau), cau);
+    expect(cauLoiThanhToan(loi(401), cauTuChoi: cau),
+        'Phiên đăng nhập hết hạn. Hãy đăng nhập lại.');
+    expect(cauLoiThanhToan(loi(500), cauTuChoi: cau),
+        'Máy chủ chưa phản hồi. Thử lại sau.');
+    expect(
+        cauLoiThanhToan(
+            DioException(
+                requestOptions: req, type: DioExceptionType.connectionError),
+            cauTuChoi: cau),
+        'Không có kết nối. Thử lại khi có mạng.');
+  });
+
   test('lỗi khác → câu chung; KHÔNG câu nào chứa URL / http / token', () {
     final cac = [
       cauLoiThanhToan(StateError('x')),

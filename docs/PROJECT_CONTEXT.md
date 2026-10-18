@@ -613,6 +613,25 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-18)
 
+### 🩹 Mở lượt G89 + G94: đợt sửa hai lỗi đang chạy ở màn Chờ thanh toán (2026-10-18 tối)
+
+Thứ tự người dùng chốt chiều cùng ngày: đầu lượt chỉ sửa hai lỗi ở mã backend viết vào màn Chờ thanh toán, mỗi lỗi có ca
+đỏ trước; spec → Stitch → màn mới đi sau. Chi tiết, gốc lỗi và việc còn lại: khối ✅ cuối khối 🔀 ở thân G94
+`CLIENT_APP_KNOWN_GAPS.md`.
+
+- **Đồng hồ trên máy về 0 thôi tự kết luận hết hạn** (G94 việc 1). `_nhipDem` chỉ còn cập nhật số giây; màn sang *"Đơn đã
+  hết hạn"* duy nhất khi `order-status` trả `EXPIRED` — server tự trả `EXPIRED` cho đơn `PENDING` quá `expired_at` lúc
+  đọc, còn `WAITING_CONFIRMATION` không bao giờ hết hạn. Trước đây trạng thái hết hạn theo đồng hồ chặn mọi câu trả lời
+  sau đó, nên người chuyển thừa quay lại sau hạn không bao giờ thấy hộp xác nhận. Lỗi có từ bản client gốc 2026-10-06.
+  Quá hạn theo máy mà server chưa trả lời thì màn đứng ở *"Còn 00:00"* và vẫn hỏi theo nhịp.
+- **Lỗi khi xác nhận chuyển thừa có câu báo** (việc 3): `baoNhanh` loại lỗi, câu từ `cauLoiThanhToan(e, cauTuChoi: …)`
+  — tham số mới thay câu 4xx *"Không tạo được đơn thanh toán"* (sai với `confirm-upgrade`, vốn trả 400 khi đơn không còn
+  chờ xác nhận).
+- Ca đỏ trước, đỏ đúng lý do: bốn ca của màn (ba cho việc 1 — một ca cũ ghim chính hành vi lỗi, viết lại theo hợp đồng
+  mới — và một cho việc 3) cùng một ca unit. Toàn bộ `flutter test` **7.398 pass / 10 skip / 0 fail** (5 ph 03 s),
+  `flutter analyze` **20**. Chưa nghiệm thu máy thật: cần backend dev chạy (`npm install` — phép đích danh) và PayOS
+  sandbox.
+
 ### 🔀 Gộp `main` @ `e7570e16` (2026-10-18, commit gộp `fcbc2ba2`) — Redis đa nhà cung cấp, OTP qua Brevo / Resend, VietQR + đối soát thanh toán; backend báo đóng đơn 41–44, client soát bằng mã + CSDL; backend sửa 26 tệp client-app + tệp CI
 
 - **Trước khi gộp, nhánh đã push** (người dùng chọn 2026-10-18): `51df7ff7..b54488c6`, 99 commit. Sau push,

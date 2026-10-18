@@ -5,7 +5,14 @@ import 'package:dio/dio.dart';
 /// in nguyên URL ký hàng nghìn ký tự lên màn.
 ///
 /// Cố ý không nhìn `dart:io` (`SocketException`): app còn chạy trên web.
-String cauLoiThanhToan(Object e) {
+///
+/// [cauTuChoi] thay câu cho lỗi 4xx (trừ 401) — câu mặc định nói về *tạo đơn*,
+/// sai với thao tác khác (`confirm-upgrade` trả 400 khi đơn không còn chờ xác
+/// nhận).
+String cauLoiThanhToan(
+  Object e, {
+  String cauTuChoi = 'Không tạo được đơn thanh toán. Thử lại sau.',
+}) {
   if (e is DioException) {
     final code = e.response?.statusCode;
     if (code == 401) return 'Phiên đăng nhập hết hạn. Hãy đăng nhập lại.';
@@ -19,7 +26,7 @@ String cauLoiThanhToan(Object e) {
       case DioExceptionType.receiveTimeout:
         return 'Không có kết nối. Thử lại khi có mạng.';
       case DioExceptionType.badResponse:
-        return 'Không tạo được đơn thanh toán. Thử lại sau.';
+        return cauTuChoi;
       case DioExceptionType.badCertificate:
       case DioExceptionType.cancel:
       case DioExceptionType.transformTimeout:

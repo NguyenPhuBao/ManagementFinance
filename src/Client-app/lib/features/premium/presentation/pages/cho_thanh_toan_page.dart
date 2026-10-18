@@ -10,11 +10,13 @@ import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/realtime/realtime_channel.dart';
 import '../../../../core/realtime/realtime_event.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/bo_hoi_trang_thai_don.dart';
 import '../../data/mo_lien_ket.dart';
 import '../../data/payment_api.dart';
+import '../../domain/cau_loi_thanh_toan.dart';
 import '../../domain/don_thanh_toan.dart';
 import '../bloc/goi_cubit.dart';
 
@@ -142,15 +144,17 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
     _conLai = d.isNegative ? Duration.zero : d;
   }
 
+  /// Đồng hồ trên máy chỉ để HIỆN số giây còn lại — về 0 cũng không đưa màn
+  /// sang hết hạn. Server là nguồn sự thật: `order-status` tự trả `EXPIRED` cho
+  /// đơn `PENDING` quá `expired_at`, còn `WAITING_CONFIRMATION` không bao giờ
+  /// hết hạn. Tự kết luận ở đây là chặn mọi câu trả lời sau đó (`_khiCo` chỉ
+  /// nhận khi màn còn `cho`): người chuyển thừa quay lại sau hạn từng thấy *"Đơn
+  /// đã hết hạn"* thay cho hộp xác nhận (G94 việc 1).
   void _nhipDem() {
     if (!mounted) return;
     // `isCurrent` không có bộ báo — hỏi mỗi nhịp, như `TheoDoiXem`.
     _xet();
     setState(_capNhatConLai);
-    if (_conLai == Duration.zero && _man == _Man.cho) {
-      setState(() => _man = _Man.hetHan);
-      _bo.dung();
-    }
   }
 
   Future<void> _khiCo(TrangThaiDon t) async {
@@ -200,7 +204,14 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
         if (mounted) setState(() => _man = _Man.canHoanTien);
       }
     } catch (e) {
-      debugPrint('[Payment] Lỗi xác nhận nâng cấp: $e');
+      // Nút mở lại ở `finally`; người dùng phải biết vì sao chưa có gì xảy ra
+      // (G94 việc 3 — trước đây chỉ `debugPrint`).
+      if (mounted) {
+        baoNhanh(
+          cauLoiThanhToan(e, cauTuChoi: 'Không xác nhận được đơn này. Thử lại sau.'),
+          loai: LoaiThongBao.loi,
+        );
+      }
     } finally {
       if (mounted) setState(() => _dangXuLyXacNhan = false);
     }

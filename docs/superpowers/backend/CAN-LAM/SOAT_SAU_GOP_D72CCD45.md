@@ -196,3 +196,10 @@ Phía client có một khoảng trống mới, **G94** (`docs/CLIENT_APP_KNOWN_G
 nên coi là `pending`: người chuyển thừa ngồi ở màn *Chờ thanh toán* tới hết hạn mà không thấy hộp xác nhận. Câu *"chỉ
 có hiệu lực 30 phút"* nay sai. A–F không chặn client. Người dùng chốt làm G94 **cùng lượt** với phần client của đơn 43,
 sau khi đơn 43 đóng. Nếu thiết kế lúc ấy cần thêm trường ở `order-status` (mục F), client sẽ đặt đơn riêng.
+
+> **Cập nhật 2026-10-18 tối (client):** màn Chờ thanh toán thôi tự báo hết hạn khi đồng hồ trên máy về 0 — nay chỉ báo
+> khi `GET /payment/order-status` trả `EXPIRED`. Client vì thế **dựa vào** hành vi hiện có của backend: đơn `PENDING` quá
+> `expired_at` được trả `EXPIRED` ngay lúc đọc — ba chỗ cùng làm việc ấy: `findOrderByCode` gọi
+> `autoExpirePendingOrders` trước khi đọc (`payment.repository.js:106`), phép chuẩn hoá ở `payment.repository.js:30`, và
+> `payment.service.js:713`. Xin giữ hành vi ấy; nếu bỏ cả ba, màn chờ sẽ đứng ở *"Còn 00:00"* tới lượt quét định kỳ
+> (`setInterval`, `payment.service.js:895`). Không phải việc mới cho backend.

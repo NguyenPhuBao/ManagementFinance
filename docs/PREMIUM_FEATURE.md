@@ -17,9 +17,11 @@ HOÃN, làm cùng lượt G89:** backend thêm ba trạng thái đơn `WAITING_C
 - **Phía backend:** đơn 44 đạt A, C, D, E, F khi client soát 2026-10-18. Mục B còn hai vế (đơn đang chờ xác nhận / chờ
   hoàn tiền vẫn bị webhook xử lý lại; chưa khử trùng theo `reference`) — banner đầu `CAN-LAM/SOAT_SAU_GOP_D72CCD45.md`.
 - **Phía client:** gộp `e7570e16` mang mã backend viết thẳng vào mảng này — ba trạng thái đơn, hai nút xác nhận chuyển
-  thừa ở màn Chờ thanh toán, nhãn lịch sử, hạn 10 phút. Ca chính vẫn hở: đồng hồ trên máy về 0 lúc màn không hiện thì người
-  chuyển thừa vẫn thấy *"Đơn đã hết hạn"*, và chỉ màn chờ gọi được `confirm-upgrade`. Danh sách chín chỗ còn hở: khối 🔀
-  ở thân G94 `CLIENT_APP_KNOWN_GAPS.md`.
+  thừa ở màn Chờ thanh toán, nhãn lịch sử, hạn 10 phút. ✅ **2026-10-18 tối** (đợt sửa hai lỗi mở đầu lượt G89 + G94):
+  đồng hồ trên máy chỉ còn để hiện số giây — màn sang *"Đơn đã hết hạn"* duy nhất khi `order-status` trả `EXPIRED` (server
+  tự trả `EXPIRED` cho đơn `PENDING` quá hạn), nên người chuyển thừa quay lại sau hạn thấy hộp xác nhận; quá hạn theo máy
+  mà server chưa trả lời thì màn đứng ở *"Còn 00:00"* và vẫn hỏi. Lỗi khi bấm xác nhận nay báo bằng `baoNhanh`. Còn hở:
+  chỉ màn chờ gọi được `confirm-upgrade`, cùng bảy việc khác — khối 🔀 ở thân G94 `CLIENT_APP_KNOWN_GAPS.md`.
 
 > Tài liệu là ảnh chụp — đối chiếu với mã trước khi kết luận. Mọi con số đếm bằng máy, kèm ngày.
 
