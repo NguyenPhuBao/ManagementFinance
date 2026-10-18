@@ -635,9 +635,13 @@ src/Backend/
   - **41** và **42** đạt trọn, client chuyển sang `DA-XONG/` (mục 4i mục lục).
   - **43** đạt A2 (`accountRejection` mặc định `ACCOUNT_INACTIVE` — chặn đúng đường làm client xoá SQLite), B, C. Còn
     A1 phần controller (`aiops.controller.js:249`, `:305` ghi đè `'Locked'`), A3 (mở khoá tự động không xét ai khoá),
-    A4 (mã chết `feature.collector.js:231`), A5 (CSDL dev 0 CHECK trên `account`, chưa có `database/N`).
-  - **44** đạt A, C, D, E, F. Mục B còn hai vế: đơn `WAITING_CONFIRMATION` / `REFUND_PENDING` vẫn bị webhook xử lý lại,
-    và chưa khử trùng theo `reference`.
+    A4 (mã chết `feature.collector.js:231`), A5 (CSDL dev 0 CHECK trên `account`, chưa có `database/N`), A6 tuỳ chọn, và
+    D: `grep` từng hàng ngày 2026-10-18 cho thấy **0 / 12** chỗ đính chính `Event-Notification-to-ClientApp.md` được sửa
+    (khoảng 106 dòng thêm ở `3a5d320c` là phần thanh toán của đơn 44 F).
+  - **44** đạt A, C, D, E, F. Mục B còn hai vế: đơn `WAITING_CONFIRMATION` / `REFUND_PENDING` vẫn bị webhook xử lý lại
+    (ghi đè `amount_received`, phát lại sự kiện, và một lần chuyển đúng giá gói nâng gói khi người dùng chưa chọn), và chưa
+    khử trùng theo `reference`. Kèm câu hỏi có mặc định cho backend: spec không đặt hạn cho `WAITING_CONFIRMATION`; client
+    mặc định không hạn và sẽ thêm lối xác nhận ở Lịch sử mua.
   - **45, 46, 47** backend chưa đụng.
   - Chi tiết kèm số dòng: banner đầu hai tệp 43, 44 và banner đầu `CAN-LAM/README.md`.
   - **Người dùng chốt cùng ngày:** phần dư của đơn 43 không chặn — lượt **G89 + G94** bắt đầu từ phiên sau, mở bằng

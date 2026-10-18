@@ -1,7 +1,8 @@
 # Soát sau gộp `main` @ `d72ccd45`: hai tệp migration trùng số và script áp migration đồng bộ bị viết đè; webhook xử lý lại đơn đã đối soát; tra mã nhận diện bắt nhầm tiền tố PayOS; hợp đồng thanh toán mới chưa vào tài liệu sự kiện (mục 44)
 
 > 🟡 **Client soát 2026-10-18 (sau gộp `main` @ `e7570e16`; backend ghi *"✅ Đã xong 100%"* ở `3a5d320c`): đạt năm
-> mục, mục B còn hai vế.** Đo bằng đọc mã ở `e7570e16` và truy vấn chỉ đọc trên CSDL dev.
+> mục, mục B còn hai vế.** Đo bằng đọc mã ở `e7570e16`, truy vấn chỉ đọc trên CSDL dev, và `grep` tài liệu hợp đồng sự
+> kiện. Thân đơn bên dưới giữ nguyên: mục *Xin làm* và *Kiểm lại bằng* của vế B vẫn áp dụng.
 >
 > **Đạt:**
 > - **A** — `ls database | cut -d_ -f1 | sort | uniq -d` không in gì. Hai tệp thanh toán thành `28_…` và `29_…`, thêm
@@ -10,18 +11,28 @@
 > - **D** — `28_…sql:17` có `ALTER COLUMN "status" TYPE VARCHAR(25)`. CSDL dev đo 2026-10-18: `payment_order.status` dài
 >   **25**, bảng có **22** cột (đủ cột của 27, 28, 29).
 > - **E** — controller (`:207`) và service (`:378`) đều trả 400 khi `accept` không phải boolean.
-> - **F** — `Event-Notification-to-ClientApp.md` có bốn sự kiện `payment.*` (hàng 12–15); client chưa đối từng trường.
+> - **F** — `Event-Notification-to-ClientApp.md` §3.12–3.14 có ba sự kiện `payment.*` với đúng các khoá payload mà
+>   `payment.service.js` phát; §3.12 tả `POST /api/payment/confirm-upgrade` với `accept` true / false; ba trạng thái mới và
+>   hạn 10 phút đều có. Thêm §3.15 `payment.order_expired` (ngoài đơn).
 >
 > **Còn mở — mục B:**
-> 1. Chốt idempotency (`payment.service.js:136`) chỉ chặn `PAID` · `REFUNDED` · `CANCELLED`. Đơn đang
->    `WAITING_CONFIRMATION` hoặc `REFUND_PENDING` nhận lại webhook thì vẫn bị xử lý lại, và `amount_received` bị ghi đè.
->    Đơn xin *"chỉ xử lý khi còn `PENDING` (và `EXPIRED`)"*.
+> 1. Chốt idempotency (`payment.service.js:136`) chỉ chặn `PAID` · `REFUNDED` · `CANCELLED`. Ba nhánh sau nó (khớp ·
+>    thừa · thiếu) không xét trạng thái nữa. Nên một webhook lặp lại cho đơn `WAITING_CONFIRMATION` hoặc `REFUND_PENDING`
+>    sẽ ghi thêm một hàng `payment_transaction`, ghi đè `amount_received`, và phát lại `payment.overpaid_confirmation` /
+>    `payment.underpaid_warning`. Nếu số tiền của lần sau khớp đúng giá gói, đơn đang chờ xác nhận nhảy thẳng sang `PAID`
+>    và nâng gói mà người dùng chưa chọn. Đơn xin *"chỉ xử lý khi còn `PENDING` (và `EXPIRED`)"*.
+>    *Kiểm lại:* ca test — đơn `WAITING_CONFIRMATION` nhận lại đúng webhook cũ → trạng thái và `amount_received` không đổi,
+>    không phát sự kiện, có thêm tối đa một hàng `payment_transaction` để đối soát.
 > 2. Chưa khử trùng theo `reference`: `recordTransaction` (`payment.repository.js:325`) `create` thẳng, không có unique
 >    index trên `payos_transaction_id`.
+>    *Kiểm lại:* hai webhook cùng `reference` → một hàng `payment_transaction` (câu ở mục *Kiểm lại bằng* vế B).
 >
-> Thêm một điều đo được, không thuộc đơn này: bộ hết hạn tự động (`autoExpirePendingOrders`, `payment.repository.js:46`)
-> chỉ xét `PENDING`. Đơn `WAITING_CONFIRMATION` nằm chờ mãi nếu người dùng rời màn chờ, vì client chỉ gọi
-> `confirm-upgrade` từ màn ấy (G94 phía client).
+> **Câu hỏi có mặc định (không chặn client):** spec `docs/Payment/PAYMENT_WORKFLOW_SPEC.md` (sơ đồ trạng thái, dòng
+> 132–136) cho `WAITING_CONFIRMATION` chỉ hai lối ra, đều do người dùng chọn. Bộ hết hạn tự động
+> (`autoExpirePendingOrders`, `payment.repository.js:46`) chỉ xét `PENDING`. Vậy người dùng không bao giờ chọn thì tiền
+> nằm ở đó mãi. **Mặc định client theo:** không có hạn chờ; client sẽ thêm lối xác nhận ở trang Lịch sử mua, vì
+> `GET /payment/history` đã trả đủ mã đơn và trạng thái (G94 phía client). Backend chỉ cần ghi lựa chọn ấy vào spec. Nếu
+> backend muốn có hạn chờ, xin ghi hạn và trạng thái đích vào spec để client hiện đúng câu.
 
 **Ngày:** 2026-10-16 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat` (commit gộp `e49100ed`)
 **Loại:** đơn xin — **một lỗi mức cao** (A), **ba lỗi mức vừa** (B, C, D), **hai việc mức thấp** (E, F). Không đổi lược đồ

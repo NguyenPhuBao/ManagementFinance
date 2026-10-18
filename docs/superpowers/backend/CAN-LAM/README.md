@@ -4,12 +4,13 @@
 > 0 (`3a5d320c`) nhưng không chuyển tệp. Client soát bằng mã + CSDL dev.
 > - **41** và **42** đạt trọn, đã chuyển sang `DA-XONG/` (mục 4i mục lục).
 > - **43** đạt phần chính. `accountRejection` nay mặc định `ACCOUNT_INACTIVE`, nên AIOps khoá tài khoản không còn làm
->   client xoá dữ liệu. Webhook gặp đơn lạ trả 2xx, 503 lúc bảo trì có `code`. Còn năm việc: controller AIOps ghi đè
+>   client xoá dữ liệu. Webhook gặp đơn lạ trả 2xx, 503 lúc bảo trì có `code`. Còn sáu việc: controller AIOps ghi đè
 >   `'Locked'`, mở khoá tự động không xét ai đã khoá, mã chết ở `feature.collector.js:231`, chưa có `database/N` cho
->   `ck_account_status`, và `force_logout` (tuỳ chọn).
+>   `ck_account_status`, `force_logout` (tuỳ chọn), và vế **D** — 12 chỗ đính chính
+>   `Event-Notification-to-ClientApp.md` chưa chỗ nào được sửa.
 > - **44** đạt A, C, D, E, F. Mục **B** còn hai vế: đơn `WAITING_CONFIRMATION` / `REFUND_PENDING` vẫn bị webhook xử lý lại,
->   và chưa khử trùng theo `reference`.
-> - Chi tiết từng vế, kèm số dòng, ở banner đầu hai tệp 43 và 44.
+>   và chưa khử trùng theo `reference`. Kèm một câu hỏi có mặc định: đơn chờ xác nhận có hạn chờ không.
+> - Chi tiết từng vế, kèm số dòng, cách sửa đề nghị và phép kiểm lại, ở banner đầu hai tệp 43 và 44.
 > - **45, 46, 47** backend chưa đụng. Đọc mã: `|| '3'` và `?? existing` vẫn ở `sync.repository.js:499` và `:525`;
 >   `maxOutputTokens: 1024` và `req.on('close')` của chatbot không đổi.
 >
@@ -116,7 +117,7 @@
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
-| **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | **A (cao)** AIOps khoá tài khoản ghi `'Inactive'` thay `'Locked'`; `accountRejection` mặc định `ACCOUNT_INACTIVE`, chỉ `Deleted` mới `ACCOUNT_DELETED`; áp lại `ck_account_status`. **B (cao)** webhook `orderCode` lạ → 2xx, không tạo đơn / không nâng gói cho Admin. **C (vừa)** 503 lúc đăng nhập bảo trì mang `code` + `Retry-After: 60`. **D (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | 🟡 Backend ghi ✅ Đã xong 100% · client soát 2026-10-18: đạt A2, B, C; còn A1 (controller), A3, A4, A5 — banner tệp |
+| **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | **A (cao)** AIOps khoá tài khoản ghi `'Inactive'` thay `'Locked'`; `accountRejection` mặc định `ACCOUNT_INACTIVE`, chỉ `Deleted` mới `ACCOUNT_DELETED`; áp lại `ck_account_status`. **B (cao)** webhook `orderCode` lạ → 2xx, không tạo đơn / không nâng gói cho Admin. **C (vừa)** 503 lúc đăng nhập bảo trì mang `code` + `Retry-After: 60`. **D (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | 🟡 Backend ghi ✅ Đã xong 100% · client soát 2026-10-18: đạt A2, B, C; còn A1 (controller), A3, A4, A5, A6 (tuỳ chọn), D (0 / 12) — banner tệp |
 | **44** | [SOAT_SAU_GOP_D72CCD45.md](./SOAT_SAU_GOP_D72CCD45.md) | Backend | **A (cao)** Đánh số lại hai tệp migration thanh toán (thành 28 và 29, tránh trùng 20, 24); trả `apply_migration_20.js` về `Server_update_at`. **B (vừa)** Webhook Idempotency không ghi đè đơn `REFUNDED`/`CANCELLED`. **C (vừa)** Tra mã nhận diện theo token cuối của nội dung. **D (vừa)** Nới `payment_order.status` lên VARCHAR(25). **E (thấp)** `accept` bắt buộc boolean. **F (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | 🟡 Backend ghi ✅ Đã xong 100% · client soát 2026-10-18: đạt A, C, D, E, F; B còn hai vế — banner tệp |
 | **45** | [TAT_NHAC_HOA_DON_QUA_DONG_BO.md](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) | Backend | `sync.repository.js`: hoá đơn `time_notification` — tạo ~:471 `\|\| '3'` và cập nhật ~:497 `?? existing` nuốt NULL (= tắt nhắc ở client); ~:98 `String(null)` thành `"null"`. Đổi sang `!== undefined ? … : …`. Đo dev: 37 hoá đơn sống, 0 NULL (hệ quả của phép ép). Client đã làm phần mình (`d657b065`, tắt là tắt thật); tới khi sửa, tắt nhắc bị đảo sau một vòng đồng bộ. | ⏳ Chờ backend |
 | **46** | [NOTIFICATION_CLIENT_APP_LECH_MA.md](./NOTIFICATION_CLIENT_APP_LECH_MA.md) | Backend (chữ) | Sửa `docs/Notification/Notification_Client-app.md` theo bảng của đơn (~30 chỗ, bốn nhóm: đường dẫn · hàm / route · con số · hành vi; nhãn [cũ] / [mới]); phần phía backend ghi riêng, ngắn. Kiểm lại bằng một câu `grep` ra 0 dòng. Không đổi mã; không chặn client. | ⏳ Chờ |
