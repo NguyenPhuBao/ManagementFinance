@@ -6,9 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../data/datasources/payment_api.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
-import '../../data/models/don_thanh_toan.dart';
+import '../../data/repositories/don_thanh_toan_repository.dart';
 import '../../domain/quyen_tinh_nang.dart';
 import '../../domain/tran_goi.dart';
 import '../../data/models/tran_goi.dart';
@@ -33,7 +32,7 @@ String cauMoDauQuyen(MaQuyen ma) => '${ma.ten} là tính năng Premium.';
 /// xác nhận).
 class NangCapPage extends StatefulWidget {
   const NangCapPage(
-      {super.key, this.tran, this.quyen, this.api, this.goi, this.clock});
+      {super.key, this.tran, this.quyen, this.repo, this.goi, this.clock});
 
   /// Loại trần vừa chạm (từ query `?tran=`); `null` = mở từ thẻ Cá nhân / băng khoá.
   final LoaiTran? tran;
@@ -41,8 +40,8 @@ class NangCapPage extends StatefulWidget {
   /// Tính năng bị khoá vừa chạm (query `?quyen=`); `tran` khác `null` thì câu trần thắng.
   final MaQuyen? quyen;
 
-  /// `null` → `sl<PaymentApi>()`; test tiêm bản giả.
-  final PaymentApi? api;
+  /// `null` → `sl<DonThanhToanRepository>()`; test tiêm bản giả.
+  final DonThanhToanRepository? repo;
 
   /// `null` → `context.watch<GoiCubit>()`.
   final GoiCubit? goi;
@@ -55,7 +54,7 @@ class NangCapPage extends StatefulWidget {
 class _NangCapPageState extends State<NangCapPage> {
   bool _dangTao = false;
 
-  PaymentApi get _api => widget.api ?? sl<PaymentApi>();
+  DonThanhToanRepository get _repo => widget.repo ?? sl<DonThanhToanRepository>();
   DateTime _now() => (widget.clock ?? DateTime.now)();
 
   /// Tạo đơn rồi sang màn Đang chờ. Nút khoá trong lúc chờ: bấm đôi là hai đơn
@@ -64,13 +63,12 @@ class _NangCapPageState extends State<NangCapPage> {
     if (_dangTao) return;
     setState(() => _dangTao = true);
     try {
-      final don = donTuJson(await _api.taoDon(), now: _now());
-      if (don == null) throw StateError('đơn thiếu orderCode / checkoutUrl');
+      final don = await _repo.taoDon();
       if (!mounted) return;
       await context.push('/premium/cho-thanh-toan', extra: don);
     } catch (e) {
       if (!mounted) return;
-      baoNhanh(cauLoiThanhToan(loaiLoiThanhToanTu(e)), loai: LoaiThongBao.loi);
+      baoNhanh(cauLoiThanhToan(loaiLoiCua(e)), loai: LoaiThongBao.loi);
     } finally {
       if (mounted) setState(() => _dangTao = false);
     }

@@ -15,7 +15,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/bo_hoi_trang_thai_don.dart';
 import '../../data/mo_lien_ket.dart';
-import '../../data/datasources/payment_api.dart';
+import '../../data/repositories/don_thanh_toan_repository.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
 import '../../data/models/don_thanh_toan.dart';
 import '../../domain/trang_thai_don.dart';
@@ -31,7 +31,7 @@ class ChoThanhToanPage extends StatefulWidget {
   const ChoThanhToanPage({
     super.key,
     required this.don,
-    this.api,
+    this.repo,
     this.goi,
     this.moLienKet,
     this.suKien,
@@ -40,8 +40,8 @@ class ChoThanhToanPage extends StatefulWidget {
 
   final DonThanhToan don;
 
-  /// `null` → `sl<PaymentApi>()`.
-  final PaymentApi? api;
+  /// `null` → `sl<DonThanhToanRepository>()`.
+  final DonThanhToanRepository? repo;
 
   /// `null` → `context.read<GoiCubit>()`.
   final GoiCubit? goi;
@@ -75,7 +75,7 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
   bool _dangXuLyXacNhan = false;
   Duration _conLai = Duration.zero;
 
-  PaymentApi get _api => widget.api ?? sl<PaymentApi>();
+  DonThanhToanRepository get _repo => widget.repo ?? sl<DonThanhToanRepository>();
   GoiCubit get _goi => widget.goi ?? context.read<GoiCubit>();
   DateTime _now() => (widget.clock ?? DateTime.now)();
 
@@ -84,8 +84,7 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _bo = BoHoiTrangThaiDon(
-      hoi: () async =>
-          trangThaiDonTuChuoi((await _api.trangThaiDon(widget.don.orderCode))['status']),
+      hoi: () => _repo.trangThaiDon(widget.don.orderCode),
       khiCo: _khiCo,
     );
     _subSuKien = (widget.suKien ?? sl<RealtimeChannel>().events).listen((e) {
@@ -197,7 +196,7 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
   Future<void> _xacNhanNangCap(bool accept) async {
     setState(() => _dangXuLyXacNhan = true);
     try {
-      await _api.xacNhanNangCap(orderCode: widget.don.orderCode, accept: accept);
+      await _repo.xacNhan(orderCode: widget.don.orderCode, accept: accept);
       if (accept) {
         await _goi.lamMoi();
         if (mounted) setState(() => _man = _Man.thanhCong);
@@ -209,7 +208,7 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage>
       // (G94 việc 3 — trước đây chỉ `debugPrint`).
       if (mounted) {
         baoNhanh(
-          cauLoiThanhToan(loaiLoiThanhToanTu(e), cauTuChoi: 'Không xác nhận được đơn này. Thử lại sau.'),
+          cauLoiThanhToan(loaiLoiCua(e), cauTuChoi: 'Không xác nhận được đơn này. Thử lại sau.'),
           loai: LoaiThongBao.loi,
         );
       }

@@ -72,6 +72,8 @@ import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
+import '../../features/premium/data/repositories/don_thanh_toan_repository.dart';
+import '../../features/premium/data/repositories/don_thanh_toan_repository_impl.dart';
 import '../../features/premium/data/repositories/goi_repository.dart';
 import '../../features/premium/data/goi_store.dart';
 import '../../features/premium/data/datasources/payment_api.dart';
@@ -486,6 +488,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // vì AuthBloc là factory. Đếm đăng ký theo mặt cắt để router tiêm bản giả.
   sl.registerLazySingleton<PaymentApi>(
       () => DioPaymentApi(sl<DioClient>().dio));
+  // Ba trang Premium đọc / ghi đơn qua repository, không gọi thẳng API (spec G94 2026-10-18 mục 4.2).
+  sl.registerLazySingleton<DonThanhToanRepository>(
+      () => DonThanhToanRepositoryImpl(api: sl()));
   sl.registerLazySingleton<GoiStore>(
       () => SecureStorageGoiStore(sl<FlutterSecureStorage>()));
   sl.registerLazySingleton<GoiRepository>(

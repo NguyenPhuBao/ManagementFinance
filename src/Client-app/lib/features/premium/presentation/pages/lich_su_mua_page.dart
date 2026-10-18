@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../data/datasources/payment_api.dart';
+import '../../data/repositories/don_thanh_toan_repository.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
 import '../../domain/trang_thai_don.dart';
 import '../../data/models/dong_lich_su.dart';
@@ -14,10 +14,10 @@ import '../../data/models/dong_lich_su.dart';
 /// (20 dòng, không phân trang vô hạn). Màn Stitch *"Lịch sử mua Premium -
 /// FlowMoney"* `e7d6609536224c4fbd2e2a94f4623e36` (chờ người dùng xác nhận).
 class LichSuMuaPage extends StatefulWidget {
-  const LichSuMuaPage({super.key, this.api});
+  const LichSuMuaPage({super.key, this.repo});
 
-  /// `null` → `sl<PaymentApi>()`.
-  final PaymentApi? api;
+  /// `null` → `sl<DonThanhToanRepository>()`.
+  final DonThanhToanRepository? repo;
 
   @override
   State<LichSuMuaPage> createState() => _LichSuMuaPageState();
@@ -28,7 +28,7 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
   String? _loi;
   bool _dangNap = true;
 
-  PaymentApi get _api => widget.api ?? sl<PaymentApi>();
+  DonThanhToanRepository get _repo => widget.repo ?? sl<DonThanhToanRepository>();
 
   @override
   void initState() {
@@ -42,7 +42,7 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
       _loi = null;
     });
     try {
-      final ds = dongLichSuTu(await _api.lichSu());
+      final ds = await _repo.lichSu();
       if (!mounted) return;
       setState(() {
         _dong = ds;
@@ -51,7 +51,7 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _loi = cauLoiThanhToan(loaiLoiThanhToanTu(e));
+        _loi = cauLoiThanhToan(loaiLoiCua(e));
         _dangNap = false;
       });
     }

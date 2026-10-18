@@ -10,6 +10,7 @@ import 'package:dio/dio.dart';
 import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
+import 'package:flowmoney/features/premium/data/repositories/don_thanh_toan_repository_impl.dart';
 import 'package:flowmoney/features/premium/data/models/don_thanh_toan.dart';
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/domain/hang_goi.dart';
@@ -100,7 +101,7 @@ void main() {
         builder: (_, __) => NangCapPage(
             tran: tran,
             quyen: quyen,
-            api: api ?? _ApiGia(),
+            repo: DonThanhToanRepositoryImpl(api: api ?? _ApiGia(), clock: () => now),
             goi: cubit,
             clock: () => now),
       ),
@@ -183,7 +184,7 @@ void main() {
       value: cubit,
       child: MaterialApp(
           theme: AppTheme.lightTheme,
-          home: NangCapPage(api: _ApiGia(), goi: cubit, clock: () => now)),
+          home: NangCapPage(repo: DonThanhToanRepositoryImpl(api: _ApiGia(), clock: () => now), goi: cubit, clock: () => now)),
     ));
     await tester.pumpAndSettle();
     expect(find.text('Premium'), findsWidgets);

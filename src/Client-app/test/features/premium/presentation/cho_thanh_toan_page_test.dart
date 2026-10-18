@@ -16,6 +16,7 @@ import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
 import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
+import 'package:flowmoney/features/premium/data/repositories/don_thanh_toan_repository_impl.dart';
 import 'package:flowmoney/features/premium/data/models/don_thanh_toan.dart';
 import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/premium/presentation/pages/cho_thanh_toan_page.dart';
@@ -119,7 +120,7 @@ void main() {
         path: '/premium/cho-thanh-toan',
         builder: (_, s) => ChoThanhToanPage(
           don: s.extra as DonThanhToan,
-          api: api,
+          repo: DonThanhToanRepositoryImpl(api: api),
           goi: cubit,
           moLienKet: (u) async {
             daMo.add(u);

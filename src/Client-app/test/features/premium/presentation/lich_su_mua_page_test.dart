@@ -4,6 +4,7 @@ library;
 
 import 'package:dio/dio.dart';
 import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
+import 'package:flowmoney/features/premium/data/repositories/don_thanh_toan_repository_impl.dart';
 import 'package:flowmoney/features/premium/presentation/pages/lich_su_mua_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -38,7 +39,7 @@ class _ApiGia implements PaymentApi {
 
 void main() {
   Widget boc(PaymentApi api) =>
-      MaterialApp(theme: AppTheme.lightTheme, home: LichSuMuaPage(api: api));
+      MaterialApp(theme: AppTheme.lightTheme, home: LichSuMuaPage(repo: DonThanhToanRepositoryImpl(api: api)));
 
   testWidgets('có dòng: ngày dd/MM/yyyy, tiền, trạng thái', (tester) async {
     await tester.pumpWidget(boc(_ApiGia([
