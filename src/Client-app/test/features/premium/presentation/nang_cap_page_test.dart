@@ -79,6 +79,29 @@ class _ApiGia implements PaymentApi {
       throw UnimplementedError();
 }
 
+/// Màn Chờ giả: khung đầu `pushReplacement` sang Chi tiết đơn — đúng đường của màn Chờ thật với đơn chuyển thừa.
+class _ChoThayNgay extends StatefulWidget {
+  const _ChoThayNgay(this.ma);
+
+  final int ma;
+
+  @override
+  State<_ChoThayNgay> createState() => _ChoThayNgayState();
+}
+
+class _ChoThayNgayState extends State<_ChoThayNgay> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.pushReplacement('/premium/don/${widget.ma}');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(body: Text('CHỜ'));
+}
+
 Map<String, Object?> _don(int ma, String status) =>
     {'order_code': ma, 'amount': 49000, 'status': status, 'created_at': '2026-10-06T02:00:00.000Z'};
 
@@ -116,6 +139,7 @@ void main() {
     MaQuyen? quyen,
     _ApiGia? api,
     DateTime? hetHan,
+    bool choThayNgay = false,
   }) async {
     final cubit = await goi(premium: premium, hetHan: hetHan);
     final router = GoRouter(initialLocation: '/premium', routes: [
@@ -135,8 +159,10 @@ void main() {
       ),
       GoRoute(
         path: '/premium/cho-thanh-toan',
-        builder: (_, s) =>
-            Scaffold(body: Text('CHỜ ${(s.extra as DonThanhToan).orderCode}')),
+        builder: (_, s) => choThayNgay
+            // Như màn Chờ thật khi server trả trạng thái đối soát: THAY chính nó bằng Chi tiết đơn.
+            ? _ChoThayNgay((s.extra as DonThanhToan).orderCode)
+            : Scaffold(body: Text('CHỜ ${(s.extra as DonThanhToan).orderCode}')),
       ),
       GoRoute(
           path: '/premium/lich-su',
@@ -361,6 +387,63 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.soLanLichSu, 2);
     expect(find.byKey(const Key('nang-cap-the-cho-xac-nhan')), findsNothing);
+    expect(nutThanhToan(tester).onPressed, isNotNull);
+  });
+
+  testWidgets('⭐ đường chính: Thanh toán → màn Chờ THAY bằng Chi tiết đơn → Đồng ý → về Nâng cấp: đọc lại SAU khi về, thẻ mất, nút mở',
+      (tester) async {
+    final api = _ApiGia()..lichSuItems = const [];
+    final router = await dung(tester, premium: false, api: api, choThayNgay: true);
+    await tester.tap(find.byKey(const Key('nang-cap-thanh-toan')));
+    // Người dùng chuyển thừa trong lúc ở màn Chờ → server: đơn chờ xác nhận.
+    api.lichSuItems = [_don(200370869, 'WAITING_CONFIRMATION')];
+    await tester.pumpAndSettle();
+    expect(find.text('CHI TIẾT 200370869'), findsOneWidget, reason: 'màn Chờ đã tự thay bằng Chi tiết đơn');
+
+    // Ở Chi tiết đơn người dùng bấm Đồng ý → server PAID (chỉ phát account.upgraded — Nâng cấp đang bị che).
+    api.lichSuItems = [_don(200370869, 'PAID')];
+    final truocKhiVe = api.soLanLichSu;
+    router.pop();
+    // Không `pumpAndSettle`: bản lỗi để nút Thanh toán quay mãi → treo thay vì đỏ.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Gói hiện tại: Basic'), findsOneWidget, reason: 'đã về Nâng cấp');
+    expect(
+        find.descendant(
+            of: find.byKey(const Key('nang-cap-thanh-toan')), matching: find.byType(CircularProgressIndicator)),
+        findsNothing,
+        reason: 'future của `push` tới màn Chờ (đã bị thay) không về — nút từng quay mãi khi người dùng quay lại');
+    expect(api.soLanLichSu, greaterThan(truocKhiVe),
+        reason: '`push` tới màn Chờ bị `pushReplacement` — future của nó không gắn với lúc người dùng thật sự quay về');
+    expect(find.byKey(const Key('nang-cap-the-cho-xac-nhan')), findsNothing);
+    expect(nutThanhToan(tester).onPressed, isNotNull, reason: 'đơn đã kích hoạt — khoá với lý do sai là chặn gia hạn');
+  });
+
+  testWidgets('đường chính với Từ chối: về Nâng cấp → thẻ chờ xác nhận thành thẻ chờ hoàn tiền, nút mở', (tester) async {
+    final api = _ApiGia()..lichSuItems = const [];
+    final router = await dung(tester, premium: false, api: api, choThayNgay: true);
+    await tester.tap(find.byKey(const Key('nang-cap-thanh-toan')));
+    api.lichSuItems = [_don(200370869, 'WAITING_CONFIRMATION')];
+    await tester.pumpAndSettle();
+    expect(find.text('CHI TIẾT 200370869'), findsOneWidget);
+    // Từ chối → server REFUND_PENDING, KHÔNG phát sự kiện nào.
+    api.lichSuItems = [_don(200370869, 'REFUND_PENDING')];
+    router.pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byKey(const Key('nang-cap-the-cho-xac-nhan')), findsNothing);
+    expect(find.text('Đơn #200370869 đang chờ hoàn tiền'), findsOneWidget);
+    expect(nutThanhToan(tester).onPressed, isNotNull);
+  });
+
+  testWidgets('tín hiệu taiKhoanNangCap (Đồng ý ở máy khác → server phát account.upgraded) → đọc lại', (tester) async {
+    final api = _ApiGia()..lichSuItems = [_don(5, 'WAITING_CONFIRMATION')];
+    await dung(tester, premium: false, api: api);
+    expect(nutThanhToan(tester).onPressed, isNull);
+    api.lichSuItems = [_don(5, 'PAID')];
+    suKien.add(RealtimeEvent.taiKhoanNangCap);
+    await tester.pumpAndSettle();
+    expect(api.soLanLichSu, 2);
     expect(nutThanhToan(tester).onPressed, isNotNull);
   });
 

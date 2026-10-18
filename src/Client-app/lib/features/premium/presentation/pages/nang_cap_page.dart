@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -41,8 +42,9 @@ String cauMoDauQuyen(MaQuyen ma) => '${ma.ten} là tính năng Premium.';
 /// Premium - Có đơn cần xử lý (khoá Thanh toán)"* `5c629d0af67e4c6fbda1c85de896fa8d`):
 /// đơn chờ xác nhận chuyển thừa → thẻ nổi + KHOÁ *Thanh toán* / *Gia hạn* (tránh
 /// trả lần hai khi khoản thừa còn chờ dùng); đơn chờ hoàn tiền → thẻ nhỏ, không
-/// khoá (người chuyển thiếu vẫn mua lại được). Đọc lịch sử khi mở màn, khi quay
-/// về từ màn khác, khi có tín hiệu `payment.*`; đọc hỏng → không thẻ, nút mở
+/// khoá (người chuyển thiếu vẫn mua lại được). Đọc lịch sử khi mở màn, khi màn
+/// TRỞ LẠI HIỆN (route phía trên vừa pop — `TickerMode` của màn bật lại), khi có
+/// tín hiệu `payment.*` / `account.upgraded`; đọc hỏng → không thẻ, nút mở
 /// (không chặn mua vì mạng — KIEN_TRUC mục 7) — đã đọc được thì giữ kết quả cũ.
 /// Lệch Stitch có chủ ý: không chép dòng *"Tự động gia hạn · Hủy bất cứ lúc
 /// nào"* (gói không tự gia hạn — lời hứa sai), không đổi thẻ gói hiện tại.
@@ -82,6 +84,8 @@ class _NangCapPageState extends State<NangCapPage> {
   /// Lịch sử trang 1 — nguồn của hai thẻ đơn cần xử lý. Rỗng tới khi đọc được.
   List<DongLichSu> _dsDon = const [];
   StreamSubscription<RealtimeEvent>? _subSuKien;
+  ValueListenable<TickerModeData>? _ticker;
+  bool _dangHien = true;
 
   DonThanhToanRepository get _repo => widget.repo ?? sl<DonThanhToanRepository>();
   DateTime _now() => (widget.clock ?? DateTime.now)();
@@ -90,13 +94,39 @@ class _NangCapPageState extends State<NangCapPage> {
   void initState() {
     super.initState();
     _subSuKien = (widget.suKien ?? sl<RealtimeChannel>().events).listen((e) {
-      if (e == RealtimeEvent.donThanhToanDoi) unawaited(_napDon());
+      // `account.upgraded`: *Đồng ý* ở máy khác (server chỉ phát sự kiện ấy cho `confirm-upgrade`).
+      if (e == RealtimeEvent.donThanhToanDoi || e == RealtimeEvent.taiKhoanNangCap) unawaited(_napDon());
     });
     unawaited(_napDon());
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final t = TickerMode.getValuesNotifier(context);
+    if (!identical(t, _ticker)) {
+      _ticker?.removeListener(_khiDoiHien);
+      _ticker = t..addListener(_khiDoiHien);
+      _dangHien = t.value.enabled;
+    }
+  }
+
+  /// Route phía trên vừa pop → màn hiện lại → mở nút, đọc lại đơn. KHÔNG dựa vào future của `context.push`: màn Chờ
+  /// THAY chính nó bằng Chi tiết đơn (`pushReplacement`), và future của lượt `push` ấy không về khi người dùng quay lại
+  /// — từng để nút *Thanh toán* quay mãi và thẻ *chuyển thừa* đứng sau khi đã *Đồng ý* (cùng khuôn `TickerMode` của
+  /// màn Chờ).
+  void _khiDoiHien() {
+    final hien = _ticker?.value.enabled ?? true;
+    final troLai = hien && !_dangHien;
+    _dangHien = hien;
+    if (!troLai || !mounted) return;
+    if (_dangTao) setState(() => _dangTao = false);
+    unawaited(_napDon());
+  }
+
+  @override
   void dispose() {
+    _ticker?.removeListener(_khiDoiHien);
     unawaited(_subSuKien?.cancel());
     super.dispose();
   }
@@ -110,26 +140,22 @@ class _NangCapPageState extends State<NangCapPage> {
     }
   }
 
-  /// Mở một màn rồi đọc lại đơn khi quay về — người dùng vừa xác nhận / từ chối / trả ở đó.
-  Future<void> _moRoiNapLai(String duong, {Object? extra}) async {
-    await context.push(duong, extra: extra);
-    if (mounted) unawaited(_napDon());
-  }
+  /// Mở một màn; đọc lại đơn khi quay về do [_khiDoiHien] lo (người dùng vừa xác nhận / từ chối / trả ở đó).
+  void _mo(String duong) => unawaited(context.push(duong));
 
-  /// Tạo đơn rồi sang màn Đang chờ. Nút khoá trong lúc chờ: bấm đôi là hai đơn
-  /// (spec 9.2). Hỏng → SnackBar câu ngắn, ở lại màn.
+  /// Tạo đơn rồi sang màn Đang chờ. Nút khoá từ lúc bấm tới khi màn này hiện lại ([_khiDoiHien]): bấm đôi là hai đơn
+  /// (spec 9.2). Hỏng → viên câu ngắn, ở lại màn, nút mở.
   Future<void> _thanhToan() async {
     if (_dangTao) return;
     setState(() => _dangTao = true);
     try {
       final don = await _repo.taoDon();
       if (!mounted) return;
-      await _moRoiNapLai('/premium/cho-thanh-toan', extra: don);
+      unawaited(context.push('/premium/cho-thanh-toan', extra: don));
     } catch (e) {
       if (!mounted) return;
       baoNhanh(cauLoiThanhToan(loaiLoiCua(e)), loai: LoaiThongBao.loi);
-    } finally {
-      if (mounted) setState(() => _dangTao = false);
+      setState(() => _dangTao = false);
     }
   }
 
@@ -246,7 +272,7 @@ class _NangCapPageState extends State<NangCapPage> {
               const SizedBox(height: 12),
               TextButton(
                 key: const Key('nang-cap-lich-su'),
-                onPressed: () => unawaited(_moRoiNapLai('/premium/lich-su')),
+                onPressed: () => _mo('/premium/lich-su'),
                 child: const Text('Lịch sử mua'),
               ),
             ],
@@ -345,8 +371,8 @@ class _NangCapPageState extends State<NangCapPage> {
       );
 
   /// Một đơn → Chi tiết đơn; nhiều đơn → Lịch sử mua (người dùng chọn đơn ở đó).
-  void _moDonCanXuLy(List<DongLichSu> ds) => unawaited(_moRoiNapLai(
-      ds.length == 1 ? '/premium/don/${ds.first.orderCode}' : '/premium/lich-su'));
+  void _moDonCanXuLy(List<DongLichSu> ds) =>
+      _mo(ds.length == 1 ? '/premium/don/${ds.first.orderCode}' : '/premium/lich-su');
 
   /// Thẻ nổi: viền trái 4 px cam (Stitch `5c629d0a…`). Viền không đều không đi được
   /// cùng `borderRadius` của `BoxDecoration` (assertion) → thanh màu là một ô con
