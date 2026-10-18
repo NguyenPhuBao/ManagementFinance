@@ -25,5 +25,9 @@ void main() {
     expect(chuTrangThaiDon(TrangThaiDon.pending), 'Chờ thanh toán');
     expect(chuTrangThaiDon(TrangThaiDon.cancelled), 'Đã huỷ');
     expect(chuTrangThaiDon(TrangThaiDon.expired), 'Hết hạn');
+    expect(chuTrangThaiDon(TrangThaiDon.refundPending), 'Chờ hoàn tiền',
+        reason: 'người dùng không phải làm gì — "Cần hoàn tiền" đọc như việc của họ (spec G94 mục 5.1)');
+    expect(chuTrangThaiDon(TrangThaiDon.waitingConfirmation), 'Chờ xác nhận');
+    expect(chuTrangThaiDon(TrangThaiDon.refunded), 'Đã hoàn tiền');
   });
 }

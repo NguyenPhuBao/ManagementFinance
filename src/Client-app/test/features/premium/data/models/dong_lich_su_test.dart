@@ -43,4 +43,33 @@ void main() {
     expect(d.luc, isNull);
     expect(d.trangThai, TrangThaiDon.pending);
   });
+
+  test('đọc thêm số đã chuyển · số đã hoàn · ngày hoàn · ngày tạo / trả (spec G94 mục 5.1)', () {
+    final d = dongLichSuTu([
+      {
+        'order_code': 9,
+        'amount': 49000,
+        'status': 'REFUNDED',
+        'created_at': '2026-10-18T07:05:00.000Z',
+        'paid_at': null,
+        'amount_received': 60000,
+        'refunded_amount': 60000,
+        'refunded_at': '2026-10-20T02:00:00.000Z',
+      }
+    ]).single;
+    expect(d.taoLuc, DateTime.utc(2026, 10, 18, 7, 5));
+    expect(d.traLuc, isNull);
+    expect(d.luc, d.taoLuc, reason: 'dòng Lịch sử vẫn hiện paid_at ?? created_at');
+    expect(d.soDaChuyen, 60000);
+    expect(d.soDaHoan, 60000);
+    expect(d.hoanLuc, DateTime.utc(2026, 10, 20, 2));
+  });
+
+  test('amount_received 0 / rác → null (server mặc định 0.00 khi chưa nhận)', () {
+    final d = dongLichSuTu([
+      {'order_code': 1, 'amount': 49000, 'status': 'PENDING', 'amount_received': 0, 'refunded_amount': 'x'}
+    ]).single;
+    expect(d.soDaChuyen, isNull);
+    expect(d.soDaHoan, isNull);
+  });
 }
