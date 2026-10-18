@@ -613,13 +613,13 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-18)
 
-### 🔀 Gộp `main` @ `e7570e16` (2026-10-18, commit gộp `fcbc2ba2`) — Redis đa nhà cung cấp, OTP qua Brevo / Resend, VietQR + đối soát thanh toán; backend báo đóng đơn 41–44, client soát bằng mã + CSDL; backend sửa 27 tệp client-app
+### 🔀 Gộp `main` @ `e7570e16` (2026-10-18, commit gộp `fcbc2ba2`) — Redis đa nhà cung cấp, OTP qua Brevo / Resend, VietQR + đối soát thanh toán; backend báo đóng đơn 41–44, client soát bằng mã + CSDL; backend sửa 26 tệp client-app + tệp CI
 
 - **Trước khi gộp, nhánh đã push** (người dùng chọn 2026-10-18): `51df7ff7..b54488c6`, 99 commit. Sau push,
   `git rev-list --count origin/TranQuangDat..HEAD` = 0.
 - **Một xung đột:** bảng mục 0 của `CAN-LAM/README.md`. Backend viết lại bốn hàng 41–44, client có ba hàng 45–47. Bản gộp
   giữ nguyên văn bốn hàng của backend và ba hàng của client. 19 commit `main` (PR #139–#146, NPBao).
-- **Backend sửa 27 tệp dưới `src/Client-app`** (7 tệp `lib/`, 20 tệp test):
+- **Backend sửa 26 tệp dưới `src/Client-app`** (6 tệp `lib/`, 20 tệp test) và tệp CI `.github/workflows/client-app.yml` (đếm lại 2026-10-18; bản đầu của khối này ghi nhầm 27 tệp, 7 tệp `lib/`):
   - `lib/core/constants/app_constants.dart`: cả nhánh máy ảo lẫn nhánh web / `adb reverse` trỏ sang
     `https://managementfinance.onrender.com/api`. Người dùng chốt trả về backend cục bộ → commit `93f9ea91`.
   - Premium, phủ một phần **G94**: `TrangThaiDon` thêm ba giá trị; `DonThanhToan` thêm `recognitionCode` · `qrUrl` ·
