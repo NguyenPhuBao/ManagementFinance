@@ -43,8 +43,8 @@ canh bằng test quét mã nguồn (mục 6).
 
 ## 3. Cây thư mục
 
-`lib/` có **644** tệp `.dart`, **127.513** dòng (kể 14 tệp `.g.dart` do Drift sinh) — `git ls-files lib | grep '\.dart$'`
-và `… | xargs cat | wc -l`. `test/` có **652** tệp `*_test.dart` (664 tệp `.dart` kể cả helper), **131.765** dòng (đếm lại **2026-10-18 tối sau G94 lát 2** — tính năng đơn thanh toán, +10 tệp `lib/`, +5 tệp test — HEAD `01e0d630`). (Trước đó 2026-10-18 sau G94 lát 1, HEAD `cc300f61`: `lib/` 634 tệp, 126.253 dòng; `test/` 647 `_test` (659 `.dart`), 130.633 dòng. Trước đó 2026-10-17 sau trợ lý online, HEAD `fb92c16d`: `lib/` 629 tệp, 125.809 dòng; `test/` 644 `_test` (656 `.dart`), 129.998 dòng. Trước đó 2026-10-16 sau gỡ cụm, HEAD `f702a884`: `lib/` 618 tệp, 124.393 dòng; `test/` 629 `_test` (640 `.dart`), 126.455 dòng. 2026-10-15: 626 tệp `.dart` (617 `_test`), 124.875 dòng; 2026-10-13, sau tách bốn trang lớn: 596 / 616 tệp, 122.667 / 123.486 dòng.)
+`lib/` có **644** tệp `.dart`, **127.539** dòng (kể 14 tệp `.g.dart` do Drift sinh) — `git ls-files lib | grep '\.dart$'`
+và `… | xargs cat | wc -l`. `test/` có **652** tệp `*_test.dart` (664 tệp `.dart` kể cả helper), **131.848** dòng (đếm lại **2026-10-18 tối sau G94 lát 2** — tính năng đơn thanh toán, +10 tệp `lib/`, +5 tệp test — HEAD `ddd35e1a`). (Trước đó 2026-10-18 sau G94 lát 1, HEAD `cc300f61`: `lib/` 634 tệp, 126.253 dòng; `test/` 647 `_test` (659 `.dart`), 130.633 dòng. Trước đó 2026-10-17 sau trợ lý online, HEAD `fb92c16d`: `lib/` 629 tệp, 125.809 dòng; `test/` 644 `_test` (656 `.dart`), 129.998 dòng. Trước đó 2026-10-16 sau gỡ cụm, HEAD `f702a884`: `lib/` 618 tệp, 124.393 dòng; `test/` 629 `_test` (640 `.dart`), 126.455 dòng. 2026-10-15: 626 tệp `.dart` (617 `_test`), 124.875 dòng; 2026-10-13, sau tách bốn trang lớn: 596 / 616 tệp, 122.667 / 123.486 dòng.)
 
 ```
 lib/

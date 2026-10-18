@@ -1859,7 +1859,8 @@ cả hai cần phép đích danh) và PayOS sandbox (việc tồn chưa làm).
 >   `confirm-upgrade` (*Yêu cầu hoàn tiền* hỏi lại một lần); lối vào: màn Chờ (`pushReplacement` khi server trả trạng thái
 >   đối soát), mọi dòng Lịch sử mua (`cc098628`), thẻ đầu màn Nâng cấp (`01e0d630` — đơn chờ xác nhận **khoá** *Thanh toán*,
 >   đơn chờ hoàn tiền thì không). Xác nhận bị 4xx (đơn đã đổi ở nơi khác) → báo + nạp lại theo server — đóng luôn chỗ *"Để lại
->   cho spec"* của đợt hai lỗi.
+>   cho spec"* của đợt hai lỗi. Nâng cấp đọc lại khi **màn hiện lại** (`TickerMode`), không theo future của `push` — màn Chờ
+>   bị `pushReplacement` nên future ấy không về (bản đầu để nút *Thanh toán* quay mãi; bẫy 22 `PREMIUM_FEATURE.md`).
 > - **4** ✅ `RealtimeEvent.donThanhToanDoi` (`af7351fe`) — sáu tên `payment.*`, tín hiệu im lặng; bốn màn nghe.
 > - **5** ✅ bỏ bộ tự dựng URL QR + tên ghi cứng (`7f231cc6`) — `donTuJson` chỉ nhận `qrUrl` của server.
 > - **6** ✅ **đảo** câu 7 spec 2026-10-06 theo người dùng chốt: màn Chờ giữ ảnh QR (to) + *Lưu mã QR* qua kênh Kotlin
@@ -1870,8 +1871,8 @@ cả hai cần phép đích danh) và PayOS sandbox (việc tồn chưa làm).
 > - **8** ✅ docstring màn Chờ khôi phục: mã Stitch, lý lẽ ba vế *đang hiện*, chú thích `Flexible` 155 px, nút *Xong* hai lớp.
 > - **9** ✅ chữ *"10-30 phút"* hết ở `lib/` (`grep` 2026-10-18).
 > - **10** ✅ test viết lại theo hợp đồng mới: `chi_tiet_don_page_test` (16 ca), `cho_thanh_toan_page_test` (viết lại, 18
->   ca), `lich_su_mua_page_test` (9), `nang_cap_page_test` (+10), model / domain / Cubit / repository / kênh ở Task 1–5.
-> - `flutter test` **7.463 / 10 skip**, analyze 20 (HEAD `01e0d630`). 🚧 **Còn:** nghiệm thu máy thật — tám bước ở spec mục
+>   ca), `lich_su_mua_page_test` (9), `nang_cap_page_test` (+13), model / domain / Cubit / repository / kênh ở Task 1–5.
+> - `flutter test` **7.466 / 10 skip**, analyze 20 (HEAD `ddd35e1a`). 🚧 **Còn:** nghiệm thu máy thật — tám bước ở spec mục
 >   10 (khoá PayOS sandbox vào `src/Backend/.env` + phép đích danh `npm install` ở `src/Backend`). Đóng G94 khi đạt.
 
 ---

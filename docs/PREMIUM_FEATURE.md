@@ -164,6 +164,12 @@ màn Chờ: dòng Lịch sử mua và thẻ đầu màn Nâng cấp.
     `borderRadius` (assertion) → thanh màu là ô con trong `Material` bo góc + `IntrinsicHeight`.
 21. **Thẻ ở Nâng cấp: đọc hỏng thì không chặn mua** — chưa đọc được lịch sử → không thẻ, nút mở; đã đọc được thì lượt hỏng
     sau giữ kết quả cũ (không mở khoá vì mạng chập chờn).
+22. ⚠️ **Đừng `await context.push('/premium/cho-thanh-toan')` để biết lúc người dùng quay về Nâng cấp** — màn Chờ THAY
+    chính nó bằng Chi tiết đơn (`pushReplacement`), và future của lượt `push` ấy **không về** khi Chi tiết đơn pop (đo bằng
+    test, `go_router` 14.6). Bản đầu của Task 9 làm thế: quay về là nút *Thanh toán* **quay mãi** và thẻ *chuyển thừa* đứng
+    sau khi đã *Đồng ý*. Nâng cấp nghe `TickerMode` (cùng khuôn màn Chờ): màn hiện lại → mở nút + đọc lại; nghe thêm
+    `taiKhoanNangCap` vì *Đồng ý* chỉ làm server phát `account.upgraded`. Ca canh: hai ca *đường chính* ở
+    `nang_cap_page_test` (route Chờ giả `pushReplacement` ngay) — dùng `pump(400 ms)`, không `pumpAndSettle` (bản lỗi treo).
 
 ## 5. Màn Stitch (lượt gọi 2026-10-06 — năm lượt trả `timeout` nhưng màn vẫn được tạo; ✅ **người dùng xác nhận tối 2026-10-06**)
 

@@ -619,7 +619,7 @@ Kế hoạch `docs/superpowers/plans/2026-10-18-g94-lat-2-tinh-nang-don-thanh-to
 dùng cho *"làm hết khỏi chờ duyệt"*. Màn Stitch (người dùng xác nhận bằng mắt cả năm): Màn Chờ `95b2774f…` · Chi tiết đơn
 chờ xác nhận + hộp hỏi lại `408de0af…` · bốn trạng thái `d3b59018…` · Lịch sử mua `04c4aa7d…` · Nâng cấp `5c629d0a…`.
 
-- **Người dùng thấy khác (Task 6–9, `463fcf0c` → `01e0d630`):**
+- **Người dùng thấy khác (Task 6–9, `463fcf0c` → `01e0d630`, sửa `ddd35e1a`):**
   - **Màn Chờ thanh toán** không tự mở trang PayOS nữa; có ảnh VietQR to + *Lưu mã QR* (vào `Pictures/FlowMoney`), khối
     *Thông tin chuyển khoản* (số TK, chủ TK, số tiền, nội dung — chép được), ba bước, nút phụ *Mở trang thanh toán PayOS*.
     Ô *Mã nhận diện* riêng bỏ (mã nằm cuối nội dung). Server trả `WAITING_CONFIRMATION` / `REFUND_PENDING` / `REFUNDED` →
@@ -630,11 +630,15 @@ chờ xác nhận + hộp hỏi lại `408de0af…` · bốn trạng thái `d3b5
   - **Lịch sử mua**: mọi dòng có › và mở Chi tiết đơn; quay về nạp lại ngầm; nhãn + màu dùng chung.
   - **Nâng cấp**: thẻ *"Bạn đã chuyển thừa cho đơn #…"* đầu màn + **khoá** *Thanh toán* / *Gia hạn* kèm lý do; thẻ nhỏ
     *"Đơn #… đang chờ hoàn tiền"* (không khoá).
-- **Chỗ thi công khác bản viết:** chín điểm ở banner đầu spec G94 (giá gói ở thân không ở thẻ đầu; thẻ Nâng cấp giữ kết quả
+- **Chỗ thi công khác bản viết:** mười điểm ở banner đầu spec G94 (giá gói ở thân không ở thẻ đầu; thẻ Nâng cấp giữ kết quả
   cũ khi lượt đọc sau hỏng; Lịch sử nạp lại ngầm; không chép *"Tự động gia hạn"* của Stitch…).
-- **Đo:** `flutter test` **7.463 / 10 skip / 0 fail** (+39 so với đầu phiên 7.424; +57 cả lát 2), analyze **20**, HEAD
-  `01e0d630`; `flutter build apk --release` đạt **226,4 MB**. Mỗi task: ca đỏ trước + bản sai có chủ ý (16 bản) làm đúng
-  ca ấy đỏ.
+- ⚠️ **Lỗi lượt soát cuối lát bắt được, sửa trước khi báo xong:** Nâng cấp từng `await context.push('/premium/cho-thanh-toan')`
+  để biết lúc người dùng quay về — nhưng màn Chờ `pushReplacement` sang Chi tiết đơn và future ấy không về: quay lại là nút
+  *Thanh toán* quay mãi, thẻ *chuyển thừa* đứng sau khi đã *Đồng ý*. Nay nghe `TickerMode` (màn hiện lại → mở nút + đọc lại)
+  + `taiKhoanNangCap`; hai ca *đường chính* đỏ trước. Bẫy 22 `PREMIUM_FEATURE.md`.
+- **Đo:** `flutter test` **7.466 / 10 skip / 0 fail** (+42 so với đầu phiên 7.424; +60 cả lát 2), analyze **20**, HEAD
+  `ddd35e1a`; `flutter build apk --release` đạt **226,4 MB** (dựng ở `01e0d630`, trước bản sửa đường quay về — bản sửa chỉ
+  đổi Dart, không đổi Kotlin / gói). Mỗi task: ca đỏ trước + bản sai có chủ ý (18 bản) làm đúng ca ấy đỏ.
 - **Còn:** nghiệm thu OnePlus — tám bước ở spec mục 10, cần khoá PayOS sandbox + phép đích danh `npm install` ở
   `src/Backend`. Ngoài phạm vi, ghi lại: `premium/presentation/widgets/the_khoa_quyen.dart` còn 10 `Color(0x…)` (client viết
   2026-10-08, theo giá trị Stitch) — vào đợt soát toàn app.

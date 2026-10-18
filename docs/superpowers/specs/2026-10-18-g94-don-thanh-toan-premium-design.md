@@ -13,8 +13,8 @@ ngày** — câu hỏi mở mục 12 giữ mặc định (đơn `PENDING` chỉ 
 > ✅ **Lát 2 — mã xong 2026-10-18 tối** (kế hoạch `plans/2026-10-18-g94-lat-2-tinh-nang-don-thanh-toan.md`, gitignore,
 > 10 task, inline; mỗi task ca đỏ trước + bản sai có chủ ý đỏ đúng ca, `flutter test` toàn phần xanh). Task 1–5:
 > `073920e6` · `ed190dde` · `af7351fe` · `072d7d9b` · `026e221a`. Task 6–9: `463fcf0c` Chi tiết đơn + route · `7f231cc6`
-> màn Chờ + model `DonThanhToan` · `cc098628` Lịch sử mua · `01e0d630` Nâng cấp. Số đo cuối: `flutter test` **7.463 /
-> 10 skip**, analyze **20**, `flutter build apk --release` đạt (226,4 MB). 🚧 **Chưa nghiệm thu máy thật** (mục 10 — cần
+> màn Chờ + model `DonThanhToan` · `cc098628` Lịch sử mua · `01e0d630` Nâng cấp · `ddd35e1a` sửa đường quay về Nâng cấp (điểm 10 dưới). Số đo cuối:
+> `flutter test` **7.466 / 10 skip**, analyze **20**, `flutter build apk --release` đạt (226,4 MB). 🚧 **Chưa nghiệm thu máy thật** (mục 10 — cần
 > khoá PayOS sandbox + phép `npm install` backend).
 >
 > **Chỗ thi công khác bản viết** (đọc khi đối chiếu mã):
@@ -32,6 +32,10 @@ ngày** — câu hỏi mở mục 12 giữ mặc định (đơn `PENDING` chỉ 
 >    gói hiện tại sang kiểu *Tình trạng tài khoản* của Stitch `5c629d0a…` (ngoài phạm vi 5.7).
 > 8. Màn Chờ bỏ ô *Mã nhận diện* riêng (Stitch `95b2774f…` không có; mã nằm cuối *Nội dung*, chép cả nội dung).
 > 9. Ảnh QR dựng **một lần** ở `initState` (mục 5.4 chỉ nói khe `nguonAnhQr`).
+> 10. Màn Nâng cấp đọc lại khi **màn hiện lại** (`TickerMode` bật lại) thay cho *"quay về từ màn khác"* bằng future của
+>     `push`, và nghe thêm `taiKhoanNangCap` (mục 5.7 chỉ nói `donThanhToanDoi`). Lý do đo được: màn Chờ `pushReplacement`
+>     sang Chi tiết đơn nên future của lượt `push` không về — bản đầu để nút *Thanh toán* quay mãi khi quay lại (lượt soát
+>     cuối lát bắt được, sửa trước khi báo xong). *Đồng ý* chỉ làm server phát `account.upgraded`.
 Mở lượt **G89 + G94** — đợt đầu của lượt (sửa hai lỗi đang chạy, `a52f9181`) đã xong trước bản này. G89 (bảo trì /
 phong toả AIOps) là phân hệ độc lập, **spec riêng**, làm sau.
 
