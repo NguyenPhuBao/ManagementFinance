@@ -1,5 +1,13 @@
 # Thông báo + xin sửa chữ: kiến trúc Client-app trong `Project.md` §3.3 tả sai mã đang chạy
 
+> ✅ **ĐÓNG 2026-10-18 — client soát sau gộp `main` @ `e7570e16`, chuyển sang `DA-XONG/`.** Backend sửa `Project.md` §3.3 ở
+> `3a5d320c` theo mặc định của mục 3. Câu trỏ sang `docs/KIEN_TRUC_CLIENT_APP.md` nằm ở `Project.md:381`. Cả sáu dòng của
+> bảng mục 2 đã vào (`:386`–`:393`). Hai chỗ nhỏ còn lại, không mở đơn mới. (1) Liên kết ở `:381` là đường dẫn tuyệt đối
+> `file:///d:/Tai_Lieu_IUH/…` của máy người viết, nên mở trên máy khác là hỏng. (2) Dòng *Repository* chép đúng câu đơn
+> đề nghị ngày 2026-10-10, *"hoặc hàng Drift (hoá đơn, danh mục)"*. Câu ấy **lạc hậu theo mã** từ đợt Entity Hoá đơn
+> (2026-10-14) và Entity Danh mục (2026-10-15): repository nay không còn lối nào trả hàng Drift. Lần sau client xin sửa
+> `Project.md` thì gộp hai chỗ ấy vào.
+
 **Ngày:** 2026-10-10 · **Người viết:** phía Client-app · **Nhánh:** `TranQuangDat` · **Mục:** 42
 **Loại:** **thông báo**, kèm **xin sửa chữ** và một câu hỏi có mặc định. **Không xin đổi mã backend, không migration,
 không trường đồng bộ mới, không đổi hợp đồng API.** Backend không trả lời thì client làm theo mặc định ở mục 3.

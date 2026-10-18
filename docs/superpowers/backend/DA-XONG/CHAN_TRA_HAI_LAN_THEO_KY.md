@@ -1,5 +1,15 @@
 # Chặn trả tiền hai lần cho CÙNG MỘT KỲ hoá đơn, không chỉ cùng `Idbill` (mục 41)
 
+> ✅ **ĐÓNG 2026-10-18 — client soát bằng mã + CSDL sau gộp `main` @ `e7570e16`, chuyển sang `DA-XONG/`.** Backend làm ở
+> `3a5d320c` (*Update System Version 1.1.0*). `chanTraHaiLan` (`modules/sync/sync.repository.js:302`) thêm vế kỳ anh em:
+> cùng `previous_bill_id` + `due_date`, hàng `bill` sống, bỏ `dangXoaTrongLo`, ném `BILL_PERIOD_ALREADY_PAID`. Vế ấy chạy ở
+> **cả** nhánh tạo lẫn nhánh cập nhật thắng LWW. `sync.service.js:181` ánh xạ mã mới **trước** `BILL_ALREADY_PAID`.
+> `node --test tests/unit/sync.brother_bill.test.js`: **6/6** đạt (Prisma giả lập). CSDL dev: câu truy vấn mục 2 thêm
+> `khoan_chi > 0` rồi gộp theo kỳ → **0** nhóm có hơn một kỳ mang khoản chi sống. Ca 4, 5 và 7 của mục 4 chưa có test
+> riêng; đọc mã thì đúng (lọc `delete_at: null`, so `due_date` tuyệt đối, `notIn` loại chính nó). Client không phải đổi
+> mã: mã đã nằm trong `_permanentCodes` và `BillPaymentConflictResolver.maKyTrungDaTra` từ 2026-10-09. Chưa đo đầu-cuối
+> trên hai máy.
+
 **Người viết:** Client-app · **Ngày:** 2026-10-09 · **Mức:** cao — tiền bị trừ nhiều lần cho một kỳ, đã xảy ra thật
 (tài khoản 10: −300.000 đ thay vì −100.000 đ).
 **Xin Backend:** mở rộng chốt `chanTraHaiLan` ở `upsertTransaction` (`modules/sync/sync.repository.js:302`) từ *"cùng

@@ -10,9 +10,16 @@ và phần tài liệu này. Spec: `docs/superpowers/specs/2026-10-06-premium-pa
 dưới đây. Từ lượt ấy bảng ở mục 1 chỉ là **mặc định khi server không trả khoá**; con số và công tắc thật do admin đặt ở
 Admin-web `/permissions`.
 
-**⚠️ Đối soát chuyển thừa / thiếu (2026-10-16):** 
-- **Phía Backend (Đơn 44):** ✅ **ĐÃ HOÀN THÀNH 100%** (Mục 41, 43, 44): Idempotency chặn lặp mở rộng `['PAID', 'REFUNDED', 'CANCELLED']`, cơ chế Just-in-Time Sync (`GET /api/payment/orders/:orderCode/status`), regex nhận diện token PayOS linh hoạt, migration 28 mở rộng status `VARCHAR(25)`, và 377/377 tests PASS xanh tuyệt đối.
-- **Phía Client-app (G94):** Sẵn sàng để đồng bộ ba trạng thái đơn mới (`WAITING_CONFIRMATION`, `REFUND_PENDING`, `REFUNDED`), `POST /payment/confirm-upgrade` và ba sự kiện `payment.*` theo đúng hạn đơn **10 phút** (`docs/Payment/PAYMENT_WORKFLOW_SPEC.md` v2.0.0). Chi tiết tại G94 `CLIENT_APP_KNOWN_GAPS.md`.
+**⚠️ Đối soát chuyển thừa / thiếu (2026-10-16, gộp `main` @ `d72ccd45`; soát lại 2026-10-18 sau gộp `e7570e16`) — G94
+HOÃN, làm cùng lượt G89:** backend thêm ba trạng thái đơn `WAITING_CONFIRMATION` · `REFUND_PENDING` · `REFUNDED`,
+`POST /payment/confirm-upgrade` và ba sự kiện `payment.*`, và rút hạn đơn còn **10 phút**
+(`docs/Payment/PAYMENT_WORKFLOW_SPEC.md` v2.0.0).
+- **Phía backend:** đơn 44 đạt A, C, D, E, F khi client soát 2026-10-18. Mục B còn hai vế (đơn đang chờ xác nhận / chờ
+  hoàn tiền vẫn bị webhook xử lý lại; chưa khử trùng theo `reference`) — banner đầu `CAN-LAM/SOAT_SAU_GOP_D72CCD45.md`.
+- **Phía client:** gộp `e7570e16` mang mã backend viết thẳng vào mảng này — ba trạng thái đơn, hai nút xác nhận chuyển
+  thừa ở màn Chờ thanh toán, nhãn lịch sử, hạn 10 phút. Ca chính vẫn hở: đồng hồ trên máy về 0 lúc màn không hiện thì người
+  chuyển thừa vẫn thấy *"Đơn đã hết hạn"*, và chỉ màn chờ gọi được `confirm-upgrade`. Danh sách chín chỗ còn hở: khối 🔀
+  ở thân G94 `CLIENT_APP_KNOWN_GAPS.md`.
 
 > Tài liệu là ảnh chụp — đối chiếu với mã trước khi kết luận. Mọi con số đếm bằng máy, kèm ngày.
 

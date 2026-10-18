@@ -38,7 +38,7 @@ ManagementFinance/
 │   ├── Rule_Project/     ← Nguồn sự thật CSDL, Data Security, DB Guard, 2-Tier Testing
 │   ├── Notification/     ← Tài liệu Hub điều phối thông báo đa kênh & Realtime Socket.IO
 │   ├── AI/               ← Tài liệu kiến trúc AI (Edge SLM On-device & Cloud RAG Copilot)
-│   ├── Bank/             ← Tài liệu tích hợp SePay/Casso (Lưu trữ Backend, tạm dừng phía Client)
+│   ├── Bank/             ← Tài liệu tích hợp SePay/Casso — chỉ còn là lịch sử: nhóm bỏ liên kết ngân hàng 2026-09-18, client đã gỡ phần của mình
 │   ├── Deploy/           ← Quy trình triển khai Cloud, phân luồng Fast-Lane và SLA
 │   ├── bill/             ← Tài liệu chi tiết module Hóa đơn
 │   └── progress/         ← Báo cáo tiến độ hoàn thiện thực tế của Backend và Client-app
@@ -611,7 +611,43 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-17)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-18)
+
+### 🔀 Gộp `main` @ `e7570e16` (2026-10-18, commit gộp `fcbc2ba2`) — Redis đa nhà cung cấp, OTP qua Brevo / Resend, VietQR + đối soát thanh toán; backend báo đóng đơn 41–44, client soát bằng mã + CSDL; backend sửa 27 tệp client-app
+
+- **Trước khi gộp, nhánh đã push** (người dùng chọn 2026-10-18): `51df7ff7..b54488c6`, 99 commit. Sau push,
+  `git rev-list --count origin/TranQuangDat..HEAD` = 0.
+- **Một xung đột:** bảng mục 0 của `CAN-LAM/README.md`. Backend viết lại bốn hàng 41–44, client có ba hàng 45–47. Bản gộp
+  giữ nguyên văn bốn hàng của backend và ba hàng của client. 19 commit `main` (PR #139–#146, NPBao).
+- **Backend sửa 27 tệp dưới `src/Client-app`** (7 tệp `lib/`, 20 tệp test):
+  - `lib/core/constants/app_constants.dart`: cả nhánh máy ảo lẫn nhánh web / `adb reverse` trỏ sang
+    `https://managementfinance.onrender.com/api`. Người dùng chốt trả về backend cục bộ → commit `93f9ea91`.
+  - Premium, phủ một phần **G94**: `TrangThaiDon` thêm ba giá trị; `DonThanhToan` thêm `recognitionCode` · `qrUrl` ·
+    `transferContent` · `amountReceived` · `fee`, dự phòng hạn 30 → 10 phút; `PaymentApi.xacNhanNangCap`
+    (`POST /payment/confirm-upgrade`); màn Chờ thanh toán thêm ba thân (xác nhận chuyển thừa với hai nút, cần hoàn tiền,
+    đã hoàn tiền), ô mã nhận diện có nút chép, ảnh VietQR; lịch sử mua có ba nhãn mới. Chỗ còn hở: khối G94
+    `CLIENT_APP_KNOWN_GAPS.md` (soát 2026-10-18).
+  - CI: bước đếm cảnh báo viết lại bằng Python, đọc được cả khi thiếu dòng tổng. `MUC_NEN` vẫn 20.
+- **Sau gộp:** `git check-ignore --no-index` trên `src/Client-app/test/x_test.dart` không khớp. Cây `src/Client-app` đổi
+  hash (`691e32ae…` → `8988cef1…`), nên chạy lại toàn bộ test sau `93f9ea91`: `flutter test` **7.394 pass / 10 skip /
+  0 fail** (6 ph 17 s; thêm 2 ca của backend), `flutter analyze` **20**.
+- **Soát đơn 41–44** (backend ghi *"✅ Đã xong 100%"* ở `3a5d320c`, không chuyển tệp):
+  - **41** và **42** đạt trọn, client chuyển sang `DA-XONG/` (mục 4i mục lục).
+  - **43** đạt A2 (`accountRejection` mặc định `ACCOUNT_INACTIVE` — chặn đúng đường làm client xoá SQLite), B, C. Còn
+    A1 phần controller (`aiops.controller.js:249`, `:305` ghi đè `'Locked'`), A3 (mở khoá tự động không xét ai khoá),
+    A4 (mã chết `feature.collector.js:231`), A5 (CSDL dev 0 CHECK trên `account`, chưa có `database/N`).
+  - **44** đạt A, C, D, E, F. Mục B còn hai vế: đơn `WAITING_CONFIRMATION` / `REFUND_PENDING` vẫn bị webhook xử lý lại,
+    và chưa khử trùng theo `reference`.
+  - **45, 46, 47** backend chưa đụng.
+  - Chi tiết kèm số dòng: banner đầu hai tệp 43, 44 và banner đầu `CAN-LAM/README.md`.
+- **Backend dev chạy lại cần `npm install`** (gói mới `resend`), mà `npm install` tự `prisma generate` — phép đích danh
+  (quy tắc 1). CSDL dev đo 2026-10-18 đã khớp `schema.prisma` mới: `payment_order` 22 cột (có `qr_url` của
+  `database/27`), `status` dài 25. Lần generate này vì thế không vỡ `P2022`. Redis chỉ đổi cách chọn địa chỉ
+  (`config/redis.resolver.js`, mặc định `redis://127.0.0.1:6379`), kết nối vẫn `lazyConnect` như trước. Lượt này client
+  không `npm install`, không áp migration.
+- **Tài liệu client bị backend sửa:** `PREMIUM_FEATURE.md` (đoạn G94 — client viết lại theo kết quả soát) và cây thư mục
+  mục 1 của tệp này (giữ, sửa dòng `Bank/`). `docs/Notification/Notification_Client-app.md` (tài liệu backend) thêm ba
+  hàng; đơn 46 vẫn mở.
 
 ### 🌐 Trợ lý online hỗn hợp: có mạng hỏi backend (Gemini), hỏng / mất mạng rơi về mô hình trên máy — ✅ mã + đợt sửa sau review xong, NGHIỆM THU OnePlus 13R trên backend dev 2026-10-18 (người dùng chốt 2026-10-11)
 
@@ -5249,7 +5285,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
   > **Mức nền:** `flutter test` **2339/2339**, `flutter analyze` **25 issue / 0 error**.
 
 - **Bước 12 — `Auto_pay` qua đồng bộ, và bốn lỗi im lặng mà nghiệm thu hai máy ảo bắt được** (2026-09-13, **schema không đổi**). Bước cuối của chuỗi hoá đơn. Spec: `docs/superpowers/specs/2026-09-13-auto-pay-dong-bo-design.md`; chi tiết: mục **6.5** và **6.8** `docs/bill/BILL_DOCUMENTATION.md`. Payload hoá đơn **20 → 21 trường**; công tắc tự trả nay là thuộc tính của *hoá đơn* chứ không của *máy*, nên dòng phụ "chỉ nên bật trên một thiết bị" đã bỏ.
-  > **Rủi ro đóng bằng BA mảnh khớp nhau, thiếu mảnh nào cũng vô hiệu cả ba:** `auto_pay` đi qua đồng bộ (client) + `chanTraHaiLan` ở `upsertTransaction` (backend, `7779999`) + `BillPaymentConflictResolver` (client) — máy thua một cuộc đua nhận `BILL_ALREADY_PAID` thì tự gỡ khoản trả của chính nó và hoàn tiền. ⚠️ *(2026-10-09, G87: ba mảnh ấy chỉ chặn cùng `Idbill` — hai máy cùng trả một kỳ vẫn đẻ hai **kỳ con trùng** và bộ tự trả trừ tiền cho từng kỳ; client gộp kỳ trùng sau mỗi lần kéo về, khe còn lại xin server ở **đơn 41** `CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md`.)*
+  > **Rủi ro đóng bằng BA mảnh khớp nhau, thiếu mảnh nào cũng vô hiệu cả ba:** `auto_pay` đi qua đồng bộ (client) + `chanTraHaiLan` ở `upsertTransaction` (backend, `7779999`) + `BillPaymentConflictResolver` (client) — máy thua một cuộc đua nhận `BILL_ALREADY_PAID` thì tự gỡ khoản trả của chính nó và hoàn tiền. ⚠️ *(2026-10-09, G87: ba mảnh ấy chỉ chặn cùng `Idbill` — hai máy cùng trả một kỳ vẫn đẻ hai **kỳ con trùng** và bộ tự trả trừ tiền cho từng kỳ; client gộp kỳ trùng sau mỗi lần kéo về, khe còn lại xin server ở **đơn 41** `DA-XONG/CHAN_TRA_HAI_LAN_THEO_KY.md` — ✅ backend làm ở `3a5d320c`, client soát đạt 2026-10-18.)*
   > ⚠️ **Task 9 (nghiệm thu hai máy ảo) bắt được BỐN lỗi im lặng mà 2296 ca test đều không thấy** — đây là toàn bộ lý do task ấy tồn tại, và cả bốn đều thuộc loại "không lỗi, không log, chỉ dữ liệu sai":
   > 1. **Vòng lặp tự trả.** `undoPayment` kéo hoá đơn về `Pending` — đúng cho người dùng bấm tay, **sai ở đây**: `BILL_ALREADY_PAID` nghĩa là server ĐÃ có khoản chi. Bộ tự trả tin theo và trả lại ở chu kỳ sau → tạo → bị từ chối → gỡ → hoàn tiền → lặp. Đo **5 vòng trong 3 phút**, ví phình 350.000 mỗi vòng. Sửa: `BillDao.danhDauDaTra` (ghi **cả hai** cột `payStatus` + `isPaid`), gọi **trước** `markSynced`.
   > 2. **Gỡ nhầm khoản chi của máy thắng.** `undoPayment` tự tìm khoản chi bằng `getByBill`, một `LIMIT 1` **không `ORDER BY`** — mà trên máy thua thì *chắc chắn* có hai khoản chi sống cùng `billId` (của nó và của máy thắng, đã pull về từ 2026-09-12). Đo trên PostgreSQL: hoá đơn `d2332790` còn `Payed` nhưng khoản chi **duy nhất** của nó mang `Deleted_at`, và một kỳ kế tiếp bị xoá **17 ms** sau — dấu vân tay của một `db.transaction`. Sửa: `undoPayment` nhận thêm `transactionId`, resolver truyền `localId` server vừa từ chối.

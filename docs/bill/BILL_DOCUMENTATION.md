@@ -1002,7 +1002,8 @@ thay đổi số dư cục bộ thua một lần xung đột đều biến mất
 > `payBill` ném `BillAlreadyPaidException` khi kỳ có kỳ trùng đã đóng (`kyCungKyDaDong`), và `BillAutoPayRunner` bỏ
 > qua kỳ ấy **im lặng** (không sự kiện *"không tự trả được"*). Giới hạn còn lại: một máy kéo về xong rồi mới tới lượt
 > máy khác trả kỳ trùng thì cửa sổ ấy vẫn hở — hẹp, chưa đo; ✉️ client xin backend đóng nó ở server (2026-10-09, **đơn 41**
-> `CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md`: chặn khoản chi cho kỳ anh em cùng `Previous_bill_id` + `Due_date`, mã riêng
+> `DA-XONG/CHAN_TRA_HAI_LAN_THEO_KY.md` — ✅ backend làm ở `3a5d320c`, client soát bằng mã + CSDL đạt 2026-10-18 sau gộp
+> `e7570e16`, chưa đo đầu-cuối hai máy: chặn khoản chi cho kỳ anh em cùng `Previous_bill_id` + `Due_date`, mã riêng
 > `BILL_PERIOD_ALREADY_PAID` — ✅ client đã sẵn cùng ngày: mã trong `_permanentCodes`, và
 > `BillPaymentConflictResolver.maKyTrungDaTra` gỡ khoản trả như `BILL_ALREADY_PAID` nhưng **không** `danhDauDaTra` —
 > đánh dấu kỳ trùng là đã trả thì `kyTrungCanGo` thấy hai kỳ đã đóng và giữ cả hai mãi; đo CSDL dev cùng ngày: tài khoản

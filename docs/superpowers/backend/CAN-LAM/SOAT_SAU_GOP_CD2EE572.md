@@ -1,5 +1,32 @@
 # Soát sau gộp `main` @ `cd2ee572`: AIOps khoá tài khoản làm client xoá dữ liệu; webhook PayOS nâng nhầm tài khoản; đăng nhập lúc bảo trì mất `code`; đính chính hợp đồng sự kiện (mục 43)
 
+> 🟡 **Client soát 2026-10-18 (sau gộp `main` @ `e7570e16`; backend ghi *"✅ Đã xong 100%"* ở `3a5d320c`): đạt phần
+> chính, còn năm việc.** Đo bằng đọc mã ở `e7570e16` và truy vấn chỉ đọc trên CSDL dev.
+>
+> **Đạt:**
+> - **A2** — `accountRejection` (`middleware/auth.js:60`) mặc định `ACCOUNT_INACTIVE`. Chỉ không còn trạng thái, `Deleted`,
+>   hoặc `delete_at` đã qua mới thành `ACCOUNT_DELETED`. Đây là vế chặn được việc client xoá SQLite: `'Locked'` hay
+>   trạng thái lạ nào cũng đọc là *bị khoá*.
+> - **A1 phần quarantine** — `quarantinePair` (`aiops.quarantine.js:398`) và hai lối khoá của admin (`:753`, `:839`) ghi
+>   `'Inactive'` + `Reason_inactive`.
+> - **B** — webhook không thấy đơn (`payment.service.js:130`) ghi log và trả 2xx, không tạo đơn, không nâng gói.
+>   `findOrCreateOrderByCode` vẫn được export nhưng không còn chỗ nào gọi.
+> - **C** — `auth.controller.js:61` trả 503 có `code: 'MAINTENANCE_MODE'` và header `Retry-After: 60`.
+> - **D** — `Event-Notification-to-ClientApp.md` có sửa ở `3a5d320c`; client mới soát lướt, chưa đối từng hàng của bảng.
+>
+> **Còn mở:**
+> 1. **A1 phần controller** — `aiops.controller.js:249` và `:305` vẫn ghi `status: 'Locked'` **ngay sau** khi
+>    `permanentBanAccount` / `temporaryBlockAccount` đã ghi `'Inactive'`, nên lệnh sau đè lệnh trước. Nhờ A2, client vẫn
+>    giữ dữ liệu, nhưng `'Locked'` là giá trị ngoài tập bốn trạng thái. Có `ck_account_status` thì lệnh ấy vỡ và bị nuốt
+>    trong `catch`.
+> 2. **A3** — mở khoá tự động (`aiops.quarantine.js:141`, `:153`, `:983`) gọi `_syncAccountStatusToDatabase(…, 'Active')`.
+>    Hàm ấy (`:657`) `updateMany` theo `idaccount` / `username` mà không xét ai đã khoá. Tài khoản admin đặt `Inactive` vì
+>    lý do khác vẫn bị mở.
+> 3. **A4** — `feature.collector.js:231` vẫn `require('../../database/prisma')` (không tồn tại) và ghi `'TemporarilyLocked'`.
+> 4. **A5** — chưa có tệp `database/N` nào áp `ck_account_status`. CSDL dev đo 2026-10-18: bảng `account` có **0** CHECK.
+>    Trạng thái đang có: `Active` 6 hàng, `Deleted` 14 hàng — áp thẳng được.
+> 5. **A6** (tuỳ chọn) — AIOps khoá tài khoản chưa phát `account.force_logout`.
+
 **Ngày:** 2026-10-15 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat` (commit gộp `12104082`)
 **Loại:** đơn xin — **hai lỗi mã mức cao** (A, B), **một lỗi mức vừa** (C), **sửa tài liệu** (D). Không đổi lược đồ
 đồng bộ, không đổi payload `/sync/*`. Mọi khẳng định dưới đây đo bằng **đọc mã** ở `cd2ee572` và **truy vấn chỉ đọc**

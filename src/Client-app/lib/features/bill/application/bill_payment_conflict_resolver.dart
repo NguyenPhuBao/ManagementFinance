@@ -35,7 +35,7 @@ class BillPaymentConflictResolver {
 
   /// Mã backend gắn cho khoản chi trả một kỳ mà **kỳ trùng** của nó (cùng
   /// `Previous_bill_id` + `Due_date`, khác `Idbill`) đã có khoản chi — đơn 41
-  /// `CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md` (G87). Gỡ khoản trả như [maDaTra],
+  /// `DA-XONG/CHAN_TRA_HAI_LAN_THEO_KY.md` (G87). Gỡ khoản trả như [maDaTra],
   /// nhưng hoá đơn **không** được đánh dấu đã trả: server không có khoản chi
   /// cho hoá đơn NÀY, và để nó còn phải trả thì lượt gộp kỳ trùng sau lần kéo về
   /// kế tiếp (`kyTrungCanGo`) xoá mềm nó.
