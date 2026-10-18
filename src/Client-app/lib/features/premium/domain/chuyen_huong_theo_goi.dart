@@ -14,3 +14,7 @@ String? chuyenHuongTheoGoi(Uri uri, KetQuaTran ket) {
     Duoc() => null,
   };
 }
+
+/// Phần THUẦN của `redirect` route Chi tiết đơn `/premium/don/:orderCode` (spec G94 2026-10-18 mục 5.5): mã không
+/// phải số nguyên → về Lịch sử mua, nơi người dùng chọn lại đơn.
+String? chuyenHuongChiTietDon(String? ma) => int.tryParse(ma ?? '') == null ? '/premium/lich-su' : null;

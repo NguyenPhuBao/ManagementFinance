@@ -37,6 +37,8 @@ import '../../features/premium/data/models/don_thanh_toan.dart';
 import '../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../features/premium/domain/tran_goi.dart';
 import '../../features/premium/domain/hang_goi.dart';
+import '../../features/premium/domain/chuyen_huong_theo_goi.dart';
+import '../../features/premium/presentation/pages/chi_tiet_don_page.dart';
 import '../../features/premium/presentation/pages/cho_thanh_toan_page.dart';
 import '../../features/premium/presentation/pages/lich_su_mua_page.dart';
 import '../../features/premium/presentation/pages/nang_cap_page.dart';
@@ -481,6 +483,15 @@ class AppRouter {
           GoRoute(
               path: '/premium/lich-su',
               builder: (_, __) => const LichSuMuaPage()),
+          // Chi tiết đơn (spec G94 2026-10-18 mục 5.5): mở từ Lịch sử mua, thẻ màn Nâng cấp, và màn Chờ khi server
+          // trả trạng thái đối soát (`pushReplacement`). Mã không phải số → về Lịch sử mua.
+          GoRoute(
+            path: '/premium/don/:orderCode',
+            redirect: (_, state) =>
+                chuyenHuongChiTietDon(state.pathParameters['orderCode']),
+            builder: (_, state) => ChiTietDonPage(
+                orderCode: int.parse(state.pathParameters['orderCode']!)),
+          ),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
           GoRoute(
               path: '/settings/change-password',
