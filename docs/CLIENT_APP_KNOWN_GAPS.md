@@ -1810,6 +1810,10 @@ cả hai cần phép đích danh) và PayOS sandbox (việc tồn chưa làm).
 >
 > Lượt G89 + G94 vẫn cần spec + Stitch như đoạn *Khi làm* trên. Mã backend vừa viết là **điểm xuất phát**, không phải
 > phần đã xong. **Người dùng chốt 2026-10-18:** phần dư của đơn 43 không chặn — lượt G89 + G94 bắt đầu từ phiên sau.
+> Client được sửa sáu tệp backend viết như mọi tệp client khác. **Thứ tự chốt cùng ngày:** lượt ấy mở đầu bằng **một đợt
+> chỉ sửa hai lỗi đang chạy** — việc 1 (đồng hồ về 0 lúc màn không hiện → *"Đơn đã hết hạn"*) và việc 3 (lỗi mạng khi
+> xác nhận không báo gì) — mỗi lỗi một ca test đỏ trước. Sau đợt ấy mới tới spec, Stitch và các màn mới, gồm lối xác
+> nhận khi đã rời màn chờ. Người dùng không chọn tách hai lỗi ra sửa ngay, và không chọn gỡ hẳn phần backend viết.
 
 ---
 
