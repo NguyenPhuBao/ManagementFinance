@@ -7,8 +7,8 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/payment_api.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
-import '../../domain/don_thanh_toan.dart';
-import '../../domain/dong_lich_su.dart';
+import '../../domain/trang_thai_don.dart';
+import '../../data/models/dong_lich_su.dart';
 
 /// Màn Lịch sử mua `/premium/lich-su` (spec Premium 9.4) — chỉ đọc, trang 1
 /// (20 dòng, không phân trang vô hạn). Màn Stitch *"Lịch sử mua Premium -

@@ -1,4 +1,4 @@
-import 'don_thanh_toan.dart';
+import '../../domain/trang_thai_don.dart';
 
 /// Một dòng của `GET /payment/history` (spec Premium 9.4). [luc] = `paid_at`
 /// nếu có, không thì `created_at`; rác → `null`.
@@ -33,14 +33,3 @@ List<DongLichSu> dongLichSuTu(List<Map<String, Object?>> items) {
         ),
   ];
 }
-
-/// Chữ trạng thái do client chọn — hằng tiếng Việt, không lấy từ payload.
-String chuTrangThaiDon(TrangThaiDon t) => switch (t) {
-      TrangThaiDon.paid => 'Đã thanh toán',
-      TrangThaiDon.pending => 'Chờ thanh toán',
-      TrangThaiDon.waitingConfirmation => 'Chờ xác nhận',
-      TrangThaiDon.refundPending => 'Cần hoàn tiền',
-      TrangThaiDon.refunded => 'Đã hoàn tiền',
-      TrangThaiDon.cancelled => 'Đã huỷ',
-      TrangThaiDon.expired => 'Hết hạn',
-    };

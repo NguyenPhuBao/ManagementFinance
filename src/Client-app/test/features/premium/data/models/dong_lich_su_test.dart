@@ -3,8 +3,8 @@
 /// thái do client chọn.
 library;
 
-import 'package:flowmoney/features/premium/domain/don_thanh_toan.dart';
-import 'package:flowmoney/features/premium/domain/dong_lich_su.dart';
+import 'package:flowmoney/features/premium/domain/trang_thai_don.dart';
+import 'package:flowmoney/features/premium/data/models/dong_lich_su.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -42,12 +42,5 @@ void main() {
     expect(d.soTien, 0);
     expect(d.luc, isNull);
     expect(d.trangThai, TrangThaiDon.pending);
-  });
-
-  test('chữ trạng thái tiếng Việt', () {
-    expect(chuTrangThaiDon(TrangThaiDon.paid), 'Đã thanh toán');
-    expect(chuTrangThaiDon(TrangThaiDon.pending), 'Chờ thanh toán');
-    expect(chuTrangThaiDon(TrangThaiDon.cancelled), 'Đã huỷ');
-    expect(chuTrangThaiDon(TrangThaiDon.expired), 'Hết hạn');
   });
 }

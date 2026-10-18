@@ -33,7 +33,7 @@ import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
 import '../../features/premium/data/chan_theo_goi.dart';
-import '../../features/premium/domain/don_thanh_toan.dart';
+import '../../features/premium/data/models/don_thanh_toan.dart';
 import '../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../features/premium/domain/tran_goi.dart';
 import '../../features/premium/domain/hang_goi.dart';

@@ -1,8 +1,8 @@
-/// `DonThanhToan` đọc từ `POST /payment/create-order` và trạng thái đơn của
-/// `GET /payment/order-status` (spec Premium 5.4 & Payment Reconciliation).
+/// `DonThanhToan` đọc từ `POST /payment/create-order` (spec Premium 5.4 & Payment Reconciliation). Trạng thái đơn
+/// của `GET /payment/order-status`: `test/features/premium/domain/trang_thai_don_test.dart`.
 library;
 
-import 'package:flowmoney/features/premium/domain/don_thanh_toan.dart';
+import 'package:flowmoney/features/premium/data/models/don_thanh_toan.dart';
 import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -48,19 +48,5 @@ void main() {
         now: now)!;
     expect(d.soTien, kGiaPremium);
     expect(d.hetHanLuc, now.add(const Duration(minutes: 10)));
-  });
-
-  test('trạng thái đơn: đầy đủ 6 trạng thái nghiệp vụ; lạ → pending', () {
-    expect(trangThaiDonTuChuoi('PAID'), TrangThaiDon.paid);
-    expect(trangThaiDonTuChuoi('paid'), TrangThaiDon.paid);
-    expect(trangThaiDonTuChuoi('WAITING_CONFIRMATION'), TrangThaiDon.waitingConfirmation);
-    expect(trangThaiDonTuChuoi('REFUND_PENDING'), TrangThaiDon.refundPending);
-    expect(trangThaiDonTuChuoi('REFUNDED'), TrangThaiDon.refunded);
-    expect(trangThaiDonTuChuoi('CANCELLED'), TrangThaiDon.cancelled);
-    expect(trangThaiDonTuChuoi('EXPIRED'), TrangThaiDon.expired);
-    expect(trangThaiDonTuChuoi('PENDING'), TrangThaiDon.pending);
-    expect(trangThaiDonTuChuoi('SUCCESS'), TrangThaiDon.pending,
-        reason: 'chuỗi không biết không được coi là đã trả');
-    expect(trangThaiDonTuChuoi(null), TrangThaiDon.pending);
   });
 }

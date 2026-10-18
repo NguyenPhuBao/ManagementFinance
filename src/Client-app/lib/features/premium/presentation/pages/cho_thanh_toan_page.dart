@@ -17,7 +17,8 @@ import '../../data/bo_hoi_trang_thai_don.dart';
 import '../../data/mo_lien_ket.dart';
 import '../../data/payment_api.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
-import '../../domain/don_thanh_toan.dart';
+import '../../data/models/don_thanh_toan.dart';
+import '../../domain/trang_thai_don.dart';
 import '../bloc/goi_cubit.dart';
 
 /// Màn Đang chờ thanh toán `/premium/cho-thanh-toan` (spec Premium 2026-10-06

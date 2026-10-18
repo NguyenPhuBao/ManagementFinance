@@ -8,7 +8,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/payment_api.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
-import '../../domain/don_thanh_toan.dart';
+import '../../data/models/don_thanh_toan.dart';
 import '../../domain/quyen_tinh_nang.dart';
 import '../../domain/tran_goi.dart';
 import '../../data/models/tran_goi.dart';

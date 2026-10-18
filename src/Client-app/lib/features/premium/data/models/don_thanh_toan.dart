@@ -1,4 +1,4 @@
-import 'hang_goi.dart';
+import '../../domain/hang_goi.dart';
 
 /// Đơn vừa tạo (`POST /payment/create-order`) — chứa thông tin thanh toán VietQR,
 /// mã nhận diện 6 ký tự, số tiền, và thời hạn (spec Premium 5.4 & Payment spec).
@@ -79,25 +79,3 @@ DonThanhToan? donTuJson(Map<String, Object?> json, {required DateTime now}) {
     fee: (json['fee'] as num?)?.toInt(),
   );
 }
-
-enum TrangThaiDon {
-  pending,
-  paid,
-  waitingConfirmation,
-  refundPending,
-  refunded,
-  cancelled,
-  expired,
-}
-
-/// Chuỗi `status` của `GET /payment/order-status`.
-TrangThaiDon trangThaiDonTuChuoi(Object? s) =>
-    switch (s?.toString().toUpperCase()) {
-      'PAID' => TrangThaiDon.paid,
-      'WAITING_CONFIRMATION' => TrangThaiDon.waitingConfirmation,
-      'REFUND_PENDING' => TrangThaiDon.refundPending,
-      'REFUNDED' => TrangThaiDon.refunded,
-      'CANCELLED' => TrangThaiDon.cancelled,
-      'EXPIRED' => TrangThaiDon.expired,
-      _ => TrangThaiDon.pending,
-    };
