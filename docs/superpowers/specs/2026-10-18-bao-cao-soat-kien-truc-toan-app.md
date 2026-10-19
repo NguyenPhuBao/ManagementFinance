@@ -116,6 +116,10 @@ Trình báo cáo đầu phiên 2026-10-19 (HEAD `868551b6`; đối chiếu lại
    `nguon_ly_do_thoat`, `nguon_tai_nen`, `tai_nen_background_downloader`, `luu_tep_platform`, `luu_anh_qr`, `mo_lien_ket`) → dời;
    nguồn / store / dịch vụ (`nguon_giong_noi`, `slm_cache`, `mo_hinh_tai_ve`, `bo_nap_mo_hinh`, `xuat_tep_service_impl`) ở lại.
    Ba hàng B của mục 3 (Cài đặt thông báo, Thêm giao dịch, Quét ảnh gọi thẳng cổng) đóng theo luật này, 0 mã.
+   Preflight 2026-10-19 làm rõ hai vế: **cổng** = interface + bản thật cho MỘT ranh giới (kênh `flowmoney/*`, gói nền tảng, thư mục
+   tệp riêng) → `datasources/`; **store** (kho khoá–giá trị / bảng cục bộ mang luật của mảng — `*_store`, `cong_tac_*`, kể cả bọc
+   `flutter_secure_storage`) và nguồn / dịch vụ → gốc `data/`; `auth_local_data_source` (đã ở `datasources/` từ trước) giữ chỗ.
+   `luu_anh_qr` lẫn bộ tải ảnh Dio trần → tách bộ tải ra tệp riêng để cổng kênh không import Dio (trang Chờ thanh toán gọi thẳng nó).
 3. **Làm cả bốn lát** — Mục tiêu · Giao dịch + Danh mục · Thông báo + Trợ lý AI · Hoá đơn + core + Premium — **bằng agent con**.
    Thêm vào lát 4 (đo 2026-10-19, ngoài 14 A cũ vì báo cáo bỏ qua Premium): `premium/presentation/widgets/the_khoa_quyen.dart` 12
    giá trị `Color(0x…)` trên 10 dòng. Thêm vào lát 1 (C): `analytics/domain/du_bao_dong_tien.dart:338` viết
