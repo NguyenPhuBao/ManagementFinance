@@ -2080,7 +2080,7 @@ trung tâm thông báo).
   ticker của `AnimatedSlide` bắt đầu ở khung SAU khung dựng — hai nhịp thì viên còn lệch nửa chiều cao (25 dp).
 - **Stitch** `fb68baba5ad04368918911cbf987725b` *"Thông báo nổi (toast) - Ba biến thể"* — lượt gọi trả `timeout`, màn
   xuất hiện sau (✅ người dùng xác nhận tối 2026-10-06). Đối chiếu ra bốn chỗ lệch; người dùng chọn **chép cả bốn**
-  (`719293c`): ① viên neo **trên bàn phím SỐ tự vẽ** của Thêm giao dịch — `BaoCheDayToast` (`core/ui/`) bọc 16 phím,
+  (`719293c`): ① viên neo **trên bàn phím SỐ tự vẽ** của Thêm giao dịch — `BaoCheDayToast` (`core/ui/`; nay `shared/widgets/`, 2026-10-19) bọc 16 phím,
   đo khoảng đáy bị che, báo vào `cheDayToast`; `AppToast` nổi 12 dp trên đó (hệ điều hành không báo `viewInsets` cho
   bàn phím tự vẽ, nên bản trước đè hai hàng phím dưới). ⚠️ Rời cây thì trả 0 qua **microtask + quyền sở hữu kênh**
   — gán thẳng trong `dispose` là setState lúc cây khoá, và có thể xoá số của vùng mới dựng cùng khung. ② **Vuốt ngang**

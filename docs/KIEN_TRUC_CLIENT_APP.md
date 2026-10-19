@@ -49,7 +49,7 @@ và `… | xargs cat | wc -l`. `test/` có **652** tệp `*_test.dart` (664 tệ
 ```
 lib/
 ├── main.dart                 điểm vào app + điểm vào engine nền (`chayNenTuChuyenTien`, @pragma)
-├── core/             96 tệp  hạ tầng + điểm ghép — KHÔNG chứa màn hình (15 chủ đề — test quét 25; `core/notification` đã dời 2026-10-15)
+├── core/             96 tệp (đếm 2026-10-19)  hạ tầng + điểm ghép — KHÔNG chứa màn hình (15 chủ đề — test quét 25; `core/notification` đã dời 2026-10-15)
 │   ├── api/           4      DioClient (DI dùng `sl<DioClient>().dio`), AuthInterceptor (gắn token, làm mới, dịch 401 + code; phát lại sau 401 giữ `responseType` · `receiveTimeout` · `cancelToken`), `khung_sse` (bộ tách khung SSE thuần, 2026-10-17)
 │   ├── auth/          3      buoc_dang_xuat (kiểu thuần 4 tệp hạ tầng dùng), PhienDieuPhoi(+That) ← điều phối phiên
 │   ├── category/      1      category_name (normalizeCategoryName — DAO + util dùng)
@@ -80,10 +80,10 @@ lib/
 │   ├── home/          8      domain 1 · presentation 7
 │   ├── notification/ 48      data 17 · domain 11 · application 8 · presentation 12 (widgets/cai_dat_thong_bao/ 6 tệp; luật, bộ quét, bộ nhập dời từ core/notification 2026-10-15)
 │   └── ai_chat/      12      data 4 (datasources/ 1 — SSE trợ lý online; `cong_tac_online`) · domain 2 (`duong_hoi`, `su_kien_online`) · presentation 6 (pages/ 1 · widgets/tro_ly_ai/ 5) — màn Trợ lý AI + trợ lý online (2026-10-17; spike C4 đã gỡ 2026-10-12)
-└── shared/           14 tệp  theme/ 3 (AppTheme, AppColors) · widgets/ 11 (MainShell, chuông, toast…)
+└── shared/           14 tệp (đếm 2026-10-19)  theme/ 3 (AppTheme, AppColors) · widgets/ 11 (MainShell, chuông, toast…)
 ```
 
-Hàng `lib/` · `test/` · `core` · `core/api` · `core/di` · `features/` · `transaction` · `ai_chat` đếm lại bằng máy **2026-10-17 sau trợ lý online** (HEAD `fb92c16d`, `git ls-files … | grep -c '\.dart$'`; `injection_container` bằng `wc -l`); `transaction` 76 → 77 là `data/hoa_don_da_xoa_nguon.dart` của việc 4c (cùng ngày), `ai_chat` 3 → 12 và `core/api` 3 → 4 là của trợ lý online. Các số dưới là của lần đếm trước.
+Hàng `core` (96) và `shared` (14 · `widgets/` 11) đếm lại bằng máy **2026-10-19** (`find lib/core -name '*.dart' | wc -l`, `find lib/shared -name '*.dart' | wc -l`) sau khi `bao_che_day_toast` dời `core/ui/` → `shared/widgets/`. Hàng `lib/` · `test/` · `core` · `core/api` · `core/di` · `features/` · `transaction` · `ai_chat` đếm lại bằng máy **2026-10-17 sau trợ lý online** (HEAD `fb92c16d`, `git ls-files … | grep -c '\.dart$'`; `injection_container` bằng `wc -l`); `transaction` 76 → 77 là `data/hoa_don_da_xoa_nguon.dart` của việc 4c (cùng ngày), `ai_chat` 3 → 12 và `core/api` 3 → 4 là của trợ lý online. Các số dưới là của lần đếm trước.
 Số tệp `lib/`/`test/`/`features/` và ba mảng `ai_edge`, `transaction`, `home` đếm lại bằng máy **2026-10-12** (sau C4); tổng `lib/` (**596** tệp, **122.667** dòng), `test/` và các hàng `analytics` · `goal` · `notification` đếm lại **2026-10-13** sau tách bốn trang lớn (G88 gạch 2). Đếm mảng: `for d in features/*/; do find $d -name '*.dart' | wc -l; done` (và `$d/data`, `$d/domain`, `$d/presentation`).
 Tổng `lib/` · `core` · `features/` và bốn mảng `analytics` · `transaction` · `bill` · `category` (kèm tách data / domain) đếm lại bằng máy **2026-10-16 sau gỡ cụm** (HEAD `f702a884`, `git ls-files`): `lib/` 618 · `core` 96 · `features/` 508 · `analytics` 61 · `transaction` 76 · `bill` 39 · `category` 22; câu *"`core` vẫn 92 tệp, `features/` 504, `lib/` 610"* ở dưới là số của HEAD `4b7740a3` trước đợt này.
 Số trên đếm lại 2026-10-10 sau đợt dọn vị trí tệp (HEAD `e2ab224c`); riêng tổng `lib/` · `test/` · `features/` và mảng `transaction` đếm lại 2026-10-11 sau tách trang Thêm giao dịch (HEAD `18ae5749`).
