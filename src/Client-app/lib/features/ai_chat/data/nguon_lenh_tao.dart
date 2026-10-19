@@ -7,8 +7,8 @@ import '../../ai_edge/domain/lenh_tao.dart';
 import '../../category/data/repositories/category_management_repository.dart';
 import '../../wallet/data/repositories/wallet_repository.dart';
 
-/// Ví HOẠT ĐỘNG (`getActive` — bộ chọn ví, không kể ví lưu trữ) và danh mục chi chọn được của [idaccount]. Lỗi đọc →
-/// danh sách rỗng: lệnh vẫn chạy, chỉ không điền ví / danh mục.
+/// Ví HOẠT ĐỘNG (`getActive` — bộ chọn ví, không kể ví lưu trữ) và danh mục chi chọn được của [idaccount], đọc qua
+/// repository của hai mảng. Lỗi đọc → danh sách rỗng: lệnh vẫn chạy, chỉ không điền ví / danh mục.
 Future<NguonLenhTao> napNguonLenhTao(int idaccount) async {
   List<MucChon> vi = const [];
   List<MucChon> danhMucChi = const [];

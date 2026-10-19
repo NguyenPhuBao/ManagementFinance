@@ -41,10 +41,10 @@ class CategoryIconRegistry {
   static Future<Map<String, String>?> getIcon(String id, String name) async {
     await _ensureLoaded();
     final lowerId = id.toLowerCase();
-    final lowerName = normalizeCategoryName(name);
+    final khoaTen = normalizeCategoryName(name);
 
     if (lowerId.isNotEmpty && _cache.containsKey(lowerId)) return _cache[lowerId];
-    if (lowerName.isNotEmpty && _cache.containsKey(lowerName)) return _cache[lowerName];
+    if (khoaTen.isNotEmpty && _cache.containsKey(khoaTen)) return _cache[khoaTen];
     return null;
   }
 }
