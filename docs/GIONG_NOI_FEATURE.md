@@ -106,7 +106,7 @@ chỉ áp khi `chuoiSoTien` vẫn bằng chuỗi luật đã điền. Khi lệch
 | `transaction/data/datasources/kenh_micro.dart` + `MainActivity.kt` | kênh `flowmoney/micro`: `biChan`, `moCaiDat` | `giong_noi_noi_day_test` |
 | `transaction/data/nguon_giong_noi.dart` | cổng DI: `donTepGiongNoiSot`, `tepGiongNoiMoi`, quyền | `don_tep_giong_noi_sot_test` |
 | `transaction/data/chep_loi_bang_gemma.dart` | gọi `SlmRuntime.chepLoi`; hàng đợi chép toàn cục | `chep_loi_bang_gemma_test` |
-| `transaction/data/dong_hang_bien_dong.dart` | `dongHangBienDong`, `dongHangChuyenKhoan` dời khỏi Cubit (chừa chỗ, §4.2 spec) | `dong_hang_bien_dong_test` |
+| `transaction/application/dong_hang_bien_dong.dart` | `dongHangBienDong`, `dongHangChuyenKhoan` dời khỏi Cubit (chừa chỗ, §4.2 spec) | `dong_hang_bien_dong_test` |
 | `transaction/domain/chon_loi_nghe.dart` | chọn lối, hằng mã lỗi, `kThuGemmaLuotSau`, câu thông báo | `chon_loi_nghe_test` |
 | `transaction/domain/do_im_lang.dart` | `BoDoIm` (dừng khi im), `kNguongCoTieng` −35 dBFS, `kNgheToiDa` 20 s | `do_im_lang_test` |
 | `transaction/domain/chep_loi.dart` · `chot_so_tien_cau.dart` | chuẩn hoá lời chép; `chotSoTienCau` | `chep_loi_test`, `chot_so_tien_cau_test` |

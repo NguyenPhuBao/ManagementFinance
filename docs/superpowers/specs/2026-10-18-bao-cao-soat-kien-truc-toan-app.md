@@ -3,8 +3,10 @@
 > ✅ **Đã sửa 2026-10-19** (bốn lát, kế hoạch `docs/superpowers/plans/2026-10-19-sua-lech-kien-truc-bon-lat.md`, gitignore;
 > khối 🧱 đầu mục 14 `PROJECT_CONTEXT.md`): **cả 14 A** (cộng `the_khoa_quyen` 12 màu + vế thừa `du_bao_dong_tien:338`); B
 > *ngân sách tổng* (áp `khoanVaoThongKe`, người dùng chốt) và ba B *cổng nền tảng dưới `datasources/`* (đóng theo luật mới mục 8
-> `KIEN_TRUC`, test quét 31). **Còn lại:** B `notification_prefs.dart` / `doc_mon_hang.dart` toJson ở `domain/`,
-> `dong_hang_bien_dong.dart` (dáng bộ điều phối); mọi hàng C; `other_daos.dart`, `SyncEngine`. Số dòng trong bảng dưới là của
+> `KIEN_TRUC`, test quét 31). Phiên 2 cùng ngày (mục cuối tệp): B `MonHang` /
+> `dong_hang_bien_dong` sửa, B `notification_prefs` đóng không sửa (lý do ở điểm 3); C ngày bắt đầu ngân sách, phần trăm
+> (quét 33), `DateFormat` (quét 32) sửa, các C còn lại đóng có lý do; `other_daos.dart` tách. **Còn lại duy nhất:**
+> `SyncEngine` (spec riêng). Số dòng trong bảng dưới là của
 > HEAD `af7351fe` — nhiều tệp đã dời / đổi (mục *Quyết định* cuối tệp).
 
 **Bối cảnh:** người dùng chốt 2026-10-18 *"từ đây về sau tất cả các phần mới hay cũ đều phải tuân thủ kiến trúc mà
@@ -154,8 +156,8 @@ bằng agent con. `SyncEngine` là việc kiến trúc → brainstorm + spec ri�
    form và repository cùng gọi.
 5. **Phần trăm** (hàng C mục 6): `chuPhanTram(tiLe)` ở `core/utils/phan_tram.dart`, thay 7 chỗ `'${(x * 100).round()}%'`;
    canh bằng **test quét 33**.
-6. **`DateFormat` → `DateFormatter`** (hàng C mục 6): mọi dòng dựng `DateFormat` ngoài `core/utils/date_formatter.dart` (35
-   dòng / 28 tệp đo 2026-10-19 — báo cáo cũ ghi ~14 tệp) đi qua `DateFormatter`, **chữ hiển thị giữ nguyên từng ký tự**: mỗi
+6. **`DateFormat` → `DateFormatter`** (hàng C mục 6): mọi dòng dựng `DateFormat` ngoài `core/utils/date_formatter.dart` (37
+   dòng mã / 31 tệp có từ trọn `DateFormat` — dựng hoặc kiểu tham số — đo 2026-10-19; báo cáo cũ ghi ~14 tệp) đi qua `DateFormatter`, **chữ hiển thị giữ nguyên từng ký tự**: mỗi
    mẫu đang dùng một hàm (`dd/MM/yyyy`, `dd/MM`, `dd/MM/yyyy HH:mm`, `HH:mm dd/MM/yyyy` của thẻ đơn Premium theo Stitch,
    `MM/yyyy`, `MM/yy`, khoá nhóm `yyyy-MM-dd`, `EEEE, dd/MM/yyyy`). Mẫu **chỉ có số dựng không locale** (chữ số giống hệt ở
    mọi locale, widget test không cần `initializeDateFormatting`); chỉ mẫu có tên thứ giữ `vi_VN`. Canh bằng **test quét 32**.

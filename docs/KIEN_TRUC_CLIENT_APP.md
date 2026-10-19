@@ -43,18 +43,18 @@ canh bằng test quét mã nguồn (mục 6).
 
 ## 3. Cây thư mục
 
-`lib/` có **647** tệp `.dart`, **127.534** dòng (kể 14 tệp `.g.dart` do Drift sinh) — `git ls-files lib | grep '\.dart$'`
-và `… | xargs cat | wc -l`. `test/` có **657** tệp `*_test.dart` (669 tệp `.dart` kể cả helper), **132.258** dòng (đếm lại **2026-10-19** sau bốn lát sửa lệch kiến trúc và gỡ `CategoryIconRegistry`, `git ls-files`). (Trước khi gỡ registry, HEAD `9712fc80`: `lib/` 648 tệp, 127.595 dòng; `test/` 658 `_test` (670 `.dart`), 132.276 dòng. Trước đó 2026-10-18 tối sau G94 lát 2, HEAD `ddd35e1a`: `lib/` 644 tệp, 127.539 dòng; `test/` 652 `_test` (664 `.dart`), 131.848 dòng. Trước đó 2026-10-18 sau G94 lát 1, HEAD `cc300f61`: `lib/` 634 tệp, 126.253 dòng; `test/` 647 `_test` (659 `.dart`), 130.633 dòng. Trước đó 2026-10-17 sau trợ lý online, HEAD `fb92c16d`: `lib/` 629 tệp, 125.809 dòng; `test/` 644 `_test` (656 `.dart`), 129.998 dòng. Trước đó 2026-10-16 sau gỡ cụm, HEAD `f702a884`: `lib/` 618 tệp, 124.393 dòng; `test/` 629 `_test` (640 `.dart`), 126.455 dòng. 2026-10-15: 626 tệp `.dart` (617 `_test`), 124.875 dòng; 2026-10-13, sau tách bốn trang lớn: 596 / 616 tệp, 122.667 / 123.486 dòng.)
+`lib/` có **652** tệp `.dart`, **127.530** dòng (kể 16 tệp `.g.dart` do Drift sinh) — `git ls-files lib | grep '\.dart$'`
+và `… | xargs cat | wc -l`. `test/` có **661** tệp `*_test.dart` (673 tệp `.dart` kể cả helper), **132.420** dòng (đếm lại **2026-10-19** sau phần còn lại của báo cáo soát — `DateFormatter`, `chuPhanTram`, tách `other_daos.dart`, giao dịch có `application/` — HEAD `925e38a9`, `git ls-files`). (Trước phần còn lại của báo cáo soát, sau bốn lát sửa lệch kiến trúc và gỡ `CategoryIconRegistry`: `lib/` 647 tệp, 127.534 dòng; `test/` 657 `_test` (669 `.dart`), 132.258 dòng. Trước khi gỡ registry, HEAD `9712fc80`: `lib/` 648 tệp, 127.595 dòng; `test/` 658 `_test` (670 `.dart`), 132.276 dòng. Trước đó 2026-10-18 tối sau G94 lát 2, HEAD `ddd35e1a`: `lib/` 644 tệp, 127.539 dòng; `test/` 652 `_test` (664 `.dart`), 131.848 dòng. Trước đó 2026-10-18 sau G94 lát 1, HEAD `cc300f61`: `lib/` 634 tệp, 126.253 dòng; `test/` 647 `_test` (659 `.dart`), 130.633 dòng. Trước đó 2026-10-17 sau trợ lý online, HEAD `fb92c16d`: `lib/` 629 tệp, 125.809 dòng; `test/` 644 `_test` (656 `.dart`), 129.998 dòng. Trước đó 2026-10-16 sau gỡ cụm, HEAD `f702a884`: `lib/` 618 tệp, 124.393 dòng; `test/` 629 `_test` (640 `.dart`), 126.455 dòng. 2026-10-15: 626 tệp `.dart` (617 `_test`), 124.875 dòng; 2026-10-13, sau tách bốn trang lớn: 596 / 616 tệp, 122.667 / 123.486 dòng.)
 
 ```
 lib/
 ├── main.dart                 điểm vào app + điểm vào engine nền (`chayNenTuChuyenTien`, @pragma)
-├── core/             95 tệp (đếm 2026-10-19)  hạ tầng + điểm ghép — KHÔNG chứa màn hình (15 chủ đề — test quét 25; `core/notification` đã dời 2026-10-15)
+├── core/            100 tệp (đếm 2026-10-19)  hạ tầng + điểm ghép — KHÔNG chứa màn hình (15 chủ đề — test quét 25; `core/notification` đã dời 2026-10-15)
 │   ├── api/           4      DioClient (DI dùng `sl<DioClient>().dio`), AuthInterceptor (gắn token, làm mới, dịch 401 + code; phát lại sau 401 giữ `responseType` · `receiveTimeout` · `cancelToken`), `khung_sse` (bộ tách khung SSE thuần, 2026-10-17)
 │   ├── auth/          3      buoc_dang_xuat (kiểu thuần 4 tệp hạ tầng dùng), PhienDieuPhoi(+That) ← điều phối phiên
 │   ├── category/      1      category_name (normalizeCategoryName — DAO + util dùng)
 │   ├── constants/     2      app_constants, app_localization
-│   ├── database/     42      AppDatabase, 10 tệp DAO, bảng, kết nối (native / web)
+│   ├── database/     46      AppDatabase, 14 tệp DAO (đếm 2026-10-19; `other_daos.dart` đã tách thành `budget_dao` · `bill_dao` · `goal_dao`), bảng, kết nối (native / web)
 │   ├── di/            1      injection_container (1.039 dòng) ← điểm ghép duy nhất của DI
 │   ├── errors/        1      app_exceptions
 │   ├── nen/           7      chạy nền: chay_nen, luot_nen, lich_nen, kênh `flowmoney/tu_chuyen_tien`, `app_lifecycle_watcher`
@@ -64,10 +64,10 @@ lib/
 │   ├── router/        1      app_router (GoRouter) ← điểm ghép
 │   ├── sync/          8      SyncEngine, normalizer, checkpoint, hai cổng `CongSoDuVi` · `CongViBiGiu` (2026-10-16; `noiBoNgheKetQuaDay` đã về DI)
 │   ├── ui/            3      thong_bao_nhanh (toast), bieu_do_cham, do_chu (`bao_che_day_toast` dời về `shared/widgets/` 2026-10-19)
-│   └── utils/         9      CurrencyFormatter, gioi_han_do_dai, so_bang_chu, ngay_trong_cau, khop_ten, `tuan_iso`, `dung_sai_tien` (hàm thuần dùng chung — tiền lệ cho `domain/` mục 4)…
-├── features/        537 tệp (đếm 2026-10-19)  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation (+ `application/` ở năm mảng: ví · danh mục · hoá đơn · mục tiêu · thông báo)
+│   └── utils/        10      CurrencyFormatter, `DateFormatter` (tám hàm, mỗi mẫu ngày một hàm — quét 32), `chuPhanTram` (quét 33), gioi_han_do_dai, so_bang_chu, ngay_trong_cau, khop_ten, `tuan_iso`, `dung_sai_tien` (hàm thuần dùng chung — tiền lệ cho `domain/` mục 4)…
+├── features/        537 tệp (đếm 2026-10-19)  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation (+ `application/` ở sáu mảng: ví · danh mục · hoá đơn · mục tiêu · thông báo · giao dịch)
 │   ├── ai_edge/      83      data 23 (datasources/ 5) · domain 55 · presentation 5 (đếm 2026-10-19) — luật, gói số, tool, SLM runtime, lớp chắn
-│   ├── transaction/  77      data 19 · domain 29 · presentation 29 (bloc/ 5 kể `ThemGiaoDichCubit` + state · widgets/them_giao_dich/ 7 tệp)
+│   ├── transaction/  77      data 18 · domain 29 · application 1 · presentation 29 (đếm 2026-10-19; bloc/ 5 kể `ThemGiaoDichCubit` + state · widgets/them_giao_dich/ 7 tệp)
 │   ├── analytics/    61      data 9 · domain 18 · presentation 34 (widgets/phan_tich/ 14 tệp · widgets/xem_truoc_bao_cao/ 10 tệp)
 │   ├── bill/         39      data 7 · domain 16 · application 2 · presentation 14
 │   ├── goal/         49      data 4 · domain 18 · application 1 · presentation 26 (widgets/them_muc_tieu/ 7 tệp · widgets/chi_tiet_muc_tieu/ 7 tệp)
@@ -96,7 +96,7 @@ Các hàng `core/sync` · `core/ocr` và `features/` (tổng + `transaction` · 
 | `presentation/` | Trang, widget, Bloc/Cubit; giữ trạng thái màn, gọi repository | `domain/`, `data/` của chính mảng và mảng khác (repository, nguồn), `application/` (bộ điều phối), `core/` — kể `core/database` để dùng **kiểu** hàng Drift — chỉ cho mảng chưa có Entity (danh sách chờ của quét 27); Hoá đơn, Ví, Giao dịch, Danh mục, Thông báo: Entity (danh sách chờ rỗng từ 2026-10-15) — `core/di` để lấy repository qua service locator, `core/ui`, `core/utils`, `core/constants` — và `shared/` | cầm `AppDatabase` / gọi DAO (**test quét 22** — kiểu hàng thì được, lối truy cập thì không); tệp quá 1.200 dòng ngoài danh sách miễn trừ (**quét 23**) |
 | `domain/` | Hàm thuần: luật nghiệp vụ, phép tính, định dạng câu — kể cả hàm thuần dùng chung nhiều mảng, đặt ở `core/utils` · `core/category` (tiền lệ `tuan_iso`, `normalizeCategoryName`) | Dart thuần, `domain/` khác, Entity ở `data/models/` (kéo Drift bắc cầu qua `fromDrift` — cái giá đã nhận) | Flutter, Drift, `sl`, `application/` (quét 25 luật 7) |
 | `data/` | Repository (interface + bản thi hành), datasource, Entity, các dịch vụ **bị datasource / repository gọi** (`so_du_vi_service`, `tha_vi_bi_giu`) | `core/database`, `core/api`, `domain/` | widget, `application/` (quét 25 luật 7), Drift trong interface repository (quét 27 luật 4) |
-| `application/` (từ 2026-10-15, G88 gạch 6) | Bộ điều phối nhiều bước — ghi qua nhiều repository, quét, nhập, đặt lịch (`features/<x>/application/`: ví 4 · danh mục 2 · hoá đơn 2 · mục tiêu 1 · thông báo 8 = **17** tệp) | `data/`, `domain/`, `core/` | widget; được điểm ghép (`core/di` · `core/nen/chay_nen` · `phien_dieu_phoi_that`), `main.dart` và `presentation/` gọi; (`core/sync/noi_bo_nghe_ket_qua_day` — nợ gạch 4 — đã về DI 2026-10-16, không còn ngoại lệ); còn `data/` và `domain/` **không** import nó |
+| `application/` (từ 2026-10-15, G88 gạch 6) | Bộ điều phối nhiều bước — ghi qua nhiều repository, quét, nhập, đặt lịch (`features/<x>/application/`: ví 4 · danh mục 2 · hoá đơn 2 · mục tiêu 1 · thông báo 8 · giao dịch 1 = **18** tệp, đếm 2026-10-19) | `data/`, `domain/`, `core/` | widget; được điểm ghép (`core/di` · `core/nen/chay_nen` · `phien_dieu_phoi_that`), `main.dart` và `presentation/` gọi; (`core/sync/noi_bo_nghe_ket_qua_day` — nợ gạch 4 — đã về DI 2026-10-16, không còn ngoại lệ); còn `data/` và `domain/` **không** import nó |
 
 Chiều import một hướng **presentation → application → data / domain** (spec mục 8; luật 7 quét 25 canh vế data / domain).
 
@@ -181,10 +181,10 @@ vào thống kê), `viTinhVaoTong` (ví nào cộng vào tổng), `normalizeCate
 lỗi đã xảy ra thật ở mỗi chỗ — ví dụ G41/G47 (bảng tra tên danh mục chép ba lần).
 
 **(2) Test quét mã nguồn.** Luật nào bộ test hành vi không thấy được (một import lọt, một handler rỗng, một `?? 1`) thì
-thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–31 phủ **32
+thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–33 phủ **34
 tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đều ghi *"thứ mười bốn"*, va chạm có từ 2026-09-21) — cộng
-**3** tệp cùng khuôn không đánh số, tổng **35** (đếm bằng máy 2026-10-19, sau quét 31). Đếm: `grep -rlE "Directory\(['\"]lib" test` (30 tệp quét cây, đếm bằng máy
-2026-10-19; quét 31 duyệt cây qua biến `goc` nên khuôn grep không thấy nó) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **32**.
+**3** tệp cùng khuôn không đánh số, tổng **37** (đếm bằng bảng 2026-10-19, sau quét 33). Đếm: `grep -rlE "Directory\(['\"]lib" test` (32 tệp quét cây, đếm bằng máy
+2026-10-19; quét 31 duyệt cây qua biến `goc` nên khuôn grep không thấy nó) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **34**.
 
 | Số | Tệp (dưới `test/`) | Luật | Phạm vi | Từ |
 |---|---|---|---|---|
@@ -220,11 +220,13 @@ tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đ�
 | **29** | `core/ui/domain_khong_vong_mang_test.dart` | đồ thị cấp mảng — cạnh `A->B` khi tệp dưới `features/A/domain/` có `import` / `export` / `part` tới bất kỳ tầng nào của mảng B; cạnh nằm trên một vòng (hai đầu cùng một thành phần liên thông mạnh > 1) phải ở `conCho` (**rỗng** từ 2026-10-16 — ba lát gỡ cụm theo chiều `analytics → bill → transaction → category`; cạnh trong danh sách mà hết nằm trên vòng thì đỏ "rút"); có ca tiền đề số tệp | `features/*/domain/` → mọi tầng mảng khác | **2026-10-16** |
 | **30** | `features/goal/da_hoan_thanh_mot_noi_test.dart` | luật "mục tiêu đã xong" chỉ ở getter `daHoanThanh` (`isCompleted \|\|` ngoài `goal_entity.dart` là đỏ) | cây | **2026-10-19** |
 | **31** | `core/ui/trang_khong_import_datasource_csdl_api_test.dart` | trang (`presentation/`, `shared/`) import datasource bọc CSDL / API backend hoặc gói Dio — `conCho` rỗng từ 2026-10-19 (Trung tâm thông báo và Trợ lý AI gỡ cùng ngày) | `presentation/` + `shared/` | **2026-10-19** |
+| **32** | `core/utils/dinh_dang_ngay_mot_noi_test.dart` | nhắc `DateFormat` ngoài `core/utils/date_formatter.dart` — mỗi mẫu ngày một hàm `DateFormatter` | cây | **2026-10-19** |
+| **33** | `core/utils/phan_tram_mot_noi_test.dart` | tự viết `(x * 100).round()}%` ngoài `chuPhanTram` (`core/utils/phan_tram.dart`) | cây | **2026-10-19** |
 | — | `features/wallet/vi_trung_ten_resolver_wiring_test.dart` | `ViTrungTenResolver` dựng một chỗ và được nối | cây | 2026-10-05 |
 | — | `features/wallet/vi_trung_ten_cuc_bo_test.dart` | cờ `bi_tu_choi_trung_ten` không lọt vào đồng bộ | danh sách tệp | 2026-10-05 |
 | — | `core/nen/noi_bo_nghe_hai_noi_test.dart` | hai engine (app + nền) mỗi engine nối bộ nghe kết quả đẩy đúng một lần | cây | 2026-10-10 |
 
-(Bảng có 35 hàng sau khi thêm quét 31 ngày 2026-10-19; 34 trước đó. Bộ đọc chỉ thị dùng chung `test/helpers/chi_thi_dart.dart` và test của nó là test helper, không vào bảng.) Ngoài các tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
+(Bảng có 37 hàng sau khi thêm quét 32 / 33 ngày 2026-10-19; 35 trước đó. Bộ đọc chỉ thị dùng chung `test/helpers/chi_thi_dart.dart` và test của nó là test helper, không vào bảng.) Ngoài các tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
 ⚠️ Các test quét của đợt 2026-10-10 có **ca tiền đề** (phép quét phải thấy ít nhất một tệp) để không xanh giả khi chạy sai thư mục; một số test quét cũ chưa có; chạy từ
 `src/Client-app`.
 
@@ -281,7 +283,7 @@ trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng
 
 ## 9. Ưu điểm, nhược điểm, nợ có tên
 
-**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (35 tệp test quét, CI — đếm bằng máy 2026-10-19). Ranh
+**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (37 tệp test quét, CI — đếm bằng bảng 2026-10-19). Ranh
 giới nền tảng thay được bằng bản giả, nên **7.392** ca test (đo 2026-10-18 khuya sau đợt sửa + F4 trợ lý online, +10 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 
@@ -312,5 +314,5 @@ Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): 
 2. **Gọi đúng tên.** Feature-first ba tầng + `application/` (bộ điều phối), offline-first. Không nhận là Clean Architecture; nói vì sao không (mục 1).
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
-4. **Con số.** 14 mảng, 647 tệp `lib/` (đếm 2026-10-19, mục 1), 35 tệp test quét (đếm bằng máy 2026-10-19), 7.484 ca test (đo 2026-10-19, +10 skip), CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
+4. **Con số.** 14 mảng, 652 tệp `lib/` (đếm 2026-10-19, mục 1), 37 tệp test quét (đếm bằng bảng 2026-10-19), 7.484 ca test (đo 2026-10-19, +10 skip), CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
 5. **Tự nêu nhược điểm trước khi bị hỏi.** Còn mở: Entity mới 7/14 mảng (xong Hoá đơn, Ví, Giao dịch 2026-10-14, Danh mục, Thông báo 2026-10-15); `SyncEngine` một tệp 2.163 dòng; không logger, không mã hoá SQLite; `setState` vẫn là cách giữ trạng thái chủ đạo; và cạnh `bill/application/bill_payment_conflict_resolver.dart` → `notification_rules.dart` giữ cố ý (bộ điều phối phát thông báo, quét 29 chỉ đọc nguồn `domain/`). Đã trả, có ngày: G88 đóng 2026-10-16 (gạch 4: `core` → `features` chỉ còn năm tệp domain thuần; bốn trang trên 1.200 dòng tách xong 2026-10-13), vòng `bill_status` ↔ `notification_rules` và bốn cặp hai chiều của cụm {analytics, bill, category, transaction} gỡ 2026-10-16 — quét 29 canh vòng mới, `conCho` rỗng. Nói cả hai nhóm, tức là đã biết, không phải chưa nhìn thấy.

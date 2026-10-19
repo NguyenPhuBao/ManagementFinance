@@ -141,7 +141,7 @@ lib/features/bill/
 ```
 
 Bảng và DAO: `core/database/tables/other_tables.dart` (`Bills`) và
-`core/database/daos/other_daos.dart` (`BillDao`: `markPaid`, `markOverdue`,
+`core/database/daos/bill_dao.dart` (`BillDao`: `markPaid`, `markOverdue`,
 `getUpcoming`, `getGeneratedFrom`, `updateFields`). Cột nối phía giao dịch:
 `transaction_dao.dart` (`getByBill`, `getBillPayments` — bản đồ billId →
 khoản chi cho cả trang).
