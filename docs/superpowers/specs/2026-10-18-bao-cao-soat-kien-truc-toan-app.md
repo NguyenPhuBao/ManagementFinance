@@ -101,3 +101,26 @@ cổng / dịch vụ bị gọi theo tiền lệ, trừ:
 
 Đã biết thêm (spec G94 mục 13): `core/database/daos/other_daos.dart` chứa ba DAO → tách; `SyncEngine` 2.164 dòng →
 lượt riêng.
+
+## Quyết định người dùng 2026-10-19
+
+Trình báo cáo đầu phiên 2026-10-19 (HEAD `868551b6`; đối chiếu lại mọi điểm A trên mã hiện tại — ngoài Premium chỉ
+`app_router.dart` đổi từ `af7351fe`, số dòng trích còn đúng). G94 tạm gác (chưa nghiệm thu máy).
+
+1. **Ngân sách tổng đi qua `khoanVaoThongKe`** (hàng B mục 6): *đã chi* của ngân sách tổng bỏ khoản *Điều chỉnh số dư*, *Số dư ban
+   đầu*, nửa chi cặp nạp mục tiêu kiểu cũ — khớp *chi tháng này* ở Trang chủ / Phân tích / Sổ. Ba loại ấy không danh mục nên
+   ngân sách theo danh mục không đổi; dòng điều chỉnh vẫn ở Sổ, không còn trong danh sách ngân sách tổng.
+2. **Cổng nền tảng / gói ngoài / hệ tệp → `data/datasources/`** (hàng B mục 3): mục 8 `KIEN_TRUC` thêm hàng; trang được gọi thẳng
+   cổng nền tảng, không được import datasource bọc CSDL / API backend (test quét mới). Đo 2026-10-19: hai chỗ ấy ngang nhau (~10
+   tệp ở gốc `data/`, ~12 dưới `datasources/`); xếp loại lại thì **8** tệp ở gốc là cổng (`slm_runtime`, `phien_cong_cu`,
+   `nguon_ly_do_thoat`, `nguon_tai_nen`, `tai_nen_background_downloader`, `luu_tep_platform`, `luu_anh_qr`, `mo_lien_ket`) → dời;
+   nguồn / store / dịch vụ (`nguon_giong_noi`, `slm_cache`, `mo_hinh_tai_ve`, `bo_nap_mo_hinh`, `xuat_tep_service_impl`) ở lại.
+   Ba hàng B của mục 3 (Cài đặt thông báo, Thêm giao dịch, Quét ảnh gọi thẳng cổng) đóng theo luật này, 0 mã.
+3. **Làm cả bốn lát** — Mục tiêu · Giao dịch + Danh mục · Thông báo + Trợ lý AI · Hoá đơn + core + Premium — **bằng agent con**.
+   Thêm vào lát 4 (đo 2026-10-19, ngoài 14 A cũ vì báo cáo bỏ qua Premium): `premium/presentation/widgets/the_khoa_quyen.dart` 12
+   giá trị `Color(0x…)` trên 10 dòng. Thêm vào lát 1 (C): `analytics/domain/du_bao_dong_tien.dart:338` viết
+   `daHoanThanh || remainingAmount <= 0` — vế sau thừa. Đã kiểm hai điểm *rẻ*: `progress` trả 1.0 khi `targetAmount <= 0` nên hai
+   công thức *đã xong* chỉ khác ở NaN / âm; `transactionTypeLabel` trả đúng chữ màn Gắn danh mục đang in.
+
+Chưa làm trong đợt này: hàng B `notification_prefs` / `MonHang` toJson, `dong_hang_bien_dong`; mọi hàng C; `other_daos.dart`,
+`SyncEngine`.
