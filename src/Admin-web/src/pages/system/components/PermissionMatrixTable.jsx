@@ -198,7 +198,7 @@ const PermissionMatrixTable = ({
               aria-label={`Config Scope ${f.id} ${accountType}`}
               onClick={() => onOpenScopeDrawer(f, accountType)}
               className="p-1 text-slate-500 hover:text-primary hover:bg-slate-100 rounded border border-slate-200 transition cursor-pointer"
-              title="Cấu hình Trụ 3 & 4"
+              title="Cấu hình Trụ 3 (Scope JSON)"
             >
               <span className="material-symbols-outlined text-[13px]">edit</span>
             </button>
@@ -228,9 +228,9 @@ const PermissionMatrixTable = ({
             <button
               type="button"
               aria-label={`Undo ${f.id} ${accountType}`}
-              onClick={() => onUndoRow(f.id)}
+              onClick={() => onUndoRow(f.id, accountType)}
               className="p-1 text-amber-600 hover:text-amber-800 hover:bg-amber-100/60 rounded cursor-pointer transition"
-              title={t('permissions.table.undoRow', 'Hoàn tác thay đổi')}
+              title={t('permissions.table.undoRow', 'Hoàn tác dòng này')}
             >
               <span className="material-symbols-outlined text-[15px]">undo</span>
             </button>
@@ -268,13 +268,13 @@ const PermissionMatrixTable = ({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                <th className="py-2.5 px-3.5 w-[26%]">{t('permissions.table.featureCol', 'Tính Năng (Mã & Tên)')}</th>
-                <th className="py-2.5 px-3 w-[10%]">{t('permissions.table.planCol', 'Gói')}</th>
+                <th className="py-2.5 px-3.5 w-[24%]">{t('permissions.table.featureCol', 'Tính Năng & Mã Định Danh')}</th>
+                <th className="py-2.5 px-3 w-[8%]">{t('permissions.table.planCol', 'Gói')}</th>
                 <th className="py-2.5 px-3 w-[14%]">{t('permissions.table.pillar1Col', 'Trụ 1: Truy Cập')}</th>
-                <th className="py-2.5 px-3 w-[16%]">{t('permissions.table.pillar2Col', 'Trụ 2: Định Mức')}</th>
-                <th className="py-2.5 px-3 w-[16%]">{t('permissions.table.pillar3Col', 'Trụ 3: Phạm Vi')}</th>
-                <th className="py-2.5 px-3 w-[15%]">{t('permissions.table.pillar4Col', 'Trụ 4: Chính Sách Hạ Cấp')}</th>
-                <th className="py-2.5 px-2 w-[3%] text-center">#</th>
+                <th className="py-2.5 px-3 w-[15%]">{t('permissions.table.pillar2Col', 'Trụ 2: Định Mức')}</th>
+                <th className="py-2.5 px-3 w-[15%]">{t('permissions.table.pillar3Col', 'Trụ 3: Phạm Vi')}</th>
+                <th className="py-2.5 px-3 w-[16%]">{t('permissions.table.pillar4Col', 'Trụ 4: Chính Sách Hạ Cấp')}</th>
+                <th className="py-2.5 px-2 w-[8%] text-center">{t('permissions.table.actionsCol', 'Thao tác')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -411,7 +411,7 @@ const PermissionMatrixTable = ({
                                   type="button"
                                   data-testid={`btn-config-scope-${f.id}-Basic`}
                                   aria-label={`Config Scope ${f.id} Basic`}
-                                  title="Cấu hình Trụ 3 & 4"
+                                  title="Cấu hình Trụ 3 (Scope JSON)"
                                   onClick={() => onOpenScopeDrawer(f, 'Basic')}
                                   className="p-0.5 text-slate-400 hover:text-primary rounded cursor-pointer"
                                 >
@@ -443,7 +443,7 @@ const PermissionMatrixTable = ({
                                 <button
                                   type="button"
                                   aria-label={`Undo ${f.id} Basic`}
-                                  onClick={() => onUndoRow(f.id)}
+                                  onClick={() => onUndoRow(f.id, 'Basic')}
                                   className="text-amber-600 hover:text-amber-800"
                                 >
                                   <span className="material-symbols-outlined text-[14px]">undo</span>
@@ -542,7 +542,7 @@ const PermissionMatrixTable = ({
                                   type="button"
                                   data-testid={`btn-config-scope-${f.id}-Premium`}
                                   aria-label={`Config Scope ${f.id} Premium`}
-                                  title="Cấu hình Trụ 3 & 4"
+                                  title="Cấu hình Trụ 3 (Scope JSON)"
                                   onClick={() => onOpenScopeDrawer(f, 'Premium')}
                                   className="p-0.5 text-slate-400 hover:text-primary rounded cursor-pointer"
                                 >
@@ -574,7 +574,7 @@ const PermissionMatrixTable = ({
                                 <button
                                   type="button"
                                   aria-label={`Undo ${f.id} Premium`}
-                                  onClick={() => onUndoRow(f.id)}
+                                  onClick={() => onUndoRow(f.id, 'Premium')}
                                   className="text-amber-600 hover:text-amber-800"
                                 >
                                   <span className="material-symbols-outlined text-[14px]">undo</span>

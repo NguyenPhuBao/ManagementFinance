@@ -182,8 +182,8 @@ describe('Admin-web 4 Pillars Permission Suite — 2-Tier Testing (Rule 11 Compl
         expect(screen.getByText('Quản lý Ví tiền & Tài sản')).toBeInTheDocument();
       });
 
-      // Tìm các nút cấu hình Scope & Policy
-      const scopeButtons = screen.getAllByTitle(/Cấu hình Trụ 3 & 4/i);
+      // Tìm các nút cấu hình Scope
+      const scopeButtons = screen.getAllByTitle(/Cấu hình Trụ 3/i);
       expect(scopeButtons.length).toBeGreaterThan(0);
 
       // Bấm nút cấu hình của tính năng đầu tiên (wallets - Basic)
@@ -191,8 +191,8 @@ describe('Admin-web 4 Pillars Permission Suite — 2-Tier Testing (Rule 11 Compl
 
       // Drawer mở ra
       await waitFor(() => {
-        expect(screen.getByText('Cấu Hình Chuyên Sâu (Trụ 3 & 4)')).toBeInTheDocument();
-        expect(screen.getByTestId('select-downgrade-policy')).toBeInTheDocument();
+        expect(screen.getByText(/Cấu Hình Chuyên Sâu \(Trụ 3/i)).toBeInTheDocument();
+        expect(screen.queryByTestId('select-downgrade-policy')).toBeNull();
         expect(screen.getByTestId('textarea-scope-json')).toBeInTheDocument();
       });
 
@@ -201,7 +201,7 @@ describe('Admin-web 4 Pillars Permission Suite — 2-Tier Testing (Rule 11 Compl
       fireEvent.click(closeBtn);
 
       await waitFor(() => {
-        expect(screen.queryByText('Cấu Hình Chuyên Sâu (Trụ 3 & 4)')).not.toBeInTheDocument();
+        expect(screen.queryByText(/Cấu Hình Chuyên Sâu \(Trụ 3/i)).not.toBeInTheDocument();
       });
     });
 
@@ -212,16 +212,17 @@ describe('Admin-web 4 Pillars Permission Suite — 2-Tier Testing (Rule 11 Compl
         expect(screen.getByText('Quản lý Ví tiền & Tài sản')).toBeInTheDocument();
       });
 
-      const scopeButtons = screen.getAllByTitle(/Cấu hình Trụ 3 & 4/i);
+      const scopeButtons = screen.getAllByTitle(/Cấu hình Trụ 3/i);
       fireEvent.click(scopeButtons[0]);
 
       await waitFor(() => {
-        expect(screen.getByTestId('select-downgrade-policy')).toBeInTheDocument();
+        expect(screen.getByTestId('textarea-scope-json')).toBeInTheDocument();
+        expect(screen.queryByTestId('select-downgrade-policy')).toBeNull();
       });
 
-      // Sửa chính sách hạ cấp sang READ_ONLY
-      const policySelect = screen.getByTestId('select-downgrade-policy');
-      fireEvent.change(policySelect, { target: { value: 'READ_ONLY' } });
+      // Sửa JSON scope
+      const jsonTextarea = screen.getByTestId('textarea-scope-json');
+      fireEvent.change(jsonTextarea, { target: { value: JSON.stringify({ custom_limit: 100 }) } });
 
       // Bấm "Áp dụng vào bản nháp"
       const applyBtn = screen.getByTestId('btn-apply-drawer');
@@ -229,7 +230,7 @@ describe('Admin-web 4 Pillars Permission Suite — 2-Tier Testing (Rule 11 Compl
 
       // Chờ Drawer đóng
       await waitFor(() => {
-        expect(screen.queryByText('Cấu Hình Chuyên Sâu (Trụ 3 & 4)')).not.toBeInTheDocument();
+        expect(screen.queryByText('Cấu Hình Chuyên Sâu (Trụ 3)')).not.toBeInTheDocument();
       });
 
       // Nút Lưu thay đổi được kích hoạt (enabled)
@@ -284,16 +285,13 @@ describe('Admin-web 4 Pillars Permission Suite — 2-Tier Testing (Rule 11 Compl
       });
 
       // Mở Drawer tính năng xuất báo cáo cho Basic (index 2)
-      const scopeButtons = screen.getAllByTitle(/Cấu hình Trụ 3 & 4/i);
+      const scopeButtons = screen.getAllByTitle(/Cấu hình Trụ 3/i);
       fireEvent.click(scopeButtons[2]);
 
       await waitFor(() => {
-        expect(screen.getByTestId('select-downgrade-policy')).toBeInTheDocument();
+        expect(screen.getByTestId('textarea-scope-json')).toBeInTheDocument();
+        expect(screen.queryByTestId('select-downgrade-policy')).toBeNull();
       });
-
-      // Đổi policy sang GRACE_PERIOD_3D
-      const policySelect = screen.getByTestId('select-downgrade-policy');
-      fireEvent.change(policySelect, { target: { value: 'GRACE_PERIOD_3D' } });
 
       // Đổi Scope JSON
       const jsonTextarea = screen.getByTestId('textarea-scope-json');
@@ -307,7 +305,7 @@ describe('Admin-web 4 Pillars Permission Suite — 2-Tier Testing (Rule 11 Compl
 
       // Chờ drawer đóng và pendingUpdates cập nhật
       await waitFor(() => {
-        expect(screen.queryByText('Cấu Hình Chuyên Sâu (Trụ 3 & 4)')).not.toBeInTheDocument();
+        expect(screen.queryByText(/Cấu Hình Chuyên Sâu \(Trụ 3/i)).not.toBeInTheDocument();
       });
 
       // Bấm nút Lưu thay đổi
@@ -343,7 +341,7 @@ describe('Admin-web 4 Pillars Permission Suite — 2-Tier Testing (Rule 11 Compl
         // Trụ 3: scope_config
         expect(updatedExport.scope_config).toEqual({ formats: ['csv', 'excel'] });
         // Trụ 4: downgrade_policy
-        expect(updatedExport.downgrade_policy).toBe('GRACE_PERIOD_3D');
+        expect(updatedExport.downgrade_policy).toBe('LOCK_FEATURE');
       });
 
       // Toast thông báo thành công
@@ -443,6 +441,77 @@ describe('Admin-web 4 Pillars Permission Suite — 2-Tier Testing (Rule 11 Compl
 
       expect(mockAlert.success).toHaveBeenCalled();
     });
+
+    it('2.5. [TẦNG 1 & TẦNG 2] Hoàn tác (Undo) chỉ áp dụng ĐÚNG DÒNG tương ứng, không làm ảnh hưởng dòng khác', async () => {
+      render(<PermissionManagementPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Quản lý Ví tiền & Tài sản')).toBeInTheDocument();
+      });
+
+      // Kiểm tra tiêu đề cột Thao tác xuất hiện thay cho #
+      expect(screen.getAllByText('Thao tác').length).toBeGreaterThan(0);
+
+      // 1. Sửa dòng BASIC của wallets: Tắt toggle
+      const toggleBasic = screen.getByLabelText('Toggle wallets Basic');
+      fireEvent.click(toggleBasic);
+
+      // 2. Sửa dòng PREMIUM của wallets: Đổi hạn mức từ vô hạn sang 50
+      const unlimitedPrem = screen.getByLabelText('Unlimited wallets Premium');
+      fireEvent.click(unlimitedPrem); // Bỏ tick vô hạn
+      const quotaPrem = screen.getByLabelText('Quota wallets Premium');
+      fireEvent.change(quotaPrem, { target: { value: '50' } });
+
+      // Cả 2 nút Undo Basic và Undo Premium đều xuất hiện
+      await waitFor(() => {
+        expect(screen.getByLabelText('Undo wallets Basic')).toBeInTheDocument();
+        expect(screen.getByLabelText('Undo wallets Premium')).toBeInTheDocument();
+      });
+
+      // 3. THAO TÁC: Chỉ bấm nút Hoàn tác của dòng BASIC
+      const undoBasicBtn = screen.getByLabelText('Undo wallets Basic');
+      fireEvent.click(undoBasicBtn);
+
+      // 4. KIỂM THỬ TÁC ĐỘNG HỆ THỐNG (SYSTEM IMPACT):
+      await waitFor(() => {
+        // Dòng BASIC đã được khôi phục về ban đầu (Toggle bật trở lại, nút Undo Basic biến mất)
+        expect(screen.queryByLabelText('Undo wallets Basic')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Toggle wallets Basic')).toBeChecked();
+
+        // DÒNG PREMIUM VẪN GIỮ NGUYÊN THAY ĐỔI: Giá trị vẫn là 50, nút Undo Premium vẫn còn
+        expect(screen.getByLabelText('Undo wallets Premium')).toBeInTheDocument();
+        expect(screen.getByLabelText('Quota wallets Premium')).toHaveValue(50);
+      });
+    });
+
+    it('2.6. [TẦNG 1 & TẦNG 2] Nút Đặt Lại Mặc Định mở modal xác nhận và gọi API khôi phục thành công', async () => {
+      render(<PermissionManagementPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Quản lý Ví tiền & Tài sản')).toBeInTheDocument();
+      });
+
+      // Bấm nút "Đặt Lại Mặc Định" trên Toolbar
+      const resetBtn = screen.getByTestId('btn-reset-default');
+      expect(resetBtn).toBeInTheDocument();
+      fireEvent.click(resetBtn);
+
+      // Modal xác nhận khôi phục mặc định mở ra
+      await waitFor(() => {
+        expect(screen.getByTestId('modal-confirm-reset')).toBeInTheDocument();
+      });
+
+      // Bấm nút "Đặt Lại Mặc Định" trong Modal
+      const confirmResetBtn = screen.getByTestId('btn-confirm-reset');
+      fireEvent.click(confirmResetBtn);
+
+      // SYSTEM IMPACT: Kiểm tra API resetPermissionsDefault được gọi và toast thông báo thành công
+      await waitFor(() => {
+        expect(adminApi.resetPermissionsDefault).toHaveBeenCalledTimes(1);
+      });
+      expect(mockAlert.success).toHaveBeenCalled();
+    });
   });
 });
+
 
