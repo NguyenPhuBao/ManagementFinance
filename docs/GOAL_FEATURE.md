@@ -444,6 +444,11 @@ chuyển tiền dựa trên một lựa chọn người dùng chưa từng đưa
 
 ---
 
+**Số tiền mỗi kỳ form Thêm mục tiêu tự đề xuất** (khi đổi số tiền mục tiêu hoặc hạn chót): từ 2026-10-19 đi qua
+`soTienMoiKyDeXuat` (`goal_forecast.dart`), đếm theo **ngày lịch** — trước đó form trừ `DateTime` thô nên hạn 00:00 hụt một
+ngày khi mở form buổi tối và số đề xuất đổi theo giờ mở. Chu kỳ lấy từ `soNgayChuKy`, nhãn nhịp ("mỗi tuần"…) một chỗ
+`nhanNhipChuKy` cho thẻ Cấu hình và khối Nhận xét.
+
 ### 3.14 Khoản trích **bù** mang mốc của kỳ, không phải lúc bù
 
 Bỏ app ba kỳ thì ba kỳ được trích bù trong cùng một lượt quét. Bản trước ghi cả

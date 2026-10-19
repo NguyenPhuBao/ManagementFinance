@@ -12,6 +12,7 @@ import '../../data/repositories/goal_repository.dart';
 import '../../domain/goal_auto_deposit.dart';
 import '../../domain/goal_deposit_wallets.dart';
 import '../../domain/goal_edit_form.dart';
+import '../../domain/goal_forecast.dart';
 import '../widgets/goal_appearance.dart';
 import '../../domain/chu_ky_muc_tieu.dart';
 import '../widgets/them_muc_tieu/anh_dau_muc_tieu.dart';
@@ -248,17 +249,6 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
     super.dispose();
   }
 
-  int get _cycleDays {
-    switch (_frequency) {
-      case DepositFrequency.daily:
-        return 1;
-      case DepositFrequency.weekly:
-        return 7;
-      case DepositFrequency.monthly:
-        return 30;
-    }
-  }
-
   void _onTargetAmountOrDateChanged() {
     if (_isRecalculatingFromDeposit) return;
     _isRecalculatingFromDate = true;
@@ -270,15 +260,16 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       return;
     }
 
-    final totalDays = _targetDate.difference(DateTime.now()).inDays;
-    final validDays = totalDays <= 0 ? _cycleDays : totalDays;
-    final periods = (validDays / _cycleDays.toDouble()).ceil();
-    if (periods <= 0) {
+    final suggested = soTienMoiKyDeXuat(
+      mucTieu: targetAmount,
+      hanChot: _targetDate,
+      chuKy: _chuKyHienTai,
+      now: DateTime.now(),
+    );
+    if (suggested == null) {
       _isRecalculatingFromDate = false;
       return;
     }
-
-    final suggested = (targetAmount / periods).ceilToDouble();
     final formattedStr = CurrencyFormatter.formatSoThoi(suggested).trim();
     if (_depositAmountController.text != formattedStr) {
       _depositAmountController.value = TextEditingValue(
@@ -304,7 +295,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
 
     _isRecalculatingFromDeposit = true;
     final periodsNeeded = (targetAmount / depositAmount).ceil();
-    final daysNeeded = (periodsNeeded * _cycleDays).clamp(1, 36500);
+    final daysNeeded = (periodsNeeded * soNgayChuKy(_chuKyHienTai)).clamp(1, 36500);
 
     try {
       _targetDate = DateTime.now().add(Duration(days: daysNeeded));
@@ -373,13 +364,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
       }
     }
 
-    final chuKy = _autoDeposit
-        ? switch (_frequency) {
-            DepositFrequency.daily => 'Day',
-            DepositFrequency.weekly => 'Week',
-            DepositFrequency.monthly => 'Month',
-          }
-        : null;
+    final chuKy = _autoDeposit ? _chuKyHienTai : null;
 
     if (_isEdit) {
       // Đường sửa dừng ở đây: không đụng ví tích luỹ (ô ấy chỉ đọc), không

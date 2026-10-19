@@ -36,13 +36,7 @@ class KhoiNhanDinhMucTieu extends StatelessWidget {
           'DỰ BÁO HOÀN THÀNH: THÁNG ${DateFormat('MM/yyyy').format(duBao)}';
     }
 
-    final nhipLabel = switch (goal.cycleTakeMoney) {
-      'Day' => 'mỗi ngày',
-      'Week' => 'mỗi tuần',
-      'Quarter' => 'mỗi quý',
-      'Year' => 'mỗi năm',
-      _ => 'mỗi tháng',
-    };
+    final nhipLabel = nhanNhipChuKy(goal.cycleTakeMoney);
 
     final String mota;
     if (goal.daHoanThanh) {
