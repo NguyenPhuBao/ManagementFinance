@@ -139,9 +139,22 @@ const AIOpsPage = () => {
     activeFilter: 'all',
   });
 
-  // Phân trang danh sách Nguồn theo dõi đặc biệt (Quarantine Table)
+  // Phân trang & Bộ lọc danh sách Nguồn theo dõi đặc biệt (Quarantine Table)
   const [quarantinePage, setQuarantinePage] = useState(1);
   const [quarantinePageSize, setQuarantinePageSize] = useState(5);
+  const [quarantineIpFilter, setQuarantineIpFilter] = useState('');
+  const [quarantineAccountFilter, setQuarantineAccountFilter] = useState('');
+
+  // Tạm khóa thủ công IP / Tài khoản (Manual Quarantine)
+  const [showManualQuarantineModal, setShowManualQuarantineModal] = useState(false);
+  const [manualQuarantineForm, setManualQuarantineForm] = useState({
+    targetType: 'ip', // 'ip' | 'account'
+    ipValue: '',
+    accountValue: '',
+    reason: 'Admin tạm khóa an ninh thủ công qua Audit Log',
+    durationMinutes: 240,
+  });
+  const [manualQuarantineLoading, setManualQuarantineLoading] = useState(false);
 
   // Bộ đếm thời gian thực trên Client phục vụ đếm ngược và tự động mở khóa (mỗi 5s)
   const [currentClientTime, setCurrentClientTime] = useState(Date.now());
@@ -201,11 +214,23 @@ const AIOpsPage = () => {
     return remMin > 0 ? `${hours} giờ ${remMin} phút` : `${hours} giờ`;
   };
 
-  // Danh sách Nguồn theo dõi đặc biệt sau phân trang
+  // Danh sách Nguồn theo dõi đặc biệt sau bộ lọc và phân trang
+  const filteredQuarantineList = useMemo(() => {
+    return quarantineList.filter((item) => {
+      const ipStr = String(item.maskedIp || item.ip || item.raw_ip || item.hash || '').toLowerCase();
+      const accountStr = String(item.username || item.idaccount || '').toLowerCase();
+
+      const matchesIp = !quarantineIpFilter.trim() || ipStr.includes(quarantineIpFilter.trim().toLowerCase());
+      const matchesAccount = !quarantineAccountFilter.trim() || accountStr.includes(quarantineAccountFilter.trim().toLowerCase());
+
+      return matchesIp && matchesAccount;
+    });
+  }, [quarantineList, quarantineIpFilter, quarantineAccountFilter]);
+
   const paginatedQuarantineList = useMemo(() => {
     const start = (quarantinePage - 1) * quarantinePageSize;
-    return quarantineList.slice(start, start + quarantinePageSize);
-  }, [quarantineList, quarantinePage, quarantinePageSize]);
+    return filteredQuarantineList.slice(start, start + quarantinePageSize);
+  }, [filteredQuarantineList, quarantinePage, quarantinePageSize]);
 
   // Socket.io connection
   const socket = useSocket();
@@ -555,6 +580,88 @@ const AIOpsPage = () => {
       });
     } finally {
       setQuarantiningActor(false);
+    }
+  };
+
+  // Mở modal Tạm khóa thủ công IP / Tài khoản
+  const handleOpenManualQuarantine = () => {
+    setManualQuarantineForm({
+      targetType: 'ip',
+      ipValue: '',
+      accountValue: '',
+      reason: t('aiops.quarantine.manualDefaultReason', 'Admin tạm khóa an ninh thủ công qua Audit Log'),
+      durationMinutes: 240,
+    });
+    setShowManualQuarantineModal(true);
+  };
+
+  // Xác nhận thực thi Tạm khóa thủ công IP hoặc Tài khoản
+  const handleSubmitManualQuarantine = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const { targetType, ipValue, accountValue, reason, durationMinutes } = manualQuarantineForm;
+    const durMin = parseInt(durationMinutes, 10) || 240;
+
+    if (targetType === 'ip') {
+      const cleanIp = ipValue.trim();
+      if (!cleanIp) {
+        setFeedback({ ok: false, msg: t('aiops.quarantine.errEmptyIp', 'Vui lòng nhập địa chỉ IP cần tạm khóa.') });
+        return;
+      }
+      // Bảo vệ loopback và IP bản thân
+      const myClean = String(myCurrentIp || '').replace(/^::ffff:/, '').trim();
+      if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp === 'localhost' || (myClean && cleanIp === myClean)) {
+        setFeedback({ ok: false, msg: t('aiops.quarantine.errProtectedIp', 'Không thể tạm khóa địa chỉ IP loopback hoặc IP máy bạn đang đăng nhập.') });
+        return;
+      }
+      try {
+        setManualQuarantineLoading(true);
+        const res = await aiopsApi.quarantineActor({
+          ip: cleanIp,
+          reason: reason || 'Admin tạm khóa IP thủ công qua Audit Log',
+          durationMinutes: durMin,
+          vector: 'auth',
+        });
+        const resData = res?.data || res;
+        setFeedback({
+          ok: true,
+          msg: t('aiops.quarantine.manualIpSuccess', `Đã tạm khóa IP ${cleanIp} thành công (${Math.round(durMin / 60)} giờ).`, { ip: cleanIp, hours: Math.round(durMin / 60) }),
+        });
+        setShowManualQuarantineModal(false);
+        await fetchAIOpsData();
+      } catch (err) {
+        setFeedback({
+          ok: false,
+          msg: err?.response?.data?.message || err?.message || 'Tạm khóa IP thất bại.',
+        });
+      } finally {
+        setManualQuarantineLoading(false);
+      }
+    } else {
+      const cleanUser = accountValue.trim();
+      if (!cleanUser) {
+        setFeedback({ ok: false, msg: t('aiops.quarantine.errEmptyAccount', 'Vui lòng nhập Username hoặc ID tài khoản cần tạm khóa.') });
+        return;
+      }
+      try {
+        setManualQuarantineLoading(true);
+        const res = await aiopsApi.temporaryBlockAccount({
+          username: cleanUser,
+          durationMinutes: durMin,
+        });
+        setFeedback({
+          ok: true,
+          msg: t('aiops.quarantine.manualAccountSuccess', `Đã tạm khóa tài khoản ${cleanUser} thành công (${Math.round(durMin / 60)} giờ).`, { user: cleanUser, hours: Math.round(durMin / 60) }),
+        });
+        setShowManualQuarantineModal(false);
+        await fetchAIOpsData();
+      } catch (err) {
+        setFeedback({
+          ok: false,
+          msg: err?.response?.data?.message || err?.message || 'Tạm khóa tài khoản thất bại.',
+        });
+      } finally {
+        setManualQuarantineLoading(false);
+      }
     }
   };
 
@@ -3107,7 +3214,7 @@ const AIOpsPage = () => {
       {/* KHỐI 4: BẢNG NGUỒN THEO DÕI ĐẶC BIỆT */}
       {/* ======================================================== */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
               <span className="material-symbols-outlined text-[20px]">shield_with_heart</span>
@@ -3116,11 +3223,83 @@ const AIOpsPage = () => {
               <h2 className="text-sm font-bold text-slate-800 m-0">
                 {t('aiops.quarantine.title', 'Nguồn theo dõi đặc biệt')}
               </h2>
+              <p className="text-[11px] text-slate-500 m-0">
+                {t('aiops.quarantine.subtitle', 'Danh sách IP & Tài khoản bị phong tỏa hoặc cách ly giám sát')}
+              </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              id="btn-open-manual-quarantine"
+              type="button"
+              onClick={handleOpenManualQuarantine}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+              title={t('aiops.quarantine.manualBtnTitle', 'Tạm khóa thủ công địa chỉ IP hoặc tài khoản người dùng')}
+            >
+              <span className="material-symbols-outlined text-[16px]">lock_clock</span>
+              <span>{t('aiops.quarantine.btnManualLock', 'Tạm khóa thủ công')}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Thanh tìm kiếm & bộ lọc IP / Tài khoản */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70 p-3 rounded-xl border border-slate-200/60">
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            <div className="relative min-w-[170px] flex-1 sm:max-w-xs">
+              <span className="material-symbols-outlined absolute left-2.5 top-2 text-slate-400 text-[16px]">search</span>
+              <input
+                type="text"
+                data-testid="quarantine-ip-filter-input"
+                placeholder={t('aiops.quarantine.filterIpPlaceholder', 'Lọc theo IP...')}
+                value={quarantineIpFilter}
+                onChange={(e) => {
+                  setQuarantineIpFilter(e.target.value);
+                  setQuarantinePage(1);
+                }}
+                className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div className="relative min-w-[170px] flex-1 sm:max-w-xs">
+              <span className="material-symbols-outlined absolute left-2.5 top-2 text-slate-400 text-[16px]">person_search</span>
+              <input
+                type="text"
+                data-testid="quarantine-account-filter-input"
+                placeholder={t('aiops.quarantine.filterAccountPlaceholder', 'Lọc theo Tài khoản...')}
+                value={quarantineAccountFilter}
+                onChange={(e) => {
+                  setQuarantineAccountFilter(e.target.value);
+                  setQuarantinePage(1);
+                }}
+                className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            {(quarantineIpFilter || quarantineAccountFilter) && (
+              <button
+                type="button"
+                data-testid="clear-quarantine-filter-btn"
+                onClick={() => {
+                  setQuarantineIpFilter('');
+                  setQuarantineAccountFilter('');
+                  setQuarantinePage(1);
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-medium transition-all cursor-pointer shadow-2xs"
+              >
+                <span className="material-symbols-outlined text-[14px]">close</span>
+                <span>{t('common.clearFilter', 'Xóa lọc')}</span>
+              </button>
+            )}
+          </div>
+
+          <div className="text-[11px] font-semibold text-slate-500 whitespace-nowrap self-end sm:self-auto">
+            {t('aiops.quarantine.showingCount', `Hiển thị ${filteredQuarantineList.length} / ${quarantineList.length} đối tượng`, { count: filteredQuarantineList.length, total: quarantineList.length })}
           </div>
         </div>
 
         {quarantineList.length > 0 ? (
+          filteredQuarantineList.length > 0 ? (
           <div className="rounded-xl border border-slate-200/80 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
@@ -3381,7 +3560,7 @@ const AIOpsPage = () => {
             <Pagination
               currentPage={quarantinePage}
               pageSize={quarantinePageSize}
-              total={quarantineList.length}
+              total={filteredQuarantineList.length}
               pageSizeOptions={[5, 10, 20]}
               onPageChange={(p) => setQuarantinePage(p)}
               onPageSizeChange={(s) => {
@@ -3391,6 +3570,17 @@ const AIOpsPage = () => {
               itemLabel={t('aiops.quarantine.itemLabel', 'nguồn theo dõi')}
             />
           </div>
+          ) : (
+            <div className="p-8 text-center rounded-xl bg-slate-50/80 border border-slate-200/60 space-y-2">
+              <span className="material-symbols-outlined text-[32px] text-slate-400">filter_alt_off</span>
+              <p className="font-bold text-xs text-slate-700 m-0">
+                {t('aiops.quarantine.noFilteredResults', 'Không tìm thấy nguồn nào khớp với bộ lọc IP / Tài khoản')}
+              </p>
+              <p className="text-[11px] text-slate-500 m-0">
+                {t('aiops.quarantine.noFilteredResultsDesc', 'Hãy thử điều chỉnh từ khóa tìm kiếm hoặc bấm Xóa lọc để xem toàn bộ danh sách.')}
+              </p>
+            </div>
+          )
         ) : (
           <div className="p-6 text-center rounded-xl bg-slate-50/80 border border-slate-200/60 space-y-2">
             <span className="material-symbols-outlined text-[36px] text-emerald-600">gpp_good</span>
@@ -3746,6 +3936,157 @@ const AIOpsPage = () => {
                 {t('common.close', 'Đóng')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL TẠM KHÓA AN NINH THỦ CÔNG (MANUAL QUARANTINE MODAL) */}
+      {/* ======================================================== */}
+      {showManualQuarantineModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600 font-bold text-base">
+                <span className="material-symbols-outlined text-[24px]">lock_clock</span>
+                <h3>{t('aiops.quarantine.manualModalTitle', 'Tạm Khóa An Ninh Thủ Công')}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowManualQuarantineModal(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitManualQuarantine} className="space-y-4 text-xs">
+              {/* Chọn loại đối tượng */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  {t('aiops.quarantine.targetTypeLabel', 'Chọn loại đối tượng cần tạm khóa:')}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setManualQuarantineForm(prev => ({ ...prev, targetType: 'ip' }))}
+                    className={`py-2 px-3 rounded-xl border text-center font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                      manualQuarantineForm.targetType === 'ip'
+                        ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-2xs'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">public</span>
+                    <span>Địa chỉ IP</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setManualQuarantineForm(prev => ({ ...prev, targetType: 'account' }))}
+                    className={`py-2 px-3 rounded-xl border text-center font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                      manualQuarantineForm.targetType === 'account'
+                        ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-2xs'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">person</span>
+                    <span>Tài khoản</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Input giá trị */}
+              {manualQuarantineForm.targetType === 'ip' ? (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {t('aiops.quarantine.ipInputLabel', 'Địa chỉ IP (IPv4 / IPv6):')}
+                  </label>
+                  <input
+                    type="text"
+                    data-testid="manual-quarantine-ip-input"
+                    placeholder="VD: 192.168.1.100 hoặc 203.113.152.12"
+                    value={manualQuarantineForm.ipValue}
+                    onChange={(e) => setManualQuarantineForm(prev => ({ ...prev, ipValue: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 font-mono focus:bg-white focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    autoFocus
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    * IP sẽ bị chặn ngay tại tầng mạng và đưa vào danh sách cô lập an ninh.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    {t('aiops.quarantine.accountInputLabel', 'Tên đăng nhập (Username) hoặc ID Tài khoản:')}
+                  </label>
+                  <input
+                    type="text"
+                    data-testid="manual-quarantine-account-input"
+                    placeholder="VD: user_test hoặc id 123"
+                    value={manualQuarantineForm.accountValue}
+                    onChange={(e) => setManualQuarantineForm(prev => ({ ...prev, accountValue: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    autoFocus
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    * Tài khoản sẽ bị khóa tạm thời trong CSDL (status = Locked) ngăn đăng nhập.
+                  </p>
+                </div>
+              )}
+
+              {/* Thời gian tạm khóa */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {t('aiops.quarantine.durationLabel', 'Thời hạn tạm khóa:')}
+                </label>
+                <select
+                  data-testid="manual-quarantine-duration-select"
+                  value={manualQuarantineForm.durationMinutes}
+                  onChange={(e) => setManualQuarantineForm(prev => ({ ...prev, durationMinutes: Number(e.target.value) }))}
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 cursor-pointer"
+                >
+                  <option value={60}>1 giờ (60 phút)</option>
+                  <option value={240}>4 giờ (240 phút - Chuẩn an ninh)</option>
+                  <option value={720}>12 giờ (720 phút)</option>
+                  <option value={1440}>24 giờ (1 ngày)</option>
+                </select>
+              </div>
+
+              {/* Lý do tạm khóa */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {t('aiops.quarantine.reasonLabel', 'Lý do tạm khóa an ninh:')}
+                </label>
+                <textarea
+                  rows={2}
+                  data-testid="manual-quarantine-reason-input"
+                  placeholder="Ghi chú lý do..."
+                  value={manualQuarantineForm.reason}
+                  onChange={(e) => setManualQuarantineForm(prev => ({ ...prev, reason: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-rose-500"
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowManualQuarantineModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold cursor-pointer transition-colors"
+                >
+                  {t('common.cancel', 'Hủy')}
+                </button>
+                <button
+                  type="submit"
+                  data-testid="submit-manual-quarantine-btn"
+                  disabled={manualQuarantineLoading}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-xs cursor-pointer transition-all disabled:opacity-50 inline-flex items-center gap-1.5"
+                >
+                  {manualQuarantineLoading && <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>}
+                  <span>{manualQuarantineLoading ? t('common.processing', 'Đang xử lý...') : t('aiops.quarantine.btnConfirmLock', 'Xác nhận Tạm khóa')}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import paymentApi from '../../api/payment.api';
 import Pagination from '../../components/common/Pagination';
+import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useLanguageSafe } from '../../store/language.context';
 import useSocket from '../../hooks/useSocket';
+import { exportToCsv } from '../../utils/csv-exporter.util';
 
 const STATUS_CONFIG = {
   PAID: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: 'check_circle' },
@@ -106,6 +108,7 @@ const PaymentHistoryPage = () => {
     refund_proof: '',
   });
   const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [showRefundSecurityModal, setShowRefundSecurityModal] = useState(false);
 
   // Fetch package types from DB on mount
   useEffect(() => {
@@ -417,9 +420,16 @@ const PaymentHistoryPage = () => {
     });
   };
 
-  // Submit Refund Form
-  const handleSubmitRefund = async (e) => {
+  // Initiate Refund Form (mở Security Confirm Modal yêu cầu xác thực PIN)
+  const handleInitiateRefund = (e) => {
     e.preventDefault();
+    if (!refundTargetOrder) return;
+    if (!refundForm.refunded_amount || Number(refundForm.refunded_amount) <= 0) return;
+    setShowRefundSecurityModal(true);
+  };
+
+  // Execute Refund sau khi đã xác thực PIN / Mật khẩu thành công
+  const handleExecuteRefund = async () => {
     if (!refundTargetOrder) return;
     setRefundSubmitting(true);
     try {
@@ -457,6 +467,67 @@ const PaymentHistoryPage = () => {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
+  const [exportingCsv, setExportingCsv] = useState(false);
+
+  const handleExportCsv = async () => {
+    try {
+      setExportingCsv(true);
+      const params = {
+        page: 1,
+        limit: Math.min(total || 500, 1000),
+        ...(search.trim() && { search: search.trim() }),
+        ...(statusFilter !== 'ALL' && { status: statusFilter }),
+        ...(packageFilter !== 'ALL' && { packageType: packageFilter }),
+        ...(fromDate && { fromDate }),
+        ...(toDate && { toDate }),
+        ...(excludeTemplate && { excludeTemplate: 'true' }),
+      };
+      const res = await paymentApi.getOrders(params);
+      const d = res?.data?.data || res?.data || res;
+      const exportItems = (d.items && d.items.length > 0) ? d.items : ((d.orders && d.orders.length > 0) ? d.orders : orders);
+
+      const headers = [
+        'Mã Đơn hàng',
+        'Mã GD Cổng',
+        'Khách hàng',
+        'Gói cước',
+        'Số tiền (VNĐ)',
+        'Cổng TT',
+        'Trạng thái',
+        'Ngày tạo',
+        'Ngày thanh toán',
+        'Ghi chú / Hoàn tiền',
+      ];
+
+      const rows = exportItems.map((o) => {
+        const orderId = o.order_code || o.idorder || '';
+        const transId = o.transaction_id || '';
+        const customer = o.user?.fullname || o.user?.name || o.account?.username || 'Khách vãng lai';
+        const pkgName = o.package_name || o.package_type || 'Gói dịch vụ';
+        const amount = o.amount || 0;
+        const gateway = o.payment_gateway || 'PayOS';
+        const status = o.status || '';
+        const created = formatDate(o.created_at);
+        const paid = formatDate(o.paid_at);
+        const note = o.refund_reason || o.notes || '';
+
+        return [orderId, transId, customer, pkgName, amount, gateway, status, created, paid, note];
+      });
+
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+      exportToCsv({
+        filename: `payment_history_${dateStr}.csv`,
+        headers,
+        rows,
+      });
+    } catch (err) {
+      console.error('Export CSV payments failed:', err);
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header & Page Title */}
@@ -473,6 +544,19 @@ const PaymentHistoryPage = () => {
               {feedbackMsg}
             </span>
           )}
+          <button
+            id="btn-export-payment-csv"
+            type="button"
+            onClick={handleExportCsv}
+            disabled={exportingCsv}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-outline-variant rounded-lg font-semibold text-sm transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+            title={t('payments.exportCsvTooltip', 'Xuất toàn bộ giao dịch lọc được ra file CSV')}
+          >
+            <span className={`material-symbols-outlined text-lg text-emerald-600 ${exportingCsv ? 'animate-spin' : ''}`}>
+              {exportingCsv ? 'sync' : 'download'}
+            </span>
+            <span>{exportingCsv ? t('common.exporting', 'Đang xuất...') : t('payments.exportCsvBtn', 'Xuất CSV')}</span>
+          </button>
           <button
             onClick={() => {
               setPayosData(null);
@@ -1357,7 +1441,7 @@ const PaymentHistoryPage = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitRefund} className="p-6 space-y-4">
+            <form onSubmit={handleInitiateRefund} className="p-6 space-y-4">
               <div className="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant text-xs space-y-1.5">
                 <div className="flex justify-between">
                   <span className="text-on-surface-variant">{t('payments.refundModal.orderCode')}:</span>
@@ -1785,6 +1869,21 @@ const PaymentHistoryPage = () => {
           </div>
         </div>
       )}
+      {/* Security Re-Authentication Modal for Refund Action */}
+      <SecurityConfirmModal
+        isOpen={showRefundSecurityModal}
+        onClose={() => setShowRefundSecurityModal(false)}
+        actionType="REFUND_ORDER"
+        actionDescription={
+          refundTargetOrder
+            ? `Xác nhận hoàn tiền ${formatVnd(refundForm.refunded_amount)} cho đơn hàng #${refundTargetOrder.order_code}`
+            : 'Xác nhận hoàn tiền'
+        }
+        onSuccess={() => {
+          setShowRefundSecurityModal(false);
+          handleExecuteRefund();
+        }}
+      />
     </div>
   );
 };

@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
 
-const DOWNGRADE_POLICIES = [
-  'BLOCK_CREATE',
-  'LOCK_FEATURE',
-  'READ_ONLY',
-  'GRACE_PERIOD_3D',
-  'FALLBACK_DEFAULT',
-];
-
 const PermissionScopeDrawer = ({
   isOpen,
   onClose,
@@ -20,14 +12,12 @@ const PermissionScopeDrawer = ({
 }) => {
   const { t } = useLanguageSafe();
 
-  const [policy, setPolicy] = useState(initialPolicy);
   const [scopeJson, setScopeJson] = useState('{}');
   const [jsonError, setJsonError] = useState(null);
 
   // Đồng bộ khi mở drawer hoặc thay đổi feature/accountType
   useEffect(() => {
     if (isOpen && feature) {
-      setPolicy(initialPolicy || feature.default_downgrade_policy || 'BLOCK_CREATE');
       try {
         const jsonStr = JSON.stringify(initialScope || {}, null, 2);
         setScopeJson(jsonStr);
@@ -36,7 +26,7 @@ const PermissionScopeDrawer = ({
         setScopeJson('{}');
       }
     }
-  }, [isOpen, feature, accountType, initialScope, initialPolicy]);
+  }, [isOpen, feature, accountType, initialScope]);
 
   if (!isOpen || !feature) return null;
 
@@ -48,16 +38,12 @@ const PermissionScopeDrawer = ({
         featureId: feature.id,
         accountType,
         scope_config: parsedScope,
-        downgrade_policy: policy,
+        downgrade_policy: initialPolicy,
       });
       onClose();
     } catch (err) {
       setJsonError(t('permissions.drawer.jsonInvalid'));
     }
-  };
-
-  const getPolicyLabel = (p) => {
-    return t(`permissions.drawer.policies.${p}`, p);
   };
 
   return (
@@ -109,39 +95,6 @@ const PermissionScopeDrawer = ({
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto p-5 space-y-6">
-            {/* TRỤ 4: CHÍNH SÁCH HẠ CẤP */}
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-amber-600 text-[18px]">policy</span>
-                <label className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  {t('permissions.drawer.policySectionTitle')}
-                </label>
-              </div>
-              <p className="text-[11px] text-slate-500 m-0">
-                {t('permissions.drawer.policySectionDesc')}
-              </p>
-
-              <select
-                data-testid="select-downgrade-policy"
-                value={policy}
-                onChange={(e) => setPolicy(e.target.value)}
-                className="w-full text-xs font-medium text-slate-800 bg-slate-50 border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition"
-              >
-                {DOWNGRADE_POLICIES.map((p) => (
-                  <option key={p} value={p}>
-                    {getPolicyLabel(p)}
-                  </option>
-                ))}
-              </select>
-
-              <div className="p-3 bg-amber-50/60 border border-amber-200/80 rounded-lg text-[11px] text-amber-900 leading-relaxed">
-                <span className="font-semibold">Chi tiết hành vi: </span>
-                {getPolicyLabel(policy)}
-              </div>
-            </div>
-
-            <div className="border-t border-slate-200" />
-
             {/* TRỤ 3: PHẠM VI HOẠT ĐỘNG (SCOPE CONFIG) */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">

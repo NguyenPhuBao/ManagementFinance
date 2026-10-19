@@ -39,6 +39,9 @@ const adminApi = {
   getPermissions: () => axiosClient.get('/admin/permissions'),
   updatePermissions: (updates) => axiosClient.put('/admin/permissions', { updates }),
   resetPermissionsDefault: () => axiosClient.post('/admin/permissions/reset'),
+
+  // Security Action Re-authentication
+  verifySecurityAction: (data) => axiosClient.post('/admin/verify-security-action', data),
 };
 
 export default adminApi;

@@ -262,18 +262,29 @@ const PermissionManagementPage = () => {
     []
   );
 
-  // Handler: Hoàn tác 1 dòng (Undo)
-  const handleUndoRow = useCallback((featureId) => {
-    setDraftPermissions((prev) => ({
-      Basic: {
-        ...prev.Basic,
-        [featureId]: JSON.parse(JSON.stringify(originalPermissions.Basic?.[featureId] || {})),
-      },
-      Premium: {
-        ...prev.Premium,
-        [featureId]: JSON.parse(JSON.stringify(originalPermissions.Premium?.[featureId] || {})),
-      },
-    }));
+  // Handler: Hoàn tác đúng 1 dòng (Undo) theo featureId và accountType
+  const handleUndoRow = useCallback((featureId, accountType) => {
+    setDraftPermissions((prev) => {
+      if (accountType) {
+        return {
+          ...prev,
+          [accountType]: {
+            ...prev[accountType],
+            [featureId]: JSON.parse(JSON.stringify(originalPermissions[accountType]?.[featureId] || {})),
+          },
+        };
+      }
+      return {
+        Basic: {
+          ...prev.Basic,
+          [featureId]: JSON.parse(JSON.stringify(originalPermissions.Basic?.[featureId] || {})),
+        },
+        Premium: {
+          ...prev.Premium,
+          [featureId]: JSON.parse(JSON.stringify(originalPermissions.Premium?.[featureId] || {})),
+        },
+      };
+    });
   }, [originalPermissions]);
 
   // Handler: Lưu thay đổi hàng loạt (Batch Save)

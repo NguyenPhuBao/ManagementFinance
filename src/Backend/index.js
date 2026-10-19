@@ -111,7 +111,7 @@ async function bootstrap() {
           ramFreeMb: freeMemMb,
           ramRssMb: memRssMb,
           requestsPerMin: lastSample.requestsPerMin || 0,
-          threatScore: aiopsStatus.threatScore ?? 5,
+          threatScore: aiopsStatus.threatScore ?? 0,
           threatStatus: aiopsStatus.status || 'NORMAL',
           vectorScores: aiopsStatus.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
           vectorDefenses: aiopsStatus.vectorDefenses || {},

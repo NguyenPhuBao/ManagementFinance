@@ -7,7 +7,7 @@ import { STORAGE_KEYS } from '../../utils/constants';
 
 const LockScreenModal = () => {
   const settingsCtx = useSettingsSafe();
-  const { user, logout } = useAuthContext();
+  const { user, logout, syncAuthSession } = useAuthContext();
   const alert = useAlertSafe();
   const { t } = useLanguageSafe();
 
@@ -44,7 +44,10 @@ const LockScreenModal = () => {
     setLoading(true);
 
     try {
-      await settingsCtx.unlockScreen(password);
+      const sessionData = await settingsCtx.unlockScreen(password, syncAuthSession);
+      if (syncAuthSession && sessionData) {
+        syncAuthSession(sessionData);
+      }
       setPassword('');
       alert?.success?.(
         t('lockScreen.welcomeBack', { name: activeUser?.fullname || activeUser?.username || 'Admin' }),

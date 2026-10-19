@@ -41,10 +41,16 @@ function formatUptimeDuration(totalSeconds) {
  */
 function calcUptimePercent(uptimeSeconds) {
   const SLA_WINDOW_DAYS = 30;
-  const windowSeconds = SLA_WINDOW_DAYS * 24 * 3600;
-  // Nếu server chưa chạy đủ window, dùng tổng thời gian thực tế làm mẫu số
-  const denominator = Math.max(uptimeSeconds, windowSeconds);
-  const percent = parseFloat(((uptimeSeconds / denominator) * 100).toFixed(3));
+  let totalDowntimeSec = 0;
+  try {
+    const history = defaultMaintenanceManager.getHistory() || [];
+    totalDowntimeSec = history.reduce((acc, h) => acc + (h.durationSeconds || 0), 0);
+  } catch (_) {}
+
+  // Uptime SLA Khả Dụng thực tế: Tỷ lệ thời gian phục vụ / Tổng thời gian quan sát
+  const totalObserved = Math.max(uptimeSeconds + totalDowntimeSec, 1);
+  const rawPercent = (uptimeSeconds / totalObserved) * 100;
+  const percent = parseFloat(Math.min(100, Math.max(0, rawPercent)).toFixed(3));
   return { uptimePercent: percent, slaWindowDays: SLA_WINDOW_DAYS };
 }
 
@@ -713,7 +719,15 @@ const adminService = {
     }
 
     const sqlContent = fs.readFileSync(sqlPath, 'utf8');
-    await prisma.$executeRawUnsafe(sqlContent);
+    const { pool } = require('../../config/db');
+    await pool.query('BEGIN');
+    try {
+      await pool.query(sqlContent);
+      await pool.query('COMMIT');
+    } catch (dbErr) {
+      await pool.query('ROLLBACK');
+      throw dbErr;
+    }
 
     // Xóa cache Redis
     try {
@@ -738,6 +752,60 @@ const adminService = {
     }
 
     return { success: true, message: 'Đã khôi phục phân quyền về chuẩn mặc định 4 Trụ Cột', matrix };
+  },
+
+  /**
+   * Xác thực mã PIN hoặc mật khẩu quản trị viên cho các hành động chí mạng (Re-authentication)
+   */
+  async verifySecurityAction({ pin, password, action, targetId } = {}, currentUser = null) {
+    if (!pin && !password) {
+      const err = new Error('Vui lòng cung cấp mã PIN bảo mật hoặc mật khẩu quản trị viên');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
+    let isPinValid = false;
+    let isPasswordValid = false;
+
+    if (pin && typeof pin === 'string') {
+      isPinValid = pin.trim() === systemPin.trim();
+    }
+
+    if (!isPinValid && password && currentUser?.idaccount) {
+      const bcrypt = require('bcrypt');
+      const account = await adminRepository.getAccountById(currentUser.idaccount);
+      if (account?.password) {
+        isPasswordValid = await bcrypt.compare(password, account.password);
+      }
+    }
+
+    if (!isPinValid && !isPasswordValid) {
+      const err = new Error('Mã PIN hoặc mật khẩu quản trị viên không chính xác!');
+      err.statusCode = 401;
+      throw err;
+    }
+
+    // Ghi nhận Audit Log xác thực an toàn
+    try {
+      const { prisma } = require('../../config/db');
+      await prisma.auditlog.create({
+        data: {
+          idaccount: currentUser?.idaccount || 1,
+          request: `[SECURITY] Xác thực hành động chí mạng: ${action || 'CRITICAL_ACTION'} (Mục tiêu: ${targetId || 'N/A'})`,
+          req_status: 'Pass',
+          reason: `Phương thức: ${isPinValid ? 'Mã PIN' : 'Mật khẩu'}`,
+          time_req: new Date(),
+          time_res: new Date(),
+        },
+      });
+    } catch (_) {}
+
+    return {
+      verified: true,
+      action: action || 'CRITICAL_ACTION',
+      verifiedAt: new Date().toISOString(),
+    };
   },
 };
 

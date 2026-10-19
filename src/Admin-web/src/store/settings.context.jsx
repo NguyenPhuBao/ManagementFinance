@@ -170,7 +170,7 @@ export const SettingsProvider = ({ children }) => {
     } catch (_) {}
   }, []);
 
-  const unlockScreen = useCallback(async (password) => {
+  const unlockScreen = useCallback(async (password, onSessionSync) => {
     const rawUser = localStorage.getItem(STORAGE_KEYS.LOCKED_USER) || localStorage.getItem(STORAGE_KEYS.USER);
     if (!rawUser) {
       setIsLocked(false);
@@ -205,10 +205,25 @@ export const SettingsProvider = ({ children }) => {
     localStorage.removeItem(STORAGE_KEYS.LOCKED_USER);
     localStorage.setItem(STORAGE_KEYS.LAST_ACTIVE_AT, String(Date.now()));
 
+    // 4. Phát sự kiện đồng bộ Session ngay lập tức để AuthContext nhận diện
+    const sessionPayload = { user: userData || user, accessToken, refreshToken };
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('auth:session-synced', {
+          detail: sessionPayload,
+        })
+      );
+    }
+    if (typeof onSessionSync === 'function') {
+      try {
+        onSessionSync(sessionPayload);
+      } catch (_) {}
+    }
+
     setIsLocked(false);
     setLockedAt(null);
     leftAtRef.current = null;
-    return true;
+    return sessionPayload;
   }, []);
 
   // 5.1. Giải phóng và reset sạch sẽ trạng thái khóa (Dùng khi Fresh Login hoặc Logout)

@@ -387,6 +387,18 @@ const adminRepository = {
       total,
     };
   },
+
+  async getAccountById(idaccount) {
+    return prisma.account.findUnique({
+      where: { idaccount: Number(idaccount) },
+      select: {
+        idaccount: true,
+        password: true,
+        username: true,
+        email: true,
+      },
+    });
+  },
 };
 
 module.exports = adminRepository;
