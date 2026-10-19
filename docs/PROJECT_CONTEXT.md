@@ -645,13 +645,23 @@ Người dùng chốt hướng **B** (tách lớp cộng tác, dời nguyên vă
   ⚠️ Luật dời nguyên văn kiểm bằng hàm `kiem_nguyen_van` (diff `--cached` ghép dòng xoá / thêm, bỏ qua thụt lề) trước mỗi commit.
 - **`app_database.g.dart` sinh lại** (`4ea604e2`, commit riêng — chỉ chú thích cột, gồm phần lệch `billId` đã ghi từ trước).
 - **Commit:** `d3ec0f87` (canh trước khi tách) · `a1dc80eb` (hàm thuần) · `e4399a19` (`GuiLoDongBo`) · `5a7775e2`
-  (`ThuGomThaoTacDay`) · `23253ec5` (`ApDuLieuKeoVe`, quét 34 hết miễn trừ) · `4f07ddc3` · `a6c6fc7d` (chú thích trỏ đúng tệp).
+  (`ThuGomThaoTacDay`) · `23253ec5` (`ApDuLieuKeoVe`, quét 34 hết miễn trừ) · `4f07ddc3` · `a6c6fc7d` (chú thích trỏ đúng tệp) ·
+  `fd63db46` · `fd881308` · `ce8dfcd8` · `9ac31c93` (tài liệu sống + mốc) · `8889bb72` (ca canh G14) · `1dc5c7bd` (tài liệu sau review).
+- **Review toàn nhánh (Opus, `c3584861..9ac31c93`):** *With fixes* — 0 Critical; Important duy nhất: **không ca nào đỏ khi bỏ
+  `_keoVe.datLaiPhien()`** khỏi `stop()` → thêm ca `sync_checkpoint_test.dart` (`hasCompletedPull` về `false` sau `stop()`,
+  `soLanKeoVeXong` giữ nguyên; thử bản sai thấy đỏ) — G14 vốn là lỗi im lặng, đợt tách đổi phép gán tại chỗ thành lời gọi sang
+  lớp khác. Kiểm nguyên văn chạy trên **cả dải**: 252 dòng dư, không dòng nào ngoài danh mục cho phép. ⚠️ **Gợi ý để lại**
+  (chưa làm): `ap_du_lieu_keo_ve.dart` **743/800** — lần thêm bảng / cột kéo về kế tiếp sẽ chạm trần, nên tính chẻ
+  `pullFromBackend` trước; bảy hàm top-level của `core/sync` (`gieoTuKhoaKhiTrong`, `resolveCategoryId`, `toValidUuid`…) nay
+  công khai cho cả package — có thể thêm quét "chỉ `core/sync` import tệp nội bộ của `core/sync`"; quy tắc 8 `CLAUDE.md` nói bộ
+  gieo danh mục *"chạy sau mọi lần pull"* nhưng mã chỉ gọi qua `PhienDieuPhoiThat` sau `start()` (lệch có từ trước, chưa sửa —
+  chờ người dùng).
 - **Ngoài phạm vi, còn lại:** 17 `DateTime.now()` trần trong `core/sync` (đếm 2026-10-19 bằng `grep -o "DateTime.now()" lib/core/sync/*.dart | wc -l`: `ap_du_lieu_keo_ve` 13 · `gieo_tu_khoa` 1 · `gui_lo_dong_bo` 1 · `moc_keo_ve` 1 · `thu_gom_day` 1) (đổi sang đồng hồ tiêm được là đổi hành vi — để
   riêng); 5 `curly_braces_in_flow_control_structures` (nay ở `bieu_tuong_danh_muc_mac_dinh.dart`, trước ở `sync_engine.dart`;
   tổng `flutter analyze` vẫn 20 — bốn tệp mang: `core/database/connection/web.dart`,
   `core/sync/bieu_tuong_danh_muc_mac_dinh.dart`, `category/data/models/category_tree.dart`,
   `test/core/sync/e2e_sqlite_to_backend_sync_test.dart`); `pullFromBackend` vẫn **một phương thức ~616 dòng** (dời nguyên
-  văn, chưa chẻ); 7 lớp giả `implements` và 4 lớp `extends SyncEngine` giữ nguyên. **Mốc cuối** (đo 2026-10-19 @`fd63db46`, mã giống `a6c6fc7d`): `flutter test` **7.521 pass / 10 skip / 0 fail** (5 ph 56 s; 7.494 + 27 ca: quét 34, ba ca chặn, vòng `for` hai test quét ví đọc 14 tệp `core/sync`); `flutter analyze` **20** issue (165 s) — `core/database/connection/web.dart` 1 · `core/sync/bieu_tuong_danh_muc_mac_dinh.dart` 5 · `features/category/data/models/category_tree.dart` 1 · `test/core/sync/e2e_sqlite_to_backend_sync_test.dart` 13; `MUC_NEN` giữ 20.
+  văn, chưa chẻ); 7 lớp giả `implements` và 4 lớp `extends SyncEngine` giữ nguyên. **Mốc cuối** (đo 2026-10-19 @`1dc5c7bd`, sau lượt sửa review toàn nhánh): `flutter test` **7.522 pass / 10 skip / 0 fail** (5 ph 22 s; 7.494 + 28 ca: quét 34, ba ca chặn, vòng `for` hai test quét ví đọc 14 tệp `core/sync`, ca canh `hasCompletedPull` về `false` sau `stop()` — G14, thử bản sai bỏ `datLaiPhien` thấy đỏ); `flutter analyze` **20** issue (đo @`fd63db46` 165 s, lượt sửa chỉ thêm một ca test + một chú thích, người sửa đo lại vẫn 20) — `core/database/connection/web.dart` 1 · `core/sync/bieu_tuong_danh_muc_mac_dinh.dart` 5 · `features/category/data/models/category_tree.dart` 1 · `test/core/sync/e2e_sqlite_to_backend_sync_test.dart` 13; `MUC_NEN` giữ 20.
 
 ### 🧹 Phần còn lại báo cáo soát kiến trúc — B · C · `other_daos` (2026-10-19, phiên 2) · `SyncEngine` brainstorm riêng
 
