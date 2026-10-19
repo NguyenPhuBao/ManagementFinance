@@ -9,19 +9,7 @@ import { useAlertSafe } from '../../store/alert.context';
 import { useSettingsSafe } from '../../store/settings.context';
 import { useLanguageSafe } from '../../store/language.context';
 import useAuth from '../../hooks/useAuth';
-import useResizableColumns from '../../hooks/useResizableColumns';
-import ResizableTh from '../../components/common/ResizableTh';
 import TruncateCell from '../../components/common/TruncateCell';
-
-const DEFAULT_AIOPS_COL_WIDTHS = {
-  status: 120,
-  actor: 180,
-  vector: 100,
-  metric: 120,
-  rootCause: 220,
-  mitigation: 180,
-  defense: 140,
-};
 
 const VECTOR_KEYS = {
   auth: 'aiops.vectors.auth',
@@ -45,11 +33,7 @@ const AIOpsPage = () => {
   const [quarantineList, setQuarantineList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
-    tableKey: 'aiops_quarantine',
-    defaultWidths: DEFAULT_AIOPS_COL_WIDTHS,
-    minWidth: 60,
-  });
+
   const [calibrating, setCalibrating] = useState(false);
   const [unblockingHash, setUnblockingHash] = useState(null);
   const [feedback, _setFeedback] = useState(null);
@@ -2994,79 +2978,30 @@ const AIOpsPage = () => {
         {/* Table Content */}
         {incidentsList.length > 0 ? (
           <div className="overflow-x-auto rounded-xl border border-outline-variant/70">
-            <table className="w-full text-left text-xs border-collapse table-fixed">
+            <table className="w-full text-left text-xs border-collapse min-w-[950px]">
               <thead>
                 <tr className="border-b border-outline-variant/80 bg-surface-container-low/60 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                  <ResizableTh
-                    colKey="status"
-                    width={colWidths.status}
-                    minWidth={90}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="py-2.5 px-3 whitespace-nowrap"
-                  >
+                  <th className="w-[12%] min-w-[100px] py-2.5 px-3 whitespace-nowrap">
                     {t('aiops.rca.colStatus', 'Tình trạng')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="actor"
-                    width={colWidths.actor}
-                    minWidth={120}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="py-2.5 px-3 whitespace-nowrap"
-                  >
+                  </th>
+                  <th className="w-[18%] min-w-[140px] py-2.5 px-3 whitespace-nowrap">
                     {t('aiops.rca.colActor', 'Đối tượng')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="vector"
-                    width={colWidths.vector}
-                    minWidth={80}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="py-2.5 px-3 whitespace-nowrap"
-                  >
+                  </th>
+                  <th className="w-[11%] min-w-[90px] py-2.5 px-3 whitespace-nowrap">
                     {t('aiops.rca.colVector', 'Vector')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="metric"
-                    width={colWidths.metric}
-                    minWidth={90}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="py-2.5 px-3 whitespace-nowrap"
-                  >
+                  </th>
+                  <th className="w-[12%] min-w-[100px] py-2.5 px-3 whitespace-nowrap">
                     {t('aiops.rca.colMetric', 'Chỉ số')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="rootCause"
-                    width={colWidths.rootCause}
-                    minWidth={140}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="py-2.5 px-3"
-                  >
+                  </th>
+                  <th className="w-[23%] min-w-[170px] py-2.5 px-3">
                     {t('aiops.rca.colRootCause', 'Nguyên nhân')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="mitigation"
-                    width={colWidths.mitigation}
-                    minWidth={120}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="py-2.5 px-3"
-                  >
+                  </th>
+                  <th className="w-[14%] min-w-[120px] py-2.5 px-3">
                     {t('aiops.rca.colMitigation', 'Xử lý')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="defense"
-                    width={colWidths.defense}
-                    minWidth={100}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="py-2.5 px-3 whitespace-nowrap text-center"
-                  >
+                  </th>
+                  <th className="w-[10%] min-w-[90px] py-2.5 px-3 whitespace-nowrap text-center">
                     {t('aiops.rca.colDefense', 'Phòng vệ')}
-                  </ResizableTh>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/40 bg-white">

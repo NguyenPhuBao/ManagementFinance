@@ -6,19 +6,7 @@ import { useLanguageSafe } from '../../store/language.context';
 import { classifyAuditAction } from '../../utils/audit-tags.util';
 import { exportToCsv } from '../../utils/csv-exporter.util';
 import { formatFullDateTime } from '../../utils/format';
-import useResizableColumns from '../../hooks/useResizableColumns';
-import ResizableTh from '../../components/common/ResizableTh';
 import TruncateCell from '../../components/common/TruncateCell';
-
-const DEFAULT_AUDIT_COL_WIDTHS = {
-  id: 80,
-  account: 200,
-  request: 260,
-  status: 120,
-  reason: 200,
-  timeReq: 150,
-  timeRes: 150,
-};
 
 const STATUS_CONFIG = {
   Pass: { bg: 'bg-[#dcfce7]', text: 'text-[#166534]', border: 'border-[#86efac]' },
@@ -41,11 +29,7 @@ const AuditLogPage = () => {
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
 
-  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
-    tableKey: 'audit_logs',
-    defaultWidths: DEFAULT_AUDIT_COL_WIDTHS,
-    minWidth: 50,
-  });
+
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -370,79 +354,30 @@ const AuditLogPage = () => {
       {/* Table Card */}
       <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
         <div className="overflow-x-auto min-h-[300px]">
-          <table className="w-full text-left border-collapse min-w-[760px] text-xs table-fixed">
+          <table className="w-full text-left border-collapse text-xs min-w-[900px]">
             <thead>
               <tr className="bg-surface-container-low/60 border-b border-outline-variant">
-                <ResizableTh
-                  colKey="id"
-                  width={colWidths.id}
-                  minWidth={60}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]"
-                >
+                <th className="w-16 py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
                   {t('auditLogs.colId')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="account"
-                  width={colWidths.account}
-                  minWidth={120}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]"
-                >
+                </th>
+                <th className="w-[18%] min-w-[140px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
                   {t('auditLogs.colAccount')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="request"
-                  width={colWidths.request}
-                  minWidth={150}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]"
-                >
+                </th>
+                <th className="w-[24%] min-w-[180px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
                   {t('auditLogs.colRequest')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="status"
-                  width={colWidths.status}
-                  minWidth={90}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] text-center"
-                >
+                </th>
+                <th className="w-[12%] min-w-[100px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] text-center">
                   {t('auditLogs.colStatus')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="reason"
-                  width={colWidths.reason}
-                  minWidth={100}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]"
-                >
+                </th>
+                <th className="w-[20%] min-w-[150px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
                   {t('auditLogs.colReason')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="timeReq"
-                  width={colWidths.timeReq}
-                  minWidth={110}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap"
-                >
+                </th>
+                <th className="w-[13%] min-w-[120px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">
                   {t('auditLogs.colTimeReq')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="timeRes"
-                  width={colWidths.timeRes}
-                  minWidth={110}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap"
-                >
+                </th>
+                <th className="w-[13%] min-w-[120px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">
                   {t('auditLogs.colTimeRes')}
-                </ResizableTh>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/40">

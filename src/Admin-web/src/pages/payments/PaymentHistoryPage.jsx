@@ -5,20 +5,7 @@ import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useLanguageSafe } from '../../store/language.context';
 import useSocket from '../../hooks/useSocket';
 import { exportToCsv } from '../../utils/csv-exporter.util';
-import useResizableColumns from '../../hooks/useResizableColumns';
-import ResizableTh from '../../components/common/ResizableTh';
 import TruncateCell from '../../components/common/TruncateCell';
-
-const DEFAULT_PAYMENT_COL_WIDTHS = {
-  orderCode: 160,
-  user: 220,
-  package: 140,
-  amount: 140,
-  status: 140,
-  createdAt: 150,
-  paidAt: 150,
-  actions: 140,
-};
 
 const STATUS_CONFIG = {
   PAID: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: 'check_circle' },
@@ -90,11 +77,7 @@ const PaymentHistoryPage = () => {
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
 
-  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
-    tableKey: 'payments',
-    defaultWidths: DEFAULT_PAYMENT_COL_WIDTHS,
-    minWidth: 60,
-  });
+
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [packageFilter, setPackageFilter] = useState('ALL');
   const [packageTypes, setPackageTypes] = useState(['Basic', 'Premium']);
@@ -806,89 +789,33 @@ const PaymentHistoryPage = () => {
       {/* Orders Data Table */}
       <div className="bg-surface-container rounded-xl border border-outline-variant shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse table-fixed">
+          <table className="w-full text-left text-sm border-collapse min-w-[950px]">
             <thead>
               <tr className="bg-surface-container-high/60 border-b border-outline-variant text-on-surface-variant font-semibold text-xs uppercase tracking-wider">
-                <ResizableTh
-                  colKey="orderCode"
-                  width={colWidths.orderCode}
-                  minWidth={100}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3.5 px-4"
-                >
+                <th className="w-[15%] min-w-[130px] py-3.5 px-4">
                   {t('payments.table.orderCode')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="user"
-                  width={colWidths.user}
-                  minWidth={120}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3.5 px-4"
-                >
+                </th>
+                <th className="w-[22%] min-w-[180px] py-3.5 px-4">
                   {t('payments.table.user')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="package"
-                  width={colWidths.package}
-                  minWidth={100}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3.5 px-4"
-                >
+                </th>
+                <th className="w-[13%] min-w-[110px] py-3.5 px-4">
                   {t('payments.table.package')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="amount"
-                  width={colWidths.amount}
-                  minWidth={100}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3.5 px-4"
-                >
+                </th>
+                <th className="w-[13%] min-w-[110px] py-3.5 px-4">
                   {t('payments.table.amount')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="status"
-                  width={colWidths.status}
-                  minWidth={100}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3.5 px-4 text-center"
-                >
+                </th>
+                <th className="w-[12%] min-w-[110px] py-3.5 px-4 text-center">
                   {t('payments.table.status')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="createdAt"
-                  width={colWidths.createdAt}
-                  minWidth={110}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3.5 px-4"
-                >
+                </th>
+                <th className="w-[12%] min-w-[110px] py-3.5 px-4">
                   {t('payments.table.createdAt')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="paidAt"
-                  width={colWidths.paidAt}
-                  minWidth={110}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3.5 px-4"
-                >
+                </th>
+                <th className="w-[12%] min-w-[110px] py-3.5 px-4">
                   {t('payments.table.paidAt')}
-                </ResizableTh>
-                <ResizableTh
-                  colKey="actions"
-                  width={colWidths.actions}
-                  minWidth={100}
-                  onResize={startResizing}
-                  onReset={resetColumn}
-                  className="py-3.5 px-4 text-center"
-                >
+                </th>
+                <th className="w-24 min-w-[90px] py-3.5 px-4 text-center">
                   {t('payments.table.actions')}
-                </ResizableTh>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/40">
