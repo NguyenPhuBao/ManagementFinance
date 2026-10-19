@@ -4,6 +4,8 @@ import Pagination from '../../components/common/Pagination';
 import useSocket from '../../hooks/useSocket';
 import { useLanguageSafe } from '../../store/language.context';
 import { classifyAuditAction } from '../../utils/audit-tags.util';
+import { exportToCsv } from '../../utils/csv-exporter.util';
+import { formatFullDateTime } from '../../utils/format';
 
 const STATUS_CONFIG = {
   Pass: { bg: 'bg-[#dcfce7]', text: 'text-[#166534]', border: 'border-[#86efac]' },
@@ -146,6 +148,64 @@ const AuditLogPage = () => {
     });
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportCsv = async () => {
+    try {
+      setExporting(true);
+      const params = {
+        page: 1,
+        limit: Math.min(total || 500, 1000),
+        ...(search.trim() && { search: search.trim() }),
+        ...(statusFilter && { status: statusFilter }),
+        ...(dateFrom && { startDate: dateFrom }),
+        ...(dateTo && { endDate: dateTo + 'T23:59:59' }),
+      };
+      const res = await adminApi.getAuditLogs(params);
+      const d = res.data?.data || res.data;
+      const exportItems = d.items && d.items.length > 0 ? d.items : logs;
+
+      const headers = [
+        'Mã Log',
+        'Thời gian',
+        'Tài khoản Quản trị',
+        'Họ và tên',
+        'Phân loại',
+        'Hành động / Yêu cầu',
+        'Trạng thái',
+        'Địa chỉ IP',
+        'Lý do / Phản hồi',
+      ];
+
+      const rows = exportItems.map((log) => {
+        const tag = classifyAuditAction(log.request);
+        const logId = log.id || log.idlog || '';
+        const time = formatFullDateTime(log.time_req || log.timeReq);
+        const username = log.account?.username || log.username || 'System';
+        const fullname = log.account?.User?.fullname || '';
+        const tagLabel = tag?.code ? `[${tag.code}] ${tag.labelVi}` : '[API]';
+        const request = log.request || '';
+        const status = log.req_status || '';
+        const ip = log.ip || '';
+        const reason = log.reason || '';
+
+        return [logId, time, username, fullname, tagLabel, request, status, ip, reason];
+      });
+
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+      exportToCsv({
+        filename: `audit_logs_${dateStr}.csv`,
+        headers,
+        rows,
+      });
+    } catch (err) {
+      console.error('Export CSV audit logs failed:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleResetFilters = () => {
     setSearch('');
     setStatusFilter('');
@@ -183,6 +243,19 @@ const AuditLogPage = () => {
               {t('auditLogs.connecting')}
             </span>
           )}
+          <button
+            id="btn-export-audit-csv"
+            type="button"
+            onClick={handleExportCsv}
+            disabled={exporting}
+            className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 border border-outline-variant bg-white hover:bg-slate-50 rounded-lg px-3 py-2 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+            title={t('auditLogs.exportCsvTitle', 'Xuất toàn bộ nhật ký ra định dạng CSV phục vụ kiểm toán')}
+          >
+            <span className={`material-symbols-outlined text-[16px] text-emerald-600 ${exporting ? 'animate-spin' : ''}`}>
+              {exporting ? 'sync' : 'download'}
+            </span>
+            <span>{exporting ? t('common.exporting', 'Đang xuất...') : t('auditLogs.exportCsvBtn', 'Xuất CSV')}</span>
+          </button>
           <button
             onClick={handleResetFilters}
             className="flex items-center gap-1.5 text-xs text-on-surface-variant hover:text-on-surface border border-outline-variant bg-white rounded-lg px-3 py-2 transition-colors cursor-pointer"
