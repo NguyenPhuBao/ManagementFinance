@@ -4762,7 +4762,7 @@ chip cùng mang tên "Danh mục đã xoá"**. Truy vấn PostgreSQL cho ra **đ
 danh mục bất thường ở tài khoản ấy — `Chi khác` và `Làm thêm`, cả hai
 `Create_by = 1`, `is_default = true`, bị backend xoá mềm hôm 2026-09-07.
 
-⚠️ **Gốc rễ:** nhánh kéo về (`ApDuLieuKeoVe`, trước 2026-10-19 là `sync_engine`) quy `is_default = true` thành **`idaccount = 0`**
+⚠️ **Gốc rễ:** `sync_engine` (nay `ApDuLieuKeoVe`) quy `is_default = true` thành **`idaccount = 0`**
 (`sync_engine.dart:733` — số dòng của tệp cũ), nên hàng mặc định toàn cục **không mang mã tài khoản
 nào** — nhưng cả hai repository tra danh mục đều lọc
 `t.idaccount.equals(idaccount)`. Hai bản chép tay của cùng một truy vấn, cả hai
