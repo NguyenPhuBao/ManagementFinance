@@ -358,9 +358,9 @@ category = 10, wallet = 20, transaction = 40, budget = 50, bill = 60, goal = 70
 | `categories` | `category_dao.dart` | Danh mục (local seed + UUID từ backend) |
 | `wallets` | `wallet_dao.dart` | Ví tiền |
 | `transactions` | `transaction_dao.dart` | Giao dịch |
-| `budgets` | `other_daos.dart` | Ngân sách |
-| `bills` | `other_daos.dart` | Hóa đơn |
-| `goals` | `other_daos.dart` | Mục tiêu |
+| `budgets` | `budget_dao.dart` | Ngân sách |
+| `bills` | `bill_dao.dart` | Hóa đơn |
+| `goals` | `goal_dao.dart` | Mục tiêu |
 
 ### syncStatus field
 Mỗi entity trong SQLite có `syncStatus`:
