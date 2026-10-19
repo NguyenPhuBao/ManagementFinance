@@ -180,10 +180,10 @@ vào thống kê), `viTinhVaoTong` (ví nào cộng vào tổng), `normalizeCate
 lỗi đã xảy ra thật ở mỗi chỗ — ví dụ G41/G47 (bảng tra tên danh mục chép ba lần).
 
 **(2) Test quét mã nguồn.** Luật nào bộ test hành vi không thấy được (một import lọt, một handler rỗng, một `?? 1`) thì
-thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–29 phủ **30
+thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–30 phủ **31
 tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đều ghi *"thứ mười bốn"*, va chạm có từ 2026-09-21) — cộng
-**3** tệp cùng khuôn không đánh số, tổng **33** (đếm bằng máy 2026-10-16, sau quét 27, 28 và 29). Đếm: `grep -rlE "Directory\(['\"]lib" test` (29 tệp quét cây, đo
-2026-10-16) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **30**.
+**3** tệp cùng khuôn không đánh số, tổng **34** (đếm bằng máy 2026-10-19, sau quét 30). Đếm: `grep -rlE "Directory\(['\"]lib" test` (30 tệp quét cây, đếm bằng máy
+2026-10-19) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **31**.
 
 | Số | Tệp (dưới `test/`) | Luật | Phạm vi | Từ |
 |---|---|---|---|---|
@@ -217,11 +217,12 @@ tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đ�
 | **27** | `core/ui/presentation_domain_khong_kieu_drift_test.dart` | **bốn** luật — (1) `presentation/` + `shared/` + `lib/core` (trừ `database`, `sync`) và, từ 2026-10-15, cả `features/*/domain/` không nhắc kiểu hàng Drift theo tên kiểu (danh sách chờ theo kiểu `conChoKieu` **rỗng** từ 2026-10-15, đợt Entity Thông báo); (2) `domain/` không import `core/database` / `package:drift` (danh sách chờ rỗng từ 2026-10-15); (3) `features/*/data` và `features/*/application` không khai `<dynamic>` trần cho `Stream` / `Future` / `List` / `Iterable` (danh sách chờ rỗng); (4) interface repository (`features/*/data/repositories/*_repository.dart`, 11 tệp đếm 2026-10-15) không import `core/database` / `package:drift`; từ 2026-10-16 luật 2 và 4 đọc chỉ thị qua `chi_thi_dart.dart` nên thấy cả `export`, còn mẫu tên kiểu của luật 1 bắt thêm `is X ?` và `X(` (hai dạng tách bạch: mẫu `case X(…)` của Dart 3, và dựng hàng `X(…)` trực tiếp — đo 0 chỗ trúng mới) | cây `lib/` | **2026-10-14** |
 | **28** | `core/ui/domain_khong_import_tang_tren_test.dart` | **hai** luật — `features/*/domain/` không import đường chứa `/presentation/`; đường chứa `/data/` phải chứa `/data/models/` (Entity, `BudgetView`, `ThongKeKy` hợp lệ; repository / datasource / nguồn thì không); `conCho` **rỗng** từ khi có (đo gốc năm tệp, rút cùng đợt; đọc chỉ thị qua `chi_thi_dart.dart`) | cây `lib/` | **2026-10-16** |
 | **29** | `core/ui/domain_khong_vong_mang_test.dart` | đồ thị cấp mảng — cạnh `A->B` khi tệp dưới `features/A/domain/` có `import` / `export` / `part` tới bất kỳ tầng nào của mảng B; cạnh nằm trên một vòng (hai đầu cùng một thành phần liên thông mạnh > 1) phải ở `conCho` (**rỗng** từ 2026-10-16 — ba lát gỡ cụm theo chiều `analytics → bill → transaction → category`; cạnh trong danh sách mà hết nằm trên vòng thì đỏ "rút"); có ca tiền đề số tệp | `features/*/domain/` → mọi tầng mảng khác | **2026-10-16** |
+| **30** | `features/goal/da_hoan_thanh_mot_noi_test.dart` | luật "mục tiêu đã xong" chỉ ở getter `daHoanThanh` (`isCompleted \|\|` ngoài `goal_entity.dart` là đỏ) | cây | **2026-10-19** |
 | — | `features/wallet/vi_trung_ten_resolver_wiring_test.dart` | `ViTrungTenResolver` dựng một chỗ và được nối | cây | 2026-10-05 |
 | — | `features/wallet/vi_trung_ten_cuc_bo_test.dart` | cờ `bi_tu_choi_trung_ten` không lọt vào đồng bộ | danh sách tệp | 2026-10-05 |
 | — | `core/nen/noi_bo_nghe_hai_noi_test.dart` | hai engine (app + nền) mỗi engine nối bộ nghe kết quả đẩy đúng một lần | cây | 2026-10-10 |
 
-(Bảng có 33 hàng sau khi thêm quét 29 ngày 2026-10-16; 32 trước đó. Bộ đọc chỉ thị dùng chung `test/helpers/chi_thi_dart.dart` và test của nó là test helper, không vào bảng.) Ngoài các tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
+(Bảng có 34 hàng sau khi thêm quét 30 ngày 2026-10-19; 33 trước đó. Bộ đọc chỉ thị dùng chung `test/helpers/chi_thi_dart.dart` và test của nó là test helper, không vào bảng.) Ngoài các tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
 ⚠️ Các test quét của đợt 2026-10-10 có **ca tiền đề** (phép quét phải thấy ít nhất một tệp) để không xanh giả khi chạy sai thư mục; một số test quét cũ chưa có; chạy từ
 `src/Client-app`.
 
