@@ -7,6 +7,7 @@ import Pagination from '../../components/common/Pagination';
 import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
+import { maskPhone } from '../../utils/format';
 
 const ALL_STATUS_KEYS = ['active', 'inactive', 'pendingdelete', 'deleted'];
 
@@ -35,6 +36,8 @@ const UserListPage = () => {
 
   const [filter, setFilter] = useState({
     location: 'all',
+    packageType: 'all',
+    timeRange: 'all',
     statuses: [...ALL_STATUS_KEYS],
   });
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,7 +73,26 @@ const UserListPage = () => {
       (filter.location === 'hn' && (u.address || '').toLowerCase().includes('hà nội')) ||
       (filter.location === 'dn' && (u.address || '').toLowerCase().includes('đà nẵng')) ||
       (filter.location === 'ct' && (u.address || '').toLowerCase().includes('cần thơ'));
-    return matchSearch && matchStatus && matchLocation;
+
+    const matchPackage =
+      filter.packageType === 'all' ||
+      (u.package && u.package.toLowerCase() === filter.packageType.toLowerCase());
+
+    const matchTimeRange = (() => {
+      if (filter.timeRange === 'all' || !u.created_at) return true;
+      const createdTime = new Date(u.created_at).getTime();
+      const now = Date.now();
+      const diffDays = (now - createdTime) / (1000 * 60 * 60 * 24);
+      if (filter.timeRange === '7days') return diffDays <= 7;
+      if (filter.timeRange === '30days') return diffDays <= 30;
+      if (filter.timeRange === 'this_year') {
+        const year = new Date(u.created_at).getFullYear();
+        return year === new Date().getFullYear();
+      }
+      return true;
+    })();
+
+    return matchSearch && matchStatus && matchLocation && matchPackage && matchTimeRange;
   });
 
   const totalPages = Math.ceil(filteredUsers.length / pageSize) || 1;
@@ -632,7 +654,7 @@ const UserListPage = () => {
                           {item.email}
                         </td>
                         <td className="px-5 py-3.5 text-on-surface-variant font-mono">
-                          {item.phone}
+                          {maskPhone(item.phone)}
                         </td>
                         <td className="px-5 py-3.5 text-center">
                           <span
@@ -759,6 +781,39 @@ const UserListPage = () => {
                   <option value="ct">{t('users.locations.ct')}</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-2">
+                  Gói dịch vụ / Membership
+                </label>
+                <select
+                  data-testid="filter-package"
+                  value={filter.packageType}
+                  onChange={(e) => setFilter({ ...filter, packageType: e.target.value })}
+                  className="w-full px-3 py-2 border border-outline-variant rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-xs font-medium bg-white h-[42px] cursor-pointer"
+                >
+                  <option value="all">Tất cả gói cước</option>
+                  <option value="Basic">Gói Cơ bản (Basic)</option>
+                  <option value="Premium">Gói VIP (Premium)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-2">
+                  Thời gian tham gia
+                </label>
+                <select
+                  data-testid="filter-time-range"
+                  value={filter.timeRange}
+                  onChange={(e) => setFilter({ ...filter, timeRange: e.target.value })}
+                  className="w-full px-3 py-2 border border-outline-variant rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-xs font-medium bg-white h-[42px] cursor-pointer"
+                >
+                  <option value="all">Tất cả thời gian</option>
+                  <option value="7days">7 ngày gần đây</option>
+                  <option value="30days">30 ngày gần đây</option>
+                  <option value="this_year">Trong năm nay</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-3">
                   {t('users.filterModal.statusLabel')}
@@ -821,7 +876,7 @@ const UserListPage = () => {
               <button
                 className="px-4 py-2 border border-outline-variant rounded-xl text-on-surface text-xs font-semibold hover:bg-surface-container-low transition-colors cursor-pointer"
                 onClick={() => {
-                  setFilter({ location: 'all', statuses: [...ALL_STATUS_KEYS] });
+                  setFilter({ location: 'all', packageType: 'all', timeRange: 'all', statuses: [...ALL_STATUS_KEYS] });
                   toggleModal('filter', false);
                 }}
               >

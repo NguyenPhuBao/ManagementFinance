@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import adminApi from '../../api/admin.api';
 import { USER_STATUS_LABELS } from '../../utils/constants';
-import { formatDateTime } from '../../utils/format';
+import { formatDateTime, maskPhone } from '../../utils/format';
 
 const UserDetailModal = ({ userId, onClose }) => {
   const [user, setUser] = useState(null);
@@ -75,7 +75,7 @@ const UserDetailModal = ({ userId, onClose }) => {
                   <RowItem label="ID User" value={user.id} />
                   <RowItem label="Họ tên" value={user.fullname} />
                   <RowItem label="Email" value={user.email} />
-                  <RowItem label="Số điện thoại" value={user.phone || '—'} />
+                  <RowItem label="Số điện thoại" value={maskPhone(user.phone)} />
                   <RowItem label="Địa chỉ" value={user.address || '—'} />
                   <RowItem label="Mã vùng" value={user.country_code || '—'} />
                 </div>
