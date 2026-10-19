@@ -1,79 +1,48 @@
 import 'package:intl/intl.dart';
 
-/// Formatter ngày tháng cho FlowMoney — tất cả hiển thị tiếng Việt.
+/// Định dạng ngày của FlowMoney — **nơi duy nhất** dựng `DateFormat` (test quét `lib/` thứ 32, 2026-10-19).
 ///
-/// Ví dụ:
-/// ```dart
-/// DateFormatter.formatDate(DateTime.now())         // → "10/08/2026"
-/// DateFormatter.formatMonthYear(DateTime.now())    // → "Tháng 8, 2026"
-/// DateFormatter.formatRelative(DateTime.now())     // → "Hôm nay"
-/// DateFormatter.formatRelative(yesterday)          // → "Hôm qua"
-/// DateFormatter.formatRelative(lastWeek)           // → "Thứ Hai, 04/08"
-/// ```
+/// Mỗi mẫu đang hiện trên màn một hàm; chữ ra giữ nguyên từng ký tự so với các bản dựng tay trước đó (báo cáo soát
+/// kiến trúc 2026-10-18 mục 6, quyết định phiên 2 điểm 6). Cần mẫu mới thì thêm HÀM ở đây, đừng dựng `DateFormat` tại
+/// chỗ.
+///
+/// ⚠️ Mẫu CHỈ CÓ SỐ dựng **không locale**: chữ số ra giống hệt ở mọi locale, và không cần `initializeDateFormatting` —
+/// thiếu nó thì `DateFormat(…, 'vi_VN')` ném và cả cây widget dừng dựng (bẫy widget test). Chỉ mẫu có CHỮ (tên thứ)
+/// mang `vi_VN`; `main.dart` và `core/nen/chay_nen.dart` đã gọi `initializeDateFormatting('vi_VN')`.
 class DateFormatter {
   DateFormatter._();
 
-  static final _dateFormat       = DateFormat('dd/MM/yyyy', 'vi_VN');
-  static final _dateTimeFormat   = DateFormat('HH:mm, dd/MM/yyyy', 'vi_VN');
-  static final _monthYearFormat  = DateFormat('MMMM, yyyy', 'vi_VN');
-  static final _dayMonthFormat   = DateFormat('dd/MM', 'vi_VN');
-  static final _weekdayFormat    = DateFormat('EEEE', 'vi_VN');
-  static final _timeFormat       = DateFormat('HH:mm', 'vi_VN');
+  static final _ngay = DateFormat('dd/MM/yyyy');
+  static final _ngayThang = DateFormat('dd/MM');
+  static final _ngayGio = DateFormat('dd/MM/yyyy HH:mm');
+  static final _gioNgay = DateFormat('HH:mm dd/MM/yyyy');
+  static final _thangNam = DateFormat('MM/yyyy');
+  static final _thangNamNgan = DateFormat('MM/yy');
+  static final _khoaNgay = DateFormat('yyyy-MM-dd');
+  static final _thuNgay = DateFormat('EEEE, dd/MM/yyyy', 'vi_VN');
 
-  /// `10/08/2026`
-  static String formatDate(DateTime date) => _dateFormat.format(date);
+  /// `03/08/2026`
+  static String formatDate(DateTime d) => _ngay.format(d);
 
-  /// `10:30, 10/08/2026`
-  static String formatDateTime(DateTime date) => _dateTimeFormat.format(date);
+  /// `03/08`
+  static String formatDayMonth(DateTime d) => _ngayThang.format(d);
 
-  /// `Tháng 8, 2026`
-  static String formatMonthYear(DateTime date) {
-    final formatted = _monthYearFormat.format(date);
-    // Viết hoa chữ cái đầu tháng
-    return formatted[0].toUpperCase() + formatted.substring(1);
-  }
+  /// `03/08/2026 09:05` — ngày rồi giờ.
+  static String formatDateTime(DateTime d) => _ngayGio.format(d);
 
-  /// `10:30`
-  static String formatTime(DateTime date) => _timeFormat.format(date);
+  /// `09:05 03/08/2026` — giờ rồi ngày (thẻ đầu Chi tiết đơn Premium, theo màn Stitch).
+  static String formatTimeDate(DateTime d) => _gioNgay.format(d);
 
-  /// Hiển thị date dạng tương đối:
-  /// - Hôm nay → "Hôm nay"
-  /// - Hôm qua → "Hôm qua"  
-  /// - Trong tuần hiện tại → "Thứ Hai, 04/08"
-  /// - Xa hơn → "10/08/2026"
-  static String formatRelative(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final target = DateTime(date.year, date.month, date.day);
+  /// `08/2026`
+  static String formatMonthYear(DateTime d) => _thangNam.format(d);
 
-    final diff = today.difference(target).inDays;
+  /// `08/26` — nhãn trục biểu đồ khi khoảng dài.
+  static String formatMonthYearShort(DateTime d) => _thangNamNgan.format(d);
 
-    if (diff == 0) return 'Hôm nay';
-    if (diff == 1) return 'Hôm qua';
-    if (diff < 7) {
-      final weekday = _weekdayFormat.format(date);
-      final dayMonth = _dayMonthFormat.format(date);
-      // Viết hoa chữ cái đầu thứ
-      final weekdayCap = weekday[0].toUpperCase() + weekday.substring(1);
-      return '$weekdayCap, $dayMonth';
-    }
-    return formatDate(date);
-  }
+  /// `2026-08-03` — KHOÁ nhóm theo ngày, không phải chữ hiển thị: so chuỗi ra đúng thứ tự thời gian, và
+  /// `DateTime.parse` đọc ngược được.
+  static String dayKey(DateTime d) => _khoaNgay.format(d);
 
-  /// Nhóm transactions theo ngày: "Hôm nay", "Hôm qua", vv.
-  static String groupHeader(DateTime date) => formatRelative(date);
-
-  /// So sánh 2 ngày có cùng ngày không (bỏ qua giờ)
-  static bool isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-
-  /// Parse chuỗi dd/MM/yyyy về DateTime, trả null nếu lỗi
-  static DateTime? parseDate(String text) {
-    try {
-      return _dateFormat.parseStrict(text);
-    } catch (_) {
-      return null;
-    }
-  }
+  /// Tên thứ tiếng Việt + `, 03/08/2026` — tiêu đề nhóm ngày ở Sổ giao dịch. Cần dữ liệu locale `vi_VN`.
+  static String formatWeekdayDate(DateTime d) => _thuNgay.format(d);
 }
