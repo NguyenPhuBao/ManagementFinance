@@ -27,6 +27,12 @@ vi.mock('../api/payment.api', () => ({
   },
 }));
 
+vi.mock('../api/admin.api', () => ({
+  default: {
+    verifySecurityAction: vi.fn().mockResolvedValue({ data: { verified: true } }),
+  },
+}));
+
 describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () => {
   const mockStats = {
     totalRevenue: 490000,
@@ -623,6 +629,11 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       // Submit form
       const submitBtn = screen.getByRole('button', { name: /Xác nhận Đã hoàn tiền/i });
       fireEvent.click(submitBtn);
+
+      // Nhập PIN xác thực bảo mật
+      const pinInput = screen.getByPlaceholderText(/Nhập mã PIN 6 số/i);
+      fireEvent.change(pinInput, { target: { value: '123456' } });
+      fireEvent.click(screen.getByRole('button', { name: /Xác thực & Thực thi/i }));
 
       await waitFor(() => {
         expect(paymentApi.processRefund).toHaveBeenCalledWith(

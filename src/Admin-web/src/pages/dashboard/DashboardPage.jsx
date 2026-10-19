@@ -7,6 +7,17 @@ import ServerHealthPanel from '../../components/common/ServerHealthPanel';
 import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useLanguageSafe } from '../../store/language.context';
 import { classifyAuditAction } from '../../utils/audit-tags.util';
+import useResizableColumns from '../../hooks/useResizableColumns';
+import ResizableTh from '../../components/common/ResizableTh';
+import TruncateCell from '../../components/common/TruncateCell';
+
+const DEFAULT_DASHBOARD_COL_WIDTHS = {
+  user: 180,
+  action: 220,
+  reason: 200,
+  status: 120,
+  time: 130,
+};
 
 const STATUS_CONFIG = {
   Pass: {
@@ -363,6 +374,12 @@ const DashboardPage = () => {
   const socket = useSocket();
   const { t } = useLanguageSafe();
   const [loading, setLoading] = useState(true);
+
+  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+    tableKey: 'dashboard_activities',
+    defaultWidths: DEFAULT_DASHBOARD_COL_WIDTHS,
+    minWidth: 60,
+  });
   const now = new Date();
   const vnNow = getVnDateParts(now) || {
     year: String(now.getFullYear()),
@@ -1164,33 +1181,33 @@ const DashboardPage = () => {
                   <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
                 </div>
               )}
-              <table className="w-full text-left border-collapse min-w-[640px]">
+              <table className="w-full text-left border-collapse min-w-[640px] table-fixed">
                   <thead>
                       <tr className="bg-surface-container-low/50">
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.user')}</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.action')}</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.reason')}</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.status')}</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">{t('dashboard.recentActivities.columns.time')}</th>
+                          <ResizableTh colKey="user" width={colWidths.user} onResize={startResizing} onReset={resetColumn} className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.user')}</ResizableTh>
+                          <ResizableTh colKey="action" width={colWidths.action} onResize={startResizing} onReset={resetColumn} className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.action')}</ResizableTh>
+                          <ResizableTh colKey="reason" width={colWidths.reason} onResize={startResizing} onReset={resetColumn} className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.reason')}</ResizableTh>
+                          <ResizableTh colKey="status" width={colWidths.status} onResize={startResizing} onReset={resetColumn} className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.status')}</ResizableTh>
+                          <ResizableTh colKey="time" width={colWidths.time} onResize={startResizing} onReset={resetColumn} align="right" resizable={false} className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">{t('dashboard.recentActivities.columns.time')}</ResizableTh>
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/50">
                       {recentActivities.length > 0 ? (
                         recentActivities.map(activity => (
                             <tr key={activity.key} className={`hover:bg-surface-container-lowest transition-colors group ${activity.isNew ? 'bg-primary/5 animate-pulse duration-1000' : ''}`}>
-                                <td className="py-3 px-5">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform">
+                                <td className="py-3 px-5 overflow-hidden">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-8 h-8 shrink-0 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform">
                                             {(activity.user || 'U').split(' ').pop().charAt(0)}
                                         </div>
-                                        <span className="font-body-md font-semibold text-on-surface">{activity.user}</span>
+                                        <TruncateCell text={activity.user} className="font-body-md font-semibold text-on-surface" />
                                     </div>
                                 </td>
-                                <td className="py-3 px-5 text-on-surface-variant font-body-md whitespace-nowrap">
+                                <td className="py-3 px-5 text-on-surface-variant font-body-md overflow-hidden">
                                     {(() => {
                                       const { tagInfo, cleanAction } = classifyAuditAction(activity.action);
                                       return (
-                                        <span className="inline-flex items-center gap-2">
+                                        <div className="flex items-center gap-2 min-w-0" title={cleanAction}>
                                           <span
                                             className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${tagInfo.bg} ${tagInfo.text} ${tagInfo.border} shrink-0`}
                                             title={tagInfo.label}
@@ -1198,22 +1215,22 @@ const DashboardPage = () => {
                                             <span className="material-symbols-outlined text-[11px]">{tagInfo.icon}</span>
                                             <span>{tagInfo.tag}</span>
                                           </span>
-                                          <span className="font-medium text-xs text-on-surface">{cleanAction}</span>
-                                        </span>
+                                          <TruncateCell text={cleanAction} className="font-medium text-xs text-on-surface" />
+                                        </div>
                                       );
                                     })()}
                                 </td>
-                                <td className="py-3 px-5 text-on-surface-variant font-body-sm max-w-[200px] truncate" title={activity.reason || ''}>
+                                <td className="py-3 px-5 text-on-surface-variant font-body-sm overflow-hidden">
                                     {activity.reason ? (
-                                      <span className="text-on-surface-variant/90">{activity.reason}</span>
+                                      <TruncateCell text={activity.reason} className="text-on-surface-variant/90" />
                                     ) : (
                                       <span className="text-outline-variant/80">—</span>
                                     )}
                                 </td>
-                                <td className="py-3 px-5 whitespace-nowrap">
+                                <td className="py-3 px-5 whitespace-nowrap overflow-hidden">
                                     {getStatusBadge(activity.status, t)}
                                 </td>
-                                <td className="py-3 px-5 text-on-surface-variant font-body-sm text-right whitespace-nowrap">{activity.time}</td>
+                                <td className="py-3 px-5 text-on-surface-variant font-body-sm text-right whitespace-nowrap overflow-hidden">{activity.time}</td>
                             </tr>
                         ))
                       ) : (

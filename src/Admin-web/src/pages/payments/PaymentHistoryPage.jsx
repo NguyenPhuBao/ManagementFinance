@@ -5,6 +5,20 @@ import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useLanguageSafe } from '../../store/language.context';
 import useSocket from '../../hooks/useSocket';
 import { exportToCsv } from '../../utils/csv-exporter.util';
+import useResizableColumns from '../../hooks/useResizableColumns';
+import ResizableTh from '../../components/common/ResizableTh';
+import TruncateCell from '../../components/common/TruncateCell';
+
+const DEFAULT_PAYMENT_COL_WIDTHS = {
+  orderCode: 160,
+  user: 220,
+  package: 140,
+  amount: 140,
+  status: 140,
+  createdAt: 150,
+  paidAt: 150,
+  actions: 140,
+};
 
 const STATUS_CONFIG = {
   PAID: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: 'check_circle' },
@@ -75,6 +89,12 @@ const PaymentHistoryPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
+
+  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+    tableKey: 'payments',
+    defaultWidths: DEFAULT_PAYMENT_COL_WIDTHS,
+    minWidth: 60,
+  });
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [packageFilter, setPackageFilter] = useState('ALL');
   const [packageTypes, setPackageTypes] = useState(['Basic', 'Premium']);
@@ -786,17 +806,89 @@ const PaymentHistoryPage = () => {
       {/* Orders Data Table */}
       <div className="bg-surface-container rounded-xl border border-outline-variant shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse">
+          <table className="w-full text-left text-sm border-collapse table-fixed">
             <thead>
               <tr className="bg-surface-container-high/60 border-b border-outline-variant text-on-surface-variant font-semibold text-xs uppercase tracking-wider">
-                <th className="py-3.5 px-4">{t('payments.table.orderCode')}</th>
-                <th className="py-3.5 px-4">{t('payments.table.user')}</th>
-                <th className="py-3.5 px-4">{t('payments.table.package')}</th>
-                <th className="py-3.5 px-4">{t('payments.table.amount')}</th>
-                <th className="py-3.5 px-4 text-center">{t('payments.table.status')}</th>
-                <th className="py-3.5 px-4">{t('payments.table.createdAt')}</th>
-                <th className="py-3.5 px-4">{t('payments.table.paidAt')}</th>
-                <th className="py-3.5 px-4 text-center">{t('payments.table.actions')}</th>
+                <ResizableTh
+                  colKey="orderCode"
+                  width={colWidths.orderCode}
+                  minWidth={100}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3.5 px-4"
+                >
+                  {t('payments.table.orderCode')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="user"
+                  width={colWidths.user}
+                  minWidth={120}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3.5 px-4"
+                >
+                  {t('payments.table.user')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="package"
+                  width={colWidths.package}
+                  minWidth={100}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3.5 px-4"
+                >
+                  {t('payments.table.package')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="amount"
+                  width={colWidths.amount}
+                  minWidth={100}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3.5 px-4"
+                >
+                  {t('payments.table.amount')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="status"
+                  width={colWidths.status}
+                  minWidth={100}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3.5 px-4 text-center"
+                >
+                  {t('payments.table.status')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="createdAt"
+                  width={colWidths.createdAt}
+                  minWidth={110}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3.5 px-4"
+                >
+                  {t('payments.table.createdAt')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="paidAt"
+                  width={colWidths.paidAt}
+                  minWidth={110}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3.5 px-4"
+                >
+                  {t('payments.table.paidAt')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="actions"
+                  width={colWidths.actions}
+                  minWidth={100}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3.5 px-4 text-center"
+                >
+                  {t('payments.table.actions')}
+                </ResizableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/40">
@@ -833,40 +925,36 @@ const PaymentHistoryPage = () => {
                       key={order.id}
                       className="hover:bg-surface-container-lowest/60 transition-colors"
                     >
-                      <td className="py-3.5 px-4 font-mono font-bold text-on-surface">
+                      <td className="py-3.5 px-4 font-mono font-bold text-on-surface overflow-hidden">
                         <div className="flex flex-col">
-                          <div className="flex items-center gap-1.5">
-                            <span>#{order.order_code}</span>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <TruncateCell text={`#${order.order_code}`} />
                             {order.is_template && (
-                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
                                 Mẫu
                               </span>
                             )}
                           </div>
                           {order.recognition_code && (
-                            <span className="text-[11px] font-mono text-primary font-normal">
-                              Mã: {order.recognition_code}
-                            </span>
+                            <TruncateCell text={`Mã: ${order.recognition_code}`} className="text-[11px] font-mono text-primary font-normal" />
                           )}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-on-surface flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-base text-on-surface-variant">
+                      <td className="py-3.5 px-4 overflow-hidden">
+                        <div className="font-semibold text-on-surface flex items-center gap-1.5 min-w-0">
+                          <span className="material-symbols-outlined text-base text-on-surface-variant shrink-0">
                             account_circle
                           </span>
-                          <span>{order.account?.username || '—'}</span>
+                          <TruncateCell text={order.account?.username || '—'} className="min-w-0" />
                         </div>
                         <div className="text-xs text-on-surface-variant mt-0.5">
-                          {order.account?.User?.fullname || order.account?.email || ''}
+                          <TruncateCell text={order.account?.User?.fullname || order.account?.email || ''} />
                         </div>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-                          <span className="material-symbols-outlined text-[13px]">workspace_premium</span>
-                          {order.package_type === 'PREMIUM_1_MONTH'
-                            ? t('payments.filter.packageMonth')
-                            : order.package_type}
+                      <td className="py-3.5 px-4 overflow-hidden">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 max-w-full">
+                          <span className="material-symbols-outlined text-[13px] shrink-0">workspace_premium</span>
+                          <TruncateCell text={order.package_type === 'PREMIUM_1_MONTH' ? t('payments.filter.packageMonth') : order.package_type} />
                         </span>
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-emerald-600 font-mono">

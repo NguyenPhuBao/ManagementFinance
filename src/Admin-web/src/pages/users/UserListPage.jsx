@@ -8,8 +8,20 @@ import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 import { maskPhone } from '../../utils/format';
+import useResizableColumns from '../../hooks/useResizableColumns';
+import ResizableTh from '../../components/common/ResizableTh';
+import TruncateCell from '../../components/common/TruncateCell';
 
 const ALL_STATUS_KEYS = ['active', 'inactive', 'pendingdelete', 'deleted'];
+
+const DEFAULT_USER_COL_WIDTHS = {
+  select: 48,
+  name: 280,
+  email: 240,
+  phone: 160,
+  status: 140,
+  actions: 180,
+};
 
 const UserListPage = () => {
   const alert = useAlertSafe();
@@ -42,6 +54,12 @@ const UserListPage = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+    tableKey: 'users',
+    defaultWidths: DEFAULT_USER_COL_WIDTHS,
+    minWidth: 48,
+  });
 
   const getStatusBadge = (status) => {
     switch (status?.toLowerCase()) {
@@ -600,20 +618,65 @@ const UserListPage = () => {
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[850px]">
+            <table className="w-full text-left border-collapse min-w-[850px] table-fixed">
               <thead>
                 <tr className="bg-surface-container-low/80 border-b border-outline-variant text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-                  <th className="px-5 py-3.5 w-12 text-center">
+                  <th style={{ width: `${colWidths.select}px` }} className="px-5 py-3.5 text-center">
                     <input
                       type="checkbox"
                       className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
                     />
                   </th>
-                  <th className="px-5 py-3.5">{t('users.table.colName')}</th>
-                  <th className="px-5 py-3.5">{t('users.table.colEmail')}</th>
-                  <th className="px-5 py-3.5">{t('users.table.colPhone')}</th>
-                  <th className="px-5 py-3.5 text-center">{t('users.table.colStatus')}</th>
-                  <th className="px-5 py-3.5 text-right">{t('users.table.colActions')}</th>
+                  <ResizableTh
+                    colKey="name"
+                    width={colWidths.name}
+                    minWidth={120}
+                    onResize={startResizing}
+                    onReset={resetColumn}
+                    className="px-5 py-3.5"
+                  >
+                    {t('users.table.colName')}
+                  </ResizableTh>
+                  <ResizableTh
+                    colKey="email"
+                    width={colWidths.email}
+                    minWidth={120}
+                    onResize={startResizing}
+                    onReset={resetColumn}
+                    className="px-5 py-3.5"
+                  >
+                    {t('users.table.colEmail')}
+                  </ResizableTh>
+                  <ResizableTh
+                    colKey="phone"
+                    width={colWidths.phone}
+                    minWidth={100}
+                    onResize={startResizing}
+                    onReset={resetColumn}
+                    className="px-5 py-3.5"
+                  >
+                    {t('users.table.colPhone')}
+                  </ResizableTh>
+                  <ResizableTh
+                    colKey="status"
+                    width={colWidths.status}
+                    minWidth={100}
+                    onResize={startResizing}
+                    onReset={resetColumn}
+                    className="px-5 py-3.5 text-center"
+                  >
+                    {t('users.table.colStatus')}
+                  </ResizableTh>
+                  <ResizableTh
+                    colKey="actions"
+                    width={colWidths.actions}
+                    minWidth={120}
+                    onResize={startResizing}
+                    onReset={resetColumn}
+                    className="px-5 py-3.5 text-right"
+                  >
+                    {t('users.table.colActions')}
+                  </ResizableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/60 font-body-md text-xs text-on-surface">
@@ -635,26 +698,22 @@ const UserListPage = () => {
                             className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
                           />
                         </td>
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-3">
+                        <td className="px-5 py-3.5 overflow-hidden">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-primary/20 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 shadow-2xs shrink-0">
                               {(item.name || item.username || 'U').charAt(0).toUpperCase()}
                             </div>
-                            <div className="min-w-0">
-                              <span className="font-bold text-on-surface block truncate text-xs hover:text-primary transition-colors">
-                                {item.name}
-                              </span>
-                              <span className="text-[11px] text-secondary font-mono">
-                                @{item.username}
-                              </span>
+                            <div className="min-w-0 flex-1">
+                              <TruncateCell text={item.name} className="font-bold text-on-surface text-xs hover:text-primary transition-colors" />
+                              <TruncateCell text={`@${item.username}`} className="text-[11px] text-secondary font-mono" />
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 text-on-surface-variant font-medium">
-                          {item.email}
+                        <td className="px-5 py-3.5 text-on-surface-variant font-medium overflow-hidden">
+                          <TruncateCell text={item.email} />
                         </td>
-                        <td className="px-5 py-3.5 text-on-surface-variant font-mono">
-                          {maskPhone(item.phone)}
+                        <td className="px-5 py-3.5 text-on-surface-variant font-mono overflow-hidden">
+                          <TruncateCell text={maskPhone(item.phone)} />
                         </td>
                         <td className="px-5 py-3.5 text-center">
                           <span

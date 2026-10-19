@@ -5,6 +5,16 @@ import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
+import useResizableColumns from '../../hooks/useResizableColumns';
+import ResizableTh from '../../components/common/ResizableTh';
+import TruncateCell from '../../components/common/TruncateCell';
+
+const DEFAULT_CATEGORY_COL_WIDTHS = {
+  name: 280,
+  type: 140,
+  keyword: 260,
+  actions: 160,
+};
 
 const CLASSIFY_MAP = { Thu: 'income', Chi: 'expense', 'Vay/no': 'debt', 'Vay/nợ': 'debt' };
 const TYPE_TO_CLASSIFY = { income: 'Thu', expense: 'Chi', debt: 'Vay/no' };
@@ -33,6 +43,12 @@ const CategoryPage = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+    tableKey: 'categories',
+    defaultWidths: DEFAULT_CATEGORY_COL_WIDTHS,
+    minWidth: 80,
+  });
 
   const searchNorm = normalizeVietnameseUnaccent(search);
   const filtered = categories.filter((c) => {
@@ -588,13 +604,49 @@ const CategoryPage = () => {
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[750px]">
+            <table className="w-full text-left border-collapse min-w-[750px] table-fixed">
               <thead>
                 <tr className="bg-surface-container-low/80 border-b border-outline-variant text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-                  <th className="px-5 py-3.5">{t('categories.table.colName')}</th>
-                  <th className="px-5 py-3.5">{t('categories.table.colType')}</th>
-                  <th className="px-5 py-3.5">{t('categories.table.colKeyword')}</th>
-                  <th className="px-5 py-3.5 text-right">{t('categories.table.colActions')}</th>
+                  <ResizableTh
+                    colKey="name"
+                    width={colWidths.name}
+                    minWidth={140}
+                    onResize={startResizing}
+                    onReset={resetColumn}
+                    className="px-5 py-3.5"
+                  >
+                    {t('categories.table.colName')}
+                  </ResizableTh>
+                  <ResizableTh
+                    colKey="type"
+                    width={colWidths.type}
+                    minWidth={100}
+                    onResize={startResizing}
+                    onReset={resetColumn}
+                    className="px-5 py-3.5"
+                  >
+                    {t('categories.table.colType')}
+                  </ResizableTh>
+                  <ResizableTh
+                    colKey="keyword"
+                    width={colWidths.keyword}
+                    minWidth={120}
+                    onResize={startResizing}
+                    onReset={resetColumn}
+                    className="px-5 py-3.5"
+                  >
+                    {t('categories.table.colKeyword')}
+                  </ResizableTh>
+                  <ResizableTh
+                    colKey="actions"
+                    width={colWidths.actions}
+                    minWidth={120}
+                    onResize={startResizing}
+                    onReset={resetColumn}
+                    className="px-5 py-3.5 text-right"
+                  >
+                    {t('categories.table.colActions')}
+                  </ResizableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/60 font-body-md text-xs text-on-surface">
@@ -605,8 +657,8 @@ const CategoryPage = () => {
                         key={item.id}
                         className="hover:bg-surface-container-lowest/80 transition-colors group"
                       >
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-3">
+                        <td className="px-5 py-3.5 overflow-hidden">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-primary/20 text-primary flex items-center justify-center border border-primary/20 shadow-2xs shrink-0">
                               <span className="material-symbols-outlined text-[18px]">
                                 {item.type === 'income'
@@ -616,7 +668,7 @@ const CategoryPage = () => {
                                   : 'credit_card'}
                               </span>
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               {item.isUserCategory ? (
                                 <div className="flex flex-col">
                                   <span className="font-bold text-rose-700 text-xs">***</span>
@@ -626,19 +678,21 @@ const CategoryPage = () => {
                                 </div>
                               ) : (
                                 <>
-                                  <div className="flex items-center gap-2">
-                                    <span className={`font-bold text-on-surface block text-xs ${item.status === 'deleted' || item.delete_at ? 'line-through text-secondary' : ''}`}>
-                                      {item.name}
-                                    </span>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <TruncateCell
+                                      text={item.name}
+                                      className={`font-bold text-on-surface text-xs min-w-0 ${item.status === 'deleted' || item.delete_at ? 'line-through text-secondary' : ''}`}
+                                    />
                                     {(item.status === 'deleted' || item.delete_at) && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs shrink-0">
                                         {t('categories.table.deleted') || 'Đã xóa'}
                                       </span>
                                     )}
                                   </div>
-                                  <span className="text-[10px] text-secondary">
-                                    {t('categories.table.createdBySystem', { creator: (item.created_by === 'system' || item.created_by === 'Hệ thống') ? t('categories.createdBySystem') : item.created_by })}
-                                  </span>
+                                  <TruncateCell
+                                    text={t('categories.table.createdBySystem', { creator: (item.created_by === 'system' || item.created_by === 'Hệ thống') ? t('categories.createdBySystem') : item.created_by })}
+                                    className="text-[10px] text-secondary min-w-0"
+                                  />
                                 </>
                               )}
                             </div>
@@ -653,16 +707,14 @@ const CategoryPage = () => {
                             {t(`categories.tabs.${item.type}`) || TRANSACTION_TYPE_LABELS[item.type] || item.type}
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 max-w-[380px]">
+                        <td className="px-5 py-3.5 overflow-hidden">
                           {item.isUserCategory ? (
                             <span className="text-secondary italic text-xs font-mono">***</span>
                           ) : item.keyword ? (
-                            <div
-                              className="w-full bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1 text-[11px] text-slate-800 font-mono whitespace-nowrap overflow-x-auto keyword-scrollbar select-all shadow-2xs"
-                              title={item.keyword}
-                            >
-                              {item.keyword}
-                            </div>
+                            <TruncateCell
+                              text={item.keyword}
+                              className="w-full bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1 text-[11px] text-slate-800 font-mono shadow-2xs"
+                            />
                           ) : (
                             <span className="text-secondary/60 italic text-xs">{t('categories.table.noKeyword')}</span>
                           )}

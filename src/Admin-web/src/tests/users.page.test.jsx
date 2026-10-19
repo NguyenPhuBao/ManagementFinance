@@ -10,6 +10,7 @@ vi.mock('../api/admin.api', () => ({
     getUsers: vi.fn(),
     updateUserStatus: vi.fn(),
     deleteUser: vi.fn(),
+    verifySecurityAction: vi.fn(),
   },
 }));
 
@@ -303,6 +304,14 @@ describe('Admin-web Users Suite — UserListPage', () => {
     // Nhấn nút xác nhận xóa trên banner
     const confirmBtn = screen.getByRole('button', { name: /xác nhận xóa/i });
     fireEvent.click(confirmBtn);
+
+    // Xác thực bảo mật Re-Auth với mã PIN 6 số
+    adminApi.verifySecurityAction.mockResolvedValueOnce({
+      data: { verified: true, action: 'DELETE_USER' },
+    });
+    const pinInput = screen.getByPlaceholderText(/Nhập mã PIN 6 số/i);
+    fireEvent.change(pinInput, { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: /Xác thực & Thực thi/i }));
 
     // Tầng 2 (System Impact): Gọi API xóa mềm tới backend
     await waitFor(() => {

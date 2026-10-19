@@ -5,6 +5,7 @@ const SecurityConfirmModal = ({
   isOpen,
   onClose,
   onConfirm,
+  onSuccess,
   title = 'Xác thực hành động bảo mật',
   description = 'Hành động này có tác động nghiêm trọng đến hệ thống. Vui lòng nhập mã PIN bảo mật để xác nhận.',
   actionType = 'CRITICAL_ACTION',
@@ -56,8 +57,9 @@ const SecurityConfirmModal = ({
         targetId: targetLabel,
       });
 
-      if (typeof onConfirm === 'function') {
-        await onConfirm();
+      const callback = onConfirm || onSuccess;
+      if (typeof callback === 'function') {
+        await callback();
       }
       onClose();
     } catch (err) {
