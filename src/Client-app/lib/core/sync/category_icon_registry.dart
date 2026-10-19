@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../category/category_name.dart';
+
 /// Bộ lưu trữ bền vững (Persistent Registry) cho Icon và Màu sắc Danh mục.
 /// 
 /// Tự động bảo tồn icon và màu sắc cá nhân do người dùng chọn kể cả khi
@@ -28,7 +30,7 @@ class CategoryIconRegistry {
     await _ensureLoaded();
     final item = {'icon': icon, 'colour': colour};
     if (id.isNotEmpty) _cache[id.toLowerCase()] = item;
-    if (name.isNotEmpty) _cache[name.trim().toLowerCase()] = item;
+    if (name.isNotEmpty) _cache[normalizeCategoryName(name)] = item;
 
     try {
       await _storage.write(key: _storageKey, value: json.encode(_cache));
@@ -39,7 +41,7 @@ class CategoryIconRegistry {
   static Future<Map<String, String>?> getIcon(String id, String name) async {
     await _ensureLoaded();
     final lowerId = id.toLowerCase();
-    final lowerName = name.trim().toLowerCase();
+    final lowerName = normalizeCategoryName(name);
 
     if (lowerId.isNotEmpty && _cache.containsKey(lowerId)) return _cache[lowerId];
     if (lowerName.isNotEmpty && _cache.containsKey(lowerName)) return _cache[lowerName];
