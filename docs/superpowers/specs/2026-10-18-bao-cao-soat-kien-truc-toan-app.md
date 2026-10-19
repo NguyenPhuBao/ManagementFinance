@@ -1,5 +1,12 @@
 # Báo cáo soát kiến trúc toàn client-app — chỉ đọc (2026-10-18)
 
+> ✅ **Đã sửa 2026-10-19** (bốn lát, kế hoạch `docs/superpowers/plans/2026-10-19-sua-lech-kien-truc-bon-lat.md`, gitignore;
+> khối 🧱 đầu mục 14 `PROJECT_CONTEXT.md`): **cả 14 A** (cộng `the_khoa_quyen` 12 màu + vế thừa `du_bao_dong_tien:338`); B
+> *ngân sách tổng* (áp `khoanVaoThongKe`, người dùng chốt) và ba B *cổng nền tảng dưới `datasources/`* (đóng theo luật mới mục 8
+> `KIEN_TRUC`, test quét 31). **Còn lại:** B `notification_prefs.dart` / `doc_mon_hang.dart` toJson ở `domain/`,
+> `dong_hang_bien_dong.dart` (dáng bộ điều phối); mọi hàng C; `other_daos.dart`, `SyncEngine`. Số dòng trong bảng dưới là của
+> HEAD `af7351fe` — nhiều tệp đã dời / đổi (mục *Quyết định* cuối tệp).
+
 **Bối cảnh:** người dùng chốt 2026-10-18 *"từ đây về sau tất cả các phần mới hay cũ đều phải tuân thủ kiến trúc mà
 client-app đang hướng đến"* và *"sau khi hoàn thành phần này, tôi muốn kiểm tra lại toàn bộ"* (spec G94 mục 13). Báo cáo
 này là **phép đo chỉ đọc**, không sửa tệp nào; việc sửa làm **sau lượt G94**, người dùng chọn lát. Đối chiếu

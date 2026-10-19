@@ -611,7 +611,40 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-18)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-19)
+
+### 🧱 Sửa lệch kiến trúc toàn app — bốn lát (2026-10-19) · G94 vẫn chờ nghiệm thu sandbox
+
+Trình báo cáo `docs/superpowers/specs/2026-10-18-bao-cao-soat-kien-truc-toan-app.md` (14 A · 7 B · 11 C) đầu phiên; người dùng
+chốt hai việc + làm cả bốn lát bằng **agent con** (Fable soát kế hoạch, Sonnet thực thi, Opus soát từng task). Kế hoạch
+`docs/superpowers/plans/2026-10-19-sua-lech-kien-truc-bon-lat.md` (gitignore). G94 **tạm gác** — vẫn chưa chạy trên máy nào.
+
+- **Hai quyết định (mục *Quyết định người dùng 2026-10-19* của báo cáo):**
+  - **Ngân sách tổng đi qua `khoanVaoThongKe`** (`getExpenses`, `2ee15556`) — *đã chi* bỏ *Điều chỉnh số dư*, *Số dư ban
+    đầu*, nửa chi cặp nạp mục tiêu kiểu cũ; khớp *chi tháng này* ở Trang chủ / Phân tích / Sổ. Ngân sách theo danh mục không
+    đổi (ba loại ấy không danh mục). `Spent` của ngân sách tổng trên server giảm ở lần đẩy kế (`cacheSpent` → payload).
+  - **Cổng nền tảng → `data/datasources/`**, store / nguồn ở gốc `data/` (hàng mới mục 8 `KIEN_TRUC`); trang **được** gọi
+    thẳng cổng, **không** được import datasource bọc CSDL / API (Dio) — **test quét 31** (`conCho` rỗng). Dời 8 tệp
+    (`slm_runtime`, `phien_cong_cu`, `nguon_ly_do_thoat`, `nguon_tai_nen`, `tai_nen_background_downloader`, `luu_tep_platform`,
+    `luu_anh_qr`, `mo_lien_ket`); bộ tải ảnh VietQR Dio trần tách khỏi `LuuAnhQr` (`premium/data/datasources/tai_anh_dio_tran.dart`).
+- **Đổi hành vi (hai chỗ, có chủ đích):** ngân sách tổng (trên); form Thêm mục tiêu đề xuất số tiền mỗi kỳ đếm theo **ngày
+  lịch** (`soTienMoiKyDeXuat`, `2c1b06be`) — trước trừ `DateTime` thô, mở form buổi tối hụt một ngày.
+- **Không đổi hành vi:** luật *mục tiêu đã xong* một chỗ `daHoanThanh` + **test quét 30** (`2fa6fd50`); `transactionTypeLabel`
+  / `budget_period` về `domain/` (`df3ef9f3`); bảng tra icon so tên bằng `normalizeCategoryName`, nguồn lệnh tạo C3 đọc
+  qua repository (`0ec3f0ed`); Trung tâm thông báo ghi nhật ký qua `ThongBaoRepository.ghiNhatKy*` (`c8da40ae`); trang Trợ
+  lý AI qua `TroLyOnlineRepository` → `LuotHoiOnline` (luồng + `huy` thuần), hết `CancelToken` (`1bc81a6e`); chu kỳ hoá đơn
+  `kChuKyHoaDon` (`21566e47`); `bao_che_day_toast` → `shared/widgets/` (`dcb371e9`); thẻ khoá quyền lấy màu `AppColors`
+  (`0620e4d2`).
+- **Preflight (Fable, chạy thử trên bản sao cây) bắt hai lỗi kế hoạch trước khi thi công:** regex của script dời tệp neo `$`
+  câm trên **246 / 1.309** tệp `.dart` CRLF (8 import gãy im lặng, phép kiểm grep của kế hoạch chỉ bắt 1 / 8); dời `luu_anh_qr`
+  (lẫn Dio) vào `datasources/` là quét 31 đỏ trang Chờ thanh toán. ⚠️ `sed` / `awk` / `od` qua ống trong Git Bash **che `\r`**
+  (đếm ra 0) — đếm CRLF bằng Dart; regex Dart đọc cả tệp đừng neo `$`. `git reset --hard` với `autocrlf=true` đổi LF → CRLF.
+- **Soát từng task bắt thêm:** ca canh bảng tra icon chỉ đỏ khi hoàn tác `saveIcon` (0 chỗ gọi) — viết lại để canh `getIcon`
+  (đường đọc di sản duy nhất); `KIEN_TRUC` mục (2) bảng test quét bị sót khi grep `"33 tệp"` (câu viết "tổng **33**").
+- **Còn lại của báo cáo:** B `notification_prefs` / `MonHang` toJson ở `domain/`, `dong_hang_bien_dong`; mọi hàng C;
+  `other_daos.dart` (ba DAO), `SyncEngine` 2.164 dòng. Câu hỏi mở cho người dùng: `CategoryIconRegistry.saveIcon` 0 chỗ gọi
+  — registry chỉ còn đọc di sản, có gỡ không.
+- Số đo: `flutter test` **7.485 / 10 skip / 0 fail** (HEAD `0620e4d2`), `flutter analyze` 20.
 
 ### ✅ G94 lát 2 — tính năng đơn thanh toán, mã xong 10 / 10 task (2026-10-18 tối) · 🚧 chờ nghiệm thu sandbox
 
