@@ -12,7 +12,7 @@
 /// 4. Bàn phím ẩn thì dưới số tiền là *"Chạm để sửa số tiền"* — không có nó thì không ai biết con số chạm được.
 library;
 
-import 'package:flowmoney/core/ui/bao_che_day_toast.dart';
+import 'package:flowmoney/shared/widgets/bao_che_day_toast.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';

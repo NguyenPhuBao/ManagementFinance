@@ -49,7 +49,7 @@ và `… | xargs cat | wc -l`. `test/` có **652** tệp `*_test.dart` (664 tệ
 ```
 lib/
 ├── main.dart                 điểm vào app + điểm vào engine nền (`chayNenTuChuyenTien`, @pragma)
-├── core/             97 tệp  hạ tầng + điểm ghép — KHÔNG chứa màn hình (15 chủ đề — test quét 25; `core/notification` đã dời 2026-10-15)
+├── core/             96 tệp  hạ tầng + điểm ghép — KHÔNG chứa màn hình (15 chủ đề — test quét 25; `core/notification` đã dời 2026-10-15)
 │   ├── api/           4      DioClient (DI dùng `sl<DioClient>().dio`), AuthInterceptor (gắn token, làm mới, dịch 401 + code; phát lại sau 401 giữ `responseType` · `receiveTimeout` · `cancelToken`), `khung_sse` (bộ tách khung SSE thuần, 2026-10-17)
 │   ├── auth/          3      buoc_dang_xuat (kiểu thuần 4 tệp hạ tầng dùng), PhienDieuPhoi(+That) ← điều phối phiên
 │   ├── category/      1      category_name (normalizeCategoryName — DAO + util dùng)
@@ -63,7 +63,7 @@ lib/
 │   ├── realtime/      5      RealtimeChannel; chỉ realtime_socket.dart import socket_io_client
 │   ├── router/        1      app_router (GoRouter) ← điểm ghép
 │   ├── sync/          9      SyncEngine, normalizer, checkpoint, hai cổng `CongSoDuVi` · `CongViBiGiu` (2026-10-16; `noiBoNgheKetQuaDay` đã về DI)
-│   ├── ui/            4      thong_bao_nhanh (toast), bieu_do_cham, do_chu, bao_che_day_toast
+│   ├── ui/            3      thong_bao_nhanh (toast), bieu_do_cham, do_chu (`bao_che_day_toast` dời về `shared/widgets/` 2026-10-19)
 │   └── utils/         9      CurrencyFormatter, gioi_han_do_dai, so_bang_chu, ngay_trong_cau, khop_ten, `tuan_iso`, `dung_sai_tien` (hàm thuần dùng chung — tiền lệ cho `domain/` mục 4)…
 ├── features/        533 tệp  14 mảng nghiệp vụ, mỗi mảng data / domain / presentation (+ `application/` ở năm mảng: ví · danh mục · hoá đơn · mục tiêu · thông báo)
 │   ├── ai_edge/      83      data 23 · domain 55 · presentation 5 — luật, gói số, tool, SLM runtime, lớp chắn
@@ -80,7 +80,7 @@ lib/
 │   ├── home/          8      domain 1 · presentation 7
 │   ├── notification/ 48      data 17 · domain 11 · application 8 · presentation 12 (widgets/cai_dat_thong_bao/ 6 tệp; luật, bộ quét, bộ nhập dời từ core/notification 2026-10-15)
 │   └── ai_chat/      12      data 4 (datasources/ 1 — SSE trợ lý online; `cong_tac_online`) · domain 2 (`duong_hoi`, `su_kien_online`) · presentation 6 (pages/ 1 · widgets/tro_ly_ai/ 5) — màn Trợ lý AI + trợ lý online (2026-10-17; spike C4 đã gỡ 2026-10-12)
-└── shared/           13 tệp  theme/ 3 (AppTheme, AppColors) · widgets/ 10 (MainShell, chuông, toast…)
+└── shared/           14 tệp  theme/ 3 (AppTheme, AppColors) · widgets/ 11 (MainShell, chuông, toast…)
 ```
 
 Hàng `lib/` · `test/` · `core` · `core/api` · `core/di` · `features/` · `transaction` · `ai_chat` đếm lại bằng máy **2026-10-17 sau trợ lý online** (HEAD `fb92c16d`, `git ls-files … | grep -c '\.dart$'`; `injection_container` bằng `wc -l`); `transaction` 76 → 77 là `data/hoa_don_da_xoa_nguon.dart` của việc 4c (cùng ngày), `ai_chat` 3 → 12 và `core/api` 3 → 4 là của trợ lý online. Các số dưới là của lần đếm trước.

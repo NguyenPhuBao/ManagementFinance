@@ -47,7 +47,7 @@ import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
 import '../bloc/transaction_state.dart';
-import '../../../../core/ui/bao_che_day_toast.dart';
+import '../../../../shared/widgets/bao_che_day_toast.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
 // `BudgetLookup` dời sang lớp nguồn; trang export lại để nơi gọi cũ (`widget.budgetLookup`, test) không đổi import.

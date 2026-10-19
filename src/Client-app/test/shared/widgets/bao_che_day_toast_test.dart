@@ -3,7 +3,7 @@
 /// cho `AppToast`; rời cây thì trả về 0.
 library;
 
-import 'package:flowmoney/core/ui/bao_che_day_toast.dart';
+import 'package:flowmoney/shared/widgets/bao_che_day_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
