@@ -171,7 +171,7 @@ class SyncEngine {
   }
 
   /// Bậc chặn cho bản ghi lỗi vĩnh viễn trong lô vừa gửi — `GuiLoDongBo` đọc qua hàm này lúc gặp lỗi (sau `await`).
-  /// Biểu thức chép nguyên văn từ dòng chọn bậc chặn cũ của `GuiLoDongBo.sendBatch`: chỉ số là `_consecutiveFailures`, KHÔNG trừ một như ở trên.
+  /// Biểu thức chép nguyên văn từ `SyncEngine._sendBatch` cũ (nay `GuiLoDongBo.sendBatch` đọc qua `_bacChan()`): chỉ số là `_consecutiveFailures`, KHÔNG trừ một như ở trên.
   Duration _bacChanHienTai() =>
       _backoffSteps[_consecutiveFailures.clamp(0, _backoffSteps.length - 1)];
 

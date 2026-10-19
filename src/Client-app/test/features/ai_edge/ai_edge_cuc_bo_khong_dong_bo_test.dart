@@ -21,7 +21,7 @@
 ///
 /// ## Vì sao KHÔNG bỏ dòng chú thích (khác test quét 14)
 ///
-/// Một chú thích nhắc tên cột trong `sync_engine.dart` là dấu hiệu ai đó đang
+/// Một chú thích nhắc tên cột trong đường đồng bộ (`lib/core/sync/`) là dấu hiệu ai đó đang
 /// định đưa nó vào. Ở đây mọi lần nhắc đều đáng để dừng lại đọc.
 library;
 

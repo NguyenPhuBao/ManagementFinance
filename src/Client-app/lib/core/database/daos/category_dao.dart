@@ -128,7 +128,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   ///    xoá". Vì thế không dùng [watchAll] (hàm ấy lọc `deletedAt`).
   /// 2. ⚠️ **Lọc theo CỜ `isDefault`, không chỉ theo tài khoản.** `sync_engine`
   ///    quy `is_default = true` thành **`idaccount = 0`**
-  ///    (`ap_du_lieu_keo_ve.dart`, nhánh kéo ví), nên hàng mặc định toàn cục không mang mã tài
+  ///    (`ap_du_lieu_keo_ve.dart`, nhánh kéo danh mục), nên hàng mặc định toàn cục không mang mã tài
   ///    khoản nào. Thiếu vế ấy thì giao dịch trỏ vào chúng **mất tên**.
   ///
   /// Vế thứ hai vốn thiếu ở **cả hai** repository cho tới 2026-09-15, mỗi nơi
