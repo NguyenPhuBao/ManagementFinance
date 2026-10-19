@@ -8,12 +8,22 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/duong_dong_bo.dart';
+
 void main() {
-  const duongDongBo = [
-    'lib/core/sync/sync_engine.dart',
-    'lib/core/sync/cong_vi_bi_giu.dart',
-    'lib/core/sync/sync_payload_normalizer.dart',
-  ];
+  final duongDongBo = tepDuongDongBo();
+
+  test('phép quét thấy đường đồng bộ (có engine, bộ chuẩn hoá, cổng ví bị giữ)', () {
+    expect(
+      duongDongBo,
+      containsAll([
+        'lib/core/sync/sync_engine.dart',
+        'lib/core/sync/sync_payload_normalizer.dart',
+        'lib/core/sync/cong_vi_bi_giu.dart',
+      ]),
+      reason: 'Liệt kê thư mục hỏng (chạy sai thư mục, dấu \\ của Windows) thì các ca dưới xanh vì không đọc gì.',
+    );
+  });
 
   for (final f in duongDongBo) {
     test('$f không nhắc tới cờ', () {

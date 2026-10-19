@@ -27,6 +27,8 @@ import 'package:flowmoney/features/wallet/presentation/bloc/wallet_cubit.dart';
 import 'package:flowmoney/features/wallet/presentation/pages/wallet_list_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
+import '../../helpers/duong_dong_bo.dart';
+
 class _StubAuthRepository implements AuthRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -192,10 +194,15 @@ void main() {
     // Đây cũng là bài học ngược chiều của G28: khi `status` còn là cột cục bộ,
     // **ba** chú thích ở ba tệp khác vẫn nói nó "đi ra máy khác qua
     // `/sync/push`". Chữ thì trôi, test quét thì không.
-    const duongDongBo = [
-      'lib/core/sync/sync_engine.dart',
-      'lib/core/sync/sync_payload_normalizer.dart',
-    ];
+    final duongDongBo = tepDuongDongBo();
+
+    test('phép quét thấy đường đồng bộ (có engine và bộ chuẩn hoá)', () {
+      expect(
+        duongDongBo,
+        containsAll(['lib/core/sync/sync_engine.dart', 'lib/core/sync/sync_payload_normalizer.dart']),
+        reason: 'Liệt kê thư mục hỏng thì các ca dưới xanh vì không đọc gì.',
+      );
+    });
 
     for (final f in duongDongBo) {
       test('$f không nhắc tới cờ', () {
