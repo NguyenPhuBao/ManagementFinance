@@ -25,6 +25,12 @@ DateTime _atDay(int year, int month, int day) {
   return DateTime(year, month, day < lastDay ? day : lastDay);
 }
 
+/// Ngày bắt đầu mặc định của một ngân sách MỚI: ngày 1 của tháng chứa [now], 00:00.
+///
+/// Một định nghĩa cho form tạo (`budget_form.dart`) và đường thêm của repository khi người gọi không truyền ngày (báo
+/// cáo soát kiến trúc 2026-10-18 mục 6, sửa 2026-10-19 — trước đó viết tay ở cả hai chỗ).
+DateTime ngayBatDauMacDinh(DateTime now) => DateTime(now.year, now.month, 1);
+
 /// Nhảy [steps] chu kỳ kể từ [anchor].
 ///
 /// Luôn tính từ **mốc gốc**, không cộng dồn từ kết quả của lần nhảy trước: mốc

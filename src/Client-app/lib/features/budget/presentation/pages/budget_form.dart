@@ -166,7 +166,7 @@ class _BudgetFormState extends State<BudgetForm> {
     _overSpending = b?.overSpending ?? BudgetOverSpending.over;
     _recurrence = b?.recurrence ?? true;
     final now = DateTime.now();
-    _startDate = b?.startDate ?? DateTime(now.year, now.month, 1);
+    _startDate = b?.startDate ?? ngayBatDauMacDinh(now);
     _endDate = b?.endDate;
     _loadSuggestion(_categoryId);
   }

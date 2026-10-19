@@ -133,4 +133,13 @@ void main() {
       );
     });
   });
+
+  group('ngayBatDauMacDinh', () {
+    test('ngày 1 của tháng chứa now, 00:00 — kể cả cuối tháng Hai năm nhuận và cuối năm', () {
+      expect(ngayBatDauMacDinh(DateTime(2024, 2, 29, 23, 59)), DateTime(2024, 2, 1),
+          reason: 'tháng Hai năm nhuận, giờ bị bỏ');
+      expect(ngayBatDauMacDinh(DateTime(2026, 12, 31, 8)), DateTime(2026, 12, 1), reason: 'cuối năm không nhảy sang năm sau');
+      expect(ngayBatDauMacDinh(DateTime(2026, 3, 1)), DateTime(2026, 3, 1), reason: 'đã là ngày 1 thì giữ nguyên');
+    });
+  });
 }

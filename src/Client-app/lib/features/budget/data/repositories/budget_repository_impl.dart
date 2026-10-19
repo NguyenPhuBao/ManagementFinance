@@ -8,6 +8,7 @@ import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../domain/budget_history.dart';
+import '../../domain/budget_period.dart';
 import '../../domain/cua_so_nhin_lai.dart';
 import '../../domain/nhip_chi.dart';
 import '../datasources/budget_local_data_source.dart';
@@ -350,7 +351,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
       thresholdWarningAmount: thresholdWarningAmount,
       thresholdWarningPercent: thresholdWarningPercent,
       overSpending: overSpending,
-      startDate: startDate ?? DateTime(now.year, now.month, 1),
+      startDate: startDate ?? ngayBatDauMacDinh(now),
       endDate: endDate,
       recurrence: recurrence,
       timeRecurrence: timeRecurrence,
