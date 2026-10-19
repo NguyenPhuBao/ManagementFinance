@@ -186,9 +186,10 @@ const ServerHealthPanel = () => {
       if (!data) return;
       setHealth((prev) => ({
         ...prev,
+        environment: data.environment || prev?.environment,
         uptime: {
           uptimeFormatted: data.uptimeFormatted,
-          uptimePercent: Math.min(100, parseFloat(((data.uptimeSeconds / (30 * 24 * 3600)) * 100).toFixed(3))),
+          uptimePercent: typeof data.uptimePercent === 'number' ? data.uptimePercent : (prev?.uptime?.uptimePercent ?? 100),
           startedAt: prev?.uptime?.startedAt || null,
           slaWindowDays: 30,
         },
@@ -265,6 +266,8 @@ const ServerHealthPanel = () => {
     }
   };
 
+  const env = health?.environment;
+  const isCloud = env?.mode === 'cloud';
   const cpu = health?.cpu;
   const ram = health?.ram;
   const eventLoop = health?.eventLoop;
@@ -280,6 +283,20 @@ const ServerHealthPanel = () => {
         <div className="flex items-center gap-2">
           <span className={`w-2.5 h-2.5 rounded-full ${critical ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
           <h3 className="font-title-md font-bold text-on-surface text-sm">{t('serverHealth.title', 'Sức Khỏe Máy Chủ')}</h3>
+          {env && (
+            <span
+              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                isCloud
+                  ? 'bg-sky-50 text-sky-700 border-sky-300'
+                  : 'bg-slate-100 text-slate-700 border-slate-300'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[12px]">
+                {isCloud ? 'cloud' : 'dns'}
+              </span>
+              <span>{env.provider || (isCloud ? 'Cloud Container' : 'Host Server')}</span>
+            </span>
+          )}
         </div>
         <button
           onClick={refreshAll}
@@ -314,8 +331,26 @@ const ServerHealthPanel = () => {
         <>
           {/* CPU / RAM / Event Loop Gauges */}
           <div className="space-y-3">
-            <Gauge label="CPU" value={cpu?.percent ?? 0} max={100} unit="%" warnAt={70} critAt={85} icon="memory_alt" extra={cpu?.cores ? `(${cpu.cores} cores)` : ''} />
-            <Gauge label="RAM" value={ram?.usedMb ?? 0} max={ram?.totalMb ?? 100} unit="MB" warnAt={70} critAt={85} icon="storage" extra={ram?.totalMb ? `(${(ram.totalMb / 1024).toFixed(1)} GB)` : ''} />
+            <Gauge
+              label="CPU"
+              value={cpu?.percent ?? 0}
+              max={100}
+              unit="%"
+              warnAt={70}
+              critAt={85}
+              icon="memory_alt"
+              extra={cpu?.cores ? `(${cpu.cores} ${isCloud ? 'vCPU' : 'cores'})` : ''}
+            />
+            <Gauge
+              label="RAM"
+              value={ram?.usedMb ?? 0}
+              max={ram?.totalMb ?? 100}
+              unit="MB"
+              warnAt={70}
+              critAt={85}
+              icon="storage"
+              extra={ram?.totalMb ? `(${ram.totalMb >= 1024 ? (ram.totalMb / 1024).toFixed(1) + ' GB' : ram.totalMb + ' MB'} ${isCloud ? 'Quota' : 'Host'})` : ''}
+            />
             <Gauge label="Event Loop" value={eventLoop?.lagMs ?? 0} max={200} unit="ms" warnAt={50} critAt={100} icon="speed" />
           </div>
 
