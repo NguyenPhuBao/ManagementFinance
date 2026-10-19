@@ -6,6 +6,19 @@ import { useLanguageSafe } from '../../store/language.context';
 import { classifyAuditAction } from '../../utils/audit-tags.util';
 import { exportToCsv } from '../../utils/csv-exporter.util';
 import { formatFullDateTime } from '../../utils/format';
+import useResizableColumns from '../../hooks/useResizableColumns';
+import ResizableTh from '../../components/common/ResizableTh';
+import TruncateCell from '../../components/common/TruncateCell';
+
+const DEFAULT_AUDIT_COL_WIDTHS = {
+  id: 80,
+  account: 200,
+  request: 260,
+  status: 120,
+  reason: 200,
+  timeReq: 150,
+  timeRes: 150,
+};
 
 const STATUS_CONFIG = {
   Pass: { bg: 'bg-[#dcfce7]', text: 'text-[#166534]', border: 'border-[#86efac]' },
@@ -27,6 +40,12 @@ const AuditLogPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
+
+  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+    tableKey: 'audit_logs',
+    defaultWidths: DEFAULT_AUDIT_COL_WIDTHS,
+    minWidth: 50,
+  });
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -351,16 +370,79 @@ const AuditLogPage = () => {
       {/* Table Card */}
       <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
         <div className="overflow-x-auto min-h-[300px]">
-          <table className="w-full text-left border-collapse min-w-[760px] text-xs">
+          <table className="w-full text-left border-collapse min-w-[760px] text-xs table-fixed">
             <thead>
               <tr className="bg-surface-container-low/60 border-b border-outline-variant">
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] w-16">{t('auditLogs.colId')}</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">{t('auditLogs.colAccount')}</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">{t('auditLogs.colRequest')}</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] text-center w-28">{t('auditLogs.colStatus')}</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">{t('auditLogs.colReason')}</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">{t('auditLogs.colTimeReq')}</th>
-                <th className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">{t('auditLogs.colTimeRes')}</th>
+                <ResizableTh
+                  colKey="id"
+                  width={colWidths.id}
+                  minWidth={60}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]"
+                >
+                  {t('auditLogs.colId')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="account"
+                  width={colWidths.account}
+                  minWidth={120}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]"
+                >
+                  {t('auditLogs.colAccount')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="request"
+                  width={colWidths.request}
+                  minWidth={150}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]"
+                >
+                  {t('auditLogs.colRequest')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="status"
+                  width={colWidths.status}
+                  minWidth={90}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] text-center"
+                >
+                  {t('auditLogs.colStatus')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="reason"
+                  width={colWidths.reason}
+                  minWidth={100}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]"
+                >
+                  {t('auditLogs.colReason')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="timeReq"
+                  width={colWidths.timeReq}
+                  minWidth={110}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap"
+                >
+                  {t('auditLogs.colTimeReq')}
+                </ResizableTh>
+                <ResizableTh
+                  colKey="timeRes"
+                  width={colWidths.timeRes}
+                  minWidth={110}
+                  onResize={startResizing}
+                  onReset={resetColumn}
+                  className="py-3 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap"
+                >
+                  {t('auditLogs.colTimeRes')}
+                </ResizableTh>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/40">
@@ -385,10 +467,10 @@ const AuditLogPage = () => {
                   return (
                     <tr key={displayId} className="hover:bg-surface-container-lowest transition-colors">
                       <td className="py-3 px-4 text-on-surface-variant font-mono font-medium">#{displayId}</td>
-                      <td className="py-3 px-4">
-                        <div className="font-semibold text-on-surface flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-[15px] text-slate-400">account_circle</span>
-                          <span>{log.username || log.account?.username || '—'}</span>
+                      <td className="py-3 px-4 overflow-hidden">
+                        <div className="font-semibold text-on-surface flex items-center gap-1.5 min-w-0">
+                          <span className="material-symbols-outlined text-[15px] text-slate-400 shrink-0">account_circle</span>
+                          <TruncateCell text={log.username || log.account?.username || '—'} className="min-w-0" />
                         </div>
                         <div className="text-[11px] text-on-surface-variant flex items-center gap-1.5 mt-0.5 font-mono">
                           <span>UID: {log.idaccount}</span>
@@ -399,11 +481,11 @@ const AuditLogPage = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-on-surface max-w-[280px]">
+                      <td className="py-3 px-4 text-on-surface overflow-hidden">
                         {(() => {
                           const { tagInfo, cleanAction } = classifyAuditAction(log.request);
                           return (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
                               <span
                                 className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${tagInfo.bg} ${tagInfo.text} ${tagInfo.border} shrink-0`}
                                 title={tagInfo.label}
@@ -411,9 +493,7 @@ const AuditLogPage = () => {
                                 <span className="material-symbols-outlined text-[11px]">{tagInfo.icon}</span>
                                 <span>{tagInfo.tag}</span>
                               </span>
-                              <span className="truncate font-medium text-xs text-on-surface" title={cleanAction}>
-                                {cleanAction}
-                              </span>
+                              <TruncateCell text={cleanAction} className="font-medium text-xs text-on-surface min-w-0" />
                             </div>
                           );
                         })()}
@@ -423,8 +503,8 @@ const AuditLogPage = () => {
                           {t('auditLogs.statuses.' + log.req_status) || log.req_status}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-on-surface-variant max-w-[180px] truncate" title={log.reason || ''}>
-                        {log.reason || '—'}
+                      <td className="py-3 px-4 text-on-surface-variant overflow-hidden">
+                        <TruncateCell text={log.reason || '—'} />
                       </td>
                       <td className="py-3 px-4 text-on-surface-variant whitespace-nowrap font-mono text-[11px]">
                         {fmt(log.timeReq || log.time_req)}

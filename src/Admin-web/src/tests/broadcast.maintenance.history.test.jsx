@@ -44,6 +44,7 @@ vi.mock('../api/admin.api', () => ({
       },
     }),
     cancelScheduledMaintenance: vi.fn().mockResolvedValue({ data: { cancelled: true } }),
+    verifySecurityAction: vi.fn().mockResolvedValue({ data: { verified: true } }),
     getMaintenanceHistory: vi.fn().mockResolvedValue({
       data: {
         data: [
@@ -148,12 +149,14 @@ describe('BroadcastPage - Emergency Maintenance & History Journal Suite', () => 
     const inputReason = screen.getByPlaceholderText(/Nâng cấp cụm máy chủ và tối ưu hóa hệ thống khẩn cấp/i);
     fireEvent.change(inputReason, { target: { value: 'Sự cố nghẽn mạng khẩn cấp' } });
 
-    // 3. Bấm nút đỏ Bảo trì khẩn cấp -> Mở popup
+    // 3. Bấm nút đỏ Bảo trì khẩn cấp -> Mở popup xác thực bảo mật
     const emergencyBtn = screen.getByRole('button', { name: /Bảo trì khẩn cấp/i });
     fireEvent.click(emergencyBtn);
 
-    // 4. Bấm xác nhận trong popup
-    const confirmBtn = await screen.findByRole('button', { name: /Xác nhận kích hoạt/i });
+    // 4. Nhập PIN 6 số và xác thực thực thi
+    const pinInput = screen.getByPlaceholderText(/Nhập mã PIN 6 số/i);
+    fireEvent.change(pinInput, { target: { value: '123456' } });
+    const confirmBtn = await screen.findByRole('button', { name: /Xác thực & Thực thi/i });
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {

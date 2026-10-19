@@ -7,6 +7,20 @@ import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 import Pagination from '../../components/common/Pagination';
 import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
+import useResizableColumns from '../../hooks/useResizableColumns';
+import ResizableTh from '../../components/common/ResizableTh';
+import TruncateCell from '../../components/common/TruncateCell';
+
+const DEFAULT_BROADCAST_COL_WIDTHS = {
+  id: 60,
+  type: 110,
+  user: 160,
+  reason: 240,
+  start: 140,
+  end: 140,
+  duration: 110,
+  status: 120,
+};
 
 const BROADCAST_LEVELS = [
   { value: 'info', color: 'text-blue-500', icon: 'info' },
@@ -19,6 +33,12 @@ const BroadcastPage = () => {
   const socket = useSocket();
   const { t } = useLanguageSafe();
   const [activeTab, setActiveTab] = useState('maintenance'); // 'maintenance' | 'broadcast'
+
+  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+    tableKey: 'broadcast_history',
+    defaultWidths: DEFAULT_BROADCAST_COL_WIDTHS,
+    minWidth: 50,
+  });
 
   // --- State Quản trị Bảo trì ---
   const [maintenance, setMaintenance] = useState({
@@ -796,17 +816,89 @@ const BroadcastPage = () => {
 
             {/* Bảng Dữ Liệu */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse table-fixed">
                 <thead>
                   <tr className="border-b border-outline-variant text-[11px] text-on-surface-variant uppercase tracking-wider bg-surface-container-lowest font-semibold">
-                    <th className="py-2.5 px-3">#</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colType', 'Loại')}</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colUser', 'Người kích hoạt')}</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colReason', 'Lý do / Thông điệp')}</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colStart', 'Bắt đầu')}</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colEnd', 'Kết thúc')}</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colDuration', 'Thời lượng')}</th>
-                    <th className="py-2.5 px-3 text-right">{t('broadcast.history.colStatus', 'Trạng thái')}</th>
+                    <ResizableTh
+                      colKey="id"
+                      width={colWidths.id}
+                      minWidth={40}
+                      onResize={startResizing}
+                      onReset={resetColumn}
+                      className="py-2.5 px-3"
+                    >
+                      #
+                    </ResizableTh>
+                    <ResizableTh
+                      colKey="type"
+                      width={colWidths.type}
+                      minWidth={90}
+                      onResize={startResizing}
+                      onReset={resetColumn}
+                      className="py-2.5 px-3"
+                    >
+                      {t('broadcast.history.colType', 'Loại')}
+                    </ResizableTh>
+                    <ResizableTh
+                      colKey="user"
+                      width={colWidths.user}
+                      minWidth={120}
+                      onResize={startResizing}
+                      onReset={resetColumn}
+                      className="py-2.5 px-3"
+                    >
+                      {t('broadcast.history.colUser', 'Người kích hoạt')}
+                    </ResizableTh>
+                    <ResizableTh
+                      colKey="reason"
+                      width={colWidths.reason}
+                      minWidth={140}
+                      onResize={startResizing}
+                      onReset={resetColumn}
+                      className="py-2.5 px-3"
+                    >
+                      {t('broadcast.history.colReason', 'Lý do / Thông điệp')}
+                    </ResizableTh>
+                    <ResizableTh
+                      colKey="start"
+                      width={colWidths.start}
+                      minWidth={110}
+                      onResize={startResizing}
+                      onReset={resetColumn}
+                      className="py-2.5 px-3"
+                    >
+                      {t('broadcast.history.colStart', 'Bắt đầu')}
+                    </ResizableTh>
+                    <ResizableTh
+                      colKey="end"
+                      width={colWidths.end}
+                      minWidth={110}
+                      onResize={startResizing}
+                      onReset={resetColumn}
+                      className="py-2.5 px-3"
+                    >
+                      {t('broadcast.history.colEnd', 'Kết thúc')}
+                    </ResizableTh>
+                    <ResizableTh
+                      colKey="duration"
+                      width={colWidths.duration}
+                      minWidth={90}
+                      onResize={startResizing}
+                      onReset={resetColumn}
+                      className="py-2.5 px-3"
+                    >
+                      {t('broadcast.history.colDuration', 'Thời lượng')}
+                    </ResizableTh>
+                    <ResizableTh
+                      colKey="status"
+                      width={colWidths.status}
+                      minWidth={100}
+                      onResize={startResizing}
+                      onReset={resetColumn}
+                      className="py-2.5 px-3 text-right"
+                    >
+                      {t('broadcast.history.colStatus', 'Trạng thái')}
+                    </ResizableTh>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/50">
@@ -851,14 +943,14 @@ const BroadcastPage = () => {
                               <span>{isEmergency ? t('broadcast.history.typeEmergency', 'Khẩn cấp') : t('broadcast.history.typeScheduled', 'Theo lịch')}</span>
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-medium text-on-surface whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1.5 font-semibold text-slate-800">
-                              <span className="material-symbols-outlined text-[15px] text-slate-500">account_circle</span>
-                              {row.activated_by || 'system'}
+                          <td className="py-3 px-3 font-medium text-on-surface overflow-hidden">
+                            <span className="inline-flex items-center gap-1.5 font-semibold text-slate-800 min-w-0 max-w-full">
+                              <span className="material-symbols-outlined text-[15px] text-slate-500 shrink-0">account_circle</span>
+                              <TruncateCell text={row.activated_by || 'system'} className="min-w-0" />
                             </span>
                           </td>
-                          <td className="py-3 px-3 max-w-[280px] truncate" title={row.reason}>
-                            <span className="text-on-surface">{row.reason}</span>
+                          <td className="py-3 px-3 overflow-hidden">
+                            <TruncateCell text={row.reason} className="text-on-surface" />
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap text-on-surface-variant text-[11px]">
                             {row.started_at ? formatDateTime(row.started_at) : '—'}

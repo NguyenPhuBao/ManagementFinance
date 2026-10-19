@@ -4273,4 +4273,26 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - Backend: Unit test `tests/unit/permission.4pillars.service.test.js` (5/5 tests pass), Integration test `tests/integration/admin.permission.api.test.js` (5/5 tests pass). Toàn bộ Backend: **389/389 tests PASS**.
   - Admin-web: Unit & Integration test 2 tầng `src/tests/permission.4pillars.page.test.jsx` (7/7 tests pass), `src/tests/permission.page.test.jsx` (5/5 tests pass), `src/tests/phase2.i18n.test.jsx` (5/5 tests pass). Toàn bộ Admin-web 27 file test PASS 100%.
 
+### 4.11. Tính Năng Co Dãn Cột Kiểu Excel & Cắt Dài Văn Bản Dấu Ba Chấm Trên Tất Cả Các Bảng Admin-web (2026-10-19)
+- **Tài liệu Thiết kế & Kế hoạch Thực thi:**
+  - Thiết kế: [`docs/superpowers/specs/2026-10-19-excel-column-resize-design.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/superpowers/specs/2026-10-19-excel-column-resize-design.md)
+  - Kế hoạch: [`docs/superpowers/plans/2026-10-19-excel-column-resize-implementation-plan.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/superpowers/plans/2026-10-19-excel-column-resize-implementation-plan.md)
+- **Kiến Trúc Component & Hook Tái Sử Dụng:**
+  - `src/Admin-web/src/hooks/useResizableColumns.js`: Custom hook quản lý state độ rộng cột (`widths`), lưu trữ và tự động đồng bộ LocalStorage theo khóa `admin_tbl_widths_<tableKey>`, giới hạn kích thước tối thiểu an toàn (`minWidth`), hỗ trợ kéo dãn chuột và nhấp đúp để khôi phục kích thước ban đầu (`resetColumn`).
+  - `src/Admin-web/src/components/common/ResizableTh.jsx`: Thẻ header cột dạng chuẩn Excel có thanh vạch phân cách kéo dãn (`cursor-col-resize`), tuân thủ chuẩn ARIA (`role="separator"`, `aria-orientation="vertical"`), hỗ trợ kéo mượt mà trên toàn bộ cửa sổ (`window.mousemove`, `window.mouseup`) và double-click để reset.
+  - `src/Admin-web/src/components/common/TruncateCell.jsx`: Component bọc dữ liệu ô bảng, áp dụng chuẩn CSS `truncate` (hiển thị dấu ba chấm `...` khi nội dung vượt quá kích thước cột) và tự động gắn thuộc tính tooltip native `title` hiển thị đầy đủ văn bản khi rê chuột.
+- **Phạm Vi Triển Khai Toàn Diện (Toàn Bộ Bảng Admin-web):**
+  1. `UserListPage.jsx`: Quản lý danh sách người dùng (`id`, `user`, `role`, `tier`, `status`, `createdAt`, `actions`).
+  2. `AuditLogPage.jsx`: Nhật ký kiểm toán hệ thống (`user`, `role`, `action`, `reason`, `ip`, `time`, `reqStatus`).
+  3. `PaymentHistoryPage.jsx`: Lịch sử giao dịch thanh toán Premium (`orderCode`, `user`, `package`, `amount`, `paymentMethod`, `status`, `createdAt`, `actions`).
+  4. `CategoryPage.jsx`: Quản lý danh mục thu chi mặc định (`name`, `type`, `color`, `icon`, `status`, `actions`).
+  5. `BroadcastPage.jsx`: Lịch sử bảo trì hệ thống và thông báo phát sóng (`status`, `reason`, `activatedBy`, `start`, `end`, `actions`).
+  6. `AIOpsPage.jsx`: Bảng Ma Trận Phòng Vệ & Cách Ly Quarantine Matrix (`status`, `actor`, `vector`, `metric`, `rootCause`, `mitigation`, `defense`).
+  7. `DashboardPage.jsx`: Bảng Hoạt Động Gần Đây / Realtime Audit Activities (`user`, `action`, `reason`, `status`, `time`).
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+  - Unit tests: `src/tests/use-resizable-columns.test.jsx` (4/4 tests pass), `src/tests/resizable-table-components.test.jsx` (3/3 tests pass).
+  - E2E Integration test 2 tầng: `src/tests/excel-column-resizing.e2e.test.jsx` (7/7 tests pass) kiểm tra cả Tầng 1 (Render handle `cursor-col-resize`, text truncate `...`, native title tooltip, double-click reset) và Tầng 2 (Kéo dãn cập nhật width trên DOM, lưu thực tế vào LocalStorage, duy trì khi tải lại trang, chặn co dãn dưới minWidth).
+  - Toàn bộ test suite các trang liên quan đều PASS 100%. Production build (`npm run build`) thành công sạch sẽ.
+
+
 
