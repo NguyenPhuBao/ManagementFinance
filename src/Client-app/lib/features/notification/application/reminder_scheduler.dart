@@ -227,7 +227,7 @@ class ReminderScheduler {
         prefs.batNhom(NotificationGroup.goal)) {
       for (final g in await tai(idaccount, at)) {
         if (g.isDeleted || !g.autoDepositEnabled) continue;
-        if (g.isCompleted || g.remainingAmount <= 0) continue;
+        if (g.daHoanThanh) continue;
 
         final ky = kyKeTiep(
           mocNeo: g.timeCycleTakeMoney,

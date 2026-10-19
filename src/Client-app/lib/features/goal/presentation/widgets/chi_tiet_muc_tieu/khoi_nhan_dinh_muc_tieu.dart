@@ -27,7 +27,7 @@ class KhoiNhanDinhMucTieu extends StatelessWidget {
     // đóng băng. Không có bộ lập lịch nào trích tiền, nên nhịp thật do chính
     // các lần nạp tay quyết định — và đó mới là thứ đáng hiển thị.
     final String tieuDe;
-    if (goal.isCompleted || goal.remainingAmount <= 0) {
+    if (goal.daHoanThanh) {
       tieuDe = 'ĐÃ ĐẠT MỤC TIÊU';
     } else if (duBao == null) {
       tieuDe = 'CHƯA ĐỦ DỮ LIỆU ĐỂ DỰ BÁO';
@@ -45,7 +45,7 @@ class KhoiNhanDinhMucTieu extends StatelessWidget {
     };
 
     final String mota;
-    if (goal.isCompleted || goal.remainingAmount <= 0) {
+    if (goal.daHoanThanh) {
       mota = 'Không cần tích thêm đồng nào.';
     } else if (thucTe == null) {
       // Lý do là CHƯA ĐỦ THỜI GIAN, không phải chưa đủ số lần nạp — xem

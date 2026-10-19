@@ -334,8 +334,7 @@ List<CamKet> _camKetMucTieu(
   for (final g in mucTieu) {
     if (g.isDeleted ||
         !g.autoDepositEnabled ||
-        g.daHoanThanh ||
-        g.remainingAmount <= 0) {
+        g.daHoanThanh) {
       continue;
     }
     final nguonId = g.autoDepositWalletId!;

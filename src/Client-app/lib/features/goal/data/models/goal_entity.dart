@@ -280,7 +280,7 @@ class GoalEntity {
   /// bắt đầu, hoặc kỳ dài 0 ngày. Im lặng đúng hơn là báo bừa: một thông báo
   /// "trễ tiến độ" sai làm người dùng mất tin vào mọi thông báo khác.
   bool isBehindSchedule(DateTime now) {
-    if (isCompleted || progress >= 1.0) return false;
+    if (daHoanThanh) return false;
 
     final batDau = startDate;
     if (batDau == null) return false;

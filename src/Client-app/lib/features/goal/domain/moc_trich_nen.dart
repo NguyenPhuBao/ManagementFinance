@@ -20,7 +20,7 @@ import 'goal_auto_deposit.dart';
   }
 
   for (final g in goals) {
-    if (g.isDeleted || !g.autoDepositEnabled || g.isCompleted || g.remainingAmount <= 0) continue;
+    if (g.isDeleted || !g.autoDepositEnabled || g.daHoanThanh) continue;
     coTuDong = true;
     final k = kyKeTiep(
       mocNeo: g.timeCycleTakeMoney,

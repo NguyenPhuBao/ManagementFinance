@@ -626,6 +626,8 @@ dài thêm mãi. Nay chia hai tab theo đúng lối của Ngân sách, nhãn man
 `GoalEntity.daHoanThanh` = `isCompleted || progress >= 1.0` là **định nghĩa duy
 nhất**; luật thông báo `_goalCandidates` và bộ chia tab `chiaMucTieu` đều gọi nó.
 Trước đây mỗi nơi tự viết lại cùng biểu thức — hai bản sao chờ ngày lệch.
+Từ 2026-10-19 bộ trích tự động, lịch nhắc, mốc chạy nền, khối Nhận xét chi tiết mục tiêu và dự báo 30 ngày
+đều gọi getter này; test quét 30 (`test/features/goal/da_hoan_thanh_mot_noi_test.dart`) canh.
 
 Cần cả hai vế: cờ được ghi lúc nạp/rút, còn `progress >= 1.0` bắt ca cờ chưa kịp
 ghi **và** bắt mục tiêu 0 đồng (nơi `progress` trả thẳng `1.0`).

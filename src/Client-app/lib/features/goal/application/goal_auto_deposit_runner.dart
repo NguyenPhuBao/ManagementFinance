@@ -44,7 +44,7 @@ class GoalAutoDepositRunner {
     for (final row in await db.goalDao.getAll(idaccount)) {
       final goal = GoalEntity.fromDrift(row);
       if (goal.isDeleted || !goal.autoDepositEnabled) continue;
-      if (goal.isCompleted || goal.remainingAmount <= 0) continue;
+      if (goal.daHoanThanh) continue;
 
       // Mỗi mục tiêu độc lập: một cấu hình hỏng không được chặn những mục tiêu
       // còn lại, nếu không một lỗi lẻ làm cả tính năng ngừng chạy trong im
