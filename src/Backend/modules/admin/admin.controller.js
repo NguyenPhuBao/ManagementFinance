@@ -269,6 +269,17 @@ const adminController = {
       return ResponseHandler.error(res, error.message, statusCode);
     }
   },
+
+  async verifySecurityAction(req, res) {
+    try {
+      const result = await adminService.verifySecurityAction(req.body, req.user);
+      return ResponseHandler.success(res, result, 'Xác thực hành động bảo mật thành công');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('verifySecurityAction failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
 };
 
 module.exports = adminController;

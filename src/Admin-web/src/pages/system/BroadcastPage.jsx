@@ -6,6 +6,7 @@ import { formatDateTime } from '../../utils/format';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 import Pagination from '../../components/common/Pagination';
+import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 
 const BROADCAST_LEVELS = [
   { value: 'info', color: 'text-blue-500', icon: 'info' },
@@ -1056,54 +1057,21 @@ const BroadcastPage = () => {
         </div>
       )}
 
-      {/* POPUP MODAL XÁC NHẬN BẢO TRÌ KHẨN CẤP */}
-      {showEmergencyConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-red-200 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-[24px]">warning</span>
-              </div>
-              <div>
-                <h3 className="font-bold text-base text-gray-900 m-0">
-                  {t('broadcast.schedule.emergencyModal.title', 'Xác nhận BẢO TRÌ KHẨN CẤP')}
-                </h3>
-                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                  {t('broadcast.schedule.emergencyModal.desc', 'Bạn có chắc chắn muốn kích hoạt chế độ BẢO TRÌ KHẨN CẤP ngay lập tức không? Toàn bộ khách hàng sẽ bị ngắt kết nối và nhận cảnh báo khẩn cấp.')}
-                </p>
-              </div>
-            </div>
-
-            {scheduleReason && (
-              <div className="bg-red-50 border border-red-100 rounded-lg p-2.5 text-xs text-red-950 font-medium">
-                <span className="font-bold">Lý do:</span> {scheduleReason}
-              </div>
-            )}
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowEmergencyConfirmModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
-              >
-                {t('common.cancel', 'Hủy')}
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  setShowEmergencyConfirmModal(false);
-                  await handleConfirmEmergencyMaintenance();
-                }}
-                disabled={actionLoading}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
-              >
-                <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                <span>{actionLoading ? t('common.processing') : t('broadcast.schedule.emergencyModal.confirmBtn', 'Xác nhận kích hoạt')}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* POPUP MODAL XÁC THỰC MÃ PIN / MẬT KHẨU BẢO TRÌ KHẨN CẤP */}
+      <SecurityConfirmModal
+        isOpen={showEmergencyConfirmModal}
+        onClose={() => setShowEmergencyConfirmModal(false)}
+        actionType="EMERGENCY_MAINTENANCE"
+        actionDescription={
+          scheduleReason
+            ? `Kích hoạt chế độ BẢO TRÌ KHẨN CẤP toàn hệ thống (Lý do: ${scheduleReason})`
+            : 'Kích hoạt chế độ BẢO TRÌ KHẨN CẤP toàn hệ thống. Mọi người dùng sẽ bị chặn truy cập và nhận thông báo khẩn.'
+        }
+        onSuccess={async () => {
+          setShowEmergencyConfirmModal(false);
+          await handleConfirmEmergencyMaintenance();
+        }}
+      />
     </div>
   );
 };

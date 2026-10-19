@@ -4,6 +4,7 @@ import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
 import UserDetailModal from '../../components/common/UserDetailModal';
 import Pagination from '../../components/common/Pagination';
+import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 
@@ -30,6 +31,7 @@ const UserListPage = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
   const [detailUserId, setDetailUserId] = useState(null);
+  const [showDeleteSecurityModal, setShowDeleteSecurityModal] = useState(false);
 
   const [filter, setFilter] = useState({
     location: 'all',
@@ -343,7 +345,7 @@ const UserListPage = () => {
               <button
                 disabled={deletingUser}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                onClick={confirmDelete}
+                onClick={() => setShowDeleteSecurityModal(true)}
               >
                 {deletingUser && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
                 {t('users.deleteModal.confirmBtn')}
@@ -986,10 +988,21 @@ const UserListPage = () => {
         </div>
       )}
 
-      {/* User Detail Modal */}
-      {detailUserId && (
-        <UserDetailModal userId={detailUserId} onClose={() => setDetailUserId(null)} />
-      )}
+      {/* Security Re-Authentication Modal for Soft Delete User */}
+      <SecurityConfirmModal
+        isOpen={showDeleteSecurityModal}
+        onClose={() => setShowDeleteSecurityModal(false)}
+        actionType="DELETE_USER"
+        actionDescription={
+          userToDelete
+            ? `Xác nhận xóa mềm tài khoản người dùng ${userToDelete.name} (@${userToDelete.username})`
+            : 'Xác nhận xóa người dùng'
+        }
+        onSuccess={() => {
+          setShowDeleteSecurityModal(false);
+          confirmDelete();
+        }}
+      />
     </>
   );
 };

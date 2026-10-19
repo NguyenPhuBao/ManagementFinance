@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import paymentApi from '../../api/payment.api';
 import Pagination from '../../components/common/Pagination';
+import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useLanguageSafe } from '../../store/language.context';
 import useSocket from '../../hooks/useSocket';
 
@@ -106,6 +107,7 @@ const PaymentHistoryPage = () => {
     refund_proof: '',
   });
   const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [showRefundSecurityModal, setShowRefundSecurityModal] = useState(false);
 
   // Fetch package types from DB on mount
   useEffect(() => {
@@ -417,9 +419,16 @@ const PaymentHistoryPage = () => {
     });
   };
 
-  // Submit Refund Form
-  const handleSubmitRefund = async (e) => {
+  // Initiate Refund Form (mở Security Confirm Modal yêu cầu xác thực PIN)
+  const handleInitiateRefund = (e) => {
     e.preventDefault();
+    if (!refundTargetOrder) return;
+    if (!refundForm.refunded_amount || Number(refundForm.refunded_amount) <= 0) return;
+    setShowRefundSecurityModal(true);
+  };
+
+  // Execute Refund sau khi đã xác thực PIN / Mật khẩu thành công
+  const handleExecuteRefund = async () => {
     if (!refundTargetOrder) return;
     setRefundSubmitting(true);
     try {
@@ -1357,7 +1366,7 @@ const PaymentHistoryPage = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitRefund} className="p-6 space-y-4">
+            <form onSubmit={handleInitiateRefund} className="p-6 space-y-4">
               <div className="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant text-xs space-y-1.5">
                 <div className="flex justify-between">
                   <span className="text-on-surface-variant">{t('payments.refundModal.orderCode')}:</span>
@@ -1785,6 +1794,21 @@ const PaymentHistoryPage = () => {
           </div>
         </div>
       )}
+      {/* Security Re-Authentication Modal for Refund Action */}
+      <SecurityConfirmModal
+        isOpen={showRefundSecurityModal}
+        onClose={() => setShowRefundSecurityModal(false)}
+        actionType="REFUND_ORDER"
+        actionDescription={
+          refundTargetOrder
+            ? `Xác nhận hoàn tiền ${formatVnd(refundForm.refunded_amount)} cho đơn hàng #${refundTargetOrder.order_code}`
+            : 'Xác nhận hoàn tiền'
+        }
+        onSuccess={() => {
+          setShowRefundSecurityModal(false);
+          handleExecuteRefund();
+        }}
+      />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { TIME_FILTERS, TIME_FILTER_LABELS, STORAGE_KEYS } from '../../utils/cons
 import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
 import ServerHealthPanel from '../../components/common/ServerHealthPanel';
+import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useLanguageSafe } from '../../store/language.context';
 
 const STATUS_CONFIG = {
@@ -454,6 +455,48 @@ const DashboardPage = () => {
   const [loadingActivities, setLoadingActivities] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
 
+  // Bảo trì khẩn cấp toàn hệ thống (đồng bộ với BroadcastPage & CSDL)
+  const [maintenanceStatus, setMaintenanceStatus] = useState({ active: false, reason: '', isEmergency: true });
+  const [showMaintenanceSecurityModal, setShowMaintenanceSecurityModal] = useState(false);
+  const [togglingMaintenance, setTogglingMaintenance] = useState(false);
+
+  // Fetch trạng thái bảo trì khi mount
+  useEffect(() => {
+    let isMounted = true;
+    const fetchMaintenance = async () => {
+      try {
+        const res = await adminApi.getMaintenanceStatus();
+        const data = res?.data || res;
+        if (isMounted && data) {
+          setMaintenanceStatus(data);
+        }
+      } catch (err) {
+        console.warn('[Dashboard] Lỗi tải trạng thái bảo trì:', err);
+      }
+    };
+    fetchMaintenance();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const executeMaintenanceToggle = async (nextActive) => {
+    setTogglingMaintenance(true);
+    try {
+      const res = await adminApi.setMaintenanceStatus({
+        active: nextActive,
+        reason: nextActive ? 'Bảo trì khẩn cấp kích hoạt trực tiếp từ Dashboard' : '',
+        isEmergency: true,
+      });
+      const data = res?.data || res;
+      if (data) setMaintenanceStatus(data);
+    } catch (err) {
+      console.error('[Dashboard] Lỗi thao tác bảo trì:', err);
+    } finally {
+      setTogglingMaintenance(false);
+    }
+  };
+
   // Helper tính danh sách số trang thông minh (tối đa 3 trang quanh trang hiện tại + ...)
   const getPageNumbers = (curr, total) => {
     if (total <= 5) {
@@ -663,14 +706,20 @@ const DashboardPage = () => {
       });
     };
 
+    const handleMaintenanceChanged = (mState) => {
+      if (mState) setMaintenanceStatus(mState);
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('audit_activity', handleAuditActivity);
+    socket.on('admin.maintenance_changed', handleMaintenanceChanged);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('audit_activity', handleAuditActivity);
+      socket.off('admin.maintenance_changed', handleMaintenanceChanged);
     };
   }, [socket, activityLimit]);
 
@@ -793,6 +842,36 @@ const DashboardPage = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
+              {/* Nút Kích hoạt / Tắt Bảo trì khẩn cấp toàn hệ thống */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (maintenanceStatus.active) {
+                    executeMaintenanceToggle(false);
+                  } else {
+                    setShowMaintenanceSecurityModal(true);
+                  }
+                }}
+                disabled={togglingMaintenance}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg border font-label-md text-[13px] font-bold shadow-sm transition-all duration-200 cursor-pointer disabled:opacity-50 ${
+                  maintenanceStatus.active
+                    ? 'bg-rose-600 text-white border-rose-700 animate-pulse hover:bg-rose-700'
+                    : 'bg-white border-rose-300 text-rose-600 hover:bg-rose-50 hover:border-rose-400'
+                }`}
+                title={maintenanceStatus.active ? 'Bảo trì khẩn cấp đang bật - Nhấn để tắt' : 'Kích hoạt chế độ Bảo trì khẩn cấp toàn hệ thống'}
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  {maintenanceStatus.active ? 'emergency_home' : 'warning'}
+                </span>
+                <span>
+                  {togglingMaintenance
+                    ? 'Đang xử lý...'
+                    : maintenanceStatus.active
+                    ? 'ĐANG BẢO TRÌ KHẨN CẤP'
+                    : 'Bảo trì khẩn cấp'}
+                </span>
+              </button>
+
               {/* Bộ lọc nhanh: Hôm nay, 7 Ngày, 1 Tháng, 1 Năm */}
               <div className="flex bg-white p-1 rounded-lg border border-outline-variant shadow-sm">
                   {Object.entries(TIME_FILTER_LABELS).map(([key, label]) => {
@@ -1256,11 +1335,21 @@ const DashboardPage = () => {
                   <p className="font-title-lg font-bold text-secondary m-0">
                     {(requestStats.summary?.total || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitReq')}</span>
                   </p>
-              </div>
           </div>
       </div>
     </div>
-    </>
+    {/* Security Re-Authentication Modal for Emergency Maintenance from Dashboard */}
+    <SecurityConfirmModal
+      isOpen={showMaintenanceSecurityModal}
+      onClose={() => setShowMaintenanceSecurityModal(false)}
+      actionType="EMERGENCY_MAINTENANCE"
+      actionDescription="Kích hoạt chế độ BẢO TRÌ KHẨN CẤP toàn hệ thống từ Dashboard. Mọi phiên người dùng sẽ bị chặn và nhận thông báo khẩn."
+      onSuccess={async () => {
+        setShowMaintenanceSecurityModal(false);
+        await executeMaintenanceToggle(true);
+      }}
+    />
+  </>
   );
 };
 

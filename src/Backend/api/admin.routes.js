@@ -44,6 +44,7 @@ router.delete('/system/maintenance/schedule', adminController.cancelScheduledMai
 router.get('/system/maintenance/history', adminController.getMaintenanceHistory);
 router.get('/system/health', adminController.getSystemHealth);
 router.get('/audit-logs', adminController.getAuditLogs);
+router.post('/verify-security-action', adminController.verifySecurityAction);
 
 // Quản lý người dùng
 router.get('/getuser', adminController.getUsers);
