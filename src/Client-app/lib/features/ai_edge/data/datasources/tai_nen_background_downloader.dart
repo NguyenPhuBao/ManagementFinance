@@ -1,4 +1,4 @@
-// lib/features/ai_edge/data/tai_nen_background_downloader.dart
+// lib/features/ai_edge/data/datasources/tai_nen_background_downloader.dart
 /// Bản [NguonTaiNen] thật — bọc `background_downloader`.
 ///
 /// Tệp **duy nhất** của dự án import gói ấy, cùng khuôn `slm_runtime.dart` với

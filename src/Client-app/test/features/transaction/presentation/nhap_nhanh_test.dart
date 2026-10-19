@@ -8,8 +8,8 @@ library;
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
-import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/phien_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/slm_runtime.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/category/data/goi_y_phan_hoi_store.dart';
 import 'package:flowmoney/features/category/data/models/category_entity.dart';

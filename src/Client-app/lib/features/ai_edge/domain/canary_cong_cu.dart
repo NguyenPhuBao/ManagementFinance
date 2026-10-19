@@ -60,7 +60,7 @@ class LanThoat {
 }
 
 /// Nguồn "vì sao lần trước app chết" — giao diện thuần; bản thật nói chuyện
-/// với `MainActivity` qua kênh native (`data/nguon_ly_do_thoat.dart`).
+/// với `MainActivity` qua kênh native (`data/datasources/nguon_ly_do_thoat.dart`).
 abstract class NguonLyDoThoat {
   /// Các lần tiến trình của app chết gần đây, theo bất kỳ thứ tự nào. `null`
   /// là **không biết**: Android 10 trở xuống, nền tảng khác, hoặc kênh lỗi.

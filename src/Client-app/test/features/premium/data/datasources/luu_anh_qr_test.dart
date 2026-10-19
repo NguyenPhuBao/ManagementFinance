@@ -2,7 +2,7 @@
 /// tham số chỉ hiện ra thành "bấm Lưu mà chẳng thấy gì" — hợp đồng gọi thì kiểm được.
 library;
 
-import 'package:flowmoney/features/premium/data/luu_anh_qr.dart';
+import 'package:flowmoney/features/premium/data/datasources/luu_anh_qr.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 

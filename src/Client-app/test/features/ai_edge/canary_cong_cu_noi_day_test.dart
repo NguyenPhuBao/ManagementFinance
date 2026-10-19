@@ -13,14 +13,14 @@ library;
 
 import 'dart:io';
 
-import 'package:flowmoney/features/ai_edge/data/nguon_ly_do_thoat.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/nguon_ly_do_thoat.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 String _doc(String duongDan) => File(duongDan).readAsStringSync();
 
 void main() {
   test('runtime thật: mở phiên hỏi daTat(), lượt sinh đi qua quaCanary', () {
-    final s = _doc('lib/features/ai_edge/data/slm_runtime.dart');
+    final s = _doc('lib/features/ai_edge/data/datasources/slm_runtime.dart');
     expect(s, contains('daTat()'),
         reason: 'không hỏi thì máy đã biết là sập vẫn mở phiên có tool');
     expect(s, contains('throw const BacCongCuDaTat()'),

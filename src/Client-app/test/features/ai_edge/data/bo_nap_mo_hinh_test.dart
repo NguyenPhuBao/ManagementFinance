@@ -85,7 +85,7 @@ void main() {
   });
 
   test('⭐ nối dây: docAnh / chepLoi / moHinhSan cùng đi qua đường nạp chung, không còn khối inline cũ', () {
-    final s = File('lib/features/ai_edge/data/slm_runtime.dart').readAsStringSync();
+    final s = File('lib/features/ai_edge/data/datasources/slm_runtime.dart').readAsStringSync();
     expect(s, contains('CanMoHinh.anh'), reason: 'docAnh phải đi qua luật nạp chung');
     expect(s, contains('CanMoHinh.am'), reason: 'chepLoi phải đi qua luật nạp chung');
     expect(s, contains('CanMoHinh.chu'), reason: 'moHinhSan phải đi qua luật nạp chung (nhánh chu của quyetDinhNap)');

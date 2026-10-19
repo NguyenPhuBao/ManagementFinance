@@ -12,7 +12,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../ai_edge/data/slm_runtime.dart';
+import '../../ai_edge/data/datasources/slm_runtime.dart';
 import '../domain/doc_anh_gemma.dart';
 
 /// Đo Realme 2026-10-08 (CPU, Mali): 21–42 s một ảnh; GPU OnePlus 3,7–11 s. Trần rộng gấp đôi lượt chậm nhất đã đo.

@@ -57,8 +57,8 @@ import '../domain/ket_luan_so_sanh.dart';
 import '../domain/kiem_cau_tra_loi.dart';
 import '../domain/slm_prompt.dart';
 import 'bo_cong_cu.dart';
-import 'phien_cong_cu.dart';
-import 'slm_runtime.dart';
+import 'datasources/phien_cong_cu.dart';
+import 'datasources/slm_runtime.dart';
 
 Stream<SuKienGac> hoiBangCongCu(
   String cauHoi, {

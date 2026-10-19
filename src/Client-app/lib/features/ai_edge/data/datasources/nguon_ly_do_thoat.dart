@@ -1,4 +1,4 @@
-// lib/features/ai_edge/data/nguon_ly_do_thoat.dart
+// lib/features/ai_edge/data/datasources/nguon_ly_do_thoat.dart
 /// Bản thật của [NguonLyDoThoat] — nói chuyện với `MainActivity` qua kênh
 /// [kKenhLyDoThoat] (bước 1b, 2026-09-23).
 ///
@@ -13,7 +13,7 @@ library;
 
 import 'package:flutter/services.dart';
 
-import '../domain/canary_cong_cu.dart';
+import '../../domain/canary_cong_cu.dart';
 
 const String kKenhLyDoThoat = 'flowmoney/ly_do_thoat';
 

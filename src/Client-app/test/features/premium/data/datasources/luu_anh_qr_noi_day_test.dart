@@ -5,7 +5,7 @@ library;
 
 import 'dart:io';
 
-import 'package:flowmoney/features/premium/data/luu_anh_qr.dart';
+import 'package:flowmoney/features/premium/data/datasources/luu_anh_qr.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

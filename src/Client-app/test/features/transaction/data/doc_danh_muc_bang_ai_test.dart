@@ -2,8 +2,8 @@
 /// 2026-10-08: "AI chọn danh mục, gọi Gemma lần hai"). Mọi đường hỏng trả `null` — form đoán bằng từ khoá như cũ.
 library;
 
-import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
-import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/phien_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/slm_runtime.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/transaction/data/doc_danh_muc_bang_ai.dart';
 import 'package:flutter_test/flutter_test.dart';

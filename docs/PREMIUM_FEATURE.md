@@ -96,8 +96,9 @@ data/    models/trang_thai_goi.dart (TrangThaiGoi · laPremium(now) · soNgayCon
          repositories/goi_repository.dart (kho thắng type · lamMoi không ném · resumed giãn 5' · socket hỏi ngay)
          repositories/don_thanh_toan_repository.dart (+ _impl: taoDon · trangThaiDon · lichSu · timDon · xacNhan; lỗi → LoiThanhToan)
          goi_store.dart (secure storage `goi_tai_khoan_<id>`) · dem_dang_hoat_dong.dart (NguonDemDangHoatDong) ·
-         co_quyen_nen.dart · mo_lien_ket.dart (tệp DUY NHẤT import url_launcher — test quét 18) ·
-         luu_anh_qr.dart (LuuAnhQr: Dio TRẦN tải ảnh → kênh flowmoney/luu_anh → MediaStore.Images)
+         datasources/mo_lien_ket.dart (tệp DUY NHẤT import url_launcher — test quét 18) ·
+         datasources/luu_anh_qr.dart (LuuAnhQr: chỉ kênh flowmoney/luu_anh → MediaStore.Images; bộ tải ảnh tiêm qua taiAnh) ·
+         datasources/tai_anh_dio_tran.dart (Dio TRẦN tải ảnh VietQR — chỉ DI gọi) · co_quyen_nen.dart
 presentation/ bloc/goi_cubit.dart (singleton, gốc cây) · bloc/phien_goi_tu_auth.dart · bloc/co_quyen.dart ·
          bloc/chan_theo_goi.dart (redirectTaoTheoGoi · chanTheoGoi · chanTheoQuyen) ·
          bloc/chi_tiet_don_cubit.dart (nap · dongY · tuChoi · canBao) ·

@@ -46,7 +46,7 @@ import '../../features/budget/data/repositories/budget_repository.dart';
 import '../../features/ai_edge/domain/canary_gpu.dart';
 import '../../features/ai_edge/domain/canary_cong_cu.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
-import '../../features/ai_edge/data/nguon_ly_do_thoat.dart';
+import '../../features/ai_edge/data/datasources/nguon_ly_do_thoat.dart';
 import '../../features/transaction/data/vi_theo_nguon_store.dart';
 import '../../features/transaction/data/hoa_don_da_xoa_nguon.dart';
 import '../../features/transaction/domain/doc_tin_bien_dong.dart';
@@ -54,9 +54,9 @@ import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
 import '../../features/ai_edge/data/nguon_goi_so.dart';
 import '../../features/ai_edge/data/bo_cong_cu.dart';
-import '../../features/ai_edge/data/slm_runtime.dart';
-import '../../features/ai_edge/data/nguon_tai_nen.dart';
-import '../../features/ai_edge/data/tai_nen_background_downloader.dart';
+import '../../features/ai_edge/data/datasources/slm_runtime.dart';
+import '../../features/ai_edge/data/datasources/nguon_tai_nen.dart';
+import '../../features/ai_edge/data/datasources/tai_nen_background_downloader.dart';
 import '../../features/budget/data/tai_phan_bo_nguon.dart';
 import '../../features/budget/data/repositories/budget_repository_impl.dart';
 import '../../features/budget/presentation/bloc/budget_cubit.dart';
@@ -72,7 +72,8 @@ import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
-import '../../features/premium/data/luu_anh_qr.dart';
+import '../../features/premium/data/datasources/luu_anh_qr.dart';
+import '../../features/premium/data/datasources/tai_anh_dio_tran.dart';
 import '../../features/premium/data/repositories/don_thanh_toan_repository.dart';
 import '../../features/premium/data/repositories/don_thanh_toan_repository_impl.dart';
 import '../../features/premium/data/repositories/goi_repository.dart';
@@ -493,7 +494,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<DonThanhToanRepository>(
       () => DonThanhToanRepositoryImpl(api: sl()));
   // Lưu ảnh mã VietQR vào Thư viện ảnh (kênh flowmoney/luu_anh — spec G94 mục 5.3).
-  sl.registerLazySingleton<LuuAnhQr>(() => LuuAnhQr());
+  sl.registerLazySingleton<LuuAnhQr>(() => LuuAnhQr(taiAnh: taiAnhBangDioTran));
   sl.registerLazySingleton<GoiStore>(
       () => SecureStorageGoiStore(sl<FlutterSecureStorage>()));
   sl.registerLazySingleton<GoiRepository>(

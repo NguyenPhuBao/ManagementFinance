@@ -333,9 +333,9 @@ sửa tên danh mục lặng lẽ **tắt cờ**; có ca test canh (*"sửa tên
 | `test/features/ai_edge/domain/gac_cau_test.dart` | 11 | việc số 1 — gác theo câu: ⭐ **cuối bộ đệm chưa phải kết câu** và **token cắt ngay sau dấu chấm** (hai ca từ lỗi máy thật, bẫy 4.18); `tachCauHoanChinh` không cắt ở chấm ngăn nghìn; ⭐ câu trượt → `BiChan`, huỷ **một** lần, câu sau **không** hiện (dựng `StreamController` thật); hết luồng không dấu kết vẫn kiểm phần đuôi; luồng rỗng không phát gì | 2026-09-22 |
 | `test/features/ai_edge/data/nguon_goi_so_test.dart` | 3 | việc số 1 — **sáu** gói theo thứ tự cố định; hoá đơn hỏi đúng `idaccount`; ví đọc **một** lần. Fake ghi đè `noSuchMethod` — chỉ dựng hàm được gọi, hàm lạ thì ném | 2026-09-22 |
 | `test/features/ai_edge/domain/the_cua_cau_test.dart` | 5 | đo cổng A — thẻ của một câu: ⭐ số đếm ngắn không khớp vì là chuỗi con của số tiền (bẫy 4.19); cùng loại/ngưỡng với bộ kiểm số; hai nhãn cùng số → một thẻ; câu không số → không thẻ | 2026-09-22 |
-| `test/features/ai_edge/data/nguon_tai_nen_test.dart` | 5 | tải nền — giao diện `NguonTaiNen` + bản giả: chưa bắt đầu thì `luotDangSong` null; batDau/tamDung/tiepTuc/huy; `tienToi` | 2026-09-22 |
+| `test/features/ai_edge/data/datasources/nguon_tai_nen_test.dart` | 5 | tải nền — giao diện `NguonTaiNen` + bản giả: chưa bắt đầu thì `luotDangSong` null; batDau/tamDung/tiepTuc/huy; `tienToi` | 2026-09-22 |
 | `test/features/ai_edge/data/mo_hinh_tai_ve_test.dart` (viết lại) | 15 | tải nền — `daCo()` kiểm **kích thước** (tệp 8 byte = chưa có; ca 2,4 GB `skip`); `khoiPhuc()` nối lượt lần trước / không có lượt thì im; `dangCho` → `choMang`; tamDung/tiepTuc; hỏng → `loi` kèm câu ngắn và **giữ** tệp dở; `huy()` xoá tệp dở; `cauLoiTai` 4 ca giữ nguyên | 2026-09-22 |
-| `test/features/ai_edge/data/tai_nen_background_downloader_test.dart` | 9 | tải nền — hai hàm thuần của bản thật: ⭐ tiến độ âm là mã (bẫy 4.21); ⭐ `canceled` của WorkManager → `dangCho`, của người dùng → `huy` (4.22); `waitingToRetry` → `dangChay`; các trạng thái còn lại | 2026-09-22 |
+| `test/features/ai_edge/data/datasources/tai_nen_background_downloader_test.dart` | 9 | tải nền — hai hàm thuần của bản thật: ⭐ tiến độ âm là mã (bẫy 4.21); ⭐ `canceled` của WorkManager → `dangCho`, của người dùng → `huy` (4.22); `waitingToRetry` → `dangChay`; các trạng thái còn lại | 2026-09-22 |
 | `test/features/ai_edge/domain/canary_gpu_test.dart` | 5 | tải nền (lộ ra ở nghiệm thu) — canary GPU: máy sạch thử GPU và dấu ghi **trước**; nạp xong dọn dấu; ⭐ dấu sót → CPU + ghi nhớ; đã hỏng → CPU mãi; đã hỏng thì không ghi canary | 2026-09-22 |
 | `test/features/ai_edge/presentation/cai_dat_ai_page_test.dart` (+9) | 9 | tải nền — mở màn **hỏi lại** lượt lần trước; chờ mạng nói "Wi-Fi" và **không** hứa "giữ lại"; Tạm dừng ↔ Tiếp tục; bấm Tạm dừng **không tự đặt** trạng thái (`_NguonKhongPhanHoi`); hàng nút 411dp; hộp thoại 4G: hỏi trước / đồng ý → `chiWifi=false` / Để sau → không tải / có Wi-Fi → không hỏi | 2026-09-22 |
 | `test/core/nhan_dien_app_test.dart` (+1) | 1 | manifest khai `FOREGROUND_SERVICE_DATA_SYNC` (Android 14+ đòi; build xanh nếu thiếu) | 2026-09-22 |
@@ -1140,7 +1140,7 @@ Dart mà không cần mô hình: đặt dấu bằng `run-as`, làm tiến trìn
 sẽ có, nên đó là phép đo gần nhất làm được. Đường Android 10 trở xuống chỉ canh bằng unit test (không
 có máy ảo API ≤ 29 trong dự án).
 
-**Test:** `domain/canary_cong_cu_test.dart` **15** ca · `data/nguon_ly_do_thoat_test.dart` **4** ·
+**Test:** `domain/canary_cong_cu_test.dart` **15** ca · `data/datasources/nguon_ly_do_thoat_test.dart` **4** ·
 `data/vong_lap_cong_cu_test.dart` +**1** · `canary_cong_cu_noi_day_test.dart` **4** (đọc mã nguồn
 của bốn mối nối — runtime, DI, `main.dart`, Kotlin — vì `flutter test` chạy trên x86_64, nơi đường
 thật của phiên có tool là vùng mù). Các ca "không được tắt nhầm" xanh ngay trên khung rỗng nên đã

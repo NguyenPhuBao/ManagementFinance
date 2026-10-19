@@ -21,7 +21,7 @@ import '../domain/nhan_xet.dart';
 import '../domain/slm_prompt.dart';
 import 'mo_hinh_tai_ve.dart';
 import 'slm_cache.dart';
-import 'slm_runtime.dart';
+import 'datasources/slm_runtime.dart';
 
 class SlmDienGiai implements BoDienGiai {
   final SlmRuntime runtime;

@@ -1,4 +1,4 @@
-// lib/features/ai_edge/data/slm_runtime.dart
+// lib/features/ai_edge/data/datasources/slm_runtime.dart
 /// Tệp **DUY NHẤT** của dự án được import `flutter_gemma` — test quét thứ 16
 /// canh (cùng khuôn `realtime_socket.dart`).
 ///
@@ -11,11 +11,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
 
-import '../domain/canary_cong_cu.dart';
-import '../domain/canary_gpu.dart';
-import '../domain/cong_cu.dart';
-import '../domain/nap_da_phuong_thuc.dart';
-import 'bo_nap_mo_hinh.dart';
+import '../../domain/canary_cong_cu.dart';
+import '../../domain/canary_gpu.dart';
+import '../../domain/cong_cu.dart';
+import '../../domain/nap_da_phuong_thuc.dart';
+import '../bo_nap_mo_hinh.dart';
 import 'phien_cong_cu.dart';
 
 /// Hạn chờ `stopGeneration()` native. Nếu nó treo, `huy()` vẫn trả về (nuốt lỗi + log) — nếu không, hàng đợi chép lời

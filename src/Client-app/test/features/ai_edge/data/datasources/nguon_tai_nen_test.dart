@@ -5,7 +5,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flowmoney/features/ai_edge/data/nguon_tai_nen.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/nguon_tai_nen.dart';
 
 void main() {
   test('bản giả: chưa bắt đầu thì KHÔNG có lượt nào đang sống', () async {

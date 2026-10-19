@@ -15,7 +15,7 @@ library;
 import 'dart:async';
 import 'dart:io';
 
-import 'nguon_tai_nen.dart';
+import 'datasources/nguon_tai_nen.dart';
 
 enum TrangThaiMoHinh { chuaTai, dangTai, tamDung, choMang, daTai, loi }
 

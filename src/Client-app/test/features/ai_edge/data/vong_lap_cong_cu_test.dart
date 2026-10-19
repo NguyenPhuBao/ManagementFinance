@@ -5,8 +5,8 @@
 library;
 
 import 'package:flowmoney/features/ai_edge/data/bo_cong_cu.dart';
-import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
-import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/phien_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/slm_runtime.dart';
 import 'package:flowmoney/features/ai_edge/data/vong_lap_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/canary_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/chinh_tham_so.dart';

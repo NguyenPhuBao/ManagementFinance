@@ -5,7 +5,7 @@ library;
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/slm_runtime.dart';
 import 'package:flowmoney/features/transaction/data/doc_anh_bang_gemma.dart';
 import 'package:flowmoney/features/transaction/domain/doc_anh_gemma.dart';
 import 'package:flutter_test/flutter_test.dart';

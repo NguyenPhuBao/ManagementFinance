@@ -156,7 +156,7 @@ qua `ReminderScheduler` + cổng `OsNotifier` (native / web / stub), đếm chu�
 `ThongBaoRepository` (trả `NotificationEntity`); chạm thông báo đi `NotificationTapRouter` → deeplink, `go` hay `push` theo `nhanhThanhTab`.
 
 **AI.** Tầng tất định: `ai_edge/domain` dựng **gói số** từ hàm domain sẵn có (lớp AI không tự tính — test quét 14) cho
-khối Nhận xét ở sáu màn và kế hoạch tái phân bổ. Tầng mô hình: `ai_edge/data/slm_runtime.dart` (chỗ duy nhất import
+khối Nhận xét ở sáu màn và kế hoạch tái phân bổ. Tầng mô hình: `ai_edge/data/datasources/slm_runtime.dart` (chỗ duy nhất import
 `flutter_gemma`) chạy Gemma 4 E2B trên máy; màn Trợ lý AI đi `vong_lap_cong_cu.dart` — định tuyến `dinhTuyenCauHoi`, tool
 **chỉ đọc** qua repository, mọi câu qua `kiemCauTraLoi` (sáu lớp chắn) trước khi hiện. Ô Nhập nhanh, lệnh tạo, đọc ảnh
 quét dùng phiên một lời gọi; AI chỉ **điền sẵn**, người dùng bấm Lưu (bất biến ④). **Trợ lý online** (2026-10-17, chưa
@@ -180,10 +180,10 @@ vào thống kê), `viTinhVaoTong` (ví nào cộng vào tổng), `normalizeCate
 lỗi đã xảy ra thật ở mỗi chỗ — ví dụ G41/G47 (bảng tra tên danh mục chép ba lần).
 
 **(2) Test quét mã nguồn.** Luật nào bộ test hành vi không thấy được (một import lọt, một handler rỗng, một `?? 1`) thì
-thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–30 phủ **31
+thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–31 phủ **32
 tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đều ghi *"thứ mười bốn"*, va chạm có từ 2026-09-21) — cộng
-**3** tệp cùng khuôn không đánh số, tổng **34** (đếm bằng máy 2026-10-19, sau quét 30). Đếm: `grep -rlE "Directory\(['\"]lib" test` (30 tệp quét cây, đếm bằng máy
-2026-10-19) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **31**.
+**3** tệp cùng khuôn không đánh số, tổng **35** (đếm bằng máy 2026-10-19, sau quét 31). Đếm: `grep -rlE "Directory\(['\"]lib" test` (30 tệp quét cây, đếm bằng máy
+2026-10-19; quét 31 duyệt cây qua biến `goc` nên khuôn grep không thấy nó) cộng các tệp đọc danh sách tệp cố định. Test quét mới lấy số **32**.
 
 | Số | Tệp (dưới `test/`) | Luật | Phạm vi | Từ |
 |---|---|---|---|---|
@@ -203,9 +203,9 @@ tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đ�
 | 14 | `features/ai_edge/ai_edge_khong_tinh_test.dart` | `ai_edge/` không so chiều tiền / tự tính | cây `ai_edge/` | 2026-09-19 |
 | 14 | `core/utils/dau_tien_mot_noi_test.dart` | `formatIncome` / `formatExpense` chỉ trong `currency_formatter.dart` | cây | 2026-09-21 |
 | 15 | `features/ai_edge/ai_edge_cuc_bo_khong_dong_bo_test.dart` | thứ cục bộ của schema v24 không vào đồng bộ | danh sách tệp | 2026-09-19 |
-| 16 | `features/ai_edge/chi_mot_noi_import_gemma_test.dart` | chỉ `slm_runtime.dart` import `flutter_gemma` | cây | 2026-09-22 |
+| 16 | `features/ai_edge/chi_mot_noi_import_gemma_test.dart` | chỉ `datasources/slm_runtime.dart` import `flutter_gemma` | cây | 2026-09-22 |
 | 17 | `core/ocr/chi_mot_noi_import_mlkit_test.dart` | chỉ `doc_chu_anh_mlkit.dart` import ML Kit | cây | 2026-10-02 |
-| 18 | `features/premium/chi_mot_noi_import_url_launcher_test.dart` | chỉ `mo_lien_ket.dart` import `url_launcher` | cây | 2026-10-06 |
+| 18 | `features/premium/chi_mot_noi_import_url_launcher_test.dart` | chỉ `datasources/mo_lien_ket.dart` import `url_launcher` | cây | 2026-10-06 |
 | 19 | `core/ui/khong_snackbar_test.dart` | không `SnackBar` / `ScaffoldMessenger` | cây | 2026-10-06 |
 | 20 | `features/transaction/chi_mot_noi_import_image_picker_test.dart` | chỉ `quet_anh_page.dart` import `image_picker` | cây | 2026-10-08 |
 | 21 | `features/premium/quyen_tinh_nang_mot_noi_test.dart` | quyền theo gói chỉ đọc qua `duocDung` | cây | 2026-10-08 |
@@ -218,11 +218,12 @@ tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đ�
 | **28** | `core/ui/domain_khong_import_tang_tren_test.dart` | **hai** luật — `features/*/domain/` không import đường chứa `/presentation/`; đường chứa `/data/` phải chứa `/data/models/` (Entity, `BudgetView`, `ThongKeKy` hợp lệ; repository / datasource / nguồn thì không); `conCho` **rỗng** từ khi có (đo gốc năm tệp, rút cùng đợt; đọc chỉ thị qua `chi_thi_dart.dart`) | cây `lib/` | **2026-10-16** |
 | **29** | `core/ui/domain_khong_vong_mang_test.dart` | đồ thị cấp mảng — cạnh `A->B` khi tệp dưới `features/A/domain/` có `import` / `export` / `part` tới bất kỳ tầng nào của mảng B; cạnh nằm trên một vòng (hai đầu cùng một thành phần liên thông mạnh > 1) phải ở `conCho` (**rỗng** từ 2026-10-16 — ba lát gỡ cụm theo chiều `analytics → bill → transaction → category`; cạnh trong danh sách mà hết nằm trên vòng thì đỏ "rút"); có ca tiền đề số tệp | `features/*/domain/` → mọi tầng mảng khác | **2026-10-16** |
 | **30** | `features/goal/da_hoan_thanh_mot_noi_test.dart` | luật "mục tiêu đã xong" chỉ ở getter `daHoanThanh` (`isCompleted \|\|` ngoài `goal_entity.dart` là đỏ) | cây | **2026-10-19** |
+| **31** | `core/ui/trang_khong_import_datasource_csdl_api_test.dart` | trang (`presentation/`, `shared/`) import datasource bọc CSDL / API backend hoặc gói Dio — `conCho` 2 tệp, gỡ ở hai task sau | cây | **2026-10-19** |
 | — | `features/wallet/vi_trung_ten_resolver_wiring_test.dart` | `ViTrungTenResolver` dựng một chỗ và được nối | cây | 2026-10-05 |
 | — | `features/wallet/vi_trung_ten_cuc_bo_test.dart` | cờ `bi_tu_choi_trung_ten` không lọt vào đồng bộ | danh sách tệp | 2026-10-05 |
 | — | `core/nen/noi_bo_nghe_hai_noi_test.dart` | hai engine (app + nền) mỗi engine nối bộ nghe kết quả đẩy đúng một lần | cây | 2026-10-10 |
 
-(Bảng có 34 hàng sau khi thêm quét 30 ngày 2026-10-19; 33 trước đó. Bộ đọc chỉ thị dùng chung `test/helpers/chi_thi_dart.dart` và test của nó là test helper, không vào bảng.) Ngoài các tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
+(Bảng có 35 hàng sau khi thêm quét 31 ngày 2026-10-19; 34 trước đó. Bộ đọc chỉ thị dùng chung `test/helpers/chi_thi_dart.dart` và test của nó là test helper, không vào bảng.) Ngoài các tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
 ⚠️ Các test quét của đợt 2026-10-10 có **ca tiền đề** (phép quét phải thấy ít nhất một tệp) để không xanh giả khi chạy sai thư mục; một số test quét cũ chưa có; chạy từ
 `src/Client-app`.
 
@@ -254,12 +255,13 @@ Bảng này là luật cho mọi tệp; **test quét 25** (`test/core/ui/vi_tri_
 (tám luật — sáu của spec dọn vị trí tệp 2026-10-10 mục 4, thêm luật 7 *data / domain không import application/* ở đợt 2026-10-15, luật 5b *năm tệp domain thuần của `core` còn thuần* ở đợt 2026-10-16; luật 5 từ ratchet thành danh sách cố định). Đợt dọn 2026-10-10 (`docs/superpowers/specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`)
 đưa cây về khớp bảng — G88 gạch 7 đóng; miễn trừ `ai_chat/spike/` đã gỡ khi C4 chốt lối (2026-10-12). Máy **có** canh việc mọi tệp dưới
 `presentation/` nằm trong một trong bốn thư mục `bloc/` · `pages/` · `widgets/` · `state/` (không tệp rời); còn **thư mục nào**
-trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng core cần"*, là luật **đọc** — máy không canh.
+trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng core cần"*, là luật **đọc** — máy không canh. **Test quét 31** (`test/core/ui/trang_khong_import_datasource_csdl_api_test.dart`) canh vế *trang không cầm datasource bọc CSDL / API*.
 
 | Loại tệp | Thư mục |
 |---|---|
 | Interface repository + bản thi hành | `features/<x>/data/repositories/<x>_repository.dart` + `<x>_repository_impl.dart` |
 | Datasource (bọc DAO / API) | `features/<x>/data/datasources/` |
+| **Cổng** nền tảng / gói ngoài / hệ tệp — interface Dart thuần + bản thật cho MỘT ranh giới: một kênh `flowmoney/*`, một gói nền tảng (thông báo hệ điều hành, tải nền, mở liên kết, mô hình trên máy, ghi âm / nhận giọng) hoặc thư mục tệp riêng của app (`os_notifier*`, `kenh_bien_dong`, `kho_anh_quet`, `slm_runtime`, `mo_lien_ket`, `luu_anh_qr`…) | `features/<x>/data/datasources/` (người dùng chốt 2026-10-19). Trang **được** gọi thẳng cổng; datasource bọc CSDL (`core/database/`) hoặc mạng / API (Dio, `core/api/`) thì **không** — trang đi qua repository / nguồn (quét 31). **Store** — kho khoá–giá trị / bảng cục bộ mang luật đọc–ghi của mảng (`*_store`, `cong_tac_*`, kể cả bọc `flutter_secure_storage`) — và **nguồn / dịch vụ** gom nhiều cổng hoặc mang luật (`nguon_giong_noi`, `slm_cache`, `mo_hinh_tai_ve`, `bo_nap_mo_hinh`) ở gốc `data/`. Tiền lệ cũ giữ chỗ: `auth/data/datasources/auth_local_data_source.dart` (store token, có từ trước luật) |
 | Entity, model | `features/<x>/data/models/` |
 | Bộ điều phối nhiều bước (dịch vụ ghi qua nhiều repository, bộ quét, bộ nhập) | `features/<x>/application/` (từ 2026-10-15; trước là `data/services/`). Dịch vụ mà datasource / repository **gọi** (`so_du_vi_service`, `tha_vi_bi_giu`) ở lại `data/` — `data/` không import `application/` (quét 25 luật 7) |
 | Hàm thuần (luật, phép tính, câu chữ) | `features/<x>/domain/` |

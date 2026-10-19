@@ -1,9 +1,9 @@
 /// `PhienMotLoiGoi` — vòng đời phiên của Nhập nhanh (C2) và lệnh tạo (C3).
 library;
 
-import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/phien_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/data/phien_mot_loi_goi.dart';
-import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/slm_runtime.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flutter_test/flutter_test.dart';
 

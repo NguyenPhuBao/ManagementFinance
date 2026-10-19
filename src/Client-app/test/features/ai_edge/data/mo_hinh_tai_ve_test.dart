@@ -8,7 +8,7 @@ library;
 import 'dart:io';
 
 import 'package:flowmoney/features/ai_edge/data/mo_hinh_tai_ve.dart';
-import 'package:flowmoney/features/ai_edge/data/nguon_tai_nen.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/nguon_tai_nen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

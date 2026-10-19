@@ -14,8 +14,8 @@ import 'package:flutter/foundation.dart';
 
 import '../domain/canary_cong_cu.dart';
 import '../domain/cong_cu.dart';
-import 'phien_cong_cu.dart';
-import 'slm_runtime.dart';
+import 'datasources/phien_cong_cu.dart';
+import 'datasources/slm_runtime.dart';
 
 class PhienMotLoiGoi {
   PhienMotLoiGoi({

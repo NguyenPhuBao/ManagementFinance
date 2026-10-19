@@ -1,4 +1,4 @@
-// lib/features/ai_edge/data/nguon_tai_nen.dart
+// lib/features/ai_edge/data/datasources/nguon_tai_nen.dart
 /// Một lượt tải tệp **sống lâu hơn tiến trình app**.
 ///
 /// ⚠️ Vì sao cần một giao diện riêng thay vì một hàm `taiTep` như trước: hàm

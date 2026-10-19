@@ -4,8 +4,8 @@ library;
 
 import 'dart:async';
 
-import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
-import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/phien_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/slm_runtime.dart';
 import 'package:flowmoney/features/ai_edge/domain/canary_cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/transaction/data/doc_cau_bang_ai.dart';

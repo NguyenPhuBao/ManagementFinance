@@ -10,7 +10,7 @@ library;
 
 import '../../../core/category/category_name.dart';
 import '../../ai_edge/data/phien_mot_loi_goi.dart';
-import '../../ai_edge/data/slm_runtime.dart';
+import '../../ai_edge/data/datasources/slm_runtime.dart';
 import '../../ai_edge/domain/cong_cu.dart';
 import 'doc_cau_bang_ai.dart' show kThoiHanDocAi;
 

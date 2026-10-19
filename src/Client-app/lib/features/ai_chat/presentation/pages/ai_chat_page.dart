@@ -43,7 +43,7 @@ import '../../../ai_edge/data/bo_cong_cu.dart';
 import '../../../ai_edge/data/cong_tac_ai.dart';
 import '../../../ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../../ai_edge/data/nguon_goi_so.dart';
-import '../../../ai_edge/data/slm_runtime.dart';
+import '../../../ai_edge/data/datasources/slm_runtime.dart';
 import '../../../ai_edge/data/vong_lap_cong_cu.dart';
 import '../../../ai_edge/domain/bo_markdown.dart';
 import '../../../ai_edge/domain/cau_chao.dart';

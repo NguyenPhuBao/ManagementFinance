@@ -9,7 +9,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../ai_edge/data/slm_runtime.dart';
+import '../../ai_edge/data/datasources/slm_runtime.dart';
 import '../domain/chep_loi.dart';
 
 /// Spike C4 (Realme CPU, giọng tổng hợp 2,8 s): chép lời 9,8 s. Trần 60 s tính CẢ pha đóng + nạp bản hai cờ (CPU nạp bản chữ ≈ 27 s, bản hai cờ chưa đo) — con số phải đo trên máy.

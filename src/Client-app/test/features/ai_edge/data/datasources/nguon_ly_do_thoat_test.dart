@@ -4,7 +4,7 @@
 /// phía native và canh phép dịch dữ liệu.
 library;
 
-import 'package:flowmoney/features/ai_edge/data/nguon_ly_do_thoat.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/nguon_ly_do_thoat.dart';
 import 'package:flowmoney/features/ai_edge/domain/canary_cong_cu.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';

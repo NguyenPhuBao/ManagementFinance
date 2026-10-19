@@ -9,8 +9,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('chỉ premium/data/mo_lien_ket.dart import url_launcher', () {
-    const duocPhep = 'lib/features/premium/data/mo_lien_ket.dart';
+  test('chỉ premium/data/datasources/mo_lien_ket.dart import url_launcher', () {
+    const duocPhep = 'lib/features/premium/data/datasources/mo_lien_ket.dart';
     final coImport = [
       for (final f in Directory('lib').listSync(recursive: true).whereType<File>())
         if (f.path.endsWith('.dart'))

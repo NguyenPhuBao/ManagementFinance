@@ -2,7 +2,7 @@
 /// ca trên nó, nên nó phải chạy đúng kịch bản và ghi lại đúng thứ đã nhận.
 library;
 
-import 'package:flowmoney/features/ai_edge/data/phien_cong_cu.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/phien_cong_cu.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
