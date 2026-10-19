@@ -1350,6 +1350,7 @@ const DashboardPage = () => {
           </div>
       </div>
     </div>
+    </div>
     {/* Security Re-Authentication Modal for Emergency Maintenance from Dashboard */}
     <SecurityConfirmModal
       isOpen={showMaintenanceSecurityModal}
