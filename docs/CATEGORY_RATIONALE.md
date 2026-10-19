@@ -122,7 +122,7 @@ Chi phí làm bây giờ gần như bằng không: dữ liệu mặc định tr�
 | Chỉ có ở client | 8 |
 | Chỉ có ở backend | 3 |
 
-Vì danh mục mặc định được ánh xạ **bằng tên**, 8 mục chỉ có ở client không tìm được bản UUID nào → `resolveCategoryId` trả `null` → **mọi giao dịch dùng chúng bị hoãn đẩy vĩnh viễn**.
+Vì danh mục mặc định được ánh xạ **bằng tên**, 8 mục chỉ có ở client không tìm được bản UUID nào → `_resolveCategoryId` (nay `resolveCategoryId`) trả `null` → **mọi giao dịch dùng chúng bị hoãn đẩy vĩnh viễn**.
 
 Trong 8 mục đó có `Chi khác` và `Thu khác` — thứ người dùng bấm khi không có mục nào hợp, tức **đường hay đi nhất lại đang là đường hỏng** — cùng `Trả nợ` và `Thu nợ`, một nửa nghiệp vụ vay nợ.
 
@@ -145,7 +145,7 @@ Chuyển chủ sở hữu giải quyết trọn vẹn: bộ **mặc định** c�
 
 ### Một chi tiết suýt làm hỏng cả cách sửa
 
-Ban đầu định chuyển tại chỗ, giữ nguyên id `cat_other_chi` cho khỏi phải repoint. Nhưng `resolveCategoryId` chỉ chấp nhận danh mục **không phải mặc định** khi id là **UUID hợp lệ**:
+Ban đầu định chuyển tại chỗ, giữ nguyên id `cat_other_chi` cho khỏi phải repoint. Nhưng `_resolveCategoryId` (nay `resolveCategoryId`; đoạn mã dưới là bản lúc đó) chỉ chấp nhận danh mục **không phải mặc định** khi id là **UUID hợp lệ**:
 
 ```dart
 if (!localCategory.isDefault) {
@@ -760,7 +760,7 @@ Ghi lại để người sau không mất công đề xuất lại:
 | Đếm bản sao **theo tài khoản** thay vì theo từng danh mục (2026-09-07) | Tài khoản đã có sẵn danh mục riêng sẽ bị từ chối seed, trong khi bản mặc định của nó đã bị ẩn — nó còn lại đúng vài danh mục |
 | Đếm bản sao **bỏ qua hàng đã xoá mềm** (2026-09-07) | Chính là `ensureMissing()` cũ, tức tái hiện nguyên vẹn G16 |
 | Xoá hẳn 5 mục backend không có | Tái hiện lỗi 11.6 hàng loạt; mất cả hai mục "Khác" và một nửa nghiệp vụ vay nợ; giao dịch cũ không có đích để chuyển sang |
-| Chuyển 5 mục tại chỗ, giữ id `cat_*` | `resolveCategoryId` từ chối danh mục người dùng có id không phải UUID → giao dịch vẫn kẹt |
+| Chuyển 5 mục tại chỗ, giữ id `cat_*` | `_resolveCategoryId` (nay `resolveCategoryId`) từ chối danh mục người dùng có id không phải UUID → giao dịch vẫn kẹt |
 | Giữ mỗi nhóm là một không gian tên riêng | PostgreSQL không có `Idgroup` trong unique index nên vẫn chặn — client cho tạo rồi đẩy lên mới vỡ |
 | Chỉ chuẩn hoá chữ thường, chưa cần NFC | Siết chặt về sau đắt hơn hẳn: dữ liệu đang tồn tại sẽ vi phạm và `CREATE UNIQUE INDEX` thất bại |
 | Chặn tuyệt đối cả khi sửa | Người dùng có dữ liệu cũ sẽ không sửa nổi danh mục đó nữa, kể cả chỉ đổi icon |

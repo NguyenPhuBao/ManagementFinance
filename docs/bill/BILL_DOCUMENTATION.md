@@ -606,7 +606,7 @@ mã, chưa tái hiện đầu-cuối). Từ `main` @ `cc65f4f`, nhánh cập nh�
 `BILL_ALREADY_PAID`. Các thao tác khác trong lô vẫn lọt (khoản chi và kỳ kế tiếp
 bị xoá mềm, ví được hoàn), chỉ hoá đơn trên server còn `'Payed'` — máy thứ hai
 thấy hoá đơn đã trả mà không có khoản chi. Client xếp mã ấy **vĩnh viễn**
-(`_permanentCodes` của `GuiLoDongBo`, 2026-09-11) nên không kéo chậm cả hàng đợi, nhưng hàng hoá đơn
+(`_permanentCodes`, 2026-09-11; nay của `GuiLoDongBo`) nên không kéo chậm cả hàng đợi, nhưng hàng hoá đơn
 không lên được server. Lỗi phía backend — CAN-LAM **17 B**
 (`docs/superpowers/backend/DA-XONG/FIX_BACKEND_3_REGRESSIONS.md` mục 3; ✅ **backend bỏ chốt ấy, gộp `cbbeeb4` 2026-09-12** — đo thật: hàng kẹt 7 lần đẩy lên server `Pending`). Hoàn tác
 một lần trả **chưa kịp đồng bộ** thì không dính.

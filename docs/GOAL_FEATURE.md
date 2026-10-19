@@ -1142,7 +1142,7 @@ và mã hoá chiều tiền bằng **dấu của `Amount`**. Bỏ phép quy đ�
 bị từ chối.
 
 > Phiên 2026-09-05 đã kết luận nhầm là chỗ này đang hỏng, chỉ vì đọc
-> `collectPendingOps` rồi dừng. Hợp đồng nay có **bốn phép kiểm giá trị** canh
+> `_collectPendingOps` rồi dừng. Hợp đồng nay có **bốn phép kiểm giá trị** canh
 > chừng, không chỉ tên khoá.
 
 ### 4.4 `goal_id` là cột **CỤC BỘ**

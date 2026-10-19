@@ -290,7 +290,7 @@ Migration `from < 24`: `addColumn` + `createTable`, không điền hàng cũ. **
 mọi tệp `lib/core/sync/` (từ 2026-10-19, qua helper `tepDuongDongBo()`; trước đó ba tệp `sync_engine.dart`, `sync_payload_normalizer.dart`, `sync_models.dart`) và trong hợp đồng payload —
 **không** bỏ dòng chú thích (khác test 14): một chú thích nhắc tên cột ở đường đồng bộ là dấu hiệu ai
 đó định đưa nó vào. Bản sai có chủ ý (`final String banSaiCoChuY = 'ai_co_dinh';` cuối
-`sync_engine.dart`; nay bất kỳ tệp `core/sync` nào) làm nó đỏ đúng dòng ngày 2026-09-19. `sync_payload_contract_test.dart` không đổi.
+`sync_engine.dart`) làm nó đỏ đúng dòng ngày 2026-09-19. `sync_payload_contract_test.dart` không đổi. (Từ 2026-10-19 test quét tệp nào dưới `lib/core/sync/` cũng vậy.)
 
 ⚠️ **Hai bẫy của lượt này**: (1) data class Drift `Category` đòi thêm tham số bắt buộc → **7** chỗ
 dựng `Category(...)` bằng tay trong test phải thêm `aiCoDinh: false` (cùng việc cơ học của G27);

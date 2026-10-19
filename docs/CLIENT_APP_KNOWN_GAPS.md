@@ -2396,7 +2396,7 @@ giao dịch, đè lên nút. Người dùng: *"fix trước phần thông báo h
 > tên, giao dịch của B dưới ví đã đổi tên, máy A thấy đủ.
 >
 > ⚠️ **Hai lỗi lượt nghiệm thu bắt được, 5820 ca test đều mù:**
-> 1. **Vòng đồng bộ nóng** (291 chu kỳ trong 5 giây trên máy B): bước **1b** của `collectPendingOps` gửi kèm danh mục
+> 1. **Vòng đồng bộ nóng** (291 chu kỳ trong 5 giây trên máy B): bước **1b** của `_collectPendingOps` (nay `ThuGomThaoTacDay.collectPendingOps`) gửi kèm danh mục
 >    của mọi giao dịch đang chờ — kể cả giao dịch **bị giữ**, vốn nằm `pending` vô thời hạn — nên mỗi chu kỳ đẩy lại hai
 >    danh mục, server trả xung đột (không lỗi ⇒ không giãn cách), và `/sync/push` phát `sync.completed` về **chính máy
 >    này** ⇒ `syncNow` ⇒ chạy bù ⇒ đẩy lại. Trước G63 các giao dịch ấy hỏng khoá ngoại nên giãn cách kìm vòng lại; giữ
@@ -2455,7 +2455,7 @@ trùng tên cục bộ) — kể cả khi chỉ tắt cờ mặc định; xoá t
 - Cột cục bộ `wallets.bi_tu_choi_trung_ten` (schema mới), đặt bởi một bộ nghe `pushResultStream` khi thao tác ví hỏng với
   `WALLET_NAME_DUPLICATE` / `UNIQUE_VIOLATION` — cùng khuôn `BillPaymentConflictResolver`.
 - Một hàm thuần `capViTrungTen` ở `wallet/domain/` là định nghĩa duy nhất của "cặp trùng".
-- **Trong lúc chờ:** `ThuGomThaoTacDay.collectPendingOps` bỏ qua ví mang cờ và mọi giao dịch / hoá đơn / mục tiêu dính tới nó.
+- **Trong lúc chờ:** `_collectPendingOps` (nay `ThuGomThaoTacDay.collectPendingOps`) bỏ qua ví mang cờ và mọi giao dịch / hoá đơn / mục tiêu dính tới nó.
 - **Thẻ hỏi Gộp / Đổi tên** ở màn Quản lý ví, kèm một dòng nhắc ở Trang chủ. *Gộp* dời giao dịch, hoá đơn, mục tiêu và
   bảng *nguồn → ví* của D1 sang ví đã đồng bộ, bỏ ví máy này **cùng khoản "Số dư ban đầu"** của nó (cùng một tài khoản
   thật — giữ hai số dư mở sổ là đếm đôi), có hộp xác nhận nêu số giao dịch và số dư sau gộp. *Đổi tên* điền sẵn

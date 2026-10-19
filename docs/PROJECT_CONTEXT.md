@@ -635,7 +635,7 @@ Người dùng chốt hướng **B** (tách lớp cộng tác, dời nguyên vă
 - **Quét 34** `test/core/sync/sync_tep_khong_qua_dai_test.dart`: tệp dưới `lib/core/sync/` > 800 dòng ngoài `mienTru` là đỏ;
   trần riêng chỉ được giảm; `mienTru` **rỗng từ 2026-10-19** (cơ chế giữ cho tệp dài sau này). Số test quét tiếp theo: **35**.
 - **Ba quét cột cục bộ đọc cả thư mục:** `vi_trung_ten_cuc_bo_test`, quét 7 (`wallet_cho_phep_am_test`) và quét 15
-  (`ai_edge_cuc_bo_khong_dong_bo_test`) trước chỉ đọc `sync_engine.dart` — sau tách thì cột cục bộ lọt vào tệp mới là mù. Nay
+  (`ai_edge_cuc_bo_khong_dong_bo_test`) trước đọc danh sách cứng 2–3 tệp (engine + normalizer ± models / `cong_vi_bi_giu`) — sau tách thì cột cục bộ lọt vào tệp mới là mù. Nay
   đọc qua helper **`test/helpers/duong_dong_bo.dart`** (`tepDuongDongBo()`, mọi tệp `lib/core/sync/`); là helper, không đếm vào
   chuỗi quét đánh số.
 - **Quá trình:** Phần 1 của thiết kế ước ~720 dòng cho engine là **đo sai** (thật ~873) → nhấc **ba nhóm hàm thuần** ra khỏi
@@ -645,12 +645,12 @@ Người dùng chốt hướng **B** (tách lớp cộng tác, dời nguyên vă
 - **`app_database.g.dart` sinh lại** (`4ea604e2`, commit riêng — chỉ chú thích cột, gồm phần lệch `billId` đã ghi từ trước).
 - **Commit:** `d3ec0f87` (canh trước khi tách) · `a1dc80eb` (hàm thuần) · `e4399a19` (`GuiLoDongBo`) · `5a7775e2`
   (`ThuGomThaoTacDay`) · `23253ec5` (`ApDuLieuKeoVe`, quét 34 hết miễn trừ) · `4f07ddc3` · `a6c6fc7d` (chú thích trỏ đúng tệp).
-- **Ngoài phạm vi, còn lại:** ~15 `DateTime.now()` trần trong `core/sync` (đổi sang đồng hồ tiêm được là đổi hành vi — để
+- **Ngoài phạm vi, còn lại:** 17 `DateTime.now()` trần trong `core/sync` (đếm 2026-10-19 bằng `grep -o "DateTime.now()" lib/core/sync/*.dart | wc -l`: `ap_du_lieu_keo_ve` 13 · `gieo_tu_khoa` 1 · `gui_lo_dong_bo` 1 · `moc_keo_ve` 1 · `thu_gom_day` 1) (đổi sang đồng hồ tiêm được là đổi hành vi — để
   riêng); 5 `curly_braces_in_flow_control_structures` (nay ở `bieu_tuong_danh_muc_mac_dinh.dart`, trước ở `sync_engine.dart`;
   tổng `flutter analyze` vẫn 20 — bốn tệp mang: `core/database/connection/web.dart`,
   `core/sync/bieu_tuong_danh_muc_mac_dinh.dart`, `category/data/models/category_tree.dart`,
   `test/core/sync/e2e_sqlite_to_backend_sync_test.dart`); `pullFromBackend` vẫn **một phương thức ~616 dòng** (dời nguyên
-  văn, chưa chẻ); bốn lớp giả `implements` giữ nguyên. Mốc test / analyze cuối: ở commit kế (Task 8).
+  văn, chưa chẻ); 7 lớp giả `implements` và 4 lớp `extends SyncEngine` giữ nguyên. Mốc test / analyze cuối: ở commit kế (Task 8).
 
 ### 🧹 Phần còn lại báo cáo soát kiến trúc — B · C · `other_daos` (2026-10-19, phiên 2) · `SyncEngine` brainstorm riêng
 
@@ -4763,7 +4763,7 @@ danh mục bất thường ở tài khoản ấy — `Chi khác` và `Làm thêm
 `Create_by = 1`, `is_default = true`, bị backend xoá mềm hôm 2026-09-07.
 
 ⚠️ **Gốc rễ:** nhánh kéo về (`ApDuLieuKeoVe`, trước 2026-10-19 là `sync_engine`) quy `is_default = true` thành **`idaccount = 0`**
-(`sync_engine.dart:733`), nên hàng mặc định toàn cục **không mang mã tài khoản
+(`sync_engine.dart:733` — số dòng của tệp cũ), nên hàng mặc định toàn cục **không mang mã tài khoản
 nào** — nhưng cả hai repository tra danh mục đều lọc
 `t.idaccount.equals(idaccount)`. Hai bản chép tay của cùng một truy vấn, cả hai
 cùng thiếu vế `isDefault`.
