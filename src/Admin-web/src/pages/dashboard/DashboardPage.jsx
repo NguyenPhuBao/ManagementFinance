@@ -1167,21 +1167,21 @@ const DashboardPage = () => {
                   <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
                 </div>
               )}
-              <table className="w-full text-left border-collapse min-w-[720px]">
+              <table className="w-full text-left border-collapse min-w-[580px]">
                   <thead>
                       <tr className="bg-surface-container-low/50">
-                          <th className="w-[22%] min-w-[150px] py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.user')}</th>
-                          <th className="w-[26%] min-w-[180px] py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.action')}</th>
-                          <th className="w-[24%] min-w-[160px] py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.reason')}</th>
-                          <th className="w-[14%] min-w-[110px] py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.status')}</th>
-                          <th className="w-[14%] min-w-[110px] py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">{t('dashboard.recentActivities.columns.time')}</th>
+                          <th className="w-[22%] min-w-[130px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.user')}</th>
+                          <th className="w-[28%] min-w-[160px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.action')}</th>
+                          <th className="w-[22%] min-w-[120px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.reason')}</th>
+                          <th className="w-[14%] min-w-[85px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.status')}</th>
+                          <th className="w-[14%] min-w-[85px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">{t('dashboard.recentActivities.columns.time')}</th>
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/50">
                       {recentActivities.length > 0 ? (
                         recentActivities.map(activity => (
                             <tr key={activity.key} className={`hover:bg-surface-container-lowest transition-colors group ${activity.isNew ? 'bg-primary/5 animate-pulse duration-1000' : ''}`}>
-                                <td className="py-3 px-5 overflow-hidden">
+                                <td className="py-3 px-3.5 overflow-hidden">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div className="w-8 h-8 shrink-0 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform">
                                             {(activity.user || 'U').split(' ').pop().charAt(0)}
@@ -1189,7 +1189,7 @@ const DashboardPage = () => {
                                         <TruncateCell text={activity.user} className="font-body-md font-semibold text-on-surface" />
                                     </div>
                                 </td>
-                                <td className="py-3 px-5 text-on-surface-variant font-body-md overflow-hidden">
+                                <td className="py-3 px-3.5 text-on-surface-variant font-body-md overflow-hidden">
                                     {(() => {
                                       const { tagInfo, cleanAction } = classifyAuditAction(activity.action);
                                       return (
@@ -1206,17 +1206,17 @@ const DashboardPage = () => {
                                       );
                                     })()}
                                 </td>
-                                <td className="py-3 px-5 text-on-surface-variant font-body-sm overflow-hidden">
+                                <td className="py-3 px-3.5 text-on-surface-variant font-body-sm overflow-hidden">
                                     {activity.reason ? (
                                       <TruncateCell text={activity.reason} className="text-on-surface-variant/90" />
                                     ) : (
                                       <span className="text-outline-variant/80">—</span>
                                     )}
                                 </td>
-                                <td className="py-3 px-5 whitespace-nowrap overflow-hidden">
+                                <td className="py-3 px-3.5 whitespace-nowrap overflow-hidden">
                                     {getStatusBadge(activity.status, t)}
                                 </td>
-                                <td className="py-3 px-5 text-on-surface-variant font-body-sm text-right whitespace-nowrap overflow-hidden">{activity.time}</td>
+                                <td className="py-3 px-3.5 text-on-surface-variant font-body-sm text-right whitespace-nowrap overflow-hidden">{activity.time}</td>
                             </tr>
                         ))
                       ) : (
