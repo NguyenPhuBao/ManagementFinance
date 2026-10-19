@@ -15,10 +15,8 @@ void main() {
   const tran = 800;
 
   /// Tệp (tương đối `lib/`) → trần riêng. Số là số dòng đo ngày điền; không được tăng.
-  const mienTru = <String, int>{
-    // Tách SyncEngine (2026-10-19): hạ về số đo sau mỗi bước dời, bước cuối rút hẳn.
-    'core/sync/sync_engine.dart': 1199,
-  };
+  // Rỗng từ 2026-10-19 (tách SyncEngine xong): cơ chế giữ nguyên cho tệp dài sau này — đừng xoá vòng kiểm.
+  const mienTru = <String, int>{};
 
   test('tệp dưới core/sync không quá $tran dòng, trừ danh sách có trần riêng', () {
     final goc = Directory('lib/core/sync');

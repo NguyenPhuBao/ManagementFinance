@@ -35,7 +35,7 @@ void main() {
         'Chính nó — `getActive` được dựng bằng cách lọc trên `getAll`.',
     'features/wallet/data/repositories/wallet_repository_impl.dart':
         'Bản thi hành: `getAll` / `watchAll` chuyển tiếp datasource cho bảng tra tên — chỉ chuyển tiếp, không chọn.',
-    'core/sync/sync_engine.dart':
+    'core/sync/ap_du_lieu_keo_ve.dart':
         'Đồng bộ phải đẩy và kéo cả ví lưu trữ, nếu không trạng thái ấy không '
             'bao giờ ra khỏi được máy này.',
     'core/di/injection_container.dart':
