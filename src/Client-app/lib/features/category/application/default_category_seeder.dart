@@ -58,7 +58,7 @@ class DefaultCategorySeeder {
     for (final mau in khuon) {
       if (_daCoBanSao(daCo, mau)) continue;
 
-      // UUID chứ không phải slug: `_resolveCategoryId` chỉ chấp nhận danh mục
+      // UUID chứ không phải slug: `resolveCategoryId` chỉ chấp nhận danh mục
       // người dùng khi id là UUID hợp lệ, id dạng slug sẽ bị trả null và giao
       // dịch kẹt vĩnh viễn.
       final id = _sinhId();

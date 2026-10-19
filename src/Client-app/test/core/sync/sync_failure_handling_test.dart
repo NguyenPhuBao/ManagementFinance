@@ -196,7 +196,7 @@ void main() {
       SyncStatus.error,
       reason: 'Canh chừng G1: trước đây _runSync() luôn kết thúc bằng '
           '_setStatus(SyncStatus.idle) bất kể kết quả, nên SyncStatus.error '
-          'gần như là mã chết — _sendBatch không ném lỗi ra ngoài nên khối '
+          'gần như là mã chết — GuiLoDongBo.sendBatch không ném lỗi ra ngoài nên khối '
           'catch không bao giờ chạm tới. Giao diện báo "đã đồng bộ xong" '
           'trong khi không một bản ghi nào lên được server.',
     );
@@ -537,7 +537,7 @@ void main() {
         row?.syncBlockedUntil,
         clock.add(const Duration(seconds: 30)),
         reason: 'Canh chừng G16. Trước bản vá này, 23505 rơi xuống nhánh '
-            'transient ở cuối _classifyFailure nên bản ghi được đẩy lại ở MỌI '
+            'transient ở cuối GuiLoDongBo._classifyFailure nên bản ghi được đẩy lại ở MỌI '
             'chu kỳ, vĩnh viễn. Đường kích hoạt có thật và tự lặp: người dùng '
             'xoá một danh mục cá nhân mặc định, rồi ensureMissing() tạo lại nó '
             'với UUID mới ở MỖI lần mở app — mỗi lần thêm một bản ghi kẹt. '
@@ -580,7 +580,7 @@ void main() {
     // Nhưng cái giá đi kèm không ai lường: `message` nay là câu tiếng Việt cho
     // người dùng đọc, nên MỌI regex bên dưới — `23505`, `23514`,
     // `violates ... constraint` — không còn khớp gì cả. Lỗi vĩnh viễn im lặng
-    // tụt xuống nhánh `transient` ở cuối `_classifyFailure`, và bản ghi quay
+    // tụt xuống nhánh `transient` ở cuối `GuiLoDongBo._classifyFailure`, và bản ghi quay
     // lại bị đẩy ở MỌI chu kỳ, đúng vòng lặp mà G3 và G16 sinh ra để chặn.
     //
     // Bốn test dưới canh chừng đúng chỗ ấy: phân loại phải đi theo `code`,

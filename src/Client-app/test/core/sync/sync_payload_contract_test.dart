@@ -519,8 +519,8 @@ void main() {
       });
 
       test('transfer mang categoryId không phân giải được vẫn được đẩy', () {
-        /// Canh chừng điều gì: `_collectPendingOps` hoãn mọi giao dịch có
-        /// `categoryId` mà `_resolveCategoryId` không tìm ra, để chờ pull về
+        /// Canh chừng điều gì: `ThuGomThaoTacDay.collectPendingOps` hoãn mọi giao dịch có
+        /// `categoryId` mà `resolveCategoryId` không tìm ra, để chờ pull về
         /// danh mục. Với khoản chuyển thì danh mục là vô nghĩa (payload bỏ
         /// nó đi), nhưng bản app cũ từng gán `'cat_transfer'` — id không có
         /// thật — nên những hàng ấy nằm lại máy VĨNH VIỄN, im lặng, trong khi

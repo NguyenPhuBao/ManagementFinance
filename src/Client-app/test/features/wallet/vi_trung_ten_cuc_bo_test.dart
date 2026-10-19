@@ -1,7 +1,7 @@
 /// G63 — cờ `bi_tu_choi_trung_ten` là cột CỤC BỘ: không được lọt vào đường đồng bộ (spec mục 8, bẫy 7).
 ///
 /// PostgreSQL không có cột tương ứng; một khoá lọt vào payload đẩy là ví kẹt hàng đợi vĩnh viễn, im lặng — đúng thứ
-/// G63 sinh ra để chữa. `sync_engine.dart` hỏi "ví nào bị giữ" qua cổng `CongViBiGiu` (bản thật `ViBiGiuDongBo` → `ViTrungTenNguon`), nên nó và cổng không cần biết tên cột.
+/// G63 sinh ra để chữa. `ThuGomThaoTacDay` (`thu_gom_day.dart`) hỏi "ví nào bị giữ" qua cổng `CongViBiGiu` (bản thật `ViBiGiuDongBo` → `ViTrungTenNguon`), nên nó và cổng không cần biết tên cột.
 library;
 
 import 'dart:io';

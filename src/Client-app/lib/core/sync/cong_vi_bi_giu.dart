@@ -6,7 +6,7 @@ library;
 
 import '../database/app_database.dart';
 
-/// Id các bản ghi `_collectPendingOps` phải bỏ khỏi lô đẩy (bảng 4.4 spec G63) — record để `core` không cần kiểu
+/// Id các bản ghi `ThuGomThaoTacDay.collectPendingOps` phải bỏ khỏi lô đẩy (bảng 4.4 spec G63) — record để `core` không cần kiểu
 /// `BanGhiBiGiu` của `features/wallet/domain`.
 typedef BanGhiGiuKhoiDay = ({
   Set<String> vi,

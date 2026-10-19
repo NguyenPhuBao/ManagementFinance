@@ -64,7 +64,8 @@ DateTime? mocTuMaxSince(
 /// một máy đang kẹt: mốc hỏng che mất đúng khoảng dữ liệu bị bỏ lỡ, nên kẹp
 /// nó về "bây giờ" vẫn không lấy lại được phần ấy.
 ///
-/// Công khai để test gọi thẳng; đường chạy thật chỉ dùng nó ở `SyncEngine.start`.
+/// Công khai vì `SyncEngine.mocPullConDungKhong` (API của engine) chuyển tiếp sang đây; đường chạy thật dùng nó ở
+/// `ApDuLieuKeoVe.napMoc` / `napMocNeuChuaCo`.
 DateTime? mocPullConDungKhong(DateTime? daLuu, DateTime bayGio) {
   if (daLuu == null) return null;
   return daLuu.isAfter(bayGio) ? null : daLuu;

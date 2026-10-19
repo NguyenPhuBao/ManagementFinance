@@ -171,7 +171,7 @@ class SyncEngine {
   }
 
   /// Bậc chặn cho bản ghi lỗi vĩnh viễn trong lô vừa gửi — `GuiLoDongBo` đọc qua hàm này lúc gặp lỗi (sau `await`).
-  /// Biểu thức chép nguyên văn từ `_sendBatch` cũ: chỉ số là `_consecutiveFailures`, KHÔNG trừ một như ở trên.
+  /// Biểu thức chép nguyên văn từ dòng chọn bậc chặn cũ của `GuiLoDongBo.sendBatch`: chỉ số là `_consecutiveFailures`, KHÔNG trừ một như ở trên.
   Duration _bacChanHienTai() =>
       _backoffSteps[_consecutiveFailures.clamp(0, _backoffSteps.length - 1)];
 
@@ -191,7 +191,7 @@ class SyncEngine {
   /// mục trên một máy mới trong khi tài khoản đã có sẵn chúng ở backend, sinh
   /// ra 5 thao tác đẩy hỏng vĩnh viễn (G14).
   ///
-  /// Cố ý **không** suy ra từ `_lastPullTime`: mốc đó chỉ được đặt khi có dữ
+  /// Cố ý **không** suy ra từ `ApDuLieuKeoVe._lastPullTime`: mốc đó chỉ được đặt khi có dữ
   /// liệu trả về, nên tài khoản mới toanh sẽ mãi trông như chưa pull lần nào.
   bool get hasCompletedPull => _keoVe.daKeoXong;
 
@@ -326,7 +326,7 @@ class SyncEngine {
   /// kiện `sync.completed` của socket (G34) khi máy khác vừa đẩy xong.
   ///
   /// Là `bool` chứ không phải bộ đếm: nhiều yêu cầu dồn vào một cửa sổ vẫn chỉ
-  /// đáng **một** lần chạy bù, vì `_collectPendingOps` gom toàn bộ bản ghi còn
+  /// đáng **một** lần chạy bù, vì `ThuGomThaoTacDay.collectPendingOps` gom toàn bộ bản ghi còn
   /// `pending` chứ không xử theo từng yêu cầu.
   bool _noMotLanChay = false;
 
@@ -438,11 +438,11 @@ class SyncEngine {
 
       // Trạng thái kết thúc phải phản ánh kết quả thật. Trước đây chu kỳ nào
       // cũng kết thúc bằng `idle`, kể cả khi mọi thao tác đẩy đều hỏng — nên
-      // `SyncStatus.error` gần như là mã chết: `_sendBatch` không ném lỗi ra
+      // `SyncStatus.error` gần như là mã chết: `GuiLoDongBo.sendBatch` không ném lỗi ra
       // ngoài nên khối `catch` bên dưới chỉ chạm tới được khi có exception
       // thật sự, chứ không phải khi server từ chối dữ liệu.
       //
-      // Lấy kết quả của lần đẩy SAU CÙNG: `_collectPendingOps` gom lại toàn bộ
+      // Lấy kết quả của lần đẩy SAU CÙNG: `ThuGomThaoTacDay.collectPendingOps` gom lại toàn bộ
       // bản ghi còn `pending` nên lần thử lại đã bao gồm cả những thao tác hỏng
       // vĩnh viễn của lần đầu.
       final lastPush = retryResult ?? pushResult;

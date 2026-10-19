@@ -53,7 +53,7 @@ void main() {
   tearDown(() => db.close());
 
   test('⭐ saveKeywords đánh dấu danh mục pending + scheduleSync — không thì từ khoá không bao giờ lên server', () async {
-    // Từ khoá đi TRONG payload danh mục (`sync_engine.dart` ~1187); trước 2026-09-30 sửa từ khoá không đổi syncStatus nên
+    // Từ khoá đi TRONG payload danh mục (`thu_gom_day.dart`); trước 2026-09-30 sửa từ khoá không đổi syncStatus nên
     // chỉ lên server khi danh mục bị sửa vì lý do khác (spec đề xuất từ khoá §3).
     final sync = _SyncGia();
     repository = CategoryManagementRepositoryImpl(db: db, syncEngine: sync);

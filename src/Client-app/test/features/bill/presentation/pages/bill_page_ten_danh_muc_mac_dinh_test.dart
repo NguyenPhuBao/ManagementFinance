@@ -6,7 +6,7 @@
 /// `BillPage._napTenGoi` và `BillDetailPage` dựng `TransactionLookup` từ
 /// `categoryDao.getAll(accountId)` — hàm ấy lọc `idaccount = accountId` và
 /// `deletedAt IS NULL`, nên hàng mặc định toàn cục (`idaccount = 0`,
-/// `isDefault = true` — `sync_engine.dart:733`) lẫn hàng đã xoá mềm đều **mất
+/// `isDefault = true` — `ap_du_lieu_keo_ve.dart`) lẫn hàng đã xoá mềm đều **mất
 /// tên**. Bảng tra tên có một định nghĩa duy nhất: `CategoryDao.getBangTraTen`.
 library;
 

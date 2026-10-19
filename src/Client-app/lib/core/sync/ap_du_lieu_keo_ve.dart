@@ -58,7 +58,7 @@ class ApDuLieuKeoVe {
   /// Lúc `SyncEngine.start`: nạp mốc đã lưu của [idaccount].
   Future<void> napMoc(int idaccount) async {
     // Khôi phục mốc pull đã lưu để không phải kéo lại toàn bộ dữ liệu mỗi lần
-    // mở app. Nếu SQLite cục bộ rỗng, _pullFromBackend vẫn tự ép full pull nên
+    // mở app. Nếu SQLite cục bộ rỗng, pullFromBackend vẫn tự ép full pull nên
     // không sợ thiếu dữ liệu khi cài lại app.
     //
     // Mốc ở TƯƠNG LAI thì coi như không có, và lần pull kế tiếp quay về kéo
@@ -86,7 +86,7 @@ class ApDuLieuKeoVe {
     _hasCompletedPull = false;
     // Chỉ xoá mốc trong RAM. Mốc đã lưu được giữ lại theo từng idaccount để lần
     // đăng nhập sau vẫn pull tăng dần; nếu dữ liệu cục bộ đã bị xoá thì
-    // _pullFromBackend tự ép full pull.
+    // pullFromBackend tự ép full pull.
     _lastPullTime = null;
   }
 
@@ -144,7 +144,7 @@ class ApDuLieuKeoVe {
                 // cục bộ chưa kịp đẩy — đúng cơ chế của **G37**, đo thật trên
                 // hai máy ảo ngày 2026-09-13: ví bị trừ còn 1.650.000 → push ví
                 // xung đột → pull ghi đè về 2.000.000 → lần trừ biến mất, mà
-                // hàng vừa bị `_markSyncedById` nên cũng không còn gì để đẩy
+                // hàng vừa bị `GuiLoDongBo._markSyncedById` nên cũng không còn gì để đẩy
                 // lại.
                 //
                 // Ví MỚI về từ máy khác không cần cột này để đúng: lần INSERT
@@ -408,7 +408,7 @@ class ApDuLieuKeoVe {
             await gieoTuKhoaKhiTrong(_db, accountId, tuKhoaTheoDanhMuc);
             // Repair TRƯỚC: cập nhật categoryId từ 'cat_food' → UUID trong các
             // pending transactions. PHẢI chạy trước removeDuplicateLocalSeedCategories()
-            // vì _resolveCategoryId cần getById('cat_food') để đọc tên category rồi
+            // vì resolveCategoryId cần getById('cat_food') để đọc tên category rồi
             // tìm UUID cùng tên — nếu seed 'cat_food' đã bị xóa trước, getById() trả
             // về null và repair sẽ luôn thất bại (transaction bị defer vĩnh viễn).
             final repaired = await _db.transactionDao

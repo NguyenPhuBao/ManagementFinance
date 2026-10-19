@@ -12,7 +12,7 @@
 /// `transaction."Amount"` là **`numeric(15,2)`**: nhiều nhất **13 chữ số phần
 /// nguyên**. Tràn cho SQLSTATE `22003`, mà `sync.service.js` **không có nhánh
 /// nào** cho mã ấy nên nó rơi về `DB_ERROR`; và `_permanentCodes` của
-/// `SyncEngine` là **danh sách trắng**, `DB_ERROR` không nằm trong đó. Kết quả:
+/// `GuiLoDongBo` (`core/sync/gui_lo_dong_bo.dart`) là **danh sách trắng**, `DB_ERROR` không nằm trong đó. Kết quả:
 /// giao dịch bị **gửi lại ở mọi chu kỳ đồng bộ** — không lỗi, không log, chỉ
 /// một hàng đợi càng lúc càng chậm. Cùng vòng lặp mà G31 và G14 sinh ra để
 /// chặn, và cùng lỗ hổng vừa vá ở ô số dư ví (G45).
@@ -114,7 +114,7 @@ String _chuoiSoNguyen(double v) => v.toInt().toString();
 /// ⚠️ **Kết quả bị KẸP TRẦN.** Hai vế 13 chữ số cộng lại ra 14 chữ số, vượt
 /// `numeric(15,2)` của `transaction."Amount"` — tràn cho SQLSTATE `22003`, mà
 /// `sync.service.js` không có nhánh cho mã ấy nên nó rơi về `DB_ERROR`, thứ
-/// **không** nằm trong danh sách trắng `_permanentCodes`; giao dịch bị gửi lại
+/// **không** nằm trong danh sách trắng `GuiLoDongBo._permanentCodes`; giao dịch bị gửi lại
 /// ở mọi chu kỳ đồng bộ, im lặng. Cùng vòng lặp G31/G14/G46.
 ///
 /// ⚠️ **Hiệu được phép ÂM** và không kẹp về 0: `ThemGiaoDichCubit.chuanBiLuu` đã có chốt

@@ -42,7 +42,7 @@ Duration khoangChoLanThu(int lanThat) {
 /// Cùng lý lẽ đã ghi trong `lib/core/network/connection_monitor.dart`: hai câu
 /// hỏi khác nhau. `SyncEngine` trả lời *khi nào thì đồng bộ*; lớp này chỉ thuật
 /// lại *server vừa nói gì*. Trộn vào một chỗ thì một trong hai phải chịu thiệt,
-/// và `sync_engine.dart` đã hơn 1.600 dòng.
+/// và `SyncEngine` từng hơn 1.600 dòng một tệp (tách 2026-10-19).
 ///
 /// Lớp này **không tự gọi** `SyncEngine`. Nó chỉ phát ra [events]; việc nối
 /// [events] vào `syncNow()` và vào toast do `main.dart` làm. Nhờ vậy nó test

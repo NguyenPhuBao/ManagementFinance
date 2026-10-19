@@ -33,7 +33,7 @@ class ThuGomThaoTacDay {
 
   final AppDatabase _db;
 
-  /// Ví nào đang bị giữ vì trùng tên (G63) — qua cổng, bản thật `ViBiGiuDongBo` (`features/wallet/data/`). Engine KHÔNG đọc
+  /// Ví nào đang bị giữ vì trùng tên (G63) — qua cổng, bản thật `ViBiGiuDongBo` (`features/wallet/data/`). `ThuGomThaoTacDay` KHÔNG đọc
   /// cột cờ trực tiếp — test quét `vi_trung_ten_cuc_bo_test` canh tên cột không xuất hiện ở tệp này.
   final CongViBiGiu _viBiGiu;
 
@@ -156,7 +156,7 @@ class ThuGomThaoTacDay {
           'is_deleted': w.isDeleted,
           'include_in_total': w.includeInTotal,
           // Chuỗi thô của SQLite ('active'/'inactive'); `walletForPush` dịch
-          // sang từ vựng của server. Engine dựng payload thô, normalizer là
+          // sang từ vựng của server. `ThuGomThaoTacDay` dựng payload thô, normalizer là
           // tầng hợp đồng — cùng khuôn `type` ngay trên. (G28, 2026-09-14.)
           'status': w.status,
           'updated_at': w.updatedAt.toUtc().toIso8601String(),

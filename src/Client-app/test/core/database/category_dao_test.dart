@@ -718,7 +718,7 @@ void main() {
   });
 
   group('getByName — ánh xạ danh mục mặc định cục bộ sang UUID của backend', () {
-    // `_resolveCategoryId` dùng hàm này để tìm bản UUID cùng tên. Trước đây nó
+    // `resolveCategoryId` dùng hàm này để tìm bản UUID cùng tên. Trước đây nó
     // so bằng `t.name.equals(name)` nên phân biệt hoa/thường và không gộp dạng
     // Unicode; lệch một chữ hoa là ánh xạ thất bại, giao dịch bị hoãn đẩy VĨNH
     // VIỄN mà không có lỗi nào báo ra.
@@ -839,7 +839,7 @@ void main() {
       (await upgraded.categoryDao.getById('cat_bill_chi'))!.name,
       'Hóa đơn',
       reason: 'Ba mục này chỉ khác NHÃN so với backend. Không đổi tên thì '
-          '_resolveCategoryId không tìm được bản UUID cùng tên, trả null, và '
+          'resolveCategoryId không tìm được bản UUID cùng tên, trả null, và '
           'giao dịch dùng chúng bị hoãn đẩy vĩnh viễn — hỏng hoàn toàn im lặng.',
     );
 

@@ -128,7 +128,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   ///    xoá". Vì thế không dùng [watchAll] (hàm ấy lọc `deletedAt`).
   /// 2. ⚠️ **Lọc theo CỜ `isDefault`, không chỉ theo tài khoản.** `sync_engine`
   ///    quy `is_default = true` thành **`idaccount = 0`**
-  ///    (`sync_engine.dart:733`), nên hàng mặc định toàn cục không mang mã tài
+  ///    (`ap_du_lieu_keo_ve.dart`, nhánh kéo ví), nên hàng mặc định toàn cục không mang mã tài
   ///    khoản nào. Thiếu vế ấy thì giao dịch trỏ vào chúng **mất tên**.
   ///
   /// Vế thứ hai vốn thiếu ở **cả hai** repository cho tới 2026-09-15, mỗi nơi
@@ -439,11 +439,11 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
 
   /// Tìm danh mục theo TÊN, so khớp qua [normalizeCategoryName].
   ///
-  /// Dùng ở `_resolveCategoryId` để ánh xạ danh mục mặc định cục bộ (id dạng
+  /// Dùng ở `resolveCategoryId` (`core/sync/uuid_dong_bo.dart`) để ánh xạ danh mục mặc định cục bộ (id dạng
   /// `cat_food`) sang UUID tương ứng của backend. Trước đây so bằng
   /// `t.name.equals(name)` — phân biệt hoa/thường và không gộp dạng Unicode —
   /// nên chỉ cần lệch một chữ hoa hay một dạng dấu là ánh xạ thất bại,
-  /// `_resolveCategoryId` trả `null`, và giao dịch bị hoãn đẩy VĨNH VIỄN mà
+  /// `resolveCategoryId` trả `null`, và giao dịch bị hoãn đẩy VĨNH VIỄN mà
   /// không có lỗi nào báo ra. Đúng lớp lỗi 11.4 / 11.6 trong PROJECT_CONTEXT.
   ///
   /// Lọc trong Dart chứ không trong SQL vì phép chuẩn hoá có bước NFC mà

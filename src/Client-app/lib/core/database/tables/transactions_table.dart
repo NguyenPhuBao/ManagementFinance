@@ -24,7 +24,7 @@ class Transactions extends Table {
   /// Cả hai đường ghi đều giữ bất biến này:
   /// - ghi tay — `TransactionRepository._applyBalances` trừ ví bằng
   ///   `_adjust(walletId, -amount)` cho `'chi'` và cộng `amount` cho `'thu'`;
-  /// - kéo về — `sync_engine.dart` ghi `.abs()` rồi suy `type` qua
+  /// - kéo về — `ap_du_lieu_keo_ve.dart` ghi `.abs()` rồi suy `type` qua
   ///   `SyncPayloadNormalizer.transactionTypeFromBackend`, nên số âm của server
   ///   không bao giờ lọt xuống SQLite.
   ///
@@ -55,7 +55,7 @@ class Transactions extends Table {
   /// Client legacy:  'Manual' | 'Casso'   | 'SMS' | 'OCR'
   ///
   /// ⚠️ **Cột này KHÔNG đi qua đồng bộ theo chiều nào cả**, và **không có mapper
-  /// chuẩn hoá nào**. Payload đẩy (`sync_engine.dart`, `_collectPendingOps`)
+  /// chuẩn hoá nào**. Payload đẩy (`thu_gom_day.dart`, `ThuGomThaoTacDay.collectPendingOps`)
   /// gồm **13** trường (đếm bằng máy từ `sync_payload_contract_test.dart`,
   /// 2026-09-14; mốc **12** là của 2026-09-11, trước khi `idbill` vào ngày
   /// 2026-09-12) và không có `provider`; nhánh kéo về cũng không đọc nó. Nên
@@ -110,7 +110,7 @@ class Transactions extends Table {
   /// `Value.absent()` khi server không gửi.
   ///
   /// ⚠️ Cột này có khoá ngoại `fk_transaction_bill`, nên hoá đơn **phải** được
-  /// đẩy TRƯỚC giao dịch — mục 4 của `_collectPendingOps` đứng trước mục 5 vì
+  /// đẩy TRƯỚC giao dịch — mục 4 của `ThuGomThaoTacDay.collectPendingOps` đứng trước mục 5 vì
   /// lý do ấy, và có ca test canh thứ tự.
   ///
   /// Vì sao cần: trước đây khoản trả hoá đơn chỉ nhận ra được bằng **tiền tố

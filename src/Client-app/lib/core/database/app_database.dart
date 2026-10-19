@@ -455,8 +455,8 @@ class AppDatabase extends _$AppDatabase {
           // cập nhật app lặng lẽ bỏ lưu trữ chúng: ví quay lại mọi bộ chọn,
           // quay lại tổng tài sản, và hai bộ chạy tự động dùng lại nó.
           //
-          // Đủ, vì Push chạy TRƯỚC Pull trong cùng chu kỳ (`_sendBatch` rồi
-          // `_pullFromBackend`): ví lên tới server trước khi pull đọc về.
+          // Đủ, vì Push chạy TRƯỚC Pull trong cùng chu kỳ (`GuiLoDongBo.sendBatch` rồi
+          // `ApDuLieuKeoVe.pullFromBackend`): ví lên tới server trước khi pull đọc về.
           //
           // Chỉ đụng ví đang lưu trữ và chưa xoá — quét cả bảng là ép đẩy lại
           // mọi ví ở lần mở app kế tiếp, cùng lập luận với v20.
