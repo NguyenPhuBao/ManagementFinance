@@ -4372,7 +4372,7 @@ xuất cân đối (thẻ + thông báo + tool `can_doi`), **ô NHỊP CHI** tra
 - **Kỳ đã đóng** `kyDaDongTruoc` (`budget_history.dart`) trên **cùng lưới `BudgetEntity.mocKy`** mà `currentPeriod` nhảy —
   lùi cả về **trước** ngày tạo ngân sách, bỏ kỳ bắt đầu trước giao dịch đầu tiên của tài khoản (thiếu dữ liệu ≠ không chi).
 - **Đọc một lần**: `BudgetRepository.nhipChiTheoNganSach` đọc khoản chi MỘT lượt cho mọi ngân sách rồi chia bằng
-  `khoanThuocNganSach` — vế danh mục tách khỏi `getExpenses` để "đã chi" có một định nghĩa. Mọi nơi dùng gọi qua
+  `khoanThuocNganSach` — vế danh mục tách khỏi `getExpenses` để "đã chi" có một định nghĩa (từ 2026-10-19 `getExpenses` còn lọc qua `khoanVaoThongKe`, nên ngân sách tổng và nhịp chi bỏ *Điều chỉnh số dư* / *Số dư ban đầu* / nửa cặp nạp mục tiêu kiểu cũ). Mọi nơi dùng gọi qua
   **`docNhipChi`** (`budget/data/doc_nhip_chi.dart`): nhịp là phần **phụ**, đọc hỏng thì `{}` → chi đều, không hỏng trang.
 - **Ba chỗ dùng**: `duPhongCua(nhipChi:)` / `taiPhanBoCua(nhipTheoNganSach:)` qua `DuLieuTaiPhanBo.nhipTheoNganSach` — thẻ
   *Đề xuất cân đối*, thông báo `budgetRebalance`, tool `can_doi` cùng theo vì cùng đi qua `keHoachTaiPhanBoTu`;
