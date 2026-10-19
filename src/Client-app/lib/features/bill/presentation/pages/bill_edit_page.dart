@@ -335,12 +335,7 @@ class _BillEditPageState extends State<BillEditPage> {
                     // hai kiểu.
                     SegmentedChoice<String>(
                       keyPrefix: 'bill-cycle',
-                      options: const [
-                        SegmentedOption(kBillCycleWeek, 'Hàng tuần'),
-                        SegmentedOption(kBillCycleMonth, 'Hàng tháng'),
-                        SegmentedOption(kBillCycleQuarter, 'Hàng quý'),
-                        SegmentedOption(kBillCycleYear, 'Hàng năm'),
-                      ],
+                      options: [for (final c in kChuKyHoaDon) SegmentedOption(c, tenChuKyHoaDon(c))],
                       selected: _lich.timeRecurrence,
                       onChanged: (val) => setState(
                           () => _lich = _lich.copyWith(timeRecurrence: val)),

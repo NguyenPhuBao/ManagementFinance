@@ -788,17 +788,9 @@ class _BillAddPageState extends State<BillAddPage> {
   /// Từng là `Wrap` và xếp thành bốn hàng dọc — lý do và cách tránh nằm ở
   /// [SegmentedChoice], nay dùng chung với ngân sách và mục tiêu.
   Widget _buildCycleSelector() {
-    const nhan = <String, String>{
-      kBillCycleWeek: 'Hàng tuần',
-      kBillCycleMonth: 'Hàng tháng',
-      kBillCycleQuarter: 'Hàng quý',
-      kBillCycleYear: 'Hàng năm',
-    };
     return SegmentedChoice<String>(
       keyPrefix: 'bill-cycle',
-      options: [
-        for (final e in nhan.entries) SegmentedOption(e.key, e.value),
-      ],
+      options: [for (final c in kChuKyHoaDon) SegmentedOption(c, tenChuKyHoaDon(c))],
       selected: _lich.timeRecurrence,
       onChanged: _chonChuKy,
     );

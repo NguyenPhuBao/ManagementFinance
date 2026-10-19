@@ -11,6 +11,9 @@ const String kBillCycleMonth = 'Month';
 const String kBillCycleQuarter = 'Quarter';
 const String kBillCycleYear = 'Year';
 
+/// Bốn chu kỳ chọn được ở form Thêm / Sửa hoá đơn, theo thứ tự hiển thị — nhãn qua [tenChuKyHoaDon].
+const List<String> kChuKyHoaDon = [kBillCycleWeek, kBillCycleMonth, kBillCycleQuarter, kBillCycleYear];
+
 /// Mốc đến hạn của kỳ kế tiếp, tính từ [current] theo [timeRecurrence].
 ///
 /// Cộng tháng/quý/năm bằng `DateTime(y, m + n, d)` là **sai**: hàm dựng
