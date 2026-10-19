@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -62,7 +62,6 @@ class _BillDeletePageState extends State<BillDeletePage> {
   /// Viền và chữ nút *Hủy bỏ* (`on-tertiary-container` của Stitch, cùng màu thùng rác trên thẻ hoá đơn).
   static const _do = Color(0xFFF1453B);
 
-  static final _ngay = DateFormat('dd/MM/yyyy');
 
   BillEntity? _bill;
   CategoryEntity? _danhMuc;
@@ -249,7 +248,7 @@ class _BillDeletePageState extends State<BillDeletePage> {
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          'Hạn ${_ngay.format(b.dueDate)}',
+                          'Hạn ${DateFormatter.formatDate(b.dueDate)}',
                           maxLines: 1,
                           style: const TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary),

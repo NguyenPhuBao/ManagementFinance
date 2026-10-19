@@ -1,7 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../core/ui/bieu_do_cham.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -69,7 +69,7 @@ class GoalProgressChart extends StatelessWidget {
     // Mục tiêu vài tuần và mục tiêu vài năm dùng chung một trục; nhãn "09/26"
     // cho một mục tiêu 3 tuần thì bốn nhãn giống hệt nhau.
     final soNgay = chuoi.denNgay.difference(chuoi.tuNgay).inDays;
-    final dinhDangNgay = DateFormat(soNgay >= 100 ? 'MM/yy' : 'dd/MM');
+    String nhanNgay(DateTime x) => soNgay >= 100 ? DateFormatter.formatMonthYearShort(x) : DateFormatter.formatDayMonth(x);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -198,7 +198,7 @@ class GoalProgressChart extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            dinhDangNgay.format(
+                            nhanNgay(
                               DateTime.fromMillisecondsSinceEpoch(moc.round()),
                             ),
                             maxLines: 1,
@@ -223,7 +223,7 @@ class GoalProgressChart extends StatelessWidget {
                     getTooltipItems: (spots) => [
                       for (final s in spots)
                         LineTooltipItem(
-                          '${dinhDangNgay.format(
+                          '${nhanNgay(
                             DateTime.fromMillisecondsSinceEpoch(s.x.round()),
                           )} · ${rutGon(s.y)}',
                           const TextStyle(

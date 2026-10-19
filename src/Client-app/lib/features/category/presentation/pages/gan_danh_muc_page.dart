@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../widgets/category_visuals.dart';
 import '../../data/models/category_entity.dart';
@@ -321,7 +321,7 @@ class _GanDanhMucPageState extends State<GanDanhMucPage> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    [DateFormat('dd/MM').format(t.date), if (tenVi != null) tenVi].join(' · '),
+                    [DateFormatter.formatDayMonth(t.date), if (tenVi != null) tenVi].join(' · '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),

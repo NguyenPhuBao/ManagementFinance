@@ -5,7 +5,7 @@ library;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../../core/utils/date_formatter.dart';
 
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../shared/theme/app_colors.dart';
@@ -279,7 +279,7 @@ class NhacTrung extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '${CurrencyFormatter.format(d.soTien!)} $chieu hôm '
-                  '${DateFormat('dd/MM').format(d.thoiGian!)} đã có trong sổ',
+                  '${DateFormatter.formatDayMonth(d.thoiGian!)} đã có trong sổ',
                   style: const TextStyle(
                       fontSize: 12, color: AppColors.textSecondary),
                 ),
@@ -320,7 +320,7 @@ Future<void> moKhoanTrung(BuildContext context, List<KhoanSo> trung) =>
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(k.ghiChu.isEmpty ? '(không ghi chú)' : k.ghiChu),
-                  subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(k.ngay)),
+                  subtitle: Text(DateFormatter.formatDateTime(k.ngay)),
                   trailing: Text(CurrencyFormatter.formatCoDau(k.soTien,
                       thu: k.loai == 'thu')),
                 ),

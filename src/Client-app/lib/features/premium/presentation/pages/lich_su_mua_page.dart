@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/realtime/realtime_channel.dart';
@@ -183,7 +183,7 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                     Text(
-                      luc == null ? 'Mã đơn #${d.orderCode}' : DateFormat('dd/MM/yyyy').format(luc.toLocal()),
+                      luc == null ? 'Mã đơn #${d.orderCode}' : DateFormatter.formatDate(luc.toLocal()),
                       style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ],

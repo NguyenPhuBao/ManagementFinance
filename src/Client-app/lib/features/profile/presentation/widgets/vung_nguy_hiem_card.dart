@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../auth/domain/dem_nguoc_xoa.dart';
 import '../../../../core/di/injection_container.dart';
@@ -172,7 +172,7 @@ class _VungNguyHiemCardState extends State<VungNguyHiemCard> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Tài khoản và toàn bộ dữ liệu sẽ bị xoá vĩnh viễn vào ${DateFormat('dd/MM/yyyy').format(ngayXoa)}.',
+                'Tài khoản và toàn bộ dữ liệu sẽ bị xoá vĩnh viễn vào ${DateFormatter.formatDate(ngayXoa)}.',
                 style: const TextStyle(
                     fontSize: 14, height: 1.5, color: AppColors.textPrimary),
               ),

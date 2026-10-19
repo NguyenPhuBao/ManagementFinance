@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/bill_recurrence.dart';
@@ -323,7 +323,6 @@ class _BillAddPageState extends State<BillAddPage> {
   }
 
   Widget _buildFormCard() {
-    final dateFormatter = DateFormat('dd/MM/yyyy');
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -371,7 +370,6 @@ class _BillAddPageState extends State<BillAddPage> {
           _buildDateField(
             value: _lich.startDate,
             onTap: _pickStartDate,
-            formatter: dateFormatter,
           ),
           const SizedBox(height: 16),
 
@@ -383,7 +381,6 @@ class _BillAddPageState extends State<BillAddPage> {
           _buildDateField(
             value: _lich.ketThucKy,
             onTap: null,
-            formatter: dateFormatter,
             khoa: true,
             textKey: const ValueKey('bill-period-end-text'),
           ),
@@ -404,7 +401,6 @@ class _BillAddPageState extends State<BillAddPage> {
           _buildDateField(
             value: _lich.dueDate,
             onTap: null,
-            formatter: dateFormatter,
             khoa: true,
             textKey: const ValueKey('bill-due-date-text'),
           ),
@@ -719,7 +715,6 @@ class _BillAddPageState extends State<BillAddPage> {
   Widget _buildDateField({
     required DateTime? value,
     required VoidCallback? onTap,
-    required DateFormat formatter,
     bool khoa = false,
     Key? textKey,
   }) {
@@ -740,7 +735,7 @@ class _BillAddPageState extends State<BillAddPage> {
                   color: AppColors.outline, size: 24),
               const SizedBox(width: 12),
               Text(
-                value == null ? 'Chưa chọn' : 'Ngày ${formatter.format(value)}',
+                value == null ? 'Chưa chọn' : 'Ngày ${DateFormatter.formatDate(value)}',
                 key: textKey,
                 style: const TextStyle(fontSize: 16, color: AppColors.primary),
               ),

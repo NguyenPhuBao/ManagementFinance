@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
@@ -459,7 +459,7 @@ class HomePage extends StatelessWidget {
             final content = buildTransactionRowContent(tx, lookup);
             return _buildTransactionItem(
               content,
-              '${content.subtitle} • ${DateFormat('dd/MM').format(tx.date)}',
+              '${content.subtitle} • ${DateFormatter.formatDayMonth(tx.date)}',
             );
           }),
       ],

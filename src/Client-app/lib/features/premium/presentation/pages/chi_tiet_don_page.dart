@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/realtime/realtime_channel.dart';
@@ -201,7 +201,7 @@ class _ChiTietDonPageState extends State<ChiTietDonPage> with WidgetsBindingObse
         ),
       );
 
-  String _ngay(DateTime d) => DateFormat('dd/MM/yyyy').format(d.toLocal());
+  String _ngay(DateTime d) => DateFormatter.formatDate(d.toLocal());
 
   String _tien(int so) => CurrencyFormatter.format(so.toDouble());
 

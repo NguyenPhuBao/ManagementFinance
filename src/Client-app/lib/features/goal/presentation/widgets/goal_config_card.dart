@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/goal_entity.dart';
@@ -89,7 +89,7 @@ class GoalConfigCard extends StatelessWidget {
           _Dong(
             icon: Icons.event_outlined,
             nhan: 'Hạn chót',
-            giaTri: DateFormat('dd/MM/yyyy').format(goal.targetDate),
+            giaTri: DateFormatter.formatDate(goal.targetDate),
             phu: moTaHanChot(goal, moc),
           ),
           const _VachNgan(),

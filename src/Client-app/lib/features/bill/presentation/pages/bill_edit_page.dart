@@ -3,7 +3,7 @@ import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../domain/bill_recurrence.dart';
 import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
@@ -219,7 +219,6 @@ class _BillEditPageState extends State<BillEditPage> {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormatter = DateFormat('dd/MM/yyyy');
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -289,7 +288,7 @@ class _BillEditPageState extends State<BillEditPage> {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Ngày bắt đầu hóa đơn'),
-                      subtitle: Text(dateFormatter.format(_lich.startDate)),
+                      subtitle: Text(DateFormatter.formatDate(_lich.startDate)),
                       trailing: const Icon(Icons.calendar_today,
                           color: AppColors.primary),
                       onTap: _pickStartDate,
@@ -301,7 +300,7 @@ class _BillEditPageState extends State<BillEditPage> {
                       contentPadding: EdgeInsets.zero,
                       enabled: false,
                       title: const Text('Ngày kết thúc kỳ'),
-                      subtitle: Text(dateFormatter.format(_lich.ketThucKy)),
+                      subtitle: Text(DateFormatter.formatDate(_lich.ketThucKy)),
                       trailing: const Icon(Icons.lock_outline,
                           color: AppColors.primary),
                     ),
@@ -320,7 +319,7 @@ class _BillEditPageState extends State<BillEditPage> {
                       contentPadding: EdgeInsets.zero,
                       enabled: false,
                       title: const Text('Hạn thanh toán'),
-                      subtitle: Text(dateFormatter.format(_lich.dueDate)),
+                      subtitle: Text(DateFormatter.formatDate(_lich.dueDate)),
                       trailing: const Icon(Icons.lock_outline,
                           color: AppColors.primary),
                     ),

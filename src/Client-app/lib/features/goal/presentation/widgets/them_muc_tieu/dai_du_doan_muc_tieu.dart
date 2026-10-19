@@ -3,7 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../../core/utils/date_formatter.dart';
 
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../shared/theme/app_colors.dart';
@@ -61,8 +61,7 @@ class DaiDuDoanMucTieu extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const TextSpan(text: 'Dự kiến bạn sẽ đạt mục tiêu vào ngày '),
                   TextSpan(
-                      text: DateFormat('dd/MM/yyyy')
-                          .format(estimatedCompletionDate),
+                      text: DateFormatter.formatDate(estimatedCompletionDate),
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppColors.income)),

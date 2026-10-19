@@ -4,7 +4,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../category/domain/category_classify.dart';
 import '../../../category/data/models/category_entity.dart';
@@ -854,7 +854,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       nhanDanhMuc: _s.phanTach.isEmpty ? 'Danh mục' : 'Danh mục chính',
       noteController: _noteController,
       // D1: giờ trong tin là giờ giao dịch — hiện ra để người dùng thấy nó được giữ.
-      ngayHienThi: DateFormat(_bienDong != null ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy').format(_s.ngay),
+      ngayHienThi: _bienDong != null ? DateFormatter.formatDateTime(_s.ngay) : DateFormatter.formatDate(_s.ngay),
       onChonVi: () => _moChonVi(context, isDestination: false),
       onChonViDich: () => _moChonVi(context, isDestination: true),
       onChonDanhMuc: () async {

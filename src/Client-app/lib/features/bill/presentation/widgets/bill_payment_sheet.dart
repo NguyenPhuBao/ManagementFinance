@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../domain/bill_recurrence.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../data/models/bill_entity.dart';
@@ -66,7 +66,6 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
   bool _dangChonVi = false;
   String? _loi;
 
-  static final _dinhDangNgay = DateFormat('dd/MM/yyyy');
   @override
   void initState() {
     super.initState();
@@ -188,7 +187,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
                   suffixIcon: Icon(Icons.calendar_today_outlined, size: 18),
                 ),
                 child: Text(
-                  _dinhDangNgay.format(_ngay),
+                  DateFormatter.formatDate(_ngay),
                   style: const TextStyle(fontSize: 15),
                 ),
               ),
@@ -337,8 +336,8 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
           if (b.startDate != null)
             _dongThongTin(
                 'Kỳ',
-                '${_dinhDangNgay.format(b.startDate!)} → '
-                    '${_dinhDangNgay.format(b.periodEnd ?? b.dueDate)}'),
+                '${DateFormatter.formatDate(b.startDate!)} → '
+                    '${DateFormatter.formatDate(b.periodEnd ?? b.dueDate)}'),
           _dongThongTin('Chu kỳ',
               b.isRecurrence ? tenChuKyHoaDon(b.timeRecurrence) : 'Không lặp'),
           _dongThongTin(
@@ -366,7 +365,7 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
         : chenh > 0
             ? 'còn $chenh ngày'
             : 'quá hạn ${-chenh} ngày';
-    return '${_dinhDangNgay.format(due)} ($phu)';
+    return '${DateFormatter.formatDate(due)} ($phu)';
   }
 
   Widget _dongThongTin(String nhan, String giaTri) => Padding(

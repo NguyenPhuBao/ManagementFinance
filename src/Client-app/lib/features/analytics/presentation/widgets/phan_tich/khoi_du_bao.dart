@@ -3,7 +3,7 @@
 library;
 
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
+import '../../../../../core/utils/date_formatter.dart';
 import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../domain/bao_cao_xuat.dart';
@@ -40,7 +40,6 @@ class KhoiDuBao extends StatefulWidget {
 /// Số dòng cam kết khi chưa bấm "Xem thêm".
 const int soDongCamKetThuGon = 5;
 
-String ddMM(DateTime d) => DateFormat('dd/MM').format(d);
 
 class _KhoiDuBaoState extends State<KhoiDuBao> {
   bool _moHet = false;
@@ -226,7 +225,7 @@ class DongViThieu extends StatelessWidget {
           Expanded(
             child: Text(
               'Ví ${v.ten} thiếu ${chuoiTien(v.thieu)} để trả cam kết ngày '
-              '${ddMM(v.ngay)}',
+              '${DateFormatter.formatDayMonth(v.ngay)}',
               style: const TextStyle(fontSize: 12, color: AppColors.warning),
             ),
           ),
@@ -408,7 +407,7 @@ class BieuDoDuBao extends StatelessWidget {
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    ddMM(ds[i].ngay),
+                    DateFormatter.formatDayMonth(ds[i].ngay),
                     style: const TextStyle(
                         fontSize: 11, color: AppColors.textSecondary),
                   ),
@@ -536,7 +535,7 @@ class DongCamKet extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${ddMM(c.ngay)} · ${c.tenVi ?? 'Ví đã xoá'}',
+                  '${DateFormatter.formatDayMonth(c.ngay)} · ${c.tenVi ?? 'Ví đã xoá'}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

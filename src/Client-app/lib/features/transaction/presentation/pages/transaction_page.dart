@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../../category/domain/category_classify.dart';
 import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
@@ -627,7 +627,7 @@ class _TransactionPageState extends State<TransactionPage> {
     // Group transactions by Date (YYYY-MM-DD)
     final Map<String, List<TransactionEntity>> grouped = {};
     for (final tx in transactions) {
-      final dateKey = DateFormat('yyyy-MM-dd').format(tx.date);
+      final dateKey = DateFormatter.dayKey(tx.date);
       grouped.putIfAbsent(dateKey, () => []).add(tx);
     }
 
@@ -642,7 +642,7 @@ class _TransactionPageState extends State<TransactionPage> {
           final dayTxs = grouped[dateStr]!;
           final dateObj = DateTime.parse(dateStr);
           final formattedDateHeader =
-              DateFormat('EEEE, dd/MM/yyyy', 'vi_VN').format(dateObj);
+              DateFormatter.formatWeekdayDate(dateObj);
 
           // Tổng của nhóm ngày: CÙNG hàm với thẻ tổng (`khoanVaoThongKe` — bỏ khoản điều chỉnh số dư / mở sổ). Vòng cộng
           // thô theo `type` từng nằm ở đây: trên Realme một ngày chỉ có khoản điều chỉnh hiện "+10.000 đ" trong khi thẻ

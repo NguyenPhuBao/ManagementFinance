@@ -3,7 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../../core/utils/date_formatter.dart';
 
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../shared/theme/app_colors.dart';
@@ -33,7 +33,7 @@ class KhoiNhanDinhMucTieu extends StatelessWidget {
       tieuDe = 'CHƯA ĐỦ DỮ LIỆU ĐỂ DỰ BÁO';
     } else {
       tieuDe =
-          'DỰ BÁO HOÀN THÀNH: THÁNG ${DateFormat('MM/yyyy').format(duBao)}';
+          'DỰ BÁO HOÀN THÀNH: THÁNG ${DateFormatter.formatMonthYear(duBao)}';
     }
 
     final nhipLabel = nhanNhipChuKy(goal.cycleTakeMoney);
@@ -55,7 +55,7 @@ class KhoiNhanDinhMucTieu extends StatelessWidget {
       final canThem = keHoach == null
           ? ''
           : ' · cần ${CurrencyFormatter.format(keHoach)} để kịp hạn '
-              '${DateFormat('MM/yyyy').format(goal.targetDate)}';
+              '${DateFormatter.formatMonthYear(goal.targetDate)}';
       mota =
           'Đang tích ${CurrencyFormatter.format(thucTe)} $nhipLabel$canThem.';
     }

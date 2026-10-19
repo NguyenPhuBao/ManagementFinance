@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../data/models/bill_entity.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
@@ -119,7 +119,6 @@ class _BillPageState extends State<BillPage> {
     context.watch<AuthBloc>();
     _thuNap();
 
-    final dateFormatter = DateFormat('dd/MM/yyyy');
     final now = widget.now ?? DateTime.now();
     final idKhoanLap = currentAccountIdOrNull(context);
     final nguonKhoanLap = widget.deXuatNguon ??
@@ -271,7 +270,6 @@ class _BillPageState extends State<BillPage> {
                       sections.chuaDong,
                       cacThangSau: sections.chuaDongCacThangSau,
                       now: now,
-                      dateFormatter: dateFormatter,
                       khiTrong: 'Không còn hoá đơn nào phải trả.',
                       payments: state.payments,
                       tatCa: state.bills,
@@ -280,7 +278,6 @@ class _BillPageState extends State<BillPage> {
                       context,
                       sections.daDong,
                       now: now,
-                      dateFormatter: dateFormatter,
                       khiTrong: 'Chưa có kỳ nào đã đóng.',
                       payments: state.payments,
                       tatCa: state.bills,
@@ -304,7 +301,6 @@ class _BillPageState extends State<BillPage> {
     List<BillEntity> bills, {
     List<BillEntity> cacThangSau = const [],
     required DateTime now,
-    required DateFormat dateFormatter,
     required String khiTrong,
     required Map<String, TransactionEntity> payments,
     required List<BillEntity> tatCa,
@@ -315,7 +311,6 @@ class _BillPageState extends State<BillPage> {
             delegate: SliverChildBuilderDelegate(
               (_, i) => _dongHoaDon(context, ds[i],
                   now: now,
-                  dateFormatter: dateFormatter,
                   payments: payments,
                   tatCa: tatCa),
               childCount: ds.length,
@@ -409,7 +404,6 @@ class _BillPageState extends State<BillPage> {
     BuildContext context,
     BillEntity bill, {
     required DateTime now,
-    required DateFormat dateFormatter,
     required Map<String, TransactionEntity> payments,
     required List<BillEntity> tatCa,
   }) {
@@ -432,9 +426,9 @@ class _BillPageState extends State<BillPage> {
         // 411dp chỉ còn chỗ cho ~18 ký tự, một dòng bị cắt thành "Hạn
         // 06/09/2026 • T…" (thấy trên máy ảo 06/09).
         subtitle: khoanChi == null
-            ? 'Hạn ${dateFormatter.format(bill.dueDate)}'
-            : 'Hạn ${dateFormatter.format(bill.dueDate)}\n'
-                'Trả ${dateFormatter.format(khoanChi.date)}',
+            ? 'Hạn ${DateFormatter.formatDate(bill.dueDate)}'
+            : 'Hạn ${DateFormatter.formatDate(bill.dueDate)}\n'
+                'Trả ${DateFormatter.formatDate(khoanChi.date)}',
         // Dòng đã trả mở khoản chi; dòng chưa trả mở trang chi tiết (mang
         // theo hàng đang giữ để trang vẽ ngay, rồi tự đọc lại CSDL).
         onTap: khoanChi != null
