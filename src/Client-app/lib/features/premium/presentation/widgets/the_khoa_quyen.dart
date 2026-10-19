@@ -45,10 +45,10 @@ class TheKhoaQuyen extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: const BoxDecoration(
-              color: Color(0xFFF4F4F0),
+              color: AppColors.surfaceContainerLow,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.lock_outline, size: 20, color: Color(0xFF767872)),
+            child: const Icon(Icons.lock_outline, size: 20, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 8),
           Text(
@@ -61,7 +61,7 @@ class TheKhoaQuyen extends StatelessWidget {
           const Text(
             'Dành cho Premium',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: Color(0xFF767872)),
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 10),
           SizedBox(
@@ -107,9 +107,6 @@ class DongKhoaQuyen extends StatelessWidget {
   final String cau;
   final VoidCallback? onMo;
 
-  static const _vang = Color(0xFFD97706);
-  static const _nenVang = Color(0xFFFEF3C7);
-
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -118,8 +115,8 @@ class DongKhoaQuyen extends StatelessWidget {
         Container(
           width: 24,
           height: 24,
-          decoration: const BoxDecoration(color: _nenVang, shape: BoxShape.circle),
-          child: const Icon(Icons.lock_outline, size: 15, color: _vang),
+          decoration: const BoxDecoration(color: AppColors.khoaNenVang, shape: BoxShape.circle),
+          child: const Icon(Icons.lock_outline, size: 15, color: AppColors.khoaVang),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -130,8 +127,8 @@ class DongKhoaQuyen extends StatelessWidget {
         TextButton(
           key: const Key('nut-nang-cap'),
           style: TextButton.styleFrom(
-            backgroundColor: _nenVang,
-            foregroundColor: _vang,
+            backgroundColor: AppColors.khoaNenVang,
+            foregroundColor: AppColors.khoaVang,
             minimumSize: const Size(0, 28),
             padding: const EdgeInsets.symmetric(horizontal: 10),
             shape: const StadiumBorder(),
@@ -156,9 +153,9 @@ class DongKhoaCongTac extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nen = dangBat ? const Color(0xFFFFF4F2) : const Color(0xFFFAF8EE);
-    final vien = dangBat ? const Color(0xFFFAD7D4) : const Color(0xFFECE5CD);
-    final mau = dangBat ? AppColors.error : const Color(0xFF523F0C);
+    final nen = dangBat ? AppColors.khoaTamDungNen : AppColors.khoaCanNen;
+    final vien = dangBat ? AppColors.khoaTamDungVien : AppColors.khoaCanVien;
+    final mau = dangBat ? AppColors.error : AppColors.khoaCanChu;
     return Container(
       key: Key('dong-khoa-cong-tac-${ma.maServer}'),
       margin: const EdgeInsets.only(top: 8),
@@ -171,7 +168,7 @@ class DongKhoaCongTac extends StatelessWidget {
       child: Row(
         children: [
           Icon(dangBat ? Icons.lock_clock_outlined : Icons.lock_outline,
-              size: 18, color: dangBat ? AppColors.error : const Color(0xFF8C6D1F)),
+              size: 18, color: dangBat ? AppColors.error : AppColors.khoaCanIcon),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -185,7 +182,7 @@ class DongKhoaCongTac extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: AppColors.textPrimary,
-              side: const BorderSide(color: Color(0xFFD5D3CA)),
+              side: const BorderSide(color: AppColors.vienNutNangCap),
               minimumSize: const Size(0, 30),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
