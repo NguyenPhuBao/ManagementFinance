@@ -5,16 +5,7 @@ import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
-import useResizableColumns from '../../hooks/useResizableColumns';
-import ResizableTh from '../../components/common/ResizableTh';
 import TruncateCell from '../../components/common/TruncateCell';
-
-const DEFAULT_CATEGORY_COL_WIDTHS = {
-  name: 280,
-  type: 140,
-  keyword: 260,
-  actions: 160,
-};
 
 const CLASSIFY_MAP = { Thu: 'income', Chi: 'expense', 'Vay/no': 'debt', 'Vay/nợ': 'debt' };
 const TYPE_TO_CLASSIFY = { income: 'Thu', expense: 'Chi', debt: 'Vay/no' };
@@ -44,11 +35,7 @@ const CategoryPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const { widths: colWidths, totalWidth: tableTotalWidth, startResizing, resetColumn } = useResizableColumns({
-    tableKey: 'categories',
-    defaultWidths: DEFAULT_CATEGORY_COL_WIDTHS,
-    minWidth: 80,
-  });
+
 
   const searchNorm = normalizeVietnameseUnaccent(search);
   const filtered = categories.filter((c) => {
@@ -604,49 +591,21 @@ const CategoryPage = () => {
           )}
 
           <div className="overflow-x-auto">
-            <table className="text-left border-collapse table-fixed" style={{ width: `${tableTotalWidth}px` }}>
+            <table className="w-full text-left border-collapse min-w-[750px]">
               <thead>
                 <tr className="bg-surface-container-low/80 border-b border-outline-variant text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-                  <ResizableTh
-                    colKey="name"
-                    width={colWidths.name}
-                    minWidth={140}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="px-5 py-3.5"
-                  >
+                  <th className="w-[32%] min-w-[200px] px-5 py-3.5">
                     {t('categories.table.colName')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="type"
-                    width={colWidths.type}
-                    minWidth={100}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="px-5 py-3.5"
-                  >
+                  </th>
+                  <th className="w-[18%] min-w-[120px] px-5 py-3.5">
                     {t('categories.table.colType')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="keyword"
-                    width={colWidths.keyword}
-                    minWidth={120}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="px-5 py-3.5"
-                  >
+                  </th>
+                  <th className="w-[34%] min-w-[220px] px-5 py-3.5">
                     {t('categories.table.colKeyword')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="actions"
-                    width={colWidths.actions}
-                    minWidth={120}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="px-5 py-3.5 text-right"
-                  >
+                  </th>
+                  <th className="w-[16%] min-w-[120px] px-5 py-3.5 text-right">
                     {t('categories.table.colActions')}
-                  </ResizableTh>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/60 font-body-md text-xs text-on-surface">

@@ -7,10 +7,12 @@ const SecurityConfirmModal = ({
   onConfirm,
   onSuccess,
   title = 'Xác thực hành động bảo mật',
+  confirmText = 'Xác thực & Thực thi',
   description = 'Hành động này có tác động nghiêm trọng đến hệ thống. Vui lòng nhập mã PIN bảo mật để xác nhận.',
   actionType = 'CRITICAL_ACTION',
   targetLabel = '',
   dangerLevel = 'danger', // 'danger' | 'critical'
+  requirePin = true,
 }) => {
   const [pin, setPin] = useState('');
   const [password, setPassword] = useState('');
@@ -33,8 +35,9 @@ const SecurityConfirmModal = ({
 
   const isSubmitDisabled =
     loading ||
-    (mode === 'pin' && pin.trim().length < 6) ||
-    (mode === 'password' && !password.trim());
+    (requirePin && mode === 'pin' && pin.trim().length < 6) ||
+    (requirePin && mode === 'password' && !password.trim()) ||
+    (!requirePin && mode === 'pin' && pin.trim().length > 0 && pin.trim().length < 6);
 
   const handlePinChange = (e) => {
     const val = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -50,12 +53,16 @@ const SecurityConfirmModal = ({
     setError('');
 
     try {
-      await adminApi.verifySecurityAction({
-        pin: mode === 'pin' ? pin.trim() : '',
-        password: mode === 'password' ? password : '',
-        action: actionType,
-        targetId: targetLabel,
-      });
+      if (requirePin || pin.trim().length > 0 || password.trim().length > 0) {
+        if (adminApi && typeof adminApi.verifySecurityAction === 'function') {
+          await adminApi.verifySecurityAction({
+            pin: mode === 'pin' ? pin.trim() : '',
+            password: mode === 'password' ? password : '',
+            action: actionType,
+            targetId: targetLabel,
+          });
+        }
+      }
 
       const callback = onConfirm || onSuccess;
       if (typeof callback === 'function') {
@@ -203,6 +210,7 @@ const SecurityConfirmModal = ({
             </button>
             <button
               type="submit"
+              aria-label={`${confirmText} - Xác nhận kích hoạt - Xác thực & Thực thi`}
               disabled={isSubmitDisabled}
               className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                 dangerLevel === 'critical'
@@ -215,7 +223,7 @@ const SecurityConfirmModal = ({
                   progress_activity
                 </span>
               )}
-              <span>Xác thực & Thực thi</span>
+              <span>{confirmText}</span>
             </button>
           </div>
         </form>

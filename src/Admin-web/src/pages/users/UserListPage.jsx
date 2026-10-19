@@ -8,20 +8,9 @@ import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 import { maskPhone } from '../../utils/format';
-import useResizableColumns from '../../hooks/useResizableColumns';
-import ResizableTh from '../../components/common/ResizableTh';
 import TruncateCell from '../../components/common/TruncateCell';
 
 const ALL_STATUS_KEYS = ['active', 'inactive', 'pendingdelete', 'deleted'];
-
-const DEFAULT_USER_COL_WIDTHS = {
-  select: 48,
-  name: 280,
-  email: 240,
-  phone: 160,
-  status: 140,
-  actions: 180,
-};
 
 const UserListPage = () => {
   const alert = useAlertSafe();
@@ -54,12 +43,6 @@ const UserListPage = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-
-  const { widths: colWidths, totalWidth: tableTotalWidth, startResizing, resetColumn } = useResizableColumns({
-    tableKey: 'users',
-    defaultWidths: DEFAULT_USER_COL_WIDTHS,
-    minWidth: 48,
-  });
 
   const getStatusBadge = (status) => {
     switch (status?.toLowerCase()) {
@@ -618,65 +601,30 @@ const UserListPage = () => {
           )}
 
           <div className="overflow-x-auto">
-            <table className="text-left border-collapse table-fixed" style={{ width: `${tableTotalWidth}px` }}>
+            <table className="w-full text-left border-collapse min-w-[850px]">
               <thead>
                 <tr className="bg-surface-container-low/80 border-b border-outline-variant text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-                  <th style={{ width: `${colWidths.select}px`, minWidth: `${colWidths.select}px`, maxWidth: `${colWidths.select}px` }} className="px-5 py-3.5 text-center">
+                  <th className="w-12 px-5 py-3.5 text-center">
                     <input
                       type="checkbox"
                       className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
                     />
                   </th>
-                  <ResizableTh
-                    colKey="name"
-                    width={colWidths.name}
-                    minWidth={120}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="px-5 py-3.5"
-                  >
+                  <th className="px-5 py-3.5 w-[26%] min-w-[200px]">
                     {t('users.table.colName')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="email"
-                    width={colWidths.email}
-                    minWidth={120}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="px-5 py-3.5"
-                  >
+                  </th>
+                  <th className="px-5 py-3.5 w-[24%] min-w-[180px]">
                     {t('users.table.colEmail')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="phone"
-                    width={colWidths.phone}
-                    minWidth={100}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="px-5 py-3.5"
-                  >
+                  </th>
+                  <th className="px-5 py-3.5 w-[16%] min-w-[130px]">
                     {t('users.table.colPhone')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="status"
-                    width={colWidths.status}
-                    minWidth={100}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="px-5 py-3.5 text-center"
-                  >
+                  </th>
+                  <th className="px-5 py-3.5 w-[14%] min-w-[110px] text-center">
                     {t('users.table.colStatus')}
-                  </ResizableTh>
-                  <ResizableTh
-                    colKey="actions"
-                    width={colWidths.actions}
-                    minWidth={120}
-                    onResize={startResizing}
-                    onReset={resetColumn}
-                    className="px-5 py-3.5 text-right"
-                  >
+                  </th>
+                  <th className="px-5 py-3.5 w-[20%] min-w-[150px] text-right">
                     {t('users.table.colActions')}
-                  </ResizableTh>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/60 font-body-md text-xs text-on-surface">

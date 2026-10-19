@@ -578,7 +578,7 @@ src/
     │   │   └── sync.api.js
     │   ├── components/
     │   │   ├── layout/  (AppLayout, Sidebar, Header)
-    │   │   └── common/  (Loading, EmptyState, ConfirmModal, Pagination, ServerHealthPanel)
+    │   │   └── common/  (Loading, EmptyState, ConfirmModal, Pagination, ServerHealthPanel, SecurityConfirmModal, TruncateCell)
     │   ├── hooks/       (useAuth, useSocket, usePagination)
     │   ├── pages/
     │   │   ├── auth/       (LoginPage, ForgotPasswordPage)
@@ -597,6 +597,11 @@ src/
     ├── vite.config.js
     └── package.json
 ```
+
+#### 📌 4.2.1. Quy Chuẩn Bảng Dữ Liệu Quản Trị Enterprise (Data Tables Standard)
+- **Tỷ lệ cột hài hòa cố định:** Không sử dụng tính năng kéo dãn cột thủ công (loại bỏ hoàn toàn logic resize cột) nhằm giữ bố cục giao diện nhất quán, tránh vỡ layout và tối ưu hiệu suất làm việc cho Quản trị viên.
+- **Cắt chữ tự động & Tooltip (`TruncateCell`):** Văn bản vượt quá độ rộng cột được tự động ẩn và hiển thị bằng dấu ba chấm `...` (`truncate`), đồng thời gắn `title` để người dùng hover xem toàn bộ nội dung mà không gây xô lệch hàng/cột.
+- **Responsive Scroll Container:** Bảng dữ liệu được bọc trong container `overflow-x-auto` với giá trị `min-w-[...]` chuẩn xác theo từng loại dữ liệu, đảm bảo không bị co rúm trên thiết bị hoặc màn hình nhỏ.
 
 ### 4.3 Client-app (Flutter + SQLite)
 

@@ -7,17 +7,7 @@ import ServerHealthPanel from '../../components/common/ServerHealthPanel';
 import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useLanguageSafe } from '../../store/language.context';
 import { classifyAuditAction } from '../../utils/audit-tags.util';
-import useResizableColumns from '../../hooks/useResizableColumns';
-import ResizableTh from '../../components/common/ResizableTh';
 import TruncateCell from '../../components/common/TruncateCell';
-
-const DEFAULT_DASHBOARD_COL_WIDTHS = {
-  user: 180,
-  action: 220,
-  reason: 200,
-  status: 120,
-  time: 130,
-};
 
 const STATUS_CONFIG = {
   Pass: {
@@ -375,11 +365,7 @@ const DashboardPage = () => {
   const { t } = useLanguageSafe();
   const [loading, setLoading] = useState(true);
 
-  const { widths: colWidths, totalWidth: tableTotalWidth, startResizing, resetColumn } = useResizableColumns({
-    tableKey: 'dashboard_activities',
-    defaultWidths: DEFAULT_DASHBOARD_COL_WIDTHS,
-    minWidth: 60,
-  });
+
   const now = new Date();
   const vnNow = getVnDateParts(now) || {
     year: String(now.getFullYear()),
@@ -1181,14 +1167,14 @@ const DashboardPage = () => {
                   <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
                 </div>
               )}
-              <table className="text-left border-collapse table-fixed" style={{ width: `${tableTotalWidth}px` }}>
+              <table className="w-full text-left border-collapse min-w-[720px]">
                   <thead>
                       <tr className="bg-surface-container-low/50">
-                          <ResizableTh colKey="user" width={colWidths.user} onResize={startResizing} onReset={resetColumn} className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.user')}</ResizableTh>
-                          <ResizableTh colKey="action" width={colWidths.action} onResize={startResizing} onReset={resetColumn} className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.action')}</ResizableTh>
-                          <ResizableTh colKey="reason" width={colWidths.reason} onResize={startResizing} onReset={resetColumn} className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.reason')}</ResizableTh>
-                          <ResizableTh colKey="status" width={colWidths.status} onResize={startResizing} onReset={resetColumn} className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.status')}</ResizableTh>
-                          <ResizableTh colKey="time" width={colWidths.time} onResize={startResizing} onReset={resetColumn} align="right" resizable={false} className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">{t('dashboard.recentActivities.columns.time')}</ResizableTh>
+                          <th className="w-[22%] min-w-[150px] py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.user')}</th>
+                          <th className="w-[26%] min-w-[180px] py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.action')}</th>
+                          <th className="w-[24%] min-w-[160px] py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.reason')}</th>
+                          <th className="w-[14%] min-w-[110px] py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.status')}</th>
+                          <th className="w-[14%] min-w-[110px] py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">{t('dashboard.recentActivities.columns.time')}</th>
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/50">

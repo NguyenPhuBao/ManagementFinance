@@ -7,20 +7,7 @@ import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 import Pagination from '../../components/common/Pagination';
 import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
-import useResizableColumns from '../../hooks/useResizableColumns';
-import ResizableTh from '../../components/common/ResizableTh';
 import TruncateCell from '../../components/common/TruncateCell';
-
-const DEFAULT_BROADCAST_COL_WIDTHS = {
-  id: 60,
-  type: 110,
-  user: 160,
-  reason: 240,
-  start: 140,
-  end: 140,
-  duration: 110,
-  status: 120,
-};
 
 const BROADCAST_LEVELS = [
   { value: 'info', color: 'text-blue-500', icon: 'info' },
@@ -34,11 +21,7 @@ const BroadcastPage = () => {
   const { t } = useLanguageSafe();
   const [activeTab, setActiveTab] = useState('maintenance'); // 'maintenance' | 'broadcast'
 
-  const { widths: colWidths, totalWidth: tableTotalWidth, startResizing, resetColumn } = useResizableColumns({
-    tableKey: 'broadcast_history',
-    defaultWidths: DEFAULT_BROADCAST_COL_WIDTHS,
-    minWidth: 50,
-  });
+
 
   // --- State Quản trị Bảo trì ---
   const [maintenance, setMaintenance] = useState({
@@ -816,89 +799,33 @@ const BroadcastPage = () => {
 
             {/* Bảng Dữ Liệu */}
             <div className="overflow-x-auto">
-              <table className="text-left text-xs border-collapse table-fixed" style={{ width: `${tableTotalWidth}px` }}>
+              <table className="w-full text-left text-xs border-collapse min-w-[850px]">
                 <thead>
                   <tr className="border-b border-outline-variant text-[11px] text-on-surface-variant uppercase tracking-wider bg-surface-container-lowest font-semibold">
-                    <ResizableTh
-                      colKey="id"
-                      width={colWidths.id}
-                      minWidth={40}
-                      onResize={startResizing}
-                      onReset={resetColumn}
-                      className="py-2.5 px-3"
-                    >
+                    <th className="w-14 py-2.5 px-3">
                       #
-                    </ResizableTh>
-                    <ResizableTh
-                      colKey="type"
-                      width={colWidths.type}
-                      minWidth={90}
-                      onResize={startResizing}
-                      onReset={resetColumn}
-                      className="py-2.5 px-3"
-                    >
+                    </th>
+                    <th className="w-[13%] min-w-[100px] py-2.5 px-3">
                       {t('broadcast.history.colType', 'Loại')}
-                    </ResizableTh>
-                    <ResizableTh
-                      colKey="user"
-                      width={colWidths.user}
-                      minWidth={120}
-                      onResize={startResizing}
-                      onReset={resetColumn}
-                      className="py-2.5 px-3"
-                    >
+                    </th>
+                    <th className="w-[17%] min-w-[130px] py-2.5 px-3">
                       {t('broadcast.history.colUser', 'Người kích hoạt')}
-                    </ResizableTh>
-                    <ResizableTh
-                      colKey="reason"
-                      width={colWidths.reason}
-                      minWidth={140}
-                      onResize={startResizing}
-                      onReset={resetColumn}
-                      className="py-2.5 px-3"
-                    >
+                    </th>
+                    <th className="w-[26%] min-w-[180px] py-2.5 px-3">
                       {t('broadcast.history.colReason', 'Lý do / Thông điệp')}
-                    </ResizableTh>
-                    <ResizableTh
-                      colKey="start"
-                      width={colWidths.start}
-                      minWidth={110}
-                      onResize={startResizing}
-                      onReset={resetColumn}
-                      className="py-2.5 px-3"
-                    >
+                    </th>
+                    <th className="w-[15%] min-w-[110px] py-2.5 px-3">
                       {t('broadcast.history.colStart', 'Bắt đầu')}
-                    </ResizableTh>
-                    <ResizableTh
-                      colKey="end"
-                      width={colWidths.end}
-                      minWidth={110}
-                      onResize={startResizing}
-                      onReset={resetColumn}
-                      className="py-2.5 px-3"
-                    >
+                    </th>
+                    <th className="w-[15%] min-w-[110px] py-2.5 px-3">
                       {t('broadcast.history.colEnd', 'Kết thúc')}
-                    </ResizableTh>
-                    <ResizableTh
-                      colKey="duration"
-                      width={colWidths.duration}
-                      minWidth={90}
-                      onResize={startResizing}
-                      onReset={resetColumn}
-                      className="py-2.5 px-3"
-                    >
+                    </th>
+                    <th className="w-[14%] min-w-[100px] py-2.5 px-3">
                       {t('broadcast.history.colDuration', 'Thời lượng')}
-                    </ResizableTh>
-                    <ResizableTh
-                      colKey="status"
-                      width={colWidths.status}
-                      minWidth={100}
-                      onResize={startResizing}
-                      onReset={resetColumn}
-                      className="py-2.5 px-3 text-right"
-                    >
+                    </th>
+                    <th className="w-24 min-w-[90px] py-2.5 px-3 text-right">
                       {t('broadcast.history.colStatus', 'Trạng thái')}
-                    </ResizableTh>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/50">
@@ -1153,6 +1080,9 @@ const BroadcastPage = () => {
       <SecurityConfirmModal
         isOpen={showEmergencyConfirmModal}
         onClose={() => setShowEmergencyConfirmModal(false)}
+        title="Xác nhận BẢO TRÌ KHẨN CẤP"
+        confirmText="Xác thực & Thực thi"
+        requirePin={false}
         actionType="EMERGENCY_MAINTENANCE"
         actionDescription={
           scheduleReason
