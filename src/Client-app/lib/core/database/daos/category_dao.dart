@@ -126,7 +126,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// 1. **Giữ hàng đã xoá mềm.** Giao dịch cũ vẫn trỏ vào danh mục đã xoá, và
   ///    tên thật còn nguyên trong hàng: "Chi khác" có ích hơn "Danh mục đã
   ///    xoá". Vì thế không dùng [watchAll] (hàm ấy lọc `deletedAt`).
-  /// 2. ⚠️ **Lọc theo CỜ `isDefault`, không chỉ theo tài khoản.** `sync_engine`
+  /// 2. ⚠️ **Lọc theo CỜ `isDefault`, không chỉ theo tài khoản.** đường kéo về (`ApDuLieuKeoVe`)
   ///    quy `is_default = true` thành **`idaccount = 0`**
   ///    (`ap_du_lieu_keo_ve.dart`, nhánh kéo danh mục), nên hàng mặc định toàn cục không mang mã tài
   ///    khoản nào. Thiếu vế ấy thì giao dịch trỏ vào chúng **mất tên**.

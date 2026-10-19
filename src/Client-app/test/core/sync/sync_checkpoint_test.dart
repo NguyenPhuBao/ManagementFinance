@@ -389,5 +389,22 @@ void main() {
       expect(engine.soLanKeoVeXong, 0,
           reason: 'chu kỳ kết thúc ở trạng thái cuối dù Pull hỏng — chỉ con đếm này mới nói dữ liệu đã mới');
     });
+
+    test('stop() đặt hasCompletedPull về false nhưng KHÔNG đặt lại soLanKeoVeXong (G14)', () async {
+      await seedWallet();
+      await runSync();
+      expect(engine.hasCompletedPull, isTrue);
+      final truocStop = engine.soLanKeoVeXong;
+      expect(truocStop, 1);
+
+      engine.stop();
+
+      expect(engine.hasCompletedPull, isFalse,
+          reason: 'G14: tài khoản kế tiếp mà thừa hưởng daKeoXong = true sẽ tin một SQLite chưa kéo về, '
+              'và PersonalDefaultCategories / bộ gieo danh mục hành động trên dữ liệu ấy');
+      expect(engine.soLanKeoVeXong, truocStop,
+          reason: 'datLaiPhien KHÔNG đặt lại bộ đếm: nó đếm cả đời engine để lượt quét hoá đơn nhận ra "vừa có lượt kéo mới"; '
+              'về 0 là mất tín hiệu ấy khi đổi tài khoản');
+    });
   });
 }
