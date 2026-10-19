@@ -7,6 +7,9 @@
 /// trang được gọi thẳng — chúng không chạm hai thứ trên.
 ///
 /// `conCho`: chỗ lệch đo được lúc viết quét, gỡ dần — chỉ được bớt, không được thêm.
+///
+/// Giới hạn đã biết: chỉ soi MỘT tầng (chỉ thị của chính tệp datasource đích) — cổng bọc tiếp một datasource CSDL, hoặc trang
+/// import thẳng `core/api/` / `core/database/`, không bị bắt (đo 2026-10-19: 0 chỗ).
 library;
 
 import 'dart:io';

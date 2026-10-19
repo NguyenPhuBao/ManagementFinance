@@ -1100,7 +1100,7 @@ chưa làm.
   datasource) — chúng chuyển xuống `NhatKyThongBao`, cửa ghi DUY NHẤT vẫn là nó.
 - **`NhatKyThongBao`** (`features/notification/data/datasources/nhat_ky_thong_bao.dart`) là **cửa
   ghi duy nhất** và **không bao giờ ném**: một lỗi CSDL chỉ thành một dòng
-  `[NhatKy] ghi … hỏng`, vì chín chỗ gọi đều là đường người dùng đang thao tác.
+  `[NhatKy] ghi … hỏng`, vì ghi nhật ký chỉ là việc phụ của tám chỗ gọi (đếm 2026-10-19: `grep -rnE "[.](ghi|ghiNhieu)[(]" lib` lọc `nhatKy` / `NhatKyThongBao` — `main.dart`, `notification_scanner`, `reminder_scheduler` ×2, `thong_bao_repository_impl` ×2, `de_xuat_thong_bao_nguon`, `hang_cho_su_kien`): có đường người dùng đang thao tác (chạm thông báo, bỏ qua đề xuất), có bộ quét / bộ lập lịch ghi sự kiện nền (`huyLich`, `datLich`, `hoan`) — cả hai đều không được hỏng vì một dòng nhật ký.
   Mã tài khoản lấy từ tham số, không có thì từ nguồn phiên; `null` hay `≤ 0` là
   **bỏ hàng**, không đoán (quy tắc 2).
   ⚠️ DI đăng ký nó với nguồn phiên `() => null` rồi `main.dart` gắn nguồn thật

@@ -1,5 +1,5 @@
 /// `ThongBaoRepository` — repository của mảng Thông báo trên `NotificationDao` (spec Entity Thông báo 2026-10-15 mục 4.2; trước là
-/// `ThongBaoNguon`, spec bịt điểm rò 2026-10-10 mục 4.4). Không mang luật: mỗi lối chuyển tiếp đúng một hàm DAO, map Entity ở biên.
+/// `ThongBaoNguon`, spec bịt điểm rò 2026-10-10 mục 4.4). Không mang luật: mỗi lối chuyển tiếp đúng một hàm DAO, map Entity ở biên (trừ hai lối nhật ký, chuyển xuống `NhatKyThongBao`).
 /// Test này canh "chuyển tiếp đúng hàm" và "chenLai trả hàng y nguyên", không canh luật của DAO. `==` sau vòng tròn CSDL đứng được vì
 /// Drift lưu `DateTime` dạng giây và trả `DateTime` local (fixture mốc tròn giây) — xem `notification_entity_companion_test`.
 library;

@@ -4,7 +4,7 @@ import '../models/notification_entity.dart';
 import '../models/notification_entity_companion.dart';
 import 'thong_bao_repository.dart';
 
-/// Bản thi hành duy nhất ngoài test: chuyển tiếp 1–1 sang [NotificationDao], map `fromDrift` ở biên trả về, `companionTu` ở biên ghi.
+/// Bản thi hành duy nhất ngoài test: chuyển tiếp 1–1 sang [NotificationDao], map `fromDrift` ở biên trả về, `companionTu` ở biên ghi; riêng hai lối nhật ký chuyển xuống [NhatKyThongBao] (cửa ghi DUY NHẤT của bảng sự kiện).
 class ThongBaoRepositoryImpl implements ThongBaoRepository {
   ThongBaoRepositoryImpl(this._dao, {NhatKyThongBao? nhatKy}) : _nhatKy = nhatKy;
   final NotificationDao _dao;

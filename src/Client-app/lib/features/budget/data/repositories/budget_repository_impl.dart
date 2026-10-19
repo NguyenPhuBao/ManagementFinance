@@ -145,9 +145,9 @@ class BudgetRepositoryImpl implements BudgetRepository {
     }
     if (tu == null || den == null) return {for (final b in budgets) b.id: null};
 
-    // MỘT lượt đọc cho mọi ngân sách: `categoryId: null` = mọi khoản chi (đúng
-    // định nghĩa ngân sách tổng); từng ngân sách lọc lại bằng CHÍNH vế của
-    // `getExpenses` (`khoanThuocNganSach`).
+    // MỘT lượt đọc cho mọi ngân sách: `categoryId: null` = mọi khoản chi VÀO
+    // THỐNG KÊ (`khoanVaoThongKe`, 2026-10-19 — đúng định nghĩa ngân sách tổng);
+    // từng ngân sách lọc lại bằng vế danh mục `khoanThuocNganSach`.
     final chi = await localDataSource.getExpenses(
       idaccount: idaccount,
       categoryId: null,

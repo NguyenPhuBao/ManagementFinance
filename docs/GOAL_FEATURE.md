@@ -321,6 +321,11 @@ không tồn tại.
 Nay ba mảnh ấy đều được lưu (ba cột, mục 5 — **đã đồng bộ từ 2026-09-07**), và
 `GoalAutoDepositRunner` chạy các kỳ đã tới hạn.
 
+**Số tiền mỗi kỳ form Thêm mục tiêu tự đề xuất** (khi đổi số tiền mục tiêu hoặc hạn chót): từ 2026-10-19 đi qua
+`soTienMoiKyDeXuat` (`goal_forecast.dart`), đếm theo **ngày lịch** — trước đó form trừ `DateTime` thô nên hạn 00:00 hụt một
+ngày khi mở form buổi tối và số đề xuất đổi theo giờ mở. Chu kỳ lấy từ `soNgayChuKy`, nhãn nhịp ("mỗi tuần"…) một chỗ
+`nhanNhipChuKy` cho thẻ Cấu hình và khối Nhận xét.
+
 **Nơi chạy là `NotificationScanner.scan()`**, tức mỗi khi một chu kỳ đồng bộ kết
 thúc — không phải WorkManager. Các kỳ bỏ lỡ được **trích bù** theo đúng thứ tự
 khi app mở lại, nên không kỳ nào mất; chúng chỉ xảy ra muộn hơn mốc lý thuyết.
@@ -443,11 +448,6 @@ một `cycle_take_money`. Suy ra "đã đồng ý cho trích tự động" từ 
 chuyển tiền dựa trên một lựa chọn người dùng chưa từng đưa ra.
 
 ---
-
-**Số tiền mỗi kỳ form Thêm mục tiêu tự đề xuất** (khi đổi số tiền mục tiêu hoặc hạn chót): từ 2026-10-19 đi qua
-`soTienMoiKyDeXuat` (`goal_forecast.dart`), đếm theo **ngày lịch** — trước đó form trừ `DateTime` thô nên hạn 00:00 hụt một
-ngày khi mở form buổi tối và số đề xuất đổi theo giờ mở. Chu kỳ lấy từ `soNgayChuKy`, nhãn nhịp ("mỗi tuần"…) một chỗ
-`nhanNhipChuKy` cho thẻ Cấu hình và khối Nhận xét.
 
 ### 3.14 Khoản trích **bù** mang mốc của kỳ, không phải lúc bù
 

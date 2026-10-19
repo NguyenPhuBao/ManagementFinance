@@ -1,6 +1,6 @@
 import '../models/notification_entity.dart';
 
-/// Cổng đọc / ghi bảng thông báo CỤC BỘ của mảng — repository của Thông báo (spec Entity Thông báo 2026-10-15 mục 4.2; trước đó là
+/// Cổng đọc / ghi bảng thông báo CỤC BỘ của mảng (và ghi nhật ký sự kiện B5a qua `NhatKyThongBao`, hai lối riêng) — repository của Thông báo (spec Entity Thông báo 2026-10-15 mục 4.2; trước đó là
 /// `ThongBaoNguon` ở `core/notification`, spec bịt điểm rò 2026-10-10 mục 4.4).
 ///
 /// Chỉ **chuyển tiếp** đúng mười bốn lối giao diện và nguồn Thêm giao dịch đang dùng — không luật, không gộp. Interface chỉ nhận / trả

@@ -170,12 +170,12 @@ lib/features/ai_edge/
             ap_dung_ke_hoach.dart · kiem_giong.dart
             (P3) slm_prompt.dart · chu_de_chan.dart
             (việc số 1, 2026-09-22) kiem_nhan.dart · kiem_cau_tra_loi.dart — định nghĩa DUY NHẤT của "một câu được hiện" · gac_cau.dart — gác theo câu trên stream token · the_cua_cau.dart — thẻ số liệu của một câu (cùng phép khớp với bộ kiểm số)
-  data/     (P3) slm_runtime.dart — tệp DUY NHẤT import flutter_gemma (sinh · sinhDan · huy) · slm_dien_giai.dart · slm_cache.dart · mo_hinh_tai_ve.dart (từ tối 2026-09-22 đứng trên NguonTaiNen; tai_tep_dio.dart ĐÃ BỎ) · nguon_tai_nen.dart — giao diện lượt tải sống lâu hơn tiến trình + bản giả · tai_nen_background_downloader.dart — tệp DUY NHẤT import background_downloader · cong_tac_ai.dart · nguon_goi_so.dart — SÁU gói cho màn Trợ lý AI
+  data/     (P3; nay `data/datasources/` cho `slm_runtime` · `nguon_tai_nen` · `tai_nen_background_downloader`, dời 2026-10-19) slm_runtime.dart — tệp DUY NHẤT import flutter_gemma (sinh · sinhDan · huy) · slm_dien_giai.dart · slm_cache.dart · mo_hinh_tai_ve.dart (từ tối 2026-09-22 đứng trên NguonTaiNen; tai_tep_dio.dart ĐÃ BỎ) · nguon_tai_nen.dart — giao diện lượt tải sống lâu hơn tiến trình + bản giả · tai_nen_background_downloader.dart — tệp DUY NHẤT import background_downloader · cong_tac_ai.dart · nguon_goi_so.dart — SÁU gói cho màn Trợ lý AI
   domain/   (tải nền) hoi_dung_4g.dart — chuỗi hộp thoại dữ liệu di động · canary_gpu.dart — dấu canary GPU (Mali sập native)
   domain/   (bước 1b, 2026-09-23) canary_cong_cu.dart — CanaryCongCu (xét dấu sót bằng lý do thoát của Android) · quaCanary (bọc một lượt sinh) · BacCongCuDaTat
-  data/     (bước 1b) nguon_ly_do_thoat.dart — kênh `flowmoney/ly_do_thoat` tới `MainActivity` (lý do thoát + phiên bản app) · slm_runtime.dart: `moPhien` hỏi `daTat()`, mỗi lượt của `_PhienThat` đi qua `quaCanary` · main.dart xét dấu sót lúc khởi động
+  data/     (bước 1b; nguon_ly_do_thoat.dart nay ở `data/datasources/`, 2026-10-19) nguon_ly_do_thoat.dart — kênh `flowmoney/ly_do_thoat` tới `MainActivity` (lý do thoát + phiên bản app) · slm_runtime.dart: `moPhien` hỏi `daTat()`, mỗi lượt của `_PhienThat` đi qua `quaCanary` · main.dart xét dấu sót lúc khởi động
   domain/   (lát 4b, 2026-09-23 — NỐI VÀO MÀN Trợ lý AI từ Task 8) hang_so_lieu.dart — HangSoLieu + KetQuaCongCu · goi_so_tra_cuu.dart — gói tích luỹ của bậc tool (mẫu câu theo lượt gọi, bẫy 4.35) · cong_cu.dart — CongCu, KhaiBaoCongCu, bốn tên tool, kTranGoiCongCu · gac_cau.dart thêm DangTraCuu / KhongTraCuu · slm_prompt.dart thêm kPromptHeThongCongCu · hang_{hoa_don,vi,ngan_sach,chi_tieu}.dart — bốn hàm dựng hàng theo tên · goi_so_vi.dart mở viDangAm công khai · bo_markdown.dart — gỡ markdown lúc hiện (bẫy 4.36) · the_cua_cau.dart xét theo từng câu (bẫy 4.34)
-  data/     (lát 4b) phien_cong_cu.dart — giao diện phiên có tool + PhienCongCuGia · slm_runtime.dart thêm moPhien (bản thật _PhienThat — sập native với gói 1.7.0, chạy được từ 1.8.0, bẫy 4.33) · cong_cu_{ngan_sach,hoa_don,vi,chi_tieu}.dart — bốn adapter đọc repository · bo_cong_cu.dart — BoCongCu (khai báo + tra theo tên), DI lazy · vong_lap_cong_cu.dart — hoiBangCongCu: trần, thang lùi L1–L4, log print · nguon_goi_so.dart tách viChoGoiSoTu / nganSachDangChay dùng chung
+  data/     (lát 4b; phien_cong_cu.dart · slm_runtime.dart nay ở `data/datasources/`, 2026-10-19) phien_cong_cu.dart — giao diện phiên có tool + PhienCongCuGia · slm_runtime.dart thêm moPhien (bản thật _PhienThat — sập native với gói 1.7.0, chạy được từ 1.8.0, bẫy 4.33) · cong_cu_{ngan_sach,hoa_don,vi,chi_tieu}.dart — bốn adapter đọc repository · bo_cong_cu.dart — BoCongCu (khai báo + tra theo tên), DI lazy · vong_lap_cong_cu.dart — hoiBangCongCu: trần, thang lùi L1–L4, log print · nguon_goi_so.dart tách viChoGoiSoTu / nganSachDangChay dùng chung
   domain/   (bước 2, 2026-09-23 — mã xong; cổng D chưa đạt, mục 9.17) hang_muc_tieu.dart · hang_goi_y_han_muc.dart · hang_giao_dich.dart — ba hàm dựng hàng · loi_tham_so.dart — lời từ chối tham số chung · cong_cu.dart thêm ba tên tool + ba nhãn chỉ báo · hang_chi_tieu.dart: kMaKy tám mã · goi_so.dart / kiem_so.dart: LoaiSo.ngayThang · hang_so_lieu.dart: KetQuaCongCu.tenLienQuan
   data/     (bước 2) cong_cu_{muc_tieu,goi_y_han_muc,giao_dich}.dart — ba adapter · bo_cong_cu.dart: bảy tool
   domain/   (bước 2b, 2026-09-24 — mã xong; cổng D lần 2 chưa đạt, mục 9.18) loi_tham_so.dart — chỗ DUY NHẤT dựng lời từ chối (tuChoi… → loi + choNguoiDung + thamSoGo) · tham_so_mo_hinh.dart — thamSoTen (giữ chỗ = không lọc) · laSoTien · goi_so_tra_cuu.dart: lượt bị từ chối KHÔNG là đã tra cứu, gỡ theo tham số, choHienChuMoHinh · hang_chi_tieu.dart: kMaKyMoiLuc (mã riêng của tim_giao_dich) · cong_cu.dart: toolsJsonCua
@@ -796,7 +796,7 @@ thật sự xảy ra thay vì bịa nhãn.
 
 | # | Thay đổi | Tệp |
 |---|---|---|
-| 1 | **Streaming chặn theo câu** — `SlmRuntime.sinhDan` (token) + `huy` (`stopGeneration()`); `gacTheoCau` gom token, đủ câu thì kiểm rồi phát `CauQua`, trượt thì huỷ và phát `BiChan`, không còn sự kiện nào sau. Màn dựng bong bóng lớn dần theo câu; bị chặn sau ≥ 1 câu → **giữ** các câu ấy; chưa câu nào → câu lùi | `data/slm_runtime.dart` · `domain/gac_cau.dart` · `ai_chat_page.dart` |
+| 1 | **Streaming chặn theo câu** — `SlmRuntime.sinhDan` (token) + `huy` (`stopGeneration()`); `gacTheoCau` gom token, đủ câu thì kiểm rồi phát `CauQua`, trượt thì huỷ và phát `BiChan`, không còn sự kiện nào sau. Màn dựng bong bóng lớn dần theo câu; bị chặn sau ≥ 1 câu → **giữ** các câu ấy; chưa câu nào → câu lùi | `data/slm_runtime.dart` (nay `data/datasources/`, 2026-10-19) · `domain/gac_cau.dart` · `ai_chat_page.dart` |
 | 2 | **`kiemNhan`** — lớp chắn thứ ba (số thật gán tên sai); từ khoá suy từ nhãn lúc chạy, so theo âm tiết | `domain/kiem_nhan.dart`; `kiem_so.dart` mở `soLieuKhop` |
 | 3 | **`kiemCauTraLoi`** — định nghĩa duy nhất của "một câu được hiện": số + nhãn + giọng theo `mucTongHop` (có gói cảnh báo → cả câu không được trấn an). Đây là chỗ **nối `kiemGiong` vào hỏi đáp** — trước đó chưa nối | `domain/kiem_cau_tra_loi.dart` |
 | 4 | `NguonGoiSo` gom **sáu** gói (thêm hoá đơn, ví); ví đọc **một** lần cho cả gói ví lẫn tổng của trang chủ | `data/nguon_goi_so.dart` · DI |
@@ -4607,7 +4607,7 @@ ba màn `1896d02b…` *bong bóng online* · `7a6519d6…` *tờ thông tin* · 
    `moToThongTinOnline` — *Đã hiểu* → ghi cờ đã đọc, câu đi online; *Chỉ dùng AI trên máy* → tắt công tắc + ghi cờ, câu này
    đi máy; vuốt tắt → câu này đi máy, **lần sau hỏi lại**.
 4. `_hoiOnline`: `xepHistory` (ghép theo **cặp** `user` + lời đáp AI ngay sau, ≤ 3 cặp cuối = ≤ 6 tin; luôn xen kẽ, đầu `user`, cuối
-   `model`; thẻ lệnh, câu cố định của hệ thống và tin không có lời đáp bị bỏ) → datasource SSE →
+   `model`; thẻ lệnh, câu cố định của hệ thống và tin không có lời đáp bị bỏ) → `TroLyOnlineRepository.hoi` → `LuotHoiOnline` (luồng sự kiện + `huy` thuần, 2026-10-19) → datasource SSE →
    chunk **nối thẳng** vào `_traLoiDangDen` (không chèn khoảng trắng, **không gác theo câu**, không thẻ số liệu; gỡ markdown lúc
    hiện bằng `boDanhDauMarkdown`) → `quyetDinhSauOnline` → `_chotOnline`. Hàng chờ *Đang hỏi trợ lý online…* kèm nút **Dừng**
    (`Key('dung-online')`), nút còn ở dưới bong bóng khi chữ đã chảy. 403 → `GoiRepository.lamMoi()` để băng khoá cập nhật.
@@ -4644,6 +4644,9 @@ lib/core/api/interceptors/auth_interceptor.dart     — _retryRequest phát lạ
 lib/features/ai_chat/domain/su_kien_online.dart     — SuKienOnline { ChuOnline · XongOnline · DuPhongOnline · LoiOnline }, TinLichSu
 lib/features/ai_chat/domain/duong_hoi.dart          — nenHoiOnline · quyetDinhSauOnline (HoanTat / RoiVeMay / GiuPhanDaCo) · xepHistory · năm hằng nhãn
 lib/features/ai_chat/data/datasources/tro_ly_online_remote_data_source.dart — POST /ai/chatbot/chat/stream, receiveTimeout 45 s, khung → sự kiện
+lib/features/ai_chat/data/repositories/tro_ly_online_repository.dart      — giao diện `hoi` → `LuotHoiOnline` (2026-10-19)
+lib/features/ai_chat/data/repositories/tro_ly_online_repository_impl.dart — bản thật, bọc datasource SSE
+lib/features/ai_chat/data/models/luot_hoi_online.dart — `LuotHoiOnline`: luồng `SuKienOnline` + `huy` thuần (datasource giữ `CancelToken`)
 lib/features/ai_chat/data/cong_tac_online.dart      — CongTacOnline: khoá ai_online_bat (mặc định BẬT), ai_online_da_doc_to (mặc định chưa); nuốt lỗi
 lib/features/ai_chat/presentation/widgets/tro_ly_ai/ — the_lenh_tao (dời nguyên văn) · nhan_nguon · to_thong_tin_online · dong_khoa · hang_chip
 lib/features/ai_edge/domain/chu_de_chan.dart         — chuDeBiChanOnline cạnh chuDeBiChan; hai nhóm _tuKhoaSong / _tuKhoaTuVan
@@ -4709,6 +4712,8 @@ chỉnh fixture test.
 | `core/api/auth_interceptor_test.dart` | 18 | +1 (17 cũ) — phát lại sau 401 giữ `responseType` / `receiveTimeout` / `cancelToken` |
 | `features/ai_chat/data/datasources/tro_ly_online_remote_data_source_test.dart` | 16 | mới — adapter Dio giả; 403 / 429 / 503, `done.fallback`, `done.error`, đứt giữa luồng, thân cụt UTF-8 |
 | `features/ai_chat/data/cong_tac_online_test.dart` | 3 | mới |
+| `features/ai_chat/data/repositories/tro_ly_online_repository_impl_test.dart` | 1 | 2026-10-19 — repository trả `LuotHoiOnline` (đếm `grep` ca `test(`) |
+| `features/ai_chat/data/nguon_lenh_tao_test.dart` | 1 | 2026-10-19 — nguồn ví / danh mục lệnh tạo C3 đọc qua repository (đếm `grep` ca `test(`) |
 | `features/ai_chat/domain/duong_hoi_test.dart` | 21 | mới — ma trận `nenHoiOnline`, đủ hàng luật rơi, `xepHistory`; +5 đợt sửa (luật cặp: câu bị chặn, Dừng không chữ, C3, 4 cặp → 3, trộn) |
 | `features/ai_chat/ly_do_khoa_test.dart` | 7 | +4 (3 cũ) — bảng chân trị với `onlineBat` |
 | `features/ai_chat/ai_chat_page_test.dart` | 80 | +24 (50 cũ) — nhóm *trợ lý online (spec 2026-10-11)*; +6 đợt sửa (history rỗng / một cặp, M4, `kMayChuHongTuChoi` + đối chứng, 403 → `lamMoi` / 503, không nối chữ sau Dừng) |

@@ -39,8 +39,8 @@ class BudgetOverSpending {
 
 /// Một hạn mức chi tiêu cho một danh mục trong một chu kỳ.
 ///
-/// `categoryId == null` nghĩa là **ngân sách tổng** — áp cho mọi khoản chi,
-/// không giới hạn danh mục nào.
+/// `categoryId == null` nghĩa là **ngân sách tổng** — áp cho mọi khoản chi
+/// vào thống kê (`khoanVaoThongKe`), không giới hạn danh mục nào.
 ///
 /// ## Vì sao không có trường `name`
 ///

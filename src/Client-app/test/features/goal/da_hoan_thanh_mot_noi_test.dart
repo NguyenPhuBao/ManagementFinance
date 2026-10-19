@@ -7,6 +7,9 @@
 ///
 /// Quét: ngoài `goal_entity.dart`, không dòng MÃ nào (dòng bắt đầu bằng `//` được bỏ qua) chứa `isCompleted` theo sau là
 /// toán tử hoặc. Trong `goal_entity.dart` chỉ đúng một dòng mã như thế — chính getter.
+///
+/// Giới hạn đã biết: chỉ bắt dạng `isCompleted` đứng TRƯỚC `||`; không bắt `|| …isCompleted` ở cuối, dạng phủ định, hay vế số
+/// tiền đứng một mình (vd. `duBaoHoanThanh` ở `goal_forecast.dart` dùng `remainingAmount <= 0` — phép chặn số học, cố ý giữ).
 library;
 
 import 'dart:io';
