@@ -638,8 +638,9 @@ Người dùng chốt hướng **B** (tách lớp cộng tác, dời nguyên vă
   (`ai_edge_cuc_bo_khong_dong_bo_test`) trước đọc danh sách cứng 2–3 tệp (engine + normalizer ± models / `cong_vi_bi_giu`) — sau tách thì cột cục bộ lọt vào tệp mới là mù. Nay
   đọc qua helper **`test/helpers/duong_dong_bo.dart`** (`tepDuongDongBo()`, mọi tệp `lib/core/sync/`); là helper, không đếm vào
   chuỗi quét đánh số.
-- **Quá trình:** Phần 1 của thiết kế ước ~720 dòng cho engine là **đo sai** (thật ~873) → nhấc **ba nhóm hàm thuần** ra khỏi
-  lớp, thành bốn tệp (`uuid_dong_bo` · `moc_keo_ve` · `bieu_tuong_danh_muc_mac_dinh` · `gieo_tu_khoa`). **Hai docstring gắn nhầm**
+- **Quá trình:** Phần 1 của thiết kế ước ~720 dòng cho **lớp kéo về** là **đo sai** (thật ~873) → nhấc **ba nhóm hàm thuần** ra khỏi
+  lớp: mốc (vào `moc_keo_ve.dart`), biểu tượng / màu danh mục (`bieu_tuong_danh_muc_mac_dinh.dart`, tệp mới) và gieo từ khoá
+  (`gieo_tu_khoa.dart`, tệp mới); `uuid_dong_bo` đã có từ Phần 1. **Hai docstring gắn nhầm**
   (lớp `SyncEngine` đứng trên `_ngayCucBoUtcIso`; `_deletedAtFrom` đứng trên `_idViMacDinhTrongLo`) đặt lại đúng chủ.
   ⚠️ Luật dời nguyên văn kiểm bằng hàm `kiem_nguyen_van` (diff `--cached` ghép dòng xoá / thêm, bỏ qua thụt lề) trước mỗi commit.
 - **`app_database.g.dart` sinh lại** (`4ea604e2`, commit riêng — chỉ chú thích cột, gồm phần lệch `billId` đã ghi từ trước).

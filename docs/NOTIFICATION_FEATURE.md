@@ -233,7 +233,7 @@ lib/features/notification/domain/cau_chu_dong_y.dart   # câu chữ dùng chung 
 
 ⚠️ **Tên là `AppNotifications`, KHÔNG phải `Notifications`.** Drift sinh data
 class số ít, và `Notification` là lớp có thật trong `package:flutter/widgets`.
-Dự án đã dính đúng vết này với `Category` — xem dòng đầu `sync_engine.dart` (cùng dòng ấy có ở cả năm tệp `core/sync` cần kiểu `Category`):
+Dự án đã dính đúng vết này với `Category` — xem dòng đầu `sync_engine.dart` (cùng dòng `hide Category` ấy có ở cả năm tệp `core/sync` vừa import `foundation` vừa import `app_database`; riêng `sync_engine.dart` nay không dùng kiểu `Category`):
 `import 'package:flutter/foundation.dart' hide Category;`.
 
 Bảng **cố ý không có** `syncStatus` / `syncError` / `updatedAt` / `isDeleted`.
