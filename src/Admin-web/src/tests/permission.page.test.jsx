@@ -70,16 +70,14 @@ describe('Admin-web Permission Suite — PermissionManagementPage (AIOps Style)'
     });
   });
 
-  it('1.1. Render đầy đủ tiêu đề AIOps, banner Real-time và 4 thẻ Bento KPI', async () => {
+  it('1.1. Render đầy đủ tiêu đề, thanh công cụ tối giản và bảng ma trận', async () => {
     render(<PermissionManagementPage />);
 
     await waitFor(() => {
       expect(screen.getByText(/Phân Quyền Gói Cước/i)).toBeInTheDocument();
-      expect(screen.getByText(/Cơ Chế Phân Quyền/i)).toBeInTheDocument();
-      expect(screen.getByText('Tổng Tính Năng')).toBeInTheDocument();
-      expect(screen.getByText('Hạn Mức Tài Nguyên')).toBeInTheDocument();
-      expect(screen.getByText('Công Tắc Logic (Toggle)')).toBeInTheDocument();
-      expect(screen.getByText('Thay Đổi Chưa Lưu')).toBeInTheDocument();
+      expect(screen.getByTestId('btn-refresh')).toBeInTheDocument();
+      expect(screen.getByTestId('btn-reset-default')).toBeInTheDocument();
+      expect(screen.getByTestId('btn-save-permissions')).toBeInTheDocument();
     });
   });
 
@@ -89,8 +87,8 @@ describe('Admin-web Permission Suite — PermissionManagementPage (AIOps Style)'
     await waitFor(() => {
       expect(screen.getByText('Ví tiền & Tài khoản')).toBeInTheDocument();
       expect(screen.getByText('Trợ lý Chatbot AI')).toBeInTheDocument();
-      expect(screen.getByText('Tài nguyên')).toBeInTheDocument();
-      expect(screen.getByText('Trí tuệ nhân tạo')).toBeInTheDocument();
+      expect(screen.getAllByText(/Tài nguyên/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Trí tuệ nhân tạo/).length).toBeGreaterThan(0);
     });
   });
 
@@ -101,32 +99,32 @@ describe('Admin-web Permission Suite — PermissionManagementPage (AIOps Style)'
       expect(screen.getByText('Ví tiền & Tài khoản')).toBeInTheDocument();
     });
 
-    // Lọc theo nhóm Trí tuệ nhân tạo
-    const aiGroupTab = screen.getByRole('button', { name: /Trí tuệ nhân tạo/i });
-    fireEvent.click(aiGroupTab);
+    // Lọc theo nhóm Trí tuệ nhân tạo qua select dropdown
+    const groupSelect = screen.getByTestId('select-group-filter');
+    fireEvent.change(groupSelect, { target: { value: 'Trí tuệ nhân tạo' } });
 
     expect(screen.queryByText('Ví tiền & Tài khoản')).not.toBeInTheDocument();
     expect(screen.getByText('Trợ lý Chatbot AI')).toBeInTheDocument();
 
     // Tìm kiếm từ khóa
-    const searchInput = screen.getByPlaceholderText(/Tìm theo tên tính năng hoặc mã slug/i);
+    const searchInput = screen.getByTestId('input-search-features');
     fireEvent.change(searchInput, { target: { value: 'chatbot' } });
 
     expect(screen.getByText('Trợ lý Chatbot AI')).toBeInTheDocument();
   });
 
-  it('1.4. Bấm "Mở Hết Cho Premium" kích hoạt dirty tracker và hiển thị badge Đã sửa', async () => {
+  it('1.4. Thay đổi quyền kích hoạt dirty tracker và nút Lưu Thay Đổi', async () => {
     render(<PermissionManagementPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Ví tiền & Tài khoản')).toBeInTheDocument();
     });
 
-    const unlockAllBtn = screen.getByRole('button', { name: /Mở Hết Cho Premium/i });
-    fireEvent.click(unlockAllBtn);
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
 
-    expect(screen.getByText(/Đã mở khóa toàn bộ/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Khôi Phục/i })).toBeInTheDocument();
+    const saveBtn = screen.getByRole('button', { name: /Lưu Thay Đổi/i });
+    expect(saveBtn).not.toBeDisabled();
   });
 
   it('1.5. Mở Modal xác nhận lưu và gọi updatePermissions thành công', async () => {
@@ -136,7 +134,7 @@ describe('Admin-web Permission Suite — PermissionManagementPage (AIOps Style)'
       expect(screen.getByText('Ví tiền & Tài khoản')).toBeInTheDocument();
     });
 
-    // Bật tính năng AI cho Basic để tạo dirty state
+    // Bật tính năng để tạo dirty state
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[0]);
 
@@ -145,10 +143,10 @@ describe('Admin-web Permission Suite — PermissionManagementPage (AIOps Style)'
     fireEvent.click(saveBtn);
 
     // Kiểm tra Modal xác nhận mở ra
-    expect(screen.getByText(/Xác Nhận Lưu Ma Trận Phân Quyền/i)).toBeInTheDocument();
+    expect(screen.getByText(/Xác Nhận Lưu Thay Đổi/i)).toBeInTheDocument();
 
-    // Bấm nút "Xác Nhận Lưu Ngay" trong modal
-    const confirmSaveBtn = screen.getByRole('button', { name: /Xác Nhận Lưu Ngay/i });
+    // Bấm nút "Xác Nhận Lưu" trong modal
+    const confirmSaveBtn = screen.getByTestId('btn-confirm-save');
     fireEvent.click(confirmSaveBtn);
 
     await waitFor(() => {
@@ -156,3 +154,4 @@ describe('Admin-web Permission Suite — PermissionManagementPage (AIOps Style)'
     });
   });
 });
+

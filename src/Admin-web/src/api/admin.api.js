@@ -38,6 +38,7 @@ const adminApi = {
   // Dynamic Feature Permissions
   getPermissions: () => axiosClient.get('/admin/permissions'),
   updatePermissions: (updates) => axiosClient.put('/admin/permissions', { updates }),
+  resetPermissionsDefault: () => axiosClient.post('/admin/permissions/reset'),
 };
 
 export default adminApi;

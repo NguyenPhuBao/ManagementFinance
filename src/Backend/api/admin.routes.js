@@ -61,6 +61,7 @@ router.delete('/deletecategory/:id', adminController.deleteCategory);
 // Phân quyền gói cước theo loại tài khoản (Dynamic Feature Permissions)
 router.get('/permissions', adminController.getPermissions);
 router.put('/permissions', adminController.updatePermissions);
+router.post('/permissions/reset', adminController.resetPermissions);
 
 // Quản lý & Theo dõi lịch sử thanh toán (Payment History & Orders)
 router.get('/payments/orders', paymentController.getOrdersForAdmin);

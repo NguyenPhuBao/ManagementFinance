@@ -13,18 +13,37 @@ const DEFAULT_PERMISSIONS = {
       custom_categories: 5,
     },
     features: {
-      ai_assistant: false,
+      biometric_auth: true,
+      offline_login: true,
+      account_deletion: true,
+      net_worth_overview: true,
+      quick_action_shortcuts: true,
+      wallet_balance_adjustment: true,
+      wallet_exclude_total: true,
+      transaction_management: true,
       ai_quick_input: false,
       ocr_receipt: true,
-      ai_edge_model: false,
+      quick_category_assignment: true,
+      in_app_calculator: true,
+      category_keywords_matching: true,
       smart_budget_rebalancing: false,
-      financial_health_fhs: true,
+      budget_overspend_alert: true,
+      bill_auto_pay: false,
+      bill_reminder_notifications: true,
+      goal_auto_deposit: false,
+      goal_deposit_withdraw: true,
       export_reports: false,
+      financial_health_fhs: true,
       cashflow_forecast: false,
       anomaly_spending_insights: false,
-      bill_auto_pay: false,
-      goal_auto_deposit: false,
+      ai_assistant: false,
+      ai_edge_model: false,
+      ai_model_management: true,
       bank_notification_parser: true,
+      daily_recording_reminder: true,
+      vietqr_payment: true,
+      payment_history: true,
+      offline_first_sync: true,
     },
   },
   Premium: {
@@ -36,18 +55,37 @@ const DEFAULT_PERMISSIONS = {
       custom_categories: null,
     },
     features: {
-      ai_assistant: true,
+      biometric_auth: true,
+      offline_login: true,
+      account_deletion: true,
+      net_worth_overview: true,
+      quick_action_shortcuts: true,
+      wallet_balance_adjustment: true,
+      wallet_exclude_total: true,
+      transaction_management: true,
       ai_quick_input: true,
       ocr_receipt: true,
-      ai_edge_model: true,
+      quick_category_assignment: true,
+      in_app_calculator: true,
+      category_keywords_matching: true,
       smart_budget_rebalancing: true,
-      financial_health_fhs: true,
+      budget_overspend_alert: true,
+      bill_auto_pay: true,
+      bill_reminder_notifications: true,
+      goal_auto_deposit: true,
+      goal_deposit_withdraw: true,
       export_reports: true,
+      financial_health_fhs: true,
       cashflow_forecast: true,
       anomaly_spending_insights: true,
-      bill_auto_pay: true,
-      goal_auto_deposit: true,
+      ai_assistant: true,
+      ai_edge_model: true,
+      ai_model_management: true,
       bank_notification_parser: true,
+      daily_recording_reminder: true,
+      vietqr_payment: true,
+      payment_history: true,
+      offline_first_sync: true,
     },
   },
 };
@@ -69,11 +107,18 @@ const permissionRepository = {
       });
 
       if (!records || records.length === 0) {
-        return DEFAULT_PERMISSIONS[normalizedType];
+        return {
+          limits: DEFAULT_PERMISSIONS[normalizedType].limits,
+          features: DEFAULT_PERMISSIONS[normalizedType].features,
+          scopes: {},
+          policies: {},
+        };
       }
 
       const limits = {};
       const features = {};
+      const scopes = {};
+      const policies = {};
 
       for (const row of records) {
         const featureId = row.feature_id;
@@ -84,12 +129,20 @@ const permissionRepository = {
         } else {
           features[featureId] = Boolean(row.is_enabled);
         }
+
+        scopes[featureId] = row.scope_config || {};
+        policies[featureId] = row.downgrade_policy || 'BLOCK_CREATE';
       }
 
-      return { limits, features };
+      return { limits, features, scopes, policies };
     } catch (err) {
       console.warn(`[PermissionRepository] Lỗi đọc quyền cho ${accountType}, sử dụng fallback:`, err.message);
-      return DEFAULT_PERMISSIONS[normalizedType];
+      return {
+        limits: DEFAULT_PERMISSIONS[normalizedType].limits,
+        features: DEFAULT_PERMISSIONS[normalizedType].features,
+        scopes: {},
+        policies: {},
+      };
     }
   },
 
@@ -113,9 +166,20 @@ const permissionRepository = {
   },
 
   /**
-   * Cập nhật quyền của một tính năng theo loại tài khoản (phục vụ Admin-web)
+   * Cập nhật quyền của một tính năng theo loại tài khoản (hỗ trợ đầy đủ 4 trụ cột)
    */
-  async updatePermission(accountType, featureId, { is_enabled, limit_value }) {
+  async updatePermission(accountType, featureId, { is_enabled, limit_value, scope_config, downgrade_policy }) {
+    const updateData = {
+      updated_at: new Date(),
+    };
+
+    if (is_enabled !== undefined) updateData.is_enabled = Boolean(is_enabled);
+    if (limit_value !== undefined) {
+      updateData.limit_value = limit_value !== '' && limit_value !== null ? Number(limit_value) : null;
+    }
+    if (scope_config !== undefined) updateData.scope_config = scope_config;
+    if (downgrade_policy !== undefined) updateData.downgrade_policy = downgrade_policy;
+
     return prisma.account_type_permission.upsert({
       where: {
         account_type_feature_id: {
@@ -123,16 +187,14 @@ const permissionRepository = {
           feature_id: featureId,
         },
       },
-      update: {
-        is_enabled: is_enabled !== undefined ? is_enabled : true,
-        limit_value: limit_value !== undefined ? limit_value : null,
-        updated_at: new Date(),
-      },
+      update: updateData,
       create: {
         account_type: accountType,
         feature_id: featureId,
-        is_enabled: is_enabled !== undefined ? is_enabled : true,
-        limit_value: limit_value !== undefined ? limit_value : null,
+        is_enabled: is_enabled !== undefined ? Boolean(is_enabled) : true,
+        limit_value: limit_value !== undefined && limit_value !== '' && limit_value !== null ? Number(limit_value) : null,
+        scope_config: scope_config !== undefined ? scope_config : {},
+        downgrade_policy: downgrade_policy !== undefined ? downgrade_policy : 'BLOCK_CREATE',
       },
     });
   },

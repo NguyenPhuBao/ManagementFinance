@@ -782,7 +782,7 @@ async function getSubscriptionInfo(idaccount) {
   }
 
   const effectiveType = (!isExpired && isPremium) ? 'Premium' : 'Basic';
-  const { limits, features } = await permissionRepository.getPermissionsByAccountType(effectiveType);
+  const { limits, features, scopes, policies } = await permissionRepository.getPermissionsByAccountType(effectiveType);
 
   return {
     accountType: account.type,
@@ -791,6 +791,8 @@ async function getSubscriptionInfo(idaccount) {
     isExpired,
     limits,
     features,
+    scopes: scopes || {},
+    policies: policies || {},
     price: config.payment.premiumPriceVnd || 49000,
     packageDays: config.payment.packageDurationDays || 30,
   };
