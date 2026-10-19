@@ -5,6 +5,8 @@
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
 
+> ♻️ **Tham chiếu tới `SyncEngine` trong các mục dưới là ảnh chụp trước 2026-10-19.** Ngày ấy `sync_engine.dart` (2.153 dòng) tách thành `SyncEngine` + ba lớp cộng tác (mục lục `core/sync`: `KIEN_TRUC_CLIENT_APP.md` mục 3): `_collectPendingOps` → `ThuGomThaoTacDay.collectPendingOps` (`thu_gom_day.dart`), `_sendBatch` · `_classifyFailure` · `_permanentCodes` · `_markSyncedById` → `GuiLoDongBo` (`gui_lo_dong_bo.dart`), `_pullFromBackend` → `ApDuLieuKeoVe.pullFromBackend` (`ap_du_lieu_keo_ve.dart`), `_resolveCategoryId` → `resolveCategoryId` (`uuid_dong_bo.dart`). Số dòng kiểu `sync_engine.dart:1025` là của tệp cũ — đừng mở theo số; tìm theo tên ký hiệu.
+
 ---
 > **Phiên 2026-09-03 đã đóng 9/10 mục có lúc đó.** Mô tả gốc bên dưới được giữ
 > nguyên (kể cả phần *vì sao hoãn*) vì nó ghi lại bối cảnh và bán kính ảnh
@@ -2014,7 +2016,7 @@ việc không làm: người dùng không biết vì sao đồng bộ im (toast 
 bao lâu.
 
 **Nếu làm (khi tới lượt):** đọc **mã HTTP + `code`** của phản hồi — không đọc payload socket, không nghe sự kiện mới — ở
-`core/api/auth_interceptor.dart` và nhánh `transportFailed` của `core/sync/sync_engine.dart` → một dải trên Trang chủ *"Hệ
+`core/api/auth_interceptor.dart` và nhánh `transportFailed` của `core/sync/gui_lo_dong_bo.dart` (trước 2026-10-19: `sync_engine.dart`) → một dải trên Trang chủ *"Hệ
 thống đang bảo trì — dữ liệu trên máy vẫn dùng được"* (ẩn theo `Retry-After` hoặc khi request kế thành công), toast đồng bộ
 nói rõ lý do; 403 `AIOPS_QUARANTINED` một câu riêng. Không đổi payload đồng bộ, không đổi schema. Cần spec ngắn + màn Stitch
 (dải chưa có trong thiết kế). Bán kính: hai tệp trên, `shared/app_toast`, Trang chủ.
@@ -2394,7 +2396,7 @@ giao dịch, đè lên nút. Người dùng: *"fix trước phần thông báo h
 > tên, giao dịch của B dưới ví đã đổi tên, máy A thấy đủ.
 >
 > ⚠️ **Hai lỗi lượt nghiệm thu bắt được, 5820 ca test đều mù:**
-> 1. **Vòng đồng bộ nóng** (291 chu kỳ trong 5 giây trên máy B): bước **1b** của `_collectPendingOps` gửi kèm danh mục
+> 1. **Vòng đồng bộ nóng** (291 chu kỳ trong 5 giây trên máy B): bước **1b** của `collectPendingOps` gửi kèm danh mục
 >    của mọi giao dịch đang chờ — kể cả giao dịch **bị giữ**, vốn nằm `pending` vô thời hạn — nên mỗi chu kỳ đẩy lại hai
 >    danh mục, server trả xung đột (không lỗi ⇒ không giãn cách), và `/sync/push` phát `sync.completed` về **chính máy
 >    này** ⇒ `syncNow` ⇒ chạy bù ⇒ đẩy lại. Trước G63 các giao dịch ấy hỏng khoá ngoại nên giãn cách kìm vòng lại; giữ
@@ -2453,7 +2455,7 @@ trùng tên cục bộ) — kể cả khi chỉ tắt cờ mặc định; xoá t
 - Cột cục bộ `wallets.bi_tu_choi_trung_ten` (schema mới), đặt bởi một bộ nghe `pushResultStream` khi thao tác ví hỏng với
   `WALLET_NAME_DUPLICATE` / `UNIQUE_VIOLATION` — cùng khuôn `BillPaymentConflictResolver`.
 - Một hàm thuần `capViTrungTen` ở `wallet/domain/` là định nghĩa duy nhất của "cặp trùng".
-- **Trong lúc chờ:** `_collectPendingOps` bỏ qua ví mang cờ và mọi giao dịch / hoá đơn / mục tiêu dính tới nó.
+- **Trong lúc chờ:** `ThuGomThaoTacDay.collectPendingOps` bỏ qua ví mang cờ và mọi giao dịch / hoá đơn / mục tiêu dính tới nó.
 - **Thẻ hỏi Gộp / Đổi tên** ở màn Quản lý ví, kèm một dòng nhắc ở Trang chủ. *Gộp* dời giao dịch, hoá đơn, mục tiêu và
   bảng *nguồn → ví* của D1 sang ví đã đồng bộ, bỏ ví máy này **cùng khoản "Số dư ban đầu"** của nó (cùng một tài khoản
   thật — giữ hai số dư mở sổ là đếm đôi), có hộp xác nhận nêu số giao dịch và số dư sau gộp. *Đổi tên* điền sẵn
@@ -2803,7 +2805,7 @@ chữ số.
 | **Ngân sách** | hạn mức, ngưỡng cảnh báo bằng tiền | nt |
 
 Hậu quả giống hệt G45: tràn cho SQLSTATE `22003`, `sync.service.js` **không có
-nhánh** cho mã ấy nên trả `DB_ERROR`, và `_permanentCodes` của `SyncEngine` là
+nhánh** cho mã ấy nên trả `DB_ERROR`, và `_permanentCodes` của `GuiLoDongBo` là
 **danh sách trắng** — bản ghi bị **gửi lại ở mọi chu kỳ đồng bộ**, im lặng.
 
 **Đã sửa thế nào.** Ba mảng dùng `TextField` thì áp `GioiHanSoChuSo` có sẵn.

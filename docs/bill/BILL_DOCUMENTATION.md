@@ -606,7 +606,7 @@ mã, chưa tái hiện đầu-cuối). Từ `main` @ `cc65f4f`, nhánh cập nh�
 `BILL_ALREADY_PAID`. Các thao tác khác trong lô vẫn lọt (khoản chi và kỳ kế tiếp
 bị xoá mềm, ví được hoàn), chỉ hoá đơn trên server còn `'Payed'` — máy thứ hai
 thấy hoá đơn đã trả mà không có khoản chi. Client xếp mã ấy **vĩnh viễn**
-(`_permanentCodes`, 2026-09-11) nên không kéo chậm cả hàng đợi, nhưng hàng hoá đơn
+(`_permanentCodes` của `GuiLoDongBo`, 2026-09-11) nên không kéo chậm cả hàng đợi, nhưng hàng hoá đơn
 không lên được server. Lỗi phía backend — CAN-LAM **17 B**
 (`docs/superpowers/backend/DA-XONG/FIX_BACKEND_3_REGRESSIONS.md` mục 3; ✅ **backend bỏ chốt ấy, gộp `cbbeeb4` 2026-09-12** — đo thật: hàng kẹt 7 lần đẩy lên server `Pending`). Hoàn tác
 một lần trả **chưa kịp đồng bộ** thì không dính.
@@ -621,7 +621,7 @@ một lần trả **chưa kịp đồng bộ** thì không dính.
 ✅ **Từ 2026-09-12 cả hai đi qua đồng bộ** — khoá `idbill` (giao dịch) và
 `previous_bill_id` (hoá đơn), cùng đợt với `anchor_day`. ⚠️ `transaction.Idbill`
 có khoá ngoại `fk_transaction_bill`, nên **hoá đơn phải được đẩy TRƯỚC giao
-dịch** — thứ tự ở `_collectPendingOps` đã đổi và có ca test canh; thiếu chốt ấy
+dịch** — thứ tự ở `ThuGomThaoTacDay.collectPendingOps` (`core/sync/thu_gom_day.dart`) đã đổi và có ca test canh; thiếu chốt ấy
 thì khoản trả hoá đơn vỡ khoá ngoại rồi kẹt hàng đợi đẩy, im lặng. Nhánh kéo về
 dùng `Value.absent()` khi server im lặng.
 
@@ -1004,7 +1004,7 @@ thay đổi số dư cục bộ thua một lần xung đột đều biến mất
 > máy khác trả kỳ trùng thì cửa sổ ấy vẫn hở — hẹp, chưa đo; ✉️ client xin backend đóng nó ở server (2026-10-09, **đơn 41**
 > `DA-XONG/CHAN_TRA_HAI_LAN_THEO_KY.md` — ✅ backend làm ở `3a5d320c`, client soát bằng mã + CSDL đạt 2026-10-18 sau gộp
 > `e7570e16`, chưa đo đầu-cuối hai máy: chặn khoản chi cho kỳ anh em cùng `Previous_bill_id` + `Due_date`, mã riêng
-> `BILL_PERIOD_ALREADY_PAID` — ✅ client đã sẵn cùng ngày: mã trong `_permanentCodes`, và
+> `BILL_PERIOD_ALREADY_PAID` — ✅ client đã sẵn cùng ngày: mã trong `_permanentCodes` (nay của `GuiLoDongBo`), và
 > `BillPaymentConflictResolver.maKyTrungDaTra` gỡ khoản trả như `BILL_ALREADY_PAID` nhưng **không** `danhDauDaTra` —
 > đánh dấu kỳ trùng là đã trả thì `kyTrungCanGo` thấy hai kỳ đã đóng và giữ cả hai mãi; đo CSDL dev cùng ngày: tài khoản
 > 17, 19 cũng có kỳ trùng bật tự trả). `gopKyTrung` gọi `scheduleSync()` khi có gỡ (bản đầu để lệnh

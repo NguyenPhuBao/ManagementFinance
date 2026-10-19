@@ -248,8 +248,8 @@ Response:
 
 ## 6. Sync Engine (Client-side)
 
-**File chính**: `src/Client-app/lib/core/sync/sync_engine.dart`
-**Phụ trợ**: `sync_models.dart`, `sync_checkpoint_store.dart`, `sync_payload_normalizer.dart`
+**File chính**: `src/Client-app/lib/core/sync/sync_engine.dart` (vòng đời, giãn cách, `_runSync` — mọi cam kết thứ tự) cùng ba lớp cộng tác do nó dựng (từ 2026-10-19, khối ♻️ mục 14): `thu_gom_day.dart` (`ThuGomThaoTacDay.collectPendingOps`), `gui_lo_dong_bo.dart` (`GuiLoDongBo`: `sendBatch`, `_permanentCodes`, phân loại lỗi), `ap_du_lieu_keo_ve.dart` (`ApDuLieuKeoVe`: `pullFromBackend`, mốc kéo về)
+**Phụ trợ**: `sync_models.dart`, `sync_checkpoint_store.dart`, `sync_payload_normalizer.dart`, hàm thuần `uuid_dong_bo.dart` · `moc_keo_ve.dart` · `bieu_tuong_danh_muc_mac_dinh.dart` · `gieo_tu_khoa.dart`
 
 > Phần này đã được kiểm chứng lại bằng cách đọc mã nguồn ngày 2026-09-02. Việc còn dang dở: xem `docs/CLIENT_APP_KNOWN_GAPS.md`.
 
@@ -257,9 +257,9 @@ Response:
 
 | Nguồn | Nơi cài đặt |
 |---|---|
-| Ngay khi `start()` được gọi | `sync_engine.dart:112` — `await syncNow()` |
-| Mạng phục hồi | listener `onConnectivityChanged` (`:96-102`) |
-| Định kỳ **15 phút** | `Timer.periodic` (`:106-109`), hằng số `_periodicSyncMinutes = 15` |
+| Ngay khi `start()` được gọi | `SyncEngine.start()` (`sync_engine.dart`) — `await syncNow()` |
+| Mạng phục hồi | listener `onConnectivityChanged` trong `start()` |
+| Định kỳ **15 phút** | `Timer.periodic` trong `start()`, hằng số `_periodicSyncMinutes = 15` |
 | Sau mỗi lần ghi dữ liệu | `scheduleSync()` — debounce **2 giây**, được gọi từ **19 vị trí** trong tầng feature |
 
 `start()` luôn huỷ listener/timer cũ trước khi cài mới nên gọi nhiều lần không nhân đôi trigger.
@@ -275,18 +275,18 @@ SyncEngine._runSync()
 │   (không chạy chồng, nhưng KHÔNG nuốt yêu cầu — xem `finally` ở cuối)
 ├── Trong giãn cách sau các chu kỳ hỏng? → _scheduleBackoffRetry + return
 ├── PUSH
-│   ├── _collectPendingOps(accountId)
+│   ├── ThuGomThaoTacDay.collectPendingOps(accountId)   [thu_gom_day.dart]
 │   │   ├── 1.  Categories pending — getSyncableCategories() (loại isLocalOnly)
 │   │   │       sắp NHÓM trước CON vì backend có FK fk_category_parent
 │   │   ├── 2.  Wallets pending
 │   │   ├── 1b. Categories được pending transaction tham chiếu (lazy push)
-│   │   ├── 3.  Transactions (_resolveCategoryId trước → defer nếu null)
+│   │   ├── 3.  Transactions (resolveCategoryId trước → defer nếu null)
 │   │   └── 4-6. Budgets → Bills → Goals
-│   └── _sendBatch(ops) → SyncResult
+│   └── GuiLoDongBo.sendBatch(ops) → SyncResult   [gui_lo_dong_bo.dart]
 │       ├── SyncPayloadNormalizer chuẩn hoá tên trường
 │       └── Phân loại từng thất bại: transient | permanent | sessionInvalid
 ├── Nếu có sessionInvalid → phát sessionInvalidStream, DỪNG (không pull, không retry)
-├── PULL  (since = mốc đã lưu; SQLite rỗng thì ép full pull)
+├── PULL  (ApDuLieuKeoVe.pullFromBackend [ap_du_lieu_keo_ve.dart]; since = mốc đã lưu; SQLite rỗng thì ép full pull)
 │   ├── Upsert: Wallets → Transactions → Categories → Budgets → Bills → Goals
 │   │   (mọi DAO dùng insertAllOnConflictUpdate — chỉ ghi cột có trong companion)
 │   ├── repairPendingTransactionsCategoryId()  ← PHẢI chạy TRƯỚC dedup
@@ -303,7 +303,7 @@ timer 15 phút, đổi mạng, hoặc lần mở app sau. Cửa sổ ấy không
 dày nhất (`scheduleSync()` sau mỗi lần ghi, và `sync.completed` của socket đánh
 thức `syncNow()`) đều hay rơi đúng vào lúc một chu kỳ đang chạy. Hỏng **im
 lặng** — không lỗi, không log. Nay ghi nợ bằng `_noMotLanChay` và trả nợ trong
-`finally`; là `bool` chứ không phải bộ đếm vì `_collectPendingOps` gom toàn bộ
+`finally`; là `bool` chứ không phải bộ đếm vì `collectPendingOps` gom toàn bộ
 bản ghi `pending`, nên nhiều yêu cầu dồn lại vẫn chỉ đáng **một** lần chạy bù.
 Có test canh cả hai vế: `test/core/sync/sync_yeu_cau_giua_chu_ky_test.dart`.
 
@@ -323,7 +323,7 @@ Dù nhận diện bằng cách nào, đó cũng chỉ là **tín hiệu**; quy�
 
 Lưu bền vững qua `flutter_secure_storage`, khoá theo từng `idaccount` (`sync_checkpoint_store.dart`). Mốc mới lấy theo `update_at` lớn nhất trong dữ liệu nhận được — **không** dùng `DateTime.now()` của client, vì backend lọc `update_at > since` bằng đồng hồ của nó. ⚠️ **Đổi từ G67 (2026-10-08):** server (migration 20 + 21) lọc theo giờ-server `Server_update_at` và trả `maxSince` từng bảng; mốc nay là `mocTuMaxSince` (`core/sync/moc_keo_ve.dart`) — **lớn nhất** giữa các bảng, kẹp về `pulledAt − 2 phút` khi còn nóng, +1 ms khi đã nguội (giờ-server lưu µs, JSON mang ms). `update_at` lớn nhất chỉ còn là đường lùi khi phản hồi không có khoá `maxSince`. Khoá lưu đổi sang `sync_last_pull_v2_<id>` để mỗi máy kéo lại toàn bộ đúng một lần (hàng G67 từng bỏ sót nằm dưới mốc cũ).
 
-### `_resolveCategoryId(categoryId)` — logic quan trọng
+### `resolveCategoryId(db, categoryId)` — logic quan trọng (`core/sync/uuid_dong_bo.dart`, từ 2026-10-19; trước đó `SyncEngine._resolveCategoryId`)
 ```
 - Category NON-DEFAULT → chỉ cần UUID format hợp lệ
 - Category DEFAULT với UUID hợp lệ → trả về luôn (KHÔNG tìm UUID khác)
@@ -382,7 +382,7 @@ syncStatus = 'synced' (không cần push)
 
 Sau khi pull từ backend → UUID categories thay thế → `removeDuplicateLocalSeedCategories()` xóa các local seed đã có UUID tương ứng.
 
-**Bộ seed khớp đúng 13 danh mục mặc định của backend** (từ 2026-09-03). Trước đó client seed 18 mục còn backend có 13, và **chỉ 10 mục khớp tên** — mà danh mục mặc định lại được ánh xạ sang UUID backend **bằng cách so tên**, nên 8 mục lệch kia không tìm được bản nào, `_resolveCategoryId` trả `null`, và mọi giao dịch dùng chúng bị hoãn đẩy **vĩnh viễn** mà không có lỗi nào báo ra.
+**Bộ seed khớp đúng 13 danh mục mặc định của backend** (từ 2026-09-03). Trước đó client seed 18 mục còn backend có 13, và **chỉ 10 mục khớp tên** — mà danh mục mặc định lại được ánh xạ sang UUID backend **bằng cách so tên**, nên 8 mục lệch kia không tìm được bản nào, `resolveCategoryId` trả `null`, và mọi giao dịch dùng chúng bị hoãn đẩy **vĩnh viễn** mà không có lỗi nào báo ra.
 
 Tám mục lệch được xử lý làm hai nhóm khác nhau:
 
@@ -391,7 +391,7 @@ Tám mục lệch được xử lý làm hai nhóm khác nhau:
 | Chỉ khác **nhãn** | `Sức khoẻ`→`Y tế`, `Nhà ở`→`Nhà cửa`, `Hoá đơn & Dịch vụ`→`Hóa đơn` | Đổi tên seed cho khớp backend. Migration v9→v10 đổi tên cho máy đã cài. **Không xoá hàng** — xoá hàng seed trước khi giao dịch được repoint chính là lỗi 11.6. |
 | Backend **không có** | `Chi khác`, `Thu khác`, `Làm thêm`, `Trả nợ`, `Thu nợ` | Chuyển thành **danh mục riêng của tài khoản** (`PersonalDefaultCategories.ensureForAccount()`, chạy lúc đăng nhập **và** khi khôi phục phiên). Danh mục người dùng thì đồng bộ được, nên chúng đẩy lên bình thường — backend không phải thêm gì. |
 
-> ⚠️ Năm mục cá nhân đó phải mang **id UUID**, không phải id dạng `cat_*`: `_resolveCategoryId` chỉ chấp nhận danh mục người dùng có UUID hợp lệ, id dạng slug sẽ bị trả `null` và giao dịch lại kẹt y như cũ.
+> ⚠️ Năm mục cá nhân đó phải mang **id UUID**, không phải id dạng `cat_*`: `resolveCategoryId` chỉ chấp nhận danh mục người dùng có UUID hợp lệ, id dạng slug sẽ bị trả `null` và giao dịch lại kẹt y như cũ.
 >
 > Dữ liệu cũ trỏ vào hàng `cat_*` được **repoint trước, xoá mềm sau** — ở cả ba bảng có `categoryId` (transactions, budgets, bills).
 
@@ -508,6 +508,8 @@ src/Backend/
 
 ## 11. Các vấn đề đã giải quyết (ghi nhớ để tránh lặp lại)
 
+> ♻️ Tên hàm `SyncEngine._collectPendingOps` · `_sendBatch` · `_pullFromBackend` · `_resolveCategoryId` · `_classifyFailure` ở các mục dưới là của **trước 2026-10-19**; nay ở `ThuGomThaoTacDay.collectPendingOps` · `GuiLoDongBo` · `ApDuLieuKeoVe.pullFromBackend` · `resolveCategoryId` (`uuid_dong_bo.dart`) — mục 6 ở trên và khối ♻️ mục 14.
+
 ### 11.1 FK violation `fk_transaction_category`
 **Nguyên nhân**: Transaction bị push lên backend trước khi category của nó tồn tại trên backend.
 
@@ -598,7 +600,8 @@ src/Backend/
 
 | File | Mục đích |
 |------|----------|
-| `src/Client-app/lib/core/sync/sync_engine.dart` | Toàn bộ logic sync offline-first |
+| `src/Client-app/lib/core/sync/sync_engine.dart` | Vòng đời + thứ tự `_runSync` của sync offline-first |
+| `src/Client-app/lib/core/sync/thu_gom_day.dart` · `gui_lo_dong_bo.dart` · `ap_du_lieu_keo_ve.dart` | Gom thao tác chờ · đẩy lô + phân loại lỗi · kéo về + mốc (tách khỏi engine 2026-10-19) |
 | `src/Client-app/lib/core/database/daos/category_dao.dart` | Dedup + repair categories |
 | `src/Client-app/lib/core/database/daos/transaction_dao.dart` | Transaction queries + repair |
 | `src/Client-app/lib/core/sync/sync_payload_normalizer.dart` | Field name mapping |
@@ -613,13 +616,49 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-19)
 
+### ♻️ Tách SyncEngine (2026-10-19) — `SyncEngine` + ba lớp cộng tác + bốn tệp hàm thuần, quét 34
+
+Người dùng chốt hướng **B** (tách lớp cộng tác, dời nguyên văn) kèm **quét 34**: mọi tệp `core/sync` ≤ **800** dòng. Spec
+`docs/superpowers/specs/2026-10-19-tach-sync-engine-design.md`; kế hoạch `docs/superpowers/plans/2026-10-19-tach-sync-engine.md`
+(gitignore). Không đổi hành vi, không đổi chữ nào người dùng thấy; API công khai của `SyncEngine` **giữ nguyên từng chữ**
+(7 lớp giả `implements` và 4 lớp `extends SyncEngine` không phải sửa).
+
+- **Cây `lib/core/sync/` (14 tệp, đo `readAsLinesSync` 2026-10-19, HEAD `a6c6fc7d`):** `ap_du_lieu_keo_ve.dart` **743**
+  (`ApDuLieuKeoVe`: `pullFromBackend`, `napMoc` · `napMocNeuChuaCo` · `datLaiPhien`, mốc + checkpoint, `daKeoXong`,
+  `soLanKeoVeXong`) · `sync_engine.dart` **506** (vòng đời, giãn cách, `_runSync` với **mọi cam kết thứ tự**, ba stream,
+  hàm chuyển tiếp) · `thu_gom_day.dart` **455** (`ThuGomThaoTacDay`: `collectPendingOps` mục 0·1·2·1b·3·4·5·6,
+  `_isSyncBlocked`) · `gui_lo_dong_bo.dart` **410** (`GuiLoDongBo`: `sendBatch`, `_permanentCodes`, `_classifyFailure`,
+  `accountNotFoundCode`) · `sync_payload_normalizer` 165 · `sync_models` 151 · `moc_keo_ve` 103 · `sync_checkpoint_store` 68 ·
+  `uuid_dong_bo` 59 · `gieo_tu_khoa` 55 · `bieu_tuong_danh_muc_mac_dinh` 45 · `backend_bool` 37 · `cong_vi_bi_giu` 30 ·
+  `cong_so_du_vi` 12. Trước: một tệp **2.153** dòng làm bảy việc. Ba lớp cộng tác được dựng **trong thân constructor** của
+  engine; ba thứ của engine được đọc **qua hàm** (`now`, `taiKhoanPhien`, `bacChan`).
+- **Quét 34** `test/core/sync/sync_tep_khong_qua_dai_test.dart`: tệp dưới `lib/core/sync/` > 800 dòng ngoài `mienTru` là đỏ;
+  trần riêng chỉ được giảm; `mienTru` **rỗng từ 2026-10-19** (cơ chế giữ cho tệp dài sau này). Số test quét tiếp theo: **35**.
+- **Ba quét cột cục bộ đọc cả thư mục:** `vi_trung_ten_cuc_bo_test`, quét 7 (`wallet_cho_phep_am_test`) và quét 15
+  (`ai_edge_cuc_bo_khong_dong_bo_test`) trước chỉ đọc `sync_engine.dart` — sau tách thì cột cục bộ lọt vào tệp mới là mù. Nay
+  đọc qua helper **`test/helpers/duong_dong_bo.dart`** (`tepDuongDongBo()`, mọi tệp `lib/core/sync/`); là helper, không đếm vào
+  chuỗi quét đánh số.
+- **Quá trình:** Phần 1 của thiết kế ước ~720 dòng cho engine là **đo sai** (thật ~873) → nhấc **ba nhóm hàm thuần** ra khỏi
+  lớp, thành bốn tệp (`uuid_dong_bo` · `moc_keo_ve` · `bieu_tuong_danh_muc_mac_dinh` · `gieo_tu_khoa`). **Hai docstring gắn nhầm**
+  (lớp `SyncEngine` đứng trên `_ngayCucBoUtcIso`; `_deletedAtFrom` đứng trên `_idViMacDinhTrongLo`) đặt lại đúng chủ.
+  ⚠️ Luật dời nguyên văn kiểm bằng hàm `kiem_nguyen_van` (diff `--cached` ghép dòng xoá / thêm, bỏ qua thụt lề) trước mỗi commit.
+- **`app_database.g.dart` sinh lại** (`4ea604e2`, commit riêng — chỉ chú thích cột, gồm phần lệch `billId` đã ghi từ trước).
+- **Commit:** `d3ec0f87` (canh trước khi tách) · `a1dc80eb` (hàm thuần) · `e4399a19` (`GuiLoDongBo`) · `5a7775e2`
+  (`ThuGomThaoTacDay`) · `23253ec5` (`ApDuLieuKeoVe`, quét 34 hết miễn trừ) · `4f07ddc3` · `a6c6fc7d` (chú thích trỏ đúng tệp).
+- **Ngoài phạm vi, còn lại:** ~15 `DateTime.now()` trần trong `core/sync` (đổi sang đồng hồ tiêm được là đổi hành vi — để
+  riêng); 5 `curly_braces_in_flow_control_structures` (nay ở `bieu_tuong_danh_muc_mac_dinh.dart`, trước ở `sync_engine.dart`;
+  tổng `flutter analyze` vẫn 20 — bốn tệp mang: `core/database/connection/web.dart`,
+  `core/sync/bieu_tuong_danh_muc_mac_dinh.dart`, `category/data/models/category_tree.dart`,
+  `test/core/sync/e2e_sqlite_to_backend_sync_test.dart`); `pullFromBackend` vẫn **một phương thức ~616 dòng** (dời nguyên
+  văn, chưa chẻ); bốn lớp giả `implements` giữ nguyên. Mốc test / analyze cuối: ở commit kế (Task 8).
+
 ### 🧹 Phần còn lại báo cáo soát kiến trúc — B · C · `other_daos` (2026-10-19, phiên 2) · `SyncEngine` brainstorm riêng
 
 Người dùng chọn làm **cả bốn việc** còn lại của báo cáo `docs/superpowers/specs/2026-10-18-bao-cao-soat-kien-truc-toan-app.md`;
 quyết định ghi ở mục *Quyết định người dùng 2026-10-19 (phiên 2)* cuối tệp ấy. Ba việc đầu là một kế hoạch
 (`docs/superpowers/plans/2026-10-19-phan-con-lai-bao-cao-soat.md`, gitignore) thi công bằng **agent con** (Fable preflight ·
 Sonnet thực thi · Opus soát từng task + review toàn nhánh); **`SyncEngine` là việc kiến trúc — spec riêng**, đang brainstorm
-(người dùng chọn hướng *tách lớp cộng tác*, có quét **34** canh mỗi tệp `core/sync` ≤ 800 dòng). Không đổi hành vi, không
+(người dùng chọn hướng *tách lớp cộng tác*, có quét **34** canh mỗi tệp `core/sync` ≤ 800 dòng; **đã thi công cùng ngày — khối ♻️ ngay trên**). Không đổi hành vi, không
 đổi chữ nào người dùng thấy.
 
 - **Sửa (`3a1669e8..d10ea922`):** `MonHang` JSON → hai hàm private của cổng `kho_anh_quet.dart` (`fe254036`);
@@ -4273,7 +4312,7 @@ lặng**. Bảng đầy đủ ở **G45** `docs/CLIENT_APP_KNOWN_GAPS.md`.
 **Nặng nhất là số dư không giới hạn chữ số.** `wallet."Balance"` là
 `numeric(15,2)`, tức 13 chữ số phần nguyên. Tràn cho SQLSTATE **`22003`**, mà
 `sync.service.js` **không có nhánh nào** cho mã ấy nên nó rơi về `DB_ERROR`; và
-`_permanentCodes` của `SyncEngine` là **danh sách trắng**, `DB_ERROR` không nằm
+`_permanentCodes` của `GuiLoDongBo` là **danh sách trắng**, `DB_ERROR` không nằm
 trong đó. Kết quả: ví bị **gửi lại ở mọi chu kỳ đồng bộ**, không lỗi, không log,
 chỉ một hàng đợi càng lúc càng chậm. Đúng vòng lặp mà G31 và G14 sinh ra để
 chặn, chỉ khác cột.
@@ -4723,7 +4762,7 @@ chip cùng mang tên "Danh mục đã xoá"**. Truy vấn PostgreSQL cho ra **đ
 danh mục bất thường ở tài khoản ấy — `Chi khác` và `Làm thêm`, cả hai
 `Create_by = 1`, `is_default = true`, bị backend xoá mềm hôm 2026-09-07.
 
-⚠️ **Gốc rễ:** `sync_engine` quy `is_default = true` thành **`idaccount = 0`**
+⚠️ **Gốc rễ:** nhánh kéo về (`ApDuLieuKeoVe`, trước 2026-10-19 là `sync_engine`) quy `is_default = true` thành **`idaccount = 0`**
 (`sync_engine.dart:733`), nên hàng mặc định toàn cục **không mang mã tài khoản
 nào** — nhưng cả hai repository tra danh mục đều lọc
 `t.idaccount.equals(idaccount)`. Hai bản chép tay của cùng một truy vấn, cả hai

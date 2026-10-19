@@ -233,7 +233,7 @@ lib/features/notification/domain/cau_chu_dong_y.dart   # câu chữ dùng chung 
 
 ⚠️ **Tên là `AppNotifications`, KHÔNG phải `Notifications`.** Drift sinh data
 class số ít, và `Notification` là lớp có thật trong `package:flutter/widgets`.
-Dự án đã dính đúng vết này với `Category` — xem dòng đầu `sync_engine.dart`:
+Dự án đã dính đúng vết này với `Category` — xem dòng đầu `sync_engine.dart` (cùng dòng ấy có ở cả năm tệp `core/sync` cần kiểu `Category`):
 `import 'package:flutter/foundation.dart' hide Category;`.
 
 Bảng **cố ý không có** `syncStatus` / `syncError` / `updatedAt` / `isDeleted`.
@@ -318,7 +318,7 @@ thứ ba):
 ⚠️ **Vì sao phải thêm hai mốc kia.** Bản đầu buộc vòng quét vào một sự kiện
 **mạng**, trong một app **offline-first** — và đó là chỗ hỏng. Khi không có kết
 nối, `SyncEngine._runSync()` thoát sớm ở `SyncStatus.pending`
-(`sync_engine.dart:360`), một trạng thái **không** nằm trong `isTerminal`
+(`sync_engine.dart:374`, đo lại 2026-10-19 sau tách SyncEngine), một trạng thái **không** nằm trong `isTerminal`
 (`sync_models.dart:134`). Hệ quả: cả một phiên offline **không có lượt quét
 nào** — không thông báo, `markOverdue` không chạy, và **hai bộ tự chuyển tiền
 nằm bên trong `scan()` cũng đứng im**, nên hoá đơn bật tự trả không được trả.

@@ -533,7 +533,7 @@ một **test quét `lib/`** canh việc ấy cho mọi ô tiền trong app.
 
 ⚠️ **Vì sao phải chặn ở ô nhập chứ không đợi lỗi**: tràn cho SQLSTATE `22003`,
 mà `sync.service.js` **không có nhánh** cho mã ấy nên nó rơi về `DB_ERROR`; và
-`_permanentCodes` của `SyncEngine` là **danh sách trắng**, `DB_ERROR` không nằm
+`_permanentCodes` của `GuiLoDongBo` (`core/sync/gui_lo_dong_bo.dart`) là **danh sách trắng**, `DB_ERROR` không nằm
 trong đó. Mục tiêu bị **gửi lại ở mọi chu kỳ đồng bộ** — không lỗi, không log,
 chỉ một hàng đợi càng lúc càng chậm. Cùng vòng lặp mà G31 và G14 sinh ra để
 chặn.
@@ -1127,20 +1127,22 @@ sử đều hiện dấu trừ, kể cả dòng người dùng thật sự đã 
 Dùng tiền tố ghi chú (mục 3.3). Khoá đổi ví (mục 3.1) làm ca này khó xảy ra
 nhưng **không** loại bỏ được — dữ liệu tạo trước khi có khoá vẫn còn.
 
-### 4.3 `_collectPendingOps` dựng payload **thô**, normalizer chạy sau
+### 4.3 `collectPendingOps` dựng payload **thô**, normalizer chạy sau
 
-Đọc `_collectPendingOps` rồi kết luận là **sai**: nó dựng
+(`ThuGomThaoTacDay.collectPendingOps` ở `core/sync/thu_gom_day.dart` từ 2026-10-19; trước đó là `SyncEngine._collectPendingOps`.)
+
+Đọc `collectPendingOps` rồi kết luận là **sai**: nó dựng
 `{'type': 'chi', 'amount': 1000}` và dừng ở đó.
 `SyncPayloadNormalizer.transactionForPush` mới là nơi quy đổi sang
 `{'type': 'Transaction', 'amount': -1000}`, và nó chạy ở
-`sync_engine.dart:1234`, **ngay trước `POST /sync/push`**.
+`GuiLoDongBo.sendBatch` (`core/sync/gui_lo_dong_bo.dart`; trước 2026-10-19 là `sync_engine.dart:1234`), **ngay trước `POST /sync/push`**.
 
 PostgreSQL có `chk_transaction_type CHECK ("Type" IN ('Transaction','Transfer'))`
 và mã hoá chiều tiền bằng **dấu của `Amount`**. Bỏ phép quy đổi là mọi giao dịch
 bị từ chối.
 
 > Phiên 2026-09-05 đã kết luận nhầm là chỗ này đang hỏng, chỉ vì đọc
-> `_collectPendingOps` rồi dừng. Hợp đồng nay có **bốn phép kiểm giá trị** canh
+> `collectPendingOps` rồi dừng. Hợp đồng nay có **bốn phép kiểm giá trị** canh
 > chừng, không chỉ tên khoá.
 
 ### 4.4 `goal_id` là cột **CỤC BỘ**

@@ -47,7 +47,7 @@ Tất cả 6 mô-đun dữ liệu cốt lõi dưới đây đã được hoàn t
 3. **Cô lập Dữ liệu Người dùng (Account Data Isolation):**
    * Tất cả câu lệnh truy vấn SQLite local (`WalletDao`, `TransactionDao`) được cô lập nghiêm ngặt theo `idaccount`.
    * Reset mốc thời gian checkpoint `_lastPullTime = null` khi Đăng xuất (`LogoutRequested`), đảm bảo chuyển đổi tài khoản an toàn 100%.
-   * **Bổ sung 2026-09-08:** mốc pull nay còn được **lưu bền vững theo từng tài khoản** qua `SyncCheckpointStore` (`sync_engine.dart:253`), nên mở lại app không kéo lại từ đầu. Câu ở trên chỉ mô tả nhánh đăng xuất.
+   * **Bổ sung 2026-09-08:** mốc pull nay còn được **lưu bền vững theo từng tài khoản** qua `SyncCheckpointStore` (nay do `ApDuLieuKeoVe` cầm, `core/sync/ap_du_lieu_keo_ve.dart`; trước tách SyncEngine 2026-10-19 ở `sync_engine.dart:253`), nên mở lại app không kéo lại từ đầu. Câu ở trên chỉ mô tả nhánh đăng xuất.
    * **Đổi 2026-10-08 (G67):** mốc thôi lấy theo `update_at` (giờ ghi của máy) mà theo **giờ-server** — `mocTuMaxSince` (`core/sync/moc_keo_ve.dart`) đọc `maxSince` từng bảng + `pulledAt` của phản hồi `/sync/pull` (migration 20 + 21): lớn nhất giữa các bảng, kẹp `pulledAt − 2 phút` khi còn nóng, +1 ms khi nguội. Khoá lưu đổi sang `sync_last_pull_v2_<id>` để mỗi máy kéo lại toàn bộ một lần. Mục G67 `CLIENT_APP_KNOWN_GAPS.md`.
    * **G85 (2026-10-08):** lượt kéo về vá neo (khoản mở sổ) cho ví đã có trên máy **trước** khi ghi giao dịch vừa kéo vào sổ — vá sau là neo nuốt giao dịch của máy kia. Ví đích của khoản chuyển vừa về cũng được tính lại.
 
@@ -69,7 +69,7 @@ Dưới đây là các hạng mục nâng cao chưa hỗ trợ đồng bộ (ho�
 ## 🛠️ IV. NGUYÊN TẮC BẢO TRÌ VÀ PHÁT TRIỂN TIẾP THEO
 
 1. **Tuân thủ phân định Client - Backend:**
-   * Mọi điều chỉnh logic, chuẩn hóa định dạng và bóc tách gói tin phải được thực hiện hoàn toàn ở phía **Client-app** (`src/Client-app/lib/core/sync/sync_engine.dart`), tuyệt đối không can thiệp CSDL hoặc mã nguồn Backend.
+   * Mọi điều chỉnh logic, chuẩn hóa định dạng và bóc tách gói tin phải được thực hiện hoàn toàn ở phía **Client-app** (`src/Client-app/lib/core/sync/` — `sync_engine.dart` điều phối; `thu_gom_day.dart` gom thao tác chờ, `gui_lo_dong_bo.dart` đẩy lô + phân loại lỗi, `ap_du_lieu_keo_ve.dart` kéo về + mốc, `sync_payload_normalizer.dart` chuẩn hoá tên trường), tuyệt đối không can thiệp CSDL hoặc mã nguồn Backend.
 2. **Trạng thái bản ghi (Sync Status):**
    * Các bản ghi tạo mới/chỉnh sửa tại SQLite local luôn bắt đầu với `syncStatus = 'pending'`.
    * Sau khi PUSH thành công tới Backend hoặc PULL từ Backend về, `syncStatus` bắt buộc được chuyển thành `'synced'`.

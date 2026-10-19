@@ -16,7 +16,7 @@ tài khoản có mạng, hoá đơn vừa tắt nhắc trở lại "nhắc trư�
 
 ## Hiện tượng (đọc mã `sync.repository.js`)
 
-Client đẩy khoá snake_case `'time_notification': null` (`sync_engine.dart` ~:1475, payload hoá đơn 21 trường,
+Client đẩy khoá snake_case `'time_notification': null` (`core/sync/thu_gom_day.dart`, `collectPendingOps` — trước 2026-10-19 là `sync_engine.dart` ~:1475; payload hoá đơn 21 trường,
 `sync_payload_contract_test.dart` khoá tên).
 
 | Dòng | Nhánh | Mã hiện tại | Kết quả với `null` |
