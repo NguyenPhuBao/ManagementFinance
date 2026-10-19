@@ -349,7 +349,7 @@ Bộ đọc chỉ thị dùng chung `test/helpers/chi_thi_dart.dart` (`duongChiT
 - **Test quét đọc cả dòng chú thích** — chú thích nhắc nguyên văn chuỗi bị cấm là làm test quét đỏ.
 - **Thêm một khối vào đầu trang / một phần tử vào hàng là đổi ngữ cảnh mọi ca cuộn tới cuối** — `tap` trượt khỏi khung chỉ *cảnh báo*, không đỏ, nên ca đỏ ở chỗ chẳng liên quan. `ensureVisible` trước khi chạm.
 - **Widget test trang có `StreamBuilder` trên stream drift**: gọi `dongTrang()` TRONG thân ca và `pump(Duration)` — thiếu là treo cả tệp (bẫy 7.13 `NOTIFICATION_FEATURE.md`).
-- **Dữ liệu locale chỉ còn cần cho `DateFormatter.formatWeekdayDate`** (tiêu đề nhóm ngày ở Sổ giao dịch, `transaction_page.dart`): từ 2026-10-19 mọi `DateFormat` đi qua `DateFormatter` và mẫu số không cần dữ liệu locale. Widget test dựng trang ấy mà thiếu `initializeDateFormatting('vi_VN')` thì `DateFormat` ném, cả cây dừng dựng — mọi ca đỏ với dáng vẻ *"không tìm thấy chuỗi"*.
+- **Dữ liệu locale chỉ còn cần cho `DateFormatter.formatWeekdayDate`** (tiêu đề nhóm ngày ở Sổ giao dịch, `transaction_page.dart`): từ 2026-10-19 mọi `DateFormat` đi qua `DateFormatter` và mẫu số không cần dữ liệu locale. Widget test dựng trang ấy mà thiếu `initializeDateFormatting` (các test Sổ giao dịch gọi `'vi'` — đủ, `intl` rút `vi_VN` về `vi`) thì `DateFormat` ném, cả cây dừng dựng — mọi ca đỏ với dáng vẻ *"không tìm thấy chuỗi"*.
 - **I/O thật không chạy dưới FakeAsync của widget test** — thao tác tệp trên đường test phải đồng bộ hoặc tiêm được.
 - **Đừng ghi cứng mốc tương lai trong test lịch** — qua ngày ấy là ca đỏ ở vùng không ai vừa chạm; dùng mốc tương đối hoặc đồng hồ tiêm.
 - **Chẩn đoán IDE sau mỗi `Edit` là ảnh chụp giữa chuỗi sửa** — `flutter test` / `flutter analyze` mới là phép đo.

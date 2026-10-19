@@ -613,6 +613,36 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-19)
 
+### 🧹 Phần còn lại báo cáo soát kiến trúc — B · C · `other_daos` (2026-10-19, phiên 2) · `SyncEngine` brainstorm riêng
+
+Người dùng chọn làm **cả bốn việc** còn lại của báo cáo `docs/superpowers/specs/2026-10-18-bao-cao-soat-kien-truc-toan-app.md`;
+quyết định ghi ở mục *Quyết định người dùng 2026-10-19 (phiên 2)* cuối tệp ấy. Ba việc đầu là một kế hoạch
+(`docs/superpowers/plans/2026-10-19-phan-con-lai-bao-cao-soat.md`, gitignore) thi công bằng **agent con** (Fable preflight ·
+Sonnet thực thi · Opus soát từng task + review toàn nhánh); **`SyncEngine` là việc kiến trúc — spec riêng**, đang brainstorm
+(người dùng chọn hướng *tách lớp cộng tác*, có quét **34** canh mỗi tệp `core/sync` ≤ 800 dòng). Không đổi hành vi, không
+đổi chữ nào người dùng thấy.
+
+- **Sửa (`3a1669e8..d10ea922`):** `MonHang` JSON → hai hàm private của cổng `kho_anh_quet.dart` (`fe254036`);
+  `dong_hang_bien_dong.dart` → `transaction/application/` — giao dịch thành mảng thứ **sáu** có `application/` (`b706fb3c`);
+  ngày bắt đầu mặc định ngân sách một hàm `ngayBatDauMacDinh` (`a6e023bf`); chữ phần trăm một hàm `chuPhanTram`
+  (`core/utils/phan_tram.dart`) thay **tám** bản viết tay + **test quét 33** (`a71474b9`, bản thứ tám ở thẻ ngân sách Trang chủ
+  do review toàn nhánh bắt — `9527760a`); `DateFormatter` mỗi mẫu đang dùng một hàm, **mẫu chỉ có số dựng không locale**
+  (chỉ `formatWeekdayDate` — tiêu đề nhóm ngày Sổ giao dịch — còn cần dữ liệu `vi_VN`), gỡ năm hàm 0 chỗ gọi, đổi nghĩa
+  `formatDateTime` / `formatMonthYear` (0 chỗ gọi) (`3c84494e`); **37 dòng / 31 tệp** dựng `DateFormat` tay đi qua nó + **test
+  quét 32** (`7ac2cea2`); `core/database/daos/other_daos.dart` tách `budget_dao` · `bill_dao` · `goal_dao`, thân nguyên văn
+  (`925e38a9`).
+- **Đóng không sửa (lý do ở báo cáo):** `NotificationPrefs.toJson/fromJson` giữ ở `domain/` (là chỗ áp dải hợp lệ = luật
+  domain); "ngày cuối tháng" `DateTime(y, m + 1, 0).day` (một dòng, `bill_recurrence` bị luật 5b giữ bản riêng, hàm kẹp ngày
+  khác biên); `summarizeTransactions` ↔ `tongThuChi`; bộ đọc đầu ra mô hình; repository gọi DAO thẳng.
+- **Preflight Fable** (chỉ đọc, đo intl 0.20.3 thật): 0 Critical, 6 Important đều ở lệnh đếm / số dòng / CRLF trong kế hoạch —
+  sửa trước khi thi công. ⚠️ `other_daos.dart` là CRLF → cắt ba DAO bằng script Dart `readAsLinesSync` + nghiệm thu từng dòng
+  trên blob git, không qua `sed`.
+- ⚠️ **`app_database.g.dart` lệch nguồn** (chú thích cột `Transaction.billId`, nguồn đổi ở `7baeb3a6` mà chưa sinh lại).
+  `build_runner` không ghi lại vì bộ nhớ đệm (Task 7 đã hoàn tệp bằng git) — lần chạy `build_runner` có lý do thật kế tiếp sẽ
+  thấy +5 −2 ở tệp này: **commit riêng**, đừng để lọt vào commit khác (ép ngay thì `build_runner clean` + dựng lại toàn bộ).
+- Số đo (HEAD `d10ea922`): `flutter test` **7.494 / 10 skip / 0 fail** (+10 ca: quét 32 ×2, quét 33, `date_formatter_test`
+  ×2, `phan_tram_test` ×2, ca `.mon.json`, `ngayBatDauMacDinh` ×2), `flutter analyze` **20**. Test quét kế tiếp lấy số **34**.
+
 ### 🧱 Sửa lệch kiến trúc toàn app — bốn lát (2026-10-19) · G94 vẫn chờ nghiệm thu sandbox
 
 Trình báo cáo `docs/superpowers/specs/2026-10-18-bao-cao-soat-kien-truc-toan-app.md` (14 A · 7 B · 11 C) đầu phiên; người dùng
