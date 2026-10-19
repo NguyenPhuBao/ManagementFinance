@@ -102,6 +102,9 @@ Bốn lối vào, mỗi lối thay đúng một chỗ engine đang đụng trạ
 | `napMocNeuChuaCo(int idaccount)` | `syncMotLuot()` dòng 345–348 | giữ nguyên biểu thức `_lastPullTime ??= …`: mốc đã có thì **không** đọc checkpoint |
 | `datLaiPhien()` | `stop()` dòng 318 + 323 | `_hasCompletedPull = false; _lastPullTime = null;` — **không** đặt lại `_soLanKeoVeXong` (đếm theo đời engine) |
 
+Trong `stop()`, đặt `datLaiPhien()` ở chỗ nào trước `_setStatus(idle)` cũng tương đương: đoạn ấy chạy đồng bộ, không có
+người nghe nào chen giữa. Không cần soát thứ tự ở đây.
+
 ⚠️ Quên lối `datLaiPhien` là lỗi **im lặng**: tài khoản đăng nhập sau thừa hưởng cờ *"đã kéo xong"* của phiên trước, và
 `PersonalDefaultCategories` tin vào CSDL chưa kéo (G14).
 
@@ -167,6 +170,10 @@ engine, gửi lô không biết gì về giãn cách. Lối vào: `sendBatch(Lis
 - tham chiếu dartdoc `[x]` trỏ tới ký hiệu đã sang tệp khác thì ghi đủ (`[SyncEngine.start]`), chữ giữ nguyên;
 - **docstring đặt nhầm** ở dòng 1878–1890: nó tả `_deletedAtFrom` nhưng đứng trên `_idViMacDinhTrongLo`. Khi dời, gắn
   nó vào đúng hàm. Đây là sửa chỗ đặt chú thích, không phải sửa mã.
+- **docstring đặt nhầm thứ hai**, ở đầu tệp: dòng 21–44 là **một** khối `///` liền mạch (không dòng trống giữa 39 và
+  40), đứng ngay trên `_ngayCucBoUtcIso` (dòng 45). Vì dartdoc gắn khối vào khai báo kế tiếp, nên hôm nay đoạn tả
+  *"SyncEngine — bộ máy đồng bộ offline-first"* là doc của `_ngayCucBoUtcIso`, còn `class SyncEngine` không có doc.
+  Khi dời ở bước 3: tách khối — dòng 21–39 ở lại trên `class SyncEngine`, dòng 40–44 đi theo hàm sang `thu_gom_day.dart`.
 
 **Không được đổi:**
 - thứ tự câu lệnh, chú thích, chữ log;
@@ -207,6 +214,10 @@ Khuôn giống quét 23 (`tep_presentation_khong_qua_dai_test.dart`):
 - trần riêng chỉ được giảm;
 - tệp miễn trừ xuống ≤ 800 mà chưa rút khỏi danh sách thì đỏ;
 - tệp trong danh sách không còn tồn tại thì đỏ.
+
+⚠️ Số **2153** là của `wc -l`. Còn test đếm bằng `readAsLinesSync().length`, và hai cách lệch nhau một dòng khi tệp
+không có ký tự xuống dòng ở cuối. Bàn giao 2026-10-19 đã gặp đúng kiểu lệch ấy (*"số dòng lệch một"*). Vì vậy trần riêng
+**lấy từ số chính test báo** ở lượt chạy đầu, không chép từ spec này. Mọi lần hạ trần cũng theo luật ấy.
 
 Mỗi bước dời **hạ trần riêng** về đúng số đo sau bước ấy. Bước 4 rút mục cuối, `mienTru` rỗng; cơ chế miễn trừ giữ lại
 cho tệp dài sau này, như quét 23. Docstring ghi số **34**. Bảng test quét ở `CLAUDE.md` và `KIEN_TRUC` thêm một hàng;
@@ -273,7 +284,9 @@ Làm ở **bước 5**, sau khi mã xong, là commit riêng.
 - ⚠️ `core/database/tables/transactions_table.dart` có hai docstring cột nhắc `_collectPendingOps`, và docstring cột
   chảy vào `app_database.g.dart`. Sửa chúng thì chạy `build_runner` (`clean` trước, vì bộ nhớ đệm không ghi lại tệp đã
   hoàn bằng git), commit **riêng** `.g.dart`. Lượt sinh ấy kéo theo chỗ lệch có sẵn (chú thích `Transaction.billId`,
-  +5 −2) — đúng việc bàn giao 2026-10-19 hẹn *"lần `build_runner` kế commit riêng"*.
+  +5 −2) — đúng việc bàn giao 2026-10-19 hẹn *"lần `build_runner` kế commit riêng"*. **Chốt:** diff `.g.dart` chỉ
+  được gồm chú thích (hai docstring vừa sửa + phần `billId`). Lớn hơn thế (bộ sinh / phiên bản trôi) thì **dừng, hỏi
+  người dùng**, không commit.
 - **Tài liệu sống** — sửa câu ở **thì hiện tại** nói *mã nằm đâu*; câu lịch sử có ngày giữ nguyên. Danh sách:
   - `CLAUDE.md` — hàng *Đụng vào đồng bộ*, bảng test quét, *số tiếp theo*;
   - `docs/PROJECT_CONTEXT.md` — mục 6, 7 và khối mới mục 14;
