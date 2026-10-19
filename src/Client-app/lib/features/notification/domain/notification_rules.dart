@@ -10,6 +10,7 @@ import '../../transaction/domain/khoan_vao_thong_ke.dart';
 import '../../ai_edge/domain/tai_phan_bo.dart';
 import '../../bill/data/models/bill_entity.dart';
 import '../../wallet/data/models/wallet_entity.dart';
+import '../../../core/utils/phan_tram.dart';
 import '../../../core/utils/tuan_iso.dart';
 
 /// Loại thông báo. Giá trị `.name` được ghi thẳng vào cột `kind`.
@@ -416,7 +417,7 @@ List<NotificationCandidate> _budgetCandidates(NotificationRuleInput input) {
       kind: NotificationKind.budgetNearLimit,
       dedupeKey: 'budgetNear:${b.id}:$ky:$bac',
       title: 'Sắp vượt ngân sách',
-      body: 'Bạn đã chi tiêu ${_phanTram(b.rawPercentSpent)} ngân sách '
+      body: 'Bạn đã chi tiêu ${chuPhanTram(b.rawPercentSpent)} ngân sách '
           '${view.displayName}.',
       severity: NotificationSeverity.warning,
       subjectType: 'budget',
@@ -1029,8 +1030,6 @@ String _ngayGon(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-'
     '${d.month.toString().padLeft(2, '0')}-'
     '${d.day.toString().padLeft(2, '0')}';
-
-String _phanTram(double ratio) => '${(ratio * 100).round()}%';
 
 /// Rút gọn kiểu "1,2 triệu" / "500 nghìn" cho câu thông báo — số đầy đủ đã có
 /// trên màn ngân sách, ở đây chỉ cần đủ để người dùng quyết định có mở app.

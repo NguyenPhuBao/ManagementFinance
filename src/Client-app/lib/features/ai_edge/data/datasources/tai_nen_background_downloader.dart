@@ -11,6 +11,7 @@ import 'dart:async';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/utils/phan_tram.dart';
 import 'nguon_tai_nen.dart';
 
 /// ⚠️ **Hằng của dự án, KHÔNG để gói sinh ngẫu nhiên.**
@@ -173,7 +174,7 @@ class BackgroundDownloaderTaiNen implements NguonTaiNen {
       final tt = dichTrangThai(u.status, huyDoNguoiDung: _huyDoNguoiDung);
       if (tt == null) return;
       debugPrint('[SLM] tải: ${u.status.name} → ${tt.name} '
-          '(${(_phanTramCuoi * 100).round()}%)');
+          '(${chuPhanTram(_phanTramCuoi)})');
       _phat.add((
         trangThai: tt,
         phanTram: tt == TrangThaiLuot.xong ? 1 : _phanTramCuoi,

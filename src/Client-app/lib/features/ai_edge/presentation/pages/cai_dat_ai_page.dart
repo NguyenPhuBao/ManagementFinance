@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/utils/phan_tram.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../ai_chat/data/cong_tac_online.dart';
 import '../../data/cong_tac_ai.dart';
@@ -384,7 +385,7 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
       children: [
         _dongTieuDe(
           icon: Icons.sync,
-          tieuDe: 'Đang tải… ${(_phanTram * 100).round()}%',
+          tieuDe: 'Đang tải… ${chuPhanTram(_phanTram)}',
           phu: '${dungLuongGb(xong)} / ${dungLuongGb(kCoTepByte)}',
         ),
         const SizedBox(height: 14),
@@ -418,7 +419,7 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
         children: [
           _dongTieuDe(
             icon: Icons.pause_circle_outline,
-            tieuDe: 'Đã tạm dừng · ${(_phanTram * 100).round()}%',
+            tieuDe: 'Đã tạm dừng · ${chuPhanTram(_phanTram)}',
             phu: 'Phần đã tải được giữ lại, bấm Tiếp tục để tải nốt.',
           ),
           const SizedBox(height: 14),
