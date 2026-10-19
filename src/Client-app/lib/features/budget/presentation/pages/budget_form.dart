@@ -5,7 +5,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
 import '../../data/models/budget_entity.dart';
-import '../../data/models/budget_period.dart';
+import '../../domain/budget_period.dart';
 import '../../domain/cua_so_nhin_lai.dart';
 import '../widgets/budget_visuals.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';

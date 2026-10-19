@@ -8,6 +8,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../transaction/domain/transaction_type_label.dart';
 import '../../data/gan_danh_muc_nguon.dart';
 import '../../data/goi_y_phan_hoi_store.dart';
 import '../../../transaction/domain/gan_hang_loat.dart';
@@ -117,7 +118,7 @@ class _GanDanhMucPageState extends State<GanDanhMucPage> {
       context,
       loai: t.type,
       moTa: [
-        t.type == 'thu' ? 'Khoản thu' : 'Khoản chi',
+        transactionTypeLabel(t.type),
         CurrencyFormatter.formatCoDau(t.amount, thu: t.type == 'thu'),
         if (ghiChu.isNotEmpty) ghiChu,
       ].join(' · '),

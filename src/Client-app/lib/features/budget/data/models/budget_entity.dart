@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
-import 'budget_period.dart';
+import '../../domain/budget_period.dart';
 
 /// Chu kỳ lặp của ngân sách — dùng đúng tập giá trị backend nhận ở cột
 /// `Time_recurrence` (`VarChar(7)`).

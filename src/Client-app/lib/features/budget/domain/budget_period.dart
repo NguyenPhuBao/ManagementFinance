@@ -12,7 +12,7 @@
 /// ngoài mọi kỳ — không exception, không log.
 library;
 
-import 'budget_entity.dart';
+import '../data/models/budget_entity.dart';
 
 /// Ngày [day] của tháng [month]/[year], **kẹp về ngày cuối tháng** nếu tháng đó
 /// ngắn hơn.

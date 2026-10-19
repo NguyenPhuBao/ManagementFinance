@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/transaction_entity.dart';
-import '../../data/models/transaction_type_label.dart';
+import '../../domain/transaction_type_label.dart';
 import '../../domain/transaction_lookup.dart';
 import '../../domain/transaction_owner.dart';
 import 'transaction_row_content.dart';

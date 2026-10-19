@@ -1,4 +1,4 @@
-import 'package:flowmoney/features/transaction/data/models/transaction_type_label.dart';
+import 'package:flowmoney/features/transaction/domain/transaction_type_label.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Tiêu đề dự phòng của một dòng giao dịch khi ghi chú để trống.

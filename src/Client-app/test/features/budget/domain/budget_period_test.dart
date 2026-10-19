@@ -11,7 +11,7 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
-import 'package:flowmoney/features/budget/data/models/budget_period.dart';
+import 'package:flowmoney/features/budget/domain/budget_period.dart';
 
 void main() {
   group('advancePeriod — nhảy đúng một chu kỳ', () {
