@@ -13,7 +13,6 @@ import 'backend_bool.dart';
 import 'cong_so_du_vi.dart';
 import 'cong_vi_bi_giu.dart';
 import 'sync_models.dart';
-import 'category_icon_registry.dart';
 import 'sync_checkpoint_store.dart';
 import 'moc_keo_ve.dart';
 import 'sync_payload_normalizer.dart';
@@ -772,9 +771,6 @@ class SyncEngine {
               if (existingLocal?.isLocalOnly == true) {
                 continue;
               }
-              final iconRegistry =
-                  await CategoryIconRegistry.getIcon(catUuid, catName);
-
               String finalIcon;
               if (rawIcon != null &&
                   rawIcon.isNotEmpty &&
@@ -784,10 +780,6 @@ class SyncEngine {
                   existingLocal.icon.isNotEmpty &&
                   existingLocal.icon != 'category') {
                 finalIcon = existingLocal.icon;
-              } else if (iconRegistry != null &&
-                  iconRegistry['icon'] != null &&
-                  iconRegistry['icon'] != 'category') {
-                finalIcon = iconRegistry['icon']!;
               } else {
                 finalIcon = _defaultIconForCategoryName(catName);
               }
@@ -798,9 +790,6 @@ class SyncEngine {
               } else if (existingLocal != null &&
                   existingLocal.colour.isNotEmpty) {
                 finalColor = existingLocal.colour;
-              } else if (iconRegistry != null &&
-                  iconRegistry['colour'] != null) {
-                finalColor = iconRegistry['colour']!;
               } else {
                 finalColor = _defaultColorForCategoryName(catName);
               }
