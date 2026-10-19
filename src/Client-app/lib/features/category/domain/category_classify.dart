@@ -1,4 +1,5 @@
 import '../../../core/category/category_name.dart';
+import '../data/models/category_entity.dart';
 
 /// Ba phân loại danh mục, theo đúng thứ tự tab ở mọi màn hình: trang quản lý
 /// danh mục, bảng chọn danh mục khi tạo giao dịch, form tạo danh mục/nhóm.
@@ -44,4 +45,23 @@ String suggestDebtDirection(String categoryName) {
   // Không nhận ra thì coi là tiền ra: phần lớn khoản vay/nợ người dùng tự đặt
   // tên là tiền họ đưa đi, và chọn sai thì đổi được ngay trên form.
   return 'chi';
+}
+
+/// Danh mục gắn được cho một khoản theo chiều tiền: `chi` → {chi, vay_no}; `thu` → {thu, vay_no}.
+///
+/// Ở đây từ 2026-10-16 (trước ở `gan_hang_loat.dart`, nay `transaction/domain/`; quét 29): chỉ đọc danh mục.
+///
+/// ⚠️ Thiếu bộ lọc này thì mô hình — học trên CẢ BA phân loại — gắn được *"Lương"* cho một khoản chi, tức đảo chiều
+/// tiền trong mọi thống kê. [chonDuoc] là tập `selectableChildrenAll` của màn Thêm giao dịch; vẫn bỏ hàng đã xoá và
+/// nhóm cho chắc.
+Set<String> hopLeTheoChieu(String loai, List<CategoryEntity> chonDuoc) {
+  final phanLoai = switch (loai) {
+    'chi' => const {'chi', 'vay_no'},
+    'thu' => const {'thu', 'vay_no'},
+    _ => const <String>{},
+  };
+  return {
+    for (final c in chonDuoc)
+      if (!c.isDeleted && !c.isGroup && phanLoai.contains(c.classify)) c.id,
+  };
 }

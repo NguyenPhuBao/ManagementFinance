@@ -48,6 +48,7 @@ import '../../features/ai_edge/domain/canary_cong_cu.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
 import '../../features/ai_edge/data/nguon_ly_do_thoat.dart';
 import '../../features/transaction/data/vi_theo_nguon_store.dart';
+import '../../features/transaction/data/hoa_don_da_xoa_nguon.dart';
 import '../../features/transaction/domain/doc_tin_bien_dong.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
@@ -71,9 +72,12 @@ import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
+import '../../features/premium/data/luu_anh_qr.dart';
+import '../../features/premium/data/repositories/don_thanh_toan_repository.dart';
+import '../../features/premium/data/repositories/don_thanh_toan_repository_impl.dart';
 import '../../features/premium/data/repositories/goi_repository.dart';
 import '../../features/premium/data/goi_store.dart';
-import '../../features/premium/data/payment_api.dart';
+import '../../features/premium/data/datasources/payment_api.dart';
 import '../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../features/premium/presentation/state/an_nhac_het_han.dart';
 import '../../features/premium/presentation/bloc/goi_cubit.dart';
@@ -83,6 +87,8 @@ import '../../features/wallet/domain/dot_am.dart';
 import '../../features/wallet/presentation/bloc/wallet_cubit.dart';
 import '../../features/transaction/data/datasources/transaction_local_data_source.dart';
 import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
+import '../../features/ai_chat/data/cong_tac_online.dart';
+import '../../features/ai_chat/data/datasources/tro_ly_online_remote_data_source.dart';
 import '../../features/transaction/data/chep_loi_bang_gemma.dart';
 import '../../features/transaction/data/datasources/ghi_am.dart';
 import '../../features/transaction/data/datasources/kenh_micro.dart';
@@ -100,6 +106,7 @@ import '../../features/bill/application/bill_payment_conflict_resolver.dart';
 import '../../features/bill/data/repositories/bill_repository_impl.dart';
 import '../../features/bill/presentation/bloc/bill_bloc.dart';
 import '../../features/bill/data/de_xuat_hoa_don_nguon.dart';
+import '../../features/bill/data/so_ngay_nhac_nguon.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
 import '../../features/category/data/repositories/category_management_repository_impl.dart';
 import '../../features/category/application/default_category_seeder.dart';
@@ -107,6 +114,7 @@ import '../../features/category/application/personal_default_categories.dart';
 import '../../features/category/domain/category_suggestion_engine.dart';
 import '../../features/category/data/gan_danh_muc_nguon.dart';
 import '../../features/category/data/goi_y_phan_hoi_store.dart';
+import '../../features/category/data/danh_muc_ai_doan_store.dart';
 import '../network/connection_monitor.dart';
 import '../ui/thong_bao_nhanh.dart';
 import '../../features/notification/application/reminder_scheduler.dart';
@@ -344,6 +352,23 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerFactory<BillBloc>(
     () => BillBloc(repository: sl<BillRepository>()),
   );
+  // Tuỳ chọn "Nhắc trước" của Cài đặt thông báo: mặc định cho hoá đơn mới (form
+  // Thêm chọn sẵn chip, 2026-10-17) và ngưỡng nhãn "Sắp đến hạn" cho hoá đơn tắt
+  // nhắc (trang Hoá đơn, tool AI `danh_sach_hoa_don`). Hàm đọc đặt ở đây (điểm
+  // ghép) để `bill/data` và `bill/presentation` không import `notification/`. Đọc
+  // lúc gọi nên đăng ký trước kho tuỳ chọn vẫn được.
+  sl.registerLazySingleton<SoNgayNhacNguon>(
+    () => SoNgayNhacNguon((id) async =>
+        (await sl<NotificationPrefsStore>().read(id)).soNgayNhacHoaDon),
+  );
+  // Việc 4c (2026-10-17): Sổ giao dịch và Chi tiết ngân sách hỏi "hoá đơn của khoản này đã xoá chưa" lúc vuốt / mở
+  // bảng chi tiết, để mở khoá có cảnh báo cho khoản chi mồ côi. Hàm đọc đặt ở đây (điểm ghép) — mảng transaction
+  // không import bill. `getById` đọc cả hàng đã xoá mềm (ca canh ở `bill_repository_impl_test.dart`); hàng chưa
+  // kéo về → `null` → `false` (khoá).
+  sl.registerLazySingleton<HoaDonDaXoaNguon>(
+    () => HoaDonDaXoaNguon((id) async =>
+        (await sl<BillRepository>().getById(id))?.isDeleted ?? false),
+  );
   // Thẻ "Có vẻ là khoản lặp" trên trang Hoá đơn (B2) — trang tự lấy nguồn này
   // khi đã đăng ký, không thì không dựng thẻ.
   sl.registerLazySingleton<DeXuatHoaDonNguon>(
@@ -363,6 +388,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // B1: phản hồi thẻ gợi ý danh mục — bảng cục bộ v25, không đồng bộ.
   sl.registerLazySingleton<GoiYPhanHoiStore>(
     () => GoiYPhanHoiStoreDrift(sl<AppDatabase>()),
+  );
+  // B1 bỏ mẫu "danh mục do AI chọn, lưu nguyên" — bảng cục bộ v31, không đồng bộ (người dùng chốt 2026-10-16).
+  sl.registerLazySingleton<DanhMucAiDoanStore>(
+    () => DanhMucAiDoanStoreDrift(sl<AppDatabase>()),
   );
   // C1 — nguồn màn Gắn danh mục nhanh gom phụ thuộc, để trang không cầm AppDatabase (spec bịt điểm rò mục 4.5).
   sl.registerLazySingleton<GanDanhMucNguon>(
@@ -460,6 +489,11 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // vì AuthBloc là factory. Đếm đăng ký theo mặt cắt để router tiêm bản giả.
   sl.registerLazySingleton<PaymentApi>(
       () => DioPaymentApi(sl<DioClient>().dio));
+  // Ba trang Premium đọc / ghi đơn qua repository, không gọi thẳng API (spec G94 2026-10-18 mục 4.2).
+  sl.registerLazySingleton<DonThanhToanRepository>(
+      () => DonThanhToanRepositoryImpl(api: sl()));
+  // Lưu ảnh mã VietQR vào Thư viện ảnh (kênh flowmoney/luu_anh — spec G94 mục 5.3).
+  sl.registerLazySingleton<LuuAnhQr>(() => LuuAnhQr());
   sl.registerLazySingleton<GoiStore>(
       () => SecureStorageGoiStore(sl<FlutterSecureStorage>()));
   sl.registerLazySingleton<GoiRepository>(
@@ -845,6 +879,12 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   );
 
   sl.registerLazySingleton<CongTacAi>(CongTacAi.new);
+  // Trợ lý online (spec 2026-10-11): câu hỏi đi backend qua SSE khi có mạng; cùng `Dio` của
+  // `DioClient` để `AuthInterceptor` gắn Bearer / làm mới token. Công tắc + cờ tờ gắn máy.
+  sl.registerLazySingleton<TroLyOnlineRemoteDataSource>(
+    () => TroLyOnlineRemoteDataSourceImpl(sl<DioClient>().dio),
+  );
+  sl.registerLazySingleton<CongTacOnline>(CongTacOnline.new);
 
   // Ô Nhập nhanh của màn Thêm giao dịch đọc câu bằng mô hình (C2 §2.8, người dùng chọn "AI đọc mọi câu" 2026-09-30) —
   // chỗ THỨ HAI dùng mô hình sau màn Trợ lý AI (lối B mở rộng). Cùng hai điều kiện của màn ấy: tệp đủ và công tắc bật.
@@ -948,6 +988,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       phanTich: sl<AnalyticsRepository>(),
       danhMuc: sl<CategoryManagementRepository>(),
       taiPhanBo: sl<TaiPhanBoNguon>(),
+      soNgayNhac: sl<SoNgayNhacNguon>(),
     ),
   );
 

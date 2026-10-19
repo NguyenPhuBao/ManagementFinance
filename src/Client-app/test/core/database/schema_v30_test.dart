@@ -9,10 +9,10 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('schema là v30', () async {
+  test('schema hiện tại là v31 (v30 còn nguyên)', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
-    expect(db.schemaVersion, 30);
+    expect(db.schemaVersion, 31);
   });
 
   test('bảng KHÔNG có cột đồng bộ', () async {

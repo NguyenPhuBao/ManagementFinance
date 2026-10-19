@@ -1,23 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/realtime/realtime_channel.dart';
+import '../../../../core/realtime/realtime_event.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../data/payment_api.dart';
+import '../../data/models/dong_lich_su.dart';
+import '../../data/repositories/don_thanh_toan_repository.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
-import '../../domain/don_thanh_toan.dart';
-import '../../domain/dong_lich_su.dart';
+import '../widgets/nhan_trang_thai_don.dart';
 
-/// Màn Lịch sử mua `/premium/lich-su` (spec Premium 9.4) — chỉ đọc, trang 1
-/// (20 dòng, không phân trang vô hạn). Màn Stitch *"Lịch sử mua Premium -
-/// FlowMoney"* `e7d6609536224c4fbd2e2a94f4623e36` (chờ người dùng xác nhận).
+/// Màn Lịch sử mua `/premium/lich-su` (spec Premium 9.4; spec G94 2026-10-18 mục 5.6) — trang 1 (20 dòng, không phân
+/// trang vô hạn). Màn Stitch *"Lịch sử mua Premium - Dòng bấm được (có Chờ xác nhận)"* `04c4aa7dda504cc4922290ea79ef3e63`
+/// (thay `e7d6609536224c4fbd2e2a94f4623e36`; dòng chân *"Giao dịch thanh toán bảo mật FlowMoney"* của Stitch là trang
+/// trí — không chép, lệch có chủ ý).
+///
+/// MỌI dòng bấm được → Chi tiết đơn `/premium/don/:orderCode` — lối xác nhận chuyển thừa khi người dùng đã rời màn Chờ
+/// (người dùng chốt 2026-10-18). Quay về thì nạp lại; tín hiệu `payment.*` cũng nạp lại.
 class LichSuMuaPage extends StatefulWidget {
-  const LichSuMuaPage({super.key, this.api});
+  const LichSuMuaPage({super.key, this.repo, this.suKien});
 
-  /// `null` → `sl<PaymentApi>()`.
-  final PaymentApi? api;
+  /// `null` → `sl<DonThanhToanRepository>()`.
+  final DonThanhToanRepository? repo;
+
+  /// `null` → `sl<RealtimeChannel>().events`.
+  final Stream<RealtimeEvent>? suKien;
 
   @override
   State<LichSuMuaPage> createState() => _LichSuMuaPageState();
@@ -27,22 +38,33 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
   List<DongLichSu>? _dong;
   String? _loi;
   bool _dangNap = true;
+  StreamSubscription<RealtimeEvent>? _subSuKien;
 
-  PaymentApi get _api => widget.api ?? sl<PaymentApi>();
+  DonThanhToanRepository get _repo => widget.repo ?? sl<DonThanhToanRepository>();
 
   @override
   void initState() {
     super.initState();
-    _nap();
+    _subSuKien = (widget.suKien ?? sl<RealtimeChannel>().events).listen((e) {
+      if (e == RealtimeEvent.donThanhToanDoi) unawaited(_nap());
+    });
+    unawaited(_nap());
   }
 
+  @override
+  void dispose() {
+    unawaited(_subSuKien?.cancel());
+    super.dispose();
+  }
+
+  /// Đã có danh sách thì nạp lại NGẦM — giữ dòng trên màn, không chớp vòng xoay mỗi lần quay về / có tín hiệu.
   Future<void> _nap() async {
     setState(() {
-      _dangNap = true;
+      _dangNap = _dong == null;
       _loi = null;
     });
     try {
-      final ds = dongLichSuTu(await _api.lichSu());
+      final ds = await _repo.lichSu();
       if (!mounted) return;
       setState(() {
         _dong = ds;
@@ -51,10 +73,15 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _loi = cauLoiThanhToan(e);
+        _loi = cauLoiThanhToan(loaiLoiCua(e), cauTuChoi: 'Không tải được lịch sử mua. Thử lại sau.');
         _dangNap = false;
       });
     }
+  }
+
+  Future<void> _moDon(int ma) async {
+    await context.push('/premium/don/$ma');
+    if (mounted) unawaited(_nap());
   }
 
   @override
@@ -72,8 +99,7 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
         centerTitle: true,
         title: const Text(
           'Lịch sử mua',
-          style: TextStyle(
-              color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 20),
+          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 20),
         ),
       ),
       body: SafeArea(child: _than()),
@@ -91,8 +117,7 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(loi,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                  textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
               const SizedBox(height: 12),
               TextButton(onPressed: _nap, child: const Text('Thử lại')),
             ],
@@ -108,13 +133,12 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
           children: [
             Icon(Icons.receipt_long_outlined, size: 48, color: AppColors.outlineVariant),
             SizedBox(height: 12),
-            Text('Chưa có lượt mua nào',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+            Text('Chưa có lượt mua nào', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
           ],
         ),
       );
     }
-    // `Material` bọc danh sách: ListTile trong Container có màu mà không có
+    // `Material` bọc danh sách: InkWell trong Container có màu mà không có
     // Material riêng là assertion "ink splashes may be invisible" (Flutter 3.47).
     return Material(
       type: MaterialType.transparency,
@@ -129,55 +153,55 @@ class _LichSuMuaPageState extends State<LichSuMuaPage> {
 
   Widget _dongWidget(DongLichSu d) {
     final luc = d.luc;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outlineVariant),
+        side: const BorderSide(color: AppColors.outlineVariant),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.workspace_premium_outlined, color: AppColors.textSecondary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Gói Premium 30 ngày',
-                    style: TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                Text(
-                  luc == null
-                      ? 'Mã đơn #${d.orderCode}'
-                      : DateFormat('dd/MM/yyyy').format(luc.toLocal()),
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: Key('lich-su-dong-${d.orderCode}'),
+        onTap: () => unawaited(_moDon(d.orderCode)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 6, 12),
+          child: Row(
             children: [
-              Text(CurrencyFormatter.format(d.soTien.toDouble()),
-                  style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-              Text(chuTrangThaiDon(d.trangThai),
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: switch (d.trangThai) {
-                        TrangThaiDon.paid => AppColors.income,
-                        TrangThaiDon.pending => AppColors.warning,
-                        TrangThaiDon.waitingConfirmation => const Color(0xFF7B1FA2),
-                        TrangThaiDon.refundPending => const Color(0xFFE65100),
-                        TrangThaiDon.refunded => const Color(0xFF00796B),
-                        TrangThaiDon.cancelled || TrangThaiDon.expired => AppColors.textSecondary,
-                      })),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
+                child: const Icon(Icons.workspace_premium, size: 22, color: AppColors.textSecondary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Gói Premium 30 ngày',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    Text(
+                      luc == null ? 'Mã đơn #${d.orderCode}' : DateFormat('dd/MM/yyyy').format(luc.toLocal()),
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(CurrencyFormatter.format(d.soTien.toDouble()),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  NhanTrangThaiDon(d.trangThai),
+                ],
+              ),
+              const Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

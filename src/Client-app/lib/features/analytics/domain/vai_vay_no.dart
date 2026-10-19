@@ -36,7 +36,7 @@ library;
 
 import '../../category/domain/category_classify.dart';
 import '../../../core/category/category_name.dart';
-import 'khoan_vao_thong_ke.dart';
+import '../../transaction/domain/khoan_vao_thong_ke.dart';
 import 'pham_vi_ky.dart';
 import 'phan_loai_dong_tien.dart';
 import 'thong_ke_thang.dart';

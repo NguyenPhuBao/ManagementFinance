@@ -1,12 +1,12 @@
 import 'dart:async';
+import 'dart:ui' show AppLifecycleState;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart' show AppLifecycleState;
 
 import '../../../../core/realtime/realtime_event.dart';
-import '../../domain/trang_thai_goi.dart';
+import '../models/trang_thai_goi.dart';
 import '../goi_store.dart';
-import '../payment_api.dart';
+import '../datasources/payment_api.dart';
 
 /// Phiên đăng nhập nhìn từ mảng gói: mã tài khoản + `type` của `/auth/*`.
 /// Dịch từ `AuthState` ở `presentation/bloc/phien_goi_tu_auth.dart` — repository

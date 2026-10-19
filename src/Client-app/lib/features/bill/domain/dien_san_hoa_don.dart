@@ -7,7 +7,7 @@
 library;
 
 import 'bill_recurrence.dart';
-import '../../transaction/domain/khoan_lap.dart';
+import 'khoan_lap.dart';
 
 typedef DienSanHoaDon = ({
   String? ten,

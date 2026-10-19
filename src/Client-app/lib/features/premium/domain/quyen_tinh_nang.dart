@@ -6,7 +6,9 @@
 library;
 
 import 'tran_goi.dart';
-import 'trang_thai_goi.dart';
+import '../data/models/tran_goi.dart';
+import 'hang_goi.dart';
+import '../data/models/trang_thai_goi.dart';
 
 /// 11 quyền bật/tắt (`financial_health_fhs` bỏ: app không có màn FHS). [macDinhKhiThieu] là giá trị khi server
 /// không trả khoá — người dùng chốt 2026-10-08: **mở**, trừ ba quyền AI giữ chốt 06/10 là khoá với Basic.

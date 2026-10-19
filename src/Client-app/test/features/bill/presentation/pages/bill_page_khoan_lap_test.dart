@@ -28,7 +28,7 @@ import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_event.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_page.dart';
-import 'package:flowmoney/features/transaction/domain/khoan_lap.dart';
+import 'package:flowmoney/features/bill/domain/khoan_lap.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
 class _StubAuthRepository implements AuthRepository {

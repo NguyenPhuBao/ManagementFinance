@@ -119,9 +119,12 @@ class Transactions extends Table {
   /// khoản chi nó đã sinh ra — thứ mà luồng **hoàn tác thanh toán** bắt buộc
   /// phải có để hoàn đúng số tiền vào đúng ví.
   ///
-  /// Hàng kéo về từ server và hàng do bản app cũ tạo đều để trống cột này, nên
-  /// hoàn tác chỉ làm được với khoản trả ghi từ bản 2026-09-06 trở đi;
+  /// Hàng do bản app trước 2026-09-06 tạo, và hàng ghi trước 2026-09-12 rồi
+  /// kéo về máy khác, để trống cột này, nên hoàn tác chỉ làm được với khoản
+  /// trả có `billId`;
   /// `BillRepositoryImpl.undoPayment` từ chối có thông báo rõ thay vì đoán.
+  /// Từ việc 4c (2026-10-17) sổ giao dịch khoá khoản trả hoá đơn theo cột này,
+  /// không theo tiền tố.
   TextColumn get billId => text().nullable()();
 
   // ── Transfer fields (DB v2) ───────────────────────────────────────────────

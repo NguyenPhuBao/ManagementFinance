@@ -1,8 +1,9 @@
 /// Test quét `lib/` thứ **27** (spec Entity Hoá đơn 2026-10-14, mục 8): giao diện và domain không cầm kiểu hàng Drift.
 ///
-/// Bốn luật. (1) `presentation/` + `shared/` + `lib/core` (trừ `core/database`, `core/sync` — kể cả bốn điểm ghép (DI / router / nen, thêm `phien_dieu_phoi_that`),
+/// Bốn luật. Luật 2 và 4 đọc chỉ thị `import` / `export` / `part` (kể cả vế `if (dart.library.x)` và chỉ thị nhiều dòng) qua
+/// `test/helpers/chi_thi_dart.dart` từ 2026-10-16 — trước đó chỉ thấy dòng `import `. (1) `presentation/` + `shared/` + `lib/core` (trừ `core/database`, `core/sync` — kể cả bốn điểm ghép (DI / router / nen, thêm `phien_dieu_phoi_that`),
 /// đo 2026-10-14 = 0) + `features/*/domain/` (từ 2026-10-15) không nhắc tên kiểu hàng Drift — [kieuDrift] và companion tương ứng —
-/// so trên dòng đã bỏ chú thích, vì docstring vùng này hay nhắc *"đối tượng `Bill`"*. (2) `features/*/domain/` không import
+/// so trên dòng đã bỏ chú thích, vì docstring vùng này hay nhắc *"đối tượng `Bill`"*. (2) `features/*/domain/` không import / export / part
 /// `core/database` hay `package:drift` (mục 4 `KIEN_TRUC_CLIENT_APP.md`: domain là Dart thuần). (3) `features/*/data/` và
 /// `features/*/application/` (từ đợt Thông báo) không khai `Stream<dynamic>` · `Future<dynamic>` · `List<dynamic>` · `Iterable<dynamic>` —
 /// `dynamic` là cách hàng Drift đi qua chữ ký mà luật 1 mù (`GoalRepository.watchGoalTransactions` giấu hàng `Transaction` hai tháng,
@@ -13,11 +14,14 @@
 /// kiểu không có chỗ chờ trong phạm vi quét — nhắc tới là đỏ ngay.
 /// Mở rộng 2026-10-14 (spec Entity Giao dịch + Ví mục 8); 2026-10-15 (spec Entity Danh mục mục 9): luật 1 quét domain, luật 3;
 /// 2026-10-15 (spec Entity Thông báo mục 9): `AppNotificationEvent`, luật 3 quét `application/`, luật 4, `mauKieu` bắt ` &&` / ` ||`.
+/// 2026-10-16: `mauKieu` bắt thêm `is X ?` và `X(` (`case X(:final id)`, dựng hàng) — hai dạng từng lọt.
 library;
 
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../helpers/chi_thi_dart.dart';
 
 /// Kiểu hàng Drift mà giao diện, domain hay `core` từng cầm. Thêm bảng mới có hàng lên các tầng ấy thì thêm ở đây.
 const kieuDrift = [
@@ -65,15 +69,18 @@ String boChuThich(String d) {
   return i < 0 ? d : d.substring(0, i);
 }
 
-/// `Bill?` · `List<Bill>` · `Bill bill` · `, Bill)` · `as Bill;` · `Bill.fromJson(` · `is Bill &&` · `is Bill ||` — nhưng KHÔNG `BillBloc`,
-/// `BillEntity`, `BillRepository`, `BillEntity.fromDrift(`. (`>[` / `>(` đã bắt qua `>`.)
+/// `Bill?` · `List<Bill>` · `Bill bill` · `, Bill)` · `as Bill;` · `Bill.fromJson(` · `is Bill &&` · `is Bill ||` · `is Bill ?` ·
+/// `Bill(` (mẫu `case Bill(:final id)` của Dart 3 và dựng hàng `Bill(id: …)`) — nhưng KHÔNG `BillBloc`, `BillEntity`,
+/// `BillRepository`, `BillEntity.fromDrift(`, `BillEntity(`, `isBill ?`, `BillsCompanion(` (companion có [mauCompanion] riêng).
+/// (`>[` / `>(` đã bắt qua `>`.)
 RegExp mauKieu(String ten) =>
-    RegExp('\\b$ten(\\?|>| [a-z_][A-Za-z0-9_]*\\b|,|\\)|;|\\.fromJson| &&| \\|\\|)');
+    RegExp('\\b$ten(\\?|>| [a-z_][A-Za-z0-9_]*\\b|,|\\)|;|\\.fromJson| &&| \\|\\|| \\?|\\()');
 
-/// Dòng import mà luật 2 (features/*/domain/) và luật 4 (interface repository) cấm: core/database hoặc package:drift.
-bool importCam(String d) =>
-    d.startsWith('import ') &&
-    (d.contains('core/database') || d.contains('package:drift'));
+/// Đường (URI) trong chỉ thị `import` / `export` / `part` mà luật 2 (features/*/domain/) và luật 4 (interface repository)
+/// cấm: core/database hoặc package:drift. Nhận ĐƯỜNG do `duongChiThi` tách ra, không nhận dòng — nên thấy cả `export`, `part`
+/// và vế `if (dart.library.x)` xuống dòng. So chuỗi là đủ: không chuẩn hoá đích (khác quét 25 / 28).
+bool duongCam(String duong) =>
+    duong.startsWith('package:drift') || duong.contains('core/database');
 
 /// Companion còn bắt cả dựng (`BillsCompanion(` / `.insert(`).
 RegExp mauCompanion(String ten) =>
@@ -104,6 +111,22 @@ void main() {
     expect(m.hasMatch('if (x is Bill && x.isPaid) {'), isTrue,
         reason: 'is X && từng lọt (bàn giao đợt 3) — sau dấu cách là & chứ không phải tên biến.');
     expect(m.hasMatch('final ok = y is Bill || z;'), isTrue);
+    expect(m.hasMatch('final b = x is Bill ? x : null;'), isTrue,
+        reason: 'is X ? (có dấu cách trước ?) từng lọt — chỉ `X?` liền nhau được nhận.');
+    expect(m.hasMatch('case Bill(:final id):'), isTrue,
+        reason: 'mẫu đối tượng của Dart 3 (case X(...)) không có kiểu đứng riêng nào để nhận.');
+    expect(m.hasMatch("final h = Bill(id: 'x');"), isTrue,
+        reason: 'dựng hàng Drift trực tiếp bằng X( từng lọt.');
+    expect(m.hasMatch('final b = x is BillEntity ? x : null;'), isFalse,
+        reason: 'BillEntity là kiểu thuần — sau `Bill` là chữ `E` nối tiếp tên, không mở nhánh nào của mauKieu.');
+    expect(m.hasMatch('BillEntity('), isFalse,
+        reason: 'dựng BillEntity không phải dựng hàng Drift.');
+    expect(m.hasMatch('final v = isBill ? a : b;'), isFalse,
+        reason: 'isBill là một tên biến — \\b chặn dương tính giả.');
+    expect(m.hasMatch('billLeadDays(bill)'), isFalse,
+        reason: 'hàm chữ thường bắt đầu bằng bill — không phải kiểu.');
+    expect(m.hasMatch('return BillsCompanion('), isFalse,
+        reason: 'companion có mẫu riêng (mauCompanion) — mauKieu không được nhận lẫn.');
     expect(m.hasMatch('if (x is BillEntity && x.isPaid) {'), isFalse);
     expect(m.hasMatch('BillEntity.fromDrift(row)'), isFalse);
     expect(m.hasMatch('class BillBloc extends Bloc<BillEvent, BillState> {'),
@@ -113,10 +136,18 @@ void main() {
         mauCompanion('BillsCompanion')
             .hasMatch('return BillsCompanion.insert('),
         isTrue);
-    expect(importCam("import 'package:drift/drift.dart' show Value;"), isTrue);
-    expect(importCam("import '../../../core/database/app_database.dart';"),
-        isTrue);
-    expect(importCam("import 'dart:io';"), isFalse);
+    bool cam(String nguon) => duongChiThi(nguon).any(duongCam);
+    expect(cam("import 'package:drift/drift.dart' show Value;"), isTrue);
+    expect(cam("import '../../../core/database/app_database.dart';"), isTrue);
+    expect(cam("import 'dart:io';"), isFalse);
+    expect(cam("export 'package:drift/drift.dart';"), isTrue,
+        reason: 'export kéo kiểu Drift ra khỏi domain y như import — quét cũ đòi startsWith(import ).');
+    expect(cam("part '../../core/database/x.dart';"), isTrue,
+        reason: 'part kéo tệp database vào cùng thư viện.');
+    expect(cam("import 'a.dart'\n    if (dart.library.io) 'package:drift/native.dart';"), isTrue,
+        reason: 'vế điều kiện xuống dòng cũng là đường thật.');
+    expect(cam("// import 'package:drift/drift.dart';"), isFalse,
+        reason: 'dòng chú thích không phải chỉ thị.');
     expect(mauDynamic.hasMatch('  Stream<dynamic> watchGoalTransactions('), isTrue);
     expect(mauDynamic.hasMatch('final txs = (snapshot.data as List<dynamic>?) ?? [];'), isTrue);
     expect(mauDynamic.hasMatch('  Future<dynamic> f() async => null;'), isTrue,
@@ -210,7 +241,7 @@ void main() {
       final duong = _duong(f);
       if (!duong.contains('/domain/')) continue;
       soTep++;
-      if (f.readAsLinesSync().any(importCam)) {
+      if (duongChiThi(f.readAsStringSync()).any(duongCam)) {
         thay.add(duong);
       }
     }
@@ -263,7 +294,7 @@ void main() {
       final duong = _duong(f);
       if (!duong.contains('/data/repositories/') || !duong.endsWith('_repository.dart')) continue;
       soTep++;
-      if (f.readAsLinesSync().any(importCam)) {
+      if (duongChiThi(f.readAsStringSync()).any(duongCam)) {
         loi.add(
             '$duong: interface repository import core/database / package:drift — lối chuyển tiếp trả hàng Drift không nêu tên kiểu lọt qua luật 1; interface chỉ nhận / trả Entity và Dart thuần (spec Entity Thông báo 2026-10-15 mục 9).');
       }

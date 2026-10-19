@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/repositories/goi_repository.dart';
 import '../../domain/quyen_tinh_nang.dart';
-import '../../domain/trang_thai_goi.dart';
+import '../../data/models/trang_thai_goi.dart';
 
 /// Phát `TrangThaiGoi` cho mọi màn (thẻ Cá nhân, dòng nhắc Trang chủ, băng
 /// khoá Trợ lý AI, ô Nhập nhanh, màn Nâng cấp). Mỏng: luật nằm ở

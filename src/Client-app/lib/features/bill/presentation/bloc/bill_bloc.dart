@@ -21,6 +21,7 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     on<DeleteBillEvent>(_onDeleteBill);
     on<PayBillEvent>(_onPayBill);
     on<UndoPaymentEvent>(_onUndoPayment);
+    on<DatLaiChuaTraEvent>(_onDatLaiChuaTra);
     on<SkipBillEvent>(_onSkipBill);
     on<UndoSkipEvent>(_onUndoSkip);
   }
@@ -152,13 +153,36 @@ class BillBloc extends Bloc<BillEvent, BillState> {
     } on BillNotPaidException {
       emit(BillError('Hóa đơn này chưa được thanh toán.'));
     } on BillUndoUnavailableException {
-      // Lý do cụ thể, không phải lỗi chung chung: khoản chi được ghi bằng bản
-      // app cũ nên không có sợi dây `billId` để lần về.
+      // Lưới an toàn: trang chỉ gửi sự kiện này khi bản đồ khoản chi của nó
+      // CÓ khoản gắn `billId` (`hoiHoanTacHoaDon`); kỳ không có khoản nào đi
+      // hộp "đưa về chưa trả" (`DatLaiChuaTraEvent`). Tới được đây là bản đồ
+      // cũ hơn CSDL — trang không nạp lại sau `BillError`, nên bấm lại sẽ mở
+      // lại đúng hộp cũ; phải mở lại trang.
       emit(BillError(
-          'Không hoàn tác được: khoản chi của lần thanh toán này được ghi '
-          'bằng bản ứng dụng cũ. Hãy xoá nó thủ công ở sổ giao dịch.'));
+          'Không tìm thấy khoản chi của lần thanh toán này. Mở lại trang rồi '
+          'bấm Hoàn tác để đưa kỳ về chưa trả.'));
     } catch (e) {
       emit(BillError('Hoàn tác thất bại: $e'));
+    }
+  }
+
+  Future<void> _onDatLaiChuaTra(
+    DatLaiChuaTraEvent event,
+    Emitter<BillState> emit,
+  ) async {
+    try {
+      await repository.datLaiChuaTra(billId: event.billId);
+      // ⚠️ Không bắt đầu bằng "Xóa" — xem `_onSkipBill`.
+      emit(BillOperationSuccess('Đã đưa kỳ về chưa thanh toán'));
+    } on BillNotPaidException {
+      emit(BillError('Hóa đơn này chưa được thanh toán.'));
+    } on BillPaymentStillLinkedException {
+      // Hộp hỏi mở theo bản đồ khoản chi của trang; bản đồ ấy cũ hơn CSDL.
+      // Trang không nạp lại sau `BillError`, nên phải mở lại trang.
+      emit(BillError('Kỳ này còn khoản chi của lần thanh toán. Mở lại trang '
+          'rồi bấm Hoàn tác để trả tiền về ví.'));
+    } catch (e) {
+      emit(BillError('Đưa kỳ về chưa thanh toán thất bại: $e'));
     }
   }
 

@@ -1,8 +1,8 @@
 // lib/features/ai_edge/presentation/pages/cai_dat_ai_page.dart
-/// Màn **Cài đặt AI** — tải / xoá mô hình trên máy và công tắc dùng nó.
+/// Màn **Cài đặt AI** — tải / xoá mô hình trên máy và hai công tắc (dùng AI trên máy; Trợ lý online).
 ///
 /// Dựng theo màn Stitch `1da347e753964e15a91b10c473975923` *"Cài đặt AI -
-/// FlowMoney"* (người dùng nghiệm thu 2026-09-22). ⚠️ Màn Stitch vẽ **ba
+/// FlowMoney"* (người dùng nghiệm thu 2026-09-22; công tắc Trợ lý online: màn `b320f4b91f9d425d8bc74da1d0234ca0`). ⚠️ Màn Stitch vẽ **ba
 /// trạng thái xếp dọc** kèm nhãn *"Trạng thái 1/2/3"* — đó là bản **so sánh
 /// khi thiết kế**, không phải bố cục thật; bản này dựng **một** trạng thái tại
 /// một thời điểm.
@@ -19,6 +19,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../ai_chat/data/cong_tac_online.dart';
 import '../../data/cong_tac_ai.dart';
 import '../../data/mo_hinh_tai_ve.dart';
 import '../../domain/hoi_dung_4g.dart';
@@ -47,12 +48,16 @@ class CaiDatAiPage extends StatefulWidget {
     this.moHinh,
     this.congTac,
     this.coWifi,
+    this.congTacOnline,
   });
+
+  /// Công tắc *Trợ lý online*. `null` = lấy từ `sl` nếu đã đăng ký, không thì kho thật.
+  final CongTacOnline? congTacOnline;
 
   /// Ép sẵn trạng thái *đã có mô hình hay chưa*.
   ///
   /// `null` = hỏi [MoHinhTaiVe] thật (đường chạy thật). Khác `null` = **không
-  /// chạm DI một lần nào**, để widget test dựng được cả hai trạng thái mà
+  /// chạm DI để dựng mô hình**, để widget test dựng được cả hai trạng thái mà
   /// không phải dựng cả `injection_container`.
   final bool? daCoMoHinh;
 
@@ -79,13 +84,20 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
   String? _loi;
   bool _bat = true;
 
+  late final CongTacOnline _congTacOnline;
+  bool _onlineBat = true;
+
   @override
   void initState() {
     super.initState();
     _congTac = widget.congTac ?? const CongTacAi();
+    _congTacOnline = widget.congTacOnline ??
+        (sl.isRegistered<CongTacOnline>()
+            ? sl<CongTacOnline>()
+            : const CongTacOnline());
 
     if (widget.daCoMoHinh != null) {
-      // Trạng thái ép sẵn: không hỏi DI, không nghe stream nào.
+      // Trạng thái ép sẵn: không hỏi DI về mô hình, không nghe stream nào.
       _tt = widget.daCoMoHinh!
           ? TrangThaiMoHinh.daTai
           : TrangThaiMoHinh.chuaTai;
@@ -108,6 +120,21 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
     }
 
     unawaited(_docCongTac());
+    unawaited(_docCongTacOnline());
+  }
+
+  Future<void> _docCongTacOnline() async {
+    final b = await _congTacOnline.docBat();
+    if (!mounted) return;
+    setState(() => _onlineBat = b);
+  }
+
+  // Ghi trước rồi mới hiện: `ghiBat` nuốt lỗi kho (mất cờ chỉ đưa về mặc định), nên Switch không bao giờ nói dối
+  // một giá trị chưa kịp ghi (phán quyết D Task 11).
+  Future<void> _doiCongTacOnline(bool v) async {
+    await _congTacOnline.ghiBat(v);
+    if (!mounted) return;
+    setState(() => _onlineBat = v);
   }
 
   Future<void> _doTrangThai() async {
@@ -236,6 +263,8 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
   @override
   Widget build(BuildContext context) {
     final daTai = _tt == TrangThaiMoHinh.daTai;
+    final coMoHinh = context.coQuyen(MaQuyen.aiEdgeModel);
+    final coTroLy = context.coQuyen(MaQuyen.aiAssistant);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -253,28 +282,36 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
           onPressed: () => context.pop(),
         ),
       ),
-      // Quyền `ai_edge_model` (spec phân quyền 2026-10-08): không có → không tải, không công tắc; chỉ thẻ khoá.
-      body: !context.coQuyen(MaQuyen.aiEdgeModel)
-          ? const Padding(
-              padding: EdgeInsets.all(16),
-              child: TheKhoaQuyen(ma: MaQuyen.aiEdgeModel),
-            )
-          : SingleChildScrollView(
+      // Quyền `ai_edge_model` (spec phân quyền 2026-10-08) chỉ khoá PHẦN MÔ HÌNH (tải / xoá + công tắc "Dùng AI trên
+      // máy"): không có → thẻ khoá thay chỗ. Thẻ "Trợ lý online" đứng NGOÀI cổng ấy (chỉ cần `ai_assistant`) — nếu
+      // không, người bấm "Chỉ dùng AI trên máy" ở tờ thông tin sẽ không bật lại được. Khối Riêng tư luôn hiện.
+      body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _nhanMuc('MÔ HÌNH TRÊN MÁY'),
-            const SizedBox(height: 10),
-            _the(child: _khoiTrangThai()),
-            if (!daTai) ...[
+            if (coMoHinh) ...[
+              _nhanMuc('MÔ HÌNH TRÊN MÁY'),
               const SizedBox(height: 10),
-              _dongWifi(),
+              _the(child: _khoiTrangThai()),
+              if (!daTai) ...[
+                const SizedBox(height: 10),
+                _dongWifi(),
+              ],
+              const SizedBox(height: 22),
+              _nhanMuc('TUỲ CHỌN'),
+              const SizedBox(height: 10),
+              _theCongTac(),
+            ] else
+              const TheKhoaQuyen(ma: MaQuyen.aiEdgeModel),
+            if (coTroLy) ...[
+              if (!coMoHinh) ...[
+                const SizedBox(height: 22),
+                _nhanMuc('TUỲ CHỌN'),
+              ],
+              const SizedBox(height: 12),
+              _theCongTacOnline(),
             ],
-            const SizedBox(height: 22),
-            _nhanMuc('TUỲ CHỌN'),
-            const SizedBox(height: 10),
-            _theCongTac(),
             const SizedBox(height: 16),
             _khoiRiengTu(),
           ],
@@ -564,12 +601,35 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
         ],
       );
 
-  Widget _theCongTac() => Material(
+  Widget _theCongTac() => _theCongTacChung(
+        tieuDe: 'Dùng AI trên máy',
+        moTa: 'Tắt thì app dùng câu mẫu có sẵn',
+        giaTri: _bat,
+        doi: _doiCongTac,
+      );
+
+  Widget _theCongTacOnline() => _theCongTacChung(
+        tieuDe: 'Trợ lý online',
+        moTa: 'Có mạng thì hỏi máy chủ; tắt thì chỉ dùng AI trên máy',
+        giaTri: _onlineBat,
+        doi: _doiCongTacOnline,
+        khoaSwitch: const Key('cong-tac-online'),
+      );
+
+  /// Khuôn thẻ công tắc dùng chung cho hai thẻ ở "TUỲ CHỌN".
+  Widget _theCongTacChung({
+    required String tieuDe,
+    required String moTa,
+    required bool giaTri,
+    required ValueChanged<bool> doi,
+    Key? khoaSwitch,
+  }) =>
+      Material(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () => _doiCongTac(!_bat),
+          onTap: () => doi(!giaTri),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -579,25 +639,25 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
             ),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Dùng AI trên máy',
-                        style: TextStyle(
+                        tieuDe,
+                        style: const TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w600),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
-                        'Tắt thì app dùng câu mẫu có sẵn',
-                        style: TextStyle(
+                        moTa,
+                        style: const TextStyle(
                             fontSize: 13, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
                 ),
-                Switch(value: _bat, onChanged: _doiCongTac),
+                Switch(key: khoaSwitch, value: giaTri, onChanged: doi),
               ],
             ),
           ),
@@ -619,8 +679,10 @@ class _CaiDatAiPageState extends State<CaiDatAiPage> {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Mô hình chạy hoàn toàn trên máy bạn. Không có số liệu nào '
-                'rời khỏi thiết bị.',
+                'AI trên máy không gửi gì rời khỏi thiết bị. Trợ lý online '
+                '(khi bật và có mạng) gửi câu hỏi, bản tóm tắt tài chính '
+                'và vài tin gần nhất của cuộc trò chuyện tới máy chủ '
+                'FlowMoney và Google Gemini.',
                 style: TextStyle(
                     fontSize: 13,
                     height: 1.45,

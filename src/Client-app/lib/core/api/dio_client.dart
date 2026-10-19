@@ -8,7 +8,7 @@ import 'interceptors/auth_interceptor.dart';
 /// - BaseUrl từ AppConstants
 /// - AuthInterceptor: tự động gắn token + refresh khi 401
 ///
-/// Cách dùng trong injection: sl<Dio>() → luôn trả về instance này.
+/// Cách dùng trong injection: `sl<DioClient>().dio` — GetIt chỉ đăng ký `DioClient`, không đăng ký `Dio` trần.
 class DioClient {
   final Dio _dio;
 

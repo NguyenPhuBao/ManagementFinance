@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flowmoney/features/ai_chat/data/cong_tac_online.dart';
 import 'package:flowmoney/features/ai_edge/data/cong_tac_ai.dart';
 import 'package:flowmoney/features/ai_edge/data/mo_hinh_tai_ve.dart';
 import 'package:flowmoney/features/ai_edge/data/nguon_tai_nen.dart';
@@ -21,9 +22,12 @@ import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
-import 'package:flowmoney/features/premium/data/payment_api.dart';
-import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
+import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
+
+import '../../../helpers/kho_gia.dart';
 
 void main() {
   // ⚠️ Theme thật, không `MaterialApp` trần: theme của app ép mọi
@@ -79,7 +83,9 @@ void main() {
       (t) async {
     await t.pumpWidget(boc(const CaiDatAiPage(daCoMoHinh: true)));
     expect(find.text('Dùng AI trên máy'), findsOneWidget);
-    expect(find.byType(Switch), findsOneWidget);
+    // Từ Task 11 màn có HAI công tắc; ca này chỉ nói về công tắc cũ (không Key).
+    expect(find.byWidgetPredicate((w) => w is Switch && w.key == null),
+        findsOneWidget);
     // Tắt công tắc không làm app mất tính năng — nó lùi về mẫu câu. Không nói
     // ra thì người dùng đọc cái tắt ấy là "mất khối Nhận xét".
     expect(find.textContaining('câu mẫu'), findsOneWidget);
@@ -333,6 +339,62 @@ void main() {
 
     expect(find.text(kCauHoi4G), findsNothing);
     expect(nguon.chiWifiLanCuoi, isTrue);
+  });
+
+  group('công tắc Trợ lý online (spec 2026-10-11 §3.5 c)', () {
+    testWidgets('thẻ thứ hai đọc cờ, gạt thì ghi', (t) async {
+      final kho = KhoGia({'ai_online_bat': 'false'});
+      await t.pumpWidget(boc(CaiDatAiPage(
+          daCoMoHinh: true, congTacOnline: CongTacOnline(kho))));
+      await t.pumpAndSettle();
+      expect(find.text('Trợ lý online'), findsOneWidget);
+      expect(find.text('Có mạng thì hỏi máy chủ; tắt thì chỉ dùng AI trên máy'),
+          findsOneWidget);
+      final sw = find.byKey(const Key('cong-tac-online'));
+      expect(t.widget<Switch>(sw).value, isFalse,
+          reason: 'đọc cờ từ kho, không phải mặc định');
+      await t.tap(sw);
+      await t.pumpAndSettle();
+      expect(kho.ban['ai_online_bat'], 'true',
+          reason: 'gạt công tắc phải ghi cờ xuống kho, không chỉ đổi state');
+      expect(t.widget<Switch>(sw).value, isTrue);
+    });
+
+    testWidgets('có ai_assistant, không ai_edge_model → thẻ online vẫn hiện cạnh thẻ khoá mô hình', (t) async {
+      final goi = _goiBasic(const {'ai_edge_model': false, 'ai_assistant': true});
+      await t.pumpWidget(BlocProvider<GoiCubit>.value(
+          value: goi,
+          child: boc(CaiDatAiPage(
+              daCoMoHinh: false, congTacOnline: CongTacOnline(KhoGia())))));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('cong-tac-online')), findsOneWidget,
+          reason: 'công tắc online phải bật lại được dù thiếu quyền mô hình');
+      expect(find.byKey(const Key('the-khoa-ai_edge_model')), findsOneWidget);
+      expect(find.textContaining('Google Gemini'), findsOneWidget);
+    });
+
+    testWidgets('Basic (không cả hai quyền) → không thẻ online, có thẻ khoá, Riêng tư vẫn hiện', (t) async {
+      final goi = _goiBasic(const {'ai_edge_model': false, 'ai_assistant': false});
+      await t.pumpWidget(BlocProvider<GoiCubit>.value(
+          value: goi,
+          child: boc(CaiDatAiPage(
+              daCoMoHinh: false, congTacOnline: CongTacOnline(KhoGia())))));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('cong-tac-online')), findsNothing);
+      expect(find.byKey(const Key('the-khoa-ai_edge_model')), findsOneWidget);
+      expect(find.textContaining('Google Gemini'), findsOneWidget);
+    });
+
+    testWidgets(
+        'khối Riêng tư nói đúng hai đường: trên máy không gửi gì; online gửi tóm tắt tới FlowMoney và Google Gemini',
+        (t) async {
+      await t.pumpWidget(boc(const CaiDatAiPage(daCoMoHinh: false)));
+      await t.pumpAndSettle();
+      expect(find.textContaining('không gửi gì rời khỏi thiết bị'),
+          findsOneWidget);
+      expect(find.textContaining('Google Gemini'), findsOneWidget);
+      expect(find.textContaining('vài tin gần nhất của cuộc trò chuyện'), findsOneWidget);
+    });
   });
 }
 

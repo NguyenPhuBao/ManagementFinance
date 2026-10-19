@@ -16,7 +16,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart';
 import '../../category/data/models/category_entity.dart';
 import '../../transaction/data/models/transaction_entity.dart';
-import '../../transaction/domain/khoan_lap.dart';
+import '../domain/khoan_lap.dart';
 import '../domain/de_xuat_hoa_don.dart';
 import 'models/bill_entity.dart';
 

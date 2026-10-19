@@ -130,4 +130,109 @@ void main() {
       test('lọt: "$c"', () => expect(chuDeBiChan(c), isFalse));
     }
   });
+
+  group('chuDeBiChanOnline — chỉ nhóm DỮ LIỆU SỐNG (spec trợ lý online 2026-10-11 §0 q2, §3.1)', () {
+    for (final c in [
+      'giá vàng hôm nay bao nhiêu',
+      'gia vang hom nay',
+      'giá xăng tuần này',
+      'tỷ giá usd',
+      'ti gia hom nay',
+      'lãi suất ngân hàng nào cao nhất',
+      'Lãi suất hôm nay bao nhiêu?',
+      'lai suat hien nay la bao nhieu',
+      'Lãi suất ngân hàng hôm nay?',
+      'thời tiết mai thế nào',
+      'tin tức tài chính hôm nay',
+      'kết quả xổ số',
+      'bóng đá tối nay',
+      // Câu hỏi GIÁ của tài sản: Gemini không có dữ liệu sống, sẽ bịa số cũ.
+      'giá bitcoin hiện tại',
+      'bitcoin gia bao nhieu',
+      'cổ phiếu VNM giá bao nhiêu tiền',
+      'giá đô hôm nay',
+    ]) {
+      test('online vẫn chặn: "$c"', () => expect(chuDeBiChanOnline(c), isTrue));
+    }
+    for (final c in [
+      'quỹ khẩn cấp là gì',
+      'quy tac 50 30 20 la gi',
+      'bitcoin là gì',
+      'nên đầu tư thế nào với 10 triệu',
+      'chứng khoán có rủi ro gì',
+      'thuế thu nhập cá nhân tính thế nào',
+      'tôi có nên vay ngân hàng mua xe không',
+      'tháng này tôi chi nhiều nhất cho gì',
+      // Người dùng chốt 2026-10-17 khuya: chỉ lãi suất ngân hàng / hôm nay / hiện nay là dữ liệu sống.
+      'Lãi suất kép là gì?',
+      'Vay trả góp lãi suất 10%/năm thì mỗi tháng trả bao nhiêu?',
+      'lai suat kep la gi',
+    ]) {
+      test('online MỞ: "$c"', () => expect(chuDeBiChanOnline(c), isFalse));
+    }
+
+    for (final c in [
+      'Vậy đó là bao nhiêu tiền?',
+      'còn tháng trước, đó là bao nhiêu tiền',
+      'Đó là giá bao nhiêu?',
+      'giá trị giao dịch lớn nhất, đó là giao dịch nào',
+      'Tôi chi bao nhiêu tiền cho xăng, đó là nhiều hay ít?',
+      'Vâng, vậy tháng trước tôi tiêu hết bao nhiêu tiền?',
+      'Dạ vâng, ăn uống hết bao nhiêu tiền',
+      'tháng vắng nhà tôi tiêu bao nhiêu tiền',
+      'tôi chi bao nhiêu tiền cho rượu vang',
+      'tiền áo khoác hết bao nhiêu tiền',
+      'tôi có phiếu giảm giá không',
+    ]) {
+      test('online MỞ (bẫy bỏ dấu gộp nghĩa): "$c"',
+          () => expect(chuDeBiChanOnline(c), isFalse,
+              reason: 'đó là/vâng/vắng/vang/tiền áo/có phiếu bỏ dấu trùng tên tài sản'));
+    }
+
+    for (final c in [
+      'giáo viên dạy về vàng có tốn tiền không',
+      'học phí giáo dục của tôi bao nhiêu',
+      'mua đôi giày hết giá bao nhiêu',
+      'giá vé xe đôi hôm nay',
+    ]) {
+      test('online MỞ (ranh giới từ): "$c"',
+          () => expect(chuDeBiChanOnline(c), isFalse,
+              reason: 'canh ranh giới từ của RegExp có dấu: giá/đô nằm TRONG từ khác (giáo, đôi)'));
+    }
+    for (final c in ['giá vàng?', 'mua vàng, giá bao nhiêu tiền?', '(giá) usd.']) {
+      test('online chặn (dấu câu dính): "$c"',
+          () => expect(chuDeBiChanOnline(c), isTrue,
+              reason: 'canh ranh giới từ của RegExp có dấu: dấu câu là ranh giới, không phải chữ/số'));
+    }
+
+    test('ranh giới cố ý: số liệu của chính người dùng — online chặn, trên máy mở', () {
+      for (final c in ['tháng này tôi mua vàng hết bao nhiêu tiền', 'ví USD còn bao nhiêu tiền']) {
+        expect(chuDeBiChanOnline(c), isTrue,
+            reason: 'chặn oan chỉ tốn một nhãn nguồn (đi trên máy, tool trả lời từ sổ); '
+                'lọt oan là Gemini bịa giá — đúng thứ cần chặn: $c');
+        expect(chuDeBiChan(c), isFalse, reason: 'trên máy tool trả lời từ sổ: $c');
+      }
+    });
+
+    test('bộ huấn luyện: online không chặn oan câu mang nhãn tool', () {
+      final mau = docTsv(docTep(kDuongBoHuanLuyen));
+      expect(mau.length, greaterThan(500), reason: 'tiền đề: đọc được bộ huấn luyện');
+      final oan = [
+        for (final m in mau)
+          if (m.nhan != kNhanKhongDinhTuyen && chuDeBiChanOnline(m.cau)) m.toString(),
+      ];
+      expect(oan, isEmpty, reason: 'câu tool trả lời được mà bị chặn online');
+    });
+
+    test('chuDeBiChan (trên máy) vẫn chặn "lãi suất" trần — đổi online không được đổi đường máy', () {
+      expect(chuDeBiChan('Lãi suất kép là gì?'), isTrue, reason: 'cổng F: H2 lần 2 đã đo');
+    });
+
+    test('ca canh: chuDeBiChan (trên máy) KHÔNG đổi — nhóm tư vấn và định nghĩa vẫn chặn', () {
+      for (final c in ['bitcoin là gì', 'nên đầu tư thế nào', 'thuế thu nhập cá nhân tính thế nào', 'giá vàng hôm nay']) {
+        expect(chuDeBiChan(c), isTrue, reason: c);
+      }
+      expect(chuDeBiChan('tháng này tôi chi nhiều nhất cho gì'), isFalse);
+    });
+  });
 }

@@ -117,6 +117,7 @@ void main() {
         'food': ['pho'],
       });
       expect(k.categoryId, 'shop');
+      expect(k.danhMucTuAi, isTrue, reason: 'Gemma nhìn ảnh chọn danh mục — B1 không học từ nó khi lưu nguyên');
     });
 
     test('tên AI khớp sau chuẩn hoá', () {
@@ -128,6 +129,8 @@ void main() {
         'food': ['pho'],
       };
       expect(ketQuaTuBienDong(d('Cà phê'), chonDuoc: chonDuoc, tuKhoa: tk).categoryId, 'food');
+      expect(ketQuaTuBienDong(d('Cà phê'), chonDuoc: chonDuoc, tuKhoa: tk).danhMucTuAi, isFalse,
+          reason: 'tên AI không dùng được → danh mục đến từ từ khoá, không phải AI');
       expect(ketQuaTuBienDong(d('Lương'), chonDuoc: chonDuoc, tuKhoa: tk).categoryId, 'food');
     });
 

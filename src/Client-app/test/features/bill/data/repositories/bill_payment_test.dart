@@ -247,6 +247,47 @@ void main() {
       );
     });
 
+    test('kỳ kế tiếp ĐÃ trả thì GIỮ NGUYÊN, cùng khoản chi của nó (2026-10-17)',
+        () async {
+      // Tab Lịch sử bày Hoàn tác cho MỌI kỳ đã trả — hoàn tác tháng 9 khi
+      // tháng 10 đã trả là chuyện bấm được.
+      final bill = await seedBill();
+      await repository.payBill(
+          bill: bill, walletId: walletId, idaccount: accountId);
+      final kySau = BillEntity.fromDrift(
+          (await db.billDao.getGeneratedFrom('bill-1'))!);
+      await repository.payBill(
+          bill: kySau, walletId: walletId, idaccount: accountId);
+
+      await repository.undoPayment(billId: 'bill-1');
+
+      final sau = (await db.billDao.getById(kySau.id))!;
+      expect(sau.isDeleted, isFalse,
+          reason: 'Gỡ vô điều kiện là xoá luôn tháng sau đã trả — khoản chi '
+              'của nó thành mồ côi, tiền vẫn mất, chuỗi sau đó đứt.');
+      expect(sau.payStatus, 'Payed');
+      expect((await db.transactionDao.getByBill(kySau.id))?.isDeleted, isFalse,
+          reason: 'Khoản chi của tháng sau còn sống.');
+      expect((await db.billDao.getById('bill-1'))!.payStatus, 'Pending');
+      expect(await soDu(walletId), soDuBanDau - 200000,
+          reason: 'Chỉ hoàn khoản của kỳ được hoàn tác; kỳ sau vẫn trả.');
+    });
+
+    test('kỳ kế tiếp ĐÃ BỎ QUA cũng giữ nguyên', () async {
+      final bill = await seedBill();
+      await repository.payBill(
+          bill: bill, walletId: walletId, idaccount: accountId);
+      final kySau = (await db.billDao.getGeneratedFrom('bill-1'))!;
+      await repository.skipBill(billId: kySau.id);
+
+      await repository.undoPayment(billId: 'bill-1');
+
+      final sau = (await db.billDao.getById(kySau.id))!;
+      expect(sau.isDeleted, isFalse,
+          reason: 'Kỳ bỏ qua đã sinh kỳ của riêng nó — gỡ nó là đứt chuỗi.');
+      expect(sau.payStatus, 'Skipped');
+    });
+
     test('hoá đơn không lặp thì không có kỳ nào để gỡ', () async {
       final bill = await seedBill(isRecurrence: false);
       await repository.payBill(
@@ -293,6 +334,150 @@ void main() {
 
       expect((await db.billDao.getAll(accountId)).length, 2);
       expect(await soDu(walletId), soDuBanDau - 200000);
+    });
+  });
+
+  /// Kỳ đã trả mà KHÔNG còn khoản chi sống nào gắn `billId` — khoản trả ghi
+  /// bằng bản app cũ (tiền tố ghi chú, cột nối trống), có thể đã bị xoá ở Sổ
+  /// giao dịch (việc 4c mở khoá nó). `undoPayment` từ chối kỳ này; trước lượt
+  /// này kỳ ấy không còn lối nào về chưa trả.
+  group('đưa kỳ kiểu cũ về chưa trả (datLaiChuaTra)', () {
+    Future<void> seedKy(String id,
+            {required String payStatus, String? tu}) =>
+        db.billDao.insert(BillsCompanion.insert(
+          id: id,
+          idaccount: accountId,
+          walletId: const Value(walletId),
+          categoryId: const Value(categoryId),
+          generatedFromBillId: Value(tu),
+          name: 'Tiền điện',
+          amount: 200000,
+          dueDate: DateTime(2026, 9, 20),
+          payStatus: Value(payStatus),
+          isPaid: Value(payStatus == 'Payed'),
+          isRecurrence: const Value(true),
+          timeRecurrence: const Value(kBillCycleMonth),
+          syncStatus: const Value('synced'),
+          updatedAt: DateTime(2026, 9, 1),
+        ));
+
+    Future<void> seedKhoanChi(String id, {String? billId, String note = ''}) =>
+        db.transactionDao.insert(TransactionsCompanion.insert(
+          id: id,
+          idaccount: accountId,
+          walletId: walletId,
+          categoryId: const Value(categoryId),
+          amount: 200000,
+          type: 'chi',
+          billId: Value(billId),
+          note: Value(note),
+          date: DateTime(2026, 9, 20),
+          updatedAt: DateTime(2026, 9, 20),
+        ));
+
+    test('kỳ về chưa trả: đặt CẢ HAI cột và vào hàng đợi đẩy', () async {
+      await seedKy('bill-1', payStatus: 'Payed');
+
+      await repository.datLaiChuaTra(billId: 'bill-1');
+
+      final sau = (await db.billDao.getById('bill-1'))!;
+      expect(sau.payStatus, 'Pending',
+          reason: 'Nhánh đẩy gửi `pay_status`, không gửi `isPaid` — chỉ đổi '
+              'một cột là máy khác vẫn thấy kỳ đã trả.');
+      expect(sau.isPaid, isFalse);
+      expect(sau.syncStatus, 'pending',
+          reason: 'Không vào hàng đợi thì server giữ `Payed` và lượt kéo về sau '
+              'đưa kỳ về lại đã trả.');
+    });
+
+    test('KHÔNG đụng số dư ví và KHÔNG xoá khoản chi kiểu cũ còn ở sổ',
+        () async {
+      await seedKy('bill-1', payStatus: 'Payed');
+      // Khoản trả kiểu cũ: tiền tố ghi chú, không `billId`.
+      await seedKhoanChi('tx-cu', note: 'Thanh toán hoá đơn: Tiền điện');
+
+      await repository.datLaiChuaTra(billId: 'bill-1');
+
+      expect(await soDu(walletId), soDuBanDau,
+          reason: 'Không có khoản chi nào lần được về kỳ này, nên không có '
+              'gì để hoàn — tiền (nếu đã về) là do người dùng xoá ở Sổ.');
+      final cu = (await db.transactionDao.getById('tx-cu'))!;
+      expect(cu.isDeleted, isFalse,
+          reason: 'Đoán khoản chi theo tiền tố là thứ `undoPayment` cố ý không '
+              'làm — xoá nhầm là mất một khoản chi KHÁC của người dùng. Hộp '
+              'hỏi bảo người dùng tự xoá ở Sổ.');
+    });
+
+    test('còn khoản chi sống gắn billId thì TỪ CHỐI, không ghi gì', () async {
+      await seedKy('bill-1', payStatus: 'Payed');
+      await seedKhoanChi('tx-1', billId: 'bill-1');
+
+      await expectLater(
+        repository.datLaiChuaTra(billId: 'bill-1'),
+        throwsA(isA<BillPaymentStillLinkedException>()),
+      );
+
+      final sau = (await db.billDao.getById('bill-1'))!;
+      expect(sau.payStatus, 'Payed',
+          reason: 'Về `Pending` mà khoản chi gắn `billId` còn sống thì sổ vẫn '
+              'khoá khoản ấy (`transactionOwnerOf`) — tiền không còn lối về '
+              'ví, và trả lại là hai khoản chi cho một kỳ. Phải đi `undoPayment`.');
+      expect(sau.syncStatus, 'synced');
+      expect((await db.transactionDao.getById('tx-1'))!.isDeleted, isFalse);
+    });
+
+    test('kỳ chưa trả bị từ chối', () async {
+      await seedKy('bill-1', payStatus: 'Pending');
+
+      await expectLater(
+        repository.datLaiChuaTra(billId: 'bill-1'),
+        throwsA(isA<BillNotPaidException>()),
+      );
+    });
+
+    test('kỳ kế tiếp CHƯA trả (lần trả sinh ra) bị gỡ', () async {
+      await seedKy('bill-1', payStatus: 'Payed');
+      await seedKy('bill-2', payStatus: 'Pending', tu: 'bill-1');
+
+      await repository.datLaiChuaTra(billId: 'bill-1');
+
+      expect((await db.billDao.getAll(accountId)).map((b) => b.id), ['bill-1'],
+          reason: 'Để lại thì hai kỳ cùng mở, và trả kỳ này lần nữa đẻ thêm '
+              'một kỳ trùng với kỳ đang mở.');
+      final kySau = (await db.billDao.getById('bill-2'))!;
+      expect(kySau.isDeleted, isTrue, reason: 'Xoá MỀM — quy tắc 5.');
+      expect(kySau.syncStatus, 'pending');
+    });
+
+    test('kỳ kế tiếp ĐÃ trả thì GIỮ NGUYÊN, cùng khoản chi của nó', () async {
+      // Kỳ kiểu cũ là kỳ CŨ: chuỗi đã chạy tiếp, tháng sau thường đã trả.
+      await seedKy('bill-1', payStatus: 'Payed');
+      await seedKy('bill-2', payStatus: 'Payed', tu: 'bill-1');
+      await seedKhoanChi('tx-2', billId: 'bill-2');
+
+      await repository.datLaiChuaTra(billId: 'bill-1');
+
+      final kySau = (await db.billDao.getById('bill-2'))!;
+      expect(kySau.isDeleted, isFalse,
+          reason: 'Gỡ vô điều kiện (như `undoPayment` trước 2026-10-17) là xoá '
+              'luôn tháng sau đã '
+              'trả — khoản chi của nó thành mồ côi, tiền vẫn mất.');
+      expect(kySau.payStatus, 'Payed');
+      expect((await db.transactionDao.getById('tx-2'))!.isDeleted, isFalse);
+      expect((await db.billDao.getById('bill-1'))!.payStatus, 'Pending');
+    });
+
+    test('kỳ kế tiếp ĐÃ BỎ QUA cũng giữ nguyên', () async {
+      await seedKy('bill-1', payStatus: 'Payed');
+      await seedKy('bill-2', payStatus: 'Skipped', tu: 'bill-1');
+
+      await repository.datLaiChuaTra(billId: 'bill-1');
+
+      final kySau = (await db.billDao.getById('bill-2'))!;
+      expect(kySau.isDeleted, isFalse,
+          reason: 'Kỳ bỏ qua là quyết định của người dùng và đã sinh kỳ của '
+              'riêng nó — gỡ nó là đứt chuỗi sau đó.');
+      expect(kySau.payStatus, 'Skipped');
     });
   });
 }

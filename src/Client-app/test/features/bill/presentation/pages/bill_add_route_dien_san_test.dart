@@ -21,8 +21,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flowmoney/features/premium/data/dem_dang_hoat_dong.dart';
 import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
-import 'package:flowmoney/features/premium/data/payment_api.dart';
-import 'package:flowmoney/features/premium/domain/tran_goi.dart';
+import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
+import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RepoGia implements AuthRepository {

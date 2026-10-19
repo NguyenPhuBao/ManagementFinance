@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../domain/trang_thai_goi.dart';
+import 'models/trang_thai_goi.dart';
 
 /// Kho trạng thái gói **theo tài khoản** — cùng khuôn
 /// `SecureStorageNotificationPrefsStore` (spec Premium 6.1).

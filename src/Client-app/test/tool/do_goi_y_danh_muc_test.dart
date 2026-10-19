@@ -27,6 +27,7 @@ import 'package:flowmoney/features/category/data/models/category_suggestion.dart
 import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
 import 'package:flowmoney/features/category/domain/category_suggestion_engine.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
+import 'package:flowmoney/features/transaction/domain/mau_hoc_danh_muc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

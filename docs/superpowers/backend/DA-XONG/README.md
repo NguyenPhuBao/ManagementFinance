@@ -176,6 +176,18 @@ Thư mục này nay **58** tệp + mục lục (đếm bằng máy 2026-10-07).
 Thư mục này nay **58** tệp + mục lục (đếm bằng máy 2026-10-09, sau khi chuyển mục 39). ⚠️ Mốc *"58"* ngay trên (2026-10-07)
 đếm **không khớp** phép đếm hôm nay (57 trước khi chuyển) — **đừng cộng dồn, hãy đếm lại**.
 
+## 4i. Client soát và chuyển 2026-10-18 (mục 41, 42 — sau gộp `main` @ `e7570e16`)
+
+Backend báo cả bốn mục 41–44 *"✅ Đã xong 100%"* ở `3a5d320c` nhưng không chuyển tệp. Client soát bằng mã + CSDL dev.
+Hai mục đạt trọn nên chuyển sang đây. Mục 43 và 44 đạt phần chính, còn phần dư, nên vẫn ở `CAN-LAM/` (banner đầu mỗi tệp).
+
+| Tài liệu | Kết quả soát |
+|---|---|
+| [CHAN_TRA_HAI_LAN_THEO_KY.md](./CHAN_TRA_HAI_LAN_THEO_KY.md) | ✅ **Mục 41.** Vế kỳ anh em của `chanTraHaiLan` chạy ở cả nhánh tạo lẫn nhánh cập nhật; `BILL_PERIOD_ALREADY_PAID` được ánh xạ trước `BILL_ALREADY_PAID`; test backend 6/6; CSDL dev 0 nhóm kỳ trùng có hơn một khoản chi sống. Client không đổi mã. |
+| [TAI_LIEU_KIEN_TRUC_CLIENT_APP.md](./TAI_LIEU_KIEN_TRUC_CLIENT_APP.md) | ✅ **Mục 42.** `Project.md` §3.3 có đủ sáu dòng xin sửa và câu trỏ sang `docs/KIEN_TRUC_CLIENT_APP.md`. Hai chỗ nhỏ ghi ở banner tệp: liên kết tuyệt đối của máy người viết, và dòng *Repository* lạc hậu theo mã client từ 2026-10-15. |
+
+Thư mục này nay **60** tệp + mục lục (đếm bằng máy 2026-10-18, sau khi chuyển mục 41 và 42).
+
 ---
 
 ## 5. Hai chỗ dễ đọc nhầm

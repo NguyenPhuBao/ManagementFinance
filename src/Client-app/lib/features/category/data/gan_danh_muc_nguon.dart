@@ -12,7 +12,8 @@ import '../../../core/database/app_database.dart';
 import 'models/category_entity.dart';
 import '../../transaction/data/models/transaction_entity.dart';
 import '../../transaction/data/repositories/transaction_repository.dart';
-import '../domain/gan_hang_loat.dart';
+import '../../transaction/domain/gan_hang_loat.dart';
+import '../../transaction/domain/mau_hoc_danh_muc.dart';
 import '../domain/phan_loai_ghi_chu.dart';
 import 'goi_y_phan_hoi_store.dart';
 import 'models/category_suggestion.dart';
@@ -41,8 +42,11 @@ Future<DuLieuGanDanhMuc> taiDuLieuGan({
   final chonDuoc = await danhMuc.selectableChildrenAll(accountId: idaccount);
   BoPhanLoaiGhiChu? mo;
   try {
+    // Giao dịch mang dấu "danh mục do AI chọn, lưu nguyên" ra khỏi mẫu B1 — cùng luật màn Thêm giao dịch (2026-10-16).
+    final aiDoan = await db.danhMucAiDoanDao.idsCua(idaccount);
     mo = BoPhanLoaiGhiChu.hoc(mauHocTu([
-      for (final t in txs) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
+      for (final t in txs)
+        if (!aiDoan.contains(t.id)) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
     ]));
   } catch (e) {
     debugPrint('[GanDanhMuc] học mô hình lỗi: $e');

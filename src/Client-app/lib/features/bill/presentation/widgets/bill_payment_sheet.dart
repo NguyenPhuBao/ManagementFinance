@@ -5,6 +5,7 @@ import '../../../wallet/data/models/wallet_entity.dart';
 import '../../data/models/bill_entity.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../domain/bill_nhac_truoc.dart';
 import '../../domain/bill_status.dart';
 import 'bill_status_visuals.dart';
 
@@ -44,7 +45,13 @@ class BillPaymentSheet extends StatefulWidget {
     required this.onConfirmed,
     this.categoryName,
     this.today,
+    this.soNgayNhacMacDinh = mocNhacMacDinh,
   });
+
+  /// Ngưỡng nhãn "Sắp đến hạn" cho hoá đơn tắt nhắc — trang mở bảng đọc tuỳ
+  /// chọn "Nhắc trước" (`SoNgayNhacNguon`) rồi truyền xuống, để nhãn trên bảng
+  /// khớp nhãn của dòng vừa chạm.
+  final int soNgayNhacMacDinh;
 
   @override
   State<BillPaymentSheet> createState() => _BillPaymentSheetState();
@@ -251,7 +258,8 @@ class _BillPaymentSheetState extends State<BillPaymentSheet> {
   /// bao nhiêu ngày, khoảng kỳ, chu kỳ, danh mục, ví của hoá đơn, nhắc
   /// trước, tự động trả, ghi chú cố định của hoá đơn (khác ghi chú lần trả).
   Widget _khoiThongTin(BillEntity b) {
-    final status = billDisplayStatusOf(b, _homNay);
+    final status =
+        billDisplayStatusOf(b, _homNay, macDinh: widget.soNgayNhacMacDinh);
     final nhac = b.timeNotification;
     String tenVi = 'Ví đã xoá';
     for (final w in widget.wallets) {

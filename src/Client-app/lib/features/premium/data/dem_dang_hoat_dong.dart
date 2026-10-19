@@ -5,7 +5,7 @@ import '../../bill/data/models/bill_entity.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../category/domain/ban_sao_mac_dinh.dart';
 import '../../goal/data/models/goal_entity.dart';
-import '../domain/tran_goi.dart';
+import '../domain/hang_goi.dart';
 
 /// Mặt cắt để `redirect` của router tiêm được bản giả (test không dựng CSDL).
 abstract class NguonDemDangHoatDong {

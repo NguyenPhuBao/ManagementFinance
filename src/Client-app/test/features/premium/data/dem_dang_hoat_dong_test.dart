@@ -10,7 +10,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/premium/data/dem_dang_hoat_dong.dart';
-import 'package:flowmoney/features/premium/domain/tran_goi.dart';
+import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

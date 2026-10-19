@@ -16,7 +16,7 @@ library;
 
 import '../../../core/utils/tuan_iso.dart';
 import '../../budget/domain/cua_so_nhin_lai.dart';
-import 'khoan_vao_thong_ke.dart';
+import '../../transaction/domain/khoan_vao_thong_ke.dart';
 import 'nguong_co_nghia.dart';
 import 'phan_loai_dong_tien.dart';
 import 'thong_ke_thang.dart';

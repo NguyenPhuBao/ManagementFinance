@@ -162,7 +162,22 @@ quét 25 cho `ai_chat/spike/` đã rỗng. Gói `speech_to_text ^7.5.0` và `rec
 - **Quét 23:** Cubit form 1.132 dòng (trần 1.200, còn 68) — thêm logic là phải chừa chỗ trước.
 - Chuỗi mã lỗi của gói (`kLoiMatMang`, `kLoiKhongCoGoi`…) theo **tài liệu gói, chưa đo** — sai chuỗi thì mọi lỗi rơi `loiChung`.
 
-## 8. Lệch Stitch đã biết — chờ người dùng quyết (KHÔNG sửa trong C4)
+## 8. Lệch Stitch — ✅ người dùng chốt 2026-10-16: app theo Stitch
+
+> ✅ **Đã sửa 2026-10-16** (commit `c65092c1`, `796250ce`):
+> - **Năm nút** (`c8f09f19…`): chỉ *Thêm chi* nền đặc `#1A1A19` (bỏ gradient), bốn nút còn lại trắng viền `#D5D5CE` + bóng;
+>   biểu tượng `arrow_downward` · `arrow_upward` · `sync_alt` · `qr_code_scanner` · `mic`; nhãn cách vòng 6 dp. **Giữ**
+>   `Expanded` thay `justify-between` (kiểu Stitch tràn ở 320 dp). Test `hang_nut_nhanh_kieu_test.dart` + ca quét nguồn ở
+>   `trang_chu_gon_test.dart`.
+> - **Ô Nhập nhanh lúc nói** (`d696e81e…`): nhãn *"Giọng nói & Gõ"* (chờ, Premium có micro) / *"● Đang nghe…"* ở đầu thẻ
+>   thay chữ gợi ý; đỏ lỗi `#BA1A1A` cho viền ô · nút dừng ■ (vòng 32 dp nền đỏ 10 % + ô vuông 14 dp) · chấm đang ghi; khối
+>   hai chip (`KhoiChonSoTien`) vào TRONG thẻ (tham số `khoiChonSoTien`). **Giữ có chủ ý**: dòng *"Đang ghi âm / chép lời"* và
+>   *"Đang kiểm"* hiện LẦN LƯỢT (hai việc nối tiếp); tia sét giữ `#F25F5C` — màn C2 `8afdfe11…` vẽ `#F25F5C`, màn C4 vẽ
+>   `#BA1A1A`, hai màn Stitch mâu thuẫn. `KhoiChonSoTien` giữ kiểu (dùng chung D1 / Quét). Test
+>   `o_nhap_nhanh_stitch_c4_test.dart` + ca trong thẻ ở `nhap_nhanh_test.dart`.
+>
+> Bảng lệch gốc giữ bên dưới.
+
 
 - Màn **`d696e81e4d984bb9bf7b4fdd2afca517`** (Thêm giao dịch, ô Nhập nhanh): màu đỏ `expense` thay `error`; hint thay badge
   "Đang nghe…"; nút ■ là icon; trạng thái 3 (đang chép lời / kiểm) hai dòng **loại trừ nhau** còn Stitch vẽ cùng lúc; khối hai
@@ -181,6 +196,9 @@ Chép nguyên mục 9 spec (Realme và/hoặc OnePlus — máy nào cắm đo m�
 - [ ] RAM đỉnh bản mô hình hai cờ (PSS + swap) khi Quét rồi Nói và ngược lại; không sập native ở OnePlus GPU.
 - [ ] Hộp hỏi quyền micro trên ColorOS; trạng thái *bị chặn* → nút Mở cài đặt.
 - [ ] Hàng năm nút Trang chủ trên máy 320 dp thật; màn Thêm giao dịch bốn trạng thái so với Stitch.
+      *(2026-10-16 app đã sửa theo Stitch — mục 8. Lúc nói phải thấy: nhãn đỏ "● Đang nghe…" ở góc trên thẻ, viền ô đỏ
+      `#BA1A1A`, nút dừng là ô vuông đỏ trong vòng nhạt, hai chip số tiền nằm TRONG thẻ. Lệch có chủ ý: hai dòng "đang
+      ghi / chép lời" và "đang kiểm" hiện lần lượt; tia sét `#F25F5C`.)*
 - [ ] Thời gian thật của kiểm chéo; chip hiện đúng khi lệch.
 - [ ] Sau bảng đo: người dùng quyết giữ hai lối hay bỏ một (gỡ gói của lối bỏ).
 

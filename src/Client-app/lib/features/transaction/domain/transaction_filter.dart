@@ -1,5 +1,5 @@
 import '../../../core/category/category_name.dart';
-import '../../analytics/domain/khoan_vao_thong_ke.dart';
+import 'khoan_vao_thong_ke.dart';
 import '../data/models/transaction_entity.dart';
 import 'khoang_tien.dart';
 

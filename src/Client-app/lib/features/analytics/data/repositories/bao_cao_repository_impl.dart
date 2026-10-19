@@ -4,7 +4,7 @@ import '../../../budget/data/repositories/budget_repository.dart';
 import '../../domain/bao_cao_xuat.dart';
 import '../../../wallet/domain/vi_tinh_vao_tong.dart';
 import 'bao_cao_repository.dart';
-import '../models/lua_chon_loc.dart';
+import '../../../transaction/data/models/lua_chon_loc.dart';
 
 /// Đọc giao dịch, ví và danh mục của một tài khoản rồi giao cho [dungBaoCao].
 ///

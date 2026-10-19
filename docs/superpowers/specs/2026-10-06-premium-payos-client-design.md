@@ -95,6 +95,11 @@ bản này theo **mã**.
 | 8 | Cách thử | **Sandbox PayOS trên dev** (người dùng tạo kênh Thử nghiệm + dán khoá vào `.env`; áp `database/19` cần cho phép đích danh; webhook qua ngrok hoặc tự ký) |
 | — | Kiến trúc | **A** — mô-đun `features/premium/` riêng, **một** định nghĩa `conTaoDuoc`, **một** cửa chặn ở `redirect` của router |
 
+> 🔧 **Câu 7 đảo từ 2026-10-18 (G94, người dùng chốt):** màn Đang chờ **vẽ ảnh VietQR** (server dựng, `qrUrl`) kèm nút
+> *Lưu mã QR* và khối thông tin chuyển khoản; **không tự mở** `checkoutUrl` — trang PayOS còn là nút phụ. Lý do: lưu /
+> chụp ảnh rồi *Quét từ ảnh* trong app ngân hàng cùng máy điền sẵn số tiền + nội dung, không phải gõ. Thân câu 7 giữ
+> nguyên làm lịch sử; thiết kế thay: `specs/2026-10-18-g94-don-thanh-toan-premium-design.md` mục 2 câu 4–6, mục 5.4.
+
 ---
 
 ## 3. Phạm vi
@@ -353,6 +358,18 @@ lại, **không rời màn**; nút Thanh toán khoá trong lúc chờ (chống b
   (từ `GoiCubit`, không từ `order-status`), nút **Xong** → `pop` **hai** lớp (về màn trước Nâng cấp). Đến từ cửa chặn thì
   người dùng tự bấm + lần nữa; **không** tự mở form.
 - `expired` / `cancelled`, hoặc đếm ngược về 0 → dừng hỏi → câu tương ứng + nút **Tạo đơn mới** (`pop` về Nâng cấp).
+
+  > 🔧 **Mã lệch thân spec từ 2026-10-18 (G94 việc 1):** bỏ vế *"hoặc đếm ngược về 0"*. Đồng hồ trên máy chỉ để hiện số
+  > giây; màn sang hết hạn duy nhất khi `order-status` trả `EXPIRED` — server tự trả `EXPIRED` cho đơn `PENDING` quá
+  > `expired_at` ngay lúc đọc. Lý do: từ gộp `d72ccd45` đơn có thể nằm ở `WAITING_CONFIRMATION` (không bao giờ hết hạn),
+  > và trạng thái hết hạn theo đồng hồ máy chặn mọi câu trả lời sau đó, nên người chuyển thừa quay lại sau hạn không bao
+  > giờ thấy hộp xác nhận. Vế *"màn này sống tối đa 30 phút"* ở gạch hỏi `order-status` cũng thôi đúng.
+
+  > 🔧 **Mã lệch thân mục 9.3 từ 2026-10-18 (G94 lát 2):** màn **không** mở `checkoutUrl` khi vào; nút *Mở lại trang thanh
+  > toán* thành nút phụ *Mở trang thanh toán PayOS* (mở hỏng → link chép được, như cũ). Màn vẽ ảnh QR + *Lưu mã QR* +
+  > thông tin chuyển khoản + ba bước (Stitch `95b2774f…`). Trạng thái đối soát (`WAITING_CONFIRMATION` · `REFUND_PENDING`
+  > · `REFUNDED`) → `pushReplacement` sang Chi tiết đơn `/premium/don/:orderCode`. Hỏi ngay thêm khi tín hiệu
+  > `payment.*` (`donThanhToanDoi`). Thiết kế: spec G94 2026-10-18 mục 5.4–5.5.
 - Rời màn (Back) → dừng hỏi. Socket `account.upgraded` vẫn làm `lamMoi()` ở tầng repository nên trả xong sau khi đã rời
   màn thì thẻ Cá nhân vẫn đổi.
 
@@ -361,6 +378,10 @@ lại, **không rời màn**; nút Thanh toán khoá trong lúc chờ (chống b
 `PaymentApi.lichSu()` (trang 1, 20 dòng — không phân trang vô hạn, YAGNI); mỗi dòng: ngày tạo · số tiền · trạng thái
 (chữ tiếng Việt do client chọn: *Đã thanh toán / Chờ thanh toán / Đã huỷ / Hết hạn*). Rỗng → câu rỗng; lỗi →
 `cauLoiThanhToan` + Thử lại.
+
+> 🔧 **Mã lệch thân từ 2026-10-18 (G94 lát 2):** đọc qua `DonThanhToanRepository.lichSu()`; thêm ba nhãn *Chờ xác nhận ·
+> Chờ hoàn tiền · Đã hoàn tiền* (widget dùng chung `NhanTrangThaiDon`); **mọi dòng bấm được** → Chi tiết đơn, quay về và
+> tín hiệu `payment.*` thì nạp lại; lỗi 4xx nói *"Không tải được lịch sử mua…"*. Stitch `04c4aa7d…`; spec G94 mục 5.6.
 
 ### 9.5 Nhắc hết hạn — Trang chủ
 

@@ -2,7 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/domain/tran_goi.dart';
-import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/data/models/tran_goi.dart';
+import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 
 /// Spec phân quyền client 2026-10-08 mục 4.1 — `duocDung` là định nghĩa duy nhất.
 void main() {

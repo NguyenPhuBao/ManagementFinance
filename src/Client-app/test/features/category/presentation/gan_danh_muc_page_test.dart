@@ -4,7 +4,7 @@ import 'package:flowmoney/features/transaction/data/models/transaction_entity.da
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
 import 'package:flowmoney/features/category/data/gan_danh_muc_nguon.dart';
-import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
+import 'package:flowmoney/features/transaction/domain/gan_hang_loat.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/category/presentation/pages/gan_danh_muc_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';

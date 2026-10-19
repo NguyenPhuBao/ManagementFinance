@@ -1,5 +1,5 @@
 import '../../domain/bao_cao_xuat.dart';
-import '../models/lua_chon_loc.dart';
+import '../../../transaction/data/models/lua_chon_loc.dart';
 
 abstract class BaoCaoRepository {
   /// Một **ảnh chụp** theo bộ lọc: màn Xem trước là tờ báo cáo của một khoảng

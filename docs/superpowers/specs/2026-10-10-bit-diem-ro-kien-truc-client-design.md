@@ -382,7 +382,7 @@ do**, không tắt test, không hạ ngưỡng.
   chính; bảng mối quan tâm xuyên suốt; ba chữ ký thật (một định nghĩa duy nhất, test quét, cổng + bộ chuyển); bảng 24 test
   quét sau đợt này; ưu / nhược điểm; **nợ còn lại có tên** (mục 10).
 - **`src/Client-app/README.md`**: đoạn *Kiến trúc* ba câu trỏ sang tài liệu trên.
-- **Đơn CAN-LAM 42** `docs/superpowers/backend/CAN-LAM/TAI_LIEU_KIEN_TRUC_CLIENT_APP.md`: xin backend sửa bảng
+- **Đơn CAN-LAM 42** `docs/superpowers/backend/DA-XONG/TAI_LIEU_KIEN_TRUC_CLIENT_APP.md` (✅ đóng 2026-10-18): xin backend sửa bảng
   `Project.md` mục 3.3, kèm câu thay thế từng dòng — *State Management: BLoC + Cubit cho 10 màn, trạng thái màn còn lại
   trong widget và stream Drift*; *Repository: interface ở tầng data, trả Entity hoặc hàng Drift tuỳ mảng*; thêm dòng
   *Test quét kiến trúc*, *Cổng nền tảng*, *Chạy nền WorkManager*. Cập nhật mục 0 của `CAN-LAM/README.md` (client được

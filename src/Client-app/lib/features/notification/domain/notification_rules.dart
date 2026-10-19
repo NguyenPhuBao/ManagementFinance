@@ -4,8 +4,9 @@ import '../../goal/data/models/goal_entity.dart';
 import '../../goal/domain/goal_auto_deposit.dart';
 import '../../bill/domain/bill_auto_pay.dart';
 import '../../bill/domain/bill_pay_status.dart';
+import '../../bill/domain/bill_nhac_truoc.dart';
 import '../../budget/domain/budget_health.dart';
-import '../../analytics/domain/khoan_vao_thong_ke.dart';
+import '../../transaction/domain/khoan_vao_thong_ke.dart';
 import '../../ai_edge/domain/tai_phan_bo.dart';
 import '../../bill/data/models/bill_entity.dart';
 import '../../wallet/data/models/wallet_entity.dart';
@@ -159,21 +160,13 @@ class NotificationRuleInput {
   /// cùng lúc — ấn tượng đầu tiên tệ nhất có thể. `null` = không lọc gì.
   final DateTime? silenceBefore;
 
-  /// Số ngày nhắc trước hạn cho hoá đơn **không tự đặt**.
-  ///
-  /// Đến từ tuỳ chọn của người dùng (`NotificationPrefs.soNgayNhacHoaDon`).
-  /// Bỏ qua nó là công tắc "nhắc trước" trong trang cài đặt trông như có tác
-  /// dụng mà thật ra không.
-  final int defaultBillLeadDays;
-
   /// Cảnh báo khi số dư một ví xuống tới mức này, đơn vị **đồng**.
   ///
   /// `0` = **tắt**, và đó là mặc định. Một con số thay vì một cặp
   /// công tắc-cộng-số vì cặp ấy biểu diễn được một trạng thái vô nghĩa (bật
   /// nhưng ngưỡng bằng 0), còn một con số thì không.
   ///
-  /// Đến từ `NotificationPrefs.nguongSoDuThap`, cùng đường với
-  /// [defaultBillLeadDays].
+  /// Đến từ `NotificationPrefs.nguongSoDuThap`.
   final int lowBalanceThreshold;
 
   /// Id các ví **đã có ít nhất một giao dịch** (bất kỳ vai: ví nguồn hay ví đích của khoản chuyển).
@@ -241,7 +234,6 @@ class NotificationRuleInput {
     this.autoPays = const [],
     this.syncFailed = false,
     this.silenceBefore,
-    this.defaultBillLeadDays = mocNhacMacDinh,
     this.lowBalanceThreshold = 0,
     this.viDaDung,
     this.dotAm,
@@ -519,19 +511,6 @@ List<NotificationCandidate> _largeExpenseCandidates(
 
 // ── Hoá đơn ──────────────────────────────────────────────────────────────────
 
-/// Số ngày nhắc trước hạn khi cả hoá đơn lẫn tuỳ chọn đều không nói gì.
-///
-/// Khớp `@default("3")` của cột `Time_notification` phía backend, để một hoá
-/// đơn tạo ở client và một hoá đơn tạo ở nơi khác hành xử như nhau.
-const int mocNhacMacDinh = 3;
-
-/// Số ngày nhắc trước hạn thật sự dùng cho [bill].
-///
-/// Giá trị đặt riêng cho một hoá đơn **thắng** giá trị mặc định chung: nó là
-/// lựa chọn cụ thể hơn.
-int billLeadDays(BillEntity bill, {int fallback = mocNhacMacDinh}) =>
-    int.tryParse(bill.timeNotification ?? '') ?? fallback;
-
 /// Khoá chống trùng của thông báo "hoá đơn sắp đến hạn".
 ///
 /// **Hàm này là điểm nối duy nhất giữa thông báo trong app và lịch đặt trước ở
@@ -584,8 +563,11 @@ List<NotificationCandidate> _billCandidates(NotificationRuleInput input) {
       continue;
     }
 
-    final nhacTruoc = billLeadDays(b, fallback: input.defaultBillLeadDays);
-    if (soNgayConLai > nhacTruoc) continue;
+    // Hoá đơn tắt nhắc (NULL) không có lời nhắc TRƯỚC hạn — đặt SAU nhánh quá
+    // hạn ở trên, vì nợ quá hạn vẫn phải báo. Trước 2026-10-16 chỗ này lấp NULL
+    // bằng tuỳ chọn chung nên hoá đơn đã tắt nhắc vẫn bị nhắc.
+    final nhacTruoc = soNgayNhacRieng(b);
+    if (nhacTruoc == null || soNgayConLai > nhacTruoc) continue;
 
     final mocNhac = hanTra.subtract(Duration(days: nhacTruoc));
     ra.add(NotificationCandidate(

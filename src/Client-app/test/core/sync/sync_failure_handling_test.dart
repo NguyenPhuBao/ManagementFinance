@@ -722,7 +722,7 @@ void main() {
       expect(
         row?.syncBlockedUntil,
         clock.add(const Duration(seconds: 30)),
-        reason: 'Đơn 41 (`CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md`) xin server từ '
+        reason: 'Đơn 41 (`DA-XONG/CHAN_TRA_HAI_LAN_THEO_KY.md`) xin server từ '
             'chối khoản chi cho kỳ trùng bằng mã này. Tập mã vĩnh viễn là danh '
             'sách trắng: backend lên trước mà client chưa biết mã thì khoản chi '
             'bị gửi lại ở MỌI chu kỳ, và ví máy này bị trừ mà không ai hoàn.',

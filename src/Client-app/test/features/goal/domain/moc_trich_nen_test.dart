@@ -46,6 +46,10 @@ void main() {
     expect(l.moc, DateTime(2026, 10, 15, 7),
         reason: 'phép chọn mốc sớm nhất nằm TRONG xet (bản chép riêng của mỗi tệp, spec 3.3) — "phần tử đầu thắng" hay "mốc cuối thắng" đều sai');
     expect(l.coTuDong, isTrue);
+
+    final dao = mocTrichNen([som, muon], now: now);
+    expect(dao.moc, DateTime(2026, 10, 15, 7),
+        reason: 'thứ tự ĐẢO [sớm, muộn] bắt bản sai "phần tử cuối thắng"; thứ tự gốc [muộn, sớm] bắt "phần tử đầu thắng" — cần cả hai');
   });
 
   test('mục tiêu đã xong / tắt trích → bỏ', () {

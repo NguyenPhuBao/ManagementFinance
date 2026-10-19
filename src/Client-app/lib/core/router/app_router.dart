@@ -32,10 +32,13 @@ import '../../features/profile/presentation/pages/delete_account_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
 import '../../features/wallet/presentation/pages/wallet_list_page.dart';
 import '../../features/wallet/presentation/pages/wallet_add_page.dart';
-import '../../features/premium/data/chan_theo_goi.dart';
-import '../../features/premium/domain/don_thanh_toan.dart';
+import '../../features/premium/presentation/bloc/chan_theo_goi.dart';
+import '../../features/premium/data/models/don_thanh_toan.dart';
 import '../../features/premium/domain/quyen_tinh_nang.dart';
 import '../../features/premium/domain/tran_goi.dart';
+import '../../features/premium/domain/hang_goi.dart';
+import '../../features/premium/domain/chuyen_huong_theo_goi.dart';
+import '../../features/premium/presentation/pages/chi_tiet_don_page.dart';
 import '../../features/premium/presentation/pages/cho_thanh_toan_page.dart';
 import '../../features/premium/presentation/pages/lich_su_mua_page.dart';
 import '../../features/premium/presentation/pages/nang_cap_page.dart';
@@ -52,6 +55,7 @@ import '../../features/bill/domain/dien_san_hoa_don.dart';
 import '../../features/bill/presentation/pages/bill_add_page.dart';
 import '../../features/bill/presentation/pages/bill_edit_page.dart';
 import '../../features/bill/presentation/pages/bill_detail_page.dart';
+import '../../features/bill/presentation/pages/bill_delete_page.dart';
 import '../../features/goal/presentation/pages/goal_page.dart';
 import '../../features/goal/presentation/pages/goal_add_page.dart';
 import '../../features/goal/presentation/pages/goal_detail_page.dart';
@@ -372,6 +376,15 @@ class AppRouter {
               ),
             ),
           ),
+          // Màn xác nhận xoá (Stitch "Xác nhận xóa hóa đơn"). Chỉ HỎI — trả `true` / `false`; chỗ gọi
+          // (`xacNhanXoaHoaDon`) gửi `DeleteBillEvent` vào BillBloc của nó, nên route không cấp BillBloc.
+          GoRoute(
+            path: '/bills/:id/delete',
+            builder: (_, s) => BillDeletePage(
+              id: s.pathParameters['id']!,
+              bill: s.extra as BillEntity?,
+            ),
+          ),
           // Chi tiết một hoá đơn. Ngoài shell như các route hoá đơn khác, nên
           // `push` từ danh sách không dính bẫy `StatefulShellRoute`. Đặt SAU
           // '/bills/add' và '/bills/:id/edit' — đường cụ thể trước đường có
@@ -470,6 +483,15 @@ class AppRouter {
           GoRoute(
               path: '/premium/lich-su',
               builder: (_, __) => const LichSuMuaPage()),
+          // Chi tiết đơn (spec G94 2026-10-18 mục 5.5): mở từ Lịch sử mua, thẻ màn Nâng cấp, và màn Chờ khi server
+          // trả trạng thái đối soát (`pushReplacement`). Mã không phải số → về Lịch sử mua.
+          GoRoute(
+            path: '/premium/don/:orderCode',
+            redirect: (_, state) =>
+                chuyenHuongChiTietDon(state.pathParameters['orderCode']),
+            builder: (_, state) => ChiTietDonPage(
+                orderCode: int.parse(state.pathParameters['orderCode']!)),
+          ),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
           GoRoute(
               path: '/settings/change-password',

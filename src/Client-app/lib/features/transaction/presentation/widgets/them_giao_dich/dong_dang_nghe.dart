@@ -22,10 +22,12 @@ class DongDangNghe extends StatelessWidget {
         child: Row(
           children: [
             if (chamDo)
+              // Đỏ lỗi — Stitch `d696e81e…` (người dùng chốt 2026-10-16).
               Container(
+                key: const Key('dong-dang-nghe-cham'),
                 width: 10,
                 height: 10,
-                decoration: const BoxDecoration(color: AppColors.expense, shape: BoxShape.circle),
+                decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
               )
             else
               const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),

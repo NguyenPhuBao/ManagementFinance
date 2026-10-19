@@ -7,7 +7,7 @@ import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/gan_danh_muc_nguon.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
-import 'package:flowmoney/features/category/domain/gan_hang_loat.dart';
+import 'package:flowmoney/features/transaction/domain/gan_hang_loat.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
 import 'package:flutter_test/flutter_test.dart';

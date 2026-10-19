@@ -26,6 +26,7 @@ import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_bloc.dart';
 import 'package:flowmoney/features/bill/presentation/bloc/bill_event.dart';
 import 'package:flowmoney/features/bill/presentation/pages/bill_page.dart';
+import 'package:flowmoney/features/bill/data/so_ngay_nhac_nguon.dart';
 import 'package:flowmoney/shared/theme/app_colors.dart';
 
 import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
@@ -45,8 +46,15 @@ class _FixedAuthBloc extends AuthBloc {
 
 /// Trả về đúng danh sách được giao — không cần CSDL cho một test giao diện.
 class _FixedBillRepository implements BillRepository {
-  _FixedBillRepository(this.bills);
+  _FixedBillRepository(this.bills, {this.payments = const {}});
   final List<BillEntity> bills;
+
+  /// Khoản chi gắn `billId` theo hoá đơn. Kỳ đã trả KHÔNG có mục ở đây là kỳ
+  /// kiểu cũ — nút Hoàn tác mở hộp "đưa về chưa trả" thay cho hộp hoàn tiền.
+  final Map<String, TransactionEntity> payments;
+
+  /// Các `billId` đã đi qua [datLaiChuaTra].
+  final datLai = <String>[];
 
   @override
   Stream<List<BillEntity>> watchBills(int idaccount) => Stream.value(bills);
@@ -54,7 +62,10 @@ class _FixedBillRepository implements BillRepository {
   // Bloc đọc bản đồ khoản chi cùng lúc với danh sách; để rơi vào
   // `noSuchMethod` là trang không bao giờ tới `BillLoaded`.
   @override
-  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => const {};
+  Future<Map<String, TransactionEntity>> paymentsOf(int idaccount) async => payments;
+
+  @override
+  Future<void> datLaiChuaTra({required String billId}) async => datLai.add(billId);
 
   /// Luôn hỏng — để dựng được trạng thái `BillError` mà không cần CSDL.
   @override
@@ -76,10 +87,12 @@ BillEntity _bill({
   bool isPaid = false,
   String payStatus = 'Pending',
   String? timeNotification = '3',
+  String? tu,
 }) =>
     BillEntity(
       id: id,
       idaccount: 10,
+      generatedFromBillId: tu,
       walletId: 'w1',
       categoryId: 'c1',
       name: name,
@@ -99,6 +112,19 @@ BillEntity _bill({
       isDeleted: false,
       syncStatus: 'synced',
       updatedAt: DateTime(2026, 9, 1),
+    );
+
+/// Khoản chi gắn `billId` của lần trả kỳ [billId] — kỳ trả từ 2026-09-12.
+TransactionEntity _khoanTra(String billId) => TransactionEntity(
+      id: 'tx-$billId',
+      walletId: 'w1',
+      idaccount: 10,
+      categoryId: 'c1',
+      billId: billId,
+      amount: 100000,
+      type: 'chi',
+      date: DateTime(2026, 9, 4),
+      updatedAt: DateTime(2026, 9, 4),
     );
 
 void main() {
@@ -150,10 +176,13 @@ void main() {
     WidgetTester tester,
     List<BillEntity> bills, {
     bool seed = false,
+    Size kho = const Size(411, 2000),
+    SoNgayNhacNguon? soNgayNhac,
+    _FixedBillRepository? repo,
   }) async {
     if (seed) await gieoViVaDanhMuc();
 
-    tester.view.physicalSize = const Size(411, 2000);
+    tester.view.physicalSize = kho;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -166,8 +195,8 @@ void main() {
       ),
     ));
     addTearDown(auth.close);
-    final bloc =
-        BillBloc(repository: _FixedBillRepository(bills), now: () => now);
+    final bloc = BillBloc(
+        repository: repo ?? _FixedBillRepository(bills), now: () => now);
     addTearDown(bloc.close);
 
     await tester.pumpWidget(MultiBlocProvider(
@@ -175,11 +204,44 @@ void main() {
         BlocProvider<AuthBloc>.value(value: auth),
         BlocProvider<BillBloc>.value(value: bloc),
       ],
-      child: MaterialApp(home: BillPage(now: now)),
+      child: MaterialApp(home: BillPage(now: now, soNgayNhac: soNgayNhac)),
     ));
     bloc.add(LoadBillsEvent(idaccount: 10));
     await tester.pumpAndSettle();
   }
+
+  group('nhãn "Sắp đến hạn" theo tuỳ chọn "Nhắc trước" (2026-10-16)', () {
+    // Hạn 11/09, hôm nay 06/09 ⇒ còn 5 ngày.
+    testWidgets('hoá đơn TẮT nhắc: nhãn dùng số ngày của Cài đặt thông báo',
+        (tester) async {
+      await dungTrang(
+        tester,
+        [_bill(id: 'a', dueDate: DateTime(2026, 9, 11), timeNotification: null)],
+        soNgayNhac: SoNgayNhacNguon((_) async => 7),
+      );
+
+      expect(find.text('SẮP ĐẾN HẠN'), findsOneWidget,
+          reason: 'Người dùng đặt "Nhắc trước 7 ngày"; hoá đơn tắt nhắc còn 5 '
+              'ngày. Trước 2026-10-16 nhãn dùng mốc 3 cố định nên hoá đơn ấy '
+              'chưa "sắp đến hạn" dù tuỳ chọn nói đã tới.');
+    });
+
+    testWidgets('hoá đơn đặt số ngày riêng: tuỳ chọn chung KHÔNG đè lên',
+        (tester) async {
+      await dungTrang(
+        tester,
+        [_bill(id: 'a', dueDate: DateTime(2026, 9, 11), timeNotification: '1')],
+        soNgayNhac: SoNgayNhacNguon((_) async => 7),
+      );
+
+      expect(find.text('SẮP ĐẾN HẠN'), findsNothing,
+          reason: 'Nhắc trước 1 ngày, còn 5 ngày — cùng số bộ nhắc dùng cho '
+              'hoá đơn ấy, nhãn và dải nhắc nói cùng một chuyện.');
+      expect(find.text('CHƯA THANH TOÁN'), findsOneWidget,
+          reason: 'Đòi kết quả, không chỉ đòi vắng mặt — một bản sai bỏ hẳn '
+              'nhãn cũng làm vế trên xanh (G43).');
+    });
+  });
 
   Color vachMau(WidgetTester tester, String id) {
     final c = tester.widget<Container>(find.byKey(ValueKey('bill-accent-$id')));
@@ -422,36 +484,143 @@ void main() {
   });
 
   testWidgets('hoàn tác hỏi xác nhận và nói rõ ba hệ quả', (tester) async {
-    await dungTrang(tester, [
-      _bill(
-          id: 'b',
-          dueDate: DateTime(2026, 9, 4),
-          name: 'Da tra',
-          isPaid: true,
-          payStatus: 'Payed'),
-    ]);
+    final daTra = _bill(
+        id: 'b',
+        dueDate: DateTime(2026, 9, 4),
+        name: 'Da tra',
+        isPaid: true,
+        payStatus: 'Payed');
+    final kySau = _bill(
+        id: 'c', dueDate: DateTime(2026, 10, 4), name: 'Da tra', tu: 'b');
+    await dungTrang(tester, [daTra, kySau],
+        repo: _FixedBillRepository([daTra, kySau],
+            payments: {'b': _khoanTra('b')}));
+    await tester.tap(find.textContaining('Lịch sử ('));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('bill-undo-b')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Hoàn 100.000 đ về ví'), findsOneWidget);
+    expect(
+        find.textContaining(
+            'và gỡ kỳ kế tiếp (hạn 04/10/2026, chưa trả)'),
+        findsOneWidget,
+        reason: 'Hoàn tác đụng tới ba thứ (ví, khoản chi, kỳ sau) nên phải '
+            'nói trước, không im lặng làm.');
+  });
+
+  testWidgets(
+      'hoàn tác khi kỳ sau ĐÃ TRẢ: hộp hoàn tiền KHÔNG hứa gỡ kỳ sau '
+      '(2026-10-17)', (tester) async {
+    final daTra = _bill(
+        id: 'b',
+        dueDate: DateTime(2026, 9, 4),
+        name: 'Da tra',
+        isPaid: true,
+        payStatus: 'Payed');
+    final kySauDaTra = _bill(
+        id: 'c',
+        dueDate: DateTime(2026, 10, 4),
+        name: 'Da tra',
+        tu: 'b',
+        isPaid: true,
+        payStatus: 'Payed');
+    await dungTrang(tester, [daTra, kySauDaTra],
+        repo: _FixedBillRepository([daTra, kySauDaTra],
+            payments: {'b': _khoanTra('b'), 'c': _khoanTra('c')}));
+    await tester.tap(find.textContaining('Lịch sử ('));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const ValueKey('bill-undo-b')));
+    await tester.tap(find.byKey(const ValueKey('bill-undo-b')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Hoàn 100.000 đ về ví'), findsOneWidget);
+    expect(find.textContaining('gỡ kỳ kế tiếp'), findsNothing,
+        reason: 'undoPayment chỉ gỡ kỳ sau còn phải trả — kỳ sau đã trả ở lại; '
+            'nhắc "gỡ kỳ kế tiếp" là hứa sai.');
+  });
+
+  testWidgets(
+      'kỳ KHÔNG có khoản chi gắn billId: hộp "đưa về chưa trả", không hứa '
+      'hoàn tiền (2026-10-17)', (tester) async {
+    final daTra = _bill(
+        id: 'b',
+        dueDate: DateTime(2026, 9, 4),
+        name: 'Da tra',
+        isPaid: true,
+        payStatus: 'Payed');
+    final repo = _FixedBillRepository([daTra]);
+    await dungTrang(tester, [daTra], repo: repo);
     await tester.tap(find.text('Lịch sử (1)'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('bill-undo-b')));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Hoàn'), findsWidgets);
-    expect(find.textContaining('gỡ kỳ kế tiếp'), findsOneWidget,
-        reason: 'Hoàn tác đụng tới ba thứ (ví, khoản chi, kỳ sau) nên phải '
-            'nói trước, không im lặng làm.');
+    expect(find.textContaining('Hoàn 100.000 đ về ví'), findsNothing,
+        reason: 'Không có khoản chi nào lần được về kỳ này — hứa hoàn tiền là '
+            'nói dối, và bấm xong chỉ nhận một thông báo lỗi.');
+    expect(find.textContaining('Không tìm thấy khoản chi của lần trả này'),
+        findsOneWidget);
+    expect(find.textContaining('hãy xoá nó ở đó trước'), findsOneWidget,
+        reason: 'Đưa về chưa trả khi khoản kiểu cũ còn ở sổ rồi trả lại là hai '
+            'khoản chi cho một kỳ — phải nói trước.');
+    expect(find.textContaining('Đưa kỳ "Da tra" về chưa thanh toán?'),
+        findsOneWidget);
+    expect(find.textContaining('gỡ kỳ kế tiếp'), findsNothing,
+        reason: 'Không có kỳ sau NỐI CHUỖI còn phải trả thì datLaiChuaTra không '
+            'gỡ gì — nhắc "gỡ kỳ kế tiếp" là hứa sai (máy ảo 2026-10-17: di h0c '
+            '16/09 → 23/09 không nối chuỗi, kỳ 23/09 vẫn còn).');
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Đưa về chưa trả'));
+    await tester.pumpAndSettle();
+
+    expect(repo.datLai, ['b'],
+        reason: 'Nút phải gửi DatLaiChuaTraEvent, không phải UndoPaymentEvent '
+            '(đi đường ấy là thông báo lỗi "không tìm thấy khoản chi").');
+  });
+
+  testWidgets(
+      'hộp "đưa về chưa trả" nêu kỳ sau KÈM HẠN khi kỳ ấy nối chuỗi và còn '
+      'phải trả', (tester) async {
+    final daTra = _bill(
+        id: 'b',
+        dueDate: DateTime(2026, 9, 4),
+        name: 'Da tra',
+        isPaid: true,
+        payStatus: 'Payed');
+    final kySau = _bill(
+        id: 'c', dueDate: DateTime(2026, 10, 4), name: 'Da tra', tu: 'b');
+    await dungTrang(tester, [daTra, kySau],
+        repo: _FixedBillRepository([daTra, kySau]));
+    await tester.tap(find.textContaining('Lịch sử ('));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('bill-undo-b')));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.textContaining('Đưa kỳ "Da tra" về chưa thanh toán và gỡ kỳ kế '
+            'tiếp (hạn 04/10/2026, chưa trả)?'),
+        findsOneWidget,
+        reason: 'Nêu hạn để người dùng biết đúng kỳ nào sẽ mất khỏi tab Cần '
+            'thanh toán.');
   });
 
   testWidgets('báo lỗi KHÔNG được làm trắng cả trang', (tester) async {
     final bat = batThongBao();
-    await dungTrang(tester, [
-      _bill(
-          id: 'b',
-          dueDate: DateTime(2026, 9, 4),
-          name: 'Da tra',
-          isPaid: true,
-          payStatus: 'Payed'),
-    ]);
+    final daTra = _bill(
+        id: 'b',
+        dueDate: DateTime(2026, 9, 4),
+        name: 'Da tra',
+        isPaid: true,
+        payStatus: 'Payed');
+    // Có khoản chi gắn billId để đi hộp hoàn tiền; `undoPayment` của stub
+    // luôn ném → `BillError`.
+    await dungTrang(tester, [daTra],
+        repo: _FixedBillRepository([daTra], payments: {'b': _khoanTra('b')}));
     await tester.tap(find.text('Lịch sử (1)'));
     await tester.pumpAndSettle();
 
@@ -527,6 +696,51 @@ void main() {
           reason: 'Thay bằng lối hoàn tác, đối xứng với dòng đã trả.');
     });
 
+    testWidgets(
+        'hoàn tác bỏ qua: nêu kỳ sau KÈM HẠN khi kỳ ấy còn phải trả '
+        '(2026-10-17)', (tester) async {
+      final boQua =
+          _bill(id: 'b', dueDate: DateTime(2026, 9, 10), payStatus: 'Skipped');
+      final kySau = _bill(id: 'c', dueDate: DateTime(2026, 10, 10), tu: 'b');
+      await dungTrang(tester, [boQua, kySau]);
+      await tester.tap(find.textContaining('Lịch sử ('));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('bill-undo-skip-b')));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.textContaining(
+              ', và kỳ kế tiếp (hạn 10/10/2026, chưa trả) sẽ bị gỡ.'),
+          findsOneWidget);
+    });
+
+    testWidgets(
+        'hoàn tác bỏ qua khi kỳ sau ĐÃ TRẢ: hộp KHÔNG hứa gỡ kỳ sau '
+        '(2026-10-17)', (tester) async {
+      final boQua =
+          _bill(id: 'b', dueDate: DateTime(2026, 9, 10), payStatus: 'Skipped');
+      final kySauDaTra = _bill(
+          id: 'c',
+          dueDate: DateTime(2026, 10, 10),
+          tu: 'b',
+          isPaid: true,
+          payStatus: 'Payed');
+      await dungTrang(tester, [boQua, kySauDaTra]);
+      await tester.tap(find.textContaining('Lịch sử ('));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(const ValueKey('bill-undo-skip-b')));
+      await tester.tap(find.byKey(const ValueKey('bill-undo-skip-b')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('quay lại trạng thái chưa thanh toán'),
+          findsOneWidget);
+      expect(find.textContaining('kỳ kế tiếp'), findsNothing,
+          reason: 'undoSkip chỉ gỡ kỳ sau còn phải trả — kỳ sau đã trả ở lại; '
+              'nhắc "kỳ kế tiếp … sẽ bị gỡ" là hứa sai.');
+    });
+
     testWidgets('kỳ bỏ qua KHÔNG cộng vào tổng tiền cần thanh toán',
         (tester) async {
       await dungTrang(tester, [
@@ -543,6 +757,98 @@ void main() {
               'người dùng chỉ nợ 50.000 đ.');
       expect(find.textContaining('1 hóa đơn chưa thanh toán'), findsOneWidget,
           reason: 'Số đếm cũng chỉ tính kỳ còn phải trả.');
+    });
+  });
+
+  // Người dùng chốt 2026-10-16: tab "Cần thanh toán (N)" đếm KỲ NÀY, cùng con
+  // số với thẻ tổng; kỳ các tháng sau (thường là kỳ `payBill` vừa sinh) vẫn
+  // hiện trong tab, dưới tiêu đề nhóm "CÁC THÁNG SAU (n)".
+  group('tab Cần thanh toán đếm theo kỳ này', () {
+    testWidgets('số trên tab bằng số trên thẻ; kỳ tháng sau dưới tiêu đề nhóm',
+        (tester) async {
+      await dungTrang(tester, [
+        _bill(id: 'a', dueDate: DateTime(2026, 9, 11), amount: 50000),
+        _bill(id: 'b', dueDate: DateTime(2026, 9, 23), amount: 10000),
+        _bill(id: 'c', dueDate: DateTime(2026, 10, 4), amount: 123000),
+      ]);
+
+      expect(find.text('Cần thanh toán (2)'), findsOneWidget,
+          reason: 'Tab từng đếm cả kỳ 04/10 nên nói (3) trong khi thẻ ngay trên '
+              'nói "2 hóa đơn chưa thanh toán" — hai con số cho một câu hỏi.');
+      expect(find.text('2 hóa đơn chưa thanh toán'), findsOneWidget);
+
+      final tieuDe = find.byKey(const ValueKey('bill-nhom-cac-thang-sau'));
+      expect(tester.widget<Text>(tieuDe).data, 'CÁC THÁNG SAU (1)');
+      expect(tester.widget<Text>(tieuDe).style?.color, const Color(0xFF454743),
+          reason: 'Màn Stitch f4ed09da… vẽ tiêu đề bằng on-surface-variant '
+              '#454743; AppColors.onSurfaceVariant là #767872, nhạt hơn.');
+      final yTieuDe = tester.getTopLeft(tieuDe).dy;
+      expect(tester.getTopLeft(find.byKey(const ValueKey('bill-accent-b'))).dy,
+          lessThan(yTieuDe),
+          reason: 'Kỳ này đứng TRÊN tiêu đề nhóm.');
+      expect(tester.getTopLeft(find.byKey(const ValueKey('bill-accent-c'))).dy,
+          greaterThan(yTieuDe),
+          reason: 'Kỳ 04/10 vẫn phải hiện — người dùng trả trước được — nhưng '
+              'nằm DƯỚI tiêu đề nhóm.');
+    });
+
+    testWidgets('tháng này trả hết, còn kỳ tháng sau: nói "trong tháng này"',
+        (tester) async {
+      await dungTrang(tester, [
+        _bill(
+            id: 'a',
+            dueDate: DateTime(2026, 9, 4),
+            isPaid: true,
+            payStatus: 'Payed'),
+        _bill(id: 'b', dueDate: DateTime(2026, 10, 4)),
+      ]);
+
+      expect(find.text('Cần thanh toán (0)'), findsOneWidget);
+      expect(find.byKey(const ValueKey('bill-thang-nay-trong')), findsOneWidget,
+          reason: 'Câu trống chung "Không còn hoá đơn nào phải trả." sẽ nói '
+              'ngược với nhóm các tháng sau ngay bên dưới.');
+      expect(find.text('Không còn hoá đơn nào phải trả.'), findsNothing);
+      expect(find.text('CÁC THÁNG SAU (1)'), findsOneWidget);
+      expect(find.byKey(const ValueKey('bill-accent-b')), findsOneWidget);
+    });
+
+    testWidgets('không còn gì phải trả: trạng thái rỗng cũ, không tiêu đề nhóm',
+        (tester) async {
+      await dungTrang(tester, [
+        _bill(
+            id: 'a',
+            dueDate: DateTime(2026, 9, 4),
+            isPaid: true,
+            payStatus: 'Payed'),
+      ]);
+
+      expect(find.text('Không còn hoá đơn nào phải trả.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('bill-nhom-cac-thang-sau')), findsNothing);
+      expect(find.byKey(const ValueKey('bill-thang-nay-trong')), findsNothing);
+    });
+
+    testWidgets('không tràn ở 360 dp khi có nhóm các tháng sau', (tester) async {
+      await dungTrang(
+        tester,
+        [
+          _bill(
+              id: 'a',
+              dueDate: DateTime(2026, 9, 4),
+              amount: 123456789,
+              name: 'Hoá đơn có cái tên rất dài để thử tràn bố cục'),
+          for (var i = 1; i <= 12; i++)
+            _bill(
+                id: 'sau$i',
+                dueDate: DateTime(2026, 9 + i, 4),
+                amount: 9999999999999,
+                name: 'Kỳ sau có cái tên rất dài số $i'),
+        ],
+        kho: const Size(360, 2400),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('CÁC THÁNG SAU (12)'), findsOneWidget,
+          reason: 'Ca phải dựng được nhóm thật, không chỉ "không lỗi".');
     });
   });
 }

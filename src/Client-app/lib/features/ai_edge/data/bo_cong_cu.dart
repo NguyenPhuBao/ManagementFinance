@@ -6,6 +6,7 @@ library;
 import '../../analytics/data/repositories/analytics_repository.dart';
 import '../../analytics/data/repositories/bao_cao_repository.dart';
 import '../../bill/data/repositories/bill_repository.dart';
+import '../../bill/data/so_ngay_nhac_nguon.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../budget/data/tai_phan_bo_nguon.dart';
 import '../../category/data/repositories/category_management_repository.dart';
@@ -45,11 +46,13 @@ class BoCongCu {
     required AnalyticsRepository phanTich,
     required CategoryManagementRepository danhMuc,
     required TaiPhanBoNguon taiPhanBo,
+    // Tuỳ chọn "Nhắc trước" cho nhãn "sắp đến hạn" của tool hoá đơn (2026-10-17). `null` = mốc 3.
+    SoNgayNhacNguon? soNgayNhac,
   }) =>
       BoCongCu([
         CongCuTruyVan(giaoDich: giaoDich, nganSach: nganSach, baoCao: baoCao, mucTieu: mucTieu),
         CongCuNganSach(nganSach, taiPhanBo: taiPhanBo),
-        CongCuHoaDon(hoaDon),
+        CongCuHoaDon(hoaDon, soNgayNhac: soNgayNhac),
         CongCuVi(vi),
         CongCuMucTieu(mucTieu, vi: vi),
         CongCuGoiYHanMuc(nganSach),

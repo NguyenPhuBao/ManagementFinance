@@ -2,9 +2,9 @@
 /// Luật thuần; chỗ nối trên màn ở `transaction/presentation/add_transaction_goi_y_so_tien_test.dart`.
 library;
 
-import 'package:flowmoney/features/bill/domain/bill_note.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_so_tien.dart';
+import 'package:flowmoney/features/transaction/domain/mau_hoc_danh_muc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 typedef _GiaoDich = ({
@@ -79,30 +79,6 @@ void main() {
     });
 
     test('29/02 năm nhuận (thứ Ba)', () => expect(nhomThuCua(DateTime(2028, 2, 29)), kNhomNgayThuong));
-  });
-
-  group('mauSoTienTu', () {
-    test('⭐ khoản KHÔNG ghi chú vẫn là mẫu — tín hiệu ở đây là số tiền', () {
-      final m = mauSoTienTu([_gd('food', 30000, ghiChu: null), _gd('food', 30000, ghiChu: '')]);
-      expect(m, hasLength(2));
-      expect(m.first.categoryId, 'food');
-      expect(m.first.chieu, 'chi');
-      expect(m.first.maBac, '20000-50000');
-      expect(m.first.nhomThu, kNhomNgayThuong);
-      expect(m.first.walletId, 'cash');
-    });
-
-    test('bỏ khoản chuyển khoản', () => expect(mauSoTienTu([_gd('food', 30000, loai: 'transfer')]), isEmpty));
-    test('bỏ khoản không danh mục', () => expect(mauSoTienTu([_gd(null, 30000)]), isEmpty));
-    test('bỏ khoản đã xoá', () => expect(mauSoTienTu([_gd('food', 30000, daXoa: true)]), isEmpty));
-    test('bỏ khoản số tiền 0', () => expect(mauSoTienTu([_gd('food', 0)]), isEmpty));
-    test('bỏ khoản do máy gắn ghi chú (trả hoá đơn)', () {
-      expect(mauSoTienTu([_gd('food', 30000, ghiChu: '${kGhiChuTraHoaDon}Tiền nhà')]), isEmpty);
-    });
-
-    test('ghi chú do người gõ không làm mất mẫu', () {
-      expect(mauSoTienTu([_gd('food', 30000, ghiChu: 'cafe sáng')]), hasLength(1));
-    });
   });
 
   // ── Phép đoán ───────────────────────────────────────────────────────────────

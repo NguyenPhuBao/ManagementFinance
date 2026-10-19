@@ -2,8 +2,9 @@
 /// tầng trên của mảng.
 ///
 /// Domain là tầng dưới cùng (mục 4 `docs/KIEN_TRUC_CLIENT_APP.md`): luật thuần, không biết giao diện, không biết dữ liệu đến
-/// từ đâu. Hai luật, đọc trên dòng `import` / `export` (nháy đơn / kép, `package:flowmoney/…` lẫn đường tương đối, BOM — khuôn
-/// quét 25 luật 5 / 7; regex neo đầu dòng nên dòng chú thích `// import …` không khớp):
+/// từ đâu. Hai luật, đọc trên chỉ thị `import` / `export` / `part` (kể cả vế `if (dart.library.x)` và chỉ thị nhiều dòng) qua
+/// `test/helpers/chi_thi_dart.dart` (từ 2026-10-16), xét trên đích đã chuẩn hoá `dichTrongLib` (`package:flowmoney/…` lẫn
+/// đường tương đối; dòng chú thích `// import …` không phải chỉ thị):
 ///
 /// 1. Không import đường chứa `/presentation/` — mượn một hàm thuần từ tệp widget là kéo Flutter và cả cây widget vào domain
 ///    (`ai_edge/domain` từng mượn `pickHomeBudget` từ `home_budget_card.dart`).
@@ -18,15 +19,12 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/chi_thi_dart.dart';
+
 /// Tệp domain còn vi phạm (đường tương đối `src/Client-app`). RỖNG từ 2026-10-15 (đo gốc năm tệp, rút cùng ngày: hai tệp mượn
 /// `pickHomeBudget` → `budget/domain`; ba tệp mượn kiểu Phân tích → `analytics/data/models`). Thêm vào đây là mở lại một nợ —
 /// phải có lý do và ngày.
 const conCho = <String>{};
-
-/// `import` / `export` + đường trong nháy; dòng đầu có thể mang BOM (U+FEFF — `readAsLinesSync` giữ nó). Dựng BOM bằng mã
-/// ký tự, không gõ ký tự thật vào mã nguồn.
-final dongImport = RegExp(
-    '^${String.fromCharCode(0xFEFF)}?(?:import|export)\\s*[\'"]([^\'"]+)[\'"]');
 
 String _duong(FileSystemEntity e) => e.path.replaceAll('\\', '/');
 
@@ -53,17 +51,16 @@ void main() {
         viPham.update(duong, (cu) => '$cu; $viSao', ifAbsent: () => viSao);
     for (final f in _tepDomain()) {
       final d = _duong(f);
-      for (final l in f.readAsLinesSync()) {
-        final m = dongImport.firstMatch(l);
-        if (m == null) continue;
-        final dich = m.group(1)!;
+      for (final duong in duongChiThi(f.readAsStringSync())) {
+        final dich = dichTrongLib(d, duong);
+        if (dich == null) continue; // dart: / gói ngoài
         if (dich.contains('/presentation/')) {
           ghi(d,
-              "luật 1: import '$dich' — domain không biết giao diện; dời hàm thuần về domain/ của mảng sở hữu nó");
+              "luật 1: chỉ thị '$duong' — domain không biết giao diện; dời hàm thuần về domain/ của mảng sở hữu nó");
         }
         if (dich.contains('/data/') && !dich.contains('/data/models/')) {
           ghi(d,
-              "luật 2: import '$dich' — domain chỉ cầm kiểu ở data/models/; dời kiểu ra data/models/");
+              "luật 2: chỉ thị '$duong' — domain chỉ cầm kiểu ở data/models/; dời kiểu ra data/models/");
         }
       }
     }

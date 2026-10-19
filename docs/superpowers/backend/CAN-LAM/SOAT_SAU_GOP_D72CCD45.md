@@ -1,5 +1,44 @@
 # Soát sau gộp `main` @ `d72ccd45`: hai tệp migration trùng số và script áp migration đồng bộ bị viết đè; webhook xử lý lại đơn đã đối soát; tra mã nhận diện bắt nhầm tiền tố PayOS; hợp đồng thanh toán mới chưa vào tài liệu sự kiện (mục 44)
 
+> 🟡 **Client soát 2026-10-18 (sau gộp `main` @ `e7570e16`; backend ghi *"✅ Đã xong 100%"* ở `3a5d320c`): đạt năm
+> mục, mục B còn hai vế.** Đo bằng đọc mã ở `e7570e16`, truy vấn chỉ đọc trên CSDL dev, và `grep` tài liệu hợp đồng sự
+> kiện. Thân đơn bên dưới giữ nguyên: mục *Xin làm* và *Kiểm lại bằng* của vế B vẫn áp dụng.
+>
+> **Đạt:**
+> - **A** — `ls database | cut -d_ -f1 | sort | uniq -d` không in gì. Hai tệp thanh toán thành `28_…` và `29_…`, thêm
+>   `27_add_qr_url_to_payment_order.sql`. `apply_migration_20.js` trỏ lại `20_add_server_update_at_sync_tables.sql`.
+> - **C** — `payment.service.js:121` tra mã nhận diện theo token cuối của `description` (`/^[A-Z0-9]{6}$/`).
+> - **D** — `28_…sql:17` có `ALTER COLUMN "status" TYPE VARCHAR(25)`. CSDL dev đo 2026-10-18: `payment_order.status` dài
+>   **25**, bảng có **22** cột (đủ cột của 27, 28, 29).
+> - **E** — controller (`:207`) và service (`:378`) đều trả 400 khi `accept` không phải boolean.
+> - **F** — `Event-Notification-to-ClientApp.md` §3.12–3.14 có ba sự kiện `payment.*` với đúng các khoá payload mà
+>   `payment.service.js` phát; §3.12 tả `POST /api/payment/confirm-upgrade` với `accept` true / false; ba trạng thái mới và
+>   hạn 10 phút đều có. Thêm §3.15 `payment.order_expired` (ngoài đơn).
+>
+> **Còn mở — mục B:**
+> 1. Chốt idempotency (`payment.service.js:136`) chỉ chặn `PAID` · `REFUNDED` · `CANCELLED`. Ba nhánh sau nó (khớp ·
+>    thừa · thiếu) không xét trạng thái nữa. Nên một webhook lặp lại cho đơn `WAITING_CONFIRMATION` hoặc `REFUND_PENDING`
+>    sẽ ghi thêm một hàng `payment_transaction`, ghi đè `amount_received`, và phát lại `payment.overpaid_confirmation` /
+>    `payment.underpaid_warning`. Nếu số tiền của lần sau khớp đúng giá gói, đơn đang chờ xác nhận nhảy thẳng sang `PAID`
+>    và nâng gói mà người dùng chưa chọn. Đơn xin *"chỉ xử lý khi còn `PENDING` (và `EXPIRED`)"*.
+>    *Kiểm lại:* ca test — đơn `WAITING_CONFIRMATION` nhận lại đúng webhook cũ → trạng thái và `amount_received` không đổi,
+>    không phát sự kiện, có thêm tối đa một hàng `payment_transaction` để đối soát.
+> 2. Chưa khử trùng theo `reference`: `recordTransaction` (`payment.repository.js:325`) `create` thẳng, không có unique
+>    index trên `payos_transaction_id`.
+>    *Kiểm lại:* hai webhook cùng `reference` → một hàng `payment_transaction` (câu ở mục *Kiểm lại bằng* vế B).
+>
+> **Câu hỏi có mặc định (không chặn client):** spec `docs/Payment/PAYMENT_WORKFLOW_SPEC.md` (sơ đồ trạng thái, dòng
+> 132–136) cho `WAITING_CONFIRMATION` chỉ hai lối ra, đều do người dùng chọn. Bộ hết hạn tự động
+> (`autoExpirePendingOrders`, `payment.repository.js:46`) chỉ xét `PENDING`. Vậy người dùng không bao giờ chọn thì tiền
+> nằm ở đó mãi. **Mặc định client theo:** không có hạn chờ; client sẽ thêm lối xác nhận ở trang Lịch sử mua, vì
+> `GET /payment/history` đã trả đủ mã đơn và trạng thái (G94 phía client). Backend chỉ cần ghi lựa chọn ấy vào spec. Nếu
+> backend muốn có hạn chờ, xin ghi hạn và trạng thái đích vào spec để client hiện đúng câu.
+>
+> ✅ **Client đã làm phần của mình (mã xong 2026-10-18 tối, G94 lát 2; chưa nghiệm thu sandbox):** mọi dòng Lịch sử mua
+> mở màn Chi tiết đơn `/premium/don/:orderCode` — nơi gọi `confirm-upgrade`; màn Nâng cấp có thẻ đơn chờ xác nhận và khoá
+> *Thanh toán* tới khi người dùng chọn. Client tìm đơn trong `GET /payment/history` trang 1 (20 dòng) — đơn chờ xác nhận
+> cũ hơn 20 đơn sẽ không có lối vào; với gói 30 ngày đây là ca hiếm, client không xin thêm API.
+
 **Ngày:** 2026-10-16 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat` (commit gộp `e49100ed`)
 **Loại:** đơn xin — **một lỗi mức cao** (A), **ba lỗi mức vừa** (B, C, D), **hai việc mức thấp** (E, F). Không đổi lược đồ
 đồng bộ, không đổi payload `/sync/*`. Mọi khẳng định dưới đây đo bằng **đọc mã** ở `d72ccd45` và **truy vấn chỉ đọc**
@@ -162,3 +201,10 @@ Phía client có một khoảng trống mới, **G94** (`docs/CLIENT_APP_KNOWN_G
 nên coi là `pending`: người chuyển thừa ngồi ở màn *Chờ thanh toán* tới hết hạn mà không thấy hộp xác nhận. Câu *"chỉ
 có hiệu lực 30 phút"* nay sai. A–F không chặn client. Người dùng chốt làm G94 **cùng lượt** với phần client của đơn 43,
 sau khi đơn 43 đóng. Nếu thiết kế lúc ấy cần thêm trường ở `order-status` (mục F), client sẽ đặt đơn riêng.
+
+> **Cập nhật 2026-10-18 tối (client):** màn Chờ thanh toán thôi tự báo hết hạn khi đồng hồ trên máy về 0 — nay chỉ báo
+> khi `GET /payment/order-status` trả `EXPIRED`. Client vì thế **dựa vào** hành vi hiện có của backend: đơn `PENDING` quá
+> `expired_at` được trả `EXPIRED` ngay lúc đọc — ba chỗ cùng làm việc ấy: `findOrderByCode` gọi
+> `autoExpirePendingOrders` trước khi đọc (`payment.repository.js:106`), phép chuẩn hoá ở `payment.repository.js:30`, và
+> `payment.service.js:713`. Xin giữ hành vi ấy; nếu bỏ cả ba, màn chờ sẽ đứng ở *"Còn 00:00"* tới lượt quét định kỳ
+> (`setInterval`, `payment.service.js:895`). Không phải việc mới cho backend.

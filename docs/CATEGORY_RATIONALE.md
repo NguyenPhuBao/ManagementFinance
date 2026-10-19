@@ -289,7 +289,8 @@ Mô hình đi **trước** bảng từ khoá; trả `null` (sổ mỏng, ghi ch�
 0,6, hoà, cặp đang bị thôi gợi ý) thì rơi về bảng từ khoá như cũ. Dòng lý do đổi
 theo nguồn: *"Bạn thường ghi “grab” cho Di chuyển (5/5 lần)."* với nguồn học. Hàm
 thuần nằm ở `category/domain/phan_loai_ghi_chu.dart`, **không** ở `ai_edge/`: nó
-đọc sổ giao dịch, thứ test quét 14 cấm trong `ai_edge/`.
+tính (Naive Bayes) trên mẫu dựng từ sổ giao dịch, thứ test quét 14 cấm trong
+`ai_edge/`; bộ dựng mẫu ở `transaction/domain/mau_hoc_danh_muc.dart`.
 
 ### Chỗ dễ làm hỏng nhất
 
@@ -398,8 +399,19 @@ Người dùng chốt việc riêng kế tiếp là **đề xuất thêm từ kh
 với một danh mục mà chưa khai từ khoá → mời thêm; chữ đang là từ khoá danh mục khác —
 *grab* ở Ăn uống — thì mời **chuyển**). ✅ Thi công 2026-09-30 — mục **5f**.
 
-⚠️ **Vòng lặp học sai — người dùng chọn chưa làm gì thêm, theo dõi sau đo** (§8 câu 8
-spec C2, 2026-09-30): với luật gọi mô hình mới, ca mô hình điền danh mục hiếm hơn hẳn. B1 học lại từ sổ
+✅ **Đóng 2026-10-16 — đánh dấu + B1 bỏ qua** (người dùng chốt; trước đó *"theo dõi sau đo"* — nhưng không đo được vì
+giao dịch không lưu nguồn danh mục). `KetQuaDocCau.danhMucTuAi` bật khi danh mục do Gemma chọn (nhánh AI của
+`docCauGiaoDich` — Nhập nhanh gõ / nói; `ketQuaTuBienDong` khi Gemma nhìn ảnh quét chọn — A5). Lưu giao dịch MỚI (không
+tách) với đúng danh mục ấy → `ThemGiaoDichCubit.daGuiLuu` ghi một hàng vào bảng cục bộ `DanhMucAiDoans` (v31,
+`DanhMucAiDoanStore`, không đồng bộ — quét 15); đổi danh mục trước khi lưu, hoặc Điền lần hai bằng luật, thì không. B1 bỏ
+giao dịch mang dấu ở **ba** chỗ học: `ThemGiaoDichNguonThat._hocTuSo` (mô hình + mẫu đề xuất từ khoá đường sửa) và
+`taiDuLieuGan` (màn Gắn danh mục). Mở Sửa giao dịch rồi Lưu là gỡ dấu (người dùng chốt: đã nhìn lại). Quyết định kèm:
+**khoản tách** không đánh dấu (phần chính mang danh mục AI vẫn vào B1 — ca hiếm); màn Gắn danh mục (C1) **không** có lối gỡ
+vì nó chỉ xử lý giao dịch chưa có danh mục; bảng ví hay dùng và mô hình theo số tiền (dự án C) vẫn đếm mọi giao dịch; máy
+khác không có dấu thì B1 ở đó vẫn học từ giao dịch ấy. Ca canh: `them_giao_dich_nguon_test` + `gan_danh_muc_nguon_test`
+chạy cả hai chiều trên cùng sổ (không dấu → B1 đoán ra cái sai; có dấu → im, sổ sau lọc vẫn ≥ `kToiThieuMauTong`).
+
+Mô tả gốc của rủi ro (§8 câu 8 spec C2, 2026-09-30): với luật gọi mô hình mới, ca mô hình điền danh mục hiếm hơn hẳn. B1 học lại từ sổ
 mỗi lần mở màn, gồm cả giao dịch nhập qua Nhập nhanh. Danh mục mô hình đoán sai mà người
 dùng lưu luôn không sửa (*"xăng" → Ăn uống*) thành mẫu của B1; vì B1 đứng **trước** mô
 hình, lần sau B1 nói lại đúng cái sai ấy và nó bị **khoá lại**. Giao dịch hôm nay không
@@ -426,9 +438,9 @@ chip nét đứt *"+ Chọn danh mục"*. Bấm *Áp dụng N* mới ghi, từng
 
 ### Chỗ dễ làm hỏng nhất
 
-- **Một định nghĩa của "khoản cần gắn"** — `xetGan` (`category/domain/gan_hang_loat.dart`):
-  chưa xoá, trống danh mục, không phải `transfer`, và **không** do máy sinh (`laGhiChuMay` của
-  B1). Thẻ đếm bằng `demChuaGan` trên **cùng** hàm, nên thẻ không bao giờ hứa N dòng mà màn hiện
+- **Một định nghĩa của "khoản cần gắn"** — `xetGan` (`transaction/domain/gan_hang_loat.dart`, từ 2026-10-16):
+  chưa xoá, trống danh mục, không phải `transfer`, và **không** do máy sinh (`laGhiChuMay`
+  (`khoan_vao_thong_ke.dart`)). Thẻ đếm bằng `demChuaGan` trên **cùng** hàm, nên thẻ không bao giờ hứa N dòng mà màn hiện
   số khác. Khoản điều chỉnh số dư, mở sổ, nạp/rút mục tiêu, trả hoá đơn cố ý không có danh mục.
 - **Lọc theo chiều tiền** — `hopLeTheoChieu`: khoản chi chỉ nhận danh mục `chi` / `vay_no`,
   khoản thu chỉ `thu` / `vay_no`. B1 học trên **cả ba** phân loại, nên thiếu bộ lọc là gắn được

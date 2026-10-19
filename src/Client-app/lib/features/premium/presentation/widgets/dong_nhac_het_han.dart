@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/nhac_het_han.dart';
-import '../../domain/trang_thai_goi.dart';
+import '../../data/models/trang_thai_goi.dart';
 import '../state/an_nhac_het_han.dart';
 import '../bloc/goi_cubit.dart';
 

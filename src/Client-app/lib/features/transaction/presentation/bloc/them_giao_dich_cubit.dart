@@ -24,7 +24,6 @@ import '../../../category/data/models/category_suggestion.dart';
 import '../../../category/domain/category_suggestion_engine.dart';
 import '../../../category/domain/category_classify.dart';
 import '../../../category/domain/de_xuat_tu_khoa.dart';
-import '../../../category/domain/gan_hang_loat.dart' show hopLeTheoChieu;
 import '../../../category/domain/phan_loai_ghi_chu.dart';
 import '../../../category/domain/phan_loai_so_tien.dart';
 import '../../data/dong_hang_bien_dong.dart';
@@ -298,6 +297,11 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   /// ⚠️ Tách khỏi `state.goiY`: [chonDanhMuc] xoá thẻ ngay khi người dùng chọn qua bảng, nhưng lựa chọn ấy CHÍNH LÀ
   /// phán xét (`khac`) — ghi lúc lưu. Ghi chú đổi / đổi đoạn thì bỏ, không ghi (không phải phán xét).
   ({CategorySuggestion goiY, String ghiChu})? _choPhanXu;
+
+  /// Danh mục do AI chọn ở lần [dienKetQua] GẦN NHẤT (`KetQuaDocCau.danhMucTuAi`). Lưu giao dịch MỚI với đúng danh mục
+  /// này → đánh dấu để B1 bỏ khỏi mẫu học (người dùng chốt 2026-10-16). Đổi danh mục trước khi lưu thì id khác, không
+  /// đánh dấu.
+  String? _danhMucAi;
 
   /// Hoãn việc tra cứu gợi ý cho tới khi người dùng ngừng gõ.
   ///
@@ -712,6 +716,24 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     _tacDongChoLoiNhan = r.tacDong;
     _soGiaoDichVuaLuu = r.laTach ? r.giaoDich.length : 1;
     if (r.truoc == null) _ghiPhanHoiKhiLuu();
+    _danhDauDanhMucAiKhiLuu(r);
+  }
+
+  /// Người dùng chốt 2026-10-16 (vòng lặp học sai): giao dịch MỚI (không tách) lưu nguyên danh mục AI chọn → đánh dấu;
+  /// đường SỬA → gỡ dấu (mở Sửa rồi Lưu = đã nhìn lại). Khoản TÁCH không đánh dấu — phần chính mang danh mục AI vẫn vào
+  /// B1 (ca hiếm: chỉ ảnh quét vừa có danh mục AI vừa tách).
+  void _danhDauDanhMucAiKhiLuu(SanSangLuu r) {
+    final truoc = r.truoc;
+    if (truoc != null) {
+      _nguon.goDanhDauDanhMucAi(idaccount: truoc.idaccount, transactionId: truoc.id);
+      return;
+    }
+    final ai = _danhMucAi;
+    if (ai == null || r.laTach) return;
+    final tx = r.giaoDich.single;
+    if (tx.categoryId == ai) {
+      _nguon.danhDauDanhMucAi(idaccount: tx.idaccount, transactionId: tx.id, categoryId: ai);
+    }
   }
 
   /// Câu toast sau `actionSuccess`. Đọc xong thì đặt lại.
@@ -925,6 +947,8 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
   /// - danh mục đến từ B1 hoặc từ khoá thì đặt [_choPhanXu] như thẻ gợi ý, để lúc lưu ghi phản hồi `chon` / `khac`.
   void dienKetQua(KetQuaDocCau kq, {required List<CategoryEntity> chonDuoc}) {
     if (isClosed) return;
+    // Cờ chỉ nói về lần điền GẦN NHẤT — Điền lần hai bằng luật mà để sót cờ cũ là đánh dấu một danh mục luật đã chọn.
+    _danhMucAi = null;
     final now = DateTime.now();
     if (kq.khongDocDuocGi) {
       emit(state.copyWith(
@@ -962,6 +986,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
         if (c.id == kq.categoryId) danhMuc = c;
       }
       if (danhMuc != null) chonDanhMuc(danhMuc);
+      if (danhMuc != null && kq.danhMucTuAi) _danhMucAi = danhMuc.id;
     }
     // Rỗng = câu chỉ có số / ngày / ví: ghi chú người dùng đã gõ giữ nguyên.
     if (kq.ghiChu.isNotEmpty) _datGhiChu(kq.ghiChu);

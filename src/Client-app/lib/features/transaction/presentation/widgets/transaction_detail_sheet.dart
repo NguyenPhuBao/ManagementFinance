@@ -12,9 +12,10 @@ import 'transaction_row_content.dart';
 ///
 /// Đọc đủ: số tiền, danh mục, ví (hoặc ví nguồn → ví đích), ngày giờ; tiêu
 /// đề là ghi chú (không có thì tên danh mục) nên không lặp lại hàng "Ghi chú".
-/// Là nơi duy nhất có nút Sửa. Khoản thuộc mục tiêu/hoá đơn chỉ đọc — cùng
-/// quy tắc với chặn xoá (`transactionOwnerOf`): sửa số tiền của khoản nạp mà
-/// không qua mục tiêu là làm lệch `current_amount` y như xoá.
+/// Là nơi duy nhất có nút Sửa. Khoản thuộc mục tiêu, hay khoản trả của hoá đơn còn sống, chỉ đọc — cùng quy tắc với
+/// chặn xoá (`transactionOwnerOf`): sửa số tiền của khoản nạp mà không qua mục tiêu là làm lệch `current_amount` y
+/// như xoá. Khoản trả hoá đơn kiểu cũ / mồ côi (việc 4c) có Sửa · Xoá; trang mở bảng tự ghép câu cảnh báo vào hộp xác
+/// nhận (`cauXacNhanXoaGiaoDich`).
 class TransactionDetailSheet extends StatelessWidget {
   const TransactionDetailSheet({
     super.key,
@@ -22,6 +23,7 @@ class TransactionDetailSheet extends StatelessWidget {
     required this.lookup,
     required this.onEdit,
     required this.onDelete,
+    this.hoaDonDaXoa = false,
   });
 
   final TransactionEntity transaction;
@@ -29,11 +31,16 @@ class TransactionDetailSheet extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
+  /// Việc 4c — hoá đơn mà `billId` trỏ tới đã xoá mềm. Trang hỏi `HoaDonDaXoaNguon` TRƯỚC khi mở bảng (bảng giữ là
+  /// widget thuần, test được không cần `sl`). Mặc định `false` = khoá — trang Hoá đơn và mọi chỗ chưa hỏi.
+  final bool hoaDonDaXoa;
+
   @override
   Widget build(BuildContext context) {
     final tx = transaction;
     final content = buildTransactionRowContent(tx, lookup);
-    final lyDo = lyDoKhongXoaTaiSo(transactionOwnerOf(tx));
+    final lyDo =
+        lyDoKhongXoaTaiSo(transactionOwnerOf(tx, hoaDonDaXoa: hoaDonDaXoa));
     final isTransfer = tx.type == 'transfer';
     final category = lookup.category(tx.categoryId);
 

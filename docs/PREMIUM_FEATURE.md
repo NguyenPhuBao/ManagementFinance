@@ -10,9 +10,25 @@ và phần tài liệu này. Spec: `docs/superpowers/specs/2026-10-06-premium-pa
 dưới đây. Từ lượt ấy bảng ở mục 1 chỉ là **mặc định khi server không trả khoá**; con số và công tắc thật do admin đặt ở
 Admin-web `/permissions`.
 
-**⚠️ Đối soát chuyển thừa / thiếu (2026-10-16):** 
-- **Phía Backend (Đơn 44):** ✅ **ĐÃ HOÀN THÀNH 100%** (Mục 41, 43, 44): Idempotency chặn lặp mở rộng `['PAID', 'REFUNDED', 'CANCELLED']`, cơ chế Just-in-Time Sync (`GET /api/payment/orders/:orderCode/status`), regex nhận diện token PayOS linh hoạt, migration 28 mở rộng status `VARCHAR(25)`, và 377/377 tests PASS xanh tuyệt đối.
-- **Phía Client-app (G94):** Sẵn sàng để đồng bộ ba trạng thái đơn mới (`WAITING_CONFIRMATION`, `REFUND_PENDING`, `REFUNDED`), `POST /payment/confirm-upgrade` và ba sự kiện `payment.*` theo đúng hạn đơn **10 phút** (`docs/Payment/PAYMENT_WORKFLOW_SPEC.md` v2.0.0). Chi tiết tại G94 `CLIENT_APP_KNOWN_GAPS.md`.
+**⚠️ Đối soát chuyển thừa / thiếu (2026-10-16, gộp `main` @ `d72ccd45`; soát lại 2026-10-18 sau gộp `e7570e16`) — G94
+MÃ XONG 2026-10-18 tối, chờ nghiệm thu máy thật:** backend thêm ba trạng thái đơn `WAITING_CONFIRMATION` · `REFUND_PENDING` · `REFUNDED`,
+`POST /payment/confirm-upgrade` và ba sự kiện `payment.*`, và rút hạn đơn còn **10 phút**
+(`docs/Payment/PAYMENT_WORKFLOW_SPEC.md` v2.0.0).
+- **Phía backend:** đơn 44 đạt A, C, D, E, F khi client soát 2026-10-18. Mục B còn hai vế (đơn đang chờ xác nhận / chờ
+  hoàn tiền vẫn bị webhook xử lý lại; chưa khử trùng theo `reference`) — banner đầu `CAN-LAM/SOAT_SAU_GOP_D72CCD45.md`.
+- **Phía client:** gộp `e7570e16` mang mã backend viết thẳng vào mảng này — ba trạng thái đơn, hai nút xác nhận chuyển
+  thừa ở màn Chờ thanh toán, nhãn lịch sử, hạn 10 phút. ✅ **2026-10-18 tối** (đợt sửa hai lỗi mở đầu lượt G89 + G94):
+  đồng hồ trên máy chỉ còn để hiện số giây — màn sang *"Đơn đã hết hạn"* duy nhất khi `order-status` trả `EXPIRED` (server
+  tự trả `EXPIRED` cho đơn `PENDING` quá hạn), nên người chuyển thừa quay lại sau hạn thấy hộp xác nhận; quá hạn theo máy
+  mà server chưa trả lời thì màn đứng ở *"Còn 00:00"* và vẫn hỏi. Lỗi khi bấm xác nhận nay báo bằng `baoNhanh`.
+- ✅ **Lát 1 (dọn kiến trúc) + lát 2 (tính năng) — mã xong 2026-10-18 tối** — spec
+  `docs/superpowers/specs/2026-10-18-g94-don-thanh-toan-premium-design.md`. Màn Chờ thanh toán **không tự mở** trang PayOS:
+  ảnh VietQR to + *Lưu mã QR* (lưu vào Thư viện ảnh rồi *Quét từ ảnh* trong app ngân hàng), khối thông tin chuyển khoản
+  có nút chép, ba bước, nút phụ *Mở trang thanh toán PayOS*. Server trả trạng thái đối soát → màn được **thay** bằng **Chi
+  tiết đơn** `/premium/don/:orderCode` — một màn cho mọi trạng thái, nơi duy nhất gọi `confirm-upgrade` (*Yêu cầu hoàn
+  tiền* hỏi lại một lần). Mọi dòng Lịch sử mua bấm được; màn Nâng cấp có thẻ đơn chờ xác nhận (**khoá** *Thanh toán*) và
+  thẻ đơn chờ hoàn tiền (không khoá). Sáu sự kiện `payment.*` là một tín hiệu im lặng `donThanhToanDoi`. 🚧 **Chưa nghiệm
+  thu máy thật** (cần khoá PayOS sandbox + phép `npm install` backend — mục 6).
 
 > Tài liệu là ảnh chụp — đối chiếu với mã trước khi kết luận. Mọi con số đếm bằng máy, kèm ngày.
 
@@ -52,34 +68,64 @@ quyền của server; khi server không trả khoá thì chúng **mở**, nên t
    hàng đợi (họ G31); `limits` của `/subscription-info` đè hằng client (đơn 38).
 6. **Mở `checkoutUrl` ngoài app** (`url_launcher`) — trang PayOS trên điện thoại có danh sách app ngân hàng mở thẳng kèm
    số tiền; QR trong app thì cùng máy không tự quét được. Không WebView (deep link sang app ngân hàng hay hỏng).
+   > 🔧 **Đảo 2026-10-18 (G94, người dùng chốt):** màn Chờ **không tự mở** trang PayOS và **giữ ảnh QR** + nút *Lưu mã
+   > QR* — lưu (hoặc chụp màn hình) rồi *Quét từ ảnh* trong app ngân hàng, số tiền + nội dung điền sẵn; trang PayOS còn
+   > là nút phụ. Spec G94 mục 2 câu 4–6.
 7. **Nghiệm thu bằng Sandbox PayOS** — không tốn tiền thật, lặp được.
 8. **Kiến trúc A**: mô-đun `features/premium/`, một định nghĩa `conTaoDuoc`, **một cửa chặn** ở `redirect` của ba route
    tạo (mọi lối vào form đều qua: nút +, thẻ *Chưa đặt ngân sách*, lệnh tạo C3, deeplink).
 
 ## 3. Kiến trúc & tệp (`lib/features/premium/`)
 
+Cây sau **G94 lát 1 + lát 2** (2026-10-18, spec `specs/2026-10-18-g94-don-thanh-toan-premium-design.md` mục 4–5 —
+khớp `KIEN_TRUC_CLIENT_APP.md` mục 4 · 5 · 8):
+
 ```
-domain/  trang_thai_goi.dart (TrangThaiGoi · laPremium(now) · soNgayConLai · trangThaiTuJson accountType??type)
-         tran_goi.dart (TranGoi.macDinh 3/3/3 · conTaoDuoc · maTran) · chuyen_huong_theo_goi.dart (?id = sửa → qua)
-         don_thanh_toan.dart (DonThanhToan · TrangThaiDon, chuỗi lạ = pending) · cau_loi_thanh_toan.dart (không URL)
-         nhac_het_han.dart (0..3 ngày) · dong_lich_su.dart
-data/    goi_store.dart (secure storage `goi_tai_khoan_<id>`) · payment_api.dart (Dio, bocData) · repositories/goi_repository.dart
-         (kho thắng type · lamMoi không ném · resumed giãn 5' · socket hỏi ngay) · dem_dang_hoat_dong.dart
-         (NguonDemDangHoatDong) · chan_theo_goi.dart (redirectTaoTheoGoi) · bo_hoi_trang_thai_don.dart (3 s) ·
-         mo_lien_ket.dart (tệp DUY NHẤT import url_launcher — test quét 18)
-presentation/ bloc/goi_cubit.dart (singleton, gốc cây) · bloc/phien_goi_tu_auth.dart · bloc/co_quyen.dart · state/an_nhac_het_han.dart ·
-         pages/nang_cap_page · cho_thanh_toan_page · lich_su_mua_page · widgets/nut_nang_cap · the_goi_tai_khoan ·
-         dong_nhac_het_han
+domain/  hang_goi.dart (kGiaPremium · kSoNgayGoi · LoaiGoi · LoaiTran — không import gì)
+         tran_goi.dart (conTaoDuoc · KetQuaTran · maTran · tenTran · tomTatTran)
+         chuyen_huong_theo_goi.dart (?id = sửa → qua · chuyenHuongChiTietDon: mã không phải số → /premium/lich-su)
+         trang_thai_don.dart (TrangThaiDon · trangThaiDonTuChuoi, chuỗi lạ = pending · chuTrangThaiDon)
+         don_can_xu_ly.dart (donChoXacNhan · donChoHoanTien · soTienLech · lyDoHoanTien thiếu / đã từ chối / không rõ)
+         cau_loi_thanh_toan.dart (LoaiLoiThanhToan · LoiThanhToan · loaiLoiCua · câu theo loại, không URL — Dart thuần)
+         quyen_tinh_nang.dart (duocDung) · nhac_het_han.dart (0..3 ngày)
+data/    models/trang_thai_goi.dart (TrangThaiGoi · laPremium(now) · soNgayConLai · trangThaiTuJson accountType??type · kho)
+         models/tran_goi.dart (TranGoi.macDinh 3/3/3)
+         models/don_thanh_toan.dart (DonThanhToan · donTuJson: qrUrl của server, KHÔNG tự dựng · số TK · chủ TK · nội dung)
+         models/dong_lich_su.dart (DongLichSu · dongLichSuTu: tạo / trả / đã chuyển / đã hoàn / ngày hoàn)
+         datasources/payment_api.dart (Dio, bocData · loaiLoiThanhToanTu: DioException → loại)
+         repositories/goi_repository.dart (kho thắng type · lamMoi không ném · resumed giãn 5' · socket hỏi ngay)
+         repositories/don_thanh_toan_repository.dart (+ _impl: taoDon · trangThaiDon · lichSu · timDon · xacNhan; lỗi → LoiThanhToan)
+         goi_store.dart (secure storage `goi_tai_khoan_<id>`) · dem_dang_hoat_dong.dart (NguonDemDangHoatDong) ·
+         co_quyen_nen.dart · mo_lien_ket.dart (tệp DUY NHẤT import url_launcher — test quét 18) ·
+         luu_anh_qr.dart (LuuAnhQr: Dio TRẦN tải ảnh → kênh flowmoney/luu_anh → MediaStore.Images)
+presentation/ bloc/goi_cubit.dart (singleton, gốc cây) · bloc/phien_goi_tu_auth.dart · bloc/co_quyen.dart ·
+         bloc/chan_theo_goi.dart (redirectTaoTheoGoi · chanTheoGoi · chanTheoQuyen) ·
+         bloc/chi_tiet_don_cubit.dart (nap · dongY · tuChoi · canBao) ·
+         state/an_nhac_het_han.dart · state/bo_hoi_trang_thai_don.dart (3 s) ·
+         pages/nang_cap_page · cho_thanh_toan_page · lich_su_mua_page · chi_tiet_don_page (qua DonThanhToanRepository) ·
+         widgets/nut_nang_cap · the_goi_tai_khoan · dong_nhac_het_han · nhan_trang_thai_don (nhãn + màu, một định nghĩa) ·
+         widgets/cho_thanh_toan/ (khoi_ma_qr · khoi_thong_tin_chuyen_khoan) ·
+         widgets/chi_tiet_don/ (the_dau_don · khoi_doi_soat · the_ket_qua_don)
 ```
 
 Sửa nơi khác: `RealtimeEvent.taiKhoanNangCap` (`account.upgraded`, `canDongBoLai false`, `loiNhan null`) ·
-`UserModel.loaiTaiKhoan` (`type` của `/auth/*`) · `app_router.dart` (3 `redirect` + 3 route `/premium*`) ·
+`RealtimeEvent.donThanhToanDoi` (sáu tên `payment.*`, cùng khuôn tín hiệu im; `GoiRepository` **không** nghe nó) ·
+`MainActivity.kt` (kênh `flowmoney/luu_anh`, phương thức `luuAnh` → `luuAnhVaoThuVien`, cạnh `luuVaoTaiVe`) ·
+`UserModel.loaiTaiKhoan` (`type` của `/auth/*`) · `app_router.dart` (3 `redirect` + 4 route `/premium*`) ·
 `ai_chat_page.dart` (`lyDoKhoa`, Basic xét trước) · `add_transaction_page.dart` (ô Nhập nhanh) · `profile_page.dart`
 (thẻ Gói) · `home_page.dart` (dòng nhắc) · `main.dart` (nối ba nguồn, `BlocProvider<GoiCubit>`) · DI · `pubspec`
 (`url_launcher ^6.3.3`). **Không đổi schema Drift, không trường đồng bộ mới.**
 
 Luồng: `/payment/subscription-info` → `trangThaiTuJson` → `GoiStore` → `GoiRepository.theoDoi` → `GoiCubit` → màn.
 Router: `redirect` → Premium? qua : `NguonDemDangHoatDong.dem` → `conTaoDuoc` → `chuyenHuongTheoGoi`.
+
+Luồng thanh toán (G94, 2026-10-18): Nâng cấp → *Thanh toán* (khoá khi còn đơn chờ xác nhận) → `taoDon` → màn Chờ (QR +
+Lưu mã + thông tin chuyển khoản; hỏi `order-status` 3 s khi đang hiện, hỏi ngay khi `resumed` / *Tôi đã chuyển khoản* /
+`taiKhoanNangCap` / `donThanhToanDoi`) → `PAID`: Thành công · `EXPIRED` / `CANCELLED`: câu + *Tạo đơn mới* ·
+`WAITING_CONFIRMATION` / `REFUND_PENDING` / `REFUNDED`: `pushReplacement('/premium/don/:orderCode')` → Chi tiết đơn
+(`ChiTietDonCubit` → `timDon` trong lịch sử trang 1; *Đồng ý* → `confirm-upgrade` + `GoiRepository.lamMoi` → *Đã kích hoạt
+Premium* + *Xong*; *Yêu cầu hoàn tiền* → hộp hỏi lại → `confirm-upgrade(accept: false)`). Lối vào Chi tiết đơn khi đã rời
+màn Chờ: dòng Lịch sử mua và thẻ đầu màn Nâng cấp.
 
 ## 4. Bẫy — phá là hỏng im lặng (và những thứ đã vấp khi thi công)
 
@@ -93,6 +139,8 @@ Router: `redirect` → Premium? qua : `NguonDemDangHoatDong.dem` → `conTaoDuoc
 7. **`context.read<GoiCubit>()`, không `BlocProvider.of`** khi muốn bắt `ProviderNotFoundException` — `BlocProvider.of`
    bọc thành `FlutterError`, 37 ca cũ đỏ cùng lúc. `laPremium == null` + không provider = **không khoá** (chỉ test cũ gặp).
 8. **Không `pumpAndSettle` khi vòng xoay còn quay** (màn Đang chờ) — không lắng + làm timer poll nổ thêm; dùng `pump()`.
+   Ca *Back sau `pushReplacement`* cũng vậy: bản sai (`push`) đưa Back về màn Chờ → `pumpAndSettle` **treo** thay vì đỏ;
+   ca dùng `pump(400 ms)` rồi đòi màn Nâng cấp.
 9. **Xoá mềm là `deletedAt`**, không phải cờ `isDeleted` (DAO lọc `deletedAt.isNull()`); ngân sách **không lặp** hết hạn ở
    **cuối kỳ đầu** (`expiresAt = min(mocKy(0), endDate)`) — hai fixture của kế hoạch sai, mã đúng.
 10. **`launchUrl` không kèm `canLaunchUrl`** → không cần `<queries>` manifest; hỏng → link chép được.
@@ -101,6 +149,27 @@ Router: `redirect` → Premium? qua : `NguonDemDangHoatDong.dem` → `conTaoDuoc
 12. **Nút Thanh toán khoá trong lúc tạo đơn** — bấm đôi là hai đơn; test bấm lần hai theo **key** vì chữ đã thành vòng xoay.
 13. Hết hạn giữa phiên **không có hẹn giờ** — đổi ở lần đọc kế (`laPremium(now)` mỗi lần hỏi).
 14. **`DateTime ==` đòi cùng múi giờ** — kho ghi UTC; so khoảnh khắc bằng `isAtSameMomentAs`.
+15. **Màn Chờ KHÔNG tự mở trang PayOS** (G94, người dùng chốt) — ca đầu của `cho_thanh_toan_page_test` đòi `daMo` rỗng
+    sau khi vào màn; đừng thêm lại `addPostFrameCallback((_) => _mo())`.
+16. **Ảnh QR dựng MỘT lần ở `initState`** (`_anhQr`) — dựng trong `build` là mỗi nhịp đồng hồ một `ImageProvider` mới;
+    `NetworkImage` so bằng URL nên không tải lại, nhưng nguồn tiêm không so bằng giá trị thì tải lại mỗi giây. `flutter
+    test` trả 400 cho mọi ảnh mạng → khe tiêm `nguonAnhQr`; nút *Lưu mã QR* hiện khi có `qrUrl`, chỉ ẩn khi ảnh báo hỏng.
+17. **Trạng thái đối soát → `pushReplacement`, không `push`** — `push` để lại màn Chờ dưới Chi tiết đơn, Back quay về một
+    màn đã dừng hỏi. Cờ `_daSangChiTiet` chặn câu trả lời về muộn gọi `pushReplacement` lần hai.
+18. **Chỉ Chi tiết đơn gọi `confirm-upgrade`** — một chỗ cho ba lối vào (màn Chờ, Lịch sử mua, thẻ Nâng cấp). `4xx` = đơn
+    đã đổi ở nơi khác → báo + **nạp lại** (thân đi theo server); mất mạng / 5xx → báo, nút mở, **không** nạp lại.
+19. **`Text` số tiền dài ngắt / cắt im lặng** — `takeException` mù; số tiền đi `FittedBox(scaleDown)` + `maxLines: 1`, ca
+    320 dp đo `RenderParagraph.didExceedMaxLines` và chiều cao (khuôn bẫy *ô nhập TIỀN* của `CLAUDE.md`).
+20. **Viền trái 4 px + bo góc** (thẻ chờ xác nhận ở Nâng cấp): `BoxDecoration` không nhận viền không đều cùng
+    `borderRadius` (assertion) → thanh màu là ô con trong `Material` bo góc + `IntrinsicHeight`.
+21. **Thẻ ở Nâng cấp: đọc hỏng thì không chặn mua** — chưa đọc được lịch sử → không thẻ, nút mở; đã đọc được thì lượt hỏng
+    sau giữ kết quả cũ (không mở khoá vì mạng chập chờn).
+22. ⚠️ **Đừng `await context.push('/premium/cho-thanh-toan')` để biết lúc người dùng quay về Nâng cấp** — màn Chờ THAY
+    chính nó bằng Chi tiết đơn (`pushReplacement`), và future của lượt `push` ấy **không về** khi Chi tiết đơn pop (đo bằng
+    test, `go_router` 14.6). Bản đầu của Task 9 làm thế: quay về là nút *Thanh toán* **quay mãi** và thẻ *chuyển thừa* đứng
+    sau khi đã *Đồng ý*. Nâng cấp nghe `TickerMode` (cùng khuôn màn Chờ): màn hiện lại → mở nút + đọc lại; nghe thêm
+    `taiKhoanNangCap` vì *Đồng ý* chỉ làm server phát `account.upgraded`. Ca canh: hai ca *đường chính* ở
+    `nang_cap_page_test` (route Chờ giả `pushReplacement` ngay) — dùng `pump(400 ms)`, không `pumpAndSettle` (bản lỗi treo).
 
 ## 5. Màn Stitch (lượt gọi 2026-10-06 — năm lượt trả `timeout` nhưng màn vẫn được tạo; ✅ **người dùng xác nhận tối 2026-10-06**)
 
@@ -115,6 +184,22 @@ Router: `redirect` → Premium? qua : `NguonDemDangHoatDong.dem` → `conTaoDuoc
 | Trợ lý AI — khoá Premium | `2b3fa0f69486498584fdf3a243f30147` |
 | Thêm giao dịch — Nhập nhanh khoá | `21790848a0dc4e98970c0a591b88f44e` |
 
+**G94 (lượt gọi 2026-10-18 tối — cả năm trả `timeout`, màn hiện sau ~1 giờ; màn 2 tạo lại một lần; ✅ người dùng xác nhận
+bằng mắt cả năm — màn 2 ở phiên sau, cùng tối):**
+
+| Màn / khối | id |
+|---|---|
+| Thanh toán Premium — Đang chờ (mã QR + Lưu mã) — thay `b05060e3…` | `95b2774f085747fa8777aea3505bb6ee` |
+| Chi tiết đơn — Chờ xác nhận chuyển thừa + Hộp hỏi lại | `408de0af0d8a4fb796d3997580120d7a` |
+| Chi tiết đơn — Bốn trạng thái (chờ hoàn tiền thiếu / đã chọn hoàn · đã hoàn · đã kích hoạt) | `d3b59018c7624f1a902eba125243130f` |
+| Lịch sử mua — Dòng bấm được — thay `e7d66095…` | `04c4aa7dda504cc4922290ea79ef3e63` (dòng chân *"Giao dịch thanh toán bảo mật"* — trang trí, **không chép**) |
+| Nâng cấp — Có đơn cần xử lý (khoá Thanh toán) | `5c629d0af67e4c6fbda1c85de896fa8d` (dòng *"Tự động gia hạn · Hủy bất cứ lúc nào"* — gói không tự gia hạn, **không chép**; thẻ gói hiện tại giữ như cũ) |
+
+Lệch có chủ ý ở Chi tiết đơn: thẻ đầu theo bố cục `d3b59018…` cho **mọi** trạng thái (dòng phụ *mã đơn · giờ tạo* xuống
+hàng riêng — bố cục `408de0af…` để dòng ấy cạnh viên trạng thái, ở 320 dp cột chỉ còn ~120 dp); giá gói nằm ở thân, không
+ở thẻ đầu (spec mục 5.5 nói *đầu màn luôn có giá gói* — Stitch người dùng duyệt không vẽ), ba thân một dòng (`pending` ·
+`expired` · `cancelled`) có dòng *Giá gói X*.
+
 ## 6. Nghiệm thu máy thật — 🚧 CHƯA LÀM (Task 16)
 
 Điều kiện: người dùng tạo kênh PayOS *Thử nghiệm* và dán `PAYOS_CLIENT_ID / API_KEY / CHECKSUM_KEY` vào
@@ -126,6 +211,12 @@ qua ngrok hoặc tự ký HMAC POST `localhost:3000/api/payment/webhook`. Mườ
   `payment_transaction`, sáu chỉ mục. Rồi `npx prisma generate` theo `schema.prisma` hiện tại (backend tắt sẵn);
   `account.findFirst` chạy (hết `P2022`), `payment_order.count()` = 0. Bản client Prisma sinh từ `3ef5db7` thôi cần.
 - ⏳ Khoá PayOS: `grep -c '^PAYOS_' src/Backend/.env` = **0** lúc áp — chờ người dùng dán.
+- 🚧 **G94 (mã xong 2026-10-18 tối) — chưa đo.** Điều kiện thêm: phép **đích danh** chạy `npm install` ở `src/Backend` (gói
+  `resend` của gộp `e7570e16`; tự `prisma generate` — CSDL dev đã khớp schema, đo 2026-10-18). Tám bước ở spec G94 mục 10:
+  ảnh QR hiện + *Lưu mã QR* → ảnh ở `Pictures/FlowMoney`; MB Bank *Quét từ ảnh* điền đúng số tiền + nội dung; đơn sandbox
+  có `bin` / `accountNumber` của PayOS hay rơi về giá trị ghi cứng phía server (`payment.service.js:29–31`); chuyển xong
+  quay lại → *Thành công*; chuyển thừa / thiếu → Chi tiết đơn đúng thân, *Đồng ý* / *Từ chối*; thẻ Nâng cấp + dòng Lịch
+  sử + khoá *Thanh toán*; bản `--release` lưu ảnh được; 360 dp (Realme) không tràn.
 
 ## 7. Giới hạn cố ý
 
@@ -186,7 +277,7 @@ nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
   `PhienDieuPhoiThat.moPhienCucBo` (**G93**, 2026-10-14 — từ G86 lượt quét đầu mỗi phiên chạy **trước** `AuthSuccess`, và
   trước khi có hook thì Basic bị tự trả / tự trích ở lượt ấy). Vì tài khoản đã đặt sẵn, `noiPhien` so với **phiên đã nối
   của nó** chứ không với `idaccount` — không thì mất `lamMoi` và `loaiPhien` ở `AuthSuccess`.
-- **Route:** `redirectTaoTheoGoi(LoaiTran)` (trần) và `redirectTheoQuyen(MaQuyen)` (bật/tắt) ở `premium/data/chan_theo_goi.dart`;
+- **Route:** `redirectTaoTheoGoi(LoaiTran)` (trần) và `redirectTheoQuyen(MaQuyen)` (bật/tắt) ở `premium/presentation/bloc/chan_theo_goi.dart` (trước 2026-10-18: `data/`);
   màn Nâng cấp nhận `?tran=` hoặc `?quyen=<maServer>` (`duongNangCap`), mã lạ → như không có tham số. Cả hai **chờ kho gói
   nạp xong** (`GoiRepository.choNapKho()`) rồi mới đọc `idaccount` + `hienTai` (G92, 2026-10-14): router chạy lại `redirect`
   lúc `AuthSuccess`, đúng khi `noiPhien` vừa gán tài khoản mà secure storage chưa trả lời — đọc ngay là Basic mặc định.
@@ -209,7 +300,7 @@ Backend tự sửa 7 tệp client (`TranGoi` thêm `hoaDon` · `danhMucRieng`, `
 1. ⚠️ **Đừng xét bảng bằng `goi.loai`.** Server trả `accountType` là gói **gốc** (`'Premium'` cả khi đã hết hạn) còn
    `features` / `limits` là của gói **hiệu lực** (`payment.service.js`, `effectiveType`).
 2. **Test quét `lib/` thứ 21** — `test/features/premium/quyen_tinh_nang_mot_noi_test.dart`: `quyenTinhNang` chỉ được đọc ở
-   `quyen_tinh_nang.dart` (và kho ở `trang_thai_goi.dart`); chuỗi mã quyền server chỉ nằm ở `MaQuyen`.
+   `quyen_tinh_nang.dart` (và kho ở `data/models/trang_thai_goi.dart`); chuỗi mã quyền server chỉ nằm ở `MaQuyen`.
 3. `redirectTaoTheoGoi` đọc `sl<GoiRepository>()` **và** `sl<NguonDemDangHoatDong>()` lúc chạy — test dựng `AppRouter`
    thật rồi đi qua route tạo (nay thêm `/bills/add`, `/categories/*/new`) phải đăng ký cả hai.
 4. `context.watch<GoiCubit>()` — một `emit` cần **hai** nhịp `pump` mới tới widget trong test.

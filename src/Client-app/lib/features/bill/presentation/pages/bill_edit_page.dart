@@ -15,8 +15,10 @@ import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/nen/co_chay_nen.dart';
 import '../../domain/bill_auto_pay.dart' show goiYTuTra;
 import '../../domain/bill_draft.dart';
+import '../../domain/bill_nhac_truoc.dart';
 import '../../domain/bill_schedule.dart';
 import '../bloc/bill_bloc.dart';
+import '../widgets/bill_actions.dart';
 import '../widgets/bill_grace_selector.dart';
 import '../bloc/bill_event.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
@@ -186,29 +188,9 @@ class _BillEditPageState extends State<BillEditPage> {
     context.pop();
   }
 
-  void _delete() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xóa hóa đơn'),
-        content: const Text('Bạn có chắc chắn muốn xóa hóa đơn này?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.read<BillBloc>().add(DeleteBillEvent(id: widget.id));
-              context.pop();
-            },
-            child: const Text('Xóa', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+  Future<void> _delete() async {
+    final daGui = await xacNhanXoaHoaDon(context, widget.id, bill: widget.bill);
+    if (daGui && mounted) context.pop();
   }
 
   Future<void> _pickStartDate() async {
@@ -383,13 +365,11 @@ class _BillEditPageState extends State<BillEditPage> {
                         labelText: 'Nhắc trước hạn',
                         border: OutlineInputBorder(),
                       ),
-                      items: const [
-                        DropdownMenuItem(
+                      items: [
+                        const DropdownMenuItem(
                             value: null, child: Text('Không nhắc')),
-                        DropdownMenuItem(value: '1', child: Text('1 ngày')),
-                        DropdownMenuItem(value: '3', child: Text('3 ngày')),
-                        DropdownMenuItem(value: '5', child: Text('5 ngày')),
-                        DropdownMenuItem(value: '7', child: Text('7 ngày')),
+                        for (final n in kMucNhacTruoc)
+                          DropdownMenuItem(value: '$n', child: Text('$n ngày')),
                       ],
                       onChanged: (v) => setState(() => _nhacTruoc = v),
                     ),

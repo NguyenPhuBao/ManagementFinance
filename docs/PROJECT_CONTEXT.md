@@ -38,7 +38,7 @@ ManagementFinance/
 │   ├── Rule_Project/     ← Nguồn sự thật CSDL, Data Security, DB Guard, 2-Tier Testing
 │   ├── Notification/     ← Tài liệu Hub điều phối thông báo đa kênh & Realtime Socket.IO
 │   ├── AI/               ← Tài liệu kiến trúc AI (Edge SLM On-device & Cloud RAG Copilot)
-│   ├── Bank/             ← Tài liệu tích hợp SePay/Casso (Lưu trữ Backend, tạm dừng phía Client)
+│   ├── Bank/             ← Tài liệu tích hợp SePay/Casso — chỉ còn là lịch sử: nhóm bỏ liên kết ngân hàng 2026-09-18, client đã gỡ phần của mình
 │   ├── Deploy/           ← Quy trình triển khai Cloud, phân luồng Fast-Lane và SLA
 │   ├── bill/             ← Tài liệu chi tiết module Hóa đơn
 │   └── progress/         ← Báo cáo tiến độ hoàn thiện thực tế của Backend và Client-app
@@ -611,7 +611,452 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-16)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-18)
+
+### ✅ G94 lát 2 — tính năng đơn thanh toán, mã xong 10 / 10 task (2026-10-18 tối) · 🚧 chờ nghiệm thu sandbox
+
+Kế hoạch `docs/superpowers/plans/2026-10-18-g94-lat-2-tinh-nang-don-thanh-toan.md` (gitignore), thi công **inline**, người
+dùng cho *"làm hết khỏi chờ duyệt"*. Màn Stitch (người dùng xác nhận bằng mắt cả năm): Màn Chờ `95b2774f…` · Chi tiết đơn
+chờ xác nhận + hộp hỏi lại `408de0af…` · bốn trạng thái `d3b59018…` · Lịch sử mua `04c4aa7d…` · Nâng cấp `5c629d0a…`.
+
+- **Người dùng thấy khác (Task 6–9, `463fcf0c` → `01e0d630`, sửa `ddd35e1a`):**
+  - **Màn Chờ thanh toán** không tự mở trang PayOS nữa; có ảnh VietQR to + *Lưu mã QR* (vào `Pictures/FlowMoney`), khối
+    *Thông tin chuyển khoản* (số TK, chủ TK, số tiền, nội dung — chép được), ba bước, nút phụ *Mở trang thanh toán PayOS*.
+    Ô *Mã nhận diện* riêng bỏ (mã nằm cuối nội dung). Server trả `WAITING_CONFIRMATION` / `REFUND_PENDING` / `REFUNDED` →
+    màn được **thay** bằng Chi tiết đơn.
+  - **Chi tiết đơn** `/premium/don/:orderCode` (mới): thẻ đầu (gói, mã đơn + giờ tạo, nhãn); chờ xác nhận → *BẠN ĐÃ CHUYỂN
+    THỪA* (đã chuyển / giá / thừa) + *Đồng ý kích hoạt gói* / *Yêu cầu hoàn tiền* (hộp hỏi lại); chờ hoàn tiền (thiếu / đã
+    chọn hoàn / không rõ); đã hoàn (số + ngày); đã thanh toán; vừa kích hoạt → hạn mới + *Xong*. Mã rác → Lịch sử mua.
+  - **Lịch sử mua**: mọi dòng có › và mở Chi tiết đơn; quay về nạp lại ngầm; nhãn + màu dùng chung.
+  - **Nâng cấp**: thẻ *"Bạn đã chuyển thừa cho đơn #…"* đầu màn + **khoá** *Thanh toán* / *Gia hạn* kèm lý do; thẻ nhỏ
+    *"Đơn #… đang chờ hoàn tiền"* (không khoá).
+- **Chỗ thi công khác bản viết:** mười điểm ở banner đầu spec G94 (giá gói ở thân không ở thẻ đầu; thẻ Nâng cấp giữ kết quả
+  cũ khi lượt đọc sau hỏng; Lịch sử nạp lại ngầm; không chép *"Tự động gia hạn"* của Stitch…).
+- ⚠️ **Lỗi lượt soát cuối lát bắt được, sửa trước khi báo xong:** Nâng cấp từng `await context.push('/premium/cho-thanh-toan')`
+  để biết lúc người dùng quay về — nhưng màn Chờ `pushReplacement` sang Chi tiết đơn và future ấy không về: quay lại là nút
+  *Thanh toán* quay mãi, thẻ *chuyển thừa* đứng sau khi đã *Đồng ý*. Nay nghe `TickerMode` (màn hiện lại → mở nút + đọc lại)
+  + `taiKhoanNangCap`; hai ca *đường chính* đỏ trước. Bẫy 22 `PREMIUM_FEATURE.md`.
+- **Đo:** `flutter test` **7.466 / 10 skip / 0 fail** (+42 so với đầu phiên 7.424; +60 cả lát 2), analyze **20**, HEAD
+  `ddd35e1a`; `flutter build apk --release` đạt **226,4 MB** (dựng ở `01e0d630`, trước bản sửa đường quay về — bản sửa chỉ
+  đổi Dart, không đổi Kotlin / gói). Mỗi task: ca đỏ trước + bản sai có chủ ý (18 bản) làm đúng ca ấy đỏ.
+- **Còn:** nghiệm thu OnePlus — tám bước ở spec mục 10, cần khoá PayOS sandbox + phép đích danh `npm install` ở
+  `src/Backend`. Ngoài phạm vi, ghi lại: `premium/presentation/widgets/the_khoa_quyen.dart` còn 10 `Color(0x…)` (client viết
+  2026-10-08, theo giá trị Stitch) — vào đợt soát toàn app.
+
+Task 1–5 (phiên trước, cùng tối):
+
+- **Xong (nền, chưa đổi màn nào):** `DongLichSu` đọc thêm số đã chuyển / đã hoàn / ngày hoàn / ngày tạo, `luc` thành
+  getter; `domain/don_can_xu_ly.dart` (`donChoXacNhan`, `donChoHoanTien`, `soTienLech`, `lyDoHoanTien` ba nhánh); nhãn
+  *Chờ hoàn tiền*; `DonThanhToanRepository.timDon`; `RealtimeEvent.donThanhToanDoi` ← sáu tên `payment.*` (im lặng,
+  không kéo đồng bộ, `GoiRepository` không làm mới theo nó); cổng `LuuAnhQr` (Dio trần tải ảnh + kênh Kotlin
+  `flowmoney/luu_anh` ghi `MediaStore.Images` ở `Pictures/FlowMoney`, không xin quyền Android 10+) — bản `--release`
+  dựng đạt 226,3 MB; `ChiTietDonCubit` + `NhanTrangThaiDon` / `mauTrangThaiDon`. Commit `073920e6` → `026e221a`.
+- **Đo:** `flutter test` **7.424 / 10 skip / 0 fail** (+18 từ đầu lát 2), analyze **20**.
+- ~~**Còn:** Task 6–10~~ — xong cùng tối, khối trên.
+- **Soát kiến trúc toàn app (chỉ đọc) đã chạy** — `docs/superpowers/specs/2026-10-18-bao-cao-soat-kien-truc-toan-app.md`:
+  14 lệch rõ · 7 chưa chắc · 11 để biết; sửa SAU lượt G94, người dùng chọn lát; hai việc cần người dùng chốt.
+
+### 🧱 G94 lát 1 — dọn kiến trúc mảng Premium, không đổi hành vi (2026-10-18 tối)
+
+Spec `docs/superpowers/specs/2026-10-18-g94-don-thanh-toan-premium-design.md` mục 4; kế hoạch
+`docs/superpowers/plans/2026-10-18-g94-lat-1-don-kien-truc-premium.md` (gitignore). Người dùng chốt cùng ngày: mọi phần mới
+hay cũ phải khớp `KIEN_TRUC_CLIENT_APP.md`, và lượt G94 mở đầu bằng việc đưa **cả mảng Premium** về khớp.
+
+- **Chín chỗ lệch đã sửa** (mục 1.3 spec): model + bộ đọc JSON (`TrangThaiGoi`, `TranGoi`, `DonThanhToan`, `DongLichSu`)
+  `domain/` → `data/models/`; hằng / enum gói → `domain/hang_goi.dart`, trạng thái đơn → `domain/trang_thai_don.dart`;
+  vòng import `trang_thai_goi` ↔ `tran_goi` gỡ; `domain/cau_loi_thanh_toan.dart` hết import Dio (câu theo
+  `LoaiLoiThanhToan`, phép đọc Dio → `loaiLoiThanhToanTu` ở `data/datasources/payment_api.dart`); `PaymentApi` →
+  `data/datasources/`; `DonThanhToanRepository` (interface + `_impl`) — Nâng cấp, Lịch sử mua, Chờ thanh toán thôi gọi
+  thẳng API, nhận lỗi đã phân loại `LoiThanhToan`; bộ hỏi theo nhịp → `presentation/state/`; cửa chặn route
+  `chan_theo_goi` → `presentation/bloc/`; `goi_repository` lấy `AppLifecycleState` từ `dart:ui`.
+- **Không lệch, giữ chỗ** (tiền lệ toàn app — store / nguồn / cổng nền tảng ở `data/` gốc): `goi_store`,
+  `dem_dang_hoat_dong`, `mo_lien_ket`, `co_quyen_nen`.
+- **Cách làm:** năm commit mã (`a99dd4b2` · `a32b056c` · `61da10b0` · `9d9c134b` · `a0f3e3c2`), mỗi commit `flutter test`
+  toàn phần xanh. ~85 lượt sửa import do một script dò ký hiệu (scratchpad, không vào repo). Lớp `TranGoi` chép sang tệp
+  mới được đối chiếu bằng máy (trùng 71 dòng). Chuỗi thoát ` ` của `tomTatTran` giữ nguyên. Danh sách cho phép của
+  quét 21 trỏ đường mới.
+- **Đo:** `flutter test` **7.406 pass / 10 skip / 0 fail** (+8: bộ đọc lỗi Dio 4, repository 4; câu-theo-loại 4 thay 4 ca
+  cũ), `flutter analyze` **20**. Kiểm bằng `grep`: `data/` + `domain/` của Premium 0 import `flutter/widgets` ·
+  `material` · `go_router`; `domain/` 0 import Dio; `presentation/` 0 `sl<PaymentApi>`. Mảng Premium nay **32** tệp.
+- **Kế tiếp:** lát 2 (tính năng G94) viết kế hoạch sau khi người dùng xác nhận năm màn Stitch (spec mục 9 — năm lượt
+  `generate_screen_from_text` trả `timeout`, chưa thấy màn). Sau lượt G94: soát kiến trúc toàn client-app (spec mục 13).
+
+### 🩹 Mở lượt G89 + G94: đợt sửa hai lỗi đang chạy ở màn Chờ thanh toán (2026-10-18 tối)
+
+Thứ tự người dùng chốt chiều cùng ngày: đầu lượt chỉ sửa hai lỗi ở mã backend viết vào màn Chờ thanh toán, mỗi lỗi có ca
+đỏ trước; spec → Stitch → màn mới đi sau. Chi tiết, gốc lỗi và việc còn lại: khối ✅ cuối khối 🔀 ở thân G94
+`CLIENT_APP_KNOWN_GAPS.md`.
+
+- **Đồng hồ trên máy về 0 thôi tự kết luận hết hạn** (G94 việc 1). `_nhipDem` chỉ còn cập nhật số giây; màn sang *"Đơn đã
+  hết hạn"* duy nhất khi `order-status` trả `EXPIRED` — server tự trả `EXPIRED` cho đơn `PENDING` quá `expired_at` lúc
+  đọc, còn `WAITING_CONFIRMATION` không bao giờ hết hạn. Trước đây trạng thái hết hạn theo đồng hồ chặn mọi câu trả lời
+  sau đó, nên người chuyển thừa quay lại sau hạn không bao giờ thấy hộp xác nhận. Lỗi có từ bản client gốc 2026-10-06.
+  Quá hạn theo máy mà server chưa trả lời thì màn đứng ở *"Còn 00:00"* và vẫn hỏi theo nhịp.
+- **Lỗi khi xác nhận chuyển thừa có câu báo** (việc 3): `baoNhanh` loại lỗi, câu từ `cauLoiThanhToan(e, cauTuChoi: …)`
+  — tham số mới thay câu 4xx *"Không tạo được đơn thanh toán"* (sai với `confirm-upgrade`, vốn trả 400 khi đơn không còn
+  chờ xác nhận).
+- Ca đỏ trước, đỏ đúng lý do: bốn ca của màn (ba cho việc 1 — một ca cũ ghim chính hành vi lỗi, viết lại theo hợp đồng
+  mới — và một cho việc 3) cùng một ca unit. Toàn bộ `flutter test` **7.398 pass / 10 skip / 0 fail** (5 ph 03 s),
+  `flutter analyze` **20**. Chưa nghiệm thu máy thật: cần backend dev chạy (`npm install` — phép đích danh) và PayOS
+  sandbox.
+
+### 🔀 Gộp `main` @ `e7570e16` (2026-10-18, commit gộp `fcbc2ba2`) — Redis đa nhà cung cấp, OTP qua Brevo / Resend, VietQR + đối soát thanh toán; backend báo đóng đơn 41–44, client soát bằng mã + CSDL; backend sửa 26 tệp client-app + tệp CI
+
+- **Trước khi gộp, nhánh đã push** (người dùng chọn 2026-10-18): `51df7ff7..b54488c6`, 99 commit. Sau push,
+  `git rev-list --count origin/TranQuangDat..HEAD` = 0.
+- **Một xung đột:** bảng mục 0 của `CAN-LAM/README.md`. Backend viết lại bốn hàng 41–44, client có ba hàng 45–47. Bản gộp
+  giữ nguyên văn bốn hàng của backend và ba hàng của client. 19 commit `main` (PR #139–#146, NPBao).
+- **Backend sửa 26 tệp dưới `src/Client-app`** (6 tệp `lib/`, 20 tệp test) và tệp CI `.github/workflows/client-app.yml` (đếm lại 2026-10-18; bản đầu của khối này ghi nhầm 27 tệp, 7 tệp `lib/`):
+  - `lib/core/constants/app_constants.dart`: cả nhánh máy ảo lẫn nhánh web / `adb reverse` trỏ sang
+    `https://managementfinance.onrender.com/api`. Người dùng chốt trả về backend cục bộ → commit `93f9ea91`.
+  - Premium, phủ một phần **G94**: `TrangThaiDon` thêm ba giá trị; `DonThanhToan` thêm `recognitionCode` · `qrUrl` ·
+    `transferContent` · `amountReceived` · `fee`, dự phòng hạn 30 → 10 phút; `PaymentApi.xacNhanNangCap`
+    (`POST /payment/confirm-upgrade`); màn Chờ thanh toán thêm ba thân (xác nhận chuyển thừa với hai nút, cần hoàn tiền,
+    đã hoàn tiền), ô mã nhận diện có nút chép, ảnh VietQR; lịch sử mua có ba nhãn mới. Chỗ còn hở: khối G94
+    `CLIENT_APP_KNOWN_GAPS.md` (soát 2026-10-18).
+  - CI: bước đếm cảnh báo viết lại bằng Python, đọc được cả khi thiếu dòng tổng. `MUC_NEN` vẫn 20.
+- **Sau gộp:** `git check-ignore --no-index` trên `src/Client-app/test/x_test.dart` không khớp. Cây `src/Client-app` đổi
+  hash (`691e32ae…` → `8988cef1…`), nên chạy lại toàn bộ test sau `93f9ea91`: `flutter test` **7.394 pass / 10 skip /
+  0 fail** (6 ph 17 s; thêm 2 ca của backend), `flutter analyze` **20**.
+- **Soát đơn 41–44** (backend ghi *"✅ Đã xong 100%"* ở `3a5d320c`, không chuyển tệp):
+  - **41** và **42** đạt trọn, client chuyển sang `DA-XONG/` (mục 4i mục lục).
+  - **43** đạt A2 (`accountRejection` mặc định `ACCOUNT_INACTIVE` — chặn đúng đường làm client xoá SQLite), B, C. Còn
+    A1 phần controller (`aiops.controller.js:249`, `:305` ghi đè `'Locked'`), A3 (mở khoá tự động không xét ai khoá),
+    A4 (mã chết `feature.collector.js:231`), A5 (CSDL dev 0 CHECK trên `account`, chưa có `database/N`), A6 tuỳ chọn, và
+    D: `grep` từng hàng ngày 2026-10-18 cho thấy **0 / 12** chỗ đính chính `Event-Notification-to-ClientApp.md` được sửa
+    (khoảng 106 dòng thêm ở `3a5d320c` là phần thanh toán của đơn 44 F).
+  - **44** đạt A, C, D, E, F. Mục B còn hai vế: đơn `WAITING_CONFIRMATION` / `REFUND_PENDING` vẫn bị webhook xử lý lại
+    (ghi đè `amount_received`, phát lại sự kiện, và một lần chuyển đúng giá gói nâng gói khi người dùng chưa chọn), và chưa
+    khử trùng theo `reference`. Kèm câu hỏi có mặc định cho backend: spec không đặt hạn cho `WAITING_CONFIRMATION`; client
+    mặc định không hạn và sẽ thêm lối xác nhận ở Lịch sử mua.
+  - **45, 46, 47** backend chưa đụng.
+  - Chi tiết kèm số dòng: banner đầu hai tệp 43, 44 và banner đầu `CAN-LAM/README.md`.
+  - **Người dùng chốt cùng ngày:** phần dư của đơn 43 không chặn — lượt **G89 + G94** bắt đầu từ phiên sau, mở bằng
+    brainstorm → spec → Stitch. Phần gộp + tài liệu push cùng ngày.
+- **Backend dev chạy lại cần `npm install`** (gói mới `resend`), mà `npm install` tự `prisma generate` — phép đích danh
+  (quy tắc 1). CSDL dev đo 2026-10-18 đã khớp `schema.prisma` mới: `payment_order` 22 cột (có `qr_url` của
+  `database/27`), `status` dài 25. Lần generate này vì thế không vỡ `P2022`. Redis chỉ đổi cách chọn địa chỉ
+  (`config/redis.resolver.js`, mặc định `redis://127.0.0.1:6379`), kết nối vẫn `lazyConnect` như trước. Lượt này client
+  không `npm install`, không áp migration.
+- **Tài liệu client bị backend sửa:** `PREMIUM_FEATURE.md` (đoạn G94 — client viết lại theo kết quả soát) và cây thư mục
+  mục 1 của tệp này (giữ, sửa dòng `Bank/`). `docs/Notification/Notification_Client-app.md` (tài liệu backend) thêm ba
+  hàng; đơn 46 vẫn mở.
+
+### 🌐 Trợ lý online hỗn hợp: có mạng hỏi backend (Gemini), hỏng / mất mạng rơi về mô hình trên máy — ✅ mã + đợt sửa sau review xong, NGHIỆM THU OnePlus 13R trên backend dev 2026-10-18 (người dùng chốt 2026-10-11)
+
+Thi công khối 📝 2026-10-11 bên dưới. Spec `docs/superpowers/specs/2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md`
+(**mục 10**: 23 chỗ khác bản viết, đếm 2026-10-18 — 21 của mã / test (20–23 là ba quyết định người dùng + F4), dòng 18 là lệch đánh số bất biến với
+`AI_AGENT_ARCHITECTURE.md` §6, dòng 19 tách tiêu chí ca 5 §6 của **spec** — Dừng); kế hoạch 13 task (gitignore) thi công bằng agent con — Fable soát kế hoạch (5 chặn, áp
+thử Task 1–6), Sonnet làm, Opus soát từng task (mỗi task ≤ 1 vòng sửa); Task 2 **bỏ**. **22** commit `80d9dee8` → `fb92c16d`
+(21 mã + test, `b6eb9975` id Stitch) + commit tài liệu Task 12; rồi đợt sửa sau review `1ddb90aa` (mã) · `0e52d591` (đơn 47) ·
+`418b9e2d` (tài liệu) và F4 `f88137f7` + vòng sửa 1 `1c6ab600` (2026-10-18 — `boDanhDauMarkdown` gỡ `#` / `>` / `---`, giữ `>` trước
+con số / dấu so sánh theo bẫy 4.36). Mục **15** `AI_EDGE_FEATURE.md`; đơn CAN-LAM **47**
+(`CLIENT_TRO_LY_ONLINE.md`).
+
+- **Luồng** (`_hoi`): Basic khoá → lệnh tạo C3 trên máy (bất kể mạng) → cổng online `nenHoiOnline` (công tắc `CongTacOnline`
+  bật ∧ `ConnectionMonitor.coMangNgay()` ∧ `!chuDeBiChanOnline`) → tờ thông tin một lần → `_hoiOnline` (SSE `POST
+  /ai/chatbot/chat/stream`, chunk nối thẳng, nhãn nguồn, nút Dừng) → luật rơi thuần `quyetDinhSauOnline`: hỏng **trước chữ
+  đầu** thì **cùng câu** đi đường trên máy (nhãn *AI trên máy · máy chủ không phản hồi*); đứt giữa dòng giữ chữ + *kết nối gián
+  đoạn*; máy chưa sẵn thì câu cố định theo nguyên nhân thật (`kMayChuHongKhongMoHinh` · `kKhongMangKhongMoHinh` · `kCauTuChoi` ·
+  `cauKhoaHoiDap`).
+- **Ba chốt hỏng im lặng** (đo trên mã backend + SDK, không có trong spec): `DuPhongOnline` **luôn** rơi về máy — server chẻ câu
+  thông báo ⚠️ thành `delta` trước `done.fallback`, và `done {error}` cũng là rơi; `xepHistory` ghép history theo **cặp** (tin
+  `user` + lời đáp AI ngay sau, ≤ 3 cặp cuối; tin mồ côi — câu bị chặn, Dừng không chữ, lệnh C3 — không lên Gemini) — SDK `@google/generative-ai` 0.24.1 ném *First content should be with role 'user'* và lỗi ấy mở
+  circuit breaker **dùng chung mọi tài khoản**; `toiDa = 6` = `history.slice(-6)` phía server, đừng nâng; `AuthInterceptor`
+  phát lại sau 401 bằng `fetch(copyWith(headers:))` — bản cũ mất `responseType: stream`, SSE đọc dồn thành `String`.
+- **Phán quyết khác** (spec mục 10): DI `sl<DioClient>().dio` (GetIt không đăng ký `Dio`; docstring `dio_client.dart:11` sửa
+  cùng lượt); `coMangNgay()` có sẵn thay `coMangLucNay()`; `chuDeBiChanOnline` so **hai lượt** (có dấu từ trọn / bỏ dấu chỉ từ
+  một nghĩa — câu giá gõ không dấu của đô la / tiền ảo / cổ phiếu nay đi Gemini, chấp nhận); vị từ `_maySan` tách khỏi
+  `_coMoHinh`; nút Dừng vẽ theo `_huyOnline` (còn sau chữ đầu); thẻ *Trợ lý online* + khối Riêng tư ở Cài đặt AI đặt **ngoài**
+  cổng `ai_edge_model`; datasource bắt mọi lỗi giữa luồng thành `LoiOnline`.
+- **Tệp**: `core/api/khung_sse.dart` (mới) · `core/api/interceptors/auth_interceptor.dart` · `ai_chat/domain/{su_kien_online,
+  duong_hoi}.dart` (thư mục mới) · `ai_chat/data/datasources/tro_ly_online_remote_data_source.dart` · `ai_chat/data/cong_tac_online.dart`
+  · `ai_chat/presentation/widgets/tro_ly_ai/` 5 tệp (`the_lenh_tao` dời nguyên văn, `dong_khoa` + `hang_chip` dời để trang dưới
+  trần) · `ai_edge/domain/chu_de_chan.dart` · `ai_edge/presentation/pages/cai_dat_ai_page.dart` · DI; helper test
+  `test/helpers/kho_gia.dart`. `lib/` 10 tệp mới, 5 tệp sửa (+ một dòng docstring `core/api/dio_client.dart` ở commit tài liệu);
+  `core/network` không đổi.
+- **Đợt sửa sau review toàn nhánh + ba quyết định người dùng (2026-10-17 khuya; một lượt Sonnet `1ddb90aa` mã · `0e52d591` đơn
+  47 · `418b9e2d` tài liệu, re-review Opus 11/12 addressed, phần dư chữ gộp vào commit khép phiên)**: I1 `xepHistory` ghép theo
+  **cặp** (tin `user` + lời đáp AI ngay sau, ≤ 3 cặp cuối — tin mồ côi không lên Gemini); M4 cổng máy-chưa-sẵn xét
+  `chuDeBiChanOnline` TRƯỚC `matMang`; hằng mới **`kMayChuHongTuChoi`** (*"Máy chủ không phản hồi; AI trên máy chỉ nhận xét được
+  trên số liệu của bạn trong app."*) cho câu định nghĩa / tư vấn khi vừa rơi từ online; `chuDeBiChanOnline` thôi chặn `'lãi suất'`
+  trần — chỉ *ngân hàng / hôm nay / hiện nay* (+ không dấu), đường trên máy không đổi; chữ tờ thông tin + Riêng tư thêm vế history;
+  ca 403 → `lamMoi`; M1 không nối chữ sau Dừng; hai docstring sai. Ba câu hỏi còn lại người dùng chốt: *Đang nghĩ…* sau tờ **giữ**;
+  nhánh `catch` có chữ vẫn chưa có ca phủ (để). Đơn 47: lớp lỗi huỷ *tuỳ thời điểm* (nhận diện bằng `signal.aborted`), tiêu chí
+  Dừng đo **ba** thời điểm.
+- **Số đo** (2026-10-18 khuya tại `1c6ab600`, sau đợt sửa + F4): `flutter test` **7.392 pass / 10 skip / 0 fail** (6 phút 29
+  giây, một mình; +18 đợt sửa, +6 F4), `flutter analyze` **20** (mức nền), `ai_chat_page.dart` **1.153** dòng. Lúc xong Task 12 (2026-10-17):
+  `flutter test` **7.368 pass / 10 skip** (trước 7.240; **+128** — 52 ở 8 tệp test mới: `khung_sse` 8 ·
+  datasource 16 · `duong_hoi` 16 · `cong_tac_online` 3 · bốn widget 9; 76 ở 5 tệp sửa: `chu_de_chan` +43 · `ai_chat_page` +24 ·
+  `ly_do_khoa` +4 · `cai_dat_ai_page` +4 · `auth_interceptor` +1); chạy một mình 7 phút 43 giây. `flutter analyze` **20** (mức
+  nền, 0 trong tệp lượt này). `ai_chat_page.dart` 1.079 → **1.141** dòng (đỉnh 1.164 sau Task 9, `mienTru` vẫn rỗng);
+  `cai_dat_ai_page.dart` 633 → **694**; `injection_container.dart` 1.031 → 1.039.
+- **Stitch** ba màn (`list_screens` 129 → 132; ba lượt gọi đều `timeout`, màn có sau ~25 phút): `1896d02b…` bong bóng online ·
+  `7a6519d6…` tờ thông tin · `b320f4b9…` Cài đặt AI công tắc — người dùng xác nhận **đạt** 2026-10-17 tối (spec §7). Chữ tờ +
+  Riêng tư nay thêm vế *"và vài tin gần nhất của cuộc trò chuyện"* (người dùng chốt 2026-10-18 khuya) — lệch Stitch đúng một vế,
+  không vẽ lại.
+- **Nghiệm thu OnePlus 13R (CPH2691, Android 16, ≈ 361 dp) — 2026-10-18 00:08–00:40**, bản debug `418b9e2d` với `baseUrl` đổi tạm
+  `127.0.0.1` qua `adb reverse` (không commit), backend dev Node v22.19.0 chạy thật, `gemini-3.8-flash` + khoá dev; tài khoản thử
+  `quangdat` (id 18) nâng Premium **tạm** trên CSDL dev bằng một câu `UPDATE` (người dùng cho phép đích danh) rồi trả về Basic cho ca
+  7. **Cổng G0 đạt**: Gemini trả lời thật (15–40 s / lượt). **Đạt** theo chữ trên màn: ca 1 (nhãn *Trợ lý online* chấm xanh, không
+  chip) · ca 2 (Gemini và máy đều *chưa có khoản chi*) · ca 3 (gỡ `adb reverse` → nhãn đỏ *AI trên máy · máy chủ không phản hồi*) ·
+  ca 4 (máy bay: 0 dòng `[Online]`) · ca 6 (tờ một lần với chữ mới; công tắc tắt → đi máy, 0 request) · ca 7 (Basic: băng khoá, 0
+  request) · ca 8 (từ chối tức thì) · ba quyết định người dùng (A3 `kMayChuHongTuChoi` · *lãi suất kép* đi Gemini, *lãi suất ngân
+  hàng hôm nay* từ chối · chữ history, không tràn 361 dp) · I1 (câu online ngay sau câu bị chặn: không lỗi history, không breaker)
+  · `DuPhongOnline` (Google 503 "high demand" ×4 trong 15 phút) rơi về máy, câu ⚠️ không hiện. **Ca 5** đo được nửa client: Dừng lúc
+  đang chờ → `[Online] lỗi cancel` 5 s, socket đóng thật, không bong bóng; *"giữa dòng"* không bắt được (chữ chảy trong < 2,4 s —
+  chu kỳ `uiautomator dump` trên máy). **Bỏ, người dùng chốt**: ca 9 + M4 (không xoá mô hình 2,41 GB).
+- **Còn để** (cả ba thuộc backend — **G96**, đơn 47 việc 5–7 có số đo): (1) Dừng không tới server — client đóng socket (ESTABLISHED
+  tới :3000 4 → 2 trong 1 s) nhưng backend không ghi dòng ngắt kết nối, *"Hoàn tất 14590ms"* 12 s sau → `req.on('close')` không nổ;
+  (2) sau `meta` server im > 45 s khi Gemini suy nghĩ (49,9 s; curl 91 s) → client `receiveTimeout` rơi về máy trong khi server
+  chạy tới cùng — người dùng chốt **giữ 45 s**, xin keep-alive `: ping`; (3) `maxOutputTokens: 1024` gồm token suy nghĩ → câu dài cụt
+  ở điểm ngẫu nhiên, client hiện phần cụt không cảnh báo (đúng hợp đồng `done {}`). Ngoài phạm vi: **G95** `coVeLenhTao` bắt nhầm
+  *"Hãy viết 15 lời khuyên tiết kiệm tiền…"* thành lệnh tạo (Gemma đọc ~5 s rồi câu mới đi online).
+
+### ↩️ Hoàn tác kỳ trả kiểu cũ: đưa kỳ về chưa trả, không hoàn tiền (2026-10-17 tối, người dùng chốt)
+
+Gỡ điểm chờ của việc 4c (khối 🔓 bên dưới, *Còn để* dòng đầu): xoá khoản trả kiểu cũ ở Sổ xong thì kỳ vẫn `Payed`, Hoàn
+tác lặp lại câu bảo xoá ở Sổ — kỳ không còn lối về chưa trả. Người dùng chọn *"hỏi rồi đưa kỳ về chưa trả"*, duyệt chữ
+hộp và luật kỳ kế tiếp; việc nhỏ nên thiết kế trong chat (không spec), inline, TDD — mỗi ca canh chính thử bằng bản sai
+có chủ ý. Mục 6.1 · 6.3 · 6.10 `BILL_DOCUMENTATION.md`.
+
+- **Rẽ ở trang theo bản đồ khoản chi**: `hoiHoanTacHoaDon(context, bill, coKhoanTra:)` — trang Hoá đơn
+  `payments[bill.id] != null` (đi qua `_buildBillItem` → `_HangSoTien`), trang Chi tiết `_khoanChi.containsKey(b.id)`.
+  Không có khoản → hộp *"Không tìm thấy khoản chi của lần trả này… hãy xoá nó ở đó trước; bước này không đổi số dư ví.
+  Đưa kỳ "…" về chưa thanh toán [và gỡ kỳ kế tiếp (hạn dd/MM/yyyy, chưa trả)]?"* → **Đưa về chưa trả** →
+  `DatLaiChuaTraEvent`. Khoản kiểu cũ không có `billId` nên không bao giờ ở trong bản đồ — rẽ không phải đoán. Không đưa
+  lên Stitch (biến thể chữ của hộp sẵn có; người dùng đồng ý).
+- **Vế kỳ sau chỉ khi thật sự có** (`01c54fe5`, người dùng chốt sau khi máy ảo bắt): *"và gỡ kỳ kế tiếp (hạn dd/MM/yyyy,
+  chưa trả)"* theo `kySauConPhaiTra` (`bill_chain.dart` — kỳ sau nối chuỗi, chưa xoá mềm, `conPhaiTra`; trang Hoá đơn trên
+  `state.bills`, Chi tiết trên `_chuoi`). Bản đầu nhắc theo `isRecurrence`: kỳ kiểu cũ *di h0c* 16/09 không nối chuỗi với
+  kỳ 23/09 (tạo trước cột nối) nên kỳ 23/09 vẫn còn — hứa sai. Không đoán kỳ sau theo tên + hạn; hệ quả chấp nhận: hai kỳ
+  cùng mở, trả lại kỳ cũ sinh kỳ trùng hạn với kỳ không nối (G87 không gộp, khác gốc chuỗi).
+- **`BillRepository.datLaiChuaTra`**: tự kiểm lại (chưa trả → `BillNotPaidException`; còn khoản gắn `billId` →
+  `BillPaymentStillLinkedException` mới); `Pending` + `isPaid false` + `pending`; không đụng sổ, không đụng số dư. ⚠️
+  **Kỳ kế tiếp chỉ gỡ khi `conPhaiTra`** — kỳ kiểu cũ là kỳ cũ, tháng sau thường đã trả / bỏ qua.
+- Câu lưới an toàn của `BillUndoUnavailableException` đổi thành *"Không tìm thấy khoản chi của lần thanh toán này. Mở lại
+  trang rồi bấm Hoàn tác để đưa kỳ về chưa trả."* — **"mở lại trang"** vì hai trang không nạp lại bản đồ sau
+  `BillError` (thiết kế duyệt ghi *"bấm Hoàn tác lại"*; đổi sau khi đọc listener của hai trang).
+- ✅ **`undoPayment` cũng chỉ gỡ kỳ sau còn phải trả** (`bad1c077`, người dùng chốt *"sửa ngay, cùng luật"*): bản trước gỡ
+  vô điều kiện, mà tab Lịch sử bày Hoàn tác cho mọi kỳ đã trả → hoàn tác tháng 9 khi tháng 10 đã trả là xoá mềm luôn tháng
+  10, khoản chi của nó thành mồ côi (suy từ mã khi làm lượt này; ca canh đỏ với bản cũ). Hộp hoàn tiền nhắc kỳ sau theo
+  `kySauConPhaiTra` (chung vế `_veKySau` với hộp "Đưa về chưa trả"; trước theo `isRecurrence`). Bộ gỡ xung đột không đổi
+  hành vi. Hệ quả chấp nhận: trả lại kỳ vừa hoàn tác sinh kỳ trùng hạn với kỳ sau đã trả — `payBill` từ chối nó, lượt gộp
+  G87 sau lần kéo về gỡ nó.
+- ✅ **`undoSkip` (Hoàn tác bỏ qua) cùng luật** (`53e6d15a`, người dùng duyệt *"ok sửa"*): chỉ gỡ kỳ sau còn phải trả; hộp nói *", và
+  kỳ kế tiếp (hạn …, chưa trả) sẽ bị gỡ"* theo `kySauConPhaiTra` (`_nhanKySau` chung cho ba hộp Hoàn tác). Ca canh đỏ với
+  bản cũ: repository 2 (kỳ sau đã trả / bỏ qua giữ nguyên), trang Hoá đơn 2, trang Chi tiết 1 (đi trọn trên CSDL thật).
+  Chưa nghiệm thu máy ảo: máy ảo không có kỳ nào đang bỏ qua — thử phải *Bỏ qua kỳ* rồi hoàn tác (đổi dữ liệu thử).
+- **Số đo**: `flutter test` **7.240 pass / 10 skip** (trước 7.213; +27 — `9971a26b` +12: repository 7, bloc 2, trang Hoá
+  đơn 1, trang Chi tiết 2; `01c54fe5` +7: `kySauConPhaiTra` 5, mỗi trang 1; `bad1c077` +3: `undoPayment` giữ kỳ sau đã trả
+  / bỏ qua, hộp hoàn tiền khi kỳ sau đã trả; `53e6d15a` +5: `undoSkip` 2, trang Hoá đơn 2, trang Chi tiết 1; ca cũ *"hoàn tác hỏi xác nhận"* / *"báo lỗi không làm trắng"* nhận một khoản
+  gắn `billId` để vẫn canh nhánh hoàn tiền); `flutter analyze` 20 (mức nền, 0 trong tệp lượt này).
+- ✅ **Nghiệm thu máy ảo** `FlowMoney_16G` (`-gpu host`, 411 dp, tài khoản 10): ba kỳ kiểu cũ (*di h0c* 16/09, *Kiem*
+  11/09, *TestAuto* 06/09) mở hộp mới ở cả hai trang, kỳ có khoản gắn `billId` vẫn hộp hoàn tiền. Trọn luồng trên
+  *TestAuto* (người dùng cho phép): xoá khoản kiểu cũ ở Sổ (ví *test* −100.000 → −90.000 đ) → Hoàn tác → Đưa về chưa trả
+  (tab *Cần thanh toán (5) · Lịch sử (8)*, ví không đổi) → trả lại, ngày 06/09 (ví −100.000 đ, tổng −3.256.000 đ như lúc
+  đầu, dòng có *"Trả 06/09/2026"*). Kỳ *TestAuto* 13/09 do lần trả sinh ra (hàng tuần) **đã xoá** qua màn xác nhận xoá
+  theo lựa chọn của người dùng — tab về *Cần thanh toán (4) · Lịch sử (9)* như đầu phiên. Chờ đẩy khi backend chạy: khoản
+  kiểu cũ xoá mềm, khoản mới, kỳ 06/09, kỳ 13/09 xoá mềm. Sau `bad1c077`: hộp hoàn tiền của *Netflix* 28/09 (kỳ 05/10 đã
+  trả) **không** hứa gỡ kỳ sau; của *TestAuto* 06/09 (lúc kỳ 13/09 còn) nêu *"(hạn 13/09/2026, chưa trả)"*. Danh sách cập
+  nhật chậm ~1–2 s trên máy ảo.
+
+### 🔓 Việc 4c — khoản trả hoá đơn khoá theo `billId`; khoản kiểu cũ / mồ côi mở khoá có cảnh báo (2026-10-17, người dùng chốt)
+
+Spec `docs/superpowers/specs/2026-10-17-chu-so-huu-khoan-tra-hoa-don-design.md`; kế hoạch 8 task (gitignore) thi công bằng
+agent con (Fable soát kế hoạch — 2 lỗi chặn ở test, chạy thử trên worktree tạm; Sonnet làm; Opus soát từng task + toàn
+nhánh). Mục 6.10 `BILL_DOCUMENTATION.md`.
+
+- **Luật** (`a385bd4a`): `transactionOwnerOf(tx, {hoaDonDaXoa = false})` khoá theo `billId`, không theo tiền tố — ghi chú
+  hỏng lúc kéo về không làm mất khoá; khoản **kiểu cũ** (tiền tố, không `billId`) và **mồ côi** (`billId` + hoá đơn đã xoá
+  mềm) thành của chính nó; `canhBaoXoaTaiSo` + `cauXacNhanXoaGiaoDich` giữ câu chữ một chỗ.
+- **Cổng** (`44a4c2e2`): `HoaDonDaXoaNguon` + `hoaDonDaXoaCua` ở `transaction/data/`; DI nối
+  `BillRepository.getById(id)?.isDeleted` (ca canh `getById` đọc cả hàng xoá mềm); không cạnh `transaction → bill`.
+- **Widget** (`6afbac40`): vuốt xoá hỏi xác nhận kèm cảnh báo cho khoản đã mở khoá (giao dịch thường vẫn vuốt là xoá);
+  bảng chi tiết nhận `bool hoaDonDaXoa`. **Trang** (`5da7f908`): Sổ giao dịch + Chi tiết ngân sách hỏi cổng trước khi mở
+  bảng, ghép câu cảnh báo vào hộp xoá; trang Hoá đơn không đổi.
+- **Câu Hoàn tác** kiểu cũ chỉ sang Sổ giao dịch, nói kỳ vẫn ghi đã trả (`b55d8906`); ca canh kéo về `idbill` có / thiếu
+  (`f1a405e7`) và `"idbill": null` tường minh — hình dạng server thật gửi (`8e1e1e2d`, sau review toàn nhánh); chú thích
+  lỗi thời về `billId` / `goalId` "cục bộ, kéo về luôn trống" (`7baeb3a6`, `ec7aff16`).
+- **Số đo**: `flutter test` **7.213 pass / 10 skip** (trước 7.178; +35 — preflight ước +34, lượt sửa cuối +1);
+  `flutter analyze` 20 (mức nền, 0 trong tệp 4c).
+- **Nghiệm thu máy ảo** `FlowMoney_16G` (`-gpu host`, 411 dp, tài khoản 10): khoản kiểu cũ *di h0c* (06/09) vuốt → hộp
+  "bản cũ" → Hủy, còn nguyên; bảng có Sửa · Xoá, hộp ghép cảnh báo + câu chung. Khoản mồ côi: hoá đơn thử *Thu mo coi
+  1710* (12.000 đ, không lặp) trả → xoá kỳ đã trả → ở Sổ vuốt → hộp "Hoá đơn của khoản này đã xoá" → Xóa → tổng số dư về
+  đúng −3.256.000 đ như trước lúc thử (dữ liệu thử đã dọn; hoá đơn thử xoá mềm chờ đẩy khi backend chạy). Khoản của hoá
+  đơn còn (*Kiem t…* 19/09) vuốt → thông báo khoá. Chi tiết ngân sách Ăn uống: giao dịch thường có Sửa · Xoá, hộp chỉ câu
+  chung.
+- **Còn để** (báo người dùng): ✅ ~~xoá khoản kiểu cũ ở Sổ xong, kỳ vẫn `Payed`; bấm Hoàn tác lại vẫn hiện câu bảo xoá
+  ở Sổ~~ — **gỡ cùng ngày** (khối ↩️ bên trên: Hoàn tác hỏi đưa kỳ về chưa trả không hoàn tiền).
+  `khoaNhomCua` (B2) vẫn chỉ loại theo `billId` (spec mục 4). `app_database.g.dart` còn docstring cũ của cột `billId`
+  (không chạy `build_runner` lượt này) — lần sinh kế ra một khối diff chỉ là chú thích.
+
+### 🗑️ Màn xác nhận xoá hoá đơn; "Nhắc trước" là mặc định cho hoá đơn mới (2026-10-17, người dùng chốt)
+
+Người dùng chọn bốn việc từ danh sách bàn giao: **1** màn xác nhận xoá hoá đơn, **4b** hàng "Nhắc trước", **4** đơn CAN-LAM
+về tài liệu thông báo, **4c** spec `transactionOwnerOf` đọc `billId`. Hai việc mã làm inline, TDD; mỗi ca canh chính thử
+bằng bản sai có chủ ý.
+
+- **Việc 1** (`9f9125e4`, mục 6.10 `BILL_DOCUMENTATION.md`): ba lối xoá (thẻ danh sách, trang Chi tiết, form Sửa) qua
+  **`xacNhanXoaHoaDon`** → route `/bills/:id/delete` (Stitch `124611f0…`), thay ba `AlertDialog`. Trang chỉ hỏi
+  (`pop(true/false)`); chỗ gọi gửi `DeleteBillEvent`. `bill_delete_page.dart` viết lại bằng dữ liệu thật (mockup cũ rút
+  khỏi danh sách chờ quét 11). Câu phụ theo trạng thái kỳ (người dùng chốt) vì xoá chỉ gỡ **một** hàng: còn phải trả —
+  câu Stitch + "không tạo kỳ kế tiếp" nếu lặp; đã trả — "hãy Hoàn tác trước khi xoá"; bỏ qua — chỉ gỡ khỏi danh sách.
+  Bẫy có sẵn lúc ấy: xoá kỳ đã trả thì khoản chi ở lại sổ và bị khoá (owner theo tiền tố) mà nút Hoàn tác mất —
+  ✅ gỡ ở việc 4c (khối 🔓 bên trên).
+- **Việc 4b** (`96ae06fb`): người dùng chọn *mặc định cho hoá đơn mới* (không gỡ hàng). Một hằng `kMucNhacTruoc`
+  (1 · 3 · 5 · 7) cho chip form Thêm, danh sách form Sửa, hàng Cài đặt; form Thêm chọn sẵn chip qua `SoNgayNhacNguon` +
+  `mucNhacChonSan` (ngoài bốn mức → 3; lựa chọn tay không bị đè); câu phụ hàng Cài đặt nói cả hai nghĩa; tool AI
+  `danh_sach_hoa_don` đọc cùng ngưỡng (`CongCuHoaDon(soNgayNhac:)`, DI truyền một chỗ).
+- **Nghiệm thu máy ảo** `FlowMoney_16G` (`-gpu host`, 411 dp, tài khoản 10): màn xác nhận từ thẻ danh sách (kỳ đang mở
+  của hoá đơn lặp — câu "không tạo kỳ kế tiếp"), từ tab Lịch sử (kỳ đã trả — câu "Hoàn tác trước khi xoá"), từ trang Chi
+  tiết (Hủy bỏ quay về Chi tiết); Cài đặt: bốn mức, câu phụ ba dòng không tràn; đặt 7 → form Thêm chọn sẵn chip **7
+  ngày**; tạo hoá đơn thử *Thu xoa 1710* rồi xoá qua *Xác nhận Xóa* → biến khỏi danh sách, **một** toast. Dọn: hoá đơn
+  thử **xoá mềm** qua giao diện (chờ đẩy khi backend chạy), tuỳ chọn trả về **3**.
+- **Số đo**: `flutter test` **7.178 pass / 10 skip** (trước 7.146; +32 ca, ba tệp test mới — `_test.dart` 632);
+  `flutter analyze` 20 (mức nền). Schema v31 không đổi.
+- **Còn để** (ngoài phạm vi, báo người dùng): ở 320 dp hai hàng ngưỡng tiền của Cài đặt thông báo (`HangNguongSoDu`,
+  `HangNguongChiLon`) tràn 12 / 28 px dưới font Ahem của `flutter test` — có từ trước, chưa đo trên máy hẹp thật.
+
+### 🔗 Gỡ vòng cụm {analytics, bill, category, transaction} ở tầng domain — quét 29 `conCho` rỗng (2026-10-16, người dùng chốt)
+
+Người dùng chốt: chiều chuẩn **`analytics → bill → transaction → category`**; cả ba lát một đợt; lát 3 **tách theo dữ
+liệu hàm đọc** (không dời nguyên bốn tệp — `category/data/models/category_suggestion.dart` đọc hằng `kNguonGoiY*` nên dời
+nguyên tệp sinh vòng ẩn qua `data/models` mà quét 29 không thấy). Spec `docs/superpowers/specs/2026-10-16-go-vong-mang-domain-design.md`.
+Không màn hình, số liệu, hành vi nào đổi.
+
+- **Lát 1** (`a74ea68d`): `khoan_vao_thong_ke.dart` → `transaction/domain/`; `LuaChonLoc` → `transaction/data/models/`.
+  Rút 5 cạnh.
+- **Lát 2** (`3e1d9e0d`): hằng `kGhiChuTraHoaDon` → `transaction/domain/transaction_owner.dart` (`bill_note.dart` giữ hàm
+  `ghiChuTraHoaDon`); `khoan_lap.dart` → `bill/domain/`. Rút 3 cạnh.
+- **Lát 3** (`f702a884`): `laGhiChuMay` → `khoan_vao_thong_ke.dart`; `mauHocTu` + `mauSoTienTu` → tệp mới
+  `transaction/domain/mau_hoc_danh_muc.dart`; `gan_hang_loat.dart` → `transaction/domain/` trừ `hopLeTheoChieu` →
+  `category/domain/category_classify.dart`; `kDungSaiTien` → `core/utils/dung_sai_tien.dart`. Rút 2 cạnh — `conCho` rỗng.
+- Bằng chứng mỗi lát: quét 29 đỏ đúng các dòng *"đã gỡ — rút"* (5 · 3 · 2) trước khi sửa danh sách. Mốc
+  `flutter test` **7.146 pass / 10 skip** không đổi qua ba lát; `flutter analyze` 20.
+- Đo sau đợt: 14 mảng, 180 tệp domain, 26 cạnh mảng (trước: 14 · 179 · 32). Số tệp `.dart` (`git ls-files`, 2026-10-16):
+  `lib/` 618 · `features/` 508 · `core` 96 · analytics 61 · transaction 76 · bill 39 · category 22 · tệp `*_test.dart` 629.
+- Còn để lúc ấy: chú thích của `kGhiChuTraHoaDon` (dời nguyên văn) nói `TransactionEntity` không mang `billId` — ✅ sửa
+  ở việc 4c (2026-10-17, khối 🔓).
+
+### 🔕 Hoá đơn tắt nhắc là tắt THẬT; nhãn "Sắp đến hạn" theo tuỳ chọn "Nhắc trước" (2026-10-16, người dùng chốt)
+
+Lượt soát toàn đợt 🧹 phát hiện `bill.timeNotification` NULL bị **ba nơi hiểu ba cách**: form Thêm hoá đơn ghi NULL khi
+tắt công tắc "Nhắc trước hạn" và màn Chi tiết / bảng Thanh toán hiện "Không nhắc"; bộ luật thông báo và bộ đặt lịch hệ
+điều hành lấp NULL bằng tuỳ chọn "Nhắc trước" chung (**tắt mà vẫn bị nhắc** — cả thông báo trong app lẫn lịch màn hình
+khoá); nhãn "Sắp đến hạn" dùng mốc 3 cố định. Người dùng chọn "Sửa luôn" rồi "tắt là tắt thật".
+
+⚠️ **Chờ backend — đơn CAN-LAM 45** (lượt soát Opus bắt): `/sync/push` ép NULL thành `'3'` khi tạo (`|| '3'`) và giữ số cũ
+khi cập nhật (`?? existing`), pull trả về và client ghi đè — **tắt nhắc chỉ sống tới vòng đồng bộ đầu tiên**. Đo PostgreSQL
+dev (chỉ đọc): 37 hoá đơn sống, **0** mang NULL — hệ quả của phép ép. Nghiệm thu máy ảo bên dưới chạy khi backend dev tắt
+nên không đi qua vòng ấy. Client không đổi thêm; backend sửa là tính năng tự đúng.
+
+- `d657b065` — `soNgayNhacRieng(bill)` (`bill/domain/bill_nhac_truoc.dart`; NULL / chuỗi không đọc được → `null` = tắt).
+  Bộ luật bỏ hoá đơn tắt nhắc **sau** nhánh quá hạn (quá hạn vẫn báo); bộ đặt lịch bỏ nó **trước** `khongHuy.add` (lịch
+  cũ bị huỷ ở `resync` kế). `NotificationRuleInput.defaultBillLeadDays` gỡ (không còn người đọc).
+  `billDisplayStatusOf(…, {macDinh})`. Bốn ca ghim cách cũ lật (rules ×2, scheduler, scanner) + ca "tắt nhắc vẫn báo
+  quá hạn", "tắt nhắc thì lịch cũ bị huỷ", `bill_nhac_truoc_test`.
+- `d956bd9a` — cổng `bill/data/so_ngay_nhac_nguon.dart` (DI nối `NotificationPrefsStore`; `bill/` không import
+  `notification/`); trang danh sách, trang chi tiết, bảng Thanh toán truyền tuỳ chọn vào nhãn. Mỗi ca đỏ trước khi nối.
+- Commit tài liệu cùng đợt: mục 7b / 7c `BILL_DOCUMENTATION.md` (kèm sửa câu cũ *"cột không nằm trong payload đẩy"* —
+  sai, payload 21 trường có `time_notification`), `NOTIFICATION_FEATURE.md`, câu phụ hàng "Nhắc trước" ở Cài đặt thông
+  báo (`hang_nguong.dart`: câu cũ hứa nhắc cho hoá đơn không tự đặt số ngày).
+- **Người dùng chốt thêm:** hoá đơn bật **tự trả** mà tắt nhắc cũng **không** nhận lời báo trước "Hoá đơn sắp được tự trả"
+  (`reminder_scheduler.dart`) — tắt là tắt hết; thông báo "đã tự trả" sau khi trả vẫn có.
+- **Còn để (lúc ấy):** tuỳ chọn "Nhắc trước" chỉ là ngưỡng nhãn của hoá đơn tắt nhắc; tool AI `danh_sach_hoa_don`
+  dùng mốc 3. ✅ Cả hai làm 2026-10-17 — người dùng chọn *mặc định cho hoá đơn mới* (khối 🗑️ ngay đầu mục 14).
+
+### 🧹 Nợ kiến trúc nhỏ — gỡ vòng `bill` ↔ `notification` ở tầng domain, quét 29, bịt lỗ quét 25 / 27 / 28 (2026-10-16, người dùng chốt)
+
+Người dùng chốt năm việc, thi công bằng agent con; không màn hình, số liệu, hành vi app nào đổi. Sáu commit mã / test (cộng hai commit tài liệu và một commit sửa chữ cuối) trên nhánh
+`TranQuangDat` từ `e01bd561`:
+
+- **Gỡ vòng ở tầng domain** (`16f0997e`): `billLeadDays` + `mocNhacMacDinh` dời từ `notification/domain/notification_rules.dart`
+  về `bill/domain/bill_nhac_truoc.dart` — luật thuần nằm ở mảng của dữ liệu nó đọc. `bill_status.dart` thôi import
+  `notification_rules.dart`; `reminder_scheduler.dart` và bộ luật import từ tệp mới. ⚠️ Cạnh
+  `bill/application/bill_payment_conflict_resolver.dart → notification_rules.dart` (`NotificationKind.billPaidOnOtherDevice`)
+  **còn và cố ý**: bộ điều phối phát thông báo, không phải luật thuần.
+- **Bộ đọc chỉ thị chung** (`4ddb182e`, `6d167603`): `test/helpers/chi_thi_dart.dart` (`duongChiThi`, `dichTrongLib`;
+  13 ca ở `chi_thi_dart_test.dart`, test helper không đếm vào dãy quét). Quét 25 (luật 5, 5b, 7), quét 28 và quét 27 (luật 2,
+  4) đọc chỉ thị qua nó: thấy `part` (không `part of`), từng vế `if (…)` của import có điều kiện, chỉ thị xuống dòng, và
+  `export` (quét 27 trước chỉ đọc dòng `import `). Ba giới hạn đã biết ghi ở docstring helper (dòng dạng chỉ thị trong chuỗi
+  `'''`; chú thích chen giữa các vế điều kiện; dòng chỉ thị trong chú thích khối `/* … */`) — hiện 0 trường hợp trong `lib/`.
+- **Quét 27 luật 1** (`bf3bb08d`): `mauKieu` bắt thêm `is X ?` và `X(` (hai dạng tách bạch: mẫu `case X(…)` của Dart 3, và dựng hàng `X(…)` trực tiếp). Đo: 0 chỗ trúng
+  mới trong phạm vi quét.
+- **Quét 29** (`45113fd0`) `core/ui/domain_khong_vong_mang_test.dart`: đồ thị cấp mảng (nguồn chỉ `features/*/domain/`, đích
+  mọi tầng của mảng khác); mọi cạnh có hai đầu cùng một thành phần liên thông mạnh > 1 phải ở danh sách chờ `conCho`
+  **mười cạnh**, chỉ được giảm (cạnh trong danh sách mà hết nằm trên vòng → đỏ "rút"). Đo 2026-10-16: 14 mảng, 179 tệp domain,
+  32 cạnh; cụm duy nhất {analytics, bill, category, transaction} = bốn cặp hai chiều (`analytics|category`,
+  `analytics|transaction`, `bill|transaction`, `category|transaction`) + hai cạnh một chiều (`analytics->bill`,
+  `category->bill`). Luật trên **cạnh** (không trên cặp) vì thiết kế "cặp + cụm" mù ca cuối — vòng dài kéo thêm mảng vào cụm.
+- **Hai ca `moc_tu_tra_nen_test` / `moc_trich_nen_test`** (`949b5e62`): *mốc sớm nhất thắng* chạy cả hai thứ tự — thứ tự gốc
+  bắt bản sai "phần tử đầu thắng", thứ tự đảo bắt "phần tử cuối thắng"; mỗi bản sai chỉ một `expect` bắt được, cần cả hai.
+- **Số đo** (2026-10-16, sau `949b5e62`): `flutter test` **7.133 / 10 skip / 0 fail** (trước 7.118; +13 helper +2 quét 29),
+  `flutter analyze` **20** (mức nền không đổi, `MUC_NEN` không đổi). Test quét: **33** tệp (30 mang số 1–29, hai tệp số 14, 3
+  không số); số kế tiếp **30**.
+- **Bản sai đã chạy** (cấy vào `lib/` rồi hoàn tác): (a) `bill_note.dart` + import có điều kiện xuống dòng — quét 28 cũ XANH, mới
+  đỏ; (b) `uu_tien_hop_le.dart` + `export 'package:drift/drift.dart';` — quét 27 luật 2 cũ xanh, mới đỏ; (c) `so_du_vi_service.dart`
+  + `part '../application/x.dart';` — quét 25 luật 7 cũ xanh, mới đỏ; quét 29: xoá `'bill->transaction'` khỏi `conCho` · thêm
+  `'goal->wallet'` · cấy `import notification_rules.dart` lại vào `bill_status.dart` (cụm phình thêm ai_edge, notification) ·
+  cấy `category_classify.dart` vào `budget/domain/budget_health.dart` (budget kéo vào cụm) — cả bốn đỏ đúng chỗ.
+- **Nợ còn giữ có tên:** bốn cặp hai chiều của cụm {analytics, bill, category, transaction} (mười cạnh chờ của quét 29) —
+  người dùng chốt không gỡ đợt này (gỡ 2026-10-16, khối 🔗). Cạnh `application/` → `notification` còn, cố ý.
+
+### 🗳️ Bốn quyết định chờ người dùng — chốt và thi công (2026-10-16 tối)
+
+Người dùng chọn làm *"phần B"* trong danh sách việc không chờ backend (những việc chỉ cần họ quyết), rồi chốt cả bốn qua
+câu hỏi chọn được:
+
+- **Hàng năm nút nhanh Trang chủ → theo Stitch `c8f09f19…`** (`c65092c1`): chỉ *Thêm chi* nền đặc `#1A1A19`, bốn nút
+  trắng viền `#D5D5CE` + bóng, biểu tượng `arrow_downward` · `arrow_upward` · `sync_alt` · `qr_code_scanner` · `mic`, nhãn
+  cách 6 dp; giữ `Expanded` (kiểu `justify-between` của Stitch tràn ở 320 dp). Các màn Trang chủ khác trên Stitch không
+  vẽ hàng nút này — `c8f09f19…` là thiết kế duy nhất.
+- **Ô Nhập nhanh lúc nói → theo Stitch `d696e81e…`, trừ một điểm** (`796250ce`): nhãn *"Giọng nói & Gõ"* /
+  *"● Đang nghe…"*, đỏ lỗi `#BA1A1A` (viền · nút dừng ■ · chấm ghi), khối hai chip vào trong thẻ; GIỮ hai dòng trạng thái
+  hiện lần lượt. Tia sét giữ `#F25F5C` — hai màn Stitch (C2 `8afdfe11…`, C4) mâu thuẫn. Mục 8 `GIONG_NOI_FEATURE.md`.
+- **Dự án A / phép thử A2 → hoãn tới khi `litert-torch` #1013 đóng.** Kiểm 2026-10-16: còn mở, bình luận cuối 27/08. Mục
+  10.6 `AI_EDGE_FEATURE.md`.
+- **B1 học sai → đánh dấu + bỏ qua** (thiết kế duyệt cùng ngày, phương án gỡ: *mở Sửa rồi Lưu*): bảng cục bộ
+  `DanhMucAiDoans` (**schema v31**), `KetQuaDocCau.danhMucTuAi` (nhánh AI của `docCauGiaoDich`; `ketQuaTuBienDong` khi
+  Gemma chọn danh mục ảnh quét — lệnh tạo C3 không tạo giao dịch nên không có đường thứ ba), cubit đánh dấu ở `daGuiLuu`
+  (tạo mới, không tách) và gỡ ở đường sửa, B1 bỏ mẫu mang dấu ở `_hocTuSo` (mô hình + mẫu đề xuất) và `taiDuLieuGan`. Mục 5d
+  `CATEGORY_RATIONALE.md`. Ca canh học chạy hai chiều trên cùng sổ; bốn bản sai có chủ ý đều bị bắt. Hai ca canh có sẵn
+  phải sửa theo: số schema ở `bill_schema_v21_test` / `schema_v24` / `v29` / `v30`, danh sách DAO cấm của quét 22.
+- `flutter test` **7.118 / 10 skip / 0 fail** (+22 ca), `flutter analyze` **20**. ✅ **Nghiệm thu máy ảo** (`FlowMoney_16G`, `-gpu host`, APK debug cài 15:18 dựng từ
+  `af4963d7`): hàng năm nút đúng Stitch; ô Nhập nhanh chờ có nhãn *"Giọng nói & Gõ"*; bấm micro → nhãn *"● Đang nghe…"*,
+  viền đỏ, nút ■ đỏ, Điền khoá — đúng Stitch; 0 điểm ảnh vàng thuần trên ba ảnh. CSDL máy ảo di trú lên `user_version 31`,
+  dữ liệu nguyên (tài khoản 10: 138 giao dịch, 7 ví, 30 hoá đơn). Khung hình đầu sau lần mở đầu có di trú hiện 0 đ trước khi
+  dữ liệu nạp xong (vài giây sau đủ). Chưa đo: hai chip trong thẻ (cần câu nói thật lệch số), máy thật 320 dp — để lượt C4
+  trên OnePlus.
+
+### 🧾 Trang Hoá đơn — tab "Cần thanh toán" đếm theo kỳ này, kỳ các tháng sau dưới tiêu đề nhóm (2026-10-16, người dùng chốt)
+
+- **Lệch cũ:** thẻ tổng (`summarizeBills`) đếm hoá đơn chưa trả có hạn trước đầu tháng sau (kể cả nợ quá hạn), còn tab
+  (`splitBills`) đếm **mọi** kỳ chưa đóng. `payBill` sinh ngay kỳ tháng sau mỗi lần trả một hoá đơn lặp, nên lệch là
+  ca **thường**: máy ảo `FlowMoney_16G` có sẵn một hoá đơn hạn 04/12, tức với luật cũ tab ghi (5) khi thẻ ghi 4.
+- **Chốt** (người dùng chọn trong ba phương án, có xem bản vẽ ASCII): tab đếm **kỳ này**. Kỳ chưa trả có hạn từ đầu
+  tháng sau vẫn hiện trong tab, dưới tiêu đề **"CÁC THÁNG SAU (n)"**, không vào số. Tháng này hết nợ mà còn nhóm ấy
+  thì hiện *"Không còn hoá đơn nào phải trả trong tháng này."*. Phương án *"thẻ đếm mọi hoá đơn"* bị loại vì ngược
+  quyết định cũ (thẻ từng hiện 183.000 đ khi tháng ấy chỉ nợ 60.000 đ).
+- **Mã:** `thuocKyNay(bill, now)` ở `bill/domain/bill_status.dart` là định nghĩa duy nhất của "kỳ này", dùng chung
+  cho `summarizeBills` và `splitBills(bills, now)`. `BillSections` có thêm `chuaDongCacThangSau`.
+  `bill_page.dart` dựng thêm tiêu đề nhóm (key `bill-nhom-cac-thang-sau`) và dòng *"trong tháng này"*
+  (key `bill-thang-nay-trong`). Lượt sau cùng ngày: khối Nhận xét (`ai_edge/domain/goi_so_hoa_don.dart`) và tool
+  `danh_sach_hoa_don` (`hang_hoa_don.dart`, tập `ky_nay`) thôi chép tay phép chặn cuối tháng, gọi `thuocKyNay`
+  (refactor không đổi hành vi — 1.845 ca `ai_edge` + `bill` xanh trước và sau).
+- **Test:** +11 ca (7 domain, gồm ca bất biến *số trên tab = số trên thẻ* trên bốn mốc; 4 widget, gồm 360 dp). Bảy
+  bản sai có chủ ý làm đỏ **10/11** ca mới: luật cũ của `splitBills`, biên đóng, biên 00:00 ngày cuối tháng, so cùng
+  tháng (bỏ nợ cũ), chia kỳ trước khi xét đã trả, số tab cộng cả các tháng sau, luôn dựng nhóm. Ca *không tràn ở
+  360 dp* chưa thử với bản sai nào; nó chỉ đòi dựng được nhóm thật (*"CÁC THÁNG SAU (12)"*). `flutter test` **7.096 / 10 skip / 0 fail**, `flutter analyze` **20**.
+- **Nghiệm thu máy ảo** (`FlowMoney_16G`, `-gpu host`, APK debug 13:36): thẻ *"4 hóa đơn chưa thanh toán"* =
+  tab *(4)*. Nhóm *"CÁC THÁNG SAU"* hiện dưới kỳ quá hạn cuối, đếm đúng sau khi thêm rồi xoá mềm một hoá đơn thử hạn
+  16/11 (2 → 1). Ở 360 dp (`wm density 480`) có 0 điểm ảnh vàng thuần; mật độ đã trả về 420.
+- **Stitch:** lệnh `edit_screens` lên màn `e8b460b4…` trả **timeout** và không đổi màn ấy. Người dùng tự tạo màn mới
+  **`f4ed09da…` "Hoá đơn - Có mục Các tháng sau"** (đo `list_screens`: 128 → 129 màn, chỉ thêm màn này). Đối chiếu
+  HTML: tiêu đề `text-[12px] font-semibold tracking-[0.05em] uppercase text-[#454743] mt-6 mb-2` — bản Flutter khớp cỡ,
+  độ đậm, giãn chữ và khoảng cách (đệm đáy thẻ 16 + đệm trên 8 = 24; dưới 8), **lệch màu**: đã dùng
+  `AppColors.textSecondary` `#767872` → đổi sang `Color(0xFF454743)` cục bộ (cùng khuôn `the_cho_xoa_trang_chu.dart`;
+  `AppColors.onSurfaceVariant` là bí danh của `#767872`), ca widget canh màu.
 
 ### 🔀 Gộp `main` @ `d72ccd45` (2026-10-16, commit gộp `e49100ed`) — Payment premium: đối soát chuyển thừa / thiếu, hoàn tiền có minh chứng, mã nhận diện 6 ký tự, hạn đơn 10 phút; client đặt đơn 44, mở G94
 
@@ -646,8 +1091,8 @@ src/Backend/
   
   **Đơn 43 B vẫn mở:** `findOrCreateOrderByCode` giống hệt từng dòng; đơn tự tạo lấy `amount` từ webhook nên luôn đi
   nhánh PAID, hậu quả không đổi.
-- Nhánh **đã push** cùng lượt này (người dùng chọn 2026-10-16): `fce511a1..22b09b8e` (đo `git rev-parse` remote = HEAD).
-  Commit ghi lựa chọn G94 sau đó chưa push.
+- Nhánh **đã push** cùng lượt này (người dùng chọn 2026-10-16): `fce511a1..22b09b8e`, rồi `51df7ff7` (commit ghi lựa
+  chọn G94) — đo `git rev-parse` remote = HEAD cả hai lần.
 
 ### 🧱 G88 gạch 4 + quét 28 — G88 ĐÓNG (2026-10-16, chín commit mã `48bba881` → `4b7740a3` (đếm bằng `git rev-list --count`) + commit test sau review toàn nhánh `36180d62`, đã push 2026-10-16 cùng lượt gộp `d72ccd45`; nghiệm thu máy ảo ✅ đạt 2026-10-16)
 
@@ -657,7 +1102,7 @@ Spec `docs/superpowers/specs/2026-10-15-g88-gach-4-va-quet-28-design.md` (khối
 - **Test quét:** quét 25 nay **tám** luật; **quét 28** mới (hai luật: `features/*/domain/` không import `presentation/`; đường `data/` phải là `data/models/`; `conCho` rỗng); số quét kế tiếp **29**.
 - **Đo bằng máy 2026-10-16 (HEAD `4b7740a3`):** `lib/core` import `features/` **178** = điểm ghép **170** (DI 111 · router 54 · `chay_nen` 4 · `phien_dieu_phoi_that` 1) + hạ tầng **8** (`sync_engine` 4 · `sync_payload_normalizer` 2 · `wallet_dao` 1 · `other_daos` 1); trước đợt 184 = 166 + 18. Domain → `presentation/` / `data/` ngoài `data/models/` **0**; 178 tệp domain. `flutter test` 7.075 → **7.085** pass / **10** skip (đo ở `36180d62` — lượt sửa sau review toàn nhánh thêm 3 ca; tại `4b7740a3` là 7.082), `flutter analyze` **20**.
 - ✅ **Nghiệm thu máy ảo** (APK `006ea8b0…`, `lastUpdateTime` 2026-10-16 01:06:11; 15 ảnh trước/sau, cắt 100 px thanh trạng thái): 3 cặp giống hệt (01 · 08 · 10), phần còn lại lệch giải thích được — ngày 15 → 16/10 (số ngày còn lại, nhịp chi, ngày hoá đơn, danh sách cam kết 30 ngày), toast đồng bộ khi backend tắt (09), cuộn lệch vài px, con trỏ nhấp nháy (11); vàng `#FFFF00` **0** ở 15 ảnh; `E/flutter` **0**; `SyncEngine` khởi động (17 dòng); app không chết lúc mở. ⚠️ **Lỗ:** đẩy / kéo thật với máy chủ (backend tắt — phủ bằng bộ test đồng bộ engine thật); lượt nền WorkManager thật; điều kiện quyền gói của lịch nền ở DI chỉ canh bằng ca đọc nguồn; Trợ lý AI trên máy ảo rơi về *"Chưa có mô hình"* (gói số `hang_tong_quan` phủ bằng test). Bước neo số dư của engine (cổng `datNeoNhieuVi`) có thêm ca đòi kết quả từ `36180d62` (`sync_pull_so_du_vi_test` — bắt cả bản "vá neo sau khi ghi" và ví chỉ chạm qua giao dịch kéo về; cổng làm rỗng thì ca *"pull KHÔNG ghi đè số dư"* vốn đã đỏ).
-- **Nợ còn giữ có tên, không thuộc G88:** vòng phụ thuộc `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart`; regex quét 27 còn hở. Các khối bên dưới là lịch sử có ngày — `lichNenKeTiep`, `core/sync/noi_bo_nghe_ket_qua_day`, `conChoCoreImport` trong chúng là đường / tên **tại thời điểm ấy**.
+- **Nợ còn giữ có tên, không thuộc G88 (cập nhật 2026-10-16):** vòng `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart` và regex quét 27 còn hở **đã trả** — xem khối 🧹 đầu mục này (mục 14); bốn cặp hai chiều của cụm {analytics, bill, category, transaction} đã gỡ cùng ngày 2026-10-16 — xem khối 🔗 đầu mục 14, `conCho` của quét 29 rỗng. Các khối bên dưới là lịch sử có ngày — `lichNenKeTiep`, `core/sync/noi_bo_nghe_ket_qua_day`, `conChoCoreImport` trong chúng là đường / tên **tại thời điểm ấy**.
 
 ### 🧱 Entity Thông báo + gạch 5 + gạch 6 — G88 gạch 3 đợt 4/4 ĐÓNG (2026-10-15, bảy commit mã `73429f46` → `08effea7`, đã push tới `fce511a1`; nghiệm thu máy ảo ✅ đạt 2026-10-15)
 
@@ -815,6 +1260,9 @@ Người dùng chốt 2026-10-11 làm **trước C4** (C4 giọng nói chạm đ
 - ⚠️ Các khối cũ hơn của mục 14 còn gọi hàm riêng tư của trang theo tên lúc viết. Bảng đổi tên: `_saveTransaction` + `_luuTach` → `ThemGiaoDichCubit.chuanBiLuu` · `_loadSuggestion` → `_napGoiY` · `_dienKetQua` → `dienKetQua` · `_dienTuCau` / `_onNoteChanged` (trang còn hàm chuyển tiếp cùng tên) → logic ở `dienTuCau` / `ghiChuDoi` · `_amountString` → `chuoiSoTien` · `_huong` → `huong` · `_selectedWallet` → `viNguon` · `_hienBanPhimSo` → `hienBanPhimSo` (đều ở `ThemGiaoDichState` / Cubit); `_henGoiYTheoForm`, `_goiYSoTien`, `_choPhanXu` giữ tên (riêng tư trong Cubit).
 
 ### 📝 Trợ lý online (hỗn hợp: có mạng hỏi backend Gemini, hỏng / mất mạng rơi về mô hình trên máy) — spec duyệt + kế hoạch viết, CHƯA thi công (2026-10-11 chiều, người dùng chốt để sau)
+
+> ✅ **Ảnh chụp 2026-10-11 — thi công xong 2026-10-17**, khối 🌐 đầu mục 14. Hai chỗ dưới đây khác mã: `coMangLucNay()` **không
+> làm** (dùng `coMangNgay()` có sẵn từ C4), và DI dùng `sl<DioClient>().dio` — spec mục 10 dòng 1–2.
 
 - Đảo quyết định treo từ 2026-09-26 (🛑 *chatbot trực tuyến chưa nhận*): người dùng chốt **"kết nối AI chatbox ở backend vào, khi
   có mạng dùng ở backend, không có thì offline"** và **"tuân thủ cấu trúc hệ thống, tránh sau này phải sửa lại"**. Brainstorm sáu phần,
@@ -1969,6 +2417,8 @@ vẫn ghi 0, vì client không sửa tệp ấy) *(đóng ở `eceb6c9` ngày h�
   (SSE `POST /api/ai/chatbot/chat/stream`, thẻ FHS, bảng cục bộ `LocalChatMessages`, nút đổi Online/Offline, 6 tiêu chí
   AC-MOB). Client **chưa nhận**: người dùng chọn AI trên máy để dùng được khi mất mạng, và chế độ này gửi số liệu sang
   Google. ⚠️ Hợp đồng API trong tệp ấy **lệch mã** ở `meta`, `done`, mã lỗi 503 và giới hạn `history` — đơn mới mục 3.
+  *(Ảnh chụp 2026-09-26. Người dùng đảo ngày 2026-10-11 — tích hợp **hỗn hợp**, thi công 2026-10-17: khối 🌐 đầu mục 14;
+  năm chỗ cố ý không làm theo tệp ấy ở đơn CAN-LAM 47.)*
 - 🛑 **Lỗi mã backend đo được 2026-09-26** (đơn mới mục 7; không chặn client vì client chưa gọi): khoản chi lưu **âm** trên
   PostgreSQL (truy vấn đọc: **23/23** hàng `Chi` âm, **6/6** hàng `Thu` dương) mà mã FHS cộng như số dương — quỹ khẩn cấp
   luôn **0**, 50/30/20 **âm**, top danh mục chi đảo, `compare_spending_periods` báo chi **giảm** khi chi tăng; test backend
@@ -4928,7 +5378,7 @@ hiện cũng không chứng minh lời gọi của mình tạo ra nó. Hỏi ng�
   > **Mức nền:** `flutter test` **2339/2339**, `flutter analyze` **25 issue / 0 error**.
 
 - **Bước 12 — `Auto_pay` qua đồng bộ, và bốn lỗi im lặng mà nghiệm thu hai máy ảo bắt được** (2026-09-13, **schema không đổi**). Bước cuối của chuỗi hoá đơn. Spec: `docs/superpowers/specs/2026-09-13-auto-pay-dong-bo-design.md`; chi tiết: mục **6.5** và **6.8** `docs/bill/BILL_DOCUMENTATION.md`. Payload hoá đơn **20 → 21 trường**; công tắc tự trả nay là thuộc tính của *hoá đơn* chứ không của *máy*, nên dòng phụ "chỉ nên bật trên một thiết bị" đã bỏ.
-  > **Rủi ro đóng bằng BA mảnh khớp nhau, thiếu mảnh nào cũng vô hiệu cả ba:** `auto_pay` đi qua đồng bộ (client) + `chanTraHaiLan` ở `upsertTransaction` (backend, `7779999`) + `BillPaymentConflictResolver` (client) — máy thua một cuộc đua nhận `BILL_ALREADY_PAID` thì tự gỡ khoản trả của chính nó và hoàn tiền. ⚠️ *(2026-10-09, G87: ba mảnh ấy chỉ chặn cùng `Idbill` — hai máy cùng trả một kỳ vẫn đẻ hai **kỳ con trùng** và bộ tự trả trừ tiền cho từng kỳ; client gộp kỳ trùng sau mỗi lần kéo về, khe còn lại xin server ở **đơn 41** `CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md`.)*
+  > **Rủi ro đóng bằng BA mảnh khớp nhau, thiếu mảnh nào cũng vô hiệu cả ba:** `auto_pay` đi qua đồng bộ (client) + `chanTraHaiLan` ở `upsertTransaction` (backend, `7779999`) + `BillPaymentConflictResolver` (client) — máy thua một cuộc đua nhận `BILL_ALREADY_PAID` thì tự gỡ khoản trả của chính nó và hoàn tiền. ⚠️ *(2026-10-09, G87: ba mảnh ấy chỉ chặn cùng `Idbill` — hai máy cùng trả một kỳ vẫn đẻ hai **kỳ con trùng** và bộ tự trả trừ tiền cho từng kỳ; client gộp kỳ trùng sau mỗi lần kéo về, khe còn lại xin server ở **đơn 41** `DA-XONG/CHAN_TRA_HAI_LAN_THEO_KY.md` — ✅ backend làm ở `3a5d320c`, client soát đạt 2026-10-18.)*
   > ⚠️ **Task 9 (nghiệm thu hai máy ảo) bắt được BỐN lỗi im lặng mà 2296 ca test đều không thấy** — đây là toàn bộ lý do task ấy tồn tại, và cả bốn đều thuộc loại "không lỗi, không log, chỉ dữ liệu sai":
   > 1. **Vòng lặp tự trả.** `undoPayment` kéo hoá đơn về `Pending` — đúng cho người dùng bấm tay, **sai ở đây**: `BILL_ALREADY_PAID` nghĩa là server ĐÃ có khoản chi. Bộ tự trả tin theo và trả lại ở chu kỳ sau → tạo → bị từ chối → gỡ → hoàn tiền → lặp. Đo **5 vòng trong 3 phút**, ví phình 350.000 mỗi vòng. Sửa: `BillDao.danhDauDaTra` (ghi **cả hai** cột `payStatus` + `isPaid`), gọi **trước** `markSynced`.
   > 2. **Gỡ nhầm khoản chi của máy thắng.** `undoPayment` tự tìm khoản chi bằng `getByBill`, một `LIMIT 1` **không `ORDER BY`** — mà trên máy thua thì *chắc chắn* có hai khoản chi sống cùng `billId` (của nó và của máy thắng, đã pull về từ 2026-09-12). Đo trên PostgreSQL: hoá đơn `d2332790` còn `Payed` nhưng khoản chi **duy nhất** của nó mang `Deleted_at`, và một kỳ kế tiếp bị xoá **17 ms** sau — dấu vân tay của một `db.transaction`. Sửa: `undoPayment` nhận thêm `transactionId`, resolver truyền `localId` server vừa từ chối.

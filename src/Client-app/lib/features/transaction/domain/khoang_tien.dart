@@ -16,15 +16,7 @@
 library;
 
 import '../../../core/utils/currency_formatter.dart';
-
-/// Dung sai khi so số tiền: **nửa đồng**.
-///
-/// `amount` là `double`, và khoản **điều chỉnh số dư** mang đuôi lẻ có thật. Một
-/// khoản đúng `500.000` mà máy giữ là `499999.99999994` sẽ rơi khỏi bộ lọc
-/// "từ 500.000" — không exception, không log, chỉ một dòng biến mất khỏi danh
-/// sách. Cùng ngưỡng mà `dieu_chinh_so_du_service.dart` và `ranhVuotTrungBinh`
-/// đã dùng cho đúng loại đuôi lẻ này.
-const double kDungSaiTien = 0.5;
+import '../../../core/utils/dung_sai_tien.dart';
 
 class KhoangTien {
   const KhoangTien({this.tu, this.den});

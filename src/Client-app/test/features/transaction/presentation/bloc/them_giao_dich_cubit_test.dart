@@ -10,6 +10,7 @@ import 'package:flowmoney/features/category/domain/category_suggestion_engine.da
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart'
     show kKetQuaGoiYBoQua, kKetQuaGoiYChon, kKetQuaGoiYKhac, kNguonGoiYHoc;
 import 'package:flowmoney/features/category/domain/phan_loai_so_tien.dart';
+import 'package:flowmoney/features/transaction/domain/mau_hoc_danh_muc.dart';
 import 'package:flowmoney/features/transaction/data/doc_cau_bang_ai.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
@@ -894,6 +895,59 @@ void main() {
           expect(nguon.phanHoiDaGhi, isEmpty);
         });
       });
+    });
+  });
+  // Người dùng chốt 2026-10-16 (vòng lặp học sai mục 5d `CATEGORY_RATIONALE.md`): giao dịch MỚI có danh mục do AI chọn
+  // mà người dùng lưu NGUYÊN thì đánh dấu — B1 bỏ nó khỏi mẫu học; mở Sửa rồi Lưu là gỡ dấu.
+  group('đánh dấu danh mục do AI chọn', () {
+    Future<ThemGiaoDichCubit> dienAi(NguonThemGiaoDichGia nguon, {bool tuAi = true}) async {
+      final c = taoCubit(nguon);
+      await c.moTrang();
+      c.dienKetQua(KetQuaDocCau(soTien: 45000, categoryId: 'food', danhMucTuAi: tuAi, ghiChu: 'bún chả'),
+          chonDuoc: [anUong, diChuyen]);
+      return c;
+    }
+
+    test('⭐ lưu nguyên danh mục AI → đánh dấu đúng giao dịch vừa lưu', () async {
+      final nguon = NguonThemGiaoDichGia(vi: [tienMat], danhMuc: [anUong, diChuyen]);
+      final c = await dienAi(nguon);
+      final r = await c.chuanBiLuu() as SanSangLuu;
+      c.daGuiLuu(r);
+      expect(nguon.aiDoanDaDanhDau, [(tx: r.giaoDich.single.id, dm: 'food')]);
+      expect(nguon.aiDoanDaGo, isEmpty);
+    });
+
+    test('đổi sang danh mục khác trước khi lưu → KHÔNG đánh dấu', () async {
+      final nguon = NguonThemGiaoDichGia(vi: [tienMat], danhMuc: [anUong, diChuyen]);
+      final c = await dienAi(nguon);
+      c.chonDanhMuc(diChuyen);
+      c.daGuiLuu(await c.chuanBiLuu() as SanSangLuu);
+      expect(nguon.aiDoanDaDanhDau, isEmpty, reason: 'người dùng đã sửa — đó là phán xét của họ, B1 được học');
+    });
+
+    test('danh mục KHÔNG từ AI (B1 / từ khoá / tên trong câu) → KHÔNG đánh dấu', () async {
+      final nguon = NguonThemGiaoDichGia(vi: [tienMat], danhMuc: [anUong, diChuyen]);
+      final c = await dienAi(nguon, tuAi: false);
+      c.daGuiLuu(await c.chuanBiLuu() as SanSangLuu);
+      expect(nguon.aiDoanDaDanhDau, isEmpty);
+    });
+
+    test('Điền lần hai bằng luật (cùng danh mục) xoá dấu của lần AI trước', () async {
+      final nguon = NguonThemGiaoDichGia(vi: [tienMat], danhMuc: [anUong, diChuyen]);
+      final c = await dienAi(nguon);
+      c.dienKetQua(const KetQuaDocCau(categoryId: 'food', ghiChu: 'phở'), chonDuoc: [anUong, diChuyen]);
+      c.daGuiLuu(await c.chuanBiLuu() as SanSangLuu);
+      expect(nguon.aiDoanDaDanhDau, isEmpty,
+          reason: 'cờ chỉ nói về lần điền GẦN NHẤT — để sót cờ cũ là đánh dấu một danh mục luật đã chọn');
+    });
+
+    test('đường SỬA: lưu là gỡ dấu của chính giao dịch ấy, không đánh dấu mới', () async {
+      final nguon = NguonThemGiaoDichGia(vi: [tienMat], danhMuc: [anUong]);
+      final c = taoCubit(nguon, dangSua: giaoDichCu(), danhMucDangSua: anUong);
+      await c.moTrang();
+      c.daGuiLuu(await c.chuanBiLuu() as SanSangLuu);
+      expect(nguon.aiDoanDaGo, ['tx-cu'], reason: 'mở Sửa rồi Lưu = người dùng đã nhìn lại (người dùng chốt)');
+      expect(nguon.aiDoanDaDanhDau, isEmpty);
     });
   });
 }

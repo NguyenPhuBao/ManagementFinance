@@ -1,5 +1,14 @@
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/domain/category_classify.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../presentation/category_test_fakes.dart';
+
+final _diChuyen = makeCategory(id: 'c-dc', name: 'Di chuyển');
+final _anUong = makeCategory(id: 'c-an', name: 'Ăn uống');
+final _luong = makeCategory(id: 'c-luong', name: 'Lương', classify: 'thu');
+final _choVay = makeCategory(id: 'c-vay', name: 'Cho vay', classify: 'vay_no');
+final _chonDuoc = [_diChuyen, _anUong, _luong, _choVay];
 
 void main() {
   group('kCategoryClassifies', () {
@@ -53,6 +62,37 @@ void main() {
     test('tên không nhận ra thì mặc định tiền ra — người dùng đổi trên form', () {
       expect(suggestDebtDirection('Góp vốn'), 'chi');
       expect(suggestDebtDirection(''), 'chi');
+    });
+  });
+
+  group('hopLeTheoChieu', () {
+    test('khoản chi → danh mục chi và vay/nợ', () {
+      expect(hopLeTheoChieu('chi', _chonDuoc), {'c-dc', 'c-an', 'c-vay'});
+    });
+
+    test('khoản thu → danh mục thu và vay/nợ', () {
+      expect(hopLeTheoChieu('thu', _chonDuoc), {'c-luong', 'c-vay'});
+    });
+
+    test('bỏ danh mục đã xoá và nhóm', () {
+      final goc = makeCategory(id: 'c-xoa', name: 'Cũ');
+      final xoa = CategoryEntity(
+        id: goc.id,
+        idaccount: goc.idaccount,
+        name: goc.name,
+        classify: goc.classify,
+        icon: goc.icon,
+        colour: goc.colour,
+        isDefault: goc.isDefault,
+        isDeleted: true,
+        parentId: goc.parentId,
+        isGroup: goc.isGroup,
+        aiCoDinh: goc.aiCoDinh,
+        syncStatus: goc.syncStatus,
+        updatedAt: goc.updatedAt,
+      );
+      final nhom = makeCategory(id: 'c-nhom', name: 'Nhóm', isGroup: true);
+      expect(hopLeTheoChieu('chi', [..._chonDuoc, xoa, nhom]), {'c-dc', 'c-an', 'c-vay'});
     });
   });
 }

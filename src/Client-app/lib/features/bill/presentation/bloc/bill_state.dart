@@ -15,8 +15,8 @@ class BillLoaded extends BillState {
   final BillSummary summary;
 
   /// Khoản chi của từng hoá đơn đã trả, theo `billId`. Hoá đơn không có mục
-  /// ở đây là "không biết ngày trả" (hàng kéo về từ server, hoặc trả bằng bản
-  /// app trước v16) — trang không được đoán.
+  /// ở đây là "không biết ngày trả" (chỉ khoản trả ghi trước 2026-09-12, khi
+  /// cột `billId` chưa đồng bộ) — trang không được đoán.
   final Map<String, TransactionEntity> payments;
 
   BillLoaded({

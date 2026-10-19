@@ -24,10 +24,12 @@ import 'datasources/kho_anh_quet.dart';
 import '../../budget/data/models/budget_entity.dart';
 import '../../budget/data/repositories/budget_repository.dart';
 import '../../category/data/goi_y_phan_hoi_store.dart';
+import '../../category/data/danh_muc_ai_doan_store.dart';
 import '../../category/data/models/category_suggestion.dart';
 import '../../category/data/repositories/category_management_repository.dart';
 import '../../category/domain/phan_loai_ghi_chu.dart';
 import '../../category/domain/phan_loai_so_tien.dart';
+import '../domain/mau_hoc_danh_muc.dart';
 import '../../wallet/data/repositories/wallet_repository.dart';
 import '../../wallet/data/models/wallet_entity.dart';
 import '../domain/dien_san_bien_dong.dart';
@@ -61,6 +63,12 @@ abstract class ThemGiaoDichNguon {
 
   /// Bắn rồi quên — phản hồi hỏng không được chặn việc chọn hay lưu.
   void ghiPhanHoi({required int idaccount, required CategorySuggestion goiY, required String ketQua, String? chon});
+
+  /// Giao dịch MỚI lưu nguyên danh mục do AI chọn → B1 bỏ khỏi mẫu học (người dùng chốt 2026-10-16). Bắn rồi quên.
+  void danhDauDanhMucAi({required int idaccount, required String transactionId, required String categoryId});
+
+  /// Mở Sửa giao dịch rồi Lưu = người dùng đã nhìn lại → gỡ dấu. Bắn rồi quên.
+  void goDanhDauDanhMucAi({required int idaccount, required String transactionId});
 
   Future<List<CategoryEntity>> danhMucChonDuoc(int idaccount);
   Future<Map<String, List<String>>> tuKhoa(int idaccount);
@@ -100,6 +108,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
     BoPhanLoaiGhiChu? boPhanLoaiTiem,
     BoPhanLoaiSoTien? boSoTienTiem,
     GoiYPhanHoiStore? phanHoi,
+    DanhMucAiDoanStore? aiDoan,
     DocCauBangAi? docAi,
     ViTheoNguonStore? viTheoNguon,
     Future<void> Function(int idaccount, String khoa)? xoaBienDong,
@@ -114,6 +123,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
         _boPhanLoaiTiem = boPhanLoaiTiem,
         _boSoTienTiem = boSoTienTiem,
         _phanHoiTiem = phanHoi,
+        _aiDoanTiem = aiDoan,
         _docAiTiem = docAi,
         _viTheoNguonTiem = viTheoNguon,
         _xoaBienDongTiem = xoaBienDong,
@@ -129,6 +139,7 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
   final BoPhanLoaiGhiChu? _boPhanLoaiTiem;
   final BoPhanLoaiSoTien? _boSoTienTiem;
   final GoiYPhanHoiStore? _phanHoiTiem;
+  final DanhMucAiDoanStore? _aiDoanTiem;
   final DocCauBangAi? _docAiTiem;
   final ViTheoNguonStore? _viTheoNguonTiem;
   final Future<void> Function(int idaccount, String khoa)? _xoaBienDongTiem;
@@ -142,6 +153,8 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
   CategoryManagementRepository get _danhMuc => _danhMucTiem ?? sl<CategoryManagementRepository>();
   GoiYPhanHoiStore? get _phanHoi =>
       _phanHoiTiem ?? (sl.isRegistered<GoiYPhanHoiStore>() ? sl<GoiYPhanHoiStore>() : null);
+  DanhMucAiDoanStore? get _aiDoan =>
+      _aiDoanTiem ?? (sl.isRegistered<DanhMucAiDoanStore>() ? sl<DanhMucAiDoanStore>() : null);
   ViTheoNguonStore? get _viTheoNguon =>
       _viTheoNguonTiem ?? (sl.isRegistered<ViTheoNguonStore>() ? sl<ViTheoNguonStore>() : null);
   KhoBienLai? get _khoBienLai => _khoBienLaiTiem ?? (sl.isRegistered<KhoBienLai>() ? sl<KhoBienLai>() : null);
@@ -177,6 +190,14 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
 
   Future<LichSuHoc> _hocTuSo(int idaccount, String? dangSua) async {
     final txs = await sl<TransactionRepository>().getAll(idaccount);
+    // Giao dịch mang dấu "danh mục do AI chọn, lưu nguyên" ra khỏi mẫu B1 (người dùng chốt 2026-10-16) — chỉ B1 và
+    // mẫu đề xuất từ khoá; bảng ví hay dùng và mô hình số tiền vẫn đếm mọi giao dịch. Đọc dấu lỗi → không lọc.
+    var aiDoan = const <String>{};
+    try {
+      aiDoan = await _aiDoan?.idsCua(idaccount) ?? const {};
+    } catch (e) {
+      debugPrint('[GoiYDanhMuc] đọc dấu danh mục AI lỗi: $e');
+    }
     final bang = viHayDungTheoDanhMuc(demViTheoDanhMuc([
       for (final t in txs) (categoryId: t.categoryId, walletId: t.walletId),
     ]));
@@ -184,7 +205,8 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
     if (bo == null) {
       try {
         bo = BoPhanLoaiGhiChu.hoc(mauHocTu([
-          for (final t in txs) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
+          for (final t in txs)
+            if (!aiDoan.contains(t.id)) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
         ]));
       } catch (e) {
         // Học lỗi → rơi về bảng từ khoá, không toast (spec B1 mục 6).
@@ -223,7 +245,8 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
           ? null
           : mauHocTu([
               for (final t in txs)
-                if (t.id != dangSua) (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
+                if (t.id != dangSua && !aiDoan.contains(t.id))
+                  (loai: t.type, categoryId: t.categoryId, ghiChu: t.note, ngay: t.date),
             ]),
     );
   }
@@ -243,6 +266,24 @@ class ThemGiaoDichNguonThat implements ThemGiaoDichNguon {
     unawaited(store
         .ghi(idaccount: idaccount, goiY: goiY, ketQua: ketQua, chonCategoryId: chon)
         .catchError((Object e) => debugPrint('[GoiYDanhMuc] ghi phản hồi lỗi: $e')));
+  }
+
+  @override
+  void danhDauDanhMucAi({required int idaccount, required String transactionId, required String categoryId}) {
+    final store = _aiDoan;
+    if (store == null) return;
+    unawaited(store
+        .danhDau(idaccount: idaccount, transactionId: transactionId, categoryId: categoryId)
+        .catchError((Object e) => debugPrint('[GoiYDanhMuc] đánh dấu danh mục AI lỗi: $e')));
+  }
+
+  @override
+  void goDanhDauDanhMucAi({required int idaccount, required String transactionId}) {
+    final store = _aiDoan;
+    if (store == null) return;
+    unawaited(store
+        .go(idaccount: idaccount, transactionId: transactionId)
+        .catchError((Object e) => debugPrint('[GoiYDanhMuc] gỡ dấu danh mục AI lỗi: $e')));
   }
 
   @override

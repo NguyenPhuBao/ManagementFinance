@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
 import 'package:drift/native.dart';
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/bill/data/datasources/bill_local_datasource.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository_impl.dart';
 import 'package:flowmoney/features/bill/domain/bill_draft.dart';
-import 'package:flowmoney/features/bill/domain/bill_note.dart';
+import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
 import 'package:flowmoney/features/bill/domain/bill_recurrence.dart';
 import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
@@ -189,6 +189,27 @@ void main() {
     });
   });
 
+  group('deleteBill', () {
+    // Màn xác nhận xoá (2026-10-17) nói với kỳ ĐÃ trả: "chỉ gỡ nó khỏi danh sách… khoản chi vẫn ở sổ giao dịch và
+    // số dư ví không đổi". Ca này canh câu ấy còn đúng.
+    test('xoá kỳ ĐÃ trả: chỉ gỡ đúng hàng ấy — khoản chi, số dư, kỳ kế tiếp còn nguyên', () async {
+      final bill = await seedBill();
+      await repository.payBill(bill: bill, walletId: walletId, idaccount: accountId);
+      final kySau = (await repository.getBills(accountId)).singleWhere((b) => b.id != 'bill-1');
+
+      await repository.deleteBill('bill-1');
+
+      final conLai = await repository.getBills(accountId);
+      expect(conLai.map((b) => b.id), [kySau.id],
+          reason: 'Mỗi kỳ là một hàng; xoá kỳ đã trả không đụng kỳ kế tiếp.');
+      final khoanChi = await giaoDichThat(db, accountId);
+      expect(khoanChi, hasLength(1), reason: 'Khoản chi đã ghi vẫn ở sổ.');
+      expect(khoanChi.single.billId, 'bill-1');
+      expect((await db.walletDao.getById(walletId))!.balance, 800000.0,
+          reason: 'Xoá không hoàn tiền — hoàn tiền là việc của Hoàn tác.');
+    });
+  });
+
   group('payBill', () {
     test('đặt cả isPaid lẫn payStatus', () async {
       final bill = await seedBill();
@@ -238,9 +259,9 @@ void main() {
 
       final tx = (await giaoDichThat(db, accountId)).single;
       expect(tx.note, '${kGhiChuTraHoaDon}Tiền điện — Kỳ 8, số công tơ 1234',
-          reason: 'Sổ giao dịch nhận diện khoản của hoá đơn bằng tiền tố '
-              '(`transactionOwnerOf` dùng startsWith). Ghi chú người dùng '
-              'phải nối vào SAU, nếu không mất lớp chặn vuốt xoá.');
+          reason: 'Tiền tố ở ĐẦU là dấu ghi chú do máy viết (`laGhiChuMay`, '
+              'startsWith) và cách nhận khoản kiểu cũ ở sổ giao dịch. Ghi chú '
+              'người dùng phải nối vào SAU.');
     });
 
     test('ghi chú rỗng hoặc toàn khoảng trắng thì ghi chú như cũ', () async {
@@ -343,6 +364,27 @@ void main() {
           reason: 'Giao dịch trùng làm sai toàn bộ báo cáo chi tiêu.');
       expect((await db.billDao.getAll(accountId)).length, 2,
           reason: 'Chỉ được sinh đúng một hoá đơn kỳ sau.');
+    });
+  });
+
+  group('getById — cổng HoaDonDaXoaNguon (việc 4c) đứng trên phép này', () {
+    test('đọc CẢ hàng đã xoá mềm, mang isDeleted = true', () async {
+      await seedBill(id: 'da-xoa', isPaid: true);
+      await repository.deleteBill('da-xoa');
+
+      final hoaDon = await repository.getById('da-xoa');
+      expect(hoaDon, isNotNull,
+          reason: 'DI nối HoaDonDaXoaNguon vào getById(id)?.isDeleted. Lọc hàng '
+              'đã xoá ở đây là cổng luôn trả false — khoản chi mồ côi khoá vĩnh '
+              'viễn, im lặng, mà test cổng với hàm giả vẫn xanh.');
+      expect(hoaDon!.isDeleted, isTrue,
+          reason: 'Hoá đơn đã xoá mềm phải đọc ra được kèm cờ xoá — đó là thứ '
+              'cổng HoaDonDaXoaNguon hỏi để mở khoá khoản mồ côi.');
+    });
+
+    test('hoá đơn chưa có trên máy → null (cổng đọc là chưa biết → khoá)',
+        () async {
+      expect(await repository.getById('chua-keo-ve'), isNull);
     });
   });
 }

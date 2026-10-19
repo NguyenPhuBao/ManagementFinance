@@ -8,7 +8,7 @@ library;
 
 import '../../transaction/data/models/transaction_entity.dart';
 import '../data/models/bill_entity.dart';
-import '../../transaction/domain/khoan_lap.dart';
+import 'khoan_lap.dart';
 import 'bill_pay_status.dart';
 
 /// Tối đa số dòng của thẻ.

@@ -185,7 +185,12 @@ class NotificationPrefs {
   final int gioNhac;
   final int phutNhac;
 
-  /// Số ngày nhắc trước hạn, dùng cho hoá đơn không tự đặt.
+  /// Tuỳ chọn "Nhắc trước" — hai nghĩa, đọc qua `SoNgayNhacNguon`: **mặc định cho
+  /// hoá đơn mới** (form Thêm chọn sẵn chip, 2026-10-17) và ngưỡng nhãn "Sắp đến
+  /// hạn" cho hoá đơn **tắt nhắc** (trang Hoá đơn, tool AI). Từ 2026-10-16
+  /// **không** sinh lời nhắc nào: hoá đơn tắt nhắc (`timeNotification` NULL) không
+  /// được nhắc, hoá đơn đặt số ngày riêng dùng số ấy. Đừng lấp NULL bằng số này ở
+  /// bộ luật / bộ đặt lịch — đó là lỗi "tắt mà vẫn bị nhắc" đã gỡ.
   final int soNgayNhacHoaDon;
 
   /// Có bật khoảng giờ không bắn thông báo ra hệ điều hành không.
@@ -322,8 +327,9 @@ class NotificationPrefs {
   /// đơn tạo ở client và một hoá đơn tạo ở nơi khác hành xử như nhau.
   static const int _soNgayMacDinh = 3;
 
-  /// Trần của `soNgayNhacHoaDon`. Rộng hơn cửa sổ quét 30 ngày một chút để
-  /// không chặn oan, nhưng vẫn loại được những con số vô nghĩa.
+  /// Trần của `soNgayNhacHoaDon` — loại những con số vô nghĩa đọc từ kho (bảng
+  /// chọn chỉ cho tới 7). Đặt từ thời số này còn lấp lời nhắc trong cửa sổ quét
+  /// 30 ngày; giữ để kho cũ mang số lạ vẫn đọc ra giá trị hợp lệ.
   static const int _soNgayToiDa = 60;
 
   /// Thứ Hai 08:00 — đầu tuần làm việc, và là lúc "tuần qua" vừa mới khép lại

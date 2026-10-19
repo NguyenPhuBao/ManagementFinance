@@ -31,4 +31,39 @@ void main() {
     expect(kGoiBasic, contains('Premium'));
     expect(kGoiBasic, isNot(contains('tải')));
   });
+
+  group('onlineBat (spec trợ lý online 2026-10-11 §3.5 d)', () {
+    test('mặc định false → bảng chân trị cũ không đổi', () {
+      expect(lyDoKhoa(laPremium: true, coTep: false, congTacBat: true),
+          LyDoKhoaHoiDap.chuaCoMoHinh);
+      expect(lyDoKhoa(laPremium: true, coTep: true, congTacBat: false),
+          LyDoKhoaHoiDap.congTacTat);
+    });
+    test('Basic vẫn khoá dù online bật — cả hai đường đều đòi ai_assistant', () {
+      expect(
+          lyDoKhoa(
+              laPremium: false, coTep: true, congTacBat: true, onlineBat: true),
+          LyDoKhoaHoiDap.goiBasic);
+    });
+    test('chưa có mô hình / công tắc tắt nhưng online bật → MỞ (null)', () {
+      expect(
+          lyDoKhoa(
+              laPremium: true, coTep: false, congTacBat: true, onlineBat: true),
+          isNull);
+      expect(
+          lyDoKhoa(
+              laPremium: true, coTep: true, congTacBat: false, onlineBat: true),
+          isNull);
+    });
+    test('online tắt → lý do cũ', () {
+      expect(
+          lyDoKhoa(
+              laPremium: true,
+              coTep: false,
+              congTacBat: false,
+              onlineBat: false),
+          LyDoKhoaHoiDap.chuaCoMoHinh,
+          reason: 'không có tệp xét trước công tắc — hai câu khác nhau (cauKhoaHoiDap)');
+    });
+  });
 }

@@ -1,9 +1,10 @@
 /// Đề xuất thêm từ khoá từ thói quen — spec `2026-09-30-de-xuat-them-tu-khoa-design.md` §2.
 library;
 
-import 'package:flowmoney/features/bill/domain/bill_note.dart';
+import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
 import 'package:flowmoney/features/category/domain/de_xuat_tu_khoa.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
+import 'package:flowmoney/features/transaction/domain/mau_hoc_danh_muc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 MauGhiChu m(String c, String ghiChu) =>

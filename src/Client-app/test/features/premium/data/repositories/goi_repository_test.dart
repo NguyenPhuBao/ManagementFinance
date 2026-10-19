@@ -9,8 +9,9 @@ import 'dart:async';
 import 'package:flowmoney/core/realtime/realtime_event.dart';
 import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
-import 'package:flowmoney/features/premium/data/payment_api.dart';
-import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
+import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -204,6 +205,10 @@ void main() {
       sk.add(RealtimeEvent.dongBoXong);
       await _nghi();
       expect(api.soLanHoi, 1);
+      sk.add(RealtimeEvent.donThanhToanDoi);
+      await _nghi();
+      expect(api.soLanHoi, 1,
+          reason: 'gói chỉ làm mới theo account.upgraded — trạng thái đơn đổi không phải gói đổi (spec G94 mục 5.8)');
       sk.add(RealtimeEvent.taiKhoanNangCap);
       await _nghi();
       expect(api.soLanHoi, 2);

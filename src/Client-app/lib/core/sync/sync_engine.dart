@@ -1953,9 +1953,10 @@ class SyncEngine {
     // làm thao tác bị từ chối chạy được. Chốt từ chối nhầm — như bản `7675b35`
     // chặn cả hoàn tác thanh toán — thì việc sửa thuộc backend.
     'BILL_ALREADY_PAID',
-    // Đơn 41 (`CAN-LAM/CHAN_TRA_HAI_LAN_THEO_KY.md`, 2026-10-09): server từ
+    // Đơn 41 (`DA-XONG/CHAN_TRA_HAI_LAN_THEO_KY.md`, 2026-10-09): server từ
     // chối khoản chi cho một kỳ TRÙNG đã được trả. Thêm trước khi backend lên —
-    // danh sách trắng, mã lạ là gửi lại mãi.
+    // danh sách trắng, mã lạ là gửi lại mãi. Backend lên ở `3a5d320c` (gộp
+    // `e7570e16`, 2026-10-18).
     'BILL_PERIOD_ALREADY_PAID',
   };
 

@@ -29,7 +29,7 @@ import '../../../../core/ocr/tep_tam_chon_anh.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../../category/data/repositories/category_management_repository.dart';
-import '../../../category/domain/gan_hang_loat.dart';
+import '../../../category/domain/category_classify.dart' show hopLeTheoChieu;
 import '../../data/doc_anh_bang_gemma.dart';
 import '../../data/doc_danh_muc_bang_ai.dart';
 import '../../domain/chot_tong_quet.dart';

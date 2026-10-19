@@ -1,4 +1,52 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (4 mục chờ backend — mục 41, 42, 43, 44)
+# Backend & Client — DANH SÁCH CẦN LÀM (5 mục chờ backend — mục 43, 44, 45, 46, 47)
+
+> 🔀 **Client gộp `main` @ `e7570e16` và soát, 2026-10-18.** Backend ghi *"✅ Đã xong 100%"* cho mục 41–44 trong bảng mục
+> 0 (`3a5d320c`) nhưng không chuyển tệp. Client soát bằng mã + CSDL dev.
+> - **41** và **42** đạt trọn, đã chuyển sang `DA-XONG/` (mục 4i mục lục).
+> - **43** đạt phần chính. `accountRejection` nay mặc định `ACCOUNT_INACTIVE`, nên AIOps khoá tài khoản không còn làm
+>   client xoá dữ liệu. Webhook gặp đơn lạ trả 2xx, 503 lúc bảo trì có `code`. Còn sáu việc: controller AIOps ghi đè
+>   `'Locked'`, mở khoá tự động không xét ai đã khoá, mã chết ở `feature.collector.js:231`, chưa có `database/N` cho
+>   `ck_account_status`, `force_logout` (tuỳ chọn), và vế **D** — 12 chỗ đính chính
+>   `Event-Notification-to-ClientApp.md` chưa chỗ nào được sửa.
+> - **44** đạt A, C, D, E, F. Mục **B** còn hai vế: đơn `WAITING_CONFIRMATION` / `REFUND_PENDING` vẫn bị webhook xử lý lại,
+>   và chưa khử trùng theo `reference`. Kèm một câu hỏi có mặc định: đơn chờ xác nhận có hạn chờ không.
+> - Chi tiết từng vế, kèm số dòng, cách sửa đề nghị và phép kiểm lại, ở banner đầu hai tệp 43 và 44.
+> - **45, 46, 47** backend chưa đụng. Đọc mã: `|| '3'` và `?? existing` vẫn ở `sync.repository.js:499` và `:525`;
+>   `maxOutputTokens: 1024` và `req.on('close')` của chatbot không đổi.
+>
+> `DA-XONG/` đếm bằng máy 2026-10-18: **60** tệp + mục lục. `ls CAN-LAM/` nay: **43 · 44 · 45 · 46 · 47** ·
+> `CLIENT_INTEGRATION_GUIDE.md` + README.
+
+> ✉️ **Client đặt mục 47, 2026-10-17 tối — cập nhật 2026-10-18 sau nghiệm thu máy thật:** [`CLIENT_TRO_LY_ONLINE.md`](./CLIENT_TRO_LY_ONLINE.md)
+> — mức **vừa**, đơn **thông báo + xin**. Client đã tích hợp `POST /api/ai/chatbot/chat/stream` theo lối **hỗn hợp** (có mạng
+> hỏi backend, hỏng / mất mạng thì AI trên máy trả lời cùng câu); **đã nghiệm thu OnePlus 13R trên backend dev chạy thật
+> 2026-10-18** (`gemini-3.8-flash` với khoá dev trả lời thật — việc 1 hạ xuống *thấp*, chỉ còn ghi tài liệu + đặt cho cloud).
+> Đơn nêu năm chỗ cố ý không làm theo `ChatbotAI_Moblie.md` (huy hiệu / nút chuyển chế độ, thẻ FHS + `GET /snapshot`, bảng
+> `LocalChatMessages`, mẫu `Dio()` trần, `conversationId` vẫn gửi) và ba hành vi client phải bù (`delta` thông báo trước
+> `done.fallback`; `done {error}` tài liệu không tả; `history` mở đầu vai `model` làm SDK Gemini ném và mở circuit breaker dùng
+> chung). Xin **bảy** việc — ba mức vừa, cả ba có số đo ngày 2026-10-18: **việc 5** Dừng không tới server — client đóng socket
+> thật (ESTABLISHED 4 → 2) nhưng không dòng `[SSE Controller] … đã ngắt kết nối`, service *"Hoàn tất 14590ms"* 12 s sau →
+> `req.on('close')` không nổ trên Node 22; **việc 6** keep-alive SSE `: ping` khi chờ Gemini — server im > 45 s (49,9 s; curl
+> 91 s) nên client `receiveTimeout` rơi về máy trong khi server vẫn chạy (client giữ 45 s — người dùng chốt); **việc 7**
+> `maxOutputTokens: 1024` gồm token suy nghĩ → câu dài cụt ở điểm ngẫu nhiên (172 ↔ 1.851 ký tự). Việc 2–4 (thấp): giữ
+> `history.slice(-6)`, kiểm vai tin đầu ở server, sửa bốn chỗ `ChatbotAI.md` + `done {error}`. Không đổi lược đồ, payload; không
+> chặn client.
+> `DA-XONG/` đếm bằng máy 2026-10-17: **58** tệp + mục lục. `ls CAN-LAM/` nay: **41 · 42 · 43 · 44 · 45 · 46 · 47** ·
+> `CLIENT_INTEGRATION_GUIDE.md` + README.
+
+> ✉️ **Client đặt mục 46, 2026-10-17:** [`NOTIFICATION_CLIENT_APP_LECH_MA.md`](./NOTIFICATION_CLIENT_APP_LECH_MA.md) —
+> mức **thấp**, chỉ **sửa chữ**. `docs/Notification/Notification_Client-app.md` (commit cuối `10ab14c3`) tả client lệch mã
+> ở khoảng 30 chỗ: đường dẫn `core/notification/` đã dời sang `features/notification/`, mã mẫu REST không biên dịch và gọi
+> `/api/api/notifications`, hàm / route không tồn tại (`markAsRead`, `insertServerNotification`, `/profile/account-security`),
+> "19 loại" / 7 chip (thật: 20 / 8), và hành vi tả sai (quét "định kỳ", người dùng chờ xoá "không thấy" đếm ngược, chuông
+> có số đã xong mà §3.5 vẫn ghi là việc chưa làm). Mỗi hàng gắn **[cũ]** (đã báo ở B350D40 / A7C03B7 mà vẫn sai) hoặc
+> **[mới]**. Không đổi mã, lược đồ, payload. `DA-XONG/` đếm bằng máy 2026-10-17: **58** tệp + mục lục. `ls CAN-LAM/` nay:
+> **41 · 42 · 43 · 44 · 45 · 46** · `CLIENT_INTEGRATION_GUIDE.md` + README.
+
+> ✉️ **Client đặt mục 45, 2026-10-16 khuya:** [`TAT_NHAC_HOA_DON_QUA_DONG_BO.md`](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) —
+> mức **vừa**. `/sync/push` ép `time_notification = NULL` của hoá đơn thành `'3'` khi tạo (`|| '3'`) và giữ giá trị cũ khi
+> cập nhật (`?? existing`), nên "tắt nhắc" của người dùng bị đảo lại sau một vòng đồng bộ. Xin đổi sang khuôn
+> `!== undefined ? … : …` như `period_end` / `auto_pay` ngay dưới. Không đổi lược đồ, không cần migration.
 
 > ✉️ **Client đặt mục 44, 2026-10-16 (sau gộp `main` @ `d72ccd45`):** [`SOAT_SAU_GOP_D72CCD45.md`](./SOAT_SAU_GOP_D72CCD45.md)
 > — có một mục mức **cao**. **(A)** `database/20_add_payment_reconciliation…` và `24_add_is_template…` **trùng số** với
@@ -23,14 +71,14 @@
 > `DA-XONG/` đếm bằng máy 2026-10-15: **58** tệp + mục lục. `ls CAN-LAM/` nay: **41 · 42 · 43** ·
 > `CLIENT_INTEGRATION_GUIDE.md` + README.
 >
-> ✉️ **Client đặt mục 42, 2026-10-10:** [`TAI_LIEU_KIEN_TRUC_CLIENT_APP.md`](./TAI_LIEU_KIEN_TRUC_CLIENT_APP.md) — mức
+> ✉️ **Client đặt mục 42, 2026-10-10:** [`TAI_LIEU_KIEN_TRUC_CLIENT_APP.md`](../DA-XONG/TAI_LIEU_KIEN_TRUC_CLIENT_APP.md) — mức
 > **thấp**, chỉ **sửa chữ**. `Project.md` §3.3 ghi *"Mỗi màn hình có BLoC riêng"* trong khi app có 3 Bloc + 7 Cubit cho
 > màn có luồng ghi, 289 `setState`, màn đọc dùng stream Drift; dòng *Repository* cũng tả nguồn local/remote không có. Đơn
 > kèm câu thay thế từng dòng, ba dòng thêm (test quét kiến trúc, cổng nền tảng, chạy nền WorkManager) và một câu hỏi có
 > mặc định (§3.3 **trỏ** sang `docs/KIEN_TRUC_CLIENT_APP.md`). Không đổi mã, lược đồ, payload. `DA-XONG/` đếm bằng máy
 > 2026-10-10: **58** tệp + mục lục. `ls CAN-LAM/` nay: **41 · 42** · `CLIENT_INTEGRATION_GUIDE.md` + README.
 >
-> ✉️ **Client đặt mục 41, 2026-10-09:** [`CHAN_TRA_HAI_LAN_THEO_KY.md`](./CHAN_TRA_HAI_LAN_THEO_KY.md) — mức **cao**.
+> ✉️ **Client đặt mục 41, 2026-10-09:** [`CHAN_TRA_HAI_LAN_THEO_KY.md`](../DA-XONG/CHAN_TRA_HAI_LAN_THEO_KY.md) — mức **cao**.
 > Chốt `chanTraHaiLan` chỉ chặn khoản chi thứ hai cùng `Idbill`; hai máy cùng trả một kỳ thì sinh hai **kỳ con trùng**
 > (khác `Idbill`) và bộ tự trả trừ tiền cho từng kỳ — đo CSDL dev: tài khoản 10 bị trừ **3 × 100.000 đ** cho kỳ 05/10;
 > tài khoản 17 và 19 đang có kỳ trùng bật tự trả, hạn 13/10. Xin mở rộng chốt sang **kỳ anh em** (cùng
@@ -65,14 +113,15 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **4** mục — đếm bằng `ls` 2026-10-16, sau gộp `main` @ `d72ccd45`: backend chưa trả lời mục 41, 42, 43)
+## 0. Còn phải làm (Hiện tại: **5** mục — đếm bằng `ls` 2026-10-18 sau gộp `e7570e16`: 43 và 44 backend báo xong, client soát còn phần dư; 45 và 46 backend chưa trả lời; client đặt 47 ngày 2026-10-17 và cập nhật số đo 2026-10-18. Mục 41 và 42 đã chuyển sang `DA-XONG/`)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
-| **41** | [CHAN_TRA_HAI_LAN_THEO_KY.md](./CHAN_TRA_HAI_LAN_THEO_KY.md) | Backend | Mở rộng `chanTraHaiLan` (`upsertTransaction`) sang kỳ anh em cùng `Previous_bill_id` + `Due_date`; mã mới `BILL_PERIOD_ALREADY_PAID` qua phép ánh xạ lỗi của `sync.service.js`. Đã kiểm thử 2-Tier PASS 100%. | ✅ Đã xong 100% |
-| **42** | [TAI_LIEU_KIEN_TRUC_CLIENT_APP.md](./TAI_LIEU_KIEN_TRUC_CLIENT_APP.md) | Backend (chữ) | Sửa bảng `Project.md` §3.3 *Kiến trúc Client-app* khớp hoàn toàn với thực tế mã nguồn: 3 Bloc + 7 Cubit, repository đọc/ghi SQLite, thêm Test quét kiến trúc, Cổng nền tảng, WorkManager chạy nền. Đã trỏ sang `docs/KIEN_TRUC_CLIENT_APP.md`. | ✅ Đã xong 100% |
-| **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | **A (cao)** AIOps khoá tài khoản ghi `'Inactive'` thay `'Locked'`; `accountRejection` mặc định `ACCOUNT_INACTIVE`, chỉ `Deleted` mới `ACCOUNT_DELETED`; áp lại `ck_account_status`. **B (cao)** webhook `orderCode` lạ → 2xx, không tạo đơn / không nâng gói cho Admin. **C (vừa)** 503 lúc đăng nhập bảo trì mang `code` + `Retry-After: 60`. **D (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | ✅ Đã xong 100% |
-| **44** | [SOAT_SAU_GOP_D72CCD45.md](./SOAT_SAU_GOP_D72CCD45.md) | Backend | **A (cao)** Đánh số lại hai tệp migration thanh toán (thành 28 và 29, tránh trùng 20, 24); trả `apply_migration_20.js` về `Server_update_at`. **B (vừa)** Webhook Idempotency không ghi đè đơn `REFUNDED`/`CANCELLED`. **C (vừa)** Tra mã nhận diện theo token cuối của nội dung. **D (vừa)** Nới `payment_order.status` lên VARCHAR(25). **E (thấp)** `accept` bắt buộc boolean. **F (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | ✅ Đã xong 100% |
+| **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | **A (cao)** AIOps khoá tài khoản ghi `'Inactive'` thay `'Locked'`; `accountRejection` mặc định `ACCOUNT_INACTIVE`, chỉ `Deleted` mới `ACCOUNT_DELETED`; áp lại `ck_account_status`. **B (cao)** webhook `orderCode` lạ → 2xx, không tạo đơn / không nâng gói cho Admin. **C (vừa)** 503 lúc đăng nhập bảo trì mang `code` + `Retry-After: 60`. **D (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | 🟡 Backend ghi ✅ Đã xong 100% · client soát 2026-10-18: đạt A2, B, C; còn A1 (controller), A3, A4, A5, A6 (tuỳ chọn), D (0 / 12) — banner tệp |
+| **44** | [SOAT_SAU_GOP_D72CCD45.md](./SOAT_SAU_GOP_D72CCD45.md) | Backend | **A (cao)** Đánh số lại hai tệp migration thanh toán (thành 28 và 29, tránh trùng 20, 24); trả `apply_migration_20.js` về `Server_update_at`. **B (vừa)** Webhook Idempotency không ghi đè đơn `REFUNDED`/`CANCELLED`. **C (vừa)** Tra mã nhận diện theo token cuối của nội dung. **D (vừa)** Nới `payment_order.status` lên VARCHAR(25). **E (thấp)** `accept` bắt buộc boolean. **F (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | 🟡 Backend ghi ✅ Đã xong 100% · client soát 2026-10-18: đạt A, C, D, E, F; B còn hai vế — banner tệp |
+| **45** | [TAT_NHAC_HOA_DON_QUA_DONG_BO.md](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) | Backend | `sync.repository.js`: hoá đơn `time_notification` — tạo ~:471 `\|\| '3'` và cập nhật ~:497 `?? existing` nuốt NULL (= tắt nhắc ở client); ~:98 `String(null)` thành `"null"`. Đổi sang `!== undefined ? … : …`. Đo dev: 37 hoá đơn sống, 0 NULL (hệ quả của phép ép). Client đã làm phần mình (`d657b065`, tắt là tắt thật); tới khi sửa, tắt nhắc bị đảo sau một vòng đồng bộ. | ⏳ Chờ backend |
+| **46** | [NOTIFICATION_CLIENT_APP_LECH_MA.md](./NOTIFICATION_CLIENT_APP_LECH_MA.md) | Backend (chữ) | Sửa `docs/Notification/Notification_Client-app.md` theo bảng của đơn (~30 chỗ, bốn nhóm: đường dẫn · hàm / route · con số · hành vi; nhãn [cũ] / [mới]); phần phía backend ghi riêng, ngắn. Kiểm lại bằng một câu `grep` ra 0 dòng. Không đổi mã; không chặn client. | ⏳ Chờ |
+| **47** | [CLIENT_TRO_LY_ONLINE.md](./CLIENT_TRO_LY_ONLINE.md) | Backend | Thông báo client đã tích hợp `chat/stream` (hỗn hợp, tự rơi về AI trên máy); **nghiệm thu OnePlus trên backend dev 2026-10-18 đạt** — đơn cập nhật số đo. **(thấp)** ghi tên `GEMINI_MODEL` đã kiểm (`gemini-3.8-flash` trả lời thật trên dev 2026-10-18) vào `ChatbotAI.md` và đặt trên cloud; giữ `history.slice(-6)`; cân nhắc bỏ tin đầu không phải `user` trước `startChat` (SDK ném → breaker dùng chung mở cho mọi tài khoản); tả `done {error}` trong `ChatbotAI_Moblie.md` §2.1 và sửa bốn chỗ `ChatbotAI.md` — `:286`, `:420` khẳng định Dừng ngắt được Gemini; `:296`, `:443` chỉ nêu tên hook `req.on('close')`. **(vừa) việc 5** Dừng không tới server — **đo 2026-10-18**: client đóng socket thật (ESTABLISHED tới :3000 4 → 2 trong 1 s) nhưng không dòng `[SSE Controller] … đã ngắt kết nối`, service *"Hoàn tất 14590ms"* 12 s sau → `req.on('close')` không nổ (Node 22); xin: khi client ngắt kết nối thì thôi ghi `delta`, không gọi thêm tool / Gemini, huỷ lời gọi Gemini đang chạy hoặc bỏ lời gọi kế (service ghi log ngay tại lời gọi Gemini), không đếm breaker / không fallback; tiêu chí đo bằng log ở ba thời điểm. **(vừa) việc 6** keep-alive SSE `: ping` ≤ 15 s khi chờ Gemini — server im > 45 s (49,9 s; curl 91 s) nên client `receiveTimeout` rơi về máy trong khi server vẫn chạy (client giữ 45 s). **(vừa) việc 7** `maxOutputTokens: 1024` gồm token suy nghĩ → câu dài cụt ở điểm ngẫu nhiên (172 ↔ 1.851 ký tự); cân nhắc gửi `finishReason` trong `done`. Không đổi lược đồ / payload; không chặn client. | ⏳ Chờ backend |
 
 ---
 

@@ -16,16 +16,17 @@ class TransactionEntity {
   final String? walletTransfer;
 
   /// Mục tiêu tiết kiệm sở hữu khoản này (nạp/rút/trích tự động); `null` với
-  /// giao dịch thường. Cột CỤC BỘ, không đi qua đồng bộ — hàng kéo từ server
-  /// luôn trống, nên nơi nhận diện phải kèm nhánh đọc tiền tố ghi chú
-  /// (xem `transactionOwnerOf`).
+  /// giao dịch thường. Đồng bộ dưới tên `idgoal` từ 2026-09-07; hàng CŨ trên
+  /// server vẫn mang NULL (G18), nên nơi nhận diện phải kèm nhánh đọc tiền tố
+  /// ghi chú (xem `transactionOwnerOf`).
   final String? goalId;
 
   /// Hoá đơn mà khoản này là lần trả (`transactions.billId` → `idbill` ở payload); `null` với giao dịch thường.
   ///
   /// **CHỈ ĐỌC ở tầng này** (cùng khuôn `WalletEntity.biTuChoiTrungTen`): `fromDrift` chép, `toCompanion` KHÔNG mang —
   /// cột do `BillRepositoryImpl.payBill` ghi thẳng qua DAO; mang ở đây là mỗi lần sửa một giao dịch dựng từ form
-  /// (`billId == null`) ghi NULL đè lên khoản trả hoá đơn. `khoaNhomCua` đọc nó để loại khoản trả hoá đơn khỏi
+  /// (`billId == null`) ghi NULL đè lên khoản trả hoá đơn. `transactionOwnerOf` khoá khoản trả hoá đơn theo nó
+  /// (việc 4c, 2026-10-17); `khoaNhomCua` đọc nó để loại khoản trả hoá đơn khỏi
   /// phép tìm khoản lặp (B2).
   final String? billId;
 

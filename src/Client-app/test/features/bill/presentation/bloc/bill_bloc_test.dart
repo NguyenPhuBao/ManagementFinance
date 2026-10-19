@@ -91,4 +91,99 @@ void main() {
           'kỹ thuật, trong khi đây là tình huống bình thường: bấm nút hai lần.',
     );
   });
+
+  test('hoàn tác khoản trả kiểu cũ (không billId) chỉ đường sang Sổ giao dịch',
+      () async {
+    // Kỳ đã trả mà KHÔNG có khoản chi nào mang billId — khoản trả ghi trước
+    // 2026-09-12 (tiền tố ghi chú, cột nối trống) → undoPayment ném
+    // BillUndoUnavailableException.
+    await db.billDao.insert(
+      BillsCompanion.insert(
+        id: 'kieu-cu',
+        idaccount: 1,
+        name: 'Internet',
+        amount: 100000.0,
+        dueDate: DateTime.now(),
+        payStatus: const Value('Payed'),
+        isPaid: const Value(true),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    bloc.add(UndoPaymentEvent(billId: 'kieu-cu'));
+
+    final state =
+        await bloc.stream.firstWhere((s) => s is BillError) as BillError;
+    expect(
+      state.message,
+      'Không tìm thấy khoản chi của lần thanh toán này. Mở lại trang rồi bấm '
+      'Hoàn tác để đưa kỳ về chưa trả.',
+      reason: 'Trang chỉ gửi UndoPaymentEvent khi bản đồ khoản chi của nó CÓ '
+          'khoản gắn billId — tới được đây là bản đồ cũ hơn CSDL. Câu cũ bảo '
+          '"xoá ở Sổ, kỳ vẫn ghi là đã trả": ngõ cụt, kỳ không bao giờ về chưa '
+          'trả. Trang không nạp lại sau BillError, nên "bấm lại" mở lại đúng '
+          'hộp cũ — phải mở lại trang.',
+    );
+  });
+
+  group('DatLaiChuaTraEvent (kỳ kiểu cũ về chưa trả, không hoàn tiền)', () {
+    Future<void> kyDaTra(String id) => db.billDao.insert(
+          BillsCompanion.insert(
+            id: id,
+            idaccount: 1,
+            name: 'Internet',
+            amount: 100000.0,
+            dueDate: DateTime.now(),
+            payStatus: const Value('Payed'),
+            isPaid: const Value(true),
+            updatedAt: DateTime.now(),
+          ),
+        );
+
+    test('thành công: báo đã đưa về chưa thanh toán, kỳ về Pending', () async {
+      await kyDaTra('kieu-cu');
+
+      bloc.add(DatLaiChuaTraEvent(billId: 'kieu-cu'));
+
+      final state = await bloc.stream
+          .firstWhere((s) => s is BillOperationSuccess) as BillOperationSuccess;
+      expect(state.message, 'Đã đưa kỳ về chưa thanh toán',
+          reason: 'Không được bắt đầu bằng "Xóa": trang Chi tiết đóng trang '
+              'theo `startsWith(\'Xóa\')`.');
+      expect((await db.billDao.getById('kieu-cu'))!.payStatus, 'Pending');
+    });
+
+    test('còn khoản chi gắn billId: chỉ sang Hoàn tác, không lỗi chung chung',
+        () async {
+      await kyDaTra('con-khoan');
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w',
+        idaccount: 1,
+        name: 'Ví',
+        updatedAt: DateTime.now(),
+      ));
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+        id: 'tx-con',
+        idaccount: 1,
+        walletId: 'w',
+        amount: 100000,
+        type: 'chi',
+        billId: const Value('con-khoan'),
+        date: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ));
+
+      bloc.add(DatLaiChuaTraEvent(billId: 'con-khoan'));
+
+      final state =
+          await bloc.stream.firstWhere((s) => s is BillError) as BillError;
+      expect(
+        state.message,
+        'Kỳ này còn khoản chi của lần thanh toán. Mở lại trang rồi bấm Hoàn tác '
+        'để trả tiền về ví.',
+        reason: 'Hộp hỏi mở theo bản đồ của trang; bản đồ cũ hơn CSDL thì '
+            'repository từ chối — câu phải chỉ đường, không in exception.',
+      );
+    });
+  });
 }

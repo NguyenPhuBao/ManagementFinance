@@ -24,11 +24,8 @@ void main() {
   const choChot = <String, (int, String)>{
     // `ai_chat_page.dart` rút khỏi danh sách ngày 2026-09-22 (P3 Task 8): con
     // số "3.200.000đ" là của bản mockup tĩnh, nay đã gỡ cùng cả khối bịa số.
-    'features/bill/presentation/pages/bill_delete_page.dart': (
-      1,
-      'Chuỗi cố định "260.000đ" trong một màn mockup không nối vào router — '
-          'xoá hay dùng thật chờ chốt cùng lượt dọn màn chết.',
-    ),
+    // `bill_delete_page.dart` rút ngày 2026-10-17: màn xác nhận xoá nối router và
+    // dựng bằng dữ liệu thật — "260.000đ" mockup đi cùng bản cũ.
   };
 
   // `đ` ngay sau chữ số, sau `}` (kết thúc nội suy có ngoặc), hoặc sau một

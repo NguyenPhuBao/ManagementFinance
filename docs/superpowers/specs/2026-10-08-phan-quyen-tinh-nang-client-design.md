@@ -64,7 +64,7 @@ quyenTinhNang`, getter `GoiCubit.duoc…`) nhưng **chỉ hai getter có chỗ g
 | `ocr_receipt` | Bật/tắt | Nút *Quét* (Trang chủ, `moQuet`) + đường *Chia sẻ → Ghi vào FlowMoney* (`NhapBienLai`) | Mở |
 | `bank_notification_parser` | Bật/tắt | Công tắc *Đọc biến động số dư* (D1) + `NhapBienDong` | Mở |
 | `ai_assistant` · `ai_quick_input` | Bật/tắt | Đã có (`lyDoKhoa` màn Trợ lý AI; ô Nhập nhanh) — đổi sang đọc qua `duocDung` | **Khoá với Basic** |
-| `financial_health_fhs` | — | **Bỏ qua**: app không có màn FHS (đó là chatbot trực tuyến của backend, client chưa nhận) | — |
+| `financial_health_fhs` | — | **Bỏ qua**: app không có màn FHS (đó là chatbot trực tuyến của backend, client chưa nhận) *(2026-10-17: client đã nối chatbot ấy — trợ lý online hỗn hợp — nhưng **vẫn** không làm thẻ FHS, quyết định 5 spec `2026-10-11-tro-ly-online-backend-fallback-tren-may-design.md`; mã quyền này vẫn bỏ qua)* | — |
 
 *Nhắc ghi sau khi dùng app ngân hàng* **không** thuộc quyền nào — để mở.
 

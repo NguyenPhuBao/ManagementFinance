@@ -59,6 +59,13 @@ class UndoPaymentEvent extends BillEvent {
   UndoPaymentEvent({required this.billId});
 }
 
+/// Đưa kỳ đã trả về chưa trả **không hoàn tiền** — kỳ không còn khoản chi nào
+/// gắn `billId` (khoản trả kiểu cũ). Xem `BillRepository.datLaiChuaTra`.
+class DatLaiChuaTraEvent extends BillEvent {
+  final String billId;
+  DatLaiChuaTraEvent({required this.billId});
+}
+
 /// Bỏ qua kỳ này: đánh dấu `Skipped`, không trừ ví, không ghi khoản chi, nhưng
 /// vẫn sinh kỳ kế tiếp nếu hoá đơn có lặp.
 class SkipBillEvent extends BillEvent {

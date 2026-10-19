@@ -1,5 +1,6 @@
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
+import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
 import 'package:flowmoney/features/transaction/presentation/widgets/transaction_detail_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,8 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../category/presentation/category_test_fakes.dart';
 
 /// Bảng chi tiết mở khi bấm một dòng trong sổ: đọc đủ thông tin, và là nơi
-/// duy nhất có nút Sửa. Khoản thuộc mục tiêu/hoá đơn chỉ đọc — cùng quy tắc
-/// với chặn xoá (xem `transactionOwnerOf`).
+/// duy nhất có nút Sửa. Khoản thuộc mục tiêu, hay khoản trả của hoá đơn còn
+/// sống, chỉ đọc — cùng quy tắc với chặn xoá (xem `transactionOwnerOf`); khoản
+/// trả hoá đơn kiểu cũ / mồ côi (việc 4c) có Sửa · Xoá.
 void main() {
   final lookup = TransactionLookup(
     wallets: [
@@ -24,6 +26,7 @@ void main() {
     String? categoryId,
     String? goalId,
     String? walletTransfer,
+    String? billId,
   }) =>
       TransactionEntity(
         id: 'tx',
@@ -31,6 +34,7 @@ void main() {
         idaccount: 1,
         categoryId: categoryId,
         goalId: goalId,
+        billId: billId,
         walletTransfer: walletTransfer,
         amount: 25000,
         type: type,
@@ -40,7 +44,9 @@ void main() {
       );
 
   Widget harness(TransactionEntity transaction,
-          {VoidCallback? onEdit, VoidCallback? onDelete}) =>
+          {VoidCallback? onEdit,
+          VoidCallback? onDelete,
+          bool hoaDonDaXoa = false}) =>
       MaterialApp(
         home: Scaffold(
           body: TransactionDetailSheet(
@@ -48,6 +54,7 @@ void main() {
             lookup: lookup,
             onEdit: onEdit ?? () {},
             onDelete: onDelete ?? () {},
+            hoaDonDaXoa: hoaDonDaXoa,
           ),
         ),
       );
@@ -102,5 +109,33 @@ void main() {
             'current_amount y như xoá.');
     expect(find.text('Xoá giao dịch'), findsNothing);
     expect(find.textContaining('mục tiêu'), findsWidgets);
+  });
+
+  group('việc 4c — khoản trả hoá đơn', () {
+    const ghiChuTra = '${kGhiChuTraHoaDon}Tiền điện';
+
+    testWidgets('hoá đơn còn (có billId): KHÔNG Sửa/Xoá, hiện lý do', (tester) async {
+      await tester.pumpWidget(harness(tx(billId: 'b1', note: ghiChuTra)));
+
+      expect(find.text('Xoá giao dịch'), findsNothing);
+      expect(find.text('Sửa giao dịch'), findsNothing);
+      expect(find.textContaining('không xoá được từ sổ giao dịch'), findsOneWidget,
+          reason: 'Đòi kết quả, không chỉ đòi vắng mặt: bảng phải nói vì sao.');
+    });
+
+    testWidgets('mồ côi (hoaDonDaXoa: true): có Sửa và Xoá', (tester) async {
+      await tester.pumpWidget(
+          harness(tx(billId: 'b1', note: ghiChuTra), hoaDonDaXoa: true));
+
+      expect(find.text('Xoá giao dịch'), findsOneWidget);
+      expect(find.text('Sửa giao dịch'), findsOneWidget);
+    });
+
+    testWidgets('kiểu cũ (tiền tố, không billId): có Sửa và Xoá', (tester) async {
+      await tester.pumpWidget(harness(tx(note: ghiChuTra)));
+
+      expect(find.text('Xoá giao dịch'), findsOneWidget);
+      expect(find.text('Sửa giao dịch'), findsOneWidget);
+    });
   });
 }

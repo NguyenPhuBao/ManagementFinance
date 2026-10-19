@@ -7,14 +7,15 @@
 library;
 
 import 'package:flowmoney/core/di/injection_container.dart';
-import 'package:flowmoney/features/premium/data/chan_theo_goi.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/chan_theo_goi.dart';
 import 'package:flowmoney/features/premium/data/dem_dang_hoat_dong.dart';
 import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
-import 'package:flowmoney/features/premium/data/payment_api.dart';
+import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
-import 'package:flowmoney/features/premium/domain/tran_goi.dart';
-import 'package:flowmoney/features/premium/domain/trang_thai_goi.dart';
+import 'package:flowmoney/features/premium/data/models/tran_goi.dart';
+import 'package:flowmoney/features/premium/domain/hang_goi.dart';
+import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';

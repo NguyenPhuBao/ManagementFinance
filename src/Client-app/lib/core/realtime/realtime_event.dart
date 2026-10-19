@@ -1,4 +1,4 @@
-/// Bốn sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
+/// Năm sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
 /// backend phát tới room `account_<idaccount>`.
 ///
 /// ## Vì sao chỉ có tên, không có dữ liệu
@@ -42,6 +42,13 @@ enum RealtimeEvent {
   /// máy khác đổi thẻ ở tab Cá nhân. Không kéo đồng bộ: lên gói không sinh
   /// dữ liệu đồng bộ mới.
   taiKhoanNangCap,
+
+  /// `payment.overpaid_confirmation` · `payment.underpaid_warning` · `payment.refunded` · `payment.success` ·
+  /// `payment.order_expired` · `payment.order_cancelled` — backend phát tới phòng tài khoản khi trạng thái một đơn
+  /// thanh toán đổi (`payment.service.js`). **Tín hiệu**: màn Chờ / Chi tiết đơn / Lịch sử mua / Nâng cấp đang mở hỏi
+  /// lại server; không đọc payload (cam kết hộp đen), không toast (người dùng chốt 2026-10-18), không kéo đồng bộ.
+  /// `GoiRepository` KHÔNG làm mới gói theo nó — gói chỉ theo `account.upgraded` (spec G94 2026-10-18 mục 5.8).
+  donThanhToanDoi,
 }
 
 /// Dịch tên sự kiện của backend sang enum. Tên lạ trả `null` — backend thêm sự
@@ -60,6 +67,13 @@ RealtimeEvent? realtimeEventFromName(String name) {
     case 'account.upgraded':
     case 'account.permissions_updated':
       return RealtimeEvent.taiKhoanNangCap;
+    case 'payment.overpaid_confirmation':
+    case 'payment.underpaid_warning':
+    case 'payment.refunded':
+    case 'payment.success':
+    case 'payment.order_expired':
+    case 'payment.order_cancelled':
+      return RealtimeEvent.donThanhToanDoi;
     default:
       return null;
   }
@@ -72,7 +86,9 @@ extension RealtimeEventX on RealtimeEvent {
   /// dữ liệu về sau nó là một vòng mạng thừa. `account.upgraded` cũng không:
   /// lên gói là chuyện của bảng `account`, không bảng nào client đồng bộ đổi.
   bool get canDongBoLai =>
-      this != RealtimeEvent.ocrTrung && this != RealtimeEvent.taiKhoanNangCap;
+      this != RealtimeEvent.ocrTrung &&
+      this != RealtimeEvent.taiKhoanNangCap &&
+      this != RealtimeEvent.donThanhToanDoi;
 
   /// Câu hiện trên toast. Hằng số, cố ý không nêu số liệu.
   ///
@@ -87,6 +103,8 @@ extension RealtimeEventX on RealtimeEvent {
       case RealtimeEvent.dongBoXong:
         return null;
       case RealtimeEvent.taiKhoanNangCap:
+        return null;
+      case RealtimeEvent.donThanhToanDoi:
         return null;
     }
   }

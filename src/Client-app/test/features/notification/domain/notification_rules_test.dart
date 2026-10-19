@@ -218,13 +218,14 @@ void main() {
       List<BillEntity> bills, {
       DateTime? at,
       DateTime? imLangTruoc,
-      int? nhacTruocMacDinh,
     }) {
+      // Bộ luật KHÔNG nhận tuỳ chọn "Nhắc trước" chung cho hoá đơn (gỡ
+      // 2026-10-16): hoá đơn đặt số ngày riêng dùng số ấy, hoá đơn tắt nhắc
+      // không được nhắc — tuỳ chọn chung không còn chỗ lấp vào.
       return buildNotificationCandidates(NotificationRuleInput(
         now: at ?? now,
         bills: bills,
         silenceBefore: imLangTruoc,
-        defaultBillLeadDays: nhacTruocMacDinh ?? 3,
       ));
     }
 
@@ -237,11 +238,28 @@ void main() {
                 'người dùng thành vô nghĩa.');
       });
 
-      test('không đặt số ngày thì mặc định 3', () {
-        expect(chayHD([hoaDon(denHan: DateTime(2026, 9, 18), nhacTruoc: null)])
-            .length, 1);
-        expect(chayHD([hoaDon(denHan: DateTime(2026, 9, 19), nhacTruoc: null)]),
-            isEmpty);
+      test('hoá đơn TẮT nhắc (NULL) thì không có "sắp đến hạn"', () {
+        expect(chayHD([hoaDon(denHan: DateTime(2026, 9, 18), nhacTruoc: null)]),
+            isEmpty,
+            reason: 'NULL là tắt nhắc (mục 7b BILL_DOCUMENTATION; form ghi NULL '
+                'khi tắt công tắc, màn Chi tiết hiện "Không nhắc"). Trước '
+                '2026-10-16 bộ luật đọc NULL thành mặc định 3 — tắt mà vẫn bị '
+                'nhắc.');
+        expect(
+            chayHD([hoaDon(denHan: DateTime(2026, 9, 15, 8), nhacTruoc: null)]),
+            isEmpty,
+            reason: 'Kể cả đến hạn đúng hôm nay.');
+      });
+
+      test('hoá đơn TẮT nhắc vẫn báo QUÁ HẠN', () {
+        final ra =
+            chayHD([hoaDon(denHan: DateTime(2026, 9, 10), nhacTruoc: null)]);
+        expect(ra.single.kind, NotificationKind.billOverdue,
+            reason: 'Tắt là tắt lời nhắc TRƯỚC hạn; nợ quá hạn vẫn là thứ '
+                'người dùng phải biết (người dùng chốt 2026-10-16). Ca canh VỊ '
+                'TRÍ: phép bỏ hoá đơn tắt nhắc phải đứng SAU nhánh quá hạn — '
+                'đặt trước là ca này đỏ (xanh sẵn trên mã cũ vì mã cũ không bỏ '
+                'gì).');
       });
 
       test("mốc '7' được tôn trọng", () {
@@ -355,27 +373,6 @@ void main() {
           hoaDon(denHan: DateTime(2026, 9, 18), nhacTruoc: '7')
         ]).single.dedupeKey;
         expect(ba == bay, false);
-      });
-    });
-
-    group('số ngày nhắc mặc định đến từ tuỳ chọn người dùng', () {
-      test('hoá đơn không tự đặt thì theo tuỳ chọn, không theo hằng số 3', () {
-        final hd = hoaDon(denHan: DateTime(2026, 9, 20), nhacTruoc: null);
-
-        expect(chayHD([hd]), isEmpty,
-            reason: 'Còn 5 ngày, mặc định 3 ngày thì chưa nhắc.');
-        expect(chayHD([hd], nhacTruocMacDinh: 7).length, 1,
-            reason: 'Người dùng đặt "nhắc trước 7 ngày" trong trang cài đặt. '
-                'Bỏ qua tuỳ chọn ấy là công tắc trông như có tác dụng mà thật '
-                'ra không.');
-      });
-
-      test('hoá đơn tự đặt số ngày thì tuỳ chọn KHÔNG đè lên', () {
-        final hd = hoaDon(denHan: DateTime(2026, 9, 20), nhacTruoc: '1');
-
-        expect(chayHD([hd], nhacTruocMacDinh: 7), isEmpty,
-            reason: 'Số ngày đặt riêng cho một hoá đơn là lựa chọn cụ thể hơn '
-                'và phải thắng giá trị mặc định chung.');
       });
     });
 

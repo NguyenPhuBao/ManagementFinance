@@ -1,5 +1,60 @@
 # Soát sau gộp `main` @ `cd2ee572`: AIOps khoá tài khoản làm client xoá dữ liệu; webhook PayOS nâng nhầm tài khoản; đăng nhập lúc bảo trì mất `code`; đính chính hợp đồng sự kiện (mục 43)
 
+> 🟡 **Client soát 2026-10-18 (sau gộp `main` @ `e7570e16`; backend ghi *"✅ Đã xong 100%"* ở `3a5d320c`): đạt phần
+> chính, còn sáu việc.** Đo bằng đọc mã ở `e7570e16`, truy vấn chỉ đọc trên CSDL dev, và `grep` từng hàng bảng mục D trên
+> `docs/Admin-web/Event-Notification-to-ClientApp.md`. Thân đơn bên dưới giữ nguyên: mục *Xin làm* và *Kiểm lại bằng* của
+> từng vế vẫn áp dụng; dòng *Kiểm lại* dưới mỗi việc còn mở là phép đo rút gọn.
+>
+> **Đạt:**
+> - **A2** — `accountRejection` (`middleware/auth.js:60`) mặc định `ACCOUNT_INACTIVE`. Chỉ không còn trạng thái, `Deleted`,
+>   hoặc `delete_at` đã qua mới thành `ACCOUNT_DELETED`. Đây là vế chặn được việc client xoá SQLite: `'Locked'` hay
+>   trạng thái lạ nào cũng đọc là *bị khoá*.
+> - **A1 phần quarantine** — `quarantinePair` (`aiops.quarantine.js:398`) và hai lối khoá của admin (`:753`, `:839`) ghi
+>   `'Inactive'` + `Reason_inactive`.
+> - **B** — webhook không thấy đơn (`payment.service.js:130`) ghi log và trả 2xx, không tạo đơn, không nâng gói.
+>   `findOrCreateOrderByCode` vẫn được export nhưng không còn chỗ nào gọi.
+> - **C** — `auth.controller.js:61` trả 503 có `code: 'MAINTENANCE_MODE'` và header `Retry-After: 60`.
+>
+> **Còn mở:**
+> 1. **A1 phần controller** — `aiops.controller.js:249` và `:305` vẫn ghi `status: 'Locked'` **ngay sau** khi
+>    `permanentBanAccount` / `temporaryBlockAccount` đã ghi `'Inactive'`, nên lệnh sau đè lệnh trước. Nhờ A2, client vẫn
+>    giữ dữ liệu, nhưng `'Locked'` là giá trị ngoài tập bốn trạng thái. Xin bỏ hẳn hai khối `updateMany` ấy: hàm quarantine
+>    đã ghi đúng `'Inactive'` + lý do.
+>    *Kiểm lại:* `git grep -n "'Locked'\|TemporarilyLocked" -- src/Backend/modules` → 0 dòng.
+> 2. **A3** — mở khoá tự động (`aiops.quarantine.js:141`, `:153`, `:983`) gọi `_syncAccountStatusToDatabase(…, 'Active')`.
+>    Hàm ấy (`:657`) `updateMany` theo `idaccount` / `username` mà không xét ai đã khoá. Tài khoản admin đặt `Inactive` vì
+>    lý do khác vẫn bị mở. Xin thêm điều kiện vào `where` của nhánh `'Active'`: chỉ mở hàng đang `Inactive` **và** mang
+>    đúng lý do do AIOps ghi (hoặc một dấu nguồn tương đương do backend chọn).
+>    *Kiểm lại:* ca test — admin khoá tài khoản X với lý do riêng trong lúc X đang bị AIOps cách ly; hết hạn cách ly → X
+>    vẫn `Inactive`, `Reason_inactive` vẫn là lý do của admin.
+> 3. **A4** — `feature.collector.js:231` vẫn `require('../../database/prisma')` (không tồn tại) và ghi `'TemporarilyLocked'`.
+>    Lệnh ném và bị nuốt nên hôm nay vô hại; `quarantinePair` ngay trên đã khoá đúng. Xin xoá khối ấy.
+>    *Kiểm lại:* `git grep -n "database/prisma" -- src/Backend/modules` → 0 dòng.
+> 4. **A5** — chưa có tệp `database/N` nào áp `ck_account_status`. CSDL dev đo 2026-10-18: bảng `account` có **0** CHECK.
+>    Trạng thái đang có: `Active` 6 hàng, `Deleted` 14 hàng — áp thẳng được. Làm **sau** việc 1: còn lệnh ghi `'Locked'`
+>    thì mỗi lần admin khoá qua AIOps Sentinel sẽ vỡ CHECK và ghi một dòng WARN (không hại dữ liệu, vì `'Inactive'` đã
+>    ghi trước).
+>    *Kiểm lại:* hai câu SQL ở mục *Kiểm lại bằng* của vế A.
+> 5. **A6** (tuỳ chọn) — AIOps khoá tài khoản chưa phát `account.force_logout`.
+> 6. **D — chưa sửa hàng nào (0 / 12).** Ở `3a5d320c`, `Event-Notification-to-ClientApp.md` thêm khoảng 106 dòng, nhưng đó là
+>    phần thanh toán của đơn 44 mục F. Đo từng hàng ngày 2026-10-18:
+>    - §4.5 vẫn lồng `code` trong `data` và có `statusCode` (`:531`–`:535`).
+>    - §3.8 vẫn `summary: { created, updated, deleted }` (`:264`).
+>    - §3.4 vẫn route `PUT /api/admin/permissions/matrix` và khoá `idaccount_type` / `idfeature` (`:168`, `:175`).
+>    - §3.5 vẫn một hình dạng payload; không có `PERMISSIONS_MATRIX_UPDATED`.
+>    - §3.11 vẫn tả `user.notification` là sự kiện sống (`:67`, `:326`).
+>    - §3.7 vẫn ghi phát khi người dùng gửi yêu cầu xoá.
+>    - §3.9 · §3.10 vẫn `predicted_category_id`, `confidence` và `DUPLICATE_RECEIPT_HASH` (`:293`, `:316`).
+>    - §3.2 vẫn `"reason": null` khi tắt, không có `scheduled`.
+>    - §4.2 vẫn ngưỡng 100 ms (`:463`), bảng §2 hàng 17 cũng vậy (`:73`).
+>    - §3.1 · §3.3 vẫn route `PATCH /api/admin/users/:id/status` và `POST /api/admin/system/broadcast` (`:88`, `:141`).
+>    - §4.6 vẫn *"Refresh Token đã bị hủy trên server"* (`:560`).
+>    - §1 chưa ghi việc sự kiện có thể tới hai lần qua Redis.
+>
+>    Bảng §5 *hiện trạng client* cũng chưa đính chính theo danh sách cuối vế D, ví dụ `user.notification` vẫn ghi *"BỎ SÓT"*
+>    (`:617`).
+>    *Kiểm lại:* chạy lại đúng các `grep` theo số dòng trên; mỗi hàng phải ra câu mới ở cột *Mã thật* của bảng vế D.
+
 **Ngày:** 2026-10-15 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat` (commit gộp `12104082`)
 **Loại:** đơn xin — **hai lỗi mã mức cao** (A, B), **một lỗi mức vừa** (C), **sửa tài liệu** (D). Không đổi lược đồ
 đồng bộ, không đổi payload `/sync/*`. Mọi khẳng định dưới đây đo bằng **đọc mã** ở `cd2ee572` và **truy vấn chỉ đọc**

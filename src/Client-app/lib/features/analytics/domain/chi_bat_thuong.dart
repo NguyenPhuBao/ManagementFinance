@@ -11,7 +11,7 @@
 /// Spec: docs/superpowers/specs/2026-09-28-b3-chi-bat-thuong-theo-danh-muc-design.md
 library;
 
-import 'khoan_vao_thong_ke.dart';
+import '../../transaction/domain/khoan_vao_thong_ke.dart';
 import 'phan_loai_dong_tien.dart';
 import 'thong_ke_thang.dart';
 

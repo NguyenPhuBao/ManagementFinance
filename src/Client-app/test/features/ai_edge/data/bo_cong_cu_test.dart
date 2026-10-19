@@ -12,6 +12,8 @@ import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/analytics/data/repositories/analytics_repository.dart';
 import 'package:flowmoney/features/analytics/data/repositories/bao_cao_repository.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
+import 'package:flowmoney/features/bill/data/so_ngay_nhac_nguon.dart';
+import 'package:flowmoney/features/ai_edge/data/cong_cu_hoa_don.dart';
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/budget/data/tai_phan_bo_nguon.dart';
@@ -250,6 +252,25 @@ void main() {
   test('hoá đơn: tham số trang_thai đi tới hàm dựng hàng', () async {
     final kq = (await bo.chay(kTenCongCuHoaDon, {'trang_thai': 'qua_han'}, idaccount: 10, now: now))!;
     expect(kq.hang.map((h) => h.ten).toList(), ['Kiem']);
+  });
+
+  test('hoá đơn: macDinh chuyển cổng "Nhắc trước" (soNgayNhac) xuống tool — DI chỉ truyền một chỗ (2026-10-17)', () {
+    final nguon = SoNgayNhacNguon((_) async => 7);
+    final coNguon = BoCongCu.macDinh(
+      nganSach: _NganSach(),
+      vi: _Vi(),
+      hoaDon: hoaDon,
+      mucTieu: _MucTieu(),
+      giaoDich: _GiaoDich(),
+      baoCao: _BaoCao(),
+      phanTich: _PhanTich(),
+      danhMuc: _DanhMuc(),
+      taiPhanBo: taiPhanBo,
+      soNgayNhac: nguon,
+    );
+    expect(coNguon.cacCongCu.whereType<CongCuHoaDon>().single.soNgayNhac, same(nguon));
+    expect(bo.cacCongCu.whereType<CongCuHoaDon>().single.soNgayNhac, isNull,
+        reason: 'Không truyền thì tool dùng mốc 3 như trước.');
   });
 
   test('ví: chép qua viChoGoiSoTu — ví âm đứng đầu', () async {

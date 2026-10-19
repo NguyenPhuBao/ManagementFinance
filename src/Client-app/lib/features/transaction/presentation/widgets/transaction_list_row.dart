@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/confirm_dialog.dart';
+import '../../data/hoa_don_da_xoa_nguon.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_lookup.dart';
 import '../../domain/transaction_owner.dart';
@@ -9,9 +11,10 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 
 /// Một dòng trong sổ giao dịch: vuốt trái để xoá.
 ///
-/// Khoản thuộc mục tiêu hay hoá đơn thì `confirmDismiss` trả `false` — hàng
-/// bật lại và một SnackBar chỉ đường tới nơi xoá đúng — vì xoá ở đây chỉ hoàn
-/// ví, không đụng tới bộ đếm/cờ của thực thể kia (xem `transactionOwnerOf`).
+/// Khoản thuộc mục tiêu, hay khoản trả của hoá đơn còn sống, thì `confirmDismiss` trả `false` — hàng bật lại và một
+/// câu chỉ đường tới nơi xoá đúng — vì xoá ở đây chỉ hoàn ví, không đụng tới bộ đếm/cờ của thực thể kia (xem
+/// `transactionOwnerOf`). Khoản trả hoá đơn kiểu cũ / mồ côi (việc 4c) thì hỏi xác nhận kèm câu cảnh báo
+/// (`canhBaoXoaTaiSo`); giao dịch thường vẫn vuốt là xoá.
 /// Nội dung hiển thị do [buildTransactionRowContent] tính. Tách khỏi
 /// `TransactionPage` để test được mà không cần `sl` lẫn `AuthBloc`.
 class TransactionListRow extends StatelessWidget {
@@ -21,10 +24,15 @@ class TransactionListRow extends StatelessWidget {
     required this.onDelete,
     this.lookup,
     this.onTap,
+    this.nguonHoaDonDaXoa,
   });
 
   final TransactionEntity transaction;
   final VoidCallback onDelete;
+
+  /// Việc 4c — hỏi "hoá đơn của khoản này đã xoá chưa" lúc vuốt (mở khoá có cảnh báo cho khoản mồ côi). `null` (dòng
+  /// đơn lẻ trong test, trang chưa đăng ký cổng) → khoản có `billId` vẫn khoá.
+  final HoaDonDaXoaNguon? nguonHoaDonDaXoa;
 
   /// Bấm vào dòng — trang mở bảng chi tiết. `null` thì dòng không phản ứng.
   final VoidCallback? onTap;
@@ -49,10 +57,22 @@ class TransactionListRow extends StatelessWidget {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       confirmDismiss: (_) async {
-        final lyDo = lyDoKhongXoaTaiSo(transactionOwnerOf(tx));
-        if (lyDo == null) return true;
-        baoNhanh(lyDo, loai: LoaiThongBao.loi);
-        return false;
+        final daXoa = await hoaDonDaXoaCua(tx, nguonHoaDonDaXoa);
+        final lyDo =
+            lyDoKhongXoaTaiSo(transactionOwnerOf(tx, hoaDonDaXoa: daXoa));
+        if (lyDo != null) {
+          baoNhanh(lyDo, loai: LoaiThongBao.loi);
+          return false;
+        }
+        final canhBao = canhBaoXoaTaiSo(tx, hoaDonDaXoa: daXoa);
+        // Giao dịch thường giữ nguyên vuốt-là-xoá — không thêm hộp thoại.
+        if (canhBao == null) return true;
+        if (!context.mounted) return false;
+        return ConfirmDialog.show(
+          context,
+          title: 'Xoá giao dịch?',
+          message: canhBao,
+        );
       },
       onDismissed: (_) {
         onDelete();

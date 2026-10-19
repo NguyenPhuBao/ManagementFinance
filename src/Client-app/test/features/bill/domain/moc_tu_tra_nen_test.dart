@@ -68,6 +68,15 @@ void main() {
     expect(l.moc, DateTime(2026, 10, 12, 8, 30),
         reason: 'phép chọn mốc sớm nhất nằm TRONG xet (bản chép riêng của mỗi tệp, spec 3.3) — "phần tử đầu thắng" hay "mốc cuối thắng" đều sai');
     expect(l.coTuDong, isTrue);
+
+    final dao = mocTuTraNen(
+      [_hoaDon(han: DateTime(2026, 10, 12)), _hoaDon(han: DateTime(2026, 10, 20))],
+      now: now,
+      gioNhac: 8,
+      phutNhac: 30,
+    );
+    expect(dao.moc, DateTime(2026, 10, 12, 8, 30),
+        reason: 'thứ tự ĐẢO [sớm, muộn] bắt bản sai "phần tử cuối thắng"; thứ tự gốc [muộn, sớm] bắt "phần tử đầu thắng" — cần cả hai');
   });
 
   test('tắt tự trả / đã trả / thiếu ví / đã xoá → bỏ hẳn', () {

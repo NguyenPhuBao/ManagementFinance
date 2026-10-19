@@ -4,6 +4,7 @@ library;
 
 import 'package:flowmoney/features/premium/domain/chuyen_huong_theo_goi.dart';
 import 'package:flowmoney/features/premium/domain/tran_goi.dart';
+import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -41,5 +42,12 @@ void main() {
   test('?id= rỗng vẫn là tạo', () {
     expect(chuyenHuongTheoGoi(Uri.parse('/budget/rules?id='), vuotNs),
         isNotNull);
+  });
+
+  test('/premium/don/:orderCode — mã không phải số (deeplink tay, gõ nhầm) → về Lịch sử mua (spec G94 mục 5.5)', () {
+    expect(chuyenHuongChiTietDon('200370869'), isNull);
+    expect(chuyenHuongChiTietDon('abc'), '/premium/lich-su');
+    expect(chuyenHuongChiTietDon(''), '/premium/lich-su');
+    expect(chuyenHuongChiTietDon(null), '/premium/lich-su');
   });
 }

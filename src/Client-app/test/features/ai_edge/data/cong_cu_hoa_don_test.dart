@@ -9,10 +9,11 @@ import 'package:flowmoney/features/ai_edge/data/cong_cu_hoa_don.dart';
 import 'package:flowmoney/features/ai_edge/domain/cong_cu.dart';
 import 'package:flowmoney/features/ai_edge/domain/hang_hoa_don.dart';
 import 'package:flowmoney/features/bill/data/repositories/bill_repository.dart';
+import 'package:flowmoney/features/bill/data/so_ngay_nhac_nguon.dart';
 import 'package:flowmoney/features/bill/domain/bill_pay_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-BillEntity _bill(String ten, DateTime dueDate, {bool tuTra = false}) => BillEntity(
+BillEntity _bill(String ten, DateTime dueDate, {bool tuTra = false, String? nhac = '3'}) => BillEntity(
       id: ten,
       idaccount: 10,
       walletId: 'w1',
@@ -24,7 +25,7 @@ BillEntity _bill(String ten, DateTime dueDate, {bool tuTra = false}) => BillEnti
       payStatus: 'Pending',
       isPaid: false,
       autoPayEnabled: tuTra,
-      timeNotification: '3',
+      timeNotification: nhac,
       isRecurrence: true,
       timeRecurrence: kBillCycleMonth,
       recurrence: 'monthly',
@@ -127,6 +128,36 @@ void main() {
         reason: 'kỳ đã trả 28/09 là câu trả lời SAI cho "hoá đơn nào tự trả"');
     expect(log.any((l) => l.contains('trang_thai')), isTrue, reason: 'lượt gỡ phải lên log');
   });
+
+  group('số ngày "Nhắc trước" của Cài đặt (2026-10-17)', () {
+    test('hoá đơn TẮT nhắc còn 5 ngày, tuỳ chọn 7 → "sắp đến hạn", đọc đúng tài khoản', () async {
+      final hoi = <int>[];
+      final nguon = SoNgayNhacNguon((id) async {
+        hoi.add(id);
+        return 7;
+      });
+      final kq = await CongCuHoaDon(_HoaDonTatNhac(), soNgayNhac: nguon, log: (_) {})
+          .chay({'ky': 'tat_ca', 'trang_thai': 'tat_ca'}, idaccount: 10, now: now);
+      expect(hoi, [10]);
+      expect(kq.hang.single.trangThai, 'sắp đến hạn',
+          reason: 'Trang Hoá đơn hiện "Sắp đến hạn" cho hoá đơn này — tool đọc mốc 3 là nói khác trang.');
+    });
+
+    test('không có nguồn → mốc 3 như cũ', () async {
+      final kq = await CongCuHoaDon(_HoaDonTatNhac(), log: (_) {})
+          .chay({'ky': 'tat_ca', 'trang_thai': 'tat_ca'}, idaccount: 10, now: now);
+      expect(kq.hang.single.trangThai, isNot('sắp đến hạn'));
+    });
+  });
+}
+
+/// Một hoá đơn TẮT nhắc (`timeNotification` NULL), hạn 27/09 — còn 5 ngày so với `now` 22/09.
+class _HoaDonTatNhac implements BillRepository {
+  @override
+  Stream<List<BillEntity>> watchBills(int idaccount) =>
+      Stream.value([_bill('Internet', DateTime(2026, 9, 27), nhac: null)]);
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
 }
 
 class _HoaDonKyDaTra implements BillRepository {

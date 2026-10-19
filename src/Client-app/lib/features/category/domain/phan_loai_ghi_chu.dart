@@ -5,17 +5,16 @@
 /// bằng chứng), làm trơn Laplace. Xác suất tính trên MỌI danh mục đã học; `hopLe` chỉ lọc ứng viên — tính trên phần
 /// còn lại là đẩy danh mục duy nhất còn sống lên 100 % cho một ghi chú chẳng liên quan.
 ///
-/// Đặt ở `category/domain/`, không ở `ai_edge/`: nó đọc sổ giao dịch, thứ test quét 14 cấm trong `ai_edge/`. Bỏ
-/// dấu (`removeVietnameseTones`) ở đây là đúng chỗ của nó — đây là GỢI Ý, không phải quy tắc trùng tên (quy tắc 7).
+/// Đặt ở `category/domain/`, không ở `ai_edge/`: nó TÍNH (Naive Bayes) trên mẫu dựng từ sổ giao dịch, thứ test quét
+/// 14 cấm trong `ai_edge/`. Bỏ dấu (`removeVietnameseTones`) ở đây là đúng chỗ của nó — đây là GỢI Ý, không phải quy
+/// tắc trùng tên (quy tắc 7). Từ 2026-10-16 phần đọc sổ — `laGhiChuMay` (`transaction/domain/khoan_vao_thong_ke.dart`)
+/// và bộ dựng mẫu `mauHocTu` (`transaction/domain/mau_hoc_danh_muc.dart`) — ở mảng giao dịch (quét 29); tệp này chỉ
+/// nhận mẫu, không đọc hàng sổ.
 library;
 
 import 'dart:math' as math;
 
 import '../../../core/category/category_name.dart';
-import '../../analytics/domain/khoan_vao_thong_ke.dart';
-import '../../bill/domain/bill_note.dart';
-import '../../goal/domain/goal_history_direction.dart';
-import '../../transaction/domain/transaction_owner.dart';
 
 /// Dưới mười mẫu có nhãn thì sổ còn quá mỏng để nói "bạn thường ghi …" — cùng lý lẽ `kToiThieuMauViHayDung`.
 const int kToiThieuMauTong = 10;
@@ -48,28 +47,6 @@ List<String> amTietCua(String ghiChu) => removeVietnameseTones(normalizeCategory
 
 /// Các đoạn chữ / số của ghi chú, GIỮ CHỮ GÕ (có dấu, hoa thường) — để in lại cụm bỏ dấu đúng như người dùng viết.
 List<String> tuGocCua(String ghiChu) => ghiChu.split(_ngoaiChu).where((t) => t.isNotEmpty).toList();
-
-/// Ghi chú do MÁY gắn chứ không phải người dùng gõ — học chúng là dạy mô hình rằng *"thanh toán hóa đơn"* là một
-/// danh mục. Gom mọi nhận dạng ĐÃ CÓ, không viết lại chuỗi nào.
-bool laGhiChuMay({required String loai, required String? categoryId, required String? ghiChu}) {
-  if (!khoanVaoThongKe(loai: loai, categoryId: categoryId, ghiChu: ghiChu)) return true;
-  final g = ghiChu ?? '';
-  return g.startsWith(kGhiChuTraHoaDon) ||
-      g.startsWith(kGhiChuNapMucTieu) ||
-      g.startsWith(kGhiChuRutMucTieu) ||
-      g.startsWith(kGhiChuNapMucTieuCu);
-}
-
-/// Mẫu có nhãn: giao dịch có danh mục, ghi chú người dùng gõ, còn ít nhất một âm tiết.
-List<MauGhiChu> mauHocTu(
-        Iterable<({String loai, String? categoryId, String? ghiChu, DateTime ngay})> giaoDich) =>
-    [
-      for (final t in giaoDich)
-        if (t.categoryId != null &&
-            !laGhiChuMay(loai: t.loai, categoryId: t.categoryId, ghiChu: t.ghiChu))
-          if (amTietCua(t.ghiChu ?? '') case final a when a.isNotEmpty)
-            MauGhiChu(categoryId: t.categoryId!, amTiet: a, ngay: t.ngay),
-    ];
 
 class DoanDanhMuc {
   final String categoryId;

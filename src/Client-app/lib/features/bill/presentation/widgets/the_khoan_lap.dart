@@ -6,7 +6,7 @@ import '../../../category/presentation/widgets/category_visuals.dart';
 import '../../../category/data/models/category_entity.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../transaction/domain/khoan_lap.dart';
+import '../../domain/khoan_lap.dart';
 import '../../data/de_xuat_hoa_don_nguon.dart';
 import '../../domain/dien_san_hoa_don.dart';
 

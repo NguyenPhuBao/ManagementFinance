@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../domain/quyen_tinh_nang.dart';
 import '../../domain/tran_goi.dart';
+import '../../domain/hang_goi.dart';
 
 /// Nút dùng chung cho hai băng khoá (Trợ lý AI, Nhập nhanh) và thẻ Gói ở tab
 /// Cá nhân: `push('/premium')` — route ngoài shell, push từ mọi nơi được (bẫy

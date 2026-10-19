@@ -1,7 +1,7 @@
 /// Tool `danh_sach_hoa_don` — hàng theo TÊN kèm trạng thái và số tiền (spec 4b
 /// mục 3.4). Không tính gì: trạng thái từ `billDisplayStatusOf`, tổng hợp từ
-/// `summarizeBills`, bộ lọc kỳ chép đúng `GoiSoHoaDon` — hàng và tổng phải nói
-/// về **một** tập hoá đơn.
+/// `summarizeBills`, tập kỳ này qua `thuocKyNay` — cùng định nghĩa với thẻ tổng
+/// và `GoiSoHoaDon` — hàng và tổng phải nói về **một** tập hoá đơn.
 ///
 /// [ky] (spec mở rộng tool 2026-09-27 §5.1) chọn TẬP hoá đơn; hàng, số đếm và
 /// tổng tiền luôn tính trên cùng tập ấy:
@@ -11,7 +11,8 @@
 ///   `payBill` sinh hàng thật, cùng phép với dự báo 30 ngày). ⚠️ Spec viết "chiếu
 ///   từ hoá đơn đã trả kỳ này"; mã thật thì trả tiền là SINH LUÔN hàng kỳ sau,
 ///   nên hàng đã trả không còn gì để chiếu — chiếu từ nó là đếm đôi.
-/// - `tat_ca`: mọi hàng bất kể tháng — tập của tab *Cần thanh toán*.
+/// - `tat_ca`: mọi hàng bất kể tháng — cùng `chua_tra` là toàn bộ tab *Cần thanh
+///   toán* (kỳ này + nhóm *Các tháng sau*; số trên tab chỉ đếm kỳ này).
 ///
 /// *Cố định mỗi tháng* luôn là của KỲ NÀY (hoá đơn lặp chu kỳ tháng, kể cả đã
 /// trả), không theo [ky]: nó trả lời "mỗi tháng tôi gánh bao nhiêu".
@@ -25,6 +26,7 @@ library;
 import '../../bill/domain/bill_recurrence.dart';
 import '../../bill/data/models/bill_entity.dart';
 import '../../bill/domain/bill_ky_ke_tiep.dart';
+import '../../bill/domain/bill_nhac_truoc.dart';
 import '../../bill/domain/bill_pay_status.dart';
 import '../../bill/domain/bill_status.dart';
 import 'goi_so.dart';
@@ -99,6 +101,8 @@ List<BillEntity> _tapTheoTen(List<BillEntity> bills, String ten, DateTime now) {
   return [cua.reduce((x, y) => y.dueDate.isAfter(x.dueDate) ? y : x)];
 }
 
+/// [soNgayNhac]: tuỳ chọn "Nhắc trước" của Cài đặt thông báo — ngưỡng "sắp đến hạn" của hoá đơn tắt nhắc, cùng số
+/// trang Hoá đơn dùng (2026-10-17; trước đó tool dùng mốc 3 cố định nên có thể nói khác trang).
 KetQuaCongCu hangHoaDon(
   List<BillEntity> bills, {
   required DateTime now,
@@ -106,6 +110,7 @@ KetQuaCongCu hangHoaDon(
   String ky = kKyHoaDonMacDinh,
   String? ten,
   bool tuTra = false,
+  int soNgayNhac = mocNhacMacDinh,
 }) {
   if (!kTrangThaiHoaDon.contains(trangThai)) {
     return tuChoiGiaTri('trang_thai', trangThai, kTrangThaiHoaDon);
@@ -114,12 +119,14 @@ KetQuaCongCu hangHoaDon(
     return tuChoiGiaTri('ky', ky, kKyHoaDon);
   }
 
-  // Cùng phép chặn cuối tháng với `summarizeBills` và `GoiSoHoaDon.tu`.
-  final cuoiKy = DateTime(now.year, now.month + 1, 1);
+  // Kỳ này: CÙNG định nghĩa `thuocKyNay` với `summarizeBills`, `GoiSoHoaDon.tu`
+  // và số trên tab *Cần thanh toán* — không chép lại phép chặn cuối tháng.
   final kyNay = [
     for (final b in bills)
-      if (b.dueDate.isBefore(cuoiKy)) b,
+      if (thuocKyNay(b, now)) b,
   ];
+  // Biên mở của kỳ này cũng là đầu kỳ tới (`ky_toi`).
+  final dauKyToi = DateTime(now.year, now.month + 1, 1);
 
   // Tập của [ky] và MỐC đưa cho `summarizeBills` — hàm ấy chặn ở cuối tháng
   // của mốc, nên mốc phải nằm trong tháng của hạn xa nhất trong tập.
@@ -135,8 +142,8 @@ KetQuaCongCu hangHoaDon(
   } else {
     switch (ky) {
       case 'ky_toi':
-        tap = _tapKyToi(bills, cuoiKy, DateTime(now.year, now.month + 2, 1));
-        mocTom = cuoiKy;
+        tap = _tapKyToi(bills, dauKyToi, DateTime(now.year, now.month + 2, 1));
+        mocTom = dauKyToi;
       case 'tat_ca':
         tap = [for (final b in bills) (b: b, duKien: false)];
         var xa = now;
@@ -154,7 +161,7 @@ KetQuaCongCu hangHoaDon(
   if (tuTra) tap = [for (final m in tap) if (m.b.autoPayEnabled) m];
   final tom = summarizeBills([for (final m in tap) m.b], mocTom);
 
-  BillDisplayStatus trangThaiCua(_Muc m) => billDisplayStatusOf(m.b, now);
+  BillDisplayStatus trangThaiCua(_Muc m) => billDisplayStatusOf(m.b, now, macDinh: soNgayNhac);
   var quaHan = 0;
   var soTuTra = 0;
   for (final m in tap) {

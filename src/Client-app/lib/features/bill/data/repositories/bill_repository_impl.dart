@@ -149,10 +149,11 @@ class BillRepositoryImpl implements BillRepository {
           categoryId: Value(current.categoryId),
           amount: soTien,
           type: 'chi',
-          // Tiền tố đứng TRƯỚC — `transactionOwnerOf` nhận diện bằng
+          // Tiền tố đứng TRƯỚC — `laGhiChuMay` và nhận diện khoản kiểu cũ dùng
           // startsWith; ghi chú của lần trả (nếu có) nối sau bằng gạch dài.
           note: Value(ghiChuTraHoaDon(current.name, note)),
-          // Sợi dây để hoàn tác lần được ngược về đây. Cột CỤC BỘ (v16) —
+          // Sợi dây để hoàn tác lần được ngược về đây, và là khoá của sổ giao
+          // dịch (việc 4c). Cột v16, đồng bộ `idbill` từ 2026-09-12 —
           // tiền tố ghi chú ở trên KHÔNG đủ: người dùng gõ trùng tiền tố là
           // hoàn nhầm tiền vào ví bằng một khoản chi khác của họ.
           billId: Value(current.id),
@@ -250,8 +251,13 @@ class BillRepositoryImpl implements BillRepository {
 
       // 2. Gỡ kỳ kế tiếp mà lần trả đã sinh ra. Để lại thì người dùng có hai
       //    kỳ cùng mở, và trả lại lần nữa sẽ đẻ thêm một kỳ trùng.
+      //    ⚠️ CHỈ khi kỳ ấy còn phải trả — cùng luật với `datLaiChuaTra`
+      //    (2026-10-17). Tab Lịch sử bày Hoàn tác cho mọi kỳ đã trả; gỡ vô điều
+      //    kiện là hoàn tác tháng 9 xoá luôn tháng 10 đã trả, khoản chi của nó
+      //    thành mồ côi. Bên gỡ xung đột (`BillPaymentConflictResolver`) không
+      //    đổi gì: kỳ sau máy thua vừa sinh luôn còn phải trả.
       final kySau = await db.billDao.getGeneratedFrom(billId);
-      if (kySau != null) {
+      if (kySau != null && conPhaiTra(BillEntity.fromDrift(kySau))) {
         await dataSource.softDeleteBill(kySau.id);
       }
 
@@ -270,6 +276,49 @@ class BillRepositoryImpl implements BillRepository {
     // GIAO DỊCH chứ không từ hoá đơn: người dùng có thể đã trả bằng ví khác.
     // ⚠️ Ngoài `db.transaction`, cùng lý do với `payBill`.
     await soDuVi.tinhLaiSoDu(khoanChi.walletId);
+
+    syncEngine?.scheduleSync();
+  }
+
+  @override
+  Future<void> datLaiChuaTra({required String billId}) async {
+    final current = await dataSource.getBillById(billId);
+    if (current == null) {
+      throw StateError('Không tìm thấy hoá đơn $billId');
+    }
+    if (!daCoKhoanChi(BillEntity.fromDrift(current))) {
+      throw BillNotPaidException(billId);
+    }
+    // Còn khoản chi gắn `billId` thì đây là việc của `undoPayment` — xem
+    // `BillPaymentStillLinkedException`. Hộp hỏi chỉ mở khi trang không thấy
+    // khoản nào, nhưng bản đồ của trang có thể cũ hơn CSDL.
+    if (await db.transactionDao.getByBill(billId) != null) {
+      throw BillPaymentStillLinkedException(billId);
+    }
+
+    final now = DateTime.now();
+
+    await db.transaction(() async {
+      // Chỉ gỡ kỳ kế tiếp khi nó còn phải trả — cùng luật với `undoPayment`
+      // (từ 2026-10-17; trước đó `undoPayment` gỡ vô điều kiện). Kỳ kiểu cũ
+      // là kỳ cũ: tháng sau của nó thường đã trả hoặc bỏ qua, gỡ nó là xoá một
+      // kỳ đã đóng (khoản chi của nó thành mồ côi). Kỳ còn phải trả thì chưa
+      // sinh kỳ nào, nên một phép kiểm là đủ cho cả chuỗi.
+      final kySau = await db.billDao.getGeneratedFrom(billId);
+      if (kySau != null && conPhaiTra(BillEntity.fromDrift(kySau))) {
+        await dataSource.softDeleteBill(kySau.id);
+      }
+
+      // Đặt CẢ HAI cột, cùng lý do với `undoPayment`. Không đụng sổ, không
+      // đụng số dư: không có khoản chi nào lần được về kỳ này.
+      await dataSource.updateBill(BillsCompanion(
+        id: Value(billId),
+        payStatus: const Value(kBillPending),
+        isPaid: const Value(false),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
+    });
 
     syncEngine?.scheduleSync();
   }
@@ -358,9 +407,11 @@ class BillRepositoryImpl implements BillRepository {
     await db.transaction(() async {
       // Gỡ kỳ kế tiếp mà lần bỏ qua đã sinh ra — cùng lý do với `undoPayment`:
       // để lại thì người dùng có hai kỳ cùng mở, và bỏ qua lần nữa sẽ đẻ thêm
-      // một kỳ trùng.
+      // một kỳ trùng. ⚠️ CHỈ khi kỳ ấy còn phải trả — cùng luật với
+      // `undoPayment` / `datLaiChuaTra` (2026-10-17): gỡ vô điều kiện là hoàn
+      // tác bỏ qua tháng 9 xoá luôn tháng 10 đã trả.
       final kySau = await db.billDao.getGeneratedFrom(billId);
-      if (kySau != null) {
+      if (kySau != null && conPhaiTra(BillEntity.fromDrift(kySau))) {
         await dataSource.softDeleteBill(kySau.id);
       }
 
@@ -395,7 +446,7 @@ class BillRepositoryImpl implements BillRepository {
     return BillsCompanion.insert(
       id: const Uuid().v4(),
       idaccount: current.idaccount,
-      // Sợi dây để hoàn tác gỡ đúng kỳ này. Cột CỤC BỘ (v16).
+      // Sợi dây để hoàn tác gỡ đúng kỳ này. Cột v16, đồng bộ `previous_bill_id` từ 2026-09-12.
       generatedFromBillId: Value(current.id),
       walletId: Value(current.walletId),
       categoryId: Value(current.categoryId),

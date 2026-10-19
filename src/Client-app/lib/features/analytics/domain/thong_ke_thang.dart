@@ -8,7 +8,7 @@
 /// không cần CSDL.
 library;
 
-import 'khoan_vao_thong_ke.dart';
+import '../../transaction/domain/khoan_vao_thong_ke.dart';
 import 'pham_vi_ky.dart';
 
 /// Một giao dịch rút gọn khỏi hàng Drift: chỉ bốn thứ phép thống kê cần.
@@ -107,7 +107,7 @@ TongThuChi tongThuChi(
   var chi = 0.0;
   for (final k in ds) {
     if (!_trongKhoang(k.ngay, from, to)) continue;
-    // Phép lọc có ĐÚNG MỘT định nghĩa ở `khoan_vao_thong_ke.dart`: nó loại cả
+    // Phép lọc có ĐÚNG MỘT định nghĩa ở `transaction/domain/khoan_vao_thong_ke.dart`: nó loại cả
     // khoản chuyển (tiền đổi chỗ) lẫn khoản điều chỉnh số dư (phép sửa sổ).
     if (!khoanVaoThongKe(
       loai: k.loai,

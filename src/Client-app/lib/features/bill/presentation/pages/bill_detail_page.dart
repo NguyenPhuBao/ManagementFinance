@@ -16,7 +16,9 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
 import '../../domain/bill_chain.dart';
+import '../../domain/bill_nhac_truoc.dart';
 import '../../domain/bill_status.dart';
+import '../../data/so_ngay_nhac_nguon.dart';
 import '../bloc/bill_bloc.dart';
 import '../bloc/bill_state.dart';
 import '../widgets/bill_actions.dart';
@@ -30,8 +32,10 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 /// thái cho một hoá đơn. Thao tác thì vẫn đi qua `BillBloc` để dùng chung ba
 /// luồng trả / hoàn tác / xoá với trang danh sách.
 ///
-/// "Lịch sử các kỳ" lần theo `generatedFromBillId` — cột **cục bộ** (v16),
-/// nên hoá đơn kéo về từ server chỉ có một dòng lịch sử; đừng đoán theo tên.
+/// "Lịch sử các kỳ" lần theo `generatedFromBillId` — cột v16, đồng bộ
+/// (`previous_bill_id`) từ 2026-09-12; kỳ ghi trước ngày ấy rồi kéo về máy
+/// khác không nối được với kỳ trước nó, nên lịch sử có thể chỉ một dòng;
+/// đừng đoán theo tên.
 class BillDetailPage extends StatefulWidget {
   final String id;
 
@@ -41,7 +45,13 @@ class BillDetailPage extends StatefulWidget {
   /// Tiêm được để test không phụ thuộc ngày chạy.
   final DateTime? now;
 
-  const BillDetailPage({super.key, required this.id, this.bill, this.now});
+  /// Tuỳ chọn "Nhắc trước" — ngưỡng nhãn "Sắp đến hạn" của hoá đơn tắt nhắc,
+  /// cùng nguồn với trang danh sách. `null` thì lấy từ DI nếu đã đăng ký, không
+  /// thì mốc 3 ngày.
+  final SoNgayNhacNguon? soNgayNhac;
+
+  const BillDetailPage(
+      {super.key, required this.id, this.bill, this.now, this.soNgayNhac});
 
   @override
   State<BillDetailPage> createState() => _BillDetailPageState();
@@ -53,6 +63,9 @@ class _BillDetailPageState extends State<BillDetailPage> {
   Map<String, TransactionEntity> _khoanChi = const {};
   TransactionLookup _lookup = TransactionLookup.empty;
   bool _dangTai = true;
+
+  /// Ngưỡng nhãn "Sắp đến hạn" cho hoá đơn tắt nhắc (tuỳ chọn "Nhắc trước").
+  int _soNgayNhac = mocNhacMacDinh;
 
   static final _ngay = DateFormat('dd/MM/yyyy');
   @override
@@ -80,7 +93,11 @@ class _BillDetailPageState extends State<BillDetailPage> {
     var tatCa = <BillEntity>[bill];
     var khoanChi = <String, TransactionEntity>{};
     var lookup = TransactionLookup.empty;
+    var soNgayNhac = mocNhacMacDinh;
     if (accountId != null) {
+      final nguon = widget.soNgayNhac ??
+          (sl.isRegistered<SoNgayNhacNguon>() ? sl<SoNgayNhacNguon>() : null);
+      if (nguon != null) soNgayNhac = await nguon.doc(accountId);
       tatCa = await sl<BillRepository>().getBills(accountId);
       khoanChi = await sl<BillRepository>().paymentsOf(accountId);
       final vi = await sl<WalletRepository>().getAll(accountId);
@@ -97,6 +114,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
       if (_chuoi.isEmpty) _chuoi = [bill];
       _khoanChi = khoanChi;
       _lookup = lookup;
+      _soNgayNhac = soNgayNhac;
       _dangTai = false;
     });
   }
@@ -157,7 +175,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
                     tooltip: 'Xoá',
                     icon: const Icon(Icons.delete_outline,
                         color: AppColors.error),
-                    onPressed: () => hoiXoaHoaDon(context, b.id),
+                    onPressed: () => xacNhanXoaHoaDon(context, b.id, bill: b),
                   ),
                 ],
         ),
@@ -174,7 +192,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
   }
 
   Widget _noiDung(BuildContext context, BillEntity b, DateTime now) {
-    final status = billDisplayStatusOf(b, now);
+    final status = billDisplayStatusOf(b, now, macDinh: _soNgayNhac);
     final danhMuc = _lookup.category(b.categoryId);
 
     return ListView(
@@ -379,7 +397,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
   }
 
   Widget _dongLichSu(BillEntity b, {required bool laHienTai, required DateTime now}) {
-    final status = billDisplayStatusOf(b, now);
+    final status = billDisplayStatusOf(b, now, macDinh: _soNgayNhac);
     final tra = _khoanChi[b.id];
     // Chữ thường, khác nhãn IN HOA ở đầu trang, để không lẫn hai thứ.
     final phu = switch (status) {
@@ -441,7 +459,10 @@ class _BillDetailPageState extends State<BillDetailPage> {
     if (status == BillDisplayStatus.paid) {
       return OutlinedButton.icon(
         key: const ValueKey('bill-detail-undo'),
-        onPressed: () => hoiHoanTacHoaDon(context, b),
+        // Không có khoản chi gắn `billId` (kiểu cũ) → hộp đưa về chưa trả.
+        onPressed: () => hoiHoanTacHoaDon(context, b,
+            coKhoanTra: _khoanChi.containsKey(b.id),
+            kySau: kySauConPhaiTra(_chuoi, b.id)),
         icon: const Icon(Icons.undo, size: 18),
         label: const Text('Hoàn tác thanh toán'),
         style: _vien,
@@ -454,7 +475,8 @@ class _BillDetailPageState extends State<BillDetailPage> {
       // một giao diện nói dối.
       return OutlinedButton.icon(
         key: const ValueKey('bill-detail-undo-skip'),
-        onPressed: () => hoiHoanTacBoQua(context, b),
+        onPressed: () =>
+            hoiHoanTacBoQua(context, b, kySau: kySauConPhaiTra(_chuoi, b.id)),
         icon: const Icon(Icons.undo, size: 18),
         label: const Text('Hoàn tác bỏ qua'),
         style: _vien,
@@ -468,7 +490,8 @@ class _BillDetailPageState extends State<BillDetailPage> {
       children: [
         ElevatedButton.icon(
           key: const ValueKey('bill-detail-pay'),
-          onPressed: () => moBangThanhToanHoaDon(context, b),
+          onPressed: () =>
+              moBangThanhToanHoaDon(context, b, soNgayNhac: _soNgayNhac),
           icon: const Icon(Icons.payments_outlined, size: 18),
           label: const Text('Thanh toán'),
           style: ElevatedButton.styleFrom(
