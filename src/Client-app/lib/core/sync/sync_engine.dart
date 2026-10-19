@@ -15,6 +15,10 @@ import 'cong_vi_bi_giu.dart';
 import 'sync_models.dart';
 import 'sync_checkpoint_store.dart';
 import 'moc_keo_ve.dart';
+import 'moc_keo_ve.dart' as moc;
+import 'bieu_tuong_danh_muc_mac_dinh.dart';
+import 'gieo_tu_khoa.dart';
+import 'uuid_dong_bo.dart';
 import 'sync_payload_normalizer.dart';
 import '../../features/goal/domain/uu_tien_hop_le.dart';
 
@@ -781,7 +785,7 @@ class SyncEngine {
                   existingLocal.icon != 'category') {
                 finalIcon = existingLocal.icon;
               } else {
-                finalIcon = _defaultIconForCategoryName(catName);
+                finalIcon = defaultIconForCategoryName(catName);
               }
 
               String finalColor;
@@ -791,7 +795,7 @@ class SyncEngine {
                   existingLocal.colour.isNotEmpty) {
                 finalColor = existingLocal.colour;
               } else {
-                finalColor = _defaultColorForCategoryName(catName);
+                finalColor = defaultColorForCategoryName(catName);
               }
 
               companions.add(CategoriesCompanion(
@@ -845,14 +849,14 @@ class SyncEngine {
               }
             }
             await _db.categoryDao.upsertAll(companions);
-            await _gieoTuKhoaKhiTrong(accountId, tuKhoaTheoDanhMuc);
+            await gieoTuKhoaKhiTrong(_db, accountId, tuKhoaTheoDanhMuc);
             // Repair TRƯỚC: cập nhật categoryId từ 'cat_food' → UUID trong các
             // pending transactions. PHẢI chạy trước removeDuplicateLocalSeedCategories()
             // vì _resolveCategoryId cần getById('cat_food') để đọc tên category rồi
             // tìm UUID cùng tên — nếu seed 'cat_food' đã bị xóa trước, getById() trả
             // về null và repair sẽ luôn thất bại (transaction bị defer vĩnh viễn).
             final repaired = await _db.transactionDao
-                .repairPendingTransactionsCategoryId(_resolveCategoryId);
+                .repairPendingTransactionsCategoryId((id) => resolveCategoryId(_db, id));
             if (repaired > 0) {
               debugPrint(
                   '[SyncEngine] Repaired $repaired transactions: updated categoryId to UUID.');
@@ -1114,11 +1118,11 @@ class SyncEngine {
           // được gì nữa cho tới khi thời gian thật đuổi kịp — hỏng hoàn toàn im
           // lặng. Kẹp chứ không vứt bỏ: dữ liệu vừa nhận đã là tất cả những gì
           // server có tính tới lúc này.
-          final newest = _kepVeHienTai(
+          final newest = kepVeHienTai(
               topData != null && topData.containsKey('maxSince')
                   ? mocTuMaxSince(topData['maxSince'],
                       pulledAt: topData['pulledAt'])
-                  : _newestUpdateAt(payloadData));
+                  : newestUpdateAt(payloadData));
           if (newest != null) {
             _lastPullTime = newest;
             await _checkpointStore?.write(accountId, newest);
@@ -1149,48 +1153,10 @@ class SyncEngine {
     }
   }
 
-  /// Mốc đã lưu, hoặc `null` nếu nó nằm ở **tương lai**.
-  ///
-  /// `null` ở đây kéo theo một lần full pull (`since = 1970`), đúng thứ cần cho
-  /// một máy đang kẹt: mốc hỏng che mất đúng khoảng dữ liệu bị bỏ lỡ, nên kẹp
-  /// nó về "bây giờ" vẫn không lấy lại được phần ấy.
-  ///
-  /// Công khai để test gọi thẳng; đường chạy thật chỉ dùng nó ở [start].
-  static DateTime? mocPullConDungKhong(DateTime? daLuu, DateTime bayGio) {
-    if (daLuu == null) return null;
-    return daLuu.isAfter(bayGio) ? null : daLuu;
-  }
-
-  /// Kẹp một mốc **sắp ghi** về không quá hiện tại.
-  ///
-  /// Khác [mocPullConDungKhong] ở chỗ nó *kẹp* thay vì *vứt*: ở đường ghi ta
-  /// vừa nhận xong dữ liệu, nên "bây giờ" là mốc đúng — không có khoảng nào bị
-  /// bỏ lỡ để mà phải kéo lại.
-  static DateTime? _kepVeHienTai(DateTime? moc) {
-    if (moc == null) return null;
-    final bayGio = DateTime.now().toUtc();
-    return moc.isAfter(bayGio) ? bayGio : moc;
-  }
-
-  /// Tìm `update_at` mới nhất trong toàn bộ payload pull (mọi loại thực thể).
-  ///
-  /// Chỉ còn là đường lùi cho server **chưa** trả `maxSince` (trước migration 20)
-  /// — xem [mocTuMaxSince] và G67.
-  static DateTime? _newestUpdateAt(Map<String, dynamic> payloadData) {
-    DateTime? newest;
-    for (final value in payloadData.values) {
-      if (value is! List) continue;
-      for (final row in value) {
-        if (row is! Map) continue;
-        final raw = (row['update_at'] ?? row['updated_at'])?.toString();
-        if (raw == null) continue;
-        final parsed = DateTime.tryParse(raw)?.toUtc();
-        if (parsed == null) continue;
-        if (newest == null || parsed.isAfter(newest)) newest = parsed;
-      }
-    }
-    return newest;
-  }
+  /// Chuyển tiếp — định nghĩa và lý do ở `moc_keo_ve.dart` (tách SyncEngine 2026-10-19). Giữ vì là API công khai của
+  /// engine.
+  static DateTime? mocPullConDungKhong(DateTime? daLuu, DateTime bayGio) =>
+      moc.mocPullConDungKhong(daLuu, bayGio);
 
   // ── Collect pending operations ────────────────────────────────────────────
 
@@ -1238,7 +1204,7 @@ class SyncEngine {
     });
     for (final c in syncableCategories) {
       if (_isSyncBlocked(c.syncBlockedUntil)) continue;
-      final validId = _toValidUuid(c.id);
+      final validId = toValidUuid(c.id);
       String validClassify = c.classify;
       if (validClassify == 'vay_no' || validClassify == 'vay-no') {
         validClassify = 'vay/no';
@@ -1269,7 +1235,7 @@ class SyncEngine {
           // Cấu trúc nhóm — backend mapEntityFields() nhận camelCase:
           // isGroup → Is_group, parentId → Idgroup.
           'isGroup': c.isGroup,
-          'parentId': c.parentId != null ? _toValidUuid(c.parentId!) : null,
+          'parentId': c.parentId != null ? toValidUuid(c.parentId!) : null,
           'updated_at': c.updatedAt.toUtc().toIso8601String(),
           'idaccount': c.idaccount > 0 ? c.idaccount : idaccount,
         },
@@ -1283,7 +1249,7 @@ class SyncEngine {
     for (final w in pendingWallets) {
       if (_isSyncBlocked(w.syncBlockedUntil)) continue;
       if (giu.vi.contains(w.id)) continue;
-      final validId = _toValidUuid(w.id);
+      final validId = toValidUuid(w.id);
       ops.add(SyncOperation(
         localId: w.id,
         entity: SyncEntityType.wallet,
@@ -1325,7 +1291,7 @@ class SyncEngine {
       // chu kỳ → xung đột (không lỗi, nên không giãn cách) → server phát
       // `sync.completed` về chính máy này → `syncNow` → chạy bù → đẩy lại.
       if (giu.giaoDich.contains(t.id)) continue;
-      final resolvedId = await _resolveCategoryId(t.categoryId);
+      final resolvedId = await resolveCategoryId(_db, t.categoryId);
       if (resolvedId == null) continue;
       if (alreadyInBatch.contains(resolvedId)) continue;
       final cat = await _db.categoryDao.getById(resolvedId);
@@ -1343,7 +1309,7 @@ class SyncEngine {
         entity: SyncEntityType.category,
         operation: cat.isDeleted ? SyncOperationType.delete : SyncOperationType.update,
         payload: {
-          'id': _toValidUuid(cat.id),
+          'id': toValidUuid(cat.id),
           'name': cat.name,
           'namecategory': cat.name,
           'classify': validClassify,
@@ -1362,7 +1328,7 @@ class SyncEngine {
             'keyword': tuKhoaTheoDanhMuc[cat.id]!.join(','),
           'isGroup': cat.isGroup,
           'parentId':
-              cat.parentId != null ? _toValidUuid(cat.parentId!) : null,
+              cat.parentId != null ? toValidUuid(cat.parentId!) : null,
           'updated_at': cat.updatedAt.toUtc().toIso8601String(),
           'idaccount': currentAccount,
         },
@@ -1381,7 +1347,7 @@ class SyncEngine {
     for (final g in pendingGoals) {
       if (_isSyncBlocked(g.syncBlockedUntil)) continue;
       if (giu.mucTieu.contains(g.id)) continue;
-      final validId = _toValidUuid(g.id);
+      final validId = toValidUuid(g.id);
       ops.add(SyncOperation(
         localId: g.id,
         entity: SyncEntityType.goal,
@@ -1394,7 +1360,7 @@ class SyncEngine {
           'current_amount': g.currentAmount,
           'start_date': g.startDate?.toUtc().toIso8601String(),
           'target_date': g.targetDate.toUtc().toIso8601String(),
-          'idwallet': g.walletId != null ? _toValidUuid(g.walletId!) : null,
+          'idwallet': g.walletId != null ? toValidUuid(g.walletId!) : null,
           'cycle_take_money': g.cycleTakeMoney,
           'time_cycle_take_money':
               g.timeCycleTakeMoney?.toUtc().toIso8601String(),
@@ -1404,7 +1370,7 @@ class SyncEngine {
           // hỏng nặng hơn hiện trạng "máy thứ hai không trích gì".
           'auto_deposit_amount': g.autoDepositAmount,
           'auto_deposit_wallet_id': g.autoDepositWalletId != null
-              ? _toValidUuid(g.autoDepositWalletId!)
+              ? toValidUuid(g.autoDepositWalletId!)
               : null,
           'auto_deposit_last_run':
               g.autoDepositLastRun?.toUtc().toIso8601String(),
@@ -1439,11 +1405,11 @@ class SyncEngine {
     for (final bill in pendingBills) {
       if (_isSyncBlocked(bill.syncBlockedUntil)) continue;
       if (giu.hoaDon.contains(bill.id)) continue;
-      final validId = _toValidUuid(bill.id);
+      final validId = toValidUuid(bill.id);
       final validWalletId =
-          bill.walletId != null ? _toValidUuid(bill.walletId!) : null;
+          bill.walletId != null ? toValidUuid(bill.walletId!) : null;
       final validCategoryId =
-          bill.categoryId != null ? _toValidUuid(bill.categoryId!) : null;
+          bill.categoryId != null ? toValidUuid(bill.categoryId!) : null;
       ops.add(SyncOperation(
         localId: bill.id,
         entity: SyncEntityType.bill,
@@ -1505,8 +1471,8 @@ class SyncEngine {
     for (final t in pendingTx) {
       if (_isSyncBlocked(t.syncBlockedUntil)) continue;
       if (giu.giaoDich.contains(t.id)) continue;
-      final validId = _toValidUuid(t.id);
-      final validWalletId = _toValidUuid(t.walletId);
+      final validId = toValidUuid(t.id);
+      final validWalletId = toValidUuid(t.walletId);
       // Khoản chuyển ví không có danh mục — payload bỏ `categoryId` cho loại
       // này (xem `transactionForPush`) — nên KHÔNG hoãn nó vì danh mục. Bản
       // app trước 2026-09-05 từng gán `'cat_transfer'` (id không có thật) cho
@@ -1514,7 +1480,7 @@ class SyncEngine {
       // vĩnh viễn trong khi số dư hai ví vẫn lên server.
       final isTransfer = t.type == 'transfer';
       final validCategoryId =
-          isTransfer ? null : await _resolveCategoryId(t.categoryId);
+          isTransfer ? null : await resolveCategoryId(_db, t.categoryId);
       if (!isTransfer && t.categoryId != null && validCategoryId == null) {
         debugPrint(
           '[SyncEngine] Deferring transaction ${t.id}: '
@@ -1534,14 +1500,14 @@ class SyncEngine {
           // Ví đích khi type = 'transfer' — backend đọc trực tiếp
           // `idwallet_transfer` (bỏ qua nếu không phải giao dịch chuyển khoản).
           'idwallet_transfer':
-              t.walletTransfer != null ? _toValidUuid(t.walletTransfer!) : null,
-          'idgoal': t.goalId != null ? _toValidUuid(t.goalId!) : null,
+              t.walletTransfer != null ? toValidUuid(t.walletTransfer!) : null,
+          'idgoal': t.goalId != null ? toValidUuid(t.goalId!) : null,
           // Khoá nối tới hoá đơn — mở đường đồng bộ 2026-09-12, cùng khuôn
           // `idgoal` ngay trên. Không có nó thì máy khác không lần được từ hoá
           // đơn ngược về đúng khoản chi nó sinh ra, và hoàn tác thanh toán phải
           // từ chối. Hoá đơn được đẩy ở mục 4, TRƯỚC đây, vì cột này có khoá
           // ngoại `fk_transaction_bill`.
-          'idbill': t.billId != null ? _toValidUuid(t.billId!) : null,
+          'idbill': t.billId != null ? toValidUuid(t.billId!) : null,
           'amount': t.amount,
           'type': t.type,
           'note': t.note,
@@ -1561,9 +1527,9 @@ class SyncEngine {
     // snake_case cuối cùng để tránh lệ thuộc vào việc mapper có khớp hay không.
     for (final b in await _db.budgetDao.getPending(idaccount)) {
       if (_isSyncBlocked(b.syncBlockedUntil)) continue;
-      final validId = _toValidUuid(b.id);
+      final validId = toValidUuid(b.id);
       final validCatId =
-          b.categoryId != null ? _toValidUuid(b.categoryId!) : null;
+          b.categoryId != null ? toValidUuid(b.categoryId!) : null;
       ops.add(SyncOperation(
         localId: b.id,
         entity: SyncEntityType.budget,
@@ -1598,59 +1564,6 @@ class SyncEngine {
     return ops;
   }
 
-
-  String _toValidUuid(String id) {
-    final uuidRegex = RegExp(
-        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-        caseSensitive: false);
-    if (uuidRegex.hasMatch(id)) return id;
-    final hexCodes =
-        id.codeUnits.map((c) => (c % 16).toRadixString(16)).join('');
-    final padded = hexCodes.padRight(12, '0').substring(0, 12);
-    return '00000000-0000-4000-8000-$padded';
-  }
-
-  bool _isValidUuidFormat(String id) {
-    final uuidRegex = RegExp(
-        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-        caseSensitive: false);
-    return uuidRegex.hasMatch(id);
-  }
-
-  Future<String?> _resolveCategoryId(String? categoryId) async {
-    if (categoryId == null) return null;
-
-    final localCategory = await _db.categoryDao.getById(categoryId);
-    if (localCategory == null) return null;
-
-    // Non-default user category: chỉ cần UUID hợp lệ
-    if (!localCategory.isDefault) {
-      return _isValidUuidFormat(categoryId) ? categoryId : null;
-    }
-
-    // Default category đã có UUID hợp lệ (từ backend) → dùng luôn
-    // KHÔNG tìm UUID khác — tránh trả về UUID sai từ account khác
-    if (_isValidUuidFormat(categoryId)) {
-      return categoryId;
-    }
-
-    // Default category với ID dạng 'cat_food' → tìm UUID tương ứng theo tên
-    final categoriesWithSameName =
-        await _db.categoryDao.getByName(localCategory.name);
-    for (final category in categoriesWithSameName) {
-      if (_isValidUuidFormat(category.id) &&
-          category.id != localCategory.id &&
-          category.isDefault &&
-          SyncPayloadNormalizer.sameCategoryClassify(
-            category.classify,
-            localCategory.classify,
-          )) {
-        return category.id;
-      }
-    }
-
-    return null; // Chưa có UUID tương ứng — defer transaction
-  }
 
   // ── Send batch to backend ─────────────────────────────────────────────────
 
@@ -1699,7 +1612,7 @@ class SyncEngine {
             final opIndex = ops.indexWhere(
               (e) =>
                   e.localId == respLocalId ||
-                  _toValidUuid(e.localId) == respLocalId,
+                  toValidUuid(e.localId) == respLocalId,
             );
             if (opIndex != -1) {
               final op = ops[opIndex];
@@ -2041,53 +1954,6 @@ class SyncEngine {
     return SyncFailureKind.transient;
   }
 
-  /// Gieo từ khoá phân loại backend gửi kèm danh mục — **chỉ khi danh mục đó
-  /// chưa có từ khoá nào** ở máy này.
-  ///
-  /// Vì sao không ghi đè: cột `Keyword` phía backend là **một chuỗi dùng chung
-  /// cho mọi tài khoản** (xem `docs/superpowers/backend/DA-XONG/CATEGORY_KEYWORD_SYNC.md`),
-  /// còn `CategoryKeywords` phía client là dữ liệu **riêng từng người dùng**,
-  /// sửa được trong màn quản lý danh mục. Ghi đè ở mỗi chu kỳ pull sẽ khiến
-  /// thao tác xoá từ khoá của người dùng không bao giờ dính — nó bị hồi sinh ở
-  /// lần pull sau, đúng cách danh mục đã xoá từng bị hồi sinh ở G7.
-  ///
-  /// Đánh đổi có chủ ý: xoá **hết** từ khoá của một danh mục thì lần pull sau
-  /// gieo lại, vì "rỗng" không phân biệt được với "chưa từng gieo" nếu không
-  /// thêm cột mới.
-  ///
-  /// `idaccount` dùng để ghi là **tài khoản đang đăng nhập**, không phải
-  /// `idaccount` của hàng danh mục — danh mục mặc định lưu với `idaccount = 0`
-  /// nhưng `loadKeywords` tra theo tài khoản người dùng.
-  Future<void> _gieoTuKhoaKhiTrong(
-    int accountId,
-    Map<String, List<String>> tuKhoaTheoDanhMuc,
-  ) async {
-    if (accountId <= 0 || tuKhoaTheoDanhMuc.isEmpty) return;
-    final now = DateTime.now();
-    var soDanhMucDaGieo = 0;
-    for (final entry in tuKhoaTheoDanhMuc.entries) {
-      try {
-        final daCo = await _db.categoryDao.getKeywords(accountId, entry.key);
-        if (daCo.isNotEmpty) continue;
-        await _db.categoryDao.replaceKeywords(
-          accountId: accountId,
-          categoryId: entry.key,
-          keywords: entry.value,
-          now: now,
-        );
-        soDanhMucDaGieo++;
-      } catch (e) {
-        // Một danh mục hỏng không được làm đổ cả chu kỳ pull: từ khoá là dữ
-        // liệu phụ trợ cho bộ gợi ý, không phải dữ liệu tài chính.
-        debugPrint('[SyncEngine] Bỏ qua từ khoá của ${entry.key}: $e');
-      }
-    }
-    if (soDanhMucDaGieo > 0) {
-      debugPrint(
-          '[SyncEngine] Đã gieo từ khoá phân loại cho $soDanhMucDaGieo danh mục.');
-    }
-  }
-
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   void _setStatus(SyncStatus s) {
@@ -2107,47 +1973,5 @@ class SyncEngine {
     _statusController.close();
     _sessionInvalidController.close();
     _pushResultController.close();
-  }
-
-  static String _defaultIconForCategoryName(String name) {
-    final lower = name.toLowerCase();
-    if (lower.contains('ăn') || lower.contains('uống')) return 'restaurant';
-    if (lower.contains('xe') || lower.contains('di chuyển'))
-      return 'directions_car';
-    if (lower.contains('sắm')) return 'shopping_bag';
-    if (lower.contains('y tế') ||
-        lower.contains('sức khoẻ') ||
-        lower.contains('sức khỏe') ||
-        lower.contains('thuốc')) return 'local_hospital';
-    if (lower.contains('học') || lower.contains('giáo dục')) return 'school';
-    if (lower.contains('trí') ||
-        lower.contains('game') ||
-        lower.contains('phim')) return 'sports_esports';
-    if (lower.contains('nhà')) return 'home';
-    if (lower.contains('đơn') || lower.contains('dịch vụ')) return 'receipt';
-    if (lower.contains('lương')) return 'work';
-    if (lower.contains('thưởng') || lower.contains('quà'))
-      return 'card_giftcard';
-    if (lower.contains('đầu tư') || lower.contains('lãi')) return 'trending_up';
-    if (lower.contains('vay') || lower.contains('nợ')) return 'attach_money';
-    return 'category';
-  }
-
-  static String _defaultColorForCategoryName(String name) {
-    final lower = name.toLowerCase();
-    if (lower.contains('ăn') || lower.contains('uống')) return '#FF5722';
-    if (lower.contains('xe') || lower.contains('di chuyển')) return '#2196F3';
-    if (lower.contains('sắm')) return '#9C27B0';
-    if (lower.contains('y tế') ||
-        lower.contains('sức khoẻ') ||
-        lower.contains('sức khỏe')) return '#F44336';
-    if (lower.contains('học') || lower.contains('giáo dục')) return '#3F51B5';
-    if (lower.contains('trí') || lower.contains('game')) return '#E91E63';
-    if (lower.contains('nhà')) return '#607D8B';
-    if (lower.contains('đơn')) return '#795548';
-    if (lower.contains('lương')) return '#4CAF50';
-    if (lower.contains('thưởng')) return '#8BC34A';
-    if (lower.contains('đầu tư')) return '#009688';
-    return '#4CAF50';
   }
 }
