@@ -15,7 +15,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final huyen = String.fromCharCode(0x0300); // dấu huyền tổ hợp
   final mu = String.fromCharCode(0x0302); // dấu mũ tổ hợp
-  final sac = String.fromCharCode(0x0301); // dấu sắc tổ hợp
+  final rau = String.fromCharCode(0x031B); // dấu râu tổ hợp
+  final nga = String.fromCharCode(0x0303); // dấu ngã tổ hợp
 
   setUpAll(() {
     FlutterSecureStorage.setMockInitialValues({
@@ -31,7 +32,7 @@ void main() {
   });
 
   test('saveIcon: lưu tên tách dấu + khoảng trắng đôi, tra bằng tên dựng sẵn một khoảng trắng → trúng', () async {
-    await CategoryIconRegistry.saveIcon('', 'Tra$huyen  su${sac}a', 'tea', '#112233');
+    await CategoryIconRegistry.saveIcon('', 'Tra$huyen  su$rau${nga}a', 'tea', '#112233');
     expect(await CategoryIconRegistry.getIcon('', ' trà sữa '), {'icon': 'tea', 'colour': '#112233'},
         reason: 'Hai tên là MỘT danh mục theo normalizeCategoryName; ghi trượt là mất icon.');
   });
