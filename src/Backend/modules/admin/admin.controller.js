@@ -258,6 +258,17 @@ const adminController = {
       return ResponseHandler.error(res, error.message, statusCode);
     }
   },
+
+  async resetPermissions(req, res) {
+    try {
+      const result = await adminService.resetPermissionsToDefault(req.user);
+      return ResponseHandler.success(res, result, 'Khôi phục phân quyền về mặc định thành công');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('resetPermissions failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
 };
 
 module.exports = adminController;

@@ -614,7 +614,7 @@ const adminService = {
   },
 
   /**
-   * Lấy ma trận phân quyền tính năng theo loại tài khoản (Basic / Premium)
+   * Lấy ma trận phân quyền tính năng theo loại tài khoản (Basic / Premium) - Đầy đủ 4 Trụ Cột
    */
   async getPermissionsMatrix() {
     const features = await permissionRepository.getAllFeatures();
@@ -632,6 +632,8 @@ const adminService = {
       permissions[p.account_type][p.feature_id] = {
         is_enabled: Boolean(p.is_enabled),
         limit_value: p.limit_value !== undefined ? p.limit_value : null,
+        scope_config: p.scope_config || {},
+        downgrade_policy: p.downgrade_policy || 'BLOCK_CREATE',
       };
     }
 
@@ -639,8 +641,8 @@ const adminService = {
   },
 
   /**
-   * Cập nhật hàng loạt cấu hình phân quyền tính năng
-   * @param {Array<{ account_type: string, feature_id: string, is_enabled: boolean, limit_value: number|null }>} updates
+   * Cập nhật hàng loạt cấu hình phân quyền tính năng (Hỗ trợ đầy đủ 4 Trụ Cột)
+   * @param {Array<{ account_type: string, feature_id: string, is_enabled: boolean, limit_value: number|null, scope_config?: object, downgrade_policy?: string }>} updates
    */
   async updatePermissionsMatrix(updates = [], adminUser = null) {
     if (!Array.isArray(updates) || updates.length === 0) {
@@ -651,7 +653,7 @@ const adminService = {
 
     const results = [];
     for (const item of updates) {
-      const { account_type, feature_id, is_enabled, limit_value } = item;
+      const { account_type, feature_id, is_enabled, limit_value, scope_config, downgrade_policy } = item;
       if (!['Basic', 'Premium'].includes(account_type)) {
         const err = new Error(`Loại tài khoản không hợp lệ: ${account_type}`);
         err.statusCode = 400;
@@ -666,8 +668,21 @@ const adminService = {
       const updated = await permissionRepository.updatePermission(account_type, feature_id, {
         is_enabled: is_enabled !== undefined ? Boolean(is_enabled) : true,
         limit_value: limit_value !== undefined && limit_value !== '' && limit_value !== null ? Number(limit_value) : null,
+        scope_config: scope_config !== undefined ? scope_config : undefined,
+        downgrade_policy: downgrade_policy !== undefined ? downgrade_policy : undefined,
       });
       results.push(updated);
+    }
+
+    // Xóa cache Redis phân quyền (nếu có)
+    try {
+      const { getRedisClient } = require('../../config/redis.resolver');
+      const redis = typeof getRedisClient === 'function' ? getRedisClient() : null;
+      if (redis) {
+        await redis.del('permissions:Basic', 'permissions:Premium');
+      }
+    } catch (cacheErr) {
+      // bỏ qua lỗi cache không ảnh hưởng kết quả chính
     }
 
     // Phát Socket.IO realtime thông báo phân quyền thay đổi tới toàn bộ client
@@ -681,6 +696,48 @@ const adminService = {
     }
 
     return { updatedCount: results.length, updates: results };
+  },
+
+  /**
+   * Đặt lại toàn bộ phân quyền về chuẩn mặc định 4 Trụ Cột (SSOT 4_TRU_COT.md)
+   */
+  async resetPermissionsToDefault(adminUser = null) {
+    const fs = require('fs');
+    const path = require('path');
+    const sqlPath = path.join(__dirname, '../../database/32_seed_permissions_4_pillars_data.sql');
+
+    if (!fs.existsSync(sqlPath)) {
+      const err = new Error('Không tìm thấy tệp SQL khôi phục mặc định');
+      err.statusCode = 500;
+      throw err;
+    }
+
+    const sqlContent = fs.readFileSync(sqlPath, 'utf8');
+    await prisma.$executeRawUnsafe(sqlContent);
+
+    // Xóa cache Redis
+    try {
+      const { getRedisClient } = require('../../config/redis.resolver');
+      const redis = typeof getRedisClient === 'function' ? getRedisClient() : null;
+      if (redis) {
+        await redis.del('permissions:Basic', 'permissions:Premium');
+      }
+    } catch (cacheErr) {
+      // ignore
+    }
+
+    // Phát socket thông báo toàn bộ ma trận mới
+    const matrix = await this.getPermissionsMatrix();
+    try {
+      const { emitPermissionsUpdated } = require('../../core/socket');
+      if (typeof emitPermissionsUpdated === 'function') {
+        emitPermissionsUpdated({ reset: true, timestamp: new Date() });
+      }
+    } catch (socketErr) {
+      logger.warn('[AdminService] Không thể phát socket permissions reset:', socketErr.message);
+    }
+
+    return { success: true, message: 'Đã khôi phục phân quyền về chuẩn mặc định 4 Trụ Cột', matrix };
   },
 };
 
