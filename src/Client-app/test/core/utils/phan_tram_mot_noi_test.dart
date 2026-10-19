@@ -2,7 +2,8 @@
 /// (`core/utils/phan_tram.dart`; báo cáo soát kiến trúc 2026-10-18 mục 6, sửa 2026-10-19).
 ///
 /// Vì sao: tới 2026-10-19 có bảy bản viết tay `'${(x * 100).round()}%'` ở năm tệp (màn tải mô hình, hai khối Phân tích,
-/// luật thông báo ngân sách, dòng log tải nền) — cùng phép, không chỗ nào nói phép ấy làm tròn kiểu gì.
+/// luật thông báo ngân sách, dòng log tải nền) và một bản thứ tám dạng biến nhân 100 sẵn (`home_budget_card`), gỡ cùng
+/// ngày sau review toàn nhánh — quét không bắt dạng ấy (giới hạn bên dưới) — cùng phép, không chỗ nào nói phép ấy làm tròn kiểu gì.
 ///
 /// Quét: ngoài tệp định nghĩa, không dòng MÃ nào (dòng bắt đầu bằng `//` bỏ qua) khớp `* 100).round()}%`.
 ///
