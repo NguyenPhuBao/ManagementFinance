@@ -21,6 +21,17 @@ const String kThuMucAnhQuet = 'anh_quet';
 
 final RegExp _duoi = RegExp(r'^[a-z0-9]{1,5}$');
 
+// `.mon.json` (mục 11.2b) là định dạng tệp của RIÊNG kho này — đọc / ghi ở đây, không ở `domain/` (báo cáo soát kiến
+// trúc 2026-10-18 mục 1, sửa 2026-10-19). Phần tử sai kiểu → `null`: chỉ làm hỏng chính nó, không kéo cả danh sách.
+Map<String, Object> _monSangJson(MonHang m) => {'id': m.id, 'ten': m.ten, 'soTien': m.soTien};
+
+MonHang? _monTuJson(Object? j) {
+  if (j is! Map) return null;
+  final id = j['id'], ten = j['ten'], st = j['soTien'];
+  if (id is! int || ten is! String || st is! num) return null;
+  return MonHang(id: id, ten: ten, soTien: st.toDouble());
+}
+
 class KhoAnhQuet {
   KhoAnhQuet({required this.thuMuc});
 
@@ -63,7 +74,7 @@ class KhoAnhQuet {
   Future<void> luuMon(String tep, List<MonHang> mon) async {
     if (!tenTepBienLaiHopLe(tep)) return;
     try {
-      File('${(await _thuMuc()).path}/$tep.mon.json').writeAsStringSync(jsonEncode([for (final m in mon) m.toJson()]));
+      File('${(await _thuMuc()).path}/$tep.mon.json').writeAsStringSync(jsonEncode([for (final m in mon) _monSangJson(m)]));
     } catch (e) {
       debugPrint('[Quet] ghi danh sách món hỏng: ${e.runtimeType}');
     }
@@ -77,7 +88,7 @@ class KhoAnhQuet {
       if (!f.existsSync()) return const [];
       final j = jsonDecode(f.readAsStringSync());
       if (j is! List) return const [];
-      return [for (final x in j) if (MonHang.fromJson(x) case final m?) m];
+      return [for (final x in j) if (_monTuJson(x) case final m?) m];
     } catch (_) {
       return const [];
     }

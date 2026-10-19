@@ -41,12 +41,9 @@ Tien khach dua         200.000''');
     expect(ds.length, 2);
   });
 
-  test('id là chỉ số dòng, ổn định; toJson ↔ fromJson; fromJson rác → null', () {
+  test('id là chỉ số dòng, ổn định (ghi / đọc .mon.json canh ở kho_anh_quet_test)', () {
     final ds = docMonHang('A 10.000\nB 20.000');
-    expect(ds.map((m) => m.id), [0, 1]);
-    expect(MonHang.fromJson(ds[1].toJson())!.ten, 'B');
-    expect(MonHang.fromJson({'id': 'x'}), isNull);
-    expect(MonHang.fromJson(42), isNull);
+    expect(ds.map((m) => m.id), [0, 1], reason: 'id = chỉ số dòng trong chữ OCR của một ảnh');
   });
 
   test('chữ rỗng → rỗng', () => expect(docMonHang('  \n'), isEmpty));

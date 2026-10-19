@@ -38,14 +38,6 @@ class MonHang {
   /// Âm với dòng giảm giá / KM.
   final double soTien;
 
-  Map<String, Object> toJson() => {'id': id, 'ten': ten, 'soTien': soTien};
-
-  static MonHang? fromJson(Object? j) {
-    if (j is! Map) return null;
-    final id = j['id'], ten = j['ten'], st = j['soTien'];
-    if (id is! int || ten is! String || st is! num) return null;
-    return MonHang(id: id, ten: ten, soTien: st.toDouble());
-  }
 }
 
 /// Số tiền có NGĂN NGHÌN — loại ngày, giờ, năm (`2026` ≥ 1.000 mà `tienTrenDong` vẫn nhận), số điện thoại.
