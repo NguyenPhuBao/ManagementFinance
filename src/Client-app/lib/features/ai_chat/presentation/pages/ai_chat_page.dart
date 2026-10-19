@@ -29,7 +29,6 @@ library;
 
 import 'dart:async';
 
-import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -60,7 +59,8 @@ import '../../../premium/data/repositories/goi_repository.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../data/cong_tac_online.dart';
-import '../../data/datasources/tro_ly_online_remote_data_source.dart';
+import '../../data/models/luot_hoi_online.dart';
+import '../../data/repositories/tro_ly_online_repository.dart';
 import '../../data/doc_lenh_bang_ai.dart';
 import '../../data/nguon_lenh_tao.dart';
 import '../../domain/duong_hoi.dart';
@@ -228,7 +228,7 @@ class AiChatPage extends StatefulWidget {
   });
 
   /// Khe tiêm cho test: luồng sự kiện của nhánh online (spec trợ lý online 2026-10-11). `null` = đường thật qua
-  /// `TroLyOnlineRemoteDataSource` (DI); chưa đăng ký → online tắt.
+  /// `TroLyOnlineRepository` (DI); chưa đăng ký → online tắt.
   final Stream<SuKienOnline> Function(String cauHoi, List<TinLichSu> history)? onHoiOnline;
 
   /// Khe tiêm cho test: có mạng lúc gửi? `null` = `ConnectionMonitor.coMangNgay`.
@@ -319,7 +319,7 @@ class _AiChatPageState extends State<AiChatPage> {
 
   // ── Trợ lý online (spec 2026-10-11) ──
   late final String _conversationId = const Uuid().v4();
-  CancelToken? _huyOnline;
+  void Function(String lyDo)? _huyOnline;
   bool _daDungOnline = false;
 
   /// Công tắc online bật ∧ có đường online (khe tiêm hoặc DI). Đọc vô điều kiện ở `initState` / `_moCaiDatAi`.
@@ -333,7 +333,7 @@ class _AiChatPageState extends State<AiChatPage> {
   Future<bool> _coMang() => (widget.coMang ?? _coMangThat)();
   Future<bool> _coMangThat() =>
       sl.isRegistered<ConnectionMonitor>() ? sl<ConnectionMonitor>().coMangNgay() : Future.value(false);
-  bool _coDuongOnline() => widget.onHoiOnline != null || sl.isRegistered<TroLyOnlineRemoteDataSource>();
+  bool _coDuongOnline() => widget.onHoiOnline != null || sl.isRegistered<TroLyOnlineRepository>();
 
   Future<void> _docOnlineBat() async {
     final bat = (await _congTacOnline?.docBat() ?? false) && _coDuongOnline();
@@ -408,7 +408,7 @@ class _AiChatPageState extends State<AiChatPage> {
 
   @override
   void dispose() {
-    _huyOnline?.cancel('rời màn');
+    _huyOnline?.call('rời màn');
     _oNhap.dispose();
     _cuon.dispose();
     super.dispose();
@@ -618,7 +618,7 @@ class _AiChatPageState extends State<AiChatPage> {
   /// `quyetDinhSauOnline(daDung: true)` giữ phần đã hiện kèm ghi chú "đã dừng".
   void _dungOnline() {
     _daDungOnline = true;
-    _huyOnline?.cancel('người dùng dừng');
+    _huyOnline?.call('người dùng dừng');
     setState(() {});
   }
 
@@ -638,7 +638,6 @@ class _AiChatPageState extends State<AiChatPage> {
 
   /// Một lượt online: nối chunk vào `_traLoiDangDen`, kết bằng luật rơi §3.3. Không bao giờ ném — hỏng thì [RoiVeMay].
   Future<KetQuaOnline> _hoiOnline(String c) async {
-    final cancel = CancelToken();
     var daCoChu = false;
     final chu = StringBuffer();
     try {
@@ -648,16 +647,16 @@ class _AiChatPageState extends State<AiChatPage> {
         for (final t in _tinNhan.take(_tinNhan.length - 1))
           (cuaToi: t.cuaToi, cau: t.cau, laThe: t.lenh != null || (!t.cuaToi && t.nguon == null)),
       ]);
+      final luot = widget.onHoiOnline != null
+          ? LuotHoiOnline(suKien: widget.onHoiOnline!(c, history), huy: (_) {})
+          : sl<TroLyOnlineRepository>().hoi(cauHoi: c, conversationId: _conversationId, history: history);
       setState(() {
-        _huyOnline = cancel;
+        _huyOnline = luot.huy;
         _daDungOnline = false;
         _dangTraCuu = kDangHoiOnline;
         _traLoiDangDen = null;
       });
-      final luong = widget.onHoiOnline != null
-          ? widget.onHoiOnline!(c, history)
-          : sl<TroLyOnlineRemoteDataSource>()
-              .hoi(cauHoi: c, conversationId: _conversationId, history: history, cancel: cancel);
+      final luong = luot.suKien;
       SuKienOnline cuoi = const LoiOnline(http: null, lyDo: 'không sự kiện');
       var chot = false;
       await for (final sk in luong) {

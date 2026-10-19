@@ -15,9 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/chi_thi_dart.dart';
 
-const conCho = <String>{
-  'lib/features/ai_chat/presentation/pages/ai_chat_page.dart',
-};
+const conCho = <String>{};
 
 final _goiDio = RegExp(r'^package:dio/');
 

@@ -17,6 +17,8 @@ import 'package:go_router/go_router.dart';
 import 'package:flowmoney/features/ai_chat/data/cong_tac_online.dart';
 import 'package:flowmoney/features/ai_chat/data/doc_lenh_bang_ai.dart';
 import 'package:flowmoney/features/ai_chat/data/datasources/tro_ly_online_remote_data_source.dart';
+import 'package:flowmoney/features/ai_chat/data/repositories/tro_ly_online_repository.dart';
+import 'package:flowmoney/features/ai_chat/data/repositories/tro_ly_online_repository_impl.dart';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/ai_chat/domain/duong_hoi.dart';
 import 'package:flowmoney/features/ai_chat/domain/su_kien_online.dart';
@@ -1292,8 +1294,8 @@ void main() {
 
     testWidgets('Dừng cắt CancelToken thật của datasource (không chỉ đổi nhãn)', (t) async {
       final nguon = _NguonOnlineGia();
-      sl.registerSingleton<TroLyOnlineRemoteDataSource>(nguon);
-      addTearDown(() => sl.unregister<TroLyOnlineRemoteDataSource>());
+      sl.registerSingleton<TroLyOnlineRepository>(TroLyOnlineRepositoryImpl(nguon));
+      addTearDown(() => sl.unregister<TroLyOnlineRepository>());
       await t.pumpWidget(boc(AiChatPage(
         coMoHinh: true, laPremium: true, congTacOnline: daDoc(), coMang: () async => true,
       )));
@@ -1311,8 +1313,8 @@ void main() {
 
     testWidgets('khung chữ tới SAU Dừng không được nối vào bong bóng', (t) async {
       final nguon = _NguonOnlineGia();
-      sl.registerSingleton<TroLyOnlineRemoteDataSource>(nguon);
-      addTearDown(() => sl.unregister<TroLyOnlineRemoteDataSource>());
+      sl.registerSingleton<TroLyOnlineRepository>(TroLyOnlineRepositoryImpl(nguon));
+      addTearDown(() => sl.unregister<TroLyOnlineRepository>());
       await t.pumpWidget(boc(AiChatPage(
         coMoHinh: true, laPremium: true, congTacOnline: daDoc(), coMang: () async => true,
       )));

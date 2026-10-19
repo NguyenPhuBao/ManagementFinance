@@ -90,6 +90,8 @@ import '../../features/transaction/data/datasources/transaction_local_data_sourc
 import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
 import '../../features/ai_chat/data/cong_tac_online.dart';
 import '../../features/ai_chat/data/datasources/tro_ly_online_remote_data_source.dart';
+import '../../features/ai_chat/data/repositories/tro_ly_online_repository.dart';
+import '../../features/ai_chat/data/repositories/tro_ly_online_repository_impl.dart';
 import '../../features/transaction/data/chep_loi_bang_gemma.dart';
 import '../../features/transaction/data/datasources/ghi_am.dart';
 import '../../features/transaction/data/datasources/kenh_micro.dart';
@@ -887,6 +889,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // `DioClient` để `AuthInterceptor` gắn Bearer / làm mới token. Công tắc + cờ tờ gắn máy.
   sl.registerLazySingleton<TroLyOnlineRemoteDataSource>(
     () => TroLyOnlineRemoteDataSourceImpl(sl<DioClient>().dio),
+  );
+  sl.registerLazySingleton<TroLyOnlineRepository>(
+    () => TroLyOnlineRepositoryImpl(sl<TroLyOnlineRemoteDataSource>()),
   );
   sl.registerLazySingleton<CongTacOnline>(CongTacOnline.new);
 

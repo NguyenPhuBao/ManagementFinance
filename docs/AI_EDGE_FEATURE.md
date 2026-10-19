@@ -4648,7 +4648,7 @@ lib/features/ai_chat/data/cong_tac_online.dart      — CongTacOnline: khoá ai_
 lib/features/ai_chat/presentation/widgets/tro_ly_ai/ — the_lenh_tao (dời nguyên văn) · nhan_nguon · to_thong_tin_online · dong_khoa · hang_chip
 lib/features/ai_edge/domain/chu_de_chan.dart         — chuDeBiChanOnline cạnh chuDeBiChan; hai nhóm _tuKhoaSong / _tuKhoaTuVan
 lib/features/ai_edge/presentation/pages/cai_dat_ai_page.dart — thẻ công tắc "Trợ lý online" + khối Riêng tư, NGOÀI cổng ai_edge_model
-lib/core/di/injection_container.dart                — TroLyOnlineRemoteDataSourceImpl(sl<DioClient>().dio) · CongTacOnline (lazy)
+lib/core/di/injection_container.dart                — TroLyOnlineRemoteDataSourceImpl(sl<DioClient>().dio) · TroLyOnlineRepository (trang gọi `.hoi` → `LuotHoiOnline`: luồng + `huy`, 2026-10-19; datasource giữ `CancelToken`) · CongTacOnline (lazy)
 ```
 
 Số dòng (`wc -l` 2026-10-18, sau đợt sửa): `ai_chat_page.dart` **1.153** (trần quét 23 = 1.200; trước lượt 1.079, 1.141 lúc xong Task 12), `cai_dat_ai_page.dart`
