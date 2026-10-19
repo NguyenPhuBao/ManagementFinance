@@ -1096,6 +1096,8 @@ chưa làm.
   `SyncEntityType`, test quét thứ 15 cấm bốn tên của nó lọt vào đường đồng bộ.
   Hai hàm dọn khi đổi tài khoản xoá cả bảng này; `NotificationScanner.start`
   dọn hàng cũ hơn **180 ngày** (`giuSuKien`).
+- Trang Trung tâm thông báo ghi qua `ThongBaoRepository.ghiNhatKy` / `ghiNhatKyNhieu` (2026-10-19; trang không import
+  datasource) — chúng chuyển xuống `NhatKyThongBao`, cửa ghi DUY NHẤT vẫn là nó.
 - **`NhatKyThongBao`** (`features/notification/data/datasources/nhat_ky_thong_bao.dart`) là **cửa
   ghi duy nhất** và **không bao giờ ném**: một lỗi CSDL chỉ thành một dòng
   `[NhatKy] ghi … hỏng`, vì chín chỗ gọi đều là đường người dùng đang thao tác.

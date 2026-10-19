@@ -17,7 +17,6 @@ import '../../helpers/chi_thi_dart.dart';
 
 const conCho = <String>{
   'lib/features/ai_chat/presentation/pages/ai_chat_page.dart',
-  'lib/features/notification/presentation/pages/notification_center_page.dart',
 };
 
 final _goiDio = RegExp(r'^package:dio/');

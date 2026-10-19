@@ -1,12 +1,14 @@
 import '../../../../core/database/daos/notification_dao.dart';
+import '../datasources/nhat_ky_thong_bao.dart';
 import '../models/notification_entity.dart';
 import '../models/notification_entity_companion.dart';
 import 'thong_bao_repository.dart';
 
 /// Bản thi hành duy nhất ngoài test: chuyển tiếp 1–1 sang [NotificationDao], map `fromDrift` ở biên trả về, `companionTu` ở biên ghi.
 class ThongBaoRepositoryImpl implements ThongBaoRepository {
-  ThongBaoRepositoryImpl(this._dao);
+  ThongBaoRepositoryImpl(this._dao, {NhatKyThongBao? nhatKy}) : _nhatKy = nhatKy;
   final NotificationDao _dao;
+  final NhatKyThongBao? _nhatKy;
 
   @override
   Stream<int> watchUnreadCount(int idaccount) =>
@@ -43,4 +45,10 @@ class ThongBaoRepositoryImpl implements ThongBaoRepository {
   @override
   Future<int> xoaCung(int idaccount, String dedupeKey) =>
       _dao.xoaCung(idaccount, dedupeKey);
+  @override
+  Future<void> ghiNhatKy(String dedupeKey, String suKien, {required int idaccount}) async =>
+      _nhatKy?.ghi(dedupeKey, suKien, idaccount: idaccount);
+  @override
+  Future<void> ghiNhatKyNhieu(List<String> dedupeKeys, String suKien, {required int idaccount}) async =>
+      _nhatKy?.ghiNhieu(dedupeKeys, suKien, idaccount: idaccount);
 }

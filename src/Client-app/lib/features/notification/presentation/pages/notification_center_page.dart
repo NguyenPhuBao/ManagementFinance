@@ -7,8 +7,8 @@ import '../../data/models/notification_entity.dart';
 import '../../data/repositories/thong_bao_repository.dart';
 import '../../data/de_xuat_thong_bao_nguon.dart';
 import '../../domain/hoc_gio_thong_bao.dart';
-import '../../data/datasources/nhat_ky_thong_bao.dart';
 import '../../domain/notification_deeplink.dart';
+import '../../domain/su_kien_thong_bao.dart';
 import '../../domain/notification_rules.dart';
 import '../../domain/notification_prefs.dart';
 import '../../../../core/di/injection_container.dart';
@@ -25,7 +25,6 @@ class NotificationCenterPage extends StatefulWidget {
     super.key,
     this.idaccount,
     this.nguon,
-    this.nhatKy,
     this.taiDeXuat,
     this.nhomBanDau,
   });
@@ -53,10 +52,6 @@ class NotificationCenterPage extends StatefulWidget {
   /// Cổng đọc / ghi thông báo — tiêm cho test; mặc định `sl<ThongBaoRepository>()`. Ở đây `??` là an toàn: một nguồn
   /// không bao giờ mang nghĩa "cố ý để trống".
   final ThongBaoRepository? nguon;
-
-  /// Nhật ký thông báo (B5a) — tiêm cho test; mặc định `sl<NhatKyThongBao>()`.
-  /// Chưa đăng ký thì trang vẫn chạy, chỉ không ghi nhật ký.
-  final NhatKyThongBao? nhatKy;
 
   /// Đề xuất chỉnh thông báo (B5b) — nạp MỘT lần lúc mở trang và lúc quay về
   /// từ trang Cài đặt. Mặc định `DeXuatThongBaoNguon.tai`; tiêm được cho test.
@@ -133,8 +128,6 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
   Widget build(BuildContext context) {
     final idaccount = widget.idaccount;
     final dao = widget.nguon ?? sl<ThongBaoRepository>();
-    final nhatKy = widget.nhatKy ??
-        (sl.isRegistered<NhatKyThongBao>() ? sl<NhatKyThongBao>() : null);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -168,10 +161,8 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
                           // tập "chưa đọc" đã rỗng. Một `doc_tat_ca` mỗi khoá.
                           final khoa = await dao.khoaChuaDoc(idaccount);
                           await dao.markAllRead(idaccount);
-                          if (nhatKy != null) {
-                            unawaited(nhatKy.ghiNhieu(khoa, SuKienThongBao.docTatCa,
-                                idaccount: idaccount));
-                          }
+                          unawaited(dao.ghiNhatKyNhieu(khoa, SuKienThongBao.docTatCa,
+                              idaccount: idaccount));
                         },
                   child: Text(
                     'Đọc tất cả',
@@ -199,13 +190,13 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     child: _TheGoiY(deXuat: _deXuat, onTap: _moCaiDat),
                   ),
-                Expanded(child: _danhSach(dao, idaccount, nhatKy)),
+                Expanded(child: _danhSach(dao, idaccount)),
               ],
             ),
     );
   }
 
-  Widget _danhSach(ThongBaoRepository dao, int idaccount, NhatKyThongBao? nhatKy) {
+  Widget _danhSach(ThongBaoRepository dao, int idaccount) {
     return StreamBuilder<List<NotificationEntity>>(
       stream: dao.watchFeed(
         idaccount,
@@ -248,10 +239,8 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
               item: items[i],
               onTap: () {
                 dao.markRead(items[i].id);
-                if (nhatKy != null) {
-                  unawaited(nhatKy.ghi(items[i].dedupeKey,
-                      SuKienThongBao.moTrongApp, idaccount: idaccount));
-                }
+                unawaited(dao.ghiNhatKy(items[i].dedupeKey,
+                    SuKienThongBao.moTrongApp, idaccount: idaccount));
                 final route = items[i].deeplink;
                 if (route == null) return;
                 // `go` chứ không `push` cho route thuộc thanh tab: push
@@ -266,7 +255,7 @@ class _NotificationCenterPageState extends State<NotificationCenterPage> {
               },
               onLongPress: () => _doiTrangThaiDoc(context, dao, items[i]),
               onDismiss: () =>
-                  _xoaCoHoanTac(context, dao, items[i], nhatKy, idaccount),
+                  _xoaCoHoanTac(context, dao, items[i], idaccount),
             );
           },
         );
@@ -532,7 +521,6 @@ Future<void> _xoaCoHoanTac(
   BuildContext context,
   ThongBaoRepository dao,
   NotificationEntity item,
-  NhatKyThongBao? nhatKy,
   int idaccount,
 ) async {
   // D1: hàng biến động số dư — vuốt là *Bỏ qua*, xoá CỨNG (spec D1 §3.3: nội dung tin ngân hàng không nằm lại dưới
@@ -543,9 +531,7 @@ Future<void> _xoaCoHoanTac(
   } else {
     await dao.dismiss(item.id);
   }
-  if (nhatKy != null) {
-    unawaited(nhatKy.ghi(item.dedupeKey, SuKienThongBao.gatBo, idaccount: idaccount));
-  }
+  unawaited(dao.ghiNhatKy(item.dedupeKey, SuKienThongBao.gatBo, idaccount: idaccount));
 
   // Nội dung chung chung và tự ẩn sau vài giây: viên tạm thời là để báo việc
   // vừa xảy ra, không phải để đọc lại chi tiết. E4 (2026-10-06): viên toast có
@@ -559,9 +545,7 @@ Future<void> _xoaCoHoanTac(
       } else {
         dao.khoiPhuc(item.id);
       }
-      if (nhatKy != null) {
-        unawaited(nhatKy.ghi(item.dedupeKey, SuKienThongBao.khoiPhuc, idaccount: idaccount));
-      }
+      unawaited(dao.ghiNhatKy(item.dedupeKey, SuKienThongBao.khoiPhuc, idaccount: idaccount));
     }),
   );
 }

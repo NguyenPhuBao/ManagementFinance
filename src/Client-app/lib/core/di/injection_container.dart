@@ -509,7 +509,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // Repository của mảng Thông báo cho TRANG và nguồn Thêm giao dịch (spec Entity Thông báo 2026-10-15 mục 4.2; trước là cổng
   // ThongBaoNguon — spec bịt điểm rò 2026-10-10, mục 4.4). Chỉ chuyển tiếp; các bộ điều phối ở `application/` và nguồn B5b vẫn cầm DAO. Đăng ký cả
   // chế độ nền (cùng `setupDependencies`, không gate theo `cheDoNen`). Lazy — không dựng gì khi không ai gọi.
-  sl.registerLazySingleton<ThongBaoRepository>(() => ThongBaoRepositoryImpl(sl<AppDatabase>().notificationDao));
+  sl.registerLazySingleton<ThongBaoRepository>(() => ThongBaoRepositoryImpl(
+        sl<AppDatabase>().notificationDao,
+        nhatKy: sl.isRegistered<NhatKyThongBao>() ? sl<NhatKyThongBao>() : null,
+      ));
 
   // Nhật ký thông báo (B5a) — cửa ghi duy nhất. Nguồn phiên để RỖNG ở đây và
   // `main.dart` gán lại (`datNguonPhien`): `AuthBloc` đăng ký dạng FACTORY, nên

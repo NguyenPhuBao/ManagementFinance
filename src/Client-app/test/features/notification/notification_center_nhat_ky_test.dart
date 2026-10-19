@@ -58,8 +58,7 @@ void main() {
       builder: bocToast(batThongBao()),
       home: NotificationCenterPage(
         idaccount: accountId,
-        nguon: ThongBaoRepositoryImpl(db.notificationDao),
-        nhatKy: nhatKy,
+        nguon: ThongBaoRepositoryImpl(db.notificationDao, nhatKy: nhatKy),
       ),
     ));
     await nhip(tester);

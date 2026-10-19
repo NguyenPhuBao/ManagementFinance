@@ -3,7 +3,7 @@ import '../models/notification_entity.dart';
 /// Cổng đọc / ghi bảng thông báo CỤC BỘ của mảng — repository của Thông báo (spec Entity Thông báo 2026-10-15 mục 4.2; trước đó là
 /// `ThongBaoNguon` ở `core/notification`, spec bịt điểm rò 2026-10-10 mục 4.4).
 ///
-/// Chỉ **chuyển tiếp** đúng mười hai lối giao diện và nguồn Thêm giao dịch đang dùng — không luật, không gộp. Interface chỉ nhận / trả
+/// Chỉ **chuyển tiếp** đúng mười bốn lối giao diện và nguồn Thêm giao dịch đang dùng — không luật, không gộp. Interface chỉ nhận / trả
 /// `NotificationEntity` và Dart thuần (quét 27 luật 4): hàng Drift dừng ở `ThongBaoRepositoryImpl`. Ngoài cổng này, chỗ còn cầm
 /// `NotificationDao` thẳng đều dưới tầng trang: bộ quét, `BadgeUpdater`, ba bộ nhập (`notification/application/`), `DeXuatThongBaoNguon`
 /// (data — dựng `SuKienNhatKy` / Entity), `BillPaymentConflictResolver` và `GopViService` (`application/` của hoá đơn, ví).
@@ -24,4 +24,9 @@ abstract class ThongBaoRepository {
   /// chỉ khi hàng thật sự được ghi (giữ hợp đồng `NotificationDao.insertIfAbsent`). Thay `insertIfAbsent(AppNotificationsCompanion)`.
   Future<bool> chenLai(NotificationEntity hang);
   Future<int> xoaCung(int idaccount, String dedupeKey);
+
+  /// Ghi một sự kiện nhật ký thông báo (B5a) — chuyển xuống `NhatKyThongBao`, cửa ghi DUY NHẤT vào bảng sự kiện. Không bao
+  /// giờ ném; bản không có nhật ký thì bỏ qua.
+  Future<void> ghiNhatKy(String dedupeKey, String suKien, {required int idaccount});
+  Future<void> ghiNhatKyNhieu(List<String> dedupeKeys, String suKien, {required int idaccount});
 }

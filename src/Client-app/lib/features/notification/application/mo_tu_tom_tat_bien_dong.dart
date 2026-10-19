@@ -9,8 +9,7 @@
 library;
 
 import 'dart:async';
-
-import 'package:flutter/widgets.dart';
+import 'dart:ui' show AppLifecycleState;
 
 import '../data/datasources/kenh_bien_dong.dart';
 
