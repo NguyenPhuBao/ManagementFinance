@@ -3,6 +3,7 @@ import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
 import useSocket from '../../hooks/useSocket';
 import { useLanguageSafe } from '../../store/language.context';
+import { classifyAuditAction } from '../../utils/audit-tags.util';
 
 const STATUS_CONFIG = {
   Pass: { bg: 'bg-[#dcfce7]', text: 'text-[#166534]', border: 'border-[#86efac]' },
@@ -325,8 +326,24 @@ const AuditLogPage = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-on-surface max-w-[240px] truncate font-medium" title={log.request}>
-                        {log.request}
+                      <td className="py-3 px-4 text-on-surface max-w-[280px]">
+                        {(() => {
+                          const { tagInfo, cleanAction } = classifyAuditAction(log.request);
+                          return (
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${tagInfo.bg} ${tagInfo.text} ${tagInfo.border} shrink-0`}
+                                title={tagInfo.label}
+                              >
+                                <span className="material-symbols-outlined text-[11px]">{tagInfo.icon}</span>
+                                <span>{tagInfo.tag}</span>
+                              </span>
+                              <span className="truncate font-medium text-xs text-on-surface" title={cleanAction}>
+                                {cleanAction}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>

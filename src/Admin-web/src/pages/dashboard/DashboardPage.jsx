@@ -6,6 +6,7 @@ import Pagination from '../../components/common/Pagination';
 import ServerHealthPanel from '../../components/common/ServerHealthPanel';
 import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useLanguageSafe } from '../../store/language.context';
+import { classifyAuditAction } from '../../utils/audit-tags.util';
 
 const STATUS_CONFIG = {
   Pass: {
@@ -1186,10 +1187,21 @@ const DashboardPage = () => {
                                     </div>
                                 </td>
                                 <td className="py-3 px-5 text-on-surface-variant font-body-md whitespace-nowrap">
-                                    <span className="inline-flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
-                                        {activity.action}
-                                    </span>
+                                    {(() => {
+                                      const { tagInfo, cleanAction } = classifyAuditAction(activity.action);
+                                      return (
+                                        <span className="inline-flex items-center gap-2">
+                                          <span
+                                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${tagInfo.bg} ${tagInfo.text} ${tagInfo.border} shrink-0`}
+                                            title={tagInfo.label}
+                                          >
+                                            <span className="material-symbols-outlined text-[11px]">{tagInfo.icon}</span>
+                                            <span>{tagInfo.tag}</span>
+                                          </span>
+                                          <span className="font-medium text-xs text-on-surface">{cleanAction}</span>
+                                        </span>
+                                      );
+                                    })()}
                                 </td>
                                 <td className="py-3 px-5 text-on-surface-variant font-body-sm max-w-[200px] truncate" title={activity.reason || ''}>
                                     {activity.reason ? (
