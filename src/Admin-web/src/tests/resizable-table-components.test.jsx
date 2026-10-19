@@ -22,7 +22,8 @@ describe('Task 2: 2-Tier Test - ResizableTh and TruncateCell Components', () => 
     const th = screen.getByText('Họ và tên').closest('th');
     expect(th).toBeInTheDocument();
     expect(th.style.width).toBe('220px');
-    expect(th.style.minWidth).toBe('80px');
+    expect(th.style.minWidth).toBe('220px');
+    expect(th.style.maxWidth).toBe('220px');
 
     const handle = screen.getByTestId('resize-handle-name');
     expect(handle).toBeInTheDocument();

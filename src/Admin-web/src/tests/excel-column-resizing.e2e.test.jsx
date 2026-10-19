@@ -14,7 +14,7 @@ const ResizableTestTable = ({ tableKey = 'test_table_e2e' }) => {
     action: 100,
   };
 
-  const { widths, startResizing, resetColumn } = useResizableColumns({
+  const { widths, totalWidth, startResizing, resetColumn } = useResizableColumns({
     tableKey,
     defaultWidths: DEFAULT_WIDTHS,
     minWidth: 50,
@@ -31,7 +31,7 @@ const ResizableTestTable = ({ tableKey = 'test_table_e2e' }) => {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left border-collapse table-fixed">
+      <table className="text-left border-collapse table-fixed" style={{ width: `${totalWidth}px` }}>
         <thead>
           <tr className="bg-gray-100">
             <ResizableTh colKey="id" width={widths.id} onResize={startResizing} onReset={resetColumn}>
@@ -228,6 +228,65 @@ describe('Excel Column Resizing & Truncation Suite (Rule 11: 2-Tier Testing)', (
       expect(idTh).toHaveStyle({ width: '50px' });
       const saved = JSON.parse(localStorage.getItem('admin_tbl_widths_test_table_e2e'));
       expect(saved.id).toBe(50);
+    });
+
+    it('2.5. BẤT BIẾN ĐỘC LẬP EXCEL (CRITICAL INVARIANT): Co dãn một cột TUYỆT ĐỐI KHÔNG làm thay đổi kích thước của các cột phía trước và các cột phía sau', () => {
+      render(<ResizableTestTable />);
+
+      const table = screen.getByRole('table');
+      const idTh = screen.getByText('ID').closest('th');
+      const nameTh = screen.getByText('Tên người dùng').closest('th');
+      const emailTh = screen.getByText('Email').closest('th');
+      const actionTh = screen.getByText('Thao tác').closest('th');
+
+      // Ban đầu: id=80, name=180, email=220, action=100 -> table=580px
+      expect(table).toHaveStyle({ width: '580px' });
+      expect(idTh).toHaveStyle({ width: '80px', minWidth: '80px', maxWidth: '80px' });
+      expect(nameTh).toHaveStyle({ width: '180px', minWidth: '180px', maxWidth: '180px' });
+      expect(emailTh).toHaveStyle({ width: '220px', minWidth: '220px', maxWidth: '220px' });
+      expect(actionTh).toHaveStyle({ width: '100px', minWidth: '100px', maxWidth: '100px' });
+
+      // Kéo dãn cột Email (cột thứ 3) từ 220px tăng thêm +130px -> 350px
+      const emailResizer = emailTh.querySelector('[role="separator"]');
+      fireEvent.mouseDown(emailResizer, { clientX: 200 });
+      act(() => {
+        fireEvent.mouseMove(window, { clientX: 330 });
+      });
+      act(() => {
+        fireEvent.mouseUp(window);
+      });
+
+      // BẢO CHỨNG:
+      // 1. Cột Email thay đổi đúng 350px
+      expect(emailTh).toHaveStyle({ width: '350px', minWidth: '350px', maxWidth: '350px' });
+      // 2. CÁC CỘT PHÍA TRƯỚC (ID, Name) TUYỆT ĐỐI KHÔNG BỊ CO DÃN THEO (GIỮ NGUYÊN 100%)
+      expect(idTh).toHaveStyle({ width: '80px', minWidth: '80px', maxWidth: '80px' });
+      expect(nameTh).toHaveStyle({ width: '180px', minWidth: '180px', maxWidth: '180px' });
+      // 3. Cột phía sau (Action) TUYỆT ĐỐI KHÔNG BỊ ẢNH HƯỞNG
+      expect(actionTh).toHaveStyle({ width: '100px', minWidth: '100px', maxWidth: '100px' });
+      // 4. Toàn bộ bảng mở rộng thêm đúng 130px (580 + 130 = 710px)
+      expect(table).toHaveStyle({ width: '710px' });
+
+      // Bây giờ thử thu nhỏ cột Tên người dùng (cột thứ 2) từ 180px xuống 120px (-60px)
+      const nameResizer = nameTh.querySelector('[role="separator"]');
+      fireEvent.mouseDown(nameResizer, { clientX: 300 });
+      act(() => {
+        fireEvent.mouseMove(window, { clientX: 240 });
+      });
+      act(() => {
+        fireEvent.mouseUp(window);
+      });
+
+      // BẢO CHỨNG:
+      // 1. Cột Tên người dùng thay đổi đúng 120px
+      expect(nameTh).toHaveStyle({ width: '120px', minWidth: '120px', maxWidth: '120px' });
+      // 2. Cột phía trước (ID) vẫn nguyên vẹn 80px
+      expect(idTh).toHaveStyle({ width: '80px', minWidth: '80px', maxWidth: '80px' });
+      // 3. Các cột phía sau (Email 350px, Action 100px) vẫn nguyên vẹn
+      expect(emailTh).toHaveStyle({ width: '350px', minWidth: '350px', maxWidth: '350px' });
+      expect(actionTh).toHaveStyle({ width: '100px', minWidth: '100px', maxWidth: '100px' });
+      // 4. Bảng co lại đúng 60px (710 - 60 = 650px)
+      expect(table).toHaveStyle({ width: '650px' });
     });
   });
 });

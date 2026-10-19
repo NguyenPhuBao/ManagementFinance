@@ -44,7 +44,7 @@ const CategoryPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+  const { widths: colWidths, totalWidth: tableTotalWidth, startResizing, resetColumn } = useResizableColumns({
     tableKey: 'categories',
     defaultWidths: DEFAULT_CATEGORY_COL_WIDTHS,
     minWidth: 80,
@@ -604,7 +604,7 @@ const CategoryPage = () => {
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[750px] table-fixed">
+            <table className="text-left border-collapse table-fixed" style={{ width: `${tableTotalWidth}px` }}>
               <thead>
                 <tr className="bg-surface-container-low/80 border-b border-outline-variant text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
                   <ResizableTh

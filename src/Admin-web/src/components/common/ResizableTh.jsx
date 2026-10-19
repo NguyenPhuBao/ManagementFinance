@@ -26,7 +26,8 @@ export default function ResizableTh({
   const inlineStyle = {
     ...style,
     width: width !== undefined && width !== null ? `${width}px` : undefined,
-    minWidth: minWidth !== undefined && minWidth !== null ? `${minWidth}px` : undefined,
+    minWidth: width !== undefined && width !== null ? `${width}px` : undefined,
+    maxWidth: width !== undefined && width !== null ? `${width}px` : undefined,
   };
 
   return (

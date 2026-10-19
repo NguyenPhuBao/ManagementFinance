@@ -45,7 +45,7 @@ const AIOpsPage = () => {
   const [quarantineList, setQuarantineList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+  const { widths: colWidths, totalWidth: tableTotalWidth, startResizing, resetColumn } = useResizableColumns({
     tableKey: 'aiops_quarantine',
     defaultWidths: DEFAULT_AIOPS_COL_WIDTHS,
     minWidth: 60,
@@ -2994,7 +2994,7 @@ const AIOpsPage = () => {
         {/* Table Content */}
         {incidentsList.length > 0 ? (
           <div className="overflow-x-auto rounded-xl border border-outline-variant/70">
-            <table className="w-full text-left text-xs border-collapse table-fixed">
+            <table className="text-left text-xs border-collapse table-fixed" style={{ width: `${tableTotalWidth}px` }}>
               <thead>
                 <tr className="border-b border-outline-variant/80 bg-surface-container-low/60 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                   <ResizableTh

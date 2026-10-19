@@ -90,7 +90,7 @@ const PaymentHistoryPage = () => {
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
 
-  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+  const { widths: colWidths, totalWidth: tableTotalWidth, startResizing, resetColumn } = useResizableColumns({
     tableKey: 'payments',
     defaultWidths: DEFAULT_PAYMENT_COL_WIDTHS,
     minWidth: 60,
@@ -806,7 +806,7 @@ const PaymentHistoryPage = () => {
       {/* Orders Data Table */}
       <div className="bg-surface-container rounded-xl border border-outline-variant shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse table-fixed">
+          <table className="text-left text-sm border-collapse table-fixed" style={{ width: `${tableTotalWidth}px` }}>
             <thead>
               <tr className="bg-surface-container-high/60 border-b border-outline-variant text-on-surface-variant font-semibold text-xs uppercase tracking-wider">
                 <ResizableTh

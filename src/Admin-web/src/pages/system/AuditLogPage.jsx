@@ -41,7 +41,7 @@ const AuditLogPage = () => {
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
 
-  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+  const { widths: colWidths, totalWidth: tableTotalWidth, startResizing, resetColumn } = useResizableColumns({
     tableKey: 'audit_logs',
     defaultWidths: DEFAULT_AUDIT_COL_WIDTHS,
     minWidth: 50,
@@ -370,7 +370,7 @@ const AuditLogPage = () => {
       {/* Table Card */}
       <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
         <div className="overflow-x-auto min-h-[300px]">
-          <table className="w-full text-left border-collapse min-w-[760px] text-xs table-fixed">
+          <table className="text-left border-collapse text-xs table-fixed" style={{ width: `${tableTotalWidth}px` }}>
             <thead>
               <tr className="bg-surface-container-low/60 border-b border-outline-variant">
                 <ResizableTh

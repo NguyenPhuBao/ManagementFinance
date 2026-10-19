@@ -34,7 +34,7 @@ const BroadcastPage = () => {
   const { t } = useLanguageSafe();
   const [activeTab, setActiveTab] = useState('maintenance'); // 'maintenance' | 'broadcast'
 
-  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+  const { widths: colWidths, totalWidth: tableTotalWidth, startResizing, resetColumn } = useResizableColumns({
     tableKey: 'broadcast_history',
     defaultWidths: DEFAULT_BROADCAST_COL_WIDTHS,
     minWidth: 50,
@@ -816,7 +816,7 @@ const BroadcastPage = () => {
 
             {/* Bảng Dữ Liệu */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse table-fixed">
+              <table className="text-left text-xs border-collapse table-fixed" style={{ width: `${tableTotalWidth}px` }}>
                 <thead>
                   <tr className="border-b border-outline-variant text-[11px] text-on-surface-variant uppercase tracking-wider bg-surface-container-lowest font-semibold">
                     <ResizableTh

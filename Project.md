@@ -4289,10 +4289,17 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   5. `BroadcastPage.jsx`: Lịch sử bảo trì hệ thống và thông báo phát sóng (`status`, `reason`, `activatedBy`, `start`, `end`, `actions`).
   6. `AIOpsPage.jsx`: Bảng Ma Trận Phòng Vệ & Cách Ly Quarantine Matrix (`status`, `actor`, `vector`, `metric`, `rootCause`, `mitigation`, `defense`).
   7. `DashboardPage.jsx`: Bảng Hoạt Động Gần Đây / Realtime Audit Activities (`user`, `action`, `reason`, `status`, `time`).
-- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11) & Khắc Phục Lỗi Co Dãn Phụ Thuộc:**
+  - *Root Cause đã xử lý:* Trước đây thẻ `<table>` sử dụng class `w-full` (100% chiều rộng khung chứa). Theo đặc tả CSS `table-layout: fixed`, khi chiều rộng bảng bị cố định vào 100%, việc thay đổi độ rộng của một cột buộc trình duyệt phải tự động co dãn bù trừ các cột khác (đặc biệt là các cột phía trước).
+  - *Giải pháp triệt để chuẩn Excel:*
+    1. Loại bỏ hoàn toàn class `w-full` và `min-w-[...]` trên thẻ `<table>`.
+    2. Hook `useResizableColumns` tính toán và cung cấp `totalWidth` chính xác bằng tổng độ rộng các cột (`sum(widths)`). Bảng được áp dụng trực tiếp `style={{ width: `${tableTotalWidth}px` }}`.
+    3. Thẻ `ResizableTh` cố định nghiêm ngặt cả 3 thuộc tính `{ width, minWidth, maxWidth }` theo pixel hiện tại.
+    4. Bổ sung test case 2.5 trong `src/tests/excel-column-resizing.e2e.test.jsx`: Khẳng định bất biến độc lập Excel — khi co dãn một cột bất kỳ, tất cả các cột phía trước và phía sau được bảo toàn 100% kích thước, không lệch dù chỉ 1 pixel.
   - Unit tests: `src/tests/use-resizable-columns.test.jsx` (4/4 tests pass), `src/tests/resizable-table-components.test.jsx` (3/3 tests pass).
-  - E2E Integration test 2 tầng: `src/tests/excel-column-resizing.e2e.test.jsx` (7/7 tests pass) kiểm tra cả Tầng 1 (Render handle `cursor-col-resize`, text truncate `...`, native title tooltip, double-click reset) và Tầng 2 (Kéo dãn cập nhật width trên DOM, lưu thực tế vào LocalStorage, duy trì khi tải lại trang, chặn co dãn dưới minWidth).
+  - E2E Integration test 2 tầng: `src/tests/excel-column-resizing.e2e.test.jsx` (8/8 tests pass).
   - Toàn bộ test suite các trang liên quan đều PASS 100%. Production build (`npm run build`) thành công sạch sẽ.
+
 
 
 

@@ -13,6 +13,7 @@ describe('Task 1: 2-Tier Test - useResizableColumns Hook', () => {
   it('Tầng 1 (Rendering): Khởi tạo hook với độ rộng mặc định khi LocalStorage trống', () => {
     const { result } = renderHook(() => useResizableColumns({ tableKey, defaultWidths }));
     expect(result.current.widths).toEqual(defaultWidths);
+    expect(result.current.totalWidth).toBe(570);
     expect(result.current.isResizing).toBe(false);
   });
 

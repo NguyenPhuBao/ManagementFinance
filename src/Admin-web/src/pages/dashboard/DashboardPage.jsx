@@ -375,7 +375,7 @@ const DashboardPage = () => {
   const { t } = useLanguageSafe();
   const [loading, setLoading] = useState(true);
 
-  const { widths: colWidths, startResizing, resetColumn } = useResizableColumns({
+  const { widths: colWidths, totalWidth: tableTotalWidth, startResizing, resetColumn } = useResizableColumns({
     tableKey: 'dashboard_activities',
     defaultWidths: DEFAULT_DASHBOARD_COL_WIDTHS,
     minWidth: 60,
@@ -1181,7 +1181,7 @@ const DashboardPage = () => {
                   <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
                 </div>
               )}
-              <table className="w-full text-left border-collapse min-w-[640px] table-fixed">
+              <table className="text-left border-collapse table-fixed" style={{ width: `${tableTotalWidth}px` }}>
                   <thead>
                       <tr className="bg-surface-container-low/50">
                           <ResizableTh colKey="user" width={colWidths.user} onResize={startResizing} onReset={resetColumn} className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.user')}</ResizableTh>

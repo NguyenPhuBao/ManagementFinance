@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 /**
  * Custom hook quản lý co dãn cột kéo thả như Excel và ghi nhớ kích thước vào LocalStorage
@@ -109,8 +109,13 @@ export default function useResizableColumns({ tableKey, defaultWidths = {}, minW
     }
   }, [defaultWidths, storageKey]);
 
+  const totalWidth = useMemo(() => {
+    return Object.values(widths).reduce((acc, w) => acc + (Number(w) || 0), 0);
+  }, [widths]);
+
   return {
     widths,
+    totalWidth,
     isResizing,
     activeCol,
     startResizing,
