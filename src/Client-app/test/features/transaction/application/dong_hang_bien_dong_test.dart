@@ -1,9 +1,9 @@
-// test/features/transaction/data/dong_hang_bien_dong_test.dart
+// test/features/transaction/application/dong_hang_bien_dong_test.dart
 /// D1 — đóng một hàng biến động sau Lưu / Bỏ qua. Dời khỏi `ThemGiaoDichCubit` ngày 2026-10-12 (spec C4 §4.2) để chừa
 /// chỗ dưới trần 1.200 dòng (quét 23); hành vi giữ nguyên từng dòng.
 library;
 
-import 'package:flowmoney/features/transaction/data/dong_hang_bien_dong.dart';
+import 'package:flowmoney/features/transaction/application/dong_hang_bien_dong.dart';
 import 'package:flowmoney/features/transaction/domain/dien_san_bien_dong.dart';
 import 'package:flowmoney/features/transaction/domain/goi_y_chuyen_khoan.dart';
 import 'package:flutter_test/flutter_test.dart';

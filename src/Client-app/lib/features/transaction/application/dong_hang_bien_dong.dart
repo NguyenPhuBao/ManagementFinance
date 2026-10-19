@@ -1,14 +1,16 @@
-// lib/features/transaction/data/dong_hang_bien_dong.dart
+// lib/features/transaction/application/dong_hang_bien_dong.dart
 /// D1 — đóng một hàng biến động sau khi Lưu / Bỏ qua. Dời khỏi `ThemGiaoDichCubit` ngày 2026-10-12 (spec C4 §4.2,
 /// khối 🔧 ý 1) để chừa chỗ dưới trần 1.200 dòng của quét 23. Không `emit`; mọi giá trị đã chốt lúc gọi (màn có thể đã
 /// `pop`). Không bao giờ ném.
+/// Ở `application/` từ 2026-10-19 (báo cáo soát kiến trúc, quyết định phiên 2 điểm 2): chuỗi nhiều bước nhớ ví → xoá
+/// hàng → xoá ảnh, chỉ Cubit gọi — bộ điều phối, không phải dịch vụ mà `data/` gọi.
 library;
 
 import 'package:flutter/foundation.dart';
 
 import '../domain/dien_san_bien_dong.dart';
 import '../domain/goi_y_chuyen_khoan.dart';
-import 'them_giao_dich_nguon.dart';
+import '../data/them_giao_dich_nguon.dart';
 
 /// Xoá CỨNG hàng loại 20 (`NotificationDao.xoaCung`, ngoại lệ có chủ ý — spec D1 §3.3), và khi Lưu ở lần đầu của cặp
 /// nguồn + đuôi thì nhớ ví ([nhoVi]). Ảnh quét (A5): chỉ xoá ảnh (`close` của Cubit cũng xoá — luỹ đẳng).
