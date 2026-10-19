@@ -644,7 +644,10 @@ chốt hai việc + làm cả bốn lát bằng **agent con** (Fable soát kế 
 - **Còn lại của báo cáo:** B `notification_prefs` / `MonHang` toJson ở `domain/`, `dong_hang_bien_dong`; mọi hàng C;
   `other_daos.dart` (ba DAO), `SyncEngine` 2.164 dòng. Câu hỏi mở cho người dùng: `CategoryIconRegistry.saveIcon` 0 chỗ gọi
   — registry chỉ còn đọc di sản, có gỡ không.
-- Số đo: `flutter test` **7.485 / 10 skip / 0 fail** (HEAD `0620e4d2`), `flutter analyze` 20.
+- **Review toàn nhánh (Opus): sẵn sàng merge sau đợt sửa** — 0 Critical; 4 Important đều là tài liệu / chú thích còn tả hành
+  vi cũ (KIEN_TRUC Trợ lý online, 34 ↔ 35 tệp quét, AI_EDGE vị trí mã, chú thích ngân sách / thông báo) → sửa `44a99e78`; thêm ca
+  canh DI truyền `taiAnhBangDioTran` (`77115e95` — không gửi token người dùng tới `img.vietqr.io`).
+- Số đo: `flutter test` **7.486 / 10 skip / 0 fail** (HEAD `77115e95`, 6 ph 14 s), `flutter analyze` 20.
 
 ### ✅ G94 lát 2 — tính năng đơn thanh toán, mã xong 10 / 10 task (2026-10-18 tối) · 🚧 chờ nghiệm thu sandbox
 

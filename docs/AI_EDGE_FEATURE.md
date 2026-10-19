@@ -179,7 +179,7 @@ lib/features/ai_edge/
   domain/   (bước 2, 2026-09-23 — mã xong; cổng D chưa đạt, mục 9.17) hang_muc_tieu.dart · hang_goi_y_han_muc.dart · hang_giao_dich.dart — ba hàm dựng hàng · loi_tham_so.dart — lời từ chối tham số chung · cong_cu.dart thêm ba tên tool + ba nhãn chỉ báo · hang_chi_tieu.dart: kMaKy tám mã · goi_so.dart / kiem_so.dart: LoaiSo.ngayThang · hang_so_lieu.dart: KetQuaCongCu.tenLienQuan
   data/     (bước 2) cong_cu_{muc_tieu,goi_y_han_muc,giao_dich}.dart — ba adapter · bo_cong_cu.dart: bảy tool
   domain/   (bước 2b, 2026-09-24 — mã xong; cổng D lần 2 chưa đạt, mục 9.18) loi_tham_so.dart — chỗ DUY NHẤT dựng lời từ chối (tuChoi… → loi + choNguoiDung + thamSoGo) · tham_so_mo_hinh.dart — thamSoTen (giữ chỗ = không lọc) · laSoTien · goi_so_tra_cuu.dart: lượt bị từ chối KHÔNG là đã tra cứu, gỡ theo tham số, choHienChuMoHinh · hang_chi_tieu.dart: kMaKyMoiLuc (mã riêng của tim_giao_dich) · cong_cu.dart: toolsJsonCua
-  data/     (bước 2b) vong_lap_cong_cu.dart: cổng hiện chữ choHienChuMoHinh, L1b, L2b · cong_cu_giao_dich.dart: ky bắt buộc + moi_luc · slm_runtime.dart đo tools_json bằng toolsJsonCua
+  data/     (bước 2b) vong_lap_cong_cu.dart: cổng hiện chữ choHienChuMoHinh, L1b, L2b · cong_cu_giao_dich.dart: ky bắt buộc + moi_luc · slm_runtime.dart (nay `data/datasources/`, 2026-10-19) đo tools_json bằng toolsJsonCua
   domain/   (bước 2c, 2026-09-24 — mã xong; cổng D lần 3 chưa đạt nhưng bẫy 4.44 / 4.45 đóng, mục 9.19) hang_so_lieu.dart: KetQuaCongCu.rongTheoBoLoc · boLoc · soLieuBoLoc (bộ lọc dội lại — không vào json trừ soLieuBoLoc) · hang_giao_dich.dart: boLoc bảy điều kiện thứ tự cố định, tên THẬT đã khớp, Từ/Đến rời tongHop, tu_khoa vào tenLienQuan · goi_so_tra_cuu.dart: _luotRong (không bao giờ gỡ), choHienChuMoHinh ba vế, tiền tố kỳ + bộ lọc, nhóm rỗng, cauLuotRong, cauNoiThem · core/utils/khop_ten.dart: bậc ba `_` = dấu cách · loi_tham_so.dart: câu người dùng đổi `_` · transaction/domain/tim_giao_dich.dart: tenDanhMucKhop / tenViKhop (tenKhop thành getter)
   data/     (bước 2c) vong_lap_cong_cu.dart: nhãn L2c / L2b+L2c, log nêu lý do cổng đóng, nối cauNoiThem
   domain/   (đổi tên tool, 2026-09-24 chiều — mục 9.20) cong_cu.dart: kTenCongCuTongKet = 'tong_ket_thu_chi_ky' (tên cũ chi_tieu_theo_ky; hằng cũ kTenCongCuChiTieu bỏ), chỉ báo "Đang tổng kết thu chi…" · cong_cu_chi_tieu.dart / hang_chi_tieu.dart giữ tên tệp (nội dung vẫn là chi tiêu theo kỳ) · bo_cong_cu_test: kTranToolsJsonDaDo 5437
@@ -206,7 +206,7 @@ lib/features/transaction/data/doc_cau_bang_ai.dart — (C2 §2.8) DocCauBangAi: 
 test/tool/dinh_tuyen/                             — (dự án B) KHÔNG vào bản app: du_lieu.dart (đọc TSV, mười nhãn, mã băm) · huan_luyen.dart (hocNaiveBayes · hocLogistic · kiemCheo · phanLuatBoLai · danhGia · chonNguong · sinhTepTrongSo) · bo_huan_luyen.tsv · bo_do.tsv (KHOÁ bằng mã băm) · huan_luyen_dinh_tuyen_test.dart và do_bo_do_test.dart (`skip`, chạy tay)
 lib/core/database/tables/ai_feedback_table.dart   — bảng AiRebalancingFeedbacks (cục bộ)
 lib/core/database/daos/ai_feedback_dao.dart
-lib/features/ai_chat/                             — màn Trợ lý AI (P3), đọc ai_edge; từ 2026-10-17 thêm trợ lý online (domain/ · data/datasources/ · widgets/tro_ly_ai/ — mục 15.3)
+lib/features/ai_chat/                             — màn Trợ lý AI (P3), đọc ai_edge; từ 2026-10-17 thêm trợ lý online (domain/ · data/datasources/ · widgets/tro_ly_ai/ — mục 15.3; 2026-10-19 thêm data/repositories/ · data/models/)
 ```
 
 ## 4. Bẫy — đọc trước khi sửa
