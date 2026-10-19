@@ -650,7 +650,7 @@ Người dùng chốt hướng **B** (tách lớp cộng tác, dời nguyên vă
   tổng `flutter analyze` vẫn 20 — bốn tệp mang: `core/database/connection/web.dart`,
   `core/sync/bieu_tuong_danh_muc_mac_dinh.dart`, `category/data/models/category_tree.dart`,
   `test/core/sync/e2e_sqlite_to_backend_sync_test.dart`); `pullFromBackend` vẫn **một phương thức ~616 dòng** (dời nguyên
-  văn, chưa chẻ); 7 lớp giả `implements` và 4 lớp `extends SyncEngine` giữ nguyên. Mốc test / analyze cuối: ở commit kế (Task 8).
+  văn, chưa chẻ); 7 lớp giả `implements` và 4 lớp `extends SyncEngine` giữ nguyên. **Mốc cuối** (đo 2026-10-19 @`fd63db46`, mã giống `a6c6fc7d`): `flutter test` **7.521 pass / 10 skip / 0 fail** (5 ph 56 s; 7.494 + 27 ca: quét 34, ba ca chặn, vòng `for` hai test quét ví đọc 14 tệp `core/sync`); `flutter analyze` **20** issue (165 s) — `core/database/connection/web.dart` 1 · `core/sync/bieu_tuong_danh_muc_mac_dinh.dart` 5 · `features/category/data/models/category_tree.dart` 1 · `test/core/sync/e2e_sqlite_to_backend_sync_test.dart` 13; `MUC_NEN` giữ 20.
 
 ### 🧹 Phần còn lại báo cáo soát kiến trúc — B · C · `other_daos` (2026-10-19, phiên 2) · `SyncEngine` brainstorm riêng
 
