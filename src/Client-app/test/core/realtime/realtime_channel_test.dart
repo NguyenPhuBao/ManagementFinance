@@ -559,8 +559,13 @@ void main() {
     test('start() lại sau khi bị từ chối → nối lại được', () async {
       final kenh = dungKenh();
       await kenh.start(idaccount: 10);
+      final nhan = <Object>[];
+      final sub = kenh.buocDangXuat.listen(nhan.add);
       daTao[0].banNoiHong(tuChoi);
       await Future<void>.delayed(Duration.zero);
+      expect(nhan, hasLength(1), reason: 'lời từ chối phải thật sự xảy ra TRƯỚC lần start() thứ hai');
+      expect(daTao[0].daDispose, isTrue);
+      await sub.cancel();
 
       await kenh.start(idaccount: 10);
       expect(daTao, hasLength(2));

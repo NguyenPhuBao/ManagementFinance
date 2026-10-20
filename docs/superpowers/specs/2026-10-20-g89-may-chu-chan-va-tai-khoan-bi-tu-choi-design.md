@@ -1,6 +1,6 @@
 # G89 + phần client của đơn 43 — máy chủ chặn (bảo trì / phong toả) và tài khoản bị từ chối
 
-**Ngày:** 2026-10-20 · **Nhánh:** `TranQuangDat` · **Trạng thái:** người dùng duyệt bản viết 2026-10-20; thi công xong 2026-10-20 (12 commit `b7ca4512..98d58c64`). **Phạm vi do người dùng chốt 2026-10-18:** một lượt gồm G89 (`docs/CLIENT_APP_KNOWN_GAPS.md`) và ba việc client
+**Ngày:** 2026-10-20 · **Nhánh:** `TranQuangDat` · **Trạng thái:** người dùng duyệt bản viết 2026-10-20; 🚧 MÃ XONG 2026-10-20, CHỜ NGHIỆM THU OnePlus (Task 12) (12 commit `b7ca4512..98d58c64`). **Phạm vi do người dùng chốt 2026-10-18:** một lượt gồm G89 (`docs/CLIENT_APP_KNOWN_GAPS.md`) và ba việc client
 của đơn 43 (`docs/superpowers/backend/CAN-LAM/SOAT_SAU_GOP_CD2EE572.md`): xét lại xoá SQLite khi `ACCOUNT_DELETED` · `connect_error`
 có `data.code` → dừng nối lại + đăng xuất · `account.downgraded` → làm mới gói. Phần dư của đơn 43 phía backend **không** chặn lượt
 này (người dùng chốt 2026-10-18).
@@ -201,7 +201,7 @@ Mọi ca canh phải thử bằng một bản sai và thấy đỏ.
 
 ## 9. Tài liệu
 
-- G89 đóng; sửa năm câu cũ: *"503 đăng nhập mất `code`"* · *"`user.notification` sống"* (hàm gửi không chỗ gọi) · *"`RealtimeEvent`
+- G89 mã xong, chờ nghiệm thu máy; sửa năm câu cũ: *"503 đăng nhập mất `code`"* · *"`user.notification` sống"* (hàm gửi không chỗ gọi) · *"`RealtimeEvent`
   chỉ dịch 5 tên"* (5 giá trị, 11 tên) · *"loopback miễn ở mọi môi trường"* (tầng kiểm request chỉ miễn khi `development`; mọi
   môi trường là nhờ lớp từ chối thêm IP được bảo vệ) · đường `core/api/auth_interceptor.dart` (thật: `core/api/interceptors/`).
 - Ba chú thích client dẫn số dòng backend đã lệch → dẫn **tên hàm**: `buoc_dang_xuat.dart` (`tuSuKienSocket`),
@@ -220,7 +220,7 @@ Mọi ca canh phải thử bằng một bản sai và thấy đỏ.
 
 ## 11. Chỗ bản thi công khác bản viết
 
-Đánh số theo thứ tự thi công (đếm 2026-10-20).
+Đánh số 1–13 theo thứ tự trong kế hoạch, các mục sau thêm dần khi review (đếm 2026-10-20).
 
 1. **`/auth/refresh` tới interceptor gián tiếp.** Nó đi Dio riêng của `AuthInterceptor`; 503 của nó chỉ tới `MayChuInterceptor` vì
    lỗi được chép sang request gốc (`_loiTamThoiChoRequest`) — nên interceptor phải đứng **sau** `AuthInterceptor`. Lượt phát lại
@@ -238,9 +238,8 @@ Mọi ca canh phải thử bằng một bản sai và thấy đỏ.
 7. Hàm thêm ngoài spec: `mocThuLaiKhiBiChan` (sàn ở MỘT chỗ), `chuGioHetHan`, `DateFormatter.formatTime` / `formatTimeDayMonth`.
 8. **Ca canh "interceptor chỉ gắn vào `DioClient`"** là **test quét 36**; `DioClient` tự dựng interceptor từ tham số
    `trangThaiMayChu` + `khiBiTatQuyen` (DI không dựng nó).
-9. **Hình dạng `connect_error` đã đo bằng mã** (người dùng cho phép đọc pub cache 2026-10-20): `socket.io` 4.8.3 gửi
-   `{message, data}`, `socket_io_client` 3.1.6 chuyển nguyên lên handler → dạng lồng. Bộ đọc giữ thêm nhánh phẳng (giao thức 3).
-   Nghiệm thu (3) chỉ còn xác nhận trên máy.
+9. **Hình dạng `connect_error`** đã đo bằng mã (người dùng cho phép đọc pub cache 2026-10-20) — xem #18. Nghiệm thu (3) chỉ
+   còn xác nhận trên máy.
 10. **Lỗi SSE** (trợ lý online, body là luồng) không phân loại được — trợ lý đã tự rơi về mô hình trên máy.
 11. `AppDatabase.purgeDataForAccount` gỡ hẳn cùng `purge_data_for_account_test.dart` và năm ca schema (đo lúc lập kế hoạch: ngoài
     DI chỉ test của chính nó gọi).
@@ -261,6 +260,10 @@ Mọi ca canh phải thử bằng một bản sai và thấy đỏ.
     (Thay cho điều "chưa đo" ở bản viết.)
 19. **Task 5 không có bước RED thật** (mã viết trước test) — bù bằng ba bản sai đỏ; ca "start() lại sau khi bị từ chối" chạy async
     thật thay FakeAsync (cancel của luồng kết nối giả hoàn tất bằng future null dùng chung của SDK, FakeAsync không bơm được).
+20. **Phong toả KHÔNG nói giờ giữ đúng hành vi trước G89** (ruling 2026-10-20, spec mục 3.3 *"`hetHanLuc == null` → giãn cách như
+    hôm nay"*): lượt hỏng được tính, giãn cách luỹ tiến, chu kỳ kết thúc `error` → bộ quét có thể nổ `syncFailed`. Câu *"lượt bị
+    chặn kết thúc `pending`"* (mục 3, #3, #5) chỉ áp cho bảo trì và phong toả CÓ giờ. Ca canh: `sync_may_chu_chan_test`
+    *"phong toả KHÔNG giờ"*.
 
 Ghi nhận cho người đọc sau: (a) lúc máy chủ chặn, `SyncEngine` không dựng `_nextAllowedSyncAt` → mọi nguồn kích hoạt gửi request
 thẳng, sàn 30 s chỉ áp cho hẹn giờ (đánh đổi "đổi mạng thử ngay"); (b) toast bảo trì có thể không hiện cả đợt nếu lúc 503 đầu

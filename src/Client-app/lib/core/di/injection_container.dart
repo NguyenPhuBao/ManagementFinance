@@ -173,7 +173,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     () => AuthInterceptor(secureStorage: sl(), cheDoNen: cheDoNen),
   );
   // G89 (spec 2026-10-20 mục 3): trạng thái máy chủ — bảo trì / phong toả. Sống trong RAM, không gắn tài khoản. Engine nền
-  // (cheDoNen) có bản riêng của isolate ấy — chỉ để SyncEngine của lượt nền hẹn đúng mốc.
+  // (cheDoNen) có bản riêng của isolate ấy: lượt bị chặn không bị tính là lượt hỏng, nên lần `dongBo` thứ hai của `LuotNen`
+  // không bị giãn cách chặn; hook `FEATURE_DISABLED` vẫn gắn ở nền. (Hẹn giờ thử lại không có nghĩa gì ở lượt nền.)
   sl.registerLazySingleton<TrangThaiMayChu>(TrangThaiMayChu.new);
   sl.registerLazySingleton<DioClient>(
     () => DioClient(

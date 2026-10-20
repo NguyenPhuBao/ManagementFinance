@@ -108,7 +108,6 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     await _xoaAnhQuet?.call();
   }
 
-
   @override
   Future<void> dispose() async {
     for (final s in _subs) { await s.cancel(); }

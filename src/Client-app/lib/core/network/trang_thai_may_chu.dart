@@ -100,7 +100,19 @@ String chuGioHetHan(DateTime hetHan, DateTime bayGio) {
   return cungNgay ? DateFormatter.formatTime(h) : DateFormatter.formatTimeDayMonth(h);
 }
 
-/// Trạng thái hiện tại — DI singleton, sống trong RAM. Chỉ interceptor của `DioClient` ghi (test quét 36).
+/// Giờ hết phong toả nếu còn hiệu lực ([bayGio] chưa tới nó), ngược lại `null` — giờ đã trôi thì đừng hứa. Một định nghĩa
+/// cho dòng nhắc Trang chủ và màn Đăng nhập.
+DateTime? gioPhongToaConHieuLuc(MayChuPhongToa t, DateTime bayGio) {
+  final het = t.hetHanLuc;
+  return (het != null && het.isAfter(bayGio)) ? het : null;
+}
+
+/// Giá trị `Retry-After` từ danh sách header (phần tử ĐẦU; `headers.value` của Dio NÉM khi header có từ hai giá trị).
+/// Nhận `List<String>?` để tệp này không import Dio.
+String? giaTriRetryAfter(List<String>? ds) => (ds != null && ds.isNotEmpty) ? ds.first : null;
+
+/// Trạng thái hiện tại — DI singleton, sống trong RAM. Chỉ interceptor của `DioClient` ghi — quy ước; test quét 36 canh chỗ
+/// DỰNG interceptor, không canh ai ghi `.value`.
 class TrangThaiMayChu extends ValueNotifier<TinhTrangMayChu> {
   TrangThaiMayChu() : super(const MayChuBinhThuong());
 }

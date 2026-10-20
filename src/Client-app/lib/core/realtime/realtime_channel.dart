@@ -234,7 +234,7 @@ class RealtimeChannel {
     if (ten == _tenBuocDangXuat) {
       final thongBao = tuSuKienSocket(payload);
       // Gói tin của tài khoản khác: không xảy ra khi room đúng, nhưng nếu xảy
-      // ra thì nó đá nhầm người đang đăng nhập ra kèm một lượt dọn SQLite.
+      // ra thì nó đá nhầm người đang đăng nhập ra (đăng xuất kèm hộp thoại).
       // Thiếu id thì vẫn nhận — socket này đã xác thực bằng JWT của chính phiên
       // đang chạy, nên room do server chọn mới là chốt thật.
       if (thongBao.idaccount != null && thongBao.idaccount != _idaccount) {

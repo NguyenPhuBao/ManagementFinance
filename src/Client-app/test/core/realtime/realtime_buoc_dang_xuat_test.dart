@@ -175,7 +175,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(nhan, isEmpty,
         reason: 'gói tin của tài khoản khác mà nhận là đá nhầm người đang '
-            'đăng nhập ra, kèm một lượt dọn SQLite');
+            'đăng nhập ra (đăng xuất kèm hộp thoại)');
     await kenh.stop();
   });
 

@@ -1505,7 +1505,7 @@ không có "kỳ" tự nhiên như ngân sách (chu kỳ) hay hoá đơn (hạn 
 `syncFailed` là **người tiêu thụ đầu tiên** của `SyncEngine.statusStream` cho
 mục đích hiển thị. Cờ được **đặt lại về false** khi lượt đồng bộ kế tiếp thành
 công; không xoá là mỗi lượt quét về sau đều báo lại một sự cố đã qua.
-`syncFailed` **không nổ khi máy chủ bảo trì / phong toả** — chu kỳ ấy kết thúc `pending`, không `error` (G89, 2026-10-20).
+`syncFailed` **không nổ khi máy chủ bảo trì / phong toả có giờ hết hạn** — chu kỳ ấy kết thúc `pending`, không `error` (G89, 2026-10-20).
 
 `NotificationScanner.start()` nay gọi `purgeOlderThan(90 ngày)` — một lần mỗi
 phiên, nuốt lỗi. Bảng chỉ lớn lên vì hàng đã xoá mềm phải giữ để chặn trùng.

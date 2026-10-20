@@ -4,10 +4,11 @@
 /// Dart **thuần**: không import Flutter, không import Dio. Nhờ vậy nó dùng được
 /// ở cả tầng mạng lẫn tầng bloc mà không kéo theo phụ thuộc nào.
 ///
-/// ## Luật một chiều
+/// ## Giá trị lạ về `biKhoa`
 ///
 /// Mọi giá trị lạ, thiếu, hoặc sai kiểu đều về [LyDoBuocDangXuat.biKhoa] (spec cưỡng chế đăng xuất §3.1). Từ G89 (2026-10-20)
-/// hai lý do chỉ khác nhau ở CHỮ hộp thoại — không lý do nào dọn SQLite nữa.
+/// hai lý do chỉ khác nhau ở CHỮ hộp thoại — không lý do nào dọn SQLite nữa — nên giá trị lạ về `biKhoa` chỉ ảnh hưởng
+/// chữ hộp thoại, không còn bất đối xứng mất dữ liệu.
 library;
 
 /// Vì sao tài khoản bị đẩy ra.

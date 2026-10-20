@@ -135,7 +135,7 @@ màn Chờ: dòng Lịch sử mua và thẻ đầu màn Nâng cấp.
 2. **Bằng trần là vượt** (`dangCo >= tran`); Premium → `Duoc` không nhìn số.
 3. **`/subscription-info` trả `accountType`**, hướng dẫn ghi `type` — đọc cả hai.
 4. **`/budget/rules?id=` là sửa**, `chuyenHuongTheoGoi` tự cho qua dù `Vuot`; `?category=` là tạo → chặn.
-5. **Socket `account.upgraded` là tín hiệu** — không đọc payload (hộp đen của `events`), gọi lại API.
+5. **Socket `account.upgraded` (và `account.downgraded` = `taiKhoanHaCap`) là tín hiệu** — không đọc payload (hộp đen của `events`), gọi lại API.
 6. **Kho thắng `type` của phiên** — admin hạ cấp tay khi `/payment/*` hỏng thì máy giữ Premium theo cache tới lần
    `/subscription-info` trả lời được (giới hạn 15.2 spec).
 7. **`context.read<GoiCubit>()`, không `BlocProvider.of`** khi muốn bắt `ProviderNotFoundException` — `BlocProvider.of`

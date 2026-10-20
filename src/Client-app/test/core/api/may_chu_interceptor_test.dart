@@ -152,6 +152,8 @@ void main() {
       throwsA(isA<DioException>().having((e) => e.response?.statusCode, 'status', 503)),
     );
     expect(tt.value, isA<MayChuBaoTri>());
+    expect((tt.value as MayChuBaoTri).thuLaiLuc, clock.add(const Duration(seconds: 60)),
+        reason: 'phải ghim phần tử ĐẦU (60), không phải 120');
   });
 
   test('hook khiBiTatQuyen ném ĐỒNG BỘ → nơi gọi vẫn nhận DioException 403 gốc', () async {

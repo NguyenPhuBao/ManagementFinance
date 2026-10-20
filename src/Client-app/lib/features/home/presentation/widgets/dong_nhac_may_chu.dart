@@ -99,16 +99,16 @@ class DongNhacMayChu extends StatelessWidget {
           tieuDe: 'Máy chủ đang bảo trì',
           phu: 'Dữ liệu trên máy vẫn dùng được, tự đồng bộ khi xong',
         );
-      case MayChuPhongToa(:final hetHanLuc):
+      case MayChuPhongToa():
         // Giờ đã qua mà dòng nhắc còn (chưa có request nào thành công) → đừng hứa một giờ đã trôi.
-        final conGio = hetHanLuc != null && hetHanLuc.isAfter(bayGio);
+        final gio = gioPhongToaConHieuLuc(t, bayGio);
         return (
           icon: Icons.shield,
           nen: _nenChan,
           mauIcon: _iconChan,
           tieuDe: 'Mạng này đang bị tạm chặn',
-          phu: conGio
-              ? 'Tới ${chuGioHetHan(hetHanLuc, bayGio)} · dữ liệu trên máy vẫn dùng được'
+          phu: gio != null
+              ? 'Tới ${chuGioHetHan(gio, bayGio)} · dữ liệu trên máy vẫn dùng được'
               : 'Dữ liệu trên máy vẫn dùng được',
         );
     }

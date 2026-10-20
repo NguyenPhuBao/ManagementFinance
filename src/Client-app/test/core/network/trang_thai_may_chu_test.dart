@@ -139,6 +139,36 @@ void main() {
     });
   });
 
+  group('gioPhongToaConHieuLuc', () {
+    test('giờ tương lai -> trả đúng giờ ấy', () {
+      final het = bayGio.add(const Duration(minutes: 5));
+      expect(gioPhongToaConHieuLuc(MayChuPhongToa(hetHanLuc: het), bayGio), het);
+    });
+    test('giờ đã qua -> null', () {
+      expect(gioPhongToaConHieuLuc(MayChuPhongToa(hetHanLuc: bayGio.subtract(const Duration(minutes: 1))), bayGio),
+          isNull);
+    });
+    test('bằng đúng bayGio -> null (isAfter nghiêm ngặt)', () {
+      expect(gioPhongToaConHieuLuc(MayChuPhongToa(hetHanLuc: bayGio), bayGio), isNull);
+    });
+    test('không giờ -> null', () {
+      expect(gioPhongToaConHieuLuc(MayChuPhongToa(), bayGio), isNull);
+    });
+  });
+
+  group('giaTriRetryAfter', () {
+    test('null / rỗng -> null', () {
+      expect(giaTriRetryAfter(null), isNull);
+      expect(giaTriRetryAfter(const <String>[]), isNull);
+    });
+    test('một giá trị -> giá trị ấy', () {
+      expect(giaTriRetryAfter(const ['60']), '60');
+    });
+    test('hai giá trị -> phần tử ĐẦU', () {
+      expect(giaTriRetryAfter(const ['60', '120']), '60');
+    });
+  });
+
   test('TrangThaiMayChu khởi đầu bình thường, và ghi lại bình thường không phát', () {
     final t = TrangThaiMayChu();
     var soLanPhat = 0;

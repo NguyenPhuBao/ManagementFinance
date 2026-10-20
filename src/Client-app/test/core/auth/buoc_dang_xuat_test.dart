@@ -106,7 +106,7 @@ void main() {
 
       expect(tb, isNotNull);
       expect(tb!.nguon, NguonBuocDangXuat.lamMoi,
-          reason: 'bước dọn SQLite của §3.6b chỉ phân biệt được nhờ trường này');
+          reason: 'nguồn của lượt đăng xuất chỉ phân biệt được nhờ trường này (dữ liệu SQLite giữ tới khi tài khoản khác đăng nhập)');
       expect(tb.lyDo, LyDoBuocDangXuat.biKhoa);
     });
 

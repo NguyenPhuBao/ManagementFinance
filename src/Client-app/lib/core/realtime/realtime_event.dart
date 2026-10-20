@@ -1,5 +1,5 @@
 /// Sáu giá trị (mười hai tên) sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
-/// backend phát tới room `account_<idaccount>`.
+/// backend phát tới room `account_<idaccount>` (riêng `account.downgraded` / `emitPermissionsUpdated` phát tới MỌI socket).
 ///
 /// ## Vì sao chỉ có tên, không có dữ liệu
 ///
@@ -92,7 +92,7 @@ extension RealtimeEventX on RealtimeEvent {
   ///
   /// `ocr.duplicate` nói đúng điều ngược lại — không có gì được tạo — nên kéo
   /// dữ liệu về sau nó là một vòng mạng thừa. `account.upgraded` cũng không:
-  /// lên gói là chuyện của bảng `account`, không bảng nào client đồng bộ đổi.
+  /// lên gói là chuyện của bảng `account`, không bảng nào client đồng bộ đổi; `account.downgraded` (hạ gói) cùng lý do.
   bool get canDongBoLai =>
       this != RealtimeEvent.ocrTrung &&
       this != RealtimeEvent.taiKhoanNangCap &&

@@ -58,12 +58,10 @@ class MayChuInterceptor extends Interceptor {
       final res = err.response;
       if (res != null) {
         if (_mangPhien(err.requestOptions)) {
-          // `headers.value` NÉM khi header có từ hai giá trị — đọc danh sách, lấy phần tử đầu.
-          final ra = res.headers['retry-after'];
           final moi = phanLoaiPhanHoi(
             status: res.statusCode,
             body: res.data,
-            retryAfter: (ra != null && ra.isNotEmpty) ? ra.first : null,
+            retryAfter: giaTriRetryAfter(res.headers['retry-after']),
             bayGio: _now(),
           );
           if (moi != null) _trangThai.value = moi;

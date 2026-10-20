@@ -616,7 +616,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-20)
 
-### 🛡️ G89 — máy chủ chặn + phần client đơn 43 (2026-10-20) — ✅ ĐÓNG, chờ nghiệm thu máy
+### 🛡️ G89 — máy chủ chặn + phần client đơn 43 (2026-10-20) — 🚧 MÃ XONG 2026-10-20, CHỜ NGHIỆM THU OnePlus (Task 12)
 
 Spec `docs/superpowers/specs/2026-10-20-g89-may-chu-chan-va-tai-khoan-bi-tu-choi-design.md` (người dùng duyệt bản viết 2026-10-20;
 Stitch **`006c5a2eafc9461ab630163d1ff85de9`** *"Trang chủ - Dòng nhắc máy chủ (3 biến thể)"*). **12 commit `b7ca4512..98d58c64`.**
@@ -632,7 +632,7 @@ giờ đổi lỗi của nơi gọi (`try/catch` + `retry-after` đọc dạng d
 toast nên lượt bị chặn dùng `pending`, hình dạng `connect_error` đã đo bằng mã gói. Ghi nhận: lúc bị chặn mọi nguồn kích hoạt đồng
 bộ gửi request thẳng (sàn 30 s chỉ cho hẹn giờ); toast bảo trì có thể không hiện nếu đang có toast bậc cao (dòng nhắc vẫn nói).
 🚧 **Nghiệm thu máy còn chờ** (spec mục 8): bảo trì lên server; admin phong toả IP LAN; khoá tài khoản lúc máy tắt mạng → bật mạng
-→ đăng xuất + hộp thoại; đăng nhập lúc bảo trì → câu mới. G89 `CLIENT_APP_KNOWN_GAPS.md` ✅ đóng; `CAN-LAM/README.md` đơn 43: phần
+→ đăng xuất + hộp thoại; đăng nhập lúc bảo trì → câu mới. G89 `CLIENT_APP_KNOWN_GAPS.md` mã xong, chờ nghiệm thu máy; `CAN-LAM/README.md` đơn 43: phần
 client xong, phần dư backend giữ nguyên.
 
 ### ✂️ Chẻ `pullFromBackend` — sáu hàm dựng companion sang `anh_xa_keo_ve.dart` (2026-10-20)
