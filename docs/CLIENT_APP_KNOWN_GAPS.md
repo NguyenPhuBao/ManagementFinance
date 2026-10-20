@@ -5,7 +5,7 @@
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
 
-> ♻️ **Tham chiếu tới `SyncEngine` trong các mục dưới là ảnh chụp trước 2026-10-19.** Ngày ấy `sync_engine.dart` (2.153 dòng) tách thành `SyncEngine` + ba lớp cộng tác (mục lục `core/sync`: `KIEN_TRUC_CLIENT_APP.md` mục 3): `_collectPendingOps` → `ThuGomThaoTacDay.collectPendingOps` (`thu_gom_day.dart`), `_sendBatch` · `_classifyFailure` · `_permanentCodes` · `_markSyncedById` → `GuiLoDongBo` (`gui_lo_dong_bo.dart`), `_pullFromBackend` → `ApDuLieuKeoVe.pullFromBackend` (`ap_du_lieu_keo_ve.dart`), `_resolveCategoryId` → `resolveCategoryId` (`uuid_dong_bo.dart`). Số dòng kiểu `sync_engine.dart:1025` là của tệp cũ — đừng mở theo số; tìm theo tên ký hiệu.
+> ♻️ **Tham chiếu tới `SyncEngine` trong các mục dưới là ảnh chụp trước 2026-10-19.** Ngày ấy `sync_engine.dart` (2.153 dòng) tách thành `SyncEngine` + ba lớp cộng tác (mục lục `core/sync`: `KIEN_TRUC_CLIENT_APP.md` mục 3): `_collectPendingOps` → `ThuGomThaoTacDay.collectPendingOps` (`thu_gom_day.dart`), `_sendBatch` · `_classifyFailure` · `_permanentCodes` · `_markSyncedById` → `GuiLoDongBo` (`gui_lo_dong_bo.dart`), `_pullFromBackend` → `ApDuLieuKeoVe.pullFromBackend` (`ap_du_lieu_keo_ve.dart`; từ 2026-10-20 phần dựng companion từng thực thể — các chốt `Value.absent()` khi server im lặng — ở `anh_xa_keo_ve.dart`), `_resolveCategoryId` → `resolveCategoryId` (`uuid_dong_bo.dart`). Số dòng kiểu `sync_engine.dart:1025` là của tệp cũ — đừng mở theo số; tìm theo tên ký hiệu.
 
 ---
 > **Phiên 2026-09-03 đã đóng 9/10 mục có lúc đó.** Mô tả gốc bên dưới được giữ

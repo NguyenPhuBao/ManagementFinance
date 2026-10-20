@@ -248,7 +248,7 @@ Response:
 
 ## 6. Sync Engine (Client-side)
 
-**File chính**: `src/Client-app/lib/core/sync/sync_engine.dart` (vòng đời, giãn cách, `_runSync` — mọi cam kết thứ tự) cùng ba lớp cộng tác do nó dựng (từ 2026-10-19, khối ♻️ mục 14): `thu_gom_day.dart` (`ThuGomThaoTacDay.collectPendingOps`), `gui_lo_dong_bo.dart` (`GuiLoDongBo`: `sendBatch`, `_permanentCodes`, phân loại lỗi), `ap_du_lieu_keo_ve.dart` (`ApDuLieuKeoVe`: `pullFromBackend`, mốc kéo về)
+**File chính**: `src/Client-app/lib/core/sync/sync_engine.dart` (vòng đời, giãn cách, `_runSync` — mọi cam kết thứ tự) cùng ba lớp cộng tác do nó dựng (từ 2026-10-19, khối ♻️ mục 14): `thu_gom_day.dart` (`ThuGomThaoTacDay.collectPendingOps`), `gui_lo_dong_bo.dart` (`GuiLoDongBo`: `sendBatch`, `_permanentCodes`, phân loại lỗi), `ap_du_lieu_keo_ve.dart` (`ApDuLieuKeoVe`: `pullFromBackend`, mốc kéo về; sáu hàm dựng companion từng thực thể ở `anh_xa_keo_ve.dart` từ 2026-10-20, khối ✂️ mục 14)
 **Phụ trợ**: `sync_models.dart`, `sync_checkpoint_store.dart`, `sync_payload_normalizer.dart`, hàm thuần `uuid_dong_bo.dart` · `moc_keo_ve.dart` · `bieu_tuong_danh_muc_mac_dinh.dart` · `gieo_tu_khoa.dart`
 
 > Phần này đã được kiểm chứng lại bằng cách đọc mã nguồn ngày 2026-09-02. Việc còn dang dở: xem `docs/CLIENT_APP_KNOWN_GAPS.md`.
@@ -508,7 +508,7 @@ src/Backend/
 
 ## 11. Các vấn đề đã giải quyết (ghi nhớ để tránh lặp lại)
 
-> ♻️ Tên hàm `SyncEngine._collectPendingOps` · `_sendBatch` · `_pullFromBackend` · `_resolveCategoryId` · `_classifyFailure` ở các mục dưới là của **trước 2026-10-19**; nay ở `ThuGomThaoTacDay.collectPendingOps` · `GuiLoDongBo` · `ApDuLieuKeoVe.pullFromBackend` · `resolveCategoryId` (`uuid_dong_bo.dart`) — mục 6 ở trên và khối ♻️ mục 14.
+> ♻️ Tên hàm `SyncEngine._collectPendingOps` · `_sendBatch` · `_pullFromBackend` · `_resolveCategoryId` · `_classifyFailure` ở các mục dưới là của **trước 2026-10-19**; nay ở `ThuGomThaoTacDay.collectPendingOps` · `GuiLoDongBo` · `ApDuLieuKeoVe.pullFromBackend` · `resolveCategoryId` (`uuid_dong_bo.dart`) — mục 6 ở trên và khối ♻️ mục 14. Từ 2026-10-20 phần dựng companion của nhánh kéo về ở `anh_xa_keo_ve.dart` (khối ✂️ mục 14).
 
 ### 11.1 FK violation `fk_transaction_category`
 **Nguyên nhân**: Transaction bị push lên backend trước khi category của nó tồn tại trên backend.
@@ -615,6 +615,28 @@ src/Backend/
 ---
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-20)
+
+### ✂️ Chẻ `pullFromBackend` — sáu hàm dựng companion sang `anh_xa_keo_ve.dart` (2026-10-20)
+
+Gợi ý của review toàn nhánh tách SyncEngine: `ap_du_lieu_keo_ve.dart` **743/800** dòng (quét 34), `pullFromBackend` một phương
+thức ~616 dòng — lần thêm bảng / cột kéo về kế tiếp là chạm trần. Người dùng chọn làm **inline**. Không đổi hành vi.
+
+- **Tệp mới `lib/core/sync/anh_xa_keo_ve.dart` (431 dòng):** `companionViKeoVe` · `companionGiaoDichKeoVe` ·
+  `companionDanhMucKeoVe(c, catUuid:, catName:, existingLocal:)` (luật rơi về biểu tượng / màu của hàng cục bộ — người gọi đọc
+  hàng, hàm không chạm CSDL) · `companionNganSachKeoVe` · `companionHoaDonKeoVe` · `companionMucTieuKeoVe` + `_deletedAtFrom`.
+  Tham số hàng giữ `dynamic` như vòng `map` cũ. Mọi chốt *server im lặng = `Value.absent()`* (`balance`, `include_in_total`,
+  `status`, `idgoal`, `idbill`, `previous_bill_id`, `anchor_day`, `period_end`, `auto_pay`) nay nằm ở tệp này. Nội bộ (quét 35).
+- **`ap_du_lieu_keo_ve.dart` 743 → 355 dòng:** còn điều phối và mọi bước có tác dụng phụ, thứ tự không đổi (ví →
+  `clearDefaultExcept`; `viDungToi` + `datNeoNhieuVi` **trước** ghi giao dịch — G85; vòng danh mục `getById` / bỏ `isLocalOnly` /
+  gom từ khoá → repair → dọn seed → gộp trùng; mốc G67; tính lại số dư; cờ + `soLanKeoVeXong`).
+- **Dời nguyên văn**, bằng script có neo dòng (lệch một dòng là dừng). Kiểm đa tập dòng (bỏ thụt lề) HEAD ↔ bản mới: mất đúng
+  15 dòng — năm đầu `map((x) {`, năm `}).toList();`, `companions.add(CategoriesCompanion(`, chữ ký `static _deletedAtFrom`, và
+  **ba chú thích chỉ vị trí đã sai sau khi dời** (*"cuối hàm này"* → `ApDuLieuKeoVe.pullFromBackend`; hai chỗ *"nhánh ví ở trên"*
+  thêm `companionViKeoVe`). Bốn câu chỉ vị trí khác vẫn đúng trong ngữ cảnh mới, giữ nguyên.
+- **Lưới:** không thêm test — 11 tệp `sync_pull_*` + `sync_payload_contract_test` đi qua đúng các hàm này. Ba bản sai trong tệp
+  mới đều đỏ: đọc `balance` của server (`sync_pull_so_du_vi_test` 2 ca), `billId` `Value(null)` khi server im lặng
+  (`sync_pull_giao_dich_idbill_test` 2 ca), bỏ qua `auto_pay` (`sync_pull_bill_auto_pay_test` 2 ca).
+- **Số đếm (2026-10-20):** `core` 107 · `core/sync` **15** · `lib/` 659 · `test/` 664 `_test`. `flutter test` **7.533 pass / 10 skip / 0 fail** (4 ph 46 s; +2 — hai quét ví sinh một ca mỗi tệp `core/sync`); `flutter analyze` **20**.
 
 ### 🚪 Quét 35 — ngoài `core/sync` chỉ dùng sáu tệp cửa công khai (2026-10-20)
 
