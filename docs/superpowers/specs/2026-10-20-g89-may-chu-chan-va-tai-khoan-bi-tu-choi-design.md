@@ -1,6 +1,6 @@
 # G89 + phần client của đơn 43 — máy chủ chặn (bảo trì / phong toả) và tài khoản bị từ chối
 
-**Ngày:** 2026-10-20 · **Nhánh:** `TranQuangDat` · **Trạng thái:** người dùng duyệt bản viết 2026-10-20; 🚧 MÃ XONG 2026-10-20, CHỜ NGHIỆM THU OnePlus (Task 12) (12 commit `b7ca4512..98d58c64`). **Phạm vi do người dùng chốt 2026-10-18:** một lượt gồm G89 (`docs/CLIENT_APP_KNOWN_GAPS.md`) và ba việc client
+**Ngày:** 2026-10-20 · **Nhánh:** `TranQuangDat` · **Trạng thái:** người dùng duyệt bản viết 2026-10-20; ✅ MÃ XONG + NGHIỆM THU OnePlus 13R ĐẠT 2026-10-20 (Task 12 — kết quả ở mục 12) (12 commit `b7ca4512..98d58c64`). **Phạm vi do người dùng chốt 2026-10-18:** một lượt gồm G89 (`docs/CLIENT_APP_KNOWN_GAPS.md`) và ba việc client
 của đơn 43 (`docs/superpowers/backend/CAN-LAM/SOAT_SAU_GOP_CD2EE572.md`): xét lại xoá SQLite khi `ACCOUNT_DELETED` · `connect_error`
 có `data.code` → dừng nối lại + đăng xuất · `account.downgraded` → làm mới gói. Phần dư của đơn 43 phía backend **không** chặn lượt
 này (người dùng chốt 2026-10-18).
@@ -201,7 +201,7 @@ Mọi ca canh phải thử bằng một bản sai và thấy đỏ.
 
 ## 9. Tài liệu
 
-- G89 mã xong, chờ nghiệm thu máy; sửa năm câu cũ: *"503 đăng nhập mất `code`"* · *"`user.notification` sống"* (hàm gửi không chỗ gọi) · *"`RealtimeEvent`
+- G89 mã xong, nghiệm thu OnePlus đạt 2026-10-20 (mục 12); sửa năm câu cũ: *"503 đăng nhập mất `code`"* · *"`user.notification` sống"* (hàm gửi không chỗ gọi) · *"`RealtimeEvent`
   chỉ dịch 5 tên"* (5 giá trị, 11 tên) · *"loopback miễn ở mọi môi trường"* (tầng kiểm request chỉ miễn khi `development`; mọi
   môi trường là nhờ lớp từ chối thêm IP được bảo vệ) · đường `core/api/auth_interceptor.dart` (thật: `core/api/interceptors/`).
 - Ba chú thích client dẫn số dòng backend đã lệch → dẫn **tên hàm**: `buoc_dang_xuat.dart` (`tuSuKienSocket`),
@@ -264,8 +264,31 @@ Mọi ca canh phải thử bằng một bản sai và thấy đỏ.
     hôm nay"*): lượt hỏng được tính, giãn cách luỹ tiến, chu kỳ kết thúc `error` → bộ quét có thể nổ `syncFailed`. Câu *"lượt bị
     chặn kết thúc `pending`"* (mục 3, #3, #5) chỉ áp cho bảo trì và phong toả CÓ giờ. Ca canh: `sync_may_chu_chan_test`
     *"phong toả KHÔNG giờ"*.
+21. **Dòng `Nối hỏng: $e` thô trên máy thật** (OnePlus 13R, 2026-10-20 16:18:06, `socket.io` của backend dev nhánh này) — khớp
+    dạng đã đo bằng mã ở #18, `data` lồng trong `{message, data}`:
+    `[RealtimeChannel] Nối hỏng: {message: Authentication error: Tài khoản đã bị vô hiệu hóa. Lý do: Nghiệm thu G89 (3b) — đường socket, data: {code: ACCOUNT_INACTIVE, idaccount: 18, reason_inactive: Nghiệm thu G89 (3b) — đường socket}}`
+    rồi `[RealtimeChannel] Bắt tay bị từ chối: biKhoa — dừng nối lại`; 47 s sau đó không dòng `Thử nối lại` nào.
 
 Ghi nhận cho người đọc sau: (a) lúc máy chủ chặn, `SyncEngine` không dựng `_nextAllowedSyncAt` → mọi nguồn kích hoạt gửi request
 thẳng, sàn 30 s chỉ áp cho hẹn giờ (đánh đổi "đổi mạng thử ngay"); (b) toast bảo trì có thể không hiện cả đợt nếu lúc 503 đầu
 đang có toast phản hồi bậc cao (chính sách `_hien` không xếp hàng) — dòng nhắc Trang chủ vẫn nói trạng thái; (c) `idaccount`
 trong lời từ chối bắt tay khác phiên → bỏ qua và vẫn nối lại mỗi 60 s (khuôn `force_logout`).
+
+## 12. Nghiệm thu OnePlus 13R — 2026-10-20 15:59–16:20 · ✅ ĐẠT cả bốn kịch bản
+
+Bản **debug** (`--debug`, tài khoản 18 `quangdat`), `baseUrl` sửa **tạm** sang IP LAN `172.31.98.144` (không commit — điện thoại và máy
+tính cùng dải `/23`; đi `adb reverse` thì server thấy `127.0.0.1`, địa chỉ không bao giờ bị phong toả). Backend dev nhánh này chạy thật
+sau `npm install` (người dùng cho phép đích danh; thiếu gói `resend` từ gộp `e7570e16` là backend sập lúc khởi động); thao tác admin qua
+API (`/admin/system/maintenance`, `/admin/aiops/quarantine`, `/admin/updatestatus/18`) — người dùng cho phép đích danh.
+
+| Kịch bản | Đo được | Kết quả |
+|---|---|---|
+| (1) bảo trì | Bật 16:04:05 → ghi khoản thu 12.000 đ → lượt đẩy 16:06:21 nhận 503 `MAINTENANCE_MODE`: dòng nhắc *"Máy chủ đang bảo trì — Dữ liệu trên máy vẫn dùng được, tự đồng bộ khi xong"* + toast *"Chưa đồng bộ được: máy chủ đang bảo trì"*; lý do admin gõ **không** hiện. `SyncEngine`: *"Máy chủ đang chặn — không tính lượt hỏng, thử lại lúc 16:07:21"* (`Retry-After` 60). Lượt 16:07:21 nhận 503 lần hai — **không** toast thứ hai (đo bằng kích thước khung: 268 KB có toast, 248 KB không, 10 khung quanh lượt ấy đều ~248 KB). Tắt 16:07:56 → lượt hẹn 16:08:22 đẩy được, khoản 12.000 đ có trên server (truy vấn đọc), dòng nhắc ẩn (ảnh 16:08:30) — ~34 s vì `Retry-After` là 60, không phải một trần chung | ✅ |
+| (2) phong toả có giờ | `POST /admin/aiops/quarantine` IP `172.31.99.230` 20 phút (⚠️ `temporary-ip` chỉ sửa mục **đã có** — `count: 0`, không chặn gì). Mở lại app 16:09:55: dòng nhắc *"Mạng này đang bị tạm chặn — Tới 16:29 · dữ liệu trên máy vẫn dùng được"* + toast *"Chưa đồng bộ được: mạng này đang bị tạm chặn"*; `SyncEngine` hẹn đúng giờ hết hạn *16:29:42.594*. Gỡ (`unblock-ip`) 16:10:32 → đưa app xuống nền rồi mở lại → dòng nhắc ẩn (ảnh 16:10:36). Request nào xoá nó — **không đo được** (logcat im, backend không ghi access log) | ✅ |
+| (3) khoá lúc mất mạng | Tắt Wi-Fi + dữ liệu di động → khoá `quangdat` 16:12:07 → bật Wi-Fi 16:12:22. **HTTP thắng cuộc đua**: lượt đẩy lúc có mạng nhận 401 `ACCOUNT_INACTIVE` (16:12:29.3) → hộp thoại *"Tài khoản đã bị vô hiệu hoá"* kèm lý do; socket bị dừng trước khi bắt tay trả lời; SQLite tài khoản 18 **giữ nguyên** (đọc CSDL chép từ máy: 2 ví, 3 giao dịch, 18 danh mục sống — dòng log *"Wallets count: 0"* là log gỡ lỗi đếm theo phiên đã đóng) | ✅ |
+| (3b) đường socket | Ép socket thắng: **phong toả AIOps chặn HTTP nhưng KHÔNG chặn bắt tay socket** (đo 16:10:01 — socket *"Đã nối"* lúc IP đang bị chặn). Tắt Wi-Fi → phong toả IP → khoá tài khoản → bật Wi-Fi 16:18:03: HTTP 403 `AIOPS_QUARANTINED` (không đăng xuất), bắt tay → dòng thô ở mục 11 #21 → *"Bắt tay bị từ chối: biKhoa — dừng nối lại"* → hộp thoại câu mặc định *"Tài khoản của bạn đã bị vô hiệu hoá."* (cố ý không đọc `message` của bắt tay; `data.reason_inactive` có sẵn nếu muốn hiện lý do như đường HTTP); 47 s sau không `Thử nối lại`; SQLite giữ nguyên | ✅ |
+| (4) đăng nhập lúc bảo trì | `quangdat` đúng mật khẩu → *"Máy chủ đang bảo trì. Thử lại sau ít phút."*, một thông báo, không toast chồng (khung `m2`–`m4` một toast, `m5`+ không). Ghi nhận: tên đăng nhập **không tồn tại** lúc bảo trì nhận 401 — backend kiểm thông tin đăng nhập trước bảo trì | ✅ |
+
+Bẫy đo của lượt này: OnePlus chụp màn **đen** khi ô mật khẩu đang mở bàn phím bảo mật — Back đóng bàn phím rồi mới chụp; mất mạng thật
+phải tắt **cả** Wi-Fi lẫn dữ liệu di động, và bật lại dữ liệu cuối buổi. Lượt đo cũng lộ **G98** (`CLIENT_APP_KNOWN_GAPS.md`): ví test
+`test-wallet-1789014227658` kẹt hàng đợi đẩy và đẩy giãn cách đồng bộ của tài khoản 18 lên 15 phút.

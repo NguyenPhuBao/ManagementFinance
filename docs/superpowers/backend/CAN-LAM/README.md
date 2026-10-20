@@ -1,9 +1,16 @@
 # Backend & Client — DANH SÁCH CẦN LÀM (5 mục chờ backend — mục 43, 44, 45, 46, 47)
 
-> ✅ **Client mã xong phần của mục 43, 2026-10-20, chờ nghiệm thu máy (G89, 12 commit `b7ca4512..98d58c64`).** Bốn việc client của đơn: `ACCOUNT_DELETED`
+> ✅ **Client mã xong phần của mục 43 và NGHIỆM THU OnePlus ĐẠT, 2026-10-20 (G89, 12 commit `b7ca4512..98d58c64`; bảng kết quả ở
+> mục 12 spec G89).** Bốn việc client của đơn: `ACCOUNT_DELETED`
 > không còn xoá SQLite ở mọi nguồn · `connect_error` có `data.code` → đăng xuất + dừng nối lại · `account.downgraded` → làm mới gói ·
 > dòng nhắc Trang chủ / toast / câu màn Đăng nhập khi 503 `MAINTENANCE_MODE` hoặc 403 `AIOPS_QUARANTINED`. Client **không xin backend
 > gì thêm**; sáu việc dư phía backend ở banner bên dưới giữ nguyên.
+>
+> 👁️ **Ghi nhận khi nghiệm thu (chưa phải đơn xin):** (1) phong toả AIOps chặn mọi request HTTP từ IP nhưng **không chặn bắt tay
+> Socket.io** — đo trên backend dev nhánh client 2026-10-20: socket *"Đã nối"* lúc IP đang bị chặn; (2) `POST /admin/aiops/quarantine/temporary-ip`
+> chỉ sửa mục đã có (`count: 0`, không chặn IP mới) — tạo mới phải dùng `POST /admin/aiops/quarantine`; (3) một test backend đã chèn
+> ví `test-wallet-1789014227658` + 9 giao dịch `test-tran-note-*` (id không phải UUID) thẳng vào tài khoản dev 18 `quangdat` — hàng ví
+> kẹt hàng đợi đẩy của client (**G98** `CLIENT_APP_KNOWN_GAPS.md`); có cần đơn dọn dữ liệu hay không, người dùng chưa chốt.
 
 > 🔀 **Client gộp `main` @ `e7570e16` và soát, 2026-10-18.** Backend ghi *"✅ Đã xong 100%"* cho mục 41–44 trong bảng mục
 > 0 (`3a5d320c`) nhưng không chuyển tệp. Client soát bằng mã + CSDL dev.

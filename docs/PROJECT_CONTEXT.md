@@ -626,7 +626,7 @@ of type 'int' of 'index'"* (nhánh 2xx cùng bệnh ở `data['success']`). Sử
 trên mã cũ. Đo 2026-10-20: `flutter test` **7627/7627** pass, 10 skip (5 ph 19 s); `flutter analyze` **20**. Chi tiết: G97
 `CLIENT_APP_KNOWN_GAPS.md`.
 
-### 🛡️ G89 — máy chủ chặn + phần client đơn 43 (2026-10-20) — 🚧 MÃ XONG 2026-10-20, CHỜ NGHIỆM THU OnePlus (Task 12)
+### 🛡️ G89 — máy chủ chặn + phần client đơn 43 (2026-10-20) — ✅ ĐÓNG: MÃ XONG + NGHIỆM THU OnePlus 13R ĐẠT 2026-10-20
 
 Spec `docs/superpowers/specs/2026-10-20-g89-may-chu-chan-va-tai-khoan-bi-tu-choi-design.md` (người dùng duyệt bản viết 2026-10-20;
 Stitch **`006c5a2eafc9461ab630163d1ff85de9`** *"Trang chủ - Dòng nhắc máy chủ (3 biến thể)"*). **12 commit `b7ca4512..98d58c64`.**
@@ -641,9 +641,13 @@ error; check-ignore không khớp. **Chỗ khác bản viết: mục 11 spec (20
 giờ đổi lỗi của nơi gọi (`try/catch` + `retry-after` đọc dạng danh sách), `error` kích hoạt thông báo `syncFailed` chứ không phải
 toast nên lượt bị chặn dùng `pending`, hình dạng `connect_error` đã đo bằng mã gói. Ghi nhận: lúc bị chặn mọi nguồn kích hoạt đồng
 bộ gửi request thẳng (sàn 30 s chỉ cho hẹn giờ); toast bảo trì có thể không hiện nếu đang có toast bậc cao (dòng nhắc vẫn nói).
-🚧 **Nghiệm thu máy còn chờ** (spec mục 8): bảo trì lên server; admin phong toả IP LAN; khoá tài khoản lúc máy tắt mạng → bật mạng
-→ đăng xuất + hộp thoại; đăng nhập lúc bảo trì → câu mới. G89 `CLIENT_APP_KNOWN_GAPS.md` mã xong, chờ nghiệm thu máy; `CAN-LAM/README.md` đơn 43: phần
-client xong, phần dư backend giữ nguyên.
+✅ **Nghiệm thu OnePlus 13R đạt 2026-10-20 15:59–16:20** (bảng ở **mục 12 spec**; bản debug, `baseUrl` tạm sang IP LAN, backend dev
+chạy sau `npm install`, thao tác admin qua API — cả hai việc ở `src/Backend` người dùng cho phép đích danh): bảo trì → dòng nhắc +
+**một** toast, tắt → lượt hẹn kế đẩy được khoản ghi lúc bảo trì; phong toả có giờ → dòng nhắc *"Tới 16:29"*, gỡ → ẩn; khoá tài
+khoản lúc mất mạng → hộp thoại, SQLite giữ nguyên — HTTP 401 thắng cuộc đua, đường socket ép thắng bằng cách phong toả IP trước
+(**phong toả AIOps chặn HTTP nhưng không chặn bắt tay socket**), dòng `Nối hỏng` thô ở mục 11 #21; đăng nhập lúc bảo trì → câu
+mới, không toast chồng. Lượt đo lộ **G98** (ví test id không phải UUID kẹt đẩy, kéo giãn cách đồng bộ 15 phút). G89
+`CLIENT_APP_KNOWN_GAPS.md` đóng; `CAN-LAM/README.md` đơn 43: phần client xong và nghiệm thu đạt, phần dư backend giữ nguyên.
 
 ### ✂️ Chẻ `pullFromBackend` — sáu hàm dựng companion sang `anh_xa_keo_ve.dart` (2026-10-20)
 
