@@ -616,6 +616,24 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-20)
 
+### 🚪 Quét 35 — ngoài `core/sync` chỉ dùng sáu tệp cửa công khai (2026-10-20)
+
+Gợi ý của review toàn nhánh tách SyncEngine: lớp / hàm top-level của Dart không có phạm vi thư mục, nên sau đợt tách bốn lớp
+cộng tác và bốn tệp hàm thuần công khai cho cả package — gọi `ApDuLieuKeoVe` / `GuiLoDongBo` / `resolveCategoryId` từ ngoài là
+đi vòng mọi cam kết thứ tự của `_runSync` mà không qua cờ `syncing`.
+
+- **Quét 35** `test/core/sync/chi_core_sync_import_tep_noi_bo_test.dart`: tệp `lib/` ngoài `lib/core/sync/` chỉ được có chỉ thị
+  (`import` / `export` / `part`, qua `test/helpers/chi_thi_dart.dart`) vào `core/sync` qua danh sách cố định **`cuaCongKhai`** —
+  sáu tệp đo được (19 chỉ thị): `sync_engine` (11) · `sync_models` (4) · `sync_payload_normalizer` · `sync_checkpoint_store` ·
+  `cong_so_du_vi` · `cong_vi_bi_giu`. Tám tệp còn lại (bốn lớp cộng tác + `uuid_dong_bo` · `moc_keo_ve` ·
+  `bieu_tuong_danh_muc_mac_dinh` · `gieo_tu_khoa` · `backend_bool`) là nội bộ; tệp **mới** trong `core/sync` mặc định nội bộ.
+  Luật 2: mỗi tên trong `cuaCongKhai` còn là tệp thật. Hai đối chứng: dương (≥ 15 chỉ thị vào cửa — bộ đọc mù là đỏ) và âm
+  (bốn dạng chỉ thị giả vào tệp nội bộ bị bắt). Không áp lên `test/`. `conCho` rỗng. Bản sai (cấy import `moc_keo_ve.dart` vào
+  `chay_nen.dart`) → đỏ đúng tệp.
+- **Gỡ `SyncEngine.mocPullConDungKhong`** (hàm chuyển tiếp, 0 chỗ gọi ở `lib/` lẫn `test/`) và `import 'moc_keo_ve.dart' as moc`;
+  `accountNotFoundCode` giữ (`sync_payload_contract_test` đọc).
+- Số test quét kế tiếp: **36**; tổng **39** tệp (đếm bằng bảng 2026-10-20). `flutter test` **7.531 pass / 10 skip / 0 fail** (4 ph 30 s; +3); `flutter analyze` **20**.
+
 ### 🌱 Bộ gieo danh mục mặc định chạy sau MỖI lượt kéo về (2026-10-20) — quy tắc 8 khớp mã
 
 Review toàn nhánh tách SyncEngine bắt: quy tắc 8 `CLAUDE.md` và spec `2026-09-07-per-account-default-categories-design.md`

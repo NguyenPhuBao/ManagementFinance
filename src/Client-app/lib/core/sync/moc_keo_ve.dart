@@ -64,8 +64,8 @@ DateTime? mocTuMaxSince(
 /// một máy đang kẹt: mốc hỏng che mất đúng khoảng dữ liệu bị bỏ lỡ, nên kẹp
 /// nó về "bây giờ" vẫn không lấy lại được phần ấy.
 ///
-/// Công khai vì `SyncEngine.mocPullConDungKhong` (API của engine) chuyển tiếp sang đây; đường chạy thật dùng nó ở
-/// `ApDuLieuKeoVe.napMoc` / `napMocNeuChuaCo`.
+/// Đường chạy thật dùng nó ở `ApDuLieuKeoVe.napMoc` / `napMocNeuChuaCo`. Hàm chuyển tiếp `SyncEngine.mocPullConDungKhong`
+/// (0 chỗ gọi) gỡ 2026-10-20; tệp này là nội bộ của `core/sync` (quét 35).
 DateTime? mocPullConDungKhong(DateTime? daLuu, DateTime bayGio) {
   if (daLuu == null) return null;
   return daLuu.isAfter(bayGio) ? null : daLuu;

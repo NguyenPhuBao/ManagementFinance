@@ -181,9 +181,9 @@ vào thống kê), `viTinhVaoTong` (ví nào cộng vào tổng), `normalizeCate
 lỗi đã xảy ra thật ở mỗi chỗ — ví dụ G41/G47 (bảng tra tên danh mục chép ba lần).
 
 **(2) Test quét mã nguồn.** Luật nào bộ test hành vi không thấy được (một import lọt, một handler rỗng, một `?? 1`) thì
-thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–34 phủ **35
+thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–35 phủ **36
 tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đều ghi *"thứ mười bốn"*, va chạm có từ 2026-09-21) — cộng
-**3** tệp cùng khuôn không đánh số, tổng **38** (đếm bằng bảng 2026-10-19, sau quét 34; helper `test/helpers/duong_dong_bo.dart` — `tepDuongDongBo()` trả mọi tệp `lib/core/sync/` cho ba quét cột cục bộ — không đếm, như `chi_thi_dart.dart`). Đếm (2026-10-19, HEAD `fd63db46`, từ `src/Client-app`): `git grep -lE "Directory[(]['\"]lib" -- test | grep -v helpers` ra **33** tệp quét cây (gồm quét 34; quét 31 duyệt cây qua biến `goc` nên khuôn grep không thấy nó — cộng 1 là 34); `git grep -l tepDuongDongBo -- test | grep -v helpers` ra **3** tệp (ba quét cột cục bộ); 34 + 3 = 37, **1** tệp còn lại đọc danh sách tệp cố định — tổng 38 khớp bảng. Test quét mới lấy số **35**.
+**3** tệp cùng khuôn không đánh số, tổng **39** (đếm bằng bảng 2026-10-20, sau quét 35; helper `test/helpers/duong_dong_bo.dart` — `tepDuongDongBo()` trả mọi tệp `lib/core/sync/` cho ba quét cột cục bộ — không đếm, như `chi_thi_dart.dart`). Đếm (2026-10-20, từ `src/Client-app`, bằng awk — `grep` qua rtk bóp méo mẫu): tệp `test/` (trừ `helpers/`) chứa `Directory('lib` ra **34** tệp quét cây (gồm quét 34 và 35; quét 31 duyệt cây qua biến `goc` nên khuôn ấy không thấy nó — cộng 1 là 35); chứa `tepDuongDongBo` ra **3** tệp (ba quét cột cục bộ); 35 + 3 = 38, **1** tệp còn lại đọc danh sách tệp cố định — tổng 39 khớp bảng. Test quét mới lấy số **36**.
 
 | Số | Tệp (dưới `test/`) | Luật | Phạm vi | Từ |
 |---|---|---|---|---|
@@ -222,6 +222,7 @@ tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đ�
 | **32** | `core/utils/dinh_dang_ngay_mot_noi_test.dart` | nhắc `DateFormat` ngoài `core/utils/date_formatter.dart` — mỗi mẫu ngày một hàm `DateFormatter` | cây | **2026-10-19** |
 | **33** | `core/utils/phan_tram_mot_noi_test.dart` | tự viết `(x * 100).round()}%` ngoài `chuPhanTram` (`core/utils/phan_tram.dart`) | cây | **2026-10-19** |
 | **34** | `core/sync/sync_tep_khong_qua_dai_test.dart` | tệp dưới `lib/core/sync/` > 800 dòng ngoài `mienTru` (trần riêng chỉ giảm; rỗng từ 2026-10-19) | cây | **2026-10-19** |
+| **35** | `core/sync/chi_core_sync_import_tep_noi_bo_test.dart` | ngoài `lib/core/sync/` chỉ thị vào `core/sync` không qua `cuaCongKhai` (sáu tệp); tệp mới trong `core/sync` mặc định nội bộ; `conCho` rỗng | cây | **2026-10-20** |
 | — | `features/wallet/vi_trung_ten_resolver_wiring_test.dart` | `ViTrungTenResolver` dựng một chỗ và được nối | cây | 2026-10-05 |
 | — | `features/wallet/vi_trung_ten_cuc_bo_test.dart` | cờ `bi_tu_choi_trung_ten` không lọt vào đồng bộ | mọi tệp `core/sync` (`tepDuongDongBo()`, từ 2026-10-19; trước: danh sách tệp) | 2026-10-05 |
 | — | `core/nen/noi_bo_nghe_hai_noi_test.dart` | hai engine (app + nền) mỗi engine nối bộ nghe kết quả đẩy đúng một lần | cây | 2026-10-10 |
@@ -283,8 +284,8 @@ trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng
 
 ## 9. Ưu điểm, nhược điểm, nợ có tên
 
-**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (38 tệp test quét, CI — đếm bằng bảng 2026-10-19 sau quét 34). Ranh
-giới nền tảng thay được bằng bản giả, nên **7.528** ca test (đo 2026-10-20, +10 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
+**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (39 tệp test quét, CI — đếm bằng bảng 2026-10-20 sau quét 35). Ranh
+giới nền tảng thay được bằng bản giả, nên **7.531** ca test (đo 2026-10-20, +10 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 
 **Nhược điểm còn lại.** Entity 7/14 mảng; giao diện không còn cầm kiểu hàng Drift ở mảng nào (G88 gạch 3 xong: Hoá đơn, Ví, Giao dịch 2026-10-14, Danh mục + Thông báo 2026-10-15; gạch 5 và 6 đóng cùng đợt). Gạch 4 đóng 2026-10-16 (`core` → `features` chỉ còn năm tệp domain thuần, quét 25 luật 5 / 5b), G88 đóng. Ba lệch `domain` → `data/repositories` và hai chỗ `ai_edge/domain` → `presentation` (`pickHomeBudget`) từng nằm ở đây đã trả cùng đợt, nay canh bằng quét 28. Vòng `bill/domain/bill_status.dart` ↔ `notification/domain/notification_rules.dart` **đã gỡ 2026-10-16** (`billLeadDays` + `mocNhacMacDinh` về `bill/domain/bill_nhac_truoc.dart`); cạnh `bill/application/bill_payment_conflict_resolver.dart` → `notification_rules.dart` còn, cố ý (bộ điều phối phát thông báo; quét 29 chỉ đọc nguồn `domain/`). Bốn cặp hai chiều của cụm {analytics, bill, category, transaction} **đã gỡ 2026-10-16** (ba lát, spec `2026-10-16-go-vong-mang-domain-design.md`; chiều chuẩn `analytics → bill → transaction → category`), `conCho` của quét 29 rỗng. *(Câu "`SyncEngine` 2.163 dòng một tệp" của lần đo 2026-10-16 đã trả 2026-10-19 — tách thành engine 506 dòng + ba lớp cộng tác + bốn tệp hàm thuần, quét 34 canh ≤ 800 dòng.)*
@@ -314,5 +315,5 @@ Sau đợt trên, **tách trang Thêm giao dịch** (2026-10-11, G88 gạch 1): 
 2. **Gọi đúng tên.** Feature-first ba tầng + `application/` (bộ điều phối), offline-first. Không nhận là Clean Architecture; nói vì sao không (mục 1).
 3. **Ba chữ ký.** Một định nghĩa duy nhất · test quét mã nguồn · cổng + bộ chuyển — mỗi cái kèm một ví dụ lỗi thật nó
    đã chặn (G41 bảng tra tên chép ba lần; G38 rơi về tài khoản admin; mô hình sập native thì canary bắt).
-4. **Con số.** 14 mảng, 658 tệp `lib/` (đếm 2026-10-19, mục 3), 38 tệp test quét (đếm bằng bảng 2026-10-19), 7.528 ca test (đo 2026-10-20, +10 skip), CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
+4. **Con số.** 14 mảng, 658 tệp `lib/` (đếm 2026-10-19, mục 3), 39 tệp test quét (đếm bằng bảng 2026-10-20), 7.531 ca test (đo 2026-10-20, +10 skip), CI xanh trên Ubuntu; trước/sau của đợt 2026-10-10 (mục 9).
 5. **Tự nêu nhược điểm trước khi bị hỏi.** Còn mở: Entity mới 7/14 mảng (xong Hoá đơn, Ví, Giao dịch 2026-10-14, Danh mục, Thông báo 2026-10-15); không logger, không mã hoá SQLite; `setState` vẫn là cách giữ trạng thái chủ đạo; và cạnh `bill/application/bill_payment_conflict_resolver.dart` → `notification_rules.dart` giữ cố ý (bộ điều phối phát thông báo, quét 29 chỉ đọc nguồn `domain/`). Đã trả, có ngày: `SyncEngine` một tệp 2.153 dòng (lúc tách; 2.163 là số đo 2026-10-16) tách thành engine + ba lớp cộng tác + bốn tệp hàm thuần 2026-10-19 (quét 34: mọi tệp `core/sync` ≤ 800 dòng, `mienTru` rỗng); G88 đóng 2026-10-16 (gạch 4: `core` → `features` chỉ còn năm tệp domain thuần; bốn trang trên 1.200 dòng tách xong 2026-10-13), vòng `bill_status` ↔ `notification_rules` và bốn cặp hai chiều của cụm {analytics, bill, category, transaction} gỡ 2026-10-16 — quét 29 canh vòng mới, `conCho` rỗng. Nói cả hai nhóm, tức là đã biết, không phải chưa nhìn thấy.

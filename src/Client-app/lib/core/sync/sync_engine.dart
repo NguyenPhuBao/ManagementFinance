@@ -9,7 +9,6 @@ import 'cong_so_du_vi.dart';
 import 'cong_vi_bi_giu.dart';
 import 'sync_models.dart';
 import 'sync_checkpoint_store.dart';
-import 'moc_keo_ve.dart' as moc;
 import 'gui_lo_dong_bo.dart';
 import 'thu_gom_day.dart';
 
@@ -502,11 +501,6 @@ class SyncEngine {
       debugPrint('[SyncEngine] Việc sau kéo về hỏng — lượt kéo sau thử lại: $e');
     }
   }
-
-  /// Chuyển tiếp — định nghĩa và lý do ở `moc_keo_ve.dart` (tách SyncEngine 2026-10-19). Giữ vì là API công khai của
-  /// engine.
-  static DateTime? mocPullConDungKhong(DateTime? daLuu, DateTime bayGio) =>
-      moc.mocPullConDungKhong(daLuu, bayGio);
 
   /// Chuyển tiếp — định nghĩa và lý do ở [GuiLoDongBo.accountNotFoundCode] (tách SyncEngine 2026-10-19). Giữ vì là
   /// API công khai của engine (`sync_payload_contract_test` đọc nó).
