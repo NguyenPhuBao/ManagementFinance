@@ -20,6 +20,11 @@ void main() {
       expect(DateFormatter.formatMonthYearShort(d), '08/26', reason: 'MM/yy — trục biểu đồ tiến độ dài');
       expect(DateFormatter.dayKey(d), '2026-08-03', reason: 'khoá nhóm ngày ở Sổ giao dịch, so chuỗi được theo thời gian');
     });
+
+    test('formatTime / formatTimeDayMonth — giờ hết phong toả (G89)', () {
+      expect(DateFormatter.formatTime(DateTime(2026, 10, 20, 9, 5)), '09:05');
+      expect(DateFormatter.formatTimeDayMonth(DateTime(2026, 10, 21, 9, 0)), '09:00 21/10');
+    });
   });
 
   group('mẫu có tên thứ — cần dữ liệu locale vi_VN', () {

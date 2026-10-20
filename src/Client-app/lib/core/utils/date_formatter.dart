@@ -16,6 +16,8 @@ class DateFormatter {
   static final _ngayThang = DateFormat('dd/MM');
   static final _ngayGio = DateFormat('dd/MM/yyyy HH:mm');
   static final _gioNgay = DateFormat('HH:mm dd/MM/yyyy');
+  static final _gio = DateFormat('HH:mm');
+  static final _gioNgayThang = DateFormat('HH:mm dd/MM');
   static final _thangNam = DateFormat('MM/yyyy');
   static final _thangNamNgan = DateFormat('MM/yy');
   static final _khoaNgay = DateFormat('yyyy-MM-dd');
@@ -32,6 +34,12 @@ class DateFormatter {
 
   /// `09:05 03/08/2026` — giờ rồi ngày (thẻ đầu Chi tiết đơn Premium, theo màn Stitch).
   static String formatTimeDate(DateTime d) => _gioNgay.format(d);
+
+  /// `09:05` — giờ hết phong toả cùng ngày (dòng nhắc máy chủ ở Trang chủ, màn Đăng nhập — G89).
+  static String formatTime(DateTime d) => _gio.format(d);
+
+  /// `09:00 21/10` — giờ hết phong toả khác ngày.
+  static String formatTimeDayMonth(DateTime d) => _gioNgayThang.format(d);
 
   /// `08/2026`
   static String formatMonthYear(DateTime d) => _thangNam.format(d);
