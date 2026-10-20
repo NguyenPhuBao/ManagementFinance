@@ -3304,7 +3304,8 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
     sau tiền tố lịch sự, có thể kèm *bạn*.
   - Lý do: *"Hãy viết 15 lời khuyên tiết kiệm…"* đo OnePlus 2026-10-18 lọt cổng, vì số đếm *15* đọc ra 15.000 đ. Màn chat
     hiện *"Đang đọc lệnh bằng AI…"* ~5 s rồi câu mới được trả lời.
-  - ⚠️ `ke` = *kể* / *kế*, nên *"kế hoạch…"* vẫn lọt.
+  - ⚠️ `ke` bỏ dấu là cả *kể* lẫn *kế*, và *kể từ* / *kể cả* là liên từ, nên *"kế hoạch… / kể từ… / kể cả…"* vẫn lọt.
+  - Luật chỉ bắt động từ ở vị trí đầu. *"bạn có thể gợi ý…"* chưa bắt.
   - 10 câu đo ở bảng dưới (dạng gõ không dấu) được khoá bằng một ca test.
 - **Phiên AI riêng** `DocLenhBangAi` (`ai_chat/data/doc_lenh_bang_ai.dart`): ba tool `tao_hoa_don` · `tao_muc_tieu` ·
   `dat_ngan_sach`, mong đợi **một** lời gọi; không gọi tool = "không phải lệnh tạo". Ví / danh mục là `enum` tên có thật

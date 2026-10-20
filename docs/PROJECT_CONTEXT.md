@@ -627,15 +627,20 @@ Lỗi lộ khi nghiệm thu OnePlus 2026-10-18. Câu *"Hay viet 15 loi khuyen ti
   có thể kèm *bạn* — vòng bỏ tiền tố tách thành `_sauTienTo`, dùng chung với `_nhan`.
 - Chọn luật theo **động từ**, không theo danh từ đếm (*lời khuyên, cách, mẹo…*), vì không lệnh tạo nào mở đầu như thế, còn danh
   sách danh từ đếm không bao giờ đủ. `cachDocSoTien` không đổi, nên Nhập nhanh không bị ảnh hưởng.
-- ⚠️ `ke` bỏ dấu là cả *kể* lẫn *kế*, nên câu mở bằng *"kế hoạch…"* vẫn là lệnh.
+- ⚠️ `ke` bỏ dấu là cả *kể* lẫn *kế*, và *kể từ* / *kể cả* là liên từ. Câu mở bằng *"kế hoạch… / kể từ… / kể cả…"* vẫn là
+  lệnh. Vế *kể từ / kể cả* do lượt soát bắt sau bản đầu.
+- Luật chỉ bắt động từ ở vị trí đầu. *"bạn có thể gợi ý…"* chưa bắt (cố ý, chờ câu đo).
 
-**Test:** 10 ca mới ở `ai_edge/domain/lenh_tao_test.dart`. 8 ca không lọt (đỏ 8 / 8 trên mã cũ). 1 ca *kế hoạch* (bản sai bỏ
-chặn `ke hoach` làm nó đỏ). 1 ca khoá đúng **10 câu C3 đã đo** trên Realme + OnePlus (mục 9.43 `AI_EDGE_FEATURE.md`); bản sai thêm
-`toi` vào danh sách làm nó đỏ.
+**Test:** 11 ca mới ở `ai_edge/domain/lenh_tao_test.dart`.
+- 8 ca không lọt, đỏ 8 / 8 trên mã cũ.
+- 1 ca *kế hoạch*: bản sai bỏ chặn `ke hoach` làm nó đỏ.
+- 1 ca *kể từ / kể cả*: bản sai rút tập chặn làm nó đỏ.
+- 1 ca khoá đúng **10 câu C3 đã đo** trên Realme + OnePlus (mục 9.43 `AI_EDGE_FEATURE.md`): bản sai thêm `toi` vào danh sách làm
+  nó đỏ.
 
 **Đo trên máy:** chưa đo lại. Cổng là hàm luật thuần, và các câu đã đo đều có ca canh. Phần do mô hình đọc không đổi.
 
-**Số đo 2026-10-20:** `flutter test` **7637/7637** pass, 10 skip (4 ph 28 s); `flutter analyze` **20**.
+**Số đo 2026-10-20:** `flutter test` **7638/7638** pass, 10 skip (4 ph 00 s); `flutter analyze` **20**.
 
 ### 🔤 G97 — body lỗi không phải JSON ở datasource xác thực (2026-10-20) — ✅ MỞ VÀ ĐÓNG
 
