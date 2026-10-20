@@ -12,6 +12,16 @@ void main() {
       phanLoaiPhanHoi(status: status, body: body, retryAfter: retryAfter, bayGio: bayGio);
 
   group('phanLoaiPhanHoi', () {
+    test('Retry-After dài hơn 1 ngày / khổng lồ → 60 s mặc định, không ném', () {
+      for (final ra in ['86401', '9000000000000', '9999999999999']) {
+        final t = pl(503, {'code': 'MAINTENANCE_MODE'}, retryAfter: ra) as MayChuBaoTri;
+        expect(t.thuLaiLuc, bayGio.add(kThuLaiBaoTriMacDinh),
+            reason: 'Retry-After: $ra — giá trị khổng lồ làm DateTime.add ném RangeError ra khỏi interceptor');
+      }
+      final motNgay = pl(503, {'code': 'MAINTENANCE_MODE'}, retryAfter: '86400') as MayChuBaoTri;
+      expect(motNgay.thuLaiLuc, bayGio.add(const Duration(days: 1)), reason: 'đúng trần vẫn nhận');
+    });
+
     test('503 MAINTENANCE_MODE + Retry-After 60 → bảo trì, thử lại sau 60 s', () {
       final t = pl(503, {'code': 'MAINTENANCE_MODE', 'message': 'Admin gõ'}, retryAfter: '60');
       expect(t, isA<MayChuBaoTri>());
@@ -138,5 +148,9 @@ void main() {
     expect(soLanPhat, 0, reason: 'mỗi 2xx ghi bình thường — không được dựng lại dòng nhắc mỗi request');
     t.value = MayChuBaoTri(thuLaiLuc: bayGio);
     expect(soLanPhat, 1);
+    t.value = MayChuBaoTri(thuLaiLuc: bayGio);
+    expect(soLanPhat, 2,
+        reason:
+            'mỗi 503 là một đối tượng MỚI — == theo giá trị sẽ nuốt lần phát này (identical không bắt được lỗi ấy)');
   });
 }

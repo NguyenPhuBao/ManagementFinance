@@ -10,6 +10,7 @@ import '../../core/api/dio_client.dart';
 import '../../core/auth/phien_dieu_phoi.dart';
 import '../../core/auth/phien_dieu_phoi_that.dart';
 import '../../core/database/app_database.dart';
+import '../../core/network/trang_thai_may_chu.dart';
 import '../../features/notification/data/repositories/thong_bao_repository.dart';
 import '../../features/notification/data/repositories/thong_bao_repository_impl.dart';
 import '../../core/realtime/realtime_channel.dart';
@@ -171,8 +172,18 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<AuthInterceptor>(
     () => AuthInterceptor(secureStorage: sl(), cheDoNen: cheDoNen),
   );
+  // G89 (spec 2026-10-20 mục 3): trạng thái máy chủ — bảo trì / phong toả. Sống trong RAM, không gắn tài khoản. Engine nền
+  // (cheDoNen) có bản riêng của isolate ấy — chỉ để SyncEngine của lượt nền hẹn đúng mốc.
+  sl.registerLazySingleton<TrangThaiMayChu>(TrangThaiMayChu.new);
   sl.registerLazySingleton<DioClient>(
-    () => DioClient(secureStorage: sl(), authInterceptor: sl()),
+    () => DioClient(
+      secureStorage: sl(),
+      authInterceptor: sl(),
+      trangThaiMayChu: sl(),
+      // 403 FEATURE_DISABLED → làm mới gói (spec mục 6.2). Đọc `sl` lúc GỌI: GoiRepository đăng ký sau DioClient.
+      // `lamMoi` không bao giờ ném.
+      khiBiTatQuyen: () => sl<GoiRepository>().lamMoi(),
+    ),
   );
 
   // ── 4. Core: SyncEngine (offline-first sync) ────────────────────────────

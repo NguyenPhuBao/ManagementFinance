@@ -18,8 +18,12 @@ import '../utils/date_formatter.dart';
 /// IP mà AIOps đang theo dõi vì nghi DoS (spec mục 3.3). Đó là kết cục duy nhất tính năng này không được phép sinh ra.
 const Duration kSanThuLai = Duration(seconds: 30);
 
-/// `Retry-After` thiếu hoặc không phải số nguyên dương.
+/// `Retry-After` thiếu, không phải số nguyên dương, hoặc dài hơn [kTranRetryAfter].
 const Duration kThuLaiBaoTriMacDinh = Duration(seconds: 60);
+
+/// `Retry-After` dài hơn chừng này coi như không đọc được (→ [kThuLaiBaoTriMacDinh]): giá trị khổng lồ làm `DateTime.add` ném
+/// `RangeError`, và một hẹn "thử lại sau vài năm" là tắt đồng bộ tới khi khởi động lại app.
+const Duration kTranRetryAfter = Duration(days: 1);
 
 sealed class TinhTrangMayChu {
   const TinhTrangMayChu();
@@ -62,7 +66,9 @@ TinhTrangMayChu? phanLoaiPhanHoi({
   final ma = body['code'];
   if (status == 503 && ma == 'MAINTENANCE_MODE') {
     final giay = int.tryParse(retryAfter?.trim() ?? '');
-    final cho = (giay != null && giay > 0) ? Duration(seconds: giay) : kThuLaiBaoTriMacDinh;
+    final cho = (giay != null && giay > 0 && giay <= kTranRetryAfter.inSeconds)
+        ? Duration(seconds: giay)
+        : kThuLaiBaoTriMacDinh;
     return MayChuBaoTri(thuLaiLuc: bayGio.add(cho < kSanThuLai ? kSanThuLai : cho));
   }
   if (status == 403 && ma == 'AIOPS_QUARANTINED') {
