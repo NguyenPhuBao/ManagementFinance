@@ -73,7 +73,6 @@ void main() {
       boQuet: null,
       interceptor: null,
       donTaiKhoanKhac: (_) async => 0,
-      xoaBanSao: (_) async => 0,
       datLaiCoGiaoDien: () {
         if (sl.isRegistered<AnTheChoXoa>()) sl<AnTheChoXoa>().value = false;
         if (sl.isRegistered<AnNhacViTrungTen>()) sl<AnNhacViTrungTen>().value = false;

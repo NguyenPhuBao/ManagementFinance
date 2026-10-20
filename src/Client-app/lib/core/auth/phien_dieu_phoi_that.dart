@@ -19,7 +19,6 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     required NotificationScanner? boQuet,
     required AuthInterceptor? interceptor,
     required Future<int> Function(int idaccount) donTaiKhoanKhac,
-    required Future<int> Function(int idaccount) xoaBanSao,
     Future<void> Function()? xoaCacheSlm,
     Future<void> Function(int idaccount)? chuyenHangSeedCu,
     Future<void> Function(int idaccount)? seedTaiKhoanMoi,
@@ -27,7 +26,7 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     void Function()? datLaiCoGiaoDien,
     Future<void> Function(int idaccount)? datGoi,
   })  : _dongBo = dongBo, _thoiGianThuc = thoiGianThuc, _boQuet = boQuet,
-        _donTaiKhoanKhac = donTaiKhoanKhac, _xoaBanSao = xoaBanSao, _xoaCacheSlm = xoaCacheSlm,
+        _donTaiKhoanKhac = donTaiKhoanKhac, _xoaCacheSlm = xoaCacheSlm,
         _chuyenHangSeedCu = chuyenHangSeedCu,
         _seedTaiKhoanMoi = seedTaiKhoanMoi, _xoaAnhQuet = xoaAnhQuet, _datLaiCoGiaoDien = datLaiCoGiaoDien,
         _datGoi = datGoi {
@@ -45,7 +44,6 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
   final RealtimeChannel? _thoiGianThuc;
   final NotificationScanner? _boQuet;
   final Future<int> Function(int) _donTaiKhoanKhac;
-  final Future<int> Function(int) _xoaBanSao;
   final Future<void> Function()? _xoaCacheSlm;
   final Future<void> Function(int)? _chuyenHangSeedCu;
   final Future<void> Function(int)? _seedTaiKhoanMoi;
@@ -110,8 +108,6 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     await _xoaAnhQuet?.call();
   }
 
-  @override
-  Future<void> xoaDuLieu(int idaccount) => _xoaBanSao(idaccount);
 
   @override
   Future<void> dispose() async {

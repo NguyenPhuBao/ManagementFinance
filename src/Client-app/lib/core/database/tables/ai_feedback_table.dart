@@ -18,7 +18,7 @@ import 'package:drift/drift.dart';
 /// vào `SyncEntityType` và đường đồng bộ.
 ///
 /// Thêm ở schema v24 (2026-09-19). Xoá theo tài khoản ở
-/// `purgeDataForOtherAccounts` / `purgeDataForAccount`.
+/// `purgeDataForOtherAccounts`.
 class AiRebalancingFeedbacks extends Table {
   TextColumn get id => text()();
 

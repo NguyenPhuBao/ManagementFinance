@@ -64,9 +64,6 @@ void main() {
     expect(await dao.giayXemTu(8, '2000-01-01'), isEmpty);
     expect(await dao.phanHoi(8), isEmpty);
     expect(await dao.giayXemTu(7, '2000-01-01'), hasLength(1));
-    await db.purgeDataForAccount(7);
-    expect(await dao.giayXemTu(7, '2000-01-01'), isEmpty);
-    expect(await dao.phanHoi(7), isEmpty);
   });
 
   test('migration v28 → v29 chỉ TẠO hai bảng', () async {

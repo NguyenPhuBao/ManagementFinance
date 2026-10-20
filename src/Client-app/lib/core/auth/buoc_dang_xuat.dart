@@ -6,10 +6,8 @@
 ///
 /// ## Luật một chiều
 ///
-/// Đọc nhầm *đã xoá* thành *bị khoá* chỉ khiến máy **giữ lại** bản sao dữ liệu.
-/// Đọc nhầm *bị khoá* thành *đã xoá* là **xoá mất** dữ liệu của người dùng.
-/// Nên mọi giá trị lạ, thiếu, hoặc sai kiểu đều về [LyDoBuocDangXuat.biKhoa]
-/// (spec cưỡng chế đăng xuất §3.1).
+/// Mọi giá trị lạ, thiếu, hoặc sai kiểu đều về [LyDoBuocDangXuat.biKhoa] (spec cưỡng chế đăng xuất §3.1). Từ G89 (2026-10-20)
+/// hai lý do chỉ khác nhau ở CHỮ hộp thoại — không lý do nào dọn SQLite nữa.
 library;
 
 /// Vì sao tài khoản bị đẩy ra.
@@ -18,12 +16,13 @@ enum LyDoBuocDangXuat {
   /// nên dữ liệu cục bộ phải **giữ**.
   biKhoa,
 
-  /// Tài khoản đã bị xoá (`ACCOUNT_DELETED`) — server đã ẩn danh hoá (xoá
-  /// `note`, `images`), máy không được giữ bản rõ.
+  /// Tài khoản đã bị xoá (`ACCOUNT_DELETED`). Dữ liệu cục bộ vẫn GIỮ tới khi tài khoản khác
+  /// đăng nhập trên máy (G89, người dùng chốt 2026-10-20).
   daXoa,
 }
 
-/// Lời ấy tới bằng đường nào. Chỉ bước dọn SQLite của §3.5 đọc tới nó (§3.6b).
+/// Lời ấy tới bằng đường nào. Từ G89 (2026-10-20) không chỗ nào trong `lib/` rẽ nhánh theo nguồn — giữ để
+/// log và test phân biệt ba đường.
 enum NguonBuocDangXuat {
   /// Sự kiện `account.force_logout` trên kênh thời gian thực.
   socket,
@@ -33,7 +32,6 @@ enum NguonBuocDangXuat {
 
   /// Body 401 của chính `/auth/refresh`.
   ///
-  /// ⚠️ Nguồn này **không** được dùng để dọn SQLite: trên `main` @ `7675b35`,
   /// Lý do có ngoại lệ (CAN-LAM 17 §2.5): tới 2026-09-12 `/auth/refresh` chưa
   /// tách lỗi lược đồ thành 503, nên một sự cố phía server đội lốt được
   /// `ACCOUNT_DELETED`. Backend đã sửa trong `main` @ `cbbeeb4` (gộp 2026-09-12).
@@ -53,10 +51,7 @@ enum NguonBuocDangXuat {
   /// *không* còn vô nghĩa — nó nay chặn đúng ca thật (tài khoản bị xoá, phát
   /// hiện qua nhánh làm mới) chứ không chỉ che ca lỗi lược đồ.
   ///
-  /// ✅ **Người dùng chốt 2026-09-13: GIỮ ngoại lệ** (spec §3.6b). Dữ liệu trong
-  /// SQLite là bản duy nhất trên máy, nên báo động giả mà dọn là mất thật; còn
-  /// nếu xoá là đúng thì `purgeDataForOtherAccounts` vẫn dọn khi tài khoản khác
-  /// đăng nhập — chỉ **hoãn** chứ không bỏ. Đừng "dọn dẹp" nhánh này.
+  /// Ngoại lệ "không dọn SQLite" của nguồn này (G36, 2026-09-13) mở rộng ra cả ba nguồn ngày 2026-10-20 (G89).
   lamMoi,
 }
 

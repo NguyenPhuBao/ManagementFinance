@@ -16,7 +16,7 @@ import 'package:drift/drift.dart';
 /// ấy tính ra; mỗi máy tự học từ sổ đã đồng bộ nên kết quả gần như nhau. Test quét thứ 15
 /// (`test/features/ai_edge/ai_edge_cuc_bo_khong_dong_bo_test.dart`) cấm nó lọt vào đường đồng bộ.
 ///
-/// Thêm ở schema v25 (2026-09-29). Xoá theo tài khoản ở `purgeDataForOtherAccounts` / `purgeDataForAccount`.
+/// Thêm ở schema v25 (2026-09-29). Xoá theo tài khoản ở `purgeDataForOtherAccounts`.
 class GoiYDanhMucPhanHois extends Table {
   TextColumn get id => text()();
 

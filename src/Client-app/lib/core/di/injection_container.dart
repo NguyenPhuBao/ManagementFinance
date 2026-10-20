@@ -227,7 +227,6 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       boQuet: sl<NotificationScanner>(),
       interceptor: sl<AuthInterceptor>(),
       donTaiKhoanKhac: sl<AppDatabase>().purgeDataForOtherAccounts,
-      xoaBanSao: sl<AppDatabase>().purgeDataForAccount,
       xoaCacheSlm: () => sl<SlmCache>().xoaHet(),
       chuyenHangSeedCu: (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id),
       seedTaiKhoanMoi: (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id),

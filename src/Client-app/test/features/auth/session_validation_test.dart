@@ -171,7 +171,6 @@ void main() {
       boQuet: sl.isRegistered<NotificationScanner>() ? sl<NotificationScanner>() : null,
       interceptor: sl.isRegistered<AuthInterceptor>() ? sl<AuthInterceptor>() : null,
       donTaiKhoanKhac: db.purgeDataForOtherAccounts,
-      xoaBanSao: db.purgeDataForAccount,
       xoaCacheSlm: () async {
         if (sl.isRegistered<SlmCache>()) await sl<SlmCache>().xoaHet();
       },

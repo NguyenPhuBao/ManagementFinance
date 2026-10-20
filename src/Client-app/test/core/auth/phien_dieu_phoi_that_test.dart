@@ -151,7 +151,6 @@ void main() {
       boQuet: coQuet ? scanner : null,
       interceptor: interceptor,
       donTaiKhoanKhac: (id) async { hook.add('don $id'); return daDon; },
-      xoaBanSao: (id) async { hook.add('xoaBanSao $id'); return 1; },
       xoaCacheSlm: () async => hook.add('xoaCache'),
       chuyenHangSeedCu: (id) async => hook.add('seedCu $id'),
       seedTaiKhoanMoi: (id) async => hook.add('seedMoi $id'),
@@ -190,7 +189,6 @@ void main() {
       boQuet: _ScannerHoiQuyen(db, () => quyenLucQuet.add(coQuyenNen(MaQuyen.billAutoPay, goi: goi))),
       interceptor: interceptor,
       donTaiKhoanKhac: (_) async => 0,
-      xoaBanSao: (_) async => 0,
       datGoi: (id) => goi.datTaiKhoan(id),
     );
     addTearDown(p.dispose);
@@ -243,7 +241,7 @@ void main() {
     expect(hook, isEmpty);
   });
 
-  test('batThoiGianThuc / sauDangNhap / dongPhien / xoaDuLieu', () async {
+  test('batThoiGianThuc / sauDangNhap / dongPhien', () async {
     final p = dung();
     await p.batThoiGianThuc(10);
     expect(realtime.nhatKy, ['start 10']);
@@ -252,8 +250,6 @@ void main() {
     await p.dongPhien();
     expect(sync.nhatKy, ['stop']); expect(scanner.goi, ['stop']); expect(realtime.nhatKy.last, 'stop');
     expect(hook.last, 'xoaAnh');
-    await p.xoaDuLieu(7);
-    expect(hook.last, 'xoaBanSao 7');
   });
 
   test('sauDangNhap không có SyncEngine: bỏ seed, vẫn đặt lại cờ giao diện', () async {

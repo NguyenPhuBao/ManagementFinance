@@ -64,14 +64,6 @@ void main() {
     expect(await db.goiYPhanHoiDao.getAll(7), hasLength(1));
   });
 
-  test('purgeDataForAccount xoá phản hồi của chính tài khoản ấy', () async {
-    await db.goiYPhanHoiDao.ghi(_dong(idaccount: 7));
-    await db.goiYPhanHoiDao.ghi(_dong(idaccount: 8));
-    await db.purgeDataForAccount(7);
-    expect(await db.goiYPhanHoiDao.getAll(7), isEmpty);
-    expect(await db.goiYPhanHoiDao.getAll(8), hasLength(1));
-  });
-
   group('migration v24 → v25', () {
     late AppDatabase cu;
     setUp(() {

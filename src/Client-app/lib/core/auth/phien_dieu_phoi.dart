@@ -31,8 +31,5 @@ abstract class PhienDieuPhoi {
   /// Dừng mọi thứ sống theo phiên: đồng bộ, bộ quét (kèm huỷ lịch), socket, ảnh quét chờ.
   Future<void> dongPhien();
 
-  /// Xoá bản sao cục bộ của tài khoản — Bloc chỉ gọi khi `daXoa` và nguồn khác `lamMoi` (G36, giữ 2026-09-13).
-  Future<void> xoaDuLieu(int idaccount);
-
   Future<void> dispose();
 }

@@ -17,8 +17,8 @@ export 'auth_state.dart';
 /// Từ đợt bịt điểm rò kiến trúc 2026-10-10 Bloc không còn gọi service locator (test quét 24) và không biết tên dịch
 /// vụ nào sống theo phiên — dọn tài khoản khác, bộ quét thông báo, socket, đồng bộ, seed đều nằm sau các bước của
 /// [PhienDieuPhoi] (bản thật `PhienDieuPhoiThat`, nối ở DI). Thứ ở lại đây là quyết định về PHIÊN: thứ tự emit, các
-/// phép kiểm `_vanLaPhien` sau mỗi `await`, cờ cưỡng chế đăng xuất, và điều kiện *không xoá dữ liệu khi nguồn là
-/// `lamMoi`* (G36). `phien == null` (widget test dựng Bloc trần) nghĩa là không điều phối gì.
+/// phép kiểm `_vanLaPhien` sau mỗi `await`, cờ cưỡng chế đăng xuất, và quyết định KHÔNG dọn SQLite khi bị buộc đăng xuất
+/// (G89, mở rộng G36). `phien == null` (widget test dựng Bloc trần) nghĩa là không điều phối gì.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository authRepository;
   final PhienDieuPhoi? _phien;
@@ -30,8 +30,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ///
   /// ⚠️ Không dùng `state` để chặn: state chỉ đổi ở bước cuối, mà handler của
   /// Bloc chạy **đồng thời** — thông báo thứ hai (socket rồi HTTP, hoặc ngược
-  /// lại) tới lúc lượt đầu còn đang `await` vẫn thấy `AuthSuccess` và sẽ dọn
-  /// SQLite thêm một lần nữa (spec cưỡng chế đăng xuất §9).
+  /// lại) tới lúc lượt đầu còn đang `await` vẫn thấy `AuthSuccess` và sẽ dừng
+  /// phiên / xoá token thêm một lần nữa (spec cưỡng chế đăng xuất §9).
   bool _dangBuocDangXuat = false;
 
   /// Lý do của lượt cưỡng chế đăng xuất đang chạy, giữ lại để **mọi** đường
@@ -111,32 +111,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     await _phien?.dongPhien();
 
-    // Dọn bản sao cục bộ CHỈ khi tài khoản thật sự đã bị xoá, và chỉ khi lời ấy
-    // không đến từ nhánh làm mới token — ở đó một lỗi lược đồ phía server từng
-    // đội lốt được `ACCOUNT_DELETED` (CAN-LAM 17 §2.5, spec §3.6b). Backend đã
-    // sửa (gộp 2026-09-12).
-    //
-    // ⚠️ Chú thích cũ ở đây nói *"xoá qua admin thu hồi refresh token nên nhánh
-    // làm mới trả 401 không mã — `daXoa` không tới được đây"*. Đúng tới bản
-    // `cbbeeb4`, **sai từ `7779999`**: đo đầu-cuối 2026-09-13 cho thấy xoá mềm
-    // qua admin trả **401 + `ACCOUNT_DELETED`** dù 4/4 refresh token đã bị thu
-    // hồi (G36 đóng). Nên nhánh này **có** chạy thật, và ngoại lệ dưới đây đang
-    // giữ lại SQLite cho một ca có thật — không còn là lớp che ca giả định.
-    //
-    // ✅ Người dùng chốt 2026-09-13: **GIỮ** ngoại lệ (spec §3.6b). SQLite là
-    // bản duy nhất trên máy, nên dọn nhầm là mất thật; nếu xoá là đúng thì
-    // `purgeDataForOtherAccounts` vẫn dọn khi tài khoản khác đăng nhập — chỉ
-    // hoãn chứ không bỏ. Đừng gỡ điều kiện `nguon != lamMoi` dưới đây.
-    if (thongBao.lyDo == LyDoBuocDangXuat.daXoa &&
-        thongBao.nguon != NguonBuocDangXuat.lamMoi) {
-      // `idaccount` chỉ đến từ chính lời server nói, hoặc từ phiên đăng nhập —
-      // không suy từ SQLite, không mặc định về 1 (quy tắc 2 `CLAUDE.md`).
-      final idTuThongBao = thongBao.idaccount;
-      final idTuPhien =
-          int.tryParse((await authRepository.getCurrentUser())?.id ?? '');
-      final id = idTuThongBao ?? idTuPhien;
-      if (id != null && id > 0) await _phien?.xoaDuLieu(id);
-    }
+    // ACCOUNT_DELETED KHÔNG dọn SQLite ở bất kỳ nguồn nào (G89, người dùng chốt 2026-10-20 — mở rộng ngoại lệ G36 của
+    // 2026-09-13 từ riêng nhánh làm mới ra cả socket và request thường). SQLite là bản DUY NHẤT trên máy: một báo động giả
+    // (lỗi lược đồ đội lốt mã, khoá nhầm) mà dọn là mất thật phần chưa đồng bộ; còn khi xoá là đúng thì
+    // `purgeDataForOtherAccounts` dọn ngay lúc tài khoản khác đăng nhập trên máy này — chỉ HOÃN chứ không bỏ. Hộp thoại vẫn
+    // nói "đã bị xoá": lý do nằm nguyên trong `thongBao`.
 
     // KHÔNG gọi `logout()`: route `/auth/logout` đi qua `authenticate` và sẽ
     // trả 401 mang mã rồi quay vòng qua interceptor (§3.5 bước 4). Interceptor
