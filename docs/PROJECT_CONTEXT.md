@@ -616,7 +616,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-20)
 
-### 🚪 G95 — cổng lệnh tạo C3 thôi bắt câu xin viết chữ (2026-10-20) — ✅ ĐÓNG (mã + test; chưa đo lại trên máy)
+### 🚪 G95 — cổng lệnh tạo C3 thôi bắt câu xin viết chữ (2026-10-20) — ✅ ĐÓNG (mã + test; đo Realme đạt)
 
 Lỗi lộ khi nghiệm thu OnePlus 2026-10-18. Câu *"Hay viet 15 loi khuyen tiet kiem tien cho sinh vien…"* qua được cổng rộng
 `coVeLenhTao` (`ai_edge/domain/lenh_tao.dart`), vì hai lẽ: câu có *tiết kiệm*, một đối tượng tạo được; và số đếm *15* bị
@@ -638,7 +638,12 @@ Lỗi lộ khi nghiệm thu OnePlus 2026-10-18. Câu *"Hay viet 15 loi khuyen ti
 - 1 ca khoá đúng **10 câu C3 đã đo** trên Realme + OnePlus (mục 9.43 `AI_EDGE_FEATURE.md`): bản sai thêm `toi` vào danh sách làm
   nó đỏ.
 
-**Đo trên máy:** chưa đo lại. Cổng là hàm luật thuần, và các câu đã đo đều có ca canh. Phần do mô hình đọc không đổi.
+**Đo trên máy — Realme RMX2205, 2026-10-20 19:19–19:21 (CPU, bản debug, gõ không dấu): đạt.**
+- *"hay viet 15 loi khuyen…"*: không có *"Đang đọc lệnh bằng AI…"*, đi thẳng vào vòng hỏi đáp sáu tool.
+- *"ke tu thang sau de danh 2 trieu moi thang"*: vẫn ra thẻ *"Tạo mục tiêu"* sau 15,6 s.
+
+Lượt đo lộ **G99** (có từ trước G95): mô hình bịa *hạn 30/06/2027* cho câu chỉ nêu mốc bắt đầu, và lưới cho qua vì câu có chữ
+*tháng*. Bảng đo ở thân G95 `CLIENT_APP_KNOWN_GAPS.md`.
 
 **Số đo 2026-10-20:** `flutter test` **7638/7638** pass, 10 skip (4 ph 00 s); `flutter analyze` **20**.
 

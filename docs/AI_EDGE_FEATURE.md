@@ -3307,6 +3307,8 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
   - ⚠️ `ke` bỏ dấu là cả *kể* lẫn *kế*, và *kể từ* / *kể cả* là liên từ, nên *"kế hoạch… / kể từ… / kể cả…"* vẫn lọt.
   - Luật chỉ bắt động từ ở vị trí đầu. *"bạn có thể gợi ý…"* chưa bắt.
   - 10 câu đo ở bảng dưới (dạng gõ không dấu) được khoá bằng một ca test.
+  - ✅ Đo Realme 2026-10-20: câu G95 đi thẳng vòng hỏi đáp; *"ke tu thang sau de danh 2 trieu moi thang"* vẫn ra thẻ. Lượt đo
+    lộ **G99**: mô hình bịa *hạn* cho câu chỉ nêu mốc bắt đầu, lọt `_hanAiHopLe` vì câu có chữ *tháng* (`CLIENT_APP_KNOWN_GAPS.md`).
 - **Phiên AI riêng** `DocLenhBangAi` (`ai_chat/data/doc_lenh_bang_ai.dart`): ba tool `tao_hoa_don` · `tao_muc_tieu` ·
   `dat_ngan_sach`, mong đợi **một** lời gọi; không gọi tool = "không phải lệnh tạo". Ví / danh mục là `enum` tên có thật
   + chuỗi rỗng. Thời hạn 45 s, canary phiên có tool, mọi hỏng hóc → `null`. **Không** nhét vào phiên sáu tool (trần
