@@ -74,12 +74,8 @@ bool _coCum(List<String> t, List<String> cum) {
   return false;
 }
 
-/// Kết quả nhận: loại lệnh và vị trí (chỉ số âm tiết) ngay SAU danh từ — nơi phần nội dung bắt đầu.
-({LoaiLenhTao loai, int sauDanhTu})? _nhan(String cau) {
-  if (cau.contains('?')) return null;
-  final t = amTietKhongDau(cau);
-  if (_tuHoi.any((c) => _coCum(t, c))) return null;
-  var i = 0;
+/// Vị trí âm tiết đầu tiên sau mọi tiền tố lịch sự [_tienTo] tính từ [i] (chúng có thể chồng nhau).
+int _sauTienTo(List<String> t, int i) {
   for (var doi = true; doi;) {
     doi = false;
     for (final p in _tienTo) {
@@ -89,6 +85,15 @@ bool _coCum(List<String> t, List<String> cum) {
       }
     }
   }
+  return i;
+}
+
+/// Kết quả nhận: loại lệnh và vị trí (chỉ số âm tiết) ngay SAU danh từ — nơi phần nội dung bắt đầu.
+({LoaiLenhTao loai, int sauDanhTu})? _nhan(String cau) {
+  if (cau.contains('?')) return null;
+  final t = amTietKhongDau(cau);
+  if (_tuHoi.any((c) => _coCum(t, c))) return null;
+  var i = _sauTienTo(t, 0);
   if (i >= t.length || !_dongTu.contains(t[i])) return null;
   i++;
   for (var dem = 0; dem <= 2; dem++) {
@@ -131,14 +136,38 @@ const List<List<String>> _doiTuongTao = [
 /// Tín hiệu muốn tạo — một âm tiết ở bất cứ đâu, hoặc cụm *lên kế hoạch*.
 const Set<String> _tinHieuTao = {'tao', 'them', 'dat', 'lap', 'muon', 'nhac'};
 
+/// Động từ XIN VIẾT CHỮ — câu mở bằng nó (sau tiền tố lịch sự, có thể kèm *bạn*) xin một đoạn chữ, không phải lệnh tạo:
+/// *"Hãy viết 15 lời khuyên tiết kiệm…"* có đối tượng tạo được (*tiết kiệm*) và số đếm *15* đọc ra 15.000 đ, nên cổng
+/// rộng từng mở (G95, đo OnePlus 2026-10-18). Không lệnh tạo nào mở đầu như thế. ⚠️ `ke` bỏ dấu là cả *kể* lẫn *kế* —
+/// *"kế hoạch để dành…"* vẫn là lệnh, nên [_moBangXinVietChu] bỏ qua `ke` khi chữ sau là `hoach`.
+const List<List<String>> _xinVietChu = [
+  ['viet'],
+  ['liet', 'ke'],
+  ['ke'],
+  ['soan'],
+  ['giai', 'thich'],
+  ['tom', 'tat'],
+  ['goi', 'y'],
+  ['phan', 'tich'],
+];
+
+bool _moBangXinVietChu(List<String> t) {
+  var i = _sauTienTo(t, 0);
+  if (i < t.length && t[i] == 'ban') i = _sauTienTo(t, i + 1);
+  if (i + 1 < t.length && t[i] == 'ke' && t[i + 1] == 'hoach') return false;
+  return _xinVietChu.any((c) => _batDauBang(t, i, c));
+}
+
 /// Cổng RỘNG (§8.1): câu có vẻ muốn tạo hoá đơn / mục tiêu / ngân sách → mở phiên AI riêng. `true` ⇔ câu theo mẫu §2,
-/// hoặc (không từ hỏi ∧ nhắc đối tượng tạo được ∧ (có tín hiệu muốn tạo ∨ có số tiền đọc được)). Câu lọt cổng mà mô
-/// hình không gọi tool → về vòng hỏi đáp như cũ: giá của cổng rộng là một lượt chờ thừa, không phải câu trả lời sai.
+/// hoặc (không từ hỏi ∧ không mở bằng động từ xin viết chữ ∧ nhắc đối tượng tạo được ∧ (có tín hiệu muốn tạo ∨ có số
+/// tiền đọc được)). Câu lọt cổng mà mô hình không gọi tool → về vòng hỏi đáp như cũ: giá của cổng rộng là một lượt chờ
+/// thừa, không phải câu trả lời sai.
 bool coVeLenhTao(String cau, {required DateTime now}) {
   if (loaiLenhTao(cau) != null) return true;
   if (cau.contains('?')) return false;
   final t = amTietKhongDau(cau);
   if (_tuHoi.any((c) => _coCum(t, c))) return false;
+  if (_moBangXinVietChu(t)) return false;
   if (!_doiTuongTao.any((c) => _coCum(t, c))) return false;
   return t.any(_tinHieuTao.contains) ||
       _coCum(t, const ['len', 'ke', 'hoach']) ||
