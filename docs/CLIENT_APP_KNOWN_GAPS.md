@@ -1984,7 +1984,13 @@ vào `d1DangHienPin` + một ca test Basic.
 
 ---
 
-### G89 — Thao tác của admin (bảo trì khẩn cấp, phong toả AIOps, broadcast) vô hình trên client: không nhánh nào đọc `MAINTENANCE_MODE` / `AIOPS_QUARANTINED` · 🚧 LƯỢT ĐÃ MỞ 2026-10-18 TỐI — BỐN VIỆC CHƯA ĐỤNG (trước đó ⏳ hoãn tới khi backend đóng đơn 43; mở 2026-10-11 ⏸️ để nguyên; người dùng chốt lại 2026-10-15)
+### G89 — Thao tác của admin (bảo trì khẩn cấp, phong toả AIOps, broadcast) vô hình trên client: không nhánh nào đọc `MAINTENANCE_MODE` / `AIOPS_QUARANTINED` · 📝 SPEC 2026-10-20, CHƯA THI CÔNG (lượt mở 2026-10-18 tối; trước đó ⏳ hoãn tới khi backend đóng đơn 43; mở 2026-10-11 ⏸️ để nguyên; người dùng chốt lại 2026-10-15)
+
+> 📝 **2026-10-20 — spec `docs/superpowers/specs/2026-10-20-g89-may-chu-chan-va-tai-khoan-bi-tu-choi-design.md`** (người dùng
+> duyệt ba phần trong phiên; Stitch `006c5a2e…`). Thay đoạn *"Nếu làm"* cuối mục bằng thiết kế ấy: mô hình trạng thái máy chủ ở
+> `core/network` + interceptor; dòng nhắc Trang chủ (không phải dải mọi trang); bảo trì / phong toả **không** tính lượt hỏng của
+> đồng bộ; `connect_error` có `data.code` → đăng xuất + dừng nối lại; `account.downgraded` + 403 `FEATURE_DISABLED` → làm mới gói;
+> `ACCOUNT_DELETED` **không xoá SQLite ở mọi nguồn**. Năm câu đã cũ của mục này liệt kê ở mục 9 spec — sửa khi đóng mục.
 
 > ⏳ **Chốt lại 2026-10-15 (sau gộp `main` @ `cd2ee572`).** Backend thêm hợp đồng `docs/Admin-web/Event-Notification-to-ClientApp.md`
 > (*"PO đã phê duyệt"*) đòi client xử lý bảo trì / phong toả / broadcast. Đối chiếu mã hai phía cùng ngày đính chính phần
