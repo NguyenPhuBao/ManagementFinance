@@ -12,6 +12,7 @@ import 'dart:async';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flowmoney/core/auth/buoc_dang_xuat.dart';
 import 'package:flowmoney/core/constants/app_constants.dart';
 import 'package:flowmoney/core/realtime/realtime_channel.dart';
 import 'package:flowmoney/core/realtime/realtime_event.dart';
@@ -488,5 +489,82 @@ void main() {
                   reason: 'Và không có lần nối lại nào SAU khi đã dừng — nối '
                       'lại lúc ấy là nối bằng token của người vừa rời đi.');
             }));
+  });
+
+  group('G89 — bắt tay bị từ chối vì tài khoản', () {
+    const tuChoi = {
+      'message': 'Authentication error: Tài khoản đã bị vô hiệu hoá',
+      'data': {'code': 'ACCOUNT_INACTIVE', 'idaccount': 10, 'reason_inactive': 'Vi phạm'},
+    };
+
+    test('connect_error mang code → MỘT lời buộc đăng xuất, KHÔNG nối lại kể cả khi đổi mạng',
+        () => FakeAsync().run((async) {
+              final kenh = dungKenh();
+              final nhan = <ThongBaoBuocDangXuat>[];
+              kenh.buocDangXuat.listen(nhan.add);
+              kenh.start(idaccount: 10);
+              async.flushMicrotasks();
+              expect(daTao, hasLength(1));
+
+              daTao[0].banNoiHong(tuChoi);
+              async.flushMicrotasks();
+              expect(nhan, hasLength(1));
+              expect(nhan.single.nguon, NguonBuocDangXuat.socket);
+              expect(nhan.single.lyDo, LyDoBuocDangXuat.biKhoa);
+
+              mang.co();
+              async.elapse(const Duration(minutes: 5));
+              async.flushMicrotasks();
+              expect(daTao, hasLength(1),
+                  reason: 'nối lại là gõ cửa bằng đúng danh tính vừa bị từ chối, mỗi 60 giây, mãi');
+              expect(nhan, hasLength(1));
+            }));
+
+    test('connect_error không code (token / lược đồ) → giãn cách nối lại như cũ, không phát gì',
+        () => FakeAsync().run((async) {
+              final kenh = dungKenh();
+              final nhan = <ThongBaoBuocDangXuat>[];
+              kenh.buocDangXuat.listen(nhan.add);
+              kenh.start(idaccount: 10);
+              async.flushMicrotasks();
+
+              daTao[0].banNoiHong({'message': 'Authentication error: Token expired'});
+              async.elapse(const Duration(seconds: 2));
+              async.flushMicrotasks();
+              expect(daTao, hasLength(2));
+              expect(nhan, isEmpty);
+              kenh.stop();
+            }));
+
+    test('lời từ chối mang idaccount KHÁC phiên → bỏ qua (khuôn force_logout), nối lại như cũ',
+        () => FakeAsync().run((async) {
+              final kenh = dungKenh();
+              final nhan = <ThongBaoBuocDangXuat>[];
+              kenh.buocDangXuat.listen(nhan.add);
+              kenh.start(idaccount: 10);
+              async.flushMicrotasks();
+
+              daTao[0].banNoiHong({
+                'data': {'code': 'ACCOUNT_INACTIVE', 'idaccount': 99},
+              });
+              async.elapse(const Duration(seconds: 2));
+              async.flushMicrotasks();
+              expect(nhan, isEmpty);
+              expect(daTao, hasLength(2));
+              kenh.stop();
+            }));
+
+    // Không dùng FakeAsync: `onConnectivityChanged` của `_ConnectivityGia` là luồng dựng ở vùng gốc, nên `cancel()` của nó
+    // hoàn tất bằng microtask THẬT — FakeAsync không bơm được, `start()` thứ hai kẹt ở `await stop()` và test đỏ oan.
+    test('start() lại sau khi bị từ chối → nối lại được', () async {
+      final kenh = dungKenh();
+      await kenh.start(idaccount: 10);
+      daTao[0].banNoiHong(tuChoi);
+      await Future<void>.delayed(Duration.zero);
+
+      await kenh.start(idaccount: 10);
+      expect(daTao, hasLength(2));
+      await kenh.stop();
+    });
   });
 }

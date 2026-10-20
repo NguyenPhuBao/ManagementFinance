@@ -96,8 +96,8 @@ class ThongBaoBuocDangXuat {
 
 /// Đọc payload của `account.force_logout`.
 ///
-/// Backend phát sự kiện này từ **một** hàm duy nhất (`core/socket.js:175-191`,
-/// gọi từ `admin.service.js:140`, `:199` và `scheduler.service.js:116`) với
+/// Backend phát sự kiện này từ **một** hàm duy nhất (`emitForceLogout` ở
+/// `core/socket.js`, gọi từ `admin.service.js` và `scheduler.service.js`) với
 /// hình dạng `{ idaccount, reason, message }` — nên đọc payload ở đây an toàn,
 /// khác hẳn các sự kiện đi qua EventBus của backend, thứ mà client không biết
 /// bản đang chạy dựng payload bằng khoá gì (xem chú thích đầu
@@ -141,6 +141,25 @@ ThongBaoBuocDangXuat? tuBody401(
     nguon: nguon,
     loiNhan: _cauTu(body['message']),
     idaccount: _idTu(body['idaccount']),
+  );
+}
+
+/// Đọc lỗi `connect_error` của bắt tay socket (spec G89 mục 5). Backend từ chối vì TÀI KHOẢN bằng
+/// `Object.assign(new Error(...), {data: {code, idaccount, reason_inactive}})` trong middleware xác thực bắt tay
+/// (`initSocket` ở `core/socket.js`); lỗi lược đồ / token / nội bộ là `Error` KHÔNG có `data` → `null` → nơi gọi giãn cách
+/// nối lại như cũ.
+///
+/// Dạng đo 2026-10-20 (`socket.io` 4.8.3 + `socket_io_client` 3.1.6): handler nhận nguyên `data` của gói `CONNECT_ERROR` —
+/// `Map` `{message, data: {code, …}}`. Nhánh `code` ở cấp gốc là dạng của giao thức 3 cũ (`err.data || err.message`), giữ cho
+/// chắc. Câu của server nằm ở `message` cấp ngoài (*"Authentication error: …"*) — cố ý KHÔNG đọc: `loiNhan` rỗng → hộp thoại
+/// dùng câu mặc định.
+ThongBaoBuocDangXuat? tuLoiBatTaySocket(Object? loi) {
+  if (loi is! Map) return null;
+  final data = loi['data'];
+  if (data is Map) return tuBody401(data, nguon: NguonBuocDangXuat.socket);
+  return tuBody401(
+    <String, Object?>{'code': loi['code'], 'idaccount': loi['idaccount']},
+    nguon: NguonBuocDangXuat.socket,
   );
 }
 

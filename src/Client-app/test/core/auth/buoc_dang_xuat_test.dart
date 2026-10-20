@@ -182,4 +182,36 @@ void main() {
               'nguồn phải là hai state khác nhau');
     });
   });
+
+  group('tuLoiBatTaySocket (G89 mục 5)', () {
+    test('dạng gói tin {message, data: {code, idaccount}} → lời buộc đăng xuất nguồn socket, KHÔNG đọc message', () {
+      final tb = tuLoiBatTaySocket({
+        'message': 'Authentication error: Tài khoản đã bị vô hiệu hoá',
+        'data': {'code': 'ACCOUNT_INACTIVE', 'idaccount': 11, 'reason_inactive': 'Vi phạm'},
+      });
+      expect(tb, isNotNull);
+      expect(tb!.lyDo, LyDoBuocDangXuat.biKhoa);
+      expect(tb.nguon, NguonBuocDangXuat.socket);
+      expect(tb.idaccount, 11);
+      expect(tb.loiNhan, '', reason: 'câu "Authentication error: …" cố ý không đọc — hộp thoại dùng câu mặc định');
+    });
+
+    test('dạng phẳng {code, idaccount} → cũng nhận', () {
+      final tb = tuLoiBatTaySocket({'code': 'ACCOUNT_DELETED', 'idaccount': '12'});
+      expect(tb!.lyDo, LyDoBuocDangXuat.daXoa);
+      expect(tb.idaccount, 12);
+    });
+
+    test('lỗi token / lược đồ / nội bộ (không code) → null → nối lại như cũ', () {
+      expect(tuLoiBatTaySocket('lỗi giả'), isNull);
+      expect(tuLoiBatTaySocket(null), isNull);
+      expect(tuLoiBatTaySocket({'message': 'Authentication error: Token expired'}), isNull);
+      expect(tuLoiBatTaySocket({'message': 'x', 'data': const {}}), isNull);
+      expect(
+          tuLoiBatTaySocket({
+            'data': {'code': ''}
+          }),
+          isNull);
+    });
+  });
 }
