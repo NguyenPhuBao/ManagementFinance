@@ -33,13 +33,13 @@ void main() {
 
       expect(tb.lyDo, LyDoBuocDangXuat.biKhoa,
           reason:
-              'ACCOUNT_INACTIVE là khoá tạm — dọn SQLite ở đây là mất dữ liệu');
+              'ACCOUNT_INACTIVE là khoá tạm (admin mở lại được) — hộp thoại phải nói "bị vô hiệu hoá", không "đã bị xoá"');
     });
 
     test('reason lạ → biKhoa', () {
       expect(tuSuKienSocket({'reason': 'SOMETHING_NEW'}).lyDo,
           LyDoBuocDangXuat.biKhoa,
-          reason: 'backend thêm mã mới không được làm client xoá dữ liệu');
+          reason: 'mã mới của backend rơi về lý do nhẹ hơn (bị khoá) — không được báo nhầm "tài khoản đã bị xoá"');
     });
 
     test('thiếu hẳn reason → biKhoa, câu rỗng, id vẫn đọc được', () {

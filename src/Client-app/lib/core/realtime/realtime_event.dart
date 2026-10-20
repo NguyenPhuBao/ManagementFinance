@@ -1,5 +1,6 @@
 /// Sáu giá trị (mười hai tên) sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
-/// backend phát tới room `account_<idaccount>` (riêng `account.downgraded` / `emitPermissionsUpdated` phát tới MỌI socket).
+/// backend phát tới room `account_<idaccount>` (riêng `emitPermissionsUpdated` — `account.permissions_updated` /
+/// `account.upgraded` — phát tới MỌI socket).
 ///
 /// ## Vì sao chỉ có tên, không có dữ liệu
 ///

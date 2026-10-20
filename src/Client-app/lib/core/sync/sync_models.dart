@@ -131,7 +131,7 @@ class SyncResult {
 /// Trạng thái của sync session
 enum SyncStatus {
   idle,         // Chu kỳ kết thúc, không còn gì tồn đọng
-  pending,      // Có dữ liệu chờ sync; cũng là chu kỳ đã chạy mà máy chủ chặn (bảo trì / phong toả), đã hẹn thử lại
+  pending,      // Có dữ liệu chờ sync; cũng là chu kỳ đã chạy mà máy chủ chặn (bảo trì / phong toả có giờ), đã hẹn thử lại
   syncing,      // Đang sync
   error,        // Chu kỳ kết thúc nhưng còn thao tác thất bại
   authExpired,  // Phiên đăng nhập đã chết — đã dừng, thử lại là vô ích
