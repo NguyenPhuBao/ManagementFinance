@@ -349,10 +349,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
 /// Câu màn Đăng nhập khi máy chủ chặn (spec G89 mục 4.3); `null` = không phải bảo trì / phong toả → câu của server như cũ.
 String? _cauKhiMayChuChan(Response res, DateTime bayGio) {
+  // `headers.value` NÉM khi header có từ hai giá trị — đọc danh sách, lấy phần tử đầu (như interceptor).
+  final ra = res.headers['retry-after'];
   final t = phanLoaiPhanHoi(
     status: res.statusCode,
     body: res.data,
-    retryAfter: res.headers.value('retry-after'),
+    retryAfter: (ra != null && ra.isNotEmpty) ? ra.first : null,
     bayGio: bayGio,
   );
   switch (t) {

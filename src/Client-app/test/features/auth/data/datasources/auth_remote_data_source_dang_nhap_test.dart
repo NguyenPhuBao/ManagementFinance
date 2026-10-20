@@ -44,6 +44,25 @@ void main() {
     await expectLater(ds(a).login('dat', 'x'), cau('Máy chủ đang bảo trì. Thử lại sau ít phút.'));
   });
 
+  test('503 MAINTENANCE_MODE với retry-after lặp hai giá trị → vẫn câu client, không lỗi thô', () async {
+    final a = _Adapter(503, {
+      'success': false,
+      'code': 'MAINTENANCE_MODE'
+    }, them: {
+      'retry-after': ['60', '120']
+    });
+    await expectLater(ds(a).login('dat', 'x'), cau('Máy chủ đang bảo trì. Thử lại sau ít phút.'));
+  });
+
+  test('403 AIOPS_QUARANTINED giờ đã qua → bỏ vế "tới…"', () async {
+    final a = _Adapter(403, {
+      'code': 'AIOPS_QUARANTINED',
+      'quarantineExpiresAt': DateTime(2026, 10, 20, 9, 0).toUtc().toIso8601String(),
+    });
+    await expectLater(
+        ds(a).login('dat', 'x'), cau('Mạng này đang bị máy chủ tạm chặn. Thử lại sau hoặc đổi mạng (Wi-Fi ↔ 4G).'));
+  });
+
   test('403 AIOPS_QUARANTINED có giờ → nêu giờ', () async {
     final a = _Adapter(403, {
       'code': 'AIOPS_QUARANTINED',
