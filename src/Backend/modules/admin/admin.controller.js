@@ -280,6 +280,17 @@ const adminController = {
       return ResponseHandler.error(res, error.message, statusCode);
     }
   },
+
+  async changeAdminPin(req, res) {
+    try {
+      const result = await adminService.changeAdminPin(req.body, req.user);
+      return ResponseHandler.success(res, result, result.message);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('changeAdminPin failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
 };
 
 module.exports = adminController;

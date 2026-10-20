@@ -328,6 +328,7 @@ const adminRepository = {
     if (search) {
       where.OR = [
         { request: { contains: search, mode: 'insensitive' } },
+        { action: { contains: search, mode: 'insensitive' } },
         { account: { username: { contains: search, mode: 'insensitive' } } },
       ];
     }
@@ -346,6 +347,7 @@ const adminRepository = {
           idlog: true,
           idaccount: true,
           request: true,
+          action: true,
           req_status: true,
           reason: true,
           time_req: true,
@@ -375,7 +377,7 @@ const adminRepository = {
         },
         ip: l.account?.refreshtoken?.[0]?.ip_address || '127.0.0.1',
         request: l.request,
-        action: l.request,
+        action: l.action || l.request,
         req_status: l.req_status,
         status: l.req_status,
         reason: l.reason,
@@ -394,8 +396,19 @@ const adminRepository = {
       select: {
         idaccount: true,
         password: true,
+        pin_hash: true,
         username: true,
         email: true,
+      },
+    });
+  },
+
+  async updateAccountPin(idaccount, pinHash) {
+    return prisma.account.update({
+      where: { idaccount: Number(idaccount) },
+      data: {
+        pin_hash: pinHash,
+        update_at: new Date(),
       },
     });
   },

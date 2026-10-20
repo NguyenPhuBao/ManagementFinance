@@ -69,7 +69,7 @@ class AnomalyDetector {
    * Tính toán các thông số đường chuẩn thực tế (Real-Server Hardware Baselines)
    * dựa trên số nhân CPU thật, tổng RAM vật lý của server, và quy mô người dùng N.
    */
-  calculateServerHardwareBaseline(targetConcurrency = null) {
+  calculateServerHardwareBaseline(targetConcurrency = null, currentSample = null) {
     const N = Math.max(100, Number(targetConcurrency || this.targetConcurrency || 1000));
     const cpus = os.cpus() || [];
     const cpuCores = Math.max(1, cpus.length || 1);
@@ -83,30 +83,42 @@ class AnomalyDetector {
       }
     } catch (_) {}
 
-    // 1. Lưu lượng:
+    // 1. Lưu lượng lý thuyết:
     const baseRpm = N * 10;
     const rps = baseRpm / 60;
 
-    // 2. CPU thực tế:
-    // Mỗi request tài chính tốn trung bình ~1.8ms CPU. Tải thêm (%) = (rps * 1.8 * 100) / (cpuCores * 1000)
+    // 2. CPU thực tế kết hợp tải thực đo:
     const idleCpuPct = 3;
     const addedCpuPct = (rps * 1.8 * 100) / (cpuCores * 1000);
-    const expectedCpuDay = Math.min(95, Math.max(5, Math.round(idleCpuPct + addedCpuPct)));
-    const expectedCpuNight = Math.min(90, Math.max(3, Math.round(idleCpuPct + addedCpuPct * 0.25)));
+    const theoCpuDay = Math.min(95, Math.max(5, Math.round(idleCpuPct + addedCpuPct)));
+    const theoCpuNight = Math.min(90, Math.max(3, Math.round(idleCpuPct + addedCpuPct * 0.25)));
 
-    // 3. RAM thực tế:
-    // Mỗi kết nối người dùng đồng thời tiêu hao buffer & cache trung bình 0.5 MB
+    // 3. RAM thực tế kết hợp tải thực đo:
     const addedRamDayMb = Math.round(N * 0.5);
     const expectedRamDayMb = idleRssMb + addedRamDayMb;
-    const expectedRamDay = Math.min(98, Math.max(10, Math.round((expectedRamDayMb / totalMemMb) * 100)));
+    const theoRamDay = Math.min(98, Math.max(10, Math.round((expectedRamDayMb / totalMemMb) * 100)));
     const expectedRamNightMb = idleRssMb + Math.round(addedRamDayMb * 0.25);
-    const expectedRamNight = Math.min(95, Math.max(8, Math.round((expectedRamNightMb / totalMemMb) * 100)));
+    const theoRamNight = Math.min(95, Math.max(8, Math.round((expectedRamNightMb / totalMemMb) * 100)));
 
     // 4. Event Loop Lag:
-    const expectedLagDay = Math.max(3, Math.round(4 + Math.max(0, (expectedCpuDay - 60) * 0.3)));
-    const expectedLagNight = 3;
+    const theoLagDay = Math.max(3, Math.round(4 + Math.max(0, (theoCpuDay - 60) * 0.3)));
+    const theoLagNight = 3;
 
-    // 5. Đánh giá khả năng chịu tải (Capacity Assessment):
+    // 5. Kết hợp chỉ số đo lường thực tế (Live System Sample) nếu có:
+    const liveCpu = currentSample && typeof currentSample.cpuPercent === 'number' ? currentSample.cpuPercent : null;
+    const liveRam = currentSample && typeof currentSample.ramPercent === 'number' ? currentSample.ramPercent : null;
+    const liveLag = currentSample && typeof currentSample.eventLoopLagMs === 'number' ? currentSample.eventLoopLagMs : null;
+    const liveRpm = currentSample && typeof currentSample.requestsPerMin === 'number' ? currentSample.requestsPerMin : null;
+
+    const expectedCpuDay = liveCpu !== null ? Math.min(95, Math.max(5, Math.round(0.6 * liveCpu + 0.4 * theoCpuDay))) : theoCpuDay;
+    const expectedCpuNight = liveCpu !== null ? Math.min(90, Math.max(3, Math.round(0.4 * liveCpu + 0.6 * theoCpuNight))) : theoCpuNight;
+    const expectedRamDay = liveRam !== null ? Math.min(98, Math.max(10, Math.round(0.6 * liveRam + 0.4 * theoRamDay))) : theoRamDay;
+    const expectedRamNight = liveRam !== null ? Math.min(95, Math.max(8, Math.round(0.4 * liveRam + 0.6 * theoRamNight))) : theoRamNight;
+    const expectedLagDay = liveLag !== null ? Math.max(2, Math.round(0.6 * liveLag + 0.4 * theoLagDay)) : theoLagDay;
+    const expectedLagNight = liveLag !== null ? Math.max(2, Math.round(0.4 * liveLag + 0.6 * theoLagNight)) : theoLagNight;
+    const effectiveRpm = liveRpm && liveRpm > 0 ? Math.round(0.4 * liveRpm + 0.6 * baseRpm) : baseRpm;
+
+    // 6. Đánh giá khả năng chịu tải (Capacity Assessment):
     const isOverCapacity = expectedCpuDay >= 85 || expectedRamDay >= 85;
     const isNearLimit = expectedCpuDay >= 70 || expectedRamDay >= 70;
     const capacityStatus = isOverCapacity ? 'OVER_CAPACITY' : (isNearLimit ? 'WARNING' : 'OPTIMAL');
@@ -126,15 +138,21 @@ class AnomalyDetector {
         platform: process.platform,
         arch: process.arch,
       },
+      liveMetricsSample: currentSample ? {
+        measuredCpu: liveCpu,
+        measuredRam: liveRam,
+        measuredLag: liveLag,
+        measuredRpm: liveRpm,
+      } : null,
       calculatedMetrics: {
-        baselineRpm: baseRpm,
-        safePeakRpm: baseRpm * 3,
+        baselineRpm: effectiveRpm,
+        safePeakRpm: effectiveRpm * 3,
         expectedCpuPercent: expectedCpuDay,
         expectedRamPercent: expectedRamDay,
         expectedEventLoopLagMs: expectedLagDay,
       },
       nightMetrics: {
-        baselineRpm: Math.round(baseRpm * 0.25),
+        baselineRpm: Math.round(effectiveRpm * 0.25),
         expectedCpuPercent: expectedCpuNight,
         expectedRamPercent: expectedRamNight,
         expectedEventLoopLagMs: expectedLagNight,
@@ -152,8 +170,8 @@ class AnomalyDetector {
   /**
    * Khởi tạo đường chuẩn 24 giờ dựa trên phần cứng server thật và quy mô người dùng mục tiêu
    */
-  _initializeBaselines() {
-    const hwBaseline = this.calculateServerHardwareBaseline(this.targetConcurrency);
+  _initializeBaselines(currentSample = null) {
+    const hwBaseline = this.calculateServerHardwareBaseline(this.targetConcurrency, currentSample);
     const baselines = [];
     for (let h = 0; h < 24; h++) {
       const isNight = h >= 0 && h <= 6;
@@ -617,11 +635,12 @@ class AnomalyDetector {
   }
 
   calibrate(options = {}) {
-    // 1. Tự động tính toán lại đường chuẩn 24h dựa trên phần cứng server thật và N
+    // 1. Tự động tính toán lại đường chuẩn 24h dựa trên phần cứng server thật, tải thực tế và N
     const target = options.targetConcurrency || (typeof options === 'number' ? options : this.targetConcurrency);
     this.targetConcurrency = Math.max(100, Number(target || 1000));
-    const report = this.calculateServerHardwareBaseline(this.targetConcurrency);
-    this.hourlyBaselines = this._initializeBaselines();
+    const currentSample = options.currentSample || null;
+    const report = this.calculateServerHardwareBaseline(this.targetConcurrency, currentSample);
+    this.hourlyBaselines = this._initializeBaselines(currentSample);
 
     // 2. Nếu có customBaselines truyền vào từng giờ, merge vào
     if (options.customBaselines) {

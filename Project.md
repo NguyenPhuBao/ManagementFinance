@@ -1,12 +1,20 @@
 # 📘 Project.md — ManagementFinance
 
-> File này là nguồn ngữ cảnh nòng cốt dành cho AI. Mọi yêu cầu về hệ thống (kiến trúc, cấu trúc, công nghệ, quy trình, giai đoạn, chức năng, đặc tả...) sẽ được ghi lại và cập nhật tại đây trong suốt quá trình phát triển dự án.
-> AI phải đọc file này trước khi thực hiện bất kỳ công việc nào. AI là nhân viên tích cực chăm chỉ và nhiệt thành.
-> AI đóng vai trò là Senior BA khi phân tích thiết kế hệ thống, lắng nghe phân tích chức năng, đặc tả chức năng và khi hiện thực hóa hệ thống (hỗ trợ dev).
-> AI đóng vai trò là Kỹ sư Full Stack cao cấp khi hiện thực chức năng (viết code) ở cả backend & frontend, mapping 2 thành phần lại với nhau.
-> AI đóng vai trò là Senior Tester, sẽ thực hiện kiểm thử chức năng  mỗi khi Fullstack hoàn thành một chức năng, làm xong 1 chức năng thì tiến hành kiểm thử luôn không chờ tới lúc hoàn thành.
-> Mọi yêu cầu hay công việc không rõ ràng, thiếu chức năng thì đều phải đặt câu hỏi cho PO (tôi) và chờ duyệt trước khi làm tiếp.
-> Chỉ làm đúng yêu cầu mà PO đưa ra, không làm lan man hay vượt quá yêu cầu. Nếu phát hiện hướng đi hay yêu cầu tiếp theo thì đề xuất để PO duyệt rồi mới làm.
+> **NGUỒN NGỮ CẢNH NÒNG CỐT DÀNH CHO AI (SOURCE OF TRUTH).**
+> Mọi yêu cầu về hệ thống (kiến trúc, cấu trúc, công nghệ, quy trình, giai đoạn, chức năng, đặc tả...) sẽ được ghi lại và cập nhật tại đây trong suốt quá trình phát triển dự án. AI bắt buộc phải đọc file này trước khi thực hiện bất kỳ công việc nào.
+>
+> 👑 **BỘ 3 QUY TẮC CỨNG HÀNG CAO NHẤT (SUPREME MANDATORY RULES — BẮT BUỘC TUÂN THỦ 100%):**
+> 1. **Tuyệt đối tuân thủ yêu cầu từ PO:** Nếu yêu cầu từ PO gây sai lệch dự án hoặc chưa tối ưu thì:
+>    - Chỉ ra lý do tại sao không nên làm theo yêu cầu của PO.
+>    - Đưa ra phương án tối ưu hơn và đưa ra cho PO duyệt.
+>    - Tuyệt đối không tự ý đánh giá và tự ý thực thi khi chưa có sự xét duyệt từ phía PO.
+> 2. **Suy luận bao quát theo cả chiều ngang và chiều sâu:**
+>    - Khi tiến hành thực thi 1 tính năng chức năng (Thêm, Xóa, Sửa - CRUD) thì cần phải suy luận theo chiều ngang (các mối quan hệ, liên kết đến tính năng chức năng đó) kết hợp với suy luận theo chiều sâu (khi các mối quan hệ và liên kết ban đầu có liên quan đến chức năng được thực thi xảy ra sự thay đổi thì có ảnh hưởng thế nào đến hệ thống).
+>    - Việc suy luận kết hợp chiều ngang và chiều sâu đảm bảo khi thực thi bất kỳ 1 tính năng chức năng nào đều sẽ ăn khớp với hệ thống và đảm bảo hệ thống hoạt động ổn định mà không phát sinh thêm các lỗi mới (Zero Regressions).
+> 3. **Không rõ thì hỏi PO ngay, không tự suy diễn:**
+>    - Các yêu cầu chưa rõ ràng thì đặt câu hỏi cho PO ngay lập tức, tuyệt đối không tự suy diễn.
+>
+> AI đóng vai trò là Senior BA khi phân tích thiết kế hệ thống, lắng nghe phân tích chức năng, đặc tả chức năng; Kỹ sư Full Stack cao cấp khi hiện thực chức năng (viết code) ở cả backend & frontend, mapping 2 thành phần lại với nhau; Senior Tester thực hiện kiểm thử 2 tầng (Giao diện + Tác động hệ thống thực tế) mỗi khi hoàn thành từng tính năng.
 ---
 
 ## 1. Tổng Quan Dự Án
@@ -4305,6 +4313,37 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - E2E Integration test 2 tầng: `src/tests/excel-column-resizing.e2e.test.jsx` (8/8 tests pass).
   - Toàn bộ test suite các trang liên quan đều PASS 100%. Production build (`npm run build`) thành công sạch sẽ.
 
-
-
-
+### 4.12. Hoàn Thiện & Khắc Phục Triệt Để 5 Nhóm Điểm Nghẽn PO Yêu Cầu (Admin PIN, Dọn Dẹp CSDL, User Filters, Categories Restore, Dynamic AIOps Baseline, Audit Log Dual Columns) (2026-10-19)
+- **Tài liệu Kế hoạch Triển Khai & Báo cáo:** [`implementation_plan_po_review.md`](file:///C:/Users/Tieu%20Bao/.gemini/antigravity-ide/brain/73e72374-a447-47c7-8310-e2bc6c1be78b/implementation_plan_po_review.md).
+- **Phạm vi & Chi Tiết Khắc Phục:**
+  1. **Lưu Trữ & Băm Mật Mã Mã PIN Quản Trị Viên (Admin PIN Bcrypt):**
+     - Đã thêm cột `pin_hash VARCHAR(255)` vào bảng `account` trong CSDL PostgreSQL Supabase (Migration 33).
+     - Khởi tạo mã PIN băm bằng `bcryptjs` an toàn trong CSDL cho tài khoản Admin, thay thế hardcode biến môi trường.
+     - Hàm `adminService.verifySecurityAction` xác thực so sánh trực tiếp với `account.pin_hash`.
+     - Thêm endpoint `POST /api/admin/change-pin` (yêu cầu mật khẩu tài khoản và PIN mới 6 chữ số).
+     - Bổ sung giao diện Quản lý Mã PIN trong `SettingsModal.jsx` (tab Bảo Mật & Thông Tin).
+  2. **Làm Sạch CSDL & Kiểm Soát Dữ Liệu Kiểm Thử Toàn Hệ Thống:**
+     - Đã dọn sạch 100% tài khoản test giả lập tích tụ từ trước (`user_ret_*`, `@anonymized.local`) bằng Migration 33 trong chế độ transaction an toàn (`session_replication_role = 'replica'`).
+     - Đảm bảo các file test sử dụng mock repository hoặc cơ chế dọn dẹp teardown rollback (`payment.db.integration.test.js`), ngăn ngừa ghi rác dữ liệu vào DB thật.
+  3. **Tối Ưu & Sửa Lỗi Trang Quản Lý Người Dùng (`UserListPage.jsx`):**
+     - Bộ lọc trạng thái: Mặc định chọn 3 trạng thái "Đang hoạt động" + "Vô hiệu hóa" + "Chờ xóa" (bỏ `'deleted'`).
+     - Bỏ lọc theo "Khu vực" và "Thời gian tham gia" thừa thãi.
+     - Giữ lại và sửa lỗi lọc theo gói dịch vụ (Membership: Basic / Premium) đồng bộ với thuộc tính tài khoản `u.type` / `u.package`.
+     - Loại bỏ cột checkbox thừa thãi trong bảng.
+     - Sửa hành động icon con mắt (👁️): Tích hợp component `UserDetailModal.jsx` mở popup xem đầy đủ thông tin chi tiết người dùng và gói cước.
+  4. **Logic Khôi Phục & Mở Lại Danh Mục Đã Xóa Mềm (`CategoryPage.jsx` & `admin.service.js`):**
+     - Khi thêm mới danh mục nếu phát hiện cặp `(name, classify)` đã tồn tại nhưng đang bị xóa mềm (`delete_at IS NOT NULL`), hệ thống tự động khôi phục (`delete_at = null`), cập nhật từ khóa keyword mới và mở lại danh mục thành công thay vì chặn lỗi trùng.
+     - Client validation trên `CategoryPage.jsx` chỉ cảnh báo chặn trùng nếu danh mục cùng tên + cùng loại đang còn hoạt động (`!c.isDeleted`).
+  5. **Tái Hiệu Chuẩn Baseline AIOps Động Từ Đo Lường Máy Chủ Thực Tế:**
+     - Sửa `anomaly.detector.js` và `aiops.service.js`: Hàm `calibrate()` nạp trực tiếp mẫu đo lường phần cứng thực tế hiện tại (`sample.cpuPercent`, `sample.ramPercent`, `sample.eventLoopLagMs`, `sample.requestsPerMin`) từ `hardwareCollector.getSample()`.
+     - Ứng dụng thuật toán EWMA cập nhật động baseline theo tải thực tế của máy chủ, đánh giá lại Threat Score ngay tức thì và phát sóng socket `aiops.metrics`.
+  6. **Phân Định 2 Cột Riêng Biệt (Action & API Request) Cho Nhật Ký Kiểm Toán & Dashboard:**
+     - Thêm cột `"Action" VARCHAR(255)` vào bảng `audit_log` (Migration 33) phân định rõ:
+       - `request`: Phương thức HTTP và endpoint API (ví dụ: `POST /api/auth/login`, `GET /api/categories`).
+       - `action`: Hành động thực tế người dùng/quản trị viên (ví dụ: `Đăng nhập hệ thống`, `Tạo danh mục hệ thống`, `Xác thực hành động chí mạng`).
+     - Bảng Hoạt Động Gần Đây tại `DashboardPage.jsx`: Tách thành 6 cột chuẩn (`NGƯỜI DÙNG` | `HÀNH ĐỘNG` | `YÊU CẦU API` | `LÝ DO` | `TRẠNG THÁI` | `THỜI GIAN`), cột API hiển thị badge phương thức HTTP (GET/POST/PUT/DELETE) trực quan.
+     - Bảng Nhật Ký Kiểm Toán tại `AuditLogPage.jsx`: Tách thành 8 cột riêng biệt có cả `Hành động` nghiệp vụ và `Yêu cầu API`.
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+  - Backend: **397/397 tests PASS 100%**.
+  - Admin-web: **28 test suites / 28 test suites PASS 100%**, bao gồm bài test 2 tầng mới `src/tests/admin.pin.and.audit.columns.test.jsx` (8/8 tests pass).
+  - Production build: `npm run build` hoàn tất thành công sạch sẽ.

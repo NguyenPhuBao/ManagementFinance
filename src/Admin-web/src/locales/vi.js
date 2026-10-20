@@ -311,6 +311,7 @@ export default {
       columns: {
         user: 'Người dùng',
         action: 'Hành động',
+        request: 'Yêu cầu API',
         reason: 'Lý do',
         status: 'Trạng thái',
         time: 'Thời gian',
@@ -792,7 +793,8 @@ export default {
     dateTo: 'Đến:',
     colId: 'ID',
     colAccount: 'Tài khoản',
-    colRequest: 'Thao tác (Request)',
+    colAction: 'Hành động',
+    colRequest: 'Yêu cầu API',
     colStatus: 'Trạng thái',
     colReason: 'Lý do',
     colTimeReq: 'Thời gian gửi',

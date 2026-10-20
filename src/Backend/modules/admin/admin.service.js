@@ -334,25 +334,28 @@ const adminService = {
 
     const { prisma } = require('../../config/db');
 
-    // Check unique [Is_default & namecategory] (không được phép có 2 category hệ thống giống nhau đang active)
+    // Check unique cặp [Tên danh mục + Loại danh mục] đang active
     const existingDefault = await prisma.category.findFirst({
       where: {
         name_category: { equals: trimmedName, mode: 'insensitive' },
+        classify: canonicalClassify,
         is_default: true,
         delete_at: null,
       },
     });
     if (existingDefault) {
-      throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép tạo trùng tên.`), { statusCode: 400 });
+      throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" (${canonicalClassify}) đã tồn tại và đang hoạt động trong hệ thống.`), { statusCode: 400 });
     }
 
-    // Nếu đã có danh mục hệ thống cùng tên bị xóa mềm: tự động khôi phục (restore) và cập nhật thông tin mới
+    // Nếu phát hiện cặp [Tên danh mục + Loại danh mục] đã bị xóa mềm: tiến hành mở lại (restore) và cập nhật keyword mới
     const softDeleted = await prisma.category.findFirst({
       where: {
         name_category: { equals: trimmedName, mode: 'insensitive' },
+        classify: canonicalClassify,
         is_default: true,
         delete_at: { not: null },
       },
+      orderBy: { delete_at: 'desc' },
     });
     if (softDeleted) {
       const restored = await prisma.category.update({
@@ -764,20 +767,23 @@ const adminService = {
       throw err;
     }
 
-    const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
+    const bcrypt = require('bcryptjs');
     let isPinValid = false;
     let isPasswordValid = false;
+    const account = currentUser?.idaccount ? await adminRepository.getAccountById(currentUser.idaccount) : null;
 
     if (pin && typeof pin === 'string') {
-      isPinValid = pin.trim() === systemPin.trim();
+      const trimmedPin = pin.trim();
+      if (account?.pin_hash) {
+        isPinValid = await bcrypt.compare(trimmedPin, account.pin_hash);
+      } else {
+        const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
+        isPinValid = trimmedPin === systemPin.trim();
+      }
     }
 
-    if (!isPinValid && password && currentUser?.idaccount) {
-      const bcrypt = require('bcrypt');
-      const account = await adminRepository.getAccountById(currentUser.idaccount);
-      if (account?.password) {
-        isPasswordValid = await bcrypt.compare(password, account.password);
-      }
+    if (!isPinValid && password && account?.password) {
+      isPasswordValid = await bcrypt.compare(password, account.password);
     }
 
     if (!isPinValid && !isPasswordValid) {
@@ -786,15 +792,16 @@ const adminService = {
       throw err;
     }
 
-    // Ghi nhận Audit Log xác thực an toàn
+    // Ghi nhận Audit Log xác thực an toàn với đầy đủ Request (API) và Action (Nghiệp vụ)
     try {
       const { prisma } = require('../../config/db');
       await prisma.auditlog.create({
         data: {
           idaccount: currentUser?.idaccount || 1,
-          request: `[SECURITY] Xác thực hành động chí mạng: ${action || 'CRITICAL_ACTION'} (Mục tiêu: ${targetId || 'N/A'})`,
+          request: 'POST /api/admin/verify-security-action',
+          action: `[SECURITY] Xác thực hành động chí mạng: ${action || 'CRITICAL_ACTION'} (Mục tiêu: ${targetId || 'N/A'})`,
           req_status: 'Pass',
-          reason: `Phương thức: ${isPinValid ? 'Mã PIN' : 'Mật khẩu'}`,
+          reason: `Phương thức: ${isPinValid ? 'Mã PIN cá nhân' : 'Mật khẩu'}`,
           time_req: new Date(),
           time_res: new Date(),
         },
@@ -805,6 +812,79 @@ const adminService = {
       verified: true,
       action: action || 'CRITICAL_ACTION',
       verifiedAt: new Date().toISOString(),
+    };
+  },
+
+  /**
+   * Đổi mã PIN bảo mật riêng của tài khoản Admin (Lưu cứng CSDL, mã hóa bcrypt)
+   */
+  async changeAdminPin({ oldPin, newPin, password } = {}, currentUser) {
+    if (!currentUser?.idaccount) {
+      const err = new Error('Yêu cầu xác thực tài khoản quản trị viên');
+      err.statusCode = 401;
+      throw err;
+    }
+
+    if (!newPin || typeof newPin !== 'string' || !/^\d{6}$/.test(newPin.trim())) {
+      const err = new Error('Mã PIN mới phải gồm đúng 6 chữ số (0-9)');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const bcrypt = require('bcryptjs');
+    const account = await adminRepository.getAccountById(currentUser.idaccount);
+    if (!account) {
+      const err = new Error('Không tìm thấy tài khoản quản trị');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    let isOldPinValid = false;
+    let isPasswordValid = false;
+
+    if (oldPin && typeof oldPin === 'string') {
+      if (account.pin_hash) {
+        isOldPinValid = await bcrypt.compare(oldPin.trim(), account.pin_hash);
+      } else {
+        const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
+        isOldPinValid = oldPin.trim() === systemPin.trim();
+      }
+    }
+
+    if (!isOldPinValid && password && account.password) {
+      isPasswordValid = await bcrypt.compare(password, account.password);
+    }
+
+    if (!isOldPinValid && !isPasswordValid) {
+      const err = new Error('Mã PIN hiện tại hoặc mật khẩu không chính xác!');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // Hash mã PIN mới bằng bcryptjs
+    const saltRounds = 10;
+    const newPinHash = await bcrypt.hash(newPin.trim(), saltRounds);
+    await adminRepository.updateAccountPin(currentUser.idaccount, newPinHash);
+
+    // Ghi nhận Audit Log
+    try {
+      const { prisma } = require('../../config/db');
+      await prisma.auditlog.create({
+        data: {
+          idaccount: currentUser.idaccount,
+          request: 'POST /api/admin/change-pin',
+          action: 'Đổi mã PIN bảo mật quản trị viên',
+          req_status: 'Pass',
+          reason: 'Cập nhật mã PIN cá nhân thành công',
+          time_req: new Date(),
+          time_res: new Date(),
+        },
+      });
+    } catch (_) {}
+
+    return {
+      success: true,
+      message: 'Đổi mã PIN bảo mật quản trị viên thành công!',
     };
   },
 };

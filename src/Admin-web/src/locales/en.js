@@ -311,6 +311,7 @@ export default {
       columns: {
         user: 'User',
         action: 'Action',
+        request: 'API Request',
         reason: 'Reason',
         status: 'Status',
         time: 'Time',
@@ -792,7 +793,8 @@ export default {
     dateTo: 'To:',
     colId: 'ID',
     colAccount: 'Account',
-    colRequest: 'Operation (Request)',
+    colAction: 'Action',
+    colRequest: 'API Request',
     colStatus: 'Status',
     colReason: 'Reason',
     colTimeReq: 'Request Time',

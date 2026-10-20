@@ -8,12 +8,38 @@
 
 # 🏛️ PHẦN I: NGUYÊN TẮC XÂY DỰNG & VẬN HÀNH DỰ ÁN
 
+## 👑 BỘ QUY TẮC CỨNG HÀNG CAO NHẤT (SUPREME MANDATORY RULES — BẮT BUỘC TUÂN THỦ 100%)
+
+> ⚠️ **ĐÂY LÀ 3 QUY TẮC TỐI CAO ĐỨNG Ở HÀNG CAO NHẤT CỦA TOÀN DỰ ÁN, CÓ HIỆU LỰC TUYỆT ĐỐI VÀ ÁP ĐẶT TRÊN MỌI QUY TẮC KHÁC:**
+>
+> 1. **QUY TẮC TỐI CAO 1 — TUYỆT ĐỐI TUÂN THỦ YÊU CẦU TỪ PO:**
+>    - Tuyệt đối tuân thủ mọi yêu cầu, phạm vi và mục tiêu nghiệp vụ từ PO (Product Owner).
+>    - Nếu phát hiện yêu cầu từ PO gây sai lệch dự án hoặc chưa tối ưu:
+>      + Chỉ ra lý do cụ thể, rõ ràng tại sao không nên làm theo yêu cầu của PO.
+>      + Đưa ra phương án tối ưu hơn (phân tích ưu/nhược điểm, tính khả thi, đánh đổi) và trình bày cho PO duyệt.
+>      + **Tuyệt đối KHÔNG tự ý đánh giá và tự ý thực thi khi chưa có sự xét duyệt từ phía PO.**
+>
+> 2. **QUY TẮC TỐI CAO 2 — SUY LUẬN BAO QUÁT THEO CẢ CHIỀU NGANG VÀ CHIỀU SÂU:**
+>    - Khi tiến hành thực thi 1 tính năng chức năng (Thêm, Xóa, Sửa - CRUD hoặc sửa đổi logic):
+>      + **Suy luận theo chiều ngang:** Rà soát tất cả các mối quan hệ, liên kết đến tính năng chức năng đó (các bảng CSDL, Foreign Keys, APIs, Middlewares, Controllers, Services, Repositories, Events Bus, Socket Real-time, Sync Engine, Client Mobile, Admin Web, Permissions).
+>      + **Suy luận theo chiều sâu:** Đánh giá khi các mối quan hệ và liên kết ban đầu có liên quan đến chức năng được thực thi xảy ra sự thay đổi thì có ảnh hưởng thế nào đến toàn bộ hệ thống (dữ liệu lịch sử, side-effects, cascade updates/deletes, triggers bảo vệ, bảo mật, hiệu năng, trải nghiệm người dùng).
+>      + **Mục tiêu:** Việc suy luận kết hợp chiều ngang và chiều sâu đảm bảo khi thực thi bất kỳ 1 tính năng chức năng nào đều sẽ **ăn khớp hoàn hảo với hệ thống** và đảm bảo **hệ thống hoạt động ổn định mà không phát sinh thêm các lỗi mới (Zero Regressions)**.
+>
+> 3. **QUY TẮC TỐI CAO 3 — KHÔNG RÕ THÌ HỎI PO NGAY, TUYỆT ĐỐI KHÔNG TỰ SUY DIỄN:**
+>    - Các yêu cầu chưa rõ ràng, còn mơ hồ hoặc thiếu chi tiết thì **đặt câu hỏi cho PO ngay lập tức**.
+>    - **Tuyệt đối KHÔNG tự suy diễn**, phỏng đoán mò hay tự giả định logic nghiệp vụ theo ý nghĩ chủ quan.
+
+---
+
 ## ⚡ 1. KHẨU HIỆU & QUY TẮC CỐT LÕI (TL;DR)
 
 ```
-RTK | CODEGRAPH | PROJECT.MD | DATA_SECURITY | DB_GUARD | 2-TIER TEST | SKILL→PHASE | KARPATHY | SELF-CHECK
+PO_FIRST | DUAL_AXIS_THINKING | ASK_PO | RTK | CODEGRAPH | PROJECT.MD | DATA_SECURITY | DB_GUARD | 2-TIER TEST | SKILL→PHASE | KARPATHY | SELF-CHECK
 ```
 
+* **PO_First (Tuân thủ PO & Duyệt):** Tuyệt đối tuân thủ yêu cầu PO; nếu chưa tối ưu phải chỉ rõ lý do, đề xuất giải pháp và chờ PO duyệt; cấm tự ý thực thi.
+* **Dual-Axis (Suy luận Ngang & Sâu):** Khi Thêm/Xóa/Sửa phải bao quát liên kết ngang và tác động sâu để bảo toàn hệ thống (Zero Regressions).
+* **Ask_PO (Không rõ hỏi ngay):** Mọi điểm chưa rõ ràng phải hỏi PO ngay lập tức, tuyệt đối không tự suy diễn.
 * **RTK mọi lệnh CLI:** Mọi lệnh terminal bắt buộc có tiền tố `rtk` (ví dụ: `rtk npm test`, `rtk git status`).
 * **CodeGraph kiểm tra tác động:** Dùng `brief`, `deps`, `context`, `impact` trước khi sửa mã nguồn.
 * **Project.md nắm ngữ cảnh:** Đọc `Project.md` để nắm kiến trúc, tech stack và quy ước trước khi bắt đầu.
@@ -39,6 +65,7 @@ RTK | CODEGRAPH | PROJECT.MD | DATA_SECURITY | DB_GUARD | 2-TIER TEST | SKILL→
 > **Quy định bất di bất dịch về yêu cầu:**  
 > 1. AI chỉ làm đúng yêu cầu mà PO đưa ra, tuyệt đối không làm lan man, phỏng đoán hay vượt quá yêu cầu.  
 > 2. Nếu phát hiện hướng đi mới, rủi ro tiềm ẩn hoặc yêu cầu tiếp theo cần thiết, AI phải lập đề xuất và chờ PO phê duyệt mới được triển khai.
+> 3. Tuyệt đối tuân thủ 3 Quy Tắc Tối Cao (Tuân thủ PO & Chờ duyệt, Suy luận Chiều ngang & Chiều sâu, Không rõ hỏi PO ngay).
 
 ---
 

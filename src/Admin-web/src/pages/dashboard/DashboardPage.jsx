@@ -72,6 +72,32 @@ const getStatusBadge = (status, t) => {
   );
 };
 
+const renderRequestBadge = (requestStr) => {
+  if (!requestStr) return <span className="text-outline-variant/80">—</span>;
+  const parts = requestStr.trim().split(' ');
+  const method = parts[0]?.toUpperCase();
+  const path = parts.slice(1).join(' ');
+
+  let badgeColor = 'bg-slate-100 text-slate-700 border-slate-200';
+  if (method === 'GET') badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
+  else if (method === 'POST') badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  else if (method === 'PUT' || method === 'PATCH') badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
+  else if (method === 'DELETE') badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
+
+  if (['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    return (
+      <div className="flex items-center gap-1.5 min-w-0 font-mono text-xs" title={requestStr}>
+        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border shrink-0 ${badgeColor}`}>
+          {method}
+        </span>
+        <TruncateCell text={path || requestStr} className="text-on-surface-variant font-medium min-w-0" />
+      </div>
+    );
+  }
+
+  return <TruncateCell text={requestStr} className="text-on-surface-variant font-mono text-xs min-w-0" />;
+};
+
 const getVnDateParts = (dateInput) => {
   if (!dateInput) return null;
   const d = new Date(dateInput);
@@ -642,6 +668,7 @@ const DashboardPage = () => {
           id: item.id,
           user: item.user || t('dashboard.recentActivities.defaultUser'),
           action: item.action || t('dashboard.recentActivities.defaultAction'),
+          request: item.request || null,
           reason: item.reason || null,
           status: item.status || 'Pass',
           time: formatActivityTime(item, t),
@@ -680,6 +707,7 @@ const DashboardPage = () => {
         id: data.id,
         user: data.user || t('dashboard.recentActivities.defaultUser'),
         action: data.action || t('dashboard.recentActivities.defaultAction'),
+        request: data.request || null,
         reason: data.reason || null,
         status: data.status || 'Pass',
         time: formatActivityTime(data, t),
@@ -1167,14 +1195,15 @@ const DashboardPage = () => {
                   <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
                 </div>
               )}
-              <table className="w-full text-left border-collapse min-w-[580px]">
+              <table className="w-full text-left border-collapse min-w-[680px]">
                   <thead>
                       <tr className="bg-surface-container-low/50">
-                          <th className="w-[22%] min-w-[130px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.user')}</th>
-                          <th className="w-[28%] min-w-[160px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.action')}</th>
-                          <th className="w-[22%] min-w-[120px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.reason')}</th>
-                          <th className="w-[14%] min-w-[85px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.status')}</th>
-                          <th className="w-[14%] min-w-[85px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">{t('dashboard.recentActivities.columns.time')}</th>
+                          <th className="w-[18%] min-w-[120px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.user')}</th>
+                          <th className="w-[24%] min-w-[150px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.action')}</th>
+                          <th className="w-[22%] min-w-[140px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.request')}</th>
+                          <th className="w-[16%] min-w-[100px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.reason')}</th>
+                          <th className="w-[10%] min-w-[75px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.status')}</th>
+                          <th className="w-[10%] min-w-[75px] py-3 px-3.5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">{t('dashboard.recentActivities.columns.time')}</th>
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/50">
@@ -1207,6 +1236,9 @@ const DashboardPage = () => {
                                     })()}
                                 </td>
                                 <td className="py-3 px-3.5 text-on-surface-variant font-body-sm overflow-hidden">
+                                    {renderRequestBadge(activity.request)}
+                                </td>
+                                <td className="py-3 px-3.5 text-on-surface-variant font-body-sm overflow-hidden">
                                     {activity.reason ? (
                                       <TruncateCell text={activity.reason} className="text-on-surface-variant/90" />
                                     ) : (
@@ -1221,7 +1253,7 @@ const DashboardPage = () => {
                         ))
                       ) : (
                         <tr>
-                            <td colSpan="5" className="py-8 text-center text-on-surface-variant font-body-md">
+                            <td colSpan="6" className="py-8 text-center text-on-surface-variant font-body-md">
                                 {t('dashboard.recentActivities.noActivities')}
                             </td>
                         </tr>

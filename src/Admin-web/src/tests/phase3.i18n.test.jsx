@@ -189,7 +189,8 @@ describe('Admin-web Phase 3 i18n Suite — System & Operations Pages (2-Tier Tes
       expect(screen.getByText('Nhật Ký Hoạt Động')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Tìm thao tác hoặc username...')).toBeInTheDocument();
       expect(screen.getByText('Tất cả trạng thái')).toBeInTheDocument();
-      expect(screen.getByText('Thao tác (Request)')).toBeInTheDocument();
+      expect(screen.getByText('Hành động')).toBeInTheDocument();
+      expect(screen.getByText('Yêu cầu API')).toBeInTheDocument();
       expect(screen.getByText('Thời gian gửi')).toBeInTheDocument();
     });
 
@@ -213,7 +214,8 @@ describe('Admin-web Phase 3 i18n Suite — System & Operations Pages (2-Tier Tes
       expect(screen.getByText('Audit Logs')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Search request or username...')).toBeInTheDocument();
       expect(screen.getByText('All statuses')).toBeInTheDocument();
-      expect(screen.getByText('Operation (Request)')).toBeInTheDocument();
+      expect(screen.getByText('Action')).toBeInTheDocument();
+      expect(screen.getByText('API Request')).toBeInTheDocument();
       expect(screen.getByText('Request Time')).toBeInTheDocument();
     });
   });

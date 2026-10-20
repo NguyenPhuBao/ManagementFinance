@@ -45,6 +45,7 @@ router.get('/system/maintenance/history', adminController.getMaintenanceHistory)
 router.get('/system/health', adminController.getSystemHealth);
 router.get('/audit-logs', adminController.getAuditLogs);
 router.post('/verify-security-action', adminController.verifySecurityAction);
+router.post('/change-pin', adminController.changeAdminPin);
 
 // Quản lý người dùng
 router.get('/getuser', adminController.getUsers);

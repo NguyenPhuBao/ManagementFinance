@@ -87,6 +87,15 @@ const UserDetailModal = ({ userId, onClose }) => {
                 <div className="space-y-0">
                   <RowItem label="Username" value={user.username} />
                   <RowItem label="Vai trò" value={user.rolename} />
+                  <RowItem label="Gói dịch vụ" value={
+                    <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
+                      (user.type || 'basic').toLowerCase() === 'premium'
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                        : 'bg-slate-100 text-slate-800 border border-slate-200'
+                    }`}>
+                      {user.type || 'Basic'}
+                    </span>
+                  } />
                   {user.status?.toLowerCase() === 'pendingdelete' && (
                     <RowItem 
                       label="Thời gian chờ xóa" 
