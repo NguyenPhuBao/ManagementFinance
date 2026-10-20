@@ -154,7 +154,11 @@ SELECT count(*) FROM wallet
  WHERE "Idwallet" !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' AND "Delete_at" IS NULL;      -- 0
 SELECT count(*) FROM "transaction"
  WHERE "Idtran" !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' AND "Deleted_at" IS NULL;      -- 0
-SELECT count(*) FROM wallet WHERE "Idaccount" = 18 AND "Create_at" > '<giờ chạy script>';                          -- 0
+-- Script không còn ghi vào tài khoản có sẵn trước giờ chạy. Lọc theo tên ví của ca 11, vì người dùng vẫn tự tạo ví thật
+-- trong tài khoản 18; ví ma của bước 2 (cũng tên "Ví Test Note") loại riêng.
+SELECT count(*) FROM wallet w JOIN account a ON a."Idaccount" = w."Idaccount"
+ WHERE w."Create_at" > '<giờ chạy script>' AND a."Create_at" < '<giờ chạy script>'
+   AND w."Name" = 'Ví Test Note' AND w."Idwallet" <> '00000000-0000-4000-8000-4534d71cc54d';                         -- 0
 ```
 
 **Phía client** (client tự đo sau khi backend báo xong, trên OnePlus):
