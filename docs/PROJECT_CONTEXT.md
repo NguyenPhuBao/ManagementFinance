@@ -616,6 +616,27 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-20)
 
+### 🚪 G95 — cổng lệnh tạo C3 thôi bắt câu xin viết chữ (2026-10-20) — ✅ ĐÓNG (mã + test; chưa đo lại trên máy)
+
+Lỗi lộ khi nghiệm thu OnePlus 2026-10-18. Câu *"Hay viet 15 loi khuyen tiet kiem tien cho sinh vien…"* qua được cổng rộng
+`coVeLenhTao` (`ai_edge/domain/lenh_tao.dart`), vì hai lẽ: câu có *tiết kiệm*, một đối tượng tạo được; và số đếm *15* bị
+`cachDocSoTien` đọc ra 15.000 đ. Màn chat vì thế hiện *"Đang đọc lệnh bằng AI… Huỷ"* ~5 s rồi câu mới được trả lời.
+
+**Sửa:** thêm một vế loại trừ. Câu mở bằng động từ **xin viết chữ** thì không phải lệnh tạo.
+- Động từ được tính: *viết · liệt kê · kể · soạn · giải thích · tóm tắt · gợi ý · phân tích*. Chúng đứng sau tiền tố lịch sự,
+  có thể kèm *bạn* — vòng bỏ tiền tố tách thành `_sauTienTo`, dùng chung với `_nhan`.
+- Chọn luật theo **động từ**, không theo danh từ đếm (*lời khuyên, cách, mẹo…*), vì không lệnh tạo nào mở đầu như thế, còn danh
+  sách danh từ đếm không bao giờ đủ. `cachDocSoTien` không đổi, nên Nhập nhanh không bị ảnh hưởng.
+- ⚠️ `ke` bỏ dấu là cả *kể* lẫn *kế*, nên câu mở bằng *"kế hoạch…"* vẫn là lệnh.
+
+**Test:** 10 ca mới ở `ai_edge/domain/lenh_tao_test.dart`. 8 ca không lọt (đỏ 8 / 8 trên mã cũ). 1 ca *kế hoạch* (bản sai bỏ
+chặn `ke hoach` làm nó đỏ). 1 ca khoá đúng **10 câu C3 đã đo** trên Realme + OnePlus (mục 9.43 `AI_EDGE_FEATURE.md`); bản sai thêm
+`toi` vào danh sách làm nó đỏ.
+
+**Đo trên máy:** chưa đo lại. Cổng là hàm luật thuần, và các câu đã đo đều có ca canh. Phần do mô hình đọc không đổi.
+
+**Số đo 2026-10-20:** `flutter test` **7637/7637** pass, 10 skip (4 ph 28 s); `flutter analyze` **20**.
+
 ### 🔤 G97 — body lỗi không phải JSON ở datasource xác thực (2026-10-20) — ✅ MỞ VÀ ĐÓNG
 
 Review toàn nhánh G89 đề nghị. Trang HTML của proxy / Render (Dio trả `String` khi `content-type` không phải JSON) làm

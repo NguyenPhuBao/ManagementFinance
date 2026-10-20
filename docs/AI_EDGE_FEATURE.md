@@ -3299,6 +3299,13 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
   hằng/mỗi + tuần/tháng/quý/năm · một tháng ∧ (có *tín hiệu muốn tạo* — tạo · thêm · đặt · lập · muốn · nhắc · lên kế
   hoạch — **hoặc** một số tiền đọc được)). ⚠️ Không có `quy` trần (*"quý này"* của câu hỏi cũng ra `quy`). Lưới **72 câu
   cổng F** → `false` hết; **ở đây lưới ấy canh thật** (bản sai bỏ vế từ hỏi làm nó đỏ — khác cổng hẹp 9.42).
+  ✅ **Từ 2026-10-20 (G95) thêm vế: câu mở bằng động từ XIN VIẾT CHỮ thì cổng đóng.**
+  - Động từ được tính: *viết · liệt kê · kể · soạn · giải thích · tóm tắt · gợi ý · phân tích* (`_moBangXinVietChu`). Chúng đứng
+    sau tiền tố lịch sự, có thể kèm *bạn*.
+  - Lý do: *"Hãy viết 15 lời khuyên tiết kiệm…"* đo OnePlus 2026-10-18 lọt cổng, vì số đếm *15* đọc ra 15.000 đ. Màn chat
+    hiện *"Đang đọc lệnh bằng AI…"* ~5 s rồi câu mới được trả lời.
+  - ⚠️ `ke` = *kể* / *kế*, nên *"kế hoạch…"* vẫn lọt.
+  - 10 câu đo ở bảng dưới (dạng gõ không dấu) được khoá bằng một ca test.
 - **Phiên AI riêng** `DocLenhBangAi` (`ai_chat/data/doc_lenh_bang_ai.dart`): ba tool `tao_hoa_don` · `tao_muc_tieu` ·
   `dat_ngan_sach`, mong đợi **một** lời gọi; không gọi tool = "không phải lệnh tạo". Ví / danh mục là `enum` tên có thật
   + chuỗi rỗng. Thời hạn 45 s, canary phiên có tool, mọi hỏng hóc → `null`. **Không** nhét vào phiên sáu tool (trần
@@ -4738,7 +4745,7 @@ chỉnh fixture test.
   49,9 s sau `meta` khi server im) — nhưng Gemini suy nghĩ lâu hơn 45 s nên câu dài rơi về máy trong khi server chạy tới cùng;
   người dùng chốt **giữ 45 s**, xin backend keep-alive `: ping` (đơn 47 việc 6, **G96**). Dừng phía server: client đóng socket
   thật nhưng `req.on('close')` không nổ (Node 22) — đơn 47 việc 5 nay có mốc đo. Câu dài cụt vì `maxOutputTokens: 1024` gồm
-  token suy nghĩ — đơn 47 việc 7. Cổng C3 bắt nhầm *"hãy viết 15 lời khuyên tiết kiệm…"* — **G95**.
+  token suy nghĩ — đơn 47 việc 7. Cổng C3 bắt nhầm *"hãy viết 15 lời khuyên tiết kiệm…"* — **G95** (✅ đóng 2026-10-20, vế loại trừ câu xin viết chữ ở mục 9.43).
 - ✅ Tin `user` mồ côi trong `history` (4.54) — đã sửa 2026-10-17 khuya: `xepHistory` ghép theo cặp.
 - ✅ Ba câu hỏi người dùng (spec mục 10 dòng 14) đã chốt 2026-10-17 khuya: (a) câu định nghĩa / tư vấn khi máy chủ hỏng →
   `kMayChuHongTuChoi`; (b) hàng *Đang nghĩ…* sau tờ thông tin đang mở — giữ; (c) nhánh `catch` khi đã có chữ chưa có ca phủ — vẫn để.
