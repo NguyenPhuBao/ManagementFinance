@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' hide Category;
 
 import '../api/dio_client.dart';
 import '../database/app_database.dart';
+import '../network/trang_thai_may_chu.dart';
 import 'ap_du_lieu_keo_ve.dart';
 import 'cong_so_du_vi.dart';
 import 'cong_vi_bi_giu.dart';
@@ -204,6 +205,9 @@ class SyncEngine {
   /// đẩy. `null` = không có việc gì.
   final Future<int> Function(int idaccount)? _sauKeoVe;
 
+  /// Trạng thái máy chủ (spec G89 mục 3.3) — `null` = hành vi như trước G89 (test cũ không truyền). DI truyền bản thật.
+  final TrangThaiMayChu? _trangThaiMayChu;
+
   SyncEngine({
     required DioClient dioClient,
     required AppDatabase db,
@@ -213,9 +217,11 @@ class SyncEngine {
     SyncCheckpointStore? checkpointStore,
     DateTime Function()? now,
     Future<int> Function(int idaccount)? sauKeoVe,
+    TrangThaiMayChu? trangThaiMayChu,
   })  : _now = now ?? DateTime.now,
         _connectivity = connectivity ?? Connectivity(),
-        _sauKeoVe = sauKeoVe {
+        _sauKeoVe = sauKeoVe,
+        _trangThaiMayChu = trangThaiMayChu {
     _keoVe = ApDuLieuKeoVe(
       dioClient: dioClient,
       db: db,
@@ -386,6 +392,10 @@ class SyncEngine {
     debugPrint(
         '[SyncEngine] Starting full sync (Push & Pull) for account $accountId');
 
+    // G89: trạng thái máy chủ LÚC VÀO chu kỳ — cuối chu kỳ chỉ tính lời chặn ghi TRONG chu kỳ này (mỗi phản hồi chặn là một
+    // đối tượng mới), để một 503 cũ còn sót (trợ lý online, chu kỳ trước) không biến lỗi mạng thường thành hẹn 30 s.
+    final chanDauChuKy = _trangThaiMayChu?.value;
+
     try {
       // 1. Push local pending ops to Backend
       final ops = await _thuGom.collectPendingOps(accountId);
@@ -456,7 +466,16 @@ class SyncEngine {
       // vĩnh viễn của lần đầu.
       final lastPush = retryResult ?? pushResult;
       final stillFailing = lastPush != null && lastPush.failed > 0;
-      if (stillFailing) {
+      // G89 (spec mục 3.3): máy chủ bảo trì / phong toả có giờ → KHÔNG tính lượt hỏng (không đụng `_consecutiveFailures`
+      // lẫn `_nextAllowedSyncAt` — đổi mạng vẫn thử ngay được), hẹn thử lại đúng mốc server cho (sàn `kSanThuLai`), và kết
+      // thúc `pending` chứ không `error`: `error` là bộ quét thông báo nổ "Đồng bộ hỏng" (`NotificationKind.syncFailed`) cho
+      // một sự cố đã có dòng nhắc riêng ở Trang chủ. Áp cả khi không có gì để đẩy mà chỉ lượt kéo bị chặn. Mốc bảo trì
+      // trượt theo mỗi 503 mới (`thuLaiLuc` tính từ lúc nhận) — vô hại: mỗi 503 ấy đã là một request.
+      final mocChan = _mocThuLaiNeuBiChan(chanDauChuKy);
+      if (mocChan != null) {
+        debugPrint('[SyncEngine] Máy chủ đang chặn — không tính lượt hỏng, thử lại lúc $mocChan');
+        _scheduleBackoffRetry(mocChan);
+      } else if (stillFailing) {
         _registerFailedCycle();
       } else {
         _resetBackoff();
@@ -467,7 +486,7 @@ class SyncEngine {
       // phát cho cùng một thất bại — `BillPaymentConflictResolver` chịu được,
       // vì khoản chi đã gỡ thì không còn tìm thấy ở lượt sau.
       if (retryResult != null) _emitPushResult(retryResult);
-      _setStatus(stillFailing ? SyncStatus.error : SyncStatus.idle);
+      _setStatus(mocChan != null ? SyncStatus.pending : (stillFailing ? SyncStatus.error : SyncStatus.idle));
     } catch (e) {
       debugPrint('[SyncEngine] Sync error: $e');
       _setStatus(SyncStatus.error);
@@ -481,6 +500,13 @@ class SyncEngine {
         unawaited(_runSync());
       }
     }
+  }
+
+  /// Mốc thử lại khi máy chủ đang chặn VÀ lời chặn được ghi trong chu kỳ vừa chạy (khác [chanDauChuKy]); `null` = không.
+  DateTime? _mocThuLaiNeuBiChan(TinhTrangMayChu? chanDauChuKy) {
+    final hienTai = _trangThaiMayChu?.value;
+    if (hienTai == null || identical(hienTai, chanDauChuKy)) return null;
+    return mocThuLaiKhiBiChan(hienTai, _now());
   }
 
   /// Chạy [_sauKeoVe] cho [accountId] — tài khoản của CHU KỲ (biến cục bộ của `_runSync`, đúng cả với `syncMotLuot`).
