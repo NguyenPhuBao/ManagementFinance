@@ -36,10 +36,8 @@ const UserListPage = () => {
   const [showDeleteSecurityModal, setShowDeleteSecurityModal] = useState(false);
 
   const [filter, setFilter] = useState({
-    location: 'all',
     packageType: 'all',
-    timeRange: 'all',
-    statuses: [...ALL_STATUS_KEYS],
+    statuses: ['active', 'inactive', 'pendingdelete'],
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -68,32 +66,13 @@ const UserListPage = () => {
     const userStatus = (u.status || '').toLowerCase();
     const currentStatuses = filter.statuses || [];
     const matchStatus = currentStatuses.includes(userStatus);
-    const matchLocation =
-      filter.location === 'all' ||
-      (filter.location === 'hcm' && (u.address || '').toLowerCase().includes('hồ chí minh')) ||
-      (filter.location === 'hn' && (u.address || '').toLowerCase().includes('hà nội')) ||
-      (filter.location === 'dn' && (u.address || '').toLowerCase().includes('đà nẵng')) ||
-      (filter.location === 'ct' && (u.address || '').toLowerCase().includes('cần thơ'));
 
+    const userPkg = (u.type || u.package || 'Basic').toLowerCase();
     const matchPackage =
       filter.packageType === 'all' ||
-      (u.package && u.package.toLowerCase() === filter.packageType.toLowerCase());
+      userPkg === filter.packageType.toLowerCase();
 
-    const matchTimeRange = (() => {
-      if (filter.timeRange === 'all' || !u.created_at) return true;
-      const createdTime = new Date(u.created_at).getTime();
-      const now = Date.now();
-      const diffDays = (now - createdTime) / (1000 * 60 * 60 * 24);
-      if (filter.timeRange === '7days') return diffDays <= 7;
-      if (filter.timeRange === '30days') return diffDays <= 30;
-      if (filter.timeRange === 'this_year') {
-        const year = new Date(u.created_at).getFullYear();
-        return year === new Date().getFullYear();
-      }
-      return true;
-    })();
-
-    return matchSearch && matchStatus && matchLocation && matchPackage && matchTimeRange;
+    return matchSearch && matchStatus && matchPackage;
   });
 
   const totalPages = Math.ceil(filteredUsers.length / pageSize) || 1;
@@ -577,7 +556,7 @@ const UserListPage = () => {
 
             <button
               className={`px-3 py-1.5 border rounded-xl font-label-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                filter.location !== 'all' || (filter.statuses || []).length !== ALL_STATUS_KEYS.length
+                filter.packageType !== 'all' || (filter.statuses || []).length !== 3 || !(filter.statuses || []).includes('active')
                   ? 'border-primary bg-primary/10 text-primary'
                   : 'border-outline-variant bg-white text-on-surface hover:bg-surface-container-low'
               }`}
@@ -601,19 +580,13 @@ const UserListPage = () => {
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[850px]">
+            <table className="w-full text-left border-collapse min-w-[780px]">
               <thead>
                 <tr className="bg-surface-container-low/80 border-b border-outline-variant text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-                  <th className="w-12 px-5 py-3.5 text-center">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
-                    />
-                  </th>
-                  <th className="px-5 py-3.5 w-[26%] min-w-[200px]">
+                  <th className="px-5 py-3.5 w-[30%] min-w-[200px]">
                     {t('users.table.colName')}
                   </th>
-                  <th className="px-5 py-3.5 w-[24%] min-w-[180px]">
+                  <th className="px-5 py-3.5 w-[26%] min-w-[180px]">
                     {t('users.table.colEmail')}
                   </th>
                   <th className="px-5 py-3.5 w-[16%] min-w-[130px]">
@@ -622,7 +595,7 @@ const UserListPage = () => {
                   <th className="px-5 py-3.5 w-[14%] min-w-[110px] text-center">
                     {t('users.table.colStatus')}
                   </th>
-                  <th className="px-5 py-3.5 w-[20%] min-w-[150px] text-right">
+                  <th className="px-5 py-3.5 w-[14%] min-w-[120px] text-right">
                     {t('users.table.colActions')}
                   </th>
                 </tr>
@@ -640,12 +613,6 @@ const UserListPage = () => {
                         key={item.id}
                         className="hover:bg-surface-container-lowest/80 transition-colors group"
                       >
-                        <td className="px-5 py-3.5 text-center">
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
-                          />
-                        </td>
                         <td className="px-5 py-3.5 overflow-hidden">
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-primary/20 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 shadow-2xs shrink-0">
@@ -724,7 +691,7 @@ const UserListPage = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-on-surface-variant">
+                    <td colSpan="5" className="px-6 py-12 text-center text-on-surface-variant">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <span className="material-symbols-outlined text-4xl text-secondary/60">
                           person_search
@@ -774,23 +741,6 @@ const UserListPage = () => {
             <div className="p-6 space-y-5">
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-2">
-                  {t('users.filterModal.locationLabel')}
-                </label>
-                <select
-                  value={filter.location}
-                  onChange={(e) => setFilter({ ...filter, location: e.target.value })}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-xs font-medium bg-white h-[42px] cursor-pointer"
-                >
-                  <option value="all">{t('users.filterModal.allLocations')}</option>
-                  <option value="hcm">{t('users.locations.hcm')}</option>
-                  <option value="hn">{t('users.locations.hn')}</option>
-                  <option value="dn">{t('users.locations.dn')}</option>
-                  <option value="ct">{t('users.locations.ct')}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-2">
                   Gói dịch vụ / Membership
                 </label>
                 <select
@@ -805,22 +755,6 @@ const UserListPage = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-2">
-                  Thời gian tham gia
-                </label>
-                <select
-                  data-testid="filter-time-range"
-                  value={filter.timeRange}
-                  onChange={(e) => setFilter({ ...filter, timeRange: e.target.value })}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-xs font-medium bg-white h-[42px] cursor-pointer"
-                >
-                  <option value="all">Tất cả thời gian</option>
-                  <option value="7days">7 ngày gần đây</option>
-                  <option value="30days">30 ngày gần đây</option>
-                  <option value="this_year">Trong năm nay</option>
-                </select>
-              </div>
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-3">
                   {t('users.filterModal.statusLabel')}
@@ -883,7 +817,7 @@ const UserListPage = () => {
               <button
                 className="px-4 py-2 border border-outline-variant rounded-xl text-on-surface text-xs font-semibold hover:bg-surface-container-low transition-colors cursor-pointer"
                 onClick={() => {
-                  setFilter({ location: 'all', packageType: 'all', timeRange: 'all', statuses: [...ALL_STATUS_KEYS] });
+                  setFilter({ packageType: 'all', statuses: ['active', 'inactive', 'pendingdelete'] });
                   toggleModal('filter', false);
                 }}
               >
@@ -1065,6 +999,14 @@ const UserListPage = () => {
           confirmDelete();
         }}
       />
+      {/* User Detail Modal */}
+      {detailUserId && (
+        <UserDetailModal
+          userId={detailUserId}
+          onClose={() => setDetailUserId(null)}
+          onRefresh={fetchUsers}
+        />
+      )}
     </>
   );
 };

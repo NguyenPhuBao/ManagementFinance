@@ -134,28 +134,42 @@ const CategoryPage = () => {
       return;
     }
 
-    // Pre-validation: Kiểm tra trùng tên danh mục hệ thống
-    const dupDefault = categories.find(
+    const targetClassify = TYPE_TO_CLASSIFY[form.type] || 'Chi';
+
+    // Pre-validation: Chỉ chặn nếu cùng tên VÀ cùng loại VÀ danh mục đó ĐANG HOẠT ĐỘNG (!c.isDeleted)
+    const dupActive = categories.find(
       (c) =>
         c.isDefault &&
+        !c.isDeleted &&
         c.name &&
         normalizeCategoryName(c.name) === normName &&
+        c.classify === targetClassify &&
         (!editingCategory || c.id !== editingCategory.id)
     );
-    if (dupDefault) {
-      const msg = t('categories.alerts.duplicateName', { name: dupDefault.name });
+    if (dupActive) {
+      const msg = t('categories.alerts.duplicateName', { name: dupActive.name });
       if (alert) alert.warning(msg, t('categories.alerts.duplicateTitle'));
       window.alert(msg);
       return;
     }
 
-    const actionText = editingCategory ? t('categories.loading.updating') : t('categories.loading.creating');
+    // Nhận diện nếu cặp (tên - loại) đã bị xóa mềm để tiến hành khôi phục / mở lại
+    const softDeleted = !editingCategory && categories.find(
+      (c) =>
+        c.isDefault &&
+        c.isDeleted &&
+        c.name &&
+        normalizeCategoryName(c.name) === normName &&
+        c.classify === targetClassify
+    );
+
+    const actionText = editingCategory ? t('categories.loading.updating') : (softDeleted ? 'Đang mở lại danh mục...' : t('categories.loading.creating'));
     setProcessing({ isProcessing: true, text: actionText });
 
     try {
       const payload = {
         name: trimmedName,
-        classify: TYPE_TO_CLASSIFY[form.type] || 'Chi',
+        classify: targetClassify,
         is_default: true,
         keyword: form.keyword ? form.keyword.trim() : null,
       };
@@ -165,9 +179,16 @@ const CategoryPage = () => {
         setEditingCategory(null);
         if (alert) alert.success(t('categories.alerts.updateSuccess', { name: trimmedName }));
       } else {
-        await adminApi.createCategory(payload);
+        const res = await adminApi.createCategory(payload);
         toggleModal('add', false);
-        if (alert) alert.success(t('categories.alerts.createSuccess', { name: trimmedName }));
+        const isRestored = softDeleted || res?.data?.restored;
+        if (alert) {
+          alert.success(
+            isRestored
+              ? `Đã khôi phục và mở lại danh mục "${trimmedName}" thành công!`
+              : t('categories.alerts.createSuccess', { name: trimmedName })
+          );
+        }
       }
       setForm({ name: '', isDefault: 'yes', type: 'expense', keyword: '' });
       await fetchCategories();

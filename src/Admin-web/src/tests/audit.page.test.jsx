@@ -168,11 +168,11 @@ describe('Admin-web System Suite — AuditLogPage', () => {
       const row = screen.getByText('POST /api/v1/wallets/transfer').closest('tr');
       expect(row).not.toBeNull();
       const cells = row.querySelectorAll('td');
-      // Cột 5 (Thời gian gửi) và Cột 6 (Thời gian phản hồi) KHÔNG ĐƯỢC LÀ '—'
-      expect(cells[5].textContent.trim()).not.toBe('—');
+      // Với bảng 8 cột: Cột 6 (Thời gian gửi) và Cột 7 (Thời gian phản hồi) KHÔNG ĐƯỢC LÀ '—'
       expect(cells[6].textContent.trim()).not.toBe('—');
-      expect(cells[5].textContent.trim().length).toBeGreaterThan(5);
+      expect(cells[7].textContent.trim()).not.toBe('—');
       expect(cells[6].textContent.trim().length).toBeGreaterThan(5);
+      expect(cells[7].textContent.trim().length).toBeGreaterThan(5);
     });
   });
 

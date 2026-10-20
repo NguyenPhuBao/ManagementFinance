@@ -279,6 +279,7 @@ const authRepository = {
       data: {
         idaccount: data.idaccount,
         request: (data.request || '').substring(0, 200),
+        action: data.action ? String(data.action).substring(0, 255) : null,
         req_status: data.req_status || 'Pass',
         reason: data.reason ? String(data.reason).substring(0, 200) : null,
         time_req: data.time_req || new Date(),

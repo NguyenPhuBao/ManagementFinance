@@ -20,6 +20,32 @@ const STATUS_CONFIG = {
 
 const STATUSES = ['', 'Pass', 'Fail', 'Rejected', 'Interrupted', 'Accepted', 'Processing', 'Pending'];
 
+const renderRequestBadge = (requestStr) => {
+  if (!requestStr) return <span className="text-slate-400">—</span>;
+  const parts = requestStr.trim().split(' ');
+  const method = parts[0]?.toUpperCase();
+  const path = parts.slice(1).join(' ');
+
+  let badgeColor = 'bg-slate-100 text-slate-700 border-slate-200';
+  if (method === 'GET') badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
+  else if (method === 'POST') badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  else if (method === 'PUT' || method === 'PATCH') badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
+  else if (method === 'DELETE') badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
+
+  if (['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    return (
+      <div className="flex items-center gap-1.5 min-w-0 font-mono text-[11px]" title={requestStr}>
+        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border shrink-0 ${badgeColor}`}>
+          {method}
+        </span>
+        <TruncateCell text={path || requestStr} className="text-on-surface-variant font-medium min-w-0 font-mono text-[11px]" />
+      </div>
+    );
+  }
+
+  return <TruncateCell text={requestStr} className="text-on-surface-variant font-mono text-[11px] min-w-0" />;
+};
+
 const AuditLogPage = () => {
   const { t, currentLang } = useLanguageSafe();
   const [logs, setLogs] = useState([]);
@@ -86,6 +112,7 @@ const AuditLogPage = () => {
       const timeRes = data.timeRes || data.time_res || new Date().toISOString();
       const reqStatus = data.status || data.req_status || 'Pass';
       const actionName = data.action || data.request || t('auditLogs.defaultAction');
+      const requestEndpoint = data.request || data.action || '';
       const uname = data.username || data.user || t('auditLogs.defaultUser');
 
       const newLog = {
@@ -97,7 +124,8 @@ const AuditLogPage = () => {
           username: uname,
           User: { fullname: data.user || null },
         },
-        request: actionName,
+        action: actionName,
+        request: requestEndpoint,
         req_status: reqStatus,
         reason: data.reason || null,
         timeReq,
@@ -112,6 +140,7 @@ const AuditLogPage = () => {
       const matchesSearch =
         !search.trim() ||
         actionName.toLowerCase().includes(search.trim().toLowerCase()) ||
+        requestEndpoint.toLowerCase().includes(search.trim().toLowerCase()) ||
         uname.toLowerCase().includes(search.trim().toLowerCase());
 
       const canPrepend = page === 1 && matchesStatus && matchesSearch && !dateFrom && !dateTo;
@@ -170,29 +199,31 @@ const AuditLogPage = () => {
 
       const headers = [
         'Mã Log',
-        'Thời gian',
+        'Thời gian gửi',
         'Tài khoản Quản trị',
         'Họ và tên',
         'Phân loại',
-        'Hành động / Yêu cầu',
+        'Hành động',
+        'Yêu cầu API',
         'Trạng thái',
         'Địa chỉ IP',
         'Lý do / Phản hồi',
       ];
 
       const rows = exportItems.map((log) => {
-        const tag = classifyAuditAction(log.request);
+        const actionText = log.action || log.request || '';
+        const tag = classifyAuditAction(actionText);
         const logId = log.id || log.idlog || '';
         const time = formatFullDateTime(log.time_req || log.timeReq);
         const username = log.account?.username || log.username || 'System';
         const fullname = log.account?.User?.fullname || '';
-        const tagLabel = tag?.code ? `[${tag.code}] ${tag.labelVi}` : '[API]';
+        const tagLabel = tag?.tag || '[API]';
         const request = log.request || '';
         const status = log.req_status || '';
         const ip = log.ip || '';
         const reason = log.reason || '';
 
-        return [logId, time, username, fullname, tagLabel, request, status, ip, reason];
+        return [logId, time, username, fullname, tagLabel, actionText, request, status, ip, reason];
       });
 
       const now = new Date();
@@ -354,28 +385,31 @@ const AuditLogPage = () => {
       {/* Table Card */}
       <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
         <div className="overflow-x-auto min-h-[300px]">
-          <table className="w-full text-left border-collapse text-xs min-w-[900px]">
+          <table className="w-full text-left border-collapse text-xs min-w-[1050px]">
             <thead>
               <tr className="bg-surface-container-low/60 border-b border-outline-variant">
                 <th className="w-16 py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
                   {t('auditLogs.colId')}
                 </th>
-                <th className="w-[18%] min-w-[140px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
+                <th className="w-[16%] min-w-[130px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
                   {t('auditLogs.colAccount')}
                 </th>
-                <th className="w-[24%] min-w-[180px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
+                <th className="w-[18%] min-w-[160px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
+                  {t('auditLogs.colAction')}
+                </th>
+                <th className="w-[18%] min-w-[160px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
                   {t('auditLogs.colRequest')}
                 </th>
-                <th className="w-[12%] min-w-[100px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] text-center">
+                <th className="w-[10%] min-w-[90px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] text-center">
                   {t('auditLogs.colStatus')}
                 </th>
-                <th className="w-[20%] min-w-[150px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
+                <th className="w-[16%] min-w-[130px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
                   {t('auditLogs.colReason')}
                 </th>
-                <th className="w-[13%] min-w-[120px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">
+                <th className="w-[11%] min-w-[110px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">
                   {t('auditLogs.colTimeReq')}
                 </th>
-                <th className="w-[13%] min-w-[120px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">
+                <th className="w-[11%] min-w-[110px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">
                   {t('auditLogs.colTimeRes')}
                 </th>
               </tr>
@@ -383,14 +417,14 @@ const AuditLogPage = () => {
             <tbody className="divide-y divide-outline-variant/40">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-on-surface-variant">
+                  <td colSpan={8} className="py-16 text-center text-on-surface-variant">
                     <span className="material-symbols-outlined animate-spin text-primary text-3xl block mx-auto mb-2">progress_activity</span>
                     {t('auditLogs.loading')}
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-on-surface-variant">
+                  <td colSpan={8} className="py-16 text-center text-on-surface-variant">
                     <span className="material-symbols-outlined text-4xl text-gray-300 block mx-auto mb-2">content_paste_off</span>
                     {t('auditLogs.empty')}
                   </td>
@@ -418,7 +452,8 @@ const AuditLogPage = () => {
                       </td>
                       <td className="py-3 px-4 text-on-surface overflow-hidden">
                         {(() => {
-                          const { tagInfo, cleanAction } = classifyAuditAction(log.request);
+                          const actionText = log.action || log.request;
+                          const { tagInfo, cleanAction } = classifyAuditAction(actionText);
                           return (
                             <div className="flex items-center gap-2 min-w-0">
                               <span
@@ -432,6 +467,9 @@ const AuditLogPage = () => {
                             </div>
                           );
                         })()}
+                      </td>
+                      <td className="py-3 px-4 text-on-surface-variant overflow-hidden">
+                        {renderRequestBadge(log.request)}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>

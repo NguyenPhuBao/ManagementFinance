@@ -4,6 +4,7 @@ import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 import useSocket from '../../hooks/useSocket';
 import soundService from '../../services/sound.service';
+import adminApi from '../../api/admin.api';
 import { API_BASE_URL } from '../../utils/constants';
 
 const SettingsModal = ({ isOpen, onClose }) => {
@@ -26,6 +27,49 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const [testingSound, setTestingSound] = useState(false);
   const [isSocketLive, setIsSocketLive] = useState(Boolean(socket?.connected));
   const [liveSocketId, setLiveSocketId] = useState(socket?.id || '');
+
+  // State quản lý Đổi mã PIN Admin
+  const [showPinChange, setShowPinChange] = useState(false);
+  const [pinForm, setPinForm] = useState({ password: '', newPin: '', confirmPin: '', oldPin: '' });
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinError, setPinError] = useState('');
+
+  const handleChangePin = async (e) => {
+    e?.preventDefault?.();
+    setPinError('');
+    if (!pinForm.password) {
+      setPinError(t('settings.pinSection.requirePassword', 'Vui lòng nhập mật khẩu tài khoản hiện tại'));
+      return;
+    }
+    if (!/^\d{6}$/.test(pinForm.newPin)) {
+      setPinError(t('settings.pinSection.invalidPin', 'Mã PIN mới phải bao gồm đúng 6 chữ số'));
+      return;
+    }
+    if (pinForm.newPin !== pinForm.confirmPin) {
+      setPinError(t('settings.pinSection.mismatchPin', 'Mã PIN xác nhận không khớp'));
+      return;
+    }
+
+    setPinLoading(true);
+    try {
+      await adminApi.changePin({
+        password: pinForm.password,
+        newPin: pinForm.newPin,
+        oldPin: pinForm.oldPin || undefined,
+      });
+      alert?.success?.(
+        t('settings.pinSection.successMessage', 'Cập nhật mã PIN bảo mật thành công!'),
+        t('settings.pinSection.successTitle', 'Mã PIN Bảo Mật')
+      );
+      setPinForm({ password: '', newPin: '', confirmPin: '', oldPin: '' });
+      setShowPinChange(false);
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || t('settings.pinSection.failMessage', 'Không thể đổi mã PIN');
+      setPinError(msg);
+    } finally {
+      setPinLoading(false);
+    }
+  };
 
   // Lắng nghe trực tiếp trạng thái Socket và cập nhật realtime
   useEffect(() => {
@@ -401,6 +445,121 @@ const SettingsModal = ({ isOpen, onClose }) => {
           {/* TAB 4: Bảo mật & Thông tin */}
           {activeTab === 'system' && (
             <div className="space-y-4">
+              {/* Khối Quản lý Mã PIN Bảo Mật Admin */}
+              <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3" data-testid="settings-pin-section">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[18px] text-primary">pin</span>
+                      <span>{t('settings.pinSection.title', 'Mã PIN Bảo Mật Admin')}</span>
+                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded border border-emerald-300">
+                        {t('settings.pinSection.statusSecure', 'CSDL Bcrypt')}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      {t('settings.pinSection.desc', 'Mã PIN 6 số dùng xác thực các hành động nhạy cảm (Bảo trì khẩn cấp, thao tác dữ liệu,...).')}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPinChange(!showPinChange);
+                      setPinError('');
+                    }}
+                    className="px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-primary/30 text-primary font-bold rounded-xl transition cursor-pointer shadow-2xs flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">edit</span>
+                    <span>{showPinChange ? t('common.cancel', 'Hủy') : t('settings.pinSection.changePinBtn', 'Đổi mã PIN')}</span>
+                  </button>
+                </div>
+
+                {showPinChange && (
+                  <form onSubmit={handleChangePin} className="mt-3 p-3 bg-white rounded-xl border border-outline-variant space-y-3 animate-in fade-in duration-150">
+                    {pinError && (
+                      <div className="p-2 text-[11px] bg-rose-50 border border-rose-200 text-rose-700 rounded-lg flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[15px] shrink-0">error</span>
+                        <span>{pinError}</span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          {t('settings.pinSection.passwordLabel', 'Mật khẩu hiện tại *')}
+                        </label>
+                        <input
+                          type="password"
+                          value={pinForm.password}
+                          onChange={(e) => setPinForm({ ...pinForm, password: e.target.value })}
+                          placeholder="••••••••"
+                          className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          {t('settings.pinSection.oldPinLabel', 'Mã PIN cũ (Nếu có)')}
+                        </label>
+                        <input
+                          type="password"
+                          maxLength={6}
+                          value={pinForm.oldPin}
+                          onChange={(e) => setPinForm({ ...pinForm, oldPin: e.target.value.replace(/\D/g, '') })}
+                          placeholder="6 chữ số cũ"
+                          className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          {t('settings.pinSection.newPinLabel', 'Mã PIN mới (6 chữ số) *')}
+                        </label>
+                        <input
+                          type="password"
+                          maxLength={6}
+                          value={pinForm.newPin}
+                          onChange={(e) => setPinForm({ ...pinForm, newPin: e.target.value.replace(/\D/g, '') })}
+                          placeholder="6 chữ số mới"
+                          className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          {t('settings.pinSection.confirmPinLabel', 'Xác nhận mã PIN mới *')}
+                        </label>
+                        <input
+                          type="password"
+                          maxLength={6}
+                          value={pinForm.confirmPin}
+                          onChange={(e) => setPinForm({ ...pinForm, confirmPin: e.target.value.replace(/\D/g, '') })}
+                          placeholder="Nhập lại 6 số"
+                          className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowPinChange(false)}
+                        className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                      >
+                        {t('common.cancel', 'Hủy')}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={pinLoading}
+                        className="px-4 py-1.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg text-xs shadow-2xs transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {pinLoading && <span className="material-symbols-outlined animate-spin text-[14px]">progress_activity</span>}
+                        <span>{t('settings.pinSection.submitBtn', 'Lưu mã PIN mới')}</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
               <div className="p-4 rounded-xl border border-outline-variant/60 bg-slate-50/60 flex items-center justify-between gap-4">
                 <div className="flex-1">
                   <div className="font-bold text-slate-800">{t('settings.securitySection.title', 'Tự động khóa an toàn khi không hoạt động')}</div>

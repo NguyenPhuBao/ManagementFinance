@@ -484,12 +484,26 @@ class AIOpsService {
   }
 
   calibrate(options = {}) {
-    const report = this.detector.calibrate(options);
-    logger.info(`[AIOps] Tái hiệu chuẩn đường chuẩn thành công cho quy mô ${report.targetConcurrency} người dùng trên server ${report.serverSpecs.cpuCores} cores / ${report.serverSpecs.totalRamMb}MB RAM`);
+    const currentSample = this.collector.getSample();
+    const report = this.detector.calibrate({ ...options, currentSample });
+    const evalResult = this.detector.evaluate(currentSample);
+    this._currentStatus = {
+      evaluatedAt: new Date().toISOString(),
+      threatScore: evalResult.threatScore,
+      status: evalResult.status,
+      vectorScores: evalResult.vectorScores,
+      vectorDefenses: evalResult.vectorDefenses,
+      anomalies: evalResult.anomalies,
+      recommendedAction: evalResult.recommendedAction,
+      sample: currentSample,
+      targetConcurrency: this.detector.targetConcurrency,
+    };
+    logger.info(`[AIOps] Tái hiệu chuẩn đường chuẩn thành công cho quy mô ${report.targetConcurrency} người dùng (CPU: ${currentSample.cpuPercent}%, RAM: ${currentSample.ramPercent}%)`);
     return {
       success: true,
-      message: `Đã tái hiệu chuẩn thành công theo phần cứng máy chủ (${report.serverSpecs.cpuCores} Cores, ${(report.serverSpecs.totalRamMb / 1024).toFixed(1)}GB RAM) cho quy mô ${report.targetConcurrency.toLocaleString('vi-VN')} người dùng!`,
+      message: `Đã tái hiệu chuẩn thành công theo phần cứng máy chủ (${report.serverSpecs.cpuCores} Cores, ${(report.serverSpecs.totalRamMb / 1024).toFixed(1)}GB RAM, CPU thực đo ${currentSample.cpuPercent}%, RAM thực đo ${currentSample.ramPercent}%) cho quy mô ${report.targetConcurrency.toLocaleString('vi-VN')} người dùng!`,
       data: report,
+      status: this._currentStatus,
     };
   }
 }
