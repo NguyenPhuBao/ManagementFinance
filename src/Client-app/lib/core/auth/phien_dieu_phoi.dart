@@ -21,7 +21,8 @@ abstract class PhienDieuPhoi {
   /// Bật kênh thời gian thực.
   Future<void> batThoiGianThuc(int idaccount);
 
-  /// Bật đồng bộ; [cho] đợi chu kỳ đầu rồi tạo bản sao danh mục (đăng nhập), không [cho] thì nối việc ấy vào sau (mở app).
+  /// Bật đồng bộ; [cho] đợi chu kỳ đầu (đăng nhập), không [cho] thì không đợi (mở app). Bản sao danh mục mặc định tạo
+  /// trong chu kỳ đồng bộ, sau mỗi lượt kéo về thành công (`SyncEngine.sauKeoVe`, quy tắc 8).
   Future<void> batDongBo(int idaccount, {required bool cho});
 
   /// Chỉ sau đăng nhập mới: seed dữ liệu tài khoản mới, đặt lại cờ giao diện sống theo phiên app.

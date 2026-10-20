@@ -200,6 +200,11 @@ class SyncEngine {
   /// làm mới — gộp trên dữ liệu cũ là xoá hoá đơn máy khác đã trả.
   int get soLanKeoVeXong => _keoVe.soLanKeoVeXong;
 
+  /// Việc chạy sau **MỖI** lượt kéo về thành công, trong chính chu kỳ ấy (sau Pull, trước lần thử đẩy lại) — DI nối bộ
+  /// gieo danh mục mặc định (quy tắc 8 `CLAUDE.md`; `core/sync` không biết tên mảng). Trả số hàng vừa ghi; > 0 thì hẹn
+  /// đẩy. `null` = không có việc gì.
+  final Future<int> Function(int idaccount)? _sauKeoVe;
+
   SyncEngine({
     required DioClient dioClient,
     required AppDatabase db,
@@ -208,8 +213,10 @@ class SyncEngine {
     Connectivity? connectivity,
     SyncCheckpointStore? checkpointStore,
     DateTime Function()? now,
+    Future<int> Function(int idaccount)? sauKeoVe,
   })  : _now = now ?? DateTime.now,
-        _connectivity = connectivity ?? Connectivity() {
+        _connectivity = connectivity ?? Connectivity(),
+        _sauKeoVe = sauKeoVe {
     _keoVe = ApDuLieuKeoVe(
       dioClient: dioClient,
       db: db,
@@ -416,7 +423,10 @@ class SyncEngine {
       if (pushResult != null) _emitPushResult(pushResult);
 
       // 2. Pull all updated data from Backend PostgreSQL to SQLite local
+      final soLanKeoTruoc = _keoVe.soLanKeoVeXong;
       await _keoVe.pullFromBackend(accountId);
+      // Gác theo SỐ LẦN kéo xong, không theo `hasCompletedPull`: cờ ấy đúng mãi sau lượt đầu, còn Pull nuốt lỗi.
+      if (_keoVe.soLanKeoVeXong > soLanKeoTruoc) await _sauMoiLuotKeoVe(accountId);
 
       // Một transaction thất bại có thể đang trỏ tới ID danh mục mặc định cũ;
       // Pull xong mới có UUID từ backend nên đáng thử lại MỘT lần.
@@ -471,6 +481,25 @@ class SyncEngine {
         debugPrint('[SyncEngine] Chạy bù cho yêu cầu đến giữa chu kỳ trước');
         unawaited(_runSync());
       }
+    }
+  }
+
+  /// Chạy [_sauKeoVe] cho [accountId] — tài khoản của CHU KỲ (biến cục bộ của `_runSync`, đúng cả với `syncMotLuot`).
+  ///
+  /// Ba chốt (ca canh `sync_gieo_sau_keo_ve_test.dart`): chạy trong cờ `syncing` nên hai lượt không gieo chồng nhau
+  /// (gieo chồng là bản sao trùng — dạng G16); phiên đã đóng giữa lượt kéo (`stop()`) thì bỏ; lỗi chỉ ghi log — Đẩy và
+  /// Kéo đã xong, biến chu kỳ thành `error` là kéo engine vào giãn cách vì một việc cục bộ, và lượt kéo sau tự thử lại.
+  Future<void> _sauMoiLuotKeoVe(int accountId) async {
+    final viec = _sauKeoVe;
+    if (viec == null || _currentIdaccount != accountId) return;
+    try {
+      final daGhi = await viec(accountId);
+      if (daGhi > 0) {
+        debugPrint('[SyncEngine] Việc sau kéo về ghi $daGhi hàng — hẹn đẩy');
+        scheduleSync(); // hàng vừa ghi nằm sau bước đẩy của chu kỳ này
+      }
+    } catch (e) {
+      debugPrint('[SyncEngine] Việc sau kéo về hỏng — lượt kéo sau thử lại: $e');
     }
   }
 

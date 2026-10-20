@@ -43,7 +43,7 @@ class DefaultCategorySeeder {
   /// Cố ý **không** nuốt lỗi: bản mặc định đã bị ẩn khỏi mọi danh sách, nên một
   /// lượt seed hỏng trong im lặng nghĩa là người dùng mở app ra thấy danh sách
   /// danh mục rỗng và không ghi nổi một giao dịch, mà không ai biết vì sao.
-  /// Luật ở trên vốn luỹ đẳng nên lần mở app sau tự thử lại.
+  /// Luật ở trên vốn luỹ đẳng nên lượt kéo về sau tự thử lại (`SyncEngine.sauKeoVe` bắt lỗi, ghi log — từ 2026-10-20).
   Future<int> seedForAccount(int idaccount) async {
     if (idaccount <= 0) return 0; // danh tính chỉ đến từ phiên đăng nhập
 

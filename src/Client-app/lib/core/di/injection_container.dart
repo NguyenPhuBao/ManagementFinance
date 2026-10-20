@@ -187,6 +187,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       checkpointStore: const SecureStorageSyncCheckpointStore(
         FlutterSecureStorage(),
       ),
+      // Quy tắc 8: bộ gieo danh mục mặc định chạy sau MỌI lượt kéo về thành công — cả lượt nền (`syncMotLuot`).
+      sauKeoVe: (id) => sl<DefaultCategorySeeder>().seedForAccount(id),
     ),
   );
 
@@ -214,7 +216,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
 
   // BLoC (factory → tạo mới mỗi lần gọi sl<AuthBloc>())
   // Bộ điều phối phiên (spec bịt điểm rò 2026-10-10, mục 6): bốn dịch vụ core + hook sang các mảng. Đây là chỗ DUY NHẤT
-  // nối SlmCache / seeder / initializer / hai cờ giao diện với vòng đời phiên; AuthBloc không biết chúng (test quét 24).
+  // nối SlmCache / bộ chuyển hàng seed cũ / initializer / hai cờ giao diện với vòng đời phiên; AuthBloc không biết chúng
+  // (test quét 24). Bộ gieo danh mục mặc định thì nối vào SyncEngine (mục 4 ở trên) từ 2026-10-20 — nó chạy theo
+  // lượt kéo về, không theo phiên.
   // Mọi dịch vụ dưới đây đăng ký vô điều kiện (kể cả chế độ nền) và lazy nên không cần gác `isRegistered`.
   sl.registerLazySingleton<PhienDieuPhoi>(
     () => PhienDieuPhoiThat(
@@ -226,7 +230,6 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       xoaBanSao: sl<AppDatabase>().purgeDataForAccount,
       xoaCacheSlm: () => sl<SlmCache>().xoaHet(),
       chuyenHangSeedCu: (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id),
-      taoBanSaoDanhMuc: (id) => sl<DefaultCategorySeeder>().seedForAccount(id),
       seedTaiKhoanMoi: (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id),
       xoaAnhQuet: () => sl<KhoAnhQuet>().xoaHet(),
       datLaiCoGiaoDien: () {

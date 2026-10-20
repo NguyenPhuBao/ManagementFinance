@@ -45,15 +45,18 @@ class _SpySyncEngine extends SyncEngine {
   _SpySyncEngine({required super.dioClient, required super.db, super.connectivity})
       : super(soDuVi: congSoDuViThat(db), viBiGiu: congViBiGiuThat(db));
   final nhatKy = <String>[];
-  bool daKeoVe = false;
   final _chet = StreamController<void>.broadcast();
   @override
   Stream<void> get sessionInvalidStream => _chet.stream;
   void phienChet() => _chet.add(null);
+  /// `null` = `start` xong ngay; có giá trị thì `start` đợi nó (đo đường đăng nhập có đợi chu kỳ đầu không).
+  Completer<void>? chuKyDau;
   @override
-  bool get hasCompletedPull => daKeoVe;
-  @override
-  Future<void> start({required int idaccount}) async => nhatKy.add('start $idaccount');
+  Future<void> start({required int idaccount}) async {
+    nhatKy.add('start $idaccount');
+    await chuKyDau?.future;
+    nhatKy.add('start xong');
+  }
   @override
   void stop() => nhatKy.add('stop');
   @override
@@ -141,7 +144,7 @@ void main() {
   });
   tearDown(() async { sync.dispose(); interceptor.dispose(); realtime.dong(); await db.close(); });
 
-  PhienDieuPhoiThat dung({int daDon = 0, int banSao = 0, bool coDongBo = true, bool coQuet = true}) {
+  PhienDieuPhoiThat dung({int daDon = 0, bool coDongBo = true, bool coQuet = true}) {
     final p = PhienDieuPhoiThat(
       dongBo: coDongBo ? sync : null,
       thoiGianThuc: realtime,
@@ -151,7 +154,6 @@ void main() {
       xoaBanSao: (id) async { hook.add('xoaBanSao $id'); return 1; },
       xoaCacheSlm: () async => hook.add('xoaCache'),
       chuyenHangSeedCu: (id) async => hook.add('seedCu $id'),
-      taoBanSaoDanhMuc: (id) async { hook.add('banSao $id'); return banSao; },
       seedTaiKhoanMoi: (id) async => hook.add('seedMoi $id'),
       xoaAnhQuet: () async => hook.add('xoaAnh'),
       datLaiCoGiaoDien: () => hook.add('coUI'),
@@ -216,26 +218,29 @@ void main() {
     expect(hook, isEmpty); expect(scanner.goi, isEmpty); expect(sync.nhatKy, isEmpty);
   });
 
-  test('batDongBo cho: true — đợi start, tạo bản sao khi đã kéo về, hẹn đẩy khi có bản sao mới', () async {
-    sync.daKeoVe = true;
-    await dung(banSao: 13).batDongBo(10, cho: true);
-    expect(sync.nhatKy, ['start 10', 'hen']);
-    expect(hook, ['banSao 10']);
-  });
-
-  test('batDongBo cho: true — chưa kéo về thì KHÔNG tạo bản sao (G14)', () async {
-    await dung(banSao: 13).batDongBo(10, cho: true);
-    expect(sync.nhatKy, ['start 10']);
+  // Bản sao danh mục mặc định không còn tạo ở bộ điều phối (2026-10-20, quy tắc 8): bộ gieo chạy trong chu kỳ đồng bộ
+  // qua cổng `SyncEngine.sauKeoVe` — ca canh ở `test/core/sync/sync_gieo_sau_keo_ve_test.dart`.
+  test('batDongBo cho: true — ĐỢI chu kỳ đầu của start (đăng nhập có bản sao trước AuthSuccess), không gọi hook nào',
+      () async {
+    sync.chuKyDau = Completer<void>();
+    var xong = false;
+    final f = dung().batDongBo(10, cho: true).then((_) => xong = true);
+    await pumpEventQueue();
+    expect(xong, isFalse, reason: 'Đường đăng nhập phải đợi chu kỳ đầu — bộ gieo chạy trong chu kỳ ấy.');
+    sync.chuKyDau!.complete();
+    await f;
+    expect(sync.nhatKy, ['start 10', 'start xong']);
     expect(hook, isEmpty);
   });
 
-  test('batDongBo cho: false — không chặn, bản sao nối sau start', () async {
-    sync.daKeoVe = true;
-    final p = dung(banSao: 1);
-    await p.batDongBo(10, cho: false);
+  test('batDongBo cho: false — KHÔNG đợi chu kỳ đầu (mở app không chờ mạng)', () async {
+    sync.chuKyDau = Completer<void>();
+    await dung().batDongBo(10, cho: false);
+    expect(sync.nhatKy, ['start 10']);
+    sync.chuKyDau!.complete();
     await pumpEventQueue();
-    expect(sync.nhatKy, ['start 10', 'hen']);
-    expect(hook, ['banSao 10']);
+    expect(sync.nhatKy, ['start 10', 'start xong']);
+    expect(hook, isEmpty);
   });
 
   test('batThoiGianThuc / sauDangNhap / dongPhien / xoaDuLieu', () async {
