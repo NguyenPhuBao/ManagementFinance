@@ -138,8 +138,10 @@ const Set<String> _tinHieuTao = {'tao', 'them', 'dat', 'lap', 'muon', 'nhac'};
 
 /// Động từ XIN VIẾT CHỮ — câu mở bằng nó (sau tiền tố lịch sự, có thể kèm *bạn*) xin một đoạn chữ, không phải lệnh tạo:
 /// *"Hãy viết 15 lời khuyên tiết kiệm…"* có đối tượng tạo được (*tiết kiệm*) và số đếm *15* đọc ra 15.000 đ, nên cổng
-/// rộng từng mở (G95, đo OnePlus 2026-10-18). Không lệnh tạo nào mở đầu như thế. ⚠️ `ke` bỏ dấu là cả *kể* lẫn *kế* —
-/// *"kế hoạch để dành…"* vẫn là lệnh, nên [_moBangXinVietChu] bỏ qua `ke` khi chữ sau là `hoach`.
+/// rộng từng mở (G95, đo OnePlus 2026-10-18). Không lệnh tạo nào mở đầu như thế. ⚠️ `ke` là âm tiết duy nhất ở đây
+/// không chỉ là động từ: bỏ dấu nó còn là *kế* (*"kế hoạch để dành…"*), và *kể từ* / *kể cả* là liên từ (*"kể từ tháng
+/// sau để dành 2 triệu"*) — cả ba mở đầu được lệnh tạo, nên [_moBangXinVietChu] bỏ qua `ke` khi chữ sau thuộc
+/// [_sauKeKhongPhaiKe]. Chỉ bắt động từ ở vị trí đầu: *"bạn có thể gợi ý…"*, *"bạn ơi hãy viết…"* chưa bắt — thêm khi có câu đo.
 const List<List<String>> _xinVietChu = [
   ['viet'],
   ['liet', 'ke'],
@@ -151,10 +153,12 @@ const List<List<String>> _xinVietChu = [
   ['phan', 'tich'],
 ];
 
+const Set<String> _sauKeKhongPhaiKe = {'hoach', 'tu', 'ca'};
+
 bool _moBangXinVietChu(List<String> t) {
   var i = _sauTienTo(t, 0);
   if (i < t.length && t[i] == 'ban') i = _sauTienTo(t, i + 1);
-  if (i + 1 < t.length && t[i] == 'ke' && t[i + 1] == 'hoach') return false;
+  if (i + 1 < t.length && t[i] == 'ke' && _sauKeKhongPhaiKe.contains(t[i + 1])) return false;
   return _xinVietChu.any((c) => _batDauBang(t, i, c));
 }
 

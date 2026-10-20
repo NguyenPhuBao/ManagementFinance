@@ -289,6 +289,17 @@ void main() {
       expect(coVeLenhTao('ke hoach tiet kiem 5 trieu moi thang', now: now), isTrue);
     });
 
+    test('G95 — "kể từ …" / "kể cả …" (liên từ, không phải động từ kể) vẫn lọt cổng', () {
+      const lenh = [
+        'kể từ tháng sau để dành 2 triệu mỗi tháng',
+        'ke tu thang sau de danh 2 trieu moi thang',
+        'kể cả tiền thưởng, để dành 20 triệu làm quỹ khẩn cấp',
+      ];
+      final roi = [for (final c in lenh) if (!coVeLenhTao(c, now: now)) c];
+      expect(roi, isEmpty,
+          reason: '*kể từ* = "bắt đầu từ", *kể cả* = "tính cả" — mở đầu được một lệnh tạo; chặn chúng là mất thẻ form');
+    });
+
     test('⭐ 10 câu C3 đã đo trên máy (mục 9.43 AI_EDGE_FEATURE) — vẫn lọt cổng', () {
       const daDo = [
         'tao hoa don gym 300k ngay 5 hang thang',
