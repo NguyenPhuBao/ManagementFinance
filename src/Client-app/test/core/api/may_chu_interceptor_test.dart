@@ -142,6 +142,35 @@ void main() {
     expect(tt.value, isA<MayChuBinhThuong>());
   });
 
+  test('Retry-After hai giá trị → nơi gọi vẫn nhận DioException 503 gốc, và trạng thái vẫn ghi', () async {
+    baoTri();
+    adapter.them = {
+      'retry-after': ['60', '120']
+    };
+    await expectLater(
+      dio.get<dynamic>('/sync/pull', options: Options(headers: {'Authorization': 'Bearer t'})),
+      throwsA(isA<DioException>().having((e) => e.response?.statusCode, 'status', 503)),
+    );
+    expect(tt.value, isA<MayChuBaoTri>());
+  });
+
+  test('hook khiBiTatQuyen ném ĐỒNG BỘ → nơi gọi vẫn nhận DioException 403 gốc', () async {
+    final d = Dio(BaseOptions(baseUrl: 'http://127.0.0.1:3000/api'))
+      ..httpClientAdapter = adapter
+      ..interceptors.add(MayChuInterceptor(
+        trangThai: tt,
+        khiBiTatQuyen: () => throw StateError('x'),
+        now: () => clock,
+      ));
+    adapter
+      ..status = 403
+      ..body = const {'code': 'FEATURE_DISABLED'};
+    await expectLater(
+      d.get<dynamic>('/sync/pull', options: Options(headers: {'Authorization': 'Bearer t'})),
+      throwsA(isA<DioException>().having((e) => e.response?.statusCode, 'status', 403)),
+    );
+  });
+
   test('DioClient gắn MayChuInterceptor SAU AuthInterceptor; không truyền trạng thái thì không gắn', () {
     final auth = AuthInterceptor(secureStorage: _KhoGia());
     final co = DioClient(secureStorage: _KhoGia(), authInterceptor: auth, trangThaiMayChu: tt).dio.interceptors;

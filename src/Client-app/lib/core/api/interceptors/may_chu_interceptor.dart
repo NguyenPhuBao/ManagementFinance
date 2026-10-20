@@ -1,12 +1,13 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../network/trang_thai_may_chu.dart';
 
 /// Ghi [TrangThaiMayChu] từ phản hồi của Dio CHUNG (spec G89 2026-10-20 mục 3.2), và báo [khiBiTatQuyen] khi server trả
 /// 403 `FEATURE_DISABLED` (mục 6.2 — `account.downgraded` chỉ phát lúc 0 giờ, còn server chặn từ lúc hết hạn). Không đổi
-/// phản hồi nào — luôn `next`.
+/// phản hồi nào — luôn `next`: mọi lỗi phân loại / hook đều bị nuốt có log, interceptor không bao giờ đổi lỗi của nơi gọi.
 ///
 /// Chỉ `DioClient` dựng lớp này (test quét 36): Dio chung CHỈ nói chuyện với backend của app. Một lời gọi tới host bên thứ
 /// ba đi qua đây trả 2xx sẽ xoá nhầm dòng nhắc bảo trì.
@@ -40,27 +41,37 @@ class MayChuInterceptor extends Interceptor {
 
   @override
   void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
-    final ma = response.statusCode ?? 0;
-    if (ma >= 200 && ma < 300 && _mangPhien(response.requestOptions) && _trangThai.value is! MayChuBinhThuong) {
-      _trangThai.value = const MayChuBinhThuong();
+    try {
+      final ma = response.statusCode ?? 0;
+      if (ma >= 200 && ma < 300 && _mangPhien(response.requestOptions) && _trangThai.value is! MayChuBinhThuong) {
+        _trangThai.value = const MayChuBinhThuong();
+      }
+    } catch (e) {
+      debugPrint('[MayChuInterceptor] onResponse bỏ qua lỗi: $e');
     }
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    final res = err.response;
-    if (res != null) {
-      if (_mangPhien(err.requestOptions)) {
-        final moi = phanLoaiPhanHoi(
-          status: res.statusCode,
-          body: res.data,
-          retryAfter: res.headers.value('retry-after'),
-          bayGio: _now(),
-        );
-        if (moi != null) _trangThai.value = moi;
+    try {
+      final res = err.response;
+      if (res != null) {
+        if (_mangPhien(err.requestOptions)) {
+          // `headers.value` NÉM khi header có từ hai giá trị — đọc danh sách, lấy phần tử đầu.
+          final ra = res.headers['retry-after'];
+          final moi = phanLoaiPhanHoi(
+            status: res.statusCode,
+            body: res.data,
+            retryAfter: (ra != null && ra.isNotEmpty) ? ra.first : null,
+            bayGio: _now(),
+          );
+          if (moi != null) _trangThai.value = moi;
+        }
+        _xetTatQuyen(res);
       }
-      _xetTatQuyen(res);
+    } catch (e) {
+      debugPrint('[MayChuInterceptor] onError bỏ qua lỗi: $e');
     }
     handler.next(err);
   }
