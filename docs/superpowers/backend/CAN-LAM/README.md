@@ -1,4 +1,21 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (5 mục chờ backend — mục 43, 44, 45, 46, 47)
+# Backend & Client — DANH SÁCH CẦN LÀM (6 mục chờ backend — mục 43, 44, 45, 46, 47, 48)
+
+> ✉️ **Client đặt mục 48, 2026-10-20:** [`DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md`](./DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md),
+> mức **vừa**.
+> - **Nguồn:** ca 11 của `Test/test_data_security_encryption_and_masking.js` (`b147feeb`) chọn "tài khoản Active đầu tiên"
+>   bằng `findFirst` không `orderBy`. Ngày 2026-09-10 nó trúng tài khoản dev thật 18 `quangdat`; hôm nay nó trả 82.
+> - **Dữ liệu để lại:** ví `test-wallet-1789014227658` (id không phải UUID, script không bao giờ dọn) và 9 giao dịch
+>   `test-tran-note-*`. 2 giao dịch còn sống, vì lượt chạy gãy ở `assert` trước bước dọn.
+> - **Hệ quả ở client (G98):** `toValidUuid` đổi id, server tạo mới, rồi trùng tên với chính ví gốc. Ví kẹt hàng đợi đẩy ở
+>   mọi máy đăng nhập tài khoản 18, và đồng bộ của cả tài khoản bị hoãn tới 15 phút.
+> - **Xin:**
+>   - **Việc 1:** dọn bằng **xoá mềm**, ba bước. Bước 1: ví gốc + 2 giao dịch. Bước 2 là hệ quả biết trước: máy đang kẹt đẩy
+>     lại và tạo một ví "ma" `00000000-0000-4000-8000-4534d71cc54d`. Bước 3: xoá mềm ví ma, hoặc người dùng xoá nó trong app.
+>   - **Việc 2:** sửa ca 11 (tài khoản test riêng, `crypto.randomUUID()`, dọn trong `finally`).
+>   - **Việc 3 (thấp):** `test_sync_new_schema.js` và `test_can_lam_fixes.js` cùng khuôn.
+> - Không đổi mã `src/Backend`, lược đồ hay payload. Người dùng chốt hướng này; client không đổi mã vì đơn.
+> - `DA-XONG/` đếm bằng máy 2026-10-20: **60** tệp + mục lục. `ls CAN-LAM/` nay: **43 · 44 · 45 · 46 · 47 · 48** ·
+>   `CLIENT_INTEGRATION_GUIDE.md` + README.
 
 > ✅ **Client mã xong phần của mục 43 và NGHIỆM THU OnePlus ĐẠT, 2026-10-20 (G89, 12 commit `b7ca4512..98d58c64`; bảng kết quả ở
 > mục 12 spec G89).** Bốn việc client của đơn: `ACCOUNT_DELETED`
@@ -10,7 +27,7 @@
 > Socket.io** — đo trên backend dev nhánh client 2026-10-20: socket *"Đã nối"* lúc IP đang bị chặn; (2) `POST /admin/aiops/quarantine/temporary-ip`
 > chỉ sửa mục đã có (`count: 0`, không chặn IP mới) — tạo mới phải dùng `POST /admin/aiops/quarantine`; (3) một test backend đã chèn
 > ví `test-wallet-1789014227658` + 9 giao dịch `test-tran-note-*` (id không phải UUID) thẳng vào tài khoản dev 18 `quangdat` — hàng ví
-> kẹt hàng đợi đẩy của client (**G98** `CLIENT_APP_KNOWN_GAPS.md`); có cần đơn dọn dữ liệu hay không, người dùng chưa chốt.
+> kẹt hàng đợi đẩy của client (**G98** `CLIENT_APP_KNOWN_GAPS.md`); người dùng chốt đơn dọn dữ liệu + sửa script → **mục 48**.
 
 > 🔀 **Client gộp `main` @ `e7570e16` và soát, 2026-10-18.** Backend ghi *"✅ Đã xong 100%"* cho mục 41–44 trong bảng mục
 > 0 (`3a5d320c`) nhưng không chuyển tệp. Client soát bằng mã + CSDL dev.
@@ -125,7 +142,7 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **5** mục — đếm bằng `ls` 2026-10-18 sau gộp `e7570e16`: 43 và 44 backend báo xong, client soát còn phần dư; 45 và 46 backend chưa trả lời; client đặt 47 ngày 2026-10-17 và cập nhật số đo 2026-10-18. Mục 41 và 42 đã chuyển sang `DA-XONG/`)
+## 0. Còn phải làm (Hiện tại: **6** mục — đếm bằng `ls` 2026-10-20: 43 và 44 backend báo xong, client soát còn phần dư; 45 và 46 backend chưa trả lời; client đặt 47 ngày 2026-10-17 (cập nhật số đo 2026-10-18) và 48 ngày 2026-10-20. Mục 41 và 42 đã chuyển sang `DA-XONG/`)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
@@ -134,6 +151,7 @@
 | **45** | [TAT_NHAC_HOA_DON_QUA_DONG_BO.md](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) | Backend | `sync.repository.js`: hoá đơn `time_notification` — tạo ~:471 `\|\| '3'` và cập nhật ~:497 `?? existing` nuốt NULL (= tắt nhắc ở client); ~:98 `String(null)` thành `"null"`. Đổi sang `!== undefined ? … : …`. Đo dev: 37 hoá đơn sống, 0 NULL (hệ quả của phép ép). Client đã làm phần mình (`d657b065`, tắt là tắt thật); tới khi sửa, tắt nhắc bị đảo sau một vòng đồng bộ. | ⏳ Chờ backend |
 | **46** | [NOTIFICATION_CLIENT_APP_LECH_MA.md](./NOTIFICATION_CLIENT_APP_LECH_MA.md) | Backend (chữ) | Sửa `docs/Notification/Notification_Client-app.md` theo bảng của đơn (~30 chỗ, bốn nhóm: đường dẫn · hàm / route · con số · hành vi; nhãn [cũ] / [mới]); phần phía backend ghi riêng, ngắn. Kiểm lại bằng một câu `grep` ra 0 dòng. Không đổi mã; không chặn client. | ⏳ Chờ |
 | **47** | [CLIENT_TRO_LY_ONLINE.md](./CLIENT_TRO_LY_ONLINE.md) | Backend | Thông báo client đã tích hợp `chat/stream` (hỗn hợp, tự rơi về AI trên máy); **nghiệm thu OnePlus trên backend dev 2026-10-18 đạt** — đơn cập nhật số đo. **(thấp)** ghi tên `GEMINI_MODEL` đã kiểm (`gemini-3.8-flash` trả lời thật trên dev 2026-10-18) vào `ChatbotAI.md` và đặt trên cloud; giữ `history.slice(-6)`; cân nhắc bỏ tin đầu không phải `user` trước `startChat` (SDK ném → breaker dùng chung mở cho mọi tài khoản); tả `done {error}` trong `ChatbotAI_Moblie.md` §2.1 và sửa bốn chỗ `ChatbotAI.md` — `:286`, `:420` khẳng định Dừng ngắt được Gemini; `:296`, `:443` chỉ nêu tên hook `req.on('close')`. **(vừa) việc 5** Dừng không tới server — **đo 2026-10-18**: client đóng socket thật (ESTABLISHED tới :3000 4 → 2 trong 1 s) nhưng không dòng `[SSE Controller] … đã ngắt kết nối`, service *"Hoàn tất 14590ms"* 12 s sau → `req.on('close')` không nổ (Node 22); xin: khi client ngắt kết nối thì thôi ghi `delta`, không gọi thêm tool / Gemini, huỷ lời gọi Gemini đang chạy hoặc bỏ lời gọi kế (service ghi log ngay tại lời gọi Gemini), không đếm breaker / không fallback; tiêu chí đo bằng log ở ba thời điểm. **(vừa) việc 6** keep-alive SSE `: ping` ≤ 15 s khi chờ Gemini — server im > 45 s (49,9 s; curl 91 s) nên client `receiveTimeout` rơi về máy trong khi server vẫn chạy (client giữ 45 s). **(vừa) việc 7** `maxOutputTokens: 1024` gồm token suy nghĩ → câu dài cụt ở điểm ngẫu nhiên (172 ↔ 1.851 ký tự); cân nhắc gửi `finishReason` trong `done`. Không đổi lược đồ / payload; không chặn client. | ⏳ Chờ backend |
+| **48** | [DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md](./DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md) | Backend (dữ liệu + script test) | **Việc 1 (vừa)** xoá mềm trên CSDL dev, ba bước. Bước 1: ví `test-wallet-1789014227658` + 2 giao dịch `test-tran-note-*` còn sống của tài khoản 18 (`Server_update_at` tự cập nhật qua trigger). Bước 2 là hệ quả biết trước: máy đang kẹt đẩy lại id giả và tạo ví "ma" `00000000-0000-4000-8000-4534d71cc54d`. Bước 3: xoá mềm ví ma, hoặc người dùng xoá trong app. **Việc 2 (vừa)** sửa ca 11 `Test/test_data_security_encryption_and_masking.js`: tài khoản test riêng thay `findFirst` không `orderBy`, `crypto.randomUUID()`, dọn trong `finally`. **Việc 3 (thấp)** `test_sync_new_schema.js:21`, `test_can_lam_fixes.js:44` cùng khuôn (UUID, có dọn). Phép kiểm: ba câu `SELECT` ở cuối đơn. Không đổi mã / lược đồ / payload; client không đổi mã (G98). | ⏳ Chờ backend |
 
 ---
 
