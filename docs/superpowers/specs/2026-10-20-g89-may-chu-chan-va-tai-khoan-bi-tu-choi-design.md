@@ -1,0 +1,210 @@
+# G89 + phần client của đơn 43 — máy chủ chặn (bảo trì / phong toả) và tài khoản bị từ chối
+
+**Ngày:** 2026-10-20 · **Nhánh:** `TranQuangDat` · **Trạng thái:** đã duyệt từng phần trong phiên (A · B · C), chờ người dùng
+duyệt bản viết. **Phạm vi do người dùng chốt 2026-10-18:** một lượt gồm G89 (`docs/CLIENT_APP_KNOWN_GAPS.md`) và ba việc client
+của đơn 43 (`docs/superpowers/backend/CAN-LAM/SOAT_SAU_GOP_CD2EE572.md`): xét lại xoá SQLite khi `ACCOUNT_DELETED` · `connect_error`
+có `data.code` → dừng nối lại + đăng xuất · `account.downgraded` → làm mới gói. Phần dư của đơn 43 phía backend **không** chặn lượt
+này (người dùng chốt 2026-10-18).
+
+## 1. Quyết định người dùng (2026-10-20)
+
+| # | Câu hỏi | Chốt |
+|---|---|---|
+| 1 | Bảo trì: người dùng thấy gì | **Dòng nhắc ở Trang chủ**, cùng họ *Premium sắp hết hạn* / *ví trùng tên*; tự ẩn khi request kế thành công; toast đồng bộ nói lý do |
+| 2 | Giãn cách đồng bộ lúc bảo trì | **Bảo trì không tính là lượt hỏng** — thử lại theo `Retry-After` |
+| 3 | Phong toả AIOps | **Cùng dòng nhắc, nêu giờ hết hạn**; đồng bộ hẹn đúng lúc hết hạn, đổi mạng thì thử ngay |
+| 4 | `ACCOUNT_DELETED` | **Không xoá SQLite ngay ở mọi nguồn** — mở rộng ngoại lệ G36 (2026-09-13) cho socket và request thường |
+| 5 | Kiến trúc | **Một mô hình trạng thái chung** (hàm phân loại thuần + `ValueNotifier` không dính Dio, interceptor ghi) |
+| 6 | Phần A · B · C của thiết kế | Duyệt từng phần trong phiên |
+
+Hai việc đã chốt từ trước, không hỏi lại: `connect_error` có `data.code` → dừng nối lại + đăng xuất; `account.downgraded` →
+làm mới gói (2026-10-15).
+
+## 2. Sự thật đo được (đọc mã backend trên nhánh, 2026-10-20)
+
+Bốn mục đầu (503 bảo trì, 503 đăng nhập, bắt tay socket, 403 phong toả) tự đọc lại sau báo cáo agent con; còn lại theo báo cáo
+agent con (đọc mã, chỉ đọc), kế hoạch đo lại trước khi viết test phụ thuộc vào chúng.
+
+- **503 bảo trì** — `src/Backend/middleware/maintenance.middleware.js:35-47`: body **phẳng**, `code: 'MAINTENANCE_MODE'` ở cấp
+  gốc, `message` (lý do admin gõ hoặc câu mặc định), `isEmergency`, `activatedAt`; header `Retry-After: '60'` là **hằng**, không
+  suy từ giờ kết thúc. Giờ kết thúc của phiên bảo trì **không** có trong body. Được đi qua: admin, `/health*`,
+  `POST /api/auth/login`; `/sync/*` và `/auth/refresh` của người thường nhận 503.
+- **503 lúc đăng nhập** — `src/Backend/modules/auth/auth.controller.js:61-73`: cùng hình dạng, có `code` + `Retry-After: 60`.
+  ⚠️ Câu *"503 đăng nhập mất `code`"* trong G89 đã cũ (đơn 43 vế C đạt).
+- **Bắt tay socket** — `src/Backend/core/socket.js:41-50`: từ chối vì tài khoản thì
+  `Object.assign(new Error(...), {data: {code, idaccount, reason_inactive}})`, `code` ∈ {`ACCOUNT_INACTIVE`, `ACCOUNT_DELETED`};
+  lỗi lược đồ / token / nội bộ là `Error` **không có `data`**. Socket không bị kiểm bảo trì, không bị kiểm phong toả.
+- **403 phong toả** — `src/Backend/modules/aiops/aiops.quarantine.js:1096-1105`: `code` **và** `error` đều là
+  `'AIOPS_QUARANTINED'`, `quarantineExpiresAt` (ISO hoặc `null`), `reason`; **không** có `Retry-After`. Xét **theo IP**
+  (`req.ip`), miễn admin. Thời hạn: tự động 15–30 phút, admin mặc định 4 giờ. Phong toả theo **tài khoản** không ra 403 — nó
+  ghi `Inactive` nên client thấy 401 `ACCOUNT_INACTIVE`.
+- **Các 503 khác** (giữ nguyên hành vi hôm nay): `SERVER_OVERLOADED`, `DB_POOL_OVERLOADED`, và 503 lỗi lược đồ ở `auth.js`
+  **không có `code`**.
+- **`account.downgraded`** — `src/Backend/core/scheduler.service.js:319`: chỉ phát từ job 00:00 giờ VN, tới `account_<id>`.
+  Từ lúc hết hạn tới khi job chạy, middleware đã trả 403 `{code: 'FEATURE_DISABLED', featureId, accountType}`
+  (`src/Backend/middleware/feature-permission.middleware.js:51`). Hoàn tiền không đổi gói. Admin đổi ma trận quyền phát
+  `account.upgraded` tới **mọi** socket (client đã `lamMoi` qua `taiKhoanNangCap`).
+- **`accountRejection`** (`src/Backend/middleware/auth.js`): `Deleted` hoặc không có hàng → `ACCOUNT_DELETED`; mọi trạng thái
+  khác ngoài `Active` / `PendingDelete` còn hạn → `ACCOUNT_INACTIVE`. Nhánh `delete_at` là mã chết (`getAccountValidity` không
+  trả cột ấy). Request thường nhận 401, `code` ở cấp gốc.
+
+**Phía client hôm nay:** `AuthInterceptor` chỉ xử lý 401; `GuiLoDongBo` xếp 403/503 vào `transportFailed` + `transient`, nên
+`failed > 0` kéo engine vào giãn cách 30 giây → 60 phút; `ApDuLieuKeoVe.pullFromBackend` nuốt mọi lỗi; `RealtimeChannel`
+`onConnectError` chỉ `debugPrint` rồi hẹn nối lại (2 → 60 giây, mãi); không ai nghe `account.downgraded`; `AuthBloc` gọi
+`xoaDuLieu` khi `daXoa` ∧ nguồn ≠ `lamMoi`; Trang chủ chưa có dải / dòng nhắc nào về máy chủ.
+
+## 3. Kiến trúc — mô hình trạng thái máy chủ (Phần A)
+
+### 3.1 Hàm phân loại + mô hình — `lib/core/network/trang_thai_may_chu.dart` (không import Dio)
+
+```dart
+sealed class TinhTrangMayChu {}
+final class MayChuBinhThuong extends TinhTrangMayChu {}
+final class MayChuBaoTri extends TinhTrangMayChu { final DateTime thuLaiLuc; }
+final class MayChuPhongToa extends TinhTrangMayChu { final DateTime? hetHanLuc; }
+
+/// `null` = phản hồi này KHÔNG nói gì về trạng thái máy chủ → không đổi.
+TinhTrangMayChu? phanLoaiPhanHoi({required int? status, Object? body, String? retryAfter, required DateTime bayGio});
+
+class TrangThaiMayChu extends ValueNotifier<TinhTrangMayChu> { ... }   // DI, sống trong bộ nhớ
+```
+
+- 503 ∧ `body['code'] == 'MAINTENANCE_MODE'` → `MayChuBaoTri(thuLaiLuc: bayGio + Retry-After)`; `Retry-After` thiếu / không phải
+  số nguyên dương → **60 giây**.
+- 403 ∧ `body['code'] == 'AIOPS_QUARANTINED'` → `MayChuPhongToa(hetHanLuc: parse(quarantineExpiresAt))`; thiếu / rác → `null`.
+- Chỉ đọc `code` ở **cấp gốc** của body là `Map`; mọi phản hồi khác trả `null` — kể cả 503 quá tải, 503 không `code`, 403
+  `FEATURE_DISABLED`, 403 trạng thái tài khoản lúc đăng nhập. **Không bao giờ phân loại theo mã HTTP một mình.**
+- Trạng thái **không gắn tài khoản** (bảo trì là chung, phong toả theo IP) — đăng xuất không xoá nó. Không lưu xuống đĩa.
+- Vì sao ở `core/network`: chủ đề đã có (`ConnectionMonitor`), trang được đọc (`AppToast`, Trợ lý AI đang đọc) — dòng nhắc
+  không phải chạm `core/api` (tinh thần quét 31), không thêm chủ đề `core` (quét 25), không thêm tệp `core/sync` (quét 35).
+
+### 3.2 Interceptor ghi — `lib/core/api/interceptors/may_chu_interceptor.dart`
+
+- Gắn vào Dio chung của app (`DioClient`), cạnh `AuthInterceptor`, không đụng nó.
+- `onError`: `phanLoaiPhanHoi(...)` khác `null` → ghi vào `TrangThaiMayChu`.
+- `onResponse` 2xx → `MayChuBinhThuong` (dòng nhắc tự ẩn).
+- Phủ mọi request đi qua Dio chung: đồng bộ (đẩy **và** kéo), Trợ lý online, thanh toán, đăng nhập, `/auth/refresh`.
+- Cũng là chỗ bắt 403 `FEATURE_DISABLED` cho mục 6.2 (hook, không ghi trạng thái máy chủ).
+
+### 3.3 Đồng bộ — `SyncEngine` nhận cổng tuỳ chọn `trangThaiMayChu`
+
+- Không truyền → hành vi y như cũ (test cũ không đổi). DI truyền bản thật.
+- Cuối `_runSync`, nếu trạng thái là `MayChuBaoTri` → **không** `_registerFailedCycle`, hẹn thử lại đúng `thuLaiLuc` qua
+  `_scheduleBackoffRetry` sẵn có (getter `backoffRetryAt` đo được). Áp cả khi **không có gì để đẩy** mà lượt kéo nhận 503.
+- `MayChuPhongToa` có `hetHanLuc` → như trên, hẹn đúng `hetHanLuc`. Đổi mạng (`onConnectivityChanged`) thử ngay vì không còn
+  giãn cách chặn. `hetHanLuc == null` → giãn cách như hôm nay.
+- Lượt bị chặn kết thúc bằng `SyncStatus.pending` (như mất mạng), **không** `error` — toast lý do do `TrangThaiMayChu` phát
+  (mục 4.2); để `error` là `AppToast` hiện thêm toast *thất bại* chung chồng lên.
+- Thao tác đẩy hỏng lúc bảo trì vẫn `transient` (không đổi `GuiLoDongBo`).
+- Hệ quả: tắt bảo trì xong khoảng 1 phút dữ liệu lên server, dòng nhắc ẩn.
+- ⚠️ Quy ước *payload socket là hộp đen* giữ nguyên: **không** nghe `system.maintenance_changed` / `system.broadcast` (quyết
+  định 2026-09-30) — nên client **không biết giờ kết thúc bảo trì**, và không chữ nào hứa giờ ấy.
+
+## 4. Giao diện (Phần B) — Stitch `006c5a2eafc9461ab630163d1ff85de9`
+
+Màn Stitch *"Trang chủ - Dòng nhắc máy chủ (3 biến thể) - FlowMoney"* (tạo 2026-10-20, lượt gọi báo timeout, người dùng xác nhận
+màn đã có; chữ ba biến thể đối chiếu khớp HTML). Khuôn theo `f21e76fa…` *"Trang chủ - Dòng nhắc Premium sắp hết hạn"*.
+
+### 4.1 `DongNhacMayChu` — `lib/features/home/presentation/widgets/dong_nhac_may_chu.dart`
+
+- `ValueListenableBuilder` trên `sl<TrangThaiMayChu>()`; `MayChuBinhThuong` → không dựng gì (không đệm).
+- Đứng **đầu** chồng dòng nhắc ở `home_page.dart` (nó giải thích vì sao mọi thứ khác chưa đồng bộ).
+- Thẻ trắng, viền `outline-variant` 30 %, bo 12, đệm ngang 14, huy hiệu 24 × 24 bo 6; chữ **hai dòng**: tiêu đề 13 px
+  `on-surface`, dòng phụ 11 px `#454743`. **Không** nút, **không** ✕ (tự ẩn).
+
+| Trạng thái | Huy hiệu | Tiêu đề | Dòng phụ |
+|---|---|---|---|
+| `MayChuBaoTri` | `construction`, nền `amber-100` | Máy chủ đang bảo trì | Dữ liệu trên máy vẫn dùng được, tự đồng bộ khi xong |
+| `MayChuPhongToa` có giờ | `shield`, `#ba1a1a` trên `#ffdad6` | Mạng này đang bị tạm chặn | Tới 15:30 · dữ liệu trên máy vẫn dùng được |
+| `MayChuPhongToa` không giờ | như trên | Mạng này đang bị tạm chặn | Dữ liệu trên máy vẫn dùng được |
+
+- Giờ hết hạn khác ngày hôm nay → *"Tới 09:00 21/10"*. Mọi định dạng giờ qua `DateFormatter` (quét 32).
+- Không hiện lý do admin gõ (thông báo tối giản).
+
+### 4.2 Toast đồng bộ
+
+- Một lần khi **chuyển sang** trạng thái chặn (không lặp ở mỗi lượt thử lại 60 giây): *"Chưa đồng bộ được: máy chủ đang bảo
+  trì"* / *"Chưa đồng bộ được: mạng này đang bị tạm chặn"*. Qua `AppToast` hiện có.
+
+### 4.3 Màn Đăng nhập
+
+- 503 `MAINTENANCE_MODE` → *"Máy chủ đang bảo trì. Thử lại sau ít phút."*
+- 403 `AIOPS_QUARANTINED` → *"Mạng này đang bị máy chủ tạm chặn tới 15:30. Thử lại sau hoặc đổi mạng (Wi-Fi ↔ 4G)."*
+  (không giờ → bỏ vế *"tới…"*).
+- 403 vì trạng thái tài khoản lúc đăng nhập: như cũ. Câu hiện đúng chỗ đang hiện `message` của server.
+
+### 4.4 Không đổi
+
+Trợ lý online đã rơi về mô hình trên máy khi máy chủ hỏng (mục 15 `AI_EDGE_FEATURE.md`).
+
+## 5. Socket bị từ chối bắt tay (Phần C.1)
+
+- `RealtimeChannel.onConnectError`: lỗi mang `data` là `Map` có `code` chuỗi khác rỗng → `tuBody401(data, nguon:
+  NguonBuocDangXuat.socket)` (`lib/core/auth/buoc_dang_xuat.dart` — cùng khoá `code` · `idaccount` · `reason_inactive` ở cấp
+  gốc như body 401) → phát lên `buocDangXuat` (đường `account.force_logout` đang dùng) và **dừng nối lại** tới lần `start()`
+  sau. `idaccount` khác phiên → bỏ qua (khuôn `force_logout`).
+- Lỗi không `data` → giãn cách nối lại như cũ.
+- ⚠️ **Chưa đo** gói `socket_io_client` chuyển lỗi `connect_error` lên Dart bằng hình dạng nào (`Map` có `data`? chuỗi?). Kế
+  hoạch có bước đo trên máy / bằng ca test với payload thật trước khi viết bộ đọc; bộ đọc phải chịu cả hai dạng.
+- Hệ quả: tài khoản bị khoá lúc máy offline → có mạng là bị đăng xuất kèm lý do, thay vì kênh nối lại mỗi 60 giây mãi.
+
+## 6. Gói (Phần C.2)
+
+1. `account.downgraded` → giá trị mới `RealtimeEvent.taiKhoanHaCap`: im lặng (`loiNhan == null`, `canDongBoLai == false`),
+   không đọc payload; `GoiRepository` nghe → `lamMoi()`. Màn Nâng cấp / Chờ thanh toán **không** nghe (đó là luồng
+   `taiKhoanNangCap`).
+2. 403 `FEATURE_DISABLED` (cấp gốc) từ bất kỳ request → `MayChuInterceptor` gọi hook `khiBiTatQuyen` (DI nối
+   `sl<GoiRepository>().lamMoi()`), hai lần gọi cách nhau **≥ 30 giây**. Lý do: `account.downgraded` chỉ phát lúc 0 giờ, còn
+   server đã trả 403 từ lúc hết hạn / admin đổi quyền.
+
+## 7. Không xoá SQLite khi `ACCOUNT_DELETED` (Phần C.3)
+
+- `AuthBloc` bỏ nhánh `xoaDuLieu` (`auth_bloc.dart`, khối *"Người dùng chốt 2026-09-13: GIỮ ngoại lệ"*): vẫn đăng xuất, vẫn
+  hộp thoại, chữ không đổi. Dữ liệu nằm lại tới khi tài khoản khác đăng nhập trên máy (`purgeDataForOtherAccounts`).
+- Gỡ chuỗi chết: `PhienDieuPhoi.xoaDuLieu` + bản thật, tham số `xoaBanSao` của `PhienDieuPhoiThat` + DI; `AppDatabase.
+  purgeDataForAccount` nếu ngoài test của chính nó không còn chỗ gọi (đo lúc lập kế hoạch) — kèm docstring năm bảng nhắc tên hàm.
+- Chú thích cũ *"Đừng gỡ điều kiện `nguon != lamMoi`"* thay bằng lý do mới (luật một cho ba nguồn, người dùng chốt 2026-10-20).
+
+## 8. Kiểm thử và nghiệm thu (Phần C.4)
+
+Mọi ca canh phải thử bằng một bản sai và thấy đỏ.
+
+- `phanLoaiPhanHoi`: bảng ca — 503 có / không `code` / `code` khác; 403 `AIOPS_QUARANTINED` / `FEATURE_DISABLED` / tài khoản;
+  body không phải `Map`; `Retry-After` số / thiếu / rác / âm; `quarantineExpiresAt` có / `null` / rác.
+- `MayChuInterceptor`: lỗi được phân loại → ghi; 2xx → xoá; lỗi không phân loại → giữ; `FEATURE_DISABLED` → hook, giãn 30 s.
+- `SyncEngine`: bảo trì → `consecutiveFailures` không tăng, `backoffRetryAt == thuLaiLuc`; chỉ lượt kéo 503 (không thao tác
+  chờ) cũng hẹn; phong toả có / không giờ; không cổng → như cũ.
+- `RealtimeChannel`: `connect_error` có `data.code` → một `ThongBaoBuocDangXuat` nguồn socket + không hẹn nối lại; không `data`
+  → hẹn như cũ; `idaccount` khác → bỏ qua.
+- `RealtimeEvent`: `account.downgraded` → `taiKhoanHaCap`, im lặng; `GoiRepository` gọi `lamMoi`.
+- `AuthBloc`: `daXoa` × ba nguồn → không xoá; vẫn đăng xuất + hộp thoại.
+- Widget `DongNhacMayChu` ở 360 dp, `AppTheme.lightTheme`: ba biến thể + ẩn; đo **chiều cao thật** (chữ dài không ngắt dòng im
+  lặng); khổ hẹp 320 dp không tràn (`takeException`).
+- Màn Đăng nhập: hai câu lỗi mới; 403 tài khoản giữ nguyên.
+- **Nghiệm thu OnePlus 13R** (bản `--release` hoặc debug; backend dev chạy — cần phép **đích danh** của người dùng cho mọi việc ở
+  `src/Backend`): (1) admin bật bảo trì (Admin-web) → dòng nhắc + toast một lần; tắt → ≤ ~1 phút dòng nhắc ẩn, thao tác ghi lúc
+  bảo trì lên server; (2) admin phong toả IP LAN của máy → dòng nhắc có giờ; gỡ → ẩn ở lượt kế; (3) khoá tài khoản lúc máy tắt
+  mạng → bật mạng → đăng xuất + hộp thoại từ socket; (4) đăng nhập lúc bảo trì → câu mới.
+
+## 9. Tài liệu
+
+- G89 đóng; sửa năm câu cũ: *"503 đăng nhập mất `code`"* · *"`user.notification` sống"* (hàm gửi không chỗ gọi) · *"`RealtimeEvent`
+  chỉ dịch 5 tên"* (5 giá trị, 11 tên) · *"loopback miễn ở mọi môi trường"* (tầng kiểm request chỉ miễn khi `development`; mọi
+  môi trường là nhờ lớp từ chối thêm IP được bảo vệ) · đường `core/api/auth_interceptor.dart` (thật: `core/api/interceptors/`).
+- Ba chú thích client dẫn số dòng backend đã lệch → dẫn **tên hàm**: `buoc_dang_xuat.dart` (`tuSuKienSocket`),
+  `realtime_event.dart` (nguồn `account.upgraded` — thiếu hai nguồn), `realtime_channel.dart` (đầu tệp).
+- `CLAUDE.md` hàng *xác thực* (chốt *"dọn SQLite chỉ khi `daXoa` và nguồn khác `lamMoi`"*), `KIEN_TRUC_CLIENT_APP.md`
+  (`core/network`, `core/api/interceptors`), `NOTIFICATION_FEATURE.md` nếu chạm toast, `PREMIUM_FEATURE.md` (`taiKhoanHaCap`,
+  hook `FEATURE_DISABLED`), mục 14 `PROJECT_CONTEXT.md`, README `CAN-LAM/` (đơn 43: phần client xong).
+- **Không xin backend gì.** Thiếu giờ kết thúc bảo trì là chấp nhận theo thiết kế; phần dư đơn 43 (A1, A3–A6, D) vẫn mở phía backend.
+
+## 10. Ngoài phạm vi
+
+- Nghe `system.maintenance_changed` / `system.broadcast` / `user.notification` (quyết định 2026-09-30, payload hộp đen).
+- Dải trên mọi trang; nút ✕ cho dòng nhắc; hiện lý do admin gõ.
+- 503 / 429 / 504 khác (`SERVER_OVERLOADED`, `DB_POOL_OVERLOADED`, `RETRY_LIMIT_EXCEEDED`, `REQUEST_TIMEOUT`) — giữ hành vi hôm nay.
+- Đổi chữ hộp thoại tài khoản bị xoá.
+
+## 11. Chỗ bản thi công khác bản viết
+
+*(điền khi thi công)*
