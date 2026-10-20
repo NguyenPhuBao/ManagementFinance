@@ -643,9 +643,13 @@ Lỗi lộ khi nghiệm thu OnePlus 2026-10-18. Câu *"Hay viet 15 loi khuyen ti
 - *"ke tu thang sau de danh 2 trieu moi thang"*: vẫn ra thẻ *"Tạo mục tiêu"* sau 15,6 s.
 
 Lượt đo lộ **G99** (có từ trước G95): mô hình bịa *hạn 30/06/2027* cho câu chỉ nêu mốc bắt đầu, và lưới cho qua vì câu có chữ
-*tháng*. Bảng đo ở thân G95 `CLIENT_APP_KNOWN_GAPS.md`.
+*tháng*. **G99 đóng cùng ngày.** Regex `_mauMocBatDau` gạt cụm *kể từ / bắt đầu từ / từ + đơn vị + mốc* trước khi xét chữ thời
+gian. Ca *"⚠️ G99"*: 8 câu đỏ trên mã cũ, 2 câu vẫn nhận hạn. Đo lại Realme 19:30: thẻ *"Đọc bằng luật · Tạo mục tiêu · Chưa rõ
+tên, số tiền, hạn"*. Bảng đo ở thân G95 và G99, `CLIENT_APP_KNOWN_GAPS.md`.
 
-**Số đo 2026-10-20:** `flutter test` **7638/7638** pass, 10 skip (4 ph 00 s); `flutter analyze` **20**.
+**Số đo 2026-10-20:** sau G95 `flutter test` **7638/7638** pass, 10 skip (4 ph 00 s); sau G99 **7639/7639**, 10 skip (6 ph 09 s);
+`flutter analyze` **20**. Người dùng chốt **giữ** luật *mức góp theo kỳ không phải số tiền đích* (thẻ nói *"Chưa rõ số tiền"*) khi
+thấy thẻ G99 trống số tiền, không thêm dòng mức góp, không tự tính đích.
 
 ### 🔤 G97 — body lỗi không phải JSON ở datasource xác thực (2026-10-20) — ✅ MỞ VÀ ĐÓNG
 

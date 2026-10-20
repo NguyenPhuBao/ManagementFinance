@@ -3308,7 +3308,8 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
   - Luật chỉ bắt động từ ở vị trí đầu. *"bạn có thể gợi ý…"* chưa bắt.
   - 10 câu đo ở bảng dưới (dạng gõ không dấu) được khoá bằng một ca test.
   - ✅ Đo Realme 2026-10-20: câu G95 đi thẳng vòng hỏi đáp; *"ke tu thang sau de danh 2 trieu moi thang"* vẫn ra thẻ. Lượt đo
-    lộ **G99**: mô hình bịa *hạn* cho câu chỉ nêu mốc bắt đầu, lọt `_hanAiHopLe` vì câu có chữ *tháng* (`CLIENT_APP_KNOWN_GAPS.md`).
+    lộ **G99**: mô hình bịa *hạn* cho câu chỉ nêu mốc bắt đầu, lọt `_hanAiHopLe` vì câu có chữ *tháng* — ✅ đóng cùng ngày
+    (`_mauMocBatDau`, dòng *hạn mục tiêu* của bảng lưới kiểm bên dưới; đo lại Realme: thẻ không còn hạn).
 - **Phiên AI riêng** `DocLenhBangAi` (`ai_chat/data/doc_lenh_bang_ai.dart`): ba tool `tao_hoa_don` · `tao_muc_tieu` ·
   `dat_ngan_sach`, mong đợi **một** lời gọi; không gọi tool = "không phải lệnh tạo". Ví / danh mục là `enum` tên có thật
   + chuỗi rỗng. Thời hạn 45 s, canary phiên có tool, mọi hỏng hóc → `null`. **Không** nhét vào phiên sáu tool (trần
@@ -3324,7 +3325,7 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
   | loại | câu **không** theo mẫu 9.42 **và không** mang dấu hiệu loại (`_loaiTheoDauHieu`: *hạn mức · giới hạn · tối đa* → ngân sách, xét trước; *tiết kiệm · để dành · dành dụm* → mục tiêu; *đóng tiền · trả tiền · nộp tiền · thanh toán · nhắc tôi* → hoá đơn, xét sau cùng — thêm 2026-10-02) |
   | số tiền / đích / hạn mức | là một cách đọc được từ chính câu (`cachDocSoTien`, lệch ≤ 0,5); với **mục tiêu**, số tiền *theo kỳ* (*"2 triệu mỗi tháng"*, *"500k/tháng"*) **không** phải số tiền đích — luật lẫn AI đều bỏ (`_tienTheoKy`) |
   | tên | không chứa chữ số, mọi chữ có trong câu **đúng thứ tự** (không cần liền nhau), gọt chữ chu kỳ (*"tiền điện hàng tháng"* → *"tiền điện"*); câu theo mẫu thì tên luật thắng |
-  | hạn mục tiêu | `dd/mm/yyyy` có thật, **sau** hôm nay, ≤ 50 năm, **và** câu nói tới thời gian — **ngoài các cụm chu kỳ** (*"mỗi tháng"*, *"500k/tháng"* không tính; 2026-10-02) |
+  | hạn mục tiêu | `dd/mm/yyyy` có thật, **sau** hôm nay, ≤ 50 năm, **và** câu nói tới thời gian — **ngoài các cụm chu kỳ** (*"mỗi tháng"*, *"500k/tháng"* không tính; 2026-10-02) **và cụm mốc bắt đầu** (*"kể từ tháng sau"*, *"từ ngày 1/11"* không tính — `_mauMocBatDau`, G99, 2026-10-20) |
   | chu kỳ | luật không thấy *hằng / mỗi + …* trong câu |
   | ngày gốc | 1–31, chữ số ấy đứng riêng trong câu **ngoài đoạn số tiền**; từ ngày gốc suy ra **ngày bắt đầu** (dưới) |
   | danh mục | tên enum khớp đúng **một** danh mục chi (đoán danh mục là giá trị mô hình thêm vào); chữ *"hoá đơn"* đầu tiên của câu là đối tượng của lệnh, **không** phải danh mục *Hóa đơn* |
