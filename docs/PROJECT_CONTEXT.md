@@ -616,6 +616,16 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-20)
 
+### 🔤 G97 — body lỗi không phải JSON ở datasource xác thực (2026-10-20) — ✅ MỞ VÀ ĐÓNG
+
+Review toàn nhánh G89 đề nghị. Trang HTML của proxy / Render (Dio trả `String` khi `content-type` không phải JSON) làm
+`AuthRemoteDataSourceImpl` đọc `String['message']` → `TypeError`, và màn Đăng nhập in nguyên câu *"type 'String' is not a subtype
+of type 'int' of 'index'"* (nhánh 2xx cùng bệnh ở `data['success']`). Sửa bằng hai hàm `_cauLoi` / `_thanhCong` cho cả 14 lời gọi;
+⚠️ `getProfile` chỉ giữ `statusCode` khi body là JSON — trang 404 của proxy không được thành *phiên chết* (mã cũ tình cờ ra
+`unknown` nhờ chính `TypeError`). 30 ca ở `auth/data/datasources/auth_remote_data_source_body_khong_json_test.dart`, đỏ 27 / 30
+trên mã cũ. Đo 2026-10-20: `flutter test` **7627/7627** pass, 10 skip (5 ph 19 s); `flutter analyze` **20**. Chi tiết: G97
+`CLIENT_APP_KNOWN_GAPS.md`.
+
 ### 🛡️ G89 — máy chủ chặn + phần client đơn 43 (2026-10-20) — 🚧 MÃ XONG 2026-10-20, CHỜ NGHIỆM THU OnePlus (Task 12)
 
 Spec `docs/superpowers/specs/2026-10-20-g89-may-chu-chan-va-tai-khoan-bi-tu-choi-design.md` (người dùng duyệt bản viết 2026-10-20;
