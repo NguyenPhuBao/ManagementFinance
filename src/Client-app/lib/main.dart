@@ -12,6 +12,7 @@ import 'core/constants/app_localization.dart';
 import 'core/router/app_router.dart';
 import 'core/di/injection_container.dart';
 import 'core/network/connection_monitor.dart';
+import 'core/network/trang_thai_may_chu.dart';
 import 'features/auth/presentation/bloc/current_account.dart';
 import 'features/notification/domain/cham_hdh.dart';
 import 'features/notification/data/datasources/nhat_ky_thong_bao.dart';
@@ -215,6 +216,7 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
             connectionEvents: sl<ConnectionMonitor>().events,
             pushResults: sl<SyncEngine>().pushResultStream,
             realtimeEvents: sl<RealtimeChannel>().events,
+            mayChu: sl<TrangThaiMayChu>(),
             thongBaoNhanh: sl<ThongBaoNhanh>().stream,
             child: child ?? const SizedBox.shrink(),
           ),
