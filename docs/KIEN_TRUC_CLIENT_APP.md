@@ -49,8 +49,8 @@ và `… | xargs cat | wc -l`. `test/` có **662** tệp `*_test.dart` (675 tệ
 ```
 lib/
 ├── main.dart                 điểm vào app + điểm vào engine nền (`chayNenTuChuyenTien`, @pragma)
-├── core/            107 tệp (đếm 2026-10-20, sau chẻ `pullFromBackend`)  hạ tầng + điểm ghép — KHÔNG chứa màn hình (15 chủ đề — test quét 25; `core/notification` đã dời 2026-10-15)
-│   ├── api/           4      DioClient (DI dùng `sl<DioClient>().dio`), AuthInterceptor (gắn token, làm mới, dịch 401 + code; phát lại sau 401 giữ `responseType` · `receiveTimeout` · `cancelToken`), `khung_sse` (bộ tách khung SSE thuần, 2026-10-17)
+├── core/            109 tệp (đếm 2026-10-20, sau G89; 107 sau chẻ `pullFromBackend`)  hạ tầng + điểm ghép — KHÔNG chứa màn hình (15 chủ đề — test quét 25; `core/notification` đã dời 2026-10-15)
+│   ├── api/           5      DioClient (DI dùng `sl<DioClient>().dio`; tự dựng `MayChuInterceptor` từ tham số `trangThaiMayChu` + `khiBiTatQuyen` — quét 36), `interceptors/` (`may_chu_interceptor` — ghi `TrangThaiMayChu` từ 503 `MAINTENANCE_MODE` / 403 `AIOPS_QUARANTINED` của request mang phiên, hook 403 `FEATURE_DISABLED`; đứng SAU AuthInterceptor, G89 2026-10-20; `ket_qua_lam_moi`), AuthInterceptor (gắn token, làm mới, dịch 401 + code; phát lại sau 401 giữ `responseType` · `receiveTimeout` · `cancelToken`), `khung_sse` (bộ tách khung SSE thuần, 2026-10-17)
 │   ├── auth/          3      buoc_dang_xuat (kiểu thuần 4 tệp hạ tầng dùng), PhienDieuPhoi(+That) ← điều phối phiên
 │   ├── category/      1      category_name (normalizeCategoryName — DAO + util dùng)
 │   ├── constants/     2      app_constants, app_localization
@@ -58,7 +58,7 @@ lib/
 │   ├── di/            1      injection_container (1.039 dòng) ← điểm ghép duy nhất của DI
 │   ├── errors/        1      app_exceptions
 │   ├── nen/           7      chạy nền: chay_nen, luot_nen, lich_nen, kênh `flowmoney/tu_chuyen_tien`, `app_lifecycle_watcher`
-│   ├── network/       1      connection_monitor
+│   ├── network/       2      connection_monitor, `trang_thai_may_chu` (mô hình bảo trì / phong toả, Dart thuần, không gắn tài khoản, không lưu đĩa — G89 2026-10-20)
 │   ├── ocr/           7      DocChuAnh (cổng) + bản ML Kit, `ten_tep_bien_lai` (kho ảnh quét dời về `transaction/data/datasources/` 2026-10-16)
 │   ├── realtime/      5      RealtimeChannel; chỉ realtime_socket.dart import socket_io_client
 │   ├── router/        1      app_router (GoRouter) ← điểm ghép
@@ -170,7 +170,7 @@ online không qua lớp chắn ở client, chỉ mang nhãn nguồn.
 **Xác thực.** `core/api/dio_client.dart` + `AuthInterceptor` gắn token từ `FlutterSecureStorage`, làm mới khi 401, dịch
 401 mang `code` thành lời từ chối có lý do. `AuthBloc` giữ trạng thái và thứ tự emit; vòng đời phiên ở
 `PhienDieuPhoi` hai pha: `moPhienCucBo` **trước** `AuthSuccess` (dọn tài khoản khác, bộ quét — để mở app không chờ mạng,
-G86) rồi `batThoiGianThuc` · kiểm `_vanLaPhien` · `batDongBo`; `dongPhien` / `xoaDuLieu` khi đăng xuất hay bị buộc đăng xuất.
+G86) rồi `batThoiGianThuc` · kiểm `_vanLaPhien` · `batDongBo`; `dongPhien` khi đăng xuất hay bị buộc đăng xuất (`xoaDuLieu` và `purgeDataForAccount` gỡ 2026-10-20, G89 — `ACCOUNT_DELETED` không xoá SQLite ở mọi nguồn).
 
 ## 6. Ba chữ ký thật
 

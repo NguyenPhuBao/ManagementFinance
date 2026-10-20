@@ -469,7 +469,7 @@ Các singleton quan trọng:
 3. Khi token hết hạn → auto-refresh qua `/api/auth/refresh` (⚠️ 2026-09-11: theo mã backend sau gộp `main` @ `cc65f4f`, endpoint này từ chối mọi tài khoản nên người dùng bị đăng xuất khi access token hết hạn — CAN-LAM 17 A; ✅ backend sửa, gộp `cbbeeb4` 2026-09-12 — đo đầu-cuối chiều cùng ngày: 200 kèm token mới; sau khi khoá tài khoản thử → 401 + `code: ACCOUNT_INACTIVE` ở cấp gốc)
 4. `AuthBloc` quản lý trạng thái đăng nhập; từ 2026-10-10 mọi thứ sống theo phiên (dọn tài khoản khác, bộ quét thông
    báo, socket, đồng bộ, seed) đi qua `PhienDieuPhoi` — `moPhienCucBo` trước `AuthSuccess`, rồi `batThoiGianThuc` · kiểm
-   `_vanLaPhien` · `batDongBo`; `dongPhien` / `xoaDuLieu` khi đăng xuất. `auth_bloc.dart` không gọi service locator (quét 24).
+   `_vanLaPhien` · `batDongBo`; `dongPhien` khi đăng xuất (`xoaDuLieu` gỡ 2026-10-20, G89). `auth_bloc.dart` không gọi service locator (quét 24).
 
 ---
 
@@ -606,7 +606,7 @@ src/Backend/
 | `src/Client-app/lib/core/database/daos/transaction_dao.dart` | Transaction queries + repair |
 | `src/Client-app/lib/core/sync/sync_payload_normalizer.dart` | Field name mapping |
 | `src/Client-app/lib/core/realtime/realtime_channel.dart` | Kênh thời gian thực: bắt tay JWT, backoff nối lại, nghe cả `onConnectivityChanged` |
-| `src/Client-app/lib/core/realtime/realtime_event.dart` | **Ba** sự kiện client dịch — `ocr.completed`, `ocr.duplicate`, `sync.completed` (từ 2026-09-12, im lặng, `loiNhan == null`) — và **lý do client không đọc payload**. ⚠️ `bank_transaction.incoming` **cố ý không nằm ở đây** từ 2026-09-18: backend vẫn phát, client bỏ qua như mọi tên lạ |
+| `src/Client-app/lib/core/realtime/realtime_event.dart` | **Sáu** giá trị enum (đếm 2026-10-20; ba đầu — `ocr.completed`, `ocr.duplicate`, `sync.completed` từ 2026-09-12, im lặng, `loiNhan == null` — rồi `taiKhoanNangCap`, `taiKhoanHaCap` từ G89, `donThanhToanDoi`) — và **lý do client không đọc payload**. ⚠️ `bank_transaction.incoming` **cố ý không nằm ở đây** từ 2026-09-18: backend vẫn phát, client bỏ qua như mọi tên lạ |
 | `src/Backend/modules/sync/sync.repository.js` | Prisma queries cho sync |
 | `src/Backend/modules/sync/sync.service.js` | Business logic sync |
 | `src/Backend/prisma/schema.prisma` | DB schema (Prisma) |
@@ -616,13 +616,24 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-20)
 
-### 📝 Spec G89 + phần client đơn 43 (2026-10-20) — chờ duyệt bản viết, chưa thi công
+### 🛡️ G89 — máy chủ chặn + phần client đơn 43 (2026-10-20) — ✅ ĐÓNG, chờ nghiệm thu máy
 
-Spec `docs/superpowers/specs/2026-10-20-g89-may-chu-chan-va-tai-khoan-bi-tu-choi-design.md` (người dùng duyệt ba phần A · B · C
-trong phiên; Stitch **`006c5a2eafc9461ab630163d1ff85de9`** *"Trang chủ - Dòng nhắc máy chủ (3 biến thể)"*). Năm quyết định ở mục 1
-spec: dòng nhắc Trang chủ · bảo trì / phong toả không tính lượt hỏng (sàn thử lại 30 s) · phong toả nêu giờ hết hạn ·
-`ACCOUNT_DELETED` không xoá SQLite ở mọi nguồn · một mô hình trạng thái chung ở `core/network`. G89 `CLIENT_APP_KNOWN_GAPS.md`
-đánh dấu 📝.
+Spec `docs/superpowers/specs/2026-10-20-g89-may-chu-chan-va-tai-khoan-bi-tu-choi-design.md` (người dùng duyệt bản viết 2026-10-20;
+Stitch **`006c5a2eafc9461ab630163d1ff85de9`** *"Trang chủ - Dòng nhắc máy chủ (3 biến thể)"*). **12 commit `627850d6..98d58c64`.**
+Việc đã làm: (1) `ACCOUNT_DELETED` **không** xoá SQLite ở mọi nguồn (`purgeDataForAccount` / `PhienDieuPhoi.xoaDuLieu` gỡ);
+(2) `TrangThaiMayChu` ở `core/network` + `MayChuInterceptor` ở `core/api/interceptors/` (đứng sau `AuthInterceptor`, chỉ ghi từ
+request mang phiên; quét 36 canh chỉ `DioClient` dựng nó); (3) `SyncEngine`: lượt bị chặn kết thúc `pending`, không tính lượt
+hỏng, hẹn lại theo `Retry-After` (sàn 30 s, hàm `mocThuLaiKhiBiChan`); (4) `connect_error` có `data.code` → `buocDangXuat` +
+dừng nối lại (khuôn `force_logout`); (5) `account.downgraded` = `RealtimeEvent.taiKhoanHaCap` + 403 `FEATURE_DISABLED` → làm mới
+gói (giãn 30 s); (6) dòng nhắc Trang chủ, một toast, câu màn Đăng nhập (bảo trì / phong toả, có giờ nếu còn). Đo 2026-10-20:
+`flutter test` **7590/7590** pass, 10 skip (6 ph 39 s; trước 7533); `flutter analyze` **20** issue, 0 error; check-ignore không
+khớp. **Chỗ khác bản viết: mục 11 spec (19 chỗ)** — đáng nhớ: trần `Retry-After` 1 ngày (`kTranRetryAfter`), interceptor không bao
+giờ đổi lỗi của nơi gọi (`try/catch` + `retry-after` đọc dạng danh sách), `error` kích hoạt thông báo `syncFailed` chứ không phải
+toast nên lượt bị chặn dùng `pending`, hình dạng `connect_error` đã đo bằng mã gói. Ghi nhận: lúc bị chặn mọi nguồn kích hoạt đồng
+bộ gửi request thẳng (sàn 30 s chỉ cho hẹn giờ); toast bảo trì có thể không hiện nếu đang có toast bậc cao (dòng nhắc vẫn nói).
+🚧 **Nghiệm thu máy còn chờ** (spec mục 8): bảo trì lên server; admin phong toả IP LAN; khoá tài khoản lúc máy tắt mạng → bật mạng
+→ đăng xuất + hộp thoại; đăng nhập lúc bảo trì → câu mới. G89 `CLIENT_APP_KNOWN_GAPS.md` ✅ đóng; `CAN-LAM/README.md` đơn 43: phần
+client xong, phần dư backend giữ nguyên.
 
 ### ✂️ Chẻ `pullFromBackend` — sáu hàm dựng companion sang `anh_xa_keo_ve.dart` (2026-10-20)
 

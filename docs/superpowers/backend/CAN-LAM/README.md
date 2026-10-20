@@ -1,5 +1,10 @@
 # Backend & Client — DANH SÁCH CẦN LÀM (5 mục chờ backend — mục 43, 44, 45, 46, 47)
 
+> ✅ **Client xong phần của mục 43, 2026-10-20 (G89, 12 commit `627850d6..98d58c64`).** Bốn việc client của đơn: `ACCOUNT_DELETED`
+> không còn xoá SQLite ở mọi nguồn · `connect_error` có `data.code` → đăng xuất + dừng nối lại · `account.downgraded` → làm mới gói ·
+> dòng nhắc Trang chủ / toast / câu màn Đăng nhập khi 503 `MAINTENANCE_MODE` hoặc 403 `AIOPS_QUARANTINED`. Client **không xin backend
+> gì thêm**; sáu việc dư phía backend ở banner bên dưới giữ nguyên.
+
 > 🔀 **Client gộp `main` @ `e7570e16` và soát, 2026-10-18.** Backend ghi *"✅ Đã xong 100%"* cho mục 41–44 trong bảng mục
 > 0 (`3a5d320c`) nhưng không chuyển tệp. Client soát bằng mã + CSDL dev.
 > - **41** và **42** đạt trọn, đã chuyển sang `DA-XONG/` (mục 4i mục lục).
@@ -117,7 +122,7 @@
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
-| **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | **A (cao)** AIOps khoá tài khoản ghi `'Inactive'` thay `'Locked'`; `accountRejection` mặc định `ACCOUNT_INACTIVE`, chỉ `Deleted` mới `ACCOUNT_DELETED`; áp lại `ck_account_status`. **B (cao)** webhook `orderCode` lạ → 2xx, không tạo đơn / không nâng gói cho Admin. **C (vừa)** 503 lúc đăng nhập bảo trì mang `code` + `Retry-After: 60`. **D (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | 🟡 Backend ghi ✅ Đã xong 100% · client soát 2026-10-18: đạt A2, B, C; còn A1 (controller), A3, A4, A5, A6 (tuỳ chọn), D (0 / 12) — banner tệp |
+| **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | **A (cao)** AIOps khoá tài khoản ghi `'Inactive'` thay `'Locked'`; `accountRejection` mặc định `ACCOUNT_INACTIVE`, chỉ `Deleted` mới `ACCOUNT_DELETED`; áp lại `ck_account_status`. **B (cao)** webhook `orderCode` lạ → 2xx, không tạo đơn / không nâng gói cho Admin. **C (vừa)** 503 lúc đăng nhập bảo trì mang `code` + `Retry-After: 60`. **D (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | 🟡 Backend ghi ✅ Đã xong 100% · client soát 2026-10-18: đạt A2, B, C; còn A1 (controller), A3, A4, A5, A6 (tuỳ chọn), D (0 / 12) — banner tệp · **phần client (bốn việc) xong 2026-10-20 — G89**, phần dư backend giữ nguyên |
 | **44** | [SOAT_SAU_GOP_D72CCD45.md](./SOAT_SAU_GOP_D72CCD45.md) | Backend | **A (cao)** Đánh số lại hai tệp migration thanh toán (thành 28 và 29, tránh trùng 20, 24); trả `apply_migration_20.js` về `Server_update_at`. **B (vừa)** Webhook Idempotency không ghi đè đơn `REFUNDED`/`CANCELLED`. **C (vừa)** Tra mã nhận diện theo token cuối của nội dung. **D (vừa)** Nới `payment_order.status` lên VARCHAR(25). **E (thấp)** `accept` bắt buộc boolean. **F (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | 🟡 Backend ghi ✅ Đã xong 100% · client soát 2026-10-18: đạt A, C, D, E, F; B còn hai vế — banner tệp |
 | **45** | [TAT_NHAC_HOA_DON_QUA_DONG_BO.md](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) | Backend | `sync.repository.js`: hoá đơn `time_notification` — tạo ~:471 `\|\| '3'` và cập nhật ~:497 `?? existing` nuốt NULL (= tắt nhắc ở client); ~:98 `String(null)` thành `"null"`. Đổi sang `!== undefined ? … : …`. Đo dev: 37 hoá đơn sống, 0 NULL (hệ quả của phép ép). Client đã làm phần mình (`d657b065`, tắt là tắt thật); tới khi sửa, tắt nhắc bị đảo sau một vòng đồng bộ. | ⏳ Chờ backend |
 | **46** | [NOTIFICATION_CLIENT_APP_LECH_MA.md](./NOTIFICATION_CLIENT_APP_LECH_MA.md) | Backend (chữ) | Sửa `docs/Notification/Notification_Client-app.md` theo bảng của đơn (~30 chỗ, bốn nhóm: đường dẫn · hàm / route · con số · hành vi; nhãn [cũ] / [mới]); phần phía backend ghi riêng, ngắn. Kiểm lại bằng một câu `grep` ra 0 dòng. Không đổi mã; không chặn client. | ⏳ Chờ |

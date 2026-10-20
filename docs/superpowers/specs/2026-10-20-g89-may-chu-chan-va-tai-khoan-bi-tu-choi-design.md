@@ -1,7 +1,6 @@
 # G89 + phần client của đơn 43 — máy chủ chặn (bảo trì / phong toả) và tài khoản bị từ chối
 
-**Ngày:** 2026-10-20 · **Nhánh:** `TranQuangDat` · **Trạng thái:** đã duyệt từng phần trong phiên (A · B · C), chờ người dùng
-duyệt bản viết. **Phạm vi do người dùng chốt 2026-10-18:** một lượt gồm G89 (`docs/CLIENT_APP_KNOWN_GAPS.md`) và ba việc client
+**Ngày:** 2026-10-20 · **Nhánh:** `TranQuangDat` · **Trạng thái:** người dùng duyệt bản viết 2026-10-20; thi công xong 2026-10-20 (12 commit `627850d6..98d58c64`). **Phạm vi do người dùng chốt 2026-10-18:** một lượt gồm G89 (`docs/CLIENT_APP_KNOWN_GAPS.md`) và ba việc client
 của đơn 43 (`docs/superpowers/backend/CAN-LAM/SOAT_SAU_GOP_CD2EE572.md`): xét lại xoá SQLite khi `ACCOUNT_DELETED` · `connect_error`
 có `data.code` → dừng nối lại + đăng xuất · `account.downgraded` → làm mới gói. Phần dư của đơn 43 phía backend **không** chặn lượt
 này (người dùng chốt 2026-10-18).
@@ -101,7 +100,7 @@ class TrangThaiMayChu extends ValueNotifier<TinhTrangMayChu> { ... }   // DI, s�
   **server** — máy chạy nhanh giờ, hoặc 403 cũ về muộn, là mốc đã qua → thử ngay → 403 → thử ngay: vòng request dồn dập vào đúng
   IP mà AIOps đang theo dõi vì nghi DoS. Đây là kết cục duy nhất tính năng này không được phép sinh ra.
 - Lượt bị chặn kết thúc bằng `SyncStatus.pending` (như mất mạng), **không** `error` — toast lý do do `TrangThaiMayChu` phát
-  (mục 4.2); để `error` là `AppToast` hiện thêm toast *thất bại* chung chồng lên.
+  (mục 4.2); để `error` là bộ quét thông báo nổ "Đồng bộ hỏng" (`NotificationKind.syncFailed`) — `AppToast` không đọc `SyncStatus`.
 - Thao tác đẩy hỏng lúc bảo trì vẫn `transient` (không đổi `GuiLoDongBo`).
 - Hệ quả: tắt bảo trì xong khoảng 1 phút dữ liệu lên server, dòng nhắc ẩn.
 - ⚠️ Quy ước *payload socket là hộp đen* giữ nguyên: **không** nghe `system.maintenance_changed` / `system.broadcast` (quyết
@@ -221,4 +220,49 @@ Mọi ca canh phải thử bằng một bản sai và thấy đỏ.
 
 ## 11. Chỗ bản thi công khác bản viết
 
-*(điền khi thi công)*
+Đánh số theo thứ tự thi công (đếm 2026-10-20).
+
+1. **`/auth/refresh` tới interceptor gián tiếp.** Nó đi Dio riêng của `AuthInterceptor`; 503 của nó chỉ tới `MayChuInterceptor` vì
+   lỗi được chép sang request gốc (`_loiTamThoiChoRequest`) — nên interceptor phải đứng **sau** `AuthInterceptor`. Lượt phát lại
+   thành công sau làm mới token đi `handler.resolve` → không qua `onResponse` → 2xx ấy không xoá dòng nhắc; request kế xoá.
+2. **Chỉ ghi từ request mang phiên** (header `Authorization`). Đăng nhập / đăng ký / quên mật khẩu không ghi — tránh toast
+   *"Chưa đồng bộ được…"* chồng lên câu lỗi màn Đăng nhập. Mục 3.2 ghi *"phủ … đăng nhập"*.
+3. **Lý do kết thúc `pending`**: `error` làm `NotificationScanner` nổ `NotificationKind.syncFailed` (không phải `AppToast`).
+   Hệ quả: chu kỳ bị chặn không kích hoạt lượt quét thông báo (vẫn quét lúc mở app / `resumed`); thông báo "Đồng bộ hỏng" không
+   nổ lúc bảo trì (hôm nay có).
+4. **Chỉ tính lời chặn ghi TRONG chu kỳ** (`identical` với trạng thái lúc vào chu kỳ) — một 503 cũ còn sót không biến lỗi mạng
+   thường thành hẹn 30 s. Hai lớp chặn vì thế không có constructor `const`.
+5. **Lượt bị chặn không đụng `_nextAllowedSyncAt` / `_consecutiveFailures`** — để đổi mạng thử ngay; mốc bảo trì trượt theo mỗi
+   503 mới (vô hại).
+6. **Dòng nhắc phong toả khi giờ đã qua** → biến thể không giờ (không hứa một giờ đã trôi). Câu màn Đăng nhập cùng luật.
+7. Hàm thêm ngoài spec: `mocThuLaiKhiBiChan` (sàn ở MỘT chỗ), `chuGioHetHan`, `DateFormatter.formatTime` / `formatTimeDayMonth`.
+8. **Ca canh "interceptor chỉ gắn vào `DioClient`"** là **test quét 36**; `DioClient` tự dựng interceptor từ tham số
+   `trangThaiMayChu` + `khiBiTatQuyen` (DI không dựng nó).
+9. **Hình dạng `connect_error` đã đo bằng mã** (người dùng cho phép đọc pub cache 2026-10-20): `socket.io` 4.8.3 gửi
+   `{message, data}`, `socket_io_client` 3.1.6 chuyển nguyên lên handler → dạng lồng. Bộ đọc giữ thêm nhánh phẳng (giao thức 3).
+   Nghiệm thu (3) chỉ còn xác nhận trên máy.
+10. **Lỗi SSE** (trợ lý online, body là luồng) không phân loại được — trợ lý đã tự rơi về mô hình trên máy.
+11. `AppDatabase.purgeDataForAccount` gỡ hẳn cùng `purge_data_for_account_test.dart` và năm ca schema (đo lúc lập kế hoạch: ngoài
+    DI chỉ test của chính nó gọi).
+12. Toast dùng bậc + nguồn **đồng bộ** có sẵn; màu `AppColors.warning` (bảo trì) / `AppColors.expense` (phong toả).
+13. Engine nền (`cheDoNen`) cũng gắn interceptor + hook (trạng thái RAM riêng isolate; `lamMoi` ở nền vô hại).
+14. **Trần `Retry-After` 1 ngày** (`kTranRetryAfter`, `trang_thai_may_chu.dart`): `Retry-After` dài hơn 86.400 s → 60 s mặc
+    định. Lý do: review Task 2 đo `'9000000000000'` làm `DateTime.add` ném `RangeError` ra khỏi interceptor. Thêm cùng commit
+    Task 3 (`4782f447`).
+15. **Interceptor không bao giờ đổi lỗi của nơi gọi** (`6aad1f12`): phân loại + hook `khiBiTatQuyen` (và thân `onResponse`) bọc
+    `try/catch` có log; `retry-after` đọc dạng danh sách lấy phần tử đầu — `Headers.value` của Dio NÉM khi header lặp (đo bằng
+    script Dio 5.11). Màn Đăng nhập đọc cùng cách (`98d58c64`).
+16. **Bản sai "bỏ `maxLines: 1` → đỏ" của kế hoạch không thể đỏ**: `maxLines: 1` và `overflow: ellipsis` thay được cho nhau
+    (ellipsis tự cắt ở dòng tràn đầu khi `maxLines` null). Ca 320 dp canh bằng bản sai bỏ CẢ HAI, ở cỡ chữ 1,0 và 1,5
+    (`fe3da95b`). Tiêu đề rộng tự nhiên 331 px trong vùng chữ 206 px (font test).
+17. **Ca màn Đăng nhập "giờ phong toả đã qua"** thêm sau review (`98d58c64`) — nhánh `isAfter` trước đó không ca nào phân biệt.
+18. **Hình dạng `connect_error`** đo bằng mã gói: `socket.io` 4.8.3 `namespace.js:229-238` gửi `{message, data}`;
+    `socket_io_client` 3.1.6 `socket.dart:426-429` chuyển nguyên `packet['data']`. Bộ đọc giữ nhánh phẳng cho giao thức 3.
+    (Thay cho điều "chưa đo" ở bản viết.)
+19. **Task 5 không có bước RED thật** (mã viết trước test) — bù bằng ba bản sai đỏ; ca "start() lại sau khi bị từ chối" chạy async
+    thật thay FakeAsync (cancel của luồng kết nối giả hoàn tất bằng future null dùng chung của SDK, FakeAsync không bơm được).
+
+Ghi nhận cho người đọc sau: (a) lúc máy chủ chặn, `SyncEngine` không dựng `_nextAllowedSyncAt` → mọi nguồn kích hoạt gửi request
+thẳng, sàn 30 s chỉ áp cho hẹn giờ (đánh đổi "đổi mạng thử ngay"); (b) toast bảo trì có thể không hiện cả đợt nếu lúc 503 đầu
+đang có toast phản hồi bậc cao (chính sách `_hien` không xếp hàng) — dòng nhắc Trang chủ vẫn nói trạng thái; (c) `idaccount`
+trong lời từ chối bắt tay khác phiên → bỏ qua và vẫn nối lại mỗi 60 s (khuôn `force_logout`).

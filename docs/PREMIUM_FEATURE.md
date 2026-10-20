@@ -110,6 +110,7 @@ presentation/ bloc/goi_cubit.dart (singleton, gốc cây) · bloc/phien_goi_tu_a
 ```
 
 Sửa nơi khác: `RealtimeEvent.taiKhoanNangCap` (`account.upgraded`, `canDongBoLai false`, `loiNhan null`) ·
+`RealtimeEvent.taiKhoanHaCap` (`account.downgraded` — tín hiệu im như `taiKhoanNangCap`, làm mới gói; G89 2026-10-20) · hook `khiBiTatQuyen` của `MayChuInterceptor` (403 `FEATURE_DISABLED` → làm mới gói, giãn 30 s; G89) ·
 `RealtimeEvent.donThanhToanDoi` (sáu tên `payment.*`, cùng khuôn tín hiệu im; `GoiRepository` **không** nghe nó) ·
 `MainActivity.kt` (kênh `flowmoney/luu_anh`, phương thức `luuAnh` → `luuAnhVaoThuVien`, cạnh `luuVaoTaiVe`) ·
 `UserModel.loaiTaiKhoan` (`type` của `/auth/*`) · `app_router.dart` (3 `redirect` + 4 route `/premium*`) ·
