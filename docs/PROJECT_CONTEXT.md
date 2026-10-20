@@ -619,7 +619,7 @@ src/Backend/
 ### 🛡️ G89 — máy chủ chặn + phần client đơn 43 (2026-10-20) — ✅ ĐÓNG, chờ nghiệm thu máy
 
 Spec `docs/superpowers/specs/2026-10-20-g89-may-chu-chan-va-tai-khoan-bi-tu-choi-design.md` (người dùng duyệt bản viết 2026-10-20;
-Stitch **`006c5a2eafc9461ab630163d1ff85de9`** *"Trang chủ - Dòng nhắc máy chủ (3 biến thể)"*). **12 commit `627850d6..98d58c64`.**
+Stitch **`006c5a2eafc9461ab630163d1ff85de9`** *"Trang chủ - Dòng nhắc máy chủ (3 biến thể)"*). **12 commit `b7ca4512..98d58c64`.**
 Việc đã làm: (1) `ACCOUNT_DELETED` **không** xoá SQLite ở mọi nguồn (`purgeDataForAccount` / `PhienDieuPhoi.xoaDuLieu` gỡ);
 (2) `TrangThaiMayChu` ở `core/network` + `MayChuInterceptor` ở `core/api/interceptors/` (đứng sau `AuthInterceptor`, chỉ ghi từ
 request mang phiên; quét 36 canh chỉ `DioClient` dựng nó); (3) `SyncEngine`: lượt bị chặn kết thúc `pending`, không tính lượt

@@ -1,6 +1,6 @@
 # G89 + phần client của đơn 43 — máy chủ chặn (bảo trì / phong toả) và tài khoản bị từ chối
 
-**Ngày:** 2026-10-20 · **Nhánh:** `TranQuangDat` · **Trạng thái:** người dùng duyệt bản viết 2026-10-20; thi công xong 2026-10-20 (12 commit `627850d6..98d58c64`). **Phạm vi do người dùng chốt 2026-10-18:** một lượt gồm G89 (`docs/CLIENT_APP_KNOWN_GAPS.md`) và ba việc client
+**Ngày:** 2026-10-20 · **Nhánh:** `TranQuangDat` · **Trạng thái:** người dùng duyệt bản viết 2026-10-20; thi công xong 2026-10-20 (12 commit `b7ca4512..98d58c64`). **Phạm vi do người dùng chốt 2026-10-18:** một lượt gồm G89 (`docs/CLIENT_APP_KNOWN_GAPS.md`) và ba việc client
 của đơn 43 (`docs/superpowers/backend/CAN-LAM/SOAT_SAU_GOP_CD2EE572.md`): xét lại xoá SQLite khi `ACCOUNT_DELETED` · `connect_error`
 có `data.code` → dừng nối lại + đăng xuất · `account.downgraded` → làm mới gói. Phần dư của đơn 43 phía backend **không** chặn lượt
 này (người dùng chốt 2026-10-18).

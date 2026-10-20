@@ -1,6 +1,6 @@
 # Backend & Client — DANH SÁCH CẦN LÀM (5 mục chờ backend — mục 43, 44, 45, 46, 47)
 
-> ✅ **Client xong phần của mục 43, 2026-10-20 (G89, 12 commit `627850d6..98d58c64`).** Bốn việc client của đơn: `ACCOUNT_DELETED`
+> ✅ **Client xong phần của mục 43, 2026-10-20 (G89, 12 commit `b7ca4512..98d58c64`).** Bốn việc client của đơn: `ACCOUNT_DELETED`
 > không còn xoá SQLite ở mọi nguồn · `connect_error` có `data.code` → đăng xuất + dừng nối lại · `account.downgraded` → làm mới gói ·
 > dòng nhắc Trang chủ / toast / câu màn Đăng nhập khi 503 `MAINTENANCE_MODE` hoặc 403 `AIOPS_QUARANTINED`. Client **không xin backend
 > gì thêm**; sáu việc dư phía backend ở banner bên dưới giữ nguyên.
