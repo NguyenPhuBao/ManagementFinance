@@ -614,7 +614,33 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-19)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-20)
+
+### 🌱 Bộ gieo danh mục mặc định chạy sau MỖI lượt kéo về (2026-10-20) — quy tắc 8 khớp mã
+
+Review toàn nhánh tách SyncEngine bắt: quy tắc 8 `CLAUDE.md` và spec `2026-09-07-per-account-default-categories-design.md`
+(mục 5 + đoạn cuối) nói bộ gieo là *"phép đối chiếu chạy sau **mọi** lần pull"*, nhưng mã chỉ gieo **một lần mỗi phiên**
+(`PhienDieuPhoiThat.batDongBo`, sau `start()` khi `hasCompletedPull`; trước đợt bịt điểm rò 2026-10-10 là `AuthBloc`, cùng luật).
+Hệ quả người dùng thấy: lượt kéo đầu lúc đăng nhập hỏng (mạng chập chờn) → màn Danh mục **rỗng** cả phiên, kể cả khi lượt đồng
+bộ nền sau đó kéo về được; danh mục mặc định server thêm sau chỉ tới ở lần mở app kế. Người dùng chốt **sửa mã cho khớp luật**.
+
+- **Cổng `SyncEngine.sauKeoVe`** (`Future<int> Function(int idaccount)?`, constructor, khuôn `soDuVi` / `viBiGiu`; DI nối
+  `DefaultCategorySeeder.seedForAccount` — `core/sync` không biết tên mảng). `_runSync` gọi nó ngay **sau Pull, trước lần thử
+  đẩy lại**, chỉ khi `soLanKeoVeXong` **vừa tăng** (không xét `hasCompletedPull` — đúng mãi sau lượt đầu, còn Pull nuốt lỗi),
+  với `idaccount` của **chu kỳ** (đúng cả `syncMotLuot` → lượt nền cũng gieo). Ba chốt ở `_sauMoiLuotKeoVe`: chạy trong cờ
+  `syncing` (không gieo chồng — dạng G16); phiên đóng giữa lượt kéo thì bỏ; lỗi chỉ `debugPrint`, chu kỳ vẫn `idle` (lượt kéo sau
+  thử lại). Trả > 0 → `scheduleSync()` như `_taoBanSao` cũ.
+- **`PhienDieuPhoiThat`** gỡ hook `taoBanSaoDanhMuc` + `_taoBanSao`; `batDongBo(cho: true)` vẫn `await start()` — `start()` đợi
+  chu kỳ đầu nên đường đăng nhập vẫn có bản sao trước `AuthSuccess` khi lượt kéo ấy thành công. Getter `hasCompletedPull`
+  **giữ** (ca canh G14 `8889bb72`).
+- **Test:** `test/core/sync/sync_gieo_sau_keo_ve_test.dart` **7 ca** (engine thật, Dio giả: lượt đầu hỏng → lượt sau có bản
+  sao · đúng một lần mỗi lượt kéo xong · sau Pull · luỹ đẳng + hẹn đẩy chỉ khi tạo mới · lỗi không làm chu kỳ `error` · phiên đóng
+  giữa lượt kéo · không nối cổng); thử **sáu** bản sai (gác `daKeoXong`, bỏ chốt phiên, `rethrow`, bỏ hẹn, hẹn khi 0, không gọi)
+  — mỗi bản đỏ đúng ca. `phien_dieu_phoi_that_test`: ba ca bản sao → hai ca *đợi / không đợi chu kỳ đầu* (bản sai `unawaited`
+  ở đường `cho` → đỏ). ⚠️ `AppDatabase.forTesting` có sẵn bộ mặc định cục bộ — ca dùng bộ gieo thật đòi *có* bản sao, không
+  đòi đúng một hàng.
+- **Số đo:** `flutter test` **7.528 pass / 10 skip / 0 fail** (5 ph 33 s; +6); `flutter analyze` **20** (không đổi);
+  `sync_engine.dart` 506 → **535** dòng; `ap_du_lieu_keo_ve.dart` không đụng (743).
 
 ### ♻️ Tách SyncEngine (2026-10-19) — `SyncEngine` + ba lớp cộng tác + bốn tệp hàm thuần, quét 34
 

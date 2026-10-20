@@ -683,7 +683,8 @@ theo. **Đo được 2026-09-07 trên `emulator-5554`:** server có **18** hàng
 máy ấy tạo được **13** bản sao (hai trong số còn lại bị chặn đúng luật vì tài
 khoản từng có bản riêng cùng tên; ba cái còn lại đơn giản là chưa từng về máy).
 
-**Vì sao không sửa ngay:** bước seed chạy sau **mọi** lần pull và luỹ đẳng, nên
+**Vì sao không sửa ngay:** bước seed chạy sau **mọi** lần pull và luỹ đẳng (⚠️ câu này chỉ
+đúng với mã từ 2026-10-20 — cổng `SyncEngine.sauKeoVe`; trước đó mã gieo một lần mỗi phiên, sau `start()`), nên
 khi một hàng mặc định thật sự về máy thì bản sao được tạo ở lượt kế tiếp. Người
 dùng không mất gì — họ chỉ có ít danh mục dựng sẵn hơn, và tự thêm được.
 
