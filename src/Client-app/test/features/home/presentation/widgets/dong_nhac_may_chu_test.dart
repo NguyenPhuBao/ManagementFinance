@@ -81,17 +81,23 @@ void main() {
     expect(the, findsNothing);
   });
 
-  testWidgets('320 dp: không tràn; tiêu đề MỘT dòng (đo chiều cao thật), dòng phụ được xuống dòng', (t) async {
+  /// Tiêu đề phải MỘT dòng. `maxLines: 1` và `overflow: ellipsis` THAY ĐƯỢC CHO NHAU (maxLines null thì ellipsis tự cắt ở
+  /// dòng tràn đầu tiên) nên bỏ riêng một cái vẫn xanh — bản sai phải bỏ CẢ HAI. Vùng chữ ở 320 dp = 206 px (viền 1 px mỗi
+  /// bên); bề rộng tự nhiên của tiêu đề 331 px (cỡ 1,0) / 494 px (cỡ 1,5). Bỏ cả hai: cỡ 1,0 → 32 px (hai dòng), 1,5 → 72 px.
+  Future<void> tieuDeMotDong(WidgetTester t, double chuTo) async {
     tt.value = MayChuPhongToa(hetHanLuc: DateTime(2026, 10, 21, 9, 0));
-    await dung(t, rong: 320, chuTo: 1.5);
+    await dung(t, rong: 320, chuTo: chuTo);
     expect(t.takeException(), isNull);
-    // Font thật của app hẹp hơn Ahem: ở 320 dp × cỡ chữ 1,0 tiêu đề vừa MỘT dòng kể cả khi thiếu maxLines (bản sai không đỏ),
-    // nên phóng chữ 1,5 (cỡ hệ thống người dùng hay đặt) để tiêu đề (≈ 308 px) vượt vùng chữ (208 px).
-    expect(t.getSize(find.text('Mạng này đang bị tạm chặn')).height, lessThan(13 * 1.5 * 1.25 * 1.5),
+    final mot = 13 * chuTo * 1.25;
+    expect(t.getSize(find.text('Mạng này đang bị tạm chặn')).height, lessThan(mot * 1.5),
         reason:
-            'Text ngắt dòng IM LẶNG (không sọc vàng) — chỉ chiều cao thật bắt được. Một dòng = 13 × 1,5 × 1,25 = 24,4; '
-            'hai dòng = 48,8 — bỏ maxLines là hai dòng');
-  });
+            'Text ngắt dòng IM LẶNG (không sọc vàng) — chỉ chiều cao thật bắt được. Một dòng ≈ $mot; bỏ cả maxLines lẫn '
+            'overflow thì tiêu đề xuống dòng (32 px ở cỡ 1,0; 72 px ở cỡ 1,5)');
+  }
+
+  testWidgets('320 dp, cỡ chữ mặc định: không tràn; tiêu đề MỘT dòng', (t) => tieuDeMotDong(t, 1));
+
+  testWidgets('320 dp, chữ phóng 1,5: không tràn; tiêu đề MỘT dòng', (t) => tieuDeMotDong(t, 1.5));
 
   testWidgets('chưa đăng ký TrangThaiMayChu và không truyền → không dựng (test cũ Trang chủ không đổi)', (t) async {
     await t.pumpWidget(const MaterialApp(home: Scaffold(body: DongNhacMayChu())));
