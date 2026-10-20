@@ -582,6 +582,26 @@ void main() {
       expect(han('để dành 20 triệu đi du lịch trong một năm', '30/09/2027'), DateTime(2027, 9, 30),
           reason: '"một năm" bị gọt nhưng "trong" còn lại');
     });
+    test('⚠️ G99: mốc BẮT ĐẦU ("kể từ tháng sau") không phải hạn — hạn mô hình bịa bị bỏ', () {
+      // Realme (CPU) 2026-10-20: mô hình trả han 30/06/2027 cho câu chỉ nêu mốc bắt đầu; chữ "thang" của "tháng sau"
+      // làm câu thành "câu nói thời gian" nên hạn bịa lọt lưới — thẻ in "hạn 30/06/2027".
+      DateTime? han(String c, String h) => (doc(c, ai(han: h)) as LenhTaoMucTieu).han;
+      const boMocBatDau = [
+        'ke tu thang sau de danh 2 trieu moi thang', // nguyên văn câu đo
+        'kể từ tháng sau để dành 2 triệu mỗi tháng',
+        'bắt đầu từ tuần sau để dành 200k mỗi tuần', // "đầu" cũng là chữ thời gian — phải nằm trong cụm bị gạt
+        'từ tháng sau để dành 1 triệu mỗi tháng',
+        'bat dau tu thang 11 de danh 1 trieu moi thang',
+        'kể từ đầu tháng sau để dành 2 triệu mỗi tháng',
+        'từ ngày 1/11 để dành 500k mỗi tuần', // dấu "/" của mốc bắt đầu không phải dấu của một hạn
+        'kể từ tháng 11 năm sau để dành 2 triệu mỗi tháng',
+      ];
+      final lot = [for (final c in boMocBatDau) if (han(c, '30/06/2027') != null) c];
+      expect(lot, isEmpty, reason: 'câu chỉ nêu lúc BẮT ĐẦU góp thì hạn mô hình đưa ra là bịa');
+      expect(han('từ tháng sau để dành 10 triệu đi du lịch trước tết', '10/02/2027'), DateTime(2027, 2, 10),
+          reason: 'gạt mốc bắt đầu rồi câu VẪN còn chữ thời gian ("trước tết") → nhận');
+      expect(han('ke tu thang sau de danh 10 trieu di du lich truoc tet', '10/02/2027'), DateTime(2027, 2, 10));
+    });
     test('không ô nào từ AI → nguon luat', () {
       final l = doc('tạo hoá đơn gym 300k ngày 5 hằng tháng',
           ai(loai: LoaiLenhTao.hoaDon, ten: 'gym', soTien: 300000, chuKy: 'thang', ngayGoc: 5)) as LenhTaoHoaDon;

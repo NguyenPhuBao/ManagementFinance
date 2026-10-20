@@ -566,11 +566,22 @@ final RegExp _mauCumChuKy = RegExp(
   unicode: true,
 );
 
-/// Câu có nhắc một thời điểm / khoảng thời gian — xét SAU khi bỏ các cụm chu kỳ. Đo OnePlus (GPU) 2026-10-02: *"tiet
-/// kiem 2 trieu moi thang cho chuyen du lich"* → mô hình trả hạn 01/01/2027; chữ *thang* của *"moi thang"* làm câu
-/// thành "câu nói thời gian" và hạn bịa lọt lưới.
+/// Cụm MỐC BẮT ĐẦU — *kể từ tháng sau · bắt đầu từ tuần sau · từ ngày 1/11 · từ đầu tháng 11 năm sau* — nói lúc bắt đầu
+/// góp, không nói hạn (G99, đo Realme 2026-10-20: *"ke tu thang sau de danh 2 trieu moi thang"* → mô hình trả hạn
+/// 30/06/2027 và lọt lưới). `tu` trần chỉ khớp khi ngay sau là đơn vị thời gian + mốc, nên *"tư"* / *"tự"* không vướng.
+final RegExp _mauMocBatDau = RegExp(
+  r'(?<![\p{L}\p{N}])(?:kể\s+từ|bắt\s+đầu\s+từ|bắt\s+đầu|từ|ke\s+tu|bat\s+dau\s+tu|bat\s+dau|tu)\s+'
+  r'(?:(?:đầu|cuối|dau|cuoi)\s+)?(?:tuần|tháng|quý|năm|ngày|tuan|thang|quy|nam|ngay)\s+'
+  r'(?:sau|tới|này|toi|nay|\d{1,2}(?:\s*/\s*\d{1,4})?)'
+  r'(?:\s+(?:năm|nam)\s+(?:sau|tới|nay|toi|\d{4}))?(?![\p{L}\p{N}])',
+  unicode: true,
+);
+
+/// Câu có nhắc một thời điểm / khoảng thời gian — xét SAU khi bỏ các cụm chu kỳ và cụm mốc bắt đầu. Đo OnePlus (GPU)
+/// 2026-10-02: *"tiet kiem 2 trieu moi thang cho chuyen du lich"* → mô hình trả hạn 01/01/2027; chữ *thang* của *"moi
+/// thang"* làm câu thành "câu nói thời gian" và hạn bịa lọt lưới. Mốc bắt đầu cùng bệnh (G99).
 bool _cauNoiThoiGian(String s) {
-  final thuong = s.toLowerCase().replaceAll(_mauCumChuKy, ' ');
+  final thuong = s.toLowerCase().replaceAll(_mauCumChuKy, ' ').replaceAll(_mauMocBatDau, ' ');
   if (thuong.contains('/')) return true;
   final tu = thuong.split(_tachTu);
   return thuong != removeVietnameseTones(thuong)
