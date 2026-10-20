@@ -69,8 +69,9 @@ TinhTrangMayChu? phanLoaiPhanHoi({required int? status, Object? body, String? re
 class TrangThaiMayChu extends ValueNotifier<TinhTrangMayChu> { ... }   // DI, sống trong bộ nhớ
 ```
 
-- 503 ∧ `body['code'] == 'MAINTENANCE_MODE'` → `MayChuBaoTri(thuLaiLuc: bayGio + Retry-After)`; `Retry-After` thiếu / không phải
-  số nguyên dương → **60 giây**.
+- 503 ∧ `body['code'] == 'MAINTENANCE_MODE'` → `MayChuBaoTri(thuLaiLuc: bayGio + max(Retry-After, kSanThuLai))`; `Retry-After`
+  thiếu / không phải số nguyên dương → **60 giây**. **`kSanThuLai` = 30 giây** — server hôm nay gửi hằng 60, nhưng một bản sau
+  gửi `Retry-After: 1` thì không có sàn là vòng request mỗi giây.
 - 403 ∧ `body['code'] == 'AIOPS_QUARANTINED'` → `MayChuPhongToa(hetHanLuc: parse(quarantineExpiresAt))`; thiếu / rác → `null`.
 - Chỉ đọc `code` ở **cấp gốc** của body là `Map`; mọi phản hồi khác trả `null` — kể cả 503 quá tải, 503 không `code`, 403
   `FEATURE_DISABLED`, 403 trạng thái tài khoản lúc đăng nhập. **Không bao giờ phân loại theo mã HTTP một mình.**
@@ -83,6 +84,9 @@ class TrangThaiMayChu extends ValueNotifier<TinhTrangMayChu> { ... }   // DI, s�
 - Gắn vào Dio chung của app (`DioClient`), cạnh `AuthInterceptor`, không đụng nó.
 - `onError`: `phanLoaiPhanHoi(...)` khác `null` → ghi vào `TrangThaiMayChu`.
 - `onResponse` 2xx → `MayChuBinhThuong` (dòng nhắc tự ẩn).
+- **Giả định ghi rõ:** Dio chung **chỉ** nói chuyện với backend của app — host bên thứ ba đã cấm trên nó (`AuthInterceptor` gắn
+  token người dùng cho mọi host; bộ tải ảnh / mô hình dùng Dio riêng). Một lời gọi CDN đi qua Dio chung sẽ trả 2xx và **xoá nhầm**
+  dòng nhắc; ca test canh rằng interceptor chỉ gắn vào `DioClient`.
 - Phủ mọi request đi qua Dio chung: đồng bộ (đẩy **và** kéo), Trợ lý online, thanh toán, đăng nhập, `/auth/refresh`.
 - Cũng là chỗ bắt 403 `FEATURE_DISABLED` cho mục 6.2 (hook, không ghi trạng thái máy chủ).
 
@@ -91,8 +95,11 @@ class TrangThaiMayChu extends ValueNotifier<TinhTrangMayChu> { ... }   // DI, s�
 - Không truyền → hành vi y như cũ (test cũ không đổi). DI truyền bản thật.
 - Cuối `_runSync`, nếu trạng thái là `MayChuBaoTri` → **không** `_registerFailedCycle`, hẹn thử lại đúng `thuLaiLuc` qua
   `_scheduleBackoffRetry` sẵn có (getter `backoffRetryAt` đo được). Áp cả khi **không có gì để đẩy** mà lượt kéo nhận 503.
-- `MayChuPhongToa` có `hetHanLuc` → như trên, hẹn đúng `hetHanLuc`. Đổi mạng (`onConnectivityChanged`) thử ngay vì không còn
-  giãn cách chặn. `hetHanLuc == null` → giãn cách như hôm nay.
+- `MayChuPhongToa` có `hetHanLuc` → như trên, hẹn lúc **`max(hetHanLuc, bayGio + kSanThuLai)`**. Đổi mạng (`onConnectivityChanged`)
+  thử ngay vì không còn giãn cách chặn. `hetHanLuc == null` → giãn cách như hôm nay.
+- ⚠️ **Sàn là bắt buộc**: `_scheduleBackoffRetry` với mốc ở quá khứ hẹn `Duration.zero` (đọc mã 2026-10-20). `hetHanLuc` là giờ
+  **server** — máy chạy nhanh giờ, hoặc 403 cũ về muộn, là mốc đã qua → thử ngay → 403 → thử ngay: vòng request dồn dập vào đúng
+  IP mà AIOps đang theo dõi vì nghi DoS. Đây là kết cục duy nhất tính năng này không được phép sinh ra.
 - Lượt bị chặn kết thúc bằng `SyncStatus.pending` (như mất mạng), **không** `error` — toast lý do do `TrangThaiMayChu` phát
   (mục 4.2); để `error` là `AppToast` hiện thêm toast *thất bại* chung chồng lên.
 - Thao tác đẩy hỏng lúc bảo trì vẫn `transient` (không đổi `GuiLoDongBo`).
@@ -143,6 +150,8 @@ Trợ lý online đã rơi về mô hình trên máy khi máy chủ hỏng (mụ
   NguonBuocDangXuat.socket)` (`lib/core/auth/buoc_dang_xuat.dart` — cùng khoá `code` · `idaccount` · `reason_inactive` ở cấp
   gốc như body 401) → phát lên `buocDangXuat` (đường `account.force_logout` đang dùng) và **dừng nối lại** tới lần `start()`
   sau. `idaccount` khác phiên → bỏ qua (khuôn `force_logout`).
+- `loiNhan` ra rỗng (câu nằm ở `err.message` dạng *"Authentication error: …"*, không nằm trong `data` — cố ý không đọc tiền tố ấy)
+  → `HopThoaiBiDayRa` dùng câu mặc định theo lý do, như 401 không kèm câu.
 - Lỗi không `data` → giãn cách nối lại như cũ.
 - ⚠️ **Chưa đo** gói `socket_io_client` chuyển lỗi `connect_error` lên Dart bằng hình dạng nào (`Map` có `data`? chuỗi?). Kế
   hoạch có bước đo trên máy / bằng ca test với payload thật trước khi viết bộ đọc; bộ đọc phải chịu cả hai dạng.
@@ -163,6 +172,9 @@ Trợ lý online đã rơi về mô hình trên máy khi máy chủ hỏng (mụ
   hộp thoại, chữ không đổi. Dữ liệu nằm lại tới khi tài khoản khác đăng nhập trên máy (`purgeDataForOtherAccounts`).
 - Gỡ chuỗi chết: `PhienDieuPhoi.xoaDuLieu` + bản thật, tham số `xoaBanSao` của `PhienDieuPhoiThat` + DI; `AppDatabase.
   purgeDataForAccount` nếu ngoài test của chính nó không còn chỗ gọi (đo lúc lập kế hoạch) — kèm docstring năm bảng nhắc tên hàm.
+  Bốn tệp test nhắc `xoaDuLieu` / `xoaBanSao` (đo 2026-10-20): `core/auth/phien_dieu_phoi_that_test.dart`,
+  `features/auth/auth_bloc_buoc_dang_xuat_test.dart`, `features/auth/auth_bloc_cho_xoa_test.dart`,
+  `features/auth/session_validation_test.dart`.
 - Chú thích cũ *"Đừng gỡ điều kiện `nguon != lamMoi`"* thay bằng lý do mới (luật một cho ba nguồn, người dùng chốt 2026-10-20).
 
 ## 8. Kiểm thử và nghiệm thu (Phần C.4)
@@ -170,7 +182,9 @@ Trợ lý online đã rơi về mô hình trên máy khi máy chủ hỏng (mụ
 Mọi ca canh phải thử bằng một bản sai và thấy đỏ.
 
 - `phanLoaiPhanHoi`: bảng ca — 503 có / không `code` / `code` khác; 403 `AIOPS_QUARANTINED` / `FEATURE_DISABLED` / tài khoản;
-  body không phải `Map`; `Retry-After` số / thiếu / rác / âm; `quarantineExpiresAt` có / `null` / rác.
+  body không phải `Map`; `Retry-After` số / thiếu / rác / âm / **`1` (→ sàn 30 s)**; `quarantineExpiresAt` có / `null` / rác.
+- **Sàn thử lại**: phong toả với `hetHanLuc` ở **quá khứ** → `backoffRetryAt == bayGio + 30 s` (bản sai bỏ `max` → hẹn ngay, đỏ);
+  `Retry-After: 1` → `thuLaiLuc == bayGio + 30 s`.
 - `MayChuInterceptor`: lỗi được phân loại → ghi; 2xx → xoá; lỗi không phân loại → giữ; `FEATURE_DISABLED` → hook, giãn 30 s.
 - `SyncEngine`: bảo trì → `consecutiveFailures` không tăng, `backoffRetryAt == thuLaiLuc`; chỉ lượt kéo 503 (không thao tác
   chờ) cũng hẹn; phong toả có / không giờ; không cổng → như cũ.

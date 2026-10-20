@@ -616,6 +616,14 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-20)
 
+### 📝 Spec G89 + phần client đơn 43 (2026-10-20) — chờ duyệt bản viết, chưa thi công
+
+Spec `docs/superpowers/specs/2026-10-20-g89-may-chu-chan-va-tai-khoan-bi-tu-choi-design.md` (người dùng duyệt ba phần A · B · C
+trong phiên; Stitch **`006c5a2eafc9461ab630163d1ff85de9`** *"Trang chủ - Dòng nhắc máy chủ (3 biến thể)"*). Năm quyết định ở mục 1
+spec: dòng nhắc Trang chủ · bảo trì / phong toả không tính lượt hỏng (sàn thử lại 30 s) · phong toả nêu giờ hết hạn ·
+`ACCOUNT_DELETED` không xoá SQLite ở mọi nguồn · một mô hình trạng thái chung ở `core/network`. G89 `CLIENT_APP_KNOWN_GAPS.md`
+đánh dấu 📝.
+
 ### ✂️ Chẻ `pullFromBackend` — sáu hàm dựng companion sang `anh_xa_keo_ve.dart` (2026-10-20)
 
 Gợi ý của review toàn nhánh tách SyncEngine: `ap_du_lieu_keo_ve.dart` **743/800** dòng (quét 34), `pullFromBackend` một phương
