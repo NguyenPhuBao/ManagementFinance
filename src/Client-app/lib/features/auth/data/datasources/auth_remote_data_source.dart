@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../../core/errors/app_exceptions.dart' show ServerException;
+import '../../../../core/network/trang_thai_may_chu.dart';
 
 /// Exception riêng cho lỗi mạng (không có internet / timeout).
 ///
@@ -55,8 +56,9 @@ abstract class AuthRemoteDataSource {
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final Dio dio;
+  final DateTime Function() _now;
 
-  AuthRemoteDataSourceImpl({required this.dio});
+  AuthRemoteDataSourceImpl({required this.dio, DateTime Function()? now}) : _now = now ?? DateTime.now;
 
   @override
   Future<Map<String, dynamic>> login(String username, String password) async {
@@ -71,6 +73,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw Exception(response.data['message'] ?? 'Đăng nhập thất bại');
     } on DioException catch (e) {
       if (_isNetworkError(e)) throw const NetworkException();
+      // G89 (spec mục 4.3): máy chủ bảo trì / phong toả mạng → câu của client — KHÔNG câu admin gõ (thông báo tối giản).
+      final chan = _cauKhiMayChuChan(e.response!, _now());
+      if (chan != null) throw Exception(chan);
       final msg = e.response?.data?['message'] ?? 'Lỗi máy chủ';
       throw Exception(msg);
     }
@@ -339,5 +344,24 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         e.type == DioExceptionType.receiveTimeout ||
         e.type == DioExceptionType.sendTimeout ||
         e.response == null;
+  }
+}
+
+/// Câu màn Đăng nhập khi máy chủ chặn (spec G89 mục 4.3); `null` = không phải bảo trì / phong toả → câu của server như cũ.
+String? _cauKhiMayChuChan(Response res, DateTime bayGio) {
+  final t = phanLoaiPhanHoi(
+    status: res.statusCode,
+    body: res.data,
+    retryAfter: res.headers.value('retry-after'),
+    bayGio: bayGio,
+  );
+  switch (t) {
+    case MayChuBaoTri():
+      return 'Máy chủ đang bảo trì. Thử lại sau ít phút.';
+    case MayChuPhongToa(:final hetHanLuc):
+      final toi = hetHanLuc != null && hetHanLuc.isAfter(bayGio) ? ' tới ${chuGioHetHan(hetHanLuc, bayGio)}' : '';
+      return 'Mạng này đang bị máy chủ tạm chặn$toi. Thử lại sau hoặc đổi mạng (Wi-Fi ↔ 4G).';
+    case MayChuBinhThuong() || null:
+      return null;
   }
 }
