@@ -103,8 +103,9 @@ class DaiNguonBienDong extends StatelessWidget {
   }
 }
 
-/// A5 mục 13 — ảnh quét mà số AI (Gemma nhìn ảnh) và số luật LỆCH > 1%: ô số tiền để trống, người dùng chạm một chip
-/// để điền (hoặc gõ số khác). Chip đang khớp ô số tiền được tô chọn. Người dùng chốt 2026-10-08.
+/// A5 mục 13 — ảnh quét mà số AI (Gemma nhìn ảnh) và số luật LỆCH > 1%, hoặc tờ in hai số lệch ≤ 1% không biết số nào bị
+/// OCR đọc nhầm (G101 — cả Basic): ô số tiền để trống, người dùng chạm một chip để điền (hoặc gõ số khác). Chip đang khớp
+/// ô số tiền được tô chọn. Người dùng chốt 2026-10-08.
 class KhoiChonSoTien extends StatelessWidget {
   const KhoiChonSoTien(
       {super.key,

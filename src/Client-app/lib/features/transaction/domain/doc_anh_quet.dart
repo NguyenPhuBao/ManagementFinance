@@ -47,10 +47,12 @@ class KetQuaAnhQuet {
   final List<MonHang> mon;
   final Set<OAnhQuet> oThieu;
 
-  /// Số tiền đến từ mô hình nhìn ảnh, hoặc có chip chọn giữa số AI và số luật (dải nguồn trên form nói *"Đọc bằng AI"*).
+  /// Số mô hình nhìn ảnh nằm trên form — điền sẵn, hoặc là một chip (dải nguồn trên form nói *"Đọc bằng AI"*). Hai chip
+  /// của hai số OCR (G101) không tính.
   final bool aiLap;
 
-  /// Đặt số tiền đã CHỐT (A5 mục 13, `chotTongQuet`) — kể cả `null` (hai số lệch, ô để trống cho chip chọn).
+  /// Đặt số tiền đã CHỐT (A5 mục 13, `chotTongQuet`) — kể cả `null` (ô để trống: hai số lệch cho chip chọn, hoặc số luật
+  /// đáng ngờ — G101).
   KetQuaAnhQuet voiSoTien(double? v, {required bool aiLap}) => KetQuaAnhQuet(
         loai: loai,
         soTien: v,

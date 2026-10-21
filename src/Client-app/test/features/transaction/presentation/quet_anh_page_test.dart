@@ -208,6 +208,50 @@ void main() {
     expect(u.queryParameters.containsKey('chon'), isFalse);
   });
 
+  // G101 (Realme 2026-10-21): OCR đọc nhầm dòng tổng; form từng điền sẵn số sai — Basic không bao giờ đi qua phép chốt.
+  const r08 = ['MAXIDI', 'BANH 24.900 VO8', 'TONG CONG 75.706', 'VAT 8% 75.700 5.607'];
+  const r13 = ['MAXIDI', 'BOT CHIEN 19.800 VO5', 'TRUNG GA 15.990 VO5', 'TONG CONG 2.127'];
+
+  testWidgets('⭐ G101 Basic — tờ in một số khác lệch ≤ 1% so với tổng → hai chip, không amount, không chữ AI',
+      (tester) async {
+    final g = _GemmaGia(const KetQuaGemmaAnh(tong: 75700));
+    await mo(tester, docChu: _DocChuGia(r08), gemma: g, laPremium: false);
+    await cho(tester);
+    final u = form()!;
+    expect(u.queryParameters.containsKey('amount'), isFalse);
+    expect(u.queryParameters['chon'], '75706,75700');
+    expect(u.queryParameters.containsKey('ai'), isFalse);
+    expect(g.soLanDoc, 0);
+  });
+
+  testWidgets('⭐ G101 Basic — tổng nhỏ hơn một dòng món → không amount, không chip, toast "Chưa đọc được số tiền"',
+      (tester) async {
+    final bat = batThongBao();
+    await mo(tester, docChu: _DocChuGia(r13), laPremium: false);
+    await cho(tester);
+    final u = form()!;
+    expect(u.queryParameters.containsKey('amount'), isFalse);
+    expect(u.queryParameters.containsKey('chon'), isFalse);
+    expect(bat.cau, contains(kCauChuaDocTien));
+  });
+
+  testWidgets('⭐ G101 Premium — Gemma bị bỏ, số luật có số gần → hai chip của OCR, KHÔNG ai=1', (tester) async {
+    await mo(tester, docChu: _DocChuGia(r08), gemma: _GemmaGia(const KetQuaGemmaAnh(tong: 55000)));
+    await cho(tester);
+    final u = form()!;
+    expect(u.queryParameters['chon'], '75706,75700');
+    expect(u.queryParameters.containsKey('ai'), isFalse, reason: 'không số nào trên form là của Gemma');
+  });
+
+  testWidgets('G101 Premium — Gemma hơn số luật đúng một chữ số → hai chip (AI trước), ai=1', (tester) async {
+    await mo(tester, docChu: _DocChuGia(r13), gemma: _GemmaGia(const KetQuaGemmaAnh(tong: 72127)));
+    await cho(tester);
+    final u = form()!;
+    expect(u.queryParameters.containsKey('amount'), isFalse);
+    expect(u.queryParameters['chon'], '72127,2127');
+    expect(u.queryParameters['ai'], '1');
+  });
+
   testWidgets('⭐ hoá đơn + Premium → Gemma lần hai chọn danh mục từ cửa hàng + MÓN Gemma đọc; query dm', (tester) async {
     final dm = _DanhMucGia('Ăn uống');
     await mo(tester,

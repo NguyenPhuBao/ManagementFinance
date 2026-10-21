@@ -75,8 +75,8 @@ class DienSanBienDong {
   /// A5 — ít nhất một ô do AI lấp (chỉ có nghĩa với khoá `quet:`).
   final bool ai;
 
-  /// A5 mục 13 — ảnh quét mà số AI và số luật LỆCH nhau: các số cho người dùng chạm chọn (số AI trước), ô số tiền để
-  /// trống. Rỗng với mọi khoá khác `quet:`.
+  /// A5 mục 13 — ảnh quét mà số AI và số luật LỆCH nhau (số AI trước), hoặc tờ in hai số lệch ≤ 1% (số luật trước —
+  /// G101): các số cho người dùng chạm chọn, ô số tiền để trống. Rỗng với mọi khoá khác `quet:`.
   final List<double> luaChonTien;
 
   /// A5 mục 13 — TÊN danh mục chi Gemma chọn từ cửa hàng + các món (người dùng chốt 2026-10-08). Form tra tên trong
@@ -124,7 +124,8 @@ DienSanBienDong? dienSanBienDongTuQuery(Map<String, String> q) {
 
 /// A5 — query mở form từ ảnh quét. Khoá mang tên ảnh: mỗi lần quét một khoá khác.
 ///
-/// [luaChonTien] — số AI và số luật lệch nhau (`chotTongQuet`): form hiện chip chọn, ô số tiền trống.
+/// [luaChonTien] — các số `chotTongQuet` chưa chốt được (số AI lệch số luật, hoặc hai số OCR lệch ≤ 1%): form hiện chip
+/// chọn, ô số tiền trống.
 String deeplinkQuet(KetQuaAnhQuet kq, {required String anh, List<double> luaChonTien = const [], String? danhMucAi}) =>
     Uri(path: '/add', queryParameters: {
       'khoa': '$kTienToKhoaQuet$anh',

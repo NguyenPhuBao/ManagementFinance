@@ -23,7 +23,12 @@ class KetQuaHoaDon {
 
   /// Dòng mà luật lấy tổng từ đó — để người chấm thấy vì sao.
   final String? canCu;
-  const KetQuaHoaDon({this.tong, this.cuaHang, this.ngay, this.gio, this.canCu, this.ngayDuHaiSo = true});
+
+  /// Chỉ số (trong các dòng KHÔNG rỗng, đã `trim`) của dòng đầu khối tổng — dòng số khi số nằm ngay trên nhãn, không thì
+  /// dòng nhãn. Vùng món nằm TRƯỚC nó. `null` khi không có nhãn tổng (tổng là số lớn nhất của cả tờ).
+  final int? dongTong;
+  const KetQuaHoaDon(
+      {this.tong, this.cuaHang, this.ngay, this.gio, this.canCu, this.dongTong, this.ngayDuHaiSo = true});
 
   @override
   String toString() =>
@@ -152,6 +157,9 @@ String _dongTien(String d) => d
     .replaceAll(_gio, ' ')
     .replaceAllMapped(RegExp(r'(?<=\d)[Oo](?![A-Za-z])'), (_) => '0');
 
+/// Số tiền trên một dòng hoá đơn, đọc như bộ tìm tổng đọc: đã bỏ ngày / giờ, chữ *O* dính sau chữ số là số 0.
+List<int> tienTrenDongHoaDon(String dong) => tienTrenDong(_dongTien(dong));
+
 final RegExp _soCoNgan = RegExp(r'\d{1,3}(?:[.,]\d{3})+');
 
 /// Dòng chỉ có một số tiền (kèm đơn vị) — OCR hay để số ở dòng NGAY TRÊN nhãn tổng (*"79.243"* rồi *"Tong tien:"*).
@@ -169,6 +177,7 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
 
   int? tong;
   String? canCu;
+  int? dongTong;
   var hang = kNhanTongHoaDon.length;
   for (var i = 0; i < dong.length; i++) {
     if (kNhanLoaiHoaDon.any(bo[i].contains)) continue;
@@ -176,11 +185,13 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
     if (h < 0 || h > hang) continue;
     var tien = tienTrenDong(_dongTien(dong[i]));
     var nguon = dong[i];
+    var dau = i;
     // Nhãn không có số: dòng TRÊN chỉ có số thắng dòng dưới (BHX, MAXIDI in số cao hơn nhãn một chút; dòng dưới là
     // dòng kế — điểm, chuyển khoản — Realme 2026-10-08).
     if (tien.isEmpty && i > 0 && _chiSoTien.hasMatch(dong[i - 1])) {
       tien = tienTrenDong(dong[i - 1]);
       nguon = '${dong[i - 1]} ⏎ ${dong[i]}';
+      dau = i - 1;
     }
     if (tien.isEmpty && i + 1 < dong.length && !kNhanLoaiHoaDon.any(bo[i + 1].contains)) {
       tien = tienTrenDong(_dongTien(dong[i + 1]));
@@ -190,6 +201,7 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
     hang = h;
     tong = tien.reduce((a, b) => a > b ? a : b);
     canCu = nguon;
+    dongTong = dau;
   }
   if (tong == null) {
     // Số có NGĂN NGHÌN trước: số trần 5–8 chữ số trên hoá đơn thường là mã (nhân viên *"NV:99184"*, quầy, hoá đơn) —
@@ -220,6 +232,7 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
     ngayDuHaiSo: ngay?.$2 ?? true,
     gio: _docGio(chuNgay),
     canCu: canCu,
+    dongTong: dongTong,
   );
 }
 

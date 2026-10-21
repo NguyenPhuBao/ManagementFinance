@@ -3,8 +3,9 @@
 ///
 /// Luật trước (ML Kit qua `DocChuAnh` → `ghepDongTheoHang` → `docAnhQuet`). Hoá đơn + Premium + mô hình + công tắc →
 /// Gemma NHÌN ẢNH đọc món + tổng (`DocAnhBangGemma`, spec A5 mục 13 — người dùng chốt: AI đọc món và tổng, luật đọc phần
-/// còn lại); số tiền chốt bằng `chotTongQuet`: khớp → điền, lệch → ô trống + hai chip trên form. Biên lai chỉ luật
-/// (Gemma chưa đo trên biên lai). Không ghi gì — người dùng bấm Lưu trên form (bất biến ④).
+/// còn lại). Số tiền của MỌI hoá đơn — kể cả Basic — chốt bằng `chotTongQuet`: khớp → điền, lệch / số luật đáng ngờ →
+/// ô trống (+ hai chip trên form) — G101. Biên lai chỉ luật (Gemma chưa đo trên biên lai). Không ghi gì — người dùng bấm
+/// Lưu trên form (bất biến ④).
 ///
 /// ⚠️ Tệp DUY NHẤT của `lib/` import `image_picker` — test quét thứ 20
 /// (`chi_mot_noi_import_image_picker_test.dart`).
@@ -243,17 +244,14 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
     if (kq.mon.isNotEmpty) await kho.luuMon(ten, kq.mon);
     var chon = const <double>[];
     String? danhMuc;
+    int? tongAi;
     final g = _docGemma;
     if (van.trim().isNotEmpty && kq.loai == LoaiAnhQuet.hoaDon && g != null && duong != null && _laPremium) {
       setState(() => _pha = _Pha.ai);
       // Đọc ĐỒNG BỘ: ảnh đã thu về rộng ≤ 1280 (vài trăm KB); I/O bất đồng bộ không chạy dưới FakeAsync của widget
       // test (cùng lý do `KhoBienLai.xoa`).
       final a = await g.doc(File(duong).readAsBytesSync());
-      if (a?.tong case final tong?) {
-        final c = chotTongQuet(luat: kq.soTien, ai: tong, vanBan: van);
-        kq = kq.voiSoTien(c.soTien, aiLap: c.luaChon.isNotEmpty || c.soTien == tong.toDouble());
-        chon = c.luaChon;
-      }
+      tongAi = a?.tong;
       final hoiDm = _docDanhMuc;
       if (hoiDm != null && !_huyAi && mounted) {
         final mon = [for (final m in a?.mon ?? const <({String ten, double soTien})>[]) m.ten];
@@ -264,6 +262,15 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
         );
         if (danhMuc != null) kq = kq.copyWith(aiLap: true);
       }
+    }
+    // Mọi hoá đơn đi qua phép chốt, kể cả Basic và Huỷ pha AI (`tongAi` null) — số luật đứng một mình cũng phải qua lưới
+    // A / B (G101: Basic từng được điền sẵn 2.127 cho tờ 72.127). Biên lai giữ số của `docBienLai`.
+    if (kq.loai == LoaiAnhQuet.hoaDon) {
+      final c = chotTongQuet(luat: kq.soTien, ai: tongAi, vanBan: van);
+      final soAi = tongAi?.toDouble();
+      // "Đọc bằng AI" chỉ khi số mô hình nằm trên form — hai chip của hai số OCR (lưới B) không phải của AI.
+      kq = kq.voiSoTien(c.soTien, aiLap: soAi != null && (c.soTien == soAi || c.luaChon.contains(soAi)));
+      chon = c.luaChon;
     }
     if (!mounted) return;
     if (van.trim().isEmpty) {

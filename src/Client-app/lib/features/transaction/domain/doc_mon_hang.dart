@@ -56,6 +56,18 @@ final RegExp _amTu = RegExp(r'\b(giam|km|khuyen mai|chiet khau)\b');
 /// Token đuôi dòng thuộc phần số: số, `x`, `=`, `@`, `%`… (SL × đơn giá = thành tiền).
 final RegExp _tokSo = RegExp(r'^[-xX=@*]?[\d.,]*[xX=@*%]?$');
 
+List<String> _boMaThue(List<String> tok) {
+  var t = tok;
+  while (t.length > 1 && _maThue.hasMatch(t.last)) {
+    t = t.sublist(0, t.length - 1);
+  }
+  return t;
+}
+
+/// Số THÀNH TIỀN của một dòng theo đúng luật đọc món: số có ngăn nghìn cuối dòng, sau khi bỏ mã thuế; âm khi in `-`.
+/// `null` khi dòng không kết thúc bằng số tiền. `chotTongQuet` dùng để xét tổng có nhỏ hơn một dòng món không (G101).
+double? tienCuoiDong(String dong) => _tienCuoi(_boMaThue(dong.trim().split(RegExp(r'\s+'))));
+
 double? _tienCuoi(List<String> tok) {
   if (tok.isEmpty || !_tienNgan.hasMatch(tok.last)) return null;
   final v = double.tryParse(tok.last.replaceAll('-', '').replaceAll(RegExp(r'[.,]'), ''));
@@ -82,10 +94,7 @@ List<MonHang> docMonHang(String vanBan) {
     final bo = boDauHoaDon(dong[i]);
     if (kNhanDungMon.any((r) => r.hasMatch(bo))) break;
     if (_nhanBoMon.any(bo.contains)) continue;
-    var tok = dong[i].split(RegExp(r'\s+'));
-    while (tok.length > 1 && _maThue.hasMatch(tok.last)) {
-      tok = tok.sublist(0, tok.length - 1);
-    }
+    final tok = _boMaThue(dong[i].split(RegExp(r'\s+')));
     final tien = _tienCuoi(tok);
     if (tien == null) continue;
     var ten = _tenTu(tok);
