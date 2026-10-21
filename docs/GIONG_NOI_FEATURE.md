@@ -1,8 +1,11 @@
 # Giọng nói nhập giao dịch (C4)
 
 > **Trạng thái (2026-10-12):** **mã xong** — Task 1–15 của kế hoạch `docs/superpowers/plans/2026-10-12-c4-giong-noi-nhap-giao-dich.md`
-> (gitignore), `flutter test` toàn bộ **7037** ca (+9 `skip`, sau đợt sửa review toàn nhánh 2026-10-12), `flutter analyze` 20 (mức nền). 🚧 **CHƯA KIỂM THỬ TRÊN MÁY** —
-> người dùng dặn dừng trước phần đo trên điện thoại; mọi con số "chưa đo" bên dưới và checklist mục 9 là việc của lúc cầm máy.
+> (gitignore), `flutter test` toàn bộ **7037** ca (+9 `skip`, sau đợt sửa review toàn nhánh 2026-10-12), `flutter analyze` 20 (mức nền).
+> ◐ **Nghiệm thu Realme RMX2205CN (CPU) 2026-10-21 tối** — mục **9.1**: cả hai lối chạy được. Lối **Gemma** (tắt mạng) 4 câu,
+> lối **Android** (có mạng) 4 câu; kiểm chéo + hai chip đạt; nút Nói ở Trang chủ, hộp hỏi quyền micro đạt. Lượt đo lộ **G102**
+> (lối Android tự dừng sau ~2 s; lối Gemma đem bản ghi im lặng đi chép và điền câu lệnh vào ô) và **G103** (Google viết *"mbbank"*
+> dính, *"500.000₫"* — ví nguồn trượt, ghi chú sót), cả hai mở và đóng cùng tối. Các mục checklist còn lại ở mục 9.
 > Spec: `docs/superpowers/specs/2026-10-12-c4-giong-noi-nhap-giao-dich-design.md` (khối 🔧 đầu tệp THẮNG thân spec).
 > Nửa *chụp hoá đơn* của C4 đã làm ở A5 — `docs/QUET_ANH_FEATURE.md`; tệp này chỉ là nửa **giọng nói**.
 
@@ -57,7 +60,10 @@ Luật **chỉ chọn thêm trong tập `cachDocSoTien`** — không có bộ đ
   thì tiền thắng. *Mùng* chỉ nhận dạng có dấu.
 - **Ví gọi tắt** (*bằng MB Bank* khi ví tên *Ví MB Bank*): tên bỏ chữ *Ví* chỉ được nhận **ngay sau** *ví · bằng · qua · từ ·
   sang · vào · đến · tới* — làm ở `doc_cau_giao_dich.dart`, không ở `khop_ten.dart` (nhận ở mọi chỗ thì *"mua sách tiết kiệm"*
-  chọn ví *Ví tiết kiệm*). Giới từ so **có dấu** khi câu có dấu.
+  chọn ví *Ví tiết kiệm*). Giới từ so **có dấu** khi câu có dấu. Tên gọi tắt khớp cả dạng **viết dính** (*"từ mbbank"* =
+  *MB Bank* — Google viết như thế, G103), vẫn chỉ sau giới từ.
+- **Ký hiệu ₫** (*"500.000₫"*, Google viết như thế, G103) là đơn vị như *đ*: `_chuanCau` đổi *₫ → đ* ở đầu vào của cả ba phép đọc
+  (`docCauGiaoDich`, `cachDocSoTien`, `chonSoTienTrongCau`).
 - **Ba lỗi sẵn có (có từ trước C4) đã sửa cùng lượt:** (1) *"1 triệu 2"* luật đọc **1.000.000 im lặng** (`_mauSoDonVi` khớp
   *"1 triệu"*, `_mauTrieuLe` chỉ nằm trong `cachDocSoTien`); (2) *"từ"* bỏ dấu thành `tu` = *tư* (4) → câu chuyển ví bằng chữ
   *"chuyển năm trăm nghìn từ MB Bank sang tiết kiệm"* mất cả số tiền (nay so chữ số chữ **có dấu**); (3) *"quả"* bỏ dấu là `qua`,
@@ -100,7 +106,7 @@ chỉ áp khi `chuoiSoTien` vẫn bằng chuỗi luật đã điền. Khi lệch
 
 | Tệp | Vai trò | Test |
 |---|---|---|
-| `transaction/data/datasources/nghe_android.dart` | **duy nhất** import `speech_to_text`; `NgheAndroidThat` (singleton mỗi tiến trình) | chỉ quét 26 — `NgheAndroidThat` chưa có test; hợp đồng một lượt canh ở `luot_nghe_test` |
+| `transaction/data/datasources/nghe_android.dart` | **duy nhất** import `speech_to_text`; `NgheAndroidThat` (singleton mỗi tiến trình; nhận `stt` tiêm được cho test) | `nghe_android_test` (gói thật qua kênh giả + `fakeAsync`: chờ tiếng đầu 6 s, có chữ rồi 2 s, chữ sau `notListening` không mất — G102), quét 26; hợp đồng một lượt ở `luot_nghe_test` |
 | `transaction/data/datasources/luot_nghe.dart` | chuẩn hoá một lượt nghe: chữ tạm rồi **ĐÚNG MỘT** kết thúc; lỗi thắng `done`; `kChoLoiSauDone` = 300 ms | `luot_nghe_test` |
 | `transaction/data/datasources/ghi_am.dart` | **duy nhất** import `record`; WAV 16 kHz mono vào thư mục tạm | quét 26 |
 | `transaction/data/datasources/kenh_micro.dart` + `MainActivity.kt` | kênh `flowmoney/micro`: `biChan`, `moCaiDat` | `giong_noi_noi_day_test` |
@@ -124,6 +130,18 @@ Spike đã **gỡ** (C4 Task 2): `lib/features/ai_chat/spike/`, route `/spike-c4
 quét 25 cho `ai_chat/spike/` đã rỗng. Gói `speech_to_text ^7.5.0` và `record ^7.1.1` thành **gói chính thức**.
 
 ## 7. ⚠️ Chốt hỏng-im-lặng — phá thì sao
+
+- ✅ **`pauseFor` của `speech_to_text` 7.5.0 tính từ lúc BẮT ĐẦU nghe** (`_lastSpeechEventAt = _listenStartedAt`, chỉ đặt lại khi
+  có chữ) — G102, đo Realme 2026-10-21. Bản đầu đặt thẳng `pauseFor: kImDeDung` (2 s): gói tự `stop()` sau ~1,7 s âm thanh, người
+  dùng chưa kịp nói, Google trả `NO_SPEECH_DETECTED` → *"Không nghe rõ"*. Nay `listen` với `kChoTiengDau` (6 s, cùng mốc lối
+  Gemma), chữ tạm **khác rỗng** đầu tiên thì `changePauseFor(kImDeDung)`. Phía native, `pauseFor` thành
+  `EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS` — bộ hẹn giờ phía Dart vẫn là thứ dừng lượt.
+- ✅ **`changePauseFor` NÉM `ListenNotStartedException` khi gói không còn ở trạng thái nghe** — mà `notListening` có thể tới
+  trước chữ cuối. Gọi trần trong `onResult` là mất luôn chữ của lượt; bọc `try`, `luot.chu` luôn chạy.
+- ✅ **Bản ghi im lặng KHÔNG đem đi chép** (G102): `BoDoIm` dừng vì *chưa nói gì sau 6 giây* (`daCoTieng == false`) → `_dungGhi(coTieng:
+  false)` báo *"Không nghe rõ"*, xoá tệp, không gọi Gemma. Đo Realme: Gemma nhận bản ghi rỗng thì **trả lại câu lệnh**, app điền
+  nó vào ô và C2 còn tốn ~10 s đọc nó. Bấm ■ thì vẫn chép (ngưỡng −35 dBFS chưa đo mọi máy). Lưới thứ hai: `lamSachLoiChep` trả
+  rỗng khi lời chép chứa một mảnh của câu lệnh (`_manhCauLenh`).
 
 - **Thứ tự sự kiện của `speech_to_text` 7.5.0** (đọc mã, chưa đo): lỗi khi **chưa có chữ** thì `done` tới **TRƯỚC** `error`; có
   chữ tạm thì chỉ `error`, không `done`. Bỏ `LuotNghe` (hoặc cho `done` đi thẳng) → lỗi mạng bị đọc là "xong, không có gì" →
@@ -186,20 +204,63 @@ quét 25 cho `ai_chat/spike/` đã rỗng. Gói `speech_to_text ^7.5.0` và `rec
   khác (arrow_downward / arrow_upward / qr_code_scanner / mic vs wallet / payments / document_scanner / mic_none); khoảng cách
   nhãn 10 vs 6; `Expanded` vs `justify-between`. Chữ ×1,3 ở 320 dp nhãn "Thêm thu" co 0,740.
 
-## 9. Checklist kiểm thử trên máy (chưa làm)
+## 9.1 Nghiệm thu Realme RMX2205CN (CPU, Premium — tài khoản 10), 2026-10-21 tối
 
-Chép nguyên mục 9 spec (Realme và/hoặc OnePlus — máy nào cắm đo máy đó):
+Người dùng đọc câu vào máy; Claude chấm bằng `uiautomator` + logcat. Không bấm Lưu. Bản `bf988d6f…` (trước G102) và `de459fab…`
+(sau G102).
+
+**Lối Gemma** (Wi-Fi + dữ liệu tắt → `chonLoiNghe` chọn Gemma), qua nút **Nói** ở Trang chủ và micro ở ô Nhập nhanh:
+
+| Câu đọc | Lời chép | Form | Thời gian |
+|---|---|---|---|
+| Ăn phở bốn mươi lăm nghìn | *Anh phở 45 nghìn* | 45.000 đ · Ăn uống ✅ (ghi chú *"Anh phở"*) | ghi 9,4 s · chép 5,5 s · C2 gọi AI ~16 s |
+| Đổ xăng năm chục | *Đỗ Săng 50* | 50.000 đ ✅ (N2), kiểm chéo khớp · danh mục **Ăn uống** ❌ — B1 học *"Săng"* 3/3 lần trên máy này | chép 3,4 s · kiểm ~16 s |
+| Tiền điện một triệu hai | đúng từng chữ | ô trống + **hai chip 1.000.000 · 1.200.000** (luật N1 đúng, Gemma kiểm chéo sai — đúng thiết kế), Hóa đơn | chép 3,4 s · kiểm ~17 s |
+| Mua áo hai trăm nghìn bằng MB Bank | đúng từng chữ | 200.000 đ · **Ví MB Bank** · Mua sắm ✅ | chép 3,7 s · C2 ~17 s |
+
+- Mô hình: lần Nói đầu trong tiến trình (đang giữ bản chữ) đóng một lần rồi nạp bản hai cờ — `nạp mô hình xong sau 962 ms (CPU ·
+  ảnh · âm thanh)`, không sập. Bản ghi dài nhất 16,3 s chép trong 6,4 s, không vỡ trần token.
+- Bấm micro khi đang kiểm chéo / chép → `[SLM] đã huỷ lượt sinh giữa chừng` (ba lần), lượt cũ ra 0 ký tự, không kẹt.
+- Ngưỡng −35 dBFS với giọng nói thường cầm tay: lượt nói tự dừng sau 2 s im; lượt im dừng ở giây 6.
+- ⚠️ Lượt im lặng (người dùng chưa đọc) trên bản cũ: Gemma trả **nguyên câu lệnh** (*"Chép lại chính xác câu tiếng Việt…"*), app
+  điền nó vào ô rồi C2 báo *"Mình chưa đọc được câu này"* → **G102**. Bản sửa: ô trống, không lượt Gemma nào trong log.
+
+**Lối Android** (có mạng; dịch vụ nhận dạng là *Speech Services by Google* `com.google.android.tts`, chạy lai trực tuyến + SODA
+trên máy): hộp hỏi quyền micro của ColorOS hiện đúng (*Cho phép khi sử dụng · Chỉ lần này · Từ chối*). Bản cũ tự dừng sau ~1,7 s
+âm thanh (**G102**). ⚠️ Một lượt đo bản sửa đọc *"lỗi của máy"* — dịch vụ có `onStartOfSpeech` mà trả 0 giả thuyết, cả Gboard
+cũng không nhận — nhưng người dùng lúc ấy cho **Google Dịch phát câu từ chính chiếc Realme**; nói bằng giọng thật thì chạy:
+
+| Câu nói | Google nghe | Form | Ghi chú |
+|---|---|---|---|
+| Ăn phở bốn mươi lăm nghìn | *ăn phở 45.000* | 45.000 đ · Ăn uống ✅ | luật đọc đủ, điền ngay |
+| Đổ xăng năm chục | *đổ xăng 50* | 50.000 đ · Di chuyển ✅ | kiểm chéo ~13 s, khớp |
+| Tiền điện một triệu hai | đúng từng chữ | hai chip 1.000.000 · 1.200.000, Hóa đơn | Gemma kiểm chéo đọc sai lần thứ 2/2 (cả lối Gemma) |
+| Chuyển năm trăm nghìn từ MB Bank sang tiết kiệm | *…từ **mbbank**…* rồi *…500.000**₫**…* | ví nguồn **Tiền mặt** ❌, ghi chú sót → **G103**; bản sửa: Ví MB Bank → Tiết kiệm ✅ | lượt cuối Google viết đúng *MB Bank* |
+
+Mỗi lượt nghe dừng ~2 s sau chữ cuối (bắt đầu → dừng 5,3–6,6 s). Thêm: ColorOS (HANS) đóng băng `com.google.android.tts` ~8 s sau
+một lượt và chặn mạng của nó; một lượt lúc 20:30 không vào trạng thái nghe, kết thúc sau ~20 s với *"Không nghe được — thử lại
+sau"* — các lượt từ 20:53 trở đi dịch vụ chạy bình thường (chưa rõ lúc nào được rã băng). Chưa sửa gì cho chuyện này.
+
+⚠️ Bẫy đo: **đừng phát câu mẫu bằng app khác trên CHÍNH máy đang nghe** (Google Dịch…) — bộ nhận dạng nghe thấy tiếng
+(`onStartOfSpeech`) nhưng trả rỗng, trông y như lỗi của máy.
+
+## 9. Checklist kiểm thử trên máy
+
+Mục đã đo ở 9.1 đánh dấu tại chỗ. Chép nguyên mục 9 spec (Realme và/hoặc OnePlus — máy nào cắm đo máy đó):
 
 - [ ] Đọc 20 câu mục 5 bằng giọng thật: lối Android **có mạng**, lối Android **chế độ máy bay** (`onDevice`), lối Gemma —
-      bảng *câu đọc · lời chép · ô điền đúng · thời gian*.
+      bảng *câu đọc · lời chép · ô điền đúng · thời gian*. *(◐ 2026-10-21 Realme: lối Gemma 4 câu, lối Android có mạng 4 câu —
+      9.1; lối Android chế độ máy bay và 12 câu còn lại chưa đo.)*
 - [ ] Mã lỗi thật của `speech_to_text` cho mất mạng / không gói ngôn ngữ → chỉnh hằng ở `chon_loi_nghe.dart` nếu khác.
 - [ ] RAM đỉnh bản mô hình hai cờ (PSS + swap) khi Quét rồi Nói và ngược lại; không sập native ở OnePlus GPU.
-- [ ] Hộp hỏi quyền micro trên ColorOS; trạng thái *bị chặn* → nút Mở cài đặt.
+- [ ] Hộp hỏi quyền micro trên ColorOS; trạng thái *bị chặn* → nút Mở cài đặt. *(◐ 2026-10-21 Realme: hộp hỏi quyền hiện đúng,
+      cấp được; nhánh *bị chặn* chưa đo.)*
 - [ ] Hàng năm nút Trang chủ trên máy 320 dp thật; màn Thêm giao dịch bốn trạng thái so với Stitch.
       *(2026-10-16 app đã sửa theo Stitch — mục 8. Lúc nói phải thấy: nhãn đỏ "● Đang nghe…" ở góc trên thẻ, viền ô đỏ
       `#BA1A1A`, nút dừng là ô vuông đỏ trong vòng nhạt, hai chip số tiền nằm TRONG thẻ. Lệch có chủ ý: hai dòng "đang
       ghi / chép lời" và "đang kiểm" hiện lần lượt; tia sét `#F25F5C`.)*
-- [ ] Thời gian thật của kiểm chéo; chip hiện đúng khi lệch.
+- [x] Thời gian thật của kiểm chéo; chip hiện đúng khi lệch. *(2026-10-21 Realme CPU: ~16–17 s — mở phiên ~3 s + sinh ~13 s;
+      "một triệu hai" → chip 1.000.000 · 1.200.000.)*
 - [ ] Sau bảng đo: người dùng quyết giữ hai lối hay bỏ một (gỡ gói của lối bỏ).
 
 **Thêm từ lượt soát:**
@@ -211,14 +272,18 @@ Chép nguyên mục 9 spec (Realme và/hoặc OnePlus — máy nào cắm đo m�
       ms (CPU … · ảnh · âm thanh)` — cả ở tiến trình mới; 16 lượt quét + chọn danh mục + Nhập nhanh không sập, PSS 3,0–3,26 GB.
       Chưa đo OnePlus GPU, chưa đo chuỗi có Nói. Mục 7 `QUET_ANH_FEATURE.md`; lộ G100 — mô hình nạp thêm bản khi engine dựng
       lại; ✅ G100 đóng cùng ngày, thân ở `CLIENT_APP_KNOWN_GAPS.md`.)*
-- [ ] Thời gian lượt Gemma đầu tiên trên CPU (nạp chữ + đóng + nạp hai cờ + suy luận) so với trần 60 s (`kThoiHanChepLoi`).
-- [ ] `stopGeneration` có trả về trong `kHanDungSinh` (2 s) không — log `[SLM] đã huỷ lượt sinh giữa chừng` hay `huỷ lượt sinh hỏng`.
+- [x] Thời gian lượt Gemma đầu tiên trên CPU (nạp chữ + đóng + nạp hai cờ + suy luận) so với trần 60 s (`kThoiHanChepLoi`).
+      *(2026-10-21 Realme: đang giữ bản chữ → đóng + nạp hai cờ 962 ms + chép 7,4 s — xa trần; chuỗi *bản chữ → Nói* không sập.)*
+- [x] `stopGeneration` có trả về trong `kHanDungSinh` (2 s) không — log `[SLM] đã huỷ lượt sinh giữa chừng` hay `huỷ lượt sinh hỏng`.
+      *(2026-10-21 Realme: ba lần "đã huỷ lượt sinh giữa chừng", không lần nào hỏng.)*
 - [ ] RAM bản hai cờ (nhắc lại ở trên, nhưng đo cả chuỗi *Trợ lý → Nói → Quét* và *Nói → Quét → Nói*, đếm số lần đóng).
 - [ ] Cờ âm thanh có **vô hại với đường chữ** (cùng một bản mô hình giờ phục vụ cả Trợ lý, Nhập nhanh, C3): tốc độ, bộ nhớ,
       chất lượng câu trả lời có tụt không.
 - [ ] Prefill âm thanh **dài nhất** (20 giây) nằm trong trần `maxTokens` 4096 (nếu vỡ: `FAILED_PRECONDITION` như bẫy 4.29).
+      *(◐ 2026-10-21 Realme: bản ghi 16,3 s chép trong 6,4 s, không vỡ; 20 s chưa đo.)*
 - [ ] Chuỗi mã lỗi `speech_to_text` thật (đủ cả `error_insufficient_permissions`, `error_server_disconnected` — chưa có ca).
-- [ ] Ngưỡng `kNguongCoTieng` = −35 dBFS ở phòng ồn / yên; nhịp `kNhipBienDo` 100 ms của bộ ghi thật.
+- [ ] Ngưỡng `kNguongCoTieng` = −35 dBFS ở phòng ồn / yên; nhịp `kNhipBienDo` 100 ms của bộ ghi thật. *(◐ 2026-10-21 Realme,
+      phòng yên, giọng thường cầm tay: nói → dừng sau 2 s im; im → dừng ở giây 6. Phòng ồn chưa đo.)*
 - [ ] Nhịp `kChoLoiSauDone` (300 ms) đủ để lỗi thắng `done` trên máy chậm.
 - [ ] `ChepLoiBangGemma.huy()` **giữa** `record.start`; `dung()` ném lỗi thì micro có kẹt không (`ghiAm.huy()` best-effort).
 - [ ] Hai trang `/add` cùng sống (deeplink `/add?noi=1` đè form đang ghi Gemma): WAV đang ghi còn nguyên (đã chặn theo tuổi tệp, M2).

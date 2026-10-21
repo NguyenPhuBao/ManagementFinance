@@ -616,6 +616,29 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-21)
 
+### 🎙️ C4 giọng nói — nghiệm thu Realme lần đầu (2026-10-21 tối) — ◐ hai lối chạy; G102 + G103 mở và đóng
+
+Người dùng đọc câu vào Realme (CPU, tài khoản 10, Premium); Claude chấm bằng `uiautomator` + logcat, không bấm Lưu. Bảng ở mục
+9.1 `GIONG_NOI_FEATURE.md`.
+- **Lối Gemma** (tắt Wi-Fi + dữ liệu): 4 câu ra đúng số tiền; lời chép sai vài chữ (*Ăn → Anh*, *xăng → Săng*). Chép lời 3,4–5,5 s,
+  lượt AI sau đó (danh mục / kiểm chéo) ~16 s. Đóng bản chữ + nạp bản hai cờ 962 ms, không sập.
+- **Lối Android** (có mạng, *Speech Services by Google*): 4 câu ra chữ, dừng ~2 s sau chữ cuối.
+- Kiểm chéo *"một triệu hai"* hiện hai chip đúng thiết kế, nhưng Gemma đọc sai 1.000.000 cả hai lần.
+
+**Lỗi lộ ra — cả hai sửa cùng tối (TDD + kiểm lại trên máy):**
+- **G102.** `speech_to_text` 7.5.0 tính `pauseFor` từ lúc bắt đầu nghe → lối Android tự dừng sau ~1,7 s âm thanh. Nay chờ tiếng đầu
+  6 s rồi `changePauseFor(2 s)`, bọc `try` (hàm ném khi đã `notListening`). Lối Gemma: bản ghi không có tiếng sau 6 s thì không
+  chép (Gemma vọng lại câu lệnh và app điền nó vào ô); `lamSachLoiChep` bỏ lời chép chứa mảnh câu lệnh.
+- **G103.** Google viết *"từ mbbank"* (ví nguồn trượt về Tiền mặt) và *"500.000₫"* (ghi chú sót *₫*). Tên gọi tắt khớp `\s*`;
+  `_chuanCau` đổi *₫ → đ* ở cả ba phép đọc câu.
+
+⚠️ Bẫy đo: người dùng từng cho Google Dịch phát câu từ chính chiếc Realme — dịch vụ nghe thấy tiếng mà trả rỗng, cả Gboard cũng
+không nhận, trông như lỗi của máy. Nói bằng giọng thật thì chạy.
+
+**Test:** `nghe_android_test` 4 ca mới (gói `speech_to_text` thật qua kênh giả + `fakeAsync`), cubit +2, `chep_loi_test` +2,
+`doc_cau_noi_test` +4; năm bản sai cấy thử của G102 đều đỏ, ba ca G103 đỏ trên mã cũ. **Số đo:** `flutter test`
+**7706/7706** pass, 10 skip (5 ph 45 s); `flutter analyze` **20**.
+
 ### 🧠 G100 — gỡ task khỏi Đa nhiệm thôi nạp thêm một bản mô hình (2026-10-21 tối) — ✅ ĐÓNG (mã + test + nghiệm thu Realme)
 
 Đường Back hai lần đã sửa trưa cùng ngày (xuống nền). Còn đường **vuốt app khỏi Đa nhiệm**: đo lại trên bản mới (Realme CPU,
