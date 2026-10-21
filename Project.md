@@ -14,7 +14,7 @@
 > 3. **Không rõ thì hỏi PO ngay, không tự suy diễn:**
 >    - Các yêu cầu chưa rõ ràng thì đặt câu hỏi cho PO ngay lập tức, tuyệt đối không tự suy diễn.
 >
-> AI đóng vai trò là Senior BA khi phân tích thiết kế hệ thống, lắng nghe phân tích chức năng, đặc tả chức năng; Kỹ sư Full Stack cao cấp khi hiện thực chức năng (viết code) ở cả backend & frontend, mapping 2 thành phần lại với nhau; Senior Tester thực hiện kiểm thử 2 tầng (Giao diện + Tác động hệ thống thực tế) mỗi khi hoàn thành từng tính năng.
+> AI đóng vai trò là **Lead BA** khi phân tích thiết kế hệ thống, lắng nghe phân tích chức năng, đặc tả chức năng; **Lead FullStack cao cấp** khi hiện thực chức năng (viết code) ở cả backend & frontend, mapping 2 thành phần lại với nhau; **Lead Tester** thực hiện kiểm thử 2 tầng (Giao diện + Tác động hệ thống thực tế) mỗi khi hoàn thành từng tính năng.
 ---
 
 ## 1. Tổng Quan Dự Án
@@ -90,7 +90,7 @@ Hệ thống gồm **3 phần tách biệt nhưng liên kết** với nhau:
 | **Separation of Concerns** | Backend là trung tâm dữ liệu tập trung (source of truth). Client tự xử lý validation, tính toán tạm thời, không giữ logic nghiệp vụ phức tạp trên backend cho client. |
 | **Resilience & Anti-SPOF** | Bảo vệ chống lỗi sập dây chuyền (SPOF): Bẫy lỗi toàn cục (`uncaughtException`, `unhandledRejection`), Request Timeout (30s), Retry Guard (ngăn vòng lặp vô tận/retry storm), Supabase DB Bulkhead (tách 80% client / 20% admin headroom, statement_timeout 10s), Load Shedding minh bạch khi Event Loop lag > 100ms. |
 | **Admin Fast-Lane & Emergency Switch** | Làn ưu tiên đặc quyền cho Admin-web: bypass rate limiter, không bị drop khi nghẽn tải; tích hợp công tắc bảo trì khẩn cấp (`MAINTENANCE_MODE`) và cổng tra cứu `/health/admin` siêu nhẹ. |
-| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast & Maintenance UI phát realtime qua Socket.io kèm Quản trị Bảo trì 4 trạng thái (`SCHEDULED`, `ONGOING`, `COMPLETED`, `CANCELLED`) lưu trữ CSDL bền bỉ; Cơ chế độc quyền lịch bảo trì (chặn đứng mọi hành vi lên lịch bảo trì đè nhau khi đã có một lịch đang chờ); Cơ chế can thiệp khẩn cấp (cho phép DUY NHẤT bảo trì khẩn cấp kích hoạt nâng cấp khi đang trong phiên bảo trì thông thường, tự động phát broadcast cảnh báo đỏ và cập nhật CSDL sang `EMERGENCY`); Cơ chế triệt tiêu thông báo trùng lặp 3 tầng (chỉ định kênh `admin.maintenance_changed` cho Admin-web, cờ `isActionInitiatorRef` bỏ qua toast socket khi admin tự thao tác, và Deduplication Debounce 1500ms tại `AlertContext`); (4) Dashboard chuẩn hóa với Bảng Hoạt động nằm ngang hàng Server Health và 2 Biểu đồ Lưu lượng/Đăng nhập Full-width đồng bộ kích thước; (5) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng CCU, Lá chắn bảo vệ IP Admin Hybrid kết hợp cấu hình tĩnh qua .env `ADMIN_TRUSTED_IPS` và tự động đăng ký động theo phiên đăng nhập khi Admin đổi vị trí/thiết bị, Early Token Decoder phân quyền tác nhân 2 tầng Admin/User/System/Guest; Kiến trúc Lưu Trữ Bền Vững 3 Bảng Quan Hệ N-N `aiops_ip_quarantine`, `aiops_account_quarantine`, `aiops_quarantine_incident_link` phục vụ kiểm soát bảo mật và điều tra an ninh chéo, cơ chế Hydration RAM $O(1) < 1\text{ms}$ Zero-loss on restart); (6) Quản Lý Thanh Toán & Kênh PayOS Thật (`/payments`): Theo dõi doanh thu KPI, tra cứu lịch sử đơn hàng phân trang đa bộ lọc, lọc động danh sách gói cước từ CSDL, đối soát webhook PayOS kèm xác thực chữ ký HMAC-SHA256, phân biệt đơn mẫu (`is_template`) với **Nguyên tắc Tài chính Bất Di Bất Dịch**: Đơn mẫu chỉ dùng để kiểm tra tình trạng kết nối PayOS và webhook, TUYỆT ĐỐI KHÔNG tính vào Doanh thu thực nhận và các chỉ số kinh doanh (Tổng đơn, Thành công, Tỷ lệ) ở cả Backend, Admin-web và Client-app; Backend mặc định lọc `is_template = false` cho `getPaymentSummaryStats` và `findOrdersByAccount`; Webhook đơn mẫu xác nhận `PAID` để Admin đối soát realtime nhưng không kích hoạt gói Premium; Bảng đơn hàng có checkbox "Loại bỏ mẫu" để Admin linh hoạt kiểm tra log đối soát hoặc lọc đơn thật; nút Hoàn tiền thông minh (sáng khi `REFUND_PENDING`, disabled mờ khi khác), upload lưu trữ ảnh minh chứng hoàn tiền tại `src/Backend/Assets/Refunds`, modal sinh mã QR Napas 247 PayOS chỉ tạo đơn khi nhấn nút `+ Đơn PENDING`, và cơ chế Tự động đối soát tức thì (Just-in-Time Sync - JIT Sync) khi xem chi tiết hoặc polling trạng thái: tự động kiểm tra cổng PayOS khi đơn ở trạng thái `PENDING`, phát hiện tức thì các đơn bị Hủy (`CANCELLED`) hoặc Hết hạn (`EXPIRED`) trên PayOS mà không cần phụ thuộc Webhook, đồng thời tự động triệt tiêu `qr_url` và `checkout_url` trong CSDL và phát Socket đồng bộ thời gian thực cho Admin-web và Client-app. Xem chi tiết tại `docs/Payment/PAYMENT_WORKFLOW_SPEC.md`; (7) Quản Lý Tính Năng & Phân Quyền 4 Trụ Cột Đa Tầng (`/permissions`): Xóa bỏ hoàn toàn dạng card/box màu mè trẻ em; tái thiết kế thành **Bảng Ma Trận Dữ Liệu Phẳng Mật Độ Cao (Data-Dense Minimalist Matrix Table)** chuẩn Enterprise B2B SaaS (Linear, Stripe) với Segmented Pill Tab Switcher (`ALL` Đối chiếu 2 gói gộp rowSpan=2, `Basic`, `Premium`). Thể hiện trực tiếp và trọn vẹn **4 Trụ Cột Phân Quyền**: (a) **Trụ 1: Truy Cập (Access)** — Switch toggle phẳng Bật/Khóa; (b) **Trụ 2: Định Mức (Quota / Limit)** — Input số trần tài nguyên hoặc Checkbox ∞ Vô hạn; (c) **Trụ 3: Phạm Vi (Scope)** — Tag tóm tắt tham số logic (`PDF, Excel`, `Model Edge 250MB`...) kèm Drawer Inspector chỉnh sửa JSON Schema; (d) **Trụ 4: Chính Sách Hạ Cấp (Downgrade Policy)** — Dropdown trên từng dòng với 5 chính sách chuẩn: `BLOCK_CREATE` (Chặn tạo mới), `LOCK_FEATURE` (Khóa tính năng), `READ_ONLY` (Chỉ xem), `GRACE_PERIOD_3D` (Ân hạn 3 ngày), `FALLBACK_DEFAULT` (Về mặc định). Cơ sở dữ liệu lưu trữ 36 tính năng chuẩn theo 13 phân hệ (`feature`) và 72 bản ghi phân quyền 4 trụ cột (`account_type_permission`), phát sóng Socket.io thời gian thực tới Client-app. Chi tiết tại `docs/Functional-Mobile/4_TRU_COT.md`. |
+| **Admin Operations Center** | Bộ công cụ giám sát vận hành & an ninh số: (1) Server Health Panel (CPU, RAM, Event Loop, DB Pool, Load Shed 24h) kèm công tắc khẩn cấp tách biệt độc lập chống SPOF; (2) Audit Log Viewer phân trang, đa bộ lọc và tự động cập nhật real-time qua Socket.io (tuân thủ Luật ATTTM & NĐ 13/2023/NĐ-CP); (3) System Broadcast & Maintenance UI phát realtime qua Socket.io kèm Quản trị Bảo trì 4 trạng thái (`SCHEDULED`, `ONGOING`, `COMPLETED`, `CANCELLED`) lưu trữ CSDL bền bỉ; Cơ chế độc quyền lịch bảo trì (chặn đứng mọi hành vi lên lịch bảo trì đè nhau khi đã có một lịch đang chờ); Cơ chế can thiệp khẩn cấp (cho phép DUY NHẤT bảo trì khẩn cấp kích hoạt nâng cấp khi đang trong phiên bảo trì thông thường, tự động phát broadcast cảnh báo đỏ và cập nhật CSDL sang `EMERGENCY`); Cơ chế triệt tiêu thông báo trùng lặp 3 tầng (chỉ định kênh `admin.maintenance_changed` cho Admin-web, cờ `isActionInitiatorRef` bỏ qua toast socket khi admin tự thao tác, và Deduplication Debounce 1500ms tại `AlertContext`); (4) Dashboard chuẩn hóa với Bảng Hoạt động nằm ngang hàng Server Health và 2 Biểu đồ Lưu lượng/Đăng nhập Full-width đồng bộ kích thước; (5) AIOps Sentinel & Tường lửa tự động phong tỏa (giám sát 13 chỉ số, Threat Score đa vector theo quy mô tải người dùng CCU, Lá chắn bảo vệ IP Admin Hybrid kết hợp cấu hình tĩnh qua .env `ADMIN_TRUSTED_IPS` và tự động đăng ký động theo phiên đăng nhập khi Admin đổi vị trí/thiết bị, Early Token Decoder phân quyền tác nhân 2 tầng Admin/User/System/Guest; Kiến trúc Lưu Trữ Bền Vững 3 Bảng Quan Hệ N-N `aiops_ip_quarantine`, `aiops_account_quarantine`, `aiops_quarantine_incident_link` phục vụ kiểm soát bảo mật và điều tra an ninh chéo, cơ chế Hydration RAM $O(1) < 1\text{ms}$ Zero-loss on restart); (6) Quản Lý Thanh Toán & Kênh PayOS Thật (`/payments`): Theo dõi doanh thu KPI, tra cứu lịch sử đơn hàng phân trang đa bộ lọc, lọc động danh sách gói cước từ CSDL, đối soát webhook PayOS kèm xác thực chữ ký HMAC-SHA256, phân biệt đơn mẫu (`is_template`) với **Nguyên tắc Tài chính Bất Di Bất Dịch**: Đơn mẫu chỉ dùng để kiểm tra tình trạng kết nối PayOS và webhook, TUYỆT ĐỐI KHÔNG tính vào Doanh thu thực nhận và các chỉ số kinh doanh (Tổng đơn, Thành công, Tỷ lệ) ở cả Backend, Admin-web và Client-app; Backend mặc định lọc `is_template = false` cho `getPaymentSummaryStats` và `findOrdersByAccount`; Webhook đơn mẫu xác nhận `PAID` để Admin đối soát realtime nhưng không kích hoạt gói Premium; Bảng đơn hàng có checkbox "Loại bỏ mẫu" để Admin linh hoạt kiểm tra log đối soát hoặc lọc đơn thật; nút Hoàn tiền thông minh (sáng khi `REFUND_PENDING`, disabled mờ khi khác), upload lưu trữ ảnh minh chứng hoàn tiền tại `src/Backend/Assets/Refunds`, modal sinh mã QR Napas 247 PayOS chỉ tạo đơn khi nhấn nút `+ Đơn PENDING`, và cơ chế Tự động đối soát tức thì (Just-in-Time Sync - JIT Sync) khi xem chi tiết hoặc polling trạng thái: tự động kiểm tra cổng PayOS khi đơn ở trạng thái `PENDING`, phát hiện tức thì các đơn bị Hủy (`CANCELLED`) hoặc Hết hạn (`EXPIRED`) trên PayOS mà không cần phụ thuộc Webhook, đồng thời tự động triệt tiêu `qr_url` và `checkout_url` trong CSDL và phát Socket đồng bộ thời gian thực cho Admin-web và Client-app. Xem chi tiết tại `docs/Payment/PAYMENT_WORKFLOW_SPEC.md`; (7) Quản Lý Tính Năng & Phân Quyền 4 Trụ Cột Đa Tầng (`/permissions`): Xóa bỏ hoàn toàn dạng card/box màu mè trẻ em; tái thiết kế thành **Bảng Ma Trận Dữ Liệu Phẳng Mật Độ Cao (Data-Dense Minimalist Matrix Table)** chuẩn Enterprise B2B SaaS (Linear, Stripe) với Segmented Pill Tab Switcher (`ALL` Đối chiếu 2 gói gộp rowSpan=2, `Basic`, `Premium`). Thể hiện trực tiếp và trọn vẹn **4 Trụ Cột Phân Quyền**: (a) **Trụ 1: Truy Cập (Access)** — Switch toggle phẳng Bật/Khóa; (b) **Trụ 2: Định Mức (Quota / Limit)** — Input số trần tài nguyên hoặc Checkbox ∞ Vô hạn; (c) **Trụ 3: Phạm Vi (Scope)** — Tag tóm tắt tham số logic (`PDF, Excel`, `Model Edge 250MB`...) kèm Drawer Inspector chỉnh sửa JSON Schema; (d) **Trụ 4: Chính Sách Hạ Cấp (Downgrade Policy)** — Dropdown trên từng dòng với 5 chính sách chuẩn: `BLOCK_CREATE` (Chặn tạo mới), `LOCK_FEATURE` (Khóa tính năng), `READ_ONLY` (Chỉ xem), `GRACE_PERIOD_3D` (Ân hạn 3 ngày), `FALLBACK_DEFAULT` (Về mặc định). Cơ sở dữ liệu lưu trữ 36 tính năng chuẩn theo 13 phân hệ (`feature`) và 72 bản ghi phân quyền 4 trụ cột (`account_type_permission`), phát sóng Socket.io thời gian thực tới Client-app. Chi tiết tại `docs/Functional-Mobile/4_TRU_COT.md`; (8) Quản Trị Bảo Mật Admin & Fluid Responsive Layout v2.5: (a) Quản lý tài khoản Admin: Thêm cột CSDL `is_first_login` và `created_by_admin_id` (Migration 34); Modal bắt buộc đổi mật khẩu & PIN 6 số khi đăng nhập lần đầu (`FirstLoginModal`), không thể tắt/bỏ qua, cập nhật tức thì vào CSDL và duy trì phiên làm việc; (b) Tab Quản lý Admin bên trong Cài đặt hệ thống (`SettingsModal`): 3 chức năng tích hợp gồm Đổi mã PIN (yêu cầu mật khẩu + PIN cũ), Đổi mật khẩu (yêu cầu mật khẩu cũ + PIN cũ), Cấp tài khoản admin mới (nhập username/email $\rightarrow$ xác thực PIN của admin người cấp $\rightarrow$ khởi tạo mặc định pass/pin 123456 và gán `is_first_login = true`); (c) Sửa lỗi Auto-lock văng ra Login: Interceptor trong `axios-client.js` triệt tiêu điều hướng 401 khi `isLocked === true`, bảo toàn tuyệt đối phiên làm việc sau khi mở khóa an toàn; (d) Giao diện Fluid Responsive toàn hệ thống: Tự động co dãn mượt mà trên mọi mức zoom trình duyệt 50% - 200%, Sidebar hỗ trợ Mini-mode 76px icon-only trên desktop và trượt drawer trên mobile kèm backdrop, container fluid nới rộng `max-w-[1720px]`, các bảng dữ liệu cuộn ngang độc lập không làm vỡ layout. |
 
 
 ### 3.2 Chi Tiết Kiến Trúc Backend
@@ -4347,3 +4347,190 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - Backend: **397/397 tests PASS 100%**.
   - Admin-web: **28 test suites / 28 test suites PASS 100%**, bao gồm bài test 2 tầng mới `src/tests/admin.pin.and.audit.columns.test.jsx` (8/8 tests pass).
   - Production build: `npm run build` hoàn tất thành công sạch sẽ.
+
+### 4.13. Hoàn Thiện & Tinh Chỉnh Toàn Diện Dashboard Admin-web (Chuẩn SLA Phương Án 1 & Bảo Mật PIN) (2026-10-21)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/Admin-web/DASHBOARD_REFINEMENT_PLAN.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Admin-web/DASHBOARD_REFINEMENT_PLAN.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn bộ kế hoạch và chọn **Phương án 1 (Chuẩn SLA Công nghiệp)** cho Thẻ Uptime Hệ thống.
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **Header Dashboard:**
+     - Loại bỏ hoàn toàn dòng phụ đề `{t('dashboard.subtitle')}` gây rối mắt.
+     - Loại bỏ nút "Bảo trì khẩn cấp" ở hàng công cụ Header để quy tụ về Tab Sức khỏe hệ thống và Quản trị phát sóng `/broadcast`.
+  2. **Thẻ & Tab Uptime Hệ thống (Chuẩn SLA Phương án 1):**
+     - Backend `admin.service.js` & `maintenance.repository.js`: Bổ sung `getEmergencyDowntimeSeconds()`, tính toán thời gian chạy thực tế phục vụ người dùng `activeUptimeSec = max(0, processUptimeSec - emergencyDowntimeSec)`.
+     - Sự cố khẩn cấp (Emergency Outage) bị khấu trừ vào thời gian phục hồi và % SLA; bảo trì định kỳ có kế hoạch trước (Scheduled Maintenance) không bị phạt SLA.
+     - `index.js` luồng phát `admin.metrics_stream` đồng bộ công thức và hàm format với REST API `/admin/system/health`, đồng bộ tức thì Card Uptime và Widget Uptime trong `ServerHealthPanel`.
+  3. **Bảng Hoạt Động Gần Đây (Recent Activities):**
+     - Áp dụng `table-fixed` cho thẻ `<table>`, cố định tỷ lệ cột: `Người dùng (18%)`, `Hành động (12% - thu nhỏ 50%)`, `Yêu cầu API (30%)`, `Lý do (18%)`, `Trạng thái (11%)`, `Thời gian (11%)`.
+     - Sử dụng `TruncateCell` kèm tooltip native `title` trên mọi ô dữ liệu để tự động ẩn `...` khi chuỗi dài và hiển thị đầy đủ khi rê chuột.
+     - Tích hợp `RealtimeStatusBadge` góc phải bảng, phản ánh tức thì 3 trạng thái kết nối Socket.
+  4. **Bảo Mật Kích Hoạt Bảo Trì Khẩn Cấp Bằng Mã PIN 6 Số:**
+     - Trong `ServerHealthPanel.jsx`: Tích hợp `SecurityConfirmModal` bắt buộc xác thực mã PIN 6 số trước khi cho phép công tắc chuyển sang trạng thái BẬT bảo trì khẩn cấp.
+     - Bắt buộc nhập lý do bảo trì, tự động ghi Audit Log khi bật/tắt.
+  5. **Biểu Đồ Đăng Nhập & Lưu Lượng Request:**
+     - Loại bỏ nhãn tĩnh `Live Mode` xanh nhấp nháy khỏi biểu đồ Request.
+     - Đồng nhất bổ sung component `RealtimeStatusBadge` vào góc phải tiêu đề của cả Biểu đồ Đăng nhập và Biểu đồ Request.
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+  - Backend: **404/404 tests PASS 100%**.
+  - Admin-web: **37 test suites / 37 test suites (272/272 tests) PASS 100%**, bao gồm bài test 2 tầng mới `src/tests/dashboard.refinement.2tier.test.jsx` (7/7 tests pass).
+  - Production build: `npm run build` hoàn tất thành công sạch sẽ (0 lint/type errors).
+
+### 4.14. Hoàn Thiện & Tinh Chỉnh Trang Quản Lý Người Dùng (i18n Gói Dịch Vụ & Khắc Phục Lỗi Lọc Premium) (2026-10-21)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/Admin-web/USERS_REFINEMENT_PLAN.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Admin-web/USERS_REFINEMENT_PLAN.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn bộ kế hoạch khảo sát và sửa chữa.
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **Header Trang Quản Lý Người Dùng:**
+     - Loại bỏ icon `manage_accounts` trong khối hộp bo góc.
+     - Loại bỏ nhãn nhấp nháy `Realtime Sync`.
+     - Loại bỏ dòng ghi chú phụ đề dài về Nghị định 13/2023/NĐ-CP.
+     - Header chỉ còn lại tiêu đề trang `Quản lý người dùng` và nút `Làm mới` (Refresh) tinh gọn, chuẩn Enterprise.
+  2. **Chuẩn Hóa Đa Ngôn Ngữ (i18n) Cho Bộ Lọc Gói Cước:**
+     - `src/Admin-web/src/locales/vi.js`: Bổ sung `packageLabel: 'Gói dịch vụ'`, `allPackages: 'Tất cả gói cước'`, `basicPackage: 'Gói Cơ bản (Basic)'`, `premiumPackage: 'Gói VIP (Premium)'`.
+     - `src/Admin-web/src/locales/en.js`: Bổ sung `packageLabel: 'Membership'`, `allPackages: 'All Packages'`, `basicPackage: 'Basic Package'`, `premiumPackage: 'VIP (Premium) Package'`.
+     - Khi chuyển đổi ngôn ngữ, nhãn dropdown tự động hiển thị chính xác (`Gói dịch vụ` khi dùng vi, `Membership` khi dùng en).
+  3. **Khắc Phục Triệt Để Lỗi Lọc Gói Cước (Tài khoản BaoNP Premium):**
+     - Sửa hàm `fetchUsers()` và `handleUserRegistered` trong `UserListPage.jsx`: Bổ sung nạp trường `type: u.type || 'Basic'`. Dữ liệu gói cước được lưu trữ ngầm trong state dữ liệu đối tượng người dùng (ẩn dưới giao diện như PO chỉ đạo, không thêm cột thừa thãi trên bảng).
+     - Bộ lọc `filteredUsers` so sánh chính xác `filter.packageType` với `u.type` (case-insensitive). Khi lọc gói `VIP (Premium)`, hệ thống hiển thị chính xác tài khoản `BaoNP` (`phubao9as@gmail.com`) và các tài khoản Premium khác trong CSDL; các tài khoản Basic bị ẩn chuẩn xác.
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+  - Admin-web: **38 test suites / 38 test suites (279/279 tests) PASS 100%**, bao gồm bài test 2 tầng mới `src/tests/users.refinement.2tier.test.jsx` (7/7 tests pass).
+  - Production build: `npm run build` hoàn tất thành công sạch sẽ trong 3.21s (0 lint/type errors).
+
+### 4.15. Hoàn Thiện & Tinh Chỉnh Trang Quản Lý Danh Mục (Bản Nháp Staging, Đặt Lại Mặc Định & Xác Thực PIN) (2026-10-21)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/Admin-web/CATEGORIES_REFINEMENT_PLAN.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Admin-web/CATEGORIES_REFINEMENT_PLAN.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn bộ kế hoạch khảo sát, thiết kế luồng bản nháp và nghiệm thu.
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **Header Trang Quản Lý Danh Mục:**
+     - Loại bỏ hoàn toàn khối icon `category` bo góc `w-12 h-12`.
+     - Loại bỏ badge `NLP Keywords Ready`.
+     - Loại bỏ dòng ghi chú phụ đề dài `{t('categories.subtitle')}`.
+     - Giữ lại tiêu đề `Quản lý danh mục hệ thống` và 2 nút `Làm mới`, `Thêm danh mục mới` tinh gọn, thanh thoát.
+  2. **Modal Thêm & Chỉnh Sửa Danh Mục:**
+     - Cập nhật dòng gợi ý dưới ô nhập từ khóa (Keyword) trong `vi.js` thành: *"Nhập các từ khóa phân cách bởi dấu phẩy (,)."* (lược bỏ hoàn toàn vế sau về AI) và `en.js` thành: *"Enter comma-separated keywords (,)."*.
+  3. **Modal Xác Nhận Xóa Danh Mục (Minimalist):**
+     - Loại bỏ hoàn toàn khối ghi chú thông tin Xóa Mềm (Soft Delete) dài dòng.
+     - Tối giản modal thành đúng 1 dòng câu hỏi xác nhận: `Bạn chắc chắn muốn xóa danh mục "<Tên danh mục>" ?` cùng 2 nút bấm: `Hủy` và `Xác nhận xóa`.
+  4. **Cơ Chế Bản Nháp (Draft / Staging Mode) & Nút "Đặt Lại Mặc Định":**
+     - Thêm state `originalCategories` (snapshot gốc từ CSDL) và `stagedChanges` (`added`, `updated`, `deleted`).
+     - Khi Admin Thêm mới, Sửa hoặc Xóa danh mục, hệ thống lập tức cập nhật danh sách hiển thị trên bảng (kèm nhãn trạng thái `Bản nháp`, `Đã sửa (nháp)` hoặc `Đã xóa`) nhưng **chưa lưu vào CSDL** (chưa gọi API backend).
+     - Bổ sung nút **"Đặt lại mặc định"** bên trái nút "Đồng bộ danh mục" ở thanh điều hướng chân bảng. Khi click, hiển thị popup xác nhận với 2 nút `Hủy` và `Xác nhận đặt lại`. Khi xác nhận, hệ thống khôi phục toàn bộ danh mục về đúng dữ liệu CSDL gốc, hủy bỏ 100% bản nháp.
+  5. **Nút "Đồng Bộ Danh Mục" & Xác Thực Mã PIN Bảo Mật Quản Trị:**
+     - Loại bỏ banner alert đồng bộ màu xanh dương cũ (`syncAlert` banner).
+     - Khi click "Đồng bộ danh mục", hiển thị Popup bảo mật yêu cầu nhập mã PIN 6 số với 2 nút `Hủy` và `Xác nhận đồng bộ`.
+     - Gọi `adminApi.verifySecurityAction({ pin, action: 'SYNC_CATEGORIES' })` xác thực mã PIN. Nhập sai mã PIN hệ thống chặn đứng, báo lỗi trực tiếp trên popup.
+     - Khi mã PIN hợp lệ: Tiến hành lưu tuần tự các thay đổi trong bản nháp vào CSDL (`createCategory`, `updateCategory`, `deleteCategory`), phát socket real-time tới Client-app, tải lại snapshot dữ liệu mới và hiển thị Toast thành công.
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+  - Admin-web: **39 test suites / 39 test suites (287/287 tests) PASS 100%**, bao gồm bài test 2 tầng mới `src/tests/categories.refinement.2tier.test.jsx` (8/8 tests pass) và cập nhật `src/tests/categories.page.test.jsx` (6/6 tests pass).
+  - Production build: `npm run build` hoàn tất thành công sạch sẽ trong 3.19s (0 lint/type errors).
+
+### 4.16. Hoàn Thiện & Tinh Chỉnh Trang Nhật Ký Kiểm Toán (Audit Log) (2026-10-21)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/Admin-web/AUDIT_LOG_REFINEMENT_PLAN.md`](file:///d:/Tai_Lieu_IUH\Tailieu_Nam5_HK1\DoAnTotNghiep\Personal_Finance_Management\docs\Admin-web\AUDIT_LOG_REFINEMENT_PLAN.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn bộ kế hoạch khảo sát, chuẩn hóa cột Hành động 100% tiếng Việt, tái cấu trúc Header và bộ lọc.
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **Header Trang Nhật Ký Kiểm Toán:**
+     - Loại bỏ hoàn toàn dòng ghi chú phụ đề dài: *"Audit Log — Lưu vết toàn bộ thao tác và request gửi về hệ thống (Append-only)"*.
+     - Loại bỏ icon `fact_check` khỏi tiêu đề trang.
+     - Di chuyển badge nhỏ **"Real-time"** (Socket connection status) sang nằm ngay bên cạnh tiêu đề **"Nhật Ký Hoạt Động"**.
+     - Loại bỏ nút "Đặt lại" ở Header bên phải; cụm thao tác Header chỉ còn lại 2 nút: `Xuất CSV` và `Làm mới`.
+  2. **Thanh Lọc Nhật Ký (Filter Toolbar):**
+     - **Vị trí nút Đặt lại:** Bổ sung nút **"Đặt lại"** nằm ở góc phải ngoài cùng của thanh bộ lọc (`ml-auto shrink-0`, id `btn-reset-audit-filters`).
+     - **Thanh tìm kiếm:** Giữ nguyên thanh tìm kiếm với độ rộng ưu tiên linh hoạt (`flex-1 min-w-[220px]`).
+     - **LOV Trạng thái:** Thu nhỏ kích thước gọn gàng (`w-36 sm:w-44 shrink-0`), viền nhẹ nhàng.
+     - **Khoảng ngày Từ ngày - Đến ngày:** Tái cấu trúc thành 1 container mềm mại duy nhất (`inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50/70 border border-slate-200/80 rounded-lg`), icon lịch `calendar_month`, input Từ ngày, mũi tên `→`, input Đến ngày, và nút xóa nhanh (x). Loại bỏ hoàn toàn 2 khung viền hộp riêng biệt to dày gây rối mắt.
+  3. **Chuẩn Hóa 100% Tiếng Việt Cho Cột Hành Động (Zero API Leak in Action column):**
+     - Xây dựng **Smart Action Formatter** (`translateApiToActionName`) tại `src/Admin-web/src/utils/audit-tags.util.js` và đồng bộ trong `src/Backend/modules/auth/auth.service.js` (`formatActionName`).
+     - Ánh xạ đầy đủ toàn bộ các nhóm API: Thanh toán & Gói cước (`/payments/*`), Quản trị hệ thống (`/admin/permissions`, `/admin/system/maintenance`, `/admin/change-pin`, `/admin/verify-security-action`), AIOps Sentinel, Giao dịch tài chính, Ví, Ngân sách...
+     - Đảm bảo 100% các dòng trên Cột "Hành động" hiển thị câu tiếng Việt mô tả nghiệp vụ thân thiện (`Tạo đơn hàng thanh toán gói cước`, `Cập nhật phân quyền gói cước`, `Xác thực mã PIN bảo mật`...).
+     - Tuyệt đối không để lộ chuỗi API thô trong cột Hành động. Cột "Yêu cầu API" bên cạnh đảm nhận vai trò hiển thị method badge (`POST`, `GET`, `PUT`, `DELETE`) và URL path kỹ thuật.
+     - Giữ nguyên mã Tag chuẩn tiếng Anh quốc tế (`[PAYMENT]`, `[AUTH]`, `[USER]`, `[SYSTEM]`, `[AIOPS]`, `[CATEGORY]`, `[API]`) kèm tooltip tiếng Việt tương ứng.
+     - Xuất CSV kế thừa câu mô tả tiếng Việt chuẩn hóa cho cột Hành động.
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+  - Admin-web: **40 test suites / 40 test suites (295/295 tests) PASS 100%**, bao gồm bài test 2 tầng mới `src/tests/audit.refinement.2tier.test.jsx` (8/8 tests pass) và `src/tests/audit.page.test.jsx` (9/9 tests pass).
+  - Backend: **71 test suites / 71 test suites (404/404 tests) PASS 100%**.
+  - Production build: `npm run build` hoàn tất thành công sạch sẽ trong 3.13s (0 lint/type errors).
+
+### 4.17. Hoàn Thiện & Tinh Chỉnh Trang Quản Lý Lịch Sử Thanh Toán (Payment History) (2026-10-21)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/Admin-web/PAYMENT_REFINEMENT_PLAN.md`](docs/Admin-web/PAYMENT_REFINEMENT_PLAN.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn bộ kế hoạch khảo sát, lược bỏ nút "Làm mới" dư thừa ở Header, đồng bộ gói cước theo CSDL (chỉ 2 gói Basic & Premium), và lưu vết sự kiện hết hạn gói hạ cấp về Basic vào CSDL PostgreSQL (`payment_order`).
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **Header Trang Lịch Sử Thanh Toán:**
+     - Loại bỏ hoàn toàn nút "Làm mới" (`<button onClick={handleRefresh}>`). Trang đã có Socket.io nhận diện biến động thanh toán PayOS thời gian thực và tự động cập nhật, đồng thời thanh bộ lọc đã có nút "Đặt lại", giúp Header tinh giản và thoáng mắt.
+  2. **Bộ Lọc Gói Cước & Hiển Thị Bảng (Chuẩn hóa 2 gói: Basic & Premium):**
+     - **CSDL:** Cập nhật 19 bản ghi đơn hàng cũ mang chuỗi legacy `PREMIUM_1_MONTH` và `PREMIUM_6_MONTHS` sang `'Premium'`. Toàn bộ CSDL chỉ còn 2 gói: `Basic` và `Premium`.
+     - **Backend:** `createOrder`, `findOrCreateOrderByCode`, `getOrCreatePayosQr`, `createSampleOrder` chuẩn hóa lưu gói mặc định là `'Premium'`. Tự động nhận diện và tương thích ngược nếu Mobile Client gửi `PREMIUM_1_MONTH`. `findOrdersForAdmin` hỗ trợ lọc chính xác theo gói.
+     - **Dropdown Bộ lọc:** Nạp trực tiếp từ API CSDL (`getPackageTypes`) hiển thị: `Tất cả các gói cước`, `Gói Basic (Mặc định)` và `Gói Premium` (đa ngôn ngữ vi/en).
+     - **Bảng dữ liệu:**
+       + Gói Basic: Badge màu trung tính/slate (`bg-slate-100 text-slate-700 border-slate-300`) kèm icon `inventory_2` và nhãn `Gói Basic`.
+       + Gói Premium: Badge màu thương hiệu (`bg-primary/10 text-primary border-primary/20`) kèm icon `workspace_premium` và nhãn `Gói Premium`.
+     - **Modal Sandbox QR:** Chuẩn hóa tạo đơn hàng gói `Premium`.
+     - **Modal Chi tiết:** Hiển thị tên gói cước đã được format đa ngôn ngữ thân thiện.
+  3. **Lưu Vết Lịch Sử Hết Hạn Gói Chuyển Về Gói Cơ Bản Vào CSDL (`payment_order`):**
+     - Cập nhật hàm `downgradeExpiredPremiumAccounts` tại `src/Backend/modules/payment/payment.repository.js`: Khi phát hiện tài khoản Premium hết hạn, bên cạnh việc cập nhật `account.type = 'Basic'`, hệ thống lập tức **INSERT bản ghi vào bảng `payment_order`**:
+       + `package_type`: `'Basic'`
+       + `amount`: `0`, `amount_received`: `0`, `fee`: `0`
+       + `status`: `'EXPIRED'`
+       + `transfer_content`: `'Hết hạn gói Premium, chuyển về gói cơ bản'`
+       + `recognition_code`: `'EXP'`
+       + `created_at` & `expired_at`: thời điểm hết hạn
+     - Tính Idempotent: Mỗi đợt hết hạn chỉ sinh duy nhất 1 bản ghi vào CSDL, không lặp lại.
+     - Bảo toàn doanh thu: Doanh thu thực nhận (`getPaymentSummaryStats`) chỉ tính đơn `PAID` nên bản ghi hết hạn (`amount: 0`, `status: 'EXPIRED'`) không làm lệch doanh thu.
+     - Tự động kích hoạt: `findOrdersForAdmin` gọi `await downgradeExpiredPremiumAccounts()` đảm bảo dữ liệu hiển thị tức thời ngay khi Admin truy cập trang.
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+  - **Backend:** 71/71 suites (405/405 tests pass), bổ sung unit test case 4 trong `tests/unit/payment.repository.test.js` xác nhận lưu vết `payment_order` khi hạ cấp tài khoản.
+  - **Admin-web:** 41/41 suites (302/302 tests pass), bài test 2 tầng mới `src/tests/payment.refinement.2tier.test.jsx` (7/7 tests pass) và cập nhật `src/tests/payment.page.test.jsx` (16/16 tests pass).
+  - **Production build:** `npm run build` hoàn tất thành công trong 3.18s (0 lỗi lint/type).
+
+### 4.18. Tinh Chỉnh & Nâng Cấp Hệ Thống Bảo Trì & Phát Sóng Thông Báo (Maintenance & Broadcast Refinements) (2026-10-21)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/Admin-web/MAINTENANCE_BROADCAST_REFINEMENT_PLAN.md`](docs/Admin-web/MAINTENANCE_BROADCAST_REFINEMENT_PLAN.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn bộ kế hoạch khảo sát thực tế trên môi trường production, thiết kế kiến trúc bảo trì độc lập chống ảnh hưởng chéo, loại bỏ icon cảm xúc thừa (`⚠️`, `🚨`), bổ sung bảng lưu vết CSDL và phân trang cho Broadcast, khóa toggle tại Dashboard khi đang bảo trì, và yêu cầu popup xác nhận trước khi tắt bảo trì.
+- **Kiến Trúc Cô Lập Xử Lý Bảo Trì (Zero-Coupling Maintenance Architecture):**
+  1. *Nguyên lý cô lập độc lập:* Module bảo trì được cấu trúc theo mô hình Out-of-Band Guard. Trạng thái bảo trì và logic kiểm tra kết nối nằm hoàn toàn tại `src/Backend/modules/admin/maintenance.repository.js` và `maintenance.middleware.js` (được gắn ngay tại đầu chuỗi Express pipeline, trước tất cả router nghiệp vụ).
+  2. *Cập nhật các tính năng khác:* Khi phát triển, sửa đổi, refactor hoặc deploy các module tài chính (ví, giao dịch, ngân sách, hóa đơn, thanh toán...), tuyệt đối không thay đổi mã nguồn của `maintenance.middleware.js`. Nhờ đó, bảo trì hoàn toàn miễn nhiễm với mọi biến động hay lỗi từ các tính năng khác.
+  3. *Quy trình cập nhật chính hệ thống bảo trì an toàn:*
+     - Trạng thái phiên bảo trì được lưu trữ bền vững trong bảng PostgreSQL `system_maintenance` đồng thời cache bộ nhớ (In-memory Snapshot). Khi server backend restart hoặc redeploy (zero-downtime rolling update), middleware lập tức khôi phục trạng thái từ PostgreSQL mà không làm mất phiên bảo trì đang diễn ra.
+     - Kiểm thử hồi quy 2 tầng (2-Tier Testing) bắt buộc với các kịch bản Socket realtime, toggle switch, và API fallback để đảm bảo cơ chế bảo trì luôn tin cậy trong mọi tình huống khẩn cấp.
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **Tab Phát Thông Báo (`BroadcastTab` tại `BroadcastPage.jsx`):**
+     - Loại bỏ hoàn toàn khối ghi chú quy tắc vận hành phát thanh (rules notes block) để giao diện sạch sẽ, tập trung vào tác vụ phát tin.
+     - **CSDL Bền Vững:** Tạo repository `src/Backend/modules/notification/broadcast.repository.js` kết nối bảng PostgreSQL `broadcast_notification` (`id`, `title`, `message`, `level`, `sender_username`, `created_at`), kèm cơ chế `initTable()` an toàn và in-memory fallback tuân thủ 100% DB Guard Rule 10.
+     - **Backend API:** Mở rộng `NotificationService.broadcast` tự động ghi nhận người gửi và lưu vết CSDL; bổ sung endpoint `GET /api/notifications/broadcast/history` hỗ trợ phân trang chuẩn (`page`, `limit`).
+     - **Bảng Dữ Liệu Phát Sóng:** Thêm bảng lịch sử phát sóng phía dưới form phát tin, hiển thị 6 cột: `#`, `Mức độ` (Badge sắc màu Info/Warning/Critical), `Tiêu đề`, `Nội dung thông báo`, `Người phát sóng`, `Thời điểm phát sóng` (định dạng giờ Việt Nam GMT+7).
+     - **Phân Trang:** Mặc định 5 dòng / trang (`limit = 5`), tích hợp dropdown chọn số dòng (5, 10, 20, 50) và các nút điều hướng chuyển trang mượt mà. Tự động nạp lại bảng ngay sau khi Admin phát sóng thông báo mới.
+  2. **Tab Điều Hành Bảo Trì (`MaintenanceTab` tại `BroadcastPage.jsx`):**
+     - Loại bỏ nút icon cong tròn (`refresh`) dư thừa tại tiêu đề bảng "Lịch Sử Các Phiên Bảo Trì Hệ Thống" do bảng đã được tự động đồng bộ thời gian thực qua kênh Socket.io `admin.maintenance_changed`.
+  3. **Chế Độ Bảo Trì & Giao Diện Tổng Quan:**
+     - **AppLayout Header Orange Banner:** Loại bỏ hoàn toàn icon `⚠️` ở tiêu đề banner; nút "Quản trị bảo trì" điều hướng trực tiếp tới `/broadcast`.
+     - **Dashboard ServerHealthPanel:**
+       + Phân biệt trực quan giữa Bảo trì khẩn cấp (nền đỏ rose, icon `crisis_alert`, badge `Khẩn cấp`) và Bảo trì thông thường (nền cam amber, icon `construction`, badge `Thông thường`).
+       + Khóa công tắc `#btn-maintenance-toggle` (`disabled={true}`) khi đang có bảo trì hoạt động, chuyển trỏ chuột sang `cursor-not-allowed` kèm tooltip hướng dẫn sang trang `/broadcast`.
+       + Nút liên kết "Quản trị & Lên lịch bảo trì →" sử dụng component an toàn `SafeMaintenanceLink` (hỗ trợ cả môi trường có Router lẫn độc lập không Router).
+     - **Trang Bảo Trì & Thông Báo (`BroadcastPage.jsx`):**
+       + Banner trạng thái bảo trì đang hoạt động được bố trí nổi bật ngay dưới tiêu đề trang, phân biệt màu sắc rõ ràng (Khẩn cấp vs Thông thường) và loại bỏ icon `🚨`.
+       + **Popup Xác Nhận Tắt Bảo Trì:** Khi Admin nhấn "Tắt Bảo Trì", hệ thống không tắt ngay lập tức mà mở modal xác nhận an toàn (`showStopMaintenanceConfirmModal`), hiển thị thông điệp cảnh báo và hai nút "Xác Nhận Kết Thúc" / "Hủy Bỏ" chống thao tác nhầm lẫn.
+     - **Đa Ngôn Ngữ (i18n):** Cập nhật đầy đủ file `vi.js` và `en.js`, bổ sung namespace `historyBroadcast` và `stopConfirm`.
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+  - **Backend:** 71/71 test suites (405/405 tests PASS 100%).
+  - **Admin-web:** 42/42 test suites (313/313 tests PASS 100%), bao gồm bộ test 2 tầng mới `src/tests/broadcast.refinement.2tier.test.jsx` (11/11 tests pass), `src/tests/broadcast.page.test.jsx` (12/12 tests pass), `src/tests/broadcast.maintenance.history.test.jsx` (9/9 tests pass).
+  - **Zero Regressions:** Toàn bộ test suite ở cả 2 module đều đạt chuẩn 100% pass, không có lỗi tiềm ẩn hay hồi quy logic.
+
+### 4.19. Cơ Chế Đối Soát & Bù Dữ Liệu Bảo Trì Khi CSDL Sự Cố (Maintenance Failover & Reconciliation Engine) (2026-10-21)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/Admin-web/MAINTENANCE_FAILOVER_RECONCILIATION_PLAN.md`](docs/Admin-web/MAINTENANCE_FAILOVER_RECONCILIATION_PLAN.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn bộ phương án kỹ thuật giải quyết bài toán "bảo trì ma" (Ghost Maintenance Bug) khi CSDL gặp sự cố (mất mạng/timeout), duy trì khả năng Bật/Tắt bảo trì 100% trên RAM/Redis và tự động bù dữ liệu (flush outbox) + triệt tiêu bản ghi mồ côi khi CSDL khôi phục.
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **Nguồn Chân Lý Vận Hành (Operational Source of Truth):**
+     - Đảm bảo trạng thái trên RAM và Redis (`system:maintenance_mode`) phản ánh ý chí vận hành trực tiếp mới nhất của Admin. CSDL cũ bị mất kết nối tuyệt đối không được quyền ghi đè ngược lại làm đảo lộn trạng thái sống.
+  2. **Hàng Đợi Bù Giao Dịch (Outbox Write-Back Buffer):**
+     - Bổ sung `_pendingDbSyncQueue` trong `src/Backend/modules/admin/maintenance.repository.js`. Khi các phương thức `createRecord`, `completeOngoingRecord`, `updateOngoingToEmergency` gặp sự cố CSDL (`catch(err)`), ngoài việc lưu vào `_inMemoryFallback`, tác vụ lập tức được xếp vào hàng đợi Outbox với cấu trúc `{ action, payload, queuedAt }`.
+     - Tích hợp phương thức `hasPendingSync()` và `flushPendingQueue()` tự động duyệt hàng đợi, thực thi tuần tự các câu lệnh còn nợ vào PostgreSQL và dọn sạch hàng đợi an toàn.
+  3. **Trình Giám Sát Tự Động Khôi Phục & Ghost Maintenance Killer (`reconcileWithDatabase`):**
+     - Bổ sung phương thức `reconcileWithDatabase({ currentActiveState })` trong `MaintenanceRepository` và `reconcileStateWithDatabase()` trong `MaintenanceManager`:
+       + **Ghost Maintenance Killer:** Nếu RAM/Redis hiện tại là `active === false` (Admin đã tắt bảo trì), worker tự động chạy `UPDATE "maintenance_history" SET "status" = 'COMPLETED', "ended_at" = COALESCE("ended_at", NOW()) WHERE "status" = 'ONGOING'`. Triệt tiêu 100% mọi bản ghi mồ côi `ONGOING` còn treo trong CSDL do CSDL sập lúc tắt.
+       + **State Alignment:** Nếu RAM/Redis hiện tại là `active === true` (Admin đang bật bảo trì), tự động kiểm tra CSDL và tạo bản ghi `ONGOING` tương ứng nếu chưa có.
+       + **Outbox Flush:** Tự động xả toàn bộ tác vụ còn nợ trong `_pendingDbSyncQueue` vào PostgreSQL.
+  4. **Tích Hợp Khởi Động An Toàn & Nhịp Tim Định Kỳ (`src/Backend/index.js`):**
+     - Khi Backend khởi động (`initTable()`), tự động kích hoạt `reconcileStateWithDatabase()` để dọn dẹp các phiên bảo trì ma mồ côi nếu server bị tắt đột ngột trước đó.
+     - Trong vòng lặp `metricsInterval` (3s/lần), nếu phát hiện `hasPendingSync() === true`, tự động gọi `flushPendingQueue()` để bù dữ liệu ngay khi CSDL vừa thông luồng trở lại.
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+  - **Backend:** 74/74 test suites (**412/412 tests PASS 100%**), bao gồm bộ test 2 tầng mới `src/Backend/tests/unit/maintenance.reconciliation.2tier.test.js` (7/7 tests pass) kiểm chứng toàn diện cả kịch bản CSDL sập, lưu Outbox buffer, Ghost Killer triệt tiêu bản ghi mồ côi và State Alignment.
+  - **Admin-web:** 42/42 test suites (**313/313 tests PASS 100%**).
+  - **Zero Regressions:** Hệ thống duy trì tuyệt đối tính ổn định và toàn vẹn dữ liệu.
+
+

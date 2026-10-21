@@ -486,7 +486,7 @@ class AIOpsService {
   calibrate(options = {}) {
     const currentSample = this.collector.getSample();
     const report = this.detector.calibrate({ ...options, currentSample });
-    const evalResult = this.detector.evaluate(currentSample);
+    const evalResult = this.detector.evaluate(currentSample, false);
     this._currentStatus = {
       evaluatedAt: new Date().toISOString(),
       threatScore: evalResult.threatScore,

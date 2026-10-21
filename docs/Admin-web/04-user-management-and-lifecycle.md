@@ -12,9 +12,10 @@
 Chức năng **Quản Lý Người Dùng & Vòng Đời Tài Khoản** cho phép quản trị viên theo dõi, giám sát và can thiệp kịp thời vào trạng thái hoạt động của các tài khoản người dùng cuối (Client-app). 
 
 Hệ thống được thiết kế tuân thủ tuyệt đối **Nghị định 13/2023/NĐ-CP về Bảo vệ dữ liệu cá nhân** và chuẩn **GDPR**:
-- 100% dữ liệu nhạy cảm (Email, SĐT, Địa chỉ) hiển thị trên màn hình đều được mặt nạ hóa (Masking).
-- Quy trình khóa tài khoản bắt buộc phải có lý do nghiệp vụ chính đáng và phát sinh sự kiện **Cưỡng chế đăng xuất (Force Logout)** tức thời trên thiết bị di động.
-- Quy trình xóa tài khoản được thực thi an toàn bằng giao dịch cơ sở dữ liệu (Prisma Transaction 5 bước), không làm mất dữ liệu tài chính lịch sử.
+- **Bảo toàn hiển thị trạng thái xóa mềm (Soft-Delete Visibility):** Sau khi thực hiện xóa mềm, tài khoản không biến mất khỏi bảng một cách khó hiểu mà tự động hiển thị thẻ trạng thái đỏ `Đã xóa` (`Deleted`), giúp kiểm toán viên và quản trị viên dễ dàng theo dõi.
+- **Bảo vệ quyền riêng tư 100%:** Dữ liệu nhạy cảm (Email, SĐT, Địa chỉ, IP) hiển thị trên màn hình đều được mặt nạ hóa (Masking) ngay từ tầng Backend.
+- **Quy trình khóa tài khoản nghiêm ngặt:** Bắt buộc nhập lý do nghiệp vụ hợp lệ và phát sinh sự kiện **Cưỡng chế đăng xuất (Force Logout)** tức thời trên thiết bị di động.
+- **Giao dịch xóa tài khoản an toàn 5 bước:** Đảm bảo toàn vẹn dữ liệu kế toán và lịch sử giao dịch bằng Prisma Transaction, không dùng `DELETE` vật lý.
 
 ---
 
@@ -34,7 +35,7 @@ stateDiagram-v2
     Active --> Deleted: Admin thực hiện Xóa mềm (Soft-delete khẩn cấp)
     Inactive --> Deleted: Admin thực hiện Xóa mềm
     
-    Deleted --> [*]: Lưu trữ phục vụ kiểm toán tài chính (Không thể khôi phục)
+    Deleted --> [*]: Lưu trữ kiểm toán tài chính (Hiển thị badge Đã xóa trên Admin-web)
 ```
 
 ### 2.1. Quy trình Khóa Tài Khoản & Cưỡng Chế Đăng Xuất (Force Logout)
@@ -67,6 +68,8 @@ return prisma.$transaction(async (tx) => {
 });
 ```
 
+Sau khi xóa thành công, giao diện Frontend tự động mở rộng bộ lọc `filter.statuses` để bao gồm `'deleted'`, giúp dòng người dùng vừa bị xóa lập tức hiển thị badge đỏ pastel `Đã xóa` thay vì biến mất đột ngột.
+
 ---
 
 ## 📐 3. CÁC QUY TẮC MẶT NẠ HÓA DỮ LIỆU (DATA MASKING RULES)
@@ -97,25 +100,26 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
 ## 💼 5. CÔNG DỤNG & GIÁ TRỊ NGHIỆP VỤ
 
 - **Kiểm soát rủi ro tức thì:** Ngăn chặn ngay lập tức các tài khoản đang có hành vi spam giao dịch hoặc tấn công hệ thống.
-- **Minh bạch thông tin:** Quản trị viên nắm rõ tài khoản nào đang hoạt động, tài khoản nào đang trong diện chờ thanh lý 30 ngày.
+- **Minh bạch thông tin:** Quản trị viên nắm rõ tài khoản nào đang hoạt động, tài khoản nào đang trong diện chờ thanh lý 30 ngày, và tài khoản nào đã bị xóa mềm phục vụ đối soát.
 - **Tuân thủ pháp luật:** Tránh mọi rủi ro kiện tụng liên quan đến việc nhân viên nội bộ xem lén thông tin liên lạc cá nhân của khách hàng.
 
 ---
 
 ## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN
 
-1. **Bảng Danh Sách Người Dùng (`UserListPage.jsx`):**
-   - Tìm kiếm linh hoạt theo Họ tên, Email hoặc Số điện thoại.
-   - Bộ lọc trạng thái đa năng: Tất cả, Hoạt động (`Active`), Đã vô hiệu hóa (`Inactive`), Chờ xóa (`PendingDelete`), Đã xóa (`Deleted`).
-1. **Giao Diện Quản Lý Người Dùng Chuẩn Enterprise AIOps Bento (`UserListPage.jsx` — Cập nhật v2.5):**
+1. **Giao Diện Quản Lý Người Dùng Enterprise AIOps Bento (`UserListPage.jsx`):**
    - **Hero Header Bar:** Tích hợp icon nhận diện tròn gradient, huy hiệu Realtime Sync xanh lá nhấp nháy, nút Refresh tức thì.
-   - **Bento Stats KPI:** 4 thẻ KPI bo góc `rounded-2xl` tổng hợp tức thời: Tổng người dùng, Đang hoạt động, Bị vô hiệu hóa, Chờ xóa 30 ngày (hỗ trợ click trực tiếp để chuyển nhanh bộ lọc).
-   - **Thanh Điều Khiển Pill Tabs:** Lọc nhanh trạng thái người dùng dạng viên thuốc (`Tất Cả`, `Hoạt Động`, `Vô Hiệu Hóa`, `Chờ Xóa`, `Đã Xóa`) kèm số lượng badge thời gian thực. Sau khi xóa mềm, tài khoản vẫn hiển thị trên danh sách kèm nhãn "Đã xóa", không bị biến mất.
-   - **Bảng Dữ Liệu Hiện Đại:** Bo góc mềm `rounded-2xl`, avatar người dùng sinh động, badges trạng thái pastel chuẩn màu (Emerald, Slate, Amber, Rose).
-   - **Bộ Lọc Nâng Cao:** Hỗ trợ tìm kiếm realtime đa trường (Họ tên, Email, SĐT, Username) và lọc theo 4 khu vực đô thị trọng điểm: TP. Hồ Chí Minh, Hà Nội, Đà Nẵng, Cần Thơ.
-   - **Phân Trang Tiêu Chuẩn:** Tùy chọn 5, 10, 20 hoặc 50 người dùng/trang với bộ điều hướng linh hoạt.
+   - **Bento Stats KPI:** 4 thẻ KPI bo góc `rounded-2xl` tổng hợp tức thời: Tổng người dùng, Đang hoạt động, Bị vô hiệu hóa, Chờ xóa 30 ngày, Đã xóa mềm (hỗ trợ click trực tiếp để chuyển nhanh bộ lọc).
+   - **Thanh Điều Khiển Pill Tabs:** Lọc nhanh trạng thái người dùng dạng viên thuốc (`Tất Cả`, `Hoạt Động`, `Vô Hiệu Hóa`, `Chờ Xóa`, `Đã Xóa`) kèm số lượng badge thời gian thực.
+   - **Bảng Dữ Liệu Hiện Đại:** Bo góc mềm `rounded-2xl`, avatar người dùng sinh động, badges trạng thái pastel chuẩn màu:
+     - `Active`: `bg-emerald-50 text-emerald-700 border-emerald-200/80`
+     - `Inactive`: `bg-slate-100 text-slate-700 border-slate-200`
+     - `PendingDelete`: `bg-amber-50 text-amber-800 border-amber-200/80`
+     - `Deleted`: `bg-rose-50 text-rose-700 border-rose-200/80`
+   - **Bộ Lọc Nâng Cao:** Hỗ trợ tìm kiếm realtime đa trường (Họ tên, Email, SĐT, Username) và lọc theo gói cước (`All`, `Basic`, `Premium`, `VIP`).
+   - **Phân Trang Tiêu Chuẩn:** Tùy chọn 5, 10, 20 hoặc 50 người dùng/trang với bộ điều hướng linh hoạt `Pagination`.
 2. **Modal & Trang Chi Tiết Người Dùng (`UserDetailModal.jsx` / `UserDetailPage.jsx`):**
-   - Hiển thị ngày tạo tài khoản, ngày cập nhật, mã vùng quốc gia, lý do khóa và số ngày đếm ngược chờ xóa.
+   - Hiển thị ngày tạo tài khoản, ngày cập nhật, gói tài khoản, lý do khóa và số ngày đếm ngược chờ xóa.
 3. **Modal Khóa Tài Khoản Kèm Kiểm Tra Ràng Buộc:**
    - Textarea nhập lý do có đếm ký tự và thông báo lỗi trực tiếp, nút vô hiệu hóa tự động bị khóa khi chưa nhập lý do.
 4. **Cập Nhật Real-Time Không Cần F5:**
@@ -131,7 +135,7 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
 - **Đến Mobile App (Client-app):**
   - **Khóa tài khoản:** Client nhận Socket `force_logout`, bị xóa JWT, chuyển về màn hình đăng nhập. Mọi API sau đó đều trả về HTTP 401/403 kèm thông báo lý do Admin đã nhập.
   - **Mở khóa tài khoản:** Người dùng có thể đăng nhập lại bình thường trên điện thoại.
-  - **Xóa mềm:** Toàn bộ liên kết ngân hàng bị ngắt kết nối an toàn, các giao dịch offline trên SQLite sẽ không thể push sync lên máy chủ.
+  - **Xóa mềm:** Toàn bộ liên kết ngân hàng bị ngắt kết nối an toàn, các giao dịch offline trên SQLite Drift sẽ không thể push sync lên máy chủ.
 
 ---
 

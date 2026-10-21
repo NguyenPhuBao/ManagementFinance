@@ -147,6 +147,10 @@ for (const log of logs) {
    - **Hàng 2 (Grid 2 cột):** Bảng Hoạt động gần đây (`lg:col-span-2`) nằm ngang hàng với Box Sức khỏe máy chủ `ServerHealthPanel` (`lg:col-span-1`).
    - **Hàng 3:** Biểu đồ Tần suất đăng nhập (Full-width).
    - **Hàng 4:** Biểu đồ Lưu lượng Request (Full-width, đồng bộ chiều cao và tỷ lệ hiển thị với Biểu đồ Đăng nhập).
+6. **Tinh Chỉnh Sức Khỏe Máy Chủ & Điều Hành Bảo Trì Tại Dashboard (`ServerHealthPanel.jsx`):**
+   - **Phân biệt trực quan 2 chế độ:** Chế độ Khẩn cấp dùng tông đỏ rose (`border-rose-300 bg-rose-50/90`), icon `crisis_alert`, badge `Khẩn cấp`; Chế độ Thông thường dùng tông cam hổ phách (`border-amber-300 bg-amber-50/90`), icon `construction`, badge `Thông thường`.
+   - **Khóa công tắc an toàn:** Nút `#btn-maintenance-toggle` bị **KHÓA CHẶT** (`disabled={true}`) khi đang có bất kỳ phiên bảo trì nào đang diễn ra, con trỏ chuột chuyển sang `cursor-not-allowed` kèm tooltip giải thích rõ ràng nhằm ngăn chặn thao tác tắt bật tùy tiện ngoài tầm kiểm soát tại Dashboard.
+   - **Điều hướng chuyên trách:** Nút liên kết "Quản trị & Lên lịch bảo trì →" sử dụng component an toàn `SafeMaintenanceLink` điều hướng trực tiếp sang Trung tâm điều hành `/broadcast`.
 
 ---
 

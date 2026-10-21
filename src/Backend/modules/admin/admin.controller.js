@@ -291,6 +291,39 @@ const adminController = {
       return ResponseHandler.error(res, error.message, statusCode);
     }
   },
+
+  async firstLoginSetup(req, res) {
+    try {
+      const result = await adminService.firstLoginSetup(req.body, req.user);
+      return ResponseHandler.success(res, result, result.message);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('firstLoginSetup failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async changeAdminPassword(req, res) {
+    try {
+      const result = await adminService.changeAdminPassword(req.body, req.user);
+      return ResponseHandler.success(res, result, result.message);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('changeAdminPassword failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async createAdminAccount(req, res) {
+    try {
+      const result = await adminService.createAdminAccount(req.body, req.user);
+      return ResponseHandler.created(res, result, result.message);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('createAdminAccount failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
 };
 
 module.exports = adminController;

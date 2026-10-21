@@ -84,6 +84,16 @@ const BroadcastPage = () => {
   const [sending, setSending] = useState(false);
   const [broadcastResult, setBroadcastResult] = useState(null);
 
+  // --- State Lịch Sử Phát Thông Báo (PostgreSQL Persistence) ---
+  const [broadcastHistory, setBroadcastHistory] = useState([]);
+  const [broadcastPage, setBroadcastPage] = useState(1);
+  const [broadcastLimit, setBroadcastLimit] = useState(5);
+  const [broadcastTotal, setBroadcastTotal] = useState(0);
+  const [loadingBroadcastHistory, setLoadingBroadcastHistory] = useState(false);
+
+  // State Modal popup xác nhận kết thúc bảo trì
+  const [showStopMaintenanceConfirmModal, setShowStopMaintenanceConfirmModal] = useState(false);
+
   // Tải trạng thái bảo trì
   const fetchMaintenance = async () => {
     try {
@@ -102,6 +112,38 @@ const BroadcastPage = () => {
       setLoadingMaintenance(false);
     }
   };
+
+  // Tải lịch sử phát thông báo từ CSDL PostgreSQL (Phân trang mặc định 5/page)
+  const fetchBroadcastHistory = useCallback(async (pageToFetch = 1, limitToFetch = 5) => {
+    try {
+      setLoadingBroadcastHistory(true);
+      const res = await notificationApi.getBroadcastHistory({ page: pageToFetch, limit: limitToFetch });
+      const payload = res?.data?.data || res?.data || res;
+      let rows = [];
+      let total = 0;
+
+      if (payload && Array.isArray(payload.data)) {
+        rows = payload.data;
+        if (payload.pagination) {
+          total = Number(payload.pagination.total) || 0;
+        } else {
+          total = rows.length;
+        }
+      } else if (Array.isArray(payload)) {
+        rows = payload;
+        total = rows.length;
+      }
+
+      setBroadcastHistory(rows);
+      setBroadcastTotal(total);
+      setBroadcastPage(pageToFetch);
+      setBroadcastLimit(limitToFetch);
+    } catch (err) {
+      console.error('[BroadcastPage] Lỗi tải lịch sử phát thông báo:', err);
+    } finally {
+      setLoadingBroadcastHistory(false);
+    }
+  }, []);
 
   // Tải lịch sử bảo trì từ CSDL PostgreSQL (Trích xuất payload chuẩn hóa)
   const fetchHistory = useCallback(
@@ -157,7 +199,8 @@ const BroadcastPage = () => {
   useEffect(() => {
     fetchMaintenance();
     fetchHistory(1, historyLimit);
-  }, [fetchHistory]);
+    fetchBroadcastHistory(1, broadcastLimit);
+  }, [fetchHistory, fetchBroadcastHistory]);
 
   // Lắng nghe sự kiện bảo trì Realtime qua Socket.io
   useEffect(() => {
@@ -397,6 +440,7 @@ const BroadcastPage = () => {
       setTitle('');
       setMessage('');
       setLevel('info');
+      fetchBroadcastHistory(1, broadcastLimit);
     } catch (e) {
       const errMsg = e.response?.data?.message || t('broadcast.feedback.broadcastErrorTitle');
       setBroadcastResult({ ok: false, msg: errMsg });
@@ -412,7 +456,7 @@ const BroadcastPage = () => {
   const currentLocalIso = new Date(Date.now() + 60000).toISOString().slice(0, 16);
 
   return (
-    <div className="max-w-[1440px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full">
+    <div className="max-w-[1720px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full">
       {/* Tiêu đề trang & Thanh chuyển Tab */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline-variant pb-4">
         <div>
@@ -442,7 +486,10 @@ const BroadcastPage = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('broadcast')}
+            onClick={() => {
+              setActiveTab('broadcast');
+              fetchBroadcastHistory(1, broadcastLimit);
+            }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'broadcast'
                 ? 'bg-white text-primary shadow-xs font-bold'
@@ -455,77 +502,79 @@ const BroadcastPage = () => {
         </div>
       </div>
 
+      {/* BANNER THÔNG BÁO ĐANG BẢO TRÌ Ở GẦN ĐẦU TRANG (HIỂN THỊ KHI ĐANG BẢO TRÌ) */}
+      {maintenance.active && (
+        <div
+          className={`rounded-2xl border p-5 transition-all shadow-xs ${
+            maintenance.isEmergency
+              ? 'border-rose-300 bg-rose-50/90 text-rose-950'
+              : 'border-amber-300 bg-amber-50/90 text-amber-950'
+          }`}
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div
+                className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs ${
+                  maintenance.isEmergency
+                    ? 'bg-rose-600 text-white animate-pulse'
+                    : 'bg-amber-500 text-white'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[26px]">
+                  {maintenance.isEmergency ? 'crisis_alert' : 'construction'}
+                </span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base font-bold m-0">
+                    {maintenance.isEmergency
+                      ? t('broadcast.banner.emergencyTitle', 'HỆ THỐNG ĐANG BẢO TRÌ KHẨN CẤP')
+                      : t('broadcast.banner.silentTitle', 'HỆ THỐNG ĐANG BẢO TRÌ THÔNG THƯỜNG')}
+                  </h2>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase ${
+                      maintenance.isEmergency
+                        ? 'bg-rose-200 text-rose-800'
+                        : 'bg-amber-200 text-amber-800'
+                    }`}
+                  >
+                    {maintenance.isEmergency ? t('broadcast.banner.emergencyBadge', 'Khẩn cấp') : t('broadcast.banner.silentBadge', 'Thông thường')}
+                  </span>
+                </div>
+                <p className="text-xs opacity-90 mt-1">
+                  {maintenance.isEmergency
+                    ? t('broadcast.banner.emergencyDesc')
+                    : t('broadcast.banner.silentDesc')}
+                </p>
+                <div className="mt-2 text-xs flex flex-wrap gap-x-4 gap-y-1 font-medium">
+                  <span>• {t('broadcast.banner.reasonLabel')} <b>{maintenance.reason || t('broadcast.banner.noReason')}</b></span>
+                  {maintenance.activatedBy && <span>• {t('broadcast.banner.activatedByLabel')} <b>{maintenance.activatedBy}</b></span>}
+                  {maintenance.activatedAt && (
+                    <span>• {t('broadcast.banner.activatedAtLabel')} <b>{formatDateTime(maintenance.activatedAt)}</b></span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick toggle if currently active - Mở popup xác nhận */}
+            <button
+              id="btn-turn-off-maintenance"
+              onClick={() => setShowStopMaintenanceConfirmModal(true)}
+              disabled={actionLoading}
+              className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 text-on-surface text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 self-start md:self-center flex-shrink-0"
+            >
+              <span className="material-symbols-outlined text-[18px] text-emerald-600">power_settings_new</span>
+              <span>{t('broadcast.turnOffBtn', 'Tắt Bảo Trì')}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ======================================================== */}
       {/* TAB 1: ĐIỀU HÀNH BẢO TRÌ HỆ THỐNG */}
       {/* ======================================================== */}
       {activeTab === 'maintenance' && (
         <div className="space-y-6">
-          {/* 1.1 BANNER TRẠNG THÁI BẢO TRÌ (CHỈ HIỂN THỊ KHI ĐANG BẢO TRÌ) */}
-          {maintenance.active && (
-            <div
-              className={`rounded-2xl border p-5 transition-all shadow-xs ${
-                maintenance.isEmergency
-                  ? 'border-red-300 bg-red-50/90 text-red-950'
-                  : 'border-orange-300 bg-orange-50/90 text-orange-950'
-              }`}
-            >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-start gap-3.5">
-                  <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs ${
-                      maintenance.isEmergency
-                        ? 'bg-red-600 text-white animate-pulse'
-                        : 'bg-orange-500 text-white'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[26px]">
-                      {maintenance.isEmergency ? 'error' : 'construction'}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-base font-bold m-0">
-                        {maintenance.isEmergency
-                          ? t('broadcast.banner.emergencyTitle')
-                          : t('broadcast.banner.silentTitle')}
-                      </h2>
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase ${
-                          maintenance.isEmergency
-                            ? 'bg-red-200 text-red-800'
-                            : 'bg-orange-200 text-orange-800'
-                        }`}
-                      >
-                        {maintenance.isEmergency ? t('broadcast.banner.emergencyBadge') : t('broadcast.banner.silentBadge')}
-                      </span>
-                    </div>
-                    <p className="text-xs opacity-90 mt-1">
-                      {maintenance.isEmergency
-                        ? t('broadcast.banner.emergencyDesc')
-                        : t('broadcast.banner.silentDesc')}
-                    </p>
-                    <div className="mt-2 text-xs flex flex-wrap gap-x-4 gap-y-1 font-medium">
-                      <span>• {t('broadcast.banner.reasonLabel')} <b>{maintenance.reason || t('broadcast.banner.noReason')}</b></span>
-                      {maintenance.activatedBy && <span>• {t('broadcast.banner.activatedByLabel')} <b>{maintenance.activatedBy}</b></span>}
-                      {maintenance.activatedAt && (
-                        <span>• {t('broadcast.banner.activatedAtLabel')} <b>{formatDateTime(maintenance.activatedAt)}</b></span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick toggle if currently active */}
-                <button
-                  onClick={() => handleToggleMaintenance(false)}
-                  disabled={actionLoading}
-                  className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 text-on-surface text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 self-start md:self-center flex-shrink-0"
-                >
-                  <span className="material-symbols-outlined text-[18px] text-emerald-600">power_settings_new</span>
-                  <span>{t('broadcast.turnOffBtn', 'Tắt Bảo Trì')}</span>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Feedback Alert */}
           {maintenanceFeedback && (
@@ -782,18 +831,6 @@ const BroadcastPage = () => {
                   <option value="COMPLETED">{t('broadcast.history.statusCompleted', 'Đã hoàn thành')}</option>
                   <option value="CANCELLED">{t('broadcast.history.statusCancelled', 'Đã hủy')}</option>
                 </select>
-
-                <button
-                  type="button"
-                  onClick={() => fetchHistory(historyPage, historyLimit)}
-                  disabled={loadingHistory}
-                  className="p-1.5 hover:bg-surface-container-highest rounded-lg text-on-surface-variant transition-colors cursor-pointer flex items-center justify-center border border-outline-variant"
-                  title={t('broadcast.history.refreshBtn', 'Làm mới')}
-                >
-                  <span className={`material-symbols-outlined text-[18px] ${loadingHistory ? 'animate-spin' : ''}`}>
-                    refresh
-                  </span>
-                </button>
               </div>
             </div>
 
@@ -945,7 +982,7 @@ const BroadcastPage = () => {
       {/* TAB 2: PHÁT THÔNG BÁO HỆ THỐNG (SYSTEM BROADCAST) */}
       {/* ======================================================== */}
       {activeTab === 'broadcast' && (
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6">
           <form onSubmit={handleSendBroadcast} className="bg-white rounded-2xl border border-outline-variant shadow-sm p-6 space-y-5">
             <div>
               <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
@@ -1064,14 +1101,112 @@ const BroadcastPage = () => {
             </button>
           </form>
 
-          <div className="bg-surface-container-low border border-outline-variant/60 rounded-xl p-4 text-xs text-on-surface-variant space-y-1.5">
-            <p className="font-semibold text-on-surface flex items-center gap-1">
-              <span className="material-symbols-outlined text-[15px] text-amber-600">info</span>
-              {t('broadcast.rulesTitle')}
-            </p>
-            <p>{t('broadcast.rule1')}</p>
-            <p>{t('broadcast.rule2')}</p>
-            <p>{t('broadcast.rule3')}</p>
+          {/* 2.2 BẢNG HIỂN THỊ DANH SÁCH THÔNG BÁO VÀ NGƯỜI GỬI (POSTGRESQL PERSISTENCE - PHÂN TRANG 5/PAGE) */}
+          <div className="bg-white rounded-2xl border border-outline-variant shadow-sm p-5 space-y-4">
+            <div className="border-b border-outline-variant pb-3">
+              <h3 className="font-bold text-sm text-on-surface flex items-center gap-2 m-0">
+                <span className="material-symbols-outlined text-primary text-[20px]">mark_email_read</span>
+                <span>{t('broadcast.historyBroadcast.title', 'Lịch Sử Các Thông Báo Đã Phát Sóng')}</span>
+              </h3>
+              <p className="text-[11px] text-on-surface-variant mt-0.5 m-0">
+                {t('broadcast.historyBroadcast.subtitle', 'Lưu vết Audit Trail vĩnh viễn trong CSDL PostgreSQL, theo dõi người phát sóng, mức độ và nội dung')}
+              </p>
+            </div>
+
+            {/* Bảng Dữ Liệu */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-outline-variant text-[11px] text-on-surface-variant uppercase tracking-wider bg-surface-container-lowest font-semibold">
+                    <th className="w-12 py-2.5 px-3">#</th>
+                    <th className="w-28 py-2.5 px-3">{t('broadcast.historyBroadcast.colLevel', 'Mức độ')}</th>
+                    <th className="w-1/4 min-w-[150px] py-2.5 px-3">{t('broadcast.historyBroadcast.colTitle', 'Tiêu đề')}</th>
+                    <th className="w-2/5 min-w-[200px] py-2.5 px-3">{t('broadcast.historyBroadcast.colMessage', 'Nội dung thông báo')}</th>
+                    <th className="w-28 py-2.5 px-3">{t('broadcast.historyBroadcast.colSender', 'Người gửi')}</th>
+                    <th className="w-36 py-2.5 px-3 text-right">{t('broadcast.historyBroadcast.colTime', 'Thời điểm phát sóng')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/50">
+                  {loadingBroadcastHistory && broadcastHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-8 text-center text-on-surface-variant">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                          <span>{t('common.loading', 'Đang tải dữ liệu...')}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : broadcastHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-8 text-center text-on-surface-variant">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <span className="material-symbols-outlined text-[28px] text-gray-400">chat_bubble_outline</span>
+                          <span className="text-xs">{t('broadcast.historyBroadcast.emptyText', 'Chưa có thông báo nào được phát sóng.')}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    broadcastHistory.map((row, idx) => {
+                      const lvl = (row.level || 'INFO').toUpperCase();
+                      const isCritical = lvl === 'CRITICAL';
+                      const isWarning = lvl === 'WARNING';
+                      return (
+                        <tr key={row.id || idx} className="hover:bg-surface-container-lowest transition-colors">
+                          <td className="py-3 px-3 font-mono text-[11px] text-on-surface-variant">{row.id || (idx + 1)}</td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              isCritical
+                                ? 'bg-rose-50 text-rose-700 border-rose-300'
+                                : isWarning
+                                ? 'bg-amber-50 text-amber-700 border-amber-300'
+                                : 'bg-blue-50 text-blue-700 border-blue-300'
+                            }`}>
+                              <span className="material-symbols-outlined text-[12px]">
+                                {isCritical ? 'error' : isWarning ? 'warning' : 'info'}
+                              </span>
+                              <span>{lvl}</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-semibold text-on-surface max-w-[180px]">
+                            <TruncateCell text={row.title} className="font-semibold text-on-surface" />
+                          </td>
+                          <td className="py-3 px-3 text-on-surface-variant max-w-[280px]">
+                            <TruncateCell text={row.message} className="text-on-surface-variant" />
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-surface-container-low px-2 py-0.5 rounded-md border border-outline-variant/60 text-on-surface">
+                              <span className="material-symbols-outlined text-[13px] text-primary">account_circle</span>
+                              <span>{row.sender_username || 'admin'}</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right whitespace-nowrap text-on-surface-variant text-[11px]">
+                            {row.created_at ? formatDateTime(row.created_at) : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Phân trang Chuẩn (Mặc định 5/page) */}
+            <Pagination
+              currentPage={broadcastPage}
+              pageSize={broadcastLimit}
+              total={broadcastTotal}
+              pageSizeOptions={[5, 10, 20]}
+              onPageChange={(p) => {
+                setBroadcastPage(p);
+                fetchBroadcastHistory(p, broadcastLimit);
+              }}
+              onPageSizeChange={(s) => {
+                setBroadcastLimit(s);
+                setBroadcastPage(1);
+                fetchBroadcastHistory(1, s);
+              }}
+              itemLabel={t('broadcast.historyBroadcast.itemLabel', 'thông báo')}
+            />
           </div>
         </div>
       )}
@@ -1094,6 +1229,51 @@ const BroadcastPage = () => {
           await handleConfirmEmergencyMaintenance();
         }}
       />
+
+      {/* POPUP MODAL XÁC NHẬN KẾT THÚC BẢO TRÌ */}
+      {showStopMaintenanceConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-outline-variant animate-fade-in">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-[24px]">power_settings_new</span>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-bold text-base text-on-surface m-0">
+                  {t('broadcast.stopConfirm.title', 'Xác Nhận Kết Thúc Bảo Trì')}
+                </h3>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  {t('broadcast.stopConfirm.desc', 'Bạn có chắc chắn muốn kết thúc phiên bảo trì này và khôi phục hoạt động bình thường cho toàn bộ người dùng?')}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-outline-variant">
+              <button
+                type="button"
+                onClick={() => setShowStopMaintenanceConfirmModal(false)}
+                disabled={actionLoading}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-on-surface bg-surface-container-low hover:bg-surface-container border border-outline-variant transition-colors cursor-pointer"
+              >
+                {t('broadcast.stopConfirm.cancelBtn', 'Hủy Bỏ')}
+              </button>
+              <button
+                type="button"
+                id="btn-confirm-stop-maintenance"
+                onClick={async () => {
+                  setShowStopMaintenanceConfirmModal(false);
+                  await handleToggleMaintenance(false);
+                }}
+                disabled={actionLoading}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/90 transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+              >
+                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                <span>{actionLoading ? t('common.processing') : t('broadcast.stopConfirm.confirmBtn', 'Xác Nhận Kết Thúc')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

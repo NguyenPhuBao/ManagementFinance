@@ -76,6 +76,8 @@ vi.mock('../api/admin.api', () => ({
 vi.mock('../api/notification.api', () => ({
   default: {
     sendBroadcast: vi.fn().mockResolvedValue({ data: { success: true } }),
+    broadcastToAll: vi.fn().mockResolvedValue({ data: { success: true } }),
+    getBroadcastHistory: vi.fn().mockResolvedValue({ data: { data: [], pagination: { page: 1, limit: 5, total: 0, totalPages: 1 } } }),
   },
 }));
 

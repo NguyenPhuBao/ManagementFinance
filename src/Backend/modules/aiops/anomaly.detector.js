@@ -212,7 +212,7 @@ class AnomalyDetector {
   /**
    * Đánh giá rủi ro đa vector (Multi-Vector Evaluation)
    */
-  evaluate(sample) {
+  evaluate(sample, shouldUpdateBaseline = true) {
     const hour = this._getVnHour();
     const baseline = this.hourlyBaselines[hour];
     const anomalies = [];
@@ -611,7 +611,7 @@ class AnomalyDetector {
     const isAnomaly = anomalies.length > 0 || threatScore >= 70;
 
     // Cơ chế Anti-Poisoning: Chỉ cập nhật baseline khi hệ thống hoạt động bình thường, an toàn
-    if (threatScore < 70) {
+    if (shouldUpdateBaseline && threatScore < 70) {
       this._updateBaseline(sample, hour);
     }
 

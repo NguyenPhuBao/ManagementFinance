@@ -212,18 +212,18 @@ const AuditLogPage = () => {
 
       const rows = exportItems.map((log) => {
         const actionText = log.action || log.request || '';
-        const tag = classifyAuditAction(actionText);
+        const { tagInfo, cleanAction } = classifyAuditAction(actionText, log.request);
         const logId = log.id || log.idlog || '';
         const time = formatFullDateTime(log.time_req || log.timeReq);
         const username = log.account?.username || log.username || 'System';
         const fullname = log.account?.User?.fullname || '';
-        const tagLabel = tag?.tag || '[API]';
+        const tagLabel = tagInfo?.tag || '[API]';
         const request = log.request || '';
         const status = log.req_status || '';
         const ip = log.ip || '';
         const reason = log.reason || '';
 
-        return [logId, time, username, fullname, tagLabel, actionText, request, status, ip, reason];
+        return [logId, time, username, fullname, tagLabel, cleanAction, request, status, ip, reason];
       });
 
       const now = new Date();
@@ -250,21 +250,15 @@ const AuditLogPage = () => {
   };
 
   return (
-    <div className="max-w-[1440px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full">
+    <div className="max-w-[1720px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[28px]">fact_check</span>
+        <div className="flex items-center gap-3">
+          <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight">
             {t('auditLogs.title')}
           </h1>
-          <p className="font-body-md text-on-surface-variant mt-1">
-            {t('auditLogs.subtitle')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
           {socketConnected ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#dcfce7] text-[#166534] font-label-md text-xs font-semibold border border-[#86efac]">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-xs font-semibold border border-[#86efac]">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
@@ -272,31 +266,25 @@ const AuditLogPage = () => {
               {t('auditLogs.realtime')}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 font-label-md text-xs font-medium border border-amber-200" title={t('auditLogs.connectingTitle')}>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 font-label-md text-xs font-medium border border-amber-200" title={t('auditLogs.connectingTitle')}>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
               {t('auditLogs.connecting')}
             </span>
           )}
+        </div>
+        <div className="flex items-center gap-2">
           <button
             id="btn-export-audit-csv"
             type="button"
             onClick={handleExportCsv}
             disabled={exporting}
-            className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 border border-outline-variant bg-white hover:bg-slate-50 rounded-lg px-3 py-2 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 border border-outline-variant bg-white hover:bg-slate-50 rounded-lg px-3 py-2 transition-colors cursor-pointer shadow-xs disabled:opacity-50 font-medium"
             title={t('auditLogs.exportCsvTitle', 'Xuất toàn bộ nhật ký ra định dạng CSV phục vụ kiểm toán')}
           >
             <span className={`material-symbols-outlined text-[16px] text-emerald-600 ${exporting ? 'animate-spin' : ''}`}>
               {exporting ? 'sync' : 'download'}
             </span>
             <span>{exporting ? t('common.exporting', 'Đang xuất...') : t('auditLogs.exportCsvBtn', 'Xuất CSV')}</span>
-          </button>
-          <button
-            onClick={handleResetFilters}
-            className="flex items-center gap-1.5 text-xs text-on-surface-variant hover:text-on-surface border border-outline-variant bg-white rounded-lg px-3 py-2 transition-colors cursor-pointer"
-            title={t('auditLogs.resetTitle')}
-          >
-            <span className="material-symbols-outlined text-[16px]">filter_alt_off</span>
-            {t('auditLogs.resetBtn')}
           </button>
           <button
             id="btn-refresh-audit"
@@ -310,23 +298,25 @@ const AuditLogPage = () => {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white rounded-xl border border-outline-variant shadow-sm p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="relative">
+      <div className="bg-white rounded-xl border border-outline-variant shadow-2xs p-3.5 flex flex-wrap items-center gap-2.5">
+        {/* 1. Thanh tìm kiếm */}
+        <div className="relative flex-1 min-w-[220px]">
           <span className="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">search</span>
           <input
             type="text"
             placeholder={t('auditLogs.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-outline-variant rounded-lg pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-on-surface"
+            className="w-full border border-outline-variant rounded-lg pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-on-surface bg-white"
           />
         </div>
 
-        <div>
+        {/* 2. LOV Trạng thái (thu nhỏ) */}
+        <div className="w-36 sm:w-44 shrink-0">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full border border-outline-variant rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-on-surface bg-white cursor-pointer"
+            className="w-full border border-outline-variant rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-on-surface bg-white cursor-pointer truncate"
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -336,24 +326,51 @@ const AuditLogPage = () => {
           </select>
         </div>
 
-        <div className="flex items-center gap-1 border border-outline-variant rounded-lg px-2.5 py-1.5 text-xs text-on-surface-variant">
-          <span className="text-[11px] whitespace-nowrap">{t('auditLogs.dateFrom')}</span>
+        {/* 3. Khoảng ngày Từ - Đến gộp chung vào 1 container mềm mại */}
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-slate-50/70 text-xs text-on-surface-variant shrink-0">
+          <span className="material-symbols-outlined text-[16px] text-slate-400 shrink-0">calendar_month</span>
+          <span className="text-[11px] whitespace-nowrap font-medium text-slate-500">{t('auditLogs.dateFrom')}</span>
           <input
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="w-full bg-transparent text-xs focus:outline-none text-on-surface cursor-pointer"
+            className="bg-transparent text-xs text-on-surface focus:outline-none cursor-pointer p-0 border-0"
           />
-        </div>
-
-        <div className="flex items-center gap-1 border border-outline-variant rounded-lg px-2.5 py-1.5 text-xs text-on-surface-variant">
-          <span className="text-[11px] whitespace-nowrap">{t('auditLogs.dateTo')}</span>
+          <span className="text-slate-300 text-xs px-0.5">→</span>
+          <span className="text-[11px] whitespace-nowrap font-medium text-slate-500">{t('auditLogs.dateTo')}</span>
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="w-full bg-transparent text-xs focus:outline-none text-on-surface cursor-pointer"
+            className="bg-transparent text-xs text-on-surface focus:outline-none cursor-pointer p-0 border-0"
           />
+          {(dateFrom || dateTo) && (
+            <button
+              type="button"
+              onClick={() => {
+                setDateFrom('');
+                setDateTo('');
+              }}
+              title={t('common.clear', 'Xóa')}
+              className="text-slate-400 hover:text-slate-600 p-0.5 ml-0.5 transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[14px]">close</span>
+            </button>
+          )}
+        </div>
+
+        {/* 4. Nút Đặt lại nằm ở góc phải ngoài cùng */}
+        <div className="ml-auto shrink-0">
+          <button
+            id="btn-reset-audit-filters"
+            type="button"
+            onClick={handleResetFilters}
+            className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 border border-outline-variant bg-white hover:bg-slate-50 rounded-lg px-3 py-2 transition-colors cursor-pointer shadow-2xs font-medium"
+            title={t('auditLogs.resetTitle')}
+          >
+            <span className="material-symbols-outlined text-[16px] text-slate-500">filter_alt_off</span>
+            <span>{t('auditLogs.resetBtn')}</span>
+          </button>
         </div>
       </div>
 
@@ -453,7 +470,7 @@ const AuditLogPage = () => {
                       <td className="py-3 px-4 text-on-surface overflow-hidden">
                         {(() => {
                           const actionText = log.action || log.request;
-                          const { tagInfo, cleanAction } = classifyAuditAction(actionText);
+                          const { tagInfo, cleanAction } = classifyAuditAction(actionText, log.request);
                           return (
                             <div className="flex items-center gap-2 min-w-0">
                               <span

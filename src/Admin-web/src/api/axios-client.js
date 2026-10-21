@@ -16,6 +16,14 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use(
   (config) => {
     config.headers['x-client-platform'] = 'admin-web';
+    const isLocked = typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEYS.IS_LOCKED) === 'true';
+    const isAuthUrl = config.url?.includes('/auth/login') || config.url?.includes('/auth/refresh');
+    
+    // Nếu màn hình đang khóa và không phải request đăng nhập/mở khóa thì hủy sớm để không spam backend
+    if (isLocked && !isAuthUrl) {
+      return Promise.reject(new axios.Cancel('Request cancelled: screen is locked'));
+    }
+
     const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -59,6 +67,13 @@ axiosClient.interceptors.response.use(
     const isAuthUrl = originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/refresh');
 
     if (error.response?.status === 401 && !isAuthUrl) {
+      // 1. Nếu đang ở trạng thái Khóa Màn Hình An Toàn (isLocked === true):
+      // Tuyệt đối KHÔNG chuyển hướng ra /login vì token tạm thời bị thu hồi, cần giữ nguyên giao diện để người dùng nhập mật khẩu mở khóa
+      const isLocked = typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEYS.IS_LOCKED) === 'true';
+      if (isLocked) {
+        return Promise.reject(error);
+      }
+
       const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
 
       // Nếu không có refresh token hoặc request này đã từng thử refresh rồi nhưng vẫn 401

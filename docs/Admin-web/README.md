@@ -2,7 +2,7 @@
 
 > **Dự án:** Personal Finance Management  
 > **Module:** `src/Admin-web` (Frontend Quản trị) & `src/Backend/modules/admin` (Backend Core API)  
-> **Phiên bản:** v2.4 (Cập nhật ngày 03/10/2026)  
+> **Phiên bản:** v2.5 (Cập nhật ngày 21/10/2026)  
 > **Đối tượng sử dụng:** Product Owner (PO), Technical Architect, Senior Engineers, QA & DevOps Team  
 
 ---
@@ -23,23 +23,23 @@ graph TD
     subgraph "Backend Core Services (src/Backend)"
         AuthServ[Auth & Security Service]
         AdminServ[Admin & Aggregation Service]
-        MaintMgr[Maintenance Manager - Fast-Lane Engine]
+        MaintMgr[Maintenance Manager - Zero-Coupling & Outbox Buffer]
         AIOpsEngine[AIOps Sentinel - ML Detection & Active Quarantine]
         SocketHub[Socket.io Gateway - admin_room]
     end
 
     subgraph "Admin-web Command Center (src/Admin-web)"
-        AuthMod[1. Auth & Fast-Lane Key]
-        DashMod[2. Dashboard & Analytics Engine]
-        HealthMod[3. Server Health & SLA 30d]
-        UserMod[4. User Management & Lifecycle]
-        CatMod[5. Category Defense-in-Depth]
-        AuditMod[6. Audit Log Traceability]
-        MaintMod[7. Maintenance & Resilience]
-        BroadMod[8. System Broadcast & Alerts]
-        AIOpsMod[9. AIOps Sentinel & Quarantine]
-        CopilotMod[10. AI Copilot & FHS Snapshot]
-        RTBusMod[11. Full Real-time Event Bus]
+        AuthMod[1. Auth, FirstLogin & Fast-Lane Key]
+        DashMod[2. Dashboard & Standard Layout Engine]
+        HealthMod[3. Server Health, Hardware Calibrated & SLA 30d]
+        UserMod[4. User Management, Soft-Delete & Lifecycle]
+        CatMod[5. Category Defense-in-Depth & Zero-Knowledge]
+        AuditMod[6. Audit Log Traceability, Tags & UTF-8 CSV]
+        MaintMod[7. Maintenance Zero-Coupling & Ghost Killer]
+        BroadMod[8. System Broadcast, Alerts & DB History]
+        AIOpsMod[9. AIOps Sentinel, 3-Table Quarantine & RCA]
+        CopilotMod[10. AI Copilot & FHS Snapshot - Mobile Reserved]
+        RTBusMod[11. Full Real-time Event Bus 11 Events]
         PayMod[12. Payment & Realtime Reconciliation]
     end
 
@@ -74,17 +74,17 @@ Mỗi chức năng của Admin-web được ghi nhận độc lập tại một 
 
 | STT | Tập tin tài liệu | Tên chức năng chính | Mô tả vắn tắt |
 |:---:|---|---|---|
-| **01** | [`01-authentication-and-authorization.md`](./01-authentication-and-authorization.md) | **Xác thực & Phân quyền Quản trị (Auth & Fast-Lane)** | Đăng nhập Admin, xác thực Token JWT kép, Invalidation Cache, và Cửa thoát hiểm khẩn cấp `X-Emergency-Admin-Key`. |
-| **02** | [`02-dashboard-and-analytics.md`](./02-dashboard-and-analytics.md) | **Bảng Điều Khiển & Động Cơ Thống Kê Tổng Hợp** | Thống kê số liệu vĩ mô (Polling ngầm 10s), kết hợp luồng Real-Time Socket.io tức thì cho Hoạt động gần đây (Audit-log) và Server Health. |
-| **03** | [`03-server-health-and-sla-monitoring.md`](./03-server-health-and-sla-monitoring.md) | **Giám Sát Sức Khỏe Máy Chủ & Uptime SLA 30 Ngày** | Đo lường Uptime chuẩn SLA 30 ngày, theo dõi tải CPU, RAM (RSS), độ trễ Event Loop Lag, DB Pool và Load Shedding (Bảo vệ 24/7). |
-| **04** | [`04-user-management-and-lifecycle.md`](./04-user-management-and-lifecycle.md) | **Quản Lý Người Dùng & Vòng Đời Tài Khoản** | Danh sách người dùng, mặt nạ bảo mật PII, lọc địa phương, khóa tài khoản cưỡng chế đăng xuất Socket và xóa mềm an toàn. |
-| **05** | [`05-category-management.md`](./05-category-management.md) | **Quản Lý Danh Mục Hệ Thống & Bảo Vệ Riêng Tư** | Quản lý danh mục mặc định, kiểm soát trùng tên, tự động phục hồi danh mục đã xóa, nút Làm mới thủ công (bỏ Socket listener). |
-| **06** | [`06-audit-logging-and-traceability.md`](./06-audit-logging-and-traceability.md) | **Nhật Ký Truy Vết Toàn Hệ Thống (Audit Logging)** | Ghi nhận bất đồng bộ toàn bộ request kỹ thuật (Zero PII), phân loại trạng thái HTTP, tuân thủ Luật ATTTM 2015 & NĐ 13/2023/NĐ-CP. |
-| **07** | [`07-maintenance-and-resilience.md`](./07-maintenance-and-resilience.md) | **Quản Trị Bảo Trì Hệ Thống & Cứu Hộ Khẩn Cấp** | Công tắc bảo trì 2 chế độ (Thường vs Khẩn cấp), làn ưu tiên Quản trị viên, và Quy tắc cốt lõi: Bảo trì khẩn cấp tự động xóa lịch hẹn. |
-| **08** | [`08-broadcast-and-notification.md`](./08-broadcast-and-notification.md) | **Phát Sóng Thông Báo Hệ Thống & Hộp Thư Cảnh Báo** | Phát sóng thông báo toàn mạng (Info, Warning, Critical) qua Socket.io room chung và quản lý thông báo an ninh cho Admin. |
-| **09** | [`09-aiops-sentinel-and-quarantine.md`](./09-aiops-sentinel-and-quarantine.md) | **AIOps Sentinel & Tường Lửa Tự Động Phong Tỏa** | Máy học Online giám sát 13 thông số, tính Threat Score, bóc tách Root Cause, và tự động cách ly nguồn IP tấn công (HTTP 403). |
-| **10** | [`10-ai-copilot-and-financial-health.md`](./10-ai-copilot-and-financial-health.md) | **Trợ Lý AI Tài Chính & Điểm Sức Khỏe FHS** | ⚠️ Đã loại bỏ khỏi Admin-web theo quyết định của PO (Bảo lưu toàn bộ mã nguồn Backend cho ứng dụng di động Client-app). |
-| **11** | [`11-full-realtime-architecture.md`](./11-full-realtime-architecture.md) | **Kiến Trúc Real-Time Toàn Diện Qua Socket.io** | Trục điều phối sự kiện thời gian thực tập trung qua `admin_room`, cập nhật tức thì 100% trang không cần tải lại trang (F5). |
+| **01** | [`01-authentication-and-authorization.md`](./01-authentication-and-authorization.md) | **Xác thực, Phân quyền & Quản Trị Viên (Auth & Fast-Lane)** | Migration 34 (`is_first_login`, `created_by_admin_id`), `FirstLoginModal`, cấp quyền/đổi mật khẩu/PIN admin (`SettingsModal`), `LockScreen` session recovery, JWT Token kép và Cửa thoát hiểm khẩn cấp `X-Emergency-Admin-Key`. |
+| **02** | [`02-dashboard-and-analytics.md`](./02-dashboard-and-analytics.md) | **Bảng Điều Khiển & Động Cơ Thống Kê Tổng Hợp** | Bố cục chuẩn Dashboard, đồng bộ ngang hàng `ServerHealthPanel` và Bảng hoạt động, 2 biểu đồ full-width, phân biệt bảo trì khẩn cấp vs thường, khóa toggle Dashboard và điều hướng `SafeMaintenanceLink`. |
+| **03** | [`03-server-health-and-sla-monitoring.md`](./03-server-health-and-sla-monitoring.md) | **Giám Sát Sức Khỏe Máy Chủ & Uptime SLA 30 Ngày** | Nhận diện môi trường Cloud (cgroup_v2 quota) vs Host Server, CPU delta ticks đa nhân, RAM RSS thực tế, độ trễ Event Loop lag ms, DB Connection Pool và cơ chế khóa toggle an toàn. |
+| **04** | [`04-user-management-and-lifecycle.md`](./04-user-management-and-lifecycle.md) | **Quản Lý Người Dùng & Vòng Đời Tài Khoản** | Giao diện Bento KPI, bảo toàn hiển thị trạng thái xóa mềm badge đỏ `Đã xóa`, mặt nạ bảo mật PII, khóa tài khoản cưỡng chế đăng xuất Socket và giao dịch xóa mềm 5 bước Prisma ACID. |
+| **05** | [`05-category-management.md`](./05-category-management.md) | **Quản Lý Danh Mục Hệ Thống & Bảo Vệ Riêng Tư** | Nguyên tắc Zero-Knowledge Privacy (Admin chỉ quản lý `is_default = true`, cấm can thiệp danh mục cá nhân), chuẩn hóa phân loại canonical, auto-restore on re-create và nút Làm mới thủ công. |
+| **06** | [`06-audit-logging-and-traceability.md`](./06-audit-logging-and-traceability.md) | **Nhật Ký Truy Vết Toàn Hệ Thống (Audit Logging)** | Ghi nhận bất đồng bộ toàn bộ request (Zero PII overhead), tự động phân loại thẻ tags nghiệp vụ (`[AUTH]`, `[SECURITY]`, `[FINANCE]`), huy hiệu HTTP method và xuất báo cáo CSV chuẩn UTF-8 BOM. |
+| **07** | [`07-maintenance-and-resilience.md`](./07-maintenance-and-resilience.md) | **Quản Trị Bảo Trì Hệ Thống & Cứu Hộ Khẩn Cấp** | Kiến trúc Zero-Coupling hoạt động độc lập CSDL, Outbox Buffer `_pendingDbSyncQueue`, Ghost Maintenance Killer `reconcileWithDatabase`, popup xác nhận tắt bảo trì, xóa icon thô sơ `⚠️`/`🚨`. |
+| **08** | [`08-broadcast-and-notification.md`](./08-broadcast-and-notification.md) | **Phát Sóng Thông Báo Hệ Thống & Hộp Thư Cảnh Báo** | Phát sóng thông báo toàn mạng (Info, Warning, Critical), bảng lịch sử phát sóng lưu CSDL PostgreSQL `broadcast_notification`, phân trang 5 dòng/trang và xóa bỏ rules note rườm rà. |
+| **09** | [`09-aiops-sentinel-and-quarantine.md`](./09-aiops-sentinel-and-quarantine.md) | **AIOps Sentinel & Tường Lửa Tự Động Phong Tỏa** | Máy học Online 4 vector độc lập, Threat Score tương quan, lưu cứng quy mô CCU `aiops_setting`, kiến trúc 3 bảng phong tỏa quan hệ N-N, Early Token Decoder và tối ưu empty state súc tích. |
+| **10** | [`10-ai-copilot-and-financial-health.md`](./10-ai-copilot-and-financial-health.md) | **Trợ Lý AI Tài Chính & Điểm Sức Khỏe FHS** | ⚠️ Đã loại bỏ khỏi Admin-web theo quyết định của PO (Bảo lưu toàn bộ mã nguồn Backend cho ứng dụng di động Client-app phục vụ Edge AI SLM và phân tích 50/30/20). |
+| **11** | [`11-full-realtime-architecture.md`](./11-full-realtime-architecture.md) | **Kiến Trúc Real-Time Toàn Diện Qua Socket.io** | Trục điều phối 11 sự kiện thời gian thực tập trung qua `admin_room`, cơ chế triệt tiêu Toast lặp lại 3 tầng (`isActionInitiatorRef`, Debounce 1500ms) và giám sát Ping Latency đo độ trễ thực tế. |
 | **12** | [`../Payment/PAYMENT_WORKFLOW_SPEC.md`](../Payment/PAYMENT_WORKFLOW_SPEC.md) | **Quản Trị Thanh Toán & Đối Soát Realtime** | Đối soát giao dịch PayOS VietQR, Sandbox Mode thử nghiệm sinh đơn thật, Just-in-Time Sync, và xử lý hoàn tiền Refund đính kèm minh chứng. |
 
 ---
@@ -131,13 +131,29 @@ Toàn bộ các chức năng trong thư mục tài liệu này tuân thủ 100% 
 
 ---
 
-## ⚙️ 5. TRUNG TÂM CÀI ĐẶT HỆ THỐNG & TRẢI NGHIỆM QUẢN TRỊ (SETTINGS CENTER)
+## ⚙️ 5. TRUNG TÂM CÀI ĐẶT HỆ THỐNG & QUẢN TRỊ VIÊN (SETTINGS CENTER)
 
 Tích hợp trực tiếp trên Header thanh điều hướng (`Header.jsx`), nằm ngay bên phải icon Thông báo hệ thống (🔔):
 - **Biểu tượng (Icon):** ⚙️ Material Symbol `settings` (title: *"Cài đặt hệ thống"*).
-- **Hộp thoại Cài Đặt (`SettingsModal.jsx`):** Thiết kế Tabbed Modal bo góc chuẩn Enterprise với 4 tab nghiệp vụ:
+- **Hộp thoại Cài Đặt (`SettingsModal.jsx`):** Thiết kế Tabbed Modal bo góc chuẩn Enterprise với 5 tab nghiệp vụ hoàn chỉnh:
   1. **Giao diện (Appearance):** Lựa chọn Chủ đề Giao diện (Sáng / Tối / Tự động theo OS), Mật độ hiển thị bảng (Rộng rãi / Tiêu chuẩn / Tối ưu thu gọn Compact).
   2. **Cảnh báo & Âm thanh (Alerts & Sound):** Bật/tắt âm thanh cảnh báo khi có sự cố khẩn cấp (`soundAlarm`), Thời lượng hiển thị Toast thông báo (3s / 5s / 8s / 10s), Bật/tắt huy hiệu đếm chưa đọc trên icon chuông.
-  3. **Realtime & Socket.io:** Trạng thái kết nối Socket `admin_room` trực tiếp, cấu hình chu kỳ lấy mẫu nhịp tim AIOps Sentinel (1s / 3s / 5s), nút Kiểm tra độ trễ (Ping Test).
-  4. **Bảo mật & Hệ thống (Security & Storage):** Tự động khóa màn hình Admin sau thời gian rảnh rỗi (5 / 15 / 30 phút), nút Xóa bộ nhớ đệm trình duyệt cục bộ (Local Storage Cache Reset) an toàn, hiển thị Thông tin phiên bản & Môi trường runtime.
-- **Lưu trữ Cục bộ:** Mọi cấu hình cài đặt được tự động lưu bền vững vào `localStorage` với tiền tố `admin_settings_*` và có hiệu lực ngay lập tức.
+  3. **Realtime & Socket.io:** Trạng thái kết nối Socket `admin_room` trực tiếp, cấu hình chu kỳ lấy mẫu nhịp tim AIOps Sentinel (1s / 3s / 5s), nút Kiểm tra độ trễ (Ping Test đo ms thực tế).
+  4. **Bảo mật & Phiên làm việc (Security & Session):** Tự động khóa màn hình Admin sau thời gian rảnh rỗi (5 / 15 / 30 phút), nút Xóa bộ nhớ đệm trình duyệt cục bộ (Local Storage Cache Reset) an toàn, hiển thị Thông tin phiên bản & Môi trường runtime.
+  5. **Quản trị viên (Admin Management):**
+     - Cấp tài khoản quản trị viên mới với mật khẩu và mã PIN tạm thời.
+     - Thay đổi mật khẩu đăng nhập cá nhân (yêu cầu mật khẩu cũ + kiểm tra độ mạnh mật khẩu mới).
+     - Thay đổi mã PIN bảo mật cấp 2 (yêu cầu mã PIN cũ 6 chữ số, tự động mã hóa SHA-256).
+- **Lưu trữ Cục bộ & CSDL:** Cấu hình cá nhân lưu `localStorage` với tiền tố `admin_settings_*`; thông tin bảo mật và tài khoản lưu trữ đồng bộ vào CSDL PostgreSQL qua API `admin.api.js`.
+
+---
+
+## 🖥️ 6. THIẾT KẾ FLUID RESPONSIVE & ĐA TỶ LỆ MÀN HÌNH
+
+Hệ thống giao diện Admin-web được xây dựng theo chuẩn **Fluid Responsive Architecture** đảm bảo trải nghiệm hiển thị hoàn hảo trên mọi kích thước màn hình và tỷ lệ zoom:
+- **Tương thích Zoom 50% - 200%:** Thiết kế sử dụng các đơn vị co giãn linh hoạt và CSS Grid/Flexbox tự co giãn, không bị tràn layout hay gãy cột khi quản trị viên phóng to hoặc thu nhỏ trình duyệt.
+- **Sidebar Mini-Mode Thu Gọn (76px vs 260px):**
+  - Chế độ mở rộng: Độ rộng 260px hiển thị đầy đủ icon, nhãn tiếng Việt và huy hiệu số lượng.
+  - Chế độ thu gọn: Độ rộng 76px với icon trung tâm tinh gọn, tự động bung tooltip giải thích khi rê chuột qua, tối đa hóa không gian quan sát dữ liệu trên các màn hình nhỏ (Laptop 13-14 inch).
+- **Khung chứa Dữ liệu Siêu Rộng (Max Container Fluid `max-w-[1720px]`):**
+  - Đảm bảo tận dụng tối đa bề ngang trên màn hình Full HD (1920x1080), 2K và 4K mà không bị ép hẹp vào giữa, mang lại tầm nhìn bao quát cho các biểu đồ hạ tầng và bảng dữ liệu chuyên sâu.

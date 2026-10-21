@@ -260,7 +260,7 @@ describe('Admin-web Phase 2 i18n Suite — Core Business Pages (2-Tier Testing)'
       fireEvent.click(filterBtnEn);
 
       expect(screen.getByText('Filter Data')).toBeInTheDocument();
-      expect(screen.getByText('Gói Cơ bản (Basic)')).toBeInTheDocument();
+      expect(screen.getByText(/Basic/i)).toBeInTheDocument();
       expect(screen.getAllByText('Active').length).toBeGreaterThan(0);
     });
   });

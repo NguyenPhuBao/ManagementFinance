@@ -10,6 +10,7 @@ class MaintenanceRepository {
   constructor(options = {}) {
     this.pool = options.pool !== undefined ? options.pool : pool;
     this._inMemoryFallback = [];
+    this._pendingDbSyncQueue = [];
     this._nextId = 1;
   }
 
@@ -81,7 +82,7 @@ class MaintenanceRepository {
       }
     }
 
-    // Memory fallback
+    // Memory fallback & Outbox Queue
     const record = {
       id: this._nextId++,
       type,
@@ -94,6 +95,11 @@ class MaintenanceRepository {
       created_at: new Date().toISOString(),
     };
     this._inMemoryFallback.unshift(record);
+    this._pendingDbSyncQueue.push({
+      action: 'CREATE_RECORD',
+      payload: { ...record },
+      queuedAt: new Date().toISOString(),
+    });
     return record;
   }
 
@@ -127,6 +133,11 @@ class MaintenanceRepository {
         updated.push(item);
       }
     }
+    this._pendingDbSyncQueue.push({
+      action: 'COMPLETE_ONGOING',
+      payload: { ended_at: endedAtIso, status },
+      queuedAt: new Date().toISOString(),
+    });
     return updated;
   }
 
@@ -159,6 +170,11 @@ class MaintenanceRepository {
         updated.push(item);
       }
     }
+    this._pendingDbSyncQueue.push({
+      action: 'UPDATE_TO_EMERGENCY',
+      payload: { reason, activated_by },
+      queuedAt: new Date().toISOString(),
+    });
     return updated;
   }
 
@@ -335,6 +351,185 @@ class MaintenanceRepository {
         totalPages: Math.ceil(total / l) || 1,
       },
     };
+  }
+
+  /**
+   * Tính tổng số giây hệ thống bị gián đoạn do Bảo trì khẩn cấp (Emergency Outage)
+   * Phục vụ tính toán SLA và Uptime hoạt động thực tế (Phương án 1 được PO duyệt).
+   * @param {Date} sinceDate
+   * @returns {Promise<number>}
+   */
+  async getEmergencyDowntimeSeconds(sinceDate = null) {
+    const since = sinceDate instanceof Date ? sinceDate : new Date(Date.now() - 30 * 24 * 3600 * 1000);
+    const sinceIso = since.toISOString();
+
+    if (this.pool && typeof this.pool.query === 'function') {
+      try {
+        const query = `
+          SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE("ended_at", NOW()) - "started_at"))), 0) AS total_sec
+          FROM "maintenance_history"
+          WHERE "type" = 'EMERGENCY'
+            AND "status" IN ('COMPLETED', 'ONGOING')
+            AND "started_at" >= $1;
+        `;
+        const res = await this.pool.query(query, [sinceIso]);
+        const sec = parseFloat(res.rows[0]?.total_sec || 0);
+        return Math.max(0, Math.floor(sec));
+      } catch (err) {
+        logger.warn('[Maintenance Repository] getEmergencyDowntimeSeconds DB error, fallback to memory', { error: err.message });
+      }
+    }
+
+    // Memory fallback
+    let totalSec = 0;
+    const sinceTime = since.getTime();
+    for (const item of this._inMemoryFallback) {
+      if (item.type === 'EMERGENCY' && (item.status === 'COMPLETED' || item.status === 'ONGOING')) {
+        const start = new Date(item.started_at).getTime();
+        if (start >= sinceTime) {
+          const end = item.ended_at ? new Date(item.ended_at).getTime() : Date.now();
+          totalSec += Math.max(0, Math.floor((end - start) / 1000));
+        }
+      }
+    }
+    return totalSec;
+  }
+
+  /**
+   * Kiểm tra xem còn tác vụ ghi CSDL nào đang tồn đọng trong Outbox hay không
+   */
+  hasPendingSync() {
+    return Array.isArray(this._pendingDbSyncQueue) && this._pendingDbSyncQueue.length > 0;
+  }
+
+  /**
+   * Tự động flush các tác vụ trong Outbox Queue vào CSDL PostgreSQL khi kết nối sẵn sàng
+   */
+  async flushPendingQueue() {
+    if (!this.pool || typeof this.pool.query !== 'function') return 0;
+    if (!this.hasPendingSync()) return 0;
+
+    let flushed = 0;
+    const remaining = [];
+
+    while (this._pendingDbSyncQueue.length > 0) {
+      const task = this._pendingDbSyncQueue.shift();
+      try {
+        if (task.action === 'CREATE_RECORD') {
+          const { type, reason, activated_by, started_at, scheduled_end_at, status } = task.payload;
+          const query = `
+            INSERT INTO "maintenance_history" ("type", "reason", "activated_by", "started_at", "scheduled_end_at", "status")
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *;
+          `;
+          await this.pool.query(query, [type, reason, activated_by, started_at, scheduled_end_at, status]);
+          flushed++;
+        } else if (task.action === 'COMPLETE_ONGOING') {
+          const { ended_at, status } = task.payload;
+          const query = `
+            UPDATE "maintenance_history"
+            SET "ended_at" = $1, "status" = $2
+            WHERE "status" = 'ONGOING'
+            RETURNING *;
+          `;
+          await this.pool.query(query, [ended_at, status]);
+          flushed++;
+        } else if (task.action === 'UPDATE_TO_EMERGENCY') {
+          const { reason, activated_by } = task.payload;
+          const query = `
+            UPDATE "maintenance_history"
+            SET "type" = 'EMERGENCY', "reason" = COALESCE($1, "reason"), "activated_by" = COALESCE($2, "activated_by")
+            WHERE "status" = 'ONGOING'
+            RETURNING *;
+          `;
+          await this.pool.query(query, [reason, activated_by]);
+          flushed++;
+        }
+      } catch (err) {
+        logger.warn('[Maintenance Repository] Lỗi khi flush tác vụ outbox, hoàn trả lại queue', { action: task.action, error: err.message });
+        remaining.push(task);
+        break;
+      }
+    }
+
+    if (remaining.length > 0) {
+      this._pendingDbSyncQueue.unshift(...remaining);
+    }
+
+    if (flushed > 0) {
+      logger.info(`[Maintenance Repository] Đã flush thành công ${flushed} tác vụ bảo trì tồn đọng vào CSDL.`);
+    }
+
+    return flushed;
+  }
+
+  /**
+   * Cơ chế Đối soát & Đồng bộ Hai chiều (Bi-directional Reconciliation Engine)
+   * Triệt tiêu hoàn toàn lỗi "Bảo trì ma" (Ghost Maintenance) khi CSDL khôi phục.
+   * 
+   * @param {Object} options
+   * @param {Object} options.currentActiveState Trạng thái sống hiện tại trên RAM/Redis
+   */
+  async reconcileWithDatabase({ currentActiveState } = {}) {
+    if (!this.pool || typeof this.pool.query !== 'function') {
+      return { success: false, reason: 'NO_POOL' };
+    }
+
+    let ghostSessionsClosed = 0;
+    let alignedWithActive = false;
+
+    try {
+      const isSystemCurrentlyActive = currentActiveState && Boolean(currentActiveState.active);
+
+      if (!isSystemCurrentlyActive) {
+        // CHỐT CHẶN: GHOST MAINTENANCE KILLER
+        // Nếu hệ thống hiện tại đang KHÔNG bảo trì, mọi bản ghi ONGOING trong CSDL đều là bản ghi mồ côi
+        // do CSDL bị sập lúc Admin tắt bảo trì. Buộc phải đóng lại ngay lập tức!
+        const query = `
+          UPDATE "maintenance_history"
+          SET "status" = 'COMPLETED', "ended_at" = COALESCE("ended_at", NOW())
+          WHERE "status" = 'ONGOING'
+          RETURNING *;
+        `;
+        const res = await this.pool.query(query, [new Date().toISOString()]);
+        ghostSessionsClosed = (res?.rows || []).length;
+        if (ghostSessionsClosed > 0) {
+          logger.warn(`[Maintenance Reconciliation] [GHOST KILLER] Đã đóng ${ghostSessionsClosed} phiên bảo trì mồ côi (ONGOING) trong CSDL để triệt tiêu lỗi bảo trì ma!`);
+        }
+      } else {
+        // STATE ALIGNMENT: Nếu hệ thống ĐANG bảo trì thật sự, đảm bảo CSDL có bản ghi ONGOING đồng bộ
+        const checkSql = `SELECT * FROM "maintenance_history" WHERE "status" = 'ONGOING' LIMIT 1;`;
+        const checkRes = await this.pool.query(checkSql);
+        if (!checkRes?.rows || checkRes.rows.length === 0) {
+          const insertSql = `
+            INSERT INTO "maintenance_history" ("type", "reason", "activated_by", "started_at", "status")
+            VALUES ($1, $2, $3, $4, 'ONGOING')
+            RETURNING *;
+          `;
+          await this.pool.query(insertSql, [
+            currentActiveState.isEmergency ? 'EMERGENCY' : 'SCHEDULED',
+            currentActiveState.reason || 'Bảo trì hệ thống.',
+            currentActiveState.activatedBy || 'admin',
+            currentActiveState.activatedAt || new Date().toISOString(),
+          ]);
+          alignedWithActive = true;
+          logger.info('[Maintenance Reconciliation] Đã tạo bản ghi ONGOING trong CSDL để đồng bộ với phiên bảo trì đang diễn ra.');
+        }
+      }
+
+      // Flush các tác vụ còn tồn trong Outbox Queue
+      const flushedCount = await this.flushPendingQueue();
+
+      return {
+        success: true,
+        ghostSessionsClosed,
+        flushedCount,
+        alignedWithActive,
+      };
+    } catch (err) {
+      logger.error('[Maintenance Reconciliation] Lỗi đối soát trạng thái với CSDL', { error: err.message });
+      return { success: false, error: err.message };
+    }
   }
 }
 

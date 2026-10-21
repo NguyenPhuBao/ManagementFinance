@@ -46,6 +46,9 @@ router.get('/system/health', adminController.getSystemHealth);
 router.get('/audit-logs', adminController.getAuditLogs);
 router.post('/verify-security-action', adminController.verifySecurityAction);
 router.post('/change-pin', adminController.changeAdminPin);
+router.post('/first-login-setup', adminController.firstLoginSetup);
+router.post('/change-password', adminController.changeAdminPassword);
+router.post('/create-admin', adminController.createAdminAccount);
 
 // Quản lý người dùng
 router.get('/getuser', adminController.getUsers);

@@ -11,7 +11,10 @@
 
 **Giám Sát Sức Khỏe Máy Chủ & Đo Lường Uptime SLA** là bảng chỉ số hạ tầng thời gian thực cung cấp cho quản trị viên cái nhìn trực diện về trạng thái vận hành của máy chủ Node.js và CSDL PostgreSQL. 
 
-Điểm nổi bật của chức năng này là **công thức tính tỷ lệ hoạt động liên tục (Uptime Percentage) theo tiêu chuẩn cam kết dịch vụ SLA 30 ngày**, loại bỏ các con số ảo 100% khi server vừa mới được deploy hoặc restart, phản ánh độ tin cậy thực tế của nền tảng dịch vụ.
+Điểm nổi bật của chức năng này:
+1. **Công thức tính tỷ lệ hoạt động liên tục (Uptime Percentage) theo tiêu chuẩn cam kết dịch vụ SLA 30 ngày**, loại bỏ các con số ảo 100% khi server vừa mới được deploy hoặc restart, phản ánh độ tin cậy thực tế của nền tảng dịch vụ.
+2. **Giám sát phần cứng chính xác theo môi trường (Hardware Metric Calibration):** Tự động phân biệt giữa môi trường Cloud Container (cgroup_v2 quota) và Host vật lý, tính toán CPU delta ticks thay vì cumulative ticks, tránh hiện tượng RAM 0/100 MB ảo.
+3. **Cửa thoát hiểm khẩn cấp (Emergency Maintenance Outpost):** Tích hợp công tắc bật bảo trì khẩn cấp độc lập với cơ chế khóa công tắc an toàn tại Dashboard khi bảo trì đang hoạt động, hướng dẫn quản trị viên chuyển hướng sang trang Quản trị Bảo trì.
 
 ---
 
@@ -21,10 +24,10 @@
 graph TD
     subgraph "Tiến Trình Node.js & Phần Cứng (OS Level)"
         A1[process.uptime: Thời gian chạy tính bằng giây]
-        A2[os.cpus: Thời gian hoạt động user/system/idle]
-        A3[os.totalmem & os.freemem & process.memoryUsage]
-        A4[EventLoopMonitor: Timer đo độ trễ Event Loop lag ms]
-        A5[DbBulkhead: Đếm kết nối client & admin connection pool]
+        A2[os.cpus: Tính toán chênh lệch Delta Ticks giữa 2 mẫu]
+        A3[cgroup_v2 vs os.totalmem: Quota Container Cloud vs Host RAM]
+        A4[EventLoopMonitor: Micro-timer đo độ trễ Event Loop lag ms]
+        A5[DbBulkhead: Đếm kết nối Client Pool vs Admin Reserved Pool]
     end
 
     subgraph "Bộ Điều Phối Metrics Backend (src/Backend)"
@@ -33,20 +36,21 @@ graph TD
         B3[Socket.io Hub: admin_room]
     end
 
-    subgraph "Thành Phần Giao Diện (src/Admin-web)"
+    subgraph "Thành Phần Giao Diện (src/Admin-web - ServerHealthPanel)"
         C1[UptimeWidget: Tiến trình SLA 30 ngày & Thời gian chạy]
-        C2[Thanh đo tải CPU: Đa nhân trung bình]
-        C3[Thanh đo RAM: % Hệ thống & MB RSS thực tế]
-        C4[Độ trễ Event Loop: Đo ms & Cờ quá tải]
-        C5[Hồ kết nối CSDL: Client pool vs Admin pool]
+        C2[Thanh đo tải CPU: Đa nhân thực tế + nhãn vCPU/cores]
+        C3[Thanh đo RAM: MB RSS chiếm dụng / Quota Cloud hoặc Host]
+        C4[Độ trễ Event Loop: Đo ms & Cờ cảnh báo nghẽn]
+        C5[Hồ kết nối CSDL: Client Pool 16 & Admin Pool 4]
+        C6[Cửa thoát hiểm bảo trì: Khóa công tắc khi Active + SafeMaintenanceLink]
     end
 
-    A1 & A2 & A3 & A4 & A5 -->|Thu thập mỗi 3 giây| B1
-    A1 & A2 & A3 & A4 & A5 -->|Yêu cầu theo yêu cầu| B2
+    A1 & A2 & A3 & A4 & A5 -->|Thu thập chu kỳ 3 giây| B1
+    A1 & A2 & A3 & A4 & A5 -->|Yêu cầu theo REST API| B2
     
     B1 -->|emit admin.metrics_stream| B3
     B3 -->|Socket Stream 3s| C1 & C2 & C3 & C4 & C5
-    B2 -->|Fallback Polling 60s| C1 & C2 & C3 & C4 & C5
+    B2 -->|Fallback Polling 60s| C1 & C2 & C3 & C4 & C5 & C6
 ```
 
 ### 2.1. Luồng truyền tải kép (Dual-Path Delivery)
@@ -75,24 +79,32 @@ Chuyển đổi số giây thực tế `process.uptime()` thành định dạng 
 - Số giờ: $\lfloor (\text{seconds} \pmod{86400}) / 3600 \rfloor$
 - Số phút: $\lfloor (\text{seconds} \pmod{3600}) / 60 \rfloor$
 - *Kết quả hiển thị:* `5 ngày 12 giờ 34 phút`.
+- *Thời điểm khởi động (`startedAt`):* Tự động format theo múi giờ Việt Nam `Asia/Ho_Chi_Minh` (`HH:mm dd/MM/yyyy`).
 
-### 3.3. Công thức tính Tải CPU Trung Bình Đa Nhân
-Duyệt qua tất cả các nhân phần cứng CPU (`os.cpus()`):
+### 3.3. Tải CPU Delta Ticks Đa Nhân
+Thay vì đọc `os.cpus()` tĩnh (vốn là tích lũy từ thời điểm bật máy chủ OS), hệ thống lưu lại snapshot trước và tính chênh lệch Delta sau 1 giây:
 
-$$\text{CPU Core \%} = \frac{\text{totalTime} - \text{idleTime}}{\text{totalTime}} \times 100$$
+$$\Delta \text{Idle} = \text{idle}_{\text{now}} - \text{idle}_{\text{prev}}$$
+$$\Delta \text{Total} = \text{total}_{\text{now}} - \text{total}_{\text{prev}}$$
+$$\text{CPU \%} = \left(1 - \frac{\Delta \text{Idle}}{\Delta \text{Total}}\right) \times 100$$
 
-$$\text{Average CPU \%} = \frac{\sum_{i=1}^{N} \text{Core}_i}{N} \quad (N = \text{số nhân CPU})$$
+- Tự động nhận diện số nhân vCPU trên Cloud hoặc Core vật lý trên Host.
 
-### 3.4. Công thức tính Bộ Nhớ RAM
-- **RAM sử dụng:** $\text{usedMem} = \text{totalmem} - \text{freemem}$
-- **Tỷ lệ RAM %:** $(\text{usedMem} / \text{totalmem}) \times 100$
-- **RSS (Resident Set Size):** Đo lường lượng RAM vật lý thực tế mà tiến trình Node.js đang chiếm giữ: `Math.round(process.memoryUsage().rss / 1024 / 1024)` (MB).
+### 3.4. Bộ Nhớ RAM & Nhận Diện Môi Trường (Cloud vs Host)
+Hệ thống tự động phát hiện `cgroup_v2` memory quota trên các dịch vụ Cloud Container (Docker, Render, AWS ECS, GCP Cloud Run):
+- **Cloud Container:** `totalMb = memory.max / (1024 * 1024)` (Quota giới hạn container).
+- **Host Server:** `totalMb = os.totalmem() / (1024 * 1024)` (RAM vật lý máy chủ).
+- **RAM sử dụng (RSS - Resident Set Size):** Đo lường lượng RAM vật lý thực tế mà tiến trình Node.js đang chiếm giữ: `Math.round(process.memoryUsage().rss / 1024 / 1024)` (MB).
+- Tránh hoàn toàn lỗi phổ biến hiển thị `0/100 MB` hoặc tính sai tỷ lệ phần trăm trên container.
 
-### 3.5. Đo Lường Độ Trễ Event Loop (Event Loop Lag)
-Sử dụng một micro-timer để đo độ trễ thực tế giữa thời điểm dự kiến kích hoạt timer và thời điểm callback thực sự được thực thi.
-- Nếu `lagMs < 20ms`: Event Loop hoạt động lý tưởng.
-- Nếu `lagMs >= 50ms`: Cảnh báo nghẽn I/O.
-- Nếu `lagMs >= 120ms`: Máy chủ bị quá tải CPU/Event Loop, có nguy cơ treo phản hồi.
+### 3.5. Độ Trễ Event Loop & DB Connection Pool
+- **Event Loop Lag:** Micro-timer kiểm tra độ trễ thực tế giữa chu kỳ `setTimeout`:
+  - `lagMs < 20ms`: Event Loop mượt mà.
+  - `lagMs >= 50ms`: Cảnh báo nghẽn I/O.
+  - `lagMs >= 100ms`: Quá tải nghiêm trọng (`critical = true`).
+- **Database Bulkhead Isolation:**
+  - `Client Pool`: Tối đa 16 kết nối dành cho người dùng thông thường.
+  - `Admin Pool`: Dành riêng 4 kết nối độc lập cho quản trị viên, đảm bảo Admin luôn truy cập được bảng điều khiển ngay cả khi Client Pool chạm ngưỡng $100\%$.
 
 ---
 
@@ -100,52 +112,62 @@ Sử dụng một micro-timer để đo độ trễ thực tế giữa thời đ
 
 | Chỉ số | Ngưỡng Bình thường | Ngưỡng Cảnh báo (Warning) | Ngưỡng Nguy cấp (Critical) |
 |---|:---:|:---:|:---:|
-| **Uptime SLA** | $\ge 99.5\%$ (Xanh lá) | $95.0\% - 99.4\%$ (Vàng cam) | $< 95.0\%$ (Đỏ) |
+| **Uptime SLA** | $\ge 99.5\%$ (Xanh ngọc) | $95.0\% - 99.4\%$ (Vàng hổ phách) | $< 95.0\%$ (Đỏ hồng) |
 | **CPU Sử Dụng** | $< 70\%$ | $70\% - 84\%$ | $\ge 85\%$ |
-| **RAM Sử Dụng** | $< 80\%$ | $80\% - 89\%$ | $\ge 90\%$ |
+| **RAM Sử Dụng** | $< 70\%$ | $70\% - 84\%$ | $\ge 85\%$ |
 | **Event Loop Lag** | $< 25\text{ms}$ | $25\text{ms} - 49\text{ms}$ | $\ge 50\text{ms}$ (Bật cờ quá tải) |
-| **DB Connection Pool** | $< 70\%$ Max | $70\% - 89\%$ Max | $\ge 90\%$ (Kích hoạt Bulkhead) |
+| **Client DB Pool** | $< 12/16$ | $12/16 - 15/16$ | $16/16$ (Kích hoạt Bulkhead) |
 
 ---
 
-## 💼 5. CÔNG DỤNG & GIÁ TRỊ NGHIỆP VỤ
+## 🛡️ 5. CỬA THOÁT HIỂM BẢO TRÌ & CƠ CHẾ KHÓA CÔNG TẮC AN TOÀN
 
-- **Phát hiện rò rỉ bộ nhớ (Memory Leak):** Quản trị viên theo dõi chỉ số `ramRssMb`. Nếu RSS liên tục tăng dần theo thời gian mà không hạ xuống sau garbage collection, hệ thống có nguy cơ rò rỉ bộ nhớ.
-- **Minh bạch cam kết SLA:** Cung cấp bằng chứng kỹ thuật rõ ràng về thời gian hoạt động của máy chủ phục vụ đánh giá chất lượng đồ án và vận hành sản phẩm.
-- **Cửa thoát hiểm khẩn cấp (Emergency Escape Hatch):** Ngay tại góc panel, quản trị viên có nút công tắc bảo trì độc lập để ngắt kết nối hệ thống lập tức khi phát hiện phần cứng bốc khói hoặc Event Loop bị treo.
+### 5.1. Bật Bảo Trì Khẩn Cấp Tại Chỗ (Emergency Switch)
+Ngay tại `ServerHealthPanel`, quản trị viên có thể kích hoạt chế độ bảo trì khẩn cấp lập tức:
+- **Yêu cầu nhập lý do:** Bắt buộc nhập lý do vào ô text input trước khi gạt công tắc.
+- **Xác thực mã PIN cấp 2:** Khi bật công tắc, hệ thống kích hoạt `SecurityConfirmModal` yêu cầu nhập đúng mã PIN quản trị viên (6 chữ số).
+
+### 5.2. Khóa Công Tắc Khi Đang Trong Trạng Thái Bảo Trì (Toggle Lock Protection)
+- **Vấn đề an toàn:** Tránh trường hợp quản trị viên vô tình click vào công tắc tại Dashboard làm tắt bảo trì sai quy trình khi hệ thống chưa khắc phục xong sự cố.
+- **Giải pháp triển khai:**
+  - Khi `maintenance.active = true`, công tắc `#btn-maintenance-toggle` chuyển sang trạng thái **disabled (`disabled={true}`)**, con trỏ chuột chuyển thành `cursor-not-allowed`, độ mờ `opacity-70`.
+  - Tooltip giải thích: *"Chế độ bảo trì đang kích hoạt. Khóa công tắc tại Dashboard. Vui lòng vào trang Quản trị & Lên lịch bảo trì."*
+  - Cung cấp component điều hướng an toàn `SafeMaintenanceLink` (tương thích cả trong và ngoài Router context) để quản trị viên nhấp vào và chuyển trực tiếp tới trang Quản trị Bảo Trì `/broadcast`.
+
+### 5.3. Phân Biệt Trực Quan: Khẩn Cấp vs Thông Thường
+Khối bảo trì tự động đổi diện mạo dựa trên cờ `isEmergency`:
+- **Bảo trì Khẩn Cấp (`isEmergency = true`):**
+  - Viền và nền: `border-rose-300 bg-rose-50/90`.
+  - Icon: `crisis_alert` màu đỏ nhấp nháy (`animate-pulse`).
+  - Badge: Thẻ đỏ `Khẩn cấp`.
+- **Bảo trì Thông Thường (`isEmergency = false`):**
+  - Viền và nền: `border-amber-300 bg-amber-50/90`.
+  - Icon: `construction` màu hổ phách.
+  - Badge: Thẻ vàng `Thông thường`.
 
 ---
 
-## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN
-
-1. **Thanh Progress Bar Uptime:**
-   - Đổi màu động theo ngưỡng SLA 30 ngày (`#10b981` cho $\ge 99.5\%$, `#f59e0b` cho $95-99.5\%$, `#ef4444` cho $< 95\%$).
-   - Hiển thị ngày giờ khởi động máy chủ quy đổi múi giờ `Asia/Ho_Chi_Minh`.
-2. **Khối Gauges Trực Quan Hóa:**
-   - 4 thanh đo phần cứng với animation chuyển động 500ms mượt mà.
-3. **Chỉ số Cắt Tải Tự Động (Load Shedding Count):**
-   - Đếm số lượng request bị middleware chủ động ngắt bỏ trong 24 giờ qua để bảo vệ máy chủ khỏi sập hoàn toàn.
-
----
-
-## 📱 7. ẢNH HƯỞNG ĐẾN HỆ THỐNG & MOBILE APP (CLIENT-APP)
+## 📱 6. ẢNH HƯỞNG ĐẾN HỆ THỐNG & MOBILE APP (CLIENT-APP)
 
 - **Đến Backend:**
   - Nhịp tim Stream 3s chạy bằng timer non-blocking (`unref()`), payload siêu nhẹ $< 450$ bytes, tiêu tốn $< 0.1\%$ CPU máy chủ.
 - **Đến Cơ sở dữ liệu:**
   - Giám sát CSDL thông qua biến In-Memory của `DbBulkhead`, hoàn toàn không phát sinh câu lệnh SQL `SELECT` thăm dò, không làm tốn Connection Pool của người dùng.
 - **Đến Mobile App (Client-app):**
-  - Khi Admin phát hiện CPU/RAM/Event Loop chạm ngưỡng đỏ trên bảng điều khiển, Admin có thể bật Bảo trì hoặc kích hoạt Load Shedding, giúp bảo vệ an toàn cho các giao dịch tài chính quan trọng của người dùng không bị hỏng hóc giữa chừng.
+  - Bảo vệ tức thì các giao dịch tài chính: Khi máy chủ rơi vào tình trạng quá tải hoặc Admin kích hoạt bảo trì khẩn cấp từ Panel này, Mobile App lập tức nhận tín hiệu và hiển thị màn hình bảo trì toàn màn hình, ngăn người dùng thao tác gây đứt gãy dữ liệu.
 
 ---
 
-## 📡 8. DANH MỤC API & SOCKET.IO PHỤ TRÁCH
+## 📡 7. DANH MỤC API & SOCKET.IO PHỤ TRÁCH
 
 ### REST API Endpoints
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 |---|---|---|---|
 | `GET` | `/api/admin/system/health` | Lấy chi tiết thông số phần cứng, uptime SLA, và DB pool | Admin |
+| `GET` | `/api/admin/maintenance/status` | Lấy trạng thái bảo trì độc lập hiện tại | Public / Admin |
+| `POST` | `/api/admin/maintenance/toggle` | Bật/tắt bảo trì khẩn cấp (yêu cầu mã PIN) | Super Admin / Admin |
 
 ### Socket.io Events
 - **Nhận từ Server (`admin_room`):**
-  - Sự kiện `admin.metrics_stream`: Nhận gói tin nhịp tim mỗi 3 giây chứa đầy đủ Uptime, CPU, RAM, Event Loop Lag và Threat Score.
+  - Sự kiện `admin.metrics_stream`: Nhận gói tin nhịp tim mỗi 3 giây chứa đầy đủ Uptime, CPU, RAM, Event Loop Lag, Load Shedding và DB Pool.
+  - Sự kiện `admin.maintenance_changed`: Cập nhật trạng thái bảo trì tức thì khi có thay đổi từ bất kỳ phiên làm việc nào.

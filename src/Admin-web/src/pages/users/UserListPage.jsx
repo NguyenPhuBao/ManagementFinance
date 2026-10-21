@@ -104,6 +104,8 @@ const UserListPage = () => {
         email: u.email,
         phone: u.phone || '—',
         status: u.status ? u.status.toLowerCase() : 'active',
+        type: u.type || 'Basic',
+        package: u.type || u.package || 'Basic',
         address: u.address || '',
         username: u.username,
         reason_inactive: u.reason_inactive || null,
@@ -140,6 +142,8 @@ const UserListPage = () => {
           email: newUser.email || '—',
           phone: newUser.phone || '—',
           status: (newUser.status || 'active').toLowerCase(),
+          type: newUser.type || 'Basic',
+          package: newUser.type || newUser.package || 'Basic',
           address: '',
           username: newUser.username,
           reason_inactive: null,
@@ -368,24 +372,10 @@ const UserListPage = () => {
 
         {/* 1. Header Hero Bar chuẩn Enterprise */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs">
-              <span className="material-symbols-outlined text-[28px]">manage_accounts</span>
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h2 className="font-headline-md text-xl md:text-2xl font-bold text-on-surface m-0 tracking-tight">
-                  {t('users.title')}
-                </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                  {t('users.realtimeSync')}
-                </span>
-              </div>
-              <p className="text-xs text-on-surface-variant mt-0.5">
-                {t('users.subtitle')}
-              </p>
-            </div>
+          <div>
+            <h2 className="font-headline-md text-xl md:text-2xl font-bold text-on-surface m-0 tracking-tight">
+              {t('users.title')}
+            </h2>
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -741,7 +731,7 @@ const UserListPage = () => {
             <div className="p-6 space-y-5">
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-2">
-                  Gói dịch vụ / Membership
+                  {t('users.filterModal.packageLabel', 'Gói dịch vụ')}
                 </label>
                 <select
                   data-testid="filter-package"
@@ -749,9 +739,9 @@ const UserListPage = () => {
                   onChange={(e) => setFilter({ ...filter, packageType: e.target.value })}
                   className="w-full px-3 py-2 border border-outline-variant rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-xs font-medium bg-white h-[42px] cursor-pointer"
                 >
-                  <option value="all">Tất cả gói cước</option>
-                  <option value="Basic">Gói Cơ bản (Basic)</option>
-                  <option value="Premium">Gói VIP (Premium)</option>
+                  <option value="all">{t('users.filterModal.allPackages', 'Tất cả gói cước')}</option>
+                  <option value="Basic">{t('users.filterModal.basicPackage', 'Gói Cơ bản (Basic)')}</option>
+                  <option value="Premium">{t('users.filterModal.premiumPackage', 'Gói VIP (Premium)')}</option>
                 </select>
               </div>
 

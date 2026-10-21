@@ -171,3 +171,26 @@ body[data-density="compact"] .stat-card {
 .dark table tr:hover {
   background-color: rgba(51, 65, 85, 0.4) !important;
 }
+
+/* ==========================================================================
+   Fluid Responsive Layout Rules (Browser Zoom 50% - 200%)
+   ========================================================================== */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Đảm bảo toàn bộ wrapper bảng không vỡ bố cục khi người dùng zoom lớn */
+.table-responsive-container,
+.responsive-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Smooth fluid transitions cho container co dãn khi zoom hoặc thu gọn sidebar */
+main, aside, header {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 250ms;
+}
