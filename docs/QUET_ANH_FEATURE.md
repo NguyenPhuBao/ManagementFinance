@@ -13,6 +13,8 @@
 > điền đúng · 1 hỏi chip · ⚠️ **2 điền sẵn SAI không hỏi** (R13 2.127 thay 72.127, R08 75.706 thay 75.700 — **G101**). Huỷ pha
 > AI đạt; mô hình giữ qua 15 lượt quét không nạp lại, không sập. Lộ thêm **G100**: Back thoát app rồi mở lại thì mô hình nạp
 > thêm một bản (Native Heap 1,89 → 3,72 GB) — đường Back đã sửa cùng ngày (Back hai lần = xuống nền).
+> ✅ **G101 đóng cùng ngày (mã + test, chưa chạy lại trên máy)** — ba lưới ở `chotTongQuet` (người dùng chọn A + B + C), và
+> Basic cũng qua phép chốt: 0 / 34 tờ chữ điền sẵn sai (chữ 08/10, chữ `/quet` 21/10 chép từ logcat, OnePlus). Mục 1 bước 3–3b.
 > ✅ **AI làm chính đã nối (2026-10-08 tối, mã + test)**: hoá đơn + Premium → Gemma NHÌN
 > ẢNH đọc món + tổng (`DocAnhBangGemma`), luật đọc phần còn lại; số chốt bằng `chotTongQuet` — khớp → điền, lệch → ô
 > trống + hai chip trên form. Đường cũ *"AI đọc chữ OCR"* (`DocAnhBangAi`, `lapTuAi`) **đã bỏ**.
@@ -28,9 +30,14 @@ hệ thống, `maxWidth 1280`) → màn `/quet` *"Đang đọc ảnh…"* (`Quet
 2. ML Kit qua `DocChuAnh` → `ghepDongTheoHang` → `docAnhQuet` (luật): nhận loại ảnh (`loaiAnhQuet`), đọc
    hoá đơn (`docHoaDonTuChu` + `docMonHang`) hoặc biên lai (`docBienLai`).
 3. **Hoá đơn** + **Premium** + mô hình + công tắc AI → *"Đang đọc bằng AI…"*: `DocAnhBangGemma` (Gemma nhìn ảnh,
-   câu hỏi `kPromptMonTong` — chỉ món + tổng) → `chotTongQuet(luat, ai, vanBan)`: số AI chỉ dùng khi có in trên ảnh
-   hoặc khác số luật đúng một chữ số; khớp ≤ 1% → điền số AI; lệch → ô số tiền trống + query `chon=<AI>,<luật>`.
-   Biên lai chỉ luật (Gemma chưa đo biên lai). Gemma CPU (Mali) 21–42 s / ảnh, GPU 4–11 s; trần 90 s.
+   câu hỏi `kPromptMonTong` — chỉ món + tổng). Biên lai chỉ luật (Gemma chưa đo biên lai). Gemma CPU (Mali) 21–42 s / ảnh,
+   GPU 4–11 s; trần 90 s.
+3b. **Mọi hoá đơn** (cả Basic, cả Huỷ pha AI — `ai: null`) → `chotTongQuet(luat, ai, vanBan)` (G101, 2026-10-21):
+   - Số AI chỉ dùng khi có in trên ảnh, hoặc khác số luật đúng một chữ số — thay, **thêm hoặc bớt** một chữ số (lưới C).
+     Khớp ≤ 1% → điền số AI; lệch → ô trống + query `chon=<AI>,<luật>`.
+   - Số luật đứng một mình (không AI / AI bị bỏ): nhỏ hơn thành tiền lớn nhất của các dòng trên dòng tổng → ô trống + toast
+     (lưới A); trên tờ có một số khác lệch ≤ 1% (dòng VAT…) → ô trống + `chon=<luật>,<số gần>` (lưới B); không thì điền.
+   - Query `ai=1` chỉ khi số AI nằm trên form (điền hoặc chip).
    Rồi **Gemma lần hai chọn danh mục** (`DocDanhMucBangAi`, người dùng chốt "AI chọn danh mục"): tên cửa hàng + các
    món (của Gemma, không có thì của luật) → tool `chon_danh_muc` với enum danh mục CHI của tài khoản → query `dm=<tên>`
    → `ketQuaTuBienDong` chọn nó, THẮNG từ khoá ghi chú; tên không có / sai chiều → từ khoá như cũ. Huỷ thì không gọi.
@@ -46,7 +53,7 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 |---|---|
 | `transaction/domain/doc_hoa_don.dart` | Luật hoá đơn giấy (tổng, cửa hàng, ngày, **giờ**) — nâng từ spike C4; spike giữ bí danh qua `export` |
 | `transaction/domain/doc_mon_hang.dart` | `MonHang`, `docMonHang` — danh sách món |
-| `transaction/domain/chot_tong_quet.dart` | `chotTongQuet` — số AI chỉ dùng khi có trên ảnh (hoặc khác số luật đúng một chữ số); khớp luật ≤ 1% → điền, lệch → hai chip |
+| `transaction/domain/chot_tong_quet.dart` | `chotTongQuet` — số AI chỉ dùng khi có trên ảnh (hoặc khác số luật đúng một chữ số, kể cả thêm / bớt); khớp luật ≤ 1% → điền, lệch → hai chip; số luật đứng một mình qua lưới A (nhỏ hơn dòng món → trống) và B (có số gần ≤ 1% → hai chip) — G101 |
 | `transaction/domain/doc_anh_quet.dart` | `loaiAnhQuet`, `docAnhQuet`, `KetQuaAnhQuet` (`voiSoTien` đặt số đã chốt, kể cả `null`) |
 | `transaction/domain/doc_anh_gemma.dart` | `kPromptMonTong` (câu hỏi ĐÃ ĐO — đổi là đo lại), `docJsonGemmaAnh` (số `"75,700"` và `39,000` không ngoặc) |
 | `transaction/data/doc_danh_muc_bang_ai.dart` | `DocDanhMucBangAi` — Gemma lần hai (chữ) chọn MỘT danh mục chi; tên soát lại với danh sách |
@@ -78,6 +85,12 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 4. **AI chỉ chạm SỐ TIỀN** (ngày, cửa hàng là của luật — người dùng chốt). Số AI không in trên ảnh thì bỏ (4/5 lần
    Gemma CPU sai là loại ấy); chỉ điền sẵn khi khớp số luật, lệch thì hỏi bằng chip (`DienSanBienDong.luaChonTien`,
    khối `khoi-chon-so-tien` dưới dải nguồn, chạm chip đi qua `themPhimSoTien`).
+4a. ⚠️ **Số luật đứng một mình KHÔNG được điền vô điều kiện** (G101) — OCR làm mất / đổi chữ số của chính dòng tổng (R13
+   *"2,127"* cho 72.127; R08 *"75,706"* cho 75.700) và form từng điền số ấy không dấu hiệu gì. Phép chốt chạy cho **mọi** hoá
+   đơn, kể cả Basic: tách nó trở lại nhánh Premium là Basic điền lại số sai. Lưới A đọc thành tiền bằng `tienCuoiDong`, không
+   bằng `docMonHang` (dừng ở dòng tiêu đề cột *"Tổng"* của MAXIDI); lưới B bỏ dòng nhãn loại (tiền mặt làm tròn) và ngày giờ.
+   Phép kiểm hồi quy trên chữ `/quet` thật: `hoa_don_quet_that_test.dart` (chữ ở `hoa_don_that_du_lieu.dart` là của màn spike, đã
+   khác vì `image_picker` nén lại ảnh).
 4b. ⚠️ **`docAnh` KHÔNG đóng mô hình sau khi đọc** — OnePlus 13R (Adreno, GPU) 2026-10-08 **sập native** (SIGSEGV
    `gl_release_context` ← `LiteRtDestroyEnvironment`) ở lần ĐÓNG thứ hai trong một tiến trình: quét 1 nạp bản ảnh rồi
    đóng → chọn danh mục nạp bản chữ → quét 2 đóng bản chữ → sập. Nay bản có ảnh được GIỮ, phiên chữ (chọn danh mục,
@@ -136,7 +149,8 @@ dịch"*, tooltip ✓ nói *"Lưu N giao dịch"*; chip đầu khối nói *"T�
 ## 4. Premium
 
 Nút Quét + luật mở cho mọi người. AI lấp ô thiếu chỉ Premium (`_laPremium` ở `QuetAnhPage`, cùng khuôn
-`AddTransactionPage`); Basic không thấy chữ "AI" nào ở luồng quét. Tách theo danh mục là luật → mở cho cả Basic.
+`AddTransactionPage`); Basic không thấy chữ "AI" nào ở luồng quét. Basic vẫn có thể gặp khối hai chip (lưới B của G101 — hai số
+OCR lệch nhau), không kèm *"Đọc bằng AI"*. Tách theo danh mục là luật → mở cho cả Basic.
 
 ## 5. Android
 
@@ -183,7 +197,9 @@ sang `Download/`, chọn qua trình chọn ảnh hệ thống, đã xoá sau bu�
 
 Tổng hợp:
 - **Tờ mới:** điền đúng 1/1.
-- **15 tờ cũ:** 12 điền đúng · 1 hỏi chip · **2 điền sẵn SAI không hỏi** (G101).
+- **15 tờ cũ:** 12 điền đúng · 1 hỏi chip · **2 điền sẵn SAI không hỏi** (G101 — ✅ đóng cùng ngày: trên đúng chữ OCR của bảng
+  này, R08 nay hỏi chip 75.706 · 75.700 ở cả hai gói, R13 hỏi chip 72.127 · 2.127 ở Premium và để trống ở Basic; chưa chạy lại
+  trên máy).
 - Luật đúng tổng 13/15 (R15 tính *Tổng tiền* 32.160 như quy ước 08/10); Gemma CPU 12/15 cũ, 0/1 tờ mới.
 - So với 08/10: R11 nay điền đúng (số Gemma không có trên ảnh nên bị bỏ). R15 lùi: hôm 08/10 Gemma đọc 30.000 nên chip có số thực
   trả, hôm nay chip không có. R08, R13 lùi vì OCR trên ảnh nén lại.

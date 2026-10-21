@@ -614,7 +614,36 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-20)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-21)
+
+### 🧾 G101 — Quét ảnh thôi điền sẵn số tiền sai (2026-10-21) — ✅ MỞ VÀ ĐÓNG (mã + test; chưa chạy lại trên máy)
+
+Lộ khi nghiệm thu A5 trên Realme (CPU) cùng ngày: hai trong 15 tờ cũ qua `/quet` được **điền sẵn số sai, không chip**.
+- R13: tổng in 72.127, OCR đọc *"2,127"*, form điền 2.127. Gemma đọc đúng 72.127 nhưng bị bỏ.
+- R08: tổng in 75.700, OCR đọc *"75,706"*, form điền 75.706. Gemma đọc 55.000.
+
+OCR khác buổi 08/10 vì `image_picker` nén lại ảnh. `chotTongQuet` bỏ số Gemma không in trên ảnh, rồi điền số luật không kiểm
+gì thêm. Basic còn không đi qua phép chốt.
+
+**Bàn đo.** Logcat của buổi nghiệm thu có nguyên chữ OCR của 16 lượt `/quet` (`[Quet][OCR]` in bằng `print`). Chép ra, che số
+điện thoại / tên khách → `hoa_don_quet_that_du_lieu.dart`; ca kiểm chính dữ liệu: luật trên chữ ấy ra đúng dòng `[Quet][luat]`
+cả 16 tờ. Ba ứng viên đo trên 34 tờ chữ (15 chữ 08/10 · 16 chữ `/quet` · 3 OnePlus), mỗi tờ cả hai gói, trước khi hỏi.
+
+**Sửa — người dùng chọn ba lưới A + B + C:**
+- **C** — số Gemma thêm / bớt một chữ số so với số luật cũng là ứng viên (trước chỉ nhận thay một chữ số, cùng độ dài).
+- **A** — số luật đứng một mình mà nhỏ hơn thành tiền lớn nhất của các dòng trên dòng tổng → ô trống + toast.
+- **B** — số luật đứng một mình mà tờ in một số khác lệch ≤ 1% (dòng VAT…) → hai chip [số luật, số gần nhất].
+- `/quet` chốt **mọi** hoá đơn, kể cả Basic. `ai=1` chỉ khi số Gemma nằm trên form.
+
+Kết quả trên 34 tờ chữ: **0** tờ điền sẵn sai. Cái giá: R13 chữ 08/10 (luật đúng, tờ có dòng tiền mặt OCR đọc 72,121) chuyển
+sang hỏi chip. Thân G101 ở `CLIENT_APP_KNOWN_GAPS.md` có bảng đo; mục 1 bước 3b + chốt 4a ở `QUET_ANH_FEATURE.md`.
+
+**Test:** `hoa_don_quet_that_test.dart` (17 ca dữ liệu + 4 ca G101), 13 ca lưới ở `hoa_don_that_test.dart`, 4 ca widget ở
+`quet_anh_page_test.dart`. Mười một bản sai cấy thử đều bị bắt (một bản lọt lượt đầu → thêm ca OCR mất chữ số ở giữa).
+
+**Số đo 2026-10-21:** `flutter test` **7682/7682** pass, 10 skip (5 ph 05 s; +40 so với 7642 sau G100); `flutter analyze` **20**.
+**Chưa chạy lại trên máy** — 15 ảnh R01–R16 nằm trong `app_flutter/spike_c4/do1/` của Realme (đang rút); việc còn lại là nhìn
+khối chip ở Basic và dải nguồn không chữ *"AI"* trên form thật.
 
 ### 🚪 G95 — cổng lệnh tạo C3 thôi bắt câu xin viết chữ (2026-10-20) — ✅ ĐÓNG (mã + test; đo Realme đạt)
 

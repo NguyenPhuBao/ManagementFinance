@@ -411,7 +411,7 @@ khỏi dòng, số ở dòng trên nhãn, *"tổng"* đọc méo, *Payment* trê
 bỏ dấu ảnh, đọc *Sep 28, 2026* và *Ngày … tháng … năm*; kèm tên cửa hàng (bỏ chữ trên đồ vật phía sau, trống thay vì
 đoán). Trên chính 15 tờ ấy: luật tổng **15/15** (R15 tính *Tổng tiền* 32.160), ngày 9 đúng cả giờ + 2 đúng ngày (giờ không đọc ra) · 4 không đọc ra
 · **0 sai im lặng**, cửa hàng 8 đúng · 3 trống · 4 tạm được; chốt AI + luật **13/15 điền sẵn đều đúng, 2 tờ hỏi chip**
-(số đúng có trong chip). ⚠️ Luật sửa trên đúng bộ đo — cần hoá đơn MỚI để kiểm. `chotTongQuet` **chưa nối** vào `/quet`.
+(số đúng có trong chip). *(Sau G101, 2026-10-21: 12/15 — R13 in thêm dòng tiền mặt OCR đọc 72,121, lưới B hỏi chip.)* ⚠️ Luật sửa trên đúng bộ đo — cần hoá đơn MỚI để kiểm. `chotTongQuet` **chưa nối** vào `/quet`.
 
 **Nối vào `/quet` (2026-10-08 tối — mã + test, 🚧 chưa nghiệm thu máy thật):** `SlmDocAnh.docAnh` (runtime nạp lại
 bản có ảnh, đóng sau khi đọc) → `DocAnhBangGemma` (trần 90 s, Huỷ) → `docJsonGemmaAnh` → `chotTongQuet` → query `chon`
@@ -481,4 +481,7 @@ dòng tổng; còn `chotTongQuet` bỏ số Gemma (R13 đọc đúng 72.127) vì
 chữ số, rồi điền số luật không kiểm gì thêm. Bảng *"13/15 điền sẵn đều đúng, 2 tờ hỏi chip"* ở trên tính trên chữ OCR của đường
 spike, **không** phải dự đoán đầu-cuối của `/quet`. Gemma CPU 18–38 s / ảnh, chọn danh mục 7,5–9,7 s; giữ bản có ảnh qua 15
 lượt không nạp lại, không sập (chốt 4b đứng trên CPU). Huỷ pha AI đạt, trễ ~5 s vì lời gọi native không ngắt được. Lộ thêm
-**G100** — Back thoát app rồi mở lại thì mô hình nạp thêm một bản (Native Heap 1,89 → 3,72 GB).
+**G100** — Back thoát app rồi mở lại thì mô hình nạp thêm một bản (Native Heap 1,89 → 3,72 GB). **G101 đóng cùng ngày**
+(`639f7114`, mã + test): ba lưới A + B + C ở `chotTongQuet`, Basic cũng qua phép chốt — trên chữ OCR của lượt này (chép từ
+logcat, `hoa_don_quet_that_du_lieu.dart`) R08 hỏi chip ở cả hai gói, R13 hỏi chip ở Premium và để trống ở Basic. Chi tiết mục
+1 bước 3b và chốt 4a `QUET_ANH_FEATURE.md`.
