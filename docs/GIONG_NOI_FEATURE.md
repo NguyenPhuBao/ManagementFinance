@@ -210,7 +210,7 @@ Chép nguyên mục 9 spec (Realme và/hoặc OnePlus — máy nào cắm đo m�
       *(2026-10-21, **vế Realme CPU đạt**: nghiệm thu A5 trên Realme nạp bản hai cờ — log `[SLM] nạp mô hình xong sau 1249–1476
       ms (CPU … · ảnh · âm thanh)` — cả ở tiến trình mới; 16 lượt quét + chọn danh mục + Nhập nhanh không sập, PSS 3,0–3,26 GB.
       Chưa đo OnePlus GPU, chưa đo chuỗi có Nói. Mục 7 `QUET_ANH_FEATURE.md`; lộ G100 — mô hình nạp thêm bản khi engine dựng
-      lại.)*
+      lại; ✅ G100 đóng cùng ngày, thân ở `CLIENT_APP_KNOWN_GAPS.md`.)*
 - [ ] Thời gian lượt Gemma đầu tiên trên CPU (nạp chữ + đóng + nạp hai cờ + suy luận) so với trần 60 s (`kThoiHanChepLoi`).
 - [ ] `stopGeneration` có trả về trong `kHanDungSinh` (2 s) không — log `[SLM] đã huỷ lượt sinh giữa chừng` hay `huỷ lượt sinh hỏng`.
 - [ ] RAM bản hai cờ (nhắc lại ở trên, nhưng đo cả chuỗi *Trợ lý → Nói → Quét* và *Nói → Quét → Nói*, đếm số lần đóng).

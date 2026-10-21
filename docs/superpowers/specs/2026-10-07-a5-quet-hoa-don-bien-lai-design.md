@@ -481,7 +481,8 @@ dòng tổng; còn `chotTongQuet` bỏ số Gemma (R13 đọc đúng 72.127) vì
 chữ số, rồi điền số luật không kiểm gì thêm. Bảng *"13/15 điền sẵn đều đúng, 2 tờ hỏi chip"* ở trên tính trên chữ OCR của đường
 spike, **không** phải dự đoán đầu-cuối của `/quet`. Gemma CPU 18–38 s / ảnh, chọn danh mục 7,5–9,7 s; giữ bản có ảnh qua 15
 lượt không nạp lại, không sập (chốt 4b đứng trên CPU). Huỷ pha AI đạt, trễ ~5 s vì lời gọi native không ngắt được. Lộ thêm
-**G100** — Back thoát app rồi mở lại thì mô hình nạp thêm một bản (Native Heap 1,89 → 3,72 GB). **G101 đóng cùng ngày**
+**G100** — Back thoát app rồi mở lại thì mô hình nạp thêm một bản (Native Heap 1,89 → 3,72 GB); ✅ đóng cùng ngày (Back hai lần
+→ xuống nền; gỡ task khi đang giữ mô hình → đóng hẳn tiến trình), thân ở `CLIENT_APP_KNOWN_GAPS.md`. **G101 đóng cùng ngày**
 (`639f7114`, mã + test): ba lưới A + B + C ở `chotTongQuet`, Basic cũng qua phép chốt — trên chữ OCR của lượt này (chép từ
 logcat, `hoa_don_quet_that_du_lieu.dart`) R08 hỏi chip ở cả hai gói, R13 hỏi chip ở Premium và để trống ở Basic. Chi tiết mục
 1 bước 3b và chốt 4a `QUET_ANH_FEATURE.md`.

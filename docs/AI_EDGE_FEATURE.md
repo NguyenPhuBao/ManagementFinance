@@ -264,8 +264,17 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.4 | **Luật "đã bị cắt hai kỳ liền trước" (C3) chỉ kích hoạt khi ngân sách đã tồn tại ≥ 3 kỳ** — `recentPeriods` trả một kỳ cho ngân sách tạo tháng này, và luật im lặng | không lỗi; chỉ là trần 25 % thay vì 15 % | `tai_phan_bo_test.dart` *"đã bị cắt hai kỳ liền trước → trần 15 %"* có cả hai fixture |
 
 ⚠️ **Bảng dừng ở 4.48 — các bẫy sau đánh số tiếp nhưng nằm ở mục của lát sinh ra chúng:** 4.49 · 4.50 ở mục **9.32**
-(`truy_van_giao_dich`), 4.51 · 4.52 ở mục **9.33**, 4.53–4.58 (trợ lý online) ở mục **15.6** (đếm 2026-10-17). Bẫy mới lấy số
-**4.59**.
+(`truy_van_giao_dich`), 4.51 · 4.52 ở mục **9.33**, 4.53–4.58 (trợ lý online) ở mục **15.6** (đếm 2026-10-17), 4.59 ngay dưới
+đây (2026-10-21). Bẫy mới lấy số **4.60**.
+
+- **4.59 — engine Flutter dựng lại trong tiến trình còn sống làm rò MỘT BẢN MÔ HÌNH** (G100, 2026-10-21, thân ở
+  `CLIENT_APP_KNOWN_GAPS.md`). `flutter_gemma_litertlm` 1.8.0 chỉ cất **địa chỉ** engine native trong đối tượng Dart, không
+  `NativeFinalizer`: isolate chết mà chưa `close()` thì bản ấy nằm lại tới hết tiến trình, và isolate mới nạp bản thứ hai (Realme
+  CPU +1,85 GB mỗi vòng, OnePlus GPU +0,75 GB). Tiến trình sống tiếp vì dịch vụ D1 giữ nó. Hai đường dựng lại đã chặn: Back hai
+  lần → `moveTaskToBack` (`ThoatHaiLan`); gỡ task khi đang giữ mô hình → `MainActivity.onDestroy` giết tiến trình (cờ
+  `BoNapMoHinh.baoGiu` → `KenhGiuMoHinh`). ⚠️ Cờ chỉ bật **sau** khi nạp xong — báo sớm là có thể giết giữa pha nạp, dấu canary GPU
+  (4.24) sót lại thành *GPU hỏng vĩnh viễn*. ⚠️ Đừng chữa bằng cách đóng mô hình khi `detached`: OnePlus GPU sập ở lần đóng thứ
+  hai trong một tiến trình (chốt 4b `QUET_ANH_FEATURE.md`). Đường mới nào làm engine dựng lại trong tiến trình còn sống sẽ rò y hệt.
 
 ## 5. Màn Stitch
 

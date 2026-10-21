@@ -1864,7 +1864,9 @@ Kotlin — đủ ba vế điều kiện, giết sau `super.onDestroy()`; nối d
 | Mở lại → quét R08 | nạp **một** bản: Native **1,90 GB** (trước bản sửa: 3,71 GB), PSS 3,04 GB ✅ |
 | Gỡ task lần hai | 13926 → giết → 14836, PSS 56 MB ✅ |
 
-Chưa đo OnePlus GPU (giết tiến trình giải phóng cả ngữ cảnh GPU, không đi qua `LiteRtDestroyEnvironment`).
+Chưa đo: OnePlus GPU (giết tiến trình giải phóng cả ngữ cảnh GPU, không đi qua `LiteRtDestroyEnvironment`); vuốt đi nhiều lần
+liên tiếp trong thời gian ngắn — hai lần giết đo được đều dựng lại dịch vụ D1 sau ~1 s, nhưng Android giãn dần thời gian khởi
+động lại dịch vụ khi nó chết dồn dập.
 
 ---
 
