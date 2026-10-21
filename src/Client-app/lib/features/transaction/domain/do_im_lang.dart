@@ -16,6 +16,9 @@ class BoDoIm {
   bool _daCoTieng = false;
   Duration? _imTu;
 
+  /// Đã có mẫu nào ≥ [kNguongCoTieng] chưa. Dừng vì *chưa nói gì sau 6 giây* thì bản ghi là im lặng — đừng đem đi chép.
+  bool get daCoTieng => _daCoTieng;
+
   /// Thêm một mẫu [dbfs] ở mốc [luc] (tính từ lúc bắt đầu ghi). `true` = nên dừng.
   bool them(double dbfs, Duration luc) {
     if (luc >= kNgheToiDa) return true;
