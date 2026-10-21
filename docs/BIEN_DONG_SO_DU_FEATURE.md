@@ -120,6 +120,10 @@ App ngân hàng / ví hiện thông báo
 ## 4. Bẫy
 
 - ⚠️ **Tin đến TRƯỚC lúc bật quyền không bao giờ tới listener** — muốn đo thì bật quyền trước rồi mới chuyển tiền.
+- ⚠️ **Vuốt FlowMoney khỏi Đa nhiệm sau khi đã dùng AI là GIẾT tiến trình** (G100, 2026-10-21 — `MainActivity.onDestroy`, vì
+  engine dựng lại trong tiến trình còn sống sẽ nạp thêm một bản mô hình). Hệ điều hành dựng lại tiến trình cho
+  `BienDongListenerService` ~1,1 s sau và listener gắn lại (đo Realme). Trong khe ấy tin biến động tới **không** được đọc —
+  `onListenerConnected` không quét lại tin đang hiện. Chưa dùng AI thì vuốt app đi không giết gì (tiến trình sống như cũ).
 - ⚠️ **Logcat `main` của OnePlus chỉ 256 KiB, trôi trong ~30 s**: `adb logcat -G 16M` + ghi liên tục ra tệp ngoài repo.
 - ⚠️ **Bản release không `run-as`** — tệp hàng chờ và CSDL chỉ kiểm được ở bản debug; bản release kiểm bằng thứ nhìn thấy.
 - ⚠️ **MoMo / ZaloPay KHÔNG bắn thông báo khi chuyển tiền ĐI** — khoản chi bằng số dư ví lọt khỏi D1 (khoản trừ vào ngân

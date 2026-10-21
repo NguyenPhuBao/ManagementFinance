@@ -616,7 +616,29 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-21)
 
-### 🧾 G101 — Quét ảnh thôi điền sẵn số tiền sai (2026-10-21) — ✅ MỞ VÀ ĐÓNG (mã + test; chưa chạy lại trên máy)
+### 🧠 G100 — gỡ task khỏi Đa nhiệm thôi nạp thêm một bản mô hình (2026-10-21 tối) — ✅ ĐÓNG (mã + test + nghiệm thu Realme)
+
+Đường Back hai lần đã sửa trưa cùng ngày (xuống nền). Còn đường **vuốt app khỏi Đa nhiệm**: đo lại trên bản mới (Realme CPU,
+tài khoản 10) — tiến trình sống (dịch vụ D1 giữ), engine dựng lại, quét một tờ là nạp bản thứ hai: Native 1,86 → **3,71 GB**,
+PSS 4,80 GB. Đo thêm: `am crash` tiến trình đang giữ dịch vụ D1 → ColorOS dựng lại tiến trình cho dịch vụ sau ~2 s.
+
+**Sửa — người dùng chọn *đóng hẳn tiến trình*** (trong ba lối: đóng hẳn · một engine cho cả tiến trình · để nguyên):
+- `BoNapMoHinh.baoGiu` báo `true` sau khi nạp **xong**, `false` sau khi đóng; DI nối vào kênh `flowmoney/giu_mo_hinh`
+  (`KenhGiuMoHinh`, `ai_edge/data/datasources/`). Đang nạp thì chưa báo — giết giữa pha nạp là đánh dấu GPU hỏng oan.
+- `MainActivity.onDestroy`: không đổi cấu hình ∧ activity cuối ∧ đang giữ mô hình → `Process.killProcess` sau
+  `super.onDestroy()`.
+
+Người dùng không thấy gì khác: mở lại sau khi vuốt app đi vốn đã là dựng lại engine. Chưa dùng AI thì không giết.
+
+**Nghiệm thu Realme (bản `9792b5c3…`):** chưa dùng AI → gỡ task, tiến trình giữ nguyên · Back hai lần → xuống nền, không giết ·
+đang giữ mô hình → gỡ task: tiến trình chết, dịch vụ D1 lên lại ~1,1 s sau (54 MB), listener gắn lại · mở lại + quét: nạp **một**
+bản, Native **1,90 GB** · lặp lần hai đạt. Chưa đo OnePlus GPU.
+
+**Test:** `bo_nap_mo_hinh_test` +5 ca, `kenh_giu_mo_hinh_test` 5 ca (kênh + nối dây Kotlin / DI); bốn bản sai cấy thử đều đỏ.
+**Số đo 2026-10-21 tối:** `flutter test` **7694/7694** pass, 10 skip (6 ph 17 s); `flutter analyze` **20**. Thân G100 ở
+`CLIENT_APP_KNOWN_GAPS.md`.
+
+### 🧾 G101 — Quét ảnh thôi điền sẵn số tiền sai (2026-10-21) — ✅ MỞ VÀ ĐÓNG (mã + test; nghiệm thu Realme Premium đạt cùng tối, Basic chưa nhìn trên máy)
 
 Lộ khi nghiệm thu A5 trên Realme (CPU) cùng ngày: hai trong 15 tờ cũ qua `/quet` được **điền sẵn số sai, không chip**.
 - R13: tổng in 72.127, OCR đọc *"2,127"*, form điền 2.127. Gemma đọc đúng 72.127 nhưng bị bỏ.
@@ -644,8 +666,9 @@ sang hỏi chip. Thân G101 ở `CLIENT_APP_KNOWN_GAPS.md` có bảng đo; mục
 *"AI"* ở `form_anh_quet_test.dart`. Mười một bản sai cấy thử đều bị bắt (một bản lọt lượt đầu → thêm ca OCR mất chữ số ở giữa).
 
 **Số đo 2026-10-21:** `flutter test` **7684/7684** pass, 10 skip (4 ph 48 s; +42 so với 7642 sau G100); `flutter analyze` **20**.
-**Chưa chạy lại trên máy** — 15 ảnh R01–R16 nằm trong `app_flutter/spike_c4/do1/` của Realme (đang rút); việc còn lại là nhìn
-khối chip ở Basic và dải nguồn không chữ *"AI"* trên form thật.
+**Nghiệm thu Realme Premium cùng tối** (bản `bf988d6f…`, R08 / R13 chép từ `app_flutter/spike_c4/do1/` sang `Download/fmquet/`,
+chọn qua trình chọn ảnh): R08 → 0 đ + hai chip 75.706 · 75.700, chạm chip điền đúng; R13 → 0 đ + hai chip 72.127 · 2.127 — ✅.
+Còn lại: nhìn đường Basic (khối chip không chữ *"AI"*, R13 ô trống) — cần OnePlus, tài khoản 18.
 
 ### 🚪 G95 — cổng lệnh tạo C3 thôi bắt câu xin viết chữ (2026-10-20) — ✅ ĐÓNG (mã + test; đo Realme đạt)
 

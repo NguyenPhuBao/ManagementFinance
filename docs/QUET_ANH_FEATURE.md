@@ -12,9 +12,11 @@
 > ✅ **Nghiệm thu Realme (CPU) 2026-10-21** — mục 7: 1 hoá đơn giấy mới (chụp dọc) điền đúng; 15 tờ cũ qua `/quet` thật: 12
 > điền đúng · 1 hỏi chip · ⚠️ **2 điền sẵn SAI không hỏi** (R13 2.127 thay 72.127, R08 75.706 thay 75.700 — **G101**). Huỷ pha
 > AI đạt; mô hình giữ qua 15 lượt quét không nạp lại, không sập. Lộ thêm **G100**: Back thoát app rồi mở lại thì mô hình nạp
-> thêm một bản (Native Heap 1,89 → 3,72 GB) — đường Back đã sửa cùng ngày (Back hai lần = xuống nền).
-> ✅ **G101 đóng cùng ngày (mã + test, chưa chạy lại trên máy)** — ba lưới ở `chotTongQuet` (người dùng chọn A + B + C), và
-> Basic cũng qua phép chốt: 0 / 34 tờ chữ điền sẵn sai (chữ 08/10, chữ `/quet` 21/10 chép từ logcat, OnePlus). Mục 1 bước 3–3b.
+> thêm một bản (Native Heap 1,89 → 3,72 GB) — ✅ **G100 đóng cùng ngày**: Back hai lần = xuống nền; gỡ task khỏi Đa nhiệm khi
+> đang giữ mô hình = đóng hẳn tiến trình (nghiệm thu Realme: mở lại chỉ nạp một bản).
+> ✅ **G101 đóng cùng ngày** — ba lưới ở `chotTongQuet` (người dùng chọn A + B + C), và Basic cũng qua phép chốt: 0 / 34 tờ chữ
+> điền sẵn sai (chữ 08/10, chữ `/quet` 21/10 chép từ logcat, OnePlus). Mục 1 bước 3–3b. **Nghiệm thu Realme Premium cùng tối
+> đạt**: R08 → hai chip 75.706 · 75.700, R13 → hai chip 72.127 · 2.127 (mục 7). Đường Basic chưa nhìn trên máy.
 > ✅ **AI làm chính đã nối (2026-10-08 tối, mã + test)**: hoá đơn + Premium → Gemma NHÌN
 > ẢNH đọc món + tổng (`DocAnhBangGemma`), luật đọc phần còn lại; số chốt bằng `chotTongQuet` — khớp → điền, lệch → ô
 > trống + hai chip trên form. Đường cũ *"AI đọc chữ OCR"* (`DocAnhBangAi`, `lapTuAi`) **đã bỏ**.
@@ -199,8 +201,9 @@ sang `Download/`, chọn qua trình chọn ảnh hệ thống, đã xoá sau bu�
 Tổng hợp:
 - **Tờ mới:** điền đúng 1/1.
 - **15 tờ cũ:** 12 điền đúng · 1 hỏi chip · **2 điền sẵn SAI không hỏi** (G101 — ✅ đóng cùng ngày: trên đúng chữ OCR của bảng
-  này, R08 nay hỏi chip 75.706 · 75.700 ở cả hai gói, R13 hỏi chip 72.127 · 2.127 ở Premium và để trống ở Basic; chưa chạy lại
-  trên máy).
+  này, R08 nay hỏi chip 75.706 · 75.700 ở cả hai gói, R13 hỏi chip 72.127 · 2.127 ở Premium và để trống ở Basic). **Đo lại cùng
+  tối trên Realme, Premium, bản `bf988d6f…`:** R08 → 0 đ + hai chip 75.706 · 75.700 (chạm 75.700 điền đúng); R13 → 0 đ + hai chip
+  72.127 · 2.127 — ✅. Đường Basic chưa nhìn trên máy.
 - Luật đúng tổng 13/15 (R15 tính *Tổng tiền* 32.160 như quy ước 08/10); Gemma CPU 12/15 cũ, 0/1 tờ mới.
 - So với 08/10: R11 nay điền đúng (số Gemma không có trên ảnh nên bị bỏ). R15 lùi: hôm 08/10 Gemma đọc 30.000 nên chip có số thực
   trả, hôm nay chip không có. R08, R13 lùi vì OCR trên ảnh nén lại.
@@ -216,7 +219,8 @@ Các mục khác:
   danh mục) dùng chung bản có ảnh, không nạp lại, không sập. PSS ổn định 3,0–3,26 GB (swap tăng dần 0,1 → 0,95 GB).
 - Dọn ảnh: `anh_quet/` rỗng sau mỗi *Bỏ qua*; `cache/` không còn bản sao `image_picker`.
 - ⚠️ **G100**: Back thoát app (tiến trình còn sống nhờ dịch vụ D1) rồi mở lại thì mô hình nạp thêm một bản, Native Heap 1,89 →
-  3,72 GB. Đường Back đã sửa cùng ngày (Back hai lần đưa app xuống nền, nghiệm thu OnePlus GPU); gỡ task còn mở.
+  3,72 GB. ✅ Đóng cùng ngày: Back hai lần đưa app xuống nền (nghiệm thu OnePlus GPU); gỡ task khỏi Đa nhiệm khi đang giữ mô
+  hình thì `MainActivity` giết tiến trình (nghiệm thu Realme CPU — mở lại chỉ nạp một bản, Native 1,90 GB thay vì 3,71 GB).
 - Chưa làm: (a) biên lai MB (thư viện Realme không có), (e) bản `--release` (đã đo trên OnePlus), (f) Basic (đã đo trên OnePlus),
   tách bằng tick món (tính năng tạm tắt, `kChonMonTuAnhQuet = false`).
 
