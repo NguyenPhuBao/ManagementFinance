@@ -75,12 +75,16 @@ async function autoExpirePendingOrders() {
  * @param {object} data
  */
 async function createOrder(data) {
+  let pkgType = data.packageType || 'Premium';
+  if (typeof pkgType === 'string' && pkgType.toUpperCase().startsWith('PREMIUM')) {
+    pkgType = 'Premium';
+  }
   const created = await prisma.payment_order.create({
     data: {
       id: data.id,
       idaccount: data.idaccount,
       order_code: BigInt(data.orderCode),
-      package_type: data.packageType || 'PREMIUM_1_MONTH',
+      package_type: pkgType,
       amount: data.amount,
       amount_received: data.amountReceived || 0,
       fee: data.fee || 0,
@@ -129,7 +133,7 @@ async function findOrderByCode(orderCode) {
  * @param {number} amount 
  * @param {string} packageType 
  */
-async function findOrCreateOrderByCode(orderCode, amount, packageType = 'PREMIUM_1_MONTH') {
+async function findOrCreateOrderByCode(orderCode, amount, packageType = 'Premium') {
   const existingOrder = await findOrderByCode(orderCode);
   if (existingOrder) {
     return existingOrder;
@@ -477,6 +481,35 @@ async function downgradeExpiredPremiumAccounts(now = new Date()) {
     },
   });
 
+  // Ghi nhận lịch sử hết gói và chuyển về gói cơ bản vào CSDL (bảng payment_order)
+  const historyOrders = expiredAccounts.map((acc, index) => ({
+    id: crypto.randomUUID(),
+    idaccount: acc.idaccount,
+    order_code: BigInt(Date.now() * 1000 + Math.floor(Math.random() * 900) + 100 + index),
+    package_type: 'Basic',
+    amount: 0,
+    amount_received: 0,
+    fee: 0,
+    currency: 'VND',
+    status: 'EXPIRED',
+    transfer_content: 'Hết hạn gói Premium, chuyển về gói cơ bản',
+    recognition_code: 'EXP',
+    created_at: now,
+    expired_at: now,
+    is_template: false,
+  }));
+
+  try {
+    if (prisma.payment_order && typeof prisma.payment_order.createMany === 'function') {
+      await prisma.payment_order.createMany({
+        data: historyOrders,
+      });
+    }
+  } catch (histErr) {
+    const logger = require('../../core/logger');
+    logger.warn('[Payment] Lỗi ghi nhận lịch sử hết hạn gói:', { error: histErr.message });
+  }
+
   return expiredAccounts;
 }
 
@@ -495,6 +528,7 @@ async function findOrdersForAdmin({
   excludeTemplate = false,
 } = {}) {
   await autoExpirePendingOrders();
+  await downgradeExpiredPremiumAccounts();
   const currentPage = Math.max(1, parseInt(page, 10) || 1);
   const take = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
   const skip = (currentPage - 1) * take;
@@ -507,7 +541,7 @@ async function findOrdersForAdmin({
 
   if (packageType && packageType !== 'ALL') {
     if (packageType.toUpperCase() === 'PREMIUM') {
-      where.package_type = { startsWith: 'PREMIUM', mode: 'insensitive' };
+      where.package_type = { in: ['Premium', 'PREMIUM_1_MONTH', 'PREMIUM_6_MONTHS'] };
     } else {
       where.package_type = packageType;
     }
@@ -741,7 +775,7 @@ async function getOrderDetailForAdmin(orderId) {
  * Lấy hoặc tạo mã QR thanh toán từ kênh PayOS thật
  * @param {object} param0 { amount, packageType }
  */
-async function getOrCreatePayosQr({ amount = 49000, packageType = 'PREMIUM_1_MONTH', persistOrder = false, idaccount } = {}) {
+async function getOrCreatePayosQr({ amount = 49000, packageType = 'Premium', persistOrder = false, idaccount } = {}) {
   const orderCode = payosClient.generateOrderCode();
   const recognitionCode = payosClient.generateRecognitionCode();
   let description = recognitionCode;
@@ -843,7 +877,7 @@ async function getOrCreatePayosQr({ amount = 49000, packageType = 'PREMIUM_1_MON
  * @param {object} param0 
  */
 async function createSampleOrder({
-  packageType = 'PREMIUM_1_MONTH',
+  packageType = 'Premium',
   amount = 49000,
   status = 'PENDING',
   simulateWebhook = false,

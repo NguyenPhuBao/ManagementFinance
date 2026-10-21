@@ -31,11 +31,15 @@ model account {
   reason_inactive String?          @db.Text @map("Reason_Inactive")
   countdown       Int?             @map("Countdown")
   premium_expires_at DateTime?        @db.Timestamp(6) @map("premium_expires_at")
+  is_first_login  Boolean          @default(true) @map("is_first_login")
+  created_by_admin_id Int?         @map("created_by_admin_id")
   create_at       DateTime         @default(now()) @db.Timestamp(6) @map("Create_at")
   update_at  DateTime         @default(now()) @db.Timestamp(6) @map("Update_at")
   delete_at  DateTime?        @db.Timestamp(6) @map("Delete_at")
 
   role         role           @relation(fields: [idrole], references: [idrole], onUpdate: NoAction, map: "fk_account_role")
+  creator_admin account?      @relation("AdminCreatedBy", fields: [created_by_admin_id], references: [idaccount], onDelete: SetNull, onUpdate: NoAction, map: "fk_account_created_by_admin")
+  created_admins account[]    @relation("AdminCreatedBy")
   User         User?
   auditlog     auditlog[]
   otp_code     otp_code[]

@@ -25,6 +25,12 @@ vi.mock('../api/admin.api', () => ({
 vi.mock('../api/notification.api', () => ({
   default: {
     broadcastToAll: vi.fn(),
+    getBroadcastHistory: vi.fn().mockResolvedValue({
+      data: {
+        data: [],
+        pagination: { page: 1, limit: 5, total: 0, totalPages: 1 },
+      },
+    }),
   },
 }));
 
@@ -161,6 +167,14 @@ describe('Admin-web System Suite — BroadcastPage (2-Mode Maintenance & Broadca
 
     const turnOffBtn = screen.getByRole('button', { name: /Tắt Bảo Trì/i });
     fireEvent.click(turnOffBtn);
+
+    // PO YÊU CẦU: Hiển thị popup xác nhận kết thúc bảo trì
+    await waitFor(() => {
+      expect(screen.getByText('Xác Nhận Kết Thúc Bảo Trì')).toBeInTheDocument();
+    });
+
+    const confirmEndBtn = screen.getByRole('button', { name: /Xác Nhận Kết Thúc/i });
+    fireEvent.click(confirmEndBtn);
 
     await waitFor(() => {
       expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith(

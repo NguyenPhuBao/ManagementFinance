@@ -24,6 +24,12 @@ const notificationApi = {
    * @param {{ title: string, message: string, level: 'info'|'warning'|'critical' }} data
    */
   broadcastToAll: (data) => axiosClient.post('/notifications/broadcast', data),
+
+  /**
+   * Lấy danh sách lịch sử phát sóng thông báo toàn hệ thống (phân trang 5/page)
+   * @param {Object} params - { page, limit, level }
+   */
+  getBroadcastHistory: (params = {}) => axiosClient.get('/notifications/broadcast/history', { params }),
 };
 
 export default notificationApi;

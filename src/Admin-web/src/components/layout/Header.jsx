@@ -8,7 +8,7 @@ import soundService from '../../services/sound.service';
 import SettingsModal from './SettingsModal';
 import LanguageToggle from '../common/LanguageToggle';
 
-const Header = ({ onMenuToggle }) => {
+const Header = ({ onMenuToggle, sidebarCollapsed }) => {
   const alert = useAlertSafe();
   const settingsCtx = useSettingsSafe();
   const settings = settingsCtx?.settings;
@@ -150,12 +150,23 @@ const Header = ({ onMenuToggle }) => {
   const shouldShowBadge = settings?.showUnreadBadge !== false && unreadCount > 0;
 
   return (
-    <header className="fixed top-0 right-0 left-0 md:left-[280px] h-16 bg-surface border-b border-outline-variant flex items-center justify-between px-page-padding z-30">
-      <div className="flex items-center gap-4">
-        <button onClick={onMenuToggle} className="md:hidden text-on-surface hover:text-primary transition-colors">
-          <span className="material-symbols-outlined">menu</span>
+    <header className={`fixed top-0 right-0 left-0 transition-all duration-300 h-16 bg-surface border-b border-outline-variant flex items-center justify-between px-page-padding z-30 ${
+      sidebarCollapsed ? 'md:left-[76px]' : 'md:left-[260px]'
+    }`}>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onMenuToggle}
+          className="p-1.5 rounded-lg text-on-surface hover:text-primary hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center"
+          title={sidebarCollapsed ? 'Mở rộng thanh điều hướng' : 'Thu nhỏ thanh điều hướng'}
+        >
+          <span className="material-symbols-outlined text-[24px]">
+            {sidebarCollapsed ? 'menu' : 'menu_open'}
+          </span>
         </button>
-        <div className="font-headline-sm text-headline-sm font-semibold text-on-surface md:hidden">{t('nav.brandTitle')}</div>
+        <div className="font-headline-sm text-headline-sm font-semibold text-on-surface md:hidden">
+          {t('nav.brandTitle')}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 relative" ref={dropdownRef}>

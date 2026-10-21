@@ -1,7 +1,40 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useInRouterContext } from 'react-router-dom';
 import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
 import { useLanguageSafe } from '../../store/language.context';
+import SecurityConfirmModal from './SecurityConfirmModal';
+
+const RouterMaintenanceLink = ({ to, children, className }) => {
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(to)}
+      className={className}
+    >
+      {children}
+    </button>
+  );
+};
+
+const SafeMaintenanceLink = ({ to, children, className }) => {
+  const inRouter = useInRouterContext();
+  if (inRouter) {
+    return <RouterMaintenanceLink to={to} className={className}>{children}</RouterMaintenanceLink>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (typeof window !== 'undefined') window.location.href = to;
+      }}
+      className={className}
+    >
+      {children}
+    </button>
+  );
+};
 
 const REFRESH_MS = 60_000;
 
@@ -109,7 +142,9 @@ const ServerHealthPanel = () => {
   const [maintenance, setMaintenance] = useState({ active: false, reason: '', activatedBy: null, activatedAt: null });
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
   const [reason, setReason] = useState('');
+  const [reasonError, setReasonError] = useState('');
   const [toggling, setToggling] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
 
   // 1. Tải trạng thái bảo trì độc lập (siêu nhẹ, không nghẽn)
   const fetchMaintenance = useCallback(async () => {
@@ -119,9 +154,11 @@ const ServerHealthPanel = () => {
       if (data) {
         setMaintenance({
           active: Boolean(data.active),
+          isEmergency: data.isEmergency !== false,
           reason: data.reason || '',
           activatedBy: data.activatedBy || null,
           activatedAt: data.activatedAt || null,
+          scheduled: data.scheduled || null,
         });
       }
     } catch (e) {
@@ -238,25 +275,41 @@ const ServerHealthPanel = () => {
     };
   }, [socket]);
 
-  // 3. Thao tác công tắc bảo trì khẩn cấp (Emergency Switch)
-  const toggle = async () => {
+  // 3. Thao tác công tắc bảo trì khẩn cấp (Emergency Switch - Yêu cầu xác thực mã PIN khi bật)
+  const handleToggleClick = () => {
     const next = !maintenance.active;
-    if (next && !reason.trim()) {
-      alert(t('serverHealth.alertReasonRequired', 'Vui lòng nhập lý do trước khi kích hoạt bảo trì khẩn cấp!'));
-      return;
+    if (next) {
+      if (!reason.trim()) {
+        setReasonError(t('serverHealth.alertReasonRequired', 'Vui lòng nhập lý do trước khi kích hoạt bảo trì khẩn cấp!'));
+        return;
+      }
+      setReasonError('');
+      setShowPinModal(true);
+    } else {
+      executeToggle(false);
     }
+  };
+
+  const executeToggle = async (nextActive) => {
     setToggling(true);
     try {
-      const payload = { active: next, reason: next ? reason.trim() : null, isEmergency: true };
+      const payload = {
+        active: nextActive,
+        reason: nextActive ? reason.trim() : null,
+        isEmergency: true,
+      };
       await adminApi.setMaintenanceStatus(payload);
       setMaintenance((prev) => ({
         ...prev,
-        active: next,
-        isEmergency: next,
-        reason: next ? reason.trim() : '',
-        activatedAt: new Date().toISOString(),
+        active: nextActive,
+        isEmergency: nextActive,
+        reason: nextActive ? reason.trim() : '',
+        activatedAt: nextActive ? new Date().toISOString() : null,
       }));
-      if (!next) setReason('');
+      if (!nextActive) {
+        setReason('');
+        setReasonError('');
+      }
       // Làm mới lại dữ liệu xác thực
       await fetchMaintenance();
     } catch (e) {
@@ -389,53 +442,106 @@ const ServerHealthPanel = () => {
         </>
       )}
 
-      {/* KHỐI 2: CÔNG TẮC BẢO TRÌ KHẨN CẤP — LUÔN HOẠT ĐỘNG ĐỘC LẬP (CỬA THOÁT HIỂM) */}
-      <div className={`rounded-lg p-3.5 border transition-all ${maintenance.active ? 'border-orange-300 bg-orange-50/90 shadow-xs' : 'border-outline-variant bg-surface-container-lowest'}`}>
+      {/* KHỐI 2: CÔNG TẮC BẢO TRÌ — LUÔN HOẠT ĐỘNG ĐỘC LẬP (CỬA THOÁT HIỂM) */}
+      <div className={`rounded-lg p-3.5 border transition-all ${
+        maintenance.active
+          ? maintenance.isEmergency
+            ? 'border-rose-300 bg-rose-50/90 shadow-xs'
+            : 'border-amber-300 bg-amber-50/90 shadow-xs'
+          : 'border-outline-variant bg-surface-container-lowest'
+      }`}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <span className={`material-symbols-outlined text-[17px] ${maintenance.active ? 'text-orange-600 animate-bounce' : 'text-on-surface-variant'}`}>
-              construction
+            <span className={`material-symbols-outlined text-[17px] ${
+              maintenance.active
+                ? maintenance.isEmergency
+                  ? 'text-rose-600 animate-pulse'
+                  : 'text-amber-600'
+                : 'text-on-surface-variant'
+            }`}>
+              {maintenance.active ? (maintenance.isEmergency ? 'crisis_alert' : 'construction') : 'construction'}
             </span>
             <div>
-              <p className="text-xs font-bold text-on-surface">{t('serverHealth.emergencyMaint', 'Bảo trì khẩn cấp')}</p>
-              <p className="text-[10px] text-gray-400">{t('serverHealth.emergencyMaintDesc', 'Cắt toàn bộ Client, giữ Admin thông luồng')}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-bold text-on-surface">
+                  {maintenance.active
+                    ? maintenance.isEmergency
+                      ? t('serverHealth.emergencyMaint', 'Bảo trì khẩn cấp')
+                      : t('serverHealth.regularMaint', 'Bảo trì thông thường')
+                    : t('serverHealth.emergencyMaint', 'Bảo trì khẩn cấp')}
+                </p>
+                {maintenance.active && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full uppercase ${
+                    maintenance.isEmergency
+                      ? 'bg-rose-200 text-rose-800'
+                      : 'bg-amber-200 text-amber-800'
+                  }`}>
+                    {maintenance.isEmergency
+                      ? t('broadcast.banner.emergencyBadge', 'Khẩn cấp')
+                      : t('broadcast.banner.silentBadge', 'Thông thường')}
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-gray-500">
+                {maintenance.active
+                  ? maintenance.isEmergency
+                    ? t('serverHealth.emergencyMaintDesc', 'Cắt toàn bộ Client, giữ Admin thông luồng')
+                    : t('serverHealth.regularMaintDesc', 'Bảo trì kỹ thuật định kỳ hệ thống')
+                  : t('serverHealth.emergencyMaintDesc', 'Cắt toàn bộ Client, giữ Admin thông luồng')}
+              </p>
             </div>
           </div>
           <button
             id="btn-maintenance-toggle"
-            onClick={toggle}
-            disabled={toggling || maintenanceLoading}
-            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors duration-200 cursor-pointer disabled:opacity-50 ${maintenance.active ? 'bg-orange-500 ring-2 ring-orange-300' : 'bg-gray-300'}`}
-            title={maintenance.active ? t('serverHealth.toggleOffTitle', 'Bấm để tắt bảo trì') : t('serverHealth.toggleOnTitle', 'Bấm để bật bảo trì')}
+            onClick={handleToggleClick}
+            disabled={maintenance.active || toggling || maintenanceLoading}
+            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors duration-200 ${
+              maintenance.active
+                ? `${maintenance.isEmergency ? 'bg-rose-500 ring-2 ring-rose-300' : 'bg-amber-500 ring-2 ring-amber-300'} cursor-not-allowed opacity-70`
+                : 'bg-gray-300 cursor-pointer disabled:opacity-50'
+            }`}
+            title={
+              maintenance.active
+                ? t('serverHealth.toggleLockedTooltip', 'Chế độ bảo trì đang kích hoạt. Khóa công tắc tại Dashboard. Vui lòng vào trang Quản trị & Lên lịch bảo trì.')
+                : t('serverHealth.toggleOnTitle', 'Bấm để bật bảo trì (cần nhập mã PIN)')
+            }
           >
             <span className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${maintenance.active ? 'translate-x-5' : 'translate-x-0.5'}`} />
           </button>
         </div>
 
         {!maintenance.active && (
-          <div className="mt-2 space-y-1.5">
+          <div className="mt-2 space-y-1">
             <input
               type="text"
               placeholder={t('serverHealth.reasonPlaceholder', 'Nhập lý do bảo trì trước khi bật...')}
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full text-xs bg-white text-on-surface border border-outline-variant rounded-md px-2.5 py-1.5 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
+              onChange={(e) => {
+                setReason(e.target.value);
+                if (reasonError) setReasonError('');
+              }}
+              className={`w-full text-xs bg-white text-on-surface border rounded-md px-2.5 py-1.5 placeholder:text-gray-400 focus:outline-none focus:ring-1 shadow-2xs ${
+                reasonError ? 'border-rose-400 focus:ring-rose-500' : 'border-outline-variant focus:ring-primary'
+              }`}
             />
+            {reasonError && (
+              <p className="text-[11px] text-rose-600 font-medium">{reasonError}</p>
+            )}
           </div>
         )}
 
         {maintenance.active && (
           <div className={`text-xs rounded-md p-2 space-y-1 mt-2 border ${
             maintenance.isEmergency
-              ? 'text-red-900 bg-red-100/80 border-red-300'
-              : 'text-orange-900 bg-orange-100/70 border-orange-200'
+              ? 'text-rose-900 bg-rose-100/80 border-rose-300'
+              : 'text-amber-900 bg-amber-100/70 border-amber-200'
           }`}>
             <p className="font-semibold flex items-center gap-1">
-              <span className={`material-symbols-outlined text-[15px] ${maintenance.isEmergency ? 'text-red-700' : 'text-orange-700'}`}>
-                {maintenance.isEmergency ? 'error' : 'warning'}
+              <span className={`material-symbols-outlined text-[15px] ${maintenance.isEmergency ? 'text-rose-700' : 'text-amber-700'}`}>
+                {maintenance.isEmergency ? 'error' : 'construction'}
               </span>
               <span>
-                {maintenance.isEmergency ? t('serverHealth.emergencyPrefix', 'Bảo trì khẩn cấp: ') : t('serverHealth.techPrefix', 'Bảo trì kỹ thuật: ')}
+                {maintenance.isEmergency ? t('serverHealth.emergencyPrefix', 'Bảo trì khẩn cấp: ') : t('serverHealth.techPrefix', 'Bảo trì thông thường: ')}
                 {maintenance.reason || t('serverHealth.systemMaintaining', 'Hệ thống đang bảo trì')}
               </span>
             </p>
@@ -458,11 +564,28 @@ const ServerHealthPanel = () => {
         )}
 
         <div className="mt-2 text-right">
-          <a href="/broadcast" className="text-[11px] text-primary hover:underline font-medium inline-flex items-center gap-0.5">
+          <SafeMaintenanceLink
+            to="/broadcast"
+            className="text-[11px] text-primary hover:underline font-medium inline-flex items-center gap-0.5 cursor-pointer bg-transparent border-none p-0"
+          >
             {t('serverHealth.manageSchedule', 'Quản trị & Lên lịch bảo trì →')}
-          </a>
+          </SafeMaintenanceLink>
         </div>
       </div>
+
+      {/* Modal xác thực mã PIN bảo mật khi bật Bảo trì khẩn cấp */}
+      <SecurityConfirmModal
+        isOpen={showPinModal}
+        onClose={() => setShowPinModal(false)}
+        actionType="EMERGENCY_MAINTENANCE"
+        dangerLevel="critical"
+        title={t('serverHealth.pinModalTitle', 'Xác thực kích hoạt Bảo trì khẩn cấp')}
+        description={t('serverHealth.emergencyMaintPinDesc', 'Kích hoạt chế độ BẢO TRÌ KHẨN CẤP toàn hệ thống. Mọi phiên người dùng Client sẽ bị chặn và nhận thông báo khẩn cấp.')}
+        onSuccess={async () => {
+          setShowPinModal(false);
+          await executeToggle(true);
+        }}
+      />
     </div>
   );
 };

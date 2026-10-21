@@ -223,6 +223,23 @@ const notificationService = {
       createdAt: new Date().toISOString(),
     };
 
+    // PO YÊU CẦU: Lưu vết vào CSDL PostgreSQL (broadcast_notification)
+    try {
+      const { defaultBroadcastRepository } = require('./broadcast.repository');
+      if (defaultBroadcastRepository) {
+        defaultBroadcastRepository.createRecord({
+          title: broadcastPayload.title,
+          message: broadcastPayload.message,
+          level: broadcastPayload.level,
+          sender_username: payload.sender_username || payload.metadata?.sender_username || 'admin',
+        }).catch((err) => {
+          logger.warn('[Notification Service] Lỗi lưu CSDL broadcast_notification', { error: err.message });
+        });
+      }
+    } catch (repoErr) {
+      logger.warn('[Notification Service] Không thể gọi broadcast.repository', { error: repoErr.message });
+    }
+
     this.getSocket().emitSystemBroadcast(broadcastPayload);
     return broadcastPayload;
   },

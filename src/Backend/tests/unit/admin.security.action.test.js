@@ -25,10 +25,11 @@ describe('adminService.verifySecurityAction', () => {
   it('should verify successfully when correct hashed PIN in DB is provided', async () => {
     const origGet = adminRepository.getAccountById;
     const pinHash = await bcrypt.hash('888999', 10);
+    const dummyPassHash = await bcrypt.hash('dummy_pass', 10);
     adminRepository.getAccountById = async (id) => ({
       idaccount: id,
       pin_hash: pinHash,
-      password: 'hashed_password',
+      password: dummyPassHash,
     });
 
     try {
@@ -47,10 +48,11 @@ describe('adminService.verifySecurityAction', () => {
 
   it('should verify successfully with fallback system PIN when account has no pin_hash in DB', async () => {
     const origGet = adminRepository.getAccountById;
+    const dummyPassHash = await bcrypt.hash('dummy_pass', 10);
     adminRepository.getAccountById = async (id) => ({
       idaccount: id,
       pin_hash: null,
-      password: 'hashed_password',
+      password: dummyPassHash,
     });
     process.env.ADMIN_SECURITY_PIN = '654321';
 
@@ -69,10 +71,11 @@ describe('adminService.verifySecurityAction', () => {
   it('should reject with 401 when invalid PIN is provided', async () => {
     const origGet = adminRepository.getAccountById;
     const pinHash = await bcrypt.hash('888999', 10);
+    const dummyPassHash = await bcrypt.hash('dummy_pass', 10);
     adminRepository.getAccountById = async (id) => ({
       idaccount: id,
       pin_hash: pinHash,
-      password: 'hashed_password',
+      password: dummyPassHash,
     });
 
     try {

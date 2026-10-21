@@ -418,6 +418,29 @@ class MaintenanceManager {
       scheduled: this.scheduled,
     };
   }
+
+  /**
+   * Kích hoạt đối soát trạng thái với CSDL (Reconciliation)
+   * Đảm bảo CSDL và RAM/Redis đồng nhất, dọn dẹp các phiên bảo trì ma mồ côi
+   * 
+   * @param {Object} customRepository Tuỳ chọn repository (dùng khi inject trong test)
+   */
+  async reconcileStateWithDatabase(customRepository = null) {
+    try {
+      const repo = customRepository || require('../../modules/admin/maintenance.repository').defaultMaintenanceRepository;
+      if (repo && typeof repo.reconcileWithDatabase === 'function') {
+        const result = await repo.reconcileWithDatabase({
+          currentActiveState: this.getStatus(),
+        });
+        logger.info('[MAINTENANCE] Hoàn tất đối soát trạng thái với CSDL (Reconciliation)', result);
+        return { success: true, ...result };
+      }
+      return { success: false, reason: 'NO_REPOSITORY' };
+    } catch (err) {
+      logger.warn('[MAINTENANCE] Lỗi đối soát trạng thái bảo trì với CSDL:', { error: err.message });
+      return { success: false, error: err.message };
+    }
+  }
 }
 
 const defaultMaintenanceManager = new MaintenanceManager();

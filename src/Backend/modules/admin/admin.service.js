@@ -33,25 +33,48 @@ function formatUptimeDuration(totalSeconds) {
 }
 
 /**
- * Tính % uptime theo cửa sổ SLA 30 ngày.
- * Nếu server chạy ít hơn 30 ngày, sử dụng thời gian thực tế.
- * Công thức: uptimeSeconds / windowSeconds × 100
+ * Tính % uptime theo chuẩn SLA 30 ngày (Phương án 1 - Chuẩn SLA Công nghiệp được PO duyệt):
+ * - Trừ thời gian bảo trì khẩn cấp (Emergency Outage) vào Uptime SLA.
+ * - Thời gian hoạt động thực tế (Active Runtime) = Tổng thời gian máy chủ chạy - Thời gian bảo trì khẩn cấp.
+ * - Bảo trì định kỳ có báo trước không tính là lỗi vi phạm SLA.
  * @param {number} uptimeSeconds
- * @returns {{ uptimePercent: number, slaWindowDays: number }}
+ * @returns {Promise<{ uptimePercent: number, uptimeSeconds: number, rawUptimeSeconds: number, emergencyDowntimeSec: number, slaWindowDays: number }>}
  */
-function calcUptimePercent(uptimeSeconds) {
+async function calcUptimePercent(uptimeSeconds) {
   const SLA_WINDOW_DAYS = 30;
-  let totalDowntimeSec = 0;
+  let emergencyDowntimeSec = 0;
   try {
-    const history = defaultMaintenanceManager.getHistory() || [];
-    totalDowntimeSec = history.reduce((acc, h) => acc + (h.durationSeconds || 0), 0);
+    const { defaultMaintenanceRepository } = require('./maintenance.repository');
+    if (defaultMaintenanceRepository && typeof defaultMaintenanceRepository.getEmergencyDowntimeSeconds === 'function') {
+      const sinceDate = new Date(Date.now() - SLA_WINDOW_DAYS * 24 * 3600 * 1000);
+      emergencyDowntimeSec = await defaultMaintenanceRepository.getEmergencyDowntimeSeconds(sinceDate);
+    }
   } catch (_) {}
 
+  // Nếu hiện tại đang có phiên bảo trì khẩn cấp ongoing mà chưa kết thúc:
+  try {
+    if (defaultMaintenanceManager.isEmergencyMode() && defaultMaintenanceManager.activatedAt) {
+      const currentOngoing = Math.max(0, Math.floor((Date.now() - new Date(defaultMaintenanceManager.activatedAt).getTime()) / 1000));
+      if (emergencyDowntimeSec === 0) {
+        emergencyDowntimeSec = currentOngoing;
+      }
+    }
+  } catch (_) {}
+
+  // Thời gian máy chủ thực tế phục vụ người dùng = Tổng thời gian chạy - Thời gian bảo trì khẩn cấp
+  const activeUptimeSec = Math.max(0, uptimeSeconds - emergencyDowntimeSec);
+
   // Uptime SLA Khả Dụng thực tế: Tỷ lệ thời gian phục vụ / Tổng thời gian quan sát
-  const totalObserved = Math.max(uptimeSeconds + totalDowntimeSec, 1);
-  const rawPercent = (uptimeSeconds / totalObserved) * 100;
+  const totalObserved = Math.max(uptimeSeconds + emergencyDowntimeSec, 1);
+  const rawPercent = (activeUptimeSec / totalObserved) * 100;
   const percent = parseFloat(Math.min(100, Math.max(0, rawPercent)).toFixed(3));
-  return { uptimePercent: percent, slaWindowDays: SLA_WINDOW_DAYS };
+  return {
+    uptimePercent: percent,
+    uptimeSeconds: activeUptimeSec,
+    rawUptimeSeconds: uptimeSeconds,
+    emergencyDowntimeSec,
+    slaWindowDays: SLA_WINDOW_DAYS,
+  };
 }
 
 function calcGrowth(current, previous) {
@@ -575,8 +598,11 @@ const adminService = {
     const maintStatus = defaultMaintenanceManager.getStatus();
     const { getLoadSheddingCount } = require('../../middleware/load-shedding.middleware');
 
-    const uptimeSeconds = Math.floor(process.uptime());
-    const { uptimePercent, slaWindowDays } = calcUptimePercent(uptimeSeconds);
+    const rawUptimeSeconds = Math.floor(process.uptime());
+    const uptimeResult = await calcUptimePercent(rawUptimeSeconds);
+    const uptimeSeconds = uptimeResult.uptimeSeconds;
+    const uptimePercent = uptimeResult.uptimePercent;
+    const slaWindowDays = uptimeResult.slaWindowDays;
 
     return {
       cpu: { cores: cpus.length, percent: cpuPercent },
@@ -606,6 +632,7 @@ const adminService = {
       loadShedding: { shedCount24h: typeof getLoadSheddingCount === 'function' ? getLoadSheddingCount() : 0 },
       uptime: {
         uptimeSeconds,
+        rawUptimeSeconds,
         uptimeFormatted: formatUptimeDuration(uptimeSeconds),
         startedAt: SERVER_START_TIME.toISOString(),
         uptimePercent,
@@ -817,16 +844,48 @@ const adminService = {
 
   /**
    * Đổi mã PIN bảo mật riêng của tài khoản Admin (Lưu cứng CSDL, mã hóa bcrypt)
+  /**
+   * Thiết lập mật khẩu mới và mã PIN bảo mật cho Admin đăng nhập lần đầu
    */
-  async changeAdminPin({ oldPin, newPin, password } = {}, currentUser) {
+  async firstLoginSetup({ newPassword, confirmPassword, pin, confirmPin } = {}, currentUser) {
     if (!currentUser?.idaccount) {
       const err = new Error('Yêu cầu xác thực tài khoản quản trị viên');
       err.statusCode = 401;
       throw err;
     }
 
-    if (!newPin || typeof newPin !== 'string' || !/^\d{6}$/.test(newPin.trim())) {
-      const err = new Error('Mã PIN mới phải gồm đúng 6 chữ số (0-9)');
+    if (!newPassword || newPassword.length < 6) {
+      const err = new Error('Mật khẩu mới phải có tối thiểu 6 ký tự');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (newPassword === '123456') {
+      const err = new Error('Mật khẩu mới không được trùng với mật khẩu mặc định (123456)');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (confirmPassword && confirmPassword !== newPassword) {
+      const err = new Error('Xác nhận mật khẩu mới không khớp');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (!pin || typeof pin !== 'string' || !/^\d{6}$/.test(pin.trim())) {
+      const err = new Error('Mã PIN bảo mật phải bao gồm đúng 6 chữ số (0-9)');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (pin.trim() === '123456') {
+      const err = new Error('Mã PIN bảo mật không được là mã mặc định (123456)');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (confirmPin && confirmPin.trim() !== pin.trim()) {
+      const err = new Error('Xác nhận mã PIN không khớp');
       err.statusCode = 400;
       throw err;
     }
@@ -839,24 +898,97 @@ const adminService = {
       throw err;
     }
 
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const pinHash = await bcrypt.hash(pin.trim(), 10);
+
+    const updated = await adminRepository.updateFirstLoginSetup(currentUser.idaccount, passwordHash, pinHash);
+
+    // Ghi nhận Audit Log
+    try {
+      const { prisma } = require('../../config/db');
+      await prisma.auditlog.create({
+        data: {
+          idaccount: currentUser.idaccount,
+          request: 'POST /api/admin/first-login-setup',
+          action: '[SECURITY] Admin hoàn tất thiết lập mật khẩu và mã PIN lần đầu',
+          req_status: 'Pass',
+          reason: 'Hoàn tất thiết lập tài khoản ban đầu',
+          time_req: new Date(),
+          time_res: new Date(),
+        },
+      });
+    } catch (_) {}
+
+    return {
+      success: true,
+      message: 'Thiết lập mật khẩu và mã PIN bảo mật thành công!',
+      user: {
+        idaccount: updated.idaccount,
+        username: updated.username,
+        email: updated.email,
+        fullname: updated.User ? updated.User.fullname : '',
+        idrole: updated.idrole,
+        rolename: updated.role ? updated.role.rolename : 'Admin',
+        is_first_login: false,
+      },
+    };
+  },
+
+  /**
+   * Đổi mã PIN bảo mật riêng của tài khoản Admin (Yêu cầu mật khẩu và mã PIN cũ)
+   */
+  async changeAdminPin({ oldPin, newPin, confirmPin, password } = {}, currentUser) {
+    if (!currentUser?.idaccount) {
+      const err = new Error('Yêu cầu xác thực tài khoản quản trị viên');
+      err.statusCode = 401;
+      throw err;
+    }
+
+    if (!password) {
+      const err = new Error('Vui lòng nhập mật khẩu tài khoản hiện tại');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (!newPin || typeof newPin !== 'string' || !/^\d{6}$/.test(newPin.trim())) {
+      const err = new Error('Mã PIN mới phải gồm đúng 6 chữ số (0-9)');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (confirmPin && confirmPin.trim() !== newPin.trim()) {
+      const err = new Error('Xác nhận mã PIN mới không khớp');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const bcrypt = require('bcryptjs');
+    const account = await adminRepository.getAccountById(currentUser.idaccount);
+    if (!account) {
+      const err = new Error('Không tìm thấy tài khoản quản trị');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // 1. Kiểm tra mật khẩu hiện tại
+    const isPasswordValid = await bcrypt.compare(password, account.password);
+    if (!isPasswordValid) {
+      const err = new Error('Mật khẩu tài khoản hiện tại không chính xác!');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 2. Kiểm tra mã PIN cũ
     let isOldPinValid = false;
-    let isPasswordValid = false;
-
-    if (oldPin && typeof oldPin === 'string') {
-      if (account.pin_hash) {
-        isOldPinValid = await bcrypt.compare(oldPin.trim(), account.pin_hash);
-      } else {
-        const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
-        isOldPinValid = oldPin.trim() === systemPin.trim();
-      }
+    if (account.pin_hash) {
+      isOldPinValid = await bcrypt.compare(oldPin ? oldPin.trim() : '', account.pin_hash);
+    } else {
+      const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
+      isOldPinValid = (oldPin ? oldPin.trim() : '') === systemPin.trim();
     }
 
-    if (!isOldPinValid && password && account.password) {
-      isPasswordValid = await bcrypt.compare(password, account.password);
-    }
-
-    if (!isOldPinValid && !isPasswordValid) {
-      const err = new Error('Mã PIN hiện tại hoặc mật khẩu không chính xác!');
+    if (!isOldPinValid) {
+      const err = new Error('Mã PIN hiện tại không chính xác!');
       err.statusCode = 400;
       throw err;
     }
@@ -885,6 +1017,203 @@ const adminService = {
     return {
       success: true,
       message: 'Đổi mã PIN bảo mật quản trị viên thành công!',
+    };
+  },
+
+  /**
+   * Đổi mật khẩu tài khoản Admin (Yêu cầu mật khẩu cũ và mã PIN cũ)
+   */
+  async changeAdminPassword({ oldPassword, oldPin, newPassword, confirmPassword } = {}, currentUser) {
+    if (!currentUser?.idaccount) {
+      const err = new Error('Yêu cầu xác thực tài khoản quản trị viên');
+      err.statusCode = 401;
+      throw err;
+    }
+
+    if (!oldPassword) {
+      const err = new Error('Vui lòng nhập mật khẩu hiện tại');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (!oldPin) {
+      const err = new Error('Vui lòng nhập mã PIN bảo mật hiện tại');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      const err = new Error('Mật khẩu mới phải có tối thiểu 6 ký tự');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (newPassword === oldPassword) {
+      const err = new Error('Mật khẩu mới không được trùng với mật khẩu hiện tại');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (confirmPassword && confirmPassword !== newPassword) {
+      const err = new Error('Xác nhận mật khẩu mới không khớp');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const bcrypt = require('bcryptjs');
+    const account = await adminRepository.getAccountById(currentUser.idaccount);
+    if (!account) {
+      const err = new Error('Không tìm thấy tài khoản quản trị');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // 1. Kiểm tra mật khẩu cũ
+    const isPasswordValid = await bcrypt.compare(oldPassword, account.password);
+    if (!isPasswordValid) {
+      const err = new Error('Mật khẩu hiện tại không chính xác!');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 2. Kiểm tra mã PIN cũ
+    let isOldPinValid = false;
+    if (account.pin_hash) {
+      isOldPinValid = await bcrypt.compare(oldPin.trim(), account.pin_hash);
+    } else {
+      const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
+      isOldPinValid = oldPin.trim() === systemPin.trim();
+    }
+
+    if (!isOldPinValid) {
+      const err = new Error('Mã PIN bảo mật hiện tại không chính xác!');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+    await adminRepository.updateAccountPassword(currentUser.idaccount, newPasswordHash);
+
+    // Ghi nhận Audit Log
+    try {
+      const { prisma } = require('../../config/db');
+      await prisma.auditlog.create({
+        data: {
+          idaccount: currentUser.idaccount,
+          request: 'POST /api/admin/change-password',
+          action: 'Đổi mật khẩu quản trị viên',
+          req_status: 'Pass',
+          reason: 'Cập nhật mật khẩu tài khoản Admin thành công',
+          time_req: new Date(),
+          time_res: new Date(),
+        },
+      });
+    } catch (_) {}
+
+    return {
+      success: true,
+      message: 'Đổi mật khẩu quản trị viên thành công!',
+    };
+  },
+
+  /**
+   * Cấp tài khoản quản trị viên mới (Xác thực mã PIN của admin người cấp)
+   */
+  async createAdminAccount({ username, email, pin } = {}, currentUser) {
+    if (!currentUser?.idaccount) {
+      const err = new Error('Yêu cầu xác thực tài khoản quản trị viên');
+      err.statusCode = 401;
+      throw err;
+    }
+
+    if (!username || typeof username !== 'string' || username.trim().length < 3) {
+      const err = new Error('Tên đăng nhập admin phải có tối thiểu 3 ký tự');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (!/^[a-zA-Z0-9_.-]+$/.test(username.trim())) {
+      const err = new Error('Tên đăng nhập chỉ được chứa chữ cái, số, dấu chấm, gạch dưới hoặc gạch ngang (không dấu, không khoảng trắng)');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      const err = new Error('Email không hợp lệ');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (!pin || typeof pin !== 'string') {
+      const err = new Error('Vui lòng nhập mã PIN bảo mật để xác thực quyền cấp tài khoản');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const bcrypt = require('bcryptjs');
+    const creatorAccount = await adminRepository.getAccountById(currentUser.idaccount);
+    if (!creatorAccount) {
+      const err = new Error('Không tìm thấy thông tin tài khoản quản trị viên đang thao tác');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // 1. Xác thực mã PIN của admin người cấp
+    let isPinValid = false;
+    if (creatorAccount.pin_hash) {
+      isPinValid = await bcrypt.compare(pin.trim(), creatorAccount.pin_hash);
+    } else {
+      const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
+      isPinValid = pin.trim() === systemPin.trim();
+    }
+
+    if (!isPinValid) {
+      const err = new Error('Mã PIN bảo mật của bạn không chính xác!');
+      err.statusCode = 401;
+      throw err;
+    }
+
+    // 2. Kiểm tra trùng lặp username hoặc email
+    const existing = await adminRepository.findAccountByUsernameOrEmail(username.trim(), email.trim());
+    if (existing) {
+      const isEmail = existing.email.toLowerCase() === email.trim().toLowerCase();
+      const err = new Error(isEmail ? 'Email này đã tồn tại trong hệ thống!' : 'Tên đăng nhập này đã tồn tại trong hệ thống!');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 3. Khởi tạo mật khẩu mặc định (123456) và mã PIN mặc định (123456)
+    const defaultPasswordHash = await bcrypt.hash('123456', 10);
+    const defaultPinHash = await bcrypt.hash('123456', 10);
+
+    const newAdmin = await adminRepository.createAdminAccount({
+      username: username.trim(),
+      email: email.trim(),
+      passwordHash: defaultPasswordHash,
+      pinHash: defaultPinHash,
+      createdByAdminId: currentUser.idaccount,
+    });
+
+    // Ghi nhận Audit Log
+    try {
+      const { prisma } = require('../../config/db');
+      await prisma.auditlog.create({
+        data: {
+          idaccount: currentUser.idaccount,
+          request: 'POST /api/admin/create-admin',
+          action: `[ADMIN_MGMT] Cấp tài khoản quản trị mới: ${newAdmin.username} (${newAdmin.email})`,
+          req_status: 'Pass',
+          reason: `Người cấp: Admin #${currentUser.idaccount}`,
+          time_req: new Date(),
+          time_res: new Date(),
+        },
+      });
+    } catch (_) {}
+
+    return {
+      success: true,
+      message: `Cấp tài khoản quản trị "${newAdmin.username}" thành công với mật khẩu và mã PIN khởi đầu là 123456.`,
+      data: newAdmin,
     };
   },
 };
@@ -1107,5 +1436,8 @@ function resolveFilterContext(params) {
   }
   return { startDate, endDate, prevStartDate, prevEndDate, buckets, format: 'hour', period: 'today', label: 'Hôm nay' };
 }
+
+adminService.formatUptimeDuration = formatUptimeDuration;
+adminService.calcUptimePercent = calcUptimePercent;
 
 module.exports = adminService;

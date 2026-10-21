@@ -101,4 +101,55 @@ test('Payment Repository Suite', async (t) => {
       prisma.$transaction = origTx;
     }
   });
+
+  await t.test('4. downgradeExpiredPremiumAccounts() hạ cấp tài khoản và tạo bản ghi lịch sử payment_order vào CSDL', async () => {
+    const origFindMany = prisma.account.findMany;
+    const origUpdateMany = prisma.account.updateMany;
+    const origCreateMany = prisma.payment_order ? prisma.payment_order.createMany : undefined;
+
+    let capturedAccountUpdate = null;
+    let capturedHistoryOrders = null;
+
+    prisma.account.findMany = async () => [
+      { idaccount: 101, username: 'user_exp1', email: 'exp1@test.com', premium_expires_at: new Date(Date.now() - 1000) },
+      { idaccount: 102, username: 'user_exp2', email: 'exp2@test.com', premium_expires_at: new Date(Date.now() - 2000) },
+    ];
+
+    prisma.account.updateMany = async (args) => {
+      capturedAccountUpdate = args;
+      return { count: 2 };
+    };
+
+    if (!prisma.payment_order) prisma.payment_order = {};
+    prisma.payment_order.createMany = async (args) => {
+      capturedHistoryOrders = args;
+      return { count: args.data.length };
+    };
+
+    try {
+      const now = new Date();
+      const downgraded = await paymentRepository.downgradeExpiredPremiumAccounts(now);
+
+      assert.strictEqual(downgraded.length, 2);
+      assert.deepStrictEqual(capturedAccountUpdate.where.idaccount.in, [101, 102]);
+      assert.strictEqual(capturedAccountUpdate.data.type, 'Basic');
+      assert.strictEqual(capturedAccountUpdate.data.premium_expires_at, null);
+
+      assert.ok(capturedHistoryOrders, 'Bắt buộc phải gọi prisma.payment_order.createMany để lưu vết');
+      assert.strictEqual(capturedHistoryOrders.data.length, 2);
+      assert.strictEqual(capturedHistoryOrders.data[0].package_type, 'Basic');
+      assert.strictEqual(capturedHistoryOrders.data[0].status, 'EXPIRED');
+      assert.strictEqual(capturedHistoryOrders.data[0].amount, 0);
+      assert.strictEqual(capturedHistoryOrders.data[0].transfer_content, 'Hết hạn gói Premium, chuyển về gói cơ bản');
+    } finally {
+      prisma.account.findMany = origFindMany;
+      prisma.account.updateMany = origUpdateMany;
+      if (origCreateMany) {
+        prisma.payment_order.createMany = origCreateMany;
+      } else {
+        delete prisma.payment_order.createMany;
+      }
+    }
+  });
 });
+

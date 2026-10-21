@@ -76,8 +76,10 @@ describe('Admin-web System Suite — AuditLogPage', () => {
       expect(adminApi.getAuditLogs).toHaveBeenCalledWith(
         expect.objectContaining({ page: 1, limit: 10 })
       );
-      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
-      expect(screen.getByText('DELETE /api/v1/admin/categories/10')).toBeInTheDocument();
+      expect(screen.getByText('Đăng nhập hệ thống')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/auth/login')).toBeInTheDocument();
+      expect(screen.getByText('Xóa danh mục hệ thống')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/admin/categories/10')).toBeInTheDocument();
       expect(screen.getByText('Cấm xóa danh mục người dùng')).toBeInTheDocument();
     });
   });
@@ -86,7 +88,8 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     render(<AuditLogPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+      expect(screen.getByText('Đăng nhập hệ thống')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/auth/login')).toBeInTheDocument();
     });
 
     // Thay đổi combobox trạng thái sang 'Rejected' (combobox đầu tiên trong toolbar)
@@ -107,7 +110,8 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     render(<AuditLogPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+      expect(screen.getByText('Đăng nhập hệ thống')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/auth/login')).toBeInTheDocument();
     });
 
     const auditHandler = socketListeners['audit_activity'];
@@ -127,7 +131,7 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('PATCH /api/v1/admin/users/status')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/admin/users/status')).toBeInTheDocument();
       expect(screen.getByText('Khóa tài khoản vi phạm')).toBeInTheDocument();
     });
   });
@@ -145,7 +149,8 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     render(<AuditLogPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+      expect(screen.getByText('Đăng nhập hệ thống')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/auth/login')).toBeInTheDocument();
     });
 
     const auditHandler = socketListeners['audit_activity'];
@@ -164,8 +169,8 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('POST /api/v1/wallets/transfer')).toBeInTheDocument();
-      const row = screen.getByText('POST /api/v1/wallets/transfer').closest('tr');
+      expect(screen.getByText('/api/v1/wallets/transfer')).toBeInTheDocument();
+      const row = screen.getByText('/api/v1/wallets/transfer').closest('tr');
       expect(row).not.toBeNull();
       const cells = row.querySelectorAll('td');
       // Với bảng 8 cột: Cột 6 (Thời gian gửi) và Cột 7 (Thời gian phản hồi) KHÔNG ĐƯỢC LÀ '—'
@@ -180,7 +185,8 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     render(<AuditLogPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+      expect(screen.getByText('Đăng nhập hệ thống')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/auth/login')).toBeInTheDocument();
     });
 
     const auditHandler = socketListeners['audit_activity'];
@@ -198,8 +204,8 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     });
 
     await waitFor(() => {
-      // Số lượng row hiển thị không được tăng lên thành 2 row cùng có POST /api/v1/auth/login
-      const rows = screen.getAllByText('POST /api/v1/auth/login');
+      // Số lượng row hiển thị không được tăng lên thành 2 row cùng có ID = 1
+      const rows = screen.getAllByText('/api/v1/auth/login');
       expect(rows.length).toBe(1);
     });
   });
@@ -208,7 +214,8 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     render(<AuditLogPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+      expect(screen.getByText('Đăng nhập hệ thống')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/auth/login')).toBeInTheDocument();
     });
 
     // Chọn bộ lọc trạng thái sang 'Rejected'
@@ -251,7 +258,7 @@ describe('Admin-web System Suite — AuditLogPage', () => {
 
     // Log Rejected khớp bộ lọc nên được chèn trực tiếp vào bảng
     await waitFor(() => {
-      expect(screen.getByText('POST /api/v1/admin/forbidden-action')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/admin/forbidden-action')).toBeInTheDocument();
       expect(screen.getByText('Không đủ thẩm quyền')).toBeInTheDocument();
     });
   });
@@ -268,7 +275,8 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     render(<AuditLogPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+      expect(screen.getByText('Đăng nhập hệ thống')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/auth/login')).toBeInTheDocument();
     });
 
     // Chuyển sang trang 2 bằng nút trang "2"
@@ -310,7 +318,8 @@ describe('Admin-web System Suite — AuditLogPage', () => {
     render(<AuditLogPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('POST /api/v1/auth/login')).toBeInTheDocument();
+      expect(screen.getByText('Đăng nhập hệ thống')).toBeInTheDocument();
+      expect(screen.getByText('/api/v1/auth/login')).toBeInTheDocument();
     });
 
     const selects = screen.getAllByRole('combobox');

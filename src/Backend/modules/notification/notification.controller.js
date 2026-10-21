@@ -151,10 +151,12 @@ const notificationController = {
   async broadcast(req, res) {
     try {
       const { title, message, level, metadata } = req.body || {};
+      const sender_username = req.user?.username || req.user?.fullname || 'admin';
       const result = await notificationService.broadcast({
         title,
         message,
         level: level || 'INFO',
+        sender_username,
         metadata: metadata || {},
       });
 
@@ -162,6 +164,26 @@ const notificationController = {
     } catch (error) {
       logger.error('[NotificationController] broadcast error', { error: error.message });
       return ResponseHandler.error(res, 'Không thể phát thông báo hệ thống');
+    }
+  },
+
+  /**
+   * GET /api/notifications/broadcast/history
+   * Lấy danh sách lịch sử các thông báo phát sóng toàn hệ thống kèm phân trang
+   */
+  async getBroadcastHistory(req, res) {
+    try {
+      const { page = 1, limit = 5, level } = req.query || {};
+      const { defaultBroadcastRepository } = require('./broadcast.repository');
+      const result = await defaultBroadcastRepository.getHistory({
+        page,
+        limit,
+        level,
+      });
+      return ResponseHandler.success(res, result, 'Lấy lịch sử phát sóng thông báo thành công');
+    } catch (error) {
+      logger.error('[NotificationController] getBroadcastHistory error', { error: error.message });
+      return ResponseHandler.error(res, 'Không thể tải lịch sử phát sóng thông báo');
     }
   },
 };

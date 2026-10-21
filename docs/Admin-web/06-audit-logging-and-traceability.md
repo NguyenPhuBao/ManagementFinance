@@ -60,14 +60,20 @@ sequenceDiagram
 - `/health`, `/health/admin`, `/favicon.ico`
 - Các polling thống kê của chính Admin: `/admin/system/health`, `/admin/totaluser`, `/admin/totalcategories`, `/admin/getusertotime`, `/admin/login-stats`, `/admin/request-stats`, `/admin/aiops/*`.
 
-### 2.3. Ánh Xạ Hành Động Tiếng Việt Thân Thiện (`formatActionName`)
-Thay vì hiển thị URL kỹ thuật khó hiểu (`POST /api/sync/push`), hệ thống tự động biên dịch thành ngôn ngữ tự nhiên:
-- `POST /api/auth/login` $\implies$ **"Đăng nhập hệ thống"**
-- `POST /api/auth/register` $\implies$ **"Đăng ký tài khoản"**
-- `POST /api/sync/push` $\implies$ **"Đồng bộ dữ liệu (Push)"**
-- `GET /api/sync/pull` $\implies$ **"Tải dữ liệu đồng bộ (Pull)"**
-- `POST /api/ai/chatbot/chat/stream` $\implies$ **"Hỏi đáp trợ lý tài chính AI"**
-- `POST /api/bank/webhook` $\implies$ **"Webhook biến động số dư"**
+### 2.3. Ánh Xạ Hành Động & Phân Loại Thẻ Tags Thông Minh (`classifyAuditAction`)
+Thay vì chỉ hiển thị URL kỹ thuật thô (`POST /api/sync/push`), hệ thống kết hợp chuẩn hóa tên hành động tiếng Việt và phân loại tự động vào các nhóm thẻ nghiệp vụ trực quan (Business Tags):
+- **Nhóm Xác Thực (`[AUTH]`):** Đăng nhập, đăng ký, đăng xuất, làm mới token, xác thực OTP.
+- **Nhóm Bảo Mật & Phân Quyền (`[SECURITY]`):** Khóa/mở khóa tài khoản, đổi mật khẩu, xác thực mã PIN admin, phong tỏa IP.
+- **Nhóm Tài Chính & Giao Dịch (`[FINANCE]`):** Giao dịch thu chi, chuyển khoản, webhook biến động số dư ngân hàng.
+- **Nhóm Vận Hành Hạ Tầng (`[MAINTENANCE]`):** Bật/tắt bảo trì hệ thống, điều chỉnh tham số máy chủ.
+- **Nhóm Danh Mục Chuẩn (`[CATEGORY]`):** Thêm, sửa, xóa danh mục thu chi hệ thống.
+- **Nhóm Trí Tuệ Nhân Tạo (`[AI]`):** Hỏi đáp trợ lý AI, OCR hóa đơn, phân loại thông minh.
+
+Đồng thời, cột **Yêu Cầu API** trên giao diện được trang bị các Badge phương thức HTTP sắc màu chuẩn nhận diện:
+- `GET`: Xanh da trời (`bg-blue-50 text-blue-700 border-blue-200`)
+- `POST`: Xanh ngọc lục bảo (`bg-emerald-50 text-emerald-700 border-emerald-200`)
+- `PUT` / `PATCH`: Vàng hổ phách (`bg-amber-50 text-amber-700 border-amber-200`)
+- `DELETE`: Đỏ hồng (`bg-rose-50 text-rose-700 border-rose-200`)
 
 ---
 
@@ -98,7 +104,7 @@ Tuyệt đối không lưu trữ chi tiết kỹ thuật nhạy cảm ra ngoài:
 1. **Nguyên tắc Append-Only (Bất biến):**
    - Bảng `audit_log` trong CSDL PostgreSQL chỉ có quyền `INSERT` và `SELECT`. Tuyệt đối cấm lệnh `UPDATE` hoặc `DELETE` từ bất kỳ tài khoản nào (kể cả Admin) để đảm bảo bằng chứng pháp lý trước cơ quan chức năng.
 2. **Giới hạn số lượng truy vấn (`queryLimit`):**
-   - API phân trang cho phép lấy tối đa 200 bản ghi/lần (mặc định 50 bản ghi/trang).
+   - API phân trang cho phép lấy tối đa 200 bản ghi/lần (mặc định 10 bản ghi/trang khi tải giao diện).
 3. **Chỉ mục hiệu năng (Composite Indexes):**
    - Đánh index trên `time_req DESC` và `[idaccount, time_req]` giúp truy vấn phân trang trên hàng triệu bản ghi chỉ mất $< 10\text{ms}$.
 
@@ -115,13 +121,18 @@ Tuyệt đối không lưu trữ chi tiết kỹ thuật nhạy cảm ra ngoài:
 ## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN
 
 1. **Bộ Lọc Tìm Kiếm Đa Chiều (`AuditLogPage.jsx`):**
-   - Lọc theo từng mã trạng thái (`Pass`, `Fail`, `Rejected`, `Interrupted`, v.v.).
-   - Tìm kiếm tức thời theo Tên người dùng (`Username`) hoặc Tên hành động (`Request`).
+   - Lọc theo từng mã trạng thái (`Pass`, `Fail`, `Rejected`, `Interrupted`, `Accepted`, `Processing`, `Pending`).
+   - Tìm kiếm tức thời theo Tên tài khoản (`Username`) hoặc Đường dẫn API (`Request`).
    - Lọc theo khoảng ngày bắt đầu (`dateFrom`) và ngày kết thúc (`dateTo`).
-2. **Luồng Cập Nhật Real-time:**
-   - Kết nối Socket.io qua sự kiện `audit_activity`. Khi quản trị viên đang đứng ở Trang 1 và không bật bộ lọc, các dòng log mới phát sinh từ người dùng di động sẽ tự động chèn vào đầu bảng kèm hiệu ứng làm mới nhẹ nhàng.
-3. **Thanh Phân Trang Thông Minh (`Pagination.jsx`):**
-   - Hỗ trợ nhảy trang trực tiếp và chọn kích thước trang linh hoạt (10, 20, 50, 100, 200), mặc định 10 bản ghi/trang mỗi khi tải trang.
+   - Nút **"Đặt lại"** khôi phục nhanh về trạng thái hiển thị ban đầu.
+2. **Xuất Báo Cáo CSV Chuẩn UTF-8 (`exportToCsv`):**
+   - Cho phép tải toàn bộ danh sách log đang lọc (tối đa 1,000 bản ghi) thành tệp `.csv` với tiền tố BOM UTF-8 `\uFEFF`, mở trực tiếp trên Microsoft Excel không bị lỗi font tiếng Việt.
+   - Định dạng tên tệp chuẩn: `audit_logs_YYYYMMDD_HHmm.csv`.
+3. **Luồng Cập Nhật Real-time Thông Minh:**
+   - Kết nối Socket.io qua sự kiện `audit_activity`. Khi đang ở Trang 1 và không áp dụng bộ lọc, hệ thống tự động chèn log mới vào đầu bảng.
+   - Nếu đang duyệt trang sau hoặc đang lọc, hệ thống hiển thị thông báo badge đếm số lượng log mới xuất hiện để không gây xáo trộn tầm nhìn của người dùng.
+4. **Thanh Phân Trang Thông Minh (`Pagination.jsx`):**
+   - Hỗ trợ nhảy trang trực tiếp và chọn kích thước trang linh hoạt (10, 20, 50, 100, 200), mặc định 10 bản ghi/trang.
 
 ---
 
@@ -143,7 +154,7 @@ Tuyệt đối không lưu trữ chi tiết kỹ thuật nhạy cảm ra ngoài:
 
 ### Socket.io Events
 - **Phát tán (`Server -> admin_room`):**
-  - `audit_activity`: Phát gói tin tóm tắt `{ id, idaccount, user, action, status, reason, time_req, time_res }` mỗi khi một request được hoàn tất.
+  - `audit_activity`: Phát gói tin tóm tắt `{ id, idaccount, user, action, status, reason, time_req, time_res, ip }` mỗi khi một request được hoàn tất.
 
 ---
 

@@ -37,6 +37,13 @@ router.patch(
   notificationController.markAdminAlertAsRead
 );
 
+// Lịch sử thông báo Broadcast toàn hệ thống (Chỉ Admin)
+router.get(
+  '/broadcast/history',
+  authorize('admin'),
+  notificationController.getBroadcastHistory
+);
+
 // Phát thông báo Broadcast toàn hệ thống (Chỉ Admin)
 router.post(
   '/broadcast',

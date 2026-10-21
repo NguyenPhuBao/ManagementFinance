@@ -110,6 +110,7 @@ const authController = {
       rolename: req.user.rolename,
       type: req.user.type || 'Basic',
       status: req.user.status || 'Active',
+      is_first_login: Boolean(req.user.is_first_login),
       currentClientIp: clientIp || null,
     }, 'Token hợp lệ');
   },

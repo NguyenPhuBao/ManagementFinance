@@ -399,6 +399,8 @@ const adminRepository = {
         pin_hash: true,
         username: true,
         email: true,
+        idrole: true,
+        is_first_login: true,
       },
     });
   },
@@ -410,6 +412,85 @@ const adminRepository = {
         pin_hash: pinHash,
         update_at: new Date(),
       },
+    });
+  },
+
+  async updateFirstLoginSetup(idaccount, passwordHash, pinHash) {
+    return prisma.account.update({
+      where: { idaccount: Number(idaccount) },
+      data: {
+        password: passwordHash,
+        pin_hash: pinHash,
+        is_first_login: false,
+        update_at: new Date(),
+      },
+      include: {
+        role: { select: { idrole: true, rolename: true } },
+        User: { select: { fullname: true, email: true, phone: true } },
+      },
+    });
+  },
+
+  async updateAccountPassword(idaccount, passwordHash) {
+    return prisma.account.update({
+      where: { idaccount: Number(idaccount) },
+      data: {
+        password: passwordHash,
+        update_at: new Date(),
+      },
+    });
+  },
+
+  async findAccountByUsernameOrEmail(username, email) {
+    return prisma.account.findFirst({
+      where: {
+        OR: [
+          { username: { equals: username, mode: 'insensitive' } },
+          { email: { equals: email, mode: 'insensitive' } },
+        ],
+      },
+    });
+  },
+
+  async createAdminAccount({ username, email, passwordHash, pinHash, createdByAdminId }) {
+    return prisma.$transaction(async (tx) => {
+      const newAccount = await tx.account.create({
+        data: {
+          username: username.trim(),
+          email: email.trim(),
+          password: passwordHash,
+          pin_hash: pinHash,
+          idrole: 1, // Admin role
+          status: 'Active',
+          type: 'Basic',
+          is_first_login: true,
+          created_by_admin_id: createdByAdminId ? Number(createdByAdminId) : null,
+          create_at: new Date(),
+          update_at: new Date(),
+        },
+      });
+
+      const newUser = await tx.User.create({
+        data: {
+          idaccount: newAccount.idaccount,
+          fullname: `Quản trị viên ${username.trim()}`,
+          email: email.trim(),
+          create_at: new Date(),
+          update_at: new Date(),
+        },
+      });
+
+      return {
+        idaccount: newAccount.idaccount,
+        username: newAccount.username,
+        email: newAccount.email,
+        fullname: newUser.fullname,
+        idrole: newAccount.idrole,
+        status: newAccount.status,
+        is_first_login: newAccount.is_first_login,
+        created_by_admin_id: newAccount.created_by_admin_id,
+        create_at: newAccount.create_at,
+      };
     });
   },
 };

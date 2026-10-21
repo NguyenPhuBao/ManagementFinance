@@ -97,7 +97,7 @@ const PaymentHistoryPage = () => {
   const [payosData, setPayosData] = useState(null);
   const [payosLoading, setPayosLoading] = useState(false);
   const [selectedSampleAmount, setSelectedSampleAmount] = useState(49000);
-  const [selectedSamplePackage, setSelectedSamplePackage] = useState('PREMIUM_1_MONTH');
+  const [selectedSamplePackage, setSelectedSamplePackage] = useState('Premium');
   const [countdownSeconds, setCountdownSeconds] = useState(600);
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -571,17 +571,6 @@ const PaymentHistoryPage = () => {
             <span className="material-symbols-outlined text-lg">qr_code_2</span>
             <span>{t('payments.sampleQrBtn')}</span>
           </button>
-          <button
-            onClick={handleRefresh}
-            disabled={loading || statsLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg border border-outline-variant transition-colors cursor-pointer disabled:opacity-50"
-            title={t('payments.refresh')}
-          >
-            <span className={`material-symbols-outlined text-lg ${(loading || statsLoading) ? 'animate-spin' : ''}`}>
-              refresh
-            </span>
-            <span className="text-sm font-semibold">{t('payments.refresh')}</span>
-          </button>
         </div>
       </div>
 
@@ -718,9 +707,14 @@ const PaymentHistoryPage = () => {
                 const pkgId = typeof pkg === 'object' && pkg !== null ? pkg.id : pkg;
                 const pkgName = typeof pkg === 'object' && pkg !== null ? (pkg.name || pkg.id) : pkg;
                 const isDefault = (typeof pkg === 'object' && pkg !== null && pkg.isDefault) || pkgId === 'Basic';
-                const pkgLabel = isDefault
-                  ? (pkgName.includes('Mặc định') ? pkgName : `${pkgName} (Mặc định)`)
-                  : (pkgId === 'PREMIUM_1_MONTH' ? t('payments.filter.packageMonth') : pkgName);
+                let pkgLabel = pkgName;
+                if (pkgId === 'Basic') {
+                  pkgLabel = t('payments.filter.packageBasicDefault', 'Gói Basic (Mặc định)');
+                } else if (pkgId === 'Premium') {
+                  pkgLabel = t('payments.filter.packagePremium', 'Gói Premium');
+                } else if (isDefault) {
+                  pkgLabel = `${pkgName} (${t('common.default', 'Mặc định')})`;
+                }
                 return (
                   <option key={pkgId} value={pkgId}>
                     {pkgLabel}
@@ -879,10 +873,17 @@ const PaymentHistoryPage = () => {
                         </div>
                       </td>
                       <td className="py-3.5 px-4 overflow-hidden">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 max-w-full">
-                          <span className="material-symbols-outlined text-[13px] shrink-0">workspace_premium</span>
-                          <TruncateCell text={order.package_type === 'PREMIUM_1_MONTH' ? t('payments.filter.packageMonth') : order.package_type} />
-                        </span>
+                        {order.package_type === 'Basic' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300 max-w-full">
+                            <span className="material-symbols-outlined text-[13px] shrink-0 text-slate-500">inventory_2</span>
+                            <TruncateCell text={t('payments.filter.packageBasic', 'Gói Basic')} />
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 max-w-full">
+                            <span className="material-symbols-outlined text-[13px] shrink-0">workspace_premium</span>
+                            <TruncateCell text={t('payments.filter.packagePremium', 'Gói Premium')} />
+                          </span>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-emerald-600 font-mono">
                         <div>{formatVnd(order.amount)}</div>
@@ -1216,7 +1217,13 @@ const PaymentHistoryPage = () => {
                     </div>
                     <div>
                       <span className="text-on-surface-variant text-xs">{t('payments.detailModal.packageType')}:</span>
-                      <p className="font-semibold text-on-surface">{selectedOrder.package_type}</p>
+                      <p className="font-semibold text-on-surface">
+                        {selectedOrder.package_type === 'Basic'
+                          ? t('payments.filter.packageBasic', 'Gói Basic')
+                          : (selectedOrder.package_type === 'Premium' || selectedOrder.package_type?.startsWith('PREMIUM')
+                              ? t('payments.filter.packagePremium', 'Gói Premium')
+                              : selectedOrder.package_type)}
+                      </p>
                     </div>
                     <div>
                       <span className="text-on-surface-variant text-xs">{t('payments.detailModal.createdAt')}:</span>
@@ -1598,7 +1605,7 @@ const PaymentHistoryPage = () => {
                         type="button"
                         onClick={() => {
                           setSelectedSampleAmount(2000);
-                          setSelectedSamplePackage('PREMIUM_1_MONTH');
+                          setSelectedSamplePackage('Premium');
                         }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           selectedSampleAmount === 2000
@@ -1612,7 +1619,7 @@ const PaymentHistoryPage = () => {
                         type="button"
                         onClick={() => {
                           setSelectedSampleAmount(49000);
-                          setSelectedSamplePackage('PREMIUM_1_MONTH');
+                          setSelectedSamplePackage('Premium');
                         }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           selectedSampleAmount === 49000
@@ -1626,7 +1633,7 @@ const PaymentHistoryPage = () => {
                         type="button"
                         onClick={() => {
                           setSelectedSampleAmount(270000);
-                          setSelectedSamplePackage('PREMIUM_6_MONTHS');
+                          setSelectedSamplePackage('Premium');
                         }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           selectedSampleAmount === 270000

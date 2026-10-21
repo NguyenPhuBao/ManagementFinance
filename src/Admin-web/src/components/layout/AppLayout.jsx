@@ -3,14 +3,23 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import AppSidebar from './Sidebar';
 import AppHeader from './Header';
 import LockScreenModal from './LockScreenModal';
+import FirstLoginModal from './FirstLoginModal';
 import useSocket from '../../hooks/useSocket';
 import aiopsApi from '../../api/aiops.api';
 import adminApi from '../../api/admin.api';
 import { useLanguageSafe } from '../../store/language.context';
+import { useSettingsSafe } from '../../store/settings.context';
 
 const AppLayout = () => {
   const { t } = useLanguageSafe();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const settingsCtx = useSettingsSafe();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('admin_sidebar_collapsed') === 'true';
+    } catch (_) {
+      return false;
+    }
+  });
   const [threatAlert, setThreatAlert] = useState(null);
   const [dismissed, setDismissed] = useState(false);
   const [mitigating, setMitigating] = useState(false);
@@ -21,11 +30,20 @@ const AppLayout = () => {
   const navigate = useNavigate();
   const socket = useSocket();
 
-  const toggleSidebar = () => setSidebarCollapsed(prev => !prev);
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('admin_sidebar_collapsed', String(next));
+      } catch (_) {}
+      return next;
+    });
+  };
 
   // Kiểm tra trạng thái AIOps ban đầu và định kỳ
   // CHỈ hiện Báo động đỏ toàn hệ thống khi HẠ TẦNG gặp nguy cơ sập dây chuyền (EMERGENCY_MAINTENANCE / Resource >= 85)
   const checkThreatStatus = async () => {
+    if (settingsCtx?.isLocked) return;
     try {
       const res = await aiopsApi.getStatus();
       const data = res?.data || res;
@@ -127,7 +145,7 @@ const AppLayout = () => {
             </span>
             <div>
               <span className="font-extrabold uppercase tracking-wide mr-1.5">
-                {t('appLayout.maintenanceBannerTitle', '⚠️ HỆ THỐNG ĐANG BẢO TRÌ:')}
+                {t('appLayout.maintenanceBannerTitle', 'HỆ THỐNG ĐANG BẢO TRÌ:')}
               </span>
               <span>
                 {maintenanceState.reason || t('appLayout.maintenanceDefaultReason', 'Đang thực hiện bảo trì kỹ thuật')}
@@ -206,12 +224,14 @@ const AppLayout = () => {
         </div>
       )}
 
-      <AppSidebar collapsed={sidebarCollapsed} />
-      <AppHeader onMenuToggle={toggleSidebar} />
+      <AppSidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+      <AppHeader onMenuToggle={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
       
       {/* Main Content Canvas */}
-      <main className={`${isAlertVisible || isMaintenanceVisible ? 'pt-[130px]' : 'pt-[88px]'} md:pl-[304px] px-page-padding pb-page-padding min-h-screen transition-all duration-200`}>
-        <div className="max-w-[1440px] mx-auto">
+      <main className={`${isAlertVisible || isMaintenanceVisible ? 'pt-[130px]' : 'pt-[88px]'} ${
+        sidebarCollapsed ? 'md:pl-[92px]' : 'md:pl-[276px]'
+      } px-3 sm:px-4 md:px-6 pb-page-padding min-h-screen transition-all duration-300 w-full`}>
+        <div className="w-full max-w-[1720px] mx-auto min-w-0">
           <Outlet />
         </div>
       </main>
@@ -273,6 +293,9 @@ const AppLayout = () => {
 
       {/* ─── INACTIVITY AUTO-LOCK SCREEN OVERLAY ─── */}
       <LockScreenModal />
+
+      {/* ─── MANDATORY FIRST LOGIN SECURITY SETUP MODAL ─── */}
+      <FirstLoginModal />
     </div>
   );
 };

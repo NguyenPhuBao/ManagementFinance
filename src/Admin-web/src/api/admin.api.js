@@ -40,9 +40,12 @@ const adminApi = {
   updatePermissions: (updates) => axiosClient.put('/admin/permissions', { updates }),
   resetPermissionsDefault: () => axiosClient.post('/admin/permissions/reset'),
 
-  // Security Action Re-authentication & PIN Management
+  // Security Action Re-authentication & PIN / Password / Admin Management
   verifySecurityAction: (data) => axiosClient.post('/admin/verify-security-action', data),
   changePin: (data) => axiosClient.post('/admin/change-pin', data),
+  changePassword: (data) => axiosClient.post('/admin/change-password', data),
+  firstLoginSetup: (data) => axiosClient.post('/admin/first-login-setup', data),
+  createAdmin: (data) => axiosClient.post('/admin/create-admin', data),
 };
 
 export default adminApi;

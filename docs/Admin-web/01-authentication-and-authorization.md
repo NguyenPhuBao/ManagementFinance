@@ -105,10 +105,23 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
    - Layout chia đôi màn hình (Split-screen) với visual nhận diện thương hiệu `FinanceAdmin`.
    - Toggle hiển thị/ẩn mật khẩu an toàn.
    - Bắt lỗi trực tiếp và hiển thị thông báo tiếng Việt trực quan.
-2. **Giao diện Chính sách Quên Mật Khẩu (`ForgotPasswordPage.jsx`):**
+2. **Modal Bắt Buộc Đổi Mật Khẩu & Mã PIN Khi Đăng Nhập Lần Đầu (`FirstLoginModal.jsx`):**
+   - **Cơ sở dữ liệu (Migration 34):** Cột `is_first_login` (Boolean) và `created_by_admin_id` (Int) trong bảng `account`.
+   - **Cơ chế cưỡng chế an toàn:** Khi tài khoản Admin mới được cấp (`is_first_login = true`), ngay sau khi đăng nhập thành công, hệ thống chặn toàn bộ điều hướng và hiển thị Modal bắt buộc đổi mật khẩu và thiết lập mã PIN bảo mật 6 số.
+   - **Chống gian lận & Bỏ qua:** Modal không có nút đóng (X), không thể click ra ngoài backdrop, và nếu F5 tải lại trang thì trạng thái `is_first_login` vẫn khóa giao diện cho đến khi Admin đổi mật khẩu và mã PIN thành công.
+   - **Xác thực dữ liệu:** Mật khẩu mới tối thiểu 6 ký tự; mã PIN phải đúng 6 chữ số (chỉ gồm số 0-9). Khi đổi thành công, hệ thống cập nhật `is_first_login = false`, băm an toàn vào CSDL và mở khóa truy cập toàn diện.
+3. **Tab Quản Trị Admin Trong Cài Đặt Hệ Thống (`SettingsModal.jsx`):**
+   - Tích hợp trực tiếp vào hộp thoại Cài đặt (Settings Center), cung cấp 3 tác vụ an ninh cốt lõi:
+     + **Đổi mã PIN bảo mật:** Yêu cầu xác thực đồng thời mật khẩu đăng nhập hiện tại và mã PIN cũ trước khi cập nhật mã PIN 6 số mới.
+     + **Đổi mật khẩu tài khoản:** Yêu cầu xác thực mật khẩu cũ và mã PIN cũ, ngăn chặn việc bị đổi mật khẩu khi rời máy tính.
+     + **Cấp tài khoản Admin mới:** Quản trị viên cấp cao có thể tạo tài khoản Admin cho đồng nghiệp bằng cách nhập Username/Email và xác thực bằng **Mã PIN bảo mật của chính người cấp**. Tài khoản mới được khởi tạo mật khẩu/PIN mặc định (`123456`), gán `is_first_login = true` để bắt buộc người nhận phải đổi thông tin ngay lần đầu đăng nhập.
+4. **Cơ Chế Khóa Màn Hình An Toàn & Bảo Toàn Phiên (`LockScreen` & `axios-client.js`):**
+   - Tự động kích hoạt màn hình khóa khi Admin không tương tác quá thời gian quy định (5 / 15 / 30 phút).
+   - **Khắc phục lỗi văng ra Login:** Axios interceptor được cấu hình cơ chế bỏ qua redirect 401 khi cờ `isLocked === true`. Khi Admin mở khóa màn hình bằng mật khẩu/PIN, phiên làm việc (Tokens) được khôi phục nguyên vẹn 100% mà không bị đá về trang Login.
+5. **Giao diện Chính sách Quên Mật Khẩu (`ForgotPasswordPage.jsx`):**
    - Banner cảnh báo bảo mật màu vàng Amber.
-   - Thẻ hiển thị số điện thoại Hotline hỗ trợ khẩn cấp (+84 355 281 276).
-3. **Đăng xuất Cưỡng chế & Tự nguyện:**
+   - Thẻ hiển thị số điện thoại Hotline hỗ trợ kỹ thuật (+84 355 281 276).
+6. **Đăng xuất Cưỡng chế & Tự nguyện:**
    - Xóa token khỏi `localStorage`, xóa phiên Socket.io và điều hướng về trang Login ngay lập tức.
 
 ---
@@ -117,7 +130,9 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
 
 - **Đến Backend:**
   - Giảm tải DB nhờ cơ chế xác thực JWT phi trạng thái (Stateless), chỉ truy vấn DB khi refresh token.
+  - Quản lý mã PIN bảo mật Admin với băm `bcrypt` an toàn (`pin_hash`), bảo vệ các tác vụ chí mạng (Hoàn tiền, Xóa người dùng, Khởi tạo bảo trì).
 - **Đến Cơ sở dữ liệu:**
+  - Bảng `account` mở rộng trường `is_first_login`, `created_by_admin_id`, `pin_hash`.
   - Bảng `refreshtoken` được làm sạch tự động định kỳ, thu hồi các token hết hạn (`Status = true`).
 - **Đến Mobile App (Client-app):**
   - Cơ chế phân quyền cách ly hoàn toàn người dùng di động khỏi các route quản trị (`/api/admin/*`). Nếu người dùng Client-app thử gọi API Admin, server trả về ngay HTTP 403 mà không tốn tài nguyên xử lý logic.
@@ -134,8 +149,14 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
 | `POST` | `/api/auth/refresh` | Đổi Refresh Token lấy Access Token mới | Có Refresh Token hợp lệ |
 | `POST` | `/api/auth/logout` | Đăng xuất & Thu hồi Refresh Token | Authenticated |
 | `GET` | `/api/auth/profile` | Lấy thông tin chi tiết tài khoản Admin | Admin (`idrole === 1`) |
+| `POST` | `/api/admin/change-first-login` | Đổi mật khẩu & PIN bắt buộc lần đầu | Admin mới (`is_first_login = true`) |
+| `POST` | `/api/admin/change-pin` | Đổi mã PIN bảo mật Admin 6 số | Admin (`idrole === 1`) |
+| `POST` | `/api/admin/change-password` | Đổi mật khẩu tài khoản Admin | Admin (`idrole === 1`) |
+| `POST` | `/api/admin/create-admin-account` | Cấp tài khoản Admin mới kèm xác thực PIN | Admin (`idrole === 1`) |
+| `POST` | `/api/admin/verify-security-action` | Xác thực mã PIN trước hành động chí mạng | Admin (`idrole === 1`) |
 
 ### Socket.io Events
 - **Lắng nghe (`Client -> Server`):** Handshake gửi kèm `token` qua query/auth header.
 - **Phát tán (`Server -> admin_room`):**
   - `admin.user_logged_in`: Phát tới toàn bộ Admin khi có lượt đăng nhập mới thành công.
+  - `account.force_logout`: Cưỡng chế đăng xuất người dùng khi bị khóa tài khoản.

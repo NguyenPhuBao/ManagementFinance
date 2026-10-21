@@ -1360,7 +1360,7 @@ const AIOpsPage = () => {
   const chartSvgPath = chartSvgPaths.composite;
 
   return (
-    <div className="max-w-[1440px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full">
+    <div className="max-w-[1720px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full">
       {/* Tiêu đề trang & Thanh công cụ */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline-variant pb-4">
         <div>
