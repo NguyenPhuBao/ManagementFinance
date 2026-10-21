@@ -214,7 +214,7 @@ final RegExp _truocLaNam = RegExp(r'(?<![a-z])nam\s*$');
 /// Số bắt đầu ở [batDau] (trên [b], cùng độ dài [s]) có đứng ngay sau chữ *năm* dương lịch (*"năm 2026"*) không. Bỏ dấu
 /// thì tên riêng *Nam* và phương *nam* cũng thành `nam` (*"thu nợ anh Nam 500.000"* mất tiền): câu có dấu chỉ chặn khi
 /// chữ ấy là *năm* CÓ DẤU; cả câu không dấu ([cauKhongDau]) thì `nam` là năm. [s] đã NFC (hai nơi gọi đều truyền
-/// `unorm.nfc(cau)`).
+/// `_chuanCau(cau)`).
 bool _sauLaNamDuongLich(String s, String b, int batDau, {required bool cauKhongDau}) {
   final m = _truocLaNam.firstMatch(b.substring(0, batDau));
   if (m == null) return false;
@@ -341,6 +341,11 @@ double _phanLe(String le, double donVi) => int.parse(le) * donVi / const [1, 10,
 /// đó còn là *mặt* của *"tiền mặt"*.
 const Set<String> _tuDemTruocTien = {'hết', 'mất', 'tốn', 'het', 'ton'};
 
+/// Câu vào của mọi phép đọc ở tệp này: NFC, và ký hiệu **₫** (U+20AB) thành *đ* — nhận dạng giọng nói của Google viết
+/// *"500.000₫"* (Realme 2026-10-21), mà mẫu số tiền chạy trên câu bỏ dấu nên chỉ nhận *đ → d*; *₫* lọt vào ghi chú. Cùng
+/// một đơn vị UTF-16 nên vị trí giữa câu có dấu và câu bỏ dấu không lệch.
+String _chuanCau(String cau) => unorm.nfc(cau).replaceAll('₫', 'đ');
+
 KetQuaDocCau docCauGiaoDich(
   String cau, {
   required DateTime now,
@@ -353,7 +358,7 @@ KetQuaDocCau docCauGiaoDich(
   String chieuDangChon = 'chi',
   String? viDangChon,
 }) {
-  final s = unorm.nfc(cau);
+  final s = _chuanCau(cau);
   final thuong = s.toLowerCase();
   final b = removeVietnameseTones(thuong);
   // Bỏ dấu giữ độ dài với câu dựng sẵn; khác đi (ký tự lạ) thì vị trí không tin được — không đọc gì.
@@ -607,7 +612,7 @@ double? soTienAiHopLe(String cau, KetQuaAi? ai, {required DateTime now}) {
 /// (*"ba chục"* = 30.000); *"X triệu Y"* / *"X tr Y"* / *"một triệu hai"* → X,Y triệu — bất kể vị trí của Y (luật chỉ CHỌN
 /// cách đọc này khi Y ở chỗ của tiền, [_dungChoTien]; ở chỗ khác Gemma mới chọn); *"2k5"* → 2.500.
 Set<double> cachDocSoTien(String cau, {required DateTime now}) {
-  final s = unorm.nfc(cau);
+  final s = _chuanCau(cau);
   final b = removeVietnameseTones(s.toLowerCase());
   if (b.length != s.length) return const {};
   final kd = _cauKhongDau(s);
@@ -812,7 +817,9 @@ List<_ViNhac> _tenGoiViTrongCau(String thuong, String b, List<WalletEntity> dsVi
   ]..sort((x, y) => y.$1.length.compareTo(x.$1.length));
   final kq = <_ViNhac>[];
   for (final (goi, w) in ung) {
-    final than = goi.split(' ').map(RegExp.escape).join(r'\s+');
+    // `\s*`: nhận dạng giọng nói của Google viết dính tên ví (*"từ mbbank sang tiết kiệm"*, Realme 2026-10-21) — `\s+` thì
+    // ví nguồn trượt về ví chọn sẵn. Hai đầu vẫn chặn theo ranh giới từ, và vẫn chỉ nhận ngay sau giới từ (bên dưới).
+    final than = goi.split(' ').map(RegExp.escape).join(r'\s*');
     for (final m in RegExp('(?<![a-z0-9])$than(?![a-z0-9])').allMatches(b)) {
       if (kq.any((k) => m.start < k.ketThuc && m.end > k.batDau)) continue;
       final truoc = _tuCuoi.firstMatch(conLai.substring(0, m.start));
@@ -900,7 +907,7 @@ List<T> _cungTen<T>(List<T> ds, String ten, String Function(T) tenCua) {
 /// Số tiền của [cau] theo ĐÚNG bộ chọn của ô Nhập nhanh (§2.1) kèm vị trí `[batDau, ketThuc)` trong câu đã NFC — C3 (lệnh
 /// tạo ở màn Trợ lý AI) dùng lại, một định nghĩa. `null` khi không đọc được, số không dương, hoặc ≥ 13 chữ số.
 ({int batDau, int ketThuc, double giaTri})? chonSoTienTrongCau(String cau, {required DateTime now}) {
-  final s = unorm.nfc(cau);
+  final s = _chuanCau(cau);
   final b = removeVietnameseTones(s.toLowerCase());
   if (b.length != s.length) return null;
   final c = _chonSoTien(s, b, ngay: timNgayTrongCau(s, now), canhBao: <String>[]);

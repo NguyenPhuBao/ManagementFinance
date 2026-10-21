@@ -456,6 +456,33 @@ void main() {
       expect(kq.walletToId, 'mb');
     });
 
+    test('⚠️ tên gọi VIẾT DÍNH — nguyên văn Google trả trên Realme 2026-10-21: "chuyển 500.000 từ mbbank sang tiết kiệm"', () {
+      final kq = doc('chuyển 500.000 từ mbbank sang tiết kiệm', vi: [tienMat, mb, tk]);
+      expect(kq.loai, 'transfer');
+      expect(kq.walletId, 'mb',
+          reason: 'nhận dạng giọng nói của Google viết "MB Bank" thành "mbbank" — form từng chọn Tiền mặt làm ví nguồn');
+      expect(kq.walletToId, 'tk');
+      expect(kq.soTien, 500000.0);
+      expect(kq.ghiChu, isNot(contains('mbbank')), reason: 'ghi chú từng sót "từ mbbank"');
+    });
+
+    test('⚠️ ký hiệu "₫" Google viết liền số (Realme 2026-10-21) là đơn vị như "đ" — ghi chú từng sót "₫"', () {
+      final kq = doc('chuyển 500.000₫ từ mbbank sang tiết kiệm', vi: [tienMat, mb, tk]);
+      expect((kq.loai, kq.walletId, kq.walletToId, kq.soTien), ('transfer', 'mb', 'tk', 500000.0));
+      expect(kq.ghiChu, isNot(contains('₫')));
+      final an = doc('ăn phở 45.000₫', vi: [tienMat]);
+      expect((an.soTien, an.ghiChu), (45000.0, 'ăn phở'));
+      expect(cachDocSoTien('ăn phở 45.000₫', now: now), contains(45000.0), reason: 'lưới AI dùng cùng cách đọc');
+    });
+
+    test('tên gọi viết dính sau "bằng": "mua áo 200 nghìn bằng mbbank" → Ví MB Bank', () {
+      expect(doc('mua áo 200 nghìn bằng mbbank', vi: [tienMat, mb]).walletId, 'mb');
+    });
+
+    test('tên gọi viết dính vẫn chỉ nhận ngay sau giới từ: "phí mbbank 20 nghìn" không chọn ví', () {
+      expect(doc('phí mbbank 20 nghìn', vi: [tienMat, mb]).walletId, isNull);
+    });
+
     test('tên gọi dưới 3 ký tự không dùng: "trả bằng a" không chọn ví Ví A', () {
       expect(doc('ăn phở 45k trả bằng a', vi: [tienMat, viA]).walletId, isNull);
     });
