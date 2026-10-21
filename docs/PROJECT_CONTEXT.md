@@ -1503,7 +1503,7 @@ Spec `docs/superpowers/specs/2026-10-13-tach-bon-trang-lon-design.md` (khối �
 - ⚠️ Các khối lịch sử cũ hơn của mục 14 còn gọi hàm riêng tư của bốn trang theo tên lúc viết (`_showDepositDialog` → `moPhieuNapTien`, `_theBienDong` → `TheBienDong`, `_khoiDongTien` → `KhoiDongTienBaoCao`…): đọc tên mới trong thư mục `widgets/<tên trang>/`.
 - Lỗi có sẵn, không sửa: `TextEditingController` của hai phiếu Nạp / Rút không `dispose` (spec mục 9).
 
-### 🎙️ C4 giọng nói — MÃ XONG 2026-10-12, CHƯA kiểm thử trên máy
+### 🎙️ C4 giọng nói — MÃ XONG 2026-10-12 (*nghiệm thu Realme lần đầu 2026-10-21 tối — khối 🎙️ đầu mục 14*)
 
 Task 1–15 của kế hoạch xong (39 commit, `f992ecac` → `e5809642`); `flutter test` **7037** ca (+9 skip, sau đợt sửa review toàn nhánh 2026-10-12; mốc trước 7032), `flutter analyze` 20, Cubit form 1.132 dòng (trần quét 23: 1.200). Tài liệu đầy đủ: **`docs/GIONG_NOI_FEATURE.md`** (người dùng thấy gì, chọn lối, luật N1/N2/ngày/ví gọi tắt, kiểm chéo, Gemma một bản hai cờ, bảng tệp + test, chốt hỏng-im-lặng, lệch Stitch, checklist đo máy). Tóm tắt: micro ở ô Nhập nhanh + nút **Nói** Trang chủ (`/add?noi=1`); **Android trước, Gemma chép lời dự phòng**; nói xong tự Điền qua `dienTuCau`; số tiền đọc bằng dạng nói mới được Gemma kiểm chéo, lệch thì hai chip. Spike gỡ hết (miễn trừ quét 25 rỗng), thêm test quét **26**. Người dùng chốt giữa chừng: N1 chỉ khi Y ở chỗ tiền (lối A, đổi thân spec §3.2); *"ngày X tháng này"* không lùi. 🚧 **Phần kiểm thử trên máy (spec mục 9) chưa làm** — chuỗi mã lỗi `speech_to_text`, ngưỡng −35 dBFS, `kChoLoiSauDone`, RAM bản hai cờ, giọng thật cả hai lối, hộp quyền ColorOS, 320 dp thật. Hai màn Stitch lệch bản thi công (`d696e81e…`, `c8f09f19…`) chờ người dùng quyết. **Chưa push.**
 
