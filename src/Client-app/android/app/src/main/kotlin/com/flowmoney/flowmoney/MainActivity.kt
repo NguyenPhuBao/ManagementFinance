@@ -56,6 +56,11 @@ import java.io.IOException
  *
  * Kênh `flowmoney/micro` — giọng nói C4 (2026-10-12): `biChan` (quyền micro đã bị chặn hẳn chưa — gọi sau một lần
  * xin bị từ chối), `moCaiDat` (trang thông tin ứng dụng). Xem `lib/features/transaction/data/datasources/kenh_micro.dart`.
+ *
+ * Kênh `flowmoney/xuong_nen` — Back hai lần ở Trang chủ (G100, 2026-10-21): `xuongNen` đưa cả task xuống nền thay vì
+ * đóng activity. Đóng activity là huỷ Flutter engine trong khi tiến trình còn sống (dịch vụ D1 giữ nó), và bản mô hình
+ * Gemma của isolate cũ nằm lại không ai giải phóng. Trả `false` thì phía Dart vẫn thoát bằng `SystemNavigator.pop()`.
+ * Xem `lib/shared/widgets/thoat_hai_lan.dart`.
  */
 class MainActivity : FlutterActivity() {
     private val kenhLuuTep = "flowmoney/luu_tep"
@@ -64,6 +69,7 @@ class MainActivity : FlutterActivity() {
     private val kenhMicro = "flowmoney/micro"
     private val kenhBienDong = "flowmoney/bien_dong"
     private val kenhPhienNganHang = "flowmoney/phien_ngan_hang"
+    private val kenhXuongNen = "flowmoney/xuong_nen"
 
     /** Lần khởi động / lần `onNewIntent` gần nhất có mang extra của thông báo tóm tắt. */
     private var moTuTomTat = false
@@ -104,6 +110,14 @@ class MainActivity : FlutterActivity() {
                     }
                 } catch (e: Exception) {
                     ket.error("loi_tu_chuyen_tien", e.message, null)
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, kenhXuongNen)
+            .setMethodCallHandler { call, ket ->
+                when (call.method) {
+                    "xuongNen" -> ket.success(moveTaskToBack(true))
+                    else -> ket.notImplemented()
                 }
             }
 

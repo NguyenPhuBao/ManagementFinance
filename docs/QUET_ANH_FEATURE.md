@@ -12,7 +12,7 @@
 > ✅ **Nghiệm thu Realme (CPU) 2026-10-21** — mục 7: 1 hoá đơn giấy mới (chụp dọc) điền đúng; 15 tờ cũ qua `/quet` thật: 12
 > điền đúng · 1 hỏi chip · ⚠️ **2 điền sẵn SAI không hỏi** (R13 2.127 thay 72.127, R08 75.706 thay 75.700 — **G101**). Huỷ pha
 > AI đạt; mô hình giữ qua 15 lượt quét không nạp lại, không sập. Lộ thêm **G100**: Back thoát app rồi mở lại thì mô hình nạp
-> thêm một bản (Native Heap 1,89 → 3,72 GB).
+> thêm một bản (Native Heap 1,89 → 3,72 GB) — đường Back đã sửa cùng ngày (Back hai lần = xuống nền).
 > ✅ **AI làm chính đã nối (2026-10-08 tối, mã + test)**: hoá đơn + Premium → Gemma NHÌN
 > ẢNH đọc món + tổng (`DocAnhBangGemma`), luật đọc phần còn lại; số chốt bằng `chotTongQuet` — khớp → điền, lệch → ô
 > trống + hai chip trên form. Đường cũ *"AI đọc chữ OCR"* (`DocAnhBangAi`, `lapTuAi`) **đã bỏ**.
@@ -199,7 +199,7 @@ Các mục khác:
   danh mục) dùng chung bản có ảnh, không nạp lại, không sập. PSS ổn định 3,0–3,26 GB (swap tăng dần 0,1 → 0,95 GB).
 - Dọn ảnh: `anh_quet/` rỗng sau mỗi *Bỏ qua*; `cache/` không còn bản sao `image_picker`.
 - ⚠️ **G100**: Back thoát app (tiến trình còn sống nhờ dịch vụ D1) rồi mở lại thì mô hình nạp thêm một bản, Native Heap 1,89 →
-  3,72 GB.
+  3,72 GB. Đường Back đã sửa cùng ngày (Back hai lần đưa app xuống nền, nghiệm thu OnePlus GPU); gỡ task còn mở.
 - Chưa làm: (a) biên lai MB (thư viện Realme không có), (e) bản `--release` (đã đo trên OnePlus), (f) Basic (đã đo trên OnePlus),
   tách bằng tick món (tính năng tạm tắt, `kChonMonTuAnhQuet = false`).
 

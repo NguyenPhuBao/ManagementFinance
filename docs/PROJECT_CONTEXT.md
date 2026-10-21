@@ -4113,7 +4113,11 @@ chủ đưa thẳng ra launcher, không cảnh báo — app không có `PopScope
 lượt đánh giá tôi cũng mất app hai lần vì thế). Nay `MainShell` bọc thân bằng
 **`ThoatHaiLan`** (`shared/widgets/thoat_hai_lan.dart`): Back ở tab khác thì
 **về Trang chủ**; ở Trang chủ thì toast *"Nhấn lần nữa để thoát"*, nhấn lại
-trong **2 giây** mới `SystemNavigator.pop()`. Luật là lớp thuần
+trong **2 giây** mới `SystemNavigator.pop()` *(⚠️ đổi 2026-10-21, **G100**: lần
+nhấn thứ hai nay đưa cả task **xuống nền** qua kênh `flowmoney/xuong_nen` →
+`moveTaskToBack(true)`, chỉ rơi về `SystemNavigator.pop()` khi kênh không làm
+được — đóng activity là huỷ Flutter engine trong khi tiến trình còn sống, và
+bản mô hình Gemma của isolate cũ nằm lại; `CLIENT_APP_KNOWN_GAPS.md`)*. Luật là lớp thuần
 `LuatThoatHaiLan` (test bằng đồng hồ giả; về tab đầu **không mồi** cho lần
 thoát kế); widget test giả kênh `SystemChannels.platform` để bắt lời gọi thoát.
 Chỉ can thiệp khi route của shell ở trên cùng — trang đẩy lên root navigator

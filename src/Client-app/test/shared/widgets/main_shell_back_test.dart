@@ -24,6 +24,7 @@ import 'dart:io';
 import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
 import 'package:flowmoney/shared/widgets/main_shell.dart';
+import 'package:flowmoney/shared/widgets/thoat_hai_lan.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,6 +57,12 @@ void main() {
     );
     addTearDown(() => tester.binding.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, null));
+    // G100 (2026-10-21): "thoát" đưa app xuống nền qua kênh này, chỉ rơi về SystemNavigator.pop khi kênh không làm được.
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(ThoatHaiLan.kenh, (call) async {
+      goiHeThong.add(call);
+      return true;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(ThoatHaiLan.kenh, null));
 
     router = GoRouter(
       navigatorKey: rootKey,
@@ -88,7 +95,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  bool daGoiThoat() => goiHeThong.any((c) => c.method == 'SystemNavigator.pop');
+  /// Tính CẢ HAI đường thoát — xuống nền (G100) và đóng activity — để ca "không thoát" không xanh oan.
+  bool daGoiThoat() => goiHeThong.any((c) => c.method == 'SystemNavigator.pop' || c.method == 'xuongNen');
 
   Future<void> nhanBack(WidgetTester tester) async {
     await tester.binding.handlePopRoute();
@@ -104,12 +112,14 @@ void main() {
     expect(find.text('TRANG A'), findsOneWidget);
   });
 
-  testWidgets('ở tab đầu: Back hai lần liền thì thoát', (tester) async {
+  testWidgets('ở tab đầu: Back hai lần liền thì thoát — xuống nền, không đóng activity (G100)', (tester) async {
     await bom(tester);
     await nhanBack(tester);
     await nhanBack(tester);
 
-    expect(daGoiThoat(), isTrue);
+    expect(goiHeThong.where((c) => c.method == 'xuongNen'), hasLength(1));
+    expect(goiHeThong.any((c) => c.method == 'SystemNavigator.pop'), isFalse,
+        reason: 'đóng activity là huỷ Flutter engine → bản mô hình Gemma nằm lại, lần mở sau nạp thêm một bản');
   });
 
   testWidgets('ở tab khác: Back về tab đầu, KHÔNG thoát', (tester) async {
