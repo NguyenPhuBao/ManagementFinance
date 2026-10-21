@@ -83,7 +83,10 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
   /// Dấu canary của phiên có tool (bước 1b) — `null` chỉ trong test.
   final CanaryCongCu? canaryCongCu;
 
-  SlmRuntimeThat({this.canary, this.canaryCongCu});
+  /// G100 — báo native tiến trình đang giữ một bản mô hình (`KenhGiuMoHinh.dat`); `null` chỉ trong test.
+  final Future<void> Function(bool giu)? baoGiuMoHinh;
+
+  SlmRuntimeThat({this.canary, this.canaryCongCu, this.baoGiuMoHinh});
 
   InferenceModel? _model;
   bool _daKhoiTao = false;
@@ -99,6 +102,7 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     coMoHinh: () => _model != null,
     dong: dong,
     nap: (duongTep, {required anh, required am}) => _nap(duongTep, anh: anh, am: am),
+    baoGiu: baoGiuMoHinh,
   );
 
   @override

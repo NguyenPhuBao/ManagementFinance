@@ -47,6 +47,7 @@ import '../../features/budget/data/repositories/budget_repository.dart';
 import '../../features/ai_edge/domain/canary_gpu.dart';
 import '../../features/ai_edge/domain/canary_cong_cu.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
+import '../../features/ai_edge/data/datasources/kenh_giu_mo_hinh.dart';
 import '../../features/ai_edge/data/datasources/nguon_ly_do_thoat.dart';
 import '../../features/transaction/data/vi_theo_nguon_store.dart';
 import '../../features/transaction/data/hoa_don_da_xoa_nguon.dart';
@@ -871,6 +872,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     () => SlmRuntimeThat(
       canary: const CanaryGpu(thuMuc: getApplicationSupportDirectory),
       canaryCongCu: sl<CanaryCongCu>(),
+      // G100 đường gỡ task: MainActivity giết tiến trình khi bị huỷ thật mà cờ này bật.
+      baoGiuMoHinh: const KenhGiuMoHinh().dat,
     ),
   );
 
