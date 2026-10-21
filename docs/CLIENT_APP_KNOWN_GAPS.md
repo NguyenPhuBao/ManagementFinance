@@ -1767,7 +1767,10 @@ sau).** *Back hai lần ở Trang chủ = đưa app xuống nền*. Lối *đón
 
 **Đã sửa (đường Back).** `ThoatHaiLan` (`shared/widgets/thoat_hai_lan.dart`): lần nhấn thứ hai gọi kênh `flowmoney/xuong_nen`
 → `MainActivity.kt` `moveTaskToBack(true)` (activity và Flutter engine sống tiếp). Kênh trả `false`, không có kênh, hoặc lỗi thì
-rơi về `SystemNavigator.pop()` như cũ. Không có lần đóng mô hình nào, nên an toàn với GPU. Test: `thoat_hai_lan_test.dart` (ca
+rơi về `SystemNavigator.pop()` như cũ. Không có lần đóng mô hình nào, nên an toàn với GPU. Hệ quả cố ý: Back hai lần nay
+**giống hệt nút Home**, nên đường khởi động lạnh (G86 `AuthCheckRequested` → `verifySession`, lượt quét đầu của
+`moPhienCucBo`, phép kiểm `CanaryCongCu` qua `ApplicationExitInfo` ở `main.dart`) chỉ chạy lại sau khi tiến trình chết thật; mở
+lại sau Back là `resumed`, như mở lại sau Home. Test: `thoat_hai_lan_test.dart` (ca
 *"⚠️ G100"* đỏ trên mã cũ — không có lời gọi `xuongNen`; hai ca rơi về `pop` khi kênh trả `false` / không có kênh; một ca nối dây
 đọc `MainActivity.kt`) và `main_shell_back_test.dart` (ca Back hai lần đòi `xuongNen`, không `pop`; `daGoiThoat()` tính **cả
 hai** đường thoát để ca *"không thoát"* không xanh oan).
