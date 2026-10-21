@@ -633,15 +633,17 @@ cả 16 tờ. Ba ứng viên đo trên 34 tờ chữ (15 chữ 08/10 · 16 chữ
 - **C** — số Gemma thêm / bớt một chữ số so với số luật cũng là ứng viên (trước chỉ nhận thay một chữ số, cùng độ dài).
 - **A** — số luật đứng một mình mà nhỏ hơn thành tiền lớn nhất của các dòng trên dòng tổng → ô trống + toast.
 - **B** — số luật đứng một mình mà tờ in một số khác lệch ≤ 1% (dòng VAT…) → hai chip [số luật, số gần nhất].
-- `/quet` chốt **mọi** hoá đơn, kể cả Basic. `ai=1` chỉ khi số Gemma nằm trên form.
+- `/quet` chốt **mọi** hoá đơn, kể cả Basic. Phép chốt chỉ bật `ai=1` khi số Gemma nằm trên form; danh mục Gemma chọn vẫn
+  bật như cũ.
 
 Kết quả trên 34 tờ chữ: **0** tờ điền sẵn sai. Cái giá: R13 chữ 08/10 (luật đúng, tờ có dòng tiền mặt OCR đọc 72,121) chuyển
 sang hỏi chip. Thân G101 ở `CLIENT_APP_KNOWN_GAPS.md` có bảng đo; mục 1 bước 3b + chốt 4a ở `QUET_ANH_FEATURE.md`.
 
-**Test:** `hoa_don_quet_that_test.dart` (17 ca dữ liệu + 4 ca G101), 13 ca lưới ở `hoa_don_that_test.dart`, 4 ca widget ở
-`quet_anh_page_test.dart`. Mười một bản sai cấy thử đều bị bắt (một bản lọt lượt đầu → thêm ca OCR mất chữ số ở giữa).
+**Test:** `hoa_don_quet_that_test.dart` (17 ca dữ liệu + 4 ca G101), 13 ca lưới ở `hoa_don_that_test.dart`, 5 ca widget ở
+`quet_anh_page_test.dart` (một ca riêng cho danh mục Gemma chọn vẫn bật `ai=1`), 1 ca form Basic có khối chip mà không chữ
+*"AI"* ở `form_anh_quet_test.dart`. Mười một bản sai cấy thử đều bị bắt (một bản lọt lượt đầu → thêm ca OCR mất chữ số ở giữa).
 
-**Số đo 2026-10-21:** `flutter test` **7682/7682** pass, 10 skip (5 ph 05 s; +40 so với 7642 sau G100); `flutter analyze` **20**.
+**Số đo 2026-10-21:** `flutter test` **7684/7684** pass, 10 skip (4 ph 48 s; +42 so với 7642 sau G100); `flutter analyze` **20**.
 **Chưa chạy lại trên máy** — 15 ảnh R01–R16 nằm trong `app_flutter/spike_c4/do1/` của Realme (đang rút); việc còn lại là nhìn
 khối chip ở Basic và dải nguồn không chữ *"AI"* trên form thật.
 

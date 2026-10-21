@@ -1751,7 +1751,8 @@ ra đúng dòng `[Quet][luat]` của logcat ở cả 16 tờ (tổng, ghi chú, 
   Gemma trùng đúng số luật thì vẫn điền. Cái giá đã chấp nhận: R13 chữ 08/10 in tổng 72.127 và dòng tiền mặt OCR đọc 72,121 —
   luật đúng nhưng nay hỏi chip.
 - **`/quet` chốt mọi hoá đơn** (`quet_anh_page.dart`): trước đây chỉ nhánh Premium gọi `chotTongQuet`, Basic điền thẳng số luật.
-  Cờ *"Đọc bằng AI"* chỉ bật khi số Gemma nằm trên form (điền hoặc chip) — hai chip của hai số OCR không phải của AI.
+  Phần số tiền chỉ bật cờ *"Đọc bằng AI"* khi số Gemma nằm trên form (điền hoặc chip) — hai chip của hai số OCR không phải
+  của AI. Danh mục do Gemma chọn vẫn bật cờ như cũ, nên ở Premium form thường vẫn nói *"Đọc bằng AI"* (ca widget canh cả hai).
 
 Mười một bản sai cấy thử (bỏ từng lưới, bỏ từng vế loại trừ, so `<=`, xét số luật trước số Gemma, cờ AI theo *"có chip"*…) đều
 bị ít nhất một ca bắt; bản *"so chuỗi con"* cho lưới C lọt ở lượt đầu, nên có thêm ca *OCR mất chữ số ở GIỮA*. **Chưa chạy lại

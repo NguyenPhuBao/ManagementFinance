@@ -235,12 +235,28 @@ void main() {
     expect(bat.cau, contains(kCauChuaDocTien));
   });
 
-  testWidgets('⭐ G101 Premium — Gemma bị bỏ, số luật có số gần → hai chip của OCR, KHÔNG ai=1', (tester) async {
+  // Cô lập ĐƯỜNG SỐ TIỀN: không có bộ chọn danh mục. Trên máy thật Gemma gần như luôn chọn được danh mục, và danh mục
+  // AI chọn bật `ai=1` như cũ (ca dưới) — phép chốt chỉ không TỰ bật cờ cho hai chip của OCR.
+  testWidgets('⭐ G101 Premium — Gemma bị bỏ, số luật có số gần → hai chip của OCR; phép chốt KHÔNG bật ai=1',
+      (tester) async {
     await mo(tester, docChu: _DocChuGia(r08), gemma: _GemmaGia(const KetQuaGemmaAnh(tong: 55000)));
     await cho(tester);
     final u = form()!;
     expect(u.queryParameters['chon'], '75706,75700');
     expect(u.queryParameters.containsKey('ai'), isFalse, reason: 'không số nào trên form là của Gemma');
+  });
+
+  testWidgets('G101 Premium — như trên nhưng Gemma chọn được danh mục → hai chip của OCR, ai=1 (vì danh mục)',
+      (tester) async {
+    await mo(tester,
+        docChu: _DocChuGia(r08),
+        gemma: _GemmaGia(const KetQuaGemmaAnh(tong: 55000)),
+        danhMuc: _DanhMucGia('Ăn uống'));
+    await cho(tester);
+    final u = form()!;
+    expect(u.queryParameters['chon'], '75706,75700');
+    expect(u.queryParameters['dm'], 'Ăn uống');
+    expect(u.queryParameters['ai'], '1');
   });
 
   testWidgets('G101 Premium — Gemma hơn số luật đúng một chữ số → hai chip (AI trước), ai=1', (tester) async {

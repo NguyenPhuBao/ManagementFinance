@@ -268,7 +268,8 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
     if (kq.loai == LoaiAnhQuet.hoaDon) {
       final c = chotTongQuet(luat: kq.soTien, ai: tongAi, vanBan: van);
       final soAi = tongAi?.toDouble();
-      // "Đọc bằng AI" chỉ khi số mô hình nằm trên form — hai chip của hai số OCR (lưới B) không phải của AI.
+      // Phần số tiền chỉ bật "Đọc bằng AI" khi số mô hình nằm trên form — hai chip của hai số OCR (lưới B) không phải
+      // của AI. Danh mục do Gemma chọn đã bật cờ ở trên (`voiSoTien` giữ nó).
       kq = kq.voiSoTien(c.soTien, aiLap: soAi != null && (c.soTien == soAi || c.luaChon.contains(soAi)));
       chon = c.luaChon;
     }

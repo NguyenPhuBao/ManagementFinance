@@ -37,7 +37,8 @@ hệ thống, `maxWidth 1280`) → màn `/quet` *"Đang đọc ảnh…"* (`Quet
      Khớp ≤ 1% → điền số AI; lệch → ô trống + query `chon=<AI>,<luật>`.
    - Số luật đứng một mình (không AI / AI bị bỏ): nhỏ hơn thành tiền lớn nhất của các dòng trên dòng tổng → ô trống + toast
      (lưới A); trên tờ có một số khác lệch ≤ 1% (dòng VAT…) → ô trống + `chon=<luật>,<số gần>` (lưới B); không thì điền.
-   - Query `ai=1` chỉ khi số AI nằm trên form (điền hoặc chip).
+   - Phép chốt chỉ bật `ai=1` khi số AI nằm trên form (điền hoặc chip) — hai chip của hai số OCR thì không. Danh mục Gemma
+     chọn (bước kế) vẫn bật `ai=1` như cũ.
    Rồi **Gemma lần hai chọn danh mục** (`DocDanhMucBangAi`, người dùng chốt "AI chọn danh mục"): tên cửa hàng + các
    món (của Gemma, không có thì của luật) → tool `chon_danh_muc` với enum danh mục CHI của tài khoản → query `dm=<tên>`
    → `ketQuaTuBienDong` chọn nó, THẮNG từ khoá ghi chú; tên không có / sai chiều → từ khoá như cũ. Huỷ thì không gọi.

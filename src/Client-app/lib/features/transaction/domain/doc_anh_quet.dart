@@ -47,8 +47,8 @@ class KetQuaAnhQuet {
   final List<MonHang> mon;
   final Set<OAnhQuet> oThieu;
 
-  /// Số mô hình nhìn ảnh nằm trên form — điền sẵn, hoặc là một chip (dải nguồn trên form nói *"Đọc bằng AI"*). Hai chip
-  /// của hai số OCR (G101) không tính.
+  /// Mô hình góp vào form: số mô hình nhìn ảnh nằm trên form (điền sẵn, hoặc là một chip), hoặc danh mục do Gemma chọn
+  /// — dải nguồn trên form nói *"Đọc bằng AI"*. Hai chip của hai số OCR (G101) tự chúng không bật cờ.
   final bool aiLap;
 
   /// Đặt số tiền đã CHỐT (A5 mục 13, `chotTongQuet`) — kể cả `null` (ô để trống: hai số lệch cho chip chọn, hoặc số luật
