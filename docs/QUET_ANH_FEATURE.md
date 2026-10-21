@@ -4,11 +4,15 @@
 > (Task 10–13) của kế hoạch `docs/superpowers/plans/2026-10-08-a5-quet-va-tach-danh-muc.md` (gitignore).
 > 🚧 **Nghiệm thu OnePlus 2026-10-08 lật một phần thiết kế** — spec mục **13**: tick món TẠM TẮT
 > (`kChonMonTuAnhQuet = false`), ngày tương lai đảo ngày/tháng, luật sửa theo OCR thật (`367cefbd`). Người dùng chốt
-> **AI làm chính (Gemma nhìn ảnh), luật dự phòng**, lệch > 1% → hai chip chọn số — **CHƯA THI CÔNG**. Bảng đo 6 hoá đơn ở
-> spec mục 13.
+> **AI làm chính (Gemma nhìn ảnh), luật dự phòng**, lệch > 1% → hai chip chọn số — đã thi công tối 2026-10-08 (dòng ✅ dưới).
+> Bảng đo 6 hoá đơn ở spec mục 13.
 > ✅ **Luật sửa theo 15 hoá đơn thật trên Realme (2026-10-08 chiều)** — chốt 9–12 ở mục 3.
 > ✅ **Nghiệm thu OnePlus (GPU) trọn 8 tờ 2026-10-08** — không tờ nào điền sẵn số sai, ba tờ lệch hỏi bằng chip, chạm
-> chip đạt; bảng ở spec mục 13. 🚧 Realme (CPU) chưa chạy `/quet` thật.
+> chip đạt; bảng ở spec mục 13.
+> ✅ **Nghiệm thu Realme (CPU) 2026-10-21** — mục 7: 1 hoá đơn giấy mới (chụp dọc) điền đúng; 15 tờ cũ qua `/quet` thật: 12
+> điền đúng · 1 hỏi chip · ⚠️ **2 điền sẵn SAI không hỏi** (R13 2.127 thay 72.127, R08 75.706 thay 75.700 — **G101**). Huỷ pha
+> AI đạt; mô hình giữ qua 15 lượt quét không nạp lại, không sập. Lộ thêm **G100**: Back thoát app rồi mở lại thì mô hình nạp
+> thêm một bản (Native Heap 1,89 → 3,72 GB).
 > ✅ **AI làm chính đã nối (2026-10-08 tối, mã + test)**: hoá đơn + Premium → Gemma NHÌN
 > ẢNH đọc món + tổng (`DocAnhBangGemma`), luật đọc phần còn lại; số chốt bằng `chotTongQuet` — khớp → điền, lệch → ô
 > trống + hai chip trên form. Đường cũ *"AI đọc chữ OCR"* (`DocAnhBangAi`, `lapTuAi`) **đã bỏ**.
@@ -145,8 +149,59 @@ dựng được ngày 2026-10-08 (224,9 MB) — R8 không cần quy tắc mới 
 `98133eb8…` sheet chọn món (spec mục 7, 11.7). Khối hai chip: màn `bd764b70…` *"Thêm giao dịch - Từ ảnh quét - Hai số
 khác nhau"* xuất hiện sau lượt gọi `timeout` — ✅ **người dùng xác nhận 2026-10-08**.
 
-## 7. Nghiệm thu máy thật (Realme) — CHƯA LÀM
+## 7. Nghiệm thu máy thật (Realme) — đo 2026-10-21
 
 Bảng điền ở Task 14: (a) biên lai MB từ thư viện · (b) ≥ 5 hoá đơn giấy người dùng chụp — tiền / ngày / ghi chú (chỉ
 luật · luật + AI), **món đọc đúng / tổng món**, thời gian chờ, độ dài chữ gửi mô hình (logcat `[Quet][AI]`) · (c) Huỷ hai
 pha · (d) ảnh dọc máy ảnh (EXIF) · (e) bản `--release` · (f) Basic · tách 3 phần bằng tick món → số dư, Sổ, PostgreSQL.
+
+**Lượt đo 2026-10-21** — Realme RMX2205, Gemma **CPU** (cờ `slm_gpu_hong`), bản debug `b174b8d6…`, tài khoản Premium (số 10),
+app trỏ `10.0.2.2` nên không đồng bộ. Người dùng chốt: **không bấm Lưu** (chấm trên form rồi *Bỏ qua*). Chỉ có **một** hoá đơn
+giấy mới. 15 tờ còn lại là R01–R16 của buổi 08/10, lấy từ `app_flutter/spike_c4/do1/` (bản đã thu về rộng 1280), chép tạm
+sang `Download/`, chọn qua trình chọn ảnh hệ thống, đã xoá sau buổi đo. ⚠️ `image_picker` **nén lại** các ảnh này (R08 98.970 →
+83.192 byte), nên OCR chạy trên ảnh nén hai lần và khác chữ lưu trong `hoa_don_that_du_lieu.dart`. Lượt này là **kiểm hồi quy
+đầu-cuối của `/quet`**, không phải phép đo trên ảnh chưa từng thấy (trừ tờ mới).
+
+| Tờ | Đáp án | Luật | Gemma CPU | Form hiện | Gemma · danh mục (s) | Danh mục | Ngày | Ghi chú |
+|---|---|---|---|---|---|---|---|---|
+| **Mới** ỦA TEA (chụp dọc) | 398.800 | ✅ | ❌ 161.000 (không trên ảnh → bỏ) | điền ✅ | 30,8 · 9,7 | Ăn uống | 14/10 ✅, giờ 00:00 (in *"1407"*) | ỦA TEA |
+| R01 Starbucks | 262.000 | ✅ | ✅ | điền ✅ | 35,0 · 8,6 | Ăn uống | 28/09 14:19 ✅ | *STARBUCKS"* ◐ |
+| R02 ÙA TEA | 158.000 | ✅ | ✅ | điền ✅ | 37,8 · 7,6 | Ăn uống | 02/10 14:26 ✅ | ỦA TEA |
+| R03 ÙA TEA | 217.500 | ✅ | ✅ | điền ✅ | 33,9 · 8,7 | Ăn uống | 02/10 14:33 ✅ | ỦA TEA |
+| R04 BHX | 55.500 | ✅ | ✅ | điền ✅ | 19,8 · 7,6 | Ăn uống | lúc quét (đúng luật) | tiêu đề OCR méo ◐ |
+| R05 eco-shop | 57.000 | ✅ | ✅ | điền ✅ | 26,5 · 8,1 | Mua sắm | 30/08 ✅ | eco-shop Invoice |
+| R06 Pharmacity | 76.872 | ✅ | ✅ | điền ✅ | 20,9 · 8,9 | Y tế | 20/08 16:43 ✅ | NHÀ THUỐc |
+| R07 MAXIDI | 44.700 | ✅ | ✅ | điền ✅ | 25,1 · 7,8 | Ăn uống | 21/09 18:55 ✅ | trống (đúng luật) |
+| R08 MAXIDI | 75.700 | ❌ 75.706 | ❌ 55.000 | ⚠️ **điền 75.706** (G101) | 20,6 · 7,9 | Ăn uống | 11/09 19:42 ✅ | MAXIDI ORE |
+| R10 | 45.000 | ✅ | ✅ | điền ✅ | 18,5 · 7,5 | Ăn uống | 19/09 18:06 ✅ | trống (đúng luật) |
+| R11 BHX nhoè | 79.243 | ✅ | ❌ 119.180 (bỏ) | điền ✅ | 28,4 · 8,1 | Mua sắm | lúc quét (đúng luật) | tiêu đề ◐ |
+| R12 Dookki | 300.240 | ✅ | ✅ | điền ✅ | 18,8 · 7,8 | Ăn uống | lúc quét (đúng luật) | DOOKKI Topokki Buftet |
+| R13 MAXIDI | 72.127 | ❌ 2.127 | ✅ 72.127 (bỏ) | ⚠️ **điền 2.127** (G101) | 31,3 · 7,6 | Mua sắm | lúc quét ❌ (OCR *"912/2025"*) | MAXIDI |
+| R14 MAXIDI | 44.745 | ✅ | ✅ | điền ✅ | 27,2 · 8,0 | Ăn uống | 01/10 20:02 ✅ | trống (đúng luật) |
+| R15 BHX | 30.000 thực trả | 32.160 (*Tổng tiền*) | ❌ 13.500 | hai chip 13.500 · 32.160 ◐ | 19,5 · 7,9 | Ăn uống | lúc quét (đúng luật) | tiêu đề rác ❌ |
+| R16 Bee Bee Mart | 36.000 | ✅ | ✅ | điền ✅ | 18,4 · 7,9 | Ăn uống | 19/09 21:29 ✅ | BEE BEE MART 18K |
+
+Tổng hợp:
+- **Tờ mới:** điền đúng 1/1.
+- **15 tờ cũ:** 12 điền đúng · 1 hỏi chip · **2 điền sẵn SAI không hỏi** (G101).
+- Luật đúng tổng 13/15 (R15 tính *Tổng tiền* 32.160 như quy ước 08/10); Gemma CPU 12/15 cũ, 0/1 tờ mới.
+- So với 08/10: R11 nay điền đúng (số Gemma không có trên ảnh nên bị bỏ). R15 lùi: hôm 08/10 Gemma đọc 30.000 nên chip có số thực
+  trả, hôm nay chip không có. R08, R13 lùi vì OCR trên ảnh nén lại.
+- Ngày: 10 tờ đúng, 4 tờ không in / không đọc nên lấy lúc quét đúng luật, R13 không đọc ra. **0 ngày sai im lặng.**
+- Thời gian: OCR + luật < 1 s; nạp mô hình 1,2–1,5 s (cache XNNPACK); Gemma nhìn ảnh **18–38 s**; chọn danh mục 7,5–9,7 s.
+
+Các mục khác:
+- **(d) ảnh dọc máy ảnh — đạt** (tờ mới, Quét → Chụp ảnh).
+- **(c) Huỷ pha AI — đạt**: form mang kết quả luật, không *"Đọc bằng AI"*, không gọi lượt chọn danh mục. Màn *"Đang đọc bằng
+  AI…"* còn đứng ~5 s sau khi bấm, vì lời gọi đọc ảnh native không ngắt được (huỷ 14:23:53, native trả 14:23:58). Huỷ pha
+  luật: OCR < 1 s, adb không chạm kịp (widget test canh).
+- **Chốt 4b trên CPU — đạt**: 15 lượt quét liên tiếp + chọn danh mục + Nhập nhanh (*"mua quà sinh nhật mẹ 250k"*, mô hình chọn
+  danh mục) dùng chung bản có ảnh, không nạp lại, không sập. PSS ổn định 3,0–3,26 GB (swap tăng dần 0,1 → 0,95 GB).
+- Dọn ảnh: `anh_quet/` rỗng sau mỗi *Bỏ qua*; `cache/` không còn bản sao `image_picker`.
+- ⚠️ **G100**: Back thoát app (tiến trình còn sống nhờ dịch vụ D1) rồi mở lại thì mô hình nạp thêm một bản, Native Heap 1,89 →
+  3,72 GB.
+- Chưa làm: (a) biên lai MB (thư viện Realme không có), (e) bản `--release` (đã đo trên OnePlus), (f) Basic (đã đo trên OnePlus),
+  tách bằng tick món (tính năng tạm tắt, `kChonMonTuAnhQuet = false`).
+
+Ứng viên sửa (chưa mở mục G, chưa đo): giờ in không dấu hai chấm *"Giờ vào: 1407"* → 14:07; ghi chú dính ký tự rác của OCR
+(*STARBUCKS"*); màn Huỷ pha AI nên đóng ngay thay vì chờ native trả về.
