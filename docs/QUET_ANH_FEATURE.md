@@ -17,6 +17,9 @@
 > ✅ **G101 đóng cùng ngày** — ba lưới ở `chotTongQuet` (người dùng chọn A + B + C), và Basic cũng qua phép chốt: 0 / 34 tờ chữ
 > điền sẵn sai (chữ 08/10, chữ `/quet` 21/10 chép từ logcat, OnePlus). Mục 1 bước 3–3b. **Nghiệm thu Realme Premium cùng tối
 > đạt**: R08 → hai chip 75.706 · 75.700, R13 → hai chip 72.127 · 2.127 (mục 7). Đường Basic chưa nhìn trên máy.
+> ✅ **Ba ứng viên sửa của lượt Realme 21/10 mã xong 2026-10-22** (người dùng duyệt; chưa đo trên máy): giờ in liền
+> *"Giò vào: 1407"* → 14:07 (chốt 11), tên cửa hàng cắt ký tự rác hai đầu *STARBUCKS"* → *STARBUCKS* (11b), Huỷ pha AI
+> sang form ngay + lời gọi mô hình kế tiếp chờ lượt đọc ảnh cũ (13).
 > ✅ **AI làm chính đã nối (2026-10-08 tối, mã + test)**: hoá đơn + Premium → Gemma NHÌN
 > ẢNH đọc món + tổng (`DocAnhBangGemma`), luật đọc phần còn lại; số chốt bằng `chotTongQuet` — khớp → điền, lệch → ô
 > trống + hai chip trên form. Đường cũ *"AI đọc chữ OCR"* (`DocAnhBangAi`, `lapTuAi`) **đã bỏ**.
@@ -47,7 +50,9 @@ hệ thống, `maxWidth 1280`) → màn `/quet` *"Đang đọc ảnh…"* (`Quet
 4. `pushReplacement('/add?khoa=quet:<ảnh>&…')` (`deeplinkQuet`) — form Thêm giao dịch điền sẵn, dải *"Từ ảnh quét ·
    dd/MM HH:mm"* (+ *"· Đọc bằng AI"*). Không ghi gì cho tới khi người dùng bấm Lưu.
 
-Huỷ ở pha luật → về Trang chủ, xoá ảnh. Huỷ ở pha AI → dừng lượt sinh, mở form với kết quả luật. Back = Huỷ.
+Huỷ ở pha luật → về Trang chủ, xoá ảnh. Huỷ ở pha AI → mở form với kết quả luật **ngay** (2026-10-22, người dùng duyệt —
+trước đó màn đứng ~5 s chờ lời gọi đọc ảnh native trả về, Realme CPU); lượt ấy chạy nốt ở nền, kết quả bị bỏ, và lời gọi
+mô hình kế tiếp chờ nó xong (chốt 13, mục 3). Back = Huỷ.
 Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc được ảnh / số tiền — nhập tay nhé"*.
 
 ## 2. Tệp
@@ -64,6 +69,7 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 | `features/transaction/data/datasources/kho_anh_quet.dart` (dời từ `core/ocr/` 2026-10-16) | `KhoAnhQuet` — ảnh + `<tên>.mon.json` |
 | `transaction/domain/dien_san_bien_dong.dart` | khoá `quet:`, `kNguonAnhQuet`, `DienSanBienDong.laQuet/ai`, `deeplinkQuet` |
 | `transaction/presentation/pages/quet_anh_page.dart` | `moQuet`, `QuetAnhPage` — tệp DUY NHẤT import `image_picker` |
+| `ai_edge/data/luot_khong_ngat_duoc.dart` | `LuotKhongNgatDuoc` — lượt đọc ảnh bị Huỷ chạy nốt ở nền; lời gọi mô hình kế tiếp chờ nó (chốt 13) |
 | `transaction/domain/tach_giao_dich.dart` | `PhanTach`, `conLai`, `kiemTach`, `gopKhiDoiDanhMucChinh`, `dungGiaoDichTach` |
 | `TransactionRepository.addTransactions` · `TransactionLocalDataSource.addTransactions` · `AddTransactionsEvent` | Lưu N giao dịch trong một giao tác, một `actionSuccess` |
 
@@ -119,13 +125,28 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
 10. **Ngày in thiếu số 0 (`ngayDuHaiSo = false`) thì chọn cách đọc gần lúc quét nhất** — máy POS MAXIDI in tháng/ngày
     (*9/2/2026* = 02/09); ngày in đủ hai chữ số vẫn đọc ngày/tháng trước (*05/03* không thành *03/05*).
 11. **Dòng dấu ảnh *"Shot on …"* bị bỏ khi tìm ngày giờ** — giờ trên đó là giờ chụp. Đọc thêm *"Sep 28, 2026 2:19PM"* và
-    *"Ngày 19 tháng 09 năm 2026"*.
+    *"Ngày 19 tháng 09 năm 2026"*. **Giờ sau nhãn "Giờ / Giờ vào / Giờ ra" không có dấu hai chấm** (*"Giò vào: 1407"* —
+    OCR đọc "Giờ" thành "Giò"; *"Giờ ra: 14.26"*, *"Giò vào::1426"*) là **đường dự phòng** (`_gioSauNhan`, 2026-10-22):
+    chỉ khi cả tờ không có HH:MM nào, xét **từng dòng** (`boDauHoaDon` gộp cả xuống dòng). ỦA TEA N01 nay 14:07, không
+    còn 00:00.
+11b. **Tên cửa hàng cắt ký tự không phải chữ / dấu / số ở HAI ĐẦU** (2026-10-22): logo ™ / ® thành dấu nháy
+    (*STARBUCKS"* → *STARBUCKS*), viền khung thành `|`. Giữ ngoặc (*"Cơm Tấm (Q1)"*) và `\p{M}` (tên NFD không mất dấu).
+    Chỉ tên cửa hàng của hoá đơn — nội dung chuyển khoản của biên lai là chữ người chuyển gõ, giữ nguyên.
 12. **Tên cửa hàng chỉ tìm TRƯỚC thân hoá đơn**, bỏ chữ trên đồ vật phía sau (*ASUS, CORE, IRIS*), mẩu một từ ≤ 4 chữ
     cái (*"tel"*), địa chỉ / liên hệ, tiêu đề chứng từ; không thấy → **trống** (không đoán bằng dòng địa chỉ chợ).
     Dữ liệu test: `test/features/transaction/domain/hoa_don_that_du_lieu.dart` (chữ OCR thật, đã che số điện thoại).
     ⚠️ Luật sửa trên **chính** 15 tờ này — cần hoá đơn mới để biết nó có chỉ khớp riêng bộ này không. Chỗ dễ vỡ nhất:
     *"dòng trên chỉ-có-số thắng"* (đo đúng 5 ca) — một dòng món đứng ngay trước nhãn tổng sẽ bị bốc nhầm.
     Đo lại trên Realme bằng nút *Lô* mã `luat:do1` (bản spike, chỉ luật): khớp đúng dữ liệu test.
+13. **Huỷ pha AI không chờ native, và lượt đọc ảnh bị bỏ vẫn giữ mô hình** (2026-10-22, người dùng duyệt). `QuetAnhPage`
+    chờ `Future.any([lượt đọc ảnh, tín hiệu Huỷ])`; lượt bị bỏ chạy nốt (~5 s Realme CPU — `stopGeneration` không ngắt
+    được pha nhận ảnh), `DocAnhBangGemma` bỏ kết quả bằng bộ đếm lượt. ⚠️ Chỉ có **một** bản mô hình: `SlmRuntimeThat`
+    cho `docAnh` chạy qua `LuotKhongNgatDuoc.chay` (`ai_edge/data/luot_khong_ngat_duoc.dart`) và bốn lối sinh khác
+    (`sinh` · `sinhDan` · `moPhien` · `chepLoi`) `await _luotAnh.cho()` trước khi tạo phiên — Quét lại / Nói / Trợ lý ngay
+    sau Huỷ chờ thêm tối đa vài giây chứ không chồng hai lượt lên engine (vùng chưa đo, họ bẫy sập native OnePlus GPU).
+    **Đừng** cho `huy` chờ (Huỷ kẹt) hay `dong` / `moHinhSan` chờ (`docAnh` → `_boNap.can` → `dong` là khoá chết). `moc`
+    của `docAnh` / `chepLoi` ghi **trước** khi chờ: Huỷ trong lúc chờ thì lượt ấy không chạy. Nối dây: `flutter test` mù
+    (gói thật) — canh bằng đọc mã ở `luot_khong_ngat_duoc_test`; **chưa đo trên máy**.
 
 ## 3b. Tách theo danh mục (mục 11 spec)
 
@@ -224,5 +245,6 @@ Các mục khác:
 - Chưa làm: (a) biên lai MB (thư viện Realme không có), (e) bản `--release` (đã đo trên OnePlus), (f) Basic (đã đo trên OnePlus),
   tách bằng tick món (tính năng tạm tắt, `kChonMonTuAnhQuet = false`).
 
-Ứng viên sửa (chưa mở mục G, chưa đo): giờ in không dấu hai chấm *"Giờ vào: 1407"* → 14:07; ghi chú dính ký tự rác của OCR
-(*STARBUCKS"*); màn Huỷ pha AI nên đóng ngay thay vì chờ native trả về.
+~~Ứng viên sửa (chưa mở mục G, chưa đo): giờ in không dấu hai chấm *"Giờ vào: 1407"* → 14:07; ghi chú dính ký tự rác của OCR
+(*STARBUCKS"*); màn Huỷ pha AI nên đóng ngay thay vì chờ native trả về.~~ ✅ **Cả ba mã xong 2026-10-22** (mã + test,
+chưa đo trên máy) — chốt 11, 11b, 13 ở mục 3.

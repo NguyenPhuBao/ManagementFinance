@@ -616,6 +616,24 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-22)
 
+### 🧾 A5 — ba ứng viên sửa của lượt Realme 21/10 (2026-10-22, người dùng duyệt) — mã + test, chưa đo trên máy
+
+Bàn giao trước để lại ba ứng viên ở mục 7 `QUET_ANH_FEATURE.md`; người dùng chọn làm cả ba (không máy nào cắm).
+- **Giờ in liền** (chốt 11): ỦA TEA N01 in *"Giò vào: 1407"* — OCR đọc "Giờ" thành "Giò", mất dấu hai chấm; tờ không có
+  HH:MM nào nên form để 00:00. `_gioSauNhan` (`doc_hoa_don.dart`) đọc giờ sau nhãn *Giờ / Giờ vào / Giờ ra* (`1407`,
+  `14.26`, `::1426`) — **chỉ là đường dự phòng** khi cả tờ không có HH:MM, xét từng dòng. N01 nay 14:07; R02 / R03 không đổi.
+- **Tên cửa hàng cắt ký tự rác hai đầu** (chốt 11b): `STARBUCKS"` → `STARBUCKS`; giữ ngoặc và `\p{M}`; chỉ hoá đơn.
+- **Huỷ pha AI sang form ngay** (chốt 13; bẫy 4.60 `AI_EDGE_FEATURE.md`): `QuetAnhPage` chờ `Future.any([lượt đọc ảnh, tín hiệu
+  Huỷ])` thay vì đứng ~5 s chờ native. Khi soát, thấy `SlmRuntimeThat` **không** tuần tự hoá lượt sinh (chỉ pha nạp) → người
+  dùng chọn thêm chốt: `LuotKhongNgatDuoc` (`ai_edge/data/`) — `docAnh` chạy qua `chay`, `sinh` · `sinhDan` · `moPhien` ·
+  `chepLoi` chờ `cho()`; `huy` / `dong` / `moHinhSan` không chờ (kẹt Huỷ / khoá chết). Nối dây canh bằng đọc mã.
+
+**Test:** `doc_hoa_don_test` +18 (giờ sau nhãn + chặn, tên cắt rác), `hoa_don_quet_that_test` N01 / R01 đổi kỳ vọng,
+`luot_khong_ngat_duoc_test` 12 ca mới (5 thời gian + 7 nối dây), `quet_anh_page_test` +1 (bản giả `ngatNgay: false`). Ca mới
+đỏ trên mã cũ; bản sai *kiểm-và-nhận-chỗ qua `cho()`* làm 3 ca đỏ. **Số đo:** `flutter test` **7745/7745** pass, 10 skip
+(5 ph 11 s, +31 so với 7714); `flutter analyze` **20**. Kiểm trên máy: N01 ra 14:07 · R01 ghi chú *STARBUCKS* · Huỷ ở
+*"Đang đọc bằng AI…"* vào form ngay, rồi Quét lại liền một ảnh khác không sập.
+
 ### 🎯 C4 — kiểm chéo số tiền chỉ khi câu còn số tiền khác; gỡ đường kiểm ở nền (2026-10-22, người dùng chốt)
 
 Nghiệm thu Realme hôm trước: Gemma đọc *"tiền điện một triệu hai"* thành 1.000.000 **2/2 lần** → ô trống + hai chip oan mỗi
@@ -1536,7 +1554,7 @@ Spec `docs/superpowers/specs/2026-10-12-c4-giong-noi-nhap-giao-dich-design.md` (
 spec), kế hoạch `docs/superpowers/plans/2026-10-12-c4-giong-noi-nhap-giao-dich.md` (gitignore). Người dùng chốt: **Android
 nghe trước, Gemma chép lời khi mất mạng** · micro ở **ô Nhập nhanh** + nút **Nói** ở Trang chủ (`/add?noi=1`) · luật học
 thêm dạng nói tiền (*một triệu hai*, *năm chục*, *ba trăm rưỡi* — chỉ CHỌN trong tập `cachDocSoTien`), ngày (*ngày năm tháng
-chín*, *mùng X*), ví gọi tắt (*bằng MB Bank*) · **Gemma kiểm chéo số đọc bằng dạng nói, lệch thì hai chip** (thu hẹp 2026-10-22: chỉ khi câu còn số tiền khác — khối 🎯 đầu mục 14) · nói xong tự
+chín*, *mùng X*), ví gọi tắt (*bằng MB Bank*) · **Gemma kiểm chéo số đọc bằng dạng nói, lệch thì hai chip** (thu hẹp 2026-10-22: chỉ khi câu còn số tiền khác — khối 🎯 mục 14) · nói xong tự
 Điền qua `ThemGiaoDichCubit.dienTuCau`. Lúc lập kế hoạch lộ **ba lỗi sẵn có** cùng vùng: *"1 triệu 2"* đọc 1.000.000 im
 lặng; *"từ"* bỏ dấu thành *"tư"* (4) làm câu chuyển ví bằng chữ mất số tiền; *"quả"* bỏ dấu trùng *"qua"*. Phạm vi lần thi
 công: **dừng trước kiểm thử trên máy** (spec mục 9). Cách thi công **chưa chọn** — hỏi người dùng. Bàn giao:

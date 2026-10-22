@@ -265,7 +265,7 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 
 ⚠️ **Bảng dừng ở 4.48 — các bẫy sau đánh số tiếp nhưng nằm ở mục của lát sinh ra chúng:** 4.49 · 4.50 ở mục **9.32**
 (`truy_van_giao_dich`), 4.51 · 4.52 ở mục **9.33**, 4.53–4.58 (trợ lý online) ở mục **15.6** (đếm 2026-10-17), 4.59 ngay dưới
-đây (2026-10-21). Bẫy mới lấy số **4.60**.
+đây (2026-10-21), 4.60 ngay dưới 4.59 (2026-10-22). Bẫy mới lấy số **4.61**.
 
 - **4.59 — engine Flutter dựng lại trong tiến trình còn sống làm rò MỘT BẢN MÔ HÌNH** (G100, 2026-10-21, thân ở
   `CLIENT_APP_KNOWN_GAPS.md`). `flutter_gemma_litertlm` 1.8.0 chỉ cất **địa chỉ** engine native trong đối tượng Dart, không
@@ -275,6 +275,13 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
   `BoNapMoHinh.baoGiu` → `KenhGiuMoHinh`). ⚠️ Cờ chỉ bật **sau** khi nạp xong — báo sớm là có thể giết giữa pha nạp, dấu canary GPU
   (4.24) sót lại thành *GPU hỏng vĩnh viễn*. ⚠️ Đừng chữa bằng cách đóng mô hình khi `detached`: OnePlus GPU sập ở lần đóng thứ
   hai trong một tiến trình (chốt 4b `QUET_ANH_FEATURE.md`). Đường mới nào làm engine dựng lại trong tiến trình còn sống sẽ rò y hệt.
+- **4.60 — lượt bị bỏ vẫn chạy trên engine; lời gọi kế tiếp phải chờ nó** (2026-10-22, người dùng duyệt). `SlmRuntimeThat` chỉ
+  tuần tự hoá pha **nạp** (`BoNapMoHinh`), không tuần tự hoá lượt **sinh**; `huy()` = `stopGeneration`, mà lời gọi đọc ảnh không
+  ngắt được tức thì (Realme CPU: ~5 s). Từ khi màn Quét sang form ngay lúc Huỷ (chốt 13 `QUET_ANH_FEATURE.md`), lượt ấy chạy nốt ở
+  nền — nên `docAnh` chạy qua `LuotKhongNgatDuoc.chay` (`ai_edge/data/luot_khong_ngat_duoc.dart`) và `sinh` · `sinhDan` ·
+  `moPhien` · `chepLoi` `await _luotAnh.cho()` trước khi tạo phiên. ⚠️ `huy` không chờ (Huỷ kẹt); `dong` / `moHinhSan` không chờ
+  (`docAnh` → `_boNap.can` → `dong` là khoá chết); kiểm-và-nhận-chỗ trong `chay` phải cùng một microtask (bản sai cấy thử làm 3 ca
+  đỏ). Lối sinh mới thêm vào runtime cũng phải chờ — test đọc mã ở `luot_khong_ngat_duoc_test` chỉ canh năm lối hiện có.
 
 ## 5. Màn Stitch
 
