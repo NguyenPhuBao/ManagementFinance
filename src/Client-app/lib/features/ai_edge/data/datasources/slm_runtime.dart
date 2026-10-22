@@ -144,9 +144,13 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
       final dongHo = Stopwatch()..start();
       // Nhiệt độ 0,2 như lượt đo (Gemma ra y hệt 3/3 lần mỗi ảnh) — đổi là phải đo lại.
       final chat = await _model!.createChat(temperature: 0.2, supportImage: true);
+      final taoChat = dongHo.elapsedMilliseconds;
       // Huỷ / hết giờ tới trong lúc tạo chat: `huy()` khi ấy chưa có chat để dừng — bỏ lượt TRƯỚC khi gửi ảnh, nếu không
       // lượt chạy trọn (23–56 s Realme CPU) và giữ chỗ (khe Huỷ, 2026-10-22). Xét cùng microtask với lúc gán `_chatDangSinh`.
-      if (_boNap.moc != moc || (huyLuot?.daHuy ?? false)) throw const LuotNapBiHuy();
+      if (_boNap.moc != moc || (huyLuot?.daHuy ?? false)) {
+        debugPrint('[SLM][anh] bỏ lượt — Huỷ / hết giờ tới lúc đang tạo chat ($taoChat ms)');
+        throw const LuotNapBiHuy();
+      }
       _chatDangSinh = chat;
       // Hết giờ của lớp bọc dừng CHÍNH chat này — kể cả thẻ đã huỷ lúc đang tạo chat (tín hiệu vẫn tới người nghe muộn).
       unawaited(huyLuot?.tin.then((_) => _dungChat(chat)));
@@ -160,8 +164,9 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
       } finally {
         if (identical(_chatDangSinh, chat)) _chatDangSinh = null;
       }
+      // `tạo chat` = độ dài khe Huỷ ở trên (đo 2026-10-22 để biết khe thật).
       debugPrint('[SLM][anh] đọc ảnh xong sau ${dongHo.elapsedMilliseconds} ms '
-          '(ảnh ${anh.length} byte → ${cau.length} ký tự)');
+          '(tạo chat $taoChat ms; ảnh ${anh.length} byte → ${cau.length} ký tự)');
       return cau.toString().trim();
     });
   }
@@ -177,7 +182,10 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     // Nhiệt độ 0,2 như spike C4 (2026-10-01) — đổi là phải đo lại.
     final chat = await _model!.createChat(temperature: 0.2, supportAudio: true);
     // Như `docAnh`: Huỷ / hết giờ lúc đang tạo chat thì bỏ trước khi gửi âm thanh.
-    if (_boNap.moc != moc || (huyLuot?.daHuy ?? false)) throw const LuotNapBiHuy();
+    if (_boNap.moc != moc || (huyLuot?.daHuy ?? false)) {
+      debugPrint('[SLM][am] bỏ lượt — Huỷ / hết giờ tới lúc đang tạo chat');
+      throw const LuotNapBiHuy();
+    }
     _chatDangSinh = chat;
     unawaited(huyLuot?.tin.then((_) => _dungChat(chat)));
     await chat.addQueryChunk(Message.withAudio(text: prompt, audioBytes: wav, isUser: true));
@@ -272,7 +280,10 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     final dongHo = Stopwatch()..start();
     final chat = await m.createChat(temperature: 0.2);
     // Huỷ lúc đang tạo chat (như `docAnh`): bỏ trước khi gửi câu.
-    if (_boNap.moc != moc) throw const LuotNapBiHuy();
+    if (_boNap.moc != moc) {
+      debugPrint('[SLM] bỏ lượt sinh câu — Huỷ tới lúc đang tạo chat');
+      throw const LuotNapBiHuy();
+    }
     await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
     final r = await chat.generateChatResponse();
     final cau = (r is TextResponse ? r.token : r.toString()).trim();
@@ -295,7 +306,10 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     final dongHo = Stopwatch()..start();
     final chat = await m.createChat(temperature: 0.2);
     // Huỷ lúc đang tạo chat (như `docAnh`): bỏ trước khi gán `_chatDangSinh` và gửi câu.
-    if (_boNap.moc != moc) throw const LuotNapBiHuy();
+    if (_boNap.moc != moc) {
+      debugPrint('[SLM] bỏ lượt sinh dần — Huỷ tới lúc đang tạo chat');
+      throw const LuotNapBiHuy();
+    }
     _chatDangSinh = chat;
     await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
     var tokenDau = -1;
@@ -358,6 +372,7 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     // Huỷ lúc đang tạo phiên (~3 s Realme CPU, như `docAnh`): bỏ trước khi gửi câu — `PhienMotLoiGoi` chưa có phiên để dừng.
     // Phiên chưa tới tay người gọi nên không ai `dong()` nó (đường thường luôn đóng) — đóng ở đây.
     if (_boNap.moc != moc) {
+      debugPrint('[SLM][tool] bỏ phiên — Huỷ tới lúc đang tạo phiên');
       try {
         await chat.close();
       } catch (e) {
