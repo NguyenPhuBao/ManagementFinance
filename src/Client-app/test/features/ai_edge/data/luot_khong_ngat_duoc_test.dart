@@ -239,6 +239,15 @@ void main() {
         truoc(t, 'createChat(', 'huyLuot?.tin.then((_) => _dungChat(chat))', 'nghe thẻ sau khi có chat');
       });
     }
+    // Lối A (người dùng chốt 2026-10-22): Huỷ pha AI màn Quét gọi `huy()` hai lần song song trên cùng chat đọc ảnh — native
+    // chỉ được nhận một `stopGeneration` mỗi lúc (`GopLuotDung`, test hành vi ở `gop_luot_dung_test`).
+    test('_dungChat gộp lời dừng trùng — stopGeneration chỉ gọi bên trong _gopDung.dung', () {
+      final t = than('Future<void> _dungChat(');
+      truoc(t, '_gopDung.dung(chat,', 'chat.stopGeneration()', 'stopGeneration phải nằm trong lời gọi gộp');
+      expect('.stopGeneration('.allMatches(lop).length, 1,
+          reason: 'SlmRuntimeThat chỉ dừng chat qua _dungChat — lời stopGeneration thứ hai là lối đi vòng qua lớp gộp');
+      expect(t, contains("'[SLM] gộp lời dừng trùng"), reason: 'logcat cần một dòng CÓ MẶT khi gộp (debugPrint bị tiết lưu)');
+    });
     for (final chuKy in ['Future<void> huy()', 'Future<void> dong()', 'Future<void> moHinhSan(']) {
       test('$chuKy KHÔNG chờ', () => expect(than(chuKy), isNot(contains('_luotAnh'))));
     }

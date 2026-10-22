@@ -18,6 +18,7 @@ import '../../domain/canary_gpu.dart';
 import '../../domain/cong_cu.dart';
 import '../../domain/nap_da_phuong_thuc.dart';
 import '../bo_nap_mo_hinh.dart';
+import '../gop_luot_dung.dart';
 import '../huy_luot.dart';
 import '../luot_khong_ngat_duoc.dart';
 import 'phien_cong_cu.dart';
@@ -360,15 +361,21 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
   }
 
   /// Dừng [chat] — [huy] (người dùng) và thẻ hết giờ của một lượt (`HuyLuot`) cùng đi qua đây. `stopGeneration` treo thì
-  /// vẫn trả về sau [kHanDungSinh].
-  Future<void> _dungChat(InferenceChat chat) async {
-    try {
-      await chat.stopGeneration().timeout(kHanDungSinh);
-      debugPrint('[SLM] đã huỷ lượt sinh giữa chừng');
-    } catch (e) {
-      debugPrint('[SLM] huỷ lượt sinh hỏng: $e');
-    }
+  /// vẫn trả về sau [kHanDungSinh]. Lời dừng tới khi chat ấy ĐANG dừng thì chờ chung, native chỉ nhận một `stopGeneration`
+  /// (`GopLuotDung`): Huỷ pha AI màn Quét gọi hai lần `huy()` song song trên cùng chat đọc ảnh (bẫy 4.60).
+  Future<void> _dungChat(InferenceChat chat) {
+    if (_gopDung.dangDung(chat)) debugPrint('[SLM] gộp lời dừng trùng vào lượt đang dừng');
+    return _gopDung.dung(chat, () async {
+      try {
+        await chat.stopGeneration().timeout(kHanDungSinh);
+        debugPrint('[SLM] đã huỷ lượt sinh giữa chừng');
+      } catch (e) {
+        debugPrint('[SLM] huỷ lượt sinh hỏng: $e');
+      }
+    });
   }
+
+  final GopLuotDung<InferenceChat> _gopDung = GopLuotDung();
 
   @override
   Future<void> dong() async {
