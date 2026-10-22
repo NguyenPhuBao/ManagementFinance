@@ -622,6 +622,9 @@ Bàn giao trước để lại ba ứng viên ở mục 7 `QUET_ANH_FEATURE.md`;
 - **Giờ in liền** (chốt 11): ỦA TEA N01 in *"Giò vào: 1407"* — OCR đọc "Giờ" thành "Giò", mất dấu hai chấm; tờ không có
   HH:MM nào nên form để 00:00. `_gioSauNhan` (`doc_hoa_don.dart`) đọc giờ sau nhãn *Giờ / Giờ vào / Giờ ra* (`1407`,
   `14.26`, `::1426`) — **chỉ là đường dự phòng** khi cả tờ không có HH:MM, xét từng dòng. N01 nay 14:07; R02 / R03 không đổi.
+  Soát mã (code-review hai trục, cùng ngày) bắt bản đầu đọc nhầm *"Giỏ 120.000"* → 01:20 và *"Tổng đài 24 giờ: 1900"* →
+  19:00; người dùng chọn siết (phút không dính nhóm nghìn; chặn số 1–2 chữ số ngay trước nhãn trừ đuôi ngày) — +7 ca.
+  Các phát hiện khác của lượt soát (trần chờ cho `cho()`, siết test P7, dọn nhỏ) người dùng **chưa** chọn làm.
 - **Tên cửa hàng cắt ký tự rác hai đầu** (chốt 11b): `STARBUCKS"` → `STARBUCKS`; giữ ngoặc và `\p{M}`; chỉ hoá đơn.
 - **Huỷ pha AI sang form ngay** (chốt 13; bẫy 4.60 `AI_EDGE_FEATURE.md`): `QuetAnhPage` chờ `Future.any([lượt đọc ảnh, tín hiệu
   Huỷ])` thay vì đứng ~5 s chờ native. Khi soát, thấy `SlmRuntimeThat` **không** tuần tự hoá lượt sinh (chỉ pha nạp) → người

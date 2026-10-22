@@ -128,7 +128,10 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
     *"Ngày 19 tháng 09 năm 2026"*. **Giờ sau nhãn "Giờ / Giờ vào / Giờ ra" không có dấu hai chấm** (*"Giò vào: 1407"* —
     OCR đọc "Giờ" thành "Giò"; *"Giờ ra: 14.26"*, *"Giò vào::1426"*) là **đường dự phòng** (`_gioSauNhan`, 2026-10-22):
     chỉ khi cả tờ không có HH:MM nào, xét **từng dòng** (`boDauHoaDon` gộp cả xuống dòng). ỦA TEA N01 nay 14:07, không
-    còn 00:00.
+    còn 00:00. ⚠️ Đường này chạy khá thường (4/16 tờ `/quet` thật không có HH:MM) nên phải chặt — soát mã cùng ngày bắt hai
+    ca bản đầu đọc nhầm, đã siết: bỏ dấu *"Giỏ"* cũng là `gio` (*"Giỏ 120.000"* ra 01:20 → phút không được dính tiếp nhóm
+    nghìn `.0` · `,0` · ` 000`); *"Tổng đài 24 giờ: 1900 6017"* ra 19:00 → chặn số một–hai chữ số đứng ngay trước nhãn,
+    trừ khi nó là đuôi một ngày (*"02/10/26 Giờ ra"*, *"02/10/2026 Giờ ra"* vẫn đọc).
 11b. **Tên cửa hàng cắt ký tự không phải chữ / dấu / số ở HAI ĐẦU** (2026-10-22): logo ™ / ® thành dấu nháy
     (*STARBUCKS"* → *STARBUCKS*), viền khung thành `|`. Giữ ngoặc (*"Cơm Tấm (Q1)"*) và `\p{M}` (tên NFD không mất dấu).
     Chỉ tên cửa hàng của hoá đơn — nội dung chuyển khoản của biên lai là chữ người chuyển gõ, giữ nguyên.

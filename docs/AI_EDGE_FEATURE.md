@@ -287,7 +287,10 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
   là phải cho nó chờ qua một hàm đóng riêng, đừng gắn chốt vào `dong` mà `BoNapMoHinh` đang dùng (khoá chết). ⚠️ **Giới hạn của
   `cho()`**: nó chỉ đợi lượt đang chạy và lượt **đã vào hàng trước nó**; hai lời gọi MỚI sau lượt bị bỏ (một `docAnh` và một
   lối khác gọi trước nó) vẫn có thể chạy cùng lúc — đó là tình huống hai tính năng cùng lúc mà giao diện vốn chặn, không phải
-  điều chốt này bảo đảm.
+  điều chốt này bảo đảm. **Chưa làm (soát mã 2026-10-22, người dùng chưa chọn):** `cho()` không có trần thời gian — lượt native
+  treo thì năm lối sinh treo theo; trần 90 s của `DocAnhBangGemma` và trần chép lời nay tính cả thời gian chờ (trái chú thích
+  `chep_loi_bang_gemma.dart` *"không bao thời gian xếp hàng"*), và `onTimeout` gọi `runtime.huy()` tăng bộ đếm chung, có thể huỷ
+  oan một lượt khác đang chờ với `moc`; `sinh` · `sinhDan` · `moPhien` không có `moc` nên Huỷ lúc đang chờ không bỏ được lượt ấy.
 
 ## 5. Màn Stitch
 
