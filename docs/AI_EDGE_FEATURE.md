@@ -282,6 +282,12 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
   `moPhien` · `chepLoi` `await _luotAnh.cho()` trước khi tạo phiên. ⚠️ `huy` không chờ (Huỷ kẹt); `dong` / `moHinhSan` không chờ
   (`docAnh` → `_boNap.can` → `dong` là khoá chết); kiểm-và-nhận-chỗ trong `chay` phải cùng một microtask (bản sai cấy thử làm 3 ca
   đỏ). Lối sinh mới thêm vào runtime cũng phải chờ — test đọc mã ở `luot_khong_ngat_duoc_test` chỉ canh năm lối hiện có.
+  ⚠️ **`dong()` không có chốt** — đo 2026-10-22: chỗ gọi duy nhất là `BoNapMoHinh`, và sau `docAnh` máy giữ bản **hai cờ** nên
+  lượt chữ / chép lời kế tiếp không đóng / nạp lại; nối thêm một chỗ gọi `dong()` từ ngoài (nút xoá mô hình, tắt công tắc AI)
+  là phải cho nó chờ qua một hàm đóng riêng, đừng gắn chốt vào `dong` mà `BoNapMoHinh` đang dùng (khoá chết). ⚠️ **Giới hạn của
+  `cho()`**: nó chỉ đợi lượt đang chạy và lượt **đã vào hàng trước nó**; hai lời gọi MỚI sau lượt bị bỏ (một `docAnh` và một
+  lối khác gọi trước nó) vẫn có thể chạy cùng lúc — đó là tình huống hai tính năng cùng lúc mà giao diện vốn chặn, không phải
+  điều chốt này bảo đảm.
 
 ## 5. Màn Stitch
 

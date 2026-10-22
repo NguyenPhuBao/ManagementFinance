@@ -58,7 +58,9 @@ void main() {
     expect(dinh, 1);
   });
 
-  test('cho() đang đợi lượt A thì đợi luôn lượt B vừa vào hàng trước nó', () async {
+  // ⚠️ Chỉ đúng khi B vào hàng TRƯỚC lời gọi cho(): ai đợi trước thì chạy tiếp trước (thứ tự microtask). Gọi cho() trước
+  // rồi mới chay(B) thì cho() có thể xong ngay khi A xong, chạy song song với B — giới hạn ghi ở bẫy 4.60.
+  test('cho() đang đợi lượt A thì đợi luôn lượt B đã vào hàng TRƯỚC nó', () async {
     final l = LuotKhongNgatDuoc();
     final a = Completer<void>(), b = Completer<void>();
     unawaited(l.chay(() => a.future));
