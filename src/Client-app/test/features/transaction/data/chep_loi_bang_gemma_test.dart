@@ -67,7 +67,9 @@ void main() {
     expect(m.the.single!.daHuy, isTrue);
     expect(m.soLanHuy, 0, reason: 'huy() toàn cục bỏ oan lượt khác đang chờ với moc (bẫy 4.60)');
   });
-  test('I1: stopGeneration treo vẫn không kẹt hàng đợi — lượt quá hạn trả null, lượt kế tiếp gọi được mô hình', () async {
+  // `huyTreo`: `huy()` toàn cục không bao giờ xong. Lối hết giờ chỉ huỷ thẻ của lượt (bẫy 4.60) — quay lại chờ `huy()` toàn
+  // cục (trước 2026-10-22 là `unawaited`) thì lượt quá hạn treo theo và hàng đợi kẹt.
+  test('I1: hết giờ không chờ huy() toàn cục — lượt quá hạn trả null, lượt kế tiếp gọi được mô hình', () async {
     final m = _MoHinhGia()
       ..treo = Completer<String>()
       ..huyTreo = Completer<void>();

@@ -197,8 +197,10 @@ quét 25 cho `ai_chat/spike/` đã rỗng. Gói `speech_to_text ^7.5.0` và `rec
 - ✅ **`donTepGiongNoiSot` chỉ xoá `giong_noi_*.wav` cũ hơn `kNgheToiDa` + `kThoiHanChepLoi`** (M2, review toàn nhánh) — hai
   trang `/add` cùng sống thì WAV đang ghi của trang kia còn mới, được giữ.
 - ✅ **`stopGeneration()` có hạn `kHanDungSinh` = 2 s** ở `SlmRuntimeThat.huy` / `_PhienThat.huy` (I1): treo thì `huy()` vẫn
-  trả (nuốt lỗi + log); `ChepLoiBangGemma` onTimeout dùng `unawaited(moHinh.huy())`. Một chỗ phủ C4, C2, A5, Trợ lý.
-  Phần native không test được (chỉ ghi lý do); phần hàng đợi có ca `I1` ở `chep_loi_bang_gemma_test`.
+  trả (nuốt lỗi + log). Một chỗ phủ C4, C2, A5, Trợ lý. `ChepLoiBangGemma` onTimeout từng dùng `unawaited(moHinh.huy())`; từ
+  2026-10-22 nó chỉ huỷ thẻ `HuyLuot` của lượt (đồng bộ — runtime dừng chat ở nền, bẫy 4.60), nên hàng đợi càng không chờ
+  engine. Phần native không test được (chỉ ghi lý do); phần hàng đợi có ca `I1` ở `chep_loi_bang_gemma_test` — nay canh
+  *"hết giờ không chờ `huy()` toàn cục"* (`huyTreo` treo mãi mà lượt kế vẫn chạy).
 - ✅ **`NgheGiongNoiCubit._dungGhi` kiểm lượt ngay trước `gemma.chep`** (M1): Huỷ rơi vào khe đọc tệp không tốn lượt mô hình.
 - ⚠️ **M8:** `NguonGiongNoi` đăng ký cả iOS mà `ios/Runner/Info.plist` chưa có `NSMicrophoneUsageDescription` /
   `NSSpeechRecognitionUsageDescription` (dự án chỉ chạy Android).

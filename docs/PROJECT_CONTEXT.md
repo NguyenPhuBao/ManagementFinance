@@ -647,8 +647,8 @@ Chốt `LuotKhongNgatDuoc` (khối 🧾 A5 ngay dưới) không có trần: lư�
 C3, Nói (Gemma) và Quét liền kẹt mãi ở *"Đang đọc bằng AI…"*. Nay `chay` / `cho` đợi tối đa `kTranChoLuotCu` **45 s** (tính
 từ lúc bắt đầu đợi, cộng dồn qua lượt nối sau), quá trần ném `LuotCuChuaXong` → người gọi rơi về luật / mẫu câu như mọi lỗi
 mô hình. Quá trần **không** giải phóng chỗ (lượt treo vẫn trên engine); lượt đã quá trần một lần thì lời gọi sau ném ngay.
-45 s ≥ lượt đọc ảnh chậm nhất đã đo (42 s) và < trần 60 s / 90 s của hai lớp bọc — `onTimeout` của lớp bọc (gọi `huy()`
-toàn cục) không còn chạy lúc lượt đang chờ. Hai phần dư (hết giờ của lượt đang chạy vẫn huỷ toàn cục; ba lối chữ chưa có
+45 s ≥ lượt đọc ảnh chậm nhất đã đo (42 s) và < trần 60 s / 90 s của hai lớp bọc — `onTimeout` của lớp bọc (lúc ấy còn gọi
+`huy()` toàn cục; nay chỉ huỷ thẻ của lượt, khối 🪪) không còn chạy lúc lượt đang chờ. Hai phần dư (hết giờ của lượt đang chạy vẫn huỷ toàn cục; ba lối chữ chưa có
 `moc`) làm ngay sau đó — khối 🪪 ngay trên.
 
 **Test:** `luot_khong_ngat_duoc_test` +10 (7 trần dưới `fakeAsync` — kể cả ca canh ba hằng — và 3 đọc mã: `moc` ghi trước khi
