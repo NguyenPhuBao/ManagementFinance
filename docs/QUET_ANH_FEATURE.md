@@ -21,7 +21,7 @@
 > *"Giò vào: 1407"* → 14:07 (chốt 11), tên cửa hàng cắt ký tự rác hai đầu *STARBUCKS"* → *STARBUCKS* (11b), Huỷ pha AI
 > sang form ngay + lời gọi mô hình kế tiếp chờ lượt đọc ảnh cũ (13). ✅ **Đo Realme (CPU) 2026-10-22 tối, cả ba đạt**: N01
 > chụp lại → 398.800 · *ỦA TEA* · 14/10 **14:07**; R01 → *STARBUCKS*; Huỷ pha AI → form ngay, lượt Quét kế tiếp **chờ** lượt
-> cũ rồi chạy (chốt 13). Lần chụp N01 đầu dính dòng rác *"card n"* ở mép ảnh → ghi chú *"card n"* — **G105** (chốt 12).
+> cũ rồi chạy (chốt 13). Lần chụp N01 đầu dính dòng rác *"card n"* ở mép ảnh → ghi chú *"card n"* — **G105**, ✅ sửa cùng tối (chốt 12).
 > ✅ **AI làm chính đã nối (2026-10-08 tối, mã + test)**: hoá đơn + Premium → Gemma NHÌN
 > ẢNH đọc món + tổng (`DocAnhBangGemma`), luật đọc phần còn lại; số chốt bằng `chotTongQuet` — khớp → điền, lệch → ô
 > trống + hai chip trên form. Đường cũ *"AI đọc chữ OCR"* (`DocAnhBangAi`, `lapTuAi`) **đã bỏ**.
@@ -139,8 +139,11 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
     Chỉ tên cửa hàng của hoá đơn — nội dung chuyển khoản của biên lai là chữ người chuyển gõ, giữ nguyên.
 12. **Tên cửa hàng chỉ tìm TRƯỚC thân hoá đơn**, bỏ chữ trên đồ vật phía sau (*ASUS, CORE, IRIS*), mẩu một từ ≤ 4 chữ
     cái (*"tel"*), địa chỉ / liên hệ, tiêu đề chứng từ; không thấy → **trống** (không đoán bằng dòng địa chỉ chợ).
-    ⚠️ **G105** (mở 2026-10-22): mẩu rác **hai** từ ngắn ở mép ảnh (*"card n"*, N01 chụp lần đầu trên Realme) lọt luật mẩu
-    một từ và thắng *"ỦA TEA 2DEE"* ở dòng 3 — ghi chú điền *"card n"*. Chụp lại không dính mép thì đúng.
+    ✅ **Dòng TOÀN CHỮ THƯỜNG xếp sau mọi dòng có chữ hoa** (G105, 2026-10-22 tối): N01 chụp dính chữ lạ ở mép trên, OCR
+    dòng đầu *"card n"* thắng *"ỦA TEA 2DEE"* ở dòng 3. Người dùng chọn xếp theo chữ hoa; bản *"viết hoa thắng"* làm R06
+    thật (*"NHÀ THUỐc"* → dòng khẩu hiệu viết hoa bên dưới) và tên viết thường (*Quán Phở Hùng* thua *DELIVERS*) hỏng, nên
+    chỉ dòng toàn chữ thường bị đẩy xuống — vẫn được lấy khi không còn dòng nào khác. Đuôi rác *2DEE* **không** cắt (tên
+    kiểu *7ELEVEN*, *24H*). Dữ liệu: tờ `N01b` ở `hoa_don_quet_that_du_lieu.dart`.
     Dữ liệu test: `test/features/transaction/domain/hoa_don_that_du_lieu.dart` (chữ OCR thật, đã che số điện thoại).
     ⚠️ Luật sửa trên **chính** 15 tờ này — cần hoá đơn mới để biết nó có chỉ khớp riêng bộ này không. Chỗ dễ vỡ nhất:
     *"dòng trên chỉ-có-số thắng"* (đo đúng 5 ca) — một dòng món đứng ngay trước nhãn tổng sẽ bị bốc nhầm.
@@ -151,10 +154,13 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
     cho `docAnh` chạy qua `LuotKhongNgatDuoc.chay` (`ai_edge/data/luot_khong_ngat_duoc.dart`) và bốn lối sinh khác
     (`sinh` · `sinhDan` · `moPhien` · `chepLoi`) `await _luotAnh.cho()` trước khi tạo phiên — Quét lại / Nói / Trợ lý ngay
     sau Huỷ chờ thêm tối đa vài giây chứ không chồng hai lượt lên engine (vùng chưa đo, họ bẫy sập native OnePlus GPU).
-    Lượt cũ chưa xong sau **45 s** (`kTranChoLuotCu`, thêm cùng ngày theo code-review) thì lượt mới ném `LuotCuChuaXong` và
+    Lượt cũ chưa xong sau **20 s** (`kTranChoLuotCu`; 45 s lúc thêm theo code-review, hạ 2026-10-22 tối — người dùng chốt,
+    lý lẽ ở bẫy 4.60) thì lượt mới ném `LuotCuChuaXong` và
     rơi về luật / mẫu câu — native treo không kéo cả năm lối sinh treo theo; quá trần **không** giải phóng chỗ, lượt đã quá
     trần thì lời gọi sau ném ngay. Hết trần 90 s của `DocAnhBangGemma` chỉ dừng **lượt của nó** qua thẻ `HuyLuot`, không gọi
-    `huy()` toàn cục (bẫy 4.60); nút Huỷ của người dùng vẫn là `huy()` toàn cục. **Đừng** cho `huy` chờ (Huỷ kẹt) hay `dong` / `moHinhSan` chờ (`docAnh` → `_boNap.can` → `dong` là khoá chết). `moc`
+    `huy()` toàn cục (bẫy 4.60); nút Huỷ của người dùng vẫn là `huy()` toàn cục. Huỷ rơi vào lúc runtime đang tạo chat
+    (dưới ~1,2 s sau khi *"Đang đọc bằng AI…"* hiện) từng không dừng được gì — lượt chạy trọn 23–56 s ở nền; vá 2026-10-22
+    tối: xét lại bộ đếm Huỷ ngay sau `createChat` (bẫy 4.60, *khe Huỷ*). **Đừng** cho `huy` chờ (Huỷ kẹt) hay `dong` / `moHinhSan` chờ (`docAnh` → `_boNap.can` → `dong` là khoá chết). `moc`
     của `docAnh` / `chepLoi` ghi **trước** khi chờ: Huỷ trong lúc chờ thì lượt ấy không chạy. Nối dây: `flutter test` mù
     (gói thật) — canh bằng đọc mã ở `luot_khong_ngat_duoc_test`; **chưa đo trên máy**. Nút Huỷ gọi cả `_docGemma.huy()` lẫn
     `_docDanhMuc.huy()` — hai lần `huy()` song song trên cùng chat đọc ảnh; từ 2026-10-22 (lối A) runtime **gộp** chúng
@@ -270,7 +276,7 @@ Các mục khác:
 | Ca | Kết quả |
 |---|---|
 | N01 chụp lại (máy ảnh) | 398.800 · *ỦA TEA* · 14/10/2026 **14:07** · Ăn uống · *Đọc bằng AI*; Gemma 55,9 s (10 món) |
-| N01 chụp lần đầu | 398.800 · 14/10 14:07 đúng, ghi chú **"card n"** (dòng rác mép ảnh) — **G105**; Gemma 23,3 s |
+| N01 chụp lần đầu | 398.800 · 14/10 14:07 đúng, ghi chú **"card n"** (dòng rác mép ảnh) — **G105**, ✅ sửa cùng tối (luật nay ra *ỦA TEA 2DEE*, chưa chạy lại trên máy); Gemma 23,3 s |
 | R01 (thư viện) | 262.000 · *STARBUCKS* · 28/09 14:19 |
 | R02 (thư viện) | 158.000 · *ỦA TEA* · Ăn uống · *Đọc bằng AI*; Gemma 32,6 s |
 | Huỷ pha AI ×4 | form ngay, kết quả luật; logcat mỗi lần **một** dòng gộp + **một** dòng huỷ; lượt bỏ xong 5–7 s sau |

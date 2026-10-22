@@ -616,6 +616,26 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-22)
 
+### ⏳ Trần chờ 20 s · vá khe Huỷ lúc tạo chat · G105 (2026-10-22 khuya, người dùng chọn sau buổi đo Realme) — mã + test, chưa đo trên máy
+
+Ba việc từ buổi đo ở khối 🧷 dưới (`674ed646`):
+- **Trần chờ lượt cũ 45 → 20 s** — người dùng hỏi *"có cách nào giảm thời gian"*. Lý lẽ mới: mọi đường rời pha AI màn Quét
+  (kể cả Back — `PopScope` → `_bamHuy`) đều gọi lệnh dừng, nên ca thường chỉ là lượt bị Huỷ còn giữ chỗ tới hết pha nạp (nạp
+  lạnh 1,3–9,2 s) hoặc hết prefill ảnh (5–7 s sau Huỷ). Trần chạm khi lệnh dừng hỏng (lượt trọn đo 55,9 s) hoặc Huỷ giữa lần
+  nạp CPU đầu tiên sau cài đặt (27,2 s) → rơi về luật sau 20 s. Test canh ba vế. 5–9 s của ca thường không rút được từ phía
+  app (`stopGeneration` không cắt prefill native).
+- **Khe Huỷ lúc tạo chat** — tìm ra khi soát lý lẽ trần: năm lối sinh `await createChat(…)` rồi mới gán `_chatDangSinh`,
+  Huỷ rơi vào khe ấy (dưới ~1,2 s sau khi *"Đang đọc bằng AI…"* hiện) thì `huy()` không có gì để dừng, lượt đọc ảnh chạy trọn
+  23–56 s ở nền. Nay xét lại bộ đếm Huỷ (và thẻ `HuyLuot`) ngay sau `createChat`; `moPhien` đóng phiên vừa tạo trước khi ném.
+- **G105** — dòng **toàn chữ thường** (*"card n"*, chữ lạ ở mép ảnh) xếp sau mọi dòng có chữ hoa khi chọn tên cửa hàng.
+  Người dùng chọn *ưu tiên dòng viết hoa*; bản *"viết hoa thắng"* bị bộ chữ thật lật (R06, tên viết thường) nên làm bản hẹp.
+  N01 chụp dính mép nay ra *"ỦA TEA 2DEE"* (đuôi *2DEE* không cắt).
+
+**Test:** `luot_khong_ngat_duoc_test` — ca trần viết lại (đỏ trên 45 s) + 7 ca đọc mã khe Huỷ (đỏ trên mã cũ; bản sai *gán
+`_chatDangSinh` trước khi xét* đỏ); `doc_hoa_don_test` +4; tờ `N01b` vào `hoa_don_quet_that_du_lieu.dart` (17 mục); 34 tờ chữ
+thật cũ giữ nguyên; hai bản sai luật tên đỏ. **Số đo:** `flutter test` **7796/7796** pass, 10 skip (5 ph 35 s, +12 so với
+7784); `flutter analyze` 20. Chi tiết: cuối bẫy 4.60 `AI_EDGE_FEATURE.md`, chốt 12 / 13 `QUET_ANH_FEATURE.md`, G105.
+
 ### 🧷 Gộp lời dừng trùng — native chỉ nhận một `stopGeneration` mỗi chat (2026-10-22 tối, người dùng chọn lối A) — mã + test
 
 Dây Huỷ của `6c9e6e99` (khối 🪪 dưới) làm nút Huỷ pha AI màn Quét gọi `huy()` **hai lần song song** trên cùng chat đọc ảnh

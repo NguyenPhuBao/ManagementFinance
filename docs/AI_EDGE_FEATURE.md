@@ -289,7 +289,8 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
   `cho()`**: nó chỉ đợi lượt đang chạy và lượt **đã vào hàng trước nó**; hai lời gọi MỚI sau lượt bị bỏ (một `docAnh` và một
   lối khác gọi trước nó) vẫn có thể chạy cùng lúc — đó là tình huống hai tính năng cùng lúc mà giao diện vốn chặn, không phải
   điều chốt này bảo đảm. ✅ **Trần chờ** (code-review 2026-10-22, người dùng chọn cùng ngày): `chay` / `cho` đợi tối đa
-  `kTranChoLuotCu` **45 s** tính từ lúc bắt đầu đợi (cộng dồn qua lượt nối sau), quá trần ném `LuotCuChuaXong` — mọi người gọi
+  `kTranChoLuotCu` (**45 s** lúc thêm — ⚠️ **20 s từ 2026-10-22 tối**, người dùng chốt, lý lẽ mới ở cuối mục; câu *"45 s ≥
+  lượt chậm nhất"* bên dưới là lý lẽ cũ) tính từ lúc bắt đầu đợi (cộng dồn qua lượt nối sau), quá trần ném `LuotCuChuaXong` — mọi người gọi
   đã bắt lỗi chung và rơi về luật / mẫu câu (Trợ lý: câu *"không chạy được"*). ⚠️ Quá trần **không** giải phóng chỗ (lượt
   treo vẫn trên engine — cho lượt mới chạy là chồng hai lượt); lượt đã quá trần một lần thì lời gọi sau ném **ngay**. Native
   treo thật = AI chết tới hết tiến trình, app không treo. 45 s ≥ lượt đọc ảnh chậm nhất đã đo (42 s — lượt bị bỏ mà
@@ -325,10 +326,22 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
   bốn bản sai đỏ) + ca đọc mã *"`_dungChat` gộp lời dừng trùng"* ở `luot_khong_ngat_duoc_test` (`.stopGeneration(` chỉ một chỗ
   trong `SlmRuntimeThat`). ✅ **Đo Realme (CPU) 2026-10-22 tối** (chốt 13 `QUET_ANH_FEATURE.md`): bốn lần Huỷ pha AI, mỗi lần
   **một** dòng gộp + **một** dòng huỷ, không sập; chốt chờ `_luotAnh` lần đầu thấy chạy thật — lượt Quét mới tạo chat **2 ms**
-  sau khi lượt bị bỏ xong. OnePlus GPU chưa đo. ⚠️ **Số đo mới cho trần 45 s:** cùng buổi, một lượt đọc ảnh **trọn vẹn** (N01,
-  10 món, 1.215 ký tự) mất **55,9 s** — dài hơn mốc 42 s mà `kTranChoLuotCu` dựa vào. Lượt **bị Huỷ** vẫn chỉ chạy nốt 5–7 s
-  (dừng sau prefill), nên trần chỉ chạm khi `stopGeneration` hỏng trên lượt dài — lúc ấy lượt mới rơi về luật oan. Chưa đổi
-  hằng (phải < 60 s của `kThoiHanChepLoi`).
+  sau khi lượt bị bỏ xong. OnePlus GPU chưa đo. Cùng buổi, một lượt đọc ảnh **trọn vẹn** (N01, 10 món, 1.215 ký tự) mất
+  **55,9 s** — dài hơn mốc 42 s mà trần 45 s dựa vào.
+  ✅ **Trần chờ hạ xuống 20 s** (cùng tối, người dùng hỏi *"có cách nào giảm thời gian"* rồi chọn 20 s). Lý lẽ mới: trần không
+  cần che một lượt đọc **trọn vẹn** — mọi đường rời pha AI màn Quét (kể cả Back, `PopScope` → `_bamHuy`) đều gọi lệnh dừng,
+  nên ca thường chỉ là lượt bị Huỷ còn giữ chỗ tới hết pha nạp (nạp lạnh Realme CPU 1,3–9,2 s) hoặc hết prefill ảnh (chạy nốt
+  5–7 s sau Huỷ). 20 s ≥ gấp đôi 9,2 s. Trần chỉ chạm khi lượt cũ chạy trọn (lệnh dừng hỏng) hoặc Huỷ rơi vào lần nạp CPU
+  **đầu tiên** sau cài đặt (đo 27,2 s, mục 9.10 bước 6) — khi ấy rơi về luật sau 20 s thay vì chờ tiếp, đúng ý người dùng. Test
+  canh ba vế (≥ 18,4 s · ≤ 20 s · < hai trần lớp bọc). Phía app không rút được 5–9 s của ca thường: `stopGeneration` không
+  cắt được prefill native.
+  ✅ **Khe Huỷ lúc tạo chat** (cùng tối, tìm ra khi soát lý lẽ trần, người dùng chọn vá): `_boNap.can` xét bộ đếm Huỷ lúc vào
+  và sau khi nạp, nhưng năm lối sinh còn `await createChat(…)` rồi mới gán `_chatDangSinh` — Huỷ rơi vào khe ấy (dưới ~1,2 s
+  ngay sau khi *"Đang đọc bằng AI…"* hiện, đo Realme) thì `huy()` không có chat để dừng, lượt đọc ảnh chạy **trọn** 23–56 s ở
+  nền và giữ chỗ. Nay cả năm lối xét lại `_boNap.moc != moc` (và thẻ `HuyLuot` ở `docAnh` / `chepLoi`) **ngay sau
+  `createChat`**, trước khi gán `_chatDangSinh` và trước `addQueryChunk` (chưa prefill); `moPhien` đóng phiên vừa tạo trước khi
+  ném (chưa tới tay `PhienMotLoiGoi` nên không ai `dong()`). Test đọc mã 7 ca ở `luot_khong_ngat_duoc_test` (đỏ trên mã cũ;
+  bản sai *gán `_chatDangSinh` trước khi xét* đỏ). Chưa đo trên máy — khe quá hẹp để bấm trúng bằng adb.
 
 ## 5. Màn Stitch
 
