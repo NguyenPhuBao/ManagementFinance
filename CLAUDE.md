@@ -110,7 +110,7 @@
 # framework báo *"ink splashes may be invisible"* qua `FlutterError` — widget test có `takeException`
 # đỏ (10 ca ở 3 tệp hoá đơn khi nâng). Sửa bằng `Material(type: MaterialType.transparency)` bọc
 # cột chứa tile, KHÔNG đổi gì nhìn thấy được. Ô mới cùng khuôn sẽ vấp lại — đọc khối ⬆️ mục 14 `PROJECT_CONTEXT.md`.
-# Test (chạy từ src/Client-app) — mốc hiện tại **7762/7762** pass, **10** ca cố ý `skip` (đo 2026-10-22, 5 ph 41 s, sau trần 45 s cho chốt chờ lượt mô hình cũ — +10 so với 7752; 10 skip gồm `test/tool/do_from_drift_test.dart` chạy tay). Sau mỗi đợt **sửa đúng con số này**, đừng nối thêm lịch sử — mốc từng đợt
+# Test (chạy từ src/Client-app) — mốc hiện tại **7763/7763** pass, **10** ca cố ý `skip` (đo 2026-10-22, 4 ph 59 s, sau trần 45 s cho chốt chờ lượt mô hình cũ + siết ca P7 — +11 so với 7752; 10 skip gồm `test/tool/do_from_drift_test.dart` chạy tay). Sau mỗi đợt **sửa đúng con số này**, đừng nối thêm lịch sử — mốc từng đợt
 # nằm ở khối tương ứng mục 14 `docs/PROJECT_CONTEXT.md` và ở commit. ⚠️ Thời gian dao động mạnh theo tải máy: ~1,5
 # phút chạy một mình, ~3,5 phút song song `flutter analyze`, tới ~5,5 phút song song build APK; đo 2026-10-17 tối: 7 ph 43 s
 # (không `flutter` nào song song, nhưng máy tải nặng — các agent con đang chạy); 2026-10-18 khuya: 6 ph 29 s (một agent soát chỉ đọc).

@@ -95,7 +95,8 @@ Luật **chỉ chọn thêm trong tập `cachDocSoTien`** — không có bộ đ
 qua **cùng lưới C2** — `soTienAiHopLe(cau, ai, now)` (tách từ `docCauGiaoDich`, một định nghĩa): số ∈ `cachDocSoTien`.
 `chotSoTienCau(luat:, ai:, khac:)` → `ChotTong` (không dùng lại `chotTongQuet` của OCR): **hai chip chỉ khi số AI ∈ `khac`**;
 số AI khác số luật mà ngoài `khac` là Gemma đọc lại **chính cụm luật** theo cách khác → giữ số luật. Khi lệch, tóm tắt
-"Đã điền" bỏ phần số tiền (P7).
+"Đã điền" bỏ phần số tiền (P7) — chỉ còn số tiền thì bỏ hẳn dòng, còn ô khác thì giữ phần ấy (*"Đã điền: Hôm qua"*); ca canh
+đòi đúng tóm tắt (2026-10-22, sau code-review — trước chỉ đòi *"không chứa 50.000"*, để lọt một dòng *"Đã điền: "* cụt).
 
 🔧 **Người dùng chốt 2026-10-22 — thu hẹp quyết định số 5 của spec.** Đo Realme 2026-10-21 (mục 9.1): Gemma đọc *"tiền điện một
 triệu hai"* thành **1.000.000** 2/2 lần (cả hai lối) → hai chip oan mỗi lần, sau ~16 s chờ. Phép đo `cachDocSoTien` trên 14 câu
@@ -104,8 +105,9 @@ tạo chip, lượt chờ là thừa; N1 (*một triệu hai · 1 triệu 2*) �
 Gemma. Bản cụt không phải ý thật vì luật chỉ chọn N1 khi chữ số lẻ đứng ở chỗ của tiền; ca *"học phí hai triệu năm"* (mỗi năm)
 người dùng loại: *sổ ghi một lần trả tiền đã xảy ra, ít khi nói "hàng năm, hàng tháng"*.
 
-- **Không có đường kiểm ở nền.** `soTienCanKiem` ⇒ ghi chú còn số tiền ⇒ `oThieu` có `OThieu.ghiChu` ⇒ C2 hỏi Gemma **trước**
-  khi điền, và Cubit dùng luôn kết quả ấy (`_chotSoTien`). Đường cũ *điền luật ngay rồi một lượt `DocCauBangAi.doc` ở nền*
+- **Không có đường kiểm ở nền.** `soTienCanKiem` ⇒ ghi chú luật còn số tiền ⇒ ở lượt **chỉ có luật** (lượt quyết có hỏi AI)
+  `oThieu` có `OThieu.ghiChu` ⇒ C2 hỏi Gemma **trước** khi điền, và Cubit dùng luôn kết quả ấy (`_chotSoTien` nhận kết quả
+  lượt luật — số luật và `soTienKhac` không đọc từ kết quả đã lấp AI). Đường cũ *điền luật ngay rồi một lượt `DocCauBangAi.doc` ở nền*
   (`dangKiemSoTien`, `huyKiemSoTien`, dòng *"Đang kiểm số tiền bằng AI…"* + Huỷ ở `ONhapNhanh`) chỉ còn chạy cho câu một cụm —
   đúng những câu thôi kiểm — nên đã **gỡ** cùng ngày. Ca canh bất biến ở `doc_cau_noi_test` (nhóm *soTienKhac*).
 - ⚠️ **Tính trên ghi chú, không trên cả câu** — số trong tên ví đã đọc (*"bằng thẻ 365"*) không phải số tiền; tính trên câu

@@ -632,6 +632,17 @@ mỗi lượt nối, không huỷ hẹn giờ, `moc` sau khi chờ, `moHinhSan` 
 `flutter test` **7762/7762** pass, 10 skip (5 ph 41 s, +10 so với 7752); `flutter analyze` **20**. Kiểm trên máy (khi có):
 khó tạo native treo thật — phép đo khả thi chỉ là *Huỷ ở pha AI rồi Quét / Nói / Trợ lý ngay*, lượt mới chờ vài giây rồi chạy.
 
+### 🧹 Siết test + dọn nhỏ theo code-review (2026-10-22, người dùng chọn cùng lượt với khối ⏱️) — không đổi hành vi
+
+- Ca P7 `them_giao_dich_kiem_cheo_test` đòi **đúng** tóm tắt: lệch mà tóm tắt chỉ có số tiền → bỏ hẳn dòng (`ketQuaDien`
+  `null`); thêm ca có ngày → *"Đã điền: Hôm qua"*. Bản sai *để lại "Đã điền: " cụt* xanh với ca cũ, đỏ với ca mới.
+- `_chotSoTien` (`ThemGiaoDichCubit`) nhận cả `KetQuaDocCau` của lượt luật thay vì ba trường tách rời, tự xét `soTienCanKiem`.
+- `0.5` viết tay → `kDungSaiTien` ở `chot_so_tien_cau.dart` và `doc_cau_giao_dich.dart` (`soTienKhac`, `soTienAiHopLe`).
+- `QuetAnhPage`: cờ `_huyAi` thành getter `_tinHuyAi.isCompleted` (hai trạng thái cho một sự thật), docstring theo hành vi mới.
+- Chú thích *"luôn có `OThieu.ghiChu`"* / *"cùng phép đọc"* ở `doc_cau_giao_dich.dart` nói rõ chỉ đúng cho lượt **chỉ có luật**.
+
+**Số đo:** `flutter test` **7763/7763** pass, 10 skip (4 ph 59 s, +1 so với 7762); `flutter analyze` **20**.
+
 ### 🧾 A5 — ba ứng viên sửa của lượt Realme 21/10 (2026-10-22, người dùng duyệt) — mã + test, chưa đo trên máy
 
 Bàn giao trước để lại ba ứng viên ở mục 7 `QUET_ANH_FEATURE.md`; người dùng chọn làm cả ba (không máy nào cắm).
