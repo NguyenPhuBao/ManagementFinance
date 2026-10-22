@@ -1704,15 +1704,76 @@ Realme / OnePlus. Chi tiết: khối 🕗 đầu mục 14 `PROJECT_CONTEXT.md`.
 nút *Chụp ảnh*; OCR ra ba dòng đầu *"card n"* · *"Dịa chi Kios 01, quang truờng Dramond, Drh Thi"* · *"ỦA TEA 2DEE"* —
 *"card n"* là chữ của vật nằm ở mép khung. Luật tên cửa hàng (chốt 12 `QUET_ANH_FEATURE.md`: chỉ tìm trước thân hoá đơn, bỏ
 mẩu **một** từ ≤ 4 chữ cái, địa chỉ / liên hệ, tiêu đề chứng từ) cho *"card n"* qua và lấy nó vì đứng đầu → ghi chú
-*"card n"*. Số tiền 398.800 và ngày giờ 14/10 14:07 vẫn đúng. Chụp lại (không dính mép) → *ỦA TEA* đúng. Chữ OCR lần ấy (55 dòng,
-đã che số khách) ở phụ lục tệp bàn giao `flowmoney-handoff-2026-10-22-gop-loi-dung-do-realme.md` — đưa vào
-`hoa_don_quet_that_du_lieu.dart` khi sửa.
+*"card n"*. Số tiền 398.800 và ngày giờ 14/10 14:07 vẫn đúng. Chụp lại (không dính mép) → *ỦA TEA* đúng. Chữ OCR lần ấy (55 dòng
+`[Quet][OCR]` của logcat, đã che số khách) ở cuối mục này — đưa vào `hoa_don_quet_that_du_lieu.dart` khi sửa.
 
 **Chưa sửa** — cần người dùng chọn hướng: siết luật mẩu ngắn (mọi từ ≤ 4 chữ cái *và* tổng ngắn), hay ưu tiên dòng có dấu
 hiệu tên (chữ hoa toàn dòng, đứng ngay trên dòng địa chỉ). Mỗi luật mới là một dương tính giả mới — phải chạy lại trên 34
 tờ chữ thật (`hoa_don_that_test`, `hoa_don_quet_that_test`).
 
 **Bán kính.** Chỉ ghi chú của hoá đơn quét khi ảnh dính chữ lạ ở mép trên; người dùng thấy ngay trên form và sửa được.
+
+<details><summary>Chữ OCR N01 chụp lần đầu — Realme 2026-10-22 19:58, <code>/quet</code> thật (luật: <code>tong=398800 | ghi="card n" | luc=2026-10-14 14:07</code>)</summary>
+
+```
+card n
+Dịa chi Kios 01, quang truờng Dramond, Drh Thi
+ỦA TEA 2DEE
+Thi, Van phúc
+Hotline: 0934803456
+HÒA ĐƠN THANH TOÁN
+So HÐ: UAO068
+Mã HD: #TH8HW TN: THU NGAN
+an: HUB (GRABF00D) Ngðy: 14/10/2026
+(GF-264_TH8HW)
+Giò ra 1407
+Gid vào: 1407
+STT pon Thanh
+Tên món
+gid tien
+MATCHA OATMILK 142,000 42,000
+SIZE NM
+100% NGOT 1
+100% ĐẢ
+SÜA TƯƠI TRẢN
+CHÅU ĐUỜNG ĐẾN- L 39,000 39,000
+50X NGOT
+100% ĐẢ
+MATCHA LATTE 39,000 39 000
+-SIZE M
+50% ĐẢ
+4 MATCHA LATTE 39, 000 39,000
+4gr bột Matcha 12,000 12,000|
+- SIZE M 0
+MATCHA LATTE 39,000| 39,000
+- SIZE M
+50% NGỘT
+TRA NHO XANH
+45,000 90,000
+THACH DUA - L
+NHẢN DỦA SỬA 149 000 49,000|
+TRA TRÁI CAY NHHẾT
+8 ĐỚI - L 145,0D0 45,000
+HOP TRAI CẢY NHO
+|MIX 3 LOAI 29,000 29,000
+Tống số mon. i0
+Thành tien: 423,000 d
+Tien chiết khấu: 24,200 d
+Töng tien: 398,800d
++Thanh toán (GRAB_ONLINE) 398,800 d
+Ghi chú: (GRABFOOD-GF-264.THEHW-DEL-2026-
+10 14 1407 30). Hoa đon áp dung bản hàng thea
+kénh
+Khách bông - 8410****** -
+null
+Moi thác Inåc, khiéu nại dưn hàng, quy kihách vui
+là ng lién hệ hotline nhé
+MR realme Shot on O3 Pro 5G 2026 10 22 19:57
+Cảm on Quy Khách
+Powered by iPOs.vn
+```
+
+</details>
 
 ---
 
