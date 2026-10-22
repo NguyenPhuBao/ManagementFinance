@@ -284,17 +284,34 @@ bool _khongPhaiTenCuaHang(String dong) {
 }
 
 /// Tên cửa hàng: dòng có chữ đầu tiên TRƯỚC thân hoá đơn (dòng có số tiền, mã HĐ, tiêu đề cột), bỏ chữ trên đồ vật
-/// phía sau, mẩu chữ lẻ (một từ ≤ 4 chữ cái — *"tel"*, *"M"*), địa chỉ / liên hệ và tiêu đề chứng từ. Không thấy →
-/// `null`: ô trống để người dùng gõ tốt hơn một tên đoán sai (MAXIDI bị cắt mất logo chỉ còn dòng địa chỉ chợ). Tên trả
-/// về đã cắt ký tự rác ở hai đầu ([_racDauTen], [_racCuoiTen]).
+/// phía sau, mẩu chữ lẻ (một từ ≤ 4 chữ cái — *"tel"*, *"M"*), địa chỉ / liên hệ và tiêu đề chứng từ. Dòng TOÀN CHỮ
+/// THƯỜNG xếp sau mọi dòng có chữ hoa — chỉ lấy khi không còn dòng nào khác: G105 (Realme 2026-10-22) — N01 chụp dính
+/// mép, OCR dòng đầu *"card n"* (chữ của vật ở mép ảnh), tên *"ỦA TEA 2DEE"* ở dòng 3. ⚠️ Đừng nới thành *"dòng viết hoa
+/// thắng"*: bản thử ấy đổi R06 thật (*"NHÀ THUỐc"* — OCR đọc chữ cuối thường) sang dòng khẩu hiệu viết hoa bên dưới, và
+/// tên viết thường (*"Quán Phở Hùng"*) thua dòng *DELIVERS*. Không thấy → `null`: ô trống để người dùng gõ tốt hơn một
+/// tên đoán sai (MAXIDI bị cắt mất logo chỉ còn dòng địa chỉ chợ). Tên trả về đã cắt ký tự rác ở hai đầu ([_racDauTen],
+/// [_racCuoiTen]).
 String? _cuaHang(List<String> dong, List<String> bo) {
+  String? thuong;
   for (var i = 0; i < dong.length; i++) {
     final b = bo[i];
-    if (_thanHoaDon.hasMatch(b) || tienTrenDong(_dongTien(dong[i])).isNotEmpty) return null;
+    if (_thanHoaDon.hasMatch(b) || tienTrenDong(_dongTien(dong[i])).isNotEmpty) break;
     final tu = _tuChu.allMatches(dong[i]).toList();
     if (tu.isEmpty || (tu.length == 1 && tu.first.group(0)!.length <= 4)) continue;
     if (_khongPhaiTenCuaHang(dong[i])) continue;
-    return dong[i].replaceFirst(_racDauTen, '').replaceFirst(_racCuoiTen, '');
+    if (_toanChuThuong(tu)) {
+      thuong ??= dong[i];
+      continue;
+    }
+    return _catRacTen(dong[i]);
   }
-  return null;
+  return thuong == null ? null : _catRacTen(thuong);
 }
+
+/// Mọi chữ cái của dòng đều là chữ THƯỜNG (*"card n"* có; *"eco-shop Invoice"*, *"NHÀ THUỐc"* không).
+bool _toanChuThuong(List<RegExpMatch> tu) {
+  final chu = tu.map((m) => m.group(0)!).join();
+  return chu == chu.toLowerCase() && chu != chu.toUpperCase();
+}
+
+String _catRacTen(String dong) => dong.replaceFirst(_racDauTen, '').replaceFirst(_racCuoiTen, '');

@@ -1,6 +1,7 @@
 /// A5 — luật đọc ảnh quét + chốt tổng chạy trên chữ OCR mà `/quet` THẬT đã thấy (Realme, 2026-10-21; dữ liệu ở
 /// `hoa_don_quet_that_du_lieu.dart`). Khác `hoa_don_that_test.dart`: chữ ở đây đã qua `image_picker` (ảnh nén lại), nên
-/// đây mới là phép kiểm hồi quy đầu-cuối của `/quet` trên 15 tờ R01–R16 + một tờ mới.
+/// đây mới là phép kiểm hồi quy đầu-cuối của `/quet` trên 15 tờ R01–R16 + một tờ mới (N01, và N01b — cùng tờ chụp lại
+/// 2026-10-22 tối, ảnh dính chữ lạ ở mép, G105).
 ///
 /// Nhóm đầu là phép kiểm CHÍNH dữ liệu: luật trên chữ đã che thông tin phải ra đúng dòng `[Quet][luat]` của logcat
 /// hôm ấy — đỏ là dữ liệu chép sai, hoặc luật đã đổi cách đọc một tờ thật.
@@ -14,14 +15,14 @@ import 'hoa_don_quet_that_du_lieu.dart';
 
 /// Đáp án chấm bằng mắt trên ảnh (bảng mục 7 `QUET_ANH_FEATURE.md`). R15 lấy *Tổng tiền* như quy ước 08/10.
 const Map<String, int> kDapAnQuet = {
-  'N01': 398800, 'R01': 262000, 'R02': 158000, 'R03': 217500, 'R04': 55500, 'R05': 57000, 'R06': 76872,
-  'R07': 44700, 'R08': 75700, 'R10': 45000, 'R11': 79243, 'R12': 300240, 'R13': 72127, 'R14': 44745, 'R15': 32160,
+  'N01': 398800, 'N01b': 398800, 'R01': 262000, 'R02': 158000, 'R03': 217500, 'R04': 55500, 'R05': 57000,
+  'R06': 76872, 'R07': 44700, 'R08': 75700, 'R10': 45000, 'R11': 79243, 'R12': 300240, 'R13': 72127, 'R14': 44745, 'R15': 32160,
   'R16': 36000,
 };
 
-/// Tổng Gemma CPU (Realme, nhìn ảnh) trả trong cùng lượt — dòng `[Quet][Gemma]` của logcat.
+/// Tổng Gemma CPU (Realme, nhìn ảnh) trả trong cùng lượt — dòng `[Quet][Gemma]` của logcat (N01b: 2026-10-22, 23,3 s).
 const Map<String, int> kGemmaQuet = {
-  'N01': 161000, 'R01': 262000, 'R02': 158000, 'R03': 217500, 'R04': 55500, 'R05': 57000, 'R06': 76872,
+  'N01': 161000, 'N01b': 398800, 'R01': 262000, 'R02': 158000, 'R03': 217500, 'R04': 55500, 'R05': 57000, 'R06': 76872,
   'R07': 44700, 'R08': 55000, 'R10': 45000, 'R11': 119180, 'R12': 300240, 'R13': 72127, 'R14': 44745, 'R15': 13500,
   'R16': 36000,
 };
@@ -35,6 +36,9 @@ void main() {
     const logcat = <String, (int, String, (int, int, int, int, int)?)>{
       // 2026-10-22: giờ in liền sau nhãn (*"Giò vào: 1407"*) — trước đọc 00:00.
       'N01': (398800, 'ỦA TEA', (2026, 10, 14, 14, 7)),
+      // 2026-10-22 tối (G105): dòng rác mép ảnh *"card n"* (toàn chữ thường) đứng đầu — trước ra *card n*; nay dòng toàn chữ
+      // thường xếp sau. Đuôi rác *2DEE* cố ý KHÔNG cắt (tên kiểu *7ELEVEN*, *24H* sẽ bị cắt oan).
+      'N01b': (398800, 'ỦA TEA 2DEE', (2026, 10, 14, 14, 7)),
       // 2026-10-22: ký tự rác ở hai đầu tên cửa hàng bị cắt — trước ra *STARBUCKS"*.
       'R01': (262000, 'STARBUCKS', (2026, 9, 28, 14, 19)),
       'R02': (158000, 'ỦA TEA', (2026, 10, 2, 14, 26)),
@@ -54,7 +58,7 @@ void main() {
       'R16': (36000, 'BEE BEE MART 18K', (2026, 9, 19, 21, 29)),
     };
 
-    test('đủ 16 tờ, không thừa', () => expect(kHoaDonQuetRealme.keys.toSet(), logcat.keys.toSet()));
+    test('đủ 17 mục, không thừa', () => expect(kHoaDonQuetRealme.keys.toSet(), logcat.keys.toSet()));
 
     for (final e in logcat.entries) {
       test(e.key, () {

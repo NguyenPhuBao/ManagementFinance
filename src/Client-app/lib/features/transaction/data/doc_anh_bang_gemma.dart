@@ -17,7 +17,7 @@ import '../../ai_edge/data/huy_luot.dart';
 import '../domain/doc_anh_gemma.dart';
 
 /// Đo Realme 2026-10-08 (CPU, Mali): 21–42 s một ảnh; GPU OnePlus 3,7–11 s. Trần rộng gấp đôi lượt chậm nhất đã đo.
-/// Tính cả lúc runtime chờ lượt đọc ảnh trước bị bỏ (bẫy 4.60; trần `kTranChoLuotCu` 45 s, ngắn hơn trần này — lượt chờ
+/// Tính cả lúc runtime chờ lượt đọc ảnh trước bị bỏ (bẫy 4.60; trần `kTranChoLuotCu` 20 s, ngắn hơn trần này — lượt chờ
 /// quá lâu tự ném trước khi trần này tới).
 const Duration kThoiHanDocAnhGemma = Duration(seconds: 90);
 

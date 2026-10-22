@@ -123,6 +123,24 @@ Tien thoi lai            8.138
     }
   });
 
+  // G105 (Realme 2026-10-22): N01 chụp dính chữ lạ ở mép trên — OCR dòng đầu *"card n"*, ghi chú ra *"card n"*. Người dùng
+  // chọn xếp theo chữ hoa; bản *"viết hoa thắng"* làm R06 thật và tên viết thường hỏng, nên chỉ dòng TOÀN CHỮ THƯỜNG xếp sau.
+  group('tên cửa hàng: dòng toàn chữ thường xếp sau dòng có chữ hoa', () {
+    test('⭐ "card n" ở mép trên không thắng tên cửa hàng bên dưới', () {
+      expect(docHoaDonTuChu('card n\nDịa chi Kios 01, quang truờng\nỦA TEA\nSo HÐ: UAO068\nTổng tiền: 398,800 d').cuaHang,
+          'ỦA TEA');
+    });
+    test('tên viết thường lẫn hoa (không toàn chữ thường) vẫn đứng đầu — không thua dòng viết hoa bên dưới', () {
+      expect(docHoaDonTuChu('Nhà thuốc Long Châu\nCHI NHÁNH QUẬN 3\nTổng tiền: 50.000').cuaHang, 'Nhà thuốc Long Châu');
+    });
+    test('chỉ có dòng toàn chữ thường → vẫn lấy nó (không bỏ trống)', () {
+      expect(docHoaDonTuChu('eco-shop\nTổng tiền: 50.000').cuaHang, 'eco-shop');
+    });
+    test('hai dòng toàn chữ thường → lấy dòng ĐẦU', () {
+      expect(docHoaDonTuChu('card n\neco-shop\nTổng tiền: 50.000').cuaHang, 'card n');
+    });
+  });
+
   test('kNhanTongHoaDon / kNhanLoaiHoaDon công khai, cùng nội dung spike', () {
     expect(kNhanTongHoaDon.first, 'tong thanh toan');
     expect(kNhanLoaiHoaDon, contains('khach dua'));

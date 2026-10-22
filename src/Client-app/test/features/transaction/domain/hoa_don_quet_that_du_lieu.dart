@@ -5,7 +5,8 @@
 ///
 /// Cùng 15 tờ R01–R16 với `hoa_don_that_du_lieu.dart` (ảnh rộng 1280 của buổi 08/10), nhưng chữ KHÁC: tệp ấy đọc bằng màn
 /// spike, còn ở đây ảnh đã qua `image_picker` (R08 98.970 → 83.192 byte). Đây mới là đầu vào thật của `/quet` — G101.
-/// Dữ liệu cho `hoa_don_quet_that_test.dart`; bảng kết quả ở mục 7 `docs/QUET_ANH_FEATURE.md`.
+/// Dữ liệu cho `hoa_don_quet_that_test.dart`; bảng kết quả ở mục 7 `docs/QUET_ANH_FEATURE.md`. Thêm 2026-10-22 tối: `N01b`
+/// — tờ N01 chụp lại bằng máy ảnh (bản `16b71a1e…`), ảnh dính chữ lạ ở mép trên (G105); 17 mục.
 library;
 
 const Map<String, String> kHoaDonQuetRealme = {
@@ -59,6 +60,64 @@ Khách hang' - 8490000000
 null
 MRrealme Shot onE3Pro 5,6don hàng, quy khách vuị 2026 10 21 13:49
 lò 1g liên hệ hotline nhé''',
+  // ỦA TEA N01 chụp LẠI 2026-10-22 19:58 (Realme, bản `16b71a1e…`) — ảnh dính chữ lạ ở mép trên: OCR dòng đầu *"card n"*,
+  // tên cửa hàng xuống dòng 3 kèm đuôi rác *"2DEE"* — G105.
+  'N01b': r'''
+card n
+Dịa chi Kios 01, quang truờng Dramond, Drh Thi
+ỦA TEA 2DEE
+Thi, Van phúc
+Hotline: 0934803456
+HÒA ĐƠN THANH TOÁN
+So HÐ: UAO068
+Mã HD: #TH8HW TN: THU NGAN
+an: HUB (GRABF00D) Ngðy: 14/10/2026
+(GF-264_TH8HW)
+Giò ra 1407
+Gid vào: 1407
+STT pon Thanh
+Tên món
+gid tien
+MATCHA OATMILK 142,000 42,000
+SIZE NM
+100% NGOT 1
+100% ĐẢ
+SÜA TƯƠI TRẢN
+CHÅU ĐUỜNG ĐẾN- L 39,000 39,000
+50X NGOT
+100% ĐẢ
+MATCHA LATTE 39,000 39 000
+-SIZE M
+50% ĐẢ
+4 MATCHA LATTE 39, 000 39,000
+4gr bột Matcha 12,000 12,000|
+- SIZE M 0
+MATCHA LATTE 39,000| 39,000
+- SIZE M
+50% NGỘT
+TRA NHO XANH
+45,000 90,000
+THACH DUA - L
+NHẢN DỦA SỬA 149 000 49,000|
+TRA TRÁI CAY NHHẾT
+8 ĐỚI - L 145,0D0 45,000
+HOP TRAI CẢY NHO
+|MIX 3 LOAI 29,000 29,000
+Tống số mon. i0
+Thành tien: 423,000 d
+Tien chiết khấu: 24,200 d
+Töng tien: 398,800d
++Thanh toán (GRAB_ONLINE) 398,800 d
+Ghi chú: (GRABFOOD-GF-264.THEHW-DEL-2026-
+10 14 1407 30). Hoa đon áp dung bản hàng thea
+kénh
+Khách bông - 8490000000 -
+null
+Moi thác Inåc, khiéu nại dưn hàng, quy kihách vui
+là ng lién hệ hotline nhé
+MR realme Shot on O3 Pro 5G 2026 10 22 19:57
+Cảm on Quy Khách
+Powered by iPOs.vn''',
   // Starbucks
   'R01': r'''
 STARBUCKS"

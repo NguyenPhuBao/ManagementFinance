@@ -10,12 +10,14 @@ library;
 import 'dart:async';
 
 /// Trần chờ lượt cũ của MỘT lời gọi [LuotKhongNgatDuoc.chay] / [LuotKhongNgatDuoc.cho], tính từ lúc bắt đầu đợi (code-review
-/// 2026-10-22: lượt native TREO thì năm lối sinh treo theo). ≥ lượt đọc ảnh chậm nhất đã đo (Realme CPU 42 s — lượt bị bỏ
-/// mà `stopGeneration` hỏng thì chạy nốt tới cùng), và NGẮN HƠN trần của hai lớp bọc (`kThoiHanChepLoi` 60 s,
-/// `kThoiHanDocAnhGemma` 90 s): lượt đang chờ tự ném trước, lớp bọc không phải cắt một lượt còn đứng chờ (cắt lúc ấy thì
-/// thẻ `HuyLuot` của lượt chỉ được xét SAU pha nạp — `chepLoi` có thể nạp mô hình vô ích). Test canh cả hai vế. Chưa đo
-/// trên máy.
-const Duration kTranChoLuotCu = Duration(seconds: 45);
+/// 2026-10-22: lượt native TREO thì năm lối sinh treo theo). Ca THƯỜNG — lượt đọc ảnh bị Huỷ còn giữ chỗ tới hết pha nạp (nạp
+/// lạnh Realme CPU 1,3–9,2 s) hoặc hết prefill ảnh (Realme 2026-10-22: chạy nốt 5–7 s sau Huỷ) — nằm gọn trong trần với biên
+/// gấp đôi. Trần chạm khi lượt cũ chạy TRỌN vì lệnh dừng hỏng (một lượt đọc ảnh đo được 55,9 s), hoặc khi Huỷ rơi vào lần nạp
+/// CPU ĐẦU TIÊN sau cài đặt (đo 27,2 s, 2026-09-22): người dùng chốt 2026-10-22 không bắt chờ tới đó — 20 s rồi rơi về luật
+/// (trước là 45 s). NGẮN HƠN trần của hai lớp bọc (`kThoiHanChepLoi`
+/// 60 s, `kThoiHanDocAnhGemma` 90 s): lượt đang chờ tự ném trước, lớp bọc không phải cắt một lượt còn đứng chờ (cắt lúc ấy
+/// thì thẻ `HuyLuot` của lượt chỉ được xét SAU pha nạp — `chepLoi` có thể nạp mô hình vô ích). Test canh ba vế.
+const Duration kTranChoLuotCu = Duration(seconds: 20);
 
 /// Lượt cũ không xong trong [kTranChoLuotCu] — coi như mô hình không chạy được lúc này; người gọi rơi về luật / mẫu câu.
 class LuotCuChuaXong implements Exception {
@@ -32,7 +34,7 @@ class LuotKhongNgatDuoc {
   Future<void>? _dang;
 
   /// Lượt đã làm MỘT lời gọi quá trần — lời gọi sau ném ngay thay vì đợi thêm một trần nữa (native treo thì mỗi câu hỏi
-  /// chờ 45 s). ⚠️ Quá trần KHÔNG giải phóng chỗ: lượt ấy vẫn chạy trên engine, cho lượt mới chạy là hai lượt chồng nhau.
+  /// chờ trọn một trần). ⚠️ Quá trần KHÔNG giải phóng chỗ: lượt ấy vẫn chạy trên engine, cho lượt mới chạy là hai lượt chồng nhau.
   Future<void>? _quaTran;
 
   /// Chạy [f] sau khi lượt trước (nếu có) xong; trong lúc [f] chạy, [cho] đợi nó. Lỗi của [f] ném lại cho người gọi.

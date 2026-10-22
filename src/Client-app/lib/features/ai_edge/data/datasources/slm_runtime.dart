@@ -120,7 +120,8 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
   /// không chờ (Huỷ sẽ kẹt), [dong] / [moHinhSan] không chờ (`docAnh` → `_boNap.can` → [dong] là khoá chết). Lượt cũ quá
   /// `kTranChoLuotCu` → lối sinh ném `LuotCuChuaXong` (người gọi rơi về luật / mẫu câu như mọi lỗi mô hình). Cả năm lối ghi
   /// `moc` TRƯỚC khi chờ: [huy] (người dùng) trong lúc chờ là bỏ lượt — `docAnh` / `chepLoi` qua `_boNap.can`, ba lối chữ tự
-  /// kiểm ngay sau khi chờ. Nối dây canh bằng đọc mã ở `luot_khong_ngat_duoc_test`.
+  /// kiểm ngay sau khi chờ; cả năm xét lại ngay sau `createChat` (Huỷ tới lúc đang tạo chat thì [huy] chưa có gì để dừng —
+  /// khe Huỷ, 2026-10-22). Nối dây canh bằng đọc mã ở `luot_khong_ngat_duoc_test`.
   final LuotKhongNgatDuoc _luotAnh = LuotKhongNgatDuoc();
 
   @override
@@ -143,6 +144,9 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
       final dongHo = Stopwatch()..start();
       // Nhiệt độ 0,2 như lượt đo (Gemma ra y hệt 3/3 lần mỗi ảnh) — đổi là phải đo lại.
       final chat = await _model!.createChat(temperature: 0.2, supportImage: true);
+      // Huỷ / hết giờ tới trong lúc tạo chat: `huy()` khi ấy chưa có chat để dừng — bỏ lượt TRƯỚC khi gửi ảnh, nếu không
+      // lượt chạy trọn (23–56 s Realme CPU) và giữ chỗ (khe Huỷ, 2026-10-22). Xét cùng microtask với lúc gán `_chatDangSinh`.
+      if (_boNap.moc != moc || (huyLuot?.daHuy ?? false)) throw const LuotNapBiHuy();
       _chatDangSinh = chat;
       // Hết giờ của lớp bọc dừng CHÍNH chat này — kể cả thẻ đã huỷ lúc đang tạo chat (tín hiệu vẫn tới người nghe muộn).
       unawaited(huyLuot?.tin.then((_) => _dungChat(chat)));
@@ -172,6 +176,8 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     final dongHo = Stopwatch()..start();
     // Nhiệt độ 0,2 như spike C4 (2026-10-01) — đổi là phải đo lại.
     final chat = await _model!.createChat(temperature: 0.2, supportAudio: true);
+    // Như `docAnh`: Huỷ / hết giờ lúc đang tạo chat thì bỏ trước khi gửi âm thanh.
+    if (_boNap.moc != moc || (huyLuot?.daHuy ?? false)) throw const LuotNapBiHuy();
     _chatDangSinh = chat;
     unawaited(huyLuot?.tin.then((_) => _dungChat(chat)));
     await chat.addQueryChunk(Message.withAudio(text: prompt, audioBytes: wav, isUser: true));
@@ -265,6 +271,8 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     // đúng con số này, và không có nó thì phải sửa mã mới đo lại được.
     final dongHo = Stopwatch()..start();
     final chat = await m.createChat(temperature: 0.2);
+    // Huỷ lúc đang tạo chat (như `docAnh`): bỏ trước khi gửi câu.
+    if (_boNap.moc != moc) throw const LuotNapBiHuy();
     await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
     final r = await chat.generateChatResponse();
     final cau = (r is TextResponse ? r.token : r.toString()).trim();
@@ -286,6 +294,8 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     // con số người dùng cảm nhận, không phải tổng thời gian.
     final dongHo = Stopwatch()..start();
     final chat = await m.createChat(temperature: 0.2);
+    // Huỷ lúc đang tạo chat (như `docAnh`): bỏ trước khi gán `_chatDangSinh` và gửi câu.
+    if (_boNap.moc != moc) throw const LuotNapBiHuy();
     _chatDangSinh = chat;
     await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
     var tokenDau = -1;
@@ -345,6 +355,16 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
       toolChoice: ToolChoice.auto,
       systemInstruction: heThong,
     );
+    // Huỷ lúc đang tạo phiên (~3 s Realme CPU, như `docAnh`): bỏ trước khi gửi câu — `PhienMotLoiGoi` chưa có phiên để dừng.
+    // Phiên chưa tới tay người gọi nên không ai `dong()` nó (đường thường luôn đóng) — đóng ở đây.
+    if (_boNap.moc != moc) {
+      try {
+        await chat.close();
+      } catch (e) {
+        debugPrint('[SLM][tool] đóng phiên bị huỷ hỏng: $e');
+      }
+      throw const LuotNapBiHuy();
+    }
     await chat.addQueryChunk(Message.text(text: cauHoi, isUser: true));
     debugPrint('[SLM][tool] mở phiên sau ${dongHo.elapsedMilliseconds} ms: '
         '${congCu.length} tool, tools_json $doDaiToolsJson ký tự, '

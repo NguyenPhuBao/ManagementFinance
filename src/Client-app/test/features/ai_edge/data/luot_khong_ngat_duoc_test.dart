@@ -118,7 +118,7 @@ void main() {
 
         final sau = _theoDoi(l.cho());
         fa.flushMicrotasks();
-        expect(sau.loi, isA<LuotCuChuaXong>(), reason: 'mỗi lời gọi đợi thêm một trần nữa là mỗi câu hỏi chờ 45 s');
+        expect(sau.loi, isA<LuotCuChuaXong>(), reason: 'mỗi lời gọi đợi thêm một trần nữa là mỗi câu hỏi chờ trọn một trần');
 
         treo.complete();
         fa.flushMicrotasks();
@@ -168,14 +168,19 @@ void main() {
       });
     });
 
-    test('⭐ trần chờ ≥ lượt đọc ảnh chậm nhất đã đo và NGẮN HƠN trần hai lớp bọc', () {
+    test('⭐ trần chờ ≥ gấp đôi lúc lượt bị Huỷ còn giữ chỗ, ≤ 20 s (người dùng chốt), NGẮN HƠN trần hai lớp bọc', () {
       // Ngắn hơn: lượt đang chờ tự ném trước khi `.timeout` của lớp bọc tới — lớp bọc không cắt một lượt còn đứng trong
       // `cho()` (thẻ `HuyLuot` của lượt chỉ được xét sau pha nạp, nên cắt lúc ấy có thể nạp mô hình vô ích).
       expect(kTranChoLuotCu, lessThan(kThoiHanChepLoi));
       expect(kTranChoLuotCu, lessThan(kThoiHanDocAnhGemma));
-      // Realme CPU 2026-10-08: 21–42 s một ảnh — lượt bị bỏ mà `stopGeneration` hỏng thì chạy nốt tới cùng.
-      expect(kTranChoLuotCu, greaterThanOrEqualTo(const Duration(seconds: 42)),
-          reason: 'trần ngắn hơn lượt chậm hợp lệ là coi lượt ấy như treo');
+      // Ca THƯỜNG: lượt đọc ảnh bị Huỷ còn giữ chỗ tới hết pha nạp (nạp lạnh Realme CPU 1,3–9,2 s) hoặc hết prefill ảnh
+      // (Realme 2026-10-22: chạy nốt 5–7 s sau Huỷ, cả lượt ≤ 8,7 s). Trần ngắn hơn là Huỷ rồi Quét / Nói ngay rơi về luật oan.
+      expect(kTranChoLuotCu, greaterThanOrEqualTo(const Duration(milliseconds: 2 * 9200)),
+          reason: 'trần phải che ca thường với biên gấp đôi');
+      // Trần chạm khi lượt cũ chạy TRỌN (lệnh dừng hỏng — đo 55,9 s một lượt) hoặc Huỷ giữa lần nạp CPU đầu tiên sau cài đặt
+      // (27,2 s) — người dùng chốt 2026-10-22 không bắt chờ tới đó, rơi về luật sau 20 s.
+      expect(kTranChoLuotCu, lessThanOrEqualTo(const Duration(seconds: 20)),
+          reason: 'người dùng chốt: ca lệnh dừng hỏng chờ tối đa 20 s');
     });
   });
 
@@ -237,6 +242,37 @@ void main() {
         truoc(t, '_boNap.can(', 'if (huyLuot?.daHuy ?? false) throw const LuotNapBiHuy();', 'kiểm thẻ sau pha nạp');
         truoc(t, 'if (huyLuot?.daHuy ?? false) throw const LuotNapBiHuy();', 'createChat(', 'kiểm thẻ trước khi tạo chat');
         truoc(t, 'createChat(', 'huyLuot?.tin.then((_) => _dungChat(chat))', 'nghe thẻ sau khi có chat');
+      });
+    }
+    // Khe Huỷ (2026-10-22, người dùng chọn vá): `huy()` chỉ dừng được chat đã gán vào `_chatDangSinh` — Huỷ tới trong lúc
+    // `createChat` đang chạy thì không có gì để dừng, lượt chạy TRỌN (đọc ảnh 23–56 s trên Realme CPU) và giữ chỗ tới hết.
+    // Xét lại ngay khi có chat: trước khi gửi ảnh / câu (gửi rồi là prefill đã chạy) và trước khi gán `_chatDangSinh`.
+    for (final chuKy in [
+      'Future<String> docAnh(',
+      'Future<String> chepLoi(',
+      'Future<String> sinh(',
+      'Stream<String> sinhDan(',
+      'Future<PhienCongCu> moPhien(',
+    ]) {
+      test('$chuKy xét lại Huỷ SAU khi tạo chat, trước khi gửi', () {
+        final t = than(chuKy);
+        final tao = t.indexOf('createChat(');
+        final gui = t.indexOf('addQueryChunk(');
+        final kiem = t.indexOf('_boNap.moc != moc', tao);
+        expect(tao, isNonNegative);
+        expect(kiem, greaterThan(tao), reason: 'thiếu phép xét bộ đếm Huỷ sau createChat — Huỷ lúc đang tạo chat bị nuốt');
+        expect(kiem, lessThan(gui), reason: 'xét sau khi đã gửi thì prefill đã chạy');
+        final gan = t.indexOf('_chatDangSinh = chat');
+        if (gan >= 0) expect(kiem, lessThan(gan), reason: 'gán rồi mới ném là để lại chat chết trong _chatDangSinh');
+      });
+    }
+    for (final chuKy in ['Future<String> docAnh(', 'Future<String> chepLoi(']) {
+      test('$chuKy xét lại thẻ HuyLuot SAU khi tạo chat, trước khi gửi', () {
+        final t = than(chuKy);
+        final tao = t.indexOf('createChat(');
+        final kiem = t.indexOf('huyLuot?.daHuy', tao);
+        expect(kiem, greaterThan(tao), reason: 'hết giờ lúc đang tạo chat thì đừng gửi ảnh / âm rồi mới dừng');
+        expect(kiem, lessThan(t.indexOf('addQueryChunk(')));
       });
     }
     // Lối A (người dùng chốt 2026-10-22): Huỷ pha AI màn Quét gọi `huy()` hai lần song song trên cùng chat đọc ảnh — native

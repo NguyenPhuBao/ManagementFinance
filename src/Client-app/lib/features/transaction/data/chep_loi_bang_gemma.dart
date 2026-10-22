@@ -14,7 +14,7 @@ import '../../ai_edge/data/huy_luot.dart';
 import '../domain/chep_loi.dart';
 
 /// Spike C4 (Realme CPU, giọng tổng hợp 2,8 s): chép lời 9,8 s. Trần 60 s tính CẢ pha đóng + nạp bản hai cờ (CPU nạp bản chữ ≈ 27 s, bản hai cờ chưa đo) — con số phải đo trên máy.
-/// Cũng tính cả lúc runtime chờ lượt đọc ảnh bị bỏ (bẫy 4.60; thường vài giây, trần `kTranChoLuotCu` 45 s — ngắn hơn trần
+/// Cũng tính cả lúc runtime chờ lượt đọc ảnh bị bỏ (bẫy 4.60; thường vài giây, trần `kTranChoLuotCu` 20 s — ngắn hơn trần
 /// này nên lượt chờ quá lâu tự ném trước khi trần này tới).
 const Duration kThoiHanChepLoi = Duration(seconds: 60);
 
