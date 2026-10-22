@@ -29,7 +29,7 @@ const adminApi = {
   getSystemHealth: () => axiosClient.get('/admin/system/health'),
   getMaintenanceStatus: () => axiosClient.get('/admin/system/maintenance'),
   setMaintenanceStatus: (data) => axiosClient.post('/admin/system/maintenance', data),
-  cancelScheduledMaintenance: () => axiosClient.delete('/admin/system/maintenance/schedule'),
+  cancelScheduledMaintenance: (id) => (id ? axiosClient.delete(`/admin/system/maintenance/schedule/${id}`) : axiosClient.delete('/admin/system/maintenance/schedule')),
   getMaintenanceHistory: (params = {}) => axiosClient.get('/admin/system/maintenance/history', { params }),
 
   // Audit Logs

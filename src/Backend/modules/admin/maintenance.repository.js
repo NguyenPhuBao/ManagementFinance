@@ -280,6 +280,29 @@ class MaintenanceRepository {
   }
 
   /**
+   * Lấy danh sách tất cả các lịch bảo trì đang chờ thực hiện (status = 'SCHEDULED')
+   */
+  async getActiveScheduledRecords() {
+    if (this.pool && typeof this.pool.query === 'function') {
+      try {
+        const query = `
+          SELECT * FROM "maintenance_history"
+          WHERE "status" = 'SCHEDULED'
+          ORDER BY "started_at" ASC;
+        `;
+        const res = await this.pool.query(query);
+        return res.rows;
+      } catch (err) {
+        logger.error('[Maintenance Repository] getActiveScheduledRecords DB error, fallback to memory', { error: err.message });
+      }
+    }
+
+    return this._inMemoryFallback
+      .filter((x) => x.status === 'SCHEDULED')
+      .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
+  }
+
+  /**
    * Lấy danh sách lịch sử bảo trì phân trang
    */
   async getHistory({ page = 1, limit = 10, type = null, status = null } = {}) {

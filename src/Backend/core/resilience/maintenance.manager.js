@@ -17,8 +17,10 @@ class MaintenanceManager {
     this.reason = 'Hệ thống đang gặp sự cố. Quý khách vui lòng quay lại sau ít phút!';
     this.activatedBy = null;
     this.activatedAt = null;
-    this.scheduled = null; // { scheduledAt, reason, isEmergency, createdBy, createdAt }
+    this.scheduledList = []; // Mảng chứa các lịch bảo trì tương lai
+    this.scheduled = null; // Trỏ tới lịch gần nhất để tương thích ngược
     this._scheduledTimer = null;
+    this._autoEndTimer = null;
     this.redis = options.redis || null;
     this.notificationService = options.notificationService || null;
   }
@@ -43,11 +45,52 @@ class MaintenanceManager {
     return this.notificationService;
   }
 
+  getScheduledList() {
+    return (this.scheduledList || []).map((item) => ({
+      id: item.id,
+      recordId: item.recordId,
+      scheduledAt: item.scheduledAt,
+      scheduledEndAt: item.scheduledEndAt,
+      reason: item.reason,
+      isEmergency: item.isEmergency,
+      createdBy: item.createdBy,
+      createdAt: item.createdAt,
+    }));
+  }
+
+  getNearestSchedule() {
+    const list = this.getScheduledList();
+    if (!list.length) return null;
+    const now = Date.now();
+    const futureList = list.filter((item) => new Date(item.scheduledAt).getTime() > now);
+    if (!futureList.length) return list[0] || null;
+    return futureList.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0];
+  }
+
+  clearAllTimers() {
+    if (this._scheduledTimer) {
+      clearTimeout(this._scheduledTimer);
+      this._scheduledTimer = null;
+    }
+    if (this._autoEndTimer) {
+      clearTimeout(this._autoEndTimer);
+      this._autoEndTimer = null;
+    }
+    if (Array.isArray(this.scheduledList)) {
+      for (const item of this.scheduledList) {
+        if (item._timer) {
+          clearTimeout(item._timer);
+          item._timer = null;
+        }
+      }
+    }
+  }
+
   setMaintenance(active, reason = null, activatedBy = 'system', options = {}) {
     const isActivating = Boolean(active);
     // MẶC ĐỊNH BẢO TRÌ TỨC THÌ LUÔN LÀ BẢO TRÌ KHẨN CẤP (PO Policy)
     const isEmergency = options.isEmergency !== undefined ? Boolean(options.isEmergency) : true;
-    const maintenanceType = options.type || (isEmergency ? 'EMERGENCY' : 'SCHEDULED');
+    const maintenanceType = options.type || (isEmergency ? 'EMERGENCY' : 'ROUTINE');
 
     if (isActivating && this.active) {
       // ĐẶC BIỆT: Nếu đang bảo trì thông thường, cho phép DUY NHẤT bảo trì khẩn cấp kích hoạt đè lên để can thiệp
@@ -151,10 +194,10 @@ class MaintenanceManager {
         }
       }
 
-      // Phát thông báo khẩn cấp tới toàn bộ client-app & người dùng
-      if (this.isEmergency) {
-        const notifService = this.getNotificationService();
-        if (notifService && typeof notifService.broadcast === 'function') {
+      // Phát thông báo tới toàn bộ client-app & người dùng
+      const notifService = this.getNotificationService();
+      if (notifService && typeof notifService.broadcast === 'function') {
+        if (this.isEmergency) {
           notifService.broadcast({
             title: '⚠️ BẢO TRÌ HỆ THỐNG KHẨN CẤP',
             message: this.reason,
@@ -167,6 +210,22 @@ class MaintenanceManager {
             },
           }).catch((err) => {
             logger.error('[MAINTENANCE] Lỗi phát thông báo khẩn cấp', { error: err.message });
+          });
+        } else if (maintenanceType === 'SCHEDULED') {
+          // PO POLICY: Bảo trì theo lịch phát thông báo "HỆ THỐNG ĐANG BẢO TRÌ" (Warning), KHÔNG chứa từ KHẨN CẤP
+          notifService.broadcast({
+            title: '🛠️ HỆ THỐNG ĐANG BẢO TRÌ',
+            message: this.reason || 'Hệ thống đang tiến hành bảo trì kỹ thuật định kỳ theo lịch trình. Toàn bộ tính năng sẽ sớm khôi phục.',
+            level: 'WARNING',
+            metadata: {
+              type: 'SCHEDULED_MAINTENANCE',
+              isEmergency: false,
+              activatedAt: this.activatedAt,
+              activatedBy: this.activatedBy,
+              scheduledEndAt: options.scheduled_end_at || null,
+            },
+          }).catch((err) => {
+            logger.error('[MAINTENANCE] Lỗi phát thông báo bảo trì theo lịch', { error: err.message });
           });
         }
       }
@@ -230,13 +289,80 @@ class MaintenanceManager {
     return this.getStatus();
   }
 
+  async activateScheduledItem(sched) {
+    if (!sched) return;
+    logger.info('[MAINTENANCE] Kích hoạt phiên bảo trì theo lịch hẹn', { sched });
+
+    if (sched._timer) {
+      clearTimeout(sched._timer);
+      sched._timer = null;
+    }
+
+    this.scheduledList = (this.scheduledList || []).filter(
+      (x) => x !== sched && x.id !== sched.id && (!sched.recordId || x.recordId !== sched.recordId)
+    );
+    this.scheduled = this.getNearestSchedule();
+
+    // PO YÊU CẦU: Nếu lúc này hệ thống đang trong phiên bảo trì (khẩn cấp), lịch này bị "vướng" và bị hủy bỏ!
+    if (this.active) {
+      logger.warn('[MAINTENANCE] Đến giờ hẹn nhưng hệ thống đang có bảo trì diễn ra: HỦY lịch bảo trì bị vướng', {
+        sched,
+        activeMaintenanceReason: this.reason,
+      });
+      try {
+        const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
+        if (sched.recordId) {
+          await defaultMaintenanceRepository.cancelScheduledRecord({
+            id: sched.recordId,
+            reason: 'Bị hủy do trùng vào thời gian bảo trì khác đang diễn ra',
+          });
+        }
+      } catch (repoErr) {
+        logger.warn('[MAINTENANCE] Lỗi CSDL khi hủy lịch bị vướng', { error: repoErr.message });
+      }
+      return;
+    }
+
+    // Cập nhật CSDL sang ONGOING
+    try {
+      const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
+      if (sched.recordId) {
+        await defaultMaintenanceRepository.updateRecordStatus(sched.recordId, {
+          status: 'ONGOING',
+          started_at: new Date(),
+        });
+      }
+    } catch (repoErr) {
+      logger.warn('[MAINTENANCE] Lỗi cập nhật CSDL kích hoạt lịch', { error: repoErr.message });
+    }
+
+    // Kích hoạt bảo trì với isEmergency = false
+    this.setMaintenance(true, sched.reason, `Lịch hẹn bởi ${sched.createdBy}`, {
+      isEmergency: false,
+      type: 'SCHEDULED',
+      scheduled_end_at: sched.scheduledEndAt,
+      skipCreateRecord: true,
+    });
+
+    // Nếu có thời điểm kết thúc đã hẹn, thiết lập timer tự động kết thúc
+    if (sched.scheduledEndAt) {
+      const endDelayMs = new Date(sched.scheduledEndAt).getTime() - Date.now();
+      if (endDelayMs > 0) {
+        this._autoEndTimer = setTimeout(() => {
+          logger.info('[MAINTENANCE] Đến giờ kết thúc hẹn trước: Tự động khôi phục hệ thống');
+          this._autoEndTimer = null;
+          this.setMaintenance(false, 'Hết thời gian bảo trì định kỳ theo lịch hẹn', 'Hệ thống tự động');
+        }, endDelayMs);
+        if (this._autoEndTimer && typeof this._autoEndTimer.unref === 'function') {
+          this._autoEndTimer.unref();
+        }
+      }
+    }
+  }
+
   scheduleMaintenance({ scheduledAt, scheduledEndAt, reason, isEmergency = false, createdBy = 'admin' }) {
     if (this.active) {
       throw new Error('Hệ thống hiện đang trong phiên bảo trì trực tiếp. Vui lòng kết thúc bảo trì trước khi lên lịch trình mới.');
-    }
-
-    if (this.scheduled) {
-      throw new Error('Đã có lịch bảo trì đang chờ thực hiện. Không thể lên thêm lịch bảo trì mới để tránh đè chéo thời gian. Vui lòng hủy lịch cũ trước nếu muốn thay đổi.');
     }
 
     if (!scheduledAt) {
@@ -244,11 +370,17 @@ class MaintenanceManager {
     }
 
     const targetDate = new Date(scheduledAt);
-    const now = new Date();
-    const delayMs = targetDate.getTime() - now.getTime();
+    const now = Date.now();
+    const delayMs = targetDate.getTime() - now;
 
     if (isNaN(delayMs) || delayMs <= 0) {
       throw new Error('Thời điểm bảo trì phải nằm trong tương lai');
+    }
+
+    // PO RÀNG BUỘC 1: Bắt buộc đặt trước thời điểm kích hoạt ít nhất 4 tiếng
+    const minLeadTimeMs = 4 * 3600 * 1000;
+    if (targetDate.getTime() < now + minLeadTimeMs) {
+      throw new Error('Thời gian bảo trì theo lịch phải được thiết lập trước ít nhất 4 tiếng!');
     }
 
     let targetEndDate = null;
@@ -259,29 +391,71 @@ class MaintenanceManager {
       }
     }
 
-    this.scheduled = {
+    const minIntervalMs = 5 * 3600 * 1000;
+    const newStart = targetDate.getTime();
+    const newEnd = targetEndDate ? targetEndDate.getTime() : newStart;
+
+    // PO RÀNG BUỘC 2: Kiểm tra khoảng cách tối thiểu 5 tiếng với các lịch đã lên
+    for (const item of this.scheduledList) {
+      const itemStart = new Date(item.scheduledAt).getTime();
+      const itemEnd = item.scheduledEndAt ? new Date(item.scheduledEndAt).getTime() : itemStart;
+
+      // 1. Kiểm tra trùng lặp thời gian
+      if (newStart < itemEnd && newEnd > itemStart) {
+        throw new Error('Thời gian bảo trì bị trùng lặp với một lịch bảo trì đã tồn tại!');
+      }
+
+      // 2. Kiểm tra khoảng cách 5 tiếng
+      if (newStart >= itemEnd) {
+        const gap = newStart - itemEnd;
+        if (gap < minIntervalMs) {
+          throw new Error('Mỗi phiên bảo trì theo lịch phải cách nhau ít nhất 5 tiếng!');
+        }
+      } else if (newEnd <= itemStart) {
+        const gap = itemStart - newEnd;
+        if (gap < minIntervalMs) {
+          throw new Error('Mỗi phiên bảo trì theo lịch phải cách nhau ít nhất 5 tiếng!');
+        }
+      }
+    }
+
+    const schedItem = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
       recordId: null,
       scheduledAt: targetDate.toISOString(),
       scheduledEndAt: targetEndDate ? targetEndDate.toISOString() : null,
       reason: reason || 'Bảo trì hệ thống theo lịch trình định kỳ.',
-      isEmergency: Boolean(isEmergency),
+      isEmergency: false,
       createdBy,
-      createdAt: now.toISOString(),
+      createdAt: new Date().toISOString(),
+      _timer: null,
     };
+
+    schedItem._timer = setTimeout(async () => {
+      await this.activateScheduledItem(schedItem);
+    }, delayMs);
+
+    if (schedItem._timer && typeof schedItem._timer.unref === 'function') {
+      schedItem._timer.unref();
+    }
+
+    this.scheduledList.push(schedItem);
+    this.scheduledList.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+    this.scheduled = this.getNearestSchedule();
 
     // PO YÊU CẦU: Lưu ngay vào CSDL PostgreSQL với trạng thái SCHEDULED
     try {
       const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
       defaultMaintenanceRepository.createRecord({
         type: 'SCHEDULED',
-        reason: this.scheduled.reason,
-        activated_by: this.scheduled.createdBy,
-        started_at: this.scheduled.scheduledAt,
-        scheduled_end_at: this.scheduled.scheduledEndAt,
+        reason: schedItem.reason,
+        activated_by: schedItem.createdBy,
+        started_at: schedItem.scheduledAt,
+        scheduled_end_at: schedItem.scheduledEndAt,
         status: 'SCHEDULED',
       }).then((record) => {
-        if (record && this.scheduled) {
-          this.scheduled.recordId = record.id;
+        if (record && schedItem) {
+          schedItem.recordId = record.id;
         }
       }).catch((err) => {
         logger.warn('[MAINTENANCE] Lỗi lưu CSDL lịch bảo trì SCHEDULED', { error: err.message });
@@ -291,81 +465,11 @@ class MaintenanceManager {
     }
 
     logger.info('[MAINTENANCE] Đã lên lịch bảo trì hệ thống', {
-      scheduledAt: this.scheduled.scheduledAt,
-      scheduledEndAt: this.scheduled.scheduledEndAt,
-      isEmergency: this.scheduled.isEmergency,
+      scheduledAt: schedItem.scheduledAt,
+      scheduledEndAt: schedItem.scheduledEndAt,
+      isEmergency: schedItem.isEmergency,
       delayMs,
     });
-
-    // Thiết lập timer Node.js
-    this._scheduledTimer = setTimeout(async () => {
-      logger.info('[MAINTENANCE] Đến giờ hẹn: Kiểm tra và kích hoạt bảo trì hệ thống', {
-        scheduled: this.scheduled,
-      });
-      const sched = this.scheduled;
-      this._scheduledTimer = null;
-      this.scheduled = null;
-
-      if (!sched) return;
-
-      // PO YÊU CẦU: Nếu lúc này hệ thống đang trong phiên bảo trì (khẩn cấp), lịch này bị "vướng" và bị hủy bỏ!
-      if (this.active) {
-        logger.warn('[MAINTENANCE] Đến giờ hẹn nhưng hệ thống đang có bảo trì diễn ra: HỦY lịch bảo trì bị vướng', {
-          sched,
-          activeMaintenanceReason: this.reason,
-        });
-        try {
-          const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
-          await defaultMaintenanceRepository.cancelScheduledRecord({
-            id: sched.recordId,
-            reason: 'Bị hủy do trùng vào thời gian bảo trì khác đang diễn ra',
-          });
-        } catch (repoErr) {
-          logger.warn('[MAINTENANCE] Lỗi CSDL khi hủy lịch bị vướng', { error: repoErr.message });
-        }
-        return;
-      }
-
-      // Nếu không bị vướng: Cập nhật bản ghi CSDL sang ONGOING và kích hoạt bảo trì bình thường!
-      try {
-        const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
-        if (sched.recordId) {
-          await defaultMaintenanceRepository.updateRecordStatus(sched.recordId, {
-            status: 'ONGOING',
-            started_at: new Date(),
-          });
-        }
-      } catch (repoErr) {
-        logger.warn('[MAINTENANCE] Lỗi cập nhật CSDL kích hoạt lịch', { error: repoErr.message });
-      }
-
-      this.setMaintenance(true, sched.reason, `Lịch hẹn bởi ${sched.createdBy}`, {
-        isEmergency: Boolean(sched.isEmergency),
-        type: 'SCHEDULED',
-        scheduled_end_at: sched.scheduledEndAt,
-        skipCreateRecord: true,
-      });
-
-      // Nếu có thời điểm kết thúc đã hẹn, thiết lập timer tự động kết thúc
-      if (sched.scheduledEndAt) {
-        const endDelayMs = new Date(sched.scheduledEndAt).getTime() - Date.now();
-        if (endDelayMs > 0) {
-          this._autoEndTimer = setTimeout(() => {
-            logger.info('[MAINTENANCE] Đến giờ kết thúc hẹn trước: Tự động khôi phục hệ thống');
-            this._autoEndTimer = null;
-            this.setMaintenance(false, 'Hết thời gian bảo trì định kỳ theo lịch hẹn', 'Hệ thống tự động');
-          }, endDelayMs);
-          if (this._autoEndTimer && typeof this._autoEndTimer.unref === 'function') {
-            this._autoEndTimer.unref();
-          }
-        }
-      }
-    }, delayMs);
-
-    // Không làm treo tiến trình Node.js nếu có scheduler
-    if (this._scheduledTimer && typeof this._scheduledTimer.unref === 'function') {
-      this._scheduledTimer.unref();
-    }
 
     try {
       const { emitMaintenanceChanged } = require('../socket');
@@ -375,24 +479,50 @@ class MaintenanceManager {
     return this.getStatus();
   }
 
-  cancelScheduledMaintenance() {
+  cancelScheduledMaintenance(id = null) {
+    let cancelled = false;
+    let targetRecordId = null;
+
+    if (id !== null && id !== undefined) {
+      const numericId = Number(id);
+      const targetIdx = this.scheduledList.findIndex(
+        (x) => x.id === id || x.id === numericId || x.recordId === id || x.recordId === numericId
+      );
+      if (targetIdx !== -1) {
+        const target = this.scheduledList[targetIdx];
+        if (target._timer) {
+          clearTimeout(target._timer);
+          target._timer = null;
+        }
+        targetRecordId = target.recordId;
+        this.scheduledList.splice(targetIdx, 1);
+        cancelled = true;
+      }
+    } else {
+      if (this.scheduledList.length > 0) {
+        for (const item of this.scheduledList) {
+          if (item._timer) {
+            clearTimeout(item._timer);
+            item._timer = null;
+          }
+        }
+        targetRecordId = this.scheduledList[0]?.recordId || null;
+        this.scheduledList = [];
+        cancelled = true;
+      }
+    }
+
     if (this._scheduledTimer) {
       clearTimeout(this._scheduledTimer);
       this._scheduledTimer = null;
     }
-    if (this._autoEndTimer) {
-      clearTimeout(this._autoEndTimer);
-      this._autoEndTimer = null;
-    }
-    const sched = this.scheduled;
-    const hadSchedule = Boolean(sched);
-    this.scheduled = null;
+    this.scheduled = this.getNearestSchedule();
 
-    if (hadSchedule && sched?.recordId) {
+    if (cancelled && targetRecordId) {
       try {
         const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
         defaultMaintenanceRepository.cancelScheduledRecord({
-          id: sched.recordId,
+          id: targetRecordId,
           reason: 'Admin chủ động hủy lịch bảo trì',
         }).catch((err) => {
           logger.warn('[MAINTENANCE] Lỗi CSDL khi hủy lịch chủ động', { error: err.message });
@@ -405,7 +535,7 @@ class MaintenanceManager {
       emitMaintenanceChanged(this.getStatus());
     } catch (_) {}
 
-    return { cancelled: hadSchedule };
+    return { cancelled, remaining: this.scheduledList.length };
   }
 
   getStatus() {
@@ -415,7 +545,8 @@ class MaintenanceManager {
       reason: this.reason,
       activatedBy: this.activatedBy,
       activatedAt: this.activatedAt,
-      scheduled: this.scheduled,
+      scheduled: this.getNearestSchedule(),
+      scheduledList: this.getScheduledList(),
     };
   }
 
