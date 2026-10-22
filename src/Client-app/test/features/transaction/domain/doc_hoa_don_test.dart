@@ -74,6 +74,10 @@ Tien thoi lai            8.138
       ('Giò vào::1426 F7 F8', '14:26'),
       ('Giờ: 907', '09:07'),
       ('Gio vao 2105', '21:05'),
+      // R02 bộ spike (`hoa_don_that_du_lieu.dart`): tờ không có HH:MM nào, chữ số rời sau giờ là phím tắt in kèm.
+      ('Ngày: 02/10/2026 Giờ ra: 14.26 7& 8', '14:26'),
+      // Năm hai chữ số đứng ngay trước nhãn là đuôi của NGÀY, không phải "24 giờ".
+      ('Ngày: 02/10/26 Giờ ra: 14.26', '14:26'),
     ]) {
       test('"$dong" → $gio', () {
         expect(docHoaDonTuChu('ỦA TEA\nNgày: 14/10/2026\n$dong\nTổng tiền: 398,800 d').gio, gio);
@@ -84,7 +88,18 @@ Tien thoi lai            8.138
       expect(docHoaDonTuChu('ỦA TEA\nGiò vào: 1407\nNgày: 14/10/2026 18:42\nTổng tiền: 398,800 d').gio, '18:42');
     });
 
-    for (final dong in ['Giờ vào: 2507', 'Giờ vào: 1475', 'Giờ mở cửa: 0700', 'Giờ vàng 1407']) {
+    for (final dong in [
+      'Giờ vào: 2507',
+      'Giờ vào: 1475',
+      'Giờ mở cửa: 0700',
+      'Giờ vàng 1407',
+      // Soát mã 2026-10-22: bỏ dấu "Giỏ" cũng là "gio", số tiền sau nó từng ra 01:20; số tổng đài sau "24 giờ" ra 19:00.
+      'Giỏ 120.000',
+      'Giỏ 120,000',
+      'Giỏ 120 000',
+      'Tổng đài 24 giờ: 1900 6017',
+      'Hotline 24 gio 1800 1234',
+    ]) {
       test('"$dong" → không phải giờ', () {
         expect(docHoaDonTuChu('ỦA TEA\nNgày: 14/10/2026\n$dong\nTổng tiền: 398,800 d').gio, isNull);
       });

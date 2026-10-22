@@ -120,8 +120,12 @@ String _hai(int v) => v.toString().padLeft(2, '0');
 
 /// Giờ ngay sau NHÃN *"Giờ / Giờ vào / Giờ ra"* mà giữa giờ và phút không có dấu hai chấm — so trên một dòng đã bỏ dấu.
 /// ỦA TEA tờ N01 (`/quet` thật, Realme 2026-10-21): *"Giò vào: 1407"* (OCR đọc "Giờ" thành "Giò"), *"Giờ ra: 14.26"*,
-/// *"Giò vào::1426"*.
-final RegExp _gioSauNhan = RegExp(r'\bgio(?:\s+(?:vao|ra))?\s*[:.]*\s*(\d{1,2})[.:]?(\d{2})\b');
+/// *"Giò vào::1426"*. Soát mã 2026-10-22: bỏ dấu thì *"Giỏ"* cũng là `gio` — số tiền sau nó (*"Giỏ 120.000"*, *"120 000"*)
+/// không phải giờ, nên phút không được dính tiếp một nhóm nghìn; và số MỘT–HAI chữ số ngay trước (*"Tổng đài 24 giờ: 1900
+/// 6017"*) là "24 giờ", không phải nhãn — số dài hơn hay đuôi của một ngày thì không chặn (*"Ngày: 02/10/2026 Giờ ra:
+/// 14.26"*, R02 bộ spike; *"02/10/26 Giờ ra"*).
+final RegExp _gioSauNhan = RegExp(
+    r'(?<!(?:^|[^\d/.\-])\d{1,2}\s?)\bgio(?:\s+(?:vao|ra))?\s*[:.]*\s*(\d{1,2})[.:]?(\d{2})\b(?![.,]\d)(?!\s\d{3})');
 
 String? _docGio(String vanBan) {
   for (final m in _gio.allMatches(vanBan)) {
