@@ -6,6 +6,9 @@
 > lối **Android** (có mạng) 4 câu; kiểm chéo + hai chip đạt; nút Nói ở Trang chủ, hộp hỏi quyền micro đạt. Lượt đo lộ **G102**
 > (lối Android tự dừng sau ~2 s; lối Gemma đem bản ghi im lặng đi chép và điền câu lệnh vào ô) và **G103** (Google viết *"mbbank"*
 > dính, *"500.000₫"* — ví nguồn trượt, ghi chú sót), cả hai mở và đóng cùng tối. Các mục checklist còn lại ở mục 9.
+> 🔧 **Kiểm chéo thu hẹp (người dùng chốt 2026-10-22, mục 4):** Gemma chỉ kiểm số tiền khi câu **còn số tiền khác** ngoài cụm
+> luật đã đọc — câu một cụm (*"tiền điện một triệu hai"*, *"đổ xăng năm chục"*) điền ngay, không chờ, không chip. Đường kiểm ở
+> nền (dòng *"Đang kiểm số tiền bằng AI…"* + Huỷ) đã **gỡ**: không còn câu nào đi vào nó.
 > Spec: `docs/superpowers/specs/2026-10-12-c4-giong-noi-nhap-giao-dich-design.md` (khối 🔧 đầu tệp THẮNG thân spec).
 > Nửa *chụp hoá đơn* của C4 đã làm ở A5 — `docs/QUET_ANH_FEATURE.md`; tệp này chỉ là nửa **giọng nói**.
 
@@ -17,9 +20,11 @@
   giây) → tự dừng khi im ~2 giây / bấm ■ / đủ 20 giây / chưa nói gì sau 6 giây (`kChoTiengDau`) → lối Gemma có thêm dòng *"Đang chép lời bằng AI trên máy…"* + Huỷ →
   câu nằm trong ô và **tự Điền** qua `ThemGiaoDichCubit.dienTuCau` (đúng đường C2). Nghe sai → sửa chữ trong ô, bấm *Điền* lại.
   Không ghi gì tới khi bấm Lưu (bất biến ④ nhóm C).
-- **Kiểm chéo số tiền** khi số được đọc bằng dạng nói mới học (*năm chục · một triệu hai · ba trăm rưỡi*) và máy có Gemma: số
-  điền ngay, dòng *"Đang kiểm số tiền bằng AI…"* + Huỷ; khớp → dòng biến mất; lệch → ô số tiền **trống** + **hai chip**
-  (`KhoiChonSoTien`, số AI trước, số luật sau). Người dùng đã đổi số trước khi AI về → AI không đụng.
+- **Kiểm chéo số tiền** khi số được đọc bằng dạng nói mới học (*năm chục · một triệu hai · ba trăm rưỡi*), máy có Gemma, **và
+  câu còn số tiền khác** (*"mua 20 quả trứng năm chục"*): số ấy nằm lại trong ghi chú nên màn hỏi Gemma **trước** khi điền (dòng
+  *"Đang đọc bằng AI…"* của C2); Gemma chọn số kia → ô số tiền **trống** + **hai chip** (`KhoiChonSoTien`, số AI trước, số luật
+  sau); khớp / số AI là bản cụt của cụm luật → điền số luật. Câu một cụm (*"tiền điện một triệu hai"*) **không** hỏi Gemma —
+  người dùng chốt 2026-10-22, mục 4.
 - **Nút Nói ở Trang chủ**: hàng nút nhanh thành năm (Thêm thu · Thêm chi · Chuyển · Quét · **Nói**). Bấm → `/add?noi=1` →
   màn Thêm giao dịch mở và nghe ngay. Basic → `/premium?quyen=ai_quick_input`.
 - **Không làm:** giọng nói ở màn sửa giao dịch, ở Trợ lý AI, ở form điền từ biến động / ảnh quét. Không lưu âm thanh — WAV của
@@ -85,11 +90,29 @@ Luật **chỉ chọn thêm trong tập `cachDocSoTien`** — không có bộ đ
 
 ## 4. Kiểm chéo số tiền
 
-`KetQuaDocCau.soTienCanKiem` = số tiền đến từ N1/N2. `chotSoTienCau(luat:, ai:)` → `ChotTong` (không dùng lại `chotTongQuet`
-của OCR). Số AI đi qua **cùng lưới C2** — `soTienAiHopLe(cau, ai, now)` (tách từ `docCauGiaoDich`, một định nghĩa): số ∈
-`cachDocSoTien`, nên "lệch" luôn là hai cách đọc thật của cùng một câu. Cubit: câu còn ô thiếu → dùng luôn kết quả AI của C2
-(không gọi hai lần); ngược lại điền luật ngay rồi một lượt `DocCauBangAi.doc` ở nền (`dangKiemSoTien`). **Người dùng thắng:**
-chỉ áp khi `chuoiSoTien` vẫn bằng chuỗi luật đã điền. Khi lệch, tóm tắt "Đã điền" bỏ phần số tiền (P7).
+`KetQuaDocCau.soTienDangNoi` = số tiền đến từ N1/N2; `soTienKhac` = cách đọc số tiền **còn sót trong ghi chú** của luật
+(`cachDocSoTien(ghiChu)`, bỏ số bằng số luật — số tiền khác mà chưa ô nào dùng); getter **`soTienCanKiem`** = cả hai. Số AI đi
+qua **cùng lưới C2** — `soTienAiHopLe(cau, ai, now)` (tách từ `docCauGiaoDich`, một định nghĩa): số ∈ `cachDocSoTien`.
+`chotSoTienCau(luat:, ai:, khac:)` → `ChotTong` (không dùng lại `chotTongQuet` của OCR): **hai chip chỉ khi số AI ∈ `khac`**;
+số AI khác số luật mà ngoài `khac` là Gemma đọc lại **chính cụm luật** theo cách khác → giữ số luật. Khi lệch, tóm tắt
+"Đã điền" bỏ phần số tiền (P7).
+
+🔧 **Người dùng chốt 2026-10-22 — thu hẹp quyết định số 5 của spec.** Đo Realme 2026-10-21 (mục 9.1): Gemma đọc *"tiền điện một
+triệu hai"* thành **1.000.000** 2/2 lần (cả hai lối) → hai chip oan mỗi lần, sau ~16 s chờ. Phép đo `cachDocSoTien` trên 14 câu
+mẫu cho thấy câu một cụm chỉ có hai kiểu: N2 (*năm chục · 45 · ba trăm rưỡi*) — tập cách đọc **chỉ có số luật**, Gemma không thể
+tạo chip, lượt chờ là thừa; N1 (*một triệu hai · 1 triệu 2*) — cách đọc khác duy nhất là **bản cụt** X·đơn vị, đúng kiểu sai của
+Gemma. Bản cụt không phải ý thật vì luật chỉ chọn N1 khi chữ số lẻ đứng ở chỗ của tiền; ca *"học phí hai triệu năm"* (mỗi năm)
+người dùng loại: *sổ ghi một lần trả tiền đã xảy ra, ít khi nói "hàng năm, hàng tháng"*.
+
+- **Không có đường kiểm ở nền.** `soTienCanKiem` ⇒ ghi chú còn số tiền ⇒ `oThieu` có `OThieu.ghiChu` ⇒ C2 hỏi Gemma **trước**
+  khi điền, và Cubit dùng luôn kết quả ấy (`_chotSoTien`). Đường cũ *điền luật ngay rồi một lượt `DocCauBangAi.doc` ở nền*
+  (`dangKiemSoTien`, `huyKiemSoTien`, dòng *"Đang kiểm số tiền bằng AI…"* + Huỷ ở `ONhapNhanh`) chỉ còn chạy cho câu một cụm —
+  đúng những câu thôi kiểm — nên đã **gỡ** cùng ngày. Ca canh bất biến ở `doc_cau_noi_test` (nhóm *soTienKhac*).
+- ⚠️ **Tính trên ghi chú, không trên cả câu** — số trong tên ví đã đọc (*"bằng thẻ 365"*) không phải số tiền; tính trên câu
+  là Gemma được phép đưa chip rác 365.000 (ca canh trong cùng nhóm; bản sai cấy thử làm 5 ca đỏ).
+- ⚠️ **`cachDocSoTien` vẫn giữ bản cụt** — nó còn phục vụ đường luật bỏ trống (*"một triệu hai tiền sách"* — Y không ở chỗ của
+  tiền, Gemma chọn); bỏ ở đó là Gemma mất cách đọc 1.000.000. Đường ấy vẫn có thể điền 1.000.000 im lặng nếu Gemma đọc cụt —
+  **G104** `CLIENT_APP_KNOWN_GAPS.md`, hoãn (sửa lời nhắc là đổi mọi câu C2, phải đo lại hai máy).
 
 ## 5. Gemma chép lời, một bản mô hình hai cờ
 
@@ -115,11 +138,11 @@ chỉ áp khi `chuoiSoTien` vẫn bằng chuỗi luật đã điền. Khi lệch
 | `transaction/application/dong_hang_bien_dong.dart` | `dongHangBienDong`, `dongHangChuyenKhoan` dời khỏi Cubit (chừa chỗ, §4.2 spec) | `dong_hang_bien_dong_test` |
 | `transaction/domain/chon_loi_nghe.dart` | chọn lối, hằng mã lỗi, `kThuGemmaLuotSau`, câu thông báo | `chon_loi_nghe_test` |
 | `transaction/domain/do_im_lang.dart` | `BoDoIm` (dừng khi im), `kNguongCoTieng` −35 dBFS, `kNgheToiDa` 20 s | `do_im_lang_test` |
-| `transaction/domain/chep_loi.dart` · `chot_so_tien_cau.dart` | chuẩn hoá lời chép; `chotSoTienCau` | `chep_loi_test`, `chot_so_tien_cau_test` |
-| `transaction/domain/doc_cau_giao_dich.dart` · `core/utils/ngay_trong_cau.dart` · `so_bang_chu.dart` | N1, N2, ngày, ví gọi tắt, `soTienAiHopLe` | `doc_cau_noi_test`, `bo_20_cau_noi_test`, `ngay_trong_cau_test` |
+| `transaction/domain/chep_loi.dart` · `chot_so_tien_cau.dart` | chuẩn hoá lời chép; `chotSoTienCau` (chip chỉ khi số AI ∈ `soTienKhac`) | `chep_loi_test`, `chot_so_tien_cau_test` |
+| `transaction/domain/doc_cau_giao_dich.dart` · `core/utils/ngay_trong_cau.dart` · `so_bang_chu.dart` | N1, N2, ngày, ví gọi tắt, `soTienAiHopLe`, `soTienDangNoi` / `soTienKhac` / `soTienCanKiem` | `doc_cau_noi_test`, `bo_20_cau_noi_test`, `ngay_trong_cau_test` |
 | `transaction/presentation/bloc/nghe_giong_noi_cubit.dart` (+ `_state`) | máy trạng thái micro (**Cubit riêng**, không vào `ThemGiaoDichCubit`); `kHanNgheAndroid` = `kNgheToiDa` + 5 s | `nghe_giong_noi_cubit_test` |
-| `transaction/presentation/bloc/them_giao_dich_cubit.dart` | kiểm chéo (3.4 spec): `luaChonTienCau`, `dangKiemSoTien`, `huyKiemSoTien` | `them_giao_dich_kiem_cheo_test` |
-| `transaction/presentation/widgets/them_giao_dich/o_nhap_nhanh.dart` · `dong_dang_nghe.dart` | nút micro; dòng đang nghe / chép lời / kiểm | `nhap_nhanh_test`, `nhap_nhanh_micro_hep_test` |
+| `transaction/presentation/bloc/them_giao_dich_cubit.dart` | kiểm chéo (3.4 spec, mục 4): `luaChonTienCau`, `_chotSoTien` trên kết quả AI của C2 | `them_giao_dich_kiem_cheo_test` |
+| `transaction/presentation/widgets/them_giao_dich/o_nhap_nhanh.dart` · `dong_dang_nghe.dart` | nút micro; dòng đang nghe / chép lời | `nhap_nhanh_test`, `nhap_nhanh_micro_hep_test` |
 | `home/presentation/widgets/hang_nut_nhanh.dart` | hàng năm nút nhanh, nút Nói | `hang_nut_nhanh_test`, `trang_chu_gon_test` |
 | `ai_edge/domain/nap_da_phuong_thuc.dart` · `ai_edge/data/bo_nap_mo_hinh.dart` | luật nạp một bản hai cờ; tuần tự hoá nạp | `nap_da_phuong_thuc_test`, `bo_nap_mo_hinh_test` |
 | `core/router/app_router.dart` | `/add?noi=1` (**query, không `extra`** — `extra is String` là chiều tiền đặt sẵn) | `nhap_nhanh_test` có ca dựng trang với `batDauNghe`; phép đọc `queryParameters['noi']` (`app_router.dart`) chưa có ca |
@@ -150,8 +173,9 @@ quét 25 cho `ai_chat/spike/` đã rỗng. Gói `speech_to_text ^7.5.0` và `rec
 - **Một bản mô hình HAI cờ, đóng ≤ 1 lần mỗi tiến trình.** OnePlus 13R GPU **sập native** ở lần đóng thứ hai (A5). Quay về
   luật cũ "từ chối bản có âm thanh" → chuỗi *Quét → Nói → Quét* đóng hai lần → sập, và `flutter test` không thấy (runtime giả).
   Canh bằng `quyetDinhNap` + `BoNapMoHinh` (chuỗi Trợ lý/Quét/Nói đủ thứ tự).
-- **Nút Điền khoá khi micro không ở `cho`**; bắt đầu micro thì **huỷ Điền / kiểm chéo bằng AI trước** (`huyDocAi`,
-  `huyKiemSoTien`) — chỉ có **một** mô hình, hai lượt chồng nhau là lượt AI bị cắt hoặc micro trễ.
+- **Nút Điền khoá khi micro không ở `cho`**; bắt đầu micro thì **huỷ lượt Điền bằng AI trước** (`huyDocAi` — lượt ấy kiểm luôn
+  số tiền; đường kiểm nền `huyKiemSoTien` gỡ 2026-10-22) — chỉ có **một** mô hình, hai lượt chồng nhau là lượt AI bị cắt hoặc
+  micro trễ.
 - **`_dungGhi` chỉ xoá tệp của lượt mình** (chụp vào biến cục bộ trước `await chep`) — đọc trường `_tep` sau `await` là xoá nhầm
   WAV của lượt mới (Gemma huỷ chậm ~5 s) → "không nghe rõ" oan.
 - **Hint ô Nhập nhanh khi có micro là `'45k tiền mặt'`** (không micro giữ `'phở 45k tiền mặt'`). Đo (font thật ×1,1, trang
@@ -258,9 +282,11 @@ Mục đã đo ở 9.1 đánh dấu tại chỗ. Chép nguyên mục 9 spec (Rea
 - [ ] Hàng năm nút Trang chủ trên máy 320 dp thật; màn Thêm giao dịch bốn trạng thái so với Stitch.
       *(2026-10-16 app đã sửa theo Stitch — mục 8. Lúc nói phải thấy: nhãn đỏ "● Đang nghe…" ở góc trên thẻ, viền ô đỏ
       `#BA1A1A`, nút dừng là ô vuông đỏ trong vòng nhạt, hai chip số tiền nằm TRONG thẻ. Lệch có chủ ý: hai dòng "đang
-      ghi / chép lời" và "đang kiểm" hiện lần lượt; tia sét `#F25F5C`.)*
+      ghi / chép lời" và "đang kiểm" hiện lần lượt; tia sét `#F25F5C`. Từ 2026-10-22 dòng "đang kiểm" đã gỡ — mục 4.)*
 - [x] Thời gian thật của kiểm chéo; chip hiện đúng khi lệch. *(2026-10-21 Realme CPU: ~16–17 s — mở phiên ~3 s + sinh ~13 s;
-      "một triệu hai" → chip 1.000.000 · 1.200.000.)*
+      "một triệu hai" → chip 1.000.000 · 1.200.000.)* → dẫn tới đợt thu hẹp 2026-10-22 (mục 4).
+- [ ] Sau đợt thu hẹp 2026-10-22: *"tiền điện một triệu hai"* điền 1.200.000 **ngay** (không dòng chờ, không chip);
+      *"mua 20 quả trứng năm chục"* hiện *"Đang đọc bằng AI…"* rồi điền / hai chip.
 - [ ] Sau bảng đo: người dùng quyết giữ hai lối hay bỏ một (gỡ gói của lối bỏ).
 
 **Thêm từ lượt soát:**

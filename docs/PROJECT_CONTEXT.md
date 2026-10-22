@@ -614,7 +614,30 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-21)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-22)
+
+### 🎯 C4 — kiểm chéo số tiền chỉ khi câu còn số tiền khác; gỡ đường kiểm ở nền (2026-10-22, người dùng chốt)
+
+Nghiệm thu Realme hôm trước: Gemma đọc *"tiền điện một triệu hai"* thành 1.000.000 **2/2 lần** → ô trống + hai chip oan mỗi
+lần, sau ~16 s chờ. Đo `cachDocSoTien` trên 14 câu mẫu: câu một cụm N2 (*năm chục · 45 · ba trăm rưỡi*) chỉ có **một** cách
+đọc — lượt Gemma không thể đổi gì; câu một cụm N1 chỉ có thêm **bản cụt** X·đơn vị, đúng kiểu sai của Gemma. Người dùng chốt
+(thu hẹp quyết định 5 của spec C4, khối 🔧 mục 12): **Gemma chỉ kiểm khi câu còn số tiền khác** — loại cả ca *"học phí hai
+triệu năm"* vì *sổ ghi một lần trả tiền đã xảy ra, ít khi nói "hàng năm, hàng tháng"*.
+- **Mã:** `KetQuaDocCau.soTienDangNoi` (cờ cũ đổi tên) + `soTienKhac` = `cachDocSoTien(ghi chú luật)` bỏ số luật — tính trên
+  **ghi chú**, không trên cả câu (số trong tên ví đã đọc, *"bằng thẻ 365"*, không thành chip rác); getter `soTienCanKiem`.
+  `chotSoTienCau(…, khac:)` ra chip chỉ khi số AI ∈ tập.
+- **Lộ ra khi viết test:** câu còn số tiền khác thì số ấy nằm trong ghi chú → luôn có ô thiếu `ghiChu` → C2 hỏi Gemma
+  **trước** khi điền. Đường *điền ngay rồi kiểm ở nền* chỉ còn chạy cho câu một cụm — đúng những câu thôi kiểm → người dùng
+  chọn **gỡ**: `_kiemSoTienNen`, `huyKiemSoTien`, `dangKiemSoTien` (state), dòng *"Đang kiểm số tiền bằng AI…"* + Huỷ ở
+  `ONhapNhanh`, nhánh micro nhường mô hình cho lượt kiểm.
+- `cachDocSoTien` **không đổi** (vẫn giữ bản cụt cho đường luật bỏ trống *"một triệu hai tiền sách"*); lời nhắc Gemma không đổi.
+  Đường luật bỏ trống ấy vẫn có thể điền bản cụt của Gemma không hỏi → **G104** (hoãn, chưa đo).
+
+**Test:** `chot_so_tien_cau_test` +1, `doc_cau_noi_test` +11 (nhóm *soTienKhac*, kèm ca canh bất biến *cần kiểm ⇒ ô thiếu
+`ghiChu`* và ca tên ví), `them_giao_dich_kiem_cheo_test` viết lại theo đường hỏi trước (câu hai số *"mua 20 quả trứng năm
+chục"*; 15 → 12 ca — bỏ 5 ca chỉ của đường nền, gộp ca *"ô thiếu kiểm luôn"*, thêm 3 ca câu một cụm), `nhap_nhanh_test` đổi 2 ca + bỏ 1, một ca `them_giao_dich_cubit_test` đổi số AI sang số tiền
+khác. Bốn ca mới đỏ trên mã cũ; bản sai *tính trên cả câu* làm 5 ca đỏ. **Số đo:** `flutter test` **7714/7714** pass, 10 skip (5 ph 13 s;
++8 so với 7706); `flutter analyze` **20**. Chưa đo trên máy (không máy nào cắm) — checklist mục 9 `GIONG_NOI_FEATURE.md`.
 
 ### 🎙️ C4 giọng nói — nghiệm thu Realme lần đầu (2026-10-21 tối) — ◐ hai lối chạy; G102 + G103 mở và đóng
 
@@ -1513,7 +1536,7 @@ Spec `docs/superpowers/specs/2026-10-12-c4-giong-noi-nhap-giao-dich-design.md` (
 spec), kế hoạch `docs/superpowers/plans/2026-10-12-c4-giong-noi-nhap-giao-dich.md` (gitignore). Người dùng chốt: **Android
 nghe trước, Gemma chép lời khi mất mạng** · micro ở **ô Nhập nhanh** + nút **Nói** ở Trang chủ (`/add?noi=1`) · luật học
 thêm dạng nói tiền (*một triệu hai*, *năm chục*, *ba trăm rưỡi* — chỉ CHỌN trong tập `cachDocSoTien`), ngày (*ngày năm tháng
-chín*, *mùng X*), ví gọi tắt (*bằng MB Bank*) · **Gemma kiểm chéo số đọc bằng dạng nói, lệch thì hai chip** · nói xong tự
+chín*, *mùng X*), ví gọi tắt (*bằng MB Bank*) · **Gemma kiểm chéo số đọc bằng dạng nói, lệch thì hai chip** (thu hẹp 2026-10-22: chỉ khi câu còn số tiền khác — khối 🎯 đầu mục 14) · nói xong tự
 Điền qua `ThemGiaoDichCubit.dienTuCau`. Lúc lập kế hoạch lộ **ba lỗi sẵn có** cùng vùng: *"1 triệu 2"* đọc 1.000.000 im
 lặng; *"từ"* bỏ dấu thành *"tư"* (4) làm câu chuyển ví bằng chữ mất số tiền; *"quả"* bỏ dấu trùng *"qua"*. Phạm vi lần thi
 công: **dừng trước kiểm thử trên máy** (spec mục 9). Cách thi công **chưa chọn** — hỏi người dùng. Bàn giao:
