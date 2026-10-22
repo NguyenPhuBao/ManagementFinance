@@ -616,6 +616,31 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-22)
 
+### 🪪 Huỷ đúng lượt — hết giờ dừng lượt của nó, Huỷ của Nhập nhanh tới lượt đang chờ (2026-10-22, người dùng chọn hai việc dư của bẫy 4.60) — mã + test, chưa đo trên máy
+
+Nguyên tắc: **Huỷ của người dùng = `huy()` toàn cục** (muốn AI dừng hẳn — tăng bộ đếm chung, dừng `_chatDangSinh`), **hết
+giờ = chỉ lượt của nó**.
+- **Hết giờ dừng đúng lượt:** lớp thuần `HuyLuot` (`ai_edge/data/huy_luot.dart`). `DocAnhBangGemma` / `ChepLoiBangGemma` tạo
+  một thẻ mỗi lượt, đưa vào `docAnh` / `chepLoi` (`huyLuot:` — tham số mới của `SlmDocAnh` / `SlmChepLoi`); `onTimeout` chỉ
+  `huy()` thẻ ấy. Runtime xét thẻ sau `_boNap.can` (không tạo chat) và nghe nó để dừng **chính** chat của lượt (`_dungChat`,
+  chung với `huy()`). Trước đó `onTimeout` gọi `huy()` toàn cục — có thể bỏ oan lượt khác đang chờ với `moc`. Trần vẫn ở
+  lớp bọc (test được), chỉ phép dừng đi theo thẻ.
+- **Huỷ tới lượt đang chờ:** `sinh` · `sinhDan` · `moPhien` ghi `moc` trước khi chờ lượt đọc ảnh cũ, kiểm ngay sau
+  (`LuotNapBiHuy`, trước `createChat`); `PhienMotLoiGoi.huy()` nay gọi `runtime.huy()` **trước** mọi `await` — dây còn thiếu:
+  Huỷ của Nhập nhanh / C3 / danh mục quét trước chỉ tới `_phien?.huy()`, lúc đang chờ thì `_phien` còn `null`, nên mô hình vẫn
+  mở một phiên vô ích khi lượt cũ xong. Gọi trước mọi `await` vì micro Huỷ lượt Điền rồi mới mở lượt chép lời — bộ đếm tăng
+  muộn là bỏ oan lượt chép lời. Hôm nay chỉ nhánh `moPhien` có đường Huỷ thật; `sinh` (không chỗ gọi) và `sinhDan` (Trợ lý
+  không có nút Dừng trên máy) thêm để năm lối đồng nhất.
+
+Người dùng không thấy gì khác trên app. Thẻ chưa mở sang `SlmRuntime` (bảy bản giả) — ghi ở bẫy 4.60.
+
+**Test:** `huy_luot_test` 4 ca; `doc_anh_bang_gemma_test` / `chep_loi_bang_gemma_test` đổi ca *"quá hạn"* (thẻ của lượt bị
+huỷ, `huy()` toàn cục **không** gọi) + đòi mỗi lượt mang thẻ chưa huỷ; `phien_mot_loi_goi_test` +1 (*huy() gọi runtime.huy()
+đồng bộ*); `luot_khong_ngat_duoc_test` +8 đọc mã (`moc` ba lối chữ, kiểm sau khi chờ, thẻ ở `docAnh` / `chepLoi`). Ca mới đỏ
+trên mã cũ; bốn bản sai cấy thử (bỏ / dời `runtime.huy()` ở `PhienMotLoiGoi`, `onTimeout` gọi lại `huy()` toàn cục, không đưa
+thẻ) đều đỏ đúng ca. **Số đo:** `flutter test` **7776/7776** pass, 10 skip (4 ph 30 s, +13 so với 7763); `flutter analyze`
+**20**.
+
 ### ⏱️ Trần 45 s cho chốt chờ lượt mô hình cũ (2026-10-22, phát hiện code-review — người dùng chọn) — mã + test, chưa đo trên máy
 
 Chốt `LuotKhongNgatDuoc` (khối 🧾 A5 ngay dưới) không có trần: lượt đọc ảnh native **treo** thì Trợ lý AI, Nhập nhanh, lệnh
@@ -623,8 +648,8 @@ C3, Nói (Gemma) và Quét liền kẹt mãi ở *"Đang đọc bằng AI…"*. 
 từ lúc bắt đầu đợi, cộng dồn qua lượt nối sau), quá trần ném `LuotCuChuaXong` → người gọi rơi về luật / mẫu câu như mọi lỗi
 mô hình. Quá trần **không** giải phóng chỗ (lượt treo vẫn trên engine); lượt đã quá trần một lần thì lời gọi sau ném ngay.
 45 s ≥ lượt đọc ảnh chậm nhất đã đo (42 s) và < trần 60 s / 90 s của hai lớp bọc — `onTimeout` của lớp bọc (gọi `huy()`
-toàn cục) không còn chạy lúc lượt đang chờ. Còn lại (chưa làm, bẫy 4.60): `onTimeout` của lượt **đang chạy** vẫn tăng bộ đếm
-chung (oan chỉ khi hai tính năng chạy cùng lúc); `sinh` · `sinhDan` · `moPhien` không có `moc`.
+toàn cục) không còn chạy lúc lượt đang chờ. Hai phần dư (hết giờ của lượt đang chạy vẫn huỷ toàn cục; ba lối chữ chưa có
+`moc`) làm ngay sau đó — khối 🪪 ngay trên.
 
 **Test:** `luot_khong_ngat_duoc_test` +10 (7 trần dưới `fakeAsync` — kể cả ca canh ba hằng — và 3 đọc mã: `moc` ghi trước khi
 chờ ở `docAnh` / `chepLoi`, `moHinhSan` không chờ). Bốn ca hành vi đỏ trên mã cũ; sáu bản sai cấy thử (bỏ ném-ngay, trần mới

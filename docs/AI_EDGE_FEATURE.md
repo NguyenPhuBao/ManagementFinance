@@ -293,12 +293,24 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
   đã bắt lỗi chung và rơi về luật / mẫu câu (Trợ lý: câu *"không chạy được"*). ⚠️ Quá trần **không** giải phóng chỗ (lượt
   treo vẫn trên engine — cho lượt mới chạy là chồng hai lượt); lượt đã quá trần một lần thì lời gọi sau ném **ngay**. Native
   treo thật = AI chết tới hết tiến trình, app không treo. 45 s ≥ lượt đọc ảnh chậm nhất đã đo (42 s — lượt bị bỏ mà
-  `stopGeneration` hỏng chạy nốt tới cùng) và < trần 60 s / 90 s của hai lớp bọc: lượt chờ quá lâu tự ném trước, nên
-  `onTimeout` của lớp bọc (gọi `huy()` toàn cục — tăng bộ đếm chung của `BoNapMoHinh`, dừng `_chatDangSinh`) không bao giờ chạy
-  lúc lượt còn đứng chờ; test canh cả hai vế — đổi một trong ba hằng là đỏ. Hai trần ấy nay **tính cả** lúc chờ (chú thích
-  đã sửa). **Còn lại, chưa làm:** `onTimeout` của một lượt **đang chạy** vẫn tăng bộ đếm chung — huỷ oan lượt khác đang chờ với
-  `moc` chỉ khi hai tính năng chạy cùng lúc (giao diện vốn chặn); `sinh` · `sinhDan` · `moPhien` không có `moc` nên Huỷ lúc
-  đang chờ không bỏ được lượt ấy (người dùng chưa chọn).
+  `stopGeneration` hỏng chạy nốt tới cùng) và < trần 60 s / 90 s của hai lớp bọc: lượt chờ quá lâu tự ném trước, lớp bọc
+  không phải cắt một lượt còn đứng chờ; test canh cả hai vế — đổi một trong ba hằng là đỏ. Hai trần ấy nay **tính cả** lúc
+  chờ (chú thích đã sửa).
+  ✅ **Hai cách dừng, hai nghĩa** (cùng ngày, người dùng chọn hai việc dư của lượt soát): **Huỷ của người dùng** = `huy()`
+  toàn cục (tăng bộ đếm chung của `BoNapMoHinh`, dừng `_chatDangSinh` — đúng nghĩa: muốn AI dừng hẳn); **hết giờ của lớp
+  bọc** = chỉ lượt của nó, qua thẻ `HuyLuot` (`ai_edge/data/huy_luot.dart`): `DocAnhBangGemma` / `ChepLoiBangGemma` tạo một thẻ
+  mỗi lượt, đưa vào `docAnh(…, huyLuot:)` / `chepLoi(…, huyLuot:)`, `onTimeout` chỉ `huy()` thẻ ấy; runtime xét `daHuy` sau
+  `_boNap.can` (không tạo chat) và nghe `tin` để dừng **chính** chat của lượt (`_dungChat`, chung với `huy()`). Hết ca huỷ oan
+  lượt khác đang chờ. ⚠️ Trần vẫn ở **lớp bọc** (test được), chỉ phép dừng đi theo thẻ — đừng dời bộ hẹn giờ vào
+  `SlmRuntimeThat` (không test được trên x86). `sinh` · `sinhDan` · `moPhien` nay ghi `moc` trước khi chờ và tự kiểm ngay sau
+  (`LuotNapBiHuy`, trước `createChat`), và **`PhienMotLoiGoi.huy()` gọi `runtime.huy()`** — dây còn thiếu: trước đó Huỷ của
+  Nhập nhanh / C3 / danh mục quét chỉ tới `_phien?.huy()` (lúc đang chờ thì `_phien` còn `null`), nên lượt đang chờ vẫn mở một
+  phiên vô ích khi lượt cũ xong. ⚠️ `runtime.huy()` phải gọi **trước** mọi `await` trong `PhienMotLoiGoi.huy()`: micro gọi Huỷ
+  lượt Điền rồi mới mở lượt chép lời — bộ đếm tăng muộn là bỏ oan chính lượt chép lời (ca canh *"đồng bộ"*). Trung thực: hôm
+  nay chỉ nhánh `moPhien` có đường Huỷ thật (qua `PhienMotLoiGoi`); `sinh` không có chỗ gọi (`BoDienGiai` không đăng ký DI),
+  `sinhDan` ở Trợ lý không có nút Dừng trên máy — thêm để năm lối đồng nhất. Thẻ `HuyLuot` **chưa** mở sang `SlmRuntime` (bảy
+  bản giả trong test): ba lối chữ chưa có trần riêng ở runtime (`PhienMotLoiGoi.thoiHan` dừng bằng `phien.huy()` — chat của
+  chính phiên); hợp nhất hai cơ chế là bước kế nếu cần.
 
 ## 5. Màn Stitch
 

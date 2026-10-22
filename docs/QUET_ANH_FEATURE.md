@@ -149,7 +149,8 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
     sau Huỷ chờ thêm tối đa vài giây chứ không chồng hai lượt lên engine (vùng chưa đo, họ bẫy sập native OnePlus GPU).
     Lượt cũ chưa xong sau **45 s** (`kTranChoLuotCu`, thêm cùng ngày theo code-review) thì lượt mới ném `LuotCuChuaXong` và
     rơi về luật / mẫu câu — native treo không kéo cả năm lối sinh treo theo; quá trần **không** giải phóng chỗ, lượt đã quá
-    trần thì lời gọi sau ném ngay. **Đừng** cho `huy` chờ (Huỷ kẹt) hay `dong` / `moHinhSan` chờ (`docAnh` → `_boNap.can` → `dong` là khoá chết). `moc`
+    trần thì lời gọi sau ném ngay. Hết trần 90 s của `DocAnhBangGemma` chỉ dừng **lượt của nó** qua thẻ `HuyLuot`, không gọi
+    `huy()` toàn cục (bẫy 4.60); nút Huỷ của người dùng vẫn là `huy()` toàn cục. **Đừng** cho `huy` chờ (Huỷ kẹt) hay `dong` / `moHinhSan` chờ (`docAnh` → `_boNap.can` → `dong` là khoá chết). `moc`
     của `docAnh` / `chepLoi` ghi **trước** khi chờ: Huỷ trong lúc chờ thì lượt ấy không chạy. Nối dây: `flutter test` mù
     (gói thật) — canh bằng đọc mã ở `luot_khong_ngat_duoc_test`; **chưa đo trên máy**.
 
