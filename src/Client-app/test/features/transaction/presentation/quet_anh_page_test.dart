@@ -38,9 +38,12 @@ class _DocChuGia implements DocChuAnh {
 }
 
 class _GemmaGia implements DocAnhBangGemma {
-  _GemmaGia(this.kq, {this.cho});
+  _GemmaGia(this.kq, {this.cho, this.ngatNgay = true});
   final KetQuaGemmaAnh? kq;
   final Completer<KetQuaGemmaAnh?>? cho;
+
+  /// `false`: như máy thật — lời gọi đọc ảnh native không ngắt được tức thì (Realme ~5 s), `huy()` không làm `doc` về.
+  final bool ngatNgay;
   int soLanDoc = 0;
   int soLanHuy = 0;
 
@@ -54,7 +57,7 @@ class _GemmaGia implements DocAnhBangGemma {
   @override
   Future<void> huy() async {
     soLanHuy++;
-    if (cho != null && !cho!.isCompleted) cho!.complete(null);
+    if (ngatNgay && cho != null && !cho!.isCompleted) cho!.complete(null);
   }
 
   @override
@@ -332,6 +335,30 @@ void main() {
     final u = form()!;
     expect(u.queryParameters['amount'], '165000');
     expect(u.queryParameters.containsKey('ai'), isFalse);
+  });
+
+  testWidgets('⭐ Huỷ ở pha AI khi lượt đọc ảnh native KHÔNG ngắt được → vẫn mở form NGAY; lượt cũ về sau bị bỏ',
+      (tester) async {
+    // Nghiệm thu Realme 2026-10-21: màn "Đang đọc bằng AI…" đứng ~5 s sau khi bấm Huỷ (huỷ 14:23:53, native trả
+    // 14:23:58). Người dùng duyệt 2026-10-22: sang form ngay; lời gọi mô hình kế tiếp chờ lượt cũ (`LuotKhongNgatDuoc`).
+    final c = Completer<KetQuaGemmaAnh?>();
+    final g = _GemmaGia(null, cho: c, ngatNgay: false);
+    final dm = _DanhMucGia('Ăn uống');
+    await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: g, danhMuc: dm);
+    await cho(tester);
+    expect(find.text('Đang đọc bằng AI…'), findsOneWidget, reason: 'tiền đề: đang ở pha AI');
+    await tester.tap(find.byKey(const Key('quet-huy')));
+    await cho(tester);
+    expect(g.soLanHuy, 1);
+    final u = form();
+    expect(u, isNotNull, reason: 'không chờ lượt native về mới mở form');
+    expect(u!.queryParameters['amount'], '165000');
+    expect(u.queryParameters.containsKey('ai'), isFalse);
+    expect(dm.daHoi, isEmpty);
+    c.complete(const KetQuaGemmaAnh(tong: 999000));
+    await cho(tester);
+    expect(form()!.queryParameters['amount'], '165000', reason: 'kết quả về muộn không đụng form');
+    expect(dm.daHoi, isEmpty, reason: 'lượt về muộn không mở lượt chọn danh mục');
   });
 
   // Nghiệm thu OnePlus 2026-10-08: một màn khác (form trống của nút +, deeplink thông báo) mở ĐÈ lên `/quet` trong lúc

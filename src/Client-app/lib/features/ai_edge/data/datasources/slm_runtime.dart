@@ -16,6 +16,7 @@ import '../../domain/canary_gpu.dart';
 import '../../domain/cong_cu.dart';
 import '../../domain/nap_da_phuong_thuc.dart';
 import '../bo_nap_mo_hinh.dart';
+import '../luot_khong_ngat_duoc.dart';
 import 'phien_cong_cu.dart';
 
 /// Hạn chờ `stopGeneration()` native. Nếu nó treo, `huy()` vẫn trả về (nuốt lỗi + log) — nếu không, hàng đợi chép lời
@@ -105,6 +106,13 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     baoGiu: baoGiuMoHinh,
   );
 
+  /// Lượt đọc ảnh đang chạy — `huy()` KHÔNG ngắt được nó tức thì (Realme CPU 2026-10-21: ~5 s), mà màn Quét đã sang form
+  /// ngay khi người dùng bấm Huỷ (người dùng duyệt 2026-10-22). Năm lối SINH ([sinh], [sinhDan], [moPhien], [chepLoi],
+  /// [docAnh]) chờ nó trước khi tạo phiên chat: một bản mô hình, hai lượt chồng nhau trên engine là vùng chưa đo. ⚠️ [huy]
+  /// không chờ (Huỷ sẽ kẹt), [dong] / [moHinhSan] không chờ (`docAnh` → `_boNap.can` → [dong] là khoá chết). Nối dây canh
+  /// bằng đọc mã ở `luot_khong_ngat_duoc_test`.
+  final LuotKhongNgatDuoc _luotAnh = LuotKhongNgatDuoc();
+
   @override
   Future<void> moHinhSan(String duongTep) => _boNap.can(CanMoHinh.chu, duongTep);
 
@@ -116,30 +124,34 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     // ảnh được GIỮ: lần chọn danh mục (phiên chữ có tool) và các đường chữ khác dùng luôn nó; một tiến trình đóng
     // nhiều nhất một lần (khi bản đang nạp là bản chữ của Trợ lý / Nhập nhanh).
     // Luật chung với chepLoi: `quyetDinhNap` (C4).
+    // `moc` ghi TRƯỚC khi chờ lượt cũ: Huỷ trong lúc chờ thì `can` ném `LuotNapBiHuy`, lượt này không chạy.
     final moc = _boNap.moc;
-    await _boNap.can(CanMoHinh.anh, duongTep, moc: moc);
-    final dongHo = Stopwatch()..start();
-    // Nhiệt độ 0,2 như lượt đo (Gemma ra y hệt 3/3 lần mỗi ảnh) — đổi là phải đo lại.
-    final chat = await _model!.createChat(temperature: 0.2, supportImage: true);
-    _chatDangSinh = chat;
-    await chat.addQueryChunk(Message.withImage(text: prompt, imageBytes: anh, isUser: true));
-    final cau = StringBuffer();
-    try {
-      // Đường dần (không `generateChatResponse`) để `huy()` có `stopGeneration` mà gọi.
-      await for (final r in chat.generateChatResponseAsync()) {
-        if (r is TextResponse) cau.write(r.token);
+    return _luotAnh.chay(() async {
+      await _boNap.can(CanMoHinh.anh, duongTep, moc: moc);
+      final dongHo = Stopwatch()..start();
+      // Nhiệt độ 0,2 như lượt đo (Gemma ra y hệt 3/3 lần mỗi ảnh) — đổi là phải đo lại.
+      final chat = await _model!.createChat(temperature: 0.2, supportImage: true);
+      _chatDangSinh = chat;
+      await chat.addQueryChunk(Message.withImage(text: prompt, imageBytes: anh, isUser: true));
+      final cau = StringBuffer();
+      try {
+        // Đường dần (không `generateChatResponse`) để `huy()` có `stopGeneration` mà gọi.
+        await for (final r in chat.generateChatResponseAsync()) {
+          if (r is TextResponse) cau.write(r.token);
+        }
+      } finally {
+        if (identical(_chatDangSinh, chat)) _chatDangSinh = null;
       }
-    } finally {
-      if (identical(_chatDangSinh, chat)) _chatDangSinh = null;
-    }
-    debugPrint('[SLM][anh] đọc ảnh xong sau ${dongHo.elapsedMilliseconds} ms '
-        '(ảnh ${anh.length} byte → ${cau.length} ký tự)');
-    return cau.toString().trim();
+      debugPrint('[SLM][anh] đọc ảnh xong sau ${dongHo.elapsedMilliseconds} ms '
+          '(ảnh ${anh.length} byte → ${cau.length} ký tự)');
+      return cau.toString().trim();
+    });
   }
 
   @override
   Future<String> chepLoi(String duongTep, String prompt, Uint8List wav) async {
     final moc = _boNap.moc;
+    await _luotAnh.cho();
     await _boNap.can(CanMoHinh.am, duongTep, moc: moc);
     final dongHo = Stopwatch()..start();
     // Nhiệt độ 0,2 như spike C4 (2026-10-01) — đổi là phải đo lại.
@@ -222,6 +234,7 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
 
   @override
   Future<String> sinh(String prompt, {int tranToken = 120}) async {
+    await _luotAnh.cho();
     final m = _model;
     if (m == null) throw StateError('Mô hình chưa nạp');
 
@@ -242,6 +255,7 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
 
   @override
   Stream<String> sinhDan(String prompt, {int tranToken = 300}) async* {
+    await _luotAnh.cho();
     final m = _model;
     if (m == null) throw StateError('Mô hình chưa nạp');
 
@@ -278,6 +292,7 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
     required String cauHoi,
     required List<KhaiBaoCongCu> congCu,
   }) async {
+    await _luotAnh.cho();
     final m = _model;
     if (m == null) throw StateError('Mô hình chưa nạp');
 

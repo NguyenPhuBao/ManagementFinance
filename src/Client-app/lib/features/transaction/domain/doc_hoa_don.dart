@@ -118,6 +118,11 @@ bool _laDauAnh(String bo) => bo.contains('shot on');
 
 String _hai(int v) => v.toString().padLeft(2, '0');
 
+/// Giờ ngay sau NHÃN *"Giờ / Giờ vào / Giờ ra"* mà giữa giờ và phút không có dấu hai chấm — so trên một dòng đã bỏ dấu.
+/// ỦA TEA tờ N01 (`/quet` thật, Realme 2026-10-21): *"Giò vào: 1407"* (OCR đọc "Giờ" thành "Giò"), *"Giờ ra: 14.26"*,
+/// *"Giò vào::1426"*.
+final RegExp _gioSauNhan = RegExp(r'\bgio(?:\s+(?:vao|ra))?\s*[:.]*\s*(\d{1,2})[.:]?(\d{2})\b');
+
 String? _docGio(String vanBan) {
   for (final m in _gio.allMatches(vanBan)) {
     var h = int.parse(m.group(1)!);
@@ -125,6 +130,14 @@ String? _docGio(String vanBan) {
     final ap = m.group(3)?.toLowerCase();
     if (ap != null && h >= 1 && h <= 12) h = ap == 'p' ? h % 12 + 12 : h % 12;
     if (h < 24 && p < 60) return '${_hai(h)}:${m.group(2)}';
+  }
+  // Đường DỰ PHÒNG (người dùng duyệt 2026-10-22): chỉ khi cả tờ không có HH:MM nào — có thì HH:MM ở trên thắng. Từng
+  // dòng một: `boDauHoaDon` gộp cả xuống dòng, nhãn cuối dòng sẽ bắt số của dòng sau.
+  for (final dong in vanBan.split('\n')) {
+    for (final m in _gioSauNhan.allMatches(boDauHoaDon(dong))) {
+      final h = int.parse(m.group(1)!), p = int.parse(m.group(2)!);
+      if (h < 24 && p < 60) return '${_hai(h)}:${m.group(2)}';
+    }
   }
   return null;
 }
@@ -255,6 +268,11 @@ final RegExp _thanHoaDon =
 
 final RegExp _tuChu = RegExp(r'\p{L}+', unicode: true);
 
+/// Ký tự không phải chữ / dấu / số ở HAI ĐẦU tên cửa hàng — logo ™ / ® OCR đọc thành dấu nháy (*STARBUCKS"*, Realme
+/// 2026-10-21), viền khung thành `|`. Giữ ngoặc (*"Cơm Tấm (Q1)"*); giữ `\p{M}` để tên viết tổ hợp (NFD) không mất dấu.
+final RegExp _racDauTen = RegExp(r'^[^\p{L}\p{M}\p{N}(\[]+', unicode: true);
+final RegExp _racCuoiTen = RegExp(r'[^\p{L}\p{M}\p{N})\]]+$', unicode: true);
+
 /// Một dòng chắc KHÔNG phải tên cửa hàng: chữ trên đồ vật phía sau, địa chỉ / liên hệ, tiêu đề chứng từ.
 bool _khongPhaiTenCuaHang(String dong) {
   final b = boDauHoaDon(dong);
@@ -263,7 +281,8 @@ bool _khongPhaiTenCuaHang(String dong) {
 
 /// Tên cửa hàng: dòng có chữ đầu tiên TRƯỚC thân hoá đơn (dòng có số tiền, mã HĐ, tiêu đề cột), bỏ chữ trên đồ vật
 /// phía sau, mẩu chữ lẻ (một từ ≤ 4 chữ cái — *"tel"*, *"M"*), địa chỉ / liên hệ và tiêu đề chứng từ. Không thấy →
-/// `null`: ô trống để người dùng gõ tốt hơn một tên đoán sai (MAXIDI bị cắt mất logo chỉ còn dòng địa chỉ chợ).
+/// `null`: ô trống để người dùng gõ tốt hơn một tên đoán sai (MAXIDI bị cắt mất logo chỉ còn dòng địa chỉ chợ). Tên trả
+/// về đã cắt ký tự rác ở hai đầu ([_racDauTen], [_racCuoiTen]).
 String? _cuaHang(List<String> dong, List<String> bo) {
   for (var i = 0; i < dong.length; i++) {
     final b = bo[i];
@@ -271,7 +290,7 @@ String? _cuaHang(List<String> dong, List<String> bo) {
     final tu = _tuChu.allMatches(dong[i]).toList();
     if (tu.isEmpty || (tu.length == 1 && tu.first.group(0)!.length <= 4)) continue;
     if (_khongPhaiTenCuaHang(dong[i])) continue;
-    return dong[i];
+    return dong[i].replaceFirst(_racDauTen, '').replaceFirst(_racCuoiTen, '');
   }
   return null;
 }

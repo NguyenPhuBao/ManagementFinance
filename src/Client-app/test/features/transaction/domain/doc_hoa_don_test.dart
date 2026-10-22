@@ -64,6 +64,50 @@ Tien thoi lai            8.138
     expect(docHoaDonTuChu('X\n01/10/2026 25:61\nTong 10.000').gio, isNull);
   });
 
+  // 2026-10-22 (người dùng duyệt): ỦA TEA tờ N01 (`/quet` thật, Realme 2026-10-21) in *"Giò vào: 1407"* — OCR đọc "Giờ"
+  // thành "Giò" và không có dấu hai chấm giữa giờ và phút; cả tờ không có HH:MM nào nên form để 00:00.
+  group('giờ sau nhãn "Giờ" không có dấu hai chấm — đường dự phòng', () {
+    for (final (dong, gio) in [
+      ('Giò vào: 1407', '14:07'),
+      ('(GF-264_TH8HW) Giò ra: 1407', '14:07'),
+      ('Giờ ra: 14.26', '14:26'),
+      ('Giò vào::1426 F7 F8', '14:26'),
+      ('Giờ: 907', '09:07'),
+      ('Gio vao 2105', '21:05'),
+    ]) {
+      test('"$dong" → $gio', () {
+        expect(docHoaDonTuChu('ỦA TEA\nNgày: 14/10/2026\n$dong\nTổng tiền: 398,800 d').gio, gio);
+      });
+    }
+
+    test('⭐ tờ đã có giờ HH:MM ở chỗ khác → HH:MM thắng (chỉ là đường dự phòng)', () {
+      expect(docHoaDonTuChu('ỦA TEA\nGiò vào: 1407\nNgày: 14/10/2026 18:42\nTổng tiền: 398,800 d').gio, '18:42');
+    });
+
+    for (final dong in ['Giờ vào: 2507', 'Giờ vào: 1475', 'Giờ mở cửa: 0700', 'Giờ vàng 1407']) {
+      test('"$dong" → không phải giờ', () {
+        expect(docHoaDonTuChu('ỦA TEA\nNgày: 14/10/2026\n$dong\nTổng tiền: 398,800 d').gio, isNull);
+      });
+    }
+  });
+
+  // 2026-10-22: Starbucks tờ R01 ra ghi chú *STARBUCKS"* — dấu nháy là logo ™ / ® OCR đọc thành ký tự.
+  group('tên cửa hàng: cắt ký tự không phải chữ / số ở HAI ĐẦU', () {
+    for (final (dau, ten) in [
+      ('STARBUCKS"', 'STARBUCKS'),
+      ('"Quán Phở Hùng"', 'Quán Phở Hùng'),
+      ('|BEE BEE MART|', 'BEE BEE MART'),
+      ('™ABC Mart.', 'ABC Mart'),
+      ('Cơm Tấm (Q1)', 'Cơm Tấm (Q1)'),
+      ('BEE BEE MART 18K', 'BEE BEE MART 18K'),
+      ('eco-shop Invoice', 'eco-shop Invoice'),
+    ]) {
+      test('"$dau" → "$ten"', () {
+        expect(docHoaDonTuChu('$dau\nDELIVERS\nTotal 262,000').cuaHang, ten);
+      });
+    }
+  });
+
   test('kNhanTongHoaDon / kNhanLoaiHoaDon công khai, cùng nội dung spike', () {
     expect(kNhanTongHoaDon.first, 'tong thanh toan');
     expect(kNhanLoaiHoaDon, contains('khach dua'));

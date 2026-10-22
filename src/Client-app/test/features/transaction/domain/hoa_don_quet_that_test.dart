@@ -33,8 +33,10 @@ void main() {
   group('luật trên chữ /quet ra đúng dòng [Quet][luat] của logcat 2026-10-21', () {
     // (tổng, ghi chú, ngày giờ in trên tờ — null = không đọc ra, form dùng lúc quét)
     const logcat = <String, (int, String, (int, int, int, int, int)?)>{
-      'N01': (398800, 'ỦA TEA', (2026, 10, 14, 0, 0)),
-      'R01': (262000, 'STARBUCKS"', (2026, 9, 28, 14, 19)),
+      // 2026-10-22: giờ in liền sau nhãn (*"Giò vào: 1407"*) — trước đọc 00:00.
+      'N01': (398800, 'ỦA TEA', (2026, 10, 14, 14, 7)),
+      // 2026-10-22: ký tự rác ở hai đầu tên cửa hàng bị cắt — trước ra *STARBUCKS"*.
+      'R01': (262000, 'STARBUCKS', (2026, 9, 28, 14, 19)),
       'R02': (158000, 'ỦA TEA', (2026, 10, 2, 14, 26)),
       'R03': (217500, 'ỦA TEA', (2026, 10, 2, 14, 33)),
       'R04': (55500, 'DHIẾU TRANH TOẢN BÁCH HÓA XANH', null),
