@@ -639,7 +639,15 @@ thật cũ giữ nguyên; hai bản sai luật tên đỏ. **Số đo:** `flutte
 **Đo Realme CPU cùng khuya** (bản `5129e9df…`; `6fc0b3a1` thêm hai dòng log đo): khe Huỷ **đạt** — khởi động lại app, chạm
 Huỷ ngay khi nạp xong → *"bỏ lượt — Huỷ tới lúc đang tạo chat (693 ms)"*, form điền bằng luật, không có *đọc ảnh xong*.
 Tạo chat 28–693 ms (khe chỉ đáng kể ở lượt đầu sau nạp). Ba lần Huỷ sau khe: gộp + huỷ, không sập. G105 chờ người dùng
-chụp lại tờ dính mép. Lộ khe cũ `_huyLuat` ↔ `setState(_pha = ai)` (cuối bẫy 4.60) — chưa sửa.
+chụp lại tờ dính mép. Lộ khe cũ `_huyLuat` ↔ `setState(_pha = ai)` (cuối bẫy 4.60).
+
+**Sau đó cùng khuya** (người dùng chọn): ✅ **khe cũ màn Quét** (`8d1ecca0`) — Huỷ trong lúc `await kho.luuMon` (sau phép xét
+`_huyLuat`, trước pha AI) bị nuốt (Premium chạy trọn pha AI, Basic mở form); nay xét lại sau `luuMon`, 2 ca widget đỏ trên mã
+cũ. G105 đo lại: chụp dính tấm thẻ tiếng Anh — chữ rác lẫn hoa thường vẫn thắng *ỦA TEA*; người dùng chọn **nhắc lúc chụp**:
+✅ **sheet chọn nguồn ảnh theo đúng Stitch `8027b781…`** (`2bdc2a68` — tiêu đề, dòng khoá, dòng nhắc `kNhacChupSat`, dòng phụ,
+Huỷ nền xám; `isScrollControlled` + cuộn, không có thì tràn cả ở 360 dp), 5 ca widget, nghiệm thu Realme 360 dp đạt. Lượt
+`edit_screens` đưa dòng nhắc lên Stitch trả timeout, màn chưa đổi khi kiểm. **Số đo:** `flutter test` **7803/7803** pass,
+10 skip (4 ph 44 s, +7); `flutter analyze` 20.
 
 ### 🧷 Gộp lời dừng trùng — native chỉ nhận một `stopGeneration` mỗi chat (2026-10-22 tối, người dùng chọn lối A) — mã + test
 

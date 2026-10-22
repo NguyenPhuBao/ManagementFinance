@@ -345,9 +345,8 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
   động lại app để lượt quét đầu phải nạp, chạm Huỷ ngay khi logcat in *nạp mô hình xong* → `[SLM][anh] bỏ lượt — Huỷ / hết giờ
   tới lúc đang tạo chat (693 ms)`, màn điền bằng luật, **không** có dòng *đọc ảnh xong* (mã cũ: lượt chạy trọn ở nền). Tạo chat
   đo 28–693 ms — khe chỉ đáng kể ở lượt **đầu sau nạp** (28 ms khi mô hình đã nạp sẵn). Mốc kích theo dòng `[Quet][luat]` trượt
-  ba lần vì thời gian nạp dao động 0,57–1,4 s. ⚠️ Lộ một khe cũ khác (chưa sửa, chưa đo): màn Quét xét `_huyLuat` **trước**
-  khi in dòng luật; Huỷ rơi vào lúc giữa đó và `setState(_pha = ai)` thì nút thành *"Đang huỷ…"* và bị khoá, pha AI vẫn chạy
-  trọn mà không Huỷ được.
+  ba lần vì thời gian nạp dao động 0,57–1,4 s. Lộ một khe cũ khác ở màn Quét — Huỷ trong lúc `await kho.luuMon` (sau phép
+  xét `_huyLuat`, trước pha AI) bị nuốt — ✅ sửa cùng khuya (`8d1ecca0`, chốt 13 `QUET_ANH_FEATURE.md`).
 
 ## 5. Màn Stitch
 

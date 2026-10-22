@@ -143,7 +143,9 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
     dòng đầu *"card n"* thắng *"ỦA TEA 2DEE"* ở dòng 3. Người dùng chọn xếp theo chữ hoa; bản *"viết hoa thắng"* làm R06
     thật (*"NHÀ THUỐc"* → dòng khẩu hiệu viết hoa bên dưới) và tên viết thường (*Quán Phở Hùng* thua *DELIVERS*) hỏng, nên
     chỉ dòng toàn chữ thường bị đẩy xuống — vẫn được lấy khi không còn dòng nào khác. Đuôi rác *2DEE* **không** cắt (tên
-    kiểu *7ELEVEN*, *24H*). Dữ liệu: tờ `N01b` ở `hoa_don_quet_that_du_lieu.dart`.
+    kiểu *7ELEVEN*, *24H*). Dữ liệu: tờ `N01b` ở `hoa_don_quet_that_du_lieu.dart`. ⚠️ Chữ rác **lẫn hoa thường** (tấm thẻ
+    tiếng Anh ở mép, đo Realme khuya) vẫn thắng — không luật nào tách được mà không hỏng tờ thật; người dùng chọn **nhắc lúc
+    chụp** thay vì thêm luật: sheet chọn nguồn có dòng *"Chụp sát tờ hoá đơn, đừng để vật có chữ lọt vào khung"*.
     Dữ liệu test: `test/features/transaction/domain/hoa_don_that_du_lieu.dart` (chữ OCR thật, đã che số điện thoại).
     ⚠️ Luật sửa trên **chính** 15 tờ này — cần hoá đơn mới để biết nó có chỉ khớp riêng bộ này không. Chỗ dễ vỡ nhất:
     *"dòng trên chỉ-có-số thắng"* (đo đúng 5 ca) — một dòng món đứng ngay trước nhãn tổng sẽ bị bốc nhầm.
@@ -161,8 +163,9 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
     `huy()` toàn cục (bẫy 4.60); nút Huỷ của người dùng vẫn là `huy()` toàn cục. Huỷ rơi vào lúc runtime đang tạo chat
     (dưới ~1,2 s sau khi *"Đang đọc bằng AI…"* hiện) từng không dừng được gì — lượt chạy trọn 23–56 s ở nền; vá 2026-10-22
     tối: xét lại bộ đếm Huỷ ngay sau `createChat` (bẫy 4.60, *khe Huỷ*) — ✅ đo Realme cùng tối: Huỷ trúng khe (lượt đầu sau
-    nạp, tạo chat 693 ms) → lượt bỏ ngay, form điền bằng luật. ⚠️ Khe cũ còn mở: Huỷ giữa phép xét `_huyLuat` và
-    `setState(_pha = ai)` (vài trăm ms) → nút *"Đang huỷ…"* bị khoá, pha AI chạy trọn. **Đừng** cho `huy` chờ (Huỷ kẹt) hay `dong` / `moHinhSan` chờ (`docAnh` → `_boNap.can` → `dong` là khoá chết). `moc`
+    nạp, tạo chat 693 ms) → lượt bỏ ngay, form điền bằng luật. ✅ Khe cũ (`8d1ecca0`, cùng khuya): `_chay` xét `_huyLuat`
+    sau OCR rồi `await kho.luuMon` — Huỷ trong lúc lưu món bật cờ, nút khoá ở *"Đang huỷ…"*, Premium chạy trọn pha AI,
+    Basic mở form như chưa Huỷ; nay xét lại ngay sau `luuMon` (như Huỷ pha luật: xoá ảnh + tệp món, về trang trước). **Đừng** cho `huy` chờ (Huỷ kẹt) hay `dong` / `moHinhSan` chờ (`docAnh` → `_boNap.can` → `dong` là khoá chết). `moc`
     của `docAnh` / `chepLoi` ghi **trước** khi chờ: Huỷ trong lúc chờ thì lượt ấy không chạy. Nối dây: `flutter test` mù
     (gói thật) — canh bằng đọc mã ở `luot_khong_ngat_duoc_test`; **chưa đo trên máy**. Nút Huỷ gọi cả `_docGemma.huy()` lẫn
     `_docDanhMuc.huy()` — hai lần `huy()` song song trên cùng chat đọc ảnh; từ 2026-10-22 (lối A) runtime **gộp** chúng
@@ -209,7 +212,9 @@ dựng được ngày 2026-10-08 (224,9 MB) — R8 không cần quy tắc mới 
 
 ## 6. Stitch
 
-`8027b781…` sheet chọn nguồn · `353934f2…` Đang đọc ảnh · `14d9a417…` form Từ ảnh quét · `01f8cdc6…` khối tách ·
+`8027b781…` sheet chọn nguồn (✅ app theo đúng màn từ 2026-10-22 khuya — trước đó chỉ hai `ListTile` + Huỷ; thêm dòng nhắc
+`kNhacChupSat` cùng kiểu dòng khoá — G105; lượt `edit_screens` đưa dòng ấy lên Stitch trả **timeout**, màn chưa đổi khi kiểm
+— chờ người dùng xem) · `353934f2…` Đang đọc ảnh · `14d9a417…` form Từ ảnh quét · `01f8cdc6…` khối tách ·
 `98133eb8…` sheet chọn món (spec mục 7, 11.7). Khối hai chip: màn `bd764b70…` *"Thêm giao dịch - Từ ảnh quét - Hai số
 khác nhau"* xuất hiện sau lượt gọi `timeout` — ✅ **người dùng xác nhận 2026-10-08**.
 
