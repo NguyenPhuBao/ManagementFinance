@@ -6,7 +6,10 @@ library;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flowmoney/features/ai_edge/data/luot_khong_ngat_duoc.dart';
+import 'package:flowmoney/features/transaction/data/chep_loi_bang_gemma.dart';
+import 'package:flowmoney/features/transaction/data/doc_anh_bang_gemma.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -75,9 +78,110 @@ void main() {
     expect(daCho, isTrue);
   });
 
+  // Trần chờ (phát hiện code-review 2026-10-22): lượt native TREO thì năm lối sinh không được treo theo — hết trần, lượt
+  // mới ném để người gọi rơi về luật / mẫu câu như khi mô hình hỏng. Chạy dưới FakeAsync: không bao giờ treo, chỉ đỏ.
+  group('trần chờ lượt cũ', () {
+    const motGiay = Duration(seconds: 1);
+
+    test('⭐ lượt cũ không xong trong kTranChoLuotCu → cho() ném LuotCuChuaXong, không đợi mãi', () {
+      fakeAsync((fa) {
+        final l = LuotKhongNgatDuoc();
+        unawaited(l.chay(() => Completer<void>().future));
+        final cho = _theoDoi(l.cho());
+        fa.elapse(kTranChoLuotCu - motGiay);
+        expect((cho.xong, cho.loi), (false, null), reason: 'chưa tới trần — còn đợi');
+        fa.elapse(motGiay);
+        expect(cho.loi, isA<LuotCuChuaXong>(), reason: 'lượt native treo thì Trợ lý / Nhập nhanh / Nói kẹt mãi');
+        expect(cho.xong, isFalse);
+      });
+    });
+
+    test('⭐ chay() của lượt sau cũng có trần — và KHÔNG chạy lượt của nó khi lượt cũ còn giữ chỗ', () {
+      fakeAsync((fa) {
+        final l = LuotKhongNgatDuoc();
+        unawaited(l.chay(() => Completer<void>().future));
+        var daChay = false;
+        final sau = _theoDoi(l.chay(() async => daChay = true));
+        fa.elapse(kTranChoLuotCu);
+        expect(sau.loi, isA<LuotCuChuaXong>(), reason: 'docAnh thứ hai sau lượt treo cũng phải rơi về luật');
+        expect(daChay, isFalse, reason: 'quá trần KHÔNG giải phóng chỗ — chạy là hai lượt chồng nhau trên engine');
+      });
+    });
+
+    test('lượt đã quá trần một lần → lời gọi sau ném NGAY; lượt ấy xong thì về bình thường', () {
+      fakeAsync((fa) {
+        final l = LuotKhongNgatDuoc();
+        final treo = Completer<void>();
+        unawaited(l.chay(() => treo.future));
+        _theoDoi(l.cho());
+        fa.elapse(kTranChoLuotCu);
+
+        final sau = _theoDoi(l.cho());
+        fa.flushMicrotasks();
+        expect(sau.loi, isA<LuotCuChuaXong>(), reason: 'mỗi lời gọi đợi thêm một trần nữa là mỗi câu hỏi chờ 45 s');
+
+        treo.complete();
+        fa.flushMicrotasks();
+        final cho = _theoDoi(l.cho());
+        var daChay = false;
+        _theoDoi(l.chay(() async => daChay = true));
+        fa.flushMicrotasks();
+        expect((cho.xong, daChay), (true, true), reason: 'lượt treo đã trả — không được kẹt ở trạng thái "quá trần"');
+      });
+    });
+
+    test('trần tính từ lúc BẮT ĐẦU đợi, cộng dồn qua lượt nối sau', () {
+      fakeAsync((fa) {
+        final l = LuotKhongNgatDuoc();
+        final a = Completer<void>();
+        unawaited(l.chay(() => a.future));
+        unawaited(l.chay(() => Completer<void>().future));
+        final cho = _theoDoi(l.cho());
+        fa.elapse(kTranChoLuotCu - motGiay * 5);
+        a.complete();
+        fa.elapse(motGiay * 5);
+        expect(cho.loi, isA<LuotCuChuaXong>(), reason: 'mỗi lượt nối sau một trần mới là đợi không giới hạn');
+      });
+    });
+
+    test('lượt cũ xong trước trần → cho() xong, không còn hẹn giờ treo lại', () {
+      fakeAsync((fa) {
+        final l = LuotKhongNgatDuoc();
+        final a = Completer<void>();
+        unawaited(l.chay(() => a.future));
+        final cho = _theoDoi(l.cho());
+        fa.elapse(motGiay);
+        a.complete();
+        fa.flushMicrotasks();
+        expect(cho.xong, isTrue);
+        expect(fa.pendingTimers, isEmpty, reason: 'hẹn giờ sót lại làm widget test đỏ "Timer is still pending"');
+      });
+    });
+
+    test('không phải đợi → không dựng hẹn giờ', () {
+      fakeAsync((fa) {
+        final l = LuotKhongNgatDuoc();
+        _theoDoi(l.cho());
+        _theoDoi(l.chay<void>(() async {}));
+        fa.flushMicrotasks();
+        expect(fa.pendingTimers, isEmpty);
+      });
+    });
+
+    test('⭐ trần chờ ≥ lượt đọc ảnh chậm nhất đã đo và NGẮN HƠN trần hai lớp bọc', () {
+      // Ngắn hơn: lượt đang chờ tự ném trước khi `.timeout` của lớp bọc tới — `onTimeout` (gọi `huy()` toàn cục, tăng bộ
+      // đếm chung của `BoNapMoHinh`) không bao giờ chạy lúc lượt còn đứng trong `cho()`.
+      expect(kTranChoLuotCu, lessThan(kThoiHanChepLoi));
+      expect(kTranChoLuotCu, lessThan(kThoiHanDocAnhGemma));
+      // Realme CPU 2026-10-08: 21–42 s một ảnh — lượt bị bỏ mà `stopGeneration` hỏng thì chạy nốt tới cùng.
+      expect(kTranChoLuotCu, greaterThanOrEqualTo(const Duration(seconds: 42)),
+          reason: 'trần ngắn hơn lượt chậm hợp lệ là coi lượt ấy như treo');
+    });
+  });
+
   // Vùng `flutter test` mù: `SlmRuntimeThat` gọi `flutter_gemma` thật, không dựng được trên x86. Canh nối dây bằng đọc mã
-  // (khuôn các `*_noi_day_test`): năm lối SINH chờ / chạy qua `_luotAnh`; `huy` và `dong` thì KHÔNG — `huy` chờ là Huỷ kẹt
-  // tới khi lượt cũ xong, `dong` chờ là khoá chết (`docAnh` → `_boNap.can` → `dong`).
+  // (khuôn các `*_noi_day_test`): năm lối SINH chờ / chạy qua `_luotAnh`; `huy`, `dong`, `moHinhSan` thì KHÔNG — `huy` chờ
+  // là Huỷ kẹt tới khi lượt cũ xong, `dong` / `moHinhSan` chờ là khoá chết (`docAnh` → `_boNap.can` → `dong`).
   group('nối dây trong slm_runtime.dart', () {
     final nguon = File('lib/features/ai_edge/data/datasources/slm_runtime.dart').readAsStringSync();
     final lop = nguon.substring(nguon.indexOf('class SlmRuntimeThat'), nguon.indexOf('class _PhienThat'));
@@ -98,8 +202,33 @@ void main() {
       test('$chuKy chờ lượt đọc ảnh cũ', () => expect(than(chuKy), contains('await _luotAnh.cho()')));
     }
     test('docAnh chạy qua _luotAnh.chay', () => expect(than('Future<String> docAnh('), contains('_luotAnh.chay(')));
-    for (final chuKy in ['Future<void> huy()', 'Future<void> dong()']) {
+    // `moc` ghi SAU khi chờ thì Huỷ bấm lúc đang chờ lượt cũ không bỏ được lượt này: nó nạp / sinh như chưa từng bị huỷ.
+    for (final chuKy in ['Future<String> docAnh(', 'Future<String> chepLoi(']) {
+      test('$chuKy ghi moc TRƯỚC khi chờ lượt cũ', () {
+        final t = than(chuKy);
+        final moc = t.indexOf('final moc = _boNap.moc;');
+        expect(moc, isNonNegative, reason: 'không thấy phép ghi moc');
+        expect(moc, lessThan(t.indexOf('_luotAnh.')), reason: 'moc phải ghi trước lời chờ _luotAnh');
+      });
+    }
+    for (final chuKy in ['Future<void> huy()', 'Future<void> dong()', 'Future<void> moHinhSan(']) {
       test('$chuKy KHÔNG chờ', () => expect(than(chuKy), isNot(contains('_luotAnh'))));
     }
   });
+}
+
+/// Kết quả của một Future dưới FakeAsync — đọc được giữa chừng, và lỗi được bắt (không lọt thành lỗi chưa xử lý của zone).
+class _KetQua {
+  var xong = false;
+  Object? loi;
+}
+
+_KetQua _theoDoi(Future<Object?> f) {
+  final k = _KetQua();
+  f.then((_) {
+    k.xong = true;
+  }, onError: (Object e) {
+    k.loi = e;
+  });
+  return k;
 }

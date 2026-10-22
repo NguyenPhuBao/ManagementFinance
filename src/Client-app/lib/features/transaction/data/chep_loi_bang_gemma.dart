@@ -13,6 +13,8 @@ import '../../ai_edge/data/datasources/slm_runtime.dart';
 import '../domain/chep_loi.dart';
 
 /// Spike C4 (Realme CPU, giọng tổng hợp 2,8 s): chép lời 9,8 s. Trần 60 s tính CẢ pha đóng + nạp bản hai cờ (CPU nạp bản chữ ≈ 27 s, bản hai cờ chưa đo) — con số phải đo trên máy.
+/// Cũng tính cả lúc runtime chờ lượt đọc ảnh bị bỏ (bẫy 4.60; thường vài giây, trần `kTranChoLuotCu` 45 s — ngắn hơn trần
+/// này nên lượt chờ quá lâu tự ném trước, `onTimeout` không gọi `huy()` lúc lượt còn đứng chờ).
 const Duration kThoiHanChepLoi = Duration(seconds: 60);
 
 class ChepLoiBangGemma {
@@ -45,7 +47,8 @@ class ChepLoiBangGemma {
   }
 
   /// Câu chép từ [wav], hoặc `null`. Chờ lượt đang chạy xong rồi mới gọi mô hình; bị [huy] trong lúc xếp hàng thì trả
-  /// `null` mà KHÔNG gọi mô hình. [thoiHan] chỉ bao lời gọi mô hình, không bao thời gian xếp hàng.
+  /// `null` mà KHÔNG gọi mô hình. [thoiHan] chỉ bao lời gọi mô hình, không bao thời gian xếp hàng ở đây — nhưng lời gọi
+  /// mô hình gồm cả lúc runtime chờ lượt đọc ảnh bị bỏ (xem [kThoiHanChepLoi]).
   Future<String?> chep(Uint8List wav) async {
     final doi = _doiHuy;
     final truoc = _hangDoi;

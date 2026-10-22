@@ -109,7 +109,8 @@ class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
   /// Lượt đọc ảnh đang chạy — `huy()` KHÔNG ngắt được nó tức thì (Realme CPU 2026-10-21: ~5 s), mà màn Quét đã sang form
   /// ngay khi người dùng bấm Huỷ (người dùng duyệt 2026-10-22). Năm lối SINH ([sinh], [sinhDan], [moPhien], [chepLoi],
   /// [docAnh]) chờ nó trước khi tạo phiên chat: một bản mô hình, hai lượt chồng nhau trên engine là vùng chưa đo. ⚠️ [huy]
-  /// không chờ (Huỷ sẽ kẹt), [dong] / [moHinhSan] không chờ (`docAnh` → `_boNap.can` → [dong] là khoá chết). Nối dây canh
+  /// không chờ (Huỷ sẽ kẹt), [dong] / [moHinhSan] không chờ (`docAnh` → `_boNap.can` → [dong] là khoá chết). Lượt cũ quá
+  /// `kTranChoLuotCu` → lối sinh ném `LuotCuChuaXong` (người gọi rơi về luật / mẫu câu như mọi lỗi mô hình). Nối dây canh
   /// bằng đọc mã ở `luot_khong_ngat_duoc_test`.
   final LuotKhongNgatDuoc _luotAnh = LuotKhongNgatDuoc();
 
