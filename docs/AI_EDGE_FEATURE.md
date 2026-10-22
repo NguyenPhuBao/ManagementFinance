@@ -287,10 +287,17 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
   là phải cho nó chờ qua một hàm đóng riêng, đừng gắn chốt vào `dong` mà `BoNapMoHinh` đang dùng (khoá chết). ⚠️ **Giới hạn của
   `cho()`**: nó chỉ đợi lượt đang chạy và lượt **đã vào hàng trước nó**; hai lời gọi MỚI sau lượt bị bỏ (một `docAnh` và một
   lối khác gọi trước nó) vẫn có thể chạy cùng lúc — đó là tình huống hai tính năng cùng lúc mà giao diện vốn chặn, không phải
-  điều chốt này bảo đảm. **Chưa làm (soát mã 2026-10-22, người dùng chưa chọn):** `cho()` không có trần thời gian — lượt native
-  treo thì năm lối sinh treo theo; trần 90 s của `DocAnhBangGemma` và trần chép lời nay tính cả thời gian chờ (trái chú thích
-  `chep_loi_bang_gemma.dart` *"không bao thời gian xếp hàng"*), và `onTimeout` gọi `runtime.huy()` tăng bộ đếm chung, có thể huỷ
-  oan một lượt khác đang chờ với `moc`; `sinh` · `sinhDan` · `moPhien` không có `moc` nên Huỷ lúc đang chờ không bỏ được lượt ấy.
+  điều chốt này bảo đảm. ✅ **Trần chờ** (code-review 2026-10-22, người dùng chọn cùng ngày): `chay` / `cho` đợi tối đa
+  `kTranChoLuotCu` **45 s** tính từ lúc bắt đầu đợi (cộng dồn qua lượt nối sau), quá trần ném `LuotCuChuaXong` — mọi người gọi
+  đã bắt lỗi chung và rơi về luật / mẫu câu (Trợ lý: câu *"không chạy được"*). ⚠️ Quá trần **không** giải phóng chỗ (lượt
+  treo vẫn trên engine — cho lượt mới chạy là chồng hai lượt); lượt đã quá trần một lần thì lời gọi sau ném **ngay**. Native
+  treo thật = AI chết tới hết tiến trình, app không treo. 45 s ≥ lượt đọc ảnh chậm nhất đã đo (42 s — lượt bị bỏ mà
+  `stopGeneration` hỏng chạy nốt tới cùng) và < trần 60 s / 90 s của hai lớp bọc: lượt chờ quá lâu tự ném trước, nên
+  `onTimeout` của lớp bọc (gọi `huy()` toàn cục — tăng bộ đếm chung của `BoNapMoHinh`, dừng `_chatDangSinh`) không bao giờ chạy
+  lúc lượt còn đứng chờ; test canh cả hai vế — đổi một trong ba hằng là đỏ. Hai trần ấy nay **tính cả** lúc chờ (chú thích
+  đã sửa). **Còn lại, chưa làm:** `onTimeout` của một lượt **đang chạy** vẫn tăng bộ đếm chung — huỷ oan lượt khác đang chờ với
+  `moc` chỉ khi hai tính năng chạy cùng lúc (giao diện vốn chặn); `sinh` · `sinhDan` · `moPhien` không có `moc` nên Huỷ lúc
+  đang chờ không bỏ được lượt ấy (người dùng chưa chọn).
 
 ## 5. Màn Stitch
 

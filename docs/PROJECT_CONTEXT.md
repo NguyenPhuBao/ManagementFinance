@@ -616,6 +616,22 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-22)
 
+### ⏱️ Trần 45 s cho chốt chờ lượt mô hình cũ (2026-10-22, phát hiện code-review — người dùng chọn) — mã + test, chưa đo trên máy
+
+Chốt `LuotKhongNgatDuoc` (khối 🧾 A5 ngay dưới) không có trần: lượt đọc ảnh native **treo** thì Trợ lý AI, Nhập nhanh, lệnh
+C3, Nói (Gemma) và Quét liền kẹt mãi ở *"Đang đọc bằng AI…"*. Nay `chay` / `cho` đợi tối đa `kTranChoLuotCu` **45 s** (tính
+từ lúc bắt đầu đợi, cộng dồn qua lượt nối sau), quá trần ném `LuotCuChuaXong` → người gọi rơi về luật / mẫu câu như mọi lỗi
+mô hình. Quá trần **không** giải phóng chỗ (lượt treo vẫn trên engine); lượt đã quá trần một lần thì lời gọi sau ném ngay.
+45 s ≥ lượt đọc ảnh chậm nhất đã đo (42 s) và < trần 60 s / 90 s của hai lớp bọc — `onTimeout` của lớp bọc (gọi `huy()`
+toàn cục) không còn chạy lúc lượt đang chờ. Còn lại (chưa làm, bẫy 4.60): `onTimeout` của lượt **đang chạy** vẫn tăng bộ đếm
+chung (oan chỉ khi hai tính năng chạy cùng lúc); `sinh` · `sinhDan` · `moPhien` không có `moc`.
+
+**Test:** `luot_khong_ngat_duoc_test` +10 (7 trần dưới `fakeAsync` — kể cả ca canh ba hằng — và 3 đọc mã: `moc` ghi trước khi
+chờ ở `docAnh` / `chepLoi`, `moHinhSan` không chờ). Bốn ca hành vi đỏ trên mã cũ; sáu bản sai cấy thử (bỏ ném-ngay, trần mới
+mỗi lượt nối, không huỷ hẹn giờ, `moc` sau khi chờ, `moHinhSan` chờ, nhận chỗ qua `cho()`) đều đỏ đúng ca. **Số đo:**
+`flutter test` **7762/7762** pass, 10 skip (5 ph 41 s, +10 so với 7752); `flutter analyze` **20**. Kiểm trên máy (khi có):
+khó tạo native treo thật — phép đo khả thi chỉ là *Huỷ ở pha AI rồi Quét / Nói / Trợ lý ngay*, lượt mới chờ vài giây rồi chạy.
+
 ### 🧾 A5 — ba ứng viên sửa của lượt Realme 21/10 (2026-10-22, người dùng duyệt) — mã + test, chưa đo trên máy
 
 Bàn giao trước để lại ba ứng viên ở mục 7 `QUET_ANH_FEATURE.md`; người dùng chọn làm cả ba (không máy nào cắm).
@@ -624,7 +640,8 @@ Bàn giao trước để lại ba ứng viên ở mục 7 `QUET_ANH_FEATURE.md`;
   `14.26`, `::1426`) — **chỉ là đường dự phòng** khi cả tờ không có HH:MM, xét từng dòng. N01 nay 14:07; R02 / R03 không đổi.
   Soát mã (code-review hai trục, cùng ngày) bắt bản đầu đọc nhầm *"Giỏ 120.000"* → 01:20 và *"Tổng đài 24 giờ: 1900"* →
   19:00; người dùng chọn siết (phút không dính nhóm nghìn; chặn số 1–2 chữ số ngay trước nhãn trừ đuôi ngày) — +7 ca.
-  Các phát hiện khác của lượt soát (trần chờ cho `cho()`, siết test P7, dọn nhỏ) người dùng **chưa** chọn làm.
+  Các phát hiện khác của lượt soát: trần chờ cho `cho()` và siết test P7 + dọn nhỏ — làm trong phiên kế cùng ngày (khối ⏱️
+  ngay trên).
 - **Tên cửa hàng cắt ký tự rác hai đầu** (chốt 11b): `STARBUCKS"` → `STARBUCKS`; giữ ngoặc và `\p{M}`; chỉ hoá đơn.
 - **Huỷ pha AI sang form ngay** (chốt 13; bẫy 4.60 `AI_EDGE_FEATURE.md`): `QuetAnhPage` chờ `Future.any([lượt đọc ảnh, tín hiệu
   Huỷ])` thay vì đứng ~5 s chờ native. Khi soát, thấy `SlmRuntimeThat` **không** tuần tự hoá lượt sinh (chỉ pha nạp) → người
