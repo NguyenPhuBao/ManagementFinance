@@ -10,11 +10,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../ai_edge/data/datasources/slm_runtime.dart';
+import '../../ai_edge/data/huy_luot.dart';
 import '../domain/chep_loi.dart';
 
 /// Spike C4 (Realme CPU, giọng tổng hợp 2,8 s): chép lời 9,8 s. Trần 60 s tính CẢ pha đóng + nạp bản hai cờ (CPU nạp bản chữ ≈ 27 s, bản hai cờ chưa đo) — con số phải đo trên máy.
 /// Cũng tính cả lúc runtime chờ lượt đọc ảnh bị bỏ (bẫy 4.60; thường vài giây, trần `kTranChoLuotCu` 45 s — ngắn hơn trần
-/// này nên lượt chờ quá lâu tự ném trước, `onTimeout` không gọi `huy()` lúc lượt còn đứng chờ).
+/// này nên lượt chờ quá lâu tự ném trước khi trần này tới).
 const Duration kThoiHanChepLoi = Duration(seconds: 60);
 
 class ChepLoiBangGemma {
@@ -59,9 +60,12 @@ class ChepLoiBangGemma {
       await truoc;
       if (doi != _doiHuy) return null;
       if (!await sanSang() || doi != _doiHuy) return null;
-      final tho = await moHinh.chepLoi(await duongTep(), kPromptChepLoi, wav).timeout(thoiHan, onTimeout: () async {
-        // Không `await`: huỷ treo thì lượt vẫn kết thúc, hàng đợi không kẹt (I1).
-        unawaited(moHinh.huy());
+      final the = HuyLuot();
+      final tho =
+          await moHinh.chepLoi(await duongTep(), kPromptChepLoi, wav, huyLuot: the).timeout(thoiHan, onTimeout: () {
+        // Dừng ĐÚNG lượt này (bẫy 4.60) — `huy()` toàn cục bỏ oan lượt khác đang chờ. Thẻ huỷ đồng bộ, runtime dừng chat ở
+        // nền: `stopGeneration` treo thì lượt vẫn kết thúc, hàng đợi không kẹt (I1).
+        the.huy();
         throw TimeoutException('chép lời quá ${thoiHan.inSeconds} s');
       });
       if (doi != _doiHuy) return null;

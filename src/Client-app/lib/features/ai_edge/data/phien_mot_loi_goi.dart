@@ -116,6 +116,11 @@ class PhienMotLoiGoi {
   /// Người dùng bấm Huỷ: lượt đang chạy trả `null`, engine thôi giải mã.
   Future<void> huy() async {
     _luot++;
+    // Huỷ TOÀN CỤC của runtime, gọi TRƯỚC mọi `await` (bẫy 4.60): lượt mở phiên có thể đang đứng chờ lượt đọc ảnh bị bỏ
+    // (`_phien` còn null) — bộ đếm tăng thì lượt ấy không mở phiên vô ích khi lượt cũ xong. Tăng muộn là bỏ oan lượt mở SAU
+    // lời Huỷ: micro gọi Huỷ lượt Điền rồi mới mở lượt chép lời.
+    final toanCuc = runtime.huy();
     await _phien?.huy();
+    await toanCuc;
   }
 }

@@ -169,8 +169,8 @@ void main() {
     });
 
     test('⭐ trần chờ ≥ lượt đọc ảnh chậm nhất đã đo và NGẮN HƠN trần hai lớp bọc', () {
-      // Ngắn hơn: lượt đang chờ tự ném trước khi `.timeout` của lớp bọc tới — `onTimeout` (gọi `huy()` toàn cục, tăng bộ
-      // đếm chung của `BoNapMoHinh`) không bao giờ chạy lúc lượt còn đứng trong `cho()`.
+      // Ngắn hơn: lượt đang chờ tự ném trước khi `.timeout` của lớp bọc tới — lớp bọc không cắt một lượt còn đứng trong
+      // `cho()` (thẻ `HuyLuot` của lượt chỉ được xét sau pha nạp, nên cắt lúc ấy có thể nạp mô hình vô ích).
       expect(kTranChoLuotCu, lessThan(kThoiHanChepLoi));
       expect(kTranChoLuotCu, lessThan(kThoiHanDocAnhGemma));
       // Realme CPU 2026-10-08: 21–42 s một ảnh — lượt bị bỏ mà `stopGeneration` hỏng thì chạy nốt tới cùng.
@@ -202,13 +202,41 @@ void main() {
       test('$chuKy chờ lượt đọc ảnh cũ', () => expect(than(chuKy), contains('await _luotAnh.cho()')));
     }
     test('docAnh chạy qua _luotAnh.chay', () => expect(than('Future<String> docAnh('), contains('_luotAnh.chay(')));
+    /// [a] có mặt và đứng TRƯỚC [b] trong [t].
+    void truoc(String t, String a, String b, String lyDo) {
+      expect(t.indexOf(a), isNonNegative, reason: 'không thấy "$a"');
+      expect(t.indexOf(b), isNonNegative, reason: 'không thấy "$b"');
+      expect(t.indexOf(a), lessThan(t.indexOf(b)), reason: lyDo);
+    }
+
     // `moc` ghi SAU khi chờ thì Huỷ bấm lúc đang chờ lượt cũ không bỏ được lượt này: nó nạp / sinh như chưa từng bị huỷ.
-    for (final chuKy in ['Future<String> docAnh(', 'Future<String> chepLoi(']) {
+    for (final chuKy in [
+      'Future<String> docAnh(',
+      'Future<String> chepLoi(',
+      'Future<String> sinh(',
+      'Stream<String> sinhDan(',
+      'Future<PhienCongCu> moPhien(',
+    ]) {
       test('$chuKy ghi moc TRƯỚC khi chờ lượt cũ', () {
+        truoc(than(chuKy), 'final moc = _boNap.moc;', '_luotAnh.', 'moc phải ghi trước lời chờ _luotAnh');
+      });
+    }
+    // Ba lối chữ không qua `_boNap.can(moc:)` — tự kiểm ngay sau khi chờ (Huỷ của Nhập nhanh / C3 / danh mục quét tới qua
+    // `PhienMotLoiGoi.huy` → `huy()` toàn cục).
+    for (final chuKy in ['Future<String> sinh(', 'Stream<String> sinhDan(', 'Future<PhienCongCu> moPhien(']) {
+      test('$chuKy bỏ lượt khi bị huỷ lúc đang chờ — không tạo chat', () {
         final t = than(chuKy);
-        final moc = t.indexOf('final moc = _boNap.moc;');
-        expect(moc, isNonNegative, reason: 'không thấy phép ghi moc');
-        expect(moc, lessThan(t.indexOf('_luotAnh.')), reason: 'moc phải ghi trước lời chờ _luotAnh');
+        truoc(t, 'await _luotAnh.cho();', 'if (_boNap.moc != moc) throw const LuotNapBiHuy();', 'kiểm sau khi chờ');
+        truoc(t, 'if (_boNap.moc != moc) throw const LuotNapBiHuy();', 'createChat(', 'kiểm trước khi tạo chat');
+      });
+    }
+    // Hết giờ của lớp bọc đi bằng thẻ của lượt: sau pha nạp không tạo chat, sau khi tạo chat thì dừng CHÍNH chat ấy.
+    for (final chuKy in ['Future<String> docAnh(', 'Future<String> chepLoi(']) {
+      test('$chuKy theo thẻ huỷ của lượt — bỏ sau pha nạp, dừng đúng chat của mình', () {
+        final t = than(chuKy);
+        truoc(t, '_boNap.can(', 'if (huyLuot?.daHuy ?? false) throw const LuotNapBiHuy();', 'kiểm thẻ sau pha nạp');
+        truoc(t, 'if (huyLuot?.daHuy ?? false) throw const LuotNapBiHuy();', 'createChat(', 'kiểm thẻ trước khi tạo chat');
+        truoc(t, 'createChat(', 'huyLuot?.tin.then((_) => _dungChat(chat))', 'nghe thẻ sau khi có chat');
       });
     }
     for (final chuKy in ['Future<void> huy()', 'Future<void> dong()', 'Future<void> moHinhSan(']) {

@@ -12,8 +12,9 @@ import 'dart:async';
 /// Trần chờ lượt cũ của MỘT lời gọi [LuotKhongNgatDuoc.chay] / [LuotKhongNgatDuoc.cho], tính từ lúc bắt đầu đợi (code-review
 /// 2026-10-22: lượt native TREO thì năm lối sinh treo theo). ≥ lượt đọc ảnh chậm nhất đã đo (Realme CPU 42 s — lượt bị bỏ
 /// mà `stopGeneration` hỏng thì chạy nốt tới cùng), và NGẮN HƠN trần của hai lớp bọc (`kThoiHanChepLoi` 60 s,
-/// `kThoiHanDocAnhGemma` 90 s): lượt đang chờ tự ném trước, nên `onTimeout` của lớp bọc — gọi `huy()` toàn cục — không bao
-/// giờ chạy lúc lượt còn đứng chờ. Test canh cả hai vế. Chưa đo trên máy.
+/// `kThoiHanDocAnhGemma` 90 s): lượt đang chờ tự ném trước, lớp bọc không phải cắt một lượt còn đứng chờ (cắt lúc ấy thì
+/// thẻ `HuyLuot` của lượt chỉ được xét SAU pha nạp — `chepLoi` có thể nạp mô hình vô ích). Test canh cả hai vế. Chưa đo
+/// trên máy.
 const Duration kTranChoLuotCu = Duration(seconds: 45);
 
 /// Lượt cũ không xong trong [kTranChoLuotCu] — coi như mô hình không chạy được lúc này; người gọi rơi về luật / mẫu câu.
