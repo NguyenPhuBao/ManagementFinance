@@ -640,16 +640,18 @@ void main() {
     });
   });
 
-  testWidgets('C4 kiểm chéo: Gemma đọc số khác luật → hai chip; chạm chip là điền, chip biến mất', (tester) async {
+  testWidgets('C4 kiểm chéo: câu hai số tiền, Gemma chọn số kia → hai chip; chạm chip là điền, chip biến mất',
+      (tester) async {
     final ai = _AiCheo();
     await tester.pumpWidget(app(docAi: ai));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'tiền điện một triệu hai');
+    // "20 quả" còn trong ghi chú → ô thiếu → C2 hỏi Gemma trước khi điền; lượt ấy kiểm luôn số tiền (2026-10-22).
+    await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'mua 20 quả trứng năm chục');
     await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-dien')));
     await tester.tap(find.byKey(const Key('nhap-nhanh-dien')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    ai.luot.single.complete(const KetQuaAi(soTien: 1000000));
+    ai.luot.single.complete(const KetQuaAi(soTien: 20000));
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('khoi-chon-so-tien')), findsOneWidget);
@@ -659,27 +661,22 @@ void main() {
     await tester.ensureVisible(find.byKey(const Key('chon-so-tien-1')));
     await tester.tap(find.byKey(const Key('chon-so-tien-1')));
     await tester.pumpAndSettle();
-    expect(find.text('1.200.000 đ'), findsWidgets);
+    expect(find.text('50.000 đ'), findsWidgets);
     expect(find.byKey(const Key('khoi-chon-so-tien')), findsNothing);
   });
 
-  testWidgets('C4 kiểm chéo ở nền: dòng "Đang kiểm…" hiện, Huỷ thì tắt và giữ số luật', (tester) async {
+  testWidgets('⭐ C4 câu một cụm ("một triệu hai"): điền ngay, không hỏi Gemma, không chip', (tester) async {
     final ai = _AiCheo();
     await tester.pumpWidget(app(docAi: ai));
     await tester.pumpAndSettle();
-    // "ăn uống" là tên danh mục → không còn ô thiếu → điền ngay, kiểm ở nền.
-    await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'ăn uống năm chục');
+    // "ăn uống" là tên danh mục → không còn ô thiếu. Đo Realme 2026-10-21: Gemma đọc câu này thành 1.000.000 2/2 lần.
+    await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'ăn uống một triệu hai');
     await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-dien')));
     await tester.tap(find.byKey(const Key('nhap-nhanh-dien')));
     await tester.pump(const Duration(milliseconds: 350));
-    expect(find.byKey(const Key('nhap-nhanh-dang-kiem')), findsOneWidget);
-    expect(find.text('50.000 đ'), findsWidgets);
-    await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-huy-kiem')));
-    await tester.tap(find.byKey(const Key('nhap-nhanh-huy-kiem')));
-    await tester.pump(const Duration(milliseconds: 350));
-    expect(find.byKey(const Key('nhap-nhanh-dang-kiem')), findsNothing);
-    expect(ai.soLanHuy, 1);
-    expect(find.text('50.000 đ'), findsWidgets);
+    expect(ai.luot, isEmpty, reason: 'người dùng chốt 2026-10-22: Gemma chỉ kiểm khi câu còn số tiền ngoài cụm luật');
+    expect(find.text('1.200.000 đ'), findsWidgets);
+    expect(find.byKey(const Key('khoi-chon-so-tien')), findsNothing);
   });
 
   group('C4 micro', () {
@@ -810,22 +807,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       expect(ai.soLanHuy, greaterThanOrEqualTo(1), reason: 'mô hình là một: micro không được chồng lên lượt đang giải mã');
       expect(find.byKey(const Key('nhap-nhanh-dang-doc')), findsNothing);
-    });
-
-    testWidgets('không chồng AI lên micro: đang "Kiểm số tiền" mà chạm micro → lượt kiểm bị huỷ', (tester) async {
-      final ai = _AiCheo();
-      await tester.pumpWidget(app(docAi: ai, giongNoi: nguon()));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byKey(const Key('nhap-nhanh-o')), 'ăn uống năm chục');
-      await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-dien')));
-      await tester.tap(find.byKey(const Key('nhap-nhanh-dien')));
-      await tester.pump(const Duration(milliseconds: 350));
-      expect(find.byKey(const Key('nhap-nhanh-dang-kiem')), findsOneWidget, reason: 'tiền đề');
-      await tester.ensureVisible(find.byKey(const Key('nhap-nhanh-micro')));
-      await tester.tap(find.byKey(const Key('nhap-nhanh-micro')));
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(ai.soLanHuy, 1);
-      expect(find.byKey(const Key('nhap-nhanh-dang-kiem')), findsNothing);
     });
   });
 

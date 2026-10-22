@@ -79,9 +79,22 @@ class KetQuaDocCau {
   /// mục tiêu / ngân sách — `LoaiLenhTao`), nên không có đường thứ ba.
   final bool danhMucTuAi;
 
-  /// C4 (spec 2026-10-12 §3.4): số tiền do LUẬT đọc bằng một dạng nói mới học (N1 *X đơn vị Y*, N2 số 10–999 × 1.000)
-  /// — màn cho Gemma kiểm chéo, lệch thì hai chip. `false` khi số đến từ dạng có đơn vị / chữ số đủ, hay từ AI.
-  final bool soTienCanKiem;
+  /// C4 (spec 2026-10-12 §3.2): số tiền do LUẬT đọc bằng một dạng nói mới học (N1 *X đơn vị Y*, N2 số 10–999 × 1.000).
+  /// `false` khi số đến từ dạng có đơn vị / chữ số đủ, hay từ AI.
+  final bool soTienDangNoi;
+
+  /// Cách đọc số tiền còn sót trong GHI CHÚ của luật (`cachDocSoTien(ghiChu)`, bỏ số bằng [soTien]) — số tiền khác mà
+  /// chưa ô nào dùng. Chỉ tính khi [soTienDangNoi]. Ngoài nó Gemma chỉ có thể đọc lại chính cụm luật theo cách khác
+  /// (bỏ chữ số lẻ: *"một triệu hai"* → 1.000.000), mà luật chỉ chọn dạng nói khi chữ số lẻ đứng ở chỗ của tiền.
+  /// Tính trên ghi chú chứ không trên câu: số trong tên ví đã đọc (*"bằng thẻ 365"*) không phải số tiền.
+  final Set<double> soTienKhac;
+
+  /// C4 §3.4, người dùng chốt 2026-10-22: Gemma kiểm chéo số tiền ⇔ số đọc bằng dạng nói **và** câu còn số tiền khác
+  /// ([soTienKhac]) — lệch thì hai chip. Câu một cụm (*"tiền điện một triệu hai"*, *"đổ xăng năm chục"*) thì không: đo
+  /// Realme 2026-10-21 Gemma đọc *"một triệu hai"* thành 1.000.000 2/2 lần, mỗi lần một cặp chip oan sau ~16 s chờ.
+  /// Khi `true`, ghi chú còn số tiền nên [oThieu] luôn có [OThieu.ghiChu] — màn hỏi Gemma TRƯỚC khi điền, lượt ấy kiểm
+  /// luôn số tiền (không có đường kiểm ở nền).
+  bool get soTienCanKiem => soTienDangNoi && soTienKhac.isNotEmpty;
 
   /// Ô câu có nhắc mà vẫn chưa đọc được, tính SAU khi AI lấp (xem [OThieu]). Đường luật một mình: khác rỗng thì màn hỏi AI.
   final Set<OThieu> oThieu;
@@ -101,7 +114,8 @@ class KetQuaDocCau {
     this.canhBao = const [],
     this.quaAi = false,
     this.danhMucTuAi = false,
-    this.soTienCanKiem = false,
+    this.soTienDangNoi = false,
+    this.soTienKhac = const {},
   });
 
   bool get khongDocDuocGi =>
@@ -374,7 +388,7 @@ KetQuaDocCau docCauGiaoDich(
   // Số tiền.
   final tien = _chonSoTien(s, b, ngay: ng, canhBao: canhBao);
   double? soTien;
-  var soTienCanKiem = false;
+  var soTienDangNoi = false;
   if (tien != null) {
     if (tien.giaTri >= 1e13) {
       canhBao.add(kCanhBaoSoTienQuaLon);
@@ -382,7 +396,7 @@ KetQuaDocCau docCauGiaoDich(
       canhBao.add(kCanhBaoSoTienKhongHopLe);
     } else {
       soTien = tien.giaTri.roundToDouble();
-      soTienCanKiem = tien.noi;
+      soTienDangNoi = tien.noi;
       daDung.add(_moRongCumTien(thuong, b, tien));
     }
   }
@@ -423,6 +437,13 @@ KetQuaDocCau docCauGiaoDich(
   var ghiChu = _ghiChuTu(s, daDung);
   // Đoán danh mục trên ghi chú của LUẬT (câu đã bỏ tiền, ngày, ví) — ghi chú AI có thể đã bớt chữ.
   final ghiChuLuat = ghiChu;
+  // Cùng phép đọc với vế [OThieu.ghiChu] bên dưới: số tiền còn sót trong ghi chú luật.
+  final soTienKhac = soTienDangNoi
+      ? {
+          for (final v in cachDocSoTien(ghiChuLuat, now: now))
+            if ((v - soTien!).abs() > 0.5) v,
+        }
+      : const <double>{};
   var ngay = ng?.ngay;
 
   // §2.8 — ô của AI qua kiểm của luật. ĐỔI LẦN HAI (người dùng chốt 2026-09-30): luật trước — AI chỉ LẤP ô luật để
@@ -534,7 +555,8 @@ KetQuaDocCau docCauGiaoDich(
     canhBao: canhBao,
     quaAi: aiLap,
     danhMucTuAi: danhMucTuAi,
-    soTienCanKiem: soTienCanKiem,
+    soTienDangNoi: soTienDangNoi,
+    soTienKhac: soTienKhac,
   );
 }
 

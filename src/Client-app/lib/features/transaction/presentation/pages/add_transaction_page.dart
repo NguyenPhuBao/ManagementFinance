@@ -295,8 +295,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         ketQua: _s.ketQuaDien,
         onDien: _dienTuCau,
         onHuy: _huyDocAi,
-        dangKiemSoTien: _s.dangKiemSoTien,
-        onHuyKiem: _cubit.huyKiemSoTien,
         coMicro: s != null,
         trangThaiNghe: s?.trangThai ?? TrangThaiNghe.cho,
         giayGhi: s?.giay ?? 0,
@@ -311,11 +309,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               ),
       );
 
-  /// Huỷ lượt AI đang chạy (đọc câu / kiểm số tiền) trước khi micro vào: mô hình là một — lượt chép lời đóng / nạp lại
-  /// nó dưới chân một phiên chat đang giải mã là sập native (cùng họ A5).
+  /// Huỷ lượt AI đang đọc câu (lượt ấy kiểm luôn số tiền) trước khi micro vào: mô hình là một — lượt chép lời đóng / nạp
+  /// lại nó dưới chân một phiên chat đang giải mã là sập native (cùng họ A5).
   Future<void> _nhuongMoHinhChoMicro() async {
     if (_s.dangDocAi) await _huyDocAi();
-    if (_s.dangKiemSoTien) await _cubit.huyKiemSoTien();
   }
 
   Future<void> _bamMicro() async {
