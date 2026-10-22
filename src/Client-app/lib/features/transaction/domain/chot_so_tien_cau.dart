@@ -7,9 +7,10 @@
 /// 1.000.000 — đo Realme 2026-10-21, 2/2 lần): giữ số luật, không chip.
 library;
 
+import '../../../core/utils/dung_sai_tien.dart';
 import 'chot_tong_quet.dart' show ChotTong;
 
 ChotTong chotSoTienCau({required double luat, required double? ai, required Set<double> khac}) =>
-    ai != null && (ai - luat).abs() > 0.5 && khac.any((v) => (v - ai).abs() <= 0.5)
+    ai != null && (ai - luat).abs() > kDungSaiTien && khac.any((v) => (v - ai).abs() <= kDungSaiTien)
         ? ChotTong(luaChon: [ai, luat])
         : ChotTong(soTien: luat);

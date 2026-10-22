@@ -149,12 +149,22 @@ void main() {
     expect(ai.luot, isEmpty);
   });
 
-  test('P7: lệch → dòng "Đã điền" không còn nói số tiền luật đã điền', () async {
+  test('P7: lệch → dòng "Đã điền" không còn nói số tiền luật đã điền; chỉ còn số tiền thì bỏ hẳn dòng', () async {
     final ai = _AiKiem();
     final c = await moi(ai);
     await dienVaTra(c, ai, kCauHaiSo, const KetQuaAi(soTien: 20000));
     expect(c.state.luaChonTienCau, isNotEmpty);
-    expect(c.state.ketQuaDien?.tomTat ?? '', isNot(contains('50.000')));
+    // Tóm tắt trước khi chốt là "Đã điền: 50.000 đ" — bỏ số tiền thì không còn gì để nói, AI không đổi ô nào, không cảnh
+    // báo. Chỉ đòi "không chứa 50.000" thì một bản để lại "Đã điền: " cụt hay xoá nhầm cả dòng có chữ vẫn xanh.
+    expect(c.state.ketQuaDien, isNull);
+  });
+
+  test('P7 (có ngày): lệch → tóm tắt còn ngày, mất số tiền', () async {
+    final ai = _AiKiem();
+    final c = await moi(ai);
+    await dienVaTra(c, ai, 'hôm qua $kCauHaiSo', const KetQuaAi(soTien: 20000));
+    expect(c.state.luaChonTienCau, isNotEmpty);
+    expect(c.state.ketQuaDien?.tomTat, 'Đã điền: Hôm qua');
   });
 
   test('P7 (có danh mục): lệch → tóm tắt còn danh mục, mất số tiền', () async {

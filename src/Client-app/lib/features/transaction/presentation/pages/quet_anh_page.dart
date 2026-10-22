@@ -143,14 +143,14 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
   DocDanhMucBangAi? get _docDanhMuc =>
       widget.docDanhMuc ?? (sl.isRegistered<DocDanhMucBangAi>() ? sl<DocDanhMucBangAi>() : null);
 
-  /// Bấm Huỷ ở pha AI: lượt đang chạy trả `null`, và KHÔNG gọi mô hình lần hai.
-  var _huyAi = false;
-
   /// Tín hiệu Huỷ cho lượt đọc ảnh: `_chay` thôi CHỜ nó mà mở form ngay với kết quả luật (người dùng duyệt 2026-10-22).
   /// Lời gọi native không ngắt được tức thì (Realme CPU 2026-10-21: màn đứng ~5 s sau Huỷ) nên lượt ấy chạy nốt ở nền —
   /// `DocAnhBangGemma` bỏ kết quả của nó (bộ đếm lượt), và lời gọi mô hình kế tiếp chờ nó xong (`LuotKhongNgatDuoc`
   /// trong `SlmRuntimeThat`).
   final _tinHuyAi = Completer<void>();
+
+  /// Đã bấm Huỷ ở pha AI: `_chay` không hỏi danh mục bằng mô hình nữa, và bỏ danh mục AI nếu lượt hỏi ấy về sau Huỷ.
+  bool get _huyAi => _tinHuyAi.isCompleted;
 
   Future<List<String>> _tenDanhMucChi() async {
     final f = widget.tenDanhMucChi;
@@ -307,7 +307,6 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
     }
     if (_pha == _Pha.ai) {
       // `_chay` thôi chờ lượt đọc ảnh → mở form với kết quả luật NGAY, không đợi native trả về.
-      _huyAi = true;
       if (!_tinHuyAi.isCompleted) _tinHuyAi.complete();
       unawaited(_docGemma?.huy());
       unawaited(_docDanhMuc?.huy());

@@ -22,6 +22,7 @@ import '../../../core/category/category_name.dart';
 import '../../category/data/models/category_entity.dart';
 import '../../wallet/data/models/wallet_entity.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/dung_sai_tien.dart';
 import '../../../core/utils/khop_ten.dart';
 import '../../../core/utils/ngay_trong_cau.dart';
 import '../../../core/utils/so_bang_chu.dart';
@@ -92,8 +93,9 @@ class KetQuaDocCau {
   /// C4 §3.4, người dùng chốt 2026-10-22: Gemma kiểm chéo số tiền ⇔ số đọc bằng dạng nói **và** câu còn số tiền khác
   /// ([soTienKhac]) — lệch thì hai chip. Câu một cụm (*"tiền điện một triệu hai"*, *"đổ xăng năm chục"*) thì không: đo
   /// Realme 2026-10-21 Gemma đọc *"một triệu hai"* thành 1.000.000 2/2 lần, mỗi lần một cặp chip oan sau ~16 s chờ.
-  /// Khi `true`, ghi chú còn số tiền nên [oThieu] luôn có [OThieu.ghiChu] — màn hỏi Gemma TRƯỚC khi điền, lượt ấy kiểm
-  /// luôn số tiền (không có đường kiểm ở nền).
+  /// Khi `true`, ghi chú luật còn số tiền nên ở lượt CHỈ có luật — lượt màn dùng để quyết có hỏi AI — [oThieu] luôn có
+  /// [OThieu.ghiChu]: màn hỏi Gemma TRƯỚC khi điền, lượt ấy kiểm luôn số tiền (không có đường kiểm ở nền). Kết quả đã lấp
+  /// AI thì không chắc (AI dọn số khỏi ghi chú là vế ấy tắt); cờ này đọc ghi chú luật nên không đổi theo AI.
   bool get soTienCanKiem => soTienDangNoi && soTienKhac.isNotEmpty;
 
   /// Ô câu có nhắc mà vẫn chưa đọc được, tính SAU khi AI lấp (xem [OThieu]). Đường luật một mình: khác rỗng thì màn hỏi AI.
@@ -437,11 +439,12 @@ KetQuaDocCau docCauGiaoDich(
   var ghiChu = _ghiChuTu(s, daDung);
   // Đoán danh mục trên ghi chú của LUẬT (câu đã bỏ tiền, ngày, ví) — ghi chú AI có thể đã bớt chữ.
   final ghiChuLuat = ghiChu;
-  // Cùng phép đọc với vế [OThieu.ghiChu] bên dưới: số tiền còn sót trong ghi chú luật.
+  // Số tiền còn sót trong ghi chú LUẬT. Ở lượt chỉ có luật đây cùng phép đọc với vế [OThieu.ghiChu] bên dưới; lượt có AI
+  // thì vế ấy đọc ghi chú SAU khi AI dọn, còn tập này vẫn đọc ghi chú luật.
   final soTienKhac = soTienDangNoi
       ? {
           for (final v in cachDocSoTien(ghiChuLuat, now: now))
-            if ((v - soTien!).abs() > 0.5) v,
+            if ((v - soTien!).abs() > kDungSaiTien) v,
         }
       : const <double>{};
   var ngay = ng?.ngay;
@@ -623,7 +626,7 @@ KetQuaDocCau docCauGiaoDich(
 double? soTienAiHopLe(String cau, KetQuaAi? ai, {required DateTime now}) {
   final st = ai?.soTien;
   if (st == null || st >= 1e13) return null;
-  return cachDocSoTien(cau, now: now).any((v) => (v - st).abs() <= 0.5) ? st.roundToDouble() : null;
+  return cachDocSoTien(cau, now: now).any((v) => (v - st).abs() <= kDungSaiTien) ? st.roundToDouble() : null;
 }
 
 /// Mọi CÁCH ĐỌC hợp lệ (≥ 1.000 đ, dưới 13 chữ số) của các con số có trong [cau] — lưới kiểm số tiền của AI (§2.8). AI

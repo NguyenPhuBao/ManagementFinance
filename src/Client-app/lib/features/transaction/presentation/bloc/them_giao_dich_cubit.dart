@@ -844,12 +844,14 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     _apDungKetQua(cau, chonDuoc, tuKhoa, ai: ai);
     // C4 §3.4 — kiểm chéo số luật đọc bằng dạng nói, chỉ khi câu còn số tiền khác (người dùng chốt 2026-10-22). Số ấy
     // nằm trong ghi chú nên câu có ô thiếu `ghiChu`: lượt AI vừa rồi kiểm luôn — không có lượt kiểm thứ hai ở nền.
-    final soLuat = luat.soTien;
-    if (luat.soTienCanKiem && soLuat != null && ai != null) _chotSoTien(cau, soLuat, ai, luat.soTienKhac);
+    if (ai != null) _chotSoTien(cau, luat, ai);
   }
 
-  void _chotSoTien(String cau, double soLuat, KetQuaAi ai, Set<double> khac) {
-    final c = chotSoTienCau(luat: soLuat, ai: soTienAiHopLe(cau, ai, now: DateTime.now()), khac: khac);
+  /// [luat] là kết quả của lượt CHỈ có luật — số luật và tập số tiền khác đọc từ đó, không từ kết quả đã lấp AI.
+  void _chotSoTien(String cau, KetQuaDocCau luat, KetQuaAi ai) {
+    final soLuat = luat.soTien;
+    if (!luat.soTienCanKiem || soLuat == null) return;
+    final c = chotSoTienCau(luat: soLuat, ai: soTienAiHopLe(cau, ai, now: DateTime.now()), khac: luat.soTienKhac);
     if (c.luaChon.isEmpty) return;
     // Ô số tiền trống: dòng "Đã điền" không được còn nói số luật đã điền (preflight P7).
     final kq = state.ketQuaDien;
