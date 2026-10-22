@@ -636,6 +636,11 @@ Ba việc từ buổi đo ở khối 🧷 dưới (`674ed646`):
 thật cũ giữ nguyên; hai bản sai luật tên đỏ. **Số đo:** `flutter test` **7796/7796** pass, 10 skip (5 ph 35 s, +12 so với
 7784); `flutter analyze` 20. Chi tiết: cuối bẫy 4.60 `AI_EDGE_FEATURE.md`, chốt 12 / 13 `QUET_ANH_FEATURE.md`, G105.
 
+**Đo Realme CPU cùng khuya** (bản `5129e9df…`; `6fc0b3a1` thêm hai dòng log đo): khe Huỷ **đạt** — khởi động lại app, chạm
+Huỷ ngay khi nạp xong → *"bỏ lượt — Huỷ tới lúc đang tạo chat (693 ms)"*, form điền bằng luật, không có *đọc ảnh xong*.
+Tạo chat 28–693 ms (khe chỉ đáng kể ở lượt đầu sau nạp). Ba lần Huỷ sau khe: gộp + huỷ, không sập. G105 chờ người dùng
+chụp lại tờ dính mép. Lộ khe cũ `_huyLuat` ↔ `setState(_pha = ai)` (cuối bẫy 4.60) — chưa sửa.
+
 ### 🧷 Gộp lời dừng trùng — native chỉ nhận một `stopGeneration` mỗi chat (2026-10-22 tối, người dùng chọn lối A) — mã + test
 
 Dây Huỷ của `6c9e6e99` (khối 🪪 dưới) làm nút Huỷ pha AI màn Quét gọi `huy()` **hai lần song song** trên cùng chat đọc ảnh

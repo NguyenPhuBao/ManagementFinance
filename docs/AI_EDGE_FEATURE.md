@@ -341,7 +341,13 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
   nền và giữ chỗ. Nay cả năm lối xét lại `_boNap.moc != moc` (và thẻ `HuyLuot` ở `docAnh` / `chepLoi`) **ngay sau
   `createChat`**, trước khi gán `_chatDangSinh` và trước `addQueryChunk` (chưa prefill); `moPhien` đóng phiên vừa tạo trước khi
   ném (chưa tới tay `PhienMotLoiGoi` nên không ai `dong()`). Test đọc mã 7 ca ở `luot_khong_ngat_duoc_test` (đỏ trên mã cũ;
-  bản sai *gán `_chatDangSinh` trước khi xét* đỏ). Chưa đo trên máy — khe quá hẹp để bấm trúng bằng adb.
+  bản sai *gán `_chatDangSinh` trước khi xét* đỏ). ✅ **Đo Realme CPU cùng tối** (bản `5129e9df…`, `6fc0b3a1` thêm log): khởi
+  động lại app để lượt quét đầu phải nạp, chạm Huỷ ngay khi logcat in *nạp mô hình xong* → `[SLM][anh] bỏ lượt — Huỷ / hết giờ
+  tới lúc đang tạo chat (693 ms)`, màn điền bằng luật, **không** có dòng *đọc ảnh xong* (mã cũ: lượt chạy trọn ở nền). Tạo chat
+  đo 28–693 ms — khe chỉ đáng kể ở lượt **đầu sau nạp** (28 ms khi mô hình đã nạp sẵn). Mốc kích theo dòng `[Quet][luat]` trượt
+  ba lần vì thời gian nạp dao động 0,57–1,4 s. ⚠️ Lộ một khe cũ khác (chưa sửa, chưa đo): màn Quét xét `_huyLuat` **trước**
+  khi in dòng luật; Huỷ rơi vào lúc giữa đó và `setState(_pha = ai)` thì nút thành *"Đang huỷ…"* và bị khoá, pha AI vẫn chạy
+  trọn mà không Huỷ được.
 
 ## 5. Màn Stitch
 

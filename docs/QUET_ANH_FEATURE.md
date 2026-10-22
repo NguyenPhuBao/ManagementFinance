@@ -160,7 +160,9 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
     trần thì lời gọi sau ném ngay. Hết trần 90 s của `DocAnhBangGemma` chỉ dừng **lượt của nó** qua thẻ `HuyLuot`, không gọi
     `huy()` toàn cục (bẫy 4.60); nút Huỷ của người dùng vẫn là `huy()` toàn cục. Huỷ rơi vào lúc runtime đang tạo chat
     (dưới ~1,2 s sau khi *"Đang đọc bằng AI…"* hiện) từng không dừng được gì — lượt chạy trọn 23–56 s ở nền; vá 2026-10-22
-    tối: xét lại bộ đếm Huỷ ngay sau `createChat` (bẫy 4.60, *khe Huỷ*). **Đừng** cho `huy` chờ (Huỷ kẹt) hay `dong` / `moHinhSan` chờ (`docAnh` → `_boNap.can` → `dong` là khoá chết). `moc`
+    tối: xét lại bộ đếm Huỷ ngay sau `createChat` (bẫy 4.60, *khe Huỷ*) — ✅ đo Realme cùng tối: Huỷ trúng khe (lượt đầu sau
+    nạp, tạo chat 693 ms) → lượt bỏ ngay, form điền bằng luật. ⚠️ Khe cũ còn mở: Huỷ giữa phép xét `_huyLuat` và
+    `setState(_pha = ai)` (vài trăm ms) → nút *"Đang huỷ…"* bị khoá, pha AI chạy trọn. **Đừng** cho `huy` chờ (Huỷ kẹt) hay `dong` / `moHinhSan` chờ (`docAnh` → `_boNap.can` → `dong` là khoá chết). `moc`
     của `docAnh` / `chepLoi` ghi **trước** khi chờ: Huỷ trong lúc chờ thì lượt ấy không chạy. Nối dây: `flutter test` mù
     (gói thật) — canh bằng đọc mã ở `luot_khong_ngat_duoc_test`; **chưa đo trên máy**. Nút Huỷ gọi cả `_docGemma.huy()` lẫn
     `_docDanhMuc.huy()` — hai lần `huy()` song song trên cùng chat đọc ảnh; từ 2026-10-22 (lối A) runtime **gộp** chúng
