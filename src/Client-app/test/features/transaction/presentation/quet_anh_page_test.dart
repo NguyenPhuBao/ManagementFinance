@@ -516,7 +516,7 @@ void main() {
     expect(pushed, '/tmp/a.jpg');
   });
 
-  // Stitch `8027b781…` *"Trang chủ - Chọn nguồn ảnh để Quét"*: tiêu đề, dòng khoá, hai lựa chọn có dòng phụ, nút Huỷ — cộng
+  // Stitch `50e001f2…` *"Trang chủ - Chọn nguồn ảnh để Quét"* (bản có dòng nhắc; bản trước `8027b781…`): tiêu đề, dòng khoá, hai lựa chọn có dòng phụ, nút Huỷ — cộng
   // dòng nhắc chụp (G105, người dùng chọn 2026-10-22: ảnh dính vật có chữ ở mép thì ghi chú ra chữ của vật ấy).
   group('sheet chọn nguồn ảnh theo Stitch', () {
     Future<void> moSheet(WidgetTester tester, {Size kho = const Size(411, 914), double coChu = 1.0}) async {

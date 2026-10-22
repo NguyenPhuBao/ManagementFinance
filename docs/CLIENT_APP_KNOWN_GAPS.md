@@ -1723,7 +1723,7 @@ dòng đầu *"ral Setl Ths cad rd effect"* có chữ hoa nên không bị xếp
 *Sửa*). Chữ OCR ở khối thứ hai cuối mục.
 
 **Hướng chọn cho phần còn hở (người dùng, 2026-10-22 khuya):** *nhắc lúc chụp* (trong ba hướng: hoãn · nhắc · thử thêm luật).
-Sheet chọn nguồn ảnh nay theo đúng Stitch `8027b781…` và có dòng *"Chụp sát tờ hoá đơn, đừng để vật có chữ lọt vào khung"*
+Sheet chọn nguồn ảnh nay theo đúng Stitch `50e001f2…` (bản có dòng nhắc của `8027b781…`, người dùng xác nhận) và có dòng *"Chụp sát tờ hoá đơn, đừng để vật có chữ lọt vào khung"*
 (`kNhacChupSat`, `2bdc2a68`; nghiệm thu Realme 360 dp: không tràn). Luật đọc tên không đổi thêm. G105 để ◐ — vật có chữ lẫn
 hoa thường lọt vào khung vẫn ra ghi chú sai; người dùng thấy và sửa trên form.
 

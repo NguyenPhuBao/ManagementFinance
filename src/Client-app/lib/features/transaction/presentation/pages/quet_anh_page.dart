@@ -61,7 +61,8 @@ Future<String?> _chonAnhThat(NguonAnh n) async {
 /// thắng tên cửa hàng trên form (Realme: thẻ tiếng Anh ở mép → ghi chú *"ral Setl Ths cad rd effect"*).
 const kNhacChupSat = 'Chụp sát tờ hoá đơn, đừng để vật có chữ lọt vào khung';
 
-/// Bottom sheet chọn nguồn ảnh (Stitch `8027b781…` *"Trang chủ - Chọn nguồn ảnh để Quét"* — tiêu đề, dòng khoá, dòng nhắc
+/// Bottom sheet chọn nguồn ảnh (Stitch `50e001f2…` *"Trang chủ - Chọn nguồn ảnh để Quét"* — bản có dòng nhắc, thay
+/// `8027b781…`; tiêu đề, dòng khoá, dòng nhắc
 /// chụp [kNhacChupSat], hai lựa chọn có dòng phụ, Huỷ) → chụp / chọn → `push('/quet')`. Đóng sheet / huỷ máy ảnh = không gì.
 ///
 /// ⚠️ `useRootNavigator`: nút Quét nằm trong nhánh của shell, sheet mở ở navigator nhánh thì thanh điều hướng + nút +

@@ -213,8 +213,9 @@ dựng được ngày 2026-10-08 (224,9 MB) — R8 không cần quy tắc mới 
 ## 6. Stitch
 
 `8027b781…` sheet chọn nguồn (✅ app theo đúng màn từ 2026-10-22 khuya — trước đó chỉ hai `ListTile` + Huỷ; thêm dòng nhắc
-`kNhacChupSat` cùng kiểu dòng khoá — G105; lượt `edit_screens` đưa dòng ấy lên Stitch trả **timeout**, màn chưa đổi khi kiểm
-— chờ người dùng xem) · `353934f2…` Đang đọc ảnh · `14d9a417…` form Từ ảnh quét · `01f8cdc6…` khối tách ·
+`kNhacChupSat` cùng kiểu dòng khoá — G105) → **`50e001f2…`** cùng tên là bản có dòng nhắc (lượt `edit_screens` trả timeout,
+Stitch tạo màn MỚI thay vì sửa `8027b781…` — ✅ người dùng xác nhận 2026-10-22; HTML khớp app: biểu tượng 16, chữ 13, cách 4)
+· `353934f2…` Đang đọc ảnh · `14d9a417…` form Từ ảnh quét · `01f8cdc6…` khối tách ·
 `98133eb8…` sheet chọn món (spec mục 7, 11.7). Khối hai chip: màn `bd764b70…` *"Thêm giao dịch - Từ ảnh quét - Hai số
 khác nhau"* xuất hiện sau lượt gọi `timeout` — ✅ **người dùng xác nhận 2026-10-08**.
 
