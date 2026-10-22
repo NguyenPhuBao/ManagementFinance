@@ -116,7 +116,7 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
 
   await t.test('7. Lên lịch bảo trì: Lưu thông tin lịch và cho phép hủy lịch chủ động', () => {
     const mgr = new MaintenanceManager();
-    const futureDate = new Date(Date.now() + 100000).toISOString();
+    const futureDate = new Date(Date.now() + 5 * 3600 * 1000).toISOString();
 
     mgr.scheduleMaintenance({
       scheduledAt: futureDate,
@@ -134,6 +134,7 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
     const cancelRes = mgr.cancelScheduledMaintenance();
     assert.strictEqual(cancelRes.cancelled, true);
     assert.strictEqual(mgr.getStatus().scheduled, null);
+    mgr.clearAllTimers();
   });
 
   await t.test('8. PO POLICY MỚI: Khi đã kích hoạt bảo trì thì KHÔNG cho phép kích hoạt bảo trì khẩn cấp nữa', () => {
@@ -157,7 +158,7 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
 
   await t.test('8.1. PO POLICY MỚI: Kích hoạt bảo trì khẩn cấp KHÔNG hủy bỏ các lịch bảo trì đã cài đặt trước', () => {
     const mgr = new MaintenanceManager();
-    const futureDate = new Date(Date.now() + 100000).toISOString();
+    const futureDate = new Date(Date.now() + 5 * 3600 * 1000).toISOString();
 
     // 1. Đặt lịch trước
     mgr.scheduleMaintenance({
@@ -181,6 +182,7 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
     // Dọn dẹp
     mgr.cancelScheduledMaintenance();
     mgr.setMaintenance(false, 'Xong', 'admin');
+    mgr.clearAllTimers();
   });
 
   await t.test('8.2. CHÍNH SÁCH MỚI: Chỉ duy nhất bảo trì khẩn cấp có thể kích hoạt khi đang trong thời gian bảo trì thông thường', () => {
@@ -227,10 +229,10 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
     assert.strictEqual(mgr.isMaintenanceActive(), false);
   });
 
-  await t.test('8.3. CHÍNH SÁCH MỚI: Không cho phép bảo trì theo lịch đè nhau', () => {
+  await t.test('8.3. CHÍNH SÁCH MỚI: Không cho phép bảo trì theo lịch đè nhau hoặc cách nhau dưới 5 tiếng', () => {
     const mgr = new MaintenanceManager();
-    const futureDate1 = new Date(Date.now() + 100000).toISOString();
-    const futureDate2 = new Date(Date.now() + 200000).toISOString();
+    const futureDate1 = new Date(Date.now() + 5 * 3600 * 1000).toISOString();
+    const futureDate2 = new Date(Date.now() + 7 * 3600 * 1000).toISOString(); // Cách nhau 2 tiếng (< 5h)
 
     // 1. Đặt lịch bảo trì lần 1 thành công
     mgr.scheduleMaintenance({
@@ -242,7 +244,7 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
     assert.ok(mgr.getStatus().scheduled);
     assert.strictEqual(mgr.getStatus().scheduled.scheduledAt, futureDate1);
 
-    // 2. Cố gắng đặt lịch bảo trì lần 2 đè lên lịch cũ -> BẮT BUỘC BỊ TỪ CHỐI
+    // 2. Cố gắng đặt lịch bảo trì lần 2 cách lịch 1 chỉ 2 tiếng (< 5h) -> BẮT BUỘC BỊ TỪ CHỐI
     assert.throws(
       () => {
         mgr.scheduleMaintenance({
@@ -252,7 +254,7 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
           createdBy: 'admin-02',
         });
       },
-      /Đã có lịch bảo trì đang chờ thực hiện\. Không thể lên thêm lịch bảo trì mới/
+      /Mỗi phiên bảo trì theo lịch phải cách nhau ít nhất 5 tiếng/
     );
 
     // 3. Bảo toàn lịch cũ không bị ghi đè
@@ -272,12 +274,13 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
 
     // Dọn dẹp
     mgr.cancelScheduledMaintenance();
+    mgr.clearAllTimers();
   });
 
   await t.test('9. Lên lịch bảo trì với thời điểm kết thúc hợp lệ (scheduledEndAt)', () => {
     const mgr = new MaintenanceManager();
-    const futureStart = new Date(Date.now() + 100000).toISOString();
-    const futureEnd = new Date(Date.now() + 200000).toISOString();
+    const futureStart = new Date(Date.now() + 5 * 3600 * 1000).toISOString();
+    const futureEnd = new Date(Date.now() + 6 * 3600 * 1000).toISOString();
 
     mgr.scheduleMaintenance({
       scheduledAt: futureStart,
@@ -292,12 +295,13 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
     assert.strictEqual(status.scheduled.scheduledAt, futureStart);
     assert.strictEqual(status.scheduled.scheduledEndAt, futureEnd);
     mgr.cancelScheduledMaintenance();
+    mgr.clearAllTimers();
   });
 
   await t.test('10. Chặn lên lịch khi thời điểm kết thúc trước hoặc bằng thời điểm bắt đầu', () => {
     const mgr = new MaintenanceManager();
-    const futureStart = new Date(Date.now() + 200000).toISOString();
-    const invalidEnd = new Date(Date.now() + 100000).toISOString();
+    const futureStart = new Date(Date.now() + 6 * 3600 * 1000).toISOString();
+    const invalidEnd = new Date(Date.now() + 5 * 3600 * 1000).toISOString();
 
     assert.throws(
       () => {
@@ -315,7 +319,7 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
     const mgr = new MaintenanceManager();
     mgr.setMaintenance(true, 'Đang bảo trì trực tiếp', 'admin-01');
 
-    const futureStart = new Date(Date.now() + 100000).toISOString();
+    const futureStart = new Date(Date.now() + 5 * 3600 * 1000).toISOString();
 
     assert.throws(
       () => {

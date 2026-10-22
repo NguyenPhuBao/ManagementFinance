@@ -202,7 +202,8 @@ const adminController = {
 
   cancelScheduledMaintenance(req, res) {
     const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
-    defaultMaintenanceManager.cancelScheduledMaintenance();
+    const id = req.params?.id || req.body?.id || req.query?.id || null;
+    defaultMaintenanceManager.cancelScheduledMaintenance(id);
     return ResponseHandler.success(res, defaultMaintenanceManager.getStatus(), 'Đã hủy lịch bảo trì hệ thống');
   },
 

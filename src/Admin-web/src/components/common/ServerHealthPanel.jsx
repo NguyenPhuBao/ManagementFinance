@@ -467,7 +467,7 @@ const ServerHealthPanel = () => {
                   {maintenance.active
                     ? maintenance.isEmergency
                       ? t('serverHealth.emergencyMaint', 'Bảo trì khẩn cấp')
-                      : t('serverHealth.regularMaint', 'Bảo trì thông thường')
+                      : t('serverHealth.scheduledMaint', 'Hệ thống đang bảo trì')
                     : t('serverHealth.emergencyMaint', 'Bảo trì khẩn cấp')}
                 </p>
                 {maintenance.active && (
@@ -478,7 +478,7 @@ const ServerHealthPanel = () => {
                   }`}>
                     {maintenance.isEmergency
                       ? t('broadcast.banner.emergencyBadge', 'Khẩn cấp')
-                      : t('broadcast.banner.silentBadge', 'Thông thường')}
+                      : t('broadcast.banner.scheduledBadge', 'Theo lịch')}
                   </span>
                 )}
               </div>

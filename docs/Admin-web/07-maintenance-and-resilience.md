@@ -15,10 +15,20 @@ Hệ thống được xây dựng trên nền tảng **Kiến trúc Zero-Couplin
 1. **Kiến trúc Độc Lập Hoàn Toàn Khỏi CSDL (Zero-Coupling Out-of-Band Gatekeeper):** Trạng thái bảo trì được quản lý trực tiếp bằng biến In-Memory và Redis với độ trễ $O(1) < 0.05\text{ms}$. Ngay cả khi CSDL PostgreSQL gặp sự cố sập hoàn toàn, Admin vẫn có thể bật/tắt bảo trì bình thường.
 2. **Bộ Đệm Ngoại Tuyến (Outbox Buffer `_pendingDbSyncQueue`):** Mọi lệnh thay đổi trạng thái khi CSDL offline được xếp vào hàng đợi bộ đệm để ghi bù ngay khi kết nối CSDL phục hồi.
 3. **Cơ Chế Triệt Tiêu Bản Ghi Ma (Ghost Maintenance Killer - `reconcileWithDatabase`):** Khi CSDL khôi phục, hệ thống tự động đối soát chéo giữa RAM/Redis và CSDL. Nếu phiên bảo trì đã kết thúc trong thời gian CSDL mất kết nối, hệ thống tự động cập nhật dứt điểm các bản ghi `ONGOING` thành `COMPLETED`, xóa bỏ hoàn toàn rủi ro xuất hiện "phiên bảo trì ma" kéo dài sai thực tế.
-4. **Đặc quyền Cứu hộ Khẩn cấp (Emergency Override):** Duy nhất **Bảo trì khẩn cấp** có quyền kích hoạt đè khi hệ thống đang trong phiên bảo trì thông thường nhằm xử lý ngay lập tức các tình huống rủi ro bảo mật hoặc thảm họa máy chủ.
-5. **CẤM TUYỆT ĐỐI bảo trì theo lịch đè nhau (No Overlapping Schedules):** Nếu hệ thống đang trong phiên bảo trì hoặc đã có một lịch bảo trì tương lai đang chờ kích hoạt (`SCHEDULED`), hệ thống từ chối mọi yêu cầu lên lịch mới để loại trừ xung đột thời gian.
-6. **Bảo toàn lịch hẹn tương lai:** Khi kích hoạt bảo trì khẩn cấp, hệ thống chỉ hủy những lịch bị giao thoa (`scheduled.start_time <= emergency.end_time`), bảo toàn nguyên vẹn các lịch xa hơn trong tương lai.
-7. **Trải nghiệm Quản trị Chuyên Nghiệp:** Popup Modal xác nhận hai chiều (cả khi bật và khi tắt bảo trì), loại bỏ hoàn toàn các icon `⚠️`/`🚨` thô sơ trong payload thông báo, thay thế bằng định dạng chuyên nghiệp chuẩn Enterprise.
+4. **Phân Định Rõ Ràng Hai Loại Hình Bảo Trì (PO Mandatory):**
+   - **Bảo trì khẩn cấp (`isEmergency: true`):** Tiêu đề chuẩn PO: **"HỆ THỐNG ĐANG BẢO TRÌ KHẨN CẤP"**, giao diện tông đỏ `rose`, badge `[KHẨN CẤP]`, tự động phát broadcast cấp độ `critical` tới toàn bộ người dùng.
+   - **Bảo trì theo lịch (`isEmergency: false`):** Tiêu đề chuẩn PO: **"HỆ THỐNG ĐANG BẢO TRÌ"** (tuyệt đối không hiển thị từ "khẩn cấp"), giao diện tông cam `amber`, badge `[THEO LỊCH]`, broadcast cấp độ `warning`.
+5. **Ràng Buộc Thời Gian Lập Lịch Khắt Khe (PO Rule):**
+   - Bắt buộc lập lịch trước thời điểm kích hoạt ít nhất **4 tiếng** (`scheduledAt >= now + 4h`).
+   - Mỗi phiên bảo trì theo lịch phải cách nhau ít nhất **5 tiếng** (`scheduledAt_b - scheduledEndAt_a >= 5h` hoặc tối thiểu 5h khoảng cách bắt đầu).
+6. **Cảnh Báo Lịch Bảo Trì Sắp Diễn Ra (Imminent Maintenance Warning):**
+   - Card/Banner cảnh báo "LỊCH BẢO TRÌ SẮP DIỄN RA" **CHỈ HIỂN THỊ KHI CÒN $\le 1$ TIẾNG** trước thời điểm bắt đầu.
+   - Nếu còn xa hơn 1 tiếng (> 1h), **ẨN HOÀN TOÀN** card này.
+   - Khi kích hoạt Card cảnh báo: **TUYỆT ĐỐI KHÔNG ĐƯỢC LÀM MẤT FORM LẬP LỊCH BẢO TRÌ ĐỊNH KỲ**.
+7. **Đa Lịch Bảo Trì (Multi-Schedule Management):**
+   - Form lập lịch bảo trì định kỳ luôn luôn hiện diện và sẵn sàng tiếp nhận lịch mới.
+   - Bảng danh sách các lịch bảo trì đã hẹn hiển thị chi tiết (bắt đầu, kết thúc, thời lượng, lý do, người tạo) kèm nút hủy riêng biệt theo ID (`DELETE /api/admin/system/maintenance/schedule/:id`).
+8. **Đặc quyền Cứu hộ Khẩn cấp (Emergency Override):** Duy nhất **Bảo trì khẩn cấp** có quyền kích hoạt đè khi hệ thống đang trong phiên bảo trì thông thường nhằm xử lý ngay lập tức các tình huống rủi ro bảo mật hoặc thảm họa máy chủ. Kích hoạt khẩn cấp bảo toàn các lịch hẹn tương lai.
 
 ---
 
@@ -122,15 +132,16 @@ Khi cơ sở dữ liệu bị mất kết nối hoặc quá tải:
 ## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN (`BroadcastPage.jsx`)
 
 1. **Global Maintenance Banner & Modal Xác Nhận 2 Chiều:**
-   - Khi kích hoạt bảo trì khẩn cấp: Modal xác nhận yêu cầu nhập mã PIN bảo mật cấp 2.
-   - Khi tắt bảo trì khẩn cấp: Modal xác nhận cảnh báo hệ thống sắp mở lại kết nối cho toàn bộ người dùng Client-app.
-   - Loại bỏ hoàn toàn các icon `⚠️`/`🚨` thô sơ trong thông báo phát sóng.
-2. **Cột Trái — Kích Hoạt Bảo Trì Khẩn Cấp:**
-   - Ô nhập lý do gửi tới người dùng.
-   - Nút bấm **LUÔN ĐỎ** (`bg-red-600`) mang tên **"Bật Bảo Trì Khẩn Cấp"**.
-3. **Cột Phải — Lên Lịch Thời Điểm Bảo Trì:**
-   - Input `datetime-local` chọn ngày giờ bắt đầu và kết thúc dự kiến chuẩn xác.
-   - Tự động khóa và hiển thị cảnh báo nếu hệ thống đang có lịch hẹn hoặc đang trong phiên bảo trì trực tiếp.
+   - Khi kích hoạt bảo trì khẩn cấp: Modal xác nhận yêu cầu nhập mã PIN bảo mật cấp 2. Banner hiển thị tông đỏ `rose`, badge `[KHẨN CẤP]`, tiêu đề: **"HỆ THỐNG ĐANG BẢO TRÌ KHẨN CẤP"**.
+   - Khi bảo trì theo lịch kích hoạt: Banner hiển thị tông cam `amber`, badge `[THEO LỊCH]`, tiêu đề chuẩn PO: **"HỆ THỐNG ĐANG BẢO TRÌ"**.
+   - Khi tắt bảo trì: Modal xác nhận cảnh báo hệ thống sắp mở lại kết nối cho toàn bộ người dùng Client-app.
+2. **Cảnh Báo Lịch Bảo Trì Sắp Diễn Ra (Chỉ hiển thị khi $\le 1$ tiếng):**
+   - Card/Banner cảnh báo tông cam viền amber nhấp nháy hiển thị số phút đếm ngược.
+   - **Tuyệt đối không làm mất form lập lịch bảo trì định kỳ**.
+3. **Khung Điều Hành & Lập Lịch Bảo Trì Kỹ Thuật Định Kỳ (Luôn Hiện Diện):**
+   - Form lập lịch luôn sẵn sàng tạo mới: input `datetime-local` bắt đầu (tối thiểu trước 4 tiếng) và kết thúc dự kiến, lý do.
+   - Nút **"Lên lịch bảo trì"** và nút **"Làm mới"** biểu mẫu.
+   - **Bảng Danh Sách Lịch Bảo Trì Đã Lên Lịch (Upcoming Schedules):** Hiển thị danh sách các phiên bảo trì định kỳ đã đặt, kèm nút **"Hủy"** riêng cho từng dòng theo ID.
 4. **Bảng Lịch Sử Các Phiên Bảo Trì Hệ Thống (PostgreSQL Persistence):**
    - Lưu trữ vĩnh viễn trong bảng `maintenance_history`.
    - Các cột hiển thị: `#`, `Loại bảo trì` (Khẩn cấp / Theo lịch), `Người kích hoạt`, `Lý do / Thông điệp`, `Thời điểm bắt đầu`, `Thời điểm kết thúc`, `Thời lượng`, `Trạng thái` (Đang diễn ra, Đã hoàn thành, Đã hủy).
@@ -153,10 +164,11 @@ Khi cơ sở dữ liệu bị mất kết nối hoặc quá tải:
 ### REST API Endpoints
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 |---|---|---|---|
-| `GET` | `/api/admin/system/maintenance` | Lấy chi tiết trạng thái bảo trì & lịch hẹn hiện tại | Admin |
-| `POST` | `/api/admin/system/maintenance` | Bật hoặc Tắt bảo trì khẩn cấp tức thì (yêu cầu mã PIN khi bật) | Admin |
+| `GET` | `/api/admin/system/maintenance` | Lấy chi tiết trạng thái bảo trì & danh sách lịch hẹn (`scheduledList`) | Admin |
+| `POST` | `/api/admin/system/maintenance` | Bật/Tắt bảo trì khẩn cấp tức thì hoặc đặt lịch bảo trì mới | Admin |
 | `POST` | `/api/admin/system/maintenance/schedule` | Lên lịch hẹn bảo trì tự động | Admin |
-| `DELETE` | `/api/admin/system/maintenance/schedule` | Hủy bỏ lịch bảo trì đã hẹn | Admin |
+| `DELETE` | `/api/admin/system/maintenance/schedule` | Hủy bỏ lịch bảo trì gần nhất | Admin |
+| `DELETE` | `/api/admin/system/maintenance/schedule/:id` | Hủy bỏ lịch bảo trì theo ID cụ thể | Admin |
 | `GET` | `/api/admin/system/maintenance/history` | Lấy danh sách lịch sử các phiên bảo trì (có phân trang, bộ lọc) | Admin |
 
 ### Socket.io Events

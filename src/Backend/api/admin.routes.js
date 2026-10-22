@@ -41,6 +41,7 @@ router.get('/request-stats', adminController.getRequestStats);
 router.get('/system/maintenance', adminController.getMaintenanceStatus);
 router.post('/system/maintenance', adminController.setMaintenanceStatus);
 router.delete('/system/maintenance/schedule', adminController.cancelScheduledMaintenance);
+router.delete('/system/maintenance/schedule/:id', adminController.cancelScheduledMaintenance);
 router.get('/system/maintenance/history', adminController.getMaintenanceHistory);
 router.get('/system/health', adminController.getSystemHealth);
 router.get('/audit-logs', adminController.getAuditLogs);
