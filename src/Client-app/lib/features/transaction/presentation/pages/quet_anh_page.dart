@@ -133,7 +133,8 @@ class QuetAnhPage extends StatefulWidget {
 class _QuetAnhPageState extends State<QuetAnhPage> {
   var _pha = _Pha.luat;
 
-  /// Bấm Huỷ ở pha luật: chờ OCR về rồi thoát, xoá ảnh.
+  /// Bấm Huỷ ở pha luật: chờ OCR về rồi thoát, xoá ảnh. `_chay` xét cờ HAI lần — sau OCR và sau khi lưu món (lúc ấy nút
+  /// đã khoá ở "Đang huỷ…", nên lần xét thứ hai là chỗ duy nhất Huỷ ấy còn có tác dụng).
   var _huyLuat = false;
 
   DocChuAnh? get _docChu => widget.docChu ?? (sl.isRegistered<DocChuAnh>() ? sl<DocChuAnh>() : null);
@@ -249,6 +250,14 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
       print('[Quet][luat] tong=${kq.soTien} | ghi="${kq.ghiChu}" | luc=${kq.thoiGian} | thieu=${kq.oThieu}');
     }
     if (kq.mon.isNotEmpty) await kho.luuMon(ten, kq.mon);
+    // Huỷ bấm trong lúc lưu món (sau phép xét ở trên, trước pha AI): nút đã thành "Đang huỷ…" và bị khoá — không xét lại
+    // thì Premium chạy trọn pha AI mà không Huỷ được, Basic mở form như chưa từng Huỷ (2026-10-22).
+    if (!mounted) return;
+    if (_huyLuat) {
+      await kho.xoa(ten);
+      _ve();
+      return;
+    }
     var chon = const <double>[];
     String? danhMuc;
     int? tongAi;

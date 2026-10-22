@@ -16,6 +16,7 @@ import 'dart:typed_data';
 import 'package:flowmoney/features/transaction/data/doc_anh_bang_gemma.dart';
 import 'package:flowmoney/features/transaction/data/doc_danh_muc_bang_ai.dart';
 import 'package:flowmoney/features/transaction/domain/doc_anh_gemma.dart';
+import 'package:flowmoney/features/transaction/domain/doc_mon_hang.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/quet_anh_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -80,6 +81,17 @@ class _DanhMucGia implements DocDanhMucBangAi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Kho thật, nhưng [luuMon] đợi [cho] — giữ màn ở khoảng giữa phép xét Huỷ pha luật và lúc sang pha AI.
+class _KhoChoLuuMon extends KhoAnhQuet {
+  _KhoChoLuuMon({required super.thuMuc, required this.cho});
+  final Completer<void> cho;
+  @override
+  Future<void> luuMon(String tep, List<MonHang> mon) async {
+    await cho.future;
+    return super.luuMon(tep, mon);
+  }
 }
 
 const _hoaDon = [
@@ -321,6 +333,31 @@ void main() {
     final d = Directory('${goc.path}/$kThuMucAnhQuet');
     expect(d.existsSync() ? d.listSync() : const [], isEmpty);
   });
+
+  // Realme 2026-10-22 (đọc mã khi đo khe Huỷ): phép xét `_huyLuat` chạy TRƯỚC `await kho.luuMon` — Huỷ bấm trong lúc ấy
+  // bật cờ, nút thành "Đang huỷ…" và bị khoá, mà không ai xét lại: Premium vào pha AI chạy trọn (~30 s) không Huỷ được,
+  // Basic mở form như chưa từng Huỷ.
+  for (final premium in [true, false]) {
+    testWidgets('⭐ Huỷ trong lúc lưu món (giữa pha luật và pha AI) → như Huỷ pha luật — ${premium ? 'Premium' : 'Basic'}',
+        (tester) async {
+      final c = Completer<void>();
+      kho = _KhoChoLuuMon(thuMuc: () async => goc, cho: c);
+      final g = _GemmaGia(const KetQuaGemmaAnh(tong: 165000));
+      await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: g, laPremium: premium);
+      await cho(tester);
+      expect(find.text('Đang đọc bằng AI…'), findsNothing, reason: 'tiền đề: chưa sang pha AI');
+      await tester.tap(find.byKey(const Key('quet-huy')));
+      await tester.pump();
+      expect(find.text('Đang huỷ…'), findsOneWidget);
+      c.complete();
+      await cho(tester);
+      expect(g.soLanDoc, 0, reason: 'đã Huỷ — không gọi Gemma');
+      expect(form(), isNull, reason: 'đã Huỷ — không mở form');
+      expect(find.text('Trang trước'), findsOneWidget);
+      final d = Directory('${goc.path}/$kThuMucAnhQuet');
+      expect(d.existsSync() ? d.listSync() : const [], isEmpty, reason: 'ảnh và tệp món bị xoá');
+    });
+  }
 
   testWidgets('Huỷ ở pha AI → dừng lượt sinh, mở form với kết quả luật (không ai=1)', (tester) async {
     final c = Completer<KetQuaGemmaAnh?>();
