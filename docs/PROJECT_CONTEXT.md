@@ -616,6 +616,30 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-22)
 
+### 🧷 Gộp lời dừng trùng — native chỉ nhận một `stopGeneration` mỗi chat (2026-10-22 tối, người dùng chọn lối A) — mã + test
+
+Dây Huỷ của `6c9e6e99` (khối 🪪 dưới) làm nút Huỷ pha AI màn Quét gọi `huy()` **hai lần song song** trên cùng chat đọc ảnh
+(`_docGemma.huy()` + `_docDanhMuc.huy()` → `PhienMotLoiGoi.huy()` → `runtime.huy()`), tức hai `stopGeneration` native khi
+native chưa trả — OnePlus GPU từng sập ở lời gọi lặp. Hai lối đã trình: (A) chặn ở runtime, (B) để nguyên, đo máy trước —
+người dùng chọn A. `SlmRuntimeThat._dungChat` nay đi qua lớp thuần **`GopLuotDung`** (`ai_edge/data/gop_luot_dung.dart`):
+lời dừng tới khi chat ấy đang dừng thì chờ chung; lượt xong (kể cả hỏng / quá 2 s) là nhả chỗ. Thẻ hết giờ `HuyLuot` cùng
+đường. Logcat in `[SLM] gộp lời dừng trùng vào lượt đang dừng` khi gộp. Người dùng không thấy gì khác trên app. Chi tiết +
+ba bẫy viết lớp ấy: cuối bẫy 4.60 `AI_EDGE_FEATURE.md`.
+
+**Test:** `gop_luot_dung_test` 7 ca (bốn bản sai — bỏ tra lượt đang dừng · `Map` thường · không nhả chỗ · không `Future.sync`
+— đều đỏ đúng ca; bản đầu viết `whenComplete(() => _dangDung.remove(khoa))` tự khoá chết, ba ca đỏ bắt được) +
+`luot_khong_ngat_duoc_test` +1 đọc mã (bản sai `_dungChat` gọi thẳng `stopGeneration` đỏ). **Số đo:** `flutter test`
+**7784/7784** pass, 10 skip (6 ph 36 s, +8 so với 7776); `flutter analyze` 20.
+
+**Đo Realme (CPU) cùng tối** (bản debug `16b71a1e…`, Premium, tài khoản 10, backend dev tắt — chưa đo OnePlus GPU): bốn lần
+Huỷ pha AI màn Quét, mỗi lần **một** dòng gộp + **một** dòng huỷ, form ngay, không sập (PID không đổi ~20 phút). Chốt chờ
+`_luotAnh` (khối ⏱️ / 4.60) **lần đầu thấy chạy thật**: Quét liền với nhịp chạm sát nhất → lượt mới tạo chat 2 ms sau khi
+lượt bị bỏ xong; nhịp người thường / Nói thì lượt cũ (5–7 s sau Huỷ) xong trước. Ba sửa của Quét đạt: N01 14:07 + *ỦA TEA*,
+R01 *STARBUCKS*. Nhập nhanh: *"tiền điện một triệu hai"* → 1.200.000, không chip (lượt AI ~15 s là của **danh mục** —
+`OThieu.danhMuc`, tài khoản 10 không có từ khoá cho *tiền điện*; không phải phép kiểm số tiền); *"mua 20 quả trứng năm chục"*
+→ hai chip 20.000 · 50.000. Lộ **G105** (dòng rác *"card n"* mép ảnh thắng tên cửa hàng) và một số đo mới: lượt đọc ảnh
+trọn vẹn 55,9 s (N01, 10 món) > mốc 42 s của trần 45 s (cuối bẫy 4.60). Bảng: mục 7 `QUET_ANH_FEATURE.md`.
+
 ### 🪪 Huỷ đúng lượt — hết giờ dừng lượt của nó, Huỷ của Nhập nhanh tới lượt đang chờ (2026-10-22, người dùng chọn hai việc dư của bẫy 4.60) — mã + test, chưa đo trên máy
 
 Nguyên tắc: **Huỷ của người dùng = `huy()` toàn cục** (muốn AI dừng hẳn — tăng bộ đếm chung, dừng `_chatDangSinh`), **hết

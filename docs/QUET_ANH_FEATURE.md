@@ -19,7 +19,9 @@
 > đạt**: R08 → hai chip 75.706 · 75.700, R13 → hai chip 72.127 · 2.127 (mục 7). Đường Basic chưa nhìn trên máy.
 > ✅ **Ba ứng viên sửa của lượt Realme 21/10 mã xong 2026-10-22** (người dùng duyệt; chưa đo trên máy): giờ in liền
 > *"Giò vào: 1407"* → 14:07 (chốt 11), tên cửa hàng cắt ký tự rác hai đầu *STARBUCKS"* → *STARBUCKS* (11b), Huỷ pha AI
-> sang form ngay + lời gọi mô hình kế tiếp chờ lượt đọc ảnh cũ (13).
+> sang form ngay + lời gọi mô hình kế tiếp chờ lượt đọc ảnh cũ (13). ✅ **Đo Realme (CPU) 2026-10-22 tối, cả ba đạt**: N01
+> chụp lại → 398.800 · *ỦA TEA* · 14/10 **14:07**; R01 → *STARBUCKS*; Huỷ pha AI → form ngay, lượt Quét kế tiếp **chờ** lượt
+> cũ rồi chạy (chốt 13). Lần chụp N01 đầu dính dòng rác *"card n"* ở mép ảnh → ghi chú *"card n"* — **G105** (chốt 12).
 > ✅ **AI làm chính đã nối (2026-10-08 tối, mã + test)**: hoá đơn + Premium → Gemma NHÌN
 > ẢNH đọc món + tổng (`DocAnhBangGemma`), luật đọc phần còn lại; số chốt bằng `chotTongQuet` — khớp → điền, lệch → ô
 > trống + hai chip trên form. Đường cũ *"AI đọc chữ OCR"* (`DocAnhBangAi`, `lapTuAi`) **đã bỏ**.
@@ -137,6 +139,8 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
     Chỉ tên cửa hàng của hoá đơn — nội dung chuyển khoản của biên lai là chữ người chuyển gõ, giữ nguyên.
 12. **Tên cửa hàng chỉ tìm TRƯỚC thân hoá đơn**, bỏ chữ trên đồ vật phía sau (*ASUS, CORE, IRIS*), mẩu một từ ≤ 4 chữ
     cái (*"tel"*), địa chỉ / liên hệ, tiêu đề chứng từ; không thấy → **trống** (không đoán bằng dòng địa chỉ chợ).
+    ⚠️ **G105** (mở 2026-10-22): mẩu rác **hai** từ ngắn ở mép ảnh (*"card n"*, N01 chụp lần đầu trên Realme) lọt luật mẩu
+    một từ và thắng *"ỦA TEA 2DEE"* ở dòng 3 — ghi chú điền *"card n"*. Chụp lại không dính mép thì đúng.
     Dữ liệu test: `test/features/transaction/domain/hoa_don_that_du_lieu.dart` (chữ OCR thật, đã che số điện thoại).
     ⚠️ Luật sửa trên **chính** 15 tờ này — cần hoá đơn mới để biết nó có chỉ khớp riêng bộ này không. Chỗ dễ vỡ nhất:
     *"dòng trên chỉ-có-số thắng"* (đo đúng 5 ca) — một dòng món đứng ngay trước nhãn tổng sẽ bị bốc nhầm.
@@ -152,7 +156,15 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
     trần thì lời gọi sau ném ngay. Hết trần 90 s của `DocAnhBangGemma` chỉ dừng **lượt của nó** qua thẻ `HuyLuot`, không gọi
     `huy()` toàn cục (bẫy 4.60); nút Huỷ của người dùng vẫn là `huy()` toàn cục. **Đừng** cho `huy` chờ (Huỷ kẹt) hay `dong` / `moHinhSan` chờ (`docAnh` → `_boNap.can` → `dong` là khoá chết). `moc`
     của `docAnh` / `chepLoi` ghi **trước** khi chờ: Huỷ trong lúc chờ thì lượt ấy không chạy. Nối dây: `flutter test` mù
-    (gói thật) — canh bằng đọc mã ở `luot_khong_ngat_duoc_test`; **chưa đo trên máy**.
+    (gói thật) — canh bằng đọc mã ở `luot_khong_ngat_duoc_test`; **chưa đo trên máy**. Nút Huỷ gọi cả `_docGemma.huy()` lẫn
+    `_docDanhMuc.huy()` — hai lần `huy()` song song trên cùng chat đọc ảnh; từ 2026-10-22 (lối A) runtime **gộp** chúng
+    thành một `stopGeneration` native (`GopLuotDung`, bẫy 4.60) — logcat có dòng `[SLM] gộp lời dừng trùng…`.
+    ✅ **Đo Realme (CPU) 2026-10-22 tối** (bản `16b71a1e…`, chưa đo OnePlus GPU): bốn lần Huỷ, mỗi lần đúng **một** dòng
+    *gộp* + **một** dòng *đã huỷ lượt sinh* (~10–70 ms sau), form mở ngay với kết quả luật; lượt bị bỏ chạy nốt **5–7 s** sau
+    Huỷ (0 ký tự). Quét liền với nhịp chạm sát nhất: lượt mới vào pha AI lúc lượt cũ còn chạy (19:54:27.1 → lượt cũ xong
+    19:54:28.137) và tạo chat **2 ms** sau khi lượt cũ xong — chờ rồi chạy, *"Đọc bằng AI"*, không rơi về luật. Nhịp người
+    thường (~6,5 s Back → Quét → chọn ảnh) và Nói (~10 s tới lượt AI) thì lượt cũ đã xong trước. Không sập, PID không đổi
+    suốt buổi (~20 phút, ~10 lượt mô hình).
 
 ## 3b. Tách theo danh mục (mục 11 spec)
 
@@ -252,5 +264,14 @@ Các mục khác:
   tách bằng tick món (tính năng tạm tắt, `kChonMonTuAnhQuet = false`).
 
 ~~Ứng viên sửa (chưa mở mục G, chưa đo): giờ in không dấu hai chấm *"Giờ vào: 1407"* → 14:07; ghi chú dính ký tự rác của OCR
-(*STARBUCKS"*); màn Huỷ pha AI nên đóng ngay thay vì chờ native trả về.~~ ✅ **Cả ba mã xong 2026-10-22** (mã + test,
-chưa đo trên máy) — chốt 11, 11b, 13 ở mục 3.
+(*STARBUCKS"*); màn Huỷ pha AI nên đóng ngay thay vì chờ native trả về.~~ ✅ **Cả ba mã xong 2026-10-22** — chốt 11, 11b,
+13 ở mục 3; ✅ **đo Realme 2026-10-22 tối, cả ba đạt** (bản `16b71a1e…`, Premium, tài khoản 10, backend dev tắt):
+
+| Ca | Kết quả |
+|---|---|
+| N01 chụp lại (máy ảnh) | 398.800 · *ỦA TEA* · 14/10/2026 **14:07** · Ăn uống · *Đọc bằng AI*; Gemma 55,9 s (10 món) |
+| N01 chụp lần đầu | 398.800 · 14/10 14:07 đúng, ghi chú **"card n"** (dòng rác mép ảnh) — **G105**; Gemma 23,3 s |
+| R01 (thư viện) | 262.000 · *STARBUCKS* · 28/09 14:19 |
+| R02 (thư viện) | 158.000 · *ỦA TEA* · Ăn uống · *Đọc bằng AI*; Gemma 32,6 s |
+| Huỷ pha AI ×4 | form ngay, kết quả luật; logcat mỗi lần **một** dòng gộp + **một** dòng huỷ; lượt bỏ xong 5–7 s sau |
+| Quét liền sau Huỷ | lượt mới chờ lượt cũ (tạo chat 2 ms sau khi lượt cũ xong) rồi đọc bằng AI — chốt 13 |

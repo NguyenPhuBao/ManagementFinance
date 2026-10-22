@@ -311,6 +311,24 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
   `sinhDan` ở Trợ lý không có nút Dừng trên máy — thêm để năm lối đồng nhất. Thẻ `HuyLuot` **chưa** mở sang `SlmRuntime` (bảy
   bản giả trong test): ba lối chữ chưa có trần riêng ở runtime (`PhienMotLoiGoi.thoiHan` dừng bằng `phien.huy()` — chat của
   chính phiên); hợp nhất hai cơ chế là bước kế nếu cần.
+  ✅ **Gộp lời dừng trùng** (cùng ngày, người dùng chọn lối A): từ khi `PhienMotLoiGoi.huy()` gọi `runtime.huy()`, nút Huỷ pha
+  AI màn Quét (`_docGemma.huy()` + `_docDanhMuc.huy()`, cả hai `unawaited`) tới `huy()` **hai lần song song** trên cùng chat
+  đọc ảnh — hai `stopGeneration` native khi native chưa trả, mà OnePlus GPU từng sập ở lời gọi lặp. `_dungChat` nay đi qua
+  `GopLuotDung` (`ai_edge/data/gop_luot_dung.dart`, Dart thuần): lời dừng tới khi chat ấy **đang** dừng thì chờ chung, native
+  nhận một lời; lượt xong (kể cả hỏng / quá `kHanDungSinh`) là nhả chỗ — bấm Huỷ lần nữa vẫn thử dừng. Đổi lại (người dùng chấp
+  nhận): lượt đang dừng hỏng thì lời đã gộp vào nó không thử riêng. Khi gộp, logcat in `[SLM] gộp lời dừng trùng vào lượt đang
+  dừng` — trên máy tìm dòng ấy **có mặt** (`debugPrint` bị tiết lưu, vắng dòng huỷ thứ hai không chứng minh gì). Thẻ hết giờ
+  `HuyLuot` cũng qua `_dungChat`, nên gộp luôn với Huỷ của người dùng. ⚠️ Ba bẫy: `whenComplete(() => map.remove(k))` trả về
+  **chính** Future đang chờ → `whenComplete` chờ nó → lượt không bao giờ xong (test bắt; thân khối); map so khoá theo **định
+  danh** (`Map.identity()`); `Future.sync` để lời ném đồng bộ cũng tới mọi người chờ và nhả chỗ. `_PhienThat.huy()` (chat của
+  phiên có tool, không phải `_chatDangSinh`) **không** đi qua lớp gộp — ngoài phạm vi lối A. Test: `gop_luot_dung_test` (7 ca,
+  bốn bản sai đỏ) + ca đọc mã *"`_dungChat` gộp lời dừng trùng"* ở `luot_khong_ngat_duoc_test` (`.stopGeneration(` chỉ một chỗ
+  trong `SlmRuntimeThat`). ✅ **Đo Realme (CPU) 2026-10-22 tối** (chốt 13 `QUET_ANH_FEATURE.md`): bốn lần Huỷ pha AI, mỗi lần
+  **một** dòng gộp + **một** dòng huỷ, không sập; chốt chờ `_luotAnh` lần đầu thấy chạy thật — lượt Quét mới tạo chat **2 ms**
+  sau khi lượt bị bỏ xong. OnePlus GPU chưa đo. ⚠️ **Số đo mới cho trần 45 s:** cùng buổi, một lượt đọc ảnh **trọn vẹn** (N01,
+  10 món, 1.215 ký tự) mất **55,9 s** — dài hơn mốc 42 s mà `kTranChoLuotCu` dựa vào. Lượt **bị Huỷ** vẫn chỉ chạy nốt 5–7 s
+  (dừng sau prefill), nên trần chỉ chạm khi `stopGeneration` hỏng trên lượt dài — lúc ấy lượt mới rơi về luật oan. Chưa đổi
+  hằng (phải < 60 s của `kThoiHanChepLoi`).
 
 ## 5. Màn Stitch
 
