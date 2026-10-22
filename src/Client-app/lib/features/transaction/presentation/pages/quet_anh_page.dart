@@ -38,6 +38,7 @@ import '../../domain/dien_san_bien_dong.dart';
 import '../../domain/doc_anh_gemma.dart' show KetQuaGemmaAnh;
 import '../../domain/doc_anh_quet.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../../shared/theme/app_colors.dart';
 
 enum NguonAnh { mayAnh, thuVien }
 
@@ -56,40 +57,194 @@ Future<String?> _chonAnhThat(NguonAnh n) async {
   return x?.path;
 }
 
-/// Bottom sheet hai dòng (Stitch `8027b781…`) → chụp / chọn → `push('/quet')`. Đóng sheet / huỷ máy ảnh = không gì.
+/// Lời nhắc chụp ở sheet chọn nguồn (G105, người dùng chọn 2026-10-22): vật có chữ lọt vào mép ảnh thì chữ của nó có thể
+/// thắng tên cửa hàng trên form (Realme: thẻ tiếng Anh ở mép → ghi chú *"ral Setl Ths cad rd effect"*).
+const kNhacChupSat = 'Chụp sát tờ hoá đơn, đừng để vật có chữ lọt vào khung';
+
+/// Bottom sheet chọn nguồn ảnh (Stitch `8027b781…` *"Trang chủ - Chọn nguồn ảnh để Quét"* — tiêu đề, dòng khoá, dòng nhắc
+/// chụp [kNhacChupSat], hai lựa chọn có dòng phụ, Huỷ) → chụp / chọn → `push('/quet')`. Đóng sheet / huỷ máy ảnh = không gì.
 ///
 /// ⚠️ `useRootNavigator`: nút Quét nằm trong nhánh của shell, sheet mở ở navigator nhánh thì thanh điều hướng + nút +
-/// đè lên nó và che nút Huỷ (nghiệm thu OnePlus 2026-10-08).
+/// đè lên nó và che nút Huỷ (nghiệm thu OnePlus 2026-10-08). `isScrollControlled` + cuộn: ở 320 dp chữ ×1,3 hai dòng ghi
+/// chú và dòng phụ xuống dòng, sheet cao hơn trần 9/16 màn của sheet thường.
 Future<void> moQuet(BuildContext context, {ChonAnh? chonAnh}) async {
   final nguon = await showModalBottomSheet<NguonAnh>(
     context: context,
     useRootNavigator: true,
-    builder: (ctx) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            key: const Key('quet-chup-anh'),
-            leading: const Icon(Icons.photo_camera_outlined),
-            title: const Text('Chụp ảnh'),
-            onTap: () => Navigator.pop(ctx, NguonAnh.mayAnh),
-          ),
-          ListTile(
-            key: const Key('quet-chon-anh'),
-            leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Chọn ảnh có sẵn'),
-            onTap: () => Navigator.pop(ctx, NguonAnh.thuVien),
-          ),
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
-          const SizedBox(height: 8),
-        ],
-      ),
-    ),
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    builder: (_) => const _SheetChonNguon(),
   );
   if (nguon == null || !context.mounted) return;
   final duongDan = await (chonAnh ?? _chonAnhThat)(nguon);
   if (duongDan == null || !context.mounted) return;
   await context.push('/quet', extra: duongDan);
+}
+
+class _SheetChonNguon extends StatelessWidget {
+  const _SheetChonNguon();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.outline.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Quét hoá đơn / biên lai',
+                    style: TextStyle(
+                      fontSize: 20,
+                      height: 28 / 20,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  _DongGhiChu(Icons.lock_outline, 'Ảnh được đọc ngay trên máy, không gửi đi đâu'),
+                  SizedBox(height: 4),
+                  _DongGhiChu(Icons.crop_free, kNhacChupSat),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            _LuaChonNguon(
+              key: const Key('quet-chup-anh'),
+              icon: Icons.photo_camera_outlined,
+              ten: 'Chụp ảnh',
+              phu: 'Hoá đơn giấy, màn hình máy khác',
+              onTap: () => Navigator.pop(context, NguonAnh.mayAnh),
+            ),
+            const SizedBox(height: 8),
+            _LuaChonNguon(
+              key: const Key('quet-chon-anh'),
+              icon: Icons.photo_library_outlined,
+              ten: 'Chọn ảnh có sẵn',
+              phu: 'Ảnh chụp màn hình biên lai chuyển khoản',
+              onTap: () => Navigator.pop(context, NguonAnh.thuVien),
+            ),
+            const SizedBox(height: 20),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: AppColors.surfaceContainerLow,
+                  foregroundColor: AppColors.textPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Huỷ'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Dòng chữ nhỏ có biểu tượng dưới tiêu đề sheet (dòng khoá, dòng nhắc chụp) — xuống dòng, không cắt.
+class _DongGhiChu extends StatelessWidget {
+  const _DongGhiChu(this.icon, this.chu);
+  final IconData icon;
+  final String chu;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(icon, size: 16, color: AppColors.textSecondary),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(chu, style: const TextStyle(fontSize: 13, height: 1.375, color: AppColors.textSecondary)),
+        ),
+      ],
+    );
+  }
+}
+
+/// Một lựa chọn nguồn ảnh: vòng biểu tượng, tên, dòng phụ (xuống dòng ở khổ hẹp), mũi tên.
+class _LuaChonNguon extends StatelessWidget {
+  const _LuaChonNguon({super.key, required this.icon, required this.ten, required this.phu, required this.onTap});
+  final IconData icon;
+  final String ten;
+  final String phu;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 64),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
+                  child: Icon(icon, size: 24, color: AppColors.primary),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ten,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          height: 1.25,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(phu, style: const TextStyle(fontSize: 12, height: 1.25, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_right, size: 20, color: AppColors.outline),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 enum _Pha { luat, ai }

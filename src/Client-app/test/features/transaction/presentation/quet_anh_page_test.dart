@@ -515,4 +515,69 @@ void main() {
     expect(find.text('MAN QUET'), findsOneWidget);
     expect(pushed, '/tmp/a.jpg');
   });
+
+  // Stitch `8027b781…` *"Trang chủ - Chọn nguồn ảnh để Quét"*: tiêu đề, dòng khoá, hai lựa chọn có dòng phụ, nút Huỷ — cộng
+  // dòng nhắc chụp (G105, người dùng chọn 2026-10-22: ảnh dính vật có chữ ở mép thì ghi chú ra chữ của vật ấy).
+  group('sheet chọn nguồn ảnh theo Stitch', () {
+    Future<void> moSheet(WidgetTester tester, {Size kho = const Size(411, 914), double coChu = 1.0}) async {
+      tester.view.physicalSize = kho * 3;
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        builder: (ctx, child) => MediaQuery(
+          data: MediaQuery.of(ctx).copyWith(textScaler: TextScaler.linear(coChu)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: Builder(builder: (ctx) => TextButton(onPressed: () => moQuet(ctx), child: const Text('Q'))),
+        ),
+      ));
+      await tester.tap(find.text('Q'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('⭐ đủ chữ của màn Stitch + dòng nhắc chụp', (tester) async {
+      await moSheet(tester);
+      for (final chu in [
+        'Quét hoá đơn / biên lai',
+        'Ảnh được đọc ngay trên máy, không gửi đi đâu',
+        kNhacChupSat,
+        'Chụp ảnh',
+        'Hoá đơn giấy, màn hình máy khác',
+        'Chọn ảnh có sẵn',
+        'Ảnh chụp màn hình biên lai chuyển khoản',
+        'Huỷ',
+      ]) {
+        expect(find.text(chu), findsOneWidget, reason: chu);
+      }
+      expect(kNhacChupSat, 'Chụp sát tờ hoá đơn, đừng để vật có chữ lọt vào khung');
+      expect(tester.takeException(), isNull);
+    });
+
+    for (final (kho, coChu) in [(const Size(320, 640), 1.3), (const Size(360, 800), 1.0), (const Size(360, 800), 1.3)]) {
+      testWidgets('không tràn, dòng nhắc và dòng phụ xuống dòng chứ không cắt — ${kho.width.toInt()} dp, chữ ×$coChu',
+          (tester) async {
+        await moSheet(tester, kho: kho, coChu: coChu);
+        expect(tester.takeException(), isNull, reason: 'tràn bố cục');
+        for (final chu in [kNhacChupSat, 'Ảnh chụp màn hình biên lai chuyển khoản']) {
+          final t = tester.widget<Text>(find.text(chu));
+          expect(t.overflow, isNot(TextOverflow.ellipsis), reason: '$chu — cắt chữ là mất lời nhắc');
+          expect(t.maxLines, isNull, reason: chu);
+        }
+        // Nút Huỷ nằm trọn trong màn (sheet cao hơn khung thì cuộn được — Huỷ vẫn phải chạm được).
+        await tester.ensureVisible(find.text('Huỷ'));
+        await tester.pumpAndSettle();
+        final r = tester.getRect(find.text('Huỷ'));
+        expect(r.bottom, lessThanOrEqualTo(kho.height));
+      });
+    }
+
+    testWidgets('Huỷ đóng sheet, không mở máy ảnh / thư viện', (tester) async {
+      await moSheet(tester);
+      await tester.tap(find.text('Huỷ'));
+      await tester.pumpAndSettle();
+      expect(find.text('Quét hoá đơn / biên lai'), findsNothing);
+      expect(find.text('Q'), findsOneWidget);
+    });
+  });
 }
