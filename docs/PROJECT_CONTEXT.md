@@ -642,6 +642,14 @@ Người dùng: *"lấy code mới nhất về kiểm tra"*. 33 commit, 179 tệ
   · C trùng số migration **27** lần hai + tệp `)2_can_lam_all_migrations.sql` · D thứ tự áp trước `npm install` · E (thấp) hai
   route `devices` không có trong mã, CORS thiếu `x-device-name` (bản web sẽ hỏng preflight) · F (thấp) migration 33 xoá cứng
   tài khoản test khi tắt khoá ngoại. README `CAN-LAM/` cập nhật banner + mục 0.
+- **Soát bốn tài liệu `docs/Admin-web/` (người dùng nhờ, cùng ngày — 4 agent song song, tôi kiểm lại chỗ mức cao):**
+  `Event-Notification-to-ClientApp.md`, `Sync-To-ClientApp.md`, `IP-Device-ClientApp.md`, `DEVICE_TRACKING_AND_SYNC_PLAN.md` —
+  không tệp nào khớp trọn. Mức cao: xoá SQLite khi `ACCOUNT_DELETED` (ngược G89); body 401 / 403 tả `code` lồng trong `data`
+  (thật ở cấp gốc); hoá đơn `time_recurrence` `'Day'` (vỡ CHECK); xoá mềm bằng `is_deleted` (server chỉ đọc `isDeleted`, xoá
+  chạy nhờ `operation: 'delete'`); mốc kéo về `pulledAt`. Tả như đã có: route / màn thiết bị Admin, *"hoàn tất 100%"*, test
+  `[x]`. → **vế H đơn 49** (người dùng chọn bổ sung đơn 49). Lộ thêm **lỗi mã thật** → **vế G (CAO)**: `syncOrderWithPayOS`
+  (`payment.service.js:673`, từ `c13873ef8` 2026-10-16) gọi `activatePremiumSubscription` sai chữ ký — webhook không tới thì đơn
+  `PAID` mà tài khoản vẫn Basic, lỗi bị nuốt; ghi bẫy vào hàng G94 `CLIENT_APP_KNOWN_GAPS.md` (nghiệm thu PayOS sandbox).
 
 ### 🔢 G104 — câu *"một triệu hai tiền sách"* ra hai chip; *"X bậc Y"* một định nghĩa, X 1–99 (2026-10-23, người dùng chọn) — mã + test, chưa đo trên máy
 

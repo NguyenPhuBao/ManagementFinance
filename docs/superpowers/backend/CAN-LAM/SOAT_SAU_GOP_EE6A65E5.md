@@ -1,8 +1,10 @@
-# Mục 49 — Soát sau khi client gộp `main` @ `ee6a65e5` (PR #153–#158) — tài liệu lệch mã, migration trùng số, thứ tự áp
+# Mục 49 — Soát sau khi client gộp `main` @ `ee6a65e5` (PR #153–#158) — tài liệu lệch mã, migration trùng số, thứ tự áp, lỗi kích hoạt Premium
 
-> **Client đặt 2026-10-23.** Người nhận: backend (NPBao). Mức chung: **vừa** — không có chỗ nào làm hỏng app đang chạy trên
-> backend đã áp đủ migration; các chỗ dưới đây là **tài liệu sai** (ai làm theo sẽ gây hỏng thật), **migration trùng số**, và
-> **một bẫy thứ tự** trên máy dev.
+> **Client đặt 2026-10-23.** Người nhận: backend (NPBao). Mức chung: **vừa**, riêng **vế G mức CAO** (lỗi mã thật: đơn đã
+> trả tiền mà tài khoản không lên Premium — bổ sung cùng ngày sau lượt soát bốn tài liệu `docs/Admin-web/`). Ngoài vế G, không
+> có chỗ nào làm hỏng app đang chạy trên backend đã áp đủ migration; các chỗ còn lại là **tài liệu sai** (ai làm theo sẽ gây hỏng
+> thật), **migration trùng số**, và **một bẫy thứ tự** trên máy dev. Vế H (bổ sung cùng ngày) là bảng chỗ sai của bốn tài liệu
+> `DEVICE_TRACKING_AND_SYNC_PLAN.md`, `Event-Notification-to-ClientApp.md`, `IP-Device-ClientApp.md`, `Sync-To-ClientApp.md`.
 >
 > Client đã soát bằng **mã của cả hai phía** (đọc tệp, `grep`), chưa chạy backend sau lượt gộp. Mỗi mục có câu lệnh để kiểm
 > lại. Client **không** đổi mã vì đơn này.
@@ -119,3 +121,101 @@ chặn. Quy ước của repo là xoá mềm (`Delete_at`) — xoá cứng hàng
 **Xin:** đổi sang xoá mềm (`Status = 'Deleted'`, `Delete_at`), hoặc xoá kèm mọi bảng con trong cùng khối và không tắt khoá ngoại.
 
 **Kiểm lại** (sau khi áp 33): `SELECT count(*) FROM wallet w LEFT JOIN account a ON a."Idaccount" = w."Idaccount" WHERE a."Idaccount" IS NULL;` → 0.
+
+---
+
+## G (CAO) — Đồng bộ JIT với PayOS ghi đơn `PAID` nhưng **không nâng Premium**
+
+`modules/payment/payment.service.js` hàm `syncOrderWithPayOS` (nhánh *"Bù trừ Webhook"*, dòng 661–704 — chạy khi
+`order-status` / lịch sử đọc một đơn mà PayOS báo `PAID` nhưng webhook chưa tới):
+
+```js
+await paymentRepository.updateOrderPaymentStatus({ orderId: order.id, status: 'PAID', amountReceived, paidAt });   // :666
+await paymentRepository.activatePremiumSubscription(order.idaccount, {                                              // :673
+  packageType: order.package_type || 'Premium',
+  orderId: order.id,
+});
+```
+
+Còn `payment.repository.js:349` khai `async function activatePremiumSubscription({ idaccount, orderId, paidAt, newExpiresAt, transactionData })`
+— **một** tham số object. Gọi với một số → `idaccount`, `orderId` đều `undefined` → `tx.payment_order.update({ where: { id: undefined } })`
+ném → lỗi bị `catch` ngoài cùng (dòng 706) nuốt thành `logger.warn('… Graceful degradation')`. Kết quả: đơn **đã là `PAID`** trong
+CSDL (bước :666 đã ghi), tài khoản **vẫn Basic**, không có `account.upgraded` (nhánh này chỉ phát `payment.success`). Lần đọc sau
+đơn đã `PAID` nên JIT không chạy lại → **kẹt vĩnh viễn**. Client hiện màn *"Thành công"* (đọc `PAID`), gọi lại
+`/subscription-info` và vẫn nhận Basic. Hai chỗ gọi đúng chữ ký ở cùng tệp: `:313` (webhook) và `:411` (`confirmUpgrade`).
+
+Lỗi có từ `c13873ef8` (2026-10-16; `d1c2284ab` 2026-10-21 chỉ thêm `packageType`). Gặp được trên dev mỗi khi webhook không tới
+(không ngrok) — đúng đường nghiệm thu PayOS sandbox của client (G94) đang chờ.
+
+**Xin:** gọi đúng chữ ký như `:313` (tính `newExpiresAt` theo gói như webhook), đặt **cùng giao tác** với bước ghi `PAID` (để không
+còn trạng thái *PAID mà chưa nâng*), và phát `account.upgraded` tới phòng tài khoản như webhook. Cân nhắc một câu dọn các đơn đã
+kẹt: đơn `PAID` mà `account.premium_expires_at` không được kéo dài sau `paid_at`.
+
+**Kiểm lại:** một test đơn vị gọi `syncOrderWithPayOS` với PayOS giả trả `PAID` → `activatePremiumSubscription` nhận object có
+`idaccount` + `orderId`; trên dev: tạo đơn, trả tiền sandbox **không** webhook, mở *Lịch sử mua* → tài khoản lên Premium.
+
+---
+
+## H (vừa) — Bốn tài liệu `docs/Admin-web/` lệch mã (soát 2026-10-23, đọc mã cả hai phía)
+
+Mỗi tài liệu được đối chiếu từng khẳng định với mã client + backend; dưới đây chỉ chỗ **sai / lỗi thời**, mức cao trước. Phần
+tả backend nhìn chung đúng; sai tập trung ở chỗ nói về **client** và chỗ tả tính năng **chưa có** như đã có. Client không đổi mã.
+
+**H1 — `Event-Notification-to-ClientApp.md`** (≈ 45 khẳng định đúng)
+
+| Dòng | Tài liệu nói | Thực tế | Mức |
+|---|---|---|---|
+| 52, 131, 523, 600, 622 (+107) | `ACCOUNT_DELETED` → client xoá SQLite (`purgeAccountData`) | Không xoá ở mọi nguồn (G89, người dùng chốt 2026-10-20 — vế B); hàm ấy không có | **cao** |
+| 496–503, 515–521 | Body 401 `{ statusCode, data: { code, idaccount, reason_inactive } }` | `code`, `idaccount`, `reason_inactive` ở **cấp gốc**, không `statusCode` (`response-handler.js` `unauthorized` trải `...extra`; `middleware/auth.js:113-116`). Client đọc cấp gốc — viết theo tài liệu là mất hộp thoại cưỡng chế đăng xuất | **cao** |
+| 476–484 | 403 `FEATURE_DISABLED` mã nằm trong `data` | Cấp gốc (`feature-permission.middleware.js:47-55`) | cao |
+| 582, 594, 597–598, 614–620 | Client *"bỏ sót"* `account.downgraded`, 503 bảo trì, 403 AIOps, 403 quyền; cần màn bảo trì | Client xử lý cả bốn từ G89 (2026-10-20): làm mới gói, dòng nhắc + hẹn thử theo `Retry-After` / `quarantineExpiresAt` | vừa (lỗi thời) |
+| 579, 612 | `system.maintenance_changed` bỏ sót | Client **cố ý** không nghe (payload hộp đen, 2026-09-30) | vừa |
+| 154, 165–167 | Hết bảo trì `reason: null`; `active=false` thì `syncNow()` | `reason` không về null; sự kiện còn phát khi tạo / huỷ lịch với `active=false` (`maintenance.manager.js`) → làm theo là đồng bộ thừa | vừa |
+| 327, 89/354, 88/328 | `payment.success` do webhook; `order_expired` do worker; người dùng huỷ đơn → `order_cancelled` | Webhook phát `account.upgraded`; tới phòng tài khoản, ba sự kiện này chỉ từ JIT-sync; worker chỉ phát `admin_room`; không có route huỷ đơn | vừa |
+| 51 | Socket *"tuyệt đối không"* gửi số tài khoản ngân hàng | `ocr.completed` chuyển nguyên `data` có `transfer_details.source_account` / `destination_account` | vừa (bảo mật) |
+| 108, 527–538 | HTTP 400 `PENDING_DELETE_PROTECTED` | Không có trong `src/Backend` (`grep` 0) | vừa |
+| 76, 115 · 84, 262, 272 · 102 · 109 · 19 | `force_logout` trơn; `sync.completed` chỉ khi máy khác đẩy, client gọi `processPull()`; ngưỡng lag 100 ms; socket lỗi thì làm mới JWT; đường dẫn `core/api/interceptors/buoc_dang_xuat.dart` | Chỉ `account.force_logout`; phát sau **mọi** push, client gọi `syncNow()`; 250 ms (`event-loop-monitor.js:9`); có `data.code` → đăng xuất, không thì giãn cách + đọc lại token; `core/auth/buoc_dang_xuat.dart` | thấp |
+| 4.3–4.13 | Tên trường payload (`expiresAt`, `receivedAmount`…), *"Zero-Guesswork"* (dòng 49) | Lệch nhiều tên; client **không đọc payload** (trừ `account.force_logout`) — nguyên tắc ấy ngược hợp đồng thật | thấp |
+
+**H2 — `Sync-To-ClientApp.md`** (≈ 115 khẳng định đúng — đa số hàng trường, số trường 13/12/22/21/17/13 khớp tệp test hợp đồng)
+
+| Dòng | Tài liệu nói | Thực tế | Mức |
+|---|---|---|---|
+| 176 | Hoá đơn `time_recurrence` có `'Day'` | `chk_bill_time_recurrence` chỉ `Week / Month / Quarter / Year` (migration `20260901090000…:136-138`) → làm theo là **kẹt hàng đợi đẩy** | **cao** |
+| 42, 89, 119, 155, 185, 211, 233 | Gửi `is_deleted: true` → server ghi `Delete_at` | `mapEntityFields` chỉ đọc `isDeleted` (camelCase, `sync.repository.js:31,60,89,129,163,179`); xoá chạy nhờ `operation: 'delete'` → `softDelete()`. Gửi `update` kèm `is_deleted` là **không xoá, không báo** | **cao** |
+| 317–321 | Client lưu `lastPullTime = pulledAt`; `maxSince = max(since, pulledAt − 2′)` | Client lưu `mocTuMaxSince(maxSince, pulledAt)`: lớn nhất `maxSince` của các bảng, kẹp **xuống** `pulledAt − 2′` (`moc_keo_ve.dart`, G67). Lưu `pulledAt` thô là bỏ sót hàng commit muộn | **cao** |
+| 249–270, 288–296, 302–306, §4 | Client có `user_profile` (12 trường), `permissions_cache`; thông báo từ Socket / FCM, cột `type`, `isRead`; *"4 bảng cục bộ"* | Không có hai bảng đầu; `AppNotifications` do client tự suy từ ngân sách / hoá đơn / mục tiêu (cột `kind`, `dedupeKey`, `readAt`…); schema v31 có **11** bảng chỉ cục bộ | vừa |
+| 277–278, 345 | Client dùng `device_info_plus`, gắn `x-device-name` | Chưa có (vế E) | vừa |
+| 82, 90, 199–204, 83, 87, 177, 202, 344 | `NameWallet`, `Include_in_total`, `Total_amount`, `Threshold_warning_*`, `Over_spending`, `Over_amount`, `chk_budget_over_spending`; ví `Type` VARCHAR(20), `Color` VARCHAR(9); `Time_notification` VARCHAR(20); ngưỡng % INT | `Name`, `IncludeInTotal`, `TotalAmount`, `Threshold_Warning_*`, `OverSpending`, `OverAmount`, `ck_budget_overspending`; `VarChar(7)`, `VarChar(20)`, `VarChar(7)`, `Decimal(15,2)` | thấp (vừa với ai viết SQL thô) |
+| 50–52, 329 · 66 · 315 | Client BẮT BUỘC đẩy cat→wallet→goal→bill→budget→tx; lỗi FK trả 400, kẹt vĩnh viễn; trigger chạy cả INSERT | Server tự sắp (`ENTITY_PRIORITY`), client đẩy budget sau tx; lỗi FK là HTTP 200 với `results[i].code = 'FOREIGN_KEY_VIOLATION'`; trigger chỉ `BEFORE UPDATE` | thấp |
+
+**H3 — `IP-Device-ClientApp.md`** (17 khẳng định đúng — phần backend ghi vết, che IP trước khi lưu, throttle 60 s, DDL 35)
+
+| Dòng | Tài liệu nói | Thực tế | Mức |
+|---|---|---|---|
+| 42–44, 325, 372, 346, 384 | Admin có tab thiết bị, màn `/admin/security/device-history`, hai route `devices`, huy hiệu *"đang hoạt động"* | Không có route, không có màn (`src/Admin-web/src/router/routes.jsx`); `getDeviceHistory` chỉ test gọi; `id` BigInt chưa có `toJSON` → viết endpoint sẽ ném | vừa |
+| 383–392 | Mọi test `[x]` | Test 1.1–1.3 (Admin, client gửi header) chưa có gì để chạy; *"tầng CSDL thực"* dùng Prisma giả | vừa |
+| 194, 259 · 285–299 · 281 | Đặt tệp `lib/core/services/`; `dio.post('/api/auth/login')` trong `AuthRepository`; `dio.interceptors.add(...)` | `services` ngoài 15 chủ đề `core` của client → test quét 25 đỏ; `baseUrl` client đã có `/api` → `/api/api/…` 404, đăng nhập ở `AuthRemoteDataSource`; làm mới token đi qua `_refreshDio` riêng → không mang header | vừa |
+| 222–231 | Lấy tên máy bằng `iosInfo.name`, `computerName` | Đó là tên **người dùng đặt** (dữ liệu cá nhân) — trái chính §2.3 của tài liệu | vừa |
+| 89 · 152 · 82 · 54, 135 · 163–165 | IPv6 giữ 3 nhóm; dự phòng *"Unknown Mobile Device"*; chỉ đăng nhập bỏ throttle; `first_seen_at` là lần đầu thấy thiết bị + IP; đoạn lấy IP | Giữ 2 nhóm (`masking.util.js:198-200`); `'Unknown Device'`; đăng ký, verify-otp, refresh cũng bỏ; chỉ so dòng mới nhất (hai máy xen kẽ → thêm dòng mỗi 60 s); đọc thẳng `X-Forwarded-For[0]` → giả được IP, lệch `auth.service` (`req.ip` trước) | thấp |
+| — | (không nhắc) | CORS `app.js:32` thiếu `x-device-name` (vế E); header tên máy có dấu hỏng trên trình duyệt (ngoài Latin-1) | thiếu |
+
+**H4 — `DEVICE_TRACKING_AND_SYNC_PLAN.md`**
+
+| Dòng | Tài liệu nói | Thực tế | Mức |
+|---|---|---|---|
+| 5 | *"ĐÃ TRIỂN KHAI HOÀN TẤT 100%"* | Client chưa có dòng mã nào (`x-device-name`, `device_info_plus`: 0 kết quả); Admin không route, không màn; CORS chưa mở | vừa |
+| 165–175 | *"Pass 8/8 test 2 tầng"*, kiểm CSDL thật | `tests/unit/device.tracking.2tier.test.js` mock Prisma trong bộ nhớ; ca 5 (unique / FK) không có test | vừa |
+| 90 | `400 PENDING_DELETE_PROTECTED` | Không có (đã lan sang H1) | vừa |
+| 125, 126, 30 / 186 | Dự phòng *"Thiết bị không xác định"*; lấy `req.ip` trước; gắn ở `authenticateToken` | `'Unknown Device'` sau user-agent; `X-Forwarded-For[0]` trước; tên đúng `authenticate`, gắn cả đăng ký / OTP / refresh | thấp |
+| 69–81 | 15 sự kiện socket (commit ghi 18) | Hai con số lệch nhau; client không bắt `system.maintenance_changed` (cố ý), `system.broadcast`, `account.countdown`, `user.notification` (hàm phát không có chỗ gọi ngoài test) | thấp |
+
+Phần đúng của H4: DDL 35, `maskIp`, danh sách trường đồng bộ và số trường, `balance` một chiều, `Server_update_at`.
+
+**Xin:** sửa các chỗ mức **cao** và **vừa** ở bốn tệp trên (chúng là tài liệu của backend — client không sửa); với chỗ nói về
+client, đối chiếu tệp test hợp đồng `src/Client-app/test/core/sync/sync_payload_contract_test.dart` và mã `src/Client-app/lib/core/`
+thay vì suy luận; tính năng chưa có thì ghi *"kế hoạch"*, đừng đánh `[x]` / *"100%"*.
+
+**Kiểm lại:**
+`grep -n "purgeAccountData\|PENDING_DELETE_PROTECTED\|NameWallet\|Total_amount\|pulledAt - 2\|HOÀN TẤT 100%" docs/Admin-web/*.md` → 0 dòng;
+hàng `time_recurrence` của **hoá đơn** trong `Sync-To-ClientApp.md` không còn `'Day'` (mục tiêu thì `Day` hợp lệ — đừng `grep` chung).
