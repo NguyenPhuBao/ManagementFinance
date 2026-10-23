@@ -28,9 +28,11 @@ class MaintenanceRepository {
         "started_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
         "scheduled_end_at" TIMESTAMP WITH TIME ZONE NULL,
         "ended_at" TIMESTAMP WITH TIME ZONE NULL,
+        "actual_duration_seconds" INTEGER NULL,
         "status" VARCHAR(20) NOT NULL DEFAULT 'ONGOING',
         "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
+      ALTER TABLE "maintenance_history" ADD COLUMN IF NOT EXISTS "actual_duration_seconds" INTEGER NULL;
       CREATE INDEX IF NOT EXISTS "idx_maintenance_history_started_at" ON "maintenance_history" ("started_at" DESC);
       CREATE INDEX IF NOT EXISTS "idx_maintenance_history_status" ON "maintenance_history" ("status");
       CREATE INDEX IF NOT EXISTS "idx_maintenance_history_type" ON "maintenance_history" ("type");
@@ -54,6 +56,7 @@ class MaintenanceRepository {
     activated_by = 'admin',
     started_at = new Date(),
     scheduled_end_at = null,
+    actual_duration_seconds = null,
     status = 'ONGOING',
   } = {}) {
     const startedAtIso = started_at instanceof Date ? started_at.toISOString() : new Date(started_at).toISOString();
@@ -64,8 +67,8 @@ class MaintenanceRepository {
     if (this.pool && typeof this.pool.query === 'function') {
       try {
         const query = `
-          INSERT INTO "maintenance_history" ("type", "reason", "activated_by", "started_at", "scheduled_end_at", "status")
-          VALUES ($1, $2, $3, $4, $5, $6)
+          INSERT INTO "maintenance_history" ("type", "reason", "activated_by", "started_at", "scheduled_end_at", "status", "actual_duration_seconds")
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
           RETURNING *;
         `;
         const res = await this.pool.query(query, [
@@ -75,6 +78,7 @@ class MaintenanceRepository {
           startedAtIso,
           scheduledEndAtIso,
           status,
+          actual_duration_seconds,
         ]);
         return res.rows[0];
       } catch (err) {
@@ -91,6 +95,7 @@ class MaintenanceRepository {
       started_at: startedAtIso,
       scheduled_end_at: scheduledEndAtIso,
       ended_at: null,
+      actual_duration_seconds: actual_duration_seconds !== undefined ? actual_duration_seconds : null,
       status,
       created_at: new Date().toISOString(),
     };
@@ -113,7 +118,9 @@ class MaintenanceRepository {
       try {
         const query = `
           UPDATE "maintenance_history"
-          SET "ended_at" = $1, "status" = $2
+          SET "ended_at" = $1,
+              "status" = $2,
+              "actual_duration_seconds" = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM ($1::timestamptz - "started_at")))::integer)
           WHERE "status" = 'ONGOING'
           RETURNING *;
         `;
@@ -130,6 +137,9 @@ class MaintenanceRepository {
       if (item.status === 'ONGOING') {
         item.ended_at = endedAtIso;
         item.status = status;
+        const startMs = new Date(item.started_at).getTime();
+        const endMs = new Date(endedAtIso).getTime();
+        item.actual_duration_seconds = Math.max(0, Math.floor((endMs - startMs) / 1000));
         updated.push(item);
       }
     }
@@ -243,7 +253,12 @@ class MaintenanceRepository {
         if (id) {
           query = `
             UPDATE "maintenance_history"
-            SET "ended_at" = $1, "status" = 'CANCELLED'
+            SET "ended_at" = $1,
+                "status" = 'CANCELLED',
+                "actual_duration_seconds" = CASE
+                  WHEN "status" = 'ONGOING' THEN GREATEST(0, FLOOR(EXTRACT(EPOCH FROM ($1::timestamptz - "started_at")))::integer)
+                  ELSE 0
+                END
             WHERE "id" = $2
             RETURNING *;
           `;
@@ -251,7 +266,12 @@ class MaintenanceRepository {
         } else {
           query = `
             UPDATE "maintenance_history"
-            SET "ended_at" = $1, "status" = 'CANCELLED'
+            SET "ended_at" = $1,
+                "status" = 'CANCELLED',
+                "actual_duration_seconds" = CASE
+                  WHEN "status" = 'ONGOING' THEN GREATEST(0, FLOOR(EXTRACT(EPOCH FROM ($1::timestamptz - "started_at")))::integer)
+                  ELSE 0
+                END
             WHERE ("status" = 'SCHEDULED' OR ("status" = 'ONGOING' AND "type" = 'SCHEDULED'))
             RETURNING *;
           `;
@@ -265,13 +285,17 @@ class MaintenanceRepository {
     }
 
     const updated = [];
+    const nowMs = new Date(nowIso).getTime();
     for (const item of this._inMemoryFallback) {
-      if (id && item.id === id) {
+      const match = id ? item.id === id : (item.status === 'SCHEDULED' || (item.status === 'ONGOING' && item.type === 'SCHEDULED'));
+      if (match) {
         item.ended_at = nowIso;
-        item.status = 'CANCELLED';
-        updated.push(item);
-      } else if (!id && (item.status === 'SCHEDULED' || (item.status === 'ONGOING' && item.type === 'SCHEDULED'))) {
-        item.ended_at = nowIso;
+        if (item.status === 'ONGOING') {
+          const startMs = new Date(item.started_at).getTime();
+          item.actual_duration_seconds = Math.max(0, Math.floor((nowMs - startMs) / 1000));
+        } else {
+          item.actual_duration_seconds = 0;
+        }
         item.status = 'CANCELLED';
         updated.push(item);
       }
@@ -445,19 +469,21 @@ class MaintenanceRepository {
       const task = this._pendingDbSyncQueue.shift();
       try {
         if (task.action === 'CREATE_RECORD') {
-          const { type, reason, activated_by, started_at, scheduled_end_at, status } = task.payload;
+          const { type, reason, activated_by, started_at, scheduled_end_at, status, actual_duration_seconds } = task.payload;
           const query = `
-            INSERT INTO "maintenance_history" ("type", "reason", "activated_by", "started_at", "scheduled_end_at", "status")
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO "maintenance_history" ("type", "reason", "activated_by", "started_at", "scheduled_end_at", "status", "actual_duration_seconds")
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *;
           `;
-          await this.pool.query(query, [type, reason, activated_by, started_at, scheduled_end_at, status]);
+          await this.pool.query(query, [type, reason, activated_by, started_at, scheduled_end_at, status, actual_duration_seconds]);
           flushed++;
         } else if (task.action === 'COMPLETE_ONGOING') {
           const { ended_at, status } = task.payload;
           const query = `
             UPDATE "maintenance_history"
-            SET "ended_at" = $1, "status" = $2
+            SET "ended_at" = $1,
+                "status" = $2,
+                "actual_duration_seconds" = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM ($1::timestamptz - "started_at")))::integer)
             WHERE "status" = 'ONGOING'
             RETURNING *;
           `;
@@ -516,7 +542,9 @@ class MaintenanceRepository {
         // do CSDL bị sập lúc Admin tắt bảo trì. Buộc phải đóng lại ngay lập tức!
         const query = `
           UPDATE "maintenance_history"
-          SET "status" = 'COMPLETED', "ended_at" = COALESCE("ended_at", $1)
+          SET "status" = 'COMPLETED',
+              "ended_at" = COALESCE("ended_at", $1),
+              "actual_duration_seconds" = COALESCE("actual_duration_seconds", GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (COALESCE("ended_at", $1::timestamptz) - "started_at")))::integer))
           WHERE "status" = 'ONGOING'
           RETURNING *;
         `;

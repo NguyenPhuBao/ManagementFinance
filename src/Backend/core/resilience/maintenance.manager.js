@@ -14,6 +14,7 @@ class MaintenanceManager {
   constructor(options = {}) {
     this.active = false;
     this.isEmergency = false;
+    this.isUpgrade = false;
     this.reason = 'Hệ thống đang gặp sự cố. Quý khách vui lòng quay lại sau ít phút!';
     this.activatedBy = null;
     this.activatedAt = null;
@@ -31,6 +32,10 @@ class MaintenanceManager {
 
   isEmergencyMode() {
     return this.active && this.isEmergency;
+  }
+
+  isUpgradeMode() {
+    return this.active && this.isUpgrade;
   }
 
   getNotificationService() {
@@ -53,6 +58,8 @@ class MaintenanceManager {
       scheduledEndAt: item.scheduledEndAt,
       reason: item.reason,
       isEmergency: item.isEmergency,
+      isUpgrade: Boolean(item.isUpgrade),
+      type: item.type || (item.isUpgrade ? 'UPGRADE' : (item.isEmergency ? 'EMERGENCY' : 'SCHEDULED')),
       createdBy: item.createdBy,
       createdAt: item.createdAt,
     }));
@@ -148,12 +155,14 @@ class MaintenanceManager {
     const isActivating = Boolean(active);
     // MẶC ĐỊNH BẢO TRÌ TỨC THÌ LUÔN LÀ BẢO TRÌ KHẨN CẤP (PO Policy)
     const isEmergency = options.isEmergency !== undefined ? Boolean(options.isEmergency) : true;
-    const maintenanceType = options.type || (isEmergency ? 'EMERGENCY' : 'ROUTINE');
+    const isUpgrade = Boolean(options.isUpgrade || options.type === 'UPGRADE');
+    const maintenanceType = options.type || (isUpgrade ? 'UPGRADE' : (isEmergency ? 'EMERGENCY' : 'ROUTINE'));
 
     if (isActivating && this.active) {
       // ĐẶC BIỆT: Nếu đang bảo trì thông thường, cho phép DUY NHẤT bảo trì khẩn cấp kích hoạt đè lên để can thiệp
       if (!this.isEmergency && isEmergency) {
         this.isEmergency = true;
+        this.isUpgrade = false;
         if (reason) this.reason = reason;
         this.activatedBy = activatedBy;
         this.activatedAt = new Date().toISOString();
@@ -191,6 +200,7 @@ class MaintenanceManager {
             metadata: {
               type: 'EMERGENCY_MAINTENANCE',
               isEmergency: true,
+              isUpgrade: false,
               activatedAt: this.activatedAt,
               activatedBy: this.activatedBy,
             },
@@ -224,14 +234,16 @@ class MaintenanceManager {
     this.active = isActivating;
 
     if (this.active) {
-      this.reason = reason || this.reason || 'Hệ thống đang bảo trì khẩn cấp.';
+      this.reason = reason || this.reason || (isUpgrade ? 'Hệ thống đang tiến hành nâng cấp.' : 'Hệ thống đang bảo trì khẩn cấp.');
       this.activatedBy = activatedBy;
       this.activatedAt = new Date().toISOString();
       this.isEmergency = isEmergency;
+      this.isUpgrade = isUpgrade;
 
-      logger.warn(`[MAINTENANCE] BẬT chế độ bảo trì [${this.isEmergency ? 'KHẨN CẤP' : 'THÔNG THƯỜNG'}]`, {
+      logger.warn(`[MAINTENANCE] BẬT chế độ [${isUpgrade ? 'NÂNG CẤP HỆ THỐNG' : (this.isEmergency ? 'KHẨN CẤP' : 'THÔNG THƯỜNG')}]`, {
         reason: this.reason,
         isEmergency: this.isEmergency,
+        isUpgrade: this.isUpgrade,
         activatedBy: this.activatedBy,
         activatedAt: this.activatedAt,
       });
@@ -263,7 +275,23 @@ class MaintenanceManager {
       // Phát thông báo tới toàn bộ client-app & người dùng
       const notifService = this.getNotificationService();
       if (notifService && typeof notifService.broadcast === 'function') {
-        if (this.isEmergency) {
+        if (isUpgrade) {
+          notifService.broadcast({
+            title: '🚀 NÂNG CẤP HỆ THỐNG',
+            message: this.reason || 'Hệ thống đang tiến hành nâng cấp phiên bản mới. Quý khách vui lòng quay lại sau ít phút.',
+            level: 'WARNING',
+            metadata: {
+              type: 'SYSTEM_UPGRADE',
+              isEmergency: false,
+              isUpgrade: true,
+              activatedAt: this.activatedAt,
+              activatedBy: this.activatedBy,
+              scheduledEndAt: options.scheduled_end_at || null,
+            },
+          }).catch((err) => {
+            logger.error('[MAINTENANCE] Lỗi phát thông báo nâng cấp hệ thống', { error: err.message });
+          });
+        } else if (this.isEmergency) {
           notifService.broadcast({
             title: '⚠️ BẢO TRÌ HỆ THỐNG KHẨN CẤP',
             message: this.reason,
@@ -271,6 +299,7 @@ class MaintenanceManager {
             metadata: {
               type: 'EMERGENCY_MAINTENANCE',
               isEmergency: true,
+              isUpgrade: false,
               activatedAt: this.activatedAt,
               activatedBy: this.activatedBy,
             },
@@ -286,6 +315,7 @@ class MaintenanceManager {
             metadata: {
               type: 'SCHEDULED_MAINTENANCE',
               isEmergency: false,
+              isUpgrade: false,
               activatedAt: this.activatedAt,
               activatedBy: this.activatedBy,
               scheduledEndAt: options.scheduled_end_at || null,
@@ -317,7 +347,9 @@ class MaintenanceManager {
         logger.warn('[MAINTENANCE] Không thể gọi maintenance repository khi tắt', { error: repoErr.message });
       }
 
+      const wasUpgrade = this.isUpgrade;
       this.isEmergency = false;
+      this.isUpgrade = false;
       this.activatedBy = null;
       this.activatedAt = null;
 
@@ -325,12 +357,15 @@ class MaintenanceManager {
       const notifService = this.getNotificationService();
       if (notifService && typeof notifService.broadcast === 'function') {
         notifService.broadcast({
-          title: '✅ HỆ THỐNG ĐÃ KẾT THÚC BẢO TRÌ',
-          message: 'Hệ thống đã hoàn tất bảo trì và hoạt động bình thường trở lại. Bạn có thể tiếp tục sử dụng tất cả các tính năng.',
+          title: wasUpgrade ? '✅ HỆ THỐNG ĐÃ HOÀN TẤT NÂNG CẤP' : '✅ HỆ THỐNG ĐÃ KẾT THÚC BẢO TRÌ',
+          message: wasUpgrade
+            ? 'Hệ thống đã hoàn tất nâng cấp phiên bản mới và hoạt động bình thường trở lại. Bạn có thể tiếp tục sử dụng tất cả các tính năng.'
+            : 'Hệ thống đã hoàn tất bảo trì và hoạt động bình thường trở lại. Bạn có thể tiếp tục sử dụng tất cả các tính năng.',
           level: 'INFO',
           metadata: {
-            type: 'MAINTENANCE_RESTORED',
+            type: wasUpgrade ? 'UPGRADE_COMPLETED' : 'MAINTENANCE_RESTORED',
             isEmergency: false,
+            isUpgrade: false,
             endedAt: new Date().toISOString(),
             deactivatedBy: activatedBy,
           },
@@ -403,9 +438,11 @@ class MaintenanceManager {
     }
 
     // Kích hoạt bảo trì với isEmergency = false
+    const isUpgrade = Boolean(sched.isUpgrade || sched.type === 'UPGRADE');
     this.setMaintenance(true, sched.reason, `Lịch hẹn bởi ${sched.createdBy}`, {
       isEmergency: false,
-      type: 'SCHEDULED',
+      isUpgrade,
+      type: sched.type || (isUpgrade ? 'UPGRADE' : 'SCHEDULED'),
       scheduled_end_at: sched.scheduledEndAt,
       skipCreateRecord: true,
     });
@@ -417,7 +454,7 @@ class MaintenanceManager {
         this._autoEndTimer = setTimeout(() => {
           logger.info('[MAINTENANCE] Đến giờ kết thúc hẹn trước: Tự động khôi phục hệ thống');
           this._autoEndTimer = null;
-          this.setMaintenance(false, 'Hết thời gian bảo trì định kỳ theo lịch hẹn', 'Hệ thống tự động');
+          this.setMaintenance(false, isUpgrade ? 'Hết thời gian nâng cấp hệ thống theo lịch hẹn' : 'Hết thời gian bảo trì định kỳ theo lịch hẹn', 'Hệ thống tự động');
         }, endDelayMs);
         if (this._autoEndTimer && typeof this._autoEndTimer.unref === 'function') {
           this._autoEndTimer.unref();
@@ -426,7 +463,7 @@ class MaintenanceManager {
     }
   }
 
-  scheduleMaintenance({ scheduledAt, scheduledEndAt, reason, isEmergency = false, createdBy = 'admin' }) {
+  scheduleMaintenance({ scheduledAt, scheduledEndAt, reason, isEmergency = false, isUpgrade = false, type = null, createdBy = 'admin' }) {
     if (this.active) {
       throw new Error('Hệ thống hiện đang trong phiên bảo trì trực tiếp. Vui lòng kết thúc bảo trì trước khi lên lịch trình mới.');
     }
@@ -485,13 +522,16 @@ class MaintenanceManager {
       }
     }
 
+    const resolvedType = type || (isUpgrade ? 'UPGRADE' : 'SCHEDULED');
     const schedItem = {
       id: Date.now() + Math.floor(Math.random() * 1000),
       recordId: null,
       scheduledAt: targetDate.toISOString(),
       scheduledEndAt: targetEndDate ? targetEndDate.toISOString() : null,
-      reason: reason || 'Bảo trì hệ thống theo lịch trình định kỳ.',
+      reason: reason || (resolvedType === 'UPGRADE' ? 'Nâng cấp hệ thống theo lịch trình.' : 'Bảo trì hệ thống theo lịch trình định kỳ.'),
       isEmergency: false,
+      isUpgrade: Boolean(isUpgrade || resolvedType === 'UPGRADE'),
+      type: resolvedType,
       createdBy,
       createdAt: new Date().toISOString(),
       _timer: null,
@@ -513,7 +553,7 @@ class MaintenanceManager {
     try {
       const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
       defaultMaintenanceRepository.createRecord({
-        type: 'SCHEDULED',
+        type: schedItem.type,
         reason: schedItem.reason,
         activated_by: schedItem.createdBy,
         started_at: schedItem.scheduledAt,
@@ -608,6 +648,8 @@ class MaintenanceManager {
     return {
       active: this.active,
       isEmergency: this.isEmergency,
+      isUpgrade: Boolean(this.isUpgrade),
+      type: this.isUpgrade ? 'UPGRADE' : (this.isEmergency ? 'EMERGENCY' : 'SCHEDULED'),
       reason: this.reason,
       activatedBy: this.activatedBy,
       activatedAt: this.activatedAt,

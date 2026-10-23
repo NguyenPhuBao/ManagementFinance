@@ -71,6 +71,14 @@ const BroadcastPage = () => {
   const [isEmergencySchedule, setIsEmergencySchedule] = useState(false);
   const [showEmergencyConfirmModal, setShowEmergencyConfirmModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isUpgradeSchedule, setIsUpgradeSchedule] = useState(false);
+  const [nowTick, setNowTick] = useState(Date.now());
+
+  // Đồng hồ cập nhật Live Timer cho các phiên đang diễn ra
+  useEffect(() => {
+    const timer = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // PO QUY ĐỊNH: Nút checkbox "Bảo trì khẩn cấp" bị chặn (disabled) khi bảo trì khẩn cấp đã được kích hoạt.
   // Nút KHÔNG bị chặn khi bảo trì định kỳ đang diễn ra hoặc đã lên lịch.
@@ -266,13 +274,8 @@ const BroadcastPage = () => {
     };
   }, [socket, fetchHistory, historyPage, historyLimit]);
 
-  // Hàm tính thời lượng bảo trì
-  const formatDuration = (startedAt, endedAt) => {
-    if (!startedAt) return '—';
-    const start = new Date(startedAt).getTime();
-    const end = endedAt ? new Date(endedAt).getTime() : Date.now();
-    const diffSec = Math.max(0, Math.floor((end - start) / 1000));
-    if (!endedAt) return t('broadcast.history.ongoingText', 'Đang diễn ra...');
+  // Hàm chuyển đổi số giây sang chuỗi định dạng (ví dụ: 45s, 12m 30s, 1h 15m)
+  const formatSecondsToString = (diffSec) => {
     if (diffSec < 60) return `${diffSec}s`;
     const min = Math.floor(diffSec / 60);
     const sec = diffSec % 60;
@@ -280,6 +283,54 @@ const BroadcastPage = () => {
     const h = Math.floor(min / 60);
     const remMin = min % 60;
     return `${h}h ${remMin}m`;
+  };
+
+  // Hàm tính thời lượng bảo trì chuẩn xác cho mọi trạng thái
+  const formatDuration = (rowOrStart, maybeEnd) => {
+    const row = typeof rowOrStart === 'object' && rowOrStart !== null
+      ? rowOrStart
+      : { started_at: rowOrStart, ended_at: maybeEnd, status: maybeEnd ? 'COMPLETED' : 'ONGOING' };
+
+    const { status, started_at, ended_at, actual_duration_seconds } = row;
+
+    // 1. Nếu CSDL đã có actual_duration_seconds đã ghi nhận
+    if (actual_duration_seconds !== null && actual_duration_seconds !== undefined) {
+      const sec = Number(actual_duration_seconds);
+      if (status === 'CANCELLED' && sec === 0) {
+        return '— (Hủy trước lịch)';
+      }
+      return formatSecondsToString(sec);
+    }
+
+    // 2. Trạng thái ĐÃ HỦY (CANCELLED)
+    if (status === 'CANCELLED') {
+      if (!started_at || new Date(started_at).getTime() > (ended_at ? new Date(ended_at).getTime() : nowTick)) {
+        return '— (Hủy trước lịch)';
+      }
+      const start = new Date(started_at).getTime();
+      const end = ended_at ? new Date(ended_at).getTime() : nowTick;
+      const diffSec = Math.max(0, Math.floor((end - start) / 1000));
+      return `${formatSecondsToString(diffSec)} (Hủy ngang)`;
+    }
+
+    // 3. Trạng thái ĐÃ LÊN LỊCH (SCHEDULED)
+    if (status === 'SCHEDULED') {
+      return 'Chưa diễn ra';
+    }
+
+    // 4. Trạng thái ĐANG DIỄN RA (ONGOING) - Live dynamic timer
+    if (status === 'ONGOING' || !ended_at) {
+      if (!started_at) return t('broadcast.history.ongoingText', 'Đang diễn ra...');
+      const start = new Date(started_at).getTime();
+      const diffSec = Math.max(0, Math.floor((nowTick - start) / 1000));
+      return `${formatSecondsToString(diffSec)} (Live)`;
+    }
+
+    // 5. Trạng thái ĐÃ HOÀN THÀNH (COMPLETED)
+    const start = new Date(started_at).getTime();
+    const end = new Date(ended_at).getTime();
+    const diffSec = Math.max(0, Math.floor((end - start) / 1000));
+    return formatSecondsToString(diffSec);
   };
 
   // Xử lý Bật/Tắt bảo trì khẩn cấp
@@ -363,8 +414,10 @@ const BroadcastPage = () => {
       const payload = {
         scheduledAt: new Date(scheduleDatetime).toISOString(),
         scheduledEndAt: scheduleEndDatetime ? new Date(scheduleEndDatetime).toISOString() : null,
-        reason: scheduleReason.trim() || t('broadcast.scheduleCardDesc', 'Bảo trì hệ thống theo lịch trình định kỳ.'),
+        reason: scheduleReason.trim() || (isUpgradeSchedule ? 'Nâng cấp hệ thống theo lịch trình.' : t('broadcast.scheduleCardDesc', 'Bảo trì hệ thống theo lịch trình định kỳ.')),
         isEmergency: false, // PO: Bảo trì theo lịch luôn là isEmergency: false
+        isUpgrade: isUpgradeSchedule,
+        type: isUpgradeSchedule ? 'UPGRADE' : 'SCHEDULED',
       };
 
       const res = await adminApi.setMaintenanceStatus(payload);
@@ -380,6 +433,7 @@ const BroadcastPage = () => {
       setScheduleEndDatetime('');
       setScheduleReason('');
       setScheduleNotify(false);
+      setIsUpgradeSchedule(false);
       fetchHistory(1, historyLimit);
     } catch (err) {
       setMaintenanceFeedback({
@@ -457,6 +511,7 @@ const BroadcastPage = () => {
       setScheduleNotify(false);
       setIsEmergencyAction(false);
       setIsEmergencySchedule(false);
+      setIsUpgradeSchedule(false);
       setMaintenanceFeedback({
         ok: true,
         msg: t('broadcast.feedback.formResetSuccess'),
@@ -750,6 +805,32 @@ const BroadcastPage = () => {
                 </label>
               </div>
 
+              {/* PO QUY ĐỊNH: TÁCH BIỆT NÂNG CẤP HỆ THỐNG VỚI BẢO TRÌ KỸ THUẬT */}
+              {!isEmergencySchedule && (
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-purple-200 bg-purple-50/40">
+                  <label htmlFor="checkbox-upgrade-schedule" className="flex items-start sm:items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      id="checkbox-upgrade-schedule"
+                      type="checkbox"
+                      checked={isUpgradeSchedule}
+                      onChange={(e) => setIsUpgradeSchedule(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 sm:mt-0 rounded text-purple-600 focus:ring-purple-500 border-purple-300 cursor-pointer"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[16px] text-purple-600">system_update</span>
+                        {t('broadcast.schedule.upgradeCheckbox', 'Nâng cấp hệ thống (System Upgrade)')}
+                      </span>
+                      <span className="text-[11px] text-purple-700 block mt-0.5">
+                        {isUpgradeSchedule
+                          ? 'Đánh dấu phiên này là Nâng cấp hệ thống. Thông báo và nhật ký sẽ mang nhãn Nâng cấp.'
+                          : 'Tách biệt việc bảo trì thông thường với việc nâng cấp phiên bản mới theo kế hoạch.'}
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              )}
+
               {/* Khi KHÔNG tick bảo trì khẩn cấp -> Hiện các trường chọn thời gian */}
               {!isEmergencySchedule ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -802,6 +883,8 @@ const BroadcastPage = () => {
                   placeholder={
                     isEmergencySchedule
                       ? 'Nhập lý do bảo trì khẩn cấp gửi tới người dùng...'
+                      : isUpgradeSchedule
+                      ? 'Ví dụ: Nâng cấp phiên bản phần mềm mới, tối ưu hóa hiệu năng hệ thống...'
                       : t('broadcast.scheduleReasonPlaceholder', 'Ví dụ: Nâng cấp cụm máy chủ và tối ưu hóa hệ thống định kỳ...')
                   }
                   className="w-full border border-outline-variant rounded-lg px-3.5 py-2.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -883,7 +966,7 @@ const BroadcastPage = () => {
                             <td className="py-2.5 px-3 font-semibold text-blue-900">{idx + 1}</td>
                             <td className="py-2.5 px-3 font-bold text-blue-700">{formatDateTime(sched.scheduledAt)}</td>
                             <td className="py-2.5 px-3 text-blue-950">{sched.scheduledEndAt ? formatDateTime(sched.scheduledEndAt) : '—'}</td>
-                            <td className="py-2.5 px-3">{sched.scheduledEndAt ? formatDuration(sched.scheduledAt, sched.scheduledEndAt) : '—'}</td>
+                            <td className="py-2.5 px-3">{sched.scheduledEndAt ? formatDuration({ started_at: sched.scheduledAt, ended_at: sched.scheduledEndAt, status: 'SCHEDULED' }) : '—'}</td>
                             <td className="py-2.5 px-3 max-w-[220px] truncate" title={sched.reason}>{sched.reason || 'Bảo trì định kỳ'}</td>
                             <td className="py-2.5 px-3 text-gray-600">{sched.createdBy || 'admin'}</td>
                             <td className="py-2.5 px-3 text-center">
@@ -927,6 +1010,7 @@ const BroadcastPage = () => {
                   className="text-xs border border-outline-variant rounded-lg pl-2.5 pr-8 py-1.5 bg-surface text-on-surface focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                 >
                   <option value="ALL">{t('broadcast.history.filterAllType', 'Tất cả loại')}</option>
+                  <option value="UPGRADE">{t('broadcast.history.typeUpgrade', 'Nâng cấp hệ thống')}</option>
                   <option value="EMERGENCY">{t('broadcast.history.typeEmergency', 'Khẩn cấp')}</option>
                   <option value="SCHEDULED">{t('broadcast.history.typeScheduled', 'Định kỳ')}</option>
                 </select>
@@ -1000,10 +1084,12 @@ const BroadcastPage = () => {
                     </tr>
                   ) : (
                     historyData.map((row, idx) => {
+                      const isUpgrade = row.type === 'UPGRADE';
                       const isEmergency = row.type === 'EMERGENCY';
                       const isOngoing = row.status === 'ONGOING';
                       const isScheduled = row.status === 'SCHEDULED';
                       const isCompleted = row.status === 'COMPLETED';
+                      const isCancelled = row.status === 'CANCELLED';
 
                       return (
                         <tr key={row.id || idx} className="hover:bg-surface-container-lowest/60 transition-colors">
@@ -1012,14 +1098,20 @@ const BroadcastPage = () => {
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${
-                              isEmergency
+                              isUpgrade
+                                ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                : isEmergency
                                 ? 'bg-red-50 text-red-700 border-red-200'
                                 : 'bg-blue-50 text-blue-700 border-blue-200'
                             }`}>
                               <span className="material-symbols-outlined text-[13px]">
-                                {isEmergency ? 'warning' : 'event'}
+                                {isUpgrade ? 'system_update' : (isEmergency ? 'warning' : 'event')}
                               </span>
-                              <span>{isEmergency ? t('broadcast.history.typeEmergency', 'Khẩn cấp') : t('broadcast.history.typeScheduled', 'Định kỳ')}</span>
+                              <span>
+                                {isUpgrade
+                                  ? t('broadcast.history.typeUpgrade', 'Nâng cấp')
+                                  : (isEmergency ? t('broadcast.history.typeEmergency', 'Khẩn cấp') : t('broadcast.history.typeScheduled', 'Định kỳ'))}
+                              </span>
                             </span>
                           </td>
                           <td className="py-3 px-3 font-medium text-on-surface overflow-hidden">
@@ -1035,14 +1127,16 @@ const BroadcastPage = () => {
                             {row.started_at ? formatDateTime(row.started_at) : '—'}
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap text-on-surface-variant text-[11px]">
-                            {row.ended_at
-                              ? formatDateTime(row.ended_at)
-                              : row.scheduled_end_at
-                              ? `${formatDateTime(row.scheduled_end_at)} (Dự kiến)`
-                              : '—'}
+                            {isCancelled
+                              ? (row.ended_at ? `${formatDateTime(row.ended_at)} (Thời điểm hủy)` : '—')
+                              : (row.ended_at
+                                ? formatDateTime(row.ended_at)
+                                : row.scheduled_end_at
+                                ? `${formatDateTime(row.scheduled_end_at)} (Dự kiến)`
+                                : '—')}
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap text-on-surface font-mono text-[11px]">
-                            {formatDuration(row.started_at, row.ended_at)}
+                            {formatDuration(row)}
                           </td>
                           <td className="py-3 px-3 text-right whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${

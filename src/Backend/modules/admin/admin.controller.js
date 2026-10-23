@@ -183,31 +183,39 @@ const adminController = {
 
   setMaintenanceStatus(req, res) {
     const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
-    const { active, reason, isEmergency, scheduledAt, scheduledEndAt } = req.body || {};
+    const { active, reason, isEmergency, isUpgrade, type, scheduledAt, scheduledEndAt } = req.body || {};
     const adminUser = req.user?.username || req.user?.fullname || 'admin';
 
-    // 1. Xử lý lên lịch bảo trì trong tương lai
+    // 1. Xử lý lên lịch bảo trì / nâng cấp trong tương lai
     if (scheduledAt) {
       try {
+        const isUpgradeFlag = Boolean(isUpgrade || type === 'UPGRADE');
         const status = defaultMaintenanceManager.scheduleMaintenance({
           scheduledAt,
           scheduledEndAt,
           reason,
           isEmergency,
+          isUpgrade: isUpgradeFlag,
+          type: type || (isUpgradeFlag ? 'UPGRADE' : 'SCHEDULED'),
           createdBy: adminUser,
         });
-        return ResponseHandler.success(res, status, 'Đã lên lịch bảo trì hệ thống thành công');
+        return ResponseHandler.success(res, status, isUpgradeFlag ? 'Đã lên lịch nâng cấp hệ thống thành công' : 'Đã lên lịch bảo trì hệ thống thành công');
       } catch (err) {
         return ResponseHandler.badRequest(res, err.message);
       }
     }
 
-    // 2. Kích hoạt hoặc tắt bảo trì tức thì (mặc định luôn là bảo trì khẩn cấp)
+    // 2. Kích hoạt hoặc tắt bảo trì tức thì (mặc định luôn là bảo trì khẩn cấp nếu không phải nâng cấp)
     try {
-      const emergencyFlag = isEmergency !== undefined ? Boolean(isEmergency) : true;
-      const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser, { isEmergency: emergencyFlag });
+      const isUpgradeFlag = Boolean(isUpgrade || type === 'UPGRADE');
+      const emergencyFlag = isUpgradeFlag ? false : (isEmergency !== undefined ? Boolean(isEmergency) : true);
+      const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser, {
+        isEmergency: emergencyFlag,
+        isUpgrade: isUpgradeFlag,
+        type: type || (isUpgradeFlag ? 'UPGRADE' : (emergencyFlag ? 'EMERGENCY' : 'ROUTINE')),
+      });
       const msg = active
-        ? 'Đã kích hoạt chế độ bảo trì khẩn cấp'
+        ? (isUpgradeFlag ? 'Đã kích hoạt chế độ nâng cấp hệ thống' : 'Đã kích hoạt chế độ bảo trì khẩn cấp')
         : 'Đã tắt chế độ bảo trì — Hệ thống hoạt động bình thường';
       return ResponseHandler.success(res, status, msg);
     } catch (err) {

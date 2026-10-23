@@ -134,26 +134,36 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 
 ---
 
-### 4.2. `system.maintenance_changed` — Thay Đổi Trạng Thái Bảo Trì Hệ Thống
+### 4.2. `system.maintenance_changed` — Thay Đổi Trạng Thái Bảo Trì / Nâng Cấp Hệ Thống
 * **Kênh phát:** Toàn bộ Client kết nối (`io.emit`).
-* **Nguồn kích hoạt:** Admin bật/tắt bảo trì khẩn cấp hoặc lịch bảo trì tự động kích hoạt.
+* **Nguồn kích hoạt:** Admin bật/tắt bảo trì khẩn cấp, nâng cấp hệ thống hoặc lịch bảo trì tự động kích hoạt.
 * **Cấu trúc Payload chuẩn:**
 ```json
 {
   "active": true,
-  "isEmergency": true,
-  "reason": "Hệ thống đang tiến hành nâng cấp cụm máy chủ cơ sở dữ liệu định kỳ.",
+  "isEmergency": false,
+  "isUpgrade": true,
+  "type": "UPGRADE",
+  "reason": "Hệ thống đang tiến hành nâng cấp phiên bản mới để nâng cao trải nghiệm của bạn.",
   "activatedAt": "2026-10-23T08:00:00.000Z",
   "activatedBy": "admin_system"
 }
 ```
-*(Khi kết thúc: `"active": false`, `"isEmergency": false`, `"reason": null`)*
+*(Nếu là bảo trì khẩn cấp: `"isEmergency": true, "isUpgrade": false, "type": "EMERGENCY"`)*  
+*(Nếu là bảo trì định kỳ: `"isEmergency": false, "isUpgrade": false, "type": "SCHEDULED"`)*  
+*(Khi kết thúc: `"active": false, "isEmergency": false, "isUpgrade": false, "reason": null`)*
+
 * **Xử lý bắt buộc trên Client-app:**
   1. Khi `active == true`:
-     - Nếu `isEmergency: true`: Hiển thị Màn hình Bảo Trì Toàn Cục màu đỏ khẩn cấp, khóa các nút tạo/sửa giao dịch, tạm dừng sync ngầm.
-     - Nếu `isEmergency: false`: Hiển thị Banner màu cam thông báo bảo trì theo lịch, cho phép người dùng xem dữ liệu offline.
+     - **Trường hợp 1 (`isUpgrade: true` / `type: "UPGRADE"` - Nâng cấp hệ thống):**
+       - Hiển thị Màn hình/Banner Nâng Cấp Hệ Thống tông màu tím hiện đại (`system_update`).
+       - Thông báo phiên bản mới đang được cập nhật. Cho phép người dùng duyệt dữ liệu cục bộ trên SQLite Drift ở chế độ Read-only, tạm hoãn gửi sync request lên server để tránh xung đột dữ liệu phiên bản mới.
+     - **Trường hợp 2 (`isEmergency: true` / `type: "EMERGENCY"` - Bảo trì khẩn cấp):**
+       - Hiển thị Màn hình Cảnh báo Bảo Trì Khẩn Cấp toàn cục màu đỏ, khóa các thao tác giao dịch nhạy cảm, tạm dừng toàn bộ luồng background sync.
+     - **Trường hợp 3 (`type: "SCHEDULED"` - Bảo trì theo lịch):**
+       - Hiển thị Banner màu cam thông báo bảo trì theo lịch trình kỹ thuật, cho phép người dùng xem dữ liệu offline.
   2. Khi `active == false`:
-     - Đóng màn hình bảo trì, hiển thị Toast xanh thông báo hệ thống hoạt động trở lại.
+     - Đóng màn hình bảo trì/nâng cấp, hiển thị Toast xanh thông báo hệ thống đã sẵn sàng hoạt động bình thường trở lại.
      - Tự động kích hoạt đồng bộ bù `syncNow()`.
 
 ---
