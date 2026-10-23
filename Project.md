@@ -4589,3 +4589,28 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - **Admin-web Frontend Tests:** **53/53 tests PASS 100%** trải rộng trên 5 test suites (`aiops.refinement.service.2tier.test.jsx`, `aiops.quarantine.forensics.ui.test.jsx`, `aiops.object.and.ip.masking.test.jsx`, `aiops.trend.chart.and.rca.fixes.test.jsx`, `aiops.page.test.jsx`).
   - **Production Build:** `npm run build` hoàn tất thành công trong 6.64s sạch sẽ (0 lint/type errors).
   - **Zero Regressions:** Bảo toàn tuyệt đối cơ chế Active Quarantine, Rate Limiting, Soft-delete và DB Guard.
+
+### 4.23. Chuẩn Hóa Ghi Nhận Thời Lượng Bảo Trì & Tách Biệt Nâng Cấp Hệ Thống (System Upgrade Isolation & Duration Accuracy) (2026-10-23)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/Admin-web/MAINTENANCE_DURATION_AND_UPGRADE_PLAN.md`](docs/Admin-web/MAINTENANCE_DURATION_AND_UPGRADE_PLAN.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn bộ kế hoạch khắc phục lỗi ghi nhận thời lượng bảo trì tại Admin-web (phiên Đã hủy bị hiện `"Đang diễn ra..."`), hiển thị Live Timer cho phiên Đang diễn ra, phân biệt thời lượng Hủy trước lịch (`0s`) vs Hủy ngang, và tách biệt hoàn toàn loại hình Nâng cấp hệ thống (`UPGRADE`) với bảo trì khẩn cấp (`EMERGENCY`).
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **CSDL PostgreSQL & Migration 36:**
+     - Tạo file DDL [`src/Backend/database/36_enhance_maintenance_history_duration_and_upgrade.sql`](src/Backend/database/36_enhance_maintenance_history_duration_and_upgrade.sql) bổ sung cột `actual_duration_seconds INTEGER NULL` vào bảng `maintenance_history`.
+     - Áp dụng an toàn vào Supabase Cloud qua script [`src/Backend/scripts/apply_migration_36.js`](src/Backend/scripts/apply_migration_36.js) (tuân thủ Rule 10 DB Guard).
+  2. **Backend Logic & Resilience Manager:**
+     - [`src/Backend/modules/admin/maintenance.repository.js`](src/Backend/modules/admin/maintenance.repository.js): Cập nhật `createRecord` (hỗ trợ `actual_duration_seconds`, type `UPGRADE`), `completeOngoingRecord` (tính `actual_duration_seconds` chính xác khi kết thúc), `cancelScheduledRecord` (gán `actual_duration_seconds = 0` nếu hủy lịch chưa chạy; tính thời gian chạy nếu hủy ngang), `reconcileWithDatabase` (tính và lưu thời lượng cho ghost session).
+     - [`src/Backend/core/resilience/maintenance.manager.js`](src/Backend/core/resilience/maintenance.manager.js): Hỗ trợ flag `isUpgrade: boolean`, `type: 'UPGRADE'`, phân biệt luồng broadcast nâng cấp (`🚀 NÂNG CẤP HỆ THỐNG`) với bảo trì sự cố.
+     - [`src/Backend/modules/admin/admin.controller.js`](src/Backend/modules/admin/admin.controller.js): Cập nhật `setMaintenanceStatus` nhận diện và chuyển tiếp tham số `isUpgrade` và `type`.
+  3. **Giao Diện Admin-web (`BroadcastPage.jsx`):**
+     - Sửa hàm `formatDuration(row)`: Nhận cả object bản ghi, phân biệt 4 trạng thái (`CANCELLED`, `SCHEDULED`, `ONGOING`, `COMPLETED`).
+     - Cột "Kết thúc": Với phiên `CANCELLED`, hiển thị ngày giờ hủy kèm nhãn `(Thời điểm hủy)`.
+     - Cột "Loại": Bổ sung Badge tím và bộ lọc `Nâng cấp hệ thống` (`UPGRADE`).
+     - Form Lên lịch: Bổ sung checkbox `Nâng cấp hệ thống (System Upgrade)`.
+     - Live Timer: Tự động cập nhật thời gian trôi qua mỗi giây cho các phiên `ONGOING`.
+  4. **Đồng bộ Tài liệu & Client-app:**
+     - Cập nhật [`docs/Admin-web/Event-Notification-to-ClientApp.md`](docs/Admin-web/Event-Notification-to-ClientApp.md) mục 4.2 với payload `isUpgrade: true`, `type: "UPGRADE"`, hướng dẫn Client-app hiển thị giao diện nâng cấp tím và cho phép duyệt dữ liệu offline.
+  5. **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+     - Backend: 7/7 unit tests trong [`src/Backend/tests/unit/admin.maintenance.history.test.js`](src/Backend/tests/unit/admin.maintenance.history.test.js) PASS 100%. Toàn bộ test suite backend (**372/372 tests PASS 100%**, 50 suites).
+     - Admin-web: Production build (`npm run build`) thành công trong 3.92s sạch sẽ, 0 lỗi cú pháp.
+     - Zero Regressions: Toàn bộ hệ thống ổn định tuyệt đối.
+
