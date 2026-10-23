@@ -616,6 +616,26 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-23)
 
+### 🏠 Chức năng GIA ĐÌNH (nhà nhiều người) — brainstorming + spec 1/4 nền móng + đơn backend 50 (2026-10-23) — chưa có mã
+
+Người dùng: *"bổ sung chức năng dành cho vợ chồng"*. Brainstorming loại **kiến trúc**; mỗi quyết định chọn qua câu hỏi (bảng mục 1
+spec): cả bốn nhu cầu (quỹ chung cùng ghi · xem chung · ai nợ ai · mục tiêu chung) · quỹ thật **và** chi tự trả · **gia đình nhiều
+người** (tối đa 6) · ba vai Owner / Member / Viewer · chủ nhà cần Premium · riêng tư *chung + chọn thêm* · **hướng A — nhà là chủ
+sở hữu thứ ba** (cột `idhousehold` cho ví, giao dịch, mục tiêu, ngân sách, danh mục; loại B quyền theo bản ghi, C chỉ chiếu) · dữ
+liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà · giải tán = xoá mềm · phần server **backend làm theo đơn**.
+- **Spec** `docs/superpowers/specs/2026-10-23-gia-dinh-nen-mong-design.md` — phần 1/4 (nền móng); ba phần con sau mỗi phần một
+  spec + đơn. Hoá đơn chung, QR, offline tạo nhà, nhiều nhà / tài khoản: ngoài phạm vi.
+- **Đơn 50** `CAN-LAM/GIA_DINH_NEN_MONG.md` (người dùng: *"viết file trình bày chi tiết cho backend đọc"*) — agent gom điểm nối
+  backend có `file:line`; SQL nháp migration 37, 12 endpoint + hình dạng trạng thái nhà, mã lỗi API, phạm vi kéo về, luật tham chiếu,
+  4 mã đẩy mới, khoá quyền `household` + giới hạn `household_members`, `ReadOnly` theo Premium chủ, `household.changed`, sao danh mục,
+  11 ca kiểm + câu SQL.
+- ⚠️ **Lộ khi gom điểm nối (lỗ hổng có sẵn, đã xác minh bằng mã):** `/sync/push` chỉ so `payload.idaccount` với token; nhánh **sửa**
+  của ví / giao dịch / ngân sách / hoá đơn / mục tiêu chỉ so `update_at`, `softDelete` xoá theo khoá chính — biết UUID là ghi đè / xoá
+  được bản ghi người khác. Đặt làm **vế A (cao)** của đơn 50, mã mới `NOT_OWNER` (client sẽ thêm vào lỗi vĩnh viễn).
+- Hai điều chỉnh spec trong lúc viết đơn: id nhà là **số nguyên do server cấp** (không UUID — nhà chỉ tạo khi có mạng); luật
+  `HOUSEHOLD_SCOPE_MISMATCH` có **ngoại lệ** giao dịch riêng trỏ `idgoal` tới mục tiêu của nhà mình (khoản góp — phần 4).
+- Chưa có mã, chưa có kế hoạch thi công; Stitch chưa vẽ 6 màn. Bước kế: người dùng đọc spec → kế hoạch thi công (writing-plans).
+
 ### 🔀 Gộp `main` @ `ee6a65e5` (2026-10-23, commit gộp `01c0d590`) — PR #153–#158: theo dõi thiết bị / IP, bảo trì nhiều lịch + nâng cấp, phân quyền 4 trụ, PIN admin; backend viết lại tài liệu đồng bộ của client; client đặt đơn 49
 
 Người dùng: *"lấy code mới nhất về kiểm tra"*. 33 commit, 179 tệp — **không** tệp nào dưới `src/Client-app` hay `CAN-LAM/`;

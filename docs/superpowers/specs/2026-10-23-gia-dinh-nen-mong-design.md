@@ -4,6 +4,8 @@
 > **Phạm vi spec này:** nhà / thành viên / lời mời, ba vai, cửa Premium, luật đồng bộ theo phạm vi nhà, cột `idhousehold`.
 > Ba phần con còn lại (quỹ chung · chi chung + ai nợ ai · mục tiêu chung) mỗi phần một spec + một đơn backend riêng, viết sau.
 > **Phía server** do backend làm theo đơn CAN-LAM (người dùng chốt) — client không sửa `src/Backend` (quy tắc 1).
+> **Đơn backend:** mục **50** `docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md` (2026-10-23, người dùng nhờ viết tài liệu cho
+> backend đọc) — chi tiết SQL nháp, 12 endpoint, mã lỗi, đồng bộ, Premium, sự kiện, câu kiểm.
 
 ---
 
@@ -51,7 +53,7 @@ nhiều nhà.
 
 ### 3.1 Ba thực thể mới — server tạo, client đọc
 
-- **Nhà** (`household`): id UUID, tên (≤ 100 ký tự, `GioiHanDoRong` như tên ví), chủ nhà (`idaccount`), trần thành viên
+- **Nhà** (`household`): id **số nguyên do server cấp** (`SERIAL`, như `idaccount` — nhà chỉ tạo khi có mạng, không cần UUID), tên (≤ 100 ký tự, `GioiHanDoRong` như tên ví), chủ nhà (`idaccount`), trần thành viên
   (mặc định 6), trạng thái `Active` · `ReadOnly` (chủ hết Premium) · `Dissolved` (đã giải tán), mốc tạo / sửa / xoá mềm.
 - **Thành viên** (`household_member`): (nhà, tài khoản, vai `Owner` · `Member` · `Viewer`, ngày vào, ngày rời). Một tài khoản
   **tối đa một nhà đang ở** (chỉ mục duy nhất theo tài khoản trên hàng chưa rời). Đúng một `Owner` mỗi nhà.
@@ -60,7 +62,7 @@ nhiều nhà.
 
 ### 3.2 Luật sở hữu bản ghi
 
-- Năm bảng đồng bộ — **ví, giao dịch, mục tiêu, ngân sách, danh mục** — thêm cột `idhousehold` (UUID, nullable).
+- Năm bảng đồng bộ — **ví, giao dịch, mục tiêu, ngân sách, danh mục** — thêm cột `idhousehold` (số nguyên, nullable).
 - `idhousehold` **trống** ⇒ dữ liệu riêng, mọi luật hiện có giữ nguyên.
 - `idhousehold` **khác trống** ⇒ bản ghi thuộc **nhà**; `idaccount` khi ấy chỉ nghĩa **người tạo** (server lấy từ JWT lúc tạo,
   không đổi khi thành viên khác sửa). Không bao giờ suy `idaccount` từ dữ liệu (quy tắc 2).
@@ -102,9 +104,20 @@ Mỗi hàng có `idhousehold` khi tạo / sửa / xoá, server kiểm:
 | Người đẩy không còn là thành viên nhà ấy | `HOUSEHOLD_NOT_MEMBER` |
 | Vai `Viewer`, hoặc nhà `ReadOnly` | `HOUSEHOLD_READ_ONLY` |
 | Nhà `Dissolved` | `HOUSEHOLD_CLOSED` |
-| Ví / danh mục / mục tiêu mà hàng tham chiếu không thuộc cùng nhà (hoặc hàng riêng tham chiếu đồ của nhà) | `HOUSEHOLD_SCOPE_MISMATCH` |
+| Tham chiếu sai phạm vi (luật ngay dưới bảng) | `HOUSEHOLD_SCOPE_MISMATCH` |
 
-Trả theo khuôn lỗi từng thao tác hiện có (`results[i].code`, HTTP 200 cho lô). ⚠️ Client thêm **cả bốn** vào
+**Luật tham chiếu** (`HOUSEHOLD_SCOPE_MISMATCH`): (a) hàng **của nhà H** chỉ được trỏ tới ví / danh mục / mục tiêu / ngân sách
+của **chính H**; (b) hàng **riêng** chỉ được trỏ tới ví / danh mục **riêng của chính người ấy** — **ngoại lệ duy nhất**: giao
+dịch riêng được trỏ `idgoal` tới mục tiêu của nhà **người ấy đang ở** (khoản góp từ ví riêng vào mục tiêu chung — phần con 4;
+mở luật ngay ở nền móng để không phải đổi mã lỗi về sau).
+
+Trả theo khuôn lỗi từng thao tác hiện có (`results[i].code`, HTTP 200 cho lô).
+
+⚠️ **Tiền đề — kiểm chủ sở hữu khi sửa / xoá** (đo 2026-10-23, đọc mã backend): `/sync/push` chỉ so `payload.idaccount` với token
+(`sync.service.js:103-113`); nhánh sửa của ví / giao dịch / ngân sách / hoá đơn / mục tiêu chỉ so `update_at` rồi ghi đè
+(`sync.repository.js` `upsertWallet` …), `softDelete` xoá theo khoá chính — **không** so `existing.idaccount`. Ai biết UUID bản ghi
+của người khác là sửa / xoá được. Gia đình làm lộ UUID giữa thành viên (từ phần con 2 — ví *cho nhà xem*), nên kiểm chủ sở hữu
+(hàng riêng: `existing.idaccount` = người đẩy; hàng của nhà: luật bảng trên) là việc **đầu tiên** của đơn backend. ⚠️ Client thêm **cả bốn** (cùng mã `NOT_OWNER` của tiền đề kiểm chủ sở hữu ngay dưới) vào
 `_permanentCodes` (`core/sync/gui_lo_dong_bo.dart`, danh sách **trắng**) **cùng lượt** — thiếu là hàng bị gửi lại mọi chu kỳ,
 im lặng (lớp lỗi G31 / G14). Gặp một trong bốn mã ⇒ làm mới trạng thái nhà (mục 5.8) và hiện nhãn *"Chưa ghi được vào nhà"* trên
 hàng ấy (spec 2 trở đi mới có hàng của nhà do người dùng ghi).
@@ -215,7 +228,7 @@ tới tab dùng `go`, không `push` (bẫy điều hướng nhóm D).
 - `presentation/bloc/nha_cubit.dart`; `pages/` 5 trang; `widgets/` hộp xác nhận, thẻ thành viên.
 
 ### 7.2 Chạm vào `core` (không import `features/` ngoài năm tệp domain thuần — quét 25)
-- **Drift v32** — cột `idhousehold` (TEXT nullable) cho `wallets`, `transactions`, `goals`, `budgets`, `categories` + chỉ mục;
+- **Drift v32** — cột `idhousehold` (INTEGER nullable) cho `wallets`, `transactions`, `goals`, `budgets`, `categories` + chỉ mục;
   bước di trú thêm cột; fixture tối thiểu của các test di trú cũ phải có cột (bẫy *thêm bước di trú* ở `CLAUDE.md`).
 - **DAO** — mọi truy vấn *"của tôi"* trên 5 bảng thêm `idhousehold IS NULL`: **25** chỗ lọc `idaccount` ở ví (6) · giao dịch (13)
   · ngân sách (3) · mục tiêu (3) (đếm `grep -c "idaccount.equals"` 2026-10-23; hoá đơn 7 chỗ không đổi vì bảng hoá đơn không thêm
@@ -239,12 +252,12 @@ tới tab dùng `go`, không `push` (bẫy điều hướng nhóm D).
 - Drawer — thêm mục *Nhà mình* vào `kMucDrawer` (`features/home/presentation/widgets/drawer_trang_chu.dart`); ca *"MỌI trang tính
   năng vào được từ menu"* tự canh.
 
-## 8. Hợp đồng với backend (nội dung đơn 50 — viết sau khi người dùng duyệt spec)
+## 8. Hợp đồng với backend (tóm tắt — bản đầy đủ là đơn 50 `CAN-LAM/GIA_DINH_NEN_MONG.md`; đơn thắng mục này nếu lệch)
 
 ### 8.1 CSDL — một tệp `database/N_*.sql` (N = số kế tiếp chưa dùng; đơn 49 vế C đang xin đổi tệp 27 trùng số sang 37)
 - Bảng `household`, `household_member`, `household_invite` (3.1) + CHECK vai / trạng thái + chỉ mục duy nhất *một nhà đang ở mỗi
   tài khoản* + *đúng một Owner mỗi nhà*.
-- Cột `Idhousehold` (VARCHAR(36) NULL, FK → `household`, chỉ mục) cho `wallet`, `transaction`, `goal`, `budget`, `category`; trigger
+- Cột `Idhousehold` (INT NULL, FK → `household`, chỉ mục) cho `wallet`, `transaction`, `goal`, `budget`, `category`; trigger
   `Server_update_at` giữ nguyên.
 - Chỉ mục duy nhất cá nhân thêm `WHERE "Idhousehold" IS NULL`; chỉ mục mới theo nhà cho tên ví, tên danh mục.
 - Câu kiểm sau khi áp: đếm cột / chỉ mục / CHECK mới (đơn ghi sẵn câu `SELECT`).
