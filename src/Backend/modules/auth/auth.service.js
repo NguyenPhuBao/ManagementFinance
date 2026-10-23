@@ -8,6 +8,7 @@ const emailService = require("../../core/email.service");
 const logger = require("../../core/logger");
 const { encrypt, decrypt } = require("../../utils/crypto.util");
 const { maskIp } = require("../../utils/masking.util");
+const { trackDeviceAccess } = require("./device-history.service");
 
 function sanitizeAuditReason(text) {
   if (!text || typeof text !== 'string') return null;
@@ -206,6 +207,9 @@ const authService = {
     const { accessToken, refreshToken } = generateTokens(payload, 2);
     await saveRefreshToken(refreshToken, payload, req);
 
+    // Ghi nhận vết thiết bị & IP theo quy tắc PO (Diff Check)
+    await trackDeviceAccess(account.idaccount, req, {}, { skipThrottle: true }).catch(() => {});
+
     logger.info("User registered via OTP successfully", { username: account.username, idaccount: account.idaccount });
 
     try {
@@ -280,6 +284,9 @@ const authService = {
     // 6. Generate tokens (user role = 2)
     const { accessToken, refreshToken } = generateTokens(payload, 2);
     await saveRefreshToken(refreshToken, payload, req);
+
+    // Ghi nhận vết thiết bị & IP theo quy tắc PO (Diff Check)
+    await trackDeviceAccess(account.idaccount, req, {}, { skipThrottle: true }).catch(() => {});
 
     logger.info("User registered", { username: account.username, idaccount: account.idaccount });
 
@@ -402,6 +409,9 @@ const authService = {
 
     const { accessToken, refreshToken } = generateTokens(payload, account.idrole);
     await saveRefreshToken(refreshToken, payload, req);
+
+    // Ghi nhận vết thiết bị & IP theo quy tắc PO (Diff Check)
+    await trackDeviceAccess(account.idaccount, req, {}, { skipThrottle: true }).catch(() => {});
 
     logger.info("User logged in", { username: account.username, idrole: account.idrole });
 
@@ -527,6 +537,9 @@ const authService = {
     // Cấp token mới
     const { accessToken, refreshToken } = generateTokens(payload, payload.idrole);
     await saveRefreshToken(refreshToken, payload, req);
+
+    // Ghi nhận vết thiết bị & IP theo quy tắc PO (Diff Check)
+    await trackDeviceAccess(payload.idaccount, req, {}, { skipThrottle: true }).catch(() => {});
 
     logger.info("Token refreshed", { idaccount: payload.idaccount });
     return { accessToken, refreshToken };
