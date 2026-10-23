@@ -616,6 +616,33 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-23)
 
+### 🔀 Gộp `main` @ `ee6a65e5` (2026-10-23, commit gộp `01c0d590`) — PR #153–#158: theo dõi thiết bị / IP, bảo trì nhiều lịch + nâng cấp, phân quyền 4 trụ, PIN admin; backend viết lại tài liệu đồng bộ của client; client đặt đơn 49
+
+Người dùng: *"lấy code mới nhất về kiểm tra"*. 33 commit, 179 tệp — **không** tệp nào dưới `src/Client-app` hay `CAN-LAM/`;
+`.gitignore` và CI không đổi, `check-ignore` không khớp; cây `src/Client-app` giữ hash `dd83f98f` → không chạy lại `flutter test`
+(mốc 7826 vẫn đúng). Không push.
+- **Xung đột duy nhất — `docs/superpowers/sync/SYNC_DOCUMENTATION.md`** (client tạo 2026-09-14): `6cbd248e` thay 75 dòng bằng
+  *"Hợp đồng v3.0"* 223 dòng. Agent soát đối chiếu từng khẳng định với mã: ~15 chỗ sai (loại ví `e-wallet / other`, danh mục hệ
+  thống `idaccount = 1` — tài khoản admin thật, công thức mốc kéo về `max(since, pulledAt − 2′)`, budgets trước transactions,
+  tên cột `NameWallet` / `Total_amount`…), mất ghi chú G67 / G85 / G34 và câu *"bảng không phải hợp đồng"*. Người dùng hỏi
+  *"tài liệu như thế nào, có hoạt động không, ảnh hưởng gì"* — trả lời: chỉ là tài liệu, app không đọc; hại nằm ở người / AI làm
+  theo. Chốt **giữ bản client + đoạn đầu** trỏ đơn 49.
+- **Soát mã backend (agent, đọc mã, chưa chạy):** `/sync/push` / `/sync/pull` vẫn khớp hợp đồng client — nhánh ánh xạ mới của
+  `mapEntityFields` là tên client không gửi; `ENTITY_PRIORITY` goal 30 < bill 31 < budget 32 < transaction 40 vẫn giữ goal / bill
+  trước giao dịch; mã lỗi, body 401, `/auth/refresh`, bắt tay socket không đổi; 503 `MAINTENANCE_MODE` vẫn `code` + `Retry-After`
+  (G89 đọc đúng). `x-device-name` tuỳ chọn (thiếu → `user-agent`); client chưa gửi — `IP-Device-ClientApp.md` xin client thêm
+  `device_info_plus` + interceptor + `deviceName` lúc đăng nhập (**chưa quyết**, chưa làm). `POST /admin/permissions/reset` phát
+  `account.upgraded` tới mọi socket → client làm mới gói (vô hại). Đơn 45 vẫn mở (`sync.repository.js:117, 527, 553`).
+- ⚠️ **Backend dev:** `schema.prisma` mang cột của migration 33 / 34 trên `account` (`pin_hash`, `is_first_login`,
+  `created_by_admin_id`); `npm install` tự `prisma generate` → nếu CSDL dev chưa áp 33 / 34 thì **đăng nhập 500 `P2022`**
+  (`auth.repository.js` `include` không `select`). Phải áp 30–36 **trước** `npm install` — phép đích danh (quy tắc 1). 27 và 36
+  tự tạo lúc khởi động; thiếu 30–32 thì quyền rơi về mặc định; thiếu 35 thì log lỗi mỗi request, không hỏng.
+- **Đơn 49** `CAN-LAM/SOAT_SAU_GOP_EE6A65E5.md` (người dùng chọn một đơn gộp): A tài liệu client bị viết lại (bảng đối chiếu)
+  + soát `Sync-To-ClientApp.md` cùng lỗi · B `Event-Notification-to-ClientApp.md` bảo xoá SQLite khi `ACCOUNT_DELETED` (ngược G89)
+  · C trùng số migration **27** lần hai + tệp `)2_can_lam_all_migrations.sql` · D thứ tự áp trước `npm install` · E (thấp) hai
+  route `devices` không có trong mã, CORS thiếu `x-device-name` (bản web sẽ hỏng preflight) · F (thấp) migration 33 xoá cứng
+  tài khoản test khi tắt khoá ngoại. README `CAN-LAM/` cập nhật banner + mục 0.
+
 ### 🔢 G104 — câu *"một triệu hai tiền sách"* ra hai chip; *"X bậc Y"* một định nghĩa, X 1–99 (2026-10-23, người dùng chọn) — mã + test, chưa đo trên máy
 
 Không máy nào cắm. Người dùng chọn G104 (đang hoãn) theo lối hai chip — lý do hoãn (3) của G104. Danh sách code-review 5.2 của
