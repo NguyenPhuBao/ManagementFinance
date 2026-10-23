@@ -620,7 +620,7 @@ src/Backend/
 
 Người dùng: *"lấy code mới nhất về kiểm tra"*. 33 commit, 179 tệp — **không** tệp nào dưới `src/Client-app` hay `CAN-LAM/`;
 `.gitignore` và CI không đổi, `check-ignore` không khớp; cây `src/Client-app` giữ hash `dd83f98f` → không chạy lại `flutter test`
-(mốc 7826 vẫn đúng). Không push.
+(mốc 7826 vẫn đúng). Đã push cùng ngày theo yêu cầu người dùng (`84c7af34..cc4ee893`).
 - **Xung đột duy nhất — `docs/superpowers/sync/SYNC_DOCUMENTATION.md`** (client tạo 2026-09-14): `6cbd248e` thay 75 dòng bằng
   *"Hợp đồng v3.0"* 223 dòng. Agent soát đối chiếu từng khẳng định với mã: ~15 chỗ sai (loại ví `e-wallet / other`, danh mục hệ
   thống `idaccount = 1` — tài khoản admin thật, công thức mốc kéo về `max(since, pulledAt − 2′)`, budgets trước transactions,
