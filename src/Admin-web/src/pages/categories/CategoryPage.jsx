@@ -16,7 +16,7 @@ const CategoryPage = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [originalCategories, setOriginalCategories] = useState([]);
-  const [stagedChanges, setStagedChanges] = useState({ added: [], updated: [], deleted: [] });
+  const [stagedChanges, setStagedChanges] = useState({ added: [], updated: [], deleted: [], restored: [] });
   const [search, setSearch] = useState('');
   const [syncToast, setSyncToast] = useState(null);
   const [syncPin, setSyncPin] = useState('');
@@ -43,9 +43,13 @@ const CategoryPage = () => {
   const hasDraftChanges =
     stagedChanges.added.length > 0 ||
     stagedChanges.updated.length > 0 ||
-    stagedChanges.deleted.length > 0;
+    stagedChanges.deleted.length > 0 ||
+    (stagedChanges.restored && stagedChanges.restored.length > 0);
   const totalDraftCount =
-    stagedChanges.added.length + stagedChanges.updated.length + stagedChanges.deleted.length;
+    stagedChanges.added.length +
+    stagedChanges.updated.length +
+    stagedChanges.deleted.length +
+    (stagedChanges.restored ? stagedChanges.restored.length : 0);
 
   const searchNorm = normalizeVietnameseUnaccent(search);
   const filtered = categories.filter((c) => {
@@ -109,7 +113,7 @@ const CategoryPage = () => {
       });
       setCategories(mapped);
       setOriginalCategories(mapped);
-      setStagedChanges({ added: [], updated: [], deleted: [] });
+      setStagedChanges({ added: [], updated: [], deleted: [], restored: [] });
     } catch (err) {
       console.error('Lỗi tải danh mục:', err);
     } finally {
@@ -220,6 +224,23 @@ const CategoryPage = () => {
       if (alert) alert.info(t('categories.draftAlerts.updated'));
     } else {
       // 2. Thêm mới bản nháp (Draft Add)
+      // Nếu thêm mới và ô keyword để trống: kiểm tra xem có danh mục đã xóa mềm cùng tên/loại không để kế thừa bộ từ khóa
+      let finalKeyword = form.keyword ? form.keyword.trim() : '';
+      if (!finalKeyword) {
+        const softDeletedMatch = categories.find(
+          (c) =>
+            (c.status === 'deleted' || c.delete_at) &&
+            c.isDefault &&
+            c.name &&
+            normalizeCategoryName(c.name) === normName &&
+            c.classify === targetClassify &&
+            c.keyword
+        );
+        if (softDeletedMatch && softDeletedMatch.keyword) {
+          finalKeyword = softDeletedMatch.keyword;
+        }
+      }
+
       const tempId = `draft_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       const newDraftItem = {
         id: tempId,
@@ -228,7 +249,7 @@ const CategoryPage = () => {
         classify: targetClassify,
         isDefault: true,
         isUserCategory: false,
-        keyword: form.keyword ? form.keyword.trim() : '',
+        keyword: finalKeyword,
         created_by: 'system',
         status: 'active',
         delete_at: null,
@@ -302,6 +323,46 @@ const CategoryPage = () => {
     if (alert) alert.info(t('categories.draftAlerts.deleted'));
   };
 
+  const handleRestore = (cat) => {
+    if (processing.isProcessing) return;
+
+    if (cat.isDraftDeleted) {
+      // Nếu vừa mới đánh dấu xóa trong phiên nháp hiện tại: Hoàn tác xóa nháp
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === cat.id
+            ? { ...c, status: 'active', delete_at: null, isDraftDeleted: false }
+            : c
+        )
+      );
+      setStagedChanges((prev) => ({
+        ...prev,
+        deleted: prev.deleted.filter((id) => id !== cat.id),
+      }));
+      if (alert) alert.info(t('categories.draftAlerts.restored') || 'Đã khôi phục danh mục trong bản nháp.');
+      return;
+    }
+
+    // Danh mục đã bị xóa mềm trong CSDL từ trước: Đánh dấu khôi phục trong nháp
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.id === cat.id
+          ? { ...c, status: 'active', delete_at: null, isDraftRestored: true }
+          : c
+      )
+    );
+
+    setStagedChanges((prev) => {
+      const filteredRestored = (prev.restored || []).filter((item) => item.id !== cat.id);
+      return {
+        ...prev,
+        restored: [...filteredRestored, cat],
+      };
+    });
+
+    if (alert) alert.info(t('categories.draftAlerts.restored') || 'Đã khôi phục danh mục trong bản nháp. Nhấn "Đồng bộ danh mục" để lưu CSDL.');
+  };
+
   const openEditModal = (cat) => {
     if (cat.isUserCategory || !cat.isDefault) {
       const msg = t('categories.alerts.privacyViolationEdit');
@@ -327,7 +388,7 @@ const CategoryPage = () => {
 
   const handleResetToDefault = () => {
     setCategories(originalCategories);
-    setStagedChanges({ added: [], updated: [], deleted: [] });
+    setStagedChanges({ added: [], updated: [], deleted: [], restored: [] });
     toggleModal('resetAlert', false);
     if (alert) alert.success(t('categories.draftAlerts.resetSuccess'));
   };
@@ -368,7 +429,23 @@ const CategoryPage = () => {
         });
       }
 
-      // 2.3. Xóa danh mục đã đánh dấu xóa
+      // 2.3. Khôi phục các danh mục đã đánh dấu khôi phục
+      if (stagedChanges.restored && stagedChanges.restored.length > 0) {
+        for (const item of stagedChanges.restored) {
+          if (adminApi.restoreCategory) {
+            await adminApi.restoreCategory(item.id);
+          } else {
+            await adminApi.createCategory({
+              name: item.name,
+              classify: item.classify,
+              is_default: true,
+              keyword: item.keyword || null,
+            });
+          }
+        }
+      }
+
+      // 2.4. Xóa danh mục đã đánh dấu xóa
       for (const id of stagedChanges.deleted) {
         await adminApi.deleteCategory(id);
       }
@@ -686,6 +763,11 @@ const CategoryPage = () => {
                                         {t('categories.table.deleted') || 'Đã xóa'}
                                       </span>
                                     )}
+                                    {item.isDraftRestored && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs shrink-0">
+                                        {t('categories.table.restored') || 'Đã khôi phục (nháp)'}
+                                      </span>
+                                    )}
                                     {item.isDraftNew && (
                                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs shrink-0">
                                         Bản nháp
@@ -733,9 +815,19 @@ const CategoryPage = () => {
                               {t('categories.table.forbiddenEditDelete')}
                             </span>
                           ) : item.status === 'deleted' || item.delete_at ? (
-                            <span className="text-xs text-rose-700 font-medium px-2 italic">
-                              {t('categories.table.deleted') || 'Đã xóa'}
-                            </span>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <span className="text-xs text-rose-700 font-medium px-1 italic">
+                                {t('categories.table.deleted') || 'Đã xóa'}
+                              </span>
+                              <button
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer text-xs font-semibold shadow-2xs"
+                                onClick={() => handleRestore(item)}
+                                title={t('categories.table.restoreTitle') || 'Khôi phục danh mục'}
+                              >
+                                <span className="material-symbols-outlined text-[16px]">settings_backup_restore</span>
+                                <span>{t('categories.table.restore') || 'Khôi phục'}</span>
+                              </button>
+                            </div>
                           ) : (
                             <div className="flex items-center justify-end gap-1">
                               <button

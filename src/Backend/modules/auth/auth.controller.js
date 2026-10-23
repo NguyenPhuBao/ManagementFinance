@@ -102,17 +102,28 @@ const authController = {
   },
 
   async me(req, res) {
-    const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
-    return ResponseHandler.success(res, {
-      idaccount: req.user.idaccount,
-      username: req.user.username,
-      idrole: req.user.idrole,
-      rolename: req.user.rolename,
-      type: req.user.type || 'Basic',
-      status: req.user.status || 'Active',
-      is_first_login: Boolean(req.user.is_first_login),
-      currentClientIp: clientIp || null,
-    }, 'Token hợp lệ');
+    try {
+      const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+      const account = await authService.getAccountById(req.user.idaccount);
+
+      const email = account?.User?.email || account?.email || '';
+      const fullname = account?.User?.fullname || '';
+
+      return ResponseHandler.success(res, {
+        idaccount: account?.idaccount || req.user.idaccount,
+        username: account?.username || req.user.username,
+        idrole: account?.idrole || req.user.idrole,
+        rolename: account?.role?.rolename || req.user.rolename,
+        type: account?.type || req.user.type || 'Basic',
+        status: account?.status || req.user.status || 'Active',
+        is_first_login: Boolean(account ? account.is_first_login : req.user.is_first_login),
+        email: email,
+        fullname: fullname,
+        currentClientIp: clientIp || null,
+      }, 'Token hợp lệ');
+    } catch (error) {
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
   },
 
   async logout(req, res) {

@@ -20,9 +20,13 @@ function mapEntityFields(entity, data) {
   switch (entity) {
     case 'wallet':
       if (m.id) { m.idwallet = m.id; delete m.id; }
+      if (m.nameWallet !== undefined) { m.name = m.nameWallet; delete m.nameWallet; }
+      if (m.name_wallet !== undefined) { m.name = m.name_wallet; delete m.name_wallet; }
+      if (m.colour !== undefined) { m.color = m.colour; delete m.colour; }
       if (m.isDefault !== undefined) { m.is_default = m.isDefault; delete m.isDefault; }
       if (m.includeInTotal !== undefined) { m.include_in_total = m.includeInTotal; delete m.includeInTotal; }
       if (m.idBankCasso !== undefined) { m.id_bank_casso = m.idBankCasso; delete m.idBankCasso; }
+      if (m.bankCassoId !== undefined) { m.id_bank_casso = m.bankCassoId; delete m.bankCassoId; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
       if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
@@ -31,18 +35,25 @@ function mapEntityFields(entity, data) {
     case 'transaction':
       if (m.id) { m.idtran = m.id; delete m.id; }
       if (m.categoryId !== undefined) { m.idcategory = m.categoryId; delete m.categoryId; }
+      if (m.idCategory !== undefined) { m.idcategory = m.idCategory; delete m.idCategory; }
       if (m.walletId !== undefined) { m.idwallet = m.walletId; delete m.walletId; }
+      if (m.idWallet !== undefined) { m.idwallet = m.idWallet; delete m.idWallet; }
       if (m.walletTransfer !== undefined) { m.idwallet_transfer = m.walletTransfer; delete m.walletTransfer; }
       if (m.wallet_transfer !== undefined) { m.idwallet_transfer = m.wallet_transfer; delete m.wallet_transfer; }
+      if (m.idWalletTransfer !== undefined) { m.idwallet_transfer = m.idWalletTransfer; delete m.idWalletTransfer; }
+      if (m.transferWalletId !== undefined) { m.idwallet_transfer = m.transferWalletId; delete m.transferWalletId; }
       if (m.goalId !== undefined) { m.idgoal = m.goalId; delete m.goalId; }
       if (m.goal_id !== undefined) { m.idgoal = m.goal_id; delete m.goal_id; }
+      if (m.idGoal !== undefined) { m.idgoal = m.idGoal; delete m.idGoal; }
       if (m.billId !== undefined) { m.idbill = m.billId; delete m.billId; }
       if (m.bill_id !== undefined) { m.idbill = m.bill_id; delete m.bill_id; }
+      if (m.idBill !== undefined) { m.idbill = m.idBill; delete m.idBill; }
       if (m.type !== undefined && ['Expense', 'Income', 'Debt', 'Loan'].includes(m.type)) {
         m.type = 'Transaction';
       }
       if (m.bankTranId !== undefined) { m.bank_tran_id = m.bankTranId; delete m.bankTranId; }
       if (m.dateTransaction !== undefined) { m.date_transaction = new Date(m.dateTransaction); delete m.dateTransaction; }
+      else if (m.date !== undefined) { m.date_transaction = new Date(m.date); delete m.date; }
       else if (m.createdAt !== undefined) { m.date_transaction = new Date(m.createdAt); delete m.createdAt; }
       else if (m.create_at !== undefined) { m.date_transaction = new Date(m.create_at); delete m.create_at; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
@@ -54,7 +65,9 @@ function mapEntityFields(entity, data) {
     case 'budget':
       if (m.id) { m.idbudget = m.id; delete m.id; }
       if (m.categoryId !== undefined) { m.idcategory = m.categoryId; delete m.categoryId; }
+      if (m.idCategory !== undefined) { m.idcategory = m.idCategory; delete m.idCategory; }
       if (m.totalAmount !== undefined) { m.total_amount = m.totalAmount; delete m.totalAmount; }
+      if (m.amount !== undefined && m.total_amount === undefined) { m.total_amount = m.amount; delete m.amount; }
       if (m.thresholdWarningAmount !== undefined) { m.threshold_warning_amount = m.thresholdWarningAmount; delete m.thresholdWarningAmount; }
       if (m.thresholdWarningPercent !== undefined) {
         m.threshold_warning_percent = m.thresholdWarningPercent !== null ? Number(m.thresholdWarningPercent) : null;
@@ -67,8 +80,11 @@ function mapEntityFields(entity, data) {
       if (m.overAmount !== undefined) { m.over_amount = m.overAmount; delete m.overAmount; }
       if (m.timeRecurrence !== undefined) { m.time_recurrence = m.timeRecurrence; delete m.timeRecurrence; }
       if (m.nexttimeRecurrence !== undefined) { m.nexttime_recurrence = m.nexttimeRecurrence ? new Date(m.nexttimeRecurrence) : null; delete m.nexttimeRecurrence; }
+      if (m.nextTimeRecurrence !== undefined) { m.nexttime_recurrence = m.nextTimeRecurrence ? new Date(m.nextTimeRecurrence) : null; delete m.nextTimeRecurrence; }
       if (m.start !== undefined) { m.start = new Date(m.start); }
+      else if (m.startDate !== undefined) { m.start = new Date(m.startDate); delete m.startDate; }
       if (m.end !== undefined) { m.end = m.end ? new Date(m.end) : null; }
+      else if (m.endDate !== undefined) { m.end = m.endDate ? new Date(m.endDate) : null; delete m.endDate; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
       if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
@@ -81,7 +97,10 @@ function mapEntityFields(entity, data) {
     case 'bill':
       if (m.id) { m.idbill = m.id; delete m.id; }
       if (m.walletId !== undefined) { m.idwallet = m.walletId; delete m.walletId; }
+      if (m.idWallet !== undefined) { m.idwallet = m.idWallet; delete m.idWallet; }
       if (m.categoryId !== undefined) { m.idcategory = m.categoryId; delete m.categoryId; }
+      if (m.idCategory !== undefined) { m.idcategory = m.idCategory; delete m.idCategory; }
+      if (m.colour !== undefined) { m.color = m.colour; delete m.colour; }
       if (m.startDate !== undefined) { m.start_date = new Date(m.startDate); delete m.startDate; }
       if (m.dueDate !== undefined) { m.due_date = new Date(m.dueDate); delete m.dueDate; }
       if (m.payStatus !== undefined) {
@@ -97,10 +116,12 @@ function mapEntityFields(entity, data) {
       if (m.timeRecurrence !== undefined) { m.time_recurrence = m.timeRecurrence; delete m.timeRecurrence; }
       if (m.timeNotification !== undefined) { m.time_notification = String(m.timeNotification); delete m.timeNotification; }
       if (m.previousBillId !== undefined) { m.previous_bill_id = m.previousBillId; delete m.previousBillId; }
+      if (m.generatedFromBillId !== undefined) { m.previous_bill_id = m.generatedFromBillId; delete m.generatedFromBillId; }
       if (m.previous_bill_id !== undefined) { m.previous_bill_id = m.previous_bill_id; }
       if (m.periodEnd !== undefined) { m.period_end = m.periodEnd ? new Date(m.periodEnd) : null; delete m.periodEnd; }
       if (m.period_end !== undefined) { m.period_end = m.period_end ? new Date(m.period_end) : null; }
       if (m.autoPay !== undefined) { m.auto_pay = Boolean(m.autoPay); delete m.autoPay; }
+      if (m.autoPayEnabled !== undefined) { m.auto_pay = Boolean(m.autoPayEnabled); delete m.autoPayEnabled; }
       if (m.auto_pay !== undefined) { m.auto_pay = Boolean(m.auto_pay); }
       if (m.anchorDay !== undefined) { m.anchor_day = m.anchorDay !== null ? Number(m.anchorDay) : null; delete m.anchorDay; }
       if (m.anchor_day !== undefined) { m.anchor_day = m.anchor_day !== null ? Number(m.anchor_day) : null; }
@@ -112,6 +133,8 @@ function mapEntityFields(entity, data) {
     case 'goal':
       if (m.id) { m.idgoal = m.id; delete m.id; }
       if (m.walletId !== undefined) { m.idwallet = m.walletId; delete m.walletId; }
+      if (m.idWallet !== undefined) { m.idwallet = m.idWallet; delete m.idWallet; }
+      if (m.colour !== undefined) { m.color = m.colour; delete m.colour; }
       if (m.targetAmount !== undefined) { m.target_amount = m.targetAmount; delete m.targetAmount; }
       if (m.currentAmount !== undefined) { m.current_amount = m.currentAmount; delete m.currentAmount; }
       if (m.startDate !== undefined) { m.start_date = new Date(m.startDate); delete m.startDate; }
@@ -131,6 +154,9 @@ function mapEntityFields(entity, data) {
         delete m.statusComplete;
       } else if (typeof m.status_complete === 'boolean') {
         m.status_complete = m.status_complete ? 'True' : 'False';
+      } else if (m.isCompleted !== undefined) {
+        m.status_complete = m.isCompleted ? 'True' : 'False';
+        delete m.isCompleted;
       }
       if (m.timeRecurrence !== undefined) { m.time_recurrence = m.timeRecurrence; delete m.timeRecurrence; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
@@ -146,6 +172,8 @@ function mapEntityFields(entity, data) {
       if (m.isGroup !== undefined) { m.is_group = m.isGroup; delete m.isGroup; }
       if (m.isDefault !== undefined) { m.is_default = m.isDefault; delete m.isDefault; }
       if (m.parentId !== undefined) { m.idgroup = m.parentId; delete m.parentId; }
+      if (m.idGroup !== undefined) { m.idgroup = m.idGroup; delete m.idGroup; }
+      if (m.colour !== undefined) { m.color = m.colour; delete m.colour; }
       if (m.color !== undefined) { m.color = m.color; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }

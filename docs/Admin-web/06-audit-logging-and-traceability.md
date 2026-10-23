@@ -1,6 +1,7 @@
 # 📜 Chức Năng 06: Nhật Ký Truy Vết Toàn Hệ Thống (Audit Logging & Security Traceability)
 
 > **Mã chức năng:** `ADMIN-FEAT-06`  
+> **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/pages/system/AuditLogPage.jsx`  
 > - Backend: `src/Backend/middleware/audit-log.middleware.js`, `src/Backend/modules/auth/auth.service.js`, `src/Backend/modules/admin/admin.repository.js`  
@@ -60,20 +61,18 @@ sequenceDiagram
 - `/health`, `/health/admin`, `/favicon.ico`
 - Các polling thống kê của chính Admin: `/admin/system/health`, `/admin/totaluser`, `/admin/totalcategories`, `/admin/getusertotime`, `/admin/login-stats`, `/admin/request-stats`, `/admin/aiops/*`.
 
-### 2.3. Ánh Xạ Hành Động & Phân Loại Thẻ Tags Thông Minh (`classifyAuditAction`)
-Thay vì chỉ hiển thị URL kỹ thuật thô (`POST /api/sync/push`), hệ thống kết hợp chuẩn hóa tên hành động tiếng Việt và phân loại tự động vào các nhóm thẻ nghiệp vụ trực quan (Business Tags):
-- **Nhóm Xác Thực (`[AUTH]`):** Đăng nhập, đăng ký, đăng xuất, làm mới token, xác thực OTP.
-- **Nhóm Bảo Mật & Phân Quyền (`[SECURITY]`):** Khóa/mở khóa tài khoản, đổi mật khẩu, xác thực mã PIN admin, phong tỏa IP.
-- **Nhóm Tài Chính & Giao Dịch (`[FINANCE]`):** Giao dịch thu chi, chuyển khoản, webhook biến động số dư ngân hàng.
-- **Nhóm Vận Hành Hạ Tầng (`[MAINTENANCE]`):** Bật/tắt bảo trì hệ thống, điều chỉnh tham số máy chủ.
-- **Nhóm Danh Mục Chuẩn (`[CATEGORY]`):** Thêm, sửa, xóa danh mục thu chi hệ thống.
-- **Nhóm Trí Tuệ Nhân Tạo (`[AI]`):** Hỏi đáp trợ lý AI, OCR hóa đơn, phân loại thông minh.
-
-Đồng thời, cột **Yêu Cầu API** trên giao diện được trang bị các Badge phương thức HTTP sắc màu chuẩn nhận diện:
-- `GET`: Xanh da trời (`bg-blue-50 text-blue-700 border-blue-200`)
-- `POST`: Xanh ngọc lục bảo (`bg-emerald-50 text-emerald-700 border-emerald-200`)
-- `PUT` / `PATCH`: Vàng hổ phách (`bg-amber-50 text-amber-700 border-amber-200`)
-- `DELETE`: Đỏ hồng (`bg-rose-50 text-rose-700 border-rose-200`)
+### 2.3. Cấu Trúc Hai Cột Độc Lập Chuẩn Hóa Nghiệp Vụ (Dual-Column Architecture)
+Theo phê duyệt của PO nhằm tối ưu tính minh bạch và chuyên nghiệp cho kiểm toán:
+1. **Cột "Hành động" (Business Action Description):**
+   - 100% hiển thị câu mô tả nghiệp vụ bằng tiếng Việt chuẩn mực, thân thiện (`Tạo đơn hàng thanh toán gói cước`, `Cập nhật phân quyền gói cước`, `Xác thực mã PIN bảo mật`, `Khôi phục danh mục thu chi`, `Bật bảo trì khẩn cấp`...).
+   - **Tuyệt đối KHÔNG để lộ chuỗi API/URL kỹ thuật thô** trong cột này.
+   - Đi kèm huy hiệu mã Tag chuẩn tiếng Anh quốc tế viết hoa (`[PAYMENT]`, `[AUTH]`, `[USER]`, `[SYSTEM]`, `[AIOPS]`, `[CATEGORY]`, `[API]`) kèm tooltip giải nghĩa tiếng Việt.
+2. **Cột "Yêu cầu API" (Technical API Request Column):**
+   - Đảm nhiệm vai trò hiển thị phương thức HTTP và endpoint kỹ thuật:
+     - Badge Method sắc nét: `GET` (Xanh da trời), `POST` (Xanh ngọc lục bảo), `PUT`/`PATCH` (Vàng hổ phách), `DELETE` (Đỏ hồng).
+     - Đường dẫn API Route tương ứng (vd: `/api/v1/payments/create-order`, `/api/admin/change-pin`).
+3. **Lược Bỏ Nút "Làm Mới" Dư Thừa:**
+   - Trang bị loại bỏ hoàn toàn nút "Làm mới" trên thanh công cụ do bảng đã được tích hợp kênh Socket.io `audit_activity` tự động chèn bản ghi mới nhất theo thời gian thực. Bổ sung nút **"Đặt lại"** để xóa các bộ lọc ngày/trạng thái.
 
 ---
 
@@ -127,6 +126,7 @@ Tuyệt đối không lưu trữ chi tiết kỹ thuật nhạy cảm ra ngoài:
    - Nút **"Đặt lại"** khôi phục nhanh về trạng thái hiển thị ban đầu.
 2. **Xuất Báo Cáo CSV Chuẩn UTF-8 (`exportToCsv`):**
    - Cho phép tải toàn bộ danh sách log đang lọc (tối đa 1,000 bản ghi) thành tệp `.csv` với tiền tố BOM UTF-8 `\uFEFF`, mở trực tiếp trên Microsoft Excel không bị lỗi font tiếng Việt.
+   - **Kế thừa cột Hành động tiếng Việt:** File CSV xuất ra chứa đầy đủ các cột chuẩn hóa: `#`, `Người Dùng`, `Thao Tác / Hành Động` (Mô tả tiếng Việt thân thiện), `Phương Thức`, `Yêu Cầu API (Route)`, `Trạng Thái`, `Lý Do / Kết Quả`, `Thời Gian Phản Hồi (ms)`, `Địa Chỉ IP`, `Thời Điểm`.
    - Định dạng tên tệp chuẩn: `audit_logs_YYYYMMDD_HHmm.csv`.
 3. **Luồng Cập Nhật Real-time Thông Minh:**
    - Kết nối Socket.io qua sự kiện `audit_activity`. Khi đang ở Trang 1 và không áp dụng bộ lọc, hệ thống tự động chèn log mới vào đầu bảng.

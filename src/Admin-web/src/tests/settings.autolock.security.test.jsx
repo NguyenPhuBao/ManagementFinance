@@ -81,13 +81,15 @@ describe('Admin-web Auto-Lock & Token Wipe Security Suite (2-Tier Testing)', () 
         </SettingsProvider>
       );
 
-      // Verify thông tin hiển thị
+      // Verify thông tin hiển thị đúng Username & Email từ CSDL, icon ổ khóa trung tâm (không còn avatar letter cá nhân)
       expect(screen.getByTestId('is-locked-status').textContent).toBe('LOCKED');
-      expect(screen.getByText('Trần Quản Trị')).toBeInTheDocument();
+      expect(screen.getByText('admin_security')).toBeInTheDocument();
       expect(screen.getByText('admin@finance.local')).toBeInTheDocument();
-      expect(screen.getByText('T')).toBeInTheDocument(); // Avatar letter
+      expect(screen.getByText('lock')).toBeInTheDocument(); // Icon ổ khóa an ninh trung tâm
+      expect(screen.queryByText('T')).not.toBeInTheDocument(); // Đã loại bỏ avatar cá nhân
+      expect(screen.queryByText('key')).not.toBeInTheDocument(); // Đã loại bỏ icon key ô input
 
-      // Verify Form inputs
+      // Verify Form inputs & Action Buttons (nằm ngang hàng)
       expect(screen.getByPlaceholderText(/Mật khẩu quản trị viên/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Mở Khóa Màn Hình/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Đăng xuất/i })).toBeInTheDocument();
@@ -206,7 +208,7 @@ describe('Admin-web Auto-Lock & Token Wipe Security Suite (2-Tier Testing)', () 
       expect(screen.getByTestId('is-locked-status').textContent).toBe('LOCKED');
       expect(localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN)).toBeNull();
       expect(localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN)).toBeNull();
-      expect(screen.getByText('Trần Quản Trị')).toBeInTheDocument();
+      expect(screen.getByText('admin_security')).toBeInTheDocument();
     });
 
     it('2.3. Tự động Khóa & Tiêu Hủy Token sau 60 phút offline khi người dùng mở lại trang', () => {

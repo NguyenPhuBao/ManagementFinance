@@ -192,7 +192,7 @@ describe('Admin-web Language Switcher 2-Tier Architecture Suite', () => {
       // Trạng thái ban đầu: Tiếng Việt
       expect(screen.getByText('Bảng điều khiển')).toBeInTheDocument();
       expect(screen.getByText('Quản lý người dùng')).toBeInTheDocument();
-      expect(screen.getByText('Phân quyền gói cước')).toBeInTheDocument();
+      expect(screen.getByText('Phân quyền dịch vụ')).toBeInTheDocument();
       expect(screen.getByText('Nhật ký kiểm toán')).toBeInTheDocument();
       expect(screen.getByText('Bảo trì & Thông báo')).toBeInTheDocument();
       expect(screen.getByText('Đăng xuất')).toBeInTheDocument();
@@ -204,7 +204,7 @@ describe('Admin-web Language Switcher 2-Tier Architecture Suite', () => {
       // Kiểm tra các nhãn chuyển dịch sang Tiếng Anh trên DOM thực tế
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
       expect(screen.getByText('User Management')).toBeInTheDocument();
-      expect(screen.getByText('Role Permissions')).toBeInTheDocument();
+      expect(screen.getByText('Service Permissions')).toBeInTheDocument();
       expect(screen.getByText('Audit Log')).toBeInTheDocument();
       expect(screen.getByText('Maintenance & Alerts')).toBeInTheDocument();
       expect(screen.getByText('Logout')).toBeInTheDocument();
@@ -212,6 +212,7 @@ describe('Admin-web Language Switcher 2-Tier Architecture Suite', () => {
       // Tiếng Việt không còn xuất hiện
       expect(screen.queryByText('Bảng điều khiển')).not.toBeInTheDocument();
       expect(screen.queryByText('Quản lý người dùng')).not.toBeInTheDocument();
+      expect(screen.queryByText('Phân quyền dịch vụ')).not.toBeInTheDocument();
     });
 
     it('2.4. Đồng bộ 2 Chiều (Two-Way Sync Impact): Thay đổi tại SettingsModal phản ánh tức thì lên LanguageToggle và ngược lại', () => {
@@ -336,7 +337,7 @@ describe('Admin-web Language Switcher 2-Tier Architecture Suite', () => {
       expect(screen.getByTestId('users-title')).toHaveTextContent('Quản lý người dùng');
       expect(screen.getByTestId('cat-title')).toHaveTextContent('Quản lý danh mục hệ thống');
       expect(screen.getByTestId('cat-add')).toHaveTextContent('Thêm danh mục mới');
-      expect(screen.getByTestId('perm-title')).toHaveTextContent('Phân Quyền Gói Cước');
+      expect(screen.getByTestId('perm-title')).toHaveTextContent('Phân quyền dịch vụ');
       expect(screen.getByTestId('perm-save')).toHaveTextContent('Lưu Thay Đổi');
 
       // Chuyển sang EN
@@ -346,7 +347,7 @@ describe('Admin-web Language Switcher 2-Tier Architecture Suite', () => {
       expect(screen.getByTestId('users-title')).toHaveTextContent('User Management');
       expect(screen.getByTestId('cat-title')).toHaveTextContent('System Category Management');
       expect(screen.getByTestId('cat-add')).toHaveTextContent('Add New Category');
-      expect(screen.getByTestId('perm-title')).toHaveTextContent('Plan Permissions — Dynamic Matrix & Real-Time Sync');
+      expect(screen.getByTestId('perm-title')).toHaveTextContent('Service Permissions');
       expect(screen.getByTestId('perm-save')).toHaveTextContent('Save Changes');
     });
 

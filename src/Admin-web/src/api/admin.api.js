@@ -23,6 +23,7 @@ const adminApi = {
   createCategory: (data) => axiosClient.post('/admin/addcategory', data),
   updateCategory: (id, data) => axiosClient.put(`/admin/updatecategory/${id}`, data),
   deleteCategory: (id) => axiosClient.delete(`/admin/deletecategory/${id}`),
+  restoreCategory: (id) => axiosClient.patch(`/admin/restorecategory/${id}`),
   syncCategories: () => axiosClient.post('/admin/categories/sync'),
 
   // System Health & Maintenance

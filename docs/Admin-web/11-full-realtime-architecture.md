@@ -1,6 +1,8 @@
 # ⚡ Chức Năng 11: Kiến Trúc Real-Time Toàn Diện (Full Real-Time Architecture & Event Bus)
 
 > **Mã chức năng:** `ADMIN-FEAT-11`  
+> **Phiên bản:** `v2.6 (23/10/2026)`  
+> **Trạng thái:** `Production Ready`  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/hooks/useSocket.js`, Toàn bộ các trang trong `src/Admin-web/src/pages/`  
 > - Backend: `src/Backend/core/socket.js`, `src/Backend/index.js`, Các hook service nghiệp vụ (`auth.service.js`, `admin.service.js`, `maintenance.manager.js`, `aiops.service.js`)  
@@ -40,10 +42,10 @@ graph TD
         P3[Dashboard: Bảng Hoạt Động recentActivities & Nhịp Tim Server Health]
         P4[Server Health Panel: Nhịp tim CPU, RAM, Event Loop Lag mỗi 3s]
         P5[User Management: Tự nạp User mới, Nhảy Badge trạng thái]
-        P6[Category Management: Nút 'Làm mới' thủ công REST API]
+        P6[Category Management: Nút 'Khôi phục' & 'Xóa' đồng bộ REST API]
         P7[Audit Log: Stream nhật ký request mới nhất lên đầu bảng]
         P8[Broadcast & Bảo Trì: Đồng bộ công tắc & Lịch hẹn bảo trì]
-        P9[AIOps Sentinel: Đồng hồ Threat Score & Danh sách chặn phong tỏa]
+        P9[AIOps Sentinel: Đồng hồ Threat Score, 4 Vectơ, Bảng RCA & Phong tỏa]
     end
 
     T1 & T2 & T3 & T4 --> GW
@@ -57,6 +59,9 @@ graph TD
     AR -->|admin.maintenance_changed| P4 & P8
     AR -->|admin.security_alert| P1 & P2 & P9
     AR -->|admin.security_blocked| P2 & P9
+    AR -->|admin.quarantine_updated| P9
+    AR -->|admin.anomaly_detected| P9
+    AR -->|admin.vector_config_changed| P9
     BC -->|system.maintenance_changed| P8
 ```
 
@@ -78,7 +83,7 @@ graph TD
 
 ---
 
-## 📑 3. BẢNG TRA CỨU TOÀN BỘ 11 SỰ KIỆN REAL-TIME CỦA HỆ THỐNG
+## 📑 3. BẢNG TRA CỨU TOÀN BỘ 13 SỰ KIỆN REAL-TIME CỦA HỆ THỐNG
 
 | Tên sự kiện Socket.io | Kênh truyền | Dữ liệu phát tải (Payload) | Thành phần tiếp nhận | Hành vi phản ứng trên giao diện |
 |---|:---:|---|---|---|
@@ -93,6 +98,8 @@ graph TD
 | **`admin.security_alert`** | `admin_room` | `{ threatScore, status, anomalies, timestamp }` | `Header`, `AppLayout`, `AIOpsPage` | Rung chuông Header (+1 badge), hiện Banner đỏ nếu Threat Score $\ge 85$, nhảy kim đồng hồ AIOps. |
 | **`admin.security_blocked`** | `admin_room` | `{ hash, maskedIp, reason, bannedAt, expiresAt }` | `AppLayout`, `AIOpsPage` | Hiện thông báo Toast góc màn hình và nạp ngay IP vi phạm vào Bảng Nguồn theo dõi đặc biệt. |
 | **`admin.quarantine_updated`** | `admin_room` | `{ type, ip, username, status, expiresAt }` | `AIOpsPage` | Tự động cập nhật bảng phong tỏa khi có IP hoặc Tài khoản được mở khóa hoặc hết hạn tự động (Auto-expire). |
+| **`admin.anomaly_detected`** | `admin_room` | `{ incidentId, code, vector, severity, message, timestamp }` | `AIOpsPage` | Tự động chèn sự cố mới vào đầu Bảng Bóc Tách Nguyên Nhân Gốc Rễ (RCA) trong CSDL PostgreSQL. |
+| **`admin.vector_config_changed`** | `admin_room` | `{ thresholds, updatedBy, updatedAt }` | `AIOpsPage` | Đồng bộ các vạch ngưỡng cảnh báo & khẩn cấp của 4 vectơ trên biểu đồ SVG khi có Quản trị viên thay đổi cấu hình. |
 
 ---
 

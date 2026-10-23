@@ -6,7 +6,7 @@ const { FeatureCollector } = require('../../modules/aiops/feature.collector');
 const { AnomalyDetector } = require('../../modules/aiops/anomaly.detector');
 
 test('AIOps Service Suite', async (t) => {
-  await t.test('1. Service initializes with empty history and healthy default status', () => {
+  await t.test('1. Service initializes with empty history and healthy default status', async () => {
     const collector = new FeatureCollector();
     const detector = new AnomalyDetector();
     const service = new AIOpsService({ collector, detector, maxHistory: 60 });
@@ -14,7 +14,7 @@ test('AIOps Service Suite', async (t) => {
     const status = service.getStatus();
     assert.strictEqual(status.status, 'NORMAL');
     assert.strictEqual(status.threatScore, 0);
-    assert.deepStrictEqual(service.getHistory(), []);
+    assert.deepStrictEqual(await service.getHistory(), []);
   });
 
   await t.test('2. tick() collects sample, evaluates, and stores in history ring buffer', async () => {
@@ -39,17 +39,17 @@ test('AIOps Service Suite', async (t) => {
     // Tick 1
     const res1 = await service.tick();
     assert.strictEqual(res1.status, 'NORMAL');
-    assert.strictEqual(service.getHistory().length, 1);
+    assert.strictEqual((await service.getHistory()).length, 1);
 
     // Tick 2
     await service.tick();
     // Tick 3
     await service.tick();
-    assert.strictEqual(service.getHistory().length, 3);
+    assert.strictEqual((await service.getHistory()).length, 3);
 
     // Tick 4: Buffer exceeds maxHistory (3) -> oldest dropped
     await service.tick();
-    assert.strictEqual(service.getHistory().length, 3);
+    assert.strictEqual((await service.getHistory()).length, 3);
   });
 
   await t.test('3. Emits Socket.io event admin.security_alert when Threat Score >= 70', async () => {
@@ -92,22 +92,22 @@ test('AIOps Service Suite', async (t) => {
     assert.ok(emittedData.anomalies.length > 0);
   });
 
-  await t.test('4. calibrate() resets or updates baseline settings', () => {
+  await t.test('4. calibrate() resets or updates baseline settings', async () => {
     const collector = new FeatureCollector();
     const detector = new AnomalyDetector();
     const service = new AIOpsService({ collector, detector });
 
-    const result = service.calibrate({ requestsPerMin: 200 });
+    const result = await service.calibrate({ requestsPerMin: 200 });
     assert.strictEqual(result.success, true);
     assert.strictEqual(detector.getBaselineMetric('requestsPerMin'), 200);
   });
 
-  await t.test('4b. calibrate() calculates real server hardware baselines and capacity assessment for N users', () => {
+  await t.test('4b. calibrate() calculates real server hardware baselines and capacity assessment for N users', async () => {
     const collector = new FeatureCollector();
     const detector = new AnomalyDetector({ targetConcurrency: 500 });
     const service = new AIOpsService({ collector, detector });
 
-    const result = service.calibrate({ targetConcurrency: 2000 });
+    const result = await service.calibrate({ targetConcurrency: 2000 });
     assert.strictEqual(result.success, true);
     assert.ok(result.data, 'Phải trả về data report');
     assert.strictEqual(result.data.targetConcurrency, 2000);
@@ -188,35 +188,35 @@ test('AIOps Service Suite', async (t) => {
     ];
 
     // Realtime (10 phút qua): chỉ có 1 mẫu trong 5 phút trước
-    const realtimeHist = service.getHistory({ range: 'realtime' });
+    const realtimeHist = await service.getHistory({ range: 'realtime' });
     assert.strictEqual(realtimeHist.length, 1);
 
     // Day (24 giờ qua): chỉ có 1 mẫu trong 24 giờ qua
-    const dayHist = service.getHistory({ range: 'day' });
+    const dayHist = await service.getHistory({ range: 'day' });
     assert.strictEqual(dayHist.length, 1);
 
     // Month (30 ngày qua): có 2 mẫu (5 phút trước và 2 ngày trước), không có mẫu 40 ngày trước
-    const monthHist = service.getHistory({ range: 'month' });
+    const monthHist = await service.getHistory({ range: 'month' });
     assert.strictEqual(monthHist.length, 2);
 
     // Year (12 tháng qua): có cả 3 mẫu
-    const yearHist = service.getHistory({ range: 'year' });
+    const yearHist = await service.getHistory({ range: 'year' });
     assert.strictEqual(yearHist.length, 3);
 
     // Custom date range (Priority over range parameter)
     // Lọc chỉ từ 3 ngày trước đến 1 ngày trước -> chỉ có đúng 1 mẫu (2 ngày trước)
     const from = new Date(now - 3 * 24 * 3600 * 1000).toISOString().slice(0, 10);
     const to = new Date(now - 1 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-    const customHist = service.getHistory({ range: 'year', from, to });
+    const customHist = await service.getHistory({ range: 'year', from, to });
     assert.strictEqual(customHist.length, 1);
     assert.strictEqual(customHist[0].threatScore, 25);
 
     // Lọc một khoảng thời gian trong quá khứ không có dữ liệu thật (năm ngoái) -> Trả về mảng rỗng []
-    const emptyHist = service.getHistory({ from: '2024-01-01', to: '2024-06-01' });
+    const emptyHist = await service.getHistory({ from: '2024-01-01', to: '2024-06-01' });
     assert.strictEqual(emptyHist.length, 0);
   });
 
-  await t.test('7. getHistory() supports 5 timeframe presets (10m, 1h, 24h, 7d, 30d) with max aggregation per bucket', () => {
+  await t.test('7. getHistory() supports 5 timeframe presets (10m, 1h, 24h, 7d, 30d) with max aggregation per bucket', async () => {
     const service = new AIOpsService();
     const now = Date.now();
 
@@ -241,7 +241,7 @@ test('AIOps Service Suite', async (t) => {
 
     // Khung 1h qua: các mẫu trong 1 phút này phải được gom và lấy MAX:
     // auth: 40 (từ mẫu 2), traffic: 80 (từ mẫu 1), exploit: 15 (từ mẫu 2), resource: 60 (từ mẫu 2), threatScore: 80 (từ mẫu 1)
-    const hist1h = service.getHistory({ range: '1h' });
+    const hist1h = await service.getHistory({ range: '1h' });
     assert.ok(hist1h.length >= 1);
     const bucket = hist1h[hist1h.length - 1];
     assert.strictEqual(bucket.vectorScores.auth, 40);
@@ -251,13 +251,13 @@ test('AIOps Service Suite', async (t) => {
     assert.strictEqual(bucket.threatScore, 80);
 
     // Kiểm tra các presets 10m, 24h, 7d, 30d đều hoạt động
-    const hist10m = service.getHistory({ range: '10m' });
+    const hist10m = await service.getHistory({ range: '10m' });
     assert.ok(Array.isArray(hist10m));
-    const hist24h = service.getHistory({ range: '24h' });
+    const hist24h = await service.getHistory({ range: '24h' });
     assert.ok(Array.isArray(hist24h));
-    const hist7d = service.getHistory({ range: '7d' });
+    const hist7d = await service.getHistory({ range: '7d' });
     assert.ok(Array.isArray(hist7d));
-    const hist30d = service.getHistory({ range: '30d' });
+    const hist30d = await service.getHistory({ range: '30d' });
     assert.ok(Array.isArray(hist30d));
   });
 });

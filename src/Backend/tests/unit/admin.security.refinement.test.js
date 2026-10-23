@@ -146,6 +146,38 @@ describe('Admin Security Refinement Suite (Backend)', () => {
   });
 
   describe('createAdminAccount', () => {
+    it('should reject when fullName is missing or too short', async () => {
+      await assert.rejects(
+        async () => {
+          await adminService.createAdminAccount(
+            { username: 'newadmin', email: 'newadmin@finance.local', pin: '000000', fullName: 'A' },
+            { idaccount: 1 }
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 400);
+          assert.ok(err.message.includes('Họ và tên'));
+          return true;
+        }
+      );
+    });
+
+    it('should reject when phone is missing or invalid', async () => {
+      await assert.rejects(
+        async () => {
+          await adminService.createAdminAccount(
+            { username: 'newadmin', email: 'newadmin@finance.local', pin: '000000', fullName: 'Nguyễn Quản Trị', phone: '123' },
+            { idaccount: 1 }
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 400);
+          assert.ok(err.message.includes('Số điện thoại'));
+          return true;
+        }
+      );
+    });
+
     it('should reject when creator PIN is invalid', async () => {
       const origGet = adminRepository.getAccountById;
       const pinHash = await bcrypt.hash('888999', 10);
@@ -159,12 +191,18 @@ describe('Admin Security Refinement Suite (Backend)', () => {
         await assert.rejects(
           async () => {
             await adminService.createAdminAccount(
-              { username: 'newadmin', email: 'newadmin@finance.local', pin: '000000' },
+              {
+                username: 'newadmin',
+                email: 'newadmin@finance.local',
+                pin: '000000',
+                fullName: 'Nguyễn Quản Trị',
+                phone: '0912345678',
+              },
               { idaccount: 1 }
             );
           },
           (err) => {
-            assert.strictEqual(err.statusCode, 401);
+            assert.strictEqual(err.statusCode, 400);
             assert.ok(err.message.includes('Mã PIN'));
             return true;
           }
@@ -188,11 +226,14 @@ describe('Admin Security Refinement Suite (Backend)', () => {
 
       adminRepository.findAccountByUsernameOrEmail = async () => null;
 
-      adminRepository.createAdminAccount = async ({ username, email, createdByAdminId }) => ({
+      adminRepository.createAdminAccount = async ({ username, email, createdByAdminId, fullName, phone, address, countryCode }) => ({
         idaccount: 100,
         username,
         email,
-        fullname: `Quản trị viên ${username}`,
+        fullname: fullName || `Quản trị viên ${username}`,
+        phone,
+        address,
+        country_code: countryCode || '+84',
         idrole: 1,
         status: 'Active',
         is_first_login: true,
@@ -201,12 +242,22 @@ describe('Admin Security Refinement Suite (Backend)', () => {
 
       try {
         const result = await adminService.createAdminAccount(
-          { username: 'superadmin2', email: 'superadmin2@finance.local', pin: '888999' },
+          {
+            username: 'superadmin2',
+            email: 'superadmin2@finance.local',
+            pin: '888999',
+            fullName: 'Lê Văn Admin',
+            phone: '0987654321',
+            address: '123 Phố Tài Chính, Q.1',
+            countryCode: '+84',
+          },
           { idaccount: 1 }
         );
 
         assert.strictEqual(result.success, true);
         assert.strictEqual(result.data.username, 'superadmin2');
+        assert.strictEqual(result.data.fullname, 'Lê Văn Admin');
+        assert.strictEqual(result.data.phone, '0987654321');
         assert.strictEqual(result.data.is_first_login, true);
         assert.strictEqual(result.data.created_by_admin_id, 1);
       } finally {
@@ -214,6 +265,24 @@ describe('Admin Security Refinement Suite (Backend)', () => {
         adminRepository.findAccountByUsernameOrEmail = origFind;
         adminRepository.createAdminAccount = origCreate;
       }
+    });
+  });
+
+  describe('changeAdminPin', () => {
+    it('should reject when newPin is identical to oldPin', async () => {
+      await assert.rejects(
+        async () => {
+          await adminService.changeAdminPin(
+            { password: 'AnyPassword', oldPin: '123456', newPin: '123456', confirmPin: '123456' },
+            { idaccount: 1 }
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 400);
+          assert.ok(err.message.includes('không được trùng'));
+          return true;
+        }
+      );
     });
   });
 });

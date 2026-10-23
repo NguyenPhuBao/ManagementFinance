@@ -1,16 +1,19 @@
 # 📡 HỢP ĐỒNG GIAO TIẾP SỰ KIỆN & THÔNG BÁO TỪ ADMIN-WEB VÀ BACKEND TỚI CLIENT-APP
 ### (Event & Notification Communication Contract: Admin-Web & Backend ➔ Client-App)
 
-> **Tài liệu nguồn sự thật (Source of Truth)** đặc tả toàn bộ các sự kiện, thông báo và tín hiệu điều hướng phát sinh từ **Admin-web** và **Backend** có tác động hoặc yêu cầu xử lý từ phía **Client-app (Mobile App Flutter)**.  
+> **Tài liệu nguồn sự thật (Source of Truth)** đặc tả toàn bộ các sự kiện thời gian thực (Socket.IO), thông báo hệ thống, tín hiệu điều hướng và lỗi chốt chặn HTTP/API phát sinh từ **Admin-web** và **Backend** có tác động hoặc yêu cầu xử lý từ phía **Client-app (Mobile App Flutter)**.  
 > 
-> * **Ngày lập & phê duyệt:** 14/10/2026  
-> * **Trạng thái:** PO ĐÃ PHÊ DUYỆT (Official Approved Specification)  
+> * **Ngày cập nhật:** 23/10/2026  
+> * **Phiên bản:** `v3.1` (Đầy đủ 100% sự kiện Socket.IO, HTTP Signals, AIOps Sentinel & Phân định ranh giới Admin-Web)  
+> * **Trạng thái:** 🟢 PO ĐÃ PHÊ DUYỆT ĐỊNH HƯỚNG & YÊU CẦU THỰC THI (Official Approved Specification)  
 > * **Phạm vi đối chiếu mã nguồn thực tế:**
->   * `src/Backend/core/socket.js` (Hạ tầng WebSocket Socket.IO)
->   * `src/Backend/modules/notification/notification.service.js` (Hệ thống thông báo đa kênh)
+>   * `src/Backend/core/socket.js` (Hạ tầng WebSocket Socket.IO v4)
+>   * `src/Backend/core/event-bus.js` & `src/Backend/core/scheduler.service.js` (Hạ tầng Event Bus & Tác vụ định kỳ)
+>   * `src/Backend/modules/notification/notification.service.js` (Hệ thống thông báo đa kênh & Broadcast persistence)
+>   * `src/Backend/modules/payment/payment.service.js` (Luồng thanh toán PayOS, hoàn tiền, hủy đơn, lệch tiền)
 >   * `src/Backend/modules/admin/admin.service.js` (Nghiệp vụ quản trị Admin)
 >   * `src/Backend/core/resilience/maintenance.manager.js` (Điều hành bảo trì khẩn cấp & theo lịch)
->   * `src/Backend/middleware/` (`auth.js`, `maintenance.middleware.js`, `load-shedding.middleware.js`, `retry-guard.middleware.js`, `feature-permission.middleware.js`)
+>   * `src/Backend/middleware/` (`auth.js`, `maintenance.middleware.js`, `load-shedding.middleware.js`, `retry-guard.middleware.js`, `feature-permission.middleware.js`, `audit-log.middleware.js`)
 >   * `src/Backend/modules/aiops/aiops.quarantine.js` (Tường lửa Sentinel & Ma trận phong tỏa)
 >   * `src/Client-app/lib/core/realtime/` (`realtime_event.dart`, `realtime_channel.dart`, `realtime_socket.dart`)
 >   * `src/Client-app/lib/core/api/interceptors/` (`auth_interceptor.dart`, `buoc_dang_xuat.dart`)
@@ -19,11 +22,13 @@
 
 ## 📌 MỤC LỤC
 1. [Nguyên Tắc Thiết Kế & Kiến Trúc Giao Tiếp](#1-nguyên-tắc-thiết-kế--kiến-trúc-giao-tiếp)
-2. [Bảng Tổng Hợp 19 Sự Kiện & Tín Hiệu](#2-bảng-tổng-hợp-19-sự-kiện--tín-hiệu)
-3. [Phần I: Đặc Tả 11 Sự Kiện Kênh Thời Gian Thực (Socket.IO Events)](#3-phần-i-đặc-tả-11-sự-kiện-kênh-thời-gian-thực-socketio-events)
-4. [Phần II: Đặc Tả 8 Tín Hiệu Chốt Chặn HTTP/API (Middleware & Error Signals)](#4-phần-ii-đặc-tả-8-tín-hiệu-chốt-chặn-httpapi-middleware--error-signals)
-5. [Phần III: Ma Trận Đối Chiếu Hiện Trạng Phía Client-App](#5-phần-iii-ma-trận-đối-chiếu-hiện-trạng-phía-client-app)
-6. [Phần IV: Checklist & Hướng Dẫn Thực Thi Cho Dev Client-App](#6-phần-iv-checklist--hướng-dẫn-thực-thi-cho-dev-client-app)
+2. [Đặc Tả Thu Thập Thông Tin Thiết Bị & IP Người Dùng](#2-đặc-tả-thu-thập-thông-tin-thiết-bị--ip-người-dùng)
+3. [Bảng Tổng Hợp Toàn Bộ Các Sự Kiện & Tín Hiệu](#3-bảng-tổng-hợp-toàn-bộ-các-sự-kiện--tín-hiệu)
+4. [Phần I: Đặc Tả Chi Tiết Toàn Bộ Sự Kiện Kênh Thời Gian Thực Cho Client-App](#4-phần-i-đặc-tả-chi-tiết-toàn-bộ-sự-kiện-kênh-thời-gian-thực-cho-client-app)
+5. [Phần II: Đặc Tả Chi Tiết 9 Tín Hiệu Chốt Chặn HTTP/API & Socket Handshake](#5-phần-ii-đặc-tả-chi-tiết-9-tín-hiệu-chốt-chặn-httpapi--socket-handshake)
+6. [Phần III: Phân Định Các Sự Kiện Dành Riêng Cho Quản Trị Viên (Admin-Web Only)](#6-phần-iii-phân-định-các-sự-kiện-dành-riêng-cho-quản-trị-viên-admin-web-only)
+7. [Phần IV: Ma Trận Đối Chiếu Hiện Trạng Phía Client-App](#7-phần-iv-ma-trận-đối-chiếu-hiện-trạng-phía-client-app)
+8. [Phần V: Checklist & Hướng Dẫn Thực Thi Cho Dev Client-App (Flutter)](#8-phần-v-checklist--hướng-dẫn-thực-thi-cho-dev-client-app-flutter)
 
 ---
 
@@ -42,649 +47,566 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 
 ### 1.2. Các Nguyên Tắc Bắt Buộc (Invariant Rules)
 * **Contract-First & Zero-Guesswork:** Tuyệt đối không suy đoán tên sự kiện hay payload. Mọi trường dữ liệu đều được ánh xạ đúng theo mã nguồn Backend đã kiểm thử.
-* **Bảo Vệ Dữ Liệu Riêng Tư (Data Security & PDP 2025):** 
-  - Socket events gửi tới người dùng **tuyệt đối không truyền số tài khoản ngân hàng đầy đủ, mật khẩu, mã OTP, số dư thô** (theo [Data_Security.md](../Rule_Project/Data_Security.md)).
-  - Sự kiện cưỡng chế xóa tài khoản (`ACCOUNT_DELETED`) bắt buộc Client-app phải dọn dẹp sạch dữ liệu cá nhân cục bộ trong SQLite.
+* **Bảo Vệ Dữ Liệu Riêng Tư (Data Security & Nghị định 13/2023/NĐ-CP):** 
+  - Socket events gửi tới người dùng **tuyệt đối không truyền số tài khoản ngân hàng đầy đủ, mật khẩu, mã OTP, số dư thô** (theo [`Data_Security.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Data_Security.md)).
+  - Sự kiện cưỡng chế xóa tài khoản (`ACCOUNT_DELETED`) bắt buộc Client-app phải dọn dẹp sạch dữ liệu cá nhân cục bộ trong SQLite (`purgeAccountData`).
 * **Phân Biệt "Đánh Thức Đồng Bộ" và "Sự Kiện Thông Điệp":**
   - Không phải sự kiện nào cũng kích hoạt `syncNow()`. Các sự kiện như nâng cấp gói, cảnh báo bảo trì, thông báo broadcast chỉ cập nhật UI / Local Storage, không ép chạy full-sync tránh nghẽn mạng và tốn pin thiết bị.
 
 ---
 
-## 2. BẢNG TỔNG HỢP 19 SỰ KIỆN & TÍN HIỆU
+## 2. ĐẶC TẢ THU THẬP THÔNG TIN THIẾT BỊ & IP NGƯỜI DÙNG
 
-| STT | Tên Sự Kiện / Tín Hiệu | Giao Thức | Nguồn Kích Hoạt | Phạm Vi | Mức Độ Ưu Tiên |
-|:---:|---|:---:|---|---|:---:|
-| **1** | `account.force_logout` | Socket.IO | Admin Khóa / Xóa tài khoản | Riêng tư (`account_<id>`) | 🚨 Khẩn cấp |
-| **2** | `system.maintenance_changed` | Socket.IO | Admin Bật/Tắt bảo trì | Toàn hệ thống (`io.emit`) | 🚨 Khẩn cấp |
-| **3** | `system.broadcast` | Socket.IO | Admin Phát thông báo hệ thống | Toàn hệ thống (`io.emit`) | ⚠️ Cao |
-| **4** | `account.permissions_updated` | Socket.IO | Admin Lưu ma trận phân quyền | Toàn hệ thống (`io.emit`) | ℹ️ Tiêu chuẩn |
-| **5** | `account.upgraded` | Socket.IO | Webhook PayOS / Admin duyệt | Riêng tư (`account_<id>`) | ℹ️ Tiêu chuẩn |
-| **6** | `account.downgraded` | Socket.IO | Cron 00:00 hạ cấp hết hạn | Riêng tư (`account_<id>`) | ⚠️ Cao |
-| **7** | `account.countdown` | Socket.IO | Cron 00:00 đếm ngược chờ xóa | Riêng tư (`account_<id>`) | ℹ️ Tiêu chuẩn |
-| **8** | `sync.completed` | Socket.IO | Backend xử lý xong đợt Push | Riêng tư (`account_<id>`) | 🔇 Im lặng |
-| **9** | `ocr.completed` | Socket.IO | Worker hoàn tất bóc tách OCR | Riêng tư (`account_<id>`) | ℹ️ Tiêu chuẩn |
-| **10** | `ocr.duplicate` | Socket.IO | AI phát hiện hóa đơn trùng lặp | Riêng tư (`account_<id>`) | ⚠️ Cảnh báo |
-| **11** | `user.notification` | Socket.IO | Hệ thống gửi tin nhắn riêng | Riêng tư (`account_<id>`) | ℹ️ Tiêu chuẩn |
-| **12** | `payment.overpaid_confirmation` | Socket.IO | Webhook PayOS chuyển thừa tiền | Riêng tư (`account_<id>`) | ⚠️ Cao |
-| **13** | `payment.underpaid_warning` | Socket.IO | Webhook PayOS chuyển thiếu tiền | Riêng tư (`account_<id>`) | ⚠️ Cảnh báo |
-| **14** | `payment.refunded` | Socket.IO | Admin hoàn tất chuyển tiền hoàn | Riêng tư (`account_<id>`) | ℹ️ Tiêu chuẩn |
-| **15** | `payment.order_expired` | Socket.IO | Worker 30s hủy đơn hết hạn 10p | Riêng tư & Admin room | ℹ️ Tiêu chuẩn |
-| **16** | HTTP 503 `MAINTENANCE_MODE` | REST API | Chế độ bảo trì hệ thống | Mọi Client gọi API | 🚨 Khẩn cấp |
-| **17** | HTTP 503 `SERVER_OVERLOADED` | REST API | Load Shedding (Lag > 100ms) | Mọi Client gọi API | ⚠️ Tạm thời |
-| **18** | HTTP 429 `RETRY_LIMIT_EXCEEDED` | REST API | Bão request lặp (> 3 retries) | IP / Client vi phạm | ⚠️ Tạm thời |
-| **19** | HTTP 403 `AIOPS_QUARANTINED` | REST API | Tường lửa Sentinel chặn IP | IP vi phạm | 🚫 Chặn truy cập |
-| **20** | HTTP 403 `FEATURE_DISABLED` | REST API | Chặn tính năng ngoài gói | Tài khoản gói Basic | 🔒 Giới hạn |
-| **21** | HTTP 401 `ACCOUNT_INACTIVE` | REST API | Admin khóa tài khoản | Tài khoản bị khóa | 🚨 Đăng xuất |
-| **22** | HTTP 401 `ACCOUNT_DELETED` | REST API | Admin xóa mềm tài khoản | Tài khoản bị xóa | 🚨 Đăng xuất & Xóa |
-| **23** | Socket Handshake Error | WebSocket | Bắt tay kết nối thất bại | Client kết nối Socket | 🚨 Ngắt kết nối |
+Đã được lập thành văn bản nguồn sự thật riêng biệt tại:  
+👉 **[`docs/Admin-web/IP-Device-ClientApp.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Admin-web/IP-Device-ClientApp.md)**
+
+### Tóm Lược Quy Tắc Bắt Buộc:
+1. **Header HTTP bắt buộc:** `x-device-name` (ví dụ: `"Samsung Galaxy S24 Ultra (Android 14)"`, tối đa 150 ký tự). Gửi trong mọi request qua Dio Interceptor.
+2. **Không tự gọi API bên thứ ba để lấy IP:** Backend tự động trích xuất IP mạng qua TCP socket và mặt nạ hóa (`maskIp`: `113.161.xx.xx`) theo Nghị định 13/2023/NĐ-CP.
+3. **Cơ chế Diff Check CSDL:** Cùng IP và Device $\longrightarrow$ UPDATE `last_active_at`; Đổi IP hoặc Device $\longrightarrow$ INSERT dòng mới vào `account_device_history`, bảo toàn 100% lịch sử truy vết.
 
 ---
 
-## 3. PHẦN I: ĐẶC TẢ 15 SỰ KIỆN KÊNH THỜI GIAN THỰC (SOCKET.IO EVENTS)
+## 3. BẢNG TỔNG HỢP TOÀN BỘ CÁC SỰ KIỆN & TÍN HIỆU
 
-### 3.1. `account.force_logout` — Cưỡng Chế Đăng Xuất Tức Thì
-* **Kênh phát:** `account_<idaccount>`
-* **Nguồn kích hoạt:** 
-  - Admin bấm **Khóa tài khoản** (`status: 'Inactive'`, kèm lý do bắt buộc) trên `UserListPage.jsx` $\rightarrow$ gọi API `PATCH /api/admin/users/:id/status`.
-  - Admin bấm **Xóa người dùng** (Soft-delete) trên `UserListPage.jsx` $\rightarrow$ gọi API `DELETE /api/admin/users/:id`.
-  - Hàm phát: [core/socket.js:184](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/core/socket.js#L184) `emitForceLogout(idaccount, reason, message)`.
+### 3.1. Nhóm 1: Sự Kiện Thời Gian Thực Gửi Tới Client-App (Socket.IO — 18 Sự Kiện)
+
+| STT | Tên Sự Kiện | Kênh / Room | Nguồn Kích Hoạt | Mục Đích Nghiệp Vụ | Mức Độ Ưu Tiên |
+|:---:|---|:---:|---|---|:---:|
+| **1** | `account.force_logout` / `force_logout` | `account_<id>` | Admin Khóa / Xóa tài khoản | Cưỡng chế đăng xuất tức thì, xóa session | 🚨 Khẩn cấp |
+| **2** | `system.maintenance_changed` | Toàn hệ thống (`io.emit`) | Admin Bật/Tắt bảo trì | Mở/đóng Màn hình Bảo trì toàn cục | 🚨 Khẩn cấp |
+| **3** | `system.broadcast` | Toàn hệ thống (`io.emit`) | Admin Phát thông báo hệ thống | In-App Banner, lưu SQLite notification | ⚠️ Cao |
+| **4** | `account.permissions_updated` | Toàn hệ thống (`io.emit`) | Admin Lưu ma trận phân quyền | Cập nhật 4 Trụ cột quyền hạn (`GoiCubit`) | ℹ️ Tiêu chuẩn |
+| **5** | `account.upgraded` | `account_<id>` & `io.emit` | PayOS Webhook / Admin duyệt gói | Nâng cấp tài khoản lên Premium | ℹ️ Tiêu chuẩn |
+| **6** | `account.downgraded` | `account_<id>` | Cron 00:00 hạ cấp hết hạn Premium | Chuyển tài khoản về gói Basic | ⚠️ Cao |
+| **7** | `account.countdown` | `account_<id>` | Cron 00:00 đếm ngược xóa 30 ngày | Thông báo số ngày còn lại trước khi xóa | ℹ️ Tiêu chuẩn |
+| **8** | `sync.completed` | `account_<id>` | Push thành công từ thiết bị khác | Đánh thức thiết bị kéo Delta Pull về | 🔇 Im lặng |
+| **9** | `ocr.completed` | `account_<id>` | Worker hoàn tất bóc tách OCR | Thông báo bóc tách xong, kích hoạt sync | ℹ️ Tiêu chuẩn |
+| **10** | `ocr.duplicate` | `account_<id>` | AI phát hiện hóa đơn trùng lặp | Cảnh báo hóa đơn đã tồn tại | ⚠️ Cảnh báo |
+| **11** | `user.notification` | `account_<id>` | Hệ thống gửi tin nhắn riêng | Lưu hộp thư cá nhân trên điện thoại | ℹ️ Tiêu chuẩn |
+| **12** | `payment.success` | `account_<id>` | Webhook PayOS xác nhận thanh toán | Cập nhật màn hình Chờ/Chi tiết đơn hàng | ℹ️ Tiêu chuẩn |
+| **13** | `payment.order_cancelled` | `account_<id>` | Người dùng / Hệ thống hủy đơn | Cập nhật trạng thái đơn thành CANCELLED | ℹ️ Tiêu chuẩn |
+| **14** | `payment.order_expired` | `account_<id>` | Worker 30s quét hủy đơn quá 10 phút | Đóng popup VietQR, báo hết hạn mã | ℹ️ Tiêu chuẩn |
+| **15** | `payment.refunded` | `account_<id>` | Admin duyệt hoàn tiền kèm minh chứng | Thông báo hoàn tiền + link xem ảnh biên lai | ℹ️ Tiêu chuẩn |
+| **16** | `payment.overpaid_confirmation` | `account_<id>` | Webhook PayOS thừa tiền đơn hàng | Cảnh báo chuyển thừa, mở hỗ trợ CSKH | ⚠️ Cao |
+| **17** | `payment.underpaid_warning` | `account_<id>` | Webhook PayOS thiếu tiền đơn hàng | Cảnh báo chuyển thiếu, hướng dẫn nộp bù | ⚠️ Cảnh báo |
+| **18** | `bank_transaction.incoming` | `account_<id>` | Webhook biến động ngân hàng (Legacy) | Thông báo giao dịch (đã dừng module Bank) | 🔇 Legacy |
+
+---
+
+### 3.2. Nhóm 2: Tín Hiệu Chốt Chặn HTTP/API & Socket Handshake (9 Tín Hiệu)
+
+| STT | Mã HTTP / Tín Hiệu | Cơ Chế Kích Hoạt | Ý Nghĩa Nghiệp Vụ | Phản Ứng Bắt Buộc Của Client-App |
+|:---:|---|---|---|---|
+| **1** | HTTP 503 `MAINTENANCE_MODE` | Middleware `maintenance.middleware.js` | Hệ thống đang bật bảo trì | Mở Màn hình Bảo Trì (`MaintenanceScreen`) |
+| **2** | HTTP 503 `SERVER_OVERLOADED` | Middleware `load-shedding.middleware.js` | Cắt tải CPU khi Event Loop lag > 100ms | Đọc header `Retry-After`, đếm ngược thử lại |
+| **3** | HTTP 429 `RETRY_LIMIT_EXCEEDED` | Middleware `retry-guard.middleware.js` | Chống bão request lặp (> 3 retries) | Dừng retry ngay lập tức, exponential backoff |
+| **4** | HTTP 403 `AIOPS_QUARANTINED` | Tường lửa Sentinel `aiops.quarantine.js` | IP bị phong tỏa an ninh | Hiển thị Dialog phong tỏa + đếm ngược mở khóa |
+| **5** | HTTP 403 `FEATURE_DISABLED` | Middleware `feature-permission.middleware.js` | Tính năng vượt quá gói cước Basic | Hiển thị BottomSheet mời nâng cấp Premium |
+| **6** | HTTP 401 `ACCOUNT_INACTIVE` | Middleware `auth.js` | Admin khóa tài khoản kèm lý do | Hiển thị Dialog lý do, điều hướng về Login |
+| **7** | HTTP 401 `ACCOUNT_DELETED` | Middleware `auth.js` | Tài khoản đã bị xóa mềm | Xóa sạch SQLite cục bộ, điều hướng Login |
+| **8** | HTTP 400 `PENDING_DELETE_PROTECTED` | Nghiệp vụ tài khoản | Tài khoản chờ thanh lý 30 ngày | Chặn thao tác sửa/xóa, thông báo hủy xóa trước |
+| **9** | WebSocket Handshake Error | `io.use` trong `core/socket.js` | Bắt tay thất bại (Token lỗi/hết hạn/khóa) | Ngắt kết nối socket, làm mới JWT token |
+
+---
+
+## 4. PHẦN I: ĐẶC TẢ CHI TIẾT TOÀN BỘ SỰ KIỆN KÊNH THỜI GIAN THỰC CHO CLIENT-APP
+
+### 4.1. `account.force_logout` / `force_logout` — Cưỡng Chế Đăng Xuất Tức Thì
+* **Kênh phát:** `account_<idaccount>` và Direct Socket ID.
+* **Nguồn kích hoạt:**
+  - Admin bấm **Khóa tài khoản** (`status: 'Inactive'`, kèm lý do) trên `UserListPage.jsx`.
+  - Admin bấm **Xóa mềm người dùng** 5 bước ACID trên `UserListPage.jsx`.
 * **Cấu trúc Payload chuẩn:**
 ```json
 {
   "idaccount": 50,
   "reason": "ACCOUNT_INACTIVE",
-  "message": "Tài khoản của bạn đã bị vô hiệu hóa. Lý do: Gian lận giao dịch và hoàn tiền bất thường."
+  "message": "Tài khoản của bạn đã bị vô hiệu hóa. Lý do: Phát hiện đăng nhập bất thường từ thiết bị lạ."
 }
 ```
-*(Trường hợp bị xóa: `"reason": "ACCOUNT_DELETED"`, `"message": "Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên."`)*
+*(Nếu bị xóa: `"reason": "ACCOUNT_DELETED"`, `"message": "Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên."`)*
 * **Xử lý bắt buộc trên Client-app:**
-  1. Đọc payload an toàn tại luồng `_buocDangXuatController` trong `realtime_channel.dart`.
-  2. Xóa sạch `accessToken` và `refreshToken` khỏi `FlutterSecureStorage`.
-  3. Nếu `reason == 'ACCOUNT_DELETED'`: Xóa trắng dữ liệu nhạy cảm của tài khoản trong SQLite (`purgeAccountData`).
-  4. Nếu `reason == 'ACCOUNT_INACTIVE'`: Giữ nguyên CSDL SQLite (để khi Admin mở lại không bị mất dữ liệu).
-  5. Mở Popup Dialog thông báo lỗi ghi rõ câu `message` từ server. Khi người dùng bấm "Đồng ý", chuyển hướng về màn hình `LoginPage`.
+  1. Xóa sạch `accessToken` và `refreshToken` khỏi `FlutterSecureStorage`.
+  2. Nếu `reason == 'ACCOUNT_DELETED'`: Xóa trắng CSDL SQLite (`purgeAccountData`) để tuân thủ quyền riêng tư.
+  3. Nếu `reason == 'ACCOUNT_INACTIVE'`: Giữ nguyên dữ liệu SQLite.
+  4. Mở Popup Dialog hiển thị đúng nội dung `message`. Bấm "Đồng ý" chuyển về màn hình `LoginPage`.
 
 ---
 
-### 3.2. `system.maintenance_changed` — Thay Đổi Trạng Thái Bảo Trì Hệ Thống
-* **Kênh phát:** Toàn bộ Client kết nối (`io.emit`)
-* **Nguồn kích hoạt:**
-  - Admin kích hoạt **Bảo trì khẩn cấp** hoặc **Lên lịch bảo trì** trên `BroadcastPage.jsx`.
-  - Khi lịch hẹn bảo trì tự động bắt đầu hoặc kết thúc theo thời gian hẹn ([maintenance.manager.js:277](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/core/resilience/maintenance.manager.js#L277)).
-  - Hàm phát: [core/socket.js:328](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/core/socket.js#L328) `io.emit('system.maintenance_changed', maintenanceStatus)`.
+### 4.2. `system.maintenance_changed` — Thay Đổi Trạng Thái Bảo Trì Hệ Thống
+* **Kênh phát:** Toàn bộ Client kết nối (`io.emit`).
+* **Nguồn kích hoạt:** Admin bật/tắt bảo trì khẩn cấp hoặc lịch bảo trì tự động kích hoạt.
 * **Cấu trúc Payload chuẩn:**
 ```json
 {
   "active": true,
-  "reason": "Hệ thống đang tiến hành nâng cấp cụm máy chủ cơ sở dữ liệu định kỳ.",
   "isEmergency": true,
-  "activatedAt": "2026-10-14T08:00:00.000Z",
+  "reason": "Hệ thống đang tiến hành nâng cấp cụm máy chủ cơ sở dữ liệu định kỳ.",
+  "activatedAt": "2026-10-23T08:00:00.000Z",
   "activatedBy": "admin_system"
 }
 ```
-*(Khi kết thúc bảo trì: `"active": false`, `"isEmergency": false`, `"reason": null`)*
+*(Khi kết thúc: `"active": false`, `"isEmergency": false`, `"reason": null`)*
 * **Xử lý bắt buộc trên Client-app:**
   1. Khi `active == true`:
-     - Cập nhật biến trạng thái toàn cục `isMaintenanceActive = true`.
-     - Tạm dừng ngay bộ định thời tự động đồng bộ ngầm (`SyncTimer.pause()`), triệt tiêu nguy cơ spam request gây nghẽn.
-     - Hiển thị Màn hình Bảo Trì Toàn Cục (`MaintenanceScreen`) hoặc Modal khóa thao tác ghi rõ lý do.
+     - Nếu `isEmergency: true`: Hiển thị Màn hình Bảo Trì Toàn Cục màu đỏ khẩn cấp, khóa các nút tạo/sửa giao dịch, tạm dừng sync ngầm.
+     - Nếu `isEmergency: false`: Hiển thị Banner màu cam thông báo bảo trì theo lịch, cho phép người dùng xem dữ liệu offline.
   2. Khi `active == false`:
-     - Cập nhật `isMaintenanceActive = false`.
-     - Đóng Màn hình Bảo trì, hiển thị Toast xanh thông báo *"Hệ thống đã hoạt động bình thường trở lại"*.
-     - Kích hoạt tiến trình đồng bộ bù (`syncNow()`).
+     - Đóng màn hình bảo trì, hiển thị Toast xanh thông báo hệ thống hoạt động trở lại.
+     - Tự động kích hoạt đồng bộ bù `syncNow()`.
 
 ---
 
-### 3.3. `system.broadcast` — Thông Báo Toàn Hệ Thống
-* **Kênh phát:** Toàn bộ Client kết nối (`io.emit`)
-* **Nguồn kích hoạt:**
-  - Admin soạn và phát tin nhắn từ Tab "Phát thông báo" tại `BroadcastPage.jsx` $\rightarrow$ gọi API `POST /api/admin/system/broadcast`.
-  - Hệ thống tự động phát khi Bắt đầu bảo trì khẩn cấp (`⚠️ BẢO TRÌ HỆ THỐNG KHẨN CẤP`) hoặc Kết thúc bảo trì (`✅ HỆ THỐNG ĐÃ KẾT THÚC BẢO TRÌ`).
-  - Hàm phát: [core/socket.js:257](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/core/socket.js#L257) `emitSystemBroadcast(broadcastData)`.
+### 4.3. `system.broadcast` — Thông Báo Toàn Hệ Thống
+* **Kênh phát:** Toàn bộ Client kết nối (`io.emit`).
+* **Nguồn kích hoạt:** Admin phát sóng từ Tab "Phát thông báo" tại `BroadcastPage.jsx`.
 * **Cấu trúc Payload chuẩn:**
 ```json
 {
   "id": "e4b52c08-72fa-45cf-81b4-f6b92a40dc78",
-  "title": "Thông báo nâng cấp ứng dụng phiên bản 2.5",
-  "message": "Hệ thống bổ sung tính năng AI Copilot và tối ưu hóa hiệu năng đồng bộ offline.",
+  "title": "Thông báo nâng cấp ứng dụng phiên bản 3.0",
+  "message": "Hệ thống bổ sung tính năng theo dõi thiết bị an ninh và tối ưu hóa hiệu năng đồng bộ offline.",
   "level": "INFO",
+  "isEmergency": false,
   "category": "BROADCAST",
-  "createdAt": "2026-10-14T08:15:00.000Z",
-  "metadata": {}
+  "createdAt": "2026-10-23T08:15:00.000Z"
 }
 ```
 * **Xử lý bắt buộc trên Client-app:**
-  1. Bật Global Toast / Top In-App Banner với màu sắc trực quan theo cấp độ `level`:
-     - `CRITICAL`: Nền đỏ, icon cảnh báo nguy cấp.
-     - `WARNING`: Nền vàng cam, icon chú ý.
-     - `INFO`: Nền xanh dương hoặc đen trung tính.
-  2. Lưu bản ghi thông báo vào Bảng Thông Báo Cục Bộ SQLite để người dùng có thể xem lại trong Tab Thông Báo.
+  1. Hiển thị In-App Banner hoặc Top SnackBar theo cấp độ `level`:
+     - `CRITICAL` hoặc `isEmergency: true`: Banner đỏ cảnh báo khẩn cấp toàn màn hình.
+     - `WARNING`: Banner vàng cam.
+     - `INFO`: SnackBar xanh dương nhẹ, tự đóng sau 4 giây.
+  2. Lưu thông báo vào bảng SQLite cục bộ `notification` trên điện thoại.
 
 ---
 
-### 3.4. `account.permissions_updated` — Cập Nhật Ma Trận Phân Quyền Tính Năng
-* **Kênh phát:** Toàn bộ Client kết nối (`io.emit`)
-* **Nguồn kích hoạt:**
-  - Admin thay đổi hạn mức (`LIMIT`) hoặc bật/tắt tính năng (`TOGGLE`) trên trang `PermissionManagementPage.jsx` $\rightarrow$ gọi API `PUT /api/admin/permissions/matrix`.
-  - Hàm phát: [core/socket.js:378](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/core/socket.js#L378) `emitPermissionsUpdated(updates)`.
+### 4.4. `account.permissions_updated` — Cập Nhật Ma Trận Phân Quyền Tính Năng
+* **Kênh phát:** Toàn bộ Client kết nối (`io.emit`).
+* **Nguồn kích hoạt:** Admin lưu ma trận phân quyền 4 Trụ cột trên `PermissionManagementPage.jsx`.
 * **Cấu trúc Payload chuẩn:**
 ```json
 {
   "updates": [
-    {
-      "idaccount_type": 1,
-      "idfeature": "ai_assistant",
-      "is_enabled": true,
-      "limit_value": null
-    },
-    {
-      "idaccount_type": 1,
-      "idfeature": "wallets",
-      "is_enabled": true,
-      "limit_value": 3
-    }
+    { "idaccount_type": 1, "idfeature": "ai_assistant", "is_enabled": true, "limit_value": null },
+    { "idaccount_type": 1, "idfeature": "wallets", "is_enabled": true, "limit_value": 3 }
   ],
-  "timestamp": "2026-10-14T08:20:00.000Z"
+  "timestamp": "2026-10-23T08:20:00.000Z"
 }
 ```
 * **Xử lý bắt buộc trên Client-app:**
-  1. **Không kích hoạt Full Sync:** Đây là thay đổi quyền, không phải dữ liệu tài chính.
-  2. Gọi nhẹ API `GET /api/payment/subscription-info` (~300 bytes) để tải lại thông tin quyền của tài khoản hiện tại.
-  3. Cập nhật `GoiCubit` và lưu cấu hình quyền mới vào `FlutterSecureStorage`.
-  4. Giao diện tức thì ẩn/hiện hoặc giới hạn các nút chức năng (OCR, Chatbot, Thêm ví...) theo đúng cấu hình mới của server.
+  1. Không chạy full sync. Gọi nhẹ API `GET /api/payment/subscription-info` (~300 bytes).
+  2. Cập nhật `GoiCubit` và lưu cấu hình quyền mới vào `FlutterSecureStorage`.
+  3. Cập nhật giao diện ẩn/hiện hoặc khóa các tính năng theo hạn mức mới.
 
 ---
 
-### 3.5. `account.upgraded` — Nâng Cấp Gói Premium Thành Công
-* **Kênh phát:** `account_<idaccount>` (hoặc broadcast khi Admin cập nhật ma trận)
+### 4.5. `account.upgraded` & `account.downgraded` — Nâng Cấp & Hạ Cấp Gói Cước
+* **Kênh phát:** `account_<idaccount>`.
 * **Nguồn kích hoạt:**
-  - Người dùng quét mã VietQR và thanh toán PayOS thành công $\rightarrow$ Webhook PayOS xác thực chữ ký $\rightarrow$ [payment.service.js:169](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/payment/payment.service.js#L169) `emitToAccount(idaccount, 'account.upgraded', ...)`.
-* **Cấu trúc Payload chuẩn:**
+  - `account.upgraded`: Webhook PayOS xác nhận đã thanh toán đơn Premium thành công, hoặc Admin duyệt gia hạn thủ công.
+  - `account.downgraded`: Tác vụ bảo trì 00:00:00 UTC+7 quét phát hiện gói Premium đã hết hạn.
+* **Cấu trúc Payload:**
 ```json
+// Nâng cấp:
 {
   "type": "Premium",
-  "premiumExpiresAt": "2026-11-14T15:00:00.000Z"
+  "message": "Nâng cấp tài khoản lên gói Premium thành công",
+  "expiresAt": "2027-10-23T00:00:00.000Z"
 }
-```
-* **Xử lý bắt buộc trên Client-app:**
-  1. `GoiCubit` chuyển trạng thái sang `GoiState.premium(expiresAt)`.
-  2. Lưu hạn Premium vào `FlutterSecureStorage`.
-  3. Nếu người dùng đang mở trang Nâng cấp gói: Tự động chuyển sang màn hình **Chúc Mừng Kích Hoạt Thành Công** kèm hiệu ứng Confetti.
-  4. Mở khóa toàn bộ hạn mức UI: cho phép tạo không giới hạn ví, ngân sách, hóa đơn, mục tiêu và kích hoạt AI Chatbot.
 
----
-
-### 3.6. `account.downgraded` — Hạ Cấp Gói Cước Về Basic
-* **Kênh phát:** `account_<idaccount>`
-* **Nguồn kích hoạt:**
-  - Tiến trình Scheduler chạy tự động lúc 00:00:00 (Asia/Ho_Chi_Minh) phát hiện tài khoản đã hết hạn Premium $\rightarrow$ [scheduler.service.js:319](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/core/scheduler.service.js#L319) `emitToAccount(idaccount, 'account.downgraded', ...)`.
-* **Cấu trúc Payload chuẩn:**
-```json
+// Hạ cấp:
 {
   "type": "Basic",
   "message": "Gói Premium đã hết hạn, tài khoản chuyển về gói Basic"
 }
 ```
-* **Xử lý bắt buộc trên Client-app:**
-  1. `GoiCubit` chuyển trạng thái về `GoiState.basic()`.
-  2. Xóa mốc `premium_expires_at` khỏi bộ nhớ bảo mật.
-  3. Hiển thị Dialog thông báo: *"Gói Premium của bạn đã hết hạn sử dụng. Tài khoản đã được chuyển về gói Tiêu chuẩn (Basic)."* kèm nút "Gia hạn ngay".
-  4. **Quy tắc bảo vệ dữ liệu cũ:** Tuyệt đối không xóa các ví/ngân sách/mục tiêu người dùng đã tạo vượt hạn mức trước đây. Chỉ chặn không cho tạo mới thêm khi đã $\ge 3$.
+* **Xử lý trên Client-app:**
+  - Gọi lại `GET /api/payment/subscription-info` để nạp hạn mức mới vào `GoiCubit`.
+  - Hiển thị Toast thông báo chúc mừng nâng cấp hoặc thông báo hết hạn gói. Không kích hoạt sync dữ liệu tài chính vì bảng nghiệp vụ không thay đổi.
 
 ---
 
-### 3.7. `account.countdown` — Đếm Ngược Thời Gian Chờ Xóa Tài Khoản
-* **Kênh phát:** `account_<idaccount>`
-* **Nguồn kích hoạt:**
-  - Người dùng gửi yêu cầu xóa tài khoản (trạng thái `PendingDelete`, thời gian ân hạn 30 ngày).
-  - Tiến trình Scheduler chạy tự động lúc 00:00:00 (Asia/Ho_Chi_Minh) giảm countdown mỗi ngày $\rightarrow$ [scheduler.service.js:184](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/core/scheduler.service.js#L184).
-* **Cấu trúc Payload chuẩn:**
+### 4.6. `account.countdown` — Đếm Ngược Chờ Xóa Tài Khoản 30 Ngày
+* **Kênh phát:** `account_<idaccount>`.
+* **Nguồn kích hoạt:** Tác vụ 00:00:00 UTC+7 quét các tài khoản `PendingDelete` và trừ lùi ngày.
+* **Cấu trúc Payload:**
 ```json
 {
   "idaccount": 50,
-  "username": "nguyenvan_a",
-  "daysRemaining": 25,
+  "username": "nguyenvanan",
+  "daysRemaining": 28,
   "title": "Cảnh báo ngừng hoạt động tài khoản",
-  "message": "Tài khoản của bạn đang trong thời gian chờ xóa. Còn 25 ngày trước khi tài khoản bị xóa vĩnh viễn."
+  "message": "Tài khoản của bạn đang trong thời gian chờ xóa. Còn 28 ngày trước khi tài khoản bị xóa vĩnh viễn."
 }
 ```
-* **Xử lý bắt buộc trên Client-app:**
-  1. Cập nhật số ngày `daysRemaining` hiển thị trên Thẻ Cảnh Báo Trang Chủ và mục "Vùng nguy hiểm" trong Cài Đặt.
-  2. Giữ nút "Hủy yêu cầu xóa tài khoản" để người dùng có thể khôi phục lại bất kỳ lúc nào khi `daysRemaining > 0`.
+* **Xử lý trên Client-app:**
+  - Hiển thị Banner cam cảnh báo đếm ngược ở đầu màn hình Trang chủ (`HomeScreen`).
+  - Đính kèm nút "Hủy yêu cầu xóa tài khoản" gọi API `POST /api/auth/cancel-delete`.
 
 ---
 
-### 3.8. `sync.completed` — Hoàn Tất Xử Lý Đồng Bộ Hai Chiều
-* **Kênh phát:** `account_<idaccount>`
-* **Nguồn kích hoạt:**
-  - Backend nhận và ghi xong một lô `POST /api/sync/push` từ một thiết bị bất kỳ $\rightarrow$ [sync.service.js:242](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/sync/sync.service.js#L242).
-* **Cấu trúc Payload chuẩn:**
+### 4.7. `sync.completed` — Hoàn Tất Đợt Đồng Bộ Từ Thiết Bị Khác
+* **Kênh phát:** `account_<idaccount>`.
+* **Nguồn kích hoạt:** Backend xử lý xong một batch `/api/sync/push` từ một thiết bị khác (Web hoặc điện thoại khác của cùng tài khoản).
+* **Cấu trúc Payload:**
 ```json
 {
-  "summary": {
-    "created": 1,
-    "updated": 2,
-    "deleted": 0
-  },
-  "timestamp": "2026-10-14T08:30:00.000Z"
+  "summary": { "created": 2, "updated": 1, "deleted": 0 },
+  "timestamp": "2026-10-23T08:30:00.000Z"
 }
 ```
-* **Xử lý bắt buộc trên Client-app:**
-  1. **Tuyệt đối im lặng (Silent Event):** KHÔNG hiện Toast thông báo vì thiết bị vừa đẩy dữ liệu cũng nhận lại sự kiện này.
-  2. Đánh thức `syncEngine.syncNow()` trên các thiết bị khác cùng tài khoản để kích hoạt Delta Pull (`GET /api/sync/pull?since=...`), kéo bản ghi mới về SQLite cục bộ ngay tức khắc.
+* **Xử lý trên Client-app:**
+  - **Sự kiện im lặng (Silent Event):** KHÔNG hiện Toast làm phiền người dùng.
+  - Tự động kích hoạt luồng kéo ngầm `syncEngine.processPull()` để cập nhật dữ liệu mới nhất vào SQLite Drift.
 
 ---
 
-### 3.9. `ocr.completed` — Xử Lý Bóc Tách Hóa Đơn Hoàn Tất
-* **Kênh phát:** `account_<idaccount>`
-* **Nguồn kích hoạt:**
-  - AI OCR Worker xử lý xong hình ảnh hóa đơn từ hàng đợi ngầm $\rightarrow$ [ocr.service.js:133](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/ai/features/ocr/ocr.service.js#L133).
-* **Cấu trúc Payload chuẩn:**
+### 4.8. `ocr.completed` & `ocr.duplicate` — Kết Quả Bóc Tách Hóa Đơn OCR
+* **Kênh phát:** `account_<idaccount>`.
+* **Nguồn kích hoạt:** Worker hoàn tất phân tích ảnh hóa đơn hoặc AI phát hiện hóa đơn trùng lặp.
+* **Cấu trúc Payload:**
 ```json
+// ocr.completed:
 {
-  "title": "Hóa đơn đã được bóc tách thành công",
-  "message": "Hóa đơn Circle K (45.000đ) đã được bóc tách và phân loại.",
+  "idaccount": 50,
+  "title": "Bóc tách hóa đơn hoàn tất",
+  "message": "Hóa đơn siêu thị Co.opmart đã được phân loại vào danh mục Ăn uống.",
   "type": "OcrCompleted",
-  "createdAt": "2026-10-14T08:35:00.000Z",
-  "data": {
-    "merchant_name": "Circle K",
-    "total_amount": 45000,
-    "detected_type": "Receipt",
-    "predicted_category_id": "uuid-category",
-    "confidence": 0.96
-  }
+  "metadata": { "transactionId": "b8a1c9e2-..." }
+}
+
+// ocr.duplicate:
+{
+  "idaccount": 50,
+  "title": "Phát hiện hóa đơn trùng lặp",
+  "message": "Hóa đơn này có số tiền và thời gian trùng với một giao dịch đã ghi nhận.",
+  "type": "OcrDuplicate"
 }
 ```
-* **Xử lý bắt buộc trên Client-app:**
-  1. Hiển thị Toast thông báo: *"Đã bóc tách xong hóa đơn Circle K (45.000đ)"*.
-  2. Kích hoạt kéo giao dịch / dữ liệu hóa đơn về màn hình Sổ Giao Dịch hoặc màn hình Xác Nhận Giao Dịch Chờ.
+* **Xử lý trên Client-app:**
+  - Với `ocr.completed`: Hiện Toast "Đã bóc tách xong hóa đơn", kích hoạt `syncNow()` để kéo giao dịch mới về.
+  - Với `ocr.duplicate`: Hiện Dialog cảnh báo vàng, KHÔNG kích hoạt sync vì không có dữ liệu mới sinh ra.
 
 ---
 
-### 3.10. `ocr.duplicate` — Hóa Đơn Bị Trùng Lặp
-* **Kênh phát:** `account_<idaccount>`
-* **Nguồn kích hoạt:**
-  - AI Deduplication Engine phát hiện ảnh hóa đơn vừa gửi đã tồn tại trong CSDL $\rightarrow$ [ocr.service.js:95](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/ai/features/ocr/ocr.service.js#L95).
-* **Cấu trúc Payload chuẩn:**
+### 4.9. `user.notification` — Thông Báo Riêng Tư Trong Hộp Thư Cá Nhân
+* **Kênh phát:** `account_<idaccount>`.
+* **Nguồn kích hoạt:** Backend phát thông báo cá nhân (nhắc nhở chi tiêu quá hạn, cảnh báo vượt ngưỡng ngân sách).
+* **Cấu trúc Payload:**
 ```json
 {
-  "title": "Giao dịch đã tồn tại",
-  "message": "Hình ảnh này trùng khớp với giao dịch đã được ghi nhận trên hệ thống trước đó.",
-  "type": "OcrDuplicate",
-  "createdAt": "2026-10-14T08:36:00.000Z",
-  "data": {
-    "reason": "DUPLICATE_RECEIPT_HASH"
-  }
+  "id": "notif-uuid-1234",
+  "idaccount": 50,
+  "title": "Ngân sách Ăn uống vượt 80%",
+  "message": "Bạn đã chi tiêu 4.200.000đ / 5.000.000đ của hạn mức tháng 10.",
+  "type": "BudgetWarning",
+  "createdAt": "2026-10-23T08:35:00.000Z"
 }
 ```
-* **Xử lý bắt buộc trên Client-app:**
-  1. Hiển thị Toast cảnh báo: *"Hóa đơn này đã được ghi nhận trước đó"*.
-  2. **Không kích hoạt đồng bộ kéo:** Vì không có dữ liệu mới nào được tạo trên server.
+* **Xử lý trên Client-app:**
+  - Lưu vào bảng SQLite `notification` trên thiết bị.
+  - Tăng số đếm Badge chưa đọc tại biểu tượng Chuông thông báo (`NotificationBell`).
 
 ---
 
-### 3.11. `user.notification` — Tin Nhắn Thông Báo Trực Tiếp
-* **Kênh phát:** `account_<idaccount>`
+### 4.10. `payment.success` & `payment.order_cancelled` — Thanh Toán Thành Công & Hủy Đơn
+* **Kênh phát:** `account_<idaccount>`.
 * **Nguồn kích hoạt:**
-  - Backend phát thông báo cá nhân hóa qua `notificationService.sendDirectNotification(idaccount, ...)`.
-* **Cấu trúc Payload chuẩn:**
+  - `payment.success`: Webhook PayOS xác nhận chuyển khoản khớp chính xác số tiền đơn hàng.
+  - `payment.order_cancelled`: Người dùng hủy đơn trên giao diện hoặc đơn bị hủy thủ công.
+* **Cấu trúc Payload:**
 ```json
+// payment.success:
 {
-  "id": "uuid-notif",
-  "title": "Nhắc nhở hóa đơn tiền điện",
-  "message": "Hóa đơn tiền điện kỳ tháng 10 của bạn sắp đến hạn thanh toán vào ngày mai.",
-  "type": "BillReminder",
-  "createdAt": "2026-10-14T08:40:00.000Z",
-  "metadata": {
-    "idbill": "uuid-bill",
-    "amount": 350000
-  }
+  "orderCode": 1729671234567,
+  "amount": 49000,
+  "status": "PAID",
+  "message": "Thanh toán đơn hàng thành công"
+}
+
+// payment.order_cancelled:
+{
+  "orderCode": 1729671234567,
+  "status": "CANCELLED",
+  "message": "Đơn hàng đã bị hủy"
 }
 ```
-* **Xử lý bắt buộc trên Client-app:**
-  1. Hiển thị thông báo In-app Notification.
-  2. Tăng số đếm Badge chuông thông báo trên Header giao diện di động.
-  3. Lưu vào danh sách thông báo để người dùng xem lại.
+* **Xử lý trên Client-app:**
+  - Đóng popup chờ thanh toán QR Code.
+  - Chuyển hướng sang màn hình "Thanh toán thành công" (nếu là `payment.success`) hoặc cập nhật trạng thái đơn trong Lịch sử mua hàng.
 
 ---
 
-### 3.12. `payment.overpaid_confirmation` — Khách Hàng Chuyển Thừa Tiền (Yêu Cầu Xác Nhận)
-* **Kênh phát:** `account_<idaccount>`
-* **Nguồn kích hoạt:**
-  - Webhook PayOS ghi nhận `amountReceived > expectedAmount` (Luồng 6.2a) $\rightarrow$ Trạng thái đơn đổi thành `WAITING_CONFIRMATION` ([payment.service.js:183](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/payment/payment.service.js#L183)).
-* **Cấu trúc Payload chuẩn:**
+### 4.11. `payment.order_expired` — Đơn Hàng Thanh Toán Quá Hạn (10 Phút)
+* **Kênh phát:** `account_<idaccount>`.
+* **Nguồn kích hoạt:** Worker 30s quét và hủy các đơn hàng VietQR chưa thanh toán sau 10 phút.
+* **Cấu trúc Payload:**
 ```json
 {
-  "orderId": "uuid-order",
-  "orderCode": 123456789,
+  "orderCode": 1729671234567,
+  "message": "Đơn hàng đã hết hạn thanh toán (quá 10 phút). Vui lòng tạo đơn mới."
+}
+```
+* **Xử lý trên Client-app:** Tự động đóng popup mã QR và báo mã đã hết hạn.
+
+---
+
+### 4.12. `payment.refunded` — Thông Báo Hoàn Tiền Thành Công Kèm Minh Chứng
+* **Kênh phát:** `account_<idaccount>`.
+* **Nguồn kích hoạt:** Admin xử lý duyệt hoàn tiền giao dịch PayOS đính kèm minh chứng.
+* **Cấu trúc Payload:**
+```json
+{
+  "orderCode": 1729671234567,
+  "refundedAmount": 49000,
+  "refundReason": "Giao dịch chuyển khoản trùng lặp theo yêu cầu của khách hàng",
+  "refundProof": "https://supabase-storage.../refund_proof_123.jpg",
+  "timestamp": "2026-10-23T08:25:00.000Z"
+}
+```
+* **Xử lý trên Client-app:** Hiển thị Dialog thông báo hoàn tiền kèm nút "Xem biên lai chuyển khoản".
+
+---
+
+### 4.13. `payment.overpaid_confirmation` & `payment.underpaid_warning` — Lệch Số Tiền
+* **Kênh phát:** `account_<idaccount>`.
+* **Nguồn kích hoạt:** Webhook PayOS phát hiện số tiền chuyển khoản không khớp với giá trị đơn.
+* **Cấu trúc Payload:**
+```json
+{
+  "orderCode": 1729671234567,
   "expectedAmount": 49000,
-  "amountReceived": 70000,
-  "excessAmount": 21000,
-  "message": "Bạn đã chuyển thừa 21.000đ. Bạn có muốn quy đổi thành thêm ngày sử dụng Premium không?"
+  "receivedAmount": 20000,
+  "message": "Số tiền nhận được (20.000đ) thấp hơn giá trị đơn hàng (49.000đ). Vui lòng liên hệ hỗ trợ."
 }
 ```
-* **Xử lý bắt buộc trên Client-app:**
-  1. Nếu người dùng đang mở màn hình Chờ Thanh Toán (`ChoThanhToanPage`), hiển thị ngay Hộp thoại Xác Nhận (Dialog):
-     - Lựa chọn 1: *"Đồng ý nâng cấp & cộng ngày"* $\rightarrow$ Gọi API `POST /api/payment/confirm-upgrade` với `{ "orderCode": 123456789, "accept": true }`.
-     - Lựa chọn 2: *"Yêu cầu hoàn tiền"* $\rightarrow$ Gọi API `POST /api/payment/confirm-upgrade` với `{ "orderCode": 123456789, "accept": false }`.
-  2. Cập nhật trạng thái đơn thành `WAITING_CONFIRMATION`.
+* **Xử lý trên Client-app:** Hiển thị Dialog cảnh báo để người dùng liên hệ Hotline hỗ trợ đối soát.
 
 ---
 
-### 3.13. `payment.underpaid_warning` — Khách Hàng Chuyển Thiếu Tiền (Chờ Hoàn Trả)
-* **Kênh phát:** `account_<idaccount>`
-* **Nguồn kích hoạt:**
-  - Webhook PayOS ghi nhận `amountReceived < expectedAmount` (Luồng 6.2b) $\rightarrow$ Trạng thái đơn đổi thành `REFUND_PENDING` ([payment.service.js:231](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/payment/payment.service.js#L231)).
-* **Cấu trúc Payload chuẩn:**
-```json
-{
-  "orderId": "uuid-order",
-  "orderCode": 123456789,
-  "expectedAmount": 49000,
-  "amountReceived": 20000,
-  "shortage": 29000,
-  "fee": 0,
-  "message": "Số tiền chuyển khoản (20.000đ) không đủ để kích hoạt gói Premium (49.000đ). Đơn hàng đã được chuyển cho Quản trị viên xử lý hoàn tiền."
-}
-```
-* **Xử lý bắt buộc trên Client-app:**
-  1. Hiển thị Banner cảnh báo lỗi chuyển thiếu tiền trên màn hình thanh toán.
-  2. Dừng đếm ngược và thông báo: *"Hệ thống sẽ liên hệ và hoàn trả 20.000đ cho bạn trong thời gian sớm nhất"*.
+### 4.14. `bank_transaction.incoming` — Biến Động Số Dư Ngân Hàng (Legacy Notice)
+* **Kênh phát:** `account_<idaccount>`.
+* **Tình trạng:** ⚠️ **LEGACY / SUSPENDED:** Module Bank liên kết SePay đã dừng hoạt động ngày 18/09/2026. Backend vẫn giữ event handler để không vỡ kiến trúc EventBus, nhưng **Client-app bỏ qua sự kiện này** (`realtimeEventFromName` trả về `null`).
 
 ---
 
-### 3.14. `payment.refunded` — Quản Trị Viên Đã Hoàn Tiền Thành Công
-* **Kênh phát:** `account_<idaccount>`
-* **Nguồn kích hoạt:**
-  - Admin bấm Hoàn tiền thành công trên `PaymentHistoryPage.jsx` $\rightarrow$ API `POST /api/admin/payments/orders/:id/refund` ([payment.service.js:451](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/payment/payment.service.js#L451)).
-* **Cấu trúc Payload chuẩn:**
-```json
-{
-  "orderId": "uuid-order",
-  "refundedAmount": 20000,
-  "refundedAt": "2026-10-16T10:30:00.000Z",
-  "refundReason": "Khách chuyển thiếu tiền",
-  "refundProof": "/assets/Refunds/proof-123.jpg"
-}
-```
-* **Xử lý bắt buộc trên Client-app:**
-  1. Cập nhật trạng thái đơn trong Lịch sử thanh toán thành `REFUNDED` ("Đã hoàn tiền").
-  2. Hiển thị thông báo hoặc xem chi tiết biên lai hoàn tiền qua `refundProof`.
+## 5. PHẦN II: ĐẶC TẢ CHI TIẾT 9 TÍN HIỆU CHỐT CHẶN HTTP/API & SOCKET HANDSHAKE
 
----
-
-### 3.15. `payment.order_expired` — Đơn Hàng Hết Hạn Sau 10 Phút
-* **Kênh phát:** `admin_room` & `account_<idaccount>`
-* **Nguồn kích hoạt:**
-  - Worker quét tự động định kỳ 30 giây phát hiện đơn PENDING đã quá 10 phút $\rightarrow$ Cập nhật `status = 'EXPIRED'`, gán `qr_url = null`.
-* **Cấu trúc Payload chuẩn:**
-```json
-{
-  "orderId": "uuid-order",
-  "orderCode": 123456789,
-  "expiredAt": "2026-10-16T10:10:00.000Z",
-  "message": "Đơn hàng đã hết hạn thanh toán"
-}
-```
-* **Xử lý bắt buộc trên Client-app:**
-  1. Đổi giao diện `ChoThanhToanPage` sang trạng thái Đã hết hạn, ẩn ảnh QR.
-  2. Nút bấm *"Tạo mã QR mới"* để bắt đầu lượt thanh toán mới.
-
----
-
-## 4. PHẦN II: ĐẶC TẢ 8 TÍN HIỆU CHỐT CHẶN HTTP/API (MIDDLEWARE & ERROR SIGNALS)
-
-Khi Client-app gửi request qua Dio HTTP Client, Backend có thể trả về các mã phản hồi đặc biệt. Client-app **bắt buộc phải bóc tách tại Interceptor**:
-
-### 4.1. HTTP 503 `MAINTENANCE_MODE` — Hệ Thống Đang Bảo Trì Khẩn Cấp
-* **Middleware kích hoạt:** [maintenance.middleware.js:39-47](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/middleware/maintenance.middleware.js#L39-L47)
-* **Response Header:** `Retry-After: 60`
-* **Response Body (JSON):**
+### 5.1. HTTP 503 `MAINTENANCE_MODE` — Hệ Thống Đang Bảo Trì
+* **Phát sinh từ:** `src/Backend/middleware/maintenance.middleware.js`
+* **Response Body:**
 ```json
 {
   "success": false,
   "statusCode": 503,
   "code": "MAINTENANCE_MODE",
-  "message": "Hệ thống đang bảo trì để nâng cấp định kỳ. Quý khách vui lòng quay lại sau ít phút!",
   "isEmergency": true,
-  "activatedAt": "2026-10-14T08:00:00.000Z",
-  "timestamp": "2026-10-14T08:05:00.000Z"
+  "message": "Hệ thống đang tiến hành nâng cấp máy chủ định kỳ. Quý khách vui lòng quay lại sau ít phút!"
 }
 ```
-* **Xử lý bắt buộc trên Client-app (Dio Interceptor):**
-  - **Chặn đứng mọi retry tự động:** Không được tự ý retry liên tục.
-  - Hiển thị Màn hình Bảo Trì Toàn Cục (`MaintenanceScreen`) kèm lý do `message`.
-  - Có đồng hồ đếm ngược tối thiểu 60 giây (theo header `Retry-After`) trước khi cho phép người dùng bấm nút "Thử lại".
+* **Xử lý trên Client-app:** Bắt tại Dio Interceptor, kích hoạt Màn hình Bảo Trì toàn phần (`MaintenanceScreen`), không ném ngoại lệ crash ứng dụng.
 
 ---
 
-### 4.2. HTTP 503 `SERVER_OVERLOADED` — Cơ Chế Cắt Tải Tự Động (Load Shedding)
-* **Middleware kích hoạt:** [load-shedding.middleware.js:75-82](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/middleware/load-shedding.middleware.js#L75-L82)
-* **Điều kiện:** Event Loop Lag của Backend vượt ngưỡng $100\text{ms}$.
-* **Response Header:** `Retry-After: 5`
-* **Response Body (JSON):**
+### 5.2. HTTP 503 `SERVER_OVERLOADED` — Cắt Tải CPU Thông Minh (Load Shedding)
+* **Phát sinh từ:** `src/Backend/middleware/load-shedding.middleware.js` (Khi Event Loop lag > 100ms).
+* **Response Body:**
 ```json
 {
   "success": false,
   "statusCode": 503,
   "code": "SERVER_OVERLOADED",
-  "message": "Hệ thống đang xử lý lượng truy cập lớn. Vui lòng thử lại sau ít giây!",
-  "retryAfter": 5,
-  "timestamp": "2026-10-14T08:05:00.000Z"
+  "message": "Hệ thống đang chịu tải cao. Vui lòng thử lại sau 5 giây.",
+  "retryAfter": 5
 }
 ```
-* **Xử lý bắt buộc trên Client-app (Dio Interceptor):**
-  - Đọc trường `retryAfter` (hoặc header `Retry-After`, mặc định 5s).
-  - Tạm dừng gửi request lên server trong ít nhất 5 giây (Exponential Backoff).
-  - Không đăng xuất người dùng; hiển thị snackbar/toast: *"Máy chủ đang bận xử lý, vui lòng chờ trong giây lát..."*.
+* **Xử lý trên Client-app:** Đọc header `Retry-After: 5`, hiển thị Top Toast cam "Máy chủ đang bận, tự động thử lại sau 5s...", thực hiện exponential backoff.
 
 ---
 
-### 4.3. HTTP 429 `RETRY_LIMIT_EXCEEDED` — Ngăn Chặn Bão Request (Retry Storm Guard)
-* **Middleware kích hoạt:** [retry-guard.middleware.js:54-61](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/middleware/retry-guard.middleware.js#L54-L61)
-* **Điều kiện:** Client gửi cùng 1 request thử lại $> 3$ lần trong cửa sổ 10 giây.
-* **Response Body (JSON):**
+### 5.3. HTTP 429 `RETRY_LIMIT_EXCEEDED` — Chặn Bão Request Lặp (Retry Storm Guard)
+* **Phát sinh từ:** `src/Backend/middleware/retry-guard.middleware.js` (Khi Client gửi cùng 1 signature quá 3 lần liên tục).
+* **Response Body:**
 ```json
 {
   "success": false,
   "statusCode": 429,
   "code": "RETRY_LIMIT_EXCEEDED",
-  "message": "Phát hiện vòng lặp yêu cầu thử lại liên tục. Vui lòng dừng lại và thử lại sau ít phút!",
-  "backoffSeconds": 10,
-  "timestamp": "2026-10-14T08:05:00.000Z"
+  "message": "Phát hiện tần suất gửi lại yêu cầu quá dày đặc. Vui lòng dừng thao tác và đợi ít phút."
 }
 ```
-* **Xử lý bắt buộc trên Client-app (Dio Interceptor):**
-  - Đóng băng hàng đợi thử lại (`SyncQueue.freeze(10)`) trong `backoffSeconds` giây.
-  - Reset lại bộ đếm retry `x-retry-count` về 0.
+* **Xử lý trên Client-app:** Chặn ngay lập tức mọi vòng lặp retry tự động trong Dio Interceptor, thông báo người dùng kiểm tra kết nối mạng.
 
 ---
 
-### 4.4. HTTP 403 `AIOPS_QUARANTINED` — Tường Lửa Sentinel Phong Tỏa IP Thiết Bị
-* **Middleware kích hoạt:** [aiops.quarantine.js:1097-1105](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/modules/aiops/aiops.quarantine.js#L1097-L1105)
-* **Điều kiện:** IP thiết bị có hành vi tấn công, quét lỗ hổng hoặc brute-force bị AIOps Sentinel tự động cách ly hoặc Admin cách ly thủ công.
-* **Response Body (JSON):**
-```json
-{
-  "success": false,
-  "code": "AIOPS_QUARANTINED",
-  "error": "AIOPS_QUARANTINED",
-  "message": "Kết nối từ thiết bị của bạn tạm thời bị phong tỏa do hệ thống phát hiện hành vi bất thường hoặc dấu hiệu tấn công an ninh.",
-  "reason": "Phát hiện dấu hiệu dò quét tài nguyên bất thường",
-  "quarantineExpiresAt": "2026-10-14T09:00:00.000Z",
-  "timestamp": "2026-10-14T08:05:00.000Z"
-}
-```
-* **Xử lý bắt buộc trên Client-app (Dio Interceptor):**
-  - Hiển thị Dialog Cảnh Báo An Ninh: Thông báo kết nối từ mạng/thiết bị bị phong tỏa tạm thời kèm thời gian dự kiến mở khóa (`quarantineExpiresAt`).
-  - Hướng dẫn người dùng chuyển đổi mạng (ví dụ từ Wi-Fi sang 4G/5G) hoặc chờ bộ quét tự động mở khóa sau khi hết hạn.
-
----
-
-### 4.5. HTTP 403 `FEATURE_DISABLED` — Chặn Tính Năng Gói Basic
-* **Middleware kích hoạt:** [feature-permission.middleware.js:47-55](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/middleware/feature-permission.middleware.js#L47-L55)
-* **Điều kiện:** Tài khoản gói `Basic` cố gắng gọi các API tính năng nâng cao (Chatbot AI `/chat`, Quét hóa đơn `/ocr/parse`, Sức khỏe tài chính `/financial-health`...).
-* **Response Body (JSON):**
+### 5.4. HTTP 403 `AIOPS_QUARANTINED` — Tường Lửa Sentinel Phong Tỏa IP
+* **Phát sinh từ:** `src/Backend/modules/aiops/aiops.quarantine.js`
+* **Response Body:**
 ```json
 {
   "success": false,
   "statusCode": 403,
-  "message": "Tính năng này chưa được kích hoạt cho loại tài khoản Basic. Vui lòng nâng cấp gói để tiếp tục sử dụng!",
+  "code": "AIOPS_QUARANTINED",
+  "message": "Kết nối từ thiết bị của bạn tạm thời bị phong tỏa do phát hiện dấu hiệu bất thường.",
+  "reason": "Tấn công DoS quá ngưỡng request",
+  "quarantineExpiresAt": "2026-10-23T09:00:00.000Z"
+}
+```
+* **Xử lý trên Client-app:** Hiển thị Dialog cảnh báo an ninh toàn màn hình kèm đồng hồ đếm ngược mở khóa (`quarantineExpiresAt`).
+
+---
+
+### 5.5. HTTP 403 `FEATURE_DISABLED` — Chặn Tính Năng Vượt Gói Cước Basic
+* **Phát sinh từ:** `src/Backend/middleware/feature-permission.middleware.js`
+* **Response Body:**
+```json
+{
+  "success": false,
+  "statusCode": 403,
   "data": {
     "code": "FEATURE_DISABLED",
     "featureId": "ai_assistant",
     "accountType": "Basic"
-  }
+  },
+  "message": "Tính năng này chưa được kích hoạt cho gói Basic. Vui lòng nâng cấp Premium!"
 }
 ```
-* **Xử lý bắt buộc trên Client-app (Dio Interceptor):**
-  - Không báo lỗi crash app hay lỗi mạng chung chung.
-  - Bật BottomSheet / Modal **"Nâng Cấp Gói Premium"** giới thiệu giá trị của tính năng bị khóa kèm nút "Xem Bảng Giá & Nâng Cấp".
+* **Xử lý trên Client-app:** Mở BottomSheet giới thiệu tính năng kèm nút "Nâng cấp Premium ngay".
 
 ---
 
-### 4.6. HTTP 401 `ACCOUNT_INACTIVE` — Tài Khoản Bị Vô Hiệu Hóa Bởi Admin
-* **Vị trí kích hoạt:** [middleware/auth.js:64-76](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/middleware/auth.js#L64-L76)
-* **Response Body (JSON):**
+### 5.6. HTTP 401 `ACCOUNT_INACTIVE` — Tài Khoản Bị Vô Hiệu Hóa Kèm Lý Do
+* **Phát sinh từ:** `src/Backend/middleware/auth.js`
+* **Response Body:**
 ```json
 {
   "success": false,
-  "message": "Tài khoản đã bị vô hiệu hóa. Lý do: Sử dụng nhiều tài khoản trục lợi khuyến mãi",
-  "code": "ACCOUNT_INACTIVE",
-  "idaccount": 50,
-  "reason_inactive": "Sử dụng nhiều tài khoản trục lợi khuyến mãi"
+  "statusCode": 401,
+  "data": {
+    "code": "ACCOUNT_INACTIVE",
+    "idaccount": 50,
+    "reason_inactive": "Phát hiện đăng nhập bất thường từ thiết bị lạ."
+  },
+  "message": "Tài khoản đã bị vô hiệu hóa. Lý do: Phát hiện đăng nhập bất thường từ thiết bị lạ."
 }
 ```
-* **Xử lý bắt buộc trên Client-app (Dio Interceptor):**
-  - Bắt tại `AuthInterceptor.onError`.
-  - **Không gọi `/auth/refresh`:** Vì Refresh Token đã bị hủy trên server, gọi lại sẽ vấp Token Reuse Detection.
-  - Xóa token đăng nhập, giữ nguyên CSDL SQLite.
-  - Hiển thị Dialog thông báo lý do cụ thể và đưa về màn hình Đăng nhập.
+* **Xử lý trên Client-app:** Giữ nguyên dữ liệu SQLite offline, xóa JWT token và chuyển về màn hình Đăng nhập kèm Dialog lý do.
 
 ---
 
-### 4.7. HTTP 401 `ACCOUNT_DELETED` — Tài Khoản Đã Bị Xóa Mềm
-* **Vị trí kích hoạt:** [middleware/auth.js:70-76](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/middleware/auth.js#L70-L76)
-* **Response Body (JSON):**
+### 5.7. HTTP 401 `ACCOUNT_DELETED` — Tài Khoản Đã Bị Xóa Mềm Khỏi Hệ Thống
+* **Phát sinh từ:** `src/Backend/middleware/auth.js`
+* **Response Body:**
 ```json
 {
   "success": false,
-  "message": "Account no longer exists or has been deleted",
-  "code": "ACCOUNT_DELETED",
-  "idaccount": 50
+  "statusCode": 401,
+  "data": {
+    "code": "ACCOUNT_DELETED",
+    "idaccount": 50
+  },
+  "message": "Account no longer exists or has been deleted"
 }
 ```
-* **Xử lý bắt buộc trên Client-app (Dio Interceptor):**
-  - Xóa sạch token đăng nhập.
-  - Xóa trắng toàn bộ dữ liệu SQLite của tài khoản trên máy (`purgeAccountData`) để tuân thủ quyền được lãng quên (Right to be Forgotten).
-  - Hiển thị Dialog thông báo tài khoản đã xóa và đưa về màn hình Đăng nhập.
+* **Xử lý trên Client-app:** **Xóa trắng CSDL SQLite (`purgeAccountData`)**, xóa JWT token và điều hướng về Login.
 
 ---
 
-### 4.8. Socket Handshake Error — Kết Nối Socket Thất Bại Lúc Khởi Động
-* **Vị trí kích hoạt:** [core/socket.js:45-50](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Backend/core/socket.js#L45-L50)
-* **Cơ chế:** Khi mở app, Client-app kết nối Socket.IO kèm token. Nếu tài khoản đã bị khóa hoặc xóa trước đó:
-* **Error Object trả về qua `connect_error`:**
-```javascript
-err.message = "Authentication error: Tài khoản đã bị vô hiệu hóa. Lý do: ..."
-err.data = {
-  "code": "ACCOUNT_INACTIVE", // hoặc "ACCOUNT_DELETED"
-  "idaccount": 50,
-  "reason_inactive": "..."
+### 5.8. HTTP 400 `PENDING_DELETE_PROTECTED` — Bảo Vệ Tài Khoản Chờ Thanh Lý 30 Ngày
+* **Phát sinh từ:** Nghiệp vụ tài khoản Backend
+* **Response Body:**
+```json
+{
+  "success": false,
+  "statusCode": 400,
+  "code": "PENDING_DELETE_PROTECTED",
+  "message": "Tài khoản đang trong thời gian ân hạn 30 ngày chờ thanh lý. Vui lòng bấm 'Hủy xóa tài khoản' để tiếp tục sửa đổi dữ liệu."
 }
 ```
-* **Xử lý bắt buộc trên Client-app:**
-  - Bắt trong hàm `onConnectError` tại [realtime_channel.dart](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Client-app/lib/core/realtime/realtime_channel.dart#L178-L182).
-  - Ngừng ngay bộ định thời tự động nối lại `_henNoiLai?.cancel()`.
-  - Kích hoạt sự kiện cưỡng chế đăng xuất tức thì ngay lúc khởi động app.
+* **Xử lý trên Client-app:** Hiển thị SnackBar thông báo, hướng dẫn người dùng khôi phục tài khoản trước khi thực hiện giao dịch mới.
 
 ---
 
-## 5. PHẦN III: MA TRẬN ĐỐI CHIẾU HIỆN TRẠNG PHÍA CLIENT-APP
-
-| Hạng mục | Tên Sự Kiện / Tín Hiệu | Trạng Thái Client-App | Vị Trí Code Hiện Tại | Đánh Giá & Hành Động Cần Làm |
-|---|---|:---:|---|---|
-| **Socket** | `ocr.completed` | ✅ Đã xử lý | `realtime_event.dart:54` | Đã ánh xạ `RealtimeEvent.ocrXong`, hiện Toast. |
-| **Socket** | `ocr.duplicate` | ✅ Đã xử lý | `realtime_event.dart:56` | Đã ánh xạ `RealtimeEvent.ocrTrung`, hiện cảnh báo. |
-| **Socket** | `sync.completed` | ✅ Đã xử lý | `realtime_event.dart:58` | Đã ánh xạ `RealtimeEvent.dongBoXong`, kéo Delta Pull im lặng. |
-| **Socket** | `account.upgraded` | ✅ Đã xử lý | `realtime_event.dart:60` | Đã ánh xạ `RealtimeEvent.taiKhoanNangCap`, gọi subscription-info. |
-| **Socket** | `account.permissions_updated` | ✅ Đã xử lý | `realtime_event.dart:61` | Đã ánh xạ `RealtimeEvent.taiKhoanNangCap`, làm mới quyền hạn. |
-| **Socket** | `account.force_logout` | ✅ Đã xử lý | `realtime_channel.dart:213` | Đã bắt luồng riêng `buocDangXuat`, hiện Dialog và xóa token. |
-| **Socket** | `system.maintenance_changed` | ❌ **BỎ SÓT** | `realtime_channel.dart:235` | **Bị vứt bỏ là "sự kiện lạ"**. Cần bổ sung xử lý mở Màn hình Bảo trì. |
-| **Socket** | `system.broadcast` | ❌ **BỎ SÓT** | `realtime_channel.dart:235` | **Bị vứt bỏ là "sự kiện lạ"**. Cần bổ sung In-App Banner toàn cục. |
-| **Socket** | `account.downgraded` | ❌ **BỎ SÓT** | `realtime_channel.dart:235` | **Bị vứt bỏ là "sự kiện lạ"**. Cần chuyển `GoiCubit` về Basic. |
-| **Socket** | `account.countdown` | ❌ **BỎ SÓT** | `realtime_channel.dart:235` | **Bị vứt bỏ là "sự kiện lạ"**. Cần cập nhật số ngày đếm ngược. |
-| **Socket** | `user.notification` | ❌ **BỎ SÓT** | `realtime_channel.dart:235` | **Bị vứt bỏ là "sự kiện lạ"**. Cần lưu vào danh sách thông báo. |
-| **HTTP** | 401 `ACCOUNT_INACTIVE` | ✅ Đã xử lý | `auth_interceptor.dart:103` | Bắt tại `tuBody401`, phát `taiKhoanBiTuChoi`. |
-| **HTTP** | 401 `ACCOUNT_DELETED` | ✅ Đã xử lý | `auth_interceptor.dart:103` | Bắt tại `tuBody401`, phát `taiKhoanBiTuChoi`. |
-| **HTTP** | 503 `MAINTENANCE_MODE` | ❌ **BỎ SÓT** | `auth_interceptor.dart:91` | Đang bỏ qua (`!= 401`), ném `DioException` gây lỗi mạng chung chung. |
-| **HTTP** | 503 `SERVER_OVERLOADED` | ❌ **BỎ SÓT** | `auth_interceptor.dart:91` | Chưa đọc `Retry-After: 5`, có nguy cơ spam retry làm lag server. |
-| **HTTP** | 429 `RETRY_LIMIT_EXCEEDED` | ❌ **BỎ SÓT** | `auth_interceptor.dart:91` | Chưa đọc `backoffSeconds: 10`, chưa đóng băng SyncQueue. |
-| **HTTP** | 403 `AIOPS_QUARANTINED` | ❌ **BỎ SÓT** | `auth_interceptor.dart:91` | Chưa hiển thị Popup cảnh báo an ninh và đếm ngược mở khóa. |
-| **HTTP** | 403 `FEATURE_DISABLED` | ❌ **BỎ SÓT** | `auth_interceptor.dart:91` | Chưa hiển thị BottomSheet mời nâng cấp gói Premium. |
-| **Handshake**| Socket Connect Error | ❌ **BỎ SÓT** | `realtime_channel.dart:178` | Chỉ in log `debugPrint`, không kiểm tra `err.data` để đăng xuất sớm. |
+### 5.9. WebSocket Handshake Rejection — Lỗi Bắt Tay Xác Thực Socket
+* **Phát sinh từ:** `io.use` trong `src/Backend/core/socket.js`
+* **Cơ chế phản hồi:** Khi Client kết nối socket với token sai, hết hạn hoặc tài khoản bị khóa:
+  ```javascript
+  next(Object.assign(new Error("Authentication error: Tài khoản đã bị vô hiệu hóa"), {
+    data: { code: 'ACCOUNT_INACTIVE', idaccount: 50, reason_inactive: '...' }
+  }));
+  ```
+* **Xử lý trên Client-app:** Lắng nghe sự kiện `socket.on('connect_error')`, đọc `err.data.code` để thực hiện làm mới token hoặc đăng xuất theo đúng nghiệp vụ.
 
 ---
 
-## 6. PHẦN IV: CHECKLIST & HƯỚNG DẪN THỰC THI CHO DEV CLIENT-APP
+## 6. PHẦN III: PHÂN ĐỊNH CÁC SỰ KIỆN DÀNH RIÊNG CHO QUẢN TRỊ VIÊN (ADMIN-WEB ONLY)
 
-Để hoàn thiện 100% việc tiếp nhận thông báo và xử lý sự kiện, thành viên phụ trách Client-app cần thực hiện 4 bước sau:
+> ⚠️ **LƯU Ý DÀNH CHO DEV CLIENT-APP:**  
+> Toàn bộ các sự kiện dưới đây được máy chủ phát vào kênh riêng biệt `admin_room`. **Client-app tuyệt đối KHÔNG lắng nghe các sự kiện này** để tránh lãng phí tài nguyên và rò rỉ dữ liệu vận hành nội bộ:
 
-### Bước 1: Mở Rộng `realtime_event.dart`
-Bổ sung các enum mới và ánh xạ trong `realtimeEventFromName`:
-```dart
-enum RealtimeEvent {
-  ocrXong,
-  ocrTrung,
-  dongBoXong,
-  taiKhoanNangCap,
-  baoTriThayDoi,     // system.maintenance_changed (MỚI)
-  thongBaoHeThong,    // system.broadcast (MỚI)
-  taiKhoanHaCap,     // account.downgraded (MỚI)
-  demNguocXoa,       // account.countdown (MỚI)
-  thongBaoCaNhan,    // user.notification (MỚI)
-}
-```
-
-### Bước 2: Nâng Cấp `realtime_channel.dart`
-Trong hàm `_khiCoSuKien(String ten, dynamic payload)`:
-* Với các sự kiện mang payload thông điệp quan trọng như `system.maintenance_changed` và `system.broadcast`, bổ sung một Stream riêng `Stream<ThongBaoHeThong> get thongBaoHeThongStream` để truyền tải dữ liệu `reason`, `isEmergency`, `title`, `message` lên tầng UI.
-* Trong `onConnectError`: Kiểm tra nếu lỗi có `code == 'ACCOUNT_INACTIVE'` hoặc `'ACCOUNT_DELETED'` thì gọi `_buocDangXuatController.add(...)` ngay lúc khởi động.
-
-### Bước 3: Nâng Cấp `auth_interceptor.dart` (Bắt Mã 503, 429, 403)
-Tại hàm `onError(DioException err, ErrorInterceptorHandler handler)`:
-```dart
-// 1. Bắt chế độ bảo trì khẩn cấp HTTP 503 MAINTENANCE_MODE
-if (err.response?.statusCode == 503 && err.response?.data?['code'] == 'MAINTENANCE_MODE') {
-  _phatTinHieuBaoTri(err.response?.data);
-  return handler.next(err);
-}
-
-// 2. Bắt cắt tải thông minh HTTP 503 SERVER_OVERLOADED
-if (err.response?.statusCode == 503 && err.response?.data?['code'] == 'SERVER_OVERLOADED') {
-  final waitSec = int.tryParse(err.response?.headers.value('retry-after') ?? '5') ?? 5;
-  _apDungBackoff(waitSec);
-  return handler.next(err);
-}
-
-// 3. Bắt tường lửa phong tỏa HTTP 403 AIOPS_QUARANTINED
-if (err.response?.statusCode == 403 && err.response?.data?['code'] == 'AIOPS_QUARANTINED') {
-  _phatTinHieuPhongToa(err.response?.data);
-  return handler.next(err);
-}
-
-// 4. Bắt giới hạn tính năng HTTP 403 FEATURE_DISABLED
-if (err.response?.statusCode == 403 && err.response?.data?['data']?['code'] == 'FEATURE_DISABLED') {
-  _moModalNangCapPremium(err.response?.data?['data']);
-  return handler.next(err);
-}
-```
-
-### Bước 4: Xây Dựng Màn Hình Bảo Trì Toàn Cục & Dialog Cảnh Báo An Ninh
-* **Màn hình Bảo Trì (`MaintenanceScreen`):** Lắng nghe từ `thongBaoHeThongStream` và tín hiệu 503. Tự động hiển thị đè lên toàn bộ app khi `isMaintenanceActive = true`.
-* **Dialog Mời Nâng Cấp Premium:** Mở tự động khi nhận mã `FEATURE_DISABLED` giúp người dùng hiểu rõ lý do và kích hoạt mua gói ngay.
+1. `admin.user_registered`: Phát khi có tài khoản người dùng mới tạo thành công.
+2. `admin.user_logged_in`: Phát khi có người dùng đăng nhập thành công (phục vụ biểu đồ Active Users).
+3. `admin.user_status_changed`: Phát khi trạng thái tài khoản chuyển đổi (`Active`, `Inactive`, `PendingDelete`).
+4. `admin.category_updated`: Phát khi Admin tạo/sửa/xóa danh mục mặc định của hệ thống.
+5. `admin.maintenance_changed`: Phát riêng cho Admin Dashboard cập nhật giao diện điều hành bảo trì.
+6. `admin.metrics_stream`: Luồng nhịp tim thông số phần cứng CPU, RAM, Event Loop lag phát 3 giây/lần.
+7. `admin.notification`: Cảnh báo quản trị khẩn cấp (Overload, Security Alert).
+8. `admin.security_blocked`: Thông báo tường lửa Sentinel vừa phong tỏa một IP vi phạm.
+9. `admin.quarantine_updated`: Báo hiệu danh sách phong tỏa có sự thay đổi.
+10. `admin.anomaly_detected`: AI phát hiện dị thường truy cập của người dùng.
+11. `payment.order_created`, `payment.status_changed`, `payment.order_paid`, `payment.refund_pending`, `payment.amount_mismatch`: Các biến động đơn hàng phục vụ quản lý doanh thu Admin.
+12. `audit_activity`: Nhật ký thao tác quản trị ghi nhận vào Audit Log.
 
 ---
 
-> 🎯 **KẾT LUẬN & BÀN GIAO:**  
-> Tài liệu này là cơ sở kỹ thuật chính thức đã được đối soát 100% với mã nguồn Backend và Admin-web đang chạy thực tế. Thành viên phát triển Client-app có thể bám sát tài liệu này để triển khai hoàn thiện việc đồng bộ và phản ứng sự kiện cho ứng dụng di động.
+## 7. PHẦN IV: MA TRẬN ĐỐI CHIẾU HIỆN TRẠNG PHÍA CLIENT-APP
+
+| Tên Sự Kiện / Tín Hiệu | Hiện Trạng Client-App | Ánh Xạ Trong `realtime_event.dart` | Hành Động Cần Bổ Sung Phía Client-App |
+|---|:---:|:---:|---|
+| `x-device-name` (Header) | ❌ **CHƯA CÓ** | N/A (Header HTTP) | Thêm `device_info_plus`, tự động chèn tên thiết bị vào Dio Interceptor. |
+| `system.maintenance_changed` | ❌ **BỎ SÓT** | Chưa khai báo enum | Bổ sung enum `baoTriThayDoi`, mở `MaintenanceScreen` khi `active = true`. |
+| `system.broadcast` | ❌ **BỎ SÓT** | Chưa khai báo enum | Bổ sung enum `thongBaoHeThong`, hiển thị In-App Banner và lưu SQLite. |
+| `account.upgraded` | ✅ ĐÃ CÓ | `RealtimeEvent.taiKhoanNangCap` | Đã đón nhận, gọi `/subscription-info` cập nhật `GoiCubit`. |
+| `account.downgraded` | ❌ **BỎ SÓT** | Chưa khai báo enum | Bổ sung enum `taiKhoanHaCap`, cập nhật `GoiCubit` về Basic. |
+| `account.countdown` | ❌ **BỎ SÓT** | Chưa khai báo enum | Bổ sung enum `demNguocXoa`, hiển thị Banner cam đếm ngược 30 ngày. |
+| `sync.completed` | ✅ ĐÃ CÓ | `RealtimeEvent.dongBoXong` | Đã đón nhận, kích hoạt kéo Delta Pull ngầm (im lặng). |
+| `ocr.completed` | ✅ ĐÃ CÓ | `RealtimeEvent.ocrXong` | Đã đón nhận, hiện Toast và kích hoạt sync kéo giao dịch mới. |
+| `ocr.duplicate` | ✅ ĐÃ CÓ | `RealtimeEvent.ocrTrung` | Đã đón nhận, hiện Dialog cảnh báo vàng. |
+| `payment.success` | ✅ ĐÃ CÓ | `RealtimeEvent.donThanhToanDoi` | Đã gộp trong enum đơn thanh toán, đóng popup QR. |
+| `payment.order_cancelled` | ✅ ĐÃ CÓ | `RealtimeEvent.donThanhToanDoi` | Đã gộp trong enum đơn thanh toán. |
+| `payment.order_expired` | ✅ ĐÃ CÓ | `RealtimeEvent.donThanhToanDoi` | Đã gộp trong enum đơn thanh toán. |
+| `payment.refunded` | ✅ ĐÃ CÓ | `RealtimeEvent.donThanhToanDoi` | Đã gộp trong enum đơn thanh toán. Cần thêm nút xem biên lai. |
+| `payment.overpaid_confirmation` | ✅ ĐÃ CÓ | `RealtimeEvent.donThanhToanDoi` | Đã gộp trong enum đơn thanh toán. |
+| `payment.underpaid_warning` | ✅ ĐÃ CÓ | `RealtimeEvent.donThanhToanDoi` | Đã gộp trong enum đơn thanh toán. |
+| `bank_transaction.incoming` | 🔇 BỎ QUA | `null` (Bỏ qua chuẩn) | Giữ nguyên hành vi bỏ qua (Module Bank đã dừng). |
+| HTTP 503 `MAINTENANCE_MODE` | ❌ **BỎ SÓT** | Dio Interceptor | Bắt mã 503 tại `AuthInterceptor`, mở `MaintenanceScreen`. |
+| HTTP 503 `SERVER_OVERLOADED` | ❌ **BỎ SÓT** | Dio Interceptor | Đọc `Retry-After`, đếm ngược tự động thử lại. |
+| HTTP 429 `RETRY_LIMIT_EXCEEDED`| ❌ **BỎ SÓT** | Dio Interceptor | Dừng lặp request, thông báo người dùng tạm nghỉ. |
+| HTTP 403 `AIOPS_QUARANTINED` | ❌ **BỎ SÓT** | Dio Interceptor | Hiển thị Dialog phong tỏa và thời gian mở khóa. |
+| HTTP 403 `FEATURE_DISABLED` | ❌ **BỎ SÓT** | Dio Interceptor | Hiển thị BottomSheet mời nâng cấp gói Premium. |
+| HTTP 401 `ACCOUNT_INACTIVE` | ⚠️ BÁN PHẦN | `buoc_dang_xuat.dart` | Cần hiển thị đúng chuỗi `reason_inactive` của Admin từ payload. |
+| HTTP 401 `ACCOUNT_DELETED` | ⚠️ BÁN PHẦN | `buoc_dang_xuat.dart` | Bắt buộc gọi `purgeAccountData()` xóa sạch SQLite. |
+
+---
+
+## 8. PHẦN V: CHECKLIST & HƯỚNG DẪN THỰC THI CHO DEV CLIENT-APP (FLUTTER)
+
+- [ ] **1. Tích hợp Thu Thập Thiết Bị (Device Tracking):**
+  - Khai báo `device_info_plus: ^10.1.0` trong `pubspec.yaml`.
+  - Viết `DeviceInfoService.getDeviceName()` chuẩn hóa chuỗi $\le 150$ ký tự.
+  - Thêm `DeviceHeaderInterceptor` gắn `x-device-name` cho mọi request Dio.
+- [ ] **2. Mở rộng `realtime_event.dart`:**
+  - Bổ sung các case vào `realtimeEventFromName()`:
+    + `system.maintenance_changed` $\longrightarrow$ `RealtimeEvent.baoTriThayDoi`
+    + `system.broadcast` $\longrightarrow$ `RealtimeEvent.thongBaoHeThong`
+    + `account.downgraded` $\longrightarrow$ `RealtimeEvent.taiKhoanHaCap`
+    + `account.countdown` $\longrightarrow$ `RealtimeEvent.demNguocXoa`
+- [ ] **3. Cập nhật `AuthInterceptor` (Dio Chốt Chặn):**
+  - Bắt HTTP 503 với `code == 'MAINTENANCE_MODE'` $\longrightarrow$ điều hướng tới `MaintenanceScreen`.
+  - Bắt HTTP 503 với `code == 'SERVER_OVERLOADED'` $\longrightarrow$ kích hoạt Backoff đếm ngược theo header `Retry-After`.
+  - Bắt HTTP 403 với `code == 'AIOPS_QUARANTINED'` $\longrightarrow$ hiển thị Dialog cảnh báo an ninh Sentinel.
+  - Bắt HTTP 403 với `code == 'FEATURE_DISABLED'` $\longrightarrow$ mở BottomSheet nâng cấp gói.
+- [ ] **4. Tuân thủ Bảo Vệ Dữ Liệu Cá Nhân (Rule 9 & Nghị định 13/2023/NĐ-CP):**
+  - Khi nhận `account.force_logout` với `reason == 'ACCOUNT_DELETED'` hoặc HTTP 401 `ACCOUNT_DELETED`: Bắt buộc kích hoạt `purgeAccountData()` dọn dẹp sạch sẽ CSDL SQLite cục bộ.

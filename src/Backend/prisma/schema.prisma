@@ -53,6 +53,7 @@ model account {
   transaction  transaction[]
   payment_order payment_order[]
   payment_transaction payment_transaction[]
+  account_device_history account_device_history[]
 
   @@index([idrole], map: "idx_account_role")
   @@index([username], map: "idx_account_username")
@@ -589,4 +590,22 @@ model aiops_quarantine_incident_link {
   @@index([username], map: "idx_quarantine_link_username")
   @@index([detected_at(sort: Desc)], map: "idx_quarantine_link_detected_at")
   @@map("aiops_quarantine_incident_link")
-}
+}
+
+/// Bảng lưu vết lịch sử thiết bị và địa chỉ IP người dùng (2.21)
+model account_device_history {
+  id             BigInt   @id @default(autoincrement()) @map("id")
+  idaccount      Int      @map("idaccount")
+  device_name    String   @db.VarChar(150) @map("device_name")
+  ip_address     String   @db.VarChar(256) @map("ip_address")
+  user_agent     String?  @db.Text @map("user_agent")
+  first_seen_at  DateTime @default(now()) @db.Timestamp(6) @map("first_seen_at")
+  last_active_at DateTime @default(now()) @db.Timestamp(6) @map("last_active_at")
+
+  account        account  @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_device_history_account")
+
+  @@index([idaccount, last_active_at(sort: Desc)], map: "idx_device_history_account")
+  @@index([ip_address], map: "idx_device_history_ip")
+  @@map("account_device_history")
+}
+

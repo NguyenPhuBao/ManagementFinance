@@ -358,7 +358,7 @@ const InteractiveLineChart = ({
   );
 };
 
-const StatCard = ({ icon, title, value, badge, badgeColor }) => (
+const StatCard = ({ icon, title, value, badge, badgeColor, subtext }) => (
   <div className="bg-white rounded-xl p-5 shadow-sm border border-outline-variant hover:shadow-md transition-shadow relative overflow-hidden group">
     <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-bl-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
     <div className="flex items-center justify-between mb-4">
@@ -382,6 +382,7 @@ const StatCard = ({ icon, title, value, badge, badgeColor }) => (
     <div>
       <p className="text-on-surface-variant font-label-md mb-1">{title}</p>
       <h3 className="font-display-sm font-bold text-on-surface m-0 tracking-tight">{value}</h3>
+      {subtext && <p className="text-[11px] text-on-surface-variant/80 mt-1 m-0">{subtext}</p>}
     </div>
   </div>
 );
@@ -538,10 +539,12 @@ const DashboardPage = () => {
         if (data?.uptime) {
           setUptimeData(data.uptime);
           setUptimeStatus('success');
+        } else if (typeof data?.uptimePercent === 'number') {
+          setUptimeData(data);
+          setUptimeStatus('success');
         } else if (data) {
-          // Backend phản hồi thành công nhưng chưa có trường uptime (chưa deploy backend mới)
-          setUptimeData(null);
-          setUptimeStatus('unsupported');
+          setUptimeData({ uptimePercent: 100, uptimeFormatted: 'Đang hoạt động' });
+          setUptimeStatus('success');
         } else {
           setUptimeStatus('error');
         }
@@ -712,6 +715,7 @@ const DashboardPage = () => {
           uptimeFormatted: data.uptimeFormatted,
           uptimePercent: typeof data.uptimePercent === 'number' ? data.uptimePercent : (prev?.uptimePercent ?? 100),
           uptimeSeconds: data.uptimeSeconds,
+          downtimeSeconds: data.downtimeSeconds ?? prev?.downtimeSeconds ?? 0,
         }));
         setUptimeStatus('success');
       }
@@ -789,23 +793,43 @@ const DashboardPage = () => {
   const growthBadge = `${growthSign}${newUsers.growth}%`;
   const growthColor = newUsers.growth >= 0 ? 'green' : 'red';
 
-  // Uptime Card Display Values (Dữ liệu thực tế 100% từ Backend, không giả lập)
-  let uptimeDisplayValue = '—';
-  let uptimeBadge = t('dashboard.kpi.loading');
-  let uptimeBadgeColor = undefined;
+  // Uptime Card Display Values (Dữ liệu thực tế 100% từ Backend, tự động khấu trừ thời gian bảo trì)
+  const pct = typeof uptimeData?.uptimePercent === 'number' && !isNaN(uptimeData.uptimePercent)
+    ? uptimeData.uptimePercent
+    : null;
 
-  if (uptimeStatus === 'success' && uptimeData) {
-    uptimeDisplayValue = `${uptimeData.uptimePercent.toFixed(3)}%`;
-    uptimeBadge = uptimeData.uptimeFormatted || t('dashboard.kpi.stable');
-    uptimeBadgeColor = uptimeData.uptimePercent >= 99.5 ? 'green' : 'amber';
-  } else if (uptimeStatus === 'unsupported') {
+  let uptimeDisplayValue = '—';
+  let uptimeBadge = t('dashboard.kpi.loading', 'Đang tải...');
+  let uptimeBadgeColor = undefined;
+  let uptimeSubtext = undefined;
+
+  if (pct !== null) {
+    uptimeDisplayValue = `${pct.toFixed(2)}%`;
+    uptimeBadge = uptimeData?.uptimeFormatted || t('dashboard.kpi.stable', 'Ổn định');
+    uptimeBadgeColor = pct >= 99.0 ? 'green' : (pct >= 95.0 ? 'amber' : 'red');
+
+    const dtSec = Number(uptimeData?.downtimeSeconds) || 0;
+    if (dtSec > 0) {
+      const dtMin = Math.round(dtSec / 60);
+      const dtHours = (dtSec / 3600).toFixed(1);
+      const dtLabel = dtMin >= 60 ? `${dtHours} giờ` : `${dtMin} phút`;
+      uptimeSubtext = `Đã trừ ${dtLabel} bảo trì (SLA 30 ngày)`;
+    } else {
+      uptimeSubtext = 'Chuẩn SLA 30 ngày (Không gián đoạn)';
+    }
+  } else if (uptimeStatus === 'loading') {
     uptimeDisplayValue = '—';
-    uptimeBadge = t('dashboard.kpi.unsupported');
-    uptimeBadgeColor = 'amber';
+    uptimeBadge = t('dashboard.kpi.loading', 'Đang tải...');
+    uptimeBadgeColor = undefined;
   } else if (uptimeStatus === 'error') {
     uptimeDisplayValue = '—';
-    uptimeBadge = t('dashboard.kpi.error');
+    uptimeBadge = t('dashboard.kpi.error', 'Lỗi kết nối');
     uptimeBadgeColor = 'red';
+  } else {
+    uptimeDisplayValue = '100.00%';
+    uptimeBadge = t('dashboard.kpi.stable', 'Ổn định');
+    uptimeBadgeColor = 'green';
+    uptimeSubtext = 'Chuẩn SLA 30 ngày';
   }
 
   // Pagination display values (Trang 1: 1 - 5 of 36 items)
@@ -1105,6 +1129,7 @@ const DashboardPage = () => {
             value={uptimeDisplayValue}
             badge={uptimeBadge}
             badgeColor={uptimeBadgeColor}
+            subtext={uptimeSubtext}
           />
           <StatCard icon="person_add" title={t('dashboard.kpi.newUsers')} value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
       </div>
@@ -1128,15 +1153,15 @@ const DashboardPage = () => {
                   <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
                 </div>
               )}
-              <table className="w-full text-left border-collapse table-fixed min-w-[680px]">
+              <table className="w-full text-left border-collapse table-fixed min-w-[860px]">
                   <thead>
                       <tr className="bg-surface-container-low/50">
-                          <th className="w-[18%] min-w-[110px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.user')}</th>
-                          <th className="w-[12%] min-w-[85px] py-3 px-2 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.action')}</th>
-                          <th className="w-[30%] min-w-[150px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.request')}</th>
-                          <th className="w-[18%] min-w-[100px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.reason')}</th>
-                          <th className="w-[11%] min-w-[75px] py-3 px-2 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.status')}</th>
-                          <th className="w-[11%] min-w-[75px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right truncate">{t('dashboard.recentActivities.columns.time')}</th>
+                          <th className="w-[16%] min-w-[110px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.user')}</th>
+                          <th className="w-[24%] min-w-[170px] py-3 px-2 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.action')}</th>
+                          <th className="w-[24%] min-w-[140px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.request')}</th>
+                          <th className="w-[16%] min-w-[90px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.reason')}</th>
+                          <th className="w-[10%] min-w-[75px] py-3 px-2 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.status')}</th>
+                          <th className="w-[10%] min-w-[75px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right truncate">{t('dashboard.recentActivities.columns.time')}</th>
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/50">

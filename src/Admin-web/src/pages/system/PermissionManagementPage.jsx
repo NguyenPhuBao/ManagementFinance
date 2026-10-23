@@ -305,7 +305,7 @@ const PermissionManagementPage = () => {
       setShowConfirmModal(false);
       alert?.success?.(
         t('permissions.feedback.saveSuccess', { count: updates.length }) || `Đã cập nhật thành công ${updates.length} thiết lập phân quyền!`,
-        t('permissions.feedback.saveSuccessTitle', 'Phân Quyền Gói Cước')
+        t('permissions.feedback.saveSuccessTitle', 'Phân quyền dịch vụ')
       );
       await fetchPermissions();
     } catch (err) {

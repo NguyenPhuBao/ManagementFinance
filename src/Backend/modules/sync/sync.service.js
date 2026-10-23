@@ -43,14 +43,14 @@ const ENTITY_PK_MAP = {
 };
 
 // Dependency order to avoid Foreign Key violations:
-// Create/Update: category (10) -> wallet (20) -> budget/bill/goal (30) -> transaction (40)
-// Delete: transaction (60) -> budget/bill/goal (70) -> wallet (80) -> category (90)
+// Create/Update: category (10) -> wallet (20) -> goal (30) -> bill (31) -> budget (32) -> transaction (40)
+// Delete: transaction (60) -> budget (68) -> bill (69) -> goal (70) -> wallet (80) -> category (90)
 const ENTITY_PRIORITY = {
   category: 10,
   wallet: 20,
-  budget: 30,
-  bill: 30,
   goal: 30,
+  bill: 31,
+  budget: 32,
   transaction: 40,
 };
 

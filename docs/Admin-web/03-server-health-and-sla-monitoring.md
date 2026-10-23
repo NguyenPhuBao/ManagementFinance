@@ -1,6 +1,7 @@
 # 🖥️ Chức Năng 03: Giám Sát Sức Khỏe Máy Chủ & Đo Lường Uptime SLA 30 Ngày (Server Health & SLA Monitoring)
 
 > **Mã chức năng:** `ADMIN-FEAT-03`  
+> **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/components/common/ServerHealthPanel.jsx`, `DashboardPage.jsx`  
 > - Backend: `src/Backend/modules/admin/admin.service.js`, `src/Backend/core/resilience/event-loop-monitor.js`, `src/Backend/core/resilience/db-bulkhead.js`, `src/Backend/index.js`  

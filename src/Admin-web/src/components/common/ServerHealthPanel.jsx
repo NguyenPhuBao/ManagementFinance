@@ -77,8 +77,9 @@ const UptimeWidget = ({ uptime }) => {
     );
   }
 
-  const { uptimeFormatted, uptimePercent, startedAt, slaWindowDays } = uptime;
-  const pct = uptimePercent ?? 0;
+  const { uptimeFormatted, uptimePercent, startedAt, slaWindowDays, downtimeSeconds } = uptime;
+  const pct = Number(uptimePercent ?? 0);
+  const downtimeSec = Number(downtimeSeconds ?? 0);
 
   // Màu sắc theo ngưỡng SLA
   const barColor = pct >= 99.5 ? 'bg-emerald-500' : pct >= 95 ? 'bg-amber-400' : 'bg-red-500';
@@ -102,14 +103,14 @@ const UptimeWidget = ({ uptime }) => {
       <p className="text-on-surface font-semibold flex items-center gap-1">
         <span className="material-symbols-outlined text-[14px] text-emerald-600">timer</span>
         {t('serverHealth.uptime', 'Uptime & Tính liên tục')}
-        <span className="ml-auto text-[10px] text-gray-400 font-normal">SLA {slaWindowDays}d</span>
+        <span className="ml-auto text-[10px] text-gray-400 font-normal">SLA {slaWindowDays || 30}d</span>
       </p>
 
       {/* Thanh progress uptime */}
       <div className="flex flex-col gap-1">
         <div className="flex justify-between items-center">
           <span className="text-gray-500">{t('serverHealth.continuous', 'Khả năng sẵn sàng (SLA):')}</span>
-          <span className={`font-bold text-[13px] ${textColor}`}>{pct.toFixed(3)}%</span>
+          <span className={`font-bold text-[13px] ${textColor}`}>{pct.toFixed(2)}%</span>
         </div>
         <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
           <div
@@ -119,10 +120,22 @@ const UptimeWidget = ({ uptime }) => {
         </div>
       </div>
 
+      {/* Chi tiết khấu trừ bảo trì nếu có */}
+      {downtimeSec > 0 && (
+        <div className="flex justify-between text-[11px] text-amber-600 dark:text-amber-400">
+          <span>{t('serverHealth.maintenanceDowntime', 'Đã trừ bảo trì:')}</span>
+          <span className="font-semibold">
+            {downtimeSec >= 3600
+              ? `${(downtimeSec / 3600).toFixed(1)} giờ`
+              : `${Math.ceil(downtimeSec / 60)} phút`}
+          </span>
+        </div>
+      )}
+
       {/* Chi tiết */}
       <div className="flex justify-between pt-0.5">
         <span>{t('serverHealth.runtime', 'Thời gian chạy liên tục:')}</span>
-        <span className="font-semibold text-on-surface">{uptimeFormatted}</span>
+        <span className="font-semibold text-on-surface">{uptimeFormatted || `${pct.toFixed(2)}%`}</span>
       </div>
       <div className="flex justify-between">
         <span>{t('serverHealth.startedAt', 'Khởi động lúc:')}</span>
@@ -225,8 +238,9 @@ const ServerHealthPanel = () => {
         ...prev,
         environment: data.environment || prev?.environment,
         uptime: {
-          uptimeFormatted: data.uptimeFormatted,
+          uptimeFormatted: data.uptimeFormatted || prev?.uptime?.uptimeFormatted,
           uptimePercent: typeof data.uptimePercent === 'number' ? data.uptimePercent : (prev?.uptime?.uptimePercent ?? 100),
+          downtimeSeconds: typeof data.downtimeSeconds === 'number' ? data.downtimeSeconds : (prev?.uptime?.downtimeSeconds ?? 0),
           startedAt: prev?.uptime?.startedAt || null,
           slaWindowDays: 30,
         },
@@ -478,7 +492,7 @@ const ServerHealthPanel = () => {
                   }`}>
                     {maintenance.isEmergency
                       ? t('broadcast.banner.emergencyBadge', 'Khẩn cấp')
-                      : t('broadcast.banner.scheduledBadge', 'Theo lịch')}
+                      : t('broadcast.banner.silentBadge', 'Thông thường')}
                   </span>
                 )}
               </div>

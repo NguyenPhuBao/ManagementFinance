@@ -1,5 +1,6 @@
 const { randomUUID } = require('crypto');
 const { prisma } = require('../../config/db');
+const { encrypt, isEncrypted } = require('../../utils/crypto.util');
 
 const adminRepository = {
   async countUsers() {
@@ -270,17 +271,26 @@ const adminRepository = {
   },
 
   async deleteCategory(idcategory) {
-    // CSDL mới: xóa mềm (Delete_at) và unlink category con nếu là group
-    const cat = await prisma.category.findUnique({ where: { idcategory } });
-    if (cat && cat.is_group) {
-      await prisma.category.updateMany({
-        where: { idgroup: idcategory },
-        data: { idgroup: null, update_at: new Date() },
-      });
-    }
+    // Xóa mềm danh mục hệ thống: bảo toàn 100% dữ liệu và cấu trúc liên kết (không unlink idgroup của category con)
     return prisma.category.update({
       where: { idcategory },
-      data: { delete_at: new Date(), update_at: new Date() },
+      data: {
+        delete_at: new Date(),
+        update_at: new Date(),
+        server_update_at: new Date(),
+      },
+    });
+  },
+
+  async restoreCategory(idcategory) {
+    // Khôi phục danh mục hệ thống: bỏ cờ xóa mềm và giữ nguyên 100% mọi dữ liệu hiện có
+    return prisma.category.update({
+      where: { idcategory },
+      data: {
+        delete_at: null,
+        update_at: new Date(),
+        server_update_at: new Date(),
+      },
     });
   },
 
@@ -452,7 +462,26 @@ const adminRepository = {
     });
   },
 
-  async createAdminAccount({ username, email, passwordHash, pinHash, createdByAdminId }) {
+  async createAdminAccount({
+    username,
+    email,
+    passwordHash,
+    pinHash,
+    createdByAdminId,
+    fullName,
+    phone,
+    address,
+    countryCode,
+  }) {
+    const rawPhone = phone ? String(phone).trim() : null;
+    const rawAddress = address ? String(address).trim() : null;
+    const rawCountryCode = countryCode ? String(countryCode).trim().slice(0, 4) : '+84';
+    const rawFullName = fullName && String(fullName).trim() ? String(fullName).trim() : `Quản trị viên ${username.trim()}`;
+
+    // Mã hóa số điện thoại & địa chỉ AES-256-GCM để tuân thủ trigger CSDL trg_check_phone_encrypted & Nghị định 13
+    const encPhone = rawPhone ? (isEncrypted(rawPhone) ? rawPhone : encrypt(rawPhone)) : null;
+    const encAddress = rawAddress ? (isEncrypted(rawAddress) ? rawAddress : encrypt(rawAddress)) : null;
+
     return prisma.$transaction(async (tx) => {
       const newAccount = await tx.account.create({
         data: {
@@ -473,8 +502,11 @@ const adminRepository = {
       const newUser = await tx.User.create({
         data: {
           idaccount: newAccount.idaccount,
-          fullname: `Quản trị viên ${username.trim()}`,
+          fullname: rawFullName,
           email: email.trim(),
+          phone: encPhone,
+          address: encAddress,
+          country_code: rawCountryCode,
           create_at: new Date(),
           update_at: new Date(),
         },
@@ -485,6 +517,9 @@ const adminRepository = {
         username: newAccount.username,
         email: newAccount.email,
         fullname: newUser.fullname,
+        phone: rawPhone,
+        address: rawAddress,
+        country_code: newUser.country_code,
         idrole: newAccount.idrole,
         status: newAccount.status,
         is_first_login: newAccount.is_first_login,

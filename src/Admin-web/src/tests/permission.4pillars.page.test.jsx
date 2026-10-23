@@ -144,10 +144,10 @@ describe('Admin-web 4 Pillars Permission Suite — 2-Tier Testing (Rule 11 Compl
       expect(screen.getByText('Xuất Dữ liệu & Báo cáo')).toBeInTheDocument();
       expect(screen.getByText('Trợ lý Tài chính AI Copilot')).toBeInTheDocument();
 
-      // Kiểm tra slug id dạng code
-      expect(screen.getByText('wallets')).toBeInTheDocument();
-      expect(screen.getByText('export_reports')).toBeInTheDocument();
-      expect(screen.getByText('ai_assistant')).toBeInTheDocument();
+      // Kiểm tra f.name và badges hiển thị đầy đủ, không hiển thị trực tiếp f.id dạng code trên giao diện
+      expect(screen.queryByText('wallets')).not.toBeInTheDocument();
+      expect(screen.queryByText('export_reports')).not.toBeInTheDocument();
+      expect(screen.queryByText('ai_assistant')).not.toBeInTheDocument();
 
       // Kiểm tra badges
       const limitBadges = screen.getAllByText('LIMIT');
