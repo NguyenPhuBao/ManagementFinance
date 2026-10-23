@@ -141,6 +141,21 @@ const adminController = {
     }
   },
 
+  async restoreCategory(req, res) {
+    try {
+      const id = req.params.id;
+      if (!id || typeof id !== 'string' || id.length < 32) {
+        return ResponseHandler.badRequest(res, 'ID danh mục không hợp lệ');
+      }
+      const result = await adminService.restoreCategory(id);
+      return ResponseHandler.success(res, result, 'Khôi phục danh mục thành công');
+    } catch (error) {
+      logger.error('restoreCategory failed', { error: error.message });
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
   async getLoginStats(req, res) {
     try {
       const result = await adminService.getLoginStats(req.query);
@@ -168,31 +183,39 @@ const adminController = {
 
   setMaintenanceStatus(req, res) {
     const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
-    const { active, reason, isEmergency, scheduledAt, scheduledEndAt } = req.body || {};
+    const { active, reason, isEmergency, isUpgrade, type, scheduledAt, scheduledEndAt } = req.body || {};
     const adminUser = req.user?.username || req.user?.fullname || 'admin';
 
-    // 1. Xử lý lên lịch bảo trì trong tương lai
+    // 1. Xử lý lên lịch bảo trì / nâng cấp trong tương lai
     if (scheduledAt) {
       try {
+        const isUpgradeFlag = Boolean(isUpgrade || type === 'UPGRADE');
         const status = defaultMaintenanceManager.scheduleMaintenance({
           scheduledAt,
           scheduledEndAt,
           reason,
           isEmergency,
+          isUpgrade: isUpgradeFlag,
+          type: type || (isUpgradeFlag ? 'UPGRADE' : 'SCHEDULED'),
           createdBy: adminUser,
         });
-        return ResponseHandler.success(res, status, 'Đã lên lịch bảo trì hệ thống thành công');
+        return ResponseHandler.success(res, status, isUpgradeFlag ? 'Đã lên lịch nâng cấp hệ thống thành công' : 'Đã lên lịch bảo trì hệ thống thành công');
       } catch (err) {
         return ResponseHandler.badRequest(res, err.message);
       }
     }
 
-    // 2. Kích hoạt hoặc tắt bảo trì tức thì (mặc định luôn là bảo trì khẩn cấp)
+    // 2. Kích hoạt hoặc tắt bảo trì tức thì (mặc định luôn là bảo trì khẩn cấp nếu không phải nâng cấp)
     try {
-      const emergencyFlag = isEmergency !== undefined ? Boolean(isEmergency) : true;
-      const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser, { isEmergency: emergencyFlag });
+      const isUpgradeFlag = Boolean(isUpgrade || type === 'UPGRADE');
+      const emergencyFlag = isUpgradeFlag ? false : (isEmergency !== undefined ? Boolean(isEmergency) : true);
+      const status = defaultMaintenanceManager.setMaintenance(active, reason, adminUser, {
+        isEmergency: emergencyFlag,
+        isUpgrade: isUpgradeFlag,
+        type: type || (isUpgradeFlag ? 'UPGRADE' : (emergencyFlag ? 'EMERGENCY' : 'ROUTINE')),
+      });
       const msg = active
-        ? 'Đã kích hoạt chế độ bảo trì khẩn cấp'
+        ? (isUpgradeFlag ? 'Đã kích hoạt chế độ nâng cấp hệ thống' : 'Đã kích hoạt chế độ bảo trì khẩn cấp')
         : 'Đã tắt chế độ bảo trì — Hệ thống hoạt động bình thường';
       return ResponseHandler.success(res, status, msg);
     } catch (err) {
@@ -200,9 +223,25 @@ const adminController = {
     }
   },
 
-  cancelScheduledMaintenance(req, res) {
+  async cancelScheduledMaintenance(req, res) {
     const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
-    defaultMaintenanceManager.cancelScheduledMaintenance();
+    const { defaultMaintenanceRepository } = require('./maintenance.repository');
+    const id = req.params?.id || req.body?.id || req.query?.id || null;
+
+    if (id) {
+      try {
+        const queryRes = await defaultMaintenanceRepository.getHistory({ limit: 100 });
+        const record = (queryRes.data || []).find((x) => x.id === Number(id) || x.id === id);
+        if (record && record.status === 'SCHEDULED' && record.started_at) {
+          const hoursUntilStart = (new Date(record.started_at).getTime() - Date.now()) / (3600 * 1000);
+          if (hoursUntilStart < 4) {
+            return ResponseHandler.badRequest(res, 'Chỉ có thể hủy lịch bảo trì trước thời điểm bắt đầu ít nhất 4 tiếng!');
+          }
+        }
+      } catch (_) {}
+    }
+
+    await defaultMaintenanceManager.cancelScheduledMaintenance(id);
     return ResponseHandler.success(res, defaultMaintenanceManager.getStatus(), 'Đã hủy lịch bảo trì hệ thống');
   },
 
@@ -255,6 +294,72 @@ const adminController = {
     } catch (error) {
       const statusCode = error.statusCode || 500;
       logger.error('updatePermissions failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async resetPermissions(req, res) {
+    try {
+      const result = await adminService.resetPermissionsToDefault(req.user);
+      return ResponseHandler.success(res, result, 'Khôi phục phân quyền về mặc định thành công');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('resetPermissions failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async verifySecurityAction(req, res) {
+    try {
+      const result = await adminService.verifySecurityAction(req.body, req.user);
+      return ResponseHandler.success(res, result, 'Xác thực hành động bảo mật thành công');
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('verifySecurityAction failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async changeAdminPin(req, res) {
+    try {
+      const result = await adminService.changeAdminPin(req.body, req.user);
+      return ResponseHandler.success(res, result, result.message);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('changeAdminPin failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async firstLoginSetup(req, res) {
+    try {
+      const result = await adminService.firstLoginSetup(req.body, req.user);
+      return ResponseHandler.success(res, result, result.message);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('firstLoginSetup failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async changeAdminPassword(req, res) {
+    try {
+      const result = await adminService.changeAdminPassword(req.body, req.user);
+      return ResponseHandler.success(res, result, result.message);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('changeAdminPassword failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
+  async createAdminAccount(req, res) {
+    try {
+      const result = await adminService.createAdminAccount(req.body, req.user);
+      return ResponseHandler.created(res, result, result.message);
+    } catch (error) {
+      const statusCode = error.statusCode || 500;
+      logger.error('createAdminAccount failed', { error: error.message });
       return ResponseHandler.error(res, error.message, statusCode);
     }
   },

@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import AIOpsPage from '../pages/system/AIOpsPage';
 import aiopsApi from '../api/aiops.api';
 import adminApi from '../api/admin.api';
@@ -260,7 +260,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
       expect(aiopsApi.getIncidents).toHaveBeenCalled();
       expect(screen.getAllByText(/2 sự cố/i).length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('113.161.xxx.xxx')).toBeInTheDocument();
-      expect(screen.getByText('42.112.xxx.xxx')).toBeInTheDocument();
+      expect(screen.getByText('Lưu lượng mạng')).toBeInTheDocument();
       expect(screen.getByText(/attacker_victim/)).toBeInTheDocument();
       expect(screen.getByText(/ĐANG DIỄN RA/)).toBeInTheDocument();
       expect(screen.getByText(/ĐÃ GIẢM THIỂU/)).toBeInTheDocument();
@@ -274,7 +274,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
       expect(screen.getAllByText(/2 sự cố/i).length).toBeGreaterThanOrEqual(1);
     });
 
-    const authBtn = screen.getByRole('button', { name: /🛡️ Xác thực/i });
+    const authBtn = screen.getByRole('button', { name: /🛡️\s*Xác thực/i });
     fireEvent.click(authBtn);
 
     await waitFor(() => {
@@ -362,7 +362,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     await waitFor(() => {
       expect(aiopsApi.setScale).toHaveBeenCalledWith(2500);
       expect(window.localStorage.getItem('aiops_target_concurrency')).toBe('2500');
-      expect(screen.getByText(/2,500 CCU|2\.500 CCU/i)).toBeInTheDocument();
+      expect(screen.getByDisplayValue('2500')).toBeInTheDocument();
     });
   });
 
@@ -415,7 +415,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     });
   });
 
-  it('5.12. Hiển thị thẻ Tình Trạng Hệ Thống phía trên Target Concurrency Scaler với Badge xanh lá nhạt', async () => {
+  it('5.12. Box Tình Trạng Hệ Thống đã được loại bỏ hoàn toàn khỏi giao diện theo yêu cầu PO', async () => {
     adminApi.getMaintenanceStatus.mockResolvedValueOnce({
       data: {
         active: false,
@@ -426,16 +426,15 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Tình Trạng Hệ Thống:')).toBeInTheDocument();
-      expect(screen.getByText('Đang hoạt động')).toBeInTheDocument();
+      expect(screen.queryByText('Tình Trạng Hệ Thống:')).toBeNull();
     });
   });
 
-  it('5.13. Cập nhật thẻ Tình Trạng Hệ Thống sang "Đang bảo trì" khi nhận Socket admin.maintenance_changed', async () => {
+  it('5.13. Không còn hiển thị thẻ Tình Trạng Hệ Thống khi nhận Socket admin.maintenance_changed', async () => {
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Tình Trạng Hệ Thống:')).toBeInTheDocument();
+      expect(screen.queryByText('Tình Trạng Hệ Thống:')).toBeNull();
     });
 
     const mHandler = socketListeners['admin.maintenance_changed'];
@@ -452,9 +451,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Đang bảo trì')).toBeInTheDocument();
-      expect(screen.getByText(/Bảo trì khẩn cấp nâng cấp cụm DB/i)).toBeInTheDocument();
-      expect(screen.getByText('Điều Hành Bảo Trì')).toBeInTheDocument();
+      expect(screen.queryByText('Tình Trạng Hệ Thống:')).toBeNull();
     });
   });
 
@@ -508,7 +505,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
 
     // Hiển thị badge chỉ đo lường
     expect(
-      screen.getByText(/Chế độ chỉ đo lường — Bỏ qua khỏi Threat Score/i)
+      screen.getByText(/Bỏ qua khỏi Threat Score/i)
     ).toBeInTheDocument();
     expect(
       screen.getByText(/Đã tắt phòng vệ — Chỉ đo lường/i)
@@ -666,13 +663,12 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
 
     render(<AIOpsPage />);
 
-    // Tầng 1: Đảm bảo giao diện hiển thị toggle vector Resource
-    await waitFor(() => {
-      expect(screen.getByTestId('toggle-vector-resource')).toBeInTheDocument();
-    });
+    // Tầng 1: Đảm bảo giao diện nạp xong dữ liệu và hiển thị toggle vector Resource
+    await waitFor(() => expect(aiopsApi.getStatus).toHaveBeenCalled());
+    const toggleResource = await screen.findByTestId('toggle-vector-resource');
+    expect(toggleResource).toBeInTheDocument();
 
     // Thao tác: Bấm vào toggle của Vector 4 (Resource)
-    const toggleResource = screen.getByTestId('toggle-vector-resource');
     fireEvent.click(toggleResource);
 
     // Xác nhận Modal mở ra
@@ -680,8 +676,9 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
       expect(screen.getByText('Xác nhận TẮT Vector')).toBeInTheDocument();
     });
 
-    // Click nút xác nhận
-    const confirmBtn = screen.getByRole('button', { name: /Xác nhận TẮT/i });
+    // Click nút xác nhận trong Modal
+    const dialog = screen.getByRole('dialog', { name: /Xác nhận TẮT Vector/i });
+    const confirmBtn = within(dialog).getByRole('button', { name: /Xác nhận TẮT/i });
     fireEvent.click(confirmBtn);
 
     // Tầng 2: Kiểm tra System Impact & Behavioral Verification
@@ -691,7 +688,8 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
       // 2. Toggle state chuyển sang false
       expect(toggleResource.getAttribute('aria-checked')).toBe('false');
       // 3. Threat Score giảm xuống 5/100 (NORMAL)
-      expect(screen.getByText(/5\/100/i)).toBeInTheDocument();
+      expect(screen.getByTestId('threat-score-value')).toHaveTextContent('5');
+      expect(screen.getByText('/ 100')).toBeInTheDocument();
       // 4. Modal đóng hoàn toàn
       expect(screen.queryByText('Xác nhận TẮT Vector')).toBeNull();
     });
@@ -761,8 +759,8 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
           },
           {
             id: 'inc_traffic_admin',
-            code: 'TRAFFIC_ANOMALY_FLOOD',
-            vector: 'traffic',
+            code: 'AUTH_ANOMALY_FLOOD',
+            vector: 'auth',
             severity: 'HIGH',
             message: 'Lưu lượng cao từ máy local',
             status: 'ACTIVE',
@@ -786,8 +784,8 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
 
     // Tầng 1: UI Rendering — Hiển thị đúng Tên tài khoản, IP, và Huy hiệu bảo vệ
     await waitFor(() => {
-      // 1. Dòng 1 sự cố RAM: hiển thị tài khoản "Hệ thống nội bộ"
-      expect(screen.getByText('Hệ thống nội bộ')).toBeInTheDocument();
+      // 1. Dòng 1 sự cố RAM: hiển thị tài khoản "Hệ thống"
+      expect(screen.getAllByText('Hệ thống').length).toBeGreaterThanOrEqual(1);
 
       // 2. Dòng 2 sự cố Admin local: hiển thị TK admin_master
       expect(screen.getByText('admin_master')).toBeInTheDocument();
@@ -826,8 +824,8 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
         incidents: [
           {
             id: 'inc-dynamic-remote-admin',
-            code: 'ANOMALY_TRAFFIC_BURST',
-            vector: 'traffic',
+            code: 'ANOMALY_AUTH_BURST',
+            vector: 'auth',
             severity: 'MEDIUM',
             message: 'Tải lưu lượng lớn từ máy Admin văn phòng',
             status: 'ACTIVE',

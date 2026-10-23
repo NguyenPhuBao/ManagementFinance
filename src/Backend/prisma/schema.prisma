@@ -25,16 +25,21 @@ model account {
   email      String           @unique @db.VarChar(100) @map("Email")
   username   String           @db.VarChar(255) @map("Username")
   password   String           @db.VarChar(255) @map("Password")
+  pin_hash   String?          @db.VarChar(255) @map("pin_hash")
   status          String           @default("Active") @db.VarChar(20) @map("Status")
   type            String           @default("Basic") @db.VarChar(7) @map("Type")
   reason_inactive String?          @db.Text @map("Reason_Inactive")
   countdown       Int?             @map("Countdown")
   premium_expires_at DateTime?        @db.Timestamp(6) @map("premium_expires_at")
+  is_first_login  Boolean          @default(true) @map("is_first_login")
+  created_by_admin_id Int?         @map("created_by_admin_id")
   create_at       DateTime         @default(now()) @db.Timestamp(6) @map("Create_at")
   update_at  DateTime         @default(now()) @db.Timestamp(6) @map("Update_at")
   delete_at  DateTime?        @db.Timestamp(6) @map("Delete_at")
 
   role         role           @relation(fields: [idrole], references: [idrole], onUpdate: NoAction, map: "fk_account_role")
+  creator_admin account?      @relation("AdminCreatedBy", fields: [created_by_admin_id], references: [idaccount], onDelete: SetNull, onUpdate: NoAction, map: "fk_account_created_by_admin")
+  created_admins account[]    @relation("AdminCreatedBy")
   User         User?
   auditlog     auditlog[]
   otp_code     otp_code[]
@@ -48,6 +53,7 @@ model account {
   transaction  transaction[]
   payment_order payment_order[]
   payment_transaction payment_transaction[]
+  account_device_history account_device_history[]
 
   @@index([idrole], map: "idx_account_role")
   @@index([username], map: "idx_account_username")
@@ -77,6 +83,7 @@ model auditlog {
   idlog      Int       @id @default(autoincrement()) @map("Idlog")
   idaccount  Int       @map("Idaccount")
   request    String    @db.VarChar(200) @map("Request")
+  action     String?   @db.VarChar(255) @map("Action")
   req_status String    @default("Pass") @db.VarChar(12) @map("Req_status")
   reason     String?   @db.VarChar(200) @map("Reason")
   time_req   DateTime  @default(now()) @db.Timestamp(6) @map("TimeReq")
@@ -471,31 +478,35 @@ model payment_transaction {
 
 /// Bảng danh mục chức năng hệ thống (2.16)
 model feature {
-  id              String                    @id @db.VarChar(50) @map("id")
-  name            String                    @db.VarChar(100) @map("name")
-  description     String?                   @db.Text @map("description")
-  type            String                    @default("TOGGLE") @db.VarChar(20) @map("type")
-  category_group  String                    @default("Chức năng") @db.VarChar(50) @map("category_group")
-  default_limit   Int?                      @map("default_limit")
-  default_enabled Boolean                   @default(true) @map("default_enabled")
-  created_at      DateTime                  @default(now()) @db.Timestamp(6) @map("created_at")
-  updated_at      DateTime                  @default(now()) @db.Timestamp(6) @map("updated_at")
-  permissions     account_type_permission[]
+  id                       String                    @id @db.VarChar(50) @map("id")
+  name                     String                    @db.VarChar(100) @map("name")
+  description              String?                   @db.Text @map("description")
+  type                     String                    @default("TOGGLE") @db.VarChar(20) @map("type")
+  category_group           String                    @default("Chức năng") @db.VarChar(50) @map("category_group")
+  default_limit            Int?                      @map("default_limit")
+  default_enabled          Boolean                   @default(true) @map("default_enabled")
+  scope_schema             Json                      @default("{}") @db.JsonB @map("scope_schema")
+  default_downgrade_policy String                    @default("BLOCK_CREATE") @db.VarChar(50) @map("default_downgrade_policy")
+  created_at               DateTime                  @default(now()) @db.Timestamp(6) @map("created_at")
+  updated_at               DateTime                  @default(now()) @db.Timestamp(6) @map("updated_at")
+  permissions              account_type_permission[]
 
   @@map("feature")
 }
 
 /// Bảng phân quyền tính năng theo loại tài khoản (2.17)
 model account_type_permission {
-  id           Int      @id @default(autoincrement()) @map("id")
-  account_type String   @db.VarChar(20) @map("account_type")
-  feature_id   String   @db.VarChar(50) @map("feature_id")
-  is_enabled   Boolean  @default(true) @map("is_enabled")
-  limit_value  Int?     @map("limit_value")
-  created_at   DateTime @default(now()) @db.Timestamp(6) @map("created_at")
-  updated_at   DateTime @default(now()) @db.Timestamp(6) @map("updated_at")
+  id               Int      @id @default(autoincrement()) @map("id")
+  account_type     String   @db.VarChar(20) @map("account_type")
+  feature_id       String   @db.VarChar(50) @map("feature_id")
+  is_enabled       Boolean  @default(true) @map("is_enabled")
+  limit_value      Int?     @map("limit_value")
+  scope_config     Json     @default("{}") @db.JsonB @map("scope_config")
+  downgrade_policy String   @default("BLOCK_CREATE") @db.VarChar(50) @map("downgrade_policy")
+  created_at       DateTime @default(now()) @db.Timestamp(6) @map("created_at")
+  updated_at       DateTime @default(now()) @db.Timestamp(6) @map("updated_at")
 
-  feature      feature  @relation(fields: [feature_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_perm_feature")
+  feature          feature  @relation(fields: [feature_id], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_perm_feature")
 
   @@unique([account_type, feature_id], map: "uq_account_type_feature")
   @@index([account_type], map: "idx_perm_account_type")
@@ -579,4 +590,22 @@ model aiops_quarantine_incident_link {
   @@index([username], map: "idx_quarantine_link_username")
   @@index([detected_at(sort: Desc)], map: "idx_quarantine_link_detected_at")
   @@map("aiops_quarantine_incident_link")
-}
+}
+
+/// Bảng lưu vết lịch sử thiết bị và địa chỉ IP người dùng (2.21)
+model account_device_history {
+  id             BigInt   @id @default(autoincrement()) @map("id")
+  idaccount      Int      @map("idaccount")
+  device_name    String   @db.VarChar(150) @map("device_name")
+  ip_address     String   @db.VarChar(256) @map("ip_address")
+  user_agent     String?  @db.Text @map("user_agent")
+  first_seen_at  DateTime @default(now()) @db.Timestamp(6) @map("first_seen_at")
+  last_active_at DateTime @default(now()) @db.Timestamp(6) @map("last_active_at")
+
+  account        account  @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_device_history_account")
+
+  @@index([idaccount, last_active_at(sort: Desc)], map: "idx_device_history_account")
+  @@index([ip_address], map: "idx_device_history_ip")
+  @@map("account_device_history")
+}
+

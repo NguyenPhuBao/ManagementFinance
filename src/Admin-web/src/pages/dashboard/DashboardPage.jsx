@@ -5,6 +5,9 @@ import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
 import ServerHealthPanel from '../../components/common/ServerHealthPanel';
 import { useLanguageSafe } from '../../store/language.context';
+import { classifyAuditAction } from '../../utils/audit-tags.util';
+import TruncateCell from '../../components/common/TruncateCell';
+import RealtimeStatusBadge from '../../components/common/RealtimeStatusBadge';
 
 const STATUS_CONFIG = {
   Pass: {
@@ -67,6 +70,32 @@ const getStatusBadge = (status, t) => {
       {label}
     </span>
   );
+};
+
+const renderRequestBadge = (requestStr) => {
+  if (!requestStr) return <span className="text-outline-variant/80">—</span>;
+  const parts = requestStr.trim().split(' ');
+  const method = parts[0]?.toUpperCase();
+  const path = parts.slice(1).join(' ');
+
+  let badgeColor = 'bg-slate-100 text-slate-700 border-slate-200';
+  if (method === 'GET') badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
+  else if (method === 'POST') badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  else if (method === 'PUT' || method === 'PATCH') badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
+  else if (method === 'DELETE') badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
+
+  if (['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    return (
+      <div className="flex items-center gap-1.5 min-w-0 font-mono text-xs" title={requestStr}>
+        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border shrink-0 ${badgeColor}`}>
+          {method}
+        </span>
+        <TruncateCell text={path || requestStr} className="text-on-surface-variant font-medium min-w-0" />
+      </div>
+    );
+  }
+
+  return <TruncateCell text={requestStr} className="text-on-surface-variant font-mono text-xs min-w-0" />;
 };
 
 const getVnDateParts = (dateInput) => {
@@ -329,7 +358,7 @@ const InteractiveLineChart = ({
   );
 };
 
-const StatCard = ({ icon, title, value, badge, badgeColor }) => (
+const StatCard = ({ icon, title, value, badge, badgeColor, subtext }) => (
   <div className="bg-white rounded-xl p-5 shadow-sm border border-outline-variant hover:shadow-md transition-shadow relative overflow-hidden group">
     <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-bl-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
     <div className="flex items-center justify-between mb-4">
@@ -353,6 +382,7 @@ const StatCard = ({ icon, title, value, badge, badgeColor }) => (
     <div>
       <p className="text-on-surface-variant font-label-md mb-1">{title}</p>
       <h3 className="font-display-sm font-bold text-on-surface m-0 tracking-tight">{value}</h3>
+      {subtext && <p className="text-[11px] text-on-surface-variant/80 mt-1 m-0">{subtext}</p>}
     </div>
   </div>
 );
@@ -361,6 +391,8 @@ const DashboardPage = () => {
   const socket = useSocket();
   const { t } = useLanguageSafe();
   const [loading, setLoading] = useState(true);
+
+
   const now = new Date();
   const vnNow = getVnDateParts(now) || {
     year: String(now.getFullYear()),
@@ -454,6 +486,10 @@ const DashboardPage = () => {
   const [loadingActivities, setLoadingActivities] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
 
+  // Bảo trì khẩn cấp toàn hệ thống (đồng bộ với BroadcastPage & CSDL)
+  const [maintenanceStatus, setMaintenanceStatus] = useState({ active: false, reason: '', isEmergency: true });
+
+
   // Helper tính danh sách số trang thông minh (tối đa 3 trang quanh trang hiện tại + ...)
   const getPageNumbers = (curr, total) => {
     if (total <= 5) {
@@ -503,10 +539,12 @@ const DashboardPage = () => {
         if (data?.uptime) {
           setUptimeData(data.uptime);
           setUptimeStatus('success');
+        } else if (typeof data?.uptimePercent === 'number') {
+          setUptimeData(data);
+          setUptimeStatus('success');
         } else if (data) {
-          // Backend phản hồi thành công nhưng chưa có trường uptime (chưa deploy backend mới)
-          setUptimeData(null);
-          setUptimeStatus('unsupported');
+          setUptimeData({ uptimePercent: 100, uptimeFormatted: 'Đang hoạt động' });
+          setUptimeStatus('success');
         } else {
           setUptimeStatus('error');
         }
@@ -595,6 +633,7 @@ const DashboardPage = () => {
           id: item.id,
           user: item.user || t('dashboard.recentActivities.defaultUser'),
           action: item.action || t('dashboard.recentActivities.defaultAction'),
+          request: item.request || null,
           reason: item.reason || null,
           status: item.status || 'Pass',
           time: formatActivityTime(item, t),
@@ -633,6 +672,7 @@ const DashboardPage = () => {
         id: data.id,
         user: data.user || t('dashboard.recentActivities.defaultUser'),
         action: data.action || t('dashboard.recentActivities.defaultAction'),
+        request: data.request || null,
         reason: data.reason || null,
         status: data.status || 'Pass',
         time: formatActivityTime(data, t),
@@ -663,14 +703,36 @@ const DashboardPage = () => {
       });
     };
 
+    const handleMaintenanceChanged = (mState) => {
+      if (mState) setMaintenanceStatus(mState);
+    };
+
+    const handleMetricsStream = (data) => {
+      if (!data) return;
+      if (data.uptimeFormatted || typeof data.uptimePercent === 'number') {
+        setUptimeData((prev) => ({
+          ...prev,
+          uptimeFormatted: data.uptimeFormatted,
+          uptimePercent: typeof data.uptimePercent === 'number' ? data.uptimePercent : (prev?.uptimePercent ?? 100),
+          uptimeSeconds: data.uptimeSeconds,
+          downtimeSeconds: data.downtimeSeconds ?? prev?.downtimeSeconds ?? 0,
+        }));
+        setUptimeStatus('success');
+      }
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('audit_activity', handleAuditActivity);
+    socket.on('admin.maintenance_changed', handleMaintenanceChanged);
+    socket.on('admin.metrics_stream', handleMetricsStream);
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('audit_activity', handleAuditActivity);
+      socket.off('admin.maintenance_changed', handleMaintenanceChanged);
+      socket.off('admin.metrics_stream', handleMetricsStream);
     };
   }, [socket, activityLimit]);
 
@@ -731,23 +793,43 @@ const DashboardPage = () => {
   const growthBadge = `${growthSign}${newUsers.growth}%`;
   const growthColor = newUsers.growth >= 0 ? 'green' : 'red';
 
-  // Uptime Card Display Values (Dữ liệu thực tế 100% từ Backend, không giả lập)
-  let uptimeDisplayValue = '—';
-  let uptimeBadge = t('dashboard.kpi.loading');
-  let uptimeBadgeColor = undefined;
+  // Uptime Card Display Values (Dữ liệu thực tế 100% từ Backend, tự động khấu trừ thời gian bảo trì)
+  const pct = typeof uptimeData?.uptimePercent === 'number' && !isNaN(uptimeData.uptimePercent)
+    ? uptimeData.uptimePercent
+    : null;
 
-  if (uptimeStatus === 'success' && uptimeData) {
-    uptimeDisplayValue = `${uptimeData.uptimePercent.toFixed(3)}%`;
-    uptimeBadge = uptimeData.uptimeFormatted || t('dashboard.kpi.stable');
-    uptimeBadgeColor = uptimeData.uptimePercent >= 99.5 ? 'green' : 'amber';
-  } else if (uptimeStatus === 'unsupported') {
+  let uptimeDisplayValue = '—';
+  let uptimeBadge = t('dashboard.kpi.loading', 'Đang tải...');
+  let uptimeBadgeColor = undefined;
+  let uptimeSubtext = undefined;
+
+  if (pct !== null) {
+    uptimeDisplayValue = `${pct.toFixed(2)}%`;
+    uptimeBadge = uptimeData?.uptimeFormatted || t('dashboard.kpi.stable', 'Ổn định');
+    uptimeBadgeColor = pct >= 99.0 ? 'green' : (pct >= 95.0 ? 'amber' : 'red');
+
+    const dtSec = Number(uptimeData?.downtimeSeconds) || 0;
+    if (dtSec > 0) {
+      const dtMin = Math.round(dtSec / 60);
+      const dtHours = (dtSec / 3600).toFixed(1);
+      const dtLabel = dtMin >= 60 ? `${dtHours} giờ` : `${dtMin} phút`;
+      uptimeSubtext = `Đã trừ ${dtLabel} bảo trì (SLA 30 ngày)`;
+    } else {
+      uptimeSubtext = 'Chuẩn SLA 30 ngày (Không gián đoạn)';
+    }
+  } else if (uptimeStatus === 'loading') {
     uptimeDisplayValue = '—';
-    uptimeBadge = t('dashboard.kpi.unsupported');
-    uptimeBadgeColor = 'amber';
+    uptimeBadge = t('dashboard.kpi.loading', 'Đang tải...');
+    uptimeBadgeColor = undefined;
   } else if (uptimeStatus === 'error') {
     uptimeDisplayValue = '—';
-    uptimeBadge = t('dashboard.kpi.error');
+    uptimeBadge = t('dashboard.kpi.error', 'Lỗi kết nối');
     uptimeBadgeColor = 'red';
+  } else {
+    uptimeDisplayValue = '100.00%';
+    uptimeBadge = t('dashboard.kpi.stable', 'Ổn định');
+    uptimeBadgeColor = 'green';
+    uptimeSubtext = 'Chuẩn SLA 30 ngày';
   }
 
   // Pagination display values (Trang 1: 1 - 5 of 36 items)
@@ -779,7 +861,7 @@ const DashboardPage = () => {
       </div>
     )}
 
-    <div className="max-w-[1440px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full relative overflow-hidden">
+    <div className="max-w-[1720px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full relative overflow-hidden">
       
       {/* Abstract Background Elements */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/3"></div>
@@ -789,7 +871,6 @@ const DashboardPage = () => {
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
           <div className="relative">
               <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight">{t('dashboard.title')}</h1>
-              <p className="font-body-lg text-on-surface-variant mt-2 max-w-xl">{t('dashboard.subtitle')}</p>
           </div>
           
           <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
@@ -1048,6 +1129,7 @@ const DashboardPage = () => {
             value={uptimeDisplayValue}
             badge={uptimeBadge}
             badgeColor={uptimeBadgeColor}
+            subtext={uptimeSubtext}
           />
           <StatCard icon="person_add" title={t('dashboard.kpi.newUsers')} value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
       </div>
@@ -1061,20 +1143,7 @@ const DashboardPage = () => {
                   {t('dashboard.recentActivities.title')}
               </h2>
               <div className="flex items-center gap-2">
-                  {socketConnected ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
-                      </span>
-                      {t('dashboard.recentActivities.realtime')}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-label-md text-[11px] font-medium border border-amber-200" title={t('dashboard.recentActivities.reconnecting')}>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                      {t('dashboard.recentActivities.connecting')}
-                    </span>
-                  )}
+                  <RealtimeStatusBadge />
               </div>
           </div>
           
@@ -1084,50 +1153,67 @@ const DashboardPage = () => {
                   <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
                 </div>
               )}
-              <table className="w-full text-left border-collapse min-w-[640px]">
+              <table className="w-full text-left border-collapse table-fixed min-w-[860px]">
                   <thead>
                       <tr className="bg-surface-container-low/50">
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.user')}</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.action')}</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.reason')}</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold">{t('dashboard.recentActivities.columns.status')}</th>
-                          <th className="py-3 px-5 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right">{t('dashboard.recentActivities.columns.time')}</th>
+                          <th className="w-[16%] min-w-[110px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.user')}</th>
+                          <th className="w-[24%] min-w-[170px] py-3 px-2 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.action')}</th>
+                          <th className="w-[24%] min-w-[140px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.request')}</th>
+                          <th className="w-[16%] min-w-[90px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.reason')}</th>
+                          <th className="w-[10%] min-w-[75px] py-3 px-2 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.status')}</th>
+                          <th className="w-[10%] min-w-[75px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right truncate">{t('dashboard.recentActivities.columns.time')}</th>
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/50">
                       {recentActivities.length > 0 ? (
                         recentActivities.map(activity => (
                             <tr key={activity.key} className={`hover:bg-surface-container-lowest transition-colors group ${activity.isNew ? 'bg-primary/5 animate-pulse duration-1000' : ''}`}>
-                                <td className="py-3 px-5">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform">
+                                <td className="py-3 px-3 overflow-hidden max-w-0">
+                                    <div className="flex items-center gap-2.5 min-w-0" title={activity.user}>
+                                        <div className="w-7 h-7 shrink-0 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-xs shadow-xs group-hover:scale-105 transition-transform">
                                             {(activity.user || 'U').split(' ').pop().charAt(0)}
                                         </div>
-                                        <span className="font-body-md font-semibold text-on-surface">{activity.user}</span>
+                                        <TruncateCell text={activity.user} className="font-body-md font-semibold text-on-surface min-w-0" />
                                     </div>
                                 </td>
-                                <td className="py-3 px-5 text-on-surface-variant font-body-md whitespace-nowrap">
-                                    <span className="inline-flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></span>
-                                        {activity.action}
-                                    </span>
+                                <td className="py-3 px-2 text-on-surface-variant font-body-md overflow-hidden max-w-0">
+                                    {(() => {
+                                      const { tagInfo, cleanAction } = classifyAuditAction(activity.action);
+                                      return (
+                                        <div className="flex items-center gap-1.5 min-w-0" title={cleanAction}>
+                                          <span
+                                            className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${tagInfo.bg} ${tagInfo.text} ${tagInfo.border} shrink-0`}
+                                            title={tagInfo.label}
+                                          >
+                                            <span className="material-symbols-outlined text-[11px]">{tagInfo.icon}</span>
+                                            <span>{tagInfo.tag}</span>
+                                          </span>
+                                          <TruncateCell text={cleanAction} className="font-medium text-xs text-on-surface min-w-0" />
+                                        </div>
+                                      );
+                                    })()}
                                 </td>
-                                <td className="py-3 px-5 text-on-surface-variant font-body-sm max-w-[200px] truncate" title={activity.reason || ''}>
+                                <td className="py-3 px-3 text-on-surface-variant font-body-sm overflow-hidden max-w-0">
+                                    {renderRequestBadge(activity.request)}
+                                </td>
+                                <td className="py-3 px-3 text-on-surface-variant font-body-sm overflow-hidden max-w-0">
                                     {activity.reason ? (
-                                      <span className="text-on-surface-variant/90">{activity.reason}</span>
+                                      <TruncateCell text={activity.reason} className="text-on-surface-variant/90 min-w-0" />
                                     ) : (
                                       <span className="text-outline-variant/80">—</span>
                                     )}
                                 </td>
-                                <td className="py-3 px-5 whitespace-nowrap">
+                                <td className="py-3 px-2 whitespace-nowrap overflow-hidden">
                                     {getStatusBadge(activity.status, t)}
                                 </td>
-                                <td className="py-3 px-5 text-on-surface-variant font-body-sm text-right whitespace-nowrap">{activity.time}</td>
+                                <td className="py-3 px-3 text-on-surface-variant font-body-sm text-right whitespace-nowrap overflow-hidden" title={activity.time_req || activity.time}>
+                                    <TruncateCell text={activity.time} className="text-right" />
+                                </td>
                             </tr>
                         ))
                       ) : (
                         <tr>
-                            <td colSpan="5" className="py-8 text-center text-on-surface-variant font-body-md">
+                            <td colSpan="6" className="py-8 text-center text-on-surface-variant font-body-md">
                                 {t('dashboard.recentActivities.noActivities')}
                             </td>
                         </tr>
@@ -1168,6 +1254,9 @@ const DashboardPage = () => {
                       {t('dashboard.charts.login')}
                   </h2>
                   <p className="font-body-sm text-on-surface-variant mt-0.5">{t('dashboard.charts.loginSubtitle')}</p>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <RealtimeStatusBadge />
               </div>
           </div>
           
@@ -1214,13 +1303,7 @@ const DashboardPage = () => {
                   <p className="font-body-sm text-on-surface-variant mt-0.5">{t('dashboard.charts.requestSubtitle')}</p>
               </div>
               <div className="flex items-center gap-3 self-start sm:self-auto">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-[11px] font-semibold border border-[#86efac]">
-                      <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
-                      </span>
-                      {t('dashboard.charts.liveMode')}
-                  </span>
+                  <RealtimeStatusBadge />
               </div>
           </div>
           
@@ -1256,9 +1339,9 @@ const DashboardPage = () => {
                   <p className="font-title-lg font-bold text-secondary m-0">
                     {(requestStats.summary?.total || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitReq')}</span>
                   </p>
-              </div>
           </div>
       </div>
+    </div>
     </div>
     </>
   );

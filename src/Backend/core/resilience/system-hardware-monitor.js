@@ -1,9 +1,11 @@
 const os = require('os');
 const logger = require('../logger');
+const { getRuntimeHardwareSpecs } = require('./runtime-environment');
 
 /**
  * SystemHardwareMonitor
  * Đo lường mức tải CPU và dung lượng RAM thực tế của máy tính mà server đang chạy
+ * Hỗ trợ nhận diện tự động môi trường Cloud Container (cgroups v1/v2, Quota) vs Bare-metal Host
  * Sử dụng kỹ thuật Delta Ticks đo lường thời gian thực (Real-time CPU Usage)
  */
 class SystemHardwareMonitor {
@@ -49,14 +51,29 @@ class SystemHardwareMonitor {
 
   _sampleRam() {
     try {
-      const total = os.totalmem();
-      const free = os.freemem();
-      const used = Math.max(0, total - free);
-      this.currentRamTotalMb = Math.round(total / 1024 / 1024);
-      this.currentRamFreeMb = Math.round(free / 1024 / 1024);
-      this.currentRamUsedMb = Math.round(used / 1024 / 1024);
-      this.currentRamPercent = total > 0 ? Math.round((used / total) * 100) : 0;
-      this.currentRamRssMb = Math.round(process.memoryUsage().rss / 1024 / 1024);
+      const specs = getRuntimeHardwareSpecs();
+      const rssMb = Math.round(process.memoryUsage().rss / 1024 / 1024);
+      this.currentRamRssMb = rssMb;
+
+      if (specs.isContainer) {
+        // Trong môi trường Cloud Container: Đo lường dựa trên RAM Quota của Container
+        const totalMb = specs.ramTotalMb;
+        const usedMb = Math.min(totalMb, rssMb);
+        const freeMb = Math.max(0, totalMb - usedMb);
+        this.currentRamTotalMb = totalMb;
+        this.currentRamUsedMb = usedMb;
+        this.currentRamFreeMb = freeMb;
+        this.currentRamPercent = totalMb > 0 ? Math.min(100, Math.round((usedMb / totalMb) * 100)) : 0;
+      } else {
+        // Trong môi trường Local Workstation hoặc Bare-metal Host vật lý
+        const total = os.totalmem();
+        const free = os.freemem();
+        const used = Math.max(0, total - free);
+        this.currentRamTotalMb = Math.round(total / 1024 / 1024);
+        this.currentRamFreeMb = Math.round(free / 1024 / 1024);
+        this.currentRamUsedMb = Math.round(used / 1024 / 1024);
+        this.currentRamPercent = total > 0 ? Math.round((used / total) * 100) : 0;
+      }
     } catch (_) {}
   }
 
@@ -127,10 +144,17 @@ class SystemHardwareMonitor {
 
   getMetrics() {
     this._sampleRam();
+    const specs = getRuntimeHardwareSpecs();
     const cpus = os.cpus() || [];
     return {
+      environment: {
+        mode: specs.mode,
+        provider: specs.provider,
+        isContainer: specs.isContainer,
+        source: specs.source,
+      },
       cpu: {
-        cores: cpus.length || 1,
+        cores: specs.cpuCores || cpus.length || 1,
         model: cpus[0]?.model || 'Generic CPU',
         percent: this.currentCpuPercent,
       },

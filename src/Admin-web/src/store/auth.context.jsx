@@ -120,12 +120,43 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
   }, [settingsCtx]);
 
+  const syncAuthSession = useCallback((sessionData) => {
+    if (!sessionData) return;
+    const { user: userData, accessToken, refreshToken } = sessionData;
+    if (accessToken) {
+      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+    }
+    if (refreshToken) {
+      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+    }
+    if (userData) {
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
+      setUser(userData);
+    }
+    setIsAuthenticated(true);
+  }, []);
+
+  useEffect(() => {
+    const handleSessionSynced = (e) => {
+      if (e?.detail) {
+        syncAuthSession(e.detail);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('auth:session-synced', handleSessionSynced);
+      return () => {
+        window.removeEventListener('auth:session-synced', handleSessionSynced);
+      };
+    }
+  }, [syncAuthSession]);
+
   const value = {
     user,
     loading,
     isAuthenticated,
     login,
     logout,
+    syncAuthSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -137,6 +168,10 @@ export const useAuthContext = () => {
     throw new Error('useAuthContext must be used within AuthProvider');
   }
   return context;
+};
+
+export const useAuthSafe = () => {
+  return useContext(AuthContext) || {};
 };
 
 export default AuthContext;

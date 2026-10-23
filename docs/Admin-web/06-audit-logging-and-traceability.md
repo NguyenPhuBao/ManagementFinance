@@ -1,6 +1,7 @@
 # 📜 Chức Năng 06: Nhật Ký Truy Vết Toàn Hệ Thống (Audit Logging & Security Traceability)
 
 > **Mã chức năng:** `ADMIN-FEAT-06`  
+> **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/pages/system/AuditLogPage.jsx`  
 > - Backend: `src/Backend/middleware/audit-log.middleware.js`, `src/Backend/modules/auth/auth.service.js`, `src/Backend/modules/admin/admin.repository.js`  
@@ -60,14 +61,18 @@ sequenceDiagram
 - `/health`, `/health/admin`, `/favicon.ico`
 - Các polling thống kê của chính Admin: `/admin/system/health`, `/admin/totaluser`, `/admin/totalcategories`, `/admin/getusertotime`, `/admin/login-stats`, `/admin/request-stats`, `/admin/aiops/*`.
 
-### 2.3. Ánh Xạ Hành Động Tiếng Việt Thân Thiện (`formatActionName`)
-Thay vì hiển thị URL kỹ thuật khó hiểu (`POST /api/sync/push`), hệ thống tự động biên dịch thành ngôn ngữ tự nhiên:
-- `POST /api/auth/login` $\implies$ **"Đăng nhập hệ thống"**
-- `POST /api/auth/register` $\implies$ **"Đăng ký tài khoản"**
-- `POST /api/sync/push` $\implies$ **"Đồng bộ dữ liệu (Push)"**
-- `GET /api/sync/pull` $\implies$ **"Tải dữ liệu đồng bộ (Pull)"**
-- `POST /api/ai/chatbot/chat/stream` $\implies$ **"Hỏi đáp trợ lý tài chính AI"**
-- `POST /api/bank/webhook` $\implies$ **"Webhook biến động số dư"**
+### 2.3. Cấu Trúc Hai Cột Độc Lập Chuẩn Hóa Nghiệp Vụ (Dual-Column Architecture)
+Theo phê duyệt của PO nhằm tối ưu tính minh bạch và chuyên nghiệp cho kiểm toán:
+1. **Cột "Hành động" (Business Action Description):**
+   - 100% hiển thị câu mô tả nghiệp vụ bằng tiếng Việt chuẩn mực, thân thiện (`Tạo đơn hàng thanh toán gói cước`, `Cập nhật phân quyền gói cước`, `Xác thực mã PIN bảo mật`, `Khôi phục danh mục thu chi`, `Bật bảo trì khẩn cấp`...).
+   - **Tuyệt đối KHÔNG để lộ chuỗi API/URL kỹ thuật thô** trong cột này.
+   - Đi kèm huy hiệu mã Tag chuẩn tiếng Anh quốc tế viết hoa (`[PAYMENT]`, `[AUTH]`, `[USER]`, `[SYSTEM]`, `[AIOPS]`, `[CATEGORY]`, `[API]`) kèm tooltip giải nghĩa tiếng Việt.
+2. **Cột "Yêu cầu API" (Technical API Request Column):**
+   - Đảm nhiệm vai trò hiển thị phương thức HTTP và endpoint kỹ thuật:
+     - Badge Method sắc nét: `GET` (Xanh da trời), `POST` (Xanh ngọc lục bảo), `PUT`/`PATCH` (Vàng hổ phách), `DELETE` (Đỏ hồng).
+     - Đường dẫn API Route tương ứng (vd: `/api/v1/payments/create-order`, `/api/admin/change-pin`).
+3. **Lược Bỏ Nút "Làm Mới" Dư Thừa:**
+   - Trang bị loại bỏ hoàn toàn nút "Làm mới" trên thanh công cụ do bảng đã được tích hợp kênh Socket.io `audit_activity` tự động chèn bản ghi mới nhất theo thời gian thực. Bổ sung nút **"Đặt lại"** để xóa các bộ lọc ngày/trạng thái.
 
 ---
 
@@ -98,7 +103,7 @@ Tuyệt đối không lưu trữ chi tiết kỹ thuật nhạy cảm ra ngoài:
 1. **Nguyên tắc Append-Only (Bất biến):**
    - Bảng `audit_log` trong CSDL PostgreSQL chỉ có quyền `INSERT` và `SELECT`. Tuyệt đối cấm lệnh `UPDATE` hoặc `DELETE` từ bất kỳ tài khoản nào (kể cả Admin) để đảm bảo bằng chứng pháp lý trước cơ quan chức năng.
 2. **Giới hạn số lượng truy vấn (`queryLimit`):**
-   - API phân trang cho phép lấy tối đa 200 bản ghi/lần (mặc định 50 bản ghi/trang).
+   - API phân trang cho phép lấy tối đa 200 bản ghi/lần (mặc định 10 bản ghi/trang khi tải giao diện).
 3. **Chỉ mục hiệu năng (Composite Indexes):**
    - Đánh index trên `time_req DESC` và `[idaccount, time_req]` giúp truy vấn phân trang trên hàng triệu bản ghi chỉ mất $< 10\text{ms}$.
 
@@ -115,13 +120,19 @@ Tuyệt đối không lưu trữ chi tiết kỹ thuật nhạy cảm ra ngoài:
 ## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN
 
 1. **Bộ Lọc Tìm Kiếm Đa Chiều (`AuditLogPage.jsx`):**
-   - Lọc theo từng mã trạng thái (`Pass`, `Fail`, `Rejected`, `Interrupted`, v.v.).
-   - Tìm kiếm tức thời theo Tên người dùng (`Username`) hoặc Tên hành động (`Request`).
+   - Lọc theo từng mã trạng thái (`Pass`, `Fail`, `Rejected`, `Interrupted`, `Accepted`, `Processing`, `Pending`).
+   - Tìm kiếm tức thời theo Tên tài khoản (`Username`) hoặc Đường dẫn API (`Request`).
    - Lọc theo khoảng ngày bắt đầu (`dateFrom`) và ngày kết thúc (`dateTo`).
-2. **Luồng Cập Nhật Real-time:**
-   - Kết nối Socket.io qua sự kiện `audit_activity`. Khi quản trị viên đang đứng ở Trang 1 và không bật bộ lọc, các dòng log mới phát sinh từ người dùng di động sẽ tự động chèn vào đầu bảng kèm hiệu ứng làm mới nhẹ nhàng.
-3. **Thanh Phân Trang Thông Minh (`Pagination.jsx`):**
-   - Hỗ trợ nhảy trang trực tiếp và chọn kích thước trang linh hoạt (10, 20, 50, 100, 200), mặc định 10 bản ghi/trang mỗi khi tải trang.
+   - Nút **"Đặt lại"** khôi phục nhanh về trạng thái hiển thị ban đầu.
+2. **Xuất Báo Cáo CSV Chuẩn UTF-8 (`exportToCsv`):**
+   - Cho phép tải toàn bộ danh sách log đang lọc (tối đa 1,000 bản ghi) thành tệp `.csv` với tiền tố BOM UTF-8 `\uFEFF`, mở trực tiếp trên Microsoft Excel không bị lỗi font tiếng Việt.
+   - **Kế thừa cột Hành động tiếng Việt:** File CSV xuất ra chứa đầy đủ các cột chuẩn hóa: `#`, `Người Dùng`, `Thao Tác / Hành Động` (Mô tả tiếng Việt thân thiện), `Phương Thức`, `Yêu Cầu API (Route)`, `Trạng Thái`, `Lý Do / Kết Quả`, `Thời Gian Phản Hồi (ms)`, `Địa Chỉ IP`, `Thời Điểm`.
+   - Định dạng tên tệp chuẩn: `audit_logs_YYYYMMDD_HHmm.csv`.
+3. **Luồng Cập Nhật Real-time Thông Minh:**
+   - Kết nối Socket.io qua sự kiện `audit_activity`. Khi đang ở Trang 1 và không áp dụng bộ lọc, hệ thống tự động chèn log mới vào đầu bảng.
+   - Nếu đang duyệt trang sau hoặc đang lọc, hệ thống hiển thị thông báo badge đếm số lượng log mới xuất hiện để không gây xáo trộn tầm nhìn của người dùng.
+4. **Thanh Phân Trang Thông Minh (`Pagination.jsx`):**
+   - Hỗ trợ nhảy trang trực tiếp và chọn kích thước trang linh hoạt (10, 20, 50, 100, 200), mặc định 10 bản ghi/trang.
 
 ---
 
@@ -143,7 +154,7 @@ Tuyệt đối không lưu trữ chi tiết kỹ thuật nhạy cảm ra ngoài:
 
 ### Socket.io Events
 - **Phát tán (`Server -> admin_room`):**
-  - `audit_activity`: Phát gói tin tóm tắt `{ id, idaccount, user, action, status, reason, time_req, time_res }` mỗi khi một request được hoàn tất.
+  - `audit_activity`: Phát gói tin tóm tắt `{ id, idaccount, user, action, status, reason, time_req, time_res, ip }` mỗi khi một request được hoàn tất.
 
 ---
 

@@ -10,6 +10,7 @@ vi.mock('../api/admin.api', () => ({
     getUsers: vi.fn(),
     updateUserStatus: vi.fn(),
     deleteUser: vi.fn(),
+    verifySecurityAction: vi.fn(),
   },
 }));
 
@@ -197,14 +198,19 @@ describe('Admin-web Users Suite — UserListPage', () => {
     const pendingDeleteCheckbox = screen.getByTestId('filter-status-pendingdelete');
     const deletedCheckbox = screen.getByTestId('filter-status-deleted');
 
-    // Mặc định ban đầu: Tất cả đều được check
-    expect(allCheckbox).toBeChecked();
+    // Mặc định ban đầu theo yêu cầu PO: 3 trạng thái con (active, inactive, pendingdelete) được check, deleted chưa check
+    expect(allCheckbox).not.toBeChecked();
     expect(activeCheckbox).toBeChecked();
     expect(inactiveCheckbox).toBeChecked();
     expect(pendingDeleteCheckbox).toBeChecked();
-    expect(deletedCheckbox).toBeChecked();
+    expect(deletedCheckbox).not.toBeChecked();
 
-    // Thao tác 1: Bỏ chọn checkbox con 'deleted'
+    // Thao tác 1: Chọn thêm checkbox con 'deleted' -> Đủ tất cả 4 con -> 'Tất cả' tự động được check theo
+    fireEvent.click(deletedCheckbox);
+    expect(deletedCheckbox).toBeChecked();
+    expect(allCheckbox).toBeChecked();
+
+    // Thao tác 2: Bỏ chọn checkbox con 'deleted'
     fireEvent.click(deletedCheckbox);
     expect(deletedCheckbox).not.toBeChecked();
     // Kỳ vọng: Checkbox 'Tất cả' tự động bị uncheck
@@ -213,26 +219,21 @@ describe('Admin-web Users Suite — UserListPage', () => {
     expect(inactiveCheckbox).toBeChecked();
     expect(pendingDeleteCheckbox).toBeChecked();
 
-    // Thao tác 2: Chọn lại checkbox 'deleted' -> Đủ tất cả 4 con -> 'Tất cả' tự động được check theo
-    fireEvent.click(deletedCheckbox);
-    expect(deletedCheckbox).toBeChecked();
-    expect(allCheckbox).toBeChecked();
-
-    // Thao tác 3: Click bỏ chọn checkbox 'Tất cả' -> Toàn bộ các trạng thái con bị uncheck theo
-    fireEvent.click(allCheckbox);
-    expect(allCheckbox).not.toBeChecked();
-    expect(activeCheckbox).not.toBeChecked();
-    expect(inactiveCheckbox).not.toBeChecked();
-    expect(pendingDeleteCheckbox).not.toBeChecked();
-    expect(deletedCheckbox).not.toBeChecked();
-
-    // Thao tác 4: Click chọn lại checkbox 'Tất cả' -> Toàn bộ các trạng thái con được check theo
+    // Thao tác 3: Click chọn checkbox 'Tất cả' -> Toàn bộ các trạng thái con được check theo
     fireEvent.click(allCheckbox);
     expect(allCheckbox).toBeChecked();
     expect(activeCheckbox).toBeChecked();
     expect(inactiveCheckbox).toBeChecked();
     expect(pendingDeleteCheckbox).toBeChecked();
     expect(deletedCheckbox).toBeChecked();
+
+    // Thao tác 4: Click bỏ chọn checkbox 'Tất cả' -> Toàn bộ các trạng thái con bị uncheck theo
+    fireEvent.click(allCheckbox);
+    expect(allCheckbox).not.toBeChecked();
+    expect(activeCheckbox).not.toBeChecked();
+    expect(inactiveCheckbox).not.toBeChecked();
+    expect(pendingDeleteCheckbox).not.toBeChecked();
+    expect(deletedCheckbox).not.toBeChecked();
   });
 
   it('3.7. [Tầng 2 - System Impact] Bộ lọc nhiều trạng thái: Lọc chính xác danh sách người dùng theo các trạng thái được check', async () => {
@@ -248,16 +249,10 @@ describe('Admin-web Users Suite — UserListPage', () => {
     const filterBtn = screen.getByRole('button', { name: /bộ lọc/i });
     fireEvent.click(filterBtn);
 
-    const allCheckbox = screen.getByTestId('filter-status-all');
-    const activeCheckbox = screen.getByTestId('filter-status-active');
-    const pendingDeleteCheckbox = screen.getByTestId('filter-status-pendingdelete');
+    const inactiveCheckbox = screen.getByTestId('filter-status-inactive');
 
-    // Bỏ chọn Tất cả -> Bỏ chọn hết
-    fireEvent.click(allCheckbox);
-
-    // Chỉ chọn Active và PendingDelete (chọn 2 trạng thái cùng lúc)
-    fireEvent.click(activeCheckbox);
-    fireEvent.click(pendingDeleteCheckbox);
+    // Ban đầu đang có Active, Inactive, PendingDelete -> Bỏ chọn Inactive -> Chỉ còn Active và PendingDelete
+    fireEvent.click(inactiveCheckbox);
 
     // Nhấp nút Áp dụng
     const applyBtn = screen.getByRole('button', { name: /^áp dụng$/i });
@@ -303,6 +298,14 @@ describe('Admin-web Users Suite — UserListPage', () => {
     // Nhấn nút xác nhận xóa trên banner
     const confirmBtn = screen.getByRole('button', { name: /xác nhận xóa/i });
     fireEvent.click(confirmBtn);
+
+    // Xác thực bảo mật Re-Auth với mã PIN 6 số
+    adminApi.verifySecurityAction.mockResolvedValueOnce({
+      data: { verified: true, action: 'DELETE_USER' },
+    });
+    const pinInput = screen.getByPlaceholderText(/Nhập mã PIN 6 số/i);
+    fireEvent.change(pinInput, { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: /Xác thực & Thực thi/i }));
 
     // Tầng 2 (System Impact): Gọi API xóa mềm tới backend
     await waitFor(() => {

@@ -4,8 +4,11 @@ import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
 import UserDetailModal from '../../components/common/UserDetailModal';
 import Pagination from '../../components/common/Pagination';
+import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
+import { maskPhone } from '../../utils/format';
+import TruncateCell from '../../components/common/TruncateCell';
 
 const ALL_STATUS_KEYS = ['active', 'inactive', 'pendingdelete', 'deleted'];
 
@@ -30,10 +33,11 @@ const UserListPage = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
   const [detailUserId, setDetailUserId] = useState(null);
+  const [showDeleteSecurityModal, setShowDeleteSecurityModal] = useState(false);
 
   const [filter, setFilter] = useState({
-    location: 'all',
-    statuses: [...ALL_STATUS_KEYS],
+    packageType: 'all',
+    statuses: ['active', 'inactive', 'pendingdelete'],
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -62,13 +66,13 @@ const UserListPage = () => {
     const userStatus = (u.status || '').toLowerCase();
     const currentStatuses = filter.statuses || [];
     const matchStatus = currentStatuses.includes(userStatus);
-    const matchLocation =
-      filter.location === 'all' ||
-      (filter.location === 'hcm' && (u.address || '').toLowerCase().includes('hồ chí minh')) ||
-      (filter.location === 'hn' && (u.address || '').toLowerCase().includes('hà nội')) ||
-      (filter.location === 'dn' && (u.address || '').toLowerCase().includes('đà nẵng')) ||
-      (filter.location === 'ct' && (u.address || '').toLowerCase().includes('cần thơ'));
-    return matchSearch && matchStatus && matchLocation;
+
+    const userPkg = (u.type || u.package || 'Basic').toLowerCase();
+    const matchPackage =
+      filter.packageType === 'all' ||
+      userPkg === filter.packageType.toLowerCase();
+
+    return matchSearch && matchStatus && matchPackage;
   });
 
   const totalPages = Math.ceil(filteredUsers.length / pageSize) || 1;
@@ -100,6 +104,8 @@ const UserListPage = () => {
         email: u.email,
         phone: u.phone || '—',
         status: u.status ? u.status.toLowerCase() : 'active',
+        type: u.type || 'Basic',
+        package: u.type || u.package || 'Basic',
         address: u.address || '',
         username: u.username,
         reason_inactive: u.reason_inactive || null,
@@ -136,6 +142,8 @@ const UserListPage = () => {
           email: newUser.email || '—',
           phone: newUser.phone || '—',
           status: (newUser.status || 'active').toLowerCase(),
+          type: newUser.type || 'Basic',
+          package: newUser.type || newUser.package || 'Basic',
           address: '',
           username: newUser.username,
           reason_inactive: null,
@@ -343,7 +351,7 @@ const UserListPage = () => {
               <button
                 disabled={deletingUser}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                onClick={confirmDelete}
+                onClick={() => setShowDeleteSecurityModal(true)}
               >
                 {deletingUser && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
                 {t('users.deleteModal.confirmBtn')}
@@ -364,24 +372,10 @@ const UserListPage = () => {
 
         {/* 1. Header Hero Bar chuẩn Enterprise */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs">
-              <span className="material-symbols-outlined text-[28px]">manage_accounts</span>
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h2 className="font-headline-md text-xl md:text-2xl font-bold text-on-surface m-0 tracking-tight">
-                  {t('users.title')}
-                </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                  {t('users.realtimeSync')}
-                </span>
-              </div>
-              <p className="text-xs text-on-surface-variant mt-0.5">
-                {t('users.subtitle')}
-              </p>
-            </div>
+          <div>
+            <h2 className="font-headline-md text-xl md:text-2xl font-bold text-on-surface m-0 tracking-tight">
+              {t('users.title')}
+            </h2>
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -552,7 +546,7 @@ const UserListPage = () => {
 
             <button
               className={`px-3 py-1.5 border rounded-xl font-label-md text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                filter.location !== 'all' || (filter.statuses || []).length !== ALL_STATUS_KEYS.length
+                filter.packageType !== 'all' || (filter.statuses || []).length !== 3 || !(filter.statuses || []).includes('active')
                   ? 'border-primary bg-primary/10 text-primary'
                   : 'border-outline-variant bg-white text-on-surface hover:bg-surface-container-low'
               }`}
@@ -576,20 +570,24 @@ const UserListPage = () => {
           )}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[850px]">
+            <table className="w-full text-left border-collapse min-w-[780px]">
               <thead>
                 <tr className="bg-surface-container-low/80 border-b border-outline-variant text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-                  <th className="px-5 py-3.5 w-12 text-center">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
-                    />
+                  <th className="px-5 py-3.5 w-[30%] min-w-[200px]">
+                    {t('users.table.colName')}
                   </th>
-                  <th className="px-5 py-3.5">{t('users.table.colName')}</th>
-                  <th className="px-5 py-3.5">{t('users.table.colEmail')}</th>
-                  <th className="px-5 py-3.5">{t('users.table.colPhone')}</th>
-                  <th className="px-5 py-3.5 text-center">{t('users.table.colStatus')}</th>
-                  <th className="px-5 py-3.5 text-right">{t('users.table.colActions')}</th>
+                  <th className="px-5 py-3.5 w-[26%] min-w-[180px]">
+                    {t('users.table.colEmail')}
+                  </th>
+                  <th className="px-5 py-3.5 w-[16%] min-w-[130px]">
+                    {t('users.table.colPhone')}
+                  </th>
+                  <th className="px-5 py-3.5 w-[14%] min-w-[110px] text-center">
+                    {t('users.table.colStatus')}
+                  </th>
+                  <th className="px-5 py-3.5 w-[14%] min-w-[120px] text-right">
+                    {t('users.table.colActions')}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/60 font-body-md text-xs text-on-surface">
@@ -605,32 +603,22 @@ const UserListPage = () => {
                         key={item.id}
                         className="hover:bg-surface-container-lowest/80 transition-colors group"
                       >
-                        <td className="px-5 py-3.5 text-center">
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
-                          />
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-3">
+                        <td className="px-5 py-3.5 overflow-hidden">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-primary/20 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 shadow-2xs shrink-0">
                               {(item.name || item.username || 'U').charAt(0).toUpperCase()}
                             </div>
-                            <div className="min-w-0">
-                              <span className="font-bold text-on-surface block truncate text-xs hover:text-primary transition-colors">
-                                {item.name}
-                              </span>
-                              <span className="text-[11px] text-secondary font-mono">
-                                @{item.username}
-                              </span>
+                            <div className="min-w-0 flex-1">
+                              <TruncateCell text={item.name} className="font-bold text-on-surface text-xs hover:text-primary transition-colors" />
+                              <TruncateCell text={`@${item.username}`} className="text-[11px] text-secondary font-mono" />
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 text-on-surface-variant font-medium">
-                          {item.email}
+                        <td className="px-5 py-3.5 text-on-surface-variant font-medium overflow-hidden">
+                          <TruncateCell text={item.email} />
                         </td>
-                        <td className="px-5 py-3.5 text-on-surface-variant font-mono">
-                          {item.phone}
+                        <td className="px-5 py-3.5 text-on-surface-variant font-mono overflow-hidden">
+                          <TruncateCell text={maskPhone(item.phone)} />
                         </td>
                         <td className="px-5 py-3.5 text-center">
                           <span
@@ -693,7 +681,7 @@ const UserListPage = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-on-surface-variant">
+                    <td colSpan="5" className="px-6 py-12 text-center text-on-surface-variant">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <span className="material-symbols-outlined text-4xl text-secondary/60">
                           person_search
@@ -743,20 +731,20 @@ const UserListPage = () => {
             <div className="p-6 space-y-5">
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-2">
-                  {t('users.filterModal.locationLabel')}
+                  {t('users.filterModal.packageLabel', 'Gói dịch vụ')}
                 </label>
                 <select
-                  value={filter.location}
-                  onChange={(e) => setFilter({ ...filter, location: e.target.value })}
+                  data-testid="filter-package"
+                  value={filter.packageType}
+                  onChange={(e) => setFilter({ ...filter, packageType: e.target.value })}
                   className="w-full px-3 py-2 border border-outline-variant rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-xs font-medium bg-white h-[42px] cursor-pointer"
                 >
-                  <option value="all">{t('users.filterModal.allLocations')}</option>
-                  <option value="hcm">{t('users.locations.hcm')}</option>
-                  <option value="hn">{t('users.locations.hn')}</option>
-                  <option value="dn">{t('users.locations.dn')}</option>
-                  <option value="ct">{t('users.locations.ct')}</option>
+                  <option value="all">{t('users.filterModal.allPackages', 'Tất cả gói cước')}</option>
+                  <option value="Basic">{t('users.filterModal.basicPackage', 'Gói Cơ bản (Basic)')}</option>
+                  <option value="Premium">{t('users.filterModal.premiumPackage', 'Gói VIP (Premium)')}</option>
                 </select>
               </div>
+
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-on-surface mb-3">
                   {t('users.filterModal.statusLabel')}
@@ -819,7 +807,7 @@ const UserListPage = () => {
               <button
                 className="px-4 py-2 border border-outline-variant rounded-xl text-on-surface text-xs font-semibold hover:bg-surface-container-low transition-colors cursor-pointer"
                 onClick={() => {
-                  setFilter({ location: 'all', statuses: [...ALL_STATUS_KEYS] });
+                  setFilter({ packageType: 'all', statuses: ['active', 'inactive', 'pendingdelete'] });
                   toggleModal('filter', false);
                 }}
               >
@@ -986,9 +974,28 @@ const UserListPage = () => {
         </div>
       )}
 
+      {/* Security Re-Authentication Modal for Soft Delete User */}
+      <SecurityConfirmModal
+        isOpen={showDeleteSecurityModal}
+        onClose={() => setShowDeleteSecurityModal(false)}
+        actionType="DELETE_USER"
+        actionDescription={
+          userToDelete
+            ? `Xác nhận xóa mềm tài khoản người dùng ${userToDelete.name} (@${userToDelete.username})`
+            : 'Xác nhận xóa người dùng'
+        }
+        onSuccess={() => {
+          setShowDeleteSecurityModal(false);
+          confirmDelete();
+        }}
+      />
       {/* User Detail Modal */}
       {detailUserId && (
-        <UserDetailModal userId={detailUserId} onClose={() => setDetailUserId(null)} />
+        <UserDetailModal
+          userId={detailUserId}
+          onClose={() => setDetailUserId(null)}
+          onRefresh={fetchUsers}
+        />
       )}
     </>
   );

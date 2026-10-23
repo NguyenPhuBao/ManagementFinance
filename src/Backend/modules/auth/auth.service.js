@@ -8,6 +8,7 @@ const emailService = require("../../core/email.service");
 const logger = require("../../core/logger");
 const { encrypt, decrypt } = require("../../utils/crypto.util");
 const { maskIp } = require("../../utils/masking.util");
+const { trackDeviceAccess } = require("./device-history.service");
 
 function sanitizeAuditReason(text) {
   if (!text || typeof text !== 'string') return null;
@@ -206,6 +207,9 @@ const authService = {
     const { accessToken, refreshToken } = generateTokens(payload, 2);
     await saveRefreshToken(refreshToken, payload, req);
 
+    // Ghi nhận vết thiết bị & IP theo quy tắc PO (Diff Check)
+    await trackDeviceAccess(account.idaccount, req, {}, { skipThrottle: true }).catch(() => {});
+
     logger.info("User registered via OTP successfully", { username: account.username, idaccount: account.idaccount });
 
     try {
@@ -280,6 +284,9 @@ const authService = {
     // 6. Generate tokens (user role = 2)
     const { accessToken, refreshToken } = generateTokens(payload, 2);
     await saveRefreshToken(refreshToken, payload, req);
+
+    // Ghi nhận vết thiết bị & IP theo quy tắc PO (Diff Check)
+    await trackDeviceAccess(account.idaccount, req, {}, { skipThrottle: true }).catch(() => {});
 
     logger.info("User registered", { username: account.username, idaccount: account.idaccount });
 
@@ -397,10 +404,14 @@ const authService = {
       type: account.type || 'Basic',
       status: account.status || 'Active',
       countdown: account.countdown ?? null,
+      is_first_login: Boolean(account.is_first_login),
     };
 
     const { accessToken, refreshToken } = generateTokens(payload, account.idrole);
     await saveRefreshToken(refreshToken, payload, req);
+
+    // Ghi nhận vết thiết bị & IP theo quy tắc PO (Diff Check)
+    await trackDeviceAccess(account.idaccount, req, {}, { skipThrottle: true }).catch(() => {});
 
     logger.info("User logged in", { username: account.username, idrole: account.idrole });
 
@@ -446,6 +457,7 @@ const authService = {
         type: account.type || 'Basic',
         status: account.status || 'Active',
         countdown: account.countdown ?? null,
+        is_first_login: Boolean(account.is_first_login),
         currentClientIp: clientIp || null,
       },
     };
@@ -525,6 +537,9 @@ const authService = {
     // Cấp token mới
     const { accessToken, refreshToken } = generateTokens(payload, payload.idrole);
     await saveRefreshToken(refreshToken, payload, req);
+
+    // Ghi nhận vết thiết bị & IP theo quy tắc PO (Diff Check)
+    await trackDeviceAccess(payload.idaccount, req, {}, { skipThrottle: true }).catch(() => {});
 
     logger.info("Token refreshed", { idaccount: payload.idaccount });
     return { accessToken, refreshToken };
@@ -704,6 +719,10 @@ const authService = {
     return { idaccount, status: 'Active', countdown: null };
   },
 
+  async getAccountById(idaccount) {
+    return authRepository.findAccountById(idaccount);
+  },
+
   // ---------- GET PROFILE ----------
   async getProfile(idaccount) {
     const user = await authRepository.getProfile(idaccount);
@@ -876,12 +895,76 @@ const authService = {
     if (p.includes('/ai/chat')) return 'Hỏi đáp trợ lý tài chính AI';
     if (p.includes('/ai/classify')) return 'Phân loại giao dịch AI';
 
-    if (p.includes('/admin/updatestatus')) return 'Khóa/mở khóa tài khoản';
-    if (p.includes('/admin/getcategory')) return 'Lấy danh sách danh mục';
-    if (p.includes('/admin/addcategory')) return 'Tạo danh mục hệ thống';
-    if (p.includes('/admin/updatecategory')) return 'Cập nhật danh mục hệ thống';
-    if (p.includes('/admin/deletecategory')) return 'Xóa danh mục hệ thống';
-    if (p.includes('/admin/getuser')) return 'Lấy danh sách người dùng';
+    if (p.includes('/admin/updatestatus') || p.includes('/admin/users/status')) return 'Khóa/mở khóa tài khoản';
+    if (p.includes('/admin/deleteuser') || (p.includes('/admin/users') && m === 'DELETE')) return 'Xóa tài khoản người dùng';
+    if (p.includes('/admin/getuser') || p.includes('/admin/users')) return 'Lấy danh sách người dùng';
+    if (p.includes('/admin/deletecategory') || (p.includes('/admin/categories') && m === 'DELETE')) return 'Xóa danh mục hệ thống';
+    if (p.includes('/admin/addcategory') || (p.includes('/admin/categories') && m === 'POST')) return 'Tạo danh mục hệ thống';
+    if (p.includes('/admin/updatecategory') || (p.includes('/admin/categories') && (m === 'PUT' || m === 'PATCH'))) return 'Cập nhật danh mục hệ thống';
+    if (p.includes('/admin/getcategory') || p.includes('/admin/categories')) return 'Lấy danh sách danh mục';
+    if (p.includes('/admin/verify-security-action')) return 'Xác thực mã PIN bảo mật';
+    if (p.includes('/admin/change-pin')) return 'Đổi mã PIN quản trị viên';
+    if (p.includes('/admin/first-login-setup')) return 'Thiết lập bảo mật lần đầu';
+    if (p.includes('/admin/create-admin')) return 'Tạo tài khoản quản trị mới';
+    if (p.includes('/admin/permissions/reset')) return 'Khôi phục phân quyền mặc định';
+    if (p.includes('/admin/permissions')) return m === 'PUT' ? 'Cập nhật phân quyền gói cước' : 'Xem ma trận phân quyền gói cước';
+    if (p.includes('/admin/system/maintenance/schedule')) return 'Hủy lịch bảo trì hệ thống';
+    if (p.includes('/admin/system/maintenance/history')) return 'Xem lịch sử bảo trì hệ thống';
+    if (p.includes('/admin/system/maintenance')) return m === 'POST' ? 'Cập nhật trạng thái bảo trì hệ thống' : 'Kiểm tra trạng thái bảo trì';
+    if (p.includes('/admin/system/health')) return 'Kiểm tra sức khỏe hệ thống';
+    if (p.includes('/admin/audit-logs')) return 'Truy vấn nhật ký kiểm toán';
+
+    // Payment & PayOS
+    if (p.includes('/payment') || p.includes('/payments')) {
+      if (p.includes('/create-order') || p.includes('/create-payment')) return 'Tạo đơn hàng thanh toán gói cước';
+      if (p.includes('/order-status')) return 'Tra cứu trạng thái đơn hàng';
+      if (p.includes('/subscription-info') || p.includes('/packages')) return 'Tra cứu thông tin gói dịch vụ';
+      if (p.includes('/history') || p.includes('/orders')) {
+        if (p.includes('/refund')) return 'Xử lý hoàn tiền đơn hàng';
+        return 'Xem lịch sử giao dịch thanh toán';
+      }
+      if (p.includes('/webhook')) return 'Webhook tiếp nhận thanh toán PayOS';
+      if (p.includes('/confirm-upgrade')) return 'Xác nhận nâng cấp gói cước';
+      if (p.includes('/stats')) return 'Thống kê doanh thu thanh toán';
+      if (p.includes('/payos-qr')) return 'Tạo mã QR thanh toán PayOS';
+      if (p.includes('/simulate-webhook')) return 'Mô phỏng Webhook thanh toán';
+      return 'Giao dịch thanh toán gói cước';
+    }
+
+    // AIOps Sentinel
+    if (p.includes('/aiops/quarantine/permanent-ip')) return 'Khóa vĩnh viễn IP nguy hại';
+    if (p.includes('/aiops/quarantine/temporary-ip')) return 'Tạm khóa IP nghi vấn';
+    if (p.includes('/aiops/quarantine/unblock-ip')) return 'Mở khóa IP cách ly';
+    if (p.includes('/aiops/quarantine/permanent-account')) return 'Khóa vĩnh viễn tài khoản nguy hại';
+    if (p.includes('/aiops/quarantine/temporary-account')) return 'Tạm khóa tài khoản nghi vấn';
+    if (p.includes('/aiops/quarantine/unblock-account')) return 'Mở khóa tài khoản cách ly';
+    if (p.includes('/aiops/quarantine')) return 'Quản lý danh sách cách ly an ninh';
+    if (p.includes('/aiops/incidents')) return 'Xử lý sự cố an ninh AIOps';
+    if (p.includes('/aiops/vectors')) return 'Cấu hình vector phòng vệ AIOps';
+    if (p.includes('/aiops/calibrate')) return 'Hiệu chỉnh mô hình AIOps';
+    if (p.includes('/aiops/scale')) return 'Điều chỉnh độ nhạy AIOps';
+    if (p.includes('/aiops/status') || p.includes('/aiops/history')) return 'Giám sát an ninh AIOps';
+
+    // Transactions, Wallets, Budgets
+    if (p.includes('/transactions')) {
+      if (m === 'POST') return 'Ghi nhận giao dịch tài chính';
+      if (m === 'PUT' || m === 'PATCH') return 'Cập nhật giao dịch tài chính';
+      if (m === 'DELETE') return 'Xóa giao dịch tài chính';
+      return 'Tra cứu lịch sử giao dịch';
+    }
+    if (p.includes('/wallets')) {
+      if (m === 'POST') return 'Tạo ví tài chính mới';
+      if (m === 'PUT' || m === 'PATCH') return 'Cập nhật thông tin ví';
+      if (m === 'DELETE') return 'Xóa ví tài chính';
+      return 'Xem danh sách ví tài chính';
+    }
+    if (p.includes('/budgets')) {
+      if (m === 'POST') return 'Thiết lập hạn mức ngân sách';
+      if (m === 'PUT' || m === 'PATCH') return 'Cập nhật ngân sách';
+      if (m === 'DELETE') return 'Xóa ngân sách';
+      return 'Tra cứu hạn mức ngân sách';
+    }
+    if (p.includes('/reports')) return 'Xem báo cáo phân tích tài chính';
 
     return `${m} ${path}`;
   },
@@ -892,6 +975,7 @@ const authService = {
       const log = await authRepository.createAuditLog({
         idaccount: data.idaccount,
         request: data.request,
+        action: data.action,
         req_status: reqStatus,
         reason: data.reason || null,
         time_req: data.time_req,
@@ -913,7 +997,7 @@ const authService = {
         user: data.userDetails?.fullname || data.userDetails?.username || `User #${data.idaccount}`,
         username: data.userDetails?.username || null,
         ip: data.ip || '127.0.0.1',
-        action: data.request,
+        action: data.action || data.request,
         request: data.request,
         reason: data.reason || null,
         status: reqStatus,
@@ -942,7 +1026,8 @@ const authService = {
         id: log.idlog,
         idaccount: log.idaccount,
         user: log.account?.User?.fullname || log.account?.username || `User #${log.idaccount}`,
-        action: log.request,
+        action: log.action || log.request,
+        request: log.request,
         reason: log.reason || null,
         status: log.req_status || 'Pass',
         time: timeFormatted,

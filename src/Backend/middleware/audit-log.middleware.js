@@ -53,6 +53,7 @@ function auditLogMiddleware(req, res, next) {
       const req_status = authService.determineReqStatus(res, req);
       const reason = authService.determineReqReason(res, req);
       const actionName = authService.formatActionName(req.method, path, req);
+      const apiEndpoint = `${req.method.toUpperCase()} ${path}`;
 
       // Xác định idaccount đã xác thực hoặc từ payload
       const initialId = req.user?.idaccount || req.auditAccountId;
@@ -100,7 +101,7 @@ function auditLogMiddleware(req, res, next) {
               username: identifier || 'Guest',
               ip: clientIp,
               action: actionName,
-              request: actionName,
+              request: apiEndpoint,
               reason: reason || (res.statusCode === 429 ? 'Vượt quá giới hạn tần suất (Rate Limit)' : res.statusCode === 401 ? 'Chưa xác thực' : null),
               status: req_status,
               req_status,
@@ -115,7 +116,8 @@ function auditLogMiddleware(req, res, next) {
 
           await authService.recordAuditLog({
             idaccount: Number(targetId),
-            request: actionName,
+            request: apiEndpoint,
+            action: actionName,
             req_status,
             reason,
             time_req,

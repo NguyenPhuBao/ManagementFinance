@@ -68,7 +68,7 @@ describe('ServerHealthPanel - Real Host Hardware & Realtime Stream', () => {
 
     // RAM gauge hiển thị 6,995/7,860 MB (89%) và dung lượng GB thật
     expect(await screen.findByText('6,995/7,860 MB (89%)')).toBeInTheDocument();
-    expect(screen.getByText('(7.7 GB)')).toBeInTheDocument();
+    expect(screen.getByText('(7.7 GB Host)')).toBeInTheDocument();
 
     // Tuyệt đối không được xuất hiện 0/100 MB giả lập
     expect(screen.queryByText('0/100 MB (0%)')).not.toBeInTheDocument();
@@ -100,7 +100,7 @@ describe('ServerHealthPanel - Real Host Hardware & Realtime Stream', () => {
 
     // Sau khi socket stream cập nhật, RAM gauge phải hiển thị giá trị mới chính xác
     expect(await screen.findByText('6,838/7,860 MB (87%)')).toBeInTheDocument();
-    expect(screen.getByText('(7.7 GB)')).toBeInTheDocument();
+    expect(screen.getByText('(7.7 GB Host)')).toBeInTheDocument();
     expect(screen.getByText('(16 cores)')).toBeInTheDocument();
 
     // Tuyệt đối không bị rớt về 0/100 MB
@@ -128,6 +128,6 @@ describe('ServerHealthPanel - Real Host Hardware & Realtime Stream', () => {
 
     // Giữ nguyên tổng RAM và số cores từ state trước đó
     expect(screen.getByText('(16 cores)')).toBeInTheDocument();
-    expect(screen.getByText('(7.7 GB)')).toBeInTheDocument();
+    expect(screen.getByText('(7.7 GB Host)')).toBeInTheDocument();
   });
 });

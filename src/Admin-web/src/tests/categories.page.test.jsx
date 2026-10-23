@@ -10,6 +10,7 @@ vi.mock('../api/admin.api', () => ({
     createCategory: vi.fn(),
     updateCategory: vi.fn(),
     deleteCategory: vi.fn(),
+    verifySecurityAction: vi.fn(),
   },
 }));
 
@@ -37,6 +38,7 @@ describe('Admin-web Categories Suite — CategoryPage', () => {
     vi.clearAllMocks();
     window.alert = vi.fn();
     adminApi.getCategories.mockResolvedValue({ data: mockCategories });
+    adminApi.verifySecurityAction.mockResolvedValue({ data: { verified: true } });
   });
 
   it('2.1. Tải và hiển thị danh mục mặc định với query bắt buộc is_default = true', async () => {
@@ -114,8 +116,8 @@ describe('Admin-web Categories Suite — CategoryPage', () => {
     expect(adminApi.createCategory).not.toHaveBeenCalled();
   });
 
-  it('2.5. Tạo danh mục hệ thống mới hợp lệ gửi API createCategory với is_default = true', async () => {
-    adminApi.createCategory.mockResolvedValueOnce({ data: { id: 3, name: 'Đầu tư' } });
+  it('2.5. Tạo danh mục hệ thống mới vào bản nháp và chỉ gửi API createCategory sau khi xác thực mã PIN đồng bộ', async () => {
+    adminApi.createCategory.mockResolvedValueOnce({ data: { id: 3, name: 'Đầu tư vàng' } });
 
     render(<CategoryPage />);
 
@@ -132,6 +134,18 @@ describe('Admin-web Categories Suite — CategoryPage', () => {
     const submitBtn = screen.getByRole('button', { name: /^Lưu$/i });
     fireEvent.click(submitBtn);
 
+    // Lưu vào bản nháp trên giao diện trước
+    expect(screen.getByText('Đầu tư vàng')).toBeInTheDocument();
+    expect(screen.getByText('Bản nháp')).toBeInTheDocument();
+    expect(adminApi.createCategory).not.toHaveBeenCalled();
+
+    // Bấm Đồng bộ danh mục và nhập mã PIN
+    fireEvent.click(screen.getByRole('button', { name: /Đồng bộ danh mục/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Nhập mã PIN 6 số/i), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận đồng bộ/i }));
+
     await waitFor(() => {
       expect(adminApi.createCategory).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -142,34 +156,8 @@ describe('Admin-web Categories Suite — CategoryPage', () => {
     });
   });
 
-  it('2.6. [Tầng 1 & Tầng 2] Xóa mềm danh mục: Danh mục không biến mất, hiển thị badge Đã xóa và cột hành động hiện Đã xóa', async () => {
+  it('2.6. [Tầng 1 & Tầng 2] Xóa mềm danh mục vào bản nháp và chỉ gọi deleteCategory sau khi đồng bộ mã PIN', async () => {
     adminApi.deleteCategory.mockResolvedValueOnce({ data: { success: true } });
-    adminApi.getCategories
-      .mockResolvedValueOnce({ data: mockCategories })
-      .mockResolvedValueOnce({
-        data: [
-          {
-            id: 1,
-            name: 'Ăn uống',
-            classify: 'Chi',
-            keyword: 'an uong, com, pho',
-            is_default: true,
-            status: 'deleted',
-            delete_at: '2026-10-14T00:00:00Z',
-            create_at: '2026-01-01T00:00:00Z',
-          },
-          {
-            id: 2,
-            name: 'Lương & Thưởng',
-            classify: 'Thu',
-            keyword: 'luong, cong ty, thuong',
-            is_default: true,
-            status: 'active',
-            delete_at: null,
-            create_at: '2026-01-01T00:00:00Z',
-          },
-        ],
-      });
 
     render(<CategoryPage />);
 
@@ -188,18 +176,24 @@ describe('Admin-web Categories Suite — CategoryPage', () => {
     const confirmBtn = screen.getByRole('button', { name: /xác nhận xóa/i });
     fireEvent.click(confirmBtn);
 
-    // Tầng 2 (System Impact): Gọi API xóa danh mục với id 1
+    // Tầng 1 (UI Rendering & Interaction):
+    // Danh mục Ăn uống KHÔNG ĐƯỢC BIẾN MẤT khỏi giao diện, hiển thị badge Đã xóa
+    expect(screen.getByText('Ăn uống')).toBeInTheDocument();
+    expect(screen.getAllByText('Đã xóa').length).toBeGreaterThanOrEqual(1);
+
+    // Chưa gọi deleteCategory về CSDL
+    expect(adminApi.deleteCategory).not.toHaveBeenCalled();
+
+    // Bấm Đồng bộ danh mục và nhập mã PIN
+    fireEvent.click(screen.getByRole('button', { name: /Đồng bộ danh mục/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Nhập mã PIN 6 số/i), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận đồng bộ/i }));
+
+    // Tầng 2 (System Impact): Gọi API xóa danh mục với id 1 sau khi đồng bộ
     await waitFor(() => {
       expect(adminApi.deleteCategory).toHaveBeenCalledWith(1);
-    });
-
-    // Tầng 1 (UI Rendering & Interaction):
-    // Danh mục Ăn uống KHÔNG ĐƯỢC BIẾN MẤT khỏi giao diện
-    expect(screen.getByText('Ăn uống')).toBeInTheDocument();
-
-    // Xuất hiện badge/nhãn "Đã xóa"
-    await waitFor(() => {
-      expect(screen.getAllByText('Đã xóa').length).toBeGreaterThanOrEqual(1);
     });
   });
 });

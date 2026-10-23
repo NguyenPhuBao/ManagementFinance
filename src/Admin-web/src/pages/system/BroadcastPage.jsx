@@ -6,6 +6,8 @@ import { formatDateTime } from '../../utils/format';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 import Pagination from '../../components/common/Pagination';
+import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
+import TruncateCell from '../../components/common/TruncateCell';
 
 const BROADCAST_LEVELS = [
   { value: 'info', color: 'text-blue-500', icon: 'info' },
@@ -13,11 +15,24 @@ const BROADCAST_LEVELS = [
   { value: 'critical', color: 'text-red-500', icon: 'error' },
 ];
 
+const toLocalInputString = (date) => {
+  const d = new Date(date);
+  const pad = (n) => String(n).padStart(2, '0');
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 const BroadcastPage = () => {
   const alert = useAlertSafe();
   const socket = useSocket();
   const { t } = useLanguageSafe();
   const [activeTab, setActiveTab] = useState('maintenance'); // 'maintenance' | 'broadcast'
+
+
 
   // --- State Quản trị Bảo trì ---
   const [maintenance, setMaintenance] = useState({
@@ -53,8 +68,26 @@ const BroadcastPage = () => {
   const [scheduleReason, setScheduleReason] = useState('');
   const [scheduleNotify, setScheduleNotify] = useState(false);
   const [isEmergencyAction, setIsEmergencyAction] = useState(false);
+  const [isEmergencySchedule, setIsEmergencySchedule] = useState(false);
   const [showEmergencyConfirmModal, setShowEmergencyConfirmModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [nowTick, setNowTick] = useState(Date.now());
+
+  // Đồng hồ cập nhật Live Timer cho các phiên đang diễn ra
+  useEffect(() => {
+    const timer = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // PO QUY ĐỊNH: Nút checkbox "Bảo trì khẩn cấp" bị chặn (disabled) khi bảo trì khẩn cấp đã được kích hoạt.
+  // Nút KHÔNG bị chặn khi bảo trì định kỳ đang diễn ra hoặc đã lên lịch.
+  const isEmergencyBlocked = Boolean(maintenance.active && maintenance.isEmergency);
+
+  useEffect(() => {
+    if (isEmergencyBlocked && isEmergencySchedule) {
+      setIsEmergencySchedule(false);
+    }
+  }, [isEmergencyBlocked, isEmergencySchedule]);
 
   // --- State Lịch Sử Bảo Trì (PostgreSQL Persistence) ---
   const [historyData, setHistoryData] = useState([]);
@@ -80,6 +113,16 @@ const BroadcastPage = () => {
   const [sending, setSending] = useState(false);
   const [broadcastResult, setBroadcastResult] = useState(null);
 
+  // --- State Lịch Sử Phát Thông Báo (PostgreSQL Persistence) ---
+  const [broadcastHistory, setBroadcastHistory] = useState([]);
+  const [broadcastPage, setBroadcastPage] = useState(1);
+  const [broadcastLimit, setBroadcastLimit] = useState(5);
+  const [broadcastTotal, setBroadcastTotal] = useState(0);
+  const [loadingBroadcastHistory, setLoadingBroadcastHistory] = useState(false);
+
+  // State Modal popup xác nhận kết thúc bảo trì
+  const [showStopMaintenanceConfirmModal, setShowStopMaintenanceConfirmModal] = useState(false);
+
   // Tải trạng thái bảo trì
   const fetchMaintenance = async () => {
     try {
@@ -98,6 +141,38 @@ const BroadcastPage = () => {
       setLoadingMaintenance(false);
     }
   };
+
+  // Tải lịch sử phát thông báo từ CSDL PostgreSQL (Phân trang mặc định 5/page)
+  const fetchBroadcastHistory = useCallback(async (pageToFetch = 1, limitToFetch = 5) => {
+    try {
+      setLoadingBroadcastHistory(true);
+      const res = await notificationApi.getBroadcastHistory({ page: pageToFetch, limit: limitToFetch });
+      const payload = res?.data?.data || res?.data || res;
+      let rows = [];
+      let total = 0;
+
+      if (payload && Array.isArray(payload.data)) {
+        rows = payload.data;
+        if (payload.pagination) {
+          total = Number(payload.pagination.total) || 0;
+        } else {
+          total = rows.length;
+        }
+      } else if (Array.isArray(payload)) {
+        rows = payload;
+        total = rows.length;
+      }
+
+      setBroadcastHistory(rows);
+      setBroadcastTotal(total);
+      setBroadcastPage(pageToFetch);
+      setBroadcastLimit(limitToFetch);
+    } catch (err) {
+      console.error('[BroadcastPage] Lỗi tải lịch sử phát thông báo:', err);
+    } finally {
+      setLoadingBroadcastHistory(false);
+    }
+  }, []);
 
   // Tải lịch sử bảo trì từ CSDL PostgreSQL (Trích xuất payload chuẩn hóa)
   const fetchHistory = useCallback(
@@ -153,7 +228,8 @@ const BroadcastPage = () => {
   useEffect(() => {
     fetchMaintenance();
     fetchHistory(1, historyLimit);
-  }, [fetchHistory]);
+    fetchBroadcastHistory(1, broadcastLimit);
+  }, [fetchHistory, fetchBroadcastHistory]);
 
   // Lắng nghe sự kiện bảo trì Realtime qua Socket.io
   useEffect(() => {
@@ -197,13 +273,8 @@ const BroadcastPage = () => {
     };
   }, [socket, fetchHistory, historyPage, historyLimit]);
 
-  // Hàm tính thời lượng bảo trì
-  const formatDuration = (startedAt, endedAt) => {
-    if (!startedAt) return '—';
-    const start = new Date(startedAt).getTime();
-    const end = endedAt ? new Date(endedAt).getTime() : Date.now();
-    const diffSec = Math.max(0, Math.floor((end - start) / 1000));
-    if (!endedAt) return t('broadcast.history.ongoingText', 'Đang diễn ra...');
+  // Hàm chuyển đổi số giây sang chuỗi định dạng (ví dụ: 45s, 12m 30s, 1h 15m)
+  const formatSecondsToString = (diffSec) => {
     if (diffSec < 60) return `${diffSec}s`;
     const min = Math.floor(diffSec / 60);
     const sec = diffSec % 60;
@@ -211,6 +282,54 @@ const BroadcastPage = () => {
     const h = Math.floor(min / 60);
     const remMin = min % 60;
     return `${h}h ${remMin}m`;
+  };
+
+  // Hàm tính thời lượng bảo trì chuẩn xác cho mọi trạng thái
+  const formatDuration = (rowOrStart, maybeEnd) => {
+    const row = typeof rowOrStart === 'object' && rowOrStart !== null
+      ? rowOrStart
+      : { started_at: rowOrStart, ended_at: maybeEnd, status: maybeEnd ? 'COMPLETED' : 'ONGOING' };
+
+    const { status, started_at, ended_at, actual_duration_seconds } = row;
+
+    // 1. Nếu CSDL đã có actual_duration_seconds đã ghi nhận
+    if (actual_duration_seconds !== null && actual_duration_seconds !== undefined) {
+      const sec = Number(actual_duration_seconds);
+      if (status === 'CANCELLED' && sec === 0) {
+        return '— (Hủy trước lịch)';
+      }
+      return formatSecondsToString(sec);
+    }
+
+    // 2. Trạng thái ĐÃ HỦY (CANCELLED)
+    if (status === 'CANCELLED') {
+      if (!started_at || new Date(started_at).getTime() > (ended_at ? new Date(ended_at).getTime() : nowTick)) {
+        return '— (Hủy trước lịch)';
+      }
+      const start = new Date(started_at).getTime();
+      const end = ended_at ? new Date(ended_at).getTime() : nowTick;
+      const diffSec = Math.max(0, Math.floor((end - start) / 1000));
+      return `${formatSecondsToString(diffSec)} (Hủy ngang)`;
+    }
+
+    // 3. Trạng thái ĐÃ LÊN LỊCH (SCHEDULED)
+    if (status === 'SCHEDULED') {
+      return 'Chưa diễn ra';
+    }
+
+    // 4. Trạng thái ĐANG DIỄN RA (ONGOING) - Live dynamic timer
+    if (status === 'ONGOING' || !ended_at) {
+      if (!started_at) return t('broadcast.history.ongoingText', 'Đang diễn ra...');
+      const start = new Date(started_at).getTime();
+      const diffSec = Math.max(0, Math.floor((nowTick - start) / 1000));
+      return `${formatSecondsToString(diffSec)} (Live)`;
+    }
+
+    // 5. Trạng thái ĐÃ HOÀN THÀNH (COMPLETED)
+    const start = new Date(started_at).getTime();
+    const end = new Date(ended_at).getTime();
+    const diffSec = Math.max(0, Math.floor((end - start) / 1000));
+    return formatSecondsToString(diffSec);
   };
 
   // Xử lý Bật/Tắt bảo trì khẩn cấp
@@ -248,23 +367,40 @@ const BroadcastPage = () => {
     }
   };
 
+  // Xử lý nộp biểu mẫu: Phân nhánh Lên lịch định kỳ vs Kích hoạt khẩn cấp
+  const handleScheduleFormSubmit = (e) => {
+    e.preventDefault();
+    if (isEmergencySchedule) {
+      setShowEmergencyConfirmModal(true);
+    } else {
+      handleSaveSchedule(e);
+    }
+  };
+
   // Xử lý Lên lịch bảo trì
   const handleSaveSchedule = async (e) => {
-    e.preventDefault();
-    if (maintenance.active) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!scheduleDatetime) return;
+
+    const startMs = new Date(scheduleDatetime).getTime();
+    const now = Date.now();
+    const minLeadTimeMs = 4 * 3600 * 1000;
+
+    // PO RÀNG BUỘC 1: Bắt buộc đặt trước thời điểm kích hoạt ít nhất 4 tiếng
+    if (startMs < now + minLeadTimeMs) {
       setMaintenanceFeedback({
         ok: false,
-        msg: t('broadcast.feedback.scheduleOngoingConflict'),
+        msg: t('broadcast.feedback.scheduleMinLeadTime', 'Thời gian bảo trì theo lịch phải được thiết lập trước ít nhất 4 tiếng!'),
       });
       return;
     }
-    if (!scheduleDatetime) return;
 
     if (scheduleEndDatetime) {
-      if (new Date(scheduleEndDatetime).getTime() <= new Date(scheduleDatetime).getTime()) {
+      const endMs = new Date(scheduleEndDatetime).getTime();
+      if (endMs <= startMs) {
         setMaintenanceFeedback({
           ok: false,
-          msg: t('broadcast.feedback.scheduleEndBeforeStart'),
+          msg: t('broadcast.feedback.scheduleEndBeforeStart', 'Thời điểm kết thúc bảo trì phải sau thời điểm bắt đầu bảo trì!'),
         });
         return;
       }
@@ -277,8 +413,9 @@ const BroadcastPage = () => {
       const payload = {
         scheduledAt: new Date(scheduleDatetime).toISOString(),
         scheduledEndAt: scheduleEndDatetime ? new Date(scheduleEndDatetime).toISOString() : null,
-        reason: scheduleReason.trim() || t('broadcast.scheduleCardDesc'),
-        isEmergency: Boolean(scheduleNotify),
+        reason: scheduleReason.trim() || t('broadcast.scheduleCardDesc', 'Bảo trì hệ thống theo lịch trình định kỳ.'),
+        isEmergency: false, // PO: Bảo trì theo lịch luôn là isEmergency: false
+        type: 'SCHEDULED',
       };
 
       const res = await adminApi.setMaintenanceStatus(payload);
@@ -294,34 +431,46 @@ const BroadcastPage = () => {
       setScheduleEndDatetime('');
       setScheduleReason('');
       setScheduleNotify(false);
+      fetchHistory(1, historyLimit);
     } catch (err) {
       setMaintenanceFeedback({
         ok: false,
-        msg: err.response?.data?.message || t('broadcast.feedback.scheduleFailed'),
+        msg: err.response?.data?.message || t('broadcast.feedback.scheduleFailed', 'Lên lịch bảo trì thất bại'),
       });
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Xử lý Hủy lịch bảo trì đã hẹn
-  const handleCancelSchedule = async () => {
-    if (!window.confirm(t('broadcast.schedule.cancelConfirm'))) return;
+  // Xử lý Hủy lịch bảo trì đã hẹn (hỗ trợ hủy theo ID cụ thể và kiểm tra điều kiện trước 4 tiếng)
+  const handleCancelSchedule = async (id = null, startedAt = null) => {
+    if (startedAt) {
+      const hoursUntilStart = (new Date(startedAt).getTime() - Date.now()) / (3600 * 1000);
+      if (hoursUntilStart < 4) {
+        setMaintenanceFeedback({
+          ok: false,
+          msg: 'Chỉ có thể hủy lịch bảo trì trước thời điểm bắt đầu ít nhất 4 tiếng!',
+        });
+        return;
+      }
+    }
+    if (!window.confirm(t('broadcast.schedule.cancelConfirm', 'Bạn có chắc chắn muốn hủy lịch bảo trì này?'))) return;
     setActionLoading(true);
     setMaintenanceFeedback(null);
     isActionInitiatorRef.current = true;
     try {
-      const res = await adminApi.cancelScheduledMaintenance();
+      const res = await adminApi.cancelScheduledMaintenance(id);
       const data = res?.data || res;
       setMaintenance(data);
       setMaintenanceFeedback({
         ok: true,
-        msg: t('broadcast.feedback.cancelSuccess'),
+        msg: t('broadcast.feedback.cancelSuccess', 'Đã hủy lịch bảo trì thành công'),
       });
+      fetchHistory(historyPage, historyLimit);
     } catch (err) {
       setMaintenanceFeedback({
         ok: false,
-        msg: err.response?.data?.message || t('broadcast.feedback.cancelFailed'),
+        msg: err.response?.data?.message || t('broadcast.feedback.cancelFailed', 'Hủy lịch bảo trì thất bại'),
       });
     } finally {
       setActionLoading(false);
@@ -347,6 +496,7 @@ const BroadcastPage = () => {
         ok: true,
         msg: t('broadcast.feedback.emergencyActivated'),
       });
+      setIsEmergencySchedule(false);
       fetchHistory(1, historyLimit);
     } catch (err) {
       setMaintenanceFeedback({
@@ -367,6 +517,7 @@ const BroadcastPage = () => {
       setScheduleReason('');
       setScheduleNotify(false);
       setIsEmergencyAction(false);
+      setIsEmergencySchedule(false);
       setMaintenanceFeedback({
         ok: true,
         msg: t('broadcast.feedback.formResetSuccess'),
@@ -393,6 +544,7 @@ const BroadcastPage = () => {
       setTitle('');
       setMessage('');
       setLevel('info');
+      fetchBroadcastHistory(1, broadcastLimit);
     } catch (e) {
       const errMsg = e.response?.data?.message || t('broadcast.feedback.broadcastErrorTitle');
       setBroadcastResult({ ok: false, msg: errMsg });
@@ -408,12 +560,11 @@ const BroadcastPage = () => {
   const currentLocalIso = new Date(Date.now() + 60000).toISOString().slice(0, 16);
 
   return (
-    <div className="max-w-[1440px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full">
+    <div className="max-w-[1720px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full">
       {/* Tiêu đề trang & Thanh chuyển Tab */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline-variant pb-4">
         <div>
           <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[30px]">construction</span>
             {t('broadcast.title')}
           </h1>
         </div>
@@ -438,7 +589,10 @@ const BroadcastPage = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('broadcast')}
+            onClick={() => {
+              setActiveTab('broadcast');
+              fetchBroadcastHistory(1, broadcastLimit);
+            }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'broadcast'
                 ? 'bg-white text-primary shadow-xs font-bold'
@@ -451,77 +605,82 @@ const BroadcastPage = () => {
         </div>
       </div>
 
+      {/* BANNER THÔNG BÁO ĐANG BẢO TRÌ Ở GẦN ĐẦU TRANG (HIỂN THỊ KHI ĐANG BẢO TRÌ) */}
+      {maintenance.active && (
+        <div
+          id="banner-active-maintenance"
+          className={`rounded-2xl border p-5 transition-all shadow-xs ${
+            maintenance.isEmergency
+              ? 'border-rose-300 bg-rose-50/90 text-rose-950'
+              : 'border-amber-300 bg-amber-50/90 text-amber-950'
+          }`}
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div
+                className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs ${
+                  maintenance.isEmergency
+                    ? 'bg-rose-600 text-white animate-pulse'
+                    : 'bg-amber-500 text-white'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[26px]">
+                  {maintenance.isEmergency ? 'crisis_alert' : 'construction'}
+                </span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base font-bold m-0">
+                    {maintenance.isEmergency
+                      ? t('broadcast.banner.emergencyTitle', 'HỆ THỐNG ĐANG BẢO TRÌ KHẨN CẤP')
+                      : t('broadcast.banner.scheduledTitle', 'HỆ THỐNG ĐANG BẢO TRÌ')}
+                  </h2>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase ${
+                      maintenance.isEmergency
+                        ? 'bg-rose-200 text-rose-800'
+                        : 'bg-amber-200 text-amber-800'
+                    }`}
+                  >
+                    {maintenance.isEmergency
+                      ? t('broadcast.banner.emergencyBadge', 'Khẩn cấp')
+                      : t('broadcast.banner.scheduledBadge', 'Theo lịch')}
+                  </span>
+                </div>
+                <p className="text-xs opacity-90 mt-1">
+                  {maintenance.isEmergency
+                    ? t('broadcast.banner.emergencyDesc', 'Toàn bộ kết nối Client-app bị chặn (HTTP 503). Đã tự động phát cảnh báo đỏ tới người dùng.')
+                    : t('broadcast.banner.scheduledDesc', 'Hệ thống đang tiến hành bảo trì kỹ thuật định kỳ theo lịch trình. Toàn bộ tính năng sẽ sớm khôi phục.')}
+                </p>
+                <div className="mt-2 text-xs flex flex-wrap gap-x-4 gap-y-1 font-medium">
+                  <span>• {t('broadcast.banner.reasonLabel', 'Lý do:')} <b>{maintenance.reason || t('broadcast.banner.noReason', 'Bảo trì hệ thống')}</b></span>
+                  {maintenance.activatedBy && <span>• {t('broadcast.banner.activatedByLabel', 'Người kích hoạt:')} <b>{maintenance.activatedBy}</b></span>}
+                  {maintenance.activatedAt && (
+                    <span>• {t('broadcast.banner.activatedAtLabel', 'Bắt đầu lúc:')} <b>{formatDateTime(maintenance.activatedAt)}</b></span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Nút Tắt Bảo Trì */}
+            <button
+              id="btn-turn-off-maintenance"
+              onClick={() => setShowStopMaintenanceConfirmModal(true)}
+              disabled={actionLoading}
+              className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 text-on-surface text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 self-start md:self-center flex-shrink-0"
+            >
+              <span className="material-symbols-outlined text-[18px] text-emerald-600">power_settings_new</span>
+              <span>{t('broadcast.turnOffBtn', 'Tắt Bảo Trì')}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ======================================================== */}
       {/* TAB 1: ĐIỀU HÀNH BẢO TRÌ HỆ THỐNG */}
       {/* ======================================================== */}
       {activeTab === 'maintenance' && (
         <div className="space-y-6">
-          {/* 1.1 BANNER TRẠNG THÁI BẢO TRÌ (CHỈ HIỂN THỊ KHI ĐANG BẢO TRÌ) */}
-          {maintenance.active && (
-            <div
-              className={`rounded-2xl border p-5 transition-all shadow-xs ${
-                maintenance.isEmergency
-                  ? 'border-red-300 bg-red-50/90 text-red-950'
-                  : 'border-orange-300 bg-orange-50/90 text-orange-950'
-              }`}
-            >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-start gap-3.5">
-                  <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs ${
-                      maintenance.isEmergency
-                        ? 'bg-red-600 text-white animate-pulse'
-                        : 'bg-orange-500 text-white'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[26px]">
-                      {maintenance.isEmergency ? 'error' : 'construction'}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-base font-bold m-0">
-                        {maintenance.isEmergency
-                          ? t('broadcast.banner.emergencyTitle')
-                          : t('broadcast.banner.silentTitle')}
-                      </h2>
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase ${
-                          maintenance.isEmergency
-                            ? 'bg-red-200 text-red-800'
-                            : 'bg-orange-200 text-orange-800'
-                        }`}
-                      >
-                        {maintenance.isEmergency ? t('broadcast.banner.emergencyBadge') : t('broadcast.banner.silentBadge')}
-                      </span>
-                    </div>
-                    <p className="text-xs opacity-90 mt-1">
-                      {maintenance.isEmergency
-                        ? t('broadcast.banner.emergencyDesc')
-                        : t('broadcast.banner.silentDesc')}
-                    </p>
-                    <div className="mt-2 text-xs flex flex-wrap gap-x-4 gap-y-1 font-medium">
-                      <span>• {t('broadcast.banner.reasonLabel')} <b>{maintenance.reason || t('broadcast.banner.noReason')}</b></span>
-                      {maintenance.activatedBy && <span>• {t('broadcast.banner.activatedByLabel')} <b>{maintenance.activatedBy}</b></span>}
-                      {maintenance.activatedAt && (
-                        <span>• {t('broadcast.banner.activatedAtLabel')} <b>{formatDateTime(maintenance.activatedAt)}</b></span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick toggle if currently active */}
-                <button
-                  onClick={() => handleToggleMaintenance(false)}
-                  disabled={actionLoading}
-                  className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 text-on-surface text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 self-start md:self-center flex-shrink-0"
-                >
-                  <span className="material-symbols-outlined text-[18px] text-emerald-600">power_settings_new</span>
-                  <span>{t('broadcast.turnOffBtn', 'Tắt Bảo Trì')}</span>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Feedback Alert */}
           {maintenanceFeedback && (
@@ -547,197 +706,265 @@ const BroadcastPage = () => {
             </div>
           )}
 
-          {/* 1.2 KHUNG ĐIỀU HÀNH & LÊN LỊCH THỜI ĐIỂM BẢO TRÌ (1 BOX DUY NHẤT) */}
-          <div className="bg-white rounded-2xl border border-outline-variant p-5 md:p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-outline-variant pb-3">
-              <h3 className="font-bold text-sm text-on-surface flex items-center gap-2 m-0">
-                <span className="material-symbols-outlined text-primary text-[20px]">calendar_clock</span>
-                {t('broadcast.scheduleCardTitle')}
-              </h3>
+          {/* PO YÊU CẦU: CARD CẢNH BÁO "LỊCH BẢO TRÌ SẮP DIỄN RA" */}
+          {/* CHỈ ĐƯỢC HIỂN THỊ KHI CÒN <= 1 TIẾNG VÀ KHÔNG LÀM MẤT FORM LẬP LỊCH */}
+          {(() => {
+            const list = Array.isArray(maintenance.scheduledList) && maintenance.scheduledList.length > 0
+              ? maintenance.scheduledList
+              : (maintenance.scheduled ? [maintenance.scheduled] : []);
+            const nearest = list.find((x) => new Date(x.scheduledAt).getTime() > Date.now()) || list[0];
+            if (!nearest || maintenance.active) return null;
+            const diffMs = new Date(nearest.scheduledAt).getTime() - Date.now();
+            if (diffMs <= 0 || diffMs > 3600 * 1000) return null; // ẨN HOÀN TOÀN KHI > 1 TIẾNG
+            const minutesLeft = Math.max(1, Math.ceil(diffMs / 60000));
+
+            return (
+              <div
+                id="card-imminent-maintenance"
+                className="p-4 rounded-2xl border border-amber-300 bg-amber-50/95 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 text-amber-950 animate-pulse"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                    <span className="material-symbols-outlined text-[24px]">timer</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-xs uppercase tracking-wider text-amber-900 m-0">
+                        ⚠️ LỊCH BẢO TRÌ SẮP DIỄN RA
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-200 text-amber-900">
+                        Bắt đầu sau {minutesLeft} phút
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-900/90 mt-1">
+                      Hệ thống sẽ chuyển sang chế độ bảo trì kỹ thuật vào lúc <b>{formatDateTime(nearest.scheduledAt)}</b>.
+                      {nearest.reason && <span> Lý do: <i>"{nearest.reason}"</i>.</span>}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleCancelSchedule(nearest.id || nearest.recordId)}
+                  disabled={actionLoading}
+                  className="px-3 py-1.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs self-start md:self-center flex-shrink-0"
+                >
+                  <span className="material-symbols-outlined text-[15px]">delete_sweep</span>
+                  <span>Hủy lịch này</span>
+                </button>
+              </div>
+            );
+          })()}
+
+          {/* 1.2 KHUNG ĐIỀU HÀNH & LÊN LỊCH THỜI ĐIỂM BẢO TRÌ */}
+          {/* PO QUY ĐỊNH: FORM LẬP LỊCH BẢO TRÌ ĐỊNH KỲ LUÔN LUÔN HIỆN DIỆN VÀ SẴN SÀNG */}
+          <div className="bg-white rounded-2xl border border-outline-variant p-5 md:p-6 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-outline-variant pb-3">
+              <div>
+                <h3 className="font-bold text-sm text-on-surface flex items-center gap-2 m-0">
+                  <span className="material-symbols-outlined text-primary text-[20px]">calendar_clock</span>
+                  <span>{t('broadcast.scheduleCardTitle', 'Lập Lịch Bảo Trì Kỹ Thuật Định Kỳ')}</span>
+                </h3>
+                <p className="text-[11px] text-on-surface-variant mt-0.5">
+                  Lịch bảo trì phải được đặt trước ít nhất <b>4 tiếng</b> và cách các phiên khác tối thiểu <b>5 tiếng</b>.
+                </p>
+              </div>
             </div>
 
-            {/* Nếu đã có lịch bảo trì hẹn trước */}
-            {maintenance.scheduled ? (
-              <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/70 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 text-blue-900 font-bold text-xs uppercase tracking-wider">
-                    <span className="material-symbols-outlined text-[18px] text-blue-600">event_available</span>
-                    {t('broadcast.schedule.upcomingTitle')}
+            {/* FORM ĐẶT LỊCH / BẢO TRÌ KHẨN CẤP */}
+            <form onSubmit={handleScheduleFormSubmit} className="space-y-4">
+              {/* PO QUY ĐỊNH: MẶC ĐỊNH KHI BẢO TRÌ ĐỊNH KỲ HAY KHẨN CẤP ĐỀU SẼ PHÁT THÔNG BÁO TỚI USER VÀ ADMIN */}
+              <div className="flex items-start gap-2.5 text-xs text-primary bg-primary/5 border border-primary/20 rounded-xl px-3.5 py-2.5">
+                <span className="material-symbols-outlined text-[18px] text-primary shrink-0 mt-0.5">campaign</span>
+                <span className="leading-relaxed">
+                  {t('broadcast.schedule.defaultNotifyNote', 'Mặc định khi bảo trì (Định kỳ hay khẩn cấp), hệ thống đều sẽ tự động phát thông báo tới Client-app người dùng và Quản trị viên.')}
+                </span>
+              </div>
+
+              {/* PO QUY ĐỊNH: NÚT CHECKBOX "BẢO TRÌ KHẨN CẤP" */}
+              {/* Nút bị chặn khi khẩn cấp đã kích hoạt. KHÔNG bị chặn khi bảo trì định kỳ */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-outline-variant bg-surface-container-lowest">
+                <label htmlFor="checkbox-emergency-schedule" className="flex items-start sm:items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    id="checkbox-emergency-schedule"
+                    type="checkbox"
+                    checked={isEmergencySchedule}
+                    disabled={isEmergencyBlocked}
+                    onChange={(e) => setIsEmergencySchedule(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 sm:mt-0 rounded text-rose-600 focus:ring-rose-500 border-outline-variant cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[16px] text-rose-600">crisis_alert</span>
+                      {t('broadcast.schedule.emergencyCheckbox', 'Bảo trì khẩn cấp')}
+                    </span>
+                    {isEmergencyBlocked ? (
+                      <span className="text-[11px] text-rose-600 block mt-0.5 font-medium">
+                        {t('broadcast.schedule.emergencyBlockedHint', 'Hệ thống đang trong chế độ bảo trì khẩn cấp')}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-on-surface-variant block mt-0.5">
+                        {isEmergencySchedule
+                          ? t('broadcast.schedule.emergencyImmediateNotice', 'Chế độ bảo trì khẩn cấp sẽ có hiệu lực ngay lập tức sau khi xác nhận.')
+                          : t('broadcast.schedule.policyDesc', 'Bảo trì khẩn cấp sẽ đè trực tiếp lên bảo trì định kỳ nếu có xung đột.')}
+                      </span>
+                    )}
                   </div>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    maintenance.scheduled.isEmergency ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                  }`}>
-                    {maintenance.scheduled.isEmergency ? t('broadcast.banner.emergencyBadge') : t('broadcast.banner.silentBadge')}
-                  </span>
-                </div>
-
-                <div className="space-y-1 text-xs text-blue-950">
-                  <p>
-                    • {t('broadcast.schedule.startPrefix')} <b className="text-blue-700 text-sm">{formatDateTime(maintenance.scheduled.scheduledAt)}</b>
-                  </p>
-                  {maintenance.scheduled.scheduledEndAt && (
-                    <p>
-                      • {t('broadcast.schedule.endPrefix')} <b className="text-blue-700 text-sm">{formatDateTime(maintenance.scheduled.scheduledEndAt)}</b>
-                    </p>
-                  )}
-                  <p>• {t('broadcast.schedule.reasonPrefix')} <b>{maintenance.scheduled.reason}</b></p>
-                  <p className="text-[11px] text-blue-800/80">
-                    • {t('broadcast.schedule.creatorPrefix')} <b>{maintenance.scheduled.createdBy}</b> ({formatDateTime(maintenance.scheduled.createdAt)})
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-blue-800 italic">
-                    {t('broadcast.schedule.autoNotice')}
-                  </span>
-                  <button
-                    onClick={handleCancelSchedule}
-                    disabled={actionLoading}
-                    className="px-3 py-1.5 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
-                  >
-                    <span className="material-symbols-outlined text-[15px]">delete_sweep</span>
-                    <span>{t('broadcast.schedule.cancelBtn')}</span>
-                  </button>
-                </div>
+                </label>
               </div>
-            ) : maintenance.active ? (
-              <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/80 space-y-3">
-                <div className="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
-                  <span className="material-symbols-outlined text-[20px] text-amber-600">block</span>
-                  {t('broadcast.scheduleActiveNotice', 'Chế độ bảo trì đang kích hoạt')}
-                </div>
-                <p className="text-xs text-amber-950 leading-relaxed">
-                  {t('broadcast.scheduleActiveDesc', 'Không thể thiết lập thêm lịch bảo trì mới để tránh xung đột thời gian')}
-                </p>
-                <p className="text-[11px] text-amber-800 italic pt-1 border-t border-amber-200">
-                  👉 Vui lòng nhấn nút <b>"{t('broadcast.turnOffEmergencyBtn', 'Tắt Bảo Trì Khẩn Cấp')}"</b> ở biểu ngữ phía trên trước khi cài đặt lịch trình bảo trì mới.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleSaveSchedule} className="space-y-4">
-                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 transition-opacity ${isEmergencyAction ? 'opacity-40 pointer-events-none' : ''}`}>
+
+              {/* Khi KHÔNG tick bảo trì khẩn cấp -> Hiện các trường chọn thời gian */}
+              {!isEmergencySchedule ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label htmlFor="schedule-start-at" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
-                      {t('broadcast.scheduleStartLabel')} {!isEmergencyAction && <span className="text-red-500">*</span>}
+                      {t('broadcast.scheduleStartLabel', 'Thời điểm bắt đầu')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       id="schedule-start-at"
                       type="datetime-local"
-                      min={currentLocalIso}
+                      min={toLocalInputString(Date.now() + 4 * 3600 * 1000)}
                       value={scheduleDatetime}
                       onChange={(e) => setScheduleDatetime(e.target.value)}
-                      required={!isEmergencyAction}
-                      disabled={isEmergencyAction || maintenance.active}
-                      className="w-full border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      required={!isEmergencySchedule}
+                      className="w-full border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
+                    <span className="text-[10px] text-gray-500 mt-1 block">Tối thiểu trước 4 tiếng kể từ hiện tại</span>
                   </div>
 
                   <div>
                     <label htmlFor="schedule-end-at" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
-                      {t('broadcast.scheduleEndLabel')}
+                      {t('broadcast.scheduleEndLabel', 'Thời điểm kết thúc dự kiến')}
                     </label>
                     <input
                       id="schedule-end-at"
                       type="datetime-local"
-                      min={scheduleDatetime || currentLocalIso}
+                      min={scheduleDatetime || toLocalInputString(Date.now() + 4 * 3600 * 1000)}
                       value={scheduleEndDatetime}
                       onChange={(e) => setScheduleEndDatetime(e.target.value)}
-                      disabled={isEmergencyAction || maintenance.active}
-                      className="w-full border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      className="w-full border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                   </div>
                 </div>
+              ) : (
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-950 text-xs flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-[20px] text-rose-600 shrink-0">bolt</span>
+                  <span>Chế độ bảo trì khẩn cấp sẽ kích hoạt tức thời, cắt tải toàn bộ traffic và hủy các đợt bảo trì định kỳ bị dính khung thời gian.</span>
+                </div>
+              )}
 
-                {isEmergencyAction ? (
-                  <p className="text-[11px] text-red-600 font-semibold -mt-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[15px]">info</span>
-                    {t('broadcast.schedule.emergencyImmediateNotice', 'Chế độ bảo trì khẩn cấp sẽ có hiệu lực ngay lập tức sau khi xác nhận popup.')}
-                  </p>
+              <div>
+                <label htmlFor="schedule-reason" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
+                  {t('broadcast.scheduleReasonLabel', 'Lý do / Nội dung bảo trì')}
+                </label>
+                <input
+                  id="schedule-reason"
+                  type="text"
+                  value={scheduleReason}
+                  onChange={(e) => setScheduleReason(e.target.value)}
+                  placeholder={
+                    isEmergencySchedule
+                      ? 'Nhập lý do bảo trì khẩn cấp gửi tới người dùng...'
+                      : t('broadcast.scheduleReasonPlaceholder', 'Ví dụ: Nâng cấp cụm máy chủ và tối ưu hóa hệ thống định kỳ...')
+                  }
+                  className="w-full border border-outline-variant rounded-lg px-3.5 py-2.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+              </div>
+
+              {/* Hàng nút bấm */}
+              <div className="flex items-center gap-2.5 pt-1">
+                {isEmergencySchedule ? (
+                  <button
+                    type="submit"
+                    id="btn-submit-emergency-maintenance"
+                    disabled={actionLoading || isEmergencyBlocked}
+                    className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">crisis_alert</span>
+                    <span>{actionLoading ? t('common.processing', 'Đang xử lý...') : t('broadcast.schedule.emergencySubmitBtn', 'Kích hoạt bảo trì khẩn cấp')}</span>
+                  </button>
                 ) : (
-                  <p className="text-[11px] text-on-surface-variant -mt-1">{t('broadcast.schedule.timezoneNote')}</p>
+                  <button
+                    type="submit"
+                    id="btn-submit-schedule-maintenance"
+                    disabled={actionLoading || !scheduleDatetime}
+                    className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">alarm_on</span>
+                    <span>{actionLoading ? t('common.saving', 'Đang lưu...') : t('broadcast.scheduleSubmitBtn', 'Lên lịch bảo trì')}</span>
+                  </button>
                 )}
 
-                <div>
-                  <label htmlFor="schedule-reason" className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">
-                    {t('broadcast.scheduleReasonLabel')}
-                  </label>
-                  <input
-                    id="schedule-reason"
-                    type="text"
-                    value={scheduleReason}
-                    onChange={(e) => setScheduleReason(e.target.value)}
-                    placeholder={isEmergencyAction ? t('broadcast.reasonPlaceholder', 'Ví dụ: Nâng cấp cụm máy chủ và tối ưu hóa hệ thống khẩn cấp...') : t('broadcast.scheduleReasonPlaceholder')}
-                    disabled={maintenance.active}
-                    className="w-full border border-outline-variant rounded-lg px-3.5 py-2.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
+                <button
+                  type="button"
+                  onClick={handleResetScheduleFormAndRefresh}
+                  disabled={isRefreshing}
+                  className="py-2.5 px-4 rounded-xl text-xs font-semibold text-on-surface bg-surface-container-low hover:bg-surface-container border border-outline-variant transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  title={t('broadcast.schedule.resetTooltip', 'Làm mới')}
+                >
+                  <span className={`material-symbols-outlined text-[18px] ${isRefreshing ? 'animate-spin' : ''}`}>
+                    refresh
+                  </span>
+                  <span>{isRefreshing ? t('broadcast.schedule.refreshing', 'Đang làm mới...') : t('broadcast.schedule.resetBtn', 'Làm mới')}</span>
+                </button>
+              </div>
+            </form>
+
+            {/* BẢNG CÁC LỊCH BẢO TRÌ ĐÃ ĐẶT (UPCOMING SCHEDULES TABLE) */}
+            {(() => {
+              const list = Array.isArray(maintenance.scheduledList) && maintenance.scheduledList.length > 0
+                ? maintenance.scheduledList
+                : (maintenance.scheduled ? [maintenance.scheduled] : []);
+
+              if (!list || list.length === 0) return null;
+
+              return (
+                <div className="pt-4 border-t border-outline-variant space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-xs text-on-surface uppercase tracking-wider flex items-center gap-1.5 m-0">
+                      <span className="material-symbols-outlined text-blue-600 text-[18px]">event_upcoming</span>
+                      <span>Danh Sách Lịch Bảo Trì Đã Lên Lịch ({list.length})</span>
+                    </h4>
+                  </div>
+
+                  <div className="overflow-x-auto border border-blue-200 rounded-xl bg-blue-50/30">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-blue-200 bg-blue-100/60 text-blue-950 font-bold">
+                          <th className="py-2.5 px-3">#</th>
+                          <th className="py-2.5 px-3">Bắt đầu</th>
+                          <th className="py-2.5 px-3">Kết thúc dự kiến</th>
+                          <th className="py-2.5 px-3">Thời lượng</th>
+                          <th className="py-2.5 px-3">Lý do</th>
+                          <th className="py-2.5 px-3">Người lên lịch</th>
+                          <th className="py-2.5 px-3 text-center">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-blue-200/50">
+                        {list.map((sched, idx) => (
+                          <tr key={sched.id || sched.recordId || idx} className="hover:bg-blue-100/40">
+                            <td className="py-2.5 px-3 font-semibold text-blue-900">{idx + 1}</td>
+                            <td className="py-2.5 px-3 font-bold text-blue-700">{formatDateTime(sched.scheduledAt)}</td>
+                            <td className="py-2.5 px-3 text-blue-950">{sched.scheduledEndAt ? formatDateTime(sched.scheduledEndAt) : '—'}</td>
+                            <td className="py-2.5 px-3">{sched.scheduledEndAt ? formatDuration({ started_at: sched.scheduledAt, ended_at: sched.scheduledEndAt, status: 'SCHEDULED' }) : '—'}</td>
+                            <td className="py-2.5 px-3 max-w-[220px] truncate" title={sched.reason}>{sched.reason || 'Bảo trì định kỳ'}</td>
+                            <td className="py-2.5 px-3 text-gray-600">{sched.createdBy || 'admin'}</td>
+                            <td className="py-2.5 px-3 text-center">
+                              <button
+                                onClick={() => handleCancelSchedule(sched.id || sched.recordId)}
+                                disabled={actionLoading}
+                                className="px-2.5 py-1 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">delete</span>
+                                <span>Hủy</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-
-                {/* Hàng Checkbox: Tự động phát thông báo & Checkbox Bảo trì khẩn cấp nằm bên phải */}
-                <div className="flex flex-wrap items-center gap-6 pt-1">
-                  <label className={`flex items-center gap-2 cursor-pointer text-xs ${maintenance.active ? 'opacity-50 cursor-not-allowed' : 'text-on-surface'}`}>
-                    <input
-                      type="checkbox"
-                      checked={scheduleNotify}
-                      onChange={(e) => setScheduleNotify(e.target.checked)}
-                      disabled={maintenance.active}
-                      className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary cursor-pointer disabled:cursor-not-allowed"
-                    />
-                    <span className="font-medium">{t('broadcast.schedule.autoNotifyTitle', 'Tự động phát thông báo')}</span>
-                  </label>
-
-                  <label className={`flex items-center gap-2 cursor-pointer text-xs ${maintenance.active ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={isEmergencyAction}
-                      onChange={(e) => setIsEmergencyAction(e.target.checked)}
-                      disabled={maintenance.active}
-                      className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500 cursor-pointer disabled:cursor-not-allowed"
-                    />
-                    <span className={`font-bold flex items-center gap-1 ${maintenance.active ? 'text-gray-400' : 'text-red-600'}`}>
-                      <span className="material-symbols-outlined text-[16px]">warning</span>
-                      {t('broadcast.schedule.emergencyCheckbox', 'Bảo trì khẩn cấp')}
-                    </span>
-                  </label>
-                </div>
-
-                {/* Hàng nút bấm: Nút hành động chính & Nút làm mới */}
-                <div className="flex items-center gap-2.5 pt-2">
-                  {isEmergencyAction ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowEmergencyConfirmModal(true)}
-                      disabled={actionLoading || maintenance.active}
-                      className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">warning</span>
-                      <span>{actionLoading ? t('common.processing') : t('broadcast.schedule.emergencySubmitBtn', 'Bảo trì khẩn cấp')}</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="submit"
-                      disabled={actionLoading || !scheduleDatetime || maintenance.active}
-                      className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">alarm_on</span>
-                      <span>{actionLoading ? t('common.saving') : t('broadcast.scheduleSubmitBtn', 'Lên lịch bảo trì')}</span>
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleResetScheduleFormAndRefresh}
-                    disabled={isRefreshing}
-                    className="py-2.5 px-4 rounded-xl text-xs font-semibold text-on-surface bg-surface-container-low hover:bg-surface-container border border-outline-variant transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
-                    title={t('broadcast.schedule.resetTooltip', 'Làm mới')}
-                  >
-                    <span className={`material-symbols-outlined text-[18px] ${isRefreshing ? 'animate-spin' : ''}`}>
-                      refresh
-                    </span>
-                    <span>{isRefreshing ? t('broadcast.schedule.refreshing', 'Đang làm mới...') : t('broadcast.schedule.resetBtn', 'Làm mới')}</span>
-                  </button>
-                </div>
-              </form>
-            )}
+              );
+            })()}
           </div>
 
           {/* 1.3 BẢNG LỊCH SỬ BẢO TRÌ HỆ THỐNG (POSTGRESQL PERSISTENCE) */}
@@ -761,8 +988,9 @@ const BroadcastPage = () => {
                   className="text-xs border border-outline-variant rounded-lg pl-2.5 pr-8 py-1.5 bg-surface text-on-surface focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                 >
                   <option value="ALL">{t('broadcast.history.filterAllType', 'Tất cả loại')}</option>
+                  <option value="UPGRADE">{t('broadcast.history.typeUpgrade', 'Nâng cấp hệ thống')}</option>
                   <option value="EMERGENCY">{t('broadcast.history.typeEmergency', 'Khẩn cấp')}</option>
-                  <option value="SCHEDULED">{t('broadcast.history.typeScheduled', 'Theo lịch')}</option>
+                  <option value="SCHEDULED">{t('broadcast.history.typeScheduled', 'Định kỳ')}</option>
                 </select>
 
                 <select
@@ -775,43 +1003,51 @@ const BroadcastPage = () => {
                 >
                   <option value="ALL">{t('broadcast.history.filterAllStatus', 'Tất cả trạng thái')}</option>
                   <option value="ONGOING">{t('broadcast.history.statusOngoing', 'Đang diễn ra')}</option>
+                  <option value="SCHEDULED">{t('broadcast.history.statusScheduled', 'Đã lên lịch')}</option>
                   <option value="COMPLETED">{t('broadcast.history.statusCompleted', 'Đã hoàn thành')}</option>
                   <option value="CANCELLED">{t('broadcast.history.statusCancelled', 'Đã hủy')}</option>
                 </select>
-
-                <button
-                  type="button"
-                  onClick={() => fetchHistory(historyPage, historyLimit)}
-                  disabled={loadingHistory}
-                  className="p-1.5 hover:bg-surface-container-highest rounded-lg text-on-surface-variant transition-colors cursor-pointer flex items-center justify-center border border-outline-variant"
-                  title={t('broadcast.history.refreshBtn', 'Làm mới')}
-                >
-                  <span className={`material-symbols-outlined text-[18px] ${loadingHistory ? 'animate-spin' : ''}`}>
-                    refresh
-                  </span>
-                </button>
               </div>
             </div>
 
             {/* Bảng Dữ Liệu */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full text-left text-xs border-collapse min-w-[850px]">
                 <thead>
                   <tr className="border-b border-outline-variant text-[11px] text-on-surface-variant uppercase tracking-wider bg-surface-container-lowest font-semibold">
-                    <th className="py-2.5 px-3">#</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colType', 'Loại')}</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colUser', 'Người kích hoạt')}</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colReason', 'Lý do / Thông điệp')}</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colStart', 'Bắt đầu')}</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colEnd', 'Kết thúc')}</th>
-                    <th className="py-2.5 px-3">{t('broadcast.history.colDuration', 'Thời lượng')}</th>
-                    <th className="py-2.5 px-3 text-right">{t('broadcast.history.colStatus', 'Trạng thái')}</th>
+                    <th className="w-14 py-2.5 px-3">
+                      #
+                    </th>
+                    <th className="w-[13%] min-w-[100px] py-2.5 px-3">
+                      {t('broadcast.history.colType', 'Loại')}
+                    </th>
+                    <th className="w-[17%] min-w-[130px] py-2.5 px-3">
+                      {t('broadcast.history.colUser', 'Người kích hoạt')}
+                    </th>
+                    <th className="w-[26%] min-w-[180px] py-2.5 px-3">
+                      {t('broadcast.history.colReason', 'Lý do / Thông điệp')}
+                    </th>
+                    <th className="w-[15%] min-w-[110px] py-2.5 px-3">
+                      {t('broadcast.history.colStart', 'Bắt đầu')}
+                    </th>
+                    <th className="w-[15%] min-w-[110px] py-2.5 px-3">
+                      {t('broadcast.history.colEnd', 'Kết thúc')}
+                    </th>
+                    <th className="w-[14%] min-w-[100px] py-2.5 px-3">
+                      {t('broadcast.history.colDuration', 'Thời lượng')}
+                    </th>
+                    <th className="w-24 min-w-[90px] py-2.5 px-3 text-right">
+                      {t('broadcast.history.colStatus', 'Trạng thái')}
+                    </th>
+                    <th className="w-24 min-w-[90px] py-2.5 px-3 text-center">
+                      {t('common.actions', 'Thao tác')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/50">
                   {loadingHistory && historyData.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="py-8 text-center text-on-surface-variant">
+                      <td colSpan="9" className="py-8 text-center text-on-surface-variant">
                         <div className="flex items-center justify-center gap-2">
                           <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
                           <span>{t('common.loading', 'Đang tải dữ liệu...')}</span>
@@ -820,7 +1056,7 @@ const BroadcastPage = () => {
                     </tr>
                   ) : historyData.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="py-8 text-center text-on-surface-variant">
+                      <td colSpan="9" className="py-8 text-center text-on-surface-variant">
                         <div className="flex flex-col items-center justify-center gap-1">
                           <span className="material-symbols-outlined text-[28px] text-gray-400">event_busy</span>
                           <span className="text-xs">{t('broadcast.history.emptyText', 'Chưa có phiên bảo trì nào được ghi nhận trong CSDL.')}</span>
@@ -831,7 +1067,9 @@ const BroadcastPage = () => {
                     historyData.map((row, idx) => {
                       const isEmergency = row.type === 'EMERGENCY';
                       const isOngoing = row.status === 'ONGOING';
+                      const isScheduled = row.status === 'SCHEDULED';
                       const isCompleted = row.status === 'COMPLETED';
+                      const isCancelled = row.status === 'CANCELLED';
 
                       return (
                         <tr key={row.id || idx} className="hover:bg-surface-container-lowest/60 transition-colors">
@@ -847,50 +1085,96 @@ const BroadcastPage = () => {
                               <span className="material-symbols-outlined text-[13px]">
                                 {isEmergency ? 'warning' : 'event'}
                               </span>
-                              <span>{isEmergency ? t('broadcast.history.typeEmergency', 'Khẩn cấp') : t('broadcast.history.typeScheduled', 'Theo lịch')}</span>
+                              <span>
+                                {isEmergency
+                                  ? t('broadcast.history.typeEmergency', 'Khẩn cấp')
+                                  : t('broadcast.history.typeScheduled', 'Định kỳ')}
+                              </span>
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-medium text-on-surface whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1.5 font-semibold text-slate-800">
-                              <span className="material-symbols-outlined text-[15px] text-slate-500">account_circle</span>
-                              {row.activated_by || 'system'}
+                          <td className="py-3 px-3 font-medium text-on-surface overflow-hidden">
+                            <span className="inline-flex items-center gap-1.5 font-semibold text-slate-800 min-w-0 max-w-full">
+                              <span className="material-symbols-outlined text-[15px] text-slate-500 shrink-0">account_circle</span>
+                              <TruncateCell text={row.activated_by || 'system'} className="min-w-0" />
                             </span>
                           </td>
-                          <td className="py-3 px-3 max-w-[280px] truncate" title={row.reason}>
-                            <span className="text-on-surface">{row.reason}</span>
+                          <td className="py-3 px-3 overflow-hidden">
+                            <TruncateCell text={row.reason} className="text-on-surface" />
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap text-on-surface-variant text-[11px]">
                             {row.started_at ? formatDateTime(row.started_at) : '—'}
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap text-on-surface-variant text-[11px]">
-                            {row.ended_at
-                              ? formatDateTime(row.ended_at)
-                              : row.scheduled_end_at
-                              ? `${formatDateTime(row.scheduled_end_at)} (Dự kiến)`
-                              : '—'}
+                            {isCancelled
+                              ? (row.ended_at ? `${formatDateTime(row.ended_at)} (Thời điểm hủy)` : '—')
+                              : (row.ended_at
+                                ? formatDateTime(row.ended_at)
+                                : row.scheduled_end_at
+                                ? `${formatDateTime(row.scheduled_end_at)} (Dự kiến)`
+                                : '—')}
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap text-on-surface font-mono text-[11px]">
-                            {formatDuration(row.started_at, row.ended_at)}
+                            {formatDuration(row)}
                           </td>
                           <td className="py-3 px-3 text-right whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${
                               isOngoing
                                 ? 'bg-amber-50 text-amber-800 border-amber-300 animate-pulse'
+                                : isScheduled
+                                ? 'bg-blue-50 text-blue-800 border-blue-300'
                                 : isCompleted
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                                 : 'bg-gray-100 text-gray-700 border-gray-300'
                             }`}>
                               <span className="material-symbols-outlined text-[13px]">
-                                {isOngoing ? 'sync' : isCompleted ? 'check_circle' : 'cancel'}
+                                {isOngoing ? 'sync' : isScheduled ? 'calendar_clock' : isCompleted ? 'check_circle' : 'cancel'}
                               </span>
                               <span>
                                 {isOngoing
                                   ? t('broadcast.history.statusOngoing', 'Đang diễn ra')
+                                  : isScheduled
+                                  ? t('broadcast.history.statusScheduled', 'Đã lên lịch')
                                   : isCompleted
                                   ? t('broadcast.history.statusCompleted', 'Đã hoàn thành')
                                   : t('broadcast.history.statusCancelled', 'Đã hủy')}
                               </span>
                             </span>
+                          </td>
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            {(() => {
+                              if (isScheduled) {
+                                const startTimeMs = row.started_at ? new Date(row.started_at).getTime() : 0;
+                                const hoursUntilStart = (startTimeMs - nowTick) / (3600 * 1000);
+                                const canCancel = hoursUntilStart >= 4;
+
+                                if (canCancel) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCancelSchedule(row.id, row.started_at)}
+                                      disabled={actionLoading}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 transition-all cursor-pointer disabled:opacity-50"
+                                      title={t('broadcast.history.cancelScheduleTooltip', 'Hủy lịch bảo trì định kỳ này')}
+                                    >
+                                      <span className="material-symbols-outlined text-[14px]">cancel</span>
+                                      <span>{t('common.cancel', 'Hủy')}</span>
+                                    </button>
+                                  );
+                                }
+
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[11px] text-gray-400 font-medium cursor-not-allowed"
+                                    title={t('broadcast.history.cannotCancelHint', 'Chỉ có thể hủy trước ít nhất 4 tiếng so với giờ bắt đầu')}
+                                  >
+                                    <span className="material-symbols-outlined text-[13px]">lock</span>
+                                    <span>&lt; 4h</span>
+                                  </span>
+                                );
+                              }
+
+                              return <span className="text-gray-300">—</span>;
+                            })()}
                           </td>
                         </tr>
                       );
@@ -925,7 +1209,7 @@ const BroadcastPage = () => {
       {/* TAB 2: PHÁT THÔNG BÁO HỆ THỐNG (SYSTEM BROADCAST) */}
       {/* ======================================================== */}
       {activeTab === 'broadcast' && (
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6">
           <form onSubmit={handleSendBroadcast} className="bg-white rounded-2xl border border-outline-variant shadow-sm p-6 space-y-5">
             <div>
               <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-2">
@@ -1044,61 +1328,174 @@ const BroadcastPage = () => {
             </button>
           </form>
 
-          <div className="bg-surface-container-low border border-outline-variant/60 rounded-xl p-4 text-xs text-on-surface-variant space-y-1.5">
-            <p className="font-semibold text-on-surface flex items-center gap-1">
-              <span className="material-symbols-outlined text-[15px] text-amber-600">info</span>
-              {t('broadcast.rulesTitle')}
-            </p>
-            <p>{t('broadcast.rule1')}</p>
-            <p>{t('broadcast.rule2')}</p>
-            <p>{t('broadcast.rule3')}</p>
+          {/* 2.2 BẢNG HIỂN THỊ DANH SÁCH THÔNG BÁO VÀ NGƯỜI GỬI (POSTGRESQL PERSISTENCE - PHÂN TRANG 5/PAGE) */}
+          <div className="bg-white rounded-2xl border border-outline-variant shadow-sm p-5 space-y-4">
+            <div className="border-b border-outline-variant pb-3">
+              <h3 className="font-bold text-sm text-on-surface flex items-center gap-2 m-0">
+                <span className="material-symbols-outlined text-primary text-[20px]">mark_email_read</span>
+                <span>{t('broadcast.historyBroadcast.title', 'Lịch Sử Các Thông Báo Đã Phát Sóng')}</span>
+              </h3>
+              <p className="text-[11px] text-on-surface-variant mt-0.5 m-0">
+                {t('broadcast.historyBroadcast.subtitle', 'Lưu vết Audit Trail vĩnh viễn trong CSDL PostgreSQL, theo dõi người phát sóng, mức độ và nội dung')}
+              </p>
+            </div>
+
+            {/* Bảng Dữ Liệu */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-outline-variant text-[11px] text-on-surface-variant uppercase tracking-wider bg-surface-container-lowest font-semibold">
+                    <th className="w-12 py-2.5 px-3">#</th>
+                    <th className="w-28 py-2.5 px-3">{t('broadcast.historyBroadcast.colLevel', 'Mức độ')}</th>
+                    <th className="w-1/4 min-w-[150px] py-2.5 px-3">{t('broadcast.historyBroadcast.colTitle', 'Tiêu đề')}</th>
+                    <th className="w-2/5 min-w-[200px] py-2.5 px-3">{t('broadcast.historyBroadcast.colMessage', 'Nội dung thông báo')}</th>
+                    <th className="w-28 py-2.5 px-3">{t('broadcast.historyBroadcast.colSender', 'Người gửi')}</th>
+                    <th className="w-36 py-2.5 px-3 text-right">{t('broadcast.historyBroadcast.colTime', 'Thời điểm phát sóng')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/50">
+                  {loadingBroadcastHistory && broadcastHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-8 text-center text-on-surface-variant">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                          <span>{t('common.loading', 'Đang tải dữ liệu...')}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : broadcastHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-8 text-center text-on-surface-variant">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <span className="material-symbols-outlined text-[28px] text-gray-400">chat_bubble_outline</span>
+                          <span className="text-xs">{t('broadcast.historyBroadcast.emptyText', 'Chưa có thông báo nào được phát sóng.')}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    broadcastHistory.map((row, idx) => {
+                      const lvl = (row.level || 'INFO').toUpperCase();
+                      const isCritical = lvl === 'CRITICAL';
+                      const isWarning = lvl === 'WARNING';
+                      return (
+                        <tr key={row.id || idx} className="hover:bg-surface-container-lowest transition-colors">
+                          <td className="py-3 px-3 font-mono text-[11px] text-on-surface-variant">{row.id || (idx + 1)}</td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              isCritical
+                                ? 'bg-rose-50 text-rose-700 border-rose-300'
+                                : isWarning
+                                ? 'bg-amber-50 text-amber-700 border-amber-300'
+                                : 'bg-blue-50 text-blue-700 border-blue-300'
+                            }`}>
+                              <span className="material-symbols-outlined text-[12px]">
+                                {isCritical ? 'error' : isWarning ? 'warning' : 'info'}
+                              </span>
+                              <span>{lvl}</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-semibold text-on-surface max-w-[180px]">
+                            <TruncateCell text={row.title} className="font-semibold text-on-surface" />
+                          </td>
+                          <td className="py-3 px-3 text-on-surface-variant max-w-[280px]">
+                            <TruncateCell text={row.message} className="text-on-surface-variant" />
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-surface-container-low px-2 py-0.5 rounded-md border border-outline-variant/60 text-on-surface">
+                              <span className="material-symbols-outlined text-[13px] text-primary">account_circle</span>
+                              <span>{row.sender_username || 'admin'}</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right whitespace-nowrap text-on-surface-variant text-[11px]">
+                            {row.created_at ? formatDateTime(row.created_at) : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Phân trang Chuẩn (Mặc định 5/page) */}
+            <Pagination
+              currentPage={broadcastPage}
+              pageSize={broadcastLimit}
+              total={broadcastTotal}
+              pageSizeOptions={[5, 10, 20]}
+              onPageChange={(p) => {
+                setBroadcastPage(p);
+                fetchBroadcastHistory(p, broadcastLimit);
+              }}
+              onPageSizeChange={(s) => {
+                setBroadcastLimit(s);
+                setBroadcastPage(1);
+                fetchBroadcastHistory(1, s);
+              }}
+              itemLabel={t('broadcast.historyBroadcast.itemLabel', 'thông báo')}
+            />
           </div>
         </div>
       )}
 
-      {/* POPUP MODAL XÁC NHẬN BẢO TRÌ KHẨN CẤP */}
-      {showEmergencyConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-red-200 space-y-4">
+      {/* POPUP MODAL XÁC THỰC MÃ PIN / MẬT KHẨU BẢO TRÌ KHẨN CẤP */}
+      <SecurityConfirmModal
+        isOpen={showEmergencyConfirmModal}
+        onClose={() => setShowEmergencyConfirmModal(false)}
+        title="Xác nhận BẢO TRÌ KHẨN CẤP"
+        confirmText="Xác thực & Thực thi"
+        requirePin={false}
+        actionType="EMERGENCY_MAINTENANCE"
+        actionDescription={
+          scheduleReason
+            ? `Kích hoạt chế độ BẢO TRÌ KHẨN CẤP toàn hệ thống (Lý do: ${scheduleReason})`
+            : 'Kích hoạt chế độ BẢO TRÌ KHẨN CẤP toàn hệ thống. Mọi người dùng sẽ bị chặn truy cập và nhận thông báo khẩn.'
+        }
+        onSuccess={async () => {
+          setShowEmergencyConfirmModal(false);
+          await handleConfirmEmergencyMaintenance();
+        }}
+      />
+
+      {/* POPUP MODAL XÁC NHẬN KẾT THÚC BẢO TRÌ */}
+      {showStopMaintenanceConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-outline-variant animate-fade-in">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-[24px]">warning</span>
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-[24px]">power_settings_new</span>
               </div>
-              <div>
-                <h3 className="font-bold text-base text-gray-900 m-0">
-                  {t('broadcast.schedule.emergencyModal.title', 'Xác nhận BẢO TRÌ KHẨN CẤP')}
+              <div className="space-y-1">
+                <h3 className="font-bold text-base text-on-surface m-0">
+                  {t('broadcast.stopConfirm.title', 'Xác Nhận Kết Thúc Bảo Trì')}
                 </h3>
-                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                  {t('broadcast.schedule.emergencyModal.desc', 'Bạn có chắc chắn muốn kích hoạt chế độ BẢO TRÌ KHẨN CẤP ngay lập tức không? Toàn bộ khách hàng sẽ bị ngắt kết nối và nhận cảnh báo khẩn cấp.')}
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  {t('broadcast.stopConfirm.desc', 'Bạn có chắc chắn muốn kết thúc phiên bảo trì này và khôi phục hoạt động bình thường cho toàn bộ người dùng?')}
                 </p>
               </div>
             </div>
 
-            {scheduleReason && (
-              <div className="bg-red-50 border border-red-100 rounded-lg p-2.5 text-xs text-red-950 font-medium">
-                <span className="font-bold">Lý do:</span> {scheduleReason}
-              </div>
-            )}
-
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-outline-variant">
               <button
                 type="button"
-                onClick={() => setShowEmergencyConfirmModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+                onClick={() => setShowStopMaintenanceConfirmModal(false)}
+                disabled={actionLoading}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-on-surface bg-surface-container-low hover:bg-surface-container border border-outline-variant transition-colors cursor-pointer"
               >
-                {t('common.cancel', 'Hủy')}
+                {t('broadcast.stopConfirm.cancelBtn', 'Hủy Bỏ')}
               </button>
               <button
                 type="button"
+                id="btn-confirm-stop-maintenance"
                 onClick={async () => {
-                  setShowEmergencyConfirmModal(false);
-                  await handleConfirmEmergencyMaintenance();
+                  setShowStopMaintenanceConfirmModal(false);
+                  await handleToggleMaintenance(false);
                 }}
                 disabled={actionLoading}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/90 transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
               >
                 <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                <span>{actionLoading ? t('common.processing') : t('broadcast.schedule.emergencyModal.confirmBtn', 'Xác nhận kích hoạt')}</span>
+                <span>{actionLoading ? t('common.processing') : t('broadcast.stopConfirm.confirmBtn', 'Xác Nhận Kết Thúc')}</span>
               </button>
             </div>
           </div>

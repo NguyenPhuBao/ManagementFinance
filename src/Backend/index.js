@@ -82,14 +82,37 @@ async function bootstrap() {
     const { defaultMaintenanceManager } = require('./core/resilience/maintenance.manager');
     const { defaultSystemHardwareMonitor } = require('./core/resilience/system-hardware-monitor');
     const { defaultMaintenanceRepository } = require('./modules/admin/maintenance.repository');
-    defaultMaintenanceRepository.initTable().catch(() => {});
+    defaultMaintenanceRepository.initTable()
+      .then(() => defaultMaintenanceManager.reconcileStateWithDatabase())
+      .catch((err) => logger.warn('[Maintenance] Lỗi khởi tạo/đối soát bảo trì ban đầu:', err.message));
     const os = require('os');
 
-    const metricsInterval = setInterval(() => {
+    const metricsInterval = setInterval(async () => {
       try {
+        // Tự động kiểm tra và bù dữ liệu Outbox nếu CSDL đã phục hồi
+        if (typeof defaultMaintenanceRepository.hasPendingSync === 'function' && defaultMaintenanceRepository.hasPendingSync()) {
+          defaultMaintenanceRepository.flushPendingQueue().catch(() => {});
+        }
         const aiopsStatus = defaultAIOpsService.getStatus() || {};
         const lastSample = aiopsStatus.sample || {};
-        const uptimeSec = Math.floor(process.uptime());
+        const rawUptimeSec = Math.floor(process.uptime());
+        let activeUptimeSec = rawUptimeSec;
+        let uptimePercent = 100;
+        let uptimeFormatted = `${rawUptimeSec}s`;
+
+        try {
+          const adminService = require('./modules/admin/admin.service');
+          if (adminService && typeof adminService.calcUptimePercent === 'function') {
+            const uptimeData = await adminService.calcUptimePercent(rawUptimeSec);
+            activeUptimeSec = uptimeData.uptimeSeconds;
+            uptimePercent = uptimeData.uptimePercent;
+            uptimeFormatted = adminService.formatUptimeDuration(activeUptimeSec);
+          }
+        } catch (_) {
+          const hours = Math.floor(rawUptimeSec / 3600);
+          const minutes = Math.floor((rawUptimeSec % 3600) / 60);
+          uptimeFormatted = hours > 0 ? `${hours} giờ ${minutes} phút` : `${minutes} phút`;
+        }
 
         const hwMetrics = defaultSystemHardwareMonitor.getMetrics();
         const memRssMb = hwMetrics.ram.rssMb;
@@ -100,8 +123,10 @@ async function bootstrap() {
         const cpuPct = hwMetrics.cpu.percent;
 
         const payload = {
-          uptimeSeconds: uptimeSec,
-          uptimeFormatted: `${Math.floor(uptimeSec / 86400)}d ${Math.floor((uptimeSec % 86400) / 3600)}h ${Math.floor((uptimeSec % 3600) / 60)}m ${uptimeSec % 60}s`,
+          uptimeSeconds: activeUptimeSec,
+          rawUptimeSeconds: rawUptimeSec,
+          uptimePercent,
+          uptimeFormatted,
           eventLoopLagMs: defaultEventLoopMonitor.getLag(),
           cpuPercent: cpuPct,
           cpuCores: hwMetrics.cpu.cores,
@@ -111,7 +136,7 @@ async function bootstrap() {
           ramFreeMb: freeMemMb,
           ramRssMb: memRssMb,
           requestsPerMin: lastSample.requestsPerMin || 0,
-          threatScore: aiopsStatus.threatScore ?? 5,
+          threatScore: aiopsStatus.threatScore ?? 0,
           threatStatus: aiopsStatus.status || 'NORMAL',
           vectorScores: aiopsStatus.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
           vectorDefenses: aiopsStatus.vectorDefenses || {},

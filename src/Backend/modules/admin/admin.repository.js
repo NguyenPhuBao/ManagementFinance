@@ -1,5 +1,6 @@
 const { randomUUID } = require('crypto');
 const { prisma } = require('../../config/db');
+const { encrypt, isEncrypted } = require('../../utils/crypto.util');
 
 const adminRepository = {
   async countUsers() {
@@ -270,17 +271,26 @@ const adminRepository = {
   },
 
   async deleteCategory(idcategory) {
-    // CSDL mới: xóa mềm (Delete_at) và unlink category con nếu là group
-    const cat = await prisma.category.findUnique({ where: { idcategory } });
-    if (cat && cat.is_group) {
-      await prisma.category.updateMany({
-        where: { idgroup: idcategory },
-        data: { idgroup: null, update_at: new Date() },
-      });
-    }
+    // Xóa mềm danh mục hệ thống: bảo toàn 100% dữ liệu và cấu trúc liên kết (không unlink idgroup của category con)
     return prisma.category.update({
       where: { idcategory },
-      data: { delete_at: new Date(), update_at: new Date() },
+      data: {
+        delete_at: new Date(),
+        update_at: new Date(),
+        server_update_at: new Date(),
+      },
+    });
+  },
+
+  async restoreCategory(idcategory) {
+    // Khôi phục danh mục hệ thống: bỏ cờ xóa mềm và giữ nguyên 100% mọi dữ liệu hiện có
+    return prisma.category.update({
+      where: { idcategory },
+      data: {
+        delete_at: null,
+        update_at: new Date(),
+        server_update_at: new Date(),
+      },
     });
   },
 
@@ -328,6 +338,7 @@ const adminRepository = {
     if (search) {
       where.OR = [
         { request: { contains: search, mode: 'insensitive' } },
+        { action: { contains: search, mode: 'insensitive' } },
         { account: { username: { contains: search, mode: 'insensitive' } } },
       ];
     }
@@ -346,6 +357,7 @@ const adminRepository = {
           idlog: true,
           idaccount: true,
           request: true,
+          action: true,
           req_status: true,
           reason: true,
           time_req: true,
@@ -375,7 +387,7 @@ const adminRepository = {
         },
         ip: l.account?.refreshtoken?.[0]?.ip_address || '127.0.0.1',
         request: l.request,
-        action: l.request,
+        action: l.action || l.request,
         req_status: l.req_status,
         status: l.req_status,
         reason: l.reason,
@@ -386,6 +398,135 @@ const adminRepository = {
       })),
       total,
     };
+  },
+
+  async getAccountById(idaccount) {
+    return prisma.account.findUnique({
+      where: { idaccount: Number(idaccount) },
+      select: {
+        idaccount: true,
+        password: true,
+        pin_hash: true,
+        username: true,
+        email: true,
+        idrole: true,
+        is_first_login: true,
+      },
+    });
+  },
+
+  async updateAccountPin(idaccount, pinHash) {
+    return prisma.account.update({
+      where: { idaccount: Number(idaccount) },
+      data: {
+        pin_hash: pinHash,
+        update_at: new Date(),
+      },
+    });
+  },
+
+  async updateFirstLoginSetup(idaccount, passwordHash, pinHash) {
+    return prisma.account.update({
+      where: { idaccount: Number(idaccount) },
+      data: {
+        password: passwordHash,
+        pin_hash: pinHash,
+        is_first_login: false,
+        update_at: new Date(),
+      },
+      include: {
+        role: { select: { idrole: true, rolename: true } },
+        User: { select: { fullname: true, email: true, phone: true } },
+      },
+    });
+  },
+
+  async updateAccountPassword(idaccount, passwordHash) {
+    return prisma.account.update({
+      where: { idaccount: Number(idaccount) },
+      data: {
+        password: passwordHash,
+        update_at: new Date(),
+      },
+    });
+  },
+
+  async findAccountByUsernameOrEmail(username, email) {
+    return prisma.account.findFirst({
+      where: {
+        OR: [
+          { username: { equals: username, mode: 'insensitive' } },
+          { email: { equals: email, mode: 'insensitive' } },
+        ],
+      },
+    });
+  },
+
+  async createAdminAccount({
+    username,
+    email,
+    passwordHash,
+    pinHash,
+    createdByAdminId,
+    fullName,
+    phone,
+    address,
+    countryCode,
+  }) {
+    const rawPhone = phone ? String(phone).trim() : null;
+    const rawAddress = address ? String(address).trim() : null;
+    const rawCountryCode = countryCode ? String(countryCode).trim().slice(0, 4) : '+84';
+    const rawFullName = fullName && String(fullName).trim() ? String(fullName).trim() : `Quản trị viên ${username.trim()}`;
+
+    // Mã hóa số điện thoại & địa chỉ AES-256-GCM để tuân thủ trigger CSDL trg_check_phone_encrypted & Nghị định 13
+    const encPhone = rawPhone ? (isEncrypted(rawPhone) ? rawPhone : encrypt(rawPhone)) : null;
+    const encAddress = rawAddress ? (isEncrypted(rawAddress) ? rawAddress : encrypt(rawAddress)) : null;
+
+    return prisma.$transaction(async (tx) => {
+      const newAccount = await tx.account.create({
+        data: {
+          username: username.trim(),
+          email: email.trim(),
+          password: passwordHash,
+          pin_hash: pinHash,
+          idrole: 1, // Admin role
+          status: 'Active',
+          type: 'Basic',
+          is_first_login: true,
+          created_by_admin_id: createdByAdminId ? Number(createdByAdminId) : null,
+          create_at: new Date(),
+          update_at: new Date(),
+        },
+      });
+
+      const newUser = await tx.User.create({
+        data: {
+          idaccount: newAccount.idaccount,
+          fullname: rawFullName,
+          email: email.trim(),
+          phone: encPhone,
+          address: encAddress,
+          country_code: rawCountryCode,
+          create_at: new Date(),
+          update_at: new Date(),
+        },
+      });
+
+      return {
+        idaccount: newAccount.idaccount,
+        username: newAccount.username,
+        email: newAccount.email,
+        fullname: newUser.fullname,
+        phone: rawPhone,
+        address: rawAddress,
+        country_code: newUser.country_code,
+        idrole: newAccount.idrole,
+        status: newAccount.status,
+        is_first_login: newAccount.is_first_login,
+        created_by_admin_id: newAccount.created_by_admin_id,
+        create_at: newAccount.create_at,
+      };
+    });
   },
 };
 

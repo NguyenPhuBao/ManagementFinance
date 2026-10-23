@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import adminApi from '../../api/admin.api';
 import { USER_STATUS_LABELS } from '../../utils/constants';
-import { formatDateTime } from '../../utils/format';
+import { formatDateTime, maskPhone } from '../../utils/format';
 
 const UserDetailModal = ({ userId, onClose }) => {
   const [user, setUser] = useState(null);
@@ -75,7 +75,7 @@ const UserDetailModal = ({ userId, onClose }) => {
                   <RowItem label="ID User" value={user.id} />
                   <RowItem label="Họ tên" value={user.fullname} />
                   <RowItem label="Email" value={user.email} />
-                  <RowItem label="Số điện thoại" value={user.phone || '—'} />
+                  <RowItem label="Số điện thoại" value={maskPhone(user.phone)} />
                   <RowItem label="Địa chỉ" value={user.address || '—'} />
                   <RowItem label="Mã vùng" value={user.country_code || '—'} />
                 </div>
@@ -87,6 +87,15 @@ const UserDetailModal = ({ userId, onClose }) => {
                 <div className="space-y-0">
                   <RowItem label="Username" value={user.username} />
                   <RowItem label="Vai trò" value={user.rolename} />
+                  <RowItem label="Gói dịch vụ" value={
+                    <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
+                      (user.type || 'basic').toLowerCase() === 'premium'
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                        : 'bg-slate-100 text-slate-800 border border-slate-200'
+                    }`}>
+                      {user.type || 'Basic'}
+                    </span>
+                  } />
                   {user.status?.toLowerCase() === 'pendingdelete' && (
                     <RowItem 
                       label="Thời gian chờ xóa" 

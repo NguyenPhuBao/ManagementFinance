@@ -41,9 +41,15 @@ router.get('/request-stats', adminController.getRequestStats);
 router.get('/system/maintenance', adminController.getMaintenanceStatus);
 router.post('/system/maintenance', adminController.setMaintenanceStatus);
 router.delete('/system/maintenance/schedule', adminController.cancelScheduledMaintenance);
+router.delete('/system/maintenance/schedule/:id', adminController.cancelScheduledMaintenance);
 router.get('/system/maintenance/history', adminController.getMaintenanceHistory);
 router.get('/system/health', adminController.getSystemHealth);
 router.get('/audit-logs', adminController.getAuditLogs);
+router.post('/verify-security-action', adminController.verifySecurityAction);
+router.post('/change-pin', adminController.changeAdminPin);
+router.post('/first-login-setup', adminController.firstLoginSetup);
+router.post('/change-password', adminController.changeAdminPassword);
+router.post('/create-admin', adminController.createAdminAccount);
 
 // Quản lý người dùng
 router.get('/getuser', adminController.getUsers);
@@ -57,10 +63,13 @@ router.get('/getcategory', adminController.getCategories);
 router.post('/addcategory', adminController.addCategory);
 router.put('/updatecategory/:id', adminController.updateCategory);
 router.delete('/deletecategory/:id', adminController.deleteCategory);
+router.patch('/restorecategory/:id', adminController.restoreCategory);
+router.post('/restorecategory/:id', adminController.restoreCategory);
 
 // Phân quyền gói cước theo loại tài khoản (Dynamic Feature Permissions)
 router.get('/permissions', adminController.getPermissions);
 router.put('/permissions', adminController.updatePermissions);
+router.post('/permissions/reset', adminController.resetPermissions);
 
 // Quản lý & Theo dõi lịch sử thanh toán (Payment History & Orders)
 router.get('/payments/orders', paymentController.getOrdersForAdmin);

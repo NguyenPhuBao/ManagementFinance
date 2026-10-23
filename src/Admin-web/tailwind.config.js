@@ -71,14 +71,15 @@ export default {
         "stack-lg": "24px"
       },
       "fontFamily": {
-        "headline-sm": ["Inter"],
-        "headline-md": ["Inter"],
-        "tabular-nums": ["Inter"],
-        "body-lg": ["Inter"],
-        "headline-md-mobile": ["Inter"],
-        "display-lg": ["Inter"],
-        "label-md": ["Inter"],
-        "body-md": ["Inter"]
+        "headline-sm": ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        "headline-md": ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        "tabular-nums": ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        "body-lg": ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        "headline-md-mobile": ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        "display-lg": ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        "label-md": ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        "body-md": ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
+        "sans": ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"]
       },
       "fontSize": {
         "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],

@@ -23,13 +23,14 @@ const adminApi = {
   createCategory: (data) => axiosClient.post('/admin/addcategory', data),
   updateCategory: (id, data) => axiosClient.put(`/admin/updatecategory/${id}`, data),
   deleteCategory: (id) => axiosClient.delete(`/admin/deletecategory/${id}`),
+  restoreCategory: (id) => axiosClient.patch(`/admin/restorecategory/${id}`),
   syncCategories: () => axiosClient.post('/admin/categories/sync'),
 
   // System Health & Maintenance
   getSystemHealth: () => axiosClient.get('/admin/system/health'),
   getMaintenanceStatus: () => axiosClient.get('/admin/system/maintenance'),
   setMaintenanceStatus: (data) => axiosClient.post('/admin/system/maintenance', data),
-  cancelScheduledMaintenance: () => axiosClient.delete('/admin/system/maintenance/schedule'),
+  cancelScheduledMaintenance: (id) => (id ? axiosClient.delete(`/admin/system/maintenance/schedule/${id}`) : axiosClient.delete('/admin/system/maintenance/schedule')),
   getMaintenanceHistory: (params = {}) => axiosClient.get('/admin/system/maintenance/history', { params }),
 
   // Audit Logs
@@ -38,6 +39,14 @@ const adminApi = {
   // Dynamic Feature Permissions
   getPermissions: () => axiosClient.get('/admin/permissions'),
   updatePermissions: (updates) => axiosClient.put('/admin/permissions', { updates }),
+  resetPermissionsDefault: () => axiosClient.post('/admin/permissions/reset'),
+
+  // Security Action Re-authentication & PIN / Password / Admin Management
+  verifySecurityAction: (data) => axiosClient.post('/admin/verify-security-action', data),
+  changePin: (data) => axiosClient.post('/admin/change-pin', data),
+  changePassword: (data) => axiosClient.post('/admin/change-password', data),
+  firstLoginSetup: (data) => axiosClient.post('/admin/first-login-setup', data),
+  createAdmin: (data) => axiosClient.post('/admin/create-admin', data),
 };
 
 export default adminApi;

@@ -10,7 +10,7 @@ const payosClient = require('./payos.client');
  * @param {number} idaccount 
  * @param {object} param1 
  */
-async function createPremiumOrder(idaccount, { packageType = 'PREMIUM_1_MONTH' } = {}) {
+async function createPremiumOrder(idaccount, { packageType = 'Premium' } = {}) {
   const orderId = crypto.randomUUID();
   const orderCode = payosClient.generateOrderCode();
   const recognitionCode = payosClient.generateRecognitionCode();
@@ -671,7 +671,7 @@ async function syncOrderWithPayOS(order) {
         });
 
         await paymentRepository.activatePremiumSubscription(order.idaccount, {
-          packageType: order.package_type || 'PREMIUM_1_MONTH',
+          packageType: order.package_type || 'Premium',
           orderId: order.id,
         });
 
@@ -782,7 +782,7 @@ async function getSubscriptionInfo(idaccount) {
   }
 
   const effectiveType = (!isExpired && isPremium) ? 'Premium' : 'Basic';
-  const { limits, features } = await permissionRepository.getPermissionsByAccountType(effectiveType);
+  const { limits, features, scopes, policies } = await permissionRepository.getPermissionsByAccountType(effectiveType);
 
   return {
     accountType: account.type,
@@ -791,6 +791,8 @@ async function getSubscriptionInfo(idaccount) {
     isExpired,
     limits,
     features,
+    scopes: scopes || {},
+    policies: policies || {},
     price: config.payment.premiumPriceVnd || 49000,
     packageDays: config.payment.packageDurationDays || 30,
   };

@@ -116,6 +116,13 @@ async function authenticate(req, res, next) {
   }
 
   req.user = decoded;
+
+  // Ghi nhận lịch sử thiết bị và IP khi người dùng truy cập app (Diff Check + Throttle 60s)
+  try {
+    const { trackDeviceAccess } = require('../modules/auth/device-history.service');
+    trackDeviceAccess(decoded.idaccount, req).catch(() => {});
+  } catch (_) {}
+
   next();
 }
 

@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import paymentApi from '../../api/payment.api';
 import Pagination from '../../components/common/Pagination';
+import SecurityConfirmModal from '../../components/common/SecurityConfirmModal';
 import { useLanguageSafe } from '../../store/language.context';
 import useSocket from '../../hooks/useSocket';
+import { exportToCsv } from '../../utils/csv-exporter.util';
+import TruncateCell from '../../components/common/TruncateCell';
 
 const STATUS_CONFIG = {
   PAID: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: 'check_circle' },
@@ -73,6 +76,8 @@ const PaymentHistoryPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState('');
+
+
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [packageFilter, setPackageFilter] = useState('ALL');
   const [packageTypes, setPackageTypes] = useState(['Basic', 'Premium']);
@@ -92,7 +97,7 @@ const PaymentHistoryPage = () => {
   const [payosData, setPayosData] = useState(null);
   const [payosLoading, setPayosLoading] = useState(false);
   const [selectedSampleAmount, setSelectedSampleAmount] = useState(49000);
-  const [selectedSamplePackage, setSelectedSamplePackage] = useState('PREMIUM_1_MONTH');
+  const [selectedSamplePackage, setSelectedSamplePackage] = useState('Premium');
   const [countdownSeconds, setCountdownSeconds] = useState(600);
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -106,6 +111,7 @@ const PaymentHistoryPage = () => {
     refund_proof: '',
   });
   const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [showRefundSecurityModal, setShowRefundSecurityModal] = useState(false);
 
   // Fetch package types from DB on mount
   useEffect(() => {
@@ -417,9 +423,16 @@ const PaymentHistoryPage = () => {
     });
   };
 
-  // Submit Refund Form
-  const handleSubmitRefund = async (e) => {
+  // Initiate Refund Form (mở Security Confirm Modal yêu cầu xác thực PIN)
+  const handleInitiateRefund = (e) => {
     e.preventDefault();
+    if (!refundTargetOrder) return;
+    if (!refundForm.refunded_amount || Number(refundForm.refunded_amount) <= 0) return;
+    setShowRefundSecurityModal(true);
+  };
+
+  // Execute Refund sau khi đã xác thực PIN / Mật khẩu thành công
+  const handleExecuteRefund = async () => {
     if (!refundTargetOrder) return;
     setRefundSubmitting(true);
     try {
@@ -457,6 +470,67 @@ const PaymentHistoryPage = () => {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
+  const [exportingCsv, setExportingCsv] = useState(false);
+
+  const handleExportCsv = async () => {
+    try {
+      setExportingCsv(true);
+      const params = {
+        page: 1,
+        limit: Math.min(total || 500, 1000),
+        ...(search.trim() && { search: search.trim() }),
+        ...(statusFilter !== 'ALL' && { status: statusFilter }),
+        ...(packageFilter !== 'ALL' && { packageType: packageFilter }),
+        ...(fromDate && { fromDate }),
+        ...(toDate && { toDate }),
+        ...(excludeTemplate && { excludeTemplate: 'true' }),
+      };
+      const res = await paymentApi.getOrders(params);
+      const d = res?.data?.data || res?.data || res;
+      const exportItems = (d.items && d.items.length > 0) ? d.items : ((d.orders && d.orders.length > 0) ? d.orders : orders);
+
+      const headers = [
+        'Mã Đơn hàng',
+        'Mã GD Cổng',
+        'Khách hàng',
+        'Gói cước',
+        'Số tiền (VNĐ)',
+        'Cổng TT',
+        'Trạng thái',
+        'Ngày tạo',
+        'Ngày thanh toán',
+        'Ghi chú / Hoàn tiền',
+      ];
+
+      const rows = exportItems.map((o) => {
+        const orderId = o.order_code || o.idorder || '';
+        const transId = o.transaction_id || '';
+        const customer = o.user?.fullname || o.user?.name || o.account?.username || 'Khách vãng lai';
+        const pkgName = o.package_name || o.package_type || 'Gói dịch vụ';
+        const amount = o.amount || 0;
+        const gateway = o.payment_gateway || 'PayOS';
+        const status = o.status || '';
+        const created = formatDate(o.created_at);
+        const paid = formatDate(o.paid_at);
+        const note = o.refund_reason || o.notes || '';
+
+        return [orderId, transId, customer, pkgName, amount, gateway, status, created, paid, note];
+      });
+
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+      exportToCsv({
+        filename: `payment_history_${dateStr}.csv`,
+        headers,
+        rows,
+      });
+    } catch (err) {
+      console.error('Export CSV payments failed:', err);
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header & Page Title */}
@@ -474,6 +548,19 @@ const PaymentHistoryPage = () => {
             </span>
           )}
           <button
+            id="btn-export-payment-csv"
+            type="button"
+            onClick={handleExportCsv}
+            disabled={exportingCsv}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-outline-variant rounded-lg font-semibold text-sm transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+            title={t('payments.exportCsvTooltip', 'Xuất toàn bộ giao dịch lọc được ra file CSV')}
+          >
+            <span className={`material-symbols-outlined text-lg text-emerald-600 ${exportingCsv ? 'animate-spin' : ''}`}>
+              {exportingCsv ? 'sync' : 'download'}
+            </span>
+            <span>{exportingCsv ? t('common.exporting', 'Đang xuất...') : t('payments.exportCsvBtn', 'Xuất CSV')}</span>
+          </button>
+          <button
             onClick={() => {
               setPayosData(null);
               setShowSampleModal(true);
@@ -483,17 +570,6 @@ const PaymentHistoryPage = () => {
           >
             <span className="material-symbols-outlined text-lg">qr_code_2</span>
             <span>{t('payments.sampleQrBtn')}</span>
-          </button>
-          <button
-            onClick={handleRefresh}
-            disabled={loading || statsLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg border border-outline-variant transition-colors cursor-pointer disabled:opacity-50"
-            title={t('payments.refresh')}
-          >
-            <span className={`material-symbols-outlined text-lg ${(loading || statsLoading) ? 'animate-spin' : ''}`}>
-              refresh
-            </span>
-            <span className="text-sm font-semibold">{t('payments.refresh')}</span>
           </button>
         </div>
       </div>
@@ -631,9 +707,14 @@ const PaymentHistoryPage = () => {
                 const pkgId = typeof pkg === 'object' && pkg !== null ? pkg.id : pkg;
                 const pkgName = typeof pkg === 'object' && pkg !== null ? (pkg.name || pkg.id) : pkg;
                 const isDefault = (typeof pkg === 'object' && pkg !== null && pkg.isDefault) || pkgId === 'Basic';
-                const pkgLabel = isDefault
-                  ? (pkgName.includes('Mặc định') ? pkgName : `${pkgName} (Mặc định)`)
-                  : (pkgId === 'PREMIUM_1_MONTH' ? t('payments.filter.packageMonth') : pkgName);
+                let pkgLabel = pkgName;
+                if (pkgId === 'Basic') {
+                  pkgLabel = t('payments.filter.packageBasicDefault', 'Gói Basic (Mặc định)');
+                } else if (pkgId === 'Premium') {
+                  pkgLabel = t('payments.filter.packagePremium', 'Gói Premium');
+                } else if (isDefault) {
+                  pkgLabel = `${pkgName} (${t('common.default', 'Mặc định')})`;
+                }
                 return (
                   <option key={pkgId} value={pkgId}>
                     {pkgLabel}
@@ -702,17 +783,33 @@ const PaymentHistoryPage = () => {
       {/* Orders Data Table */}
       <div className="bg-surface-container rounded-xl border border-outline-variant shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse">
+          <table className="w-full text-left text-sm border-collapse min-w-[950px]">
             <thead>
               <tr className="bg-surface-container-high/60 border-b border-outline-variant text-on-surface-variant font-semibold text-xs uppercase tracking-wider">
-                <th className="py-3.5 px-4">{t('payments.table.orderCode')}</th>
-                <th className="py-3.5 px-4">{t('payments.table.user')}</th>
-                <th className="py-3.5 px-4">{t('payments.table.package')}</th>
-                <th className="py-3.5 px-4">{t('payments.table.amount')}</th>
-                <th className="py-3.5 px-4 text-center">{t('payments.table.status')}</th>
-                <th className="py-3.5 px-4">{t('payments.table.createdAt')}</th>
-                <th className="py-3.5 px-4">{t('payments.table.paidAt')}</th>
-                <th className="py-3.5 px-4 text-center">{t('payments.table.actions')}</th>
+                <th className="w-[15%] min-w-[130px] py-3.5 px-4">
+                  {t('payments.table.orderCode')}
+                </th>
+                <th className="w-[22%] min-w-[180px] py-3.5 px-4">
+                  {t('payments.table.user')}
+                </th>
+                <th className="w-[13%] min-w-[110px] py-3.5 px-4">
+                  {t('payments.table.package')}
+                </th>
+                <th className="w-[13%] min-w-[110px] py-3.5 px-4">
+                  {t('payments.table.amount')}
+                </th>
+                <th className="w-[12%] min-w-[110px] py-3.5 px-4 text-center">
+                  {t('payments.table.status')}
+                </th>
+                <th className="w-[12%] min-w-[110px] py-3.5 px-4">
+                  {t('payments.table.createdAt')}
+                </th>
+                <th className="w-[12%] min-w-[110px] py-3.5 px-4">
+                  {t('payments.table.paidAt')}
+                </th>
+                <th className="w-24 min-w-[90px] py-3.5 px-4 text-center">
+                  {t('payments.table.actions')}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/40">
@@ -749,41 +846,44 @@ const PaymentHistoryPage = () => {
                       key={order.id}
                       className="hover:bg-surface-container-lowest/60 transition-colors"
                     >
-                      <td className="py-3.5 px-4 font-mono font-bold text-on-surface">
+                      <td className="py-3.5 px-4 font-mono font-bold text-on-surface overflow-hidden">
                         <div className="flex flex-col">
-                          <div className="flex items-center gap-1.5">
-                            <span>#{order.order_code}</span>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <TruncateCell text={`#${order.order_code}`} />
                             {order.is_template && (
-                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
                                 Mẫu
                               </span>
                             )}
                           </div>
                           {order.recognition_code && (
-                            <span className="text-[11px] font-mono text-primary font-normal">
-                              Mã: {order.recognition_code}
-                            </span>
+                            <TruncateCell text={`Mã: ${order.recognition_code}`} className="text-[11px] font-mono text-primary font-normal" />
                           )}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-on-surface flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-base text-on-surface-variant">
+                      <td className="py-3.5 px-4 overflow-hidden">
+                        <div className="font-semibold text-on-surface flex items-center gap-1.5 min-w-0">
+                          <span className="material-symbols-outlined text-base text-on-surface-variant shrink-0">
                             account_circle
                           </span>
-                          <span>{order.account?.username || '—'}</span>
+                          <TruncateCell text={order.account?.username || '—'} className="min-w-0" />
                         </div>
                         <div className="text-xs text-on-surface-variant mt-0.5">
-                          {order.account?.User?.fullname || order.account?.email || ''}
+                          <TruncateCell text={order.account?.User?.fullname || order.account?.email || ''} />
                         </div>
                       </td>
-                      <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-                          <span className="material-symbols-outlined text-[13px]">workspace_premium</span>
-                          {order.package_type === 'PREMIUM_1_MONTH'
-                            ? t('payments.filter.packageMonth')
-                            : order.package_type}
-                        </span>
+                      <td className="py-3.5 px-4 overflow-hidden">
+                        {order.package_type === 'Basic' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300 max-w-full">
+                            <span className="material-symbols-outlined text-[13px] shrink-0 text-slate-500">inventory_2</span>
+                            <TruncateCell text={t('payments.filter.packageBasic', 'Gói Basic')} />
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20 max-w-full">
+                            <span className="material-symbols-outlined text-[13px] shrink-0">workspace_premium</span>
+                            <TruncateCell text={t('payments.filter.packagePremium', 'Gói Premium')} />
+                          </span>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-emerald-600 font-mono">
                         <div>{formatVnd(order.amount)}</div>
@@ -1117,7 +1217,13 @@ const PaymentHistoryPage = () => {
                     </div>
                     <div>
                       <span className="text-on-surface-variant text-xs">{t('payments.detailModal.packageType')}:</span>
-                      <p className="font-semibold text-on-surface">{selectedOrder.package_type}</p>
+                      <p className="font-semibold text-on-surface">
+                        {selectedOrder.package_type === 'Basic'
+                          ? t('payments.filter.packageBasic', 'Gói Basic')
+                          : (selectedOrder.package_type === 'Premium' || selectedOrder.package_type?.startsWith('PREMIUM')
+                              ? t('payments.filter.packagePremium', 'Gói Premium')
+                              : selectedOrder.package_type)}
+                      </p>
                     </div>
                     <div>
                       <span className="text-on-surface-variant text-xs">{t('payments.detailModal.createdAt')}:</span>
@@ -1357,7 +1463,7 @@ const PaymentHistoryPage = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitRefund} className="p-6 space-y-4">
+            <form onSubmit={handleInitiateRefund} className="p-6 space-y-4">
               <div className="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant text-xs space-y-1.5">
                 <div className="flex justify-between">
                   <span className="text-on-surface-variant">{t('payments.refundModal.orderCode')}:</span>
@@ -1499,7 +1605,7 @@ const PaymentHistoryPage = () => {
                         type="button"
                         onClick={() => {
                           setSelectedSampleAmount(2000);
-                          setSelectedSamplePackage('PREMIUM_1_MONTH');
+                          setSelectedSamplePackage('Premium');
                         }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           selectedSampleAmount === 2000
@@ -1513,7 +1619,7 @@ const PaymentHistoryPage = () => {
                         type="button"
                         onClick={() => {
                           setSelectedSampleAmount(49000);
-                          setSelectedSamplePackage('PREMIUM_1_MONTH');
+                          setSelectedSamplePackage('Premium');
                         }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           selectedSampleAmount === 49000
@@ -1527,7 +1633,7 @@ const PaymentHistoryPage = () => {
                         type="button"
                         onClick={() => {
                           setSelectedSampleAmount(270000);
-                          setSelectedSamplePackage('PREMIUM_6_MONTHS');
+                          setSelectedSamplePackage('Premium');
                         }}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           selectedSampleAmount === 270000
@@ -1785,6 +1891,21 @@ const PaymentHistoryPage = () => {
           </div>
         </div>
       )}
+      {/* Security Re-Authentication Modal for Refund Action */}
+      <SecurityConfirmModal
+        isOpen={showRefundSecurityModal}
+        onClose={() => setShowRefundSecurityModal(false)}
+        actionType="REFUND_ORDER"
+        actionDescription={
+          refundTargetOrder
+            ? `Xác nhận hoàn tiền ${formatVnd(refundForm.refunded_amount)} cho đơn hàng #${refundTargetOrder.order_code}`
+            : 'Xác nhận hoàn tiền'
+        }
+        onSuccess={() => {
+          setShowRefundSecurityModal(false);
+          handleExecuteRefund();
+        }}
+      />
     </div>
   );
 };

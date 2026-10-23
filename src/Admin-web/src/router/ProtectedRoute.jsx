@@ -21,7 +21,9 @@ const ProtectedRoute = ({ children }) => {
     return children;
   }
 
-  if (!isAuthenticated) {
+  const hasValidToken = typeof localStorage !== 'undefined' && Boolean(localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN));
+
+  if (!isAuthenticated && !hasValidToken) {
     return <Navigate to="/login" replace />;
   }
 

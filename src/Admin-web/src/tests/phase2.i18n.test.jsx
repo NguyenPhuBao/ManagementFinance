@@ -238,8 +238,8 @@ describe('Admin-web Phase 2 i18n Suite — Core Business Pages (2-Tier Testing)'
       fireEvent.click(filterBtn);
 
       expect(screen.getByText('Lọc dữ liệu')).toBeInTheDocument();
-      expect(screen.getByText('TP. Hồ Chí Minh')).toBeInTheDocument();
-      expect(screen.getByText('Hà Nội')).toBeInTheDocument();
+      expect(screen.getByText('Gói Cơ bản (Basic)')).toBeInTheDocument();
+      expect(screen.getAllByText('Đang hoạt động').length).toBeGreaterThan(0);
 
       // Đóng filter modal
       const closeBtn = screen.getByText('Đặt lại');
@@ -260,8 +260,8 @@ describe('Admin-web Phase 2 i18n Suite — Core Business Pages (2-Tier Testing)'
       fireEvent.click(filterBtnEn);
 
       expect(screen.getByText('Filter Data')).toBeInTheDocument();
-      expect(screen.getByText('Ho Chi Minh City')).toBeInTheDocument();
-      expect(screen.getByText('Hanoi')).toBeInTheDocument();
+      expect(screen.getByText(/Basic/i)).toBeInTheDocument();
+      expect(screen.getAllByText('Active').length).toBeGreaterThan(0);
     });
   });
 

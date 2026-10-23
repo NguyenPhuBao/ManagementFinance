@@ -5,6 +5,7 @@ import adminApi from '../../api/admin.api';
 import Pagination from '../../components/common/Pagination';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
+import TruncateCell from '../../components/common/TruncateCell';
 
 const CLASSIFY_MAP = { Thu: 'income', Chi: 'expense', 'Vay/no': 'debt', 'Vay/nợ': 'debt' };
 const TYPE_TO_CLASSIFY = { income: 'Thu', expense: 'Chi', debt: 'Vay/no' };
@@ -14,14 +15,19 @@ const CategoryPage = () => {
   const { t } = useLanguageSafe();
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+  const [originalCategories, setOriginalCategories] = useState([]);
+  const [stagedChanges, setStagedChanges] = useState({ added: [], updated: [], deleted: [], restored: [] });
   const [search, setSearch] = useState('');
   const [syncToast, setSyncToast] = useState(null);
+  const [syncPin, setSyncPin] = useState('');
+  const [pinError, setPinError] = useState('');
 
   const [modals, setModals] = useState({
     add: false,
     edit: false,
     filter: false,
     deleteAlert: false,
+    resetAlert: false,
     syncAlert: false,
   });
   const [editingCategory, setEditingCategory] = useState(null);
@@ -33,6 +39,17 @@ const CategoryPage = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  const hasDraftChanges =
+    stagedChanges.added.length > 0 ||
+    stagedChanges.updated.length > 0 ||
+    stagedChanges.deleted.length > 0 ||
+    (stagedChanges.restored && stagedChanges.restored.length > 0);
+  const totalDraftCount =
+    stagedChanges.added.length +
+    stagedChanges.updated.length +
+    stagedChanges.deleted.length +
+    (stagedChanges.restored ? stagedChanges.restored.length : 0);
 
   const searchNorm = normalizeVietnameseUnaccent(search);
   const filtered = categories.filter((c) => {
@@ -95,6 +112,8 @@ const CategoryPage = () => {
         };
       });
       setCategories(mapped);
+      setOriginalCategories(mapped);
+      setStagedChanges({ added: [], updated: [], deleted: [], restored: [] });
     } catch (err) {
       console.error('Lỗi tải danh mục:', err);
     } finally {
@@ -108,9 +127,13 @@ const CategoryPage = () => {
 
   const toggleModal = (modalName, isOpen) => {
     setModals((prev) => ({ ...prev, [modalName]: isOpen }));
+    if (modalName === 'syncAlert' && !isOpen) {
+      setSyncPin('');
+      setPinError('');
+    }
   };
 
-  const handleSave = async (e) => {
+  const handleSave = (e) => {
     e.preventDefault();
     if (processing.isProcessing) return;
 
@@ -131,51 +154,119 @@ const CategoryPage = () => {
       return;
     }
 
-    // Pre-validation: Kiểm tra trùng tên danh mục hệ thống
-    const dupDefault = categories.find(
+    const targetClassify = TYPE_TO_CLASSIFY[form.type] || 'Chi';
+
+    // Pre-validation: Chỉ chặn nếu cùng tên VÀ cùng loại VÀ danh mục đó ĐANG HOẠT ĐỘNG
+    const dupActive = categories.find(
       (c) =>
         c.isDefault &&
+        c.status !== 'deleted' &&
+        !c.delete_at &&
         c.name &&
         normalizeCategoryName(c.name) === normName &&
+        c.classify === targetClassify &&
         (!editingCategory || c.id !== editingCategory.id)
     );
-    if (dupDefault) {
-      const msg = t('categories.alerts.duplicateName', { name: dupDefault.name });
+    if (dupActive) {
+      const msg = t('categories.alerts.duplicateName', { name: dupActive.name });
       if (alert) alert.warning(msg, t('categories.alerts.duplicateTitle'));
       window.alert(msg);
       return;
     }
 
-    const actionText = editingCategory ? t('categories.loading.updating') : t('categories.loading.creating');
-    setProcessing({ isProcessing: true, text: actionText });
+    if (editingCategory) {
+      // 1. Cập nhật bản nháp (Draft Update)
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === editingCategory.id
+            ? {
+                ...c,
+                name: trimmedName,
+                type: form.type,
+                classify: targetClassify,
+                keyword: form.keyword ? form.keyword.trim() : '',
+                isDraftModified: !c.isDraftNew,
+              }
+            : c
+        )
+      );
 
-    try {
-      const payload = {
-        name: trimmedName,
-        classify: TYPE_TO_CLASSIFY[form.type] || 'Chi',
-        is_default: true,
-        keyword: form.keyword ? form.keyword.trim() : null,
-      };
-      if (editingCategory) {
-        await adminApi.updateCategory(editingCategory.id, payload);
-        toggleModal('edit', false);
-        setEditingCategory(null);
-        if (alert) alert.success(t('categories.alerts.updateSuccess', { name: trimmedName }));
-      } else {
-        await adminApi.createCategory(payload);
-        toggleModal('add', false);
-        if (alert) alert.success(t('categories.alerts.createSuccess', { name: trimmedName }));
+      setStagedChanges((prev) => {
+        if (editingCategory.isDraftNew) {
+          return {
+            ...prev,
+            added: prev.added.map((item) =>
+              item.id === editingCategory.id
+                ? { ...item, name: trimmedName, type: form.type, classify: targetClassify, keyword: form.keyword ? form.keyword.trim() : '' }
+                : item
+            ),
+          };
+        } else {
+          const filtered = prev.updated.filter((u) => u.id !== editingCategory.id);
+          return {
+            ...prev,
+            updated: [
+              ...filtered,
+              {
+                id: editingCategory.id,
+                name: trimmedName,
+                type: form.type,
+                classify: targetClassify,
+                keyword: form.keyword ? form.keyword.trim() : '',
+              },
+            ],
+          };
+        }
+      });
+
+      toggleModal('edit', false);
+      setEditingCategory(null);
+      if (alert) alert.info(t('categories.draftAlerts.updated'));
+    } else {
+      // 2. Thêm mới bản nháp (Draft Add)
+      // Nếu thêm mới và ô keyword để trống: kiểm tra xem có danh mục đã xóa mềm cùng tên/loại không để kế thừa bộ từ khóa
+      let finalKeyword = form.keyword ? form.keyword.trim() : '';
+      if (!finalKeyword) {
+        const softDeletedMatch = categories.find(
+          (c) =>
+            (c.status === 'deleted' || c.delete_at) &&
+            c.isDefault &&
+            c.name &&
+            normalizeCategoryName(c.name) === normName &&
+            c.classify === targetClassify &&
+            c.keyword
+        );
+        if (softDeletedMatch && softDeletedMatch.keyword) {
+          finalKeyword = softDeletedMatch.keyword;
+        }
       }
-      setForm({ name: '', isDefault: 'yes', type: 'expense', keyword: '' });
-      await fetchCategories();
-    } catch (err) {
-      console.error('Lỗi lưu danh mục:', err);
-      const errMsg = err.response?.data?.message || err.message || 'Lỗi lưu danh mục';
-      if (alert) alert.error(errMsg, t('categories.alerts.saveErrorTitle'));
-      window.alert(errMsg);
-    } finally {
-      setProcessing({ isProcessing: false, text: '' });
+
+      const tempId = `draft_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const newDraftItem = {
+        id: tempId,
+        name: trimmedName,
+        type: form.type,
+        classify: targetClassify,
+        isDefault: true,
+        isUserCategory: false,
+        keyword: finalKeyword,
+        created_by: 'system',
+        status: 'active',
+        delete_at: null,
+        created_at: new Date().toISOString(),
+        isDraftNew: true,
+      };
+
+      setCategories((prev) => [newDraftItem, ...prev]);
+      setStagedChanges((prev) => ({
+        ...prev,
+        added: [newDraftItem, ...prev.added],
+      }));
+
+      toggleModal('add', false);
+      if (alert) alert.info(t('categories.draftAlerts.added'));
     }
+    setForm({ name: '', isDefault: 'yes', type: 'expense', keyword: '' });
   };
 
   const openDeleteModal = (cat) => {
@@ -189,8 +280,8 @@ const CategoryPage = () => {
     toggleModal('deleteAlert', true);
   };
 
-  const confirmDelete = async () => {
-    if (!categoryToDelete || processing.isProcessing) return;
+  const confirmDelete = () => {
+    if (!categoryToDelete) return;
     if (categoryToDelete.isUserCategory || !categoryToDelete.isDefault) {
       const msg = t('categories.alerts.privacyViolationDelete');
       if (alert) alert.error(msg, t('categories.alerts.privacyTitle'));
@@ -200,29 +291,76 @@ const CategoryPage = () => {
       return;
     }
 
-    setProcessing({ isProcessing: true, text: t('categories.loading.deleting') });
-    try {
-      await adminApi.deleteCategory(categoryToDelete.id);
-      const deletedName = categoryToDelete.name;
+    if (categoryToDelete.isDraftNew) {
+      // Danh mục mới tạo trong nháp: gỡ bỏ khỏi danh sách
+      setCategories((prev) => prev.filter((c) => c.id !== categoryToDelete.id));
+      setStagedChanges((prev) => ({
+        ...prev,
+        added: prev.added.filter((item) => item.id !== categoryToDelete.id),
+      }));
+    } else {
+      // Danh mục đã có trong CSDL: đánh dấu xóa mềm trong nháp
       setCategories((prev) =>
         prev.map((c) =>
           c.id === categoryToDelete.id
-            ? { ...c, status: 'deleted', delete_at: new Date().toISOString() }
+            ? { ...c, status: 'deleted', delete_at: new Date().toISOString(), isDraftDeleted: true }
             : c
         )
       );
-      toggleModal('deleteAlert', false);
-      setCategoryToDelete(null);
-      await fetchCategories();
-      if (alert) alert.success(t('categories.alerts.deleteSuccess', { name: deletedName }));
-    } catch (err) {
-      console.error('Lỗi xóa danh mục:', err);
-      const errMsg = err.response?.data?.message || err.message || 'Lỗi khi xóa danh mục hệ thống';
-      if (alert) alert.error(errMsg, t('categories.alerts.deleteErrorTitle'));
-      window.alert(errMsg);
-    } finally {
-      setProcessing({ isProcessing: false, text: '' });
+      setStagedChanges((prev) => {
+        const filteredUpdated = prev.updated.filter((u) => u.id !== categoryToDelete.id);
+        const filteredDeleted = prev.deleted.filter((id) => id !== categoryToDelete.id);
+        return {
+          ...prev,
+          updated: filteredUpdated,
+          deleted: [...filteredDeleted, categoryToDelete.id],
+        };
+      });
     }
+
+    toggleModal('deleteAlert', false);
+    setCategoryToDelete(null);
+    if (alert) alert.info(t('categories.draftAlerts.deleted'));
+  };
+
+  const handleRestore = (cat) => {
+    if (processing.isProcessing) return;
+
+    if (cat.isDraftDeleted) {
+      // Nếu vừa mới đánh dấu xóa trong phiên nháp hiện tại: Hoàn tác xóa nháp
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === cat.id
+            ? { ...c, status: 'active', delete_at: null, isDraftDeleted: false }
+            : c
+        )
+      );
+      setStagedChanges((prev) => ({
+        ...prev,
+        deleted: prev.deleted.filter((id) => id !== cat.id),
+      }));
+      if (alert) alert.info(t('categories.draftAlerts.restored') || 'Đã khôi phục danh mục trong bản nháp.');
+      return;
+    }
+
+    // Danh mục đã bị xóa mềm trong CSDL từ trước: Đánh dấu khôi phục trong nháp
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.id === cat.id
+          ? { ...c, status: 'active', delete_at: null, isDraftRestored: true }
+          : c
+      )
+    );
+
+    setStagedChanges((prev) => {
+      const filteredRestored = (prev.restored || []).filter((item) => item.id !== cat.id);
+      return {
+        ...prev,
+        restored: [...filteredRestored, cat],
+      };
+    });
+
+    if (alert) alert.info(t('categories.draftAlerts.restored') || 'Đã khôi phục danh mục trong bản nháp. Nhấn "Đồng bộ danh mục" để lưu CSDL.');
   };
 
   const openEditModal = (cat) => {
@@ -248,19 +386,83 @@ const CategoryPage = () => {
     toggleModal('add', true);
   };
 
-  const handleSyncConfirm = async () => {
-    if (processing.isProcessing) return;
-    toggleModal('syncAlert', false);
-    setProcessing({ isProcessing: true, text: t('categories.loading.syncing') });
+  const handleResetToDefault = () => {
+    setCategories(originalCategories);
+    setStagedChanges({ added: [], updated: [], deleted: [], restored: [] });
+    toggleModal('resetAlert', false);
+    if (alert) alert.success(t('categories.draftAlerts.resetSuccess'));
+  };
+
+  const handleSyncWithPin = async (e) => {
+    if (e) e.preventDefault();
+    if (syncPin.length < 6 || processing.isProcessing) return;
+
+    setPinError('');
+    setProcessing({ isProcessing: true, text: 'Đang xác thực và đồng bộ CSDL...' });
+
     try {
+      // 1. Xác thực mã PIN Quản trị viên
+      await adminApi.verifySecurityAction({
+        pin: syncPin.trim(),
+        action: 'SYNC_CATEGORIES',
+        targetId: 'SYSTEM_CATEGORIES',
+      });
+
+      // 2. Thực thi lưu các thay đổi nháp vào CSDL
+      // 2.1. Thêm danh mục mới
+      for (const item of stagedChanges.added) {
+        await adminApi.createCategory({
+          name: item.name,
+          classify: item.classify,
+          is_default: true,
+          keyword: item.keyword || null,
+        });
+      }
+
+      // 2.2. Cập nhật danh mục đã sửa
+      for (const item of stagedChanges.updated) {
+        await adminApi.updateCategory(item.id, {
+          name: item.name,
+          classify: item.classify,
+          is_default: true,
+          keyword: item.keyword || null,
+        });
+      }
+
+      // 2.3. Khôi phục các danh mục đã đánh dấu khôi phục
+      if (stagedChanges.restored && stagedChanges.restored.length > 0) {
+        for (const item of stagedChanges.restored) {
+          if (adminApi.restoreCategory) {
+            await adminApi.restoreCategory(item.id);
+          } else {
+            await adminApi.createCategory({
+              name: item.name,
+              classify: item.classify,
+              is_default: true,
+              keyword: item.keyword || null,
+            });
+          }
+        }
+      }
+
+      // 2.4. Xóa danh mục đã đánh dấu xóa
+      for (const id of stagedChanges.deleted) {
+        await adminApi.deleteCategory(id);
+      }
+
+      // 3. Tải lại danh sách chuẩn từ CSDL
       await fetchCategories();
-      const syncMsg = t('categories.alerts.syncSuccess');
+      toggleModal('syncAlert', false);
+      setSyncPin('');
+
+      const syncMsg = t('categories.syncModal.syncSuccess');
       setSyncToast(syncMsg);
       if (alert) alert.success(syncMsg);
       setTimeout(() => setSyncToast(null), 3500);
     } catch (err) {
-      console.error('Lỗi đồng bộ danh mục:', err);
-      if (alert) alert.error(t('categories.alerts.syncError'), t('categories.alerts.syncErrorTitle'));
+      console.error('Lỗi xác thực / đồng bộ danh mục:', err);
+      const errMsg = err?.response?.data?.message || err?.message || 'Mã PIN không chính xác hoặc lỗi đồng bộ CSDL';
+      setPinError(errMsg);
     } finally {
       setProcessing({ isProcessing: false, text: '' });
     }
@@ -308,95 +510,12 @@ const CategoryPage = () => {
           </div>
         )}
 
-        {/* Sync Confirmation Banner */}
-        {modals.syncAlert && (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in shadow-xs">
-            <div className="flex items-center gap-3.5 text-on-surface">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-2xl">sync</span>
-              </div>
-              <p className="text-xs md:text-sm font-semibold text-blue-900">
-                {t('categories.syncModal.confirmText')}
-              </p>
-            </div>
-            <div className="flex items-center gap-2.5 shrink-0">
-              <button
-                disabled={processing.isProcessing}
-                className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-primary-tint transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-xs"
-                onClick={handleSyncConfirm}
-              >
-                {processing.isProcessing && (
-                  <span className="material-symbols-outlined animate-spin text-sm">
-                    progress_activity
-                  </span>
-                )}
-                {t('categories.syncModal.confirmBtn')}
-              </button>
-              <button
-                disabled={processing.isProcessing}
-                className="px-4 py-2 bg-white border border-outline-variant text-on-surface rounded-xl text-xs font-semibold hover:bg-surface-container-low transition-colors cursor-pointer disabled:opacity-50"
-                onClick={() => toggleModal('syncAlert', false)}
-              >
-                {t('categories.syncModal.cancelBtn')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Delete Confirmation Alert Banner */}
-        {modals.deleteAlert && !categoryToDelete && (
-          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3 text-on-surface">
-              <span className="material-symbols-outlined text-rose-600">warning</span>
-              <p className="font-body-lg text-sm text-rose-800">{t('categories.deleteModal.confirmText')}?</p>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <button
-                disabled={processing.isProcessing}
-                className="px-4 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-semibold hover:bg-rose-700 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-                onClick={confirmDelete}
-              >
-                {processing.isProcessing && (
-                  <span className="material-symbols-outlined animate-spin text-sm">
-                    progress_activity
-                  </span>
-                )}
-                {t('categories.deleteModal.confirmBtn')}
-              </button>
-              <button
-                disabled={processing.isProcessing}
-                className="px-4 py-1.5 bg-white border border-outline-variant text-on-surface rounded-xl text-xs font-semibold hover:bg-surface-container-low transition-colors cursor-pointer disabled:opacity-50"
-                onClick={() => {
-                  setCategoryToDelete(null);
-                  toggleModal('deleteAlert', false);
-                }}
-              >
-                {t('categories.deleteModal.cancelBtn')}
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* 1. Header Hero Bar chuẩn Enterprise */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs">
-              <span className="material-symbols-outlined text-[28px]">category</span>
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h2 className="font-headline-md text-xl md:text-2xl font-bold text-on-surface m-0 tracking-tight">
-                  {t('categories.title')}
-                </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-                  {t('categories.nlpBadge')}
-                </span>
-              </div>
-              <p className="text-xs text-on-surface-variant mt-0.5">
-                {t('categories.subtitle')}
-              </p>
-            </div>
+          <div>
+            <h2 className="font-headline-md text-xl md:text-2xl font-bold text-on-surface m-0 tracking-tight">
+              {t('categories.title')}
+            </h2>
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -591,10 +710,18 @@ const CategoryPage = () => {
             <table className="w-full text-left border-collapse min-w-[750px]">
               <thead>
                 <tr className="bg-surface-container-low/80 border-b border-outline-variant text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
-                  <th className="px-5 py-3.5">{t('categories.table.colName')}</th>
-                  <th className="px-5 py-3.5">{t('categories.table.colType')}</th>
-                  <th className="px-5 py-3.5">{t('categories.table.colKeyword')}</th>
-                  <th className="px-5 py-3.5 text-right">{t('categories.table.colActions')}</th>
+                  <th className="w-[32%] min-w-[200px] px-5 py-3.5">
+                    {t('categories.table.colName')}
+                  </th>
+                  <th className="w-[18%] min-w-[120px] px-5 py-3.5">
+                    {t('categories.table.colType')}
+                  </th>
+                  <th className="w-[34%] min-w-[220px] px-5 py-3.5">
+                    {t('categories.table.colKeyword')}
+                  </th>
+                  <th className="w-[16%] min-w-[120px] px-5 py-3.5 text-right">
+                    {t('categories.table.colActions')}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/60 font-body-md text-xs text-on-surface">
@@ -605,8 +732,8 @@ const CategoryPage = () => {
                         key={item.id}
                         className="hover:bg-surface-container-lowest/80 transition-colors group"
                       >
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-3">
+                        <td className="px-5 py-3.5 overflow-hidden">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-primary/20 text-primary flex items-center justify-center border border-primary/20 shadow-2xs shrink-0">
                               <span className="material-symbols-outlined text-[18px]">
                                 {item.type === 'income'
@@ -616,7 +743,7 @@ const CategoryPage = () => {
                                   : 'credit_card'}
                               </span>
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               {item.isUserCategory ? (
                                 <div className="flex flex-col">
                                   <span className="font-bold text-rose-700 text-xs">***</span>
@@ -626,19 +753,36 @@ const CategoryPage = () => {
                                 </div>
                               ) : (
                                 <>
-                                  <div className="flex items-center gap-2">
-                                    <span className={`font-bold text-on-surface block text-xs ${item.status === 'deleted' || item.delete_at ? 'line-through text-secondary' : ''}`}>
-                                      {item.name}
-                                    </span>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <TruncateCell
+                                      text={item.name}
+                                      className={`font-bold text-on-surface text-xs min-w-0 ${item.status === 'deleted' || item.delete_at ? 'line-through text-secondary' : ''}`}
+                                    />
                                     {(item.status === 'deleted' || item.delete_at) && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs shrink-0">
                                         {t('categories.table.deleted') || 'Đã xóa'}
                                       </span>
                                     )}
+                                    {item.isDraftRestored && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs shrink-0">
+                                        {t('categories.table.restored') || 'Đã khôi phục (nháp)'}
+                                      </span>
+                                    )}
+                                    {item.isDraftNew && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs shrink-0">
+                                        Bản nháp
+                                      </span>
+                                    )}
+                                    {item.isDraftModified && !item.delete_at && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80 shadow-2xs shrink-0">
+                                        Đã sửa (nháp)
+                                      </span>
+                                    )}
                                   </div>
-                                  <span className="text-[10px] text-secondary">
-                                    {t('categories.table.createdBySystem', { creator: (item.created_by === 'system' || item.created_by === 'Hệ thống') ? t('categories.createdBySystem') : item.created_by })}
-                                  </span>
+                                  <TruncateCell
+                                    text={t('categories.table.createdBySystem', { creator: (item.created_by === 'system' || item.created_by === 'Hệ thống') ? t('categories.createdBySystem') : item.created_by })}
+                                    className="text-[10px] text-secondary min-w-0"
+                                  />
                                 </>
                               )}
                             </div>
@@ -653,16 +797,14 @@ const CategoryPage = () => {
                             {t(`categories.tabs.${item.type}`) || TRANSACTION_TYPE_LABELS[item.type] || item.type}
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 max-w-[380px]">
+                        <td className="px-5 py-3.5 overflow-hidden">
                           {item.isUserCategory ? (
                             <span className="text-secondary italic text-xs font-mono">***</span>
                           ) : item.keyword ? (
-                            <div
-                              className="w-full bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1 text-[11px] text-slate-800 font-mono whitespace-nowrap overflow-x-auto keyword-scrollbar select-all shadow-2xs"
-                              title={item.keyword}
-                            >
-                              {item.keyword}
-                            </div>
+                            <TruncateCell
+                              text={item.keyword}
+                              className="w-full bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-1 text-[11px] text-slate-800 font-mono shadow-2xs"
+                            />
                           ) : (
                             <span className="text-secondary/60 italic text-xs">{t('categories.table.noKeyword')}</span>
                           )}
@@ -673,9 +815,19 @@ const CategoryPage = () => {
                               {t('categories.table.forbiddenEditDelete')}
                             </span>
                           ) : item.status === 'deleted' || item.delete_at ? (
-                            <span className="text-xs text-rose-700 font-medium px-2 italic">
-                              {t('categories.table.deleted') || 'Đã xóa'}
-                            </span>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <span className="text-xs text-rose-700 font-medium px-1 italic">
+                                {t('categories.table.deleted') || 'Đã xóa'}
+                              </span>
+                              <button
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer text-xs font-semibold shadow-2xs"
+                                onClick={() => handleRestore(item)}
+                                title={t('categories.table.restoreTitle') || 'Khôi phục danh mục'}
+                              >
+                                <span className="material-symbols-outlined text-[16px]">settings_backup_restore</span>
+                                <span>{t('categories.table.restore') || 'Khôi phục'}</span>
+                              </button>
+                            </div>
                           ) : (
                             <div className="flex items-center justify-end gap-1">
                               <button
@@ -732,13 +884,26 @@ const CategoryPage = () => {
             itemLabel={t('categories.table.itemLabel')}
           />
 
-          <div className="px-6 py-3.5 flex justify-end border-t border-outline-variant bg-surface-container-lowest">
+          <div className="px-6 py-3.5 flex items-center justify-end gap-3 border-t border-outline-variant bg-surface-container-lowest">
+            <button
+              className="px-4 py-2 bg-white border border-outline-variant text-on-surface rounded-xl text-xs font-semibold hover:bg-surface-container-low transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+              onClick={() => toggleModal('resetAlert', true)}
+              title={t('categories.resetModal.title')}
+            >
+              <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+              {t('categories.table.resetBtn')}
+            </button>
             <button
               className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-primary-tint transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
               onClick={() => toggleModal('syncAlert', true)}
             >
               <span className="material-symbols-outlined text-[18px]">sync</span>
               {t('categories.table.syncBtn')}
+              {hasDraftChanges && (
+                <span className="ml-1 px-1.5 py-0.5 bg-white/20 text-white rounded-full text-[10px] font-bold">
+                  {totalDraftCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -935,26 +1100,11 @@ const CategoryPage = () => {
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-on-surface m-0 leading-relaxed">
+            <div className="p-6">
+              <p className="text-xs text-on-surface m-0 leading-relaxed font-medium">
                 {t('categories.deleteModal.confirmText')}{' '}
-                <strong className="text-primary font-bold">"{categoryToDelete.name}"</strong>?
+                <strong className="text-primary font-bold">"{categoryToDelete.name}"</strong> ?
               </p>
-              <div className="bg-surface-container-low p-3.5 rounded-xl border border-outline-variant text-xs text-secondary space-y-1.5">
-                <div className="flex items-start gap-1.5 text-rose-600 font-semibold">
-                  <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5">info</span>
-                  <span>{t('categories.deleteModal.softDeleteWarning')}</span>
-                </div>
-                <ul className="list-disc pl-5 space-y-1 text-secondary text-[11px]">
-                  <li>
-                    {t('categories.deleteModal.point1')}
-                  </li>
-                  <li>
-                    {t('categories.deleteModal.point2')}
-                  </li>
-                  <li>{t('categories.deleteModal.point3')}</li>
-                </ul>
-              </div>
             </div>
             <div className="px-6 py-4 bg-surface-container-lowest border-t border-outline-variant flex justify-end gap-2.5">
               <button
@@ -982,6 +1132,146 @@ const CategoryPage = () => {
                 {t('categories.deleteModal.confirmBtn')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Confirmation Modal */}
+      {modals.resetAlert && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-2xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-outline-variant animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest">
+              <div className="flex items-center gap-2 text-amber-600">
+                <span className="material-symbols-outlined text-2xl">restart_alt</span>
+                <h3 className="font-bold text-on-surface text-base m-0">{t('categories.resetModal.title')}</h3>
+              </div>
+              <button
+                disabled={processing.isProcessing}
+                className="text-secondary hover:text-on-surface cursor-pointer p-1 rounded-full hover:bg-surface-container-low transition-colors disabled:opacity-50"
+                onClick={() => toggleModal('resetAlert', false)}
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-xs text-on-surface m-0 leading-relaxed font-medium">
+                {t('categories.resetModal.confirmText')}
+              </p>
+            </div>
+            <div className="px-6 py-4 bg-surface-container-lowest border-t border-outline-variant flex justify-end gap-2.5">
+              <button
+                type="button"
+                disabled={processing.isProcessing}
+                className="px-4 py-2 border border-outline-variant rounded-xl text-on-surface text-xs font-semibold hover:bg-surface-container-low transition-colors cursor-pointer disabled:opacity-50"
+                onClick={() => toggleModal('resetAlert', false)}
+              >
+                {t('categories.resetModal.cancelBtn')}
+              </button>
+              <button
+                type="button"
+                disabled={processing.isProcessing}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2 shadow-xs"
+                onClick={handleResetToDefault}
+              >
+                {t('categories.resetModal.confirmBtn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PIN Verification & Sync Confirmation Modal */}
+      {modals.syncAlert && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-2xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-outline-variant animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest">
+              <div className="flex items-center gap-2 text-primary">
+                <span className="material-symbols-outlined text-2xl">verified_user</span>
+                <h3 className="font-bold text-on-surface text-base m-0">{t('categories.syncModal.title')}</h3>
+              </div>
+              <button
+                disabled={processing.isProcessing}
+                className="text-secondary hover:text-on-surface cursor-pointer p-1 rounded-full hover:bg-surface-container-low transition-colors disabled:opacity-50"
+                onClick={() => {
+                  toggleModal('syncAlert', false);
+                  setSyncPin('');
+                  setPinError('');
+                }}
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <form onSubmit={handleSyncWithPin}>
+              <div className="p-6 space-y-4">
+                <p className="text-xs text-on-surface-variant m-0 leading-relaxed">
+                  {t('categories.syncModal.description')}
+                </p>
+
+                {hasDraftChanges && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-xs flex items-center justify-between">
+                    <span className="font-semibold">Thay đổi trong bản nháp chờ lưu:</span>
+                    <span className="font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full text-[11px]">
+                      {totalDraftCount} thay đổi
+                    </span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-on-surface mb-1.5">
+                    {t('categories.syncModal.pinLabel')}
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={syncPin}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                      setSyncPin(val);
+                      if (pinError) setPinError('');
+                    }}
+                    placeholder={t('categories.syncModal.pinPlaceholder')}
+                    autoFocus
+                    required
+                    disabled={processing.isProcessing}
+                    className="w-full text-center text-xl tracking-[0.5em] font-mono py-2.5 px-3 bg-surface-container-low border border-outline-variant rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition text-on-surface"
+                  />
+                </div>
+
+                {pinError && (
+                  <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
+                    <span className="material-symbols-outlined text-sm">error</span>
+                    <span>{pinError}</span>
+                  </div>
+                )}
+              </div>
+              <div className="px-6 py-4 bg-surface-container-lowest border-t border-outline-variant flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  disabled={processing.isProcessing}
+                  className="px-4 py-2 border border-outline-variant rounded-xl text-on-surface text-xs font-semibold hover:bg-surface-container-low transition-colors cursor-pointer disabled:opacity-50"
+                  onClick={() => {
+                    toggleModal('syncAlert', false);
+                    setSyncPin('');
+                    setPinError('');
+                  }}
+                >
+                  {t('categories.syncModal.cancelBtn')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={syncPin.length < 6 || processing.isProcessing}
+                  className="px-5 py-2 bg-primary hover:bg-primary-tint text-white rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-xs"
+                >
+                  {processing.isProcessing && (
+                    <span className="material-symbols-outlined animate-spin text-sm">
+                      progress_activity
+                    </span>
+                  )}
+                  {t('categories.syncModal.confirmBtn')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

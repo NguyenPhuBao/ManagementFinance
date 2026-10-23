@@ -27,6 +27,12 @@ vi.mock('../api/payment.api', () => ({
   },
 }));
 
+vi.mock('../api/admin.api', () => ({
+  default: {
+    verifySecurityAction: vi.fn().mockResolvedValue({ data: { verified: true } }),
+  },
+}));
+
 describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () => {
   const mockStats = {
     totalRevenue: 490000,
@@ -421,7 +427,7 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       });
     });
 
-    it('2.4. Nút "Làm mới" kích hoạt tải lại toàn bộ dữ liệu thực tế và hiển thị toast phản hồi', async () => {
+    it('2.4. Header đã lược bỏ hoàn toàn nút "Làm mới" theo yêu cầu của PO', async () => {
       render(<PaymentHistoryPage />);
 
       await waitFor(() => {
@@ -429,14 +435,8 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
         expect(paymentApi.getStats).toHaveBeenCalledTimes(1);
       });
 
-      const refreshBtn = screen.getByTitle(/Làm mới/i);
-      fireEvent.click(refreshBtn);
-
-      await waitFor(() => {
-        expect(paymentApi.getOrders).toHaveBeenCalledTimes(2);
-        expect(paymentApi.getStats).toHaveBeenCalledTimes(2);
-        expect(screen.getByText(/Đã làm mới dữ liệu thanh toán thành công/i)).toBeInTheDocument();
-      });
+      // Xác nhận nút Làm mới không còn hiện diện tại Header
+      expect(screen.queryByTitle(/^Làm mới$/i)).toBeNull();
     });
 
     it('2.5. Nút "Đặt lại" xóa sạch các bộ lọc và gọi lại API với giá trị mặc định', async () => {
@@ -486,7 +486,7 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
         expect(paymentApi.createSampleOrder).toHaveBeenCalledWith({
           simulateWebhook: false,
           status: 'PENDING',
-          packageType: 'PREMIUM_1_MONTH',
+          packageType: 'Premium',
           amount: 49000,
         });
         // Sau khi tạo đơn, hiển thị mã đơn và STK MB Bank
@@ -623,6 +623,11 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       // Submit form
       const submitBtn = screen.getByRole('button', { name: /Xác nhận Đã hoàn tiền/i });
       fireEvent.click(submitBtn);
+
+      // Nhập PIN xác thực bảo mật
+      const pinInput = screen.getByPlaceholderText(/Nhập mã PIN 6 số/i);
+      fireEvent.change(pinInput, { target: { value: '123456' } });
+      fireEvent.click(screen.getByRole('button', { name: /Xác thực & Thực thi/i }));
 
       await waitFor(() => {
         expect(paymentApi.processRefund).toHaveBeenCalledWith(

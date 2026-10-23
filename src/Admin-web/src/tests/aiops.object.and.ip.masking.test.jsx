@@ -188,11 +188,11 @@ describe('AIOps Object Column (TK & IP) and Quarantine IP 2-Tier Test Suite', ()
       });
     });
 
-    it('1.4. Bảng RCA > Sự cố tài nguyên hệ thống nội bộ hiển thị "Hệ thống nội bộ" và "Nội bộ hệ thống"', async () => {
+    it('1.4. Bảng RCA > Sự cố tài nguyên hệ thống nội bộ hiển thị "Hệ thống" và "Nội bộ hệ thống"', async () => {
       render(<AIOpsPage />);
 
       await waitFor(() => {
-        expect(screen.getAllByText('Hệ thống nội bộ').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('Hệ thống').length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText('Nội bộ hệ thống').length).toBeGreaterThanOrEqual(1);
       });
     });

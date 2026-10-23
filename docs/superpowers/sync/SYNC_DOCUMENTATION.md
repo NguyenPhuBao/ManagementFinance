@@ -1,5 +1,12 @@
 # TÀI LIỆU TỔNG KẾT BÁO CÁO ĐỒNG BỘ DỮ LIỆU (SYNC ENGINE DOCUMENTATION)
 
+> 🔀 **2026-10-23 — gộp `main` @ `ee6a65e5`:** commit backend `6cbd248e` đã viết lại tệp này thành bản *"Hợp đồng v3.0"*
+> (223 dòng). Client **giữ bản này** (người dùng chốt): bản v3.0 sai so với mã ở khoảng 15 chỗ — loại ví, `idaccount` của
+> danh mục hệ thống, công thức mốc kéo về, thứ tự đẩy, nhiều tên cột — và bỏ mất các ghi chú G67 / G85 / G34 bên dưới. Danh
+> sách đối chiếu và lời xin backend: mục **49** `docs/superpowers/backend/CAN-LAM/SOAT_SAU_GOP_EE6A65E5.md` (vế A). Bản v3.0
+> vẫn đọc được bằng `git show 6cbd248e:docs/superpowers/sync/SYNC_DOCUMENTATION.md`; bảng trường phía backend nằm ở
+> `docs/Admin-web/Sync-To-ClientApp.md` (cũng chưa soát, xem đơn).
+
 > **Dự án:** ManagementFinance  
 > **Kiến trúc:** Offline-First (CSDL SQLite local Drift + PostgreSQL Backend REST API)  
 > **Cơ chế:** Full 2-Way Sync (Push & Pull với Last-Write-Wins LWW Conflict Resolution)  

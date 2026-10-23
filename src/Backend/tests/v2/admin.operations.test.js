@@ -175,6 +175,124 @@ describe('Admin Operations Suite v2 — Privacy, Lifecycle & Safety Constraints'
         prisma.category.findMany = origFindMany;
       }
     });
+
+    it('1.6. [Tầng 2 - DB Impact] deleteCategory chỉ xóa mềm, giữ nguyên 100% dữ liệu keyword và không unlink idgroup của category con', async () => {
+      const origUpdate = prisma.category.update;
+      const origUpdateMany = prisma.category.updateMany;
+      let capturedUpdateData = null;
+      let updateManyCalled = false;
+
+      prisma.category.update = async ({ where, data }) => {
+        capturedUpdateData = { where, data };
+        return { idcategory: where.idcategory, ...data };
+      };
+      prisma.category.updateMany = async () => {
+        updateManyCalled = true;
+        return { count: 1 };
+      };
+
+      try {
+        await adminRepository.deleteCategory('group-parent-cat');
+        assert.ok(capturedUpdateData, 'prisma.category.update phải được gọi');
+        assert.strictEqual(capturedUpdateData.where.idcategory, 'group-parent-cat');
+        assert.ok(capturedUpdateData.data.delete_at instanceof Date, 'delete_at phải là Date');
+        assert.ok(capturedUpdateData.data.server_update_at instanceof Date, 'server_update_at phải được cập nhật');
+        assert.strictEqual(updateManyCalled, false, 'TUYỆT ĐỐI KHÔNG được gọi updateMany unlink idgroup của danh mục con');
+      } finally {
+        prisma.category.update = origUpdate;
+        prisma.category.updateMany = origUpdateMany;
+      }
+    });
+
+    it('1.7. [Tầng 2 - DB Impact] addCategory khôi phục danh mục đã xóa mềm: bảo toàn 100% bộ từ khóa cũ nếu không truyền keyword mới', async () => {
+      const origFindFirst = prisma.category.findFirst;
+      const origUpdate = prisma.category.update;
+      let capturedRestoreData = null;
+
+      // Giả lập danh mục cũ đã bị xóa mềm và có bộ từ khóa AI
+      prisma.category.findFirst = async ({ where }) => {
+        if (where.delete_at && where.delete_at.not === null) {
+          return {
+            idcategory: 'soft-del-1',
+            name_category: 'Xăng xe',
+            classify: 'Chi',
+            is_default: true,
+            keyword: 'xang, dau, petrolimex, ron95',
+            icon: 'local_gas_station',
+            delete_at: new Date('2026-10-10'),
+          };
+        }
+        return null; // Không có danh mục active trùng tên
+      };
+
+      prisma.category.update = async ({ where, data }) => {
+        capturedRestoreData = { where, data };
+        return { idcategory: where.idcategory, ...data };
+      };
+
+      try {
+        // Admin tạo mới danh mục cùng tên nhưng ĐỂ TRỐNG keyword (keyword: null hoặc "")
+        const result = await adminService.addCategory({
+          name: 'Xăng xe',
+          classify: 'Chi',
+          keyword: '',
+        }, 1);
+
+        assert.ok(capturedRestoreData, 'Danh mục đã được restore qua update');
+        assert.strictEqual(capturedRestoreData.where.idcategory, 'soft-del-1');
+        assert.strictEqual(capturedRestoreData.data.delete_at, null, 'delete_at phải được set null (bỏ xóa mềm)');
+        assert.strictEqual(
+          capturedRestoreData.data.keyword,
+          'xang, dau, petrolimex, ron95',
+          'Bộ từ khóa cũ BẮT BUỘC phải được bảo toàn 100%, không bị ghi đè null'
+        );
+        assert.strictEqual(result.keyword, 'xang, dau, petrolimex, ron95');
+      } finally {
+        prisma.category.findFirst = origFindFirst;
+        prisma.category.update = origUpdate;
+      }
+    });
+
+    it('1.8. [Tầng 2 - DB Impact] restoreCategory khôi phục danh mục trực tiếp theo ID: set delete_at = null, cập nhật server_update_at', async () => {
+      const origFindUnique = prisma.category.findUnique;
+      const origRestore = adminRepository.restoreCategory;
+      let restoredCalledWith = null;
+
+      prisma.category.findUnique = async ({ where }) => {
+        if (where.idcategory === 'cat-target-99') {
+          return {
+            idcategory: 'cat-target-99',
+            name_category: 'Mua sắm',
+            classify: 'Chi',
+            is_default: true,
+            keyword: 'shopee, lazada, tiki',
+            delete_at: new Date('2026-10-10'),
+          };
+        }
+        return null;
+      };
+
+      adminRepository.restoreCategory = async (idcategory) => {
+        restoredCalledWith = idcategory;
+        return {
+          idcategory,
+          name_category: 'Mua sắm',
+          classify: 'Chi',
+          keyword: 'shopee, lazada, tiki',
+          delete_at: null,
+        };
+      };
+
+      try {
+        const result = await adminService.restoreCategory('cat-target-99');
+        assert.strictEqual(restoredCalledWith, 'cat-target-99', 'restoreCategory repo phải được gọi với đúng ID');
+        assert.strictEqual(result.id, 'cat-target-99');
+        assert.strictEqual(result.keyword, 'shopee, lazada, tiki', 'Bộ từ khóa được bảo toàn');
+      } finally {
+        prisma.category.findUnique = origFindUnique;
+        adminRepository.restoreCategory = origRestore;
+      }
+    });
   });
 
   // ─── 2. USER LIFECYCLE & PROTECTION CONSTRAINTS ──────────────────────────
