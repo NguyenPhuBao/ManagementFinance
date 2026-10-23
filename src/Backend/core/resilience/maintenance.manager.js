@@ -585,7 +585,7 @@ class MaintenanceManager {
     return this.getStatus();
   }
 
-  cancelScheduledMaintenance(id = null) {
+  async cancelScheduledMaintenance(id = null) {
     let cancelled = false;
     let targetRecordId = null;
 
@@ -600,8 +600,11 @@ class MaintenanceManager {
           clearTimeout(target._timer);
           target._timer = null;
         }
-        targetRecordId = target.recordId;
+        targetRecordId = target.recordId || target.id;
         this.scheduledList.splice(targetIdx, 1);
+        cancelled = true;
+      } else {
+        targetRecordId = numericId || id;
         cancelled = true;
       }
     } else {
@@ -624,16 +627,16 @@ class MaintenanceManager {
     }
     this.scheduled = this.getNearestSchedule();
 
-    if (cancelled && targetRecordId) {
+    if (targetRecordId) {
       try {
         const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
-        defaultMaintenanceRepository.cancelScheduledRecord({
+        await defaultMaintenanceRepository.cancelScheduledRecord({
           id: targetRecordId,
           reason: 'Admin chủ động hủy lịch bảo trì',
-        }).catch((err) => {
-          logger.warn('[MAINTENANCE] Lỗi CSDL khi hủy lịch chủ động', { error: err.message });
         });
-      } catch (_) {}
+      } catch (err) {
+        logger.warn('[MAINTENANCE] Lỗi CSDL khi hủy lịch chủ động', { error: err.message });
+      }
     }
 
     try {

@@ -223,10 +223,25 @@ const adminController = {
     }
   },
 
-  cancelScheduledMaintenance(req, res) {
+  async cancelScheduledMaintenance(req, res) {
     const { defaultMaintenanceManager } = require('../../core/resilience/maintenance.manager');
+    const { defaultMaintenanceRepository } = require('./maintenance.repository');
     const id = req.params?.id || req.body?.id || req.query?.id || null;
-    defaultMaintenanceManager.cancelScheduledMaintenance(id);
+
+    if (id) {
+      try {
+        const queryRes = await defaultMaintenanceRepository.getHistory({ limit: 100 });
+        const record = (queryRes.data || []).find((x) => x.id === Number(id) || x.id === id);
+        if (record && record.status === 'SCHEDULED' && record.started_at) {
+          const hoursUntilStart = (new Date(record.started_at).getTime() - Date.now()) / (3600 * 1000);
+          if (hoursUntilStart < 4) {
+            return ResponseHandler.badRequest(res, 'Chỉ có thể hủy lịch bảo trì trước thời điểm bắt đầu ít nhất 4 tiếng!');
+          }
+        }
+      } catch (_) {}
+    }
+
+    await defaultMaintenanceManager.cancelScheduledMaintenance(id);
     return ResponseHandler.success(res, defaultMaintenanceManager.getStatus(), 'Đã hủy lịch bảo trì hệ thống');
   },
 

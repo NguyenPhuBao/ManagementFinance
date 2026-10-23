@@ -140,12 +140,14 @@ Khi cơ sở dữ liệu bị mất kết nối hoặc quá tải:
    - Card/Banner cảnh báo tông cam viền amber nhấp nháy hiển thị số phút đếm ngược.
    - **Tuyệt đối không làm mất form lập lịch bảo trì định kỳ**.
 3. **Khung Điều Hành & Lập Lịch Bảo Trì Kỹ Thuật Định Kỳ (Luôn Hiện Diện):**
-   - Form lập lịch luôn sẵn sàng tạo mới: input `datetime-local` bắt đầu (tối thiểu trước 4 tiếng) và kết thúc dự kiến, lý do.
+   - Form lập lịch chỉ chia làm 2 loại hình duy nhất theo quy định của PO: **Bảo trì Khẩn cấp** (`EMERGENCY`) và **Bảo trì Định kỳ** (`SCHEDULED`) (tuyệt đối không có loại hình nâng cấp riêng biệt trên form).
+   - Form luôn sẵn sàng tạo mới: input `datetime-local` bắt đầu (tối thiểu trước 4 tiếng) và kết thúc dự kiến, lý do.
    - Nút **"Lên lịch bảo trì"** và nút **"Làm mới"** biểu mẫu.
    - **Bảng Danh Sách Lịch Bảo Trì Đã Lên Lịch (Upcoming Schedules):** Hiển thị danh sách các phiên bảo trì định kỳ đã đặt, kèm nút **"Hủy"** riêng cho từng dòng theo ID.
 4. **Bảng Lịch Sử Các Phiên Bảo Trì Hệ Thống (PostgreSQL Persistence):**
    - Lưu trữ vĩnh viễn trong bảng `maintenance_history`.
-   - Các cột hiển thị: `#`, `Loại bảo trì` (Khẩn cấp / Theo lịch), `Người kích hoạt`, `Lý do / Thông điệp`, `Thời điểm bắt đầu`, `Thời điểm kết thúc`, `Thời lượng`, `Trạng thái` (Đang diễn ra, Đã hoàn thành, Đã hủy).
+   - Các cột hiển thị (9 cột): `#`, `Loại bảo trì` (Khẩn cấp / Định kỳ), `Người kích hoạt`, `Lý do / Thông điệp`, `Thời điểm bắt đầu`, `Thời điểm kết thúc`, `Thời lượng`, `Trạng thái` (Đang diễn ra, Đã lên lịch, Đã hoàn thành, Đã hủy), `Thao tác`.
+   - **Cột Thao Tác (Action Column):** Hiển thị nút **"Hủy"** đối với các phiên bảo trì định kỳ đã lên lịch (`SCHEDULED`) còn trước giờ bắt đầu tối thiểu 4 tiếng. Nếu dưới 4 tiếng, nút bị khóa (`< 4h`) nhằm ngăn chặn việc hủy sát giờ gây bất ổn hệ thống.
    - Bộ phân trang chuẩn mực (`Pagination.jsx`) mặc định 5 bản ghi/trang (hỗ trợ chọn 5, 10, 20, 50 phiên/trang).
 
 ---
