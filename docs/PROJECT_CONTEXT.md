@@ -614,7 +614,28 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-22)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-23)
+
+### 🔢 G104 — câu *"một triệu hai tiền sách"* ra hai chip; *"X bậc Y"* một định nghĩa, X 1–99 (2026-10-23, người dùng chọn) — mã + test, chưa đo trên máy
+
+Không máy nào cắm. Người dùng chọn G104 (đang hoãn) theo lối hai chip — lý do hoãn (3) của G104. Danh sách code-review 5.2 của
+bàn giao `c4-a5-review` tôi đưa ra lúc đầu đã làm xong ở phiên 2 (`00d53226`, `f943ed9e`, `6c9e6e99`) — tệp bàn giao cũ, đã
+đính chính với người dùng trước khi chọn lại.
+- **Mã (`doc_cau_giao_dich.dart`, `them_giao_dich_cubit.dart`):** `_chonSoTien` — cụm *"X bậc Y"* viết chữ mà Y không ở chỗ của
+  tiền và không hạng nào có cụm khác → `KetQuaDocCau.luaChonSoTien` = [cụt, dài] thay cảnh báo *"chưa rõ"*. Có chip thì AI
+  **không** lấp ô số tiền, ô ấy không là `OThieu.soTien`; `khongDocDuocGi` tính cả chip; `cauDaDien` trả `''` khi chỉ có chip.
+  `dienKetQua` đưa chip vào `luaChonTienCau`, ô số tiền về 0, bỏ dòng tóm tắt khi không còn gì để nói — khối `KhoiChonSoTien`
+  có sẵn, không màn mới. Lời nhắc Gemma không đổi; Gemma vẫn được hỏi (ghi chú còn cụm số → `OThieu.ghiChu`), nên chip hiện
+  sau đúng lượt chờ như trước. Huỷ lượt AI / mô hình chưa sẵn sàng → chip vẫn hiện.
+- **Một định nghĩa *"X bậc Y"* (người dùng chốt cùng lượt):** chạy câu thật lộ luật điền *"trả hai trăm nghìn tám"* = 200.800 và
+  *"một triệu hai trăm nghìn ba"* = 1.200.300 không hỏi. `_docXBacY` (X = cụm / bậc, số nguyên **1–99**) — luật điền, chip,
+  `cachDocSoTien` cùng gọi. Ranh giới *"X một chữ số"* tôi đề xuất trước, rồi bỏ sau khi chạy câu thật: nó làm hỏng *"mười lăm
+  triệu hai"* = 15.200.000 mà luật đang điền đúng (đã xin lỗi và hỏi lại). Dạng chữ số (*"1 triệu 2"*, `_mauTrieuLe`) cố ý
+  không qua — bỏ cách đọc dài ở đó là `_mauSoDonVi` điền bản cụt *"12 triệu"* không hỏi.
+- **Test:** `doc_cau_noi_test` nhóm *N1 — Y không ở chỗ của tiền* đổi kỳ vọng + nhóm *G104* 17 ca; `doc_cau_giao_dich_test`
+  một ca đổi kỳ vọng; `them_giao_dich_kiem_cheo_test` +4. Ca mới đỏ trên mã cũ; bản sai *bỏ chốt AI không lấp* → 4 ca đỏ, *bỏ vế
+  chip trong `khongDocDuocGi`* → 8 ca đỏ. **Số đo:** `flutter test` **7824/7824** pass, 10 skip (5 ph 44 s; +21 so với 7803);
+  `flutter analyze` **20**. Chi tiết + checklist đo máy: G104 `CLIENT_APP_KNOWN_GAPS.md`.
 
 ### ⏳ Trần chờ 20 s · vá khe Huỷ lúc tạo chat · G105 (2026-10-22 khuya, người dùng chọn sau buổi đo Realme) — mã + test, chưa đo trên máy
 
@@ -763,7 +784,8 @@ triệu năm"* vì *sổ ghi một lần trả tiền đã xảy ra, ít khi nó
   chọn **gỡ**: `_kiemSoTienNen`, `huyKiemSoTien`, `dangKiemSoTien` (state), dòng *"Đang kiểm số tiền bằng AI…"* + Huỷ ở
   `ONhapNhanh`, nhánh micro nhường mô hình cho lượt kiểm.
 - `cachDocSoTien` **không đổi** (vẫn giữ bản cụt cho đường luật bỏ trống *"một triệu hai tiền sách"*); lời nhắc Gemma không đổi.
-  Đường luật bỏ trống ấy vẫn có thể điền bản cụt của Gemma không hỏi → **G104** (hoãn, chưa đo).
+  Đường luật bỏ trống ấy vẫn có thể điền bản cụt của Gemma không hỏi → **G104** (hoãn, chưa đo) *(✅ đóng 2026-10-23 bằng
+  hai chip — khối 🔢 trên)*.
 
 **Test:** `chot_so_tien_cau_test` +1, `doc_cau_noi_test` +11 (nhóm *soTienKhac*, kèm ca canh bất biến *cần kiểm ⇒ ô thiếu
 `ghiChu`* và ca tên ví), `them_giao_dich_kiem_cheo_test` viết lại theo đường hỏi trước (câu hai số *"mua 20 quả trứng năm

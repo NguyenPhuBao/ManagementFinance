@@ -34,6 +34,8 @@
 >     Y đứng **chỗ của tiền** — cùng điều kiện của N2 (cuối câu, hoặc ngay trước dấu câu / chữ ví · bằng · trả · qua · từ
 >     · sang · vào · đến · tới · hôm · ngày · mùng · thứ). *"tiền điện một triệu hai"* → 1.200.000; *"chi hai triệu năm
 >     nay"*, *"nộp hai triệu ba ngày sau"*, *"một triệu hai tiền sách"* → luật để trống, Gemma chọn (như trước C4).
+>     ⟶ **Đổi 2026-10-23 (G104, người dùng chọn):** ở ca ấy luật đưa **hai chip** cụt · dài, Gemma không lấp ô số tiền; dạng
+>     viết chữ chỉ nhận X 1–99 (`_docXBacY`) — *"trả hai trăm nghìn tám"* thôi điền 200.800.
 >     `cachDocSoTien` vẫn liệt kê mọi cách đọc. Cùng lượt: chữ số chữ đứng sau cụm chỉ so **không dấu** khi **cả câu**
 >     không dấu (*"hai triệu sau khi giảm"* không thành 2.600.000), và `cachDocSoTien` dùng chung phép đọc ấy; tập chữ
 >     đứng sau tiền của N2 thêm *ví · đến · tới*.

@@ -56,7 +56,10 @@ Luật **chỉ chọn thêm trong tập `cachDocSoTien`** — không có bộ đ
 - **N1** — *X đơn vị Y* (*một triệu hai · năm nghìn hai · 1 triệu 2*) → 1.200.000 · 5.200 · 1.200.000. Chỉ chọn khi Y ở **chỗ
   của tiền** (cuối câu, hoặc ngay trước dấu câu / chữ ví · bằng · trả · qua · từ · sang · vào · đến · tới · hôm · ngày · mùng ·
   thứ — lượt soát kế hoạch, người dùng chọn lối A, **đổi thân spec §3.2**). Vòng sửa Task 3 siết: *ngày / mùng / mồng* chỉ tính khi liền sau là chữ **số**; *hôm* chỉ khi liền sau là *qua / nay / kia*; *thứ* chỉ khi liền sau là số hoặc tên thứ (`_dungChoTien`, `doc_cau_giao_dich.dart`). *"tiền điện một triệu hai"* → 1.200.000; *"chi hai
-  triệu năm nay"*, *"một triệu hai tiền sách"* → luật để trống, Gemma chọn như trước C4.
+  triệu năm nay"*, *"một triệu hai tiền sách"* → luật không chọn, và từ **2026-10-23 (G104)** đưa **hai chip** (2.000.000 ·
+  2.500.000 / 1.000.000 · 1.200.000), Gemma **không** lấp ô số tiền — trước đó Gemma chọn và từng có thể điền bản cụt không hỏi.
+  Dạng viết chữ chỉ nhận X **1–99** (`_docXBacY`, một định nghĩa cho luật điền, chip và `cachDocSoTien`): *"mười lăm triệu hai"*
+  → 15.200.000, *"trả hai trăm nghìn tám"* → chưa rõ (trước 2026-10-23 luật điền 200.800).
 - **N2** — số **10–999** không đơn vị (*năm chục · ba trăm rưỡi · bốn mươi lăm · 45*) × 1.000, cùng điều kiện vị trí. Cụm có
   đơn vị tiền (*k · nghìn · tr · củ*) vẫn thắng N1/N2; số một chữ số vẫn là số lượng.
 - **Ngày bằng chữ / số:** *ngày năm tháng chín*, *ngày 5 tháng 9*, *mùng năm*. *"tháng này"* nói rõ = tháng hiện tại, **không
@@ -112,9 +115,10 @@ người dùng loại: *sổ ghi một lần trả tiền đã xảy ra, ít khi
   đúng những câu thôi kiểm — nên đã **gỡ** cùng ngày. Ca canh bất biến ở `doc_cau_noi_test` (nhóm *soTienKhac*).
 - ⚠️ **Tính trên ghi chú, không trên cả câu** — số trong tên ví đã đọc (*"bằng thẻ 365"*) không phải số tiền; tính trên câu
   là Gemma được phép đưa chip rác 365.000 (ca canh trong cùng nhóm; bản sai cấy thử làm 5 ca đỏ).
-- ⚠️ **`cachDocSoTien` vẫn giữ bản cụt** — nó còn phục vụ đường luật bỏ trống (*"một triệu hai tiền sách"* — Y không ở chỗ của
-  tiền, Gemma chọn); bỏ ở đó là Gemma mất cách đọc 1.000.000. Đường ấy vẫn có thể điền 1.000.000 im lặng nếu Gemma đọc cụt —
-  **G104** `CLIENT_APP_KNOWN_GAPS.md`, hoãn (sửa lời nhắc là đổi mọi câu C2, phải đo lại hai máy).
+- ⚠️ **`cachDocSoTien` vẫn giữ bản cụt** — nó là lưới số tiền AI của mọi câu (*"chi hai triệu năm nay"* = 2.000.000 ở câu khác).
+  Đường luật bỏ trống *"một triệu hai tiền sách"* (Y không ở chỗ của tiền) từng để Gemma điền 1.000.000 im lặng — ✅ **G104 đóng
+  2026-10-23**: luật đưa hai chip `[cụt, dài]` (`KetQuaDocCau.luaChonSoTien`), Gemma không lấp ô số tiền, lời nhắc không đổi
+  (mã + test, chưa đo trên máy). Câu trộn dấu *"một triệu tu"* vẫn để Gemma chọn.
 
 ## 5. Gemma chép lời, một bản mô hình hai cờ
 
