@@ -681,6 +681,13 @@ void main() {
       expect(kq.luaChonSoTien, isEmpty);
     });
 
+    test('câu còn cụm NÓI luật chọn được ("năm chục" cuối câu) → không chip G104; cụm mơ hồ thành số tiền khác (C4)', () {
+      final kq = doc('một triệu hai tiền sách năm chục');
+      expect(kq.soTien, 50000.0);
+      expect(kq.luaChonSoTien, isEmpty, reason: 'chip G104 chỉ khi không hạng nào có cụm');
+      expect(kq.soTienKhac, {1000000.0, 1200000.0}, reason: 'đường kiểm chéo C4 lo câu này');
+    });
+
     for (final (cau, soAi) in [
       ('một triệu hai tiền sách', 1000000.0),
       ('một triệu hai tiền sách', 1200000.0),

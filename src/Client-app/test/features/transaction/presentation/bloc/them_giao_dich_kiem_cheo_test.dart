@@ -208,6 +208,13 @@ void main() {
       expect(c.state.luaChonTienCau, [1000000.0, 1200000.0]);
     });
 
+    test('câu còn cụm luật chọn được → chip của kiểm chéo C4 [AI, luật], không phải cặp G104', () async {
+      final ai = _AiKiem();
+      final c = await moi(ai);
+      await dienVaTra(c, ai, 'một triệu hai tiền sách năm chục', const KetQuaAi(soTien: 1000000));
+      expect(c.state.luaChonTienCau, [1000000.0, 50000.0]);
+    });
+
     test('Huỷ lượt AI đang đọc → luật điền, vẫn hai chip', () async {
       final ai = _AiKiem();
       final c = await moi(ai);

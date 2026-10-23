@@ -1890,11 +1890,13 @@ cụm / bậc phải là số nguyên **1–99**. Ranh giới *"X một chữ s�
 (`_mauTrieuLe`) cố ý không qua: bỏ cách đọc dài ở đó thì `_mauSoDonVi` đọc *"12 triệu"* thành số chắc, điền bản cụt.
 
 **Test.** `doc_cau_noi_test` — nhóm *"N1 — Y KHÔNG ở chỗ của tiền"* đổi kỳ vọng (ba câu ra chip, *"hai trăm nghìn tám tháng"*
-vẫn chưa rõ) + nhóm *G104* 17 ca (X hai chữ số ở chỗ của tiền giữ nguyên; X ≥ 100 thôi điền và rời tập cách đọc; chip + không
-`OThieu.soTien` + `khongDocDuocGi` false; *"một triệu tu"* không chip; *"45k"* thắng; AI trả 1.000.000 / 1.200.000 / 20.000 →
-không lấp; C3 `null`; `cauDaDien` rỗng). `doc_cau_giao_dich_test` một ca đổi kỳ vọng. `them_giao_dich_kiem_cheo_test` +4 (không
-AI chỉ chip, không dòng *"chưa đọc được"*; Gemma trả bản cụt → chip, chạm chip điền; số gõ trước bị bỏ; Huỷ lượt AI → chip).
-Ca mới đỏ trên mã cũ; hai bản sai cấy thử — bỏ chốt *"AI không lấp"* (4 ca đỏ), bỏ vế chip trong `khongDocDuocGi` (8 ca đỏ).
+vẫn chưa rõ) + nhóm *G104* 18 ca (X hai chữ số ở chỗ của tiền giữ nguyên; X ≥ 100 thôi điền và rời tập cách đọc; chip + không
+`OThieu.soTien` + `khongDocDuocGi` false; *"một triệu tu"* không chip; *"45k"* thắng; câu còn cụm nói luật chọn được — *"một
+triệu hai tiền sách năm chục"* — không chip G104, cụm mơ hồ thành `soTienKhac` của C4; AI trả 1.000.000 / 1.200.000 / 20.000 →
+không lấp; C3 `null`; `cauDaDien` rỗng). `doc_cau_giao_dich_test` một ca đổi kỳ vọng. `them_giao_dich_kiem_cheo_test` +5 (không
+AI chỉ chip, không dòng *"chưa đọc được"*; Gemma trả bản cụt → chip, chạm chip điền; số gõ trước bị bỏ; câu còn cụm luật chọn
+được → chip của kiểm chéo C4 [1.000.000, 50.000]; Huỷ lượt AI → chip). Ca mới đỏ trên mã cũ; ba bản sai cấy thử — bỏ chốt *"AI
+không lấp"* (4 ca đỏ), bỏ vế chip trong `khongDocDuocGi` (8 ca đỏ), cho chip bật cả khi luật đã chọn cụm (2 ca đỏ).
 
 **Đo trên máy (chưa).** Realme / OnePlus, Premium: gõ và nói *"một triệu hai tiền sách"* → ô trống + hai chip, chạm 1.200.000
 thì điền; *"trả hai trăm nghìn tám"* → ô trống + *"chưa rõ"*; *"tiền nhà mười lăm triệu hai"* → 15.200.000. Google có thể chép

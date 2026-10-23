@@ -632,9 +632,10 @@ bàn giao `c4-a5-review` tôi đưa ra lúc đầu đã làm xong ở phiên 2 (
   `cachDocSoTien` cùng gọi. Ranh giới *"X một chữ số"* tôi đề xuất trước, rồi bỏ sau khi chạy câu thật: nó làm hỏng *"mười lăm
   triệu hai"* = 15.200.000 mà luật đang điền đúng (đã xin lỗi và hỏi lại). Dạng chữ số (*"1 triệu 2"*, `_mauTrieuLe`) cố ý
   không qua — bỏ cách đọc dài ở đó là `_mauSoDonVi` điền bản cụt *"12 triệu"* không hỏi.
-- **Test:** `doc_cau_noi_test` nhóm *N1 — Y không ở chỗ của tiền* đổi kỳ vọng + nhóm *G104* 17 ca; `doc_cau_giao_dich_test`
-  một ca đổi kỳ vọng; `them_giao_dich_kiem_cheo_test` +4. Ca mới đỏ trên mã cũ; bản sai *bỏ chốt AI không lấp* → 4 ca đỏ, *bỏ vế
-  chip trong `khongDocDuocGi`* → 8 ca đỏ. **Số đo:** `flutter test` **7824/7824** pass, 10 skip (5 ph 44 s; +21 so với 7803);
+- **Test:** `doc_cau_noi_test` nhóm *N1 — Y không ở chỗ của tiền* đổi kỳ vọng + nhóm *G104* 18 ca; `doc_cau_giao_dich_test`
+  một ca đổi kỳ vọng; `them_giao_dich_kiem_cheo_test` +5. Ca mới đỏ trên mã cũ; bản sai *bỏ chốt AI không lấp* → 4 ca đỏ, *bỏ vế
+  chip trong `khongDocDuocGi`* → 8 ca đỏ, *chip bật cả khi luật đã chọn cụm* → 2 ca đỏ. Soát sau cùng (bộ soát): chú thích
+  `soTienKhac` và `_dungChoTien` thôi tả *"Gemma chọn"* cho ca G104. **Số đo:** `flutter test` **7826/7826** pass, 10 skip (4 ph 19 s; +23 so với 7803);
   `flutter analyze` **20**. Chi tiết + checklist đo máy: G104 `CLIENT_APP_KNOWN_GAPS.md`.
 
 ### ⏳ Trần chờ 20 s · vá khe Huỷ lúc tạo chat · G105 (2026-10-22 khuya, người dùng chọn sau buổi đo Realme) — mã + test, chưa đo trên máy

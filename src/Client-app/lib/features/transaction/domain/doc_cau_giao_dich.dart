@@ -86,7 +86,8 @@ class KetQuaDocCau {
 
   /// Cách đọc số tiền còn sót trong GHI CHÚ của luật (`cachDocSoTien(ghiChu)`, bỏ số bằng [soTien]) — số tiền khác mà
   /// chưa ô nào dùng. Chỉ tính khi [soTienDangNoi]. Ngoài nó Gemma chỉ có thể đọc lại chính cụm luật theo cách khác
-  /// (bỏ chữ số lẻ: *"một triệu hai"* → 1.000.000), mà luật chỉ chọn dạng nói khi chữ số lẻ đứng ở chỗ của tiền.
+  /// (bỏ chữ số lẻ: *"một triệu hai"* → 1.000.000), mà luật chỉ chọn dạng nói khi chữ số lẻ đứng ở chỗ của tiền. Đây là
+  /// đường LUẬT ĐÃ ĐIỀN; câu luật bỏ trống vì chữ số lẻ ở chỗ khác là [luaChonSoTien] (G104), không phải tập này.
   /// Tính trên ghi chú chứ không trên câu: số trong tên ví đã đọc (*"bằng thẻ 365"*) không phải số tiền.
   final Set<double> soTienKhac;
 
@@ -318,7 +319,8 @@ final RegExp _sauBatDauBangSo = RegExp(r'^\s*\d');
 /// *hôm* chỉ trước *qua · nay · kia*, *thứ* chỉ trước chữ số / tên thứ: *"hai triệu ba ngày sau"*, *"hai triệu ba hôm
 /// sau"*, *"hai triệu ba thứ đồ"* không phải 2,3 triệu. Chữ không dấu ([_sauSoTienKhongDau]) chỉ khi [cauKhongDau];
 /// câu có dấu so CÓ DẤU.
-/// [b] là câu bỏ dấu (cùng độ dài [s]). Không dùng cho [cachDocSoTien] — nó liệt kê MỌI cách đọc để Gemma còn chọn.
+/// [b] là câu bỏ dấu (cùng độ dài [s]). Không dùng cho [cachDocSoTien] — tập ấy không xét vị trí (là lưới số tiền AI của
+/// mọi câu). Chữ số lẻ viết chữ ở chỗ khác thì luật đưa hai chip thay vì để Gemma chọn (G104, [_chonSoTien]).
 bool _dungChoTien(String s, String b, int kt, {required bool cauKhongDau}) {
   final sau = b.substring(kt);
   if (sau.trim().isEmpty || _dauCauSau.hasMatch(sau)) return true;
