@@ -175,6 +175,52 @@ void main() {
     expect(c.state.ketQuaDien?.tomTat, 'Đã điền: Ăn uống');
   });
 
+  group('G104 — luật để hai cách đọc ("một triệu hai tiền sách") → hai chip, Gemma không lấp', () {
+    test('⭐ không AI, câu chỉ có số tiền mơ hồ → hai chip, không dòng "chưa đọc được"', () async {
+      // Câu không đọc ra ngày / ví / danh mục: `khongDocDuocGi` từng cắt `dienKetQua` trước mọi ô.
+      final ai = _AiKiem(san: false);
+      final c = await moi(ai);
+      await c.dienTuCau('chi hai triệu năm nay');
+      expect(c.state.luaChonTienCau, [2000000.0, 2500000.0]);
+      expect(c.state.soTienDangCo, isNull);
+      expect(c.state.ketQuaDien, isNull, reason: 'không còn gì để tóm tắt — khối chip tự nói');
+    });
+
+    test('⭐ Gemma trả bản cụt 1.000.000 → ô trống + hai chip; chạm chip 1.200.000 thì điền', () async {
+      final ai = _AiKiem();
+      final c = await moi(ai);
+      await dienVaTra(c, ai, 'một triệu hai tiền sách', const KetQuaAi(soTien: 1000000));
+      expect(c.state.soTienDangCo, isNull, reason: 'trước G104: form điền 1.000.000 không hỏi');
+      expect(c.state.luaChonTienCau, [1000000.0, 1200000.0]);
+      c.chonSoTien(1200000);
+      expect(c.state.soTienDangCo, 1200000.0);
+      expect(c.state.luaChonTienCau, isEmpty);
+    });
+
+    test('số đã gõ trước đó bị bỏ — câu nói rõ có số tiền, chỉ chưa rõ cách đọc', () async {
+      final ai = _AiKiem(san: false);
+      final c = await moi(ai);
+      c.goPhim('5');
+      c.goPhim('000');
+      expect(c.state.soTienDangCo, 5000.0, reason: 'tiền đề');
+      await c.dienTuCau('một triệu hai tiền sách');
+      expect(c.state.soTienDangCo, isNull);
+      expect(c.state.luaChonTienCau, [1000000.0, 1200000.0]);
+    });
+
+    test('Huỷ lượt AI đang đọc → luật điền, vẫn hai chip', () async {
+      final ai = _AiKiem();
+      final c = await moi(ai);
+      final f = c.dienTuCau('một triệu hai tiền sách');
+      await pumpEventQueue();
+      expect(ai.luot, hasLength(1), reason: 'tiền đề: ghi chú còn số → hỏi Gemma');
+      await c.huyDocAi('một triệu hai tiền sách');
+      expect(c.state.luaChonTienCau, [1000000.0, 1200000.0]);
+      ai.luot.single.complete(null);
+      await f;
+    });
+  });
+
   test('⭐ điền câu mới khi chip còn hiện → chip bị dọn ngay', () async {
     final ai = _AiKiem();
     final c = await moi(ai);

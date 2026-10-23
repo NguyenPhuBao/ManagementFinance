@@ -98,6 +98,13 @@ class KetQuaDocCau {
   /// AI thì không chắc (AI dọn số khỏi ghi chú là vế ấy tắt); cờ này đọc ghi chú luật nên không đổi theo AI.
   bool get soTienCanKiem => soTienDangNoi && soTienKhac.isNotEmpty;
 
+  /// G104 (người dùng chốt 2026-10-23): hai cách đọc `[cụt, dài]` của cụm *"X bậc Y"* viết bằng chữ mà Y KHÔNG ở chỗ
+  /// của tiền (*"một triệu hai tiền sách"* → 1.000.000 · 1.200.000, *"chi hai triệu năm nay"*). Luật biết cụm ấy là tiền,
+  /// chỉ không biết cách đọc — màn đưa hai chip, [soTien] để trống, và AI KHÔNG được lấp ô số tiền (Gemma từng đọc
+  /// *"một triệu hai"* thành 1.000.000 2/2 lần, mà lưới §2.8 cho qua vì cả hai đều là cách đọc của câu). Ô số tiền khi ấy
+  /// không tính là [OThieu.soTien]. Rỗng khi luật đã chọn được một cụm khác, hay khi X ngoài 1–99 ([_docXBacY]).
+  final List<double> luaChonSoTien;
+
   /// Ô câu có nhắc mà vẫn chưa đọc được, tính SAU khi AI lấp (xem [OThieu]). Đường luật một mình: khác rỗng thì màn hỏi AI.
   final Set<OThieu> oThieu;
 
@@ -118,10 +125,17 @@ class KetQuaDocCau {
     this.danhMucTuAi = false,
     this.soTienDangNoi = false,
     this.soTienKhac = const {},
+    this.luaChonSoTien = const [],
   });
 
   bool get khongDocDuocGi =>
-      soTien == null && loai == null && ngay == null && walletId == null && walletToId == null && categoryId == null;
+      soTien == null &&
+      luaChonSoTien.isEmpty &&
+      loai == null &&
+      ngay == null &&
+      walletId == null &&
+      walletToId == null &&
+      categoryId == null;
 }
 
 const String kCauChuaDocDuoc = 'Mình chưa đọc được câu này — bạn điền tay nhé.';
@@ -129,7 +143,7 @@ const String kCauChuaDocDuoc = 'Mình chưa đọc được câu này — bạn 
 /// Dòng tóm tắt dưới ô Nhập nhanh (§3): *"Đã điền: 45.000 đ · Hôm qua · Tiền mặt · Ăn uống"*. Chỉ nêu những ô ĐÃ đổi;
 /// [tenVi] / [tenDanhMuc] là tên của ví / danh mục mà màn thực sự đặt (màn có thể bỏ danh mục khi đang ở đoạn Chuyển
 /// khoản). Chuyển ví (§2.9): *"… · Chuyển ví · Tiền mặt → Tiết kiệm"*, chỉ có ví đích thì *"sang Tiết kiệm"*. Không đọc
-/// được gì → [kCauChuaDocDuoc].
+/// được gì → [kCauChuaDocDuoc]. Chỉ đọc ra hai cách đọc số tiền ([KetQuaDocCau.luaChonSoTien]) → `''`: khối chip tự nói.
 String cauDaDien(
   KetQuaDocCau kq, {
   String? tenVi,
@@ -161,7 +175,8 @@ String cauDaDien(
       tenVi,
     if (tenDanhMuc != null) tenDanhMuc,
   ];
-  return phan.isEmpty ? kCauChuaDocDuoc : 'Đã điền: ${phan.join(' · ')}';
+  if (phan.isEmpty) return kq.luaChonSoTien.isEmpty ? kCauChuaDocDuoc : '';
+  return 'Đã điền: ${phan.join(' · ')}';
 }
 
 /// Các ô THÔ mô hình trả về qua tool `dien_giao_dich` (§2.8) — chưa kiểm gì. `null` = mô hình để trống.
@@ -388,7 +403,8 @@ KetQuaDocCau docCauGiaoDich(
   if (ng != null) daDung.add((batDau: ng.batDau, ketThuc: ng.ketThuc));
 
   // Số tiền.
-  final tien = _chonSoTien(s, b, ngay: ng, canhBao: canhBao);
+  final luaChonSoTien = <double>[];
+  final tien = _chonSoTien(s, b, ngay: ng, canhBao: canhBao, luaChon: luaChonSoTien);
   double? soTien;
   var soTienDangNoi = false;
   if (tien != null) {
@@ -454,7 +470,8 @@ KetQuaDocCau docCauGiaoDich(
   var aiLap = false;
   if (ai != null) {
     final st = soTienAiHopLe(cau, ai, now: now);
-    if (soTien == null && st != null) {
+    // G104: luật để hai cách đọc → người dùng chọn bằng chip, Gemma không lấp (nó đọc bản cụt — đo Realme 2026-10-21).
+    if (soTien == null && luaChonSoTien.isEmpty && st != null) {
       soTien = st;
       canhBao.removeWhere((c) => c != kCanhBaoNhieuSoTien);
       aiLap = true;
@@ -532,7 +549,8 @@ KetQuaDocCau docCauGiaoDich(
 
   // Ô câu CÓ NHẮC mà (sau khi AI lấp, nếu có) vẫn chưa đọc được — màn chỉ gọi mô hình khi tập này khác rỗng.
   final oThieu = {
-    if (soTien == null && cachDocSoTien(cau, now: now).isNotEmpty) OThieu.soTien,
+    // Hai chip (G104): luật đã đọc ra cụm tiền, chỉ cách đọc do người dùng chọn — không phải ô để hỏi AI.
+    if (soTien == null && luaChonSoTien.isEmpty && cachDocSoTien(cau, now: now).isNotEmpty) OThieu.soTien,
     if (ngay == null && cauNhacNgay(thuong)) OThieu.ngay,
     // Xét trên câu đã bỏ các đoạn đã dùng: chữ "ví" của "sang ví Tiết kiệm" thuộc ví đích, không nhắc ví nguồn.
     if (walletId == null && dsVi.any((w) => _cauNhacVi(_boKhoang(thuong, daDung), w))) OThieu.vi,
@@ -560,6 +578,7 @@ KetQuaDocCau docCauGiaoDich(
     danhMucTuAi: danhMucTuAi,
     soTienDangNoi: soTienDangNoi,
     soTienKhac: soTienKhac,
+    luaChonSoTien: List.unmodifiable(luaChonSoTien),
   );
 }
 
@@ -635,7 +654,8 @@ double? soTienAiHopLe(String cau, KetQuaAi? ai, {required DateTime now}) {
 /// Gồm: mọi cụm luật thấy, kể cả cụm luật không chọn (lít / xị, số thứ hai); số trần `n` → `n`, và `n × 1.000` khi
 /// `10 ≤ n < 1.000` (*"ăn phở 45"*; số một chữ số là số lượng: *"2 ly"*); số chữ không đơn vị có hàng chục → × 1.000
 /// (*"ba chục"* = 30.000); *"X triệu Y"* / *"X tr Y"* / *"một triệu hai"* → X,Y triệu — bất kể vị trí của Y (luật chỉ CHỌN
-/// cách đọc này khi Y ở chỗ của tiền, [_dungChoTien]; ở chỗ khác Gemma mới chọn); *"2k5"* → 2.500.
+/// cách đọc này khi Y ở chỗ của tiền, [_dungChoTien]; ở chỗ khác luật đưa hai chip — G104 — trừ câu trộn dấu *"một triệu
+/// tu"*, nơi Gemma còn chọn). Dạng viết chữ thì X phải trong 1–99 ([_docXBacY]); *"2k5"* → 2.500.
 Set<double> cachDocSoTien(String cau, {required DateTime now}) {
   final s = _chuanCau(cau);
   final b = removeVietnameseTones(s.toLowerCase());
@@ -689,9 +709,8 @@ Set<double> cachDocSoTien(String cau, {required DateTime now}) {
     kq.add(c.giaTri);
     final sau = _chuSoChuSau(s, b, c.ketThuc, cauKhongDau: kd);
     final bac = _bacCuoi.firstMatch(b.substring(c.batDau, c.ketThuc))?.group(1);
-    if (sau != null && bac != null) {
-      kq.add(c.giaTri + sau.giaTri * _giaTriBac[bac]! / 10);
-    }
+    final dai = sau == null || bac == null ? null : _docXBacY(c.giaTri, sau.giaTri, bac);
+    if (dai != null) kq.add(dai);
   }
   for (final c in timSoBangChu(s, batBuocDonVi: false)) {
     if (c.giaTri.isNaN || trungNgay(c.batDau, c.ketThuc)) continue;
@@ -709,6 +728,20 @@ final RegExp _mauTrieuLe = RegExp(
 );
 final RegExp _bacCuoi = RegExp(r'(nghin|ngan|trieu|ty|ti)\s*$');
 const Map<String, double> _giaTriBac = {'nghin': 1e3, 'ngan': 1e3, 'trieu': 1e6, 'ty': 1e9, 'ti': 1e9};
+
+/// Cách đọc dài của cụm *"X bậc Y"* viết bằng CHỮ (C4 N1): [giaTriCum] (*"mười lăm triệu"*) + [y] phần mười của [bac]
+/// (*"hai"* → 15.200.000). `null` khi X = [giaTriCum] / bậc không phải số nguyên 1–99: *"hai trăm nghìn tám"* (200.800),
+/// *"hai trăm triệu tám"*, *"một triệu hai trăm nghìn ba"* (1.200.300) là số không ai nói (người dùng chốt 2026-10-23,
+/// G104 — trước đó luật điền chúng không hỏi). MỘT định nghĩa: luật điền và hai chip ([_chonSoTien]), tập cách đọc của
+/// Gemma ([cachDocSoTien]) cùng gọi. Dạng viết chữ số (*"1 triệu 2"*, `_mauTrieuLe`) cố ý KHÔNG qua đây: bỏ cách đọc dài
+/// ở đó thì `_mauSoDonVi` đọc *"12 triệu"* thành số chắc và điền bản cụt không hỏi.
+double? _docXBacY(double giaTriCum, int y, String bac) {
+  final donVi = _giaTriBac[bac]!;
+  final x = giaTriCum / donVi;
+  if (x != x.roundToDouble() || x < 1 || x > 99) return null;
+  return giaTriCum + y * donVi / 10;
+}
+
 const Map<String, int> _chuSoChu = {
   'mot': 1, 'hai': 2, 'ba': 3, 'bon': 4, 'tu': 4, 'nam': 5, 'sau': 6, 'bay': 7, 'tam': 8, 'chin': 9, //
 };
@@ -943,11 +976,14 @@ List<T> _cungTen<T>(List<T> ds, String ten, String Function(T) tenCua) {
 /// Cụm số tiền được chọn (§2.1), hoặc `null`. Hạng ưu tiên: *k / nghìn / tr / củ*, số chữ, số trần ≥ 1.000 trước;
 /// dạng nói mới học (N1 — C4) sau; *lít / xị* cuối (*"đổ 2 lít xăng 50k"* → 50.000). Lấy cụm đầu của hạng thắng; cảnh
 /// báo nhiều số tiền khi có ≥ 2 cụm chắc + nói (khác hạng cũng tính), hoặc ≥ 2 cụm lít / xị khi chỉ có chúng.
+/// Không hạng nào có cụm mà câu có *"X bậc Y"* viết chữ với Y KHÔNG ở chỗ của tiền → `null`, và hai cách đọc `[cụt, dài]`
+/// của cụm đầu như thế vào [luaChon] thay cảnh báo chưa rõ (G104). [luaChon] `null` (C3) → cảnh báo như trước.
 _CumTien? _chonSoTien(
   String s,
   String b, {
   required NgayTrongCau? ngay,
   required List<String> canhBao,
+  List<double>? luaChon,
 }) {
   final cum = <_CumTien>[];
   final kd = _cauKhongDau(s);
@@ -1003,6 +1039,7 @@ _CumTien? _chonSoTien(
   }
 
   var chuaRo = false;
+  List<double>? haiCachDoc;
   for (final c in timSoBangChu(s)) {
     if (trungNgay(c.batDau, c.ketThuc)) continue;
     if (c.giaTri.isNaN) {
@@ -1012,19 +1049,19 @@ _CumTien? _chonSoTien(
     final sau = _chuSoChuSau(s, b, c.ketThuc, cauKhongDau: kd);
     if (sau != null) {
       // "một triệu hai" = 1.200.000 hay 1.000.000 rồi chữ khác? N1 (C4): luật CHỌN 1.200.000 khi Y ở chỗ của tiền
-      // (cần kiểm chéo); ở chỗ khác ("hai triệu năm nay") không chắc thì không đọc.
+      // (cần kiểm chéo); ở chỗ khác ("hai triệu năm nay") không chắc thì không đọc — hai chip (G104).
       final bac = _bacCuoi.firstMatch(b.substring(c.batDau, c.ketThuc))?.group(1);
-      if (bac == null || sau.moHo || !_dungChoTien(s, b, sau.ketThuc, cauKhongDau: kd)) {
+      final dai = bac == null || sau.moHo ? null : _docXBacY(c.giaTri, sau.giaTri, bac);
+      if (dai == null) {
         chuaRo = true;
         continue;
       }
-      cum.add((
-        batDau: c.batDau,
-        ketThuc: sau.ketThuc,
-        giaTri: c.giaTri + sau.giaTri * _giaTriBac[bac]! / 10,
-        lit: false,
-        noi: true,
-      ));
+      if (!_dungChoTien(s, b, sau.ketThuc, cauKhongDau: kd)) {
+        chuaRo = true;
+        haiCachDoc ??= [c.giaTri, dai];
+        continue;
+      }
+      cum.add((batDau: c.batDau, ketThuc: sau.ketThuc, giaTri: dai, lit: false, noi: true));
       continue;
     }
     if (c.giaTri < 1000) continue; // < 1.000: N2 ở vòng `batBuocDonVi: false` bên dưới ("ba trăm rưỡi" = 350 cũng ở đó)
@@ -1048,7 +1085,12 @@ _CumTien? _chonSoTien(
           ? noi
           : [for (final c in cum) if (c.lit) c];
   if (hang.isEmpty) {
-    if (chuaRo) canhBao.add(kCanhBaoSoChuChuaRo);
+    if (haiCachDoc != null && luaChon != null) {
+      // Chip thay câu "bạn nhập tay nhé" — người dùng chạm một trong hai.
+      luaChon.addAll(haiCachDoc);
+    } else if (chuaRo) {
+      canhBao.add(kCanhBaoSoChuChuaRo);
+    }
     return null;
   }
   // Đếm cả cụm chắc lẫn cụm nói (xếp hạng chỉ chọn một): "ăn phở 45k tiền điện 1 triệu 2" vẫn có nhiều số tiền.

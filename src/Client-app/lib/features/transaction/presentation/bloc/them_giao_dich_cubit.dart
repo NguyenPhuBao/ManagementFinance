@@ -935,7 +935,12 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     }
     var s = state;
     final soTien = kq.soTien;
-    if (soTien != null) s = s.copyWith(chuoiSoTien: _goSo(soTien), hienBanPhimSo: false);
+    if (soTien != null) {
+      s = s.copyWith(chuoiSoTien: _goSo(soTien), hienBanPhimSo: false);
+    } else if (kq.luaChonSoTien.isNotEmpty) {
+      // G104: câu có số tiền mà hai cách đọc — ô trống (số cũ là của câu trước) + hai chip, như kiểm chéo C4.
+      s = s.copyWith(chuoiSoTien: '0', hienBanPhimSo: false, luaChonTienCau: kq.luaChonSoTien);
+    }
     final ngay = kq.ngay;
     if (ngay != null) s = s.copyWith(ngay: DateTime(ngay.year, ngay.month, ngay.day, s.ngay.hour, s.ngay.minute));
     if (vi != null) {
@@ -962,14 +967,12 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     final goiY = danhMuc != null ? kq.goiY : null;
     final lyDo = danhMuc != null ? kq.lyDoDanhMuc : null;
     if (goiY != null) _choPhanXu = (goiY: goiY, ghiChu: state.ghiChu.trim());
+    final tomTat = cauDaDien(kq, tenVi: vi?.name, tenViDen: viDen?.name, tenDanhMuc: danhMuc?.name, now: now);
     emit(state.copyWith(
-      ketQuaDien: (
-        tomTat: cauDaDien(kq, tenVi: vi?.name, tenViDen: viDen?.name, tenDanhMuc: danhMuc?.name, now: now),
-        docDuoc: true,
-        quaAi: kq.quaAi,
-        canhBao: kq.canhBao,
-        lyDo: lyDo,
-      ),
+      // Tóm tắt rỗng = chỉ có hai chip (G104): không còn gì để nói thì bỏ hẳn dòng — cùng nếp `_chotSoTien`.
+      ketQuaDien: tomTat.isEmpty && kq.canhBao.isEmpty && !kq.quaAi && lyDo == null
+          ? null
+          : (tomTat: tomTat, docDuoc: true, quaAi: kq.quaAi, canhBao: kq.canhBao, lyDo: lyDo),
     ));
     // Ô Nhập nhanh điền xong mà danh mục VÀ ghi chú còn trống (câu chỉ có số tiền) → nguồn số tiền được thử (dự án C).
     // Form biến động, hoặc câu có để lại ghi chú, thì hàm tự thoát.
