@@ -26,18 +26,10 @@ const PermissionFilterToolbar = ({
     <div className="bg-white border border-slate-200 rounded-lg p-3.5 space-y-3 shadow-2xs mb-4">
       {/* Hàng 1: Tiêu đề trang, Segmented Control chọn gói & Nút hành động */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-md bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0">
-            <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
-          </div>
-          <div>
-            <h1 className="text-sm font-bold text-slate-900 m-0 leading-tight">
-              {t('permissions.title', 'Quản Lý Phân Quyền Tính Năng')}
-            </h1>
-            <p className="text-[11px] text-slate-500 m-0 mt-0.5">
-              {t('permissions.subtitle', 'Ma trận 4 Trụ Cột: Truy cập · Định mức · Phạm vi · Chính sách hạ cấp')}
-            </p>
-          </div>
+        <div>
+          <h1 className="text-sm font-bold text-slate-900 m-0 leading-tight">
+            {t('permissions.title', 'Phân quyền dịch vụ')}
+          </h1>
         </div>
 
         {/* Segmented Control Chọn Chế Độ Xem Gói Cước */}
@@ -53,7 +45,7 @@ const PermissionFilterToolbar = ({
             }`}
           >
             <span className="material-symbols-outlined text-[14px]">view_column</span>
-            <span>{t('permissions.toolbar.viewAll', 'Đối Chiếu 2 Gói')}</span>
+            <span>{t('permissions.toolbar.viewAll', 'Tất cả')}</span>
           </button>
           <button
             type="button"
@@ -85,20 +77,6 @@ const PermissionFilterToolbar = ({
 
         {/* Nút Hành Động */}
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            data-testid="btn-refresh"
-            onClick={onRefresh}
-            disabled={loading || saving}
-            className="px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold rounded-md transition cursor-pointer flex items-center gap-1 disabled:opacity-50"
-            title={t('permissions.refreshTitle', 'Tải lại dữ liệu từ máy chủ')}
-          >
-            <span className={`material-symbols-outlined text-[14px] ${loading ? 'animate-spin' : ''}`}>
-              refresh
-            </span>
-            <span>{t('permissions.refreshBtn', 'Làm mới')}</span>
-          </button>
-
           <button
             type="button"
             data-testid="btn-reset-default"

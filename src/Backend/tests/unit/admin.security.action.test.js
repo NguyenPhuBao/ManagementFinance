@@ -87,7 +87,7 @@ describe('adminService.verifySecurityAction', () => {
           );
         },
         (err) => {
-          assert.strictEqual(err.statusCode, 401);
+          assert.strictEqual(err.statusCode, 400);
           assert.ok(err.message.includes('không chính xác'));
           return true;
         }

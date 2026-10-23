@@ -16,10 +16,14 @@ describe('getSystemHealth', () => {
     assert.ok('dbPool' in result, 'Should have dbPool');
     assert.ok('maintenance' in result, 'Should have maintenance');
     assert.ok('loadShedding' in result, 'Should have loadShedding');
+    assert.ok('uptime' in result, 'Should have uptime');
     assert.ok('timestamp' in result, 'Should have timestamp');
     assert.strictEqual(typeof result.ram.usedMb, 'number');
     assert.strictEqual(typeof result.eventLoop.lagMs, 'number');
     assert.strictEqual(typeof result.maintenance.active, 'boolean');
+    assert.strictEqual(typeof result.uptime.uptimePercent, 'number');
+    assert.ok(result.uptime.uptimePercent >= 0 && result.uptime.uptimePercent <= 100);
+    assert.strictEqual(typeof result.uptime.uptimeFormatted, 'string');
   });
 
   it('cpu.percent should be between 0 and 100', async () => {

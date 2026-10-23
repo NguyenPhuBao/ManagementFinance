@@ -86,6 +86,64 @@ class MaintenanceManager {
     }
   }
 
+  _cancelConflictingSchedules(emergencyStartIso = new Date().toISOString(), emergencyEndIso = null, reason = 'Tự động hủy do trùng khung thời gian bảo trì khẩn cấp') {
+    if (!Array.isArray(this.scheduledList) || this.scheduledList.length === 0) return [];
+    
+    const emergencyStartMs = new Date(emergencyStartIso).getTime();
+    // Nếu có emergencyEndIso cụ thể, dùng nó. Nếu không, khung thời gian khẩn cấp được tính là 2 giờ kể từ khi kích hoạt
+    const emergencyEndMs = emergencyEndIso 
+      ? new Date(emergencyEndIso).getTime() 
+      : emergencyStartMs + (2 * 3600 * 1000);
+
+    const cancelledRecords = [];
+    const remainingSchedules = [];
+
+    for (const sched of this.scheduledList) {
+      const schedStartMs = new Date(sched.scheduledAt).getTime();
+      const schedEndMs = sched.scheduledEndAt 
+        ? new Date(sched.scheduledEndAt).getTime() 
+        : schedStartMs + (2 * 3600 * 1000);
+
+      // Kiểm tra có dính thời gian vào khung bảo trì khẩn cấp hay không:
+      const isOverlapping = schedStartMs < emergencyEndMs && schedEndMs > emergencyStartMs;
+
+      if (isOverlapping) {
+        if (sched._timer) {
+          clearTimeout(sched._timer);
+          sched._timer = null;
+        }
+        cancelledRecords.push(sched);
+        try {
+          const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
+          if (sched.recordId) {
+            defaultMaintenanceRepository.cancelScheduledRecord({
+              id: sched.recordId,
+              reason,
+            }).catch((err) => {
+              logger.warn('[MAINTENANCE] Lỗi CSDL khi tự động hủy lịch dính thời gian khẩn cấp', { error: err.message });
+            });
+          }
+        } catch (repoErr) {
+          logger.warn('[MAINTENANCE] Không thể gọi maintenance repository khi tự động hủy lịch', { error: repoErr.message });
+        }
+      } else {
+        remainingSchedules.push(sched);
+      }
+    }
+
+    this.scheduledList = remainingSchedules;
+    this.scheduled = remainingSchedules[0] || null;
+    if (this._scheduledTimer && !this.scheduled) {
+      clearTimeout(this._scheduledTimer);
+      this._scheduledTimer = null;
+    }
+
+    if (cancelledRecords.length > 0) {
+      logger.info(`[MAINTENANCE] Đã tự động hủy ${cancelledRecords.length} lịch bảo trì định kỳ do dính vào khung bảo trì khẩn cấp.`);
+    }
+    return cancelledRecords;
+  }
+
   setMaintenance(active, reason = null, activatedBy = 'system', options = {}) {
     const isActivating = Boolean(active);
     // MẶC ĐỊNH BẢO TRÌ TỨC THÌ LUÔN LÀ BẢO TRÌ KHẨN CẤP (PO Policy)
@@ -106,6 +164,9 @@ class MaintenanceManager {
           activatedBy: this.activatedBy,
           activatedAt: this.activatedAt,
         });
+
+        // PO POLICY: Tự động hủy các lịch bảo trì định kỳ bị dính khung thời gian bảo trì khẩn cấp
+        this._cancelConflictingSchedules(this.activatedAt, options.scheduled_end_at || options.scheduledEndAt, 'Tự động hủy do kích hoạt bảo trì khẩn cấp đè lên');
 
         // Cập nhật CSDL trạng thái ONGOING sang EMERGENCY
         try {
@@ -174,6 +235,11 @@ class MaintenanceManager {
         activatedBy: this.activatedBy,
         activatedAt: this.activatedAt,
       });
+
+      if (this.isEmergency) {
+        // PO POLICY: Tự động hủy các lịch bảo trì định kỳ bị dính khung thời gian bảo trì khẩn cấp
+        this._cancelConflictingSchedules(this.activatedAt, options.scheduled_end_at || options.scheduledEndAt, 'Tự động hủy do hệ thống chuyển sang chế độ bảo trì khẩn cấp');
+      }
 
       // Lưu lịch sử bảo trì vào CSDL PostgreSQL (nếu chưa được lưu từ bước lên lịch SCHEDULED)
       if (!options.skipCreateRecord) {

@@ -706,6 +706,10 @@ const authService = {
     return { idaccount, status: 'Active', countdown: null };
   },
 
+  async getAccountById(idaccount) {
+    return authRepository.findAccountById(idaccount);
+  },
+
   // ---------- GET PROFILE ----------
   async getProfile(idaccount) {
     const user = await authRepository.getProfile(idaccount);

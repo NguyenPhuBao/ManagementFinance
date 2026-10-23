@@ -127,10 +127,28 @@ const renderServerHealth = (socketOverrides = {}) => {
   );
 };
 
+const defaultHealthData = {
+  cpu: { cores: 8, percent: 35 },
+  ram: { usedMb: 2048, totalMb: 8192, percent: 25 },
+  eventLoop: { lagMs: 4, overloaded: false },
+  dbPool: { clientActive: 2, clientLimit: 16, adminActive: 1, maxConnections: 20 },
+  maintenance: { active: false, reason: '', isEmergency: true },
+  loadShedding: { shedCount24h: 0 },
+  uptime: {
+    uptimeSeconds: 3600,
+    rawUptimeSeconds: 3600,
+    uptimeFormatted: '1 giờ',
+    uptimePercent: 100.0,
+    downtimeSeconds: 0,
+    slaWindowDays: 30,
+  },
+};
+
 describe('TẦNG 1: Kiểm thử Hiển thị & Thao tác giao diện Dashboard (UI Rendering & Interaction)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSocket.connected = true;
+    adminApi.getSystemHealth.mockResolvedValue({ data: defaultHealthData });
   });
 
   it('1.1. Header: Loại bỏ hoàn toàn dòng subtitle và nút Bảo trì khẩn cấp', async () => {
@@ -150,7 +168,7 @@ describe('TẦNG 1: Kiểm thử Hiển thị & Thao tác giao diện Dashboard 
     expect(emergencyButtons.length).toBe(0);
   });
 
-  it('1.2. Bảng Hoạt động gần đây: Cột Hành động thu nhỏ 50%, áp dụng table-fixed và tooltip', async () => {
+  it('1.2. Bảng Hoạt động gần đây: Cột Hành động mở rộng x2 (24%), áp dụng table-fixed và tooltip', async () => {
     const { container } = renderDashboard();
 
     await waitFor(() => {
@@ -161,8 +179,8 @@ describe('TẦNG 1: Kiểm thử Hiển thị & Thao tác giao diện Dashboard 
     const table = container.querySelector('table');
     expect(table).toHaveClass('table-fixed');
 
-    // Kiểm tra header cột Hành động có class w-[12%] (thu nhỏ một nửa từ 24%)
-    const thAction = container.querySelector('th.w-\\[12\\%\\]');
+    // Kiểm tra header cột Hành động có class w-[24%] (mở rộng gấp đôi theo yêu cầu PO)
+    const thAction = container.querySelector('th.w-\\[24\\%\\]');
     expect(thAction).toBeInTheDocument();
 
     // Kiểm tra nội dung text dài có tooltip title
@@ -201,12 +219,41 @@ describe('TẦNG 1: Kiểm thử Hiển thị & Thao tác giao diện Dashboard 
       expect(screen.getByText(/Vui lòng nhập lý do trước khi kích hoạt bảo trì khẩn cấp!/i)).toBeInTheDocument();
     });
   });
+
+  it('1.5. Thẻ Uptime: Hiển thị giá trị phần trăm uptime sau khi đã khấu trừ thời gian bảo trì, không bị crash', async () => {
+    adminApi.getSystemHealth.mockResolvedValue({
+      data: {
+        cpu: { cores: 8, percent: 35 },
+        ram: { usedMb: 2048, totalMb: 8192, percent: 25 },
+        eventLoop: { lagMs: 4, overloaded: false },
+        dbPool: { clientActive: 2, clientLimit: 16, adminActive: 1, maxConnections: 20 },
+        maintenance: { active: false, reason: '', isEmergency: true },
+        loadShedding: { shedCount24h: 0 },
+        uptime: {
+          uptimeSeconds: 3600,
+          rawUptimeSeconds: 3600,
+          uptimeFormatted: '1 giờ',
+          uptimePercent: 98.75,
+          downtimeSeconds: 32400,
+          slaWindowDays: 30,
+        },
+      },
+    });
+
+    const { container } = renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('98.75%').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Đã trừ 9\.0 giờ bảo trì/i).length).toBeGreaterThanOrEqual(1);
+    });
+  });
 });
 
 describe('TẦNG 2: Kiểm thử Hoạt động thực tế & Tác động hệ thống (Real System Impact)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSocket.connected = true;
+    adminApi.getSystemHealth.mockResolvedValue({ data: defaultHealthData });
   });
 
   it('2.1. Bảo mật: Công tắc Bảo trì khẩn cấp bắt buộc xác thực mã PIN trước khi gọi API', async () => {
@@ -305,15 +352,16 @@ describe('TẦNG 2: Kiểm thử Hoạt động thực tế & Tác động hệ 
     renderDashboard();
 
     await waitFor(() => {
-      expect(screen.getAllByText(/100.000%/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/100\.00%/i).length).toBeGreaterThanOrEqual(1);
     });
 
-    // Giả lập luồng nhịp tim metrics_stream phát từ máy chủ Backend
+    // Giả lập luồng nhịp tim metrics_stream phát từ máy chủ Backend kèm downtimeSeconds
     act(() => {
       if (mockSocketListeners['admin.metrics_stream']) {
         mockSocketListeners['admin.metrics_stream']({
           uptimeFormatted: '2 giờ 15 phút',
           uptimePercent: 99.85,
+          downtimeSeconds: 3888,
           uptimeSeconds: 8100,
         });
       }
@@ -321,7 +369,7 @@ describe('TẦNG 2: Kiểm thử Hoạt động thực tế & Tác động hệ 
 
     // Cả Card Uptime phải nhận giá trị mới đồng bộ với Backend
     await waitFor(() => {
-      expect(screen.getAllByText(/99.850%/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/99\.85%/i).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText(/2 giờ 15 phút/i).length).toBeGreaterThanOrEqual(1);
     });
   });

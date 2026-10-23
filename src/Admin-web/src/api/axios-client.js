@@ -66,7 +66,19 @@ axiosClient.interceptors.response.use(
     // Không can thiệp nếu lỗi là từ API đăng nhập hoặc làm mới token (để trang Login tự hiển thị lỗi)
     const isAuthUrl = originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/refresh');
 
+    // Các endpoint xác thực thứ cấp (mã PIN bảo mật, đổi PIN, đổi mật khẩu, cấp tài khoản admin)
+    // Tuyệt đối KHÔNG chuyển hướng logout khi sai mã PIN/mật khẩu xác nhận để bảo toàn trạng thái làm việc
+    const isSecurityVerificationUrl =
+      originalRequest?.url?.includes('/verify-security-action') ||
+      originalRequest?.url?.includes('/change-pin') ||
+      originalRequest?.url?.includes('/change-password') ||
+      originalRequest?.url?.includes('/create-admin');
+
     if (error.response?.status === 401 && !isAuthUrl) {
+      if (isSecurityVerificationUrl) {
+        return Promise.reject(error);
+      }
+
       // 1. Nếu đang ở trạng thái Khóa Màn Hình An Toàn (isLocked === true):
       // Tuyệt đối KHÔNG chuyển hướng ra /login vì token tạm thời bị thu hồi, cần giữ nguyên giao diện để người dùng nhập mật khẩu mở khóa
       const isLocked = typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEYS.IS_LOCKED) === 'true';

@@ -158,6 +158,7 @@ const SecurityConfirmModal = ({
               <input
                 type="password"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={6}
                 value={pin}
                 onChange={handlePinChange}

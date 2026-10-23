@@ -141,6 +141,21 @@ const adminController = {
     }
   },
 
+  async restoreCategory(req, res) {
+    try {
+      const id = req.params.id;
+      if (!id || typeof id !== 'string' || id.length < 32) {
+        return ResponseHandler.badRequest(res, 'ID danh mục không hợp lệ');
+      }
+      const result = await adminService.restoreCategory(id);
+      return ResponseHandler.success(res, result, 'Khôi phục danh mục thành công');
+    } catch (error) {
+      logger.error('restoreCategory failed', { error: error.message });
+      const statusCode = error.statusCode || 500;
+      return ResponseHandler.error(res, error.message, statusCode);
+    }
+  },
+
   async getLoginStats(req, res) {
     try {
       const result = await adminService.getLoginStats(req.query);

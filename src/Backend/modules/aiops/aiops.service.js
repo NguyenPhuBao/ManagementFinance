@@ -27,6 +27,8 @@ class AIOpsService {
       lastEvaluatedAt: null,
     };
     this._timer = null;
+    this._snapshotTimer = null;
+    this._snapshotIntervalMs = options.snapshotIntervalMs || (5 * 60 * 1000); // 5 phút / snapshot
     this._lastAlertTime = 0;
   }
 
@@ -72,6 +74,21 @@ class AIOpsService {
           } catch (_) {}
         }
       }
+
+      // Nạp cấu hình ngưỡng an toàn tùy chỉnh (Custom Vector Thresholds) từ CSDL
+      if (this.repository && typeof this.repository.getSetting === 'function') {
+        const savedThresholds = await this.repository.getSetting('custom_vector_thresholds', null);
+        if (savedThresholds) {
+          try {
+            const parsed = typeof savedThresholds === 'string' ? JSON.parse(savedThresholds) : savedThresholds;
+            this.detector.setCustomThresholds(parsed);
+            if (this._currentStatus) {
+              this._currentStatus.customThresholds = { ...this.detector.getCustomThresholds() };
+            }
+            logger.info('[AIOps] Đã nạp thành công cấu hình custom_vector_thresholds lưu cứng từ CSDL:', parsed);
+          } catch (_) {}
+        }
+      }
     } catch (err) {
       logger.warn('[AIOps] Lỗi nạp cài đặt lưu cứng từ CSDL (dùng mặc định)', { error: err.message });
     }
@@ -95,14 +112,55 @@ class AIOpsService {
     if (this._timer.unref) {
       this._timer.unref(); // Không chặn quá trình shutdown tiến trình
     }
-    logger.info('[AIOps] Sentinel engine started (10s interval)');
+
+    // Khởi động bộ ghi metric snapshot định kỳ 5 phút vào PostgreSQL
+    this._snapshotTimer = setInterval(() => {
+      this.captureMetricSnapshot().catch((err) => {
+        logger.warn('[AIOps] Lỗi captureMetricSnapshot định kỳ', { error: err.message });
+      });
+    }, this._snapshotIntervalMs);
+
+    if (this._snapshotTimer.unref) {
+      this._snapshotTimer.unref();
+    }
+
+    logger.info('[AIOps] Sentinel engine started (10s sample, 5m snapshot)');
   }
 
   stop() {
     if (this._timer) {
       clearInterval(this._timer);
       this._timer = null;
-      logger.info('[AIOps] Sentinel engine stopped');
+    }
+    if (this._snapshotTimer) {
+      clearInterval(this._snapshotTimer);
+      this._snapshotTimer = null;
+    }
+    logger.info('[AIOps] Sentinel engine stopped');
+  }
+
+  async captureMetricSnapshot() {
+    if (!this.repository || typeof this.repository.saveMetricSnapshot !== 'function') return null;
+    try {
+      const sample = this._currentStatus?.sample || (this.collector && typeof this.collector.getSample === 'function' ? this.collector.getSample() : null);
+      const vs = this._currentStatus?.vectorScores || {};
+      const snapshot = await this.repository.saveMetricSnapshot({
+        threatScore: this._currentStatus?.threatScore || 0,
+        authScore: vs.auth || 0,
+        trafficScore: vs.traffic || 0,
+        exploitScore: vs.exploit || 0,
+        resourceScore: vs.resource || 0,
+        requestsPerMin: sample?.requestsPerMin || 0,
+        cpuPercent: sample?.cpuPercent || 0,
+        ramPercent: sample?.ramPercent || 0,
+        eventLoopLagMs: sample?.eventLoopLagMs || 0,
+        isAnomaly: Boolean(this._currentStatus?.isAnomaly),
+        recordedAt: new Date(),
+      });
+      return snapshot;
+    } catch (err) {
+      logger.warn('[AIOps] Lỗi captureMetricSnapshot', { error: err.message });
+      return null;
     }
   }
 
@@ -331,12 +389,13 @@ class AIOpsService {
       targetConcurrency: this.detector.targetConcurrency,
       vectorScores: this._currentStatus?.vectorScores || { auth: 0, traffic: 0, exploit: 0, resource: 0 },
       vectorConfig: { ...this.detector.vectorConfig },
+      customThresholds: this.detector.getCustomThresholds(),
       quarantinedCount: defaultAIOpsQuarantine.getQuarantinedList().length,
       recentIncidents: (this.repository?._inMemoryFallback || []).slice(0, 10),
     };
   }
 
-  getHistory(options = {}) {
+  async getHistory(options = {}) {
     if (!options.range && !options.from && !options.to && !options.aggregate) {
       return [...this._history];
     }
@@ -345,6 +404,7 @@ class AIOpsService {
     let startTime = 0;
     let endTime = Date.now();
     let bucketWidthMs = 10000; // 10s mặc định
+    let shouldFetchDbSnapshots = false;
 
     // QUY TẮC CỐT LÕI CỦA PO: Ưu tiên bộ lọc khoảng thời gian tùy biến (from & to)
     if (from && to) {
@@ -373,10 +433,13 @@ class AIOpsService {
         bucketWidthMs = 60000; // 1 phút
       } else if (diffMs <= 36 * 3600 * 1000) {
         bucketWidthMs = 30 * 60 * 1000; // 30 phút
+        shouldFetchDbSnapshots = true;
       } else if (diffMs <= 10 * 24 * 3600 * 1000) {
         bucketWidthMs = 4 * 3600 * 1000; // 4 giờ
+        shouldFetchDbSnapshots = true;
       } else {
         bucketWidthMs = 12 * 3600 * 1000; // 12 giờ
+        shouldFetchDbSnapshots = true;
       }
     } else if (range === '1h') {
       // 1 giờ qua: 60 mẫu dàn trải trong 60 phút (1p/mẫu, lấy max 1p)
@@ -386,17 +449,21 @@ class AIOpsService {
       // 24 giờ qua: 48 mẫu dàn trải trong 24 giờ (30p/mẫu, lấy max 30p)
       startTime = Date.now() - 24 * 3600 * 1000;
       bucketWidthMs = 30 * 60 * 1000;
+      shouldFetchDbSnapshots = true;
     } else if (range === '7d') {
       // 7 ngày qua: 4 giờ lấy 1 mẫu, 6 mẫu/ngày, tổng 48 mẫu (lấy max 4 giờ)
       startTime = Date.now() - 7 * 24 * 3600 * 1000;
       bucketWidthMs = 4 * 3600 * 1000;
+      shouldFetchDbSnapshots = true;
     } else if (range === '30d' || range === 'month') {
       // 1 tháng qua: mỗi ngày 2 mẫu (12 giờ/mẫu, lấy max 12 giờ)
       startTime = Date.now() - 30 * 24 * 3600 * 1000;
       bucketWidthMs = 12 * 3600 * 1000;
+      shouldFetchDbSnapshots = true;
     } else if (range === 'year') {
       startTime = Date.now() - 365 * 24 * 3600 * 1000;
       bucketWidthMs = 24 * 3600 * 1000;
+      shouldFetchDbSnapshots = true;
     } else {
       // '10m' hoặc 'realtime' (10 phút qua: 60 mẫu, 10s/mẫu, lấy max 10s)
       startTime = Date.now() - 10 * 60 * 1000;
@@ -405,20 +472,55 @@ class AIOpsService {
 
     // NGUYÊN TẮC TRUNG THỰC DỮ LIỆU CỦA PO:
     // Tuyệt đối không sinh dữ liệu giả lập hay nội suy điểm nhân tạo.
-    // Chỉ lọc các mẫu thực tế đã được đo lường trong khoảng thời gian này.
-    const realSamples = (this._history || []).filter((item) => {
-      if (!item || !item.timestamp) return false;
-      const t = new Date(item.timestamp).getTime();
-      return !isNaN(t) && t >= startTime && t <= endTime;
-    });
+    // Kết hợp mẫu từ bộ nhớ RAM và các snapshot thực tế được lưu vào PostgreSQL
+    const combinedSamples = [];
+    const seenTimestamps = new Set();
 
-    if (realSamples.length === 0) {
+    // 1. Lấy các mẫu đo trực tiếp trong RAM:
+    for (const item of this._history || []) {
+      if (!item || !item.timestamp) continue;
+      const t = new Date(item.timestamp).getTime();
+      if (!isNaN(t) && t >= startTime && t <= endTime) {
+        combinedSamples.push(item);
+        seenTimestamps.add(item.timestamp);
+      }
+    }
+
+    // 2. Lấy thêm các snapshot định kỳ từ PostgreSQL nếu truy vấn dải thời gian dài (24h, 7d, 30d):
+    if (shouldFetchDbSnapshots && this.repository && typeof this.repository.getMetricSnapshots === 'function') {
+      try {
+        const dbSnapshots = await this.repository.getMetricSnapshots(new Date(startTime), new Date(endTime));
+        for (const snap of dbSnapshots || []) {
+          if (!snap || !snap.timestamp || seenTimestamps.has(snap.timestamp)) continue;
+          combinedSamples.push({
+            timestamp: snap.timestamp,
+            threatScore: snap.threatScore,
+            status: snap.threatScore >= 80 ? 'CRITICAL' : snap.threatScore >= 60 ? 'WARNING' : 'NORMAL',
+            vectorScores: {
+              auth: snap.authScore,
+              traffic: snap.trafficScore,
+              exploit: snap.exploitScore,
+              resource: snap.resourceScore,
+            },
+            requestsPerMin: snap.requestsPerMin,
+            cpuPercent: snap.cpuPercent,
+            ramPercent: snap.ramPercent,
+            isAnomaly: snap.isAnomaly,
+          });
+          seenTimestamps.add(snap.timestamp);
+        }
+      } catch (err) {
+        logger.warn('[AIOps] Lỗi truy vấn metric snapshots từ CSDL', { error: err.message });
+      }
+    }
+
+    if (combinedSamples.length === 0) {
       return [];
     }
 
     // Gom nhóm mẫu theo từng bucket thời gian và lấy giá trị MAX đo được
     const bucketMap = new Map();
-    for (const s of realSamples) {
+    for (const s of combinedSamples) {
       const t = new Date(s.timestamp).getTime();
       const bIndex = Math.floor((t - startTime) / bucketWidthMs);
       if (!bucketMap.has(bIndex)) {
@@ -483,7 +585,7 @@ class AIOpsService {
     return aggregated;
   }
 
-  calibrate(options = {}) {
+  async calibrate(options = {}) {
     const currentSample = this.collector.getSample();
     const report = this.detector.calibrate({ ...options, currentSample });
     const evalResult = this.detector.evaluate(currentSample, false);
@@ -497,7 +599,19 @@ class AIOpsService {
       recommendedAction: evalResult.recommendedAction,
       sample: currentSample,
       targetConcurrency: this.detector.targetConcurrency,
+      customThresholds: this.detector.getCustomThresholds(),
     };
+
+    // Nếu Admin tùy chỉnh ngưỡng an toàn mong muốn, lưu cứng vào CSDL PostgreSQL
+    if (options.customThresholds && typeof options.customThresholds === 'object' && this.repository && typeof this.repository.setSetting === 'function') {
+      try {
+        await this.repository.setSetting('custom_vector_thresholds', JSON.stringify(options.customThresholds));
+        logger.info('[AIOps] Đã lưu cứng custom_vector_thresholds vào CSDL PostgreSQL:', options.customThresholds);
+      } catch (err) {
+        logger.warn('[AIOps] Lỗi lưu custom_vector_thresholds vào CSDL', { error: err.message });
+      }
+    }
+
     logger.info(`[AIOps] Tái hiệu chuẩn đường chuẩn thành công cho quy mô ${report.targetConcurrency} người dùng (CPU: ${currentSample.cpuPercent}%, RAM: ${currentSample.ramPercent}%)`);
     return {
       success: true,

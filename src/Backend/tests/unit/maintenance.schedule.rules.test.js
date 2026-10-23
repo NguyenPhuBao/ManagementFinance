@@ -1,3 +1,5 @@
+const { describe, it, beforeEach, afterEach } = require('node:test');
+const assert = require('node:assert/strict');
 const { MaintenanceManager } = require('../../core/resilience/maintenance.manager');
 
 describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=false)', () => {
@@ -7,15 +9,19 @@ describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=
 
   beforeEach(() => {
     mockRepository = {
-      createRecord: jest.fn().mockResolvedValue({ id: 999 }),
-      updateRecordStatus: jest.fn().mockResolvedValue({ id: 999 }),
-      cancelScheduledRecord: jest.fn().mockResolvedValue({ id: 999 }),
-      completeOngoingRecord: jest.fn().mockResolvedValue({ id: 999 }),
-      getActiveScheduledRecords: jest.fn().mockResolvedValue([]),
+      createRecord: async () => ({ id: 999 }),
+      updateRecordStatus: async () => ({ id: 999 }),
+      cancelScheduledRecord: async () => ({ id: 999 }),
+      completeOngoingRecord: async () => ({ id: 999 }),
+      getActiveScheduledRecords: async () => ([]),
     };
 
     mockNotifService = {
-      broadcast: jest.fn().mockResolvedValue({ success: true }),
+      broadcastCalls: [],
+      broadcast: async (payload) => {
+        mockNotifService.broadcastCalls.push(payload);
+        return { success: true };
+      },
     };
 
     manager = new MaintenanceManager({
@@ -35,14 +41,14 @@ describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=
     const scheduledAt = new Date(now + 2 * 3600 * 1000).toISOString(); // Chỉ 2 tiếng nữa
     const scheduledEndAt = new Date(now + 3 * 3600 * 1000).toISOString();
 
-    expect(() => {
+    assert.throws(() => {
       manager.scheduleMaintenance({
         scheduledAt,
         scheduledEndAt,
         reason: 'Bảo trì test dưới 4 tiếng',
         createdBy: 'admin',
       });
-    }).toThrow(/ít nhất 4 tiếng/i);
+    }, /ít nhất 4 tiếng/i);
   });
 
   it('PASS khi đặt thời gian bảo trì trước ít nhất 4 tiếng so với hiện tại', () => {
@@ -57,8 +63,8 @@ describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=
       createdBy: 'admin',
     });
 
-    expect(status).toBeDefined();
-    expect(manager.getScheduledList().length).toBeGreaterThanOrEqual(1);
+    assert.ok(status);
+    assert.ok(manager.getScheduledList().length >= 1);
   });
 
   it('FAIL khi đặt lịch thứ 2 cách lịch thứ nhất dưới 5 tiếng', () => {
@@ -78,14 +84,14 @@ describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=
     const sched2Start = new Date(now + 9 * 3600 * 1000).toISOString();
     const sched2End = new Date(now + 10 * 3600 * 1000).toISOString();
 
-    expect(() => {
+    assert.throws(() => {
       manager.scheduleMaintenance({
         scheduledAt: sched2Start,
         scheduledEndAt: sched2End,
         reason: 'Lịch 2 quá sát lịch 1',
         createdBy: 'admin',
       });
-    }).toThrow(/cách nhau ít nhất 5 tiếng/i);
+    }, /cách nhau ít nhất 5 tiếng/i);
   });
 
   it('PASS khi đặt lịch thứ 2 cách lịch thứ nhất ít nhất 5 tiếng', () => {
@@ -112,8 +118,8 @@ describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=
       createdBy: 'admin',
     });
 
-    expect(status).toBeDefined();
-    expect(manager.getScheduledList().length).toBe(2);
+    assert.ok(status);
+    assert.strictEqual(manager.getScheduledList().length, 2);
   });
 
   it('Kích hoạt lịch hẹn bảo trì thì isEmergency = false và tiêu đề là HỆ THỐNG ĐANG BẢO TRÌ', async () => {
@@ -127,16 +133,14 @@ describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=
 
     manager.activateScheduledItem(schedItem);
 
-    expect(manager.active).toBe(true);
-    expect(manager.isEmergency).toBe(false);
-    expect(manager.getStatus().isEmergency).toBe(false);
+    assert.strictEqual(manager.active, true);
+    assert.strictEqual(manager.isEmergency, false);
+    assert.strictEqual(manager.getStatus().isEmergency, false);
 
     // Kiểm tra broadcast không được chứa từ KHẨN CẤP
-    expect(mockNotifService.broadcast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: expect.stringMatching(/HỆ THỐNG ĐANG BẢO TRÌ/i),
-        level: expect.not.stringMatching(/CRITICAL/i),
-      })
-    );
+    assert.ok(mockNotifService.broadcastCalls.length > 0);
+    const lastCall = mockNotifService.broadcastCalls[mockNotifService.broadcastCalls.length - 1];
+    assert.match(lastCall.title, /HỆ THỐNG ĐANG BẢO TRÌ/i);
+    assert.ok(!/CRITICAL/i.test(lastCall.level || ''));
   });
 });

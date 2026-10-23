@@ -25,10 +25,10 @@ const aiopsController = {
     }
   },
 
-  getHistory(req, res) {
+  async getHistory(req, res) {
     try {
       const { range, from, to } = req.query;
-      const history = defaultAIOpsService.getHistory({ range, from, to });
+      const history = await defaultAIOpsService.getHistory({ range, from, to });
       return ResponseHandler.success(res, history, 'Lịch sử chỉ số AIOps Sentinel');
     } catch (error) {
       logger.error('[AIOpsController] getHistory failed', { error: error.message });
@@ -62,9 +62,9 @@ const aiopsController = {
     }
   },
 
-  calibrate(req, res) {
+  async calibrate(req, res) {
     try {
-      const result = defaultAIOpsService.calibrate(req.body);
+      const result = await defaultAIOpsService.calibrate(req.body);
       req.auditActionName = 'Tái hiệu chuẩn mô hình máy học AIOps';
       return ResponseHandler.success(res, result, 'Hiệu chuẩn thành công');
     } catch (error) {

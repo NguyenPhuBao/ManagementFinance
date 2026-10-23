@@ -1,6 +1,7 @@
 # ⚙️ Chức Năng 07: Quản Trị Chế Độ Bảo Trì & Cứu Hộ Khẩn Cấp (Maintenance & Resilience Management)
 
 > **Mã chức năng:** `ADMIN-FEAT-07`  
+> **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/pages/system/BroadcastPage.jsx` (Tab 1), `src/Admin-web/src/components/common/ServerHealthPanel.jsx`  
 > - Backend: `src/Backend/core/resilience/maintenance.manager.js`, `src/Backend/middleware/maintenance.middleware.js`, `src/Backend/api/admin.routes.js`  

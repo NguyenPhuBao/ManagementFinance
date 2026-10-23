@@ -1,9 +1,11 @@
 # 🛡️ Chức Năng 09: Hệ Thống AI Giám Sát Bất Thường & Tường Lửa Phong Tỏa (AIOps Sentinel & Active Quarantine Shield)
 
 > **Mã chức năng:** `ADMIN-FEAT-09`  
+> **Phiên bản:** `v2.6 (23/10/2026)`  
+> **Trạng thái:** `Production Ready`  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/pages/system/AIOpsPage.jsx`, `src/Admin-web/src/components/layout/AppLayout.jsx`  
-> - Backend: `src/Backend/modules/aiops/feature.collector.js`, `anomaly.detector.js`, `aiops.quarantine.js`, `aiops.service.js`, `src/Backend/api/admin.routes.js`  
+> - Backend: `src/Backend/modules/aiops/feature.collector.js`, `anomaly.detector.js`, `aiops.quarantine.js`, `aiops.service.js`, `src/Backend/api/admin.routes.js`, `src/Backend/database/27_create_aiops_metric_snapshot_table.sql`  
 
 ---
 
@@ -13,6 +15,8 @@
 1. Phát hiện sớm các sự cố sập server (DDoS, rò rỉ bộ nhớ RAM, nghẽn Event Loop).
 2. Phát hiện các cuộc tấn công an ninh nguy hiểm (Dò quét mật khẩu Brute-Force, Tái sử dụng token đã thu hồi Token Hijacking, Rà quét lỗ hổng SQL Injection).
 3. **Tự động kích hoạt Tường Lửa Chủ Động (Active Quarantine Shield):** Cắt đứt kết nối của nguồn IP vi phạm ngay tại đầu Express Pipeline với mã HTTP 403, giải phóng tài nguyên CPU/RAM/DB tức thì và thông báo Real-Time về Admin-web.
+4. **Lưu trữ Snapshot định kỳ 5 phút (`aiops_metric_snapshot`):** Lưu trữ lịch sử 4 vectơ phục vụ soi chiếu xu hướng dài hạn (1h, 24h, 7d, 30d) mà không bị mất dữ liệu khi khởi động lại máy chủ.
+5. **Cấu hình ngưỡng cảnh báo linh hoạt (Custom Vector Thresholds):** Cho phép Quản trị viên tùy chỉnh ngưỡng cảnh báo và khẩn cấp riêng biệt cho từng vectơ rủi ro theo đặc thù vận hành thực tế.
 
 ---
 
@@ -232,88 +236,83 @@ Nhằm đảm bảo tính công bằng và loại bỏ hoàn toàn tình trạng
 
 ## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN (`AIOpsPage.jsx`)
 
-1. **Bộ Điều Khiển Quy Mô Người Dùng Mục Tiêu (Target Concurrency Scaler):**
-   - Cho phép Admin thiết lập hoặc chọn nhanh quy mô tải người dùng đồng thời ($N = 500$, $1,000$, $2,000$, $5,000$ CCU hoặc tùy biến).
-   - Tự động hiển thị và tính toán: Baseline RPM ($N \times 10$), Trần đỉnh an toàn ($3\times$), và Ngưỡng cách ly IP cá nhân ($20 + 50 \cdot \log_{10}(N)$).
-   - Cập nhật trực tiếp xuống lõi máy chủ qua API `POST /api/admin/aiops/scale` trong thời gian thực.
-2. **Ma Trận 4 Vectơ Rủi Ro Độc Lập (Multi-Vector Risk Matrix):**
-   - 4 thẻ trực quan với thước đo Progress Bar $[0, 100]$ điểm và huy hiệu màu tương ứng (Xanh, Vàng, Cam, Đỏ).
-   - Hiển thị chi tiết từng chỉ số đóng góp và **Hành vi phòng vệ cá nhân hóa độc lập** cho từng nhóm rủi ro (Auth, Traffic, Exploit, Resource).
+1. **Thanh Tiêu Đề & Nút "Ngưỡng Cảnh Báo Tùy Chỉnh" (Header & Custom Thresholds Modal):**
+   - Tiêu đề trang được chuẩn hóa sạch sẽ: `AIOps Sentinel & Giám Sát An Ninh`, bỏ ngoặc đơn rườm rà.
+   - Nút **"Ngưỡng cảnh báo tùy chỉnh"** (Custom Thresholds) cho phép Quản trị viên mở modal cấu hình riêng cho từng vectơ:
+     - Thiết lập Ngưỡng cảnh báo (Warning Threshold: mặc định 70) và Ngưỡng khẩn cấp (Critical Threshold: mặc định 85) cho cả 4 vectơ: Xác thực (`auth`), Lưu lượng (`traffic`), Khai thác (`exploit`), và Tài nguyên (`resource`).
+     - Tích hợp nút **"Mặc định"** khôi phục cấu hình tiêu chuẩn và nút **"Lưu thay đổi"** đẩy cấu hình xuống CSDL qua API `POST /api/admin/aiops/vector-thresholds`.
+   - **Loại bỏ Box "Tình trạng hệ thống" rườm rà:** Bãi bỏ khối trạng thái tĩnh (Bình thường / Cảnh báo / Nguy cấp) khỏi hàng đầu trang, nhường không gian tối ưu cho Đồng hồ bán nguyệt và Ma trận 4 Vectơ Rủi Ro.
+
+2. **Bộ Điều Khiển Quy Mô Người Dùng Mục Tiêu (Target Concurrency Scaler):**
+   - Cho phép Admin thiết lập hoặc chọn nhanh quy mô tải người dùng đồng thời ($N = 500$, $1,000$, $2,000$, $5,000$ CCU hoặc nhập tùy biến).
+   - Tối ưu giao diện thanh thoát: **Đã lược bỏ các chuỗi công thức toán thô** (`Baseline = N * 10`, `Safe Peak = 3 * Baseline`, `Quarantine = ...`) khỏi giao diện.
+   - Khi thay đổi, giá trị được lưu tức thì vào CSDL PostgreSQL (`aiops_setting`) và bộ nhớ đệm `localStorage`, đồng thời phát lệnh cập nhật tới lõi máy chủ qua API `POST /api/admin/aiops/scale`.
+
 3. **Đồng Hồ Bán Nguyệt Đo Rủi Ro Tổng Hợp (Composite Threat Score Gauge SVG):**
    - Thiết kế bán nguyệt bán kính $R=85$, quét từ $0$ đến $100$.
    - 4 phân vùng màu chuẩn xác: Xanh ($0-59$ Bình thường), Vàng ($60-79$ Tăng cao), Cam ($80-89$ Cảnh báo), Đỏ ($90-100$ Nguy cấp).
-   - Công thức hiển thị: $\text{Threat Score} = \max(\text{Vectơ}) + \text{Bonus kết hợp}$.
-4. **Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Độc Lập Thời Gian Thực (Multi-Vector Trend Chart SVG):**
-   - Trực quan hóa 60 mẫu trượt gần nhất (10 phút) của cả **4 vectơ độc lập** trên cùng một hệ quy chiếu $[0, 100]$ điểm.
-   - **Thanh chuyển Tab (Filter Tabs):** Cho phép xem đồng thời "Tất Cả 4 Vectơ" hoặc soi cận cảnh từng vectơ riêng biệt:
+   - **Bãi bỏ dòng chữ gây hiểu nhầm:** Đã loại bỏ hoàn toàn nhãn `"Chế độ chỉ đo lường — Không phong tỏa IP"` để phản ánh đúng năng lực phòng vệ tích cực (Active Quarantine) của Sentinel.
+
+4. **Ma Trận 4 Vectơ Rủi Ro Độc Lập (Multi-Vector Risk Matrix):**
+   - Tiêu đề phân mục được chuẩn hóa: **"4 Vectơ Rủi Ro"**.
+   - 4 thẻ trực quan với thước đo Progress Bar $[0, 100]$ điểm và huy hiệu màu tương ứng (Xanh, Vàng, Cam, Đỏ).
+   - Hiển thị chi tiết từng chỉ số đóng góp và **Hành vi phòng vệ cá nhân hóa độc lập** cho từng nhóm rủi ro (Auth, Traffic, Exploit, Resource).
+
+5. **Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Đa Khung Thời Gian (Multi-Vector Multi-Range Trend Chart SVG):**
+   - Hỗ trợ **5 mốc thời gian linh hoạt**:
+     - `10 Phút` (Mặc định): Trực quan hóa 60 mẫu trượt gần nhất từ Ring Buffer In-Memory ($10\text{s}$ interval).
+     - `1 Giờ`: 12 mẫu snapshot lấy từ CSDL PostgreSQL.
+     - `24 Giờ`: 288 mẫu snapshot từ CSDL PostgreSQL.
+     - `7 Ngày`: Mẫu snapshot gộp theo mốc 7 ngày.
+     - `30 Ngày`: Toàn cảnh xu hướng vận hành và an ninh trong 1 tháng.
+   - Dữ liệu lịch sử từ 1 Giờ trở lên được lấy từ API `GET /api/admin/aiops/trend?range=...` truy vấn bảng CSDL `aiops_metric_snapshot`.
+   - **Thanh chuyển Tab vectơ (Filter Tabs):** Cho phép xem đồng thời "Tất Cả 4 Vectơ" hoặc soi cận cảnh từng vectơ riêng biệt:
      - 🟠 **Vectơ 1 (Xác thực):** Amber `#f59e0b` — Theo dõi failed logins & token reuse.
      - 🔵 **Vectơ 2 (Lưu lượng):** Blue `#3b82f6` — Theo dõi biến thiên RPM theo trần CCU.
      - 🔴 **Vectơ 3 (Khai thác):** Rose `#f43f5e` — Theo dõi các mẫu SQLi, traversal injection.
      - 🟢 **Vectơ 4 (Tài nguyên):** Teal `#0d9488` — Theo dõi tải CPU/RAM và độ trễ Event Loop.
      - 🟣 **Trần tham chiếu (Composite Max):** Nét đứt tím `#8b5cf6`.
-   - **Tương tác trực quan (Interactive Hover Tooltip):** Khi rê chuột lên biểu đồ, hiển thị vạch gióng thời gian và bảng chỉ số chi tiết của cả 4 vectơ tại mốc thời gian đó (HH:mm:ss).
+   - **Tương tác trực quan (Interactive Hover Tooltip):** Khi rê chuột lên biểu đồ, hiển thị vạch gióng thời gian và bảng chỉ số chi tiết của cả 4 vectơ tại mốc thời gian đó (HH:mm:ss hoặc DD/MM HH:mm).
    - Hiển thị 2 vạch ngưỡng định lượng: Vạch vàng Cảnh báo ($70$) và Vạch đỏ Khẩn cấp ($85$).
-5. **Bảng Bóc Tách Nguyên Nhân Gốc Rễ (Root Cause Analysis - RCA) — Nhật Ký CSDL Bền Vững & Phân Trang:**
-   - **Lưu trữ CSDL Vĩnh Viễn (PostgreSQL `aiops_incident`):** Thay vì bảng tạm snapshot mất dữ liệu khi F5/khởi động lại server, mọi sự cố bất thường được lưu bền vững vào CSDL PostgreSQL phục vụ điều tra truy vết.
-   - **Tính Pháp Lý & Định Danh Đối Tượng Vi Phạm (Actor Identity):**
-     - Tuân thủ Luật An ninh mạng 2018 (Điều 26), Nghị định 53/2022/NĐ-CP (lưu nhật ký an ninh tối thiểu 12 tháng) và Nghị định 13/2023/NĐ-CP (Điều 17 ngoại lệ bảo vệ an ninh/phòng chống gian lận).
-     - Tuân thủ tài liệu chuẩn bảo mật [`docs/Rule_Project/Data_Security.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Data_Security.md): IP được che bớt an toàn (`113.161.xx.xx`), băm SHA-256 (`actor_hash`), User-Agent, Username/UserID (nếu đã đăng nhập), và Endpoint mục tiêu. Tuyệt đối **không thu thập/lưu trữ mật khẩu hoặc OTP**.
-   - **Vòng Đời Trạng Thái (Status Lifecycle):**
-     - Sự cố mới hoặc đang tái diễn mang trạng thái `ACTIVE` (chấm đỏ nhấp nháy, đếm số lần kích hoạt `hits`).
-     - Khi đối tượng ngừng vi phạm > 60 giây hoặc đã bị cách ly, hệ thống tự động chuyển trạng thái sang `MITIGATED` (Đã giảm thiểu). Dữ liệu được bảo toàn vĩnh viễn, không bị xóa tự động.
-   - **Phân Trang Server-Side & Bộ Lọc Nâng Cao:**
-     - Bộ lọc Vector (`all`, `auth`, `traffic`, `exploit`, `resource`).
-     - Bộ lọc Trạng thái (`all`, `ACTIVE`, `MITIGATED`).
-     - Ô tìm kiếm linh hoạt theo IP, Hash, Username, Endpoint, Mã lỗi.
-     - Phân trang chuẩn giao diện `Pagination.jsx` với các tùy chọn 5, 10, 20, 50 sự cố/trang.
-     - Nút "Làm sạch CSDL" tích hợp `ConfirmModal` phục vụ kiểm thử và nghiệm thu.
-5. **Bảng Tổng Quan Nguyên Nhân Bất Thường (RCA & Incident Journal):**
-   - **Cột Đối tượng:**
-     - Tài khoản hiển thị rõ Username: `TK: <username>` (đối với sự cố tài nguyên ghi rõ `TK: Hệ thống nội bộ`).
-     - Địa chỉ IP hiển thị rõ ràng và che mờ nghiêm ngặt theo định dạng `192.168.xxx.xxx` (đối với sự cố tài nguyên ghi rõ `IP: Nội bộ hệ thống`).
-   - **Cột Tình trạng & Sắp xếp:**
-     - Số lần lặp lại được tính tổng hợp theo đối tượng & IP trong toàn hệ thống.
-     - Thời điểm phát hiện hiển thị mốc sớm nhất (`first_detected_at`), kèm thời điểm sát nhất (`last_seen_at`).
-     - Thứ tự log được sắp xếp từ cao xuống thấp theo thời điểm, sự cố mới nhất (`last_seen_at DESC`) xếp trên cùng.
-   - **Thông Báo Không Có Dữ Liệu (Empty State):** Khi không có sự cố nào trong CSDL hoặc không khớp với bộ lọc đang áp dụng, bảng chỉ ghi nhận súc tích: `"Không tìm thấy sự cố"`, loại bỏ hoàn toàn các icon lớn hay nút bấm rườm rà.
-    - **Phòng vệ theo phân loại nghiệp vụ:**
-     - Với sự cố tài nguyên (`resource`): xuất phát từ chính máy chủ, không ai gây ra nên không bao giờ có nút chặn IP hay tài khoản, chỉ hiển thị thông tin điều phối hạ tầng.
-     - Với sự cố xâm nhập (`auth`, `traffic`, `exploit`): cung cấp nút thao tác phong tỏa hoặc mở khóa nhanh.
-6. **Bảng Nguồn Theo Dõi Đặc Biệt (Special Monitored Sources - Tên cũ Quarantine Blacklist - Đặt Ở Dưới Cùng Trang):**
-   - Đặt ở vị trí dưới cùng trang (sau Biểu đồ xu hướng và Bảng RCA), giúp giao diện mạch lạc theo luồng: Thống kê tổng quan -> Xu hướng -> Bóc tách nguyên nhân -> Nguồn bị cô lập/giám sát.
-   - Bãi bỏ việc tính gộp IP và Tài khoản thành một "nguồn" gây hiểu nhầm.
+
+6. **Bảng Bóc Tách Nguyên Nhân Gốc Rễ (Root Cause Analysis - RCA Table):**
+   - **Icon Vectơ Chuẩn Hóa:**
+     - 🔑 **Xác thực (`auth`):** Rủi ro dò mật khẩu, token giả mạo.
+     - 📈 **Lưu lượng (`traffic`):** Rủi ro DoS, đột biến request.
+     - 🛡️ **Khai thác (`exploit`):** Rủi ro SQL Injection, Path Traversal.
+     - ⚙️ **Tài nguyên (`resource`):** Rủi ro nghẽn CPU, RAM, Event Loop.
+   - **Cột Đối tượng Chuẩn Hóa:**
+     - Hiển thị rõ ràng 2 dòng phân định:
+       - `TK: <username>` (với sự cố phần cứng hiển thị `TK: Hệ thống nội bộ`, với khách vãng lai hiển thị `TK: Khách vãng lai / Ẩn danh`).
+       - `IP: <masked_ip>` theo định dạng `192.168.xxx.xxx` hoặc `a.b.xxx.xxx` (với sự cố phần cứng hiển thị `IP: Nội bộ hệ thống`).
+     - Huy hiệu vai trò tài khoản: Quản trị viên (`Admin`), Người dùng (`User`), Hệ thống (`System`), Khách vãng lai (`Guest`).
+   - **Cột Tình trạng:** Hiển thị thời điểm phát hiện lần đầu (`first_detected_at`), nhãn trạng thái (`ĐANG DIỄN RA` / `ĐÃ GIẢM THIỂU`), và số lần lặp lại (`Lặp lại X lần` / `Phát hiện lần 1`). Đã loại bỏ hoàn toàn dòng hiển thị dư thừa `Gần nhất: ...`.
+   - **Thao tác nhanh:**
+     - Sự cố tài nguyên (`resource`): Chỉ hiển thị thông tin điều phối hạ tầng, không bao giờ có nút chặn IP hay tài khoản.
+     - Sự cố an ninh (`auth`, `traffic`, `exploit`): Cung cấp nút Phong tỏa IP / Tạm khóa TK tức thì.
+
+7. **Bảng Nguồn Theo Dõi Đặc Biệt (Special Monitored Sources - Đặt Dưới Cùng Trang):**
+   - Đặt ở vị trí dưới cùng trang theo luồng trải nghiệm: Thống kê tổng quan $\to$ Biểu đồ xu hướng $\to$ Nhật ký RCA $\to$ Danh sách phong tỏa/theo dõi đặc biệt.
+   - **Loại bỏ Subtitle & Text đếm đối tượng:** Tiêu đề được thiết kế thanh thoát, bỏ dòng chữ mô tả phụ và text đếm rườm rà.
    - **Cấu trúc cột chuẩn hóa:**
-     1. **Địa chỉ IP:** Hiển thị dãy số IP đã che mờ (`xxx.xxx`), bỏ tick 'v', bỏ badge 'đã mở khóa' và bỏ icon điều tra khỏi cột này.
-     2. **Tài khoản:** Hiển thị tên tài khoản sạch sẽ, bỏ icon hình người, bỏ badge 'đã mở khóa'.
-     3. **Vector:** Cột mới đặt ngay sau Tài khoản, phân loại nguy cơ tổng quan (`Xác thực`, `Lưu lượng`, `Khai thác`).
-     4. **Nguyên nhân phong tỏa:** Tóm tắt súc tích, chi tiết đầy đủ nằm trong modal hồ sơ điều tra an ninh.
-     5. **Thời điểm chặn & Thời gian còn lại (Phân tách độc lập IP & TK):**
-        - Cột Thời gian còn lại hiển thị tách biệt 2 dòng: `IP: X giờ Y phút` và `TK: X giờ Y phút`.
-        - Khi IP hoặc Tài khoản đã được mở khóa (`unlocked`) hoặc bị phong tỏa vĩnh viễn (`permanent`), thời gian khóa tương ứng **không còn nữa** và hiển thị rõ ràng nhãn `--` (`IP: --` hoặc `TK: --`).
-        - Chỉ khi đối tượng ở trạng thái tạm khóa (`temporary`), hệ thống mới tính toán và hiển thị thời gian còn lại (chu kỳ tạm khóa mặc định 4 tiếng = 240 phút).
-     6. **Thao tác IP & Thao tác Tài khoản:**
-        - Nút bấm chữ thuần, không icon đi kèm.
-        - Tạm khóa: hiển thị 2 nút `Phong tỏa IP` + `Mở khóa IP` | `Phong tỏa TK` + `Mở khóa TK`.
-        - Hoạt động: hiển thị nút `Tạm khóa IP` | `Tạm khóa TK`.
-        - Phong tỏa vĩnh viễn: chỉ hiển thị text badge `IP đã bị phong tỏa` | `Tài khoản đã bị phong tỏa`, **hoàn toàn không còn hiển thị nút bấm** (không có nút Mở khóa).
-        - Màu sắc: Tone màu dịu nhẹ (`rose-50`/`rose-700`, `amber-50`/`amber-700`, `emerald-50`/`emerald-700`), màu nền badge nhạt hơn chữ.
-     7. **Thao tác (Cột cuối cùng):** Chứa icon con mắt màu xanh (`visibility`) dùng để mở modal Hồ sơ điều tra an ninh.
-     8. **Chuẩn Hóa Địa Chỉ IP & Tài Khoản Thực Tế (PO Specification):**
-        - **Bảng Tổng quan nguyên nhân bất thường (RCA Table):**
-          - **Cột Tình trạng:** Hiển thị thời điểm phát hiện lần đầu, nhãn trạng thái (`ĐANG DIỄN RA` / `ĐÃ GIẢM THIỂU`), và số lần lặp lại (`Lặp lại X lần` / `Phát hiện lần 1`). Đã loại bỏ hoàn toàn dòng hiển thị dư thừa `Gần nhất: ...`.
-          - **Cột Đối tượng:**
-          - `TK:`: Ghi nhận `username` tài khoản thật (tự động tra cứu từ bảng `account` khi có `userId`, chỉ dùng `Khách vãng lai / Ẩn danh` khi là khách vãng lai, hoặc `Hệ thống nội bộ` khi thuộc sự cố phần cứng).
-          - `IP:`: Ghi nhận IP thực tế đã được che mờ theo mẫu **`192.168.xxx.xxx`** hoặc **`a.b.xxx.xxx`** (giữ 2 octet mạng đầu, che 2 octet sau bằng `xxx.xxx`, loopback `127.0.xxx.xxx`). Tuyệt đối không dùng chuỗi mockup tiếng Việt (`1 địa chỉ IP tập trung`, `Nhiều nguồn IP phân tán`) hay placeholder `xx.xx.xxx.xxx`.
-        - **Bảng Nguồn theo dõi đặc biệt (Quarantine Table) > Cột Địa chỉ IP:**
-          - Ghi nhận IP thực đã che mờ mẫu chuẩn **`192.168.xxx.xxx`** hoặc **`a.b.xxx.xxx`**. Loại bỏ hoàn toàn các chuỗi rác `xx.xx.xx.xx`, `xx.xx.xxx.xxx` ở cả tầng Backend collector, detector, quarantine repository và Frontend formatter.
-   - **Phân trang độc lập & Hiển thị chính xác dòng:** Tích hợp bộ phân trang `Pagination` chuyên dụng, hỗ trợ tùy biến 5, 10, 20 dòng/trang. Đặt ngoài container cuộn ngang và sử dụng unique key trên từng thẻ `<tr>` kết hợp `item.id`, `item.ipHash`, `item.username`, `item.bannedAt` và index `idx` nhằm tránh xung đột key Virtual DOM, đảm bảo số dòng hiển thị luôn chính xác tuyệt đối theo bộ lọc đã chọn.
-7. **Modal 1-Click Khóa Hệ Thống Bảo Trì Khẩn Cấp (Chỉ Khi Sập Dây Chuyền):**
+     1. **Địa chỉ IP:** Dãy số IP đã che mờ chuẩn (`192.168.xxx.xxx`), bỏ icon tick hoặc badge thừa.
+     2. **Tài khoản:** Tên người dùng sạch sẽ, bỏ icon người thừa.
+     3. **Vector:** Phân loại nguy cơ (`Xác thực`, `Lưu lượng`, `Khai thác`).
+     4. **Nguyên nhân phong tỏa:** Tóm tắt ngắn gọn; chi tiết nằm trong modal hồ sơ điều tra.
+     5. **Thời điểm chặn & Thời gian còn lại:** Phân tách độc lập 2 dòng `IP: X giờ Y phút` và `TK: X giờ Y phút`. Khi đã mở khóa (`unlocked`) hoặc phong tỏa vĩnh viễn (`permanent`), hiển thị nhãn `--`.
+     6. **Thao tác IP & Thao tác Tài khoản:** Nút thuần text màu dịu nhẹ (`rose-50`/`rose-700`, `amber-50`/`amber-700`, `emerald-50`/`emerald-700`). Phong tỏa vĩnh viễn hiển thị badge tĩnh, không hiển thị nút mở khóa.
+     7. **Hồ sơ điều tra (Cột cuối):** Icon con mắt xanh mở modal Điều tra An Ninh liên kết N-N.
+   - **Phân trang độc lập:** Hỗ trợ 5, 10, 20 dòng/trang qua component `Pagination.jsx`.
+
+8. **Modal 1-Click Khóa Hệ Thống Bảo Trì Khẩn Cấp:**
    - **Nguyên tắc bảo vệ nghiêm ngặt:** Nút kích hoạt này **CHỈ hiển thị khi Vectơ 4 (Tài nguyên) vượt ngưỡng nguy cơ sập dây chuyền** (`resourceScore >= 85` hoặc `resourceScore >= 70 && Event Loop Lag > 250ms && 5xx > 15%`).
-   - Tuyệt đối không bao giờ hiển thị nút bảo trì toàn hệ thống khi chỉ có tấn công Brute-Force mật khẩu (Vectơ 1) hay tấn công Injection (Vectơ 3) từ các IP bên ngoài.
-8. **Modal Tái Hiệu Chuẩn Baseline (Calibrate Baseline):**
-   - Cho phép đặt lại đường chuẩn khi doanh nghiệp mở đợt khuyến mãi lớn.
-9. **Banner Báo Động Đỏ Toàn Cục (`AppLayout.jsx`):**
-   - Banner bảo trì khẩn cấp màu đỏ chỉ xuất hiện khi `recommendedAction === 'EMERGENCY_MAINTENANCE'` hoặc `vectorScores.resource >= 85`. Các đợt tấn công từ IP hacker chỉ hiển thị Toast thông báo cô lập IP thành công (`admin.security_blocked`), không làm gián đoạn trải nghiệm của Admin và người dùng bình thường.
+   - Tuyệt đối không bao giờ hiển thị nút bảo trì toàn hệ thống khi chỉ có tấn công an ninh từ các IP bên ngoài.
+
+9. **Modal Tái Hiệu Chuẩn Baseline (Calibrate Baseline):**
+   - Cho phép đặt lại đường chuẩn khi doanh nghiệp chuẩn bị chạy chiến dịch marketing/khuyến mãi lớn.
+
+10. **Banner Báo Động Đỏ Toàn Cục (`AppLayout.jsx`):**
+    - Banner bảo trì khẩn cấp màu đỏ chỉ xuất hiện khi `recommendedAction === 'EMERGENCY_MAINTENANCE'` hoặc `vectorScores.resource >= 85`. Các cuộc tấn công IP bên ngoài chỉ kích hoạt Toast thông báo cô lập IP (`admin.security_blocked`), không làm gián đoạn trải nghiệm người dùng.
 
 ---
 
@@ -401,12 +400,37 @@ Nhằm tối ưu hóa năng lực điều tra an ninh, phục vụ yêu cầu ki
 
 ---
 
+## 🗄️ 6.4. CẤU TRÚC BẢNG CSDL LƯU TRỮ SNAPSHOT 5 PHÚT `aiops_metric_snapshot` (POSTGRESQL)
+
+Nhằm phục vụ phân tích xu hướng dài hạn (1h, 24h, 7 ngày, 30 ngày) mà không phụ thuộc vào bộ đệm RAM Ring Buffer (vốn mất khi khởi động lại server), hệ thống thiết lập bảng `aiops_metric_snapshot`:
+
+| Tên Cột | Kiểu Dữ Liệu | Ràng buộc | Ý nghĩa Nghiệp vụ |
+|---|---|---|---|
+| `id` | `VARCHAR(64)` | `PRIMARY KEY` | Khóa chính bản ghi snapshot (UUID v4) |
+| `threat_score` | `INT` | `NOT NULL DEFAULT 0` | Điểm đe dọa tổng hợp tại thời điểm snapshot $[0, 100]$ |
+| `auth_score` | `INT` | `NOT NULL DEFAULT 0` | Điểm rủi ro Vectơ 1 (Xác thực) $[0, 100]$ |
+| `traffic_score` | `INT` | `NOT NULL DEFAULT 0` | Điểm rủi ro Vectơ 2 (Lưu lượng DoS) $[0, 100]$ |
+| `exploit_score` | `INT` | `NOT NULL DEFAULT 0` | Điểm rủi ro Vectơ 3 (Khai thác lỗ hổng) $[0, 100]$ |
+| `resource_score` | `INT` | `NOT NULL DEFAULT 0` | Điểm rủi ro Vectơ 4 (Tài nguyên phần cứng) $[0, 100]$ |
+| `requests_per_min` | `INT` | `NOT NULL DEFAULT 0` | Số lượng HTTP request đo được trên phút (RPM) |
+| `cpu_percent` | `INT` | `NOT NULL DEFAULT 0` | Tỷ lệ sử dụng CPU thực tế (%) |
+| `ram_percent` | `INT` | `NOT NULL DEFAULT 0` | Tỷ lệ chiếm dụng bộ nhớ RAM thực tế (%) |
+| `event_loop_lag_ms` | `INT` | `NOT NULL DEFAULT 0` | Độ trễ Event Loop máy chủ Node.js (ms) |
+| `is_anomaly` | `BOOLEAN` | `NOT NULL DEFAULT FALSE` | Cờ đánh dấu thời điểm có phát hiện bất thường vượt ngưỡng |
+| `recorded_at` | `TIMESTAMP(6)` | `DEFAULT NOW()` | Mốc thời gian ghi nhận (INDEX DESC tối ưu range query) |
+
+- **Cơ chế chụp ngầm:** Cronjob định kỳ chạy mỗi 5 phút một lần trong tiến trình backend để chụp và lưu snapshot vào CSDL.
+- **Tối ưu hóa truy vấn:** Chỉ mục `idx_aiops_metric_snapshot_recorded_at` trên cột `recorded_at DESC` cho phép API `/api/admin/aiops/trend` trả kết quả tức thì trong $< 10\text{ms}$.
+
+---
+
 ## 📱 7. ẢNH HƯỞNG ĐẾN HỆ THỐNG & MOBILE APP (CLIENT-APP)
 
 - **Đến Backend:**
   - Bộ nhớ In-Memory Ring Buffer chỉ lưu 60 mẫu gần nhất $\implies$ chiếm dụng $< 2\text{MB}$ RAM, thời gian tính toán Threat Score chỉ mất $< 0.2\text{ms}$.
   - Điều chỉnh trần dung lượng động, không cần khởi động lại máy chủ.
   - Lưu trữ sự cố trực tiếp vào CSDL PostgreSQL qua kiến trúc Repository hỗ trợ phân trang hiệu năng cao, kèm Fallback tự động khi offline.
+  - Snapshot định kỳ 5 phút lưu trữ nhẹ nhàng vào CSDL, tự động dọn dẹp theo chính sách lưu trữ.
 - **Đến Mobile App (Client-app):**
   - Người dùng bình thường không nhận thấy bất kỳ sự khác biệt nào ngay cả trong giờ cao điểm 1,000 - 2,000 người dùng.
   - Thiết bị nào cố tình gửi request spam hoặc can thiệp token sẽ nhận thông báo bị phong tỏa kèm thời gian đếm ngược còn lại để mở khóa.
@@ -419,7 +443,10 @@ Nhằm tối ưu hóa năng lực điều tra an ninh, phục vụ yêu cầu ki
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 |---|---|---|---|
 | `GET` | `/api/admin/aiops/status` | Lấy Threat Score, 4 điểm vectơ, trạng thái và phân tích | Admin |
-| `GET` | `/api/admin/aiops/history` | Lấy 60 mẫu lịch sử phục vụ vẽ biểu đồ SVG | Admin |
+| `GET` | `/api/admin/aiops/history` | Lấy 60 mẫu lịch sử In-Memory phục vụ vẽ biểu đồ 10 phút | Admin |
+| `GET` | `/api/admin/aiops/trend` | Lấy chuỗi mẫu snapshot theo dải thời gian (`?range=10m\|1h\|24h\|7d\|30d`) | Admin |
+| `GET` | `/api/admin/aiops/vector-thresholds` | Lấy cấu hình ngưỡng cảnh báo & khẩn cấp của 4 vectơ | Admin |
+| `POST` | `/api/admin/aiops/vector-thresholds` | Cập nhật cấu hình ngưỡng cảnh báo & khẩn cấp của 4 vectơ | Admin |
 | `GET` | `/api/admin/aiops/quarantine` | Lấy danh sách toàn bộ các IP/Tài khoản đang bị phong tỏa | Admin |
 | `POST` | `/api/admin/aiops/quarantine` | Chủ động phong tỏa thủ công một nguồn IP/Tài khoản | Admin |
 | `DELETE` | `/api/admin/aiops/quarantine/:hash` | Gỡ chặn và mở khóa kết nối thủ công cho IP (Legacy) | Admin |
@@ -440,3 +467,5 @@ Nhằm tối ưu hóa năng lực điều tra an ninh, phục vụ yêu cầu ki
   - `admin.quarantine_updated`: Thông báo cập nhật khi trạng thái phong tỏa IP/Tài khoản thay đổi.
   - `admin.metrics_stream`: Stream thông số nhịp tim, Threat Score, 4 điểm vectơ và quy mô CCU mỗi 3 giây.
   - `admin.anomaly_detected`: Phát sự kiện thời gian thực khi có sự cố bất thường mới được ghi nhận vào CSDL.
+  - `admin.vector_config_changed`: Phát thông báo khi cấu hình ngưỡng cảnh báo của các vectơ được cập nhật.
+

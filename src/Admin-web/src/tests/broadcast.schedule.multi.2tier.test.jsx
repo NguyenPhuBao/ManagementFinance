@@ -184,7 +184,7 @@ describe('BroadcastPage & Maintenance Schedule Refinements (2-Tier Architecture)
         expect(screen.getByText(/LỊCH BẢO TRÌ SẮP DIỄN RA/i)).toBeInTheDocument();
         // 2. PO QUY ĐỊNH: Form lập lịch VẪN PHẢI HIỆN DIỆN ĐẦY ĐỦ, không bị biến mất!
         expect(screen.getByLabelText(/Thời điểm bắt đầu/i)).toBeInTheDocument();
-        expect(screen.getByLabelText(/Thời điểm kết thúc dự kiến/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/Thời điểm kết thúc/i)).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Lên lịch bảo trì/i })).toBeInTheDocument();
         // 3. Bảng danh sách các lịch hẹn tương lai cũng hiển thị
         expect(screen.getByText(/Danh Sách Lịch Bảo Trì Đã Lên Lịch/i)).toBeInTheDocument();
@@ -258,7 +258,7 @@ describe('BroadcastPage & Maintenance Schedule Refinements (2-Tier Architecture)
       const validEnd = toLocalInputString(now + 7 * 3600 * 1000);
 
       fireEvent.change(screen.getByLabelText(/Thời điểm bắt đầu/i), { target: { value: validStart } });
-      fireEvent.change(screen.getByLabelText(/Thời điểm kết thúc dự kiến/i), { target: { value: validEnd } });
+      fireEvent.change(screen.getByLabelText(/Thời điểm kết thúc/i), { target: { value: validEnd } });
       fireEvent.change(screen.getByPlaceholderText(/Ví dụ: Nâng cấp cụm máy chủ/i), { target: { value: 'Bảo trì hệ thống 5h hợp lệ' } });
 
       const submitBtn = screen.getByRole('button', { name: /Lên lịch bảo trì/i });

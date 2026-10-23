@@ -33,46 +33,61 @@ function formatUptimeDuration(totalSeconds) {
 }
 
 /**
- * Tính % uptime theo chuẩn SLA 30 ngày (Phương án 1 - Chuẩn SLA Công nghiệp được PO duyệt):
- * - Trừ thời gian bảo trì khẩn cấp (Emergency Outage) vào Uptime SLA.
- * - Thời gian hoạt động thực tế (Active Runtime) = Tổng thời gian máy chủ chạy - Thời gian bảo trì khẩn cấp.
- * - Bảo trì định kỳ có báo trước không tính là lỗi vi phạm SLA.
- * @param {number} uptimeSeconds
- * @returns {Promise<{ uptimePercent: number, uptimeSeconds: number, rawUptimeSeconds: number, emergencyDowntimeSec: number, slaWindowDays: number }>}
+ * Tính % uptime theo chuẩn SLA 30 ngày (Chuẩn SLA Công nghiệp được PO phê duyệt):
+ * - Khấu trừ toàn bộ thời gian hệ thống bảo trì (cả Khẩn cấp EMERGENCY lẫn Theo lịch SCHEDULED).
+ * - Cửa sổ SLA chuẩn 30 ngày: 2,592,000 giây.
+ * - Công thức chuẩn: ((2,592,000 - totalDowntimeSeconds) / 2,592,000) * 100.
+ * - Bảo đảm độc lập với số giây khởi động lại của process NodeJS (Zero drop on restart).
+ * @param {number} uptimeSeconds - Số giây process nodejs chạy liên tục
+ * @returns {Promise<{ uptimePercent: number, uptimeSeconds: number, rawUptimeSeconds: number, downtimeSeconds: number, emergencyDowntimeSec: number, slaWindowDays: number }>}
  */
-async function calcUptimePercent(uptimeSeconds) {
+async function calcUptimePercent(uptimeSeconds = 0) {
   const SLA_WINDOW_DAYS = 30;
-  let emergencyDowntimeSec = 0;
+  const TOTAL_SLA_SECONDS = SLA_WINDOW_DAYS * 24 * 3600; // 2,592,000 giây
+  let totalDowntimeSec = 0;
+
   try {
     const { defaultMaintenanceRepository } = require('./maintenance.repository');
-    if (defaultMaintenanceRepository && typeof defaultMaintenanceRepository.getEmergencyDowntimeSeconds === 'function') {
+    if (defaultMaintenanceRepository) {
       const sinceDate = new Date(Date.now() - SLA_WINDOW_DAYS * 24 * 3600 * 1000);
-      emergencyDowntimeSec = await defaultMaintenanceRepository.getEmergencyDowntimeSeconds(sinceDate);
-    }
-  } catch (_) {}
-
-  // Nếu hiện tại đang có phiên bảo trì khẩn cấp ongoing mà chưa kết thúc:
-  try {
-    if (defaultMaintenanceManager.isEmergencyMode() && defaultMaintenanceManager.activatedAt) {
-      const currentOngoing = Math.max(0, Math.floor((Date.now() - new Date(defaultMaintenanceManager.activatedAt).getTime()) / 1000));
-      if (emergencyDowntimeSec === 0) {
-        emergencyDowntimeSec = currentOngoing;
+      if (typeof defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds === 'function') {
+        totalDowntimeSec = await defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds(sinceDate);
+      } else if (typeof defaultMaintenanceRepository.getEmergencyDowntimeSeconds === 'function') {
+        totalDowntimeSec = await defaultMaintenanceRepository.getEmergencyDowntimeSeconds(sinceDate);
       }
     }
   } catch (_) {}
 
-  // Thời gian máy chủ thực tế phục vụ người dùng = Tổng thời gian chạy - Thời gian bảo trì khẩn cấp
-  const activeUptimeSec = Math.max(0, uptimeSeconds - emergencyDowntimeSec);
+  // Nếu hiện tại hệ thống đang trong phiên bảo trì chưa kết thúc (active = true), cộng thêm thời gian đang diễn ra
+  try {
+    if (defaultMaintenanceManager && typeof defaultMaintenanceManager.isMaintenanceActive === 'function' && defaultMaintenanceManager.isMaintenanceActive()) {
+      if (defaultMaintenanceManager.activatedAt) {
+        const ongoingSec = Math.max(0, Math.floor((Date.now() - new Date(defaultMaintenanceManager.activatedAt).getTime()) / 1000));
+        totalDowntimeSec += ongoingSec;
+      }
+    } else if (defaultMaintenanceManager && defaultMaintenanceManager.getStatus) {
+      const status = defaultMaintenanceManager.getStatus();
+      if (status && status.active && status.activatedAt) {
+        const ongoingSec = Math.max(0, Math.floor((Date.now() - new Date(status.activatedAt).getTime()) / 1000));
+        totalDowntimeSec += ongoingSec;
+      }
+    }
+  } catch (_) {}
 
-  // Uptime SLA Khả Dụng thực tế: Tỷ lệ thời gian phục vụ / Tổng thời gian quan sát
-  const totalObserved = Math.max(uptimeSeconds + emergencyDowntimeSec, 1);
-  const rawPercent = (activeUptimeSec / totalObserved) * 100;
+  // Tính % Uptime SLA trong chu kỳ 30 ngày
+  const safeDowntime = Math.max(0, Math.min(totalDowntimeSec, TOTAL_SLA_SECONDS));
+  const availableSeconds = TOTAL_SLA_SECONDS - safeDowntime;
+  const rawPercent = (availableSeconds / TOTAL_SLA_SECONDS) * 100;
   const percent = parseFloat(Math.min(100, Math.max(0, rawPercent)).toFixed(3));
+
+  const rawSec = typeof uptimeSeconds === 'number' && !isNaN(uptimeSeconds) ? Math.floor(uptimeSeconds) : Math.floor(process.uptime());
+
   return {
     uptimePercent: percent,
-    uptimeSeconds: activeUptimeSec,
-    rawUptimeSeconds: uptimeSeconds,
-    emergencyDowntimeSec,
+    uptimeSeconds: rawSec,
+    rawUptimeSeconds: rawSec,
+    downtimeSeconds: safeDowntime,
+    emergencyDowntimeSec: safeDowntime,
     slaWindowDays: SLA_WINDOW_DAYS,
   };
 }
@@ -370,7 +385,7 @@ const adminService = {
       throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" (${canonicalClassify}) đã tồn tại và đang hoạt động trong hệ thống.`), { statusCode: 400 });
     }
 
-    // Nếu phát hiện cặp [Tên danh mục + Loại danh mục] đã bị xóa mềm: tiến hành mở lại (restore) và cập nhật keyword mới
+    // Nếu phát hiện cặp [Tên danh mục + Loại danh mục] đã bị xóa mềm: tiến hành mở lại (restore) và bảo toàn mọi dữ liệu hiện có
     const softDeleted = await prisma.category.findFirst({
       where: {
         name_category: { equals: trimmedName, mode: 'insensitive' },
@@ -381,15 +396,21 @@ const adminService = {
       orderBy: { delete_at: 'desc' },
     });
     if (softDeleted) {
+      // ⚠️ BẢO TOÀN DỮ LIỆU: Nếu data.keyword không truyền hoặc để rỗng, BẮT BUỘC giữ nguyên softDeleted.keyword!
+      const resolvedKeyword = (data.keyword && data.keyword.trim())
+        ? data.keyword.trim()
+        : softDeleted.keyword;
+
       const restored = await prisma.category.update({
         where: { idcategory: softDeleted.idcategory },
         data: {
           name_category: trimmedName,
           classify: canonicalClassify,
-          keyword: data.keyword ? data.keyword.trim() : null,
+          keyword: resolvedKeyword,
           icon: data.icon || softDeleted.icon,
           delete_at: null,
           update_at: new Date(),
+          server_update_at: new Date(),
         },
       });
       const resultData = { id: restored.idcategory, name: restored.name_category, classify: restored.classify, keyword: restored.keyword };
@@ -491,6 +512,25 @@ const adminService = {
       emitCategoryUpdated({ action: 'delete', idcategory });
     } catch (_) {}
     return { id: idcategory };
+  },
+
+  async restoreCategory(idcategory) {
+    const { prisma } = require('../../config/db');
+    const cat = await prisma.category.findUnique({ where: { idcategory } });
+    if (!cat) {
+      throw Object.assign(new Error('Không tìm thấy danh mục'), { statusCode: 404 });
+    }
+    // Bảo vệ quyền riêng tư người dùng: Admin TUYỆT ĐỐI KHÔNG ĐƯỢC PHÉP thao tác trên danh mục của người dùng
+    if (!cat.is_default) {
+      throw Object.assign(new Error('Vi phạm quyền riêng tư: Tuyệt đối cấm thao tác trên danh mục của người dùng.'), { statusCode: 403 });
+    }
+    const restored = await adminRepository.restoreCategory(idcategory);
+    const resultData = { id: restored.idcategory, name: restored.name_category, classify: restored.classify, keyword: restored.keyword };
+    try {
+      const { emitCategoryUpdated } = require('../../core/socket');
+      emitCategoryUpdated({ action: 'create', category: resultData });
+    } catch (_) {}
+    return resultData;
   },
 
   async getLoginStats(params = 'today') {
@@ -815,7 +855,7 @@ const adminService = {
 
     if (!isPinValid && !isPasswordValid) {
       const err = new Error('Mã PIN hoặc mật khẩu quản trị viên không chính xác!');
-      err.statusCode = 401;
+      err.statusCode = 400;
       throw err;
     }
 
@@ -958,6 +998,12 @@ const adminService = {
 
     if (confirmPin && confirmPin.trim() !== newPin.trim()) {
       const err = new Error('Xác nhận mã PIN mới không khớp');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    if (oldPin && newPin.trim() === oldPin.trim()) {
+      const err = new Error('Mã PIN mới không được trùng với mã PIN hiện tại');
       err.statusCode = 400;
       throw err;
     }
@@ -1119,10 +1165,17 @@ const adminService = {
   /**
    * Cấp tài khoản quản trị viên mới (Xác thực mã PIN của admin người cấp)
    */
-  async createAdminAccount({ username, email, pin } = {}, currentUser) {
+  async createAdminAccount({ username, email, pin, fullName, phone, address, countryCode, fullname, country_code } = {}, currentUser) {
     if (!currentUser?.idaccount) {
       const err = new Error('Yêu cầu xác thực tài khoản quản trị viên');
       err.statusCode = 401;
+      throw err;
+    }
+
+    const resolvedFullName = (fullName || fullname || '').trim();
+    if (!resolvedFullName || resolvedFullName.length < 2) {
+      const err = new Error('Họ và tên quản trị viên phải có tối thiểu 2 ký tự');
+      err.statusCode = 400;
       throw err;
     }
 
@@ -1143,6 +1196,16 @@ const adminService = {
       err.statusCode = 400;
       throw err;
     }
+
+    const cleanPhone = phone ? String(phone).trim().replace(/[\s.-]/g, '') : '';
+    if (!cleanPhone || !/^\+?[0-9]{8,15}$/.test(cleanPhone)) {
+      const err = new Error('Số điện thoại không đúng định dạng (từ 8 đến 15 chữ số)');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const resolvedCountryCode = (countryCode || country_code || '+84').toString().trim().slice(0, 4);
+    const resolvedAddress = address && typeof address === 'string' ? address.trim() : null;
 
     if (!pin || typeof pin !== 'string') {
       const err = new Error('Vui lòng nhập mã PIN bảo mật để xác thực quyền cấp tài khoản');
@@ -1169,7 +1232,7 @@ const adminService = {
 
     if (!isPinValid) {
       const err = new Error('Mã PIN bảo mật của bạn không chính xác!');
-      err.statusCode = 401;
+      err.statusCode = 400;
       throw err;
     }
 
@@ -1192,6 +1255,10 @@ const adminService = {
       passwordHash: defaultPasswordHash,
       pinHash: defaultPinHash,
       createdByAdminId: currentUser.idaccount,
+      fullName: resolvedFullName,
+      phone: cleanPhone,
+      address: resolvedAddress,
+      countryCode: resolvedCountryCode,
     });
 
     // Ghi nhận Audit Log
@@ -1201,7 +1268,7 @@ const adminService = {
         data: {
           idaccount: currentUser.idaccount,
           request: 'POST /api/admin/create-admin',
-          action: `[ADMIN_MGMT] Cấp tài khoản quản trị mới: ${newAdmin.username} (${newAdmin.email})`,
+          action: `[ADMIN_MGMT] Cấp tài khoản quản trị mới: ${newAdmin.username} (${newAdmin.fullname || resolvedFullName} - ${newAdmin.email})`,
           req_status: 'Pass',
           reason: `Người cấp: Admin #${currentUser.idaccount}`,
           time_req: new Date(),

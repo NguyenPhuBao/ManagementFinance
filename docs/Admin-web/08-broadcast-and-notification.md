@@ -1,6 +1,7 @@
 # 📢 Chức Năng 08: Phát Sóng Thông Báo & Hộp Thư Cảnh Báo (Broadcast & Notification System)
 
 > **Mã chức năng:** `ADMIN-FEAT-08`  
+> **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/pages/system/BroadcastPage.jsx` (Tab 2), `src/Admin-web/src/components/layout/Header.jsx`  
 > - Backend: `src/Backend/modules/notification/`, `src/Backend/core/socket.js`, `src/Backend/api/notification.routes.js`  

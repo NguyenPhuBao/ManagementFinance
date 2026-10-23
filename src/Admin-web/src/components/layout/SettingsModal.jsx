@@ -53,8 +53,16 @@ const SettingsModal = ({ isOpen, onClose }) => {
 
   // State 3: Modal Cấp Tài Khoản Admin Mới
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
-  const [createAdminStep, setCreateAdminStep] = useState(1); // 1: Info (username, email) | 2: PIN verification | 3: Success result
-  const [createAdminForm, setCreateAdminForm] = useState({ username: '', email: '', pin: '' });
+  const [createAdminStep, setCreateAdminStep] = useState(1); // 1: Info (fullname, username, email, phone, address) | 2: PIN verification | 3: Success result
+  const [createAdminForm, setCreateAdminForm] = useState({
+    username: '',
+    email: '',
+    fullName: '',
+    phone: '',
+    address: '',
+    countryCode: '+84',
+    pin: '',
+  });
   const [createAdminLoading, setCreateAdminLoading] = useState(false);
   const [createAdminError, setCreateAdminError] = useState('');
   const [createdAdminResult, setCreatedAdminResult] = useState(null);
@@ -73,6 +81,10 @@ const SettingsModal = ({ isOpen, onClose }) => {
     }
     if (!/^\d{6}$/.test(pinForm.newPin)) {
       setPinError(t('settings.pinSection.invalidPin', 'Mã PIN mới phải bao gồm đúng 6 chữ số'));
+      return;
+    }
+    if (pinForm.oldPin && pinForm.newPin.trim() === pinForm.oldPin.trim()) {
+      setPinError(t('settings.pinSection.samePin', 'Mã PIN mới không được trùng với mã PIN hiện tại'));
       return;
     }
     if (pinForm.newPin !== pinForm.confirmPin) {
@@ -118,6 +130,10 @@ const SettingsModal = ({ isOpen, onClose }) => {
       setPasswordError(t('settings.passwordSection.invalidPassword', 'Mật khẩu mới phải có ít nhất 6 ký tự'));
       return;
     }
+    if (passwordForm.newPassword === passwordForm.oldPassword) {
+      setPasswordError(t('settings.passwordSection.samePassword', 'Mật khẩu mới không được trùng với mật khẩu hiện tại'));
+      return;
+    }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       setPasswordError(t('settings.passwordSection.mismatchPassword', 'Mật khẩu mới xác nhận không khớp'));
       return;
@@ -148,18 +164,37 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const handleNextCreateAdminStep = (e) => {
     e?.preventDefault?.();
     setCreateAdminError('');
+    const fullNameTrimmed = createAdminForm.fullName?.trim();
     const usernameTrimmed = createAdminForm.username?.trim();
     const emailTrimmed = createAdminForm.email?.trim();
+    const phoneClean = createAdminForm.phone?.trim().replace(/[\s.-]/g, '');
+
+    if (!fullNameTrimmed || fullNameTrimmed.length < 2) {
+      setCreateAdminError(t('settings.createAdmin.requireFullName', 'Họ và tên quản trị viên phải có ít nhất 2 ký tự'));
+      return;
+    }
 
     if (!usernameTrimmed || usernameTrimmed.length < 3) {
       setCreateAdminError(t('settings.createAdmin.requireUsername', 'Tên đăng nhập admin phải có ít nhất 3 ký tự'));
       return;
     }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailTrimmed || !emailRegex.test(emailTrimmed)) {
       setCreateAdminError(t('settings.createAdmin.requireEmail', 'Email không đúng định dạng'));
       return;
     }
+
+    if (!phoneClean) {
+      setCreateAdminError(t('settings.createAdmin.requirePhone', 'Vui lòng nhập số điện thoại quản trị viên'));
+      return;
+    }
+
+    if (!/^\+?[0-9]{8,15}$/.test(phoneClean)) {
+      setCreateAdminError(t('settings.createAdmin.invalidPhone', 'Số điện thoại không đúng định dạng (từ 8 đến 15 chữ số)'));
+      return;
+    }
+
     setCreateAdminStep(2);
   };
 
@@ -174,15 +209,18 @@ const SettingsModal = ({ isOpen, onClose }) => {
 
     setCreateAdminLoading(true);
     try {
-      const res = await adminApi.createAdmin({
+      const payload = {
+        fullName: createAdminForm.fullName.trim(),
         username: createAdminForm.username.trim(),
         email: createAdminForm.email.trim(),
+        phone: createAdminForm.phone.trim().replace(/[\s.-]/g, ''),
+        address: createAdminForm.address?.trim() || null,
+        countryCode: (createAdminForm.countryCode || '+84').trim().slice(0, 4),
         pin: createAdminForm.pin,
-      });
-      setCreatedAdminResult(res.data?.data || {
-        username: createAdminForm.username.trim(),
-        email: createAdminForm.email.trim(),
-      });
+      };
+
+      const res = await adminApi.createAdmin(payload);
+      setCreatedAdminResult(res.data?.data || payload);
       setCreateAdminStep(3);
       alert?.success?.(
         t('settings.createAdmin.successMessage', 'Cấp tài khoản Admin mới thành công!'),
@@ -200,7 +238,15 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const handleCloseCreateAdminModal = () => {
     setShowCreateAdminModal(false);
     setCreateAdminStep(1);
-    setCreateAdminForm({ username: '', email: '', pin: '' });
+    setCreateAdminForm({
+      username: '',
+      email: '',
+      fullName: '',
+      phone: '',
+      address: '',
+      countryCode: '+84',
+      pin: '',
+    });
     setCreateAdminError('');
     setCreatedAdminResult(null);
   };
@@ -637,9 +683,11 @@ const SettingsModal = ({ isOpen, onClose }) => {
                         </label>
                         <input
                           type="password"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           maxLength={6}
                           value={pinForm.oldPin}
-                          onChange={(e) => setPinForm({ ...pinForm, oldPin: e.target.value.replace(/\D/g, '') })}
+                          onChange={(e) => setPinForm({ ...pinForm, oldPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                           placeholder="6 chữ số cũ"
                           className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest"
                         />
@@ -652,9 +700,11 @@ const SettingsModal = ({ isOpen, onClose }) => {
                         </label>
                         <input
                           type="password"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           maxLength={6}
                           value={pinForm.newPin}
-                          onChange={(e) => setPinForm({ ...pinForm, newPin: e.target.value.replace(/\D/g, '') })}
+                          onChange={(e) => setPinForm({ ...pinForm, newPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                           placeholder="6 chữ số mới"
                           className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest"
                           required
@@ -666,9 +716,11 @@ const SettingsModal = ({ isOpen, onClose }) => {
                         </label>
                         <input
                           type="password"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           maxLength={6}
                           value={pinForm.confirmPin}
-                          onChange={(e) => setPinForm({ ...pinForm, confirmPin: e.target.value.replace(/\D/g, '') })}
+                          onChange={(e) => setPinForm({ ...pinForm, confirmPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                           placeholder="Nhập lại 6 số"
                           className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest"
                           required
@@ -860,7 +912,15 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     onClick={() => {
                       setCreateAdminError('');
                       setCreateAdminStep(1);
-                      setCreateAdminForm({ username: '', email: '', pin: '' });
+                      setCreateAdminForm({
+                        username: '',
+                        email: '',
+                        fullName: '',
+                        phone: '',
+                        address: '',
+                        countryCode: '+84',
+                        pin: '',
+                      });
                       setCreatedAdminResult(null);
                       setShowCreateAdminModal(true);
                     }}
@@ -924,10 +984,12 @@ const SettingsModal = ({ isOpen, onClose }) => {
                   </label>
                   <input
                     type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     maxLength={6}
                     data-testid="pin-input-old"
                     value={pinForm.oldPin}
-                    onChange={(e) => setPinForm({ ...pinForm, oldPin: e.target.value.replace(/\D/g, '') })}
+                    onChange={(e) => setPinForm({ ...pinForm, oldPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                     placeholder="6 chữ số cũ"
                     className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest"
                     required
@@ -941,10 +1003,12 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     </label>
                     <input
                       type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       maxLength={6}
                       data-testid="pin-input-new"
                       value={pinForm.newPin}
-                      onChange={(e) => setPinForm({ ...pinForm, newPin: e.target.value.replace(/\D/g, '') })}
+                      onChange={(e) => setPinForm({ ...pinForm, newPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                       placeholder="6 chữ số"
                       className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest"
                       required
@@ -956,10 +1020,12 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     </label>
                     <input
                       type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       maxLength={6}
                       data-testid="pin-input-confirm"
                       value={pinForm.confirmPin}
-                      onChange={(e) => setPinForm({ ...pinForm, confirmPin: e.target.value.replace(/\D/g, '') })}
+                      onChange={(e) => setPinForm({ ...pinForm, confirmPin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                       placeholder="Nhập lại 6 số"
                       className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest"
                       required
@@ -1039,10 +1105,12 @@ const SettingsModal = ({ isOpen, onClose }) => {
                   </label>
                   <input
                     type="password"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     maxLength={6}
                     data-testid="password-input-pin"
                     value={passwordForm.pin}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, pin: e.target.value.replace(/\D/g, '') })}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                     placeholder="Nhập mã PIN cũ của bạn"
                     className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest"
                     required
@@ -1105,7 +1173,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
         {/* ==================== SUB-MODAL 3: CẤP TÀI KHOẢN ADMIN ==================== */}
         {showCreateAdminModal && (
           <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-            <div className="bg-white rounded-2xl border border-outline-variant max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="bg-white rounded-2xl border border-outline-variant max-w-lg w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
               <div className="px-5 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-bright">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -1137,37 +1205,104 @@ const SettingsModal = ({ isOpen, onClose }) => {
                   </div>
                 )}
 
-                {/* BƯỚC 1: NHẬP USERNAME & EMAIL */}
+                {/* BƯỚC 1: NHẬP THÔNG TIN QUẢN TRỊ VIÊN (FULLNAME, USERNAME, EMAIL, PHONE, COUNTRY CODE, ADDRESS) */}
                 {createAdminStep === 1 && (
-                  <form onSubmit={handleNextCreateAdminStep} className="space-y-3.5">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        Tên đăng nhập Admin mới <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        data-testid="create-admin-username"
-                        value={createAdminForm.username}
-                        onChange={(e) => setCreateAdminForm({ ...createAdminForm, username: e.target.value })}
-                        placeholder="VD: admin_finance_2"
-                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary"
-                        required
-                        autoFocus
-                      />
+                  <form onSubmit={handleNextCreateAdminStep} noValidate className="space-y-3.5">
+                    {/* HÀNG 1: FULLNAME & USERNAME (GRID 2 CỘT) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          {t('settings.createAdmin.fullNameLabel', 'Họ và tên quản trị viên')} <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          data-testid="create-admin-fullname"
+                          value={createAdminForm.fullName}
+                          onChange={(e) => setCreateAdminForm({ ...createAdminForm, fullName: e.target.value })}
+                          placeholder={t('settings.createAdmin.fullNamePlaceholder', 'VD: Nguyễn Văn Quản Trị')}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                          required
+                          autoFocus
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          {t('settings.createAdmin.usernameLabel', 'Tên đăng nhập Admin mới')} <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          data-testid="create-admin-username"
+                          value={createAdminForm.username}
+                          onChange={(e) => setCreateAdminForm({ ...createAdminForm, username: e.target.value })}
+                          placeholder={t('settings.createAdmin.usernamePlaceholder', 'VD: admin_finance_2')}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                          required
+                        />
+                      </div>
                     </div>
 
+                    {/* HÀNG 2: EMAIL QUẢN TRỊ VIÊN */}
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        Email quản trị viên <span className="text-rose-500">*</span>
+                        {t('settings.createAdmin.emailLabel', 'Email quản trị viên')} <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="email"
                         data-testid="create-admin-email"
                         value={createAdminForm.email}
                         onChange={(e) => setCreateAdminForm({ ...createAdminForm, email: e.target.value })}
-                        placeholder="admin2@domain.com"
+                        placeholder={t('settings.createAdmin.emailPlaceholder', 'admin2@domain.com')}
                         className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                         required
+                      />
+                    </div>
+
+                    {/* HÀNG 3: MÃ VÙNG / QUỐC GIA (1/3) & SỐ ĐIỆN THOẠI (2/3) */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="col-span-1">
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          {t('settings.createAdmin.countryCodeLabel', 'Mã vùng')}
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={4}
+                          data-testid="create-admin-country-code"
+                          value={createAdminForm.countryCode}
+                          onChange={(e) => setCreateAdminForm({ ...createAdminForm, countryCode: e.target.value.slice(0, 4) })}
+                          placeholder={t('settings.createAdmin.countryCodePlaceholder', '+84')}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono text-center"
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          {t('settings.createAdmin.phoneLabel', 'Số điện thoại')} <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="tel"
+                          data-testid="create-admin-phone"
+                          value={createAdminForm.phone}
+                          onChange={(e) => setCreateAdminForm({ ...createAdminForm, phone: e.target.value })}
+                          placeholder={t('settings.createAdmin.phonePlaceholder', 'VD: 0912345678')}
+                          className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* HÀNG 4: ĐỊA CHỈ LIÊN HỆ */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        {t('settings.createAdmin.addressLabel', 'Địa chỉ liên hệ')}
+                      </label>
+                      <input
+                        type="text"
+                        data-testid="create-admin-address"
+                        value={createAdminForm.address}
+                        onChange={(e) => setCreateAdminForm({ ...createAdminForm, address: e.target.value })}
+                        placeholder={t('settings.createAdmin.addressPlaceholder', 'VD: 123 Nguyễn Huệ, Quận 1, TP.HCM')}
+                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
 
@@ -1201,8 +1336,12 @@ const SettingsModal = ({ isOpen, onClose }) => {
                 {/* BƯỚC 2: XÁC THỰC MÃ PIN CỦA ADMIN HIỆN TẠI */}
                 {createAdminStep === 2 && (
                   <form onSubmit={handleConfirmCreateAdmin} className="space-y-3.5">
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                      <div className="font-semibold text-slate-700">Thông tin cấp quyền:</div>
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
+                      <div className="font-semibold text-slate-700 pb-1 border-b border-slate-200/60">Thông tin cấp quyền quản trị:</div>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">Họ và tên:</span>
+                        <strong className="text-slate-900">{createAdminForm.fullName}</strong>
+                      </div>
                       <div className="flex justify-between text-[11px]">
                         <span className="text-slate-500">Tài khoản:</span>
                         <strong className="text-slate-900 font-mono">{createAdminForm.username}</strong>
@@ -1211,6 +1350,16 @@ const SettingsModal = ({ isOpen, onClose }) => {
                         <span className="text-slate-500">Email:</span>
                         <strong className="text-slate-900">{createAdminForm.email}</strong>
                       </div>
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">Số điện thoại:</span>
+                        <strong className="text-slate-900 font-mono">{(createAdminForm.countryCode || '+84')} {createAdminForm.phone}</strong>
+                      </div>
+                      {createAdminForm.address && (
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-500">Địa chỉ:</span>
+                          <strong className="text-slate-900">{createAdminForm.address}</strong>
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -1219,10 +1368,12 @@ const SettingsModal = ({ isOpen, onClose }) => {
                       </label>
                       <input
                         type="password"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         maxLength={6}
                         data-testid="create-admin-pin-auth"
                         value={createAdminForm.pin}
-                        onChange={(e) => setCreateAdminForm({ ...createAdminForm, pin: e.target.value.replace(/\D/g, '') })}
+                        onChange={(e) => setCreateAdminForm({ ...createAdminForm, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                         placeholder="6 chữ số PIN của bạn"
                         className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest text-center text-sm"
                         required
@@ -1270,12 +1421,23 @@ const SettingsModal = ({ isOpen, onClose }) => {
 
                     <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
                       <div className="flex justify-between pb-1 border-b border-slate-200/60">
+                        <span className="text-slate-500">Họ và tên:</span>
+                        <strong className="text-slate-900">{createdAdminResult.fullname || createdAdminResult.fullName || createAdminForm.fullName}</strong>
+                      </div>
+                      <div className="flex justify-between pb-1 border-b border-slate-200/60">
                         <span className="text-slate-500">Tên đăng nhập:</span>
                         <strong className="font-mono text-slate-900">{createdAdminResult.username}</strong>
                       </div>
                       <div className="flex justify-between pb-1 border-b border-slate-200/60">
                         <span className="text-slate-500">Email:</span>
                         <strong className="text-slate-900">{createdAdminResult.email}</strong>
+                      </div>
+                      <div className="flex justify-between pb-1 border-b border-slate-200/60">
+                        <span className="text-slate-500">Số điện thoại:</span>
+                        <strong className="font-mono text-slate-900">
+                          {(createdAdminResult.country_code || createdAdminResult.countryCode || createAdminForm.countryCode || '+84')}{' '}
+                          {createdAdminResult.phone || createAdminForm.phone}
+                        </strong>
                       </div>
                       <div className="flex justify-between pb-1 border-b border-slate-200/60">
                         <span className="text-slate-500">Mật khẩu khởi đầu:</span>

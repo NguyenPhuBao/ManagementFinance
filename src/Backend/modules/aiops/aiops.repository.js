@@ -11,10 +11,11 @@ class AIOpsIncidentRepository {
     this.pool = options.pool !== undefined ? options.pool : pool;
     this._inMemoryFallback = []; // Dự phòng an toàn cho môi trường test khi không có CSDL
     this._settingsFallback = new Map([['target_concurrency', '1000']]); // Lưu cứng mặc định 1,000 CCU
+    this._snapshotFallback = []; // Dự phòng lưu trữ mẫu định kỳ cho môi trường test
   }
 
   /**
-   * Khởi tạo bảng CSDL aiops_incident và aiops_setting nếu chưa tồn tại
+   * Khởi tạo bảng CSDL aiops_incident, aiops_setting và aiops_metric_snapshot nếu chưa tồn tại
    */
   async initTable() {
     if (!this.pool || typeof this.pool.query !== 'function') return false;
@@ -58,10 +59,26 @@ class AIOpsIncidentRepository {
       INSERT INTO "aiops_setting" ("key", "value", "updated_at")
       VALUES ('target_concurrency', '1000', NOW())
       ON CONFLICT ("key") DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS "aiops_metric_snapshot" (
+        "id" VARCHAR(64) PRIMARY KEY,
+        "threat_score" INT NOT NULL DEFAULT 0,
+        "auth_score" INT NOT NULL DEFAULT 0,
+        "traffic_score" INT NOT NULL DEFAULT 0,
+        "exploit_score" INT NOT NULL DEFAULT 0,
+        "resource_score" INT NOT NULL DEFAULT 0,
+        "requests_per_min" INT NOT NULL DEFAULT 0,
+        "cpu_percent" INT NOT NULL DEFAULT 0,
+        "ram_percent" INT NOT NULL DEFAULT 0,
+        "event_loop_lag_ms" INT NOT NULL DEFAULT 0,
+        "is_anomaly" BOOLEAN NOT NULL DEFAULT FALSE,
+        "recorded_at" TIMESTAMP(6) NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS "idx_aiops_metric_snapshot_recorded_at" ON "aiops_metric_snapshot"("recorded_at" DESC);
     `;
     try {
       await this.pool.query(sql);
-      logger.info('[AIOps Repository] Các bảng aiops_incident & aiops_setting đã sẵn sàng trong PostgreSQL.');
+      logger.info('[AIOps Repository] Các bảng aiops_incident, aiops_setting & aiops_metric_snapshot đã sẵn sàng trong PostgreSQL.');
       return true;
     } catch (err) {
       logger.warn('[AIOps Repository] Không thể khởi tạo bảng aiops_incident / aiops_setting (dùng fallback bộ nhớ)', { error: err.message });
@@ -528,6 +545,120 @@ class AIOpsIncidentRepository {
     } catch (err) {
       logger.warn('[AIOps Repository] Lỗi lưu cài đặt vào CSDL PostgreSQL', { key, value, error: err.message });
       return false;
+    }
+  }
+
+  /**
+   * Lưu snapshot metric định kỳ vào bảng aiops_metric_snapshot (PostgreSQL)
+   */
+  async saveMetricSnapshot(snapshot = {}) {
+    const id = snapshot.id || `snp_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const threatScore = Math.round(Number(snapshot.threatScore) || 0);
+    const authScore = Math.round(Number(snapshot.authScore) || 0);
+    const trafficScore = Math.round(Number(snapshot.trafficScore) || 0);
+    const exploitScore = Math.round(Number(snapshot.exploitScore) || 0);
+    const resourceScore = Math.round(Number(snapshot.resourceScore) || 0);
+    const requestsPerMin = Math.round(Number(snapshot.requestsPerMin) || 0);
+    const cpuPercent = Math.round(Number(snapshot.cpuPercent) || 0);
+    const ramPercent = Math.round(Number(snapshot.ramPercent) || 0);
+    const eventLoopLagMs = Math.round(Number(snapshot.eventLoopLagMs) || 0);
+    const isAnomaly = Boolean(snapshot.isAnomaly);
+    const recordedAt = snapshot.recordedAt ? new Date(snapshot.recordedAt) : new Date();
+
+    const record = {
+      id,
+      threatScore,
+      authScore,
+      trafficScore,
+      exploitScore,
+      resourceScore,
+      requestsPerMin,
+      cpuPercent,
+      ramPercent,
+      eventLoopLagMs,
+      isAnomaly,
+      timestamp: recordedAt.toISOString(),
+      recordedAt,
+    };
+
+    this._snapshotFallback.push(record);
+    // Giới hạn buffer fallback trong bộ nhớ tối đa 10,000 bản ghi (~35 ngày)
+    if (this._snapshotFallback.length > 10000) {
+      this._snapshotFallback.shift();
+    }
+
+    if (!this.pool || typeof this.pool.query !== 'function') {
+      return record;
+    }
+
+    try {
+      const sql = `
+        INSERT INTO "aiops_metric_snapshot" (
+          "id", "threat_score", "auth_score", "traffic_score", "exploit_score", "resource_score",
+          "requests_per_min", "cpu_percent", "ram_percent", "event_loop_lag_ms", "is_anomaly", "recorded_at"
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+      `;
+      await this.pool.query(sql, [
+        id, threatScore, authScore, trafficScore, exploitScore, resourceScore,
+        requestsPerMin, cpuPercent, ramPercent, eventLoopLagMs, isAnomaly, recordedAt
+      ]);
+      return record;
+    } catch (err) {
+      logger.warn('[AIOps Repository] Không thể lưu metric snapshot vào PostgreSQL, dùng bộ nhớ', { error: err.message });
+      return record;
+    }
+  }
+
+  /**
+   * Lấy lịch sử snapshot metric từ CSDL PostgreSQL trong khoảng thời gian [startTime, endTime]
+   */
+  async getMetricSnapshots(startTime, endTime) {
+    const start = startTime ? new Date(startTime) : new Date(Date.now() - 24 * 3600 * 1000);
+    const end = endTime ? new Date(endTime) : new Date();
+
+    if (!this.pool || typeof this.pool.query !== 'function') {
+      return this._snapshotFallback
+        .filter((s) => {
+          const t = new Date(s.recordedAt || s.timestamp).getTime();
+          return t >= start.getTime() && t <= end.getTime();
+        })
+        .sort((a, b) => new Date(a.recordedAt || a.timestamp) - new Date(b.recordedAt || b.timestamp));
+    }
+
+    try {
+      const sql = `
+        SELECT 
+          "id", "threat_score", "auth_score", "traffic_score", "exploit_score", "resource_score",
+          "requests_per_min", "cpu_percent", "ram_percent", "event_loop_lag_ms", "is_anomaly", "recorded_at"
+        FROM "aiops_metric_snapshot"
+        WHERE "recorded_at" >= $1 AND "recorded_at" <= $2
+        ORDER BY "recorded_at" ASC;
+      `;
+      const res = await this.pool.query(sql, [start, end]);
+      return (res.rows || []).map((row) => ({
+        id: row.id,
+        threatScore: Number(row.threat_score) || 0,
+        authScore: Number(row.auth_score) || 0,
+        trafficScore: Number(row.traffic_score) || 0,
+        exploitScore: Number(row.exploit_score) || 0,
+        resourceScore: Number(row.resource_score) || 0,
+        requestsPerMin: Number(row.requests_per_min) || 0,
+        cpuPercent: Number(row.cpu_percent) || 0,
+        ramPercent: Number(row.ram_percent) || 0,
+        eventLoopLagMs: Number(row.event_loop_lag_ms) || 0,
+        isAnomaly: Boolean(row.is_anomaly),
+        timestamp: new Date(row.recorded_at).toISOString(),
+        recordedAt: new Date(row.recorded_at),
+      }));
+    } catch (err) {
+      logger.warn('[AIOps Repository] Lỗi lấy metric snapshot từ CSDL, fallback sang bộ nhớ', { error: err.message });
+      return this._snapshotFallback
+        .filter((s) => {
+          const t = new Date(s.recordedAt || s.timestamp).getTime();
+          return t >= start.getTime() && t <= end.getTime();
+        })
+        .sort((a, b) => new Date(a.recordedAt || a.timestamp) - new Date(b.recordedAt || b.timestamp));
     }
   }
 }

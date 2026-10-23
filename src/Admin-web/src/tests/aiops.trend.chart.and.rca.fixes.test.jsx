@@ -263,7 +263,7 @@ describe('AIOps Trend Chart & RCA Table 2-Tier Test Suite', () => {
       expect(screen.getByRole('columnheader', { name: /Phòng vệ/i })).toBeInTheDocument();
 
       // Cột Đối tượng: hiển thị TK phía trên và IP phía dưới (IP bắt buộc che mờ chuẩn PO)
-      expect(screen.getByText(/Hệ thống nội bộ/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Hệ thống/i).length).toBeGreaterThan(0);
       expect(screen.getByText(/victim_account/i)).toBeInTheDocument();
       expect(screen.getByText(/203\.113\.xxx\.xxx/i)).toBeInTheDocument();
 

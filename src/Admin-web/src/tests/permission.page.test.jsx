@@ -70,12 +70,12 @@ describe('Admin-web Permission Suite — PermissionManagementPage (AIOps Style)'
     });
   });
 
-  it('1.1. Render đầy đủ tiêu đề, thanh công cụ tối giản và bảng ma trận', async () => {
+  it('1.1. Render đầy đủ tiêu đề Phân quyền dịch vụ, thanh công cụ tối giản và bảng ma trận (không có nút refresh)', async () => {
     render(<PermissionManagementPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Phân Quyền Gói Cước/i)).toBeInTheDocument();
-      expect(screen.getByTestId('btn-refresh')).toBeInTheDocument();
+      expect(screen.getByText(/Phân quyền dịch vụ/i)).toBeInTheDocument();
+      expect(screen.queryByTestId('btn-refresh')).not.toBeInTheDocument();
       expect(screen.getByTestId('btn-reset-default')).toBeInTheDocument();
       expect(screen.getByTestId('btn-save-permissions')).toBeInTheDocument();
     });

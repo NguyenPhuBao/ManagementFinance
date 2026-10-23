@@ -1,6 +1,7 @@
 # 🤖 Chức Năng 10: Trợ Lý Tài Chính Thông Minh & Điểm Sức Khỏe FHS (AI Copilot & Financial Health Intelligence)
 
 > **Mã chức năng:** `ADMIN-FEAT-10`  
+> **Phiên bản:** `v2.6 (23/10/2026)`  
 > **Trạng thái trên Admin-web:** ⚠️ **ĐÃ LOẠI BỎ KHỎI GIAO DIỆN ADMIN-WEB THEO QUYẾT ĐỊNH CỦA PO**  
 > **Phạm vi bảo lưu:** Giữ nguyên 100% mã nguồn và dịch vụ Backend để phục vụ ứng dụng di động (`src/Client-app`).  
 > **Module liên quan:**  

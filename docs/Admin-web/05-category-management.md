@@ -1,8 +1,9 @@
 # 🏷️ Chức Năng 05: Quản Lý Danh Mục Hệ Thống & Bảo Vệ Quyền Riêng Tư (Category Management & Privacy Defense)
 
 > **Mã chức năng:** `ADMIN-FEAT-05`  
+> **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
-> - Frontend: `src/Admin-web/src/pages/categories/CategoryPage.jsx`  
+> - Frontend: `src/Admin-web/src/pages/categories/CategoryPage.jsx`, `SecurityConfirmModal.jsx`  
 > - Backend: `src/Backend/modules/admin/admin.service.js`, `admin.repository.js`, `admin.controller.js`  
 
 ---
@@ -71,15 +72,15 @@ graph TD
   2. **`Chi` (`expense`):** Danh mục chi tiêu (Ăn uống, Đi lại, Mua sắm, Y tế, Giáo dục).
   3. **`Vay/no` (`debt`):** Danh mục công nợ (Cho vay, Đi vay, Trả nợ, Thu nợ).
 
-### 2.2. Cơ Chế Chống Trùng Lặp & Tự Động Phục Hồi (Auto-Restore on Re-create)
-Để tránh tình trạng duplicate dữ liệu:
+### 2.2. Cơ Chế Chống Trùng Lặp & Tự Động Phục Hồi Bảo Toàn Từ Khóa AI (Auto-Restore on Re-create)
+Để tránh tình trạng duplicate dữ liệu và suy giảm trí tuệ AI:
 1. Khi Admin tạo danh mục `"Tiền Điện"`, Backend kiểm tra trong các danh mục hệ thống đang active (`delete_at: null`). Nếu đã có danh mục cùng tên (so sánh không phân biệt hoa thường - `mode: 'insensitive'`), hệ thống báo lỗi HTTP 400.
-2. Nếu danh mục `"Tiền Điện"` đã từng bị xóa mềm trong quá khứ (`delete_at: { not: null }`), hệ thống **tự động phục hồi bản ghi cũ**, cập nhật lại `delete_at = null`, gán icon và từ khóa mới. Cơ chế này giúp giữ nguyên khóa chính `idcategory`, bảo toàn tính toàn vẹn cho các giao dịch lịch sử trước đây từng liên kết với danh mục này.
+2. Nếu danh mục `"Tiền Điện"` đã từng bị xóa mềm trong quá khứ (`delete_at: { not: null }`), hệ thống **tự động phục hồi bản ghi cũ**, cập nhật lại `delete_at = null`, gán icon mới và **bắt buộc bảo toàn bộ từ khóa AI (`keyword`) cũ** nếu Admin không nhập từ khóa mới. Cơ chế này giúp giữ nguyên khóa chính `idcategory`, bảo toàn tính toàn vẹn cho các giao dịch lịch sử trước đây và không làm gãy đổ khả năng nhận diện OCR/SMS của Mobile Client-app.
 
 ### 2.3. Phòng Vệ Chiều Sâu 3 Tầng (Defense-in-Depth Privacy) & Cơ Chế Hiển Thị Xóa Mềm
 - **Tầng 1 (Query Level & Soft-Delete Visibility):** Mọi câu lệnh truy vấn từ Admin Repository luôn bắt buộc có điều kiện `where: { is_default: true }` để bảo vệ quyền riêng tư người dùng. Đặc biệt, hệ thống giữ lại các danh mục hệ thống đã bị xóa mềm (`delete_at !== null`) để hiển thị trên màn hình quản lý kèm nhãn trạng thái `"Đã xóa"` (thay vì làm biến mất khỏi giao diện), giúp quản trị viên theo dõi toàn diện lịch sử danh mục.
 - **Tầng 2 (Masking Fallback):** Nếu vì lỗi hệ thống hoặc dữ liệu bất thường mà một danh mục của người dùng lọt vào kết quả, service tự động che tên và từ khóa thành `***` trước khi gửi ra response.
-- **Tầng 3 (Mutation Guard):** Tại API Update và Delete, service kiểm tra cờ `if (!currentCat.is_default)`. Nếu phát hiện là danh mục cá nhân của người dùng, server lập tức ném lỗi HTTP 403: *"Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa/xóa danh mục của người dùng"*. Với danh mục đã bị xóa mềm, hệ thống vô hiệu hóa các nút Sửa/Xóa trên giao diện và chặn can thiệp tiếp.
+- **Tầng 3 (Mutation Guard):** Tại API Update và Delete, service kiểm tra cờ `if (!currentCat.is_default)`. Nếu phát hiện là danh mục cá nhân của người dùng, server lập tức ném lỗi HTTP 403: *"Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa/xóa danh mục của người dùng"*. Với danh mục đã bị xóa mềm, hệ thống vô hiệu hóa các nút Sửa/Xóa và chỉ cho phép kích hoạt nút Khôi Phục (Restore).
 
 ---
 
@@ -107,7 +108,7 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
 ## ⛔ 4. CÁC RÀNG BUỘC KỸ THUẬT
 
 1. **Ràng buộc tên danh mục:** Độ dài từ 2 đến 50 ký tự, không được chỉ chứa khoảng trắng.
-2. **Ràng buộc un-link danh mục con khi xóa Group:** Nếu xóa một danh mục cha (`is_group = true`), toàn bộ danh mục con trực thuộc sẽ được tự động tách độc lập (`updateMany: idgroup = null`), không gây lỗi ràng buộc khóa ngoại (Foreign Key Constraint).
+2. **Bảo toàn liên kết phân cấp cha - con khi xóa Group (Không un-link idgroup):** Theo chuẩn kiến trúc mới được PO phê duyệt, khi xóa mềm danh mục cha (`is_group = true`), hệ thống **tuyệt đối KHÔNG gỡ bỏ liên kết `idgroup = null`** của các danh mục con. Toàn bộ danh mục con vẫn giữ nguyên `idgroup` trỏ về danh mục cha, đảm bảo khi Admin bấm khôi phục danh mục cha thì toàn bộ cấu trúc cây thư mục phân cấp được phục hồi nguyên vẹn 100%.
 3. **Admin chỉ tạo danh mục hệ thống:** Toàn bộ danh mục tạo từ Admin-web đều bắt buộc gán `is_default = true`.
 
 ---
@@ -136,6 +137,10 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
    - Cảnh báo rõ việc xóa là Soft Delete, không làm mất giao dịch lịch sử của người dùng.
 4. **Nút 'Làm Mới' Trên Thanh Công Cụ (`Refresh Button`):**
    - Theo quyết định của PO (Mục 05): Bỏ lắng nghe Real-time Socket.io vì danh mục hệ thống có tần suất thay đổi rất thấp; trang bị nút "Làm mới" trực tiếp trên toolbar (`title="Làm mới danh sách danh mục"`) kèm biểu tượng xoay khi đang tải, cho phép Admin chủ động tải lại danh sách khi cần.
+5. **Nút Khôi Phục Danh Mục Trực Tiếp & Staged Changes PIN Guard:**
+   - Tại cột Thao tác của các hàng danh mục đã bị xóa mềm, hệ thống trang bị nút **"Khôi phục"** (Icon `settings_backup_restore`).
+   - Khi bấm, danh mục chuyển sang trạng thái nháp phục hồi với badge `Đã khôi phục (nháp)`, đưa vào danh sách thay đổi tạm lưu (`stagedChanges.restored`).
+   - Khi Admin nhấn "Lưu thay đổi", hệ thống hiển thị popup `SecurityConfirmModal` bắt buộc xác thực mã PIN quản trị viên trước khi phát lệnh khôi phục xuống cơ sở dữ liệu.
 
 ---
 
@@ -156,9 +161,10 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 |---|---|---|---|
 | `GET` | `/api/admin/getcategory` | Lấy danh sách danh mục mặc định hệ thống | Admin |
-| `POST` | `/api/admin/addcategory` | Tạo mới hoặc phục hồi danh mục hệ thống | Admin |
+| `POST` | `/api/admin/addcategory` | Tạo mới hoặc phục hồi danh mục hệ thống (bảo toàn keyword) | Admin |
 | `PUT` | `/api/admin/updatecategory/:id` | Cập nhật thông tin danh mục hệ thống | Admin |
-| `DELETE` | `/api/admin/deletecategory/:id` | Xóa mềm danh mục hệ thống | Admin |
+| `DELETE` | `/api/admin/deletecategory/:id` | Xóa mềm danh mục hệ thống (bảo toàn idgroup con) | Admin |
+| `PATCH` / `POST` | `/api/admin/restorecategory/:id` | Khôi phục danh mục đã xóa mềm (yêu cầu mã PIN) | Admin |
 
 ### Phương Thức Đồng Bộ (Sync Strategy)
 - **Cơ chế:** Kéo thủ công qua nút "Làm mới" (Manual Pull via REST API).

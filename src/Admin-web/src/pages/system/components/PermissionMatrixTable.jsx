@@ -85,25 +85,17 @@ const PermissionMatrixTable = ({
         {/* Nếu không phải subRow (tức là chế độ xem đơn gói), hiển thị cột Feature */}
         {!isSubRow && (
           <td className="py-2.5 px-3.5 align-middle">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-semibold text-slate-900">{f.name}</span>
-                <code className="text-[10px] font-mono px-1 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                  {f.id}
-                </code>
-                <span
-                  className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                    isLimitType
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'bg-purple-50 text-purple-700 border border-purple-200'
-                  }`}
-                >
-                  {isLimitType ? 'LIMIT' : 'TOGGLE'}
-                </span>
-              </div>
-              {f.description && (
-                <span className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{f.description}</span>
-              )}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-semibold text-slate-900">{f.name}</span>
+              <span
+                className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                  isLimitType
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'bg-purple-50 text-purple-700 border border-purple-200'
+                }`}
+              >
+                {isLimitType ? 'LIMIT' : 'TOGGLE'}
+              </span>
             </div>
           </td>
         )}
@@ -306,28 +298,18 @@ const PermissionMatrixTable = ({
                       }`}
                     >
                       {/* Cột 1: Thông tin tính năng gộp 2 hàng */}
-                      <td rowSpan={2} className="py-2.5 px-3.5 align-top border-r border-slate-100 bg-white">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-semibold text-slate-900 text-xs">{f.name}</span>
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                                isLimitType
-                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                  : 'bg-purple-50 text-purple-700 border border-purple-200'
-                              }`}
-                            >
-                              {isLimitType ? 'LIMIT' : 'TOGGLE'}
-                            </span>
-                          </div>
-                          <code className="text-[10px] font-mono text-slate-500">
-                            {f.id}
-                          </code>
-                          {f.description && (
-                            <span className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">
-                              {f.description}
-                            </span>
-                          )}
+                      <td rowSpan={2} className="py-2.5 px-3.5 align-middle border-r border-slate-100 bg-white">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-slate-900 text-xs">{f.name}</span>
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                              isLimitType
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : 'bg-purple-50 text-purple-700 border border-purple-200'
+                            }`}
+                          >
+                            {isLimitType ? 'LIMIT' : 'TOGGLE'}
+                          </span>
                         </div>
                       </td>
 

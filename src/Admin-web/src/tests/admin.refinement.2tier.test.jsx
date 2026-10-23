@@ -278,6 +278,9 @@ describe('Admin-web Refinement 2-Tier Test Suite (Issue Logs Verification)', () 
             idaccount: 99,
             username: 'junior_admin',
             email: 'junior@finance.local',
+            fullname: 'Junior Administrator',
+            phone: '0912345678',
+            country_code: '+84',
             is_first_login: true,
           },
         },
@@ -288,9 +291,11 @@ describe('Admin-web Refinement 2-Tier Test Suite (Issue Logs Verification)', () 
       fireEvent.click(screen.getByTestId('settings-tab-admin_mgmt'));
       fireEvent.click(screen.getByTestId('open-create-admin-btn'));
 
-      // Bước 1: Nhập username và email
+      // Bước 1: Nhập fullName, username, email và phone
+      fireEvent.change(screen.getByTestId('create-admin-fullname'), { target: { value: 'Junior Administrator' } });
       fireEvent.change(screen.getByTestId('create-admin-username'), { target: { value: 'junior_admin' } });
       fireEvent.change(screen.getByTestId('create-admin-email'), { target: { value: 'junior@finance.local' } });
+      fireEvent.change(screen.getByTestId('create-admin-phone'), { target: { value: '0912345678' } });
       fireEvent.click(screen.getByTestId('btn-next-create-admin'));
 
       // Bước 2: Nhập PIN phê duyệt của admin người cấp
@@ -300,11 +305,15 @@ describe('Admin-web Refinement 2-Tier Test Suite (Issue Logs Verification)', () 
       fireEvent.change(screen.getByTestId('create-admin-pin-auth'), { target: { value: '888888' } });
       fireEvent.click(screen.getByTestId('submit-create-admin-btn'));
 
-      // Tầng 2: Xác nhận gọi adminApi.createAdmin
+      // Tầng 2: Xác nhận gọi adminApi.createAdmin với đầy đủ các trường
       await waitFor(() => {
         expect(adminApi.createAdmin).toHaveBeenCalledWith({
+          fullName: 'Junior Administrator',
           username: 'junior_admin',
           email: 'junior@finance.local',
+          phone: '0912345678',
+          address: null,
+          countryCode: '+84',
           pin: '888888',
         });
       });
@@ -313,6 +322,7 @@ describe('Admin-web Refinement 2-Tier Test Suite (Issue Logs Verification)', () 
       await waitFor(() => {
         expect(screen.getByText(/Cấp Tài Khoản Admin Thành Công!/i)).toBeInTheDocument();
         expect(screen.getByText('junior_admin')).toBeInTheDocument();
+        expect(screen.getByText('Junior Administrator')).toBeInTheDocument();
         expect(screen.getAllByText('123456').length).toBeGreaterThanOrEqual(2); // pass & pin
       });
     });

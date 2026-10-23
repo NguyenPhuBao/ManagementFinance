@@ -1,8 +1,9 @@
 # 👥 Chức Năng 04: Quản Lý Người Dùng & Vòng Đời Tài Khoản (User Management & Lifecycle)
 
 > **Mã chức năng:** `ADMIN-FEAT-04`  
+> **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
-> - Frontend: `src/Admin-web/src/pages/users/UserListPage.jsx`, `UserDetailPage.jsx`, `src/Admin-web/src/components/common/UserDetailModal.jsx`  
+> - Frontend: `src/Admin-web/src/pages/users/UserListPage.jsx`, `UserDetailPage.jsx`, `src/Admin-web/src/components/common/UserDetailModal.jsx`, `SecurityConfirmModal.jsx`  
 > - Backend: `src/Backend/modules/admin/admin.service.js`, `admin.repository.js`, `admin.controller.js`, `src/Backend/utils/masking.util.js`, `src/Backend/utils/content-filter.util.js`  
 
 ---
@@ -116,8 +117,9 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
      - `Inactive`: `bg-slate-100 text-slate-700 border-slate-200`
      - `PendingDelete`: `bg-amber-50 text-amber-800 border-amber-200/80`
      - `Deleted`: `bg-rose-50 text-rose-700 border-rose-200/80`
-   - **Bộ Lọc Nâng Cao:** Hỗ trợ tìm kiếm realtime đa trường (Họ tên, Email, SĐT, Username) và lọc theo gói cước (`All`, `Basic`, `Premium`, `VIP`).
+   - **Bộ Lọc Nâng Cao:** Hỗ trợ tìm kiếm realtime đa trường (Họ tên, Email, SĐT, Username) và lọc theo gói cước chuẩn hóa (`Tất Cả`, `Basic`, `Premium`).
    - **Phân Trang Tiêu Chuẩn:** Tùy chọn 5, 10, 20 hoặc 50 người dùng/trang với bộ điều hướng linh hoạt `Pagination`.
+   - **Xác Thực PIN Bảo Mật Cấp 2:** Mọi thao tác khóa tài khoản hoặc xóa mềm người dùng đều kích hoạt `SecurityConfirmModal` yêu cầu nhập đúng mã PIN quản trị viên trước khi thực thi.
 2. **Modal & Trang Chi Tiết Người Dùng (`UserDetailModal.jsx` / `UserDetailPage.jsx`):**
    - Hiển thị ngày tạo tài khoản, ngày cập nhật, gói tài khoản, lý do khóa và số ngày đếm ngược chờ xóa.
 3. **Modal Khóa Tài Khoản Kèm Kiểm Tra Ràng Buộc:**

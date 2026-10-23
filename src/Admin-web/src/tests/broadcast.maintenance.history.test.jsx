@@ -96,25 +96,21 @@ describe('BroadcastPage - Emergency Maintenance & History Journal Suite', () => 
     );
   };
 
-  it('1. Đã bỏ box "Kích Hoạt Bảo Trì Khẩn Cấp", có Checkbox "Bảo trì khẩn cấp" đổi nút động sang đỏ', async () => {
+  it('1. Đã bỏ box "Kích Hoạt Bảo Trì Khẩn Cấp", Form lên lịch có đầy đủ trường bắt đầu, kết thúc, lý do và không có checkbox thừa', async () => {
     renderComponent();
 
     // Xác nhận ĐÃ BỎ box Kích Hoạt Bảo Trì Khẩn Cấp
     expect(screen.queryByText('Kích Hoạt Bảo Trì Khẩn Cấp')).not.toBeInTheDocument();
 
-    // Có Checkbox Tự động phát thông báo và Bảo trì khẩn cấp
-    expect(screen.getByRole('checkbox', { name: /Tự động phát thông báo/i })).toBeInTheDocument();
-    const emergencyCheckbox = screen.getByRole('checkbox', { name: /Bảo trì khẩn cấp/i });
-    expect(emergencyCheckbox).toBeInTheDocument();
+    // Checkbox "Bảo trì khẩn cấp" mới theo yêu cầu PO và không còn checkbox notify cũ
+    expect(screen.getByRole('checkbox', { name: /Bảo trì khẩn cấp/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Phát thông báo qua socket/i)).not.toBeInTheDocument();
 
-    // Ban đầu chưa tick: Nút là "Lên lịch bảo trì"
+    // Form lên lịch hiển thị đầy đủ các trường và nút submit
+    expect(screen.getByLabelText(/Thời điểm bắt đầu/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Thời điểm kết thúc/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nội dung \/ Lý do/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Lên lịch bảo trì/i })).toBeInTheDocument();
-
-    // Tick checkbox Bảo trì khẩn cấp: Nút tự động đổi sang Nút Đỏ "Bảo trì khẩn cấp"
-    fireEvent.click(emergencyCheckbox);
-    const emergencyBtn = screen.getByRole('button', { name: /Bảo trì khẩn cấp/i });
-    expect(emergencyBtn).toBeInTheDocument();
-    expect(emergencyBtn.className).toContain('bg-red-600');
   });
 
   it('2. Render đầy đủ Bảng Lịch Sử Bảo Trì với cột Người kích hoạt và dữ liệu từ CSDL', async () => {
@@ -140,33 +136,40 @@ describe('BroadcastPage - Emergency Maintenance & History Journal Suite', () => 
     expect(screen.getAllByText('Đang diễn ra').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('3. Khi bấm Bật Bảo Trì Khẩn Cấp, gửi payload với isEmergency = true lên server', async () => {
+  it('3. Tác động hệ thống: Khi submit form lên lịch bảo trì hợp lệ, gọi adminApi.setMaintenanceStatus với payload chuẩn xác', async () => {
+    adminApi.setMaintenanceStatus.mockResolvedValueOnce({
+      data: {
+        active: false,
+        scheduled: {
+          scheduledAt: new Date(Date.now() + 5 * 3600 * 1000).toISOString(),
+          reason: 'Bảo trì định kỳ CSDL',
+          isEmergency: false,
+        },
+      },
+    });
+
     renderComponent();
 
-    // 1. Tick checkbox Bảo trì khẩn cấp
-    const emergencyCheckbox = screen.getByRole('checkbox', { name: /Bảo trì khẩn cấp/i });
-    fireEvent.click(emergencyCheckbox);
+    const startDatetimeInput = screen.getByLabelText(/Thời điểm bắt đầu/i);
+    const dStart = new Date(Date.now() + 5 * 3600 * 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    const validStart = `${dStart.getFullYear()}-${pad(dStart.getMonth() + 1)}-${pad(dStart.getDate())}T${pad(dStart.getHours())}:${pad(dStart.getMinutes())}`;
 
-    // 2. Nhập lý do
-    const inputReason = screen.getByPlaceholderText(/Nâng cấp cụm máy chủ và tối ưu hóa hệ thống khẩn cấp/i);
-    fireEvent.change(inputReason, { target: { value: 'Sự cố nghẽn mạng khẩn cấp' } });
+    fireEvent.change(startDatetimeInput, { target: { value: validStart } });
+    fireEvent.change(screen.getByLabelText(/Nội dung \/ Lý do bảo trì/i), {
+      target: { value: 'Bảo trì định kỳ CSDL' },
+    });
 
-    // 3. Bấm nút đỏ Bảo trì khẩn cấp -> Mở popup xác thực bảo mật
-    const emergencyBtn = screen.getByRole('button', { name: /Bảo trì khẩn cấp/i });
-    fireEvent.click(emergencyBtn);
-
-    // 4. Nhập PIN 6 số và xác thực thực thi
-    const pinInput = screen.getByPlaceholderText(/Nhập mã PIN 6 số/i);
-    fireEvent.change(pinInput, { target: { value: '123456' } });
-    const confirmBtn = await screen.findByRole('button', { name: /Xác thực & Thực thi/i });
-    fireEvent.click(confirmBtn);
+    const submitBtn = screen.getByRole('button', { name: /Lên lịch bảo trì/i });
+    fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({
-        active: true,
-        reason: 'Sự cố nghẽn mạng khẩn cấp',
-        isEmergency: true,
-      });
+      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reason: 'Bảo trì định kỳ CSDL',
+          isEmergency: false,
+        })
+      );
     });
   });
 
@@ -246,7 +249,7 @@ describe('BroadcastPage - Emergency Maintenance & History Journal Suite', () => 
     expect(screen.queryByText(/PO Policy/i)).not.toBeInTheDocument();
   });
 
-  it('7. Tác động hệ thống: Khi hệ thống đang bảo trì, form lên lịch bảo trì bị vô hiệu hóa để ngăn xung đột', async () => {
+  it('7. Tác động hệ thống: Khi hệ thống đang bảo trì, banner hiển thị và có nút Tắt Bảo Trì, form lên lịch vẫn hoạt động', async () => {
     adminApi.getMaintenanceStatus.mockResolvedValueOnce({
       data: {
         active: true,
@@ -260,12 +263,11 @@ describe('BroadcastPage - Emergency Maintenance & History Journal Suite', () => 
 
     renderComponent();
 
-    // Hiển thị thông báo bảo trì đang kích hoạt
-    expect(await screen.findByText(/Chế độ bảo trì đang kích hoạt/i)).toBeInTheDocument();
-    expect(screen.getByText(/Không thể thiết lập thêm lịch bảo trì mới để tránh xung đột/i)).toBeInTheDocument();
+    // Hiển thị banner bảo trì đang kích hoạt và nút Tắt Bảo Trì
+    expect(await screen.findByRole('button', { name: /Tắt Bảo Trì/i })).toBeInTheDocument();
 
-    // Nút submit lên lịch không xuất hiện / bị khóa
-    expect(screen.queryByRole('button', { name: /Lên lịch bảo trì/i })).not.toBeInTheDocument();
+    // Form lên lịch bảo trì vẫn luôn luôn hiện diện theo chuẩn PO
+    expect(screen.getByRole('button', { name: /Lên lịch bảo trì/i })).toBeInTheDocument();
   });
 
   it('8. Tầng 1: Đã xóa phụ đề, box bình thường, mô tả checkbox, footer riêng, mô tả CSDL và badge tổng phiên', async () => {
@@ -279,8 +281,8 @@ describe('BroadcastPage - Emergency Maintenance & History Journal Suite', () => 
     // 2. Bỏ box "HỆ THỐNG ĐANG HOẠT ĐỘNG BÌNH THƯỜNG"
     expect(screen.queryByText(/HỆ THỐNG ĐANG HOẠT ĐỘNG BÌNH THƯỜNG/i)).not.toBeInTheDocument();
 
-    // 3. Checkbox chỉ còn "Tự động phát thông báo", không còn mô tả dài
-    expect(screen.getByText('Tự động phát thông báo')).toBeInTheDocument();
+    // 3. Đã bỏ checkbox "Tự động phát thông báo" theo chuẩn PO
+    expect(screen.queryByText('Tự động phát thông báo')).not.toBeInTheDocument();
     expect(screen.queryByText(/Khi tới giờ hẹn, hệ thống sẽ tự động phát sóng thông báo realtime qua Socket.IO/i)).not.toBeInTheDocument();
 
     // 4. "Lên lịch bảo trì" và "Làm mới" nằm cùng trong form

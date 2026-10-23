@@ -377,12 +377,12 @@ class MaintenanceRepository {
   }
 
   /**
-   * Tính tổng số giây hệ thống bị gián đoạn do Bảo trì khẩn cấp (Emergency Outage)
-   * Phục vụ tính toán SLA và Uptime hoạt động thực tế (Phương án 1 được PO duyệt).
+   * Tính tổng số giây hệ thống bị gián đoạn do Bảo trì (cả Khẩn cấp và Định kỳ theo lịch)
+   * Phục vụ tính toán SLA và Uptime hoạt động thực tế chính xác (PO approved).
    * @param {Date} sinceDate
    * @returns {Promise<number>}
    */
-  async getEmergencyDowntimeSeconds(sinceDate = null) {
+  async getTotalMaintenanceDowntimeSeconds(sinceDate = null) {
     const since = sinceDate instanceof Date ? sinceDate : new Date(Date.now() - 30 * 24 * 3600 * 1000);
     const sinceIso = since.toISOString();
 
@@ -391,15 +391,14 @@ class MaintenanceRepository {
         const query = `
           SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE("ended_at", NOW()) - "started_at"))), 0) AS total_sec
           FROM "maintenance_history"
-          WHERE "type" = 'EMERGENCY'
-            AND "status" IN ('COMPLETED', 'ONGOING')
+          WHERE "status" IN ('COMPLETED', 'ONGOING')
             AND "started_at" >= $1;
         `;
         const res = await this.pool.query(query, [sinceIso]);
         const sec = parseFloat(res.rows[0]?.total_sec || 0);
         return Math.max(0, Math.floor(sec));
       } catch (err) {
-        logger.warn('[Maintenance Repository] getEmergencyDowntimeSeconds DB error, fallback to memory', { error: err.message });
+        logger.warn('[Maintenance Repository] getTotalMaintenanceDowntimeSeconds DB error, fallback to memory', { error: err.message });
       }
     }
 
@@ -407,7 +406,7 @@ class MaintenanceRepository {
     let totalSec = 0;
     const sinceTime = since.getTime();
     for (const item of this._inMemoryFallback) {
-      if (item.type === 'EMERGENCY' && (item.status === 'COMPLETED' || item.status === 'ONGOING')) {
+      if (item.status === 'COMPLETED' || item.status === 'ONGOING') {
         const start = new Date(item.started_at).getTime();
         if (start >= sinceTime) {
           const end = item.ended_at ? new Date(item.ended_at).getTime() : Date.now();
@@ -416,6 +415,13 @@ class MaintenanceRepository {
       }
     }
     return totalSec;
+  }
+
+  /**
+   * Alias tương thích ngược cho getEmergencyDowntimeSeconds
+   */
+  async getEmergencyDowntimeSeconds(sinceDate = null) {
+    return this.getTotalMaintenanceDowntimeSeconds(sinceDate);
   }
 
   /**

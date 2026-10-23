@@ -1,6 +1,7 @@
 # 📊 Chức Năng 02: Bảng Điều Khiển & Động Cơ Phân Tích Thống Kê (Dashboard & Analytics Engine)
 
 > **Mã chức năng:** `ADMIN-FEAT-02`  
+> **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/pages/dashboard/DashboardPage.jsx`, `src/Admin-web/src/components/common/InteractiveLineChart.jsx`, `ServerHealthPanel.jsx`  
 > - Backend: `src/Backend/modules/admin/admin.service.js`, `admin.controller.js`, `admin.repository.js`, `src/Backend/modules/auth/auth.service.js`  
