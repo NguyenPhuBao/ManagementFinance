@@ -81,7 +81,8 @@ còn gì (`Dissolved`). Thao tác quản lý (đổi vai, rời, mời ra) vẫn
 **Ngoài phạm vi cả bốn phần:** hoá đơn chung (bảng `bill` **không** thêm cột), quét QR, tạo / tham gia nhà khi offline, một tài
 khoản ở nhiều nhà, màn quản trị gia đình ở Admin-web (có thể làm sau, không chặn client).
 
-Đơn này đặt **luật và cột cho cả bốn phần** (cột `Idhousehold`, luật tham chiếu, mã lỗi) để các đơn sau chỉ thêm, không sửa.
+Đơn này đặt **cột và mã lỗi dùng chung** cho cả bốn phần (cột `Idhousehold`, bốn mã đẩy, `NOT_OWNER`) để các đơn sau phần lớn chỉ
+thêm. **Ngoại lệ đã biết:** luật tham chiếu (D.2) có thể phải nới ở phần 2 — xem dòng *nạp / rút quỹ* ở D.2.
 
 ---
 
@@ -92,11 +93,14 @@ khoản ở nhiều nhà, màn quản trị gia đình ở Admin-web (có thể 
 **Hiện trạng (đọc mã 2026-10-23):**
 - `modules/sync/sync.service.js:103-113` chỉ so `payload.idaccount` với `req.user.idaccount`; payload để trống `idaccount` thì
   gán từ token (`:116`).
+- Lỗi *"Ownership mismatch"* ở đó trả `{status:'error', message}` **không có `code`** — client chỉ dừng gửi lại khi mã nằm trong danh
+  sách lỗi vĩnh viễn, nên hàng ấy bị **gửi lại mọi chu kỳ**. Xin trả **`NOT_OWNER`** ở đây luôn.
 - Nhánh **sửa** của `upsertWallet` (`sync.repository.js` ~`:291`), `upsertTransaction` (~`:400`), `upsertBudget` (~`:472`),
   `upsertBill` (~`:540`), `upsertGoal` (~`:613`) tìm bản ghi theo khoá chính rồi chỉ so `update_at` — **không** so
   `existing.idaccount`.
-- `softDelete` (`:709-752`) xoá theo khoá chính, không kiểm chủ (riêng danh mục có kiểm ở `:209-214` nhưng ném chuỗi lỗi rơi
-  vào `DB_ERROR`).
+- `upsertCategory` có kiểm chủ (`:209-214`, ném `'Cannot modify category belonging to another user'`) nhưng chuỗi ấy không khớp
+  nhánh bắt lỗi nào nên ra `DB_ERROR` (client coi là lỗi tạm, gửi lại mãi) — đổi sang `NOT_OWNER`.
+- `softDelete` (`:709-752`) xoá theo khoá chính, **không** kiểm chủ ở thực thể nào (nhánh danh mục chỉ chặn `is_default`).
 
 ⇒ Ai gửi `{entity:'wallet', operation:'update', payload:{idwallet:'<UUID của người khác>', update_at:<rất mới>, …}}` là ghi đè
 được ví người khác; `operation:'delete'` là xoá mềm được. UUID v4 khó đoán, nhưng gia đình **làm lộ UUID giữa thành viên** (ví
@@ -184,8 +188,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS "uq_wallet_household_name_active"
 DROP INDEX IF EXISTS "uq_wallet_default_active";
 CREATE UNIQUE INDEX "uq_wallet_default_active"
   ON "wallet" ("Idaccount") WHERE "Is_default" = TRUE AND "Delete_at" IS NULL AND "Idhousehold" IS NULL;
-ALTER TABLE "wallet" ADD CONSTRAINT "chk_wallet_household_not_default"
-  CHECK ("Idhousehold" IS NULL OR "Is_default" = FALSE);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_wallet_household_not_default') THEN
+    ALTER TABLE "wallet" ADD CONSTRAINT "chk_wallet_household_not_default"
+      CHECK ("Idhousehold" IS NULL OR "Is_default" = FALSE);
+  END IF;
+END $$;  -- PostgreSQL không có ADD CONSTRAINT IF NOT EXISTS; khối này cho tệp chạy lại được
 
 DROP INDEX IF EXISTS "uq_category_owner_name";
 CREATE UNIQUE INDEX "uq_category_owner_name"
@@ -315,6 +323,9 @@ nguyên hoặc `null`). ⚠️ Phải thêm `idhousehold` vào **mọi khối `d
   - hàng **riêng**: ví / danh mục phải là của **chính người đẩy** (riêng) — **ngoại lệ duy nhất:** giao dịch riêng được trỏ
     `idgoal` tới mục tiêu của nhà **người ấy đang ở** (khoản góp từ ví riêng vào mục tiêu chung — phần 4; mở luật ngay để không
     phải đổi mã về sau).
+  - ⚠️ **Chưa cho phép ở phần 1:** chuyển tiền giữa ví riêng và ví của nhà (**nạp / rút quỹ** — `Transfer` có một đầu riêng, một
+    đầu của nhà) ⇒ `HOUSEHOLD_SCOPE_MISMATCH`. Phần 2 sẽ định luật cho khoản ấy và cách **mọi** thành viên thấy nó (hôm nay giao
+    dịch riêng chỉ về máy chủ của nó, nên số dư quỹ chung sẽ lệch giữa các máy) — có thể phải nới luật này; đơn phần 2 nêu cụ thể.
 
 **D.3 — Bốn mã lỗi mới**, trả theo khuôn kết quả từng thao tác hiện có (`results[i] = {localId, status:'error', code, message}`,
 HTTP 200 cho cả lô — `sync.service.js:94-99, 159-237`). Client xếp cả bốn (và `NOT_OWNER` của mục A) là **lỗi vĩnh viễn**:

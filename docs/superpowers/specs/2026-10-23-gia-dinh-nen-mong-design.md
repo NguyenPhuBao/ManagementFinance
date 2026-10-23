@@ -80,6 +80,10 @@ nhiều nhà.
   riêng từng tài khoản — quy tắc 8).
 - Danh mục của nhà về máy **ngay ở spec này** ⇒ các danh sách danh mục cá nhân phải loại chúng (mục 7.2).
 - `DefaultCategorySeeder` **không** sao chép danh mục của nhà sang tài khoản (nó chỉ đọc hàng `isDefault`, idaccount 0).
+- ⚠️ `DefaultCategorySeeder.seedForAccount` xét *"đã có bản sao"* bằng `CategoryDao.getOwnedIncludingDeleted(idaccount)`
+  (`category/application/default_category_seeder.dart:55`). Danh mục của nhà mang `idaccount` = chủ nhà và **cùng tên** bộ mặc định
+  ⇒ nếu truy vấn ấy không lọc `idhousehold IS NULL`, tài khoản mới lập nhà trước lượt sao đầu sẽ **không bao giờ** có danh mục
+  riêng. Truy vấn này thuộc nhóm phải thêm `idhousehold IS NULL` (mục 7.2) — kế hoạch có ca test riêng cho nó.
 
 ## 4. Đồng bộ
 
@@ -110,6 +114,9 @@ Mỗi hàng có `idhousehold` khi tạo / sửa / xoá, server kiểm:
 của **chính H**; (b) hàng **riêng** chỉ được trỏ tới ví / danh mục **riêng của chính người ấy** — **ngoại lệ duy nhất**: giao
 dịch riêng được trỏ `idgoal` tới mục tiêu của nhà **người ấy đang ở** (khoản góp từ ví riêng vào mục tiêu chung — phần con 4;
 mở luật ngay ở nền móng để không phải đổi mã lỗi về sau).
+⚠️ **Chưa cho phép ở phần 1:** nạp / rút quỹ (chuyển giữa ví riêng và ví của nhà) ⇒ `HOUSEHOLD_SCOPE_MISMATCH`. Giao dịch riêng chỉ
+về máy chủ của nó, nên khoản nạp ghi là giao dịch riêng sẽ làm số dư quỹ chung lệch giữa các máy — phần 2 phải chọn cách (hàng
+của nhà / hàng gương / cách khác) và có thể nới luật này.
 
 Trả theo khuôn lỗi từng thao tác hiện có (`results[i].code`, HTTP 200 cho lô).
 
