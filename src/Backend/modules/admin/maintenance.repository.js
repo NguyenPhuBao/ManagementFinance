@@ -516,7 +516,7 @@ class MaintenanceRepository {
         // do CSDL bị sập lúc Admin tắt bảo trì. Buộc phải đóng lại ngay lập tức!
         const query = `
           UPDATE "maintenance_history"
-          SET "status" = 'COMPLETED', "ended_at" = COALESCE("ended_at", NOW())
+          SET "status" = 'COMPLETED', "ended_at" = COALESCE("ended_at", $1)
           WHERE "status" = 'ONGOING'
           RETURNING *;
         `;
