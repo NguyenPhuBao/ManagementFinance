@@ -86,6 +86,21 @@ void main() {
     expect(the, contains('crossorigin="anonymous"'), reason: 'thiếu crossorigin thì trình duyệt không kiểm SRI cho tệp khác nguồn');
   });
 
+  // Soát CVE thư viện (2026-10-24): `flutter_gemma` → `large_file_handler` 0.5.2 kéo `okhttp 4.9.0` — CVE-2021-0341
+  // (OkHostnameVerifier nhận chứng chỉ của SAI tên miền, sửa ở 4.9.2). Đường ấy không chạy tới được (gói chỉ được gọi để
+  // chép asset, app nạp mô hình bằng `.fromFile`), nhưng thư viện nằm trong APK và máy quét báo. Ràng buộc ở `:app` nâng
+  // bản đóng gói; đo bằng `gradlew :app:dependencies --configuration releaseRuntimeClasspath`.
+  test('okhttp đóng gói được ràng buộc ≥ 4.9.2 (CVE-2021-0341)', () {
+    final kts = File('android/app/build.gradle.kts').readAsStringSync();
+    final m = RegExp(r'''constraints\s*\{[\s\S]*?implementation\("com\.squareup\.okhttp3:okhttp:(\d+)\.(\d+)\.(\d+)"\)''')
+        .firstMatch(kts);
+    expect(m, isNotNull, reason: 'thiếu ràng buộc okhttp trong khối dependencies { constraints { … } }');
+    final ban = [for (var i = 1; i <= 3; i++) int.parse(m!.group(i)!)];
+    final duBan = ban[0] > 4 || (ban[0] == 4 && (ban[1] > 9 || (ban[1] == 9 && ban[2] >= 2)));
+    expect(duBan, isTrue, reason: 'okhttp ${ban.join('.')} vẫn dính CVE-2021-0341');
+    expect(ban[0], 4, reason: 'okhttp 5.x đổi API — large_file_handler biên dịch với 4.x');
+  });
+
   test('mọi URL sql.js trong web/index.html cùng MỘT phiên bản', () {
     final html = File('web/index.html').readAsStringSync();
     final banCo = RegExp(r'/sql\.js/([0-9.]+)/').allMatches(html).map((m) => m.group(1)).toSet();

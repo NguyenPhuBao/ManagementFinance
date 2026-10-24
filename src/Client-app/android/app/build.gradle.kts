@@ -82,6 +82,15 @@ dependencies {
     // Nhắc ghi sau khi dùng app ngân hàng: kiểm định kỳ 15 phút. ĐÚNG bản `background_downloader` 9.6.3 đang kéo vào
     // (`implementation` của plugin không lộ ra module app) — trùng bản, không xung đột.
     implementation("androidx.work:work-runtime-ktx:2.11.0")
+    constraints {
+        // Soát CVE thư viện (2026-10-24): `flutter_gemma` → `large_file_handler` 0.5.2 kéo `okhttp 4.9.0` — CVE-2021-0341
+        // (kiểm tên miền chứng chỉ sai, sửa ở 4.9.2). App không chạy tới đường mạng của gói ấy (chỉ chép asset; mô hình
+        // nạp bằng `.fromFile`), ràng buộc này để APK không mang bản lỗi. Giữ 4.x: 5.x đổi API, plugin biên dịch với 4.x.
+        // test/core/bao_mat_manifest_test.dart canh.
+        implementation("com.squareup.okhttp3:okhttp:4.12.0") {
+            because("CVE-2021-0341 — okhttp < 4.9.2 nhận chứng chỉ của sai tên miền")
+        }
+    }
 }
 
 flutter {

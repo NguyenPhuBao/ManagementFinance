@@ -689,6 +689,10 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   `<script>` của `index.html`: `sqlite_version()` = **3.54.0**, chèn / đọc chữ tiếng Việt, `create_function`, `export` rồi mở
   lại, `ON CONFLICT DO UPDATE` đạt, 0 lỗi JS; đối chứng âm đổi một ký tự mã băm → SRI chặn, `initSqlJs` không có. Changelog
   1.9 → 1.15.1 không đổi chữ ký API Drift dùng.
+  ✅ **okhttp ràng buộc 4.12.0** (`android/app/build.gradle.kts`, khối `dependencies { constraints { … } }` kèm `because(…)` —
+  nhẹ tay hơn `force`; giữ 4.x vì 5.x đổi API mà plugin biên dịch với 4.x): cây release `okhttp:4.9.0 -> 4.12.0` (kéo `okio`
+  3.4.0 → 3.6.0), OSV hỏi lại **0** advisory; dex của APK release mang `okhttp/4.12.0` (bản trước: `okhttp/4.9.0`). Ca canh ở
+  `bao_mat_manifest_test.dart` đọc `build.gradle.kts` (thử bản sai ràng buộc 4.9.0 → đỏ *"vẫn dính CVE-2021-0341"*).
 - **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 4): `NhanBienLaiActivity` tin referrer bên gửi khai (cần đo bảng chia sẻ
   trên máy); không khoá app (PIN / vân tay — tính năng, cần Stitch); ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
   rơi về 0) — hàng của nhà đúng là người tạo, nhưng hàng riêng nên bỏ khi khác tài khoản phiên; **đừng** ép `Value(accountId)`.
