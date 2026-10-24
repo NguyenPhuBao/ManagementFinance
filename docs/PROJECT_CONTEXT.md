@@ -705,7 +705,8 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   tồn của đợt 3). Bẫy: extension Dart của VS Code giữ `bin/cache/dart-sdk` và tự mở lại language-server < 1 s sau khi bị dừng
   (người dùng nhờ dừng → vòng canh dừng liên tục trong lúc thay SDK); checkout thẻ là *detached* → kênh `[user-branch]` (cả
   hai ghi ở *Toolchain*). ⚠️ **Chưa chạy trên máy thật** (không máy nào cắm): đăng nhập / đồng bộ qua TLS, Gemma, OCR trên
-  APK mới.
+  APK mới. Bản vá chỉ tới máy khi **cài lại** — APK đang nằm trên Realme / OnePlus dựng trước hôm nay (Dart 3.13.4), vẫn dính.
+  Phép kiểm web là trang thử dựng từ `index.html`, chưa `flutter build web` chạy app thật trên 3.47.8 (web chỉ để chạy thử).
 - **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 4): `NhanBienLaiActivity` tin referrer bên gửi khai (cần đo bảng chia sẻ
   trên máy); không khoá app (PIN / vân tay — tính năng, cần Stitch); ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
   rơi về 0) — hàng của nhà đúng là người tạo, nhưng hàng riêng nên bỏ khi khác tài khoản phiên; **đừng** ép `Value(accountId)`.
