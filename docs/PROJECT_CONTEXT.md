@@ -634,7 +634,12 @@ liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà 
   được bản ghi người khác. Đặt làm **vế A (cao)** của đơn 50, mã mới `NOT_OWNER` (client sẽ thêm vào lỗi vĩnh viễn).
 - Hai điều chỉnh spec trong lúc viết đơn: id nhà là **số nguyên do server cấp** (không UUID — nhà chỉ tạo khi có mạng); luật
   `HOUSEHOLD_SCOPE_MISMATCH` có **ngoại lệ** giao dịch riêng trỏ `idgoal` tới mục tiêu của nhà mình (khoản góp — phần 4).
-- Chưa có mã, chưa có kế hoạch thi công; Stitch chưa vẽ 6 màn. Bước kế: người dùng đọc spec → kế hoạch thi công (writing-plans).
+- **2026-10-24 — kế hoạch thi công lát 1** `docs/superpowers/plans/2026-10-24-gia-dinh-nen-mong-lat-1.md` (gitignore, chỉ trên máy
+  viết): 13 task, lát 1 = lõi + dữ liệu + trạng thái nhà, **chưa màn nào**; lát 2 (6 màn + route `/nha/*` + `MaQuyen.giaDinh`) viết
+  sau khi Stitch có 6 màn. Người dùng **duyệt bốn chỗ kế hoạch khác spec** (câu hỏi chọn được, chọn cả bốn): `keoLaiToanBo` thay
+  *"xoá mốc + `syncNow`"* (mốc kéo về nằm trong RAM — xoá kho không đủ) · một bộ `DieuPhoiDoiNha` (phủ cả máy thứ hai cùng tài
+  khoản) · không hook `datNha` · trần thành viên từ `household.maxMembers`. Cả 12 chỗ ghi ở **mục 11 spec** (thắng thân khi lệch).
+- Chưa có mã. Người dùng chọn *"dừng ở spec"*: **chưa** chọn cách thi công (agent con / inline), **chưa** cho vẽ 6 màn Stitch.
 
 ### 🔀 Gộp `main` @ `ee6a65e5` (2026-10-23, commit gộp `01c0d590`) — PR #153–#158: theo dõi thiết bị / IP, bảo trì nhiều lịch + nâng cấp, phân quyền 4 trụ, PIN admin; backend viết lại tài liệu đồng bộ của client; client đặt đơn 49
 

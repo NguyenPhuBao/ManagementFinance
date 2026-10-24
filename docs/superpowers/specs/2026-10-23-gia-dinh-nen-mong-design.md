@@ -1,6 +1,8 @@
 # Gia đình (nhà nhiều người) — spec 1/4: NỀN MÓNG + hợp đồng mô hình dữ liệu
 
 > **Ngày:** 2026-10-23 · **Trạng thái:** thiết kế đã duyệt từng phần trong phiên brainstorming, chờ người dùng đọc spec ·
+> **2026-10-24:** kế hoạch thi công lát 1 viết xong; **mục 11** ghi 12 chỗ kế hoạch khác thân spec (người dùng duyệt bốn chỗ chính)
+> — **mục 11 thắng thân khi lệch**; chưa có mã ·
 > **Phạm vi spec này:** nhà / thành viên / lời mời, ba vai, cửa Premium, luật đồng bộ theo phạm vi nhà, cột `idhousehold`.
 > Ba phần con còn lại (quỹ chung · chi chung + ai nợ ai · mục tiêu chung) mỗi phần một spec + một đơn backend riêng, viết sau.
 > **Phía server** do backend làm theo đơn CAN-LAM (người dùng chốt) — client không sửa `src/Backend` (quy tắc 1).
@@ -130,6 +132,9 @@ im lặng (lớp lỗi G31 / G14). Gặp một trong bốn mã ⇒ làm mới tr
 hàng ấy (spec 2 trở đi mới có hàng của nhà do người dùng ghi).
 
 ### 4.3 Vào nhà ⇒ kéo lại toàn bộ một lần
+
+> ⚠️ Cách *"xoá mốc + `syncNow()`"* dưới đây (và ở 5.1, 5.3) **không chạy** — mốc nằm trong RAM. Thay bằng
+> `SyncEngine.keoLaiToanBo`: **mục 11 #1**.
 
 Kéo về là tăng dần theo `Server_update_at` kể từ mốc, nên dữ liệu cũ của nhà **không bao giờ** tới máy người mới vào. Sau khi
 tham gia (và sau khi tạo nhà — danh mục nhà do server sinh), bộ điều phối gọi `SyncCheckpointStore.clear(idaccount)` (tệp công
@@ -316,3 +321,39 @@ Phạm vi kéo về (4.1); bốn mã đẩy (4.2); sao danh mục khi lập nhà
   — chỉ máy tạo ví của nhà được đặt neo, máy khác nhận qua kéo về; thứ tự G85 áp cho giao dịch của nhà kéo về. Ghi ở đây để spec 2
   không quên.
 - **Một tài khoản một nhà** — đơn giản hoá cố ý; mở rộng sau là đổi chỉ mục + màn chọn nhà.
+
+## 11. Chỗ kế hoạch thi công lát 1 khác thân spec (2026-10-24) — **mục này thắng thân khi lệch**
+
+Kế hoạch `docs/superpowers/plans/2026-10-24-gia-dinh-nen-mong-lat-1.md` (gitignore — chỉ nằm trên máy viết nó). Thi công chia
+hai lát: **lát 1** = lõi + dữ liệu + trạng thái nhà (Drift v32, quét 37, đồng bộ `idhousehold`, mảng `household` tầng `domain` /
+`data` / `application`, nối dây), **chưa có màn nào**. **Lát 2** = sáu màn mục 6 + route `/nha/*` + mục drawer + `MaQuyen.giaDinh`,
+viết kế hoạch riêng sau khi Stitch có sáu màn và người dùng duyệt.
+
+**#1–#4: người dùng duyệt ngày 2026-10-24**, qua câu hỏi chọn được, chọn cả bốn. **#5–#12** là chi tiết thi công đi kèm kế hoạch.
+Mục thân bị thay: 4.2 (#11) · 4.3, 5.1, 5.3, 9 (#1) · 4.6 (#2, #3, #5) · 5.7 (#4, #10) · 5.8 (#3) · 7.1 (#1, #2, #12) · 7.2 (#6,
+#7, #8) · 7.3 (#2, #3). Đơn 50 **không** phải đổi: `maxMembers` đã có trong hình dạng `/households/me`, server vẫn tự thi hành
+trần (`household_members`), chỉ là client không đọc trần từ `limits`.
+
+| # | Spec | Kế hoạch lát 1 | Vì sao |
+|---|---|---|---|
+| **1** ✅ | 4.3: vào nhà ⇒ `SyncCheckpointStore.clear` + `syncNow()` | `SyncEngine.keoLaiToanBo(id)` với **thế hệ yêu cầu** trong `ApDuLieuKeoVe` | Pull đọc mốc trong RAM (`_lastPullTime`) — chỉ xoá kho thì lượt kế vẫn tăng dần; lượt đang chạy lúc vào nhà ghi mốc mới đè phép xoá; lượt hỏng làm mất yêu cầu |
+| **2** ✅ | 7.1: `application/tham_gia_nha.dart` + `don_du_lieu_nha.dart` | Một bộ `application/dieu_phoi_doi_nha.dart` nghe `NhaRepository.doiNha` | Mọi lối nhà đổi đi chung một đường — kể cả máy THỨ HAI của cùng tài khoản và kho mất (spec chỉ phủ thao tác trên chính máy) |
+| **3** ✅ | 5.8 / 7.3: hook `datNha` trong `PhienDieuPhoiThat`; `dongPhien` gỡ trạng thái nhà | Không thêm hook; `NhaRepository.noiPhien` (khuôn `GoiRepository`) — `null` → `xoaPhien`; hook dọn đọc KHO thẳng | Trong `moPhienCucBo` chỉ phép dọn cần nhà, và nó chạy TRƯỚC mọi hook — đọc kho là đủ; ít một điểm ghép |
+| **4** ✅ | 5.7: trần thành viên từ `limits.household_members` | Từ `household.maxMembers` của `/households/me` | Server đặt trần theo gói của chủ; màn Mời chỉ có khi đã có nhà. Thêm `LoaiTran` là Basic thấy *"6 thành viên"* thành trần ở `tomTatTran` / `dacQuyenPremium` |
+| 5 | 4.6 đường 2 (a) đẩy nốt hàng của nhà; (d) tính lại số dư | Bỏ ở phần 1 | Phần 1 không có hàng của nhà nào do máy ghi; sau khi rời, server từ chối (`HOUSEHOLD_NOT_MEMBER`). Phần 2 định |
+| 6 | 7.2: Drift v32 *"+ chỉ mục"* | Không chỉ mục | Không bảng nào có chỉ mục `idaccount` (không tiền lệ); bảng cỡ hàng nghìn hàng |
+| 7 | 7.2: 25 truy vấn ví (6) · giao dịch (13) · ngân sách (3) · mục tiêu (3) | 5 · 12 · 2 · 2 thêm `isNull()` + 4 `getPending` miễn trừ; danh mục 9 + `getSyncableCategories` miễn trừ; `repointCategoryReferences` 2; **gỡ** bốn hàm `*NonDeleted` (0 chỗ gọi) | Lối ĐẨY thêm `isNull()` là hàng của nhà không bao giờ lên server; hàm không lọc gì thì quét 37 không thấy |
+| 8 | 7.2: bảng tra tên giữ danh mục nhà | `_bangTraTen` thêm `\| idhousehold.isNotNull()` | Danh mục nhà mang `idaccount` của người tạo — thành viên tra bằng tài khoản mình sẽ không thấy |
+| 9 | (không nói) | Danh mục của nhà KHÔNG gieo từ khoá vào bảng `CategoryKeywords` của người dùng | Chưa màn nào dùng; bộ gợi ý cá nhân đọc cả bảng |
+| 10 | 5.7: `MaQuyen.giaDinh` | Dời sang **lát 2** (cùng cửa route `/nha/tao`) | Thêm sớm là màn Nâng cấp kể *"Gia đình"* là đặc quyền khi chưa có màn nào; kèm miễn trừ quét 21 cho khoá JSON `'household'` ở `nha_cua_toi.dart` |
+| 11 | 4.2: gặp bốn mã ⇒ làm mới trạng thái nhà | Chỉ bốn mã `HOUSEHOLD_*`; `NOT_OWNER` thì không | `NOT_OWNER` là hàng RIÊNG của người khác — không nói gì về nhà |
+| 12 | 7.1: `VaiNha` / `TrangThaiNha` ở `data/models/` | Ở `domain/vai_nha.dart` | Enum + ánh xạ chữ là Dart thuần — tiền lệ `premium/domain/trang_thai_don.dart` |
+
+- **#1 — vì sao xoá kho không đủ** (đọc mã 2026-10-24): `ApDuLieuKeoVe.napMocNeuChuaCo` (`core/sync/ap_du_lieu_keo_ve.dart`) chỉ
+  đọc kho khi mốc trong RAM đang `null`; chỉ `start()` (`napMoc`) đọc lại kho. `SyncCheckpointStore.clear` chưa có chỗ gọi nào
+  trong `lib/`. Luật của **thế hệ yêu cầu**: lượt kéo bắt đầu **trước** yêu cầu thì không ghi mốc; lượt hỏng thì giữ yêu cầu cho
+  lượt sau; kho mốc xoá ngay lúc yêu cầu.
+- **#2 — tác dụng thấy được:** rời / vào nhà làm trên máy A thì máy B (cùng tài khoản) cũng tự dọn / tự kéo dữ liệu nhà, khi đọc
+  lại trạng thái nhà (sự kiện `household.changed` hoặc lần làm mới kế).
+- **Ghi chú (không phải chỗ lệch):** 7.2 viết `_permanentCodes` *"+4 mã"* — đúng là **+5** (bốn mã `HOUSEHOLD_*` + `NOT_OWNER`, như
+  4.2 đã ghi); kế hoạch thêm năm.
