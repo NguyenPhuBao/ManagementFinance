@@ -663,6 +663,32 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   cdnjs, tính lại đối chiếu) + `crossorigin` (tệp `.wasm` tải qua `locateFile` không gắn được); (d) **đơn CAN-LAM 51**
   `TAI_LIEU_XAC_THUC_LECH_MA.md` — sửa `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md` §2.2–2.3 (không đăng nhập offline
   bằng băm, không SharedPreferences, không vân tay).
+- ✅ **Đợt 5 — soát CVE thư viện (cùng ngày, người dùng chọn *"Soát CVE thư viện"* rồi cả bốn việc sửa):** hỏi OSV
+  (`api.osv.dev/v1/querybatch`) **193** gói Pub hosted của `pubspec.lock` (bỏ 5 gói `sdk`) → **0** advisory; **146** toạ độ
+  Maven của `gradlew :app:dependencies --configuration releaseRuntimeClasspath` (JDK `D:/Android/AndroidStudio/jbr`) → **1**
+  (`okhttp 4.9.0`); đối chứng dương cả hai (`dio 4.0.0` → `GHSA-9324-jv53-9cc8`, `okhttp 3.12.0` → `GHSA-3cqm-mf7h-prrj`).
+  OSV **không** theo dõi 18 toạ độ đóng của Google (ML Kit, Play Services, Firebase transport) và thư viện native của LiteRT /
+  QNN — "0" không có nghĩa "sạch" ở vùng ấy; iOS chưa soát. Kết quả theo mức:
+  (a) **Flutter 3.47.5 / Dart 3.13.4 — `GHSA-frr6-h895-5pxp` (High, công bố 2026-10-23):** `dart:io` trên Android dùng BoringSSL
+  dựng sẵn, không chặn 8 chứng chỉ trung gian eMudhra lộ khoá → kẻ đứng giữa giả được chứng chỉ mọi tên miền. App **dính
+  thật**: không `SecurityContext` / ghim chứng chỉ / adapter riêng, nên Dio (đăng nhập, `/sync/push`, PayOS, chat SSE, ảnh QR
+  Dio trần) và socket.io đều qua đó; tải mô hình (`background_downloader`, TLS hệ thống) và mở trang PayOS (trình duyệt) thì
+  không. Vá: Flutter **3.47.8** (Dart 3.13.7, 2026-10-23). (b) `okhttp 4.9.0` — CVE-2021-0341 (kiểm tên miền chứng chỉ sai,
+  sửa ở 4.9.2): vào qua `flutter_gemma` → `large_file_handler` 0.5.2, mà `flutter_gemma` chỉ gọi gói ấy để **chép asset**,
+  còn app nạp mô hình bằng `.fromFile(...)` (`slm_runtime.dart`) — không chạy tới được, chỉ máy quét báo. (c) SQLite Maven
+  `sqlite3-native-library:3.52.0` (CVE-2026-11822 / 11824 FTS5, sửa 3.53.2) là **dương tính giả**: `libsqlite3.so` duy nhất
+  trong APK release đọc ra **3.53.4** (source 2026-07-24) — gói `sqlite3` 3.5.1 tự dựng SQLite qua hook và thay bản Maven.
+  (d) sql.js 1.8.0 của bản web mang **SQLite 3.39.3** (2022-09-05, đọc trong `.wasm`) — trước ~10 CVE SQLite đã sửa; OSV trả
+  rỗng chỉ vì CVE ghi theo SQLite chứ không theo gói npm; mọi CVE ấy cần SQL do kẻ tấn công soạn, bản web chỉ để chạy thử.
+  Bảo trì (không CVE): `flutter_gemma` / `flutter_gemma_litertlm` **ngừng phát triển** trên pub.dev (đổi tên `flutter_edge_ai`
+  — bản vá sau này không về tên cũ); `sqlite3_flutter_libs` sang `0.6.0+eol` (không cần với `sqlite3` 3.x);
+  `flutter_secure_storage` 9.2.4 (mới nhất 11.2.0). Sửa:
+  ✅ **sql.js 1.8.0 → 1.15.1** (`web/index.html`: thẻ `<script>` + `integrity` SHA-512 mới — tự tính khớp cdnjs — + URL
+  `locateFile`); `bao_mat_manifest_test.dart` thêm ca *mọi URL sql.js cùng một phiên bản* (thử bản sai: chỉ nâng thẻ, quên
+  `locateFile` → đỏ `{1.15.1, 1.8.0}`). Đo Chrome headless (hạ tầng skill `chay-app`) trên trang dựng từ **chính** hai khối
+  `<script>` của `index.html`: `sqlite_version()` = **3.54.0**, chèn / đọc chữ tiếng Việt, `create_function`, `export` rồi mở
+  lại, `ON CONFLICT DO UPDATE` đạt, 0 lỗi JS; đối chứng âm đổi một ký tự mã băm → SRI chặn, `initSqlJs` không có. Changelog
+  1.9 → 1.15.1 không đổi chữ ký API Drift dùng.
 - **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 4): `NhanBienLaiActivity` tin referrer bên gửi khai (cần đo bảng chia sẻ
   trên máy); không khoá app (PIN / vân tay — tính năng, cần Stitch); ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
   rơi về 0) — hàng của nhà đúng là người tạo, nhưng hàng riêng nên bỏ khi khác tài khoản phiên; **đừng** ép `Value(accountId)`.
