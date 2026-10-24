@@ -175,7 +175,7 @@ class _KhoaAppPageState extends State<KhoaAppPage> {
           ? const SizedBox.shrink()
           : BlocConsumer<CaiDatKhoaAppCubit, CaiDatKhoaApp>(
               bloc: cubit,
-              listenWhen: (a, b) => b.loiNhan != null && a.lanLoi != b.lanLoi,
+              listenWhen: (_, b) => b.loiNhan != null,
               listener: (_, s) => baoNhanh(s.loiNhan!, loai: LoaiThongBao.loi),
               builder: (context, s) {
                 if (s.dangTai) return const Center(child: CircularProgressIndicator());
@@ -187,7 +187,7 @@ class _KhoaAppPageState extends State<KhoaAppPage> {
                         icon: Icons.lock_outline,
                         tieuDe: 'Khoá FlowMoney',
                         phu: 'Hỏi mã PIN mỗi khi mở app',
-                        cuoi: _congTac(key: const Key('cong-tac-khoa'), value: s.daBat, onChanged: _batTatKhoa),
+                        cuoi: _congTac(key: const Key('cong-tac-khoa'), value: s.daBat, onChanged: s.dangLam ? null : _batTatKhoa),
                       ),
                       if (s.daBat)
                         _hang(
@@ -211,7 +211,7 @@ class _KhoaAppPageState extends State<KhoaAppPage> {
                           cuoi: _congTac(
                             key: const Key('cong-tac-van-tay'),
                             value: s.coVanTay && s.may.daDangKy,
-                            onChanged: s.may.daDangKy
+                            onChanged: s.may.daDangKy && !s.dangLam
                                 ? (bat) => bat ? cubit.batVanTay() : cubit.tatVanTay()
                                 : null,
                           ),

@@ -3,8 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../application/khoa_app_service.dart';
 import '../../data/datasources/kenh_sinh_trac.dart';
 import '../../domain/luat_khoa_app.dart';
-
-const String kCauKhoAppHong = 'Không đọc / ghi được cài đặt khoá — thử lại';
+import 'khoa_app_state.dart';
 
 class CaiDatKhoaApp {
   const CaiDatKhoaApp({
@@ -14,7 +13,7 @@ class CaiDatKhoaApp {
     this.coVanTay = false,
     this.may = TrangThaiSinhTrac.khong,
     this.loiNhan,
-    this.lanLoi = 0,
+    this.dangLam = false,
   });
 
   final bool dangTai;
@@ -24,8 +23,8 @@ class CaiDatKhoaApp {
   final TrangThaiSinhTrac may;
   final String? loiNhan;
 
-  /// Tăng mỗi lần báo lỗi — để hai lỗi liền cùng câu vẫn báo hai lần.
-  final int lanLoi;
+  /// Một thao tác đang chạy — lời gọi chồng bị bỏ qua, công tắc tắt (tránh hai `SinhTrac.bat` song song).
+  final bool dangLam;
 }
 
 class CaiDatKhoaAppCubit extends Cubit<CaiDatKhoaApp> {
@@ -51,7 +50,6 @@ class CaiDatKhoaAppCubit extends Cubit<CaiDatKhoaApp> {
         coVanTay: c?.vanTay != null,
         may: may,
         loiNhan: loiNhan,
-        lanLoi: loiNhan == null ? state.lanLoi : state.lanLoi + 1,
       ));
     } catch (_) {
       if (isClosed) return;
@@ -61,9 +59,29 @@ class CaiDatKhoaAppCubit extends Cubit<CaiDatKhoaApp> {
         tuKhoaSau: state.tuKhoaSau,
         coVanTay: state.coVanTay,
         may: state.may,
-        loiNhan: kCauKhoAppHong,
-        lanLoi: state.lanLoi + 1,
+        loiNhan: kCauKhoAppKhongLuu,
       ));
+    }
+  }
+
+  bool _dangLam = false;
+
+  /// Chạy [viec] một mình: đang có thao tác khác thì bỏ qua; state mang `dangLam` trong lúc chạy.
+  Future<void> _mot(Future<void> Function() viec) async {
+    if (_dangLam || state.dangLam) return;
+    _dangLam = true;
+    emit(CaiDatKhoaApp(
+      dangTai: state.dangTai,
+      daBat: state.daBat,
+      tuKhoaSau: state.tuKhoaSau,
+      coVanTay: state.coVanTay,
+      may: state.may,
+      dangLam: true,
+    ));
+    try {
+      await viec();
+    } finally {
+      _dangLam = false;
     }
   }
 
@@ -77,15 +95,15 @@ class CaiDatKhoaAppCubit extends Cubit<CaiDatKhoaApp> {
   }
 
   /// Chạy một thay đổi; kho hỏng → báo câu, không để lỗi thoát ra.
-  Future<void> _lam(Future<String?> Function() viec) async {
-    String? loi;
-    try {
-      loi = await viec();
-    } catch (_) {
-      loi = kCauKhoAppHong;
-    }
-    await _sau(loiNhan: loi);
-  }
+  Future<void> _lam(Future<String?> Function() viec) => _mot(() async {
+        String? loi;
+        try {
+          loi = await viec();
+        } catch (_) {
+          loi = kCauKhoAppKhongLuu;
+        }
+        await _sau(loiNhan: loi);
+      });
 
   Future<void> batVanTay() => _lam(() async {
         final loi = await _sv.batVanTay(_id);
@@ -107,5 +125,5 @@ class CaiDatKhoaAppCubit extends Cubit<CaiDatKhoaApp> {
       });
 
   /// Sau khi trang đặt / đổi / tắt PIN pop(true).
-  Future<void> sauDatPin() => _sau();
+  Future<void> sauDatPin() => _mot(_sau);
 }
