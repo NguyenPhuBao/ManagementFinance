@@ -19,9 +19,10 @@ Hệ thống được xây dựng trên nền tảng **Kiến trúc Zero-Couplin
 4. **Phân Định Rõ Ràng Hai Loại Hình Bảo Trì (PO Mandatory):**
    - **Bảo trì khẩn cấp (`isEmergency: true`):** Tiêu đề chuẩn PO: **"HỆ THỐNG ĐANG BẢO TRÌ KHẨN CẤP"**, giao diện tông đỏ `rose`, badge `[KHẨN CẤP]`, tự động phát broadcast cấp độ `critical` tới toàn bộ người dùng.
    - **Bảo trì theo lịch (`isEmergency: false`):** Tiêu đề chuẩn PO: **"HỆ THỐNG ĐANG BẢO TRÌ"** (tuyệt đối không hiển thị từ "khẩn cấp"), giao diện tông cam `amber`, badge `[THEO LỊCH]`, broadcast cấp độ `warning`.
-5. **Ràng Buộc Thời Gian Lập Lịch Khắt Khe (PO Rule):**
-   - Bắt buộc lập lịch trước thời điểm kích hoạt ít nhất **4 tiếng** (`scheduledAt >= now + 4h`).
-   - Mỗi phiên bảo trì theo lịch phải cách nhau ít nhất **5 tiếng** (`scheduledAt_b - scheduledEndAt_a >= 5h` hoặc tối thiểu 5h khoảng cách bắt đầu).
+5. **Ràng Buộc Thời Gian Lập Lịch Khắt Khe (PO Rule - Cập nhật 23/10/2026):**
+   - Bắt buộc lập lịch trước thời điểm kích hoạt ít nhất **3 tiếng** (`scheduledAt >= now + 3h`).
+   - Mỗi phiên bảo trì theo lịch phải cách nhau ít nhất **12 tiếng** (`Math.abs(start_b - start_a) >= 12h`).
+   - Hủy lịch bảo trì: Chỉ cho phép hủy khi còn cách thời điểm bắt đầu tối thiểu **3 tiếng** (`hoursUntilStart >= 3`). Dưới 3 tiếng hiển thị badge `< 3h`.
 6. **Cảnh Báo Lịch Bảo Trì Sắp Diễn Ra (Imminent Maintenance Warning):**
    - Card/Banner cảnh báo "LỊCH BẢO TRÌ SẮP DIỄN RA" **CHỈ HIỂN THỊ KHI CÒN $\le 1$ TIẾNG** trước thời điểm bắt đầu.
    - Nếu còn xa hơn 1 tiếng (> 1h), **ẨN HOÀN TOÀN** card này.
@@ -141,13 +142,13 @@ Khi cơ sở dữ liệu bị mất kết nối hoặc quá tải:
    - **Tuyệt đối không làm mất form lập lịch bảo trì định kỳ**.
 3. **Khung Điều Hành & Lập Lịch Bảo Trì Kỹ Thuật Định Kỳ (Luôn Hiện Diện):**
    - Form lập lịch chỉ chia làm 2 loại hình duy nhất theo quy định của PO: **Bảo trì Khẩn cấp** (`EMERGENCY`) và **Bảo trì Định kỳ** (`SCHEDULED`) (tuyệt đối không có loại hình nâng cấp riêng biệt trên form).
-   - Form luôn sẵn sàng tạo mới: input `datetime-local` bắt đầu (tối thiểu trước 4 tiếng) và kết thúc dự kiến, lý do.
+   - Form luôn sẵn sàng tạo mới: input `datetime-local` bắt đầu (tối thiểu trước 3 tiếng) và kết thúc dự kiến, lý do. Lịch bảo trì phải cách các phiên khác tối thiểu 12 tiếng. (Đã loại bỏ box ghi chú giả thông báo icon campaign theo chỉ đạo PO).
    - Nút **"Lên lịch bảo trì"** và nút **"Làm mới"** biểu mẫu.
    - **Bảng Danh Sách Lịch Bảo Trì Đã Lên Lịch (Upcoming Schedules):** Hiển thị danh sách các phiên bảo trì định kỳ đã đặt, kèm nút **"Hủy"** riêng cho từng dòng theo ID.
 4. **Bảng Lịch Sử Các Phiên Bảo Trì Hệ Thống (PostgreSQL Persistence):**
    - Lưu trữ vĩnh viễn trong bảng `maintenance_history`.
    - Các cột hiển thị (9 cột): `#`, `Loại bảo trì` (Khẩn cấp / Định kỳ), `Người kích hoạt`, `Lý do / Thông điệp`, `Thời điểm bắt đầu`, `Thời điểm kết thúc`, `Thời lượng`, `Trạng thái` (Đang diễn ra, Đã lên lịch, Đã hoàn thành, Đã hủy), `Thao tác`.
-   - **Cột Thao Tác (Action Column):** Hiển thị nút **"Hủy"** đối với các phiên bảo trì định kỳ đã lên lịch (`SCHEDULED`) còn trước giờ bắt đầu tối thiểu 4 tiếng. Nếu dưới 4 tiếng, nút bị khóa (`< 4h`) nhằm ngăn chặn việc hủy sát giờ gây bất ổn hệ thống.
+   - **Cột Thao Tác (Action Column):** Hiển thị nút **"Hủy"** đối với các phiên bảo trì định kỳ đã lên lịch (`SCHEDULED`) còn trước giờ bắt đầu tối thiểu 3 tiếng. Nếu dưới 3 tiếng, nút bị khóa (`< 3h`) nhằm ngăn chặn việc hủy sát giờ gây bất ổn hệ thống.
    - Bộ phân trang chuẩn mực (`Pagination.jsx`) mặc định 5 bản ghi/trang (hỗ trợ chọn 5, 10, 20, 50 phiên/trang).
 
 ---

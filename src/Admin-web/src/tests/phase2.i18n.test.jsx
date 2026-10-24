@@ -330,7 +330,7 @@ describe('Admin-web Phase 2 i18n Suite — Core Business Pages (2-Tier Testing)'
       expect(screen.getByText(/Automation & Utilities \(/)).toBeInTheDocument();
 
       // Kiểm tra tiêu đề trang bằng tiếng Anh
-      expect(screen.getByText(/Plan Permissions — Dynamic Matrix & Real-Time Sync/)).toBeInTheDocument();
+      expect(screen.getByText(/Service Permissions/)).toBeInTheDocument();
     });
   });
 

@@ -103,13 +103,12 @@ const UptimeWidget = ({ uptime }) => {
       <p className="text-on-surface font-semibold flex items-center gap-1">
         <span className="material-symbols-outlined text-[14px] text-emerald-600">timer</span>
         {t('serverHealth.uptime', 'Uptime & Tính liên tục')}
-        <span className="ml-auto text-[10px] text-gray-400 font-normal">SLA {slaWindowDays || 30}d</span>
       </p>
 
       {/* Thanh progress uptime */}
       <div className="flex flex-col gap-1">
         <div className="flex justify-between items-center">
-          <span className="text-gray-500">{t('serverHealth.continuous', 'Khả năng sẵn sàng (SLA):')}</span>
+          <span className="text-gray-500">{t('serverHealth.continuous', 'Tỷ lệ hoạt động (Uptime):')}</span>
           <span className={`font-bold text-[13px] ${textColor}`}>{pct.toFixed(2)}%</span>
         </div>
         <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
@@ -134,7 +133,7 @@ const UptimeWidget = ({ uptime }) => {
 
       {/* Chi tiết */}
       <div className="flex justify-between pt-0.5">
-        <span>{t('serverHealth.runtime', 'Thời gian chạy liên tục:')}</span>
+        <span>{t('serverHealth.runtime', 'Thời gian chạy thực tế:')}</span>
         <span className="font-semibold text-on-surface">{uptimeFormatted || `${pct.toFixed(2)}%`}</span>
       </div>
       <div className="flex justify-between">
@@ -145,7 +144,7 @@ const UptimeWidget = ({ uptime }) => {
   );
 };
 
-const ServerHealthPanel = () => {
+const ServerHealthPanel = ({ uptimeData: propUptimeData }) => {
   const { t } = useLanguageSafe();
   const [health, setHealth] = useState(null);
   const [healthLoading, setHealthLoading] = useState(true);
@@ -340,7 +339,7 @@ const ServerHealthPanel = () => {
   const eventLoop = health?.eventLoop;
   const dbPool = health?.dbPool;
   const loadShedding = health?.loadShedding;
-  const uptime = health?.uptime;
+  const uptime = propUptimeData || health?.uptime;
   const critical = eventLoop?.overloaded || (cpu?.percent ?? 0) > 85 || (ram?.percent ?? 0) > 85;
 
   return (

@@ -99,14 +99,14 @@ const AIOpsPage = () => {
     applied: false,
   });
 
-  // Custom Desired Vector Thresholds (Tùy chỉnh ngưỡng an toàn 4 Vector của Admin)
+  // Custom Desired Vector Thresholds (Tùy chỉnh ngưỡng an toàn 4 Vector của Admin - PO Rule: Mặc định rỗng để lấy placeholder)
   const [customThresholdsInput, setCustomThresholdsInput] = useState({
-    authFailureThreshold: 15,
-    trafficSpikeRps: 50,
-    exploitLimit: 5,
-    resourceCpuPercent: 85,
-    resourceMemoryPercent: 85,
-    eventLoopLagMs: 100,
+    authFailureThreshold: '',
+    trafficSpikeRps: '',
+    exploitLimit: '',
+    resourceCpuPercent: '',
+    resourceMemoryPercent: '',
+    eventLoopLagMs: '',
   });
   const [fetchingHistory, setFetchingHistory] = useState(false);
 
@@ -288,17 +288,7 @@ const AIOpsPage = () => {
             localStorage.setItem('aiops_target_concurrency', String(sData.targetConcurrency));
           } catch (_) {}
         }
-        if (sData.customThresholds && typeof sData.customThresholds === 'object') {
-          setCustomThresholdsInput((prev) => ({
-            ...prev,
-            authFailureThreshold: sData.customThresholds.authFailureThreshold ?? sData.customThresholds.authFailedLogins ?? prev.authFailureThreshold,
-            trafficSpikeRps: sData.customThresholds.trafficSpikeRps ?? sData.customThresholds.trafficRatio ?? prev.trafficSpikeRps,
-            exploitLimit: sData.customThresholds.exploitLimit ?? sData.customThresholds.exploitSamples ?? prev.exploitLimit,
-            resourceCpuPercent: sData.customThresholds.resourceCpuPercent ?? sData.customThresholds.resourceCpu ?? prev.resourceCpuPercent,
-            resourceMemoryPercent: sData.customThresholds.resourceMemoryPercent ?? sData.customThresholds.resourceRam ?? prev.resourceMemoryPercent,
-            eventLoopLagMs: sData.customThresholds.eventLoopLagMs ?? sData.customThresholds.resourceLag ?? prev.eventLoopLagMs,
-          }));
-        }
+        // PO Rule: Không lưu/nạp lại giá trị admin nhập, để các ô input rỗng hiển thị placeholder tự động tính toán
       }
       if (Array.isArray(hData)) setHistoryData(hData);
       if (Array.isArray(qData)) setQuarantineList(qData);
@@ -997,21 +987,51 @@ const AIOpsPage = () => {
     fetchForensicsLogs(ipHash, username, 1, 'all');
   };
 
-  // Xử lý tái hiệu chuẩn đường chuẩn theo phần cứng thực tế & Custom Thresholds
+  // Tính toán ngưỡng an toàn khuyến nghị cho 4 Vector dựa trên quy mô CCU và mô hình chịu tải
+  const autoRecommendedThresholds = useMemo(() => {
+    const N = Math.max(100, Number(selectedConcurrency || statusData?.targetConcurrency || 1000));
+    // Vector 1 (Xác thực): Ngưỡng Brute-Force động theo log10(N)
+    const authLimit = Math.max(20, Math.round(15 + 10 * Math.log10(N / 100)));
+    // Vector 2 (Lưu lượng): Safe Peak RPS = round(N / 2), tối thiểu 50 RPS
+    const trafficRps = Math.max(50, Math.round(N / 2));
+    // Vector 3 (Khai thác): 8 mẫu/phút
+    const exploitLimit = 8;
+    // Vector 4 (Tài nguyên): Ngưỡng an toàn Node.js single-thread
+    const resourceCpu = 85;
+    const resourceRam = 85;
+    const resourceLag = 100;
+    return {
+      authFailureThreshold: authLimit,
+      trafficSpikeRps: trafficRps,
+      exploitLimit: exploitLimit,
+      resourceCpuPercent: resourceCpu,
+      resourceMemoryPercent: resourceRam,
+      eventLoopLagMs: resourceLag,
+    };
+  }, [selectedConcurrency, statusData?.targetConcurrency]);
+
+  // Xử lý tái hiệu chuẩn đường chuẩn theo phần cứng thực tế & Custom Thresholds (Ưu tiên admin nhập, nếu trống lấy placeholder)
   const handleCalibrate = async () => {
     try {
       setCalibrating(true);
       setFeedback(null);
       const targetVal = selectedConcurrency || 1000;
+      const parseField = (val, fallback) => {
+        if (val !== '' && val !== null && val !== undefined && !isNaN(Number(val)) && Number(val) > 0) {
+          return Number(val);
+        }
+        return fallback;
+      };
+
       const res = await aiopsApi.calibrate({
         targetConcurrency: targetVal,
         customThresholds: {
-          authFailureThreshold: Number(customThresholdsInput.authFailureThreshold ?? customThresholdsInput.authFailedLogins) || 25,
-          trafficSpikeRps: Number(customThresholdsInput.trafficSpikeRps ?? customThresholdsInput.trafficRatio) || 50,
-          exploitLimit: Number(customThresholdsInput.exploitLimit ?? customThresholdsInput.exploitSamples) || 8,
-          resourceCpuPercent: Number(customThresholdsInput.resourceCpuPercent ?? customThresholdsInput.resourceCpu) || 85,
-          resourceMemoryPercent: Number(customThresholdsInput.resourceMemoryPercent ?? customThresholdsInput.resourceRam) || 85,
-          eventLoopLagMs: Number(customThresholdsInput.eventLoopLagMs ?? customThresholdsInput.resourceLag) || 100,
+          authFailureThreshold: parseField(customThresholdsInput.authFailureThreshold, autoRecommendedThresholds.authFailureThreshold),
+          trafficSpikeRps: parseField(customThresholdsInput.trafficSpikeRps, autoRecommendedThresholds.trafficSpikeRps),
+          exploitLimit: parseField(customThresholdsInput.exploitLimit, autoRecommendedThresholds.exploitLimit),
+          resourceCpuPercent: parseField(customThresholdsInput.resourceCpuPercent, autoRecommendedThresholds.resourceCpuPercent),
+          resourceMemoryPercent: parseField(customThresholdsInput.resourceMemoryPercent, autoRecommendedThresholds.resourceMemoryPercent),
+          eventLoopLagMs: parseField(customThresholdsInput.eventLoopLagMs, autoRecommendedThresholds.eventLoopLagMs),
         },
       });
       const report = res?.data || res;
@@ -1146,11 +1166,44 @@ const AIOpsPage = () => {
     const maxVal = 100;
     const minVal = 0;
     const count = historyData.length;
-    const stepX = count > 1 ? (width - 2 * padding) / (count - 1) : 0;
+    const usableWidth = width - 2 * padding;
 
-    // Trích xuất điểm số của 4 vector cho từng mẫu lịch sử
-    const samples = historyData.map((d, i) => {
-      const x = count === 1 ? width / 2 : padding + i * stepX;
+    // Xác định khung thời gian hiện tại theo Preset hoặc Custom Range
+    const now = Date.now();
+    let startTime = now - 10 * 60 * 1000;
+    let endTime = now;
+
+    if (customRange.applied && customRange.from && customRange.to) {
+      startTime = new Date(customRange.from).getTime();
+      endTime = new Date(customRange.to).getTime();
+    } else if (timePreset === '1h') {
+      startTime = now - 60 * 60 * 1000;
+    } else if (timePreset === '24h' || timePreset === 'day') {
+      startTime = now - 24 * 3600 * 1000;
+    } else if (timePreset === '7d') {
+      startTime = now - 7 * 24 * 3600 * 1000;
+    } else if (timePreset === '30d' || timePreset === 'month') {
+      startTime = now - 30 * 24 * 3600 * 1000;
+    } else {
+      startTime = now - 10 * 60 * 1000;
+    }
+    const totalRangeMs = Math.max(1000, endTime - startTime);
+
+    // Sắp xếp mẫu theo thời gian tăng dần
+    const sortedData = [...historyData].sort((a, b) => {
+      const ta = new Date(a.timestamp || 0).getTime();
+      const tb = new Date(b.timestamp || 0).getTime();
+      return ta - tb;
+    });
+
+    // Trích xuất điểm số của 4 vector cho từng mẫu lịch sử (Tọa độ X chuẩn hóa theo thời gian thực)
+    const samples = sortedData.map((d, i) => {
+      const sampleTime = d.timestamp ? new Date(d.timestamp).getTime() : NaN;
+      let x = padding + (count > 1 ? (i / (count - 1)) * usableWidth : usableWidth / 2);
+      if (!isNaN(sampleTime) && totalRangeMs > 0) {
+        const ratio = (sampleTime - startTime) / totalRangeMs;
+        x = padding + Math.min(1, Math.max(0, ratio)) * usableWidth;
+      }
       const vs = d.vectorScores || {};
       
       const authScore = vs.auth !== undefined ? vs.auth : (d.failedLogins ? Math.min(100, d.failedLogins * 10) : 0);
@@ -1240,7 +1293,7 @@ const AIOpsPage = () => {
         id: 'composite',
       },
     };
-  }, [historyData, vectorConfig, t]);
+  }, [historyData, vectorConfig, timePreset, customRange, t]);
 
   // Cấu hình và tính toán vạch số liệu trục X chuẩn hóa theo từng khung thời gian
   const xAxisConfig = useMemo(() => {
@@ -1359,7 +1412,17 @@ const AIOpsPage = () => {
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
-            onClick={() => setShowCalibrateModal(true)}
+            onClick={() => {
+              setCustomThresholdsInput({
+                authFailureThreshold: '',
+                trafficSpikeRps: '',
+                exploitLimit: '',
+                resourceCpuPercent: '',
+                resourceMemoryPercent: '',
+                eventLoopLagMs: '',
+              });
+              setShowCalibrateModal(true);
+            }}
             disabled={calibrating}
             className="px-3.5 py-2 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
             title={t('aiops.calibrate.btnTooltip', 'Nhấn để tìm hiểu công dụng và thực hiện tái hiệu chuẩn baseline')}
@@ -2215,7 +2278,6 @@ const AIOpsPage = () => {
           <div className="pt-2 border-t border-slate-200/60 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px] text-indigo-600">date_range</span>
                 <span>{t('aiops.chart.timeFilter', 'Bộ lọc thời gian:')}</span>
               </span>
 
@@ -2945,18 +3007,7 @@ const AIOpsPage = () => {
 
                       {/* Cột 2: Đối tượng (Tài khoản phía trên, IP vi phạm tương ứng phía dưới) */}
                       <td className="py-3 px-3 align-top whitespace-nowrap space-y-1">
-                        {vector === 'traffic' ? (
-                          <>
-                            <div className="font-semibold text-slate-800 text-xs">
-                              <span className="text-primary font-bold">
-                                {t('aiops.rca.systemTrafficTitle', 'Hệ thống')}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-600">
-                              <span>{t('aiops.rca.networkTrafficDesc', 'Lưu lượng mạng')}</span>
-                            </div>
-                          </>
-                        ) : vector === 'resource' || actorType === 'SYSTEM_INTERNAL' ? (
+                        {vector === 'resource' ? (
                           <>
                             <div className="font-semibold text-slate-800 text-xs">
                               <span className="text-primary font-bold">
@@ -3659,7 +3710,8 @@ const AIOpsPage = () => {
                     min="1"
                     data-testid="input-auth-failure-threshold"
                     value={customThresholdsInput.authFailureThreshold}
-                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, authFailureThreshold: Number(e.target.value) }))}
+                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, authFailureThreshold: e.target.value }))}
+                    placeholder={String(autoRecommendedThresholds.authFailureThreshold)}
                     className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
@@ -3672,7 +3724,8 @@ const AIOpsPage = () => {
                     min="1"
                     data-testid="input-traffic-spike-rps"
                     value={customThresholdsInput.trafficSpikeRps}
-                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, trafficSpikeRps: Number(e.target.value) }))}
+                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, trafficSpikeRps: e.target.value }))}
+                    placeholder={String(autoRecommendedThresholds.trafficSpikeRps)}
                     className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
@@ -3685,7 +3738,8 @@ const AIOpsPage = () => {
                     min="1"
                     data-testid="input-exploit-limit"
                     value={customThresholdsInput.exploitLimit}
-                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, exploitLimit: Number(e.target.value) }))}
+                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, exploitLimit: e.target.value }))}
+                    placeholder={String(autoRecommendedThresholds.exploitLimit)}
                     className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
@@ -3699,7 +3753,8 @@ const AIOpsPage = () => {
                     max="100"
                     data-testid="input-resource-cpu-percent"
                     value={customThresholdsInput.resourceCpuPercent}
-                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, resourceCpuPercent: Number(e.target.value) }))}
+                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, resourceCpuPercent: e.target.value }))}
+                    placeholder={String(autoRecommendedThresholds.resourceCpuPercent)}
                     className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
@@ -3713,7 +3768,8 @@ const AIOpsPage = () => {
                     max="100"
                     data-testid="input-resource-memory-percent"
                     value={customThresholdsInput.resourceMemoryPercent}
-                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, resourceMemoryPercent: Number(e.target.value) }))}
+                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, resourceMemoryPercent: e.target.value }))}
+                    placeholder={String(autoRecommendedThresholds.resourceMemoryPercent)}
                     className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
@@ -3726,7 +3782,8 @@ const AIOpsPage = () => {
                     min="1"
                     data-testid="input-event-loop-lag-ms"
                     value={customThresholdsInput.eventLoopLagMs}
-                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, eventLoopLagMs: Number(e.target.value) }))}
+                    onChange={(e) => setCustomThresholdsInput(prev => ({ ...prev, eventLoopLagMs: e.target.value }))}
+                    placeholder={String(autoRecommendedThresholds.eventLoopLagMs)}
                     className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>

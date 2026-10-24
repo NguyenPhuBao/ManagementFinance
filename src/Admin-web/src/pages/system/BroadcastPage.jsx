@@ -384,13 +384,13 @@ const BroadcastPage = () => {
 
     const startMs = new Date(scheduleDatetime).getTime();
     const now = Date.now();
-    const minLeadTimeMs = 4 * 3600 * 1000;
+    const minLeadTimeMs = 3 * 3600 * 1000;
 
-    // PO RÀNG BUỘC 1: Bắt buộc đặt trước thời điểm kích hoạt ít nhất 4 tiếng
+    // PO RÀNG BUỘC 1: Bắt buộc đặt trước thời điểm kích hoạt ít nhất 3 tiếng
     if (startMs < now + minLeadTimeMs) {
       setMaintenanceFeedback({
         ok: false,
-        msg: t('broadcast.feedback.scheduleMinLeadTime', 'Thời gian bảo trì theo lịch phải được thiết lập trước ít nhất 4 tiếng!'),
+        msg: t('broadcast.feedback.scheduleMinLeadTime', 'Thời gian bảo trì theo lịch phải được thiết lập trước ít nhất 3 tiếng!'),
       });
       return;
     }
@@ -446,10 +446,10 @@ const BroadcastPage = () => {
   const handleCancelSchedule = async (id = null, startedAt = null) => {
     if (startedAt) {
       const hoursUntilStart = (new Date(startedAt).getTime() - Date.now()) / (3600 * 1000);
-      if (hoursUntilStart < 4) {
+      if (hoursUntilStart < 3) {
         setMaintenanceFeedback({
           ok: false,
-          msg: 'Chỉ có thể hủy lịch bảo trì trước thời điểm bắt đầu ít nhất 4 tiếng!',
+          msg: 'Chỉ có thể hủy lịch bảo trì trước thời điểm bắt đầu ít nhất 3 tiếng!',
         });
         return;
       }
@@ -764,21 +764,13 @@ const BroadcastPage = () => {
                   <span>{t('broadcast.scheduleCardTitle', 'Lập Lịch Bảo Trì Kỹ Thuật Định Kỳ')}</span>
                 </h3>
                 <p className="text-[11px] text-on-surface-variant mt-0.5">
-                  Lịch bảo trì phải được đặt trước ít nhất <b>4 tiếng</b> và cách các phiên khác tối thiểu <b>5 tiếng</b>.
+                  Lịch bảo trì phải được đặt trước ít nhất <b>3 tiếng</b> và cách các phiên khác tối thiểu <b>12 tiếng</b>.
                 </p>
               </div>
             </div>
 
             {/* FORM ĐẶT LỊCH / BẢO TRÌ KHẨN CẤP */}
             <form onSubmit={handleScheduleFormSubmit} className="space-y-4">
-              {/* PO QUY ĐỊNH: MẶC ĐỊNH KHI BẢO TRÌ ĐỊNH KỲ HAY KHẨN CẤP ĐỀU SẼ PHÁT THÔNG BÁO TỚI USER VÀ ADMIN */}
-              <div className="flex items-start gap-2.5 text-xs text-primary bg-primary/5 border border-primary/20 rounded-xl px-3.5 py-2.5">
-                <span className="material-symbols-outlined text-[18px] text-primary shrink-0 mt-0.5">campaign</span>
-                <span className="leading-relaxed">
-                  {t('broadcast.schedule.defaultNotifyNote', 'Mặc định khi bảo trì (Định kỳ hay khẩn cấp), hệ thống đều sẽ tự động phát thông báo tới Client-app người dùng và Quản trị viên.')}
-                </span>
-              </div>
-
               {/* PO QUY ĐỊNH: NÚT CHECKBOX "BẢO TRÌ KHẨN CẤP" */}
               {/* Nút bị chặn khi khẩn cấp đã kích hoạt. KHÔNG bị chặn khi bảo trì định kỳ */}
               <div className="flex items-center justify-between p-3.5 rounded-xl border border-outline-variant bg-surface-container-lowest">
@@ -821,13 +813,13 @@ const BroadcastPage = () => {
                     <input
                       id="schedule-start-at"
                       type="datetime-local"
-                      min={toLocalInputString(Date.now() + 4 * 3600 * 1000)}
+                      min={toLocalInputString(Date.now() + 3 * 3600 * 1000)}
                       value={scheduleDatetime}
                       onChange={(e) => setScheduleDatetime(e.target.value)}
                       required={!isEmergencySchedule}
                       className="w-full border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
-                    <span className="text-[10px] text-gray-500 mt-1 block">Tối thiểu trước 4 tiếng kể từ hiện tại</span>
+                    <span className="text-[10px] text-gray-500 mt-1 block">Tối thiểu trước 3 tiếng kể từ hiện tại</span>
                   </div>
 
                   <div>
@@ -837,7 +829,7 @@ const BroadcastPage = () => {
                     <input
                       id="schedule-end-at"
                       type="datetime-local"
-                      min={scheduleDatetime || toLocalInputString(Date.now() + 4 * 3600 * 1000)}
+                      min={scheduleDatetime || toLocalInputString(Date.now() + 3 * 3600 * 1000)}
                       value={scheduleEndDatetime}
                       onChange={(e) => setScheduleEndDatetime(e.target.value)}
                       className="w-full border border-outline-variant rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -1145,7 +1137,7 @@ const BroadcastPage = () => {
                               if (isScheduled) {
                                 const startTimeMs = row.started_at ? new Date(row.started_at).getTime() : 0;
                                 const hoursUntilStart = (startTimeMs - nowTick) / (3600 * 1000);
-                                const canCancel = hoursUntilStart >= 4;
+                                const canCancel = hoursUntilStart >= 3;
 
                                 if (canCancel) {
                                   return (
@@ -1165,10 +1157,10 @@ const BroadcastPage = () => {
                                 return (
                                   <span
                                     className="inline-flex items-center gap-1 text-[11px] text-gray-400 font-medium cursor-not-allowed"
-                                    title={t('broadcast.history.cannotCancelHint', 'Chỉ có thể hủy trước ít nhất 4 tiếng so với giờ bắt đầu')}
+                                    title={t('broadcast.history.cannotCancelHint', 'Chỉ có thể hủy trước ít nhất 3 tiếng so với giờ bắt đầu')}
                                   >
                                     <span className="material-symbols-outlined text-[13px]">lock</span>
-                                    <span>&lt; 4h</span>
+                                    <span>&lt; 3h</span>
                                   </span>
                                 );
                               }

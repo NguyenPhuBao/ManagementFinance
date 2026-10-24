@@ -247,7 +247,7 @@ describe('Admin-web Refinement 2-Tier Test Suite (Issue Logs Verification)', () 
       });
     });
 
-    it('Tầng 2 (System Impact): Thực thi Đổi Mật Khẩu gọi adminApi.changePassword với mật khẩu và PIN cũ', async () => {
+    it('Tầng 2 (System Impact): Thực thi Đổi Mật Khẩu gọi adminApi.changePassword với mật khẩu và mã PIN bảo mật hiện tại', async () => {
       adminApi.changePassword.mockResolvedValueOnce({ data: { message: 'Password updated successfully' } });
       renderWithProviders(<SettingsModal isOpen={true} onClose={vi.fn()} />);
 
@@ -260,11 +260,12 @@ describe('Admin-web Refinement 2-Tier Test Suite (Issue Logs Verification)', () 
       fireEvent.change(screen.getByTestId('password-input-confirm'), { target: { value: 'NewSuperPass@2026' } });
       fireEvent.click(screen.getByTestId('submit-change-password-btn'));
 
-      // Tầng 2: Gọi đúng API backend đổi mật khẩu
+      // Tầng 2: Gọi đúng API backend đổi mật khẩu với mã PIN bảo mật hiện tại
       await waitFor(() => {
         expect(adminApi.changePassword).toHaveBeenCalledWith({
           oldPassword: 'OldPassword@123',
           pin: '123456',
+          oldPin: '123456',
           newPassword: 'NewSuperPass@2026',
         });
       });

@@ -35,21 +35,27 @@ function formatUptimeDuration(totalSeconds) {
 /**
  * Tính % uptime theo chuẩn SLA 30 ngày (Chuẩn SLA Công nghiệp được PO phê duyệt):
  * - Khấu trừ toàn bộ thời gian hệ thống bảo trì (cả Khẩn cấp EMERGENCY lẫn Theo lịch SCHEDULED).
- * - Cửa sổ SLA chuẩn 30 ngày: 2,592,000 giây.
- * - Công thức chuẩn: ((2,592,000 - totalDowntimeSeconds) / 2,592,000) * 100.
- * - Bảo đảm độc lập với số giây khởi động lại của process NodeJS (Zero drop on restart).
- * @param {number} uptimeSeconds - Số giây process nodejs chạy liên tục
- * @returns {Promise<{ uptimePercent: number, uptimeSeconds: number, rawUptimeSeconds: number, downtimeSeconds: number, emergencyDowntimeSec: number, slaWindowDays: number }>}
+/**
+ * Tính toán tỷ lệ Uptime hệ thống thực tế theo chỉ đạo PO:
+ * - Tổng thời gian: Tính từ lúc máy chủ bắt đầu chạy (SERVER_START_TIME) đến thời điểm hiện tại.
+ * - Thời gian chạy thực tế = Tổng thời gian - Thời gian bảo trì.
+ * - Tỷ lệ % Uptime = (Thời gian chạy thực tế / Tổng thời gian) * 100.
+ * - Tự động cập nhật lại liên tục kể cả khi đang trong phiên bảo trì.
+ * @param {number} uptimeSeconds - Số giây tiến trình process nodejs hoặc tổng thời gian
+ * @returns {Promise<{ uptimePercent: number, uptimeSeconds: number, totalSeconds: number, rawUptimeSeconds: number, downtimeSeconds: number, emergencyDowntimeSec: number, startedAt: string }>}
  */
 async function calcUptimePercent(uptimeSeconds = 0) {
-  const SLA_WINDOW_DAYS = 30;
-  const TOTAL_SLA_SECONDS = SLA_WINDOW_DAYS * 24 * 3600; // 2,592,000 giây
+  // Tổng thời gian từ lúc bắt đầu chạy
+  const totalElapsedSec = typeof uptimeSeconds === 'number' && uptimeSeconds > 0
+    ? Math.floor(uptimeSeconds)
+    : Math.max(1, Math.floor((Date.now() - SERVER_START_TIME.getTime()) / 1000));
+
   let totalDowntimeSec = 0;
 
   try {
     const { defaultMaintenanceRepository } = require('./maintenance.repository');
     if (defaultMaintenanceRepository) {
-      const sinceDate = new Date(Date.now() - SLA_WINDOW_DAYS * 24 * 3600 * 1000);
+      const sinceDate = SERVER_START_TIME;
       if (typeof defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds === 'function') {
         totalDowntimeSec = await defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds(sinceDate);
       } else if (typeof defaultMaintenanceRepository.getEmergencyDowntimeSeconds === 'function') {
@@ -74,21 +80,23 @@ async function calcUptimePercent(uptimeSeconds = 0) {
     }
   } catch (_) {}
 
-  // Tính % Uptime SLA trong chu kỳ 30 ngày
-  const safeDowntime = Math.max(0, Math.min(totalDowntimeSec, TOTAL_SLA_SECONDS));
-  const availableSeconds = TOTAL_SLA_SECONDS - safeDowntime;
-  const rawPercent = (availableSeconds / TOTAL_SLA_SECONDS) * 100;
-  const percent = parseFloat(Math.min(100, Math.max(0, rawPercent)).toFixed(3));
+  // Khấu trừ an toàn: Downtime không được vượt quá Tổng thời gian
+  const safeDowntime = Math.max(0, Math.min(totalDowntimeSec, totalElapsedSec));
+  // Thời gian chạy thực tế của hệ thống
+  const runningSec = Math.max(0, totalElapsedSec - safeDowntime);
 
-  const rawSec = typeof uptimeSeconds === 'number' && !isNaN(uptimeSeconds) ? Math.floor(uptimeSeconds) : Math.floor(process.uptime());
+  // Tỷ lệ % Uptime thực tế = (Thời gian chạy thực tế / Tổng thời gian) * 100
+  const rawPercent = totalElapsedSec > 0 ? (runningSec / totalElapsedSec) * 100 : 100;
+  const percent = parseFloat(Math.min(100, Math.max(0, rawPercent)).toFixed(2));
 
   return {
     uptimePercent: percent,
-    uptimeSeconds: rawSec,
-    rawUptimeSeconds: rawSec,
+    uptimeSeconds: runningSec,
+    totalSeconds: totalElapsedSec,
+    rawUptimeSeconds: totalElapsedSec,
     downtimeSeconds: safeDowntime,
     emergencyDowntimeSec: safeDowntime,
-    slaWindowDays: SLA_WINDOW_DAYS,
+    startedAt: SERVER_START_TIME.toISOString(),
   };
 }
 
@@ -641,8 +649,9 @@ const adminService = {
     const rawUptimeSeconds = Math.floor(process.uptime());
     const uptimeResult = await calcUptimePercent(rawUptimeSeconds);
     const uptimeSeconds = uptimeResult.uptimeSeconds;
+    const totalSeconds = uptimeResult.totalSeconds;
     const uptimePercent = uptimeResult.uptimePercent;
-    const slaWindowDays = uptimeResult.slaWindowDays;
+    const downtimeSeconds = uptimeResult.downtimeSeconds;
 
     return {
       cpu: { cores: cpus.length, percent: cpuPercent },
@@ -672,11 +681,13 @@ const adminService = {
       loadShedding: { shedCount24h: typeof getLoadSheddingCount === 'function' ? getLoadSheddingCount() : 0 },
       uptime: {
         uptimeSeconds,
+        totalSeconds,
         rawUptimeSeconds,
         uptimeFormatted: formatUptimeDuration(uptimeSeconds),
+        totalFormatted: formatUptimeDuration(totalSeconds),
         startedAt: SERVER_START_TIME.toISOString(),
         uptimePercent,
-        slaWindowDays,
+        downtimeSeconds,
       },
       timestamp: new Date().toISOString(),
     };
@@ -1067,9 +1078,9 @@ const adminService = {
   },
 
   /**
-   * Đổi mật khẩu tài khoản Admin (Yêu cầu mật khẩu cũ và mã PIN cũ)
+   * Đổi mật khẩu tài khoản Admin (Yêu cầu mật khẩu hiện tại và mã PIN bảo mật hiện tại)
    */
-  async changeAdminPassword({ oldPassword, oldPin, newPassword, confirmPassword } = {}, currentUser) {
+  async changeAdminPassword({ oldPassword, oldPin, pin, newPassword, confirmPassword } = {}, currentUser) {
     if (!currentUser?.idaccount) {
       const err = new Error('Yêu cầu xác thực tài khoản quản trị viên');
       err.statusCode = 401;
@@ -1082,7 +1093,8 @@ const adminService = {
       throw err;
     }
 
-    if (!oldPin) {
+    const securityPin = (pin || oldPin || '').toString().trim();
+    if (!securityPin) {
       const err = new Error('Vui lòng nhập mã PIN bảo mật hiện tại');
       err.statusCode = 400;
       throw err;
@@ -1122,16 +1134,16 @@ const adminService = {
       throw err;
     }
 
-    // 2. Kiểm tra mã PIN cũ
-    let isOldPinValid = false;
+    // 2. Kiểm tra mã PIN bảo mật hiện tại
+    let isPinValid = false;
     if (account.pin_hash) {
-      isOldPinValid = await bcrypt.compare(oldPin.trim(), account.pin_hash);
+      isPinValid = await bcrypt.compare(securityPin, account.pin_hash);
     } else {
       const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
-      isOldPinValid = oldPin.trim() === systemPin.trim();
+      isPinValid = securityPin === systemPin.trim();
     }
 
-    if (!isOldPinValid) {
+    if (!isPinValid) {
       const err = new Error('Mã PIN bảo mật hiện tại không chính xác!');
       err.statusCode = 400;
       throw err;

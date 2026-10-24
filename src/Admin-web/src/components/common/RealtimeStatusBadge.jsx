@@ -76,8 +76,7 @@ const RealtimeStatusBadge = ({ connected: propConnected, className = '' }) => {
         title={t('dashboard.recentActivities.realtimeTooltip', 'Máy chủ thời gian thực Socket.IO đang kết nối ổn định')}
       >
         <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
+          <span className="inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
         </span>
         <span>{t('dashboard.recentActivities.realtime', 'Real-time')}</span>
       </span>

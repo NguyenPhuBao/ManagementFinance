@@ -196,7 +196,7 @@ describe('BroadcastPage & Maintenance Schedule Refinements (2-Tier Architecture)
   // ⚡ TẦNG 2: KIỂM THỬ TÁC ĐỘNG HỆ THỐNG & RÀNG BUỘC THỰC TẾ (SYSTEM IMPACT)
   // =========================================================================
   describe('⚡ TẦNG 2: Real System Impact & Business Constraints', () => {
-    it('2.1. Ràng buộc 4 tiếng: Nhập thời gian bắt đầu dưới 4 tiếng -> Chặn submit và phát Toast cảnh báo', async () => {
+    it('2.1. Ràng buộc 3 tiếng: Nhập thời gian bắt đầu dưới 3 tiếng -> Chặn submit và phát Toast cảnh báo', async () => {
       adminApi.getMaintenanceStatus.mockResolvedValue({
         active: false,
         isEmergency: false,
@@ -211,7 +211,7 @@ describe('BroadcastPage & Maintenance Schedule Refinements (2-Tier Architecture)
 
       const startInput = screen.getByLabelText(/Thời điểm bắt đầu/i);
 
-      // Nhập thời gian chỉ 2 tiếng nữa (< 4 tiếng)
+      // Nhập thời gian chỉ 2 tiếng nữa (< 3 tiếng)
       const invalidTime = toLocalInputString(now + 2 * 3600 * 1000);
       fireEvent.change(startInput, { target: { value: invalidTime } });
 
@@ -220,12 +220,12 @@ describe('BroadcastPage & Maintenance Schedule Refinements (2-Tier Architecture)
       await waitFor(() => {
         // Kiểm tra không gọi API Backend
         expect(adminApi.setMaintenanceStatus).not.toHaveBeenCalled();
-        // Kiểm tra hiển thị thông báo lỗi ít nhất 4 tiếng
-        expect(screen.getByText(/Thời gian bảo trì theo lịch phải được thiết lập trước ít nhất 4 tiếng/i)).toBeInTheDocument();
+        // Kiểm tra hiển thị thông báo lỗi ít nhất 3 tiếng
+        expect(screen.getByText(/Thời gian bảo trì theo lịch phải được thiết lập trước ít nhất 3 tiếng/i)).toBeInTheDocument();
       });
     });
 
-    it('2.2. Nhập thời gian hợp lệ (>= 4 tiếng) -> Gửi yêu cầu đặt lịch tới Backend thành công với isEmergency = false', async () => {
+    it('2.2. Nhập thời gian hợp lệ (>= 3 tiếng) -> Gửi yêu cầu đặt lịch tới Backend thành công với isEmergency = false', async () => {
       adminApi.getMaintenanceStatus.mockResolvedValue({
         active: false,
         isEmergency: false,
