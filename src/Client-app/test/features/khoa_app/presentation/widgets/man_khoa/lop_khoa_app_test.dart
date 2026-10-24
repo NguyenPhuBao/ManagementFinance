@@ -1,0 +1,181 @@
+import 'dart:async';
+
+import 'package:flowmoney/features/khoa_app/application/khoa_app_service.dart';
+import 'package:flowmoney/features/khoa_app/data/khoa_app_store.dart';
+import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
+import 'package:flowmoney/features/khoa_app/presentation/widgets/man_khoa/lop_khoa_app.dart';
+import 'package:flowmoney/shared/theme/app_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../../helpers/khoa_app_gia.dart';
+
+void main() {
+  late KhoaAppService sv;
+  late KhoaAppCubit cubit;
+  late StreamController<int?> phien;
+  late StreamController<AppLifecycleState> vongDoi;
+  var nay = DateTime(2026, 10, 24, 21);
+  var nutNoiDung = 0;
+  var quenPin = 0;
+
+  setUp(() {
+    nay = DateTime(2026, 10, 24, 21);
+    nutNoiDung = 0;
+    quenPin = 0;
+    sv = KhoaAppService(store: InMemoryKhoaAppStore(), kenh: KenhGia(), bam: bamNhanh, clock: () => nay);
+    phien = StreamController<int?>.broadcast();
+    vongDoi = StreamController<AppLifecycleState>.broadcast();
+    cubit = KhoaAppCubit(service: sv, vongDoi: vongDoi.stream, phien: phien.stream, clock: () => nay);
+  });
+
+  tearDown(() async {
+    await cubit.close();
+    await phien.close();
+    await vongDoi.close();
+  });
+
+  Widget lop(Widget child) => LopKhoaApp(khiQuenPin: () => quenPin++, dongHo: () => nay, child: child);
+
+  Widget app() => BlocProvider.value(
+        value: cubit,
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          builder: (context, child) => lop(child!),
+          home: Scaffold(body: Center(child: ElevatedButton(onPressed: () => nutNoiDung++, child: const Text('Nội dung')))),
+        ),
+      );
+
+  // P14: không runAsync (kho + băm nhanh chỉ dùng microtask); trạng thái đẩy thẳng qua cubit.nhanPhien.
+  Future<void> go(WidgetTester t, String pin) async {
+    for (final c in pin.split('')) {
+      await t.tap(find.byKey(Key('phim-$c')));
+      await t.pump();
+    }
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 50));
+  }
+
+  Future<void> khoaPhien(WidgetTester t, {int soLanSai = 0}) async {
+    await sv.datPin(10, '246810');
+    for (var i = 0; i < soLanSai; i++) {
+      await sv.kiemPin(10, '000000');
+    }
+    await t.pumpWidget(app());
+    await cubit.nhanPhien(10);
+    await t.pump();
+  }
+
+  testWidgets('DangXet: che đặc, chạm không xuyên xuống nội dung', (t) async {
+    await t.pumpWidget(app());
+    await t.tap(find.text('Nội dung'), warnIfMissed: false);
+    expect(nutNoiDung, 0);
+    expect(find.byWidgetPredicate((w) => w is AbsorbPointer && w.child is ColoredBox), findsOneWidget,
+        reason: 'lớp ĐẶC (ColoredBox) bọc AbsorbPointer thật sự che và nuốt chạm');
+  });
+
+  testWidgets('đang khoá: hiện màn khoá; nhập đúng → nội dung dùng được', (t) async {
+    await khoaPhien(t);
+    expect(find.text('Nhập mã PIN'), findsOneWidget);
+    await t.tap(find.text('Nội dung'), warnIfMissed: false);
+    expect(nutNoiDung, 0, reason: 'lớp khoá chặn chạm');
+    await go(t, '246810');
+    expect(find.text('Nhập mã PIN'), findsNothing);
+    await t.tap(find.text('Nội dung'));
+    expect(nutNoiDung, 1);
+  });
+
+  testWidgets('nhập sai → câu sai, chấm xoá về 0', (t) async {
+    await khoaPhien(t);
+    await go(t, '000000');
+    expect(find.text('Mã PIN không đúng'), findsOneWidget);
+    expect(chamPin('day'), findsNothing);
+    expect(chamPin('rong'), findsNWidgets(6));
+  });
+
+  testWidgets('Quên mã PIN? → tấm xác nhận → Đăng xuất gọi khiQuenPin; Huỷ thì không', (t) async {
+    await khoaPhien(t);
+    await t.tap(find.text('Quên mã PIN?'));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(find.text('Đăng xuất để đặt lại mã PIN?'), findsOneWidget);
+    await t.tap(find.text('Huỷ'));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(quenPin, 0);
+    expect(find.text('Đăng xuất để đặt lại mã PIN?'), findsNothing);
+    await t.tap(find.text('Quên mã PIN?'));
+    await t.pump(const Duration(milliseconds: 300));
+    await t.tap(find.text('Đăng xuất'));
+    expect(quenPin, 1);
+  });
+
+  testWidgets('đang chờ: đếm ngược + phím số tắt', (t) async {
+    await khoaPhien(t, soLanSai: 5);
+    expect(find.textContaining('Thử lại sau 00:30', findRichText: true), findsOneWidget);
+    expect(find.text('Sai mã PIN quá nhiều lần'), findsOneWidget);
+    await t.tap(find.byKey(const Key('phim-1')));
+    await t.pump();
+    expect(chamPin('day'), findsNothing, reason: 'đang chờ không nhận số');
+    nay = nay.add(const Duration(seconds: 1));
+    await t.pump(const Duration(seconds: 1));
+    expect(find.textContaining('Thử lại sau 00:29', findRichText: true), findsOneWidget);
+  });
+
+  testWidgets('hết chờ: gõ được tiếp (chấm không kẹt ở 6 số của lượt bị chặn)', (t) async {
+    await khoaPhien(t, soLanSai: 5);
+    nay = nay.add(const Duration(seconds: 31));
+    await t.pump(const Duration(seconds: 31));
+    await go(t, '246810');
+    expect(find.text('Nhập mã PIN'), findsNothing, reason: 'hết chờ, PIN đúng phải mở được');
+  });
+
+  testWidgets('đăng xuất khi đang khoá → lớp khoá gỡ', (t) async {
+    await khoaPhien(t);
+    expect(find.text('Nhập mã PIN'), findsOneWidget,
+        reason: 'ca phải thấy màn khoá TRƯỚC — chỉ đòi vắng mặt là xanh rỗng');
+    await cubit.nhanPhien(null);
+    await t.pump();
+    expect(find.text('Nhập mã PIN'), findsNothing);
+  });
+
+  testWidgets('GoRouter thật: điều hướng bên dưới khi đang khoá, mở khoá thấy trang đích', (t) async {
+    final router = GoRouter(initialLocation: '/a', routes: [
+      GoRoute(path: '/a', builder: (_, __) => const Scaffold(body: Text('Trang A'))),
+      GoRoute(path: '/b', builder: (_, __) => const Scaffold(body: Text('Trang B'))),
+    ]);
+    addTearDown(router.dispose);
+    await sv.datPin(10, '246810');
+    await t.pumpWidget(BlocProvider.value(
+      value: cubit,
+      child: MaterialApp.router(
+        theme: AppTheme.lightTheme,
+        routerConfig: router,
+        builder: (context, child) => lop(child!),
+      ),
+    ));
+    await cubit.nhanPhien(10);
+    await t.pump();
+    router.push('/b');
+    await t.pump(const Duration(milliseconds: 400));
+    expect(find.text('Nhập mã PIN'), findsOneWidget);
+    await go(t, '246810');
+    expect(find.text('Trang B'), findsOneWidget);
+    expect(find.text('Nhập mã PIN'), findsNothing);
+  });
+
+  for (final kho in const [Size(360, 640), Size(360, 800)]) {
+    testWidgets('khổ ${kho.width.toInt()} × ${kho.height.toInt()}: màn khoá không tràn', (t) async {
+      t.view.physicalSize = kho;
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      await khoaPhien(t);
+      expect(find.text('Nhập mã PIN'), findsOneWidget);
+      expect(t.takeException(), isNull);
+      await t.tap(find.text('Quên mã PIN?'));
+      await t.pump(const Duration(milliseconds: 300));
+      expect(find.text('Đăng xuất'), findsOneWidget);
+      expect(t.takeException(), isNull);
+    });
+  }
+}
