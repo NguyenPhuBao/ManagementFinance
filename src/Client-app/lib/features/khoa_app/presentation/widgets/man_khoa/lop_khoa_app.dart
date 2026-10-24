@@ -24,7 +24,7 @@ class LopKhoaApp extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             // Trình đọc màn hình không được đọc nội dung dưới lớp khoá.
-            ExcludeSemantics(excluding: che, child: child),
+            ExcludeFocus(excluding: che, child: ExcludeSemantics(excluding: che, child: child)),
             if (s is KhoaAppDangXet)
               const Positioned.fill(child: AbsorbPointer(child: ColoredBox(color: AppColors.background))),
             if (s is KhoaAppKhoa)

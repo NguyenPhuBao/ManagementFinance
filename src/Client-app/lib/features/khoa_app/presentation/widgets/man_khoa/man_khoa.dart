@@ -111,6 +111,8 @@ class _ManKhoaState extends State<ManKhoa> {
       color: AppColors.background,
       child: SafeArea(
         child: Stack(
+          alignment: Alignment.center,
+          fit: StackFit.expand,
           children: [
             // Stitch `2f0896e0…`: cả cột căn giữa dọc; khổ thấp thì bàn phím co (BanPhimPin tự tính cạnh phím).
             Column(
@@ -126,13 +128,16 @@ class _ManKhoaState extends State<ManKhoa> {
                 const Text('Nhập mã PIN',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                 const SizedBox(height: 4),
-                Text(
-                  con != null ? 'Sai mã PIN quá nhiều lần' : (loi ?? 'Mở khoá FlowMoney'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: con != null || loi != null ? FontWeight.w500 : FontWeight.w400,
-                      color: con != null || loi != null ? AppColors.expense : _xamChu),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Text(
+                    con != null ? 'Sai mã PIN quá nhiều lần' : (loi ?? 'Mở khoá FlowMoney'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: con != null || loi != null ? FontWeight.w500 : FontWeight.w400,
+                        color: con != null || loi != null ? AppColors.expense : _xamChu),
+                  ),
                 ),
                 const SizedBox(height: 32),
                 ChamPin(soDaNhap: con != null ? 0 : _nhap.length),

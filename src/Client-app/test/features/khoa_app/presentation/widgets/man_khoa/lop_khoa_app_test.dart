@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:flowmoney/features/khoa_app/application/khoa_app_service.dart';
 import 'package:flowmoney/features/khoa_app/data/khoa_app_store.dart';
 import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
+import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_state.dart';
 import 'package:flowmoney/features/khoa_app/presentation/widgets/man_khoa/lop_khoa_app.dart';
+import 'package:flowmoney/features/khoa_app/presentation/widgets/man_khoa/man_khoa.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -44,7 +47,7 @@ void main() {
         child: MaterialApp(
           theme: AppTheme.lightTheme,
           builder: (context, child) => lop(child!),
-          home: Scaffold(body: Center(child: ElevatedButton(onPressed: () => nutNoiDung++, child: const Text('Nội dung')))),
+          home: Scaffold(body: Align(alignment: Alignment.topLeft, child: ElevatedButton(onPressed: () => nutNoiDung++, child: const Text('Nội dung')))),
         ),
       );
 
@@ -120,6 +123,15 @@ void main() {
     nay = nay.add(const Duration(seconds: 1));
     await t.pump(const Duration(seconds: 1));
     expect(find.textContaining('Thử lại sau 00:29', findRichText: true), findsOneWidget);
+    // Vế 'phím số tắt' bằng hành vi: số gõ lúc chờ không được lọt vào PIN kế.
+    for (final c in '123'.split('')) {
+      await t.tap(find.byKey(Key('phim-$c')));
+      await t.pump();
+    }
+    nay = nay.add(const Duration(seconds: 31));
+    await t.pump(const Duration(seconds: 31));
+    await go(t, '246810');
+    expect(find.text('Nhập mã PIN'), findsNothing, reason: 'số gõ lúc chờ lọt vào PIN thì 246810 gửi đi sai');
   });
 
   testWidgets('hết chờ: gõ được tiếp (chấm không kẹt ở 6 số của lượt bị chặn)', (t) async {
@@ -162,6 +174,51 @@ void main() {
     await go(t, '246810');
     expect(find.text('Trang B'), findsOneWidget);
     expect(find.text('Nhập mã PIN'), findsNothing);
+  });
+
+
+  testWidgets('khổ 360 × 800: tiêu đề, phím 5, Quên mã PIN? căn giữa ngang', (t) async {
+    t.view.physicalSize = const Size(360, 800);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await khoaPhien(t);
+    for (final f in [find.text('Nhập mã PIN'), find.byKey(const Key('phim-5')), find.text('Quên mã PIN?')]) {
+      expect(t.getCenter(f).dx, closeTo(180, 0.5));
+    }
+  });
+
+  testWidgets('câu lỗi dài vẫn căn giữa, xuống dòng có lề, không tràn', (t) async {
+    t.view.physicalSize = const Size(360, 800);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(BlocProvider.value(
+      value: cubit,
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: ManKhoa(
+          trangThai: const KhoaAppKhoa(coVanTay: false, loiNhan: kCauVanTayDaDoi),
+          khiQuenPin: () {},
+          dongHo: () => nay,
+        ),
+      ),
+    ));
+    expect(t.takeException(), isNull);
+    expect(t.getCenter(find.text(kCauVanTayDaDoi)).dx, closeTo(180, 0.5));
+    expect(t.getSize(find.text(kCauVanTayDaDoi)).width, lessThanOrEqualTo(360 - 48));
+    expect(t.getCenter(find.text('Nhập mã PIN')).dx, closeTo(180, 0.5));
+    expect(t.getCenter(find.byKey(const Key('phim-5'))).dx, closeTo(180, 0.5));
+  });
+
+  testWidgets('đang khoá: Tab + Enter không bấm được nút bên dưới; trình đọc màn hình không thấy nội dung', (t) async {
+    final h = t.ensureSemantics();
+    await khoaPhien(t);
+    await t.sendKeyEvent(LogicalKeyboardKey.tab);
+    await t.sendKeyEvent(LogicalKeyboardKey.enter);
+    await t.sendKeyEvent(LogicalKeyboardKey.space);
+    await t.pump();
+    expect(nutNoiDung, 0, reason: 'focus của nội dung bên dưới phải bị loại khi khoá');
+    expect(find.bySemanticsLabel('Nội dung'), findsNothing);
+    h.dispose();
   });
 
   for (final kho in const [Size(360, 640), Size(360, 800)]) {
