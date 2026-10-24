@@ -784,7 +784,9 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   kiện của một hàng `bienDong` thử (đã *Bỏ qua* = xoá cứng); hai dòng hàng chờ biên lai thử bị xoá trước khi app nhập — đọc nhật
   ký để học giờ thì bỏ qua các mốc ấy. Mốc `flutter test` **7.876 / 10 skip** (+3). Bảo trì lộ khi build: Flutter cảnh báo
   Gradle 8.14, AGP 8.11.1, Kotlin 2.2.20 sắp hết hỗ trợ.
-- **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 7): không khoá app (PIN / vân tay — tính năng, cần Stitch); ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
+- **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 7): khoá app PIN 6 số + vân tay Keystore — **spec duyệt**
+  (`docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md`, đối chiếu Money Lover / Money Manager / Spendee / Wallet /
+  MoMo + OWASP MASVS-AUTH-2), **năm màn Stitch người dùng xác nhận**, kế hoạch 13 task (gitignore) — **chưa thi công**; ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
   rơi về 0) — hàng của nhà đúng là người tạo, nhưng hàng riêng nên bỏ khi khác tài khoản phiên; **đừng** ép `Value(accountId)`.
 - Đã soát và ổn: SQL đều hằng / bind; không bypass chứng chỉ; Bearer chỉ tới backend (đường tương đối, ảnh QR Dio trần không
   token), socket token qua `setAuth`; token chỉ ở `flutter_secure_storage`; mọi tên tệp từ deeplink / hàng chờ qua
