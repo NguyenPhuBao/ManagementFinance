@@ -56,6 +56,8 @@ import java.io.IOException
  * [TuChuyenTien] ở `configureFlutterEngine` và GỠ ở `cleanUpFlutterEngine`.
  * Xem `lib/core/nen/kenh_tu_chuyen_tien.dart` và `TuChuyenTien.kt`.
  *
+ * Kênh `flowmoney/sinh_trac` — khoá ứng dụng (2026-10-24): `trangThai`, `bat`, `mo`, `xoaHet` — `SinhTrac.kt`,
+ * `lib/features/khoa_app/data/datasources/kenh_sinh_trac.dart`. Lớp nền GIỮ `FlutterActivity` (G100).
  * Kênh `flowmoney/micro` — giọng nói C4 (2026-10-12): `biChan` (quyền micro đã bị chặn hẳn chưa — gọi sau một lần
  * xin bị từ chối), `moCaiDat` (trang thông tin ứng dụng). Xem `lib/features/transaction/data/datasources/kenh_micro.dart`.
  *
@@ -129,6 +131,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // Khoá ứng dụng (2026-10-24): vân tay mở khoá Keystore — xem `SinhTrac.kt`.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SinhTrac.KENH).setMethodCallHandler(SinhTrac(this))
 
         TuChuyenTien.ganEngineApp(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TuChuyenTien.KENH)
