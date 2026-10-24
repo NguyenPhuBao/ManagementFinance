@@ -25,11 +25,12 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     Future<void> Function()? xoaAnhQuet,
     void Function()? datLaiCoGiaoDien,
     Future<void> Function(int idaccount)? datGoi,
+    Future<void> Function()? xoaKhoaApp,
   })  : _dongBo = dongBo, _thoiGianThuc = thoiGianThuc, _boQuet = boQuet,
         _donTaiKhoanKhac = donTaiKhoanKhac, _xoaCacheSlm = xoaCacheSlm,
         _chuyenHangSeedCu = chuyenHangSeedCu,
         _seedTaiKhoanMoi = seedTaiKhoanMoi, _xoaAnhQuet = xoaAnhQuet, _datLaiCoGiaoDien = datLaiCoGiaoDien,
-        _datGoi = datGoi {
+        _datGoi = datGoi, _xoaKhoaApp = xoaKhoaApp {
     final chet = dongBo?.sessionInvalidStream;
     if (chet != null) _subs.add(chet.listen(_phienChet.add));
     final hetHan = interceptor?.sessionExpiredStream;
@@ -48,6 +49,7 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
   final Future<void> Function(int)? _chuyenHangSeedCu;
   final Future<void> Function(int)? _seedTaiKhoanMoi;
   final Future<void> Function()? _xoaAnhQuet;
+  final Future<void> Function()? _xoaKhoaApp;
   final Future<void> Function(int)? _datGoi;
   final void Function()? _datLaiCoGiaoDien;
 
@@ -106,6 +108,8 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     await _boQuet?.stop();
     await _thoiGianThuc?.stop();
     await _xoaAnhQuet?.call();
+    // Khoá ứng dụng (2026-10-24): PIN gắn tài khoản trên máy — đăng xuất là xoá (spec khoá app mục 4).
+    await _xoaKhoaApp?.call();
   }
 
   @override

@@ -157,10 +157,17 @@ void main() {
       xoaAnhQuet: () async => hook.add('xoaAnh'),
       datLaiCoGiaoDien: () => hook.add('coUI'),
       datGoi: (id) async => hook.add('goi $id'),
+      xoaKhoaApp: () async => hook.add('xoaKhoaApp'),
     );
     addTearDown(p.dispose);
     return p;
   }
+
+  test('dongPhien gọi xoaKhoaApp (đăng xuất là xoá PIN — spec khoá app mục 4)', () async {
+    await dung().dongPhien();
+    expect(hook, contains('xoaKhoaApp'),
+        reason: 'thiếu hook này, đăng nhập lại (kể cả tài khoản khác) còn khoá bằng PIN cũ');
+  });
 
   test('moPhienCucBo: dọn → (xoá cache chỉ khi có hàng bị dọn) → hàng seed cũ → gói → bộ quét', () async {
     await dung(daDon: 3).moPhienCucBo(10);
@@ -249,7 +256,7 @@ void main() {
     expect(hook, ['seedMoi 10', 'coUI']);
     await p.dongPhien();
     expect(sync.nhatKy, ['stop']); expect(scanner.goi, ['stop']); expect(realtime.nhatKy.last, 'stop');
-    expect(hook.last, 'xoaAnh');
+    expect(hook.sublist(hook.length - 2), ['xoaAnh', 'xoaKhoaApp']);
   });
 
   test('sauDangNhap không có SyncEngine: bỏ seed, vẫn đặt lại cờ giao diện', () async {

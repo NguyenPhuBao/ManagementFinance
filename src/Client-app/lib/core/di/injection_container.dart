@@ -72,6 +72,9 @@ import '../../features/wallet/application/gop_vi_service.dart';
 import '../../features/wallet/data/vi_bi_giu_dong_bo.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
+import '../../features/khoa_app/application/khoa_app_service.dart';
+import '../../features/khoa_app/data/datasources/kenh_sinh_trac.dart';
+import '../../features/khoa_app/data/khoa_app_store.dart';
 import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
 import '../../features/premium/data/datasources/luu_anh_qr.dart';
@@ -253,6 +256,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       // G93: chờ kho gói nạp xong trước lượt quét đầu — cùng chốt "gói đặt TRƯỚC khi quét" của đường nền
       // (`chay_nen.dart`). `loaiPhien` chưa có ở đây: kho trống thì `noiPhien` áp nó lúc `AuthSuccess`.
       datGoi: (id) => sl<GoiRepository>().datTaiKhoan(id),
+      // Khoá ứng dụng (2026-10-24): đăng xuất xoá PIN + khoá Keystore.
+      xoaKhoaApp: () => sl<KhoaAppService>().xoaHet(),
     ),
     dispose: (p) => p.dispose(),
   );
@@ -555,6 +560,16 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<ViTheoNguonStore>(
     () => const SecureStorageViTheoNguonStore(FlutterSecureStorage()),
   );
+  // Khoá ứng dụng (2026-10-24, spec `2026-10-24-khoa-app-pin-sinh-trac-design.md`): kho + cổng sinh trắc + service.
+  // `KhoaAppCubit` KHÔNG ở đây — dựng ở `main.dart` để nghe đúng `AuthBloc` của app (DI đăng ký AuthBloc là factory).
+  sl.registerLazySingleton<KhoaAppStore>(() => SecureStorageKhoaAppStore(sl<FlutterSecureStorage>()));
+  sl.registerLazySingleton<KenhSinhTrac>(() =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+          ? const KenhSinhTracAndroid()
+          : const KenhSinhTracTrong());
+  sl.registerLazySingleton<KhoaAppService>(
+      () => KhoaAppService(store: sl<KhoaAppStore>(), kenh: sl<KenhSinhTrac>()));
+
   // Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): mốc "đã xét đến" theo tài khoản.
   sl.registerLazySingleton<MocPhienStore>(
     () => const SecureStorageMocPhienStore(FlutterSecureStorage()),

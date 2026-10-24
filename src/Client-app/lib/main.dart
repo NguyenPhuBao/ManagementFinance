@@ -37,6 +37,10 @@ import 'features/premium/presentation/bloc/phien_goi_tu_auth.dart';
 import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/khoa_app/application/khoa_app_service.dart';
+import 'features/khoa_app/application/xoa_khoa_sau_dang_xuat.dart';
+import 'features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
+import 'features/khoa_app/presentation/widgets/man_khoa/lop_khoa_app.dart';
 
 // ignore_for_file: avoid_print
 
@@ -146,6 +150,7 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
   late final GoRouter _router;
   late final NotificationTapRouter _chamThongBao;
   late final MoTuTomTatBienDong _moTomTat;
+  late final KhoaAppCubit _khoaApp;
 
   @override
   void initState() {
@@ -179,12 +184,29 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
       vongDoi: sl<AppLifecycleWatcher>().stream,
     );
     unawaited(_moTomTat.start().catchError((_) {}));
+
+    // Khoá ứng dụng (2026-10-24): nghe ĐÚNG AuthBloc của app. Chỉ trạng thái phiên RÕ (AuthSuccess / AuthUnauthenticated)
+    // — AuthLoading, OTP… không đổi gì; AuthSuccess lặp cùng tài khoản thì cubit tự bỏ qua.
+    bool phienRo(AuthState s) => s is AuthSuccess || s is AuthUnauthenticated;
+    _khoaApp = KhoaAppCubit(
+      service: sl<KhoaAppService>(),
+      vongDoi: sl<AppLifecycleWatcher>().stream,
+      phien: widget.authBloc.stream.where(phienRo).map(idaccountTuTrangThai),
+    );
+    final dau = widget.authBloc.state;
+    if (phienRo(dau)) {
+      unawaited(_khoaApp.nhanPhien(idaccountTuTrangThai(dau)));
+    } else if (widget.initialRoute == '/login') {
+      // Không token: main() không gửi AuthCheckRequested, AuthBloc đứng ở AuthInitial — không có phiên, không khoá.
+      unawaited(_khoaApp.nhanPhien(null));
+    }
   }
 
   @override
   void dispose() {
     unawaited(_chamThongBao.stop());
     unawaited(_moTomTat.stop());
+    unawaited(_khoaApp.close());
     super.dispose();
   }
 
@@ -196,6 +218,7 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
         BlocProvider<AuthBloc>.value(value: widget.authBloc),
         // Trạng thái gói Premium — singleton của DI, một cho cả app.
         BlocProvider<GoiCubit>.value(value: sl<GoiCubit>()),
+        BlocProvider<KhoaAppCubit>.value(value: _khoaApp),
       ],
       child: MaterialApp.router(
         title: 'FlowMoney',
@@ -210,15 +233,26 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
         // Toast bọc NGOÀI router nên phủ mọi trang mà không trang nào phải
         // biết đến nó. Lớp ngoài cùng ép đồng hồ 24 giờ cho mọi bảng chọn giờ
         // (G90 — xem `bocDongHo24Gio`).
-        builder: (context, child) => bocDongHo24Gio(
-          context,
-          AppToast(
-            connectionEvents: sl<ConnectionMonitor>().events,
-            pushResults: sl<SyncEngine>().pushResultStream,
-            realtimeEvents: sl<RealtimeChannel>().events,
-            mayChu: sl<TrangThaiMayChu>(),
-            thongBaoNhanh: sl<ThongBaoNhanh>().stream,
-            child: child ?? const SizedBox.shrink(),
+        builder: (context, child) => LopKhoaApp(
+          // "Quên mã PIN?" → đăng xuất; hook `dongPhien` xoá cấu hình khoá + khoá Keystore, còn đường lùi
+          // `xoaKhoaSauDangXuat` xoá thẳng khoá của tài khoản này nhưng chỉ SAU khi đăng xuất xong (xoá trước mà đăng
+          // xuất hỏng giữa chừng = mở lạnh vào thẳng app không cần mật khẩu). Tạo future nghe TRƯỚC khi gửi sự kiện.
+          khiQuenPin: () {
+            final id = idaccountTuTrangThai(widget.authBloc.state);
+            final daDangXuat = widget.authBloc.stream.firstWhere((s) => s is AuthUnauthenticated);
+            widget.authBloc.add(LogoutRequested());
+            unawaited(xoaKhoaSauDangXuat(daDangXuat: daDangXuat, idaccount: id, service: sl<KhoaAppService>()));
+          },
+          child: bocDongHo24Gio(
+            context,
+            AppToast(
+              connectionEvents: sl<ConnectionMonitor>().events,
+              pushResults: sl<SyncEngine>().pushResultStream,
+              realtimeEvents: sl<RealtimeChannel>().events,
+              mayChu: sl<TrangThaiMayChu>(),
+              thongBaoNhanh: sl<ThongBaoNhanh>().stream,
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         ),
       ),

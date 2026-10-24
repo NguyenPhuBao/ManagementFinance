@@ -57,7 +57,7 @@ class SecureStorageKhoaAppStore implements KhoaAppStore {
       tatCa = await _storage.readAll();
     } catch (_) {
       // readAll hỏng: đăng xuất không bao giờ được ném; đường lùi (xoá thẳng theo khoá của tài khoản
-      // hiện tại) nằm ở chỗ gọi.
+      // hiện tại, sau khi đăng xuất xong) là `xoaKhoaSauDangXuat` (application/), gọi từ "Quên mã PIN?" ở main.dart.
       return;
     }
     // P3: lặp trên bản sao — mock (và có thể bản thật) trả chính map nội bộ, lặp-rồi-xoá sẽ ném

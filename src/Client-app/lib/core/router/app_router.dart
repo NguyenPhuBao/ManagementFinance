@@ -27,6 +27,8 @@ import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/goal/domain/dien_san_muc_tieu.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
+import '../../features/khoa_app/presentation/pages/dat_ma_pin_page.dart';
+import '../../features/khoa_app/presentation/pages/khoa_app_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/profile/presentation/pages/delete_account_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
@@ -502,6 +504,10 @@ class AppRouter {
           GoRoute(
               path: '/settings/change-password',
               builder: (_, __) => const ChangePasswordPage()),
+          GoRoute(path: '/settings/khoa-app', builder: (_, __) => const KhoaAppPage()),
+          GoRoute(
+              path: '/settings/khoa-app/dat-pin',
+              builder: (_, state) => DatMaPinPage(che: CheDatPin.tuTen(state.uri.queryParameters['che']))),
           GoRoute(
               path: '/settings/delete-account',
               builder: (_, __) => const DeleteAccountPage()),
