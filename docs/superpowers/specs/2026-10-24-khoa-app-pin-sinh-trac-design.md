@@ -39,7 +39,8 @@ spec chờ người dùng đọc lại.
 ## 4. Hành vi người dùng thấy (Phần 1 — đã duyệt)
 
 - **Bật:** Cá nhân → thẻ *Bảo mật & Tuỳ chọn* → hàng **"Khoá ứng dụng"** → trang Khoá ứng dụng: công tắc *Khoá FlowMoney*. Bật →
-  đặt PIN 6 số (nhập hai lần) → nếu máy đủ điều kiện, hỏi *"Dùng vân tay để mở?"*. Trang còn: *Đổi mã PIN*, công tắc *Vân tay*,
+  đặt PIN 6 số (nhập hai lần) → nếu máy đủ điều kiện, hộp vân tay của hệ điều hành *"Chạm vân tay để bật"* tự hiện (chạm = bật vân
+  tay; huỷ = chỉ dùng PIN — không có hộp hỏi riêng). Trang còn: *Đổi mã PIN*, công tắc *Vân tay*,
   ô *Tự khoá sau*. Tắt khoá / đổi PIN phải nhập PIN hiện tại.
 - **Bị khoá:** màn khoá phủ toàn bộ app, kể cả toast: logo, *"Nhập mã PIN"*, 6 chấm, bàn phím số, nút vân tay, *"Quên mã PIN?"*.
   Bật vân tay thì hộp vân tay tự hiện khi màn khoá mở.
@@ -65,13 +66,14 @@ Mảng mới **`lib/features/khoa_app/`** (không đặt ở `core/` — danh s�
 |---|---|---|
 | `domain/` | `luat_khoa_app.dart` | `enum TuKhoaSau { ngay, giay30, phut1, phut5 }` + `Duration`; `canKhoaKhiQuayLai({roiLuc, nay, muc})`; `thoiGianCho(soLanSai)` (< 5 → `null`; 5 → 30 s; 6 → 1 ph; 7 → 5 ph; ≥ 8 → 15 ph); `maPinHopLe` (đúng 6 chữ số ASCII) |
 | `domain/` | `bam_ma_pin.dart` | PBKDF2-HMAC-SHA256 (gói `crypto` sẵn có, Dart thuần); `soSanhHangThoiGian` |
-| `data/models/` | `cau_hinh_khoa_app.dart` | `bat`, `salt`, `bam`, `soVong`, `tuKhoaSau`, `vanTay` (bản mã + IV + băm SHA-256 của bí mật, hoặc `null`), `soLanSai`, `choDen` |
+| `data/models/` | `cau_hinh_khoa_app.dart` | `salt`, `bam`, `soVong`, `tuKhoaSau`, `vanTay` (bản mã + IV + băm SHA-256 của bí mật, hoặc `null`), `soLanSai`, `choDen` — **không** có cờ `bat`: có cấu hình trong kho ⇔ khoá đang bật, *tắt* = xoá cấu hình |
 | `data/` | `khoa_app_store.dart` | bọc `flutter_secure_storage`, khoá `khoa_app_<idaccount>`, JSON; đọc hỏng → `null` |
 | `data/datasources/` | `kenh_sinh_trac.dart` | cổng kênh `flowmoney/sinh_trac` (interface + bản thật + bản `Noop` cho web / test) |
-| `application/` | `khoa_app_service.dart` | đặt / đổi / tắt PIN; `kiemPin` (cập nhật đếm, ghi trước khi trả); bật / mở bằng vân tay; `xoaCuaTaiKhoan` |
+| `application/` | `khoa_app_service.dart` | `datPin` (đặt / đổi) · `kiemPin` (cập nhật đếm, ghi trước khi trả) · `tatKhoa` · `datTuKhoaSau` · `batVanTay` / `tatVanTay` / `moBangVanTay` · `xoaHet` (đăng xuất: mọi cấu hình `khoa_app_*` + mọi alias Keystore tiền tố `flowmoney_khoa_app_` — máy chỉ có một tài khoản đăng nhập mỗi lúc) |
 | `presentation/bloc/` | `khoa_app_cubit.dart` (+ state) | `dangXet` · `tat` · `mo` · `khoa(soLanSai, choDen, coVanTay, loiNhan)`; nghe `AppLifecycleWatcher.stream` + `AuthBloc.stream` |
 | `presentation/bloc/` | `cai_dat_khoa_app_cubit.dart` | trạng thái trang Khoá ứng dụng |
-| `presentation/widgets/man_khoa/` | lớp phủ, chấm PIN, bàn phím số | |
+| `presentation/widgets/man_khoa/` | lớp phủ, màn khoá, tấm xác nhận quên PIN | widget của **một** trang |
+| `presentation/widgets/` | chấm PIN, bàn phím số | dùng chung màn khoá + trang Đặt PIN (luật mục 8) |
 | `presentation/pages/` | `khoa_app_page.dart`, `dat_ma_pin_page.dart` | cài đặt; đặt / đổi PIN |
 
 **Chỗ nối:**
@@ -86,7 +88,9 @@ Mảng mới **`lib/features/khoa_app/`** (không đặt ở `core/` — danh s�
   là `InkResponse` + `Semantics` chứ không `IconButton`.
 - `core/auth/phien_dieu_phoi_that.dart`: `dongPhien` thêm hook xoá cấu hình + khoá Keystore của tài khoản (vẫn là chỗ duy nhất
   đóng phiên).
-- `core/di/injection_container.dart`: store, cổng, service (lazy singleton), cubit (singleton — lớp phủ sống suốt app).
+- `core/di/injection_container.dart`: store, cổng, service (lazy singleton). **`KhoaAppCubit` không đăng ký DI** — dựng ở
+  `main.dart` (sống suốt app cùng lớp phủ), nghe **đúng** `AuthBloc` của app: `AuthBloc` trong DI là factory, `sl<AuthBloc>()` ra một
+  bloc mới chưa đăng nhập.
 - Kotlin: tệp mới `SinhTrac.kt`; `MainActivity` chỉ đăng ký thêm **một** kênh, **giữ** `FlutterActivity`; manifest `USE_BIOMETRIC`.
 - Cấu hình khoá là **cục bộ** — không vào `SyncEntityType`, không lên server.
 
@@ -100,11 +104,12 @@ Mảng mới **`lib/features/khoa_app/`** (không đặt ở `core/` — danh s�
   *"Chạm vân tay để bật"* với `CryptoObject` → mã hoá bí mật → trả `{ banMa, iv }`.
 - `mo(idaccount, banMa, iv)` → khởi `Cipher` DECRYPT; `KeyPermanentlyInvalidatedException` → trả mã `VO_HIEU` **không** hiện hộp;
   ngược lại hộp *"Mở FlowMoney"*, nút phụ *"Dùng mã PIN"* → giải mã → trả `{ biMat }`.
-- `xoa(idaccount)` → xoá alias.
+- `xoaHet()` → xoá **mọi** alias tiền tố `flowmoney_khoa_app_` (không có lệnh xoá theo tài khoản — tắt khoá, tắt vân tay, `VO_HIEU`
+  và đăng xuất đều dùng lệnh này; máy chỉ có một tài khoản đăng nhập mỗi lúc).
 - Mã lỗi: `HUY` (người dùng huỷ / chọn PIN), `VO_HIEU`, `TAM_KHOA` (hệ điều hành khoá sinh trắc), `KHONG_HO_TRO`, `LOI`.
 
 **Dart:** bí mật 32 byte `Random.secure()`; cất **bản mã + IV + SHA-256(bí mật)**, không bao giờ cất bí mật. Mở: SHA-256(bí mật
-trả về) so hằng thời gian với băm đã cất → khớp mới mở. `VO_HIEU` → tắt vân tay, gọi `xoa`, câu *"Vân tay trên máy đã thay đổi —
+trả về) so hằng thời gian với băm đã cất → khớp mới mở. `VO_HIEU` → tắt vân tay, gọi `xoaHet`, câu *"Vân tay trên máy đã thay đổi —
 nhập mã PIN rồi bật lại trong Cài đặt"*. `HUY` → ở lại màn PIN. `TAM_KHOA` → *"Thử lại sau, hoặc nhập mã PIN"*. Sai vân tay
 **không** cộng vào đếm sai PIN.
 
@@ -114,7 +119,8 @@ chạy trong isolate; `soVong` cất cùng băm (đổi số vòng về sau khô
 `choDen` theo giờ máy — chỉnh giờ máy rút được thời gian chờ.
 
 **Phiên:** *"Quên mã PIN?"* → hộp *"Đăng xuất để đặt lại mã PIN? …"* → `LogoutRequested` → `dongPhien` xoá cấu hình + alias.
-`AuthUnauthenticated` (tự đăng xuất / bị cưỡng chế) → cubit về `tat`, lớp phủ gỡ. `AuthSuccess` của tài khoản khác → nạp cấu hình
+`AuthUnauthenticated` (tự đăng xuất / bị cưỡng chế) → cubit về `tat`, lớp phủ gỡ. Mở app khi **chưa** đăng nhập (không token —
+`main()` không gửi `AuthCheckRequested`, `AuthBloc` đứng ở `AuthInitial`) → `tat` ngay, không chờ phiên (preflight P2, 2026-10-24). `AuthSuccess` của tài khoản khác → nạp cấu hình
 của tài khoản đó. Đọc kho hỏng → coi như **chưa bật** (token cùng kho; kho hỏng thì phiên đã hỏng — khớp `AuthBloc`).
 
 **Vòng đời:** ghi `roiLuc` ở trạng thái `hidden` / `paused` đầu tiên (không ở `inactive`); `resumed` → `bat` ∧
