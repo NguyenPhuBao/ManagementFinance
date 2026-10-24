@@ -128,12 +128,6 @@ class HomePage extends StatelessWidget {
                       // với chính con số trên màn Quản lý ví — im lặng, không màn
                       // nào nói ra. Cùng loại lỗi đã đóng ở `6fd2ce9`.
                       final totalBalance = _tongTaiSan(wallets);
-                      if (snapshot.hasData) {
-                        debugPrint('📊 [SQLite DB Log] Wallets count: ${wallets.length} | Total balance: ${CurrencyFormatter.formatSoThoi(totalBalance)}đ');
-                        for (final w in wallets) {
-                          debugPrint('   • Ví "${w.name}" (Account ${w.idaccount}): ${CurrencyFormatter.formatSoThoi(w.balance)}đ');
-                        }
-                      }
                       return _buildAssetCard(totalBalance);
                     },
                   );
@@ -170,13 +164,6 @@ class HomePage extends StatelessWidget {
                     builder: (context, snapshot) {
                       final transactions = snapshot.data ?? [];
                       final now = DateTime.now();
-
-                      if (snapshot.hasData) {
-                        debugPrint('💳 [SQLite DB Log] Transactions count: ${transactions.length}');
-                        for (final t in transactions.take(5)) {
-                          debugPrint('   • Giao dịch: [${t.type.toUpperCase()}] ${CurrencyFormatter.formatSoThoi(t.amount)}đ | Ghi chú: ${t.note} | Account: ${t.idaccount}');
-                        }
-                      }
 
                       // Một định nghĩa cho thu/chi tháng — khối Nhận xét cuối
                       // trang đọc cùng hàm này (`_buildNhanXet`).

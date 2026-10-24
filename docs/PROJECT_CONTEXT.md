@@ -614,7 +614,39 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-23)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-24)
+
+### 🔒 Soát bảo mật toàn client-app (2026-10-24) — 0 lỗ hổng đạt ngưỡng; sửa hai việc người dùng chọn
+
+Người dùng: *"kiểm tra toàn bộ client-app xem hiện tại đang có lỗ hổng nào"*. Quy trình security-review áp lên **cả cây**
+`src/Client-app` (không chỉ diff): năm agent theo mặt tấn công (xác thực / phiên · mạng · thành phần Android + IPC · deeplink +
+đường dẫn tệp · lưu trữ + log + SQL) → bốn agent lọc dương tính giả → giữ độ tin ≥ 8. **Không ứng viên nào đạt**: log PII ở
+Trang chủ 6/10 (có thật, mức thấp — đọc logcat cần máy chủ / bug report), `http://` 3/10 (địa chỉ commit là loopback / máy ảo
+— rủi ro là quy trình phát hành), `MainActivity` export mở route bất kỳ 2/10 (chỉ điền sẵn, người dùng bấm Lưu), băm SHA-256
+không salt của mật khẩu 2/10 (kho Keystore; mã chết).
+- ✅ **Sửa 1 — log dữ liệu người dùng ở bản release** (`debugPrint` không bị lược): xoá 6 lệnh ở `home_page.dart` (có từ
+  `271c7774`, 2026-08-12 — tổng tài sản, tên + số dư từng ví, 5 giao dịch kèm nguyên văn ghi chú = nội dung chuyển khoản D1,
+  tên / SĐT người khác); `vong_lap_cong_cu.dart` chỉ in `g.args` khi `kDebugMode` (như `phien_mot_loi_goi.dart`). Canh bằng
+  **quét 38** `core/utils/log_khong_lo_du_lieu_nguoi_dung_test.dart` (37 dành cho quét gia đình). Trái §13.6
+  `docs/progress/Client-app.md` trước đó.
+- ✅ **Sửa 2 — đổi mật khẩu không đóng phiên**: `changePassword` xoá token nhưng màn không báo `AuthBloc` → `authRedirect` đẩy
+  `/login` về `/home`, `dongPhien` không chạy (đồng bộ, socket, cờ D1 / biên lai, lịch tự chuyển tiền nền chạy tiếp không
+  token). Màn nay `add(LogoutRequested())` (khuôn nút Đăng xuất ở `profile_page.dart`); ca canh
+  `profile/presentation/pages/change_password_page_test.dart` dựng router + `AppRouter.authRedirect` thật, thử bản sai đỏ.
+- **Còn lại, chưa sửa / chưa ghi mục G** (người dùng chọn chỉ sửa hai việc): không ép HTTPS lúc build (`app_constants.dart`;
+  `dart:io` bỏ qua network-security-config — bẫy 4.20); `checkoutUrl` chỉ kiểm có scheme + host; tệp mô hình chỉ kiểm kích
+  thước; mã chết lưu băm mật khẩu (`auth_repository_impl.dart` `_hashPassword`; `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md`
+  của backend tả đăng nhập offline không có thật); không `allowBackup` / `dataExtractionRules`; release ký khoá debug;
+  `MainActivity` không `flutter_deeplinking_enabled=false`; `NhanBienLaiActivity` tin referrer bên gửi khai; không
+  `FLAG_SECURE` / khoá app; thông báo màn khoá hiện số tiền; công tắc *"đăng xuất thiết bị khác"* không gửi lên server;
+  ~38 lệnh `log` ở `ai_edge/data/cong_cu_*.dart` + `ai_chat_page.dart:1151` in tên / câu AI bị loại không chặn (không PII);
+  CSV xuất không vô hiệu `= + - @`; nội dung chuyển khoản chiếm *"Mã giao dịch"* (`doc_tin_bien_dong.dart:174`); sql.js CDN
+  không SRI. ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
+  rơi về 0) — hàng của nhà đúng là người tạo, nhưng hàng riêng nên bỏ khi khác tài khoản phiên; **đừng** ép `Value(accountId)`.
+- Đã soát và ổn: SQL đều hằng / bind; không bypass chứng chỉ; Bearer chỉ tới backend (đường tương đối, ảnh QR Dio trần không
+  token), socket token qua `setAuth`; token chỉ ở `flutter_secure_storage`; mọi tên tệp từ deeplink / hàng chờ qua
+  `tenTepBienLaiHopLe`, deeplink dựng bằng `Uri(queryParameters:)`; PendingIntent `IMMUTABLE` tường minh; tool AI chỉ đọc;
+  không bí mật viết cứng. Mốc `flutter test` **7.834 / 10 skip** (+8), analyze 20.
 
 ### 🏠 Chức năng GIA ĐÌNH (nhà nhiều người) — brainstorming + spec 1/4 nền móng + đơn backend 50 (2026-10-23) — chưa có mã
 

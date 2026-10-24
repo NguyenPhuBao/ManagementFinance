@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/data/repositories/auth_repository.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -40,6 +42,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       );
       if (!mounted) return;
       baoNhanh('Đổi mật khẩu thành công! Vui lòng đăng nhập lại.', loai: LoaiThongBao.xong);
+      // Repository đã xoá token; phải báo AuthBloc để `dongPhien` dừng đồng bộ / socket / bộ quét / cờ D1. Thiếu bước này
+      // state vẫn `AuthSuccess`: `authRedirect` đẩy `/login` ngược về `/home` và app chạy tiếp không token (2026-10-24).
+      // `logout()` của Bloc không gọi `/auth/logout` vì token đã hết — chỉ dọn phần còn lại trên máy.
+      context.read<AuthBloc>().add(LogoutRequested());
       context.go('/login');
     } catch (e) {
       setState(() {
