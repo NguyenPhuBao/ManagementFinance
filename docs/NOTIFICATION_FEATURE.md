@@ -1820,6 +1820,24 @@ dòng nào**. Đã vấp thật 2026-09-09, mất hai lượt chạy 10 và 16 p
 lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp. Nó chỉ treo khi
 `expect` bắt đầu qua — tức đúng lúc bạn tưởng mình vừa làm nó xanh.
 
+**7.14 `pendingIds()` KHÔNG phải AlarmManager — force-stop xoá báo thức mà
+danh sách vẫn còn. ✅ ĐÃ ĐÓNG 2026-10-24.** `flutter_local_notifications` giữ
+danh sách lịch trong SharedPreferences (`scheduled_notifications.xml`), và
+`pendingNotificationRequests()` đọc **danh sách ấy**, không hỏi AlarmManager.
+Force-stop (Cài đặt → Buộc dừng; ColorOS gỡ task ở một số trạng thái; `adb
+install` rồi `am force-stop`) xoá mọi báo thức của gói mà không đụng danh sách,
+và không phát broadcast nào — bộ nhận `BOOT_COMPLETED` / `MY_PACKAGE_REPLACED`
+của plugin chỉ cứu khởi động lại máy và cập nhật app. Đo Realme: force-stop → 0
+báo thức; mở app, quét xong → **vẫn 0**, danh sách vẫn đủ 3. `resync` thấy id
+"đã chờ" thì bỏ qua (luỹ đẳng), mà khoá lịch hoá đơn không đổi giữa các lượt
+quét, nên nhắc hoá đơn **mất hẳn, im lặng**. Sửa: lượt `resync` **đầu tiên của
+mỗi tiến trình** (`ReminderScheduler._daKhoiPhuc`; DI giữ một bản) đặt lại cả
+lịch "đã chờ" — không huỷ trước (cùng id thay chỗ; huỷ là gỡ luôn thông báo
+cùng id đang trên khay), không ghi `dat_lich` (B5b đếm tới máy theo nó). Đo lại:
+force-stop → 0, mở app → 3, danh sách 3 (không nhân đôi). Kiểm báo thức thật
+bằng `adb shell dumpsys alarm | grep -c 'Alarm{.*flowmoney'`, **đừng** tin
+`pendingIds()`.
+
 ---
 
 ## 8. Kiểm thử
