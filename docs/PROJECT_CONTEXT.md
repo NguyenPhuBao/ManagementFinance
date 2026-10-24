@@ -616,6 +616,30 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-24)
 
+### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong, CHƯA nghiệm thu máy)
+
+Người dùng chọn *"Bảo mật tiếp"* sau soát bảo mật (khối 🔒 bên dưới) và yêu cầu đối chiếu thị trường (khảo sát 2026-10-24, spec mục 2).
+Spec `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (người dùng duyệt từng phần; sau soát Task 12 đổi thân spec
+mục 4/5/6 — đăng xuất chỉ xoá alias Keystore, cấu hình PIN xoá ở `sauDangNhap`), kế hoạch 13 task (gitignore) thi công bằng agent con
+(Fable preflight 16 phát hiện · Sonnet thực thi · Opus soát từng task), dải commit `a0c6dacf..92b69200` (22 commit, đếm 2026-10-25).
+Tài liệu bàn giao đầy đủ: **`docs/KHOA_APP_FEATURE.md`** (quyết định, luồng, bản đồ tệp, 21 bẫy, Stitch, checklist nghiệm thu).
+
+- **Làm gì:** Cá nhân → Bảo mật & Tuỳ chọn → *Khoá ứng dụng*: bật = đặt PIN 6 số (PBKDF2-HMAC-SHA256 Dart thuần, **cục bộ**, không lên
+  server) + tuỳ chọn vân tay (kênh Kotlin `flowmoney/sinh_trac`, `BiometricPrompt` + `CryptoObject` trên khoá AES-GCM `AndroidKeyStore`,
+  **không** `local_auth`); *Tự khoá sau* Ngay / **30 giây** / 1 / 5 phút; sai PIN 5 lần → chờ 30 s, 6 → 1 ph, 7 → 5 ph, ≥ 8 → 15 ph (đếm giữ
+  qua lần tắt app); *Quên mã PIN?* = đăng xuất → đăng nhập lại bằng mật khẩu. Miễn phí mọi gói. Lớp phủ nằm ngoài `Navigator`.
+- **Test:** `flutter test` **7981 pass / 10 skip** (đo 2026-10-25, 9 ph 34 s, +105 so với 7876), `flutter analyze` **20** (mức nền); riêng mảng 98 ca / 13 tệp dưới
+  `test/features/khoa_app/` (đếm 2026-10-25). Build `--release` đã dựng đạt ở Task 5 (R8, manifest) — chưa chạy trên máy.
+- **Việc còn (đều ở `KHOA_APP_FEATURE.md`):** (1) **nghiệm thu Realme** (mục 9: bước 0, 1–10, 7b, 9b/9c, TalkBack, Tab/Enter, 360 dp) — người
+  dùng hoãn sang phiên sau; (2) **đo số vòng PBKDF2 trên bản release** (`kSoVongMacDinh` 30.000 là số tạm, mục tiêu 200–300 ms); (3) minor còn
+  mở mục 8 — đáng xem trước: ca ghim "đang chờ → không băm", `batVanTay` chưa kiểm vân tay đã bật, hai chú thích lệch mã sau đổi thiết kế
+  (`phien_dieu_phoi_that_test.dart:176-179`, `khoa_app_store.dart:17`, `phien_dieu_phoi.dart:28-32`); (4) đơn CAN-LAM 51 đã thêm banner —
+  backend có thể tả lại §2.3 `01_XAC_THUC_VA_BAO_MAT.md` theo spec; (5) nâng `flutter_secure_storage` 9 → 10 trình riêng (cấu hình khoá app nằm
+  trong kho ấy — spec mục 9).
+- ⚠️ **Đổi thiết kế sau soát (bẫy lớn nhất):** đăng xuất xoá cấu hình PIN ở `dongPhien` thì giết tiến trình giữa `logout()` (POST trước, xoá
+  token sau) là mở lại vào thẳng app không PIN — nay `dongPhien` chỉ xoá alias, cấu hình xoá ở `PhienDieuPhoiThat.sauDangNhap` (chỉ sau đăng nhập
+  mật khẩu thành công).
+
 ### 🔒 Soát bảo mật toàn client-app (2026-10-24) — 0 lỗ hổng đạt ngưỡng; bốn đợt siết; đợt 5 soát CVE thư viện (vá Flutter `GHSA-frr6-h895-5pxp`); đợt 7 (referrer biên lai, lịch nhắc mất sau force-stop)
 
 Người dùng: *"kiểm tra toàn bộ client-app xem hiện tại đang có lỗ hổng nào"*. Quy trình security-review áp lên **cả cây**

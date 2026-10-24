@@ -1,7 +1,8 @@
 # Khoá ứng dụng bằng PIN + vân tay — thiết kế
 
-**Ngày:** 2026-10-24 (phiên 4) · **Nhánh:** `TranQuangDat` · **Trạng thái:** người dùng duyệt từng phần trong phiên (Phần 1–4),
-spec chờ người dùng đọc lại.
+**Ngày:** 2026-10-24 (phiên 4) · **Nhánh:** `TranQuangDat` · **Trạng thái:** **mã xong 2026-10-25, CHƯA nghiệm thu trên máy**
+(người dùng duyệt từng phần trong phiên 4; thi công phiên 5; tài liệu `docs/KHOA_APP_FEATURE.md`). Mục 4, 5, 6 đã sửa theo thiết
+kế cuối — xem câu *"đổi 2026-10-25 sau soát Task 12"* ở mục 6.
 **Nguồn yêu cầu:** người dùng chọn *"Bảo mật tiếp"* (khoá app PIN / vân tay là mục còn lại của khối 🔒 mục 14
 `docs/PROJECT_CONTEXT.md`) và yêu cầu *"tìm hiểu các app khác xem hệ thống bảo mật của mình đã đủ chưa"*.
 
@@ -51,7 +52,8 @@ spec chờ người dùng đọc lại.
 - **Sai PIN:** lần thứ 5 → chờ 30 giây; 6 → 1 phút; 7 → 5 phút; từ 8 → 15 phút mỗi lần. Đang chờ: bàn phím khoá + đếm ngược.
 - **Quên PIN:** hộp hỏi lại → đăng xuất → đăng nhập lại cùng tài khoản thì dữ liệu máy giữ nguyên, khoá đã tắt (đặt lại nếu
   muốn). Cần mạng.
-- **PIN gắn tài khoản trên máy;** đăng xuất là xoá. Màn Đăng nhập không có khoá app.
+- **PIN gắn tài khoản trên máy;** đăng xuất xoá **vân tay** (khoá Keystore) ngay; cấu hình PIN xoá ở lần **đăng nhập bằng mật
+  khẩu** kế tiếp (đổi 2026-10-25 sau soát Task 12 — mục 6). Màn Đăng nhập không có khoá app.
 - **Không đổi:** chia sẻ biên lai (`NhanBienLaiActivity`, không giao diện), nút *"Hoãn 1 ngày"* (chạy nền), engine nền tự trả /
   tự trích, dịch vụ D1, ảnh Đa nhiệm (đã trống).
 - **Giới hạn đã nói với người dùng:** phần lớn máy Android xếp khuôn mặt là sinh trắc *yếu* (Class 2) → không mở được khoá Keystore
@@ -64,12 +66,12 @@ Mảng mới **`lib/features/khoa_app/`** (không đặt ở `core/` — danh s�
 
 | Tầng | Tệp | Việc |
 |---|---|---|
-| `domain/` | `luat_khoa_app.dart` | `enum TuKhoaSau { ngay, giay30, phut1, phut5 }` + `Duration`; `canKhoaKhiQuayLai({roiLuc, nay, muc})`; `thoiGianCho(soLanSai)` (< 5 → `null`; 5 → 30 s; 6 → 1 ph; 7 → 5 ph; ≥ 8 → 15 ph); `maPinHopLe` (đúng 6 chữ số ASCII) |
+| `domain/` | `luat_khoa_app.dart` | `enum TuKhoaSau { ngay, giay30, phut1, phut5 }` + `Duration`; `canKhoaKhiQuayLai({roiLuc, nay, muc})`; `thoiGianCho(soLanSai)` (< 5 → `null`; 5 → 30 s; 6 → 1 ph; 7 → 5 ph; ≥ 8 → 15 ph); `maPinHopLe` (đúng 6 chữ số ASCII); `conCho(choDen, nay)` + `chuDemNguoc(Duration)` (`mm:ss`) — **một** định nghĩa "đang chờ" cho service, màn khoá và trang PIN |
 | `domain/` | `bam_ma_pin.dart` | PBKDF2-HMAC-SHA256 (gói `crypto` sẵn có, Dart thuần); `soSanhHangThoiGian` |
 | `data/models/` | `cau_hinh_khoa_app.dart` | `salt`, `bam`, `soVong`, `tuKhoaSau`, `vanTay` (bản mã + IV + băm SHA-256 của bí mật, hoặc `null`), `soLanSai`, `choDen` — **không** có cờ `bat`: có cấu hình trong kho ⇔ khoá đang bật, *tắt* = xoá cấu hình |
 | `data/` | `khoa_app_store.dart` | bọc `flutter_secure_storage`, khoá `khoa_app_<idaccount>`, JSON; đọc hỏng → `null` |
 | `data/datasources/` | `kenh_sinh_trac.dart` | cổng kênh `flowmoney/sinh_trac` (interface + bản thật + bản `Noop` cho web / test) |
-| `application/` | `khoa_app_service.dart` | `datPin` (đặt / đổi) · `kiemPin` (cập nhật đếm, ghi trước khi trả) · `tatKhoa` · `datTuKhoaSau` · `batVanTay` / `tatVanTay` / `moBangVanTay` · `xoaHet` (đăng xuất: mọi cấu hình `khoa_app_*` + mọi alias Keystore tiền tố `flowmoney_khoa_app_` — máy chỉ có một tài khoản đăng nhập mỗi lúc) |
+| `application/` | `khoa_app_service.dart` | `datPin` (đặt / đổi) · `kiemPin` (cập nhật đếm, ghi trước khi trả) · `tatKhoa` · `datTuKhoaSau` · `batVanTay` / `tatVanTay` / `moBangVanTay` · `xoaVanTayHet` (hook `dongPhien` khi đăng xuất: **chỉ** mọi alias Keystore tiền tố `flowmoney_khoa_app_`) · `datLaiSauDangNhap(idaccount)` (hook `sauDangNhap`: `store.xoa(id)` thẳng theo khoá + `store.xoaHet()` mọi cấu hình `khoa_app_*` + `xoaVanTayHet`, không bao giờ ném — máy chỉ có một tài khoản đăng nhập mỗi lúc) |
 | `presentation/bloc/` | `khoa_app_cubit.dart` (+ state) | `dangXet` · `tat` · `mo` · `khoa(soLanSai, choDen, coVanTay, loiNhan)`; nghe `AppLifecycleWatcher.stream` + `AuthBloc.stream` |
 | `presentation/bloc/` | `cai_dat_khoa_app_cubit.dart` | trạng thái trang Khoá ứng dụng |
 | `presentation/widgets/man_khoa/` | lớp phủ, màn khoá, tấm xác nhận quên PIN | widget của **một** trang |
@@ -86,8 +88,9 @@ Mảng mới **`lib/features/khoa_app/`** (không đặt ở `core/` — danh s�
 - Lớp phủ nằm **ngoài** `Navigator` (trong `MaterialApp.builder`): `showDialog` sẽ hiện **dưới** lớp phủ và không có `Overlay` cho
   `Tooltip` → hộp *"Quên mã PIN?"* là tấm xác nhận vẽ **trong** màn khoá (Stitch *"Màn khoá - Xác nhận quên mã PIN"*), phím vân tay
   là `InkResponse` + `Semantics` chứ không `IconButton`.
-- `core/auth/phien_dieu_phoi_that.dart`: `dongPhien` thêm hook xoá cấu hình + khoá Keystore của tài khoản (vẫn là chỗ duy nhất
-  đóng phiên).
+- `core/auth/phien_dieu_phoi_that.dart`: `dongPhien` thêm hook `xoaKhoaApp` (**chỉ** khoá Keystore), `sauDangNhap` thêm hook
+  `datLaiKhoaApp(idaccount)` (xoá cấu hình PIN) — vẫn là chỗ duy nhất mở / đóng phiên. *(Đổi 2026-10-25 sau soát Task 12: bản
+  duyệt ghi `dongPhien` xoá cả cấu hình.)*
 - `core/di/injection_container.dart`: store, cổng, service (lazy singleton). **`KhoaAppCubit` không đăng ký DI** — dựng ở
   `main.dart` (sống suốt app cùng lớp phủ), nghe **đúng** `AuthBloc` của app: `AuthBloc` trong DI là factory, `sl<AuthBloc>()` ra một
   bloc mới chưa đăng nhập.
@@ -118,7 +121,12 @@ chạy trong isolate; `soVong` cất cùng băm (đổi số vòng về sau khô
 `thoiGianCho`, **ghi kho trước** khi trả kết quả. Đúng (PIN hoặc vân tay) → `soLanSai = 0`, `choDen = null`. Giới hạn chấp nhận:
 `choDen` theo giờ máy — chỉnh giờ máy rút được thời gian chờ.
 
-**Phiên:** *"Quên mã PIN?"* → hộp *"Đăng xuất để đặt lại mã PIN? …"* → `LogoutRequested` → `dongPhien` xoá cấu hình + alias.
+**Phiên:** *"Quên mã PIN?"* → hộp *"Đăng xuất để đặt lại mã PIN? …"* → `LogoutRequested` → `dongPhien` xoá **alias Keystore** (vân tay chết ngay); cấu hình PIN xoá ở `PhienDieuPhoiThat.sauDangNhap` sau lần
+đăng nhập bằng **mật khẩu** thành công (trước khi phát `AuthSuccess`) — mật khẩu tài khoản = đặt lại khoá. *Đổi 2026-10-25 sau soát
+Task 12:* `AuthBloc` đăng xuất = `dongPhien` → `logout()` (POST `/auth/logout` trước, xoá token **sau**, trần 30 + 30 s); xoá cấu hình
+ở `dongPhien` mà tiến trình bị giết giữa chừng (vuốt khỏi Đa nhiệm lúc POST treo) thì mở lại: token còn + không cấu hình = vào thẳng
+app không PIN. Hệ quả: băm PIN nằm lại trong kho mã hoá của `flutter_secure_storage` tới lần đăng nhập mật khẩu kế (chỉ đọc được khi
+root); giết tiến trình giữa đăng xuất → mở lại vẫn khoá. Hành vi người dùng thấy không đổi.
 `AuthUnauthenticated` (tự đăng xuất / bị cưỡng chế) → cubit về `tat`, lớp phủ gỡ. Mở app khi **chưa** đăng nhập (không token —
 `main()` không gửi `AuthCheckRequested`, `AuthBloc` đứng ở `AuthInitial`) → `tat` ngay, không chờ phiên (preflight P2, 2026-10-24). `AuthSuccess` của tài khoản khác → nạp cấu hình
 của tài khoản đó. Đọc kho hỏng → coi như **chưa bật** (token cùng kho; kho hỏng thì phiên đã hỏng — khớp `AuthBloc`).
