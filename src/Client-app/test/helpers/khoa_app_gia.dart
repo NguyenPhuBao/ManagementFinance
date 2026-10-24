@@ -4,6 +4,9 @@ library;
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+
 import 'package:flowmoney/features/khoa_app/data/datasources/kenh_sinh_trac.dart';
 import 'package:flowmoney/features/khoa_app/domain/bam_ma_pin.dart';
 
@@ -31,3 +34,7 @@ class KenhGia implements KenhSinhTrac {
 
 /// Băm 1 vòng — test không chờ PBKDF2 30.000 vòng, và không qua isolate (FakeAsync của widget test không chạy I/O).
 Future<String> bamNhanh(String pin, List<int> salt, int soVong) async => bamMaPin(pin, salt, 1);
+
+/// Chấm PIN theo loại (`day` / `rong`): khoá mỗi chấm mang chỉ số nên tìm theo tiền tố.
+Finder chamPin(String loai) => find.byWidgetPredicate(
+    (w) => w.key is ValueKey<String> && (w.key! as ValueKey<String>).value.startsWith('cham-$loai-'));
