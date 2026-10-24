@@ -18,7 +18,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _obscureCurrent = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
-  bool _logoutOtherDevices = true;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -303,7 +302,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               
               const SizedBox(height: 16),
 
-              // Toggle Card
+              // Thẻ thông tin (2026-10-24, Stitch `2d791998…`): server LUÔN thu hồi mọi token khi đổi mật khẩu
+              // (`auth.service.js` `changePassword`) — công tắc "đăng xuất thiết bị khác" cũ không gửi đi đâu, tắt nó
+              // cũng không giữ được máy nào, nên thay bằng câu nói đúng điều sẽ xảy ra.
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
@@ -318,26 +319,16 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     ),
                   ],
                 ),
-                child: Row(
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Expanded(
+                    Icon(Icons.info_outline, size: 20, color: Color(0xFF454743)),
+                    SizedBox(width: 12),
+                    Expanded(
                       child: Text(
-                        'Tự động đăng xuất khỏi các thiết bị khác',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textPrimary,
-                        ),
+                        'Đổi mật khẩu sẽ đăng xuất mọi thiết bị, kể cả máy này.',
+                        style: TextStyle(fontSize: 14, height: 20 / 14, color: Color(0xFF454743)),
                       ),
-                    ),
-                    Switch(
-                      value: _logoutOtherDevices,
-                      onChanged: (val) {
-                        setState(() {
-                          _logoutOtherDevices = val;
-                        });
-                      },
-                      activeThumbColor: Colors.white,
-                      activeTrackColor: const Color(0xFF006E1C),
                     ),
                   ],
                 ),

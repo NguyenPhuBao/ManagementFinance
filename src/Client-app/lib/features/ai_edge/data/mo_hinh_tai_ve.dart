@@ -31,8 +31,15 @@ typedef TienDoTai = ({
 /// **không nạp được** trên engine FFI Android dù tệp nguyên vẹn từng byte, và
 /// lỗi nó ném (*"Model may be invalid"*) dẫn người đọc đi kiểm tra tải hỏng —
 /// P1 mục 8.2 `docs/AI_EDGE_FEATURE.md`.
+///
+/// ⚠️ Ghim **commit**, không `resolve/main` (2026-10-24, siết bảo mật đợt 3): nhánh `main` đổi theo người đăng tải —
+/// repo được sửa ngày 2026-10-23 — nên một lần tải lên mới lặng lẽ thay mô hình mọi phép đo dựa vào, hoặc đổi cỡ tệp làm
+/// [MoHinhTaiVe.daCo] không bao giờ đúng. Tệp này đăng lần cuối ở commit `6e5c4f1e` (2026-05-04) — chính tệp đã đo từ
+/// 2026-09-20; commit ghim là `main` lúc 2026-10-24. SHA-256 (LFS oid, API HuggingFace 2026-10-24):
+/// `181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c` — app KHÔNG băm lại 2,41 GB (người dùng chốt:
+/// ghim commit + kiểm cỡ là đủ). Đổi mô hình = đổi commit, [kCoTepByte], mã băm ở đây, rồi đo lại trên máy.
 const String kUrlMoHinh = 'https://huggingface.co/litert-community/'
-    'gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm';
+    'gemma-4-E2B-it-litert-lm/resolve/1caa527c1e88b55f046fcd8d2b4265606680663d/gemma-4-E2B-it.litertlm';
 
 const String kTenTep = 'gemma-4-E2B-it.litertlm';
 

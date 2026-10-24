@@ -81,6 +81,25 @@ void main() {
 
   tearDown(() async => sl.reset());
 
+  // Siết bảo mật đợt 3 (2026-10-24): server (`auth.service.js` `changePassword`) LUÔN thu hồi mọi token khi đổi mật
+  // khẩu — công tắc "Tự động đăng xuất khỏi các thiết bị khác" không gửi đi đâu, tắt nó cũng không giữ được máy nào.
+  // Người dùng chọn thay bằng một câu nói đúng điều server làm (Stitch `2d791998…`).
+  testWidgets('không còn công tắc đăng xuất thiết bị khác — thay bằng câu nói đúng điều server làm', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600); // font Ahem — xem ca dưới
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(MaterialApp(theme: AppTheme.lightTheme, home: const ChangePasswordPage()));
+
+    expect(find.byType(Switch), findsNothing,
+        reason: 'công tắc không gửi lên server — tắt nó vẫn bị đăng xuất mọi máy, tức giao diện nói sai');
+    expect(find.text('Tự động đăng xuất khỏi các thiết bị khác'), findsNothing);
+    expect(find.text('Đổi mật khẩu sẽ đăng xuất mọi thiết bị, kể cả máy này.'), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('đổi mật khẩu thành công → đóng phiên và về màn Đăng nhập', (tester) async {
     // Khổ rộng: ca này canh luồng phiên, không canh bố cục — ở 411 dp font Ahem của `flutter test` (1 em mỗi ký tự) làm
     // dòng "Chứa ít nhất 1 ký tự đặc biệt" (11 px) tràn 23 px, font thật chỉ ~165 px.

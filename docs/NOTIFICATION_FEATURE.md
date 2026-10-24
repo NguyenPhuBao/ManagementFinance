@@ -68,6 +68,7 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | **Phạm vi** | Bốn nhóm: hoá đơn, ngân sách, mục tiêu, hệ thống. |
 | **Cài đặt** | Công tắc theo từng nhóm + một công tắc tổng cho thông báo hệ điều hành. |
 | **Backend** | Viết tài liệu yêu cầu, chừa chỗ sẵn. **Không nối socket** *(đúng cho mảng thông báo; client có nối Socket.io ngày 2026-09-09, nhưng cho việc khác — bảng `AppNotifications` vẫn hoàn toàn cục bộ)*. |
+| **Màn khoá** (2026-10-24, siết bảo mật đợt 3) | **Không** đặt `visibility` — mặc định của Android là *riêng tư*: người dùng bật *"Ẩn nội dung nhạy cảm"* trong Cài đặt máy thì màn khoá chỉ hiện "FlowMoney", không số tiền. Người dùng chốt **giữ theo cài đặt máy**, không ép ẩn hẳn (`NotificationVisibility.secret` làm mất nhắc hoá đơn ngay trên màn khoá). Tóm tắt D1 vốn không có số. Chưa đo trên máy. |
 
 ---
 

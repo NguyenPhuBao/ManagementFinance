@@ -59,6 +59,20 @@ void main() {
         reason: 'Android 12+: allowBackup=false không chặn chuyển máy trực tiếp');
   });
 
+  // Siết bảo mật đợt 3 (2026-10-24): ảnh thu nhỏ ở Đa nhiệm (Recents) chụp màn cuối — số dư, sổ giao dịch — ai cầm máy
+  // mở Đa nhiệm là thấy. Người dùng chọn CHỈ ẩn ảnh ấy (Android 13+), KHÔNG `FLAG_SECURE`: cờ ấy chặn cả ảnh chụp màn
+  // hình của chính người dùng và làm `adb screencap` ra ảnh đen — mọi buổi đo máy thật dựa vào ảnh chụp.
+  test('MainActivity ẩn ảnh Đa nhiệm (Android 13+) và KHÔNG chặn chụp màn hình', () {
+    final kt = File('android/app/src/main/kotlin/com/flowmoney/flowmoney/MainActivity.kt').readAsStringSync();
+    final onCreate = kt.substring(kt.indexOf('override fun onCreate'), kt.indexOf('override fun onDestroy'));
+    expect(onCreate, contains('setRecentsScreenshotEnabled(false)'),
+        reason: 'thiếu là Đa nhiệm hiện ảnh màn cuối của app — số dư, giao dịch');
+    expect(onCreate, contains('Build.VERSION_CODES.TIRAMISU'),
+        reason: 'API 33 mới có hàm này — gọi trên máy cũ là NoSuchMethodError lúc mở app');
+    expect(kt, isNot(contains('FLAG_SECURE')),
+        reason: 'người dùng chọn không chặn chụp màn hình (đo máy thật cần adb screencap)');
+  });
+
   test('quy tắc trích xuất loại MỌI vùng ở cả sao lưu đám mây lẫn chuyển máy', () {
     final f = File(_quyTac);
     expect(f.existsSync(), isTrue, reason: 'manifest trỏ @xml/data_extraction_rules');

@@ -193,6 +193,29 @@ void main() {
       expect(s, contains('"Mua ""sách"" cũ"'));
     });
 
+    // Siết bảo mật đợt 3 (2026-10-24): ghi chú khoản D1 là NỘI DUNG CHUYỂN KHOẢN — người lạ viết được. Ô chữ mở đầu
+    // bằng `= + - @` (hay tab / xuống dòng) thì Excel coi là CÔNG THỨC khi người dùng mở tệp (CSV injection).
+    test('ô chữ mở đầu bằng ký tự công thức được thêm dấu nháy đơn', () {
+      final s = csv(baoCao([
+        g(ngay: DateTime(2026, 9, 5), soTien: 10000, tieuDe: '=HYPERLINK("http://x.vn","Bấm")'),
+        g(ngay: DateTime(2026, 9, 6), soTien: 20000, tieuDe: '+1 trà sữa'),
+        g(ngay: DateTime(2026, 9, 7), soTien: 30000, tieuDe: '@SUM(A1)'),
+        g(ngay: DateTime(2026, 9, 8), soTien: 40000, tieuDe: '-chuyen tien'),
+      ]));
+      expect(s, contains(';"\'=HYPERLINK(""http://x.vn"",""Bấm"")";'),
+          reason: 'không có nháy đơn thì Excel chạy công thức trong ghi chú do người khác viết');
+      expect(s, contains(";'+1 trà sữa;"));
+      expect(s, contains(";'@SUM(A1);"));
+      expect(s, contains(";'-chuyen tien;"));
+    });
+
+    test('ô SỐ âm giữ nguyên — không thêm nháy', () {
+      final s = csv(baoCao([g(ngay: DateTime(2026, 9, 5), soTien: 50000, tieuDe: 'Ăn trưa')]));
+      expect(s, contains('Ăn trưa;Ăn uống;Tiền mặt;-50000'),
+          reason: 'cột số tiền phải cộng được trong Excel — "\'-50000" là chữ');
+      expect(s, isNot(contains("'-50000")));
+    });
+
     test('có đủ ba khối: tổng, chi theo danh mục, và danh sách giao dịch', () {
       final s = csv(baoCao([
         g(ngay: DateTime(2026, 9, 5), soTien: 300000),

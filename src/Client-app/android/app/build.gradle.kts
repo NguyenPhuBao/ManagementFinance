@@ -1,8 +1,19 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Khoá ký bản phát hành (2026-10-24, siết bảo mật đợt 3): `android/key.properties` (gitignore cùng `*.jks`) trỏ tới
+// keystore thật — có thì ký bằng nó; KHÔNG có thì vẫn ký debug để máy nào cũng dựng được bản release để thử (đo R8, đo
+// máy thật), kèm cảnh báo. Mẫu tệp + lệnh keytool: mục *Lệnh hay dùng* `CLAUDE.md`. Không đưa APK ký debug cho người dùng.
+val tepKhoaPhatHanh = rootProject.file("key.properties")
+val khoaPhatHanh = Properties().apply {
+    if (tepKhoaPhatHanh.exists()) FileInputStream(tepKhoaPhatHanh).use { load(it) }
 }
 
 android {
@@ -35,11 +46,31 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (tepKhoaPhatHanh.exists()) {
+            create("release") {
+                keyAlias = khoaPhatHanh["keyAlias"] as String
+                keyPassword = khoaPhatHanh["keyPassword"] as String
+                storeFile = file(khoaPhatHanh["storeFile"] as String)
+                storePassword = khoaPhatHanh["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (tepKhoaPhatHanh.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                // `quiet`, không `warn`: `flutter build` gọi Gradle ở chế độ im — `warn` không bao giờ hiện (đo 2026-10-24).
+                if (gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }) {
+                    logger.quiet(
+                        "⚠️ FlowMoney: không có android/key.properties — bản release ký bằng khoá DEBUG " +
+                            "(chỉ để thử trên máy, KHÔNG phát hành)."
+                    )
+                }
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

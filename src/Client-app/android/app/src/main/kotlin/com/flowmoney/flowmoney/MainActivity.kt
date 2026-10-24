@@ -93,6 +93,10 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Đa nhiệm không chụp ảnh màn cuối (số dư, sổ giao dịch) — 2026-10-24, siết bảo mật đợt 3. Cố ý KHÔNG chặn chụp
+        // màn hình bằng cờ cửa sổ bảo mật: người dùng vẫn chụp được, và `adb screencap` của các buổi đo máy thật vẫn chạy.
+        // `test/core/bao_mat_manifest_test.dart` canh.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) setRecentsScreenshotEnabled(false)
         soActivitySong++
         docExtraTomTat(intent)
     }

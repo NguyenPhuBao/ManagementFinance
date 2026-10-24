@@ -26,6 +26,18 @@ void main() {
 
   MoHinhTaiVe dung() => MoHinhTaiVe(thuMuc: () async => tam, nguon: nguon);
 
+  // Siết bảo mật đợt 3 (2026-10-24): tải từ `resolve/main` là tải thứ nhánh ấy đang trỏ LÚC TẢI — repo HuggingFace đổi
+  // ngày 2026-10-23 (đo API). Một lần tải lên mới lặng lẽ thay mô hình mọi phép đo trên máy dựa vào, hoặc đổi cỡ tệp
+  // làm `daCo()` không bao giờ đúng. Ghim commit: nội dung cố định.
+  test('URL tải ghim một COMMIT, không theo nhánh', () {
+    final s = Uri.parse(kUrlMoHinh).pathSegments;
+    final i = s.indexOf('resolve');
+    expect(i, greaterThanOrEqualTo(0));
+    expect(RegExp(r'^[0-9a-f]{40}$').hasMatch(s[i + 1]), isTrue,
+        reason: '"${s[i + 1]}" là tên nhánh — nội dung đổi theo người đăng tải, không theo app');
+    expect(s.last, kTenTep);
+  });
+
   group('daCo() kiểm KÍCH THƯỚC, không chỉ kiểm tồn tại', () {
     // ⚠️ Hai việc không tách rời được: giữ tệp dở cho resume mà vẫn để
     // `daCo()` dùng `existsSync()` là tệp cụt đọc thành "đã có mô hình", rồi

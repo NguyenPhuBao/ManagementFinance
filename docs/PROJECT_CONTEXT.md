@@ -645,19 +645,29 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   `core/bao_mat_manifest_test.dart` (đọc manifest + XML — vùng mù), `auth/xoa_phien_tren_may_test.dart`,
   `premium/data/models/don_thanh_toan_test.dart`. ⚠️ **Chưa đo máy:** `am start … --es route /add` không mở route; `adb shell
   bmgr backupnow com.flowmoney.flowmoney` không sao lưu; bản release build với `API_BASE_URL` http công khai văng lúc mở.
-- **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 2): tệp mô hình chỉ kiểm kích thước;
-  `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md` (backend tạo — chỉ đọc) tả đăng nhập offline bằng băm mật khẩu không có
-  thật; release ký khoá debug; `NhanBienLaiActivity` tin referrer bên gửi khai; không `FLAG_SECURE` / khoá app; thông báo màn khoá hiện số tiền; công tắc *"đăng xuất thiết bị khác"* không gửi lên server;
+- ✅ **Đợt 3 (cùng ngày, người dùng chọn đúng bốn phương án đề xuất + ghim mô hình):** (a) `MainActivity.onCreate`
+  `setRecentsScreenshotEnabled(false)` (Android 13+) — ảnh Đa nhiệm trống, **không** cờ cửa sổ bảo mật (chụp màn hình +
+  `adb screencap` vẫn chạy; ca canh cấm chữ ấy trong `MainActivity.kt`); (b) màn Đổi mật khẩu bỏ công tắc *"đăng xuất thiết bị
+  khác"* (server `auth.service.js` `changePassword` LUÔN thu hồi mọi token) → dòng *"Đổi mật khẩu sẽ đăng xuất mọi thiết bị,
+  kể cả máy này."*; Stitch `2d791998…` gửi sửa — lượt gọi **timeout**, chờ người dùng nhìn xác nhận; (c) `build.gradle.kts`
+  đọc `android/key.properties` → ký khoá thật, thiếu thì ký debug + cảnh báo (lệnh keytool + mẫu tệp ở *Lệnh hay dùng*
+  `CLAUDE.md`); (d) thông báo màn khoá **không đổi** — theo cài đặt *"Ẩn nội dung nhạy cảm"* của máy (`NOTIFICATION_FEATURE.md`
+  mục 2); (e) `kUrlMoHinh` ghim commit `1caa527c…` (HEAD đo: đúng cỡ + ETag SHA-256), không băm lại (`AI_EDGE_FEATURE.md` mục
+  2); (f) CSV xuất: ô chữ mở đầu `= + - @` / tab / CR thêm `'` (số thuần giữ nguyên). ⚠️ Chưa đo máy: ảnh Đa nhiệm trống.
+- **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 3): `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md` (backend tạo — chỉ
+  đọc) tả đăng nhập offline bằng băm mật khẩu không có thật; `NhanBienLaiActivity` tin referrer bên gửi khai; không khoá app (PIN / vân tay — tính năng, cần Stitch);
   ~38 lệnh `log` ở `ai_edge/data/cong_cu_*.dart` + `ai_chat_page.dart:1151` in tên / câu AI bị loại không chặn (không PII);
-  CSV xuất không vô hiệu `= + - @`; nội dung chuyển khoản chiếm *"Mã giao dịch"* (`doc_tin_bien_dong.dart:174`); sql.js CDN
-  không SRI. ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
+  nội dung chuyển khoản chiếm *"Mã giao dịch"* (`doc_tin_bien_dong.dart:174`); sql.js CDN không SRI. ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
   rơi về 0) — hàng của nhà đúng là người tạo, nhưng hàng riêng nên bỏ khi khác tài khoản phiên; **đừng** ép `Value(accountId)`.
 - Đã soát và ổn: SQL đều hằng / bind; không bypass chứng chỉ; Bearer chỉ tới backend (đường tương đối, ảnh QR Dio trần không
   token), socket token qua `setAuth`; token chỉ ở `flutter_secure_storage`; mọi tên tệp từ deeplink / hàng chờ qua
   `tenTepBienLaiHopLe`, deeplink dựng bằng `Uri(queryParameters:)`; PendingIntent `IMMUTABLE` tường minh; tool AI chỉ đọc;
   không bí mật viết cứng. Mốc `flutter test` **7.834 / 10 skip** (+8) sau đợt 1, **7.860 / 10 skip** (+26) sau đợt 2;
   analyze 20; `flutter build apk --debug` đạt sau đợt 2 (manifest gộp mang `allowBackup="false"`, `dataExtractionRules`,
-  `flutter_deeplinking_enabled`).
+  `flutter_deeplinking_enabled`). Sau đợt 3: **7.865 / 10 skip** (+5), analyze 20; `flutter build apk --release` đạt
+  (226,6 MB, chứng chỉ `CN=Android Debug` — đúng nhánh dự phòng khi thiếu `key.properties`); dòng cảnh báo ký debug in bằng
+  `logger.quiet` (`warn` bị chế độ im của Gradle nuốt — đo bằng `gradlew -q assembleRelease --dry-run` với JDK
+  `D:/Android/AndroidStudio/jbr`; `gradlew` trần dùng Java 8 hệ thống và gãy).
 
 ### 🏠 Chức năng GIA ĐÌNH (nhà nhiều người) — brainstorming + spec 1/4 nền móng + đơn backend 50 (2026-10-23) — chưa có mã
 
