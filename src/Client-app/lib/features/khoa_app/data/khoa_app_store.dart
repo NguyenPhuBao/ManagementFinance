@@ -1,0 +1,87 @@
+import 'dart:convert';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import 'models/cau_hinh_khoa_app.dart';
+
+/// Kho cấu hình khoá ứng dụng theo tài khoản — cùng khuôn `SecureStorageGoiStore` (`premium/data/goi_store.dart`).
+abstract class KhoaAppStore {
+  /// `null` = chưa bật hoặc hàng hỏng. Không bao giờ ném.
+  Future<CauHinhKhoaApp?> doc(int idaccount);
+
+  /// NÉM khi kho hỏng — `KhoaAppService.kiemPin` phải biết lần sai đã được ghi hay chưa.
+  Future<void> ghi(int idaccount, CauHinhKhoaApp cauHinh);
+
+  Future<void> xoa(int idaccount);
+
+  /// Xoá MỌI cấu hình khoá trên máy (đăng xuất). Không đụng khoá khác của kho (token, gói…).
+  Future<void> xoaHet();
+}
+
+class SecureStorageKhoaAppStore implements KhoaAppStore {
+  const SecureStorageKhoaAppStore(this._storage);
+
+  final FlutterSecureStorage _storage;
+
+  static const String tienTo = 'khoa_app_';
+  static String khoa(int idaccount) => '$tienTo$idaccount';
+
+  @override
+  Future<CauHinhKhoaApp?> doc(int idaccount) async {
+    try {
+      final raw = await _storage.read(key: khoa(idaccount));
+      if (raw == null || raw.isEmpty) return null;
+      return CauHinhKhoaApp.tuJson(jsonDecode(raw));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> ghi(int idaccount, CauHinhKhoaApp cauHinh) =>
+      _storage.write(key: khoa(idaccount), value: jsonEncode(cauHinh.toJson()));
+
+  @override
+  Future<void> xoa(int idaccount) async {
+    try {
+      await _storage.delete(key: khoa(idaccount));
+    } catch (_) {
+      // Bỏ qua — xoá hỏng thì lần mở sau vẫn đọc được cấu hình cũ, người dùng tắt lại.
+    }
+  }
+
+  @override
+  Future<void> xoaHet() async {
+    try {
+      final tatCa = await _storage.readAll();
+      // P3: lặp trên bản sao — mock (và có thể bản thật) trả chính map nội bộ, lặp-rồi-xoá sẽ ném
+      // ConcurrentModificationError bị catch nuốt.
+      for (final k in tatCa.keys.toList()) {
+        if (k.startsWith(tienTo)) await _storage.delete(key: k);
+      }
+    } catch (_) {
+      // Bỏ qua — cùng lý do với [xoa].
+    }
+  }
+}
+
+/// Kho trong RAM cho test.
+class InMemoryKhoaAppStore implements KhoaAppStore {
+  final Map<int, CauHinhKhoaApp> duLieu = {};
+  bool hongKhiGhi = false;
+
+  @override
+  Future<CauHinhKhoaApp?> doc(int idaccount) async => duLieu[idaccount];
+
+  @override
+  Future<void> ghi(int idaccount, CauHinhKhoaApp cauHinh) async {
+    if (hongKhiGhi) throw StateError('kho hỏng');
+    duLieu[idaccount] = cauHinh;
+  }
+
+  @override
+  Future<void> xoa(int idaccount) async => duLieu.remove(idaccount);
+
+  @override
+  Future<void> xoaHet() async => duLieu.clear();
+}
