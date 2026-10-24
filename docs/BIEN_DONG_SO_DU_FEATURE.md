@@ -270,7 +270,10 @@ App ngân hàng: Chia sẻ → "Ghi vào FlowMoney"
 - **Đọc chữ khi FlowMoney mở**, không phải lúc chia sẻ — lúc chia sẻ hai lối cho ra thứ nhìn thấy y hệt (thông báo
   không mang số), mà lối này để toàn bộ phần đọc ở Dart, test được.
 - **Cùng loại 20, cùng tên nguồn với D1** (`nguonCuaGoi` trên gói của app gửi) — trung tâm thông báo, thẻ Sổ giao dịch,
-  bảng *nguồn → ví*, gợi ý chuyển khoản dùng nguyên. App gửi không rõ → nguồn `Biên lai`.
+  bảng *nguồn → ví*, gợi ý chuyển khoản dùng nguyên. App gửi không rõ → nguồn `Biên lai`. ⚠️ Gói gửi lấy từ **hệ thống**
+  (2026-10-24, đợt 7): `NhanBienLaiActivity` gỡ `EXTRA_REFERRER` / `EXTRA_REFERRER_NAME` trước khi đọc `referrer` — hai extra
+  ấy do bên gửi tự đặt, app lạ từng khai được `com.mbmobile` (hàng *"MB Bank"*, chọn sẵn ví MB, ảnh đọc theo mẫu vị trí MB).
+  Bảng chia sẻ ColorOS mở activity thay bên gửi (uid 1000) và không đặt extra — đo Realme: gói gửi đúng, `khai=false`.
 - **Biên lai MB Bank KHÔNG có nhãn** (*Số tiền*, *Nội dung*…): mẫu riêng đọc theo vị trí — tiêu đề *"Chuyển tiền thành
   công"* → hàng số tiền → hàng giờ → … → nội dung ngay trên chân *"Giao dịch được xác nhận bởi MB."*. Hàng chữ liền
   số là **tài khoản người nhận** (người dùng xác nhận; ví dụ dạng `PSP…` của ví MoMo) — không làm mã giao dịch, không
