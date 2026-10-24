@@ -2,6 +2,7 @@ import 'package:flowmoney/features/khoa_app/domain/luat_khoa_app.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testConChoVaDemNguoc();
   test('mặc định 30 giây; tên lạ hoặc null đọc về mặc định', () {
     expect(TuKhoaSau.macDinh, TuKhoaSau.giay30);
     expect(TuKhoaSau.tuTen('phut5'), TuKhoaSau.phut5);
@@ -46,5 +47,22 @@ void main() {
     expect(maPinHopLe('1234567'), isFalse);
     expect(maPinHopLe('12a456'), isFalse);
     expect(maPinHopLe('１２３４５６'), isFalse, reason: 'chữ số toàn khổ không phải ASCII');
+  });
+}
+
+void testConChoVaDemNguoc() {
+  group('conCho / chuDemNguoc', () {
+    final nay = DateTime(2026, 10, 25, 9);
+    test('conCho: null, đúng mốc, đã qua → null; còn → khoảng còn lại', () {
+      expect(conCho(null, nay), isNull);
+      expect(conCho(nay, nay), isNull);
+      expect(conCho(nay.subtract(const Duration(seconds: 1)), nay), isNull);
+      expect(conCho(nay.add(const Duration(seconds: 30)), nay), const Duration(seconds: 30));
+    });
+    test('chuDemNguoc: mm:ss, làm tròn lên', () {
+      expect(chuDemNguoc(const Duration(seconds: 30)), '00:30');
+      expect(chuDemNguoc(const Duration(minutes: 15)), '15:00');
+      expect(chuDemNguoc(const Duration(milliseconds: 29200)), '00:30');
+    });
   });
 }

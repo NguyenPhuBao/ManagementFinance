@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/di/injection_container.dart';
@@ -6,6 +8,7 @@ import '../../../auth/presentation/bloc/current_account.dart';
 import '../../application/khoa_app_service.dart';
 import '../../domain/luat_khoa_app.dart';
 import '../widgets/ban_phim_pin.dart';
+import '../bloc/khoa_app_state.dart';
 import '../widgets/cham_pin.dart';
 
 enum CheDatPin {
@@ -20,7 +23,7 @@ enum _Buoc { hienTai, moi, nhapLai }
 
 /// Đặt / đổi / tắt mã PIN — Stitch `34c3cade…` *"Đặt mã PIN (3 bước)"*. `pop(true)` khi xong.
 class DatMaPinPage extends StatefulWidget {
-  const DatMaPinPage({super.key, required this.che, this.service, this.idaccount});
+  const DatMaPinPage({super.key, required this.che, this.service, this.idaccount, this.dongHo});
 
   final CheDatPin che;
 
@@ -29,6 +32,9 @@ class DatMaPinPage extends StatefulWidget {
 
   /// Tiêm cho test; mặc định tài khoản phiên.
   final int? idaccount;
+
+  /// Tiêm cho test (đồng hồ giả); mặc định `DateTime.now`.
+  final DateTime Function()? dongHo;
 
   @override
   State<DatMaPinPage> createState() => _DatMaPinPageState();
@@ -40,6 +46,45 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
   String? _pinMoi;
   String? _loi;
   bool _dangLam = false;
+  DateTime? _choDen;
+  Timer? _dem;
+
+  DateTime _nay() => (widget.dongHo ?? DateTime.now)();
+  Duration? get _conCho => conCho(_choDen, _nay());
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.che != CheDatPin.dat) WidgetsBinding.instance.addPostFrameCallback((_) => _napCho());
+  }
+
+  @override
+  void dispose() {
+    _dem?.cancel();
+    super.dispose();
+  }
+
+  /// Mở trang giữa lúc đang chờ: đọc mốc từ kho để khoá phím ngay.
+  Future<void> _napCho() async {
+    final id = _id;
+    if (id == null) return;
+    try {
+      final c = await _sv.doc(id);
+      if (!mounted) return;
+      setState(() => _choDen = c?.choDen);
+      _henDem();
+    } catch (_) {}
+  }
+
+  void _henDem() {
+    _dem?.cancel();
+    if (_conCho == null) return;
+    _dem = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return t.cancel();
+      setState(() {});
+      if (_conCho == null) t.cancel();
+    });
+  }
 
   KhoaAppService get _sv => widget.service ?? sl<KhoaAppService>();
   int? get _id => widget.idaccount ?? currentAccountIdOrNull(context);
@@ -66,11 +111,17 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
     try {
       switch (_buoc) {
         case _Buoc.hienTai:
-          final kq = await _sv.kiemPin(id, pin);
+          final KetQuaKiemPin kq;
+          try {
+            kq = await _sv.kiemPin(id, pin);
+          } catch (_) {
+            _loi = kCauKhongKiemDuoc;
+            break;
+          }
           if (!kq.dung) {
-            final cho = kq.choDen;
-            final conCho = cho != null && cho.isAfter(DateTime.now());
-            _loi = conCho ? 'Thử lại sau ${_mmss(cho.difference(DateTime.now()))}' : 'Mã PIN không đúng';
+            _choDen = kq.choDen;
+            _loi = conCho(_choDen, _nay()) == null ? 'Mã PIN không đúng' : null;
+            _henDem();
             break;
           }
           if (widget.che == CheDatPin.tat) {
@@ -89,7 +140,12 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
             _loi = 'Hai mã PIN không khớp — nhập lại';
             break;
           }
-          await _sv.datPin(id, pin);
+          try {
+            await _sv.datPin(id, pin);
+          } catch (_) {
+            _loi = 'Không lưu được mã PIN — thử lại';
+            break;
+          }
           if (mounted) Navigator.of(context).pop(true);
           return;
       }
@@ -103,13 +159,8 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
     }
   }
 
-  String _mmss(Duration d) {
-    final g = d.isNegative ? 0 : (d.inMilliseconds / 1000).ceil();
-    return '${(g ~/ 60).toString().padLeft(2, '0')}:${(g % 60).toString().padLeft(2, '0')}';
-  }
-
   void _go(String so) {
-    if (_dangLam || _nhap.length >= kDoDaiPin) return;
+    if (_dangLam || _conCho != null || _nhap.length >= kDoDaiPin) return;
     setState(() => _nhap += so);
     if (_nhap.length == kDoDaiPin) _du(_nhap);
   }
@@ -117,7 +168,8 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
   @override
   Widget build(BuildContext context) {
     final (chinh, phu) = _chu;
-    final loi = _loi;
+    final con = _conCho;
+    final loi = con != null ? 'Thử lại sau ${chuDemNguoc(con)}' : _loi;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(backgroundColor: AppColors.background, title: Text(_tieuDe)),
@@ -157,7 +209,7 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
                   khiXoa: () {
                     if (_nhap.isNotEmpty) setState(() => _nhap = _nhap.substring(0, _nhap.length - 1));
                   },
-                  tatSo: _dangLam,
+                  tatSo: _dangLam || con != null,
                 ),
               ),
             ),

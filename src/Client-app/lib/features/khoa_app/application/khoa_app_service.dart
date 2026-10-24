@@ -81,7 +81,7 @@ class KhoaAppService {
     if (c == null) return const KetQuaKiemPin(dung: true, soLanSai: 0);
     final nay = _clock();
     final cho = c.choDen;
-    if (cho != null && nay.isBefore(cho)) {
+    if (conCho(cho, nay) != null) {
       return KetQuaKiemPin(dung: false, soLanSai: c.soLanSai, choDen: cho, dangCho: true);
     }
     final bam = await _bam(pin, base64Decode(c.salt), c.soVong);

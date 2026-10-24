@@ -62,19 +62,12 @@ class _ManKhoaState extends State<ManKhoa> {
 
   void _henDem() {
     _dem?.cancel();
-    if (_conCho() == null) return;
+    if (conCho(widget.trangThai.choDen, widget.dongHo()) == null) return;
     _dem = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return t.cancel();
       setState(() {});
-      if (_conCho() == null) t.cancel();
+      if (conCho(widget.trangThai.choDen, widget.dongHo()) == null) t.cancel();
     });
-  }
-
-  Duration? _conCho() {
-    final cho = widget.trangThai.choDen;
-    if (cho == null) return null;
-    final con = cho.difference(widget.dongHo());
-    return con.isNegative || con == Duration.zero ? null : con;
   }
 
   @override
@@ -97,15 +90,10 @@ class _ManKhoaState extends State<ManKhoa> {
     setState(() => _nhap = _nhap.substring(0, _nhap.length - 1));
   }
 
-  String _mmss(Duration d) {
-    final giay = (d.inMilliseconds / 1000).ceil();
-    return '${(giay ~/ 60).toString().padLeft(2, '0')}:${(giay % 60).toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final s = widget.trangThai;
-    final con = _conCho();
+    final con = conCho(widget.trangThai.choDen, widget.dongHo());
     final loi = s.loiNhan;
     return Material(
       color: AppColors.background,
@@ -150,7 +138,7 @@ class _ManKhoaState extends State<ManKhoa> {
                             TextSpan(children: [
                               const TextSpan(text: 'Thử lại sau '),
                               TextSpan(
-                                text: _mmss(con),
+                                text: chuDemNguoc(con),
                                 style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary),
                               ),
                             ]),

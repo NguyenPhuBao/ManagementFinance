@@ -1,5 +1,6 @@
 import 'package:flowmoney/features/khoa_app/application/khoa_app_service.dart';
 import 'package:flowmoney/features/khoa_app/data/khoa_app_store.dart';
+import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_state.dart';
 import 'package:flowmoney/features/khoa_app/presentation/pages/dat_ma_pin_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -11,10 +12,12 @@ void main() {
   late InMemoryKhoaAppStore kho;
   late KhoaAppService sv;
   bool? ketQua;
+  late DateTime now;
 
   setUp(() {
     kho = InMemoryKhoaAppStore();
-    sv = KhoaAppService(store: kho, kenh: KenhGia(), bam: bamNhanh);
+    now = DateTime(2026, 10, 25, 9);
+    sv = KhoaAppService(store: kho, kenh: KenhGia(), bam: bamNhanh, clock: () => now);
     ketQua = null;
   });
 
@@ -25,7 +28,7 @@ void main() {
             body: Center(
               child: ElevatedButton(
                 onPressed: () async => ketQua = await Navigator.of(context).push<bool>(
-                    MaterialPageRoute(builder: (_) => DatMaPinPage(che: che, service: sv, idaccount: 10))),
+                    MaterialPageRoute(builder: (_) => DatMaPinPage(che: che, service: sv, idaccount: 10, dongHo: () => now))),
                 child: const Text('mở'),
               ),
             ),
@@ -99,6 +102,43 @@ void main() {
     expect(find.textContaining('Thử lại sau'), findsOneWidget);
   });
 
+
+  testWidgets('doi: kho hỏng khi kiểm PIN → câu không kiểm được, không ngoại lệ', (t) async {
+    await sv.datPin(10, '246810');
+    kho.hongKhiGhi = true;
+    await mo(t, CheDatPin.doi);
+    await go(t, '000000');
+    expect(find.text(kCauKhongKiemDuoc), findsOneWidget);
+    expect(find.text('Mã PIN không đúng'), findsNothing);
+    expect(t.takeException(), isNull);
+    expect(ketQua, isNull);
+  });
+
+  testWidgets('dat: kho hỏng khi lưu → câu không lưu được, chưa pop', (t) async {
+    await mo(t, CheDatPin.dat);
+    await go(t, '246810');
+    kho.hongKhiGhi = true;
+    await go(t, '246810');
+    expect(find.text('Không lưu được mã PIN — thử lại'), findsOneWidget);
+    expect(ketQua, isNull);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('doi: mở giữa lúc chờ → đếm ngược, phím khoá; hết hạn → PIN đúng qua', (t) async {
+    await sv.datPin(10, '246810');
+    final c = (await kho.doc(10))!;
+    await kho.ghi(10, c.voiLanSai(5, now.add(const Duration(seconds: 30))));
+    await mo(t, CheDatPin.doi);
+    expect(find.text('Thử lại sau 00:30'), findsOneWidget);
+    await t.tap(find.byKey(const Key('phim-1')));
+    await t.pump();
+    expect(chamPin('day'), findsNothing);
+    now = now.add(const Duration(seconds: 31));
+    await t.pump(const Duration(seconds: 31));
+    expect(find.textContaining('Thử lại sau'), findsNothing);
+    await go(t, '246810');
+    expect(find.text('Nhập mã PIN mới'), findsOneWidget);
+  });
   for (final kich in [const Size(360, 800), const Size(360, 640)]) {
     testWidgets('bố cục ${kich.width.toInt()}x${kich.height.toInt()}: căn giữa, không tràn', (t) async {
       t.view.physicalSize = kich;

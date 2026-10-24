@@ -52,3 +52,17 @@ Duration? thoiGianCho(int soLanSai) {
       return const Duration(minutes: 15);
   }
 }
+
+/// Còn phải chờ bao lâu tới [choDen] lúc [nay] (`null` = không chờ: không có mốc, đúng mốc, hoặc đã qua).
+/// MỘT định nghĩa "đang chờ" cho service, màn khoá và trang đặt PIN.
+Duration? conCho(DateTime? choDen, DateTime nay) {
+  if (choDen == null) return null;
+  final con = choDen.difference(nay);
+  return con <= Duration.zero ? null : con;
+}
+
+/// Đếm ngược `mm:ss`, làm tròn LÊN giây (còn 29,2 s hiện `00:30`).
+String chuDemNguoc(Duration con) {
+  final giay = (con.inMilliseconds / 1000).ceil();
+  return '${(giay ~/ 60).toString().padLeft(2, '0')}:${(giay % 60).toString().padLeft(2, '0')}';
+}
