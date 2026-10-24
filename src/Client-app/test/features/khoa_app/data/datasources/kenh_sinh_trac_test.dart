@@ -22,6 +22,7 @@ void main() {
     tra((_) => {'hoTro': true, 'daDangKy': false});
     final t = await const KenhSinhTracAndroid().trangThai();
     expect([t.hoTro, t.daDangKy], [true, false]);
+    expect(goi.single.method, 'trangThai');
     tra((_) => throw PlatformException(code: 'x'));
     expect((await const KenhSinhTracAndroid().trangThai()).hoTro, isFalse);
   });
@@ -29,6 +30,7 @@ void main() {
   test('bat gửi idaccount + bí mật base64, nhận bản mã + iv', () async {
     tra((_) => {'banMa': 'YmFu', 'iv': 'aXY='});
     final kq = await const KenhSinhTracAndroid().bat(10, Uint8List.fromList([1, 2, 3]));
+    expect(goi.single.method, 'bat');
     expect(goi.single.arguments, {'idaccount': 10, 'biMat': 'AQID'});
     expect([kq.banMa, kq.iv, kq.loi], ['YmFu', 'aXY=', null]);
   });
@@ -49,6 +51,14 @@ void main() {
   test('mo thành công trả bí mật đã giải base64', () async {
     tra((_) => {'biMat': 'AQID'});
     expect((await const KenhSinhTracAndroid().mo(10, banMa: 'a', iv: 'b')).biMat, [1, 2, 3]);
+    expect(goi.single.method, 'mo');
+    expect(goi.single.arguments, {'idaccount': 10, 'banMa': 'a', 'iv': 'b'});
+  });
+
+  test('xoaHet gọi lệnh xoaHet', () async {
+    tra((_) => null);
+    await const KenhSinhTracAndroid().xoaHet();
+    expect(goi.single.method, 'xoaHet');
   });
 
   test('bản trống: không hỗ trợ, không gọi kênh', () async {
