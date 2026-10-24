@@ -136,8 +136,23 @@ describe('AIOps Sentinel Refinement 2-Tier Test Suite (Rule 11)', () => {
         message: 'Dò mật khẩu Brute Force',
         mitigation_taken: 'Cách ly IP',
       },
+      {
+        id: 'inc-res-03',
+        first_detected_at: '2026-10-23T08:02:00Z',
+        last_seen_at: '2026-10-23T08:07:00Z',
+        status: 'ACTIVE',
+        hits: 2,
+        vector: 'resource',
+        actor_type: 'SYSTEM',
+        actor_identity: 'localhost',
+        metric_current: 92,
+        metric_baseline: 60,
+        metric_unit: '%',
+        message: 'CPU quá tải 92%',
+        mitigation_taken: 'Cảnh báo',
+      },
     ],
-    total: 2,
+    total: 3,
     page: 1,
     limit: 10,
   };
@@ -267,7 +282,7 @@ describe('AIOps Sentinel Refinement 2-Tier Test Suite (Rule 11)', () => {
       expect(screen.getByTestId('preset-30d')).toBeInTheDocument();
     });
 
-    it('1.6. Box RCA: Bỏ icon "troubleshoot", hiển thị đúng icon chuẩn 4 Vector và phân biệt Cột Đối tượng (Traffic vs Khác)', async () => {
+    it('1.6. Box RCA: Bỏ icon "troubleshoot", hiển thị đúng icon chuẩn 4 Vector và phân biệt Cột Đối tượng (Chỉ Resource là Hệ thống, Traffic/Auth là Client)', async () => {
       renderComponent();
       await waitFor(() => expect(aiopsApi.getIncidents).toHaveBeenCalled());
 
@@ -275,10 +290,11 @@ describe('AIOps Sentinel Refinement 2-Tier Test Suite (Rule 11)', () => {
       const rcaHeading = screen.getByRole('heading', { name: /tổng quan nguyên nhân bất thường/i });
       expect(rcaHeading.querySelector('.material-symbols-outlined')).toBeNull();
 
-      // Cột Đối tượng của Traffic: dòng 1 là "Hệ thống", dòng 2 là "Lưu lượng mạng"
-      expect(screen.getByText('Lưu lượng mạng')).toBeInTheDocument();
+      // Cột Đối tượng của Resource: dòng 1 là "Hệ thống", dòng 2 là "Nội bộ hệ thống"
+      expect(screen.getAllByText('Hệ thống').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Nội bộ hệ thống').length).toBeGreaterThan(0);
 
-      // Cột Đối tượng của Auth: có tiền tố "TK:" và "IP:"
+      // Cột Đối tượng của Traffic & Auth: có tiền tố "TK:" và "IP:"
       expect(screen.getAllByText('TK:').length).toBeGreaterThan(0);
       expect(screen.getAllByText('IP:').length).toBeGreaterThan(0);
       expect(screen.getByText('victim_account')).toBeInTheDocument();

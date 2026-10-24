@@ -165,7 +165,11 @@ test('AIOps Service Suite', async (t) => {
   await t.test('6. getHistory() filters strictly on real recorded data without generating synthetic points', async () => {
     const collector = new FeatureCollector();
     const detector = new AnomalyDetector();
-    const service = new AIOpsService({ collector, detector });
+    const service = new AIOpsService({
+      collector,
+      detector,
+      repository: { getMetricSnapshots: async () => [] },
+    });
 
     const now = Date.now();
     // Tạo 3 mẫu thực tế: 1 mẫu vừa xong (5 phút trước), 1 mẫu 2 ngày trước, 1 mẫu 40 ngày trước

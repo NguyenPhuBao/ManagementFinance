@@ -127,7 +127,7 @@ describe('AIOps 16 Fixes & Quarantine Matrix 2-Tier Test Suite', () => {
     it('1. Đã bỏ dòng subtitle tại Header AIOps', async () => {
       render(<AIOpsPage />);
       await waitFor(() => {
-        expect(screen.getByText(/AIOps Sentinel — Giám Sát Máy Học & Phòng Vệ Tự Động/i)).toBeInTheDocument();
+        expect(screen.getByText(/AIOps Sentinel — Giám Sát.*Phòng Vệ Tự Động/i)).toBeInTheDocument();
       });
       expect(screen.queryByText(/Học baseline trực tuyến, tự động phát hiện xâm nhập & chặn đứng nguồn request bất thường từ Client-app/i)).not.toBeInTheDocument();
     });

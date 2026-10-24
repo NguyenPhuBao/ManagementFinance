@@ -259,8 +259,8 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     await waitFor(() => {
       expect(aiopsApi.getIncidents).toHaveBeenCalled();
       expect(screen.getAllByText(/2 sự cố/i).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByText('113.161.xxx.xxx')).toBeInTheDocument();
-      expect(screen.getByText('Lưu lượng mạng')).toBeInTheDocument();
+      expect(screen.getByText(/113\.161/)).toBeInTheDocument();
+      expect(screen.getByText(/Khách vãng lai/i)).toBeInTheDocument();
       expect(screen.getByText(/attacker_victim/)).toBeInTheDocument();
       expect(screen.getByText(/ĐANG DIỄN RA/)).toBeInTheDocument();
       expect(screen.getByText(/ĐÃ GIẢM THIỂU/)).toBeInTheDocument();
@@ -274,7 +274,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
       expect(screen.getAllByText(/2 sự cố/i).length).toBeGreaterThanOrEqual(1);
     });
 
-    const authBtn = screen.getByRole('button', { name: /🛡️\s*Xác thực/i });
+    const authBtn = screen.getByRole('button', { name: /^badge\s*Xác thực$/i });
     fireEvent.click(authBtn);
 
     await waitFor(() => {

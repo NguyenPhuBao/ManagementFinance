@@ -114,7 +114,7 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
 3. **Tab Quản Trị Admin Trong Cài Đặt Hệ Thống (`SettingsModal.jsx`):**
    - Tích hợp trực tiếp vào hộp thoại Cài đặt (Settings Center), cung cấp 3 tác vụ an ninh cốt lõi:
      + **Đổi mã PIN bảo mật:** Yêu cầu xác thực đồng thời mật khẩu đăng nhập hiện tại và mã PIN cũ trước khi cập nhật mã PIN 6 số mới.
-     + **Đổi mật khẩu tài khoản:** Yêu cầu xác thực mật khẩu cũ và mã PIN cũ, ngăn chặn việc bị đổi mật khẩu khi rời máy tính.
+     + **Đổi mật khẩu tài khoản:** Yêu cầu xác thực mật khẩu hiện tại và mã PIN bảo mật hiện tại của Admin, ngăn chặn việc bị đổi mật khẩu khi rời máy tính.
      + **Cấp tài khoản Admin mới:** Quản trị viên cấp cao có thể tạo tài khoản Admin cho đồng nghiệp bằng cách nhập Username/Email và xác thực bằng **Mã PIN bảo mật của chính người cấp**. Tài khoản mới được khởi tạo mật khẩu/PIN mặc định (`123456`), gán `is_first_login = true` để bắt buộc người nhận phải đổi thông tin ngay lần đầu đăng nhập.
 4. **Cơ Chế Khóa Màn Hình An Toàn & Bảo Toàn Phiên (`LockScreenModal.jsx` & `axios-client.js`):**
    - Tự động kích hoạt màn hình khóa khi Admin không tương tác quá thời gian quy định (5 / 15 / 30 phút).

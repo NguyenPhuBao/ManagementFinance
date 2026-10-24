@@ -2,7 +2,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { MaintenanceManager } = require('../../core/resilience/maintenance.manager');
 
-describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=false)', () => {
+describe('Maintenance Manager Schedule Rules (3h lead time & 12h gap constraints & isEmergency=false)', () => {
   let manager;
   let mockRepository;
   let mockNotifService;
@@ -27,6 +27,7 @@ describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=
     manager = new MaintenanceManager({
       redis: null,
       notificationService: mockNotifService,
+      repository: mockRepository,
     });
   });
 
@@ -36,30 +37,30 @@ describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=
     }
   });
 
-  it('FAIL khi đặt thời gian bảo trì trước dưới 4 tiếng so với hiện tại', () => {
+  it('FAIL khi đặt thời gian bảo trì trước dưới 3 tiếng so với hiện tại', () => {
     const now = Date.now();
-    const scheduledAt = new Date(now + 2 * 3600 * 1000).toISOString(); // Chỉ 2 tiếng nữa
+    const scheduledAt = new Date(now + 2 * 3600 * 1000).toISOString(); // Chỉ 2 tiếng nữa (< 3h)
     const scheduledEndAt = new Date(now + 3 * 3600 * 1000).toISOString();
 
     assert.throws(() => {
       manager.scheduleMaintenance({
         scheduledAt,
         scheduledEndAt,
-        reason: 'Bảo trì test dưới 4 tiếng',
+        reason: 'Bảo trì test dưới 3 tiếng',
         createdBy: 'admin',
       });
-    }, /ít nhất 4 tiếng/i);
+    }, /ít nhất 3 tiếng/i);
   });
 
-  it('PASS khi đặt thời gian bảo trì trước ít nhất 4 tiếng so với hiện tại', () => {
+  it('PASS khi đặt thời gian bảo trì trước ít nhất 3 tiếng so với hiện tại', () => {
     const now = Date.now();
-    const scheduledAt = new Date(now + 5 * 3600 * 1000).toISOString(); // 5 tiếng nữa
-    const scheduledEndAt = new Date(now + 6 * 3600 * 1000).toISOString();
+    const scheduledAt = new Date(now + 3 * 3600 * 1000 + 60000).toISOString(); // >= 3 tiếng nữa
+    const scheduledEndAt = new Date(now + 5 * 3600 * 1000).toISOString();
 
     const status = manager.scheduleMaintenance({
       scheduledAt,
       scheduledEndAt,
-      reason: 'Bảo trì test hợp lệ 5h',
+      reason: 'Bảo trì test hợp lệ >= 3h',
       createdBy: 'admin',
     });
 
@@ -67,11 +68,11 @@ describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=
     assert.ok(manager.getScheduledList().length >= 1);
   });
 
-  it('FAIL khi đặt lịch thứ 2 cách lịch thứ nhất dưới 5 tiếng', () => {
+  it('FAIL khi đặt lịch thứ 2 cách lịch thứ nhất dưới 12 tiếng', () => {
     const now = Date.now();
-    // Lịch 1: Từ now + 5h đến now + 7h
-    const sched1Start = new Date(now + 5 * 3600 * 1000).toISOString();
-    const sched1End = new Date(now + 7 * 3600 * 1000).toISOString();
+    // Lịch 1: Từ now + 3h đến now + 5h
+    const sched1Start = new Date(now + 3 * 3600 * 1000 + 60000).toISOString();
+    const sched1End = new Date(now + 5 * 3600 * 1000).toISOString();
 
     manager.scheduleMaintenance({
       scheduledAt: sched1Start,
@@ -80,9 +81,9 @@ describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=
       createdBy: 'admin',
     });
 
-    // Lịch 2: Từ now + 9h (cách lịch 1 kết thúc chỉ 2 tiếng, < 5h)
-    const sched2Start = new Date(now + 9 * 3600 * 1000).toISOString();
-    const sched2End = new Date(now + 10 * 3600 * 1000).toISOString();
+    // Lịch 2: Từ now + 10h (cách lịch 1 kết thúc chỉ 5 tiếng, < 12h)
+    const sched2Start = new Date(now + 10 * 3600 * 1000).toISOString();
+    const sched2End = new Date(now + 12 * 3600 * 1000).toISOString();
 
     assert.throws(() => {
       manager.scheduleMaintenance({
@@ -91,30 +92,30 @@ describe('Maintenance Manager Schedule Rules (4h & 5h constraints & isEmergency=
         reason: 'Lịch 2 quá sát lịch 1',
         createdBy: 'admin',
       });
-    }, /cách nhau ít nhất 5 tiếng/i);
+    }, /cách nhau ít nhất 12 tiếng/i);
   });
 
-  it('PASS khi đặt lịch thứ 2 cách lịch thứ nhất ít nhất 5 tiếng', () => {
+  it('PASS khi đặt lịch thứ 2 cách lịch thứ nhất ít nhất 12 tiếng (chỉ tạo đúng 2 lịch)', () => {
     const now = Date.now();
-    // Lịch 1: Từ now + 5h đến now + 7h
-    const sched1Start = new Date(now + 5 * 3600 * 1000).toISOString();
-    const sched1End = new Date(now + 7 * 3600 * 1000).toISOString();
+    // Lịch 1: Từ now + 3h đến now + 5h
+    const sched1Start = new Date(now + 3 * 3600 * 1000 + 60000).toISOString();
+    const sched1End = new Date(now + 5 * 3600 * 1000).toISOString();
 
     manager.scheduleMaintenance({
       scheduledAt: sched1Start,
       scheduledEndAt: sched1End,
-      reason: 'Lịch 1',
+      reason: 'Lịch 1 chuẩn 3h',
       createdBy: 'admin',
     });
 
-    // Lịch 2: Từ now + 13h (cách lịch 1 kết thúc đúng 6 tiếng, >= 5h)
-    const sched2Start = new Date(now + 13 * 3600 * 1000).toISOString();
-    const sched2End = new Date(now + 15 * 3600 * 1000).toISOString();
+    // Lịch 2: Từ now + 17h (cách lịch 1 kết thúc đúng 12 tiếng, >= 12h)
+    const sched2Start = new Date(now + 17 * 3600 * 1000).toISOString();
+    const sched2End = new Date(now + 19 * 3600 * 1000).toISOString();
 
     const status = manager.scheduleMaintenance({
       scheduledAt: sched2Start,
       scheduledEndAt: sched2End,
-      reason: 'Lịch 2 cách 6 tiếng',
+      reason: 'Lịch 2 cách 12 tiếng',
       createdBy: 'admin',
     });
 

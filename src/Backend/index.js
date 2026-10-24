@@ -97,15 +97,21 @@ async function bootstrap() {
         const lastSample = aiopsStatus.sample || {};
         const rawUptimeSec = Math.floor(process.uptime());
         let activeUptimeSec = rawUptimeSec;
+        let totalElapsedSec = rawUptimeSec;
         let uptimePercent = 100;
         let uptimeFormatted = `${rawUptimeSec}s`;
+        let downtimeSec = 0;
+        let startedAtStr = new Date(Date.now() - rawUptimeSec * 1000).toISOString();
 
         try {
           const adminService = require('./modules/admin/admin.service');
           if (adminService && typeof adminService.calcUptimePercent === 'function') {
             const uptimeData = await adminService.calcUptimePercent(rawUptimeSec);
             activeUptimeSec = uptimeData.uptimeSeconds;
+            totalElapsedSec = uptimeData.totalSeconds ?? rawUptimeSec;
             uptimePercent = uptimeData.uptimePercent;
+            downtimeSec = uptimeData.downtimeSeconds ?? 0;
+            startedAtStr = uptimeData.startedAt || startedAtStr;
             uptimeFormatted = adminService.formatUptimeDuration(activeUptimeSec);
           }
         } catch (_) {
@@ -124,9 +130,12 @@ async function bootstrap() {
 
         const payload = {
           uptimeSeconds: activeUptimeSec,
+          totalSeconds: totalElapsedSec,
           rawUptimeSeconds: rawUptimeSec,
           uptimePercent,
           uptimeFormatted,
+          downtimeSeconds: downtimeSec,
+          startedAt: startedAtStr,
           eventLoopLagMs: defaultEventLoopMonitor.getLag(),
           cpuPercent: cpuPct,
           cpuCores: hwMetrics.cpu.cores,

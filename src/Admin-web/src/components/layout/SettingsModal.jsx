@@ -123,7 +123,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
       return;
     }
     if (!passwordForm.pin || !/^\d{6}$/.test(passwordForm.pin)) {
-      setPasswordError(t('settings.passwordSection.requirePin', 'Vui lòng nhập mã PIN bảo mật cũ (6 chữ số)'));
+      setPasswordError(t('settings.passwordSection.requirePin', 'Vui lòng nhập mã PIN bảo mật hiện tại (6 chữ số)'));
       return;
     }
     if (!passwordForm.newPassword || passwordForm.newPassword.length < 6) {
@@ -144,6 +144,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
       await adminApi.changePassword({
         oldPassword: passwordForm.oldPassword,
         pin: passwordForm.pin,
+        oldPin: passwordForm.pin,
         newPassword: passwordForm.newPassword,
       });
       alert?.success?.(
@@ -1101,7 +1102,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
 
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Mã PIN bảo mật cũ (6 chữ số) <span className="text-rose-500">*</span>
+                    {t('settings.passwordSection.pinLabel', 'Mã PIN bảo mật hiện tại (6 chữ số) *')}
                   </label>
                   <input
                     type="password"
@@ -1111,7 +1112,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     data-testid="password-input-pin"
                     value={passwordForm.pin}
                     onChange={(e) => setPasswordForm({ ...passwordForm, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                    placeholder="Nhập mã PIN cũ của bạn"
+                    placeholder={t('settings.passwordSection.pinPlaceholder', 'Nhập mã PIN bảo mật hiện tại của bạn')}
                     className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary font-mono tracking-widest"
                     required
                   />

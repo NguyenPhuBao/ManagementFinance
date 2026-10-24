@@ -143,6 +143,70 @@ describe('Admin Security Refinement Suite (Backend)', () => {
         adminRepository.getAccountById = origGet;
       }
     });
+
+    it('should successfully change password when pin is provided as current security pin (matching account.pin_hash)', async () => {
+      const origGet = adminRepository.getAccountById;
+      const origUpdatePass = adminRepository.updateAccountPassword;
+      const passHash = await bcrypt.hash('CorrectOldPassword', 10);
+      const pinHash = await bcrypt.hash('654321', 10);
+      let updatedWithHash = null;
+
+      adminRepository.getAccountById = async (id) => ({
+        idaccount: id,
+        password: passHash,
+        pin_hash: pinHash,
+      });
+
+      adminRepository.updateAccountPassword = async (id, newHash) => {
+        updatedWithHash = newHash;
+        return { idaccount: id };
+      };
+
+      try {
+        const result = await adminService.changeAdminPassword(
+          { oldPassword: 'CorrectOldPassword', pin: '654321', newPassword: 'BrandNewPassword@2026', confirmPassword: 'BrandNewPassword@2026' },
+          { idaccount: 1 }
+        );
+
+        assert.strictEqual(result.success, true);
+        assert.ok(updatedWithHash !== null);
+        const matchesNew = await bcrypt.compare('BrandNewPassword@2026', updatedWithHash);
+        assert.strictEqual(matchesNew, true);
+      } finally {
+        adminRepository.getAccountById = origGet;
+        adminRepository.updateAccountPassword = origUpdatePass;
+      }
+    });
+
+    it('should reject when pin is invalid current pin', async () => {
+      const origGet = adminRepository.getAccountById;
+      const passHash = await bcrypt.hash('CorrectOldPassword', 10);
+      const pinHash = await bcrypt.hash('654321', 10);
+
+      adminRepository.getAccountById = async (id) => ({
+        idaccount: id,
+        password: passHash,
+        pin_hash: pinHash,
+      });
+
+      try {
+        await assert.rejects(
+          async () => {
+            await adminService.changeAdminPassword(
+              { oldPassword: 'CorrectOldPassword', pin: '000000', newPassword: 'BrandNewPassword@2026', confirmPassword: 'BrandNewPassword@2026' },
+              { idaccount: 1 }
+            );
+          },
+          (err) => {
+            assert.strictEqual(err.statusCode, 400);
+            assert.ok(err.message.includes('Mã PIN bảo mật hiện tại không chính xác'));
+            return true;
+          }
+        );
+      } finally {
+        adminRepository.getAccountById = origGet;
+      }
+    });
   });
 
   describe('createAdminAccount', () => {
@@ -268,21 +332,40 @@ describe('Admin Security Refinement Suite (Backend)', () => {
     });
   });
 
-  describe('changeAdminPin', () => {
-    it('should reject when newPin is identical to oldPin', async () => {
-      await assert.rejects(
-        async () => {
-          await adminService.changeAdminPin(
-            { password: 'AnyPassword', oldPin: '123456', newPin: '123456', confirmPin: '123456' },
-            { idaccount: 1 }
-          );
-        },
-        (err) => {
-          assert.strictEqual(err.statusCode, 400);
-          assert.ok(err.message.includes('không được trùng'));
-          return true;
-        }
-      );
+  describe('calcUptimePercent (PO Formula)', () => {
+    it('should return 100% when there is no maintenance downtime', async () => {
+      const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
+      const origGet = defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds;
+      defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds = async () => 0;
+
+      try {
+        // Giả lập hệ thống chạy 2 tiếng (7200s), không bảo trì
+        const result = await adminService.calcUptimePercent(7200);
+        assert.strictEqual(result.uptimePercent, 100);
+        assert.strictEqual(result.uptimeSeconds, 7200);
+        assert.strictEqual(result.totalSeconds, 7200);
+        assert.strictEqual(result.downtimeSeconds, 0);
+      } finally {
+        defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds = origGet;
+      }
+    });
+
+    it('should return exactly 80% when running 4h out of 5h total with 1h downtime (PO Example)', async () => {
+      const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
+      const origGet = defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds;
+      // 1 giờ bảo trì = 3600 giây
+      defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds = async () => 3600;
+
+      try {
+        // Tổng thời gian = 5 tiếng (18000s)
+        const result = await adminService.calcUptimePercent(18000);
+        assert.strictEqual(result.uptimePercent, 80);
+        assert.strictEqual(result.uptimeSeconds, 14400); // 4 tiếng chạy thực tế
+        assert.strictEqual(result.totalSeconds, 18000);  // 5 tiếng tổng thời gian
+        assert.strictEqual(result.downtimeSeconds, 3600);
+      } finally {
+        defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds = origGet;
+      }
     });
   });
 });

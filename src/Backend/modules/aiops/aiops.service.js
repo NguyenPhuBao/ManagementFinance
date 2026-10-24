@@ -602,16 +602,7 @@ class AIOpsService {
       customThresholds: this.detector.getCustomThresholds(),
     };
 
-    // Nếu Admin tùy chỉnh ngưỡng an toàn mong muốn, lưu cứng vào CSDL PostgreSQL
-    if (options.customThresholds && typeof options.customThresholds === 'object' && this.repository && typeof this.repository.setSetting === 'function') {
-      try {
-        await this.repository.setSetting('custom_vector_thresholds', JSON.stringify(options.customThresholds));
-        logger.info('[AIOps] Đã lưu cứng custom_vector_thresholds vào CSDL PostgreSQL:', options.customThresholds);
-      } catch (err) {
-        logger.warn('[AIOps] Lỗi lưu custom_vector_thresholds vào CSDL', { error: err.message });
-      }
-    }
-
+    // PO Rule: Không lưu cứng giá trị admin nhập vào CSDL, chỉ áp dụng cho phiên runtime hiện tại
     logger.info(`[AIOps] Tái hiệu chuẩn đường chuẩn thành công cho quy mô ${report.targetConcurrency} người dùng (CPU: ${currentSample.cpuPercent}%, RAM: ${currentSample.ramPercent}%)`);
     return {
       success: true,

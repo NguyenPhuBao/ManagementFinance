@@ -259,36 +259,41 @@ Nhằm đảm bảo tính công bằng và loại bỏ hoàn toàn tình trạng
    - Hiển thị chi tiết từng chỉ số đóng góp và **Hành vi phòng vệ cá nhân hóa độc lập** cho từng nhóm rủi ro (Auth, Traffic, Exploit, Resource).
 
 5. **Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Đa Khung Thời Gian (Multi-Vector Multi-Range Trend Chart SVG):**
-   - Hỗ trợ **5 mốc thời gian linh hoạt**:
+   - Hỗ trợ **5 mốc thời gian chuẩn hóa (Presets)**:
      - `10 Phút` (Mặc định): Trực quan hóa 60 mẫu trượt gần nhất từ Ring Buffer In-Memory ($10\text{s}$ interval).
-     - `1 Giờ`: 12 mẫu snapshot lấy từ CSDL PostgreSQL.
-     - `24 Giờ`: 288 mẫu snapshot từ CSDL PostgreSQL.
+     - `1 Giờ`: Mẫu snapshot trong 1 giờ qua.
+     - `24 Giờ`: Mẫu snapshot 24 giờ qua từ CSDL PostgreSQL.
      - `7 Ngày`: Mẫu snapshot gộp theo mốc 7 ngày.
-     - `30 Ngày`: Toàn cảnh xu hướng vận hành và an ninh trong 1 tháng.
+     - `1 Tháng`: Toàn cảnh xu hướng vận hành và an ninh trong 30 ngày qua.
+   - **Tọa độ trục thời gian thực (Timestamp-based X Positioning):** Tọa độ hoành độ $X$ của mỗi mẫu đo được tính dựa trên tỷ lệ thời gian thực tế của mẫu trong dải $[startTime, endTime]$: $x = \text{padding} + \frac{t_{\text{sample}} - t_{\text{start}}}{t_{\text{end}} - t_{\text{start}}} \times \text{usableWidth}$. Dữ liệu mới trong 10 phút qua khi xem ở chế độ "1 Tháng" sẽ nằm tập trung ở mốc "Hiện tại", không bị kéo giãn giả tạo sang Tuần 1.
+   - **Đã loại bỏ icon `date_range`** trước dòng "Bộ lọc thời gian:" để giao diện sạch sẽ, thanh thoát.
    - Dữ liệu lịch sử từ 1 Giờ trở lên được lấy từ API `GET /api/admin/aiops/trend?range=...` truy vấn bảng CSDL `aiops_metric_snapshot`.
    - **Thanh chuyển Tab vectơ (Filter Tabs):** Cho phép xem đồng thời "Tất Cả 4 Vectơ" hoặc soi cận cảnh từng vectơ riêng biệt:
-     - 🟠 **Vectơ 1 (Xác thực):** Amber `#f59e0b` — Theo dõi failed logins & token reuse.
-     - 🔵 **Vectơ 2 (Lưu lượng):** Blue `#3b82f6` — Theo dõi biến thiên RPM theo trần CCU.
-     - 🔴 **Vectơ 3 (Khai thác):** Rose `#f43f5e` — Theo dõi các mẫu SQLi, traversal injection.
-     - 🟢 **Vectơ 4 (Tài nguyên):** Teal `#0d9488` — Theo dõi tải CPU/RAM và độ trễ Event Loop.
+     - 🟠 **Vectơ 1 (Xác thực):** Amber `#f59e0b` (`badge`) — Theo dõi failed logins & token reuse.
+     - 🔵 **Vectơ 2 (Lưu lượng):** Blue `#3b82f6` (`waves`) — Theo dõi biến thiên RPM theo trần CCU.
+     - 🔴 **Vectơ 3 (Khai thác):** Rose `#f43f5e` (`bug_report`) — Theo dõi các mẫu SQLi, traversal injection.
+     - 🟢 **Vectơ 4 (Tài nguyên):** Teal `#0d9488` (`memory`) — Theo dõi tải CPU/RAM và độ trễ Event Loop.
      - 🟣 **Trần tham chiếu (Composite Max):** Nét đứt tím `#8b5cf6`.
    - **Tương tác trực quan (Interactive Hover Tooltip):** Khi rê chuột lên biểu đồ, hiển thị vạch gióng thời gian và bảng chỉ số chi tiết của cả 4 vectơ tại mốc thời gian đó (HH:mm:ss hoặc DD/MM HH:mm).
    - Hiển thị 2 vạch ngưỡng định lượng: Vạch vàng Cảnh báo ($70$) và Vạch đỏ Khẩn cấp ($85$).
 
 6. **Bảng Bóc Tách Nguyên Nhân Gốc Rễ (Root Cause Analysis - RCA Table):**
-   - **Icon Vectơ Chuẩn Hóa:**
-     - 🔑 **Xác thực (`auth`):** Rủi ro dò mật khẩu, token giả mạo.
-     - 📈 **Lưu lượng (`traffic`):** Rủi ro DoS, đột biến request.
-     - 🛡️ **Khai thác (`exploit`):** Rủi ro SQL Injection, Path Traversal.
-     - ⚙️ **Tài nguyên (`resource`):** Rủi ro nghẽn CPU, RAM, Event Loop.
-   - **Cột Đối tượng Chuẩn Hóa:**
-     - Hiển thị rõ ràng 2 dòng phân định:
-       - `TK: <username>` (với sự cố phần cứng hiển thị `TK: Hệ thống nội bộ`, với khách vãng lai hiển thị `TK: Khách vãng lai / Ẩn danh`).
-       - `IP: <masked_ip>` theo định dạng `192.168.xxx.xxx` hoặc `a.b.xxx.xxx` (với sự cố phần cứng hiển thị `IP: Nội bộ hệ thống`).
-     - Huy hiệu vai trò tài khoản: Quản trị viên (`Admin`), Người dùng (`User`), Hệ thống (`System`), Khách vãng lai (`Guest`).
+   - **Icon Vectơ Chuẩn Hóa (Material Symbols thuần túy, loại bỏ hoàn toàn Emoji cũ):**
+     - `badge` **Xác thực (`auth`):** Rủi ro dò mật khẩu, token giả mạo từ người dùng.
+     - `waves` **Lưu lượng (`traffic`):** Rủi ro DoS, đột biến request từ người dùng/client.
+     - `bug_report` **Khai thác (`exploit`):** Rủi ro SQL Injection, Path Traversal từ đối tượng bên ngoài.
+     - `memory` **Tài nguyên (`resource`):** Rủi ro nghẽn CPU, RAM, Event Loop nội bộ máy chủ.
+   - **Cột Đối tượng Chuẩn Hóa Theo Logic Gốc Của PO:**
+     - **Chỉ duy nhất Vector Tài nguyên (`vector === 'resource'`) mới thuộc về Hệ thống:**
+       - Dòng 1: `Hệ thống`
+       - Dòng 2: `Nội bộ hệ thống`
+     - **Tất cả các Vector khác (`traffic`, `auth`, `exploit`):** Đều là hành vi từ phía Client/User gửi vào máy chủ, do đó bắt buộc hiển thị:
+       - Dòng 1: `TK: <username>` (nếu không xác định thì hiển thị `TK: Khách vãng lai / Ẩn danh`).
+       - Dòng 2: `IP: <masked_ip>` (định dạng `192.168.xxx.xxx` hoặc `113.161.xxx.xxx` theo Nghị định 13/2023/NĐ-CP).
+       - Tuyệt đối không hiển thị nhãn giả `Hệ thống - Lưu lượng mạng` cho vector Lưu lượng.
    - **Cột Tình trạng:** Hiển thị thời điểm phát hiện lần đầu (`first_detected_at`), nhãn trạng thái (`ĐANG DIỄN RA` / `ĐÃ GIẢM THIỂU`), và số lần lặp lại (`Lặp lại X lần` / `Phát hiện lần 1`). Đã loại bỏ hoàn toàn dòng hiển thị dư thừa `Gần nhất: ...`.
    - **Thao tác nhanh:**
-     - Sự cố tài nguyên (`resource`): Chỉ hiển thị thông tin điều phối hạ tầng, không bao giờ có nút chặn IP hay tài khoản.
+     - Sự cố tài nguyên (`resource`): Chỉ hiển thị thông tin điều phối hạ tầng, không có nút chặn IP hay tài khoản.
      - Sự cố an ninh (`auth`, `traffic`, `exploit`): Cung cấp nút Phong tỏa IP / Tạm khóa TK tức thì.
 
 7. **Bảng Nguồn Theo Dõi Đặc Biệt (Special Monitored Sources - Đặt Dưới Cùng Trang):**
@@ -309,7 +314,15 @@ Nhằm đảm bảo tính công bằng và loại bỏ hoàn toàn tình trạng
    - Tuyệt đối không bao giờ hiển thị nút bảo trì toàn hệ thống khi chỉ có tấn công an ninh từ các IP bên ngoài.
 
 9. **Modal Tái Hiệu Chuẩn Baseline (Calibrate Baseline):**
-   - Cho phép đặt lại đường chuẩn khi doanh nghiệp chuẩn bị chạy chiến dịch marketing/khuyến mãi lớn.
+   - **Mô hình chịu tải dựa trên phần cứng máy chủ & quy mô $N$ CCU:**
+     - Hệ thống kết hợp thông số phần cứng thực tế (CPU cores, RAM vật lý) với quy mô $N$ để tính toán các ngưỡng an toàn của 4 Vector rủi ro:
+       - Xác thực: $\max(20, \text{round}(15 + 10 \cdot \log_{10}(N / 100)))$
+       - Lưu lượng: $\max(50, \text{round}(N / 2))\text{ RPS}$
+       - Khai thác: $8\text{ mẫu/phút}$
+       - Tài nguyên: CPU $85\%$, RAM $85\%$, Event Loop Lag $100\text{ms}$
+   - **Không lưu cứng giá trị admin nhập:** Mỗi lần mở modal hiệu chuẩn, tất cả ô input đều được reset rỗng (`value = ''`), tự động tính toán lại chỉ số phù hợp theo quy mô hiện tại và hiển thị dưới dạng `placeholder`.
+   - **Ưu tiên chỉ số Admin nhập:** Khi submit, nếu admin tự gõ số thì lấy số admin nhập; nếu admin để trống thì lấy chỉ số hiển thị dưới `placeholder`.
+   - Backend chỉ áp dụng hiệu chuẩn trong phiên runtime hiện tại, không ghi cứng `custom_vector_thresholds` vào CSDL `aiops_setting`.
 
 10. **Banner Báo Động Đỏ Toàn Cục (`AppLayout.jsx`):**
     - Banner bảo trì khẩn cấp màu đỏ chỉ xuất hiện khi `recommendedAction === 'EMERGENCY_MAINTENANCE'` hoặc `vectorScores.resource >= 85`. Các cuộc tấn công IP bên ngoài chỉ kích hoạt Toast thông báo cô lập IP (`admin.security_blocked`), không làm gián đoạn trải nghiệm người dùng.

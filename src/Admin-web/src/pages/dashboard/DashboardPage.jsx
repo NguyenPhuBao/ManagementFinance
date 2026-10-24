@@ -813,9 +813,9 @@ const DashboardPage = () => {
       const dtMin = Math.round(dtSec / 60);
       const dtHours = (dtSec / 3600).toFixed(1);
       const dtLabel = dtMin >= 60 ? `${dtHours} giờ` : `${dtMin} phút`;
-      uptimeSubtext = `Đã trừ ${dtLabel} bảo trì (SLA 30 ngày)`;
+      uptimeSubtext = `Đã trừ ${dtLabel} bảo trì`;
     } else {
-      uptimeSubtext = 'Chuẩn SLA 30 ngày (Không gián đoạn)';
+      uptimeSubtext = undefined;
     }
   } else if (uptimeStatus === 'loading') {
     uptimeDisplayValue = '—';
@@ -829,7 +829,7 @@ const DashboardPage = () => {
     uptimeDisplayValue = '100.00%';
     uptimeBadge = t('dashboard.kpi.stable', 'Ổn định');
     uptimeBadgeColor = 'green';
-    uptimeSubtext = 'Chuẩn SLA 30 ngày';
+    uptimeSubtext = undefined;
   }
 
   // Pagination display values (Trang 1: 1 - 5 of 36 items)
@@ -1167,7 +1167,7 @@ const DashboardPage = () => {
                   <tbody className="divide-y divide-outline-variant/50">
                       {recentActivities.length > 0 ? (
                         recentActivities.map(activity => (
-                            <tr key={activity.key} className={`hover:bg-surface-container-lowest transition-colors group ${activity.isNew ? 'bg-primary/5 animate-pulse duration-1000' : ''}`}>
+                            <tr key={activity.key} className="hover:bg-surface-container-lowest transition-colors group">
                                 <td className="py-3 px-3 overflow-hidden max-w-0">
                                     <div className="flex items-center gap-2.5 min-w-0" title={activity.user}>
                                         <div className="w-7 h-7 shrink-0 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-xs shadow-xs group-hover:scale-105 transition-transform">
@@ -1239,7 +1239,7 @@ const DashboardPage = () => {
 
         {/* Box đo lường sức khỏe máy chủ (Nằm ngang hàng với Bảng Hoạt động gần đây) */}
         <div className="lg:col-span-1 w-full">
-          <ServerHealthPanel />
+          <ServerHealthPanel uptimeData={uptimeData} />
         </div>
       </div>
 

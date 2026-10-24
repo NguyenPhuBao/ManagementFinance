@@ -3,8 +3,8 @@
 
 > **Tài liệu nguồn sự thật (Source of Truth)** đặc tả toàn bộ các sự kiện thời gian thực (Socket.IO), thông báo hệ thống, tín hiệu điều hướng và lỗi chốt chặn HTTP/API phát sinh từ **Admin-web** và **Backend** có tác động hoặc yêu cầu xử lý từ phía **Client-app (Mobile App Flutter)**.  
 > 
-> * **Ngày cập nhật:** 23/10/2026  
-> * **Phiên bản:** `v3.1` (Đầy đủ 100% sự kiện Socket.IO, HTTP Signals, AIOps Sentinel & Phân định ranh giới Admin-Web)  
+> * **Ngày cập nhật:** 24/10/2026  
+> * **Phiên bản:** `v4.0` (Đồng bộ toàn diện sau đợt chuẩn hóa CSDL, Bảo trì 2 loại hình & AIOps Sentinel chuẩn PO)  
 > * **Trạng thái:** 🟢 PO ĐÃ PHÊ DUYỆT ĐỊNH HƯỚNG & YÊU CẦU THỰC THI (Official Approved Specification)  
 > * **Phạm vi đối chiếu mã nguồn thực tế:**
 >   * `src/Backend/core/socket.js` (Hạ tầng WebSocket Socket.IO v4)
@@ -12,7 +12,7 @@
 >   * `src/Backend/modules/notification/notification.service.js` (Hệ thống thông báo đa kênh & Broadcast persistence)
 >   * `src/Backend/modules/payment/payment.service.js` (Luồng thanh toán PayOS, hoàn tiền, hủy đơn, lệch tiền)
 >   * `src/Backend/modules/admin/admin.service.js` (Nghiệp vụ quản trị Admin)
->   * `src/Backend/core/resilience/maintenance.manager.js` (Điều hành bảo trì khẩn cấp & theo lịch)
+>   * `src/Backend/core/resilience/maintenance.manager.js` (Điều hành bảo trì chỉ 2 loại: Khẩn cấp & Định kỳ đặt trước 3h, cách 12h)
 >   * `src/Backend/middleware/` (`auth.js`, `maintenance.middleware.js`, `load-shedding.middleware.js`, `retry-guard.middleware.js`, `feature-permission.middleware.js`, `audit-log.middleware.js`)
 >   * `src/Backend/modules/aiops/aiops.quarantine.js` (Tường lửa Sentinel & Ma trận phong tỏa)
 >   * `src/Client-app/lib/core/realtime/` (`realtime_event.dart`, `realtime_channel.dart`, `realtime_socket.dart`)
@@ -48,7 +48,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 ### 1.2. Các Nguyên Tắc Bắt Buộc (Invariant Rules)
 * **Contract-First & Zero-Guesswork:** Tuyệt đối không suy đoán tên sự kiện hay payload. Mọi trường dữ liệu đều được ánh xạ đúng theo mã nguồn Backend đã kiểm thử.
 * **Bảo Vệ Dữ Liệu Riêng Tư (Data Security & Nghị định 13/2023/NĐ-CP):** 
-  - Socket events gửi tới người dùng **tuyệt đối không truyền số tài khoản ngân hàng đầy đủ, mật khẩu, mã OTP, số dư thô** (theo [`Data_Security.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Data_Security.md)).
+  - Socket events gửi tới người dùng **tuyệt đối không truyền số tài khoản ngân hàng đầy đủ, mật khẩu, mã OTP, số dư thô** (theo `Data_Security.md`).
   - Sự kiện cưỡng chế xóa tài khoản (`ACCOUNT_DELETED`) bắt buộc Client-app phải dọn dẹp sạch dữ liệu cá nhân cục bộ trong SQLite (`purgeAccountData`).
 * **Phân Biệt "Đánh Thức Đồng Bộ" và "Sự Kiện Thông Điệp":**
   - Không phải sự kiện nào cũng kích hoạt `syncNow()`. Các sự kiện như nâng cấp gói, cảnh báo bảo trì, thông báo broadcast chỉ cập nhật UI / Local Storage, không ép chạy full-sync tránh nghẽn mạng và tốn pin thiết bị.
@@ -58,7 +58,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 ## 2. ĐẶC TẢ THU THẬP THÔNG TIN THIẾT BỊ & IP NGƯỜI DÙNG
 
 Đã được lập thành văn bản nguồn sự thật riêng biệt tại:  
-👉 **[`docs/Admin-web/IP-Device-ClientApp.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Admin-web/IP-Device-ClientApp.md)**
+👉 **`docs/Admin-web/IP-Device-ClientApp.md`**
 
 ### Tóm Lược Quy Tắc Bắt Buộc:
 1. **Header HTTP bắt buộc:** `x-device-name` (ví dụ: `"Samsung Galaxy S24 Ultra (Android 14)"`, tối đa 150 ký tự). Gửi trong mọi request qua Dio Interceptor.
@@ -74,7 +74,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 | STT | Tên Sự Kiện | Kênh / Room | Nguồn Kích Hoạt | Mục Đích Nghiệp Vụ | Mức Độ Ưu Tiên |
 |:---:|---|:---:|---|---|:---:|
 | **1** | `account.force_logout` / `force_logout` | `account_<id>` | Admin Khóa / Xóa tài khoản | Cưỡng chế đăng xuất tức thì, xóa session | 🚨 Khẩn cấp |
-| **2** | `system.maintenance_changed` | Toàn hệ thống (`io.emit`) | Admin Bật/Tắt bảo trì | Mở/đóng Màn hình Bảo trì toàn cục | 🚨 Khẩn cấp |
+| **2** | `system.maintenance_changed` | Toàn hệ thống (`io.emit`) | Admin Bật/Tắt bảo trì (Khẩn cấp / Định kỳ) | Mở/đóng Màn hình Bảo trì toàn cục | 🚨 Khẩn cấp |
 | **3** | `system.broadcast` | Toàn hệ thống (`io.emit`) | Admin Phát thông báo hệ thống | In-App Banner, lưu SQLite notification | ⚠️ Cao |
 | **4** | `account.permissions_updated` | Toàn hệ thống (`io.emit`) | Admin Lưu ma trận phân quyền | Cập nhật 4 Trụ cột quyền hạn (`GoiCubit`) | ℹ️ Tiêu chuẩn |
 | **5** | `account.upgraded` | `account_<id>` & `io.emit` | PayOS Webhook / Admin duyệt gói | Nâng cấp tài khoản lên Premium | ℹ️ Tiêu chuẩn |
@@ -134,36 +134,52 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 
 ---
 
-### 4.2. `system.maintenance_changed` — Thay Đổi Trạng Thái Bảo Trì / Nâng Cấp Hệ Thống
+### 4.2. `system.maintenance_changed` — Thay Đổi Trạng Thái Bảo Trì Hệ Thống (Chỉ 2 Loại Hình)
+> ⚠️ **QUY TẮC BẢO TRÌ ĐÃ ĐƯỢC PO DUYỆT CHỐT:**
+> 1. **Chỉ có đúng 2 loại hình bảo trì:**
+>    - **Bảo trì Khẩn cấp (`EMERGENCY`):** Kích hoạt tức thì khi có sự cố nghiêm trọng.
+>    - **Bảo trì Định kỳ (`SCHEDULED`):** Phải đặt lịch **trước ít nhất 3 tiếng** so với thời điểm bắt đầu. Các lịch bảo trì phải **cách nhau ít nhất 12 tiếng**. Hủy lịch phải thực hiện **trước ít nhất 3 tiếng**.
+> 2. **Tuyệt đối không có loại `UPGRADE` / `isUpgrade`:** Đã loại bỏ hoàn toàn.
+> 3. **Bỏ ghi chú campaign giả.**
+
 * **Kênh phát:** Toàn bộ Client kết nối (`io.emit`).
-* **Nguồn kích hoạt:** Admin bật/tắt bảo trì khẩn cấp, nâng cấp hệ thống hoặc lịch bảo trì tự động kích hoạt.
+* **Nguồn kích hoạt:** Admin kích hoạt/tắt bảo trì khẩn cấp hoặc lịch bảo trì định kỳ tự động kích hoạt.
 * **Cấu trúc Payload chuẩn:**
 ```json
+// Bảo trì Khẩn cấp:
+{
+  "active": true,
+  "isEmergency": true,
+  "type": "EMERGENCY",
+  "reason": "Hệ thống đang tiến hành khắc phục sự cố kỹ thuật khẩn cấp. Quý khách vui lòng quay lại sau ít phút!",
+  "activatedAt": "2026-10-24T08:00:00.000Z",
+  "activatedBy": "admin_system"
+}
+
+// Bảo trì Định kỳ:
 {
   "active": true,
   "isEmergency": false,
-  "isUpgrade": true,
-  "type": "UPGRADE",
-  "reason": "Hệ thống đang tiến hành nâng cấp phiên bản mới để nâng cao trải nghiệm của bạn.",
-  "activatedAt": "2026-10-23T08:00:00.000Z",
+  "type": "SCHEDULED",
+  "reason": "Bảo trì định kỳ máy chủ theo lịch trình kỹ thuật.",
+  "activatedAt": "2026-10-24T12:00:00.000Z",
   "activatedBy": "admin_system"
 }
+
+// Khi kết thúc bảo trì:
+{
+  "active": false,
+  "isEmergency": false,
+  "reason": null
+}
 ```
-*(Nếu là bảo trì khẩn cấp: `"isEmergency": true, "isUpgrade": false, "type": "EMERGENCY"`)*  
-*(Nếu là bảo trì định kỳ: `"isEmergency": false, "isUpgrade": false, "type": "SCHEDULED"`)*  
-*(Khi kết thúc: `"active": false, "isEmergency": false, "isUpgrade": false, "reason": null`)*
 
 * **Xử lý bắt buộc trên Client-app:**
   1. Khi `active == true`:
-     - **Trường hợp 1 (`isUpgrade: true` / `type: "UPGRADE"` - Nâng cấp hệ thống):**
-       - Hiển thị Màn hình/Banner Nâng Cấp Hệ Thống tông màu tím hiện đại (`system_update`).
-       - Thông báo phiên bản mới đang được cập nhật. Cho phép người dùng duyệt dữ liệu cục bộ trên SQLite Drift ở chế độ Read-only, tạm hoãn gửi sync request lên server để tránh xung đột dữ liệu phiên bản mới.
-     - **Trường hợp 2 (`isEmergency: true` / `type: "EMERGENCY"` - Bảo trì khẩn cấp):**
-       - Hiển thị Màn hình Cảnh báo Bảo Trì Khẩn Cấp toàn cục màu đỏ, khóa các thao tác giao dịch nhạy cảm, tạm dừng toàn bộ luồng background sync.
-     - **Trường hợp 3 (`type: "SCHEDULED"` - Bảo trì theo lịch):**
-       - Hiển thị Banner màu cam thông báo bảo trì theo lịch trình kỹ thuật, cho phép người dùng xem dữ liệu offline.
+     - **Nếu `isEmergency: true` (`EMERGENCY`):** Hiển thị Màn hình Cảnh báo Bảo Trì Khẩn Cấp toàn cục tông màu đỏ, tạm hoãn các thao tác ghi dữ liệu nhạy cảm, tạm dừng toàn bộ luồng background sync. Cho phép người dùng duyệt dữ liệu SQLite cục bộ ở chế độ Read-only.
+     - **Nếu `isEmergency: false` (`SCHEDULED`):** Hiển thị Banner màu cam thông báo bảo trì theo lịch, cho phép người dùng xem dữ liệu offline.
   2. Khi `active == false`:
-     - Đóng màn hình bảo trì/nâng cấp, hiển thị Toast xanh thông báo hệ thống đã sẵn sàng hoạt động bình thường trở lại.
+     - Đóng màn hình bảo trì, hiển thị Toast xanh thông báo hệ thống đã sẵn sàng hoạt động bình thường trở lại.
      - Tự động kích hoạt đồng bộ bù `syncNow()`.
 
 ---
@@ -175,17 +191,17 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 ```json
 {
   "id": "e4b52c08-72fa-45cf-81b4-f6b92a40dc78",
-  "title": "Thông báo nâng cấp ứng dụng phiên bản 3.0",
+  "title": "Thông báo nâng cấp ứng dụng",
   "message": "Hệ thống bổ sung tính năng theo dõi thiết bị an ninh và tối ưu hóa hiệu năng đồng bộ offline.",
   "level": "INFO",
   "isEmergency": false,
   "category": "BROADCAST",
-  "createdAt": "2026-10-23T08:15:00.000Z"
+  "createdAt": "2026-10-24T08:15:00.000Z"
 }
 ```
 * **Xử lý bắt buộc trên Client-app:**
   1. Hiển thị In-App Banner hoặc Top SnackBar theo cấp độ `level`:
-     - `CRITICAL` hoặc `isEmergency: true`: Banner đỏ cảnh báo khẩn cấp toàn màn hình.
+     - `CRITICAL` hoặc `isEmergency: true`: Banner đỏ cảnh báo khẩn cấp.
      - `WARNING`: Banner vàng cam.
      - `INFO`: SnackBar xanh dương nhẹ, tự đóng sau 4 giây.
   2. Lưu thông báo vào bảng SQLite cục bộ `notification` trên điện thoại.
@@ -202,7 +218,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
     { "idaccount_type": 1, "idfeature": "ai_assistant", "is_enabled": true, "limit_value": null },
     { "idaccount_type": 1, "idfeature": "wallets", "is_enabled": true, "limit_value": 3 }
   ],
-  "timestamp": "2026-10-23T08:20:00.000Z"
+  "timestamp": "2026-10-24T08:20:00.000Z"
 }
 ```
 * **Xử lý bắt buộc trên Client-app:**
@@ -223,7 +239,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 {
   "type": "Premium",
   "message": "Nâng cấp tài khoản lên gói Premium thành công",
-  "expiresAt": "2027-10-23T00:00:00.000Z"
+  "expiresAt": "2027-10-24T00:00:00.000Z"
 }
 
 // Hạ cấp:
@@ -264,7 +280,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 ```json
 {
   "summary": { "created": 2, "updated": 1, "deleted": 0 },
-  "timestamp": "2026-10-23T08:30:00.000Z"
+  "timestamp": "2026-10-24T08:30:00.000Z"
 }
 ```
 * **Xử lý trên Client-app:**
@@ -312,7 +328,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
   "title": "Ngân sách Ăn uống vượt 80%",
   "message": "Bạn đã chi tiêu 4.200.000đ / 5.000.000đ của hạn mức tháng 10.",
   "type": "BudgetWarning",
-  "createdAt": "2026-10-23T08:35:00.000Z"
+  "createdAt": "2026-10-24T08:35:00.000Z"
 }
 ```
 * **Xử lý trên Client-app:**
@@ -373,7 +389,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
   "refundedAmount": 49000,
   "refundReason": "Giao dịch chuyển khoản trùng lặp theo yêu cầu của khách hàng",
   "refundProof": "https://supabase-storage.../refund_proof_123.jpg",
-  "timestamp": "2026-10-23T08:25:00.000Z"
+  "timestamp": "2026-10-24T08:25:00.000Z"
 }
 ```
 * **Xử lý trên Client-app:** Hiển thị Dialog thông báo hoàn tiền kèm nút "Xem biên lai chuyển khoản".
@@ -413,7 +429,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
   "statusCode": 503,
   "code": "MAINTENANCE_MODE",
   "isEmergency": true,
-  "message": "Hệ thống đang tiến hành nâng cấp máy chủ định kỳ. Quý khách vui lòng quay lại sau ít phút!"
+  "message": "Hệ thống đang tiến hành bảo trì máy chủ. Quý khách vui lòng quay lại sau ít phút!"
 }
 ```
 * **Xử lý trên Client-app:** Bắt tại Dio Interceptor, kích hoạt Màn hình Bảo Trì toàn phần (`MaintenanceScreen`), không ném ngoại lệ crash ứng dụng.
@@ -452,6 +468,11 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 ---
 
 ### 5.4. HTTP 403 `AIOPS_QUARANTINED` — Tường Lửa Sentinel Phong Tỏa IP
+> ⚠️ **ĐẶC TẢ AIOPS SENTINEL CHUẨN PO:**
+> - **Lưu lượng (`traffic`):** Là vector đo tấn công/truy cập từ phía user/client gửi vào hệ thống (gắn liền với `TK:` tài khoản và `IP:` thiết bị).
+> - **Xác thực (`auth`) & Khai thác (`exploit`):** Đều phát xuất từ phía user/client.
+> - **Chỉ duy nhất Tài nguyên (`resource`):** Mới là vector thuộc riêng về hệ thống máy chủ.
+
 * **Phát sinh từ:** `src/Backend/modules/aiops/aiops.quarantine.js`
 * **Response Body:**
 ```json
@@ -460,8 +481,8 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
   "statusCode": 403,
   "code": "AIOPS_QUARANTINED",
   "message": "Kết nối từ thiết bị của bạn tạm thời bị phong tỏa do phát hiện dấu hiệu bất thường.",
-  "reason": "Tấn công DoS quá ngưỡng request",
-  "quarantineExpiresAt": "2026-10-23T09:00:00.000Z"
+  "reason": "Tấn công DoS quá ngưỡng request lưu lượng",
+  "quarantineExpiresAt": "2026-10-24T09:00:00.000Z"
 }
 ```
 * **Xử lý trên Client-app:** Hiển thị Dialog cảnh báo an ninh toàn màn hình kèm đồng hồ đếm ngược mở khóa (`quarantineExpiresAt`).
@@ -576,7 +597,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 | Tên Sự Kiện / Tín Hiệu | Hiện Trạng Client-App | Ánh Xạ Trong `realtime_event.dart` | Hành Động Cần Bổ Sung Phía Client-App |
 |---|:---:|:---:|---|
 | `x-device-name` (Header) | ❌ **CHƯA CÓ** | N/A (Header HTTP) | Thêm `device_info_plus`, tự động chèn tên thiết bị vào Dio Interceptor. |
-| `system.maintenance_changed` | ❌ **BỎ SÓT** | Chưa khai báo enum | Bổ sung enum `baoTriThayDoi`, mở `MaintenanceScreen` khi `active = true`. |
+| `system.maintenance_changed` | ❌ **BỎ SÓT** | Chưa khai báo enum | Bổ sung enum `baoTriThayDoi`, mở `MaintenanceScreen` khi `active = true` (2 loại: Khẩn cấp / Định kỳ). |
 | `system.broadcast` | ❌ **BỎ SÓT** | Chưa khai báo enum | Bổ sung enum `thongBaoHeThong`, hiển thị In-App Banner và lưu SQLite. |
 | `account.upgraded` | ✅ ĐÃ CÓ | `RealtimeEvent.taiKhoanNangCap` | Đã đón nhận, gọi `/subscription-info` cập nhật `GoiCubit`. |
 | `account.downgraded` | ❌ **BỎ SÓT** | Chưa khai báo enum | Bổ sung enum `taiKhoanHaCap`, cập nhật `GoiCubit` về Basic. |
@@ -609,7 +630,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
   - Thêm `DeviceHeaderInterceptor` gắn `x-device-name` cho mọi request Dio.
 - [ ] **2. Mở rộng `realtime_event.dart`:**
   - Bổ sung các case vào `realtimeEventFromName()`:
-    + `system.maintenance_changed` $\longrightarrow$ `RealtimeEvent.baoTriThayDoi`
+    + `system.maintenance_changed` $\longrightarrow$ `RealtimeEvent.baoTriThayDoi` (Xử lý 2 loại: Khẩn cấp & Định kỳ)
     + `system.broadcast` $\longrightarrow$ `RealtimeEvent.thongBaoHeThong`
     + `account.downgraded` $\longrightarrow$ `RealtimeEvent.taiKhoanHaCap`
     + `account.countdown` $\longrightarrow$ `RealtimeEvent.demNguocXoa`

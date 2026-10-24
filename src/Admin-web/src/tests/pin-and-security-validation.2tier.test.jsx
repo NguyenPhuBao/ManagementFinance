@@ -222,13 +222,16 @@ describe('Test Suite: PIN Verification & Security Validation (Rule 11 - 2-Tier T
       expect(adminApi.changePassword).not.toHaveBeenCalled();
     });
 
-    it('3.2. Tầng 1 & Tầng 2: Ô nhập PIN bảo mật trong form đổi mật khẩu chỉ cho phép nhập số', async () => {
+    it('3.2. Tầng 1 & Tầng 2: Ô nhập PIN bảo mật trong form đổi mật khẩu hiển thị đúng nhãn hiện tại và chỉ cho phép nhập số', async () => {
       renderWithProviders(<SettingsModal isOpen={true} onClose={vi.fn()} />);
 
       fireEvent.click(screen.getByRole('button', { name: /Quản Lý Admin/i }));
       fireEvent.click(screen.getByRole('button', { name: /Đổi Mật Khẩu/i }));
 
+      // Tầng 1 Assertion: Nhãn và placeholder phải là "Mã PIN bảo mật hiện tại" (không phải mã PIN cũ)
+      expect(screen.getByText(/Mã PIN bảo mật hiện tại/i)).toBeInTheDocument();
       const pinInput = screen.getByTestId('password-input-pin');
+      expect(pinInput).toHaveAttribute('placeholder', 'Nhập mã PIN bảo mật hiện tại của bạn');
 
       // Nhập chữ lẫn số vào ô PIN bảo mật
       fireEvent.change(pinInput, { target: { value: 'pin-abc-654321' } });
@@ -237,7 +240,7 @@ describe('Test Suite: PIN Verification & Security Validation (Rule 11 - 2-Tier T
       expect(pinInput.value).toBe('654321');
     });
 
-    it('3.3. Tầng 2: Form đổi mật khẩu hợp lệ gọi đúng adminApi.changePassword', async () => {
+    it('3.3. Tầng 2: Form đổi mật khẩu hợp lệ gọi đúng adminApi.changePassword với mã PIN bảo mật hiện tại', async () => {
       renderWithProviders(<SettingsModal isOpen={true} onClose={vi.fn()} />);
 
       fireEvent.click(screen.getByRole('button', { name: /Quản Lý Admin/i }));
@@ -254,9 +257,28 @@ describe('Test Suite: PIN Verification & Security Validation (Rule 11 - 2-Tier T
         expect(adminApi.changePassword).toHaveBeenCalledWith({
           oldPassword: 'OldAdmin@123',
           pin: '123456',
+          oldPin: '123456',
           newPassword: 'NewAdmin@2026',
         });
       });
+    });
+
+    it('3.4. Tầng 1: Chặn submit và hiển thị lỗi yêu cầu mã PIN bảo mật hiện tại khi để trống ô PIN', async () => {
+      renderWithProviders(<SettingsModal isOpen={true} onClose={vi.fn()} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /Quản Lý Admin/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Đổi Mật Khẩu/i }));
+
+      fireEvent.change(screen.getByTestId('password-input-old'), { target: { value: 'OldAdmin@123' } });
+      fireEvent.change(screen.getByTestId('password-input-pin'), { target: { value: '' } });
+      fireEvent.change(screen.getByTestId('password-input-new'), { target: { value: 'NewAdmin@2026' } });
+      fireEvent.change(screen.getByTestId('password-input-confirm'), { target: { value: 'NewAdmin@2026' } });
+
+      fireEvent.submit(screen.getByTestId('submit-change-password-btn').closest('form'));
+
+      // Tầng 1: Hiển thị lỗi mã PIN bảo mật hiện tại
+      expect(screen.getByText('Vui lòng nhập mã PIN bảo mật hiện tại (6 chữ số)')).toBeInTheDocument();
+      expect(adminApi.changePassword).not.toHaveBeenCalled();
     });
   });
 });

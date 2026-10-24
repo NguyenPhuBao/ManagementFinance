@@ -93,7 +93,7 @@ describe('BroadcastPage Refinements — Emergency Checkbox & Maintenance History
       expect(heading).not.toHaveTextContent('construction');
     });
 
-    it('1.2. Form Lập lịch: Hiển thị dòng ghi chú mặc định phát thông báo tới Client-app và Admin-web', async () => {
+    it('1.2. Form Lập lịch: Đã loại bỏ box ghi chú giả thông báo theo yêu cầu PO', async () => {
       adminApi.getMaintenanceStatus.mockResolvedValue({
         active: false,
         isEmergency: false,
@@ -103,8 +103,8 @@ describe('BroadcastPage Refinements — Emergency Checkbox & Maintenance History
 
       await waitFor(() => {
         expect(
-          screen.getByText(/Mặc định khi bảo trì \(Định kỳ hay khẩn cấp\), hệ thống đều sẽ tự động phát thông báo tới Client-app người dùng và Quản trị viên\./i)
-        ).toBeInTheDocument();
+          screen.queryByText(/Mặc định khi bảo trì \(Định kỳ hay khẩn cấp\), hệ thống đều sẽ tự động phát thông báo tới Client-app người dùng và Quản trị viên\./i)
+        ).not.toBeInTheDocument();
       });
     });
 
