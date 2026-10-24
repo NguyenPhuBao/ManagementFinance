@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/app_exceptions.dart' show ServerException;
@@ -48,7 +47,7 @@ class AuthRepositoryImpl implements AuthRepository {
       countdown: goc.countdown,
       countdownNhanLuc: _now(),
     );
-    await _cacheOfflineCredentials(username, password, user);
+    await _luuSauDangNhap(user);
     return user;
   }
 
@@ -273,22 +272,21 @@ class AuthRepositoryImpl implements AuthRepository {
   // ─── Private helpers ─────────────────────────────────────────────────────
   Future<void> _clearLocalData() async {
     await localDataSource.deleteTokens();
-    await secureStorage.delete(key: AppConstants.offlineUsernameKey);
-    await secureStorage.delete(key: AppConstants.offlinePasswordHashKey);
+    await _xoaKhoaDangNhapCu();
     await secureStorage.delete(key: AppConstants.offlineUserDataKey);
   }
 
-  Future<void> _cacheOfflineCredentials(
-    String username,
-    String password,
-    UserModel user,
-  ) async {
-    await secureStorage.write(
-        key: AppConstants.offlineUsernameKey, value: username);
-    await secureStorage.write(
-        key: AppConstants.offlinePasswordHashKey,
-        value: _hashPassword(password));
+  /// Sau đăng nhập chỉ lưu người dùng. Tới 2026-10-24 còn ghi tên đăng nhập + SHA-256 KHÔNG salt của mật khẩu thật mà
+  /// không chỗ nào đọc (không có đăng nhập offline bằng mật khẩu) — một bản bẻ được của mật khẩu nằm trên máy; nay chỉ
+  /// dọn hai khoá ấy cho máy đã cài bản cũ.
+  Future<void> _luuSauDangNhap(UserModel user) async {
+    await _xoaKhoaDangNhapCu();
     await _ghiNguoiDung(user);
+  }
+
+  Future<void> _xoaKhoaDangNhapCu() async {
+    await secureStorage.delete(key: AppConstants.offlineUsernameKey);
+    await secureStorage.delete(key: AppConstants.offlinePasswordHashKey);
   }
 
   /// Ghi `user.toJson()` chứ không ghi JSON thô của server: `countdown_nhan_luc`
@@ -347,10 +345,5 @@ class AuthRepositoryImpl implements AuthRepository {
     // Lệch: huỷ ở máy khác (server Active), hoặc yêu cầu gửi từ máy khác (server
     // PendingDelete) mà server không nói số — máy này không có số ngày đúng.
     await _ghiNguoiDung(user.voiTrangThai(status: statusServer));
-  }
-
-  String _hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    return sha256.convert(bytes).toString();
   }
 }

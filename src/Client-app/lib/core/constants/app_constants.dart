@@ -1,15 +1,28 @@
 import 'package:flutter/foundation.dart';
 
+import 'dia_chi_may_chu.dart';
+
 class AppConstants {
   // API
+  // Đổi địa chỉ LÚC BUILD, không sửa tay tệp này (2026-10-24):
+  //   flutter run --dart-define=API_BASE_URL=http://127.0.0.1:3000/api          (máy thật qua `adb reverse`)
+  //   flutter build apk --release --dart-define=API_BASE_URL=https://managementfinance.onrender.com/api
+  // Không truyền thì dùng mặc định dưới. Bản phát hành gọi máy chủ CÔNG KHAI qua http là ném lỗi ngay ở đây —
+  // `chonDiaChiMayChu` / `kiemDiaChiMayChu` (`dia_chi_may_chu.dart`); địa chỉ nội bộ vẫn cho http.
+  static String get baseUrl => chonDiaChiMayChu(
+        tuBuild: const String.fromEnvironment('API_BASE_URL'),
+        macDinh: _macDinh,
+        phatHanh: kReleaseMode,
+      );
+
   // Web/Desktop: 127.0.0.1 (xem lý do bên dưới). Android emulator: 10.0.2.2.
-  static String get baseUrl {
+  static String get _macDinh {
     // ── LOCAL DEV ──────────────────────────────────────────────────────────
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       // ⚠️ `10.0.2.2` là địa chỉ host riêng của **Android emulator**; MÁY THẬT
       // route nó ra ngoài mạng và không tới đâu cả. Để chạy backend dev với
-      // máy thật, cách rẻ nhất là `adb reverse tcp:3000 tcp:3000` rồi đổi tạm
-      // dòng dưới thành `127.0.0.1` — cổng 3000 trên loopback của máy được
+      // máy thật, cách rẻ nhất là `adb reverse tcp:3000 tcp:3000` rồi build với
+      // `--dart-define=API_BASE_URL=http://127.0.0.1:3000/api` — cổng 3000 trên loopback của máy được
       // adb chuyển tiếp qua cáp USB. Đã dùng lối ấy cho lượt đo P3 Task 9
       // (2026-09-22): nó không cần hai máy cùng Wi-Fi, thứ hoá ra không đúng
       // ngay cả khi hai máy nối Wi-Fi **trùng tên** — chúng nằm ở hai dải
@@ -26,10 +39,7 @@ class AppConstants {
     // Vẫn MỞ TRANG bằng http://localhost:9090 — CORS_ORIGIN phía backend đang
     // là `http://localhost:9090`, mở bằng 127.0.0.1:9090 sẽ bị CORS chặn thật.
     return 'http://127.0.0.1:3000/api'; // Web / Desktop
-
-    // ── CLOUD (Render) — bỏ comment khi deploy ──────────────────────────
-    // ignore: dead_code
-    // return 'https://managementfinance.onrender.com/api';
+    // ── CLOUD (Render): không sửa ở đây — build với --dart-define=API_BASE_URL=https://managementfinance.onrender.com/api
   }
 
   static const Duration connectionTimeout = Duration(seconds: 30);
@@ -44,8 +54,10 @@ class AppConstants {
   static const String refreshTokenKey = 'refresh_token';
   static const String userDataKey     = 'user_data';
 
-  // Offline login cache keys
+  // Bộ nhớ đệm người dùng của phiên (đọc khi mở app không mạng).
+  static const String offlineUserDataKey     = 'offline_user_data';
+  // Hai khoá CŨ — từ 2026-10-24 không ghi nữa (băm SHA-256 không salt của mật khẩu thật, không ai đọc); chỉ còn để
+  // `AuthRepositoryImpl` xoá trên máy đã cài bản trước.
   static const String offlineUsernameKey     = 'offline_username';
   static const String offlinePasswordHashKey = 'offline_password_hash';
-  static const String offlineUserDataKey     = 'offline_user_data';
 }

@@ -90,7 +90,8 @@ domain/  hang_goi.dart (kGiaPremium · kSoNgayGoi · LoaiGoi · LoaiTran — kh�
          quyen_tinh_nang.dart (duocDung) · nhac_het_han.dart (0..3 ngày)
 data/    models/trang_thai_goi.dart (TrangThaiGoi · laPremium(now) · soNgayConLai · trangThaiTuJson accountType??type · kho)
          models/tran_goi.dart (TranGoi.macDinh 3/3/3)
-         models/don_thanh_toan.dart (DonThanhToan · donTuJson: qrUrl của server, KHÔNG tự dựng · số TK · chủ TK · nội dung)
+         models/don_thanh_toan.dart (DonThanhToan · donTuJson: qrUrl của server, KHÔNG tự dựng · số TK · chủ TK · nội dung;
+                                    checkoutUrl / qrUrl chỉ nhận https — 2026-10-24)
          models/dong_lich_su.dart (DongLichSu · dongLichSuTu: tạo / trả / đã chuyển / đã hoàn / ngày hoàn)
          datasources/payment_api.dart (Dio, bocData · loaiLoiThanhToanTu: DioException → loại)
          repositories/goi_repository.dart (kho thắng type · lamMoi không ném · resumed giãn 5' · socket hỏi ngay)

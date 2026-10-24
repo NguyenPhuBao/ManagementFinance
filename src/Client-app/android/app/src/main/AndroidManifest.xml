@@ -49,8 +49,14 @@
          navigator gốc cho qua (chỉ hỏi canPop(), không hỏi PopScope), nên Back
          ở tab Phân tích đóng thẳng activity. Tắt thì Back đi đường KEYCODE_BACK
          -> popRoute -> PopScope của shell. Có test đọc tệp này canh. -->
+    <!-- Sao lưu + chuyển máy TẮT (2026-10-24, siết bảo mật đợt 2): SQLite không mã hoá (toàn bộ sổ), hàng chờ nguyên
+         văn tin ngân hàng, ảnh biên lai, kho token. allowBackup="false" thôi KHÔNG chặn chuyển máy trực tiếp từ
+         Android 12 — dataExtractionRules loại mọi vùng ở cả hai đường. Đổi máy: đăng nhập lại, dữ liệu đã đồng bộ
+         kéo về từ server. `test/core/bao_mat_manifest_test.dart` canh. -->
     <application
         android:enableOnBackInvokedCallback="false"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="FlowMoney"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
@@ -70,6 +76,14 @@
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
+              />
+            <!-- Deeplink route của Flutter TẮT (2026-10-24): activity này phải exported (launcher), mà từ Flutter 3.27
+                 deeplink bật mặc định — app khác gửi intent tường minh kèm extra `route` / data là mở được BẤT KỲ route
+                 nào với tham số điền sẵn. App không dùng lối ấy (thông báo đi qua payload plugin, tóm tắt D1 qua extra
+                 riêng). `test/core/bao_mat_manifest_test.dart` canh. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false"
               />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

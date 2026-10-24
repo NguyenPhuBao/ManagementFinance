@@ -38,15 +38,17 @@ class DonThanhToan {
   final String? chuTaiKhoan;
 }
 
-/// `null` khi thiếu `orderCode` hoặc `checkoutUrl` không phải URL có scheme và host — không dựng được màn Đang chờ từ một
-/// đơn như thế. Trường tuỳ chọn rác / rỗng → `null` cho đúng trường ấy. KHÔNG tự dựng URL ảnh QR (spec G94 mục 5.1 —
+/// `null` khi thiếu `orderCode` hoặc `checkoutUrl` không phải URL `https` có host — không dựng được màn Đang chờ từ một
+/// đơn như thế. Trường tuỳ chọn rác / rỗng → `null` cho đúng trường ấy; `qrUrl` cũng chỉ nhận `https` (2026-10-24: link
+/// mở ra app ngoài qua `url_launcher`, ảnh QR là thứ app ngân hàng quét — trước chỉ kiểm có scheme + host nên `http` /
+/// `intent://` lọt). KHÔNG tự dựng URL ảnh QR (spec G94 mục 5.1 —
 /// server luôn gửi `qrUrl`; bản tự dựng cũ ghi cứng tên chủ tài khoản ở client).
 DonThanhToan? donTuJson(Map<String, Object?> json, {required DateTime now}) {
   final code = json['orderCode'];
   final url = json['checkoutUrl'];
   if (code is! num || url is! String) return null;
   final uri = Uri.tryParse(url);
-  if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
+  if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) return null;
   final tien = json['amount'];
   final het = json['expiredAt'];
 
@@ -64,7 +66,7 @@ DonThanhToan? donTuJson(Map<String, Object?> json, {required DateTime now}) {
     soTien: tien is num && tien > 0 ? tien.toInt() : kGiaPremium,
     hetHanLuc: (het is String ? DateTime.tryParse(het) : null) ?? now.add(const Duration(minutes: 10)),
     recognitionCode: chuoi(json['recognitionCode']),
-    qrUrl: qrUri != null && qrUri.hasScheme && qrUri.host.isNotEmpty ? qrUri : null,
+    qrUrl: qrUri != null && qrUri.scheme == 'https' && qrUri.host.isNotEmpty ? qrUri : null,
     noiDung: chuoi(json['transferContent']) ?? chuoi(json['description']),
     soTaiKhoan: chuoi(json['accountNumber']),
     chuTaiKhoan: chuoi(json['accountName']),
