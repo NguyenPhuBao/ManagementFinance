@@ -616,7 +616,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-24)
 
-### 🔒 Soát bảo mật toàn client-app (2026-10-24) — 0 lỗ hổng đạt ngưỡng; bốn đợt siết; đợt 5 soát CVE thư viện (vá Flutter `GHSA-frr6-h895-5pxp`)
+### 🔒 Soát bảo mật toàn client-app (2026-10-24) — 0 lỗ hổng đạt ngưỡng; bốn đợt siết; đợt 5 soát CVE thư viện (vá Flutter `GHSA-frr6-h895-5pxp`); đợt 7 (referrer biên lai, lịch nhắc mất sau force-stop)
 
 Người dùng: *"kiểm tra toàn bộ client-app xem hiện tại đang có lỗ hổng nào"*. Quy trình security-review áp lên **cả cây**
 `src/Client-app` (không chỉ diff): năm agent theo mặt tấn công (xác thực / phiên · mạng · thành phần Android + IPC · deeplink +
@@ -651,7 +651,7 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   `setRecentsScreenshotEnabled(false)` (Android 13+) — ảnh Đa nhiệm trống, **không** cờ cửa sổ bảo mật (chụp màn hình +
   `adb screencap` vẫn chạy; ca canh cấm chữ ấy trong `MainActivity.kt`); (b) màn Đổi mật khẩu bỏ công tắc *"đăng xuất thiết bị
   khác"* (server `auth.service.js` `changePassword` LUÔN thu hồi mọi token) → dòng *"Đổi mật khẩu sẽ đăng xuất mọi thiết bị,
-  kể cả máy này."*; Stitch `2d791998…` gửi sửa — lượt gọi **timeout**, chờ người dùng nhìn xác nhận; (c) `build.gradle.kts`
+  kể cả máy này."*; Stitch `2d791998…` gửi sửa — lượt gọi **timeout**; ✅ người dùng nhìn trên Stitch và xác nhận **đúng ý** (2026-10-24 phiên 4); (c) `build.gradle.kts`
   đọc `android/key.properties` → ký khoá thật, thiếu thì ký debug + cảnh báo (lệnh keytool + mẫu tệp ở *Lệnh hay dùng*
   `CLAUDE.md`); (d) thông báo màn khoá **không đổi** — theo cài đặt *"Ẩn nội dung nhạy cảm"* của máy (`NOTIFICATION_FEATURE.md`
   mục 2); (e) `kUrlMoHinh` ghim commit `1caa527c…` (HEAD đo: đúng cỡ + ETag SHA-256), không băm lại (`AI_EDGE_FEATURE.md` mục
@@ -742,9 +742,49 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   ghép trên PC, `integrity_check` ok, gộp WAL, chép vào máy, xoá `-wal` / `-shm` cũ): thông báo 10 → 169, nhật ký 4 → 169,
   phản hồi B1 8 · B2 2, giây xem Phân tích 17, từ khoá về đúng tập cũ (*trà sữa*, *grab*; bỏ *grabfood* vừa gieo lại).
   Backend còn log 66 dòng *"Lỗi giải mã AES-256-GCM"* trên `PersonFinance` — khoá mã hoá ở `.env` hiện tại khác khoá đã mã hoá
-  dữ liệu cũ (phía backend, chưa xử lý).
-- **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 4): `NhanBienLaiActivity` tin referrer bên gửi khai (cần đo bảng chia sẻ
-  trên máy); không khoá app (PIN / vân tay — tính năng, cần Stitch); ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
+  dữ liệu cũ (phía backend, chưa xử lý). ⚠️ **Đính chính (phiên 4):** câu *"hàng sống trước = sau ở mọi bảng"* trên chỉ **đếm
+  hàng** — so từng cột thì **65 ghi chú khác** (bản mã `enc:…`); xem gạch *Đo Realme lượt 2 + Đợt 7* ngay dưới.
+- ✅ **Đo Realme lượt 2 + Đợt 7 (2026-10-24 tối, phiên 4 — người dùng chọn *"Đo tiếp trên Realme"*):** bốn phép đo còn tồn:
+  ✅ **chạm thông báo lúc app đóng** sau đợt 6, hai đường: (a) `flutter_local_notifications` — bật tạm *Tổng kết tuần* Thứ Bảy
+  20:24 (trả về Thứ Hai 08:00 sau đo), `am crash` (activity không chạy), chạm → app tự sang **Xuất báo cáo 12/10 – 18/10**, qua
+  cửa quyền Premium bằng gói đã lưu khi backend tắt; Trang chủ trống *"0 đ"* vài giây trước đó là khung khởi động bản debug,
+  mở lạnh lại thấy đủ số. (b) tóm tắt Kotlin — chia sẻ ảnh trắng vào `NhanBienLaiActivity` bằng `am start`, `am crash`, chạm
+  *"Có 1 biến động số dư mới"* → **Trung tâm thông báo, tab Biến động**. ✅ **D2D:** `bmgr` với `LocalTransport` không bật được
+  cờ `is_device_transfer` (ColorOS chặn `WRITE_SECURE_SETTINGS` cho shell) → *"Backup is not allowed"*; với `D2dTransport` của
+  Google, hệ thống **có** chạy sao lưu (`allowBackup=false` không chặn chuyển máy trên Android 12+) nhưng D2dTransport báo
+  *"Package com.flowmoney.flowmoney doesn't have any backup data"* — `dataExtractionRules` loại sạch; phương thức trả về
+  `BackupTransportService` (tác dụng phụ: lượt sao lưu dừng tiến trình app). ✅ **Bản release `API_BASE_URL=http://…` công
+  khai** (ký khoá debug, 226,7 MB): `StateError` *"Bản phát hành không được gọi máy chủ công khai qua http"* ở `main.dart:57`
+  (`sl<RealtimeChannel>()` đọc `baseUrl`) → **đứng ở màn chờ (logo)**, tiến trình sống, không văng; `verifySession` bắt mọi lỗi
+  nên không đường nào đăng xuất / xoá dữ liệu. Cài lại bản debug ngay sau.
+  **Đợt 7 — hai lỗi lộ trong lượt đo, sửa cùng tối (TDD, đo lại trên máy):** (1) **lịch nhắc mất im lặng sau force-stop**
+  (**G106**) —
+  `pendingIds()` đọc danh sách lịch của plugin (SharedPreferences), không phải AlarmManager; force-stop xoá báo thức, danh sách
+  còn, `resync` thấy "đã chờ" thì bỏ qua → nhắc hoá đơn mất hẳn (khoá không đổi giữa các lượt). Đo: force-stop → 0 báo thức,
+  mở app quét xong → vẫn 0, danh sách 3. Sửa: lượt `resync` đầu mỗi tiến trình (`ReminderScheduler._daKhoiPhuc`, DI giữ một
+  bản) đặt lại cả lịch "đã chờ" — không huỷ trước, không ghi `dat_lich`. Đo lại: 0 → **3**, danh sách 3 (không nhân đôi). Bẫy
+  **7.14** `NOTIFICATION_FEATURE.md`; ca canh `reminder_scheduler_test.dart` (2 ca mới đỏ trước khi sửa; 2 ca G59 / B5a đổi
+  sang **một** bộ đặt lịch — lượt đầu của bộ mới nay là lượt khôi phục). (2) **`NhanBienLaiActivity` tin `EXTRA_REFERRER`** —
+  đo trước khi sửa: `am start … --es android.intent.extra.REFERRER_NAME android-app://com.mbmobile` từ shell → hàng chờ
+  `"goi":"com.mbmobile"`, Trung tâm thông báo *"Biên lai chưa đọc được · MB Bank"*, form *"Từ biên lai MB Bank"* chọn sẵn **Ví MB
+  Bank**. Sửa: gỡ `EXTRA_REFERRER` + `EXTRA_REFERRER_NAME` trước khi đọc `referrer` (gói hệ thống ghi); log debug thêm `khai=`.
+  Đo lại: cùng lệnh → `goi=com.android.shell | khai=true`; qua **bảng chia sẻ ColorOS** (`android/ResolverActivity`, uid 1000
+  mở thay bên gửi) → `goi=com.android.shell | khai=false` — bảng chia sẻ chuyển danh tính bên gửi qua kênh hệ thống, không đặt
+  extra, nên chia sẻ thật từ app MB vẫn nhận ra MB. Ca canh `bien_lai_noi_day_test.dart` (gỡ cả hai extra, trước dòng đọc).
+  ⚠️ **Sự cố `enc:` (gốc phía backend, đơn CAN-LAM 52):** Trang chủ hiện ghi chú `enc:24…2106…`. So từng cột bản sao
+  `realme-tk10-2026-10-24` với CSDL máy: chỉ cột `note` khác — **64 giao dịch + 1 hoá đơn** (đều `synced`). Gốc: `decrypt()`
+  (`src/Backend/utils/crypto.util.js`) giải hỏng thì `return str` (bản mã); dữ liệu `PersonFinance` mã hoá bằng **khoá dev
+  mặc định** của tệp ấy (65/65 giải được, khớp chữ gốc), còn backend chạy chiều nay dùng khoá `.env` (0/65). Không chỉ chữ rác:
+  khoản *"Số dư ban đầu"* 200.000 đ mất tiền tố nên Thu nhập tháng 10 nói 200.000 thay vì 0. Người dùng chọn: **khôi phục 65
+  ghi chú từ bản sao** (dừng app, sửa trên bản chép, `integrity_check` ok, `updated_at` / `sync_status` giữ nguyên, SHA-1 khớp,
+  xoá `-wal` / `-shm` — bản trước khi sửa ở `D:\FlowMoney-saoluu\realme-tk10-truoc-khoi-phuc-ghichu-2026-10-24-2050\`) và **chỉ
+  viết đơn backend**, không chặn ở client (client ghi `''` khi thiếu `note`, nên chỉ 5xx là không phá dữ liệu — bảng trong đơn).
+  Bật backend cho Realme về sau phải kèm **`DATA_ENCRYPTION_KEY` = khoá dev mặc định** (*Lệnh hay dùng* `CLAUDE.md`).
+  ⚠️ **Dấu vết thử trong dữ liệu máy:** nhật ký B5a có `dat_lich` / chạm của *Tổng kết tuần* Thứ Bảy 20:24 (lịch thử) và sự
+  kiện của một hàng `bienDong` thử (đã *Bỏ qua* = xoá cứng); hai dòng hàng chờ biên lai thử bị xoá trước khi app nhập — đọc nhật
+  ký để học giờ thì bỏ qua các mốc ấy. Mốc `flutter test` **7.876 / 10 skip** (+3). Bảo trì lộ khi build: Flutter cảnh báo
+  Gradle 8.14, AGP 8.11.1, Kotlin 2.2.20 sắp hết hỗ trợ.
+- **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 7): không khoá app (PIN / vân tay — tính năng, cần Stitch); ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
   rơi về 0) — hàng của nhà đúng là người tạo, nhưng hàng riêng nên bỏ khi khác tài khoản phiên; **đừng** ép `Value(accountId)`.
 - Đã soát và ổn: SQL đều hằng / bind; không bypass chứng chỉ; Bearer chỉ tới backend (đường tương đối, ảnh QR Dio trần không
   token), socket token qua `setAuth`; token chỉ ở `flutter_secure_storage`; mọi tên tệp từ deeplink / hàng chờ qua
