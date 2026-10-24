@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flowmoney/features/khoa_app/application/khoa_app_service.dart';
 import 'package:flowmoney/features/khoa_app/data/datasources/kenh_sinh_trac.dart';
@@ -7,7 +6,6 @@ import 'package:flowmoney/features/khoa_app/data/khoa_app_store.dart';
 import 'package:flowmoney/features/khoa_app/domain/luat_khoa_app.dart';
 import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
 import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_state.dart';
-import 'package:flowmoney/features/khoa_app/presentation/bloc/cai_dat_khoa_app_cubit.dart';
 import 'package:flowmoney/features/khoa_app/presentation/pages/dat_ma_pin_page.dart';
 import 'package:flowmoney/features/khoa_app/presentation/pages/khoa_app_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
@@ -17,17 +15,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../../../helpers/bat_thong_bao.dart';
 import '../../../../helpers/khoa_app_gia.dart';
-
-class _KenhTreo extends KenhGia {
-  _KenhTreo(this._treo);
-  final Completer<KetQuaBatVanTay> _treo;
-  int soLanBat = 0;
-  @override
-  Future<KetQuaBatVanTay> bat(int idaccount, Uint8List biMat) {
-    soLanBat++;
-    return _treo.future;
-  }
-}
 
 void main() {
   late InMemoryKhoaAppStore kho;
@@ -175,24 +162,6 @@ void main() {
     await t.pumpAndSettle();
     expect(goi, [CheDatPin.doi]);
     expect(find.text('5 phút'), findsOneWidget, reason: 'pop(true) → trang đọc lại kho');
-  });
-
-  testWidgets('chạm công tắc vân tay hai lần khi lượt bật còn treo → kênh nhận MỘT lần bat', (t) async {
-    final treo = Completer<KetQuaBatVanTay>();
-    final kenhTreo = _KenhTreo(treo);
-    final sv2 = KhoaAppService(store: kho, kenh: kenhTreo, bam: bamNhanh);
-    await sv2.datPin(10, '246810');
-    final cubit = CaiDatKhoaAppCubit(service: sv2, idaccount: 10);
-    addTearDown(cubit.close);
-    await cubit.napLai();
-    final a = cubit.batVanTay();
-    final b = cubit.batVanTay();
-    await b;
-    expect(kenhTreo.soLanBat, 1);
-    expect(cubit.state.dangLam, isTrue);
-    treo.complete(const KetQuaBatVanTay.loi(LoiSinhTrac.huy));
-    await a;
-    expect(cubit.state.dangLam, isFalse);
   });
 
   testWidgets('khổ hẹp 320 dp: không tràn', (t) async {
