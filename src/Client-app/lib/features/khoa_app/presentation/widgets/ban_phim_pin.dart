@@ -93,7 +93,7 @@ class _Phim extends StatelessWidget {
         child: InkResponse(
           onTap: bat ? khiCham : null,
           customBorder: const CircleBorder(),
-          child: Center(child: child),
+          child: Center(child: ExcludeSemantics(child: child)),
         ),
       ),
     );

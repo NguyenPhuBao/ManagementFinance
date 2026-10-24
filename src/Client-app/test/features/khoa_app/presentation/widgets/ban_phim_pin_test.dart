@@ -2,6 +2,7 @@ import 'package:flowmoney/features/khoa_app/presentation/widgets/ban_phim_pin.da
 import 'package:flowmoney/features/khoa_app/presentation/widgets/cham_pin.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../../helpers/khoa_app_gia.dart';
@@ -41,6 +42,19 @@ void main() {
     await t.tap(find.byKey(const Key('phim-3')));
     await t.tap(find.byKey(const Key('phim-van-tay')));
     expect([go, vanTay], [['7'], 2], reason: 'đang chờ: số tắt, vân tay vẫn mở được (spec mục 6)');
+  });
+
+  testWidgets('trợ năng: phím số đọc một lần; tatSo bỏ hành động tap trừ vân tay', (t) async {
+    final h = t.ensureSemantics();
+    await t.pumpWidget(_boc(SizedBox(height: 400, child: BanPhimPin(
+      khiGo: (_) {}, khiXoa: () {}, khiVanTay: () {}, tatSo: true))));
+    expect(t.getSemantics(find.byKey(const Key('phim-7'))).label, '7', reason: 'nhãn Text không được gộp thêm lần nữa');
+    bool tap(String k) =>
+        t.getSemantics(find.byKey(Key(k))).getSemanticsData().hasAction(SemanticsAction.tap);
+    expect(tap('phim-3'), isFalse);
+    expect(tap('phim-xoa'), isFalse);
+    expect(tap('phim-van-tay'), isTrue);
+    h.dispose();
   });
 
   testWidgets('không có khiVanTay → ô trống, không phím vân tay', (t) async {
