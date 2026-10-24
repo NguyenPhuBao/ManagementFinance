@@ -5,6 +5,7 @@ import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/khoa_app/application/khoa_app_service.dart';
 import 'package:flowmoney/features/khoa_app/data/khoa_app_store.dart';
 import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
+import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_state.dart';
 import 'package:flowmoney/features/profile/presentation/widgets/noi_dung_cai_dat.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -61,5 +62,26 @@ void main() {
     await t.pumpWidget(app(khoaApp: cubit));
     await t.pump();
     expect(find.text('Đang bật'), findsOneWidget);
+  });
+
+  testWidgets('KhoaAppMo(daBat: false) và KhoaAppTat → KHÔNG có nhãn "Đang bật"', (t) async {
+    final sv = KhoaAppService(store: InMemoryKhoaAppStore(), kenh: KenhGia(), bam: bamNhanh);
+    final phien = StreamController<int?>.broadcast();
+    final vongDoi = StreamController<AppLifecycleState>.broadcast();
+    final cubit = KhoaAppCubit(service: sv, vongDoi: vongDoi.stream, phien: phien.stream);
+    addTearDown(() async {
+      await cubit.close();
+      await phien.close();
+      await vongDoi.close();
+    });
+    await cubit.nhanPhien(10); // chưa đặt PIN → Mo(daBat: false)
+    expect(cubit.state, isA<KhoaAppMo>());
+    await t.pumpWidget(app(khoaApp: cubit));
+    await t.pump();
+    expect(find.text('Đang bật'), findsNothing);
+    await cubit.nhanPhien(null); // không phiên → Tat
+    await t.pump();
+    expect(cubit.state, isA<KhoaAppTat>());
+    expect(find.text('Đang bật'), findsNothing);
   });
 }

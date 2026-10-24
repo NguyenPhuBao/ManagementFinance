@@ -26,11 +26,12 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     void Function()? datLaiCoGiaoDien,
     Future<void> Function(int idaccount)? datGoi,
     Future<void> Function()? xoaKhoaApp,
+    Future<void> Function(int idaccount)? datLaiKhoaApp,
   })  : _dongBo = dongBo, _thoiGianThuc = thoiGianThuc, _boQuet = boQuet,
         _donTaiKhoanKhac = donTaiKhoanKhac, _xoaCacheSlm = xoaCacheSlm,
         _chuyenHangSeedCu = chuyenHangSeedCu,
         _seedTaiKhoanMoi = seedTaiKhoanMoi, _xoaAnhQuet = xoaAnhQuet, _datLaiCoGiaoDien = datLaiCoGiaoDien,
-        _datGoi = datGoi, _xoaKhoaApp = xoaKhoaApp {
+        _datGoi = datGoi, _xoaKhoaApp = xoaKhoaApp, _datLaiKhoaApp = datLaiKhoaApp {
     final chet = dongBo?.sessionInvalidStream;
     if (chet != null) _subs.add(chet.listen(_phienChet.add));
     final hetHan = interceptor?.sessionExpiredStream;
@@ -50,6 +51,7 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
   final Future<void> Function(int)? _seedTaiKhoanMoi;
   final Future<void> Function()? _xoaAnhQuet;
   final Future<void> Function()? _xoaKhoaApp;
+  final Future<void> Function(int)? _datLaiKhoaApp;
   final Future<void> Function(int)? _datGoi;
   final void Function()? _datLaiCoGiaoDien;
 
@@ -100,6 +102,8 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
   Future<void> sauDangNhap(int idaccount) async {
     if (_dongBo != null) await _seedTaiKhoanMoi?.call(idaccount);
     _datLaiCoGiaoDien?.call();
+    // Khoá ứng dụng: cấu hình PIN cũ xoá ở đây (đăng nhập bằng mật khẩu), KHÔNG ở đăng xuất — xem `dongPhien`.
+    await _datLaiKhoaApp?.call(idaccount);
   }
 
   @override
@@ -108,7 +112,9 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     await _boQuet?.stop();
     await _thoiGianThuc?.stop();
     await _xoaAnhQuet?.call();
-    // Khoá ứng dụng (2026-10-24): PIN gắn tài khoản trên máy — đăng xuất là xoá (spec khoá app mục 4).
+    // Khoá ứng dụng (2026-10-24): CHỈ khoá vân tay (alias Keystore) chết ở đây. Cấu hình PIN giữ lại tới lần đăng nhập
+    // bằng mật khẩu (`sauDangNhap`): đăng xuất xoá token SAU hook này (POST /auth/logout trước), nên xoá cấu hình ở đây
+    // mà tiến trình bị giết giữa chừng là mở lại vào thẳng app (token còn) không cần PIN.
     await _xoaKhoaApp?.call();
   }
 

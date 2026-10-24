@@ -6,9 +6,29 @@ import 'package:flowmoney/features/khoa_app/application/khoa_app_service.dart';
 import 'package:flowmoney/features/khoa_app/data/datasources/kenh_sinh_trac.dart';
 import 'package:flowmoney/features/khoa_app/data/khoa_app_store.dart';
 import 'package:flowmoney/features/khoa_app/domain/luat_khoa_app.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/khoa_app_gia.dart';
+
+/// Kho giả hỏng: `readAll` ném; `delete` ném với khoá [khoaHong] (null = mọi khoá).
+class _KhoHong implements FlutterSecureStorage {
+  _KhoHong(this.du, {this.khoaHong});
+  final Map<String, String> du;
+  final String? khoaHong;
+  @override
+  Future<Map<String, String>> readAll({AppleOptions? iOptions, AndroidOptions? aOptions, LinuxOptions? lOptions,
+          WebOptions? webOptions, AppleOptions? mOptions, WindowsOptions? wOptions}) async =>
+      throw StateError('readAll hỏng');
+  @override
+  Future<void> delete({required String key, AppleOptions? iOptions, AndroidOptions? aOptions, LinuxOptions? lOptions,
+      WebOptions? webOptions, AppleOptions? mOptions, WindowsOptions? wOptions}) async {
+    if (khoaHong == null || key == khoaHong) throw StateError('delete hỏng');
+    du.remove(key);
+  }
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   late InMemoryKhoaAppStore kho;
@@ -107,13 +127,41 @@ void main() {
     expect(await sv.moBangVanTay(10), LoiSinhTrac.khongHoTro);
   });
 
-  test('tatKhoa xoá cấu hình + alias; xoaHet xoá mọi tài khoản', () async {
+  test('tatKhoa xoá cấu hình + alias', () async {
     await sv.datPin(10, '246810');
     await sv.datPin(11, '246810');
     await sv.tatKhoa(10);
     expect(await kho.doc(10), isNull);
     expect(await kho.doc(11), isNotNull);
-    await sv.xoaHet();
+  });
+
+  test('xoaVanTayHet: gọi kênh xoá, cấu hình PIN CÒN (đăng xuất bị ngắt giữa chừng vẫn đòi PIN)', () async {
+    await sv.datPin(10, '246810');
+    await sv.xoaVanTayHet();
+    expect(kenh.soLanXoa, 1);
+    expect(await kho.doc(10), isNotNull);
+  });
+
+  test('datLaiSauDangNhap: xoá cấu hình tài khoản này lẫn tài khoản khác + khoá Keystore', () async {
+    await sv.datPin(10, '246810');
+    await sv.datPin(11, '135790');
+    await sv.datLaiSauDangNhap(10);
+    expect(await kho.doc(10), isNull);
     expect(await kho.doc(11), isNull);
+    expect(kenh.soLanXoa, 1);
+  });
+
+  test('datLaiSauDangNhap: kho hỏng (readAll + delete ném) → không ném; kênh vẫn bị xoá', () async {
+    final hong = KhoaAppService(
+        store: SecureStorageKhoaAppStore(_KhoHong({'khoa_app_10': 'x'})), kenh: kenh, bam: bamNhanh);
+    await hong.datLaiSauDangNhap(10);
+    expect(kenh.soLanXoa, 1);
+  });
+
+  test('datLaiSauDangNhap: readAll hỏng nhưng delete được → khoa_app_<id> vẫn bị xoá THẲNG theo khoá', () async {
+    final du = {'khoa_app_10': 'x'};
+    final kho2 = _KhoHong(du, khoaHong: 'khoa_khac');
+    await KhoaAppService(store: SecureStorageKhoaAppStore(kho2), kenh: kenh, bam: bamNhanh).datLaiSauDangNhap(10);
+    expect(du, isEmpty);
   });
 }

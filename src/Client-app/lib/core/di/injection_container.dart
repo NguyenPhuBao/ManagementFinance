@@ -256,8 +256,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       // G93: chờ kho gói nạp xong trước lượt quét đầu — cùng chốt "gói đặt TRƯỚC khi quét" của đường nền
       // (`chay_nen.dart`). `loaiPhien` chưa có ở đây: kho trống thì `noiPhien` áp nó lúc `AuthSuccess`.
       datGoi: (id) => sl<GoiRepository>().datTaiKhoan(id),
-      // Khoá ứng dụng (2026-10-24): đăng xuất xoá PIN + khoá Keystore.
-      xoaKhoaApp: () => sl<KhoaAppService>().xoaHet(),
+      // Khoá ứng dụng (2026-10-24): đăng xuất chỉ xoá khoá vân tay; cấu hình PIN xoá khi đăng nhập bằng mật khẩu.
+      xoaKhoaApp: () => sl<KhoaAppService>().xoaVanTayHet(),
+      datLaiKhoaApp: (id) => sl<KhoaAppService>().datLaiSauDangNhap(id),
     ),
     dispose: (p) => p.dispose(),
   );

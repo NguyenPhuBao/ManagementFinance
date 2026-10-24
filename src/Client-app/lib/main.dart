@@ -38,7 +38,6 @@ import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/khoa_app/application/khoa_app_service.dart';
-import 'features/khoa_app/application/xoa_khoa_sau_dang_xuat.dart';
 import 'features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
 import 'features/khoa_app/presentation/widgets/man_khoa/lop_khoa_app.dart';
 
@@ -234,15 +233,8 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
         // biết đến nó. Lớp ngoài cùng ép đồng hồ 24 giờ cho mọi bảng chọn giờ
         // (G90 — xem `bocDongHo24Gio`).
         builder: (context, child) => LopKhoaApp(
-          // "Quên mã PIN?" → đăng xuất; hook `dongPhien` xoá cấu hình khoá + khoá Keystore, còn đường lùi
-          // `xoaKhoaSauDangXuat` xoá thẳng khoá của tài khoản này nhưng chỉ SAU khi đăng xuất xong (xoá trước mà đăng
-          // xuất hỏng giữa chừng = mở lạnh vào thẳng app không cần mật khẩu). Tạo future nghe TRƯỚC khi gửi sự kiện.
-          khiQuenPin: () {
-            final id = idaccountTuTrangThai(widget.authBloc.state);
-            final daDangXuat = widget.authBloc.stream.firstWhere((s) => s is AuthUnauthenticated);
-            widget.authBloc.add(LogoutRequested());
-            unawaited(xoaKhoaSauDangXuat(daDangXuat: daDangXuat, idaccount: id, service: sl<KhoaAppService>()));
-          },
+          // "Quên mã PIN?" → đăng xuất. Cấu hình PIN xoá ở lần đăng nhập mật khẩu kế (hook `sauDangNhap`), không ở đây.
+          khiQuenPin: () => widget.authBloc.add(LogoutRequested()),
           child: bocDongHo24Gio(
             context,
             AppToast(

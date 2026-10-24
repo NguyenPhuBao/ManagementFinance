@@ -158,10 +158,20 @@ void main() {
       datLaiCoGiaoDien: () => hook.add('coUI'),
       datGoi: (id) async => hook.add('goi $id'),
       xoaKhoaApp: () async => hook.add('xoaKhoaApp'),
+      datLaiKhoaApp: (id) async => hook.add('datLaiKhoa $id'),
     );
     addTearDown(p.dispose);
     return p;
   }
+
+  test('sauDangNhap(10) gọi datLaiKhoaApp(10) — cấu hình PIN xoá ở đăng nhập mật khẩu, không ở đăng xuất', () async {
+    await dung().sauDangNhap(10);
+    expect(hook, contains('datLaiKhoa 10'));
+    hook.clear();
+    await dung().dongPhien();
+    expect(hook.any((h) => h.startsWith('datLaiKhoa')), isFalse,
+        reason: 'đăng xuất không được xoá cấu hình PIN: token xoá SAU hook, bị giết giữa chừng là mở lại không PIN');
+  });
 
   test('dongPhien gọi xoaKhoaApp (đăng xuất là xoá PIN — spec khoá app mục 4)', () async {
     await dung().dongPhien();
@@ -253,7 +263,7 @@ void main() {
     await p.batThoiGianThuc(10);
     expect(realtime.nhatKy, ['start 10']);
     await p.sauDangNhap(10);
-    expect(hook, ['seedMoi 10', 'coUI']);
+    expect(hook, ['seedMoi 10', 'coUI', 'datLaiKhoa 10']);
     await p.dongPhien();
     expect(sync.nhatKy, ['stop']); expect(scanner.goi, ['stop']); expect(realtime.nhatKy.last, 'stop');
     expect(hook.sublist(hook.length - 2), ['xoaAnh', 'xoaKhoaApp']);
@@ -261,7 +271,7 @@ void main() {
 
   test('sauDangNhap không có SyncEngine: bỏ seed, vẫn đặt lại cờ giao diện', () async {
     await dung(coDongBo: false).sauDangNhap(10);
-    expect(hook, ['coUI']);
+    expect(hook, ['coUI', 'datLaiKhoa 10']);
   });
 
   test('dongPhien chịu được dịch vụ null', () async {

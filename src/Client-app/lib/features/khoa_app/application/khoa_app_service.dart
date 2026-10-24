@@ -145,9 +145,23 @@ class KhoaAppService {
     return null;
   }
 
-  /// Đăng xuất (hook `PhienDieuPhoiThat.dongPhien`).
-  Future<void> xoaHet() async {
-    await _store.xoaHet();
-    await _kenh.xoaHet();
+  /// Đăng xuất (hook `PhienDieuPhoiThat.dongPhien`): chỉ khoá Keystore — cấu hình PIN còn, nên máy vẫn đòi PIN nếu đăng
+  /// xuất bị ngắt giữa chừng. Vân tay cũ trong cấu hình gặp alias mất → `moBangVanTay` trả `voHieu` và tự tắt.
+  Future<void> xoaVanTayHet() async {
+    try {
+      await _kenh.xoaHet();
+    } catch (_) {}
+  }
+
+  /// Đăng nhập bằng mật khẩu thành công (hook `PhienDieuPhoiThat.sauDangNhap`): xoá cấu hình của tài khoản này (thẳng theo
+  /// khoá, không qua `readAll`), của tài khoản khác, và khoá Keystore. Không bao giờ ném — đăng nhập không được hỏng vì khoá app.
+  Future<void> datLaiSauDangNhap(int idaccount) async {
+    try {
+      await _store.xoa(idaccount);
+    } catch (_) {}
+    try {
+      await _store.xoaHet();
+    } catch (_) {}
+    await xoaVanTayHet();
   }
 }
