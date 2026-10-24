@@ -770,7 +770,9 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   Bank**. Sửa: gỡ `EXTRA_REFERRER` + `EXTRA_REFERRER_NAME` trước khi đọc `referrer` (gói hệ thống ghi); log debug thêm `khai=`.
   Đo lại: cùng lệnh → `goi=com.android.shell | khai=true`; qua **bảng chia sẻ ColorOS** (`android/ResolverActivity`, uid 1000
   mở thay bên gửi) → `goi=com.android.shell | khai=false` — bảng chia sẻ chuyển danh tính bên gửi qua kênh hệ thống, không đặt
-  extra, nên chia sẻ thật từ app MB vẫn nhận ra MB. Ca canh `bien_lai_noi_day_test.dart` (gỡ cả hai extra, trước dòng đọc).
+  extra. ⚠️ **Chưa đo với app MB thật**: nếu chính app MB đặt `EXTRA_REFERRER` khi chia sẻ thì nay `khai=true`, gói gửi rơi về
+  bảng chia sẻ → nguồn *Biên lai* chung (mất mẫu `_mb`, mất học ví theo nguồn) — đo bằng một biên lai MB thật trên bản debug, đọc
+  dòng `BienLaiThu: nhan | goi=… | khai=…`. Ca canh `bien_lai_noi_day_test.dart` (gỡ cả hai extra, trước dòng đọc).
   ⚠️ **Sự cố `enc:` (gốc phía backend, đơn CAN-LAM 52):** Trang chủ hiện ghi chú `enc:24…2106…`. So từng cột bản sao
   `realme-tk10-2026-10-24` với CSDL máy: chỉ cột `note` khác — **64 giao dịch + 1 hoá đơn** (đều `synced`). Gốc: `decrypt()`
   (`src/Backend/utils/crypto.util.js`) giải hỏng thì `return str` (bản mã); dữ liệu `PersonFinance` mã hoá bằng **khoá dev

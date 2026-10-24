@@ -1836,7 +1836,10 @@ lịch "đã chờ" — không huỷ trước (cùng id thay chỗ; huỷ là g�
 cùng id đang trên khay), không ghi `dat_lich` (B5b đếm tới máy theo nó). Đo lại:
 force-stop → 0, mở app → 3, danh sách 3 (không nhân đôi). Kiểm báo thức thật
 bằng `adb shell dumpsys alarm | grep -c 'Alarm{.*flowmoney'`, **đừng** tin
-`pendingIds()`.
+`pendingIds()`. ⚠️ Engine nền WorkManager (`chay_nen.dart`) là isolate MỚI
+mỗi lượt, nên mỗi lượt nền cũng chạy lượt khôi phục — đặt lại mọi lịch đang
+muốn. Đúng ý (cùng id thay chỗ, không ghi `dat_lich`), **đừng** "tối ưu" bỏ đi
+hay tưởng là lỗi.
 
 ---
 
