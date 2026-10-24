@@ -206,4 +206,35 @@ void main() {
     expect([s.soLanSai, s.choDen], [7, cho]);
     expect(s.lanKhoa, ngay.lanKhoa);
   });
+
+  test('lần ĐẦU nhận phiên null (chưa đăng nhập) → Tat, không kẹt DangXet', () async {
+    expect(cubit.state, const KhoaAppDangXet());
+    await moPhien(null);
+    expect(cubit.state, const KhoaAppTat());
+  });
+
+  test('lượt kiểm PIN hỏng sau khi phiên đã về null KHÔNG đè Tat', () async {
+    final cho = Completer<void>();
+    Future<String> bamCho(String pin, List<int> salt, int soVong) async {
+      await cho.future;
+      return bamNhanh(pin, salt, soVong);
+    }
+
+    final sv2 = KhoaAppService(store: kho, kenh: kenh, bam: bamNhanh, clock: () => nay);
+    await sv2.datPin(10, '246810');
+    final svCho = KhoaAppService(store: kho, kenh: kenh, bam: bamCho, clock: () => nay);
+    final c2 = KhoaAppCubit(service: svCho, vongDoi: vongDoi.stream, phien: phien.stream, clock: () => nay);
+    addTearDown(c2.close);
+    await c2.nhanPhien(10);
+    expect(c2.state, isA<KhoaAppKhoa>());
+    final lan = c2.nhapPin('000000');
+    await pumpEventQueue();
+    await c2.nhanPhien(null);
+    expect(c2.state, const KhoaAppTat());
+    kho.hongKhiGhi = true;
+    cho.complete();
+    await lan;
+    await pumpEventQueue();
+    expect(c2.state, const KhoaAppTat(), reason: 'catch không được emit Khoa cũ đè lên phiên mới');
+  });
 }

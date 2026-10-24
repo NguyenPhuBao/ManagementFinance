@@ -131,7 +131,7 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
     try {
       kq = await _service.kiemPin(id, pin);
     } catch (_) {
-      if (!isClosed) {
+      if (!isClosed && _id == id) {
         emit(KhoaAppKhoa(
           coVanTay: s.coVanTay,
           soLanSai: s.soLanSai,
