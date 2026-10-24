@@ -101,6 +101,12 @@ class AppRouter {
       GoRouter(
         navigatorKey: _rootNavigatorKey,
         initialLocation: initialLocation,
+        // Route mặc định của nền tảng KHÔNG được thắng: khi khởi động lạnh, extra `route` của intent thành
+        // `defaultRouteName`, mà `MainActivity` exported — app nào trên máy cũng gửi được `--es route "/add?…"` để mở
+        // form điền sẵn / bật micro. `flutter_deeplinking_enabled=false` chỉ chặn data URI (đo Realme 2026-10-24).
+        // App không dùng lối ấy: thông báo đi qua payload của plugin, tóm tắt D1 qua extra riêng.
+        // test/core/router/route_mac_dinh_nen_tang_test.dart canh.
+        overridePlatformDefaultLocation: true,
 
         // Refresh GoRouter mỗi khi AuthBloc emit state mới
         refreshListenable: GoRouterRefreshStream(authBloc.stream),

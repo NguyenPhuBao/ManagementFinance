@@ -78,9 +78,11 @@
               android:resource="@style/NormalTheme"
               />
             <!-- Deeplink route của Flutter TẮT (2026-10-24): activity này phải exported (launcher), mà từ Flutter 3.27
-                 deeplink bật mặc định — app khác gửi intent tường minh kèm extra `route` / data là mở được BẤT KỲ route
-                 nào với tham số điền sẵn. App không dùng lối ấy (thông báo đi qua payload plugin, tóm tắt D1 qua extra
-                 riêng). `test/core/bao_mat_manifest_test.dart` canh. -->
+                 deeplink bật mặc định — app khác gửi intent tường minh kèm data URI là mở được BẤT KỲ route nào với
+                 tham số điền sẵn. Cờ này CHỈ chặn data URI: extra `route` lúc khởi động lạnh vẫn thành route mặc định
+                 của nền tảng (đo Realme 2026-10-24: lệnh am start kèm extra route /add mở form) — lối ấy chặn ở router
+                 (`overridePlatformDefaultLocation`, `app_router.dart`). App không dùng cả hai lối (thông báo đi qua
+                 payload plugin, tóm tắt D1 qua extra riêng). `test/core/bao_mat_manifest_test.dart` canh. -->
             <meta-data
               android:name="flutter_deeplinking_enabled"
               android:value="false"

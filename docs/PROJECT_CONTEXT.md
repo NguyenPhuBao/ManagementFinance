@@ -637,14 +637,16 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   **lúc build** — `--dart-define=API_BASE_URL=…` thắng mặc định (10.0.2.2 / 127.0.0.1 giữ nguyên), không sửa tay
   `app_constants.dart` nữa; bản **release** gọi máy chủ công khai qua `http` là `StateError` ngay ở getter `baseUrl` (mọi nơi
   dùng — Dio, Dio làm mới, socket, engine nền — đều qua đó); nội bộ 127 / 10 / 172.16–31 / 192.168 / `localhost` vẫn cho http
-  (`core/constants/dia_chi_may_chu.dart`, 19 ca); (b) `MainActivity` mang `flutter_deeplinking_enabled=false`; (c)
+  (`core/constants/dia_chi_may_chu.dart`, 19 ca); (b) `MainActivity` mang `flutter_deeplinking_enabled=false` (⚠️ đo Realme
+  cùng tối: cờ này CHỈ chặn data URI — extra `route` lúc khởi động lạnh vẫn mở form; chặn thật ở router, *Đợt 6* dưới); (c)
   `allowBackup="false"` + `dataExtractionRules` (`res/xml/data_extraction_rules.xml`) loại chín vùng ở cả `cloud-backup` lẫn
   `device-transfer` — **đổi máy: đăng nhập lại, kéo dữ liệu đã đồng bộ; phần chỉ có trên máy không theo** (người dùng duyệt);
   (d) đăng nhập thôi ghi tên đăng nhập + băm SHA-256 mật khẩu (mã chết), đăng nhập / xoá phiên dọn hai khoá cũ; (e)
   `donTuJson` chỉ nhận `checkoutUrl` / `qrUrl` `https`. Ca canh: `core/constants/dia_chi_may_chu_test.dart`,
   `core/bao_mat_manifest_test.dart` (đọc manifest + XML — vùng mù), `auth/xoa_phien_tren_may_test.dart`,
-  `premium/data/models/don_thanh_toan_test.dart`. ⚠️ **Chưa đo máy:** `am start … --es route /add` không mở route; `adb shell
-  bmgr backupnow com.flowmoney.flowmoney` không sao lưu; bản release build với `API_BASE_URL` http công khai văng lúc mở.
+  `premium/data/models/don_thanh_toan_test.dart`. Đo Realme cùng tối (*Đợt 6* dưới): ✅ `bmgr backupnow` trả *"Backup is not
+  allowed"*, cờ gói mất `ALLOW_BACKUP`; ❌ `am start … --es route /add` **vẫn mở** form (đã sửa ở đợt 6). Chưa đo: chuyển máy
+  trực tiếp (D2D); bản release build với `API_BASE_URL` http công khai văng lúc mở.
 - ✅ **Đợt 3 (cùng ngày, người dùng chọn đúng bốn phương án đề xuất + ghim mô hình):** (a) `MainActivity.onCreate`
   `setRecentsScreenshotEnabled(false)` (Android 13+) — ảnh Đa nhiệm trống, **không** cờ cửa sổ bảo mật (chụp màn hình +
   `adb screencap` vẫn chạy; ca canh cấm chữ ấy trong `MainActivity.kt`); (b) màn Đổi mật khẩu bỏ công tắc *"đăng xuất thiết bị
@@ -653,7 +655,8 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   đọc `android/key.properties` → ký khoá thật, thiếu thì ký debug + cảnh báo (lệnh keytool + mẫu tệp ở *Lệnh hay dùng*
   `CLAUDE.md`); (d) thông báo màn khoá **không đổi** — theo cài đặt *"Ẩn nội dung nhạy cảm"* của máy (`NOTIFICATION_FEATURE.md`
   mục 2); (e) `kUrlMoHinh` ghim commit `1caa527c…` (HEAD đo: đúng cỡ + ETag SHA-256), không băm lại (`AI_EDGE_FEATURE.md` mục
-  2); (f) CSV xuất: ô chữ mở đầu `= + - @` / tab / CR thêm `'` (số thuần giữ nguyên). ⚠️ Chưa đo máy: ảnh Đa nhiệm trống.
+  2); (f) CSV xuất: ô chữ mở đầu `= + - @` / tab / CR thêm `'` (số thuần giữ nguyên). ✅ Đo Realme cùng tối: thẻ FlowMoney
+  trong Đa nhiệm là ô đen trơn (thẻ app bên cạnh vẫn hiện nội dung).
 - ✅ **Đợt 4 (cùng ngày, người dùng chọn *"việc nhanh"*):** (a) quét 38 thêm `.ghiChu` — 5 lệnh `log` in `chinh.ghiChu`
   (từ khoá tìm, tên danh mục / ví lấy từ câu hỏi) nay chỉ in nội dung khi `kDebugMode` (release in số chỗ); 3 chỗ `"$ten"`
   (tên hoá đơn / ngân sách / mục tiêu), `ai_chat_page.dart` `debugPrintCauHong` và `slm_dien_giai.dart` (không ai gọi) chặn tay
@@ -707,6 +710,39 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   hai ghi ở *Toolchain*). ⚠️ **Chưa chạy trên máy thật** (không máy nào cắm): đăng nhập / đồng bộ qua TLS, Gemma, OCR trên
   APK mới. Bản vá chỉ tới máy khi **cài lại** — APK đang nằm trên Realme / OnePlus dựng trước hôm nay (Dart 3.13.4), vẫn dính.
   Phép kiểm web là trang thử dựng từ `index.html`, chưa `flutter build web` chạy app thật trên 3.47.8 (web chỉ để chạy thử).
+- ✅ **Đo Realme tối 2026-10-24 + Đợt 6 (chặn route từ ngoài thật):** người dùng cắm Realme, chọn bản **debug 3.47.8** (cài đè
+  19:03, cùng khoá `e315e3bf` — Realme hết dính `GHSA-frr6-h895-5pxp`) và đo bốn nhóm. Kết quả:
+  ✅ không sao lưu (`Backup is not allowed`, mất `ALLOW_BACKUP`) · ✅ Đa nhiệm ô đen · ❌→✅ route ngoài (dưới) ·
+  ✅ **G104 trên Realme** (lần đầu đo máy này): nói *"một triệu hai tiền sách"* → *"Đọc ra hai số khác nhau"* hai chip
+  1.000.000 · 1.200.000, ô số tiền để 0 đ, danh mục *Giáo dục* (Gemma CPU nạp 1,2 s, lượt có tool 14,9 s) ·
+  ✅ **Quét** tờ *ỦA TEA* hai lần: số tiền 398.800 đúng cả hai (lần 1 Gemma đọc 331.000, phép chốt G101 giữ số luật, không
+  hiện chip; lần 2 luật = Gemma = 398.800), nhưng **ngày giờ điền lúc quét** — OCR đọc *"Ngày: 14/ 10/20Z6"*, *"Giờ vào:. 1407"*,
+  *"Giò ra: 1407"* mà luật không nhận (`thieu={thoiGian}`); người dùng cho là tờ để lâu, mực mờ — **không sửa**, ghi lại.
+  Mở camera / trình chọn ảnh khi đang giữ Gemma (2,1–2,8 GB) thì ColorOS **giết app ở nền** (`exit-info` SIGKILL / *OTHER KILLS
+  BY SYSTEM*), app dựng lại và vẫn hoàn tất lượt quét. · ✅ đăng nhập / kéo / đẩy (6/6) / socket trên backend dev.
+  **Đợt 6:** khởi động lạnh `am start -n com.flowmoney.flowmoney/.MainActivity --es route /add` **mở form Thêm giao dịch** dù đã có
+  `flutter_deeplinking_enabled=false` — cờ ấy chỉ chặn data URI; extra `route` thành `defaultRouteName` và go_router lấy làm vị
+  trí ban đầu. Sửa: `overridePlatformDefaultLocation: true` ở `AppRouter.createRouter` (người dùng chọn); ca canh
+  `core/router/route_mac_dinh_nen_tang_test.dart` đọc vị trí ban đầu của `GoRouter` (không dựng trang — `authRedirect` lúc chưa
+  đăng nhập che lỗi), đỏ `/add?noi=1` trước khi sửa; đo lại Realme 19:55: cùng lệnh → **Trang chủ**. Chú thích manifest và
+  docstring `bao_mat_manifest_test.dart` sửa theo. Chưa đo: bấm thông báo hệ điều hành / tóm tắt D1 lúc khởi động lạnh (đi
+  payload plugin và extra riêng, không qua route nền tảng).
+  ⚠️ **Sự cố CSDL trong lượt đo** (lỗi quy trình phía Claude): `src/Backend/.env` trỏ **Supabase dùng chung** từ 2026-10-17
+  (12 tài khoản 1–88, **không có tài khoản 10** — 0 hàng ở 17 bảng có cột tài khoản; 0 / 230 UUID của máy), còn tài khoản 10
+  của Realme sống ở PostgreSQL 18 **cục bộ** `PersonFinance` (`D:\Program Files\PostgreSQL\18`; 20 tài khoản; refresh token
+  cuối 2026-10-11). Chạy `npm run dev` trơn rồi mở app → `/auth/profile` 401 → `/auth/refresh` 401 → app tự đăng xuất (đúng
+  thiết kế; tắt backend thì app giữ phiên). Xử lý (người dùng cho phép đích danh từng việc): `npx prisma generate` (client cũ
+  2026-10-20); áp `database/26`, `27` ×2, `28`–`36` lên **`PersonFinance`** (mỗi tệp một giao tác, 33 xoá 0 tài khoản; trước đó
+  `pg_dump` ra `D:\FlowMoney-saoluu\PersonFinance-truoc-mig26-36-2026-10-24.dump`), `prisma migrate diff` sau áp: 0 cột / 0 bảng
+  thiếu; backend chạy với `DATABASE_URL` / `DIRECT_URL` trỏ cục bộ (không sửa `.env` — người dùng chốt chỉ ghi lại). Người
+  dùng lỡ đăng nhập tài khoản **11** trước → app dọn dữ liệu tài khoản 10 trên máy (đúng thiết kế) → vào lại 10 kéo đủ phần
+  server có. Đối chiếu bản sao chép trước đó (`D:\FlowMoney-saoluu\realme-tk10-2026-10-24\`): hàng **sống** trước = sau ở mọi bảng
+  (6 ví · 90 giao dịch · 14 hoá đơn · 6 ngân sách · 2 mục tiêu · 16 danh mục); 25 hàng thiếu (2 ví · 18 giao dịch · 5 hoá đơn)
+  đều **đã xoá mềm**, không hàng sống nào trỏ tới → không khôi phục. Mất thật là phần cục bộ → ghép lại từ bản sao (dừng app,
+  ghép trên PC, `integrity_check` ok, gộp WAL, chép vào máy, xoá `-wal` / `-shm` cũ): thông báo 10 → 169, nhật ký 4 → 169,
+  phản hồi B1 8 · B2 2, giây xem Phân tích 17, từ khoá về đúng tập cũ (*trà sữa*, *grab*; bỏ *grabfood* vừa gieo lại).
+  Backend còn log 66 dòng *"Lỗi giải mã AES-256-GCM"* trên `PersonFinance` — khoá mã hoá ở `.env` hiện tại khác khoá đã mã hoá
+  dữ liệu cũ (phía backend, chưa xử lý).
 - **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 4): `NhanBienLaiActivity` tin referrer bên gửi khai (cần đo bảng chia sẻ
   trên máy); không khoá app (PIN / vân tay — tính năng, cần Stitch); ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
   rơi về 0) — hàng của nhà đúng là người tạo, nhưng hàng riêng nên bỏ khi khác tài khoản phiên; **đừng** ép `Value(accountId)`.
@@ -765,7 +801,8 @@ Người dùng: *"lấy code mới nhất về kiểm tra"*. 33 commit, 179 tệ
 - ⚠️ **Backend dev:** `schema.prisma` mang cột của migration 33 / 34 trên `account` (`pin_hash`, `is_first_login`,
   `created_by_admin_id`); `npm install` tự `prisma generate` → nếu CSDL dev chưa áp 33 / 34 thì **đăng nhập 500 `P2022`**
   (`auth.repository.js` `include` không `select`). Phải áp 30–36 **trước** `npm install` — phép đích danh (quy tắc 1). 27 và 36
-  tự tạo lúc khởi động; thiếu 30–32 thì quyền rơi về mặc định; thiếu 35 thì log lỗi mỗi request, không hỏng.
+  tự tạo lúc khởi động; thiếu 30–32 thì quyền rơi về mặc định; thiếu 35 thì log lỗi mỗi request, không hỏng. ✅ **2026-10-24
+  tối:** đã áp 26–36 lên `PersonFinance` cục bộ (Supabase của `.env` vốn đã có) + `prisma generate` — khối 🔒 đầu mục 14.
 - **Đơn 49** `CAN-LAM/SOAT_SAU_GOP_EE6A65E5.md` (người dùng chọn một đơn gộp): A tài liệu client bị viết lại (bảng đối chiếu)
   + soát `Sync-To-ClientApp.md` cùng lỗi · B `Event-Notification-to-ClientApp.md` bảo xoá SQLite khi `ACCOUNT_DELETED` (ngược G89)
   · C trùng số migration **27** lần hai + tệp `)2_can_lam_all_migrations.sql` · D thứ tự áp trước `npm install` · E (thấp) hai

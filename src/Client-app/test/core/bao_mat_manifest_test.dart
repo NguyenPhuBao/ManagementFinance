@@ -2,9 +2,11 @@
 /// analyze` và cả `flutter build apk` (bẫy 7.11 `NOTIFICATION_FEATURE.md`), nên canh bằng cách đọc tệp.
 ///
 /// 1. `flutter_deeplinking_enabled=false` ở `MainActivity`: activity khởi chạy phải `exported`, và từ Flutter 3.27
-///    deeplink bật mặc định — mọi app trên máy gửi được intent tường minh kèm extra `route` / data để mở BẤT KỲ route
-///    nào của go_router với tham số điền sẵn (form `/add` mang nhãn *"Từ thông báo MB Bank"* giả, `/add?noi=1` bật micro).
-///    App không dùng lối ấy: bấm thông báo đi qua payload của plugin, thông báo tóm tắt D1 đi qua extra riêng.
+///    deeplink bật mặc định — mọi app trên máy gửi được intent tường minh kèm data URI để mở BẤT KỲ route nào của
+///    go_router với tham số điền sẵn (form `/add` mang nhãn *"Từ thông báo MB Bank"* giả, `/add?noi=1` bật micro).
+///    ⚠️ Cờ này CHỈ chặn data URI — extra `route` lúc khởi động lạnh vẫn lọt (đo Realme 2026-10-24), lối ấy chặn ở
+///    router (`overridePlatformDefaultLocation`, canh ở `core/router/route_mac_dinh_nen_tang_test.dart`).
+///    App không dùng lối nào: bấm thông báo đi qua payload của plugin, thông báo tóm tắt D1 đi qua extra riêng.
 /// 2. Tắt sao lưu + chuyển máy: SQLite (KHÔNG mã hoá — toàn bộ sổ), hàng chờ nguyên văn tin ngân hàng, ảnh biên lai,
 ///    kho token. `allowBackup=false` thôi KHÔNG đủ từ Android 12 — chuyển máy trực tiếp vẫn chép, phải có
 ///    `dataExtractionRules` loại mọi vùng ở cả `cloud-backup` lẫn `device-transfer`. Đổi máy: đăng nhập lại, phần đã
@@ -49,7 +51,7 @@ void main() {
     expect(
         RegExp(r'android:name="flutter_deeplinking_enabled"\s+android:value="false"').hasMatch(activity), isTrue,
         reason: 'thiếu là app khác trên máy mở được bất kỳ route nào với tham số điền sẵn (intent tường minh kèm '
-            'extra route bỏ qua mọi intent-filter)');
+            'data URI bỏ qua mọi intent-filter; extra route thì chặn ở router)');
   });
 
   test('ứng dụng tắt sao lưu và trỏ quy tắc trích xuất dữ liệu', () {
