@@ -77,7 +77,13 @@ Mảng mới **`lib/features/khoa_app/`** (không đặt ở `core/` — danh s�
 **Chỗ nối:**
 - `main.dart`: lớp phủ bọc **ngoài cùng** trong `MaterialApp.router(builder:)` (ngoài `AppToast`). Trạng thái đầu `dangXet` = lớp
   phủ **đặc** (màu nền splash) cho tới khi đọc xong cấu hình — mở lạnh không lọt khung nội dung nào.
-- `core/router/app_router.dart`: `/profile/khoa-app`, `/profile/khoa-app/dat-pin` (ngoài shell → `push`); trang Cá nhân thêm hàng.
+- `core/router/app_router.dart`: `/settings/khoa-app`, `/settings/khoa-app/dat-pin?che=dat|doi|tat` (ngoài shell → `push`; cùng
+  khuôn `/settings/change-password` — sửa khi lập kế hoạch, bản duyệt ghi `/profile/…`); hàng *Khoá ứng dụng* thêm vào thẻ
+  *Bảo mật & Tuỳ chọn* của `profile/presentation/widgets/noi_dung_cai_dat.dart` (định nghĩa duy nhất, dùng chung tab Cá nhân và
+  `/settings`).
+- Lớp phủ nằm **ngoài** `Navigator` (trong `MaterialApp.builder`): `showDialog` sẽ hiện **dưới** lớp phủ và không có `Overlay` cho
+  `Tooltip` → hộp *"Quên mã PIN?"* là tấm xác nhận vẽ **trong** màn khoá (Stitch *"Màn khoá - Xác nhận quên mã PIN"*), phím vân tay
+  là `InkResponse` + `Semantics` chứ không `IconButton`.
 - `core/auth/phien_dieu_phoi_that.dart`: `dongPhien` thêm hook xoá cấu hình + khoá Keystore của tài khoản (vẫn là chỗ duy nhất
   đóng phiên).
 - `core/di/injection_container.dart`: store, cổng, service (lazy singleton), cubit (singleton — lớp phủ sống suốt app).
@@ -116,9 +122,12 @@ của tài khoản đó. Đọc kho hỏng → coi như **chưa bật** (token c
 
 ## 7. Giao diện, kiểm thử, nghiệm thu (Phần 4 — đã duyệt)
 
-**Stitch trước khi viết giao diện** (`generate_screen_from_text`; timeout thì không gọi lại, nhờ người dùng xem):
-(1) Màn khoá + biến thể *đang chờ*; (2) Đặt mã PIN (nhập / nhập lại; Đổi PIN thêm bước PIN hiện tại); (3) Trang Khoá ứng dụng
-(công tắc, Đổi mã PIN, Vân tay + dòng phụ khi không đủ điều kiện, Tự khoá sau); (4) sửa màn Cá nhân thêm hàng *Khoá ứng dụng*.
+**Stitch trước khi viết giao diện** — đã tạo 2026-10-24 tối (bốn lượt gọi timeout, màn hiện sau ~40 phút; không gọi lại):
+(1) *Màn khoá ứng dụng (2 biến thể)* `2f0896e011874b4e84c8217c4f56346e`; (2) *Đặt mã PIN (3 bước)*
+`34c3cadedf024a62a7865669f310bc15`; (3) *Khoá ứng dụng - Cài đặt (2 biến thể)* `129c2d77d97d4cff9322d05be9142a92`; (4) *Cá nhân -
+Hàng Khoá ứng dụng* `3469341eadbb47629947a4757c507ffb` (màn vẽ lại cả ba hàng của thẻ — app giữ kiểu hàng hiện có, chỉ thêm hàng
++ viên *Đang bật*); (5) *Màn khoá - Xác nhận quên mã PIN* `aa95222fc5bc40c3a2c329d75b112830`. Số đo từng màn ở bảng Stitch của kế
+hoạch thi công (`docs/superpowers/plans/2026-10-24-khoa-app-pin-sinh-trac.md`, gitignore).
 
 **Test (TDD, thử bản sai cho đỏ):**
 - domain: bảng `TuKhoaSau`, `thoiGianCho` ở ca biên 4 / 5 / 8, PBKDF2 khớp vector RFC 7914 §11, `maPinHopLe`;
