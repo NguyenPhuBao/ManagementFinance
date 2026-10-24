@@ -654,10 +654,17 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   `CLAUDE.md`); (d) thông báo màn khoá **không đổi** — theo cài đặt *"Ẩn nội dung nhạy cảm"* của máy (`NOTIFICATION_FEATURE.md`
   mục 2); (e) `kUrlMoHinh` ghim commit `1caa527c…` (HEAD đo: đúng cỡ + ETag SHA-256), không băm lại (`AI_EDGE_FEATURE.md` mục
   2); (f) CSV xuất: ô chữ mở đầu `= + - @` / tab / CR thêm `'` (số thuần giữ nguyên). ⚠️ Chưa đo máy: ảnh Đa nhiệm trống.
-- **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 3): `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md` (backend tạo — chỉ
-  đọc) tả đăng nhập offline bằng băm mật khẩu không có thật; `NhanBienLaiActivity` tin referrer bên gửi khai; không khoá app (PIN / vân tay — tính năng, cần Stitch);
-  ~38 lệnh `log` ở `ai_edge/data/cong_cu_*.dart` + `ai_chat_page.dart:1151` in tên / câu AI bị loại không chặn (không PII);
-  nội dung chuyển khoản chiếm *"Mã giao dịch"* (`doc_tin_bien_dong.dart:174`); sql.js CDN không SRI. ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
+- ✅ **Đợt 4 (cùng ngày, người dùng chọn *"việc nhanh"*):** (a) quét 38 thêm `.ghiChu` — 5 lệnh `log` in `chinh.ghiChu`
+  (từ khoá tìm, tên danh mục / ví lấy từ câu hỏi) nay chỉ in nội dung khi `kDebugMode` (release in số chỗ); 3 chỗ `"$ten"`
+  (tên hoá đơn / ngân sách / mục tiêu), `ai_chat_page.dart` `debugPrintCauHong` và `slm_dien_giai.dart` (không ai gọi) chặn tay
+  — **không ca canh** (quét theo tên biến bắt nhầm 6 chỗ: tên sự kiện socket, `${cau.length}`…); (b) BIDV / MB lấy *"Mã
+  giao dịch"* / *"Ma GD"* lần **cuối** (ngân hàng gắn mã sau nội dung người chuyển viết — lần đầu là người lạ chọn được mã, tức
+  khoá chống trùng `bienDong:<mã>`), nội dung BIDV kéo tới lần cuối; (c) `web/index.html` sql.js có `integrity` SHA-512 (khớp
+  cdnjs, tính lại đối chiếu) + `crossorigin` (tệp `.wasm` tải qua `locateFile` không gắn được); (d) **đơn CAN-LAM 51**
+  `TAI_LIEU_XAC_THUC_LECH_MA.md` — sửa `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md` §2.2–2.3 (không đăng nhập offline
+  bằng băm, không SharedPreferences, không vân tay).
+- **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 4): `NhanBienLaiActivity` tin referrer bên gửi khai (cần đo bảng chia sẻ
+  trên máy); không khoá app (PIN / vân tay — tính năng, cần Stitch); ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
   rơi về 0) — hàng của nhà đúng là người tạo, nhưng hàng riêng nên bỏ khi khác tài khoản phiên; **đừng** ép `Value(accountId)`.
 - Đã soát và ổn: SQL đều hằng / bind; không bypass chứng chỉ; Bearer chỉ tới backend (đường tương đối, ảnh QR Dio trần không
   token), socket token qua `setAuth`; token chỉ ở `flutter_secure_storage`; mọi tên tệp từ deeplink / hàng chờ qua
@@ -667,7 +674,7 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   `flutter_deeplinking_enabled`). Sau đợt 3: **7.865 / 10 skip** (+5), analyze 20; `flutter build apk --release` đạt
   (226,6 MB, chứng chỉ `CN=Android Debug` — đúng nhánh dự phòng khi thiếu `key.properties`); dòng cảnh báo ký debug in bằng
   `logger.quiet` (`warn` bị chế độ im của Gradle nuốt — đo bằng `gradlew -q assembleRelease --dry-run` với JDK
-  `D:/Android/AndroidStudio/jbr`; `gradlew` trần dùng Java 8 hệ thống và gãy).
+  `D:/Android/AndroidStudio/jbr`; `gradlew` trần dùng Java 8 hệ thống và gãy). Sau đợt 4: **7.868 / 10 skip** (+3), analyze 20.
 
 ### 🏠 Chức năng GIA ĐÌNH (nhà nhiều người) — brainstorming + spec 1/4 nền móng + đơn backend 50 (2026-10-23) — chưa có mã
 

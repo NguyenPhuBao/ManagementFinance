@@ -2,6 +2,8 @@
 /// (`chinhThamSoHoaDon`) → đọc repository → `hangHoaDon`.
 library;
 
+import 'package:flutter/foundation.dart';
+
 import '../../bill/data/repositories/bill_repository.dart';
 import '../../bill/data/so_ngay_nhac_nguon.dart';
 import '../../bill/domain/bill_nhac_truoc.dart';
@@ -58,12 +60,13 @@ class CongCuHoaDon implements CongCu {
   }) async {
     final chinh = chinhThamSoHoaDon(cauHoi, args);
     if (chinh.ghiChu.isNotEmpty) {
-      log('[SLM][tool] chỉnh tham số theo câu hỏi: ${chinh.ghiChu.join('; ')}');
+      // Nội dung chỉnh mang từ khoá / tên của người dùng — bản release chỉ in số chỗ (quét 38).
+      log('[SLM][tool] chỉnh tham số theo câu hỏi${kDebugMode ? ': ${chinh.ghiChu.join('; ')}' : ' (${chinh.ghiChu.length} chỗ)'}');
     }
     final bills = await hoaDon.watchBills(idaccount).first;
     // G3 cổng F (E8): câu nêu tên một hoá đơn → tập của riêng nó, mọi trạng thái.
     final ten = tenNeuTrongCau(cauHoi, [for (final b in bills) b.name], tuLoai: 'hoá đơn');
-    if (ten != null) log('[SLM][tool] câu hỏi nêu hoá đơn → chỉ "$ten", mọi trạng thái');
+    if (ten != null) log('[SLM][tool] câu hỏi nêu hoá đơn → chỉ "${kDebugMode ? ten : '…'}", mọi trạng thái');
     final nguon = soNgayNhac;
     final soNgay = nguon == null ? mocNhacMacDinh : await nguon.doc(idaccount);
     return hangHoaDon(

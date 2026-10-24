@@ -29,7 +29,11 @@
 
   <title>flowmoney</title>
   <link rel="manifest" href="manifest.json">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+  <!-- SRI (2026-10-24, siết bảo mật đợt 4): mã băm cdnjs công bố cho sql.js 1.8.0 — CDN bị chiếm thì trình duyệt từ
+       chối chạy, thay vì chạy mã lạ đọc được CSDL. Đổi phiên bản là đổi cả mã băm. test/core/bao_mat_manifest_test.dart canh. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"
+          integrity="sha512-n7swEtVCvXpQ7KxgpPyp0+DQQEf5vPpmzCRl14x2sp2v5LpCYCjrAx03mkBAbWwGF9eUoIk8YVcDFuJRIeYttg=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
     if (window.initSqlJs) {
       var _origInitSqlJs = window.initSqlJs;

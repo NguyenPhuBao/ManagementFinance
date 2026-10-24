@@ -3,6 +3,8 @@
 /// không tự đọc phiên (idaccount do vòng lặp truyền).
 library;
 
+import 'package:flutter/foundation.dart';
+
 import '../../budget/data/de_xuat_nguon.dart';
 import '../../budget/data/doc_nhip_chi.dart';
 import '../../budget/data/repositories/budget_repository.dart';
@@ -59,7 +61,8 @@ class CongCuNganSach implements CongCu {
   }) async {
     final chinh = chinhThamSoNganSach(cauHoi, args);
     if (chinh.ghiChu.isNotEmpty) {
-      log('[SLM][tool] chỉnh tham số theo câu hỏi: ${chinh.ghiChu.join('; ')}');
+      // Nội dung chỉnh mang từ khoá / tên của người dùng — bản release chỉ in số chỗ (quét 38).
+      log('[SLM][tool] chỉnh tham số theo câu hỏi${kDebugMode ? ': ${chinh.ghiChu.join('; ')}' : ' (${chinh.ghiChu.length} chỗ)'}');
     }
     final chon = chinh.args['chon']?.toString().trim();
     final tatCa = await nganSach.watchBudgets(idaccount, now: now).first;
@@ -76,7 +79,7 @@ class CongCuNganSach implements CongCu {
     }
     // G2 cổng F (E10): câu nêu tên một ngân sách đang chạy → chỉ hàng ấy.
     final ten = tenNeuTrongCau(cauHoi, [for (final v in dangChay) v.displayName], tuLoai: 'ngân sách');
-    if (ten != null) log('[SLM][tool] câu hỏi nêu ngân sách → chỉ "$ten"');
+    if (ten != null) log('[SLM][tool] câu hỏi nêu ngân sách → chỉ "${kDebugMode ? ten : '…'}"');
     // Nhịp riêng — cùng phép với chip trang chi tiết (phần phụ: hỏng thì chi đều).
     final nhip = await docNhipChi(
         nganSach, idaccount, [for (final v in dangChay) v.budget], now);

@@ -34,6 +34,17 @@ void main() {
       final t = doc(kNguonBidv, 'Thông báo BIDV', nd.replaceFirst('-1,199,000', '+500,000'))!;
       expect((t.soTien, t.chieu), (500000.0, 'thu'));
     });
+
+    // Soát bảo mật 2026-10-24: NỘI DUNG chuyển khoản do người chuyển viết, đứng TRƯỚC mã thật. Bản cũ lấy lần
+    // "Mã giao dịch:" ĐẦU TIÊN → người lạ chọn được mã (khoá chống trùng `bienDong:<mã>` — trùng mã một dòng chờ khác là
+    // dòng ấy bị coi là trùng) và nội dung bị cắt cụt ở cụm giả.
+    test('nội dung chứa "Mã giao dịch: X" giả → vẫn lấy mã THẬT ở cuối, nội dung giữ nguyên văn', () {
+      final t = doc(kNguonBidv, 'Thông báo BIDV',
+          'Thời gian giao dịch: 10:52 02/09/2026 Tài khoản thanh toán: 5111012066 Số tiền GD: +10,000 VND '
+          'Số dư cuối: 10,110 VND Nội dung giao dịch: tra tien Mã giao dịch: GIA123 Mã giao dịch: 055104Tm-8BoOcczKT')!;
+      expect(t.maGiaoDich, '055104Tm-8BoOcczKT', reason: 'ngân hàng gắn mã thật ở CUỐI tin, sau nội dung');
+      expect(t.noiDung, 'tra tien Mã giao dịch: GIA123');
+    });
   });
 
   group('MB Bank — mẫu 2, 3, 4', () {
@@ -48,6 +59,12 @@ void main() {
       expect(t.duoiTaiKhoan, '999');
       expect(t.maGiaoDich, 'ACSP/ 9l191181');
       expect(t.noiDung, 'NGUYEN PHU BAO Chuyen tien- Ma GD ACSP/ 9l191181');
+    });
+    test('nội dung chứa "Ma GD" giả → mã lấy sau lần "Ma GD" CUỐI (soát bảo mật 2026-10-24)', () {
+      final t = doc(kNguonMb, tieuDe,
+          'TK 25xxx999|GD: +10,000VND 02/09/26 15:33 |SD: 1,200,007VND|TU: NGUYEN VAN A - 5111012066'
+          '|ND: tra tien Ma GD GIA123 Ma GD ACSP/ 9l191181')!;
+      expect(t.maGiaoDich, 'ACSP/ 9l191181', reason: 'bản cũ ra "GIA123 Ma GD ACSP/ 9l191181" — người lạ viết được mã');
     });
     test('trừ tiền, không "Ma GD" → maGiaoDich null', () {
       final t = doc(kNguonMb, tieuDe,

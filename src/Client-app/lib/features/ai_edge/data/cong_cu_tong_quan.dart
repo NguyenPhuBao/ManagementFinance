@@ -6,6 +6,8 @@
 /// câu không nêu kỳ: "thu nhập mọi thời gian" không phải câu người dùng hỏi.
 library;
 
+import 'package:flutter/foundation.dart';
+
 import '../../analytics/data/repositories/analytics_repository.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 import '../domain/chinh_tham_so.dart';
@@ -53,7 +55,8 @@ class CongCuTongQuan implements CongCu {
   }) async {
     final chinh = chinhThamSoTongQuan(cauHoi, args, now: now);
     if (chinh.ghiChu.isNotEmpty) {
-      log('[SLM][tool] chỉnh tham số theo câu hỏi: ${chinh.ghiChu.join('; ')}');
+      // Nội dung chỉnh mang từ khoá / tên của người dùng — bản release chỉ in số chỗ (quét 38).
+      log('[SLM][tool] chỉnh tham số theo câu hỏi${kDebugMode ? ': ${chinh.ghiChu.join('; ')}' : ' (${chinh.ghiChu.length} chỗ)'}');
     }
     final a = chinh.args;
     final maKy = a['ky']?.toString().trim() ?? '';

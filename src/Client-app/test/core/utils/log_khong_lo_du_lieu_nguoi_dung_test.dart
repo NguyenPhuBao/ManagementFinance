@@ -11,7 +11,8 @@
 /// ngày) không chặn, trong khi `phien_mot_loi_goi.dart` đã chặn đúng chỗ ấy bằng `kDebugMode`.
 ///
 /// Quét: dòng MÃ (bỏ dòng bắt đầu bằng `//`) có lời gọi `debugPrint(` / `print(` / `log(` (từ trọn — `_log(`, `dialog(`
-/// không tính); câu lệnh gom tới dấu `;` (tối đa 8 dòng); câu nhắc `.balance` · `.amount` · `.note` · `.args` · `.noiDung`
+/// không tính); câu lệnh gom tới dấu `;` (tối đa 8 dòng); câu nhắc `.balance` · `.amount` · `.note` · `.args` · `.noiDung` ·
+/// `.ghiChu`
 /// mà không qua `kDebugMode` — trong chính câu lệnh (`${kDebugMode ? … : ''}`) hoặc ở một khối bao quanh mở bằng dòng có
 /// `kDebugMode` / `assert(` — là đỏ.
 ///
@@ -25,7 +26,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 final _lenhLog = RegExp(r'\b(debugPrint|print|log)\(');
-final _duLieu = RegExp(r'\.(balance|amount|note|args|noiDung)\b');
+/// `.ghiChu` thêm 2026-10-24 (đợt 4): `chinh.ghiChu` của bộ chỉnh tham số tool AI mang từ khoá tìm lấy từ câu hỏi, tên
+/// danh mục / ví; `KetQuaDocCau.ghiChu` là ghi chú đọc từ câu / ảnh.
+final _duLieu = RegExp(r'\.(balance|amount|note|args|noiDung|ghiChu)\b');
 
 /// Số dòng (đếm từ 1) có lệnh log in dữ liệu người dùng mà không qua `kDebugMode`.
 List<int> dongLoRaBanRelease(List<String> dong) {

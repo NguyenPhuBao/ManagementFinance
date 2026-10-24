@@ -29,6 +29,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -1148,5 +1149,6 @@ class _AiChatPageState extends State<AiChatPage> {
 /// Tách ra một hàm để `debugPrint` không nằm giữa thân `_hoiThat` — và để chỗ
 /// này có tên gọi khi đọc log.
 void debugPrintCauHong(String cau) {
-  debugPrint('[SLM] câu hỏi đáp không qua bộ kiểm số, không hiện: $cau');
+  // Câu mang số tiền / tên của người dùng — bản release không in (soát bảo mật 2026-10-24).
+  debugPrint('[SLM] câu hỏi đáp không qua bộ kiểm số, không hiện${kDebugMode ? ': $cau' : ''}');
 }

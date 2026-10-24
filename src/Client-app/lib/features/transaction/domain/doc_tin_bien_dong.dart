@@ -160,7 +160,9 @@ TinBienDong? _docBidv(String chu, DateTime luc) {
   final tien = m == null ? null : _tien(m.group(2)!);
   if (m == null || tien == null) return null;
   final g = RegExp(r'Thời gian giao dịch:\s*(\d{1,2}):(\d{2})\s+(\d{1,2})/(\d{1,2})/(\d{4})').firstMatch(chu);
-  final nd = RegExp(r'Nội dung giao dịch:\s*(.*?)\s*(?:Mã giao dịch:|$)').firstMatch(chu)?.group(1);
+  // Nội dung do NGƯỜI CHUYỂN viết, đứng trước mã thật ở cuối tin → kết thúc ở lần "Mã giao dịch:" CUỐI, và mã lấy lần
+  // cuối (2026-10-24, soát bảo mật: lấy lần đầu là người lạ viết "Mã giao dịch: X" vào nội dung để chọn mã).
+  final nd = RegExp(r'Nội dung giao dịch:\s*(.*?)\s*(?:Mã giao dịch:(?!.*Mã giao dịch:)|$)').firstMatch(chu)?.group(1);
   return TinBienDong(
     soTien: tien,
     chieu: m.group(1) == '+' ? 'thu' : 'chi',
@@ -171,7 +173,7 @@ TinBienDong? _docBidv(String chu, DateTime luc) {
     noiDung: (nd == null || nd.isEmpty) ? chu : nd,
     nguon: kNguonBidv,
     duoiTaiKhoan: _duoi(RegExp(r'Tài khoản thanh toán:\s*(\S+)').firstMatch(chu)?.group(1)),
-    maGiaoDich: RegExp(r'Mã giao dịch:\s*(\S+)').firstMatch(chu)?.group(1),
+    maGiaoDich: RegExp(r'Mã giao dịch:\s*(\S+)').allMatches(chu).lastOrNull?.group(1),
     vanTaySoDu: vanTaySoDu(RegExp(r'Số dư cuối:\s*(-?[\d.,]+)\s*VND').firstMatch(chu)?.group(1)),
   );
 }
@@ -194,7 +196,8 @@ TinBienDong? _docMb(String chu, DateTime luc) {
     noiDung: (nd == null || nd.isEmpty) ? chu : nd,
     nguon: kNguonMb,
     duoiTaiKhoan: _duoi(RegExp(r'TK\s+(\S+?)\s*\|').firstMatch(chu)?.group(1)),
-    maGiaoDich: nd == null ? null : RegExp(r'Ma GD\s*(.+)$').firstMatch(nd)?.group(1)?.trim(),
+    // `.*` tham lam: lần "Ma GD" CUỐI — ngân hàng gắn mã sau nội dung người chuyển viết (soát bảo mật 2026-10-24).
+    maGiaoDich: nd == null ? null : RegExp(r'.*Ma GD\s*(.+)$').firstMatch(nd)?.group(1)?.trim(),
     vanTaySoDu: vanTaySoDu(RegExp(r'SD:\s*(-?[\d.,]+)\s*VND').firstMatch(chu)?.group(1)),
   );
 }

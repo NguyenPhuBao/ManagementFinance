@@ -64,11 +64,11 @@ class SlmDienGiai implements BoDienGiai {
       }
       final cau = await runtime.sinh(promptCauTheoMan(goi), tranToken: 120);
       if (!kiemSo(cau, goi)) {
-        debugPrint('[SLM] câu không qua bộ kiểm số, rơi về mẫu: $cau');
+        debugPrint('[SLM] câu không qua bộ kiểm số, rơi về mẫu${kDebugMode ? ': $cau' : ''}');
         return null;
       }
       if (!kiemGiong(cau, goi.mauCau().muc)) {
-        debugPrint('[SLM] câu sai giọng so với mức của hệ luật, rơi về mẫu: $cau');
+        debugPrint('[SLM] câu sai giọng so với mức của hệ luật, rơi về mẫu${kDebugMode ? ': $cau' : ''}');
         return null;
       }
       return cau;

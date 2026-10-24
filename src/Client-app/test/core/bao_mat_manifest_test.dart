@@ -73,6 +73,17 @@ void main() {
         reason: 'người dùng chọn không chặn chụp màn hình (đo máy thật cần adb screencap)');
   });
 
+  // Siết bảo mật đợt 4 (2026-10-24): bản web nạp sql.js từ CDN — CSDL SQLite của trình duyệt (cả sổ) chạy trong mã ấy.
+  // Không SRI thì CDN bị chiếm là mã lạ đọc được sổ. Mã băm = giá trị cdnjs công bố cho 1.8.0 (đối chiếu bằng tính lại).
+  // Tệp `.wasm` do chính sql.js tải qua `locateFile` — không gắn `integrity` được.
+  test('web/index.html nạp sql.js có SRI + crossorigin', () {
+    final html = File('web/index.html').readAsStringSync();
+    final the = RegExp(r'<script[^>]*sql-wasm\.js[^>]*>').firstMatch(html)?.group(0);
+    expect(the, isNotNull, reason: 'thẻ nạp sql.js đổi tên / dời → sửa ca này');
+    expect(the, contains('integrity="sha512-n7swEtVCvXpQ7KxgpPyp0+DQQEf5vPpmzCRl14x2sp2v5LpCYCjrAx03mkBAbWwGF9eUoIk8YVcDFuJRIeYttg=="'));
+    expect(the, contains('crossorigin="anonymous"'), reason: 'thiếu crossorigin thì trình duyệt không kiểm SRI cho tệp khác nguồn');
+  });
+
   test('quy tắc trích xuất loại MỌI vùng ở cả sao lưu đám mây lẫn chuyển máy', () {
     final f = File(_quyTac);
     expect(f.existsSync(), isTrue, reason: 'manifest trỏ @xml/data_extraction_rules');

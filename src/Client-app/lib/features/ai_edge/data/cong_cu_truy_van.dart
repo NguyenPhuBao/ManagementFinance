@@ -8,6 +8,8 @@
 /// bị từ chối kèm ví dụ — quy đổi là việc của mô hình (và của bộ chỉnh, luật 4).
 library;
 
+import 'package:flutter/foundation.dart';
+
 import '../../analytics/data/repositories/bao_cao_repository.dart';
 import '../../analytics/domain/pham_vi_ky.dart';
 import '../../budget/data/repositories/budget_repository.dart';
@@ -182,7 +184,8 @@ class CongCuTruyVan implements CongCu {
       tenMucTieu: [for (final g in goals ?? const []) g.name],
     );
     if (chinh.ghiChu.isNotEmpty) {
-      log('[SLM][tool] chỉnh tham số theo câu hỏi: ${chinh.ghiChu.join('; ')}');
+      // Nội dung chỉnh mang từ khoá / tên của người dùng — bản release chỉ in số chỗ (quét 38).
+      log('[SLM][tool] chỉnh tham số theo câu hỏi${kDebugMode ? ': ${chinh.ghiChu.join('; ')}' : ' (${chinh.ghiChu.length} chỗ)'}');
     }
     final a = chinh.args;
     final maKy = a['ky']?.toString().trim() ?? '';
