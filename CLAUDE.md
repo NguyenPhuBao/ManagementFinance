@@ -101,16 +101,21 @@
 ## Lệnh hay dùng
 
 ```bash
-# ⬆️ Toolchain: Flutter **3.47.5** / Dart **3.13.4** từ 2026-09-19 (P0 của AI Edge-SLM — nâng
-# từ 3.41.5 vì `flutter_gemma` 1.8.3 đòi Flutter ≥ 3.44; spec
-# `docs/superpowers/specs/2026-09-19-ai-edge-slm-design.md` mục 1). SDK cài bằng git ở
-# `C:/Users/tadd1/flutter`, mã `6a19cca564`; hoàn tác: `git -C ~/flutter checkout 3.41.5 && flutter --version`.
+# ⬆️ Toolchain: Flutter **3.47.8** / Dart **3.13.7** từ 2026-10-24 — vá `GHSA-frr6-h895-5pxp` (High: `dart:io` trên
+# Android không chặn chứng chỉ trung gian eMudhra lộ khoá → MitM mọi lời gọi Dio / socket; soát CVE đợt 5, khối 🔒 mục 14
+# `PROJECT_CONTEXT.md`). Trước đó 3.47.5 / 3.13.4 từ 2026-09-19 (P0 của AI Edge-SLM — nâng từ 3.41.5 vì `flutter_gemma`
+# 1.8.3 đòi Flutter ≥ 3.44; spec `docs/superpowers/specs/2026-09-19-ai-edge-slm-design.md` mục 1). SDK cài bằng git ở
+# `C:/Users/tadd1/flutter`, nhánh `stable` mã `737ba8f885`; hoàn tác: `git -C ~/flutter checkout -B stable 3.47.5 && flutter --version`
+# (`-B` dời nhánh mà giữ chỗ sửa cục bộ của SDK — `pubspec.lock` gốc SDK vốn mang thay đổi do công cụ sinh; đừng `reset --hard`). ⚠️ Đổi SDK khi VS Code đang mở: extension Dart giữ `bin/cache/dart-sdk` và **tự mở lại**
+# language-server < 1 s sau khi bị dừng → tắt extension (Disable (Workspace)) hoặc dừng liên tục trong lúc `flutter --version`
+# thay SDK; checkout THẺ là *detached* → kênh `[user-branch]` (đưa nhánh `stable` lên bằng `merge --ff-only`, xoá
+# `bin/cache/flutter.version.json` cho Flutter tính lại).
 # ⚠️ Máy khác dựng dự án phải ở ≥ 3.44, nếu không `flutter pub get` từ chối ngay khi P3 thêm gói.
 # ⚠️ 3.47 thêm assertion: `ListTile` nằm trong `Container` có màu mà không có `Material` riêng thì
 # framework báo *"ink splashes may be invisible"* qua `FlutterError` — widget test có `takeException`
 # đỏ (10 ca ở 3 tệp hoá đơn khi nâng). Sửa bằng `Material(type: MaterialType.transparency)` bọc
 # cột chứa tile, KHÔNG đổi gì nhìn thấy được. Ô mới cùng khuôn sẽ vấp lại — đọc khối ⬆️ mục 14 `PROJECT_CONTEXT.md`.
-# Test (chạy từ src/Client-app) — mốc hiện tại **7868/7868** pass, **10** ca cố ý `skip` (đo 2026-10-24, 4 ph 28 s, sau siết bảo mật đợt 4 — log AI, mã giao dịch BIDV / MB, SRI sql.js, +3 so với 7865; 10 skip gồm `test/tool/do_from_drift_test.dart` chạy tay). Sau mỗi đợt **sửa đúng con số này**, đừng nối thêm lịch sử — mốc từng đợt
+# Test (chạy từ src/Client-app) — mốc hiện tại **7870/7870** pass, **10** ca cố ý `skip` (đo 2026-10-24 trên Flutter 3.47.8, 4 ph 12 s, sau soát CVE đợt 5 — sql.js 1.15.1 + ràng buộc okhttp, +2 so với 7868; 10 skip gồm `test/tool/do_from_drift_test.dart` chạy tay). Sau mỗi đợt **sửa đúng con số này**, đừng nối thêm lịch sử — mốc từng đợt
 # nằm ở khối tương ứng mục 14 `docs/PROJECT_CONTEXT.md` và ở commit. ⚠️ Thời gian dao động mạnh theo tải máy: ~1,5
 # phút chạy một mình, ~3,5 phút song song `flutter analyze`, tới ~5,5 phút song song build APK; đo 2026-10-17 tối: 7 ph 43 s
 # (không `flutter` nào song song, nhưng máy tải nặng — các agent con đang chạy); 2026-10-18 khuya: 6 ph 29 s (một agent soát chỉ đọc).

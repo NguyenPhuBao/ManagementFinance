@@ -616,7 +616,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-24)
 
-### 🔒 Soát bảo mật toàn client-app (2026-10-24) — 0 lỗ hổng đạt ngưỡng; sửa hai việc người dùng chọn
+### 🔒 Soát bảo mật toàn client-app (2026-10-24) — 0 lỗ hổng đạt ngưỡng; bốn đợt siết; đợt 5 soát CVE thư viện (vá Flutter `GHSA-frr6-h895-5pxp`)
 
 Người dùng: *"kiểm tra toàn bộ client-app xem hiện tại đang có lỗ hổng nào"*. Quy trình security-review áp lên **cả cây**
 `src/Client-app` (không chỉ diff): năm agent theo mặt tấn công (xác thực / phiên · mạng · thành phần Android + IPC · deeplink +
@@ -697,6 +697,15 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   `0.6.0+eol`: *"không còn cần từ `sqlite3` 3.x"*): lock mất đúng 8 dòng, cây release mất `project :sqlite3_flutter_libs` +
   AAR `sqlite3-native-library:3.52.0` (146 → 145 toạ độ); APK release vẫn mỗi ABI (arm64 / armeabi-v7a / x86_64) đúng một
   `libsqlite3.so` **3.53.4** như trước. iOS chưa dựng thử (không máy Mac).
+  ✅ **Flutter 3.47.5 → 3.47.8** (Dart 3.13.4 → 3.13.7 — vá (a)): SDK git `~/flutter` nhánh `stable` ff tới `737ba8f8`; ghim
+  CI `.github/workflows/client-app.yml`; khối *Toolchain* `CLAUDE.md`. Lock không đổi do SDK. Đo: `flutter analyze` **20**
+  (0 error · 0 warning — đúng `MUC_NEN`), `flutter test` **7.870 / 10 skip** (4 ph 12 s; cũng 7.870 trên 3.47.5 ngay trước khi
+  nâng — hai việc trên không đỏ ca nào), `flutter build apk --release` đạt 226,7 MB, `libflutter.so` mang engine `cf636b1d…`
+  của 3.47.8; dòng cảnh báo ký debug **có hiện** ở `flutter build` (*"! FlowMoney: không có android/key.properties…"* — việc
+  tồn của đợt 3). Bẫy: extension Dart của VS Code giữ `bin/cache/dart-sdk` và tự mở lại language-server < 1 s sau khi bị dừng
+  (người dùng nhờ dừng → vòng canh dừng liên tục trong lúc thay SDK); checkout thẻ là *detached* → kênh `[user-branch]` (cả
+  hai ghi ở *Toolchain*). ⚠️ **Chưa chạy trên máy thật** (không máy nào cắm): đăng nhập / đồng bộ qua TLS, Gemma, OCR trên
+  APK mới.
 - **Còn lại, chưa sửa / chưa ghi mục G** (sau đợt 4): `NhanBienLaiActivity` tin referrer bên gửi khai (cần đo bảng chia sẻ
   trên máy); không khoá app (PIN / vân tay — tính năng, cần Stitch); ⚠️ **Cho kế hoạch gia đình lát 1 (Task 4):** `anh_xa_keo_ve.dart` lấy `idaccount` hàng kéo về từ payload (danh mục
   rơi về 0) — hàng của nhà đúng là người tạo, nhưng hàng riêng nên bỏ khi khác tài khoản phiên; **đừng** ép `Value(accountId)`.
