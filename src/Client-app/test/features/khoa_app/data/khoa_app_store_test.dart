@@ -3,6 +3,41 @@ import 'package:flowmoney/features/khoa_app/data/models/cau_hinh_khoa_app.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// Bản giả tối thiểu: `delete` của một khoá ném lỗi.
+class _KhoGiaHongMotKhoa implements FlutterSecureStorage {
+  _KhoGiaHongMotKhoa(this.du, this.khoaHong);
+  final Map<String, String> du;
+  final String khoaHong;
+
+  @override
+  Future<Map<String, String>> readAll({
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async =>
+      Map.of(du);
+
+  @override
+  Future<void> delete({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async {
+    if (key == khoaHong) throw StateError('xoá hỏng');
+    du.remove(key);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const cauHinh = CauHinhKhoaApp(salt: 'c2FsdA==', bam: 'YmFt', soVong: 30000);
@@ -36,5 +71,12 @@ void main() {
   test('InMemory: hongKhiGhi làm ghi ném', () async {
     final kho = InMemoryKhoaAppStore()..hongKhiGhi = true;
     expect(() => kho.ghi(1, cauHinh), throwsA(isA<StateError>()));
+  });
+
+  test('xoaHet: một khoá xoá hỏng không chặn khoá khác, token còn', () async {
+    final du = {'khoa_app_10': 'a', 'khoa_app_11': 'b', 'access_token': 'tk'};
+    await SecureStorageKhoaAppStore(_KhoGiaHongMotKhoa(du, 'khoa_app_10')).xoaHet();
+    expect(du.containsKey('khoa_app_11'), isFalse, reason: 'khoá sau khoá hỏng vẫn phải bị xoá');
+    expect(du['access_token'], 'tk');
   });
 }

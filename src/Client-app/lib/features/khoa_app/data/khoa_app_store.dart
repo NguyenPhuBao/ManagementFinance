@@ -52,15 +52,24 @@ class SecureStorageKhoaAppStore implements KhoaAppStore {
 
   @override
   Future<void> xoaHet() async {
+    final Map<String, String> tatCa;
     try {
-      final tatCa = await _storage.readAll();
-      // P3: lặp trên bản sao — mock (và có thể bản thật) trả chính map nội bộ, lặp-rồi-xoá sẽ ném
-      // ConcurrentModificationError bị catch nuốt.
-      for (final k in tatCa.keys.toList()) {
-        if (k.startsWith(tienTo)) await _storage.delete(key: k);
-      }
+      tatCa = await _storage.readAll();
     } catch (_) {
-      // Bỏ qua — cùng lý do với [xoa].
+      // readAll hỏng: đăng xuất không bao giờ được ném; đường lùi (xoá thẳng theo khoá của tài khoản
+      // hiện tại) nằm ở chỗ gọi.
+      return;
+    }
+    // P3: lặp trên bản sao — mock (và có thể bản thật) trả chính map nội bộ, lặp-rồi-xoá sẽ ném
+    // ConcurrentModificationError.
+    for (final k in tatCa.keys.toList()) {
+      if (!k.startsWith(tienTo)) continue;
+      try {
+        await _storage.delete(key: k);
+      } catch (_) {
+        // Một khoá xoá hỏng không được chặn các khoá khác (nếu không, cấu hình còn sót sẽ khoá lại
+        // bằng đúng PIN đã quên sau khi đăng nhập lại).
+      }
     }
   }
 }
