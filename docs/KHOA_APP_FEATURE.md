@@ -496,3 +496,5 @@ Mốc giờ: tên tệp video = giờ máy lúc bắt đầu; giờ máy chậm 
 Quan sát ngoài khoá app: lúc server cắt socket (12a), logcat có `Unhandled Exception: WebSocketConnectionClosed` từ `socket_io_client`
 (`IOWebSocket.close`) — app vẫn chạy đúng; chưa điều tra, chưa ghi ở đâu khác.
 Cuối buổi: khoá app BẬT lại (PIN 135790, vân tay — người dùng chạm, *Tự khoá sau* 30 giây); backend + máy chủ treo đã tắt; token admin tạm đã xoá.
+Dấu vết để lại trong CSDL dev `PersonFinance` (cố ý, không dọn): `auditlog` có hai cặp *"Khóa tài khoản"* / *"Mở khóa tài khoản"* cho tài khoản 10 (admin,
+lý do *"Kiem thu khoa ung dung - tam thoi"*, 19:11 và 19:13), bốn `refreshtoken` mới của tài khoản 10 + một của admin, `account.Update_at` của tài khoản 10 đổi.
