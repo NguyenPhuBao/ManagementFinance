@@ -226,6 +226,9 @@ Chỗ nối ngoài mảng: `lib/main.dart` (dựng `KhoaAppCubit` + `TheoDoiRout
     tên khớp `AppRouter.laRouteCongKhai` **và** hiệu ứng vào xong. ⚠️ **`route.animation` (ProxyAnimation) báo `completed` thoáng qua ngay trong `didPush` rồi mới sang `forward`** — đọc ngay là tưởng hiệu ứng xong và gỡ sớm (ca
     đỏ 28 khung lộ lúc đo); observer nghe status nhưng **đánh giá lại SAU một microtask** (`scheduleMicrotask(_tinh)`). Phụ thuộc hành vi nội bộ của Navigator / GoRouter (tên route = `settings.name`, route công khai đều ở gốc) — đổi
     phiên bản `go_router` thì chạy lại `lop_khoa_app_roi_phien_test.dart` (GoRouter thật, đo từng khung 16 ms). Route công khai lồng nhau (nếu sau này có) sẽ không khớp tên.
+    ⚠️ **Observer bỏ qua `PopupRoute`** ở cả bốn callback (`be3bdf26`, sau soát lại): màn Đăng nhập mở hộp thoại lý do (`showDialog`, route không tên) ngay khung đầu ở đường cưỡng chế
+    đăng xuất / phiên chết lúc mở lạnh — coi hộp thoại là route trên cùng thì tín hiệu không bao giờ `true`, van an toàn thành cơ chế chính (màn đặc 3 s che cả hộp thoại).
+    Phép canh nối router thật: `test/core/router/route_cong_khai_ten_route_test.dart` (route công khai không có `name:`, go_router đặt tên trang = đường dẫn) — mới ghim chắc `/login`.
 23. **I1 — tự khoá đo bằng HAI đồng hồ; đừng thay bằng `Stopwatch`.** Giờ tường (`DateTime.now`) chỉnh được bằng Cài đặt giờ: ở nền 10 phút rồi đặt giờ lùi về sau mốc rời thì `nay − roiLuc` nhỏ — vượt khoá. Nay mốc rời ghi cả
     **đồng hồ khởi động** `CLOCK_BOOTTIME` (đơn điệu, tính cả lúc máy ngủ — khác `uptimeMillis`/`Stopwatch` ngừng khi ngủ; chỉ reset khi khởi động lại), đọc bằng `clock_gettime` qua `dart:ffi`
     (`DynamicLibrary.process()`, `malloc`/`free` tra qua libc, `timespec` đọc bằng `IntPtr` ×2 — đúng 32 và 64 bit; không thêm gói). Luật ba vế: khoá khi giờ tường lùi ∨ giờ tường ≥ mức ∨ (đồng hồ khởi động `≠ null` ∧ (âm ∨ ≥ mức)).
@@ -254,7 +257,8 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 
 - **128 ca** khai báo trong 16 tệp dưới `test/features/khoa_app/` (đếm bằng grep `^\s*(test|testWidgets)\(` 2026-10-25, sau đợt sửa cuối), cộng `test/core/router/theo_doi_route_cong_khai_test.dart` (observer), ca ở `phien_dieu_phoi_that_test.dart`
   (hook `sauXacThucMatKhau` / `xoaKhoaApp` / `datLaiKhoaApp`), `auth_bloc_buoc_dang_xuat_test.dart` (thứ tự mở phiên với `PhienDieuPhoiThat` thật) và `noi_dung_cai_dat_khoa_app_test.dart` (viên *Đang bật*, kể cả `Mo(daBat:false)` và `Tat`).
-- Mốc toàn bộ: **8.013 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-25 bởi đợt sửa cuối; xem *Lệnh hay dùng* `CLAUDE.md`).
+- Mốc toàn bộ: **8.017 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-25 sau bản vá cuối `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá ấy thêm 4 ca: hai ở
+  `lop_khoa_app_roi_phien_test.dart` (`/login` tự `showDialog` → gỡ trước van; popup trên trang được bảo vệ không làm tín hiệu `true`) và hai ở `test/core/router/route_cong_khai_ten_route_test.dart`.
 - Mảng mới phải qua các quét sẵn có: 22 (`presentation/` không chạm CSDL), 25 (vị trí tệp — `core/router` là chủ đề sẵn có), 27 (không `<dynamic>` trần ở `data/` +
   `application/`), 38 (không log PII — **không** canh PIN / bí mật, bẫy 19). Không thêm test quét mới.
 - **Ca test còn MÙ** (chỉ máy thật / chưa có ca): dây nối `main.dart` → `phienDauChoKhoaApp` (hàm thuần đã có ca); **I1 bản ffi** (host Windows trả `null`; ca `dong_ho_khoi_dong_test` chỉ canh "null hoặc số không âm đơn điệu"); C1 trên máy thật
@@ -269,6 +273,10 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 - **M12** `BIOMETRIC_ERROR_TIMEOUT` → `LOI` (nên `HUY`), `SECURITY_UPDATE_REQUIRED` → nên `KHONG_HO_TRO` (người chờ ở màn khoá thấy câu chung *"Không mở được bằng vân tay — nhập mã PIN"*); `SinhTrac.kt` `xoaHet` một `try` chung quanh `forEach deleteEntry`.
   Đo câu hiện ra trên Realme trước khi đổi ánh xạ.
 - **M13** Lớp phủ không nhận phím số của bàn phím vật lý (chỉ Tab + Enter từng phím) — để lại, đã ghi.
+- **Sau soát lại đợt sửa (2026-10-25, để lại):** `DatMaPinPage._napCho` đọc kho kiểu khoan dung và nuốt lỗi → đọc hỏng thì chế độ `dat` vẫn ghi đè PIN mà không hỏi PIN cũ (M4 chỉ đóng
+  khi đọc được; lối vào chỉ là route nội bộ). `TheoDoiRouteCongKhai`: `didPop` / `didRemove` có thể ghi một popup qua `previousRoute` (kẹt `false` tới lần push kế — chiều đóng, van an toàn gỡ),
+  `didReplace` có popup ở một vế thì mất route trên cùng — cả hai chưa xảy ra được với mã hôm nay; hướng sửa: observer giữ danh sách route trang riêng. Ca nối router thật mới ghim `/login` —
+  nên liệt kê đủ các route công khai.
 - **Để lại có lý do (triage review):** ABA `nhanPhien` 10→null→10 mở hộp vân tay hai lần (Kotlin `hoi()` huỷ lời đầu — đo chạm hai lần nhanh); `batVanTay` đọc cấu hình trước hộp rồi ghi sau (hộp hệ thống là modal; không đường nào trong app đổi cấu hình lúc ấy);
   tấm Quên PIN mở mà bàn phím phía sau còn trong cây semantics (`BlockSemantics` — nghiệm thu TalkBack); ca 320 dp chưa thử nhãn dài nhất; `pbkdf2` không chặn `soVong < 1` (`tuJson` đã loại); đổi tên enum `TuKhoaSau` đã cất ⇒ đọc về mặc định 30 s;
   sai vân tay "không cộng" chưa ghim (bản sai chỉ làm chặt hơn); `_lamTuoiKhoa` giữ `coVanTay` RAM.
