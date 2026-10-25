@@ -220,6 +220,49 @@ void main() {
     expect(s.lanKhoa, ngay.lanKhoa);
   });
 
+  test('M7: lượt làm tươi (P9) về SAU một lượt kiểm PIN vừa xong → không đè soLanSai / choDen mới bằng bản cũ', () async {
+    final cham = _KhoDocCham();
+    await cubit.close();
+    sv = KhoaAppService(store: cham, kenh: kenh, bam: bamNhanh, clock: () => nay);
+    cubit = KhoaAppCubit(service: sv, vongDoi: vongDoi.stream, phien: phien.stream, clock: () => nay);
+    await sv.datPin(10, '246810');
+    await moPhien(10);
+    await cubit.nhapPin('246810');
+    await pumpEventQueue();
+    vongDoi.add(AppLifecycleState.paused);
+    await pumpEventQueue();
+    nay = nay.add(const Duration(minutes: 2));
+    cham.duLieu[10] = cham.duLieu[10]!.voiLanSai(3, null); // trang Đổi PIN đã ghi 3 lần sai
+    final cong = Completer<void>();
+    cham.cong = cong;
+    vongDoi.add(AppLifecycleState.resumed); // khoá bằng bản RAM, lượt làm tươi đọc kho (bản 3 lần sai) rồi kẹt ở cổng
+    await pumpEventQueue();
+    expect(cham.soLanChoCong, 1, reason: 'lượt làm tươi phải đang chờ ở cổng');
+    await cubit.nhapPin('000000'); // kiểm xong TRƯỚC: kho 3 → 4 lần sai
+    final sauKiem = cubit.state as KhoaAppKhoa;
+    expect([sauKiem.soLanSai, sauKiem.lanKiem], [4, 1]);
+    cong.complete();
+    await pumpEventQueue();
+    final s = cubit.state as KhoaAppKhoa;
+    expect(s.soLanSai, 4, reason: 'bản đọc trước lượt kiểm (3) không được đè kết quả của lượt kiểm (4)');
+    expect(s.lanKiem, 1);
+  });
+
+  test('M8: đang ở màn khoá mà giờ máy bị chỉnh lùi → quay lại app thì mốc chờ kẹp còn ≤ kChoToiDa (đọc lại kho)', () async {
+    await sv.datPin(10, '246810');
+    kho.duLieu[10] = kho.duLieu[10]!.voiLanSai(5, nay.add(const Duration(seconds: 30)));
+    await moPhien(10);
+    expect((cubit.state as KhoaAppKhoa).choDen, nay.add(const Duration(seconds: 30)));
+    nay = nay.subtract(const Duration(days: 1)); // giờ máy chạy trước một ngày, người dùng chỉnh lại
+    vongDoi.add(AppLifecycleState.paused);
+    vongDoi.add(AppLifecycleState.resumed);
+    await pumpEventQueue();
+    final s = cubit.state as KhoaAppKhoa;
+    expect(s.choDen, nay.add(kChoToiDa), reason: 'không được bắt chờ một ngày ba mươi giây');
+    expect(s.soLanSai, 5);
+    expect(kho.duLieu[10]!.choDen, nay.add(kChoToiDa), reason: 'mốc kẹp phải ghi lại kho');
+  });
+
   test('lần ĐẦU nhận phiên null (chưa đăng nhập) → Tat, không kẹt DangXet', () async {
     expect(cubit.state, const KhoaAppDangXet());
     await moPhien(null);
@@ -549,6 +592,24 @@ void main() {
       expect(soLanNhac, 0);
     });
   });
+}
+
+/// Kho có cổng: khi [cong] đặt, [doc] (khoan dung — đường làm tươi P9) chụp giá trị LÚC GỌI rồi chờ cổng; [docNghiemNgat]
+/// (đường kiểm PIN) không chờ.
+class _KhoDocCham extends InMemoryKhoaAppStore {
+  Completer<void>? cong;
+  int soLanChoCong = 0;
+
+  @override
+  Future<CauHinhKhoaApp?> doc(int idaccount) async {
+    final v = duLieu[idaccount];
+    final c = cong;
+    if (c != null) {
+      soLanChoCong++;
+      await c.future;
+    }
+    return v;
+  }
 }
 
 /// Kho bọc: [docNghiemNgat] hỏng từ lần gọi thứ [tuLan] (đếm từ 1).

@@ -165,6 +165,13 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
       _roiLuc = null;
       _roiKhoiDong = null;
       final hien = state;
+      if (hien is KhoaAppKhoa) {
+        // M8: đang ở màn khoá mà giờ máy vừa bị chỉnh (người dùng ra Cài đặt giờ rồi quay lại) — đọc lại kho để mốc chờ
+        // được kẹp (`KhoaAppService.doc`); đọc trùng với P9 thì vô hại (chỉ phát khi khác).
+        final id = _id;
+        if (id != null) unawaited(_lamTuoiKhoa(id, hien.lanKhoa));
+        return;
+      }
       if (hien is! KhoaAppMo) return;
       if (roi != null && c != null) {
         final kd = _khoiDong();
@@ -183,10 +190,13 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
 
   /// P9: `soLanSai` / `choDen` ở kho có thể mới hơn bản RAM (nhập sai ở trang Đổi / Tắt PIN rồi thoát).
   Future<void> _lamTuoiKhoa(int id, int lanKhoa) async {
+    // M7: bản đọc chỉ còn đúng nếu không lượt kiểm nào bắt đầu / kết thúc trong lúc đọc — lượt ấy đã ghi kho và phát số mới.
+    final dau = state;
+    final lanKiem = dau is KhoaAppKhoa ? dau.lanKiem : null;
     final c = await _service.doc(id);
     if (isClosed || _id != id || c == null) return;
     final hien = state;
-    if (hien is! KhoaAppKhoa || hien.lanKhoa != lanKhoa || hien.dangKiem) return;
+    if (hien is! KhoaAppKhoa || hien.lanKhoa != lanKhoa || hien.dangKiem || hien.lanKiem != lanKiem) return;
     _cauHinh = c;
     if (hien.soLanSai == c.soLanSai && hien.choDen == c.choDen) return;
     emit(KhoaAppKhoa(

@@ -175,4 +175,18 @@ void main() {
     expect(ketQua, isTrue);
     expect((await sv.kiemPin(10, '135790')).dung, isTrue);
   });
+
+  testWidgets('che=dat mà kho ĐỌC HỎNG (không biết có cấu hình không) → hỏi PIN hiện tại, KHÔNG ghi đè PIN cũ', (t) async {
+    await sv.datPin(10, '246810');
+    final cu = kho.duLieu[10];
+    kho.hongKhiDoc = true;
+    await mo(t, CheDatPin.dat);
+    expect(find.text('Nhập mã PIN hiện tại'), findsOneWidget,
+        reason: 'đọc hỏng không phải "chưa bật" — coi như đã có cấu hình (M4)');
+    await go(t, '135790');
+    await go(t, '135790');
+    expect(find.text(kCauKhongKiemDuoc), findsOneWidget);
+    expect(ketQua, isNull);
+    expect(kho.duLieu[10], same(cu), reason: 'cấu hình PIN cũ còn nguyên');
+  });
 }
