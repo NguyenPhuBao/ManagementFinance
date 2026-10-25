@@ -5,11 +5,11 @@
 > `a0c6dacf..393e626f` (30 commit, đếm 2026-10-25 trước commit tài liệu này: 22 commit thi công `a0c6dacf..92b69200` · `f6699e64`
 > tài liệu Task 13 · 7 commit đợt sửa `5fa1b69c` `29405da5` (C1) · `7cef81df` (I2) · `d5cfb994` (I3) · `62cad490` (I4) · `fb4f245b` (I1) ·
 > `393e626f` (mục nhỏ)).
-> 🚧 **CHƯA nghiệm thu trên máy thật** — người dùng chốt *"nghiệm thu thì để phiên sau"*. Mọi thứ dưới đây là **mã + test**; chưa
-> ai nhìn lớp khoá trên Realme. Checklist ở mục **9** (phải làm đúng thứ tự: chép CSDL Realme → đo số vòng PBKDF2 trên release →
-> nghiệm thu; **không đăng xuất ở đầu buổi**). ⚠️ **`kSoVongMacDinh` = 30.000 là số TẠM của kế hoạch, chưa đo trên bản release**
-> (mục 9, bước B). ⚠️ **Hai thứ chỉ máy thật chứng minh được:** đồng hồ khởi động `CLOCK_BOOTTIME` qua `dart:ffi` (host Windows của test
-> luôn trả `null`) và C1 (lớp che không lộ khung nào lúc chuyển sang màn Đăng nhập — cần quay màn hình).
+> ◐ **Nghiệm thu Realme buổi 1 (2026-10-25, bản release) — mục 10:** đạt các bước không cần đăng xuất (bật, mở lạnh, tự khoá, sai PIN,
+> vân tay, thêm vân tay mới, I1 tách riêng bằng chỉnh giờ lùi, G100, G106, chạm đôi). Buổi đo bắt **F1** (quay lại app lộ ~1 khung nội
+> dung) → **đã sửa và đo lại đạt** (`Mo(che)` ở `inactive`, bẫy 25); **M11** (dòng nhắc *"Khoá ứng dụng đã tắt"*) làm theo người dùng chốt
+> (bẫy 24). `kSoVongMacDinh` = **50.000** theo số đo release. 🚧 **Còn mở:** mọi bước có **đăng xuất** (10, 10a, 11, 12, D-1 — gồm C1 và
+> M11 trên máy) chờ backend `PersonFinance`; TalkBack; quét ảnh / PayOS / chạm thông báo khi khoá; 320 dp (ColorOS chặn `wm density`).
 > Spec: `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (đã sửa theo thiết kế cuối 2026-10-25).
 > Mảng mã: `src/Client-app/lib/features/khoa_app/` (21 tệp, 2.260 dòng, đếm 2026-10-25) + `android/…/SinhTrac.kt`.
 
@@ -27,8 +27,10 @@
   là thấy trang đó.
 - **Sai PIN:** lần 5 → chờ 30 giây; 6 → 1 phút; 7 → 5 phút; từ 8 → 15 phút mỗi lần. Đang chờ: phím số mờ + *"Thử lại sau mm:ss"*;
   **vân tay vẫn mở được**.
-- **Quên PIN:** tấm xác nhận → *Đăng xuất* → đăng nhập lại bằng **mật khẩu tài khoản** thì khoá đã tắt (đặt lại nếu muốn), dữ liệu
-  máy giữ nguyên. Cần mạng. ⚠️ Đăng nhập lại bằng **tài khoản khác** thì dữ liệu cục bộ của tài khoản cũ bị dọn (mục 1b).
+- **Mất tiêu điểm khi khoá bật** (F1, 2026-10-25): kéo thanh thông báo, mở menu nút nổi, hộp vân tay / hộp quyền, hoặc rời app → nội dung
+  app được che bằng nền trơn (khung cuối trước khi rời màn không mang số liệu); quay lại trong mức tự khoá thì thoáng một khung trơn rồi nội dung.
+- **Quên PIN:** tấm xác nhận → *Đăng xuất* → đăng nhập lại bằng **mật khẩu tài khoản** thì khoá đã tắt và app báo một dòng *"Khoá ứng dụng đã
+  tắt — bật lại trong Cài đặt"* (M11; mọi lần đăng nhập mật khẩu khi tài khoản đang bật khoá), dữ liệu máy giữ nguyên. Cần mạng. ⚠️ Đăng nhập lại bằng **tài khoản khác** thì dữ liệu cục bộ của tài khoản cũ bị dọn (mục 1b).
 - **Giới hạn đã nói với người dùng:** khuôn mặt phần lớn máy Android là sinh trắc *yếu* (Class 2) → không mở được khoá Keystore →
   chỉ **vân tay**; Android 7–8.1 (API 24–27, `minSdk` 24) chỉ PIN; thêm vân tay mới trên máy thì vân tay của app tự tắt, phải nhập
   PIN rồi bật lại.
@@ -44,7 +46,9 @@ lớp bảo vệ dữ liệu khi kho bị đọc ra:
   không bảo vệ dữ liệu khi tệp bị đọc ra. (Mã hoá SQLite nằm ngoài phạm vi — spec mục 8.)
 - **Nội dung thông báo** FlowMoney trên khay thông báo / màn khoá của máy vẫn hiện (khoá app không che thông báo hệ điều hành).
 - **Chụp / ghi màn hình được** — không `FLAG_SECURE` (người dùng không chọn, đợt 3).
-- **Ảnh trong Đa nhiệm chỉ trống từ Android 13** (`setRecentsScreenshotEnabled(false)`); API 24–32 vẫn có ảnh trang cuối.
+- **Ảnh trong Đa nhiệm chỉ trống từ Android 13** (`setRecentsScreenshotEnabled(false)`); API 24–32 vẫn có ảnh trang cuối. Đo Realme (Android 13)
+  2026-10-25: thẻ Đa nhiệm của FlowMoney **đen trơn**. Nhưng cờ ấy **không** chặn việc engine vẽ lại khung cuối lúc quay lại app — đó là F1 (bẫy 25),
+  chặn bằng lớp che ở `inactive`.
 - **Khuôn mặt Class 2 không dùng được** (không mở được khoá Keystore); **API 24–27 chỉ PIN**.
 - **Giờ máy:** `choDen` (thời gian chờ sau sai PIN) tính theo giờ máy — chỉnh giờ rút được thời gian chờ (spec chấp nhận). Riêng **tự
   khoá** đã chặn bằng đồng hồ khởi động (bẫy 23): chỉnh giờ lùi không vượt được khoá.
@@ -235,7 +239,18 @@ Chỗ nối ngoài mảng: `lib/main.dart` (dựng `KhoaAppCubit` + `TheoDoiRout
     Đồng hồ khởi động `null` (web, Windows, iOS, lỗi) → chỉ còn giờ tường (ca cũ giữ nguyên). `choDen` vẫn theo giờ tường (bẫy 7). **Chưa đo trên Android thật** (host test trả `null`; web build đạt) — mục 9 bước 13.
     Import có điều kiện: `flutter build web --debug` đạt, nhưng đổi cấu trúc ba tệp `dong_ho_khoi_dong*.dart` phải dựng lại web.
 24. **Hệ quả thiết kế đăng nhập mật khẩu (M11, mục 1b).** Mọi lần đăng nhập bằng mật khẩu — không riêng Quên PIN — tắt khoá, và đăng nhập tài khoản KHÁC dọn dữ liệu cục bộ tài khoản cũ. Đây là hành vi đã chốt (spec), không phải lỗi;
-    đừng "sửa" bằng cách đặt hook vào `moPhienCucBo` (bẫy 5). Muốn nhắc người dùng thì thêm dòng báo sau đăng nhập (hỏi người dùng trước — mục 8).
+    đừng "sửa" bằng cách đặt hook vào `moPhienCucBo` (bẫy 5). ✅ **Dòng nhắc (người dùng chốt 2026-10-25):** `datLaiSauDangNhap` nhớ trong RAM *"tài khoản này vừa có
+    khoá"* (`_vuaTatCua`, chỉ khi cấu hình của CHÍNH tài khoản ấy tồn tại — khoá của tài khoản khác bị xoá thì không nhắc); `KhoaAppCubit.nhanPhien` ở nhánh không cấu hình gọi
+    `layVaXoaVuaTat(id)` (đọc là xoá — dùng một lần) rồi hàm tiêm `khiKhoaVuaTat`, `main.dart` nối với `baoNhanh(kCauKhoaVuaTat)` *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"*.
+    ⚠️ Chỉ được MỘT `KhoaAppCubit` gọi `layVaXoaVuaTat` (test dựng hai cubit trên cùng service là cubit đầu tiêu cờ — vấp khi viết test).
+25. **F1 — che khi mất tiêu điểm (`Mo(che)`, nghiệm thu Realme 2026-10-25, người dùng chọn lối Flutter).** Quay lại app sau ≥ mức tự khoá, engine vẽ lại **khung cuối** lên surface mới
+    trước khi Dart nhận `resumed` → lộ ~1 khung nội dung (mục 10, *Phát hiện F1*). Sửa: `inactive` + khoá bật + `Mo` → `KhoaAppMo(daBat, che: true)` (lớp đặc), vì `hidden` / `paused`
+    tới khi Flutter đã **tắt vẽ khung** — đặt che ở đó là không bao giờ được vẽ. `resumed`: tới mức → `Khoa`; chưa → gỡ che (`Mo(che:false)`). `che` nằm TRONG `KhoaAppMo` để mọi cổng
+    `state is KhoaAppMo` của luật tự khoá giữ nguyên (đặt thành trạng thái riêng là "35 s không khoá" — ca *che rồi ở nền 29 s / 30 s* canh, bản sai đã thử). `napLai` **giữ** `che`.
+    Lớp phủ: `Mo(che)` chỉ vẽ nền đặc + `AbsorbPointer`, **không** `ExcludeFocus` / `ExcludeSemantics` — cướp tiêu điểm là đóng bàn phím mỗi lần kéo thanh thông báo (ca *lớp che
+    KHÔNG cướp tiêu điểm*). Cái giá người dùng chấp nhận: kéo thanh thông báo / mở menu nút nổi / hộp vân tay / hộp quyền khi khoá bật thì phía sau là nền trơn; quay lại trong mức thì
+    thoáng một khung trơn. ⚠️ Test: cubit dựng ở `setUp` nghe `vongDoi` trong zone thật — state phát từ sự kiện vòng đời không tới `BlocBuilder` trong `pump` (ca xanh OAN); dựng cubit
+    trong thân ca, và **đừng `await close()`** cubit cũ trong thân ca (treo cả tệp ~10 phút) — cất cho `tearDown` đóng (`cubitTrongCa`, `lop_khoa_app_test.dart`).
 
 ## 6. Giao diện — Stitch (dự án `5106367939423432838`)
 
@@ -269,9 +284,9 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 - **M5** Back khi đang khoá pop route bên dưới (bẫy 14) — cách sửa: chặn Back ở tầng lớp phủ (`BackButtonListener` / `didPopRoute` trả `true`) hoặc đưa app xuống nền bằng kênh `flowmoney/xuong_nen` như `ThoatHaiLan`.
 - **M7** `_lamTuoiKhoa` chỉ chặn `dangKiem`; nếu một lượt kiểm đã kết thúc trong lúc nó đọc kho, nó phát `soLanSai` / `choDen` cũ đè bản mới (chỉ lệch hiển thị — service vẫn chặn). Sửa: bắt `lanKiem` lúc bắt đầu.
 - **M8** `choDen` ở tương lai xa (giờ máy từng chạy trước rồi chỉnh lại) ⇒ chờ dài tuỳ ý (còn vân tay / Quên PIN). Sửa: kẹp phần chờ còn lại ở `thoiGianCho(∞)` = 15 phút.
-- **M11** Mọi đăng nhập mật khẩu tắt khoá **im lặng** (mục 1b, bẫy 24) — tối thiểu báo một dòng sau đăng nhập, hoặc chỉ xoá khi đi đường Quên PIN. **Hỏi người dùng.**
+- ~~**M11** Mọi đăng nhập mật khẩu tắt khoá **im lặng**~~ — ✅ **đóng 2026-10-25**: người dùng chọn dòng nhắc *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"* (bẫy 24). Nghiệm thu trên máy cần đăng nhập lại bằng mật khẩu → đi cùng bước 10a (cần backend `PersonFinance`).
 - **M12** `BIOMETRIC_ERROR_TIMEOUT` → `LOI` (nên `HUY`), `SECURITY_UPDATE_REQUIRED` → nên `KHONG_HO_TRO` (người chờ ở màn khoá thấy câu chung *"Không mở được bằng vân tay — nhập mã PIN"*); `SinhTrac.kt` `xoaHet` một `try` chung quanh `forEach deleteEntry`.
-  Đo câu hiện ra trên Realme trước khi đổi ánh xạ.
+  Đo Realme 2026-10-25: hộp vân tay đứng **78 s không tự hết giờ** — `TIMEOUT` gần như không gặp trên máy này; ưu tiên thấp.
 - **M13** Lớp phủ không nhận phím số của bàn phím vật lý (chỉ Tab + Enter từng phím) — để lại, đã ghi.
 - **Sau soát lại đợt sửa (2026-10-25, để lại):** `DatMaPinPage._napCho` đọc kho kiểu khoan dung và nuốt lỗi → đọc hỏng thì chế độ `dat` vẫn ghi đè PIN mà không hỏi PIN cũ (M4 chỉ đóng
   khi đọc được; lối vào chỉ là route nội bộ). `TheoDoiRouteCongKhai`: `didPop` / `didRemove` có thể ghi một popup qua `previousRoute` (kẹt `false` tới lần push kế — chiều đóng, van an toàn gỡ),
@@ -334,4 +349,66 @@ ba lần, `adb logcat -d | grep KhoaApp`. Mục tiêu **200–300 ms**: đổi `
 
 ## 10. Kết quả nghiệm thu
 
-*(Chưa có — điền ở phiên nghiệm thu: số đo PBKDF2 release, bảng đạt / không từng bước mục 9.)*
+**Buổi 1 — 2026-10-25 chiều, Realme RMX2205 (Dimensity 1100, Android 13, 360 dp), bản RELEASE** (ký debug, `API_BASE_URL=http://127.0.0.1:3000/api`,
+backend TẮT — app giữ phiên nhờ G86). Nghiệm thu làm trên bản release chứ không debug như mục 9 dặn: tốc độ băm và hiệu ứng là của bản người dùng
+nhận, và `debugPrint` vẫn ra logcat ở release. Hai dòng log TẠM (thời gian băm, vòng đời + đồng hồ khởi động) có trong bản đo, gỡ trước commit.
+A1: CSDL chép ra `D:\FlowMoney-saoluu\realme-tk10-truoc-khoa-app-2026-10-25-1430\` (335.872 byte, máy không có `-wal` / `-shm`; `integrity_check` ok,
+v31, tài khoản 10 — 134 giao dịch) kèm `FlutterSecureStorage.xml` (mã hoá bằng Keystore — chỉ dùng lại được trên chính máy này).
+
+**B. Số vòng PBKDF2** — đo trên release, `Stopwatch` quanh `compute` (gồm dựng isolate — đúng thời gian người dùng chờ):
+
+| Số vòng | Thời gian |
+|---|---|
+| 30.000 | 193 ms (lần đặt PIN) · 160 ms · **245 ms** (kiểm PIN lần đầu sau mở lạnh) |
+| 60.000 | 324 ms |
+| 100.000 | 535 ms |
+| 150.000 | 796 ms |
+
+≈ 5,3 ms / 1.000 vòng → **`kSoVongMacDinh` = 50.000** (dự kiến ~265 ms, lần đầu sau mở lạnh ~350 ms). PIN đặt ở 30.000 vẫn mở được (số vòng cất cùng băm).
+
+**C. Từng bước:**
+
+| Bước | Kết quả |
+|---|---|
+| 1 Bật | ✅ Công tắc → Đặt PIN hai lần → hộp vân tay **tự hiện** → Huỷ = chỉ PIN (trang hiện *Đổi mã PIN*, *Mở bằng vân tay* tắt, *Tự khoá sau 30 giây*). Chạm giữa hàng không bật công tắc — cùng quy ước với Cài đặt thông báo (chỉ công tắc nhận chạm), không phải lỗi |
+| 1b Bật vân tay | ✅ Công tắc *Mở bằng vân tay* → hộp hệ thống → chạm → bật (lần đầu, alias chưa có — `deleteEntry` không ném, T5). Kéo thanh thông báo khi hộp đang mở = hộp huỷ, công tắc giữ tắt |
+| 2 Mở lạnh **[quay]** | ✅ PIN: màn khoá → PIN → Trang chủ. Vân tay: hộp tự hiện **đúng một lần** → chạm → Trang chủ. Video (trình ghi ColorOS, khung cách 16,5–18 ms khi màn đổi; tách khung bằng WinRT `MediaComposition.GetThumbnailAsync` — `scratchpad/tachkhung.ps1` của phiên): màn chờ (logo) mờ dần → lớp đặc trơn (`DangXet`) → màn khoá hiện dần → đen (hộp sinh trắc là cửa sổ bảo mật — trình ghi bôi đen **cả màn**). **Không khung nào lộ nội dung** |
+| 3 Ở nền (30 s) | ✅ 20 s → quay lại không khoá; 35 s → khoá. *(Mức Ngay, tắt màn hình bằng nút nguồn: chưa)* |
+| 4 Quay lại sau ≥ mức **[quay]** | ❌ bản đầu **LỘ MỘT KHUNG** (*Phát hiện F1* dưới bảng) → ✅ **sau sửa F1** (bản release `17db9f65…`, mức *Ngay*, vân tay tắt để hộp sinh trắc không bôi đen video): **(A)** Home → mở lại bằng `am start`: khung đầu của hiệu ứng mở là khối sáng trơn, rồi màn khoá hiện dần — không khung Trang chủ nào; **(B)** mở từ **Đa nhiệm**: thẻ FlowMoney đen → thẻ đen phóng to → màn khoá; **(C)** kéo thanh thông báo: thanh của ColorOS đục, che kín — lớp che phía sau không thấy được; thu thanh lên thì app đã `resumed`, nội dung hiện lại (cái giá người dùng chấp nhận không lộ ra mắt trên Realme) |
+| 9 bis Thêm vân tay mới (làm lại) | ✅ Vân tay bật → thêm một vân tay trên máy (máy 1 → 2 vân tay) → quay lại: **không** có hộp sinh trắc (không `handleAuthenticate`, không `inactive` sau `resumed`), màn khoá báo *"Vân tay trên máy đã thay đổi — nhập mã PIN rồi bật lại trong Cài đặt"*, phím vân tay biến mất, công tắc tự tắt; PIN mở được |
+| 5 ColorOS + BiometricPrompt | ✅ Hộp vân tay (ở trang Cài đặt và ở màn khoá) chỉ gây **`inactive`**, không `paused` → không tính rời app; mức *Ngay* + bật vân tay không bị khoá ngay |
+| 7 Sai PIN | ✅ Lần 5 → *"Sai mã PIN quá nhiều lần · Thử lại sau 00:30"* đếm ngược, phím số mờ, **phím vân tay vẫn bấm được**; `force-stop` giữa lúc chờ → mở lại vẫn chờ; lần 6 → 01:00; **mở bằng vân tay giữa lúc chờ** → vào app, đếm về 0. **P9** ✓: sai 5 lần ở trang *Đổi mã PIN* → rời app (mức *Ngay*) → màn khoá hiện ngay *"Thử lại sau 00:16"*. Lần 7 / 8 không chờ (đã có test luật) |
+| 8 Vân tay | ✅ Mở được (hai ngón đăng ký khác nhau). Ngón chưa đăng ký 5 lần → *"Vân tay tạm bị khoá — thử lại sau hoặc nhập mã PIN"*, `soLanSai` không tăng. **Hộp không tự hết giờ** — đứng 78 s chưa có `TIMEOUT` (M12 gần như không xảy ra trên máy này). Câu báo hai dòng đẩy chấm + bàn phím xuống ~53 px (không tràn). Chạm phím vân tay hai lần nhanh: xem hàng 22 |
+| 9 Thêm vân tay mới | 🚧 **Chưa đo được** — lượt 1 người dùng tự tắt *Mở bằng vân tay* trong app trước khi thêm vân tay, nên lúc quay lại không có hộp là vì vân tay đã tắt, không phải nhánh `VO_HIEU` (lúc đầu ghi nhầm là đạt — người dùng đính chính). Đo được một vế: **xoá** bớt vân tay trên máy thì khoá Keystore vẫn hợp lệ (đúng chuẩn Android) — hộp vẫn hiện, ngón đã xoá không khớp, ngón còn lại mở được |
+| D Nhãn dài nhất 360 dp | ✅ *"Ngay khi rời app"* vừa ở bảng chọn và ở hàng *Tự khoá sau* (dòng phụ của hàng xuống 3 dòng, không tràn) |
+| 13 I1 bản ffi | ✅ `CLOCK_BOOTTIME` đọc được trên Android **release** (qua R8): `kd` = 621.834.902 ms, tăng 14.335 ms đúng bằng giờ tường trong cùng quãng |
+| 13a Tắt màn hình (+ bước 3) | ✅ Mức 5 phút, nút nguồn tắt màn hình ~7 phút → mở máy → vào app: **khoá**; đồng hồ khởi động tăng 6,93 phút qua lúc tắt màn hình (máy đang sạc — không chứng minh được máy đã vào ngủ sâu). Lượt này người dùng đặt nhầm giờ +1 giờ nên giờ tường cũng vượt mức — xem 13b cho phép thử tách riêng |
+| 13b Chỉnh giờ lùi (I1 tách riêng) | ✅ Mức 1 phút. **Đối chứng:** ở nền 50 s, không chỉnh giờ → không khoá (hai đồng hồ cùng +49,9 s). **Phép thử:** ở nền 70 s → lùi giờ máy về *rời app + 20 s* (`adb shell cmd alarm set-time <ms>` — shell **được** quyền này trên ColorOS; `settings put global auto_time` thì bị chặn) → mở app: giờ tường +19,7 s (< mức), đồng hồ khởi động +90,2 s → **khoá**. Trước I1 lượt này vào thẳng app. Trả giờ về đúng bằng cùng lệnh |
+| 14 G100 | ✅ Back hai lần ở Trang chủ → app xuống nền, tiến trình giữ nguyên (pid 16505) → mở lại: màn khoá. Gỡ khỏi Đa nhiệm (không giữ Gemma) → `onStackRemoved`, tiến trình **sống** (dịch vụ D1) → mở lại: activity mới + màn chờ, engine dựng lại trong tiến trình cũ → **màn khoá**. *(Đường đang giữ Gemma — `onDestroy` giết tiến trình: chưa đo, phải nạp mô hình)* |
+| 15 G106 | ✅ Báo thức FlowMoney 4 → `force-stop` 0 → mở + mở khoá: **4** (số tuyệt đối đổi theo dữ liệu — mục 9 ghi 3 là số của ngày khác; điều cần là về đúng số trước) |
+| 16 Release | ✅ kênh `flowmoney/sinh_trac` sống sau R8 (`trangThai` · `bat` · `mo` chạy); `dart:ffi` sống sau R8; băm trong isolate không giật giao diện (kiểm ~300 ms, chấm xoá ngay khi xong) |
+| 17 Bố cục 320 dp | ⛔ **Không đo được** — ColorOS chặn `wm density` (`WRITE_SECURE_SETTINGS`); dựa vào widget test 360 × 640 / 800 |
+| 18 TalkBack | ◐ **Qua cây trợ năng, chưa nghe bằng TalkBack** (người dùng bỏ qua lượt nghe): `uiautomator dump` lúc khoá chỉ có nút của màn khoá (*"Nhập mã PIN · Mở khoá FlowMoney · Đã nhập 0 trên 6 số"*, phím `0`–`9` mỗi phím **một** nhãn, *Xoá*, *Quên mã PIN?*) — không nút nào của trang dưới. Tấm Quên PIN + TalkBack chưa thử |
+| 20 Back khi khoá | ⚠️ **M5 xác nhận** (đã biết, chưa sửa): Back trên màn khoá không lộ gì, không thoát, nhưng **gỡ route bên dưới** — khoá ở trang *Khoá ứng dụng*, Back, mở khoá → về tab Cá nhân |
+| 22 Chạm đôi | ✅ Chạm đôi hàng *Đổi mã PIN* → **một** trang PIN (Back một lần là về); trang đòi *PIN hiện tại*. Chạm đôi phím vân tay trên màn khoá → hệ thống nhận 2 yêu cầu cách 27 ms, yêu cầu sau huỷ yêu cầu trước — **một** hộp |
+
+**Phát hiện F1 (bước 4, 2026-10-25) — quay lại app sau ≥ mức tự khoá lộ ~1 khung Trang chủ.** Video lượt *Home → 35 s → mở lại*: khung
+69,683–69,717 s là launcher + cửa sổ chờ tối mờ dần vào; **khung 69,767 s (~33 ms) là Trang chủ của app, thu nhỏ trong hiệu ứng mở, hơi tối,
+đọc được số dư *-3.256.000 đ* và giao dịch *100.000 đ***; 69,800 s cửa sổ đen; từ 69,850 s đen cả màn (hộp vân tay). Logcat cùng lượt:
+`SnapshotStartingWindow` vẽ lúc 14:50:04,702 · cửa sổ `MainActivity` `finishDrawing` lúc **04,777** · Dart nhận `resumed` lúc **04,806** (khoá
+phát sau đó). Tức có một khung được vẽ lên surface mới **trước** khi Dart biết đã quay lại — giả thuyết mạnh nhất: engine vẽ lại *lớp cuối*
+(Trang chủ) khi surface dựng lại (đúng cảnh báo của bước 4). Giả thuyết phụ: ảnh `TaskSnapshot` (chụp lúc 14:49:29,564 — chỉ **58 ms** sau
+`inactive` ở 29,506; `hidden`/`paused` tới 30,001) — nhưng thẻ Đa nhiệm của FlowMoney **đen trơn** (`setRecentsScreenshotEnabled(false)` có tác
+dụng ở Đa nhiệm), nên ảnh chụp nhiều khả năng không mang nội dung. Mở lạnh (bước 2) không dính vì engine mới không có lớp cuối.
+
+**Cách đo trên Realme (cho buổi sau):** ColorOS **cấm** `adb shell screenrecord` (*Permission denied*) — quay bằng trình *Ghi màn hình* của máy
+(người dùng bật / tắt; video ở `/sdcard/Pictures/Screenshots/Record_*.mp4`, khung cách 16,5–18 ms khi màn đổi, bỏ khung khi màn đứng yên). Máy tính không
+có ffmpeg / OpenCV / PIL — tách khung bằng WinRT `Windows.Media.Editing.MediaComposition.GetThumbnailAsync(…, NearestFrame)` qua **Windows PowerShell 5.1**
+(pwsh 7 không có WinRT; `Clips.Add` phải gọi qua `ICollection<MediaClip>.Add` bằng reflection), gộp khung trùng bằng MD5 rồi xem từng khung khác nhau. Hộp
+sinh trắc là cửa sổ bảo mật → trình ghi bôi đen **cả màn** khi nó mở: lượt cần nhìn liền mạch khung khoá thì **tắt vân tay**. Neo giờ video theo logcat,
+không theo đồng hồ shell (`am start` tới ATM chậm ~0,7 s). Giờ máy: `adb shell cmd alarm set-time <epoch ms>` chạy được; `wm density` và `settings put
+global auto_time` bị chặn. `uiautomator dump` có lúc trả *null root node* (dịch vụ trợ năng của người dùng) — rơi về toạ độ đã đo + ảnh chụp.
+
+**Ghi nhận phụ:** thanh trạng thái ở màn khoá có dải xám (≈ 25 % đen) — **không phải lỗi của khoá app**: Trang chủ vốn có dải ấy (không AppBar), màn khoá
+không tự đặt `SystemUiOverlayStyle` nên ăn theo trang nằm dưới. Khuôn mặt (Sensor 4, modality 8) — logcat hệ thống: *"cannot participate in Keystore
+operations"*, đúng giới hạn Class 2 (mục 1b). Hộp sinh trắc chặn `screencap` (ảnh 0 byte) — chụp bước có hộp vân tay phải nhờ người dùng nhìn.

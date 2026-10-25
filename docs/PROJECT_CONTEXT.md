@@ -616,7 +616,15 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-25)
 
-### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối, CHƯA nghiệm thu máy)
+### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối; nghiệm thu Realme buổi 1 — F1 + M11)
+
+- **Nghiệm thu Realme buổi 1 (2026-10-25 chiều, bản release, backend tắt — mục 10 `KHOA_APP_FEATURE.md`):** đạt bật / mở lạnh / tự khoá (30 s, Ngay,
+  5 phút) / sai PIN + chờ + P9 / vân tay (mở, tạm khoá, thêm vân tay mới → tự tắt) / **I1 tách riêng** (giờ tường +19,7 s, đồng hồ khởi động +90,2 s → khoá;
+  giờ máy chỉnh bằng `adb shell cmd alarm set-time`) / G100 / G106 / chạm đôi. **Số vòng PBKDF2 = 50.000** (`73b25616`; 30k → 160–193 ms, 60k → 324 ms,
+  50k → 297–357 ms). **F1:** quay lại app sau ≥ mức lộ ~1 khung Trang chủ trong hiệu ứng mở (engine vẽ lại khung cuối trước `resumed`; thẻ Đa nhiệm thì đen)
+  → người dùng chọn che bằng Flutter ở `inactive` (`KhoaAppMo(che)`) → `4c7945ed`, đo lại hai đường (mở bằng lệnh, từ Đa nhiệm) không còn khung nội dung.
+  **M11:** dòng nhắc *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"* sau đăng nhập mật khẩu (cùng commit). M5 (Back khi khoá gỡ route dưới) xác nhận trên máy.
+  Còn: các bước **đăng xuất** (C1, M11 trên máy — cần backend `PersonFinance`), quét ảnh / PayOS / chạm thông báo khi khoá, 320 dp (ColorOS chặn `wm density`).
 
 Người dùng chọn *"Bảo mật tiếp"* sau soát bảo mật (khối 🔒 bên dưới) và yêu cầu đối chiếu thị trường (khảo sát 2026-10-24, spec mục 2).
 Spec `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (người dùng duyệt từng phần; sau soát Task 12 đổi thân spec
@@ -632,10 +640,10 @@ tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu 
   van an toàn 3 s; bộ theo dõi bỏ qua `PopupRoute` — màn Đăng nhập mở hộp thoại lý do ngay khung đầu, không bỏ qua là luôn chờ hết van) — trước đó gỡ ngay lúc phiên mất làm lộ trang được bảo vệ dưới hiệu ứng sang Đăng nhập; **I1** tự khoá đo thêm bằng đồng hồ khởi động `CLOCK_BOOTTIME` qua `dart:ffi` (chỉnh giờ máy
   lùi không vượt khoá nữa); **I2** kho phân biệt vắng / hỏng (`docNghiemNgat`; hỏng → vẫn khoá, `kCauKhongKiemDuoc`); **I3** `batVanTay` khi đã bật không gọi kênh + chống chạm đôi mở hai trang PIN;
   **I4** hook `sauXacThucMatKhau` xoá PIN cũ ngay khi mật khẩu được chấp nhận (không đợi vòng đồng bộ đầu); mục nhỏ M1–M4, M6, M9, M10, T1, T5–T7.
-- **Test:** `flutter test` **8.017 pass / 10 skip** (đo 2026-10-25 sau bản vá cuối `be3bdf26` — bộ theo dõi route bỏ qua hộp thoại, 3 ph 38 s theo log, +141 so với 7876; mốc trước đợt sửa 7.981), `flutter analyze` **20** (mức nền), `flutter build web --debug` đạt
+- **Test:** `flutter test` **8.027 pass / 10 skip** sau F1 + M11 (`4c7945ed`, 2026-10-25 chiều; mảng khoá app 142 ca); trước đó **8.017** (đo 2026-10-25 sau bản vá cuối `be3bdf26` — bộ theo dõi route bỏ qua hộp thoại, 3 ph 38 s theo log, +141 so với 7876; mốc trước đợt sửa 7.981), `flutter analyze` **20** (mức nền), `flutter build web --debug` đạt
   (import có điều kiện `dart:ffi`); mảng 128 ca / 16 tệp dưới `test/features/khoa_app/` + 1 ca `test/core/router/theo_doi_route_cong_khai_test.dart` (đếm grep 2026-10-25). Build `--release` đã dựng đạt ở Task 5
   (R8, manifest) — **chưa dựng lại sau đợt sửa cuối**, chưa chạy trên máy.
-- **Việc còn (đều ở `KHOA_APP_FEATURE.md`):** (1) **nghiệm thu Realme** (mục 9: 23 bước + D / E; **không đăng xuất ở đầu buổi**, nhánh Đăng xuất chỉ sau khi kiểm danh tính CSDL + chép CSDL; điểm mới: **C1 quay màn hình 60 fps** ba đường, **I1** đồng hồ khởi động tăng khi
+- **Việc còn (đều ở `KHOA_APP_FEATURE.md`)** — *cập nhật 2026-10-25 chiều: (1) xong phần không đăng xuất, (2) xong (50.000), M11 đã làm — dòng đầu khối; câu dưới là ảnh chụp trước buổi 1:* (1) **nghiệm thu Realme** (mục 9: 23 bước + D / E; **không đăng xuất ở đầu buổi**, nhánh Đăng xuất chỉ sau khi kiểm danh tính CSDL + chép CSDL; điểm mới: **C1 quay màn hình 60 fps** ba đường, **I1** đồng hồ khởi động tăng khi
   tắt màn hình + chỉnh giờ lùi vẫn khoá, G100 gỡ khỏi Đa nhiệm) — người dùng hoãn sang phiên sau; (2) **đo số vòng PBKDF2 trên bản release** (`kSoVongMacDinh` 30.000 là số tạm, mục tiêu 200–300 ms); (3) minor còn
   mở mục 8: M5 Back khi khoá pop route dưới · M7 `_lamTuoiKhoa` đè `lanKiem` · M8 `choDen` tương lai xa · **M11 mọi đăng nhập mật khẩu tắt khoá im lặng (hỏi người dùng có muốn dòng nhắc)** · M12 `TIMEOUT` → `LOI` · M13 phím vật lý; (4) đơn CAN-LAM 51 đã thêm banner —
   backend có thể tả lại §2.3 `01_XAC_THUC_VA_BAO_MAT.md` theo spec; (5) nâng `flutter_secure_storage` 9 → 10 trình riêng (cấu hình khoá app nằm
