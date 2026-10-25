@@ -11,7 +11,7 @@
 > (bẫy 24). `kSoVongMacDinh` = **50.000** theo số đo release. 🚧 **Còn mở:** mọi bước có **đăng xuất** (10, 10a, 11, 12, D-1 — gồm C1 và
 > M11 trên máy) chờ backend `PersonFinance`; TalkBack; quét ảnh / PayOS / chạm thông báo khi khoá; 320 dp (ColorOS chặn `wm density`).
 > Spec: `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (đã sửa theo thiết kế cuối 2026-10-25).
-> Mảng mã: `src/Client-app/lib/features/khoa_app/` (21 tệp, 2.260 dòng, đếm 2026-10-25) + `android/…/SinhTrac.kt`.
+> Mảng mã: `src/Client-app/lib/features/khoa_app/` (21 tệp, 2.310 dòng, đếm 2026-10-25 chiều sau F1 + M11) + `android/…/SinhTrac.kt`.
 
 ## 1. Người dùng thấy gì
 
@@ -131,7 +131,7 @@ Mở app chưa đăng nhập  main.dart: phienDauChoKhoaApp(AuthInitial, '/login
 
 ## 4. Bản đồ tệp → việc
 
-`src/Client-app/lib/features/khoa_app/` (đếm 2026-10-25: 21 tệp, 2.260 dòng):
+`src/Client-app/lib/features/khoa_app/` (đếm 2026-10-25 chiều sau F1 + M11: 21 tệp, 2.310 dòng):
 
 | Tệp | Việc |
 |---|---|
@@ -165,7 +165,7 @@ Chỗ nối ngoài mảng: `lib/main.dart` (dựng `KhoaAppCubit` + `TheoDoiRout
    `nutNoiDung=2`); thiếu `ExcludeSemantics` thì TalkBack đọc nội dung dưới. Hai widget **luôn có mặt, bật theo cờ** (đổi cây widget
    theo trạng thái là dựng lại toàn bộ app). Hệ quả chấp nhận: ô autofocus của trang mở bằng deeplink không tự lấy focus sau mở khoá.
 2. **`inactive` không tính rời app.** `_roiLuc ??= now` chỉ ở `hidden` / `paused` **đầu tiên**; hộp vân tay, hộp cấp quyền chỉ cho
-   `inactive` — tính chúng thì mở khoá bằng vân tay xong là bị khoá lại ngay.
+   `inactive` — tính chúng thì mở khoá bằng vân tay xong là bị khoá lại ngay. (`inactive` vẫn **vẽ lớp che** F1 — bẫy 25 — nhưng không đặt mốc rời.)
 3. **`AuthSuccess` lặp** (`verifySession` phát lại cùng tài khoản sau lượt mở app từ bộ nhớ đệm — G86): `nhanPhien` có
    `if (_daBietPhien && id == _id) return` — thiếu là vừa mở khoá xong lại bị khoá lần nữa. Ca canh cả hai phía: lần đầu
    `nhanPhien(null)` từ `DangXet` → `Tat` (bản sai bỏ vế `_daBietPhien &&` tái hiện P2 mà mọi ca khác xanh).
@@ -270,9 +270,9 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 
 ## 7. Test và quét
 
-- **128 ca** khai báo trong 16 tệp dưới `test/features/khoa_app/` (đếm bằng grep `^\s*(test|testWidgets)\(` 2026-10-25, sau đợt sửa cuối), cộng `test/core/router/theo_doi_route_cong_khai_test.dart` (observer), ca ở `phien_dieu_phoi_that_test.dart`
+- **140 ca** khai báo trong 16 tệp dưới `test/features/khoa_app/` (đếm bằng Python cùng mẫu `^\s*(test|testWidgets)\(` 2026-10-25 chiều, sau F1 + M11; trước đó 128), cộng `test/core/router/theo_doi_route_cong_khai_test.dart` (observer), ca ở `phien_dieu_phoi_that_test.dart`
   (hook `sauXacThucMatKhau` / `xoaKhoaApp` / `datLaiKhoaApp`), `auth_bloc_buoc_dang_xuat_test.dart` (thứ tự mở phiên với `PhienDieuPhoiThat` thật) và `noi_dung_cai_dat_khoa_app_test.dart` (viên *Đang bật*, kể cả `Mo(daBat:false)` và `Tat`).
-- Mốc toàn bộ: **8.017 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-25 sau bản vá cuối `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá ấy thêm 4 ca: hai ở
+- Mốc toàn bộ: **8.027 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-25 chiều sau F1 + M11 `4c7945ed`; trước đó 8.017 sau `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá ấy thêm 4 ca: hai ở
   `lop_khoa_app_roi_phien_test.dart` (`/login` tự `showDialog` → gỡ trước van; popup trên trang được bảo vệ không làm tín hiệu `true`) và hai ở `test/core/router/route_cong_khai_ten_route_test.dart`.
 - Mảng mới phải qua các quét sẵn có: 22 (`presentation/` không chạm CSDL), 25 (vị trí tệp — `core/router` là chủ đề sẵn có), 27 (không `<dynamic>` trần ở `data/` +
   `application/`), 38 (không log PII — **không** canh PIN / bí mật, bẫy 19). Không thêm test quét mới.
@@ -365,6 +365,8 @@ v31, tài khoản 10 — 134 giao dịch) kèm `FlutterSecureStorage.xml` (mã h
 | 150.000 | 796 ms |
 
 ≈ 5,3 ms / 1.000 vòng → **`kSoVongMacDinh` = 50.000** (dự kiến ~265 ms, lần đầu sau mở lạnh ~350 ms). PIN đặt ở 30.000 vẫn mở được (số vòng cất cùng băm).
+Đo lại ở 50.000 (release): **297 ms** đặt PIN · **330–357 ms** kiểm lần đầu sau mở lạnh · 330 ms khi app còn sống. Bản **debug**: phím cuối → Trang chủ
+**0,45–0,8 s** (chụp màn liên tục trên máy, lần kiểm thứ hai trong tiến trình).
 
 **C. Từng bước:**
 

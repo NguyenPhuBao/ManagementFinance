@@ -52,7 +52,8 @@ kế cuối — xem câu *"đổi 2026-10-25 sau soát Task 12"* ở mục 6 và
   mở khoá là thấy trang đó.
 - **Sai PIN:** lần thứ 5 → chờ 30 giây; 6 → 1 phút; 7 → 5 phút; từ 8 → 15 phút mỗi lần. Đang chờ: bàn phím khoá + đếm ngược.
 - **Quên PIN:** hộp hỏi lại → đăng xuất → đăng nhập lại cùng tài khoản thì dữ liệu máy giữ nguyên, khoá đã tắt (đặt lại nếu
-  muốn). Cần mạng.
+  muốn). Cần mạng. *Đổi 2026-10-25 (M11, người dùng chốt):* mọi lần đăng nhập bằng mật khẩu xoá khoá của tài khoản ấy thì app báo một
+  dòng *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"* (một lần).
 - **PIN gắn tài khoản trên máy;** đăng xuất xoá **vân tay** (khoá Keystore) ngay; cấu hình PIN xoá ở lần **đăng nhập bằng mật
   khẩu** kế tiếp (đổi 2026-10-25 sau soát Task 12 — mục 6). Màn Đăng nhập không có khoá app.
 - **Không đổi:** chia sẻ biên lai (`NhanBienLaiActivity`, không giao diện), nút *"Hoãn 1 ngày"* (chạy nền), engine nền tự trả /
@@ -155,6 +156,9 @@ khi kho đã có cấu hình chạy như `doi`.
 (đơn điệu, tính cả lúc máy ngủ, chỉ reset khi khởi động lại). Khoá khi **một trong hai** đo vượt mức, hoặc giờ tường lùi, hoặc đồng hồ
 khởi động âm (máy khởi động lại giữa chừng); đồng hồ khởi động `null` (web, Windows, iOS, lỗi) → chỉ còn giờ tường. Đừng thay bằng `Stopwatch`
 (không tính lúc máy ngủ).
+*Đổi 2026-10-25, F1 (nghiệm thu Realme, người dùng chọn):* `inactive` ∧ có cấu hình ∧ `mo` → `mo(che)` — lớp phủ vẽ nền đặc (không
+`ExcludeFocus`), vì engine vẽ lại khung cuối lên surface mới trước khi Dart nhận `resumed` (đo: lộ ~1 khung số dư) mà `hidden` / `paused`
+tới khi Flutter đã tắt vẽ khung. `resumed`: tới mức → `khoa`, chưa → gỡ che. `inactive` vẫn **không** đặt mốc rời (`KHOA_APP_FEATURE.md` bẫy 25).
 
 ## 7. Giao diện, kiểm thử, nghiệm thu (Phần 4 — đã duyệt)
 
