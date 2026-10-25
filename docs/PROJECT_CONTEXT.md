@@ -629,7 +629,8 @@ src/Backend/
   giả bằng máy chủ TCP không trả lời (máy bay không cắt `adb reverse`), khoá tài khoản thử bằng API admin rồi mở lại ngay. **Đạt:** D-1 (vẫn khoá) · 10 / P12 · 10a mạng treo
   + có mạng · M11 trên máy · 12a (socket `force_logout` khi đang khoá) · 12b (phiên chết lúc mở lạnh) — **C1 ba đường đạt theo video** (tách khung 1/60 s bằng WinRT,
   định vị bằng cỡ JPEG); 11 đạt có điều kiện (lượt đồng bộ đầu xong < 1 s, chưa chen được vào giữa). Lộ **M14**: `dongPhien` xoá alias vân tay **trước** POST đăng xuất →
-  đăng xuất bị cắt giữa chừng làm vân tay tự tắt với câu *"Vân tay trên máy đã thay đổi"* (sai lý do; an toàn không đổi) — chờ người dùng chọn hướng sửa. Quan sát
+  đăng xuất bị cắt giữa chừng làm vân tay tự tắt với câu *"Vân tay trên máy đã thay đổi"* (sai lý do; an toàn không đổi) → ✅ người dùng chọn sửa câu báo: Kotlin
+  trả mã mới `MAT_KHOA` khi alias không còn → *"Vân tay đã tắt — nhập mã PIN rồi bật lại trong Cài đặt"*; lặp D-1 trên Realme đạt. Quan sát
   ngoài khoá app: `Unhandled Exception: WebSocketConnectionClosed` từ `socket_io_client` khi server cắt socket. Script đo lưu `D:\FlowMoney-saoluu\cong-cu-do\`.
 
 - **Nghiệm thu Realme buổi 1 (2026-10-25 chiều, bản release, backend tắt — mục 10 `KHOA_APP_FEATURE.md`):** đạt bật / mở lạnh / tự khoá (30 s, Ngay,
@@ -654,7 +655,7 @@ tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu 
   van an toàn 3 s; bộ theo dõi bỏ qua `PopupRoute` — màn Đăng nhập mở hộp thoại lý do ngay khung đầu, không bỏ qua là luôn chờ hết van) — trước đó gỡ ngay lúc phiên mất làm lộ trang được bảo vệ dưới hiệu ứng sang Đăng nhập; **I1** tự khoá đo thêm bằng đồng hồ khởi động `CLOCK_BOOTTIME` qua `dart:ffi` (chỉnh giờ máy
   lùi không vượt khoá nữa); **I2** kho phân biệt vắng / hỏng (`docNghiemNgat`; hỏng → vẫn khoá, `kCauKhongKiemDuoc`); **I3** `batVanTay` khi đã bật không gọi kênh + chống chạm đôi mở hai trang PIN;
   **I4** hook `sauXacThucMatKhau` xoá PIN cũ ngay khi mật khẩu được chấp nhận (không đợi vòng đồng bộ đầu); mục nhỏ M1–M4, M6, M9, M10, T1, T5–T7.
-- **Test:** `flutter test` **8.035 pass / 10 skip** sau M5 + thanh trạng thái (`c5010e1b`, 2026-10-25 tối, 5 ph 25 s; mảng khoá app 148 ca / 18 tệp); **8.027** sau F1 + M11 (`4c7945ed`, 2026-10-25 chiều; mảng khoá app 142 ca); trước đó **8.017** (đo 2026-10-25 sau bản vá cuối `be3bdf26` — bộ theo dõi route bỏ qua hộp thoại, 3 ph 38 s theo log, +141 so với 7876; mốc trước đợt sửa 7.981), `flutter analyze` **20** (mức nền), `flutter build web --debug` đạt
+- **Test:** `flutter test` **8.037 pass / 10 skip** sau M14 (2026-10-25 tối, 5 ph 27 s; mảng khoá app 150 ca / 18 tệp); **8.035** sau M5 + thanh trạng thái (`c5010e1b`); **8.027** sau F1 + M11 (`4c7945ed`, 2026-10-25 chiều; mảng khoá app 142 ca); trước đó **8.017** (đo 2026-10-25 sau bản vá cuối `be3bdf26` — bộ theo dõi route bỏ qua hộp thoại, 3 ph 38 s theo log, +141 so với 7876; mốc trước đợt sửa 7.981), `flutter analyze` **20** (mức nền), `flutter build web --debug` đạt
   (import có điều kiện `dart:ffi`); mảng 128 ca / 16 tệp dưới `test/features/khoa_app/` + 1 ca `test/core/router/theo_doi_route_cong_khai_test.dart` (đếm grep 2026-10-25). Build `--release` đã dựng đạt ở Task 5
   (R8, manifest) — **chưa dựng lại sau đợt sửa cuối**, chưa chạy trên máy.
 - **Việc còn (đều ở `KHOA_APP_FEATURE.md`)** — *cập nhật 2026-10-25 chiều: (1) xong phần không đăng xuất, (2) xong (50.000), M11 đã làm — dòng đầu khối; câu dưới là ảnh chụp trước buổi 1:* (1) **nghiệm thu Realme** (mục 9: 23 bước + D / E; **không đăng xuất ở đầu buổi**, nhánh Đăng xuất chỉ sau khi kiểm danh tính CSDL + chép CSDL; điểm mới: **C1 quay màn hình 60 fps** ba đường, **I1** đồng hồ khởi động tăng khi

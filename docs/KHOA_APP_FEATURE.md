@@ -9,15 +9,16 @@
 > vân tay, thêm vân tay mới, I1 tách riêng bằng chỉnh giờ lùi, G100, G106, chạm đôi). Buổi đo bắt **F1** (quay lại app lộ ~1 khung nội
 > dung) → **đã sửa và đo lại đạt** (`Mo(che)` ở `inactive`, bẫy 25); **M11** (dòng nhắc *"Khoá ứng dụng đã tắt"*) làm theo người dùng chốt
 > (bẫy 24). `kSoVongMacDinh` = **50.000** theo số đo release. 🚧 **Còn mở:** ~~mọi bước có **đăng xuất**~~ (✅ Buổi 2b); TalkBack (nghe thật);
-> quét ảnh / PayOS / chạm thông báo khi khoá; 320 dp (ColorOS chặn `wm density`); M14.
+> quét ảnh / PayOS / chạm thông báo khi khoá; 320 dp (ColorOS chặn `wm density`).
 > ✅ **2026-10-25 tối (phiên 7, bản debug trên Realme):** **M5 đã sửa và đo đạt** — Back trên màn khoá đưa app xuống nền, tấm Quên PIN mở thì
 > Back = Huỷ (bẫy 14, `f1daea24`); **thanh trạng thái** màn khoá tự đặt kiểu trong suốt (bẫy 26, `f1daea24` + `c5010e1b`);
 > **`flutter_secure_storage` 9.2.4 → 10.3.4** (`f5a90f4b`) — kho thật 16 mục chuyển sang RSA-OAEP + AES-GCM, PIN / gói / mốc đồng bộ
 > còn nguyên (mục 10, *Buổi 2*); hệ quả với I2 ở bẫy 27. Cùng tối, **các bước đăng xuất** (mục 10, *Buổi 2b*, backend `PersonFinance`):
 > D-1 · 10 · 10a (mạng treo + có mạng) · 11 (có điều kiện) · 12a · 12b · M11 — **đạt**; **C1 ba đường đạt theo video** (tách khung 1/60 s).
-> Lộ **M14** (mục 8): đăng xuất bị cắt giữa chừng làm vân tay tự tắt với câu *"Vân tay trên máy đã thay đổi"*.
+> Lộ **M14** (mục 8): đăng xuất bị cắt giữa chừng làm vân tay tự tắt với câu *"Vân tay trên máy đã thay đổi"* → ✅ sửa cùng tối (mã `MAT_KHOA`,
+> câu *"Vân tay đã tắt…"*), đo lại trên Realme đạt.
 > Spec: `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (đã sửa theo thiết kế cuối 2026-10-25).
-> Mảng mã: `src/Client-app/lib/features/khoa_app/` (21 tệp, 2.401 dòng, đếm 2026-10-25 tối sau M5 + thanh trạng thái; chiều 2.310) +
+> Mảng mã: `src/Client-app/lib/features/khoa_app/` (21 tệp, 2.410 dòng, đếm 2026-10-25 tối sau M5 + thanh trạng thái + M14; chiều 2.310) +
 > `android/…/SinhTrac.kt` + hàm dùng chung `duaAppXuongNen` (`lib/shared/widgets/thoat_hai_lan.dart`).
 
 ## 1. Người dùng thấy gì
@@ -233,7 +234,7 @@ Chỗ nối ngoài mảng: `lib/main.dart` (dựng `KhoaAppCubit` + `TheoDoiRout
 19. **Không log PIN / bí mật / bản mã.** Mảng hiện **0** lời gọi `debugPrint` / `print` / `log`. ⚠️ **Quét 38 KHÔNG canh việc này** — nó chỉ bắt `.balance · .amount · .note · .args · .noiDung · .ghiChu`; thêm
     `debugPrint('$pin')` vẫn xanh. Phía Kotlin thì `kenh_sinh_trac_noi_day_test` cấm `Log.`. Dòng đo tạm ở bước B mục 9 chỉ in số mili-giây. Cất **bản mã + IV + SHA-256(bí mật)**, không bao giờ cất bí mật 32 byte
     (`Random.secure()`); so SHA-256 bằng `soSanhHangThoiGian` (hằng thời gian; ca M2 phủ khác ở byte đầu / giữa — bản sai `khac = a^b` từng lọt). (Một quét thật cho `pin` / `biMat` là việc mới, số 39 — ngoài phạm vi.)
-20. **Kênh Dart ↔ Kotlin khớp tay**: tên lệnh `trangThai · bat · mo · xoaHet`, khoá `idaccount · biMat · banMa · iv · hoTro · daDangKy · loi`, mã `HUY · VO_HIEU · TAM_KHOA · KHONG_HO_TRO · LOI`. `kenh_sinh_trac_noi_day_test`
+20. **Kênh Dart ↔ Kotlin khớp tay**: tên lệnh `trangThai · bat · mo · xoaHet`, khoá `idaccount · biMat · banMa · iv · hoTro · daDangKy · loi`, mã `HUY · VO_HIEU · MAT_KHOA · TAM_KHOA · KHONG_HO_TRO · LOI` (`MAT_KHOA` từ 2026-10-25 tối — M14: alias không còn ≠ khoá vô hiệu). `kenh_sinh_trac_noi_day_test`
     đọc `SinhTrac.kt`, `MainActivity.kt`, manifest — đòi `setUserAuthenticationParameters(0,`, `AUTH_BIOMETRIC_STRONG`, `cryptoObject?.cipher`, và `maxSdkVersion="29"` nằm trên chính phần tử `USE_FINGERPRINT` (T5) — và canh `MainActivity`
     vẫn `: FlutterActivity()` (đổi sang `FlutterFragmentActivity` là đụng G100).
 21. **`lintVitalRelease` có thể không chạy `NewApi` / `MissingPermission`** (mức error nhưng không fatal) — build release xanh chưa chứng minh P10 / P11; chỉ máy thật chứng minh được (và máy API 28–29, hiện không có).
@@ -301,10 +302,10 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 
 ## 7. Test và quét
 
-- **148 ca** khai báo trong 18 tệp dưới `test/features/khoa_app/` (đếm bằng Python cùng mẫu `^\s*(test|testWidgets)\(` 2026-10-25 tối, sau M5 + thanh trạng thái: +5 `lop_khoa_app_back_test.dart`
-  (GoRouter thật), +2 `lop_khoa_app_thanh_trang_thai_test.dart`, +1 lớp mờ tấm Quên PIN ở `lop_khoa_app_test.dart`; chiều 140, trước đó 128), cộng `test/core/router/theo_doi_route_cong_khai_test.dart` (observer), ca ở `phien_dieu_phoi_that_test.dart`
+- **150 ca** khai báo trong 18 tệp dưới `test/features/khoa_app/` (đếm bằng Python cùng mẫu `^\s*(test|testWidgets)\(` 2026-10-25 tối, sau M5 + thanh trạng thái + M14: +5 `lop_khoa_app_back_test.dart`
+  (GoRouter thật), +2 `lop_khoa_app_thanh_trang_thai_test.dart`, +1 lớp mờ tấm Quên PIN ở `lop_khoa_app_test.dart`, +2 `MAT_KHOA` (service, cubit); chiều 140, trước đó 128), cộng `test/core/router/theo_doi_route_cong_khai_test.dart` (observer), ca ở `phien_dieu_phoi_that_test.dart`
   (hook `sauXacThucMatKhau` / `xoaKhoaApp` / `datLaiKhoaApp`), `auth_bloc_buoc_dang_xuat_test.dart` (thứ tự mở phiên với `PhienDieuPhoiThat` thật) và `noi_dung_cai_dat_khoa_app_test.dart` (viên *Đang bật*, kể cả `Mo(daBat:false)` và `Tat`).
-- Mốc toàn bộ: **8.035 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-25 tối sau M5 + thanh trạng thái `c5010e1b`, trên `flutter_secure_storage` 10.3.4; chiều 8.027 sau F1 + M11 `4c7945ed`; trước đó 8.017 sau `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá `be3bdf26` thêm 4 ca: hai ở
+- Mốc toàn bộ: **8.037 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-25 tối sau M14; 8.035 sau M5 + thanh trạng thái `c5010e1b`, trên `flutter_secure_storage` 10.3.4; chiều 8.027 sau F1 + M11 `4c7945ed`; trước đó 8.017 sau `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá `be3bdf26` thêm 4 ca: hai ở
   `lop_khoa_app_roi_phien_test.dart` (`/login` tự `showDialog` → gỡ trước van; popup trên trang được bảo vệ không làm tín hiệu `true`) và hai ở `test/core/router/route_cong_khai_ten_route_test.dart`.
 - Mảng mới phải qua các quét sẵn có: 22 (`presentation/` không chạm CSDL), 25 (vị trí tệp — `core/router` là chủ đề sẵn có), 27 (không `<dynamic>` trần ở `data/` +
   `application/`), 38 (không log PII — **không** canh PIN / bí mật, bẫy 19). Không thêm test quét mới.
@@ -321,7 +322,11 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 - **M12** `BIOMETRIC_ERROR_TIMEOUT` → `LOI` (nên `HUY`), `SECURITY_UPDATE_REQUIRED` → nên `KHONG_HO_TRO` (người chờ ở màn khoá thấy câu chung *"Không mở được bằng vân tay — nhập mã PIN"*); `SinhTrac.kt` `xoaHet` một `try` chung quanh `forEach deleteEntry`.
   Đo Realme 2026-10-25: hộp vân tay đứng **78 s không tự hết giờ** — `TIMEOUT` gần như không gặp trên máy này; ưu tiên thấp.
 - **M13** Lớp phủ không nhận phím số của bàn phím vật lý (chỉ Tab + Enter từng phím) — để lại, đã ghi.
-- **M14** (nghiệm thu Realme 2026-10-25 tối, bước D-1) Đăng xuất bị cắt giữa chừng → vân tay **tự tắt** với câu báo **sai lý do**. `AuthBloc._onLogoutRequested`
+- ~~**M14**~~ — ✅ **đóng 2026-10-25 tối** (người dùng chọn *sửa câu báo*): Kotlin `mo` trả mã mới **`MAT_KHOA`** khi `getKey` ra `null` (alias không còn) —
+  `KeyPermanentlyInvalidatedException` vẫn là `VO_HIEU`; Dart `LoiSinhTrac.matKhoa` → service tự tắt vân tay như `voHieu`, cubit báo **`kCauVanTayDaTat`**
+  *"Vân tay đã tắt — nhập mã PIN rồi bật lại trong Cài đặt"*. Thứ tự đăng xuất (`dongPhien` trước POST) **giữ nguyên** (bẫy 4). Test: 4 ca (dịch mã, nối dây Kotlin
+  đòi `if (khoa == null)` → `"MAT_KHOA"`, service, cubit) — đỏ trước khi sửa. Đo Realme: lặp D-1 → màn khoá báo đúng câu mới, vẫn khoá. Mô tả gốc:
+  (nghiệm thu Realme 2026-10-25 tối, bước D-1) Đăng xuất bị cắt giữa chừng → vân tay **tự tắt** với câu báo **sai lý do**. `AuthBloc._onLogoutRequested`
   chạy `dongPhien()` (xoá alias Keystore vân tay, bẫy 4) **trước** `authRepository.logout()` (POST rồi mới xoá token); giết tiến trình giữa lúc POST treo thì token +
   cấu hình PIN còn (đúng bẫy 5 — vẫn khoá) nhưng alias đã mất → lần mở sau kênh trả `VO_HIEU` → `tatVanTay` + *"Vân tay trên máy đã thay đổi — nhập mã PIN rồi bật lại
   trong Cài đặt"* dù người dùng không đổi vân tay nào. An toàn không đổi (vẫn khoá, PIN mở). Hướng sửa (chưa chọn — hỏi người dùng): Kotlin `mo` phân biệt *alias không còn*
@@ -480,7 +485,7 @@ bằng adb; khoá tài khoản thử bằng API admin `PATCH /api/admin/updatest
 
 | Bước | Kết quả |
 |---|---|
-| D-1 Giết tiến trình giữa lúc đăng xuất | ✅ Máy chủ treo → *Quên mã PIN?* → *Đăng xuất* (POST `/api/auth/logout` tới máy chủ treo lúc 18:58:31,5; tấm giữ hai nút khoá — M9) → force-stop sau 2,4 s → trả backend thật → mở lại: **vẫn khoá**, PIN mở được, vẫn đăng nhập. ⚠️ Lộ **M14**: màn khoá báo *"Vân tay trên máy đã thay đổi…"*, nút vân tay biến mất — `dongPhien` đã xoá alias trước POST (mục 8) |
+| D-1 Giết tiến trình giữa lúc đăng xuất | ✅ Máy chủ treo → *Quên mã PIN?* → *Đăng xuất* (POST `/api/auth/logout` tới máy chủ treo lúc 18:58:31,5; tấm giữ hai nút khoá — M9) → force-stop sau 2,4 s → trả backend thật → mở lại: **vẫn khoá**, PIN mở được, vẫn đăng nhập. ⚠️ Lộ **M14**: màn khoá báo *"Vân tay trên máy đã thay đổi…"*, nút vân tay biến mất — `dongPhien` đã xoá alias trước POST (mục 8). → Sửa (`MAT_KHOA`), lặp lại D-1 lúc 19:37: màn khoá báo *"Vân tay đã tắt — nhập mã PIN rồi bật lại trong Cài đặt"*, vẫn khoá ✅ |
 | 10a mạng treo **[quay]** | ✅ Tấm khoá nút suốt 30 s POST treo → hết giờ → màn Đăng nhập. **Video** (`Record_2026-10-25-19-00-42.mp4` trên máy, t = 98,600 → 98,717 s): màn khoá + tấm chuyển **thẳng** sang Đăng nhập, mọi khung khác biệt sau đó là màn Đăng nhập — **C1 đường 1 đạt** |
 | 10 / P12 | ✅ Force-stop → mở lại: màn Đăng nhập, chạm ô *Tên đăng nhập* → nhận tiêu điểm, bàn phím hiện, không lớp phủ |
 | M11 trên máy | ✅ Đăng nhập lại bằng mật khẩu → **không** màn khoá, dòng nhắc *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"*, hàng *Khoá ứng dụng* ở Cá nhân không còn viên *Đang bật*, dữ liệu còn (kéo về cùng mốc cũ — không bị dọn). Nhắc cả sau đăng nhập ở đường cưỡng chế (12b) |
