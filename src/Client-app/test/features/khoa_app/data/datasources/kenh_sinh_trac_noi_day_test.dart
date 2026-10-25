@@ -25,9 +25,12 @@ void main() {
     expect(kt, contains('"flowmoney_khoa_app_"'));
     expect(kt, isNot(contains('DEVICE_CREDENTIAL')), reason: 'MASWE-0021: không rơi về mã máy');
     expect(kt, isNot(contains('Log.')), reason: 'không log bí mật / bản mã');
-    for (final ma in ['HUY', 'VO_HIEU', 'TAM_KHOA', 'KHONG_HO_TRO', 'LOI']) {
+    for (final ma in ['HUY', 'VO_HIEU', 'MAT_KHOA', 'TAM_KHOA', 'KHONG_HO_TRO', 'LOI']) {
       expect(kt, contains('"$ma"'), reason: 'mã lỗi khớp docLoiSinhTrac');
     }
+    // M14: alias KHÔNG CÒN (đăng xuất bị cắt giữa chừng đã xoá nó) ≠ khoá bị vô hiệu (thêm vân tay mới) — hai câu báo khác nhau.
+    expect(RegExp(r'if \(khoa == null\) \{\s*result\.success\(loi\("MAT_KHOA"\)\)').hasMatch(kt), isTrue,
+        reason: 'getKey trả null phải ra MAT_KHOA, không phải VO_HIEU');
   });
 
   test('SinhTrac.kt: tên lệnh và khoá map khớp phía Dart (lệch là hỏng im lặng)', () {

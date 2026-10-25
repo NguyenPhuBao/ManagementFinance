@@ -145,15 +145,16 @@ class KhoaAppService {
     await _kenh.xoaHet();
   }
 
-  /// `null` = mở được (đếm sai về 0). Khoá Keystore vô hiệu → tự tắt vân tay.
+  /// `null` = mở được (đếm sai về 0). Khoá Keystore vô hiệu hoặc alias không còn → tự tắt vân tay.
   Future<LoiSinhTrac?> moBangVanTay(int idaccount) async {
     final c = await _store.doc(idaccount);
     final v = c?.vanTay;
     if (c == null || v == null) return LoiSinhTrac.khongHoTro;
     final kq = await _kenh.mo(idaccount, banMa: v.banMa, iv: v.iv);
-    if (kq.loi == LoiSinhTrac.voHieu) {
+    final loiKhoa = kq.loi;
+    if (loiKhoa == LoiSinhTrac.voHieu || loiKhoa == LoiSinhTrac.matKhoa) {
       await tatVanTay(idaccount);
-      return LoiSinhTrac.voHieu;
+      return loiKhoa;
     }
     final biMat = kq.biMat;
     if (kq.loi != null || biMat == null) return kq.loi ?? LoiSinhTrac.loi;
@@ -163,7 +164,8 @@ class KhoaAppService {
   }
 
   /// Đăng xuất (hook `PhienDieuPhoiThat.dongPhien`): chỉ khoá Keystore — cấu hình PIN còn, nên máy vẫn đòi PIN nếu đăng
-  /// xuất bị ngắt giữa chừng. Vân tay cũ trong cấu hình gặp alias mất → `moBangVanTay` trả `voHieu` và tự tắt.
+  /// xuất bị ngắt giữa chừng. Vân tay cũ trong cấu hình gặp alias mất → `moBangVanTay` trả `matKhoa` và tự tắt (M14: câu báo
+  /// *"Vân tay đã tắt"*, không nói *"trên máy đã thay đổi"*).
   Future<void> xoaVanTayHet() async {
     try {
       await _kenh.xoaHet();

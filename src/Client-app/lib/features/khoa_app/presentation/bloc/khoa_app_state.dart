@@ -2,6 +2,9 @@ import 'package:equatable/equatable.dart';
 
 const String kCauSaiPin = 'Mã PIN không đúng';
 const String kCauVanTayDaDoi = 'Vân tay trên máy đã thay đổi — nhập mã PIN rồi bật lại trong Cài đặt';
+
+/// M14: alias Keystore không còn (đăng xuất bị cắt giữa chừng) — người dùng không đổi vân tay nào, đừng nói "đã thay đổi".
+const String kCauVanTayDaTat = 'Vân tay đã tắt — nhập mã PIN rồi bật lại trong Cài đặt';
 const String kCauVanTayTamKhoa = 'Vân tay tạm bị khoá — thử lại sau hoặc nhập mã PIN';
 const String kCauVanTayHong = 'Không mở được bằng vân tay — nhập mã PIN';
 

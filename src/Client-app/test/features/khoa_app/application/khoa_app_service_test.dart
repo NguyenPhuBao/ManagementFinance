@@ -122,6 +122,15 @@ void main() {
     expect(kenh.soLanXoa, greaterThan(0));
   });
 
+  test('moBangVanTay: MAT_KHOA (alias đã bị xoá — đăng xuất bị cắt giữa chừng, M14) → tự tắt vân tay, trả matKhoa', () async {
+    await sv.datPin(10, '246810');
+    await sv.batVanTay(10);
+    kenh.loiMo = LoiSinhTrac.matKhoa;
+    expect(await sv.moBangVanTay(10), LoiSinhTrac.matKhoa);
+    expect((await kho.doc(10))!.vanTay, isNull, reason: 'cấu hình còn trỏ alias đã mất — phải tắt, không thì mỗi lần khoá lại báo lỗi');
+    expect(kenh.soLanXoa, greaterThan(0));
+  });
+
   test('moBangVanTay khi chưa bật vân tay → khongHoTro', () async {
     await sv.datPin(10, '246810');
     expect(await sv.moBangVanTay(10), LoiSinhTrac.khongHoTro);

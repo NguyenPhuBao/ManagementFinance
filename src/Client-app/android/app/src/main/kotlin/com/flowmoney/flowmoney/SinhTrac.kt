@@ -126,8 +126,10 @@ class SinhTrac(private val activity: Activity) : MethodChannel.MethodCallHandler
     private fun mo(id: Int, banMaB64: String, ivB64: String, result: MethodChannel.Result) {
         val cipher = try {
             val khoa = KeyStore.getInstance(KHO).apply { load(null) }.getKey(TIEN_TO + id, null) as? SecretKey
+            // Alias KHÔNG CÒN (đăng xuất xoá nó trước POST rồi bị cắt giữa chừng — M14) ≠ khoá bị vô hiệu (thêm vân tay mới):
+            // hai câu báo khác nhau ở màn khoá.
             if (khoa == null) {
-                result.success(loi("VO_HIEU"))
+                result.success(loi("MAT_KHOA"))
                 return
             }
             Cipher.getInstance(PHEP).apply {

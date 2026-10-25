@@ -143,6 +143,17 @@ void main() {
     expect(s.lanKiem, 1);
   });
 
+  test('vân tay: MAT_KHOA (alias mất, M14) → coVanTay false + câu "Vân tay đã tắt", KHÔNG nói "trên máy đã thay đổi"', () async {
+    await sv.datPin(10, '246810');
+    await sv.batVanTay(10);
+    await moPhien(10);
+    kenh.loiMo = LoiSinhTrac.matKhoa;
+    await cubit.moBangVanTay();
+    final s = cubit.state as KhoaAppKhoa;
+    expect([s.coVanTay, s.loiNhan], [false, kCauVanTayDaTat],
+        reason: 'người dùng không đổi vân tay nào — câu "đã thay đổi" là sai lý do (nghiệm thu D-1)');
+  });
+
   test('vân tay: thành công → Mo; HUY → giữ nguyên; VO_HIEU → coVanTay false + câu', () async {
     await sv.datPin(10, '246810');
     await sv.batVanTay(10);

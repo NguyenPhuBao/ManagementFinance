@@ -8,11 +8,14 @@ import 'package:flutter/services.dart';
 
 const String kKenhSinhTrac = 'flowmoney/sinh_trac';
 
-enum LoiSinhTrac { huy, voHieu, tamKhoa, khongHoTro, loi }
+/// `voHieu` = khoá Keystore bị vô hiệu (thêm vân tay mới); `matKhoa` = alias không còn (đăng xuất xoá nó rồi bị cắt giữa chừng
+/// — M14). Cả hai: tự tắt vân tay, nhưng câu báo khác nhau.
+enum LoiSinhTrac { huy, voHieu, matKhoa, tamKhoa, khongHoTro, loi }
 
 LoiSinhTrac docLoiSinhTrac(Object? ma) => switch (ma) {
       'HUY' => LoiSinhTrac.huy,
       'VO_HIEU' => LoiSinhTrac.voHieu,
+      'MAT_KHOA' => LoiSinhTrac.matKhoa,
       'TAM_KHOA' => LoiSinhTrac.tamKhoa,
       'KHONG_HO_TRO' => LoiSinhTrac.khongHoTro,
       _ => LoiSinhTrac.loi,
@@ -55,7 +58,7 @@ abstract class KenhSinhTrac {
   /// Hộp "Chạm vân tay để bật" → mã hoá [biMat] bằng khoá Keystore vừa tạo cho [idaccount].
   Future<KetQuaBatVanTay> bat(int idaccount, Uint8List biMat);
 
-  /// Hộp "Mở FlowMoney" → giải mã. Khoá vô hiệu (thêm vân tay mới) → `voHieu`, KHÔNG hiện hộp.
+  /// Hộp "Mở FlowMoney" → giải mã. Khoá vô hiệu (thêm vân tay mới) → `voHieu`; alias không còn → `matKhoa`; cả hai KHÔNG hiện hộp.
   Future<KetQuaMoVanTay> mo(int idaccount, {required String banMa, required String iv});
 
   /// Xoá mọi alias `flowmoney_khoa_app_*`.

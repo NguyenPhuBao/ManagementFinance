@@ -269,12 +269,13 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
     final cau = switch (loi) {
       LoiSinhTrac.huy => null,
       LoiSinhTrac.voHieu => kCauVanTayDaDoi,
+      LoiSinhTrac.matKhoa => kCauVanTayDaTat,
       LoiSinhTrac.tamKhoa => kCauVanTayTamKhoa,
       LoiSinhTrac.khongHoTro || LoiSinhTrac.loi => kCauVanTayHong,
     };
     if (cau == null) return;
     emit(KhoaAppKhoa(
-      coVanTay: loi != LoiSinhTrac.voHieu,
+      coVanTay: loi != LoiSinhTrac.voHieu && loi != LoiSinhTrac.matKhoa,
       soLanSai: hien.soLanSai,
       choDen: hien.choDen,
       lanKhoa: hien.lanKhoa,
