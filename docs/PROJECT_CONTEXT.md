@@ -614,31 +614,38 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-24)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-25)
 
-### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong, CHƯA nghiệm thu máy)
+### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối, CHƯA nghiệm thu máy)
 
 Người dùng chọn *"Bảo mật tiếp"* sau soát bảo mật (khối 🔒 bên dưới) và yêu cầu đối chiếu thị trường (khảo sát 2026-10-24, spec mục 2).
 Spec `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (người dùng duyệt từng phần; sau soát Task 12 đổi thân spec
-mục 4/5/6 — đăng xuất chỉ xoá alias Keystore, cấu hình PIN xoá ở `sauDangNhap`), kế hoạch 13 task (gitignore) thi công bằng agent con
-(Fable preflight 16 phát hiện · Sonnet thực thi · Opus soát từng task), dải commit `a0c6dacf..92b69200` (22 commit, đếm 2026-10-25).
-Tài liệu bàn giao đầy đủ: **`docs/KHOA_APP_FEATURE.md`** (quyết định, luồng, bản đồ tệp, 21 bẫy, Stitch, checklist nghiệm thu).
+mục 4/5/6 — đăng xuất chỉ xoá alias Keystore; sau review toàn nhánh (I4) cấu hình PIN xoá ở hook `sauXacThucMatKhau`, ngay sau `login()`), kế hoạch 13 task (gitignore) thi công bằng agent con
+(Fable preflight 16 phát hiện · Sonnet thực thi · Opus soát từng task + review toàn nhánh), dải commit `a0c6dacf..393e626f` (30 commit, đếm 2026-10-25: 22 thi công · `f6699e64`
+tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu bàn giao đầy đủ: **`docs/KHOA_APP_FEATURE.md`** (quyết định, luồng, bản đồ tệp, mô hình đe doạ mục 1b, 24 bẫy, Stitch, checklist nghiệm thu).
 
 - **Làm gì:** Cá nhân → Bảo mật & Tuỳ chọn → *Khoá ứng dụng*: bật = đặt PIN 6 số (PBKDF2-HMAC-SHA256 Dart thuần, **cục bộ**, không lên
   server) + tuỳ chọn vân tay (kênh Kotlin `flowmoney/sinh_trac`, `BiometricPrompt` + `CryptoObject` trên khoá AES-GCM `AndroidKeyStore`,
   **không** `local_auth`); *Tự khoá sau* Ngay / **30 giây** / 1 / 5 phút; sai PIN 5 lần → chờ 30 s, 6 → 1 ph, 7 → 5 ph, ≥ 8 → 15 ph (đếm giữ
   qua lần tắt app); *Quên mã PIN?* = đăng xuất → đăng nhập lại bằng mật khẩu. Miễn phí mọi gói. Lớp phủ nằm ngoài `Navigator`.
-- **Test:** `flutter test` **7981 pass / 10 skip** (đo 2026-10-25, 9 ph 34 s, +105 so với 7876), `flutter analyze` **20** (mức nền); riêng mảng 98 ca / 13 tệp dưới
-  `test/features/khoa_app/` (đếm 2026-10-25). Build `--release` đã dựng đạt ở Task 5 (R8, manifest) — chưa chạy trên máy.
-- **Việc còn (đều ở `KHOA_APP_FEATURE.md`):** (1) **nghiệm thu Realme** (mục 9: bước 0, 1–10, 7b, 9b/9c, TalkBack, Tab/Enter, 360 dp) — người
-  dùng hoãn sang phiên sau; (2) **đo số vòng PBKDF2 trên bản release** (`kSoVongMacDinh` 30.000 là số tạm, mục tiêu 200–300 ms); (3) minor còn
-  mở mục 8 — đáng xem trước: ca ghim "đang chờ → không băm", `batVanTay` chưa kiểm vân tay đã bật, hai chú thích lệch mã sau đổi thiết kế
-  (`phien_dieu_phoi_that_test.dart:176-179`, `khoa_app_store.dart:17`, `phien_dieu_phoi.dart:28-32`); (4) đơn CAN-LAM 51 đã thêm banner —
+- **Review toàn nhánh (Opus, 2026-10-25) → đợt sửa cuối:** **C1** (Critical) lớp che `KhoaAppDangRoi` giữ tới khi router đứng yên ở route công khai (`TheoDoiRouteCongKhai` + `AppRouter.laRouteCongKhai`,
+  van an toàn 3 s) — trước đó gỡ ngay lúc phiên mất làm lộ trang được bảo vệ dưới hiệu ứng sang Đăng nhập; **I1** tự khoá đo thêm bằng đồng hồ khởi động `CLOCK_BOOTTIME` qua `dart:ffi` (chỉnh giờ máy
+  lùi không vượt khoá nữa); **I2** kho phân biệt vắng / hỏng (`docNghiemNgat`; hỏng → vẫn khoá, `kCauKhongKiemDuoc`); **I3** `batVanTay` khi đã bật không gọi kênh + chống chạm đôi mở hai trang PIN;
+  **I4** hook `sauXacThucMatKhau` xoá PIN cũ ngay khi mật khẩu được chấp nhận (không đợi vòng đồng bộ đầu); mục nhỏ M1–M4, M6, M9, M10, T1, T5–T7.
+- **Test:** `flutter test` **8.013 pass / 10 skip** (đo 2026-10-25 bởi đợt sửa cuối, 3 ph 37 s theo log, +137 so với 7876; mốc trước đợt sửa 7.981), `flutter analyze` **20** (mức nền), `flutter build web --debug` đạt
+  (import có điều kiện `dart:ffi`); mảng 128 ca / 16 tệp dưới `test/features/khoa_app/` + 1 ca `test/core/router/theo_doi_route_cong_khai_test.dart` (đếm grep 2026-10-25). Build `--release` đã dựng đạt ở Task 5
+  (R8, manifest) — **chưa dựng lại sau đợt sửa cuối**, chưa chạy trên máy.
+- **Việc còn (đều ở `KHOA_APP_FEATURE.md`):** (1) **nghiệm thu Realme** (mục 9: 23 bước + D / E; **không đăng xuất ở đầu buổi**, nhánh Đăng xuất chỉ sau khi kiểm danh tính CSDL + chép CSDL; điểm mới: **C1 quay màn hình 60 fps** ba đường, **I1** đồng hồ khởi động tăng khi
+  tắt màn hình + chỉnh giờ lùi vẫn khoá, G100 gỡ khỏi Đa nhiệm) — người dùng hoãn sang phiên sau; (2) **đo số vòng PBKDF2 trên bản release** (`kSoVongMacDinh` 30.000 là số tạm, mục tiêu 200–300 ms); (3) minor còn
+  mở mục 8: M5 Back khi khoá pop route dưới · M7 `_lamTuoiKhoa` đè `lanKiem` · M8 `choDen` tương lai xa · **M11 mọi đăng nhập mật khẩu tắt khoá im lặng (hỏi người dùng có muốn dòng nhắc)** · M12 `TIMEOUT` → `LOI` · M13 phím vật lý; (4) đơn CAN-LAM 51 đã thêm banner —
   backend có thể tả lại §2.3 `01_XAC_THUC_VA_BAO_MAT.md` theo spec; (5) nâng `flutter_secure_storage` 9 → 10 trình riêng (cấu hình khoá app nằm
   trong kho ấy — spec mục 9).
 - ⚠️ **Đổi thiết kế sau soát (bẫy lớn nhất):** đăng xuất xoá cấu hình PIN ở `dongPhien` thì giết tiến trình giữa `logout()` (POST trước, xoá
-  token sau) là mở lại vào thẳng app không PIN — nay `dongPhien` chỉ xoá alias, cấu hình xoá ở `PhienDieuPhoiThat.sauDangNhap` (chỉ sau đăng nhập
-  mật khẩu thành công).
+  token sau) là mở lại vào thẳng app không PIN — nay `dongPhien` chỉ xoá alias; cấu hình xoá ở hook `PhienDieuPhoi.sauXacThucMatKhau` (chỉ sau đăng nhập
+  mật khẩu thành công, gọi ngay sau `login()`; **không** ở `moPhienCucBo`, **không** ở `sauDangNhap`). Hệ quả đã ghi ở mục 1b tài liệu: mọi đăng nhập mật khẩu tắt khoá; Quên PIN rồi đăng nhập tài khoản KHÁC thì dữ liệu cục bộ
+  tài khoản cũ bị dọn (`purgeDataForOtherAccounts`).
+- ⚠️ **Ghi nhận cho phiên sau:** khoá là lớp giao diện — SQLite không mã hoá, thông báo trên khay vẫn hiện, chụp màn hình được, ảnh Đa nhiệm chỉ trống từ Android 13, khuôn mặt Class 2 không dùng được, API 24–27 chỉ PIN (mục 1b).
+  Quét 38 **không** canh log PIN / bí mật (chỉ `.balance · .amount · .note · .args · .noiDung · .ghiChu`) — bẫy 19.
 
 ### 🔒 Soát bảo mật toàn client-app (2026-10-24) — 0 lỗ hổng đạt ngưỡng; bốn đợt siết; đợt 5 soát CVE thư viện (vá Flutter `GHSA-frr6-h895-5pxp`); đợt 7 (referrer biên lai, lịch nhắc mất sau force-stop)
 
