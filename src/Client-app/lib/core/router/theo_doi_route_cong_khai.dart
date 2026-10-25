@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show ValueListenable, ValueNotifier;
 import 'package:flutter/widgets.dart';
 
@@ -19,22 +21,27 @@ class TheoDoiRouteCongKhai extends NavigatorObserver {
   ValueListenable<bool> get dungYenOCongKhai => _dungYen;
 
   Route<dynamic>? _tren;
-  AnimationController? _hieuUng;
+  Animation<double>? _hieuUng;
 
   void _datTren(Route<dynamic>? r) {
     _hieuUng?.removeStatusListener(_khiTrangThai);
     _tren = r;
-    _hieuUng = r is TransitionRoute ? r.controller : null;
+    _hieuUng = r is TransitionRoute ? r.animation : null;
     _hieuUng?.addStatusListener(_khiTrangThai);
     _tinh();
   }
 
-  void _khiTrangThai(AnimationStatus _) => _tinh();
+  // Hoãn một microtask: lúc `didPush`, `animation` (ProxyAnimation) báo `completed` thoáng qua rồi mới sang `forward` ngay
+  // trong cùng lời gọi (đo bằng ca GoRouter thật) — đọc ngay sẽ tưởng hiệu ứng đã xong. Sau microtask thì trạng thái thật.
+  void _khiTrangThai(AnimationStatus _) => scheduleMicrotask(_tinh);
+
+  bool _daHuy = false;
 
   void _tinh() {
+    if (_daHuy) return;
     final r = _tren;
     final h = _hieuUng;
-    _dungYen.value = r != null && laCongKhai(r.settings.name) && (h == null || (h.status == AnimationStatus.completed && h.value == h.upperBound));
+    _dungYen.value = r != null && laCongKhai(r.settings.name) && (h == null || h.status == AnimationStatus.completed);
   }
 
   @override
@@ -54,6 +61,7 @@ class TheoDoiRouteCongKhai extends NavigatorObserver {
   }
 
   void dispose() {
+    _daHuy = true;
     _hieuUng?.removeStatusListener(_khiTrangThai);
     _dungYen.dispose();
   }
