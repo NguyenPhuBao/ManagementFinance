@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../shared/theme/app_colors.dart';
+import '../../../../../shared/theme/kieu_thanh_trang_thai.dart';
 import '../../../../../shared/widgets/thoat_hai_lan.dart';
 import '../../bloc/khoa_app_cubit.dart';
 import '../../bloc/khoa_app_state.dart';
@@ -86,22 +87,16 @@ class _LopKhoaAppState extends State<LopKhoaApp> with WidgetsBindingObserver {
   }
 }
 
-/// Thanh trạng thái của màn khoá: trong suốt, biểu tượng tối trên nền kem — cùng kiểu AppBar Material 3 đặt cho trang có
-/// AppBar. Không có lớp này thì màn khoá ăn theo trang nằm dưới: dải xám 25 % đen (mặc định cửa sổ Android) ở Trang chủ,
-/// trong suốt ở trang có AppBar (nghiệm thu Realme 2026-10-25). Flutter không tự trả kiểu cũ khi lớp này biến mất — trang
-/// không có `AnnotatedRegion` giữ kiểu này tới khi một trang khác đặt kiểu của nó (như sau khi ghé một trang có AppBar).
+/// Thanh trạng thái của màn khoá: kiểu chung của app (`kKieuThanhTrangThaiSang` — trong suốt, biểu tượng tối trên nền kem).
+/// Màn khoá vẫn tự bọc vì trang dưới có thể đặt kiểu khác (trang có AppBar màu, màn Quét nền tối) — không có lớp này thì màn
+/// khoá ăn theo trang nằm dưới (nghiệm thu Realme 2026-10-25). Gỡ lớp này thì vùng gốc (`VungThanhTrangThaiGoc`) hoặc vùng
+/// của trang dưới được tìm thấy lại.
 class _KieuThanhTrangThaiKhoa extends StatelessWidget {
   const _KieuThanhTrangThaiKhoa({required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
-        value: const SystemUiOverlayStyle(
-          statusBarColor: Color(0x00000000),
-          statusBarIconBrightness: Brightness.dark,
-          statusBarBrightness: Brightness.light,
-        ),
-        child: child,
-      );
+  Widget build(BuildContext context) =>
+      AnnotatedRegion<SystemUiOverlayStyle>(value: kKieuThanhTrangThaiSang, child: child);
 }

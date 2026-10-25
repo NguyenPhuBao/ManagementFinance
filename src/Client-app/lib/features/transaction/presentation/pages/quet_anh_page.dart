@@ -17,6 +17,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -39,6 +40,7 @@ import '../../domain/doc_anh_gemma.dart' show KetQuaGemmaAnh;
 import '../../domain/doc_anh_quet.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/theme/kieu_thanh_trang_thai.dart';
 
 enum NguonAnh { mayAnh, thuVien }
 
@@ -487,50 +489,54 @@ class _QuetAnhPageState extends State<QuetAnhPage> {
       onPopInvokedWithResult: (daPop, _) {
         if (!daPop) _bamHuy();
       },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.file(
-              File(widget.duongDanAnh),
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const ColoredBox(color: Colors.black),
-            ),
-            BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: ColoredBox(color: Colors.black.withValues(alpha: 0.45)),
-            ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    const Spacer(),
-                    const CircularProgressIndicator(color: Colors.white),
-                    const SizedBox(height: 20),
-                    Text(
-                      _pha == _Pha.ai ? 'Đang đọc bằng AI…' : 'Đang đọc ảnh…',
-                      key: const Key('quet-trang-thai'),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                    const Spacer(),
-                    OutlinedButton(
-                      key: const Key('quet-huy'),
-                      onPressed: _huyLuat ? null : _bamHuy,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white70),
-                        minimumSize: const Size(160, 48),
+      // Nền đen toàn màn, không AppBar: biểu tượng thanh trạng thái sáng (kiểu gốc của app là biểu tượng tối).
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: kKieuThanhTrangThaiToi,
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.file(
+                File(widget.duongDanAnh),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const ColoredBox(color: Colors.black),
+              ),
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: ColoredBox(color: Colors.black.withValues(alpha: 0.45)),
+              ),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      const Spacer(),
+                      const CircularProgressIndicator(color: Colors.white),
+                      const SizedBox(height: 20),
+                      Text(
+                        _pha == _Pha.ai ? 'Đang đọc bằng AI…' : 'Đang đọc ảnh…',
+                        key: const Key('quet-trang-thai'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                       ),
-                      child: Text(_huyLuat ? 'Đang huỷ…' : 'Huỷ'),
-                    ),
-                  ],
+                      const Spacer(),
+                      OutlinedButton(
+                        key: const Key('quet-huy'),
+                        onPressed: _huyLuat ? null : _bamHuy,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white70),
+                          minimumSize: const Size(160, 48),
+                        ),
+                        child: Text(_huyLuat ? 'Đang huỷ…' : 'Huỷ'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
