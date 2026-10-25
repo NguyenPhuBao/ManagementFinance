@@ -20,12 +20,15 @@ class LopKhoaApp extends StatelessWidget {
     return BlocBuilder<KhoaAppCubit, TrangThaiKhoaApp>(
       builder: (context, s) {
         final che = s is KhoaAppDangXet || s is KhoaAppDangRoi || s is KhoaAppKhoa;
+        // F1: `Mo(che)` — app vừa mất tiêu điểm khi khoá bật; lớp ĐẶC để khung cuối trước khi rời màn không mang nội dung.
+        // Chỉ che HÌNH, không vào `che` (ExcludeFocus): kéo thanh thông báo lúc đang gõ mà cướp tiêu điểm là đóng bàn phím.
+        final dac = s is KhoaAppDangXet || s is KhoaAppDangRoi || (s is KhoaAppMo && s.che);
         return Stack(
           fit: StackFit.expand,
           children: [
             // Trình đọc màn hình không được đọc nội dung dưới lớp khoá.
             ExcludeFocus(excluding: che, child: ExcludeSemantics(excluding: che, child: child)),
-            if (s is KhoaAppDangXet || s is KhoaAppDangRoi)
+            if (dac)
               const Positioned.fill(child: AbsorbPointer(child: ColoredBox(color: AppColors.background))),
             if (s is KhoaAppKhoa)
               Positioned.fill(child: ManKhoa(trangThai: s, khiQuenPin: khiQuenPin, dongHo: dongHo ?? DateTime.now)),

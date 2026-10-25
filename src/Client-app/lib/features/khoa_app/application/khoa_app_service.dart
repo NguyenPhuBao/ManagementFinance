@@ -56,6 +56,16 @@ class KhoaAppService {
   final DateTime Function() _clock;
   final int soVong;
 
+  /// Tài khoản mà [datLaiSauDangNhap] vừa xoá khoá (M11). Chỉ trong RAM — tiến trình mới không còn gì để nhắc.
+  int? _vuaTatCua;
+
+  /// `true` đúng MỘT lần sau khi [datLaiSauDangNhap] xoá khoá của [idaccount]; mọi lần gọi đều xoá cờ.
+  bool layVaXoaVuaTat(int idaccount) {
+    final co = _vuaTatCua == idaccount;
+    _vuaTatCua = null;
+    return co;
+  }
+
   Uint8List _byte(int n) => Uint8List.fromList(List<int>.generate(n, (_) => _ngauNhien.nextInt(256)));
 
   Future<CauHinhKhoaApp?> doc(int idaccount) => _store.doc(idaccount);
@@ -163,6 +173,11 @@ class KhoaAppService {
   /// Đăng nhập bằng mật khẩu thành công (hook `PhienDieuPhoiThat.sauXacThucMatKhau`): xoá cấu hình của tài khoản này (thẳng theo
   /// khoá, không qua `readAll`), của tài khoản khác, và khoá Keystore. Không bao giờ ném — đăng nhập không được hỏng vì khoá app.
   Future<void> datLaiSauDangNhap(int idaccount) async {
+    // M11: nhớ (một lần) rằng CHÍNH tài khoản này vừa có khoá — `KhoaAppCubit.nhanPhien` báo người dùng.
+    _vuaTatCua = null;
+    try {
+      if (await _store.doc(idaccount) != null) _vuaTatCua = idaccount;
+    } catch (_) {}
     try {
       await _store.xoa(idaccount);
     } catch (_) {}

@@ -40,6 +40,7 @@ import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/khoa_app/application/khoa_app_service.dart';
 import 'features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
+import 'features/khoa_app/presentation/bloc/khoa_app_state.dart';
 import 'features/khoa_app/presentation/state/phien_dau_khoa_app.dart';
 import 'features/khoa_app/presentation/widgets/man_khoa/lop_khoa_app.dart';
 
@@ -196,6 +197,8 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
       vongDoi: sl<AppLifecycleWatcher>().stream,
       phien: widget.authBloc.stream.where(laTrangThaiPhienRo).map(idaccountTuTrangThai),
       dungYenOCongKhai: _theoDoiRoute.dungYenOCongKhai,
+      // M11: đăng nhập bằng mật khẩu vừa tắt khoá của tài khoản này — nhắc một dòng (không lặp ở mở lạnh / verifySession).
+      khiKhoaVuaTat: () => baoNhanh(kCauKhoaVuaTat),
     );
     final dau = widget.authBloc.state;
     final dauKhoa = phienDauChoKhoaApp(dau, widget.initialRoute);

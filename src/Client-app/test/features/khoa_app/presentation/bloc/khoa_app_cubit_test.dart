@@ -437,6 +437,107 @@ void main() {
     await pumpEventQueue();
     expect(cubit.state, isA<KhoaAppKhoa>());
   });
+
+  // F1 (nghiệm thu Realme 2026-10-25): quay lại app sau ≥ mức tự khoá lộ ~1 khung nội dung CŨ — engine vẽ lại lớp cuối lên
+  // surface mới TRƯỚC khi Dart nhận `resumed`. Khung cuối trước khi app rời màn phải là lớp che: vẽ ở `inactive` (lúc
+  // `hidden` / `paused` Flutter đã tắt vẽ khung).
+  group('F1 — che khi mất tiêu điểm', () {
+    Future<void> moKhoa() async {
+      await sv.datPin(10, '246810');
+      await moPhien(10);
+      await cubit.nhapPin('246810');
+      await pumpEventQueue();
+    }
+
+    test('khoá bật: inactive → Mo(che:true) ngay (trước hidden / paused)', () async {
+      await moKhoa();
+      vongDoi.add(AppLifecycleState.inactive);
+      expect(cubit.state, const KhoaAppMo(daBat: true, che: true),
+          reason: 'lớp che phải phát ĐỒNG BỘ ở inactive — khung kế tiếp là khung cuối trước khi surface bị gỡ');
+    });
+
+    test('khoá TẮT: inactive không che', () async {
+      await moPhien(10);
+      vongDoi.add(AppLifecycleState.inactive);
+      expect(cubit.state, const KhoaAppMo(daBat: false));
+    });
+
+    test('inactive → resumed (thanh thông báo, hộp vân tay) → gỡ che, không khoá', () async {
+      await moKhoa();
+      vongDoi.add(AppLifecycleState.inactive);
+      nay = nay.add(const Duration(minutes: 10));
+      vongDoi.add(AppLifecycleState.resumed);
+      expect(cubit.state, const KhoaAppMo(daBat: true));
+    });
+
+    test('che rồi ở nền 29 s → quay lại gỡ che; 30 s → khoá', () async {
+      await moKhoa();
+      for (final s in [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused]) {
+        vongDoi.add(s);
+      }
+      nay = nay.add(const Duration(seconds: 29));
+      for (final s in [AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+        vongDoi.add(s);
+      }
+      expect(cubit.state, const KhoaAppMo(daBat: true), reason: 'chưa tới mức → gỡ che');
+      for (final s in [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused]) {
+        vongDoi.add(s);
+      }
+      nay = nay.add(const Duration(seconds: 30));
+      for (final s in [AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+        vongDoi.add(s);
+      }
+      expect(cubit.state, isA<KhoaAppKhoa>(), reason: 'che không được nuốt luật tự khoá (cổng `state is KhoaAppMo`)');
+    });
+
+    test('napLai lúc đang che giữ che (không gỡ lớp che giữa lúc app xuống nền)', () async {
+      await moKhoa();
+      vongDoi.add(AppLifecycleState.inactive);
+      await cubit.napLai();
+      expect(cubit.state, const KhoaAppMo(daBat: true, che: true));
+    });
+  });
+
+  // M11 (người dùng chốt 2026-10-25): đăng nhập bằng mật khẩu tắt khoá — báo một dòng, chỉ khi TÀI KHOẢN NÀY vừa có khoá.
+  group('M11 — nhắc "khoá đã tắt" sau đăng nhập mật khẩu', () {
+    late int soLanNhac;
+
+    setUp(() async {
+      soLanNhac = 0;
+      // Cubit của setUp chung cũng nghe `phien` và sẽ tiêu cờ trước — app thật chỉ có MỘT KhoaAppCubit.
+      await cubit.close();
+      cubit = KhoaAppCubit(
+          service: sv, vongDoi: vongDoi.stream, phien: phien.stream, clock: () => nay, khiKhoaVuaTat: () => soLanNhac++);
+    });
+
+    test('khoá đang bật → đăng nhập mật khẩu → nhắc đúng MỘT lần', () async {
+      await sv.datPin(10, '246810');
+      await moPhien(null);
+      await sv.datLaiSauDangNhap(10);
+      await moPhien(10);
+      expect(cubit.state, const KhoaAppMo(daBat: false));
+      expect(soLanNhac, 1);
+      await moPhien(10); // verifySession phát lại AuthSuccess
+      await moPhien(null);
+      await moPhien(10); // mở lại phiên không qua đăng nhập mật khẩu
+      expect(soLanNhac, 1, reason: 'cờ chỉ dùng một lần');
+    });
+
+    test('khoá vốn tắt → đăng nhập mật khẩu → không nhắc', () async {
+      await moPhien(null);
+      await sv.datLaiSauDangNhap(10);
+      await moPhien(10);
+      expect(soLanNhac, 0);
+    });
+
+    test('khoá của tài khoản KHÁC bị xoá → không nhắc tài khoản này', () async {
+      await sv.datPin(11, '135790');
+      await moPhien(null);
+      await sv.datLaiSauDangNhap(10);
+      await moPhien(10);
+      expect(soLanNhac, 0);
+    });
+  });
 }
 
 /// Kho bọc: [docNghiemNgat] hỏng từ lần gọi thứ [tuLan] (đếm từ 1).

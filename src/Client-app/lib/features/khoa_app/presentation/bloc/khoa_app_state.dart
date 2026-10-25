@@ -14,6 +14,9 @@ const String kCauKhongLuuPin = 'Không lưu được mã PIN — thử lại';
 /// Trang Khoá ứng dụng: ghi / đọc kho hỏng (khuôn với câu của trang PIN).
 const String kCauKhoAppKhongLuu = 'Không lưu được cài đặt khoá — thử lại';
 
+/// M11 (người dùng chốt 2026-10-25): đăng nhập bằng mật khẩu đã xoá khoá của tài khoản này — viên toast một lần.
+const String kCauKhoaVuaTat = 'Khoá ứng dụng đã tắt — bật lại trong Cài đặt';
+
 sealed class TrangThaiKhoaApp extends Equatable {
   const TrangThaiKhoaApp();
   @override
@@ -37,10 +40,16 @@ class KhoaAppTat extends TrangThaiKhoaApp {
 }
 
 class KhoaAppMo extends TrangThaiKhoaApp {
-  const KhoaAppMo({required this.daBat});
+  const KhoaAppMo({required this.daBat, this.che = false});
   final bool daBat;
+
+  /// F1 (nghiệm thu Realme 2026-10-25): app vừa mất tiêu điểm (`inactive`) khi khoá đang bật — lớp phủ vẽ nền ĐẶC để khung
+  /// cuối trước khi app rời màn không mang nội dung (engine vẽ lại khung ấy lên surface mới TRƯỚC khi Dart nhận `resumed`).
+  /// Vẫn là trạng thái *mở*: mọi cổng `state is KhoaAppMo` của luật tự khoá giữ nguyên.
+  final bool che;
+
   @override
-  List<Object?> get props => [daBat];
+  List<Object?> get props => [daBat, che];
 }
 
 class KhoaAppKhoa extends TrangThaiKhoaApp {

@@ -23,6 +23,7 @@ void main() {
   var nay = DateTime(2026, 10, 24, 21);
   var nutNoiDung = 0;
   var quenPin = 0;
+  final cubitCu = <KhoaAppCubit>[];
 
   setUp(() {
     nay = DateTime(2026, 10, 24, 21);
@@ -36,6 +37,10 @@ void main() {
 
   tearDown(() async {
     await cubit.close();
+    for (final c in cubitCu) {
+      await c.close();
+    }
+    cubitCu.clear();
     await phien.close();
     await vongDoi.close();
   });
@@ -70,6 +75,67 @@ void main() {
     await cubit.nhanPhien(10);
     await t.pump();
   }
+
+  /// Cubit dựng TRONG thân ca (zone FakeAsync): cubit của setUp nghe `vongDoi` trong zone thật, nên state phát từ một sự
+  /// kiện vòng đời đi qua microtask mà `pump` không xả được (bẫy 15) — ca F1 xanh oan vì lớp che chưa từng được dựng.
+  /// ⚠️ KHÔNG `await close()` cubit cũ ở đây: đóng trong zone FakeAsync một cubit dựng ở zone thật là treo cả tệp ~10 phút —
+  /// cất vào [cubitCu], `tearDown` (zone thật) đóng.
+  void cubitTrongCa() {
+    cubitCu.add(cubit);
+    cubit = KhoaAppCubit(service: sv, vongDoi: vongDoi.stream, phien: phien.stream, clock: () => nay);
+  }
+
+  testWidgets('F1: Mo(che) — lớp ĐẶC che nội dung, nuốt chạm; resumed chưa tới mức → gỡ', (t) async {
+    cubitTrongCa();
+    await khoaPhien(t);
+    await go(t, '246810');
+    expect(find.byType(ManKhoa), findsNothing);
+    final dac = find.byWidgetPredicate((w) => w is AbsorbPointer && w.child is ColoredBox);
+    expect(dac, findsNothing);
+    vongDoi.add(AppLifecycleState.inactive);
+    await t.pump();
+    await t.pump(); // sự kiện vòng đời → cubit → BlocBuilder: hai nhịp
+    expect(dac, findsOneWidget, reason: 'khung vẽ ngay sau inactive là khung cuối trước khi surface bị gỡ — phải là lớp đặc');
+    await t.tap(find.text('Nội dung'), warnIfMissed: false);
+    expect(nutNoiDung, 0);
+    vongDoi.add(AppLifecycleState.resumed);
+    await t.pump();
+    await t.pump();
+    expect(dac, findsNothing);
+    await t.tap(find.text('Nội dung'));
+    expect(nutNoiDung, 1);
+  });
+
+  testWidgets('F1: lớp che KHÔNG cướp tiêu điểm — ô đang gõ giữ bàn phím qua inactive → resumed (kéo thanh thông báo)',
+      (t) async {
+    cubitTrongCa();
+    await sv.datPin(10, '246810');
+    final o = FocusNode();
+    addTearDown(o.dispose);
+    await t.pumpWidget(BlocProvider.value(
+      value: cubit,
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        builder: (context, child) => lop(child!),
+        home: Scaffold(body: TextField(focusNode: o)),
+      ),
+    ));
+    await cubit.nhanPhien(10);
+    await t.pump();
+    await go(t, '246810');
+    o.requestFocus();
+    await t.pump();
+    expect(o.hasFocus, isTrue);
+    vongDoi.add(AppLifecycleState.inactive);
+    await t.pump();
+    await t.pump(); // sự kiện vòng đời → cubit → BlocBuilder: hai nhịp
+    expect(cubit.state, const KhoaAppMo(daBat: true, che: true));
+    expect(o.hasFocus, isTrue, reason: 'ExcludeFocus ở lớp che tạm là đóng bàn phím mỗi lần kéo thanh thông báo');
+    vongDoi.add(AppLifecycleState.resumed);
+    await t.pump();
+    await t.pump();
+    expect(o.hasFocus, isTrue);
+  });
 
   testWidgets('DangXet: che đặc, chạm không xuyên xuống nội dung', (t) async {
     await t.pumpWidget(app());

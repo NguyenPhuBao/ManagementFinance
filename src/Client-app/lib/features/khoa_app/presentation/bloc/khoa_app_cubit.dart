@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show ValueListenable;
+import 'package:flutter/foundation.dart' show ValueListenable, VoidCallback;
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -22,7 +22,9 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
     DongHoKhoiDong? dongHoKhoiDong,
     ValueListenable<bool>? dungYenOCongKhai,
     Duration vanAnToanRoi = const Duration(seconds: 3),
+    VoidCallback? khiKhoaVuaTat,
   })  : _service = service,
+        _khiKhoaVuaTat = khiKhoaVuaTat,
         _dungYenOCongKhai = dungYenOCongKhai,
         _vanAnToanRoi = vanAnToanRoi,
         _clock = clock ?? DateTime.now,
@@ -33,6 +35,9 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
   }
 
   final KhoaAppService _service;
+
+  /// M11: tài khoản vừa đăng nhập bằng mật khẩu mà trước đó có khoá — `main.dart` nối với `baoNhanh`.
+  final VoidCallback? _khiKhoaVuaTat;
   final DateTime Function() _clock;
   final DongHoKhoiDong _khoiDong;
 
@@ -76,6 +81,8 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
     _cauHinh = c;
     if (c == null) {
       emit(const KhoaAppMo(daBat: false));
+      // M11: đăng nhập bằng mật khẩu vừa xoá khoá của CHÍNH tài khoản này — báo một dòng (cờ dùng một lần).
+      if (_service.layVaXoaVuaTat(id)) _khiKhoaVuaTat?.call();
       return;
     }
     _khoa(c);
@@ -123,7 +130,9 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
     }
     if (isClosed || _id != id) return;
     _cauHinh = c;
-    if (state is KhoaAppMo) emit(KhoaAppMo(daBat: c != null));
+    final hien = state;
+    // Giữ `che`: napLai về muộn lúc app đang xuống nền mà gỡ che là khung cuối lại mang nội dung (F1).
+    if (hien is KhoaAppMo) emit(KhoaAppMo(daBat: c != null, che: hien.che));
   }
 
   void _khoa(CauHinhKhoaApp c) {
@@ -133,6 +142,14 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
 
   void _khiVongDoi(AppLifecycleState s) {
     final c = _cauHinh;
+    if (s == AppLifecycleState.inactive) {
+      // F1: che NGAY khi mất tiêu điểm — `hidden` / `paused` tới khi Flutter đã tắt vẽ khung, mà khung cuối trước khi app rời
+      // màn được engine vẽ lại lên surface mới TRƯỚC khi Dart nhận `resumed` (đo Realme: lộ ~1 khung số dư). Cái giá: kéo
+      // thanh thông báo / hộp vân tay cũng che (người dùng chọn). Không tính là rời app — mốc rời chỉ đặt ở `hidden` / `paused`.
+      final hien = state;
+      if (c != null && hien is KhoaAppMo && !hien.che) emit(KhoaAppMo(daBat: hien.daBat, che: true));
+      return;
+    }
     if (s == AppLifecycleState.hidden || s == AppLifecycleState.paused) {
       // Mốc rời app = lần `hidden` / `paused` ĐẦU TIÊN; `inactive` (hộp vân tay, hộp quyền) không tính.
       if (c != null && state is KhoaAppMo && _roiLuc == null) {
@@ -147,15 +164,20 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
       final roiKd = _roiKhoiDong;
       _roiLuc = null;
       _roiKhoiDong = null;
-      if (roi == null || c == null || state is! KhoaAppMo) return;
-      final kd = _khoiDong();
-      final oNenKd = roiKd != null && kd != null ? kd - roiKd : null;
-      if (canKhoaKhiQuayLai(roiLuc: roi, nay: _clock(), muc: c.tuKhoaSau, oNenTheoKhoiDong: oNenKd)) {
-        // Khoá NGAY bằng bản RAM (không để lọt khung nội dung), rồi làm tươi từ kho (P9).
-        _khoa(c);
-        final id = _id;
-        if (id != null) unawaited(_lamTuoiKhoa(id, _lanKhoa));
+      final hien = state;
+      if (hien is! KhoaAppMo) return;
+      if (roi != null && c != null) {
+        final kd = _khoiDong();
+        final oNenKd = roiKd != null && kd != null ? kd - roiKd : null;
+        if (canKhoaKhiQuayLai(roiLuc: roi, nay: _clock(), muc: c.tuKhoaSau, oNenTheoKhoiDong: oNenKd)) {
+          // Khoá NGAY bằng bản RAM (không để lọt khung nội dung), rồi làm tươi từ kho (P9).
+          _khoa(c);
+          final id = _id;
+          if (id != null) unawaited(_lamTuoiKhoa(id, _lanKhoa));
+          return;
+        }
       }
+      if (hien.che) emit(KhoaAppMo(daBat: hien.daBat));
     }
   }
 
