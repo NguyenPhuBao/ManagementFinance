@@ -262,6 +262,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             message: 'Máy chủ không trả về mã tài khoản hợp lệ.'));
         return;
       }
+      // Khoá ứng dụng: mật khẩu đã được chấp nhận → xoá PIN cũ NGAY (không đợi vòng đồng bộ đầu bên dưới).
+      await _phien?.sauXacThucMatKhau(idAcc);
       // Dọn tài khoản khác TRƯỚC khi bật đồng bộ (dòng sót lại bị đẩy dưới id cũ và luôn thất bại).
       await _phien?.moPhienCucBo(idAcc);
       await _phien?.batThoiGianThuc(idAcc);

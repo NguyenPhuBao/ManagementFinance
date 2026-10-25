@@ -60,6 +60,9 @@ class _PhienGia implements PhienDieuPhoi {
   Future<void> batDongBo(int idaccount, {required bool cho}) async {}
 
   @override
+  Future<void> sauXacThucMatKhau(int idaccount) async {}
+
+  @override
   Future<void> sauDangNhap(int idaccount) async {}
 
   @override

@@ -239,7 +239,7 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
         // biết đến nó. Lớp ngoài cùng ép đồng hồ 24 giờ cho mọi bảng chọn giờ
         // (G90 — xem `bocDongHo24Gio`).
         builder: (context, child) => LopKhoaApp(
-          // "Quên mã PIN?" → đăng xuất. Cấu hình PIN xoá ở lần đăng nhập mật khẩu kế (hook `sauDangNhap`), không ở đây.
+          // "Quên mã PIN?" → đăng xuất. Cấu hình PIN xoá ở lần đăng nhập mật khẩu kế (hook `sauXacThucMatKhau`), không ở đây.
           khiQuenPin: () => widget.authBloc.add(LogoutRequested()),
           child: bocDongHo24Gio(
             context,

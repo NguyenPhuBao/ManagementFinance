@@ -164,19 +164,24 @@ void main() {
     return p;
   }
 
-  test('sauDangNhap(10) gọi datLaiKhoaApp(10) — cấu hình PIN xoá ở đăng nhập mật khẩu, không ở đăng xuất', () async {
+  test('sauXacThucMatKhau(10) gọi datLaiKhoaApp(10) — cấu hình PIN xoá ở đăng nhập mật khẩu, không ở đăng xuất / sauDangNhap / moPhienCucBo', () async {
+    await dung().sauXacThucMatKhau(10);
+    expect(hook, ['datLaiKhoa 10']);
+    hook.clear();
     await dung().sauDangNhap(10);
-    expect(hook, contains('datLaiKhoa 10'));
+    await dung().moPhienCucBo(10);
+    expect(hook.any((h) => h.startsWith('datLaiKhoa')), isFalse,
+        reason: 'sauDangNhap chạy sau cả vòng đồng bộ đầu; moPhienCucBo chạy cả lúc mở lạnh (xoá PIN mỗi lần mở app)');
     hook.clear();
     await dung().dongPhien();
     expect(hook.any((h) => h.startsWith('datLaiKhoa')), isFalse,
         reason: 'đăng xuất không được xoá cấu hình PIN: token xoá SAU hook, bị giết giữa chừng là mở lại không PIN');
   });
 
-  test('dongPhien gọi xoaKhoaApp (đăng xuất là xoá PIN — spec khoá app mục 4)', () async {
+  test('dongPhien gọi xoaKhoaApp (chỉ khoá vân tay / alias; cấu hình PIN ở lại tới lần đăng nhập mật khẩu)', () async {
     await dung().dongPhien();
     expect(hook, contains('xoaKhoaApp'),
-        reason: 'thiếu hook này, đăng nhập lại (kể cả tài khoản khác) còn khoá bằng PIN cũ');
+        reason: 'thiếu hook này, alias Keystore cũ còn sống sau đăng xuất');
   });
 
   test('moPhienCucBo: dọn → (xoá cache chỉ khi có hàng bị dọn) → hàng seed cũ → gói → bộ quét', () async {
@@ -263,7 +268,7 @@ void main() {
     await p.batThoiGianThuc(10);
     expect(realtime.nhatKy, ['start 10']);
     await p.sauDangNhap(10);
-    expect(hook, ['seedMoi 10', 'coUI', 'datLaiKhoa 10']);
+    expect(hook, ['seedMoi 10', 'coUI']);
     await p.dongPhien();
     expect(sync.nhatKy, ['stop']); expect(scanner.goi, ['stop']); expect(realtime.nhatKy.last, 'stop');
     expect(hook.sublist(hook.length - 2), ['xoaAnh', 'xoaKhoaApp']);
@@ -271,7 +276,7 @@ void main() {
 
   test('sauDangNhap không có SyncEngine: bỏ seed, vẫn đặt lại cờ giao diện', () async {
     await dung(coDongBo: false).sauDangNhap(10);
-    expect(hook, ['coUI', 'datLaiKhoa 10']);
+    expect(hook, ['coUI']);
   });
 
   test('dongPhien chịu được dịch vụ null', () async {

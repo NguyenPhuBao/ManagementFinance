@@ -102,7 +102,12 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
   Future<void> sauDangNhap(int idaccount) async {
     if (_dongBo != null) await _seedTaiKhoanMoi?.call(idaccount);
     _datLaiCoGiaoDien?.call();
-    // Khoá ứng dụng: cấu hình PIN cũ xoá ở đây (đăng nhập bằng mật khẩu), KHÔNG ở đăng xuất — xem `dongPhien`.
+  }
+
+  @override
+  Future<void> sauXacThucMatKhau(int idaccount) async {
+    // Khoá ứng dụng: cấu hình PIN cũ xoá ở đây (đăng nhập bằng mật khẩu), KHÔNG ở đăng xuất (xem `dongPhien`) và KHÔNG ở
+    // `sauDangNhap` (sau cả vòng đồng bộ đầu — giết tiến trình lúc ấy là hỏi lại đúng PIN vừa quên).
     await _datLaiKhoaApp?.call(idaccount);
   }
 

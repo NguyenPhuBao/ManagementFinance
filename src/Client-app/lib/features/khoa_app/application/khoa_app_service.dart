@@ -159,7 +159,7 @@ class KhoaAppService {
     } catch (_) {}
   }
 
-  /// Đăng nhập bằng mật khẩu thành công (hook `PhienDieuPhoiThat.sauDangNhap`): xoá cấu hình của tài khoản này (thẳng theo
+  /// Đăng nhập bằng mật khẩu thành công (hook `PhienDieuPhoiThat.sauXacThucMatKhau`): xoá cấu hình của tài khoản này (thẳng theo
   /// khoá, không qua `readAll`), của tài khoản khác, và khoá Keystore. Không bao giờ ném — đăng nhập không được hỏng vì khoá app.
   Future<void> datLaiSauDangNhap(int idaccount) async {
     try {

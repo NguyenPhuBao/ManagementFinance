@@ -535,4 +535,28 @@ void main() {
     expect(repo.xoaPhienCalls, 2,
         reason: 'phiên mới thì lời từ chối của phiên cũ hết hiệu lực');
   });
+
+  test('I4: hook xoá PIN cũ (sauXacThucMatKhau) chạy NGAY sau khi login() trả id, TRƯỚC moPhienCucBo / đồng bộ / seed', () async {
+    final thuTu = <String>[];
+    final p = PhienDieuPhoiThat(
+      dongBo: sync,
+      thoiGianThuc: realtime,
+      boQuet: scanner,
+      interceptor: interceptor,
+      donTaiKhoanKhac: (id) async {
+        thuTu.add('moPhienCucBo');
+        return 0;
+      },
+      seedTaiKhoanMoi: (id) async => thuTu.add('sauDangNhap'),
+      datLaiKhoaApp: (id) async => thuTu.add('xoaPinCu $id'),
+    );
+    addTearDown(p.dispose);
+    final bloc = AuthBloc(authRepository: _RepoGia(user: _user('11')), phien: p);
+    addTearDown(bloc.close);
+    final vao = bloc.stream.where((s) => s is AuthSuccess).first;
+    bloc.add(const LoginSubmitted(email: 'dat', password: 'x'));
+    await vao.timeout(const Duration(seconds: 5));
+    expect(thuTu, ['xoaPinCu 11', 'moPhienCucBo', 'sauDangNhap'],
+        reason: 'PIN cũ chỉ xoá sau cả vòng đồng bộ đầu = giết app lúc ấy là hỏi lại đúng PIN vừa quên');
+  });
 }
