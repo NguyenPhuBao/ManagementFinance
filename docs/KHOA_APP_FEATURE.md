@@ -17,8 +17,13 @@
 > D-1 · 10 · 10a (mạng treo + có mạng) · 11 (có điều kiện) · 12a · 12b · M11 — **đạt**; **C1 ba đường đạt theo video** (tách khung 1/60 s).
 > Lộ **M14** (mục 8): đăng xuất bị cắt giữa chừng làm vân tay tự tắt với câu *"Vân tay trên máy đã thay đổi"* → ✅ sửa cùng tối (mã `MAT_KHOA`,
 > câu *"Vân tay đã tắt…"*), đo lại trên Realme đạt.
+> ✅ **2026-10-25 khuya (phiên 8):** **M7 · M8 · M12 · `_napCho`** đóng (`b49217ca`, bẫy 28); thanh trạng thái **một kiểu cho cả app** (`81c09b8a`, bẫy 26);
+> `WebSocketConnectionClosed` khi server cắt socket — gốc ở `socket_io_client` 3.1.6, ngoài mảng này (`f8ae62ca`). **Buổi 3 trên Realme (mục 10)**: bước **6**
+> (chạm thông báo khi khoá — app sống và app đã chết) · **17** (320 dp — người dùng đổi *cỡ hiển thị*) · **21** (Quét ảnh khi khoá) · **11** (proxy giữ `/sync/pull`)
+> — **đạt**; lộ **M15** (bố cục 320 dp, mục 8). Người dùng chốt **giữ** `resetOnError` (bẫy 27) và **không** miễn khoá cho lối app tự mở máy ảnh / chọn ảnh
+> (spec mục 8). 🚧 Còn: TalkBack nghe thật; PayOS khi khoá (người dùng chọn bỏ khỏi buổi 3).
 > Spec: `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (đã sửa theo thiết kế cuối 2026-10-25).
-> Mảng mã: `src/Client-app/lib/features/khoa_app/` (21 tệp, 2.410 dòng, đếm 2026-10-25 tối sau M5 + thanh trạng thái + M14; chiều 2.310) +
+> Mảng mã: `src/Client-app/lib/features/khoa_app/` (21 tệp, 2.450 dòng, đếm 2026-10-25 khuya sau phiên 8; tối 2.410, chiều 2.310) +
 > `android/…/SinhTrac.kt` + hàm dùng chung `duaAppXuongNen` (`lib/shared/widgets/thoat_hai_lan.dart`).
 
 ## 1. Người dùng thấy gì
@@ -198,7 +203,7 @@ Chỗ nối ngoài mảng: `lib/main.dart` (dựng `KhoaAppCubit` + `TheoDoiRout
    không `dung`, không ghi đếm (không có "mở bằng chuỗi bất kỳ" khi kho hỏng lúc màn khoá đang hiện); `_mo` ném thì **giữ `_cauHinh` trong RAM** (kiểm `_id == id` TRƯỚC khi gán) để lần rời app kế vẫn
    tự khoá, và emit `Mo(daBat: _cauHinh != null)`; `napLai` ném thì `return` (giữ cấu hình cũ). ⚠️ Chỉ giữ cấu hình cũ khi **đọc ném**, KHÔNG khi `null` thật (vắng thật, vd. vừa *Tắt khoá* ở trang Cài
    đặt: `napLai` phải xoá cấu hình RAM, nếu không app còn tự khoá bằng cấu hình đã xoá và màn khoá mở bằng PIN bất kỳ). `ghi` cũng **ném** khi hỏng, để `kiemPin` không báo "sai" khi chưa ghi được lần sai.
-7. **Thời gian chờ (`choDen`) theo giờ máy** (`DateTime`): chỉnh giờ máy rút được thời gian chờ — giới hạn chấp nhận (spec mục 6). Đồng hồ lùi lúc quay lại app thì `canKhoaKhiQuayLai` trả **khoá**.
+7. **Thời gian chờ (`choDen`) theo giờ máy** (`DateTime`): chỉnh giờ máy rút được thời gian chờ — giới hạn chấp nhận (spec mục 6). Đồng hồ lùi lúc quay lại app thì `canKhoaKhiQuayLai` trả **khoá**. Chiều ngược (mốc chờ xa hơn 15 phút vì giờ máy từng chạy trước) kẹp về 15 phút — bẫy 28.
    (Tự khoá thì không còn lệ thuộc giờ tường — bẫy 23.) `choDen` ở tương lai xa (giờ máy từng chạy trước rồi chỉnh lại) ⇒ chờ dài tuỳ ý — M8, mục 8.
 8. **Một định nghĩa `conCho` / `chuDemNguoc`** (`luat_khoa_app.dart`) cho service, màn khoá và trang PIN. Đang chờ → `kiemPin` **không băm** (không lộ oracle đúng / sai lúc chờ). Ca ghim đã có (M3,
    2026-10-25): PIN sai lúc chờ — đếm lời gọi `bam` = 0, `soLanSai` / `choDen` không đổi, kết quả sai = đúng.
@@ -272,17 +277,28 @@ Chỗ nối ngoài mảng: `lib/main.dart` (dựng `KhoaAppCubit` + `TheoDoiRout
     (`AnnotatedRegion`: trong suốt, biểu tượng tối) bọc màn khoá và lớp đặc của **ba** trạng thái che hẳn (DangXet · DangRoi · Khoa) — **không** bọc lớp che `Mo(che)`.
     ⚠️ Flutter **không tự trả kiểu cũ** khi vùng biến mất (`RenderView` chỉ gọi `setSystemUIOverlayStyle` khi TÌM THẤY vùng): trang không có `AnnotatedRegion` giữ kiểu
     trong suốt sau khi mở khoá. Đây **không** phải kiểu lệch mới — đo trên Realme: ghé tab Cá nhân (AppBar) rồi về Trang chủ là Trang chủ cũng mất dải xám tới lần mở lạnh kế.
-    Muốn mọi trang một kiểu thì đặt một vùng gốc cho cả app — việc riêng, chưa làm. Hệ quả kéo theo: tấm Quên PIN phải nằm **ngoài** `SafeArea` của màn khoá (lớp mờ phủ cả
+    ✅ **Phiên 8 (2026-10-25 khuya, người dùng chọn): vùng gốc cho cả app** — `VungThanhTrangThaiGoc` (`shared/widgets/`) bọc ngoài router, TRONG `LopKhoaApp`
+    (`main.dart`, ca đọc mã canh thứ tự), giá trị là hằng chung `kKieuThanhTrangThaiSang` (`shared/theme/kieu_thanh_trang_thai.dart`) — màn khoá cũng đọc hằng ấy; màn
+    Quét (nền đen toàn màn, không AppBar) tự bọc `kKieuThanhTrangThaiToi` (biểu tượng sáng). Trang mới nền tối toàn màn mà không AppBar thì phải tự bọc kiểu tối, nếu không
+    biểu tượng tối chìm. Hệ quả kéo theo: tấm Quên PIN phải nằm **ngoài** `SafeArea` của màn khoá (lớp mờ phủ cả
     vùng thanh trạng thái), mặt tấm tự tránh thanh điều hướng (`SafeArea(top: false)`) — trong `SafeArea` thì lớp mờ dừng ở mép dưới thanh trạng thái, để lại dải kem sáng.
 27. **`flutter_secure_storage` 10 — hỏng thành vắng ở tầng native (hệ quả với I2, bẫy 4d).** Từ `f5a90f4b` gói ở **10.3.4** (ghim cứng) với `AndroidOptions` **mặc định** —
     `resetOnError = true`: đọc một mục giải mã hỏng thì gói **xoá mục ấy rồi trả `null`**; bước chuyển thuật toán hỏng thì xoá **cả kho** rồi chạy tiếp. Tức `docNghiemNgat` hầu như
     không còn thấy *"hỏng"* từ máy thật — `khoa_app_<id>` hỏng riêng lẻ thành *"chưa bật"* (mở app không PIN nếu token còn đọc được). Giữ mặc định là quyết định kỹ thuật của
-    phiên 7 (người dùng chọn việc nâng, **chưa** được hỏi riêng về tuỳ chọn này — muốn đổi thì trình lại): hỏng riêng một mục cần sửa tệp XML = root, ngoài mô hình đe doạ (mục 1b); còn `resetOnError = false` biến một lần chuyển
+    phiên 7; ✅ phiên 8 (2026-10-25) trình lại hai lựa chọn, người dùng **chốt giữ bật**: hỏng riêng một mục cần sửa tệp XML = root, ngoài mô hình đe doạ (mục 1b); còn `resetOnError = false` biến một lần chuyển
     hỏng thành **mọi** lời gọi kho ném mãi → `main.dart:76` đọc token không `try` → app chết trước `runApp`, lối thoát duy nhất là *Xoá dữ liệu ứng dụng* (mất SQLite — đúng điều
     G36 / G89 từ chối). Sàn xấu nhất của lối đã chọn: đăng xuất + khoá app tắt **không có dòng nhắc M11** (cấu hình đã mất trước lần đăng nhập mật khẩu) + tuỳ chọn về mặc định +
     kéo về toàn bộ; SQLite và alias Keystore vân tay (`SinhTrac.kt`, kho riêng) không bị đụng. ⚠️ Cấu hình gói đi theo **lời gọi đầu tiên** tới kho (native `initialize` chỉ chạy
     một lần, khoá theo tên tệp prefs) — mọi `FlutterSecureStorage()` của app dùng cùng mặc định; thêm `AndroidOptions` khác mặc định ở MỘT chỗ là cấu hình chạy hay không tuỳ chỗ
     nào gọi trước (cần một định nghĩa + test quét — số 39 còn trống). **Đừng nhảy lên 11** khi chưa chắc mọi máy đã qua 10 ít nhất một lần mở (11.0.0 bỏ đường đọc dữ liệu v9).
+28. **M8 — mốc chờ xa hơn `kChoToiDa` thì kẹp VÀ GHI LẠI** (2026-10-25 phiên 8). Sai PIN lúc giờ máy chạy trước (vd. một ngày) rồi giờ được chỉnh lại → `choDen` cách hiện tại hơn
+    một ngày, màn khoá bắt chờ tương ứng (vân tay / Quên PIN vẫn còn). `kepChoDen` (`domain/luat_khoa_app.dart`) kẹp mốc về `nay + kChoToiDa` (15 phút — cùng hằng với mức chờ dài nhất
+    của `thoiGianCho`); `KhoaAppService.doc` / `docNghiemNgat` / `kiemPin` áp nó **và ghi mốc đã kẹp xuống kho** (ghi hỏng thì vẫn trả bản kẹp, lần đọc sau kẹp lại). ⚠️ Kẹp mà **không
+    ghi** là sai im lặng: mỗi lần đọc lại (P9 lúc quay lại app, mở trang Đặt PIN) mốc dời thêm 15 phút — đồng hồ đếm ngược đứng ở `15:00` hoặc nhảy về `15:00`, không bao giờ về 0 (ca
+    service *"lần đọc sau giữ đúng mốc ấy"* canh). ⚠️ Đừng đổi thành *"xa quá thì bỏ chờ"* (`conCho` trả `null`): chỉnh giờ lùi một giờ trong lúc chờ 30 s là xoá được chờ — kẹp chỉ rút
+    về 15 phút, không mở thêm lối vượt nào ngoài lối chỉnh giờ tới đã chấp nhận (bẫy 7). Đang ở màn khoá mà giờ máy đổi: `resumed` khi đang `Khoa` đọc lại kho (`_lamTuoiKhoa`) — ra
+    Cài đặt giờ rồi quay lại là mốc được kẹp; giờ tự đồng bộ (NTP) trong lúc nhìn màn khoá thì chỉ được kẹp ở lần rời / quay lại app kế (để lại). Lượt làm tươi ấy bỏ kết quả khi một
+    lượt kiểm PIN đã bắt đầu / kết thúc trong lúc nó đọc kho (**M7** — so `lanKiem` lúc bắt đầu, ca *"lượt làm tươi về SAU một lượt kiểm"*).
 
 ## 6. Giao diện — Stitch (dự án `5106367939423432838`)
 
@@ -302,10 +318,10 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 
 ## 7. Test và quét
 
-- **150 ca** khai báo trong 18 tệp dưới `test/features/khoa_app/` (đếm bằng Python cùng mẫu `^\s*(test|testWidgets)\(` 2026-10-25 tối, sau M5 + thanh trạng thái + M14: +5 `lop_khoa_app_back_test.dart`
+- **158 ca** khai báo trong 18 tệp dưới `test/features/khoa_app/` (đếm bằng Python cùng mẫu 2026-10-25 khuya sau phiên 8: +8 M7 · M8 · M12 · `_napCho`; `flutter test` chạy ra 160 vì vòng lặp khổ màn); trước đó **150 ca** (2026-10-25 tối, sau M5 + thanh trạng thái + M14: +5 `lop_khoa_app_back_test.dart`
   (GoRouter thật), +2 `lop_khoa_app_thanh_trang_thai_test.dart`, +1 lớp mờ tấm Quên PIN ở `lop_khoa_app_test.dart`, +2 `MAT_KHOA` (service, cubit); chiều 140, trước đó 128), cộng `test/core/router/theo_doi_route_cong_khai_test.dart` (observer), ca ở `phien_dieu_phoi_that_test.dart`
   (hook `sauXacThucMatKhau` / `xoaKhoaApp` / `datLaiKhoaApp`), `auth_bloc_buoc_dang_xuat_test.dart` (thứ tự mở phiên với `PhienDieuPhoiThat` thật) và `noi_dung_cai_dat_khoa_app_test.dart` (viên *Đang bật*, kể cả `Mo(daBat:false)` và `Tat`).
-- Mốc toàn bộ: **8.037 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-25 tối sau M14; 8.035 sau M5 + thanh trạng thái `c5010e1b`, trên `flutter_secure_storage` 10.3.4; chiều 8.027 sau F1 + M11 `4c7945ed`; trước đó 8.017 sau `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá `be3bdf26` thêm 4 ca: hai ở
+- Mốc toàn bộ: **8.051 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-25 khuya sau phiên 8 — +8 khoá app, +2 socket `realtime_socket_dong_test.dart`, +4 thanh trạng thái; 8.037 sau M14; 8.035 sau M5 + thanh trạng thái `c5010e1b`, trên `flutter_secure_storage` 10.3.4; chiều 8.027 sau F1 + M11 `4c7945ed`; trước đó 8.017 sau `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá `be3bdf26` thêm 4 ca: hai ở
   `lop_khoa_app_roi_phien_test.dart` (`/login` tự `showDialog` → gỡ trước van; popup trên trang được bảo vệ không làm tín hiệu `true`) và hai ở `test/core/router/route_cong_khai_ten_route_test.dart`.
 - Mảng mới phải qua các quét sẵn có: 22 (`presentation/` không chạm CSDL), 25 (vị trí tệp — `core/router` là chủ đề sẵn có), 27 (không `<dynamic>` trần ở `data/` +
   `application/`), 38 (không log PII — **không** canh PIN / bí mật, bẫy 19). Không thêm test quét mới.
@@ -316,12 +332,15 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 ## 8. Việc còn mở (chưa sửa — từ review toàn nhánh 2026-10-25, đáng xem trước khi sửa mã)
 
 - ~~**M5** Back khi đang khoá pop route bên dưới~~ — ✅ **đóng 2026-10-25 tối** (`f1daea24`, người dùng chọn *"Back đưa app xuống nền"*): `didPopRoute` ở lớp khoá, tấm Quên PIN mở thì Back = Huỷ (bẫy 14); đo Realme đạt (mục 10, *Buổi 2*).
-- **M7** `_lamTuoiKhoa` chỉ chặn `dangKiem`; nếu một lượt kiểm đã kết thúc trong lúc nó đọc kho, nó phát `soLanSai` / `choDen` cũ đè bản mới (chỉ lệch hiển thị — service vẫn chặn). Sửa: bắt `lanKiem` lúc bắt đầu.
-- **M8** `choDen` ở tương lai xa (giờ máy từng chạy trước rồi chỉnh lại) ⇒ chờ dài tuỳ ý (còn vân tay / Quên PIN). Sửa: kẹp phần chờ còn lại ở `thoiGianCho(∞)` = 15 phút.
+- ~~**M7** `_lamTuoiKhoa` chỉ chặn `dangKiem`~~ — ✅ **đóng 2026-10-25 (phiên 8)**: nó chụp `lanKiem` lúc bắt đầu và bỏ bản đọc khi `lanKiem` đã đổi (bẫy 28). Mô tả gốc: nếu một lượt kiểm đã kết thúc trong lúc nó đọc kho, nó phát `soLanSai` / `choDen` cũ đè bản mới (chỉ lệch hiển thị — service vẫn chặn).
+- ~~**M8** `choDen` ở tương lai xa~~ — ✅ **đóng 2026-10-25 (phiên 8)**: `kepChoDen` kẹp về `nay + kChoToiDa` (15 phút) và service **ghi lại** mốc đã kẹp; `resumed` khi đang khoá đọc lại kho (bẫy 28). Mô tả gốc: giờ máy từng chạy trước rồi chỉnh lại ⇒ chờ dài tuỳ ý (còn vân tay / Quên PIN).
 - ~~**M11** Mọi đăng nhập mật khẩu tắt khoá **im lặng**~~ — ✅ **đóng 2026-10-25**: người dùng chọn dòng nhắc *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"* (bẫy 24). Nghiệm thu trên máy cần đăng nhập lại bằng mật khẩu → đi cùng bước 10a (cần backend `PersonFinance`).
-- **M12** `BIOMETRIC_ERROR_TIMEOUT` → `LOI` (nên `HUY`), `SECURITY_UPDATE_REQUIRED` → nên `KHONG_HO_TRO` (người chờ ở màn khoá thấy câu chung *"Không mở được bằng vân tay — nhập mã PIN"*); `SinhTrac.kt` `xoaHet` một `try` chung quanh `forEach deleteEntry`.
-  Đo Realme 2026-10-25: hộp vân tay đứng **78 s không tự hết giờ** — `TIMEOUT` gần như không gặp trên máy này; ưu tiên thấp.
+- ~~**M12**~~ — ✅ **đóng 2026-10-25 (phiên 8)**: `TIMEOUT` → `HUY` (hộp tự hết giờ: không câu lỗi), `SECURITY_UPDATE_REQUIRED` (hằng API 31, số nguyên — an toàn ở API 28–30) → `KHONG_HO_TRO`; `xoaHet` bọc `try` quanh **từng** `deleteEntry`. Nghiệm thu = ca đọc mã `kenh_sinh_trac_noi_day_test` + `flutter build apk --debug` biên dịch đạt — **không đo được trên máy**: hộp vân tay Realme đứng **78 s không tự hết giờ** (đo 2026-10-25), chưa máy nào cần bản vá bảo mật. Ở màn khoá `KHONG_HO_TRO` và `LOI` cùng một câu `kCauVanTayHong` — đổi mã chỉ khác ở đường bật vân tay.
+  Mô tả gốc: `TIMEOUT` → `LOI`, `SECURITY_UPDATE_REQUIRED` → `LOI` (người chờ ở màn khoá thấy câu chung *"Không mở được bằng vân tay — nhập mã PIN"*); một `try` chung quanh `forEach deleteEntry`.
 - **M13** Lớp phủ không nhận phím số của bàn phím vật lý (chỉ Tab + Enter từng phím) — để lại, đã ghi.
+- **M15** (Buổi 3, 320 dp) Hàng *Tự khoá sau* ở trang Khoá ứng dụng: khi giá trị là *"Ngay khi rời app"*, cột phải chiếm chỗ → tiêu đề *"Tự khoá sau"* gãy 2 dòng,
+  dòng phụ gãy 4 dòng (không tràn, 0 điểm vàng — chỉ chật). Hướng sửa (chưa chọn): đưa giá trị xuống dưới dòng phụ khi hẹp, hoặc rút dòng phụ. Cùng buổi, ngoài
+  mảng này: nút **Google** màn Đăng nhập gãy *"Goo / gle"* ở 320 dp.
 - ~~**M14**~~ — ✅ **đóng 2026-10-25 tối** (người dùng chọn *sửa câu báo*): Kotlin `mo` trả mã mới **`MAT_KHOA`** khi `getKey` ra `null` (alias không còn) —
   `KeyPermanentlyInvalidatedException` vẫn là `VO_HIEU`; Dart `LoiSinhTrac.matKhoa` → service tự tắt vân tay như `voHieu`, cubit báo **`kCauVanTayDaTat`**
   *"Vân tay đã tắt — nhập mã PIN rồi bật lại trong Cài đặt"*. Thứ tự đăng xuất (`dongPhien` trước POST) **giữ nguyên** (bẫy 4). Test: 4 ca (dịch mã, nối dây Kotlin
@@ -331,8 +350,7 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
   cấu hình PIN còn (đúng bẫy 5 — vẫn khoá) nhưng alias đã mất → lần mở sau kênh trả `VO_HIEU` → `tatVanTay` + *"Vân tay trên máy đã thay đổi — nhập mã PIN rồi bật lại
   trong Cài đặt"* dù người dùng không đổi vân tay nào. An toàn không đổi (vẫn khoá, PIN mở). Hướng sửa (chưa chọn — hỏi người dùng): Kotlin `mo` phân biệt *alias không còn*
   (`containsAlias` sai) với *khoá bị vô hiệu* (`KeyPermanentlyInvalidatedException`) → câu riêng *"Vân tay đã tắt — …"*; hoặc dời xoá alias về sau `logout()`.
-- **Sau soát lại đợt sửa (2026-10-25, để lại):** `DatMaPinPage._napCho` đọc kho kiểu khoan dung và nuốt lỗi → đọc hỏng thì chế độ `dat` vẫn ghi đè PIN mà không hỏi PIN cũ (M4 chỉ đóng
-  khi đọc được; lối vào chỉ là route nội bộ). `TheoDoiRouteCongKhai`: `didPop` / `didRemove` có thể ghi một popup qua `previousRoute` (kẹt `false` tới lần push kế — chiều đóng, van an toàn gỡ),
+- **Sau soát lại đợt sửa (2026-10-25, để lại):** ~~`DatMaPinPage._napCho` đọc kho kiểu khoan dung và nuốt lỗi~~ — ✅ **đóng 2026-10-25 (phiên 8)**: đọc `docNghiemNgat`; đọc hỏng = *không biết* có cấu hình → chế độ `dat` cũng đổi sang hỏi PIN hiện tại (`kiemPin` gặp kho hỏng báo *"Không kiểm được mã PIN"*, không ghi đè; ca *"kho ĐỌC HỎNG"* `dat_ma_pin_page_test`). Từ `flutter_secure_storage` 10 mục giải mã hỏng tự thành *vắng* (bẫy 27) nên đường này chỉ còn với lỗi kênh / JSON hình lạ. `TheoDoiRouteCongKhai`: `didPop` / `didRemove` có thể ghi một popup qua `previousRoute` (kẹt `false` tới lần push kế — chiều đóng, van an toàn gỡ),
   `didReplace` có popup ở một vế thì mất route trên cùng — cả hai chưa xảy ra được với mã hôm nay; hướng sửa: observer giữ danh sách route trang riêng. Ca nối router thật mới ghim `/login` —
   nên liệt kê đủ các route công khai.
 - **Để lại có lý do (triage review):** ABA `nhanPhien` 10→null→10 mở hộp vân tay hai lần (Kotlin `hoi()` huỷ lời đầu — đo chạm hai lần nhanh); `batVanTay` đọc cấu hình trước hộp rồi ghi sau (hộp hệ thống là modal; không đường nào trong app đổi cấu hình lúc ấy);
@@ -499,7 +517,31 @@ JPEG** (432 × 960: màn khoá ≈ 26 KB · lớp đặc ≈ 11,7 KB · splash �
 ≈ 110 KB), rồi tách 1/60 s quanh chỗ chuyển, gộp khung trùng bằng MD5 và **mở xem mọi khung có cỡ lạ** (đều là hiệu ứng mở app / splash mờ dần).
 Mốc giờ: tên tệp video = giờ máy lúc bắt đầu; giờ máy chậm hơn giờ PC ~1 s (logcat 19:13:47,9 so với PC 19:13:48,9).
 Quan sát ngoài khoá app: lúc server cắt socket (12a), logcat có `Unhandled Exception: WebSocketConnectionClosed` từ `socket_io_client`
-(`IOWebSocket.close`) — app vẫn chạy đúng; chưa điều tra, chưa ghi ở đâu khác.
+(`IOWebSocket.close`) — app vẫn chạy đúng. ✅ Phiên 8: gốc ở `WebSocketTransport.doClose` (gọi `close()` không `await`) — sửa bằng lớp bọc
+`WebSocketDongEm` (`f8ae62ca`), đo lại Buổi 3 không còn dòng ấy.
 Cuối buổi: khoá app BẬT lại (PIN 135790, vân tay — người dùng chạm, *Tự khoá sau* 30 giây); backend + máy chủ treo đã tắt; token admin tạm đã xoá.
 Dấu vết để lại trong CSDL dev `PersonFinance` (cố ý, không dọn): `auditlog` có hai cặp *"Khóa tài khoản"* / *"Mở khóa tài khoản"* cho tài khoản 10 (admin,
 lý do *"Kiem thu khoa ung dung - tam thoi"*, 19:11 và 19:13), bốn `refreshtoken` mới của tài khoản 10 + một của admin, `account.Update_at` của tài khoản 10 đổi.
+
+**Buổi 3 — 2026-10-25 khuya (20:47–21:42, phiên 8), Realme, bản DEBUG** (`f8ae62ca` + `81c09b8a`, `API_BASE_URL=http://127.0.0.1:3000/api`; cài 20:47:54,
+SHA-1 `237e0d13…`). Người dùng cầm máy (vân tay, Cài đặt máy, đăng nhập); Claude chạm PIN / điều hướng bằng adb, chụp màn, đọc logcat. Sao lưu trước buổi
+(force-stop rồi chép, cỡ khớp): `D:\FlowMoney-saoluu\realme-tk10-truoc-phien8-2026-10-25-2046\` (3 tệp CSDL + 11 tệp `shared_prefs/`). *Tự khoá sau*
+tạm đặt **Ngay** cho bước 21 / 6.
+
+| Bước | Kết quả |
+|---|---|
+| Thanh trạng thái (`81c09b8a`) | ✅ màn khoá, Trang chủ **lúc mở lạnh**, Cá nhân, Phân tích, rồi Trang chủ lại: điểm ảnh thanh trạng thái = nền kem (237, 237, 233) cả năm ảnh — dải xám cũ (~178) đã hết; màn Quét nền đen: biểu tượng **trắng** (người dùng nhìn). |
+| 17 — 320 dp | ✅ ColorOS chặn `wm density` và `settings put system font_scale` (`WRITE_SETTINGS`) → người dùng đổi **cỡ hiển thị** trong Cài đặt máy = density 540 = **320 dp**. Màn khoá, Cá nhân, trang Khoá ứng dụng, bảng chọn *Tự khoá sau*: **0 điểm vàng thuần**, không cụt chữ; lộ **M15** (hàng *Tự khoá sau* gãy dòng khi chọn *Ngay khi rời app*). Cỡ **chữ** (font scale) chưa đo. |
+| 21 — Quét ảnh khi khoá (Ngay) | ✅ Quét → Chọn ảnh (DocumentsUI 21:11:14) → quay về: **màn khoá trước** (người dùng xác nhận) → vân tay → lượt quét chạy tiếp: OCR (STARBUCKS, 262.000) 21:11:33, Gemma đọc ảnh 39 s, danh mục *Ăn uống* 21:12:21 → **form tự điền**; cùng tiến trình suốt lượt (không bị ColorOS giết — lúc mở trình chọn chưa giữ Gemma). Không Lưu. Đường **máy ảnh khi đang giữ Gemma** (ColorOS giết app) chưa đo. PayOS: người dùng chọn bỏ. |
+| 6a — chạm thông báo, app sống + khoá | ✅ *Tổng kết tuần* đặt Chủ nhật, giờ hiện tại + 3 phút → Home → chạm thông báo: **màn khoá trước, không lộ khung nào** (người dùng nhìn) → vân tay → *Xuất Báo cáo* kỳ **12/10 – 18/10** (= `tuanTruoc(now)`, `notification_rules.dart:338` — đúng thiết kế). |
+| 6b — chạm thông báo, app đã chết | ✅ đặt lại giờ → `am crash` (không force-stop — force-stop xoá lịch) → pid 27013 chết, hệ điều hành dựng 5055 cho dịch vụ D1 (không giao diện), lịch còn 3 → chạm thông báo 21:30:15: engine mới, màn khoá → vân tay → đúng *Xuất Báo cáo 12/10 – 18/10*. |
+| `WebSocketConnectionClosed` (`f8ae62ca`) | ✅ backend nền trỏ `PersonFinance` (kiểm danh tính trước: script chỉ đọc), app nối socket → `PATCH /api/admin/updatestatus/10` `Inactive` 21:33:30, mở lại `Active` 21:33:36 (đọc CSDL: `Active`). Logcat: `Bị buộc đăng xuất: biKhoa` → `Đứt kết nối: io server disconnect` (đúng đường gói `41` + đóng) — **0** dòng `WebSocketConnectionClosed` / `Unhandled Exception` cả buổi; hộp thoại *"Tài khoản đã bị vô hiệu hoá"* đúng lý do. |
+| 11 — vuốt app giữa vòng đồng bộ đầu sau đăng nhập lại | ✅ proxy `D:\FlowMoney-saoluu\cong-cu-do\proxy_giu_pull.js` (cổng 3002 → backend 3000, `adb reverse tcp:3000 tcp:3002`; giữ mọi `/sync/pull` khi có tệp `giu.flag`, mọi yêu cầu khác + socket.io đi thẳng). Đăng nhập mật khẩu (sau lần bị buộc đăng xuất — cùng đường với *Quên PIN → Đăng xuất*: cấu hình PIN còn) → `/sync/pull` bị giữ 21:36:12 → **hết giờ 30 s, không bao giờ xong** → người dùng vuốt app khỏi Đa nhiệm → mở lại: **không hỏi PIN / vân tay**, vào Trang chủ, hàng *Khoá ứng dụng* không còn viên *Đang bật*. ⚠️ Trên Realme vuốt **không giết tiến trình** (pid 5055 suốt — dịch vụ D1 giữ), chỉ dựng lại engine (21:36:46); kết luận đứng được vì lượt đồng bộ đầu chưa từng xong mà PIN cũ đã mất — đúng I4 (xoá ở `sauXacThucMatKhau`, không đợi `sauDangNhap`). |
+
+Người dùng hỏi giữa buổi vì sao chọn ảnh để quét cũng bị hỏi PIN → giải thích (trình chọn ảnh là app khác, app xuống nền; mức *Ngay* do buổi đo đặt tạm;
+mặc định 30 giây thì chọn nhanh không bị hỏi) → người dùng chốt **giữ như spec** (không miễn khoá cho lối app tự mở máy ảnh / chọn ảnh / PayOS — spec mục 8).
+Cuối buổi: người dùng bật lại khoá app (PIN 135790, vân tay, *Tự khoá sau* 30 giây), trả *Tổng kết tuần* và cỡ hiển thị (density về 480); backend + proxy +
+logcat của buổi đã dừng, `adb reverse` trả về `tcp:3000 tcp:3000`, token admin tạm đã xoá. Lượt đồng bộ sau khi thả cờ chưa tự chạy lại trước khi tắt
+backend (đang giãn sau lần hỏng) — lần mở kế tự kéo. Dấu vết trong CSDL dev `PersonFinance` (cố ý): `auditlog` một cặp khoá / mở tài khoản 10 (admin, lý do
+*"Kiem thu phien 8 - kenh socket, tam thoi"*, 21:33), `refreshtoken` mới của tài khoản 10 và admin. Một `adb logcat` của phiên trước (pid 11868, chạy từ
+17:55) còn sống — không do buổi này mở, để nguyên.

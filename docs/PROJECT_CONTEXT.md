@@ -616,7 +616,20 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-25)
 
-### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối; nghiệm thu Realme buổi 1 — F1 + M11; buổi 2 — M5, thanh trạng thái, `flutter_secure_storage` 10)
+### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối; nghiệm thu Realme buổi 1 — F1 + M11; buổi 2 — M5, thanh trạng thái, `flutter_secure_storage` 10; phiên 8 — M7 · M8 · M12, buổi 3)
+
+- **Phiên 8 (2026-10-25 khuya; người dùng chọn cả bốn việc mở của bàn giao phiên 7):** (1) **M7 · M8 · M12 · `_napCho`** (`b49217ca`) — mốc chờ sau sai PIN xa hơn
+  15 phút kẹp về `nay + kChoToiDa` **và ghi lại** kho (bẫy 28: kẹp không ghi = đếm ngược không về 0), `resumed` khi đang khoá đọc lại kho; lượt làm tươi P9 bỏ bản đọc
+  khi `lanKiem` đã đổi; Kotlin `TIMEOUT` → `HUY`, `SECURITY_UPDATE_REQUIRED` → `KHONG_HO_TRO`, `xoaHet` bọc `try` từng alias; trang Đặt PIN đọc nghiêm ngặt (đọc hỏng ở chế
+  độ `dat` → hỏi PIN hiện tại). (2) **`WebSocketConnectionClosed`** (`f8ae62ca`, ngoài mảng khoá app — kênh thời gian thực): gốc ở `socket_io_client` 3.1.6
+  `WebSocketTransport.doClose` gọi `_ws?.close()` không `await` trong khi `package:web_socket` ném khi server đã đóng trước; bọc kết nối bằng `WebSocketDongEm`
+  (`setWebSocketConnector`), `web_socket` khai thẳng ở pubspec; test máy chủ Engine.IO giả trên `ServerSocket` thô (ghi `41` + khung đóng **một** lần — `HttpServer`
+  ghi hai lần thì không tái hiện). (3) **Thanh trạng thái một kiểu cho cả app** (`81c09b8a`): `VungThanhTrangThaiGoc` (`shared/widgets/`) dưới lớp khoá, hằng chung
+  `kKieuThanhTrangThaiSang` / `kKieuThanhTrangThaiToi` (`shared/theme/`), màn Quét tự bọc kiểu tối (bẫy 26). (4) **Buổi 3 trên Realme** (mục 10 `KHOA_APP_FEATURE.md`):
+  thanh trạng thái · 17 (320 dp) · 21 (Quét ảnh khi khoá) · 6a / 6b (chạm thông báo khi khoá, app sống / đã chết) · `WebSocketConnectionClosed` (khoá TK10 qua API
+  admin — 0 dòng lỗi) · 11 (proxy `proxy_giu_pull.js` giữ `/sync/pull` — lượt đầu không bao giờ xong mà mở lại không hỏi PIN cũ) — **đạt**; lộ **M15** (hàng *Tự khoá
+  sau* gãy dòng ở 320 dp). Người dùng chốt giữ `resetOnError` (bẫy 27) và giữ *không miễn khoá* lối app tự mở máy ảnh / chọn ảnh (spec mục 8). Test **8.051 / 10 skip**,
+  analyze 20. Chưa push.
 
 - **Buổi 2 (2026-10-25 tối, phiên 7, bản debug trên Realme — mục 10 *Buổi 2* `KHOA_APP_FEATURE.md`):** **`flutter_secure_storage` 9.2.4 → 10.3.4** ghim cứng
   (`f5a90f4b`, `AndroidOptions` mặc định): lần mở đầu gói chuyển kho thật **16 / 16 mục** sang RSA-OAEP + AES-GCM (~160 ms, logcat), lần hai đi thẳng; PIN, gói Premium,
@@ -631,7 +644,8 @@ src/Backend/
   định vị bằng cỡ JPEG); 11 đạt có điều kiện (lượt đồng bộ đầu xong < 1 s, chưa chen được vào giữa). Lộ **M14**: `dongPhien` xoá alias vân tay **trước** POST đăng xuất →
   đăng xuất bị cắt giữa chừng làm vân tay tự tắt với câu *"Vân tay trên máy đã thay đổi"* (sai lý do; an toàn không đổi) → ✅ người dùng chọn sửa câu báo: Kotlin
   trả mã mới `MAT_KHOA` khi alias không còn → *"Vân tay đã tắt — nhập mã PIN rồi bật lại trong Cài đặt"*; lặp D-1 trên Realme đạt. Quan sát
-  ngoài khoá app: `Unhandled Exception: WebSocketConnectionClosed` từ `socket_io_client` khi server cắt socket. Script đo lưu `D:\FlowMoney-saoluu\cong-cu-do\`.
+  ngoài khoá app: `Unhandled Exception: WebSocketConnectionClosed` từ `socket_io_client` khi server cắt socket (✅ sửa phiên 8, `f8ae62ca`). Script đo lưu
+  `D:\FlowMoney-saoluu\cong-cu-do\`.
 
 - **Nghiệm thu Realme buổi 1 (2026-10-25 chiều, bản release, backend tắt — mục 10 `KHOA_APP_FEATURE.md`):** đạt bật / mở lạnh / tự khoá (30 s, Ngay,
   5 phút) / sai PIN + chờ + P9 / vân tay (mở, tạm khoá, thêm vân tay mới → tự tắt) / **I1 tách riêng** (giờ tường +19,7 s, đồng hồ khởi động +90,2 s → khoá;
@@ -645,7 +659,7 @@ Người dùng chọn *"Bảo mật tiếp"* sau soát bảo mật (khối 🔒 
 Spec `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (người dùng duyệt từng phần; sau soát Task 12 đổi thân spec
 mục 4/5/6 — đăng xuất chỉ xoá alias Keystore; sau review toàn nhánh (I4) cấu hình PIN xoá ở hook `sauXacThucMatKhau`, ngay sau `login()`), kế hoạch 13 task (gitignore) thi công bằng agent con
 (Fable preflight 16 phát hiện · Sonnet thực thi · Opus soát từng task + review toàn nhánh), dải commit `a0c6dacf..393e626f` (30 commit, đếm 2026-10-25: 22 thi công · `f6699e64`
-tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu bàn giao đầy đủ: **`docs/KHOA_APP_FEATURE.md`** (quyết định, luồng, bản đồ tệp, mô hình đe doạ mục 1b, 27 bẫy (đếm 2026-10-25 tối), Stitch, checklist nghiệm thu).
+tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu bàn giao đầy đủ: **`docs/KHOA_APP_FEATURE.md`** (quyết định, luồng, bản đồ tệp, mô hình đe doạ mục 1b, 28 bẫy (đếm 2026-10-25 khuya), Stitch, checklist nghiệm thu).
 
 - **Làm gì:** Cá nhân → Bảo mật & Tuỳ chọn → *Khoá ứng dụng*: bật = đặt PIN 6 số (PBKDF2-HMAC-SHA256 Dart thuần, **cục bộ**, không lên
   server) + tuỳ chọn vân tay (kênh Kotlin `flowmoney/sinh_trac`, `BiometricPrompt` + `CryptoObject` trên khoá AES-GCM `AndroidKeyStore`,
@@ -655,7 +669,7 @@ tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu 
   van an toàn 3 s; bộ theo dõi bỏ qua `PopupRoute` — màn Đăng nhập mở hộp thoại lý do ngay khung đầu, không bỏ qua là luôn chờ hết van) — trước đó gỡ ngay lúc phiên mất làm lộ trang được bảo vệ dưới hiệu ứng sang Đăng nhập; **I1** tự khoá đo thêm bằng đồng hồ khởi động `CLOCK_BOOTTIME` qua `dart:ffi` (chỉnh giờ máy
   lùi không vượt khoá nữa); **I2** kho phân biệt vắng / hỏng (`docNghiemNgat`; hỏng → vẫn khoá, `kCauKhongKiemDuoc`); **I3** `batVanTay` khi đã bật không gọi kênh + chống chạm đôi mở hai trang PIN;
   **I4** hook `sauXacThucMatKhau` xoá PIN cũ ngay khi mật khẩu được chấp nhận (không đợi vòng đồng bộ đầu); mục nhỏ M1–M4, M6, M9, M10, T1, T5–T7.
-- **Test:** `flutter test` **8.037 pass / 10 skip** sau M14 (2026-10-25 tối, 5 ph 27 s; mảng khoá app 150 ca / 18 tệp); **8.035** sau M5 + thanh trạng thái (`c5010e1b`); **8.027** sau F1 + M11 (`4c7945ed`, 2026-10-25 chiều; mảng khoá app 142 ca); trước đó **8.017** (đo 2026-10-25 sau bản vá cuối `be3bdf26` — bộ theo dõi route bỏ qua hộp thoại, 3 ph 38 s theo log, +141 so với 7876; mốc trước đợt sửa 7.981), `flutter analyze` **20** (mức nền), `flutter build web --debug` đạt
+- **Test:** `flutter test` **8.051 pass / 10 skip** sau phiên 8 (2026-10-25 khuya, 5 ph 22 s; mảng khoá app 158 ca khai báo / 18 tệp); **8.037** sau M14 (mảng 150 ca); **8.035** sau M5 + thanh trạng thái (`c5010e1b`); **8.027** sau F1 + M11 (`4c7945ed`, 2026-10-25 chiều; mảng khoá app 142 ca); trước đó **8.017** (đo 2026-10-25 sau bản vá cuối `be3bdf26` — bộ theo dõi route bỏ qua hộp thoại, 3 ph 38 s theo log, +141 so với 7876; mốc trước đợt sửa 7.981), `flutter analyze` **20** (mức nền), `flutter build web --debug` đạt
   (import có điều kiện `dart:ffi`); mảng 128 ca / 16 tệp dưới `test/features/khoa_app/` + 1 ca `test/core/router/theo_doi_route_cong_khai_test.dart` (đếm grep 2026-10-25). Build `--release` đã dựng đạt ở Task 5
   (R8, manifest) — **chưa dựng lại sau đợt sửa cuối**, chưa chạy trên máy.
 - **Việc còn (đều ở `KHOA_APP_FEATURE.md`)** — *cập nhật 2026-10-25 chiều: (1) xong phần không đăng xuất, (2) xong (50.000), M11 đã làm — dòng đầu khối; câu dưới là ảnh chụp trước buổi 1:* (1) **nghiệm thu Realme** (mục 9: 23 bước + D / E; **không đăng xuất ở đầu buổi**, nhánh Đăng xuất chỉ sau khi kiểm danh tính CSDL + chép CSDL; điểm mới: **C1 quay màn hình 60 fps** ba đường, **I1** đồng hồ khởi động tăng khi
