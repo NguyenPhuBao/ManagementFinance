@@ -131,4 +131,58 @@ void main() {
     expect(cubit!.state, const KhoaAppTat());
     expect(lopDac, findsNothing);
   });
+
+  testWidgets('trang /login tự mở hộp thoại lý do ở khung đầu → lớp che gỡ khi hiệu ứng vào xong, TRƯỚC van an toàn', (t) async {
+    router.dispose();
+    router = GoRouter(
+      initialLocation: '/a',
+      observers: [theoDoi],
+      refreshListenable: dangNhap,
+      redirect: (context, state) {
+        final vao = dangNhap.value;
+        if (!vao && state.matchedLocation != '/login') return '/login';
+        if (vao && state.matchedLocation == '/login') return '/a';
+        return null;
+      },
+      routes: [
+        GoRoute(path: '/a', builder: (_, __) => const Scaffold(body: Text('Trang A'))),
+        GoRoute(path: '/login', builder: (_, __) => const _LoginCoHop()),
+      ],
+    );
+    await dung(t); // van 3 s
+    dangNhap.value = false;
+    await cubit!.nhanPhien(null);
+    for (var i = 0; i < 40; i++) {
+      await t.pump(const Duration(milliseconds: 50)); // tổng 2 s < van 3 s
+    }
+    expect(find.text('Hộp thoại lý do'), findsOneWidget, reason: 'hộp thoại phải thấy được, không bị màn đặc che');
+    expect(cubit!.state, const KhoaAppTat(), reason: 'hộp thoại không được chặn tín hiệu — chỉ gỡ sau van là sai');
+    expect(lopDac, findsNothing);
+  });
+
+  testWidgets('popup mở trên trang ĐƯỢC BẢO VỆ không làm tín hiệu thành true', (t) async {
+    await dung(t);
+    unawaited(showDialog<void>(context: t.element(find.text('Trang A')), builder: (_) => const Text('hộp')));
+    await t.pump(const Duration(milliseconds: 400));
+    expect(theoDoi.dungYenOCongKhai.value, isFalse);
+  });
+}
+
+class _LoginCoHop extends StatefulWidget {
+  const _LoginCoHop();
+  @override
+  State<_LoginCoHop> createState() => _LoginCoHopState();
+}
+
+class _LoginCoHopState extends State<_LoginCoHop> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) showDialog<void>(context: context, builder: (_) => const AlertDialog(content: Text('Hộp thoại lý do')));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(body: Text('Trang Đăng nhập'));
 }

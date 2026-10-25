@@ -44,19 +44,31 @@ class TheoDoiRouteCongKhai extends NavigatorObserver {
     _dungYen.value = r != null && laCongKhai(r.settings.name) && (h == null || h.status == AnimationStatus.completed);
   }
 
+  // Route "trên cùng" để xét là route TRANG trên cùng: `PopupRoute` (hộp thoại, bottom sheet, menu…) bị bỏ qua ở cả bốn
+  // callback. Màn Đăng nhập mở hộp thoại lý do ngay khung đầu (`hop_thoai_bi_day_ra`); coi hộp thoại là route trên cùng thì
+  // tín hiệu không bao giờ `true` và lớp che chỉ gỡ nhờ van an toàn. Popup mở trên trang được bảo vệ cũng không được làm
+  // tín hiệu thành `true` (route đã ghi không đổi).
   @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => _datTren(route);
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PopupRoute) return;
+    _datTren(route);
+  }
 
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _datTren(previousRoute);
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PopupRoute) return;
+    _datTren(previousRoute);
+  }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PopupRoute) return;
     if (identical(route, _tren)) _datTren(previousRoute);
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (oldRoute is PopupRoute || newRoute is PopupRoute) return;
     if (identical(oldRoute, _tren)) _datTren(newRoute);
   }
 
