@@ -616,7 +616,15 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-25)
 
-### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối; nghiệm thu Realme buổi 1 — F1 + M11)
+### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối; nghiệm thu Realme buổi 1 — F1 + M11; buổi 2 — M5, thanh trạng thái, `flutter_secure_storage` 10)
+
+- **Buổi 2 (2026-10-25 tối, phiên 7, bản debug trên Realme — mục 10 *Buổi 2* `KHOA_APP_FEATURE.md`):** **`flutter_secure_storage` 9.2.4 → 10.3.4** ghim cứng
+  (`f5a90f4b`, `AndroidOptions` mặc định): lần mở đầu gói chuyển kho thật **16 / 16 mục** sang RSA-OAEP + AES-GCM (~160 ms, logcat), lần hai đi thẳng; PIN, gói Premium,
+  mốc kéo về, cài đặt khoá còn nguyên; bản `--release` dựng đạt. Hệ quả: `resetOnError` mặc định biến mục giải mã hỏng thành *vắng* (bẫy 27 — chấp nhận, cần root).
+  Test: 7 lớp giả `implements FlutterSecureStorage` đổi `IOSOptions` / `MacOsOptions` → `AppleOptions`. **M5 đóng** (`f1daea24`, người dùng chọn *Back đưa app xuống
+  nền*): `LopKhoaApp` giữ Back qua `didPopRoute` — đăng ký trước `Router` con và Flutter hỏi theo thứ tự đăng ký (bẫy 14); tấm Quên PIN mở thì Back = Huỷ; hàm dùng
+  chung `duaAppXuongNen` tách từ `ThoatHaiLan`. **Thanh trạng thái** màn khoá tự đặt kiểu trong suốt (`AnnotatedRegion`, bẫy 26) + lớp mờ tấm Quên PIN phủ cả thanh
+  trạng thái (`c5010e1b`). Đo trên máy đạt cả ba. Còn: chạm **vân tay** sau khi nâng kho (người dùng vắng lúc đo), các bước đăng xuất.
 
 - **Nghiệm thu Realme buổi 1 (2026-10-25 chiều, bản release, backend tắt — mục 10 `KHOA_APP_FEATURE.md`):** đạt bật / mở lạnh / tự khoá (30 s, Ngay,
   5 phút) / sai PIN + chờ + P9 / vân tay (mở, tạm khoá, thêm vân tay mới → tự tắt) / **I1 tách riêng** (giờ tường +19,7 s, đồng hồ khởi động +90,2 s → khoá;
@@ -630,7 +638,7 @@ Người dùng chọn *"Bảo mật tiếp"* sau soát bảo mật (khối 🔒 
 Spec `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (người dùng duyệt từng phần; sau soát Task 12 đổi thân spec
 mục 4/5/6 — đăng xuất chỉ xoá alias Keystore; sau review toàn nhánh (I4) cấu hình PIN xoá ở hook `sauXacThucMatKhau`, ngay sau `login()`), kế hoạch 13 task (gitignore) thi công bằng agent con
 (Fable preflight 16 phát hiện · Sonnet thực thi · Opus soát từng task + review toàn nhánh), dải commit `a0c6dacf..393e626f` (30 commit, đếm 2026-10-25: 22 thi công · `f6699e64`
-tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu bàn giao đầy đủ: **`docs/KHOA_APP_FEATURE.md`** (quyết định, luồng, bản đồ tệp, mô hình đe doạ mục 1b, 24 bẫy, Stitch, checklist nghiệm thu).
+tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu bàn giao đầy đủ: **`docs/KHOA_APP_FEATURE.md`** (quyết định, luồng, bản đồ tệp, mô hình đe doạ mục 1b, 27 bẫy (đếm 2026-10-25 tối), Stitch, checklist nghiệm thu).
 
 - **Làm gì:** Cá nhân → Bảo mật & Tuỳ chọn → *Khoá ứng dụng*: bật = đặt PIN 6 số (PBKDF2-HMAC-SHA256 Dart thuần, **cục bộ**, không lên
   server) + tuỳ chọn vân tay (kênh Kotlin `flowmoney/sinh_trac`, `BiometricPrompt` + `CryptoObject` trên khoá AES-GCM `AndroidKeyStore`,
@@ -640,7 +648,7 @@ tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu 
   van an toàn 3 s; bộ theo dõi bỏ qua `PopupRoute` — màn Đăng nhập mở hộp thoại lý do ngay khung đầu, không bỏ qua là luôn chờ hết van) — trước đó gỡ ngay lúc phiên mất làm lộ trang được bảo vệ dưới hiệu ứng sang Đăng nhập; **I1** tự khoá đo thêm bằng đồng hồ khởi động `CLOCK_BOOTTIME` qua `dart:ffi` (chỉnh giờ máy
   lùi không vượt khoá nữa); **I2** kho phân biệt vắng / hỏng (`docNghiemNgat`; hỏng → vẫn khoá, `kCauKhongKiemDuoc`); **I3** `batVanTay` khi đã bật không gọi kênh + chống chạm đôi mở hai trang PIN;
   **I4** hook `sauXacThucMatKhau` xoá PIN cũ ngay khi mật khẩu được chấp nhận (không đợi vòng đồng bộ đầu); mục nhỏ M1–M4, M6, M9, M10, T1, T5–T7.
-- **Test:** `flutter test` **8.027 pass / 10 skip** sau F1 + M11 (`4c7945ed`, 2026-10-25 chiều; mảng khoá app 142 ca); trước đó **8.017** (đo 2026-10-25 sau bản vá cuối `be3bdf26` — bộ theo dõi route bỏ qua hộp thoại, 3 ph 38 s theo log, +141 so với 7876; mốc trước đợt sửa 7.981), `flutter analyze` **20** (mức nền), `flutter build web --debug` đạt
+- **Test:** `flutter test` **8.035 pass / 10 skip** sau M5 + thanh trạng thái (`c5010e1b`, 2026-10-25 tối, 5 ph 25 s; mảng khoá app 148 ca / 18 tệp); **8.027** sau F1 + M11 (`4c7945ed`, 2026-10-25 chiều; mảng khoá app 142 ca); trước đó **8.017** (đo 2026-10-25 sau bản vá cuối `be3bdf26` — bộ theo dõi route bỏ qua hộp thoại, 3 ph 38 s theo log, +141 so với 7876; mốc trước đợt sửa 7.981), `flutter analyze` **20** (mức nền), `flutter build web --debug` đạt
   (import có điều kiện `dart:ffi`); mảng 128 ca / 16 tệp dưới `test/features/khoa_app/` + 1 ca `test/core/router/theo_doi_route_cong_khai_test.dart` (đếm grep 2026-10-25). Build `--release` đã dựng đạt ở Task 5
   (R8, manifest) — **chưa dựng lại sau đợt sửa cuối**, chưa chạy trên máy.
 - **Việc còn (đều ở `KHOA_APP_FEATURE.md`)** — *cập nhật 2026-10-25 chiều: (1) xong phần không đăng xuất, (2) xong (50.000), M11 đã làm — dòng đầu khối; câu dưới là ảnh chụp trước buổi 1:* (1) **nghiệm thu Realme** (mục 9: 23 bước + D / E; **không đăng xuất ở đầu buổi**, nhánh Đăng xuất chỉ sau khi kiểm danh tính CSDL + chép CSDL; điểm mới: **C1 quay màn hình 60 fps** ba đường, **I1** đồng hồ khởi động tăng khi
@@ -724,7 +732,7 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   rỗng chỉ vì CVE ghi theo SQLite chứ không theo gói npm; mọi CVE ấy cần SQL do kẻ tấn công soạn, bản web chỉ để chạy thử.
   Bảo trì (không CVE): `flutter_gemma` / `flutter_gemma_litertlm` **ngừng phát triển** trên pub.dev (đổi tên `flutter_edge_ai`
   — bản vá sau này không về tên cũ); `sqlite3_flutter_libs` sang `0.6.0+eol` (không cần với `sqlite3` 3.x);
-  `flutter_secure_storage` 9.2.4 (mới nhất 11.2.0). Sửa:
+  `flutter_secure_storage` 9.2.4 (mới nhất 11.2.0; ✅ nâng **10.3.4** ngày 2026-10-25 tối — khối 🔐 *Buổi 2*). Sửa:
   ✅ **sql.js 1.8.0 → 1.15.1** (`web/index.html`: thẻ `<script>` + `integrity` SHA-512 mới — tự tính khớp cdnjs — + URL
   `locateFile`); `bao_mat_manifest_test.dart` thêm ca *mọi URL sql.js cùng một phiên bản* (thử bản sai: chỉ nâng thẻ, quên
   `locateFile` → đỏ `{1.15.1, 1.8.0}`). Đo Chrome headless (hạ tầng skill `chay-app`) trên trang dựng từ **chính** hai khối

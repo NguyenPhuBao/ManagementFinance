@@ -10,8 +10,13 @@
 > dung) → **đã sửa và đo lại đạt** (`Mo(che)` ở `inactive`, bẫy 25); **M11** (dòng nhắc *"Khoá ứng dụng đã tắt"*) làm theo người dùng chốt
 > (bẫy 24). `kSoVongMacDinh` = **50.000** theo số đo release. 🚧 **Còn mở:** mọi bước có **đăng xuất** (10, 10a, 11, 12, D-1 — gồm C1 và
 > M11 trên máy) chờ backend `PersonFinance`; TalkBack; quét ảnh / PayOS / chạm thông báo khi khoá; 320 dp (ColorOS chặn `wm density`).
+> ✅ **2026-10-25 tối (phiên 7, bản debug trên Realme):** **M5 đã sửa và đo đạt** — Back trên màn khoá đưa app xuống nền, tấm Quên PIN mở thì
+> Back = Huỷ (bẫy 14, `f1daea24`); **thanh trạng thái** màn khoá tự đặt kiểu trong suốt (bẫy 26, `f1daea24` + `c5010e1b`);
+> **`flutter_secure_storage` 9.2.4 → 10.3.4** (`f5a90f4b`) — kho thật 16 mục chuyển sang RSA-OAEP + AES-GCM, PIN / gói / mốc đồng bộ
+> còn nguyên (mục 10, *Buổi 2*); hệ quả với I2 ở bẫy 27.
 > Spec: `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (đã sửa theo thiết kế cuối 2026-10-25).
-> Mảng mã: `src/Client-app/lib/features/khoa_app/` (21 tệp, 2.310 dòng, đếm 2026-10-25 chiều sau F1 + M11) + `android/…/SinhTrac.kt`.
+> Mảng mã: `src/Client-app/lib/features/khoa_app/` (21 tệp, 2.401 dòng, đếm 2026-10-25 tối sau M5 + thanh trạng thái; chiều 2.310) +
+> `android/…/SinhTrac.kt` + hàm dùng chung `duaAppXuongNen` (`lib/shared/widgets/thoat_hai_lan.dart`).
 
 ## 1. Người dùng thấy gì
 
@@ -53,10 +58,12 @@ lớp bảo vệ dữ liệu khi kho bị đọc ra:
 - **Giờ máy:** `choDen` (thời gian chờ sau sai PIN) tính theo giờ máy — chỉnh giờ rút được thời gian chờ (spec chấp nhận). Riêng **tự
   khoá** đã chặn bằng đồng hồ khởi động (bẫy 23): chỉnh giờ lùi không vượt được khoá.
 - **Đọc kho hỏng:** mở lạnh = *chưa bật* (token cùng kho; kho hỏng thì phiên đã hỏng — spec chấp nhận); nhưng sau đó màn khoá /
-  kiểm PIN đọc **nghiêm ngặt** và hỏng thì **vẫn khoá** (bẫy 6).
+  kiểm PIN đọc **nghiêm ngặt** và hỏng thì **vẫn khoá** (bẫy 6). ⚠️ Từ `flutter_secure_storage` 10 (2026-10-25 tối) gói tự **xoá** mục giải mã
+  hỏng và trả `null` (`resetOnError` mặc định) — trên máy thật *"hỏng"* hầu như thành *"vắng"*, tức *"chưa bật"*; chỉ xảy ra khi một mục bị sửa
+  riêng lẻ (root) — bẫy 27.
 - **Hệ quả thiết kế (Ruling T12 + I4):** cấu hình PIN xoá ở **mọi lần đăng nhập bằng mật khẩu** (không chỉ sau Quên PIN) — kể cả
-  sau hết phiên, cưỡng chế đăng xuất, đổi mật khẩu (`change_password_page` → `LogoutRequested`). Người dùng có thể tưởng app còn khoá;
-  *chưa có dòng nhắc "khoá đã tắt"* (M11, hỏi người dùng — mục 8). Băm PIN (PBKDF2, trong kho `flutter_secure_storage`) nằm lại trên máy
+  sau hết phiên, cưỡng chế đăng xuất, đổi mật khẩu (`change_password_page` → `LogoutRequested`). Người dùng có thể tưởng app còn khoá —
+  từ 2026-10-25 có dòng nhắc *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"* (M11, bẫy 24; trừ khi kho đã bị gói xoá trước đó — bẫy 27). Băm PIN (PBKDF2, trong kho `flutter_secure_storage`) nằm lại trên máy
   từ lúc đăng xuất tới lần đăng nhập mật khẩu kế — chỉ đọc được khi root.
 - **Quên PIN rồi đăng nhập TÀI KHOẢN KHÁC:** `moPhienCucBo` → `purgeDataForOtherAccounts` dọn dữ liệu cục bộ của tài khoản cũ — phần
   **chưa đồng bộ mất**, lịch sử thông báo / dữ liệu học gợi ý (không có trên server) mất. Tấm xác nhận Quên PIN chỉ nói vế "đăng nhập
@@ -204,9 +211,15 @@ Chỗ nối ngoài mảng: `lib/main.dart` (dựng `KhoaAppCubit` + `TheoDoiRout
     `setInvalidatedByBiometricEnrollment(true)`; API ≥ 30 `setUserAuthenticationParameters(0, AUTH_BIOMETRIC_STRONG)`. Realme / OnePlus đều API ≥ 30 → nhánh API 28–29 và P10 / P11 (bẫy 21) **không đo được** bằng hai máy hiện có.
 13. **Thêm vân tay mới trên máy → Keystore vô hiệu khoá** → `mo` trả `VO_HIEU` **không hiện hộp** → service `tatVanTay` + `xoaHet` → câu *"Vân tay trên máy đã thay đổi — nhập mã PIN rồi bật lại trong Cài đặt"*;
     ở màn khoá nút vân tay biến mất (`coVanTay:false`).
-14. **Back khi đang khoá gỡ route bên dưới** (kế hoạch chấp nhận; M5): `LopKhoaApp` nằm ngoài `Navigator` và không có `PopScope` / `BackButtonListener` (Grep 0) → Back đi tới router, pop route dưới lớp phủ. Không lộ gì, nhưng
-    `PopScope` của trang dưới có thể mở hộp thoại **nằm dưới** lớp khoá, form dở bị bỏ, deeplink mở lúc khoá có thể mất trang đích. Ở tab khác Back đổi về Trang chủ (`ThoatHaiLan.veTabDau`); ở Trang chủ Back thứ nhất
-    bật toast *"Nhấn lần nữa để thoát"* **dưới** lớp khoá (người dùng không thấy), Back thứ hai đưa app xuống nền (`main_shell.dart`). Back khi tấm Quên PIN mở cũng gỡ route dưới thay vì đóng tấm. **Chưa có ca test — nghiệm thu máy.**
+14. **Back khi đang khoá — `LopKhoaApp` giữ phím Back (M5, ✅ sửa 2026-10-25 tối, `f1daea24`).** Trước đó Back đi tới router và pop route dưới lớp phủ (khoá ở trang
+    *Khoá ứng dụng*, Back, mở khoá → về tab Cá nhân — xác nhận trên Realme; `PopScope` của trang dưới mở hộp thoại **nằm dưới** lớp khoá, form dở bị bỏ, toast *"Nhấn lần nữa để
+    thoát"* hiện **dưới** lớp khoá). Nay `_LopKhoaAppState` là `WidgetsBindingObserver`: **Khoá** → tấm Quên PIN mở thì Back = Huỷ (`ManKhoaState.xuLyBackTrenTam`; đã chạm
+    *Đăng xuất* thì **giữ** tấm — đóng tấm là mở đường chạm "Quên mã PIN?" lần hai), còn lại đưa cả task xuống nền (`duaAppXuongNen`, hàm tách từ `ThoatHaiLan` — G100: không
+    đóng activity); **DangXet / DangRoi** (lớp đặc) → nuốt Back; `Tat` / `Mo` → để router. ⚠️ **Thứ tự đăng ký là cả cơ chế:** Flutter 3.47.8 hỏi `didPopRoute` **theo thứ tự đăng
+    ký** (`WidgetsBinding.handlePopRoute`, đọc mã trên GitHub), và `initState` của `LopKhoaApp` (cha) chạy trước `Router` con — nơi `RootBackButtonDispatcher` đăng ký. **Đừng**
+    dời observer xuống `ManKhoa` (dựng sau Router → router thắng), **đừng** thay bằng `BackButtonListener` (cần `Router` phía trên — lớp khoá nằm TRÊN router), và đổi phiên bản
+    Flutter thì chạy lại `lop_khoa_app_back_test.dart` (GoRouter thật; `MaterialApp(home:)` đi `_WidgetsAppState.didPopRoute` đăng ký trước lớp khoá — ca ở đó mù). Hộp vân tay
+    chỉ tự hiện **một lần mỗi lần khoá**: mở lại app sau khi Back đưa nó xuống nền thì không có hộp — Back lúc ấy rơi thẳng vào màn khoá (đo trên máy).
 15. **Test: `google_fonts` + `tester.runAsync` làm ca ĐẦU tệp đỏ (P14).** `AppTheme.lightTheme` → `GoogleFonts.interTextTheme()` tải font qua HTTP; `HttpClient` của `flutter_test` trả 400 → `Exception: Failed to load font…`
     ném vào zone của ca đang chạy khi phản hồi về — phản hồi chỉ về khi có lượt event-loop **thật** (`runAsync`). `GoogleFonts.config.allowRuntimeFetching = false` **không cứu** (đổi sang ném *"font was not found in the application
     assets"*). Cách đúng: **không `runAsync`** khi kho giả + `bamNhanh` chỉ dùng microtask; riêng `lop_khoa_app_test` còn dựng `phien`/`vongDoi`/`cubit` trong `setUp` (ngoài FakeAsync) nên gọi thẳng
@@ -251,6 +264,22 @@ Chỗ nối ngoài mảng: `lib/main.dart` (dựng `KhoaAppCubit` + `TheoDoiRout
     KHÔNG cướp tiêu điểm*). Cái giá người dùng chấp nhận: kéo thanh thông báo / mở menu nút nổi / hộp vân tay / hộp quyền khi khoá bật thì phía sau là nền trơn; quay lại trong mức thì
     thoáng một khung trơn. ⚠️ Test: cubit dựng ở `setUp` nghe `vongDoi` trong zone thật — state phát từ sự kiện vòng đời không tới `BlocBuilder` trong `pump` (ca xanh OAN); dựng cubit
     trong thân ca, và **đừng `await close()`** cubit cũ trong thân ca (treo cả tệp ~10 phút) — cất cho `tearDown` đóng (`cubitTrongCa`, `lop_khoa_app_test.dart`).
+26. **Thanh trạng thái của màn khoá (2026-10-25 tối, `f1daea24` + `c5010e1b`).** Màn khoá không tự đặt `SystemUiOverlayStyle` thì ăn theo trang dưới: dải xám 25 % đen (màu
+    mặc định của cửa sổ Android) ở trang không có AppBar (Trang chủ, Phân tích), trong suốt ở trang có AppBar (Material 3 đặt `statusBarColor` trong suốt). Nay `_KieuThanhTrangThaiKhoa`
+    (`AnnotatedRegion`: trong suốt, biểu tượng tối) bọc màn khoá và lớp đặc của **ba** trạng thái che hẳn (DangXet · DangRoi · Khoa) — **không** bọc lớp che `Mo(che)`.
+    ⚠️ Flutter **không tự trả kiểu cũ** khi vùng biến mất (`RenderView` chỉ gọi `setSystemUIOverlayStyle` khi TÌM THẤY vùng): trang không có `AnnotatedRegion` giữ kiểu
+    trong suốt sau khi mở khoá. Đây **không** phải kiểu lệch mới — đo trên Realme: ghé tab Cá nhân (AppBar) rồi về Trang chủ là Trang chủ cũng mất dải xám tới lần mở lạnh kế.
+    Muốn mọi trang một kiểu thì đặt một vùng gốc cho cả app — việc riêng, chưa làm. Hệ quả kéo theo: tấm Quên PIN phải nằm **ngoài** `SafeArea` của màn khoá (lớp mờ phủ cả
+    vùng thanh trạng thái), mặt tấm tự tránh thanh điều hướng (`SafeArea(top: false)`) — trong `SafeArea` thì lớp mờ dừng ở mép dưới thanh trạng thái, để lại dải kem sáng.
+27. **`flutter_secure_storage` 10 — hỏng thành vắng ở tầng native (hệ quả với I2, bẫy 4d).** Từ `f5a90f4b` gói ở **10.3.4** (ghim cứng) với `AndroidOptions` **mặc định** —
+    `resetOnError = true`: đọc một mục giải mã hỏng thì gói **xoá mục ấy rồi trả `null`**; bước chuyển thuật toán hỏng thì xoá **cả kho** rồi chạy tiếp. Tức `docNghiemNgat` hầu như
+    không còn thấy *"hỏng"* từ máy thật — `khoa_app_<id>` hỏng riêng lẻ thành *"chưa bật"* (mở app không PIN nếu token còn đọc được). Giữ mặc định là quyết định kỹ thuật của
+    phiên 7 (người dùng chọn việc nâng, **chưa** được hỏi riêng về tuỳ chọn này — muốn đổi thì trình lại): hỏng riêng một mục cần sửa tệp XML = root, ngoài mô hình đe doạ (mục 1b); còn `resetOnError = false` biến một lần chuyển
+    hỏng thành **mọi** lời gọi kho ném mãi → `main.dart:76` đọc token không `try` → app chết trước `runApp`, lối thoát duy nhất là *Xoá dữ liệu ứng dụng* (mất SQLite — đúng điều
+    G36 / G89 từ chối). Sàn xấu nhất của lối đã chọn: đăng xuất + khoá app tắt **không có dòng nhắc M11** (cấu hình đã mất trước lần đăng nhập mật khẩu) + tuỳ chọn về mặc định +
+    kéo về toàn bộ; SQLite và alias Keystore vân tay (`SinhTrac.kt`, kho riêng) không bị đụng. ⚠️ Cấu hình gói đi theo **lời gọi đầu tiên** tới kho (native `initialize` chỉ chạy
+    một lần, khoá theo tên tệp prefs) — mọi `FlutterSecureStorage()` của app dùng cùng mặc định; thêm `AndroidOptions` khác mặc định ở MỘT chỗ là cấu hình chạy hay không tuỳ chỗ
+    nào gọi trước (cần một định nghĩa + test quét — số 39 còn trống). **Đừng nhảy lên 11** khi chưa chắc mọi máy đã qua 10 ít nhất một lần mở (11.0.0 bỏ đường đọc dữ liệu v9).
 
 ## 6. Giao diện — Stitch (dự án `5106367939423432838`)
 
@@ -270,18 +299,20 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 
 ## 7. Test và quét
 
-- **140 ca** khai báo trong 16 tệp dưới `test/features/khoa_app/` (đếm bằng Python cùng mẫu `^\s*(test|testWidgets)\(` 2026-10-25 chiều, sau F1 + M11; trước đó 128), cộng `test/core/router/theo_doi_route_cong_khai_test.dart` (observer), ca ở `phien_dieu_phoi_that_test.dart`
+- **148 ca** khai báo trong 18 tệp dưới `test/features/khoa_app/` (đếm bằng Python cùng mẫu `^\s*(test|testWidgets)\(` 2026-10-25 tối, sau M5 + thanh trạng thái: +5 `lop_khoa_app_back_test.dart`
+  (GoRouter thật), +2 `lop_khoa_app_thanh_trang_thai_test.dart`, +1 lớp mờ tấm Quên PIN ở `lop_khoa_app_test.dart`; chiều 140, trước đó 128), cộng `test/core/router/theo_doi_route_cong_khai_test.dart` (observer), ca ở `phien_dieu_phoi_that_test.dart`
   (hook `sauXacThucMatKhau` / `xoaKhoaApp` / `datLaiKhoaApp`), `auth_bloc_buoc_dang_xuat_test.dart` (thứ tự mở phiên với `PhienDieuPhoiThat` thật) và `noi_dung_cai_dat_khoa_app_test.dart` (viên *Đang bật*, kể cả `Mo(daBat:false)` và `Tat`).
-- Mốc toàn bộ: **8.027 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-25 chiều sau F1 + M11 `4c7945ed`; trước đó 8.017 sau `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá ấy thêm 4 ca: hai ở
+- Mốc toàn bộ: **8.035 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-25 tối sau M5 + thanh trạng thái `c5010e1b`, trên `flutter_secure_storage` 10.3.4; chiều 8.027 sau F1 + M11 `4c7945ed`; trước đó 8.017 sau `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá `be3bdf26` thêm 4 ca: hai ở
   `lop_khoa_app_roi_phien_test.dart` (`/login` tự `showDialog` → gỡ trước van; popup trên trang được bảo vệ không làm tín hiệu `true`) và hai ở `test/core/router/route_cong_khai_ten_route_test.dart`.
 - Mảng mới phải qua các quét sẵn có: 22 (`presentation/` không chạm CSDL), 25 (vị trí tệp — `core/router` là chủ đề sẵn có), 27 (không `<dynamic>` trần ở `data/` +
   `application/`), 38 (không log PII — **không** canh PIN / bí mật, bẫy 19). Không thêm test quét mới.
 - **Ca test còn MÙ** (chỉ máy thật / chưa có ca): dây nối `main.dart` → `phienDauChoKhoaApp` (hàm thuần đã có ca); **I1 bản ffi** (host Windows trả `null`; ca `dong_ho_khoi_dong_test` chỉ canh "null hoặc số không âm đơn điệu"); C1 trên máy thật
-  (ca GoRouter thật phủ ba đường nhưng animation nền tảng khác — cần quay 60 fps); Back khi khoá (bẫy 14); BiometricPrompt thật, ColorOS `inactive` vs `paused`; TalkBack; bàn phím vật lý; bản release R8.
+  (ca GoRouter thật phủ ba đường nhưng animation nền tảng khác — cần quay 60 fps); BiometricPrompt thật, ColorOS `inactive` vs `paused`; TalkBack; bàn phím vật lý; bản release R8;
+  bước chuyển dữ liệu của `flutter_secure_storage` 10 (mã Android gốc — chỉ logcat trên máy, bẫy 27). Back khi khoá (bẫy 14) nay có ca GoRouter thật, kênh `xuong_nen` vẫn chỉ giả.
 
 ## 8. Việc còn mở (chưa sửa — từ review toàn nhánh 2026-10-25, đáng xem trước khi sửa mã)
 
-- **M5** Back khi đang khoá pop route bên dưới (bẫy 14) — cách sửa: chặn Back ở tầng lớp phủ (`BackButtonListener` / `didPopRoute` trả `true`) hoặc đưa app xuống nền bằng kênh `flowmoney/xuong_nen` như `ThoatHaiLan`.
+- ~~**M5** Back khi đang khoá pop route bên dưới~~ — ✅ **đóng 2026-10-25 tối** (`f1daea24`, người dùng chọn *"Back đưa app xuống nền"*): `didPopRoute` ở lớp khoá, tấm Quên PIN mở thì Back = Huỷ (bẫy 14); đo Realme đạt (mục 10, *Buổi 2*).
 - **M7** `_lamTuoiKhoa` chỉ chặn `dangKiem`; nếu một lượt kiểm đã kết thúc trong lúc nó đọc kho, nó phát `soLanSai` / `choDen` cũ đè bản mới (chỉ lệch hiển thị — service vẫn chặn). Sửa: bắt `lanKiem` lúc bắt đầu.
 - **M8** `choDen` ở tương lai xa (giờ máy từng chạy trước rồi chỉnh lại) ⇒ chờ dài tuỳ ý (còn vân tay / Quên PIN). Sửa: kẹp phần chờ còn lại ở `thoiGianCho(∞)` = 15 phút.
 - ~~**M11** Mọi đăng nhập mật khẩu tắt khoá **im lặng**~~ — ✅ **đóng 2026-10-25**: người dùng chọn dòng nhắc *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"* (bẫy 24). Nghiệm thu trên máy cần đăng nhập lại bằng mật khẩu → đi cùng bước 10a (cần backend `PersonFinance`).
@@ -391,7 +422,7 @@ v31, tài khoản 10 — 134 giao dịch) kèm `FlutterSecureStorage.xml` (mã h
 | 16 Release | ✅ kênh `flowmoney/sinh_trac` sống sau R8 (`trangThai` · `bat` · `mo` chạy); `dart:ffi` sống sau R8; băm trong isolate không giật giao diện (kiểm ~300 ms, chấm xoá ngay khi xong) |
 | 17 Bố cục 320 dp | ⛔ **Không đo được** — ColorOS chặn `wm density` (`WRITE_SECURE_SETTINGS`); dựa vào widget test 360 × 640 / 800 |
 | 18 TalkBack | ◐ **Qua cây trợ năng, chưa nghe bằng TalkBack** (người dùng bỏ qua lượt nghe): `uiautomator dump` lúc khoá chỉ có nút của màn khoá (*"Nhập mã PIN · Mở khoá FlowMoney · Đã nhập 0 trên 6 số"*, phím `0`–`9` mỗi phím **một** nhãn, *Xoá*, *Quên mã PIN?*) — không nút nào của trang dưới. Tấm Quên PIN + TalkBack chưa thử |
-| 20 Back khi khoá | ⚠️ **M5 xác nhận** (đã biết, chưa sửa): Back trên màn khoá không lộ gì, không thoát, nhưng **gỡ route bên dưới** — khoá ở trang *Khoá ứng dụng*, Back, mở khoá → về tab Cá nhân |
+| 20 Back khi khoá | ⚠️ **M5 xác nhận** buổi 1: Back trên màn khoá không lộ gì, không thoát, nhưng **gỡ route bên dưới** — khoá ở trang *Khoá ứng dụng*, Back, mở khoá → về tab Cá nhân. → ✅ **sửa + đo đạt ở Buổi 2** (dưới) |
 | 22 Chạm đôi | ✅ Chạm đôi hàng *Đổi mã PIN* → **một** trang PIN (Back một lần là về); trang đòi *PIN hiện tại*. Chạm đôi phím vân tay trên màn khoá → hệ thống nhận 2 yêu cầu cách 27 ms, yêu cầu sau huỷ yêu cầu trước — **một** hộp |
 
 **Phát hiện F1 (bước 4, 2026-10-25) — quay lại app sau ≥ mức tự khoá lộ ~1 khung Trang chủ.** Video lượt *Home → 35 s → mở lại*: khung
@@ -411,6 +442,23 @@ sinh trắc là cửa sổ bảo mật → trình ghi bôi đen **cả màn** kh
 không theo đồng hồ shell (`am start` tới ATM chậm ~0,7 s). Giờ máy: `adb shell cmd alarm set-time <epoch ms>` chạy được; `wm density` và `settings put
 global auto_time` bị chặn. `uiautomator dump` có lúc trả *null root node* (dịch vụ trợ năng của người dùng) — rơi về toạ độ đã đo + ảnh chụp.
 
-**Ghi nhận phụ:** thanh trạng thái ở màn khoá có dải xám (≈ 25 % đen) — **không phải lỗi của khoá app**: Trang chủ vốn có dải ấy (không AppBar), màn khoá
-không tự đặt `SystemUiOverlayStyle` nên ăn theo trang nằm dưới. Khuôn mặt (Sensor 4, modality 8) — logcat hệ thống: *"cannot participate in Keystore
+**Ghi nhận phụ:** thanh trạng thái ở màn khoá có dải xám (≈ 25 % đen) — Trang chủ vốn có dải ấy (không AppBar), màn khoá
+không tự đặt `SystemUiOverlayStyle` nên ăn theo trang nằm dưới (→ ✅ sửa ở Buổi 2, bẫy 26). Khuôn mặt (Sensor 4, modality 8) — logcat hệ thống: *"cannot participate in Keystore
 operations"*, đúng giới hạn Class 2 (mục 1b). Hộp sinh trắc chặn `screencap` (ảnh 0 byte) — chụp bước có hộp vân tay phải nhờ người dùng nhìn.
+
+**Buổi 2 — 2026-10-25 tối (17:40–18:35), Realme, bản DEBUG** (`API_BASE_URL=http://127.0.0.1:3000/api`, backend TẮT). Người dùng vắng — Claude thao tác
+bằng adb (PIN gõ qua toạ độ phím đọc từ `uiautomator`); **chạm vân tay chưa thử** (cần người dùng). Sao lưu trước buổi (force-stop rồi chép, so cỡ từng byte):
+`D:\FlowMoney-saoluu\realme-tk10-truoc-nang-secure-storage-10-2026-10-25-1740\` (ba tệp CSDL + cả thư mục `shared_prefs/`, 10 tệp).
+
+| Việc | Kết quả |
+|---|---|
+| `flutter_secure_storage` 9.2.4 → 10.3.4 (`f5a90f4b`), cài đè bản debug | ✅ Kho trước khi cài: **16 mục** mang tiền tố (token, `khoa_app_10`, `goi_tai_khoan_*`, `sync_last_pull_v2_*`, `notification_prefs_10`, công tắc AI…), không dấu thuật toán. Lần mở đầu, logcat `FlutterSecureStorage`: một dòng `E` *"EncryptedSharedPreferences initialization failed. Falling back to custom ciphers"* (gói dò kho kiểu cũ app không dùng — vô hại) → *"Algorithm changed detected"* → `FROM=RSA_ECB_PKCS1Padding, TO=RSA_ECB_OAEPwithSHA_256andMGF1Padding` → *"Successfully decrypted 16 items"* → *"committed 16 items"* → *"Migrated 16 items"*, **~160 ms**, không có *"Deleting all data"*. Sau đó: 16 mục còn đủ; thêm tệp dấu `FlutterSecureStorageConfiguration:FlutterSecureStorage.xml`, khoá AES bọc mới trong `FlutterSecureKeyStorage.xml` (bên cạnh khoá cũ), hai mục `__androidx_security_crypto_encrypted_prefs_*_keyset__` do lượt dò để lại (không tiền tố → `readAll` bỏ qua). Hộp vân tay **tự hiện** (đọc được `khoa_app_10`); PIN 135790 mở → Trang chủ, vẫn đăng nhập |
+| Lần mở thứ hai (force-stop) | ✅ **Không** còn dòng nào của gói (không dò, không chuyển lại); hộp vân tay tự hiện; PIN mở; kéo về từ mốc `2026-10-24T12:33:48Z` (mốc `sync_last_pull_v2_10` còn, không kéo toàn bộ); Premium *"Còn 11 ngày"* (đọc kho gói khi `lamMoi` hỏng); trang *Khoá ứng dụng*: vân tay bật, *Tự khoá sau 30 giây* |
+| Bản `--release` | ✅ dựng đạt qua R8 (226,9 MB) — không cài (dữ liệu đo nằm ở bản debug) |
+| 20 Back khi khoá — M5 (`f1daea24`) | ✅ Trang *Khoá ứng dụng* → Home 32 s → mở: khoá, hộp vân tay → Back huỷ hộp → **Back trên màn khoá → launcher**, tiến trình giữ nguyên (pid 21563) → mở lại (không có hộp — một lần mỗi lần khoá) → Back → launcher lần nữa → mở → PIN → **đúng trang *Khoá ứng dụng*** (buổi 1: về tab Cá nhân). Tấm Quên PIN mở → Back → **tấm đóng, app vẫn ở màn khoá**. Lớp đặc lúc mở lạnh (lần đầu sau cài bản debug ~10 s mới hết `DangXet`) → Back → app ở lại |
+| Thanh trạng thái (`f1daea24` + `c5010e1b`) | ✅ Lớp đặc lúc mở lạnh và màn khoá: thanh trạng thái **trong suốt** (màu kem), biểu tượng tối — hết dải xám dù Trang chủ nằm dưới. Tấm Quên PIN bản đầu: lớp mờ dừng dưới thanh trạng thái, để lại dải kem sáng → `c5010e1b` → đo lại: lớp mờ phủ liền cả thanh trạng thái |
+| Vân tay sau khi nâng kho | 🚧 chưa — người dùng chạm (alias Keystore của `SinhTrac.kt` là kho riêng, gói không đụng; hộp tự hiện cả hai lượt) |
+
+Bẫy của buổi: Back trên màn khoá nay **đưa app xuống nền**, mà hộp vân tay chỉ tự hiện một lần mỗi lần khoá — một phím Back "để huỷ hộp" ở lần mở thứ
+hai rơi vào màn khoá, và sáu cú chạm PIN kế đó rơi vào **launcher** của người dùng (vùng trống, không mở app nào). Kiểm `mCurrentFocus` trước **mỗi**
+chuỗi chạm, kể cả giữa hai lệnh của cùng một lượt.

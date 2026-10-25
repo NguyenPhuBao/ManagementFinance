@@ -197,6 +197,8 @@ iOS (Face ID) — chưa có máy Mac.
 Làm trên `flutter_secure_storage` 9.2.4 hiện tại. Nâng lên 10 / 11 trình riêng sau: changelog 11.0.0 ghi dữ liệu cất bằng thuật
 toán cũ *"will be unusable"*, phải qua 10 (`migrateOnAlgorithmChange`) trước — nếu không mất token (bị đăng xuất) và mọi thứ trong
 kho, kể cả cấu hình khoá app.
+*(✅ 2026-10-25 tối: nâng lên **10.3.4** (`f5a90f4b`), giữ `AndroidOptions` mặc định — đo chuyển dữ liệu trên Realme đạt (16 / 16 mục);
+hệ quả với đọc nghiêm ngặt I2 ở bẫy 27 `KHOA_APP_FEATURE.md`. 11 vẫn chưa nâng.)*
 
 ## 10. Nguồn khảo sát
 
