@@ -109,7 +109,12 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
   Future<void> napLai() async {
     final id = _id;
     if (id == null) return;
-    final c = await _service.doc(id);
+    final CauHinhKhoaApp? c;
+    try {
+      c = await _service.docNghiemNgat(id);
+    } catch (_) {
+      return; // đọc hỏng tạm thời: giữ cấu hình trong RAM — gán null là tắt tự khoá cả phiên
+    }
     if (isClosed || _id != id) return;
     _cauHinh = c;
     if (state is KhoaAppMo) emit(KhoaAppMo(daBat: c != null));
@@ -159,8 +164,15 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
   }
 
   Future<void> _mo(int id) async {
-    _cauHinh = await _service.doc(id);
-    if (!isClosed && _id == id) emit(const KhoaAppMo(daBat: true));
+    CauHinhKhoaApp? moi = _cauHinh;
+    try {
+      moi = await _service.docNghiemNgat(id);
+    } catch (_) {
+      // Đọc hỏng ngay sau mở khoá: giữ cấu hình trong RAM để lần rời app kế vẫn tự khoá.
+    }
+    if (isClosed || _id != id) return;
+    _cauHinh = moi;
+    emit(KhoaAppMo(daBat: _cauHinh != null));
   }
 
   Future<void> nhapPin(String pin) async {

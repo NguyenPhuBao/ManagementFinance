@@ -79,4 +79,16 @@ void main() {
     expect(du.containsKey('khoa_app_11'), isFalse, reason: 'khoá sau khoá hỏng vẫn phải bị xoá');
     expect(du['access_token'], 'tk');
   });
+
+  test('I2: docNghiemNgat — vắng → null; JSON hỏng / hình lạ → NÉM (khác doc nuốt thành null)', () async {
+    const kho = SecureStorageKhoaAppStore(FlutterSecureStorage());
+    FlutterSecureStorage.setMockInitialValues({});
+    expect(await kho.docNghiemNgat(10), isNull, reason: 'khoá không có = chưa bật');
+    FlutterSecureStorage.setMockInitialValues({'khoa_app_10': '{khong-phai-json'});
+    await expectLater(kho.docNghiemNgat(10), throwsA(anything));
+    FlutterSecureStorage.setMockInitialValues({'khoa_app_10': '{"salt": 1}'});
+    await expectLater(kho.docNghiemNgat(10), throwsA(anything));
+    await kho.ghi(11, cauHinh);
+    expect((await kho.docNghiemNgat(11))!.bam, 'YmFt');
+  });
 }

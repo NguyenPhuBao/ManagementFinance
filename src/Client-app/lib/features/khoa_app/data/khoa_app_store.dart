@@ -9,6 +9,10 @@ abstract class KhoaAppStore {
   /// `null` = chưa bật hoặc hàng hỏng. Không bao giờ ném.
   Future<CauHinhKhoaApp?> doc(int idaccount);
 
+  /// Như [doc] nhưng PHÂN BIỆT *vắng* (`null`: khoá không có) với *hỏng* (đọc / giải mã / JSON lạ → NÉM). Chỗ đã biết cấu
+  /// hình chắc chắn có (màn khoá kiểm PIN, mở khoá xong) dùng bản này: coi hỏng là "chưa bật" ở đó là mở bằng PIN bất kỳ.
+  Future<CauHinhKhoaApp?> docNghiemNgat(int idaccount);
+
   /// NÉM khi kho hỏng — `KhoaAppService.kiemPin` phải biết lần sai đã được ghi hay chưa.
   Future<void> ghi(int idaccount, CauHinhKhoaApp cauHinh);
 
@@ -35,6 +39,15 @@ class SecureStorageKhoaAppStore implements KhoaAppStore {
     } catch (_) {
       return null;
     }
+  }
+
+  @override
+  Future<CauHinhKhoaApp?> docNghiemNgat(int idaccount) async {
+    final raw = await _storage.read(key: khoa(idaccount));
+    if (raw == null || raw.isEmpty) return null;
+    final c = CauHinhKhoaApp.tuJson(jsonDecode(raw));
+    if (c == null) throw const FormatException('Cấu hình khoá ứng dụng có hình lạ');
+    return c;
   }
 
   @override
@@ -79,8 +92,17 @@ class InMemoryKhoaAppStore implements KhoaAppStore {
   final Map<int, CauHinhKhoaApp> duLieu = {};
   bool hongKhiGhi = false;
 
+  /// Đọc hỏng: [doc] trả `null` (nuốt lỗi), [docNghiemNgat] ném.
+  bool hongKhiDoc = false;
+
   @override
-  Future<CauHinhKhoaApp?> doc(int idaccount) async => duLieu[idaccount];
+  Future<CauHinhKhoaApp?> doc(int idaccount) async => hongKhiDoc ? null : duLieu[idaccount];
+
+  @override
+  Future<CauHinhKhoaApp?> docNghiemNgat(int idaccount) async {
+    if (hongKhiDoc) throw StateError('kho hỏng khi đọc');
+    return duLieu[idaccount];
+  }
 
   @override
   Future<void> ghi(int idaccount, CauHinhKhoaApp cauHinh) async {

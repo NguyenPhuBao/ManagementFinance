@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flowmoney/features/khoa_app/application/khoa_app_service.dart';
 import 'package:flowmoney/features/khoa_app/data/datasources/kenh_sinh_trac.dart';
 import 'package:flowmoney/features/khoa_app/data/khoa_app_store.dart';
+import 'package:flowmoney/features/khoa_app/data/models/cau_hinh_khoa_app.dart';
 import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
 import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_state.dart';
 import 'package:flutter/widgets.dart';
@@ -302,4 +303,68 @@ void main() {
       expect(c.state, const KhoaAppTat());
     });
   });
+
+  test('I2: đọc hỏng lúc nhập PIN → vẫn Khoa + kCauKhongKiemDuoc (không mở bằng PIN bất kỳ)', () async {
+    await sv.datPin(10, '246810');
+    await moPhien(10);
+    kho.hongKhiDoc = true;
+    await cubit.nhapPin('000000');
+    await pumpEventQueue();
+    final s = cubit.state as KhoaAppKhoa;
+    expect(s.loiNhan, kCauKhongKiemDuoc);
+  });
+
+  test('I2: đọc hỏng ngay sau mở khoá → cấu hình RAM còn, ở nền ≥ mức vẫn khoá', () async {
+    await sv.datPin(10, '246810');
+    await moPhien(10);
+    final kho2 = _KhoHongTuLanDocThu(kho, 2); // lần đọc nghiêm ngặt thứ hai (trong _mo) hỏng
+    final c2 = KhoaAppCubit(
+      service: KhoaAppService(store: kho2, kenh: kenh, bam: bamNhanh, clock: () => nay),
+      vongDoi: vongDoi.stream,
+      phien: phien.stream,
+      clock: () => nay,
+    );
+    addTearDown(c2.close);
+    await c2.nhanPhien(10); // đọc 1 (lenient doc)
+    await c2.nhapPin('246810'); // kiemPin: docNghiemNgat #1 ok; _mo: docNghiemNgat #2 hỏng
+    await pumpEventQueue();
+    expect(c2.state, const KhoaAppMo(daBat: true), reason: 'hỏng tạm thời không được báo "chưa bật"');
+    vongDoi.add(AppLifecycleState.paused);
+    nay = nay.add(const Duration(minutes: 10));
+    vongDoi.add(AppLifecycleState.resumed);
+    await pumpEventQueue();
+    expect(c2.state, isA<KhoaAppKhoa>(), reason: 'mất cấu hình RAM = tắt tự khoá cả phiên');
+  });
+
+  test('I2: napLai gặp đọc hỏng → giữ cấu hình cũ (vẫn tự khoá)', () async {
+    await sv.datPin(10, '246810');
+    await moPhien(10);
+    await cubit.nhapPin('246810');
+    await pumpEventQueue();
+    kho.hongKhiDoc = true;
+    await cubit.napLai();
+    kho.hongKhiDoc = false;
+    vongDoi.add(AppLifecycleState.paused);
+    nay = nay.add(const Duration(minutes: 10));
+    vongDoi.add(AppLifecycleState.resumed);
+    await pumpEventQueue();
+    expect(cubit.state, isA<KhoaAppKhoa>());
+  });
+}
+
+/// Kho bọc: [docNghiemNgat] hỏng từ lần gọi thứ [tuLan] (đếm từ 1).
+class _KhoHongTuLanDocThu extends InMemoryKhoaAppStore {
+  _KhoHongTuLanDocThu(this._goc, this.tuLan) {
+    duLieu.addAll(_goc.duLieu);
+  }
+  final InMemoryKhoaAppStore _goc;
+  final int tuLan;
+  int _dem = 0;
+
+  @override
+  Future<CauHinhKhoaApp?> docNghiemNgat(int idaccount) async {
+    _dem++;
+    if (_dem >= tuLan) throw StateError('kho hỏng khi đọc');
+    return duLieu[idaccount];
+  }
 }

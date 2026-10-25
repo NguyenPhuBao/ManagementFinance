@@ -164,4 +164,13 @@ void main() {
     await KhoaAppService(store: SecureStorageKhoaAppStore(kho2), kenh: kenh, bam: bamNhanh).datLaiSauDangNhap(10);
     expect(du, isEmpty);
   });
+
+  test('I2: đọc hỏng khi kiểm PIN → ném, KHÔNG báo đúng, không ghi đếm', () async {
+    await sv.datPin(10, '246810');
+    kho.hongKhiDoc = true;
+    await expectLater(sv.kiemPin(10, '000000'), throwsStateError);
+    await expectLater(sv.kiemPin(10, '246810'), throwsStateError);
+    kho.hongKhiDoc = false;
+    expect((await kho.doc(10))!.soLanSai, 0);
+  });
 }

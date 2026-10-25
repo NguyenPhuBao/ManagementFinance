@@ -59,6 +59,9 @@ class KhoaAppService {
 
   Future<CauHinhKhoaApp?> doc(int idaccount) => _store.doc(idaccount);
 
+  /// Như [doc] nhưng đọc hỏng thì NÉM (xem `KhoaAppStore.docNghiemNgat`).
+  Future<CauHinhKhoaApp?> docNghiemNgat(int idaccount) => _store.docNghiemNgat(idaccount);
+
   Future<TrangThaiSinhTrac> trangThaiMay() => _kenh.trangThai();
 
   /// Bật khoá (chưa có cấu hình) hoặc đổi PIN (giữ mức tự khoá + vân tay).
@@ -77,7 +80,8 @@ class KhoaAppService {
   }
 
   Future<KetQuaKiemPin> kiemPin(int idaccount, String pin) async {
-    final c = await _store.doc(idaccount);
+    // Đọc hỏng NÉM (không phải "chưa bật"): ở màn khoá cấu hình chắc chắn đã có — coi hỏng là chưa bật thì PIN nào cũng đúng.
+    final c = await _store.docNghiemNgat(idaccount);
     if (c == null) return const KetQuaKiemPin(dung: true, soLanSai: 0);
     final nay = _clock();
     final cho = c.choDen;
