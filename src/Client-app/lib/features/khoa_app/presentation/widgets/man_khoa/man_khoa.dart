@@ -109,13 +109,13 @@ class ManKhoaState extends State<ManKhoa> {
     final loi = s.loiNhan;
     return Material(
       color: AppColors.background,
-      child: SafeArea(
-        child: Stack(
-          alignment: Alignment.center,
-          fit: StackFit.expand,
-          children: [
-            // Stitch `2f0896e0…`: cả cột căn giữa dọc; khổ thấp thì bàn phím co (BanPhimPin tự tính cạnh phím).
-            Column(
+      child: Stack(
+        alignment: Alignment.center,
+        fit: StackFit.expand,
+        children: [
+          // Stitch `2f0896e0…`: cả cột căn giữa dọc; khổ thấp thì bàn phím co (BanPhimPin tự tính cạnh phím).
+          SafeArea(
+            child: Column(
               children: [
                 const Spacer(),
                 Container(
@@ -177,16 +177,18 @@ class ManKhoaState extends State<ManKhoa> {
                 const Spacer(),
               ],
             ),
-            if (_hoiQuen)
-              TamXacNhanQuenPin(
-                khiDangXuat: () {
-                  _dangDangXuat = true;
-                  widget.khiQuenPin();
-                },
-                khiHuy: () => setState(() => _hoiQuen = false),
-              ),
-          ],
-        ),
+          ),
+          // Tấm nằm NGOÀI SafeArea: lớp mờ của nó phủ cả vùng thanh trạng thái (trong suốt từ khi màn khoá tự đặt kiểu —
+          // `lop_khoa_app.dart`); phần thụt dưới do tấm tự tránh.
+          if (_hoiQuen)
+            TamXacNhanQuenPin(
+              khiDangXuat: () {
+                _dangDangXuat = true;
+                widget.khiQuenPin();
+              },
+              khiHuy: () => setState(() => _hoiQuen = false),
+            ),
+        ],
       ),
     );
   }

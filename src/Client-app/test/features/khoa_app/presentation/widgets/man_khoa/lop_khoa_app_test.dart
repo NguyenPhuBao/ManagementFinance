@@ -302,6 +302,23 @@ void main() {
     });
   }
 
+  testWidgets('tấm Quên PIN: lớp mờ phủ cả vùng thanh trạng thái; nút Huỷ nằm trên phần thụt dưới', (t) async {
+    // Nghiệm thu Realme 2026-10-25: màn khoá đặt thanh trạng thái trong suốt → lớp mờ chỉ phủ dưới SafeArea để lại dải
+    // kem sáng trên nền xám.
+    t.view.physicalSize = const Size(360, 800);
+    t.view.devicePixelRatio = 1;
+    t.view.padding = const FakeViewPadding(top: 24, bottom: 16);
+    addTearDown(t.view.reset);
+    await khoaPhien(t);
+    await t.tap(find.text('Quên mã PIN?'));
+    await t.pump(const Duration(milliseconds: 300));
+    final mo = find.byWidgetPredicate((w) => w is ColoredBox && w.color == Colors.black.withValues(alpha: 0.4));
+    expect(t.getRect(mo).top, 0, reason: 'lớp mờ phải phủ từ mép trên — kể cả dưới thanh trạng thái');
+    expect(t.getRect(mo).bottom, 800);
+    expect(t.getRect(find.text('Huỷ')).bottom, lessThanOrEqualTo(800 - 16), reason: 'nút không được nằm dưới thanh điều hướng');
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('M9: sau lần chạm Đăng xuất đầu tiên, cả hai nút khoá — không LogoutRequested lần hai, Huỷ không bấm được', (t) async {
     await khoaPhien(t);
     await t.tap(find.text('Quên mã PIN?'));
