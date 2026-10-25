@@ -45,6 +45,21 @@ class LuatThoatHaiLan {
   }
 }
 
+/// "Thoát" = đưa cả task xuống nền (như nút Home), KHÔNG đóng activity (G100, 2026-10-21). Đóng activity là huỷ
+/// Flutter engine trong khi tiến trình còn sống (dịch vụ nghe thông báo D1 giữ nó): bản mô hình Gemma của isolate cũ
+/// không ai giải phóng (`flutter_gemma_litertlm` chỉ cất địa chỉ engine native trong một đối tượng Dart, không
+/// finalizer), lần mở sau nạp thêm một bản — đo Realme: Native Heap 1,89 → 3,72 GB. Kênh không làm được (không phải
+/// Android, activity không phải gốc task) thì vẫn thoát như cũ. Hai chỗ gọi: Back lần hai ở Trang chủ ([ThoatHaiLan])
+/// và Back trên màn khoá ứng dụng (`LopKhoaApp`, M5).
+Future<void> duaAppXuongNen() async {
+  try {
+    if (await ThoatHaiLan.kenh.invokeMethod<bool>('xuongNen') == true) return;
+  } catch (_) {
+    // MissingPluginException / PlatformException — rơi về đóng activity.
+  }
+  await SystemNavigator.pop();
+}
+
 /// Bọc thân shell chính bằng `PopScope` và áp [LuatThoatHaiLan].
 ///
 /// Chỉ can thiệp khi route của shell đang ở **trên cùng**: trang đẩy lên root
@@ -91,22 +106,8 @@ class _ThoatHaiLanState extends State<ThoatHaiLan> {
       case QuyetDinhThoat.baoNhanLanNua:
         widget.baoNhanLanNua();
       case QuyetDinhThoat.thoat:
-        unawaited(_xuongNen());
+        unawaited(duaAppXuongNen());
     }
-  }
-
-  /// "Thoát" = đưa cả task xuống nền (như nút Home), KHÔNG đóng activity (G100, 2026-10-21). Đóng activity là huỷ
-  /// Flutter engine trong khi tiến trình còn sống (dịch vụ nghe thông báo D1 giữ nó): bản mô hình Gemma của isolate cũ
-  /// không ai giải phóng (`flutter_gemma_litertlm` chỉ cất địa chỉ engine native trong một đối tượng Dart, không
-  /// finalizer), lần mở sau nạp thêm một bản — đo Realme: Native Heap 1,89 → 3,72 GB. Kênh không làm được (không phải
-  /// Android, activity không phải gốc task) thì vẫn thoát như cũ.
-  Future<void> _xuongNen() async {
-    try {
-      if (await ThoatHaiLan.kenh.invokeMethod<bool>('xuongNen') == true) return;
-    } catch (_) {
-      // MissingPluginException / PlatformException — rơi về đóng activity.
-    }
-    await SystemNavigator.pop();
   }
 
   @override

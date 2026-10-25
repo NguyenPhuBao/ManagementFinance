@@ -21,13 +21,26 @@ class ManKhoa extends StatefulWidget {
   final DateTime Function() dongHo;
 
   @override
-  State<ManKhoa> createState() => _ManKhoaState();
+  State<ManKhoa> createState() => ManKhoaState();
 }
 
-class _ManKhoaState extends State<ManKhoa> {
+/// Công khai để `LopKhoaApp` (giữ phím Back — M5) hỏi được [xuLyBackTrenTam].
+class ManKhoaState extends State<ManKhoa> {
   String _nhap = '';
   bool _hoiQuen = false;
+
+  /// Đã chạm *Đăng xuất* trên tấm Quên PIN — tấm tự khoá nút Huỷ; Back cũng không được đóng tấm (chạm "Quên mã PIN?"
+  /// lần hai là hai `LogoutRequested`).
+  bool _dangDangXuat = false;
   Timer? _dem;
+
+  /// Back khi tấm *Quên mã PIN?* đang mở: như chạm Huỷ — đóng tấm, hoặc giữ nguyên nếu đã chạm Đăng xuất. `true` = Back đã
+  /// được dùng ở đây; `false` = tấm không mở, lớp khoá xử lý tiếp.
+  bool xuLyBackTrenTam() {
+    if (!_hoiQuen) return false;
+    if (!_dangDangXuat) setState(() => _hoiQuen = false);
+    return true;
+  }
 
   @override
   void initState() {
@@ -37,17 +50,18 @@ class _ManKhoaState extends State<ManKhoa> {
   }
 
   @override
-  void didUpdateWidget(ManKhoa cu) {
-    super.didUpdateWidget(cu);
-    if (cu.trangThai.choDen != widget.trangThai.choDen) _henDem();
-    if (cu.trangThai.lanKhoa != widget.trangThai.lanKhoa) {
+  void didUpdateWidget(ManKhoa oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.trangThai.choDen != widget.trangThai.choDen) _henDem();
+    if (oldWidget.trangThai.lanKhoa != widget.trangThai.lanKhoa) {
       _nhap = '';
       _hoiQuen = false;
+      _dangDangXuat = false;
       _tuMoVanTay();
     }
     // Một lượt kiểm vừa KẾT THÚC (sai, hay bị chặn vì đang chờ) → xoá chấm. Đếm bằng `lanKiem` chứ không nhìn khung
     // trung gian `dangKiem` (có thể không bao giờ được dựng) hay câu lỗi (lượt bị chặn không có câu) — P13.
-    if (cu.trangThai.lanKiem != widget.trangThai.lanKiem) _nhap = '';
+    if (oldWidget.trangThai.lanKiem != widget.trangThai.lanKiem) _nhap = '';
   }
 
   /// Bật vân tay thì hộp hệ thống tự hiện MỘT lần mỗi lần khoá (sau khung đầu — activity phải đang `resumed`).
@@ -165,7 +179,10 @@ class _ManKhoaState extends State<ManKhoa> {
             ),
             if (_hoiQuen)
               TamXacNhanQuenPin(
-                khiDangXuat: widget.khiQuenPin,
+                khiDangXuat: () {
+                  _dangDangXuat = true;
+                  widget.khiQuenPin();
+                },
                 khiHuy: () => setState(() => _hoiQuen = false),
               ),
           ],
