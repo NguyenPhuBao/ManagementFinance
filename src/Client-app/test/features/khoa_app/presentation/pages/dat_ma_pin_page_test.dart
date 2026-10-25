@@ -160,4 +160,19 @@ void main() {
     expect(CheDatPin.tuTen('doi'), CheDatPin.doi);
     expect(CheDatPin.tuTen('x'), CheDatPin.dat);
   });
+
+  testWidgets('M4: che=dat mà kho ĐÃ có cấu hình → hỏi PIN hiện tại trước (không ghi đè PIN không cần PIN cũ)', (t) async {
+    await sv.datPin(10, '246810');
+    await mo(t, CheDatPin.dat);
+    expect(find.text('Nhập mã PIN hiện tại'), findsOneWidget);
+    expect(find.text('Đổi mã PIN'), findsOneWidget, reason: 'tiêu đề cũng đổi theo chế độ thật');
+    await go(t, '000000');
+    expect(find.text('Mã PIN không đúng'), findsOneWidget);
+    await go(t, '246810');
+    expect(find.text('Nhập mã PIN mới'), findsOneWidget);
+    await go(t, '135790');
+    await go(t, '135790');
+    expect(ketQua, isTrue);
+    expect((await sv.kiemPin(10, '135790')).dung, isTrue);
+  });
 }

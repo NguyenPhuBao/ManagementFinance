@@ -9,10 +9,8 @@ import '../../bloc/khoa_app_cubit.dart';
 import '../../bloc/khoa_app_state.dart';
 import '../ban_phim_pin.dart';
 import '../cham_pin.dart';
+import '../mau_khoa_app.dart';
 import 'tam_xac_nhan_quen_pin.dart';
-
-/// `on-surface-variant` của Stitch — KHÔNG phải `AppColors.onSurfaceVariant` (`#767872`).
-const _xamChu = Color(0xFF454743);
 
 /// Màn khoá — Stitch `2f0896e011874b4e84c8217c4f56346e` *"Màn khoá ứng dụng (2 biến thể)"*.
 class ManKhoa extends StatefulWidget {
@@ -124,7 +122,7 @@ class _ManKhoaState extends State<ManKhoa> {
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: con != null || loi != null ? FontWeight.w500 : FontWeight.w400,
-                        color: con != null || loi != null ? AppColors.expense : _xamChu),
+                        color: con != null || loi != null ? AppColors.expense : kXamChuKhoaApp),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -143,7 +141,7 @@ class _ManKhoaState extends State<ManKhoa> {
                               ),
                             ]),
                             style: const TextStyle(
-                                fontSize: 14, color: _xamChu, fontFeatures: [FontFeature.tabularFigures()]),
+                                fontSize: 14, color: kXamChuKhoaApp, fontFeatures: [FontFeature.tabularFigures()]),
                           ),
                         ),
                 ),

@@ -1,21 +1,41 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../shared/theme/app_colors.dart';
+import '../mau_khoa_app.dart';
 
 /// Tấm xác nhận "Quên mã PIN?" vẽ TRONG màn khoá (lớp khoá ngoài `Navigator` — `showDialog` sẽ nằm dưới nó). Stitch
 /// *"Màn khoá - Xác nhận quên mã PIN"*.
-class TamXacNhanQuenPin extends StatelessWidget {
+class TamXacNhanQuenPin extends StatefulWidget {
   const TamXacNhanQuenPin({super.key, required this.khiDangXuat, required this.khiHuy});
 
   final VoidCallback khiDangXuat;
   final VoidCallback khiHuy;
 
   @override
+  State<TamXacNhanQuenPin> createState() => _TamXacNhanQuenPinState();
+}
+
+class _TamXacNhanQuenPinState extends State<TamXacNhanQuenPin> {
+  /// Đã chạm *Đăng xuất*: khoá cả hai nút + lớp mờ — chạm đôi là hai `LogoutRequested`, còn *Huỷ* lúc ấy không huỷ được gì.
+  bool _daDangXuat = false;
+
+  void _dangXuat() {
+    if (_daDangXuat) return;
+    setState(() => _daDangXuat = true);
+    widget.khiDangXuat();
+  }
+
+  void _huy() {
+    if (_daDangXuat) return;
+    widget.khiHuy();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
         Positioned.fill(
-          child: GestureDetector(onTap: khiHuy, child: ColoredBox(color: Colors.black.withValues(alpha: 0.4))),
+          child: GestureDetector(onTap: _huy, child: ColoredBox(color: Colors.black.withValues(alpha: 0.4))),
         ),
         Align(
           alignment: Alignment.bottomCenter,
@@ -52,7 +72,7 @@ class TamXacNhanQuenPin extends StatelessWidget {
                   const Text(
                     'Đăng nhập lại bằng mật khẩu tài khoản. Nếu đăng nhập đúng tài khoản này, dữ liệu trên máy được '
                     'giữ nguyên. Cần có mạng.',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF454743)),
+                    style: TextStyle(fontSize: 14, color: kXamChuKhoaApp),
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
@@ -64,7 +84,7 @@ class TamXacNhanQuenPin extends StatelessWidget {
                         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      onPressed: khiDangXuat,
+                      onPressed: _daDangXuat ? null : _dangXuat,
                       child: const Text('Đăng xuất'),
                     ),
                   ),
@@ -78,7 +98,7 @@ class TamXacNhanQuenPin extends StatelessWidget {
                         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      onPressed: khiHuy,
+                      onPressed: _daDangXuat ? null : _huy,
                       child: const Text('Huỷ'),
                     ),
                   ),

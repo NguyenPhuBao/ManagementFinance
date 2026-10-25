@@ -33,5 +33,9 @@ void main() {
     expect(soSanhHangThoiGian([1, 2, 3], [1, 2, 3]), isTrue);
     expect(soSanhHangThoiGian([1, 2, 3], [1, 2, 4]), isFalse);
     expect(soSanhHangThoiGian([1, 2, 3], [1, 2]), isFalse);
+    // M2: khác ở byte ĐẦU / GIỮA (không chỉ cuối) — bản sai `khac = a[i] ^ b[i]` (bỏ `|`) chỉ so byte cuối.
+    expect(soSanhHangThoiGian([9, 2, 3], [1, 2, 3]), isFalse, reason: 'khác ở byte đầu');
+    expect(soSanhHangThoiGian([1, 2, 3], [1, 7, 3]), isFalse, reason: 'khác ở byte giữa');
+    expect(soSanhHangThoiGian([1, 2, 3, 4, 5], [1, 2, 9, 4, 5]), isFalse);
   });
 }

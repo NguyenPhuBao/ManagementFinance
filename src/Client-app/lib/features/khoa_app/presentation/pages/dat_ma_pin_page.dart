@@ -10,6 +10,7 @@ import '../../domain/luat_khoa_app.dart';
 import '../widgets/ban_phim_pin.dart';
 import '../bloc/khoa_app_state.dart';
 import '../widgets/cham_pin.dart';
+import '../widgets/mau_khoa_app.dart';
 
 enum CheDatPin {
   dat,
@@ -41,6 +42,8 @@ class DatMaPinPage extends StatefulWidget {
 }
 
 class _DatMaPinPageState extends State<DatMaPinPage> {
+  /// Có thể đổi từ `dat` sang `doi` lúc mở trang (xem [_napCho]) nên không dùng thẳng `widget.che`.
+  late CheDatPin _che = widget.che;
   late _Buoc _buoc = widget.che == CheDatPin.dat ? _Buoc.moi : _Buoc.hienTai;
   String _nhap = '';
   String? _pinMoi;
@@ -55,7 +58,7 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.che != CheDatPin.dat) WidgetsBinding.instance.addPostFrameCallback((_) => _napCho());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _napCho());
   }
 
   @override
@@ -64,14 +67,22 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
     super.dispose();
   }
 
-  /// Mở trang giữa lúc đang chờ: đọc mốc từ kho để khoá phím ngay.
+  /// Mở trang giữa lúc đang chờ: đọc mốc từ kho để khoá phím ngay. Chế độ `dat` mà kho ĐÃ có cấu hình (route nội bộ
+  /// `?che=dat` khi khoá đang bật) thì hành xử như `doi` — hỏi PIN hiện tại trước, không ghi đè PIN không cần PIN cũ.
   Future<void> _napCho() async {
     final id = _id;
     if (id == null) return;
     try {
       final c = await _sv.doc(id);
       if (!mounted) return;
-      setState(() => _choDen = c?.choDen);
+      setState(() {
+        if (_che == CheDatPin.dat && c != null && _buoc == _Buoc.moi) {
+          _che = CheDatPin.doi;
+          _buoc = _Buoc.hienTai;
+          _nhap = '';
+        }
+        if (_che != CheDatPin.dat) _choDen = c?.choDen;
+      });
       _henDem();
     } catch (_) {}
   }
@@ -89,7 +100,7 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
   KhoaAppService get _sv => widget.service ?? sl<KhoaAppService>();
   int? get _id => widget.idaccount ?? currentAccountIdOrNull(context);
 
-  String get _tieuDe => switch (widget.che) {
+  String get _tieuDe => switch (_che) {
         CheDatPin.dat => 'Đặt mã PIN',
         CheDatPin.doi => 'Đổi mã PIN',
         CheDatPin.tat => 'Tắt khoá ứng dụng',
@@ -98,7 +109,7 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
   (String, String) get _chu => switch (_buoc) {
         _Buoc.hienTai => (
             'Nhập mã PIN hiện tại',
-            widget.che == CheDatPin.tat ? 'Để tắt khoá ứng dụng' : 'Để đổi sang mã mới'
+            _che == CheDatPin.tat ? 'Để tắt khoá ứng dụng' : 'Để đổi sang mã mới'
           ),
         _Buoc.moi => ('Nhập mã PIN mới', 'Mã gồm 6 số, chỉ lưu trên máy này'),
         _Buoc.nhapLai => ('Nhập lại mã PIN', ''),
@@ -120,11 +131,11 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
           }
           if (!kq.dung) {
             _choDen = kq.choDen;
-            _loi = conCho(_choDen, _nay()) == null ? 'Mã PIN không đúng' : null;
+            _loi = conCho(_choDen, _nay()) == null ? kCauSaiPin : null;
             _henDem();
             break;
           }
-          if (widget.che == CheDatPin.tat) {
+          if (_che == CheDatPin.tat) {
             await _sv.tatKhoa(id);
             if (mounted) Navigator.of(context).pop(true);
             return;
@@ -143,7 +154,7 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
           try {
             await _sv.datPin(id, pin);
           } catch (_) {
-            _loi = 'Không lưu được mã PIN — thử lại';
+            _loi = kCauKhongLuuPin;
             break;
           }
           if (mounted) Navigator.of(context).pop(true);
@@ -197,7 +208,7 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
               child: Text(
                 loi ?? phu,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: loi != null ? AppColors.expense : const Color(0xFF454743)),
+                style: TextStyle(fontSize: 14, color: loi != null ? AppColors.expense : kXamChuKhoaApp),
               ),
             ),
             const SizedBox(height: 32),

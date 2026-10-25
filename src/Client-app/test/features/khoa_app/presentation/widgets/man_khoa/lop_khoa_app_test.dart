@@ -235,4 +235,17 @@ void main() {
       expect(t.takeException(), isNull);
     });
   }
+
+  testWidgets('M9: sau lần chạm Đăng xuất đầu tiên, cả hai nút khoá — không LogoutRequested lần hai, Huỷ không bấm được', (t) async {
+    await khoaPhien(t);
+    await t.tap(find.text('Quên mã PIN?'));
+    await t.pump(const Duration(milliseconds: 300));
+    await t.tap(find.text('Đăng xuất'));
+    await t.pump();
+    await t.tap(find.text('Đăng xuất'), warnIfMissed: false);
+    await t.tap(find.text('Huỷ'), warnIfMissed: false);
+    await t.pump(const Duration(milliseconds: 300));
+    expect(quenPin, 1, reason: 'chạm đôi là hai LogoutRequested');
+    expect(find.text('Đăng xuất để đặt lại mã PIN?'), findsOneWidget, reason: 'Huỷ lúc đã đăng xuất không huỷ được gì');
+  });
 }

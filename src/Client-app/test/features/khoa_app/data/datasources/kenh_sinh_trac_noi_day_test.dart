@@ -18,6 +18,9 @@ void main() {
     expect(kt, contains('setInvalidatedByBiometricEnrollment(true)'));
     expect(kt, contains('BIOMETRIC_STRONG'));
     expect(kt, contains('BiometricPrompt.CryptoObject('), reason: 'MASWE-0020: không chỉ dựa callback đúng/sai');
+    expect(kt, contains('setUserAuthenticationParameters(0,'), reason: 'xác thực MỖI LẦN dùng khoá (không cửa sổ thời hạn)');
+    expect(kt, contains('AUTH_BIOMETRIC_STRONG'));
+    expect(kt, contains('cryptoObject?.cipher'), reason: 'giải mã bằng cipher của CryptoObject, không tự dựng lại');
     expect(kt, contains('KeyPermanentlyInvalidatedException'));
     expect(kt, contains('"flowmoney_khoa_app_"'));
     expect(kt, isNot(contains('DEVICE_CREDENTIAL')), reason: 'MASWE-0021: không rơi về mã máy');
@@ -47,6 +50,9 @@ void main() {
     final x = _doc('android/app/src/main/AndroidManifest.xml');
     expect(x, contains('android.permission.USE_BIOMETRIC'));
     expect(x, contains('android.permission.USE_FINGERPRINT'));
-    expect(x, contains('android:maxSdkVersion="29"'), reason: 'P10: FingerprintManager chỉ cần ở API 28–29');
+    expect(RegExp(r'<uses-permission[^>]*USE_FINGERPRINT[^>]*android:maxSdkVersion="29"').hasMatch(x) ||
+            RegExp(r'<uses-permission[^>]*android:maxSdkVersion="29"[^>]*USE_FINGERPRINT').hasMatch(x),
+        isTrue,
+        reason: 'P10: maxSdkVersion="29" phải nằm trên CHÍNH phần tử USE_FINGERPRINT (một dòng maxSdkVersion bất kỳ thì chưa đủ)');
   });
 }

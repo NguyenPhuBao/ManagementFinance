@@ -182,4 +182,44 @@ void main() {
     expect(await sv.batVanTay(10), isNull, reason: 'đã bật: coi như xong, không hỏi lại');
     expect((await kho.doc(10))!.vanTay!.banMa, truoc.banMa);
   });
+
+  test('M3: PIN SAI lúc đang chờ → không băm, không đếm, không đổi choDen; kết quả GIỐNG HỆT PIN đúng (không oracle)', () async {
+    var soLanBam = 0;
+    Future<String> bamDem(String pin, List<int> salt, int soVong) {
+      soLanBam++;
+      return bamNhanh(pin, salt, soVong);
+    }
+
+    final sv2 = KhoaAppService(store: kho, kenh: kenh, bam: bamDem, clock: () => nay);
+    await sv2.datPin(10, '246810');
+    for (var i = 0; i < 5; i++) {
+      await sv2.kiemPin(10, '000000');
+    }
+    final truoc = (await kho.doc(10))!;
+    soLanBam = 0;
+    final sai = await sv2.kiemPin(10, '111111');
+    final dung = await sv2.kiemPin(10, '246810');
+    expect(soLanBam, 0, reason: 'đang chờ: không băm PIN nào — băm rồi so là có oracle thời gian / đếm');
+    for (final k in [sai, dung]) {
+      expect([k.dung, k.dangCho, k.soLanSai, k.choDen], [false, true, truoc.soLanSai, truoc.choDen]);
+    }
+    final sau = (await kho.doc(10))!;
+    expect([sau.soLanSai, sau.choDen], [truoc.soLanSai, truoc.choDen], reason: 'PIN sai lúc chờ không cộng thêm lần sai / kéo dài chờ');
+  });
+
+  test('T6: soVong đã cất được dùng khi kiểm — đổi kSoVongMacDinh không vỡ PIN cũ', () async {
+    final soVongDaGoi = <int>[];
+    Future<String> bamGhi(String pin, List<int> salt, int soVong) {
+      soVongDaGoi.add(soVong);
+      return bamNhanh(pin, salt, soVong);
+    }
+
+    final cu = KhoaAppService(store: kho, kenh: kenh, bam: bamGhi, clock: () => nay, soVong: 1);
+    await cu.datPin(10, '246810');
+    final moi = KhoaAppService(store: kho, kenh: kenh, bam: bamGhi, clock: () => nay, soVong: 2);
+    soVongDaGoi.clear();
+    final kq = await moi.kiemPin(10, '246810');
+    expect(soVongDaGoi, [1], reason: 'kiểm phải dùng số vòng đã cất cùng băm (1), không phải mặc định của service mới (2)');
+    expect(kq.dung, isTrue);
+  });
 }

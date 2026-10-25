@@ -40,6 +40,7 @@ import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/khoa_app/application/khoa_app_service.dart';
 import 'features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
+import 'features/khoa_app/presentation/state/phien_dau_khoa_app.dart';
 import 'features/khoa_app/presentation/widgets/man_khoa/lop_khoa_app.dart';
 
 // ignore_for_file: avoid_print
@@ -190,20 +191,15 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
 
     // Khoá ứng dụng (2026-10-24): nghe ĐÚNG AuthBloc của app. Chỉ trạng thái phiên RÕ (AuthSuccess / AuthUnauthenticated)
     // — AuthLoading, OTP… không đổi gì; AuthSuccess lặp cùng tài khoản thì cubit tự bỏ qua.
-    bool phienRo(AuthState s) => s is AuthSuccess || s is AuthUnauthenticated;
     _khoaApp = KhoaAppCubit(
       service: sl<KhoaAppService>(),
       vongDoi: sl<AppLifecycleWatcher>().stream,
-      phien: widget.authBloc.stream.where(phienRo).map(idaccountTuTrangThai),
+      phien: widget.authBloc.stream.where(laTrangThaiPhienRo).map(idaccountTuTrangThai),
       dungYenOCongKhai: _theoDoiRoute.dungYenOCongKhai,
     );
     final dau = widget.authBloc.state;
-    if (phienRo(dau)) {
-      unawaited(_khoaApp.nhanPhien(idaccountTuTrangThai(dau)));
-    } else if (widget.initialRoute == '/login') {
-      // Không token: main() không gửi AuthCheckRequested, AuthBloc đứng ở AuthInitial — không có phiên, không khoá.
-      unawaited(_khoaApp.nhanPhien(null));
-    }
+    final dauKhoa = phienDauChoKhoaApp(dau, widget.initialRoute);
+    if (dauKhoa.daBiet) unawaited(_khoaApp.nhanPhien(dauKhoa.idaccount));
   }
 
   @override

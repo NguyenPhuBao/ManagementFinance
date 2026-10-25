@@ -8,6 +8,9 @@ const String kCauVanTayHong = 'Không mở được bằng vân tay — nhập m
 /// Kho hỏng khi kiểm PIN — KHÔNG được nói "Mã PIN không đúng" (nói sai với người dùng), và lần ấy không tính sai.
 const String kCauKhongKiemDuoc = 'Không kiểm được mã PIN — thử lại';
 
+/// Trang Đặt / Đổi / Tắt mã PIN: ghi PIN mới hỏng.
+const String kCauKhongLuuPin = 'Không lưu được mã PIN — thử lại';
+
 /// Trang Khoá ứng dụng: ghi / đọc kho hỏng (khuôn với câu của trang PIN).
 const String kCauKhoAppKhongLuu = 'Không lưu được cài đặt khoá — thử lại';
 

@@ -1,5 +1,6 @@
 /// Khoá ứng dụng — bộ điều phối (spec mục 5–6): PIN (PBKDF2 trong isolate), đếm sai + chờ, vân tay qua cổng
-/// `KenhSinhTrac`, xoá theo phiên. Không log PIN / bí mật.
+/// `KenhSinhTrac`. Vòng đời theo phiên: đăng xuất chỉ xoá khoá vân tay (alias Keystore, [xoaVanTayHet]); cấu hình PIN xoá khi
+/// đăng nhập bằng mật khẩu ([datLaiSauDangNhap]). Không log PIN / bí mật.
 library;
 
 import 'dart:convert';

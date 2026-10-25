@@ -10,6 +10,7 @@ import '../../application/khoa_app_service.dart';
 import '../../domain/luat_khoa_app.dart';
 import '../bloc/cai_dat_khoa_app_cubit.dart';
 import '../bloc/khoa_app_cubit.dart';
+import '../widgets/mau_khoa_app.dart';
 import 'dat_ma_pin_page.dart';
 
 typedef MoDatPin = Future<bool?> Function(BuildContext context, CheDatPin che);
@@ -17,7 +18,6 @@ typedef MoDatPin = Future<bool?> Function(BuildContext context, CheDatPin che);
 Future<bool?> _moDatPinMacDinh(BuildContext context, CheDatPin che) =>
     context.push<bool>('/settings/khoa-app/dat-pin?che=${che.name}');
 
-const _xamChu = Color(0xFF454743);
 const _xamPhu = Color(0xFF636360);
 const _xamNhat = Color(0xFF8E8E89);
 
@@ -270,7 +270,7 @@ class _KhoaAppPageState extends State<KhoaAppPage> {
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(nhan,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _xamChu, letterSpacing: 0.5)),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: kXamChuKhoaApp, letterSpacing: 0.5)),
         ),
         Container(
           clipBehavior: Clip.antiAlias,

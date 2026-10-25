@@ -402,6 +402,41 @@ void main() {
       expect(c2.state, isA<KhoaAppKhoa>(), reason: 'giờ tường vẫn khoá khi không đọc được đồng hồ khởi động');
     });
   });
+
+  test('T7: AuthSuccess tài khoản KHÁC (10 → 11) nạp cấu hình của 11', () async {
+    await sv.datPin(10, '246810');
+    await sv.datPin(11, '135790');
+    await sv.datTuKhoaSau(11, TuKhoaSau.phut5);
+    await moPhien(10);
+    await cubit.nhapPin('246810');
+    await pumpEventQueue();
+    expect(cubit.state, const KhoaAppMo(daBat: true));
+    await moPhien(11);
+    expect(cubit.state, isA<KhoaAppKhoa>(), reason: 'đổi tài khoản = mở lạnh của tài khoản mới');
+    await cubit.nhapPin('246810');
+    await pumpEventQueue();
+    expect(cubit.state, isA<KhoaAppKhoa>(), reason: 'PIN của 10 không mở được 11');
+    await cubit.nhapPin('135790');
+    await pumpEventQueue();
+    expect(cubit.state, const KhoaAppMo(daBat: true));
+    vongDoi.add(AppLifecycleState.paused);
+    nay = nay.add(const Duration(minutes: 1));
+    vongDoi.add(AppLifecycleState.resumed);
+    await pumpEventQueue();
+    expect(cubit.state, const KhoaAppMo(daBat: true), reason: 'mức 5 phút của tài khoản 11, không phải 30 giây mặc định của 10');
+  });
+
+  test('T7: mức Ngay — rời rồi quay lại tức thì vẫn khoá', () async {
+    await sv.datPin(10, '246810');
+    await sv.datTuKhoaSau(10, TuKhoaSau.ngay);
+    await moPhien(10);
+    await cubit.nhapPin('246810');
+    await pumpEventQueue();
+    vongDoi.add(AppLifecycleState.hidden);
+    vongDoi.add(AppLifecycleState.resumed);
+    await pumpEventQueue();
+    expect(cubit.state, isA<KhoaAppKhoa>());
+  });
 }
 
 /// Kho bọc: [docNghiemNgat] hỏng từ lần gọi thứ [tuLan] (đếm từ 1).

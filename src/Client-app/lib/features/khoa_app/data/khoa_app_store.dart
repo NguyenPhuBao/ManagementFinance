@@ -18,7 +18,7 @@ abstract class KhoaAppStore {
 
   Future<void> xoa(int idaccount);
 
-  /// Xoá MỌI cấu hình khoá trên máy (đăng xuất). Không đụng khoá khác của kho (token, gói…).
+  /// Xoá MỌI cấu hình khoá trên máy (đăng nhập bằng mật khẩu — `KhoaAppService.datLaiSauDangNhap`; đăng xuất KHÔNG xoá cấu hình). Không đụng khoá khác của kho (token, gói…).
   Future<void> xoaHet();
 }
 
