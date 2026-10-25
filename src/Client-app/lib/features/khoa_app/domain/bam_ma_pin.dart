@@ -10,8 +10,9 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 
-/// Số vòng mặc định — chọn để một lần băm trên Realme (Dimensity 1100, bản release) ~0,2–0,3 s. Đo lại ở Task 13.
-const int kSoVongMacDinh = 30000;
+/// Số vòng mặc định — một lần băm trên Realme (Dimensity 1100, bản release) ~0,2–0,3 s. Đo 2026-10-25 (gồm cả dựng isolate
+/// của `compute`): 30.000 → 160–193 ms · 60.000 → 324 ms · 100.000 → 535 ms · 150.000 → 796 ms (`KHOA_APP_FEATURE.md` mục 10).
+const int kSoVongMacDinh = 50000;
 
 /// Độ dài băm (byte).
 const int kDoDaiBam = 32;
