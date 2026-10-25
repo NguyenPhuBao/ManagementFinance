@@ -4,6 +4,7 @@ import 'package:flowmoney/features/khoa_app/application/khoa_app_service.dart';
 import 'package:flowmoney/features/khoa_app/data/datasources/kenh_sinh_trac.dart';
 import 'package:flowmoney/features/khoa_app/data/khoa_app_store.dart';
 import 'package:flowmoney/features/khoa_app/data/models/cau_hinh_khoa_app.dart';
+import 'package:flowmoney/features/khoa_app/domain/luat_khoa_app.dart';
 import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
 import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_state.dart';
 import 'package:flutter/widgets.dart';
@@ -349,6 +350,57 @@ void main() {
     vongDoi.add(AppLifecycleState.resumed);
     await pumpEventQueue();
     expect(cubit.state, isA<KhoaAppKhoa>());
+  });
+
+  group('I1 — tự khoá đo thêm bằng đồng hồ khởi động', () {
+    Future<KhoaAppCubit> dung(Duration? Function() kd) async {
+      await sv.datPin(10, '246810');
+      await sv.datTuKhoaSau(10, TuKhoaSau.phut5);
+      final c = KhoaAppCubit(
+        service: sv,
+        vongDoi: vongDoi.stream,
+        phien: phien.stream,
+        clock: () => nay,
+        dongHoKhoiDong: kd,
+      );
+      addTearDown(c.close);
+      await c.nhanPhien(10);
+      await c.nhapPin('246810');
+      await pumpEventQueue();
+      expect(c.state, const KhoaAppMo(daBat: true));
+      return c;
+    }
+
+    test('ở nền 60 phút, giờ tường chỉnh lùi (+1 phút), đồng hồ khởi động +60 phút → Khoa', () async {
+      var khoiDong = const Duration(hours: 5);
+      final c = await dung(() => khoiDong);
+      vongDoi.add(AppLifecycleState.hidden);
+      vongDoi.add(AppLifecycleState.paused);
+      await pumpEventQueue();
+      nay = nay.add(const Duration(minutes: 1)); // người cầm máy đặt giờ về mốc rời + 1 phút
+      khoiDong += const Duration(minutes: 60);
+      vongDoi.add(AppLifecycleState.resumed);
+      await pumpEventQueue();
+      expect(c.state, isA<KhoaAppKhoa>(), reason: 'chỉ giờ tường thì 1 phút < 5 phút = vượt khoá');
+    });
+
+    test('cả hai đo ngắn → không khoá; đồng hồ khởi động null → ca cũ', () async {
+      var khoiDong = const Duration(hours: 5);
+      final c = await dung(() => khoiDong);
+      vongDoi.add(AppLifecycleState.paused);
+      nay = nay.add(const Duration(minutes: 1));
+      khoiDong += const Duration(minutes: 1);
+      vongDoi.add(AppLifecycleState.resumed);
+      await pumpEventQueue();
+      expect(c.state, const KhoaAppMo(daBat: true));
+
+      final c2 = await dung(() => null);
+      vongDoi.add(AppLifecycleState.paused);
+      nay = nay.add(const Duration(minutes: 6));
+      vongDoi.add(AppLifecycleState.resumed);
+      await pumpEventQueue();
+      expect(c2.state, isA<KhoaAppKhoa>(), reason: 'giờ tường vẫn khoá khi không đọc được đồng hồ khởi động');
+    });
   });
 }
 

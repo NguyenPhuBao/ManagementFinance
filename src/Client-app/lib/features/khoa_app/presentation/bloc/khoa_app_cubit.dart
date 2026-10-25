@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../application/khoa_app_service.dart';
+import '../../data/datasources/dong_ho_khoi_dong.dart';
 import '../../data/datasources/kenh_sinh_trac.dart';
 import '../../data/models/cau_hinh_khoa_app.dart';
 import '../../domain/luat_khoa_app.dart';
@@ -18,12 +19,14 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
     required Stream<AppLifecycleState> vongDoi,
     required Stream<int?> phien,
     DateTime Function()? clock,
+    DongHoKhoiDong? dongHoKhoiDong,
     ValueListenable<bool>? dungYenOCongKhai,
     Duration vanAnToanRoi = const Duration(seconds: 3),
   })  : _service = service,
         _dungYenOCongKhai = dungYenOCongKhai,
         _vanAnToanRoi = vanAnToanRoi,
         _clock = clock ?? DateTime.now,
+        _khoiDong = dongHoKhoiDong ?? docThoiGianKhoiDong,
         super(const KhoaAppDangXet()) {
     _subVongDoi = vongDoi.listen(_khiVongDoi);
     _subPhien = phien.listen((id) => unawaited(nhanPhien(id)));
@@ -31,6 +34,7 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
 
   final KhoaAppService _service;
   final DateTime Function() _clock;
+  final DongHoKhoiDong _khoiDong;
 
   /// Router đã đứng yên ở route công khai (route trên cùng công khai ∧ hiệu ứng vào xong). `null` = không biết → mất phiên
   /// thì gỡ lớp phủ ngay như trước (chỉ test cũ; `main.dart` luôn truyền).
@@ -44,6 +48,7 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
   bool _daBietPhien = false;
   CauHinhKhoaApp? _cauHinh;
   DateTime? _roiLuc;
+  Duration? _roiKhoiDong;
   int _lanKhoa = 0;
 
   Future<void> nhanPhien(int? id) async {
@@ -55,6 +60,7 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
     _daBietPhien = true;
     _id = id;
     _roiLuc = null;
+    _roiKhoiDong = null;
     _cauHinh = null;
     if (id == null) {
       if (dangChe && _dungYenOCongKhai != null) {
@@ -129,14 +135,22 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
     final c = _cauHinh;
     if (s == AppLifecycleState.hidden || s == AppLifecycleState.paused) {
       // Mốc rời app = lần `hidden` / `paused` ĐẦU TIÊN; `inactive` (hộp vân tay, hộp quyền) không tính.
-      if (c != null && state is KhoaAppMo) _roiLuc ??= _clock();
+      if (c != null && state is KhoaAppMo && _roiLuc == null) {
+        // Ghi CẢ hai mốc: giờ tường (chỉnh được) và đồng hồ khởi động (không chỉnh được, tính cả lúc máy ngủ).
+        _roiLuc = _clock();
+        _roiKhoiDong = _khoiDong();
+      }
       return;
     }
     if (s == AppLifecycleState.resumed) {
       final roi = _roiLuc;
+      final roiKd = _roiKhoiDong;
       _roiLuc = null;
+      _roiKhoiDong = null;
       if (roi == null || c == null || state is! KhoaAppMo) return;
-      if (canKhoaKhiQuayLai(roiLuc: roi, nay: _clock(), muc: c.tuKhoaSau)) {
+      final kd = _khoiDong();
+      final oNenKd = roiKd != null && kd != null ? kd - roiKd : null;
+      if (canKhoaKhiQuayLai(roiLuc: roi, nay: _clock(), muc: c.tuKhoaSau, oNenTheoKhoiDong: oNenKd)) {
         // Khoá NGAY bằng bản RAM (không để lọt khung nội dung), rồi làm tươi từ kho (P9).
         _khoa(c);
         final id = _id;

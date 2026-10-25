@@ -30,6 +30,21 @@ void main() {
       expect(canKhoaKhiQuayLai(roiLuc: roi, nay: roi.subtract(const Duration(hours: 1)), muc: TuKhoaSau.phut5),
           isTrue, reason: 'không biết đã ở nền bao lâu thì nghiêng về an toàn');
     });
+    test('I1: bảng ba vế — giờ tường / đồng hồ khởi động / mức (mức 5 phút)', () {
+      bool khoa(Duration tuong, Duration? kd) =>
+          canKhoaKhiQuayLai(roiLuc: roi, nay: roi.add(tuong), muc: TuKhoaSau.phut5, oNenTheoKhoiDong: kd);
+      const phut = Duration(minutes: 1);
+      expect(khoa(phut, null), isFalse, reason: 'không đọc được đồng hồ khởi động → giữ luật cũ');
+      expect(khoa(phut, phut), isFalse, reason: 'cả hai đo ngắn');
+      expect(khoa(phut, const Duration(minutes: 60)), isTrue,
+          reason: 'giờ tường bị chỉnh lùi (1 phút) nhưng máy thật sự ở nền 60 phút');
+      expect(khoa(const Duration(minutes: 60), phut), isTrue, reason: 'giờ tường đủ lâu là khoá');
+      expect(khoa(phut, const Duration(minutes: 5)), isTrue, reason: 'biên của đồng hồ khởi động cũng dùng >=');
+      expect(khoa(phut, const Duration(minutes: -3)), isTrue, reason: 'đồng hồ khởi động lùi = máy khởi động lại → khoá');
+      expect(khoa(Duration.zero, Duration.zero), isFalse);
+      expect(
+          canKhoaKhiQuayLai(roiLuc: roi, nay: roi, muc: TuKhoaSau.ngay, oNenTheoKhoiDong: Duration.zero), isTrue);
+    });
   });
 
   test('thoiGianCho: ca biên 4 / 5 / 6 / 7 / 8 / 20', () {

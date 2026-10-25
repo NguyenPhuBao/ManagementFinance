@@ -1,7 +1,7 @@
 /// Luật của khoá ứng dụng — hàm thuần (spec `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` mục 4, 6).
 library;
 
-/// Mức *Tự khoá sau*: app ở nền lâu hơn mức này thì quay lại phải mở khoá.
+/// Mức *Tự khoá sau*: app ở nền bằng hoặc lâu hơn mức này thì quay lại phải mở khoá.
 enum TuKhoaSau {
   ngay(Duration.zero, 'Ngay khi rời app'),
   giay30(Duration(seconds: 30), '30 giây'),
@@ -32,10 +32,21 @@ final RegExp _pin = RegExp('^[0-9]{$kDoDaiPin}\$');
 bool maPinHopLe(String pin) => _pin.hasMatch(pin);
 
 /// Rời app lúc [roiLuc], quay lại lúc [nay]: có phải mở khoá không. Đồng hồ lùi → khoá (không biết đã ở nền bao lâu).
-bool canKhoaKhiQuayLai({required DateTime roiLuc, required DateTime nay, required TuKhoaSau muc}) {
+///
+/// [oNenTheoKhoiDong] = thời gian ở nền đo bằng đồng hồ KHỞI ĐỘNG (đơn điệu, tính cả lúc máy ngủ — `null` = nền tảng không
+/// đọc được): giờ tường chỉnh được bằng Cài đặt giờ nên chỉ một mình nó thì chỉnh lùi về sau mốc rời là vượt khoá. Khoá khi
+/// MỘT trong hai đo vượt mức; đồng hồ khởi động âm (máy khởi động lại giữa chừng) → khoá.
+bool canKhoaKhiQuayLai({
+  required DateTime roiLuc,
+  required DateTime nay,
+  required TuKhoaSau muc,
+  Duration? oNenTheoKhoiDong,
+}) {
   final oNen = nay.difference(roiLuc);
   if (oNen.isNegative) return true;
-  return oNen >= muc.thoiGian;
+  if (oNen >= muc.thoiGian) return true;
+  final kd = oNenTheoKhoiDong;
+  return kd != null && (kd.isNegative || kd >= muc.thoiGian);
 }
 
 /// Sai liền [soLanSai] lần thì chờ bao lâu (`null` = chưa phải chờ).
