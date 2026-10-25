@@ -115,6 +115,8 @@ class KhoaAppService {
   Future<LoiSinhTrac?> batVanTay(int idaccount) async {
     final c = await _store.doc(idaccount);
     if (c == null) return LoiSinhTrac.loi;
+    // Đã bật rồi thì không gọi kênh: Kotlin `bat` xoá khoá cũ TRƯỚC khi hỏi vân tay — người dùng Huỷ là mất vân tay đang chạy.
+    if (c.vanTay != null) return null;
     final biMat = _byte(32);
     final kq = await _kenh.bat(idaccount, biMat);
     final banMa = kq.banMa, iv = kq.iv;

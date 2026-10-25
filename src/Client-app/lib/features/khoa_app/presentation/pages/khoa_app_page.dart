@@ -62,9 +62,23 @@ class _KhoaAppPageState extends State<KhoaAppPage> {
 
   MoDatPin get _mo => widget.moDatPin ?? _moDatPinMacDinh;
 
+  /// Đang có một trang PIN mở từ đây — chạm lần hai (công tắc, hàng Đổi PIN) bị bỏ qua, nếu không hai trang PIN chồng nhau.
+  /// `dangLam` của cubit chỉ bật SAU khi trang PIN pop nên không chặn được.
+  bool _dangMoTrangPin = false;
+
+  Future<bool?> _moMotLan(CheDatPin che) async {
+    if (_dangMoTrangPin) return null;
+    _dangMoTrangPin = true;
+    try {
+      return await _mo(context, che);
+    } finally {
+      _dangMoTrangPin = false;
+    }
+  }
+
   Future<void> _batTatKhoa(bool bat) async {
     final c = _cubit!;
-    final ok = await _mo(context, bat ? CheDatPin.dat : CheDatPin.tat);
+    final ok = await _moMotLan(bat ? CheDatPin.dat : CheDatPin.tat);
     if (ok != true || !mounted) return;
     await c.sauDatPin();
     // Máy có vân tay → hộp hệ thống "Chạm vân tay để bật" chính là câu hỏi "Dùng vân tay để mở?" (spec mục 4).
@@ -72,7 +86,7 @@ class _KhoaAppPageState extends State<KhoaAppPage> {
   }
 
   Future<void> _doiPin() async {
-    final ok = await _mo(context, CheDatPin.doi);
+    final ok = await _moMotLan(CheDatPin.doi);
     if (ok == true && mounted) await _cubit!.sauDatPin();
   }
 

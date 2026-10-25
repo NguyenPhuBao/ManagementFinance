@@ -173,4 +173,13 @@ void main() {
     kho.hongKhiDoc = false;
     expect((await kho.doc(10))!.soLanSai, 0);
   });
+
+  test('I3: batVanTay khi vân tay ĐÃ bật → không gọi kênh bat (Kotlin xoá khoá cũ trước khi hỏi)', () async {
+    await sv.datPin(10, '246810');
+    expect(await sv.batVanTay(10), isNull);
+    final truoc = (await kho.doc(10))!.vanTay!;
+    kenh.loiBat = LoiSinhTrac.huy; // nếu lỡ gọi kênh, người dùng Huỷ -> trả lỗi
+    expect(await sv.batVanTay(10), isNull, reason: 'đã bật: coi như xong, không hỏi lại');
+    expect((await kho.doc(10))!.vanTay!.banMa, truoc.banMa);
+  });
 }

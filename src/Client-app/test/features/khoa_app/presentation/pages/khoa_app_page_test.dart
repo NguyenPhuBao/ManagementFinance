@@ -172,4 +172,52 @@ void main() {
     await mo(t, app());
     expect(t.takeException(), isNull);
   });
+
+  testWidgets('I3: chạm đôi công tắc / hàng Đổi PIN trong lúc trang PIN đang mở → moDatPin gọi đúng một lần', (t) async {
+    final cho = Completer<bool?>();
+    var lan = 0;
+    await t.pumpWidget(MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: KhoaAppPage(
+        service: sv,
+        idaccount: 10,
+        moDatPin: (c, che) {
+          lan++;
+          return cho.future;
+        },
+      ),
+    ));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('cong-tac-khoa')));
+    await t.pump();
+    await t.tap(find.byKey(const Key('cong-tac-khoa')));
+    await t.pump();
+    expect(lan, 1, reason: 'lần chạm thứ hai khi trang PIN còn mở phải bị bỏ qua');
+    cho.complete(false);
+    await t.pumpAndSettle();
+
+    await sv.datPin(10, '246810');
+    final cho2 = Completer<bool?>();
+    lan = 0;
+    await t.pumpWidget(MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: KhoaAppPage(
+        key: UniqueKey(),
+        service: sv,
+        idaccount: 10,
+        moDatPin: (c, che) {
+          lan++;
+          return cho2.future;
+        },
+      ),
+    ));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('hang-doi-pin')));
+    await t.pump();
+    await t.tap(find.byKey(const Key('hang-doi-pin')));
+    await t.pump();
+    expect(lan, 1);
+    cho2.complete(false);
+    await t.pumpAndSettle();
+  });
 }
