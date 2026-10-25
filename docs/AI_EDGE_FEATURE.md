@@ -151,6 +151,7 @@ hậu theo mã** — đổi mã vùng nào thì `grep` vùng ấy trong cả `CA
 | `enqueued` → `choMang` là trạng thái **riêng** trên màn; `canceled` chỉ là huỷ khi người dùng bấm; `waitingToRetry` giữ `dangChay` | `requiresWiFi` làm lượt đứng im vô thời hạn không lỗi; WorkManager dừng vì ràng buộc báo `canceled` rồi tự xếp lại; thử lại sau lỗi mạng thì máy vẫn ở Wi-Fi — ba tin khác nhau của gói, ba câu khác nhau trên màn | 2026-09-22 |
 | Màn Cài đặt AI **không tự `setState`** khi bấm Tạm dừng/Tiếp tục/Huỷ; nguồn là sự thật duy nhất | bấm trên **thông báo** hệ thống cũng phải làm màn đổi theo; màn tự đặt là hai nơi nói hai điều | 2026-09-22 |
 | Wi-Fi mặc định, **cho phép 4G sau khi hỏi** (hộp thoại `hoi_dung_4g.dart`) | người dùng chốt; tệp 2,41 GB | 2026-09-22 |
+| `kUrlMoHinh` **ghim commit** `1caa527c…` thay `resolve/main`; SHA-256 `181938105e0e…a63c` chỉ ghi ở chú thích, app **không** băm lại | repo HuggingFace đổi 2026-10-23 (API) — `main` là thứ nhánh trỏ LÚC TẢI, tải lên mới lặng lẽ thay mô hình mọi phép đo dựa vào hoặc đổi cỡ làm `daCo()` không bao giờ đúng. Tệp đăng lần cuối ở `6e5c4f1e` (2026-05-04) = tệp đã đo từ 2026-09-20; HEAD tới URL ghim trả `X-Linked-Size 2588147712` + `X-Linked-ETag` đúng mã băm. Người dùng chốt ghim + kiểm cỡ là đủ (băm 2,41 GB thêm chờ + trạng thái màn mới). Đổi mô hình = đổi commit + `kCoTepByte` + mã băm, đo lại | 2026-10-24 |
 | **Canary GPU**: dấu ghi trước `getActiveModel`, xoá trong `finally`; dấu sót → CPU vĩnh viễn | Mali (Dimensity 1100) sập **native** khi gắn delegate OpenCL — không ném gì; ngoài scope kế hoạch nhưng là lỗi chặn (mỗi lần hỏi là một lần văng). Hai tệp cục bộ, tài sản của máy | 2026-09-22 |
 | DI: `NguonTaiNen` **`registerSingleton`** sau `chuanBi()`, bọc `kIsWeb` (bản giả trên Chrome) | lazy nghĩa là `chuanBi()` chạy sau khi màn đã kết luận "không có lượt"; `background_downloader` trên web không có service nền, dựng là ném lúc mở app | 2026-09-22 |
 | **Bậc tool — hướng A**: prompt không mang số, dữ liệu chỉ vào qua các tool đọc (bốn của lát 4b; bảy từ bước 2) và tích luỹ vào `GoiSoTraCuu`; **L1** — chưa tool nào chạy thì không câu nào của mô hình được hiện, màn rơi về bậc 1 **im lặng** | chặng 4a đo được *"danh sách có tên"* cần mà chưa đủ: mô hình không nối hai mục rời của gói. `kiemSo` mù với câu bịa **tên** không chứa số, nên câu viết trước khi có dữ liệu không được hiện. Spec `2026-09-23-chang-4b-…-design.md` | 2026-09-23 |
@@ -170,16 +171,16 @@ lib/features/ai_edge/
             ap_dung_ke_hoach.dart · kiem_giong.dart
             (P3) slm_prompt.dart · chu_de_chan.dart
             (việc số 1, 2026-09-22) kiem_nhan.dart · kiem_cau_tra_loi.dart — định nghĩa DUY NHẤT của "một câu được hiện" · gac_cau.dart — gác theo câu trên stream token · the_cua_cau.dart — thẻ số liệu của một câu (cùng phép khớp với bộ kiểm số)
-  data/     (P3) slm_runtime.dart — tệp DUY NHẤT import flutter_gemma (sinh · sinhDan · huy) · slm_dien_giai.dart · slm_cache.dart · mo_hinh_tai_ve.dart (từ tối 2026-09-22 đứng trên NguonTaiNen; tai_tep_dio.dart ĐÃ BỎ) · nguon_tai_nen.dart — giao diện lượt tải sống lâu hơn tiến trình + bản giả · tai_nen_background_downloader.dart — tệp DUY NHẤT import background_downloader · cong_tac_ai.dart · nguon_goi_so.dart — SÁU gói cho màn Trợ lý AI
+  data/     (P3; nay `data/datasources/` cho `slm_runtime` · `nguon_tai_nen` · `tai_nen_background_downloader`, dời 2026-10-19) slm_runtime.dart — tệp DUY NHẤT import flutter_gemma (sinh · sinhDan · huy) · slm_dien_giai.dart · slm_cache.dart · mo_hinh_tai_ve.dart (từ tối 2026-09-22 đứng trên NguonTaiNen; tai_tep_dio.dart ĐÃ BỎ) · nguon_tai_nen.dart — giao diện lượt tải sống lâu hơn tiến trình + bản giả · tai_nen_background_downloader.dart — tệp DUY NHẤT import background_downloader · cong_tac_ai.dart · nguon_goi_so.dart — SÁU gói cho màn Trợ lý AI
   domain/   (tải nền) hoi_dung_4g.dart — chuỗi hộp thoại dữ liệu di động · canary_gpu.dart — dấu canary GPU (Mali sập native)
   domain/   (bước 1b, 2026-09-23) canary_cong_cu.dart — CanaryCongCu (xét dấu sót bằng lý do thoát của Android) · quaCanary (bọc một lượt sinh) · BacCongCuDaTat
-  data/     (bước 1b) nguon_ly_do_thoat.dart — kênh `flowmoney/ly_do_thoat` tới `MainActivity` (lý do thoát + phiên bản app) · slm_runtime.dart: `moPhien` hỏi `daTat()`, mỗi lượt của `_PhienThat` đi qua `quaCanary` · main.dart xét dấu sót lúc khởi động
+  data/     (bước 1b; nguon_ly_do_thoat.dart nay ở `data/datasources/`, 2026-10-19) nguon_ly_do_thoat.dart — kênh `flowmoney/ly_do_thoat` tới `MainActivity` (lý do thoát + phiên bản app) · slm_runtime.dart: `moPhien` hỏi `daTat()`, mỗi lượt của `_PhienThat` đi qua `quaCanary` · main.dart xét dấu sót lúc khởi động
   domain/   (lát 4b, 2026-09-23 — NỐI VÀO MÀN Trợ lý AI từ Task 8) hang_so_lieu.dart — HangSoLieu + KetQuaCongCu · goi_so_tra_cuu.dart — gói tích luỹ của bậc tool (mẫu câu theo lượt gọi, bẫy 4.35) · cong_cu.dart — CongCu, KhaiBaoCongCu, bốn tên tool, kTranGoiCongCu · gac_cau.dart thêm DangTraCuu / KhongTraCuu · slm_prompt.dart thêm kPromptHeThongCongCu · hang_{hoa_don,vi,ngan_sach,chi_tieu}.dart — bốn hàm dựng hàng theo tên · goi_so_vi.dart mở viDangAm công khai · bo_markdown.dart — gỡ markdown lúc hiện (bẫy 4.36) · the_cua_cau.dart xét theo từng câu (bẫy 4.34)
-  data/     (lát 4b) phien_cong_cu.dart — giao diện phiên có tool + PhienCongCuGia · slm_runtime.dart thêm moPhien (bản thật _PhienThat — sập native với gói 1.7.0, chạy được từ 1.8.0, bẫy 4.33) · cong_cu_{ngan_sach,hoa_don,vi,chi_tieu}.dart — bốn adapter đọc repository · bo_cong_cu.dart — BoCongCu (khai báo + tra theo tên), DI lazy · vong_lap_cong_cu.dart — hoiBangCongCu: trần, thang lùi L1–L4, log print · nguon_goi_so.dart tách viChoGoiSoTu / nganSachDangChay dùng chung
+  data/     (lát 4b; phien_cong_cu.dart · slm_runtime.dart nay ở `data/datasources/`, 2026-10-19) phien_cong_cu.dart — giao diện phiên có tool + PhienCongCuGia · slm_runtime.dart thêm moPhien (bản thật _PhienThat — sập native với gói 1.7.0, chạy được từ 1.8.0, bẫy 4.33) · cong_cu_{ngan_sach,hoa_don,vi,chi_tieu}.dart — bốn adapter đọc repository · bo_cong_cu.dart — BoCongCu (khai báo + tra theo tên), DI lazy · vong_lap_cong_cu.dart — hoiBangCongCu: trần, thang lùi L1–L4, log print · nguon_goi_so.dart tách viChoGoiSoTu / nganSachDangChay dùng chung
   domain/   (bước 2, 2026-09-23 — mã xong; cổng D chưa đạt, mục 9.17) hang_muc_tieu.dart · hang_goi_y_han_muc.dart · hang_giao_dich.dart — ba hàm dựng hàng · loi_tham_so.dart — lời từ chối tham số chung · cong_cu.dart thêm ba tên tool + ba nhãn chỉ báo · hang_chi_tieu.dart: kMaKy tám mã · goi_so.dart / kiem_so.dart: LoaiSo.ngayThang · hang_so_lieu.dart: KetQuaCongCu.tenLienQuan
   data/     (bước 2) cong_cu_{muc_tieu,goi_y_han_muc,giao_dich}.dart — ba adapter · bo_cong_cu.dart: bảy tool
   domain/   (bước 2b, 2026-09-24 — mã xong; cổng D lần 2 chưa đạt, mục 9.18) loi_tham_so.dart — chỗ DUY NHẤT dựng lời từ chối (tuChoi… → loi + choNguoiDung + thamSoGo) · tham_so_mo_hinh.dart — thamSoTen (giữ chỗ = không lọc) · laSoTien · goi_so_tra_cuu.dart: lượt bị từ chối KHÔNG là đã tra cứu, gỡ theo tham số, choHienChuMoHinh · hang_chi_tieu.dart: kMaKyMoiLuc (mã riêng của tim_giao_dich) · cong_cu.dart: toolsJsonCua
-  data/     (bước 2b) vong_lap_cong_cu.dart: cổng hiện chữ choHienChuMoHinh, L1b, L2b · cong_cu_giao_dich.dart: ky bắt buộc + moi_luc · slm_runtime.dart đo tools_json bằng toolsJsonCua
+  data/     (bước 2b) vong_lap_cong_cu.dart: cổng hiện chữ choHienChuMoHinh, L1b, L2b · cong_cu_giao_dich.dart: ky bắt buộc + moi_luc · slm_runtime.dart (nay `data/datasources/`, 2026-10-19) đo tools_json bằng toolsJsonCua
   domain/   (bước 2c, 2026-09-24 — mã xong; cổng D lần 3 chưa đạt nhưng bẫy 4.44 / 4.45 đóng, mục 9.19) hang_so_lieu.dart: KetQuaCongCu.rongTheoBoLoc · boLoc · soLieuBoLoc (bộ lọc dội lại — không vào json trừ soLieuBoLoc) · hang_giao_dich.dart: boLoc bảy điều kiện thứ tự cố định, tên THẬT đã khớp, Từ/Đến rời tongHop, tu_khoa vào tenLienQuan · goi_so_tra_cuu.dart: _luotRong (không bao giờ gỡ), choHienChuMoHinh ba vế, tiền tố kỳ + bộ lọc, nhóm rỗng, cauLuotRong, cauNoiThem · core/utils/khop_ten.dart: bậc ba `_` = dấu cách · loi_tham_so.dart: câu người dùng đổi `_` · transaction/domain/tim_giao_dich.dart: tenDanhMucKhop / tenViKhop (tenKhop thành getter)
   data/     (bước 2c) vong_lap_cong_cu.dart: nhãn L2c / L2b+L2c, log nêu lý do cổng đóng, nối cauNoiThem
   domain/   (đổi tên tool, 2026-09-24 chiều — mục 9.20) cong_cu.dart: kTenCongCuTongKet = 'tong_ket_thu_chi_ky' (tên cũ chi_tieu_theo_ky; hằng cũ kTenCongCuChiTieu bỏ), chỉ báo "Đang tổng kết thu chi…" · cong_cu_chi_tieu.dart / hang_chi_tieu.dart giữ tên tệp (nội dung vẫn là chi tiêu theo kỳ) · bo_cong_cu_test: kTranToolsJsonDaDo 5437
@@ -206,7 +207,7 @@ lib/features/transaction/data/doc_cau_bang_ai.dart — (C2 §2.8) DocCauBangAi: 
 test/tool/dinh_tuyen/                             — (dự án B) KHÔNG vào bản app: du_lieu.dart (đọc TSV, mười nhãn, mã băm) · huan_luyen.dart (hocNaiveBayes · hocLogistic · kiemCheo · phanLuatBoLai · danhGia · chonNguong · sinhTepTrongSo) · bo_huan_luyen.tsv · bo_do.tsv (KHOÁ bằng mã băm) · huan_luyen_dinh_tuyen_test.dart và do_bo_do_test.dart (`skip`, chạy tay)
 lib/core/database/tables/ai_feedback_table.dart   — bảng AiRebalancingFeedbacks (cục bộ)
 lib/core/database/daos/ai_feedback_dao.dart
-lib/features/ai_chat/                             — màn Trợ lý AI (P3), đọc ai_edge; từ 2026-10-17 thêm trợ lý online (domain/ · data/datasources/ · widgets/tro_ly_ai/ — mục 15.3)
+lib/features/ai_chat/                             — màn Trợ lý AI (P3), đọc ai_edge; từ 2026-10-17 thêm trợ lý online (domain/ · data/datasources/ · widgets/tro_ly_ai/ — mục 15.3; 2026-10-19 thêm data/repositories/ · data/models/)
 ```
 
 ## 4. Bẫy — đọc trước khi sửa
@@ -264,8 +265,89 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | 4.4 | **Luật "đã bị cắt hai kỳ liền trước" (C3) chỉ kích hoạt khi ngân sách đã tồn tại ≥ 3 kỳ** — `recentPeriods` trả một kỳ cho ngân sách tạo tháng này, và luật im lặng | không lỗi; chỉ là trần 25 % thay vì 15 % | `tai_phan_bo_test.dart` *"đã bị cắt hai kỳ liền trước → trần 15 %"* có cả hai fixture |
 
 ⚠️ **Bảng dừng ở 4.48 — các bẫy sau đánh số tiếp nhưng nằm ở mục của lát sinh ra chúng:** 4.49 · 4.50 ở mục **9.32**
-(`truy_van_giao_dich`), 4.51 · 4.52 ở mục **9.33**, 4.53–4.58 (trợ lý online) ở mục **15.6** (đếm 2026-10-17). Bẫy mới lấy số
-**4.59**.
+(`truy_van_giao_dich`), 4.51 · 4.52 ở mục **9.33**, 4.53–4.58 (trợ lý online) ở mục **15.6** (đếm 2026-10-17), 4.59 ngay dưới
+đây (2026-10-21), 4.60 ngay dưới 4.59 (2026-10-22). Bẫy mới lấy số **4.61**.
+
+- **4.59 — engine Flutter dựng lại trong tiến trình còn sống làm rò MỘT BẢN MÔ HÌNH** (G100, 2026-10-21, thân ở
+  `CLIENT_APP_KNOWN_GAPS.md`). `flutter_gemma_litertlm` 1.8.0 chỉ cất **địa chỉ** engine native trong đối tượng Dart, không
+  `NativeFinalizer`: isolate chết mà chưa `close()` thì bản ấy nằm lại tới hết tiến trình, và isolate mới nạp bản thứ hai (Realme
+  CPU +1,85 GB mỗi vòng, OnePlus GPU +0,75 GB). Tiến trình sống tiếp vì dịch vụ D1 giữ nó. Hai đường dựng lại đã chặn: Back hai
+  lần → `moveTaskToBack` (`ThoatHaiLan`); gỡ task khi đang giữ mô hình → `MainActivity.onDestroy` giết tiến trình (cờ
+  `BoNapMoHinh.baoGiu` → `KenhGiuMoHinh`). ⚠️ Cờ chỉ bật **sau** khi nạp xong — báo sớm là có thể giết giữa pha nạp, dấu canary GPU
+  (4.24) sót lại thành *GPU hỏng vĩnh viễn*. ⚠️ Đừng chữa bằng cách đóng mô hình khi `detached`: OnePlus GPU sập ở lần đóng thứ
+  hai trong một tiến trình (chốt 4b `QUET_ANH_FEATURE.md`). Đường mới nào làm engine dựng lại trong tiến trình còn sống sẽ rò y hệt.
+- **4.60 — lượt bị bỏ vẫn chạy trên engine; lời gọi kế tiếp phải chờ nó** (2026-10-22, người dùng duyệt). `SlmRuntimeThat` chỉ
+  tuần tự hoá pha **nạp** (`BoNapMoHinh`), không tuần tự hoá lượt **sinh**; `huy()` = `stopGeneration`, mà lời gọi đọc ảnh không
+  ngắt được tức thì (Realme CPU: ~5 s). Từ khi màn Quét sang form ngay lúc Huỷ (chốt 13 `QUET_ANH_FEATURE.md`), lượt ấy chạy nốt ở
+  nền — nên `docAnh` chạy qua `LuotKhongNgatDuoc.chay` (`ai_edge/data/luot_khong_ngat_duoc.dart`) và `sinh` · `sinhDan` ·
+  `moPhien` · `chepLoi` `await _luotAnh.cho()` trước khi tạo phiên. ⚠️ `huy` không chờ (Huỷ kẹt); `dong` / `moHinhSan` không chờ
+  (`docAnh` → `_boNap.can` → `dong` là khoá chết); kiểm-và-nhận-chỗ trong `chay` phải cùng một microtask (bản sai cấy thử làm 3 ca
+  đỏ). Lối sinh mới thêm vào runtime cũng phải chờ — test đọc mã ở `luot_khong_ngat_duoc_test` chỉ canh năm lối hiện có (cùng
+  `moc` ghi trước khi chờ ở `docAnh` / `chepLoi` và `huy` / `dong` / `moHinhSan` không chờ — hai vế sau thêm 2026-10-22).
+  ⚠️ **`dong()` không có chốt** — đo 2026-10-22: chỗ gọi duy nhất là `BoNapMoHinh`, và sau `docAnh` máy giữ bản **hai cờ** nên
+  lượt chữ / chép lời kế tiếp không đóng / nạp lại; nối thêm một chỗ gọi `dong()` từ ngoài (nút xoá mô hình, tắt công tắc AI)
+  là phải cho nó chờ qua một hàm đóng riêng, đừng gắn chốt vào `dong` mà `BoNapMoHinh` đang dùng (khoá chết). ⚠️ **Giới hạn của
+  `cho()`**: nó chỉ đợi lượt đang chạy và lượt **đã vào hàng trước nó**; hai lời gọi MỚI sau lượt bị bỏ (một `docAnh` và một
+  lối khác gọi trước nó) vẫn có thể chạy cùng lúc — đó là tình huống hai tính năng cùng lúc mà giao diện vốn chặn, không phải
+  điều chốt này bảo đảm. ✅ **Trần chờ** (code-review 2026-10-22, người dùng chọn cùng ngày): `chay` / `cho` đợi tối đa
+  `kTranChoLuotCu` (**45 s** lúc thêm — ⚠️ **20 s từ 2026-10-22 tối**, người dùng chốt, lý lẽ mới ở cuối mục; câu *"45 s ≥
+  lượt chậm nhất"* bên dưới là lý lẽ cũ) tính từ lúc bắt đầu đợi (cộng dồn qua lượt nối sau), quá trần ném `LuotCuChuaXong` — mọi người gọi
+  đã bắt lỗi chung và rơi về luật / mẫu câu (Trợ lý: câu *"không chạy được"*). ⚠️ Quá trần **không** giải phóng chỗ (lượt
+  treo vẫn trên engine — cho lượt mới chạy là chồng hai lượt); lượt đã quá trần một lần thì lời gọi sau ném **ngay**. Native
+  treo thật = AI chết tới hết tiến trình, app không treo. 45 s ≥ lượt đọc ảnh chậm nhất đã đo (42 s — lượt bị bỏ mà
+  `stopGeneration` hỏng chạy nốt tới cùng) và < trần 60 s / 90 s của hai lớp bọc: lượt chờ quá lâu tự ném trước, lớp bọc
+  không phải cắt một lượt còn đứng chờ; test canh cả hai vế — đổi một trong ba hằng là đỏ. Hai trần ấy nay **tính cả** lúc
+  chờ (chú thích đã sửa).
+  ✅ **Hai cách dừng, hai nghĩa** (cùng ngày, người dùng chọn hai việc dư của lượt soát): **Huỷ của người dùng** = `huy()`
+  toàn cục (tăng bộ đếm chung của `BoNapMoHinh`, dừng `_chatDangSinh` — đúng nghĩa: muốn AI dừng hẳn); **hết giờ của lớp
+  bọc** = chỉ lượt của nó, qua thẻ `HuyLuot` (`ai_edge/data/huy_luot.dart`): `DocAnhBangGemma` / `ChepLoiBangGemma` tạo một thẻ
+  mỗi lượt, đưa vào `docAnh(…, huyLuot:)` / `chepLoi(…, huyLuot:)`, `onTimeout` chỉ `huy()` thẻ ấy; runtime xét `daHuy` sau
+  `_boNap.can` (không tạo chat) và nghe `tin` để dừng **chính** chat của lượt (`_dungChat`, chung với `huy()`). Hết ca huỷ oan
+  lượt khác đang chờ. ⚠️ Trần vẫn ở **lớp bọc** (test được), chỉ phép dừng đi theo thẻ — đừng dời bộ hẹn giờ vào
+  `SlmRuntimeThat` (không test được trên x86). `sinh` · `sinhDan` · `moPhien` nay ghi `moc` trước khi chờ và tự kiểm ngay sau
+  (`LuotNapBiHuy`, trước `createChat`), và **`PhienMotLoiGoi.huy()` gọi `runtime.huy()`** — dây còn thiếu: trước đó Huỷ của
+  Nhập nhanh / C3 / danh mục quét chỉ tới `_phien?.huy()` (lúc đang chờ thì `_phien` còn `null`), nên lượt đang chờ vẫn mở một
+  phiên vô ích khi lượt cũ xong. ⚠️ `runtime.huy()` phải gọi **trước** mọi `await` trong `PhienMotLoiGoi.huy()`: micro gọi Huỷ
+  lượt Điền rồi mới mở lượt chép lời — bộ đếm tăng muộn là bỏ oan chính lượt chép lời (ca canh *"đồng bộ"*). Trung thực: hôm
+  nay chỉ nhánh `moPhien` có đường Huỷ thật (qua `PhienMotLoiGoi`); `sinh` không có chỗ gọi (`BoDienGiai` không đăng ký DI),
+  `sinhDan` ở Trợ lý không có nút Dừng trên máy — thêm để năm lối đồng nhất. Thẻ `HuyLuot` **chưa** mở sang `SlmRuntime` (bảy
+  bản giả trong test): ba lối chữ chưa có trần riêng ở runtime (`PhienMotLoiGoi.thoiHan` dừng bằng `phien.huy()` — chat của
+  chính phiên); hợp nhất hai cơ chế là bước kế nếu cần.
+  ✅ **Gộp lời dừng trùng** (cùng ngày, người dùng chọn lối A): từ khi `PhienMotLoiGoi.huy()` gọi `runtime.huy()`, nút Huỷ pha
+  AI màn Quét (`_docGemma.huy()` + `_docDanhMuc.huy()`, cả hai `unawaited`) tới `huy()` **hai lần song song** trên cùng chat
+  đọc ảnh — hai `stopGeneration` native khi native chưa trả, mà OnePlus GPU từng sập ở lời gọi lặp. `_dungChat` nay đi qua
+  `GopLuotDung` (`ai_edge/data/gop_luot_dung.dart`, Dart thuần): lời dừng tới khi chat ấy **đang** dừng thì chờ chung, native
+  nhận một lời; lượt xong (kể cả hỏng / quá `kHanDungSinh`) là nhả chỗ — bấm Huỷ lần nữa vẫn thử dừng. Đổi lại (người dùng chấp
+  nhận): lượt đang dừng hỏng thì lời đã gộp vào nó không thử riêng. Khi gộp, logcat in `[SLM] gộp lời dừng trùng vào lượt đang
+  dừng` — trên máy tìm dòng ấy **có mặt** (`debugPrint` bị tiết lưu, vắng dòng huỷ thứ hai không chứng minh gì). Thẻ hết giờ
+  `HuyLuot` cũng qua `_dungChat`, nên gộp luôn với Huỷ của người dùng. ⚠️ Ba bẫy: `whenComplete(() => map.remove(k))` trả về
+  **chính** Future đang chờ → `whenComplete` chờ nó → lượt không bao giờ xong (test bắt; thân khối); map so khoá theo **định
+  danh** (`Map.identity()`); `Future.sync` để lời ném đồng bộ cũng tới mọi người chờ và nhả chỗ. `_PhienThat.huy()` (chat của
+  phiên có tool, không phải `_chatDangSinh`) **không** đi qua lớp gộp — ngoài phạm vi lối A. Test: `gop_luot_dung_test` (7 ca,
+  bốn bản sai đỏ) + ca đọc mã *"`_dungChat` gộp lời dừng trùng"* ở `luot_khong_ngat_duoc_test` (`.stopGeneration(` chỉ một chỗ
+  trong `SlmRuntimeThat`). ✅ **Đo Realme (CPU) 2026-10-22 tối** (chốt 13 `QUET_ANH_FEATURE.md`): bốn lần Huỷ pha AI, mỗi lần
+  **một** dòng gộp + **một** dòng huỷ, không sập; chốt chờ `_luotAnh` lần đầu thấy chạy thật — lượt Quét mới tạo chat **2 ms**
+  sau khi lượt bị bỏ xong. OnePlus GPU chưa đo. Cùng buổi, một lượt đọc ảnh **trọn vẹn** (N01, 10 món, 1.215 ký tự) mất
+  **55,9 s** — dài hơn mốc 42 s mà trần 45 s dựa vào.
+  ✅ **Trần chờ hạ xuống 20 s** (cùng tối, người dùng hỏi *"có cách nào giảm thời gian"* rồi chọn 20 s). Lý lẽ mới: trần không
+  cần che một lượt đọc **trọn vẹn** — mọi đường rời pha AI màn Quét (kể cả Back, `PopScope` → `_bamHuy`) đều gọi lệnh dừng,
+  nên ca thường chỉ là lượt bị Huỷ còn giữ chỗ tới hết pha nạp (nạp lạnh Realme CPU 1,3–9,2 s) hoặc hết prefill ảnh (chạy nốt
+  5–7 s sau Huỷ). 20 s ≥ gấp đôi 9,2 s. Trần chỉ chạm khi lượt cũ chạy trọn (lệnh dừng hỏng) hoặc Huỷ rơi vào lần nạp CPU
+  **đầu tiên** sau cài đặt (đo 27,2 s, mục 9.10 bước 6) — khi ấy rơi về luật sau 20 s thay vì chờ tiếp, đúng ý người dùng. Test
+  canh ba vế (≥ 18,4 s · ≤ 20 s · < hai trần lớp bọc). Phía app không rút được 5–9 s của ca thường: `stopGeneration` không
+  cắt được prefill native.
+  ✅ **Khe Huỷ lúc tạo chat** (cùng tối, tìm ra khi soát lý lẽ trần, người dùng chọn vá): `_boNap.can` xét bộ đếm Huỷ lúc vào
+  và sau khi nạp, nhưng năm lối sinh còn `await createChat(…)` rồi mới gán `_chatDangSinh` — Huỷ rơi vào khe ấy (dưới ~1,2 s
+  ngay sau khi *"Đang đọc bằng AI…"* hiện, đo Realme) thì `huy()` không có chat để dừng, lượt đọc ảnh chạy **trọn** 23–56 s ở
+  nền và giữ chỗ. Nay cả năm lối xét lại `_boNap.moc != moc` (và thẻ `HuyLuot` ở `docAnh` / `chepLoi`) **ngay sau
+  `createChat`**, trước khi gán `_chatDangSinh` và trước `addQueryChunk` (chưa prefill); `moPhien` đóng phiên vừa tạo trước khi
+  ném (chưa tới tay `PhienMotLoiGoi` nên không ai `dong()`). Test đọc mã 7 ca ở `luot_khong_ngat_duoc_test` (đỏ trên mã cũ;
+  bản sai *gán `_chatDangSinh` trước khi xét* đỏ). ✅ **Đo Realme CPU cùng tối** (bản `5129e9df…`, `6fc0b3a1` thêm log): khởi
+  động lại app để lượt quét đầu phải nạp, chạm Huỷ ngay khi logcat in *nạp mô hình xong* → `[SLM][anh] bỏ lượt — Huỷ / hết giờ
+  tới lúc đang tạo chat (693 ms)`, màn điền bằng luật, **không** có dòng *đọc ảnh xong* (mã cũ: lượt chạy trọn ở nền). Tạo chat
+  đo 28–693 ms — khe chỉ đáng kể ở lượt **đầu sau nạp** (28 ms khi mô hình đã nạp sẵn). Mốc kích theo dòng `[Quet][luat]` trượt
+  ba lần vì thời gian nạp dao động 0,57–1,4 s. Lộ một khe cũ khác ở màn Quét — Huỷ trong lúc `await kho.luuMon` (sau phép
+  xét `_huyLuat`, trước pha AI) bị nuốt — ✅ sửa cùng khuya (`8d1ecca0`, chốt 13 `QUET_ANH_FEATURE.md`).
 
 ## 5. Màn Stitch
 
@@ -282,15 +364,15 @@ lib/features/ai_chat/                             — màn Trợ lý AI (P3), đ
 | Thứ | Ở đâu | Khuôn mẫu | Ghi chú |
 |---|---|---|---|
 | Cột `categories.ai_co_dinh` (`BoolColumn`, mặc định `false`) | `tables/categories_table.dart` | `wallets.allow_negative` (v23, G27) | Cờ "Cố định — AI không đề xuất cắt" (luật C2). Bật ở màn Thêm/Sửa danh mục (`_TheCoDinh`, key `cong-tac-ai-co-dinh`); ẩn ở màn chỉ-từ-khoá của danh mục mặc định. Đi qua `CategoryChildDraft.aiCoDinh` → `saveChild` |
-| Bảng `AiRebalancingFeedbacks` | `tables/ai_feedback_table.dart`, DAO `daos/ai_feedback_dao.dart` (`ghi`, `getAll`) | `AppNotifications` (quy tắc 9) | 11 cột, **không** `syncStatus`/`syncError`/`updatedAt`/`isDeleted`. `purgeDataForOtherAccounts` và `purgeDataForAccount` xoá theo `idaccount` (nay **mười** bảng) |
+| Bảng `AiRebalancingFeedbacks` | `tables/ai_feedback_table.dart`, DAO `daos/ai_feedback_dao.dart` (`ghi`, `getAll`) | `AppNotifications` (quy tắc 9) | 11 cột, **không** `syncStatus`/`syncError`/`updatedAt`/`isDeleted`. `purgeDataForOtherAccounts` xoá theo `idaccount` (nay **mười** bảng; `purgeDataForAccount` gỡ 2026-10-20, G89) |
 
 Migration `from < 24`: `addColumn` + `createTable`, không điền hàng cũ. **Test quét thứ 15**
 (`test/features/ai_edge/ai_edge_cuc_bo_khong_dong_bo_test.dart`) cấm năm chuỗi (`aiCoDinh`,
 `ai_co_dinh`, `AiRebalancingFeedback`, `ai_rebalancing_feedbacks`, `aiRebalancingFeedbacks`) trong
-`sync_engine.dart`, `sync_payload_normalizer.dart`, `sync_models.dart` và trong hợp đồng payload —
+mọi tệp `lib/core/sync/` (từ 2026-10-19, qua helper `tepDuongDongBo()`; trước đó ba tệp `sync_engine.dart`, `sync_payload_normalizer.dart`, `sync_models.dart`) và trong hợp đồng payload —
 **không** bỏ dòng chú thích (khác test 14): một chú thích nhắc tên cột ở đường đồng bộ là dấu hiệu ai
 đó định đưa nó vào. Bản sai có chủ ý (`final String banSaiCoChuY = 'ai_co_dinh';` cuối
-`sync_engine.dart`) làm nó đỏ đúng dòng ngày 2026-09-19. `sync_payload_contract_test.dart` không đổi.
+`sync_engine.dart`) làm nó đỏ đúng dòng ngày 2026-09-19. `sync_payload_contract_test.dart` không đổi. (Từ 2026-10-19 test quét tệp nào dưới `lib/core/sync/` cũng vậy.)
 
 ⚠️ **Hai bẫy của lượt này**: (1) data class Drift `Category` đòi thêm tham số bắt buộc → **7** chỗ
 dựng `Category(...)` bằng tay trong test phải thêm `aiCoDinh: false` (cùng việc cơ học của G27);
@@ -333,9 +415,9 @@ sửa tên danh mục lặng lẽ **tắt cờ**; có ca test canh (*"sửa tên
 | `test/features/ai_edge/domain/gac_cau_test.dart` | 11 | việc số 1 — gác theo câu: ⭐ **cuối bộ đệm chưa phải kết câu** và **token cắt ngay sau dấu chấm** (hai ca từ lỗi máy thật, bẫy 4.18); `tachCauHoanChinh` không cắt ở chấm ngăn nghìn; ⭐ câu trượt → `BiChan`, huỷ **một** lần, câu sau **không** hiện (dựng `StreamController` thật); hết luồng không dấu kết vẫn kiểm phần đuôi; luồng rỗng không phát gì | 2026-09-22 |
 | `test/features/ai_edge/data/nguon_goi_so_test.dart` | 3 | việc số 1 — **sáu** gói theo thứ tự cố định; hoá đơn hỏi đúng `idaccount`; ví đọc **một** lần. Fake ghi đè `noSuchMethod` — chỉ dựng hàm được gọi, hàm lạ thì ném | 2026-09-22 |
 | `test/features/ai_edge/domain/the_cua_cau_test.dart` | 5 | đo cổng A — thẻ của một câu: ⭐ số đếm ngắn không khớp vì là chuỗi con của số tiền (bẫy 4.19); cùng loại/ngưỡng với bộ kiểm số; hai nhãn cùng số → một thẻ; câu không số → không thẻ | 2026-09-22 |
-| `test/features/ai_edge/data/nguon_tai_nen_test.dart` | 5 | tải nền — giao diện `NguonTaiNen` + bản giả: chưa bắt đầu thì `luotDangSong` null; batDau/tamDung/tiepTuc/huy; `tienToi` | 2026-09-22 |
+| `test/features/ai_edge/data/datasources/nguon_tai_nen_test.dart` | 5 | tải nền — giao diện `NguonTaiNen` + bản giả: chưa bắt đầu thì `luotDangSong` null; batDau/tamDung/tiepTuc/huy; `tienToi` | 2026-09-22 |
 | `test/features/ai_edge/data/mo_hinh_tai_ve_test.dart` (viết lại) | 15 | tải nền — `daCo()` kiểm **kích thước** (tệp 8 byte = chưa có; ca 2,4 GB `skip`); `khoiPhuc()` nối lượt lần trước / không có lượt thì im; `dangCho` → `choMang`; tamDung/tiepTuc; hỏng → `loi` kèm câu ngắn và **giữ** tệp dở; `huy()` xoá tệp dở; `cauLoiTai` 4 ca giữ nguyên | 2026-09-22 |
-| `test/features/ai_edge/data/tai_nen_background_downloader_test.dart` | 9 | tải nền — hai hàm thuần của bản thật: ⭐ tiến độ âm là mã (bẫy 4.21); ⭐ `canceled` của WorkManager → `dangCho`, của người dùng → `huy` (4.22); `waitingToRetry` → `dangChay`; các trạng thái còn lại | 2026-09-22 |
+| `test/features/ai_edge/data/datasources/tai_nen_background_downloader_test.dart` | 9 | tải nền — hai hàm thuần của bản thật: ⭐ tiến độ âm là mã (bẫy 4.21); ⭐ `canceled` của WorkManager → `dangCho`, của người dùng → `huy` (4.22); `waitingToRetry` → `dangChay`; các trạng thái còn lại | 2026-09-22 |
 | `test/features/ai_edge/domain/canary_gpu_test.dart` | 5 | tải nền (lộ ra ở nghiệm thu) — canary GPU: máy sạch thử GPU và dấu ghi **trước**; nạp xong dọn dấu; ⭐ dấu sót → CPU + ghi nhớ; đã hỏng → CPU mãi; đã hỏng thì không ghi canary | 2026-09-22 |
 | `test/features/ai_edge/presentation/cai_dat_ai_page_test.dart` (+9) | 9 | tải nền — mở màn **hỏi lại** lượt lần trước; chờ mạng nói "Wi-Fi" và **không** hứa "giữ lại"; Tạm dừng ↔ Tiếp tục; bấm Tạm dừng **không tự đặt** trạng thái (`_NguonKhongPhanHoi`); hàng nút 411dp; hộp thoại 4G: hỏi trước / đồng ý → `chiWifi=false` / Để sau → không tải / có Wi-Fi → không hỏi | 2026-09-22 |
 | `test/core/nhan_dien_app_test.dart` (+1) | 1 | manifest khai `FOREGROUND_SERVICE_DATA_SYNC` (Android 14+ đòi; build xanh nếu thiếu) | 2026-09-22 |
@@ -796,7 +878,7 @@ thật sự xảy ra thay vì bịa nhãn.
 
 | # | Thay đổi | Tệp |
 |---|---|---|
-| 1 | **Streaming chặn theo câu** — `SlmRuntime.sinhDan` (token) + `huy` (`stopGeneration()`); `gacTheoCau` gom token, đủ câu thì kiểm rồi phát `CauQua`, trượt thì huỷ và phát `BiChan`, không còn sự kiện nào sau. Màn dựng bong bóng lớn dần theo câu; bị chặn sau ≥ 1 câu → **giữ** các câu ấy; chưa câu nào → câu lùi | `data/slm_runtime.dart` · `domain/gac_cau.dart` · `ai_chat_page.dart` |
+| 1 | **Streaming chặn theo câu** — `SlmRuntime.sinhDan` (token) + `huy` (`stopGeneration()`); `gacTheoCau` gom token, đủ câu thì kiểm rồi phát `CauQua`, trượt thì huỷ và phát `BiChan`, không còn sự kiện nào sau. Màn dựng bong bóng lớn dần theo câu; bị chặn sau ≥ 1 câu → **giữ** các câu ấy; chưa câu nào → câu lùi | `data/slm_runtime.dart` (nay `data/datasources/`, 2026-10-19) · `domain/gac_cau.dart` · `ai_chat_page.dart` |
 | 2 | **`kiemNhan`** — lớp chắn thứ ba (số thật gán tên sai); từ khoá suy từ nhãn lúc chạy, so theo âm tiết | `domain/kiem_nhan.dart`; `kiem_so.dart` mở `soLieuKhop` |
 | 3 | **`kiemCauTraLoi`** — định nghĩa duy nhất của "một câu được hiện": số + nhãn + giọng theo `mucTongHop` (có gói cảnh báo → cả câu không được trấn an). Đây là chỗ **nối `kiemGiong` vào hỏi đáp** — trước đó chưa nối | `domain/kiem_cau_tra_loi.dart` |
 | 4 | `NguonGoiSo` gom **sáu** gói (thêm hoá đơn, ví); ví đọc **một** lần cho cả gói ví lẫn tổng của trang chủ | `data/nguon_goi_so.dart` · DI |
@@ -1140,7 +1222,7 @@ Dart mà không cần mô hình: đặt dấu bằng `run-as`, làm tiến trìn
 sẽ có, nên đó là phép đo gần nhất làm được. Đường Android 10 trở xuống chỉ canh bằng unit test (không
 có máy ảo API ≤ 29 trong dự án).
 
-**Test:** `domain/canary_cong_cu_test.dart` **15** ca · `data/nguon_ly_do_thoat_test.dart` **4** ·
+**Test:** `domain/canary_cong_cu_test.dart` **15** ca · `data/datasources/nguon_ly_do_thoat_test.dart` **4** ·
 `data/vong_lap_cong_cu_test.dart` +**1** · `canary_cong_cu_noi_day_test.dart` **4** (đọc mã nguồn
 của bốn mối nối — runtime, DI, `main.dart`, Kotlin — vì `flutter test` chạy trên x86_64, nơi đường
 thật của phiên có tool là vùng mù). Các ca "không được tắt nhầm" xanh ngay trên khung rỗng nên đã
@@ -3299,6 +3381,17 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
   hằng/mỗi + tuần/tháng/quý/năm · một tháng ∧ (có *tín hiệu muốn tạo* — tạo · thêm · đặt · lập · muốn · nhắc · lên kế
   hoạch — **hoặc** một số tiền đọc được)). ⚠️ Không có `quy` trần (*"quý này"* của câu hỏi cũng ra `quy`). Lưới **72 câu
   cổng F** → `false` hết; **ở đây lưới ấy canh thật** (bản sai bỏ vế từ hỏi làm nó đỏ — khác cổng hẹp 9.42).
+  ✅ **Từ 2026-10-20 (G95) thêm vế: câu mở bằng động từ XIN VIẾT CHỮ thì cổng đóng.**
+  - Động từ được tính: *viết · liệt kê · kể · soạn · giải thích · tóm tắt · gợi ý · phân tích* (`_moBangXinVietChu`). Chúng đứng
+    sau tiền tố lịch sự, có thể kèm *bạn*.
+  - Lý do: *"Hãy viết 15 lời khuyên tiết kiệm…"* đo OnePlus 2026-10-18 lọt cổng, vì số đếm *15* đọc ra 15.000 đ. Màn chat
+    hiện *"Đang đọc lệnh bằng AI…"* ~5 s rồi câu mới được trả lời.
+  - ⚠️ `ke` bỏ dấu là cả *kể* lẫn *kế*, và *kể từ* / *kể cả* là liên từ, nên *"kế hoạch… / kể từ… / kể cả…"* vẫn lọt.
+  - Luật chỉ bắt động từ ở vị trí đầu. *"bạn có thể gợi ý…"* chưa bắt.
+  - 10 câu đo ở bảng dưới (dạng gõ không dấu) được khoá bằng một ca test.
+  - ✅ Đo Realme 2026-10-20: câu G95 đi thẳng vòng hỏi đáp; *"ke tu thang sau de danh 2 trieu moi thang"* vẫn ra thẻ. Lượt đo
+    lộ **G99**: mô hình bịa *hạn* cho câu chỉ nêu mốc bắt đầu, lọt `_hanAiHopLe` vì câu có chữ *tháng* — ✅ đóng cùng ngày
+    (`_mauMocBatDau`, dòng *hạn mục tiêu* của bảng lưới kiểm bên dưới; đo lại Realme: thẻ không còn hạn).
 - **Phiên AI riêng** `DocLenhBangAi` (`ai_chat/data/doc_lenh_bang_ai.dart`): ba tool `tao_hoa_don` · `tao_muc_tieu` ·
   `dat_ngan_sach`, mong đợi **một** lời gọi; không gọi tool = "không phải lệnh tạo". Ví / danh mục là `enum` tên có thật
   + chuỗi rỗng. Thời hạn 45 s, canary phiên có tool, mọi hỏng hóc → `null`. **Không** nhét vào phiên sáu tool (trần
@@ -3314,7 +3407,7 @@ triệu mua xe trước hè năm sau"* → mô hình hiểu ý, điền ô; lu�
   | loại | câu **không** theo mẫu 9.42 **và không** mang dấu hiệu loại (`_loaiTheoDauHieu`: *hạn mức · giới hạn · tối đa* → ngân sách, xét trước; *tiết kiệm · để dành · dành dụm* → mục tiêu; *đóng tiền · trả tiền · nộp tiền · thanh toán · nhắc tôi* → hoá đơn, xét sau cùng — thêm 2026-10-02) |
   | số tiền / đích / hạn mức | là một cách đọc được từ chính câu (`cachDocSoTien`, lệch ≤ 0,5); với **mục tiêu**, số tiền *theo kỳ* (*"2 triệu mỗi tháng"*, *"500k/tháng"*) **không** phải số tiền đích — luật lẫn AI đều bỏ (`_tienTheoKy`) |
   | tên | không chứa chữ số, mọi chữ có trong câu **đúng thứ tự** (không cần liền nhau), gọt chữ chu kỳ (*"tiền điện hàng tháng"* → *"tiền điện"*); câu theo mẫu thì tên luật thắng |
-  | hạn mục tiêu | `dd/mm/yyyy` có thật, **sau** hôm nay, ≤ 50 năm, **và** câu nói tới thời gian — **ngoài các cụm chu kỳ** (*"mỗi tháng"*, *"500k/tháng"* không tính; 2026-10-02) |
+  | hạn mục tiêu | `dd/mm/yyyy` có thật, **sau** hôm nay, ≤ 50 năm, **và** câu nói tới thời gian — **ngoài các cụm chu kỳ** (*"mỗi tháng"*, *"500k/tháng"* không tính; 2026-10-02) **và cụm mốc bắt đầu** (*"kể từ tháng sau"*, *"từ ngày 1/11"* không tính — `_mauMocBatDau`, G99, 2026-10-20) |
   | chu kỳ | luật không thấy *hằng / mỗi + …* trong câu |
   | ngày gốc | 1–31, chữ số ấy đứng riêng trong câu **ngoài đoạn số tiền**; từ ngày gốc suy ra **ngày bắt đầu** (dưới) |
   | danh mục | tên enum khớp đúng **một** danh mục chi (đoán danh mục là giá trị mô hình thêm vào); chữ *"hoá đơn"* đầu tiên của câu là đối tượng của lệnh, **không** phải danh mục *Hóa đơn* |
@@ -4372,7 +4465,7 @@ xuất cân đối (thẻ + thông báo + tool `can_doi`), **ô NHỊP CHI** tra
 - **Kỳ đã đóng** `kyDaDongTruoc` (`budget_history.dart`) trên **cùng lưới `BudgetEntity.mocKy`** mà `currentPeriod` nhảy —
   lùi cả về **trước** ngày tạo ngân sách, bỏ kỳ bắt đầu trước giao dịch đầu tiên của tài khoản (thiếu dữ liệu ≠ không chi).
 - **Đọc một lần**: `BudgetRepository.nhipChiTheoNganSach` đọc khoản chi MỘT lượt cho mọi ngân sách rồi chia bằng
-  `khoanThuocNganSach` — vế danh mục tách khỏi `getExpenses` để "đã chi" có một định nghĩa. Mọi nơi dùng gọi qua
+  `khoanThuocNganSach` — vế danh mục tách khỏi `getExpenses` để "đã chi" có một định nghĩa (từ 2026-10-19 `getExpenses` còn lọc qua `khoanVaoThongKe`, nên ngân sách tổng và nhịp chi bỏ *Điều chỉnh số dư* / *Số dư ban đầu* / nửa cặp nạp mục tiêu kiểu cũ). Mọi nơi dùng gọi qua
   **`docNhipChi`** (`budget/data/doc_nhip_chi.dart`): nhịp là phần **phụ**, đọc hỏng thì `{}` → chi đều, không hỏng trang.
 - **Ba chỗ dùng**: `duPhongCua(nhipChi:)` / `taiPhanBoCua(nhipTheoNganSach:)` qua `DuLieuTaiPhanBo.nhipTheoNganSach` — thẻ
   *Đề xuất cân đối*, thông báo `budgetRebalance`, tool `can_doi` cùng theo vì cùng đi qua `keHoachTaiPhanBoTu`;
@@ -4607,7 +4700,7 @@ ba màn `1896d02b…` *bong bóng online* · `7a6519d6…` *tờ thông tin* · 
    `moToThongTinOnline` — *Đã hiểu* → ghi cờ đã đọc, câu đi online; *Chỉ dùng AI trên máy* → tắt công tắc + ghi cờ, câu này
    đi máy; vuốt tắt → câu này đi máy, **lần sau hỏi lại**.
 4. `_hoiOnline`: `xepHistory` (ghép theo **cặp** `user` + lời đáp AI ngay sau, ≤ 3 cặp cuối = ≤ 6 tin; luôn xen kẽ, đầu `user`, cuối
-   `model`; thẻ lệnh, câu cố định của hệ thống và tin không có lời đáp bị bỏ) → datasource SSE →
+   `model`; thẻ lệnh, câu cố định của hệ thống và tin không có lời đáp bị bỏ) → `TroLyOnlineRepository.hoi` → `LuotHoiOnline` (luồng sự kiện + `huy` thuần, 2026-10-19) → datasource SSE →
    chunk **nối thẳng** vào `_traLoiDangDen` (không chèn khoảng trắng, **không gác theo câu**, không thẻ số liệu; gỡ markdown lúc
    hiện bằng `boDanhDauMarkdown`) → `quyetDinhSauOnline` → `_chotOnline`. Hàng chờ *Đang hỏi trợ lý online…* kèm nút **Dừng**
    (`Key('dung-online')`), nút còn ở dưới bong bóng khi chữ đã chảy. 403 → `GoiRepository.lamMoi()` để băng khoá cập nhật.
@@ -4644,11 +4737,14 @@ lib/core/api/interceptors/auth_interceptor.dart     — _retryRequest phát lạ
 lib/features/ai_chat/domain/su_kien_online.dart     — SuKienOnline { ChuOnline · XongOnline · DuPhongOnline · LoiOnline }, TinLichSu
 lib/features/ai_chat/domain/duong_hoi.dart          — nenHoiOnline · quyetDinhSauOnline (HoanTat / RoiVeMay / GiuPhanDaCo) · xepHistory · năm hằng nhãn
 lib/features/ai_chat/data/datasources/tro_ly_online_remote_data_source.dart — POST /ai/chatbot/chat/stream, receiveTimeout 45 s, khung → sự kiện
+lib/features/ai_chat/data/repositories/tro_ly_online_repository.dart      — giao diện `hoi` → `LuotHoiOnline` (2026-10-19)
+lib/features/ai_chat/data/repositories/tro_ly_online_repository_impl.dart — bản thật, bọc datasource SSE
+lib/features/ai_chat/data/models/luot_hoi_online.dart — `LuotHoiOnline`: luồng `SuKienOnline` + `huy` thuần (datasource giữ `CancelToken`)
 lib/features/ai_chat/data/cong_tac_online.dart      — CongTacOnline: khoá ai_online_bat (mặc định BẬT), ai_online_da_doc_to (mặc định chưa); nuốt lỗi
 lib/features/ai_chat/presentation/widgets/tro_ly_ai/ — the_lenh_tao (dời nguyên văn) · nhan_nguon · to_thong_tin_online · dong_khoa · hang_chip
 lib/features/ai_edge/domain/chu_de_chan.dart         — chuDeBiChanOnline cạnh chuDeBiChan; hai nhóm _tuKhoaSong / _tuKhoaTuVan
 lib/features/ai_edge/presentation/pages/cai_dat_ai_page.dart — thẻ công tắc "Trợ lý online" + khối Riêng tư, NGOÀI cổng ai_edge_model
-lib/core/di/injection_container.dart                — TroLyOnlineRemoteDataSourceImpl(sl<DioClient>().dio) · CongTacOnline (lazy)
+lib/core/di/injection_container.dart                — TroLyOnlineRemoteDataSourceImpl(sl<DioClient>().dio) · TroLyOnlineRepository (trang gọi `.hoi` → `LuotHoiOnline`: luồng + `huy`, 2026-10-19; datasource giữ `CancelToken`) · CongTacOnline (lazy)
 ```
 
 Số dòng (`wc -l` 2026-10-18, sau đợt sửa): `ai_chat_page.dart` **1.153** (trần quét 23 = 1.200; trước lượt 1.079, 1.141 lúc xong Task 12), `cai_dat_ai_page.dart`
@@ -4709,6 +4805,8 @@ chỉnh fixture test.
 | `core/api/auth_interceptor_test.dart` | 18 | +1 (17 cũ) — phát lại sau 401 giữ `responseType` / `receiveTimeout` / `cancelToken` |
 | `features/ai_chat/data/datasources/tro_ly_online_remote_data_source_test.dart` | 16 | mới — adapter Dio giả; 403 / 429 / 503, `done.fallback`, `done.error`, đứt giữa luồng, thân cụt UTF-8 |
 | `features/ai_chat/data/cong_tac_online_test.dart` | 3 | mới |
+| `features/ai_chat/data/repositories/tro_ly_online_repository_impl_test.dart` | 1 | 2026-10-19 — repository trả `LuotHoiOnline` (đếm `grep` ca `test(`) |
+| `features/ai_chat/data/nguon_lenh_tao_test.dart` | 1 | 2026-10-19 — nguồn ví / danh mục lệnh tạo C3 đọc qua repository (đếm `grep` ca `test(`) |
 | `features/ai_chat/domain/duong_hoi_test.dart` | 21 | mới — ma trận `nenHoiOnline`, đủ hàng luật rơi, `xepHistory`; +5 đợt sửa (luật cặp: câu bị chặn, Dừng không chữ, C3, 4 cặp → 3, trộn) |
 | `features/ai_chat/ly_do_khoa_test.dart` | 7 | +4 (3 cũ) — bảng chân trị với `onlineBat` |
 | `features/ai_chat/ai_chat_page_test.dart` | 80 | +24 (50 cũ) — nhóm *trợ lý online (spec 2026-10-11)*; +6 đợt sửa (history rỗng / một cặp, M4, `kMayChuHongTuChoi` + đối chứng, 403 → `lamMoi` / 503, không nối chữ sau Dừng) |
@@ -4733,7 +4831,7 @@ chỉnh fixture test.
   49,9 s sau `meta` khi server im) — nhưng Gemini suy nghĩ lâu hơn 45 s nên câu dài rơi về máy trong khi server chạy tới cùng;
   người dùng chốt **giữ 45 s**, xin backend keep-alive `: ping` (đơn 47 việc 6, **G96**). Dừng phía server: client đóng socket
   thật nhưng `req.on('close')` không nổ (Node 22) — đơn 47 việc 5 nay có mốc đo. Câu dài cụt vì `maxOutputTokens: 1024` gồm
-  token suy nghĩ — đơn 47 việc 7. Cổng C3 bắt nhầm *"hãy viết 15 lời khuyên tiết kiệm…"* — **G95**.
+  token suy nghĩ — đơn 47 việc 7. Cổng C3 bắt nhầm *"hãy viết 15 lời khuyên tiết kiệm…"* — **G95** (✅ đóng 2026-10-20, vế loại trừ câu xin viết chữ ở mục 9.43).
 - ✅ Tin `user` mồ côi trong `history` (4.54) — đã sửa 2026-10-17 khuya: `xepHistory` ghép theo cặp.
 - ✅ Ba câu hỏi người dùng (spec mục 10 dòng 14) đã chốt 2026-10-17 khuya: (a) câu định nghĩa / tư vấn khi máy chủ hỏng →
   `kMayChuHongTuChoi`; (b) hàng *Đang nghĩ…* sau tờ thông tin đang mở — giữ; (c) nhánh `catch` khi đã có chữ chưa có ca phủ — vẫn để.

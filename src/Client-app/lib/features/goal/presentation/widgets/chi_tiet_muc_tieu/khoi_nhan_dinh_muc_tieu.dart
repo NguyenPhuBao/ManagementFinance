@@ -3,7 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../../core/utils/date_formatter.dart';
 
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../shared/theme/app_colors.dart';
@@ -27,25 +27,19 @@ class KhoiNhanDinhMucTieu extends StatelessWidget {
     // đóng băng. Không có bộ lập lịch nào trích tiền, nên nhịp thật do chính
     // các lần nạp tay quyết định — và đó mới là thứ đáng hiển thị.
     final String tieuDe;
-    if (goal.isCompleted || goal.remainingAmount <= 0) {
+    if (goal.daHoanThanh) {
       tieuDe = 'ĐÃ ĐẠT MỤC TIÊU';
     } else if (duBao == null) {
       tieuDe = 'CHƯA ĐỦ DỮ LIỆU ĐỂ DỰ BÁO';
     } else {
       tieuDe =
-          'DỰ BÁO HOÀN THÀNH: THÁNG ${DateFormat('MM/yyyy').format(duBao)}';
+          'DỰ BÁO HOÀN THÀNH: THÁNG ${DateFormatter.formatMonthYear(duBao)}';
     }
 
-    final nhipLabel = switch (goal.cycleTakeMoney) {
-      'Day' => 'mỗi ngày',
-      'Week' => 'mỗi tuần',
-      'Quarter' => 'mỗi quý',
-      'Year' => 'mỗi năm',
-      _ => 'mỗi tháng',
-    };
+    final nhipLabel = nhanNhipChuKy(goal.cycleTakeMoney);
 
     final String mota;
-    if (goal.isCompleted || goal.remainingAmount <= 0) {
+    if (goal.daHoanThanh) {
       mota = 'Không cần tích thêm đồng nào.';
     } else if (thucTe == null) {
       // Lý do là CHƯA ĐỦ THỜI GIAN, không phải chưa đủ số lần nạp — xem
@@ -61,7 +55,7 @@ class KhoiNhanDinhMucTieu extends StatelessWidget {
       final canThem = keHoach == null
           ? ''
           : ' · cần ${CurrencyFormatter.format(keHoach)} để kịp hạn '
-              '${DateFormat('MM/yyyy').format(goal.targetDate)}';
+              '${DateFormatter.formatMonthYear(goal.targetDate)}';
       mota =
           'Đang tích ${CurrencyFormatter.format(thucTe)} $nhipLabel$canThem.';
     }

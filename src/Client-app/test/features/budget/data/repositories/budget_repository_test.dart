@@ -16,6 +16,7 @@ import 'package:flowmoney/features/budget/data/datasources/budget_local_data_sou
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository.dart';
 import 'package:flowmoney/features/budget/data/repositories/budget_repository_impl.dart';
+import 'package:flowmoney/features/budget/domain/budget_period.dart';
 
 void main() {
   const idaccount = 7;
@@ -334,6 +335,14 @@ void main() {
         reason: 'idaccount CHỈ đến từ phiên đăng nhập. Mặc định về 1 sẽ ghi dữ '
             'liệu dưới danh nghĩa tài khoản admin THẬT.',
       );
+    });
+
+    test('addBudget không truyền startDate → ngày bắt đầu là ngayBatDauMacDinh (cùng hàm với form)', () async {
+      final truoc = DateTime.now();
+      final b = await repo.addBudget(idaccount: idaccount, amount: 1000000, categoryId: anUong);
+      final sau = DateTime.now();
+      expect(b.startDate, anyOf(ngayBatDauMacDinh(truoc), ngayBatDauMacDinh(sau)),
+          reason: 'repository và form phải dùng MỘT định nghĩa ngày bắt đầu mặc định');
     });
 
     test('từ chối hạn mức không dương', () async {

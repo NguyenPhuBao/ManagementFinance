@@ -93,12 +93,4 @@ void main() {
     expect(await db.aiFeedbackDao.getAll(8), isEmpty);
     expect(await db.aiFeedbackDao.getAll(7), hasLength(1));
   });
-
-  test('purgeDataForAccount xoá phản hồi của chính tài khoản ấy', () async {
-    await db.aiFeedbackDao.ghi(_dong(idaccount: 7));
-    await db.aiFeedbackDao.ghi(_dong(idaccount: 8));
-    await db.purgeDataForAccount(7);
-    expect(await db.aiFeedbackDao.getAll(7), isEmpty);
-    expect(await db.aiFeedbackDao.getAll(8), hasLength(1));
-  });
 }

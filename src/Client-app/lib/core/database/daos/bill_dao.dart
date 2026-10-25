@@ -1,0 +1,269 @@
+import 'package:drift/drift.dart';
+import '../../../features/bill/domain/bill_pay_status.dart';
+import '../app_database.dart';
+import '../tables/other_tables.dart';
+
+part 'bill_dao.g.dart';
+
+// ─── Bill DAO ─────────────────────────────────────────────────────────────────
+
+@DriftAccessor(tables: [Bills])
+class BillDao extends DatabaseAccessor<AppDatabase> with _$BillDaoMixin {
+  BillDao(super.db);
+
+  Future<List<Bill>> getAll(int idaccount) {
+    return (select(bills)
+          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.dueDate)]))
+        .get();
+  }
+
+  /// Mọi hàng hoá đơn của tài khoản, **kể cả hàng đã xoá mềm** — để lần ngược gốc chuỗi kỳ
+  /// (`kyTrungCanGo`, G87): cha của một kỳ có thể đã bị gỡ.
+  Future<List<Bill>> getTatCaKeCaDaXoa(int idaccount) {
+    return (select(bills)..where((t) => t.idaccount.equals(idaccount))).get();
+  }
+
+  Stream<List<Bill>> watchAll(int idaccount) {
+    return (select(bills)
+          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.dueDate)]))
+        .watch();
+  }
+
+  /// Hoá đơn chưa thanh toán tới hạn trong [days] ngày tới — **gồm cả hoá đơn
+  /// đã quá hạn**, vì đó chính là thứ đáng nhắc nhất.
+  ///
+  /// Lọc theo **CẢ HAI** cột trạng thái. `markPaid()` cẩn thận đặt cả hai,
+  /// nhưng hàng kéo về từ backend hoặc do bản client cũ ghi có thể lệch: mang
+  /// `payStatus = 'Payed'` trong khi `isPaid` còn false. Chỉ lọc một cột là
+  /// người dùng bị giục trả một hoá đơn đã thanh toán rồi — không exception,
+  /// không log.
+  ///
+  /// [now] tiêm được để test không phụ thuộc đồng hồ máy.
+  Future<List<Bill>> getUpcoming(int idaccount,
+      {int days = 7, DateTime? now}) {
+    final limit = (now ?? DateTime.now()).add(Duration(days: days));
+    return (select(bills)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.deletedAt.isNull() &
+              t.isPaid.equals(false) &
+              t.payStatus.equals(kBillPayed).not() &
+              // Kỳ bỏ qua không phải nợ. Thiếu dòng này thì bộ quét thông báo
+              // và bộ đặt lịch cấp hệ điều hành đều lôi nó ra nhắc.
+              t.payStatus.equals(kBillSkipped).not() &
+              t.dueDate.isSmallerOrEqualValue(limit)))
+        .get();
+  }
+
+  Future<void> insert(BillsCompanion entry) async {
+    await into(bills).insert(entry, mode: InsertMode.insertOrReplace);
+  }
+
+  Future<Bill?> getById(String id) {
+    return (select(bills)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  /// Cập nhật CHỈ những cột có mặt trong [entry].
+  ///
+  /// Đường sửa **không được** đi qua [insert]: `InsertMode.insertOrReplace`
+  /// thay nguyên hàng, nên mọi cột vắng mặt trong companion bị đưa về giá trị
+  /// mặc định. Form sửa hoá đơn chỉ gửi lên vài trường, nên nó từng biến hoá
+  /// đơn đã thanh toán thành chưa thanh toán, xoá sạch walletId/categoryId
+  /// (hai cột NOT NULL phía backend) và hạ cờ isRecurrence.
+  Future<void> updateFields(BillsCompanion entry) async {
+    if (!entry.id.present) {
+      throw ArgumentError('BillsCompanion phải có id để biết cập nhật hàng nào');
+    }
+    await (update(bills)..where((t) => t.id.equals(entry.id.value)))
+        .write(entry);
+  }
+
+  /// Đánh dấu đã thanh toán.
+  ///
+  /// Phải đặt CẢ HAI cột: nhánh đẩy gửi `pay_status` chứ không gửi `isPaid`,
+  /// nên nếu chỉ đặt `isPaid` thì backend vĩnh viễn thấy hoá đơn là 'Pending'
+  /// mà không có lỗi nào báo ra.
+  Future<void> markPaid(String id) async {
+    await (update(bills)..where((t) => t.id.equals(id))).write(
+      BillsCompanion(
+        isPaid: const Value(true),
+        payStatus: const Value('Payed'),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Đồng bộ cờ quá hạn với mốc thời gian — **cả hai chiều**.
+  ///
+  /// Trả về số hàng thật sự đổi. **Mỗi chiều đều có điều kiện trạng thái**:
+  /// quét chạy sau MỌI lần đồng bộ, nên ghi lại vô điều kiện là bản ghi luôn ở
+  /// trạng thái `pending` — đẩy lên rồi lại `pending` — một vòng lặp đẩy vô
+  /// tận mà không có lỗi nào báo ra.
+  ///
+  /// So theo NGÀY: hoá đơn đến hạn đúng hôm nay chưa phải quá hạn, người dùng
+  /// vẫn còn cả ngày để trả.
+  ///
+  /// **Chiều ngược lại (`Overdue → Pending`) thêm ngày 2026-09-06.** Trước đó
+  /// cờ chỉ đi một chiều, trong khi form Sửa đổi được ngày bắt đầu và hạn trả
+  /// tính lại theo chu kỳ — đẩy hạn ra tương lai thì cờ ở lại vĩnh viễn.
+  /// `companionSuaTu` (`bill/data/models/bill_draft_companion.dart`) cố ý không đụng `payStatus` (form không hỏi
+  /// gì về nó) nên đường sửa không tự chữa được. Client không lộ ra vì danh
+  /// sách tính lại từ `dueDate`, nhưng cột này **có đi đồng bộ** — dữ liệu
+  /// thật 06/09 có hai hoá đơn mang `'Overdue'` với hạn ở tương lai.
+  ///
+  /// Hai lệnh không giẫm lên nhau: hàng vừa nhận `'Overdue'` ở lệnh đầu có
+  /// `dueDate < dauNgay` nên không lọt vào bộ lọc của lệnh sau.
+  ///
+  /// Kỳ `'Skipped'` nằm ngoài **cả hai** chiều, và đó là chủ ý: nó không phải
+  /// nợ nên không thể quá hạn, mà cũng không được kéo về `'Pending'`.
+  Future<int> markOverdue(int idaccount, DateTime now) async {
+    final dauNgay = DateTime(now.year, now.month, now.day);
+
+    final daQuaHan = await (update(bills)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.deletedAt.isNull() &
+              t.isPaid.equals(false) &
+              t.payStatus.equals(kBillPending) &
+              t.dueDate.isSmallerThanValue(dauNgay)))
+        .write(BillsCompanion(
+      payStatus: const Value('Overdue'),
+      syncStatus: const Value('pending'),
+      updatedAt: Value(now),
+    ));
+
+    final hetQuaHan = await (update(bills)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.deletedAt.isNull() &
+              t.isPaid.equals(false) &
+              t.payStatus.equals(kBillOverdue) &
+              t.dueDate.isBiggerOrEqualValue(dauNgay)))
+        .write(BillsCompanion(
+      payStatus: const Value('Pending'),
+      syncStatus: const Value('pending'),
+      updatedAt: Value(now),
+    ));
+
+    return daQuaHan + hetQuaHan;
+  }
+
+  Future<void> softDelete(String id) async {
+    final now = DateTime.now();
+    await (update(bills)..where((t) => t.id.equals(id))).write(
+      BillsCompanion(
+        isDeleted: const Value(true),
+        deletedAt: Value(now),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ),
+    );
+  }
+
+  /// Kỳ kế tiếp được sinh ra khi trả hoá đơn [billId], nếu còn.
+  ///
+  /// Dùng cột `generatedFromBillId` (v16, đồng bộ `previous_bill_id` từ 2026-09-12) chứ không so tên và ngày:
+  /// so tên là đúng phép so mà cột này sinh ra để thay thế. Trả `null` khi hoá
+  /// đơn không lặp, hoặc kỳ ấy đã bị xoá.
+  ///
+  /// ⚠️ `LIMIT 1` **không `ORDER BY`**, và trên máy thua một cuộc đua
+  /// `BILL_ALREADY_PAID` thì **có thể có nhiều** kỳ kế tiếp cùng
+  /// `generatedFromBillId`: mỗi lượt tự trả sinh một kỳ, ở cả hai máy. Phép
+  /// chọn giữa chúng là **không xác định**, và nó gỡ đúng **một** kỳ mỗi lượt.
+  ///
+  /// ⚠️ Câu trước ở đây từng nói hậu quả là "trung tính — gỡ kỳ nào thì vẫn
+  /// còn đúng một kỳ sống". **Đo thật ngày 2026-09-13 bác bỏ**: sau một cuộc
+  /// đua trên hai máy ảo, server còn **hai** kỳ kế tiếp sống cho cùng một hoá
+  /// đơn (và hai kỳ nữa đã xoá) — bốn kỳ được sinh ra vì vòng lặp tự trả chạy
+  /// vài vòng trước khi trạng thái `Payed` kịp tới server. Người dùng thấy hai
+  /// hoá đơn trùng cho tháng sau. Đây là **khoảng trống đã biết**, chưa sửa.
+  ///
+  /// Cùng khuôn truy vấn này ở `TransactionDao.getByBill` đã gây mất dữ liệu
+  /// thật cùng ngày (gỡ nhầm khoản chi của máy thắng rồi đẩy cờ xoá lên
+  /// server); ở đó nơi gọi nay phải truyền id đích danh — xem
+  /// `BillRepository.undoPayment`.
+  Future<Bill?> getGeneratedFrom(String billId) {
+    return (select(bills)
+          ..where((t) =>
+              t.generatedFromBillId.equals(billId) & t.deletedAt.isNull())
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  /// Chỉ cập nhật cột có trong companion (xem chú thích ở CategoryDao.upsertAll).
+  Future<void> upsertAll(List<BillsCompanion> entries) async {
+    await batch((b) => b.insertAllOnConflictUpdate(bills, entries));
+  }
+
+  Future<List<Bill>> getPending([int? idaccount]) {
+    return (select(bills)
+          ..where((t) =>
+              t.syncStatus.equals('pending') &
+              (idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount))))
+        .get();
+  }
+
+  /// Đánh dấu kỳ [id] là **đã có khoản chi**, không đụng tới ví hay giao dịch.
+  ///
+  /// Khác [BillRepository.payBill] ở chỗ nó **chỉ ghi trạng thái**: dùng khi
+  /// khoản chi đã tồn tại ở nơi khác và máy này chỉ cần thôi tin rằng kỳ ấy còn
+  /// nợ. Nơi gọi duy nhất hôm nay là `BillPaymentConflictResolver`, sau khi
+  /// server từ chối khoản trả bằng `BILL_ALREADY_PAID` — nghĩa là hoá đơn **đã
+  /// được trả trên máy khác**.
+  ///
+  /// ⚠️ Ghi **cả hai** cột: `payStatus` là cột chính thức, `isPaid` là cột
+  /// chuỗi cũ được suy ra (xem mục "Đụng vào hoá đơn" `CLAUDE.md`). Ghi thiếu
+  /// một cột thì `daCoKhoanChi` vẫn đúng nhưng các đường đọc khác lệch nhau.
+  ///
+  /// ⚠️ Và ghi **`syncStatus = 'pending'`**, tức hàng này PHẢI được đẩy lên.
+  /// Bản đầu cố ý không đẩy — spec §4.3b sợ hàng của máy thua giẫm lên trạng
+  /// thái đúng mà server vừa nhận. ĐO THẬT ngày 2026-09-13 cho thấy nỗi sợ ấy
+  /// đặt nhầm chỗ: bản `Payed` của **máy thắng** cũng bị LWW đánh bại (mỗi máy
+  /// bị pull ghi đè rồi đẩy bản cũ hơn lên), nên server giữ `Pending` vĩnh
+  /// viễn, không máy nào dạy được nó sự thật, và bộ tự trả cứ trả lại sau mỗi
+  /// lần pull. Từ bản sửa lỗi vòng lặp, máy thua giữ đúng `Payed` — đẩy nó lên
+  /// là **hội tụ**, không phải giẫm đạp.
+  Future<void> danhDauDaTra(String id) async {
+    await (update(bills)..where((t) => t.id.equals(id))).write(
+      BillsCompanion(
+        payStatus: const Value('Payed'),
+        isPaid: const Value(true),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> markSynced(String id) async {
+    await (update(bills)..where((t) => t.id.equals(id))).write(
+      const BillsCompanion(
+        syncStatus: Value('synced'),
+        // Đẩy thành công thì xoá sạch dấu vết thất bại cũ — nếu không, bản ghi
+        // vẫn mang syncBlockedUntil của lần hỏng trước và bị chặn oan.
+        syncRetryCount: Value(0),
+        syncError: Value(null),
+        syncBlockedUntil: Value(null),
+      ),
+    );
+  }
+
+  /// Chặn bản ghi khỏi hàng đợi đẩy cho tới [until] sau một lần đẩy thất bại.
+  ///
+  /// KHÔNG bỏ trạng thái 'pending': hết hạn chặn là bản ghi tự quay lại hàng
+  /// đợi. Xem chú thích ở định nghĩa bảng để biết vì sao không dùng
+  /// syncStatus = 'failed'.
+  Future<void> markSyncBlocked(String id, DateTime until, String error) async {
+    final current =
+        await (select(bills)..where((t) => t.id.equals(id))).getSingleOrNull();
+    await (update(bills)..where((t) => t.id.equals(id))).write(
+      BillsCompanion(
+        syncRetryCount: Value((current?.syncRetryCount ?? 0) + 1),
+        syncError: Value(error),
+        syncBlockedUntil: Value(until),
+      ),
+    );
+  }
+}

@@ -1,4 +1,70 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (5 mục chờ backend — mục 43, 44, 45, 46, 47)
+# Backend & Client — DANH SÁCH CẦN LÀM (10 mục chờ backend — mục 43, 44, 45, 46, 47, 48, 49, 50, 51, 52)
+
+> ✉️ **Client đặt mục 52, 2026-10-24 tối — mức CAO:** [`GIAI_MA_HONG_TRA_BAN_MA.md`](./GIAI_MA_HONG_TRA_BAN_MA.md).
+> `decrypt()` giải hỏng thì trả nguyên bản mã `enc:…`; `/sync/pull` gửi nó trong `note` và client ghi đè ghi chú (đo trên máy
+> Realme, tài khoản 10: 64 giao dịch + 1 hoá đơn; thống kê tháng sai vì ghi chú mang nghĩa). Gốc: CSDL dev `PersonFinance` mã hoá
+> bằng khoá dev mặc định, backend chạy với khoá `.env`. Xin: giải hỏng → 5xx + `code` (đơn có bảng vì sao `null` / bỏ trường cũng
+> phá dữ liệu client). `ls CAN-LAM/` nay: **43 · 44 · 45 · 46 · 47 · 48 · 49 · 50 · 51 · 52** · `CLIENT_INTEGRATION_GUIDE.md` + README.
+>
+> ✉️ **Client đặt mục 51, 2026-10-24 — sửa chữ, mức thấp:** [`TAI_LIEU_XAC_THUC_LECH_MA.md`](./TAI_LIEU_XAC_THUC_LECH_MA.md).
+> `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md` §2.2 tả *đăng nhập offline bằng `offline_password_hash` trong SharedPreferences*
+> và §2.3 tả *đăng nhập vân tay qua `local_auth`* — client **không có** cả hai (kho là `FlutterSecureStorage`; từ 2026-10-24 client
+> thôi ghi băm mật khẩu và xoá khoá cũ). Lộ khi soát bảo mật toàn client-app. `ls CAN-LAM/` nay: **43 · 44 · 45 · 46 · 47 · 48 · 49
+> · 50 · 51** · `CLIENT_INTEGRATION_GUIDE.md` + README.
+>
+> ✉️ **Client đặt mục 50, 2026-10-23 — chức năng GIA ĐÌNH (nhà nhiều người), phần 1 nền móng:**
+> [`GIA_DINH_NEN_MONG.md`](./GIA_DINH_NEN_MONG.md), mức **cao** (tính năng mới người dùng chọn; nghiệm thu client chờ đơn này).
+> Mô hình *"nhà là chủ sở hữu thứ ba"*: cột `Idhousehold` cho `wallet` · `transaction` · `goal` · `budget` · `category`; ba bảng
+> `household` · `household_member` · `household_invite`; ba vai Owner / Member / Viewer; chủ nhà cần Premium. Việc: **A (cao)** kiểm
+> chủ sở hữu khi sửa / xoá qua `/sync/push` (lỗ hổng có sẵn — biết UUID là ghi đè được) · **B** migration 37 (SQL nháp trong đơn) ·
+> **C** module `households` 12 endpoint · **D** kéo về *của tôi + của nhà tôi*, 4 mã lỗi đẩy mới + `NOT_OWNER` · **E** khoá quyền
+> `household`, giới hạn `household_members`, chủ hết Premium ⇒ nhà `ReadOnly` · **F** `household.changed`, `sync.completed` tới mọi
+> thành viên · **G** sao 13 danh mục mặc định cho nhà. Mục 4 của đơn là định hướng ba phần con sau (chưa phải việc). Spec client:
+> `docs/superpowers/specs/2026-10-23-gia-dinh-nen-mong-design.md`. `ls CAN-LAM/` nay: **43 · 44 · 45 · 46 · 47 · 48 · 49 · 50** ·
+> `CLIENT_INTEGRATION_GUIDE.md` + README.
+
+> ✉️ **Client gộp `main` @ `ee6a65e5` (PR #153–#158) và đặt mục 49, 2026-10-23:**
+> [`SOAT_SAU_GOP_EE6A65E5.md`](./SOAT_SAU_GOP_EE6A65E5.md), mức **vừa**. Lượt gộp không đụng `src/Client-app` hay `CAN-LAM/`;
+> đồng bộ, 401, socket, 503 bảo trì vẫn khớp client. Đơn gồm: **A** commit `6cbd248e` viết lại tài liệu của client
+> `docs/superpowers/sync/SYNC_DOCUMENTATION.md` thành *"Hợp đồng v3.0"* sai mã ~15 chỗ — client giữ bản cũ + đoạn đầu
+> trỏ đơn (người dùng chốt), xin đừng sửa thẳng tài liệu client và soát `Sync-To-ClientApp.md` cùng lỗi; **B**
+> `Event-Notification-to-ClientApp.md` bảo client xoá SQLite khi `ACCOUNT_DELETED` (dòng 52, 107, 131, 622 — ngược G89);
+> **C** migration trùng số **27** lần hai; **D** `npm install` trước khi áp 33 / 34 làm đăng nhập lỗi 500 (`P2022`);
+> **E (thấp)** `IP-Device-ClientApp.md` nêu hai route admin không có, CORS thiếu `x-device-name`; **F (thấp)** migration 33
+> xoá cứng tài khoản test khi tắt khoá ngoại; **G (CAO, bổ sung cùng ngày)** đồng bộ JIT với PayOS ghi đơn `PAID` mà không nâng
+> Premium (gọi sai chữ ký, `payment.service.js:673`); **H** bảng chỗ sai của bốn tài liệu `docs/Admin-web/` (người dùng nhờ soát).
+> Mục 45 vẫn mở — số dòng nay `sync.repository.js:117, 527, 553`.
+> `DA-XONG/` đếm bằng máy 2026-10-23: **60** tệp + mục lục. `ls CAN-LAM/` nay: **43 · 44 · 45 · 46 · 47 · 48 · 49** ·
+> `CLIENT_INTEGRATION_GUIDE.md` + README.
+
+> ✉️ **Client đặt mục 48, 2026-10-20:** [`DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md`](./DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md),
+> mức **vừa**.
+> - **Nguồn:** ca 11 của `Test/test_data_security_encryption_and_masking.js` (`b147feeb`) chọn "tài khoản Active đầu tiên"
+>   bằng `findFirst` không `orderBy`. Ngày 2026-09-10 nó trúng tài khoản dev thật 18 `quangdat`; hôm nay nó trả 82.
+> - **Dữ liệu để lại:** ví `test-wallet-1789014227658` (id không phải UUID, script không bao giờ dọn) và 9 giao dịch
+>   `test-tran-note-*`. 2 giao dịch còn sống, vì lượt chạy gãy ở `assert` trước bước dọn.
+> - **Hệ quả ở client (G98):** `toValidUuid` đổi id, server tạo mới, rồi trùng tên với chính ví gốc. Ví kẹt hàng đợi đẩy ở
+>   mọi máy đăng nhập tài khoản 18, và đồng bộ của cả tài khoản bị hoãn tới 15 phút.
+> - **Xin:**
+>   - **Việc 1:** dọn bằng **xoá mềm**, ba bước. Bước 1: ví gốc + 2 giao dịch. Bước 2 là hệ quả biết trước: máy đang kẹt đẩy
+>     lại và tạo một ví "ma" `00000000-0000-4000-8000-4534d71cc54d`. Bước 3: xoá mềm ví ma, hoặc người dùng xoá nó trong app.
+>   - **Việc 2:** sửa ca 11 (tài khoản test riêng, `crypto.randomUUID()`, dọn trong `finally`).
+>   - **Việc 3 (thấp):** `test_sync_new_schema.js` và `test_can_lam_fixes.js` cùng khuôn.
+> - Không đổi mã `src/Backend`, lược đồ hay payload. Người dùng chốt hướng này; client không đổi mã vì đơn.
+> - `DA-XONG/` đếm bằng máy 2026-10-20: **60** tệp + mục lục. `ls CAN-LAM/` nay: **43 · 44 · 45 · 46 · 47 · 48** ·
+>   `CLIENT_INTEGRATION_GUIDE.md` + README.
+
+> ✅ **Client mã xong phần của mục 43 và NGHIỆM THU OnePlus ĐẠT, 2026-10-20 (G89, 12 commit `b7ca4512..98d58c64`; bảng kết quả ở
+> mục 12 spec G89).** Bốn việc client của đơn: `ACCOUNT_DELETED`
+> không còn xoá SQLite ở mọi nguồn · `connect_error` có `data.code` → đăng xuất + dừng nối lại · `account.downgraded` → làm mới gói ·
+> dòng nhắc Trang chủ / toast / câu màn Đăng nhập khi 503 `MAINTENANCE_MODE` hoặc 403 `AIOPS_QUARANTINED`. Client **không xin backend
+> gì thêm**; sáu việc dư phía backend ở banner bên dưới giữ nguyên.
+>
+> 👁️ **Ghi nhận khi nghiệm thu (chưa phải đơn xin):** (1) phong toả AIOps chặn mọi request HTTP từ IP nhưng **không chặn bắt tay
+> Socket.io** — đo trên backend dev nhánh client 2026-10-20: socket *"Đã nối"* lúc IP đang bị chặn; (2) `POST /admin/aiops/quarantine/temporary-ip`
+> chỉ sửa mục đã có (`count: 0`, không chặn IP mới) — tạo mới phải dùng `POST /admin/aiops/quarantine`; (3) một test backend đã chèn
+> ví `test-wallet-1789014227658` + 9 giao dịch `test-tran-note-*` (id không phải UUID) thẳng vào tài khoản dev 18 `quangdat` — hàng ví
+> kẹt hàng đợi đẩy của client (**G98** `CLIENT_APP_KNOWN_GAPS.md`); người dùng chốt đơn dọn dữ liệu + sửa script → **mục 48**.
 
 > 🔀 **Client gộp `main` @ `e7570e16` và soát, 2026-10-18.** Backend ghi *"✅ Đã xong 100%"* cho mục 41–44 trong bảng mục
 > 0 (`3a5d320c`) nhưng không chuyển tệp. Client soát bằng mã + CSDL dev.
@@ -113,15 +179,20 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **5** mục — đếm bằng `ls` 2026-10-18 sau gộp `e7570e16`: 43 và 44 backend báo xong, client soát còn phần dư; 45 và 46 backend chưa trả lời; client đặt 47 ngày 2026-10-17 và cập nhật số đo 2026-10-18. Mục 41 và 42 đã chuyển sang `DA-XONG/`)
+## 0. Còn phải làm (Hiện tại: **10** mục — đếm bằng `ls` 2026-10-24 tối: 43 và 44 backend báo xong, client soát còn phần dư; 45 và 46 backend chưa trả lời; client đặt 47 ngày 2026-10-17 (cập nhật số đo 2026-10-18), 48 ngày 2026-10-20, 49 và 50 ngày 2026-10-23, 51 và 52 ngày 2026-10-24. Mục 41 và 42 đã chuyển sang `DA-XONG/`)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
-| **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | **A (cao)** AIOps khoá tài khoản ghi `'Inactive'` thay `'Locked'`; `accountRejection` mặc định `ACCOUNT_INACTIVE`, chỉ `Deleted` mới `ACCOUNT_DELETED`; áp lại `ck_account_status`. **B (cao)** webhook `orderCode` lạ → 2xx, không tạo đơn / không nâng gói cho Admin. **C (vừa)** 503 lúc đăng nhập bảo trì mang `code` + `Retry-After: 60`. **D (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | 🟡 Backend ghi ✅ Đã xong 100% · client soát 2026-10-18: đạt A2, B, C; còn A1 (controller), A3, A4, A5, A6 (tuỳ chọn), D (0 / 12) — banner tệp |
+| **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | **A (cao)** AIOps khoá tài khoản ghi `'Inactive'` thay `'Locked'`; `accountRejection` mặc định `ACCOUNT_INACTIVE`, chỉ `Deleted` mới `ACCOUNT_DELETED`; áp lại `ck_account_status`. **B (cao)** webhook `orderCode` lạ → 2xx, không tạo đơn / không nâng gói cho Admin. **C (vừa)** 503 lúc đăng nhập bảo trì mang `code` + `Retry-After: 60`. **D (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | 🟡 Backend ghi ✅ Đã xong 100% · client soát 2026-10-18: đạt A2, B, C; còn A1 (controller), A3, A4, A5, A6 (tuỳ chọn), D (0 / 12) — banner tệp · **phần client (bốn việc) xong 2026-10-20 — G89**, phần dư backend giữ nguyên |
 | **44** | [SOAT_SAU_GOP_D72CCD45.md](./SOAT_SAU_GOP_D72CCD45.md) | Backend | **A (cao)** Đánh số lại hai tệp migration thanh toán (thành 28 và 29, tránh trùng 20, 24); trả `apply_migration_20.js` về `Server_update_at`. **B (vừa)** Webhook Idempotency không ghi đè đơn `REFUNDED`/`CANCELLED`. **C (vừa)** Tra mã nhận diện theo token cuối của nội dung. **D (vừa)** Nới `payment_order.status` lên VARCHAR(25). **E (thấp)** `accept` bắt buộc boolean. **F (thấp)** Đã cập nhật `Event-Notification-to-ClientApp.md`. Đã kiểm thử 2-Tier PASS 100%. | 🟡 Backend ghi ✅ Đã xong 100% · client soát 2026-10-18: đạt A, C, D, E, F; B còn hai vế — banner tệp |
-| **45** | [TAT_NHAC_HOA_DON_QUA_DONG_BO.md](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) | Backend | `sync.repository.js`: hoá đơn `time_notification` — tạo ~:471 `\|\| '3'` và cập nhật ~:497 `?? existing` nuốt NULL (= tắt nhắc ở client); ~:98 `String(null)` thành `"null"`. Đổi sang `!== undefined ? … : …`. Đo dev: 37 hoá đơn sống, 0 NULL (hệ quả của phép ép). Client đã làm phần mình (`d657b065`, tắt là tắt thật); tới khi sửa, tắt nhắc bị đảo sau một vòng đồng bộ. | ⏳ Chờ backend |
+| **45** | [TAT_NHAC_HOA_DON_QUA_DONG_BO.md](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) | Backend | `sync.repository.js`: hoá đơn `time_notification` — tạo ~:471 `\|\| '3'` và cập nhật ~:497 `?? existing` nuốt NULL (= tắt nhắc ở client); ~:98 `String(null)` thành `"null"` (số dòng sau gộp `ee6a65e5`, 2026-10-23: **:527**, **:553**, **:117**). Đổi sang `!== undefined ? … : …`. Đo dev: 37 hoá đơn sống, 0 NULL (hệ quả của phép ép). Client đã làm phần mình (`d657b065`, tắt là tắt thật); tới khi sửa, tắt nhắc bị đảo sau một vòng đồng bộ. | ⏳ Chờ backend |
 | **46** | [NOTIFICATION_CLIENT_APP_LECH_MA.md](./NOTIFICATION_CLIENT_APP_LECH_MA.md) | Backend (chữ) | Sửa `docs/Notification/Notification_Client-app.md` theo bảng của đơn (~30 chỗ, bốn nhóm: đường dẫn · hàm / route · con số · hành vi; nhãn [cũ] / [mới]); phần phía backend ghi riêng, ngắn. Kiểm lại bằng một câu `grep` ra 0 dòng. Không đổi mã; không chặn client. | ⏳ Chờ |
 | **47** | [CLIENT_TRO_LY_ONLINE.md](./CLIENT_TRO_LY_ONLINE.md) | Backend | Thông báo client đã tích hợp `chat/stream` (hỗn hợp, tự rơi về AI trên máy); **nghiệm thu OnePlus trên backend dev 2026-10-18 đạt** — đơn cập nhật số đo. **(thấp)** ghi tên `GEMINI_MODEL` đã kiểm (`gemini-3.8-flash` trả lời thật trên dev 2026-10-18) vào `ChatbotAI.md` và đặt trên cloud; giữ `history.slice(-6)`; cân nhắc bỏ tin đầu không phải `user` trước `startChat` (SDK ném → breaker dùng chung mở cho mọi tài khoản); tả `done {error}` trong `ChatbotAI_Moblie.md` §2.1 và sửa bốn chỗ `ChatbotAI.md` — `:286`, `:420` khẳng định Dừng ngắt được Gemini; `:296`, `:443` chỉ nêu tên hook `req.on('close')`. **(vừa) việc 5** Dừng không tới server — **đo 2026-10-18**: client đóng socket thật (ESTABLISHED tới :3000 4 → 2 trong 1 s) nhưng không dòng `[SSE Controller] … đã ngắt kết nối`, service *"Hoàn tất 14590ms"* 12 s sau → `req.on('close')` không nổ (Node 22); xin: khi client ngắt kết nối thì thôi ghi `delta`, không gọi thêm tool / Gemini, huỷ lời gọi Gemini đang chạy hoặc bỏ lời gọi kế (service ghi log ngay tại lời gọi Gemini), không đếm breaker / không fallback; tiêu chí đo bằng log ở ba thời điểm. **(vừa) việc 6** keep-alive SSE `: ping` ≤ 15 s khi chờ Gemini — server im > 45 s (49,9 s; curl 91 s) nên client `receiveTimeout` rơi về máy trong khi server vẫn chạy (client giữ 45 s). **(vừa) việc 7** `maxOutputTokens: 1024` gồm token suy nghĩ → câu dài cụt ở điểm ngẫu nhiên (172 ↔ 1.851 ký tự); cân nhắc gửi `finishReason` trong `done`. Không đổi lược đồ / payload; không chặn client. | ⏳ Chờ backend |
+| **48** | [DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md](./DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md) | Backend (dữ liệu + script test) | **Việc 1 (vừa)** xoá mềm trên CSDL dev, ba bước. Bước 1: ví `test-wallet-1789014227658` + 2 giao dịch `test-tran-note-*` còn sống của tài khoản 18 (`Server_update_at` tự cập nhật qua trigger). Bước 2 là hệ quả biết trước: máy đang kẹt đẩy lại id giả và tạo ví "ma" `00000000-0000-4000-8000-4534d71cc54d`. Bước 3: xoá mềm ví ma, hoặc người dùng xoá trong app. **Việc 2 (vừa)** sửa ca 11 `Test/test_data_security_encryption_and_masking.js`: tài khoản test riêng thay `findFirst` không `orderBy`, `crypto.randomUUID()`, dọn trong `finally`. **Việc 3 (thấp)** `test_sync_new_schema.js:21`, `test_can_lam_fixes.js:44` cùng khuôn (UUID, có dọn). Phép kiểm: ba câu `SELECT` ở cuối đơn. Không đổi mã / lược đồ / payload; client không đổi mã (G98). | ⏳ Chờ backend |
+| **49** | [SOAT_SAU_GOP_EE6A65E5.md](./SOAT_SAU_GOP_EE6A65E5.md) | Backend (chữ + migration) | Soát sau gộp `ee6a65e5`. **A (vừa)** `6cbd248e` viết lại `SYNC_DOCUMENTATION.md` của client thành *"Hợp đồng v3.0"* sai mã ~15 chỗ (bảng đối chiếu trong đơn) — client giữ bản cũ; **tái phát 2026-10-25:** `36f1ea43` (PR #159) viết đè lần hai thành *"v4.0"* (số trường sai, checklist 4 xin thêm `provider`/`bank_tran_id`/`status`/`images` — trái quy tắc 4) — client giữ bản cũ lần hai, bảng ở cuối vế A; xin đừng sửa thẳng tài liệu client, soát `Sync-To-ClientApp.md` (cùng tên cột sai). **B (vừa)** `Event-Notification-to-ClientApp.md` dòng 52 · 107 · 131 · 622 bảo xoá SQLite khi `ACCOUNT_DELETED` — ngược G89. **C (vừa)** trùng số migration 27 (`27_add_qr_url…` và `27_create_aiops_metric_snapshot…`) + tệp `)2_can_lam_all_migrations.sql`. **D (vừa)** áp 30–36 **trước** `npm install` — `auth.repository.js` `include` không `select` → đăng nhập `P2022`. **E (thấp)** `IP-Device-ClientApp.md`: hai route admin không có trong mã; CORS `app.js:32` thiếu `x-device-name`. **F (thấp)** migration 33 xoá cứng tài khoản test khi tắt khoá ngoại → bảng con mồ côi. **G (CAO, bổ sung cùng ngày)** `syncOrderWithPayOS` (`payment.service.js:673`) gọi `activatePremiumSubscription(order.idaccount, {…})` sai chữ ký (hàm nhận một object) → khi webhook không tới, đơn thành `PAID` mà tài khoản **không lên Premium**, lỗi bị nuốt, kẹt vĩnh viễn — có từ `c13873ef8` (2026-10-16), chặn nghiệm thu PayOS sandbox G94. **H (vừa)** bảng chỗ sai của bốn tài liệu `docs/Admin-web/` (`Event-Notification-to-ClientApp.md`, `Sync-To-ClientApp.md`, `IP-Device-ClientApp.md`, `DEVICE_TRACKING_AND_SYNC_PLAN.md`): mức cao — xoá SQLite khi `ACCOUNT_DELETED`, body 401 / 403 tả `code` lồng trong `data`, hoá đơn `'Day'`, xoá mềm bằng `is_deleted`, mốc kéo về `pulledAt`; *"hoàn tất 100%"* khi client / Admin chưa có gì. Mỗi vế có câu kiểm lại. Client không đổi mã. | ⏳ Chờ backend |
+| **50** | [GIA_DINH_NEN_MONG.md](./GIA_DINH_NEN_MONG.md) | Backend (tính năng mới) | Chức năng **gia đình** (nhà nhiều người), phần 1 nền móng — người dùng chốt 2026-10-23. **A (cao)** kiểm chủ sở hữu khi sửa / xoá qua `/sync/push` (nhánh sửa chỉ so `update_at`, `softDelete` theo khoá chính) → mã `NOT_OWNER`. **B (cao)** `database/37_create_household.sql`: `household`, `household_member`, `household_invite`; `Idhousehold INT NULL` cho 5 bảng (không `bill`); chỉ mục trùng tên cá nhân thêm `"Idhousehold" IS NULL`, chỉ mục mới theo nhà; ví của nhà không là ví mặc định. **C (cao)** 12 endpoint `/api/households` (tạo, `me`, mã mời 8 ký tự / 48 giờ / một lần, xem trước, tham gia, đổi vai, chuyển chủ, mời ra, rời, giải tán = xoá mềm). **D (cao)** kéo về `(Idaccount = tôi ∧ Idhousehold trống) ∨ Idhousehold = nhà tôi`; `mapEntityFields` + mọi khối `data` nhận `idhousehold`; mã `HOUSEHOLD_NOT_MEMBER` · `HOUSEHOLD_READ_ONLY` · `HOUSEHOLD_CLOSED` · `HOUSEHOLD_SCOPE_MISMATCH`. **E** khoá `household`, giới hạn `household_members` (server tự thi hành), chủ hết Premium ⇒ `ReadOnly`. **F** `household.changed` + `sync.completed` tới mọi thành viên. **G** sao 13 danh mục mặc định cho nhà. 11 ca kiểm hành vi + câu SQL kiểm. | ⏳ Chờ backend |
+| **51** | [TAI_LIEU_XAC_THUC_LECH_MA.md](./TAI_LIEU_XAC_THUC_LECH_MA.md) | Backend (chữ) | Sửa `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md`: §2.2 bỏ *đăng nhập offline bằng `offline_password_hash`* + *SharedPreferences* (client dùng `FlutterSecureStorage`; mở app không mạng = token + người dùng đã lưu; từ 2026-10-24 không ghi băm mật khẩu); §2.3 bỏ hoặc ghi *"chưa làm"* đăng nhập vân tay `local_auth` (client không có). **(2026-10-25: client đã có khoá ứng dụng PIN 6 số + vân tay `BiometricPrompt` gắn Keystore, KHÔNG `local_auth` và không phải đăng nhập — §2.3 có thể tả lại theo `docs/KHOA_APP_FEATURE.md` / spec `2026-10-24-khoa-app-pin-sinh-trac-design.md`; xem banner đơn.)** Phần còn lại của tệp client chưa soát. | ⏳ Chờ backend |
+| **52** | [GIAI_MA_HONG_TRA_BAN_MA.md](./GIAI_MA_HONG_TRA_BAN_MA.md) | Backend | **(cao)** `decrypt()` (`utils/crypto.util.js` ~:112) giải hỏng thì `return str` — trả nguyên `enc:<iv>:<tag>:<bản mã>`; `/sync/pull` gửi nó trong `note`, client ghi đè (đo 2026-10-24: 64 giao dịch + 1 hoá đơn của tài khoản 10; mất tiền tố *"Số dư ban đầu"* nên Thu nhập tháng sai 200.000 đ). Gốc: `PersonFinance` mã hoá bằng khoá dev mặc định (65/65 giải được, khớp chữ gốc), backend chạy với khoá `.env` (0/65). Xin: giải hỏng → 5xx + `code` cho cả request, **không** bản mã / `null` / bỏ trường (client ghi `''` khi thiếu `note` — bảng ràng buộc trong đơn); cùng khuôn ở `auth` (`phone`, `address`), `masking`, `bank`, `dedup`. **(vừa)** một khoá đúng cho `PersonFinance` (chạy với khoá dev hoặc mã hoá lại); xác nhận khoá Render. **(thấp)** `encrypt()` giữ nguyên mọi chuỗi dạng `enc:a:b:c`. Client không đổi mã (người dùng chọn không chặn ở client); đã khôi phục 65 ghi chú trên máy từ bản sao. | ⏳ Chờ backend |
 
 ---
 

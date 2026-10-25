@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../../core/di/injection_container.dart';
@@ -10,6 +10,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../widgets/hang_nut_nhanh.dart';
 import '../widgets/home_budget_card.dart';
 import '../widgets/home_goal_card.dart';
+import '../widgets/dong_nhac_may_chu.dart';
 import '../widgets/the_cho_xoa_trang_chu.dart';
 import '../widgets/drawer_trang_chu.dart';
 import '../widgets/the_so_lieu_thang.dart';
@@ -62,6 +63,9 @@ class HomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(context, currentUserId),
+              // G89 — dòng nhắc máy chủ (bảo trì / phong toả), ĐẦU chồng dòng nhắc: nó giải thích vì sao mọi thứ khác chưa
+              // đồng bộ. Khoảng 24 phía trên nằm TRONG widget; bình thường không dựng gì.
+              const DongNhacMayChu(),
               // Thẻ nhắc tài khoản đang chờ xoá (G33) — spec cưỡng chế đăng xuất §5.2.
               // Khoảng 24 phía trên nằm trong thẻ: "Để sau" ẩn thẻ thì không còn
               // khoảng trống.
@@ -124,12 +128,6 @@ class HomePage extends StatelessWidget {
                       // với chính con số trên màn Quản lý ví — im lặng, không màn
                       // nào nói ra. Cùng loại lỗi đã đóng ở `6fd2ce9`.
                       final totalBalance = _tongTaiSan(wallets);
-                      if (snapshot.hasData) {
-                        debugPrint('📊 [SQLite DB Log] Wallets count: ${wallets.length} | Total balance: ${CurrencyFormatter.formatSoThoi(totalBalance)}đ');
-                        for (final w in wallets) {
-                          debugPrint('   • Ví "${w.name}" (Account ${w.idaccount}): ${CurrencyFormatter.formatSoThoi(w.balance)}đ');
-                        }
-                      }
                       return _buildAssetCard(totalBalance);
                     },
                   );
@@ -166,13 +164,6 @@ class HomePage extends StatelessWidget {
                     builder: (context, snapshot) {
                       final transactions = snapshot.data ?? [];
                       final now = DateTime.now();
-
-                      if (snapshot.hasData) {
-                        debugPrint('💳 [SQLite DB Log] Transactions count: ${transactions.length}');
-                        for (final t in transactions.take(5)) {
-                          debugPrint('   • Giao dịch: [${t.type.toUpperCase()}] ${CurrencyFormatter.formatSoThoi(t.amount)}đ | Ghi chú: ${t.note} | Account: ${t.idaccount}');
-                        }
-                      }
 
                       // Một định nghĩa cho thu/chi tháng — khối Nhận xét cuối
                       // trang đọc cùng hàm này (`_buildNhanXet`).
@@ -459,7 +450,7 @@ class HomePage extends StatelessWidget {
             final content = buildTransactionRowContent(tx, lookup);
             return _buildTransactionItem(
               content,
-              '${content.subtitle} • ${DateFormat('dd/MM').format(tx.date)}',
+              '${content.subtitle} • ${DateFormatter.formatDayMonth(tx.date)}',
             );
           }),
       ],

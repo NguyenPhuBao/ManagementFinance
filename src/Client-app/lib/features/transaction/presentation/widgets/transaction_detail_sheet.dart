@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/transaction_entity.dart';
-import '../../data/models/transaction_type_label.dart';
+import '../../domain/transaction_type_label.dart';
 import '../../domain/transaction_lookup.dart';
 import '../../domain/transaction_owner.dart';
 import 'transaction_row_content.dart';
@@ -108,7 +108,7 @@ class TransactionDetailSheet extends StatelessWidget {
             _row('Từ ví', lookup.walletName(tx.walletId)),
             _row('Đến ví', lookup.walletName(tx.walletTransfer)),
           ],
-          _row('Ngày', DateFormat('dd/MM/yyyy HH:mm').format(tx.date)),
+          _row('Ngày', DateFormatter.formatDateTime(tx.date)),
           const SizedBox(height: 20),
           if (lyDo != null)
             Container(

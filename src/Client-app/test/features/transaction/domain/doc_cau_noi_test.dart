@@ -1,5 +1,6 @@
 /// C4 — luật đọc câu NÓI (spec 2026-10-12 §3.2–3.3, khối 🔧). Luật chỉ CHỌN THÊM trong tập `cachDocSoTien` đã có;
-/// số đọc bằng dạng nói mới học mang cờ `soTienCanKiem` để Gemma kiểm chéo.
+/// số đọc bằng dạng nói mới học mang cờ `soTienDangNoi`; Gemma chỉ kiểm chéo khi câu còn số tiền khác
+/// (`soTienCanKiem` — nhóm cuối tệp, người dùng chốt 2026-10-22).
 library;
 
 import 'dart:io';
@@ -31,10 +32,10 @@ void main() {
       ('tiền điện một triệu hai hôm qua', 1200000.0),
       ('tiền điện một triệu hai, hôm qua', 1200000.0),
     ]) {
-      test('"$cau" → $so, cần kiểm', () {
+      test('"$cau" → $so, dạng nói', () {
         final kq = doc(cau);
         expect(kq.soTien, so);
-        expect(kq.soTienCanKiem, isTrue);
+        expect(kq.soTienDangNoi, isTrue);
         expect(
           cachDocSoTien(cau, now: now),
           contains(so),
@@ -52,40 +53,45 @@ void main() {
       ('ăn phở 45k', 45000.0),
       ('mua sách 120.000', 120000.0),
     ]) {
-      test('dạng có đơn vị / chữ số đủ "$cau" → $so, KHÔNG cần kiểm', () {
+      test('dạng có đơn vị / chữ số đủ "$cau" → $so, KHÔNG dạng nói', () {
         final kq = doc(cau);
         expect(kq.soTien, so);
-        expect(kq.soTienCanKiem, isFalse);
+        expect(kq.soTienDangNoi, isFalse);
       });
     }
   });
 
-  group('N1 — Y KHÔNG ở chỗ của tiền: luật y như trước C4 (lối A, người dùng chốt 2026-10-12)', () {
-    for (final cau in [
-      'chi hai triệu năm nay',
-      'nộp hai triệu ba ngày sau',
-      'trả hai trăm nghìn tám tháng',
-      'một triệu hai tiền sách',
+  group('N1 — Y KHÔNG ở chỗ của tiền: luật không chọn (lối A, 2026-10-12), đưa HAI CHIP (G104, 2026-10-23)', () {
+    for (final (cau, chip) in [
+      ('chi hai triệu năm nay', [2000000.0, 2500000.0]),
+      ('nộp hai triệu ba ngày sau', [2000000.0, 2300000.0]),
+      ('một triệu hai tiền sách', [1000000.0, 1200000.0]),
     ]) {
-      test('"$cau" → luật không chọn N1', () {
+      test('"$cau" → luật không chọn N1, hai chip $chip', () {
         final kq = doc(cau);
-        expect(kq.soTien, isNull, reason: 'dạng chữ: chưa rõ như hôm nay');
-        expect(kq.soTienCanKiem, isFalse);
-        expect(kq.canhBao, contains(kCanhBaoSoChuChuaRo));
-        expect(cachDocSoTien(cau, now: now), isNotEmpty, reason: 'Gemma vẫn chọn được ở chỗ luật bỏ trống');
+        expect(kq.soTien, isNull, reason: 'luật không biết cách đọc nào đúng');
+        expect(kq.soTienDangNoi, isFalse);
+        expect(kq.luaChonSoTien, chip, reason: 'G104: người dùng chọn — Gemma từng điền bản cụt không hỏi');
+        expect(kq.canhBao, isNot(contains(kCanhBaoSoChuChuaRo)), reason: 'chip thay câu "bạn nhập tay nhé"');
       });
     }
+    test('"trả hai trăm nghìn tám tháng" — X = 200 ngoài 1–99: không chip, chưa rõ như trước', () {
+      final kq = doc('trả hai trăm nghìn tám tháng');
+      expect(kq.soTien, isNull);
+      expect(kq.luaChonSoTien, isEmpty, reason: 'chip 200.800 là số không ai nói');
+      expect(kq.canhBao, contains(kCanhBaoSoChuChuaRo));
+    });
 
-    test('dạng chữ số: "nộp 2 triệu 3 ngày sau" → 2.000.000 như hôm nay, không cần kiểm', () {
+    test('dạng chữ số: "nộp 2 triệu 3 ngày sau" → 2.000.000 như hôm nay, không dạng nói', () {
       final kq = doc('nộp 2 triệu 3 ngày sau');
       expect(kq.soTien, 2000000.0);
-      expect(kq.soTienCanKiem, isFalse);
+      expect(kq.soTienDangNoi, isFalse);
     });
 
     test('"ngày" chỉ là chỗ của tiền khi liền sau là chữ số: "một triệu hai ngày 5/10" → N1', () {
       final kq = doc('tiền điện một triệu hai ngày 5/10');
       expect(kq.soTien, 1200000.0);
-      expect(kq.soTienCanKiem, isTrue);
+      expect(kq.soTienDangNoi, isTrue);
     });
   });
 
@@ -97,7 +103,7 @@ void main() {
         500000.0,
         reason: '_sauLaChuSoChu so trên chữ BỎ DẤU — "từ" thành tu = tư (4), cả cụm bị gạt là "chưa rõ"',
       );
-      expect(kq.soTienCanKiem, isFalse);
+      expect(kq.soTienDangNoi, isFalse);
     });
 
     test('cachDocSoTien cùng phép đọc: không có 500.400', () {
@@ -115,7 +121,7 @@ void main() {
       // Tinh chỉnh phán quyết B (điều phối 2026-10-12): trong câu có dấu, "sau" là chữ thật, không mơ hồ.
       final kq = doc('hai triệu sau khi giảm');
       expect(kq.soTien, 2000000.0);
-      expect(kq.soTienCanKiem, isFalse);
+      expect(kq.soTienDangNoi, isFalse);
       expect(cachDocSoTien('hai triệu sau khi giảm', now: now), isNot(contains(2600000.0)));
     });
     test('cả câu không dấu: "hai trieu sau" → 2.600.000', () {
@@ -125,10 +131,10 @@ void main() {
 
   group('I1 — dấu câu liền sau Y', () {
     for (final cau in ['tiền điện 1 triệu 2, hôm qua', 'tiền điện 1 triệu 2.']) {
-      test('"$cau" → 1.200.000, cần kiểm', () {
+      test('"$cau" → 1.200.000, dạng nói', () {
         final kq = doc(cau);
         expect(kq.soTien, 1200000.0);
-        expect(kq.soTienCanKiem, isTrue);
+        expect(kq.soTienDangNoi, isTrue);
         expect(cachDocSoTien(cau, now: now), contains(1200000.0));
       });
     }
@@ -154,13 +160,13 @@ void main() {
     test('dạng chữ số: "nộp 2 triệu 3 hôm sau" → 2.000.000 như trước C4', () {
       final kq = doc('nộp 2 triệu 3 hôm sau');
       expect(kq.soTien, 2000000.0);
-      expect(kq.soTienCanKiem, isFalse);
+      expect(kq.soTienDangNoi, isFalse);
     });
     for (final cau in ['trả hai triệu ba hôm trước', 'mua hai triệu ba thứ đồ']) {
       test('"$cau" → luật không chọn N1', () {
         final kq = doc(cau);
         expect(kq.soTien, isNull);
-        expect(kq.soTienCanKiem, isFalse);
+        expect(kq.soTienDangNoi, isFalse);
       });
     }
     test('"mua 2 triệu 3 thứ đồ" (chữ số) → 2.000.000', () {
@@ -169,7 +175,7 @@ void main() {
     test('"một triệu hai thứ hai" → 1.200.000', () {
       final kq = doc('tiền điện một triệu hai thứ hai');
       expect(kq.soTien, 1200000.0);
-      expect(kq.soTienCanKiem, isTrue);
+      expect(kq.soTienDangNoi, isTrue);
     });
     test('cả câu không dấu: "mot trieu hai hom qua" → 1.200.000', () {
       expect(doc('mot trieu hai hom qua').soTien, 1200000.0);
@@ -177,10 +183,10 @@ void main() {
   });
 
   group('mốt', () {
-    test('"tiền điện một triệu mốt" → 1.100.000, cần kiểm, cachDocSoTien có 1.100.000', () {
+    test('"tiền điện một triệu mốt" → 1.100.000, dạng nói, cachDocSoTien có 1.100.000', () {
       final kq = doc('tiền điện một triệu mốt');
       expect(kq.soTien, 1100000.0);
-      expect(kq.soTienCanKiem, isTrue);
+      expect(kq.soTienDangNoi, isTrue);
       expect(cachDocSoTien('tiền điện một triệu mốt', now: now), contains(1100000.0));
     });
     test('"hai triệu mốt" → 2.100.000', () {
@@ -211,7 +217,7 @@ void main() {
       test('"$cau" → $so (bẩy = bảy miền Bắc)', () {
         final kq = doc(cau);
         expect(kq.soTien, so);
-        expect(kq.soTienCanKiem, isTrue);
+        expect(kq.soTienDangNoi, isTrue);
         expect(cachDocSoTien(cau, now: now), contains(so));
       });
     }
@@ -227,10 +233,10 @@ void main() {
   });
 
   group('tỷ và C3', () {
-    test('"1 tỷ 2" → 1.200.000.000, cần kiểm', () {
+    test('"1 tỷ 2" → 1.200.000.000, dạng nói', () {
       final kq = doc('mua xe 1 tỷ 2');
       expect(kq.soTien, 1200000000.0);
-      expect(kq.soTienCanKiem, isTrue);
+      expect(kq.soTienDangNoi, isTrue);
     });
     test('chonSoTienTrongCau hưởng N1: "đặt ngân sách ăn uống 2 triệu 5" → 2.500.000', () {
       expect(chonSoTienTrongCau('đặt ngân sách ăn uống 2 triệu 5', now: now)?.giaTri, 2500000.0);
@@ -265,10 +271,10 @@ void main() {
       ('đổ xăng 50 hôm qua', 50000.0),
       ('ăn phở 45 ngày 5/10', 45000.0),
     ]) {
-      test('"$cau" → $so, cần kiểm', () {
+      test('"$cau" → $so, dạng nói', () {
         final kq = doc(cau);
         expect(kq.soTien, so);
-        expect(kq.soTienCanKiem, isTrue);
+        expect(kq.soTienDangNoi, isTrue);
         expect(kq.oThieu, isNot(contains(OThieu.soTien)));
         expect(cachDocSoTien(cau, now: now), contains(so), reason: 'bất biến kiểm chéo');
       });
@@ -329,7 +335,7 @@ void main() {
     test('có cụm đơn vị thì cụm ấy thắng, không cảnh báo nhiều số tiền', () {
       final kq = doc('mua hai mươi quả trứng ba mươi nghìn');
       expect(kq.soTien, 30000.0);
-      expect(kq.soTienCanKiem, isFalse);
+      expect(kq.soTienDangNoi, isFalse);
       expect(kq.canhBao, isNot(contains(kCanhBaoNhieuSoTien)));
     });
 
@@ -456,6 +462,33 @@ void main() {
       expect(kq.walletToId, 'mb');
     });
 
+    test('⚠️ tên gọi VIẾT DÍNH — nguyên văn Google trả trên Realme 2026-10-21: "chuyển 500.000 từ mbbank sang tiết kiệm"', () {
+      final kq = doc('chuyển 500.000 từ mbbank sang tiết kiệm', vi: [tienMat, mb, tk]);
+      expect(kq.loai, 'transfer');
+      expect(kq.walletId, 'mb',
+          reason: 'nhận dạng giọng nói của Google viết "MB Bank" thành "mbbank" — form từng chọn Tiền mặt làm ví nguồn');
+      expect(kq.walletToId, 'tk');
+      expect(kq.soTien, 500000.0);
+      expect(kq.ghiChu, isNot(contains('mbbank')), reason: 'ghi chú từng sót "từ mbbank"');
+    });
+
+    test('⚠️ ký hiệu "₫" Google viết liền số (Realme 2026-10-21) là đơn vị như "đ" — ghi chú từng sót "₫"', () {
+      final kq = doc('chuyển 500.000₫ từ mbbank sang tiết kiệm', vi: [tienMat, mb, tk]);
+      expect((kq.loai, kq.walletId, kq.walletToId, kq.soTien), ('transfer', 'mb', 'tk', 500000.0));
+      expect(kq.ghiChu, isNot(contains('₫')));
+      final an = doc('ăn phở 45.000₫', vi: [tienMat]);
+      expect((an.soTien, an.ghiChu), (45000.0, 'ăn phở'));
+      expect(cachDocSoTien('ăn phở 45.000₫', now: now), contains(45000.0), reason: 'lưới AI dùng cùng cách đọc');
+    });
+
+    test('tên gọi viết dính sau "bằng": "mua áo 200 nghìn bằng mbbank" → Ví MB Bank', () {
+      expect(doc('mua áo 200 nghìn bằng mbbank', vi: [tienMat, mb]).walletId, 'mb');
+    });
+
+    test('tên gọi viết dính vẫn chỉ nhận ngay sau giới từ: "phí mbbank 20 nghìn" không chọn ví', () {
+      expect(doc('phí mbbank 20 nghìn', vi: [tienMat, mb]).walletId, isNull);
+    });
+
     test('tên gọi dưới 3 ký tự không dùng: "trả bằng a" không chọn ví Ví A', () {
       expect(doc('ăn phở 45k trả bằng a', vi: [tienMat, viA]).walletId, isNull);
     });
@@ -521,6 +554,159 @@ void main() {
       expect(doc('tien hoc nam 2026 2 trieu').soTien, 2000000);
       expect(cachDocSoTien('tiền học năm 2026', now: now), isNot(contains(2026)));
       expect(cachDocSoTien('tien hoc nam 2026', now: now), isNot(contains(2026)));
+    });
+  });
+
+  // Người dùng chốt 2026-10-22: Gemma chỉ kiểm khi câu còn số tiền NGOÀI cụm luật đã đọc. Trong cụm, cách đọc khác của
+  // dạng nói chỉ là bản cụt (*"một triệu hai"* → 1.000.000) — luật đã chỉ chọn dạng nói khi chữ số lẻ ở chỗ của tiền.
+  group('soTienKhac / soTienCanKiem — cách đọc ngoài cụm luật', () {
+    for (final cau in [
+      'tiền điện một triệu hai',
+      'tiền điện 1 triệu 2',
+      'lương mười lăm triệu hai',
+      'đổ xăng năm chục',
+      'đổ xăng 50',
+      'sửa xe ba trăm rưỡi',
+    ]) {
+      test('⭐ "$cau" — một cụm: dạng nói, KHÔNG cần kiểm', () {
+        final kq = doc(cau);
+        expect(kq.soTienDangNoi, isTrue);
+        expect(kq.soTienKhac, isEmpty);
+        expect(
+          kq.soTienCanKiem,
+          isFalse,
+          reason: 'không còn số tiền nào khác trong câu — Gemma chỉ có thể đọc lại chính cụm ấy (Realme: 1.000.000 2/2)',
+        );
+      });
+    }
+
+    for (final (cau, so, khac) in [
+      ('mua 20 quả trứng năm chục', 50000.0, {20000.0}),
+      ('mua 15 cái áo một triệu hai', 1200000.0, {15000.0}),
+    ]) {
+      test('"$cau" — còn số tiền khác → cần kiểm, tập là $khac', () {
+        final kq = doc(cau);
+        expect(kq.soTien, so);
+        expect(kq.soTienDangNoi, isTrue);
+        expect(kq.soTienKhac, khac);
+        expect(kq.soTienCanKiem, isTrue);
+        expect(cachDocSoTien(cau, now: now), containsAll(khac), reason: 'tập ngoài cụm là tập con của cachDocSoTien');
+        expect(
+          kq.oThieu,
+          contains(OThieu.ghiChu),
+          reason: 'bất biến: số tiền khác nằm trong ghi chú → C2 hỏi Gemma TRƯỚC khi điền, lượt ấy kiểm luôn số tiền — '
+              'Cubit không có đường kiểm ở nền (gỡ 2026-10-22)',
+        );
+      });
+    }
+
+    test('số tiền trong tên ví đã đọc (ví "Thẻ 365") không phải số tiền khác', () {
+      final the = makeWallet(id: 'the', name: 'Thẻ 365');
+      final kq = doc('ăn phở năm chục bằng thẻ 365', vi: [tienMat, the]);
+      expect(kq.soTien, 50000.0);
+      expect(kq.walletId, 'the', reason: 'tiền đề: luật đọc được ví');
+      expect(kq.soTienKhac, isEmpty, reason: 'tính trên ghi chú còn lại — không thì Gemma đưa chip rác 365.000');
+      expect(kq.soTienCanKiem, isFalse);
+    });
+
+    test('số tiền khác bằng đúng số luật → không tính', () {
+      final kq = doc('mua 50 quả trứng năm chục');
+      expect(kq.soTien, 50000.0);
+      expect(kq.soTienKhac, isEmpty);
+      expect(kq.soTienCanKiem, isFalse);
+    });
+
+    test('dạng có đơn vị → không dạng nói, tập rỗng, không kiểm', () {
+      final kq = doc('mua 20 quả trứng 50k');
+      expect(kq.soTienDangNoi, isFalse);
+      expect(kq.soTienKhac, isEmpty);
+      expect(kq.soTienCanKiem, isFalse);
+    });
+  });
+
+  group('G104 — "X bậc Y" một định nghĩa (X 1–99); Y không ở chỗ của tiền → hai chip, AI không lấp', () {
+    // Người dùng chốt 2026-10-23: ranh giới X 1–99 dùng chung cho luật điền, chip và tập cách đọc của Gemma.
+    for (final (cau, so) in [
+      ('tiền nhà mười lăm triệu hai', 15200000.0),
+      ('tiền nhà hai mươi triệu năm', 20500000.0),
+      ('mua đồ chín mươi chín nghìn năm', 99500.0),
+      ('mua xe mười hai tỷ ba', 12300000000.0),
+    ]) {
+      test('X hai chữ số ở chỗ của tiền: "$cau" → $so như trước', () {
+        final kq = doc(cau);
+        expect(kq.soTien, so, reason: 'ranh giới "X một chữ số" từng định làm hỏng câu này — X 1–99 giữ nó');
+        expect(kq.soTienDangNoi, isTrue);
+      });
+    }
+
+    for (final (cau, cut, dai) in [
+      ('trả hai trăm nghìn tám', 200000.0, 200800.0),
+      ('trả hai trăm triệu tám', 200000000.0, 200800000.0),
+      ('trả một triệu hai trăm nghìn ba', 1200000.0, 1200300.0),
+    ]) {
+      test('X ≥ 100: "$cau" → thôi điền $dai, chưa rõ; tập cách đọc bỏ $dai', () {
+        final kq = doc(cau);
+        expect(kq.soTien, isNull, reason: 'trước 2026-10-23 luật điền $dai không hỏi');
+        expect(kq.luaChonSoTien, isEmpty);
+        expect(kq.canhBao, contains(kCanhBaoSoChuChuaRo));
+        final cach = cachDocSoTien(cau, now: now);
+        expect(cach, contains(cut));
+        expect(cach, isNot(contains(dai)), reason: 'một định nghĩa: Gemma cũng không được chọn $dai');
+      });
+    }
+
+    for (final (cau, chip) in [
+      ('một nghìn hai tiền gửi xe', [1000.0, 1200.0]),
+      ('hai mươi triệu năm tiền nhà', [20000000.0, 20500000.0]),
+      ('mua hai triệu ba thứ đồ', [2000000.0, 2300000.0]),
+    ]) {
+      test('"$cau" → hai chip $chip, ô số tiền không thiếu (không vì nó mà hỏi AI)', () {
+        final kq = doc(cau);
+        expect(kq.soTien, isNull);
+        expect(kq.luaChonSoTien, chip);
+        expect(kq.oThieu, isNot(contains(OThieu.soTien)), reason: 'luật biết cụm là tiền — chỉ cách đọc còn mở');
+        expect(kq.khongDocDuocGi, isFalse, reason: 'có chip là đã đọc ra — form không được nói "chưa đọc được"');
+      });
+    }
+
+    test('chữ số mơ hồ ("một triệu tu", câu trộn dấu) → không chip, chưa rõ như trước', () {
+      final kq = doc('tiền điện một triệu tu');
+      expect(kq.luaChonSoTien, isEmpty);
+      expect(kq.canhBao, contains(kCanhBaoSoChuChuaRo));
+    });
+
+    test('câu còn cụm chắc ("45k") → luật điền cụm ấy, không chip', () {
+      final kq = doc('ăn phở 45k một triệu hai tiền sách');
+      expect(kq.soTien, 45000.0);
+      expect(kq.luaChonSoTien, isEmpty);
+    });
+
+    test('câu còn cụm NÓI luật chọn được ("năm chục" cuối câu) → không chip G104; cụm mơ hồ thành số tiền khác (C4)', () {
+      final kq = doc('một triệu hai tiền sách năm chục');
+      expect(kq.soTien, 50000.0);
+      expect(kq.luaChonSoTien, isEmpty, reason: 'chip G104 chỉ khi không hạng nào có cụm');
+      expect(kq.soTienKhac, {1000000.0, 1200000.0}, reason: 'đường kiểm chéo C4 lo câu này');
+    });
+
+    for (final (cau, soAi) in [
+      ('một triệu hai tiền sách', 1000000.0),
+      ('một triệu hai tiền sách', 1200000.0),
+      ('mua 20 quả trứng một triệu hai tiền sách', 20000.0),
+    ]) {
+      test('⭐ AI trả $soAi cho "$cau" → KHÔNG lấp, vẫn hai chip, không đánh dấu AI vì số tiền', () {
+        final kq = docCauGiaoDich(cau, now: now, vi: [tienMat], chonDuoc: const [], ai: KetQuaAi(soTien: soAi));
+        expect(kq.soTien, isNull, reason: 'G104: trước đây AI lấp ô luật bỏ trống — điền bản cụt 1.000.000 không hỏi');
+        expect(kq.luaChonSoTien, [1000000.0, 1200000.0]);
+        expect(kq.quaAi, isFalse);
+      });
+    }
+
+    test('C3 (lệnh tạo) không đổi: chonSoTienTrongCau vẫn null', () {
+      expect(chonSoTienTrongCau('một triệu hai tiền sách', now: now), isNull);
+    });
+
+    test('tóm tắt khi chỉ có chip → chuỗi rỗng (khối chip tự nói), không "chưa đọc được"', () {
+      expect(cauDaDien(doc('chi hai triệu năm nay'), now: now), '');
     });
   });
 }

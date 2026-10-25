@@ -27,6 +27,8 @@ import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/goal/domain/dien_san_muc_tieu.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
+import '../../features/khoa_app/presentation/pages/dat_ma_pin_page.dart';
+import '../../features/khoa_app/presentation/pages/khoa_app_page.dart';
 import '../../features/profile/presentation/pages/change_password_page.dart';
 import '../../features/profile/presentation/pages/delete_account_page.dart';
 import '../../features/profile/presentation/pages/edit_profile_page.dart';
@@ -97,10 +99,21 @@ class AppRouter {
   /// Tạo GoRouter với:
   /// - [initialLocation]: route ban đầu (dựa trên token check trong main.dart)
   /// - [authBloc]: dùng để redirect guard tập trung
-  static GoRouter createRouter(String initialLocation, AuthBloc authBloc) =>
+  static GoRouter createRouter(
+    String initialLocation,
+    AuthBloc authBloc, {
+    List<NavigatorObserver>? observers,
+  }) =>
       GoRouter(
         navigatorKey: _rootNavigatorKey,
+        observers: observers,
         initialLocation: initialLocation,
+        // Route mặc định của nền tảng KHÔNG được thắng: khi khởi động lạnh, extra `route` của intent thành
+        // `defaultRouteName`, mà `MainActivity` exported — app nào trên máy cũng gửi được `--es route "/add?…"` để mở
+        // form điền sẵn / bật micro. `flutter_deeplinking_enabled=false` chỉ chặn data URI (đo Realme 2026-10-24).
+        // App không dùng lối ấy: thông báo đi qua payload của plugin, tóm tắt D1 qua extra riêng.
+        // test/core/router/route_mac_dinh_nen_tang_test.dart canh.
+        overridePlatformDefaultLocation: true,
 
         // Refresh GoRouter mỗi khi AuthBloc emit state mới
         refreshListenable: GoRouterRefreshStream(authBloc.stream),
@@ -496,6 +509,10 @@ class AppRouter {
           GoRoute(
               path: '/settings/change-password',
               builder: (_, __) => const ChangePasswordPage()),
+          GoRoute(path: '/settings/khoa-app', builder: (_, __) => const KhoaAppPage()),
+          GoRoute(
+              path: '/settings/khoa-app/dat-pin',
+              builder: (_, state) => DatMaPinPage(che: CheDatPin.tuTen(state.uri.queryParameters['che']))),
           GoRoute(
               path: '/settings/delete-account',
               builder: (_, __) => const DeleteAccountPage()),
@@ -505,11 +522,14 @@ class AppRouter {
         ],
       );
 
+  /// Route công khai (không cần đăng nhập) — MỘT định nghĩa cho `authRedirect` và cho lớp khoá ứng dụng.
+  static bool laRouteCongKhai(String? tenRoute) => _publicRoutes.contains(tenRoute);
+
   static String? authRedirect({
     required AuthState authState,
     required String matchedLocation,
   }) {
-    final isGoingPublic = _publicRoutes.contains(matchedLocation);
+    final isGoingPublic = laRouteCongKhai(matchedLocation);
 
     // Startup restoration may keep the requested route while token state is
     // unresolved. Other loading states come from user-initiated auth actions.

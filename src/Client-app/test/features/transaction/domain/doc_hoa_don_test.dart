@@ -64,6 +64,83 @@ Tien thoi lai            8.138
     expect(docHoaDonTuChu('X\n01/10/2026 25:61\nTong 10.000').gio, isNull);
   });
 
+  // 2026-10-22 (người dùng duyệt): ỦA TEA tờ N01 (`/quet` thật, Realme 2026-10-21) in *"Giò vào: 1407"* — OCR đọc "Giờ"
+  // thành "Giò" và không có dấu hai chấm giữa giờ và phút; cả tờ không có HH:MM nào nên form để 00:00.
+  group('giờ sau nhãn "Giờ" không có dấu hai chấm — đường dự phòng', () {
+    for (final (dong, gio) in [
+      ('Giò vào: 1407', '14:07'),
+      ('(GF-264_TH8HW) Giò ra: 1407', '14:07'),
+      ('Giờ ra: 14.26', '14:26'),
+      ('Giò vào::1426 F7 F8', '14:26'),
+      ('Giờ: 907', '09:07'),
+      ('Gio vao 2105', '21:05'),
+      // R02 bộ spike (`hoa_don_that_du_lieu.dart`): tờ không có HH:MM nào, chữ số rời sau giờ là phím tắt in kèm.
+      ('Ngày: 02/10/2026 Giờ ra: 14.26 7& 8', '14:26'),
+      // Năm hai chữ số đứng ngay trước nhãn là đuôi của NGÀY, không phải "24 giờ".
+      ('Ngày: 02/10/26 Giờ ra: 14.26', '14:26'),
+    ]) {
+      test('"$dong" → $gio', () {
+        expect(docHoaDonTuChu('ỦA TEA\nNgày: 14/10/2026\n$dong\nTổng tiền: 398,800 d').gio, gio);
+      });
+    }
+
+    test('⭐ tờ đã có giờ HH:MM ở chỗ khác → HH:MM thắng (chỉ là đường dự phòng)', () {
+      expect(docHoaDonTuChu('ỦA TEA\nGiò vào: 1407\nNgày: 14/10/2026 18:42\nTổng tiền: 398,800 d').gio, '18:42');
+    });
+
+    for (final dong in [
+      'Giờ vào: 2507',
+      'Giờ vào: 1475',
+      'Giờ mở cửa: 0700',
+      'Giờ vàng 1407',
+      // Soát mã 2026-10-22: bỏ dấu "Giỏ" cũng là "gio", số tiền sau nó từng ra 01:20; số tổng đài sau "24 giờ" ra 19:00.
+      'Giỏ 120.000',
+      'Giỏ 120,000',
+      'Giỏ 120 000',
+      'Tổng đài 24 giờ: 1900 6017',
+      'Hotline 24 gio 1800 1234',
+    ]) {
+      test('"$dong" → không phải giờ', () {
+        expect(docHoaDonTuChu('ỦA TEA\nNgày: 14/10/2026\n$dong\nTổng tiền: 398,800 d').gio, isNull);
+      });
+    }
+  });
+
+  // 2026-10-22: Starbucks tờ R01 ra ghi chú *STARBUCKS"* — dấu nháy là logo ™ / ® OCR đọc thành ký tự.
+  group('tên cửa hàng: cắt ký tự không phải chữ / số ở HAI ĐẦU', () {
+    for (final (dau, ten) in [
+      ('STARBUCKS"', 'STARBUCKS'),
+      ('"Quán Phở Hùng"', 'Quán Phở Hùng'),
+      ('|BEE BEE MART|', 'BEE BEE MART'),
+      ('™ABC Mart.', 'ABC Mart'),
+      ('Cơm Tấm (Q1)', 'Cơm Tấm (Q1)'),
+      ('BEE BEE MART 18K', 'BEE BEE MART 18K'),
+      ('eco-shop Invoice', 'eco-shop Invoice'),
+    ]) {
+      test('"$dau" → "$ten"', () {
+        expect(docHoaDonTuChu('$dau\nDELIVERS\nTotal 262,000').cuaHang, ten);
+      });
+    }
+  });
+
+  // G105 (Realme 2026-10-22): N01 chụp dính chữ lạ ở mép trên — OCR dòng đầu *"card n"*, ghi chú ra *"card n"*. Người dùng
+  // chọn xếp theo chữ hoa; bản *"viết hoa thắng"* làm R06 thật và tên viết thường hỏng, nên chỉ dòng TOÀN CHỮ THƯỜNG xếp sau.
+  group('tên cửa hàng: dòng toàn chữ thường xếp sau dòng có chữ hoa', () {
+    test('⭐ "card n" ở mép trên không thắng tên cửa hàng bên dưới', () {
+      expect(docHoaDonTuChu('card n\nDịa chi Kios 01, quang truờng\nỦA TEA\nSo HÐ: UAO068\nTổng tiền: 398,800 d').cuaHang,
+          'ỦA TEA');
+    });
+    test('tên viết thường lẫn hoa (không toàn chữ thường) vẫn đứng đầu — không thua dòng viết hoa bên dưới', () {
+      expect(docHoaDonTuChu('Nhà thuốc Long Châu\nCHI NHÁNH QUẬN 3\nTổng tiền: 50.000').cuaHang, 'Nhà thuốc Long Châu');
+    });
+    test('chỉ có dòng toàn chữ thường → vẫn lấy nó (không bỏ trống)', () {
+      expect(docHoaDonTuChu('eco-shop\nTổng tiền: 50.000').cuaHang, 'eco-shop');
+    });
+    test('hai dòng toàn chữ thường → lấy dòng ĐẦU', () {
+      expect(docHoaDonTuChu('card n\neco-shop\nTổng tiền: 50.000').cuaHang, 'card n');
+    });
+  });
+
   test('kNhanTongHoaDon / kNhanLoaiHoaDon công khai, cùng nội dung spike', () {
     expect(kNhanTongHoaDon.first, 'tong thanh toan');
     expect(kNhanLoaiHoaDon, contains('khach dua'));

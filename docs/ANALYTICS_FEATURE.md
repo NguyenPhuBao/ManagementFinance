@@ -704,10 +704,15 @@ mục: giao dịch cũ vẫn trỏ vào ví đã xoá và tên thật vẫn nằ
    đọc như một con số âm bằng không. Luật ấy vốn nằm riêng ở
    `report_preview_page._coDau`, nay là **`CurrencyFormatter.formatCoDau`** dùng
    chung — đúng nếp mọi luật hiển thị tiền ở một chỗ. Máy ảo bắt được.
-4. ⚠️ **Test của trang phải gọi `initializeDateFormatting`.** Khối Top 5 in ngày
+4. ⚠️ **Test của trang từng phải gọi `initializeDateFormatting` (tới 2026-10-19).** Khối Top 5 in ngày
    qua `DateFormatter`; thiếu dữ liệu locale thì widget ném `LocaleDataException`
    và **cả cây dừng dựng** — mọi ca trong tệp đỏ với dáng vẻ "khối không hiện",
-   không ai nghĩ tới ngày tháng. App thì không sao (`main.dart:30`).
+   không ai nghĩ tới ngày tháng. App thì không sao (`main.dart:44`). ✅ **Từ
+   2026-10-19 bẫy này không còn với trang Phân tích:** `DateFormatter` dựng mẫu
+   số **không locale** (`formatDate` / `formatDayMonth`), nên khối Top 5 không
+   ném khi thiếu `initializeDateFormatting`; widget test vẫn gọi init thì vô
+   hại. Chỉ `formatWeekdayDate` (tiêu đề nhóm ngày ở Sổ giao dịch) còn cần dữ
+   liệu `vi_VN` — kiểm 2026-10-19: không xuất hiện dưới `lib/features/analytics/`.
 
 **Khối rỗng thì không vẽ.** `theoVi` và `topChi` rỗng là ẩn cả thẻ, không vẽ một
 thẻ trắng có mỗi tiêu đề.

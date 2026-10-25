@@ -39,6 +39,17 @@ void main() {
     expect(File('${goc.path}/$kThuMucAnhQuet/$a.mon.json').existsSync(), isFalse);
   });
 
+  test('.mon.json: số âm (dòng giảm giá) giữ dấu; phần tử sai kiểu chỉ làm hỏng chính nó', () async {
+    final a = (await kho.luu(anhNguon('x.jpg').path))!;
+    await kho.luuMon(a, const [MonHang(id: 3, ten: 'KM', soTien: -5000), MonHang(id: 4, ten: 'OMO', soTien: 120000)]);
+    expect([for (final m in await kho.docMon(a)) '${m.id}|${m.ten}|${m.soTien}'], ['3|KM|-5000.0', '4|OMO|120000.0'],
+        reason: 'ghi rồi đọc lại phải ra đúng id / tên / số tiền, kể cả số âm');
+    File('${goc.path}/$kThuMucAnhQuet/$a.mon.json')
+        .writeAsStringSync('[{"id":"x"},42,{"id":1,"ten":"A","soTien":10000}]');
+    expect([for (final m in await kho.docMon(a)) m.ten], ['A'],
+        reason: 'id sai kiểu và phần tử không phải Map bị bỏ; soTien kiểu int vẫn đọc được (num → double)');
+  });
+
   test('.mon.json hỏng → không món; tên tệp hỏng → không ghép đường dẫn, không ném', () async {
     final a = (await kho.luu(anhNguon('x.jpg').path))!;
     File('${goc.path}/$kThuMucAnhQuet/$a.mon.json').writeAsStringSync('{rác');

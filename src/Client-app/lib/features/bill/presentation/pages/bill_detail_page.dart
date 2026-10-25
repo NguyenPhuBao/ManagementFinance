@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../domain/bill_recurrence.dart';
 import '../../../category/presentation/widgets/category_visuals.dart';
@@ -67,7 +67,6 @@ class _BillDetailPageState extends State<BillDetailPage> {
   /// Ngưỡng nhãn "Sắp đến hạn" cho hoá đơn tắt nhắc (tuỳ chọn "Nhắc trước").
   int _soNgayNhac = mocNhacMacDinh;
 
-  static final _ngay = DateFormat('dd/MM/yyyy');
   @override
   void initState() {
     super.initState();
@@ -248,7 +247,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Hạn ${_ngay.format(b.dueDate)}',
+                      'Hạn ${DateFormatter.formatDate(b.dueDate)}',
                       style: const TextStyle(
                           fontSize: 13, color: AppColors.textSecondary),
                     ),
@@ -357,9 +356,9 @@ class _BillDetailPageState extends State<BillDetailPage> {
           if (b.startDate != null)
             _dong(
                 'Kỳ',
-                '${_ngay.format(b.startDate!)} → '
-                '${_ngay.format(b.periodEnd ?? b.dueDate)}'),
-          _dong('Đến hạn', _ngay.format(b.dueDate)),
+                '${DateFormatter.formatDate(b.startDate!)} → '
+                '${DateFormatter.formatDate(b.periodEnd ?? b.dueDate)}'),
+          _dong('Đến hạn', DateFormatter.formatDate(b.dueDate)),
           _dong('Chu kỳ',
               b.isRecurrence ? tenChuKyHoaDon(b.timeRecurrence) : 'Không lặp'),
           _dong('Ví trả', _lookup.walletName(b.walletId)),
@@ -402,7 +401,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
     // Chữ thường, khác nhãn IN HOA ở đầu trang, để không lẫn hai thứ.
     final phu = switch (status) {
       BillDisplayStatus.paid =>
-        tra == null ? 'Đã trả' : 'Trả ${_ngay.format(tra.date)}',
+        tra == null ? 'Đã trả' : 'Trả ${DateFormatter.formatDate(tra.date)}',
       BillDisplayStatus.skipped => 'Bỏ qua',
       BillDisplayStatus.overdue => 'Quá hạn',
       BillDisplayStatus.dueSoon => 'Sắp đến hạn',
@@ -427,7 +426,7 @@ class _BillDetailPageState extends State<BillDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Kỳ ${_ngay.format(b.dueDate)}${laHienTai ? ' (đang xem)' : ''}',
+                  'Kỳ ${DateFormatter.formatDate(b.dueDate)}${laHienTai ? ' (đang xem)' : ''}',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: laHienTai ? FontWeight.w700 : FontWeight.w500,

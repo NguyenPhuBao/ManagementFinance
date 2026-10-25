@@ -284,7 +284,7 @@ void main() {
       expect(mayChu.soLanGoiLamMoi, 1);
       expect(nhan, hasLength(1));
       expect(nhan.single.nguon, NguonBuocDangXuat.lamMoi,
-          reason: 'bước dọn SQLite của §3.6b bỏ qua đúng nguồn này — lỗi lược '
+          reason: 'nguồn lamMoi phải đi nguyên vẹn tới người nghe — lỗi lược '
               'đồ phía server còn đội lốt được ACCOUNT_DELETED ở đây');
       expect(nhan.single.lyDo, LyDoBuocDangXuat.daXoa);
       expect(kho.rong, isTrue);

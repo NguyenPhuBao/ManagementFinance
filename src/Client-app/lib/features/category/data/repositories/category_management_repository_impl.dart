@@ -307,7 +307,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         keywords: keywords,
         now: now,
       );
-      // Từ khoá lên server TRONG payload danh mục (`sync_engine.dart`, khoá `keyword`), không có thực thể riêng — nên
+      // Từ khoá lên server TRONG payload danh mục (`thu_gom_day.dart`, khoá `keyword`), không có thực thể riêng — nên
       // phải đánh dấu chính danh mục. Trước 2026-09-30 thiếu khối này: sửa từ khoá ở trang "Từ khoá của tôi" chỉ lên
       // server khi danh mục bị sửa vì lý do khác (spec đề xuất từ khoá §3). Hàng mặc định toàn cục không bao giờ đẩy.
       if (!category.isDefault) {

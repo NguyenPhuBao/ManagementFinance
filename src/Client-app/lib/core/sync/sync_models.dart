@@ -131,7 +131,7 @@ class SyncResult {
 /// Trạng thái của sync session
 enum SyncStatus {
   idle,         // Chu kỳ kết thúc, không còn gì tồn đọng
-  pending,      // Có dữ liệu chờ sync
+  pending,      // Có dữ liệu chờ sync; cũng là chu kỳ đã chạy mà máy chủ chặn (bảo trì / phong toả có giờ), đã hẹn thử lại
   syncing,      // Đang sync
   error,        // Chu kỳ kết thúc nhưng còn thao tác thất bại
   authExpired,  // Phiên đăng nhập đã chết — đã dừng, thử lại là vô ích
@@ -144,6 +144,9 @@ extension SyncStatusX on SyncStatus {
   /// mà mọi thao tác đẩy đều hỏng nay kết thúc ở `error`, và phiên chết kết
   /// thúc ở `authExpired`. Chờ riêng `idle` sẽ treo tới timeout và báo lỗi
   /// dưới dạng "timeout" — rất khó lần ra nguyên nhân thật.
+  ///
+  /// ⚠️ Chu kỳ bị máy chủ chặn (bảo trì / phong toả có giờ) kết thúc ở `pending`, KHÔNG BAO GIỜ `isTerminal` — test chờ
+  /// cờ này sẽ treo; hãy `await` lời gọi đồng bộ.
   bool get isTerminal =>
       this == SyncStatus.idle ||
       this == SyncStatus.error ||

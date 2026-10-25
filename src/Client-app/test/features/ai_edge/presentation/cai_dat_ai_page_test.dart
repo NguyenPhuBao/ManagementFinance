@@ -15,7 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/ai_chat/data/cong_tac_online.dart';
 import 'package:flowmoney/features/ai_edge/data/cong_tac_ai.dart';
 import 'package:flowmoney/features/ai_edge/data/mo_hinh_tai_ve.dart';
-import 'package:flowmoney/features/ai_edge/data/nguon_tai_nen.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/nguon_tai_nen.dart';
 import 'package:flowmoney/features/ai_edge/domain/hoi_dung_4g.dart';
 import 'package:flowmoney/features/ai_edge/presentation/pages/cai_dat_ai_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';

@@ -6,6 +6,8 @@
 /// 2. HUỶ TRONG PHA NẠP: [huy] tăng một bộ đếm; lượt ghi [moc] trước khi nạp, nạp xong mà bộ đếm đã đổi thì ném
 ///    [LuotNapBiHuy] để không tạo chat. Mô hình vừa nạp vẫn được GIỮ (đóng là phá luật ≤ 1 lần).
 /// 3. Giữ cờ ảnh / âm của bản đang nạp.
+/// 4. BÁO native tiến trình có đang giữ một bản mô hình không ([baoGiu], G100 đường gỡ task): `MainActivity` giết tiến
+///    trình khi activity bị huỷ thật mà cờ bật — engine dựng lại trong tiến trình còn sống sẽ nạp THÊM một bản.
 library;
 
 import '../domain/nap_da_phuong_thuc.dart';
@@ -18,12 +20,16 @@ class LuotNapBiHuy implements Exception {
 }
 
 class BoNapMoHinh {
-  BoNapMoHinh({required this.coMoHinh, required this.dong, required this.nap});
+  BoNapMoHinh({required this.coMoHinh, required this.dong, required this.nap, this.baoGiu});
 
   /// Đang có mô hình trong bộ nhớ không (nơi khác có thể đã đóng nó).
   final bool Function() coMoHinh;
   final Future<void> Function() dong;
   final Future<void> Function(String duongTep, {required bool anh, required bool am}) nap;
+
+  /// `true` sau khi [nap] xong, `false` sau khi [dong] xong; `null` = không báo (test). ⚠️ Chỉ báo `true` khi nạp đã
+  /// XONG: giết tiến trình giữa pha nạp là để dấu canary GPU sót lại, và lần mở sau đánh dấu GPU hỏng vĩnh viễn.
+  final Future<void> Function(bool giu)? baoGiu;
 
   bool coAnh = false;
   bool coAm = false;
@@ -45,11 +51,13 @@ class BoNapMoHinh {
         await dong();
         coAnh = false;
         coAm = false;
+        await baoGiu?.call(false);
       }
       if (q.nap) {
         await nap(duongTep, anh: q.anh, am: q.am);
         coAnh = q.anh;
         coAm = q.am;
+        await baoGiu?.call(true);
       }
       if (moc != null && moc != _huy) throw const LuotNapBiHuy();
     });

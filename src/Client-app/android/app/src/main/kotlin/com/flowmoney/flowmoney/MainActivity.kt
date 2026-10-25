@@ -11,8 +11,10 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.PowerManager
+import android.os.Process
 import android.provider.MediaStore
 import android.provider.Settings
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -54,23 +56,66 @@ import java.io.IOException
  * [TuChuyenTien] ở `configureFlutterEngine` và GỠ ở `cleanUpFlutterEngine`.
  * Xem `lib/core/nen/kenh_tu_chuyen_tien.dart` và `TuChuyenTien.kt`.
  *
+ * Kênh `flowmoney/sinh_trac` — khoá ứng dụng (2026-10-24): `trangThai`, `bat`, `mo`, `xoaHet` — `SinhTrac.kt`,
+ * `lib/features/khoa_app/data/datasources/kenh_sinh_trac.dart`. Lớp nền GIỮ `FlutterActivity` (G100).
  * Kênh `flowmoney/micro` — giọng nói C4 (2026-10-12): `biChan` (quyền micro đã bị chặn hẳn chưa — gọi sau một lần
  * xin bị từ chối), `moCaiDat` (trang thông tin ứng dụng). Xem `lib/features/transaction/data/datasources/kenh_micro.dart`.
+ *
+ * Kênh `flowmoney/xuong_nen` — Back hai lần ở Trang chủ (G100, 2026-10-21): `xuongNen` đưa cả task xuống nền thay vì
+ * đóng activity. Đóng activity là huỷ Flutter engine trong khi tiến trình còn sống (dịch vụ D1 giữ nó), và bản mô hình
+ * Gemma của isolate cũ nằm lại không ai giải phóng. Trả `false` thì phía Dart vẫn thoát bằng `SystemNavigator.pop()`.
+ * Xem `lib/shared/widgets/thoat_hai_lan.dart`.
+ *
+ * Kênh `flowmoney/giu_mo_hinh` — gỡ task khỏi Đa nhiệm (G100, 2026-10-21): `datGiu` {giu} — Dart báo tiến trình đang
+ * giữ một bản mô hình Gemma. Activity bị huỷ THẬT (không phải đổi cấu hình), không còn `MainActivity` nào sống, mà cờ
+ * bật → [onDestroy] giết tiến trình: engine dựng lại trong tiến trình còn sống (dịch vụ D1 giữ nó) sẽ nạp THÊM một bản
+ * và bản cũ không ai giải phóng được. Hệ điều hành tự dựng lại tiến trình cho dịch vụ D1 (đo Realme: ~2 s). Xem
+ * `lib/features/ai_edge/data/datasources/kenh_giu_mo_hinh.dart`.
  */
 class MainActivity : FlutterActivity() {
+    companion object {
+        /** Tiến trình đang giữ một bản mô hình (Dart báo qua `flowmoney/giu_mo_hinh`). Sống theo TIẾN TRÌNH, không theo activity. */
+        @Volatile private var dangGiuMoHinh = false
+
+        /** Số `MainActivity` đang sống — chỉ giết tiến trình khi cái cuối cùng bị huỷ. Chỉ chạm trên luồng chính. */
+        private var soActivitySong = 0
+    }
+
     private val kenhLuuTep = "flowmoney/luu_tep"
     private val kenhLuuAnh = "flowmoney/luu_anh"
     private val kenhLyDoThoat = "flowmoney/ly_do_thoat"
     private val kenhMicro = "flowmoney/micro"
     private val kenhBienDong = "flowmoney/bien_dong"
     private val kenhPhienNganHang = "flowmoney/phien_ngan_hang"
+    private val kenhXuongNen = "flowmoney/xuong_nen"
+    private val kenhGiuMoHinh = "flowmoney/giu_mo_hinh"
 
     /** Lần khởi động / lần `onNewIntent` gần nhất có mang extra của thông báo tóm tắt. */
     private var moTuTomTat = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Đa nhiệm không chụp ảnh màn cuối (số dư, sổ giao dịch) — 2026-10-24, siết bảo mật đợt 3. Cố ý KHÔNG chặn chụp
+        // màn hình bằng cờ cửa sổ bảo mật: người dùng vẫn chụp được, và `adb screencap` của các buổi đo máy thật vẫn chạy.
+        // `test/core/bao_mat_manifest_test.dart` canh.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) setRecentsScreenshotEnabled(false)
+        soActivitySong++
         docExtraTomTat(intent)
+    }
+
+    /**
+     * G100: activity bị huỷ thật mà tiến trình đang giữ mô hình → giết tiến trình SAU `super.onDestroy()` (engine đã huỷ,
+     * plugin đã gỡ). Đổi cấu hình thì activity dựng lại ngay trên cùng engine — không giết. Back hai lần ở Trang chủ
+     * không tới đây (`moveTaskToBack`).
+     */
+    override fun onDestroy() {
+        soActivitySong--
+        val giet = !isChangingConfigurations && soActivitySong <= 0 && dangGiuMoHinh
+        super.onDestroy()
+        if (giet) {
+            Log.i("FlowMoney", "G100: activity bị huỷ khi tiến trình đang giữ mô hình — đóng hẳn tiến trình")
+            Process.killProcess(Process.myPid())
+        }
     }
 
     /** `launchMode="singleTop"`: chạm tóm tắt khi app đang chạy tới đây, không tới `onCreate`. */
@@ -86,6 +131,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // Khoá ứng dụng (2026-10-24): vân tay mở khoá Keystore — xem `SinhTrac.kt`.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SinhTrac.KENH).setMethodCallHandler(SinhTrac(this))
 
         TuChuyenTien.ganEngineApp(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TuChuyenTien.KENH)
@@ -104,6 +151,25 @@ class MainActivity : FlutterActivity() {
                     }
                 } catch (e: Exception) {
                     ket.error("loi_tu_chuyen_tien", e.message, null)
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, kenhXuongNen)
+            .setMethodCallHandler { call, ket ->
+                when (call.method) {
+                    "xuongNen" -> ket.success(moveTaskToBack(true))
+                    else -> ket.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, kenhGiuMoHinh)
+            .setMethodCallHandler { call, ket ->
+                when (call.method) {
+                    "datGiu" -> {
+                        dangGiuMoHinh = call.argument<Boolean>("giu") ?: false
+                        ket.success(null)
+                    }
+                    else -> ket.notImplemented()
                 }
             }
 

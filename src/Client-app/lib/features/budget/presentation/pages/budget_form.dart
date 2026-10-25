@@ -5,7 +5,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/segmented_choice.dart';
 import '../../data/models/budget_entity.dart';
-import '../../data/models/budget_period.dart';
+import '../../domain/budget_period.dart';
 import '../../domain/cua_so_nhin_lai.dart';
 import '../widgets/budget_visuals.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
@@ -166,7 +166,7 @@ class _BudgetFormState extends State<BudgetForm> {
     _overSpending = b?.overSpending ?? BudgetOverSpending.over;
     _recurrence = b?.recurrence ?? true;
     final now = DateTime.now();
-    _startDate = b?.startDate ?? DateTime(now.year, now.month, 1);
+    _startDate = b?.startDate ?? ngayBatDauMacDinh(now);
     _endDate = b?.endDate;
     _loadSuggestion(_categoryId);
   }

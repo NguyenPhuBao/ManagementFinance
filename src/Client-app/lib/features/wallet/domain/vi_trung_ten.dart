@@ -100,7 +100,7 @@ typedef GiaoDichChoXet = ({
   String? goalId,
 });
 
-/// Id các bản ghi `_collectPendingOps` phải bỏ khỏi lô đẩy — bảng 4.4 của spec.
+/// Id các bản ghi `ThuGomThaoTacDay.collectPendingOps` phải bỏ khỏi lô đẩy — bảng 4.4 của spec.
 class BanGhiBiGiu {
   const BanGhiBiGiu({
     required this.vi,

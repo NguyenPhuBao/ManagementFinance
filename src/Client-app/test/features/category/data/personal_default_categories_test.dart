@@ -1,7 +1,7 @@
 /// Canh chừng đường đi của 5 danh mục mà bộ mặc định backend từng không có.
 ///
 /// **Chặng một (lịch sử).** Chúng là danh mục MẶC ĐỊNH ở client (idaccount = 0).
-/// Danh mục mặc định không được đẩy lên, còn `_resolveCategoryId` thì ánh xạ
+/// Danh mục mặc định không được đẩy lên, còn `resolveCategoryId` thì ánh xạ
 /// chúng sang UUID backend bằng cách so tên — không có bản nào cùng tên nên trả
 /// null, và mọi giao dịch dùng chúng bị hoãn đẩy VĨNH VIỄN mà không báo gì. Cách
 /// chữa lúc ấy: tạo lại thành danh mục RIÊNG của từng tài khoản.
@@ -64,7 +64,7 @@ void main() {
   // Đo được trên app thật 2026-09-03. Đăng nhập trên một máy **chưa từng chạy
   // app** vào tài khoản đã có sẵn 5 danh mục này ở backend: client sinh lại
   // đúng 5 danh mục đó với UUID mới, đẩy lên thì vi phạm quy tắc trùng tên,
-  // backend trả `failed` **kèm message rỗng** nên `_classifyFailure` xếp vào
+  // backend trả `failed` **kèm message rỗng** nên `GuiLoDongBo._classifyFailure` xếp vào
   // `transient` và thử lại vĩnh viễn. Mọi chu kỳ đồng bộ kết thúc ở trạng thái
   // hỏng → giãn cách luỹ tiến → **mọi thay đổi khác** bị đẩy chậm theo.
   //

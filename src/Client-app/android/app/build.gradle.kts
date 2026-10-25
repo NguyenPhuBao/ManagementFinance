@@ -1,8 +1,19 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Khoá ký bản phát hành (2026-10-24, siết bảo mật đợt 3): `android/key.properties` (gitignore cùng `*.jks`) trỏ tới
+// keystore thật — có thì ký bằng nó; KHÔNG có thì vẫn ký debug để máy nào cũng dựng được bản release để thử (đo R8, đo
+// máy thật), kèm cảnh báo. Mẫu tệp + lệnh keytool: mục *Lệnh hay dùng* `CLAUDE.md`. Không đưa APK ký debug cho người dùng.
+val tepKhoaPhatHanh = rootProject.file("key.properties")
+val khoaPhatHanh = Properties().apply {
+    if (tepKhoaPhatHanh.exists()) FileInputStream(tepKhoaPhatHanh).use { load(it) }
 }
 
 android {
@@ -35,11 +46,31 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (tepKhoaPhatHanh.exists()) {
+            create("release") {
+                keyAlias = khoaPhatHanh["keyAlias"] as String
+                keyPassword = khoaPhatHanh["keyPassword"] as String
+                storeFile = file(khoaPhatHanh["storeFile"] as String)
+                storePassword = khoaPhatHanh["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (tepKhoaPhatHanh.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                // `quiet`, không `warn`: `flutter build` gọi Gradle ở chế độ im — `warn` không bao giờ hiện (đo 2026-10-24).
+                if (gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }) {
+                    logger.quiet(
+                        "⚠️ FlowMoney: không có android/key.properties — bản release ký bằng khoá DEBUG " +
+                            "(chỉ để thử trên máy, KHÔNG phát hành)."
+                    )
+                }
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
@@ -51,6 +82,15 @@ dependencies {
     // Nhắc ghi sau khi dùng app ngân hàng: kiểm định kỳ 15 phút. ĐÚNG bản `background_downloader` 9.6.3 đang kéo vào
     // (`implementation` của plugin không lộ ra module app) — trùng bản, không xung đột.
     implementation("androidx.work:work-runtime-ktx:2.11.0")
+    constraints {
+        // Soát CVE thư viện (2026-10-24): `flutter_gemma` → `large_file_handler` 0.5.2 kéo `okhttp 4.9.0` — CVE-2021-0341
+        // (kiểm tên miền chứng chỉ sai, sửa ở 4.9.2). App không chạy tới đường mạng của gói ấy (chỉ chép asset; mô hình
+        // nạp bằng `.fromFile`), ràng buộc này để APK không mang bản lỗi. Giữ 4.x: 5.x đổi API, plugin biên dịch với 4.x.
+        // test/core/bao_mat_manifest_test.dart canh.
+        implementation("com.squareup.okhttp3:okhttp:4.12.0") {
+            because("CVE-2021-0341 — okhttp < 4.9.2 nhận chứng chỉ của sai tên miền")
+        }
+    }
 }
 
 flutter {

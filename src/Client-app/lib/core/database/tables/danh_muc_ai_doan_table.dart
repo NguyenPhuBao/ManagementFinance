@@ -12,7 +12,7 @@ import 'package:drift/drift.dart';
 /// AI cục bộ v25–v30: dấu là phán đoán của **một** máy về một lần nó điền form. Máy khác không có dấu thì B1 ở đó học
 /// từ giao dịch ấy — chấp nhận, vì máy ấy không phải nơi AI đã đoán. Test quét thứ 15 cấm bảng lọt vào đường đồng bộ.
 ///
-/// Thêm ở schema v31 (2026-10-16). Xoá theo tài khoản ở `purgeDataForOtherAccounts` / `purgeDataForAccount`.
+/// Thêm ở schema v31 (2026-10-16). Xoá theo tài khoản ở `purgeDataForOtherAccounts`.
 class DanhMucAiDoans extends Table {
   TextColumn get transactionId => text()();
 

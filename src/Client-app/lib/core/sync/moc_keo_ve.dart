@@ -57,3 +57,47 @@ DateTime? mocTuMaxSince(
   final coLe = lonNhat.add(const Duration(milliseconds: 1));
   return coLe.isAfter(tran) ? tran : coLe;
 }
+
+/// Mốc đã lưu, hoặc `null` nếu nó nằm ở **tương lai**.
+///
+/// `null` ở đây kéo theo một lần full pull (`since = 1970`), đúng thứ cần cho
+/// một máy đang kẹt: mốc hỏng che mất đúng khoảng dữ liệu bị bỏ lỡ, nên kẹp
+/// nó về "bây giờ" vẫn không lấy lại được phần ấy.
+///
+/// Đường chạy thật dùng nó ở `ApDuLieuKeoVe.napMoc` / `napMocNeuChuaCo`. Hàm chuyển tiếp `SyncEngine.mocPullConDungKhong`
+/// (0 chỗ gọi) gỡ 2026-10-20; tệp này là nội bộ của `core/sync` (quét 35).
+DateTime? mocPullConDungKhong(DateTime? daLuu, DateTime bayGio) {
+  if (daLuu == null) return null;
+  return daLuu.isAfter(bayGio) ? null : daLuu;
+}
+
+/// Kẹp một mốc **sắp ghi** về không quá hiện tại.
+///
+/// Khác [mocPullConDungKhong] ở chỗ nó *kẹp* thay vì *vứt*: ở đường ghi ta
+/// vừa nhận xong dữ liệu, nên "bây giờ" là mốc đúng — không có khoảng nào bị
+/// bỏ lỡ để mà phải kéo lại.
+DateTime? kepVeHienTai(DateTime? moc) {
+  if (moc == null) return null;
+  final bayGio = DateTime.now().toUtc();
+  return moc.isAfter(bayGio) ? bayGio : moc;
+}
+
+/// Tìm `update_at` mới nhất trong toàn bộ payload pull (mọi loại thực thể).
+///
+/// Chỉ còn là đường lùi cho server **chưa** trả `maxSince` (trước migration 20)
+/// — xem [mocTuMaxSince] và G67.
+DateTime? newestUpdateAt(Map<String, dynamic> payloadData) {
+  DateTime? newest;
+  for (final value in payloadData.values) {
+    if (value is! List) continue;
+    for (final row in value) {
+      if (row is! Map) continue;
+      final raw = (row['update_at'] ?? row['updated_at'])?.toString();
+      if (raw == null) continue;
+      final parsed = DateTime.tryParse(raw)?.toUtc();
+      if (parsed == null) continue;
+      if (newest == null || parsed.isAfter(newest)) newest = parsed;
+    }
+  }
+  return newest;
+}

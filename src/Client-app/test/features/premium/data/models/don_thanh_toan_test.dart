@@ -70,6 +70,24 @@ void main() {
     expect(donTuJson({}, now: now), isNull);
   });
 
+  test('checkoutUrl không phải https → null (siết bảo mật đợt 2, 2026-10-24)', () {
+    for (final url in ['http://pay.payos.vn/web/x', 'intent://pay/#Intent;scheme=momo;end', 'momo://pay/x']) {
+      expect(donTuJson({'orderCode': 1, 'checkoutUrl': url}, now: now), isNull,
+          reason: '"$url": link này mở ra app ngoài (url_launcher) — trước chỉ kiểm có scheme + host nên intent:// '
+              'hay http đều lọt; câu trả lời bị sửa trên đường truyền là đưa người dùng tới trang giả');
+    }
+  });
+
+  test('qrUrl không phải https → không hiện ảnh QR, đơn vẫn đọc được', () {
+    final d = donTuJson({
+      'orderCode': 1,
+      'checkoutUrl': 'https://pay.payos.vn/web/x',
+      'qrUrl': 'http://img.vietqr.io/image/x.png',
+    }, now: now)!;
+    expect(d.qrUrl, isNull, reason: 'ảnh QR là thứ app ngân hàng quét để chuyển tiền — ảnh tải qua http thì ai '
+        'cùng mạng cũng thay được bằng QR tài khoản khác');
+  });
+
   test('amount / expiredAt thiếu → giá mặc định, hạn now + 10 phút', () {
     final d = donTuJson({'orderCode': 1, 'checkoutUrl': 'https://pay.payos.vn/web/x'}, now: now)!;
     expect(d.soTien, kGiaPremium);

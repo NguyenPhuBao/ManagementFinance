@@ -9,7 +9,7 @@
 /// chuyển không lấy tên danh mục: nó không thuộc danh mục nào.
 library;
 
-import '../data/models/transaction_type_label.dart';
+import 'transaction_type_label.dart';
 
 String tieuDeGiaoDich({
   required String loai,

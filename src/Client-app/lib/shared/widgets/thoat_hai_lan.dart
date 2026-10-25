@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -59,6 +61,9 @@ class ThoatHaiLan extends StatefulWidget {
     this.dongHo,
   });
 
+  /// Kênh `flowmoney/xuong_nen` — `xuongNen` gọi `moveTaskToBack(true)` ở `MainActivity.kt`, trả `true` khi làm được.
+  static const kenh = MethodChannel('flowmoney/xuong_nen');
+
   final Widget child;
   final bool Function() laTabDau;
   final VoidCallback veTabDau;
@@ -86,8 +91,22 @@ class _ThoatHaiLanState extends State<ThoatHaiLan> {
       case QuyetDinhThoat.baoNhanLanNua:
         widget.baoNhanLanNua();
       case QuyetDinhThoat.thoat:
-        SystemNavigator.pop();
+        unawaited(_xuongNen());
     }
+  }
+
+  /// "Thoát" = đưa cả task xuống nền (như nút Home), KHÔNG đóng activity (G100, 2026-10-21). Đóng activity là huỷ
+  /// Flutter engine trong khi tiến trình còn sống (dịch vụ nghe thông báo D1 giữ nó): bản mô hình Gemma của isolate cũ
+  /// không ai giải phóng (`flutter_gemma_litertlm` chỉ cất địa chỉ engine native trong một đối tượng Dart, không
+  /// finalizer), lần mở sau nạp thêm một bản — đo Realme: Native Heap 1,89 → 3,72 GB. Kênh không làm được (không phải
+  /// Android, activity không phải gốc task) thì vẫn thoát như cũ.
+  Future<void> _xuongNen() async {
+    try {
+      if (await ThoatHaiLan.kenh.invokeMethod<bool>('xuongNen') == true) return;
+    } catch (_) {
+      // MissingPluginException / PlatformException — rơi về đóng activity.
+    }
+    await SystemNavigator.pop();
   }
 
   @override

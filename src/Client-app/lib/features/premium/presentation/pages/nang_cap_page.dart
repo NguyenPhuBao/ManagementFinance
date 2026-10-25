@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/realtime/realtime_channel.dart';
@@ -317,7 +317,7 @@ class _NangCapPageState extends State<NangCapPage> {
     // Chưa biết hạn (type của phiên, `/payment/*` chưa trả) → chỉ "Premium".
     final dongHan = hetHan == null || conLai == null
         ? null
-        : 'còn $conLai ngày (đến ${DateFormat('dd/MM/yyyy').format(hetHan.toLocal())})';
+        : 'còn $conLai ngày (đến ${DateFormatter.formatDate(hetHan.toLocal())})';
     return _the(
       child: Row(
         children: [

@@ -38,8 +38,10 @@ dependencies:
   background_downloader: ^9.6.2
 
   # Local database
+  # Thư viện SQLite native do gói `sqlite3` 3.x (phụ thuộc của drift) tự dựng qua build hook — đo APK release 2026-10-24:
+  # đúng MỘT `libsqlite3.so`, bản 3.53.4. `sqlite3_flutter_libs` đã gỡ cùng ngày (pub.dev: 0.6.0+eol, "không còn cần với
+  # sqlite3 3.x"); nó chỉ kéo thêm AAR `sqlite3-native-library:3.52.0` mà bản dựng bỏ đi — máy quét CVE đọc nhầm bản ấy.
   drift: ^2.21.0
-  sqlite3_flutter_libs: ^0.5.24
   path_provider: ^2.1.4
   path: ^1.9.0
 

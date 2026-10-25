@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
 import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
@@ -130,4 +132,10 @@ void main() {
       }
     });
   }
+
+  test('the_khoa_quyen.dart không ghi cứng Color(0x…) — màu ở AppColors (báo cáo soát kiến trúc, 2026-10-19)', () {
+    final noiDung = File('lib/features/premium/presentation/widgets/the_khoa_quyen.dart').readAsStringSync();
+    expect(RegExp(r'Color\(0x').allMatches(noiDung).length, 0,
+        reason: 'Màu mới của thẻ khoá thêm vào AppColors (giá trị Stitch), không ghi cứng trong widget.');
+  });
 }

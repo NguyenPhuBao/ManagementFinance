@@ -14,7 +14,7 @@ import 'package:drift/drift.dart';
 /// được từ sổ giao dịch trên từng máy. Test quét 15 canh.
 ///
 /// Thêm ở schema v27 (2026-09-29). Xoá theo tài khoản ở
-/// `purgeDataForOtherAccounts` / `purgeDataForAccount`.
+/// `purgeDataForOtherAccounts`.
 class GoiYHoaDonPhanHois extends Table {
   TextColumn get id => text()();
 

@@ -114,4 +114,10 @@ void main() {
         reason: 'Máy vừa trả đã có màn Thành công; máy khác đổi thẻ ở tab Cá '
             'nhân là đủ. Payload là hộp đen nên không đọc hạn từ đây.');
   });
+
+  test('account.downgraded → taiKhoanHaCap: tín hiệu im, không kéo đồng bộ (G89 mục 6.1)', () {
+    expect(realtimeEventFromName('account.downgraded'), RealtimeEvent.taiKhoanHaCap);
+    expect(RealtimeEvent.taiKhoanHaCap.canDongBoLai, isFalse, reason: 'hạ gói là chuyện của bảng account, không bảng đồng bộ');
+    expect(RealtimeEvent.taiKhoanHaCap.loiNhan, isNull, reason: 'thông báo tối giản — thẻ gói ở tab Cá nhân tự đổi');
+  });
 }

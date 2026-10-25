@@ -125,7 +125,7 @@ void main() {
       expect(ketQuaBieuThuc('$day+$day'), 9999999999999,
           reason: 'Hai vế 13 chữ số cộng lại ra 14 chữ số, vượt '
               '`numeric(15,2)`. Tràn cho SQLSTATE 22003 → `DB_ERROR` → không '
-              'nằm trong danh sách trắng `_permanentCodes` → giao dịch gửi '
+              'nằm trong danh sách trắng `GuiLoDongBo._permanentCodes` → giao dịch gửi '
               'lại ở MỌI chu kỳ đồng bộ, im lặng. Cùng vòng lặp G31/G14/G46.');
     });
 

@@ -27,8 +27,6 @@ class ONhapNhanh extends StatelessWidget {
     required this.ketQua,
     required this.onDien,
     required this.onHuy,
-    this.dangKiemSoTien = false,
-    this.onHuyKiem,
     this.coMicro = false,
     this.trangThaiNghe = TrangThaiNghe.cho,
     this.giayGhi = 0,
@@ -44,8 +42,6 @@ class ONhapNhanh extends StatelessWidget {
   final KetQuaDien? ketQua;
   final VoidCallback onDien;
   final VoidCallback onHuy;
-  final bool dangKiemSoTien;
-  final VoidCallback? onHuyKiem;
 
   /// C4 — micro (Task 14). Chỉ vẽ khi [coMicro] và [laPremium].
   final bool coMicro;
@@ -326,13 +322,6 @@ class ONhapNhanh extends StatelessWidget {
               chu: 'Đang chép lời bằng AI trên máy…',
               onHuy: onHuyNghe,
               khoaHuy: const Key('nhap-nhanh-huy-nghe'),
-            ),
-          if (dangKiemSoTien)
-            DongDangNghe(
-              key: const Key('nhap-nhanh-dang-kiem'),
-              chu: 'Đang kiểm số tiền bằng AI…',
-              onHuy: onHuyKiem,
-              khoaHuy: const Key('nhap-nhanh-huy-kiem'),
             ),
           if (khoiChonSoTien case final k?) ...[const SizedBox(height: 10), k],
         ],

@@ -68,6 +68,7 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | **Phạm vi** | Bốn nhóm: hoá đơn, ngân sách, mục tiêu, hệ thống. |
 | **Cài đặt** | Công tắc theo từng nhóm + một công tắc tổng cho thông báo hệ điều hành. |
 | **Backend** | Viết tài liệu yêu cầu, chừa chỗ sẵn. **Không nối socket** *(đúng cho mảng thông báo; client có nối Socket.io ngày 2026-09-09, nhưng cho việc khác — bảng `AppNotifications` vẫn hoàn toàn cục bộ)*. |
+| **Màn khoá** (2026-10-24, siết bảo mật đợt 3) | **Không** đặt `visibility` — mặc định của Android là *riêng tư*: người dùng bật *"Ẩn nội dung nhạy cảm"* trong Cài đặt máy thì màn khoá chỉ hiện "FlowMoney", không số tiền. Người dùng chốt **giữ theo cài đặt máy**, không ép ẩn hẳn (`NotificationVisibility.secret` làm mất nhắc hoá đơn ngay trên màn khoá). Tóm tắt D1 vốn không có số. Chưa đo trên máy. |
 
 ---
 
@@ -233,7 +234,7 @@ lib/features/notification/domain/cau_chu_dong_y.dart   # câu chữ dùng chung 
 
 ⚠️ **Tên là `AppNotifications`, KHÔNG phải `Notifications`.** Drift sinh data
 class số ít, và `Notification` là lớp có thật trong `package:flutter/widgets`.
-Dự án đã dính đúng vết này với `Category` — xem dòng đầu `sync_engine.dart`:
+Dự án đã dính đúng vết này với `Category` — xem dòng đầu `sync_engine.dart` (cùng dòng `hide Category` ấy có ở cả năm tệp `core/sync` vừa import `foundation` vừa import `app_database`; riêng `sync_engine.dart` nay không dùng kiểu `Category`):
 `import 'package:flutter/foundation.dart' hide Category;`.
 
 Bảng **cố ý không có** `syncStatus` / `syncError` / `updatedAt` / `isDeleted`.
@@ -318,7 +319,7 @@ thứ ba):
 ⚠️ **Vì sao phải thêm hai mốc kia.** Bản đầu buộc vòng quét vào một sự kiện
 **mạng**, trong một app **offline-first** — và đó là chỗ hỏng. Khi không có kết
 nối, `SyncEngine._runSync()` thoát sớm ở `SyncStatus.pending`
-(`sync_engine.dart:360`), một trạng thái **không** nằm trong `isTerminal`
+(`sync_engine.dart:374`, đo lại 2026-10-19 sau tách SyncEngine), một trạng thái **không** nằm trong `isTerminal`
 (`sync_models.dart:134`). Hệ quả: cả một phiên offline **không có lượt quét
 nào** — không thông báo, `markOverdue` không chạy, và **hai bộ tự chuyển tiền
 nằm bên trong `scan()` cũng đứng im**, nên hoá đơn bật tự trả không được trả.
@@ -1096,9 +1097,11 @@ chưa làm.
   `SyncEntityType`, test quét thứ 15 cấm bốn tên của nó lọt vào đường đồng bộ.
   Hai hàm dọn khi đổi tài khoản xoá cả bảng này; `NotificationScanner.start`
   dọn hàng cũ hơn **180 ngày** (`giuSuKien`).
+- Trang Trung tâm thông báo ghi qua `ThongBaoRepository.ghiNhatKy` / `ghiNhatKyNhieu` (2026-10-19; trang không import
+  datasource) — chúng chuyển xuống `NhatKyThongBao`, cửa ghi DUY NHẤT vẫn là nó.
 - **`NhatKyThongBao`** (`features/notification/data/datasources/nhat_ky_thong_bao.dart`) là **cửa
   ghi duy nhất** và **không bao giờ ném**: một lỗi CSDL chỉ thành một dòng
-  `[NhatKy] ghi … hỏng`, vì chín chỗ gọi đều là đường người dùng đang thao tác.
+  `[NhatKy] ghi … hỏng`, vì ghi nhật ký chỉ là việc phụ của tám chỗ gọi (đếm 2026-10-19: `grep -rnE "[.](ghi|ghiNhieu)[(]" lib` lọc `nhatKy` / `NhatKyThongBao` — `main.dart`, `notification_scanner`, `reminder_scheduler` ×2, `thong_bao_repository_impl` ×2, `de_xuat_thong_bao_nguon`, `hang_cho_su_kien`): có đường người dùng đang thao tác (chạm thông báo, bỏ qua đề xuất), có bộ quét / bộ lập lịch ghi sự kiện nền (`huyLich`, `datLich`, `hoan`) — cả hai đều không được hỏng vì một dòng nhật ký.
   Mã tài khoản lấy từ tham số, không có thì từ nguồn phiên; `null` hay `≤ 0` là
   **bỏ hàng**, không đoán (quy tắc 2).
   ⚠️ DI đăng ký nó với nguồn phiên `() => null` rồi `main.dart` gắn nguồn thật
@@ -1503,6 +1506,7 @@ không có "kỳ" tự nhiên như ngân sách (chu kỳ) hay hoá đơn (hạn 
 `syncFailed` là **người tiêu thụ đầu tiên** của `SyncEngine.statusStream` cho
 mục đích hiển thị. Cờ được **đặt lại về false** khi lượt đồng bộ kế tiếp thành
 công; không xoá là mỗi lượt quét về sau đều báo lại một sự cố đã qua.
+`syncFailed` **không nổ khi máy chủ bảo trì / phong toả có giờ hết hạn** — chu kỳ ấy kết thúc `pending`, không `error` (G89, 2026-10-20).
 
 `NotificationScanner.start()` nay gọi `purgeOlderThan(90 ngày)` — một lần mỗi
 phiên, nuốt lỗi. Bảng chỉ lớn lên vì hàng đã xoá mềm phải giữ để chặn trùng.
@@ -1815,6 +1819,27 @@ dòng nào**. Đã vấp thật 2026-09-09, mất hai lượt chạy 10 và 16 p
 ⚠️ Cái bẫy trong cái bẫy: hai test viết sai vẫn **chạy xong trong một giây** ở
 lượt RED, vì `expect` ném sớm nên chưa chạm tới bước dọn dẹp. Nó chỉ treo khi
 `expect` bắt đầu qua — tức đúng lúc bạn tưởng mình vừa làm nó xanh.
+
+**7.14 `pendingIds()` KHÔNG phải AlarmManager — force-stop xoá báo thức mà
+danh sách vẫn còn. ✅ ĐÃ ĐÓNG 2026-10-24.** `flutter_local_notifications` giữ
+danh sách lịch trong SharedPreferences (`scheduled_notifications.xml`), và
+`pendingNotificationRequests()` đọc **danh sách ấy**, không hỏi AlarmManager.
+Force-stop (Cài đặt → Buộc dừng; ColorOS gỡ task ở một số trạng thái; `adb
+install` rồi `am force-stop`) xoá mọi báo thức của gói mà không đụng danh sách,
+và không phát broadcast nào — bộ nhận `BOOT_COMPLETED` / `MY_PACKAGE_REPLACED`
+của plugin chỉ cứu khởi động lại máy và cập nhật app. Đo Realme: force-stop → 0
+báo thức; mở app, quét xong → **vẫn 0**, danh sách vẫn đủ 3. `resync` thấy id
+"đã chờ" thì bỏ qua (luỹ đẳng), mà khoá lịch hoá đơn không đổi giữa các lượt
+quét, nên nhắc hoá đơn **mất hẳn, im lặng**. Sửa: lượt `resync` **đầu tiên của
+mỗi tiến trình** (`ReminderScheduler._daKhoiPhuc`; DI giữ một bản) đặt lại cả
+lịch "đã chờ" — không huỷ trước (cùng id thay chỗ; huỷ là gỡ luôn thông báo
+cùng id đang trên khay), không ghi `dat_lich` (B5b đếm tới máy theo nó). Đo lại:
+force-stop → 0, mở app → 3, danh sách 3 (không nhân đôi). Kiểm báo thức thật
+bằng `adb shell dumpsys alarm | grep -c 'Alarm{.*flowmoney'`, **đừng** tin
+`pendingIds()`. ⚠️ Engine nền WorkManager (`chay_nen.dart`) là isolate MỚI
+mỗi lượt, nên mỗi lượt nền cũng chạy lượt khôi phục — đặt lại mọi lịch đang
+muốn. Đúng ý (cùng id thay chỗ, không ghi `dat_lich`), **đừng** "tối ưu" bỏ đi
+hay tưởng là lỗi.
 
 ---
 

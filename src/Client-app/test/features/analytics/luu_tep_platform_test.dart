@@ -10,7 +10,7 @@ library;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flowmoney/features/analytics/data/luu_tep_platform.dart';
+import 'package:flowmoney/features/analytics/data/datasources/luu_tep_platform.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -205,9 +205,16 @@ String _tiLe(double x) => (x * 100).toStringAsFixed(1);
 String _phanTramCsv(double? phanTram) =>
     phanTram == null ? '' : phanTram.toStringAsFixed(1);
 
+/// Ô là SỐ thuần (`-150000`, `-12.5`) — giữ nguyên cho Excel cộng được.
+final _laSo = RegExp(r'^[+-]?\d+(\.\d+)?$');
+
 /// Một ô CSV, đã thoát theo RFC 4180.
+///
+/// Ô chữ mở đầu bằng `= + - @`, tab hay xuống dòng được thêm `'` (2026-10-24, chặn CSV injection): ghi chú khoản D1 là
+/// nội dung chuyển khoản người lạ viết được, và Excel coi ô như thế là CÔNG THỨC khi mở tệp.
 String _o(Object? v) {
-  final s = v?.toString() ?? '';
+  var s = v?.toString() ?? '';
+  if (s.isNotEmpty && '=+-@\t\r'.contains(s[0]) && !_laSo.hasMatch(s)) s = "'$s";
   final canBoc =
       s.contains(_sep) || s.contains('"') || s.contains('\n') || s.contains('\r');
   if (!canBoc) return s;

@@ -3,7 +3,7 @@
 /// Vì sao cần: backend **đã** trả `keyword` trong `/sync/pull`
 /// (`sync.repository.js`, khối `select` của `getCategoriesByAccount` có
 /// `keyword: true`), nhưng mapper pull phía client bỏ qua nó hoàn toàn — cả
-/// `sync_engine.dart` trước bản vá này không có một chữ `keyword` nào.
+/// `sync_engine.dart` (nay `ap_du_lieu_keo_ve.dart`) trước bản vá này không có một chữ `keyword` nào.
 ///
 /// Hệ quả đo được: bảng `CategoryKeywords` của một máy vừa cài **rỗng tuyệt
 /// đối**, vì hai đường seed danh mục (`AppDatabase._seedDefaultCategories` và

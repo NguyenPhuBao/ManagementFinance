@@ -27,7 +27,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.5'   # khớp máy dev (CLAUDE.md "Toolchain")
+          flutter-version: '3.47.8'   # khớp máy dev (CLAUDE.md "Toolchain"); 3.47.5 → 3.47.8 ngày 2026-10-24 vá GHSA-frr6-h895-5pxp
           channel: stable
           cache: true
 

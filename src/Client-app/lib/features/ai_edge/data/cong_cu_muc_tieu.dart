@@ -6,6 +6,8 @@
 /// động. `wallet_picker_sources_test` quét `walletDao.*`, không quét repository.
 library;
 
+import 'package:flutter/foundation.dart';
+
 import '../../goal/data/repositories/goal_repository.dart';
 import '../../wallet/data/repositories/wallet_repository.dart';
 import '../../../core/utils/khop_ten.dart';
@@ -57,7 +59,8 @@ class CongCuMucTieu implements CongCu {
   }) async {
     final chinh = chinhThamSoMucTieu(cauHoi, args);
     if (chinh.ghiChu.isNotEmpty) {
-      log('[SLM][tool] chỉnh tham số theo câu hỏi: ${chinh.ghiChu.join('; ')}');
+      // Nội dung chỉnh mang từ khoá / tên của người dùng — bản release chỉ in số chỗ (quét 38).
+      log('[SLM][tool] chỉnh tham số theo câu hỏi${kDebugMode ? ': ${chinh.ghiChu.join('; ')}' : ' (${chinh.ghiChu.length} chỗ)'}');
     }
     final chon = chinh.args['chon']?.toString().trim();
     // G1 cổng F: chữ trích chỉ khi câu hỏi nói về trích (không có câu hỏi thì
@@ -67,7 +70,7 @@ class CongCuMucTieu implements CongCu {
     final goals = await mucTieu.watchGoals(idaccount).first;
     // G4 cổng F (F14): câu nêu tên một mục tiêu → chỉ mục tiêu ấy.
     final ten = tenNeuTrongCau(cauHoi, [for (final g in goals) g.name], tuLoai: 'mục tiêu');
-    if (ten != null) log('[SLM][tool] câu hỏi nêu mục tiêu → chỉ "$ten"');
+    if (ten != null) log('[SLM][tool] câu hỏi nêu mục tiêu → chỉ "${kDebugMode ? ten : '…'}"');
     // H1 cổng F lần 2: câu hỏi một số đích → hàng chỉ mang nhóm số ấy, chỉ mẫu câu.
     final nhom = nhomMucTieuTheoCauHoi(cauHoi);
     if (nhom != null) log('[SLM][tool] câu hỏi về "$nhom" → chỉ nhóm số ấy, mẫu câu');

@@ -1,5 +1,5 @@
 /// `ThongBaoRepository` — repository của mảng Thông báo trên `NotificationDao` (spec Entity Thông báo 2026-10-15 mục 4.2; trước là
-/// `ThongBaoNguon`, spec bịt điểm rò 2026-10-10 mục 4.4). Không mang luật: mỗi lối chuyển tiếp đúng một hàm DAO, map Entity ở biên.
+/// `ThongBaoNguon`, spec bịt điểm rò 2026-10-10 mục 4.4). Không mang luật: mỗi lối chuyển tiếp đúng một hàm DAO, map Entity ở biên (trừ hai lối nhật ký, chuyển xuống `NhatKyThongBao`).
 /// Test này canh "chuyển tiếp đúng hàm" và "chenLai trả hàng y nguyên", không canh luật của DAO. `==` sau vòng tròn CSDL đứng được vì
 /// Drift lưu `DateTime` dạng giây và trả `DateTime` local (fixture mốc tròn giây) — xem `notification_entity_companion_test`.
 library;
@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/database/daos/notification_dao.dart'
     show kKindBienDongSoDu;
+import 'package:flowmoney/features/notification/data/datasources/nhat_ky_thong_bao.dart';
 import 'package:flowmoney/features/notification/data/models/notification_entity.dart';
 import 'package:flowmoney/features/notification/data/repositories/thong_bao_repository.dart';
 import 'package:flowmoney/features/notification/data/repositories/thong_bao_repository_impl.dart';
@@ -77,5 +78,24 @@ void main() {
   test('watchDemBienDong đếm hàng loại 20 (bienDongSoDu)', () async {
     await repo.chenLai(hang('n1', kind: kKindBienDongSoDu));
     expect(await repo.watchDemBienDong(10).first, 1);
+  });
+
+  test('ghiNhatKy / ghiNhatKyNhieu chuyển xuống NhatKyThongBao; không có nhật ký thì không làm gì', () async {
+    final nhatKy = NhatKyThongBao(
+      dao: db.notificationEventDao,
+      idaccountPhien: () => null,
+      clock: () => DateTime(2026, 10, 19, 9),
+    );
+    final coNhatKy = ThongBaoRepositoryImpl(db.notificationDao, nhatKy: nhatKy);
+    await coNhatKy.ghiNhatKy('bill:1', SuKienThongBao.gatBo, idaccount: 10);
+    await coNhatKy.ghiNhatKyNhieu(['a', 'b'], SuKienThongBao.docTatCa, idaccount: 10);
+    await ThongBaoRepositoryImpl(db.notificationDao).ghiNhatKy('x', SuKienThongBao.gatBo, idaccount: 10);
+
+    final hang = await db.select(db.appNotificationEvents).get();
+    expect(hang.map((h) => (h.dedupeKey, h.suKien, h.idaccount)).toSet(), {
+      ('bill:1', SuKienThongBao.gatBo, 10),
+      ('a', SuKienThongBao.docTatCa, 10),
+      ('b', SuKienThongBao.docTatCa, 10),
+    });
   });
 }

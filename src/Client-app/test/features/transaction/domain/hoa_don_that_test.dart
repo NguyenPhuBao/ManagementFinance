@@ -160,9 +160,26 @@ void main() {
       }
     });
 
-    test('13/15 điền sẵn, 2 tờ hỏi bằng chip (R11 nhoè mực · R15 trừ điểm)', () {
+    test('12/15 điền sẵn, 3 tờ hỏi bằng chip (R11 nhoè mực · R13 hai số gần · R15 trừ điểm)', () {
       final hoi = [for (final ma in kHoaDonThat.keys) if (chot(ma).soTien == null) ma];
-      expect(hoi, ['R11', 'R15']);
+      expect(hoi, ['R11', 'R13', 'R15']);
+    });
+
+    // Cái giá của lưới B (G101, người dùng chọn 2026-10-21): tờ này in tổng 72.127 và dòng tiền mặt mà OCR đọc 72,121.
+    // Luật đúng, Gemma 17.800 bị bỏ — nhưng hai số lệch ≤ 1% trên cùng tờ thì app không biết số nào bị đọc nhầm, nên hỏi.
+    test('R13 — số luật đứng một mình, tờ có số gần 72,121 → hai chip (luật trước)', () {
+      expect(chot('R13').luaChon, [72127, 72121]);
+    });
+
+    test('Basic (chỉ luật): 14/15 điền sẵn đúng, R13 hỏi bằng chip', () {
+      for (final ma in kHoaDonThat.keys) {
+        final c = chotTongQuet(luat: doc(ma).soTien, ai: null, vanBan: kHoaDonThat[ma]!);
+        if (ma == 'R13') {
+          expect(c.luaChon, [72127, 72121]);
+        } else {
+          expect(c.soTien, dung[ma] == 30000 ? 32160 : dung[ma]!.toDouble(), reason: ma);
+        }
+      }
     });
   });
 
@@ -215,6 +232,76 @@ void main() {
       final c = chotTongQuet(luat: null, ai: null, vanBan: van);
       expect(c.soTien, isNull);
       expect(c.luaChon, isEmpty);
+    });
+
+    // ── G101 (2026-10-21): ba lưới cho số luật — chữ /quet trên Realme điền sẵn 2.127 (thay 72.127) và 75.706 (thay
+    // 75.700) không dấu hiệu gì. Dữ liệu thật: `hoa_don_quet_that_test.dart`.
+
+    test('⭐ lưới C — AI không có trên ảnh nhưng hơn số luật đúng MỘT chữ số (OCR mất chữ đầu) → hai chip, AI trước', () {
+      final c = chotTongQuet(luat: 2127, ai: 72127, vanBan: 'Bot chien 19,800\n2,127\n21 Tong\nVNO72,121');
+      expect(c.soTien, isNull);
+      expect(c.luaChon, [72127, 2127]);
+    });
+
+    test('lưới C — OCR mất một chữ số ở GIỮA (72.127 → 7.127) cũng là ứng viên', () {
+      expect(chotTongQuet(luat: 7127, ai: 72127, vanBan: 'Quan A\nTong 7,127').luaChon, [72127, 7127]);
+    });
+
+    test('lưới C — kém số luật đúng một chữ số cũng là ứng viên', () {
+      expect(chotTongQuet(luat: 145000, ai: 45000, vanBan: 'Quan A\nTong cong 145.000').luaChon, [45000, 145000]);
+    });
+
+    test('lưới C — hơn số luật HAI chữ số → không phải ứng viên, bỏ AI', () {
+      expect(chotTongQuet(luat: 2127, ai: 172127, vanBan: 'Quan A\nTong 2.127').soTien, 2127);
+    });
+
+    test('⭐ lưới A — số luật nhỏ hơn một dòng món in phía TRÊN dòng tổng, không AI → ô trống, không chip', () {
+      final c = chotTongQuet(luat: 2127, ai: null, vanBan: 'MAXIDI\nBot chien 19,800 VO5\nTrang ga 15,990 V05\n2,127\n21 Tong');
+      expect(c.soTien, isNull);
+      expect(c.luaChon, isEmpty);
+    });
+
+    test('lưới A — AI có trên ảnh và khớp số luật thì vẫn điền (hai nguồn cùng đọc một số)', () {
+      const v = 'Quan A\nCom ga 60.000\nGiam gia -30.000\nTong cong 30.000';
+      expect(chotTongQuet(luat: 30000, ai: 30000, vanBan: v).soTien, 30000);
+    });
+
+    test('lưới A — số luật BẰNG dòng món lớn nhất (tờ một món) → điền', () {
+      expect(chotTongQuet(luat: 36000, ai: null, vanBan: 'BEE BEE MART\nLy thuy tinh 18,000 36,000\nTong thanh toan: 36,000')
+          .soTien, 36000);
+    });
+
+    test('lưới A — dòng "Thành tiền" trước chiết khấu không phải dòng món', () {
+      const v = 'UA TEA\nMATCHA LATTE 1 39,000 39,000\nThanh tien: 246,000 d\nTien chiet khau -28,500 d\nTong tien: 217,500 d';
+      expect(chotTongQuet(luat: 217500, ai: null, vanBan: v).soTien, 217500);
+    });
+
+    test('⭐ lưới B — số luật đứng một mình mà tờ in một số khác lệch ≤ 1% (dòng VAT) → hai chip, luật trước', () {
+      const v = 'MAXIDI\nBanh 24,900 VO8\nTeng 75,706\nDa bao gom thue:\nVO8 8 % 75,700 5,607';
+      final c = chotTongQuet(luat: 75706, ai: null, vanBan: v);
+      expect(c.soTien, isNull);
+      expect(c.luaChon, [75706, 75700]);
+      expect(chotTongQuet(luat: 75706, ai: 55000, vanBan: v).luaChon, [75706, 75700],
+          reason: 'AI không in trên ảnh, không gần số luật → bị bỏ; số luật vẫn đứng một mình');
+    });
+
+    test('lưới B — AI trùng ĐÚNG số luật → điền, không hỏi', () {
+      const v = 'MAXIDI\nTong 72,127\nVNO72,121';
+      expect(chotTongQuet(luat: 72127, ai: 72127, vanBan: v).soTien, 72127);
+    });
+
+    test('lưới B — tiền khách đưa / tiền mặt lệch ≤ 1% không phải số gần (làm tròn khi trả tiền mặt)', () {
+      const v = 'MAXIDI\nTong 44,745\nTien mat 45,000\nTien thoi 255';
+      expect(chotTongQuet(luat: 44745, ai: null, vanBan: v).soTien, 44745);
+    });
+
+    test('lưới B — năm của dòng ngày không phải số gần', () {
+      expect(chotTongQuet(luat: 2030, ai: null, vanBan: 'Quan A\nNgay 20/08/2026\nTong cong 2.030').soTien, 2030);
+    });
+
+    test('lưới B — nhiều số gần → chỉ hỏi số GẦN NHẤT (khối chip nói "hai số khác nhau")', () {
+      const v = 'Quan A\nTong cong 100.000\nVAT 100.900\nThe 100.200';
+      expect(chotTongQuet(luat: 100000, ai: null, vanBan: v).luaChon, [100000, 100200]);
     });
   });
 

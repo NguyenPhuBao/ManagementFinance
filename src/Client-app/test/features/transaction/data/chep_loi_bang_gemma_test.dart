@@ -5,7 +5,8 @@ library;
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flowmoney/features/ai_edge/data/slm_runtime.dart';
+import 'package:flowmoney/features/ai_edge/data/datasources/slm_runtime.dart';
+import 'package:flowmoney/features/ai_edge/data/huy_luot.dart';
 import 'package:flowmoney/features/transaction/data/chep_loi_bang_gemma.dart';
 import 'package:flowmoney/features/transaction/domain/chep_loi.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,11 +17,13 @@ class _MoHinhGia implements SlmChepLoi {
   Completer<String>? treo;
   Completer<void>? huyTreo;
   String? prompt;
+  final List<HuyLuot?> the = [];
   int soLanGoi = 0, soLanHuy = 0;
   @override
-  Future<String> chepLoi(String duongTep, String prompt, Uint8List wav) async {
+  Future<String> chepLoi(String duongTep, String prompt, Uint8List wav, {HuyLuot? huyLuot}) async {
     soLanGoi++;
     this.prompt = prompt;
+    the.add(huyLuot);
     if (nem != null) throw nem!;
     if (treo != null) return treo!.future;
     return tra;
@@ -42,6 +45,8 @@ void main() {
     final m = _MoHinhGia();
     expect(await tao(m).chep(wav), 'Hôm qua ăn phở 45.000');
     expect(m.prompt, kPromptChepLoi);
+    expect(m.the.single, isNotNull, reason: 'mỗi lượt mang thẻ huỷ riêng');
+    expect(m.the.single!.daHuy, isFalse);
   });
   test('chưa sẵn sàng → null, không gọi mô hình', () async {
     final m = _MoHinhGia();
@@ -56,12 +61,15 @@ void main() {
     final m = _MoHinhGia()..tra = '  ';
     expect(await tao(m).chep(wav), isNull);
   });
-  test('quá hạn → null, engine được huỷ', () async {
+  test('⭐ quá hạn → null, dừng đúng lượt của nó (thẻ huỷ), KHÔNG gọi huy() toàn cục', () async {
     final m = _MoHinhGia()..treo = Completer<String>();
     expect(await tao(m, thoiHan: const Duration(milliseconds: 20)).chep(wav), isNull);
-    expect(m.soLanHuy, 1);
+    expect(m.the.single!.daHuy, isTrue);
+    expect(m.soLanHuy, 0, reason: 'huy() toàn cục bỏ oan lượt khác đang chờ với moc (bẫy 4.60)');
   });
-  test('I1: stopGeneration treo vẫn không kẹt hàng đợi — lượt quá hạn trả null, lượt kế tiếp gọi được mô hình', () async {
+  // `huyTreo`: `huy()` toàn cục không bao giờ xong. Lối hết giờ chỉ huỷ thẻ của lượt (bẫy 4.60) — quay lại chờ `huy()` toàn
+  // cục (trước 2026-10-22 là `unawaited`) thì lượt quá hạn treo theo và hàng đợi kẹt.
+  test('I1: hết giờ không chờ huy() toàn cục — lượt quá hạn trả null, lượt kế tiếp gọi được mô hình', () async {
     final m = _MoHinhGia()
       ..treo = Completer<String>()
       ..huyTreo = Completer<void>();

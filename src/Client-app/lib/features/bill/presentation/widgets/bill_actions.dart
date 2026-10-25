@@ -3,7 +3,7 @@ import '../../../wallet/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../data/models/bill_entity.dart';
@@ -122,7 +122,7 @@ String _veKySau(BillEntity? kySau) =>
 /// *"kỳ kế tiếp (hạn dd/MM/yyyy, chưa trả)"* — nêu hạn để người dùng biết đúng
 /// kỳ nào sẽ mất khỏi tab Cần thanh toán. Chung cho ba hộp Hoàn tác.
 String _nhanKySau(BillEntity kySau) =>
-    'kỳ kế tiếp (hạn ${DateFormat('dd/MM/yyyy').format(kySau.dueDate)}, chưa '
+    'kỳ kế tiếp (hạn ${DateFormatter.formatDate(kySau.dueDate)}, chưa '
     'trả)';
 
 /// Hộp của kỳ không còn khoản chi gắn `billId`: về chưa trả, không đụng ví.

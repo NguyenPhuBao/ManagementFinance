@@ -10,6 +10,7 @@ import '../../core/api/dio_client.dart';
 import '../../core/auth/phien_dieu_phoi.dart';
 import '../../core/auth/phien_dieu_phoi_that.dart';
 import '../../core/database/app_database.dart';
+import '../../core/network/trang_thai_may_chu.dart';
 import '../../features/notification/data/repositories/thong_bao_repository.dart';
 import '../../features/notification/data/repositories/thong_bao_repository_impl.dart';
 import '../../core/realtime/realtime_channel.dart';
@@ -46,7 +47,8 @@ import '../../features/budget/data/repositories/budget_repository.dart';
 import '../../features/ai_edge/domain/canary_gpu.dart';
 import '../../features/ai_edge/domain/canary_cong_cu.dart';
 import '../../features/ai_edge/data/cong_tac_ai.dart';
-import '../../features/ai_edge/data/nguon_ly_do_thoat.dart';
+import '../../features/ai_edge/data/datasources/kenh_giu_mo_hinh.dart';
+import '../../features/ai_edge/data/datasources/nguon_ly_do_thoat.dart';
 import '../../features/transaction/data/vi_theo_nguon_store.dart';
 import '../../features/transaction/data/hoa_don_da_xoa_nguon.dart';
 import '../../features/transaction/domain/doc_tin_bien_dong.dart';
@@ -54,9 +56,9 @@ import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
 import '../../features/ai_edge/data/slm_cache.dart';
 import '../../features/ai_edge/data/nguon_goi_so.dart';
 import '../../features/ai_edge/data/bo_cong_cu.dart';
-import '../../features/ai_edge/data/slm_runtime.dart';
-import '../../features/ai_edge/data/nguon_tai_nen.dart';
-import '../../features/ai_edge/data/tai_nen_background_downloader.dart';
+import '../../features/ai_edge/data/datasources/slm_runtime.dart';
+import '../../features/ai_edge/data/datasources/nguon_tai_nen.dart';
+import '../../features/ai_edge/data/datasources/tai_nen_background_downloader.dart';
 import '../../features/budget/data/tai_phan_bo_nguon.dart';
 import '../../features/budget/data/repositories/budget_repository_impl.dart';
 import '../../features/budget/presentation/bloc/budget_cubit.dart';
@@ -70,9 +72,13 @@ import '../../features/wallet/application/gop_vi_service.dart';
 import '../../features/wallet/data/vi_bi_giu_dong_bo.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
+import '../../features/khoa_app/application/khoa_app_service.dart';
+import '../../features/khoa_app/data/datasources/kenh_sinh_trac.dart';
+import '../../features/khoa_app/data/khoa_app_store.dart';
 import '../../features/premium/data/co_quyen_nen.dart';
 import '../../features/premium/data/dem_dang_hoat_dong.dart';
-import '../../features/premium/data/luu_anh_qr.dart';
+import '../../features/premium/data/datasources/luu_anh_qr.dart';
+import '../../features/premium/data/datasources/tai_anh_dio_tran.dart';
 import '../../features/premium/data/repositories/don_thanh_toan_repository.dart';
 import '../../features/premium/data/repositories/don_thanh_toan_repository_impl.dart';
 import '../../features/premium/data/repositories/goi_repository.dart';
@@ -89,6 +95,8 @@ import '../../features/transaction/data/datasources/transaction_local_data_sourc
 import '../../features/ai_chat/data/doc_lenh_bang_ai.dart';
 import '../../features/ai_chat/data/cong_tac_online.dart';
 import '../../features/ai_chat/data/datasources/tro_ly_online_remote_data_source.dart';
+import '../../features/ai_chat/data/repositories/tro_ly_online_repository.dart';
+import '../../features/ai_chat/data/repositories/tro_ly_online_repository_impl.dart';
 import '../../features/transaction/data/chep_loi_bang_gemma.dart';
 import '../../features/transaction/data/datasources/ghi_am.dart';
 import '../../features/transaction/data/datasources/kenh_micro.dart';
@@ -168,8 +176,19 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<AuthInterceptor>(
     () => AuthInterceptor(secureStorage: sl(), cheDoNen: cheDoNen),
   );
+  // G89 (spec 2026-10-20 mục 3): trạng thái máy chủ — bảo trì / phong toả. Sống trong RAM, không gắn tài khoản. Engine nền
+  // (cheDoNen) có bản riêng của isolate ấy: lượt bị chặn không bị tính là lượt hỏng, nên lần `dongBo` thứ hai của `LuotNen`
+  // không bị giãn cách chặn; hook `FEATURE_DISABLED` vẫn gắn ở nền. (Hẹn giờ thử lại không có nghĩa gì ở lượt nền.)
+  sl.registerLazySingleton<TrangThaiMayChu>(TrangThaiMayChu.new);
   sl.registerLazySingleton<DioClient>(
-    () => DioClient(secureStorage: sl(), authInterceptor: sl()),
+    () => DioClient(
+      secureStorage: sl(),
+      authInterceptor: sl(),
+      trangThaiMayChu: sl(),
+      // 403 FEATURE_DISABLED → làm mới gói (spec mục 6.2). Đọc `sl` lúc GỌI: GoiRepository đăng ký sau DioClient.
+      // `lamMoi` không bao giờ ném.
+      khiBiTatQuyen: () => sl<GoiRepository>().lamMoi(),
+    ),
   );
 
   // ── 4. Core: SyncEngine (offline-first sync) ────────────────────────────
@@ -184,6 +203,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       checkpointStore: const SecureStorageSyncCheckpointStore(
         FlutterSecureStorage(),
       ),
+      // Quy tắc 8: bộ gieo danh mục mặc định chạy sau MỌI lượt kéo về thành công — cả lượt nền (`syncMotLuot`).
+      sauKeoVe: (id) => sl<DefaultCategorySeeder>().seedForAccount(id),
+      // G89: lượt bị máy chủ chặn (bảo trì / phong toả) không tính là lượt hỏng, hẹn thử lại đúng mốc.
+      trangThaiMayChu: sl<TrangThaiMayChu>(),
     ),
   );
 
@@ -211,7 +234,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
 
   // BLoC (factory → tạo mới mỗi lần gọi sl<AuthBloc>())
   // Bộ điều phối phiên (spec bịt điểm rò 2026-10-10, mục 6): bốn dịch vụ core + hook sang các mảng. Đây là chỗ DUY NHẤT
-  // nối SlmCache / seeder / initializer / hai cờ giao diện với vòng đời phiên; AuthBloc không biết chúng (test quét 24).
+  // nối SlmCache / bộ chuyển hàng seed cũ / initializer / hai cờ giao diện với vòng đời phiên; AuthBloc không biết chúng
+  // (test quét 24). Bộ gieo danh mục mặc định thì nối vào SyncEngine (mục 4 ở trên) từ 2026-10-20 — nó chạy theo
+  // lượt kéo về, không theo phiên.
   // Mọi dịch vụ dưới đây đăng ký vô điều kiện (kể cả chế độ nền) và lazy nên không cần gác `isRegistered`.
   sl.registerLazySingleton<PhienDieuPhoi>(
     () => PhienDieuPhoiThat(
@@ -220,10 +245,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       boQuet: sl<NotificationScanner>(),
       interceptor: sl<AuthInterceptor>(),
       donTaiKhoanKhac: sl<AppDatabase>().purgeDataForOtherAccounts,
-      xoaBanSao: sl<AppDatabase>().purgeDataForAccount,
       xoaCacheSlm: () => sl<SlmCache>().xoaHet(),
       chuyenHangSeedCu: (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id),
-      taoBanSaoDanhMuc: (id) => sl<DefaultCategorySeeder>().seedForAccount(id),
       seedTaiKhoanMoi: (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id),
       xoaAnhQuet: () => sl<KhoAnhQuet>().xoaHet(),
       datLaiCoGiaoDien: () {
@@ -233,6 +256,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       // G93: chờ kho gói nạp xong trước lượt quét đầu — cùng chốt "gói đặt TRƯỚC khi quét" của đường nền
       // (`chay_nen.dart`). `loaiPhien` chưa có ở đây: kho trống thì `noiPhien` áp nó lúc `AuthSuccess`.
       datGoi: (id) => sl<GoiRepository>().datTaiKhoan(id),
+      // Khoá ứng dụng (2026-10-24): đăng xuất chỉ xoá khoá vân tay; cấu hình PIN xoá khi đăng nhập bằng mật khẩu.
+      xoaKhoaApp: () => sl<KhoaAppService>().xoaVanTayHet(),
+      datLaiKhoaApp: (id) => sl<KhoaAppService>().datLaiSauDangNhap(id),
     ),
     dispose: (p) => p.dispose(),
   );
@@ -493,7 +519,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<DonThanhToanRepository>(
       () => DonThanhToanRepositoryImpl(api: sl()));
   // Lưu ảnh mã VietQR vào Thư viện ảnh (kênh flowmoney/luu_anh — spec G94 mục 5.3).
-  sl.registerLazySingleton<LuuAnhQr>(() => LuuAnhQr());
+  sl.registerLazySingleton<LuuAnhQr>(() => LuuAnhQr(taiAnh: taiAnhBangDioTran));
   sl.registerLazySingleton<GoiStore>(
       () => SecureStorageGoiStore(sl<FlutterSecureStorage>()));
   sl.registerLazySingleton<GoiRepository>(
@@ -508,7 +534,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // Repository của mảng Thông báo cho TRANG và nguồn Thêm giao dịch (spec Entity Thông báo 2026-10-15 mục 4.2; trước là cổng
   // ThongBaoNguon — spec bịt điểm rò 2026-10-10, mục 4.4). Chỉ chuyển tiếp; các bộ điều phối ở `application/` và nguồn B5b vẫn cầm DAO. Đăng ký cả
   // chế độ nền (cùng `setupDependencies`, không gate theo `cheDoNen`). Lazy — không dựng gì khi không ai gọi.
-  sl.registerLazySingleton<ThongBaoRepository>(() => ThongBaoRepositoryImpl(sl<AppDatabase>().notificationDao));
+  sl.registerLazySingleton<ThongBaoRepository>(() => ThongBaoRepositoryImpl(
+        sl<AppDatabase>().notificationDao,
+        nhatKy: sl.isRegistered<NhatKyThongBao>() ? sl<NhatKyThongBao>() : null,
+      ));
 
   // Nhật ký thông báo (B5a) — cửa ghi duy nhất. Nguồn phiên để RỖNG ở đây và
   // `main.dart` gán lại (`datNguonPhien`): `AuthBloc` đăng ký dạng FACTORY, nên
@@ -532,6 +561,16 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<ViTheoNguonStore>(
     () => const SecureStorageViTheoNguonStore(FlutterSecureStorage()),
   );
+  // Khoá ứng dụng (2026-10-24, spec `2026-10-24-khoa-app-pin-sinh-trac-design.md`): kho + cổng sinh trắc + service.
+  // `KhoaAppCubit` KHÔNG ở đây — dựng ở `main.dart` để nghe đúng `AuthBloc` của app (DI đăng ký AuthBloc là factory).
+  sl.registerLazySingleton<KhoaAppStore>(() => SecureStorageKhoaAppStore(sl<FlutterSecureStorage>()));
+  sl.registerLazySingleton<KenhSinhTrac>(() =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+          ? const KenhSinhTracAndroid()
+          : const KenhSinhTracTrong());
+  sl.registerLazySingleton<KhoaAppService>(
+      () => KhoaAppService(store: sl<KhoaAppStore>(), kenh: sl<KenhSinhTrac>()));
+
   // Nhắc ghi sau khi dùng app ngân hàng (2026-10-03): mốc "đã xét đến" theo tài khoản.
   sl.registerLazySingleton<MocPhienStore>(
     () => const SecureStorageMocPhienStore(FlutterSecureStorage()),
@@ -849,6 +888,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     () => SlmRuntimeThat(
       canary: const CanaryGpu(thuMuc: getApplicationSupportDirectory),
       canaryCongCu: sl<CanaryCongCu>(),
+      // G100 đường gỡ task: MainActivity giết tiến trình khi bị huỷ thật mà cờ này bật.
+      baoGiuMoHinh: const KenhGiuMoHinh().dat,
     ),
   );
 
@@ -883,6 +924,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // `DioClient` để `AuthInterceptor` gắn Bearer / làm mới token. Công tắc + cờ tờ gắn máy.
   sl.registerLazySingleton<TroLyOnlineRemoteDataSource>(
     () => TroLyOnlineRemoteDataSourceImpl(sl<DioClient>().dio),
+  );
+  sl.registerLazySingleton<TroLyOnlineRepository>(
+    () => TroLyOnlineRepositoryImpl(sl<TroLyOnlineRemoteDataSource>()),
   );
   sl.registerLazySingleton<CongTacOnline>(CongTacOnline.new);
 

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../category/domain/category_classify.dart';
 import '../../../../category/presentation/widgets/category_visuals.dart';
+import '../../../../../core/utils/phan_tram.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../data/models/thong_ke_ky.dart';
 import '../../../domain/phan_loai_dong_tien.dart';
@@ -393,8 +394,8 @@ class DongDanhMucTrang extends StatelessWidget {
     // không hiện "0% ngân sách" cho một hạn mức không tồn tại.
     final tiLe = d.coNganSach ? d.tiLeNganSach! : d.tiLeTongChi;
     final nhan = d.coNganSach
-        ? '${(tiLe * 100).round()}% ngân sách'
-        : '${(tiLe * 100).round()}% ${nhanTongCua(phanLoai)}';
+        ? '${chuPhanTram(tiLe)} ngân sách'
+        : '${chuPhanTram(tiLe)} ${nhanTongCua(phanLoai)}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

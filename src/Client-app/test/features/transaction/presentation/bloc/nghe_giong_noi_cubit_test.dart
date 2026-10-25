@@ -204,6 +204,37 @@ void main() {
     expect(c.state.giay, 2);
   });
 
+  test('⚠️ 6 giây không có tiếng → KHÔNG đưa bản ghi cho Gemma, báo "không nghe rõ", tệp bị xoá', () async {
+    final gm = _Gemma();
+    final c = tao(coMang: false, gemma: gm);
+    await c.bam();
+    for (var i = 0; i < 60; i++) {
+      g.onBienDo!(-60);
+    }
+    await pumpEventQueue();
+    expect(gm.soLanChep, 0,
+        reason: 'Realme 2026-10-21: bản ghi im lặng đem đi chép → Gemma trả lại câu lệnh và app điền nó vào ô; '
+            'còn tốn ~8 s mô hình chặn hàng đợi chép');
+    expect(c.state.trangThai, TrangThaiNghe.cho);
+    expect(c.state.thongBao, ThongBaoNghe.khongNgheRo);
+    expect(c.state.soLanXong, 0);
+    expect(daXoa, ['/tam/a.wav']);
+  });
+
+  test('bấm ■ khi bộ đo chưa thấy tiếng vẫn chép (ngưỡng dBFS chưa đo mọi máy — người dùng đã nói thì đừng vứt)',
+      () async {
+    final gm = _Gemma();
+    final c = tao(coMang: false, gemma: gm);
+    await c.bam();
+    for (var i = 0; i < 20; i++) {
+      g.onBienDo!(-60);
+    }
+    await c.bam(); // bấm ■
+    await pumpEventQueue();
+    expect(gm.soLanChep, 1);
+    expect(c.state.cauXong, 'Hôm qua ăn phở 45.000');
+  });
+
   test('Gemma chép rỗng → "không nghe rõ", tệp vẫn bị xoá', () async {
     final c = tao(coMang: false, gemma: _Gemma()..tra = null);
     await c.bam();

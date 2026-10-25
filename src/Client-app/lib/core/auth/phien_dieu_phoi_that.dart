@@ -5,8 +5,6 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show debugPrint;
-
 import '../api/interceptors/auth_interceptor.dart';
 import '../../features/notification/application/notification_scanner.dart';
 import '../realtime/realtime_channel.dart';
@@ -21,19 +19,19 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     required NotificationScanner? boQuet,
     required AuthInterceptor? interceptor,
     required Future<int> Function(int idaccount) donTaiKhoanKhac,
-    required Future<int> Function(int idaccount) xoaBanSao,
     Future<void> Function()? xoaCacheSlm,
     Future<void> Function(int idaccount)? chuyenHangSeedCu,
-    Future<int> Function(int idaccount)? taoBanSaoDanhMuc,
     Future<void> Function(int idaccount)? seedTaiKhoanMoi,
     Future<void> Function()? xoaAnhQuet,
     void Function()? datLaiCoGiaoDien,
     Future<void> Function(int idaccount)? datGoi,
+    Future<void> Function()? xoaKhoaApp,
+    Future<void> Function(int idaccount)? datLaiKhoaApp,
   })  : _dongBo = dongBo, _thoiGianThuc = thoiGianThuc, _boQuet = boQuet,
-        _donTaiKhoanKhac = donTaiKhoanKhac, _xoaBanSao = xoaBanSao, _xoaCacheSlm = xoaCacheSlm,
-        _chuyenHangSeedCu = chuyenHangSeedCu, _taoBanSaoDanhMuc = taoBanSaoDanhMuc,
+        _donTaiKhoanKhac = donTaiKhoanKhac, _xoaCacheSlm = xoaCacheSlm,
+        _chuyenHangSeedCu = chuyenHangSeedCu,
         _seedTaiKhoanMoi = seedTaiKhoanMoi, _xoaAnhQuet = xoaAnhQuet, _datLaiCoGiaoDien = datLaiCoGiaoDien,
-        _datGoi = datGoi {
+        _datGoi = datGoi, _xoaKhoaApp = xoaKhoaApp, _datLaiKhoaApp = datLaiKhoaApp {
     final chet = dongBo?.sessionInvalidStream;
     if (chet != null) _subs.add(chet.listen(_phienChet.add));
     final hetHan = interceptor?.sessionExpiredStream;
@@ -48,12 +46,12 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
   final RealtimeChannel? _thoiGianThuc;
   final NotificationScanner? _boQuet;
   final Future<int> Function(int) _donTaiKhoanKhac;
-  final Future<int> Function(int) _xoaBanSao;
   final Future<void> Function()? _xoaCacheSlm;
   final Future<void> Function(int)? _chuyenHangSeedCu;
-  final Future<int> Function(int)? _taoBanSaoDanhMuc;
   final Future<void> Function(int)? _seedTaiKhoanMoi;
   final Future<void> Function()? _xoaAnhQuet;
+  final Future<void> Function()? _xoaKhoaApp;
+  final Future<void> Function(int)? _datLaiKhoaApp;
   final Future<void> Function(int)? _datGoi;
   final void Function()? _datLaiCoGiaoDien;
 
@@ -89,24 +87,15 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
   Future<void> batDongBo(int idaccount, {required bool cho}) async {
     final e = _dongBo;
     if (e == null) return;
+    // Bản sao danh mục mặc định KHÔNG tạo ở đây (từ 2026-10-20): bộ gieo chạy trong chu kỳ đồng bộ, sau mỗi lượt kéo về
+    // thành công (cổng `SyncEngine.sauKeoVe`, quy tắc 8). `start()` đợi chu kỳ đầu, nên đường đăng nhập vẫn có bản sao
+    // trước `AuthSuccess` khi lượt kéo ấy thành công.
     if (cho) {
       await e.start(idaccount: idaccount);
-      if (e.hasCompletedPull) await _taoBanSao(idaccount);
       return;
     }
-    // Đường mở app: không đợi một vòng mạng; bản sao nối vào sau. Pull hỏng thì bỏ qua, lần mở app sau thử lại.
-    unawaited(e.start(idaccount: idaccount).then((_) async {
-      if (!e.hasCompletedPull) return;
-      await _taoBanSao(idaccount);
-    }));
-  }
-
-  Future<void> _taoBanSao(int idaccount) async {
-    final daTao = await _taoBanSaoDanhMuc?.call(idaccount) ?? 0;
-    if (daTao > 0) {
-      debugPrint('[Category] Đã tạo $daTao bản sao danh mục mặc định.');
-      _dongBo?.scheduleSync(); // hàng vừa tạo nằm sau chu kỳ vừa xong — phải hẹn đẩy (AuthBloc cũ, 2026-09-07)
-    }
+    // Đường mở app: không đợi một vòng mạng.
+    unawaited(e.start(idaccount: idaccount));
   }
 
   @override
@@ -116,15 +105,23 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
   }
 
   @override
+  Future<void> sauXacThucMatKhau(int idaccount) async {
+    // Khoá ứng dụng: cấu hình PIN cũ xoá ở đây (đăng nhập bằng mật khẩu), KHÔNG ở đăng xuất (xem `dongPhien`) và KHÔNG ở
+    // `sauDangNhap` (sau cả vòng đồng bộ đầu — giết tiến trình lúc ấy là hỏi lại đúng PIN vừa quên).
+    await _datLaiKhoaApp?.call(idaccount);
+  }
+
+  @override
   Future<void> dongPhien() async {
     _dongBo?.stop();
     await _boQuet?.stop();
     await _thoiGianThuc?.stop();
     await _xoaAnhQuet?.call();
+    // Khoá ứng dụng (2026-10-24): CHỈ khoá vân tay (alias Keystore) chết ở đây. Cấu hình PIN giữ lại tới lần đăng nhập
+    // bằng mật khẩu (`sauDangNhap`): đăng xuất xoá token SAU hook này (POST /auth/logout trước), nên xoá cấu hình ở đây
+    // mà tiến trình bị giết giữa chừng là mở lại vào thẳng app (token còn) không cần PIN.
+    await _xoaKhoaApp?.call();
   }
-
-  @override
-  Future<void> xoaDuLieu(int idaccount) => _xoaBanSao(idaccount);
 
   @override
   Future<void> dispose() async {

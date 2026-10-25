@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../category/data/models/category_entity.dart';
+import '../../../transaction/domain/khoan_vao_thong_ke.dart';
 import '../models/budget_entity.dart';
 
 /// Một khoản CHI có thuộc ngân sách của [categoryIdNganSach] không — vế danh mục
@@ -24,7 +25,8 @@ abstract class BudgetLocalDataSource {
 
   /// Tổng chi trong khoảng [from]–[to].
   ///
-  /// [categoryId] null nghĩa là ngân sách tổng → cộng mọi khoản chi.
+  /// [categoryId] null nghĩa là ngân sách tổng → cộng mọi khoản chi **vào thống kê**
+  /// (`khoanVaoThongKe`, cùng luật với Trang chủ / Phân tích / Sổ giao dịch).
   Future<double> sumExpenses({
     required int idaccount,
     required String? categoryId,
@@ -32,7 +34,7 @@ abstract class BudgetLocalDataSource {
     required DateTime to,
   });
 
-  /// Các khoản chi trong khoảng `[from, to)`, mới nhất trước.
+  /// Các khoản chi **vào thống kê** (`khoanVaoThongKe`) trong khoảng `[from, to)`, mới nhất trước.
   ///
   /// Biên [to] là biên **mở**: bộ chọn ngày trả về 00:00, nên khoản ghi ngày
   /// đầu kỳ sau nằm đúng mốc `to` của kỳ trước — đóng biên là đếm nó hai lần.
@@ -156,6 +158,10 @@ class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
     return rows
         .where((t) => t.type == 'chi')
         .where((t) => t.date.isBefore(to))
+        // Cùng luật "vào thống kê" với Trang chủ / Phân tích / Sổ (người dùng chốt 2026-10-19): khoản điều chỉnh số
+        // dư, số dư ban đầu, nửa cặp nạp mục tiêu kiểu cũ không phải tiền tiêu. Ba loại ấy không có danh mục nên chỉ
+        // ngân sách TỔNG đổi số.
+        .where((t) => khoanVaoThongKe(loai: t.type, categoryId: t.categoryId, ghiChu: t.note))
         .where((t) => khoanThuocNganSach(categoryId, t))
         .toList();
   }

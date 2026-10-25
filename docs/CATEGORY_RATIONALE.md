@@ -35,7 +35,7 @@ Kết quả **đo ngay sau đợt ấy** (2026-09-03): `flutter test` từ **144
 
 Vùng danh mục là nơi nhiều lỗi nhất dự án. Không phải ngẫu nhiên — nó có hai đặc điểm mà cộng lại thì mọi sai sót đều **hỏng âm thầm**:
 
-**(a) Tên đang bị dùng làm khoá nối giữa hai phía.** Backend sinh ID danh mục mặc định bằng `crypto.randomUUID()`, client thì seed id dạng `cat_food`. Hai bên không có khoá chung nào, nên `_resolveCategoryId` phải dò theo **tên**. Bất kỳ khác biệt nào về dấu, hoa/thường, dạng Unicode hay danh sách seed đều làm ánh xạ trượt.
+**(a) Tên đang bị dùng làm khoá nối giữa hai phía.** Backend sinh ID danh mục mặc định bằng `crypto.randomUUID()`, client thì seed id dạng `cat_food`. Hai bên không có khoá chung nào, nên `resolveCategoryId` (`core/sync/uuid_dong_bo.dart`; trước 2026-10-19 là `SyncEngine._resolveCategoryId`) phải dò theo **tên**. Bất kỳ khác biệt nào về dấu, hoa/thường, dạng Unicode hay danh sách seed đều làm ánh xạ trượt.
 
 **(b) Danh mục mặc định là hàng dùng chung.** Nó không thuộc về ai (`Create_by = 1` ở backend, `idaccount = 0` ở client), nên mọi quy tắc "theo từng người dùng" đều phải có một vế riêng cho nó.
 
@@ -84,7 +84,7 @@ Trong cùng một dự án có **ba biến thể so tên** cùng tồn tại:
 | `_normalize` trong repository | `trim().toLowerCase()` + gom khoảng trắng |
 | **`CategoryDao.getByName`** | **`t.name.equals(name)` — không chuẩn hoá gì** |
 
-`getByName` là hàm `_resolveCategoryId` dùng để ánh xạ danh mục mặc định cục bộ sang UUID backend. Nó nằm **đúng trên đường đồng bộ**, và so phân biệt hoa/thường: lệch một chữ hoa là ánh xạ trượt, trả `null`, giao dịch bị hoãn đẩy **vĩnh viễn**. Đó chính là lớp lỗi 11.4 và 11.6, chỉ đợi một lần lệch tên là tái phát.
+`getByName` là hàm `resolveCategoryId` dùng để ánh xạ danh mục mặc định cục bộ sang UUID backend. Nó nằm **đúng trên đường đồng bộ**, và so phân biệt hoa/thường: lệch một chữ hoa là ánh xạ trượt, trả `null`, giao dịch bị hoãn đẩy **vĩnh viễn**. Đó chính là lớp lỗi 11.4 và 11.6, chỉ đợi một lần lệch tên là tái phát.
 
 ### Vì sao thêm bước gộp Unicode NFC
 
@@ -122,7 +122,7 @@ Chi phí làm bây giờ gần như bằng không: dữ liệu mặc định tr�
 | Chỉ có ở client | 8 |
 | Chỉ có ở backend | 3 |
 
-Vì danh mục mặc định được ánh xạ **bằng tên**, 8 mục chỉ có ở client không tìm được bản UUID nào → `_resolveCategoryId` trả `null` → **mọi giao dịch dùng chúng bị hoãn đẩy vĩnh viễn**.
+Vì danh mục mặc định được ánh xạ **bằng tên**, 8 mục chỉ có ở client không tìm được bản UUID nào → `_resolveCategoryId` (nay `resolveCategoryId`) trả `null` → **mọi giao dịch dùng chúng bị hoãn đẩy vĩnh viễn**.
 
 Trong 8 mục đó có `Chi khác` và `Thu khác` — thứ người dùng bấm khi không có mục nào hợp, tức **đường hay đi nhất lại đang là đường hỏng** — cùng `Trả nợ` và `Thu nợ`, một nửa nghiệp vụ vay nợ.
 
@@ -145,7 +145,7 @@ Chuyển chủ sở hữu giải quyết trọn vẹn: bộ **mặc định** c�
 
 ### Một chi tiết suýt làm hỏng cả cách sửa
 
-Ban đầu định chuyển tại chỗ, giữ nguyên id `cat_other_chi` cho khỏi phải repoint. Nhưng `_resolveCategoryId` chỉ chấp nhận danh mục **không phải mặc định** khi id là **UUID hợp lệ**:
+Ban đầu định chuyển tại chỗ, giữ nguyên id `cat_other_chi` cho khỏi phải repoint. Nhưng `_resolveCategoryId` (nay `resolveCategoryId`; đoạn mã dưới là bản lúc đó) chỉ chấp nhận danh mục **không phải mặc định** khi id là **UUID hợp lệ**:
 
 ```dart
 if (!localCategory.isDefault) {
@@ -760,7 +760,7 @@ Ghi lại để người sau không mất công đề xuất lại:
 | Đếm bản sao **theo tài khoản** thay vì theo từng danh mục (2026-09-07) | Tài khoản đã có sẵn danh mục riêng sẽ bị từ chối seed, trong khi bản mặc định của nó đã bị ẩn — nó còn lại đúng vài danh mục |
 | Đếm bản sao **bỏ qua hàng đã xoá mềm** (2026-09-07) | Chính là `ensureMissing()` cũ, tức tái hiện nguyên vẹn G16 |
 | Xoá hẳn 5 mục backend không có | Tái hiện lỗi 11.6 hàng loạt; mất cả hai mục "Khác" và một nửa nghiệp vụ vay nợ; giao dịch cũ không có đích để chuyển sang |
-| Chuyển 5 mục tại chỗ, giữ id `cat_*` | `_resolveCategoryId` từ chối danh mục người dùng có id không phải UUID → giao dịch vẫn kẹt |
+| Chuyển 5 mục tại chỗ, giữ id `cat_*` | `_resolveCategoryId` (nay `resolveCategoryId`) từ chối danh mục người dùng có id không phải UUID → giao dịch vẫn kẹt |
 | Giữ mỗi nhóm là một không gian tên riêng | PostgreSQL không có `Idgroup` trong unique index nên vẫn chặn — client cho tạo rồi đẩy lên mới vỡ |
 | Chỉ chuẩn hoá chữ thường, chưa cần NFC | Siết chặt về sau đắt hơn hẳn: dữ liệu đang tồn tại sẽ vi phạm và `CREATE UNIQUE INDEX` thất bại |
 | Chặn tuyệt đối cả khi sửa | Người dùng có dữ liệu cũ sẽ không sửa nổi danh mục đó nữa, kể cả chỉ đổi icon |

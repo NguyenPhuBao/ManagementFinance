@@ -121,10 +121,10 @@ void main() {
       expect(r.ngay, DateTime(2026, 9, 5));
     });
 
-    test('⚠️ số chữ mơ hồ → không điền, kèm cảnh báo — không bao giờ bịa số', () {
+    test('⚠️ số chữ mơ hồ → không điền — không bao giờ bịa số', () {
       final r = doc('một triệu hai tiền sách');
       expect(r.soTien, isNull, reason: '"một triệu hai" là 1.200.000 hay 1.000.000 + chữ khác — không chắc thì không điền');
-      expect(r.canhBao, isNotEmpty);
+      expect(r.luaChonSoTien, [1000000.0, 1200000.0], reason: 'G104 (2026-10-23): hai cách đọc thành hai chip');
       final r2 = doc('mấy trăm nghìn tiền chợ');
       expect(r2.soTien, isNull);
       expect(r2.canhBao, isNotEmpty);
@@ -379,7 +379,7 @@ void main() {
       expect(r.soTien, 1200000);
       expect(r.canhBao, isNot(contains(kCanhBaoSoChuChuaRo)));
       expect(r.quaAi, isFalse, reason: 'luật thắng AI ở ô luật đã đọc được');
-      expect(luat.soTienCanKiem, isTrue);
+      expect(luat.soTienDangNoi, isTrue);
     });
 
     test('loại: AI "chi" / "thu" được dùng; câu có nợ / vay → null như luật', () {

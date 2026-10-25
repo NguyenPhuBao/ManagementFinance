@@ -12,10 +12,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../ai_edge/data/slm_runtime.dart';
+import '../../ai_edge/data/datasources/slm_runtime.dart';
+import '../../ai_edge/data/huy_luot.dart';
 import '../domain/doc_anh_gemma.dart';
 
 /// Đo Realme 2026-10-08 (CPU, Mali): 21–42 s một ảnh; GPU OnePlus 3,7–11 s. Trần rộng gấp đôi lượt chậm nhất đã đo.
+/// Tính cả lúc runtime chờ lượt đọc ảnh trước bị bỏ (bẫy 4.60; trần `kTranChoLuotCu` 20 s, ngắn hơn trần này — lượt chờ
+/// quá lâu tự ném trước khi trần này tới).
 const Duration kThoiHanDocAnhGemma = Duration(seconds: 90);
 
 class DocAnhBangGemma {
@@ -41,8 +44,11 @@ class DocAnhBangGemma {
     final dongHo = Stopwatch()..start();
     try {
       if (!await sanSang() || luot != _luot) return null;
-      final tho = await moHinh.docAnh(await duongTep(), kPromptMonTong, anh).timeout(thoiHan, onTimeout: () async {
-        await moHinh.huy();
+      final the = HuyLuot();
+      final tho =
+          await moHinh.docAnh(await duongTep(), kPromptMonTong, anh, huyLuot: the).timeout(thoiHan, onTimeout: () {
+        // Dừng ĐÚNG lượt này — `huy()` toàn cục tăng bộ đếm chung của `BoNapMoHinh`, bỏ oan lượt khác đang chờ (bẫy 4.60).
+        the.huy();
         throw TimeoutException('đọc ảnh quá ${thoiHan.inSeconds} s');
       });
       if (luot != _luot) return null;
@@ -58,7 +64,8 @@ class DocAnhBangGemma {
     }
   }
 
-  /// Người dùng bấm Huỷ: lượt đang chạy trả `null`, engine thôi giải mã.
+  /// Người dùng bấm Huỷ: lượt đang chạy trả `null`, engine thôi giải mã. Huỷ của người dùng là `huy()` TOÀN CỤC (muốn AI
+  /// dừng hẳn — kể cả lượt đang chờ / đang nạp); chỉ lối hết giờ mới đi bằng thẻ của lượt.
   Future<void> huy() async {
     _luot++;
     await moHinh.huy();

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/goal_entity.dart';
+import '../../domain/goal_forecast.dart';
 
 /// Câu mô tả hạn chót: đếm ngược, hoặc nói rõ đã quá bao lâu.
 ///
@@ -33,13 +34,7 @@ String moTaHanChot(GoalEntity goal, DateTime now) {
 String moTaTrichTuDong(GoalEntity goal, {required String? tenViNguon}) {
   if (!goal.autoDepositEnabled) return 'Đang tắt';
 
-  final nhip = switch (goal.cycleTakeMoney) {
-    'Day' => 'mỗi ngày',
-    'Week' => 'mỗi tuần',
-    'Quarter' => 'mỗi quý',
-    'Year' => 'mỗi năm',
-    _ => 'mỗi tháng',
-  };
+  final nhip = nhanNhipChuKy(goal.cycleTakeMoney);
 
   final soTien = CurrencyFormatter.format(goal.autoDepositAmount ?? 0);
   return tenViNguon == null
@@ -94,7 +89,7 @@ class GoalConfigCard extends StatelessWidget {
           _Dong(
             icon: Icons.event_outlined,
             nhan: 'Hạn chót',
-            giaTri: DateFormat('dd/MM/yyyy').format(goal.targetDate),
+            giaTri: DateFormatter.formatDate(goal.targetDate),
             phu: moTaHanChot(goal, moc),
           ),
           const _VachNgan(),

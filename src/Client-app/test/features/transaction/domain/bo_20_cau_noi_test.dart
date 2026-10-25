@@ -25,7 +25,7 @@ void main() {
     makeCategory(id: 'thuong', name: 'Thưởng', classify: 'thu', isDefault: true),
   ];
 
-  // (số câu, dạng chữ, dạng chữ số, số tiền, cần kiểm ở dạng chữ, cần kiểm ở dạng số, kiểm thêm)
+  // (số câu, dạng chữ, dạng chữ số, số tiền, đọc bằng dạng nói ở dạng chữ / ở dạng số — `soTienDangNoi`, kiểm thêm)
   final bang = <(int, String, String, double, bool, bool, void Function(KetQuaDocCau))>[
     (1, 'Ăn phở bốn mươi lăm nghìn', 'Ăn phở 45.000', 45000, false, false, (_) {}),
     (2, 'Cà phê hai mươi lăm nghìn', 'Cà phê 25.000', 25000, false, false, (_) {}),
@@ -155,7 +155,7 @@ void main() {
       test('câu $so ($dang): "$cau"', () {
         final k = docCauGiaoDich(cau, now: now, vi: vi, chonDuoc: dm);
         expect(k.soTien, tien);
-        expect(k.soTienCanKiem, kiem);
+        expect(k.soTienDangNoi, kiem);
         if (k.soTien != null) {
           expect(cachDocSoTien(cau, now: now), contains(k.soTien), reason: 'bất biến kiểm chéo: số luật ∈ cách đọc');
         }

@@ -74,6 +74,16 @@ class ReminderScheduler {
 
   final DateTime Function() clock;
 
+  /// Lượt [resync] đầu tiên của bộ đặt lịch này — tức của TIẾN TRÌNH, vì DI giữ một bản — đã chạy xong chưa.
+  ///
+  /// Plugin giữ danh sách lịch trong SharedPreferences (thứ `pendingIds` đọc), còn báo thức thật nằm trong
+  /// AlarmManager. Force-stop (Cài đặt → Buộc dừng; ColorOS gỡ task ở một số trạng thái) xoá báo thức mà không
+  /// đụng danh sách, và không phát broadcast nào để plugin đặt lại — đo Realme 2026-10-24: sau force-stop còn 0 báo
+  /// thức, mở app quét xong vẫn 0, danh sách vẫn đủ. Lượt thường thấy "đã chờ" thì bỏ qua, mà khoá lịch hoá đơn
+  /// không đổi giữa các lượt quét, nên lịch ấy mất hẳn. Lượt đầu vì thế đặt lại cả lịch "đã chờ" (không huỷ trước,
+  /// không ghi `dat_lich` — cùng khoá cùng mốc là một lần tới máy).
+  bool _daKhoiPhuc = false;
+
   /// Chỉ đặt lịch cho hoá đơn tới hạn trong khoảng này.
   ///
   /// Khớp `NotificationScanner.cuaSoSuKien` để hai đường không nói hai chuyện
@@ -104,7 +114,8 @@ class ReminderScheduler {
   ///
   /// **Luỹ đẳng.** Gọi sau mỗi lần ghi hoá đơn và sau mỗi lần pull — tức là rất
   /// nhiều lần. Chỉ đặt cái chưa có và chỉ huỷ cái không còn cần: huỷ-rồi-đặt-
-  /// lại toàn bộ ở mỗi lượt là mỗi lượt thêm một cơ hội để lịch rơi mất.
+  /// lại toàn bộ ở mỗi lượt là mỗi lượt thêm một cơ hội để lịch rơi mất. Ngoại
+  /// lệ duy nhất là lượt ĐẦU của tiến trình — xem [_daKhoiPhuc].
   ///
   /// [datLai] (G59, 2026-09-29): huỷ rồi đặt lại **những lịch đang chờ mà vẫn
   /// được muốn**. Cần vì khoá lịch không chứa giờ — cùng khoá là cùng id — nên
@@ -227,7 +238,7 @@ class ReminderScheduler {
         prefs.batNhom(NotificationGroup.goal)) {
       for (final g in await tai(idaccount, at)) {
         if (g.isDeleted || !g.autoDepositEnabled) continue;
-        if (g.isCompleted || g.remainingAmount <= 0) continue;
+        if (g.daHoanThanh) continue;
 
         final ky = kyKeTiep(
           mocNeo: g.timeCycleTakeMoney,
@@ -379,8 +390,11 @@ class ReminderScheduler {
       await osNotifier.cancel(id);
     }
 
+    // Lượt khôi phục ([_daKhoiPhuc]) đặt lại cả lịch "đã chờ" — cùng id thay chỗ, không huỷ trước.
+    final khoiPhuc = !_daKhoiPhuc;
     for (final entry in mongMuon.entries) {
-      if (dangCho.contains(entry.key) && !datLai) continue;
+      final daCho = dangCho.contains(entry.key);
+      if (daCho && !datLai && !khoiPhuc) continue;
       final l = entry.value;
       await osNotifier.zonedSchedule(
         id: l.id,
@@ -389,12 +403,15 @@ class ReminderScheduler {
         when: l.when,
         payload: l.khoa,
       );
-      if (coQuyen) {
+      // Khôi phục không phải một lần đặt mới: `dat_lich` thứ hai cùng khoá là B5b đếm hai lần "tới máy".
+      if (coQuyen && (!daCho || datLai)) {
         await nhatKy?.ghi(l.khoa, SuKienThongBao.datLich,
             idaccount: idaccount, luc: l.when, osId: l.id);
       }
     }
 
+    // Chỉ đánh dấu khi chạy TRỌN: lượt hỏng giữa chừng (ném) để lượt sau khôi phục lại.
+    _daKhoiPhuc = true;
     return mongMuon.length;
   }
 }

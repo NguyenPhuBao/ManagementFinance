@@ -240,4 +240,9 @@ void main() {
       );
     });
   });
+
+  test('kChuKyHoaDon: bốn chu kỳ theo thứ tự hiển thị, mỗi chu kỳ có nhãn riêng (không rơi về mã thô)', () {
+    expect(kChuKyHoaDon, [kBillCycleWeek, kBillCycleMonth, kBillCycleQuarter, kBillCycleYear]);
+    expect([for (final c in kChuKyHoaDon) tenChuKyHoaDon(c)], ['Hàng tuần', 'Hàng tháng', 'Hàng quý', 'Hàng năm']);
+  });
 }

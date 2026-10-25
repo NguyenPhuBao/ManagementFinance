@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../khoa_app/presentation/bloc/khoa_app_cubit.dart';
+import '../../../khoa_app/presentation/bloc/khoa_app_state.dart';
 import 'vung_nguy_hiem_card.dart';
 
 /// Thân trang Cài đặt — **định nghĩa duy nhất**, dùng chung bởi tab Cá nhân và
@@ -98,6 +100,13 @@ class NoiDungCaiDat extends StatelessWidget {
             title: 'Đổi mật khẩu',
             onTap: () => context.push('/settings/change-password'),
           ),
+          const Divider(height: 1, color: AppColors.outlineVariant),
+          _mucHanhDong(
+            icon: Icons.phonelink_lock,
+            title: 'Khoá ứng dụng',
+            trangThai: const _NhanKhoaApp(),
+            onTap: () => context.push('/settings/khoa-app'),
+          ),
           // Hai mục "Bảo mật 2 yếu tố (MFA)" và "Đồng bộ dữ liệu Cloud" đã gỡ
           // 2026-09-19: cả hai là `onTap: () {}` với công tắc luôn bật và dấu
           // tick luôn xanh — hứa hai tính năng không tồn tại. Đồng bộ thì app
@@ -111,6 +120,7 @@ class NoiDungCaiDat extends StatelessWidget {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    Widget? trangThai,
   }) {
     return InkWell(
       onTap: onTap,
@@ -126,10 +136,37 @@ class NoiDungCaiDat extends StatelessWidget {
                 style: const TextStyle(fontSize: 16, color: AppColors.primary),
               ),
             ),
+            if (trangThai != null) ...[trangThai, const SizedBox(width: 8)],
             const Icon(Icons.chevron_right, color: AppColors.textSecondary),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Đang bật" (xanh) khi khoá app bật. Không có `KhoaAppCubit` (widget test dựng thẻ trần) → không hiện gì.
+class _NhanKhoaApp extends StatelessWidget {
+  const _NhanKhoaApp();
+
+  @override
+  Widget build(BuildContext context) {
+    KhoaAppCubit? cubit;
+    try {
+      cubit = BlocProvider.of<KhoaAppCubit>(context);
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
+    return BlocBuilder<KhoaAppCubit, TrangThaiKhoaApp>(
+      bloc: cubit,
+      builder: (context, s) => s is KhoaAppMo && s.daBat
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(999)),
+              child: const Text('Đang bật',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF006E1C))),
+            )
+          : const SizedBox.shrink(),
     );
   }
 }

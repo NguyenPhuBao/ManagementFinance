@@ -27,7 +27,6 @@ import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/core/auth/phien_dieu_phoi_that.dart';
 import 'package:flowmoney/features/transaction/data/datasources/kho_anh_quet.dart';
 import 'package:flowmoney/features/auth/presentation/state/an_the_cho_xoa.dart';
-import 'package:flowmoney/features/category/application/default_category_seeder.dart';
 import 'package:flowmoney/features/category/application/personal_default_categories.dart';
 import 'package:flowmoney/features/wallet/application/default_account_data_initializer.dart';
 import 'package:flowmoney/features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
@@ -172,15 +171,11 @@ void main() {
       boQuet: sl.isRegistered<NotificationScanner>() ? sl<NotificationScanner>() : null,
       interceptor: sl.isRegistered<AuthInterceptor>() ? sl<AuthInterceptor>() : null,
       donTaiKhoanKhac: db.purgeDataForOtherAccounts,
-      xoaBanSao: db.purgeDataForAccount,
       xoaCacheSlm: () async {
         if (sl.isRegistered<SlmCache>()) await sl<SlmCache>().xoaHet();
       },
       chuyenHangSeedCu: sl.isRegistered<PersonalDefaultCategories>()
           ? (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id)
-          : null,
-      taoBanSaoDanhMuc: sl.isRegistered<DefaultCategorySeeder>()
-          ? (id) => sl<DefaultCategorySeeder>().seedForAccount(id)
           : null,
       seedTaiKhoanMoi: sl.isRegistered<DefaultAccountDataInitializer>()
           ? (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id)

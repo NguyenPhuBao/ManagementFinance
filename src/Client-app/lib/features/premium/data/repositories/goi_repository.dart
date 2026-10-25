@@ -21,7 +21,8 @@ typedef PhienGoi = ({int idaccount, String? loaiPhien});
 /// - Kho thắng `type` của phiên khi cả hai có (giới hạn 15.2 của spec).
 /// - Hai [lamMoi] chồng nhau dùng chung một `Future`.
 /// - Ba nguồn làm mới nối ở `main.dart` (6.4): phiên · `resumed` giãn 5 phút ·
-///   socket `account.upgraded` ngay (tín hiệu, không đọc payload).
+///   socket `account.upgraded` / `account.downgraded` ngay (tín hiệu, không đọc payload). Thêm 403 `FEATURE_DISABLED`
+///   qua hook của interceptor trạng thái máy chủ (G89 mục 6.2, DI).
 class GoiRepository {
   GoiRepository({
     required PaymentApi api,
@@ -135,10 +136,10 @@ class GoiRepository {
     }));
   }
 
-  /// `account.upgraded` là TÍN HIỆU — không đọc payload, hỏi lại API ngay.
+  /// `account.upgraded` và `account.downgraded` là TÍN HIỆU — không đọc payload, hỏi lại API ngay.
   void noiSuKien(Stream<RealtimeEvent> suKien) {
     _subs.add(suKien.listen((e) {
-      if (e == RealtimeEvent.taiKhoanNangCap) unawaited(lamMoi());
+      if (e == RealtimeEvent.taiKhoanNangCap || e == RealtimeEvent.taiKhoanHaCap) unawaited(lamMoi());
     }));
   }
 

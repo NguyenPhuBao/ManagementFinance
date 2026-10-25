@@ -1,0 +1,493 @@
+// lib/features/ai_edge/data/datasources/slm_runtime.dart
+/// Tệp **DUY NHẤT** của dự án được import `flutter_gemma` — test quét thứ 16
+/// canh (cùng khuôn `realtime_socket.dart`).
+///
+/// Mọi chỗ khác nhận [SlmRuntime], một giao diện thuần, nên test dựng được bản
+/// giả mà không cần máy arm64 — và `flutter test` chạy trên x86_64 của máy
+/// phát triển.
+library;
+
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
+
+import '../../domain/canary_cong_cu.dart';
+import '../../domain/canary_gpu.dart';
+import '../../domain/cong_cu.dart';
+import '../../domain/nap_da_phuong_thuc.dart';
+import '../bo_nap_mo_hinh.dart';
+import '../gop_luot_dung.dart';
+import '../huy_luot.dart';
+import '../luot_khong_ngat_duoc.dart';
+import 'phien_cong_cu.dart';
+
+/// Hạn chờ `stopGeneration()` native. Nếu nó treo, `huy()` vẫn trả về (nuốt lỗi + log) — nếu không, hàng đợi chép lời
+/// (singleton), Huỷ của Cubit và `close()` đều kẹt vĩnh viễn (review toàn nhánh C4, I1).
+const Duration kHanDungSinh = Duration(seconds: 2);
+
+/// Runtime mô hình. Ba trạng thái: chưa nạp, đang sẵn, đã đóng.
+abstract class SlmRuntime {
+  bool get dangSan;
+
+  /// Nạp mô hình từ [duongTep]. Ném khi máy không chạy được — người gọi bắt và
+  /// rơi về mẫu câu.
+  Future<void> moHinhSan(String duongTep);
+
+  Future<String> sinh(String prompt, {int tranToken});
+
+  /// Sinh **dần**: phát từng token khi mô hình viết. Dùng cho màn Trợ lý AI
+  /// (việc số 1, 2026-09-22) — người gọi gác theo câu (`gacTheoCau`) chứ
+  /// không hiện thẳng token: bộ kiểm chỉ có nghĩa trên câu đầy đủ.
+  Stream<String> sinhDan(String prompt, {int tranToken});
+
+  /// Mở một PHIÊN hội thoại có tool (chặng 4b). [heThong] đi bằng system
+  /// instruction native của LiteRT-LM; [cauHoi] là tin người dùng đã xếp vào
+  /// phiên. Ném `StateError` khi mô hình chưa nạp — người gọi bắt và rơi về
+  /// câu "không chạy được" (L4). Ném `BacCongCuDaTat` khi máy này từng sập
+  /// native ở phiên có tool (canary 1b) — người gọi rơi về bậc 1 (L1).
+  Future<PhienCongCu> moPhien({
+    required String heThong,
+    required String cauHoi,
+    required List<KhaiBaoCongCu> congCu,
+  });
+
+  /// Dừng lượt sinh đang chạy (engine native thôi giải mã). Không có lượt nào
+  /// đang chạy thì im lặng. Đây là Huỷ của NGƯỜI DÙNG: bản thật còn bỏ mọi lượt
+  /// đang chờ lượt đọc ảnh cũ / đang nạp (bộ đếm chung, `moc`). Hết giờ của một
+  /// lượt thì đi bằng thẻ `HuyLuot` của lượt ấy, không qua đây (bẫy 4.60).
+  Future<void> huy();
+
+  Future<void> dong();
+}
+
+/// Mô hình NHÌN ẢNH (A5 mục 13 — đọc hoá đơn). Giao diện riêng, không gộp vào [SlmRuntime]: chỉ màn Quét cần, và bản
+/// giả của [SlmRuntime] trong test không phải mang thêm một hàm.
+abstract class SlmDocAnh {
+  /// Sinh MỘT câu từ [prompt] kèm [anh]. Cần bản CÓ CẢ cờ ảnh lẫn âm thanh (`quyetDinhNap`): đang nạp bản thiếu cờ thì
+  /// đóng một lần rồi nạp bản đủ cờ, GIỮ bản ấy (đóng / nạp lại nhiều lần làm driver GPU sập native, xem thân hàm).
+  /// Ném khi máy không chạy được, hoặc [LuotNapBiHuy] nếu huỷ lúc đang nạp. [huyLuot]: thẻ của RIÊNG lượt này — lớp bọc
+  /// hết giờ huỷ thẻ thì runtime dừng đúng chat của lượt, không qua [huy] toàn cục (bẫy 4.60).
+  Future<String> docAnh(String duongTep, String prompt, Uint8List anh, {HuyLuot? huyLuot});
+
+  /// Dừng lượt đọc đang chạy — lượt ấy trả về phần chữ đã sinh (thường rỗng); đang nạp mô hình thì lượt ấy bị bỏ.
+  Future<void> huy();
+}
+
+/// Mô hình NGHE âm thanh (C4 — chép lời khi mất mạng). Giao diện riêng như [SlmDocAnh]: bản giả của [SlmRuntime] trong
+/// test không phải mang thêm một hàm.
+abstract class SlmChepLoi {
+  /// Chép lời [wav] (WAV 16 kHz mono) theo [prompt]. Nạp bản đa phương thức nếu cần, rồi GIỮ. Ném khi máy không chạy được.
+  /// [huyLuot]: như [SlmDocAnh.docAnh].
+  Future<String> chepLoi(String duongTep, String prompt, Uint8List wav, {HuyLuot? huyLuot});
+
+  Future<void> huy();
+}
+
+class SlmRuntimeThat implements SlmRuntime, SlmDocAnh, SlmChepLoi {
+  /// Dấu canary GPU — `null` chỉ trong test; đường thật luôn có (DI).
+  final CanaryGpu? canary;
+
+  /// Dấu canary của phiên có tool (bước 1b) — `null` chỉ trong test.
+  final CanaryCongCu? canaryCongCu;
+
+  /// G100 — báo native tiến trình đang giữ một bản mô hình (`KenhGiuMoHinh.dat`); `null` chỉ trong test.
+  final Future<void> Function(bool giu)? baoGiuMoHinh;
+
+  SlmRuntimeThat({this.canary, this.canaryCongCu, this.baoGiuMoHinh});
+
+  InferenceModel? _model;
+  bool _daKhoiTao = false;
+
+  /// Phiên chat của lượt `sinhDan` đang chạy — để `huy()` có chỗ để dừng.
+  InferenceChat? _chatDangSinh;
+
+  @override
+  bool get dangSan => _model != null;
+
+  /// Tuần tự hoá + huỷ trong pha nạp + cờ ảnh / âm của bản đang nạp; luật nạp ở `quyetDinhNap`.
+  late final BoNapMoHinh _boNap = BoNapMoHinh(
+    coMoHinh: () => _model != null,
+    dong: dong,
+    nap: (duongTep, {required anh, required am}) => _nap(duongTep, anh: anh, am: am),
+    baoGiu: baoGiuMoHinh,
+  );
+
+  /// Lượt đọc ảnh đang chạy — `huy()` KHÔNG ngắt được nó tức thì (Realme CPU 2026-10-21: ~5 s), mà màn Quét đã sang form
+  /// ngay khi người dùng bấm Huỷ (người dùng duyệt 2026-10-22). Năm lối SINH ([sinh], [sinhDan], [moPhien], [chepLoi],
+  /// [docAnh]) chờ nó trước khi tạo phiên chat: một bản mô hình, hai lượt chồng nhau trên engine là vùng chưa đo. ⚠️ [huy]
+  /// không chờ (Huỷ sẽ kẹt), [dong] / [moHinhSan] không chờ (`docAnh` → `_boNap.can` → [dong] là khoá chết). Lượt cũ quá
+  /// `kTranChoLuotCu` → lối sinh ném `LuotCuChuaXong` (người gọi rơi về luật / mẫu câu như mọi lỗi mô hình). Cả năm lối ghi
+  /// `moc` TRƯỚC khi chờ: [huy] (người dùng) trong lúc chờ là bỏ lượt — `docAnh` / `chepLoi` qua `_boNap.can`, ba lối chữ tự
+  /// kiểm ngay sau khi chờ; cả năm xét lại ngay sau `createChat` (Huỷ tới lúc đang tạo chat thì [huy] chưa có gì để dừng —
+  /// khe Huỷ, 2026-10-22). Nối dây canh bằng đọc mã ở `luot_khong_ngat_duoc_test`.
+  final LuotKhongNgatDuoc _luotAnh = LuotKhongNgatDuoc();
+
+  @override
+  Future<void> moHinhSan(String duongTep) => _boNap.can(CanMoHinh.chu, duongTep);
+
+  @override
+  Future<String> docAnh(String duongTep, String prompt, Uint8List anh, {HuyLuot? huyLuot}) async {
+    // ⚠️ KHÔNG đóng mô hình sau khi đọc: OnePlus 13R (Adreno, GPU) 2026-10-08 SẬP NATIVE (SIGSEGV trong
+    // `gl_release_context` ← `LiteRtDestroyEnvironment`) ở lần ĐÓNG thứ hai trong cùng một tiến trình — quét lần 1
+    // nạp bản ảnh rồi đóng, lần chọn danh mục nạp bản chữ, quét lần 2 đóng bản chữ để nạp bản ảnh → sập. Nên bản có
+    // ảnh được GIỮ: lần chọn danh mục (phiên chữ có tool) và các đường chữ khác dùng luôn nó; một tiến trình đóng
+    // nhiều nhất một lần (khi bản đang nạp là bản chữ của Trợ lý / Nhập nhanh).
+    // Luật chung với chepLoi: `quyetDinhNap` (C4).
+    // `moc` ghi TRƯỚC khi chờ lượt cũ: Huỷ trong lúc chờ thì `can` ném `LuotNapBiHuy`, lượt này không chạy.
+    final moc = _boNap.moc;
+    return _luotAnh.chay(() async {
+      await _boNap.can(CanMoHinh.anh, duongTep, moc: moc);
+      // Lớp bọc đã hết giờ trong lúc chờ / nạp: bỏ lượt, không tạo chat — không đụng bộ đếm chung (bẫy 4.60).
+      if (huyLuot?.daHuy ?? false) throw const LuotNapBiHuy();
+      final dongHo = Stopwatch()..start();
+      // Nhiệt độ 0,2 như lượt đo (Gemma ra y hệt 3/3 lần mỗi ảnh) — đổi là phải đo lại.
+      final chat = await _model!.createChat(temperature: 0.2, supportImage: true);
+      final taoChat = dongHo.elapsedMilliseconds;
+      // Huỷ / hết giờ tới trong lúc tạo chat: `huy()` khi ấy chưa có chat để dừng — bỏ lượt TRƯỚC khi gửi ảnh, nếu không
+      // lượt chạy trọn (23–56 s Realme CPU) và giữ chỗ (khe Huỷ, 2026-10-22). Xét cùng microtask với lúc gán `_chatDangSinh`.
+      if (_boNap.moc != moc || (huyLuot?.daHuy ?? false)) {
+        debugPrint('[SLM][anh] bỏ lượt — Huỷ / hết giờ tới lúc đang tạo chat ($taoChat ms)');
+        throw const LuotNapBiHuy();
+      }
+      _chatDangSinh = chat;
+      // Hết giờ của lớp bọc dừng CHÍNH chat này — kể cả thẻ đã huỷ lúc đang tạo chat (tín hiệu vẫn tới người nghe muộn).
+      unawaited(huyLuot?.tin.then((_) => _dungChat(chat)));
+      await chat.addQueryChunk(Message.withImage(text: prompt, imageBytes: anh, isUser: true));
+      final cau = StringBuffer();
+      try {
+        // Đường dần (không `generateChatResponse`) để `huy()` có `stopGeneration` mà gọi.
+        await for (final r in chat.generateChatResponseAsync()) {
+          if (r is TextResponse) cau.write(r.token);
+        }
+      } finally {
+        if (identical(_chatDangSinh, chat)) _chatDangSinh = null;
+      }
+      // `tạo chat` = độ dài khe Huỷ ở trên (đo 2026-10-22 để biết khe thật).
+      debugPrint('[SLM][anh] đọc ảnh xong sau ${dongHo.elapsedMilliseconds} ms '
+          '(tạo chat $taoChat ms; ảnh ${anh.length} byte → ${cau.length} ký tự)');
+      return cau.toString().trim();
+    });
+  }
+
+  @override
+  Future<String> chepLoi(String duongTep, String prompt, Uint8List wav, {HuyLuot? huyLuot}) async {
+    final moc = _boNap.moc;
+    await _luotAnh.cho();
+    await _boNap.can(CanMoHinh.am, duongTep, moc: moc);
+    // Như `docAnh`: thẻ của lượt đã huỷ (lớp bọc hết giờ) thì bỏ, không tạo chat.
+    if (huyLuot?.daHuy ?? false) throw const LuotNapBiHuy();
+    final dongHo = Stopwatch()..start();
+    // Nhiệt độ 0,2 như spike C4 (2026-10-01) — đổi là phải đo lại.
+    final chat = await _model!.createChat(temperature: 0.2, supportAudio: true);
+    // Như `docAnh`: Huỷ / hết giờ lúc đang tạo chat thì bỏ trước khi gửi âm thanh.
+    if (_boNap.moc != moc || (huyLuot?.daHuy ?? false)) {
+      debugPrint('[SLM][am] bỏ lượt — Huỷ / hết giờ tới lúc đang tạo chat');
+      throw const LuotNapBiHuy();
+    }
+    _chatDangSinh = chat;
+    unawaited(huyLuot?.tin.then((_) => _dungChat(chat)));
+    await chat.addQueryChunk(Message.withAudio(text: prompt, audioBytes: wav, isUser: true));
+    final cau = StringBuffer();
+    try {
+      await for (final r in chat.generateChatResponseAsync()) {
+        if (r is TextResponse) cau.write(r.token);
+      }
+    } finally {
+      if (identical(_chatDangSinh, chat)) _chatDangSinh = null;
+    }
+    debugPrint('[SLM][am] chép lời xong sau ${dongHo.elapsedMilliseconds} ms '
+        '(âm ${wav.length} byte → ${cau.length} ký tự)');
+    return cau.toString().trim();
+  }
+
+  Future<void> _nap(String duongTep, {bool anh = false, bool am = false}) async {
+    // `initialize` đăng ký engine — gọi một lần trong đời tiến trình.
+    if (!_daKhoiTao) {
+      await FlutterGemma.initialize(inferenceEngines: const [LiteRtLmEngine()]);
+      _daKhoiTao = true;
+    }
+
+    await FlutterGemma.installModel(
+      modelType: ModelType.gemma4,
+      fileType: ModelFileType.litertlm,
+    ).fromFile(duongTep).install();
+
+    // ⚠️ Máy không chạy được hỏng ở ĐÂY, không ở `install()` — P1 đo được:
+    // `install()` xong trong 265 ms trên máy ảo x86_64 rồi `getActiveModel`
+    // mới ném "require an arm64-v8a Android device (got android_x64)". Gói tự
+    // nêu tên ABI, nên không cần tự đọc ABI ở tầng nào cả.
+    //
+    // GPU trước, CPU sau: P1 đo GPU nhanh gấp rưỡi và tốn 1,73 → 0,96 GB RAM.
+    // Gói tự lùi về backend khác khi một backend ném lỗi — nhưng ⚠️ trên
+    // Mali (Dimensity 1100, đo 2026-09-22) delegate OpenCL **sập native**, thứ
+    // không ném gì cả; canary là cách duy nhất biết được điều ấy ở lần sau.
+    final dungCpu = await canary?.nenDungCpu() ?? false;
+    final dongHo = Stopwatch()..start();
+    await canary?.batDauThu();
+    try {
+      _model = await FlutterGemma.getActiveModel(
+        // ⚠️ Đây là trần cho **tổng** input + output, và nó là hằng của
+        // CLIENT chứ không phải giới hạn của Gemma 4 E2B.
+        //
+        // 1024 đủ cho tới chặng 4a, rồi vỡ ngay lượt đo đầu: gói số mang thêm
+        // danh sách có tên nên prompt hỏi đáp lên 2.276 ký tự = **1.084**
+        // token, và gói ném `INVALID_ARGUMENT: Input token ids are too long`
+        // — lỗi **cứng**, câu trả lời rỗng, không phải chỉ chậm đi. Cắt bớt
+        // dữ liệu để vừa trần cũ là cắt đúng thứ lát 4a thêm vào, nên trần
+        // được nới thay vì gói bị xén.
+        //
+        // 2048 → 4096 ở bước 2 (2026-09-23): bảy khai báo tool (`tools_json`
+        // 4.393 ký tự) cộng một phiên hai lời gọi (mục tiêu + chi tiêu) vượt
+        // trần 2048 trên Realme — lỗi lần này là `FAILED_PRECONDITION: Prefill
+        // input length exceeds available state entries`, **khác chuỗi** với
+        // bẫy 4.29 nhưng cùng một bệnh. Giá đo được trên Realme (CPU): RAM đỉnh
+        // `TOTAL PSS` 2,04 → 2,78 GB (+0,71 GiB) và swap của app 0 → 1,17 GB —
+        // **vượt** ngưỡng ≤ 0,5 GB của spec bước 2 mục 3.10; người dùng duyệt
+        // đích danh cho vượt (2026-09-23). Hạ trần lại là tái hiện lỗi trên.
+        maxTokens: 4096,
+        preferredBackend: dungCpu ? PreferredBackend.cpu : PreferredBackend.gpu,
+        // Hai cờ đa phương thức chỉ khác `null` khi docAnh / chepLoi nạp; đường chữ giữ nguyên lời gọi cũ.
+        supportImage: anh ? true : null,
+        supportAudio: am ? true : null,
+        maxNumImages: anh ? 1 : null,
+        preferredVisionBackend: anh ? (dungCpu ? PreferredBackend.cpu : PreferredBackend.gpu) : null,
+      );
+    } finally {
+      // Exception thường cũng dọn dấu: chỉ crash native (không chạy tới đây)
+      // mới để dấu lại.
+      await canary?.thuXong();
+    }
+    debugPrint('[SLM] nạp mô hình xong sau ${dongHo.elapsedMilliseconds} ms '
+        '(${dungCpu ? 'CPU — GPU máy này từng sập' : 'GPU'}${anh ? ' · ảnh' : ''}${am ? ' · âm thanh' : ''})');
+  }
+
+  @override
+  Future<String> sinh(String prompt, {int tranToken = 120}) async {
+    // `moc` như `docAnh` / `chepLoi`: [huy] (toàn cục) trong lúc chờ lượt đọc ảnh cũ → bỏ lượt, không tạo chat.
+    final moc = _boNap.moc;
+    await _luotAnh.cho();
+    if (_boNap.moc != moc) throw const LuotNapBiHuy();
+    final m = _model;
+    if (m == null) throw StateError('Mô hình chưa nạp');
+
+    // Mỗi câu một phiên chat mới: khối Nhận xét không có hội thoại, và giữ
+    // phiên cũ là để câu trước ảnh hưởng câu sau — thứ làm bộ kiểm số khó lần.
+    // Đồng hồ: chỗ DUY NHẤT đo được giá thật của một câu. Giữ lại sau P3 —
+    // mọi phép đo sau này (máy khác, mô hình khác, bậc thang khác) đều cần
+    // đúng con số này, và không có nó thì phải sửa mã mới đo lại được.
+    final dongHo = Stopwatch()..start();
+    final chat = await m.createChat(temperature: 0.2);
+    // Huỷ lúc đang tạo chat (như `docAnh`): bỏ trước khi gửi câu.
+    if (_boNap.moc != moc) {
+      debugPrint('[SLM] bỏ lượt sinh câu — Huỷ tới lúc đang tạo chat');
+      throw const LuotNapBiHuy();
+    }
+    await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
+    final r = await chat.generateChatResponse();
+    final cau = (r is TextResponse ? r.token : r.toString()).trim();
+    debugPrint('[SLM] sinh câu xong sau ${dongHo.elapsedMilliseconds} ms '
+        '(prompt ${prompt.length} ký tự → câu ${cau.length} ký tự)');
+    return cau;
+  }
+
+  @override
+  Stream<String> sinhDan(String prompt, {int tranToken = 300}) async* {
+    final moc = _boNap.moc;
+    await _luotAnh.cho();
+    if (_boNap.moc != moc) throw const LuotNapBiHuy();
+    final m = _model;
+    if (m == null) throw StateError('Mô hình chưa nạp');
+
+    // Cùng khuôn `sinh`: mỗi câu một phiên chat mới, và đồng hồ là chỗ duy
+    // nhất đo được giá thật. Thêm mốc **token đầu** — với streaming đó mới là
+    // con số người dùng cảm nhận, không phải tổng thời gian.
+    final dongHo = Stopwatch()..start();
+    final chat = await m.createChat(temperature: 0.2);
+    // Huỷ lúc đang tạo chat (như `docAnh`): bỏ trước khi gán `_chatDangSinh` và gửi câu.
+    if (_boNap.moc != moc) {
+      debugPrint('[SLM] bỏ lượt sinh dần — Huỷ tới lúc đang tạo chat');
+      throw const LuotNapBiHuy();
+    }
+    _chatDangSinh = chat;
+    await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
+    var tokenDau = -1;
+    var soKyTu = 0;
+    try {
+      // ⚠️ `stopGeneration()` chứ không `cancel()` subscription: gói ghi rõ
+      // chỉ `stopGeneration` mới tới được engine native trên mọi engine;
+      // huỷ subscription thì engine vẫn giải mã tiếp cho hết.
+      await for (final r in chat.generateChatResponseAsync()) {
+        if (r is! TextResponse) continue;
+        if (tokenDau < 0) tokenDau = dongHo.elapsedMilliseconds;
+        soKyTu += r.token.length;
+        yield r.token;
+      }
+    } finally {
+      _chatDangSinh = null;
+      debugPrint('[SLM] sinh dần xong sau ${dongHo.elapsedMilliseconds} ms '
+          '(token đầu $tokenDau ms; prompt ${prompt.length} ký tự → '
+          '$soKyTu ký tự)');
+    }
+  }
+
+  @override
+  Future<PhienCongCu> moPhien({
+    required String heThong,
+    required String cauHoi,
+    required List<KhaiBaoCongCu> congCu,
+  }) async {
+    // Huỷ của Nhập nhanh / C3 / danh mục quét tới đây qua `PhienMotLoiGoi.huy` → [huy] toàn cục.
+    final moc = _boNap.moc;
+    await _luotAnh.cho();
+    if (_boNap.moc != moc) throw const LuotNapBiHuy();
+    final m = _model;
+    if (m == null) throw StateError('Mô hình chưa nạp');
+
+    // Canary 1b (bẫy 4.33): máy này từng sập native ở phiên có tool — và lần
+    // thoát ấy được Android xác nhận là sập, không phải bị giết — thì không mở
+    // phiên nữa. Vòng lặp nhận lỗi này và đi bậc 1, im lặng.
+    if (await canaryCongCu?.daTat() ?? false) throw const BacCongCuDaTat();
+
+    final tools = [
+      for (final k in congCu)
+        Tool(name: k.ten, description: k.moTa, parameters: k.thamSo),
+    ];
+    // Đo cho bẫy 4.29 / 4.39: khai báo tool do runtime native dựng từ tools_json
+    // cũng chiếm ngữ cảnh, và trần maxTokens là trần TỔNG. `toolsJsonCua` là định
+    // nghĩa duy nhất của chuỗi ấy — test chặn độ dài ở `bo_cong_cu_test` đo cùng nó.
+    final doDaiToolsJson = toolsJsonCua(congCu).length;
+
+    final dongHo = Stopwatch()..start();
+    // Gemma 4 trên LiteRT-LM: tools đi bằng tools_json lúc tạo hội thoại; prompt
+    // tool phía Dart bị gói bỏ qua, nên ToolChoice chỉ có nghĩa với `none`.
+    final chat = await m.createChat(
+      temperature: 0.2,
+      tools: tools,
+      supportsFunctionCalls: true,
+      toolChoice: ToolChoice.auto,
+      systemInstruction: heThong,
+    );
+    // Huỷ lúc đang tạo phiên (~3 s Realme CPU, như `docAnh`): bỏ trước khi gửi câu — `PhienMotLoiGoi` chưa có phiên để dừng.
+    // Phiên chưa tới tay người gọi nên không ai `dong()` nó (đường thường luôn đóng) — đóng ở đây.
+    if (_boNap.moc != moc) {
+      debugPrint('[SLM][tool] bỏ phiên — Huỷ tới lúc đang tạo phiên');
+      try {
+        await chat.close();
+      } catch (e) {
+        debugPrint('[SLM][tool] đóng phiên bị huỷ hỏng: $e');
+      }
+      throw const LuotNapBiHuy();
+    }
+    await chat.addQueryChunk(Message.text(text: cauHoi, isUser: true));
+    debugPrint('[SLM][tool] mở phiên sau ${dongHo.elapsedMilliseconds} ms: '
+        '${congCu.length} tool, tools_json $doDaiToolsJson ký tự, '
+        'hệ thống ${heThong.length} ký tự, câu hỏi ${cauHoi.length} ký tự');
+    return _PhienThat(chat, canaryCongCu);
+  }
+
+  @override
+  Future<void> huy() async {
+    // Huỷ cả lúc đang nạp (chưa có chat): lượt đang chờ nạp sẽ bỏ khi nạp xong.
+    _boNap.huy();
+    final chat = _chatDangSinh;
+    if (chat != null) await _dungChat(chat);
+  }
+
+  /// Dừng [chat] — [huy] (người dùng) và thẻ hết giờ của một lượt (`HuyLuot`) cùng đi qua đây. `stopGeneration` treo thì
+  /// vẫn trả về sau [kHanDungSinh]. Lời dừng tới khi chat ấy ĐANG dừng thì chờ chung, native chỉ nhận một `stopGeneration`
+  /// (`GopLuotDung`): Huỷ pha AI màn Quét gọi hai lần `huy()` song song trên cùng chat đọc ảnh (bẫy 4.60).
+  Future<void> _dungChat(InferenceChat chat) {
+    if (_gopDung.dangDung(chat)) debugPrint('[SLM] gộp lời dừng trùng vào lượt đang dừng');
+    return _gopDung.dung(chat, () async {
+      try {
+        await chat.stopGeneration().timeout(kHanDungSinh);
+        debugPrint('[SLM] đã huỷ lượt sinh giữa chừng');
+      } catch (e) {
+        debugPrint('[SLM] huỷ lượt sinh hỏng: $e');
+      }
+    });
+  }
+
+  final GopLuotDung<InferenceChat> _gopDung = GopLuotDung();
+
+  @override
+  Future<void> dong() async {
+    try {
+      await _model?.close();
+    } catch (e) {
+      debugPrint('[SLM] đóng mô hình hỏng: $e');
+    }
+    _model = null;
+  }
+}
+
+/// Bản thật của [PhienCongCu] — bọc `InferenceChat` của gói. Mỗi câu hỏi một
+/// phiên, cùng lý lẽ với `sinh`/`sinhDan`: không để câu trước ảnh hưởng câu sau.
+class _PhienThat implements PhienCongCu {
+  _PhienThat(this._chat, this._canary);
+  final InferenceChat _chat;
+  final CanaryCongCu? _canary;
+
+  /// Mỗi lượt đi qua canary 1b: dấu có mặt từ trước khi engine giải mã tới sự
+  /// kiện đầu tiên — khoảng mà bản engine cũ sập (bẫy 4.33).
+  @override
+  Stream<SuKienLuot> sinhLuot() => quaCanary(_sinhLuot, _canary);
+
+  Stream<SuKienLuot> _sinhLuot() async* {
+    final dongHo = Stopwatch()..start();
+    var tokenDau = -1;
+    var soKyTu = 0;
+    var soLoiGoi = 0;
+    try {
+      await for (final r in _chat.generateChatResponseAsync()) {
+        // `ModelResponse` là sealed: thêm subtype là lỗi biên dịch ở đây, không
+        // phải một sự kiện rơi im lặng.
+        switch (r) {
+          case TextResponse(:final token):
+            if (tokenDau < 0) tokenDau = dongHo.elapsedMilliseconds;
+            soKyTu += token.length;
+            yield Chu(token);
+          case FunctionCallResponse(:final name, :final args):
+            soLoiGoi++;
+            yield GoiCongCu(name, args);
+          case ParallelFunctionCallResponse(:final calls):
+            for (final c in calls) {
+              soLoiGoi++;
+              yield GoiCongCu(c.name, c.args);
+            }
+          case ThinkingResponse():
+            // Gemma 4 không bật thinking; nếu gói có phát thì không phải chữ
+            // cho người đọc.
+            break;
+        }
+      }
+    } finally {
+      debugPrint('[SLM][tool] lượt sinh xong sau ${dongHo.elapsedMilliseconds} ms '
+          '(token đầu $tokenDau ms; $soKyTu ký tự; $soLoiGoi lời gọi)');
+    }
+  }
+
+  @override
+  Future<void> traKetQua(String ten, Map<String, dynamic> json) =>
+      _chat.addQueryChunk(Message.toolResponse(toolName: ten, response: json));
+
+  @override
+  Future<void> huy() async {
+    try {
+      await _chat.stopGeneration().timeout(kHanDungSinh);
+    } catch (e) {
+      debugPrint('[SLM][tool] huỷ lượt sinh hỏng: $e');
+    }
+  }
+
+  @override
+  Future<void> dong() async {
+    try {
+      await _chat.close();
+    } catch (e) {
+      debugPrint('[SLM][tool] đóng phiên hỏng: $e');
+    }
+  }
+}

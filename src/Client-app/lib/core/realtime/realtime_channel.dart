@@ -11,7 +11,7 @@ import 'realtime_socket.dart';
 import 'socket_base_url.dart';
 
 /// Tên sự kiện cưỡng chế đăng xuất, đúng chuỗi backend phát ở
-/// `core/socket.js:184`. Cố ý KHÔNG nằm trong `realtimeEventFromName`: nó
+/// `emitForceLogout` (`core/socket.js`). Cố ý KHÔNG nằm trong `realtimeEventFromName`: nó
 /// không phải tin "server vừa có dữ liệu mới" và không được đánh thức đồng bộ.
 const _tenBuocDangXuat = 'account.force_logout';
 
@@ -42,7 +42,7 @@ Duration khoangChoLanThu(int lanThat) {
 /// Cùng lý lẽ đã ghi trong `lib/core/network/connection_monitor.dart`: hai câu
 /// hỏi khác nhau. `SyncEngine` trả lời *khi nào thì đồng bộ*; lớp này chỉ thuật
 /// lại *server vừa nói gì*. Trộn vào một chỗ thì một trong hai phải chịu thiệt,
-/// và `sync_engine.dart` đã hơn 1.600 dòng.
+/// và `SyncEngine` từng hơn 1.600 dòng một tệp (tách 2026-10-19).
 ///
 /// Lớp này **không tự gọi** `SyncEngine`. Nó chỉ phát ra [events]; việc nối
 /// [events] vào `syncNow()` và vào toast do `main.dart` làm. Nhờ vậy nó test
@@ -74,9 +74,10 @@ class RealtimeChannel {
   ///
   /// [events] mang cam kết "client không đọc trường nào của payload", vì một
   /// tên sự kiện đi qua EventBus không bảo đảm một hình dạng payload.
-  /// `account.force_logout` thì chỉ phát từ MỘT hàm (`core/socket.js:175-191`),
+  /// `account.force_logout` thì chỉ phát từ MỘT hàm (`emitForceLogout` ở `core/socket.js`),
   /// nên đọc payload ở đây an toàn — và để cam kết kia không bị nới theo, nó đi
   /// cửa riêng (spec cưỡng chế đăng xuất §3.2).
+  /// Từ G89 (2026-10-20) luồng này còn mang lời từ chối BẮT TAY vì tài khoản (`connect_error` có `code`).
   final _buocDangXuatController =
       StreamController<ThongBaoBuocDangXuat>.broadcast();
 
@@ -178,6 +179,8 @@ class RealtimeChannel {
       ..onConnectError((e) {
         debugPrint('[RealtimeChannel] Nối hỏng: $e');
         _dangNoi = false;
+        final tuChoi = tuLoiBatTaySocket(e);
+        if (tuChoi != null && _khiBiTuChoiBatTay(tuChoi)) return;
         _datHenNoiLai();
       })
       ..onDisconnect((r) {
@@ -204,6 +207,24 @@ class RealtimeChannel {
     });
   }
 
+  /// Server từ chối bắt tay vì TÀI KHOẢN (bị khoá / đã xoá — spec G89 mục 5): thử lại là gõ cửa bằng đúng danh tính vừa bị
+  /// từ chối, mỗi 60 giây, mãi. Dừng hẳn tới lần `start()` sau và đưa lời ấy lên [buocDangXuat] — cùng đường
+  /// `account.force_logout`. Trả `false` khi bỏ qua (lời nói về tài khoản khác — khuôn `force_logout`) để nơi gọi giãn cách
+  /// như một lần nối hỏng thường.
+  bool _khiBiTuChoiBatTay(ThongBaoBuocDangXuat t) {
+    if (_daDung) return true;
+    if (t.idaccount != null && t.idaccount != _idaccount) {
+      debugPrint('[RealtimeChannel] Bỏ qua lời từ chối bắt tay của tài khoản khác: ${t.idaccount}');
+      return false;
+    }
+    debugPrint('[RealtimeChannel] Bắt tay bị từ chối: ${t.lyDo.name} — dừng nối lại');
+    // `stop()` đặt `_daDung` và huỷ hẹn giờ TRƯỚC `await` đầu tiên — bộ nghe mạng lẫn hẹn nối lại đều gác bằng cờ ấy. Socket
+    // bị dispose sau `await`, tức ngoài callback của chính nó.
+    unawaited(stop());
+    if (!_buocDangXuatController.isClosed) _buocDangXuatController.add(t);
+    return true;
+  }
+
   void _khiCoSuKien(String ten, dynamic payload) {
     if (_daDung) return;
 
@@ -213,7 +234,7 @@ class RealtimeChannel {
     if (ten == _tenBuocDangXuat) {
       final thongBao = tuSuKienSocket(payload);
       // Gói tin của tài khoản khác: không xảy ra khi room đúng, nhưng nếu xảy
-      // ra thì nó đá nhầm người đang đăng nhập ra kèm một lượt dọn SQLite.
+      // ra thì nó đá nhầm người đang đăng nhập ra (đăng xuất kèm hộp thoại).
       // Thiếu id thì vẫn nhận — socket này đã xác thực bằng JWT của chính phiên
       // đang chạy, nên room do server chọn mới là chốt thật.
       if (thongBao.idaccount != null && thongBao.idaccount != _idaccount) {

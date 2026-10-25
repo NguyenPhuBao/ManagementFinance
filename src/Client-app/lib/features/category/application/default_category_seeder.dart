@@ -43,7 +43,7 @@ class DefaultCategorySeeder {
   /// Cố ý **không** nuốt lỗi: bản mặc định đã bị ẩn khỏi mọi danh sách, nên một
   /// lượt seed hỏng trong im lặng nghĩa là người dùng mở app ra thấy danh sách
   /// danh mục rỗng và không ghi nổi một giao dịch, mà không ai biết vì sao.
-  /// Luật ở trên vốn luỹ đẳng nên lần mở app sau tự thử lại.
+  /// Luật ở trên vốn luỹ đẳng nên lượt kéo về sau tự thử lại (`SyncEngine.sauKeoVe` bắt lỗi, ghi log — từ 2026-10-20).
   Future<int> seedForAccount(int idaccount) async {
     if (idaccount <= 0) return 0; // danh tính chỉ đến từ phiên đăng nhập
 
@@ -58,7 +58,7 @@ class DefaultCategorySeeder {
     for (final mau in khuon) {
       if (_daCoBanSao(daCo, mau)) continue;
 
-      // UUID chứ không phải slug: `_resolveCategoryId` chỉ chấp nhận danh mục
+      // UUID chứ không phải slug: `resolveCategoryId` chỉ chấp nhận danh mục
       // người dùng khi id là UUID hợp lệ, id dạng slug sẽ bị trả null và giao
       // dịch kẹt vĩnh viễn.
       final id = _sinhId();

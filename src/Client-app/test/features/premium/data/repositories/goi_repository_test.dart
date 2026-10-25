@@ -196,7 +196,7 @@ void main() {
       await vd.close();
     });
 
-    test('socket: taiKhoanNangCap → lamMoi NGAY (không giãn); sự kiện khác im',
+    test('socket: taiKhoanNangCap / taiKhoanHaCap → lamMoi NGAY (không giãn); sự kiện khác im',
         () async {
       await repo.datTaiKhoan(10);
       await repo.lamMoi();
@@ -212,6 +212,9 @@ void main() {
       sk.add(RealtimeEvent.taiKhoanNangCap);
       await _nghi();
       expect(api.soLanHoi, 2);
+      sk.add(RealtimeEvent.taiKhoanHaCap);
+      await _nghi();
+      expect(api.soLanHoi, 3, reason: 'account.downgraded (job 0 giờ) cũng phải làm mới gói — G89 mục 6.1');
       await sk.close();
     });
   });

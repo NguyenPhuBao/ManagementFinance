@@ -9,7 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../domain/bao_cao_xuat.dart';
 import '../domain/xuat_tep.dart';
-import 'luu_tep_platform.dart';
+import 'datasources/luu_tep_platform.dart';
 import 'xuat_tep_service.dart';
 
 /// Lưu tệp báo cáo **vào thư mục Tải về của máy**; máy nào không làm được thì

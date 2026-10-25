@@ -34,6 +34,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/network/connection_monitor.dart';
+import 'package:flowmoney/core/network/trang_thai_may_chu.dart';
 import 'package:flowmoney/core/realtime/realtime_event.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import 'package:flowmoney/shared/widgets/app_toast.dart';
@@ -548,6 +549,68 @@ void main() {
       dayLen.add(const SyncResult(totalOps: 3, succeeded: 2, failed: 1));
       await nhip(tester);
       expect(find.text(cau), findsOneWidget);
+    });
+  });
+
+  group('máy chủ chặn (G89 mục 4.2)', () {
+    late TrangThaiMayChu tt;
+    setUp(() => tt = TrangThaiMayChu());
+
+    Future<void> dungCoMayChu(WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: AppToast(
+            connectionEvents: ketNoi.stream,
+            pushResults: dayLen.stream,
+            realtimeEvents: realtime.stream,
+            mayChu: tt,
+            tuAnSau: tuAn,
+            child: const Text('nội dung màn hình'),
+          ),
+        ),
+      ));
+      await tester.pump();
+    }
+
+    Future<void> choAn(WidgetTester tester) async {
+      await tester.pump(tuAn);
+      await tester.pump(thoiGianHieuUngToast + const Duration(milliseconds: 20));
+    }
+
+    testWidgets('chuyển sang bảo trì → MỘT toast; lời chặn mới cùng loại (mỗi lượt thử lại) → không lặp', (tester) async {
+      await dungCoMayChu(tester);
+      tt.value = MayChuBaoTri(thuLaiLuc: DateTime(2026, 10, 20, 10, 1));
+      await nhip(tester);
+      expect(find.text('Chưa đồng bộ được: máy chủ đang bảo trì'), findsOneWidget);
+
+      await choAn(tester);
+      tt.value = MayChuBaoTri(thuLaiLuc: DateTime(2026, 10, 20, 10, 2));
+      await nhip(tester);
+      expect(find.text('Chưa đồng bộ được: máy chủ đang bảo trì'), findsNothing,
+          reason: 'mỗi 503 là một trạng thái MỚI cùng loại — toast mỗi 60 giây là thứ người dùng học cách phớt lờ');
+    });
+
+    testWidgets('bảo trì → phong toả → toast phong toả', (tester) async {
+      await dungCoMayChu(tester);
+      tt.value = MayChuBaoTri(thuLaiLuc: DateTime(2026, 10, 20, 10, 1));
+      await nhip(tester);
+      await choAn(tester);
+      tt.value = MayChuPhongToa();
+      await nhip(tester);
+      expect(find.text('Chưa đồng bộ được: mạng này đang bị tạm chặn'), findsOneWidget);
+    });
+
+    testWidgets('về bình thường → không toast; chặn lại lần nữa → toast lại', (tester) async {
+      await dungCoMayChu(tester);
+      tt.value = MayChuBaoTri(thuLaiLuc: DateTime(2026, 10, 20, 10, 1));
+      await nhip(tester);
+      await choAn(tester);
+      tt.value = const MayChuBinhThuong();
+      await nhip(tester);
+      expect(find.textContaining('Chưa đồng bộ được'), findsNothing);
+      tt.value = MayChuBaoTri(thuLaiLuc: DateTime(2026, 10, 20, 10, 5));
+      await nhip(tester);
+      expect(find.text('Chưa đồng bộ được: máy chủ đang bảo trì'), findsOneWidget);
     });
   });
 }

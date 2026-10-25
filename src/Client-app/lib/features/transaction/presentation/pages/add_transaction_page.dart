@@ -4,7 +4,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../category/domain/category_classify.dart';
 import '../../../category/data/models/category_entity.dart';
@@ -47,7 +47,7 @@ import '../../data/models/transaction_entity.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
 import '../bloc/transaction_state.dart';
-import '../../../../core/ui/bao_che_day_toast.dart';
+import '../../../../shared/widgets/bao_che_day_toast.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
 // `BudgetLookup` dời sang lớp nguồn; trang export lại để nơi gọi cũ (`widget.budgetLookup`, test) không đổi import.
@@ -295,8 +295,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         ketQua: _s.ketQuaDien,
         onDien: _dienTuCau,
         onHuy: _huyDocAi,
-        dangKiemSoTien: _s.dangKiemSoTien,
-        onHuyKiem: _cubit.huyKiemSoTien,
         coMicro: s != null,
         trangThaiNghe: s?.trangThai ?? TrangThaiNghe.cho,
         giayGhi: s?.giay ?? 0,
@@ -311,11 +309,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               ),
       );
 
-  /// Huỷ lượt AI đang chạy (đọc câu / kiểm số tiền) trước khi micro vào: mô hình là một — lượt chép lời đóng / nạp lại
-  /// nó dưới chân một phiên chat đang giải mã là sập native (cùng họ A5).
+  /// Huỷ lượt AI đang đọc câu (lượt ấy kiểm luôn số tiền) trước khi micro vào: mô hình là một — lượt chép lời đóng / nạp
+  /// lại nó dưới chân một phiên chat đang giải mã là sập native (cùng họ A5).
   Future<void> _nhuongMoHinhChoMicro() async {
     if (_s.dangDocAi) await _huyDocAi();
-    if (_s.dangKiemSoTien) await _cubit.huyKiemSoTien();
   }
 
   Future<void> _bamMicro() async {
@@ -854,7 +851,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       nhanDanhMuc: _s.phanTach.isEmpty ? 'Danh mục' : 'Danh mục chính',
       noteController: _noteController,
       // D1: giờ trong tin là giờ giao dịch — hiện ra để người dùng thấy nó được giữ.
-      ngayHienThi: DateFormat(_bienDong != null ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy').format(_s.ngay),
+      ngayHienThi: _bienDong != null ? DateFormatter.formatDateTime(_s.ngay) : DateFormatter.formatDate(_s.ngay),
       onChonVi: () => _moChonVi(context, isDestination: false),
       onChonViDich: () => _moChonVi(context, isDestination: true),
       onChonDanhMuc: () async {

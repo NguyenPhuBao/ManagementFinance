@@ -36,7 +36,10 @@ abstract class NgheAndroid {
 }
 
 class NgheAndroidThat implements NgheAndroid {
-  final SpeechToText _stt = SpeechToText();
+  /// [stt] chỉ tiêm trong test (`SpeechToText.withMethodChannel()` qua kênh giả); app dùng bản singleton của gói.
+  NgheAndroidThat({SpeechToText? stt}) : _stt = stt ?? SpeechToText();
+
+  final SpeechToText _stt;
   bool _daKhoiTao = false;
   LuotNghe? _luot;
 
@@ -66,18 +69,32 @@ class NgheAndroidThat implements NgheAndroid {
   }) async {
     _luot?.huy();
     final luot = _luot = LuotNghe(onChu: onChu, onLoi: onLoi, onDung: onDung);
+    var daCoChu = false;
     try {
       await _stt.listen(
         listenOptions: SpeechListenOptions(
           localeId: 'vi_VN',
           listenFor: kNgheToiDa,
-          pauseFor: kImDeDung,
+          // ⚠️ `pauseFor` của gói tính từ lúc BẮT ĐẦU nghe và chỉ đặt lại khi có chữ — đặt thẳng 2 s là gói tự dừng
+          // trước khi người dùng kịp nói (Realme 2026-10-21: 1,7 s âm thanh, Google trả NO_SPEECH_DETECTED). Chờ tiếng
+          // đầu tới 6 s như lối Gemma; có chữ rồi mới rút về 2 s (`changePauseFor` ở `onResult`).
+          pauseFor: kChoTiengDau,
           onDevice: trenMay,
           partialResults: true,
           cancelOnError: true,
           listenMode: ListenMode.dictation,
         ),
-        onResult: (SpeechRecognitionResult r) => luot.chu(r.recognizedWords, r.finalResult),
+        onResult: (SpeechRecognitionResult r) {
+          if (!daCoChu && r.recognizedWords.trim().isNotEmpty) {
+            daCoChu = true;
+            // ⚠️ Ném `ListenNotStartedException` khi gói không còn ở trạng thái nghe — `notListening` có thể tới TRƯỚC
+            // chữ cuối; ném ở đây là mất luôn chữ của lượt.
+            try {
+              _stt.changePauseFor(kImDeDung);
+            } catch (_) {}
+          }
+          luot.chu(r.recognizedWords, r.finalResult);
+        },
       );
     } catch (_) {
       // `listen` ném thì lượt này không bao giờ bắt đầu — đừng để LuotNghe sống và hẹn `onDung` ma.

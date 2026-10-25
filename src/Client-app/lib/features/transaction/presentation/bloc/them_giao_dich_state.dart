@@ -43,7 +43,6 @@ class ThemGiaoDichState {
     this.deXuat,
     this.daThemTuKhoa,
     this.ketQuaDien,
-    this.dangKiemSoTien = false,
     this.luaChonTienCau = const [],
     this.dangDocAi = false,
     this.trungTrongSo = const [],
@@ -90,9 +89,6 @@ class ThemGiaoDichState {
   /// "Đã thêm / Đã chuyển …" — tự ẩn sau 2 giây.
   final String? daThemTuKhoa;
   final KetQuaDien? ketQuaDien;
-
-  /// C4 §3.4 — Gemma đang kiểm số tiền luật vừa đọc bằng dạng nói (dòng nhỏ + Huỷ dưới ô Nhập nhanh).
-  final bool dangKiemSoTien;
 
   /// C4 §3.4 — số AI và số luật LỆCH: chip chọn (số AI trước), ô số tiền trống. Rỗng = không hỏi.
   final List<double> luaChonTienCau;
@@ -154,7 +150,6 @@ class ThemGiaoDichState {
     Object? daThemTuKhoa = _giu,
     Object? ketQuaDien = _giu,
     bool? dangDocAi,
-    bool? dangKiemSoTien,
     List<double>? luaChonTienCau,
     List<KhoanSo>? trungTrongSo,
     Object? goiYChuyen = _giu,
@@ -183,7 +178,6 @@ class ThemGiaoDichState {
         daThemTuKhoa: identical(daThemTuKhoa, _giu) ? this.daThemTuKhoa : daThemTuKhoa as String?,
         ketQuaDien: identical(ketQuaDien, _giu) ? this.ketQuaDien : ketQuaDien as KetQuaDien?,
         dangDocAi: dangDocAi ?? this.dangDocAi,
-        dangKiemSoTien: dangKiemSoTien ?? this.dangKiemSoTien,
         luaChonTienCau: luaChonTienCau ?? this.luaChonTienCau,
         trungTrongSo: trungTrongSo ?? this.trungTrongSo,
         goiYChuyen: identical(goiYChuyen, _giu) ? this.goiYChuyen : goiYChuyen as GoiYChuyenKhoan?,

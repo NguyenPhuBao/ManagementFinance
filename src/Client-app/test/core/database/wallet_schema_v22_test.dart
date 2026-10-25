@@ -11,8 +11,8 @@
 /// bỏ lưu trữ chúng: ví quay lại mọi bộ chọn, quay lại tổng tài sản, và hai bộ
 /// chạy tự động dùng lại nó — không một dòng log nào.
 ///
-/// Bước này **đủ** vì Push chạy TRƯỚC Pull trong cùng chu kỳ (`_sendBatch` rồi
-/// `_pullFromBackend`), nên ví lên tới server trước khi pull đọc về.
+/// Bước này **đủ** vì Push chạy TRƯỚC Pull trong cùng chu kỳ (`GuiLoDongBo.sendBatch` rồi
+/// `ApDuLieuKeoVe.pullFromBackend`), nên ví lên tới server trước khi pull đọc về.
 ///
 /// ⚠️ Nó cũng chỉ chạy **một lần trong đời** mỗi máy. Đó là lý do bốn mảnh của
 /// G28 phải vào cùng một commit: phát hành migration trước nhánh đẩy là đánh

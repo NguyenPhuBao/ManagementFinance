@@ -6,8 +6,9 @@
 /// để thoát", nhấn lại trong cửa sổ ngắn mới thoát.
 ///
 /// Luật là lớp thuần `LuatThoatHaiLan` (test không cần widget); widget
-/// `ThoatHaiLan` bọc `PopScope` và gọi `SystemNavigator.pop()` — ở test bắt
-/// bằng cách giả kênh `SystemChannels.platform`.
+/// `ThoatHaiLan` bọc `PopScope`. Từ 2026-10-21 (G100) lần thoát đưa app xuống
+/// nền qua kênh `flowmoney/xuong_nen`, chỉ rơi về `SystemNavigator.pop()` khi
+/// kênh không làm được — ở test bắt bằng cách giả hai kênh.
 library;
 
 import 'dart:io';
@@ -96,12 +97,49 @@ void main() {
           reason: 'Bản trước không có PopScope nào — Back là ra launcher ngay.');
     });
 
-    testWidgets('Back hai lần liền ở tab đầu: thoát', (tester) async {
+    /// Giả kênh `flowmoney/xuong_nen`: trả [traVe] cho `xuongNen`, ghi lại mọi lời gọi.
+    List<MethodCall> giaKenhXuongNen(WidgetTester tester, Object? traVe) {
+      final goi = <MethodCall>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(ThoatHaiLan.kenh, (call) async {
+        goi.add(call);
+        return traVe;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(ThoatHaiLan.kenh, null));
+      return goi;
+    }
+
+    testWidgets('⚠️ G100 — Back hai lần liền ở tab đầu: đưa app XUỐNG NỀN, không đóng activity', (tester) async {
       await bom(tester, laTabDau: true);
+      final goi = giaKenhXuongNen(tester, true);
       await nhanBack(tester);
       await nhanBack(tester);
 
-      expect(daGoiThoat(), isTrue);
+      expect(goi.map((c) => c.method), ['xuongNen'],
+          reason: 'đòi kết quả, không chỉ đòi vắng mặt: phải gọi đúng một lần xuongNen');
+      expect(daGoiThoat(), isFalse,
+          reason: 'SystemNavigator.pop đóng activity → Flutter engine bị huỷ mà tiến trình còn sống (dịch vụ D1), bản mô '
+              'hình Gemma của isolate cũ nằm lại ~1,85 GB và lần mở sau nạp thêm một bản (G100, đo Realme 2026-10-21)');
+    });
+
+    testWidgets('kênh xuống nền trả false: vẫn thoát bằng SystemNavigator.pop', (tester) async {
+      await bom(tester, laTabDau: true);
+      giaKenhXuongNen(tester, false);
+      await nhanBack(tester);
+      await nhanBack(tester);
+
+      expect(daGoiThoat(), isTrue, reason: 'moveTaskToBack trả false (activity không phải gốc của task) — không được kẹt lại');
+    });
+
+    testWidgets('không có kênh xuống nền (không phải Android): vẫn thoát bằng SystemNavigator.pop', (tester) async {
+      await bom(tester, laTabDau: true);
+      await nhanBack(tester);
+      await nhanBack(tester);
+      // Kênh không có handler: lời đáp rỗng (→ MissingPluginException) đi qua vòng sự kiện THẬT của flutter_tester,
+      // ngoài FakeAsync của widget test — phải chờ bằng runAsync.
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump();
+
+      expect(daGoiThoat(), isTrue, reason: 'MissingPluginException không được nuốt mất lần thoát');
     });
 
     testWidgets('Back ở tab khác: về tab đầu, không báo, không thoát',
@@ -113,6 +151,15 @@ void main() {
       expect(bao, 0);
       expect(daGoiThoat(), isFalse);
     });
+  });
+
+  test('nối dây kênh flowmoney/xuong_nen: tên kênh / hàm khớp MainActivity.kt, Kotlin gọi moveTaskToBack', () {
+    // `flutter test` không chạy Kotlin — đọc tệp nguồn (cùng khuôn `luu_anh_qr_noi_day_test`).
+    final kt = File('android/app/src/main/kotlin/com/flowmoney/flowmoney/MainActivity.kt').readAsStringSync();
+    expect(ThoatHaiLan.kenh.name, 'flowmoney/xuong_nen');
+    expect(kt, contains('"flowmoney/xuong_nen"'));
+    expect(kt, contains('"xuongNen"'));
+    expect(kt, contains('moveTaskToBack(true)'), reason: 'đưa cả task xuống nền, activity và Flutter engine sống tiếp');
   });
 
   test('MainShell bọc thân bằng ThoatHaiLan', () {

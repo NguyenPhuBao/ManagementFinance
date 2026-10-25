@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
-import 'budget_period.dart';
+import '../../domain/budget_period.dart';
 
 /// Chu kỳ lặp của ngân sách — dùng đúng tập giá trị backend nhận ở cột
 /// `Time_recurrence` (`VarChar(7)`).
@@ -39,8 +39,8 @@ class BudgetOverSpending {
 
 /// Một hạn mức chi tiêu cho một danh mục trong một chu kỳ.
 ///
-/// `categoryId == null` nghĩa là **ngân sách tổng** — áp cho mọi khoản chi,
-/// không giới hạn danh mục nào.
+/// `categoryId == null` nghĩa là **ngân sách tổng** — áp cho mọi khoản chi
+/// vào thống kê (`khoanVaoThongKe`), không giới hạn danh mục nào.
 ///
 /// ## Vì sao không có trường `name`
 ///

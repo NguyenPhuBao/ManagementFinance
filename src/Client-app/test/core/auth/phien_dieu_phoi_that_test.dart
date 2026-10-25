@@ -45,15 +45,18 @@ class _SpySyncEngine extends SyncEngine {
   _SpySyncEngine({required super.dioClient, required super.db, super.connectivity})
       : super(soDuVi: congSoDuViThat(db), viBiGiu: congViBiGiuThat(db));
   final nhatKy = <String>[];
-  bool daKeoVe = false;
   final _chet = StreamController<void>.broadcast();
   @override
   Stream<void> get sessionInvalidStream => _chet.stream;
   void phienChet() => _chet.add(null);
+  /// `null` = `start` xong ngay; có giá trị thì `start` đợi nó (đo đường đăng nhập có đợi chu kỳ đầu không).
+  Completer<void>? chuKyDau;
   @override
-  bool get hasCompletedPull => daKeoVe;
-  @override
-  Future<void> start({required int idaccount}) async => nhatKy.add('start $idaccount');
+  Future<void> start({required int idaccount}) async {
+    nhatKy.add('start $idaccount');
+    await chuKyDau?.future;
+    nhatKy.add('start xong');
+  }
   @override
   void stop() => nhatKy.add('stop');
   @override
@@ -141,25 +144,45 @@ void main() {
   });
   tearDown(() async { sync.dispose(); interceptor.dispose(); realtime.dong(); await db.close(); });
 
-  PhienDieuPhoiThat dung({int daDon = 0, int banSao = 0, bool coDongBo = true, bool coQuet = true}) {
+  PhienDieuPhoiThat dung({int daDon = 0, bool coDongBo = true, bool coQuet = true}) {
     final p = PhienDieuPhoiThat(
       dongBo: coDongBo ? sync : null,
       thoiGianThuc: realtime,
       boQuet: coQuet ? scanner : null,
       interceptor: interceptor,
       donTaiKhoanKhac: (id) async { hook.add('don $id'); return daDon; },
-      xoaBanSao: (id) async { hook.add('xoaBanSao $id'); return 1; },
       xoaCacheSlm: () async => hook.add('xoaCache'),
       chuyenHangSeedCu: (id) async => hook.add('seedCu $id'),
-      taoBanSaoDanhMuc: (id) async { hook.add('banSao $id'); return banSao; },
       seedTaiKhoanMoi: (id) async => hook.add('seedMoi $id'),
       xoaAnhQuet: () async => hook.add('xoaAnh'),
       datLaiCoGiaoDien: () => hook.add('coUI'),
       datGoi: (id) async => hook.add('goi $id'),
+      xoaKhoaApp: () async => hook.add('xoaKhoaApp'),
+      datLaiKhoaApp: (id) async => hook.add('datLaiKhoa $id'),
     );
     addTearDown(p.dispose);
     return p;
   }
+
+  test('sauXacThucMatKhau(10) gọi datLaiKhoaApp(10) — cấu hình PIN xoá ở đăng nhập mật khẩu, không ở đăng xuất / sauDangNhap / moPhienCucBo', () async {
+    await dung().sauXacThucMatKhau(10);
+    expect(hook, ['datLaiKhoa 10']);
+    hook.clear();
+    await dung().sauDangNhap(10);
+    await dung().moPhienCucBo(10);
+    expect(hook.any((h) => h.startsWith('datLaiKhoa')), isFalse,
+        reason: 'sauDangNhap chạy sau cả vòng đồng bộ đầu; moPhienCucBo chạy cả lúc mở lạnh (xoá PIN mỗi lần mở app)');
+    hook.clear();
+    await dung().dongPhien();
+    expect(hook.any((h) => h.startsWith('datLaiKhoa')), isFalse,
+        reason: 'đăng xuất không được xoá cấu hình PIN: token xoá SAU hook, bị giết giữa chừng là mở lại không PIN');
+  });
+
+  test('dongPhien gọi xoaKhoaApp (chỉ khoá vân tay / alias; cấu hình PIN ở lại tới lần đăng nhập mật khẩu)', () async {
+    await dung().dongPhien();
+    expect(hook, contains('xoaKhoaApp'),
+        reason: 'thiếu hook này, alias Keystore cũ còn sống sau đăng xuất');
+  });
 
   test('moPhienCucBo: dọn → (xoá cache chỉ khi có hàng bị dọn) → hàng seed cũ → gói → bộ quét', () async {
     await dung(daDon: 3).moPhienCucBo(10);
@@ -188,7 +211,6 @@ void main() {
       boQuet: _ScannerHoiQuyen(db, () => quyenLucQuet.add(coQuyenNen(MaQuyen.billAutoPay, goi: goi))),
       interceptor: interceptor,
       donTaiKhoanKhac: (_) async => 0,
-      xoaBanSao: (_) async => 0,
       datGoi: (id) => goi.datTaiKhoan(id),
     );
     addTearDown(p.dispose);
@@ -216,29 +238,32 @@ void main() {
     expect(hook, isEmpty); expect(scanner.goi, isEmpty); expect(sync.nhatKy, isEmpty);
   });
 
-  test('batDongBo cho: true — đợi start, tạo bản sao khi đã kéo về, hẹn đẩy khi có bản sao mới', () async {
-    sync.daKeoVe = true;
-    await dung(banSao: 13).batDongBo(10, cho: true);
-    expect(sync.nhatKy, ['start 10', 'hen']);
-    expect(hook, ['banSao 10']);
-  });
-
-  test('batDongBo cho: true — chưa kéo về thì KHÔNG tạo bản sao (G14)', () async {
-    await dung(banSao: 13).batDongBo(10, cho: true);
-    expect(sync.nhatKy, ['start 10']);
+  // Bản sao danh mục mặc định không còn tạo ở bộ điều phối (2026-10-20, quy tắc 8): bộ gieo chạy trong chu kỳ đồng bộ
+  // qua cổng `SyncEngine.sauKeoVe` — ca canh ở `test/core/sync/sync_gieo_sau_keo_ve_test.dart`.
+  test('batDongBo cho: true — ĐỢI chu kỳ đầu của start (đăng nhập có bản sao trước AuthSuccess), không gọi hook nào',
+      () async {
+    sync.chuKyDau = Completer<void>();
+    var xong = false;
+    final f = dung().batDongBo(10, cho: true).then((_) => xong = true);
+    await pumpEventQueue();
+    expect(xong, isFalse, reason: 'Đường đăng nhập phải đợi chu kỳ đầu — bộ gieo chạy trong chu kỳ ấy.');
+    sync.chuKyDau!.complete();
+    await f;
+    expect(sync.nhatKy, ['start 10', 'start xong']);
     expect(hook, isEmpty);
   });
 
-  test('batDongBo cho: false — không chặn, bản sao nối sau start', () async {
-    sync.daKeoVe = true;
-    final p = dung(banSao: 1);
-    await p.batDongBo(10, cho: false);
+  test('batDongBo cho: false — KHÔNG đợi chu kỳ đầu (mở app không chờ mạng)', () async {
+    sync.chuKyDau = Completer<void>();
+    await dung().batDongBo(10, cho: false);
+    expect(sync.nhatKy, ['start 10']);
+    sync.chuKyDau!.complete();
     await pumpEventQueue();
-    expect(sync.nhatKy, ['start 10', 'hen']);
-    expect(hook, ['banSao 10']);
+    expect(sync.nhatKy, ['start 10', 'start xong']);
+    expect(hook, isEmpty);
   });
 
-  test('batThoiGianThuc / sauDangNhap / dongPhien / xoaDuLieu', () async {
+  test('batThoiGianThuc / sauDangNhap / dongPhien', () async {
     final p = dung();
     await p.batThoiGianThuc(10);
     expect(realtime.nhatKy, ['start 10']);
@@ -246,9 +271,7 @@ void main() {
     expect(hook, ['seedMoi 10', 'coUI']);
     await p.dongPhien();
     expect(sync.nhatKy, ['stop']); expect(scanner.goi, ['stop']); expect(realtime.nhatKy.last, 'stop');
-    expect(hook.last, 'xoaAnh');
-    await p.xoaDuLieu(7);
-    expect(hook.last, 'xoaBanSao 7');
+    expect(hook.sublist(hook.length - 2), ['xoaAnh', 'xoaKhoaApp']);
   });
 
   test('sauDangNhap không có SyncEngine: bỏ seed, vẫn đặt lại cờ giao diện', () async {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/goal_history_filter.dart';
@@ -261,7 +261,7 @@ class _Dong extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                DateFormat('dd/MM/yyyy HH:mm').format(khoan.ngay),
+                DateFormatter.formatDateTime(khoan.ngay),
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,

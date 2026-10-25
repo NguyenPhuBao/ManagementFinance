@@ -3,7 +3,7 @@
 /// Canh chừng điều gì: `transaction."Amount"` là **`numeric(15,2)`**, tức nhiều
 /// nhất **13 chữ số phần nguyên**. Tràn cho SQLSTATE `22003`, mà
 /// `sync.service.js` **không có nhánh nào** cho mã ấy nên nó rơi về `DB_ERROR`;
-/// và `_permanentCodes` của `SyncEngine` là **danh sách trắng**, `DB_ERROR`
+/// và `_permanentCodes` của `GuiLoDongBo` là **danh sách trắng**, `DB_ERROR`
 /// không nằm trong đó. Kết quả: giao dịch bị **gửi lại ở mọi chu kỳ đồng bộ**,
 /// không lỗi, không log, chỉ một hàng đợi càng lúc càng chậm.
 ///

@@ -217,6 +217,16 @@ void main() {
       await mo(tester);
       expect(find.text('Đọc ra hai số khác nhau — chọn số đúng:'), findsNothing);
     });
+
+    // G101 (2026-10-21): Basic cũng có khối này khi tờ in hai số lệch ≤ 1% (lưới B) — hai số của OCR, không có chữ AI.
+    testWidgets('⭐ G101 — hai chip của OCR, không ai=1 (Basic) → có khối, dải nguồn KHÔNG nói "Đọc bằng AI"',
+        (tester) async {
+      await mo(tester, chon: const [75706, 75700]);
+      expect(find.byKey(const Key('khoi-chon-so-tien')), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const Key('chon-so-tien-0')), matching: find.text('75.706 đ')), findsOneWidget);
+      expect(find.text('Từ ảnh quét · 28/09 18:42'), findsOneWidget);
+      expect(find.textContaining('AI'), findsNothing, reason: 'Basic không thấy chữ "AI" nào ở luồng quét (mục 4)');
+    });
   });
 
   testWidgets('⭐ danh mục AI chọn ("ỦA TEA" không khớp từ khoá nào) → form chọn sẵn danh mục ấy', (tester) async {

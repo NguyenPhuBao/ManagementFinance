@@ -357,7 +357,7 @@ lập.
 7. Toast có ngân sách *Cảnh báo* bị vượt chỉ nêu **một** ngân sách (cái đầu) — cùng nếp `budgetImpactSnackText`.
 8. Tên danh mục dài trong khối tách **xuống dòng**, không "…" (test bố cục 320 / 360 dp font thật bắt được lúc thi công).
 
-## 13. Đổi sau nghiệm thu OnePlus 2026-10-08 — AI làm chính, luật dự phòng (CHƯA THI CÔNG)
+## 13. Đổi sau nghiệm thu OnePlus 2026-10-08 — AI làm chính, luật dự phòng (đã thi công tối 2026-10-08; nghiệm thu Realme 2026-10-21 ở cuối mục)
 
 **Số đo** (OnePlus 13R GPU, 6 hoá đơn thật người dùng chọn từ thư viện: MAXIDI #1 nhăn + ảnh nén 720 px, QA TEA, Starbucks,
 eco-shop, MAXIDI #2, ÙA TEA có chiết khấu; đáp án chấm bằng mắt trên ảnh; màn đo spike C4):
@@ -411,7 +411,7 @@ khỏi dòng, số ở dòng trên nhãn, *"tổng"* đọc méo, *Payment* trê
 bỏ dấu ảnh, đọc *Sep 28, 2026* và *Ngày … tháng … năm*; kèm tên cửa hàng (bỏ chữ trên đồ vật phía sau, trống thay vì
 đoán). Trên chính 15 tờ ấy: luật tổng **15/15** (R15 tính *Tổng tiền* 32.160), ngày 9 đúng cả giờ + 2 đúng ngày (giờ không đọc ra) · 4 không đọc ra
 · **0 sai im lặng**, cửa hàng 8 đúng · 3 trống · 4 tạm được; chốt AI + luật **13/15 điền sẵn đều đúng, 2 tờ hỏi chip**
-(số đúng có trong chip). ⚠️ Luật sửa trên đúng bộ đo — cần hoá đơn MỚI để kiểm. `chotTongQuet` **chưa nối** vào `/quet`.
+(số đúng có trong chip). *(Sau G101, 2026-10-21: 12/15 — R13 in thêm dòng tiền mặt OCR đọc 72,121, lưới B hỏi chip.)* ⚠️ Luật sửa trên đúng bộ đo — cần hoá đơn MỚI để kiểm. `chotTongQuet` **chưa nối** vào `/quet`.
 
 **Nối vào `/quet` (2026-10-08 tối — mã + test, 🚧 chưa nghiệm thu máy thật):** `SlmDocAnh.docAnh` (runtime nạp lại
 bản có ảnh, đóng sau khi đọc) → `DocAnhBangGemma` (trần 90 s, Huỷ) → `docJsonGemmaAnh` → `chotTongQuet` → query `chon`
@@ -440,8 +440,8 @@ Lưu — tài khoản thật). Ngày: 4/5 tờ sau rơi về lúc quét vì OCR 
 *"Tbng tiễn"* là nhãn tổng (`kNhanTongDocNham` nhận mọi chữ trừ *a* giữa *t* và *ng*); ngày *"3O/08/2026"* (O sát chữ
 số là 0). Đo lại hai tờ trên máy: BHX luật 55.500 khớp Gemma → điền sẵn; eco-shop ngày 30/08/2026, giờ 00:00 (in
 *"21 33 37"* không dấu hai chấm — như R05). Chưa sửa (ứng viên): câu văn xuôi *"…và thanh toán tin mặt"* khớp nhãn
-*thanh toán* rồi mượn số dòng kế; MAXIDI OCR đọc *12,127* (chip đỡ được). 🚧 **Realme (Mali, CPU) chưa chạy `/quet`
-thật** — 8/8 là số của GPU OnePlus.
+*thanh toán* rồi mượn số dòng kế; MAXIDI OCR đọc *12,127* (chip đỡ được). 8/8 là số của GPU OnePlus. *(Realme CPU chạy `/quet` thật
+2026-10-21 — khối cuối mục; ở đó có 2 tờ điền sẵn sai, G101.)*
 
 **Nghiệm thu OnePlus tiếp (2026-10-08 chiều muộn, người dùng dặn tập trung OnePlus):** Lưu thật ÙA TEA 158.000 →
 Trang chủ trừ đúng, PostgreSQL có hàng −158.000 *Ăn uống* ngày 02/10 14:26, ví khớp ✅ · MAXIDI chọn chip 72.127 →
@@ -472,3 +472,17 @@ chữ ảnh) — ✅ **sửa 2026-10-08 tối**: tổng chỉ in ở bản debug
 - Lỗi lượt nghiệm thu chưa sửa: **sheet chọn nguồn ảnh bị thanh dưới + nút + đè** (nút *Huỷ* khuất) — `moQuet` cần
   `showModalBottomSheet(useRootNavigator: true)`.
 - Luật ngày chưa đọc dạng tiếng Anh *"Sep 28, 2026 2:19PM"* (Starbucks); giờ có thể lấy nhầm dấu ảnh *"Shot on … 08:15"*.
+
+**Nghiệm thu Realme RMX2205 (CPU) qua `/quet` thật — 2026-10-21.** Bảng từng tờ ở mục 7 `docs/QUET_ANH_FEATURE.md`. Một hoá
+đơn giấy mới (chụp dọc) điền đúng. 15 tờ R01–R16 của buổi 08/10 (bản rộng 1280 trong `spike_c4/do1/`, chọn qua trình chọn
+ảnh): **12 điền đúng · 1 hỏi chip (R15, không chip nào là số thực trả) · 2 điền sẵn SAI không hỏi** (R13 2.127 thay 72.127,
+R08 75.706 thay 75.700 — **G101** `CLIENT_APP_KNOWN_GAPS.md`). Nguyên nhân là `image_picker` nén lại ảnh, OCR mất / đổi chữ số
+dòng tổng; còn `chotTongQuet` bỏ số Gemma (R13 đọc đúng 72.127) vì số ấy không có trong chữ và khác số luật bằng *thêm* một
+chữ số, rồi điền số luật không kiểm gì thêm. Bảng *"13/15 điền sẵn đều đúng, 2 tờ hỏi chip"* ở trên tính trên chữ OCR của đường
+spike, **không** phải dự đoán đầu-cuối của `/quet`. Gemma CPU 18–38 s / ảnh, chọn danh mục 7,5–9,7 s; giữ bản có ảnh qua 15
+lượt không nạp lại, không sập (chốt 4b đứng trên CPU). Huỷ pha AI đạt, trễ ~5 s vì lời gọi native không ngắt được. Lộ thêm
+**G100** — Back thoát app rồi mở lại thì mô hình nạp thêm một bản (Native Heap 1,89 → 3,72 GB); ✅ đóng cùng ngày (Back hai lần
+→ xuống nền; gỡ task khi đang giữ mô hình → đóng hẳn tiến trình), thân ở `CLIENT_APP_KNOWN_GAPS.md`. **G101 đóng cùng ngày**
+(`639f7114`, mã + test): ba lưới A + B + C ở `chotTongQuet`, Basic cũng qua phép chốt — trên chữ OCR của lượt này (chép từ
+logcat, `hoa_don_quet_that_du_lieu.dart`) R08 hỏi chip ở cả hai gói, R13 hỏi chip ở Premium và để trống ở Basic. Chi tiết mục
+1 bước 3b và chốt 4a `QUET_ANH_FEATURE.md`.

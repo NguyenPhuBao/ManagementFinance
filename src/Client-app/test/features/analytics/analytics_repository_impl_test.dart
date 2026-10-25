@@ -262,7 +262,7 @@ void main() {
 
     test('⚠️ danh mục MẶC ĐỊNH TOÀN CỤC vẫn giữ tên thật', () async {
       // Hình dạng thật trên máy: `sync_engine` quy `is_default = true` thành
-      // **`idaccount = 0`** (sync_engine.dart:733), nên hàng mặc định toàn cục
+      // **`idaccount = 0`** (`ap_du_lieu_keo_ve.dart`), nên hàng mặc định toàn cục
       // KHÔNG mang mã tài khoản của người dùng. Truy vấn lọc đúng một
       // `idaccount` sẽ bỏ sót chúng, và giao dịch cũ trỏ vào đó mất tên.
       //

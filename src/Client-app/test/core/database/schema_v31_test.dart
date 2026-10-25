@@ -38,14 +38,12 @@ void main() {
     expect(await dao.idsCua(10), {'t1'});
   });
 
-  test('purgeDataForOtherAccounts / purgeDataForAccount dọn bảng này', () async {
+  test('purgeDataForOtherAccounts dọn bảng này', () async {
     final dao = db.danhMucAiDoanDao;
     await dao.danhDau(idaccount: 10, transactionId: 't1', categoryId: 'c');
     await dao.danhDau(idaccount: 11, transactionId: 't2', categoryId: 'c');
     await db.purgeDataForOtherAccounts(10);
     expect(await dao.idsCua(11), isEmpty, reason: 'dấu của người đăng nhập trước không được sót lại');
     expect(await dao.idsCua(10), {'t1'});
-    await db.purgeDataForAccount(10);
-    expect(await dao.idsCua(10), isEmpty);
   });
 }

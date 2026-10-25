@@ -17,7 +17,7 @@ import 'package:drift/drift.dart';
 /// khoá lúc đọc. Giờ trong ngày cũng suy từ [luc].
 ///
 /// Thêm ở schema v26 (2026-09-29). Giữ 180 ngày (`NotificationScanner.giuSuKien`).
-/// Xoá theo tài khoản ở `purgeDataForOtherAccounts` / `purgeDataForAccount`.
+/// Xoá theo tài khoản ở `purgeDataForOtherAccounts`.
 class AppNotificationEvents extends Table {
   TextColumn get id => text()();
 

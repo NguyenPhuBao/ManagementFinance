@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/realtime/realtime_channel.dart';
@@ -13,8 +13,8 @@ import '../../../../core/realtime/realtime_event.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../data/luu_anh_qr.dart';
-import '../../data/mo_lien_ket.dart';
+import '../../data/datasources/luu_anh_qr.dart';
+import '../../data/datasources/mo_lien_ket.dart';
 import '../../data/models/don_thanh_toan.dart';
 import '../../data/repositories/don_thanh_toan_repository.dart';
 import '../../domain/trang_thai_don.dart';
@@ -461,7 +461,7 @@ class _ChoThanhToanPageState extends State<ChoThanhToanPage> with WidgetsBinding
           if (hetHan != null) ...[
             const SizedBox(height: 6),
             Text(
-              'Hạn dùng đến ${DateFormat('dd/MM/yyyy').format(hetHan.toLocal())}',
+              'Hạn dùng đến ${DateFormatter.formatDate(hetHan.toLocal())}',
               style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
           ],

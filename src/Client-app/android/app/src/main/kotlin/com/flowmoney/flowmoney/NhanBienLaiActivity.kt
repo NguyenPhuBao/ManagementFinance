@@ -88,10 +88,17 @@ class NhanBienLaiActivity : Activity() {
             i.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
         else i.getParcelableExtra(Intent.EXTRA_STREAM)) ?: return "FlowMoney chỉ nhận ảnh biên lai"
         val mime = i.type ?: contentResolver.getType(uri) ?: ""
-        // `android-app://<gói>` — gói của app GỬI; app không khai thì rỗng.
+        // `getReferrer()` trả EXTRA_REFERRER / EXTRA_REFERRER_NAME do BÊN GỬI tự đặt trước gói hệ thống ghi — app nào
+        // cũng khai được tên gói ngân hàng (soát bảo mật 2026-10-24, đo Realme: hàng "MB Bank", chọn sẵn ví MB, ảnh đọc
+        // theo mẫu vị trí của MB). Gỡ hai extra thì `referrer` là gói HỆ THỐNG ghi: app đã mở activity này, hoặc app
+        // gốc khi bảng chia sẻ mở thay. `i` chính là `getIntent()` nên gỡ ở đây có tác dụng với `referrer`.
+        val khai = i.hasExtra(Intent.EXTRA_REFERRER) || i.hasExtra(Intent.EXTRA_REFERRER_NAME)
+        i.removeExtra(Intent.EXTRA_REFERRER)
+        i.removeExtra(Intent.EXTRA_REFERRER_NAME)
+        // `android-app://<gói>`; không biết thì rỗng.
         val goi = referrer?.takeIf { it.scheme == "android-app" }?.host ?: ""
         if (!mime.startsWith("image/")) {
-            thu("tu choi | goi=$goi | mime=$mime")
+            thu("tu choi | goi=$goi | khai=$khai | mime=$mime")
             return "FlowMoney chỉ nhận ảnh biên lai"
         }
 
@@ -134,7 +141,7 @@ class NhanBienLaiActivity : Activity() {
         hangCho.appendText(
             JSONObject().put("tep", ten).put("goi", goi).put("luc", System.currentTimeMillis()).toString() + "\n"
         )
-        thu("nhan | goi=$goi | mime=$mime | byte=$tong | ${kich.outWidth}x${kich.outHeight}")
+        thu("nhan | goi=$goi | khai=$khai | mime=$mime | byte=$tong | ${kich.outWidth}x${kich.outHeight}")
         BienDongListenerService.baoTomTat(this)
         return "FlowMoney đã nhận biên lai"
     }

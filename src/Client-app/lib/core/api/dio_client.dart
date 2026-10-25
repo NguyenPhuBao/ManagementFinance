@@ -1,12 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../constants/app_constants.dart';
+import '../network/trang_thai_may_chu.dart';
 import 'interceptors/auth_interceptor.dart';
+import 'interceptors/may_chu_interceptor.dart';
 
 /// Singleton Dio client dùng chung toàn app.
 /// Đã cấu hình:
 /// - BaseUrl từ AppConstants
 /// - AuthInterceptor: tự động gắn token + refresh khi 401
+/// - MayChuInterceptor (G89): ghi trạng thái máy chủ — bảo trì / phong toả
 ///
 /// Cách dùng trong injection: `sl<DioClient>().dio` — GetIt chỉ đăng ký `DioClient`, không đăng ký `Dio` trần.
 class DioClient {
@@ -22,6 +25,8 @@ class DioClient {
   DioClient({
     required FlutterSecureStorage secureStorage,
     AuthInterceptor? authInterceptor,
+    TrangThaiMayChu? trangThaiMayChu,
+    Future<void> Function()? khiBiTatQuyen,
   }) : _dio = Dio(
           BaseOptions(
             baseUrl: AppConstants.baseUrl,
@@ -33,6 +38,11 @@ class DioClient {
     _dio.interceptors.add(
       authInterceptor ?? AuthInterceptor(secureStorage: secureStorage),
     );
+    // G89: trạng thái máy chủ (bảo trì / phong toả) — đứng SAU AuthInterceptor, lý do ở đầu `may_chu_interceptor.dart`.
+    // Chỉ chỗ này được dựng nó (test quét 36). Không truyền → không gắn (test cũ dựng DioClient không đổi).
+    if (trangThaiMayChu != null) {
+      _dio.interceptors.add(MayChuInterceptor(trangThai: trangThaiMayChu, khiBiTatQuyen: khiBiTatQuyen));
+    }
   }
 
   /// Trả về Dio đã cấu hình — dùng trong các DataSource

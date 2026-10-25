@@ -307,4 +307,55 @@ void main() {
               'với một mục tiêu đứng yên.');
     });
   });
+
+  group('soTienMoiKyDeXuat — số form Thêm mục tiêu điền sẵn', () {
+    test('đếm theo NGÀY LỊCH: 20:00 hôm nay tới 00:00 tám ngày sau là 8 ngày → 2 tuần', () {
+      // Trừ DateTime thô ra 7 ngày 4 giờ → inDays 7 → 1 kỳ → 3.000.000 mỗi tuần (lỗi cũ, đổi theo giờ mở form).
+      expect(
+        soTienMoiKyDeXuat(
+          mucTieu: 3000000,
+          hanChot: DateTime(2026, 6, 23),
+          chuKy: 'Week',
+          now: DateTime(2026, 6, 15, 20),
+        ),
+        1500000,
+      );
+    });
+
+    test('hạn đã qua hoặc là hôm nay → coi như còn một kỳ', () {
+      expect(
+        soTienMoiKyDeXuat(mucTieu: 900000, hanChot: DateTime(2026, 6, 15), chuKy: 'Month', now: DateTime(2026, 6, 15, 9)),
+        900000,
+      );
+      expect(
+        soTienMoiKyDeXuat(mucTieu: 900000, hanChot: DateTime(2026, 6, 1), chuKy: 'Day', now: DateTime(2026, 6, 15)),
+        900000,
+      );
+    });
+
+    test('làm tròn LÊN tới đồng chẵn', () {
+      // 1.000.000 / 3 kỳ (90 ngày, hàng tháng 30 ngày) = 333.333,33… → 333.334.
+      expect(
+        soTienMoiKyDeXuat(mucTieu: 1000000, hanChot: DateTime(2026, 9, 13), chuKy: 'Month', now: DateTime(2026, 6, 15)),
+        333334,
+      );
+    });
+
+    test('mục tiêu ≤ 0 → null (form không điền gì)', () {
+      expect(soTienMoiKyDeXuat(mucTieu: 0, hanChot: DateTime(2026, 9, 1), chuKy: 'Month', now: DateTime(2026, 6, 15)),
+          isNull);
+    });
+  });
+
+  group('nhanNhipChuKy — một bảng nhãn cho thẻ Cấu hình và khối Nhận xét', () {
+    test('năm giá trị của cột Cycle_take_money; lạ / trống đọc là hàng tháng như soNgayChuKy', () {
+      expect(nhanNhipChuKy('Day'), 'mỗi ngày');
+      expect(nhanNhipChuKy('Week'), 'mỗi tuần');
+      expect(nhanNhipChuKy('Month'), 'mỗi tháng');
+      expect(nhanNhipChuKy('Quarter'), 'mỗi quý');
+      expect(nhanNhipChuKy('Year'), 'mỗi năm');
+      expect(nhanNhipChuKy(null), 'mỗi tháng');
+      expect(nhanNhipChuKy('Fortnight'), 'mỗi tháng');
+    });
+  });
 }

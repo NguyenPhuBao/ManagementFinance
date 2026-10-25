@@ -8,7 +8,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_secure_storage_linux
   flutter_timezone
   record_linux
-  sqlite3_flutter_libs
   url_launcher_linux
 )
 

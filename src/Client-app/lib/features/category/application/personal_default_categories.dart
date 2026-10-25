@@ -21,7 +21,7 @@ class PersonalCategorySpec {
 ///
 /// Bộ danh mục mặc định hai phía từng lệch nhau: client seed 18 mục, backend
 /// chỉ có 13, và **chỉ 10 mục khớp tên**. Danh mục mặc định thì KHÔNG được đẩy
-/// lên backend, còn `_resolveCategoryId` lại ánh xạ chúng sang UUID của backend
+/// lên backend, còn `resolveCategoryId` lại ánh xạ chúng sang UUID của backend
 /// **bằng cách so tên** — nên 5 mục dưới đây không tìm được bản UUID nào, trả
 /// `null`, và mọi giao dịch dùng chúng bị hoãn đẩy VĨNH VIỄN mà không có lỗi
 /// nào báo ra.
@@ -123,7 +123,7 @@ class PersonalDefaultCategories {
   }
 
   Future<String> _create(PersonalCategorySpec spec, int idaccount) async {
-    // UUID chứ không phải id dạng `cat_*`: `_resolveCategoryId` chỉ chấp nhận
+    // UUID chứ không phải id dạng `cat_*`: `resolveCategoryId` chỉ chấp nhận
     // danh mục người dùng có UUID hợp lệ, id dạng slug sẽ bị trả null và giao
     // dịch lại kẹt y như cũ.
     final id = _uuid.v4();

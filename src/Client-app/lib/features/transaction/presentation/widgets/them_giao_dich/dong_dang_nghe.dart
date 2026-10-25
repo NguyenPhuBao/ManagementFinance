@@ -1,5 +1,6 @@
-/// Dòng trạng thái một dòng dưới ô Nhập nhanh — *"Đang kiểm số tiền bằng AI…"* (C4 §3.4), *"Đang ghi âm…"*, *"Đang chép
-/// lời bằng AI trên máy…"* (C4 §2.1). Vòng xoay nhỏ, hoặc chấm đỏ khi đang ghi; nút chữ Huỷ tuỳ chọn.
+/// Dòng trạng thái một dòng dưới ô Nhập nhanh — *"Đang ghi âm…"*, *"Đang chép lời bằng AI trên máy…"* (C4 §2.1). Dòng
+/// *"Đang kiểm số tiền bằng AI…"* (C4 §3.4) đã gỡ 2026-10-22 cùng đường kiểm chéo ở nền. Vòng xoay nhỏ, hoặc chấm đỏ
+/// khi đang ghi; nút chữ Huỷ tuỳ chọn.
 library;
 
 import 'package:flutter/material.dart';

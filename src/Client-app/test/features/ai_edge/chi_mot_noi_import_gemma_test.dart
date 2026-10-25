@@ -16,7 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('chỉ slm_runtime.dart import flutter_gemma', () {
-    const duocPhep = 'lib/features/ai_edge/data/slm_runtime.dart';
+    const duocPhep = 'lib/features/ai_edge/data/datasources/slm_runtime.dart';
     final pham = <String>[];
 
     for (final f in Directory('lib')

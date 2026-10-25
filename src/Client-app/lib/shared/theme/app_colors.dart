@@ -58,4 +58,15 @@ class AppColors {
   static const Color surfaceContainerHighest = outlineVariant;
   static const Color surfaceContainerLowest = surface;
   static const Color borderSubtle = outlineVariant;
+
+  // ── Thẻ / dòng khoá quyền theo gói (Premium, Stitch 2026-10-08) ─────────────
+  static const Color khoaVang = Color(0xFFD97706); // ổ khoá + chữ nút "Nâng cấp" của dòng khoá
+  static const Color khoaNenVang = Color(0xFFFEF3C7); // nền ổ khoá + nút của dòng khoá
+  static const Color khoaCanNen = Color(0xFFFAF8EE); // băng "Cần Premium" — nền
+  static const Color khoaCanVien = Color(0xFFECE5CD); // băng "Cần Premium" — viền
+  static const Color khoaCanChu = Color(0xFF523F0C); // băng "Cần Premium" — chữ
+  static const Color khoaCanIcon = Color(0xFF8C6D1F); // băng "Cần Premium" — ổ khoá
+  static const Color khoaTamDungNen = Color(0xFFFFF4F2); // băng "Tạm dừng — cần Premium" — nền
+  static const Color khoaTamDungVien = Color(0xFFFAD7D4); // băng "Tạm dừng — cần Premium" — viền
+  static const Color vienNutNangCap = Color(0xFFD5D3CA); // viền nút "Nâng cấp" trên băng công tắc
 }

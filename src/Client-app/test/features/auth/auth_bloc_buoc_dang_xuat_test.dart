@@ -28,7 +28,6 @@ import 'package:flowmoney/core/auth/phien_dieu_phoi_that.dart';
 import 'package:flowmoney/features/transaction/data/datasources/kho_anh_quet.dart';
 import 'package:flowmoney/features/ai_edge/data/slm_cache.dart';
 import 'package:flowmoney/features/auth/presentation/state/an_the_cho_xoa.dart';
-import 'package:flowmoney/features/category/application/default_category_seeder.dart';
 import 'package:flowmoney/features/category/application/personal_default_categories.dart';
 import 'package:flowmoney/features/wallet/application/default_account_data_initializer.dart';
 import 'package:flowmoney/features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
@@ -260,15 +259,11 @@ void main() {
       boQuet: sl.isRegistered<NotificationScanner>() ? sl<NotificationScanner>() : null,
       interceptor: sl.isRegistered<AuthInterceptor>() ? sl<AuthInterceptor>() : null,
       donTaiKhoanKhac: db.purgeDataForOtherAccounts,
-      xoaBanSao: db.purgeDataForAccount,
       xoaCacheSlm: () async {
         if (sl.isRegistered<SlmCache>()) await sl<SlmCache>().xoaHet();
       },
       chuyenHangSeedCu: sl.isRegistered<PersonalDefaultCategories>()
           ? (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id)
-          : null,
-      taoBanSaoDanhMuc: sl.isRegistered<DefaultCategorySeeder>()
-          ? (id) => sl<DefaultCategorySeeder>().seedForAccount(id)
           : null,
       seedTaiKhoanMoi: sl.isRegistered<DefaultAccountDataInitializer>()
           ? (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id)
@@ -342,63 +337,34 @@ void main() {
     expect((state as AuthUnauthenticated).thongBao, _thongBaoBiKhoa);
   });
 
-  test('daXoa nguồn socket → dọn SQLite đúng tài khoản, chừa tài khoản khác',
-      () async {
-    await themVi(11);
-    final repo = _RepoGia(user: _user('11'));
-    final bloc = await blocDangDangNhap(repo);
-    // Chèn SAU khi mở app: đường `AuthCheckRequested` chạy
-    // `purgeDataForOtherAccounts(11)` nên hàng của 12 sẽ biến mất trước khi ca
-    // test kịp nói được điều gì.
-    await themVi(12);
-    final cho = choDangXuat(bloc);
+  // G89 (người dùng chốt 2026-10-20): ACCOUNT_DELETED KHÔNG dọn SQLite ở MỌI nguồn — mở rộng ngoại lệ G36 (2026-09-13) từ
+  // riêng nhánh làm mới ra cả socket và request thường. Dữ liệu nằm lại tới khi tài khoản khác đăng nhập trên máy
+  // (`purgeDataForOtherAccounts`).
+  for (final nguon in NguonBuocDangXuat.values) {
+    test('daXoa nguồn ${nguon.name} → KHÔNG dọn SQLite, VẪN đăng xuất kèm hộp thoại (G89)', () async {
+      await themVi(11);
+      final repo = _RepoGia(user: _user('11'));
+      final bloc = await blocDangDangNhap(repo);
+      final cho = choDangXuat(bloc);
+      final thongBao = ThongBaoBuocDangXuat(lyDo: LyDoBuocDangXuat.daXoa, nguon: nguon, idaccount: 11);
 
-    realtime.ban(_thongBaoDaXoa);
-    await cho;
+      if (nguon == NguonBuocDangXuat.socket) {
+        realtime.ban(thongBao);
+      } else {
+        interceptor.ban(thongBao);
+      }
+      final state = await cho;
 
-    expect(await soVi(11), 0,
-        reason: 'server đã ẩn danh hoá bên kia (xoá note, images) mà máy vẫn '
-            'giữ bản rõ');
-    expect(await soVi(12), 1);
-  });
-
-  test('daXoa nguồn http → cũng dọn', () async {
-    await themVi(11);
-    final repo = _RepoGia(user: _user('11'));
-    final bloc = await blocDangDangNhap(repo);
-    final cho = choDangXuat(bloc);
-
-    interceptor.ban(const ThongBaoBuocDangXuat(
-      lyDo: LyDoBuocDangXuat.daXoa,
-      nguon: NguonBuocDangXuat.http,
-      idaccount: 11,
-    ));
-    await cho;
-
-    expect(await soVi(11), 0);
-  });
-
-  test('daXoa nguồn lamMoi → KHÔNG dọn, nhưng VẪN đăng xuất (§3.6b)', () async {
-    await themVi(11);
-    final repo = _RepoGia(user: _user('11'));
-    final bloc = await blocDangDangNhap(repo);
-    final cho = choDangXuat(bloc);
-
-    interceptor.ban(const ThongBaoBuocDangXuat(
-      lyDo: LyDoBuocDangXuat.daXoa,
-      nguon: NguonBuocDangXuat.lamMoi,
-      idaccount: 11,
-    ));
-    final state = await cho;
-
-    expect(await soVi(11), 1,
-        reason: 'lỗi lược đồ phía server còn đội lốt được ACCOUNT_DELETED ở '
-            'nhánh làm mới (CAN-LAM 17 §2.5) — báo động giả mà xoá là mất dữ '
-            'liệu thật');
-    expect(state, isA<AuthUnauthenticated>());
-    expect((state as AuthUnauthenticated).thongBao?.lyDo, LyDoBuocDangXuat.daXoa,
-        reason: 'vẫn hiện hộp thoại "Tài khoản đã bị xoá"');
-  });
+      expect(await soVi(11), 1,
+          reason: 'SQLite là bản DUY NHẤT trên máy: báo động giả mà dọn là mất thật phần chưa đồng bộ; xoá đúng thì '
+              'purgeDataForOtherAccounts dọn khi tài khoản khác đăng nhập (G89)');
+      expect(sync.stopCalls, 1);
+      expect(realtime.stopCalls, 1);
+      expect(repo.xoaPhienCalls, 1);
+      expect(state, isA<AuthUnauthenticated>());
+      expect((state as AuthUnauthenticated).thongBao, thongBao, reason: 'vẫn hiện hộp thoại "Tài khoản đã bị xoá"');
+    });
+  }
 
   test('không có phiên → bỏ qua hoàn toàn', () async {
     await themVi(11);
@@ -417,8 +383,7 @@ void main() {
             'nằm sẵn trên máy');
   });
 
-  test('hai thông báo dồn dập khi handler đầu CÒN ĐANG CHẠY → chỉ một lần dừng '
-      'và một lần dọn', () async {
+  test('hai thông báo dồn dập khi handler đầu CÒN ĐANG CHẠY → chỉ một lần dừng', () async {
     await themVi(11);
     final repo = _RepoGia(user: _user('11'))..treoXoaPhien = Completer<void>();
     final bloc = await blocDangDangNhap(repo);
@@ -452,41 +417,6 @@ void main() {
         reason: '`_onAuthCheckRequested` có thể đã phát bản trơn trước; không '
             'nằm trong props thì Bloc bỏ lần phát sau và hộp thoại không bao '
             'giờ hiện');
-  });
-
-  test('thiếu idaccount trong thông báo → lấy từ phiên đăng nhập', () async {
-    await themVi(11);
-    final repo = _RepoGia(user: _user('11'));
-    final bloc = await blocDangDangNhap(repo);
-    final cho = choDangXuat(bloc);
-
-    realtime.ban(const ThongBaoBuocDangXuat(
-      lyDo: LyDoBuocDangXuat.daXoa,
-      nguon: NguonBuocDangXuat.socket,
-    ));
-    await cho;
-
-    expect(await soVi(11), 0);
-  });
-
-  test('không có id hợp lệ ở cả hai chỗ → KHÔNG dọn, vẫn đăng xuất', () async {
-    await themVi(11);
-    final repo = _RepoGia(user: _user('11'));
-    final bloc = await blocDangDangNhap(repo);
-    final cho = choDangXuat(bloc);
-    // Phiên vẫn là tài khoản 11, nhưng thông báo nói về một id hỏng: không
-    // được suy id từ SQLite, cũng không được mặc định về 1 (quy tắc 2).
-    realtime.ban(const ThongBaoBuocDangXuat(
-      lyDo: LyDoBuocDangXuat.daXoa,
-      nguon: NguonBuocDangXuat.socket,
-      idaccount: 0,
-    ));
-    final state = await cho;
-
-    expect(await soVi(11), 1,
-        reason: 'id 0 là "không biết", không phải "tài khoản 0" — và 1 là '
-            'admin thật');
-    expect(state, isA<AuthUnauthenticated>());
   });
 
   test('MỞ APP với tài khoản đã bị khoá → state cuối vẫn mang thongBao', () async {
@@ -604,5 +534,29 @@ void main() {
 
     expect(repo.xoaPhienCalls, 2,
         reason: 'phiên mới thì lời từ chối của phiên cũ hết hiệu lực');
+  });
+
+  test('I4: hook xoá PIN cũ (sauXacThucMatKhau) chạy NGAY sau khi login() trả id, TRƯỚC moPhienCucBo / đồng bộ / seed', () async {
+    final thuTu = <String>[];
+    final p = PhienDieuPhoiThat(
+      dongBo: sync,
+      thoiGianThuc: realtime,
+      boQuet: scanner,
+      interceptor: interceptor,
+      donTaiKhoanKhac: (id) async {
+        thuTu.add('moPhienCucBo');
+        return 0;
+      },
+      seedTaiKhoanMoi: (id) async => thuTu.add('sauDangNhap'),
+      datLaiKhoaApp: (id) async => thuTu.add('xoaPinCu $id'),
+    );
+    addTearDown(p.dispose);
+    final bloc = AuthBloc(authRepository: _RepoGia(user: _user('11')), phien: p);
+    addTearDown(bloc.close);
+    final vao = bloc.stream.where((s) => s is AuthSuccess).first;
+    bloc.add(const LoginSubmitted(email: 'dat', password: 'x'));
+    await vao.timeout(const Duration(seconds: 5));
+    expect(thuTu, ['xoaPinCu 11', 'moPhienCucBo', 'sauDangNhap'],
+        reason: 'PIN cũ chỉ xoá sau cả vòng đồng bộ đầu = giết app lúc ấy là hỏi lại đúng PIN vừa quên');
   });
 }

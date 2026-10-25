@@ -34,6 +34,8 @@
 >     Y đứng **chỗ của tiền** — cùng điều kiện của N2 (cuối câu, hoặc ngay trước dấu câu / chữ ví · bằng · trả · qua · từ
 >     · sang · vào · đến · tới · hôm · ngày · mùng · thứ). *"tiền điện một triệu hai"* → 1.200.000; *"chi hai triệu năm
 >     nay"*, *"nộp hai triệu ba ngày sau"*, *"một triệu hai tiền sách"* → luật để trống, Gemma chọn (như trước C4).
+>     ⟶ **Đổi 2026-10-23 (G104, người dùng chọn):** ở ca ấy luật đưa **hai chip** cụt · dài, Gemma không lấp ô số tiền; dạng
+>     viết chữ chỉ nhận X 1–99 (`_docXBacY`) — *"trả hai trăm nghìn tám"* thôi điền 200.800.
 >     `cachDocSoTien` vẫn liệt kê mọi cách đọc. Cùng lượt: chữ số chữ đứng sau cụm chỉ so **không dấu** khi **cả câu**
 >     không dấu (*"hai triệu sau khi giảm"* không thành 2.600.000), và `cachDocSoTien` dùng chung phép đọc ấy; tập chữ
 >     đứng sau tiền của N2 thêm *ví · đến · tới*.
@@ -43,6 +45,13 @@
 >     lượt soát: *tháng trước* → tháng trước; *tháng sau · tháng tới* → không đọc ngày (C2 hỏi AI); số đứng sau *tháng*
 >     là số tiền (*"tháng 3 triệu"*, *"tháng 3tr"*, *"tháng 3.000.000"*) thì tiền thắng, tháng coi như không nêu; *mùng*
 >     chỉ nhận dạng có dấu; số ngày / tháng bằng chữ đọc qua `so_bang_chu.dart`.
+> 12. **§3.4 + quyết định 5 — kiểm chéo thu hẹp (người dùng chốt 2026-10-22, sau nghiệm thu Realme 2026-10-21):** Gemma chỉ
+>     kiểm khi câu **còn số tiền khác** ngoài cụm luật — `KetQuaDocCau.soTienKhac` = `cachDocSoTien(ghi chú luật)` bỏ số
+>     luật; `soTienCanKiem` = dạng nói ∧ tập ấy không rỗng (cờ cũ đổi tên `soTienDangNoi`); `chotSoTienCau(…, khac:)` chỉ
+>     ra chip khi số AI ∈ tập. Lý do: Gemma đọc *"tiền điện một triệu hai"* thành 1.000.000 2/2 lần; câu một cụm chỉ có bản
+>     cụt (N1) hoặc không có cách đọc nào khác (N2). Hệ quả: câu cần kiểm luôn có ô thiếu `ghiChu` → C2 hỏi Gemma trước khi
+>     điền → **bước 2 của §3.4 (điền ngay rồi kiểm ở nền, `dangKiemSoTien`, dòng *"Đang kiểm số tiền bằng AI…"* + Huỷ) đã
+>     gỡ**; bước 1 là đường duy nhất. Chi tiết: mục 4 `GIONG_NOI_FEATURE.md`.
 
 ## 1. Quyết định người dùng chốt (2026-10-12)
 

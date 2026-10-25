@@ -321,6 +321,11 @@ không tồn tại.
 Nay ba mảnh ấy đều được lưu (ba cột, mục 5 — **đã đồng bộ từ 2026-09-07**), và
 `GoalAutoDepositRunner` chạy các kỳ đã tới hạn.
 
+**Số tiền mỗi kỳ form Thêm mục tiêu tự đề xuất** (khi đổi số tiền mục tiêu hoặc hạn chót): từ 2026-10-19 đi qua
+`soTienMoiKyDeXuat` (`goal_forecast.dart`), đếm theo **ngày lịch** — trước đó form trừ `DateTime` thô nên hạn 00:00 hụt một
+ngày khi mở form buổi tối và số đề xuất đổi theo giờ mở. Chu kỳ lấy từ `soNgayChuKy`, nhãn nhịp ("mỗi tuần"…) một chỗ
+`nhanNhipChuKy` cho thẻ Cấu hình và khối Nhận xét.
+
 **Nơi chạy là `NotificationScanner.scan()`**, tức mỗi khi một chu kỳ đồng bộ kết
 thúc — không phải WorkManager. Các kỳ bỏ lỡ được **trích bù** theo đúng thứ tự
 khi app mở lại, nên không kỳ nào mất; chúng chỉ xảy ra muộn hơn mốc lý thuyết.
@@ -528,7 +533,7 @@ một **test quét `lib/`** canh việc ấy cho mọi ô tiền trong app.
 
 ⚠️ **Vì sao phải chặn ở ô nhập chứ không đợi lỗi**: tràn cho SQLSTATE `22003`,
 mà `sync.service.js` **không có nhánh** cho mã ấy nên nó rơi về `DB_ERROR`; và
-`_permanentCodes` của `SyncEngine` là **danh sách trắng**, `DB_ERROR` không nằm
+`_permanentCodes` của `GuiLoDongBo` (`core/sync/gui_lo_dong_bo.dart`) là **danh sách trắng**, `DB_ERROR` không nằm
 trong đó. Mục tiêu bị **gửi lại ở mọi chu kỳ đồng bộ** — không lỗi, không log,
 chỉ một hàng đợi càng lúc càng chậm. Cùng vòng lặp mà G31 và G14 sinh ra để
 chặn.
@@ -626,6 +631,8 @@ dài thêm mãi. Nay chia hai tab theo đúng lối của Ngân sách, nhãn man
 `GoalEntity.daHoanThanh` = `isCompleted || progress >= 1.0` là **định nghĩa duy
 nhất**; luật thông báo `_goalCandidates` và bộ chia tab `chiaMucTieu` đều gọi nó.
 Trước đây mỗi nơi tự viết lại cùng biểu thức — hai bản sao chờ ngày lệch.
+Từ 2026-10-19 bộ trích tự động, lịch nhắc, mốc chạy nền, khối Nhận xét chi tiết mục tiêu và dự báo 30 ngày
+đều gọi getter này; test quét 30 (`test/features/goal/da_hoan_thanh_mot_noi_test.dart`) canh.
 
 Cần cả hai vế: cờ được ghi lúc nạp/rút, còn `progress >= 1.0` bắt ca cờ chưa kịp
 ghi **và** bắt mục tiêu 0 đồng (nơi `progress` trả thẳng `1.0`).
@@ -1120,13 +1127,15 @@ sử đều hiện dấu trừ, kể cả dòng người dùng thật sự đã 
 Dùng tiền tố ghi chú (mục 3.3). Khoá đổi ví (mục 3.1) làm ca này khó xảy ra
 nhưng **không** loại bỏ được — dữ liệu tạo trước khi có khoá vẫn còn.
 
-### 4.3 `_collectPendingOps` dựng payload **thô**, normalizer chạy sau
+### 4.3 `collectPendingOps` dựng payload **thô**, normalizer chạy sau
 
-Đọc `_collectPendingOps` rồi kết luận là **sai**: nó dựng
+(`ThuGomThaoTacDay.collectPendingOps` ở `core/sync/thu_gom_day.dart` từ 2026-10-19; trước đó là `SyncEngine._collectPendingOps`.)
+
+Đọc `collectPendingOps` rồi kết luận là **sai**: nó dựng
 `{'type': 'chi', 'amount': 1000}` và dừng ở đó.
 `SyncPayloadNormalizer.transactionForPush` mới là nơi quy đổi sang
 `{'type': 'Transaction', 'amount': -1000}`, và nó chạy ở
-`sync_engine.dart:1234`, **ngay trước `POST /sync/push`**.
+`GuiLoDongBo.sendBatch` (`core/sync/gui_lo_dong_bo.dart`; trước 2026-10-19 là `sync_engine.dart:1234`), **ngay trước `POST /sync/push`**.
 
 PostgreSQL có `chk_transaction_type CHECK ("Type" IN ('Transaction','Transfer'))`
 và mã hoá chiều tiền bằng **dấu của `Amount`**. Bỏ phép quy đổi là mọi giao dịch

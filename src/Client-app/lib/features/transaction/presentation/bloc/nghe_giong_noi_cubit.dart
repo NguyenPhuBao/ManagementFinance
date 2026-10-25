@@ -157,7 +157,7 @@ class NgheGiongNoiCubit extends Cubit<NgheGiongNoiState> {
         _soMau++;
         final luc = kNhipBienDo * _soMau;
         if (luc.inSeconds != state.giay) _phat(state.copyWith(giay: luc.inSeconds));
-        if (_boDoIm!.them(db, luc)) unawaited(_dungGhi());
+        if (_boDoIm!.them(db, luc)) unawaited(_dungGhi(coTieng: _boDoIm!.daCoTieng));
       });
     } catch (e) {
       debugPrint('[GiongNoi] ghi âm lỗi: $e');
@@ -172,7 +172,9 @@ class NgheGiongNoiCubit extends Cubit<NgheGiongNoiState> {
     }
   }
 
-  Future<void> _dungGhi() async {
+  /// [coTieng] `false` = bộ đo dừng vì chưa nghe tiếng nào sau 6 giây: bản ghi im lặng KHÔNG đem đi chép (Realme
+  /// 2026-10-21: Gemma trả lại câu lệnh, ~8 s mô hình chặn hàng đợi). Bấm ■ thì luôn chép — ngưỡng dBFS chưa đo mọi máy.
+  Future<void> _dungGhi({bool coTieng = true}) async {
     if (state.trangThai != TrangThaiNghe.dangGhi) return;
     final luot = _luot;
     final tepLuotNay = _tep; // chỉ xoá tệp CỦA LƯỢT NÀY — lượt mới có thể đã gán `_tep` khác khi ta về muộn
@@ -185,7 +187,7 @@ class NgheGiongNoiCubit extends Cubit<NgheGiongNoiState> {
     }
     final gemma = _nguon.gemma;
     String? cau;
-    if (p != null && gemma != null) {
+    if (coTieng && p != null && gemma != null) {
       try {
         // Hàng đợi lượt chép nằm ở `ChepLoiBangGemma` (mô hình là singleton, mọi Cubit dùng chung).
         final wav = await _nguon.docTep(p);

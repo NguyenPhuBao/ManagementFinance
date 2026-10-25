@@ -23,7 +23,12 @@ class KetQuaHoaDon {
 
   /// Dòng mà luật lấy tổng từ đó — để người chấm thấy vì sao.
   final String? canCu;
-  const KetQuaHoaDon({this.tong, this.cuaHang, this.ngay, this.gio, this.canCu, this.ngayDuHaiSo = true});
+
+  /// Chỉ số (trong các dòng KHÔNG rỗng, đã `trim`) của dòng đầu khối tổng — dòng số khi số nằm ngay trên nhãn, không thì
+  /// dòng nhãn. Vùng món nằm TRƯỚC nó. `null` khi không có nhãn tổng (tổng là số lớn nhất của cả tờ).
+  final int? dongTong;
+  const KetQuaHoaDon(
+      {this.tong, this.cuaHang, this.ngay, this.gio, this.canCu, this.dongTong, this.ngayDuHaiSo = true});
 
   @override
   String toString() =>
@@ -113,6 +118,15 @@ bool _laDauAnh(String bo) => bo.contains('shot on');
 
 String _hai(int v) => v.toString().padLeft(2, '0');
 
+/// Giờ ngay sau NHÃN *"Giờ / Giờ vào / Giờ ra"* mà giữa giờ và phút không có dấu hai chấm — so trên một dòng đã bỏ dấu.
+/// ỦA TEA tờ N01 (`/quet` thật, Realme 2026-10-21): *"Giò vào: 1407"* (OCR đọc "Giờ" thành "Giò"), *"Giờ ra: 14.26"*,
+/// *"Giò vào::1426"*. Soát mã 2026-10-22: bỏ dấu thì *"Giỏ"* cũng là `gio` — số tiền sau nó (*"Giỏ 120.000"*, *"120 000"*)
+/// không phải giờ, nên phút không được dính tiếp một nhóm nghìn; và số MỘT–HAI chữ số ngay trước (*"Tổng đài 24 giờ: 1900
+/// 6017"*) là "24 giờ", không phải nhãn — số dài hơn hay đuôi của một ngày thì không chặn (*"Ngày: 02/10/2026 Giờ ra:
+/// 14.26"*, R02 bộ spike; *"02/10/26 Giờ ra"*).
+final RegExp _gioSauNhan = RegExp(
+    r'(?<!(?:^|[^\d/.\-])\d{1,2}\s?)\bgio(?:\s+(?:vao|ra))?\s*[:.]*\s*(\d{1,2})[.:]?(\d{2})\b(?![.,]\d)(?!\s\d{3})');
+
 String? _docGio(String vanBan) {
   for (final m in _gio.allMatches(vanBan)) {
     var h = int.parse(m.group(1)!);
@@ -120,6 +134,14 @@ String? _docGio(String vanBan) {
     final ap = m.group(3)?.toLowerCase();
     if (ap != null && h >= 1 && h <= 12) h = ap == 'p' ? h % 12 + 12 : h % 12;
     if (h < 24 && p < 60) return '${_hai(h)}:${m.group(2)}';
+  }
+  // Đường DỰ PHÒNG (người dùng duyệt 2026-10-22): chỉ khi cả tờ không có HH:MM nào — có thì HH:MM ở trên thắng. Từng
+  // dòng một: `boDauHoaDon` gộp cả xuống dòng, nhãn cuối dòng sẽ bắt số của dòng sau.
+  for (final dong in vanBan.split('\n')) {
+    for (final m in _gioSauNhan.allMatches(boDauHoaDon(dong))) {
+      final h = int.parse(m.group(1)!), p = int.parse(m.group(2)!);
+      if (h < 24 && p < 60) return '${_hai(h)}:${m.group(2)}';
+    }
   }
   return null;
 }
@@ -152,6 +174,9 @@ String _dongTien(String d) => d
     .replaceAll(_gio, ' ')
     .replaceAllMapped(RegExp(r'(?<=\d)[Oo](?![A-Za-z])'), (_) => '0');
 
+/// Số tiền trên một dòng hoá đơn, đọc như bộ tìm tổng đọc: đã bỏ ngày / giờ, chữ *O* dính sau chữ số là số 0.
+List<int> tienTrenDongHoaDon(String dong) => tienTrenDong(_dongTien(dong));
+
 final RegExp _soCoNgan = RegExp(r'\d{1,3}(?:[.,]\d{3})+');
 
 /// Dòng chỉ có một số tiền (kèm đơn vị) — OCR hay để số ở dòng NGAY TRÊN nhãn tổng (*"79.243"* rồi *"Tong tien:"*).
@@ -169,6 +194,7 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
 
   int? tong;
   String? canCu;
+  int? dongTong;
   var hang = kNhanTongHoaDon.length;
   for (var i = 0; i < dong.length; i++) {
     if (kNhanLoaiHoaDon.any(bo[i].contains)) continue;
@@ -176,11 +202,13 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
     if (h < 0 || h > hang) continue;
     var tien = tienTrenDong(_dongTien(dong[i]));
     var nguon = dong[i];
+    var dau = i;
     // Nhãn không có số: dòng TRÊN chỉ có số thắng dòng dưới (BHX, MAXIDI in số cao hơn nhãn một chút; dòng dưới là
     // dòng kế — điểm, chuyển khoản — Realme 2026-10-08).
     if (tien.isEmpty && i > 0 && _chiSoTien.hasMatch(dong[i - 1])) {
       tien = tienTrenDong(dong[i - 1]);
       nguon = '${dong[i - 1]} ⏎ ${dong[i]}';
+      dau = i - 1;
     }
     if (tien.isEmpty && i + 1 < dong.length && !kNhanLoaiHoaDon.any(bo[i + 1].contains)) {
       tien = tienTrenDong(_dongTien(dong[i + 1]));
@@ -190,6 +218,7 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
     hang = h;
     tong = tien.reduce((a, b) => a > b ? a : b);
     canCu = nguon;
+    dongTong = dau;
   }
   if (tong == null) {
     // Số có NGĂN NGHÌN trước: số trần 5–8 chữ số trên hoá đơn thường là mã (nhân viên *"NV:99184"*, quầy, hoá đơn) —
@@ -220,6 +249,7 @@ KetQuaHoaDon docHoaDonTuChu(String vanBan) {
     ngayDuHaiSo: ngay?.$2 ?? true,
     gio: _docGio(chuNgay),
     canCu: canCu,
+    dongTong: dongTong,
   );
 }
 
@@ -242,6 +272,11 @@ final RegExp _thanHoaDon =
 
 final RegExp _tuChu = RegExp(r'\p{L}+', unicode: true);
 
+/// Ký tự không phải chữ / dấu / số ở HAI ĐẦU tên cửa hàng — logo ™ / ® OCR đọc thành dấu nháy (*STARBUCKS"*, Realme
+/// 2026-10-21), viền khung thành `|`. Giữ ngoặc (*"Cơm Tấm (Q1)"*); giữ `\p{M}` để tên viết tổ hợp (NFD) không mất dấu.
+final RegExp _racDauTen = RegExp(r'^[^\p{L}\p{M}\p{N}(\[]+', unicode: true);
+final RegExp _racCuoiTen = RegExp(r'[^\p{L}\p{M}\p{N})\]]+$', unicode: true);
+
 /// Một dòng chắc KHÔNG phải tên cửa hàng: chữ trên đồ vật phía sau, địa chỉ / liên hệ, tiêu đề chứng từ.
 bool _khongPhaiTenCuaHang(String dong) {
   final b = boDauHoaDon(dong);
@@ -249,16 +284,34 @@ bool _khongPhaiTenCuaHang(String dong) {
 }
 
 /// Tên cửa hàng: dòng có chữ đầu tiên TRƯỚC thân hoá đơn (dòng có số tiền, mã HĐ, tiêu đề cột), bỏ chữ trên đồ vật
-/// phía sau, mẩu chữ lẻ (một từ ≤ 4 chữ cái — *"tel"*, *"M"*), địa chỉ / liên hệ và tiêu đề chứng từ. Không thấy →
-/// `null`: ô trống để người dùng gõ tốt hơn một tên đoán sai (MAXIDI bị cắt mất logo chỉ còn dòng địa chỉ chợ).
+/// phía sau, mẩu chữ lẻ (một từ ≤ 4 chữ cái — *"tel"*, *"M"*), địa chỉ / liên hệ và tiêu đề chứng từ. Dòng TOÀN CHỮ
+/// THƯỜNG xếp sau mọi dòng có chữ hoa — chỉ lấy khi không còn dòng nào khác: G105 (Realme 2026-10-22) — N01 chụp dính
+/// mép, OCR dòng đầu *"card n"* (chữ của vật ở mép ảnh), tên *"ỦA TEA 2DEE"* ở dòng 3. ⚠️ Đừng nới thành *"dòng viết hoa
+/// thắng"*: bản thử ấy đổi R06 thật (*"NHÀ THUỐc"* — OCR đọc chữ cuối thường) sang dòng khẩu hiệu viết hoa bên dưới, và
+/// tên viết thường (*"Quán Phở Hùng"*) thua dòng *DELIVERS*. Không thấy → `null`: ô trống để người dùng gõ tốt hơn một
+/// tên đoán sai (MAXIDI bị cắt mất logo chỉ còn dòng địa chỉ chợ). Tên trả về đã cắt ký tự rác ở hai đầu ([_racDauTen],
+/// [_racCuoiTen]).
 String? _cuaHang(List<String> dong, List<String> bo) {
+  String? thuong;
   for (var i = 0; i < dong.length; i++) {
     final b = bo[i];
-    if (_thanHoaDon.hasMatch(b) || tienTrenDong(_dongTien(dong[i])).isNotEmpty) return null;
+    if (_thanHoaDon.hasMatch(b) || tienTrenDong(_dongTien(dong[i])).isNotEmpty) break;
     final tu = _tuChu.allMatches(dong[i]).toList();
     if (tu.isEmpty || (tu.length == 1 && tu.first.group(0)!.length <= 4)) continue;
     if (_khongPhaiTenCuaHang(dong[i])) continue;
-    return dong[i];
+    if (_toanChuThuong(tu)) {
+      thuong ??= dong[i];
+      continue;
+    }
+    return _catRacTen(dong[i]);
   }
-  return null;
+  return thuong == null ? null : _catRacTen(thuong);
 }
+
+/// Mọi chữ cái của dòng đều là chữ THƯỜNG (*"card n"* có; *"eco-shop Invoice"*, *"NHÀ THUỐc"* không).
+bool _toanChuThuong(List<RegExpMatch> tu) {
+  final chu = tu.map((m) => m.group(0)!).join();
+  return chu == chu.toLowerCase() && chu != chu.toUpperCase();
+}
+
+String _catRacTen(String dong) => dong.replaceFirst(_racDauTen, '').replaceFirst(_racCuoiTen, '');

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/phan_tram.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/domain/budget_pace.dart';
@@ -74,7 +75,6 @@ class _BudgetBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final b = view.budget;
     final mau = budgetHealthColour(budgetHealthOf(b));
-    final percent = (b.rawPercentSpent * 100).round();
     final paceLine = budgetPaceLine(budgetPaceOf(b, now));
 
     return Column(
@@ -135,7 +135,7 @@ class _BudgetBody extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              '$percent%',
+              chuPhanTram(b.rawPercentSpent),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,

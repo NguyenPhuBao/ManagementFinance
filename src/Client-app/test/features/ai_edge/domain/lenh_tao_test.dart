@@ -263,6 +263,59 @@ void main() {
       ];
       expect(nham, isEmpty, reason: 'câu hỏi lọt cổng là mở phiên lệnh vô ích rồi mới về vòng hỏi đáp (thêm ~15 s)');
     });
+
+    // G95 (nghiệm thu OnePlus 2026-10-18): câu XIN VIẾT CHỮ có số đếm ≥ 10 — số ấy đọc ra 15.000 đ, cụm *tiết kiệm* là đối
+    // tượng tạo được, nên cổng mở: *"Đang đọc lệnh bằng AI… Huỷ"* ~5 s rồi câu mới được trả lời.
+    const xinVietChu = [
+      'Hay viet 15 loi khuyen tiet kiem tien cho sinh vien, moi loi khuyen 2 cau giai thich', // nguyên văn câu đo
+      'Hãy viết 15 lời khuyên tiết kiệm tiền cho sinh viên',
+      'bạn hãy viết 20 mẹo dành dụm',
+      'gợi ý 10 cách tiết kiệm tiền',
+      'liệt kê 12 cách để dành tiền mỗi tháng',
+      'kể 10 cách tiết kiệm điện',
+      'tóm tắt 10 nguyên tắc tiết kiệm',
+      'giải thích quy tắc 50 30 20 để tiết kiệm',
+    ];
+    for (final c in xinVietChu) {
+      test('G95 không lọt — xin viết chữ: "$c"', () {
+        expect(coVeLenhTao(c, now: now), isFalse,
+            reason: 'câu xin một đoạn chữ không phải lệnh tạo — mở cổng là bắt người dùng chờ phiên đọc lệnh vô ích');
+      });
+    }
+
+    test('G95 — "kế hoạch …" (ke = kế, không phải kể) vẫn lọt cổng', () {
+      expect(coVeLenhTao('kế hoạch để dành 2 triệu mỗi tháng', now: now), isTrue,
+          reason: '`ke` bỏ dấu là cả *kể* lẫn *kế*: chặn mọi câu mở bằng `ke` là chặn luôn lệnh lên kế hoạch tiết kiệm');
+      expect(coVeLenhTao('ke hoach tiet kiem 5 trieu moi thang', now: now), isTrue);
+    });
+
+    test('G95 — "kể từ …" / "kể cả …" (liên từ, không phải động từ kể) vẫn lọt cổng', () {
+      const lenh = [
+        'kể từ tháng sau để dành 2 triệu mỗi tháng',
+        'ke tu thang sau de danh 2 trieu moi thang',
+        'kể cả tiền thưởng, để dành 20 triệu làm quỹ khẩn cấp',
+      ];
+      final roi = [for (final c in lenh) if (!coVeLenhTao(c, now: now)) c];
+      expect(roi, isEmpty,
+          reason: '*kể từ* = "bắt đầu từ", *kể cả* = "tính cả" — mở đầu được một lệnh tạo; chặn chúng là mất thẻ form');
+    });
+
+    test('⭐ 10 câu C3 đã đo trên máy (mục 9.43 AI_EDGE_FEATURE) — vẫn lọt cổng', () {
+      const daDo = [
+        'tao hoa don gym 300k ngay 5 hang thang',
+        'tao muc tieu mua xe 50 trieu truoc thang 6 nam sau',
+        'dat ngan sach an uong 3 trieu',
+        'them hoa don tien nha 3tr',
+        'lap muc tieu du lich 10tr trong 6 thang',
+        'toi muon de danh 50 trieu mua xe truoc he nam sau',
+        'moi thang tra tien nha 3 trieu vao mung 5',
+        'an uong toi da 3 trieu mot thang',
+        'nhac toi dong tien dien hang thang',
+        'tiet kiem 2 trieu moi thang cho chuyen du lich',
+      ];
+      final roi = [for (final c in daDo) if (!coVeLenhTao(c, now: now)) c];
+      expect(roi, isEmpty, reason: 'lệnh tạo đã đo đạt trên Realme + OnePlus mà rơi khỏi cổng là thành câu hỏi, mất thẻ form');
+    });
   });
 
   group('KetQuaLenhAi.tuLoiGoi', () {
@@ -528,6 +581,26 @@ void main() {
           reason: 'bỏ cụm chu kỳ rồi câu VẪN còn chữ thời gian → nhận');
       expect(han('để dành 20 triệu đi du lịch trong một năm', '30/09/2027'), DateTime(2027, 9, 30),
           reason: '"một năm" bị gọt nhưng "trong" còn lại');
+    });
+    test('⚠️ G99: mốc BẮT ĐẦU ("kể từ tháng sau") không phải hạn — hạn mô hình bịa bị bỏ', () {
+      // Realme (CPU) 2026-10-20: mô hình trả han 30/06/2027 cho câu chỉ nêu mốc bắt đầu; chữ "thang" của "tháng sau"
+      // làm câu thành "câu nói thời gian" nên hạn bịa lọt lưới — thẻ in "hạn 30/06/2027".
+      DateTime? han(String c, String h) => (doc(c, ai(han: h)) as LenhTaoMucTieu).han;
+      const boMocBatDau = [
+        'ke tu thang sau de danh 2 trieu moi thang', // nguyên văn câu đo
+        'kể từ tháng sau để dành 2 triệu mỗi tháng',
+        'bắt đầu từ tuần sau để dành 200k mỗi tuần', // "đầu" cũng là chữ thời gian — phải nằm trong cụm bị gạt
+        'từ tháng sau để dành 1 triệu mỗi tháng',
+        'bat dau tu thang 11 de danh 1 trieu moi thang',
+        'kể từ đầu tháng sau để dành 2 triệu mỗi tháng',
+        'từ ngày 1/11 để dành 500k mỗi tuần', // dấu "/" của mốc bắt đầu không phải dấu của một hạn
+        'kể từ tháng 11 năm sau để dành 2 triệu mỗi tháng',
+      ];
+      final lot = [for (final c in boMocBatDau) if (han(c, '30/06/2027') != null) c];
+      expect(lot, isEmpty, reason: 'câu chỉ nêu lúc BẮT ĐẦU góp thì hạn mô hình đưa ra là bịa');
+      expect(han('từ tháng sau để dành 10 triệu đi du lịch trước tết', '10/02/2027'), DateTime(2027, 2, 10),
+          reason: 'gạt mốc bắt đầu rồi câu VẪN còn chữ thời gian ("trước tết") → nhận');
+      expect(han('ke tu thang sau de danh 10 trieu di du lich truoc tet', '10/02/2027'), DateTime(2027, 2, 10));
     });
     test('không ô nào từ AI → nguon luat', () {
       final l = doc('tạo hoá đơn gym 300k ngày 5 hằng tháng',

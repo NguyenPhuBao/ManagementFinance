@@ -21,13 +21,15 @@
 ///
 /// ## Vì sao KHÔNG bỏ dòng chú thích (khác test quét 14)
 ///
-/// Một chú thích nhắc tên cột trong `sync_engine.dart` là dấu hiệu ai đó đang
+/// Một chú thích nhắc tên cột trong đường đồng bộ (`lib/core/sync/`) là dấu hiệu ai đó đang
 /// định đưa nó vào. Ở đây mọi lần nhắc đều đáng để dừng lại đọc.
 library;
 
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../helpers/duong_dong_bo.dart';
 
 void main() {
   const cam = [
@@ -69,13 +71,21 @@ void main() {
     'danhMucAiDoanDao',
   ];
 
-  const duongDongBo = [
-    'lib/core/sync/sync_engine.dart',
-    'lib/core/sync/sync_payload_normalizer.dart',
-    'lib/core/sync/sync_models.dart',
-  ];
+  final duongDongBo = tepDuongDongBo();
 
-  test('ba tệp của đường đồng bộ không nhắc tới thứ cục bộ nào (v24–v31)', () {
+  test('phép quét thấy đường đồng bộ (có engine, bộ chuẩn hoá, mô hình đồng bộ)', () {
+    expect(
+      duongDongBo,
+      containsAll([
+        'lib/core/sync/sync_engine.dart',
+        'lib/core/sync/sync_payload_normalizer.dart',
+        'lib/core/sync/sync_models.dart',
+      ]),
+      reason: 'Liệt kê thư mục hỏng thì ca dưới xanh vì không đọc gì.',
+    );
+  });
+
+  test('mọi tệp của đường đồng bộ không nhắc tới thứ cục bộ nào (v24–v31)', () {
     final loi = <String>[];
     for (final p in duongDongBo) {
       final f = File(p);

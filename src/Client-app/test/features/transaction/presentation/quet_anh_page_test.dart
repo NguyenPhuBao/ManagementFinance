@@ -16,6 +16,7 @@ import 'dart:typed_data';
 import 'package:flowmoney/features/transaction/data/doc_anh_bang_gemma.dart';
 import 'package:flowmoney/features/transaction/data/doc_danh_muc_bang_ai.dart';
 import 'package:flowmoney/features/transaction/domain/doc_anh_gemma.dart';
+import 'package:flowmoney/features/transaction/domain/doc_mon_hang.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/quet_anh_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,9 +39,12 @@ class _DocChuGia implements DocChuAnh {
 }
 
 class _GemmaGia implements DocAnhBangGemma {
-  _GemmaGia(this.kq, {this.cho});
+  _GemmaGia(this.kq, {this.cho, this.ngatNgay = true});
   final KetQuaGemmaAnh? kq;
   final Completer<KetQuaGemmaAnh?>? cho;
+
+  /// `false`: như máy thật — lời gọi đọc ảnh native không ngắt được tức thì (Realme ~5 s), `huy()` không làm `doc` về.
+  final bool ngatNgay;
   int soLanDoc = 0;
   int soLanHuy = 0;
 
@@ -54,7 +58,7 @@ class _GemmaGia implements DocAnhBangGemma {
   @override
   Future<void> huy() async {
     soLanHuy++;
-    if (cho != null && !cho!.isCompleted) cho!.complete(null);
+    if (ngatNgay && cho != null && !cho!.isCompleted) cho!.complete(null);
   }
 
   @override
@@ -77,6 +81,17 @@ class _DanhMucGia implements DocDanhMucBangAi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Kho thật, nhưng [luuMon] đợi [cho] — giữ màn ở khoảng giữa phép xét Huỷ pha luật và lúc sang pha AI.
+class _KhoChoLuuMon extends KhoAnhQuet {
+  _KhoChoLuuMon({required super.thuMuc, required this.cho});
+  final Completer<void> cho;
+  @override
+  Future<void> luuMon(String tep, List<MonHang> mon) async {
+    await cho.future;
+    return super.luuMon(tep, mon);
+  }
 }
 
 const _hoaDon = [
@@ -208,6 +223,66 @@ void main() {
     expect(u.queryParameters.containsKey('chon'), isFalse);
   });
 
+  // G101 (Realme 2026-10-21): OCR đọc nhầm dòng tổng; form từng điền sẵn số sai — Basic không bao giờ đi qua phép chốt.
+  const r08 = ['MAXIDI', 'BANH 24.900 VO8', 'TONG CONG 75.706', 'VAT 8% 75.700 5.607'];
+  const r13 = ['MAXIDI', 'BOT CHIEN 19.800 VO5', 'TRUNG GA 15.990 VO5', 'TONG CONG 2.127'];
+
+  testWidgets('⭐ G101 Basic — tờ in một số khác lệch ≤ 1% so với tổng → hai chip, không amount, không chữ AI',
+      (tester) async {
+    final g = _GemmaGia(const KetQuaGemmaAnh(tong: 75700));
+    await mo(tester, docChu: _DocChuGia(r08), gemma: g, laPremium: false);
+    await cho(tester);
+    final u = form()!;
+    expect(u.queryParameters.containsKey('amount'), isFalse);
+    expect(u.queryParameters['chon'], '75706,75700');
+    expect(u.queryParameters.containsKey('ai'), isFalse);
+    expect(g.soLanDoc, 0);
+  });
+
+  testWidgets('⭐ G101 Basic — tổng nhỏ hơn một dòng món → không amount, không chip, toast "Chưa đọc được số tiền"',
+      (tester) async {
+    final bat = batThongBao();
+    await mo(tester, docChu: _DocChuGia(r13), laPremium: false);
+    await cho(tester);
+    final u = form()!;
+    expect(u.queryParameters.containsKey('amount'), isFalse);
+    expect(u.queryParameters.containsKey('chon'), isFalse);
+    expect(bat.cau, contains(kCauChuaDocTien));
+  });
+
+  // Cô lập ĐƯỜNG SỐ TIỀN: không có bộ chọn danh mục. Trên máy thật Gemma gần như luôn chọn được danh mục, và danh mục
+  // AI chọn bật `ai=1` như cũ (ca dưới) — phép chốt chỉ không TỰ bật cờ cho hai chip của OCR.
+  testWidgets('⭐ G101 Premium — Gemma bị bỏ, số luật có số gần → hai chip của OCR; phép chốt KHÔNG bật ai=1',
+      (tester) async {
+    await mo(tester, docChu: _DocChuGia(r08), gemma: _GemmaGia(const KetQuaGemmaAnh(tong: 55000)));
+    await cho(tester);
+    final u = form()!;
+    expect(u.queryParameters['chon'], '75706,75700');
+    expect(u.queryParameters.containsKey('ai'), isFalse, reason: 'không số nào trên form là của Gemma');
+  });
+
+  testWidgets('G101 Premium — như trên nhưng Gemma chọn được danh mục → hai chip của OCR, ai=1 (vì danh mục)',
+      (tester) async {
+    await mo(tester,
+        docChu: _DocChuGia(r08),
+        gemma: _GemmaGia(const KetQuaGemmaAnh(tong: 55000)),
+        danhMuc: _DanhMucGia('Ăn uống'));
+    await cho(tester);
+    final u = form()!;
+    expect(u.queryParameters['chon'], '75706,75700');
+    expect(u.queryParameters['dm'], 'Ăn uống');
+    expect(u.queryParameters['ai'], '1');
+  });
+
+  testWidgets('G101 Premium — Gemma hơn số luật đúng một chữ số → hai chip (AI trước), ai=1', (tester) async {
+    await mo(tester, docChu: _DocChuGia(r13), gemma: _GemmaGia(const KetQuaGemmaAnh(tong: 72127)));
+    await cho(tester);
+    final u = form()!;
+    expect(u.queryParameters.containsKey('amount'), isFalse);
+    expect(u.queryParameters['chon'], '72127,2127');
+    expect(u.queryParameters['ai'], '1');
+  });
+
   testWidgets('⭐ hoá đơn + Premium → Gemma lần hai chọn danh mục từ cửa hàng + MÓN Gemma đọc; query dm', (tester) async {
     final dm = _DanhMucGia('Ăn uống');
     await mo(tester,
@@ -259,6 +334,31 @@ void main() {
     expect(d.existsSync() ? d.listSync() : const [], isEmpty);
   });
 
+  // Realme 2026-10-22 (đọc mã khi đo khe Huỷ): phép xét `_huyLuat` chạy TRƯỚC `await kho.luuMon` — Huỷ bấm trong lúc ấy
+  // bật cờ, nút thành "Đang huỷ…" và bị khoá, mà không ai xét lại: Premium vào pha AI chạy trọn (~30 s) không Huỷ được,
+  // Basic mở form như chưa từng Huỷ.
+  for (final premium in [true, false]) {
+    testWidgets('⭐ Huỷ trong lúc lưu món (giữa pha luật và pha AI) → như Huỷ pha luật — ${premium ? 'Premium' : 'Basic'}',
+        (tester) async {
+      final c = Completer<void>();
+      kho = _KhoChoLuuMon(thuMuc: () async => goc, cho: c);
+      final g = _GemmaGia(const KetQuaGemmaAnh(tong: 165000));
+      await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: g, laPremium: premium);
+      await cho(tester);
+      expect(find.text('Đang đọc bằng AI…'), findsNothing, reason: 'tiền đề: chưa sang pha AI');
+      await tester.tap(find.byKey(const Key('quet-huy')));
+      await tester.pump();
+      expect(find.text('Đang huỷ…'), findsOneWidget);
+      c.complete();
+      await cho(tester);
+      expect(g.soLanDoc, 0, reason: 'đã Huỷ — không gọi Gemma');
+      expect(form(), isNull, reason: 'đã Huỷ — không mở form');
+      expect(find.text('Trang trước'), findsOneWidget);
+      final d = Directory('${goc.path}/$kThuMucAnhQuet');
+      expect(d.existsSync() ? d.listSync() : const [], isEmpty, reason: 'ảnh và tệp món bị xoá');
+    });
+  }
+
   testWidgets('Huỷ ở pha AI → dừng lượt sinh, mở form với kết quả luật (không ai=1)', (tester) async {
     final c = Completer<KetQuaGemmaAnh?>();
     final g = _GemmaGia(null, cho: c);
@@ -272,6 +372,30 @@ void main() {
     final u = form()!;
     expect(u.queryParameters['amount'], '165000');
     expect(u.queryParameters.containsKey('ai'), isFalse);
+  });
+
+  testWidgets('⭐ Huỷ ở pha AI khi lượt đọc ảnh native KHÔNG ngắt được → vẫn mở form NGAY; lượt cũ về sau bị bỏ',
+      (tester) async {
+    // Nghiệm thu Realme 2026-10-21: màn "Đang đọc bằng AI…" đứng ~5 s sau khi bấm Huỷ (huỷ 14:23:53, native trả
+    // 14:23:58). Người dùng duyệt 2026-10-22: sang form ngay; lời gọi mô hình kế tiếp chờ lượt cũ (`LuotKhongNgatDuoc`).
+    final c = Completer<KetQuaGemmaAnh?>();
+    final g = _GemmaGia(null, cho: c, ngatNgay: false);
+    final dm = _DanhMucGia('Ăn uống');
+    await mo(tester, docChu: _DocChuGia(_hoaDon), gemma: g, danhMuc: dm);
+    await cho(tester);
+    expect(find.text('Đang đọc bằng AI…'), findsOneWidget, reason: 'tiền đề: đang ở pha AI');
+    await tester.tap(find.byKey(const Key('quet-huy')));
+    await cho(tester);
+    expect(g.soLanHuy, 1);
+    final u = form();
+    expect(u, isNotNull, reason: 'không chờ lượt native về mới mở form');
+    expect(u!.queryParameters['amount'], '165000');
+    expect(u.queryParameters.containsKey('ai'), isFalse);
+    expect(dm.daHoi, isEmpty);
+    c.complete(const KetQuaGemmaAnh(tong: 999000));
+    await cho(tester);
+    expect(form()!.queryParameters['amount'], '165000', reason: 'kết quả về muộn không đụng form');
+    expect(dm.daHoi, isEmpty, reason: 'lượt về muộn không mở lượt chọn danh mục');
   });
 
   // Nghiệm thu OnePlus 2026-10-08: một màn khác (form trống của nút +, deeplink thông báo) mở ĐÈ lên `/quet` trong lúc
@@ -390,5 +514,70 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('MAN QUET'), findsOneWidget);
     expect(pushed, '/tmp/a.jpg');
+  });
+
+  // Stitch `50e001f2…` *"Trang chủ - Chọn nguồn ảnh để Quét"* (bản có dòng nhắc; bản trước `8027b781…`): tiêu đề, dòng khoá, hai lựa chọn có dòng phụ, nút Huỷ — cộng
+  // dòng nhắc chụp (G105, người dùng chọn 2026-10-22: ảnh dính vật có chữ ở mép thì ghi chú ra chữ của vật ấy).
+  group('sheet chọn nguồn ảnh theo Stitch', () {
+    Future<void> moSheet(WidgetTester tester, {Size kho = const Size(411, 914), double coChu = 1.0}) async {
+      tester.view.physicalSize = kho * 3;
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        builder: (ctx, child) => MediaQuery(
+          data: MediaQuery.of(ctx).copyWith(textScaler: TextScaler.linear(coChu)),
+          child: child!,
+        ),
+        home: Scaffold(
+          body: Builder(builder: (ctx) => TextButton(onPressed: () => moQuet(ctx), child: const Text('Q'))),
+        ),
+      ));
+      await tester.tap(find.text('Q'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('⭐ đủ chữ của màn Stitch + dòng nhắc chụp', (tester) async {
+      await moSheet(tester);
+      for (final chu in [
+        'Quét hoá đơn / biên lai',
+        'Ảnh được đọc ngay trên máy, không gửi đi đâu',
+        kNhacChupSat,
+        'Chụp ảnh',
+        'Hoá đơn giấy, màn hình máy khác',
+        'Chọn ảnh có sẵn',
+        'Ảnh chụp màn hình biên lai chuyển khoản',
+        'Huỷ',
+      ]) {
+        expect(find.text(chu), findsOneWidget, reason: chu);
+      }
+      expect(kNhacChupSat, 'Chụp sát tờ hoá đơn, đừng để vật có chữ lọt vào khung');
+      expect(tester.takeException(), isNull);
+    });
+
+    for (final (kho, coChu) in [(const Size(320, 640), 1.3), (const Size(360, 800), 1.0), (const Size(360, 800), 1.3)]) {
+      testWidgets('không tràn, dòng nhắc và dòng phụ xuống dòng chứ không cắt — ${kho.width.toInt()} dp, chữ ×$coChu',
+          (tester) async {
+        await moSheet(tester, kho: kho, coChu: coChu);
+        expect(tester.takeException(), isNull, reason: 'tràn bố cục');
+        for (final chu in [kNhacChupSat, 'Ảnh chụp màn hình biên lai chuyển khoản']) {
+          final t = tester.widget<Text>(find.text(chu));
+          expect(t.overflow, isNot(TextOverflow.ellipsis), reason: '$chu — cắt chữ là mất lời nhắc');
+          expect(t.maxLines, isNull, reason: chu);
+        }
+        // Nút Huỷ nằm trọn trong màn (sheet cao hơn khung thì cuộn được — Huỷ vẫn phải chạm được).
+        await tester.ensureVisible(find.text('Huỷ'));
+        await tester.pumpAndSettle();
+        final r = tester.getRect(find.text('Huỷ'));
+        expect(r.bottom, lessThanOrEqualTo(kho.height));
+      });
+    }
+
+    testWidgets('Huỷ đóng sheet, không mở máy ảnh / thư viện', (tester) async {
+      await moSheet(tester);
+      await tester.tap(find.text('Huỷ'));
+      await tester.pumpAndSettle();
+      expect(find.text('Quét hoá đơn / biên lai'), findsNothing);
+      expect(find.text('Q'), findsOneWidget);
+    });
   });
 }

@@ -1,5 +1,14 @@
 # Báo cáo soát kiến trúc toàn client-app — chỉ đọc (2026-10-18)
 
+> ✅ **Đã sửa 2026-10-19** (bốn lát, kế hoạch `docs/superpowers/plans/2026-10-19-sua-lech-kien-truc-bon-lat.md`, gitignore;
+> khối 🧱 đầu mục 14 `PROJECT_CONTEXT.md`): **cả 14 A** (cộng `the_khoa_quyen` 12 màu + vế thừa `du_bao_dong_tien:338`); B
+> *ngân sách tổng* (áp `khoanVaoThongKe`, người dùng chốt) và ba B *cổng nền tảng dưới `datasources/`* (đóng theo luật mới mục 8
+> `KIEN_TRUC`, test quét 31). Phiên 2 cùng ngày (mục cuối tệp): B `MonHang` /
+> `dong_hang_bien_dong` sửa, B `notification_prefs` đóng không sửa (lý do ở điểm 3); C ngày bắt đầu ngân sách, phần trăm
+> (quét 33), `DateFormat` (quét 32) sửa, các C còn lại đóng có lý do; `other_daos.dart` tách. **Còn lại duy nhất:**
+> `SyncEngine` (spec riêng). Số dòng trong bảng dưới là của
+> HEAD `af7351fe` — nhiều tệp đã dời / đổi (mục *Quyết định* cuối tệp).
+
 **Bối cảnh:** người dùng chốt 2026-10-18 *"từ đây về sau tất cả các phần mới hay cũ đều phải tuân thủ kiến trúc mà
 client-app đang hướng đến"* và *"sau khi hoàn thành phần này, tôi muốn kiểm tra lại toàn bộ"* (spec G94 mục 13). Báo cáo
 này là **phép đo chỉ đọc**, không sửa tệp nào; việc sửa làm **sau lượt G94**, người dùng chọn lát. Đối chiếu
@@ -101,3 +110,61 @@ cổng / dịch vụ bị gọi theo tiền lệ, trừ:
 
 Đã biết thêm (spec G94 mục 13): `core/database/daos/other_daos.dart` chứa ba DAO → tách; `SyncEngine` 2.164 dòng →
 lượt riêng.
+
+## Quyết định người dùng 2026-10-19
+
+Trình báo cáo đầu phiên 2026-10-19 (HEAD `868551b6`; đối chiếu lại mọi điểm A trên mã hiện tại — ngoài Premium chỉ
+`app_router.dart` đổi từ `af7351fe`, số dòng trích còn đúng). G94 tạm gác (chưa nghiệm thu máy).
+
+1. **Ngân sách tổng đi qua `khoanVaoThongKe`** (hàng B mục 6): *đã chi* của ngân sách tổng bỏ khoản *Điều chỉnh số dư*, *Số dư ban
+   đầu*, nửa chi cặp nạp mục tiêu kiểu cũ — khớp *chi tháng này* ở Trang chủ / Phân tích / Sổ. Ba loại ấy không danh mục nên
+   ngân sách theo danh mục không đổi; dòng điều chỉnh vẫn ở Sổ, không còn trong danh sách ngân sách tổng.
+2. **Cổng nền tảng / gói ngoài / hệ tệp → `data/datasources/`** (hàng B mục 3): mục 8 `KIEN_TRUC` thêm hàng; trang được gọi thẳng
+   cổng nền tảng, không được import datasource bọc CSDL / API backend (test quét mới). Đo 2026-10-19: hai chỗ ấy ngang nhau (~10
+   tệp ở gốc `data/`, ~12 dưới `datasources/`); xếp loại lại thì **8** tệp ở gốc là cổng (`slm_runtime`, `phien_cong_cu`,
+   `nguon_ly_do_thoat`, `nguon_tai_nen`, `tai_nen_background_downloader`, `luu_tep_platform`, `luu_anh_qr`, `mo_lien_ket`) → dời;
+   nguồn / store / dịch vụ (`nguon_giong_noi`, `slm_cache`, `mo_hinh_tai_ve`, `bo_nap_mo_hinh`, `xuat_tep_service_impl`) ở lại.
+   Ba hàng B của mục 3 (Cài đặt thông báo, Thêm giao dịch, Quét ảnh gọi thẳng cổng) đóng theo luật này, 0 mã.
+   Preflight 2026-10-19 làm rõ hai vế: **cổng** = interface + bản thật cho MỘT ranh giới (kênh `flowmoney/*`, gói nền tảng, thư mục
+   tệp riêng) → `datasources/`; **store** (kho khoá–giá trị / bảng cục bộ mang luật của mảng — `*_store`, `cong_tac_*`, kể cả bọc
+   `flutter_secure_storage`) và nguồn / dịch vụ → gốc `data/`; `auth_local_data_source` (đã ở `datasources/` từ trước) giữ chỗ.
+   `luu_anh_qr` lẫn bộ tải ảnh Dio trần → tách bộ tải ra tệp riêng để cổng kênh không import Dio (trang Chờ thanh toán gọi thẳng nó).
+3. **Làm cả bốn lát** — Mục tiêu · Giao dịch + Danh mục · Thông báo + Trợ lý AI · Hoá đơn + core + Premium — **bằng agent con**.
+   Thêm vào lát 4 (đo 2026-10-19, ngoài 14 A cũ vì báo cáo bỏ qua Premium): `premium/presentation/widgets/the_khoa_quyen.dart` 12
+   giá trị `Color(0x…)` trên 10 dòng. Thêm vào lát 1 (C): `analytics/domain/du_bao_dong_tien.dart:338` viết
+   `daHoanThanh || remainingAmount <= 0` — vế sau thừa. Đã kiểm hai điểm *rẻ*: `progress` trả 1.0 khi `targetAmount <= 0` nên hai
+   công thức *đã xong* chỉ khác ở NaN / âm; `transactionTypeLabel` trả đúng chữ màn Gắn danh mục đang in.
+
+Chưa làm trong đợt này: hàng B `notification_prefs` / `MonHang` toJson, `dong_hang_bien_dong`; mọi hàng C; `other_daos.dart`,
+`SyncEngine`.
+
+## Quyết định người dùng 2026-10-19 (phiên 2) — phần còn lại
+
+Đo lại trên HEAD `bc5206a3` trước khi trình. Người dùng chọn làm **cả bốn việc** (B · C · `other_daos` · `SyncEngine`),
+bằng agent con. `SyncEngine` là việc kiến trúc → brainstorm + spec riêng, **không** chung kế hoạch với ba việc kia.
+
+1. **`MonHang.toJson` / `fromJson` → private trong `transaction/data/datasources/kho_anh_quet.dart`** (hàng B mục 1):
+   `.mon.json` là định dạng tệp của riêng cổng ấy, hai hàm chỉ nó gọi.
+2. **`dong_hang_bien_dong.dart` → `transaction/application/`** (hàng B mục 2): hai hàm nhiều bước (nhớ ví → xoá hàng → xoá
+   ảnh), chỉ `ThemGiaoDichCubit` gọi, không tệp `data/` nào gọi — đúng nghĩa bộ điều phối (mục 8 `KIEN_TRUC`). Giao dịch
+   thành mảng thứ **sáu** có `application/`.
+3. **`NotificationPrefs.toJson` / `fromJson` GIỮ ở `domain/`** (hàng B mục 1 — đóng, 0 mã): `fromJson` là chỗ duy nhất áp
+   **dải hợp lệ** của từng tuỳ chọn (giờ 0–23, thứ 1–7, trần ngưỡng — ~16 hằng riêng của lớp) = luật domain; dời sang store
+   thì luật chạy theo ra `data/` hoặc chỉ đổi tên hàm. Store đã giữ phần I/O (khoá secure storage, `jsonEncode`, bắt lỗi).
+   Cùng dáng với các bộ đọc Map thuần đã xếp C hợp lệ ở mục 1.
+4. **Ngày bắt đầu mặc định của ngân sách** (hàng C mục 6): một hàm `ngayBatDauMacDinh` ở `budget/domain/budget_period.dart`,
+   form và repository cùng gọi.
+5. **Phần trăm** (hàng C mục 6): `chuPhanTram(tiLe)` ở `core/utils/phan_tram.dart`, thay 7 chỗ `'${(x * 100).round()}%'`;
+   canh bằng **test quét 33**.
+6. **`DateFormat` → `DateFormatter`** (hàng C mục 6): mọi dòng dựng `DateFormat` ngoài `core/utils/date_formatter.dart` (37
+   dòng mã / 31 tệp có từ trọn `DateFormat` — dựng hoặc kiểu tham số — đo 2026-10-19; báo cáo cũ ghi ~14 tệp) đi qua `DateFormatter`, **chữ hiển thị giữ nguyên từng ký tự**: mỗi
+   mẫu đang dùng một hàm (`dd/MM/yyyy`, `dd/MM`, `dd/MM/yyyy HH:mm`, `HH:mm dd/MM/yyyy` của thẻ đơn Premium theo Stitch,
+   `MM/yyyy`, `MM/yy`, khoá nhóm `yyyy-MM-dd`, `EEEE, dd/MM/yyyy`). Mẫu **chỉ có số dựng không locale** (chữ số giống hệt ở
+   mọi locale, widget test không cần `initializeDateFormatting`); chỉ mẫu có tên thứ giữ `vi_VN`. Canh bằng **test quét 32**.
+7. **Không sửa** (đóng, 0 mã): `summarizeTransactions` ↔ `tongThuChi` (hai kiểu dữ liệu, chiều `analytics → transaction`
+   không cho gộp, luật lọc đã một chỗ `khoanVaoThongKe`); **"ngày cuối tháng"** `DateTime(y, m + 1, 0).day` (chỉ thay được
+   một dòng ở 4 tệp; `bill_recurrence.dart` thuộc năm tệp luật 5b cấm import `core/utils`; các hàm cộng / lùi tháng kẹp ngày
+   khác nhau ở biên — hợp nhất là đổi hành vi lịch); bộ đọc đầu ra mô hình (mục 1, C hợp lệ); bốn repository gọi DAO thẳng
+   (mục 4 — luật mục 8 không cấm).
+8. **Tách `core/database/daos/other_daos.dart`** thành `budget_dao.dart` · `bill_dao.dart` · `goal_dao.dart`;
+   `tables/other_tables.dart` ngoài phạm vi.

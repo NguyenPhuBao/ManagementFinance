@@ -44,6 +44,20 @@ void main() {
     expect(kt, contains('FLAG_DEBUGGABLE'), reason: 'log thu mẫu chỉ ở bản debug');
   });
 
+  test('gói gửi lấy từ HỆ THỐNG: gỡ EXTRA_REFERRER và EXTRA_REFERRER_NAME trước khi đọc referrer', () {
+    // Soát bảo mật 2026-10-24: `getReferrer()` trả extra do BÊN GỬI tự đặt trước gói hệ thống ghi. Đo Realme:
+    // `am start … --es android.intent.extra.REFERRER_NAME android-app://com.mbmobile` từ shell → hàng "Biên lai · MB
+    // Bank", form chọn sẵn Ví MB Bank, ảnh đọc theo mẫu vị trí `_mb`.
+    final kt = _doc('${_kt}NhanBienLaiActivity.kt');
+    final docGoi = kt.indexOf('referrer?.');
+    expect(docGoi, greaterThan(0));
+    for (final ten in ['Intent.EXTRA_REFERRER)', 'Intent.EXTRA_REFERRER_NAME)']) {
+      final go = kt.indexOf('removeExtra($ten');
+      expect(go, greaterThan(0), reason: 'thiếu removeExtra($ten — app lạ khai được tên gói ngân hàng');
+      expect(go, lessThan(docGoi), reason: 'gỡ SAU khi đọc referrer là vô tác dụng');
+    }
+  });
+
   test('tóm tắt đếm CẢ HAI hàng chờ, và kênh flowmoney/bien_dong có datCoPhien ở cả hai đầu', () {
     final sv = _doc('${_kt}BienDongListenerService.kt');
     expect(sv, contains('NhanBienLaiActivity.TEP_HANG_CHO'), reason: 'N của tóm tắt gộp tin ngân hàng và biên lai');

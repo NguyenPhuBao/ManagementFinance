@@ -1,9 +1,11 @@
 # Client-app — Việc còn dang dở & rủi ro đã biết
 
-**Cập nhật:** **2026-10-18 tối, lần ba** (G94 lát 2: mã tính năng xong — màn Chi tiết đơn `/premium/don/:orderCode`, màn Chờ thanh toán đủ thông tin và không tự mở trang PayOS, mọi dòng Lịch sử mua bấm được, thẻ đơn cần xử lý + khoá *Thanh toán* ở màn Nâng cấp, tín hiệu `payment.*`; việc 2, 4–10 của khối 🔀 đã làm; G94 còn mở chờ nghiệm thu sandbox PayOS — khối ✅ cuối thân G94). Trước đó **2026-10-18 tối, lần hai** (G94 lát 1: dọn kiến trúc cả mảng Premium cho khớp `KIEN_TRUC_CLIENT_APP.md`, không đổi hành vi — khối 🧱 ở thân G94; G94 vẫn mở). Trước đó **2026-10-18 tối** (mở lượt G89 + G94 bằng đợt sửa hai lỗi đang chạy ở màn Chờ thanh toán: đồng hồ trên máy về 0 thôi tự đưa màn sang *"Đơn đã hết hạn"* — server quyết, nên người chuyển thừa quay lại sau hạn thấy hộp xác nhận; lỗi khi xác nhận chuyển thừa nay có câu báo. G94 vẫn mở — khối ✅ cuối khối 🔀 ở thân G94). Trước đó **2026-10-18 chiều** (gộp `main` @ `e7570e16`; backend sửa thẳng 26 tệp client-app (6 `lib/`, 20 test) cùng tệp CI, và phủ **một phần G94** — ba trạng thái đơn, nút xác nhận chuyển thừa, nhãn lịch sử — nhưng ca chính vẫn hở; khối 🔀 ở thân G94. Backend báo đóng đơn 41–44: client soát bằng mã + CSDL, 41 và 42 đạt trọn, 43 đạt vế chặn xoá SQLite còn sáu việc (kể cả 12 chỗ tài liệu hợp đồng chưa sửa), 44 còn mục B; người dùng chốt đơn 43 **đã đủ**, lượt G89 + G94 bắt đầu từ phiên sau. Không mục G nào mở hay đóng). Trước đó **2026-10-18 khuya** (nghiệm thu Trợ lý online hỗn hợp trên OnePlus 13R với backend dev chạy thật; mở **G96** — ba giới hạn thuộc backend của đường online: Dừng không tới server, server im > 45 s khi Gemini suy nghĩ, `maxOutputTokens` gồm token suy nghĩ → câu cụt, chờ đơn 47 việc 5–7 — và **G95** — cổng C3 bắt nhầm câu hỏi dạng *"hãy viết 15 lời khuyên…"*). Trước đó **2026-10-16 chiều** (gộp `main` @ `d72ccd45`, Payment premium đối soát thừa / thiếu; client đặt **đơn 44**; mở **G94** — client không biết ba trạng thái đơn mới, màn Chờ thanh toán báo *"hết hạn"* với người vừa chuyển thừa / thiếu; người dùng chốt **làm cùng lượt G89**, sau khi backend đóng đơn 43). Trước đó **2026-10-16** (**G88 ĐÓNG — gạch 4 + quét 28**: `core` → `features` 184 → 178 (điểm ghép 170 + hạ tầng 8, cả tám trỏ vào năm tệp domain thuần — danh sách cố định thay ratchet), `SyncEngine` nhận hai cổng bắt buộc, `noiBoNgheKetQuaDay` về DI, `lichNenKeTiep` → `gopLichNen`, `KhoAnhQuet` → `transaction/data`; quét 28 cấm `domain` → `presentation` / `data/` ngoài `data/models/`; `flutter test` 7.075 → **7.085** (10 skip), `flutter analyze` **20**; nghiệm thu máy ảo ✅ đạt). Trước đó **2026-10-15 khuya** (gộp `main` @ `cd2ee572`, client đặt **đơn 43**: **G89** ⏸️ để nguyên → ⏳ **hoãn tới khi backend đóng đơn 43**, rồi làm một lượt cùng ba việc phía client của hợp đồng sự kiện mới). Trước đó **2026-10-15** (**G88 gạch 3 — đợt 4/4 Thông báo + gạch 5 + gạch 6 ĐÓNG**: `NotificationEntity` + `ThongBaoRepository` thay `ThongBaoNguon`; `core/notification` dời hết (34 tệp: 31 về `features/notification/` — domain · data · data/datasources · application — và 3 về `core/nen` · `core/ocr` · `core/utils`) — `core` còn 15 chủ đề; `data/services/` → `features/<x>/application/` (17 tệp, quét 25 luật 7); Entity **7/14**, quét 27 **bốn** luật, `conChoKieu` rỗng; ratchet quét 25 **43 → 18** (gạch 4 còn 18 dòng / 7 tệp); `flutter test` 7.069 → **7.075** (10 skip), `flutter analyze` **20**; nghiệm thu máy ảo ✅ đạt, 11/18 cặp ảnh 0 px, 7 cặp lệch đều giải thích được; G88 còn gạch 4). Trước đó **2026-10-15** (**G88 gạch 3 — đợt 3/4 Danh mục + hai nợ Mục tiêu + `ghiPhanHoi` đóng**: `CategoryEntity` thành kiểu duy nhất từ repository trở lên; `goal_auto_deposit_runner` dời `goal/data/services/`; `watchGoalTransactions` trả `Stream<List<TransactionEntity>>`; `ghiPhanHoi` nhận `PhanHoiTaiPhanBo`; lối chuyển tiếp trả hàng Drift 4 → **0**, `conChoDomain` và `conChoDynamic` rỗng, Entity **6/14**, quét 27 ba luật, ratchet quét 25 **43** giữ; `flutter test` 7.065 → **7.069** (10 skip), `flutter analyze` **20**; nghiệm thu máy ảo ✅ đạt, 27/29 cặp ảnh 0 px, hai cặp lệch 1 px cuộn; G88 vẫn mở — còn đợt Thông báo + gạch 4–6). Trước đó **2026-10-14** (**G88 gạch 3 — đợt 2/4 Giao dịch + Ví đóng**: `WalletEntity` / `TransactionEntity` thành kiểu duy nhất từ repository trở lên (trừ `goal/domain/goal_auto_deposit_runner.dart`, nằm nhầm tầng — cầm hàng Drift qua DAO, spec mục 11; và `GoalRepository.watchGoalTransactions` — `Stream<dynamic>` chở hàng Drift `Transaction` lên trang Chi tiết mục tiêu, nợ có tên, G88 gạch 3), lối chuyển tiếp trả hàng Drift 10 → **4**, `bill/domain` hết import Drift, ratchet quét 25 hạ tầng 40 → **43**, quét 27 mở rộng sang `lib/core`; `flutter test` 7.057 → **7.065** (9 skip, 0 fail ở `3252db88`; **10** skip từ `692c7091` — tệp đo chạy tay), `flutter analyze` **20**; nghiệm thu máy ảo ✅ đạt 2026-10-14 (22/24 cặp ảnh 0 px, hai cặp lệch do thời gian / nhiễu vẽ; vàng 0; Nhập nhanh từ MoMo → Tiền mặt; `fromDrift` 0,028 ms / 92 hàng); G88 vẫn mở — còn hai đợt Entity (Danh mục → Thông báo) + gạch 4–6). Cùng ngày trước đó (**G88 gạch 3 — đợt 1/4 Hoá đơn đóng**: `BillEntity` thành kiểu duy nhất từ repository trở lên, test quét 27, `flutter test` 7.057; G88 vẫn mở — còn ba đợt Entity + gạch 4–6. Cùng ngày: **G91, G92, G93 đóng** — G91: `d1DangHienPin` của khối nhắc sau ngân hàng xét thêm quyền gói `bank_notification_parser`, khớp điều kiện dựng hàng pin của thẻ D1; một ca widget test Basic, đỏ trên mã cũ. G92: hai cửa chặn route chờ `GoiRepository.choNapKho()` rồi mới đọc gói; 5 ca test, nghiệm thu máy ảo mở lạnh. G93 (tìm ra khi điều tra G92, cùng gốc): lượt quét đầu mỗi phiên chạy trước khi gói có tài khoản → `coQuyenNen` mở cửa cho Basic; sửa bằng hook `datGoi` trong `moPhienCucBo` + `noiPhien` so với phiên đã nối; bốn ca test, không đo được trên máy. Đếm: **93** mục G, **89** đã xử lý, còn **bốn** (G18, G23, G88, G89)). Trước đó **2026-10-13** (**G88 gạch 2 đóng** — bốn trang lớn còn lại tách widget theo khối, dời nguyên văn: `goal_add_page` 1.570 → **791** · `goal_detail_page` 1.480 → **664** · `notification_settings_page` 1.615 → **866** · `report_preview_page` 1.270 → **243** dòng, 30 tệp widget mới + 2 tệp `domain/`; `mienTru` của quét 23 **rỗng**; `flutter test` 7.037 → **7.039**; spec `specs/2026-10-13-tach-bon-trang-lon-design.md`. G88 vẫn mở — còn gạch 3–6. Lượt soát toàn nhánh ghi thêm **hai** lỗi có từ trước, chưa sửa: **G91** (hàng gợi ý pin biến mất cả hai nơi với người dùng Basic còn `docBienDong` bật) và **G92** (deeplink `/goals/add` lúc khởi động nguội bị chuyển sang `/premium`). Đếm: **92** mục G, **86** đã xử lý, còn **sáu** (G18, G23, G88, G89, G91, G92)). Trước đó **2026-10-12** (**G90 đóng** — `bocDongHo24Gio` ép đồng hồ 24 giờ ở `MaterialApp.builder`; gốc lỗi: bảng chọn giờ hiển thị theo ngôn ngữ `vi` nhưng đọc giờ gõ vào theo cài đặt máy; ngoài lời từ chối còn hai ca sai im lặng (20:00 gõ 8 → 20:00, 08:00 gõ 12 → 00:00); nghiệm thu máy ảo đặt 12 giờ **ba trong năm** chỗ gọi (giờ Tổng kết tuần và giờ im lặng cùng cơ chế, chưa chạm) + đối chứng bản chưa sửa. Đếm: **90** mục G, **86** đã xử lý, còn **bốn** (G18, G23, G88, G89)). Trước đó **2026-10-11** tối muộn (**G90 mở** — bảng chọn giờ, chế độ gõ chữ, từ chối mọi giờ > 12 khi máy đặt định dạng 12 giờ; năm chỗ `showTimePicker`; lộ ở lượt nghiệm thu chạy nền trên máy ảo, chưa sửa. Đếm: **90** mục G, **85** đã xử lý, còn **năm** (G18, G23, G88, G89, G90)). Trước đó **2026-10-11** tối (**G88 gạch 1 đóng** — trang Thêm giao dịch tách ra `ThemGiaoDichCubit` + `ThemGiaoDichNguon`: trang 2.007 → **779** dòng, +64 ca test, `flutter test` 6.617 → **6.681**; `mienTru` của quét 23 còn **4** tệp; G88 vẫn mở — còn gạch 2–6. Đếm: **89** mục G, **85** đã xử lý, còn **bốn** (G18, G23, G88, G89)). Trước đó **2026-10-11** trưa (**G89 mở, để nguyên có chủ ý** — thao tác admin vô hình trên client: 503 `MAINTENANCE_MODE` / 403 `AIOPS_QUARANTINED` không nhánh đọc; cùng lượt gộp `main` @ `79e46225`, `.gitignore` neo `/Test/`). Trước đó **2026-10-10** khuya (**G88 gạch 7 đóng** — đợt dọn vị trí tệp: 19 tệp dời + 2 tách + 11 test dời, `spike_sql` gỡ, **test quét 25** canh luật mục 8; spec `specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`; G88 còn gạch 1–6, gạch 4 nay có ratchet. Đếm: **88** mục G, **85** đã xử lý, còn **ba** (G18, G23, G88)) · trước đó **2026-10-10** (mở **G88** — nợ kiến trúc còn lại sau đợt *bịt điểm rò kiến trúc Client-app*, bảy gạch có số đo, cộng một câu chờ người dùng quyết về form hoá đơn cho chọn **nhóm** danh mục. Đếm: **88** mục G, **85** đã xử lý, còn **ba** (G18, G23, G88)) · trước đó **2026-10-09** (mở rồi **đóng G87** — kỳ hoá đơn trùng sống lại sau xung đột hai máy, bộ tự trả trừ tiền từng kỳ trùng; mở rồi **đóng G86** — mở app thôi đợi `/auth/profile` mới hiện dữ liệu; **đóng G52** — dòng *danh mục • ví • Tự trả* của thẻ hoá đơn thôi bị cắt ở 360 dp; nửa *"Hạn…" gãy hai dòng* đã hết từ G74. Nghiệm thu Realme 360 dp. Đếm: **87** mục G, **85** đã xử lý, còn **hai** (G18, G23)) · trước đó **2026-10-08** tối (**đóng G67** — mốc kéo về theo giờ-server `maxSince`, nghiệm thu hai máy ảo tài khoản 27 đạt hai lượt; lượt một **mở rồi đóng G85** — ví chưa có neo (ví seed) nhận giao dịch máy khác thì neo nuốt giao dịch ấy, có từ G37. Đếm: **85** mục G, **82** đã xử lý, còn **ba** (G18, G23, G52)) · trước đó **2026-10-07** tối (mở rồi **đóng G83** — chữ gợi ý ô ghi chú màn Thêm giao dịch cắt ở 320 dp, nay *"Thêm ghi chú…"* — và **G84** — chữ gợi ý ô Nhập nhanh cắt mất phần ví dụ, ô ghi chú mang khung của theme; cả hai nghiệm thu Realme. Đếm: **84** mục G, **80** đã xử lý, còn **bốn** (G18, G23, G52, G67)) · trước đó **2026-10-06** khuya (mở **G68–G72** từ nghiệm thu Realme; **đóng G68** — thanh dưới thôi tràn ở màn 320 dp; **đóng G69** — header Phân tích thôi nhảy hàng lúc tải xong; cả hai nghiệm thu Realme; **đóng G70** — form Thêm ví thôi bật sẵn mặc định; **đóng G71** — thông báo số dư của ví đã xoá tự gỡ, chưa đo máy thật). **2026-10-07**: mở và **đóng G73** — hàng chọn biểu tượng ví tràn ở 320 dp, cùng họ G68; quét cả app ở 320 dp — không còn sọc tràn nhưng mở **G74–G78**: chữ bị cắt mất thông tin; cùng ngày **đóng G74** — thẻ hoá đơn xếp chồng khi đo thấy chật — **G75** — thẻ ngân sách Trang chủ thôi mất hạn mức — **G76** — tab Ngân sách, thẻ mục tiêu — **G77** — ô kỳ Sổ giao dịch, form Thêm hoá đơn — **G72** — ba thẻ thu/chi Trang chủ cùng cỡ, cùng cao — và **G78** — chữ phụ xuống hai dòng; cả sáu ✅ nghiệm thu Realme 320 dp tối 2026-10-07, cùng **E6 ◐**; lượt nghiệm thu ấy mở rồi **đóng G79** — chấm mép biểu đồ đường vẫn mất nửa, G55 chưa từng có tác dụng — **G80** — tiêu đề Thêm giao dịch cắt khi ✓ lên thanh tiêu đề — và **G81** — hàng "sắp cạn" treo khi ví đã âm; cả ba ✅ nghiệm thu lại trên Realme 320 dp cùng tối, bản debug `fea682cb…`. rồi mở và **đóng G82** — chip Nhận xét bỏ tên đối tượng (ba *"Tỉ lệ 0,0%"* y hệt). Đếm lại bằng máy: **82** mục G, **78** đã xử lý, còn **bốn** (G18, G23, G52, G67)). Trước đó **2026-10-05** tối (**đóng G63** — giao diện Gộp / Đổi tên / dòng nhắc xong (Task 9–12, `de2b133` → `614634f`) và nghiệm thu trên **hai máy ảo cùng tài khoản thử 27**; lượt nghiệm thu bắt **hai lỗi** 5820 ca test mù: vòng đồng bộ nóng ở bước 1b (sửa `2274a1f` — sửa trong cùng lượt nên **không** mở mục G) và máy kia kéo thiếu sau Đổi tên (phần G63 sửa `3544cc4`); **mở G67** — ca chung của lỗi thứ hai, kéo về bỏ sót bản ghi lên server muộn hơn giờ ghi, **chờ backend** (đơn CAN-LAM 37). Đếm lại bằng máy: **67** mục G, **63** đã xử lý, còn **bốn** (G18, G23, G52, G67)) · trước đó **2026-10-05** (**G63 hết hoãn** — người dùng chọn làm; thiết kế duyệt trong chat, spec `docs/superpowers/specs/2026-10-05-g63-vi-trung-ten-hai-may-design.md`; chiều cùng ngày **phần lõi xong** (Task 1–8, `f2a2f52` → `6a68d86`), **chưa có giao diện, chưa nghiệm thu** — G63 vẫn mở. Không mục nào mở hay đóng thêm — số đếm giữ nguyên như dòng ngay sau) · trước đó **2026-10-04** phiên sau (**đóng G66** — `BudgetEntity.mocKy` là định nghĩa duy nhất của lưới kỳ, nhảy từ ngày bắt đầu chứ không từ mốc đã kẹp (`02d46ca`); người dùng chọn sửa **trước** việc nhịp chi; dữ liệu thật không có ngân sách nào dính. Đếm lại bằng máy: **66** mục G, **62** đã xử lý, còn **bốn** (G18, G23, G52, G63)) · trước đó **2026-10-04** (**mở G66** — ngân sách bắt đầu ngày 29–31 trôi hẳn về ngày đã kẹp từ kỳ thứ hai (31/01 → 28/02 → 28/03 → 28/04…), đi được qua form; lộ khi lập kế hoạch dự án C việc hai (nhịp chi ngân sách), **chưa sửa** — người dùng dặn dừng sau kế hoạch. Đếm lại bằng máy: **66** mục G, **61** đã xử lý, còn **năm** (G18, G23, G52, G63, G66)) · trước đó **2026-10-03** tối (**mở rồi đóng G64 và G65** — hai lỗi có sẵn lộ ra khi nghiệm thu *nhắc ghi sau khi dùng app ngân hàng* trên Realme: *Đăng xuất* ở drawer không làm gì (từ 19/09), và dải *"Đã xoá thông báo · Hoàn tác"* không tự ẩn (từ khi nâng Flutter 3.47). Hai lỗi của chính tính năng nhắc ghi sửa trong cùng lượt nên **không** mở mục G — ghi ở mục 8 `BIEN_DONG_SO_DU_FEATURE.md`. Đếm lại bằng máy: **65** mục G, **61** đóng, còn **bốn** (G18, G23, G52, G63)) · trước đó **2026-10-03** (**mở G63 và hoãn** — ví trùng tên giữa hai máy cùng tài khoản: máy đẩy sau kẹt `WALLET_NAME_DUPLICATE` mãi và có hai ví trùng tên; chỉ xảy ra khi một tài khoản dùng trên hai máy, người dùng chốt không làm tính năng, dữ liệu kẹt trên Realme dọn qua giao diện. Đếm lại bằng máy: **63** mục G, **59** đóng, còn **bốn** (G18, G23, G52, G63)) · trước đó **2026-10-02** (**mở rồi đóng G62** — hàng sáu ô OTP tràn 6,9 px ở máy 360 dp, người dùng báo khi đăng ký trên OnePlus; widget chung `HangOOtp`, mục G62 ở thân). Trước đó **2026-10-01** (**mở rồi đóng G61** — người dùng **không còn chỗ nào để tự gõ từ khoá** cho danh mục: trang *Từ khóa của tôi* chỉ mở được từ mục *Danh mục mặc định*, mà `watchTree` trả `defaultChildren: const []` từ khi mỗi tài khoản dùng bản sao riêng (2026-09-07), còn form sửa danh mục không có ô từ khoá. Người dùng hỏi giữa lượt nghiệm thu *đề xuất thêm từ khoá* trên Realme; xác nhận bằng mã và trên máy. **Sửa ở mã cùng ngày** (người dùng chọn: ô từ khoá trong form Thêm / Chỉnh sửa danh mục, đúng màn Stitch `a5a6ecb3…`); nghiệm thu Realme cùng ngày (thêm · gõ dở rồi Lưu · gỡ, kiểm SQLite). Cùng lượt, ca *chuyển grab* của đề xuất từ khoá hỏng trên dữ liệu thật (`grabcar`) và được sửa ngay — ghi ở mục 5f `CATEGORY_RATIONALE.md`, không mở mục G. Đếm lại bằng máy: **61** mục G, **58** đóng, còn **ba** (G18, G23, G52)) · trước đó **2026-09-29** tối (⚠️ phép đếm *"57 mục G, 54 đóng"* trong ngoặc này là ảnh chụp trước G58–G60; đếm bằng máy 2026-10-01 trước khi mở G61: **60** mục, **57** đóng. **mở và đóng G59** — đổi giờ nhắc không dời lịch đang chờ, nay `resync(datLai: true)`; **mở rồi đóng G60** — bảng chọn thứ tổng kết tràn ở màn thấp, nay cao theo nội dung và cuộn được; trước đó **mở và đóng G58** — màn Thêm giao dịch tràn và che ô ghi chú khi bàn phím hệ thống mở ở 360 dp; nay ẩn 16 phím số lúc gõ chữ, người dùng chọn; trước đó cùng tối **đóng G53** — nhãn trục tung thác nước in đè khi số dư âm; `daiTrucCot` đặt sàn và trần là bội của bước tròn, nghiệm thu trên Realme; cùng lượt khối *Dòng tiền tự do* chuyển sang `daiTrucCot` vì mang cùng cơ chế ở dạng tiềm ẩn; rồi **mở và đóng G54** — nhãn trục hoành thác nước dính nhau ở 360 dp, nay xoay −35° theo màn Stitch; rồi **mở và đóng G55, G56, G57** — ba chỗ nhỏ có từ trước mà người dùng chọn sửa trước B4: chấm kỳ đầu/cuối của biểu đồ đường bị cắt nửa, *"chi vượt thu nhập 26360,0%"* nay là *"chi gấp 265 lần thu nhập"*, nút tạo hoá đơn lên thanh tiêu đề. Đếm lại bằng máy: **57** mục G, **54** đóng, còn **ba** (G18, G23, G52)) · trước đó **2026-09-29** chiều muộn (**mở rồi đóng G51** — số tiền trên thẻ hoá đơn bị cắt ở 360 dp, có từ trước, lộ khi nghiệm thu B2 trên Realme; sửa `77521f2`, nghiệm thu lại trên Realme. Đếm lại bằng máy: **51** mục G, **49** đã đóng, còn **hai** (G18, G23)); cùng lượt **mở G52** (đầu thẻ hoá đơn chật ở 360 dp, có từ trước) và **hoãn** theo người dùng — nay **52** mục, **49** đóng, còn **ba** (G18, G23, G52); rồi **mở G53** khi nghiệm thu B3 (nhãn trục thác nước in đè khi số dư âm, có từ trước) — nay **53** mục, **49** đóng, còn **bốn** (G18, G23, G52, G53) · trước đó **2026-09-29** (**mở rồi đóng G49 và G50** — thẻ tổng và tiêu đề ngày của Sổ giao dịch cộng thô theo `type`, đếm cả khoản điều chỉnh số dư nên lệch Trang chủ 10.000 đ; và cặp nạp mục tiêu dạng cũ được mọi màn tính là thu **và** chi (500.000 mỗi chiều). Thấy trên Realme giữa lượt nghiệm thu B1. Đếm lại bằng máy: **50** mục G, **48** đã đóng, còn **hai** (G18, G23)) · trước đó **2026-09-21** (**lát "cửa sổ nhìn lại"** — **trọn sáu Task xong**, kể cả thẻ "Chưa đặt ngân sách"; mục **14** `PROJECT_CONTEXT.md`. Lượt này **không mở mục G nào**, nhưng nó đóng **hai lỗi đang chạy mà chưa ai ghi thành lỗ hổng**, cả hai cùng một gốc: mọi cửa sổ "ba tháng lịch đã đóng" đều **rỗng trên dữ liệu thật** (giao dịch sớm nhất trong toàn bộ CSDL là **02/09/2026**), nên *gợi ý hạn mức trong form tạo ngân sách* chưa từng hiện một con số nào kể từ 2026-09-06, và *phép neo ba ngưỡng theo thu nhập* — làm cùng ngày ở chặng 1.1 — luôn rơi về sàn. **Mã đúng, đầu vào chết**; bộ test mù vì nó dựng sẵn ba tháng dữ liệu. ⚠️ Cả hai **không** được mở thành mục G vì chúng đã được sửa trong cùng lượt phát hiện; ghi ở đây để người sau biết chúng từng tồn tại và vì sao) · trước đó **2026-09-21** (**nghiệm thu máy ảo 411dp** cho lát "sổ giao dịch: phạm vi kỳ + lọc tiền" — Task 5 Step 1, việc dở dang cuối cùng của kế hoạch ấy. Sáu việc phải thấy tận mắt thì **năm đạt**; kèm một xác nhận ngoài danh sách là **G43 đóng thật trên máy** (nút "Tuỳ chọn" mở được cả khi kỳ đang xem **vượt quá hôm nay** — khoảng khởi tạo bị kẹp đúng luật). Lượt này **mở rồi đóng G48 trong cùng ngày** (đường tắt "Xem giao dịch" thôi lọc sẵn ví khi tab Giao dịch đã mở trước — sửa bằng `didUpdateWidget`, nghiệm thu lại trên máy ảo đúng kịch bản từng hỏng) và **sửa hai chỗ nhỏ của chính lát ấy**: câu trạng thái rỗng còn nói *"trong tháng này"* dù trang nay xem được năm đơn vị, và thẻ tổng in `+0 đ` / `-0 đ` trong khi cột *Thu net* ngay cạnh đã theo luật *số 0 không mang dấu* — tức một thẻ hiện **hai quy ước**. Cả hai có ca canh ở `test/features/transaction/presentation/so_giao_dich_ky_rong_test.dart`; **schema không đổi**, vẫn v24; **payload không đổi**) · trước đó **2026-09-20** (**AI Edge-SLM P1 + P2 XONG**, và **kế hoạch P3 đã viết** — `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10 task. **P1 spike** đo Gemma 4 trên máy thật (OnePlus 13R / Snapdragon 8 Gen 3) và **lật bậc thang của spec**: người dùng chốt **E2B cho mọi máy, bỏ hẳn E4B**, vì trên GPU hai mô hình tốn RAM bằng nhau (0,96 vs 0,97 GB) trong khi E2B nhanh gấp đôi và nhẹ hơn 1 GB — bảng đo ở **mục 8** `AI_EDGE_FEATURE.md`, spec mục 4.1 nay có banner 🛑. **P2 XONG** toàn bộ 17 task; tài liệu tính năng `docs/AI_EDGE_FEATURE.md`, tường thuật ở mục 14 `PROJECT_CONTEXT.md`. Task 16 cuối cùng thêm thông báo `budgetRebalance` — loại thứ **19** của enum, mục **5g** `NOTIFICATION_FEATURE.md`. **Không mở lỗ hổng nào trong cả P2**; schema lên **v24** với hai thứ **cục bộ** (cột `categories.ai_co_dinh`, bảng `AiRebalancingFeedbacks`), **payload không đổi**. Hai việc UX gắn với mảng này: **A6** thẻ "Insight AI" chữ tĩnh — ✅ **đóng 2026-09-19** (Task 14: khối Nhận xét gắn vào **bốn** màn Ngân sách · Phân tích · Mục tiêu · Trang chủ, thẻ cũ xoá hẳn); **A11** năm handler rỗng của `ai_chat_page` — ✅ **đóng 2026-09-22** (P3 Task 8): một nút thành thật (bánh răng → `/ai-settings`), bốn nút **gỡ hẳn** cùng khối mockup bịa số, và `ai_chat_page.dart` rút khỏi danh sách miễn trừ của **hai** test quét. Bước tiếp là **thi công P3** theo kế hoạch ấy. ⭐ **Việc AI đã chốt nhưng chưa làm KHÔNG mở mục G** — chúng nằm ở **mục 11.3 và 11.4** `docs/AI_EDGE_FEATURE.md`, vì chúng là *tính năng chưa làm* chứ không phải *lỗ hổng của thứ đang chạy*: bốn việc cá nhân hoá ở tầng số người dùng chốt 2026-09-20 (học mức thiết yếu · tự đề xuất cờ Cố định · nhịp chi theo ngày · bất thường theo danh mục), cộng năm hướng xếp hạng ở 11.3. ⚠️ Luật chung cho cả bốn: **mỗi luật có ngưỡng mẫu tối thiểu, dưới ngưỡng thì im lặng hoàn toàn** — không có ngưỡng thì luật sẽ "im hàng tháng rồi nổ bừa ngay khi vừa đủ mẫu", đúng sai lầm mục 5f `NOTIFICATION_FEATURE.md` đã loại một lần) · trước đó **2026-09-19 tối** (**bắt đầu mảng AI Edge-SLM** — P0 nâng Flutter 3.47.5 xong `03fe03a`) · trước đó **2026-09-19** (**mở rồi đóng G47** — thẻ hoá đơn và bảng tra tên của ngân sách mất tên danh mục mặc định toàn cục / đã xoá mềm, cùng họ G41 ở ba bản chép tay khác của cùng truy vấn; lộ ra ở mục E8 của lượt đánh giá UX cùng ngày. Đếm lại bằng máy: **47** mục G, **45** đã đóng, còn **hai** (G18, G23). Bảng tóm tắt **thiếu G45, G46** từ 2026-09-18 — bổ sung cùng lượt. Lượt UX ấy còn để lại **A12** và **E6** trong `docs/superpowers/plans/2026-09-19-ux-ui-danh-sach-viec.md`, **chưa** mở mục G vì chưa chốt lối sửa — ✅ **A12 đã chốt và sửa 2026-09-19**: phím `.` bỏ khỏi lưới, nhưng chốt thật nằm ở `_saveTransaction` (nay `ThemGiaoDichCubit.chuanBiLuu`) vì lỗi có **hai cửa** và chế độ sửa vẫn nạp được chuỗi có dấu chấm từ `editing.amount.toString()`; xem khối "A12" mục 14 `PROJECT_CONTEXT.md`. **E6** vẫn chờ chốt. ✅ **Nhóm D — cấu trúc menu — cũng xong cùng ngày và KHÔNG mở mục G nào**: sáu chỗ hỏng tìm được đều đóng ngay trong ngày. Hai trong số ấy lộ ra lúc **thiết kế** (push-từ-ngoài-shell, hằng `nhanhThanhTab`), ba lúc **nghiệm thu máy ảo** (hai FAB chồng nhau, trang Ngân sách thành ngõ cụt, "Vùng nguy hiểm" rơi vào giữa trang Cá nhân), và **một do người dùng báo** — trang Quản lý danh mục **mất hẳn lối vào qua menu** vì nhóm module rời tab Cá nhân mà drawer chưa bao giờ có mục ấy. Lần theo báo cáo ấy còn ra hai lỗi nữa: nút bút chì trên avatar **chưa bao giờ bấm được** (không `InkWell`, tức nút **không có handler** — lưới quét nút chết chỉ tìm *handler rỗng*), và avatar **vòng đen trống** ở hai chỗ A9 bỏ sót. Tường thuật đầy đủ ở mục 14 `PROJECT_CONTEXT.md`) · trước đó **2026-09-18** (**đóng G26 bằng một quyết định sản phẩm** — nhóm **bỏ hẳn** liên kết ngân hàng, nên màn duyệt giao dịch ngân hàng thôi là việc còn thiếu. Phần client gỡ cùng ngày: màn mockup `bank_link_page.dart` — **chưa bao giờ gọi một endpoint nào**, số điện thoại và sáu ô OTP điền sẵn ghi cứng trong `initState` — cùng thẻ "LIÊN KẾT NGÂN HÀNG" ở màn Quản lý ví, hai route, và `RealtimeEvent.giaoDichNganHang`. Backend **vẫn phát** `bank_transaction.incoming`, nên client phải bỏ qua nó êm thấm, đúng nhánh `null` sẵn có cho mọi tên lạ. ⚠️ **Ba thứ giữ nguyên, cố ý**: enum `WalletType.banking`, ba cột SQLite `provider`/`bank_tran_id`/`bank_casso_id`, và phép loại ví `banking` khỏi `tinhLaiSoDu` — cả ba bảo vệ **hàng cũ kéo về**, không bảo vệ một tính năng. ⚠️ **Đừng viện G26 để mở `status`/`provider` vào hợp đồng đồng bộ** — đoạn "Bán kính nếu làm" của mục ấy nay là ảnh chụp lịch sử. **Schema không đổi**, vẫn v23; **payload không đổi**. Đếm lại bằng máy: **46** mục G, **44** đã xử lý, còn **hai** (G18, G23) — con số giữ nguyên vì G26 vốn đã mang dấu ✅. Cùng ngày, trước đó: **mở rồi đóng G46** — lượt soát nối tiếp G45, lần này quét **cả app**: lỗ hổng trần số chữ số **không phải chuyện riêng của ví**. Tám cột tiền đều là numeric(15,2), và **bốn mảng còn lại** (giao dịch, hoá đơn, mục tiêu, ngân sách) đều không giới hạn số chữ số. Nặng nhất là **giao dịch** — người dùng ghi hàng ngày, bàn phím **tự vẽ** nên inputFormatters không với tới, lại có phím **000**. Nay phép gõ tách thành hàm thuần themPhimSoTien, và có **test quét lib/ thứ tám** để ô tiền mới không mở lại lỗ hổng. ⚠️ **Lần thứ BA trong cùng ngày** một trần số chữ số biến giá trị lớn nhất thành **hợp lệ đạt tới được** rồi lộ ra bố cục chưa từng thử với giá trị ấy: ở cỡ 48, con số dài nhất **ngắt thành hai dòng** — không sọc vàng, không exception, `Text` chỉ lặng lẽ ngắt dòng, nên ca test phải đo **chiều cao thật**. Mọi ràng buộc khác đã kiểm và an toàn. Đếm lại: **46** mục G, **44** đã đóng, còn **hai** (G18, G23). Cùng ngày, trước đó: **mở rồi đóng G45** — **sáu lỗ hổng của mảng ví**, tìm được bằng một lượt soát đối chiếu **từng ràng buộc PostgreSQL với chốt tương ứng phía client**, không đến từ báo lỗi nào. Nặng nhất: ô nhập số dư không giới hạn chữ số, mà `Balance` là `numeric(15,2)` — tràn cho SQLSTATE `22003`, backend không có nhánh cho mã ấy nên trả `DB_ERROR`, và danh sách lỗi vĩnh viễn của client là **danh sách trắng** nên ví bị **gửi lại ở mọi chu kỳ đồng bộ**. Cùng vòng lặp mà G31 và G14 sinh ra để chặn. Kế đó: `softDelete` không chặn ví gắn **hoá đơn** (server để `ON DELETE RESTRICT`, và đo được **một ví xoá được ngay** trên dữ liệu thật), phép đếm giao dịch bỏ sót **khoản chuyển đến**, thông báo "điều chuyển số dư về 0đ" dẫn tới ngõ cụt từ sau G37, `currency` là cột CHECK duy nhất chưa được `walletForPush` che, và thiếu chốt cấm đặt ví **đã lưu trữ** làm mặc định. ⚠️ Lượt vá sinh ra **hai lỗi nữa, cả hai chỉ máy ảo thấy** — tràn bố cục 70px vì giới hạn mới biến một trạng thái vô nghĩa thành **hợp lệ đạt tới được**, và cỡ chữ không co vì widget mới đọc controller một lần. ⚠️ Một bản sai lật kết luận: thứ chặn tràn là **`Flexible`**, không phải bậc thang cỡ chữ — ép cỡ chữ cố định mà hai ca bố cục **vẫn xanh**. Đếm lại bằng máy: **45** mục G, **43** đã đóng, còn **hai** (G18, G23). Cùng ngày, trước đó: **đóng G44** — kỳ rỗng thì tệp xuất thôi in khối Ngân sách, theo đúng màn Xem trước. Người dùng chốt chiều *"tệp theo màn"*: người cầm tờ PDF không có chỗ hỏi lại rằng con số ấy thuộc kỳ nào. Luật nay là một vị từ thuần **`inKhoiTheoKy`** mà **cả ba** chỗ cùng đọc — CSV, PDF, và màn Xem trước. ⚠️ Lượt sửa **đính chính chính tiêu đề cũ của G44**: màn Xem trước **không** giấu "mọi khối" khi kỳ rỗng, nó vẫn hiện đầu báo cáo, khối Dòng tiền và ba thẻ tổng — hai bên lệch **đúng một khối**. ⚠️ Ca test cho nhánh **PDF** phải so **độ dài tệp** chứ không tìm chuỗi, vì PDF nén luồng nội dung; bản sai có chủ ý làm nó đỏ với chênh lệch **2 847 byte**. Đếm lại bằng máy cùng ngày: **44** mục G, **42** đã đóng, còn **hai** (G18, G23), cả hai hoãn có chủ ý. Cùng lượt, **ngoài phạm vi G44**: ba ca của `os_notifier_native_test.dart` ghi cứng mốc `DateTime(2026, 9, 17, 21, 30)` và `DateTime(2026, 9, 20, 8)` — `flutter_local_notifications` gọi `validateDateIsInTheFuture` và **ném** với mốc đã qua, nên hai ca **đỏ từ sáng 18/09** ở một vùng chẳng ai vừa đụng vào. Nay dùng mốc tương đối; giờ **21:30 giữ nguyên** vì nó là thứ bắt lỗi neo vào UTC) · trước đó **2026-09-17** (**ba khối cuối vào tệp xuất báo cáo** — mục **3.31** `ANALYTICS_FEATURE.md`: PDF/CSV nay có so-với-kỳ-trước, số liệu nhanh, top 5 khoản chi. Lượt này **đóng một lỗi đã chạy từ 2026-09-09** mà không phép đo nào trước đây bắt được — Roboto nhúng cho PDF không có khối Mũi tên lẫn khối Hình học, nên `→` ở dòng dòng tiền bị gói `pdf` bỏ đi **im lặng** trong mọi tệp app từng xuất; nó lộ ra vì bản thiết kế đầu định dùng `▲`/`▼` và **một ca test đỏ đã lật chính bản thiết kế vừa được duyệt**. Và nó **mở G44** — kỳ rỗng thì màn Xem trước giấu mọi khối còn tệp vẫn in khối Ngân sách, chưa rõ bên nào đúng nên hoãn có chủ ý. Đếm lại bằng máy cùng ngày: **44** mục G, **41** đã đóng, còn **ba** (G18, G23, G44), cả ba hoãn có chủ ý. Cùng ngày, trước đó: **đóng G27** — cờ `wallets.allow_negative`, schema **v23**: ví thẻ tín dụng / theo dõi nợ thôi bị nhắc "ví âm" mỗi ngày. ⚠️ Hai bản sai có chủ ý đi lọt ở vòng đầu, **cả hai là lỗ hổng trong chính bộ test vừa viết** — chi tiết ở mục G27. ⚠️ Phép đếm ghi ở đây khi ấy — **43** mục G, **41** đã đóng, còn **hai** (G18, G23) — là **ảnh chụp trước G44** cùng ngày; con số đang đúng nằm ở đầu banner. Cùng ngày, trước đó: **khoản chi lớn** — loại thông báo thứ **18**, mục #7 khảo sát lần hai, mục 5f `NOTIFICATION_FEATURE.md` — **không mở lỗ hổng nào**; khảo sát lần hai nay **đóng**. Cùng ngày, trước đó: **tổng tài sản theo thời gian** — mục #5 khảo sát lần hai, mục 3.30 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**. Nó *đóng* một chỗ chưa ai gọi tên: `daiTrucDuBao` dựng trần rộng gấp đôi mức cần với dải bắt đầu từ 0, thứ **không test nào bắt được** vì mọi tính chất vẫn đúng — chỉ máy ảo thấy; nay siết tại chính hàm ấy, xem bẫy **4.21** vế ba. Cũng lượt này, giả định của mục 3.25 về "vách khoản neo 2026-09-13" bị **phép đo lật**: vách ấy không tồn tại trên dữ liệu thật) · trước đó 2026-09-16 (cuối ngày: **lịch chi tiêu** — mục #6 khảo sát lần hai, mục 3.29 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**; hai chỗ nó suýt để lọt đều bị bản sai có chủ ý và máy ảo bắt tại chỗ, ghi ở mục 3.29 chứ không thành lỗ hổng. Trước đó cùng ngày: mở rồi **đóng G43** — nút "Tuỳ chọn" của bộ chọn phạm vi ném assertion và chết **im lặng** ở đúng trạng thái mặc định của trang, **có sẵn từ P1**; tìm được khi nghiệm thu máy ảo cho **so cùng kỳ năm trước** (mục #2 khảo sát lần hai), thứ **không** mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G42** trong cùng ngày — ví đã xoá mềm vẫn phình "số dư cuối kỳ" của trang Phân tích; tìm được khi soát tài liệu sau tính năng **dự báo dòng tiền 30 ngày**, thứ **không** mở lỗ hổng nào) · trước đó 2026-09-15 (mở rồi **đóng G41** trong cùng ngày — giao dịch trỏ vào danh mục mặc định toàn cục mất tên, máy ảo lộ ra bằng **hai chip cùng tên**; cùng ngày: **tỉ lệ tiết kiệm** và **A8 #8 dòng tiền tự do** — không mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G40** — trang Xem trước báo cáo lệch cột số tiền thật, và lệch **93px**, nặng hơn chỗ đã sửa ở trang Phân tích; không phải hai khối mà **sáu**. Cùng ngày: P1 phạm vi thời gian và P2 bốn khối mượn từ trang Báo cáo — **không mở lỗ hổng nào**, schema giữ v22) · trước đó 2026-09-14 (mở rồi **đóng G39** ngay trong ngày — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
+**Cập nhật:** **2026-10-24 tối** (**G106 ✅ mở và đóng** — lịch nhắc đặt trước mất im lặng sau force-stop; lượt `resync` đầu mỗi tiến trình đặt lại, đo Realme 0 → 3) · **2026-10-23** (**G104 ✅ ĐÓNG** — câu *"một triệu hai tiền sách"* thôi để Gemma điền bản cụt: luật đưa hai chip 1.000.000 · 1.200.000, Gemma không lấp ô số tiền; cùng lượt, phép đọc *"X bậc Y"* viết chữ có một định nghĩa `_docXBacY` với X 1–99 — *"trả hai trăm nghìn tám"* thôi điền 200.800. Mã + test, **chưa đo trên máy**). Trước đó **2026-10-22 tối** (đo Quét ảnh trên Realme sau lối A *gộp lời dừng trùng*; **G105 ◐ sửa một phần** — mẩu rác *"card n"* ở mép ảnh thắng tên cửa hàng *ỦA TEA*; nay dòng toàn chữ thường xếp sau; đo lại khuya: chữ rác lẫn hoa thường (tấm thẻ tiếng Anh) vẫn lọt). Trước đó **2026-10-22** (kiểm chéo số tiền C4 thu hẹp — Gemma chỉ kiểm khi câu còn số tiền khác, người dùng chốt; mở **G104 ⏸ hoãn**: đường luật bỏ trống *"một triệu hai tiền sách"* còn có thể điền bản cụt 1.000.000 của Gemma, chưa đo). Trước đó **2026-10-21, lần năm** (nghiệm thu C4 giọng nói trên Realme — cả hai lối chạy, mỗi lối 4 câu. **G102 ✅ MỞ VÀ ĐÓNG**: lối Android tự dừng sau ~2 giây vì `pauseFor` tính từ lúc bắt đầu nghe; lối Gemma đem bản ghi im lặng đi chép và điền câu lệnh vào ô. **G103 ✅ MỞ VÀ ĐÓNG**: Google viết *"mbbank"* dính và *"500.000₫"* — ví nguồn trượt, ghi chú sót. Cả hai: mã + test + kiểm lại trên máy). Trước đó **2026-10-21, lần bốn** (**G100 ✅ ĐÓNG** — gỡ task khỏi Đa nhiệm khi tiến trình đang giữ mô hình thì `MainActivity` giết tiến trình, dịch vụ D1 được hệ điều hành dựng lại ~1 s sau; nghiệm thu Realme CPU: mở lại chỉ nạp một bản, Native 1,90 GB thay vì 3,71 GB. **G101** nghiệm thu Realme Premium đạt — R08, R13 nay hỏi hai chip; đường Basic chưa nhìn trên máy). Trước đó **2026-10-21, lần ba** (**G101 ✅ ĐÓNG** — Quét ảnh thôi điền sẵn số sai: ba lưới A + B + C ở `chotTongQuet`, Basic cũng qua phép chốt; 0 / 34 tờ chữ điền sai; mã + test, chưa chạy lại trên máy). Trước đó **2026-10-21, lần hai** (**G100 ◐ sửa một phần** — Back hai lần ở Trang chủ đưa app xuống nền thay vì đóng activity; nghiệm thu OnePlus GPU trước / sau đạt; đường gỡ task còn mở). Trước đó **2026-10-21** (nghiệm thu A5 trên Realme mở **G100** — Back thoát app rồi mở lại thì mô hình Gemma nạp thêm một bản, Native Heap 1,89 → 3,72 GB; và **G101** — Quét ảnh điền sẵn số sai không hỏi khi OCR mất / đổi chữ số dòng tổng, R13 2.127 thay 72.127). Trước đó **2026-10-20, lần bảy** (**G99 ✅ ĐÓNG** — cụm mốc bắt đầu bị gạt trước khi xét chữ thời gian; đo lại Realme đạt). Trước đó **2026-10-20, lần sáu** (G95 **đo Realme đạt** — câu xin viết chữ không mở cổng, lệnh *"kể từ…"* vẫn ra thẻ; mở **G99** — hạn mô hình bịa lọt lưới khi câu chỉ nêu mốc bắt đầu). Trước đó **2026-10-20, lần năm** (**G95 ✅ ĐÓNG** — cổng lệnh tạo C3 thôi bắt câu xin viết chữ; mã + test, chưa đo lại trên máy). Trước đó **2026-10-20, lần bốn** (**G98 ⏳ chờ backend — đơn 48**: nguồn là ca 11 của script test backend `Test/test_data_security_encryption_and_masking.js`; người dùng chốt hướng dọn dữ liệu + sửa script, client không đổi mã). Trước đó **2026-10-20, lần ba** (**G89 ✅ ĐÓNG** — nghiệm thu OnePlus 13R đạt bốn kịch bản, bảng ở mục 12 spec G89; **G98 ⏳ mở** — ví test id không phải UUID kẹt hàng đợi đẩy và kéo giãn cách đồng bộ lên 15 phút). Trước đó **2026-10-20, lần hai** (**G97 ✅ mở và ĐÓNG** — body lỗi không phải JSON làm màn Đăng nhập in câu `TypeError`; `_cauLoi` / `_thanhCong` ở `auth_remote_data_source.dart`). Trước đó **2026-10-20** (**G89 🚧 MÃ XONG 2026-10-20, CHỜ NGHIỆM THU OnePlus (Task 12)** — máy chủ chặn bảo trì / phong toả, `connect_error` bị từ chối vì tài khoản, `account.downgraded`, `ACCOUNT_DELETED` không xoá SQLite ở mọi nguồn; 12 commit `b7ca4512..98d58c64`; số mục G còn mở: đếm lại bằng bảng, không chép). Trước đó **2026-10-18 tối, lần ba** (G94 lát 2: mã tính năng xong — màn Chi tiết đơn `/premium/don/:orderCode`, màn Chờ thanh toán đủ thông tin và không tự mở trang PayOS, mọi dòng Lịch sử mua bấm được, thẻ đơn cần xử lý + khoá *Thanh toán* ở màn Nâng cấp, tín hiệu `payment.*`; việc 2, 4–10 của khối 🔀 đã làm; G94 còn mở chờ nghiệm thu sandbox PayOS — khối ✅ cuối thân G94). Trước đó **2026-10-18 tối, lần hai** (G94 lát 1: dọn kiến trúc cả mảng Premium cho khớp `KIEN_TRUC_CLIENT_APP.md`, không đổi hành vi — khối 🧱 ở thân G94; G94 vẫn mở). Trước đó **2026-10-18 tối** (mở lượt G89 + G94 bằng đợt sửa hai lỗi đang chạy ở màn Chờ thanh toán: đồng hồ trên máy về 0 thôi tự đưa màn sang *"Đơn đã hết hạn"* — server quyết, nên người chuyển thừa quay lại sau hạn thấy hộp xác nhận; lỗi khi xác nhận chuyển thừa nay có câu báo. G94 vẫn mở — khối ✅ cuối khối 🔀 ở thân G94). Trước đó **2026-10-18 chiều** (gộp `main` @ `e7570e16`; backend sửa thẳng 26 tệp client-app (6 `lib/`, 20 test) cùng tệp CI, và phủ **một phần G94** — ba trạng thái đơn, nút xác nhận chuyển thừa, nhãn lịch sử — nhưng ca chính vẫn hở; khối 🔀 ở thân G94. Backend báo đóng đơn 41–44: client soát bằng mã + CSDL, 41 và 42 đạt trọn, 43 đạt vế chặn xoá SQLite còn sáu việc (kể cả 12 chỗ tài liệu hợp đồng chưa sửa), 44 còn mục B; người dùng chốt đơn 43 **đã đủ**, lượt G89 + G94 bắt đầu từ phiên sau. Không mục G nào mở hay đóng). Trước đó **2026-10-18 khuya** (nghiệm thu Trợ lý online hỗn hợp trên OnePlus 13R với backend dev chạy thật; mở **G96** — ba giới hạn thuộc backend của đường online: Dừng không tới server, server im > 45 s khi Gemini suy nghĩ, `maxOutputTokens` gồm token suy nghĩ → câu cụt, chờ đơn 47 việc 5–7 — và **G95** — cổng C3 bắt nhầm câu hỏi dạng *"hãy viết 15 lời khuyên…"*). Trước đó **2026-10-16 chiều** (gộp `main` @ `d72ccd45`, Payment premium đối soát thừa / thiếu; client đặt **đơn 44**; mở **G94** — client không biết ba trạng thái đơn mới, màn Chờ thanh toán báo *"hết hạn"* với người vừa chuyển thừa / thiếu; người dùng chốt **làm cùng lượt G89**, sau khi backend đóng đơn 43). Trước đó **2026-10-16** (**G88 ĐÓNG — gạch 4 + quét 28**: `core` → `features` 184 → 178 (điểm ghép 170 + hạ tầng 8, cả tám trỏ vào năm tệp domain thuần — danh sách cố định thay ratchet), `SyncEngine` nhận hai cổng bắt buộc, `noiBoNgheKetQuaDay` về DI, `lichNenKeTiep` → `gopLichNen`, `KhoAnhQuet` → `transaction/data`; quét 28 cấm `domain` → `presentation` / `data/` ngoài `data/models/`; `flutter test` 7.075 → **7.085** (10 skip), `flutter analyze` **20**; nghiệm thu máy ảo ✅ đạt). Trước đó **2026-10-15 khuya** (gộp `main` @ `cd2ee572`, client đặt **đơn 43**: **G89** ⏸️ để nguyên → ⏳ **hoãn tới khi backend đóng đơn 43**, rồi làm một lượt cùng ba việc phía client của hợp đồng sự kiện mới). Trước đó **2026-10-15** (**G88 gạch 3 — đợt 4/4 Thông báo + gạch 5 + gạch 6 ĐÓNG**: `NotificationEntity` + `ThongBaoRepository` thay `ThongBaoNguon`; `core/notification` dời hết (34 tệp: 31 về `features/notification/` — domain · data · data/datasources · application — và 3 về `core/nen` · `core/ocr` · `core/utils`) — `core` còn 15 chủ đề; `data/services/` → `features/<x>/application/` (17 tệp, quét 25 luật 7); Entity **7/14**, quét 27 **bốn** luật, `conChoKieu` rỗng; ratchet quét 25 **43 → 18** (gạch 4 còn 18 dòng / 7 tệp); `flutter test` 7.069 → **7.075** (10 skip), `flutter analyze` **20**; nghiệm thu máy ảo ✅ đạt, 11/18 cặp ảnh 0 px, 7 cặp lệch đều giải thích được; G88 còn gạch 4). Trước đó **2026-10-15** (**G88 gạch 3 — đợt 3/4 Danh mục + hai nợ Mục tiêu + `ghiPhanHoi` đóng**: `CategoryEntity` thành kiểu duy nhất từ repository trở lên; `goal_auto_deposit_runner` dời `goal/data/services/`; `watchGoalTransactions` trả `Stream<List<TransactionEntity>>`; `ghiPhanHoi` nhận `PhanHoiTaiPhanBo`; lối chuyển tiếp trả hàng Drift 4 → **0**, `conChoDomain` và `conChoDynamic` rỗng, Entity **6/14**, quét 27 ba luật, ratchet quét 25 **43** giữ; `flutter test` 7.065 → **7.069** (10 skip), `flutter analyze` **20**; nghiệm thu máy ảo ✅ đạt, 27/29 cặp ảnh 0 px, hai cặp lệch 1 px cuộn; G88 vẫn mở — còn đợt Thông báo + gạch 4–6). Trước đó **2026-10-14** (**G88 gạch 3 — đợt 2/4 Giao dịch + Ví đóng**: `WalletEntity` / `TransactionEntity` thành kiểu duy nhất từ repository trở lên (trừ `goal/domain/goal_auto_deposit_runner.dart`, nằm nhầm tầng — cầm hàng Drift qua DAO, spec mục 11; và `GoalRepository.watchGoalTransactions` — `Stream<dynamic>` chở hàng Drift `Transaction` lên trang Chi tiết mục tiêu, nợ có tên, G88 gạch 3), lối chuyển tiếp trả hàng Drift 10 → **4**, `bill/domain` hết import Drift, ratchet quét 25 hạ tầng 40 → **43**, quét 27 mở rộng sang `lib/core`; `flutter test` 7.057 → **7.065** (9 skip, 0 fail ở `3252db88`; **10** skip từ `692c7091` — tệp đo chạy tay), `flutter analyze` **20**; nghiệm thu máy ảo ✅ đạt 2026-10-14 (22/24 cặp ảnh 0 px, hai cặp lệch do thời gian / nhiễu vẽ; vàng 0; Nhập nhanh từ MoMo → Tiền mặt; `fromDrift` 0,028 ms / 92 hàng); G88 vẫn mở — còn hai đợt Entity (Danh mục → Thông báo) + gạch 4–6). Cùng ngày trước đó (**G88 gạch 3 — đợt 1/4 Hoá đơn đóng**: `BillEntity` thành kiểu duy nhất từ repository trở lên, test quét 27, `flutter test` 7.057; G88 vẫn mở — còn ba đợt Entity + gạch 4–6. Cùng ngày: **G91, G92, G93 đóng** — G91: `d1DangHienPin` của khối nhắc sau ngân hàng xét thêm quyền gói `bank_notification_parser`, khớp điều kiện dựng hàng pin của thẻ D1; một ca widget test Basic, đỏ trên mã cũ. G92: hai cửa chặn route chờ `GoiRepository.choNapKho()` rồi mới đọc gói; 5 ca test, nghiệm thu máy ảo mở lạnh. G93 (tìm ra khi điều tra G92, cùng gốc): lượt quét đầu mỗi phiên chạy trước khi gói có tài khoản → `coQuyenNen` mở cửa cho Basic; sửa bằng hook `datGoi` trong `moPhienCucBo` + `noiPhien` so với phiên đã nối; bốn ca test, không đo được trên máy. Đếm: **93** mục G, **89** đã xử lý, còn **bốn** (G18, G23, G88, G89)). Trước đó **2026-10-13** (**G88 gạch 2 đóng** — bốn trang lớn còn lại tách widget theo khối, dời nguyên văn: `goal_add_page` 1.570 → **791** · `goal_detail_page` 1.480 → **664** · `notification_settings_page` 1.615 → **866** · `report_preview_page` 1.270 → **243** dòng, 30 tệp widget mới + 2 tệp `domain/`; `mienTru` của quét 23 **rỗng**; `flutter test` 7.037 → **7.039**; spec `specs/2026-10-13-tach-bon-trang-lon-design.md`. G88 vẫn mở — còn gạch 3–6. Lượt soát toàn nhánh ghi thêm **hai** lỗi có từ trước, chưa sửa: **G91** (hàng gợi ý pin biến mất cả hai nơi với người dùng Basic còn `docBienDong` bật) và **G92** (deeplink `/goals/add` lúc khởi động nguội bị chuyển sang `/premium`). Đếm: **92** mục G, **86** đã xử lý, còn **sáu** (G18, G23, G88, G89, G91, G92)). Trước đó **2026-10-12** (**G90 đóng** — `bocDongHo24Gio` ép đồng hồ 24 giờ ở `MaterialApp.builder`; gốc lỗi: bảng chọn giờ hiển thị theo ngôn ngữ `vi` nhưng đọc giờ gõ vào theo cài đặt máy; ngoài lời từ chối còn hai ca sai im lặng (20:00 gõ 8 → 20:00, 08:00 gõ 12 → 00:00); nghiệm thu máy ảo đặt 12 giờ **ba trong năm** chỗ gọi (giờ Tổng kết tuần và giờ im lặng cùng cơ chế, chưa chạm) + đối chứng bản chưa sửa. Đếm: **90** mục G, **86** đã xử lý, còn **bốn** (G18, G23, G88, G89)). Trước đó **2026-10-11** tối muộn (**G90 mở** — bảng chọn giờ, chế độ gõ chữ, từ chối mọi giờ > 12 khi máy đặt định dạng 12 giờ; năm chỗ `showTimePicker`; lộ ở lượt nghiệm thu chạy nền trên máy ảo, chưa sửa. Đếm: **90** mục G, **85** đã xử lý, còn **năm** (G18, G23, G88, G89, G90)). Trước đó **2026-10-11** tối (**G88 gạch 1 đóng** — trang Thêm giao dịch tách ra `ThemGiaoDichCubit` + `ThemGiaoDichNguon`: trang 2.007 → **779** dòng, +64 ca test, `flutter test` 6.617 → **6.681**; `mienTru` của quét 23 còn **4** tệp; G88 vẫn mở — còn gạch 2–6. Đếm: **89** mục G, **85** đã xử lý, còn **bốn** (G18, G23, G88, G89)). Trước đó **2026-10-11** trưa (**G89 mở, để nguyên có chủ ý** — thao tác admin vô hình trên client: 503 `MAINTENANCE_MODE` / 403 `AIOPS_QUARANTINED` không nhánh đọc; cùng lượt gộp `main` @ `79e46225`, `.gitignore` neo `/Test/`). Trước đó **2026-10-10** khuya (**G88 gạch 7 đóng** — đợt dọn vị trí tệp: 19 tệp dời + 2 tách + 11 test dời, `spike_sql` gỡ, **test quét 25** canh luật mục 8; spec `specs/2026-10-10-don-vi-tri-tep-theo-luat-design.md`; G88 còn gạch 1–6, gạch 4 nay có ratchet. Đếm: **88** mục G, **85** đã xử lý, còn **ba** (G18, G23, G88)) · trước đó **2026-10-10** (mở **G88** — nợ kiến trúc còn lại sau đợt *bịt điểm rò kiến trúc Client-app*, bảy gạch có số đo, cộng một câu chờ người dùng quyết về form hoá đơn cho chọn **nhóm** danh mục. Đếm: **88** mục G, **85** đã xử lý, còn **ba** (G18, G23, G88)) · trước đó **2026-10-09** (mở rồi **đóng G87** — kỳ hoá đơn trùng sống lại sau xung đột hai máy, bộ tự trả trừ tiền từng kỳ trùng; mở rồi **đóng G86** — mở app thôi đợi `/auth/profile` mới hiện dữ liệu; **đóng G52** — dòng *danh mục • ví • Tự trả* của thẻ hoá đơn thôi bị cắt ở 360 dp; nửa *"Hạn…" gãy hai dòng* đã hết từ G74. Nghiệm thu Realme 360 dp. Đếm: **87** mục G, **85** đã xử lý, còn **hai** (G18, G23)) · trước đó **2026-10-08** tối (**đóng G67** — mốc kéo về theo giờ-server `maxSince`, nghiệm thu hai máy ảo tài khoản 27 đạt hai lượt; lượt một **mở rồi đóng G85** — ví chưa có neo (ví seed) nhận giao dịch máy khác thì neo nuốt giao dịch ấy, có từ G37. Đếm: **85** mục G, **82** đã xử lý, còn **ba** (G18, G23, G52)) · trước đó **2026-10-07** tối (mở rồi **đóng G83** — chữ gợi ý ô ghi chú màn Thêm giao dịch cắt ở 320 dp, nay *"Thêm ghi chú…"* — và **G84** — chữ gợi ý ô Nhập nhanh cắt mất phần ví dụ, ô ghi chú mang khung của theme; cả hai nghiệm thu Realme. Đếm: **84** mục G, **80** đã xử lý, còn **bốn** (G18, G23, G52, G67)) · trước đó **2026-10-06** khuya (mở **G68–G72** từ nghiệm thu Realme; **đóng G68** — thanh dưới thôi tràn ở màn 320 dp; **đóng G69** — header Phân tích thôi nhảy hàng lúc tải xong; cả hai nghiệm thu Realme; **đóng G70** — form Thêm ví thôi bật sẵn mặc định; **đóng G71** — thông báo số dư của ví đã xoá tự gỡ, chưa đo máy thật). **2026-10-07**: mở và **đóng G73** — hàng chọn biểu tượng ví tràn ở 320 dp, cùng họ G68; quét cả app ở 320 dp — không còn sọc tràn nhưng mở **G74–G78**: chữ bị cắt mất thông tin; cùng ngày **đóng G74** — thẻ hoá đơn xếp chồng khi đo thấy chật — **G75** — thẻ ngân sách Trang chủ thôi mất hạn mức — **G76** — tab Ngân sách, thẻ mục tiêu — **G77** — ô kỳ Sổ giao dịch, form Thêm hoá đơn — **G72** — ba thẻ thu/chi Trang chủ cùng cỡ, cùng cao — và **G78** — chữ phụ xuống hai dòng; cả sáu ✅ nghiệm thu Realme 320 dp tối 2026-10-07, cùng **E6 ◐**; lượt nghiệm thu ấy mở rồi **đóng G79** — chấm mép biểu đồ đường vẫn mất nửa, G55 chưa từng có tác dụng — **G80** — tiêu đề Thêm giao dịch cắt khi ✓ lên thanh tiêu đề — và **G81** — hàng "sắp cạn" treo khi ví đã âm; cả ba ✅ nghiệm thu lại trên Realme 320 dp cùng tối, bản debug `fea682cb…`. rồi mở và **đóng G82** — chip Nhận xét bỏ tên đối tượng (ba *"Tỉ lệ 0,0%"* y hệt). Đếm lại bằng máy: **82** mục G, **78** đã xử lý, còn **bốn** (G18, G23, G52, G67)). Trước đó **2026-10-05** tối (**đóng G63** — giao diện Gộp / Đổi tên / dòng nhắc xong (Task 9–12, `de2b133` → `614634f`) và nghiệm thu trên **hai máy ảo cùng tài khoản thử 27**; lượt nghiệm thu bắt **hai lỗi** 5820 ca test mù: vòng đồng bộ nóng ở bước 1b (sửa `2274a1f` — sửa trong cùng lượt nên **không** mở mục G) và máy kia kéo thiếu sau Đổi tên (phần G63 sửa `3544cc4`); **mở G67** — ca chung của lỗi thứ hai, kéo về bỏ sót bản ghi lên server muộn hơn giờ ghi, **chờ backend** (đơn CAN-LAM 37). Đếm lại bằng máy: **67** mục G, **63** đã xử lý, còn **bốn** (G18, G23, G52, G67)) · trước đó **2026-10-05** (**G63 hết hoãn** — người dùng chọn làm; thiết kế duyệt trong chat, spec `docs/superpowers/specs/2026-10-05-g63-vi-trung-ten-hai-may-design.md`; chiều cùng ngày **phần lõi xong** (Task 1–8, `f2a2f52` → `6a68d86`), **chưa có giao diện, chưa nghiệm thu** — G63 vẫn mở. Không mục nào mở hay đóng thêm — số đếm giữ nguyên như dòng ngay sau) · trước đó **2026-10-04** phiên sau (**đóng G66** — `BudgetEntity.mocKy` là định nghĩa duy nhất của lưới kỳ, nhảy từ ngày bắt đầu chứ không từ mốc đã kẹp (`02d46ca`); người dùng chọn sửa **trước** việc nhịp chi; dữ liệu thật không có ngân sách nào dính. Đếm lại bằng máy: **66** mục G, **62** đã xử lý, còn **bốn** (G18, G23, G52, G63)) · trước đó **2026-10-04** (**mở G66** — ngân sách bắt đầu ngày 29–31 trôi hẳn về ngày đã kẹp từ kỳ thứ hai (31/01 → 28/02 → 28/03 → 28/04…), đi được qua form; lộ khi lập kế hoạch dự án C việc hai (nhịp chi ngân sách), **chưa sửa** — người dùng dặn dừng sau kế hoạch. Đếm lại bằng máy: **66** mục G, **61** đã xử lý, còn **năm** (G18, G23, G52, G63, G66)) · trước đó **2026-10-03** tối (**mở rồi đóng G64 và G65** — hai lỗi có sẵn lộ ra khi nghiệm thu *nhắc ghi sau khi dùng app ngân hàng* trên Realme: *Đăng xuất* ở drawer không làm gì (từ 19/09), và dải *"Đã xoá thông báo · Hoàn tác"* không tự ẩn (từ khi nâng Flutter 3.47). Hai lỗi của chính tính năng nhắc ghi sửa trong cùng lượt nên **không** mở mục G — ghi ở mục 8 `BIEN_DONG_SO_DU_FEATURE.md`. Đếm lại bằng máy: **65** mục G, **61** đóng, còn **bốn** (G18, G23, G52, G63)) · trước đó **2026-10-03** (**mở G63 và hoãn** — ví trùng tên giữa hai máy cùng tài khoản: máy đẩy sau kẹt `WALLET_NAME_DUPLICATE` mãi và có hai ví trùng tên; chỉ xảy ra khi một tài khoản dùng trên hai máy, người dùng chốt không làm tính năng, dữ liệu kẹt trên Realme dọn qua giao diện. Đếm lại bằng máy: **63** mục G, **59** đóng, còn **bốn** (G18, G23, G52, G63)) · trước đó **2026-10-02** (**mở rồi đóng G62** — hàng sáu ô OTP tràn 6,9 px ở máy 360 dp, người dùng báo khi đăng ký trên OnePlus; widget chung `HangOOtp`, mục G62 ở thân). Trước đó **2026-10-01** (**mở rồi đóng G61** — người dùng **không còn chỗ nào để tự gõ từ khoá** cho danh mục: trang *Từ khóa của tôi* chỉ mở được từ mục *Danh mục mặc định*, mà `watchTree` trả `defaultChildren: const []` từ khi mỗi tài khoản dùng bản sao riêng (2026-09-07), còn form sửa danh mục không có ô từ khoá. Người dùng hỏi giữa lượt nghiệm thu *đề xuất thêm từ khoá* trên Realme; xác nhận bằng mã và trên máy. **Sửa ở mã cùng ngày** (người dùng chọn: ô từ khoá trong form Thêm / Chỉnh sửa danh mục, đúng màn Stitch `a5a6ecb3…`); nghiệm thu Realme cùng ngày (thêm · gõ dở rồi Lưu · gỡ, kiểm SQLite). Cùng lượt, ca *chuyển grab* của đề xuất từ khoá hỏng trên dữ liệu thật (`grabcar`) và được sửa ngay — ghi ở mục 5f `CATEGORY_RATIONALE.md`, không mở mục G. Đếm lại bằng máy: **61** mục G, **58** đóng, còn **ba** (G18, G23, G52)) · trước đó **2026-09-29** tối (⚠️ phép đếm *"57 mục G, 54 đóng"* trong ngoặc này là ảnh chụp trước G58–G60; đếm bằng máy 2026-10-01 trước khi mở G61: **60** mục, **57** đóng. **mở và đóng G59** — đổi giờ nhắc không dời lịch đang chờ, nay `resync(datLai: true)`; **mở rồi đóng G60** — bảng chọn thứ tổng kết tràn ở màn thấp, nay cao theo nội dung và cuộn được; trước đó **mở và đóng G58** — màn Thêm giao dịch tràn và che ô ghi chú khi bàn phím hệ thống mở ở 360 dp; nay ẩn 16 phím số lúc gõ chữ, người dùng chọn; trước đó cùng tối **đóng G53** — nhãn trục tung thác nước in đè khi số dư âm; `daiTrucCot` đặt sàn và trần là bội của bước tròn, nghiệm thu trên Realme; cùng lượt khối *Dòng tiền tự do* chuyển sang `daiTrucCot` vì mang cùng cơ chế ở dạng tiềm ẩn; rồi **mở và đóng G54** — nhãn trục hoành thác nước dính nhau ở 360 dp, nay xoay −35° theo màn Stitch; rồi **mở và đóng G55, G56, G57** — ba chỗ nhỏ có từ trước mà người dùng chọn sửa trước B4: chấm kỳ đầu/cuối của biểu đồ đường bị cắt nửa, *"chi vượt thu nhập 26360,0%"* nay là *"chi gấp 265 lần thu nhập"*, nút tạo hoá đơn lên thanh tiêu đề. Đếm lại bằng máy: **57** mục G, **54** đóng, còn **ba** (G18, G23, G52)) · trước đó **2026-09-29** chiều muộn (**mở rồi đóng G51** — số tiền trên thẻ hoá đơn bị cắt ở 360 dp, có từ trước, lộ khi nghiệm thu B2 trên Realme; sửa `77521f2`, nghiệm thu lại trên Realme. Đếm lại bằng máy: **51** mục G, **49** đã đóng, còn **hai** (G18, G23)); cùng lượt **mở G52** (đầu thẻ hoá đơn chật ở 360 dp, có từ trước) và **hoãn** theo người dùng — nay **52** mục, **49** đóng, còn **ba** (G18, G23, G52); rồi **mở G53** khi nghiệm thu B3 (nhãn trục thác nước in đè khi số dư âm, có từ trước) — nay **53** mục, **49** đóng, còn **bốn** (G18, G23, G52, G53) · trước đó **2026-09-29** (**mở rồi đóng G49 và G50** — thẻ tổng và tiêu đề ngày của Sổ giao dịch cộng thô theo `type`, đếm cả khoản điều chỉnh số dư nên lệch Trang chủ 10.000 đ; và cặp nạp mục tiêu dạng cũ được mọi màn tính là thu **và** chi (500.000 mỗi chiều). Thấy trên Realme giữa lượt nghiệm thu B1. Đếm lại bằng máy: **50** mục G, **48** đã đóng, còn **hai** (G18, G23)) · trước đó **2026-09-21** (**lát "cửa sổ nhìn lại"** — **trọn sáu Task xong**, kể cả thẻ "Chưa đặt ngân sách"; mục **14** `PROJECT_CONTEXT.md`. Lượt này **không mở mục G nào**, nhưng nó đóng **hai lỗi đang chạy mà chưa ai ghi thành lỗ hổng**, cả hai cùng một gốc: mọi cửa sổ "ba tháng lịch đã đóng" đều **rỗng trên dữ liệu thật** (giao dịch sớm nhất trong toàn bộ CSDL là **02/09/2026**), nên *gợi ý hạn mức trong form tạo ngân sách* chưa từng hiện một con số nào kể từ 2026-09-06, và *phép neo ba ngưỡng theo thu nhập* — làm cùng ngày ở chặng 1.1 — luôn rơi về sàn. **Mã đúng, đầu vào chết**; bộ test mù vì nó dựng sẵn ba tháng dữ liệu. ⚠️ Cả hai **không** được mở thành mục G vì chúng đã được sửa trong cùng lượt phát hiện; ghi ở đây để người sau biết chúng từng tồn tại và vì sao) · trước đó **2026-09-21** (**nghiệm thu máy ảo 411dp** cho lát "sổ giao dịch: phạm vi kỳ + lọc tiền" — Task 5 Step 1, việc dở dang cuối cùng của kế hoạch ấy. Sáu việc phải thấy tận mắt thì **năm đạt**; kèm một xác nhận ngoài danh sách là **G43 đóng thật trên máy** (nút "Tuỳ chọn" mở được cả khi kỳ đang xem **vượt quá hôm nay** — khoảng khởi tạo bị kẹp đúng luật). Lượt này **mở rồi đóng G48 trong cùng ngày** (đường tắt "Xem giao dịch" thôi lọc sẵn ví khi tab Giao dịch đã mở trước — sửa bằng `didUpdateWidget`, nghiệm thu lại trên máy ảo đúng kịch bản từng hỏng) và **sửa hai chỗ nhỏ của chính lát ấy**: câu trạng thái rỗng còn nói *"trong tháng này"* dù trang nay xem được năm đơn vị, và thẻ tổng in `+0 đ` / `-0 đ` trong khi cột *Thu net* ngay cạnh đã theo luật *số 0 không mang dấu* — tức một thẻ hiện **hai quy ước**. Cả hai có ca canh ở `test/features/transaction/presentation/so_giao_dich_ky_rong_test.dart`; **schema không đổi**, vẫn v24; **payload không đổi**) · trước đó **2026-09-20** (**AI Edge-SLM P1 + P2 XONG**, và **kế hoạch P3 đã viết** — `docs/superpowers/plans/2026-09-20-ai-edge-p3-cam-slm.md`, 10 task. **P1 spike** đo Gemma 4 trên máy thật (OnePlus 13R / Snapdragon 8 Gen 3) và **lật bậc thang của spec**: người dùng chốt **E2B cho mọi máy, bỏ hẳn E4B**, vì trên GPU hai mô hình tốn RAM bằng nhau (0,96 vs 0,97 GB) trong khi E2B nhanh gấp đôi và nhẹ hơn 1 GB — bảng đo ở **mục 8** `AI_EDGE_FEATURE.md`, spec mục 4.1 nay có banner 🛑. **P2 XONG** toàn bộ 17 task; tài liệu tính năng `docs/AI_EDGE_FEATURE.md`, tường thuật ở mục 14 `PROJECT_CONTEXT.md`. Task 16 cuối cùng thêm thông báo `budgetRebalance` — loại thứ **19** của enum, mục **5g** `NOTIFICATION_FEATURE.md`. **Không mở lỗ hổng nào trong cả P2**; schema lên **v24** với hai thứ **cục bộ** (cột `categories.ai_co_dinh`, bảng `AiRebalancingFeedbacks`), **payload không đổi**. Hai việc UX gắn với mảng này: **A6** thẻ "Insight AI" chữ tĩnh — ✅ **đóng 2026-09-19** (Task 14: khối Nhận xét gắn vào **bốn** màn Ngân sách · Phân tích · Mục tiêu · Trang chủ, thẻ cũ xoá hẳn); **A11** năm handler rỗng của `ai_chat_page` — ✅ **đóng 2026-09-22** (P3 Task 8): một nút thành thật (bánh răng → `/ai-settings`), bốn nút **gỡ hẳn** cùng khối mockup bịa số, và `ai_chat_page.dart` rút khỏi danh sách miễn trừ của **hai** test quét. Bước tiếp là **thi công P3** theo kế hoạch ấy. ⭐ **Việc AI đã chốt nhưng chưa làm KHÔNG mở mục G** — chúng nằm ở **mục 11.3 và 11.4** `docs/AI_EDGE_FEATURE.md`, vì chúng là *tính năng chưa làm* chứ không phải *lỗ hổng của thứ đang chạy*: bốn việc cá nhân hoá ở tầng số người dùng chốt 2026-09-20 (học mức thiết yếu · tự đề xuất cờ Cố định · nhịp chi theo ngày · bất thường theo danh mục), cộng năm hướng xếp hạng ở 11.3. ⚠️ Luật chung cho cả bốn: **mỗi luật có ngưỡng mẫu tối thiểu, dưới ngưỡng thì im lặng hoàn toàn** — không có ngưỡng thì luật sẽ "im hàng tháng rồi nổ bừa ngay khi vừa đủ mẫu", đúng sai lầm mục 5f `NOTIFICATION_FEATURE.md` đã loại một lần) · trước đó **2026-09-19 tối** (**bắt đầu mảng AI Edge-SLM** — P0 nâng Flutter 3.47.5 xong `03fe03a`) · trước đó **2026-09-19** (**mở rồi đóng G47** — thẻ hoá đơn và bảng tra tên của ngân sách mất tên danh mục mặc định toàn cục / đã xoá mềm, cùng họ G41 ở ba bản chép tay khác của cùng truy vấn; lộ ra ở mục E8 của lượt đánh giá UX cùng ngày. Đếm lại bằng máy: **47** mục G, **45** đã đóng, còn **hai** (G18, G23). Bảng tóm tắt **thiếu G45, G46** từ 2026-09-18 — bổ sung cùng lượt. Lượt UX ấy còn để lại **A12** và **E6** trong `docs/superpowers/plans/2026-09-19-ux-ui-danh-sach-viec.md`, **chưa** mở mục G vì chưa chốt lối sửa — ✅ **A12 đã chốt và sửa 2026-09-19**: phím `.` bỏ khỏi lưới, nhưng chốt thật nằm ở `_saveTransaction` (nay `ThemGiaoDichCubit.chuanBiLuu`) vì lỗi có **hai cửa** và chế độ sửa vẫn nạp được chuỗi có dấu chấm từ `editing.amount.toString()`; xem khối "A12" mục 14 `PROJECT_CONTEXT.md`. **E6** vẫn chờ chốt. ✅ **Nhóm D — cấu trúc menu — cũng xong cùng ngày và KHÔNG mở mục G nào**: sáu chỗ hỏng tìm được đều đóng ngay trong ngày. Hai trong số ấy lộ ra lúc **thiết kế** (push-từ-ngoài-shell, hằng `nhanhThanhTab`), ba lúc **nghiệm thu máy ảo** (hai FAB chồng nhau, trang Ngân sách thành ngõ cụt, "Vùng nguy hiểm" rơi vào giữa trang Cá nhân), và **một do người dùng báo** — trang Quản lý danh mục **mất hẳn lối vào qua menu** vì nhóm module rời tab Cá nhân mà drawer chưa bao giờ có mục ấy. Lần theo báo cáo ấy còn ra hai lỗi nữa: nút bút chì trên avatar **chưa bao giờ bấm được** (không `InkWell`, tức nút **không có handler** — lưới quét nút chết chỉ tìm *handler rỗng*), và avatar **vòng đen trống** ở hai chỗ A9 bỏ sót. Tường thuật đầy đủ ở mục 14 `PROJECT_CONTEXT.md`) · trước đó **2026-09-18** (**đóng G26 bằng một quyết định sản phẩm** — nhóm **bỏ hẳn** liên kết ngân hàng, nên màn duyệt giao dịch ngân hàng thôi là việc còn thiếu. Phần client gỡ cùng ngày: màn mockup `bank_link_page.dart` — **chưa bao giờ gọi một endpoint nào**, số điện thoại và sáu ô OTP điền sẵn ghi cứng trong `initState` — cùng thẻ "LIÊN KẾT NGÂN HÀNG" ở màn Quản lý ví, hai route, và `RealtimeEvent.giaoDichNganHang`. Backend **vẫn phát** `bank_transaction.incoming`, nên client phải bỏ qua nó êm thấm, đúng nhánh `null` sẵn có cho mọi tên lạ. ⚠️ **Ba thứ giữ nguyên, cố ý**: enum `WalletType.banking`, ba cột SQLite `provider`/`bank_tran_id`/`bank_casso_id`, và phép loại ví `banking` khỏi `tinhLaiSoDu` — cả ba bảo vệ **hàng cũ kéo về**, không bảo vệ một tính năng. ⚠️ **Đừng viện G26 để mở `status`/`provider` vào hợp đồng đồng bộ** — đoạn "Bán kính nếu làm" của mục ấy nay là ảnh chụp lịch sử. **Schema không đổi**, vẫn v23; **payload không đổi**. Đếm lại bằng máy: **46** mục G, **44** đã xử lý, còn **hai** (G18, G23) — con số giữ nguyên vì G26 vốn đã mang dấu ✅. Cùng ngày, trước đó: **mở rồi đóng G46** — lượt soát nối tiếp G45, lần này quét **cả app**: lỗ hổng trần số chữ số **không phải chuyện riêng của ví**. Tám cột tiền đều là numeric(15,2), và **bốn mảng còn lại** (giao dịch, hoá đơn, mục tiêu, ngân sách) đều không giới hạn số chữ số. Nặng nhất là **giao dịch** — người dùng ghi hàng ngày, bàn phím **tự vẽ** nên inputFormatters không với tới, lại có phím **000**. Nay phép gõ tách thành hàm thuần themPhimSoTien, và có **test quét lib/ thứ tám** để ô tiền mới không mở lại lỗ hổng. ⚠️ **Lần thứ BA trong cùng ngày** một trần số chữ số biến giá trị lớn nhất thành **hợp lệ đạt tới được** rồi lộ ra bố cục chưa từng thử với giá trị ấy: ở cỡ 48, con số dài nhất **ngắt thành hai dòng** — không sọc vàng, không exception, `Text` chỉ lặng lẽ ngắt dòng, nên ca test phải đo **chiều cao thật**. Mọi ràng buộc khác đã kiểm và an toàn. Đếm lại: **46** mục G, **44** đã đóng, còn **hai** (G18, G23). Cùng ngày, trước đó: **mở rồi đóng G45** — **sáu lỗ hổng của mảng ví**, tìm được bằng một lượt soát đối chiếu **từng ràng buộc PostgreSQL với chốt tương ứng phía client**, không đến từ báo lỗi nào. Nặng nhất: ô nhập số dư không giới hạn chữ số, mà `Balance` là `numeric(15,2)` — tràn cho SQLSTATE `22003`, backend không có nhánh cho mã ấy nên trả `DB_ERROR`, và danh sách lỗi vĩnh viễn của client là **danh sách trắng** nên ví bị **gửi lại ở mọi chu kỳ đồng bộ**. Cùng vòng lặp mà G31 và G14 sinh ra để chặn. Kế đó: `softDelete` không chặn ví gắn **hoá đơn** (server để `ON DELETE RESTRICT`, và đo được **một ví xoá được ngay** trên dữ liệu thật), phép đếm giao dịch bỏ sót **khoản chuyển đến**, thông báo "điều chuyển số dư về 0đ" dẫn tới ngõ cụt từ sau G37, `currency` là cột CHECK duy nhất chưa được `walletForPush` che, và thiếu chốt cấm đặt ví **đã lưu trữ** làm mặc định. ⚠️ Lượt vá sinh ra **hai lỗi nữa, cả hai chỉ máy ảo thấy** — tràn bố cục 70px vì giới hạn mới biến một trạng thái vô nghĩa thành **hợp lệ đạt tới được**, và cỡ chữ không co vì widget mới đọc controller một lần. ⚠️ Một bản sai lật kết luận: thứ chặn tràn là **`Flexible`**, không phải bậc thang cỡ chữ — ép cỡ chữ cố định mà hai ca bố cục **vẫn xanh**. Đếm lại bằng máy: **45** mục G, **43** đã đóng, còn **hai** (G18, G23). Cùng ngày, trước đó: **đóng G44** — kỳ rỗng thì tệp xuất thôi in khối Ngân sách, theo đúng màn Xem trước. Người dùng chốt chiều *"tệp theo màn"*: người cầm tờ PDF không có chỗ hỏi lại rằng con số ấy thuộc kỳ nào. Luật nay là một vị từ thuần **`inKhoiTheoKy`** mà **cả ba** chỗ cùng đọc — CSV, PDF, và màn Xem trước. ⚠️ Lượt sửa **đính chính chính tiêu đề cũ của G44**: màn Xem trước **không** giấu "mọi khối" khi kỳ rỗng, nó vẫn hiện đầu báo cáo, khối Dòng tiền và ba thẻ tổng — hai bên lệch **đúng một khối**. ⚠️ Ca test cho nhánh **PDF** phải so **độ dài tệp** chứ không tìm chuỗi, vì PDF nén luồng nội dung; bản sai có chủ ý làm nó đỏ với chênh lệch **2 847 byte**. Đếm lại bằng máy cùng ngày: **44** mục G, **42** đã đóng, còn **hai** (G18, G23), cả hai hoãn có chủ ý. Cùng lượt, **ngoài phạm vi G44**: ba ca của `os_notifier_native_test.dart` ghi cứng mốc `DateTime(2026, 9, 17, 21, 30)` và `DateTime(2026, 9, 20, 8)` — `flutter_local_notifications` gọi `validateDateIsInTheFuture` và **ném** với mốc đã qua, nên hai ca **đỏ từ sáng 18/09** ở một vùng chẳng ai vừa đụng vào. Nay dùng mốc tương đối; giờ **21:30 giữ nguyên** vì nó là thứ bắt lỗi neo vào UTC) · trước đó **2026-09-17** (**ba khối cuối vào tệp xuất báo cáo** — mục **3.31** `ANALYTICS_FEATURE.md`: PDF/CSV nay có so-với-kỳ-trước, số liệu nhanh, top 5 khoản chi. Lượt này **đóng một lỗi đã chạy từ 2026-09-09** mà không phép đo nào trước đây bắt được — Roboto nhúng cho PDF không có khối Mũi tên lẫn khối Hình học, nên `→` ở dòng dòng tiền bị gói `pdf` bỏ đi **im lặng** trong mọi tệp app từng xuất; nó lộ ra vì bản thiết kế đầu định dùng `▲`/`▼` và **một ca test đỏ đã lật chính bản thiết kế vừa được duyệt**. Và nó **mở G44** — kỳ rỗng thì màn Xem trước giấu mọi khối còn tệp vẫn in khối Ngân sách, chưa rõ bên nào đúng nên hoãn có chủ ý. Đếm lại bằng máy cùng ngày: **44** mục G, **41** đã đóng, còn **ba** (G18, G23, G44), cả ba hoãn có chủ ý. Cùng ngày, trước đó: **đóng G27** — cờ `wallets.allow_negative`, schema **v23**: ví thẻ tín dụng / theo dõi nợ thôi bị nhắc "ví âm" mỗi ngày. ⚠️ Hai bản sai có chủ ý đi lọt ở vòng đầu, **cả hai là lỗ hổng trong chính bộ test vừa viết** — chi tiết ở mục G27. ⚠️ Phép đếm ghi ở đây khi ấy — **43** mục G, **41** đã đóng, còn **hai** (G18, G23) — là **ảnh chụp trước G44** cùng ngày; con số đang đúng nằm ở đầu banner. Cùng ngày, trước đó: **khoản chi lớn** — loại thông báo thứ **18**, mục #7 khảo sát lần hai, mục 5f `NOTIFICATION_FEATURE.md` — **không mở lỗ hổng nào**; khảo sát lần hai nay **đóng**. Cùng ngày, trước đó: **tổng tài sản theo thời gian** — mục #5 khảo sát lần hai, mục 3.30 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**. Nó *đóng* một chỗ chưa ai gọi tên: `daiTrucDuBao` dựng trần rộng gấp đôi mức cần với dải bắt đầu từ 0, thứ **không test nào bắt được** vì mọi tính chất vẫn đúng — chỉ máy ảo thấy; nay siết tại chính hàm ấy, xem bẫy **4.21** vế ba. Cũng lượt này, giả định của mục 3.25 về "vách khoản neo 2026-09-13" bị **phép đo lật**: vách ấy không tồn tại trên dữ liệu thật) · trước đó 2026-09-16 (cuối ngày: **lịch chi tiêu** — mục #6 khảo sát lần hai, mục 3.29 `ANALYTICS_FEATURE.md` — **không mở lỗ hổng nào**; hai chỗ nó suýt để lọt đều bị bản sai có chủ ý và máy ảo bắt tại chỗ, ghi ở mục 3.29 chứ không thành lỗ hổng. Trước đó cùng ngày: mở rồi **đóng G43** — nút "Tuỳ chọn" của bộ chọn phạm vi ném assertion và chết **im lặng** ở đúng trạng thái mặc định của trang, **có sẵn từ P1**; tìm được khi nghiệm thu máy ảo cho **so cùng kỳ năm trước** (mục #2 khảo sát lần hai), thứ **không** mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G42** trong cùng ngày — ví đã xoá mềm vẫn phình "số dư cuối kỳ" của trang Phân tích; tìm được khi soát tài liệu sau tính năng **dự báo dòng tiền 30 ngày**, thứ **không** mở lỗ hổng nào) · trước đó 2026-09-15 (mở rồi **đóng G41** trong cùng ngày — giao dịch trỏ vào danh mục mặc định toàn cục mất tên, máy ảo lộ ra bằng **hai chip cùng tên**; cùng ngày: **tỉ lệ tiết kiệm** và **A8 #8 dòng tiền tự do** — không mở lỗ hổng nào. Trước đó cùng ngày: mở rồi **đóng G40** — trang Xem trước báo cáo lệch cột số tiền thật, và lệch **93px**, nặng hơn chỗ đã sửa ở trang Phân tích; không phải hai khối mà **sáu**. Cùng ngày: P1 phạm vi thời gian và P2 bốn khối mượn từ trang Báo cáo — **không mở lỗ hổng nào**, schema giữ v22) · trước đó 2026-09-14 (mở rồi **đóng G39** ngay trong ngày — nhãn trục tung khối "Xu hướng 6 tháng" in đè lên nhau, tìm được khi nghiệm thu máy ảo lát A8 #3/#7; mở rồi **đóng G38** ngay trong ngày — ba trang giao dịch rơi về tài khoản admin; **đóng G28** — `wallet.status` đi qua đồng bộ hai chiều, schema v22) · trước đó 2026-09-13 (mở rồi **đóng G37** ngay trong ngày — số dư ví nay suy từ sổ giao dịch; đóng G36) · trước đó 2026-09-11 (sau khi nhánh gộp `main` @ `cc65f4f` và CSDL dev áp `database/12`: đóng G29, G31, G32; G24 thành lỗi phía client rồi đóng cùng ngày; thêm G34; G35 mở rồi đóng cùng ngày; đóng G30; đóng G33); 2026-09-12: gộp `main` @ `cbbeeb4` — CAN-LAM 17 A đóng, kênh thời gian thực nối được trên máy ảo, G34 hết bị chặn rồi **đóng tối cùng ngày** (client nghe `sync.completed`, im lặng, kiểm máy ảo hai máy); chiều muộn thêm **G36** — chờ backend; tối muộn gộp `main` @ `7779999` — backend làm xong CAN-LAM 20 (chốt trả hai lần ở `upsertTransaction`, client đo thật 4 ca; G36 sửa ở mã, **chưa đo đầu-cuối** ca khoá/xoá vì cần API admin — chờ đo rồi đóng); **2026-09-13: đo đầu-cuối ba ca G36 qua API admin — cả ba đúng, G36 ✅ ĐÓNG** (kéo theo: đường `lamMoi` **có** mang `daXoa`, nên ngoại lệ §3.6b không còn vô nghĩa — người dùng chốt **giữ** cùng ngày); cùng ngày, nghiệm thu bước 12 trên hai máy ảo đóng bốn lỗi im lặng của luồng tự động trả hoá đơn và mở **G37** — số dư ví không phản ánh giao dịch sau một lần đẩy bị xung đột
 **Mục đích:** ghi lại những hạng mục đã được **cân nhắc và cố ý hoãn**, kèm lý do và bán kính ảnh hưởng. Không có tài liệu này thì người tiếp theo sẽ hoặc bỏ sót, hoặc làm lại từ đầu việc phân tích rủi ro.
 
 Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nhất.
+
+> ♻️ **Tham chiếu tới `SyncEngine` trong các mục dưới là ảnh chụp trước 2026-10-19.** Ngày ấy `sync_engine.dart` (2.153 dòng) tách thành `SyncEngine` + ba lớp cộng tác (mục lục `core/sync`: `KIEN_TRUC_CLIENT_APP.md` mục 3): `_collectPendingOps` → `ThuGomThaoTacDay.collectPendingOps` (`thu_gom_day.dart`), `_sendBatch` · `_classifyFailure` · `_permanentCodes` · `_markSyncedById` → `GuiLoDongBo` (`gui_lo_dong_bo.dart`), `_pullFromBackend` → `ApDuLieuKeoVe.pullFromBackend` (`ap_du_lieu_keo_ve.dart`; từ 2026-10-20 phần dựng companion từng thực thể — các chốt `Value.absent()` khi server im lặng — ở `anh_xa_keo_ve.dart`), `_resolveCategoryId` → `resolveCategoryId` (`uuid_dong_bo.dart`). Số dòng kiểu `sync_engine.dart:1025` là của tệp cũ — đừng mở theo số; tìm theo tên ký hiệu.
 
 ---
 > **Phiên 2026-09-03 đã đóng 9/10 mục có lúc đó.** Mô tả gốc bên dưới được giữ
@@ -94,13 +96,23 @@ Mỗi mục đều ghi rõ **vì sao hoãn** — đó là phần dễ mất nh�
 > | ~~**G86**~~ | ✅ **Mở rồi ĐÓNG 2026-10-09** (người dùng báo *"khi vào phải đợi vài giây mới hiện thông tin"*) — **mở app thì mọi trang đợi một lượt gọi mạng**: `AuthBloc._onAuthCheckRequested` chỉ phát `AuthSuccess` SAU `verifySession()` (`GET /auth/profile`, trần 30 s), trong khi mọi trang cần `AuthSuccess` để biết `idaccount`. Server chậm / Render đang ngủ / Wi-Fi không ra Internet là quay vòng tới 30 s, còn Trang chủ in *"0 đ"* và *"Người dùng"* — dữ liệu thì nằm sẵn trong SQLite. Đo Realme (bản debug không tới được server): trang Hoá đơn quay vòng ~30 s. Sửa (người dùng chọn *hiện dữ liệu ngay, hỏi server ở nền*): phần **không chạm mạng** (đọc người dùng đã lưu, kiểm `idaccount`, dọn tài khoản khác, chuyển `cat_*`) rồi **phát `AuthSuccess` ngay**; sau đó mới `verifySession()` — phiên chết → đăng xuất như cũ; hợp lệ / không rõ → đọc lại người dùng (thẻ chờ xoá), phát lại nếu đổi, **rồi mới** khởi động socket, SyncEngine (chốt *không đồng bộ với phiên chết* giữ nguyên). **Bộ quét thông báo** (nhập hàng chờ D1 / biên lai, chuông, nhắc, tự trả) chạy **trước** `AuthSuccess` — người dùng chọn sau khi lượt soát chỉ ra bản đầu làm danh sách *chờ ghi* rỗng tới 30 s khi chạm thông báo biến động lúc mất mạng; phiên chết thì `_dungMoiThuCuaPhien` dừng nó. ⚠️ Phiên chết nay vẫn dọn dữ liệu tài khoản khác và chạy một lượt quét cục bộ trước khi bị đẩy ra. ⚠️ Sau mỗi `await` phải kiểm `_vanLaPhien(user)`: lượt mở app về muộn từng **phát lại `AuthSuccess` đè lên đăng xuất** — lỗi có sẵn trước bản này, ca test *"đăng xuất trong lúc chờ server"* đỏ trên mã cũ. Hệ quả cố ý: tài khoản bị xoá/khoá thấy Trang chủ chớp rồi mới về màn Đăng nhập. Nghiệm thu Realme: số dư thật hiện ở ~9 s kể từ `am start` của bản **debug** (gồm khởi động JIT), đồng bộ bắt đầu sau khi lượt hỏi server hết |
 > | ~~**G87**~~ | ✅ **Mở rồi ĐÓNG 2026-10-09** (thấy khi nghiệm thu G52: trang Hoá đơn Realme có hai *Netflix* 05/10 và hai 12/10) — **kỳ hoá đơn trùng sống lại, bộ tự trả trừ tiền cho từng kỳ trùng**. Máy offline tự trả lại một kỳ đã trả → sinh kỳ con; hoá đơn đẩy **trước** giao dịch nên kỳ con lên server, khoản chi bị `BILL_ALREADY_PAID`, bộ gỡ xoá mềm kỳ con nhưng **Pull cùng chu kỳ ghi đè** lệnh xoá (`upsertAll` không xét hàng chờ đẩy). Đo PostgreSQL dev, tài khoản 10: ba kỳ 05/10, cả ba đã trả (**−300.000 đ thay vì −100.000**), năm kỳ 12/10 dưới ba cha. Sửa: `kyTrungCanGo` (gộp theo **gốc chuỗi + ngày hạn**, giữ kỳ đã đóng / id nhỏ nhất, không bao giờ gỡ kỳ đã trả) + `BillRepository.gopKyTrung` ở **đầu** `NotificationScanner.scan` (trước bộ tự trả, không gác quyền, **chỉ khi vừa kéo về thành công** — `SyncEngine.soLanKeoVeXong`; gộp trên dữ liệu cũ lúc mở app là xoá hoá đơn máy khác đã trả) + chốt `kyCungKyDaDong` trong `payBill`. Không đổi luật Pull. Mục 6.8 `BILL_DOCUMENTATION.md`. Hai khoản chi thừa của kỳ 05/10 (`22bb274a`, `cccb14ee`) để người dùng tự Hoàn tác. ✅ **Nghiệm thu đầu-cuối 2026-10-09**: Realme (bản mới, kéo về xong) đánh dấu đúng bốn kỳ 12/10 trùng; OnePlus đăng nhập tài khoản 10, kéo về, gộp ra **cùng tập** và đẩy — PostgreSQL: `780e51b2`, `7ebadb82`, `9886bc31`, `c0038a49` nhận `Delete_at`, giữ `65ece89a`, ba kỳ 05/10 đã trả không đổi, khoản chi Netflix vẫn 4. Lượt ấy lộ thêm: `gopKyTrung` không hẹn đồng bộ nên lệnh xoá nằm chờ tới 15 phút — nay `scheduleSync()` khi có gỡ |
 > | ~~**G90**~~ | ✅ **Mở 2026-10-11, ĐÓNG 2026-10-12** (`9bc57c63`; lộ ở lượt nghiệm thu chạy nền, máy ảo `FlowMoney_16G`) — **bảng chọn giờ, chế độ gõ chữ, trên máy đặt định dạng 12 giờ**: gõ *"21"* → *"Nhập thời gian hợp lệ"*, và hai ca sai **im lặng** (từ 20:00 gõ 8 lưu 20:00; từ 08:00 gõ 12 lưu 00:00). Gốc: Flutter hiển thị theo ngôn ngữ (`vi` = 24 giờ, không SA/CH) nhưng đọc chữ gõ theo `MediaQuery.alwaysUse24HourFormat` của máy. Sửa ở tầng app: `bocDongHo24Gio` (`core/constants/app_localization.dart`) ép cờ 24 giờ trong `builder` của `MaterialApp.router` — phủ năm chỗ `showTimePicker` và mọi chỗ thêm sau. Nghiệm thu máy ảo đặt 12 giờ + đối chứng bản chưa sửa. Mục chi tiết bên dưới |
+> | **G102** | ✅ **MỞ VÀ ĐÓNG 2026-10-21 tối** (lộ khi nghiệm thu C4 giọng nói trên Realme; mã + test + kiểm lại trên máy) — **hai lỗi của giọng nói C4**: (1) **lối Android tự dừng sau ~2 giây** — `speech_to_text` 7.5.0 tính `pauseFor` từ lúc bắt đầu nghe, mã đặt `pauseFor` = 2 s nên người dùng chưa kịp nói đã dừng, Google trả `NO_SPEECH_DETECTED` (*"Không nghe rõ"*); (2) **lối Gemma đem bản ghi im lặng đi chép** — Gemma trả lại câu lệnh, app điền *"Chép lại chính xác câu tiếng Việt…"* vào ô Nhập nhanh. Sửa: lối Android chờ tiếng đầu 6 s (`kChoTiengDau`), có chữ rồi `changePauseFor(kImDeDung)` (bọc `try` — gói ném khi đã `notListening`); bộ đo không thấy tiếng sau 6 s thì không gọi Gemma; `lamSachLoiChep` bỏ lời chép chứa mảnh câu lệnh. Kiểm lại Realme: lối Android nói giọng thật 4 câu đều ra chữ, dừng ~2 s sau chữ cuối; lượt Gemma im lặng không còn gọi mô hình. |
+> | **G103** | ✅ **MỞ VÀ ĐÓNG 2026-10-21 tối** (lộ ở lối Android của C4 trên Realme; mã + test + kiểm lại trên máy) — **lời nghe của Google viết khác chữ gõ, bộ đọc câu trượt**: *"chuyển 500.000 từ **mbbank** sang tiết kiệm"* → ví nguồn rơi về **Tiền mặt**, ghi chú sót *"từ mbbank"* (mẫu tên gọi tắt *"mb bank"* đòi `\s+`); *"500.000**₫**"* → ghi chú sót *"₫"* (mẫu số tiền chạy trên câu bỏ dấu, chỉ nhận *đ → d*). Sửa: tên gọi tắt khớp cả dạng viết dính (`\s*`, vẫn chặn ranh giới từ và vẫn chỉ sau giới từ); `_chuanCau` đổi *₫ → đ* ở đầu vào của ba phép đọc. Cả gõ tay cũng hưởng. |
+> | **G106** | ✅ **MỞ VÀ ĐÓNG 2026-10-24 tối** (lộ khi đo Realme phiên 4; mã + test + đo lại trên máy) — **lịch nhắc đặt trước mất im lặng sau force-stop**: `pendingIds()` đọc danh sách lịch của plugin, không phải AlarmManager; force-stop xoá báo thức mà danh sách còn, `resync` thấy "đã chờ" thì bỏ qua → nhắc hoá đơn mất hẳn. Sửa: lượt `resync` đầu mỗi tiến trình đặt lại cả lịch "đã chờ" (không huỷ, không ghi `dat_lich`). Đo: force-stop → 0, mở app → 3. Bẫy 7.14 `NOTIFICATION_FEATURE.md`. |
+> | **G105** | ◐ **SỬA MỘT PHẦN 2026-10-22** (+ dòng nhắc chụp ở sheet chọn nguồn — người dùng chọn thay vì thêm luật, `2bdc2a68`; lộ khi đo Quét ảnh trên Realme; dòng toàn chữ thường nay xếp sau mọi dòng có chữ hoa — N01 dính *"card n"* ra *ỦA TEA 2DEE*; ⚠️ đo lại khuya: chụp dính một tấm thẻ in chữ tiếng Anh, sáu dòng rác **lẫn hoa thường** đứng trước *ỦA TEA* → ghi chú *"ral Setl Ths cad rd effect"*, luật hiện tại không che) — **mẩu rác hai từ ngắn ở mép ảnh thắng tên cửa hàng**: N01 chụp lần đầu, OCR dòng đầu là *"card n"* (chữ lạ ở mép khung), dòng 3 *"ỦA TEA 2DEE"* → ghi chú điền *"card n"*. Luật tên (chốt 12 `QUET_ANH_FEATURE.md`) chỉ bỏ mẩu **một** từ ≤ 4 chữ cái. Chụp lại không dính mép → *ỦA TEA* đúng. Số tiền / ngày giờ không ảnh hưởng; người dùng sửa ghi chú bằng một lần gõ. |
+> | **G104** | ✅ **ĐÓNG 2026-10-23** (hoãn 2026-10-22; mã + test, **chưa đo trên máy** — không máy nào cắm) — **đường luật bỏ trống của N1 từng tin bản cụt của Gemma**: câu *"một triệu hai tiền sách"* (chữ số lẻ không ở chỗ của tiền) luật để trống, Gemma chọn trong `cachDocSoTien` = {1.000.000, 1.200.000} và form điền không hỏi. **Sửa (người dùng chọn hai chip):** luật đưa `KetQuaDocCau.luaChonSoTien` = [cụt, dài] → ô số tiền trống + hai chip (khối chip có sẵn của C4), Gemma **không** lấp ô số tiền, ô ấy không tính là ô thiếu; lời nhắc Gemma không đổi. Cùng lượt (người dùng chốt): *"X bậc Y"* viết chữ có **một** định nghĩa `_docXBacY`, X 1–99 — *"trả hai trăm nghìn tám"* thôi điền 200.800 (ô trống + *"chưa rõ"*), *"mười lăm triệu hai"* vẫn 15.200.000. |
+> | **G101** | ✅ **MỞ VÀ ĐÓNG 2026-10-21** (mở khi nghiệm thu A5 trên Realme; mã + test trên chữ `/quet` thật chép từ logcat; **nghiệm thu Realme Premium cùng tối đạt** — R08 và R13 nay hỏi hai chip; đường Basic chưa nhìn trên máy) — **Quét ảnh điền sẵn số tiền SAI mà không hỏi khi OCR làm mất / đổi chữ số dòng tổng**: R13 MAXIDI 72.127 → OCR *"2,127"* → form **2.127 đ** (Gemma đọc đúng 72.127 nhưng bị bỏ); R08 75.700 → OCR *"75,706"* → form **75.706 đ** (Gemma 55.000). `chotTongQuet` bỏ số AI không có trong chữ OCR và không khác số luật đúng một chữ số **cùng độ dài**, rồi điền số luật **không kiểm gì thêm**; Basic còn không đi qua phép chốt. Sửa (người dùng chọn **ba lưới A + B + C**): **C** số Gemma thêm / bớt một chữ số so với số luật là ứng viên; **A** số luật đứng một mình mà nhỏ hơn một dòng món phía trên dòng tổng → ô trống; **B** số luật đứng một mình mà tờ in một số khác lệch ≤ 1% → hai chip; `/quet` chốt **mọi** hoá đơn, kể cả Basic. Đo trên 34 tờ chữ (15 chữ 08/10 · 16 chữ `/quet` 21/10 · 3 OnePlus), hai gói: **0** tờ điền sẵn sai; cái giá: R13 chữ 08/10 (luật đúng) chuyển sang hỏi chip 72.127 · 72.121. Dữ liệu `hoa_don_quet_that_du_lieu.dart`. |
+> | **G100** | ✅ **ĐÓNG 2026-10-21** (hai đường. **Back hai lần** ở Trang chủ đưa app **xuống nền** — kênh `flowmoney/xuong_nen` → `moveTaskToBack(true)`; nghiệm thu OnePlus GPU trước / sau: bản cũ 420 → 799 MB Native, bản mới giữ 423 MB, không nạp lại. **Gỡ task khỏi Đa nhiệm** khi tiến trình đang giữ mô hình → `MainActivity.onDestroy` **giết tiến trình** (cờ từ `BoNapMoHinh.baoGiu` qua kênh `flowmoney/giu_mo_hinh`; chỉ khi không đổi cấu hình và là activity cuối), hệ điều hành dựng lại tiến trình cho dịch vụ D1 sau ~1 s; nghiệm thu Realme CPU: mở lại chỉ nạp một bản, Native 1,90 GB thay vì 3,71 GB. Gốc: `flutter_gemma_litertlm` chỉ cất địa chỉ engine native trong đối tượng Dart, không `NativeFinalizer`) — **Back thoát app (hoặc gỡ task) rồi mở lại thì mô hình Gemma bị nạp thêm một bản**: tiến trình sống tiếp nhờ dịch vụ D1, engine Flutter dựng lại, isolate mới nạp bản thứ hai, bản cũ không ai đóng (`lib/` không nghe `detached`). Đo Realme CPU: Native Heap 1,89 GB (một bản) → **3,72 GB** sau một vòng, PSS 4,9 GB; dựng lại được hai lần. Chạm mọi đường nạp mô hình (Trợ lý, C2, C3, C4, A5). ⚠️ Đóng mô hình khi `detached` đụng chốt 4b (OnePlus GPU sập ở lần đóng thứ hai trong một tiến trình) — vì thế lối sửa chọn *xuống nền*, không đóng gì. |
+> | **G99** | ✅ **MỞ VÀ ĐÓNG 2026-10-20** (lộ khi đo G95 trên Realme; sửa bằng `_mauMocBatDau` — cụm *kể từ / bắt đầu từ / từ + tuần·tháng·quý·năm·ngày + mốc* bị gạt trước khi xét chữ thời gian; đo lại Realme: thẻ không còn hạn bịa) — **lệnh tạo mục tiêu nhận hạn mô hình bịa khi câu chỉ nêu mốc BẮT ĐẦU**: *"ke tu thang sau de danh 2 trieu moi thang"* → thẻ *"Tạo mục tiêu · hạn 30/06/2027"* (mô hình trả `han: 30/06/2027`; câu không nêu hạn nào). Lưới `_hanAiHopLe` chỉ đòi câu có **một chữ chỉ thời gian bất kỳ** ngoài cụm chu kỳ — *tháng* của *"kể từ tháng sau"* là đủ. Có từ trước G95 (cổng cũ cũng mở cho câu này). Form vẫn để người dùng sửa trước khi Lưu (bất biến ④) nên không ghi sai thẳng. |
+> | **G98** | ⏳ **CHỜ BACKEND — đơn 48** (mở 2026-10-20, lộ khi nghiệm thu G89; người dùng chốt hướng cùng ngày) — ví test `test-wallet-1789014227658` (id **không** phải UUID, một test backend chèn thẳng vào CSDL dev, tài khoản 18) **không bao giờ đẩy lên được**: `toValidUuid` đổi id → server không thấy → `create` → trùng `(Idaccount, Name)` với chính nó → `WALLET_NAME_DUPLICATE` → G63 gắn cờ rồi thả, lặp mỗi lượt; và mỗi chu kỳ có hàng ấy bị tính là chu kỳ hỏng → giãn cách đồng bộ cả tài khoản lên **15 phút** (đo 16:08:26). Toàn CSDL dev chỉ có 1 ví + 9 giao dịch id không phải UUID, tất cả `test-` của tài khoản 18 — người dùng thật không gặp. **Nguồn:** ca 11 `Test/test_data_security_encryption_and_masking.js` (`findFirst` tài khoản Active **không** `orderBy` → trúng 18 ngày 2026-09-10). **Người dùng chốt** dọn dữ liệu + sửa script → đơn 48 `CAN-LAM/DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md`; client không đổi mã. Sau bước 1 của đơn, máy đang kẹt tạo một ví "ma" ở id giả `00000000-0000-4000-8000-4534d71cc54d` (bước 3 xoá). |
+> | ~~**G97**~~ | ✅ **Mở và ĐÓNG 2026-10-20** (review toàn nhánh G89 đề nghị) — body lỗi không phải JSON (trang HTML của proxy / Render) làm `AuthRemoteDataSourceImpl` đọc `String['message']` → `TypeError`, và màn Đăng nhập in nguyên câu *"type 'String' is not a subtype of type 'int' of 'index'"*; nhánh 2xx cùng bệnh ở `data['success']`. Sửa: `_cauLoi` / `_thanhCong` (14 lời gọi, một định nghĩa); `getProfile` chỉ giữ `statusCode` khi body là JSON — trang 404 của proxy không được thành *phiên chết*. 30 ca ở `auth_remote_data_source_body_khong_json_test.dart`. |
 > | **G96** | ⏳ **CHỜ BACKEND — đơn 47 việc 5–7** (mở 2026-10-18 sau nghiệm thu OnePlus 13R trên backend dev chạy thật) — **đường Trợ lý online phụ thuộc ba việc backend, cả ba có số đo**: Dừng không tới server (client đóng socket thật — ESTABLISHED tới :3000 4 → 2 — nhưng `req.on('close')` không nổ trên Node 22, service chạy Gemini tới cùng); server im > 45 s sau `meta` khi `gemini-3.8-flash` suy nghĩ → `receiveTimeout` rơi về máy (người dùng chốt **giữ 45 s**, xin keep-alive `: ping`); `maxOutputTokens: 1024` gồm token suy nghĩ → câu dài cụt ở điểm ngẫu nhiên, client hiện phần cụt không cảnh báo (đúng hợp đồng). Client không đổi mã tới khi backend trả lời. |
-> | **G95** | ⏳ **MỞ 2026-10-18** (nghiệm thu OnePlus, ngoài phạm vi lát trợ lý online) — **cổng lệnh tạo C3 `coVeLenhTao` bắt nhầm câu hỏi** *"Hãy viết 15 lời khuyên tiết kiệm tiền…"* (có *tiết kiệm* + số) → Gemma đọc lệnh ~5 s, từ chối, rồi câu mới đi online. Lát riêng: thêm vế loại trừ câu hỏi tri thức + đo lại bộ câu C3 trước khi nới. |
-> | **G94** | 🚧 **MÃ XONG 2026-10-18 tối (lát 1 dọn kiến trúc + lát 2 tính năng) — chờ nghiệm thu sandbox PayOS trên OnePlus** (cần khoá PayOS + phép `npm install` backend). Màn Chờ không tự mở PayOS, có QR + *Lưu mã QR* + thông tin chuyển khoản; trạng thái đối soát → Chi tiết đơn (nơi duy nhất gọi `confirm-upgrade`); Lịch sử mua bấm được; Nâng cấp có thẻ đơn cần xử lý + khoá *Thanh toán*. Lịch sử mục: (trước đó ⏳ hoãn chờ đơn 43; mở 2026-10-16 khi soát sau gộp `main` @ `d72ccd45`; người dùng chốt cùng ngày; đơn 44 không chặn). 🔀 **2026-10-18:** gộp `e7570e16` mang mã backend viết thẳng vào client — ba trạng thái đơn, hai nút xác nhận chuyển thừa, nhãn lịch sử, hạn 10 phút — nhưng ca chính vẫn hở: đồng hồ trên máy về 0 lúc màn không hiện thì người chuyển thừa vẫn thấy *"hết hạn"*, và chỉ màn chờ gọi được `confirm-upgrade`; danh sách ở khối 🔀 thân mục. ✅ **2026-10-18 tối:** đợt sửa hai lỗi đang chạy mở đầu lượt — đồng hồ trên máy thôi tự kết luận hết hạn (server quyết), lỗi khi xác nhận có câu báo; còn lối xác nhận khi đã rời màn chờ (việc 2) và bảy việc khác — **chuyển thừa / thiếu tiền khi nâng Premium thì app nói "Đơn đã hết hạn"**. Backend thêm ba trạng thái đơn `WAITING_CONFIRMATION` · `REFUND_PENDING` · `REFUNDED`, endpoint `POST /payment/confirm-upgrade` và ba sự kiện socket. `trangThaiDonTuChuoi` đọc chuỗi lạ là `pending`, nên màn Chờ thanh toán quay tới khi đồng hồ phía máy về 0 rồi hiện *"Đơn đã hết hạn"*: người vừa chuyển tiền không bao giờ thấy hộp xác nhận, server chờ mãi. Lịch sử mua ghi đơn đã hoàn tiền là *"Chờ thanh toán"*. Câu *"chỉ có hiệu lực 30 phút"* sai (server nay 10 phút). |
+> | **G95** | ✅ **ĐÓNG 2026-10-20** (mở 2026-10-18 khi nghiệm thu OnePlus; mã + test, đo Realme đạt cùng ngày) — **cổng lệnh tạo C3 `coVeLenhTao` bắt nhầm câu hỏi** *"Hãy viết 15 lời khuyên tiết kiệm tiền…"* (có *tiết kiệm* + số đếm 15 đọc ra 15.000 đ) → Gemma đọc lệnh ~5 s, từ chối, rồi câu mới đi online. Sửa: vế `_moBangXinVietChu` — câu mở bằng *viết · liệt kê · kể · soạn · giải thích · tóm tắt · gợi ý · phân tích* (sau tiền tố lịch sự, có thể kèm *bạn*) không phải lệnh; *"kế hoạch… / kể từ… / kể cả…"* vẫn lọt. 11 ca mới, gồm một ca khoá 10 câu C3 đã đo. |
+> | **G94** | 🚧 **MÃ XONG 2026-10-18 tối (lát 1 dọn kiến trúc + lát 2 tính năng) — chờ nghiệm thu sandbox PayOS trên OnePlus** (cần khoá PayOS + phép `npm install` backend). ⚠️ **Bẫy khi nghiệm thu (2026-10-23, đơn 49 vế G — lỗi backend):** đồng bộ JIT với PayOS (`payment.service.js:673`) gọi `activatePremiumSubscription` sai chữ ký → trả tiền mà webhook **không** tới (dev không ngrok) thì đơn thành `PAID` nhưng tài khoản **vẫn Basic** — màn *Thành công* hiện mà gói không đổi; đó là lỗi backend, không phải client. Đo khi có webhook (ngrok / tự ký), hoặc chờ backend sửa. Màn Chờ không tự mở PayOS, có QR + *Lưu mã QR* + thông tin chuyển khoản; trạng thái đối soát → Chi tiết đơn (nơi duy nhất gọi `confirm-upgrade`); Lịch sử mua bấm được; Nâng cấp có thẻ đơn cần xử lý + khoá *Thanh toán*. Lịch sử mục: (trước đó ⏳ hoãn chờ đơn 43; mở 2026-10-16 khi soát sau gộp `main` @ `d72ccd45`; người dùng chốt cùng ngày; đơn 44 không chặn). 🔀 **2026-10-18:** gộp `e7570e16` mang mã backend viết thẳng vào client — ba trạng thái đơn, hai nút xác nhận chuyển thừa, nhãn lịch sử, hạn 10 phút — nhưng ca chính vẫn hở: đồng hồ trên máy về 0 lúc màn không hiện thì người chuyển thừa vẫn thấy *"hết hạn"*, và chỉ màn chờ gọi được `confirm-upgrade`; danh sách ở khối 🔀 thân mục. ✅ **2026-10-18 tối:** đợt sửa hai lỗi đang chạy mở đầu lượt — đồng hồ trên máy thôi tự kết luận hết hạn (server quyết), lỗi khi xác nhận có câu báo; còn lối xác nhận khi đã rời màn chờ (việc 2) và bảy việc khác — **chuyển thừa / thiếu tiền khi nâng Premium thì app nói "Đơn đã hết hạn"**. Backend thêm ba trạng thái đơn `WAITING_CONFIRMATION` · `REFUND_PENDING` · `REFUNDED`, endpoint `POST /payment/confirm-upgrade` và ba sự kiện socket. `trangThaiDonTuChuoi` đọc chuỗi lạ là `pending`, nên màn Chờ thanh toán quay tới khi đồng hồ phía máy về 0 rồi hiện *"Đơn đã hết hạn"*: người vừa chuyển tiền không bao giờ thấy hộp xác nhận, server chờ mãi. Lịch sử mua ghi đơn đã hoàn tiền là *"Chờ thanh toán"*. Câu *"chỉ có hiệu lực 30 phút"* sai (server nay 10 phút). |
 > | ~~**G93**~~ | ✅ **Mở và ĐÓNG 2026-10-14** — hook `datGoi` trong `moPhienCucBo` (trước bộ quét) + `noiPhien` so với phiên đã nối của nó; bốn ca test đỏ trên mã cũ; không đo được trên máy (cần Basic hạ cấp). Mô tả gốc: (tìm ra khi điều tra G92; đọc mã) — **lượt quét đầu mỗi phiên chạy tự trả / tự trích / đọc biến động không qua cửa quyền gói**: từ G86 `moPhienCucBo` quét **trước** `AuthSuccess`, lúc `GoiRepository` chưa có tài khoản nên `coQuyenNen` trả `true`. Ai bị: Basic có bảng `features` khoá tắt (hạ cấp còn bật tự trả / tự trích). Đường nền đã chặn (`datGoi` trước `quet`). Chờ người dùng quyết. |
 > | ~~**G92**~~ | ✅ **Mở 2026-10-13, ĐÓNG 2026-10-14** — nguyên nhân đúng như đoán; `chanTheoGoi` + `chanTheoQuyen` chờ `GoiRepository.choNapKho()` rồi mới đọc (cửa quyền hỏng chiều ngược: Basic bị tắt quyền lọt vào Xuất báo cáo); 5 ca ở `chan_theo_goi_test.dart`, máy ảo mở lạnh 3/3 vào form. Mô tả gốc: (nghiệm thu máy ảo đợt tách bốn trang) — **deeplink `/goals/add` lúc khởi động nguội bị chuyển sang `/premium` dù tài khoản là Premium**; app đang chạy thì vào đúng form. Nguyên nhân khả dĩ, chưa đo: `chanTheoGoi` đọc `goi.hienTai` đồng bộ khi gói đã lưu chưa nạp xong → Basic mặc định → chạm trần 3. Ba route tạo có cửa chặn, chỉ đường khởi động nguội; không mất dữ liệu. |
 > | ~~**G91**~~ | ✅ **Mở 2026-10-13, ĐÓNG 2026-10-14** — `d1DangHienPin` thêm vế `context.coQuyen(MaQuyen.bankNotificationParser)`; ca ⭐ G91 ở `nhac_sau_ngan_hang_cai_dat_test.dart`. Mô tả gốc: (lượt soát đợt tách bốn trang) — **Cài đặt thông báo không còn hàng gợi ý pin nào** khi người dùng Basic còn `docBienDong` bật (từ hồi Premium) **và** bật *Nhắc ghi sau khi dùng app ngân hàng* có quyền *Truy cập dữ liệu sử dụng*: thẻ D1 khoá (`DongKhoaCongTac`, không hàng pin), còn `d1DangHienPin` của khối nhắc không xét quyền gói nên tưởng D1 đang hiện hàng ấy và giấu hàng của mình. Hậu quả nhẹ: thiếu một dòng gợi ý. |
-> | **G89** | 🚧 **LƯỢT ĐÃ MỞ 2026-10-18 tối — bốn việc của G89 chưa đụng** (đợt đầu của lượt là hai lỗi G94; trước đó ⏳ hoãn tới khi backend đóng đơn 43; lượt ấy gộp cả **G94**, người dùng chốt 2026-10-16; **2026-10-18** backend báo đóng đơn 43, client soát: đạt `accountRejection` mặc định `ACCOUNT_INACTIVE` — vế chặn client xoá SQLite — và 503 bảo trì có `code`, còn sáu việc phía AIOps, CSDL và tài liệu hợp đồng; **người dùng chốt cùng ngày: thế đã đủ** — lượt G89 + G94 bắt đầu từ phiên sau, mở bằng brainstorm → spec → Stitch) (người dùng chốt 2026-10-15; trước đó ⏸️ để nguyên có chủ ý, mở 2026-10-11 — lượt soát sau gộp `main` @ `79e46225`) — **thao tác của admin vô hình trên client**: bảo trì khẩn cấp = backend phát `user.notification` + `system.broadcast` (client cố ý không nghe từ 2026-09-30) rồi trả **503 `MAINTENANCE_MODE`** cho mọi request; phong toả AIOps = **403 `AIOPS_QUARANTINED`**. Client không có nhánh đọc hai mã ấy: đồng bộ rơi `transportFailed` (im lặng, đúng), đăng nhập hiện `message` server, không dải / hộp thoại nào — trong khi `docs/Admin-web/README.md` §3 và `07-maintenance` §7 tả *Modal đỏ toàn màn hình*, *SnackBar*, *đếm ngược phong toả*. Người dùng chốt để nguyên; nếu làm thì đọc **mã HTTP + `code`** (không nghe sự kiện mới) → dải Trang chủ + toast nói rõ lý do. |
+> | ~~**G89**~~ | **✅ ĐÓNG 2026-10-20 — nghiệm thu OnePlus 13R đạt bốn kịch bản** (bảo trì · phong toả có giờ · khoá tài khoản lúc mất mạng, cả đường HTTP lẫn đường socket · đăng nhập lúc bảo trì; kết quả ở mục 12 spec) (12 commit `b7ca4512..98d58c64`; spec `specs/2026-10-20-g89-may-chu-chan-va-tai-khoan-bi-tu-choi-design.md`, mục 11 = 20 mục thi công khác bản viết): `MayChuInterceptor` ghi `TrangThaiMayChu` (bảo trì / phong toả) → dòng nhắc Trang chủ + một toast + câu màn Đăng nhập; lượt đồng bộ bị chặn (bảo trì / phong toả có giờ) kết thúc `pending`, không tính lượt hỏng — phong toả không giờ giữ giãn cách như cũ; `connect_error` có `data.code` → đăng xuất, dừng nối lại; `account.downgraded` + 403 `FEATURE_DISABLED` → làm mới gói; `ACCOUNT_DELETED` **không xoá SQLite ở mọi nguồn**; nghiệm thu máy đạt 2026-10-20 (spec mục 12). Lịch sử trước khi mã xong: 🚧 lượt đã mở 2026-10-18 tối (đợt đầu của lượt là hai lỗi G94; trước đó ⏳ hoãn tới khi backend đóng đơn 43; lượt ấy gộp cả **G94**, người dùng chốt 2026-10-16; **2026-10-18** backend báo đóng đơn 43, client soát: đạt `accountRejection` mặc định `ACCOUNT_INACTIVE` — vế chặn client xoá SQLite — và 503 bảo trì có `code`, còn sáu việc phía AIOps, CSDL và tài liệu hợp đồng; **người dùng chốt cùng ngày: thế đã đủ** — lượt G89 + G94 bắt đầu từ phiên sau, mở bằng brainstorm → spec → Stitch) (người dùng chốt 2026-10-15; trước đó ⏸️ để nguyên có chủ ý, mở 2026-10-11 — lượt soát sau gộp `main` @ `79e46225`) — **thao tác của admin vô hình trên client**: bảo trì khẩn cấp = backend phát `user.notification` + `system.broadcast` (client cố ý không nghe từ 2026-09-30) rồi trả **503 `MAINTENANCE_MODE`** cho mọi request; phong toả AIOps = **403 `AIOPS_QUARANTINED`**. Client không có nhánh đọc hai mã ấy: đồng bộ rơi `transportFailed` (im lặng, đúng), đăng nhập hiện `message` server, không dải / hộp thoại nào — trong khi `docs/Admin-web/README.md` §3 và `07-maintenance` §7 tả *Modal đỏ toàn màn hình*, *SnackBar*, *đếm ngược phong toả*. Người dùng chốt để nguyên; nếu làm thì đọc **mã HTTP + `code`** (không nghe sự kiện mới) → dải Trang chủ + toast nói rõ lý do. |
 > | ~~**G88**~~ | ✅ **ĐÓNG 2026-10-16** (gạch 1–6 đều xong; gạch 4 + quét 28 ở khối ✅ cuối mục G88) — ⏸️ nợ có tên, mở 2026-10-10 — phần kiến trúc **cố ý** để lại sau đợt bịt điểm rò (spec `specs/2026-10-10-bit-diem-ro-kien-truc-client-design.md`): trang Thêm giao dịch ~~còn **2.007** dòng~~ ✅ **đóng 2026-10-11** (gạch 1: 779 dòng + `ThemGiaoDichCubit`) · ~~**4** tệp trong danh sách miễn trừ trần 1.200 dòng~~ ✅ **đóng 2026-10-13** (gạch 2: `mienTru` rỗng) · ~~UI cầm kiểu hàng Drift, Entity 6/14 mảng~~ ✅ **gạch 3 đóng 2026-10-15** (Entity 7/14: đợt 1/4 Hoá đơn ✅ 2026-10-14; đợt 2/4 Giao dịch + Ví ✅ 2026-10-14; đợt 3/4 Danh mục + hai nợ Mục tiêu + `ghiPhanHoi` ✅ 2026-10-15; đợt 4/4 Thông báo ✅ 2026-10-15, nghiệm thu máy ảo ✅ đạt) · ~~18 dòng (7 tệp) hạ tầng `core` import `features/`~~ ✅ **gạch 4 đóng 2026-10-16** (còn 8 dòng trỏ vào năm tệp domain thuần, danh sách cố định ở quét 25 luật 5 / 5b; quét 28 mới) · ~~`core/notification` 35 tệp là mảng nghiệp vụ nằm trong `core`~~ ✅ **gạch 5 đóng 2026-10-15** · ~~`data/services/` là tầng application chưa đổi tên~~ ✅ **gạch 6 đóng 2026-10-15** (`features/<x>/application/`; gạch 7 vị trí tệp ✅ 2026-10-10 — quét 25). Câu từng chờ người dùng quyết — form Thêm/Sửa hoá đơn cho chọn **nhóm** danh mục — ✅ đã quyết 2026-10-10: **không** |
 >
 > **G20 đã đóng ngày 2026-09-05** — `depositToGoal` nhận `occurredAt` chặn hai
@@ -681,7 +693,8 @@ theo. **Đo được 2026-09-07 trên `emulator-5554`:** server có **18** hàng
 máy ấy tạo được **13** bản sao (hai trong số còn lại bị chặn đúng luật vì tài
 khoản từng có bản riêng cùng tên; ba cái còn lại đơn giản là chưa từng về máy).
 
-**Vì sao không sửa ngay:** bước seed chạy sau **mọi** lần pull và luỹ đẳng, nên
+**Vì sao không sửa ngay:** bước seed chạy sau **mọi** lần pull và luỹ đẳng (⚠️ câu này chỉ
+đúng với mã từ 2026-10-20 — cổng `SyncEngine.sauKeoVe`; trước đó mã gieo một lần mỗi phiên, sau `start()`), nên
 khi một hàng mặc định thật sự về máy thì bản sao được tạo ở lượt kế tiếp. Người
 dùng không mất gì — họ chỉ có ít danh mục dựng sẵn hơn, và tự thêm được.
 
@@ -1686,6 +1699,599 @@ Realme / OnePlus. Chi tiết: khối 🕗 đầu mục 14 `PROJECT_CONTEXT.md`.
 
 ---
 
+### G106 — Lịch nhắc đặt trước (hoá đơn, ghi chép, tổng kết tuần) mất im lặng sau force-stop: `resync` tin danh sách của plugin, không phải AlarmManager · ✅ MỞ VÀ ĐÓNG 2026-10-24 tối (mã + test + đo lại Realme)
+
+**Nguồn.** Đo Realme phiên 4 (khối 🔒 mục 14 `PROJECT_CONTEXT.md`, gạch *Đo Realme lượt 2 + Đợt 7*): cài đặt bật *Nhắc ghi chép
+20:00* và *Tổng kết tuần Thứ Hai 08:00*, `scheduled_notifications.xml` của plugin liệt kê `ghiChep:2026-10-25`, `weekly:…`,
+`ghiChep:2026-10-26` — mà `dumpsys alarm` có **0** báo thức của app. Lịch sử tiến trình: force-stop 19:55:03 (ngay sau lượt cài
+đè). Tái hiện chắc chắn: `am force-stop` → 0; mở app, quét xong → **vẫn 0**, danh sách vẫn 3.
+
+**Cơ chế.** `ReminderScheduler.resync` hỏi `osNotifier.pendingIds()` = `pendingNotificationRequests()`, đọc danh sách
+SharedPreferences của plugin. Force-stop xoá báo thức của gói mà không đụng danh sách, và không phát broadcast nào (bộ nhận
+`BOOT_COMPLETED` / `MY_PACKAGE_REPLACED` chỉ cứu khởi động lại máy và cập nhật app — đo: cài đè không force-stop thì 3 báo thức
+còn). `resync` thấy id "đã chờ" thì bỏ qua (luỹ đẳng); khoá nhắc hoá đơn không đổi giữa các lượt quét nên lịch ấy **không bao giờ**
+được đặt lại — tới khi người dùng đổi giờ nhắc (`datLai`). Ghi chép hằng ngày tự lành dần (khoá theo ngày), tổng kết tuần lành
+sau một tuần.
+
+**Sửa.** Lượt `resync` đầu tiên của mỗi bộ đặt lịch (`_daKhoiPhuc`; DI `registerLazySingleton` ⇒ mỗi tiến trình / isolate
+một lần) đặt lại cả lịch "đã chờ": **không** huỷ trước (cùng id thay chỗ; `cancel` gỡ luôn thông báo cùng id đang nằm trên
+khay), **không** ghi `dat_lich` (B5b đếm "tới máy" theo nó); chỉ đánh dấu khi lượt chạy trọn. Test: 2 ca mới ở
+`reminder_scheduler_test.dart` (đỏ trước khi sửa); 2 ca cũ (tiền đề G59, B5a lần hai) đổi sang **một** bộ đặt lịch. Đo lại
+Realme: force-stop → 0, mở app → **3** (25/10 20:00 · 26/10 08:00 · 26/10 20:00), danh sách 3, không nhân đôi. Bẫy **7.14**
+`NOTIFICATION_FEATURE.md`.
+
+**Bán kính.** Mọi lịch đặt trước trên Android sau một lần force-stop (Cài đặt → Buộc dừng, ColorOS gỡ task ở một số trạng thái,
+`adb install` + `am force-stop` khi đo). Lịch **Hoãn** (không nằm trong tập "muốn") vẫn mất sau force-stop — hiếm, chấp nhận.
+
+### G105 — Quét ảnh: chữ rác ở mép ảnh thắng tên cửa hàng (*"card n"*, *"ral Setl Ths cad rd effect"*) · ◐ SỬA MỘT PHẦN 2026-10-22 (dòng toàn chữ thường; chữ rác lẫn hoa thường còn lọt)
+
+**Nguồn.** Đo Quét ảnh trên Realme (bản `16b71a1e…`, khối 🧷 mục 14 `PROJECT_CONTEXT.md`). Người dùng chụp tờ ỦA TEA N01 bằng
+nút *Chụp ảnh*; OCR ra ba dòng đầu *"card n"* · *"Dịa chi Kios 01, quang truờng Dramond, Drh Thi"* · *"ỦA TEA 2DEE"* —
+*"card n"* là chữ của vật nằm ở mép khung. Luật tên cửa hàng (chốt 12 `QUET_ANH_FEATURE.md`: chỉ tìm trước thân hoá đơn, bỏ
+mẩu **một** từ ≤ 4 chữ cái, địa chỉ / liên hệ, tiêu đề chứng từ) cho *"card n"* qua và lấy nó vì đứng đầu → ghi chú
+*"card n"*. Số tiền 398.800 và ngày giờ 14/10 14:07 vẫn đúng. Chụp lại (không dính mép) → *ỦA TEA* đúng. Chữ OCR lần ấy (55 dòng
+`[Quet][OCR]` của logcat, đã che số khách) ở cuối mục này — nay cũng là tờ `N01b` của `hoa_don_quet_that_du_lieu.dart`.
+
+**Sửa (cùng tối).** Người dùng chọn *ưu tiên dòng viết hoa* trong ba hướng (siết mẩu ngắn · ưu tiên viết hoa · để nguyên).
+Bản *"dòng viết hoa toàn bộ thắng"* thử trước bị chính bộ chữ thật lật: R06 (*"NHÀ THUỐc"* — OCR đọc chữ cuối thường) đổi sang
+dòng khẩu hiệu viết hoa bên dưới, và tên viết thường (*"Quán Phở Hùng"*, *"eco-shop Invoice"*) thua dòng *DELIVERS* ngay dưới
+— trái lời hứa *"tờ tên viết thường không đổi"*. Nên luật làm là bản hẹp của cùng ý: `_cuaHang` (`doc_hoa_don.dart`) xếp
+dòng **toàn chữ thường** sau mọi dòng có chữ hoa, vẫn lấy nó khi không còn dòng nào khác. N01 chụp dính mép nay ra
+*"ỦA TEA 2DEE"* (đuôi rác *2DEE* **không** cắt — tên kiểu *7ELEVEN*, *24H* sẽ bị cắt oan). Test: tờ `N01b` thêm vào
+`hoa_don_quet_that_du_lieu.dart` (17 mục) + bốn ca thuần ở `doc_hoa_don_test` (*card n* · tên lẫn hoa không thua dòng viết
+hoa · chỉ dòng thường vẫn lấy · hai dòng thường lấy dòng đầu); 34 tờ chữ thật cũ giữ nguyên kết quả; hai bản sai cấy thử đỏ.
+
+**⚠️ Đo lại trên máy (Realme, bản `5129e9df…`, 2026-10-22 khuya) — phần còn hở.** Người dùng chụp N01 dính một tấm thẻ in
+chữ tiếng Anh ở mép trên: OCR ra **sáu** dòng rác đứng trước *"ỦA TEA"* (dòng 7, viết hoa toàn bộ, ngay trên dòng địa chỉ),
+dòng đầu *"ral Setl Ths cad rd effect"* có chữ hoa nên không bị xếp sau → ghi chú điền chuỗi ấy. Số tiền 398.800, ngày giờ
+14/10 14:07, danh mục Ăn uống vẫn đúng. Luật *"viết hoa toàn bộ thắng"* sẽ ra đúng tờ này nhưng đã bị R06 thật lật (mục
+*Sửa*). Chữ OCR ở khối thứ hai cuối mục.
+
+**Hướng chọn cho phần còn hở (người dùng, 2026-10-22 khuya):** *nhắc lúc chụp* (trong ba hướng: hoãn · nhắc · thử thêm luật).
+Sheet chọn nguồn ảnh nay theo đúng Stitch `50e001f2…` (bản có dòng nhắc của `8027b781…`, người dùng xác nhận) và có dòng *"Chụp sát tờ hoá đơn, đừng để vật có chữ lọt vào khung"*
+(`kNhacChupSat`, `2bdc2a68`; nghiệm thu Realme 360 dp: không tràn). Luật đọc tên không đổi thêm. G105 để ◐ — vật có chữ lẫn
+hoa thường lọt vào khung vẫn ra ghi chú sai; người dùng thấy và sửa trên form.
+
+**Bán kính.** Chỉ ghi chú của hoá đơn quét khi ảnh dính chữ lạ ở mép trên; người dùng thấy ngay trên form và sửa được.
+
+<details><summary>Chữ OCR N01 chụp lần đầu — Realme 2026-10-22 19:58, <code>/quet</code> thật (luật: <code>tong=398800 | ghi="card n" | luc=2026-10-14 14:07</code>)</summary>
+
+```
+card n
+Dịa chi Kios 01, quang truờng Dramond, Drh Thi
+ỦA TEA 2DEE
+Thi, Van phúc
+Hotline: 0934803456
+HÒA ĐƠN THANH TOÁN
+So HÐ: UAO068
+Mã HD: #TH8HW TN: THU NGAN
+an: HUB (GRABF00D) Ngðy: 14/10/2026
+(GF-264_TH8HW)
+Giò ra 1407
+Gid vào: 1407
+STT pon Thanh
+Tên món
+gid tien
+MATCHA OATMILK 142,000 42,000
+SIZE NM
+100% NGOT 1
+100% ĐẢ
+SÜA TƯƠI TRẢN
+CHÅU ĐUỜNG ĐẾN- L 39,000 39,000
+50X NGOT
+100% ĐẢ
+MATCHA LATTE 39,000 39 000
+-SIZE M
+50% ĐẢ
+4 MATCHA LATTE 39, 000 39,000
+4gr bột Matcha 12,000 12,000|
+- SIZE M 0
+MATCHA LATTE 39,000| 39,000
+- SIZE M
+50% NGỘT
+TRA NHO XANH
+45,000 90,000
+THACH DUA - L
+NHẢN DỦA SỬA 149 000 49,000|
+TRA TRÁI CAY NHHẾT
+8 ĐỚI - L 145,0D0 45,000
+HOP TRAI CẢY NHO
+|MIX 3 LOAI 29,000 29,000
+Tống số mon. i0
+Thành tien: 423,000 d
+Tien chiết khấu: 24,200 d
+Töng tien: 398,800d
++Thanh toán (GRAB_ONLINE) 398,800 d
+Ghi chú: (GRABFOOD-GF-264.THEHW-DEL-2026-
+10 14 1407 30). Hoa đon áp dung bản hàng thea
+kénh
+Khách bông - 8410****** -
+null
+Moi thác Inåc, khiéu nại dưn hàng, quy kihách vui
+là ng lién hệ hotline nhé
+MR realme Shot on O3 Pro 5G 2026 10 22 19:57
+Cảm on Quy Khách
+Powered by iPOs.vn
+```
+
+</details>
+
+<details><summary>Chữ OCR N01 chụp dính tấm thẻ in chữ tiếng Anh — Realme 2026-10-22 21:31, <code>/quet</code> thật (luật: <code>tong=398800 | ghi="ral Setl Ths cad rd effect" | luc=2026-10-14 14:07</code>)</summary>
+
+```
+ral Setl Ths cad rd effect
+LDIVNE.BEAST/EFEECT o Normal Saon ifthis cae etroy ais onstes O00 DE ODEF/400
+Norma thes card
+keqires 1Trbtes
+eflects c
+trok This card can
+ỦA TEA
+Dla chi: Kios 01, quang trưong Dianmond, Dirh Thi
+Thi, Van phủc
+Hottine: 0934803456
+HỎA ĐƠN THANH TOẢN
+So HÐ: UAO068
+Må HD: #TH8HW TN: THU NGÁN
+Bàn. HUB (GRABF00D) Ngày: 14/10/2026
+(GF-264.THBHW) Giò ra: 1407
+Giò vào: 1407
+Don Thành
+STT Ten mỏn SL giá tien
+MATCHA OATMILK 142,000 42,000
+SIZE M
+100% NGOT
+100% ĐẢ
+sÜA TƯƠI TRẢN 39,000 39,000
+CHÅU ĐUỜNG ĐẾN-L
+50% NGOT
+100% ĐA
+MATCHA LATTE 39 000 39000
+SIZE İM
+50% ĐÁ
+MATCHA LATTE 39,000|39,000
+4gr bột Matcha 12,000 12,009|
+-SIZE M
+MATCHA LATTE 39,000 39000
+-S1ZE M
+-50% NGOT
+TRA NHO XANH
+0 THACH DỪA- L 245,000 90,000|
+NHÃN DỮA SỬA 149,000 49,000
+TRA TRÁI CAY NHIỆT
+145,090 45,000
+ĐO-L
+HÓP TRÁI CẦY NHỎ
+MIX 3 LOAI 129,000 29,000
+Töng số mon. 10
+Thành tien: 423,000 d
+Tiên chiết khäu: 24,200 d
+Tong tien: 398,800d
++Ihaph 1oản (GRAB_ONLINE) 398,800 d
+Ghi chú: (GRABFOOD-GF 264.THEHW-DEL-2026
+10 14 1407.30].. Hoa đon áp dụng bản hàng theo
+kenn
+Khách hang - 8490000000 -
+null
+Moi thảc Inàc, khiéu nại dun hang, quy kihách vuị
+long liên hệ hotline nhé
+AR realme Shot on A03 Pro 5G 2026 10 22 21:31
+```
+
+</details>
+
+---
+
+### G104 — Đường luật bỏ trống của N1 vẫn có thể điền bản cụt của Gemma (*"một triệu hai tiền sách"* → 1.000.000) · ⏸ HOÃN 2026-10-22 → ✅ ĐÓNG 2026-10-23 (mã + test, chưa đo trên máy)
+
+**Nguồn.** Lượt thu hẹp kiểm chéo C4 (mục 4 `GIONG_NOI_FEATURE.md`, khối 🎯 mục 14 `PROJECT_CONTEXT.md`). Nghiệm thu Realme
+2026-10-21: Gemma đọc *"tiền điện một triệu hai"* thành **1.000.000** 2/2 lần. Câu ấy nay luật điền 1.200.000 và không hỏi Gemma.
+Nhưng ở câu luật **bỏ trống** — chữ số lẻ không đứng ở chỗ của tiền (*"một triệu hai tiền sách"*, *"chi hai triệu năm nay"*),
+`_dungChoTien` — ô số tiền là ô thiếu, Gemma chọn trong `cachDocSoTien` (gồm cả bản cụt) và lưới `soTienAiHopLe` cho qua: nếu
+Gemma đọc cụt thì form điền 1.000.000 **không hỏi**. Chưa đo câu nào kiểu này trên máy.
+
+**Vì sao hoãn.** (1) Thêm *"một triệu hai = 1.200.000"* vào `promptNhapNhanh` là đổi lời nhắc của **mọi** câu Nhập nhanh hỏi AI
+— phải đo lại cả OnePlus GPU lẫn Realme CPU (bẫy 4.51: lời nhắc dài làm chuỗi số hỏng). (2) Bỏ bản cụt khỏi `cachDocSoTien` thì
+Gemma mất cách đọc ấy ở câu mà nó mới đúng (*"chi hai triệu năm nay"* = 2.000.000). (3) Ở những câu này cả hai cách đọc đều có
+thể đúng — một lưới thuần mã không biết chọn; hai chip là ứng viên, nhưng là quyết định của người dùng.
+
+**Bán kính.** Chỉ câu *X triệu / nghìn Y* mà Y đứng trước một danh từ khác; câu *X triệu Y* cuối câu / trước ví · ngày (phổ biến
+khi nói) không bị.
+
+**Sửa (2026-10-23, người dùng chọn lối hai chip — lý do hoãn (3)).** `_chonSoTien` (`doc_cau_giao_dich.dart`): cụm *"X bậc Y"*
+viết chữ mà Y không ở chỗ của tiền, và không hạng nào có cụm khác → hai cách đọc `[cụt, dài]` vào `KetQuaDocCau.luaChonSoTien`
+thay cảnh báo *"chưa rõ"*. `docCauGiaoDich`: có chip thì AI **không** lấp ô số tiền và ô ấy không là `OThieu.soTien` (luật biết
+cụm là tiền, chỉ cách đọc còn mở); `khongDocDuocGi` tính cả chip; `cauDaDien` trả `''` khi chỉ có chip. `ThemGiaoDichCubit
+.dienKetQua`: chip → `luaChonTienCau`, ô số tiền về 0, bỏ dòng tóm tắt khi không còn gì để nói (nếp `_chotSoTien`) — khối
+`KhoiChonSoTien` có sẵn. Lời nhắc Gemma **không** đổi; ghi chú vẫn còn cụm số nên `OThieu.ghiChu` vẫn hỏi Gemma — chip hiện sau
+đúng lượt chờ như trước, cái lợi là số đúng chứ không phải nhanh hơn. Huỷ lượt AI / mô hình chưa sẵn sàng → chip vẫn hiện.
+Ngoài phạm vi: câu trộn dấu *"một triệu tu"* (`moHo`, Gemma còn chọn); dạng chữ số *"1 triệu 2 tiền sách"* (luật vẫn điền
+1.000.000 như trước C4 — ca canh *"nộp 2 triệu 3 ngày sau"*); lệnh tạo C3 (`chonSoTienTrongCau` vẫn `null`).
+
+**Cùng lượt — một định nghĩa *"X bậc Y"* (người dùng chốt).** Chạy câu thật lộ thêm: luật điền *"trả hai trăm nghìn tám"* =
+**200.800**, *"một triệu hai trăm nghìn ba"* = 1.200.300 không hỏi (cùng công thức, X không phải số người ta nói), và chip của
+*"hai trăm nghìn tám tháng"* sẽ là 200.800. `_docXBacY` là định nghĩa duy nhất — luật điền, chip, `cachDocSoTien` cùng gọi: X =
+cụm / bậc phải là số nguyên **1–99**. Ranh giới *"X một chữ số"* được đề xuất trước rồi bỏ: chạy câu thật cho thấy nó làm hỏng
+*"mười lăm triệu hai"* (15.200.000), *"hai mươi triệu năm"*, *"mười lăm nghìn hai"* — luật đang điền đúng. Dạng chữ số
+(`_mauTrieuLe`) cố ý không qua: bỏ cách đọc dài ở đó thì `_mauSoDonVi` đọc *"12 triệu"* thành số chắc, điền bản cụt.
+
+**Test.** `doc_cau_noi_test` — nhóm *"N1 — Y KHÔNG ở chỗ của tiền"* đổi kỳ vọng (ba câu ra chip, *"hai trăm nghìn tám tháng"*
+vẫn chưa rõ) + nhóm *G104* 18 ca (X hai chữ số ở chỗ của tiền giữ nguyên; X ≥ 100 thôi điền và rời tập cách đọc; chip + không
+`OThieu.soTien` + `khongDocDuocGi` false; *"một triệu tu"* không chip; *"45k"* thắng; câu còn cụm nói luật chọn được — *"một
+triệu hai tiền sách năm chục"* — không chip G104, cụm mơ hồ thành `soTienKhac` của C4; AI trả 1.000.000 / 1.200.000 / 20.000 →
+không lấp; C3 `null`; `cauDaDien` rỗng). `doc_cau_giao_dich_test` một ca đổi kỳ vọng. `them_giao_dich_kiem_cheo_test` +5 (không
+AI chỉ chip, không dòng *"chưa đọc được"*; Gemma trả bản cụt → chip, chạm chip điền; số gõ trước bị bỏ; câu còn cụm luật chọn
+được → chip của kiểm chéo C4 [1.000.000, 50.000]; Huỷ lượt AI → chip). Ca mới đỏ trên mã cũ; ba bản sai cấy thử — bỏ chốt *"AI
+không lấp"* (4 ca đỏ), bỏ vế chip trong `khongDocDuocGi` (8 ca đỏ), cho chip bật cả khi luật đã chọn cụm (2 ca đỏ).
+
+**Đo trên máy (chưa).** Realme / OnePlus, Premium: gõ và nói *"một triệu hai tiền sách"* → ô trống + hai chip, chạm 1.200.000
+thì điền; *"trả hai trăm nghìn tám"* → ô trống + *"chưa rõ"*; *"tiền nhà mười lăm triệu hai"* → 15.200.000. Google có thể chép
+*"một triệu hai"* thành chữ số — khi ấy câu đi dạng chữ số, ngoài phạm vi.
+
+---
+
+### G103 — Lời nghe của Google viết khác chữ gõ (*"mbbank"*, *"500.000₫"*): ví nguồn trượt về ví chọn sẵn, ghi chú sót · ✅ MỞ VÀ ĐÓNG 2026-10-21 tối (mã + test + kiểm lại Realme)
+
+**Nguồn.** Lối Android của C4 trên Realme (bảng mục 9.1 `GIONG_NOI_FEATURE.md`), câu nói *"Chuyển năm trăm nghìn từ MB Bank sang
+tiết kiệm"*, ví tài khoản 10 gồm *Ví MB Bank* và *Tiết kiệm*.
+- Google trả *"chuyển 500.000 từ mbbank sang tiết kiệm"* → form *Chuyển khoản · 500.000 đ · đến Tiết kiệm* nhưng **ví nguồn Tiền
+  mặt** (ví chọn sẵn), ghi chú *"từ mbbank"*. `_tenGoiViTrongCau` dựng mẫu tên gọi tắt bằng `\s+` giữa các từ (*"mb\s+bank"*).
+- Sau bản sửa ấy, Google trả *"chuyển 500.000₫ từ mbbank sang tiết kiệm"* → ví đúng, ghi chú *"₫"*. Mẫu số tiền chạy trên câu bỏ
+  dấu (`removeVietnameseTones`) và chỉ nhận *đ → d* làm đơn vị; *₫* (U+20AB) không phải chữ có dấu nên lọt.
+
+**Sửa (`doc_cau_giao_dich.dart`).** Mẫu tên gọi tắt nối từ bằng `\s*` — hai đầu vẫn chặn ranh giới từ, vẫn chỉ nhận ngay sau *ví ·
+bằng · qua · từ · sang · vào · đến · tới*. `_chuanCau(cau)` = NFC + *₫ → đ* (cùng một đơn vị UTF-16, vị trí giữa câu có dấu / bỏ dấu
+không lệch) thay `unorm.nfc(cau)` ở cả ba phép đọc (`docCauGiaoDich`, `cachDocSoTien`, `chonSoTienTrongCau`) — lưới số tiền AI dùng
+cùng cách đọc. Câu gõ tay cũng hưởng (C2, C3).
+
+**Test.** `doc_cau_noi_test` +4 ca: nguyên văn *"…từ mbbank…"* (chuyển ví đúng, ghi chú không còn *mbbank*), *"…bằng mbbank"*, ca chặn
+*"phí mbbank 20 nghìn"* (không giới từ → không chọn ví), và *"…500.000₫…"* / *"ăn phở 45.000₫"* (đơn vị, ghi chú, `cachDocSoTien`).
+Hai ca đầu và ca *₫* đỏ trên mã cũ.
+
+**Kiểm lại Realme (bản `685a1ba6…`).** Lượt cuối Google viết *"MB Bank"* có dấu cách: *Chuyển ví · Ví MB Bank → Tiết kiệm · 500.000
+đ*, ghi chú sạch. Dạng *mbbank* (bản `34637cf9…`): ví đúng; dạng *₫* chỉ kiểm bằng ca test nguyên văn.
+
+---
+
+### G102 — Giọng nói C4: lối Android tự dừng sau ~2 giây; lối Gemma đem bản ghi im lặng đi chép và điền câu lệnh vào ô · ✅ MỞ VÀ ĐÓNG 2026-10-21 tối (mã + test + kiểm lại Realme)
+
+**Nguồn.** Nghiệm thu C4 lần đầu trên máy — Realme RMX2205CN (CPU), tài khoản 10, bản debug `bf988d6f…`. Bảng đo ở mục 9.1
+`GIONG_NOI_FEATURE.md`.
+
+**Lỗi 1 — lối Android (có mạng).** Người dùng báo *"thời gian chờ quá ngắn, nói cũng không thu được"*. Log dịch vụ
+`com.google.android.tts`: bắt đầu thu 20:53:51,83 → **app** gọi `stopListening` 20:53:53,70 (*"mics audio processed in millis:
+1720"*) → 0 giả thuyết → `NO_SPEECH_DETECTED`. Gốc (đọc mã `speech_to_text` 7.5.0, gói C4 đã được phép đọc): `listen` đặt
+`_lastSpeechEventAt = _listenStartedAt` và chỉ đặt lại khi có chữ, tức `pauseFor` tính từ lúc **bắt đầu** nghe; mã đặt `pauseFor:
+kImDeDung` (2 s). Lối Gemma có 6 s chờ tiếng đầu (`BoDoIm`), lối Android thì không.
+
+**Lỗi 2 — lối Gemma (mất mạng).** Lượt người dùng chưa kịp đọc: `BoDoIm` dừng đúng ở giây 6 (bản ghi 5,9 s) nhưng `_dungGhi` vẫn
+đưa bản ghi im lặng cho Gemma. Gemma trả **nguyên câu lệnh** bỏ dấu chấm cuối (88 ký tự), `lamSachLoiChep` nhận nó, ô Nhập nhanh
+hiện *"Chép lại chính xác câu tiếng Việt trong đoạn ghi âm. Chỉ trả về câu ấy, không giải thích"*, rồi C2 tốn thêm ~10 s để báo
+*"Mình chưa đọc được câu này"*.
+
+**Sửa.**
+- `NgheAndroidThat.nghe`: `pauseFor: kChoTiengDau`; chữ tạm khác rỗng đầu tiên → `changePauseFor(kImDeDung)`. ⚠️ Hàm ấy **ném**
+  `ListenNotStartedException` khi gói không còn ở trạng thái nghe (mà `notListening` có thể tới trước chữ cuối) — bọc `try`, chữ
+  luôn tới `LuotNghe`. `NgheAndroidThat` nhận `stt` tiêm được (test chạy gói thật qua kênh giả).
+- `BoDoIm.daCoTieng`; bộ đo dừng mà chưa thấy tiếng → `_dungGhi(coTieng: false)`: xoá tệp, *"Không nghe rõ"*, không gọi Gemma.
+  Bấm ■ thì vẫn chép (ngưỡng −35 dBFS chưa đo mọi máy).
+- `lamSachLoiChep` trả rỗng khi lời chép chứa *"chép lại chính xác câu"* hoặc *"chỉ trả về câu ấy"* — lưới thứ hai.
+
+**Test.** `nghe_android_test` 4 ca — hai ca đỏ trên mã cũ (chưa có chữ thì giây 3 vẫn nghe, tới giây 6 mới dừng; chữ tạm rỗng
+không tính là đã nói), hai ca canh bản sửa (có chữ ở giây 1 → dừng ở giây 3; chữ tới sau `notListening` không mất), `nghe_giong_noi_cubit_test` +2 ca (6 s im → không chép; bấm ■ khi chưa thấy tiếng vẫn chép),
+`chep_loi_test` +2 ca (năm dạng câu lệnh vọng lại; câu thật có chữ *"chép"* vẫn giữ). Năm bản sai cấy thử đều đỏ.
+
+**Kiểm lại Realme (bản `de459fab…`).** Lối Android nghe trọn 6 s khi chưa có chữ; nói bằng giọng thật thì 4 câu đều ra chữ,
+lượt dừng ~2 s sau chữ cuối (bảng ở mục 9.1 `GIONG_NOI_FEATURE.md`). ⚠️ Một lượt giữa chừng trả rỗng dù dịch vụ báo
+`onStartOfSpeech` (SODA `SpeechError(-73542)`), cả Gboard cũng không nhận — tưởng là lỗi của máy, nhưng người dùng khi ấy cho
+**Google Dịch phát câu từ chính chiếc Realme**. Lượt Gemma im lặng: ô trống, không lượt nạp / chép nào trong log.
+
+**Ngoài phạm vi, ghi lại.** ColorOS (HANS) đóng băng `com.google.android.tts` ~8 s sau một lượt và chặn mạng của nó; một lượt
+gọi vào lúc ấy không vào trạng thái nghe, kết thúc sau ~20 s với *"Không nghe được — thử lại sau"*.
+
+---
+
+### G101 — Quét ảnh (A5) điền sẵn số tiền SAI mà không hỏi khi OCR làm mất / đổi chữ số của dòng tổng · ✅ MỞ VÀ ĐÓNG 2026-10-21 (mở khi nghiệm thu A5 trên Realme; mã + test trên chữ `/quet` thật; nghiệm thu Realme Premium đạt cùng tối, đường Basic chưa nhìn trên máy)
+
+**Nguồn.** Nghiệm thu A5 trên Realme RMX2205 (CPU, bản debug `b174b8d6…`, 2026-10-21), 15 ảnh hoá đơn R01–R16 của buổi
+08/10 đi qua `/quet` thật. Hai tờ được **điền sẵn số sai, không chip**:
+
+| Tờ | Đáp án | Chữ OCR hôm nay | Luật | Gemma CPU | Form |
+|---|---|---|---|---|---|
+| R13 MAXIDI | 72.127 | *"2,127"* (mất chữ 7) · *"VNO72,121"* | 2.127 | **72.127** (đúng) | **2.127 đ** điền sẵn |
+| R08 MAXIDI | 75.700 | *"Teng 75,706"* · dòng VAT *"75,700"* | 75.706 | 55.000 | **75.706 đ** điền sẵn (lệch 6 đ) |
+
+Cùng hai tờ ấy, chữ OCR lưu ở `hoa_don_that_du_lieu.dart` (đọc bằng màn spike 08/10) có đủ *"72.127"* / *"75,700"*. Khác ở
+đầu vào: `/quet` đi qua `image_picker`, và gói này **nén lại** ảnh đã rộng 1280 (R08 98.970 → 83.192 byte, R13 99.043 → 82.676
+byte), nên OCR chạy trên ảnh nén hai lần. Vì vậy `hoa_don_that_test` (*"13/15 điền sẵn, 2 tờ hỏi chip"* — nay 12/15 sau bản sửa) **không** phải phép
+kiểm hồi quy của `/quet` trên các ảnh này — nó chạy trên chữ của đường spike.
+
+**Cơ chế (đọc mã, `transaction/domain/chot_tong_quet.dart`).** Hai nửa:
+1. **Số mô hình bị bỏ.** `chotTongQuet` chỉ dùng số AI khi nó có nguyên văn trong chữ OCR (`aiCo`), hoặc khác số luật **đúng
+   một chữ số cùng độ dài** (`_lechMotChuSo`). R13: 72.127 không có trong chữ, và so với 2.127 là **thêm** một chữ số chứ không
+   phải thay. R08: 55.000 không có trên ảnh và khác 75.706 ba chữ số. Lưới thứ hai được viết đúng cho R08 (chú thích mã nêu ca
+   OnePlus *"OCR ra 75.706"*), nhưng chỉ đỡ được khi mô hình đọc đúng; Gemma CPU đọc 55.000.
+2. **Số luật được điền vô điều kiện.** Số AI đã bị bỏ thì hàm trả `ChotTong(soTien: luat)`, không còn phép kiểm nào cho số luật.
+   R13 điền 2.127 dù trên cùng tờ có món 19.800.
+
+Thiết kế bỏ số AI có lý do đo được: hôm 08/10, 4/5 lần Gemma CPU sai là một số không in trên hoá đơn. *"Vẫn hiện chip"* cho mọi
+số AI bị bỏ sẽ đưa lại đúng những số rác ấy, nên không phải hướng mặc định.
+
+**Bán kính.** Mọi ảnh hoá đơn có OCR làm mất / đổi chữ số ở dòng tổng, trên cả Basic (chỉ luật) lẫn Premium. Form chỉ điền
+sẵn, người dùng vẫn sửa được trước khi bấm Lưu (bất biến ④), nhưng số sai không có dấu hiệu gì. Câu *"không tờ nào điền sẵn số
+sai"* của nghiệm thu OnePlus 08/10 **không** đúng cho Realme hôm nay.
+
+**Bàn đo.** Chữ OCR mà `/quet` thật đã thấy hôm 21/10 có sẵn trong logcat (`[Quet][OCR]` in bằng `print`, không bị tiết
+lưu): 16 lượt, chép nguyên văn, che số điện thoại / tên khách → `test/features/transaction/domain/hoa_don_quet_that_du_lieu.dart`.
+Hai lượt quét lại R06 / R16 trùng từng byte nên bỏ. Phép kiểm chính dữ liệu ở `hoa_don_quet_that_test.dart`: luật trên chữ đã che
+ra đúng dòng `[Quet][luat]` của logcat ở cả 16 tờ (tổng, ghi chú, ngày). Ca G101 đỏ đúng R08 + R13, cả Premium lẫn Basic.
+
+**Hướng đã chọn (người dùng, 2026-10-21): ba lưới A + B + C** — đo cả ba ứng viên trên 34 tờ chữ (15 chữ 08/10 · 16 chữ
+`/quet` 21/10 · 3 OnePlus), mỗi tờ chạy cả hai gói, rồi mới hỏi:
+
+| Hướng | Tờ điền sẵn sai | Tờ đang điền đúng chuyển sang hỏi |
+|---|---|---|
+| Không sửa | 2 (R08, R13) | — |
+| C | Premium 1 · Basic 2 | 0 |
+| A + C | 1 (R08, lệch 6 đ) | 0 |
+| **A + B + C** | **0** | 1 (R13 chữ 08/10) |
+
+- **C** (`_lechMotChuSo`): số Gemma không in trên ảnh vẫn là ứng viên khi khác số luật đúng một chữ số — nay gồm cả **thêm /
+  bớt** một chữ số (R13: 72.127 so với 2.127). Khác độ dài thì luôn lệch > 1%, nên lưới này chỉ đổi *"điền số luật"* thành *"hai
+  chip"*, không bao giờ điền số Gemma.
+- **A** (`_monLonNhatTrenTong`): số luật đứng một mình (không Gemma, hoặc Gemma bị bỏ) mà nhỏ hơn THÀNH TIỀN lớn nhất của các dòng
+  phía trên dòng tổng → **ô trống**, toast *"Chưa đọc được số tiền"* (R13 Basic: 2.127, có món 19.800). Đọc thành tiền bằng
+  `tienCuoiDong` (luật đọc món), không bằng `docMonHang` — hàm ấy dừng ở dòng tiêu đề cột *"Tổng"* của MAXIDI, trên mọi món. Bỏ
+  dòng mang nhãn tổng (*"Thành tiền 246.000"* trước chiết khấu) và nhãn loại.
+- **B** (`_soGanNhat`): số luật đứng một mình mà trên tờ có một số KHÁC lệch ≤ 1% → **hai chip** [số luật, số gần nhất] (R08:
+  *Tổng 75,706* · dòng VAT *75,700*). Bỏ dòng nhãn loại (tiền mặt làm tròn *45.000* cho tổng 44.745) và ngày giờ (`tienTrenDongHoaDon`).
+  Gemma trùng đúng số luật thì vẫn điền. Cái giá đã chấp nhận: R13 chữ 08/10 in tổng 72.127 và dòng tiền mặt OCR đọc 72,121 —
+  luật đúng nhưng nay hỏi chip.
+- **`/quet` chốt mọi hoá đơn** (`quet_anh_page.dart`): trước đây chỉ nhánh Premium gọi `chotTongQuet`, Basic điền thẳng số luật.
+  Phần số tiền chỉ bật cờ *"Đọc bằng AI"* khi số Gemma nằm trên form (điền hoặc chip) — hai chip của hai số OCR không phải
+  của AI. Danh mục do Gemma chọn vẫn bật cờ như cũ, nên ở Premium form thường vẫn nói *"Đọc bằng AI"* (ca widget canh cả hai).
+
+Mười một bản sai cấy thử (bỏ từng lưới, bỏ từng vế loại trừ, so `<=`, xét số luật trước số Gemma, cờ AI theo *"có chip"*…) đều
+bị ít nhất một ca bắt; bản *"so chuỗi con"* cho lưới C lọt ở lượt đầu, nên có thêm ca *OCR mất chữ số ở GIỮA*.
+
+**✅ Nghiệm thu Realme RMX2205 (CPU, Premium — tài khoản 10), 2026-10-21 tối, bản debug `bf988d6f…` (`884a0c75`).** Chỉ đo lại
+hai tờ chưa đạt, qua `/quet` thật: chép R08 / R13 từ `app_flutter/spike_c4/do1/` sang `Download/fmquet/`, chọn bằng trình chọn
+ảnh. `image_picker` nén còn 83.192 / 82.676 byte; luật và Gemma ra đúng số của lượt trưa.
+
+| Tờ | Luật | Gemma | Form lượt trưa (bản cũ) | Form bản sửa |
+|---|---|---|---|---|
+| R08 MAXIDI | 75.706 | 55.000 (không trên ảnh → bỏ) | điền 75.706 ❌ | **0 đ + hai chip 75.706 · 75.700** ✅ — chạm 75.700 điền đúng, ✓ lên thanh tiêu đề |
+| R13 MAXIDI | 2.127 | 72.127 | điền 2.127 ❌ | **0 đ + hai chip 72.127 · 2.127** ✅ |
+
+Dải nguồn vẫn *"Đọc bằng AI"* vì danh mục do Gemma chọn (đúng ghi chú ở trên). Lượt R08 thứ hai và thứ ba (khi đo G100) ra y
+hệt. Không bấm Lưu (chốt cũ — tài khoản thật). **Đường Basic chưa nhìn trên máy** (khối chip không kèm chữ *"AI"* ở R08, ô trống
+ở R13): cần OnePlus (tài khoản 18, Basic).
+
+### G100 — Thoát app bằng Back (hoặc bị gỡ task) rồi mở lại, mô hình Gemma bị nạp THÊM một bản: tiến trình giữ hai bản, ~1,85 GB mỗi vòng · ✅ ĐÓNG 2026-10-21 (Back hai lần → xuống nền, nghiệm thu OnePlus GPU đạt; gỡ task khỏi Đa nhiệm khi đang giữ mô hình → đóng hẳn tiến trình, nghiệm thu Realme CPU đạt)
+
+**Nguồn.** Realme RMX2205 (CPU), 2026-10-21. Trong buổi đo A5, Flutter engine được dựng lại **ba lần** trong cùng tiến trình
+14156 (14:00:30 · 14:00:53 · 14:02:10, lúc task bị đóng rồi mở lại). Mỗi lần có một dòng *Impeller* mới, các bộ đếm
+`RealtimeChannel` làm lại từ đầu, và màn khởi động hiện lên. Lượt quét kế tiếp ghi `[SLM] nạp mô hình xong` lần nữa. Dựng lại
+có kiểm soát (14:24–14:26, tiến trình 29255): Back ở Trang chủ (app thoát, tiến trình **sống**) → `am start` → quét một tờ.
+
+| Thời điểm | Native Heap (cấp phát) | PSS |
+|---|---|---|
+| Tiến trình mới, chưa nạp | 68 MB | 467 MB |
+| Sau lượt quét đầu (một bản mô hình) | **1,89 GB** | 3,04 GB |
+| Sau Back thoát app | 1,86 GB (không trả) | — |
+| Mở lại + quét một tờ | **3,72 GB** | **4,9 GB** (swap 2,0 GB) |
+
+Lần dựng lại do task bị đóng cho cùng con số (3,73 GB, PSS 5,0 GB, swap 3,4 GB).
+
+**Cơ chế (đọc mã + số đo).** Bản mô hình gắn với Dart isolate của engine (`SlmRuntime._model`, `slm_runtime.dart`). Mô hình chỉ
+đóng qua `SlmRuntime.dong()` khi app chủ động đổi bản nạp; `lib/` **không** có chỗ nào nghe `AppLifecycleState.detached`. Khi
+engine bị huỷ mà tiến trình còn sống (dịch vụ nghe thông báo D1 giữ nó, Realme ColorOS), bộ nhớ native của bản cũ không ai giải
+phóng. Isolate mới không biết bản ấy và nạp bản thứ hai.
+
+**Gốc trong gói (đọc mã `flutter_gemma_litertlm` 1.8.0, phép đích danh 2026-09-23).** `litert_lm_client.dart:852-878` tạo engine
+native trong một `Isolate.run` tạm và chỉ trả **địa chỉ** con trỏ; địa chỉ ấy nằm trong trường `_engine` của một đối tượng Dart.
+Engine chỉ được giải phóng qua `shutdown()` → `litert_lm_engine_delete` (`:1827`). Thư mục `ffi/` không có `NativeFinalizer`
+nào. Isolate chết mà chưa ai gọi `close()` thì địa chỉ mất theo, và engine (trọng số, KV cache, luồng) nằm lại tới hết đời tiến
+trình; isolate mới không có cách tìm lại nó.
+
+**Bán kính.** Mọi đường nạp mô hình: Trợ lý AI, Nhập nhanh (C2), lệnh tạo (C3), giọng nói (C4), Quét ảnh (A5). Điều kiện:
+engine được dựng lại khi tiến trình còn sống, do Back thoát app hoặc gỡ task khỏi Recents. Hai vòng là tiến trình đã 4,9 GB;
+chưa đo vòng ba (khả năng bị hệ điều hành giết vì hết bộ nhớ).
+
+**Hướng (người dùng chọn 2026-10-21, trong bốn lối: xuống nền · một engine cho cả tiến trình · đóng mô hình khi thoát · để
+sau).** *Back hai lần ở Trang chủ = đưa app xuống nền*. Lối *đóng mô hình khi thoát* bị loại vì đụng chốt 4b
+`QUET_ANH_FEATURE.md`: OnePlus GPU **sập native** ở lần **đóng thứ hai** trong một tiến trình (`gl_release_context` ←
+`LiteRtDestroyEnvironment`), và isolate mới lại có bộ đếm lần đóng mới. Lối *một engine cho cả tiến trình*
+(`FlutterEngineCache`) phủ được cả đường gỡ task, nhưng đụng `TuChuyenTien` gắn / gỡ engine, deeplink thông báo, đăng ký plugin.
+
+**Đã sửa (đường Back).** `ThoatHaiLan` (`shared/widgets/thoat_hai_lan.dart`): lần nhấn thứ hai gọi kênh `flowmoney/xuong_nen`
+→ `MainActivity.kt` `moveTaskToBack(true)` (activity và Flutter engine sống tiếp). Kênh trả `false`, không có kênh, hoặc lỗi thì
+rơi về `SystemNavigator.pop()` như cũ. Không có lần đóng mô hình nào, nên an toàn với GPU. Hệ quả cố ý: Back hai lần nay
+**giống hệt nút Home**, nên đường khởi động lạnh (G86 `AuthCheckRequested` → `verifySession`, lượt quét đầu của
+`moPhienCucBo`, phép kiểm `CanaryCongCu` qua `ApplicationExitInfo` ở `main.dart`) chỉ chạy lại sau khi tiến trình chết thật; mở
+lại sau Back là `resumed`, như mở lại sau Home. Test: `thoat_hai_lan_test.dart` (ca
+*"⚠️ G100"* đỏ trên mã cũ — không có lời gọi `xuongNen`; hai ca rơi về `pop` khi kênh trả `false` / không có kênh; một ca nối dây
+đọc `MainActivity.kt`) và `main_shell_back_test.dart` (ca Back hai lần đòi `xuongNen`, không `pop`; `daGoiThoat()` tính **cả
+hai** đường thoát để ca *"không thoát"* không xanh oan).
+
+**✅ Nghiệm thu OnePlus 13R (GPU), 2026-10-21, trên cùng máy, trước và sau.** Tài khoản 18 được nâng tạm lên Premium trong CSDL
+dev (người dùng cho phép đích danh) rồi trả về Basic / `NULL` sau khi đo. Mỗi lượt: Nhập nhanh *"mua qua sinh nhat me 250k"* để
+nạp mô hình → Back hai lần ở Trang chủ → mở lại → Nhập nhanh lần nữa.
+
+| Bản | Sau lần nạp đầu (Native · Graphics · PSS) | Sau Back hai lần | Mở lại + Nhập nhanh |
+|---|---|---|---|
+| Cũ (2026-10-20) | 420 MB · 184 MB · 1,04 GB | activity **bị huỷ**, tiến trình sống | engine dựng lại, **nạp lại** mô hình → **799 MB · 363 MB · 1,78 GB** |
+| Mới (`a43be813…`) | 420 MB · 183 MB · 1,28 GB | `MainActivity` **còn** trong task | không *Impeller* mới, **không nạp lại** → 423 MB · 185 MB · 1,25 GB; câu đọc bằng AI bình thường |
+
+Trên GPU mỗi vòng của bản cũ mất ~0,75 GB (CPU Realme ~1,85 GB): cùng cơ chế, phần trọng số nằm ở *Graphics*.
+
+**Đã sửa (đường gỡ task, 2026-10-21 tối — người dùng chọn lối *đóng hẳn tiến trình*, trong ba lối: đóng hẳn · một engine cho
+cả tiến trình · để nguyên).** Đo trước trên bản `bf988d6f…` (mới có sửa đường Back), Realme CPU, tài khoản 10:
+- Gỡ task → tiến trình 32272 **vẫn sống**, Native giữ 1,86 GB. Mở lại → cùng tiến trình có dòng *Impeller* mới và `main()` chạy
+  lại (engine dựng lại). Quét một tờ → `[SLM] nạp mô hình xong` lần hai, Native **3,71 GB**, PSS 4,80 GB, swap 2,78 GB.
+- `am crash` tiến trình đang giữ dịch vụ D1 → ColorOS dựng lại tiến trình cho `BienDongListenerService` sau ~2 s. Tức đóng hẳn
+  tiến trình không làm mất đọc biến động.
+
+Mã:
+- `BoNapMoHinh.baoGiu` báo `true` sau khi `nap` xong, `false` sau `dong`. Chỉ báo `true` khi nạp đã XONG (sau khi canary GPU gỡ
+  dấu): giết giữa pha nạp là để dấu sót, và lần mở sau đánh dấu GPU hỏng vĩnh viễn.
+- `SlmRuntimeThat.baoGiuMoHinh` ← DI `const KenhGiuMoHinh().dat` (`ai_edge/data/datasources/kenh_giu_mo_hinh.dart`, kênh
+  `flowmoney/giu_mo_hinh`, `datGiu {giu}`, nuốt lỗi).
+- `MainActivity.onDestroy`: `!isChangingConfigurations && soActivitySong <= 0 && dangGiuMoHinh` → `Process.killProcess(myPid())`
+  **sau** `super.onDestroy()`. Cờ và bộ đếm activity ở `companion object` (sống theo tiến trình).
+
+Người dùng không thấy gì khác: trước bản sửa, mở lại sau khi gỡ task **đã** là dựng lại engine (màn khởi động → Trang chủ); nay
+là khởi động trong tiến trình mới. Chưa dùng AI thì không giết. Không đụng: canary phiên có tool (giết chủ động không phải
+`CRASH_NATIVE`); `TuChuyenTien` (lượt nền đang dở bị giết thì WorkManager chạy lại, id tất định chống trùng); đường Back hai lần
+(không huỷ activity). Còn một khe hẹp, cố ý: gỡ task **giữa pha nạp** (cờ chưa bật) thì vẫn rò như cũ — giết lúc ấy hỏng canary
+GPU.
+
+Test: `bo_nap_mo_hinh_test` +5 ca (nạp xong → `true`; đổi bản → `false` rồi `true`; ⭐ đang nạp chưa báo; nạp ném lỗi không báo;
+huỷ giữa pha nạp vẫn báo `true`); `kenh_giu_mo_hinh_test` 5 ca (kênh gửi đúng thứ tự; không kênh / native lỗi không ném; nối dây
+Kotlin — đủ ba vế điều kiện, giết sau `super.onDestroy()`; nối dây DI). Bốn bản sai cấy thử (báo `true` trước khi nạp, bỏ báo
+`false`, DI không nối kênh, Kotlin bỏ vế `dangGiuMoHinh`) đều đỏ.
+
+**✅ Nghiệm thu Realme RMX2205 (CPU), 2026-10-21 tối, bản debug `9792b5c3…`, tài khoản 10.**
+
+| Ca | Kết quả |
+|---|---|
+| Chưa dùng AI → gỡ task | tiến trình 10784 giữ nguyên, không có dòng giết ✅ |
+| Quét R08 (nạp mô hình, Native 1,91 GB) → Back hai lần ở Trang chủ | về màn chính, `MainActivity` còn trong task, tiến trình giữ nguyên ✅ |
+| → gỡ task | dòng `G100: … đóng hẳn tiến trình` 20:08:57,99 → 10784 chết 58,55 → **13926** dựng cho `BienDongListenerService` 59,64 (`crashCount=0`), PSS 54 MB; listener gắn lại với hệ thống thông báo ✅ |
+| Mở lại → quét R08 | nạp **một** bản: Native **1,90 GB** (trước bản sửa: 3,71 GB), PSS 3,04 GB ✅ |
+| Gỡ task lần hai | 13926 → giết → 14836, PSS 56 MB ✅ |
+
+Chưa đo: OnePlus GPU (giết tiến trình giải phóng cả ngữ cảnh GPU, không đi qua `LiteRtDestroyEnvironment`); vuốt đi nhiều lần
+liên tiếp trong thời gian ngắn — hai lần giết đo được đều dựng lại dịch vụ D1 sau ~1 s, nhưng Android giãn dần thời gian khởi
+động lại dịch vụ khi nó chết dồn dập.
+
+---
+
+### G99 — Lệnh tạo mục tiêu nhận hạn mô hình bịa khi câu chỉ nêu mốc BẮT ĐẦU (*"kể từ tháng sau…"*) · ✅ MỞ VÀ ĐÓNG 2026-10-20 (lộ khi đo G95 trên Realme; mã + test + đo lại Realme đạt)
+
+**Nguồn.** Đo G95 trên Realme RMX2205 (CPU, bản debug `7c0fe632…`, 2026-10-20 19:21, gõ không dấu qua adb, **không** mở form).
+Câu *"ke tu thang sau de danh 2 trieu moi thang"* lọt cổng đúng như mong đợi. Log: `[SLM][lenh] 15614 ms: tao_muc_tieu {ten:
+tiết kiệm, so_tien_dich: 2000000, han: 30/06/2027}`. Thẻ hiện ra:
+- *"Đọc bằng AI · Tạo mục tiêu · hạn 30/06/2027 · Chưa rõ tên, số tiền"*.
+- Tên và số tiền bị lưới bỏ **đúng luật**: *tiết kiệm* không có trong câu; *2 triệu mỗi tháng* là mức góp theo kỳ.
+- **Hạn thì lọt.** Câu không nêu hạn nào: *"kể từ tháng sau"* là mốc **bắt đầu**.
+
+**Cơ chế (đọc mã).** `_hanAiHopLe` (`ai_edge/domain/lenh_tao.dart`) nhận hạn mô hình khi `_cauNoiThoiGian` đúng, tức câu có
+**một chữ chỉ thời gian bất kỳ** sau khi gạt cụm chu kỳ (*mỗi tháng · hằng tuần · /tháng*). *tháng* của *"tháng sau"* là đủ, dù
+nó đứng sau *kể từ*. Cùng họ với chốt 2026-10-02 (cụm chu kỳ không phải thời điểm, mục 9.43 `AI_EDGE_FEATURE.md`), và với bẫy
+*"mô hình hay điền thừa"*.
+
+**Bán kính.** Chỉ ô *hạn* của lệnh tạo mục tiêu, khi câu nêu mốc bắt đầu mà không nêu hạn. Thẻ chỉ điền sẵn form; người dùng vẫn
+thấy và sửa được hạn trước khi bấm Lưu (bất biến ④). **Có từ trước G95**: cổng cũ cũng mở cho câu này (có *để dành* + số tiền),
+nên thẻ y hệt.
+
+**Hướng (người dùng chọn *"sửa rồi đo lại"*, 2026-10-20).** Gạt thêm cụm **mốc bắt đầu** khỏi câu trước khi xét
+`_cauNoiThoiGian`, cùng khuôn `_mauCumChuKy`.
+
+**Đã sửa.** Thêm regex `_mauMocBatDau` (`lenh_tao.dart`), gạt khỏi câu sau cụm chu kỳ. Cấu trúc một cụm mốc bắt đầu:
+1. Mở bằng *kể từ · bắt đầu từ · bắt đầu · từ*, hoặc dạng không dấu.
+2. Có thể có *đầu / cuối*.
+3. Một đơn vị: *tuần · tháng · quý · năm · ngày*.
+4. Một mốc: *sau · tới · này*, hoặc số / ngày `1/11`.
+5. Có thể có đuôi *năm sau / năm 2027*.
+
+`tu` trần chỉ khớp khi ngay sau là đơn vị + mốc, nên *tư / tự* không vướng. Câu vẫn còn chữ thời gian ngoài mốc bắt đầu
+(*"từ tháng sau để dành 10 triệu đi du lịch trước tết"*) thì vẫn nhận hạn.
+
+**Test** (`lenh_tao_test.dart`, ca *"⚠️ G99"*):
+- 8 câu mốc bắt đầu (gồm nguyên văn câu đo, *bắt đầu từ tuần sau* có chữ *đầu*, *từ ngày 1/11* có dấu `/`, *tháng 11 năm sau*):
+  đỏ 8 / 8 trên mã cũ.
+- 2 câu vẫn nhận hạn.
+- Bản sai bỏ vế đuôi *năm sau* làm ca đỏ.
+
+**✅ Đo lại Realme RMX2205 (bản debug `b174b8d6…`, 2026-10-20 19:30):** cùng câu, mô hình vẫn trả `han: 30/06/2027`. Thẻ nay
+ghi *"Đọc bằng luật · Tạo mục tiêu · Chưa rõ tên, số tiền, hạn"*: hạn bịa bị bỏ. Dòng nguồn thành *"Đọc bằng luật"* vì không
+còn ô nào do AI lấp (đúng luật *"dòng nguồn nói thứ đã xảy ra"*).
+
+### G98 — Bản ghi server tạo với id KHÔNG phải UUID không bao giờ đẩy lên được (`toValidUuid` đổi id → server `create` → trùng tên với chính nó), và một hàng kẹt kéo giãn cách đồng bộ của cả tài khoản lên 15 phút · ⏳ CHỜ BACKEND — đơn 48 (mở 2026-10-20 khi nghiệm thu G89; người dùng chốt hướng cùng ngày)
+
+**Nguồn.** Nghiệm thu G89 trên OnePlus 13R (2026-10-20), người dùng hỏi kèm *"có dữ liệu nào chưa được đồng bộ không"*. Đọc
+CSDL chép từ máy (tài khoản 18): **một** hàng chưa đồng bộ — ví *"Ví Test Note"* `test-wallet-1789014227658`, `pending`,
+`sync_error` *"Tên ví đã tồn tại trong tài khoản này"*, cờ `bi_tu_choi_trung_ten = 1`; mọi hàng khác `synced`. Server (truy vấn
+đọc) có **đúng một** ví cùng id, cùng tên (`Create_at` 2026-09-10 04:23Z) cùng 9 giao dịch `test-tran-note-*` ghi chú `enc:…` —
+một test backend chèn thẳng vào CSDL dev; đó cũng là dòng `enc:01a5ca71610…` hiện thô ở Trang chủ.
+
+**Cơ chế (đọc mã + log backend).** `ThuGomThaoTacDay.collectPendingOps` đặt `id = toValidUuid(w.id)` (`core/sync/uuid_dong_bo.dart`)
+— id không phải UUID thành `00000000-0000-4000-8000-…`. Server (`sync.repository.js`, nhánh ví) `findUnique({idwallet})` không
+thấy id giả → `prisma.wallet.create` → `Unique constraint failed on the fields: (Idaccount, Name)` với **chính bản ghi gốc** →
+`sync.service.js` dịch thành `WALLET_NAME_DUPLICATE`. Rồi G63 quay vòng: `ViTrungTenResolver` gắn cờ; trên máy không có ví nào
+khác cùng tên nên `ThaViBiGiu` thả và làm mới giờ sửa; lượt sau đẩy lại. Log backend: hỏng lúc 15:59:39, 16:00:13, 16:01:18, 16:08:26.
+
+**Hỏng thế nào (đo).** Chu kỳ có hàng này hỏng vĩnh viễn được tính là **chu kỳ hỏng** kể cả khi phần còn lại đẩy được — lượt
+16:08:26 *"2/4 succeeded, 1 failed"* rồi *"giãn cách sau 4 chu kỳ hỏng — hoãn tới 16:23:29"*: mọi dữ liệu mới của tài khoản chờ
+tới **15 phút** (chu kỳ bị máy chủ chặn của G89 thì không tính). Ví test 300.000 đ còn nằm trong tổng số dư Trang chủ. Đếm lượt
+hỏng như thế là cố ý hay không thì chưa xét; người dùng không chọn hướng (d) ở dưới.
+
+**Vì sao ví chuyển `pending` lần đầu.** Kết luận đọc mã ngày 2026-10-20, chưa đo trên máy:
+1. Nhánh kéo về không chép `balance`, nên ví mới về mang 0 (nghĩa là *chưa biết*).
+2. `SoDuViService.tinhLaiSoDu` (`so_du_vi_service.dart:55–56`) tính được 300.000 (2 giao dịch sống × 150.000), khác 0, nên
+   gọi `WalletDao.updateBalance`.
+3. Hàm ấy (`wallet_dao.dart:249–257`) ghi `syncStatus = 'pending'`.
+
+Ví UUID cũng đi đường này rồi đẩy lên trơn tru. Còn ví này thì **mọi máy đăng nhập tài khoản 18 đều kẹt ngay sau lần kéo về
+đầu**, không cần ai bấm gì.
+
+**Nguồn dữ liệu** (đọc mã + CSDL dev, 2026-10-20): ca 11 của `Test/test_data_security_encryption_and_masking.js:236–282`
+(NPBao, commit `b147feeb`).
+- Script chọn tài khoản bằng `findFirst({ status: 'Active' })` **không** `orderBy`. Ngày 2026-09-10 nó trúng 18; hôm nay trả 82.
+- Tài khoản chưa có ví sống thì tạo ví `'test-wallet-' + Date.now()` thẳng bằng Prisma, và không bao giờ dọn ví ấy.
+- Mỗi lượt thêm một giao dịch 150.000 đ, chỉ xoá mềm khi mọi `assert` qua. 9 lượt chạy (10/09 → 11/09) để lại 2 giao dịch sống.
+
+Không phải do client test. Lượt nghiệm thu G89 chỉ làm hàng kẹt lộ ra.
+
+**Bán kính (đo toàn CSDL dev 2026-10-20, chỉ đọc).** Hàng có id không phải UUID: `wallet` 1, `transaction` 9 — **tất cả** của
+tài khoản 18, tiền tố `test-`; `category` · `bill` · `goal` · `budget` 0. Client luôn tạo UUID, nên người dùng thật không gặp —
+chỉ dữ liệu chèn thẳng vào CSDL.
+
+**Hướng — người dùng chốt (b) + (c) ngày 2026-10-20 → đơn 48** (`CAN-LAM/DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md`). Client **không**
+đổi mã. Bốn hướng đã trình:
+- (a) client không đổi id của bản ghi **đến từ server**. Đụng 18 chỗ gọi `toValidUuid` ở `thu_gom_day.dart` (đếm bằng máy
+  2026-10-20), kể cả khoá ngoại `walletId` của giao dịch; cần spec nhỏ.
+- (b) backend xoá mềm dữ liệu test.
+- (c) script test thôi ghi vào tài khoản dev thật.
+- (d) xét lại việc một hàng hỏng vĩnh viễn làm giãn cách cả tài khoản.
+
+Ba điều đọc mã + CSDL được ghi vào đơn:
+1. **Xoá ví trong app không gỡ được kẹt.** Nhánh `create` của `upsertWallet` (`sync.repository.js:244–261`) **không** ghi
+   `delete_at`, nên lượt đẩy id giả của một ví đã xoá vẫn tạo ví **sống**, rồi vẫn trùng tên. Câu *"(b) chưa đo"* cũ đã có lời
+   đáp từ đây.
+2. **Xoá ở server sẽ đẻ một ví "ma".** `uq_wallet_account_name_active` chỉ xét `WHERE "Delete_at" IS NULL`. Vậy sau khi server
+   xoá mềm ví gốc, máy đang kẹt (đẩy trước, kéo sau) tạo thành công ví **sống** `00000000-0000-4000-8000-4534d71cc54d` (id giả
+   tất định, mọi máy cho cùng một id; 300.000 đ trên server, 0 đ trên máy). Đơn có bước 3 để xoá mềm ví ấy; người dùng cũng có
+   thể tự xoá trong app.
+3. `Server_update_at` tự cập nhật qua trigger `BEFORE UPDATE`, nên xoá mềm bằng `UPDATE` là đủ để `/sync/pull` thấy.
+
+**Đóng khi:** backend báo xong đơn 48, client đo trên OnePlus thấy đủ ba điều: *"Ví Test Note"* biến mất (cả ví gốc lẫn ví ma),
+tổng số dư giảm 300.000 đ, và không còn hàng `pending`.
+
+### G97 — Body lỗi không phải JSON (trang HTML của proxy) làm màn Đăng nhập in nguyên câu `TypeError` · ✅ MỞ VÀ ĐÓNG 2026-10-20
+
+**Nguồn.** Review toàn nhánh G89 (2026-10-20) ghi *ngoài phạm vi, có từ trước*: `auth_remote_data_source.dart` đọc
+`e.response?.data?['message']`. Dio chỉ giải mã JSON khi `content-type` là JSON; trang HTML của proxy / Render (502 lúc dịch vụ
+ngủ, 404 khi không thấy dịch vụ), câu thuần chữ — `data` là `String`, và `String['message']` là `String[]` với khoá chuỗi →
+`TypeError` *"type 'String' is not a subtype of type 'int' of 'index'"*. `AuthBloc._onLoginSubmitted` bắt bằng `catch (e)` nên app
+không văng, nhưng **câu ấy hiện nguyên văn trên màn Đăng nhập** (cùng các màn Quên mật khẩu, OTP, Đổi mật khẩu, Hồ sơ…). Nhánh
+2xx cùng bệnh: `response.data['success'] == true` trên body chuỗi ném trước cả `catch` của Dio. Đo bằng test trên mã cũ: **26 / 26**
+lời gọi (13 nhánh lỗi + 12 nhánh 2xx + `getProfile` 404) ném `TypeError`; backend tự trả JSON ở mọi chỗ đã đọc (kể cả
+`authLimiter` — `message` là object), nên chỉ thấy khi có tầng đứng giữa.
+
+**Sửa (cùng gốc, cùng tệp — 14 lời gọi).** Hai hàm ở cuối tệp: `_cauLoi(body, macDinh)` — `message` chỉ khi body là `Map` và
+`message` là chuỗi có chữ, còn lại câu mặc định của lời gọi (mảng / số / chuỗi rỗng cũng về câu mặc định thay vì in thô);
+`_thanhCong(body)` — `body is Map && body['success'] == true`. Không còn chỗ nào đọc `data['message']` / `data['success']` thẳng.
+⚠️ **`getProfile` chỉ giữ `statusCode` khi body là JSON của backend**: `verifySession` đọc 401 / 404 là phiên chết → đăng xuất,
+mà trang 404 HTML của proxy không nói gì về tài khoản — trên mã cũ ca ấy tình cờ ra `SessionStatus.unknown` nhờ chính
+`TypeError`, nên sửa mà quên vế này là **đăng xuất người dùng vì proxy** (bản sai cố ý đã thử: ca đỏ). Test
+`test/features/auth/data/datasources/auth_remote_data_source_body_khong_json_test.dart` (30 ca, bảng phủ đủ 14 lời gọi — thêm lời
+gọi mới vào datasource thì ca đếm bảng đỏ).
+
+**Bán kính.** Chỉ `AuthRemoteDataSourceImpl`; câu người dùng thấy khi body là JSON của backend không đổi (`auth_remote_data_source_dang_nhap_test.dart`
+xanh nguyên). Các datasource khác đã đọc qua `is Map` (`buoc_dang_xuat.dart`, `trang_thai_may_chu.dart`, `payment_api.dart`) —
+lượt `grep` 2026-10-20 không còn khuôn `data?['message']` nào trong `lib/`.
+
 ### G96 — Đường Trợ lý online phụ thuộc ba việc backend: Dừng không tới server, server im lặng quá 45 s khi Gemini suy nghĩ, câu trả lời cụt vì trần token · ⏳ CHỜ BACKEND (đơn 47 việc 5–7; mở 2026-10-18 sau nghiệm thu OnePlus)
 
 **Nguồn.** Nghiệm thu máy thật 2026-10-18 00:08–00:40 (OnePlus 13R, backend dev chạy thật, Node v22.19.0, `gemini-3.8-flash`
@@ -1709,7 +2315,7 @@ với khoá dev) — khối 🌐 mục 14 `PROJECT_CONTEXT.md`, spec §6, đơn 
 **Bán kính.** Chỉ màn Trợ lý AI khi online bật. Không đổi mã client cho tới khi backend trả lời; khi có `finishReason` thì mở một
 lát nhỏ ở `quyetDinhSauOnline` / `NhanNguon` (ghi chú mới) — chưa làm.
 
-### G95 — Cổng lệnh tạo C3 bắt nhầm câu hỏi dạng *"Hãy viết 15 lời khuyên tiết kiệm tiền…"*: Gemma đọc lệnh ~5 s rồi câu mới đi online · ⏳ MỞ 2026-10-18 (nghiệm thu OnePlus, ngoài phạm vi lát trợ lý online)
+### G95 — Cổng lệnh tạo C3 bắt nhầm câu hỏi dạng *"Hãy viết 15 lời khuyên tiết kiệm tiền…"*: Gemma đọc lệnh ~5 s rồi câu mới đi online · ✅ ĐÓNG 2026-10-20 (mở 2026-10-18 khi nghiệm thu OnePlus; đóng bằng mã + test, đo Realme đạt cùng ngày)
 
 **Nguồn.** Nghiệm thu 2026-10-18 00:19: câu *"Hay viet 15 loi khuyen tiet kiem tien cho sinh vien, moi loi khuyen 2 cau giai
 thich"* (online bật, có mạng) hiện *"Đang đọc lệnh bằng AI… Huỷ"* trước — `coVeLenhTao` (cổng C3, chạy TRƯỚC cổng online theo
@@ -1720,8 +2326,50 @@ chối) rồi câu mới đi online. Người dùng chờ thêm ~5 s và thấy 
 liệt kê / kể*, hay câu có *mỗi … câu*) là đổi hành vi đã đo trên hai máy — cần đo lại bộ câu C3 trước. Spec trợ lý online §3.1 cố ý
 đặt C3 trước online nên lát này không chạm.
 
-**Hướng sửa.** Thêm vế loại trừ trong `coVeLenhTao` cho câu hỏi tri thức (động từ yêu cầu viết / liệt kê + số đếm lớn + không có
-số tiền), kèm ca test và chạy lại bộ đo C3 (`docs/AI_EDGE_FEATURE.md` mục 9.4x). Nhỏ, nhưng là lát riêng.
+**Hướng sửa (bản viết 2026-10-18).** Thêm vế loại trừ trong `coVeLenhTao` cho câu hỏi tri thức (động từ yêu cầu viết / liệt kê +
+số đếm lớn + không có số tiền), kèm ca test và chạy lại bộ đo C3 (`docs/AI_EDGE_FEATURE.md` mục 9.4x). Nhỏ, nhưng là lát riêng.
+
+**Đã sửa (2026-10-20).** Gốc lỗi đọc mã:
+- Câu không theo mẫu §2, không có từ hỏi.
+- Có *tiết kiệm* (một đối tượng tạo được).
+- `cachDocSoTien` đọc số đếm *15* thành 15.000 đ (luật số trần 10–999 × 1.000 của Nhập nhanh), nên vế *"có số tiền đọc được"* đúng.
+
+Vế loại trừ mới, `_moBangXinVietChu` (`lenh_tao.dart`): câu mở bằng động từ **xin viết chữ** thì cổng đóng.
+- Động từ được tính: *viết · liệt kê · kể · soạn · giải thích · tóm tắt · gợi ý · phân tích*. Chúng đứng sau tiền tố lịch sự
+  (`_sauTienTo`, tách từ `_nhan`), có thể kèm *bạn*.
+
+**Hai chỗ khác bản viết, cố ý:**
+- Không xét *"số đếm lớn"* hay *"không có số tiền"*. Câu xin viết chữ có kèm số tiền (*"viết kế hoạch tiết kiệm 5 triệu…"*) vẫn
+  là xin một đoạn chữ; mở thẻ form tạo mục tiêu cho nó là trả lời sai câu.
+- Luật theo **động từ**, không theo danh từ đếm, vì không lệnh tạo nào mở đầu như thế. `cachDocSoTien` không đổi, nên Nhập nhanh
+  không bị ảnh hưởng.
+
+⚠️ `ke` là âm tiết duy nhất trong danh sách không chỉ là động từ: bỏ dấu nó còn là *kế* (*"kế hoạch…"*), và *kể từ* / *kể cả*
+là liên từ (*"kể từ tháng sau để dành 2 triệu"*). Cả ba mở đầu được lệnh tạo, nên `ke` theo sau bởi `hoach` · `tu` · `ca` vẫn
+lọt cổng. Vế *kể từ / kể cả* do lượt soát sau bản đầu bắt: bản đầu chỉ chừa *kế hoạch*.
+
+**Giới hạn, cố ý.** Luật chỉ bắt động từ ở **vị trí đầu** (sau tiền tố lịch sự + *bạn*). *"bạn có thể gợi ý…"*, *"bạn ơi hãy
+viết…"* chưa bắt. Thêm khi có câu đo thật, vì mỗi luật từ vựng là một dương tính giả mới.
+
+**Test** ở `test/features/ai_edge/domain/lenh_tao_test.dart`:
+- 8 ca *"G95 không lọt"* (gồm nguyên văn câu đo), đỏ 8 / 8 trên mã cũ.
+- 1 ca *"kế hoạch …"*: bản sai bỏ chặn `ke hoach` làm nó đỏ.
+- 1 ca *"kể từ … / kể cả …"* (ba câu): đỏ trên bản đầu, và bản sai rút tập chặn về `{'hoach'}` làm nó đỏ.
+- 1 ca ⭐ khoá đúng **10 câu C3 đã đo** trên Realme + OnePlus (mục 9.43), dạng gõ không dấu như lúc đo: bản sai thêm `toi` vào
+  danh sách làm nó đỏ.
+
+**Bộ đo C3 không đo lại trên máy.** Cổng là hàm luật thuần; 10 câu đã đo và 72 câu cổng F đều có ca canh; phần mô hình đọc
+lệnh không đổi.
+
+**✅ Đo trên Realme RMX2205 (CPU, bản debug `7c0fe632…`, 2026-10-20 19:19–19:21, gõ không dấu qua adb).**
+
+| Câu | Mong đợi | Hiện ra | |
+|---|---|---|---|
+| hay viet 15 loi khuyen tiet kiem tien cho sinh vien | cổng **đóng** | Khung ≈0,5 s **không** có *"Đang đọc lệnh bằng AI…"*. Log `định tuyến: không … mở phiên … 6 tool`, không dòng `lệnh tạo` → vòng hỏi đáp, *"Đang nghĩ…"*. Mô hình không gọi tool nên rơi L1 sau 41 s: *"Mình chưa chắc về con số cho câu này…"*. Đó là hành vi trên máy của câu tri thức chung khi không có đường online, ngoài phạm vi G95. | ✅ |
+| ke tu thang sau de danh 2 trieu moi thang | cổng **mở** | *"Đang đọc lệnh bằng AI… Huỷ"* → thẻ *"Tạo mục tiêu"* + *Mở form tạo mục tiêu* sau 15,6 s (`lệnh tạo LenhTaoMucTieu nguồn ai → form`). | ✅ (hạn bịa → **G99**) |
+
+Hộp đồng ý *"Trợ lý online"* hiện lần đầu trên máy này; Claude chọn **"Chỉ dùng AI trên máy"** (không gửi gì ra ngoài; backend dev
+đang tắt). Đổi lại được ở Cài đặt AI.
 
 ### G94 — Chuyển thừa / thiếu tiền khi nâng Premium: client không biết ba trạng thái đơn mới, màn chờ báo "hết hạn" · 🚧 MÃ XONG 2026-10-18 TỐI, CHỜ NGHIỆM THU SANDBOX (lượt G89 + G94 mở 2026-10-18 tối; trước đó ⏳ hoãn chờ đơn 43; mở 2026-10-16, người dùng chốt cùng ngày)
 
@@ -1981,12 +2629,26 @@ vào `d1DangHienPin` + một ca test Basic.
 
 ---
 
-### G89 — Thao tác của admin (bảo trì khẩn cấp, phong toả AIOps, broadcast) vô hình trên client: không nhánh nào đọc `MAINTENANCE_MODE` / `AIOPS_QUARANTINED` · 🚧 LƯỢT ĐÃ MỞ 2026-10-18 TỐI — BỐN VIỆC CHƯA ĐỤNG (trước đó ⏳ hoãn tới khi backend đóng đơn 43; mở 2026-10-11 ⏸️ để nguyên; người dùng chốt lại 2026-10-15)
+### G89 — Thao tác của admin (bảo trì khẩn cấp, phong toả AIOps, broadcast) vô hình trên client: không nhánh nào đọc `MAINTENANCE_MODE` / `AIOPS_QUARANTINED` · ✅ ĐÓNG 2026-10-20 (mã xong + nghiệm thu OnePlus đạt) (12 commit `b7ca4512..98d58c64`; spec 2026-10-20 mục 11 = chỗ thi công khác bản viết; lịch sử: lượt mở 2026-10-18 tối; trước đó ⏳ hoãn tới khi backend đóng đơn 43; mở 2026-10-11 ⏸️ để nguyên; người dùng chốt lại 2026-10-15)
+
+> ✅ **ĐÓNG 2026-10-20 — mã xong và NGHIỆM THU OnePlus 13R ĐẠT** (12 commit `b7ca4512..98d58c64` + dọn sau review `2945cb5d`; bốn kịch bản + lượt ép đường socket, bảng ở mục 12 spec — phong toả AIOps chặn HTTP nhưng **không** chặn bắt tay socket, đó là cách ép đường socket thắng). Làm đúng spec bên dưới; chỗ thi công khác bản viết ở mục 11 spec (20 mục).
+> Năm câu cũ của mục này đã sai và được đính chính tại chỗ bên dưới: *"503 đăng nhập mất `code`"* (đã đo lại: `auth.controller`
+> chuyển `code` cho 503 — đơn 43 đạt), *"`user.notification` sống"* (hàm gửi không có chỗ gọi — mã chết), *"`RealtimeEvent` chỉ dịch
+> 5 tên"* (lúc viết: 5 giá trị / 11 tên; nay 6 giá trị / 12 tên, thêm `taiKhoanHaCap`), *"loopback miễn ở mọi môi trường"* (tầng kiểm
+> request chỉ miễn khi `development`; mọi môi trường là nhờ lớp từ chối thêm IP được bảo vệ), đường `core/api/auth_interceptor.dart`
+> (thật: `core/api/interceptors/`). `AppDatabase.purgeDataForAccount` / `PhienDieuPhoi.xoaDuLieu` **gỡ 2026-10-20 (G89)** — không đường
+> nào còn xoá SQLite khi `ACCOUNT_DELETED`.
+>
+> 📝 **2026-10-20 — spec `docs/superpowers/specs/2026-10-20-g89-may-chu-chan-va-tai-khoan-bi-tu-choi-design.md`** (người dùng
+> duyệt ba phần trong phiên; Stitch `006c5a2e…`). Thay đoạn *"Nếu làm"* cuối mục bằng thiết kế ấy: mô hình trạng thái máy chủ ở
+> `core/network` + interceptor; dòng nhắc Trang chủ (không phải dải mọi trang); bảo trì / phong toả **không** tính lượt hỏng của
+> đồng bộ; `connect_error` có `data.code` → đăng xuất + dừng nối lại; `account.downgraded` + 403 `FEATURE_DISABLED` → làm mới gói;
+> `ACCOUNT_DELETED` **không xoá SQLite ở mọi nguồn**. Năm câu đã cũ của mục này liệt kê ở mục 9 spec — sửa khi đóng mục.
 
 > ⏳ **Chốt lại 2026-10-15 (sau gộp `main` @ `cd2ee572`).** Backend thêm hợp đồng `docs/Admin-web/Event-Notification-to-ClientApp.md`
 > (*"PO đã phê duyệt"*) đòi client xử lý bảo trì / phong toả / broadcast. Đối chiếu mã hai phía cùng ngày đính chính phần
 > *Hiện tượng* dưới đây: backend **không** phát `user.notification` (hàm gửi không có chỗ gọi — mã chết); 503 lúc **đăng nhập**
-> bảo trì **mất `code`** (`auth.controller.js:59-67` chỉ chuyển `extra` khi 403) nên màn Đăng nhập chưa nhận ra được; danh sách
+> bảo trì **mất `code`** (`auth.controller.js:59-67` chỉ chuyển `extra` khi 403) nên màn Đăng nhập chưa nhận ra được *(đính chính 2026-10-20: đã sửa ở backend, client soát 2026-10-18 — 503 có `code`)*; danh sách
 > phong toả nay **lưu CSDL** (khởi động lại backend không còn xoá). Client đặt **đơn 43** (`CAN-LAM/SOAT_SAU_GOP_CD2EE572.md`:
 > A — AIOps khoá bằng `'Locked'` → `ACCOUNT_DELETED` → client xoá SQLite; B — webhook nâng nhầm; C — 503 đăng nhập thiếu `code`).
 > **2026-10-16:** lượt ấy gộp thêm **G94** (đối soát chuyển thừa / thiếu khi nâng Premium — người dùng chốt).
@@ -1997,11 +2659,11 @@ vào `d1DangHienPin` + một ca test Basic.
 **Hiện tượng.** Khi admin bật bảo trì (`POST /admin/system/maintenance`; từ gộp `main` @ `79e46225` bật tức thì mặc định là
 **khẩn cấp**), mọi request người dùng nhận **503** `{code: 'MAINTENANCE_MODE', message, isEmergency}` + `Retry-After: 60`
 (`middleware/maintenance.middleware.js`; `/auth/login` đi qua rồi `auth.service` từ chối người dùng thường); backend còn phát
-`user.notification` tới `account_<id>` và `system.broadcast` / `system.maintenance_changed` tới **mọi** socket. Client hôm nay:
+`user.notification` tới `account_<id>` *(đính chính 2026-10-20: hàm gửi `user.notification` không có chỗ gọi — mã chết)* và `system.broadcast` / `system.maintenance_changed` tới **mọi** socket. Client hôm nay:
 `SyncEngine` xếp 503 vào `transportFailed` (im lặng, thử lại theo giãn cách — đúng), màn Đăng nhập hiện `message` của server,
-còn **không dải / hộp thoại nào**, và `RealtimeEvent` chỉ dịch 5 tên nên ba sự kiện kia rơi vào hộp đen. **403
-`AIOPS_QUARANTINED`** (phong toả IP) rơi vào cùng nhánh im lặng — từ `79e46225` loopback được miễn ở mọi môi trường nên bàn
-dev (`adb reverse`) không gặp; máy thật qua LAN / cloud mới gặp.
+còn **không dải / hộp thoại nào**, và `RealtimeEvent` chỉ dịch 5 giá trị (11 tên; từ 2026-10-20: 6 giá trị / 12 tên) nên ba sự kiện kia không được dịch *(đính chính 2026-10-20: `user.notification` là mã chết — thực chất hai sự kiện `system.*` rơi vào hộp đen; từ G89 client còn nghe `account.downgraded`)*. **403
+`AIOPS_QUARANTINED`** (phong toả IP) rơi vào cùng nhánh im lặng — từ `79e46225` loopback được miễn nên bàn
+dev (`adb reverse`) không gặp *(đính chính 2026-10-20: tầng kiểm request chỉ miễn khi `development`; mọi môi trường là nhờ lớp từ chối thêm IP được bảo vệ)*; máy thật qua LAN / cloud mới gặp.
 
 **Tài liệu backend tả một client không có:** `docs/Admin-web/README.md` §3 hàng 1 (*"đẩy Modal đỏ toàn màn hình"*), hàng 4
 (*"hiển thị lý do và thời gian hết hạn"* khi bị phong toả), hàng 5 (*"SnackBar/Dialog thông báo tức thời"*);
@@ -2014,7 +2676,7 @@ việc không làm: người dùng không biết vì sao đồng bộ im (toast 
 bao lâu.
 
 **Nếu làm (khi tới lượt):** đọc **mã HTTP + `code`** của phản hồi — không đọc payload socket, không nghe sự kiện mới — ở
-`core/api/auth_interceptor.dart` và nhánh `transportFailed` của `core/sync/sync_engine.dart` → một dải trên Trang chủ *"Hệ
+`core/api/interceptors/` (lúc viết ghi nhầm `core/api/auth_interceptor.dart`) và nhánh `transportFailed` của `core/sync/gui_lo_dong_bo.dart` (trước 2026-10-19: `sync_engine.dart`) → một dải trên Trang chủ *"Hệ
 thống đang bảo trì — dữ liệu trên máy vẫn dùng được"* (ẩn theo `Retry-After` hoặc khi request kế thành công), toast đồng bộ
 nói rõ lý do; 403 `AIOPS_QUARANTINED` một câu riêng. Không đổi payload đồng bộ, không đổi schema. Cần spec ngắn + màn Stitch
 (dải chưa có trong thiết kế). Bán kính: hai tệp trên, `shared/app_toast`, Trang chủ.
@@ -2394,7 +3056,7 @@ giao dịch, đè lên nút. Người dùng: *"fix trước phần thông báo h
 > tên, giao dịch của B dưới ví đã đổi tên, máy A thấy đủ.
 >
 > ⚠️ **Hai lỗi lượt nghiệm thu bắt được, 5820 ca test đều mù:**
-> 1. **Vòng đồng bộ nóng** (291 chu kỳ trong 5 giây trên máy B): bước **1b** của `_collectPendingOps` gửi kèm danh mục
+> 1. **Vòng đồng bộ nóng** (291 chu kỳ trong 5 giây trên máy B): bước **1b** của `_collectPendingOps` (nay `ThuGomThaoTacDay.collectPendingOps`) gửi kèm danh mục
 >    của mọi giao dịch đang chờ — kể cả giao dịch **bị giữ**, vốn nằm `pending` vô thời hạn — nên mỗi chu kỳ đẩy lại hai
 >    danh mục, server trả xung đột (không lỗi ⇒ không giãn cách), và `/sync/push` phát `sync.completed` về **chính máy
 >    này** ⇒ `syncNow` ⇒ chạy bù ⇒ đẩy lại. Trước G63 các giao dịch ấy hỏng khoá ngoại nên giãn cách kìm vòng lại; giữ
@@ -2453,7 +3115,7 @@ trùng tên cục bộ) — kể cả khi chỉ tắt cờ mặc định; xoá t
 - Cột cục bộ `wallets.bi_tu_choi_trung_ten` (schema mới), đặt bởi một bộ nghe `pushResultStream` khi thao tác ví hỏng với
   `WALLET_NAME_DUPLICATE` / `UNIQUE_VIOLATION` — cùng khuôn `BillPaymentConflictResolver`.
 - Một hàm thuần `capViTrungTen` ở `wallet/domain/` là định nghĩa duy nhất của "cặp trùng".
-- **Trong lúc chờ:** `_collectPendingOps` bỏ qua ví mang cờ và mọi giao dịch / hoá đơn / mục tiêu dính tới nó.
+- **Trong lúc chờ:** `_collectPendingOps` (nay `ThuGomThaoTacDay.collectPendingOps`) bỏ qua ví mang cờ và mọi giao dịch / hoá đơn / mục tiêu dính tới nó.
 - **Thẻ hỏi Gộp / Đổi tên** ở màn Quản lý ví, kèm một dòng nhắc ở Trang chủ. *Gộp* dời giao dịch, hoá đơn, mục tiêu và
   bảng *nguồn → ví* của D1 sang ví đã đồng bộ, bỏ ví máy này **cùng khoản "Số dư ban đầu"** của nó (cùng một tài khoản
   thật — giữ hai số dư mở sổ là đếm đôi), có hộp xác nhận nêu số giao dịch và số dư sau gộp. *Đổi tên* điền sẵn
@@ -2803,7 +3465,7 @@ chữ số.
 | **Ngân sách** | hạn mức, ngưỡng cảnh báo bằng tiền | nt |
 
 Hậu quả giống hệt G45: tràn cho SQLSTATE `22003`, `sync.service.js` **không có
-nhánh** cho mã ấy nên trả `DB_ERROR`, và `_permanentCodes` của `SyncEngine` là
+nhánh** cho mã ấy nên trả `DB_ERROR`, và `_permanentCodes` của `GuiLoDongBo` là
 **danh sách trắng** — bản ghi bị **gửi lại ở mọi chu kỳ đồng bộ**, im lặng.
 
 **Đã sửa thế nào.** Ba mảng dùng `TextField` thì áp `GioiHanSoChuSo` có sẵn.

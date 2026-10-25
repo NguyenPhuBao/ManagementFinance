@@ -1,4 +1,4 @@
-import 'package:intl/intl.dart';
+import '../../../core/utils/date_formatter.dart';
 import 'bill_recurrence.dart';
 import '../data/models/bill_entity.dart';
 import 'bill_an_han.dart';
@@ -99,9 +99,8 @@ class BillSchedule {
   String? get canhBaoHanCu {
     final cu = hanCuKhongKhop;
     if (cu == null) return null;
-    final f = DateFormat('dd/MM/yyyy');
-    return 'Hoá đơn này đang có hạn trả ${f.format(cu)}, không khớp chu kỳ đã '
-        'chọn. Lưu lại sẽ đổi thành ${f.format(dueDate)}.';
+    return 'Hoá đơn này đang có hạn trả ${DateFormatter.formatDate(cu)}, không khớp chu kỳ đã '
+        'chọn. Lưu lại sẽ đổi thành ${DateFormatter.formatDate(dueDate)}.';
   }
 
   BillSchedule copyWith({

@@ -552,8 +552,9 @@ void main() {
     await c.moTrang();
     final dien = c.dienTuCau('tiền điện một triệu hai, tiền nhà 2 tr 5');
     await Future<void>.delayed(const Duration(milliseconds: 50));
+    // 2026-10-22: AI phải chọn số tiền KHÁC (tiền nhà) mới là lệch — 1.000.000 là bản cụt của chính cụm luật.
     ai.ketQua.complete(KetQuaAi.tuThamSo({
-      'so_tien': 1000000,
+      'so_tien': 2500000,
       'loai': 'chi',
       'ngay': '',
       'vi': '',

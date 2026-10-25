@@ -16,6 +16,19 @@ void main() {
     expect(lamSachLoiChep('“Cà phê 25 nghìn”'), 'Cà phê 25 nghìn');
   });
 
+  test('⚠️ Gemma vọng lại câu lệnh (bản ghi im lặng, Realme 2026-10-21) → rỗng, không thành câu của ô Nhập nhanh', () {
+    expect(lamSachLoiChep(kPromptChepLoi), '');
+    // Nguyên văn đo được: câu lệnh bỏ dấu chấm cuối.
+    expect(lamSachLoiChep('Chép lại chính xác câu tiếng Việt trong đoạn ghi âm. Chỉ trả về câu ấy, không giải thích'), '');
+    expect(lamSachLoiChep('"$kPromptChepLoi"'), '');
+    expect(lamSachLoiChep('Chép lại chính xác câu tiếng Việt trong đoạn ghi âm.'), '', reason: 'chỉ vọng nửa đầu');
+    expect(lamSachLoiChep('Chỉ trả về câu ấy, không giải thích.'), '', reason: 'chỉ vọng nửa sau');
+  });
+
+  test('câu thật có chữ "chép" vẫn giữ', () {
+    expect(lamSachLoiChep('Chép bài hộ bạn 20 nghìn'), 'Chép bài hộ bạn 20 nghìn');
+  });
+
   test('chấm trong số không bị cắt; rỗng ra rỗng', () {
     expect(lamSachLoiChep('Ăn phở 45.000'), 'Ăn phở 45.000');
     expect(lamSachLoiChep('   '), '');

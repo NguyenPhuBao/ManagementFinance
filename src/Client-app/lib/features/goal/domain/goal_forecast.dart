@@ -41,6 +41,32 @@ int _soNgay(DateTime tu, DateTime den) =>
         .difference(DateTime(tu.year, tu.month, tu.day))
         .inDays;
 
+/// Nhãn nhịp của một chu kỳ trích tiền ("mỗi ngày"…) — cùng bộ giá trị với [soNgayChuKy], giá trị lạ / trống đọc là
+/// hàng tháng. **Định nghĩa duy nhất** cho thẻ Cấu hình (`moTaTrichTuDong`) và khối Nhận xét chi tiết mục tiêu.
+String nhanNhipChuKy(String? cycle) => switch (cycle) {
+      'Day' => 'mỗi ngày',
+      'Week' => 'mỗi tuần',
+      'Quarter' => 'mỗi quý',
+      'Year' => 'mỗi năm',
+      _ => 'mỗi tháng',
+    };
+
+/// Số tiền mỗi kỳ để tích đủ [mucTieu] trước [hanChot] — số form Thêm mục tiêu điền sẵn khi người dùng đổi số tiền mục
+/// tiêu hoặc hạn chót. Đếm theo NGÀY LỊCH ([_soNgay]): hạn chọn từ lịch là 00:00, trừ thô với giờ mở form là hụt một ngày.
+/// Hạn đã qua hoặc là hôm nay thì coi như còn một kỳ; làm tròn LÊN tới đồng chẵn. `null` khi [mucTieu] ≤ 0.
+double? soTienMoiKyDeXuat({
+  required double mucTieu,
+  required DateTime hanChot,
+  required String? chuKy,
+  required DateTime now,
+}) {
+  if (mucTieu <= 0) return null;
+  final ngayMoiKy = soNgayChuKy(chuKy);
+  final conLai = _soNgay(now, hanChot);
+  final soKy = ((conLai <= 0 ? ngayMoiKy : conLai) / ngayMoiKy).ceil();
+  return (mucTieu / soKy).ceilToDouble();
+}
+
 /// Tiền tích được mỗi chu kỳ tính tới [now], theo nhịp THẬT.
 ///
 /// `null` khi chưa có `startDate` (mục tiêu do bản app cũ tạo) hoặc chưa qua

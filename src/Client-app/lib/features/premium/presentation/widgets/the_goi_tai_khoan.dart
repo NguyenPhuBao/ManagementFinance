@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/tran_goi.dart';
@@ -37,7 +37,7 @@ class TheGoiTaiKhoan extends StatelessWidget {
     final dongPhu = premium
         ? (hetHan == null || conLai == null
             ? null
-            : 'Còn $conLai ngày · đến ${DateFormat('dd/MM/yyyy').format(hetHan.toLocal())}')
+            : 'Còn $conLai ngày · đến ${DateFormatter.formatDate(hetHan.toLocal())}')
         : tomTatTran(goi.tran);
 
     return Container(

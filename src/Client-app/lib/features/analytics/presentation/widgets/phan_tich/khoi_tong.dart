@@ -3,6 +3,7 @@
 library;
 
 import '../../../../../core/utils/currency_formatter.dart';
+import '../../../../../core/utils/phan_tram.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../ai_edge/domain/goi_so_phan_tich.dart';
@@ -283,7 +284,7 @@ class TheConLai extends StatelessWidget {
             Text(
               gapLan != null
                   ? 'Chi gấp ${chuoiSoLan(gapLan)} lần thu nhập'
-                  : 'Để dành ${(tyLe * 100).round()}% thu nhập',
+                  : 'Để dành ${chuPhanTram(tyLe)} thu nhập',
               style: TextStyle(
                 fontSize: 12,
                 color: tyLe < 0 ? const Color(0xFFFFB3AE) : Colors.white70,

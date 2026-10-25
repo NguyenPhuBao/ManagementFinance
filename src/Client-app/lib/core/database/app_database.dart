@@ -16,7 +16,9 @@ import 'tables/danh_muc_ai_doan_table.dart';
 import 'daos/wallet_dao.dart';
 import 'daos/transaction_dao.dart';
 import 'daos/category_dao.dart';
-import 'daos/other_daos.dart';
+import 'daos/budget_dao.dart';
+import 'daos/bill_dao.dart';
+import 'daos/goal_dao.dart';
 import 'daos/notification_dao.dart';
 import 'daos/ai_feedback_dao.dart';
 import 'daos/goi_y_phan_hoi_dao.dart';
@@ -453,8 +455,8 @@ class AppDatabase extends _$AppDatabase {
           // cập nhật app lặng lẽ bỏ lưu trữ chúng: ví quay lại mọi bộ chọn,
           // quay lại tổng tài sản, và hai bộ chạy tự động dùng lại nó.
           //
-          // Đủ, vì Push chạy TRƯỚC Pull trong cùng chu kỳ (`_sendBatch` rồi
-          // `_pullFromBackend`): ví lên tới server trước khi pull đọc về.
+          // Đủ, vì Push chạy TRƯỚC Pull trong cùng chu kỳ (`GuiLoDongBo.sendBatch` rồi
+          // `ApDuLieuKeoVe.pullFromBackend`): ví lên tới server trước khi pull đọc về.
           //
           // Chỉ đụng ví đang lưu trữ và chưa xoá — quét cả bảng là ép đẩy lại
           // mọi ví ở lần mở app kế tiếp, cùng lập luận với v20.
@@ -643,79 +645,6 @@ class AppDatabase extends _$AppDatabase {
       // Dấu "danh mục do AI chọn" (v31) — cùng lý lẽ.
       removed += await (delete(danhMucAiDoans)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
-          .go();
-    });
-    return removed;
-  }
-
-  /// Xoá **bản sao cục bộ** của [idaccount] trong đúng mười sáu bảng mà
-  /// [purgeDataForOtherAccounts] đụng tới, cùng thứ tự con → cha.
-  ///
-  /// Dùng khi server nói tài khoản này **đã bị xoá**: bên kia đã ẩn danh hoá
-  /// (xoá `note`, `images`) mà máy vẫn giữ bản rõ. Tài khoản chỉ **bị khoá** thì
-  /// KHÔNG gọi hàm này — admin mở khoá lại được, và thay đổi chưa đồng bộ vẫn
-  /// còn đường lên server (spec cưỡng chế đăng xuất mục 2, Q2).
-  ///
-  /// Đây là xoá bản sao cục bộ, không phải xoá dữ liệu người dùng trên server —
-  /// cùng loại với hàm ngược chiều, nên quy tắc 5 `CLAUDE.md` không áp vào đây.
-  ///
-  /// [idaccount] `<= 0` → không làm gì: id hỏng mà xoá theo là quét sạch dữ liệu
-  /// của người đang dùng máy. Hàng `idaccount = 0` (bộ danh mục mặc định dùng
-  /// chung) vì thế cũng không bao giờ bị đụng tới — nó là khuôn, không thuộc ai.
-  Future<int> purgeDataForAccount(int idaccount) async {
-    if (idaccount <= 0) return 0;
-    var removed = 0;
-    await transaction(() async {
-      removed += await (delete(categoryKeywords)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed += await (delete(categoryGroupMemberships)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed += await (delete(transactions)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed += await (delete(budgets)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed +=
-          await (delete(bills)..where((t) => t.idaccount.equals(idaccount)))
-              .go();
-      removed +=
-          await (delete(goals)..where((t) => t.idaccount.equals(idaccount)))
-              .go();
-      removed += await (delete(categories)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed +=
-          await (delete(wallets)..where((t) => t.idaccount.equals(idaccount)))
-              .go();
-      // Thông báo cũng phải đi theo: bỏ sót là thông báo tài chính của tài khoản
-      // đã bị xoá còn nằm lại trên máy. Bảng này không có khoá ngoại nên vị trí
-      // trong chuỗi xoá không quan trọng.
-      removed += await (delete(appNotifications)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed += await (delete(aiRebalancingFeedbacks)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed += await (delete(goiYDanhMucPhanHois)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed += await (delete(appNotificationEvents)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed += await (delete(goiYHoaDonPhanHois)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed += await (delete(phanTichGiayXems)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed += await (delete(phanTichThuTuPhanHois)
-            ..where((t) => t.idaccount.equals(idaccount)))
-          .go();
-      removed += await (delete(danhMucAiDoans)
-            ..where((t) => t.idaccount.equals(idaccount)))
           .go();
     });
     return removed;

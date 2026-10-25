@@ -1,0 +1,125 @@
+/// Cấu hình bảo mật của manifest Android (siết bảo mật đợt 2, 2026-10-24) — vùng mù của `flutter test`, `flutter
+/// analyze` và cả `flutter build apk` (bẫy 7.11 `NOTIFICATION_FEATURE.md`), nên canh bằng cách đọc tệp.
+///
+/// 1. `flutter_deeplinking_enabled=false` ở `MainActivity`: activity khởi chạy phải `exported`, và từ Flutter 3.27
+///    deeplink bật mặc định — mọi app trên máy gửi được intent tường minh kèm data URI để mở BẤT KỲ route nào của
+///    go_router với tham số điền sẵn (form `/add` mang nhãn *"Từ thông báo MB Bank"* giả, `/add?noi=1` bật micro).
+///    ⚠️ Cờ này CHỈ chặn data URI — extra `route` lúc khởi động lạnh vẫn lọt (đo Realme 2026-10-24), lối ấy chặn ở
+///    router (`overridePlatformDefaultLocation`, canh ở `core/router/route_mac_dinh_nen_tang_test.dart`).
+///    App không dùng lối nào: bấm thông báo đi qua payload của plugin, thông báo tóm tắt D1 đi qua extra riêng.
+/// 2. Tắt sao lưu + chuyển máy: SQLite (KHÔNG mã hoá — toàn bộ sổ), hàng chờ nguyên văn tin ngân hàng, ảnh biên lai,
+///    kho token. `allowBackup=false` thôi KHÔNG đủ từ Android 12 — chuyển máy trực tiếp vẫn chép, phải có
+///    `dataExtractionRules` loại mọi vùng ở cả `cloud-backup` lẫn `device-transfer`. Đổi máy: đăng nhập lại, phần đã
+///    đồng bộ kéo về từ server; phần chỉ có trên máy (lịch sử thông báo, dữ liệu học gợi ý…) không theo — người dùng chốt.
+library;
+
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+
+const _manifest = 'android/app/src/main/AndroidManifest.xml';
+const _quyTac = 'android/app/src/main/res/xml/data_extraction_rules.xml';
+
+/// Mọi vùng dữ liệu mà quy tắc trích xuất nhận (kể cả vùng lưu trữ bảo vệ thiết bị `device_*`).
+const _vung = [
+  'root',
+  'file',
+  'database',
+  'sharedpref',
+  'external',
+  'device_root',
+  'device_file',
+  'device_database',
+  'device_sharedpref',
+];
+
+String _khoi(String xml, String the) {
+  final mo = xml.indexOf('<$the');
+  final dong = xml.indexOf('</$the>', mo);
+  expect(mo, greaterThanOrEqualTo(0), reason: 'thiếu khối <$the>');
+  expect(dong, greaterThan(mo), reason: 'khối <$the> không đóng');
+  return xml.substring(mo, dong);
+}
+
+void main() {
+  final manifest = File(_manifest).readAsStringSync();
+
+  test('MainActivity tắt deeplink route của Flutter', () {
+    final dau = manifest.indexOf('android:name=".MainActivity"');
+    expect(dau, greaterThanOrEqualTo(0));
+    final activity = manifest.substring(dau, manifest.indexOf('</activity>', dau));
+    expect(
+        RegExp(r'android:name="flutter_deeplinking_enabled"\s+android:value="false"').hasMatch(activity), isTrue,
+        reason: 'thiếu là app khác trên máy mở được bất kỳ route nào với tham số điền sẵn (intent tường minh kèm '
+            'data URI bỏ qua mọi intent-filter; extra route thì chặn ở router)');
+  });
+
+  test('ứng dụng tắt sao lưu và trỏ quy tắc trích xuất dữ liệu', () {
+    final app = manifest.substring(manifest.indexOf('<application'), manifest.indexOf('>', manifest.indexOf('<application')));
+    expect(app, contains('android:allowBackup="false"'), reason: 'sao lưu đám mây / adb backup');
+    expect(app, contains('android:dataExtractionRules="@xml/data_extraction_rules"'),
+        reason: 'Android 12+: allowBackup=false không chặn chuyển máy trực tiếp');
+  });
+
+  // Siết bảo mật đợt 3 (2026-10-24): ảnh thu nhỏ ở Đa nhiệm (Recents) chụp màn cuối — số dư, sổ giao dịch — ai cầm máy
+  // mở Đa nhiệm là thấy. Người dùng chọn CHỈ ẩn ảnh ấy (Android 13+), KHÔNG `FLAG_SECURE`: cờ ấy chặn cả ảnh chụp màn
+  // hình của chính người dùng và làm `adb screencap` ra ảnh đen — mọi buổi đo máy thật dựa vào ảnh chụp.
+  test('MainActivity ẩn ảnh Đa nhiệm (Android 13+) và KHÔNG chặn chụp màn hình', () {
+    final kt = File('android/app/src/main/kotlin/com/flowmoney/flowmoney/MainActivity.kt').readAsStringSync();
+    final onCreate = kt.substring(kt.indexOf('override fun onCreate'), kt.indexOf('override fun onDestroy'));
+    expect(onCreate, contains('setRecentsScreenshotEnabled(false)'),
+        reason: 'thiếu là Đa nhiệm hiện ảnh màn cuối của app — số dư, giao dịch');
+    expect(onCreate, contains('Build.VERSION_CODES.TIRAMISU'),
+        reason: 'API 33 mới có hàm này — gọi trên máy cũ là NoSuchMethodError lúc mở app');
+    expect(kt, isNot(contains('FLAG_SECURE')),
+        reason: 'người dùng chọn không chặn chụp màn hình (đo máy thật cần adb screencap)');
+  });
+
+  // Siết bảo mật đợt 4 (2026-10-24): bản web nạp sql.js từ CDN — CSDL SQLite của trình duyệt (cả sổ) chạy trong mã ấy.
+  // Không SRI thì CDN bị chiếm là mã lạ đọc được sổ. Mã băm = giá trị cdnjs công bố cho 1.15.1 (đối chiếu bằng tính lại;
+  // 1.8.0 → 1.15.1 cùng ngày sau soát CVE: 1.8.0 mang SQLite 3.39.3 của 2022, 1.15.1 mang 3.54.0).
+  // Tệp `.wasm` do chính sql.js tải qua `locateFile` — không gắn `integrity` được.
+  test('web/index.html nạp sql.js có SRI + crossorigin', () {
+    final html = File('web/index.html').readAsStringSync();
+    final the = RegExp(r'<script[^>]*sql-wasm\.js[^>]*>').firstMatch(html)?.group(0);
+    expect(the, isNotNull, reason: 'thẻ nạp sql.js đổi tên / dời → sửa ca này');
+    expect(the, contains('/sql.js/1.15.1/sql-wasm.js'));
+    expect(the, contains('integrity="sha512-G3Y9e6NzR59dmuT2HmyrLyitCVUsDhO8r7rpYHBPOIH05pH8eZjXue4Sh61zas4UmYiJWxrKb67tUxHVfACYgA=="'));
+    expect(the, contains('crossorigin="anonymous"'), reason: 'thiếu crossorigin thì trình duyệt không kiểm SRI cho tệp khác nguồn');
+  });
+
+  // Soát CVE thư viện (2026-10-24): `flutter_gemma` → `large_file_handler` 0.5.2 kéo `okhttp 4.9.0` — CVE-2021-0341
+  // (OkHostnameVerifier nhận chứng chỉ của SAI tên miền, sửa ở 4.9.2). Đường ấy không chạy tới được (gói chỉ được gọi để
+  // chép asset, app nạp mô hình bằng `.fromFile`), nhưng thư viện nằm trong APK và máy quét báo. Ràng buộc ở `:app` nâng
+  // bản đóng gói; đo bằng `gradlew :app:dependencies --configuration releaseRuntimeClasspath`.
+  test('okhttp đóng gói được ràng buộc ≥ 4.9.2 (CVE-2021-0341)', () {
+    final kts = File('android/app/build.gradle.kts').readAsStringSync();
+    final m = RegExp(r'''constraints\s*\{[\s\S]*?implementation\("com\.squareup\.okhttp3:okhttp:(\d+)\.(\d+)\.(\d+)"\)''')
+        .firstMatch(kts);
+    expect(m, isNotNull, reason: 'thiếu ràng buộc okhttp trong khối dependencies { constraints { … } }');
+    final ban = [for (var i = 1; i <= 3; i++) int.parse(m!.group(i)!)];
+    final duBan = ban[0] > 4 || (ban[0] == 4 && (ban[1] > 9 || (ban[1] == 9 && ban[2] >= 2)));
+    expect(duBan, isTrue, reason: 'okhttp ${ban.join('.')} vẫn dính CVE-2021-0341');
+    expect(ban[0], 4, reason: 'okhttp 5.x đổi API — large_file_handler biên dịch với 4.x');
+  });
+
+  test('mọi URL sql.js trong web/index.html cùng MỘT phiên bản', () {
+    final html = File('web/index.html').readAsStringSync();
+    final banCo = RegExp(r'/sql\.js/([0-9.]+)/').allMatches(html).map((m) => m.group(1)).toSet();
+    expect(banCo, {'1.15.1'},
+        reason: 'thẻ <script> và locateFile phải cùng bản — JS mới nạp .wasm cũ là CSDL web không mở được');
+  });
+
+  test('quy tắc trích xuất loại MỌI vùng ở cả sao lưu đám mây lẫn chuyển máy', () {
+    final f = File(_quyTac);
+    expect(f.existsSync(), isTrue, reason: 'manifest trỏ @xml/data_extraction_rules');
+    final xml = f.readAsStringSync();
+    for (final the in ['cloud-backup', 'device-transfer']) {
+      final khoi = _khoi(xml, the);
+      for (final v in _vung) {
+        expect(khoi, contains('<exclude domain="$v" path="."/>'), reason: '<$the> bỏ sót vùng $v');
+      }
+      expect(khoi, isNot(contains('<include')), reason: '<$the> không được chép lại thứ gì');
+    }
+  });
+}

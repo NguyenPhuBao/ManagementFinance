@@ -10,8 +10,10 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_localization.dart';
 import 'core/router/app_router.dart';
+import 'core/router/theo_doi_route_cong_khai.dart';
 import 'core/di/injection_container.dart';
 import 'core/network/connection_monitor.dart';
+import 'core/network/trang_thai_may_chu.dart';
 import 'features/auth/presentation/bloc/current_account.dart';
 import 'features/notification/domain/cham_hdh.dart';
 import 'features/notification/data/datasources/nhat_ky_thong_bao.dart';
@@ -36,6 +38,11 @@ import 'features/premium/presentation/bloc/phien_goi_tu_auth.dart';
 import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/khoa_app/application/khoa_app_service.dart';
+import 'features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
+import 'features/khoa_app/presentation/bloc/khoa_app_state.dart';
+import 'features/khoa_app/presentation/state/phien_dau_khoa_app.dart';
+import 'features/khoa_app/presentation/widgets/man_khoa/lop_khoa_app.dart';
 
 // ignore_for_file: avoid_print
 
@@ -145,11 +152,15 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
   late final GoRouter _router;
   late final NotificationTapRouter _chamThongBao;
   late final MoTuTomTatBienDong _moTomTat;
+  late final KhoaAppCubit _khoaApp;
+  late final TheoDoiRouteCongKhai _theoDoiRoute;
 
   @override
   void initState() {
     super.initState();
-    _router = AppRouter.createRouter(widget.initialRoute, widget.authBloc);
+    // Khoá ứng dụng cần biết router đã đứng yên ở route công khai chưa (gỡ màn che sau khi mất phiên — C1).
+    _theoDoiRoute = TheoDoiRouteCongKhai(laCongKhai: AppRouter.laRouteCongKhai);
+    _router = AppRouter.createRouter(widget.initialRoute, widget.authBloc, observers: [_theoDoiRoute]);
 
     _chamThongBao = NotificationTapRouter(
       osNotifier: sl<OsNotifier>(),
@@ -178,12 +189,28 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
       vongDoi: sl<AppLifecycleWatcher>().stream,
     );
     unawaited(_moTomTat.start().catchError((_) {}));
+
+    // Khoá ứng dụng (2026-10-24): nghe ĐÚNG AuthBloc của app. Chỉ trạng thái phiên RÕ (AuthSuccess / AuthUnauthenticated)
+    // — AuthLoading, OTP… không đổi gì; AuthSuccess lặp cùng tài khoản thì cubit tự bỏ qua.
+    _khoaApp = KhoaAppCubit(
+      service: sl<KhoaAppService>(),
+      vongDoi: sl<AppLifecycleWatcher>().stream,
+      phien: widget.authBloc.stream.where(laTrangThaiPhienRo).map(idaccountTuTrangThai),
+      dungYenOCongKhai: _theoDoiRoute.dungYenOCongKhai,
+      // M11: đăng nhập bằng mật khẩu vừa tắt khoá của tài khoản này — nhắc một dòng (không lặp ở mở lạnh / verifySession).
+      khiKhoaVuaTat: () => baoNhanh(kCauKhoaVuaTat),
+    );
+    final dau = widget.authBloc.state;
+    final dauKhoa = phienDauChoKhoaApp(dau, widget.initialRoute);
+    if (dauKhoa.daBiet) unawaited(_khoaApp.nhanPhien(dauKhoa.idaccount));
   }
 
   @override
   void dispose() {
     unawaited(_chamThongBao.stop());
     unawaited(_moTomTat.stop());
+    unawaited(_khoaApp.close());
+    _theoDoiRoute.dispose();
     super.dispose();
   }
 
@@ -195,6 +222,7 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
         BlocProvider<AuthBloc>.value(value: widget.authBloc),
         // Trạng thái gói Premium — singleton của DI, một cho cả app.
         BlocProvider<GoiCubit>.value(value: sl<GoiCubit>()),
+        BlocProvider<KhoaAppCubit>.value(value: _khoaApp),
       ],
       child: MaterialApp.router(
         title: 'FlowMoney',
@@ -209,14 +237,19 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
         // Toast bọc NGOÀI router nên phủ mọi trang mà không trang nào phải
         // biết đến nó. Lớp ngoài cùng ép đồng hồ 24 giờ cho mọi bảng chọn giờ
         // (G90 — xem `bocDongHo24Gio`).
-        builder: (context, child) => bocDongHo24Gio(
-          context,
-          AppToast(
-            connectionEvents: sl<ConnectionMonitor>().events,
-            pushResults: sl<SyncEngine>().pushResultStream,
-            realtimeEvents: sl<RealtimeChannel>().events,
-            thongBaoNhanh: sl<ThongBaoNhanh>().stream,
-            child: child ?? const SizedBox.shrink(),
+        builder: (context, child) => LopKhoaApp(
+          // "Quên mã PIN?" → đăng xuất. Cấu hình PIN xoá ở lần đăng nhập mật khẩu kế (hook `sauXacThucMatKhau`), không ở đây.
+          khiQuenPin: () => widget.authBloc.add(LogoutRequested()),
+          child: bocDongHo24Gio(
+            context,
+            AppToast(
+              connectionEvents: sl<ConnectionMonitor>().events,
+              pushResults: sl<SyncEngine>().pushResultStream,
+              realtimeEvents: sl<RealtimeChannel>().events,
+              mayChu: sl<TrangThaiMayChu>(),
+              thongBaoNhanh: sl<ThongBaoNhanh>().stream,
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         ),
       ),

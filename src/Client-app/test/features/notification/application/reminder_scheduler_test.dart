@@ -326,6 +326,30 @@ void main() {
       expect(os.lich.length, 1);
     });
 
+    // Đo Realme 2026-10-24: `am force-stop` → AlarmManager còn 0 báo thức của app, nhưng danh sách lịch của plugin
+    // (SharedPreferences — thứ `pendingIds` đọc) vẫn liệt kê đủ; mở app, quét xong → vẫn 0. Bản giả không phân biệt
+    // được hai kho, nên ca này canh HÀNH VI: lượt đầu của một bộ đặt lịch (= một tiến trình) đặt lại cả lịch "đang chờ".
+    test('lượt ĐẦU của bộ đặt lịch đặt lại lịch plugin tưởng còn chờ (force-stop xoá báo thức), lượt sau không',
+        () async {
+      await dung([hoaDon(denHan: DateTime(2026, 9, 20))]).resync(accountId);
+      final id = os.lich.keys.single;
+      final datTruoc = os.soLanDat;
+
+      // Tiến trình mới (force-stop rồi mở lại): DI dựng bộ đặt lịch mới, danh sách plugin còn nguyên.
+      final s = dung([hoaDon(denHan: DateTime(2026, 9, 20))]);
+      await s.resync(accountId);
+
+      expect(os.soLanDat, datTruoc + 1,
+          reason: 'force-stop xoá báo thức trong AlarmManager mà danh sách của plugin còn nguyên; bỏ qua vì "đã chờ" là '
+              'nhắc hoá đơn mất hẳn — khoá lịch không đổi giữa các lượt quét nên không lượt nào đặt lại');
+      expect(os.daHuy, isEmpty,
+          reason: 'đặt lại cùng id thay chỗ lịch cũ; huỷ trước là gỡ luôn thông báo cùng id đang nằm trên khay');
+      expect(os.lich.keys.single, id);
+
+      await s.resync(accountId);
+      expect(os.soLanDat, datTruoc + 1, reason: 'chỉ lượt đầu của tiến trình — các lượt sau giữ tính luỹ đẳng');
+    });
+
     test('hoá đơn được thanh toán thì lịch cũ bị huỷ', () async {
       await dung([hoaDon(denHan: DateTime(2026, 9, 20))]).resync(accountId);
       final idCu = os.lich.keys.single;
@@ -935,9 +959,19 @@ void main() {
     });
 
     test('resync lần hai (id đã chờ) KHÔNG thêm dat_lich — resync luỹ đẳng', () async {
-      await dungCoNhatKy([hd()]).resync(accountId);
-      await dungCoNhatKy([hd()]).resync(accountId);
+      final s = dungCoNhatKy([hd()]);
+      await s.resync(accountId);
+      await s.resync(accountId);
       expect(await suKien(SuKienThongBao.datLich), hasLength(1));
+    });
+
+    test('lượt khôi phục đầu tiến trình (id đã chờ) đặt lại nhưng KHÔNG thêm dat_lich', () async {
+      await dungCoNhatKy([hd()]).resync(accountId);
+      final dat = os.soLanDat;
+      await dungCoNhatKy([hd()]).resync(accountId);
+      expect(os.soLanDat, dat + 1);
+      expect(await suKien(SuKienThongBao.datLich), hasLength(1),
+          reason: 'cùng khoá, cùng mốc — một lần "tới máy" chứ không phải hai; B5b đếm tới máy theo dat_lich');
     });
 
     test('hoá đơn trả xong, lịch còn chờ → cancel và đúng MỘT huy_lich cùng khoá', () async {
@@ -968,10 +1002,12 @@ void main() {
         billDueDedupeKey(billId: 'hd1', dueDate: DateTime(2026, 9, 20), leadDays: 3));
 
     test('tiền đề: resync THƯỜNG sau khi đổi giờ vẫn giữ giờ cũ — luỹ đẳng', () async {
+      // MỘT bộ đặt lịch (một tiến trình): lượt đầu của bộ mới là lượt khôi phục, đặt lại mọi lịch.
+      final s = dung([hd()]);
       await prefs.write(accountId, const NotificationPrefs(gioNhac: 8, phutNhac: 0));
-      await dung([hd()]).resync(accountId);
+      await s.resync(accountId);
       await prefs.write(accountId, const NotificationPrefs(gioNhac: 20, phutNhac: 0));
-      await dung([hd()]).resync(accountId);
+      await s.resync(accountId);
       expect(os.lich[idHd]!.when, DateTime(2026, 9, 17, 8),
           reason: 'mặc định không đổi: lượt quét chạy sau mỗi thay đổi dữ liệu, '
               'đặt lại mọi lịch ở mỗi lượt là phí và làm bẩn nhật ký B5a');

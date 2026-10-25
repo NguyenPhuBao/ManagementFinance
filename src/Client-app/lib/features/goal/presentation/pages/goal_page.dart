@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/notification_bell.dart';
@@ -471,7 +471,7 @@ class _GoalPageContent extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            DateFormat('dd/MM/yyyy').format(goal.targetDate),
+            DateFormatter.formatDate(goal.targetDate),
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,

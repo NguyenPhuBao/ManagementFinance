@@ -3,7 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../../core/utils/date_formatter.dart';
 
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../core/utils/gioi_han_do_dai.dart';
@@ -113,7 +113,7 @@ class TheThongTinMucTieu extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              DateFormat('dd/MM/yyyy').format(targetDate),
+                              DateFormatter.formatDate(targetDate),
                               style: const TextStyle(
                                 fontSize: 14,
                                 color: AppColors.primary,

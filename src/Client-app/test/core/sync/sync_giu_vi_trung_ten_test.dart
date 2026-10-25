@@ -1,4 +1,4 @@
-/// G63 — `_collectPendingOps` GIỮ ví bị từ chối vì trùng tên cùng mọi thứ dính tới nó (spec mục 4.4).
+/// G63 — `ThuGomThaoTacDay.collectPendingOps` GIỮ ví bị từ chối vì trùng tên cùng mọi thứ dính tới nó (spec mục 4.4).
 ///
 /// Trước bản này: ví R bị `WALLET_NAME_DUPLICATE` chặn theo giờ rồi gửi lại mãi, còn giao dịch của R vỡ khoá ngoại
 /// (`transient`) và được gửi lại ở MỌI chu kỳ — mỗi chu kỳ kết thúc bằng lỗi, giãn cách luỹ tiến làm chậm mọi dữ liệu

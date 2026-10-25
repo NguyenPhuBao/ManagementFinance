@@ -4,9 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/network/connection_monitor.dart';
+import '../../core/network/trang_thai_may_chu.dart';
 import '../../core/realtime/realtime_event.dart';
 import '../../core/sync/sync_models.dart';
-import '../../core/ui/bao_che_day_toast.dart';
+import 'bao_che_day_toast.dart';
 import '../../core/ui/thong_bao_nhanh.dart';
 import '../theme/app_colors.dart';
 
@@ -49,6 +50,11 @@ import '../theme/app_colors.dart';
 /// Chỉ còn câu **còn kẹt lại** — "Một số thay đổi chưa lên được máy chủ" — và
 /// nó không nêu con số: bao nhiêu bản ghi là chi tiết cài đặt chứ không phải
 /// điều người dùng quan tâm.
+///
+/// ## Máy chủ chặn (G89, 2026-10-20)
+///
+/// Bảo trì / phong toả: MỘT toast lúc vừa chuyển sang trạng thái chặn — không lặp ở mỗi lượt thử lại 60 giây (mỗi 503 là
+/// một trạng thái MỚI cùng loại). Trạng thái kéo dài thì do dòng nhắc ở Trang chủ nói, không phải toast.
 
 /// Thời gian trượt + mờ, cho cả chiều vào lẫn chiều ra.
 ///
@@ -71,6 +77,7 @@ class AppToast extends StatefulWidget {
     required this.connectionEvents,
     required this.pushResults,
     required this.realtimeEvents,
+    this.mayChu,
     this.thongBaoNhanh = const Stream<ThongDiepNhanh>.empty(),
     this.tuAnSau = const Duration(seconds: 3),
     this.cheDay,
@@ -80,6 +87,9 @@ class AppToast extends StatefulWidget {
   final Stream<ConnectionEvent> connectionEvents;
   final Stream<SyncResult> pushResults;
   final Stream<RealtimeEvent> realtimeEvents;
+
+  /// Trạng thái máy chủ (G89) — `null` thì không toast gì về nó (test cũ không đổi).
+  final ValueListenable<TinhTrangMayChu>? mayChu;
 
   /// Câu tự do từ `ThongBaoNhanh` (2026-09-19) — "Nhấn lần nữa để thoát", và từ
   /// E4 (2026-10-06) mọi câu phản hồi của các trang ("Vui lòng chọn danh mục",
@@ -120,9 +130,13 @@ class _AppToastState extends State<AppToast> {
   double _keo = 0;
   bool _dangKeo = false;
 
+  Type _loaiMayChuTruoc = MayChuBinhThuong;
+
   @override
   void initState() {
     super.initState();
+    _loaiMayChuTruoc = widget.mayChu?.value.runtimeType ?? MayChuBinhThuong;
+    widget.mayChu?.addListener(_khiDoiMayChu);
     _subKetNoi = widget.connectionEvents.listen(_khiDoiKetNoi);
     _subDay = widget.pushResults.listen(_khiDayXong);
     _subRealtime = widget.realtimeEvents.listen(_khiCoRealtime);
@@ -130,7 +144,45 @@ class _AppToastState extends State<AppToast> {
   }
 
   @override
+  void didUpdateWidget(AppToast cu) {
+    super.didUpdateWidget(cu);
+    if (identical(cu.mayChu, widget.mayChu)) return;
+    cu.mayChu?.removeListener(_khiDoiMayChu);
+    widget.mayChu?.addListener(_khiDoiMayChu);
+    _loaiMayChuTruoc = widget.mayChu?.value.runtimeType ?? MayChuBinhThuong;
+  }
+
+  /// Máy chủ vừa CHUYỂN sang chặn (spec G89 mục 4.2). Bậc + nguồn đồng bộ: thấp hơn phản hồi cho cú bấm, và một lượt đẩy
+  /// thành công sau đó gỡ nó như gỡ "Một số thay đổi chưa lên được".
+  void _khiDoiMayChu() {
+    final t = widget.mayChu?.value;
+    if (t == null) return;
+    final truoc = _loaiMayChuTruoc;
+    _loaiMayChuTruoc = t.runtimeType;
+    if (t.runtimeType == truoc) return;
+    final noiDung = switch (t) {
+      MayChuBinhThuong() => null,
+      MayChuBaoTri() => const _NoiDungToast(
+          chu: 'Chưa đồng bộ được: máy chủ đang bảo trì',
+          mau: AppColors.warning,
+          icon: Icons.construction,
+          bac: _Bac.dongBo,
+          nguon: _Nguon.dongBo,
+        ),
+      MayChuPhongToa() => const _NoiDungToast(
+          chu: 'Chưa đồng bộ được: mạng này đang bị tạm chặn',
+          mau: AppColors.expense,
+          icon: Icons.shield_outlined,
+          bac: _Bac.dongBo,
+          nguon: _Nguon.dongBo,
+        ),
+    };
+    if (noiDung != null) _hien(noiDung);
+  }
+
+  @override
   void dispose() {
+    widget.mayChu?.removeListener(_khiDoiMayChu);
     _subKetNoi?.cancel();
     _subDay?.cancel();
     _subRealtime?.cancel();

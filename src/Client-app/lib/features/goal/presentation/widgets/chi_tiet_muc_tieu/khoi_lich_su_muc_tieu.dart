@@ -4,7 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../../core/utils/date_formatter.dart';
 
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../shared/theme/app_colors.dart';
@@ -134,7 +134,7 @@ class _DanhSachLichSu extends StatelessWidget {
       itemBuilder: (context, index) {
         final tx = hienThi[index];
         final dateStr =
-            DateFormat('dd/MM/yyyy HH:mm').format(tx.date);
+            DateFormatter.formatDateTime(tx.date);
         final amount = tx.amount;
         // Chiều tiền đọc từ tiền tố ghi chú do chính app sinh ra, KHÔNG
         // từ vị trí ví — so ví là diễn giải hàng cũ bằng cấu hình hiện

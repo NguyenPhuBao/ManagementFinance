@@ -33,13 +33,13 @@ void main() {
 
       expect(tb.lyDo, LyDoBuocDangXuat.biKhoa,
           reason:
-              'ACCOUNT_INACTIVE là khoá tạm — dọn SQLite ở đây là mất dữ liệu');
+              'ACCOUNT_INACTIVE là khoá tạm (admin mở lại được) — hộp thoại phải nói "bị vô hiệu hoá", không "đã bị xoá"');
     });
 
     test('reason lạ → biKhoa', () {
       expect(tuSuKienSocket({'reason': 'SOMETHING_NEW'}).lyDo,
           LyDoBuocDangXuat.biKhoa,
-          reason: 'backend thêm mã mới không được làm client xoá dữ liệu');
+          reason: 'mã mới của backend rơi về lý do nhẹ hơn (bị khoá) — không được báo nhầm "tài khoản đã bị xoá"');
     });
 
     test('thiếu hẳn reason → biKhoa, câu rỗng, id vẫn đọc được', () {
@@ -106,7 +106,7 @@ void main() {
 
       expect(tb, isNotNull);
       expect(tb!.nguon, NguonBuocDangXuat.lamMoi,
-          reason: 'bước dọn SQLite của §3.6b chỉ phân biệt được nhờ trường này');
+          reason: 'nguồn của lượt đăng xuất chỉ phân biệt được nhờ trường này (dữ liệu SQLite giữ tới khi tài khoản khác đăng nhập)');
       expect(tb.lyDo, LyDoBuocDangXuat.biKhoa);
     });
 
@@ -180,6 +180,38 @@ void main() {
       expect(a, isNot(b),
           reason: 'AuthUnauthenticated so sánh bằng props, hai lần đẩy ra khác '
               'nguồn phải là hai state khác nhau');
+    });
+  });
+
+  group('tuLoiBatTaySocket (G89 mục 5)', () {
+    test('dạng gói tin {message, data: {code, idaccount}} → lời buộc đăng xuất nguồn socket, KHÔNG đọc message', () {
+      final tb = tuLoiBatTaySocket({
+        'message': 'Authentication error: Tài khoản đã bị vô hiệu hoá',
+        'data': {'code': 'ACCOUNT_INACTIVE', 'idaccount': 11, 'reason_inactive': 'Vi phạm'},
+      });
+      expect(tb, isNotNull);
+      expect(tb!.lyDo, LyDoBuocDangXuat.biKhoa);
+      expect(tb.nguon, NguonBuocDangXuat.socket);
+      expect(tb.idaccount, 11);
+      expect(tb.loiNhan, '', reason: 'câu "Authentication error: …" cố ý không đọc — hộp thoại dùng câu mặc định');
+    });
+
+    test('dạng phẳng {code, idaccount} → cũng nhận', () {
+      final tb = tuLoiBatTaySocket({'code': 'ACCOUNT_DELETED', 'idaccount': '12'});
+      expect(tb!.lyDo, LyDoBuocDangXuat.daXoa);
+      expect(tb.idaccount, 12);
+    });
+
+    test('lỗi token / lược đồ / nội bộ (không code) → null → nối lại như cũ', () {
+      expect(tuLoiBatTaySocket('lỗi giả'), isNull);
+      expect(tuLoiBatTaySocket(null), isNull);
+      expect(tuLoiBatTaySocket({'message': 'Authentication error: Token expired'}), isNull);
+      expect(tuLoiBatTaySocket({'message': 'x', 'data': const {}}), isNull);
+      expect(
+          tuLoiBatTaySocket({
+            'data': {'code': ''}
+          }),
+          isNull);
     });
   });
 }

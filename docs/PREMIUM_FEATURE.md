@@ -90,14 +90,16 @@ domain/  hang_goi.dart (kGiaPremium · kSoNgayGoi · LoaiGoi · LoaiTran — kh�
          quyen_tinh_nang.dart (duocDung) · nhac_het_han.dart (0..3 ngày)
 data/    models/trang_thai_goi.dart (TrangThaiGoi · laPremium(now) · soNgayConLai · trangThaiTuJson accountType??type · kho)
          models/tran_goi.dart (TranGoi.macDinh 3/3/3)
-         models/don_thanh_toan.dart (DonThanhToan · donTuJson: qrUrl của server, KHÔNG tự dựng · số TK · chủ TK · nội dung)
+         models/don_thanh_toan.dart (DonThanhToan · donTuJson: qrUrl của server, KHÔNG tự dựng · số TK · chủ TK · nội dung;
+                                    checkoutUrl / qrUrl chỉ nhận https — 2026-10-24)
          models/dong_lich_su.dart (DongLichSu · dongLichSuTu: tạo / trả / đã chuyển / đã hoàn / ngày hoàn)
          datasources/payment_api.dart (Dio, bocData · loaiLoiThanhToanTu: DioException → loại)
          repositories/goi_repository.dart (kho thắng type · lamMoi không ném · resumed giãn 5' · socket hỏi ngay)
          repositories/don_thanh_toan_repository.dart (+ _impl: taoDon · trangThaiDon · lichSu · timDon · xacNhan; lỗi → LoiThanhToan)
          goi_store.dart (secure storage `goi_tai_khoan_<id>`) · dem_dang_hoat_dong.dart (NguonDemDangHoatDong) ·
-         co_quyen_nen.dart · mo_lien_ket.dart (tệp DUY NHẤT import url_launcher — test quét 18) ·
-         luu_anh_qr.dart (LuuAnhQr: Dio TRẦN tải ảnh → kênh flowmoney/luu_anh → MediaStore.Images)
+         datasources/mo_lien_ket.dart (tệp DUY NHẤT import url_launcher — test quét 18) ·
+         datasources/luu_anh_qr.dart (LuuAnhQr: chỉ kênh flowmoney/luu_anh → MediaStore.Images; bộ tải ảnh tiêm qua taiAnh) ·
+         datasources/tai_anh_dio_tran.dart (Dio TRẦN tải ảnh VietQR — chỉ DI gọi) · co_quyen_nen.dart
 presentation/ bloc/goi_cubit.dart (singleton, gốc cây) · bloc/phien_goi_tu_auth.dart · bloc/co_quyen.dart ·
          bloc/chan_theo_goi.dart (redirectTaoTheoGoi · chanTheoGoi · chanTheoQuyen) ·
          bloc/chi_tiet_don_cubit.dart (nap · dongY · tuChoi · canBao) ·
@@ -109,6 +111,7 @@ presentation/ bloc/goi_cubit.dart (singleton, gốc cây) · bloc/phien_goi_tu_a
 ```
 
 Sửa nơi khác: `RealtimeEvent.taiKhoanNangCap` (`account.upgraded`, `canDongBoLai false`, `loiNhan null`) ·
+`RealtimeEvent.taiKhoanHaCap` (`account.downgraded` — tín hiệu im như `taiKhoanNangCap`, làm mới gói; G89 2026-10-20) · hook `khiBiTatQuyen` của `MayChuInterceptor` (403 `FEATURE_DISABLED` → làm mới gói, giãn 30 s; G89) ·
 `RealtimeEvent.donThanhToanDoi` (sáu tên `payment.*`, cùng khuôn tín hiệu im; `GoiRepository` **không** nghe nó) ·
 `MainActivity.kt` (kênh `flowmoney/luu_anh`, phương thức `luuAnh` → `luuAnhVaoThuVien`, cạnh `luuVaoTaiVe`) ·
 `UserModel.loaiTaiKhoan` (`type` của `/auth/*`) · `app_router.dart` (3 `redirect` + 4 route `/premium*`) ·
@@ -133,7 +136,7 @@ màn Chờ: dòng Lịch sử mua và thẻ đầu màn Nâng cấp.
 2. **Bằng trần là vượt** (`dangCo >= tran`); Premium → `Duoc` không nhìn số.
 3. **`/subscription-info` trả `accountType`**, hướng dẫn ghi `type` — đọc cả hai.
 4. **`/budget/rules?id=` là sửa**, `chuyenHuongTheoGoi` tự cho qua dù `Vuot`; `?category=` là tạo → chặn.
-5. **Socket `account.upgraded` là tín hiệu** — không đọc payload (hộp đen của `events`), gọi lại API.
+5. **Socket `account.upgraded` (và `account.downgraded` = `taiKhoanHaCap`) là tín hiệu** — không đọc payload (hộp đen của `events`), gọi lại API.
 6. **Kho thắng `type` của phiên** — admin hạ cấp tay khi `/payment/*` hỏng thì máy giữ Premium theo cache tới lần
    `/subscription-info` trả lời được (giới hạn 15.2 spec).
 7. **`context.read<GoiCubit>()`, không `BlocProvider.of`** khi muốn bắt `ProviderNotFoundException` — `BlocProvider.of`
@@ -269,7 +272,7 @@ nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
   ở `premium/presentation/bloc/co_quyen.dart` — không provider thì **không khoá** (test cũ). Widget ở
   `premium/presentation/widgets/the_khoa_quyen.dart`: `TheKhoaQuyen` (thẻ 🔒 + `NutNangCap(quyen:)`), `KhoaTheoQuyen`
   (bọc con), `DongKhoaQuyen` (dòng khoá trong khối Nhận xét), `DongKhoaCongTac` (*"Cần Premium"* / *"Tạm dừng — cần
-  Premium"* khi giá trị đang lưu là bật).
+  Premium"* khi giá trị đang lưu là bật). Màu của thẻ / dòng / băng khoá ở `AppColors` (nhóm `khoa*` + `vienNutNangCap`, giá trị Stitch 2026-10-08; widget không ghi cứng `Color(0x…)` — ca canh ở `the_khoa_quyen_test.dart`, 2026-10-19).
 - **Ngoài cây widget:** `coQuyenNen(MaQuyen)` (`premium/data/co_quyen_nen.dart`) đọc `GoiRepository.hienTai`; chưa có
   phiên → `true`. DI bọc `runAutoPays` · `runAutoDeposits` · `loadKeHoach` · `NhapBienDong.batBienDong` ·
   `NhapBienLai.coQuyen`. Không quyền → bỏ lượt, **không ghi gì, không đổi mốc**. ⚠️ Vế *"chưa có phiên → `true`"* buộc

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../../../core/utils/date_formatter.dart';
 
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../data/models/dong_lich_su.dart';
@@ -19,7 +19,7 @@ class TheDauDon extends StatelessWidget {
     final tao = don.taoLuc;
     final phu = tao == null
         ? 'Mã đơn #${don.orderCode}'
-        : 'Mã đơn #${don.orderCode} · Tạo lúc ${DateFormat('HH:mm dd/MM/yyyy').format(tao.toLocal())}';
+        : 'Mã đơn #${don.orderCode} · Tạo lúc ${DateFormatter.formatTimeDate(tao.toLocal())}';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

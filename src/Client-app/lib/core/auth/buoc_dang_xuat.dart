@@ -4,12 +4,11 @@
 /// Dart **thuần**: không import Flutter, không import Dio. Nhờ vậy nó dùng được
 /// ở cả tầng mạng lẫn tầng bloc mà không kéo theo phụ thuộc nào.
 ///
-/// ## Luật một chiều
+/// ## Giá trị lạ về `biKhoa`
 ///
-/// Đọc nhầm *đã xoá* thành *bị khoá* chỉ khiến máy **giữ lại** bản sao dữ liệu.
-/// Đọc nhầm *bị khoá* thành *đã xoá* là **xoá mất** dữ liệu của người dùng.
-/// Nên mọi giá trị lạ, thiếu, hoặc sai kiểu đều về [LyDoBuocDangXuat.biKhoa]
-/// (spec cưỡng chế đăng xuất §3.1).
+/// Mọi giá trị lạ, thiếu, hoặc sai kiểu đều về [LyDoBuocDangXuat.biKhoa] (spec cưỡng chế đăng xuất §3.1). Từ G89 (2026-10-20)
+/// hai lý do chỉ khác nhau ở CHỮ hộp thoại — không lý do nào dọn SQLite nữa — nên giá trị lạ về `biKhoa` chỉ ảnh hưởng
+/// chữ hộp thoại, không còn bất đối xứng mất dữ liệu.
 library;
 
 /// Vì sao tài khoản bị đẩy ra.
@@ -18,12 +17,13 @@ enum LyDoBuocDangXuat {
   /// nên dữ liệu cục bộ phải **giữ**.
   biKhoa,
 
-  /// Tài khoản đã bị xoá (`ACCOUNT_DELETED`) — server đã ẩn danh hoá (xoá
-  /// `note`, `images`), máy không được giữ bản rõ.
+  /// Tài khoản đã bị xoá (`ACCOUNT_DELETED`). Dữ liệu cục bộ vẫn GIỮ tới khi tài khoản khác
+  /// đăng nhập trên máy (G89, người dùng chốt 2026-10-20).
   daXoa,
 }
 
-/// Lời ấy tới bằng đường nào. Chỉ bước dọn SQLite của §3.5 đọc tới nó (§3.6b).
+/// Lời ấy tới bằng đường nào. Từ G89 (2026-10-20) không chỗ nào trong `lib/` rẽ nhánh theo nguồn — giữ để
+/// log và test phân biệt ba đường.
 enum NguonBuocDangXuat {
   /// Sự kiện `account.force_logout` trên kênh thời gian thực.
   socket,
@@ -33,7 +33,6 @@ enum NguonBuocDangXuat {
 
   /// Body 401 của chính `/auth/refresh`.
   ///
-  /// ⚠️ Nguồn này **không** được dùng để dọn SQLite: trên `main` @ `7675b35`,
   /// Lý do có ngoại lệ (CAN-LAM 17 §2.5): tới 2026-09-12 `/auth/refresh` chưa
   /// tách lỗi lược đồ thành 503, nên một sự cố phía server đội lốt được
   /// `ACCOUNT_DELETED`. Backend đã sửa trong `main` @ `cbbeeb4` (gộp 2026-09-12).
@@ -53,10 +52,7 @@ enum NguonBuocDangXuat {
   /// *không* còn vô nghĩa — nó nay chặn đúng ca thật (tài khoản bị xoá, phát
   /// hiện qua nhánh làm mới) chứ không chỉ che ca lỗi lược đồ.
   ///
-  /// ✅ **Người dùng chốt 2026-09-13: GIỮ ngoại lệ** (spec §3.6b). Dữ liệu trong
-  /// SQLite là bản duy nhất trên máy, nên báo động giả mà dọn là mất thật; còn
-  /// nếu xoá là đúng thì `purgeDataForOtherAccounts` vẫn dọn khi tài khoản khác
-  /// đăng nhập — chỉ **hoãn** chứ không bỏ. Đừng "dọn dẹp" nhánh này.
+  /// Ngoại lệ "không dọn SQLite" của nguồn này (G36, 2026-09-13) mở rộng ra cả ba nguồn ngày 2026-10-20 (G89).
   lamMoi,
 }
 
@@ -101,8 +97,8 @@ class ThongBaoBuocDangXuat {
 
 /// Đọc payload của `account.force_logout`.
 ///
-/// Backend phát sự kiện này từ **một** hàm duy nhất (`core/socket.js:175-191`,
-/// gọi từ `admin.service.js:140`, `:199` và `scheduler.service.js:116`) với
+/// Backend phát sự kiện này từ **một** hàm duy nhất (`emitForceLogout` ở
+/// `core/socket.js`, gọi từ `admin.service.js` và `scheduler.service.js`) với
 /// hình dạng `{ idaccount, reason, message }` — nên đọc payload ở đây an toàn,
 /// khác hẳn các sự kiện đi qua EventBus của backend, thứ mà client không biết
 /// bản đang chạy dựng payload bằng khoá gì (xem chú thích đầu
@@ -146,6 +142,25 @@ ThongBaoBuocDangXuat? tuBody401(
     nguon: nguon,
     loiNhan: _cauTu(body['message']),
     idaccount: _idTu(body['idaccount']),
+  );
+}
+
+/// Đọc lỗi `connect_error` của bắt tay socket (spec G89 mục 5). Backend từ chối vì TÀI KHOẢN bằng
+/// `Object.assign(new Error(...), {data: {code, idaccount, reason_inactive}})` trong middleware xác thực bắt tay
+/// (`initSocket` ở `core/socket.js`); lỗi lược đồ / token / nội bộ là `Error` KHÔNG có `data` → `null` → nơi gọi giãn cách
+/// nối lại như cũ.
+///
+/// Dạng đo 2026-10-20 (`socket.io` 4.8.3 + `socket_io_client` 3.1.6): handler nhận nguyên `data` của gói `CONNECT_ERROR` —
+/// `Map` `{message, data: {code, …}}`. Nhánh `code` ở cấp gốc là dạng của giao thức 3 cũ (`err.data || err.message`), giữ cho
+/// chắc. Câu của server nằm ở `message` cấp ngoài (*"Authentication error: …"*) — cố ý KHÔNG đọc: `loiNhan` rỗng → hộp thoại
+/// dùng câu mặc định.
+ThongBaoBuocDangXuat? tuLoiBatTaySocket(Object? loi) {
+  if (loi is! Map) return null;
+  final data = loi['data'];
+  if (data is Map) return tuBody401(data, nguon: NguonBuocDangXuat.socket);
+  return tuBody401(
+    <String, Object?>{'code': loi['code'], 'idaccount': loi['idaccount']},
+    nguon: NguonBuocDangXuat.socket,
   );
 }
 

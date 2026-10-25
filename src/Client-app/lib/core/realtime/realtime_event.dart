@@ -1,5 +1,6 @@
-/// Năm sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
-/// backend phát tới room `account_<idaccount>`.
+/// Sáu giá trị (mười hai tên) sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
+/// backend phát tới room `account_<idaccount>` (riêng `emitPermissionsUpdated` — `account.permissions_updated` /
+/// `account.upgraded` — phát tới MỌI socket).
 ///
 /// ## Vì sao chỉ có tên, không có dữ liệu
 ///
@@ -35,13 +36,19 @@ enum RealtimeEvent {
   /// riêng ở bậc cao nhất (spec socket §6.3).
   dongBoXong,
 
-  /// `account.upgraded` — backend phát khi webhook PayOS xác nhận đã trả
-  /// (`payment.service.js:167-171`, `emitToAccount`). **Tín hiệu**: client
-  /// không đọc payload, `GoiRepository` gọi lại `/payment/subscription-info`
-  /// (spec Premium 2026-10-06 mục 6.5). Im — máy vừa trả có màn Thành công;
-  /// máy khác đổi thẻ ở tab Cá nhân. Không kéo đồng bộ: lên gói không sinh
-  /// dữ liệu đồng bộ mới.
+  /// `account.upgraded` (và `account.permissions_updated`) — backend phát khi webhook PayOS xác nhận đã trả
+  /// (`handlePayOSWebhook`) và khi người dùng đồng ý nâng cấp đơn chuyển thừa (`confirmUpgrade`) — cả hai ở
+  /// `payment.service.js`, qua `emitToAccount` — và tới MỌI socket khi admin đổi ma trận quyền (`emitPermissionsUpdated` ở
+  /// `core/socket.js`). **Tín hiệu**: client không đọc payload, `GoiRepository` gọi lại `/payment/subscription-info` (spec
+  /// Premium 2026-10-06 mục 6.5). Im — máy vừa trả có màn Thành công; máy khác đổi thẻ ở tab Cá nhân. Không kéo đồng bộ:
+  /// lên gói không sinh dữ liệu đồng bộ mới.
   taiKhoanNangCap,
+
+  /// `account.downgraded` — backend phát từ job hết hạn Premium lúc 00:00 giờ VN (`runDailyPremiumExpirationTask` ở
+  /// `scheduler.service.js`, qua `emitToAccount`). **Tín hiệu**: `GoiRepository` làm mới gói (spec G89 mục 6.1). Im, không
+  /// kéo đồng bộ. Màn Nâng cấp / Chờ thanh toán KHÔNG nghe (đó là luồng [taiKhoanNangCap]). Giữa lúc hết hạn và 0 giờ
+  /// server đã trả 403 `FEATURE_DISABLED` — đường ấy do interceptor trạng thái máy chủ báo (mục 6.2).
+  taiKhoanHaCap,
 
   /// `payment.overpaid_confirmation` · `payment.underpaid_warning` · `payment.refunded` · `payment.success` ·
   /// `payment.order_expired` · `payment.order_cancelled` — backend phát tới phòng tài khoản khi trạng thái một đơn
@@ -67,6 +74,8 @@ RealtimeEvent? realtimeEventFromName(String name) {
     case 'account.upgraded':
     case 'account.permissions_updated':
       return RealtimeEvent.taiKhoanNangCap;
+    case 'account.downgraded':
+      return RealtimeEvent.taiKhoanHaCap;
     case 'payment.overpaid_confirmation':
     case 'payment.underpaid_warning':
     case 'payment.refunded':
@@ -84,10 +93,11 @@ extension RealtimeEventX on RealtimeEvent {
   ///
   /// `ocr.duplicate` nói đúng điều ngược lại — không có gì được tạo — nên kéo
   /// dữ liệu về sau nó là một vòng mạng thừa. `account.upgraded` cũng không:
-  /// lên gói là chuyện của bảng `account`, không bảng nào client đồng bộ đổi.
+  /// lên gói là chuyện của bảng `account`, không bảng nào client đồng bộ đổi; `account.downgraded` (hạ gói) cùng lý do.
   bool get canDongBoLai =>
       this != RealtimeEvent.ocrTrung &&
       this != RealtimeEvent.taiKhoanNangCap &&
+      this != RealtimeEvent.taiKhoanHaCap &&
       this != RealtimeEvent.donThanhToanDoi;
 
   /// Câu hiện trên toast. Hằng số, cố ý không nêu số liệu.
@@ -103,6 +113,8 @@ extension RealtimeEventX on RealtimeEvent {
       case RealtimeEvent.dongBoXong:
         return null;
       case RealtimeEvent.taiKhoanNangCap:
+        return null;
+      case RealtimeEvent.taiKhoanHaCap:
         return null;
       case RealtimeEvent.donThanhToanDoi:
         return null;

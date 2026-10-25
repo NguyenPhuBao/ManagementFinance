@@ -8,7 +8,7 @@
 /// Spec: docs/superpowers/specs/2026-09-12-bill-an-han-period-end-design.md §4.1
 library;
 
-import 'package:intl/intl.dart';
+import '../../../core/utils/date_formatter.dart';
 
 import '../data/models/bill_entity.dart';
 
@@ -62,7 +62,7 @@ String? loiAnHan({
   final hanTra = _dauNgay(hanTraTu(ketThucKy, anHanNgay));
   if (!hanTra.isBefore(_dauNgay(ketThucKyKeTiep))) {
     return 'Hạn trả phải trước ngày kết thúc kỳ kế tiếp '
-        '(${DateFormat('dd/MM').format(ketThucKyKeTiep)})';
+        '(${DateFormatter.formatDayMonth(ketThucKyKeTiep)})';
   }
   return null;
 }

@@ -45,6 +45,8 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../domain/canary_cong_cu.dart';
 import '../domain/chinh_tham_so.dart';
 import '../domain/cong_cu.dart';
@@ -57,8 +59,8 @@ import '../domain/ket_luan_so_sanh.dart';
 import '../domain/kiem_cau_tra_loi.dart';
 import '../domain/slm_prompt.dart';
 import 'bo_cong_cu.dart';
-import 'phien_cong_cu.dart';
-import 'slm_runtime.dart';
+import 'datasources/phien_cong_cu.dart';
+import 'datasources/slm_runtime.dart';
 
 Stream<SuKienGac> hoiBangCongCu(
   String cauHoi, {
@@ -269,7 +271,9 @@ Stream<SuKienGac> hoiBangCongCu(
           continue;
         }
         goi.them(g.ten, kq, args: g.args);
-        log('[SLM][tool] lượt $luot: gọi ${g.ten} ${g.args} → ${kq.hang.length} hàng'
+        // Tham số mang dữ liệu người dùng (ghi chú tìm, tên ví / danh mục, khoảng ngày) — bản release chỉ in tên tool, như
+        // `phien_mot_loi_goi.dart` (quét 38).
+        log('[SLM][tool] lượt $luot: gọi ${g.ten}${kDebugMode ? ' ${g.args}' : ''} → ${kq.hang.length} hàng'
             '${kq.loi == null ? '' : ', từ chối: ${kq.loi}'}, ${dongHo.elapsedMilliseconds - moc} ms');
         await phien.traKetQua(g0.ten, kq.json);
       }

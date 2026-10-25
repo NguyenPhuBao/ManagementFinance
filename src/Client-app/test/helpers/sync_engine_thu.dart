@@ -10,6 +10,7 @@ library;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/network/trang_thai_may_chu.dart';
 import 'package:flowmoney/core/sync/cong_so_du_vi.dart';
 import 'package:flowmoney/core/sync/cong_vi_bi_giu.dart';
 import 'package:flowmoney/core/sync/sync_checkpoint_store.dart';
@@ -31,6 +32,7 @@ SyncEngine taoSyncEngineThu({
   DateTime Function()? now,
   CongSoDuVi? soDuVi,
   CongViBiGiu? viBiGiu,
+  TrangThaiMayChu? trangThaiMayChu,
 }) =>
     SyncEngine(
       dioClient: dioClient,
@@ -40,4 +42,5 @@ SyncEngine taoSyncEngineThu({
       connectivity: connectivity,
       checkpointStore: checkpointStore,
       now: now,
+      trangThaiMayChu: trangThaiMayChu,
     );
