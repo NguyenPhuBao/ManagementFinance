@@ -53,7 +53,15 @@ dependencies:
   uuid: ^4.5.1
 
   # Security
-  flutter_secure_storage: ^9.2.2
+  # GHIM CỨNG 10.3.4 (2026-10-25, từ 9.2.4). Lần mở đầu tiên sau khi cài bản này,
+  # gói tự chuyển MỌI mục đã cất (token, PIN khoá app, gói, mốc đồng bộ…) từ mã
+  # hoá v9 (RSA PKCS#1 + AES-CBC) sang RSA-OAEP + AES-GCM — phép chuyển ấy là mã
+  # Android gốc, `flutter test` mù, chỉ đo được trên máy (`KHOA_APP_FEATURE.md`).
+  # ⚠️ Đừng nhảy thẳng lên 11: 11.0.0 bỏ đường đọc dữ liệu v9 → mất cả kho (bị
+  # đăng xuất, khoá app tắt). Giữ mặc định `AndroidOptions` (resetOnError = true:
+  # chuyển hỏng thì xoá kho và đăng xuất, thay vì mọi lần đọc ném lỗi mãi và
+  # `main.dart` chết trước `runApp`).
+  flutter_secure_storage: 10.3.4
   crypto: ^3.0.6
 
   # UI & fonts
