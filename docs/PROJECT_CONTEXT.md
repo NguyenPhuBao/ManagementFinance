@@ -864,6 +864,18 @@ liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà 
   khoản) · không hook `datNha` · trần thành viên từ `household.maxMembers`. Cả 12 chỗ ghi ở **mục 11 spec** (thắng thân khi lệch).
 - Chưa có mã. Người dùng chọn *"dừng ở spec"*: **chưa** chọn cách thi công (agent con / inline), **chưa** cho vẽ 6 màn Stitch.
 
+### 🔀 Gộp `main` @ `0ab9cbd4` (2026-10-25, commit gộp `1fedd00a`, đã push) — PR #159: sync contract v4, bảo trì, AIOps, admin; backend viết đè tài liệu đồng bộ của client lần hai
+
+- **Nội dung:** commit backend `36f1ea43` — 39 tệp (`src/Backend` bảo trì / admin / AIOps, `src/Admin-web`, `docs/Admin-web/*`,
+  `docs/Family/GIA_DINH_NEN_MONG.md` mới); mã đồng bộ đổi đúng một dòng (`sync.repository.js` thêm `create_at` vào select danh mục —
+  client bỏ qua khoá lạ). **0 tệp `src/Client-app`** → không chạy lại `flutter test`; `check-ignore` không khớp; `CAN-LAM/` không bị đụng.
+- **Xung đột duy nhất:** `docs/superpowers/sync/SYNC_DOCUMENTATION.md` — viết đè lần hai thành *"Hợp đồng v4.0"* (số trường sai; checklist
+  mục 6 xin `provider` · `bank_tran_id` · `status` · `images` cho giao dịch và `id_bank_casso` cho ví). Người dùng chốt **giữ bản client**
+  + đoạn đầu tệp; đơn 49 thêm phần *"Tái phát 2026-10-25"* (các việc client đã làm, hai việc không làm); README mục 0 dòng 49. Người dùng
+  hỏi lại *"các cột ấy có cần không"* → không (quy tắc 4 giữ nguyên, xác nhận cùng ngày). Ràng buộc gốc đáng nhớ nếu có ngày mở lại:
+  `ck_txn_provider` chỉ `Manual · Casso · SMS · OCR`, `ck_txn_bank_id` (`Casso`/`SMS` ⇒ có mã, `Manual`/`OCR` ⇒ trống).
+- **Push:** `faebb440..1fedd00a` theo yêu cầu người dùng (để backend kéo về sửa đơn 43–52).
+
 ### 🔀 Gộp `main` @ `ee6a65e5` (2026-10-23, commit gộp `01c0d590`) — PR #153–#158: theo dõi thiết bị / IP, bảo trì nhiều lịch + nâng cấp, phân quyền 4 trụ, PIN admin; backend viết lại tài liệu đồng bộ của client; client đặt đơn 49
 
 Người dùng: *"lấy code mới nhất về kiểm tra"*. 33 commit, 179 tệp — **không** tệp nào dưới `src/Client-app` hay `CAN-LAM/`;
