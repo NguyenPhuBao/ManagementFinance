@@ -10,6 +10,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'core/constants/app_constants.dart';
 import 'core/constants/app_localization.dart';
 import 'core/router/app_router.dart';
+import 'core/router/theo_doi_route_cong_khai.dart';
 import 'core/di/injection_container.dart';
 import 'core/network/connection_monitor.dart';
 import 'core/network/trang_thai_may_chu.dart';
@@ -150,11 +151,14 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
   late final NotificationTapRouter _chamThongBao;
   late final MoTuTomTatBienDong _moTomTat;
   late final KhoaAppCubit _khoaApp;
+  late final TheoDoiRouteCongKhai _theoDoiRoute;
 
   @override
   void initState() {
     super.initState();
-    _router = AppRouter.createRouter(widget.initialRoute, widget.authBloc);
+    // Khoá ứng dụng cần biết router đã đứng yên ở route công khai chưa (gỡ màn che sau khi mất phiên — C1).
+    _theoDoiRoute = TheoDoiRouteCongKhai(laCongKhai: AppRouter.laRouteCongKhai);
+    _router = AppRouter.createRouter(widget.initialRoute, widget.authBloc, observers: [_theoDoiRoute]);
 
     _chamThongBao = NotificationTapRouter(
       osNotifier: sl<OsNotifier>(),
@@ -191,6 +195,7 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
       service: sl<KhoaAppService>(),
       vongDoi: sl<AppLifecycleWatcher>().stream,
       phien: widget.authBloc.stream.where(phienRo).map(idaccountTuTrangThai),
+      dungYenOCongKhai: _theoDoiRoute.dungYenOCongKhai,
     );
     final dau = widget.authBloc.state;
     if (phienRo(dau)) {
@@ -206,6 +211,7 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
     unawaited(_chamThongBao.stop());
     unawaited(_moTomTat.stop());
     unawaited(_khoaApp.close());
+    _theoDoiRoute.dispose();
     super.dispose();
   }
 

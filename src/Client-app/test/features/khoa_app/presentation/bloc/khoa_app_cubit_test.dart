@@ -5,6 +5,7 @@ import 'package:flowmoney/features/khoa_app/data/datasources/kenh_sinh_trac.dart
 import 'package:flowmoney/features/khoa_app/data/khoa_app_store.dart';
 import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
 import 'package:flowmoney/features/khoa_app/presentation/bloc/khoa_app_state.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -236,5 +237,70 @@ void main() {
     await lan;
     await pumpEventQueue();
     expect(c2.state, const KhoaAppTat(), reason: 'catch không được emit Khoa cũ đè lên phiên mới');
+  });
+
+  group('C1 — mất phiên khi đang che (có tín hiệu router)', () {
+    late ValueNotifier<bool> yen;
+    late KhoaAppCubit c;
+
+    setUp(() {
+      yen = ValueNotifier<bool>(false);
+      c = KhoaAppCubit(
+        service: sv,
+        vongDoi: vongDoi.stream,
+        phien: phien.stream,
+        clock: () => nay,
+        dungYenOCongKhai: yen,
+        vanAnToanRoi: const Duration(hours: 1),
+      );
+    });
+
+    tearDown(() async {
+      await c.close();
+      yen.dispose();
+    });
+
+    test('đang Khoa, router chưa yên → DangRoi; yên → Tat', () async {
+      await sv.datPin(10, '246810');
+      await c.nhanPhien(10);
+      expect(c.state, isA<KhoaAppKhoa>());
+      await c.nhanPhien(null);
+      expect(c.state, const KhoaAppDangRoi());
+      yen.value = true;
+      expect(c.state, const KhoaAppTat());
+    });
+
+    test('đang Khoa, router đã yên từ trước → Tat ngay (Quên PIN)', () async {
+      await sv.datPin(10, '246810');
+      await c.nhanPhien(10);
+      yen.value = true;
+      await c.nhanPhien(null);
+      expect(c.state, const KhoaAppTat());
+    });
+
+    test('đang DangXet có phiên rồi mất phiên → DangRoi (phiên chết lúc mở lạnh)', () async {
+      // DangXet có phiên: nhanPhien(10) chưa đọc xong kho thì nhanPhien(null) tới.
+      final lan = c.nhanPhien(10);
+      expect(c.state, const KhoaAppDangXet());
+      await c.nhanPhien(null);
+      expect(c.state, const KhoaAppDangRoi());
+      await lan;
+      expect(c.state, const KhoaAppDangRoi(), reason: 'lượt đọc kho về muộn không được đè lên DangRoi');
+    });
+
+    test('đang Mo (đã mở khoá) rồi đăng xuất → Tat ngay, không che', () async {
+      await sv.datPin(10, '246810');
+      await c.nhanPhien(10);
+      await c.nhapPin('246810');
+      await pumpEventQueue();
+      expect(c.state, const KhoaAppMo(daBat: true));
+      await c.nhanPhien(null);
+      expect(c.state, const KhoaAppTat());
+    });
+
+    test('lần ĐẦU nhận phiên null (chưa từng có phiên) → Tat, dù có tín hiệu (không hồi quy P2)', () async {
+      await c.nhanPhien(null);
+      expect(c.state, const KhoaAppTat());
+    });
   });
 }

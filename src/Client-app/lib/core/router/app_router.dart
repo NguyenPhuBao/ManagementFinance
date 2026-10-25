@@ -99,9 +99,14 @@ class AppRouter {
   /// Tạo GoRouter với:
   /// - [initialLocation]: route ban đầu (dựa trên token check trong main.dart)
   /// - [authBloc]: dùng để redirect guard tập trung
-  static GoRouter createRouter(String initialLocation, AuthBloc authBloc) =>
+  static GoRouter createRouter(
+    String initialLocation,
+    AuthBloc authBloc, {
+    List<NavigatorObserver>? observers,
+  }) =>
       GoRouter(
         navigatorKey: _rootNavigatorKey,
+        observers: observers,
         initialLocation: initialLocation,
         // Route mặc định của nền tảng KHÔNG được thắng: khi khởi động lạnh, extra `route` của intent thành
         // `defaultRouteName`, mà `MainActivity` exported — app nào trên máy cũng gửi được `--es route "/add?…"` để mở
@@ -517,11 +522,14 @@ class AppRouter {
         ],
       );
 
+  /// Route công khai (không cần đăng nhập) — MỘT định nghĩa cho `authRedirect` và cho lớp khoá ứng dụng.
+  static bool laRouteCongKhai(String? tenRoute) => _publicRoutes.contains(tenRoute);
+
   static String? authRedirect({
     required AuthState authState,
     required String matchedLocation,
   }) {
-    final isGoingPublic = _publicRoutes.contains(matchedLocation);
+    final isGoingPublic = laRouteCongKhai(matchedLocation);
 
     // Startup restoration may keep the requested route while token state is
     // unresolved. Other loading states come from user-initiated auth actions.

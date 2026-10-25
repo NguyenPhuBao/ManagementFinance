@@ -19,13 +19,13 @@ class LopKhoaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<KhoaAppCubit, TrangThaiKhoaApp>(
       builder: (context, s) {
-        final che = s is KhoaAppDangXet || s is KhoaAppKhoa;
+        final che = s is KhoaAppDangXet || s is KhoaAppDangRoi || s is KhoaAppKhoa;
         return Stack(
           fit: StackFit.expand,
           children: [
             // Trình đọc màn hình không được đọc nội dung dưới lớp khoá.
             ExcludeFocus(excluding: che, child: ExcludeSemantics(excluding: che, child: child)),
-            if (s is KhoaAppDangXet)
+            if (s is KhoaAppDangXet || s is KhoaAppDangRoi)
               const Positioned.fill(child: AbsorbPointer(child: ColoredBox(color: AppColors.background))),
             if (s is KhoaAppKhoa)
               Positioned.fill(child: ManKhoa(trangThai: s, khiQuenPin: khiQuenPin, dongHo: dongHo ?? DateTime.now)),

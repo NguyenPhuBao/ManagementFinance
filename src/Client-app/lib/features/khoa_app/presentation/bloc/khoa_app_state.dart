@@ -22,6 +22,12 @@ class KhoaAppDangXet extends TrangThaiKhoaApp {
   const KhoaAppDangXet();
 }
 
+/// Đang rời phiên (đang khoá / đang xét rồi mất phiên): giữ lớp phủ ĐẶC, cùng hình với [KhoaAppDangXet], cho tới khi router
+/// đã đứng yên ở route công khai — gỡ sớm hơn là trang được bảo vệ lộ ra dưới hiệu ứng chuyển sang màn Đăng nhập.
+class KhoaAppDangRoi extends TrangThaiKhoaApp {
+  const KhoaAppDangRoi();
+}
+
 /// Không có phiên — không khoá (màn Đăng nhập).
 class KhoaAppTat extends TrangThaiKhoaApp {
   const KhoaAppTat();

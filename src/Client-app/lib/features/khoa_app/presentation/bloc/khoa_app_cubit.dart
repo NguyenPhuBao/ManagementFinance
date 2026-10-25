@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -17,7 +18,11 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
     required Stream<AppLifecycleState> vongDoi,
     required Stream<int?> phien,
     DateTime Function()? clock,
+    ValueListenable<bool>? dungYenOCongKhai,
+    Duration vanAnToanRoi = const Duration(seconds: 3),
   })  : _service = service,
+        _dungYenOCongKhai = dungYenOCongKhai,
+        _vanAnToanRoi = vanAnToanRoi,
         _clock = clock ?? DateTime.now,
         super(const KhoaAppDangXet()) {
     _subVongDoi = vongDoi.listen(_khiVongDoi);
@@ -26,6 +31,12 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
 
   final KhoaAppService _service;
   final DateTime Function() _clock;
+
+  /// Router đã đứng yên ở route công khai (route trên cùng công khai ∧ hiệu ứng vào xong). `null` = không biết → mất phiên
+  /// thì gỡ lớp phủ ngay như trước (chỉ test cũ; `main.dart` luôn truyền).
+  final ValueListenable<bool>? _dungYenOCongKhai;
+  final Duration _vanAnToanRoi;
+  Timer? _henVanAnToan;
   late final StreamSubscription<AppLifecycleState> _subVongDoi;
   late final StreamSubscription<int?> _subPhien;
 
@@ -38,12 +49,19 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
   Future<void> nhanPhien(int? id) async {
     // `verifySession` phát lại AuthSuccess cùng tài khoản — không phải mở lạnh, không khoá lại.
     if (_daBietPhien && id == _id) return;
+    // Đang che (khoá, hoặc đang xét một phiên có tài khoản) mà mất phiên → phải giữ màn che tới khi router chuyển xong.
+    final dangChe = state is KhoaAppKhoa || (state is KhoaAppDangXet && _id != null);
+    _huyRoi();
     _daBietPhien = true;
     _id = id;
     _roiLuc = null;
     _cauHinh = null;
     if (id == null) {
-      emit(const KhoaAppTat());
+      if (dangChe && _dungYenOCongKhai != null) {
+        _batDauRoi();
+      } else {
+        emit(const KhoaAppTat());
+      }
       return;
     }
     emit(const KhoaAppDangXet());
@@ -55,6 +73,36 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
       return;
     }
     _khoa(c);
+  }
+
+  /// C1: mất phiên khi đang che. Điều kiện gỡ phải thoả NGAY nếu router đã đứng yên ở route công khai (Quên PIN → Đăng xuất:
+  /// router sang `/login` từ lúc `AuthLoading`); chưa thì chờ tín hiệu. Van an toàn: tín hiệu không bao giờ tới (router không
+  /// lên route công khai) thì sau [_vanAnToanRoi] vẫn gỡ — màn che vĩnh viễn tệ hơn một khung lộ.
+  void _batDauRoi() {
+    final tinHieu = _dungYenOCongKhai!;
+    if (tinHieu.value) {
+      emit(const KhoaAppTat());
+      return;
+    }
+    emit(const KhoaAppDangRoi());
+    tinHieu.addListener(_khiRouterDungYen);
+    _henVanAnToan = Timer(_vanAnToanRoi, _xongRoi);
+  }
+
+  void _khiRouterDungYen() {
+    if (_dungYenOCongKhai?.value ?? false) _xongRoi();
+  }
+
+  void _xongRoi() {
+    if (isClosed || state is! KhoaAppDangRoi) return;
+    _huyRoi();
+    emit(const KhoaAppTat());
+  }
+
+  void _huyRoi() {
+    _henVanAnToan?.cancel();
+    _henVanAnToan = null;
+    _dungYenOCongKhai?.removeListener(_khiRouterDungYen);
   }
 
   /// Trang Khoá ứng dụng gọi sau mỗi thay đổi — đọc lại cấu hình, KHÔNG khoá.
@@ -189,6 +237,7 @@ class KhoaAppCubit extends Cubit<TrangThaiKhoaApp> {
 
   @override
   Future<void> close() async {
+    _huyRoi();
     await _subVongDoi.cancel();
     await _subPhien.cancel();
     return super.close();
