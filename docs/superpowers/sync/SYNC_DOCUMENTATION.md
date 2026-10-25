@@ -1,5 +1,12 @@
 # TÀI LIỆU TỔNG KẾT BÁO CÁO ĐỒNG BỘ DỮ LIỆU (SYNC ENGINE DOCUMENTATION)
 
+> 🔀 **2026-10-25 — gộp `main` @ `0ab9cbd4` (tái phát):** commit backend `36f1ea43` lại viết đè tệp này thành *"Hợp đồng v4.0"*
+> (255 dòng). Client **giữ bản này** lần nữa (người dùng chốt): v4.0 ghi số trường sai so với hợp đồng thật (ví 16 / giao dịch 18
+> / mục tiêu 24 / hoá đơn 24 — thật là 13 / 13 / 22 / 21), và mục 6 *"Checklist cho Dev Client-App"* có một việc trái quy tắc đã
+> chốt (việc 4: thêm `provider` · `bank_tran_id` · `status` · `images` vào payload giao dịch — quy tắc 4 `CLAUDE.md`); các việc
+> còn lại client đã làm từ trước (kể cả `amount` mang dấu: `sync_payload_normalizer.dart` đổi `chi` → `Transaction` + số âm lúc
+> đẩy). Chi tiết: phần *Tái phát 2026-10-25* đơn **49**. Bản v4.0: `git show 36f1ea43:docs/superpowers/sync/SYNC_DOCUMENTATION.md`.
+
 > 🔀 **2026-10-23 — gộp `main` @ `ee6a65e5`:** commit backend `6cbd248e` đã viết lại tệp này thành bản *"Hợp đồng v3.0"*
 > (223 dòng). Client **giữ bản này** (người dùng chốt): bản v3.0 sai so với mã ở khoảng 15 chỗ — loại ví, `idaccount` của
 > danh mục hệ thống, công thức mốc kéo về, thứ tự đẩy, nhiều tên cột — và bỏ mất các ghi chú G67 / G85 / G34 bên dưới. Danh

@@ -247,6 +247,34 @@ describe('TẦNG 1: Kiểm thử Hiển thị & Thao tác giao diện Dashboard 
       expect(screen.getAllByText(/Đã trừ 9\.0 giờ bảo trì/i).length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  it('1.6. Thẻ Uptime: Bỏ hoàn toàn dòng chữ "Chuẩn SLA 30 ngày (Không gián đoạn)" theo đúng yêu cầu PO', async () => {
+    renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/100\.00%/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Tuyệt đối không còn dòng chữ Chuẩn SLA 30 ngày
+    expect(screen.queryByText(/Chuẩn SLA 30 ngày/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Không gián đoạn/i)).not.toBeInTheDocument();
+  });
+
+  it('1.7. Bảng Hoạt động & Badge: Loại bỏ hoàn toàn hiệu ứng lượn sóng animate-pulse trên bảng và animate-ping trên badge', async () => {
+    const { container } = renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.getByText('Admin Root')).toBeInTheDocument();
+    });
+
+    // Không có hàng tr nào trong bảng chứa animate-pulse
+    const pulsingRows = container.querySelectorAll('tbody tr.animate-pulse');
+    expect(pulsingRows.length).toBe(0);
+
+    // Không có phần tử badge nào chứa animate-ping
+    const pingElements = container.querySelectorAll('.animate-ping');
+    expect(pingElements.length).toBe(0);
+  });
 });
 
 describe('TẦNG 2: Kiểm thử Hoạt động thực tế & Tác động hệ thống (Real System Impact)', () => {
@@ -373,4 +401,36 @@ describe('TẦNG 2: Kiểm thử Hoạt động thực tế & Tác động hệ 
       expect(screen.getAllByText(/2 giờ 15 phút/i).length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  it('2.4. ServerHealthPanel: Đồng bộ uptime với Card Uptime từ prop uptimeData và bỏ chữ SLA 30d', async () => {
+    const customUptime = {
+      uptimePercent: 80.0,
+      uptimeFormatted: '4 giờ',
+      totalFormatted: '5 giờ',
+      downtimeSeconds: 3600,
+      uptimeSeconds: 14400,
+      totalSeconds: 18000,
+    };
+
+    render(
+      <MemoryRouter>
+        <LanguageProvider>
+          <SocketContext.Provider value={{ socket: mockSocket, connected: true }}>
+            <ServerHealthPanel uptimeData={customUptime} />
+          </SocketContext.Provider>
+        </LanguageProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      // Khớp 100% với giá trị 80.00% và 4 giờ
+      expect(screen.getByText('80.00%')).toBeInTheDocument();
+      expect(screen.getByText('4 giờ')).toBeInTheDocument();
+    });
+
+    // Không còn dòng SLA 30d
+    expect(screen.queryByText(/SLA 30d/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Tỷ lệ hoạt động \(Uptime\):/i)).toBeInTheDocument();
+  });
 });
+

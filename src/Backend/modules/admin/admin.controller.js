@@ -234,8 +234,8 @@ const adminController = {
         const record = (queryRes.data || []).find((x) => x.id === Number(id) || x.id === id);
         if (record && record.status === 'SCHEDULED' && record.started_at) {
           const hoursUntilStart = (new Date(record.started_at).getTime() - Date.now()) / (3600 * 1000);
-          if (hoursUntilStart < 4) {
-            return ResponseHandler.badRequest(res, 'Chỉ có thể hủy lịch bảo trì trước thời điểm bắt đầu ít nhất 4 tiếng!');
+          if (hoursUntilStart < 3) {
+            return ResponseHandler.badRequest(res, 'Chỉ có thể hủy lịch bảo trì trước thời điểm bắt đầu ít nhất 3 tiếng!');
           }
         }
       } catch (_) {}

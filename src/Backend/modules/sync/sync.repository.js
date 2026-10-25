@@ -248,6 +248,7 @@ const syncRepository = {
       select: {
         idcategory: true,
         create_by: true,
+        create_at: true,
         name_category: true,
         classify: true,
         is_default: true,

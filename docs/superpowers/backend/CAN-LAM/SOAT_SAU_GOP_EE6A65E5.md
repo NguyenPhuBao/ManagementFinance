@@ -55,6 +55,25 @@ bản cũ.
 **Kiểm lại:** `git diff ee6a65e5 <commit gộp của client> -- docs/superpowers/sync/SYNC_DOCUMENTATION.md` (bản client + đoạn đầu);
 với `Sync-To-ClientApp.md`: `grep -n "NameWallet\|Total_amount\|e-wallet" docs/Admin-web/Sync-To-ClientApp.md` → 0 dòng.
 
+### Tái phát 2026-10-25 — `36f1ea43` (*"sync module contract v4"*, PR #159) viết đè lần hai
+
+Client gộp `main` @ `0ab9cbd4` và **lại giữ bản của client** (người dùng chốt), thêm đoạn đầu tệp thứ hai. Xin như trên: **đừng sửa
+thẳng tệp này**; muốn client đổi gì thì ghi đơn. Bản v4.0 (255 dòng) sửa được vài chỗ của v3.0 (`over_spending` nay là `Stop`/`Over`)
+nhưng còn sai:
+
+| Bản v4.0 nói | Đúng (theo mã) | Bằng chứng |
+|---|---|---|
+| Số trường: ví 16 · danh mục 14 · mục tiêu 24 · hoá đơn 24 · ngân sách 19 · giao dịch 18 | Payload đẩy thật: ví **13**, mục tiêu **22**, hoá đơn **21**, giao dịch **13** (đếm bằng máy từ tệp test) | `src/Client-app/test/core/sync/sync_payload_contract_test.dart` |
+| ⚠️ Checklist 4: thêm `status` · `provider` · `images` · `bank_tran_id` vào giao dịch | **Không làm** — nhóm đã bỏ liên kết ngân hàng; bốn cột ấy cố ý không đi chiều nào (quy tắc 4 `CLAUDE.md`, tệp test khoá 13 trường). Thêm `provider` / `bank_tran_id` khi `uq_transaction_external` còn là ràng buộc toàn cục từng là đường tới vòng đẩy vô hạn | `CLAUDE.md` quy tắc 4; tệp test (0 lần nhắc `provider`, `bank_tran_id`, `images`) |
+| Checklist 5: bổ sung `id_bank_casso` cho ví | **Không làm** — cùng lý do (liên kết ngân hàng đã bỏ); client chỉ *đọc* được `banking` cho hàng cũ | `lib/features/wallet/domain/wallet_type.dart` |
+| Checklist 9: `threshold_warning_percent` *"kiểu số nguyên"* | Cột `Decimal(15,2)`, client gửi số trong 0–100 (như vế A dòng *INT* ở bảng trên) | `schema.prisma`; tệp test |
+| Checklist 1: thứ tự mảng *bắt buộc* … `budgets → transactions` | Như bảng trên: server tự sắp theo `ENTITY_PRIORITY`; ràng buộc thật chỉ là goal / bill trước giao dịch | `sync.service.js`; `thu_gom_day.dart` |
+| Checklist 2, 3, 5 (`'Active'`/`'Inactive'`), 6, 7, 8 *"cần làm"* | **Đã làm từ trước**, có ca test canh — kể cả 3: `amount` mang dấu do `SyncPayloadNormalizer` đổi lúc đẩy (`chi` → `Transaction` + số âm, `transfer` → `Transfer`), SQLite vẫn lưu dương | `lib/core/sync/sync_payload_normalizer.dart:59-75`; tệp test |
+| Checklist 10: client đọc `create_at` của danh mục | Không cần — client không sắp / lọc danh mục theo giờ tạo; trường mới trong `/sync/pull` vô hại (nhánh kéo về bỏ qua khoá lạ) | `lib/core/sync/ap_du_lieu_keo_ve.dart` |
+
+**Kiểm lại:** `git show 36f1ea43:docs/superpowers/sync/SYNC_DOCUMENTATION.md | grep -n "16 trường\|18 trường"` (bản v4) so với
+`grep -c "provider\|bank_tran_id" src/Client-app/test/core/sync/sync_payload_contract_test.dart` → 0.
+
 ---
 
 ## B (vừa) — `docs/Admin-web/Event-Notification-to-ClientApp.md` bảo client xoá SQLite khi `ACCOUNT_DELETED`

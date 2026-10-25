@@ -1,7 +1,7 @@
-# 🖥️ Chức Năng 03: Giám Sát Sức Khỏe Máy Chủ & Đo Lường Uptime SLA 30 Ngày (Server Health & SLA Monitoring)
+# 🖥️ Chức Năng 03: Giám Sát Sức Khỏe Máy Chủ & Đo Lường Uptime Hệ Thống Thực Tế (Server Health & Uptime Monitoring)
 
 > **Mã chức năng:** `ADMIN-FEAT-03`  
-> **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
+> **Phiên bản tài liệu:** `v2.7` (Cập nhật ngày 23/10/2026 theo phê duyệt của PO)  
 > **Module phụ trách:**  
 > - Frontend: `src/Admin-web/src/components/common/ServerHealthPanel.jsx`, `DashboardPage.jsx`  
 > - Backend: `src/Backend/modules/admin/admin.service.js`, `src/Backend/core/resilience/event-loop-monitor.js`, `src/Backend/core/resilience/db-bulkhead.js`, `src/Backend/index.js`  
@@ -10,12 +10,14 @@
 
 ## 📌 1. TỔNG QUAN & MỤC ĐÍCH NGHIỆP VỤ
 
-**Giám Sát Sức Khỏe Máy Chủ & Đo Lường Uptime SLA** là bảng chỉ số hạ tầng thời gian thực cung cấp cho quản trị viên cái nhìn trực diện về trạng thái vận hành của máy chủ Node.js và CSDL PostgreSQL. 
+**Giám Sát Sức Khỏe Máy Chủ & Đo Lường Uptime Hệ Thống** là bảng chỉ số hạ tầng thời gian thực cung cấp cho quản trị viên cái nhìn trực diện về trạng thái vận hành của máy chủ Node.js và CSDL PostgreSQL. 
 
 Điểm nổi bật của chức năng này:
-1. **Công thức tính tỷ lệ hoạt động liên tục (Uptime Percentage) theo tiêu chuẩn cam kết dịch vụ SLA 30 ngày**, loại bỏ các con số ảo 100% khi server vừa mới được deploy hoặc restart, phản ánh độ tin cậy thực tế của nền tảng dịch vụ.
-2. **Giám sát phần cứng chính xác theo môi trường (Hardware Metric Calibration):** Tự động phân biệt giữa môi trường Cloud Container (cgroup_v2 quota) và Host vật lý, tính toán CPU delta ticks thay vì cumulative ticks, tránh hiện tượng RAM 0/100 MB ảo.
-3. **Cửa thoát hiểm khẩn cấp (Emergency Maintenance Outpost):** Tích hợp công tắc bật bảo trì khẩn cấp độc lập với cơ chế khóa công tắc an toàn tại Dashboard khi bảo trì đang hoạt động, hướng dẫn quản trị viên chuyển hướng sang trang Quản trị Bảo trì.
+1. **Công thức tính tỷ lệ hoạt động thực tế (Uptime Percentage):** Tỷ lệ thời gian hệ thống chạy được trên tổng thời gian từ lúc bắt đầu chạy, trừ đi toàn bộ thời gian hệ thống tạm dừng do bảo trì (Scheduled/Emergency Maintenance). Số liệu được tính lại liên tục mỗi phút kể cả khi đang bảo trì.
+2. **Loại bỏ dòng chữ cũ:** Không còn sử dụng dòng chữ cố định "Chuẩn SLA 30 ngày (Không gián đoạn)".
+3. **Đồng bộ nguồn dữ liệu duy nhất:** Cả Card Uptime tại Dashboard và UptimeWidget trong Tab Sức khỏe hệ thống đều sử dụng chung một nguồn dữ liệu `uptimeData` được phân phát từ Backend.
+4. **Giám sát phần cứng chính xác theo môi trường (Hardware Metric Calibration):** Tự động phân biệt giữa môi trường Cloud Container (cgroup_v2 quota) và Host vật lý, tính toán CPU delta ticks thay vì cumulative ticks, tránh hiện tượng RAM 0/100 MB ảo.
+5. **Cửa thoát hiểm khẩn cấp (Emergency Maintenance Outpost):** Tích hợp công tắc bật bảo trì khẩn cấp độc lập với cơ chế khóa công tắc an toàn tại Dashboard khi bảo trì đang hoạt động, hướng dẫn quản trị viên chuyển hướng sang trang Quản trị Bảo trì.
 
 ---
 
@@ -24,11 +26,12 @@
 ```mermaid
 graph TD
     subgraph "Tiến Trình Node.js & Phần Cứng (OS Level)"
-        A1[process.uptime: Thời gian chạy tính bằng giây]
+        A1[process.uptime & SERVER_START_TIME]
         A2[os.cpus: Tính toán chênh lệch Delta Ticks giữa 2 mẫu]
         A3[cgroup_v2 vs os.totalmem: Quota Container Cloud vs Host RAM]
         A4[EventLoopMonitor: Micro-timer đo độ trễ Event Loop lag ms]
         A5[DbBulkhead: Đếm kết nối Client Pool vs Admin Reserved Pool]
+        A6[maintenance_history: Tổng số giây gián đoạn do bảo trì]
     end
 
     subgraph "Bộ Điều Phối Metrics Backend (src/Backend)"
@@ -37,8 +40,8 @@ graph TD
         B3[Socket.io Hub: admin_room]
     end
 
-    subgraph "Thành Phần Giao Diện (src/Admin-web - ServerHealthPanel)"
-        C1[UptimeWidget: Tiến trình SLA 30 ngày & Thời gian chạy]
+    subgraph "Thành Phần Giao Diện (src/Admin-web - ServerHealthPanel & DashboardPage)"
+        C1[Card Uptime & UptimeWidget: Đồng bộ 100% tỷ lệ % và thời gian chạy]
         C2[Thanh đo tải CPU: Đa nhân thực tế + nhãn vCPU/cores]
         C3[Thanh đo RAM: MB RSS chiếm dụng / Quota Cloud hoặc Host]
         C4[Độ trễ Event Loop: Đo ms & Cờ cảnh báo nghẽn]
@@ -46,33 +49,36 @@ graph TD
         C6[Cửa thoát hiểm bảo trì: Khóa công tắc khi Active + SafeMaintenanceLink]
     end
 
-    A1 & A2 & A3 & A4 & A5 -->|Thu thập chu kỳ 3 giây| B1
-    A1 & A2 & A3 & A4 & A5 -->|Yêu cầu theo REST API| B2
+    A1 & A2 & A3 & A4 & A5 & A6 -->|Thu thập chu kỳ 3 giây| B1
+    A1 & A2 & A3 & A4 & A5 & A6 -->|Yêu cầu theo REST API| B2
     
     B1 -->|emit admin.metrics_stream| B3
     B3 -->|Socket Stream 3s| C1 & C2 & C3 & C4 & C5
-    B2 -->|Fallback Polling 60s| C1 & C2 & C3 & C4 & C5 & C6
+    B2 -->|Fallback Polling 10s/60s| C1 & C2 & C3 & C4 & C5 & C6
 ```
 
 ### 2.1. Luồng truyền tải kép (Dual-Path Delivery)
 1. **Luồng Real-time Stream chính (Primary):** `System Metrics Streamer` chạy ngầm định kỳ **3 giây/lần** trong `index.js`, phát sự kiện `admin.metrics_stream` trực tiếp vào room `admin_room`. Bảng điều khiển cập nhật kim đo và phần trăm ngay lập tức mà không cần gửi request HTTP.
-2. **Luồng REST Fallback dự phòng (Secondary):** Định kỳ **60 giây/lần** (hoặc khi mất kết nối mạng Socket), component tự động gọi API `GET /api/admin/system/health` để bảo toàn tính toàn vẹn dữ liệu.
+2. **Luồng REST Fallback dự phòng (Secondary):** Định kỳ **10 giây/lần** trên Dashboard (hoặc khi mất kết nối mạng Socket), component tự động gọi API `GET /api/admin/system/health` để bảo toàn tính toàn vẹn dữ liệu.
 
 ---
 
 ## 📐 3. CÁC CHỈ SỐ, CÔNG THỨC & CÁCH TÍNH TOÁN
 
-### 3.1. Công thức tính Uptime SLA 30 Ngày Chuẩn Hóa
-Nhiều hệ thống thường hiển thị "100% Uptime" ngay cả khi server vừa restart được 2 phút. Trong ManagementFinance, công thức phản ánh chính xác chu kỳ cam kết chất lượng dịch vụ (SLA Window 30 ngày):
+### 3.1. Công thức tính Uptime Hệ Thống Thực Tế (Quy chuẩn PO phê duyệt)
+Thời gian uptime là tỷ lệ thời gian hệ thống chạy được trên tổng thời gian từ lúc bắt đầu chạy, trừ đi toàn bộ thời gian gián đoạn do bảo trì:
 
-$$\text{SLA Window (seconds)} = 30 \times 24 \times 3600 = 2,592,000 \text{ giây}$$
+$$T_{\text{tổng}} = \text{now} - \text{SERVER\_START\_TIME}$$
+$$T_{\text{bảo trì}} = \sum \text{Downtime các phiên bảo trì trong quá khứ} + \text{Downtime phiên đang chạy (nếu có)}$$
+$$T_{\text{chạy}} = \max(0, T_{\text{tổng}} - T_{\text{bảo trì}})$$
+$$\text{Uptime Percentage (\%)} = \left(\frac{T_{\text{chạy}}}{T_{\text{tổng}}}\right) \times 100$$
 
-$$\text{Uptime Percentage (\%)} = \left(\frac{\text{uptimeSeconds}}{\max(\text{uptimeSeconds}, 2,592,000)} \times 100\right)$$
-
-- **Ý nghĩa vận hành:**
-  - Nếu server vừa restart chạy được 1 giờ (3,600s) $\implies \text{Uptime} \approx 0.139\%$.
-  - Nếu server duy trì hoạt động ổn định liên tục đủ 30 ngày $\implies \text{Uptime} = 100.000\%$.
-  - Khuyến khích đội ngũ kỹ thuật duy trì server bền vững, không restart bừa bãi.
+- **Ví dụ minh họa chuẩn:**
+  1. Hệ thống chạy được 2 tiếng $\implies T_{\text{tổng}} = 2\text{h}, T_{\text{chạy}} = 2\text{h} \implies \text{Uptime} = 100\%$.
+  2. Hệ thống bật bảo trì 1 tiếng $\implies T_{\text{tổng}} = 3\text{h}, T_{\text{chạy}} = 2\text{h}, T_{\text{bảo trì}} = 1\text{h} \implies \text{Uptime} = 66.67\%$ (nếu xét toàn bộ) hoặc cập nhật động liên tục theo từng phút.
+  3. Hệ thống chạy thêm được 2 tiếng $\implies T_{\text{tổng}} = 5\text{h}, T_{\text{chạy}} = 4\text{h}, T_{\text{bảo trì}} = 1\text{h} \implies \text{Uptime} = 80\%$.
+- **Cơ chế tính toán lại trong lúc bảo trì:** 
+  - Kể cả khi hệ thống đang ở trạng thái bảo trì, $T_{\text{tổng}}$ vẫn tăng dần và thời gian bảo trì của phiên hiện tại tăng tương ứng, dẫn tới tỷ lệ Uptime tự động giảm xuống theo thời gian thực để người quản trị luôn thấy số liệu thực tế liên tục.
 
 ### 3.2. Định Dạng Chuỗi Thời Gian Hoạt Động (`formatUptimeDuration`)
 Chuyển đổi số giây thực tế `process.uptime()` thành định dạng tiếng Việt tự nhiên:
@@ -113,7 +119,7 @@ Hệ thống tự động phát hiện `cgroup_v2` memory quota trên các dịc
 
 | Chỉ số | Ngưỡng Bình thường | Ngưỡng Cảnh báo (Warning) | Ngưỡng Nguy cấp (Critical) |
 |---|:---:|:---:|:---:|
-| **Uptime SLA** | $\ge 99.5\%$ (Xanh ngọc) | $95.0\% - 99.4\%$ (Vàng hổ phách) | $< 95.0\%$ (Đỏ hồng) |
+| **Tỷ lệ Uptime Hệ thống** | $\ge 99.5\%$ (Xanh ngọc) | $95.0\% - 99.4\%$ (Vàng hổ phách) | $< 95.0\%$ (Đỏ hồng) |
 | **CPU Sử Dụng** | $< 70\%$ | $70\% - 84\%$ | $\ge 85\%$ |
 | **RAM Sử Dụng** | $< 70\%$ | $70\% - 84\%$ | $\ge 85\%$ |
 | **Event Loop Lag** | $< 25\text{ms}$ | $25\text{ms} - 49\text{ms}$ | $\ge 50\text{ms}$ (Bật cờ quá tải) |
