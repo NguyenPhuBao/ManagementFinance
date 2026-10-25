@@ -624,7 +624,13 @@ src/Backend/
   Test: 7 lớp giả `implements FlutterSecureStorage` đổi `IOSOptions` / `MacOsOptions` → `AppleOptions`. **M5 đóng** (`f1daea24`, người dùng chọn *Back đưa app xuống
   nền*): `LopKhoaApp` giữ Back qua `didPopRoute` — đăng ký trước `Router` con và Flutter hỏi theo thứ tự đăng ký (bẫy 14); tấm Quên PIN mở thì Back = Huỷ; hàm dùng
   chung `duaAppXuongNen` tách từ `ThoatHaiLan`. **Thanh trạng thái** màn khoá tự đặt kiểu trong suốt (`AnnotatedRegion`, bẫy 26) + lớp mờ tấm Quên PIN phủ cả thanh
-  trạng thái (`c5010e1b`). Đo trên máy đạt cả ba. Còn: chạm **vân tay** sau khi nâng kho (người dùng vắng lúc đo), các bước đăng xuất.
+  trạng thái (`c5010e1b`). Đo trên máy đạt cả ba; vân tay sau khi nâng kho người dùng chạm — đạt.
+- **Buổi 2b (2026-10-25 tối, các bước đăng xuất — mục 10 *Buổi 2b*):** backend nền trỏ `PersonFinance` (kiểm danh tính CSDL trước bằng script chỉ đọc), "mạng treo"
+  giả bằng máy chủ TCP không trả lời (máy bay không cắt `adb reverse`), khoá tài khoản thử bằng API admin rồi mở lại ngay. **Đạt:** D-1 (vẫn khoá) · 10 / P12 · 10a mạng treo
+  + có mạng · M11 trên máy · 12a (socket `force_logout` khi đang khoá) · 12b (phiên chết lúc mở lạnh) — **C1 ba đường đạt theo video** (tách khung 1/60 s bằng WinRT,
+  định vị bằng cỡ JPEG); 11 đạt có điều kiện (lượt đồng bộ đầu xong < 1 s, chưa chen được vào giữa). Lộ **M14**: `dongPhien` xoá alias vân tay **trước** POST đăng xuất →
+  đăng xuất bị cắt giữa chừng làm vân tay tự tắt với câu *"Vân tay trên máy đã thay đổi"* (sai lý do; an toàn không đổi) — chờ người dùng chọn hướng sửa. Quan sát
+  ngoài khoá app: `Unhandled Exception: WebSocketConnectionClosed` từ `socket_io_client` khi server cắt socket. Script đo lưu `D:\FlowMoney-saoluu\cong-cu-do\`.
 
 - **Nghiệm thu Realme buổi 1 (2026-10-25 chiều, bản release, backend tắt — mục 10 `KHOA_APP_FEATURE.md`):** đạt bật / mở lạnh / tự khoá (30 s, Ngay,
   5 phút) / sai PIN + chờ + P9 / vân tay (mở, tạm khoá, thêm vân tay mới → tự tắt) / **I1 tách riêng** (giờ tường +19,7 s, đồng hồ khởi động +90,2 s → khoá;

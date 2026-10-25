@@ -8,12 +8,14 @@
 > ◐ **Nghiệm thu Realme buổi 1 (2026-10-25, bản release) — mục 10:** đạt các bước không cần đăng xuất (bật, mở lạnh, tự khoá, sai PIN,
 > vân tay, thêm vân tay mới, I1 tách riêng bằng chỉnh giờ lùi, G100, G106, chạm đôi). Buổi đo bắt **F1** (quay lại app lộ ~1 khung nội
 > dung) → **đã sửa và đo lại đạt** (`Mo(che)` ở `inactive`, bẫy 25); **M11** (dòng nhắc *"Khoá ứng dụng đã tắt"*) làm theo người dùng chốt
-> (bẫy 24). `kSoVongMacDinh` = **50.000** theo số đo release. 🚧 **Còn mở:** mọi bước có **đăng xuất** (10, 10a, 11, 12, D-1 — gồm C1 và
-> M11 trên máy) chờ backend `PersonFinance`; TalkBack; quét ảnh / PayOS / chạm thông báo khi khoá; 320 dp (ColorOS chặn `wm density`).
+> (bẫy 24). `kSoVongMacDinh` = **50.000** theo số đo release. 🚧 **Còn mở:** ~~mọi bước có **đăng xuất**~~ (✅ Buổi 2b); TalkBack (nghe thật);
+> quét ảnh / PayOS / chạm thông báo khi khoá; 320 dp (ColorOS chặn `wm density`); M14.
 > ✅ **2026-10-25 tối (phiên 7, bản debug trên Realme):** **M5 đã sửa và đo đạt** — Back trên màn khoá đưa app xuống nền, tấm Quên PIN mở thì
 > Back = Huỷ (bẫy 14, `f1daea24`); **thanh trạng thái** màn khoá tự đặt kiểu trong suốt (bẫy 26, `f1daea24` + `c5010e1b`);
 > **`flutter_secure_storage` 9.2.4 → 10.3.4** (`f5a90f4b`) — kho thật 16 mục chuyển sang RSA-OAEP + AES-GCM, PIN / gói / mốc đồng bộ
-> còn nguyên (mục 10, *Buổi 2*); hệ quả với I2 ở bẫy 27.
+> còn nguyên (mục 10, *Buổi 2*); hệ quả với I2 ở bẫy 27. Cùng tối, **các bước đăng xuất** (mục 10, *Buổi 2b*, backend `PersonFinance`):
+> D-1 · 10 · 10a (mạng treo + có mạng) · 11 (có điều kiện) · 12a · 12b · M11 — **đạt**; **C1 ba đường đạt theo video** (tách khung 1/60 s).
+> Lộ **M14** (mục 8): đăng xuất bị cắt giữa chừng làm vân tay tự tắt với câu *"Vân tay trên máy đã thay đổi"*.
 > Spec: `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (đã sửa theo thiết kế cuối 2026-10-25).
 > Mảng mã: `src/Client-app/lib/features/khoa_app/` (21 tệp, 2.401 dòng, đếm 2026-10-25 tối sau M5 + thanh trạng thái; chiều 2.310) +
 > `android/…/SinhTrac.kt` + hàm dùng chung `duaAppXuongNen` (`lib/shared/widgets/thoat_hai_lan.dart`).
@@ -319,6 +321,11 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 - **M12** `BIOMETRIC_ERROR_TIMEOUT` → `LOI` (nên `HUY`), `SECURITY_UPDATE_REQUIRED` → nên `KHONG_HO_TRO` (người chờ ở màn khoá thấy câu chung *"Không mở được bằng vân tay — nhập mã PIN"*); `SinhTrac.kt` `xoaHet` một `try` chung quanh `forEach deleteEntry`.
   Đo Realme 2026-10-25: hộp vân tay đứng **78 s không tự hết giờ** — `TIMEOUT` gần như không gặp trên máy này; ưu tiên thấp.
 - **M13** Lớp phủ không nhận phím số của bàn phím vật lý (chỉ Tab + Enter từng phím) — để lại, đã ghi.
+- **M14** (nghiệm thu Realme 2026-10-25 tối, bước D-1) Đăng xuất bị cắt giữa chừng → vân tay **tự tắt** với câu báo **sai lý do**. `AuthBloc._onLogoutRequested`
+  chạy `dongPhien()` (xoá alias Keystore vân tay, bẫy 4) **trước** `authRepository.logout()` (POST rồi mới xoá token); giết tiến trình giữa lúc POST treo thì token +
+  cấu hình PIN còn (đúng bẫy 5 — vẫn khoá) nhưng alias đã mất → lần mở sau kênh trả `VO_HIEU` → `tatVanTay` + *"Vân tay trên máy đã thay đổi — nhập mã PIN rồi bật lại
+  trong Cài đặt"* dù người dùng không đổi vân tay nào. An toàn không đổi (vẫn khoá, PIN mở). Hướng sửa (chưa chọn — hỏi người dùng): Kotlin `mo` phân biệt *alias không còn*
+  (`containsAlias` sai) với *khoá bị vô hiệu* (`KeyPermanentlyInvalidatedException`) → câu riêng *"Vân tay đã tắt — …"*; hoặc dời xoá alias về sau `logout()`.
 - **Sau soát lại đợt sửa (2026-10-25, để lại):** `DatMaPinPage._napCho` đọc kho kiểu khoan dung và nuốt lỗi → đọc hỏng thì chế độ `dat` vẫn ghi đè PIN mà không hỏi PIN cũ (M4 chỉ đóng
   khi đọc được; lối vào chỉ là route nội bộ). `TheoDoiRouteCongKhai`: `didPop` / `didRemove` có thể ghi một popup qua `previousRoute` (kẹt `false` tới lần push kế — chiều đóng, van an toàn gỡ),
   `didReplace` có popup ở một vế thì mất route trên cùng — cả hai chưa xảy ra được với mã hôm nay; hướng sửa: observer giữ danh sách route trang riêng. Ca nối router thật mới ghim `/login` —
@@ -457,8 +464,35 @@ bằng adb (PIN gõ qua toạ độ phím đọc từ `uiautomator`); **chạm v
 | Bản `--release` | ✅ dựng đạt qua R8 (226,9 MB) — không cài (dữ liệu đo nằm ở bản debug) |
 | 20 Back khi khoá — M5 (`f1daea24`) | ✅ Trang *Khoá ứng dụng* → Home 32 s → mở: khoá, hộp vân tay → Back huỷ hộp → **Back trên màn khoá → launcher**, tiến trình giữ nguyên (pid 21563) → mở lại (không có hộp — một lần mỗi lần khoá) → Back → launcher lần nữa → mở → PIN → **đúng trang *Khoá ứng dụng*** (buổi 1: về tab Cá nhân). Tấm Quên PIN mở → Back → **tấm đóng, app vẫn ở màn khoá**. Lớp đặc lúc mở lạnh (lần đầu sau cài bản debug ~10 s mới hết `DangXet`) → Back → app ở lại |
 | Thanh trạng thái (`f1daea24` + `c5010e1b`) | ✅ Lớp đặc lúc mở lạnh và màn khoá: thanh trạng thái **trong suốt** (màu kem), biểu tượng tối — hết dải xám dù Trang chủ nằm dưới. Tấm Quên PIN bản đầu: lớp mờ dừng dưới thanh trạng thái, để lại dải kem sáng → `c5010e1b` → đo lại: lớp mờ phủ liền cả thanh trạng thái |
-| Vân tay sau khi nâng kho | 🚧 chưa — người dùng chạm (alias Keystore của `SinhTrac.kt` là kho riêng, gói không đụng; hộp tự hiện cả hai lượt) |
+| Vân tay sau khi nâng kho | ✅ 18:50 người dùng chạm phím vân tay trên màn khoá → hộp hệ thống 2 s → Trang chủ (người dùng xác nhận đã chạm vân tay, không nhập PIN) |
 
 Bẫy của buổi: Back trên màn khoá nay **đưa app xuống nền**, mà hộp vân tay chỉ tự hiện một lần mỗi lần khoá — một phím Back "để huỷ hộp" ở lần mở thứ
 hai rơi vào màn khoá, và sáu cú chạm PIN kế đó rơi vào **launcher** của người dùng (vùng trống, không mở app nào). Kiểm `mCurrentFocus` trước **mỗi**
 chuỗi chạm, kể cả giữa hai lệnh của cùng một lượt.
+
+**Buổi 2b — 2026-10-25 tối (18:53–19:16), Realme, bản debug, các bước ĐĂNG XUẤT.** Điều kiện A: kiểm danh tính CSDL trước (script chỉ đọc:
+`current_database()` = `PersonFinance`, tài khoản 10 `Active`), sao lưu `D:\FlowMoney-saoluu\realme-tk10-truoc-dang-xuat-2026-10-25-1853\` (CSDL + `shared_prefs/`;
+⚠️ tên tệp `FlutterSecureStorageConfiguration:FlutterSecureStorage.xml` có dấu `:` — trên NTFS cần chú ý khi khôi phục), backend nền trỏ `PersonFinance` +
+`DATA_ENCRYPTION_KEY` dev + `adb reverse tcp:3000`. Lượt đầu nối backend: `/auth/profile`, `/subscription-info`, `/sync/pull` đều 200, không lỗi giải mã.
+⚠️ App đi qua `adb reverse` (USB) nên **chế độ máy bay không làm POST treo** — "mạng treo" giả bằng một máy chủ TCP nhận kết nối mà không trả lời
+(`node may_chu_treo.js 3001` + `adb reverse tcp:3000 tcp:3001`; ba script đo của buổi — `may_chu_treo.js`, `tach_khung.ps1`, `kiem_tk10.js` (kiểm danh tính CSDL, chỉ đọc) — lưu ở `D:\FlowMoney-saoluu\cong-cu-do\`); `receiveTimeout` 30 s. Người dùng quay video (trình *Ghi màn hình*), Claude điều khiển
+bằng adb; khoá tài khoản thử bằng API admin `PATCH /api/admin/updatestatus/10` (`iduser` = 10), mở lại ngay sau mỗi lượt (đọc CSDL xác nhận `Active`).
+
+| Bước | Kết quả |
+|---|---|
+| D-1 Giết tiến trình giữa lúc đăng xuất | ✅ Máy chủ treo → *Quên mã PIN?* → *Đăng xuất* (POST `/api/auth/logout` tới máy chủ treo lúc 18:58:31,5; tấm giữ hai nút khoá — M9) → force-stop sau 2,4 s → trả backend thật → mở lại: **vẫn khoá**, PIN mở được, vẫn đăng nhập. ⚠️ Lộ **M14**: màn khoá báo *"Vân tay trên máy đã thay đổi…"*, nút vân tay biến mất — `dongPhien` đã xoá alias trước POST (mục 8) |
+| 10a mạng treo **[quay]** | ✅ Tấm khoá nút suốt 30 s POST treo → hết giờ → màn Đăng nhập. **Video** (`Record_2026-10-25-19-00-42.mp4` trên máy, t = 98,600 → 98,717 s): màn khoá + tấm chuyển **thẳng** sang Đăng nhập, mọi khung khác biệt sau đó là màn Đăng nhập — **C1 đường 1 đạt** |
+| 10 / P12 | ✅ Force-stop → mở lại: màn Đăng nhập, chạm ô *Tên đăng nhập* → nhận tiêu điểm, bàn phím hiện, không lớp phủ |
+| M11 trên máy | ✅ Đăng nhập lại bằng mật khẩu → **không** màn khoá, dòng nhắc *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"*, hàng *Khoá ứng dụng* ở Cá nhân không còn viên *Đang bật*, dữ liệu còn (kéo về cùng mốc cũ — không bị dọn). Nhắc cả sau đăng nhập ở đường cưỡng chế (12b) |
+| 10a có mạng **[quay]** | ✅ POST logout 200 trong 46 ms; video (`Record_2026-10-25-19-06-08.mp4`, t ≈ 61,1 → 61,2 s): tấm → Đăng nhập, không khung lạ |
+| 11 Vuốt khỏi Đa nhiệm sau Quên PIN | ◐ **Đạt có điều kiện**: force-stop 2,8 s sau khi chạm *Đăng nhập* → mở lại vào thẳng Trang chủ, **không** hỏi PIN cũ. Nhưng lượt đồng bộ đầu (backend cục bộ) xong trong < 1 s, tức lần giết rơi **sau** lượt ấy — không chen được vào *giữa* lượt. Thứ tự xoá cấu hình ngay sau `login()` (I4) do test đơn vị canh. Muốn đo đúng "giữa lượt" cần proxy giữ riêng `/sync/pull` |
+| 12b Phiên chết lúc mở lạnh **[quay]** | ✅ App tắt → admin khoá TK10 → mở lạnh: `/auth/profile` 401 → đăng xuất + hộp thoại *"Tài khoản đã bị vô hiệu hoá. Lý do: …"*. **Video** (t ≈ 313,8–322 s, 552 khung, 51 khác nhau): launcher → hiệu ứng mở → splash → lớp đặc → màn khoá → lớp đặc (`DangRoi`) → Đăng nhập → hộp thoại — **không khung nội dung**; C1 đường 3 đạt |
+| 12a Cưỡng chế khi đang khoá **[quay]** | ✅ App mở, đang khoá → admin khoá TK10 → socket `account.force_logout` (logcat *"Bị buộc đăng xuất: biKhoa"*) → **video** (t ≈ 459–460 s): màn khoá → lớp đặc (459,283 s) → Đăng nhập + hộp thoại (459,617 s) — C1 đường 2 đạt |
+
+Cách đọc video: `tach_khung.ps1` (WinRT `GetThumbnailAsync`, `NearestFrame`, Windows PowerShell 5.1) quét thô 1 s / khung để định vị bằng **cỡ tệp
+JPEG** (432 × 960: màn khoá ≈ 26 KB · lớp đặc ≈ 11,7 KB · splash ≈ 14,5 KB · Đăng nhập ≈ 45 KB, có hộp thoại ≈ 50 KB · tấm Quên PIN ≈ 41 KB · launcher
+≈ 110 KB), rồi tách 1/60 s quanh chỗ chuyển, gộp khung trùng bằng MD5 và **mở xem mọi khung có cỡ lạ** (đều là hiệu ứng mở app / splash mờ dần).
+Mốc giờ: tên tệp video = giờ máy lúc bắt đầu; giờ máy chậm hơn giờ PC ~1 s (logcat 19:13:47,9 so với PC 19:13:48,9).
+Quan sát ngoài khoá app: lúc server cắt socket (12a), logcat có `Unhandled Exception: WebSocketConnectionClosed` từ `socket_io_client`
+(`IOWebSocket.close`) — app vẫn chạy đúng; chưa điều tra, chưa ghi ở đâu khác.
+Cuối buổi: khoá app BẬT lại (PIN 135790, vân tay — người dùng chạm, *Tự khoá sau* 30 giây); backend + máy chủ treo đã tắt; token admin tạm đã xoá.
