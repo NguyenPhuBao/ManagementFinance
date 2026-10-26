@@ -559,7 +559,9 @@ class _BudgetCard extends StatelessWidget {
         decoration: cardDecoration,
         child: Column(
           children: [
-            LayoutBuilder(builder: (context, rang) {
+            // `BoCucTheoFont`, không `LayoutBuilder` trần: font Inter nạp sau
+            // khung đầu, phép đo phải chạy lại khi ấy.
+            BoCucTheoFont(builder: (context, rang) {
               final phu = _subtitle(b);
               final daChi = CurrencyFormatter.format(b.spent);
               final hanMuc = '/ ${CurrencyFormatter.format(b.amount)}';

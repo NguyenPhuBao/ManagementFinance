@@ -9,6 +9,9 @@ import 'package:flutter/widgets.dart';
 /// đều xếp chồng khi đo thấy không vừa một hàng. Màn hẹp có hai nguồn — cỡ chữ
 /// hệ thống lớn, và "cỡ hiển thị" của ColorOS (đổi mật độ, 360 → 320 dp) — và
 /// phép đo này phủ cả hai.
+///
+/// ⚠️ Đo trong `builder` của [BoCucTheoFont], không phải `LayoutBuilder` trần:
+/// font của app nạp sau khung đầu, xem lớp ấy.
 double doRongChu(BuildContext context, String chu, TextStyle kieu) {
   final tp = TextPainter(
     text: TextSpan(
@@ -20,4 +23,47 @@ double doRongChu(BuildContext context, String chu, TextStyle kieu) {
   final rong = tp.width;
   tp.dispose();
   return rong;
+}
+
+/// `LayoutBuilder` dựng lại khi font hệ thống đổi — cho mọi bố cục chọn theo
+/// bề rộng chữ đo lúc dựng ([doRongChu], `TextPainter`).
+///
+/// Font Inter của app tải bằng `google_fonts` (không đóng gói sẵn) và nạp
+/// **sau** khung đầu — từ bộ nhớ đệm, hoặc từ mạng ở lần chạy đầu. Trang dựng
+/// sớm (màn Đăng nhập, Trang chủ lúc mở lạnh) đo bằng font dự phòng. `Text` tự
+/// đo lại khi font nạp xong (`RenderParagraph` nghe
+/// `PaintingBinding.systemFonts`), còn phép đo trong `builder` thì không: ràng
+/// buộc không đổi nên `LayoutBuilder` không gọi lại — máy ảo 320 dp × cỡ chữ
+/// 1,6 (2026-10-26) vẽ nút *"Googl"* cụt chữ vì đo theo font dự phòng hẹp hơn
+/// Inter.
+class BoCucTheoFont extends StatefulWidget {
+  const BoCucTheoFont({super.key, required this.builder});
+
+  final Widget Function(BuildContext context, BoxConstraints rang) builder;
+
+  @override
+  State<BoCucTheoFont> createState() => _BoCucTheoFontState();
+}
+
+class _BoCucTheoFontState extends State<BoCucTheoFont> {
+  @override
+  void initState() {
+    super.initState();
+    PaintingBinding.instance.systemFonts.addListener(_doiFont);
+  }
+
+  @override
+  void dispose() {
+    PaintingBinding.instance.systemFonts.removeListener(_doiFont);
+    super.dispose();
+  }
+
+  void _doiFont() {
+    if (mounted) setState(() {});
+  }
+
+  // `LayoutBuilder` mới mỗi lần dựng: phần tử của nó gọi lại `builder` khi
+  // widget được thay, kể cả khi ràng buộc không đổi.
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: widget.builder);
 }

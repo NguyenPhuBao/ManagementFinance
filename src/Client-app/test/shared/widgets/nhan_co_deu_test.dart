@@ -3,9 +3,12 @@
 /// Realme (2026-10-26, buổi 4 `KHOA_APP_FEATURE.md`): *"Quét"*, *"Nói"* to hơn hẳn ba nhãn bên cạnh.
 library;
 
+import 'dart:io';
+
 import 'package:flowmoney/shared/widgets/nhan_co_deu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -63,5 +66,36 @@ void main() {
     for (final n in nhom) {
       expect(t.getSize(find.text(n)).width, lessThanOrEqualTo(80.5), reason: '"$n" vượt ô ở cỡ chữ 1,5');
     }
+  });
+  // Font của app (Inter, tải bằng `google_fonts`) nạp SAU khung đầu. Nhãn dựng lúc ấy đo theo font dự phòng và phải đo
+  // lại khi font nạp xong — máy ảo 320 dp × cỡ chữ 1,6 (2026-10-26) vẽ nút "Googl" cụt chữ ở màn Đăng nhập mở lạnh vì
+  // đo theo font dự phòng hẹp hơn Inter. Ở đây ngược chiều (font test rộng hơn Roboto) nhưng cùng phép kiểm: sau khi font
+  // nạp, cỡ vẽ phải bằng cỡ của một nhãn dựng mới.
+  testWidgets('font nạp SAU khung đầu: nhãn đo lại theo font thật', (t) async {
+    const ho = 'FontNapMuonNhanCoDeu';
+    Widget dung(Key k) => MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 60,
+                child: NhanCoDeu('Google', key: k, nhom: const ['Google'], kieu: const TextStyle(fontFamily: ho, fontSize: 14)),
+              ),
+            ),
+          ),
+        );
+    await t.pumpWidget(dung(const ValueKey(1)));
+    final truoc = doan(t, 'Google').text.style!.fontSize!;
+    expect(truoc, lessThan(14), reason: 'font test 1 em/ký tự: "Google" 84 dp không vừa ô 60 dp');
+    await t.runAsync(() async {
+      final l = FontLoader(ho)
+        ..addFont(Future.value(ByteData.sublistView(File('assets/fonts/Roboto-Regular.ttf').readAsBytesSync())));
+      await l.load();
+    });
+    await t.pump();
+    final sau = doan(t, 'Google').text.style!.fontSize!;
+    await t.pumpWidget(dung(const ValueKey(2)));
+    final moi = doan(t, 'Google').text.style!.fontSize!;
+    expect(moi, greaterThan(truoc), reason: 'Roboto hẹp hơn font test — nhãn dựng mới phải to hơn');
+    expect(sau, closeTo(moi, 0.01), reason: 'nhãn dựng TRƯỚC khi font nạp vẫn giữ cỡ đo theo font dự phòng');
   });
 }

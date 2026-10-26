@@ -13,6 +13,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/ui/do_chu.dart';
+
 class NhanCoDeu extends StatelessWidget {
   const NhanCoDeu(this.chu, {super.key, required this.nhom, this.kieu});
 
@@ -44,7 +46,9 @@ class NhanCoDeu extends StatelessWidget {
       return r;
     }
 
-    return LayoutBuilder(builder: (context, rang) {
+    // `BoCucTheoFont`: font Inter nạp sau khung đầu — đo lại khi ấy, nếu không nhãn giữ cỡ đo theo font dự phòng (máy ảo
+    // 320 dp × cỡ chữ 1,6, 2026-10-26: nút *"Googl"* cụt ở màn Đăng nhập mở lạnh).
+    return BoCucTheoFont(builder: (context, rang) {
       var co = heChu.scale(goc.fontSize ?? 14);
       if (rang.hasBoundedWidth) {
         // Bề rộng chữ KHÔNG tỉ lệ thẳng theo cỡ (metric làm tròn theo cỡ): đo lại ở cỡ đã co, chỉnh tới khi vừa — một lượt
