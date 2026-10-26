@@ -31,8 +31,9 @@ class TheTongSoGiaoDich extends StatelessWidget {
           ),
         ],
       ),
+      // Ba cột CHIA ĐỀU, số trong mỗi cột một dòng tự co: `spaceAround` để mỗi cột rộng bằng chữ của nó, nên ở cỡ chữ lớn
+      // hai số dính nhau và tràn khỏi thẻ ("-310.000 đ-310.00", Realme 320 dp × cỡ chữ 1,6, 2026-10-26).
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           // `formatCoDau` chứ không `formatIncome`/`formatExpense`: kỳ rỗng là
           // ca THƯỜNG từ khi trang xem được năm đơn vị, và số 0 không mang dấu
@@ -52,26 +53,40 @@ class TheTongSoGiaoDich extends StatelessWidget {
   }
 
   Widget _cot(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w500,
-          ),
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

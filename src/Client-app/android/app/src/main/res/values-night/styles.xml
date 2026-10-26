@@ -2,6 +2,9 @@
 <resources>
     <!-- Theme applied to the Android Window while the process is starting when the OS's Dark Mode setting is on -->
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <!-- M16 (2026-10-26): không vẽ khung tiêu điểm mặc định quanh FlutterView khi dùng bàn phím vật lý —
+             tiêu điểm trong app do Flutter tự vẽ. test/core/khung_tieu_diem_android_test.dart -->
+        <item name="android:defaultFocusHighlightEnabled">false</item>
         <!-- Show a splash screen on the activity. Automatically removed when
              the Flutter engine draws its first frame -->
         <item name="android:windowBackground">@drawable/launch_background</item>
@@ -17,6 +20,9 @@
 
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <!-- M16 (2026-10-26): không vẽ khung tiêu điểm mặc định quanh FlutterView khi dùng bàn phím vật lý —
+             tiêu điểm trong app do Flutter tự vẽ. test/core/khung_tieu_diem_android_test.dart -->
+        <item name="android:defaultFocusHighlightEnabled">false</item>
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
 </resources>

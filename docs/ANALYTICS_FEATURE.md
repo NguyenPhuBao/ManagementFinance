@@ -319,6 +319,11 @@ hiện tại của các ví"*:
 ấy, không phải lỗi: tháng 9 thu nhiều hơn chi 13,58 triệu trong khi tổng số dư
 hiện tại chỉ 8,89 triệu.
 
+Hai nhãn *SỐ DƯ ĐẦU KỲ* / *SỐ DƯ CUỐI KỲ* **xuống dòng, không cắt** (2026-10-26):
+một dòng + dấu ba chấm thì Realme 320 dp × cỡ chữ 1,6 còn *"SỐ DƯ ĐẦ…"* /
+*"SỐ DƯ CU…"* — mất đúng chữ phân biệt hai cột. Bản Xem trước báo cáo vốn đã xuống
+dòng; ca đo cả hai ở `analytics/presentation/widgets/phan_tich/khoi_dong_tien_chu_to_test.dart`.
+
 
 ### 3.17 Sinh tệp: PDF **và** CSV, lưu thẳng vào thư mục Tải về
 

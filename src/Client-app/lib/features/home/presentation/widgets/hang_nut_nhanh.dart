@@ -1,7 +1,9 @@
 // lib/features/home/presentation/widgets/hang_nut_nhanh.dart
 /// Hàng nút nhanh ở Trang chủ — tách từ `_buildActionItem` của `home_page.dart` ngày 2026-10-12 khi thêm nút *Nói* (C4
 /// §2.3, Stitch *"Trang chủ - Năm nút nhanh có Nói"*). Năm vòng 56 dp `spaceBetween` tràn ở 320 dp; nay mỗi nút một ô
-/// `Expanded`, vòng 52 dp, nhãn co bằng `FittedBox`. Kiểu dáng theo Stitch từ 2026-10-16 (người dùng chốt): chỉ *Thêm
+/// `Expanded`, vòng 52 dp. Nhãn co **đều** cả năm (`NhanCoDeu`, theo nhãn rộng nhất) và mỗi ô chừa 2 dp hai bên — từ
+/// 2026-10-26 (Realme 320 dp: *"Thêm thuThêm chi"* dính nhau; cỡ chữ 1,6: *"Quét"* / *"Nói"* to hơn hẳn — mỗi nhãn
+/// từng tự co riêng bằng `FittedBox`). Kiểu dáng theo Stitch từ 2026-10-16 (người dùng chốt): chỉ *Thêm
 /// chi* nền đặc `#1A1A19`, bốn nút còn lại nền trắng viền `#D5D5CE`, nhãn cách vòng 6 dp. Giữ `Expanded` thay
 /// `justify-between` của Stitch — kiểu ấy tràn ở 320 dp.
 library;
@@ -9,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/nhan_co_deu.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../premium/presentation/widgets/nut_nang_cap.dart';
 
@@ -35,13 +38,18 @@ class HangNutNhanh extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [for (final n in nut) Expanded(child: _Nut(n))],
+        children: [
+          for (final n in nut) Expanded(child: _Nut(n, nhom: [for (final m in nut) m.nhan]))
+        ],
       );
 }
 
 class _Nut extends StatelessWidget {
-  const _Nut(this.n);
+  const _Nut(this.n, {required this.nhom});
   final NutNhanh n;
+
+  /// Nhãn cả năm nút — để mọi nhãn co cùng một hệ số.
+  final List<String> nhom;
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -68,12 +76,13 @@ class _Nut extends StatelessWidget {
               child: Icon(n.bieuTuong, color: n.dam ? Colors.white : AppColors.primary, size: 24),
             ),
             const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
+            // 2 dp mỗi bên: hai nhãn kề nhau không bao giờ chạm (Realme 320 dp).
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: NhanCoDeu(
                 n.nhan,
-                maxLines: 1,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.primary),
+                nhom: nhom,
+                kieu: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.primary),
               ),
             ),
           ],

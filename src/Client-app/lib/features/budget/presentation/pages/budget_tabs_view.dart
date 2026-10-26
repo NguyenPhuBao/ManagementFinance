@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/nhan_co_deu.dart';
 import '../../../ai_edge/domain/goi_so_ngan_sach.dart';
 import '../../../ai_edge/domain/tai_phan_bo.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
@@ -65,6 +66,10 @@ class BudgetTabsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final nhanTab = [
+      'Đang hoạt động (${state.active.length})',
+      'Đã hết hạn (${state.expired.length})',
+    ];
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -99,9 +104,11 @@ class BudgetTabsView extends StatelessWidget {
             // chia đôi bề ngang, "Đang hoạt động (4" mất dấu đóng ngoặc. Nhãn
             // co nhẹ khi chật (cùng cách G68 cho thanh điều hướng); màn đủ chỗ
             // giữ nguyên cỡ.
+            // 2026-10-26: hai nhãn co CÙNG hệ số (`NhanCoDeu`) — co riêng từng
+            // nhãn thì ở cỡ chữ 1,6 nhãn dài nhỏ hẳn nhãn ngắn (Realme buổi 4).
             tabs: [
-              Tab(child: _NhanTab('Đang hoạt động (${state.active.length})')),
-              Tab(child: _NhanTab('Đã hết hạn (${state.expired.length})')),
+              for (final chu in nhanTab)
+                Tab(child: NhanCoDeu(chu, nhom: nhanTab)),
             ],
           ),
         ),
@@ -129,22 +136,6 @@ class BudgetTabsView extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Nhãn một ô tab: co nhẹ (`scaleDown`) khi ô hẹp hơn chữ, không bao giờ phóng.
-/// Kiểu chữ lấy từ `DefaultTextStyle` mà `TabBar` đặt (labelStyle).
-class _NhanTab extends StatelessWidget {
-  const _NhanTab(this.chu);
-
-  final String chu;
-
-  @override
-  Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Text(chu, maxLines: 1),
     );
   }
 }
@@ -234,12 +225,16 @@ class _ActiveTab extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Danh mục chi tiêu',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+              // `Flexible`: cỡ chữ lớn ở 320 dp thì tiêu đề xuống dòng thay vì
+              // tràn 4,7 px (2026-10-26, `budget_tabs_hep_test` × 1,76).
+              const Flexible(
+                child: Text(
+                  'Danh mục chi tiêu',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
               if (onOpenAnalytics != null)

@@ -4,9 +4,8 @@
 /// (16 + 24) và biểu tượng 24 chỉ còn ~36 dp cho chữ → *"Goo / gle"*. Không có sọc vàng (`Text` chỉ ngắt dòng), nên phép đo
 /// là **số dòng** chữ vẽ ra, không phải `takeException`.
 ///
-/// ⚠️ Font của bộ test rộng ~gấp đôi Inter (bẫy 4.4 `ANALYTICS_FEATURE.md`): ở 320 dp cỡ chữ 1 thì ba hàng KHÁC của trang
-/// tràn (hàng *MẬT KHẨU*, *hoặc tiếp tục với*, *Chưa có tài khoản?*) — trên máy chỉ nút Google gãy. Ca đặt cỡ chữ **0,55**
-/// để tỷ lệ chữ / đệm gần máy thật: *"Google"* 84 → ~46 dp (Inter 14 thật ~47 dp), đệm và biểu tượng không co.
+/// Font thật (`napFontThat`, Roboto): ×1,1 ≈ Inter ở cỡ chữ 1 (Roboto hẹp hơn vài phần trăm), ×1,76 ≈ Inter ở cỡ 1,6.
+/// ⚠️ `napFontThat` nạp font cho cả isolate — tệp này chỉ chứa ca đo font thật.
 library;
 
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
@@ -17,6 +16,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../../../helpers/font_that.dart';
 
 /// Bloc chỉ cần đứng ở `AuthInitial` — không sự kiện nào được gửi, repository không bị gọi.
 class _RepoGia implements AuthRepository {
@@ -36,11 +37,13 @@ int _soDong(WidgetTester t, Finder f) {
 }
 
 void main() {
-  testWidgets('320 dp (tỷ lệ chữ gần Inter): "Google" và "Apple" mỗi chữ một dòng', (t) async {
+  setUp(napFontThat);
+
+  Future<void> dung(WidgetTester t, double co) async {
     t.view.physicalSize = const Size(320, 900);
     t.view.devicePixelRatio = 1;
     addTearDown(t.view.reset);
-    t.platformDispatcher.textScaleFactorTestValue = 0.55;
+    t.platformDispatcher.textScaleFactorTestValue = co;
     addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
     final bloc = AuthBloc(authRepository: _RepoGia());
     addTearDown(bloc.close);
@@ -49,6 +52,10 @@ void main() {
       home: BlocProvider<AuthBloc>.value(value: bloc, child: const LoginPage()),
     ));
     await t.pump();
+  }
+
+  testWidgets('320 dp × 1,1: "Google" và "Apple" mỗi chữ một dòng, không bị co', (t) async {
+    await dung(t, 1.1);
     expect(_soDong(t, find.text('Google')), 1, reason: 'Realme 320 dp: nút Google gãy "Goo / gle"');
     expect(_soDong(t, find.text('Apple')), 1);
     for (final chu in ['Google', 'Apple']) {
@@ -59,23 +66,14 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  // Font test ở cỡ 1 ≈ Inter ở cỡ ~1,8: đúng tình huống `FittedBox` sinh ra để đỡ. Ba hàng khác của trang tràn ở đây
-  // (gom lại, không khẳng định) — chúng thuộc phép đo cỡ chữ lớn trên máy, không phải phạm vi ca này.
-  testWidgets('320 dp, chữ to: nhãn co lại cho vừa, vẫn một dòng', (t) async {
-    t.view.physicalSize = const Size(320, 900);
-    t.view.devicePixelRatio = 1;
-    addTearDown(t.view.reset);
-    final bloc = AuthBloc(authRepository: _RepoGia());
-    addTearDown(bloc.close);
+  // Cỡ 1,6 trên Realme: các hàng KHÁC của trang (Quên mật khẩu, "hoặc tiếp tục với", "Chưa có tài khoản?") có thể tràn —
+  // gom lại, không khẳng định; ca này chỉ canh hai nút mạng xã hội.
+  testWidgets('320 dp × 1,76: nhãn co lại cho vừa, vẫn một dòng, không cắt', (t) async {
     final loi = <FlutterErrorDetails>[];
     final cu = FlutterError.onError;
     FlutterError.onError = loi.add;
     try {
-      await t.pumpWidget(MaterialApp(
-        theme: AppTheme.lightTheme,
-        home: BlocProvider<AuthBloc>.value(value: bloc, child: const LoginPage()),
-      ));
-      await t.pump();
+      await dung(t, 1.76);
     } finally {
       FlutterError.onError = cu;
     }
