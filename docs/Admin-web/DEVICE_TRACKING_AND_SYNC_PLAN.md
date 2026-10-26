@@ -2,7 +2,7 @@
 
 > **Mã kế hoạch:** `PLAN-SYNC-DEVICE-EVENT-20261023`  
 > **Người lập:** Lead BA + Lead FullStack Cao Cấp + QA Architect  
-> **Trạng thái:** 🟢 PO ĐÃ PHÊ DUYỆT & ĐÃ TRIỂN KHAI HOÀN TẤT 100% (Pass 8/8 test 2 tầng, Pass 372/372 Backend tests)  
+> **Trạng thái:** 🟡 PO ĐÃ PHÊ DUYỆT ĐỊNH HƯỚNG — Backend & DDL hoàn tất (Migration 35), Client-app & Admin-web UI nằm trong kế hoạch phát triển.  
 > **Tài liệu nguồn sự thật tác động:**  
 > - `docs/superpowers/sync/SYNC_DOCUMENTATION.md`  
 > - `docs/Admin-web/Event-Notification-to-ClientApp.md`  
@@ -60,14 +60,14 @@ Cập nhật toàn diện file `docs/superpowers/sync/SYNC_DOCUMENTATION.md` the
 6. **Mục tiêu Tiết kiệm (`goals` - 22 trường):**
    - `id`, `name`, `target_amount`, `current_amount`, `start_date`, `target_date`, `idwallet`, `cycle_take_money`, `time_cycle_take_money`, `status_complete`, `recurrence`, `time_recurrence`, `icon`, `color`, `note`, `is_deleted`, `update_at`, `idaccount`, `auto_deposit_amount`, `auto_deposit_wallet_id`, `auto_deposit_last_run`, `priority` (thứ tự ưu tiên kéo thả).
 7. **Cơ chế Server_update_at & Delta Pull (Migration 20 + 21):**
-   - Khóa kéo theo giờ server `Server_update_at` UTC, kẹp thời gian nóng `pulledAt - 2 phút`, đảm bảo không mất giao dịch giữa 2 thiết bị.
+   - Khóa kéo theo giờ server `Server_update_at` UTC, tính mốc kéo về theo `mocTuMaxSince(maxSince, pulledAt)`, đảm bảo không mất giao dịch giữa 2 thiết bị.
 
 ---
 
 ### HẠNG MỤC 2: CẬP NHẬT `Event-Notification-to-ClientApp.md`
 Cập nhật toàn bộ các sự kiện và thông báo từ Backend/Admin tới Client-app:
 1. **Nhóm Sự kiện Real-Time Socket.IO (15 sự kiện):**
-   - `account.force_logout` (Lý do `ACCOUNT_INACTIVE` kèm câu thông báo của Admin, hoặc `ACCOUNT_DELETED` dọn sạch SQLite).
+   - `account.force_logout` (Lý do `ACCOUNT_INACTIVE` kèm câu thông báo của Admin, hoặc `ACCOUNT_DELETED` đăng xuất và bảo lưu SQLite trên máy).
    - `system.maintenance_changed` (`active`, `isEmergency`, `reason`, `activatedAt`, `activatedBy`).
    - `system.broadcast` (`id`, `title`, `message`, `level` INFO/WARN/CRITICAL, `timestamp`).
    - `account.permissions_updated` (Đồng bộ ma trận 4 Trụ cột quyền hạn).
@@ -79,7 +79,7 @@ Cập nhật toàn bộ các sự kiện và thông báo từ Backend/Admin tớ
    - `payment.overpaid_confirmation` & `payment.underpaid_warning` (Biến động đơn PayOS).
    - `payment.refunded` (Thông báo hoàn tiền đính kèm minh chứng).
    - `payment.order_expired` (Hủy đơn hàng quá 10 phút).
-2. **Nhóm Tín Hiệu Chốt Chặn HTTP/API (8 tín hiệu):**
+2. **Nhóm Tín Hiệu Chốt Chặn HTTP/API (7 tín hiệu):**
    - `503 MAINTENANCE_MODE`: Chế độ bảo trì hệ thống.
    - `503 SERVER_OVERLOADED`: Load shedding khi lag Event Loop > 100ms.
    - `429 RETRY_LIMIT_EXCEEDED`: Retry storm guard.
@@ -87,7 +87,6 @@ Cập nhật toàn bộ các sự kiện và thông báo từ Backend/Admin tớ
    - `403 FEATURE_DISABLED`: Chặn tính năng vượt giới hạn gói cước Basic.
    - `401 ACCOUNT_INACTIVE`: Cưỡng chế đăng xuất do tài khoản bị Admin khóa.
    - `401 ACCOUNT_DELETED`: Cưỡng chế đăng xuất do tài khoản bị xóa mềm.
-   - `400 PENDING_DELETE_PROTECTED`: Chặn mọi thao tác sửa/xóa trên tài khoản đang chờ thanh lý 30 ngày.
 
 ---
 

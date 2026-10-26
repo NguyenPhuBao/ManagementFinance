@@ -29,7 +29,7 @@ app.use(cors({
   origin: createCorsOriginValidator(config.cors.origin),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-client-platform', 'x-emergency-admin-key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-client-platform', 'x-platform', 'x-device-name', 'x-emergency-admin-key'],
 }));
 
 // Parsing

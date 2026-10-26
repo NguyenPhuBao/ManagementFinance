@@ -1,7 +1,7 @@
 # 📱 Tài Liệu Kỹ Thuật Module Notification — Client-app (Mobile)
 
-> **Trạng thái:** Đặc tả kỹ thuật & Hướng dẫn triển khai tích hợp (2026-09-29)  
-> **Phạm vi:** `src/Client-app/lib/features/notification/`, `src/Client-app/lib/core/notification/`, `src/Client-app/lib/core/realtime/`, `src/Client-app/lib/shared/widgets/notification_bell.dart`  
+> **Trạng thái:** Đặc tả kỹ thuật & Hướng dẫn triển khai tích hợp (Cập nhật chuẩn hóa)  
+> **Phạm vi:** `src/Client-app/lib/features/notification/`, `src/Client-app/lib/core/database/tables/notification_table.dart`, `src/Client-app/lib/core/database/daos/notification_dao.dart`, `src/Client-app/lib/shared/widgets/notification_bell.dart`  
 > **Mục tiêu:** Khớp nối hoàn hảo giữa Client-app Mobile (Offline-First) với Backend Hub Notification và Admin-web.
 
 ---
@@ -14,8 +14,8 @@
 graph TD
     subgraph "Nội Bộ Thiết Bị (Offline Engine Hiện Tại)"
         DB[(SQLite / Drift: AppNotifications)]
-        Scan[NotificationScanner: Quét định kỳ] --> DB
-        Sched[ReminderScheduler: Bắn OS Notification]
+        Scan[NotificationScanner: Quét sau mỗi lượt đồng bộ & khi app mở lại] --> DB
+        Sched[ReminderScheduler: Đặt lịch trước AlarmManager]
         DB --> Feed[NotificationCenterPage: Trung tâm thông báo]
         DB --> Bell[NotificationBell: Chuông AppBar]
     end
@@ -26,7 +26,7 @@ graph TD
     end
 
     subgraph "Kênh Realtime Hiện Tại"
-        Sock -.->|ocr.completed, sync.completed| RTChan[RealtimeChannel]
+        Sock -.->|ocr.completed, ocr.duplicate, sync.completed, account.upgraded, account.permissions_updated| RTChan[RealtimeChannel]
         RTChan -.->|Bỏ qua các sự kiện khác| Drop((Ignored))
     end
 ```
@@ -36,20 +36,20 @@ graph TD
    - File: `lib/core/database/tables/notification_table.dart`.
    - Có cơ chế chống trùng nội bộ bằng khoá duy nhất: `{idaccount, dedupeKey}` kết hợp `InsertMode.insertOrIgnore`.
    - Không chứa các cột đồng bộ đồng đẳng (`syncStatus`, `syncError`) vì đây là dữ liệu suy ra được từ nghiệp vụ tài chính.
-   - Hỗ trợ xoá mềm `dismissedAt` để bảo toàn khóa chống trùng, phân trang `watchFeed(idaccount, limit, kinds, chiChuaDoc)`.
+   - Hỗ trợ xoá mềm `dismissedAt` để bảo toàn khóa chống trùng, phân trang `watchFeed(idaccount, limit, kinds, chiChuaDoc)`. Riêng nhóm `bienDongSoDu` vuốt là xóa cứng (`xoaCung`) kèm hoàn tác `chenLai`.
 2. **Hệ Thống 20 Loại Thông Báo Tài Chính Cục Bộ (`NotificationKind`):**
    - Chia thành 6 nhóm người dùng bật/tắt độc lập (`NotificationGroup`):
      - `bill`: Hóa đơn sắp đến hạn, quá hạn, tự động thanh toán, trả trên thiết bị khác...
-     - `budget`: Chi tiêu chạm ngưỡng cảnh báo, vượt hạn mức, khoản chi lớn bất thường, đề xuất tái phân bổ ngân sách AI...
+     - `budget`: Chi tiêu chạm ngưỡng cảnh báo, vượt hạn mức, khoản chi vượt ngưỡng người dùng đặt, đề xuất tái phân bổ ngân sách AI...
      - `goal`: Hoàn thành mục tiêu, chậm tiến độ, chạm cột mốc, tự động trích tiền...
-     - `transaction`: Biến động số dư đọc trên máy / biên lai chia sẻ (D1).
+     - `bienDong`: Biến động số dư đọc trên máy / biên lai chia sẻ (D1).
      - `system`: Lỗi đồng bộ dữ liệu, số dư ví âm, số dư ví thấp.
      - `summary`: Báo cáo tổng kết tuần.
 3. **Giao Diện Trung Tâm Thông Báo (`NotificationCenterPage`):**
    - Đầy đủ tính năng phân trang (20 mục/lượt), vuốt xoá mềm (Dismissible), đánh dấu đã đọc một mục / tất cả mục.
-   - Bộ lọc thanh chip cuộn ngang: `Tất cả`, `Chưa đọc`, `Hoá đơn`, `Ngân sách`, `Mục tiêu`, `Hệ thống`, `Tổng kết`.
+   - Bộ lọc 8 chip cuộn ngang: `Tất cả`, `Chưa đọc`, `Hoá đơn`, `Ngân sách`, `Mục tiêu`, `Hệ thống`, `Tổng kết`, `Biến động`.
 4. **Hệ Thống Bắn Thông Báo OS (`flutter_local_notifications`):**
-   - File: `lib/core/notification/os/os_notifier_native.dart` và `reminder_scheduler.dart`.
+   - File: `lib/features/notification/data/datasources/os_notifier_native.dart` và `features/notification/application/reminder_scheduler.dart`.
 
 ---
 
@@ -116,8 +116,8 @@ graph TD
 ### 3.1. Hạng Mục 1: Mở Rộng Realtime Socket Listener
 
 #### A. File Cần Sửa Đổi:
-- [`src/Client-app/lib/core/realtime/realtime_event.dart`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Client-app/lib/core/realtime/realtime_event.dart)
-- [`src/Client-app/lib/core/realtime/realtime_channel.dart`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Client-app/lib/core/realtime/realtime_channel.dart)
+- `src/Client-app/lib/core/realtime/realtime_event.dart`
+- `src/Client-app/lib/core/realtime/realtime_channel.dart`
 
 #### B. Chi Tiết Thực Hiện:
 1. **Bổ sung các sự kiện mới vào `RealtimeChannel`:**
@@ -146,17 +146,17 @@ graph TD
 ### 3.2. Hạng Mục 2: Xây Dựng Tầng Network REST API Client
 
 #### A. File Cần Tạo Mới:
-- `src/Client-app/lib/features/notification/data/api/notification_api_client.dart`
+- `src/Client-app/lib/features/notification/data/datasources/notification_remote_data_source.dart`
 - Đăng ký DI trong `src/Client-app/lib/core/di/injection_container.dart`.
 
 #### B. Chi Tiết Thực Hiện:
 Sử dụng `DioClient` (đã có sẵn cơ chế đính kèm `AccessToken` tự động và tự động Refresh Token):
 
 ```dart
-class NotificationApiClient {
-  final DioClient _dio;
+class NotificationRemoteDataSource {
+  final Dio _dio;
 
-  NotificationApiClient({required DioClient dio}) : _dio = dio;
+  NotificationRemoteDataSource({required Dio dio}) : _dio = dio;
 
   /// Lấy danh sách thông báo server (hỗ trợ phân trang)
   Future<NotificationPageResponse> getNotifications({
@@ -165,7 +165,7 @@ class NotificationApiClient {
     bool? unreadOnly,
   }) async {
     final response = await _dio.get(
-      '/api/notifications',
+      '/notifications',
       queryParameters: {
         'page': page,
         'limit': limit,
@@ -177,18 +177,18 @@ class NotificationApiClient {
 
   /// Lấy số lượng thông báo chưa đọc từ server
   Future<int> getUnreadCount() async {
-    final response = await _dio.get('/api/notifications/unread-count');
+    final response = await _dio.get('/notifications/unread-count');
     return response.data['data']['unreadCount'] as int? ?? 0;
   }
 
   /// Đánh dấu 1 thông báo server đã đọc
   Future<void> markAsRead(String notificationId) async {
-    await _dio.patch('/api/notifications/$notificationId/read');
+    await _dio.patch('/notifications/$notificationId/read');
   }
 
   /// Đánh dấu toàn bộ thông báo server đã đọc
   Future<void> markAllAsRead() async {
-    await _dio.post('/api/notifications/read-all');
+    await _dio.post('/notifications/read-all');
   }
 }
 ```
@@ -207,7 +207,7 @@ class NotificationApiClient {
 #### B. Bổ Sung `NotificationKind` Trong `notification_rules.dart`:
 ```dart
 enum NotificationKind {
-  // ... 19 loại hiện tại ...
+  // ... 20 loại hiện tại (phần tử cuối là bienDongSoDu) ...
   
   /// Thông báo đếm ngược 30 ngày xóa tài khoản (từ Backend Scheduler)
   accountCountdown,
@@ -235,6 +235,8 @@ NotificationGroup nhomCua(NotificationKind kind) {
       return NotificationGroup.system;
     case NotificationKind.weeklySummary:
       return NotificationGroup.summary;
+    case NotificationKind.bienDongSoDu:
+      return NotificationGroup.bienDong;
   }
 }
 ```
@@ -242,9 +244,9 @@ NotificationGroup nhomCua(NotificationKind kind) {
 
 #### D. Đồng Bộ Trạng Thái Đã Đọc Hai Chiều (Optimistic Read Sync):
 - Khi người dùng chạm đọc một mục trên app:
-  1. Cập nhật ngay `readAt = DateTime.now()` vào SQLite qua `dao.markAsRead(id)` để giao diện phản hồi mượt mà không có độ trễ.
+  1. Cập nhật ngay `readAt = DateTime.now()` vào SQLite qua `ThongBaoRepository.markRead(id)` để giao diện phản hồi mượt mà không có độ trễ.
   2. Nếu mục đó có `dedupeKey.startsWith('server_')`, trích xuất `serverId = dedupeKey.substring(7)` và gọi `apiClient.markAsRead(serverId)` ngầm dưới background (bọc trong `unawaited`).
-- Tương tự khi bấm **"Đọc tất cả"**: Vừa cập nhật SQLite cục bộ, vừa gọi `apiClient.markAllAsRead()`.
+- Tương tự khi bấm **"Đọc tất cả"**: Vừa cập nhật SQLite cục bộ (`ThongBaoRepository.markAllRead(idaccount)`), vừa gọi `apiClient.markAllAsRead()`.
 
 ---
 
@@ -256,9 +258,10 @@ Khi thiết bị di chuyển vào vùng không có sóng (mất mạng) và sau 
    ```dart
    Future<void> syncMissedServerNotifications() async {
      try {
-       final res = await _apiClient.getNotifications(limit: 50);
+       final res = await _remoteDataSource.getNotifications(limit: 50);
        for (final item in res.notifications) {
-         await _dao.insertServerNotification(item);
+         // Sử dụng insertIfAbsent với dedupeKey = 'server_${item.id}'
+         await _dao.insertIfAbsent(item.toCompanion());
        }
      } catch (e) {
        debugPrint('[NotificationSync] Kéo thông báo nhỡ thất bại (sẽ thử lại sau): $e');
@@ -272,29 +275,29 @@ Khi thiết bị di chuyển vào vùng không có sóng (mất mạng) và sau 
 ### 3.5. Hạng Mục 5: Nâng Cấp Giao Diện Người Dùng (UI/UX Alignment)
 
 #### A. Nâng Cấp Chuông Thông Báo (`NotificationBell`):
-- **File:** [`src/Client-app/lib/shared/widgets/notification_bell.dart`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Client-app/lib/shared/widgets/notification_bell.dart)
+- **Trạng thái:** ✅ Đã hoàn tất ngày 2026-09-30.
+- **File:** `src/Client-app/lib/shared/widgets/notification_bell.dart`
 - **Cải tiến:**
-  - Thay thế chấm đỏ 10x10 tĩnh bằng **Badge đếm số linh hoạt**:
+  - Thay thế chấm đỏ 10x10 tĩnh bằng **Badge đếm số linh hoạt (`nhanSoChuaDoc`)**:
     + Nếu số chưa đọc $= 0$: Ẩn badge.
     + Nếu $1 \le$ số chưa đọc $\le 99$: Hiển thị số lượng chính xác (`1`, `2`, `12`).
     + Nếu số chưa đọc $> 99$: Hiển thị `99+`.
-  - Giúp đồng bộ giao diện nhận diện thương hiệu giữa Mobile Client-app và Admin-web Header.
 
-#### B. Banner Cảnh Báo Tài Khoản Chờ Xóa (PendingDelete Countdown Banner):
-- **File:** `src/Client-app/lib/features/home/presentation/widgets/pending_delete_banner.dart`
+#### B. Thẻ Cảnh Báo Tài Khoản Chờ Xóa (TheChoXoaTrangChu):
+- **File:** `src/Client-app/lib/features/home/presentation/widgets/the_cho_xoa_trang_chu.dart`
 - **Hành vi:**
-  - Khi nhận sự kiện `account.countdown` hoặc khi `AuthBloc` báo trạng thái tài khoản đang là `PendingDelete`:
-  - Hiển thị Banner viền cam/đỏ trên đầu trang Home / Profile:
-    > ⚠️ **Tài khoản đang trong thời gian chờ xoá!**  
-    > Còn **X ngày** để hủy yêu cầu và giữ lại toàn bộ dữ liệu tài chính của bạn.  
-    > `[Hủy xoá tài khoản ngay]`
-  - Bấm vào nút "Hủy xoá" sẽ chuyển hướng người dùng đến màn hình xác nhận phục hồi tài khoản (`POST /api/auth/cancel-delete`).
+  - Hiển thị theo trạng thái `AuthSuccess` có `user.dangChoXoa` (lấy từ trường `countdown` của `/auth/profile`).
+  - Hiển thị Thẻ viền đỏ dưới header Trang chủ:
+    > **Tài khoản đang chờ xoá**  
+    > Còn **X ngày** nữa tài khoản và toàn bộ dữ liệu sẽ bị xoá vĩnh viễn.  
+    > `[Để sau]` `[Huỷ xoá]`
+  - Bấm vào nút "Huỷ xoá" gọi thẳng `POST /api/auth/cancel-delete` (không có màn trung gian), khi thành công thẻ lập tức biến mất.
 
 #### C. Điều Hướng Khi Chạm Vào Thông Báo (Notification Tap Deeplink):
-- Mở rộng `NotificationTapRouter` (`lib/core/notification/notification_tap_router.dart`):
-  - `accountCountdown`: Điều hướng về `/profile/account-security`.
-  - `systemBroadcast`: Hiển thị Modal/BottomSheet đọc đầy đủ thông cáo hệ thống.
-  - `securityAlert`: Điều hướng về trang Lịch sử đăng nhập / Đổi mật khẩu.
+- Mở rộng bảng ánh xạ `deeplinkTuDedupeKey` (`features/notification/domain/notification_deeplink.dart`):
+  - `accountCountdown`: Điều hướng về `/settings/delete-account` hoặc `/profile`.
+  - `systemBroadcast`: Mở route xem chi tiết thông cáo.
+  - `securityAlert`: Điều hướng về `/settings/change-password`.
 
 ---
 
@@ -355,21 +358,22 @@ Dưới đây là danh sách công việc tuần tự dành cho Flutter Develope
 - [ ] **Bước 1: Mở rộng Data Models & Enums**
   - [ ] Bổ sung `accountCountdown`, `systemBroadcast`, `securityAlert` vào `NotificationKind` trong `notification_rules.dart`.
   - [ ] Thêm ánh xạ nhóm vào `NotificationGroup.system` trong `notification_prefs.dart`.
-  - [ ] Cập nhật switch-case dịch tên hiển thị và icon trong `notification_visuals.dart` (hoặc `NotificationCenterPage`).
+  - [ ] Cập nhật hàm `luonBao()` trong `notification_prefs.dart` (bắt buộc vì switch không có default).
+  - [ ] Cập nhật biểu tượng theo `subjectType` ở `features/notification/presentation/pages/notification_center_page.dart` (`_ThongBaoTile`) và `notification_panel.dart`; cập nhật tên nhóm ở `widgets/cai_dat_thong_bao/ten_nhom_thong_bao.dart`.
 - [ ] **Bước 2: Xây dựng Network Client**
-  - [ ] Tạo `notification_api_client.dart` với các phương thức GET, PATCH, POST chuẩn RESTful.
-  - [ ] Đăng ký `NotificationApiClient` vào `injection_container.dart`.
+  - [ ] Tạo `features/notification/data/datasources/notification_remote_data_source.dart` nhận `Dio` với các phương thức GET, PATCH, POST chuẩn RESTful (endpoints không lặp tiền tố `/api`).
+  - [ ] Đăng ký `NotificationRemoteDataSource` vào `injection_container.dart`.
 - [ ] **Bước 3: Mở rộng Tầng Realtime Channel**
   - [ ] Thêm lắng nghe sự kiện `account.countdown`, `system.broadcast`, `user.notification` trong `realtime_channel.dart`.
   - [ ] Kết nối sự kiện Realtime tự động ghi vào SQLite `AppNotifications` với `dedupeKey = 'server_${item.id}'`.
 - [ ] **Bước 4: Nối Lại Mạng & Kéo Bù (Reconnect Sync)**
-  - [ ] Tích hợp lệnh kéo bù `syncMissedServerNotifications()` vào hook `onConnect` của Socket.
-- [ ] **Bước 5: Cập Nhật UI Widgets**
-  - [ ] Nâng cấp `NotificationBell` sang Badge đếm số (ẩn khi 0, số thật khi $\le 99$, `99+` khi lớn hơn).
-  - [ ] Thêm `PendingDeleteBanner` cảnh báo thời gian đếm ngược xoá tài khoản trên `HomePage`.
+  - [ ] Tích hợp hàm kéo bù vào hook `onConnect` của Socket qua `insertIfAbsent`.
+- [x] **Bước 5: Cập Nhật UI Widgets**
+  - [x] Nâng cấp `NotificationBell` sang Badge đếm số (ẩn khi 0, số thật khi $\le 99$, `99+` khi lớn hơn) — ✅ Đã hoàn thành 2026-09-30 (`nhanSoChuaDoc`).
+  - [x] Thẻ cảnh báo thời gian đếm ngược xoá tài khoản trên `HomePage` — ✅ Đã có sẵn (`TheChoXoaTrangChu`).
   - [ ] Đấu nối 2 chiều: Đọc thông báo trên máy $\rightarrow$ gọi API mark read lên Server.
 - [ ] **Bước 6: Kiểm Thử & Kiểm Định (Verification)**
-  - [ ] Viết Unit Test cho `NotificationApiClient` (Mock Dio).
+  - [ ] Viết Unit Test cho `NotificationRemoteDataSource` (Mock Dio).
   - [ ] Viết Unit Test cho `RealtimeChannel` kiểm tra giải mã payload `account.countdown` và `system.broadcast`.
   - [ ] Chạy `flutter test` đảm bảo 100% test cases pass.
 
@@ -378,6 +382,6 @@ Dưới đây là danh sách công việc tuần tự dành cho Flutter Develope
 ## 6. Tuân Thủ An Toàn Dữ Liệu & Pháp Luật (`Data_Security.md`)
 
 Mọi triển khai trên Client-app bắt buộc tuân thủ nghiêm ngặt các điều khoản bảo mật sau:
-1. **Tuyệt đối không lưu trữ dữ liệu nhạy cảm:** Nội dung thông báo hiển thị trên chuông hoặc lưu trong SQLite không được chứa mật khẩu, mã OTP, số tài khoản đầy đủ, hay số dư cụ thể của người dùng.
+1. **Tuyệt đối không lưu trữ dữ liệu nhạy cảm:** Nội dung thông báo hiển thị trên chuông hoặc lưu trong SQLite từ server không được chứa mật khẩu, mã OTP, số tài khoản đầy đủ, hay số dư cụ thể của người dùng. (Ngoại lệ: các thông báo cục bộ tính toán trên máy như số dư ví âm, biến động D1 được xử lý offline an toàn trên máy người dùng).
 2. **Cách ly người dùng (User-scoped Isolation):** Mọi thao tác truy vấn SQLite hoặc gọi REST API phải luôn ràng buộc theo `idaccount` của phiên đăng nhập hiện tại. Đăng xuất phải xóa sạch cache thông báo trong bộ nhớ RAM.
-3. **Mã hóa truyền tải (In-transit Encryption):** Mọi kết nối Socket.io và HTTP REST API bắt buộc thực hiện qua HTTPS/WSS với mã hóa TLS 1.3.
+3. **Mã hóa truyền tải (In-transit Encryption):** Mọi kết nối Socket.io và HTTP REST API bắt buộc thực hiện qua HTTPS/WSS (khi triển khai cloud / production).

@@ -198,15 +198,14 @@ describe('AIOps Sentinel - PO Requirements (2-Tier Architecture)', () => {
       expect(lagInput.value).toBe('');
     });
 
-    it('1.2. Biểu đồ xu hướng: Đã bỏ icon date_range trước "Bộ lọc thời gian:" và có đủ 5 Presets', async () => {
+    it('1.2. [PO Updated] Biểu đồ xu hướng: Đã bỏ cụm "Bộ lọc thời gian:" chi tiết và có đủ 5 Presets', async () => {
       render(<AIOpsPage />);
       await waitFor(() => {
-        expect(screen.getByText('Bộ lọc thời gian:')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /10 phút/i })).toBeInTheDocument();
       });
 
-      // Không còn icon date_range ngay trước bộ lọc thời gian
-      const filterLabelContainer = screen.getByText('Bộ lọc thời gian:').closest('span');
-      expect(filterLabelContainer.querySelector('.material-symbols-outlined')).toBeNull();
+      // Xác nhận không còn bộ lọc thời gian chi tiết
+      expect(screen.queryByText('Bộ lọc thời gian:')).not.toBeInTheDocument();
 
       // Có đủ 5 presets: 10 phút, 1 giờ, 24 giờ, 7 ngày, 1 tháng
       expect(screen.getByRole('button', { name: /10 phút/i })).toBeInTheDocument();
@@ -324,8 +323,11 @@ describe('AIOps Sentinel - PO Requirements (2-Tier Architecture)', () => {
     it('2.3. Tác động của việc đổi Preset thời gian: Biểu đồ cập nhật dải thời gian thực tế', async () => {
       render(<AIOpsPage />);
       await waitFor(() => {
-        expect(screen.getByText('Bộ lọc thời gian:')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /7 ngày/i })).toBeInTheDocument();
       });
+
+      // Xác nhận đã bỏ bộ lọc thời gian chi tiết theo yêu cầu PO
+      expect(screen.queryByText('Bộ lọc thời gian:')).not.toBeInTheDocument();
 
       // Chuyển sang Preset 7 ngày
       const preset7d = screen.getByRole('button', { name: /7 ngày/i });

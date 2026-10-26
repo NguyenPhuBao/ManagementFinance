@@ -64,6 +64,14 @@ const syncController = {
       return ResponseHandler.success(res, result, `Sync pull: ${Object.values(result.data).reduce((sum, arr) => sum + arr.length, 0)} records`);
     } catch (error) {
       logger.error('Sync pull failed', { error: error.message });
+      if (error.code === 'DECRYPT_FAILED') {
+        return res.status(500).json({
+          success: false,
+          code: 'DECRYPT_FAILED',
+          message: 'Lỗi giải mã dữ liệu hệ thống (DECRYPT_FAILED). Vui lòng thử lại sau.',
+          timestamp: new Date().toISOString(),
+        });
+      }
       return ResponseHandler.error(res, error.message);
     }
   },

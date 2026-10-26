@@ -141,7 +141,7 @@ class ChatbotService {
           systemInstruction,
           generationConfig: {
             temperature: 0.1, // Chống ảo giác
-            maxOutputTokens: 1024,
+            maxOutputTokens: 4096,
           },
           tools: [{ functionDeclarations: financialToolsDeclarations }],
         });
@@ -157,6 +157,11 @@ class ChatbotService {
               });
             }
           }
+        }
+
+        // Bỏ các tin nhắn mở đầu nếu vai trò không phải là 'user' (SDK Gemini yêu cầu turn đầu tiên phải là user)
+        while (formattedHistory.length > 0 && formattedHistory[0].role !== 'user') {
+          formattedHistory.shift();
         }
 
         const chatSession = model.startChat({
@@ -217,6 +222,10 @@ class ChatbotService {
         onDone({ responseTimeMs: duration });
       }
     } catch (error) {
+      if (signal?.aborted) {
+        logger.info('[ChatbotService] Client đã ngắt kết nối trước đó — bỏ qua xử lý fallback.');
+        return;
+      }
       const isCircuitOpen = error.name === 'CircuitBreakerOpenError';
       const reason = isCircuitOpen
         ? error.message

@@ -22,7 +22,7 @@
 
 ## ⚙️ 2. KIẾN TRÚC & CƠ CHẾ HOẠT ĐỘNG 4 VECTƠ ĐỘC LẬP (MULTI-VECTOR RISK ARCHITECTURE)
 
-Hệ thống bãi bỏ hoàn toàn cơ chế tính điểm gộp đơn nhất (Monolithic Additive) dễ gây báo động giả khi mở rộng quy mô. Thay vào đó, Sentinel phân tách rủi ro thành **4 vectơ hoàn toàn độc lập**, mỗi vectơ có thang đo $[0, 100]$ điểm và biện pháp phòng vệ cá nhân hóa riêng biệt:
+Hệ thống bãi bỏ hoàn toàn cơ chế tính điểm gộp đơn nhất (Monolithic Additive) và **loại bỏ hoàn toàn thông số tổng Threat Score** theo chỉ đạo tối cao từ Product Owner (PO). Biểu đồ và cơ chế giám sát tập trung 100% vào **4 vectơ rủi ro hoàn toàn độc lập**, mỗi vectơ có thang đo $[0, 100]$ điểm và biện pháp phòng vệ cá nhân hóa riêng biệt, triệt tiêu hoàn toàn rủi ro cộng dồn điểm gây báo động giả hoặc bảo trì khẩn cấp oan khi máy chủ vẫn vận hành bình thường:
 
 ```mermaid
 graph TD
@@ -45,15 +45,10 @@ graph TD
         V4 ---|Phòng vệ| A4["Kích hoạt Load Shedding - Chỉ bảo trì khi sập dây chuyền"]
     end
 
-    subgraph "Tầng 3: Tổng Hợp & Đánh Giá Tương Quan (Corroborated Composite Scorer)"
-        C1["rawMax = max(S_auth, S_traffic, S_exploit, S_resource)"]
-        C2["corroborationBonus = (highVectorsCount - 1) * 8 nếu >= 2 vectơ >= 60"]
-        C3["Threat Score = min(100, max(5, rawMax + corroborationBonus))"]
-    end
-
-    subgraph "Tầng 4: Bộ Điều Khiển Quy Mô Dung Lượng (Target Concurrency Scaler)"
-        SC["Admin tùy chỉnh N = 1,000 - 2,000 CCU"]
+    subgraph "Tầng 3: Bộ Điều Khiển Quy Mô Dung Lượng (Target Concurrency Scaler)"
+        SC["Admin tùy chỉnh N = 500 - 5,000 CCU"]
         SC -->|"Baseline RPM = N * 10"| V2
+        SC -->|"Safe Peak = N * 30 RPM (N / 2 RPS)"| V2
         SC -->|"Ngưỡng cách ly IP = 20 + 50*log10(N)"| V2
     end
 
@@ -61,8 +56,6 @@ graph TD
     F2 --> V2
     F3 --> V3
     F4 --> V4
-
-    V1 & V2 & V3 & V4 --> C1 --> C2 --> C3
 ```
 
 ---
@@ -82,23 +75,35 @@ Khảo sát chi tiết số lượng HTTP Request phát sinh khi Admin hoặc Cl
 
 Trung bình một người dùng hoạt động tích cực (Active User) tạo ra khoảng **10 requests/phút** ($\mu \approx 0.15\text{ req/s}$).
 
-### 3.2. Mô Hình Chịu Tải & Công Thức Tính Quy Mô (Capacity Scaling Model)
-Từ khảo sát trên, hệ thống xây dựng mô hình suy diễn tự động cho số lượng người dùng đồng thời $N \in [100, 50000]$:
+### 3.2. Mô Hình Chịu Tải & Cơ Sở Lý Thuyết Khoa Học (Theoretical Capacity Foundations)
+Để bảo vệ hệ thống trước hội đồng giảng viên và các chuyên gia kiến trúc, các công thức được thiết lập dựa trên các định luật khoa học máy tính chuẩn mực:
 
-1. **Baseline RPM kỳ vọng:**
-   $$\text{Baseline RPM}(N) = N \times 10\text{ req/phút}$$
-   - Với $N = 1,000$ người dùng đồng thời $\implies \text{Baseline RPM} = 10,000\text{ req/phút}$.
-   - Với $N = 2,000$ người dùng đồng thời $\implies \text{Baseline RPM} = 20,000\text{ req/phút}$.
+1. **Định luật Little trong Lý thuyết Xếp hàng ($L = \lambda \times W$):**
+   - Trong một hệ thống ổn định, số lượng người dùng đồng thời trong hệ thống $L$ ($N$ CCU) bằng tích của tần suất request $\lambda$ và thời gian dừng trung bình của người dùng $W$.
+   - Khảo sát thực nghiệm hành vi người dùng ứng dụng tài chính cho thấy: 1 Active User thực hiện trung bình 1 hành động nghiệp vụ mỗi $6$ giây $\implies \lambda_{\text{user}} \approx 10\text{ req/phút} \approx 0.167\text{ RPS}$.
+   - **Baseline RPM kỳ vọng:**
+     $$\text{Baseline RPM}(N) = N \times 10\text{ req/phút}$$
+     - $N = 500 \implies 5,000\text{ RPM} \approx 83\text{ RPS}$.
+     - $N = 1,000 \implies 10,000\text{ RPM} \approx 167\text{ RPS}$.
+     - $N = 2,000 \implies 20,000\text{ RPM} \approx 333\text{ RPS}$.
+   - **Trần Đỉnh An Toàn (Safe Peak Ceiling $3\times$):**
+     $$\text{Safe Peak RPM}(N) = 3 \times \text{Baseline RPM}(N) = N \times 30\text{ req/phút}$$
+     $$\text{Safe Peak RPS}(N) = \frac{N \times 30}{60} = \frac{N}{2}\text{ req/giây (RPS)}$$
+     - Quy đổi tương đương chuẩn xác: Đỉnh an toàn cho $N = 1,000$ CCU là $30,000\text{ RPM} \leftrightarrow 500\text{ RPS}$.
+     - Lưu lượng hợp pháp có thể dao động tự nhiên lên tới $3\times$ baseline trong các đợt cao điểm mà **không bao giờ bị hệ thống coi là tấn công DoS**.
 
-2. **Trần Đỉnh An Toàn (Safe Peak Ceiling $3\times$):**
-   $$\text{Safe Peak RPM}(N) = 3 \times \text{Baseline RPM}(N)$$
-   Lưu lượng hợp pháp có thể dao động tự nhiên lên tới $3\times$ baseline trong các đợt cao điểm mà **không bao giờ bị hệ thống coi là tấn công DoS**.
+2. **Định luật Amdahl & Đặc Thù Đơn Luồng (Single-Threaded Event Loop của Node.js):**
+   - Node.js xử lý non-blocking I/O trên một luồng chính duy nhất (Single Thread). Khi tải tăng cao, sự sụt giảm hiệu năng không bắt đầu từ CPU hay RAM chạm $100\%$, mà bắt đầu từ hiện tượng nghẽn luồng xử lý (Event Loop Contention).
+   - Chỉ số **Event Loop Lag** ($> 100\text{ms}$) là chỉ báo sớm nhạy cảm nhất về tình trạng nghẽn pipeline (CPU-bound tasks hoặc cryptographic hashing quá tải), giúp kích hoạt cơ chế Load Shedding từ trước khi tiến trình rơi vào trạng thái sập hoàn toàn (Denial of Service).
 
-3. **Ngưỡng Cách Ly IP Tự Động Thích Ứng (Dynamic IP Quarantine Threshold):**
-   Thay vì cố định cứng 120 req/10s, ngưỡng cách ly 1 địa chỉ IP được điều chỉnh thích ứng theo quy mô:
-   $$\text{Quarantine Burst Limit}(N) = \max\left(150, \text{round}\left(20 + 50 \cdot \log_{10}(N)\right)\right)\text{ req/10s}$$
-   - $N = 1,000 \implies 20 + 50 \times 3 = 170\text{ req/10s}$.
-   - $N = 2,000 \implies 20 + 50 \times 3.301 = 185\text{ req/10s}$.
+3. **Ngưỡng An Ninh Co Giãn Logarit (Logarithmic Threat Threshold Scaling):**
+   - Khi quy mô người dùng tăng từ $100$ lên $5,000$ CCU, số lần gõ nhầm mật khẩu tự nhiên cũng tăng theo xác suất thống kê. Nếu áp dụng ngưỡng cố định cứng, hệ thống sẽ tự khóa nhầm người dùng hợp pháp (False Positives).
+   - Ngưỡng thất bại xác thực tối đa cho phép trên phút:
+     $$\text{Auth Fail Threshold}(N) = \max\left(15, \text{round}\left(15 + 10 \cdot \log_{10}\left(\frac{N}{100}\right)\right)\right)\text{ lần/phút}$$
+     - $N = 100 \implies 15\text{ lần/phút}$.
+     - $N = 1,000 \implies 15 + 10 \times 1 = 25\text{ lần/phút}$.
+     - $N = 5,000 \implies 15 + 10 \times 1.7 = 32\text{ lần/phút}$.
+   - Ngưỡng cách ly IP động: $\text{Quarantine Burst Limit}(N) = \max\left(150, \text{round}\left(20 + 50 \cdot \log_{10}(N)\right)\right)\text{ req/10s}$.
 
 4. **Cơ Chế Lưu Cứng Quy Mô CCU Bền Vững (Persistent Concurrency Scaling):**
    - **Lưu Cứng Trong CSDL PostgreSQL (`aiops_setting`):** Khi Admin thay đổi quy mô $N$ (qua nút chọn mẫu 500, 1000, 2000, 5000 hoặc nhập tay), giá trị được ghi tức thì vào CSDL Supabase với khóa `target_concurrency`.
@@ -127,18 +132,20 @@ Mỗi vectơ đo lường mức độ nguy cơ độc lập trong thang điểm 
    - **Đo lường từ máy chủ thật (`SystemHardwareMonitor`):** % CPU đo bằng Delta Ticks tức thời ($1,000\text{ms}$ interval) và % RAM đo từ `os.totalmem()` / `os.freemem()` thật của máy chủ đang chạy, loại bỏ hoàn toàn việc gán cứng số giả lập.
    - Phản ánh độ trễ Event Loop ($> 100\text{ms}$), RAM ($> 90\%$), CPU ($> 85\%$) và mã lỗi HTTP 5xx ($> 5\%$).
 
-### 3.4. Công Thức Tổng Hợp Tương Quan (Corroborated Composite Threat Score)
-$$S_{\text{composite}} = \min\left(100, \max\left(0, \max(S_{\text{auth}}, S_{\text{traffic}}, S_{\text{exploit}}, S_{\text{resource}}) + \text{Bonus}_{\text{corroboration}}\right)\right)$$
-Trong đó $\text{Bonus}_{\text{corroboration}} = (\text{Số lượng vectơ} \ge 60 - 1) \times 8$.  
-Hệ thống **không cộng dồn ngẫu nhiên** và **không kẹp sàn mặc định là 5 điểm**, mà phản ánh chính xác điểm rủi ro thực tế đo lường được ($0 - 100$). Chỉ bổ sung điểm tương quan khi phát hiện nhiều vectơ độc lập cùng bị công kích đồng thời.
+### 3.4. Bãi Bỏ Thông Số Tổng Threat Score (Theo Phê Duyệt Của PO)
+- **Quyết định của PO:** Bỏ hoàn toàn thông số điểm Threat Score tổng gộp trên toàn bộ giao diện và luồng cảnh báo chính của AIOps Sentinel.
+- **Cơ sở khoa học:** Biểu đồ 4 vector độc lập đã định lượng chi tiết và trực quan hóa từng khía cạnh rủi ro riêng biệt ($S_{\text{auth}}, S_{\text{traffic}}, S_{\text{exploit}}, S_{\text{resource}}$). Việc gộp hoặc cộng dồn các vector thành 1 con số đe dọa tổng quát duy nhất tiềm ẩn nguy cơ "báo động giả chùm":
+  + Ví dụ: Nếu mỗi vector chỉ biến động nhẹ $20 - 30$ điểm (hoàn toàn bình thường trong vận hành thực tế), công thức tổng hợp có thể đẩy điểm số lên mức báo động đỏ, gây kích hoạt chế độ bảo trì khẩn cấp ngoài ý muốn.
+  + Việc loại bỏ Threat Score tổng giúp đội ngũ Quản trị viên và hệ thống phòng vệ phản ứng chính xác đúng nơi có sự cố: chỉ cách ly IP vi phạm nếu rủi ro thuộc $S_{\text{auth}}$ / $S_{\text{exploit}}$, chỉ điều chỉnh phân luồng nếu thuộc $S_{\text{traffic}}$, và chỉ bảo trì khi có nguy cơ sập phần cứng từ $S_{\text{resource}}$.
 
-### 3.5. Cơ Chế Chống Đầu Độc Mô Hình Máy Học (Anti-Poisoning Guard)
+### 3.5. Cơ Chế Chống Đầu Độc Mô Hình Máy Học (EWMA Anti-Poisoning Guard)
 ```javascript
-// Chỉ cập nhật baseline khi Threat Score < 70 (Hệ thống đang trong trạng thái an toàn)
-if (threatScore < 70) {
+// Chỉ cập nhật baseline khi không có vector nào vượt ngưỡng cảnh báo (Hệ thống an toàn)
+const isSafe = Object.values(vectorScores).every(score => score < 70);
+if (isSafe) {
   this._updateHourlyBaseline(sample);
 } else {
-  logger.warn('[AIOps] Anti-Poisoning kích hoạt: Từ chối cập nhật Baseline khi Threat Score cao', { threatScore });
+  logger.warn('[AIOps] Anti-Poisoning kích hoạt: Tạm dừng cập nhật Baseline khi có vector vượt ngưỡng rủi ro');
 }
 ```
 
@@ -248,10 +255,12 @@ Nhằm đảm bảo tính công bằng và loại bỏ hoàn toàn tình trạng
    - Tối ưu giao diện thanh thoát: **Đã lược bỏ các chuỗi công thức toán thô** (`Baseline = N * 10`, `Safe Peak = 3 * Baseline`, `Quarantine = ...`) khỏi giao diện.
    - Khi thay đổi, giá trị được lưu tức thì vào CSDL PostgreSQL (`aiops_setting`) và bộ nhớ đệm `localStorage`, đồng thời phát lệnh cập nhật tới lõi máy chủ qua API `POST /api/admin/aiops/scale`.
 
-3. **Đồng Hồ Bán Nguyệt Đo Rủi Ro Tổng Hợp (Composite Threat Score Gauge SVG):**
-   - Thiết kế bán nguyệt bán kính $R=85$, quét từ $0$ đến $100$.
-   - 4 phân vùng màu chuẩn xác: Xanh ($0-59$ Bình thường), Vàng ($60-79$ Tăng cao), Cam ($80-89$ Cảnh báo), Đỏ ($90-100$ Nguy cấp).
-   - **Bãi bỏ dòng chữ gây hiểu nhầm:** Đã loại bỏ hoàn toàn nhãn `"Chế độ chỉ đo lường — Không phong tỏa IP"` để phản ánh đúng năng lực phòng vệ tích cực (Active Quarantine) của Sentinel.
+3. **Bố Cục 2 Cột Cân Xứng Khối Tín Hiệu (Loại Bỏ Hoàn Toàn Widget Threat Score Gauge):**
+   - **Chỉ thị của PO:** Bãi bỏ hoàn toàn widget đồng hồ đo Threat Score Gauge (0-100) nửa vòng tròn vì 4 vector độc lập đã định lượng từng nhóm rủi ro riêng biệt.
+   - **Tái cấu trúc giao diện:** Khối 1 được dàn trải thành lưới 2 cột đối xứng (`grid-cols-1 lg:grid-cols-2`) thanh thoát và hiện đại:
+     - **Cột 1 — Tín Hiệu Xâm Nhập & Tấn Công:** Giám sát song song Vectơ 1 (Xác thực & Danh tính) và Vectơ 3 (Khai thác lỗ hổng & Thăm dò).
+     - **Cột 2 — Sức Chịu Tải & Phần Cứng:** Giám sát song song Vectơ 2 (Lưu lượng & DoS) và Vectơ 4 (Sức khỏe tài nguyên hệ thống).
+   - Thiết kế này loại bỏ hoàn toàn sự rườm rà của chỉ số tổng, giúp người quản trị định vị tức thời bản chất của sự cố an ninh hoặc tài nguyên.
 
 4. **Ma Trận 4 Vectơ Rủi Ro Độc Lập (Multi-Vector Risk Matrix):**
    - Tiêu đề phân mục được chuẩn hóa: **"4 Vectơ Rủi Ro"**.
@@ -259,21 +268,24 @@ Nhằm đảm bảo tính công bằng và loại bỏ hoàn toàn tình trạng
    - Hiển thị chi tiết từng chỉ số đóng góp và **Hành vi phòng vệ cá nhân hóa độc lập** cho từng nhóm rủi ro (Auth, Traffic, Exploit, Resource).
 
 5. **Biểu Đồ Xu Hướng 4 Vectơ Rủi Ro Đa Khung Thời Gian (Multi-Vector Multi-Range Trend Chart SVG):**
-   - Hỗ trợ **5 mốc thời gian chuẩn hóa (Presets)**:
+   - **Thanh 5 Preset Nhanh (Quick Presets):**
      - `10 Phút` (Mặc định): Trực quan hóa 60 mẫu trượt gần nhất từ Ring Buffer In-Memory ($10\text{s}$ interval).
      - `1 Giờ`: Mẫu snapshot trong 1 giờ qua.
      - `24 Giờ`: Mẫu snapshot 24 giờ qua từ CSDL PostgreSQL.
      - `7 Ngày`: Mẫu snapshot gộp theo mốc 7 ngày.
      - `1 Tháng`: Toàn cảnh xu hướng vận hành và an ninh trong 30 ngày qua.
+   - **Loại Bỏ Hoàn Toàn Bộ Chọn Thời Gian Chi Tiết (Custom Date Range Picker):**
+     - Bãi bỏ các trường input ngày giờ "Từ... Đến...", nút Lọc, Làm mới, Xóa bộ lọc và Banner ưu tiên rườm rà.
+     - Giữ cho giao diện tập trung cao độ vào các dải quan sát chuẩn hóa của hệ thống AIOps.
+   - **Tập Trung 100% Vào 4 Vectơ Độc Lập:**
+     - Loại bỏ hoàn toàn đường trần nét đứt Max composite tím (`#8b5cf6`), nhãn `"Trần Max: threatScore"` trong Legend và dòng `"Threat Score"` trong Hover Tooltip.
+     - Biểu đồ chỉ tập trung hiển thị 4 đường xu hướng độc lập:
+       - 🟠 **Vectơ 1 (Xác thực):** Amber `#f59e0b` (`badge`) — Failed logins & token reuse.
+       - 🔵 **Vectơ 2 (Lưu lượng):** Blue `#3b82f6` (`waves`) — Biến thiên RPM theo trần CCU.
+       - 🔴 **Vectơ 3 (Khai thác):** Rose `#f43f5e` (`bug_report`) — Mẫu SQLi, traversal injection.
+       - 🟢 **Vectơ 4 (Tài nguyên):** Teal `#0d9488` (`memory`) — Tải CPU/RAM và Event Loop lag.
    - **Tọa độ trục thời gian thực (Timestamp-based X Positioning):** Tọa độ hoành độ $X$ của mỗi mẫu đo được tính dựa trên tỷ lệ thời gian thực tế của mẫu trong dải $[startTime, endTime]$: $x = \text{padding} + \frac{t_{\text{sample}} - t_{\text{start}}}{t_{\text{end}} - t_{\text{start}}} \times \text{usableWidth}$. Dữ liệu mới trong 10 phút qua khi xem ở chế độ "1 Tháng" sẽ nằm tập trung ở mốc "Hiện tại", không bị kéo giãn giả tạo sang Tuần 1.
-   - **Đã loại bỏ icon `date_range`** trước dòng "Bộ lọc thời gian:" để giao diện sạch sẽ, thanh thoát.
    - Dữ liệu lịch sử từ 1 Giờ trở lên được lấy từ API `GET /api/admin/aiops/trend?range=...` truy vấn bảng CSDL `aiops_metric_snapshot`.
-   - **Thanh chuyển Tab vectơ (Filter Tabs):** Cho phép xem đồng thời "Tất Cả 4 Vectơ" hoặc soi cận cảnh từng vectơ riêng biệt:
-     - 🟠 **Vectơ 1 (Xác thực):** Amber `#f59e0b` (`badge`) — Theo dõi failed logins & token reuse.
-     - 🔵 **Vectơ 2 (Lưu lượng):** Blue `#3b82f6` (`waves`) — Theo dõi biến thiên RPM theo trần CCU.
-     - 🔴 **Vectơ 3 (Khai thác):** Rose `#f43f5e` (`bug_report`) — Theo dõi các mẫu SQLi, traversal injection.
-     - 🟢 **Vectơ 4 (Tài nguyên):** Teal `#0d9488` (`memory`) — Theo dõi tải CPU/RAM và độ trễ Event Loop.
-     - 🟣 **Trần tham chiếu (Composite Max):** Nét đứt tím `#8b5cf6`.
    - **Tương tác trực quan (Interactive Hover Tooltip):** Khi rê chuột lên biểu đồ, hiển thị vạch gióng thời gian và bảng chỉ số chi tiết của cả 4 vectơ tại mốc thời gian đó (HH:mm:ss hoặc DD/MM HH:mm).
    - Hiển thị 2 vạch ngưỡng định lượng: Vạch vàng Cảnh báo ($70$) và Vạch đỏ Khẩn cấp ($85$).
 
@@ -314,6 +326,13 @@ Nhằm đảm bảo tính công bằng và loại bỏ hoàn toàn tình trạng
    - Tuyệt đối không bao giờ hiển thị nút bảo trì toàn hệ thống khi chỉ có tấn công an ninh từ các IP bên ngoài.
 
 9. **Modal Tái Hiệu Chuẩn Baseline (Calibrate Baseline):**
+   - **Đồng bộ chỉ số quy mô và khắc phục lệch đơn vị (RPM vs RPS):**
+     - Đã giải quyết triệt để tình trạng lệch chỉ số giữa thanh "Quy Mô Người Dùng Mục Tiêu" và Modal Hiệu chuẩn. Modal đọc giá trị `targetConcurrency` thực tế từ server (mặc định $1,000$ CCU).
+     - **Bảng quy đổi trực quan:** Hiển thị rõ ràng mối tương quan:
+       + Baseline kỳ vọng: $N \times 10\text{ req/phút}$ (VD: $1,000 \text{ CCU} \implies 10,000\text{ RPM}$).
+       + Trần đỉnh an toàn: $N \times 30\text{ req/phút} \leftrightarrow N / 2\text{ RPS}$ (VD: $1,000 \text{ CCU} \implies 30,000\text{ RPM} \leftrightarrow 500\text{ RPS}$).
+     - **Input Ngưỡng đột biến lưu lượng (`trafficSpikeRps`):** Hiển thị đơn vị `req/s` kèm chú thích quy đổi rõ ràng sang req/phút để Quản trị viên dễ dàng hình dung.
+     - **Backend Hỗ Trợ Toàn Diện:** Module `anomaly.detector.js` tiếp nhận trực tiếp tham số `trafficSpikeRps` (tự động tính toán `effectiveTrafficRatio = (trafficSpikeRps * 60) / expectedRpm`), đảm bảo ngưỡng hiệu chuẩn có hiệu lực tức thì trên luồng phát hiện bất thường Vector 2.
    - **Mô hình chịu tải dựa trên phần cứng máy chủ & quy mô $N$ CCU:**
      - Hệ thống kết hợp thông số phần cứng thực tế (CPU cores, RAM vật lý) với quy mô $N$ để tính toán các ngưỡng an toàn của 4 Vector rủi ro:
        - Xác thực: $\max(20, \text{round}(15 + 10 \cdot \log_{10}(N / 100)))$

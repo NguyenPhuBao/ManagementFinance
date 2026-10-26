@@ -168,15 +168,17 @@ describe('AIOps 16 Fixes & Quarantine Matrix 2-Tier Test Suite', () => {
       expect(screen.queryByText(/5,000 Người \(Lớn\)/i)).not.toBeInTheDocument();
     });
 
-    it('7 & 8. Chú thích Threat Score hiển thị dạng 2x2 badges, bỏ công thức tổng hợp và dòng phòng vệ Sentinel', async () => {
+    it('7 & 8. [PO Updated] Đã loại bỏ hoàn toàn Box Threat Score và chú thích thang điểm để tập trung vào 4 Vector', async () => {
       render(<AIOpsPage />);
       await waitFor(() => {
-        expect(screen.getByText('0-59: An toàn')).toBeInTheDocument();
-        expect(screen.getByText('60-79: Tăng cao')).toBeInTheDocument();
-        expect(screen.getByText('80-89: Cảnh báo')).toBeInTheDocument();
-        expect(screen.getByText('90+: Nguy cấp')).toBeInTheDocument();
+        expect(screen.getByText('Tín Hiệu Xâm Nhập & Tấn Công')).toBeInTheDocument();
       });
-      // Đã bỏ công thức và log phòng vệ Sentinel
+      // Xác nhận không còn Box Threat Score và các chú thích thang điểm
+      expect(screen.queryByText('Hệ Số Đe Dọa (Threat Score)')).not.toBeInTheDocument();
+      expect(screen.queryByText('0-59: An toàn')).not.toBeInTheDocument();
+      expect(screen.queryByText('60-79: Tăng cao')).not.toBeInTheDocument();
+      expect(screen.queryByText('80-89: Cảnh báo')).not.toBeInTheDocument();
+      expect(screen.queryByText('90+: Nguy cấp')).not.toBeInTheDocument();
       expect(screen.queryByText(/Công thức tổng hợp:/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/max\(Vectơ\) \+ Bonus kết hợp/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Phòng vệ Sentinel:/i)).not.toBeInTheDocument();
