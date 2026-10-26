@@ -637,6 +637,13 @@ src/Backend/
   Engine nền chưa đo trên máy. Hôm nay **chưa ai đọc** bảng ấy (`getDeviceHistory` 0 chỗ gọi ngoài test).
 - ✅ Cùng phiên: `NOT_OWNER` + bốn mã `HOUSEHOLD_*` vào lỗi đẩy vĩnh viễn (`8f8694bd`, khối 🏠 dưới); một câu mục 1b
   `KHOA_APP_FEATURE.md` (Quên PIN chỉ mạnh bằng mật khẩu + hộp thư email trên máy, `89923b55`).
+- 📝 **Tin từ FlowMoney (`system.broadcast`) — spec duyệt, kế hoạch xong, CHƯA có mã** (người dùng chọn *"dừng ở kế hoạch"*). Spec
+  `docs/superpowers/specs/2026-10-26-tin-tu-flowmoney-broadcast-design.md` (`30c8bead`, `03009c0c`); kế hoạch 7 task
+  `docs/superpowers/plans/2026-10-26-tin-tu-flowmoney-broadcast.md` (gitignore, chỉ trên máy viết). Người dùng chốt: chỉ tin admin
+  gõ tay (bỏ 5 tin bảo trì có `metadata.type`) · Trung tâm thông báo + khay hệ điều hành · tin lúc không nối socket thì mất (không
+  đơn backend) · nhóm riêng *"Tin từ FlowMoney"* (chip *"FlowMoney"*) · luồng riêng `RealtimeChannel.tinHeThong` + hàm thuần
+  `docTinHeThong` — ngoại lệ hộp đen thứ hai sau `account.force_logout`. Task 0 = thêm hàng + chip vào hai màn Stitch, người dùng
+  nhìn xác nhận; chưa ai chọn inline / agent con.
 
 ### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối; nghiệm thu Realme buổi 1 — F1 + M11; buổi 2 — M5, thanh trạng thái, `flutter_secure_storage` 10; phiên 8 — M7 · M8 · M12, buổi 3)
 
