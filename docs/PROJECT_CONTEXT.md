@@ -923,6 +923,9 @@ liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà 
   *"xoá mốc + `syncNow`"* (mốc kéo về nằm trong RAM — xoá kho không đủ) · một bộ `DieuPhoiDoiNha` (phủ cả máy thứ hai cùng tài
   khoản) · không hook `datNha` · trần thành viên từ `household.maxMembers`. Cả 12 chỗ ghi ở **mục 11 spec** (thắng thân khi lệch).
 - Chưa có mã. Người dùng chọn *"dừng ở spec"*: **chưa** chọn cách thi công (agent con / inline), **chưa** cho vẽ 6 màn Stitch.
+- ✅ **2026-10-26 — Task 5 của kế hoạch làm riêng, trước lát 1** (người dùng chọn): `NOT_OWNER` + bốn mã `HOUSEHOLD_*` đẩy vào
+  `_permanentCodes` (`core/sync/gui_lo_dong_bo.dart`), năm ca ở `sync_failure_handling_test.dart`, bản sai đỏ. Backend bật vế A
+  (kiểm chủ sở hữu) trước cả lát 1 thì hàng bị từ chối không bị đẩy lại mãi. Phần còn lại của lát 1 vẫn chưa có mã.
 
 ### 🔀 Gộp `main` @ `0ab9cbd4` (2026-10-25, commit gộp `1fedd00a`, đã push) — PR #159: sync contract v4, bảo trì, AIOps, admin; backend viết đè tài liệu đồng bộ của client lần hai
 

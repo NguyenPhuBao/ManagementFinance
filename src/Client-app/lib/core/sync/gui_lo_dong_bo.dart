@@ -314,6 +314,15 @@ class GuiLoDongBo {
     // danh sách trắng, mã lạ là gửi lại mãi. Backend lên ở `3a5d320c` (gộp
     // `e7570e16`, 2026-10-18).
     'BILL_PERIOD_ALREADY_PAID',
+    // Gia đình (spec `2026-10-23-gia-dinh-nen-mong-design.md` mục 4.2; đơn 50
+    // mục A + D.3). Thêm TRƯỚC khi backend lên (2026-10-26) — danh sách trắng.
+    // `NOT_OWNER`: sửa / xoá hàng của tài khoản khác (tiền đề kiểm chủ sở
+    // hữu); bốn mã `HOUSEHOLD_*`: hết quyền ghi vào nhà.
+    'NOT_OWNER',
+    'HOUSEHOLD_NOT_MEMBER',
+    'HOUSEHOLD_READ_ONLY',
+    'HOUSEHOLD_CLOSED',
+    'HOUSEHOLD_SCOPE_MISMATCH',
   };
 
   /// Khoá ngoại trỏ tới bảng `account` bị vỡ nghĩa là `idaccount` đang dùng

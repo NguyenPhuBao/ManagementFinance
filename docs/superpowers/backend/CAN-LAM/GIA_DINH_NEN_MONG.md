@@ -336,7 +336,9 @@ nguyên hoặc `null`). ⚠️ Phải thêm `idhousehold` vào **mọi khối `d
     dịch riêng chỉ về máy chủ của nó, nên số dư quỹ chung sẽ lệch giữa các máy) — có thể phải nới luật này; đơn phần 2 nêu cụ thể.
 
 **D.3 — Bốn mã lỗi mới**, trả theo khuôn kết quả từng thao tác hiện có (`results[i] = {localId, status:'error', code, message}`,
-HTTP 200 cho cả lô — `sync.service.js:94-99, 159-237`). Client xếp cả bốn (và `NOT_OWNER` của mục A) là **lỗi vĩnh viễn**:
+HTTP 200 cho cả lô — `sync.service.js:94-99, 159-237`). Client xếp cả bốn (và `NOT_OWNER` của mục A) là **lỗi vĩnh viễn**
+(✅ client **đã thêm** cả năm mã 2026-10-26 — `src/Client-app/lib/core/sync/gui_lo_dong_bo.dart`; backend bật mục A hay D lúc nào
+cũng được, hàng bị từ chối không bị đẩy lại mãi):
 
 | Mã | Khi |
 |---|---|

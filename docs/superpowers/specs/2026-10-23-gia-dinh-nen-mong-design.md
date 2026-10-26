@@ -128,7 +128,8 @@ Trả theo khuôn lỗi từng thao tác hiện có (`results[i].code`, HTTP 200
 của người khác là sửa / xoá được. Gia đình làm lộ UUID giữa thành viên (từ phần con 2 — ví *cho nhà xem*), nên kiểm chủ sở hữu
 (hàng riêng: `existing.idaccount` = người đẩy; hàng của nhà: luật bảng trên) là việc **đầu tiên** của đơn backend. ⚠️ Client thêm **cả bốn** (cùng mã `NOT_OWNER` của tiền đề kiểm chủ sở hữu ngay dưới) vào
 `_permanentCodes` (`core/sync/gui_lo_dong_bo.dart`, danh sách **trắng**) **cùng lượt** — thiếu là hàng bị gửi lại mọi chu kỳ,
-im lặng (lớp lỗi G31 / G14). Gặp một trong bốn mã ⇒ làm mới trạng thái nhà (mục 5.8) và hiện nhãn *"Chưa ghi được vào nhà"* trên
+im lặng (lớp lỗi G31 / G14). ✅ **Đã thêm 2026-10-26** (năm mã, ca canh ở `sync_failure_handling_test.dart`) — trước cả lát 1, nên
+backend lên trước hay sau client đều không lặp. Gặp một trong bốn mã ⇒ làm mới trạng thái nhà (mục 5.8) và hiện nhãn *"Chưa ghi được vào nhà"* trên
 hàng ấy (spec 2 trở đi mới có hàng của nhà do người dùng ghi).
 
 ### 4.3 Vào nhà ⇒ kéo lại toàn bộ một lần

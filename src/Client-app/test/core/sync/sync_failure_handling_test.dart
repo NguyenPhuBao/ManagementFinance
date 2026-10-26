@@ -729,6 +729,34 @@ void main() {
       );
     });
 
+    // Gia đình (spec 2026-10-23 mục 4.2; đơn 50 mục A + D.3) — thêm TRƯỚC khi
+    // backend lên: tập mã vĩnh viễn là danh sách trắng, mã chưa có tên ở đây
+    // bị gửi lại ở MỌI chu kỳ, im lặng (lớp lỗi G31 / G14).
+    for (final (ma, cau) in const [
+      ('NOT_OWNER', 'Bản ghi thuộc tài khoản khác'),
+      ('HOUSEHOLD_NOT_MEMBER', 'Bạn không còn là thành viên của nhà này'),
+      ('HOUSEHOLD_READ_ONLY', 'Nhà đang ở chế độ chỉ xem'),
+      ('HOUSEHOLD_CLOSED', 'Nhà đã giải tán'),
+      ('HOUSEHOLD_SCOPE_MISMATCH', 'Tham chiếu sai phạm vi nhà'),
+    ]) {
+      test('Mã $ma là lỗi vĩnh viễn (gia đình, thêm TRƯỚC khi backend lên)',
+          () async {
+        await seedPendingCategory();
+
+        await runOnce(_CodedFailureAdapter(code: ma, message: cau));
+
+        final row = await db.categoryDao.getById(catId);
+        expect(
+          row?.syncBlockedUntil,
+          clock.add(const Duration(seconds: 30)),
+          reason: '$ma: đẩy lại y nguyên không đổi được kết quả — hàng không '
+              'thuộc người đẩy / người đẩy hết quyền ghi vào nhà. Rơi xuống '
+              'transient là gửi lại mọi chu kỳ, giãn cách luỹ tiến (G2) kéo '
+              'chậm cả hàng đợi.',
+        );
+      });
+    }
+
     test('Mã BILL_ALREADY_PAID là lỗi vĩnh viễn', () async {
       await seedPendingCategory();
 
