@@ -79,21 +79,10 @@ coverage/
 # máy). Một luật mà người ta phải phá đều đặn là một luật sai.
 #
 # `plans/` thì GIỮ: người dùng chốt kế hoạch làm việc cá nhân không lên nhánh.
-docs/category/
-docs/deploy_Cloud/
-docs/superpowers/auth/
-docs/superpowers/client-app/
-docs/superpowers/plans/
-docs/superpowers/sync/*
 # … trừ tài liệu tổng kết đồng bộ: nó mô tả hợp đồng giữa client và backend nên
 # phải đi theo repo (bỏ chặn 2026-09-14, theo yêu cầu của người dùng).
-!docs/superpowers/sync/SYNC_DOCUMENTATION.md
-src/Backend/prisma/seed_roles.js
-src/Backend/scripts/seed_roles.js
-.superpowers/
 .stitch/
 plugins/
-src/Backend/prisma/migrations/
 
 # Test Suites (Local test scripts) — CHỈ của backend.
 #
