@@ -309,7 +309,17 @@ void main() {
       // thông báo ngân hàng, không phải từ bộ luật. Khoá và deeplink của nó
       // được canh riêng ở ca "D1" bên dưới.
       NotificationKind.bienDongSoDu,
+      // Tin admin (2026-10-26): `NhanTinHeThong` ghi từ socket `system.broadcast`, không từ bộ luật. Khoá
+      // `tinHeThong:<id>` rơi nhánh mặc định → Trung tâm thông báo — canh ở ca "tin admin" ngay dưới.
+      NotificationKind.tinHeThong,
     };
+
+    test('tin admin: khoá tinHeThong:<id> → Trung tâm thông báo, loaiTuKhoa nhận ra', () {
+      expect(deeplinkTuDedupeKey('tinHeThong:8f1c'), routeThongBao,
+          reason: 'chạm thông báo trên khay phải mở Trung tâm — nội dung chỉ đọc trọn ở đó');
+      expect(loaiTuKhoa('tinHeThong:8f1c'), NotificationKind.tinHeThong,
+          reason: 'nhật ký B5a / học giờ B5b suy loại từ khoá — thiếu là tin admin rơi khỏi mọi phép học');
+    });
 
     test('đầu vào của phép canh phủ đủ mọi loại thông báo bộ quét sinh ra', () {
       final phu = tatCaUngVien().map((c) => c.kind).toSet();

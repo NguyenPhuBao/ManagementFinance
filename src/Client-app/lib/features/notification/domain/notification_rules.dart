@@ -68,6 +68,10 @@ enum NotificationKind {
   /// ngoài màn khoá chỉ là thông báo tóm tắt không số do Kotlin bắn. Bị **xoá
   /// cứng** khi người dùng Lưu / Bỏ qua (ngoại lệ có chủ ý, spec D1 §3.3).
   bienDongSoDu,
+
+  /// Tin admin gõ ở màn Phát thông báo (Admin-web) — `system.broadcast`, ghi bởi `NhanTinHeThong` từ socket, không do
+  /// bộ quét sinh (spec 2026-10-26). Khoá `tinHeThong:<id>`.
+  tinHeThong,
 }
 
 enum NotificationSeverity { info, warning, critical }

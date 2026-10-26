@@ -20,6 +20,8 @@ String tenNhomThongBao(NotificationGroup nhom) {
       return 'Tổng kết';
     case NotificationGroup.bienDong:
       return 'Biến động số dư';
+    case NotificationGroup.tinFlowMoney:
+      return 'Tin từ FlowMoney';
   }
 }
 
@@ -37,6 +39,8 @@ String moTaNhomThongBao(NotificationGroup nhom) {
       return 'Nhìn lại tuần vừa qua.';
     case NotificationGroup.bienDong:
       return 'Đọc thông báo ngân hàng / ví điện tử trên máy để điền sẵn giao dịch.';
+    case NotificationGroup.tinFlowMoney:
+      return 'Thông báo chung do đội ngũ FlowMoney gửi.';
   }
 }
 
@@ -54,6 +58,8 @@ IconData iconNhomThongBao(NotificationGroup nhom) {
       return Icons.calendar_view_week_outlined;
     case NotificationGroup.bienDong:
       return Icons.account_balance_outlined;
+    case NotificationGroup.tinFlowMoney:
+      return Icons.campaign_outlined;
   }
 }
 

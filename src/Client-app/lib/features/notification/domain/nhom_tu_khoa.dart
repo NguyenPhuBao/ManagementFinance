@@ -40,6 +40,7 @@ NotificationKind? loaiTuKhoa(String dedupeKey) =>
       'walletLow' => NotificationKind.walletLowBalance,
       'weekly' => NotificationKind.weeklySummary,
       'bienDong' => NotificationKind.bienDongSoDu,
+      'tinHeThong' => NotificationKind.tinHeThong,
       _ => null,
     };
 

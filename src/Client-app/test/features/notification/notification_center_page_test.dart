@@ -133,6 +133,13 @@ void main() {
       expect(find.widgetWithText(ChoiceChip, 'Tổng kết'), findsOneWidget);
       await dongTrang(tester);
     });
+
+    testWidgets('có chip FlowMoney (tin admin — Stitch 65dab656…)', (tester) async {
+      await moTrang(tester);
+      expect(find.widgetWithText(ChoiceChip, 'FlowMoney'), findsOneWidget);
+      // BẮT BUỘC gọi trong thân ca (bẫy 7.13 NOTIFICATION_FEATURE.md) — thiếu là treo cả tệp.
+      await dongTrang(tester);
+    });
   });
 
   /// Vuốt phải sang trái — đúng chiều `DismissDirection.endToStart`.
