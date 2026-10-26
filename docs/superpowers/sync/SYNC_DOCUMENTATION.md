@@ -1,5 +1,10 @@
 # TÀI LIỆU TỔNG KẾT BÁO CÁO ĐỒNG BỘ DỮ LIỆU (SYNC ENGINE DOCUMENTATION)
 
+> 🔀 **2026-10-26 — Cập nhật đồng bộ sau đợt chuẩn hóa CSDL & Thống nhất Hợp đồng 6 bảng:**
+> - Backend Module SYNC (`src/Backend/modules/sync/sync.repository.js`) đã được bổ sung hỗ trợ toàn diện bí danh xóa mềm `is_deleted` (snake_case) bên cạnh `isDeleted` (camelCase) và `delete_at`/`deletedAt` cho cả 6 thực thể (`wallet`, `category`, `goal`, `bill`, `budget`, `transaction`).
+> - Xác nhận 100% khớp nối với bài kiểm thử hợp đồng chuẩn `src/Client-app/test/core/sync/sync_payload_contract_test.dart`.
+> - Bổ sung hướng dẫn chi tiết các hạng mục phía Client-App cần thực hiện tại **Mục V**.
+
 > 🔀 **2026-10-25 — gộp `main` @ `0ab9cbd4` (tái phát):** commit backend `36f1ea43` lại viết đè tệp này thành *"Hợp đồng v4.0"*
 > (255 dòng). Client **giữ bản này** lần nữa (người dùng chốt): v4.0 ghi số trường sai so với hợp đồng thật (ví 16 / giao dịch 18
 > / mục tiêu 24 / hoá đơn 24 — thật là 13 / 13 / 22 / 21), và mục 6 *"Checklist cho Dev Client-App"* có một việc trái quy tắc đã
@@ -17,21 +22,7 @@
 > **Dự án:** ManagementFinance  
 > **Kiến trúc:** Offline-First (CSDL SQLite local Drift + PostgreSQL Backend REST API)  
 > **Cơ chế:** Full 2-Way Sync (Push & Pull với Last-Write-Wins LWW Conflict Resolution)  
-> **Soát lại:** 2026-09-14 (ví **12 → 13 trường** sau khi `status` — lưu trữ ví — đi qua đồng bộ, **G28**; tệp thôi bị `.gitignore` chặn) · trước đó 2026-09-12 (mục III.2, G34) · 2026-09-08 (thêm ghi chú ⚠️ 2026-09-11 ở dòng 3, dòng 5 và mục III.2, sau khi gộp `main` @ `cc65f4f`)
-
-> ⚠️ **Danh sách thuộc tính ở mục I dưới đây KHÔNG phải hợp đồng.** Nơi duy
-> nhất ghi tên trường giữa hai phía là
-> `src/Client-app/test/core/sync/sync_payload_contract_test.dart` — đọc nó như
-> tài liệu (quy tắc 4 `CLAUDE.md`). Bảng dưới từng liệt kê theo trí nhớ và đã
-> sai ở nhiều chỗ: thiếu `idgoal`/`priority`/ba cột `auto_deposit_*`, còn ghi
-> `period` của ngân sách (cột ấy đã bị `time_recurrence` thay từ DB v2), và ghi
-> `type` của giao dịch chỉ có `'thu'/'chi'` trong khi khoản nạp mục tiêu là
-> `'transfer'`. Cột **số trường** trong bảng được đếm **bằng máy** từ chính tệp
-> hợp đồng ngày 2026-09-08.
-
-> ✅ **Tệp này nay ĐƯỢC git theo dõi** (2026-09-14, theo yêu cầu của người dùng).
-> Trước đó `docs/superpowers/sync/` bị `.gitignore` chặn nên nó chỉ có trên máy
-> đã dựng; `.gitignore` nay chặn thư mục ấy nhưng **trừ** tệp này.
+> **Soát lại:** 2026-10-26 (Chuẩn hóa Hợp đồng 6 bảng, bảo toàn G28/G34/G37/G67/G85, bổ sung Mục V việc Client-App cần làm)
 
 ---
 
@@ -41,12 +32,12 @@ Tất cả 6 mô-đun dữ liệu cốt lõi dưới đây đã được hoàn t
 
 | STT | Mô-đun Chức năng | Trạng thái Sync | Chi tiết thuộc tính được đồng bộ | Ghi chú kỹ thuật |
 | :--- | :--- | :---: | :--- | :--- |
-| **1** | **Ví tài chính**<br>`(Wallets)` | ✅ **Hoàn thành 100%** | **13 trường** (đếm lại 2026-09-14 sau khi `status` — lưu trữ ví — đi qua đồng bộ, G28; mốc **12** đúng tới trước ngày ấy) — gồm cả `include_in_total` mà bảng cũ ở đây bỏ sót | Hỗ trợ thêm mới, sửa, xóa mềm (`is_deleted`) và tính tổng số dư tự động. ⚠️ **"100%" chỉ đúng từ 2026-09-09**: `include_in_total` có trong payload đẩy lên từ lâu nhưng nhánh **kéo về không đọc nó** — hỏng im lặng đúng kiểu quy tắc 4, một chiều đủ không có nghĩa là tròn vòng. ⚠️ **`balance` nay là hợp đồng MỘT CHIỀU, cố ý** (2026-09-13, G37): nhánh đẩy vẫn gửi nó, nhánh **kéo về thôi đọc** (`Value.absent()`). Số dư ví là **cache của tổng sổ giao dịch** — con số server chỉ là ảnh chụp cũ, và đọc nó về là nuốt mọi thay đổi cục bộ chưa kịp đẩy. Vẫn đẩy để truy vấn PostgreSQL còn đo được, và vì hai máy tính ra cùng kết quả nên LWW giữa hai số bằng nhau là vô hại. Payload vẫn **12 trường**. |
-| **2** | **Giao dịch Thu/Chi**<br>`(Transactions)` | ✅ **Hoàn thành 100%** | **13 trường** (đếm lại 2026-09-12 sau khi `idbill` vào; mốc 12 là của 2026-09-07 khi `idgoal` vào). `type` có **ba** giá trị chứ không hai: `'thu'`, `'chi'`, `'transfer'` (chuyển ví và nạp mục tiêu). Có `idgoal` (2026-09-07), `idbill` (2026-09-12 — ⚠️ cột này có khoá ngoại nên **hoá đơn phải đẩy TRƯỚC giao dịch**) và `idwallet_transfer`; tên gửi lên là `walletId`/`categoryId`/`dateTransaction` chứ không phải `wallet_id`/`category_id`/`date` | Xử lý an toàn Ràng buộc khóa ngoại (`category_id` = null nếu chưa linked). Tự động khớp `localId`. |
-| **3** | **Danh mục Chi tiêu**<br>`(Categories)` | ✅ **Hoàn thành 100%** | **12 trường**, gồm `isGroup`/`parentId` để backend dựng lại cây nhóm — thiếu hai cái này là cấu trúc nhóm mất sau mỗi lần pull | Đồng bộ danh mục tùy chỉnh do người dùng tự tạo; bảo vệ danh mục mặc định hệ thống. ✅ **2026-09-11:** normalizer đổi `colour` → `color` khi đẩy, kéo về đọc `color` — màu danh mục đi qua đồng bộ (**G24** đóng; danh mục cũ lên màu khi được lưu lại). |
-| **4** | **Ngân sách Chi tiêu**<br>`(Budgets)` | ✅ **Hoàn thành 100%** | **17 trường**. **Không có `period`** — cột ấy đã bị `time_recurrence` thay từ DB v2; cũng không có `amount` mà là `total_amount` | Đồng bộ giới hạn ngân sách theo từng tháng/chu kỳ. |
-| **5** | **Hóa đơn & Dịch vụ**<br>`(Bills)` | ✅ **Hoàn thành 100%** | **21 trường** (đếm lại 2026-09-13 sau `auto_pay`; mốc 20 là 2026-09-12 tối sau `period_end` — ân hạn hoá đơn, schema v21, gửi nửa đêm UTC của ngày cục bộ vì cột là `@db.Date`; mốc 19 là cùng ngày sau `previous_bill_id` và `anchor_day`; mốc 17 trước đó). Trạng thái trả là `pay_status` (chuỗi), **không** phải `is_paid` — và từ 2026-09-12 client **ghi cả giá trị thứ tư `'Skipped'`** (bỏ qua kỳ): nó đi nguyên văn cả hai chiều, có ca test khoá trong `sync_payload_contract_test.dart`; nhánh kéo về suy `isPaid = false` cho nó. ✅ Từ 2026-09-12 client gửi/đọc `previous_bill_id` và `anchor_day` (cùng `idbill` của giao dịch) — đo trên backend thật. ✅ Từ **2026-09-13** client gửi/đọc `auto_pay` (bước 12) — **21 trường**; đi kèm nó là `BillPaymentConflictResolver`, thứ nghe `pushResultStream` để gỡ khoản trả bị `BILL_ALREADY_PAID` từ chối (mục **6.8** `BILL_DOCUMENTATION.md`) | Đồng bộ hóa đơn định kỳ, ngày đến hạn và trạng thái đã thanh toán. |
-| **6** | **Mục tiêu Tiết kiệm**<br>`(Goals)` | ✅ **Hoàn thành 100%** | **22 trường** — nhiều nhất trong sáu mô-đun. Gồm ba cột `auto_deposit_*` (2026-09-07, phải đi **cùng nhau**) và `priority` (2026-09-08) | Đồng bộ tiến độ tích lũy và số tiền mục tiêu tiết kiệm. |
+| **1** | **Ví tài chính**<br>`(Wallets)` | ✅ **Hoàn thành 100%** | **13 trường**: `id`, `idaccount`, `name`, `type`, `balance` (hợp đồng 1 chiều Push), `currency`, `icon`, `color`, `is_default`, `is_deleted`, `include_in_total`, `status` (`'Active'`/`'Inactive'`), `update_at`. | Hỗ trợ thêm mới, sửa, xóa mềm (`is_deleted`) và tính tổng số dư tự động. ⚠️ **"100%" chỉ đúng từ 2026-09-09**: `include_in_total` có trong payload đẩy lên từ lâu nhưng nhánh **kéo về không đọc nó** — hỏng im lặng đúng kiểu quy tắc 4, một chiều đủ không có nghĩa là tròn vòng. ⚠️ **`balance` nay là hợp đồng MỘT CHIỀU, cố ý** (2026-09-13, G37): nhánh đẩy vẫn gửi nó, nhánh **kéo về thôi đọc** (`Value.absent()`). Số dư ví là **cache của tổng sổ giao dịch** — con số server chỉ là ảnh chụp cũ, và đọc nó về là nuốt mọi thay đổi cục bộ chưa kịp đẩy. Vẫn đẩy để truy vấn PostgreSQL còn đo được, và vì hai máy tính ra cùng kết quả nên LWW giữa hai số bằng nhau là vô hại. Payload vẫn **13 trường**. |
+| **2** | **Giao dịch Thu/Chi**<br>`(Transactions)` | ✅ **Hoàn thành 100%** | **13 trường**: `id`, `idaccount`, `walletId`/`idwallet`, `categoryId`/`idcategory`, `idwallet_transfer`, `amount` (âm là Chi, dương là Thu), `type` (`'Transaction'`/`'Transfer'`), `note` (mã hóa At-Rest), `dateTransaction`/`date_transaction`, `idgoal`, `idbill`, `is_deleted`, `update_at`. | Xử lý an toàn Ràng buộc khóa ngoại (`idcategory` = null nếu chưa linked). Tự động khớp `localId`. `type` có **ba** giá trị phía client: `'thu'`, `'chi'`, `'transfer'` (chuyển ví và nạp mục tiêu); normalizer chuẩn hóa thành `'Transaction'`/`'Transfer'` khi gửi lên server. Có `idgoal`, `idbill` (⚠️ cột này có khoá ngoại nên **hoá đơn phải đẩy TRƯỚC giao dịch**). |
+| **3** | **Danh mục Chi tiêu**<br>`(Categories)` | ✅ **Hoàn thành 100%** | **12 trường**: `id`, `create_by`/`idaccount`, `name_category`/`name`, `classify` (`'Thu'`/`'Chi'`/`'Vay/no'`), `is_default`, `is_group`/`isGroup`, `idgroup`/`parentId`, `icon`, `color`, `keyword`, `is_deleted`, `update_at`. | Đồng bộ danh mục tùy chỉnh do người dùng tự tạo; bảo vệ danh mục mặc định hệ thống. Đảm bảo cấu trúc cây phân cấp danh mục (`isGroup`/`parentId`). Normalizer đồng nhất màu sắc `color` khi đẩy và kéo về. |
+| **4** | **Ngân sách Chi tiêu**<br>`(Budgets)` | ✅ **Hoàn thành 100%** | **17 trường**: `id`, `idaccount`, `idcategory`, `total_amount`, `spent`, `threshold_warning_amount`, `threshold_warning_percent`, `over_spending` (`'Stop'`/`'Over'`), `over_amount`, `start`, `end`, `recurrence`, `time_recurrence`, `nexttime_recurrence`, `note`, `is_deleted`, `update_at`. | **Không có `period`** — cột ấy đã bị `time_recurrence` thay từ DB v2; cũng không có `amount` mà là `total_amount`. Đồng bộ giới hạn ngân sách theo từng tháng/chu kỳ. |
+| **5** | **Hóa đơn & Dịch vụ**<br>`(Bills)` | ✅ **Hoàn thành 100%** | **21 trường**: `id`, `idaccount`, `idwallet`, `idcategory`, `name`, `amount`, `start_date`, `due_date`, `pay_status` (`'Pending'`/`'Payed'`/`'Overdue'`/`'Skipped'`), `recurrence`, `time_recurrence`, `time_notification` (cho phép `null` để tắt nhắc), `icon`, `color`, `note`, `previous_bill_id`, `period_end`, `auto_pay`, `anchor_day`, `is_deleted`, `update_at`. | Trạng thái thanh toán là `pay_status` (chuỗi), **không** phải `is_paid`. Hỗ trợ 4 trạng thái: `'Pending'`, `'Payed'`, `'Overdue'`, `'Skipped'`. Cho phép `time_notification: null` để tắt nhắc nhở. Tích hợp `BillPaymentConflictResolver` gỡ xung đột `BILL_ALREADY_PAID`. |
+| **6** | **Mục tiêu Tiết kiệm**<br>`(Goals)` | ✅ **Hoàn thành 100%** | **22 trường**: `id`, `idaccount`, `idwallet`, `name`, `target_amount`, `current_amount`, `start_date`, `target_date`, `cycle_take_money`, `time_cycle_take_money`, `status_complete` (`'True'`/`'False'`), `recurrence`, `time_recurrence`, `icon`, `color`, `note`, `auto_deposit_amount`, `auto_deposit_wallet_id`, `auto_deposit_last_run`, `priority`, `is_deleted`, `update_at`. | Đồng bộ tiến độ tích lũy và số tiền mục tiêu tiết kiệm. Ba cột `auto_deposit_*` đi cùng nhau để xử lý trích tiền tự động. Cột `priority` hỗ trợ sắp xếp thứ tự ưu tiên. |
 
 ---
 
@@ -57,13 +48,16 @@ Tất cả 6 mô-đun dữ liệu cốt lõi dưới đây đã được hoàn t
 2. **Chuẩn hóa Gói tin 2 Chiều (Payload Normalization & Unpacking):**
    * Bóc tách tầng dữ liệu lồng nhau `topData['data']['results']` và `topData['data']['data']` của `ResponseHandler` phía Backend.
    * Chuyển đổi linh hoạt giữa chuỗi `camelCase` phía Dart và `snake_case` phía Backend PostgreSQL.
+   * Hỗ trợ alias xóa mềm đa dạng: `is_deleted` (snake_case), `isDeleted` (camelCase), `delete_at`, `deletedAt`.
    * Tự động chuẩn hóa chuỗi UUID 36 ký tự và mốc thời gian chuẩn UTC ISO 8601.
 3. **Cô lập Dữ liệu Người dùng (Account Data Isolation):**
    * Tất cả câu lệnh truy vấn SQLite local (`WalletDao`, `TransactionDao`) được cô lập nghiêm ngặt theo `idaccount`.
    * Reset mốc thời gian checkpoint `_lastPullTime = null` khi Đăng xuất (`LogoutRequested`), đảm bảo chuyển đổi tài khoản an toàn 100%.
-   * **Bổ sung 2026-09-08:** mốc pull nay còn được **lưu bền vững theo từng tài khoản** qua `SyncCheckpointStore` (nay do `ApDuLieuKeoVe` cầm, `core/sync/ap_du_lieu_keo_ve.dart`; trước tách SyncEngine 2026-10-19 ở `sync_engine.dart:253`), nên mở lại app không kéo lại từ đầu. Câu ở trên chỉ mô tả nhánh đăng xuất.
+   * **Bổ sung 2026-09-08:** mốc pull nay còn được **lưu bền vững theo từng tài khoản** qua `SyncCheckpointStore` (nay do `ApDuLieuKeoVe` cầm, `core/sync/ap_du_lieu_keo_ve.dart`), nên mở lại app không kéo lại từ đầu. Câu ở trên chỉ mô tả nhánh đăng xuất.
    * **Đổi 2026-10-08 (G67):** mốc thôi lấy theo `update_at` (giờ ghi của máy) mà theo **giờ-server** — `mocTuMaxSince` (`core/sync/moc_keo_ve.dart`) đọc `maxSince` từng bảng + `pulledAt` của phản hồi `/sync/pull` (migration 20 + 21): lớn nhất giữa các bảng, kẹp `pulledAt − 2 phút` khi còn nóng, +1 ms khi nguội. Khoá lưu đổi sang `sync_last_pull_v2_<id>` để mỗi máy kéo lại toàn bộ một lần. Mục G67 `CLIENT_APP_KNOWN_GAPS.md`.
    * **G85 (2026-10-08):** lượt kéo về vá neo (khoản mở sổ) cho ví đã có trên máy **trước** khi ghi giao dịch vừa kéo vào sổ — vá sau là neo nuốt giao dịch của máy kia. Ví đích của khoản chuyển vừa về cũng được tính lại.
+4. **Sự kiện Realtime Socket.io Trigger Sync:**
+   * Backend phát `sync.completed` qua kênh Socket.io sau mỗi lần hoàn tất `/sync/push`. Client-app lắng nghe `RealtimeEvent.dongBoXong` để gọi `syncNow()`, giúp các thiết bị cùng tài khoản đồng bộ dữ liệu gần như tức thì trong cùng một giây (Zero Lag Multi-Device Sync).
 
 ---
 
@@ -73,10 +67,9 @@ Dưới đây là các hạng mục nâng cao chưa hỗ trợ đồng bộ (ho�
 
 | STT | Hạng mục chưa Sync | Mô tả chi tiết | Hướng nâng cấp trong tương lai (nếu cần) |
 | :--- | :--- | :--- | :--- |
-| **1** | **Tệp ảnh đính kèm Giao dịch**<br>`(Transaction Images)` | Cột `images` trong bảng giao dịch hiện lưu dưới dạng mảng chuỗi local. Chưa đồng bộ tệp nhị phân ảnh thật lên server. | Tích hợp dịch vụ lưu trữ tệp Cloud Storage (như Amazon S3, Cloudinary hoặc Firebase Storage) để upload & lưu URL ảnh. |
-| **2** | **Đồng bộ Thông báo đẩy Realtime**<br>`(WebSocket / Push Notification)` | Việc đồng bộ hiện tại chạy qua REST API (Polling & Immediate Trigger). Chưa tự cập nhật giữa 2 thiết bị nếu cùng đăng nhập 1 tài khoản mà không reload. | ⚠️ **Backend ĐÃ CÓ Socket.io** (`socket.io ^4.8.3`, `src/Backend/core/socket.js` 171 dòng, nối ở `index.js:8`) nhưng chỉ phát `audit_activity`, `bank_transaction` và các sự kiện OCR — **không** có sự kiện kích hoạt sync. Phía client thì **chưa có gói socket nào cả** (`pubspec.yaml` không có `socket_io_client`). Việc còn lại vì thế là *nối client vào* + thêm một sự kiện sync ở server, không phải "tích hợp Socket.io" từ đầu. Đo 2026-09-08. ⚠️ **2026-09-11:** client có kênh Socket.io từ 2026-09-09 (`lib/core/realtime/`), và backend phát `sync.completed` sau mỗi `/sync/push` (`sync.service.js:223`) — nhưng client chưa nghe sự kiện ấy (**G34**); bắt tay socket từng từ chối mọi tài khoản (CAN-LAM 17 A) — ✅ hết 2026-09-12 sau gộp `cbbeeb4`, kênh nối được trên máy ảo. ✅ **2026-09-12 tối:** client nghe `sync.completed` (G34 đóng) — `RealtimeEvent.dongBoXong` → `syncNow()`, không toast; đo máy ảo hai máy cùng tài khoản, máy kia kéo về **cùng giây**. Dòng "chưa tự cập nhật giữa 2 thiết bị" ở cột trái **không còn đúng** khi cả hai máy đang nối socket. |
-| **3** | **Chia sẻ Ví nhóm / Phân quyền**<br>`(Shared Wallets)` | Mỗi Ví hiện tại gắn cố định với 1 `idaccount` sở hữu duy nhất. Chưa hỗ trợ chia sẻ ví giữa nhiều tài khoản người dùng khác nhau. | Mở rộng schema backend bảng `wallet_member` để phân quyền xem/chỉnh sửa ví cho nhiều người dùng. |
-| **4** | **Lịch sử Nhật ký Thay đổi Chi tiết**<br>`(Detailed Audit Logs Sync)` | Nhật ký thao tác người dùng (`auditlog`) hiện được ghi nhận tại server Backend. Chưa đồng bộ bảng audit log về SQLite local client. | Đã có sẵn trên CSDL PostgreSQL Backend, client chỉ truy vấn khi cần xem báo cáo bảo mật. |
+| **1** | **Tệp ảnh đính kèm Giao dịch**<br>`(Transaction Images)` | Cột `images` trong bảng giao dịch hiện lưu dưới dạng storage key hoặc URL presigned. Chưa đồng bộ toàn bộ file nhị phân trực tiếp trong payload sync. | Đã tích hợp upload ảnh qua MinIO / Cloud Storage, trường `images` chỉ đồng bộ URL/Key. |
+| **2** | **Chia sẻ Ví nhóm / Phân quyền**<br>`(Shared Wallets)` | Mỗi Ví hiện tại gắn cố định với 1 `idaccount` sở hữu duy nhất. Chưa hỗ trợ chia sẻ ví giữa nhiều tài khoản người dùng khác nhau. | Mở rộng schema backend bảng `wallet_member` để phân quyền xem/chỉnh sửa ví cho nhiều người dùng. |
+| **3** | **Lịch sử Nhật ký Thay đổi Chi tiết**<br>`(Detailed Audit Logs Sync)` | Nhật ký thao tác người dùng (`auditlog`) hiện được ghi nhận tại server Backend. Chưa đồng bộ bảng audit log về SQLite local client. | Đã có sẵn trên CSDL PostgreSQL Backend, client chỉ truy vấn khi cần xem báo cáo bảo mật. |
 
 ---
 
@@ -87,3 +80,38 @@ Dưới đây là các hạng mục nâng cao chưa hỗ trợ đồng bộ (ho�
 2. **Trạng thái bản ghi (Sync Status):**
    * Các bản ghi tạo mới/chỉnh sửa tại SQLite local luôn bắt đầu với `syncStatus = 'pending'`.
    * Sau khi PUSH thành công tới Backend hoặc PULL từ Backend về, `syncStatus` bắt buộc được chuyển thành `'synced'`.
+3. **Thứ tự ràng buộc khóa ngoại khi Đẩy (Push Ordering):**
+   * Khi tạo/sửa: Category (10) $\to$ Wallet (20) $\to$ Budget (30) $\to$ Goal (35) $\to$ Bill (38) $\to$ Transaction (40).
+   * Khi xóa: Transaction (60) $\to$ Bill (62) $\to$ Goal (65) $\to$ Budget (70) $\to$ Wallet (80) $\to$ Category (90).
+
+---
+
+## 📋 V. CÔNG VIỆC PHÍA CLIENT-APP CẦN LÀM & ĐIỀU CHỈNH ĐỒNG BỘ
+
+Để đảm bảo Client-app đồng bộ mượt mà 100% với Backend sau các đợt cập nhật CSDL và API mới nhất, nhóm phát triển Client-app cần kiểm tra và triển khai các hạng mục sau:
+
+### 1. Đồng bộ thuộc tính Xóa Mềm (`is_deleted`)
+- **Hiện trạng:** Backend Module SYNC hiện đã chấp nhận cả `is_deleted` (snake_case) lẫn `isDeleted` (camelCase) và `delete_at`/`deletedAt` cho cả 6 entity.
+- **Yêu cầu Client-app:** Đảm bảo `sync_payload_normalizer.dart` xuất trường `is_deleted: true` khi người dùng xóa mềm bản ghi trên SQLite Drift. Nhánh kéo về (`ap_du_lieu_keo_ve.dart`) khi thấy `delete_at != null` hoặc `deleted_at != null` thì cập nhật trạng thái `isDeleted = true` tương ứng trong SQLite.
+
+### 2. Tắt nhắc nhở Hóa đơn (`time_notification: null`)
+- **Hiện trạng:** CSDL PostgreSQL Backend đã chuẩn hóa cột `time_notification` của bảng `bill` cho phép nhận giá trị `null` (để biểu thị người dùng tắt chuông/tắt nhắc hóa đơn).
+- **Yêu cầu Client-app:** Khi người dùng tắt nhắc nhở hóa đơn, Client-app gửi `time_notification: null` (hoặc `Value(null)` trong Drift) thay vì gửi chuỗi rỗng `""` hoặc cố định `"3"`. Nhánh kéo về xử lý an toàn nếu giá trị là `null`.
+
+### 3. Trạng thái Hóa đơn Bỏ qua kỳ (`pay_status: 'Skipped'`)
+- **Hiện trạng:** CSDL hỗ trợ 4 trạng thái hóa đơn: `'Pending'`, `'Payed'`, `'Overdue'`, `'Skipped'`.
+- **Yêu cầu Client-app:** Kiểm tra `BillDao` và UI hóa đơn hỗ trợ đầy đủ enum/giá trị `'Skipped'`. Khi kéo về, bản ghi `'Skipped'` được coi là chưa thanh toán tiền (`isPaid = false`) nhưng không tính vào danh sách nợ quá hạn khẩn cấp.
+
+### 4. Trạng thái Lưu trữ Ví (`status: 'Active'` / `'Inactive'`)
+- **Hiện trạng:** Bảng ví `wallet` có trường `status` gồm `'Active'` và `'Inactive'`.
+- **Yêu cầu Client-app:** Đảm bảo SQLite `WalletsCompanion` duy trì trường `status` (13 trường tổng cộng). Khi người dùng thực hiện tính năng "Lưu trữ ví" (Archive Wallet), gửi `status: 'Inactive'`.
+
+### 5. Cơ chế Giải mã trường Ghi chú (`note`) tự động
+- **Hiện trạng:** Backend tự động mã hóa AES-256 At-Rest trường `note` của Giao dịch, Ngân sách, Hóa đơn và Mục tiêu trước khi lưu vào PostgreSQL.
+- **Yêu cầu Client-app:** Khi gọi `GET /api/sync/pull`, Backend **đã tự động giải mã plaintext** trường `note` trả về qua kết nối bảo mật HTTPS TLS 1.3. Phía Client-app **KHÔNG** cần tự giải mã AES thủ công, chỉ cần đọc trực tiếp trường `note` và lưu vào SQLite Drift.
+
+### 6. Gửi Header Thiết bị (`x-device-name`) qua Dio Interceptor
+- **Hiện trạng:** Backend triển khai tính năng giám sát lịch sử truy cập và phát hiện đăng nhập lạ (`account_device_history`).
+- **Yêu cầu Client-app:** Bổ sung vào Dio Interceptor (tại `src/Client-app/lib/core/network/` hoặc `api_client.dart`):
+  - Header: `x-device-name: "<Tên nền tảng> <Tên thiết bị>"` (Ví dụ: `Platform.operatingSystem + " " + deviceInfo.model`, ví dụ: `"Android Samsung Galaxy S23"` hoặc `"iOS iPhone 15 Pro"`).
+  - Backend sẽ tự động lấy địa chỉ IP của request, áp dụng che bớt IP (`113.161.xx.xx`) theo Nghị định 13/2023/NĐ-CP và tự động ghi nhận vào bảng `account_device_history`. Client-app tuyệt đối **không** cần tự gọi API bên thứ ba để tìm IP công khai.
