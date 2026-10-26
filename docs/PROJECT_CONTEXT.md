@@ -636,7 +636,25 @@ src/Backend/
   Cài đặt *Tin từ FlowMoney* (`e8b3b36b`) · `NhanTinHeThong` ghi Trung tâm + khay theo luật bộ quét, nối MỘT lần ở `main.dart` — mục
   **5l** `NOTIFICATION_FEATURE.md`. Kiểm lại backend sau gộp `2b926d92` (spec đo ở `36f1ea43`): 5 tin bảo trì đều mang `metadata.type`,
   Admin-web gửi `level` chữ thường — spec còn đúng. Stitch: màn Trung tâm `65dab656…` người dùng xác nhận; màn Cài đặt `065eccd8…` và
-  biến thể 4 dòng nhắc `006c5a2e…` — ba lượt sửa báo `timeout`, **chưa** hiện khi hỏi (không gọi lại). 🚧 Nghiệm thu máy thật chưa.
+  biến thể 4 dòng nhắc `006c5a2e…` — ba lượt sửa báo `timeout`, **chưa** hiện khi hỏi (không gọi lại).
+- ✅ **Nghiệm thu Realme 2026-10-26 tối** (APK debug `f3098b8b…` trỏ proxy đo `127.0.0.1:3999` qua `adb reverse` → backend dev trên
+  `PersonFinance` + khoá dev; xác nhận danh tính CSDL bằng dòng `account_device_history` của lượt đăng nhập admin trước khi mở app;
+  sao lưu SQLite máy trước khi cài; proxy Node ở scratchpad — ghi `x-device-name` mỗi request, tiêm `500 DECRYPT_FAILED` cho
+  `/sync/pull` theo tệp cờ, không ghi body / token):
+  - **Tin từ FlowMoney:** admin `POST /api/notifications/broadcast` (`critical`, app mở) → log `[RealtimeChannel] Tin hệ thống <id>`,
+    khay đúng tiêu đề / nội dung, id khay = `osScheduledId('tinHeThong:<id>')`, hàng đầu Trung tâm (biểu tượng loa, dải `critical`,
+    nội dung trọn), chip *FlowMoney* cuối dải không tràn ở 360 dp và lọc đúng · tin mang `metadata.type: SCHEDULED_MAINTENANCE` → không
+    hàng, không khay · tắt nhóm ở Cài đặt (hàng *Tin từ FlowMoney* cuối khối *Loại thông báo*) → kênh nhận (log id) nhưng không hàng,
+    không khay · bật lại, app ở nền (`warning`) → khay; người dùng chạm khay → **Trung tâm thông báo** (ảnh màn xác nhận) · bảng máy
+    đúng **2** hàng `tinHeThong`, `osDeliveredAt` có. Chưa đo: một tin tới hai lần (cùng `id`) — chỉ unit test.
+  - **Dòng nhắc kéo về:** proxy tiêm 500 → tắt / bật Wi-Fi (máy không bật dữ liệu di động) → log *"Kéo về bị máy chủ từ chối: HTTP 500
+    code=DECRYPT_FAILED"*, Trang chủ hiện *"Chưa nhận được dữ liệu mới"* (tiêu đề một dòng ở 360 dp) · gỡ cờ, kích lại → dòng **tự ẩn** ·
+    không thêm thông báo *"Đồng bộ chưa thành công"* (bảng giữ 20 hàng `syncFailed`, mới nhất 22/10).
+  - **`x-device-name`:** engine app gửi `Realme RMX2205 (Android 13)` ở mọi request HTTP (bắt tay socket không mang — đã biết) ·
+    **engine nền**: `am crash` + `cmd jobscheduler run -f … 1081` (job một-lần `TuChuyenTienWorker`, tra trong
+    `no_backup/androidx.work.workdb`) → hai `/sync/pull` của lượt nền cùng tên, `[Nen] Xong — mốc kế 06/11 08:00`, job một-lần mới
+    (1082) đã hẹn · backend: **một** dòng `account_device_history` *Realme RMX2205 (Android 13)* (tạo 14:49Z bởi engine app,
+    `last_active_at` 15:00:06Z bởi engine nền), không thêm dòng `Dart/…`.
 - ✅ Chú thích `ten_thiet_bi.dart:10` + khối phiên 11 dưới: CORS đã cho `x-device-name` từ backend `49eafef6` (`1c47b2c9`).
 
 ### 🛰️ Phiên 11 (2026-10-26 chiều) — soát năm mục tài liệu v4 với mã backend `36f1ea43`, làm ba mục người dùng chọn
@@ -658,7 +676,7 @@ src/Backend/
   `account_device_history` mỗi khi tên đổi, nên mọi đường của một máy phải gửi cùng tên. Web / iOS không gửi — không có kênh gốc
   (CORS `app.js:32` **đã** cho header từ backend `49eafef6`, đơn 49 vế E; câu *"chưa cho"* cũ sửa 2026-10-26 phiên 13). **Đo máy ảo** (bản debug trỏ máy chủ thu header tạm): `/auth/profile`, `/payment/subscription-info`,
   `/sync/push`, `/sync/pull` đều mang `"Google sdk_gphone64_x86_64 (Android 16)"`; bắt tay socket không mang (backend không ghi ở đó).
-  Engine nền chưa đo trên máy. Hôm nay **chưa ai đọc** bảng ấy (`getDeviceHistory` 0 chỗ gọi ngoài test).
+  ✅ **Engine nền + máy thật đo 2026-10-26 phiên 13** (Realme, khối 🧭 trên). Hôm nay **chưa ai đọc** bảng ấy (`getDeviceHistory` 0 chỗ gọi ngoài test).
 - ✅ Cùng phiên: `NOT_OWNER` + bốn mã `HOUSEHOLD_*` vào lỗi đẩy vĩnh viễn (`8f8694bd`, khối 🏠 dưới); một câu mục 1b
   `KHOA_APP_FEATURE.md` (Quên PIN chỉ mạnh bằng mật khẩu + hộp thư email trên máy, `89923b55`).
 - 📝 **Tin từ FlowMoney (`system.broadcast`) — spec duyệt, kế hoạch xong, CHƯA có mã** (người dùng chọn *"dừng ở kế hoạch"*). Spec

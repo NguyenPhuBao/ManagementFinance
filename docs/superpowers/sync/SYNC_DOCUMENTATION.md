@@ -347,7 +347,8 @@ viễn. Chi tiết và lời xin: đơn 52, đơn 53 vế C.
 `keoVeBiMayChuTuChoi`, `ap_du_lieu_keo_ve.dart`) — bật `SyncEngine.keoVeBiTuChoi` ⇒ Trang chủ hiện dòng nhắc *"Chưa nhận được dữ liệu mới"*
 (`DongNhacKeoVe`, ngay sau dòng nhắc máy chủ). Lỗi vẫn nuốt: chu kỳ **không** thành `error` (không thông báo *"Đồng bộ hỏng"*), **không** giãn
 cách; cờ tắt ở lượt kéo thành công kế tiếp và ở `stop()`, mất mạng giữ nguyên. Ca canh `test/core/sync/sync_keo_ve_bi_tu_choi_test.dart`.
-Client vẫn không đọc riêng `code` (chỉ ghi log) — câu chữ đúng cho mọi lỗi máy chủ.
+Client vẫn không đọc riêng `code` (chỉ ghi log) — câu chữ đúng cho mọi lỗi máy chủ. Nghiệm thu Realme cùng ngày (proxy tiêm 500
+`DECRYPT_FAILED`): dòng nhắc hiện, tự ẩn ở lượt kéo thành công kế, không sinh thông báo *"Đồng bộ chưa thành công"*.
 
 ### 9.3 Nhỏ
 
