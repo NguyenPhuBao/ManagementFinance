@@ -45,7 +45,7 @@ Phát ra luồng mới `RealtimeChannel.tinHeThong` (broadcast) mang `(idaccount
 | `id` không phải chuỗi khác rỗng | `null` — `id` là khoá chống trùng |
 | `title` và `message` cùng rỗng sau `trim` | `null` |
 | tiêu đề rỗng, nội dung có | tiêu đề `"Tin từ FlowMoney"` |
-| tiêu đề dài > 120 / nội dung > 1.000 ký tự | cắt (theo rune, không cắt giữa ký tự ghép) |
+| tiêu đề dài > 120 / nội dung > 1.000 code point | cắt theo code point (`runes`) — không bao giờ cắt đôi cặp surrogate (emoji) |
 | `level` (không phân biệt hoa thường) `info` / `warning` / `critical` | `NotificationSeverity` cùng tên |
 | `level` thiếu / lạ | `info` |
 
