@@ -50,7 +50,9 @@ chợ}"*. Có lối tắt từ thẻ định mức: *"Bật tự góp đủ đ�
 
 - Chạy trong `NotificationScanner.scan()` — khi app mở **và** từ lượt nền WorkManager (Android, `lib/core/nen/` — spec 2026-10-10 tự chuyển tiền
   chạy nền), dưới **khoá thuê** `khoa_tu_chuyen_tiens` (v30) như bộ trích mục tiêu và bộ tự trả hoá đơn.
-- **Kỳ:** ngày N mỗi tháng lúc **08:00** (N vượt số ngày của tháng ⇒ ngày cuối tháng). **Mốc gốc** = `enabledAt` (lúc bật — server ghi): không
+- **Kỳ:** ngày N mỗi tháng lúc **08:00 giờ Việt Nam cố định (UTC+7)** — **không** theo múi giờ của máy (N vượt số ngày của tháng ⇒ ngày cuối
+  tháng). Lý do: kỳ là mốc **suy ra** (khác mục tiêu, nơi mốc neo là một thời điểm đã lưu), nên tính theo giờ máy thì hai máy khác múi giờ ra hai
+  mốc UTC khác nhau ⇒ hai id khác nhau ⇒ **góp hai lần**. Việt Nam không đổi giờ theo mùa nên UTC+7 là hằng. **Mốc gốc** = `enabledAt` (lúc bật — server ghi): không
   bao giờ chạy kỳ **trước** lúc bật (bật hôm 20 với N = 1 thì kỳ đầu là ngày 1 tháng sau). **Trả bù tối đa 3 kỳ** mỗi lượt (bỏ app lâu).
 - **Mỗi kỳ ghi một cặp góp** (`02A` mục 5) với id **tất định**: mã cặp `P = uuidv5(ns, "<configId>|<kỳ ms UTC>")`, nửa riêng
   `uuidv5(ns, "rieng|…")`, nửa của nhà `uuidv5(ns, "nha|…")` — namespace riêng, không chung với khoản mở sổ / khoản trích mục tiêu. Hai máy của
@@ -167,7 +169,8 @@ khi tạo với `enabled: true` hoặc khi `false → true` (giữ nguyên khi c
 ## 8. Kiểm thử và nghiệm thu
 
 - **Domain:** đã góp ròng (rút trừ, chặn 0, tiền mặt trao tay, tự góp); ngày hạn tháng 2 / tháng 30 ngày với N = 31; kỳ tự góp từ `enabledAt`
-  (bật sau ngày N ⇒ kỳ đầu tháng sau), trả bù 3; id tất định ổn định giữa hai máy khác múi giờ (băm ms UTC).
+  (bật sau ngày N ⇒ kỳ đầu tháng sau), trả bù 3; id tất định **giống nhau** khi đặt múi giờ máy khác nhau (UTC+7 và UTC−5 ra cùng mốc kỳ, cùng
+  id) — ca canh việc kỳ tính theo UTC+7 cố định chứ không theo giờ máy.
 - **Runner:** chạy một kỳ ⇒ một cặp; chạy lại ⇒ không thêm; hàng đã xoá mềm ⇒ không tạo lại; ví riêng thiếu tiền ⇒ không ghi, sự kiện lỗi, lượt
   sau chạy khi đủ; tạm dừng theo từng lý do.
 - **Thông báo:** nhắc một lần mỗi tháng mỗi ví; tổng hợp của Chủ nhà một lần mỗi tháng; không nhắc khi đủ.

@@ -138,7 +138,8 @@ ví riêng. Mọi máy trong nhà có cùng tập hàng của nhà ⇒ cùng s�
 Định nghĩa ở `household/domain/` (một chỗ mỗi phép), dùng cho bảng góp, dòng hoạt động, báo cáo (`02D`), hạn mức (`02B`):
 
 - **Tiền vào quỹ** = góp (nửa của nhà) + thu khác. **Chi của nhà** = chi của nhà (loại 1). Rút, chuyển, neo, điều chỉnh: không phải chi
-  của nhà.
+  của nhà — ngân sách chung (`02D`) và báo cáo dùng đúng định nghĩa này. ⚠️ **Hạn mức** (`02B` mục 5) cố ý **cộng thêm rút** vào dòng chung (rút
+  là tiền rời quỹ về tay một người — không cộng là lối đi vòng hạn mức); định nghĩa riêng ở đó, không sửa định nghĩa *chi của nhà*.
 - Mọi phép cộng theo kỳ dùng biên **`[from, to)`** như Sổ giao dịch.
 
 ## 8. Bảng ai góp bao nhiêu
