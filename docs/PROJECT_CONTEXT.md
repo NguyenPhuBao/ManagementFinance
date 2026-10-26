@@ -970,7 +970,7 @@ liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà 
   14 loại thông báo mới, nhóm `giaDinh` (bảng mục 8 tổng quan). Soát backend **hoãn** tới sau khi tài liệu đủ (người dùng). Chưa có mã; kế hoạch lát 1
   (2026-10-24) vẫn dùng được cho lõi phần 1.
 
-### 🔀 Gộp `main` @ `2b926d92` (2026-10-26, commit gộp `3636110d`, chưa push) — PR #161–#163: backend báo xong 9 đơn CAN-LAM; `.gitignore` gỡ dòng chặn `plans/`
+### 🔀 Gộp `main` @ `2b926d92` (2026-10-26, commit gộp `3636110d`, đã push cùng bộ `docs/Family/` — `1fedd00a..e36b4a4e`, người dùng yêu cầu để backend kéo về đọc) — PR #161–#163: backend báo xong 9 đơn CAN-LAM; `.gitignore` gỡ dòng chặn `plans/`
 
 - **Người dùng:** *"trước khi làm thì hãy lấy code mới nhất về"* (để viết tài liệu gia đình vào `docs/Family/`). 3 commit backend, 85 tệp; **0 tệp
   `src/Client-app`** (cây giữ hash `69f561ce` → không chạy lại `flutter test`); `check-ignore` `test/` không khớp.
