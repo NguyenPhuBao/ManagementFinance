@@ -40,7 +40,13 @@ function maskEmail(email) {
 function maskPhone(phone) {
   if (!phone || typeof phone !== 'string') return phone;
   // Tự động giải mã nếu là ciphertext
-  const plain = decrypt(phone).trim();
+  let plain;
+  try {
+    plain = decrypt(phone).trim();
+  } catch (err) {
+    // Không để lộ ciphertext hỏng ra giao diện và không crash API
+    return '***-***-****';
+  }
   if (plain.length < 7) return plain;
 
   if (plain.startsWith('+84') && plain.length >= 11) {
@@ -69,7 +75,12 @@ function maskPhone(phone) {
  */
 function maskAccountNumber(accountNumber) {
   if (!accountNumber || typeof accountNumber !== 'string') return accountNumber;
-  const plain = decrypt(accountNumber).trim();
+  let plain;
+  try {
+    plain = decrypt(accountNumber).trim();
+  } catch (err) {
+    return '**** **** **** ****';
+  }
   if (plain.length < 4) return '****';
 
   const last4 = plain.slice(-4);
@@ -104,7 +115,12 @@ function maskFullname(fullname) {
  */
 function maskAddress(address) {
   if (!address || typeof address !== 'string') return address;
-  const plain = decrypt(address).trim();
+  let plain;
+  try {
+    plain = decrypt(address).trim();
+  } catch (err) {
+    return '***';
+  }
   const parts = plain.split(',');
   if (parts.length <= 1) return '***';
 

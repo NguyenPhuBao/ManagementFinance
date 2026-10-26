@@ -114,7 +114,7 @@ function mapEntityFields(entity, data) {
         m.pay_status = m.pay_status ? 'Payed' : 'Pending';
       }
       if (m.timeRecurrence !== undefined) { m.time_recurrence = m.timeRecurrence; delete m.timeRecurrence; }
-      if (m.timeNotification !== undefined) { m.time_notification = String(m.timeNotification); delete m.timeNotification; }
+      if (m.timeNotification !== undefined) { m.time_notification = m.timeNotification === null ? null : String(m.timeNotification); delete m.timeNotification; }
       if (m.previousBillId !== undefined) { m.previous_bill_id = m.previousBillId; delete m.previousBillId; }
       if (m.generatedFromBillId !== undefined) { m.previous_bill_id = m.generatedFromBillId; delete m.generatedFromBillId; }
       if (m.previous_bill_id !== undefined) { m.previous_bill_id = m.previous_bill_id; }
@@ -525,7 +525,7 @@ const syncRepository = {
           pay_status: mapped.pay_status || 'Pending',
           recurrence: mapped.recurrence ?? false,
           time_recurrence: mapped.time_recurrence || 'Month',
-          time_notification: mapped.time_notification || '3',
+          time_notification: mapped.time_notification !== undefined ? mapped.time_notification : '3',
           icon: mapped.icon || 'receipt',
           color: mapped.color || '#4CAF50',
           note: prepareSafeNote(mapped.note, null),
@@ -551,7 +551,7 @@ const syncRepository = {
           pay_status: mapped.pay_status ?? existing.pay_status,
           recurrence: mapped.recurrence ?? existing.recurrence,
           time_recurrence: mapped.time_recurrence ?? existing.time_recurrence,
-          time_notification: mapped.time_notification ?? existing.time_notification,
+          time_notification: mapped.time_notification !== undefined ? mapped.time_notification : existing.time_notification,
           icon: mapped.icon ?? existing.icon,
           color: mapped.color ?? existing.color,
           previous_bill_id: mapped.previous_bill_id !== undefined ? mapped.previous_bill_id : existing.previous_bill_id,

@@ -188,23 +188,19 @@ describe('AIOps Trend Chart & RCA Table 2-Tier Test Suite', () => {
       expect(screen.queryByRole('button', { name: /12 tháng qua/i })).not.toBeInTheDocument();
     });
 
-    it('1.4: should render Time Filter with datetime inputs and search button', async () => {
+    it('1.4: should omit detailed time filter inputs and search button per PO requirement', async () => {
       render(<AIOpsPage />);
 
       await waitFor(() => {
         expect(aiopsApi.getStatus).toHaveBeenCalled();
       });
 
-      // 1.4: Tên "Bộ lọc thời gian:"
-      expect(screen.getByText(/Bộ lọc thời gian:/i)).toBeInTheDocument();
+      // Xác nhận không còn bộ lọc thời gian chi tiết Từ ... Đến ...
+      expect(screen.queryByTestId('apply-custom-range-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('filter-from-date')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('filter-to-date')).not.toBeInTheDocument();
       expect(screen.queryByText(/Bộ lọc chính xác:/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Ngày - tháng - năm/i)).not.toBeInTheDocument();
-
-      // Nút Lọc với text "Lọc" và icon kính lúp search
-      const filterBtn = screen.getByTestId('apply-custom-range-btn');
-      expect(filterBtn).toBeInTheDocument();
-      expect(filterBtn).toHaveTextContent('Lọc');
-      expect(filterBtn).toHaveTextContent('search');
     });
 
     it('1.5 & 1.7: should omit threshold texts from legend and omit footer text', async () => {
@@ -364,72 +360,25 @@ describe('AIOps Trend Chart & RCA Table 2-Tier Test Suite', () => {
       });
     });
 
-    it('should prioritize custom time filter and pass exact from/to to both Chart and RCA APIs', async () => {
+    it('should verify quick preset buttons work seamlessly without detailed range inputs', async () => {
       render(<AIOpsPage />);
 
       await waitFor(() => {
         expect(aiopsApi.getHistory).toHaveBeenCalled();
       });
 
-      // Tìm inputs datetime-local
+      // Xác nhận không có inputs datetime-local
       const inputs = document.querySelectorAll('input[type="datetime-local"]');
-      expect(inputs.length).toBe(2);
+      expect(inputs.length).toBe(0);
 
-      const fromInput = inputs[0];
-      const toInput = inputs[1];
-
-      fireEvent.change(fromInput, { target: { value: '2026-10-12T10:00' } });
-      fireEvent.change(toInput, { target: { value: '2026-10-12T18:00' } });
-
-      // Click nút Lọc
-      const filterBtn = screen.getByTestId('apply-custom-range-btn');
-      fireEvent.click(filterBtn);
+      // Click preset 1h
+      const preset1h = screen.getByTestId('preset-1h');
+      fireEvent.click(preset1h);
 
       await waitFor(() => {
-        // Tác động hệ thống: gọi API getHistory và getIncidents với chính xác from và to
-        expect(aiopsApi.getHistory).toHaveBeenCalledWith(expect.objectContaining({
-          from: '2026-10-12T10:00',
-          to: '2026-10-12T18:00',
-        }));
-        expect(aiopsApi.getIncidents).toHaveBeenCalledWith(expect.objectContaining({
-          from: '2026-10-12T10:00',
-          to: '2026-10-12T18:00',
-        }));
+        expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: '1h' });
+        expect(aiopsApi.getIncidents).toHaveBeenCalledWith(expect.objectContaining({ range: '1h' }));
       });
-
-      // Thông báo ưu tiên bộ lọc thời gian xuất hiện
-      expect(screen.getByText(/ĐANG ƯU TIÊN BỘ LỌC THỜI GIAN/i)).toBeInTheDocument();
-    });
-
-    it('should clear custom time filter and restore preset synchronization', async () => {
-      render(<AIOpsPage />);
-
-      await waitFor(() => {
-        expect(aiopsApi.getHistory).toHaveBeenCalled();
-      });
-
-      const inputs = document.querySelectorAll('input[type="datetime-local"]');
-      fireEvent.change(inputs[0], { target: { value: '2026-10-12T10:00' } });
-      fireEvent.change(inputs[1], { target: { value: '2026-10-12T18:00' } });
-
-      const filterBtn = screen.getByTestId('apply-custom-range-btn');
-      fireEvent.click(filterBtn);
-
-      await waitFor(() => {
-        expect(screen.getByText(/ĐANG ƯU TIÊN BỘ LỌC THỜI GIAN/i)).toBeInTheDocument();
-      });
-
-      // Click "Dùng lại bộ chọn" hoặc "Bỏ bộ lọc thời gian"
-      const restoreBtn = screen.getByRole('button', { name: /Dùng lại bộ chọn/i });
-      fireEvent.click(restoreBtn);
-
-      await waitFor(() => {
-        // Trở về preset 10m mặc định
-        expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: '10m' });
-        expect(aiopsApi.getIncidents).toHaveBeenCalledWith(expect.objectContaining({ range: '10m' }));
-      });
-
-      expect(screen.queryByText(/ĐANG ƯU TIÊN BỘ LỌC THỜI GIAN/i)).not.toBeInTheDocument();
     });
   });
 });

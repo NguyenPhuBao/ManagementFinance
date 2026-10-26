@@ -162,13 +162,13 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     });
   });
 
-  it('5.1. Tải và hiển thị 4 Vectơ Rủi Ro Độc Lập cùng Threat Score Gauge', async () => {
+  it('5.1. Tải và hiển thị 4 Vectơ Rủi Ro Độc Lập cùng các khối Tín Hiệu An Ninh & Sức Chịu Tải', async () => {
     render(<AIOpsPage />);
 
     await waitFor(() => {
       expect(aiopsApi.getStatus).toHaveBeenCalledTimes(1);
-      expect(screen.getByText('Hệ Số Đe Dọa (Threat Score)')).toBeInTheDocument();
-      expect(screen.getByText('BÌNH THƯỜNG (NORMAL)')).toBeInTheDocument();
+      expect(screen.getByText('Tín Hiệu Xâm Nhập & Tấn Công')).toBeInTheDocument();
+      expect(screen.getByText('Sức Chịu Tải & Phần Cứng')).toBeInTheDocument();
       // 4 tab riêng biệt
       expect(screen.getByText('1. Xác Thực')).toBeInTheDocument();
       expect(screen.getByText('2. Lưu Lượng')).toBeInTheDocument();
@@ -233,7 +233,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Hệ Số Đe Dọa (Threat Score)')).toBeInTheDocument();
+      expect(screen.getByText('Tín Hiệu Xâm Nhập & Tấn Công')).toBeInTheDocument();
     });
 
     const streamHandler = socketListeners['admin.metrics_stream'];
@@ -249,7 +249,8 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     });
 
     await waitFor(() => {
-      expect(screen.getByText('NGUY CẤP (CRITICAL)')).toBeInTheDocument();
+      // Vector 1 (Auth) nhận điểm số 95 từ metrics stream
+      expect(screen.getAllByText(/95/).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -544,39 +545,20 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     });
   });
 
-  it('5.17. Bộ lọc thời gian và Quy tắc ưu tiên cốt lõi: Ưu tiên bộ lọc thời gian thay vì bộ select nếu cả 2 được áp dụng', async () => {
+  it('5.17. [PO Updated] Biểu đồ xu hướng đã bỏ bộ lọc thời gian chi tiết (từ ... đến ...) và tập trung vào các preset thời gian nhanh chuẩn mực (10m, 1h, 24h, 7d, 30d)', async () => {
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('apply-custom-range-btn')).toBeInTheDocument();
+      expect(screen.getByTestId('preset-10m')).toBeInTheDocument();
     });
 
-    // Chọn Preset 24h trước
+    // Xác nhận bộ chọn thời gian chi tiết (từ ... đến ...) đã được loại bỏ hoàn toàn
+    expect(screen.queryByTestId('apply-custom-range-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('filter-from-date')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('filter-to-date')).not.toBeInTheDocument();
+
+    // Chọn Preset 24h
     fireEvent.click(screen.getByTestId('preset-24h'));
-    await waitFor(() => {
-      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: '24h' });
-    });
-
-    // Nhập bộ lọc thời gian (datetime-local Từ ngày đến ngày)
-    const fromInput = screen.getByTestId('filter-from-date');
-    const toInput = screen.getByTestId('filter-to-date');
-    fireEvent.change(fromInput, { target: { value: '2026-09-01T10:00' } });
-    fireEvent.change(toInput, { target: { value: '2026-10-04T18:00' } });
-
-    // Bấm Lọc
-    const applyBtn = screen.getByTestId('apply-custom-range-btn');
-    fireEvent.click(applyBtn);
-
-    // Verify PO Rule: Ưu tiên bộ lọc thời gian, params gửi { from, to } thay vì { range: '24h' }
-    await waitFor(() => {
-      expect(aiopsApi.getHistory).toHaveBeenCalledWith({ from: '2026-09-01T10:00', to: '2026-10-04T18:00' });
-      expect(screen.getByText(/ĐANG ƯU TIÊN BỘ LỌC THỜI GIAN/i)).toBeInTheDocument();
-    });
-
-    // Bấm xóa bộ lọc thời gian -> quay lại preset 24h
-    const clearBtn = screen.getByTestId('clear-custom-range-btn');
-    fireEvent.click(clearBtn);
-
     await waitFor(() => {
       expect(aiopsApi.getHistory).toHaveBeenCalledWith({ range: '24h' });
     });
@@ -602,28 +584,17 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
     });
   });
 
-  it('5.19. Nút "Làm Mới" bên cạnh nút "Lọc" reset input và trả về preset mặc định', async () => {
+  it('5.19. [PO Updated] Biểu đồ xu hướng không còn hiển thị input datetime-local hoặc các nút Lọc chi tiết, bảo đảm giao diện tinh gọn', async () => {
     render(<AIOpsPage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('refresh-custom-range-btn')).toBeInTheDocument();
+      expect(screen.getByTestId('preset-1h')).toBeInTheDocument();
     });
 
-    const fromInput = screen.getByTestId('filter-from-date');
-    const toInput = screen.getByTestId('filter-to-date');
-    fireEvent.change(fromInput, { target: { value: '2026-09-01T10:00' } });
-    fireEvent.change(toInput, { target: { value: '2026-10-04T18:00' } });
-    expect(fromInput.value).toBe('2026-09-01T10:00');
-    expect(toInput.value).toBe('2026-10-04T18:00');
-
-    // Bấm Làm Mới
-    const refreshBtn = screen.getByTestId('refresh-custom-range-btn');
-    fireEvent.click(refreshBtn);
-
-    await waitFor(() => {
-      expect(fromInput.value).toBe('');
-      expect(toInput.value).toBe('');
-    });
+    expect(screen.queryByTestId('filter-from-date')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('filter-to-date')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('refresh-custom-range-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('apply-custom-range-btn')).not.toBeInTheDocument();
   });
 
   it('5.20. Biểu đồ xu hướng không chứa chữ thừa _toggle_drop_down và đã dọn dẹp footer theo Rule 1.7', async () => {
@@ -687,10 +658,7 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
       expect(aiopsApi.toggleVector).toHaveBeenCalledWith('resource', false);
       // 2. Toggle state chuyển sang false
       expect(toggleResource.getAttribute('aria-checked')).toBe('false');
-      // 3. Threat Score giảm xuống 5/100 (NORMAL)
-      expect(screen.getByTestId('threat-score-value')).toHaveTextContent('5');
-      expect(screen.getByText('/ 100')).toBeInTheDocument();
-      // 4. Modal đóng hoàn toàn
+      // 3. Modal đóng hoàn toàn
       expect(screen.queryByText('Xác nhận TẮT Vector')).toBeNull();
     });
   });
@@ -726,8 +694,8 @@ describe('Admin-web AIOps Suite — AIOpsPage (4-Vector Risk & Quarantine Shield
       expect(screen.getByText(/AIOps Sentinel/i)).toBeInTheDocument();
     });
 
-    // Tầng 2: Kiểm tra các thành phần biểu đồ và ngưỡng an toàn render đầy đủ không crash
-    expect(screen.getByText(/Trần Max/i)).toBeInTheDocument();
+    // Tầng 2: Kiểm tra các thành phần biểu đồ và vector 4 render đầy đủ không crash
+    expect(screen.getAllByText(/4\. Tài Nguyên/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it('9. [2-Tier Test] Bảng RCA hiển thị chính xác Actor Role, bảo vệ Localhost và không có nút Phong Tỏa IP với đối tượng nội bộ', async () => {

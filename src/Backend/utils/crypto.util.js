@@ -95,7 +95,9 @@ function decrypt(cipherText) {
     const parts = str.slice(PREFIX.length).split(':');
     if (parts.length !== 3) {
       logger.warn('[Crypto] Chuỗi mã hóa sai định dạng:', str);
-      return str;
+      const err = new Error('Chuỗi mã hóa không đúng định dạng (DECRYPT_FAILED)');
+      err.code = 'DECRYPT_FAILED';
+      throw err;
     }
 
     const [ivHex, authTagHex, encryptedHex] = parts;
@@ -111,7 +113,10 @@ function decrypt(cipherText) {
     return decrypted;
   } catch (err) {
     logger.error('[Crypto] Lỗi giải mã AES-256-GCM:', { error: err.message });
-    return str;
+    const decryptErr = new Error('Lỗi giải mã dữ liệu an ninh (DECRYPT_FAILED)');
+    decryptErr.code = 'DECRYPT_FAILED';
+    decryptErr.originalMessage = err.message;
+    throw decryptErr;
   }
 }
 

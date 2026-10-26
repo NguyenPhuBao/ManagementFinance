@@ -246,7 +246,7 @@ const aiopsController = {
         await prisma.account.updateMany({
           where,
           data: {
-            status: 'Locked',
+            status: 'Inactive',
             reason_inactive: 'Quản trị viên khóa vĩnh viễn tài khoản qua AIOps Sentinel do phát hiện vi phạm an ninh',
           },
         });
@@ -302,7 +302,7 @@ const aiopsController = {
         await prisma.account.updateMany({
           where,
           data: {
-            status: 'Locked',
+            status: 'Inactive',
             reason_inactive: `Quản trị viên tạm khóa tài khoản (${Math.round(durationMs / 3600000)} giờ) qua AIOps Sentinel`,
           },
         });
