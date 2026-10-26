@@ -15,6 +15,7 @@ import '../widgets/drawer_trang_chu.dart';
 import '../widgets/the_so_lieu_thang.dart';
 import '../widgets/dau_trang_chu.dart';
 import '../widgets/the_tong_so_du.dart';
+import '../widgets/tieu_de_giao_dich_gan_day.dart';
 import '../../domain/thu_chi_thang.dart';
 import '../../../ai_edge/domain/goi_so_trang_chu.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
@@ -301,29 +302,10 @@ class HomePage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'GIAO DỊCH GẦN ĐÂY',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            TextButton(
-              // `go` để CHUYỂN sang tab Sổ giao dịch, thay vì chồng một trang
-              // mới lên tab Trang chủ — từ 2026-09-19 sổ có tab riêng.
-              onPressed: () => context.go('/transactions'),
-              child: const Text('Xem tất cả',
-                  style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13)),
-            ),
-          ],
+        TieuDeGiaoDichGanDay(
+          // `go` để CHUYỂN sang tab Sổ giao dịch, thay vì chồng một trang
+          // mới lên tab Trang chủ — từ 2026-09-19 sổ có tab riêng.
+          onXemTatCa: () => context.go('/transactions'),
         ),
         const SizedBox(height: 8),
         if (transactions.isEmpty)

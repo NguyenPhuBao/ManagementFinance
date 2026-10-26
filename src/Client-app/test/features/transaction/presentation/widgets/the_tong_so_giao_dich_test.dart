@@ -59,11 +59,36 @@ void main() {
     });
   }
 
+  // Realme 320 dp × 1,6 (lượt đo lại 2026-10-26): "0 đ" to hơn hẳn hai số kia — mỗi cột một `FittedBox` riêng nên số
+  // ngắn giữ cỡ, số dài co. Ba ô bằng nhau thì ba số (và ba nhãn) phải co CÙNG hệ số.
+  testWidgets('320 dp × 1,76, kỳ chỉ có chi: ba số CÙNG cỡ vẽ, ba nhãn cùng cỡ vẽ', (t) async {
+    await dung(t, 320, 1.76);
+    final caoSo = [for (final e in find.byWidgetPredicate((w) => w is Text && (w.data ?? '').endsWith(' đ')).evaluate()) t.getRect(find.byWidget(e.widget)).height];
+    expect(caoSo, hasLength(3));
+    for (final h in caoSo) {
+      expect((h - caoSo.first).abs(), lessThan(0.3),
+          reason: 'Realme: "0 đ" to hơn "-310.000 đ" — cao ${caoSo.map((h) => h.toStringAsFixed(1)).join(' / ')}');
+    }
+    final caoNhan = [for (final n in ['Thu nhập', 'Chi tiêu', 'Thu net']) t.getRect(find.text(n)).height];
+    for (final h in caoNhan) {
+      expect((h - caoNhan.first).abs(), lessThan(0.3), reason: 'ba nhãn cao ${caoNhan.map((h) => h.toStringAsFixed(1)).join(' / ')}');
+    }
+  });
+
   testWidgets('411 dp × 1,1: ba số giữ nguyên cỡ (chỉ co khi chật)', (t) async {
     await dung(t, 411, 1.1);
+    // Cỡ vẽ tự nhiên = chữ 14 đậm của theme ở cỡ chữ 1,1, đo bằng cùng họ chữ như `Text` (độc lập với cách thẻ co chữ).
+    final ctx = t.element(find.byType(TheTongSoGiaoDich));
+    final mau = TextPainter(
+      text: TextSpan(
+          text: '-310.000 đ',
+          style: DefaultTextStyle.of(ctx).style.merge(const TextStyle(fontSize: 14, fontWeight: FontWeight.bold))),
+      textScaler: const TextScaler.linear(1.1),
+      textDirection: TextDirection.ltr,
+    )..layout();
     for (final e in find.text('-310.000 đ').evaluate()) {
-      final f = find.byWidget(e.widget);
-      expect(t.getRect(f).width / t.getSize(f).width, greaterThan(0.99));
+      expect(t.getRect(find.byWidget(e.widget)).height, greaterThan(mau.height - 0.5), reason: 'đủ chỗ thì không co');
     }
+    mau.dispose();
   });
 }

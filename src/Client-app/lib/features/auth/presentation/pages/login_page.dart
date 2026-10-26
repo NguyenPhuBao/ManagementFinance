@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/auth/buoc_dang_xuat.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../../shared/widgets/nhan_co_deu.dart';
 import '../bloc/auth_bloc.dart';
 import '../widgets/hop_thoai_bi_day_ra.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
@@ -200,7 +201,8 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     const SizedBox(height: 16),
 
-                                    // Password Label Row
+                                    // Password Label Row — liên kết `Flexible`: cỡ chữ lớn ở 320 dp
+                                    // thì nó xuống dòng (vẫn căn phải) thay vì tràn 19 px (2026-10-26).
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
@@ -214,15 +216,19 @@ class _LoginPageState extends State<LoginPage> {
                                             letterSpacing: 0.02,
                                           ),
                                         ),
-                                        GestureDetector(
-                                          onTap: () => context
-                                              .push('/forgot-password'),
-                                          child: const Text(
-                                            'Quên mật khẩu?',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: AppColors.textSecondary,
+                                        const SizedBox(width: 12),
+                                        Flexible(
+                                          child: GestureDetector(
+                                            onTap: () => context
+                                                .push('/forgot-password'),
+                                            child: const Text(
+                                              'Quên mật khẩu?',
+                                              textAlign: TextAlign.end,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: AppColors.textSecondary,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -358,9 +364,14 @@ class _LoginPageState extends State<LoginPage> {
                                         Expanded(
                                           child: OutlinedButton.icon(
                                             onPressed: () {},
-                                            icon: const Icon(Icons.apple,
-                                                size: 20,
-                                                color: AppColors.primary),
+                                            // Ô biểu tượng 24 như nút Google: hai nút chừa cùng bề rộng
+                                            // cho nhãn thì hai nhãn mới co cùng hệ số (`NhanCoDeu`).
+                                            icon: const SizedBox.square(
+                                              dimension: 24,
+                                              child: Icon(Icons.apple,
+                                                  size: 20,
+                                                  color: AppColors.primary),
+                                            ),
                                             label: const _NhanNutMotDong('Apple'),
                                             style: OutlinedButton.styleFrom(
                                               minimumSize: const Size(0, 44),
@@ -390,8 +401,10 @@ class _LoginPageState extends State<LoginPage> {
                               const EdgeInsets.only(bottom: 24, top: 48),
                           child: Column(
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              // `Wrap`: cỡ chữ lớn ở 320 dp thì "Đăng ký ngay" xuống dòng (căn giữa,
+                              // không gãy đôi) thay vì tràn 87 px (2026-10-26).
+                              Wrap(
+                                alignment: WrapAlignment.center,
                                 children: [
                                   const Text(
                                     'Chưa có tài khoản? ',
@@ -449,18 +462,18 @@ class _LoginPageState extends State<LoginPage> {
 /// chữ ở 320 dp → *"Goo / gle"* (Realme, buổi 3 khoá app 2026-10-25). Nút căn giữa nên khổ rộng nhìn không đổi.
 const _kDemNutMangXaHoi = EdgeInsets.symmetric(horizontal: 12);
 
-/// Nhãn nút một dòng: không vừa (cỡ chữ lớn) thì thu nhỏ chữ, không ngắt dòng. `OutlinedButton.icon` đặt nhãn trong
-/// `Flexible` nên `FittedBox` nhận đúng bề rộng còn lại.
+/// Nhãn nút một dòng: không vừa (cỡ chữ lớn) thì thu nhỏ chữ, không ngắt dòng. Hai nhãn co CÙNG hệ số (`NhanCoDeu`) —
+/// mỗi nút một `FittedBox` riêng để *"Apple"* to hơn hẳn *"Google"* ở 320 dp × cỡ chữ 1,6 (2026-10-26).
+/// `OutlinedButton.icon` đặt nhãn trong `Flexible` nên nhãn nhận đúng bề rộng còn lại.
 class _NhanNutMotDong extends StatelessWidget {
   const _NhanNutMotDong(this.chu);
 
   final String chu;
 
+  static const _nhom = ['Google', 'Apple'];
+
   @override
   Widget build(BuildContext context) {
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Text(chu, maxLines: 1, style: const TextStyle(color: AppColors.textPrimary)),
-    );
+    return NhanCoDeu(chu, nhom: _nhom, kieu: const TextStyle(color: AppColors.textPrimary));
   }
 }

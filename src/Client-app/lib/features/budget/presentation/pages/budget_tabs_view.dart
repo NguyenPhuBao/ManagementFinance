@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import '../../../../core/ui/do_chu.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/nhan_co_deu.dart';
@@ -556,106 +559,124 @@ class _BudgetCard extends StatelessWidget {
         decoration: cardDecoration,
         child: Column(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: AppColors.surfaceContainer,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    budgetIconFor(view.categoryIcon),
-                    color: budgetColorFrom(view.categoryColour),
-                    size: 20,
-                  ),
+            LayoutBuilder(builder: (context, rang) {
+              final phu = _subtitle(b);
+              final daChi = CurrencyFormatter.format(b.spent);
+              final hanMuc = '/ ${CurrencyFormatter.format(b.amount)}';
+              final soDaChi = Text(daChi, style: _kieuDaChi.copyWith(color: mau));
+              final soHanMuc = Text(hanMuc, style: _kieuHanMuc);
+              final bieuTuong = Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  color: AppColors.surfaceContainer,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
+                child: Icon(
+                  budgetIconFor(view.categoryIcon),
+                  color: budgetColorFrom(view.categoryColour),
+                  size: 20,
+                ),
+              );
+              final cotTen = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    view.displayName,
+                    overflow: TextOverflow.ellipsis,
+                    style: _kieuTen,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(phu, style: _kieuPhu.copyWith(color: mau)),
+                  // Dấu hiệu cho bản ghi chưa lên tới server được (G15).
+                  // Không nêu nguyên văn lỗi backend: nó là stack trace
+                  // hoặc câu tiếng Việt của server, cả hai đều không giúp
+                  // người dùng làm gì.
+                  if (b.hasSyncError) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.cloud_off,
+                            size: 14, color: AppColors.expense),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Chưa đồng bộ được',
+                            key: ValueKey('budget-sync-error-${b.id}'),
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.expense),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              );
+              final nutChinh = onEdit == null
+                  ? null
+                  : SizedBox(
+                      height: _rongNutChinh,
+                      width: _rongNutChinh,
+                      child: IconButton(
+                        key: ValueKey('budget-edit-${b.id}'),
+                        padding: EdgeInsets.zero,
+                        iconSize: 18,
+                        tooltip: 'Chỉnh ngân sách',
+                        icon: const Icon(Icons.tune,
+                            color: AppColors.textSecondary),
+                        onPressed: onEdit,
+                      ),
+                    );
+              if (_vuaMotHang(context, rang.maxWidth, phu, daChi, hanMuc)) {
+                // Bố cục Stitch: hai số tiền ở cột phải, ngang hàng tên.
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    bieuTuong,
+                    const SizedBox(width: 12),
+                    Expanded(child: cotTen),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (nutChinh != null) nutChinh,
+                        const SizedBox(height: 4),
+                        soDaChi,
+                        soHanMuc,
+                      ],
+                    ),
+                  ],
+                );
+              }
+              // Không vừa một hàng (khổ hẹp, cỡ chữ lớn): cột tên lấy hết bề
+              // ngang, hai số tiền xuống dưới, căn phải.
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        view.displayName,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _subtitle(b),
-                        style: TextStyle(fontSize: 14, color: mau),
-                      ),
-                      // Dấu hiệu cho bản ghi chưa lên tới server được (G15).
-                      // Không nêu nguyên văn lỗi backend: nó là stack trace
-                      // hoặc câu tiếng Việt của server, cả hai đều không giúp
-                      // người dùng làm gì.
-                      if (b.hasSyncError) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.cloud_off,
-                                size: 14, color: AppColors.expense),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                'Chưa đồng bộ được',
-                                key: ValueKey('budget-sync-error-${b.id}'),
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontSize: 12, color: AppColors.expense),
-                              ),
-                            ),
-                          ],
-                        ),
+                      bieuTuong,
+                      const SizedBox(width: 12),
+                      Expanded(child: cotTen),
+                      if (nutChinh != null) ...[
+                        const SizedBox(width: 8),
+                        nutChinh,
                       ],
                     ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (onEdit != null)
-                      SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: IconButton(
-                          key: ValueKey('budget-edit-${b.id}'),
-                          padding: EdgeInsets.zero,
-                          iconSize: 18,
-                          tooltip: 'Chỉnh ngân sách',
-                          icon: const Icon(Icons.tune,
-                              color: AppColors.textSecondary),
-                          onPressed: onEdit,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    Text(
-                      CurrencyFormatter.format(b.spent),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: mau,
-                      ),
-                    ),
-                    Text(
-                      '/ ${CurrencyFormatter.format(b.amount)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.end,
+                    spacing: 4,
+                    children: [soDaChi, soHanMuc],
+                  ),
+                ],
+              );
+            }),
             const SizedBox(height: 12),
             BudgetProgressBar(percent: b.percentSpent, color: mau),
             // Ngân sách hết hạn không còn ngày nào để chia — `budgetPaceLine`
@@ -682,19 +703,51 @@ class _BudgetCard extends StatelessWidget {
     );
   }
 
+  static const _kieuTen = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: AppColors.primary,
+  );
+  static const _kieuPhu = TextStyle(fontSize: 14);
+  static const _kieuDaChi =
+      TextStyle(fontSize: 13, fontWeight: FontWeight.w600);
+  static const _kieuHanMuc =
+      TextStyle(fontSize: 12, color: AppColors.textSecondary);
+  static const double _rongNutChinh = 24;
+
+  /// Dòng phụ có trọn một dòng bên cạnh cột số tiền không — đo bằng bề rộng
+  /// THẬT (`doRongChu`, cùng khuôn thẻ hoá đơn G74). Vòng tròn biểu tượng 40 +
+  /// khe 12, khe 8 trước cột số tiền; cột ấy rộng bằng số dài nhất (hoặc nút
+  /// chỉnh). Không vừa thì hai số tiền xuống dưới: Realme 320 dp × cỡ chữ 1,6
+  /// (2026-10-26) từng để cột tên còn ~77 dp, *"Còn 490.000 đ"* gãy giữa chữ
+  /// số và tên cụt *"Ăn u…"*.
+  bool _vuaMotHang(BuildContext context, double rong, String phu,
+      String daChi, String hanMuc) {
+    final cotPhai = math.max(
+      math.max(doRongChu(context, daChi, _kieuDaChi),
+          doRongChu(context, hanMuc, _kieuHanMuc)),
+      onEdit == null ? 0.0 : _rongNutChinh,
+    );
+    return 40 + 12 + doRongChu(context, phu, _kieuPhu) + 8 + cotPhai <=
+        rong + 0.5;
+  }
+
+  /// Số tiền dính `đ` (`formatLienKhoi`): dòng phụ dài (*"Sắp hết — còn …"*)
+  /// mà xuống dòng thì chỗ ngắt rơi vào dấu cách trước số, không vào giữa
+  /// *"490.000 ⏎ đ"*.
   String _subtitle(BudgetEntity b) {
     if (expired) {
       return b.isOverBudget
-          ? 'Vượt ${CurrencyFormatter.format(b.overAmount)}'
-          : 'Còn dư ${CurrencyFormatter.format(b.remaining)}';
+          ? 'Vượt ${CurrencyFormatter.formatLienKhoi(b.overAmount)}'
+          : 'Còn dư ${CurrencyFormatter.formatLienKhoi(b.remaining)}';
     }
     if (b.isOverBudget) {
-      return 'Vượt ${CurrencyFormatter.format(b.overAmount)}';
+      return 'Vượt ${CurrencyFormatter.formatLienKhoi(b.overAmount)}';
     }
     if (b.isNearLimit) {
-      return 'Sắp hết — còn ${CurrencyFormatter.format(b.remaining)}';
+      return 'Sắp hết — còn ${CurrencyFormatter.formatLienKhoi(b.remaining)}';
     }
-    return 'Còn ${CurrencyFormatter.format(b.remaining)}';
+    return 'Còn ${CurrencyFormatter.formatLienKhoi(b.remaining)}';
   }
 }
 
