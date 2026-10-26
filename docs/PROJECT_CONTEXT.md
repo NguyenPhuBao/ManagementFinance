@@ -617,6 +617,27 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-26)
 
+### 🛰️ Phiên 11 (2026-10-26 chiều) — soát năm mục tài liệu v4 với mã backend `36f1ea43`, làm ba mục người dùng chọn
+
+- **Soát** (`Event-Notification-to-ClientApp.md` v4 — tài liệu backend, chỉ đọc): **429 `RETRY_LIMIT_EXCEEDED`** — `retry-guard.middleware.js`
+  chặn POST / PUT trùng **y body** > 3 lần / 10 s cùng IP, GET miễn; client không chạm được trong vận hành thường (`/sync/push` mang
+  `pushedAt` theo ms, `/sync/pull` và `order-status` là GET) → **không làm**, và **không** gửi `x-retry-count`. **`account.countdown`** —
+  client đã tự trừ số ngày (`dem_nguoc_xoa.dart`) → **không làm**. Ba mục người dùng chọn làm: quá tải, `x-device-name`, broadcast.
+- ✅ **503 quá tải** (`0d3aacc2`): `SERVER_OVERLOADED` (`load-shedding.middleware.js`, event loop > 250 ms, `Retry-After: 5`) và
+  `DB_POOL_OVERLOADED` (`db-bulkhead.js`, không header) ở lượt đẩy → `SyncEngine` không tính lượt hỏng, hẹn theo `Retry-After` (sàn
+  30 s), kết thúc `pending` — trước đó là chu kỳ `error` → thông báo *"Đồng bộ hỏng"* sau **một** chu kỳ. Trần 3 chu kỳ liên tiếp
+  (`SyncEngine.soLanQuaTaiKhongTinh`), quá thì tính như lỗi thường. Không qua `TrangThaiMayChu` (không dòng nhắc / toast). Bảng
+  *Phân loại lỗi đẩy dữ liệu* (mục 6) cập nhật.
+- ✅ **`x-device-name`** (Android): kênh Kotlin `flowmoney/thiet_bi` (`ThietBi.kt`, **không** `device_info_plus`) → `docTenThietBi`
+  (`core/api/ten_thiet_bi.dart`, ASCII in được ≤ 150) đọc **một lần** ở `setupDependencies`, gắn vào BaseOptions của Dio chung **và**
+  Dio `/auth/refresh`; kênh đăng ký ở **cả** engine app lẫn engine nền (`TuChuyenTien.chayHeadless`) — backend thêm một dòng
+  `account_device_history` mỗi khi tên đổi, nên mọi đường của một máy phải gửi cùng tên. Web / iOS không gửi (CORS `app.js:32` chưa
+  cho header — đơn 49 vế E). **Đo máy ảo** (bản debug trỏ máy chủ thu header tạm): `/auth/profile`, `/payment/subscription-info`,
+  `/sync/push`, `/sync/pull` đều mang `"Google sdk_gphone64_x86_64 (Android 16)"`; bắt tay socket không mang (backend không ghi ở đó).
+  Engine nền chưa đo trên máy. Hôm nay **chưa ai đọc** bảng ấy (`getDeviceHistory` 0 chỗ gọi ngoài test).
+- ✅ Cùng phiên: `NOT_OWNER` + bốn mã `HOUSEHOLD_*` vào lỗi đẩy vĩnh viễn (`8f8694bd`, khối 🏠 dưới); một câu mục 1b
+  `KHOA_APP_FEATURE.md` (Quên PIN chỉ mạnh bằng mật khẩu + hộp thư email trên máy, `89923b55`).
+
 ### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối; nghiệm thu Realme buổi 1 — F1 + M11; buổi 2 — M5, thanh trạng thái, `flutter_secure_storage` 10; phiên 8 — M7 · M8 · M12, buổi 3)
 
 - **Phiên 10 (2026-10-26 trưa; lượt sửa 2 của phiên 9 — người dùng đã chọn sửa cả bốn chỗ):** (1) **thẻ từng ngân sách** (`budget_tabs_view.dart`)

@@ -151,6 +151,14 @@ Client đã vấp đúng kiểu này với migration 19 (2026-10-06).
 
 Client **chưa** làm tính năng gửi `x-device-name` (chưa quyết định); đơn chỉ ghi để backend sửa hai chỗ trên trước.
 
+> ✅ **2026-10-26 — client đã gửi `x-device-name`** (người dùng chọn): **chỉ bản Android**, giá trị dạng `Realme RMX2205 (Android 13)`
+> (hãng + `Build.MODEL` + phiên bản Android, ASCII in được, ≤ 150 ký tự) qua kênh Kotlin `flowmoney/thiet_bi` — **không** dùng
+> `device_info_plus`. Gắn ở cả Dio chung lẫn Dio của `/auth/refresh`, ở cả engine app lẫn engine nền WorkManager, để **một máy
+> luôn gửi một tên** (luật *"tên / IP đổi → INSERT dòng mới"* của `device-history.service.js` sẽ phình bảng nếu hai đường gửi hai
+> tên). Bản web / iOS **không** gửi — nên điểm 2 (CORS) hôm nay không làm hỏng gì, nhưng vẫn nên sửa trước khi có bản web gửi
+> header. Thứ còn thiếu phía backend: **không có chỗ nào đọc** bảng `account_device_history` (`getDeviceHistory` 0 chỗ gọi ngoài
+> test, Admin-web không có màn thiết bị) — header hiện chỉ được ghi.
+
 **Kiểm lại:** `grep -n "x-device-name" src/Backend/app.js` → 1 dòng; hai route có trong `admin.routes.js` hoặc gỡ khỏi tài liệu.
 
 ---
@@ -229,7 +237,7 @@ tả backend nhìn chung đúng; sai tập trung ở chỗ nói về **client** 
 | 42, 89, 119, 155, 185, 211, 233 | Gửi `is_deleted: true` → server ghi `Delete_at` | `mapEntityFields` chỉ đọc `isDeleted` (camelCase, `sync.repository.js:31,60,89,129,163,179`); xoá chạy nhờ `operation: 'delete'` → `softDelete()`. Gửi `update` kèm `is_deleted` là **không xoá, không báo** | **cao** |
 | 317–321 | Client lưu `lastPullTime = pulledAt`; `maxSince = max(since, pulledAt − 2′)` | Client lưu `mocTuMaxSince(maxSince, pulledAt)`: lớn nhất `maxSince` của các bảng, kẹp **xuống** `pulledAt − 2′` (`moc_keo_ve.dart`, G67). Lưu `pulledAt` thô là bỏ sót hàng commit muộn | **cao** |
 | 249–270, 288–296, 302–306, §4 | Client có `user_profile` (12 trường), `permissions_cache`; thông báo từ Socket / FCM, cột `type`, `isRead`; *"4 bảng cục bộ"* | Không có hai bảng đầu; `AppNotifications` do client tự suy từ ngân sách / hoá đơn / mục tiêu (cột `kind`, `dedupeKey`, `readAt`…); schema v31 có **11** bảng chỉ cục bộ | vừa |
-| 277–278, 345 | Client dùng `device_info_plus`, gắn `x-device-name` | Chưa có (vế E) | vừa |
+| 277–278, 345 | Client dùng `device_info_plus`, gắn `x-device-name` | Chưa có (vế E) — ✅ 2026-10-26 client gắn header (Android, kênh Kotlin, **không** `device_info_plus`) | vừa |
 | 82, 90, 199–204, 83, 87, 177, 202, 344 | `NameWallet`, `Include_in_total`, `Total_amount`, `Threshold_warning_*`, `Over_spending`, `Over_amount`, `chk_budget_over_spending`; ví `Type` VARCHAR(20), `Color` VARCHAR(9); `Time_notification` VARCHAR(20); ngưỡng % INT | `Name`, `IncludeInTotal`, `TotalAmount`, `Threshold_Warning_*`, `OverSpending`, `OverAmount`, `ck_budget_overspending`; `VarChar(7)`, `VarChar(20)`, `VarChar(7)`, `Decimal(15,2)` | thấp (vừa với ai viết SQL thô) |
 | 50–52, 329 · 66 · 315 | Client BẮT BUỘC đẩy cat→wallet→goal→bill→budget→tx; lỗi FK trả 400, kẹt vĩnh viễn; trigger chạy cả INSERT | Server tự sắp (`ENTITY_PRIORITY`), client đẩy budget sau tx; lỗi FK là HTTP 200 với `results[i].code = 'FOREIGN_KEY_VIOLATION'`; trigger chỉ `BEFORE UPDATE` | thấp |
 

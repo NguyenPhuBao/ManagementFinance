@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../auth/buoc_dang_xuat.dart';
 import '../../constants/app_constants.dart';
+import '../ten_thiet_bi.dart';
 import 'ket_qua_lam_moi.dart';
 
 /// AuthInterceptor tự động:
@@ -61,6 +62,7 @@ class AuthInterceptor extends Interceptor {
     required this.secureStorage,
     Dio? dioLamMoi,
     this.cheDoNen = false,
+    String? tenThietBi,
   }) : _refreshDio = dioLamMoi ??
             Dio(
               BaseOptions(
@@ -68,7 +70,11 @@ class AuthInterceptor extends Interceptor {
                 connectTimeout: AppConstants.connectionTimeout,
                 receiveTimeout: AppConstants.receiveTimeout,
               ),
-            );
+            ) {
+    // `/auth/refresh` cũng ghi lịch sử thiết bị (`auth.service.js:542`) — CÙNG tên với Dio chung, kẻo backend thêm một dòng
+    // mỗi lần tên đổi (`ten_thiet_bi.dart`). Lượt phát lại sau làm mới mang sẵn header của request gốc.
+    if (tenThietBi != null) _refreshDio.options.headers[kHeaderTenThietBi] = tenThietBi;
+  }
 
   /// Lượt làm mới đang chạy — mọi 401 tới trong lúc ấy chờ chung lượt này
   /// (§3.8 điểm 2): hai lượt song song gửi cùng một refresh token, lượt sau

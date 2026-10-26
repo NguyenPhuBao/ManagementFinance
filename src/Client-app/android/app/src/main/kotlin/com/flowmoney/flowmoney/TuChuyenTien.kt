@@ -119,8 +119,10 @@ object TuChuyenTien {
                 loader.startInitialization(ctx)
                 loader.ensureInitializationComplete(ctx, null)
                 // Hàm dựng tự đăng ký plugin (GeneratedPluginRegistrant): secure storage, local notifications,
-                // connectivity, path_provider… Kênh riêng của MainActivity thì KHÔNG có ở đây — lượt nền không dùng.
+                // connectivity, path_provider… Kênh riêng của MainActivity thì KHÔNG có ở đây — lượt nền không dùng,
+                // TRỪ kênh tên máy: lượt nền cũng gọi backend, tên phải khớp app (`ThietBi.kt`).
                 val e = FlutterEngine(ctx)
+                ThietBi.dangKy(e.dartExecutor.binaryMessenger)
                 MethodChannel(e.dartExecutor.binaryMessenger, KENH_NEN).setMethodCallHandler { call, r ->
                     if (call.method == "nenXong") {
                         moc = (call.argument<Number>("moc") ?: 0).toLong()

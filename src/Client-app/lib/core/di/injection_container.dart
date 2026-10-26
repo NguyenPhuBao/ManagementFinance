@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/api/interceptors/auth_interceptor.dart';
 import '../../core/api/dio_client.dart';
+import '../../core/api/ten_thiet_bi.dart';
 import '../../core/auth/phien_dieu_phoi.dart';
 import '../../core/auth/phien_dieu_phoi_that.dart';
 import '../../core/database/app_database.dart';
@@ -171,10 +172,13 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
   // ── 3. Core: DioClient ─────────────────────────────────────────────────────
+  // Tên máy cho header `x-device-name` — đọc MỘT lần, đưa cho CẢ Dio chung lẫn Dio làm mới token: tên đổi giữa các request
+  // là backend thêm một dòng lịch sử thiết bị (`ten_thiet_bi.dart`). Engine nền đọc qua cùng kênh (`TuChuyenTien.kt`).
+  final tenThietBi = await docTenThietBi();
   // AuthInterceptor đăng ký riêng: PhienDieuPhoiThat cần nghe `sessionExpiredStream`
   // của ĐÚNG instance đang nằm trên đường request.
   sl.registerLazySingleton<AuthInterceptor>(
-    () => AuthInterceptor(secureStorage: sl(), cheDoNen: cheDoNen),
+    () => AuthInterceptor(secureStorage: sl(), cheDoNen: cheDoNen, tenThietBi: tenThietBi),
   );
   // G89 (spec 2026-10-20 mục 3): trạng thái máy chủ — bảo trì / phong toả. Sống trong RAM, không gắn tài khoản. Engine nền
   // (cheDoNen) có bản riêng của isolate ấy: lượt bị chặn không bị tính là lượt hỏng, nên lần `dongBo` thứ hai của `LuotNen`
@@ -188,6 +192,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       // 403 FEATURE_DISABLED → làm mới gói (spec mục 6.2). Đọc `sl` lúc GỌI: GoiRepository đăng ký sau DioClient.
       // `lamMoi` không bao giờ ném.
       khiBiTatQuyen: () => sl<GoiRepository>().lamMoi(),
+      tenThietBi: tenThietBi,
     ),
   );
 
