@@ -618,6 +618,11 @@ src/Backend/
 
 ### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối; nghiệm thu Realme buổi 1 — F1 + M11; buổi 2 — M5, thanh trạng thái, `flutter_secure_storage` 10; phiên 8 — M7 · M8 · M12, buổi 3)
 
+- **Phiên 9 (2026-10-26; người dùng chọn M15 + nút Google, dựng `--release`, nghiệm thu còn lại, rồi soát bảo mật · biên lai MB · M13):** (1) **M15** — hàng
+  *Tự khoá sau* đo tiêu đề + giá trị bằng `TextPainter` (họ chữ theme + `textScaler`), không vừa thì giá trị xuống dưới dòng phụ (mục 8 `KHOA_APP_FEATURE.md`);
+  **nút Google / Apple** màn Đăng nhập (ngoài mảng khoá app): đệm ngang 12 + nhãn một dòng tự co (`FittedBox`). ⚠️ Test khổ hẹp của trang Đăng nhập đặt cỡ chữ
+  **0,55** để font test (rộng ~gấp đôi Inter) có tỷ lệ chữ / đệm gần máy thật — ở cỡ 1 ba hàng khác tràn giả. Test **8.056 / 10 skip**, analyze 20.
+
 - **Phiên 8 (2026-10-25 khuya; người dùng chọn cả bốn việc mở của bàn giao phiên 7):** (1) **M7 · M8 · M12 · `_napCho`** (`b49217ca`) — mốc chờ sau sai PIN xa hơn
   15 phút kẹp về `nay + kChoToiDa` **và ghi lại** kho (bẫy 28: kẹp không ghi = đếm ngược không về 0), `resumed` khi đang khoá đọc lại kho; lượt làm tươi P9 bỏ bản đọc
   khi `lanKiem` đã đổi; Kotlin `TIMEOUT` → `HUY`, `SECURITY_UPDATE_REQUIRED` → `KHONG_HO_TRO`, `xoaHet` bọc `try` từng alias; trang Đặt PIN đọc nghiêm ngặt (đọc hỏng ở chế

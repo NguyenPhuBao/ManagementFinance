@@ -340,12 +340,10 @@ class _LoginPageState extends State<LoginPage> {
                                                 Icons.g_mobiledata,
                                                 size: 24,
                                                 color: AppColors.primary),
-                                            label: const Text('Google',
-                                                style: TextStyle(
-                                                    color:
-                                                        AppColors.textPrimary)),
+                                            label: const _NhanNutMotDong('Google'),
                                             style: OutlinedButton.styleFrom(
                                               minimumSize: const Size(0, 44),
+                                              padding: _kDemNutMangXaHoi,
                                               side: const BorderSide(
                                                   color:
                                                       AppColors.outlineVariant),
@@ -363,12 +361,10 @@ class _LoginPageState extends State<LoginPage> {
                                             icon: const Icon(Icons.apple,
                                                 size: 20,
                                                 color: AppColors.primary),
-                                            label: const Text('Apple',
-                                                style: TextStyle(
-                                                    color:
-                                                        AppColors.textPrimary)),
+                                            label: const _NhanNutMotDong('Apple'),
                                             style: OutlinedButton.styleFrom(
                                               minimumSize: const Size(0, 44),
+                                              padding: _kDemNutMangXaHoi,
                                               side: const BorderSide(
                                                   color:
                                                       AppColors.outlineVariant),
@@ -446,5 +442,25 @@ class _LoginPageState extends State<LoginPage> {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+}
+
+/// Đệm ngang hai nút Google / Apple. Mặc định của `OutlinedButton.icon` (16 + 24) cộng biểu tượng 24 chỉ còn ~36 dp cho
+/// chữ ở 320 dp → *"Goo / gle"* (Realme, buổi 3 khoá app 2026-10-25). Nút căn giữa nên khổ rộng nhìn không đổi.
+const _kDemNutMangXaHoi = EdgeInsets.symmetric(horizontal: 12);
+
+/// Nhãn nút một dòng: không vừa (cỡ chữ lớn) thì thu nhỏ chữ, không ngắt dòng. `OutlinedButton.icon` đặt nhãn trong
+/// `Flexible` nên `FittedBox` nhận đúng bề rộng còn lại.
+class _NhanNutMotDong extends StatelessWidget {
+  const _NhanNutMotDong(this.chu);
+
+  final String chu;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(chu, maxLines: 1, style: const TextStyle(color: AppColors.textPrimary)),
+    );
   }
 }
