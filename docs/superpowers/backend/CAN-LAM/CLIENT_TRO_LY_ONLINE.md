@@ -12,6 +12,9 @@
 >   cả hai vẫn `false` khi socket chết. Gợi ý: `res.on('close')` (hoặc `req.socket`), truyền `signal` + `timeout` vào `requestOptions`.
 > - **Rủi ro mới của việc 6:** `: ping` làm `receiveTimeout` 45 s của client không bao giờ nổ khi server còn sống, mà server không có trần tổng
 >   cho một lượt (SDK không `timeout`) ⇒ Gemini treo thì client chờ tới khi người dùng bấm Dừng. Xin `requestOptions.timeout`.
+>   ✅ **Client đã bù (2026-10-26, phiên 13):** trần TỔNG một lượt **120 s** (`kTranTongOnline`, người dùng chốt; vượt ca dài nhất đã đo 91 s) —
+>   quá trần client huỷ request (đóng socket như Dừng) và rơi về máy. Đó là lưới an toàn phía client: server vẫn chạy Gemini tới cùng (việc 5),
+>   nên lời xin `requestOptions.timeout` + `signal` **giữ nguyên**.
 > - **Việc 1 — chưa** (`ChatbotAI.md`, `.env.example` không có `GEMINI_MODEL`). **Việc 4 — chưa** (`ChatbotAI_Moblie.md:61-73` chỉ
 >   `done {fallback}`; `ChatbotAI.md` `:286`, `:296`, `:420`, `:443` y nguyên). **Việc 7 vế (b)** `finishReason` — chưa (đơn ghi "cân nhắc").
 

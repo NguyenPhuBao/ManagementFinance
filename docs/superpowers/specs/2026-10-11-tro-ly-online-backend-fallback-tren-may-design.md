@@ -469,3 +469,8 @@ Edge-SLM* (🛑 → ✅ 2026-10-11); `docs/superpowers/backend/CAN-LAM/` **đơn
     câu hệ thống nên không nhãn nguồn, không ghi chú. Người dùng chốt 2026-10-17 khuya: lý do rơi phải hiện cho người dùng.
 23. §3.4 `boDanhDauMarkdown` — nghiệm thu OnePlus 2026-10-18: câu Gemini lộ `###` / `> -` / `---` → hàm gỡ thêm tiêu đề, trích
     dẫn, dòng kẻ ngang (người dùng chốt làm ngay); luật bẫy 4.36 giữ nguyên (`>` trước con số / dấu so sánh không gỡ).
+24. §3.2 / §5 rủi ro (*"`receiveTimeout` là khoảng lặng giữa hai gói"*) — thêm **trần TỔNG một lượt 120 s** (`kTranTongOnline`, 2026-10-26
+    phiên 13, người dùng chốt) — vì backend đã gửi `: ping` mỗi 15 s (đơn 47 việc 6) nên khoảng lặng không bao giờ quá 45 s khi server
+    còn sống, mà backend không có trần nào cho lời gọi Gemini: Gemini treo là vòng xoay quay mãi. Quá trần datasource huỷ chính
+    `CancelToken` của lượt và phát `LoiOnline(http null, 'quá trần tổng 120 s')`; luật rơi §3.3 không đổi. 120 s vượt ca dài nhất đã đo
+    ở §6 (91 s).

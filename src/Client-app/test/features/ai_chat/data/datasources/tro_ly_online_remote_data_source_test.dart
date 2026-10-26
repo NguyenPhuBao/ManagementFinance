@@ -179,6 +179,84 @@ void main() {
     expect(sk.single, isA<LoiOnline>());
     expect((sk.single as LoiOnline).lyDo.toLowerCase(), contains('cancel'));
   });
+
+  // ── Trần tổng một lượt (2026-10-26, phiên 13; người dùng chốt 120 s) ────────────────────────────────────────────────
+  // Backend gửi `: ping` mỗi 15 s (`chatbot.controller.js:32`, đơn 47 việc 6) nên `receiveTimeout` 45 s KHÔNG BAO GIỜ nổ,
+  // và backend không có trần nào cho lời gọi Gemini: Gemini treo = vòng xoay quay mãi. Số đo G96: nghĩ 49,9 s, một lượt
+  // curl 91 s — trần phải vượt.
+
+  test('hằng trần tổng = 120 s, dài hơn receiveTimeout 45 s và ca dài nhất đã đo (91 s)', () {
+    expect(kTranTongOnline, const Duration(seconds: 120));
+    expect(kTranTongOnline > const Duration(seconds: 91), isTrue,
+        reason: 'G96: một lượt curl 91 s — trần ngắn hơn là cắt một câu trả lời thật sắp tới');
+  });
+
+  test('⭐ máy chủ chỉ gửi `: ping` mãi → quá trần: huỷ token, LoiOnline(http null, "trần"), không treo', () async {
+    final cancel = CancelToken();
+    final may = _MayChuPing();
+    final dongHo = Stopwatch()..start();
+    final sk = await _gom(_dungTran(may, const Duration(milliseconds: 80)), cancel: cancel)
+        .timeout(const Duration(seconds: 5), onTimeout: () => fail('treo — trần tổng không cắt'));
+    expect(sk.single, isA<LoiOnline>());
+    expect((sk.single as LoiOnline).http, isNull, reason: 'http null + chưa chữ → RoiVeMay ("máy chủ không phản hồi")');
+    expect((sk.single as LoiOnline).lyDo, contains('trần'),
+        reason: 'log phải phân biệt quá trần với Dừng của người dùng (cùng một CancelToken)');
+    expect(cancel.isCancelled, isTrue, reason: 'đóng socket thật — không để luồng ping sống tiếp');
+    expect(dongHo.elapsed, lessThan(const Duration(seconds: 2)));
+    expect(may.soPing, greaterThan(0), reason: 'đối chứng: máy chủ giả đã thật sự gửi ping');
+  });
+
+  test('có chữ rồi chỉ còn ping → [ChuOnline, LoiOnline(trần)] — trang giữ phần đã hiện, ghi chú gián đoạn', () async {
+    final sk = await _gom(
+        _dungTran(_MayChuPing(dau: 'event: delta\ndata: {"text":"Quỹ khẩn "}\n\n'), const Duration(milliseconds: 80)));
+    expect(sk.map((e) => e.runtimeType).toList(), [ChuOnline, LoiOnline]);
+    expect((sk.last as LoiOnline).lyDo, contains('trần'));
+  });
+
+  test('lượt xong trước trần → hẹn giờ huỷ theo, token KHÔNG bị huỷ về sau', () async {
+    final cancel = CancelToken();
+    final sk = await _gom(_dungTran(_MayChuSse(than: thanThuong), const Duration(milliseconds: 50)), cancel: cancel);
+    expect(sk.last, isA<XongOnline>());
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    expect(cancel.isCancelled, isFalse, reason: 'hẹn giờ sót lại sẽ huỷ token của một lượt đã xong');
+  });
+}
+
+TroLyOnlineRemoteDataSourceImpl _dungTran(HttpClientAdapter may, Duration tran) {
+  final dio = Dio(BaseOptions(baseUrl: 'http://localhost:3000/api'))..httpClientAdapter = may;
+  return TroLyOnlineRemoteDataSourceImpl(dio, tranTong: tran);
+}
+
+/// Adapter giả như backend khi Gemini treo: phát [dau] (nếu có) rồi `: ping` mỗi 10 ms, KHÔNG bao giờ `done`; đóng luồng khi
+/// request bị huỷ (như adapter thật đóng socket theo `cancelFuture`).
+class _MayChuPing implements HttpClientAdapter {
+  _MayChuPing({this.dau = ''});
+  final String dau;
+  int soPing = 0;
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    late final StreamController<Uint8List> c;
+    Timer? hen;
+    c = StreamController<Uint8List>(
+      onListen: () {
+        if (dau.isNotEmpty) c.add(Uint8List.fromList(utf8.encode(dau)));
+        hen = Timer.periodic(const Duration(milliseconds: 10), (_) {
+          soPing++;
+          c.add(Uint8List.fromList(utf8.encode(': ping\n\n')));
+        });
+      },
+      onCancel: () => hen?.cancel(),
+    );
+    cancelFuture?.whenComplete(() {
+      hen?.cancel();
+      if (!c.isClosed) c.close();
+    });
+    return ResponseBody(c.stream, 200, headers: {Headers.contentTypeHeader: ['text/event-stream']});
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
 
 /// Adapter giả: phát [phan] (hoặc [rawBytes]) rồi ném [loi] (nếu có) từ chính luồng thân.

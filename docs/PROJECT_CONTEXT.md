@@ -627,6 +627,10 @@ src/Backend/
   `error` (không thông báo *"Đồng bộ hỏng"*), **không** giãn cách; tắt ở lượt kéo thành công và `stop()`, mất mạng giữ nguyên. ⚠️ Cố ý
   **không** đi qua `TrangThaiMayChu`: `MayChuInterceptor` đặt lại nó ở mọi phản hồi thành công — lượt đẩy thành công sẽ xoá dòng nhắc dù kéo
   vẫn hỏng. Ca canh `sync_keo_ve_bi_tu_choi_test.dart` (9) + `dong_nhac_keo_ve_test.dart` (7).
+- ✅ **Trần tổng 120 s cho một lượt Trợ lý online** (`kTranTongOnline`, người dùng chốt): backend gửi `: ping` mỗi 15 s (đơn 47 việc 6) nên
+  `receiveTimeout` 45 s không còn nổ, mà backend không có trần nào cho lời gọi Gemini — Gemini treo là vòng xoay quay mãi. Quá trần
+  datasource huỷ chính `CancelToken` của lượt (đóng socket như Dừng) và phát `LoiOnline(http null, 'quá trần tổng 120 s')` — trang rơi về
+  máy / giữ phần đã hiện như mọi lỗi online, không đổi. G96 vế 2, mục 15.8 `AI_EDGE_FEATURE.md`, mục 10 dòng 24 spec trợ lý online.
 - ✅ Chú thích `ten_thiet_bi.dart:10` + khối phiên 11 dưới: CORS đã cho `x-device-name` từ backend `49eafef6` (`1c47b2c9`).
 
 ### 🛰️ Phiên 11 (2026-10-26 chiều) — soát năm mục tài liệu v4 với mã backend `36f1ea43`, làm ba mục người dùng chọn
