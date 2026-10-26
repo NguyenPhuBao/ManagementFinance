@@ -957,6 +957,33 @@ liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà 
 - ✅ **2026-10-26 — Task 5 của kế hoạch làm riêng, trước lát 1** (người dùng chọn): `NOT_OWNER` + bốn mã `HOUSEHOLD_*` đẩy vào
   `_permanentCodes` (`core/sync/gui_lo_dong_bo.dart`), năm ca ở `sync_failure_handling_test.dart`, bản sai đỏ. Backend bật vế A
   (kiểm chủ sở hữu) trước cả lát 1 thì hàng bị từ chối không bị đẩy lại mãi. Phần còn lại của lát 1 vẫn chưa có mã.
+- 📝 **2026-10-26 (sau) — người dùng MỞ RỘNG thiết kế** (*"tạo nhóm gia đình, ví chung (nhiều ví), mời hoặc mã mời, góp quỹ, chủ ví đặt hạn mức
+  từng thành viên — mở rộng giúp tôi"*). Brainstorming loại kiến trúc, 18 quyết định qua câu hỏi chọn được (bảng mục 2 `docs/Family/00_TONG_QUAN.md`):
+  **bỏ** *ai nợ ai* và *cho nhà xem* · chỉ Chủ nhà cấu hình (ví chung, hạn mức, định mức, ngân sách, mục tiêu) · vượt hạn mức = **cảnh báo + báo
+  Chủ nhà** (không chặn — app ghi sổ, không giữ tiền) · mời bằng **email** (trong app + thư kèm mã; một câu trả lời cho mọi email; mã gắn email) ·
+  góp / rút = **cặp hai khoản** nối bằng `Idfund_pair` (không nới luật phạm vi) · cài đặt của nhà **trên server kèm `/households/me`** · nửa riêng
+  tính là chi *"Góp quỹ gia đình"* · người ghi + Chủ nhà sửa / xoá · Thành viên chỉ thấy hạn mức của mình · **mục tiêu chung = công tắc trên ví
+  chung** (tiến độ = số dư ví — tránh mất số khi hai người góp offline, vì `goals.currentAmount` là cột cộng dồn ghi-sau-thắng). Người dùng chỉ
+  định viết vào **`docs/Family/`** (thư mục backend tạo) thành **bộ tệp theo phần** cho backend / PO xem và thảo luận: `00_TONG_QUAN` · `01_NEN_MONG`
+  (mời email, ma trận vai × thực thể + `HOUSEHOLD_ROLE_FORBIDDEN`) · `02A` ví chung + góp / rút · `02B` hạn mức · `02C` định mức + tự góp ·
+  `02D` ngân sách + báo cáo · `03` mục tiêu chung. Bộ này **thắng** spec 2026-10-23 và đơn 50 khi lệch (8 chỗ — mục 6 tổng quan); banner ở cả hai.
+  14 loại thông báo mới, nhóm `giaDinh` (bảng mục 8 tổng quan). Soát backend **hoãn** tới sau khi tài liệu đủ (người dùng). Chưa có mã; kế hoạch lát 1
+  (2026-10-24) vẫn dùng được cho lõi phần 1.
+
+### 🔀 Gộp `main` @ `2b926d92` (2026-10-26, commit gộp `3636110d`, chưa push) — PR #161–#163: backend báo xong 9 đơn CAN-LAM; `.gitignore` gỡ dòng chặn `plans/`
+
+- **Người dùng:** *"trước khi làm thì hãy lấy code mới nhất về"* (để viết tài liệu gia đình vào `docs/Family/`). 3 commit backend, 85 tệp; **0 tệp
+  `src/Client-app`** (cây giữ hash `69f561ce` → không chạy lại `flutter test`); `check-ignore` `test/` không khớp.
+- **Backend chuyển đơn 43–49, 51, 52 sang `DA-XONG/`** kèm khối *"PO duyệt & hoàn tất thực thi 9 mục"* ở README; `CAN-LAM/` còn **50** +
+  `CLIENT_INTEGRATION_GUIDE.md`. Thêm `docs/superpowers/client-app/CAN-LAM/README.md` (danh sách việc đề nghị client làm — mục 5 ghi *"PO hoãn
+  gia đình"*). **Client CHƯA soát** lượt báo xong này — người dùng hoãn tới sau khi viết xong tài liệu gia đình; banner 🔎 2026-10-26 đầu từng
+  tệp đơn (nay ở `DA-XONG/`) là lượt soát gần nhất, trên mã `36f1ea43`.
+- **Xung đột duy nhất:** `CAN-LAM/README.md` — lấy bản backend cho khối báo xong + bảng mục 0; banner client đổi thành *"client CHƯA soát"* +
+  khối 🏠 báo trước thiết kế gia đình đang mở rộng; hàng 50 giữ bản client.
+- **`.gitignore` của main gỡ 11 dòng** (`docs/superpowers/plans/`, `.superpowers/`, `docs/superpowers/client-app/`, `docs/superpowers/auth/`,
+  `docs/category/`, `docs/deploy_Cloud/`, `docs/superpowers/sync/*`, `src/Backend/prisma/migrations/`, hai `seed_roles.js`) — 103 mục cục bộ hiện ra
+  chưa theo dõi. Người dùng chọn **ẩn trên máy này** qua **`.git/info/exclude`** (không commit, không sửa `.gitignore` chung); kế hoạch backend đã
+  commit trong `plans/` vẫn được theo dõi. Máy khác clone về sẽ **không** có lớp chặn này.
 
 ### 🔀 Gộp `main` @ `0ab9cbd4` (2026-10-25, commit gộp `1fedd00a`, đã push) — PR #159: sync contract v4, bảo trì, AIOps, admin; backend viết đè tài liệu đồng bộ của client lần hai
 

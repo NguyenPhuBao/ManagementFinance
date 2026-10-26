@@ -1,5 +1,12 @@
 # Mục 50 — Chức năng GIA ĐÌNH (nhà nhiều người): toàn bộ thiết kế + việc backend của phần 1 (nền móng)
 
+> 🏠 **2026-10-26 (sau) — thiết kế được mở rộng; ĐỌC `docs/Family/00_TONG_QUAN.md` MỤC 6 TRƯỚC KHI LÀM ĐƠN NÀY.** Người dùng thêm: mời bằng
+> email, nhiều ví chung, góp / rút quỹ (cặp hai khoản, cột `Idfund_pair`), hạn mức chi từng thành viên, định mức góp + tự góp, ngân sách + báo cáo
+> của nhà, mục tiêu chung = công tắc trên ví chung; **bỏ** *ai nợ ai* và *cho nhà xem*. Tám chỗ đổi so với đơn này (bảng mục 6 tệp tổng quan) —
+> đáng chú ý: **ma trận vai × thực thể** khi đẩy + mã `HOUSEHOLD_ROLE_FORBIDDEN` thay đoạn *Tạo / Sửa / xoá* của D.2; **bỏ ngoại lệ `idgoal`** ở
+> D.2; mục 4 (định hướng ba phần con) **không còn đúng**. Bộ `docs/Family/00…03` là tài liệu để backend / PO **xem và thảo luận** — đơn CAN-LAM cho
+> các phần sau đặt khi thảo luận xong. Phần còn lại của đơn này (A, B, C, D trừ đoạn trên, E, F, G) giữ nguyên.
+>
 > 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`; truy vấn chỉ đọc trên CSDL Supabase của `.env`): **chưa vế nào
 > được làm** — `src/Backend` (`.js` / `.sql` / `.prisma`) có 0 chữ *household*; `database/` dừng ở `36_*`; CSDL: 0 bảng
 > `household*`, 0 cột `Idhousehold`. **Vế A vẫn mở:** nhánh sửa của `/sync/push` chỉ so `update_at` (`upsertWallet`,

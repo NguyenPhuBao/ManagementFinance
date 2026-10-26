@@ -8,6 +8,10 @@
 > **Phía server** do backend làm theo đơn CAN-LAM (người dùng chốt) — client không sửa `src/Backend` (quy tắc 1).
 > **Đơn backend:** mục **50** `docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md` (2026-10-23, người dùng nhờ viết tài liệu cho
 > backend đọc) — chi tiết SQL nháp, 12 endpoint, mã lỗi, đồng bộ, Premium, sự kiện, câu kiểm.
+> ⚠️ **2026-10-26 — người dùng mở rộng thiết kế; bộ tài liệu đầy đủ ở `docs/Family/` (`00_TONG_QUAN.md` … `03_MUC_TIEU_CHUNG.md`) THẮNG spec
+> này khi lệch.** Thay mục 2 (lộ trình: bỏ *ai nợ ai* và *cho nhà xem*; phần 2 tách 2a–2d; mục tiêu chung = công tắc trên ví chung), bổ sung phần
+> 1 (mời bằng email; ma trận quyền khi đẩy + `HOUSEHOLD_ROLE_FORBIDDEN`; bỏ ngoại lệ `idgoal` ở 4.2). Thân spec này vẫn là chi tiết phần 1 ở mọi
+> chỗ `docs/Family/01_NEN_MONG.md` không nói khác.
 
 ---
 
