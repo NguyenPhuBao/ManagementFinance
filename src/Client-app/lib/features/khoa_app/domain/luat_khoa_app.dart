@@ -49,6 +49,9 @@ bool canKhoaKhiQuayLai({
   return kd != null && (kd.isNegative || kd >= muc.thoiGian);
 }
 
+/// Mức chờ dài nhất sau sai PIN — không lần chờ hợp lệ nào còn lại lâu hơn thế (M8 kẹp theo hằng này).
+const Duration kChoToiDa = Duration(minutes: 15);
+
 /// Sai liền [soLanSai] lần thì chờ bao lâu (`null` = chưa phải chờ).
 Duration? thoiGianCho(int soLanSai) {
   if (soLanSai < kSaiBatDauCho) return null;
@@ -60,8 +63,18 @@ Duration? thoiGianCho(int soLanSai) {
     case 7:
       return const Duration(minutes: 5);
     default:
-      return const Duration(minutes: 15);
+      return kChoToiDa;
   }
+}
+
+/// M8: mốc chờ cách [nay] xa hơn [kChoToiDa] chỉ có khi giờ máy từng chạy trước lúc sai PIN rồi bị chỉnh lại — kẹp về
+/// `nay + kChoToiDa`. Người gọi phải GHI LẠI mốc đã kẹp (`KhoaAppService`): kẹp mà không ghi là mỗi lần đọc lại dời mốc
+/// thêm 15 phút, đồng hồ đếm ngược không bao giờ về 0. Chỉnh giờ lùi không mở được chờ (chỉ rút về 15 phút); chỉnh tới thì
+/// vẫn rút được — giới hạn đã chấp nhận (bẫy 7).
+DateTime? kepChoDen(DateTime? choDen, DateTime nay) {
+  if (choDen == null) return null;
+  final toiDa = nay.add(kChoToiDa);
+  return choDen.isAfter(toiDa) ? toiDa : choDen;
 }
 
 /// Còn phải chờ bao lâu tới [choDen] lúc [nay] (`null` = không chờ: không có mốc, đúng mốc, hoặc đã qua).

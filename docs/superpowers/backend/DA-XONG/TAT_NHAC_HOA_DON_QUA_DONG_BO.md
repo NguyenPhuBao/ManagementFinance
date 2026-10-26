@@ -1,5 +1,16 @@
 # `/sync/push` ép `time_notification = NULL` của hoá đơn thành `'3'` (tạo mới) hoặc giữ giá trị cũ (cập nhật) — "tắt nhắc" của người dùng bị đảo lại sau một vòng đồng bộ (mục 45)
 
+> 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **ĐẠT — giữ ở `DA-XONG/`.** `sync.repository.js:120` `=== null ? null : String(…)`; tạo `:534` `!== undefined ? … : '3'`; sửa
+> `:560` `!== undefined ? … : existing.time_notification` (cùng khuôn `period_end` / `auto_pay`); kéo về (`:577-585`) trả `null` nguyên văn. Client
+> đã sẵn (`thu_gom_day.dart:319`, `anh_xa_keo_ve.dart:299`). Hoá đơn từng bị ép `'3'` trước bản sửa không tự hồi phục — người dùng tắt nhắc
+> lại. Chưa đo trên CSDL (suy từ ngữ nghĩa Prisma: `create` với `null` tường minh ghi NULL dù có `@default`).
+
+> 🔎 **Client soát lại 2026-10-26** (mã `main` @ `5bb258ff`): **chưa làm.** Đơn đã nằm trong lịch sử nhánh backend từ
+> 2026-10-16; sau đó `sync.repository.js` được sửa hai lần (`2375e5db`, `36f1ea43`) mà không chạm ba chỗ này. Số dòng nay:
+> **:117** `String(m.timeNotification)` · **:528** `|| '3'` · **:554** `?? existing.time_notification`. Các trường kề bên
+> (`period_end`, `auto_pay`) đã dùng `!== undefined` — đúng khuôn đơn xin. CSDL Supabase của `.env` nay chỉ còn 1 hoá đơn sống
+> nên phép đo dữ liệu của đơn (đo trên CSDL dev hôm 2026-10-16) không lặp lại được ở đó.
+
 **Ngày:** 2026-10-16 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat`
 **Loại:** đơn xin — **một lỗi mức vừa**, sửa trong `src/Backend/modules/sync/sync.repository.js`. **Không** đổi lược đồ,
 **không** đổi hình dạng payload `/sync/*`, **không** cần migration. Mọi khẳng định dưới đây đo bằng **đọc mã** (HEAD

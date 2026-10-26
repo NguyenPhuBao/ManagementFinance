@@ -1,5 +1,27 @@
 # Client đã tích hợp trợ lý online (`POST /api/ai/chatbot/chat/stream`) — năm chỗ cố ý không làm theo `ChatbotAI_Moblie.md`, ba điều client phải bù, và việc xin backend (mục 47)
 
+> 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.**
+> - **Đạt:** việc 2 (`chatbot.service.js:152` `history.slice(-6)`); việc 3 (`:162-165` bỏ tin đầu không phải `user` trước `startChat`); việc 6
+>   theo mã (`chatbot.controller.js:33-37` `: ping` mỗi 15 s từ ngay sau `flushHeaders`, dọn ở `onDone` `:69` và `catch` `:77`; middleware timeout
+>   bỏ qua SSE — client chịu được: `khung_sse.dart:60` bỏ dòng `:`); việc 7 vế (a) (`maxOutputTokens: 4096`, `:144`; chưa cấu hình `thinking`,
+>   chưa đo câu "12 nguyên tắc").
+> - **Việc 5 — chưa; backend báo đã làm mà mã không đỡ:** vẫn phát hiện ngắt bằng `req.on('close')` (`chatbot.controller.js:44`) — hook đơn đã
+>   đo là không nổ trên Node 22; `cleanup()` / `abort()` (`:47-48`) nằm trong chính handler ấy. Hai lời gọi `sendMessageStream`
+>   (`chatbot.service.js:173`, `:191`) không truyền `requestOptions.signal` (grep `requestOptions` trong `modules/ai` → 0) ⇒ dù abort có nổ, fetch
+>   tới Gemini cũng không huỷ; vòng tool (`:186-191`) không xét `signal`; chặn `res.write` (`:59-81`) dựa `signal.aborted` / `res.writableEnded`,
+>   cả hai vẫn `false` khi socket chết. Gợi ý: `res.on('close')` (hoặc `req.socket`), truyền `signal` + `timeout` vào `requestOptions`.
+> - **Rủi ro mới của việc 6:** `: ping` làm `receiveTimeout` 45 s của client không bao giờ nổ khi server còn sống, mà server không có trần tổng
+>   cho một lượt (SDK không `timeout`) ⇒ Gemini treo thì client chờ tới khi người dùng bấm Dừng. Xin `requestOptions.timeout`.
+> - **Việc 1 — chưa** (`ChatbotAI.md`, `.env.example` không có `GEMINI_MODEL`). **Việc 4 — chưa** (`ChatbotAI_Moblie.md:61-73` chỉ
+>   `done {fallback}`; `ChatbotAI.md` `:286`, `:296`, `:420`, `:443` y nguyên). **Việc 7 vế (b)** `finishReason` — chưa (đơn ghi "cân nhắc").
+
+> 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`): **việc 2 đạt** (`chatbot.service.js:152` giữ `history.slice(-6)`);
+> **việc 1, 3–7 chưa làm** — ba tệp chatbot không đổi từ `1cb6bc0e` (2026-10-08): `chatbot.service.js:153` chỉ lọc vai, chưa bỏ
+> tin đầu `model`; `chatbot.controller.js:33` còn `req.on('close')`; `chatbot.service.js:144` còn `maxOutputTokens: 1024`;
+> `: ping` và `finishReason` có 0 lần; `ChatbotAI_Moblie.md` :57–73 chỉ tả `done {fallback}`, không có `error`; `ChatbotAI.md`
+> :286, :296, :420, :443 y nguyên. Mã mặc định đã là `gemini-3.8-flash` (`modules/ai/config.js:19`) nhưng tài liệu chưa ghi
+> `GEMINI_MODEL`.
+
 **Ngày:** 2026-10-17 · **cập nhật 2026-10-18** (nghiệm thu máy thật OnePlus 13R trên backend dev chạy thật, Node v22.19.0 —
 các số đo ghi *"đo 2026-10-18"*) · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat`
 **Loại:** đơn **thông báo + xin** — mức **vừa** (ba việc mức vừa: 5 · 6 · 7 — Dừng không tới server, server im lặng quá 45 s

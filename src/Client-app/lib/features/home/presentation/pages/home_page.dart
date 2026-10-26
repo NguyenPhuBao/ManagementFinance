@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/utils/date_formatter.dart';
@@ -14,6 +13,9 @@ import '../widgets/dong_nhac_may_chu.dart';
 import '../widgets/the_cho_xoa_trang_chu.dart';
 import '../widgets/drawer_trang_chu.dart';
 import '../widgets/the_so_lieu_thang.dart';
+import '../widgets/dau_trang_chu.dart';
+import '../widgets/the_tong_so_du.dart';
+import '../widgets/tieu_de_giao_dich_gan_day.dart';
 import '../../domain/thu_chi_thang.dart';
 import '../../../ai_edge/domain/goi_so_trang_chu.dart';
 import '../../../ai_edge/presentation/widgets/khoi_nhan_xet.dart';
@@ -128,7 +130,7 @@ class HomePage extends StatelessWidget {
                       // với chính con số trên màn Quản lý ví — im lặng, không màn
                       // nào nói ra. Cùng loại lỗi đã đóng ở `6fd2ce9`.
                       final totalBalance = _tongTaiSan(wallets);
-                      return _buildAssetCard(totalBalance);
+                      return TheTongSoDu(tongSoDu: totalBalance);
                     },
                   );
                 },
@@ -211,49 +213,14 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, int? idaccount) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Builder(
-              builder: (context) => IconButton(
-                tooltip: 'Mở menu',
-                icon: const Icon(Icons.menu, color: AppColors.primary, size: 28),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () => Scaffold.of(context).openDrawer(),
-              ),
-            ),
-            const SizedBox(width: 16),
-            const Text(
-              'FlowMoney',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-            ),
-          ],
+  Widget _buildHeader(BuildContext context, int? idaccount) => DauTrangChu(
+        chuong: NotificationBell(
+          unreadCount: idaccount == null
+              ? null
+              : sl<ThongBaoRepository>().watchUnreadCount(idaccount),
+          onTap: () => context.push('/notifications'),
         ),
-        // Chấm đỏ trước đây vẽ CỨNG ở đây — luôn sáng dù chẳng có thông báo
-        // nào. Nay đếm thật từ bảng thông báo cục bộ.
-        Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-          ),
-          child: NotificationBell(
-            unreadCount: idaccount == null
-                ? null
-                : sl<ThongBaoRepository>().watchUnreadCount(idaccount),
-            onTap: () => context.push('/notifications'),
-          ),
-        ),
-      ],
-    );
-  }
+      );
 
   /// Drawer là widget riêng (`DrawerTrangChu`) từ 2026-09-19 để test được mà
   /// không dựng cả trang; ở đây chỉ còn đọc tên/email từ bloc và nối callback.
@@ -281,67 +248,6 @@ class HomePage extends StatelessWidget {
           },
         );
       },
-    );
-  }
-
-  Widget _buildAssetCard(double totalBalance) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Tổng số dư ví',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.income.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'Số dư thực tế',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.income,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            CurrencyFormatter.format(totalBalance),
-            style: const TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -1,
-              color: AppColors.primary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -396,29 +302,10 @@ class HomePage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'GIAO DỊCH GẦN ĐÂY',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            TextButton(
-              // `go` để CHUYỂN sang tab Sổ giao dịch, thay vì chồng một trang
-              // mới lên tab Trang chủ — từ 2026-09-19 sổ có tab riêng.
-              onPressed: () => context.go('/transactions'),
-              child: const Text('Xem tất cả',
-                  style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13)),
-            ),
-          ],
+        TieuDeGiaoDichGanDay(
+          // `go` để CHUYỂN sang tab Sổ giao dịch, thay vì chồng một trang
+          // mới lên tab Trang chủ — từ 2026-09-19 sổ có tab riêng.
+          onXemTatCa: () => context.go('/transactions'),
         ),
         const SizedBox(height: 8),
         if (transactions.isEmpty)

@@ -96,6 +96,20 @@ void main() {
     });
   }
 
+  // Realme 320 dp + cỡ chữ 1,6 (buổi 4, 2026-10-26): "Đang hoạt động (4)" co nhỏ hơn hẳn "Đã hết hạn (2)" vì mỗi nhãn
+  // tự co riêng. ×1,76 ≈ Inter ở 1,6 (Roboto hẹp hơn).
+  for (final chu in [1.1, 1.76]) {
+    testWidgets('320 dp × $chu: hai nhãn tab CÙNG cỡ vẽ, vẫn vẽ trọn', (tester) async {
+      await dung(tester, 320, chu: chu);
+      final a = tester.getRect(find.text('Đang hoạt động (14)')).height;
+      final b = tester.getRect(find.text('Đã hết hạn (12)')).height;
+      expect((a - b).abs(), lessThan(0.3),
+          reason: 'hai ô tab bằng nhau thì hai nhãn phải co cùng hệ số — đang cao ${a.toStringAsFixed(1)} / ${b.toStringAsFixed(1)}');
+      nhanTron(tester, 'Đang hoạt động (14)', 320);
+      nhanTron(tester, 'Đã hết hạn (12)', 320);
+    });
+  }
+
   testWidgets('G76 · 411 dp: nhãn tab giữ nguyên cỡ chữ (không co khi đủ chỗ)',
       (tester) async {
     await dung(tester, 411, chu: 1.0);

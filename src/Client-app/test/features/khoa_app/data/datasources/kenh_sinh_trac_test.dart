@@ -39,6 +39,7 @@ void main() {
     for (final (ma, loi) in [
       ('HUY', LoiSinhTrac.huy),
       ('VO_HIEU', LoiSinhTrac.voHieu),
+      ('MAT_KHOA', LoiSinhTrac.matKhoa),
       ('TAM_KHOA', LoiSinhTrac.tamKhoa),
       ('KHONG_HO_TRO', LoiSinhTrac.khongHoTro),
       ('???', LoiSinhTrac.loi),

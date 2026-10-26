@@ -76,20 +76,32 @@ class ONhapNhanh extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // `Wrap` chứ không `Row` + `Spacer`: chật (cỡ chữ lớn, 320 dp) thì chip xuống dòng thay vì tràn ra ngoài thẻ
+          // (Realme 2026-10-26); đủ chỗ thì vẫn một hàng như Stitch `d696e81e…`.
+          SizedBox(
+            width: double.infinity,
+            child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
-              const Icon(Icons.bolt, size: 16, color: AppColors.expense),
-              const SizedBox(width: 4),
-              const Text(
-                'NHẬP NHANH',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.6,
-                  color: AppColors.textSecondary,
-                ),
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.bolt, size: 16, color: AppColors.expense),
+                  SizedBox(width: 4),
+                  Text(
+                    'NHẬP NHANH',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.6,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              const Spacer(),
               if (dangThu)
                 const _NhanDangNghe()
               else if (laPremium && coMicro)
@@ -101,6 +113,7 @@ class ONhapNhanh extends StatelessWidget {
                       style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
                 ),
             ],
+            ),
           ),
           const SizedBox(height: 8),
           // Nút Điền nằm TRONG khung ô, mép phải — màn Stitch `8afdfe11…` (C2 T5). Khung tự vẽ, nút đứng ngoài

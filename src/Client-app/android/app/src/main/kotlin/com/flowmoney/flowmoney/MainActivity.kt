@@ -133,6 +133,8 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         // Khoá ứng dụng (2026-10-24): vân tay mở khoá Keystore — xem `SinhTrac.kt`.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SinhTrac.KENH).setMethodCallHandler(SinhTrac(this))
+        // Tên máy cho header `x-device-name` (2026-10-26) — engine nền đăng ký cùng kênh (`TuChuyenTien.chayHeadless`).
+        ThietBi.dangKy(flutterEngine.dartExecutor.binaryMessenger)
 
         TuChuyenTien.ganEngineApp(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TuChuyenTien.KENH)

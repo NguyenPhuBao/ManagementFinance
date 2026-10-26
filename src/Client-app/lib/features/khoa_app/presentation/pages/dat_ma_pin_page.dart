@@ -6,6 +6,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../application/khoa_app_service.dart';
+import '../../data/models/cau_hinh_khoa_app.dart';
 import '../../domain/luat_khoa_app.dart';
 import '../widgets/ban_phim_pin.dart';
 import '../bloc/khoa_app_state.dart';
@@ -69,22 +70,28 @@ class _DatMaPinPageState extends State<DatMaPinPage> {
 
   /// Mở trang giữa lúc đang chờ: đọc mốc từ kho để khoá phím ngay. Chế độ `dat` mà kho ĐÃ có cấu hình (route nội bộ
   /// `?che=dat` khi khoá đang bật) thì hành xử như `doi` — hỏi PIN hiện tại trước, không ghi đè PIN không cần PIN cũ.
+  /// Đọc NGHIÊM NGẶT: kho đọc hỏng là *không biết* có cấu hình không → cũng coi như đã có (hỏi PIN hiện tại; `kiemPin` gặp
+  /// kho hỏng thì báo không kiểm được) — bản khoan dung đọc hỏng ra `null` và để chế độ `dat` ghi đè PIN cũ.
   Future<void> _napCho() async {
     final id = _id;
     if (id == null) return;
+    CauHinhKhoaApp? c;
+    var hong = false;
     try {
-      final c = await _sv.doc(id);
-      if (!mounted) return;
-      setState(() {
-        if (_che == CheDatPin.dat && c != null && _buoc == _Buoc.moi) {
-          _che = CheDatPin.doi;
-          _buoc = _Buoc.hienTai;
-          _nhap = '';
-        }
-        if (_che != CheDatPin.dat) _choDen = c?.choDen;
-      });
-      _henDem();
-    } catch (_) {}
+      c = await _sv.docNghiemNgat(id);
+    } catch (_) {
+      hong = true;
+    }
+    if (!mounted) return;
+    setState(() {
+      if (_che == CheDatPin.dat && (c != null || hong) && _buoc == _Buoc.moi) {
+        _che = CheDatPin.doi;
+        _buoc = _Buoc.hienTai;
+        _nhap = '';
+      }
+      if (_che != CheDatPin.dat) _choDen = c?.choDen;
+    });
+    _henDem();
   }
 
   void _henDem() {

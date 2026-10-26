@@ -38,7 +38,9 @@ agent con (đọc mã, chỉ đọc), kế hoạch đo lại trước khi viết
   (`req.ip`), miễn admin. Thời hạn: tự động 15–30 phút, admin mặc định 4 giờ. Phong toả theo **tài khoản** không ra 403 — nó
   ghi `Inactive` nên client thấy 401 `ACCOUNT_INACTIVE`.
 - **Các 503 khác** (giữ nguyên hành vi hôm nay): `SERVER_OVERLOADED`, `DB_POOL_OVERLOADED`, và 503 lỗi lược đồ ở `auth.js`
-  **không có `code`**.
+  **không có `code`**. ⚠️ *2026-10-26 (sau spec này):* hai mã quá tải nay được `SyncEngine` miễn lượt hỏng ở lượt đẩy (tối
+  đa 3 chu kỳ liên tiếp, `mocThuLaiKhiQuaTai`) — vẫn **không** qua `TrangThaiMayChu`, không dòng nhắc; xem bảng *Phân loại
+  lỗi đẩy dữ liệu* `PROJECT_CONTEXT.md`.
 - **`account.downgraded`** — `src/Backend/core/scheduler.service.js:319`: chỉ phát từ job 00:00 giờ VN, tới `account_<id>`.
   Từ lúc hết hạn tới khi job chạy, middleware đã trả 403 `{code: 'FEATURE_DISABLED', featureId, accountType}`
   (`src/Backend/middleware/feature-permission.middleware.js:51`). Hoàn tiền không đổi gói. Admin đổi ma trận quyền phát

@@ -106,6 +106,16 @@ class SyncEngine {
     Duration(minutes: 60),
   ];
 
+  /// Số chu kỳ LIÊN TIẾP mà lượt đẩy gặp 503 quá tải (`kMaQuaTai`) được hẹn lại mà KHÔNG tính là hỏng (2026-10-26). Quá
+  /// chừng ấy thì server quá tải mãi là server hỏng: chu kỳ kế tính như lỗi thường — giãn cách tăng, và người dùng được
+  /// báo "Đồng bộ hỏng".
+  ///
+  /// ⚠️ Đếm CHU KỲ, không đếm thời gian: như bảo trì (G89), lượt quá tải không dựng `_nextAllowedSyncAt`, nên mỗi lần ghi
+  /// cục bộ trong lúc chờ (`scheduleSync`, gộp trong 2 s) vẫn kích một chu kỳ — bốn lần ghi cách nhau hơn 2 s giữa một đợt
+  /// quá tải vẫn chạm trần và báo. Trước bản này một chu kỳ đã báo; đây là giới hạn đã biết, không phải lỗi.
+  static const soLanQuaTaiKhongTinh = 3;
+  int _lanQuaTaiLienTiep = 0;
+
   int _consecutiveFailures = 0;
   DateTime? _nextAllowedSyncAt;
 
@@ -178,6 +188,8 @@ class SyncEngine {
   void _resetBackoff() {
     _consecutiveFailures = 0;
     _nextAllowedSyncAt = null;
+    // `start()` / `stop()` cũng qua đây — phiên mới không thừa chuỗi quá tải của phiên trước.
+    _lanQuaTaiLienTiep = 0;
     // Không còn giãn cách thì cũng không còn gì để chờ — một hẹn giờ sót lại
     // chỉ chạy thêm một chu kỳ thừa.
     _cancelBackoffRetry();
@@ -472,9 +484,17 @@ class SyncEngine {
       // một sự cố đã có dòng nhắc riêng ở Trang chủ. Áp cả khi không có gì để đẩy mà chỉ lượt kéo bị chặn. Mốc bảo trì
       // trượt theo mỗi 503 mới (`thuLaiLuc` tính từ lúc nhận) — vô hại: mỗi 503 ấy đã là một request.
       final mocChan = _mocThuLaiNeuBiChan(chanDauChuKy);
-      if (mocChan != null) {
-        debugPrint('[SyncEngine] Máy chủ đang chặn — không tính lượt hỏng, thử lại lúc $mocChan');
-        _scheduleBackoffRetry(mocChan);
+      // Quá tải thoáng qua (503 `kMaQuaTai`, 2026-10-26): cùng luật với bảo trì — không tính lượt hỏng, hẹn theo
+      // `Retry-After` (sàn 30 s), kết thúc `pending` — nhưng chỉ [soLanQuaTaiKhongTinh] chu kỳ liên tiếp. Lượt kéo bị cắt
+      // tải thì `ApDuLieuKeoVe` nuốt lỗi như mọi lỗi kéo; chỉ lượt đẩy biến chu kỳ thành `error`.
+      final quaTai = lastPush?.quaTaiThuLaiLuc;
+      _lanQuaTaiLienTiep = quaTai == null ? 0 : _lanQuaTaiLienTiep + 1;
+      final mocHen = mocChan ?? (_lanQuaTaiLienTiep <= soLanQuaTaiKhongTinh ? quaTai : null);
+      if (mocHen != null) {
+        debugPrint(mocChan != null
+            ? '[SyncEngine] Máy chủ đang chặn — không tính lượt hỏng, thử lại lúc $mocHen'
+            : '[SyncEngine] Máy chủ quá tải (lượt $_lanQuaTaiLienTiep) — không tính lượt hỏng, thử lại lúc $mocHen');
+        _scheduleBackoffRetry(mocHen);
       } else if (stillFailing) {
         _registerFailedCycle();
       } else {
@@ -486,7 +506,7 @@ class SyncEngine {
       // phát cho cùng một thất bại — `BillPaymentConflictResolver` chịu được,
       // vì khoản chi đã gỡ thì không còn tìm thấy ở lượt sau.
       if (retryResult != null) _emitPushResult(retryResult);
-      _setStatus(mocChan != null ? SyncStatus.pending : (stillFailing ? SyncStatus.error : SyncStatus.idle));
+      _setStatus(mocHen != null ? SyncStatus.pending : (stillFailing ? SyncStatus.error : SyncStatus.idle));
     } catch (e) {
       debugPrint('[SyncEngine] Sync error: $e');
       _setStatus(SyncStatus.error);

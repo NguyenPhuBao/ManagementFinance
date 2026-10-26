@@ -126,8 +126,10 @@ class SinhTrac(private val activity: Activity) : MethodChannel.MethodCallHandler
     private fun mo(id: Int, banMaB64: String, ivB64: String, result: MethodChannel.Result) {
         val cipher = try {
             val khoa = KeyStore.getInstance(KHO).apply { load(null) }.getKey(TIEN_TO + id, null) as? SecretKey
+            // Alias KHÔNG CÒN (đăng xuất xoá nó trước POST rồi bị cắt giữa chừng — M14) ≠ khoá bị vô hiệu (thêm vân tay mới):
+            // hai câu báo khác nhau ở màn khoá.
             if (khoa == null) {
-                result.success(loi("VO_HIEU"))
+                result.success(loi("MAT_KHOA"))
                 return
             }
             Cipher.getInstance(PHEP).apply {
@@ -190,11 +192,16 @@ class SinhTrac(private val activity: Activity) : MethodChannel.MethodCallHandler
                             when (ma) {
                                 BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT,
                                 BiometricPrompt.BIOMETRIC_ERROR_LOCKOUT_PERMANENT -> "TAM_KHOA"
+                                // TIMEOUT: hộp tự hết giờ khi không ai chạm — như Huỷ, không câu lỗi (M12).
                                 BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED,
-                                BiometricPrompt.BIOMETRIC_ERROR_CANCELED -> "HUY"
+                                BiometricPrompt.BIOMETRIC_ERROR_CANCELED,
+                                BiometricPrompt.BIOMETRIC_ERROR_TIMEOUT -> "HUY"
+                                // SECURITY_UPDATE_REQUIRED (API 31; hằng số nguyên, an toàn ở API 28–30): cảm biến bị
+                                // tắt tới khi máy cập nhật bản vá bảo mật (M12).
                                 BiometricPrompt.BIOMETRIC_ERROR_HW_NOT_PRESENT,
                                 BiometricPrompt.BIOMETRIC_ERROR_HW_UNAVAILABLE,
-                                BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS -> "KHONG_HO_TRO"
+                                BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS,
+                                BiometricPrompt.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> "KHONG_HO_TRO"
                                 else -> "LOI"
                             },
                         ),
@@ -208,7 +215,13 @@ class SinhTrac(private val activity: Activity) : MethodChannel.MethodCallHandler
     private fun xoaHet() {
         try {
             val ks = KeyStore.getInstance(KHO).apply { load(null) }
-            ks.aliases().toList().filter { it.startsWith(TIEN_TO) }.forEach { ks.deleteEntry(it) }
+            ks.aliases().toList().filter { it.startsWith(TIEN_TO) }.forEach {
+                try {
+                    ks.deleteEntry(it)
+                } catch (e: Exception) {
+                    // Một alias xoá hỏng không được chặn các alias sau (M12).
+                }
+            }
         } catch (e: Exception) {
             // Bỏ qua — alias sót chỉ là một khoá không ai dùng; lần bật sau xoá trước khi tạo.
         }

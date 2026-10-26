@@ -313,7 +313,8 @@ Có test canh cả hai vế: `test/core/sync/sync_yeu_cau_giua_chu_ky_test.dart`
 |---|---|---|
 | `sessionInvalid` | `results[i].code == 'ACCOUNT_NOT_FOUND'` (**ưu tiên**), hoặc HTTP **401** cho cả batch; dự phòng: khớp `fk_*_account` trong thông báo Prisma | Phát `sessionInvalidStream` → AuthBloc hỏi lại server → đăng xuất nếu server phủ nhận. Không thử lại. |
 | `transient` | khoá ngoại khác, lỗi chưa rõ, hoặc cả batch không tới nơi (`transportFailed`) | Thử lại 1 lần sau khi Pull — trừ khi `transportFailed`, khi đó để giãn cách luỹ tiến lo |
-| `permanent` | `Ownership mismatch` | Không thử lại, **không** đăng xuất (đó là dữ liệu rác của tài khoản khác). Bản ghi bị chặn theo thời gian qua `syncBlockedUntil` |
+| ↳ quá tải (2026-10-26) | cả batch 503 `SERVER_OVERLOADED` / `DB_POOL_OVERLOADED` (`kMaQuaTai`, `core/network/trang_thai_may_chu.dart`) → `SyncResult.quaTaiThuLaiLuc` | Vẫn `transient` + `transportFailed`, nhưng `SyncEngine` **không** tính lượt hỏng: hẹn theo `Retry-After` (sàn 30 s), kết thúc `pending` (không thông báo *"Đồng bộ hỏng"*), không dòng nhắc — chỉ `SyncEngine.soLanQuaTaiKhongTinh` = 3 chu kỳ liên tiếp, quá thì tính như lỗi thường. Ca canh `sync_may_chu_chan_test.dart` |
+| `permanent` | `code` thuộc danh sách **trắng** `GuiLoDongBo._permanentCodes` (`UNIQUE_VIOLATION`, `CATEGORY_NAME_DUPLICATE`, `CONSTRAINT_VIOLATION`, `FORBIDDEN_SYSTEM_DEFAULT`, `WALLET_NAME_DUPLICATE`, `WALLET_DEFAULT_DUPLICATE`, `BILL_ALREADY_PAID`, `BILL_PERIOD_ALREADY_PAID`, và từ 2026-10-26 `NOT_OWNER` + bốn mã `HOUSEHOLD_*` của gia đình); dự phòng khớp chuỗi `Ownership mismatch` / 23514 / 23505 | Không thử lại, **không** đăng xuất. Bản ghi bị chặn theo thời gian qua `syncBlockedUntil`. Mã chưa có tên ở đây rơi về `transient` — gửi lại mãi, im lặng (G31 / G14) |
 
 Từ 2026-09-03 backend gắn mã lỗi ổn định `ACCOUNT_NOT_FOUND` vào từng phần tử `results[]` và trả **HTTP 401** khi *toàn bộ* thao tác trong batch hỏng vì lý do đó. Client ưu tiên hai tín hiệu này; nhánh khớp chuỗi tên constraint chỉ còn là **dự phòng** cho backend chưa cập nhật (nó vỡ khi đổi tên constraint hoặc nâng version Prisma, mà không báo lỗi gì).
 
@@ -614,9 +615,99 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-25)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-26)
 
-### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối; nghiệm thu Realme buổi 1 — F1 + M11)
+### 🛰️ Phiên 11 (2026-10-26 chiều) — soát năm mục tài liệu v4 với mã backend `36f1ea43`, làm ba mục người dùng chọn
+
+- **Soát** (`Event-Notification-to-ClientApp.md` v4 — tài liệu backend, chỉ đọc): **429 `RETRY_LIMIT_EXCEEDED`** — `retry-guard.middleware.js`
+  chặn POST / PUT trùng **y body** > 3 lần / 10 s cùng IP, GET miễn; client không chạm được trong vận hành thường (`/sync/push` mang
+  `pushedAt` theo ms, `/sync/pull` và `order-status` là GET) → **không làm**, và **không** gửi `x-retry-count`. **`account.countdown`** —
+  client đã tự trừ số ngày (`dem_nguoc_xoa.dart`) → **không làm**. Ba mục người dùng chọn làm: quá tải, `x-device-name`, broadcast.
+- ✅ **503 quá tải** (`0d3aacc2`): `SERVER_OVERLOADED` (`load-shedding.middleware.js`, event loop > 250 ms, `Retry-After: 5`) và
+  `DB_POOL_OVERLOADED` (`db-bulkhead.js`, không header) ở lượt đẩy → `SyncEngine` không tính lượt hỏng, hẹn theo `Retry-After` (sàn
+  30 s), kết thúc `pending` — trước đó là chu kỳ `error` → thông báo *"Đồng bộ hỏng"* sau **một** chu kỳ. Trần 3 chu kỳ liên tiếp
+  (`SyncEngine.soLanQuaTaiKhongTinh`), quá thì tính như lỗi thường; `start()` / `stop()` xoá chuỗi (qua `_resetBackoff`). Không
+  qua `TrangThaiMayChu` (không dòng nhắc / toast). Bảng *Phân loại lỗi đẩy dữ liệu* (mục 6) cập nhật. ⚠️ Giới hạn đã biết: trần đếm
+  **chu kỳ**, mà mỗi lần ghi cục bộ trong lúc chờ vẫn kích một chu kỳ (`scheduleSync` gộp trong 2 s; như bảo trì G89) — bốn lần
+  ghi cách nhau hơn 2 s giữa một đợt quá tải vẫn chạm trần và báo.
+- ✅ **`x-device-name`** (Android): kênh Kotlin `flowmoney/thiet_bi` (`ThietBi.kt`, **không** `device_info_plus`) → `docTenThietBi`
+  (`core/api/ten_thiet_bi.dart`, ASCII in được ≤ 150) đọc **một lần** ở `setupDependencies`, gắn vào BaseOptions của Dio chung **và**
+  Dio `/auth/refresh`; kênh đăng ký ở **cả** engine app lẫn engine nền (`TuChuyenTien.chayHeadless`) — backend thêm một dòng
+  `account_device_history` mỗi khi tên đổi, nên mọi đường của một máy phải gửi cùng tên. Web / iOS không gửi (CORS `app.js:32` chưa
+  cho header — đơn 49 vế E). **Đo máy ảo** (bản debug trỏ máy chủ thu header tạm): `/auth/profile`, `/payment/subscription-info`,
+  `/sync/push`, `/sync/pull` đều mang `"Google sdk_gphone64_x86_64 (Android 16)"`; bắt tay socket không mang (backend không ghi ở đó).
+  Engine nền chưa đo trên máy. Hôm nay **chưa ai đọc** bảng ấy (`getDeviceHistory` 0 chỗ gọi ngoài test).
+- ✅ Cùng phiên: `NOT_OWNER` + bốn mã `HOUSEHOLD_*` vào lỗi đẩy vĩnh viễn (`8f8694bd`, khối 🏠 dưới); một câu mục 1b
+  `KHOA_APP_FEATURE.md` (Quên PIN chỉ mạnh bằng mật khẩu + hộp thư email trên máy, `89923b55`).
+- 📝 **Tin từ FlowMoney (`system.broadcast`) — spec duyệt, kế hoạch xong, CHƯA có mã** (người dùng chọn *"dừng ở kế hoạch"*). Spec
+  `docs/superpowers/specs/2026-10-26-tin-tu-flowmoney-broadcast-design.md` (`30c8bead`, `03009c0c`); kế hoạch 7 task
+  `docs/superpowers/plans/2026-10-26-tin-tu-flowmoney-broadcast.md` (gitignore, chỉ trên máy viết). Người dùng chốt: chỉ tin admin
+  gõ tay (bỏ 5 tin bảo trì có `metadata.type`) · Trung tâm thông báo + khay hệ điều hành · tin lúc không nối socket thì mất (không
+  đơn backend) · nhóm riêng *"Tin từ FlowMoney"* (chip *"FlowMoney"*) · luồng riêng `RealtimeChannel.tinHeThong` + hàm thuần
+  `docTinHeThong` — ngoại lệ hộp đen thứ hai sau `account.force_logout`. Task 0 = thêm hàng + chip vào hai màn Stitch, người dùng
+  nhìn xác nhận; chưa ai chọn inline / agent con.
+
+### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối; nghiệm thu Realme buổi 1 — F1 + M11; buổi 2 — M5, thanh trạng thái, `flutter_secure_storage` 10; phiên 8 — M7 · M8 · M12, buổi 3)
+
+- **Phiên 10 (2026-10-26 trưa; lượt sửa 2 của phiên 9 — người dùng đã chọn sửa cả bốn chỗ):** (1) **thẻ từng ngân sách** (`budget_tabs_view.dart`)
+  chọn bố cục theo bề rộng thật (`doRongChu`, khuôn G74): không vừa một hàng thì hai số tiền xuống dưới căn phải — Realme 320 dp × 1,6 từng gãy *"Còn
+  49 / 0.000 / đ"*; dòng phụ `formatLienKhoi`; (2) **Trang chủ** tách `TieuDeGiaoDichGanDay` (`home/presentation/widgets/`), tiêu đề `Flexible` — *Xem tất
+  cả* thôi bị cắt; (3) **màn Đăng nhập** *Quên mật khẩu?* `Flexible` căn phải, chân trang `Wrap` căn giữa; (4) **lệch cỡ** thẻ tổng Sổ giao dịch + nút Google /
+  Apple → `NhanCoDeu` (ô biểu tượng Apple 24 dp). Đo Realme (release) + máy ảo (debug, màn Đăng nhập) đạt, nhưng lộ **lỗi font nạp muộn**: Inter tải bằng
+  `google_fonts` (không đóng gói) nạp sau khung đầu, phép đo chữ trong `LayoutBuilder` không chạy lại → nút *"Googl"* cụt khi mở lạnh; bộ test mù vì nạp font
+  trước khi dựng. Sửa bằng **`BoCucTheoFont`** (`core/ui/do_chu.dart` — `LayoutBuilder` dựng lại khi `PaintingBinding.systemFonts` đổi) ở `NhanCoDeu`, thẻ
+  ngân sách và chín chỗ đo chữ khác (người dùng chọn sửa luôn), **test quét 39** `core/ui/do_chu_qua_bo_cuc_theo_font_test.dart`. Chi tiết số đo: mục 10
+  `KHOA_APP_FEATURE.md` (*Lượt sửa 2*). ⚠️ Mẹo đăng xuất máy ảo bằng xoá tệp kho rồi chép bản sao về **hỏng** với `flutter_secure_storage` 10.3.4 (token mất,
+  phải đăng nhập lại — máy ảo đang ở màn Đăng nhập). Test **8.106 / 10 skip**, analyze 20. Commit `b7d30bd6` · `0251284e` · `711c3cf0`; chưa push.
+  Cùng phiên: **soát bảo mật `00d32976..HEAD`** — 0 lỗ hổng đạt ngưỡng (ứng viên *Quên PIN + đặt lại mật khẩu qua email* bị loại
+  3/10: chỗ yếu là luồng khôi phục tài khoản có từ trước); **soát lại cả 10 đơn `CAN-LAM/`** (người dùng yêu cầu, chỉ đọc mã `main` +
+  CSDL Supabase) — không đơn nào được làm thêm, kết quả ở banner 🔎 README `CAN-LAM/` và đầu từng đơn. **Lượt sửa 3 cỡ chữ 1,6**
+  (`544d29bb` + tiêu đề thẻ): thanh điều hướng dưới `NhanCoDeu` (+ `kieuDo`), thẻ *Chưa đặt ngân sách* bỏ trần dòng, khung thẻ việc chờ
+  duyệt (D1 / C1) đo bằng `vuaSoDong` — nút xuống dưới khi chữ không vừa hai dòng (cụt cả ở cỡ thường 320 / 360 dp); đo Realme đạt —
+  mục 10 `KHOA_APP_FEATURE.md` (*Lượt sửa 3*).
+
+- **Phiên 9 (2026-10-26; người dùng chọn M15 + nút Google, dựng `--release`, nghiệm thu còn lại, rồi soát bảo mật · biên lai MB · M13):** (1) **M15** — hàng
+  *Tự khoá sau* đo tiêu đề + giá trị bằng `TextPainter` (họ chữ theme + `textScaler`), không vừa thì giá trị xuống dưới dòng phụ (mục 8 `KHOA_APP_FEATURE.md`);
+  **nút Google / Apple** màn Đăng nhập (ngoài mảng khoá app): đệm ngang 12 + nhãn một dòng tự co (`FittedBox`); test đo bằng font thật (`napFontThat`,
+  Roboto ×1,1 ≈ Inter cỡ 1, ×1,76 ≈ Inter cỡ 1,6). (2) **M13** — màn khoá nhận phím số + Backspace
+  của bàn phím vật lý (`Focus` riêng xin tiêu điểm tường minh; luật tắt số một định nghĩa `_tatSo`; mục 8 `KHOA_APP_FEATURE.md`). (3) **Buổi 4 Realme (bản release)** — R8 vân tay, M13, M15 đạt; cỡ chữ 1,6
+  + 320 dp lộ lỗi bố cục ngoài mảng → người dùng chọn sửa cả: widget dùng chung **`NhanCoDeu`** (`shared/widgets/` — một nhóm nhãn trong các ô bằng nhau
+  co CÙNG hệ số, đo lại ở cỡ đã co vì bề rộng chữ không tỉ lệ thẳng) cho **hàng nút nhanh** Trang chủ (+ đệm 2 dp mỗi ô — *"Thêm thuThêm chi"* dính ở cả cỡ 1;
+  ngưỡng P17 0,85 → 0,8) và **hai tab Ngân sách**; tách `DauTrangChu` (chữ *FlowMoney* co, chuông cố định), `TheTongSoDu` (tiêu đề + chip `Wrap` đủ bề rộng,
+  con số một dòng tự co), `TheTongSoGiaoDich` (ba cột `Expanded`, số tự co); chip *Giọng nói & Gõ* của ô Nhập nhanh (`Wrap`); nhãn *SỐ DƯ ĐẦU / CUỐI KỲ*
+  ở trang Phân tích xuống dòng thay vì cắt (bản Xem trước báo cáo vốn không cắt); tiêu đề *Danh mục chi tiêu* trang Ngân sách `Flexible` (test lộ, máy chưa
+  cuộn tới); **M16** — `android:defaultFocusHighlightEnabled=false` ở LaunchTheme + NormalTheme cả bốn `styles.xml` (bàn phím vật lý làm Android vẽ khung
+  xanh-vàng quanh `FlutterView`). Test đo bằng font thật ×1,1 / ×1,76; ⚠️ bản release không vẽ sọc vàng — đo máy bằng mắt. Test **8.090 / 10 skip**,
+  analyze 20.
+
+- **Phiên 8 (2026-10-25 khuya; người dùng chọn cả bốn việc mở của bàn giao phiên 7):** (1) **M7 · M8 · M12 · `_napCho`** (`b49217ca`) — mốc chờ sau sai PIN xa hơn
+  15 phút kẹp về `nay + kChoToiDa` **và ghi lại** kho (bẫy 28: kẹp không ghi = đếm ngược không về 0), `resumed` khi đang khoá đọc lại kho; lượt làm tươi P9 bỏ bản đọc
+  khi `lanKiem` đã đổi; Kotlin `TIMEOUT` → `HUY`, `SECURITY_UPDATE_REQUIRED` → `KHONG_HO_TRO`, `xoaHet` bọc `try` từng alias; trang Đặt PIN đọc nghiêm ngặt (đọc hỏng ở chế
+  độ `dat` → hỏi PIN hiện tại). (2) **`WebSocketConnectionClosed`** (`f8ae62ca`, ngoài mảng khoá app — kênh thời gian thực): gốc ở `socket_io_client` 3.1.6
+  `WebSocketTransport.doClose` gọi `_ws?.close()` không `await` trong khi `package:web_socket` ném khi server đã đóng trước; bọc kết nối bằng `WebSocketDongEm`
+  (`setWebSocketConnector`), `web_socket` khai thẳng ở pubspec; test máy chủ Engine.IO giả trên `ServerSocket` thô (ghi `41` + khung đóng **một** lần — `HttpServer`
+  ghi hai lần thì không tái hiện). (3) **Thanh trạng thái một kiểu cho cả app** (`81c09b8a`): `VungThanhTrangThaiGoc` (`shared/widgets/`) dưới lớp khoá, hằng chung
+  `kKieuThanhTrangThaiSang` / `kKieuThanhTrangThaiToi` (`shared/theme/`), màn Quét tự bọc kiểu tối (bẫy 26). (4) **Buổi 3 trên Realme** (mục 10 `KHOA_APP_FEATURE.md`):
+  thanh trạng thái · 17 (320 dp) · 21 (Quét ảnh khi khoá) · 6a / 6b (chạm thông báo khi khoá, app sống / đã chết) · `WebSocketConnectionClosed` (khoá TK10 qua API
+  admin — 0 dòng lỗi) · 11 (proxy `proxy_giu_pull.js` giữ `/sync/pull` — lượt đầu không bao giờ xong mà mở lại không hỏi PIN cũ) — **đạt**; lộ **M15** (hàng *Tự khoá
+  sau* gãy dòng ở 320 dp). Người dùng chốt giữ `resetOnError` (bẫy 27) và giữ *không miễn khoá* lối app tự mở máy ảnh / chọn ảnh (spec mục 8). Test **8.051 / 10 skip**,
+  analyze 20. Chưa push.
+
+- **Buổi 2 (2026-10-25 tối, phiên 7, bản debug trên Realme — mục 10 *Buổi 2* `KHOA_APP_FEATURE.md`):** **`flutter_secure_storage` 9.2.4 → 10.3.4** ghim cứng
+  (`f5a90f4b`, `AndroidOptions` mặc định): lần mở đầu gói chuyển kho thật **16 / 16 mục** sang RSA-OAEP + AES-GCM (~160 ms, logcat), lần hai đi thẳng; PIN, gói Premium,
+  mốc kéo về, cài đặt khoá còn nguyên; bản `--release` dựng đạt. Hệ quả: `resetOnError` mặc định biến mục giải mã hỏng thành *vắng* (bẫy 27 — chấp nhận, cần root).
+  Test: 7 lớp giả `implements FlutterSecureStorage` đổi `IOSOptions` / `MacOsOptions` → `AppleOptions`. **M5 đóng** (`f1daea24`, người dùng chọn *Back đưa app xuống
+  nền*): `LopKhoaApp` giữ Back qua `didPopRoute` — đăng ký trước `Router` con và Flutter hỏi theo thứ tự đăng ký (bẫy 14); tấm Quên PIN mở thì Back = Huỷ; hàm dùng
+  chung `duaAppXuongNen` tách từ `ThoatHaiLan`. **Thanh trạng thái** màn khoá tự đặt kiểu trong suốt (`AnnotatedRegion`, bẫy 26) + lớp mờ tấm Quên PIN phủ cả thanh
+  trạng thái (`c5010e1b`). Đo trên máy đạt cả ba; vân tay sau khi nâng kho người dùng chạm — đạt.
+- **Buổi 2b (2026-10-25 tối, các bước đăng xuất — mục 10 *Buổi 2b*):** backend nền trỏ `PersonFinance` (kiểm danh tính CSDL trước bằng script chỉ đọc), "mạng treo"
+  giả bằng máy chủ TCP không trả lời (máy bay không cắt `adb reverse`), khoá tài khoản thử bằng API admin rồi mở lại ngay. **Đạt:** D-1 (vẫn khoá) · 10 / P12 · 10a mạng treo
+  + có mạng · M11 trên máy · 12a (socket `force_logout` khi đang khoá) · 12b (phiên chết lúc mở lạnh) — **C1 ba đường đạt theo video** (tách khung 1/60 s bằng WinRT,
+  định vị bằng cỡ JPEG); 11 đạt có điều kiện (lượt đồng bộ đầu xong < 1 s, chưa chen được vào giữa). Lộ **M14**: `dongPhien` xoá alias vân tay **trước** POST đăng xuất →
+  đăng xuất bị cắt giữa chừng làm vân tay tự tắt với câu *"Vân tay trên máy đã thay đổi"* (sai lý do; an toàn không đổi) → ✅ người dùng chọn sửa câu báo: Kotlin
+  trả mã mới `MAT_KHOA` khi alias không còn → *"Vân tay đã tắt — nhập mã PIN rồi bật lại trong Cài đặt"*; lặp D-1 trên Realme đạt. Quan sát
+  ngoài khoá app: `Unhandled Exception: WebSocketConnectionClosed` từ `socket_io_client` khi server cắt socket (✅ sửa phiên 8, `f8ae62ca`). Script đo lưu
+  `D:\FlowMoney-saoluu\cong-cu-do\`.
 
 - **Nghiệm thu Realme buổi 1 (2026-10-25 chiều, bản release, backend tắt — mục 10 `KHOA_APP_FEATURE.md`):** đạt bật / mở lạnh / tự khoá (30 s, Ngay,
   5 phút) / sai PIN + chờ + P9 / vân tay (mở, tạm khoá, thêm vân tay mới → tự tắt) / **I1 tách riêng** (giờ tường +19,7 s, đồng hồ khởi động +90,2 s → khoá;
@@ -630,7 +721,7 @@ Người dùng chọn *"Bảo mật tiếp"* sau soát bảo mật (khối 🔒 
 Spec `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (người dùng duyệt từng phần; sau soát Task 12 đổi thân spec
 mục 4/5/6 — đăng xuất chỉ xoá alias Keystore; sau review toàn nhánh (I4) cấu hình PIN xoá ở hook `sauXacThucMatKhau`, ngay sau `login()`), kế hoạch 13 task (gitignore) thi công bằng agent con
 (Fable preflight 16 phát hiện · Sonnet thực thi · Opus soát từng task + review toàn nhánh), dải commit `a0c6dacf..393e626f` (30 commit, đếm 2026-10-25: 22 thi công · `f6699e64`
-tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu bàn giao đầy đủ: **`docs/KHOA_APP_FEATURE.md`** (quyết định, luồng, bản đồ tệp, mô hình đe doạ mục 1b, 24 bẫy, Stitch, checklist nghiệm thu).
+tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu bàn giao đầy đủ: **`docs/KHOA_APP_FEATURE.md`** (quyết định, luồng, bản đồ tệp, mô hình đe doạ mục 1b, 28 bẫy (đếm 2026-10-25 khuya), Stitch, checklist nghiệm thu).
 
 - **Làm gì:** Cá nhân → Bảo mật & Tuỳ chọn → *Khoá ứng dụng*: bật = đặt PIN 6 số (PBKDF2-HMAC-SHA256 Dart thuần, **cục bộ**, không lên
   server) + tuỳ chọn vân tay (kênh Kotlin `flowmoney/sinh_trac`, `BiometricPrompt` + `CryptoObject` trên khoá AES-GCM `AndroidKeyStore`,
@@ -640,7 +731,7 @@ tài liệu Task 13 · 7 đợt sửa cuối `5fa1b69c..393e626f`). Tài liệu 
   van an toàn 3 s; bộ theo dõi bỏ qua `PopupRoute` — màn Đăng nhập mở hộp thoại lý do ngay khung đầu, không bỏ qua là luôn chờ hết van) — trước đó gỡ ngay lúc phiên mất làm lộ trang được bảo vệ dưới hiệu ứng sang Đăng nhập; **I1** tự khoá đo thêm bằng đồng hồ khởi động `CLOCK_BOOTTIME` qua `dart:ffi` (chỉnh giờ máy
   lùi không vượt khoá nữa); **I2** kho phân biệt vắng / hỏng (`docNghiemNgat`; hỏng → vẫn khoá, `kCauKhongKiemDuoc`); **I3** `batVanTay` khi đã bật không gọi kênh + chống chạm đôi mở hai trang PIN;
   **I4** hook `sauXacThucMatKhau` xoá PIN cũ ngay khi mật khẩu được chấp nhận (không đợi vòng đồng bộ đầu); mục nhỏ M1–M4, M6, M9, M10, T1, T5–T7.
-- **Test:** `flutter test` **8.027 pass / 10 skip** sau F1 + M11 (`4c7945ed`, 2026-10-25 chiều; mảng khoá app 142 ca); trước đó **8.017** (đo 2026-10-25 sau bản vá cuối `be3bdf26` — bộ theo dõi route bỏ qua hộp thoại, 3 ph 38 s theo log, +141 so với 7876; mốc trước đợt sửa 7.981), `flutter analyze` **20** (mức nền), `flutter build web --debug` đạt
+- **Test:** `flutter test` **8.051 pass / 10 skip** sau phiên 8 (2026-10-25 khuya, 5 ph 22 s; mảng khoá app 158 ca khai báo / 18 tệp); **8.037** sau M14 (mảng 150 ca); **8.035** sau M5 + thanh trạng thái (`c5010e1b`); **8.027** sau F1 + M11 (`4c7945ed`, 2026-10-25 chiều; mảng khoá app 142 ca); trước đó **8.017** (đo 2026-10-25 sau bản vá cuối `be3bdf26` — bộ theo dõi route bỏ qua hộp thoại, 3 ph 38 s theo log, +141 so với 7876; mốc trước đợt sửa 7.981), `flutter analyze` **20** (mức nền), `flutter build web --debug` đạt
   (import có điều kiện `dart:ffi`); mảng 128 ca / 16 tệp dưới `test/features/khoa_app/` + 1 ca `test/core/router/theo_doi_route_cong_khai_test.dart` (đếm grep 2026-10-25). Build `--release` đã dựng đạt ở Task 5
   (R8, manifest) — **chưa dựng lại sau đợt sửa cuối**, chưa chạy trên máy.
 - **Việc còn (đều ở `KHOA_APP_FEATURE.md`)** — *cập nhật 2026-10-25 chiều: (1) xong phần không đăng xuất, (2) xong (50.000), M11 đã làm — dòng đầu khối; câu dưới là ảnh chụp trước buổi 1:* (1) **nghiệm thu Realme** (mục 9: 23 bước + D / E; **không đăng xuất ở đầu buổi**, nhánh Đăng xuất chỉ sau khi kiểm danh tính CSDL + chép CSDL; điểm mới: **C1 quay màn hình 60 fps** ba đường, **I1** đồng hồ khởi động tăng khi
@@ -724,7 +815,7 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   rỗng chỉ vì CVE ghi theo SQLite chứ không theo gói npm; mọi CVE ấy cần SQL do kẻ tấn công soạn, bản web chỉ để chạy thử.
   Bảo trì (không CVE): `flutter_gemma` / `flutter_gemma_litertlm` **ngừng phát triển** trên pub.dev (đổi tên `flutter_edge_ai`
   — bản vá sau này không về tên cũ); `sqlite3_flutter_libs` sang `0.6.0+eol` (không cần với `sqlite3` 3.x);
-  `flutter_secure_storage` 9.2.4 (mới nhất 11.2.0). Sửa:
+  `flutter_secure_storage` 9.2.4 (mới nhất 11.2.0; ✅ nâng **10.3.4** ngày 2026-10-25 tối — khối 🔐 *Buổi 2*). Sửa:
   ✅ **sql.js 1.8.0 → 1.15.1** (`web/index.html`: thẻ `<script>` + `integrity` SHA-512 mới — tự tính khớp cdnjs — + URL
   `locateFile`); `bao_mat_manifest_test.dart` thêm ca *mọi URL sql.js cùng một phiên bản* (thử bản sai: chỉ nâng thẻ, quên
   `locateFile` → đỏ `{1.15.1, 1.8.0}`). Đo Chrome headless (hạ tầng skill `chay-app`) trên trang dựng từ **chính** hai khối
@@ -863,6 +954,57 @@ liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà 
   *"xoá mốc + `syncNow`"* (mốc kéo về nằm trong RAM — xoá kho không đủ) · một bộ `DieuPhoiDoiNha` (phủ cả máy thứ hai cùng tài
   khoản) · không hook `datNha` · trần thành viên từ `household.maxMembers`. Cả 12 chỗ ghi ở **mục 11 spec** (thắng thân khi lệch).
 - Chưa có mã. Người dùng chọn *"dừng ở spec"*: **chưa** chọn cách thi công (agent con / inline), **chưa** cho vẽ 6 màn Stitch.
+- ✅ **2026-10-26 — Task 5 của kế hoạch làm riêng, trước lát 1** (người dùng chọn): `NOT_OWNER` + bốn mã `HOUSEHOLD_*` đẩy vào
+  `_permanentCodes` (`core/sync/gui_lo_dong_bo.dart`), năm ca ở `sync_failure_handling_test.dart`, bản sai đỏ. Backend bật vế A
+  (kiểm chủ sở hữu) trước cả lát 1 thì hàng bị từ chối không bị đẩy lại mãi. Phần còn lại của lát 1 vẫn chưa có mã.
+- 📝 **2026-10-26 (sau) — người dùng MỞ RỘNG thiết kế** (*"tạo nhóm gia đình, ví chung (nhiều ví), mời hoặc mã mời, góp quỹ, chủ ví đặt hạn mức
+  từng thành viên — mở rộng giúp tôi"*). Brainstorming loại kiến trúc, 18 quyết định qua câu hỏi chọn được (bảng mục 2 `docs/Family/00_TONG_QUAN.md`):
+  **bỏ** *ai nợ ai* và *cho nhà xem* · chỉ Chủ nhà cấu hình (ví chung, hạn mức, định mức, ngân sách, mục tiêu) · vượt hạn mức = **cảnh báo + báo
+  Chủ nhà** (không chặn — app ghi sổ, không giữ tiền) · mời bằng **email** (trong app + thư kèm mã; một câu trả lời cho mọi email; mã gắn email) ·
+  góp / rút = **cặp hai khoản** nối bằng `Idfund_pair` (không nới luật phạm vi) · cài đặt của nhà **trên server kèm `/households/me`** · nửa riêng
+  tính là chi *"Góp quỹ gia đình"* · người ghi + Chủ nhà sửa / xoá · Thành viên chỉ thấy hạn mức của mình · **mục tiêu chung = công tắc trên ví
+  chung** (tiến độ = số dư ví — tránh mất số khi hai người góp offline, vì `goals.currentAmount` là cột cộng dồn ghi-sau-thắng). Người dùng chỉ
+  định viết vào **`docs/Family/`** (thư mục backend tạo) thành **bộ tệp theo phần** cho backend / PO xem và thảo luận: `00_TONG_QUAN` · `01_NEN_MONG`
+  (mời email, ma trận vai × thực thể + `HOUSEHOLD_ROLE_FORBIDDEN`) · `02A` ví chung + góp / rút · `02B` hạn mức · `02C` định mức + tự góp ·
+  `02D` ngân sách + báo cáo · `03` mục tiêu chung. Bộ này **thắng** spec 2026-10-23 và đơn 50 khi lệch (8 chỗ — mục 6 tổng quan); banner ở cả hai.
+  14 loại thông báo mới, nhóm `giaDinh` (bảng mục 8 tổng quan). Soát backend **hoãn** tới sau khi tài liệu đủ (người dùng). Chưa có mã; kế hoạch lát 1
+  (2026-10-24) vẫn dùng được cho lõi phần 1.
+
+### 🔀 Gộp `main` @ `2b926d92` (2026-10-26, commit gộp `3636110d`, đã push cùng bộ `docs/Family/` — `1fedd00a..e36b4a4e`, người dùng yêu cầu để backend kéo về đọc) — PR #161–#163: backend báo xong 9 đơn CAN-LAM; `.gitignore` gỡ dòng chặn `plans/`
+
+- **Người dùng:** *"trước khi làm thì hãy lấy code mới nhất về"* (để viết tài liệu gia đình vào `docs/Family/`). 3 commit backend, 85 tệp; **0 tệp
+  `src/Client-app`** (cây giữ hash `69f561ce` → không chạy lại `flutter test`); `check-ignore` `test/` không khớp.
+- **Backend chuyển đơn 43–49, 51, 52 sang `DA-XONG/`** kèm khối *"PO duyệt & hoàn tất thực thi 9 mục"* ở README; `CAN-LAM/` còn **50** +
+  `CLIENT_INTEGRATION_GUIDE.md`. Thêm `docs/superpowers/client-app/CAN-LAM/README.md` (danh sách việc đề nghị client làm — mục 5 ghi *"PO hoãn
+  gia đình"*). Người dùng hoãn soát tới sau khi viết xong tài liệu gia đình, rồi cùng ngày bảo *"quay lại phần đang làm dở"* ⇒ **client soát xong**
+  (bốn agent chỉ đọc song song: mã HEAD + CSDL Supabase `SELECT`): **chỉ 45 đạt trọn**; 46, 51 đạt phần chính (ở lại `DA-XONG/` + banner phần dư);
+  **43, 44, 47, 48, 49, 52 chuyển lại `CAN-LAM/`** (người dùng chốt) — banner 🔎 *"lượt báo xong"* đầu mỗi tệp. Đáng nhớ: 47 việc 5 và 48 việc 2
+  backend báo làm mà mã không đỡ (48: script test nay chọn **tài khoản admin**, 4 giao dịch ghi vào ví thật của tài khoản 1). **Ba hồi quy CAO do
+  chính lượt sửa → đơn mới 53** `CAN-LAM/HOI_QUY_SAU_LUOT_BAO_XONG.md`: `is_deleted: false` gỡ cờ xoá mềm (hàng đã xoá sống lại, `bc4e4f7f`) · JIT
+  PayOS Premium vô thời hạn (49 G thiếu `newExpiresAt`) · `encrypt()` giữ chuỗi `enc:…` trong khi `decrypt()` nay ném (một ghi chú `enc:1:2:3` khoá
+  mọi lượt `/sync/pull`). Danh sách việc backend đề nghị client: không mục nào vừa mới vừa cần (trả lời ở mục 10 tài liệu đồng bộ).
+- **`SYNC_DOCUMENTATION.md` bị backend viết đè lần ba** (`bc4e4f7f`, lọt qua lượt gộp vì không xung đột). Người dùng bảo *"đang có 2 file về sync,
+  đồng bộ về một file duy nhất trong folder sync"* ⇒ **gộp** bản client + `docs/Admin-web/Sync-To-ClientApp.md` (backend, v3.2) thành một
+  `docs/superpowers/sync/SYNC_DOCUMENTATION.md` dựng lại từ mã (`75126cec`): bảng trường lấy bằng máy từ tệp test hợp đồng + `schema.prisma` +
+  `anh_xa_keo_ve.dart`; tệp backend thay bằng vài dòng trỏ (người dùng cho phép đích danh); mục 14 *Trao đổi* để backend ghi thay vì viết đè.
+- **Xung đột duy nhất:** `CAN-LAM/README.md` — lấy bản backend cho khối báo xong + bảng mục 0; banner client đổi thành *"client CHƯA soát"* +
+  khối 🏠 báo trước thiết kế gia đình đang mở rộng; hàng 50 giữ bản client.
+- **`.gitignore` của main gỡ 11 dòng** (`docs/superpowers/plans/`, `.superpowers/`, `docs/superpowers/client-app/`, `docs/superpowers/auth/`,
+  `docs/category/`, `docs/deploy_Cloud/`, `docs/superpowers/sync/*`, `src/Backend/prisma/migrations/`, hai `seed_roles.js`) — 103 mục cục bộ hiện ra
+  chưa theo dõi. Người dùng chọn **ẩn trên máy này** qua **`.git/info/exclude`** (không commit, không sửa `.gitignore` chung); kế hoạch backend đã
+  commit trong `plans/` vẫn được theo dõi. Máy khác clone về sẽ **không** có lớp chặn này.
+
+### 🔀 Gộp `main` @ `0ab9cbd4` (2026-10-25, commit gộp `1fedd00a`, đã push) — PR #159: sync contract v4, bảo trì, AIOps, admin; backend viết đè tài liệu đồng bộ của client lần hai
+
+- **Nội dung:** commit backend `36f1ea43` — 39 tệp (`src/Backend` bảo trì / admin / AIOps, `src/Admin-web`, `docs/Admin-web/*`,
+  `docs/Family/GIA_DINH_NEN_MONG.md` mới); mã đồng bộ đổi đúng một dòng (`sync.repository.js` thêm `create_at` vào select danh mục —
+  client bỏ qua khoá lạ). **0 tệp `src/Client-app`** → không chạy lại `flutter test`; `check-ignore` không khớp; `CAN-LAM/` không bị đụng.
+- **Xung đột duy nhất:** `docs/superpowers/sync/SYNC_DOCUMENTATION.md` — viết đè lần hai thành *"Hợp đồng v4.0"* (số trường sai; checklist
+  mục 6 xin `provider` · `bank_tran_id` · `status` · `images` cho giao dịch và `id_bank_casso` cho ví). Người dùng chốt **giữ bản client**
+  + đoạn đầu tệp; đơn 49 thêm phần *"Tái phát 2026-10-25"* (các việc client đã làm, hai việc không làm); README mục 0 dòng 49. Người dùng
+  hỏi lại *"các cột ấy có cần không"* → không (quy tắc 4 giữ nguyên, xác nhận cùng ngày). Ràng buộc gốc đáng nhớ nếu có ngày mở lại:
+  `ck_txn_provider` chỉ `Manual · Casso · SMS · OCR`, `ck_txn_bank_id` (`Casso`/`SMS` ⇒ có mã, `Manual`/`OCR` ⇒ trống).
+- **Push:** `faebb440..1fedd00a` theo yêu cầu người dùng (để backend kéo về sửa đơn 43–52).
 
 ### 🔀 Gộp `main` @ `ee6a65e5` (2026-10-23, commit gộp `01c0d590`) — PR #153–#158: theo dõi thiết bị / IP, bảo trì nhiều lịch + nâng cấp, phân quyền 4 trụ, PIN admin; backend viết lại tài liệu đồng bộ của client; client đặt đơn 49
 

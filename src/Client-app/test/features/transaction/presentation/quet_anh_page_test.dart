@@ -19,6 +19,7 @@ import 'package:flowmoney/features/transaction/domain/doc_anh_gemma.dart';
 import 'package:flowmoney/features/transaction/domain/doc_mon_hang.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/quet_anh_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemChrome;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -179,6 +180,17 @@ void main() {
     router.pop();
     await cho(tester);
     expect(find.text('Trang trước'), findsOneWidget, reason: 'màn "Đang đọc ảnh…" đã bị thay, không nằm trong ngăn xếp');
+  });
+
+  testWidgets('thanh trạng thái: nền đen toàn màn → biểu tượng SÁNG (kiểu gốc của app là biểu tượng tối)', (tester) async {
+    final chan = Completer<void>();
+    await mo(tester, docChu: _DocChuGia(_hoaDon, cho: chan));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Đang đọc ảnh…'), findsOneWidget);
+    expect(SystemChrome.latestStyle?.statusBarIconBrightness, Brightness.light,
+        reason: 'biểu tượng tối chìm trên nền đen của màn Quét');
+    chan.complete();
+    await cho(tester);
   });
 
   testWidgets('hoá đơn có món → danh sách món lưu cạnh ảnh', (tester) async {

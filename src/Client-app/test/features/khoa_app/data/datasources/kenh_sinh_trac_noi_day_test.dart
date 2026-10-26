@@ -25,9 +25,20 @@ void main() {
     expect(kt, contains('"flowmoney_khoa_app_"'));
     expect(kt, isNot(contains('DEVICE_CREDENTIAL')), reason: 'MASWE-0021: không rơi về mã máy');
     expect(kt, isNot(contains('Log.')), reason: 'không log bí mật / bản mã');
-    for (final ma in ['HUY', 'VO_HIEU', 'TAM_KHOA', 'KHONG_HO_TRO', 'LOI']) {
+    for (final ma in ['HUY', 'VO_HIEU', 'MAT_KHOA', 'TAM_KHOA', 'KHONG_HO_TRO', 'LOI']) {
       expect(kt, contains('"$ma"'), reason: 'mã lỗi khớp docLoiSinhTrac');
     }
+    // M14: alias KHÔNG CÒN (đăng xuất bị cắt giữa chừng đã xoá nó) ≠ khoá bị vô hiệu (thêm vân tay mới) — hai câu báo khác nhau.
+    expect(RegExp(r'if \(khoa == null\) \{\s*result\.success\(loi\("MAT_KHOA"\)\)').hasMatch(kt), isTrue,
+        reason: 'getKey trả null phải ra MAT_KHOA, không phải VO_HIEU');
+    // M12: hộp tự hết giờ = người dùng không chạm gì → như Huỷ (không câu lỗi); máy cần bản vá bảo mật → không dùng được
+    // vân tay. `[^>]*` dừng ở mũi tên đầu tiên sau tên mã — mã nằm nhóm khác là trượt.
+    expect(RegExp(r'BIOMETRIC_ERROR_TIMEOUT[^>]*-> "HUY"').hasMatch(kt), isTrue, reason: 'M12: TIMEOUT → HUY');
+    expect(RegExp(r'BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED[^>]*-> "KHONG_HO_TRO"').hasMatch(kt), isTrue,
+        reason: 'M12: SECURITY_UPDATE_REQUIRED → KHONG_HO_TRO');
+    // M12: xoá từng alias trong `try` riêng — một alias xoá hỏng không được chặn các alias sau.
+    expect(RegExp(r'forEach \{\s*try \{\s*ks\.deleteEntry\(it\)').hasMatch(kt), isTrue,
+        reason: 'M12: xoaHet bọc try quanh TỪNG deleteEntry');
   });
 
   test('SinhTrac.kt: tên lệnh và khoá map khớp phía Dart (lệch là hỏng im lặng)', () {

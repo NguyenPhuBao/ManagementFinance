@@ -4,6 +4,7 @@ import '../constants/app_constants.dart';
 import '../network/trang_thai_may_chu.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/may_chu_interceptor.dart';
+import 'ten_thiet_bi.dart';
 
 /// Singleton Dio client dùng chung toàn app.
 /// Đã cấu hình:
@@ -27,12 +28,17 @@ class DioClient {
     AuthInterceptor? authInterceptor,
     TrangThaiMayChu? trangThaiMayChu,
     Future<void> Function()? khiBiTatQuyen,
+    String? tenThietBi,
   }) : _dio = Dio(
           BaseOptions(
             baseUrl: AppConstants.baseUrl,
             connectTimeout: AppConstants.connectionTimeout,
             receiveTimeout: AppConstants.receiveTimeout,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              // Tên máy cho lịch sử thiết bị của backend — `ten_thiet_bi.dart`. `null` (web, iOS, kênh lỗi) = không gửi.
+              if (tenThietBi != null) kHeaderTenThietBi: tenThietBi,
+            },
           ),
         ) {
     _dio.interceptors.add(

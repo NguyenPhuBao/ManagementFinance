@@ -169,6 +169,44 @@ void main() {
     });
   });
 
+  group('mocThuLaiKhiQuaTai (503 SERVER_OVERLOADED — cắt tải, 2026-10-26)', () {
+    DateTime? qt(int? status, Object? body, {String? retryAfter}) =>
+        mocThuLaiKhiQuaTai(status: status, body: body, retryAfter: retryAfter, bayGio: bayGio);
+
+    test('Retry-After: 5 (giá trị server gửi hôm nay) → sàn 30 s', () {
+      expect(qt(503, {'code': 'SERVER_OVERLOADED'}, retryAfter: '5'), bayGio.add(kSanThuLai),
+          reason: 'load-shedding.middleware.js gửi 5 s — dưới sàn là vòng request dồn vào đúng lúc server đang quá tải');
+    });
+
+    test('Retry-After dài hơn sàn → đúng giá trị ấy', () {
+      expect(qt(503, {'code': 'SERVER_OVERLOADED'}, retryAfter: '90'), bayGio.add(const Duration(seconds: 90)));
+    });
+
+    test('Retry-After thiếu / rác / âm / 0 / khổng lồ → sàn 30 s, không ném', () {
+      for (final ra in [null, 'abc', '-5', '0', '', '9999999999999']) {
+        expect(qt(503, {'code': 'SERVER_OVERLOADED'}, retryAfter: ra), bayGio.add(kSanThuLai), reason: 'Retry-After: $ra');
+      }
+    });
+
+    test('503 DB_POOL_OVERLOADED (db-bulkhead.js — không gửi header Retry-After) → sàn 30 s', () {
+      expect(qt(503, {'code': 'DB_POOL_OVERLOADED', 'retryAfter': 3}), bayGio.add(kSanThuLai),
+          reason: 'hết suất kết nối CSDL của client — cùng bản chất thoáng qua với SERVER_OVERLOADED');
+    });
+
+    test('không phải quá tải → null (bảo trì, 503 không code, 429, body không Map)', () {
+      expect(qt(503, {'code': 'MAINTENANCE_MODE'}, retryAfter: '60'), isNull,
+          reason: 'bảo trì đi đường TrangThaiMayChu (dòng nhắc + toast)');
+      expect(qt(503, {'success': false}), isNull, reason: '503 lỗi lược đồ không code — vẫn là lỗi thường');
+      expect(qt(429, {'code': 'RETRY_LIMIT_EXCEEDED'}), isNull);
+      expect(qt(200, {'code': 'SERVER_OVERLOADED'}), isNull, reason: 'mã luôn đi CẶP với mã HTTP');
+      expect(qt(503, 'SERVER_OVERLOADED'), isNull);
+    });
+
+    test('phanLoaiPhanHoi vẫn KHÔNG coi quá tải là trạng thái máy chủ (không dòng nhắc, không toast)', () {
+      expect(pl(503, {'code': 'SERVER_OVERLOADED'}, retryAfter: '5'), isNull);
+    });
+  });
+
   test('TrangThaiMayChu khởi đầu bình thường, và ghi lại bình thường không phát', () {
     final t = TrangThaiMayChu();
     var soLanPhat = 0;

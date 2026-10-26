@@ -68,10 +68,25 @@ class KhoaAppService {
 
   Uint8List _byte(int n) => Uint8List.fromList(List<int>.generate(n, (_) => _ngauNhien.nextInt(256)));
 
-  Future<CauHinhKhoaApp?> doc(int idaccount) => _store.doc(idaccount);
+  Future<CauHinhKhoaApp?> doc(int idaccount) async => _kepCho(idaccount, await _store.doc(idaccount));
 
   /// Như [doc] nhưng đọc hỏng thì NÉM (xem `KhoaAppStore.docNghiemNgat`).
-  Future<CauHinhKhoaApp?> docNghiemNgat(int idaccount) => _store.docNghiemNgat(idaccount);
+  Future<CauHinhKhoaApp?> docNghiemNgat(int idaccount) async =>
+      _kepCho(idaccount, await _store.docNghiemNgat(idaccount));
+
+  /// M8: mốc chờ xa hơn `kChoToiDa` (giờ máy từng chạy trước) → kẹp VÀ ghi lại, để lần đọc sau giữ đúng mốc ấy và đồng hồ
+  /// đếm ngược chạy thật. Mọi đường đưa `choDen` lên màn (màn khoá, trang Đặt PIN, [kiemPin]) đọc qua đây. Ghi hỏng thì
+  /// vẫn trả bản đã kẹp — lần đọc sau kẹp lại.
+  Future<CauHinhKhoaApp?> _kepCho(int idaccount, CauHinhKhoaApp? c) async {
+    if (c == null) return null;
+    final kep = kepChoDen(c.choDen, _clock());
+    if (kep == c.choDen) return c;
+    final moi = c.voiLanSai(c.soLanSai, kep);
+    try {
+      await _store.ghi(idaccount, moi);
+    } catch (_) {}
+    return moi;
+  }
 
   Future<TrangThaiSinhTrac> trangThaiMay() => _kenh.trangThai();
 
@@ -92,7 +107,7 @@ class KhoaAppService {
 
   Future<KetQuaKiemPin> kiemPin(int idaccount, String pin) async {
     // Đọc hỏng NÉM (không phải "chưa bật"): ở màn khoá cấu hình chắc chắn đã có — coi hỏng là chưa bật thì PIN nào cũng đúng.
-    final c = await _store.docNghiemNgat(idaccount);
+    final c = await docNghiemNgat(idaccount);
     if (c == null) return const KetQuaKiemPin(dung: true, soLanSai: 0);
     final nay = _clock();
     final cho = c.choDen;
@@ -145,15 +160,16 @@ class KhoaAppService {
     await _kenh.xoaHet();
   }
 
-  /// `null` = mở được (đếm sai về 0). Khoá Keystore vô hiệu → tự tắt vân tay.
+  /// `null` = mở được (đếm sai về 0). Khoá Keystore vô hiệu hoặc alias không còn → tự tắt vân tay.
   Future<LoiSinhTrac?> moBangVanTay(int idaccount) async {
     final c = await _store.doc(idaccount);
     final v = c?.vanTay;
     if (c == null || v == null) return LoiSinhTrac.khongHoTro;
     final kq = await _kenh.mo(idaccount, banMa: v.banMa, iv: v.iv);
-    if (kq.loi == LoiSinhTrac.voHieu) {
+    final loiKhoa = kq.loi;
+    if (loiKhoa == LoiSinhTrac.voHieu || loiKhoa == LoiSinhTrac.matKhoa) {
       await tatVanTay(idaccount);
-      return LoiSinhTrac.voHieu;
+      return loiKhoa;
     }
     final biMat = kq.biMat;
     if (kq.loi != null || biMat == null) return kq.loi ?? LoiSinhTrac.loi;
@@ -163,7 +179,8 @@ class KhoaAppService {
   }
 
   /// Đăng xuất (hook `PhienDieuPhoiThat.dongPhien`): chỉ khoá Keystore — cấu hình PIN còn, nên máy vẫn đòi PIN nếu đăng
-  /// xuất bị ngắt giữa chừng. Vân tay cũ trong cấu hình gặp alias mất → `moBangVanTay` trả `voHieu` và tự tắt.
+  /// xuất bị ngắt giữa chừng. Vân tay cũ trong cấu hình gặp alias mất → `moBangVanTay` trả `matKhoa` và tự tắt (M14: câu báo
+  /// *"Vân tay đã tắt"*, không nói *"trên máy đã thay đổi"*).
   Future<void> xoaVanTayHet() async {
     try {
       await _kenh.xoaHet();

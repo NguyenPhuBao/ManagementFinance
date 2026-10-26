@@ -271,7 +271,7 @@ class _BillAddPageState extends State<BillAddPage> {
         // hàng với mũi tên và nút Lưu chỉ còn ~160 dp, "Thêm Hóa Đơn Định Kỳ"
         // cần ~215 — cụt thành "Thêm Hóa Đơn …". ĐO bề rộng: không vừa thì
         // rút ngắn (người dùng chọn), giữ cỡ chữ; màn đủ chỗ giữ tên đầy đủ.
-        title: LayoutBuilder(builder: (context, rang) {
+        title: BoCucTheoFont(builder: (context, rang) {
           const day = 'Thêm Hóa Đơn Định Kỳ';
           final vua =
               doRongChu(context, day, _kieuTieuDe) <= rang.maxWidth + 0.5;

@@ -8,6 +8,10 @@
 > **Phía server** do backend làm theo đơn CAN-LAM (người dùng chốt) — client không sửa `src/Backend` (quy tắc 1).
 > **Đơn backend:** mục **50** `docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md` (2026-10-23, người dùng nhờ viết tài liệu cho
 > backend đọc) — chi tiết SQL nháp, 12 endpoint, mã lỗi, đồng bộ, Premium, sự kiện, câu kiểm.
+> ⚠️ **2026-10-26 — người dùng mở rộng thiết kế; bộ tài liệu đầy đủ ở `docs/Family/` (`00_TONG_QUAN.md` … `03_MUC_TIEU_CHUNG.md`) THẮNG spec
+> này khi lệch.** Thay mục 2 (lộ trình: bỏ *ai nợ ai* và *cho nhà xem*; phần 2 tách 2a–2d; mục tiêu chung = công tắc trên ví chung), bổ sung phần
+> 1 (mời bằng email; ma trận quyền khi đẩy + `HOUSEHOLD_ROLE_FORBIDDEN`; bỏ ngoại lệ `idgoal` ở 4.2). Thân spec này vẫn là chi tiết phần 1 ở mọi
+> chỗ `docs/Family/01_NEN_MONG.md` không nói khác.
 
 ---
 
@@ -128,7 +132,8 @@ Trả theo khuôn lỗi từng thao tác hiện có (`results[i].code`, HTTP 200
 của người khác là sửa / xoá được. Gia đình làm lộ UUID giữa thành viên (từ phần con 2 — ví *cho nhà xem*), nên kiểm chủ sở hữu
 (hàng riêng: `existing.idaccount` = người đẩy; hàng của nhà: luật bảng trên) là việc **đầu tiên** của đơn backend. ⚠️ Client thêm **cả bốn** (cùng mã `NOT_OWNER` của tiền đề kiểm chủ sở hữu ngay dưới) vào
 `_permanentCodes` (`core/sync/gui_lo_dong_bo.dart`, danh sách **trắng**) **cùng lượt** — thiếu là hàng bị gửi lại mọi chu kỳ,
-im lặng (lớp lỗi G31 / G14). Gặp một trong bốn mã ⇒ làm mới trạng thái nhà (mục 5.8) và hiện nhãn *"Chưa ghi được vào nhà"* trên
+im lặng (lớp lỗi G31 / G14). ✅ **Đã thêm 2026-10-26** (năm mã, ca canh ở `sync_failure_handling_test.dart`) — trước cả lát 1, nên
+backend lên trước hay sau client đều không lặp. Gặp một trong bốn mã ⇒ làm mới trạng thái nhà (mục 5.8) và hiện nhãn *"Chưa ghi được vào nhà"* trên
 hàng ấy (spec 2 trở đi mới có hàng của nhà do người dùng ghi).
 
 ### 4.3 Vào nhà ⇒ kéo lại toàn bộ một lần

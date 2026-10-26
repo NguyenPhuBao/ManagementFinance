@@ -595,8 +595,9 @@ class _BillPageState extends State<BillPage> {
         ),
         // Vạch màu trạng thái là `Positioned` cao bằng thẻ trong một `Stack`,
         // KHÔNG còn `IntrinsicHeight` + `Row(stretch)`: G74 (2026-10-07) đặt
-        // `LayoutBuilder` trong thân thẻ để đo chỗ, mà `LayoutBuilder` không
-        // trả được kích thước nội tại — bọc `IntrinsicHeight` là lỗi ở mọi khung.
+        // `LayoutBuilder` (nay qua `BoCucTheoFont`) trong thân thẻ để đo chỗ, mà
+        // `LayoutBuilder` không trả được kích thước nội tại — bọc
+        // `IntrinsicHeight` là lỗi ở mọi khung.
         child: Stack(
           children: [
             Positioned(
@@ -811,7 +812,7 @@ class _HangSoTien extends StatelessWidget {
         color: isPaid ? AppColors.textSecondary : AppColors.primary,
       ),
     );
-    return LayoutBuilder(builder: (context, rang) {
+    return BoCucTheoFont(builder: (context, rang) {
       if (_vuaMotHang(context, rang.maxWidth)) {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,

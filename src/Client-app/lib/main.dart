@@ -37,6 +37,7 @@ import 'features/premium/presentation/bloc/goi_cubit.dart';
 import 'features/premium/presentation/bloc/phien_goi_tu_auth.dart';
 import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
+import 'shared/widgets/vung_thanh_trang_thai_goc.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/khoa_app/application/khoa_app_service.dart';
 import 'features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
@@ -240,15 +241,18 @@ class _FlowMoneyAppState extends State<FlowMoneyApp> {
         builder: (context, child) => LopKhoaApp(
           // "Quên mã PIN?" → đăng xuất. Cấu hình PIN xoá ở lần đăng nhập mật khẩu kế (hook `sauXacThucMatKhau`), không ở đây.
           khiQuenPin: () => widget.authBloc.add(LogoutRequested()),
-          child: bocDongHo24Gio(
-            context,
-            AppToast(
-              connectionEvents: sl<ConnectionMonitor>().events,
-              pushResults: sl<SyncEngine>().pushResultStream,
-              realtimeEvents: sl<RealtimeChannel>().events,
-              mayChu: sl<TrangThaiMayChu>(),
-              thongBaoNhanh: sl<ThongBaoNhanh>().stream,
-              child: child ?? const SizedBox.shrink(),
+          // Kiểu thanh trạng thái gốc: trang không AppBar cũng một kiểu (trong suốt, biểu tượng tối); màn khoá đè lên được.
+          child: VungThanhTrangThaiGoc(
+            child: bocDongHo24Gio(
+              context,
+              AppToast(
+                connectionEvents: sl<ConnectionMonitor>().events,
+                pushResults: sl<SyncEngine>().pushResultStream,
+                realtimeEvents: sl<RealtimeChannel>().events,
+                mayChu: sl<TrangThaiMayChu>(),
+                thongBaoNhanh: sl<ThongBaoNhanh>().stream,
+                child: child ?? const SizedBox.shrink(),
+              ),
             ),
           ),
         ),

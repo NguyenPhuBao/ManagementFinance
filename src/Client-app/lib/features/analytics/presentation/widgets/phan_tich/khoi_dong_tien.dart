@@ -96,8 +96,8 @@ class KhoiDongTien extends StatelessWidget {
         children: [
           Text(
             nhan,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            // Xuống dòng thay vì cắt "…": một dòng thì cỡ chữ lớn ở 320 dp còn "SỐ DƯ ĐẦ…" / "SỐ DƯ CU…" — mất
+            // đúng chữ phân biệt hai cột (Realme 2026-10-26).
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,

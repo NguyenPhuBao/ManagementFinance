@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import '../../../../core/ui/do_chu.dart';
 import '../../../../shared/theme/app_colors.dart';
 
 /// Thẻ *"Có N giao dịch chưa có danh mục"* trên trang Sổ giao dịch — lối vào của C1 (gắn danh mục hàng loạt), màn
@@ -46,7 +49,10 @@ class TheBienDongChuaGhi extends StatelessWidget {
 
 /// Khung chung của hai thẻ lối vào *"việc chờ bạn duyệt"* trên Sổ giao dịch.
 ///
-/// ⚠️ Dòng chính được xuống **hai** dòng: Stitch đã cắt nó ở 390 px, và máy thật hẹp nhất của dự án là 360 dp.
+/// Bố cục Stitch: [biểu tượng · khối chữ · nút] một hàng, khi tiêu đề và dòng phụ mỗi thứ vừa **hai** dòng cạnh nút (Stitch
+/// đã cắt dòng chính ở 390 px). Không vừa — đo bằng `vuaSoDong`, không đoán theo cỡ chữ — thì nút xuống dưới, căn phải,
+/// khối chữ lấy hết bề ngang và không trần số dòng: đo bằng font thật 2026-10-26, nút giữ bề rộng tự nhiên nên cột chữ chỉ
+/// còn 63 dp ở 320 dp và 103 dp ở 360 dp ngay ở cỡ chữ thường (tiêu đề C1, dòng phụ D1 cụt *"…"*), 0 dp ở 320 dp × cỡ chữ 1,6.
 class TheViecChoDuyet extends StatelessWidget {
   const TheViecChoDuyet({
     super.key,
@@ -65,8 +71,48 @@ class TheViecChoDuyet extends StatelessWidget {
   final Key khoaNut;
   final VoidCallback onNhan;
 
+  static const _kieuTieuDe = TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary);
+  static const _kieuPhu = TextStyle(fontSize: 11, color: AppColors.textSecondary);
+  static const _kieuNut = TextStyle(fontSize: 13, fontWeight: FontWeight.w600);
+
+  /// Biểu tượng 40 + khe 12 trước khối chữ.
+  static const double _rongBieuTuong = 40 + 12;
+
+  /// Bề rộng tự nhiên của nút: đệm 12 × 2 + chữ, không dưới bề rộng tối thiểu 64 của `OutlinedButton` (Material 3).
+  double _rongNut(BuildContext context) => math.max(64, 24 + doRongChu(context, nhanNut, _kieuNut));
+
   @override
   Widget build(BuildContext context) {
+    final bieuTuong = Container(
+      width: 40,
+      height: 40,
+      decoration: const BoxDecoration(
+        color: AppColors.surfaceContainerHigh,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: 20, color: AppColors.primary),
+    );
+    final khoiChu = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(tieuDe, style: _kieuTieuDe),
+        const SizedBox(height: 2),
+        Text(phu, style: _kieuPhu),
+      ],
+    );
+    final nut = OutlinedButton(
+      key: khoaNut,
+      onPressed: onNhan,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        side: const BorderSide(color: AppColors.primary),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        textStyle: _kieuNut,
+      ),
+      child: Text(nhanNut),
+    );
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: const EdgeInsets.all(12),
@@ -81,58 +127,37 @@ class TheViecChoDuyet extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: AppColors.surfaceContainerHigh,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 20, color: AppColors.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+      child: BoCucTheoFont(builder: (context, rang) {
+        final choChu = rang.maxWidth - _rongBieuTuong - 8 - _rongNut(context);
+        final motHang = choChu > 0 &&
+            vuaSoDong(context, tieuDe, _kieuTieuDe, choChu, 2) &&
+            vuaSoDong(context, phu, _kieuPhu, choChu, 2);
+        if (motHang) {
+          return Row(
+            children: [
+              bieuTuong,
+              const SizedBox(width: 12),
+              Expanded(child: khoiChu),
+              const SizedBox(width: 8),
+              nut,
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(
               children: [
-                Text(
-                  tieuDe,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  phu,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                ),
+                bieuTuong,
+                const SizedBox(width: 12),
+                Expanded(child: khoiChu),
               ],
             ),
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            key: khoaNut,
-            onPressed: onNhan,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.primary),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-            child: Text(nhanNut),
-          ),
-        ],
-      ),
+            const SizedBox(height: 8),
+            nut,
+          ],
+        );
+      }),
     );
   }
 }

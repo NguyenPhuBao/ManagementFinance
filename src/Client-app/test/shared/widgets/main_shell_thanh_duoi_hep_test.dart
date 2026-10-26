@@ -85,4 +85,18 @@ void main() {
       }
     });
   }
+
+  // Realme 320 dp × cỡ chữ 1,6 (2026-10-26): mỗi nhãn một `FittedBox` riêng nên nhãn ngắn ("Cá nhân") giữ cỡ còn nhãn dài
+  // ("Trang chủ" đậm vì đang chọn) co — bốn nhãn lệch cỡ. Bốn ô bằng nhau thì bốn nhãn phải co CÙNG hệ số, kể cả nhãn đậm.
+  for (final (rong, coChu) in [(320.0, 1.76), (360.0, 1.5)]) {
+    testWidgets('$rong dp, chữ ×$coChu: bốn nhãn CÙNG cỡ vẽ (nhãn đang chọn đậm cũng vậy)', (tester) async {
+      await dung(tester, rong, coChu);
+      expect(tester.takeException(), isNull);
+      final cao = [for (final n in _nhan) tester.getRect(find.text(n)).height];
+      for (final h in cao) {
+        expect((h - cao.first).abs(), lessThan(0.3),
+            reason: 'bốn nhãn lệch cỡ: ${cao.map((h) => h.toStringAsFixed(1)).join(' / ')}');
+      }
+    });
+  }
 }

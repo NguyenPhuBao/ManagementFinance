@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/ui/do_chu.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
@@ -240,13 +241,7 @@ class _KhoaAppPageState extends State<KhoaAppPage> {
                           icon: Icons.timer_outlined,
                           tieuDe: 'Tự khoá sau',
                           phu: 'Khi app ở nền lâu hơn mức này',
-                          cuoi: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Text(s.tuKhoaSau.nhan,
-                                style: const TextStyle(
-                                    fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary)),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.expand_more, color: _xamNhat, size: 20),
-                          ]),
+                          giaTri: s.tuKhoaSau.nhan,
                           onTap: () => _chonTuKhoa(s.tuKhoaSau),
                         ),
                       ]),
@@ -293,47 +288,81 @@ class _KhoaAppPageState extends State<KhoaAppPage> {
     );
   }
 
+  static const _kieuGiaTri = TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary);
+
+  /// Bề rộng [chu] vẽ ra — cùng họ chữ của theme (`DefaultTextStyle`) và cùng cỡ chữ người dùng đặt (`textScaler`), nếu
+  /// không phép đo lệch với chữ thật trên máy.
+  double _rongChu(BuildContext context, String chu, TextStyle kieu) {
+    final p = TextPainter(
+      text: TextSpan(text: chu, style: DefaultTextStyle.of(context).style.merge(kieu)),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final rong = p.width;
+    p.dispose();
+    return rong;
+  }
+
   /// Hàng Stitch: đệm 14, icon 20 trong vòng tròn 36 nền `#F4F4F0`, tiêu đề 15 semibold, phụ 13. [mo] = tắt mờ.
+  ///
+  /// [giaTri] (hàng chọn — giá trị + mũi tên ở bên phải theo Stitch): khi tiêu đề không còn vừa một dòng bên cạnh nó
+  /// (khổ hẹp, cỡ chữ lớn — M15, Realme 320 dp) thì giá trị xuống dưới dòng phụ thay vì ép tiêu đề gãy dòng.
   Widget _hang({
     Key? key,
     required IconData icon,
     required String tieuDe,
     String? phu,
     Widget? cuoi,
+    String? giaTri,
     VoidCallback? onTap,
     bool mo = false,
   }) {
+    final kieuTieuDe = TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: mo ? _xamPhu : AppColors.primary);
+    Widget oGiaTri(String chu) => Row(mainAxisSize: MainAxisSize.min, children: [
+          Flexible(child: Text(chu, style: _kieuGiaTri)),
+          const SizedBox(width: 4),
+          const Icon(Icons.expand_more, color: _xamNhat, size: 20),
+        ]);
     return InkWell(
       key: key,
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
-              child: Icon(icon, size: 20, color: mo ? _xamNhat : AppColors.primary),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(tieuDe,
-                      style: TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600, color: mo ? _xamPhu : AppColors.primary)),
-                  if (phu != null) ...[
-                    const SizedBox(height: 2),
-                    Text(phu, style: TextStyle(fontSize: 13, color: mo ? _xamNhat : _xamPhu)),
-                  ],
-                ],
+        child: BoCucTheoFont(builder: (context, rang) {
+          var duoi = false;
+          if (giaTri != null) {
+            final rongGiaTri = _rongChu(context, giaTri, _kieuGiaTri) + 4 + 20;
+            final conChoTieuDe = rang.maxWidth - 36 - 12 - 12 - rongGiaTri;
+            duoi = _rongChu(context, tieuDe, kieuTieuDe) > conChoTieuDe;
+          }
+          final ben = giaTri == null ? cuoi : (duoi ? null : oGiaTri(giaTri));
+          return Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
+                child: Icon(icon, size: 20, color: mo ? _xamNhat : AppColors.primary),
               ),
-            ),
-            if (cuoi != null) ...[const SizedBox(width: 12), cuoi],
-          ],
-        ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(tieuDe, style: kieuTieuDe),
+                    if (phu != null) ...[
+                      const SizedBox(height: 2),
+                      Text(phu, style: TextStyle(fontSize: 13, color: mo ? _xamNhat : _xamPhu)),
+                    ],
+                    if (duoi) ...[const SizedBox(height: 6), oGiaTri(giaTri!)],
+                  ],
+                ),
+              ),
+              if (ben != null) ...[const SizedBox(width: 12), ben],
+            ],
+          );
+        }),
       ),
     );
   }

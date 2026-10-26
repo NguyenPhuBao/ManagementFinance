@@ -54,6 +54,18 @@ void main() {
     expect(thoiGianCho(7), const Duration(minutes: 5));
     expect(thoiGianCho(8), const Duration(minutes: 15));
     expect(thoiGianCho(20), const Duration(minutes: 15));
+    expect(thoiGianCho(99), kChoToiDa, reason: 'mức chờ dài nhất là một hằng — M8 kẹp theo đúng hằng ấy');
+  });
+
+  test('M8 kepChoDen: mốc chờ xa hơn kChoToiDa (giờ máy từng chạy trước) kẹp về nay + kChoToiDa', () {
+    final nay = DateTime(2026, 10, 25, 9);
+    expect(kepChoDen(null, nay), isNull);
+    expect(kepChoDen(nay.add(const Duration(minutes: 10)), nay), nay.add(const Duration(minutes: 10)));
+    expect(kepChoDen(nay.add(kChoToiDa), nay), nay.add(kChoToiDa), reason: 'đúng biên: không đổi');
+    expect(kepChoDen(nay.add(const Duration(hours: 26)), nay), nay.add(kChoToiDa),
+        reason: 'giờ máy chạy trước một ngày lúc sai PIN rồi chỉnh lại → không bắt chờ 26 giờ');
+    final qua = nay.subtract(const Duration(minutes: 3));
+    expect(kepChoDen(qua, nay), qua, reason: 'mốc đã qua giữ nguyên — conCho tự trả null');
   });
 
   test('maPinHopLe: đúng 6 chữ số ASCII', () {

@@ -79,6 +79,41 @@ void main() {
     expect((await kho.doc(10))!.soLanSai, 0);
   });
 
+  group('M8: mốc chờ ở tương lai xa (giờ máy từng chạy trước rồi chỉnh lại)', () {
+    const xa = Duration(hours: 26);
+    setUp(() async {
+      await sv.datPin(10, '246810');
+      kho.duLieu[10] = kho.duLieu[10]!.voiLanSai(8, nay.add(xa));
+    });
+
+    test('doc kẹp về nay + kChoToiDa VÀ ghi lại — lần đọc sau giữ đúng mốc ấy (đồng hồ đếm ngược chạy thật)', () async {
+      final mocKep = nay.add(kChoToiDa);
+      expect((await sv.doc(10))!.choDen, mocKep);
+      expect(kho.duLieu[10]!.choDen, mocKep, reason: 'kẹp mà không ghi lại là mỗi lần đọc lại dời mốc thêm 15 phút');
+      expect(kho.duLieu[10]!.soLanSai, 8, reason: 'chỉ kẹp mốc, không xoá lần sai');
+      nay = nay.add(const Duration(minutes: 1));
+      expect((await sv.doc(10))!.choDen, mocKep);
+      expect((await sv.docNghiemNgat(10))!.choDen, mocKep);
+    });
+
+    test('docNghiemNgat cũng kẹp + ghi', () async {
+      expect((await sv.docNghiemNgat(10))!.choDen, nay.add(kChoToiDa));
+      expect(kho.duLieu[10]!.choDen, nay.add(kChoToiDa));
+    });
+
+    test('kiemPin: đang chờ trả mốc đã kẹp; hết 15 phút thì PIN đúng mở được', () async {
+      final k = await sv.kiemPin(10, '246810');
+      expect([k.dung, k.dangCho, k.choDen], [false, true, nay.add(kChoToiDa)]);
+      nay = nay.add(kChoToiDa);
+      expect((await sv.kiemPin(10, '246810')).dung, isTrue);
+    });
+
+    test('kho hỏng khi ghi lại mốc kẹp: doc vẫn trả bản đã kẹp, không ném', () async {
+      kho.hongKhiGhi = true;
+      expect((await sv.doc(10))!.choDen, nay.add(kChoToiDa));
+    });
+  });
+
   test('kho hỏng khi ghi lần sai → ném (không được báo "sai" mà chưa ghi)', () async {
     await sv.datPin(10, '246810');
     kho.hongKhiGhi = true;
@@ -119,6 +154,15 @@ void main() {
     kenh.loiMo = LoiSinhTrac.voHieu;
     expect(await sv.moBangVanTay(10), LoiSinhTrac.voHieu);
     expect((await kho.doc(10))!.vanTay, isNull);
+    expect(kenh.soLanXoa, greaterThan(0));
+  });
+
+  test('moBangVanTay: MAT_KHOA (alias đã bị xoá — đăng xuất bị cắt giữa chừng, M14) → tự tắt vân tay, trả matKhoa', () async {
+    await sv.datPin(10, '246810');
+    await sv.batVanTay(10);
+    kenh.loiMo = LoiSinhTrac.matKhoa;
+    expect(await sv.moBangVanTay(10), LoiSinhTrac.matKhoa);
+    expect((await kho.doc(10))!.vanTay, isNull, reason: 'cấu hình còn trỏ alias đã mất — phải tắt, không thì mỗi lần khoá lại báo lỗi');
     expect(kenh.soLanXoa, greaterThan(0));
   });
 

@@ -10,6 +10,7 @@ import 'package:flowmoney/features/khoa_app/presentation/pages/dat_ma_pin_page.d
 import 'package:flowmoney/features/khoa_app/presentation/pages/khoa_app_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -171,6 +172,67 @@ void main() {
     await sv.datPin(10, '246810');
     await mo(t, app());
     expect(t.takeException(), isNull);
+  });
+
+  group('M15 — hàng Tự khoá sau khi chật', () {
+    /// Số dòng một `Text` thật sự vẽ ra — đếm các đỉnh khác nhau của hộp chọn cả chuỗi. Ngắt dòng không sinh sọc vàng
+    /// (`takeException` trả null), nên ca "khổ hẹp 320 dp: không tràn" ở trên mù với M15.
+    int soDong(WidgetTester t, Finder f) {
+      final p = t.renderObject<RenderParagraph>(f);
+      final dai = p.text.toPlainText().length;
+      return p
+          .getBoxesForSelection(TextSelection(baseOffset: 0, extentOffset: dai))
+          .map((b) => b.top.round())
+          .toSet()
+          .length;
+    }
+
+    void kho(WidgetTester t, double rong) {
+      t.view.physicalSize = Size(rong, 800);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+    }
+
+    final tieuDe = find.text('Tự khoá sau');
+    final phu = find.text('Khi app ở nền lâu hơn mức này');
+
+    testWidgets('320 dp + "Ngay khi rời app": tiêu đề một dòng, giá trị xuống dưới dòng phụ', (t) async {
+      kho(t, 320);
+      await sv.datPin(10, '246810');
+      await sv.datTuKhoaSau(10, TuKhoaSau.ngay);
+      await mo(t, app());
+      expect(soDong(t, tieuDe), 1,
+          reason: 'Realme 320 dp (buổi 3): giá trị bên phải chiếm chỗ, "Tự khoá sau" gãy hai dòng');
+      expect(t.getTopLeft(find.text('Ngay khi rời app')).dy, greaterThanOrEqualTo(t.getBottomLeft(phu).dy),
+          reason: 'khi tiêu đề không vừa thì giá trị + mũi tên xuống dưới dòng phụ');
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('khổ rộng: giá trị vẫn bên phải tiêu đề (Stitch 129c2d77), kể cả "Ngay khi rời app"', (t) async {
+      kho(t, 600);
+      await sv.datPin(10, '246810');
+      for (final m in [TuKhoaSau.giay30, TuKhoaSau.ngay]) {
+        await sv.datTuKhoaSau(10, m);
+        await t.pumpWidget(const SizedBox());
+        await mo(t, app());
+        final giaTri = find.text(m.nhan);
+        expect(t.getCenter(giaTri).dy, lessThan(t.getBottomLeft(phu).dy),
+            reason: '${m.nhan}: còn chỗ thì giữ bố cục một hàng — xuống dòng chỉ là đường lùi khi chật');
+        expect(t.getTopLeft(giaTri).dx, greaterThan(t.getTopRight(tieuDe).dx));
+      }
+    });
+
+    // 480 dp: font của bộ test vẽ "30 giây" + "Tự khoá sau" vừa MỘT hàng ở cỡ chữ 1 mà không vừa ở 1,5 — nên chỉ phép đo
+    // có `textScaler` mới đưa giá trị xuống (ở 411 dp cỡ 1 cũng đã chật, ca mù với bản bỏ quên `textScaler` — đã thử).
+    testWidgets('cỡ chữ 1,5 ở 480 dp + "30 giây": tiêu đề một dòng — đo theo cỡ chữ thật', (t) async {
+      kho(t, 480);
+      t.platformDispatcher.textScaleFactorTestValue = 1.5;
+      addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
+      await sv.datPin(10, '246810');
+      await mo(t, app());
+      expect(soDong(t, tieuDe), 1, reason: 'phép đo bỏ quên textScaler thì cỡ chữ lớn vẫn gãy');
+      expect(t.getTopLeft(find.text('30 giây')).dy, greaterThanOrEqualTo(t.getBottomLeft(phu).dy));
+    });
   });
 
   testWidgets('I3: chạm đôi công tắc / hàng Đổi PIN trong lúc trang PIN đang mở → moDatPin gọi đúng một lần', (t) async {

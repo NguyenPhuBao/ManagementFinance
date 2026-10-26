@@ -185,7 +185,8 @@ thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dư�
 tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đều ghi *"thứ mười bốn"*, va chạm có từ 2026-09-21) — cộng
 **3** tệp cùng khuôn không đánh số, tổng **40** (đếm bằng bảng 2026-10-20, sau quét 36; helper `test/helpers/duong_dong_bo.dart` — `tepDuongDongBo()` trả mọi tệp `lib/core/sync/` cho ba quét cột cục bộ — không đếm, như `chi_thi_dart.dart`). Đếm (2026-10-20, từ `src/Client-app`, bằng awk — `grep` qua rtk bóp méo mẫu): tệp `test/` (trừ `helpers/`) chứa `Directory('lib` ra **35** tệp quét cây (gồm quét 34, 35 và 36; quét 31 duyệt cây qua biến `goc` nên khuôn ấy không thấy nó — cộng 1 là 36); chứa `tepDuongDongBo` ra **3** tệp (ba quét cột cục bộ); 36 + 3 = 39, **1** tệp còn lại đọc danh sách tệp cố định — tổng 40 khớp bảng (đếm lại 2026-10-20 sau G89). Từ 2026-10-24 thêm quét **38** (soát bảo mật: log không lộ dữ liệu người
 dùng ở bản release) — số **37** dành cho quét gia đình (spec `2026-10-23-gia-dinh-nen-mong-design.md` mục 7.2, chưa thi
-công) — tổng **41** tệp. Test quét mới lấy số **39**.
+công) — tổng **41** tệp. Từ 2026-10-26 thêm quét **39** (đo bề rộng chữ lúc dựng phải qua `BoCucTheoFont`) — tổng **42**
+tệp. Test quét mới lấy số **40**.
 
 | Số | Tệp (dưới `test/`) | Luật | Phạm vi | Từ |
 |---|---|---|---|---|
@@ -227,11 +228,12 @@ công) — tổng **41** tệp. Test quét mới lấy số **39**.
 | **35** | `core/sync/chi_core_sync_import_tep_noi_bo_test.dart` | ngoài `lib/core/sync/` chỉ thị vào `core/sync` không qua `cuaCongKhai` (sáu tệp); tệp mới trong `core/sync` mặc định nội bộ; `conCho` rỗng | cây | **2026-10-20** |
 | **36** | `core/api/may_chu_interceptor_chi_trong_dio_client_test.dart` | `MayChuInterceptor` (interceptor trạng thái máy chủ) dựng ngoài `core/api/dio_client.dart` | cây `lib/` | **2026-10-20** |
 | **38** | `core/utils/log_khong_lo_du_lieu_nguoi_dung_test.dart` | lệnh `debugPrint` / `print` / `log` in `.balance` · `.amount` · `.note` · `.args` · `.noiDung` · `.ghiChu` (thêm 2026-10-24) mà không qua `kDebugMode` (trong câu lệnh, hoặc khối bao quanh mở bằng dòng có `kDebugMode` / `assert(`) — `debugPrint` không bị lược ở bản release; có sáu ca mẫu viết tay cho bộ đọc | cây `lib/` | **2026-10-24** |
+| **39** | `core/ui/do_chu_qua_bo_cuc_theo_font_test.dart` | tệp có `doRongChu(` / `TextPainter(` (dòng mã, bỏ phần sau `//`) không có `LayoutBuilder(` — phải qua `BoCucTheoFont` (`core/ui/do_chu.dart`, miễn trừ): font Inter (`google_fonts`, không đóng gói) nạp sau khung đầu, `Text` tự đo lại còn `builder` của `LayoutBuilder` thì không; ca tiền đề ≥ 10 tệp đo chữ; đỏ đúng 9 chỗ lúc thêm | cây `lib/` | **2026-10-26** |
 | — | `features/wallet/vi_trung_ten_resolver_wiring_test.dart` | `ViTrungTenResolver` dựng một chỗ và được nối | cây | 2026-10-05 |
 | — | `features/wallet/vi_trung_ten_cuc_bo_test.dart` | cờ `bi_tu_choi_trung_ten` không lọt vào đồng bộ | mọi tệp `core/sync` (`tepDuongDongBo()`, từ 2026-10-19; trước: danh sách tệp) | 2026-10-05 |
 | — | `core/nen/noi_bo_nghe_hai_noi_test.dart` | hai engine (app + nền) mỗi engine nối bộ nghe kết quả đẩy đúng một lần | cây | 2026-10-10 |
 
-(Bảng có 41 hàng sau khi thêm quét 38 ngày 2026-10-24 — đếm bằng `awk` hàng bắt đầu `| <số>`, `| **<số>**` hoặc `| —` có `_test.dart` (awk `/^\| (\*\*)?[0-9—]/`) = 41; 38 sau quét 34, 37 sau quét 32 / 33, 35 trước đó. Bộ đọc chỉ thị dùng chung `test/helpers/chi_thi_dart.dart` và test của nó là test helper, không vào bảng.) Ngoài các tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
+(Bảng có 42 hàng sau khi thêm quét 39 ngày 2026-10-26 — đếm bằng `awk` hàng bắt đầu `| <số>`, `| **<số>**` hoặc `| —` có `_test.dart` (awk `/^\| (\*\*)?[0-9—]/`) = 42; 41 sau quét 38, 38 sau quét 34, 37 sau quét 32 / 33, 35 trước đó. Bộ đọc chỉ thị dùng chung `test/helpers/chi_thi_dart.dart` và test của nó là test helper, không vào bảng.) Ngoài các tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
 ⚠️ Các test quét của đợt 2026-10-10 có **ca tiền đề** (phép quét phải thấy ít nhất một tệp) để không xanh giả khi chạy sai thư mục; một số test quét cũ chưa có; chạy từ
 `src/Client-app`.
 
@@ -288,7 +290,7 @@ trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng
 
 ## 9. Ưu điểm, nhược điểm, nợ có tên
 
-**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (41 tệp test quét, CI — đếm bằng bảng 2026-10-24 sau quét 38). Ranh
+**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (42 tệp test quét, CI — đếm bằng bảng 2026-10-26 sau quét 39). Ranh
 giới nền tảng thay được bằng bản giả, nên **7.597** ca test (đo 2026-10-20, +10 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 

@@ -204,6 +204,11 @@ Sau khi PO chính thức phê duyệt kế hoạch thực thi, toàn bộ 9 mụ
 
 Thư mục này nay **69** tệp + mục lục (tổng 70 tệp, đếm bằng máy 2026-10-26, sau khi chuyển 9 mục).
 
+> 🔎 **Client soát 9 mục trên, 2026-10-26 (cùng ngày):** chỉ **45** đạt trọn; **46**, **51** đạt phần chính — ở lại đây kèm banner phần dư đầu tệp;
+> **43, 44, 47, 48, 49, 52 chuyển lại `CAN-LAM/`** (người dùng chốt) — liên kết của sáu dòng ấy trong bảng trên nay trỏ sai chỗ. Kết quả từng vế ở
+> banner 🔎 *"lượt báo xong"* đầu mỗi tệp; ba hồi quy mức cao do lượt sửa gây ra ở đơn mới **53** (`CAN-LAM/HOI_QUY_SAU_LUOT_BAO_XONG.md`).
+> Thư mục nay **63** tệp + mục lục (đếm bằng máy 2026-10-26, sau khi chuyển sáu mục về).
+
 ---
 
 ## 5. Hai chỗ dễ đọc nhầm

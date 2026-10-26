@@ -111,4 +111,35 @@ void main() {
       veTron(tester, find.textContaining('mỗi tháng'), '$man dp');
     });
   }
+
+  // Realme 320 dp × cỡ chữ 1,6 (2026-10-26): hai dòng của G78 không đủ — "khoảng / 2.010.000 đ …". ×1,76 ≈ Inter ở 1,6.
+  testWidgets('320 dp × 1,76: dòng "khoảng … mỗi tháng" vẽ trọn, số tiền một dòng', (tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.76;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await dung(
+      tester,
+      320,
+      TheDeXuatNganSach(
+        goi: const GoiDeXuat(
+          ds: [DeXuatNganSach(categoryId: 'nha', tenDanhMuc: 'Nhà cửa', mucThang: 2010000)],
+          soNgayCuaSo: 19,
+          soUngVien: 1,
+        ),
+        onTao: (_) {},
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    // Realme cùng lượt đo: tiêu đề thẻ cụt "CHƯA ĐẶT N…" cạnh chip "2 nhóm".
+    veTron(tester, find.text('CHƯA ĐẶT NGÂN SÁCH'), '320 dp × 1,76 (tiêu đề thẻ)');
+    final o = find.textContaining('mỗi tháng');
+    veTron(tester, o, '320 dp × 1,76');
+    final p = tester.renderObject<RenderParagraph>(o);
+    final chu = p.text.toPlainText();
+    final dau = chu.indexOf('2.010.000');
+    final dinh = p
+        .getBoxesForSelection(TextSelection(baseOffset: dau, extentOffset: dau + '2.010.000 đ'.length))
+        .map((b) => b.top.round())
+        .toSet();
+    expect(dinh, hasLength(1), reason: 'số tiền kèm "đ" không được gãy dòng');
+  });
 }

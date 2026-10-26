@@ -1,5 +1,20 @@
 # Mục 50 — Chức năng GIA ĐÌNH (nhà nhiều người): toàn bộ thiết kế + việc backend của phần 1 (nền móng)
 
+> 🏠 **2026-10-26 (sau) — thiết kế được mở rộng; ĐỌC `docs/Family/00_TONG_QUAN.md` MỤC 6 TRƯỚC KHI LÀM ĐƠN NÀY.** Người dùng thêm: mời bằng
+> email, nhiều ví chung, góp / rút quỹ (cặp hai khoản, cột `Idfund_pair`), hạn mức chi từng thành viên, định mức góp + tự góp, ngân sách + báo cáo
+> của nhà, mục tiêu chung = công tắc trên ví chung; **bỏ** *ai nợ ai* và *cho nhà xem*. Tám chỗ đổi so với đơn này (bảng mục 6 tệp tổng quan) —
+> đáng chú ý: **ma trận vai × thực thể** khi đẩy + mã `HOUSEHOLD_ROLE_FORBIDDEN` thay đoạn *Tạo / Sửa / xoá* của D.2; **bỏ ngoại lệ `idgoal`** ở
+> D.2; mục 4 (định hướng ba phần con) **không còn đúng**. Bộ `docs/Family/00…03` là tài liệu để backend / PO **xem và thảo luận** — đơn CAN-LAM cho
+> các phần sau đặt khi thảo luận xong. Phần còn lại của đơn này (A, B, C, D trừ đoạn trên, E, F, G) giữ nguyên.
+>
+> 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`; truy vấn chỉ đọc trên CSDL Supabase của `.env`): **chưa vế nào
+> được làm** — `src/Backend` (`.js` / `.sql` / `.prisma`) có 0 chữ *household*; `database/` dừng ở `36_*`; CSDL: 0 bảng
+> `household*`, 0 cột `Idhousehold`. **Vế A vẫn mở:** nhánh sửa của `/sync/push` chỉ so `update_at` (`upsertWallet`,
+> `sync.repository.js:269-313`), `softDelete` (`:710-752`) xoá theo khoá chính — không kiểm chủ sở hữu. `36f1ea43` (PR #159)
+> thêm `docs/Family/GIA_DINH_NEN_MONG.md` — **bản chép y nguyên** đơn này (cùng blob `d6e786e1`), không kế hoạch, không trả lời
+> mục 6. Nhờ backend trả lời / ghi kế hoạch **vào đơn này**: bản ở `docs/Family/` do backend tạo nên client không cập nhật theo
+> đơn — đọc bản ở `CAN-LAM/`.
+>
 > **Client đặt 2026-10-23.** Người nhận: backend (NPBao). Mức: **cao** — tính năng mới người dùng chọn; client làm phần mình
 > song song bằng API giả, **nghiệm thu chờ đơn này**.
 >
@@ -328,7 +343,9 @@ nguyên hoặc `null`). ⚠️ Phải thêm `idhousehold` vào **mọi khối `d
     dịch riêng chỉ về máy chủ của nó, nên số dư quỹ chung sẽ lệch giữa các máy) — có thể phải nới luật này; đơn phần 2 nêu cụ thể.
 
 **D.3 — Bốn mã lỗi mới**, trả theo khuôn kết quả từng thao tác hiện có (`results[i] = {localId, status:'error', code, message}`,
-HTTP 200 cho cả lô — `sync.service.js:94-99, 159-237`). Client xếp cả bốn (và `NOT_OWNER` của mục A) là **lỗi vĩnh viễn**:
+HTTP 200 cho cả lô — `sync.service.js:94-99, 159-237`). Client xếp cả bốn (và `NOT_OWNER` của mục A) là **lỗi vĩnh viễn**
+(✅ client **đã thêm** cả năm mã 2026-10-26 — `src/Client-app/lib/core/sync/gui_lo_dong_bo.dart`; backend bật mục A hay D lúc nào
+cũng được, hàng bị từ chối không bị đẩy lại mãi):
 
 | Mã | Khi |
 |---|---|
