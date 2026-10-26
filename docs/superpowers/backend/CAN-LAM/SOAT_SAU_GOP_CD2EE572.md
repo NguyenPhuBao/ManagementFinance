@@ -213,7 +213,10 @@ Tài liệu do backend tạo — client **không** sửa (quy tắc vùng chỉ 
 - 503 `MAINTENANCE_MODE` không gây *"lỗi mạng chung chung"*: đồng bộ thất bại **im lặng** rồi giãn cách 30 s → 1' → 5' →
   15' → 60'; màn Đăng nhập hiện đúng `message` của server.
 - 503 `SERVER_OVERLOADED` / 429 `RETRY_LIMIT_EXCEEDED`: giãn cách ≥ 30 s của client đã dài hơn 5–10 s backend yêu cầu;
-  client **không gửi** `x-retry-count` nên vế *"reset bộ đếm"* không áp dụng.
+  client **không gửi** `x-retry-count` nên vế *"reset bộ đếm"* không áp dụng. *(2026-10-26: client nay nhận ra 503
+  `SERVER_OVERLOADED` / `DB_POOL_OVERLOADED` ở lượt đẩy và không tính là chu kỳ hỏng — tối đa 3 chu kỳ liên tiếp; 429 vẫn
+  không có nhánh riêng: `retry-guard` chỉ chặn POST trùng **y body** > 3 lần / 10 s, mà body `/sync/push` mang `pushedAt`
+  theo mili giây, `/sync/pull` và `order-status` là GET.)*
 - 403 `FEATURE_DISABLED`: hiện **không chạm được** — client không gọi `/api/ai/*` (Trợ lý AI, quét ảnh chạy trên máy;
   quyền chặn trước ở client theo `/subscription-info`).
 - `account.countdown`: số ngày lấy từ `/auth/profile` mỗi lần mở app rồi **tự trừ theo ngày** ở máy.

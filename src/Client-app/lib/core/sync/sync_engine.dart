@@ -106,6 +106,12 @@ class SyncEngine {
     Duration(minutes: 60),
   ];
 
+  /// Số chu kỳ LIÊN TIẾP mà lượt đẩy gặp 503 quá tải (`kMaQuaTai`) được hẹn lại mà KHÔNG tính là hỏng (2026-10-26). Quá
+  /// chừng ấy thì server quá tải mãi là server hỏng: chu kỳ kế tính như lỗi thường — giãn cách tăng, và người dùng được
+  /// báo "Đồng bộ hỏng".
+  static const soLanQuaTaiKhongTinh = 3;
+  int _lanQuaTaiLienTiep = 0;
+
   int _consecutiveFailures = 0;
   DateTime? _nextAllowedSyncAt;
 
@@ -472,9 +478,17 @@ class SyncEngine {
       // một sự cố đã có dòng nhắc riêng ở Trang chủ. Áp cả khi không có gì để đẩy mà chỉ lượt kéo bị chặn. Mốc bảo trì
       // trượt theo mỗi 503 mới (`thuLaiLuc` tính từ lúc nhận) — vô hại: mỗi 503 ấy đã là một request.
       final mocChan = _mocThuLaiNeuBiChan(chanDauChuKy);
-      if (mocChan != null) {
-        debugPrint('[SyncEngine] Máy chủ đang chặn — không tính lượt hỏng, thử lại lúc $mocChan');
-        _scheduleBackoffRetry(mocChan);
+      // Quá tải thoáng qua (503 `kMaQuaTai`, 2026-10-26): cùng luật với bảo trì — không tính lượt hỏng, hẹn theo
+      // `Retry-After` (sàn 30 s), kết thúc `pending` — nhưng chỉ [soLanQuaTaiKhongTinh] chu kỳ liên tiếp. Lượt kéo bị cắt
+      // tải thì `ApDuLieuKeoVe` nuốt lỗi như mọi lỗi kéo; chỉ lượt đẩy biến chu kỳ thành `error`.
+      final quaTai = lastPush?.quaTaiThuLaiLuc;
+      _lanQuaTaiLienTiep = quaTai == null ? 0 : _lanQuaTaiLienTiep + 1;
+      final mocHen = mocChan ?? (_lanQuaTaiLienTiep <= soLanQuaTaiKhongTinh ? quaTai : null);
+      if (mocHen != null) {
+        debugPrint(mocChan != null
+            ? '[SyncEngine] Máy chủ đang chặn — không tính lượt hỏng, thử lại lúc $mocHen'
+            : '[SyncEngine] Máy chủ quá tải (lượt $_lanQuaTaiLienTiep) — không tính lượt hỏng, thử lại lúc $mocHen');
+        _scheduleBackoffRetry(mocHen);
       } else if (stillFailing) {
         _registerFailedCycle();
       } else {
@@ -486,7 +500,7 @@ class SyncEngine {
       // phát cho cùng một thất bại — `BillPaymentConflictResolver` chịu được,
       // vì khoản chi đã gỡ thì không còn tìm thấy ở lượt sau.
       if (retryResult != null) _emitPushResult(retryResult);
-      _setStatus(mocChan != null ? SyncStatus.pending : (stillFailing ? SyncStatus.error : SyncStatus.idle));
+      _setStatus(mocHen != null ? SyncStatus.pending : (stillFailing ? SyncStatus.error : SyncStatus.idle));
     } catch (e) {
       debugPrint('[SyncEngine] Sync error: $e');
       _setStatus(SyncStatus.error);

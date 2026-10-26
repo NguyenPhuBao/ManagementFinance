@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' hide Category;
 
 import '../api/dio_client.dart';
 import '../database/app_database.dart';
+import '../network/trang_thai_may_chu.dart';
 import 'sync_models.dart';
 import 'sync_payload_normalizer.dart';
 import 'uuid_dong_bo.dart';
@@ -210,6 +211,12 @@ class GuiLoDongBo {
         succeeded: 0,
         failed: ops.length,
         transportFailed: true,
+        quaTaiThuLaiLuc: mocThuLaiKhiQuaTai(
+          status: statusCode,
+          body: e.response?.data,
+          retryAfter: giaTriRetryAfter(e.response?.headers['retry-after']),
+          bayGio: _now(),
+        ),
         errorMessages: [reason],
         failures: [
           for (final op in ops)

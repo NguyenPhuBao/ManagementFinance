@@ -98,6 +98,10 @@ class SyncResult {
   /// nhận được rồi từ chối từng thao tác.
   final bool transportFailed;
 
+  /// Cả batch bị server từ chối vì QUÁ TẢI thoáng qua (503 `kMaQuaTai`, `core/network/trang_thai_may_chu.dart`) — lúc nên
+  /// thử lại (đã có sàn 30 s); `null` = không phải quá tải. Chỉ có khi [transportFailed].
+  final DateTime? quaTaiThuLaiLuc;
+
   const SyncResult({
     required this.totalOps,
     required this.succeeded,
@@ -106,6 +110,7 @@ class SyncResult {
     this.errorMessages = const [],
     this.failures = const [],
     this.transportFailed = false,
+    this.quaTaiThuLaiLuc,
   });
 
   bool get isSuccess => failed == 0 && conflictIds.isEmpty;

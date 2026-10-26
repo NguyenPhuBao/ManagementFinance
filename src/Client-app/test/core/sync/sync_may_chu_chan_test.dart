@@ -1,5 +1,6 @@
 /// Lượt đồng bộ bị máy chủ chặn (bảo trì / phong toả) KHÔNG bị tính là lượt hỏng, hẹn thử lại đúng mốc server cho, có sàn
-/// 30 s, và kết thúc `pending` (spec G89 2026-10-20 mục 3.3).
+/// 30 s, và kết thúc `pending` (spec G89 2026-10-20 mục 3.3). Từ 2026-10-26 thêm lượt đẩy gặp 503 QUÁ TẢI (`kMaQuaTai`):
+/// cùng luật nhưng chỉ `SyncEngine.soLanQuaTaiKhongTinh` chu kỳ liên tiếp, và không đi qua `TrangThaiMayChu`.
 library;
 
 import 'dart:convert';
@@ -173,6 +174,74 @@ void main() {
     await themThaoTacCho();
     final engine = await chay(_Adapter(baoTri), coCong: false);
     expect(engine.consecutiveFailures, 1);
+  });
+
+  // ── Quá tải (503 SERVER_OVERLOADED, `load-shedding.middleware.js`) — 2026-10-26 ─────────────────────────────────────
+  // Server cắt tải khi event loop trễ > 250 ms (`event-loop-monitor.js:9`), `Retry-After: 5`. Trước đó lượt đẩy trúng lúc
+  // ấy là chu kỳ `error` → NotificationScanner nổ "Đồng bộ hỏng" cho một sự cố vài giây. Không qua TrangThaiMayChu.
+
+  ResponseBody quaTai(RequestOptions _, {String retryAfter = '5'}) => _json(503, {
+        'success': false,
+        'statusCode': 503,
+        'code': 'SERVER_OVERLOADED',
+        'message': 'Hệ thống đang xử lý lượng truy cập lớn. Vui lòng thử lại sau ít giây!',
+        'retryAfter': 5,
+      }, them: {
+        'retry-after': [retryAfter]
+      });
+
+  test('⭐ quá tải lúc đẩy → không tính lượt hỏng, hẹn sàn 30 s, pending, không dòng nhắc', () async {
+    await themThaoTacCho();
+    final engine = await chay(_Adapter(quaTai));
+    expect(engine.consecutiveFailures, 0, reason: 'vài giây quá tải không phải lỗi của máy này');
+    expect(engine.nextAllowedSyncAt, isNull);
+    expect(engine.backoffRetryAt, clock.add(kSanThuLai), reason: 'Retry-After 5 s — sàn 30 s');
+    expect(engine.status, SyncStatus.pending, reason: 'error là "Đồng bộ hỏng" cho một sự cố thoáng qua');
+    expect(tt.value, isA<MayChuBinhThuong>(), reason: 'quá tải không dựng dòng nhắc Trang chủ / toast');
+  });
+
+  test('quá tải Retry-After 90 → hẹn đúng 90 s', () async {
+    await themThaoTacCho();
+    final engine = await chay(_Adapter((o) => quaTai(o, retryAfter: '90')));
+    expect(engine.backoffRetryAt, clock.add(const Duration(seconds: 90)));
+  });
+
+  test('quá tải KÉO DÀI: quá ${SyncEngine.soLanQuaTaiKhongTinh} lượt liên tiếp → lượt kế tính là hỏng thường', () async {
+    await themThaoTacCho();
+    final engine = await chay(_Adapter(quaTai));
+    for (var i = 1; i < SyncEngine.soLanQuaTaiKhongTinh; i++) {
+      await engine.syncNow();
+    }
+    expect(engine.consecutiveFailures, 0, reason: '${SyncEngine.soLanQuaTaiKhongTinh} lượt đầu chưa tính');
+    expect(engine.status, SyncStatus.pending);
+    await engine.syncNow();
+    expect(engine.consecutiveFailures, 1,
+        reason: 'server quá tải mãi là server hỏng — người dùng phải được báo "Đồng bộ hỏng", và giãn cách phải tăng');
+    expect(engine.status, SyncStatus.error);
+  });
+
+  test('quá tải → 200 → quá tải: bộ đếm lượt quá tải về 0 sau lượt thành công', () async {
+    await themThaoTacCho();
+    final adapter = _Adapter(quaTai);
+    final engine = await chay(adapter);
+    for (var i = 1; i < SyncEngine.soLanQuaTaiKhongTinh; i++) {
+      await engine.syncNow();
+    }
+    adapter.traLoi = (_) => _json(200, {'success': true, 'data': const {}});
+    await engine.syncNow();
+    expect(engine.status, SyncStatus.idle);
+    await themThaoTacCho();
+    adapter.traLoi = quaTai;
+    await engine.syncNow();
+    expect(engine.consecutiveFailures, 0, reason: 'đếm LIÊN TIẾP — một lượt thành công ở giữa xoá chuỗi');
+    expect(engine.status, SyncStatus.pending);
+  });
+
+  test('503 KHÔNG code (lỗi lược đồ) → vẫn giãn cách như cũ', () async {
+    await themThaoTacCho();
+    final engine = await chay(_Adapter((_) => _json(503, {'success': false, 'message': 'x'})));
+    expect(engine.consecutiveFailures, 1, reason: 'chỉ đúng mã SERVER_OVERLOADED mới được miễn');
+    expect(engine.status, SyncStatus.error);
   });
 
   test('hết bảo trì: lượt kế 200 → bình thường, không còn hẹn, idle', () async {

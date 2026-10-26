@@ -54,7 +54,7 @@ final class MayChuPhongToa extends TinhTrangMayChu {
 ///
 /// Chỉ đọc `code` ở CẤP GỐC của body là `Map` (hình dạng `maintenance.middleware.js` / `auth.controller.js` /
 /// `aiops.quarantine.js` đo 2026-10-20), và luôn đi CẶP với mã HTTP. Không bao giờ phân loại theo mã HTTP một mình: 503 quá
-/// tải (`SERVER_OVERLOADED`, `DB_POOL_OVERLOADED`), 503 lỗi lược đồ không `code`, 403 `FEATURE_DISABLED`, 403 trạng thái
+/// tải ([kMaQuaTai] — `SyncEngine` đọc riêng qua [mocThuLaiKhiQuaTai]), 503 lỗi lược đồ không `code`, 403 `FEATURE_DISABLED`, 403 trạng thái
 /// tài khoản lúc đăng nhập đều trả `null` — giữ hành vi hôm nay.
 TinhTrangMayChu? phanLoaiPhanHoi({
   required int? status,
@@ -65,17 +65,41 @@ TinhTrangMayChu? phanLoaiPhanHoi({
   if (body is! Map) return null;
   final ma = body['code'];
   if (status == 503 && ma == 'MAINTENANCE_MODE') {
-    final giay = int.tryParse(retryAfter?.trim() ?? '');
-    final cho = (giay != null && giay > 0 && giay <= kTranRetryAfter.inSeconds)
-        ? Duration(seconds: giay)
-        : kThuLaiBaoTriMacDinh;
-    return MayChuBaoTri(thuLaiLuc: bayGio.add(cho < kSanThuLai ? kSanThuLai : cho));
+    return MayChuBaoTri(thuLaiLuc: _mocTheoRetryAfter(retryAfter, kThuLaiBaoTriMacDinh, bayGio));
   }
   if (status == 403 && ma == 'AIOPS_QUARANTINED') {
     final het = body['quarantineExpiresAt'];
     return MayChuPhongToa(hetHanLuc: het is String ? DateTime.tryParse(het)?.toLocal() : null);
   }
   return null;
+}
+
+/// `bayGio` + `Retry-After` (giây), có sàn [kSanThuLai]; thiếu / không phải số nguyên dương / dài hơn [kTranRetryAfter] →
+/// [macDinh]. Một luật đọc cho bảo trì và quá tải.
+DateTime _mocTheoRetryAfter(String? retryAfter, Duration macDinh, DateTime bayGio) {
+  final giay = int.tryParse(retryAfter?.trim() ?? '');
+  final cho = (giay != null && giay > 0 && giay <= kTranRetryAfter.inSeconds) ? Duration(seconds: giay) : macDinh;
+  return bayGio.add(cho < kSanThuLai ? kSanThuLai : cho);
+}
+
+/// Hai mã 503 quá tải thoáng qua của backend (đo 2026-10-26): `SERVER_OVERLOADED` — cắt tải khi event loop trễ > 250 ms
+/// (`load-shedding.middleware.js`, `event-loop-monitor.js:9`), header `Retry-After: 5`; `DB_POOL_OVERLOADED` — hết suất kết
+/// nối CSDL dành cho client (`core/resilience/db-bulkhead.js`), KHÔNG gửi header `Retry-After` (chỉ `retryAfter: 3` trong body).
+const Set<String> kMaQuaTai = {'SERVER_OVERLOADED', 'DB_POOL_OVERLOADED'};
+
+/// Mốc thử lại khi `/sync/push` gặp 503 quá tải ([kMaQuaTai]); `null` = không phải quá tải. Có sàn [kSanThuLai];
+/// `Retry-After` thiếu / không đọc được → sàn.
+///
+/// Quá tải cố ý KHÔNG là một [TinhTrangMayChu]: nó thoáng qua vài giây, không có dòng nhắc / toast / câu riêng ở màn Đăng
+/// nhập (câu của server đã đủ) — chỉ `SyncEngine` cần biết để không xếp chu kỳ ấy là hỏng.
+DateTime? mocThuLaiKhiQuaTai({
+  required int? status,
+  Object? body,
+  String? retryAfter,
+  required DateTime bayGio,
+}) {
+  if (status != 503 || body is! Map || !kMaQuaTai.contains(body['code'])) return null;
+  return _mocTheoRetryAfter(retryAfter, kSanThuLai, bayGio);
 }
 
 /// Mốc `SyncEngine` hẹn thử lại khi máy chủ đang chặn; `null` = không hẹn riêng (bình thường, hoặc phong toả không nói giờ
