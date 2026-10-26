@@ -351,7 +351,8 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
   `login_page_nut_google_test.dart`).
 - **M16** (Buổi 4, 2026-10-26) Có phím bàn phím vật lý là Android vẽ **khung tiêu điểm mặc định** (xanh-vàng (167, 209, 39), vài px) quanh cả `FlutterView` — mọi màn, chạm màn là mất; có cả trước M13 (Tab). Người dùng chọn **tắt viền** — ✅ **mã xong phiên 9**: `android:defaultFocusHighlightEnabled=false`
   ở `LaunchTheme` + `NormalTheme` của cả bốn `styles.xml` (`values`, `-night`, `-v31`, `-night-v31` — Realme Android 13 đọc `-v31`); `View` đọc giá trị mặc
-  định từ theme. Ca đọc tệp `test/core/khung_tieu_diem_android_test.dart` (vùng mù). Đo máy: chưa (cần cài bản mới).
+  định từ theme. Ca đọc tệp `test/core/khung_tieu_diem_android_test.dart` (vùng mù). ✅ Đo Realme đạt (buổi 4, bản `626c6060`: Tab + gõ PIN bằng phím, mép
+  màn vẫn nền).
 - ~~**M14**~~ — ✅ **đóng 2026-10-25 tối** (người dùng chọn *sửa câu báo*): Kotlin `mo` trả mã mới **`MAT_KHOA`** khi `getKey` ra `null` (alias không còn) —
   `KeyPermanentlyInvalidatedException` vẫn là `VO_HIEU`; Dart `LoiSinhTrac.matKhoa` → service tự tắt vân tay như `voHieu`, cubit báo **`kCauVanTayDaTat`**
   *"Vân tay đã tắt — nhập mã PIN rồi bật lại trong Cài đặt"*. Thứ tự đăng xuất (`dongPhien` trước POST) **giữ nguyên** (bẫy 4). Test: 4 ca (dịch mã, nối dây Kotlin
@@ -569,6 +570,13 @@ ký khoá debug vì không có `android/key.properties`; 227,0 MB, SHA-1 `a62c0d
 | 2 — M13 bàn phím vật lý | ✅ xuống nền 33 s (tự khoá 30 giây) → mở lại → Back đóng hộp vân tay (`HUY`, không câu lỗi) → `adb shell input keyevent` 8 · 10 · 12 (*1 3 5*) → **3 chấm** → 16 (*9*) → 4 chấm → 67 (Backspace) → 3 chấm → 151 (**bàn số** *7*) · 16 · 7 → mở khoá. Lặp lại sau khi mở rồi Huỷ tấm *Quên mã PIN?*: gõ phím vẫn mở được. ⚠️ Lộ **M16**: có phím là Android vẽ **khung tiêu điểm mặc định** (xanh-vàng (167, 209, 39), dày vài px) quanh cả `FlutterView` — chạm màn là mất; có cả trước M13 (Tab). |
 | 3 — M15 ở 320 dp | ✅ người dùng đổi cỡ hiển thị (density 540). *30 giây*: giá trị bên phải, tiêu đề một dòng. *Ngay khi rời app*: tiêu đề + dòng phụ mỗi thứ một dòng, giá trị + mũi tên xuống dưới (ảnh). Trả mức về *30 giây*. |
 | 4 — cỡ chữ lớn (1,6) + 320 dp | ✅ khoá app: màn khoá, tấm Quên PIN (nút Huỷ trọn trên màn), trang Khoá ứng dụng (*30 giây* cũng tự xuống dưới — đúng phép đo có `textScaler`; hàng công tắc xuống 2 dòng nhưng đọc được). ❌ ngoài mảng: **Trang chủ** (số tổng gãy giữa chữ số, chip *Số dư thực tế* tràn, chuông bị đẩy ra mép, nhãn nút nhanh dính nhau — có cả ở cỡ 1), **Sổ giao dịch** (thẻ tổng tràn), **Thêm giao dịch** (chip *Giọng nói & Gõ* tràn), **Phân tích** (nhãn *SỐ DƯ ĐẦ…* cắt), **Ngân sách** (hai tab lệch cỡ) — người dùng chọn sửa cả, phiên 9. |
+
+**Đo lại sau sửa (10:41–10:51, bản release `626c6060`, SHA-1 `d62ae17e…`, cài đè — vẫn cỡ chữ 1,6 + 320 dp):** ✅ Trang chủ (chuông trọn trong lề, chip
+xuống dưới tiêu đề, số tổng một dòng, năm nhãn nút nhanh cùng cỡ + có khe) · Sổ giao dịch (ba cột vừa thẻ) · Thêm giao dịch (chip dưới *NHẬP NHANH*) · Phân
+tích (nhãn số dư xuống dòng đủ chữ) · Ngân sách (hai tab cùng cỡ) · **M16** (Tab + gõ PIN bằng `keyevent`: mép màn vẫn nền (237, 237, 233), không khung) ·
+máy ảo bản debug 320 dp × 1,0 và × 1,6: nút *Google* / *Apple* một dòng. Lộ thêm (người dùng chọn sửa, phiên 9 lượt 2): *Xem tất cả* ở Trang chủ bị cắt; số
+*"Còn 490.000 đ"* ở thẻ ngân sách gãy giữa chữ số; màn Đăng nhập tràn ở *MẬT KHẨU · Quên mật khẩu?* (19 px) và *Chưa có tài khoản? Đăng ký ngay* (87 px);
+lệch cỡ ở thẻ tổng Sổ giao dịch và hai nút Google / Apple.
 
 ⚠️ Bẫy đo: (1) **bản release không vẽ sọc vàng** báo tràn (chỉ debug) — đếm điểm vàng trên ảnh release luôn ra 0, phải chấm bằng mắt; (2) ColorOS lưu cỡ chữ
 ở `settings system font_scale` nhưng chỉ khi kéo **thanh "Cỡ phông chữ"** (lần đầu người dùng đổi chỗ khác, `mGlobalConfiguration` vẫn `{1.0 …}`) — đọc
