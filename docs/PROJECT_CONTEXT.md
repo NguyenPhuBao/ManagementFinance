@@ -630,7 +630,10 @@ src/Backend/
   phải đăng nhập lại — máy ảo đang ở màn Đăng nhập). Test **8.106 / 10 skip**, analyze 20. Commit `b7d30bd6` · `0251284e` · `711c3cf0`; chưa push.
   Cùng phiên: **soát bảo mật `00d32976..HEAD`** — 0 lỗ hổng đạt ngưỡng (ứng viên *Quên PIN + đặt lại mật khẩu qua email* bị loại
   3/10: chỗ yếu là luồng khôi phục tài khoản có từ trước); **soát lại cả 10 đơn `CAN-LAM/`** (người dùng yêu cầu, chỉ đọc mã `main` +
-  CSDL Supabase) — không đơn nào được làm thêm, kết quả ở banner 🔎 README `CAN-LAM/` và đầu từng đơn.
+  CSDL Supabase) — không đơn nào được làm thêm, kết quả ở banner 🔎 README `CAN-LAM/` và đầu từng đơn. **Lượt sửa 3 cỡ chữ 1,6**
+  (`544d29bb` + tiêu đề thẻ): thanh điều hướng dưới `NhanCoDeu` (+ `kieuDo`), thẻ *Chưa đặt ngân sách* bỏ trần dòng, khung thẻ việc chờ
+  duyệt (D1 / C1) đo bằng `vuaSoDong` — nút xuống dưới khi chữ không vừa hai dòng (cụt cả ở cỡ thường 320 / 360 dp); đo Realme đạt —
+  mục 10 `KHOA_APP_FEATURE.md` (*Lượt sửa 3*).
 
 - **Phiên 9 (2026-10-26; người dùng chọn M15 + nút Google, dựng `--release`, nghiệm thu còn lại, rồi soát bảo mật · biên lai MB · M13):** (1) **M15** — hàng
   *Tự khoá sau* đo tiêu đề + giá trị bằng `TextPainter` (họ chữ theme + `textScaler`), không vừa thì giá trị xuống dưới dòng phụ (mục 8 `KHOA_APP_FEATURE.md`);

@@ -54,11 +54,11 @@ class TheDeXuatNganSach extends StatelessWidget {
               const Icon(Icons.add_circle_outline,
                   size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 6),
+              // Không trần một dòng: cỡ chữ lớn ở khổ hẹp thì tiêu đề xuống dòng — trước cụt "CHƯA ĐẶT N…" cạnh chip
+              // "2 nhóm" (Realme 320 dp × cỡ chữ 1,6, 2026-10-26).
               const Expanded(
                 child: Text(
                   'CHƯA ĐẶT NGÂN SÁCH',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,

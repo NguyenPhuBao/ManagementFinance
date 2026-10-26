@@ -129,6 +129,8 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
+    // Realme cùng lượt đo: tiêu đề thẻ cụt "CHƯA ĐẶT N…" cạnh chip "2 nhóm".
+    veTron(tester, find.text('CHƯA ĐẶT NGÂN SÁCH'), '320 dp × 1,76 (tiêu đề thẻ)');
     final o = find.textContaining('mỗi tháng');
     veTron(tester, o, '320 dp × 1,76');
     final p = tester.renderObject<RenderParagraph>(o);
