@@ -631,6 +631,12 @@ src/Backend/
   `receiveTimeout` 45 s không còn nổ, mà backend không có trần nào cho lời gọi Gemini — Gemini treo là vòng xoay quay mãi. Quá trần
   datasource huỷ chính `CancelToken` của lượt (đóng socket như Dừng) và phát `LoiOnline(http null, 'quá trần tổng 120 s')` — trang rơi về
   máy / giữ phần đã hiện như mọi lỗi online, không đổi. G96 vế 2, mục 15.8 `AI_EDGE_FEATURE.md`, mục 10 dòng 24 spec trợ lý online.
+- ✅ **Tin từ FlowMoney** (`system.broadcast`, kế hoạch 7 task phiên 11, làm inline — người dùng chọn): `docTinHeThong` (`3a582a66`) ·
+  luồng `RealtimeChannel.tinHeThong` (`5d62c79f`) · loại thứ 21 `tinHeThong` + nhóm thứ bảy `tinFlowMoney` — chip *FlowMoney*, hàng
+  Cài đặt *Tin từ FlowMoney* (`e8b3b36b`) · `NhanTinHeThong` ghi Trung tâm + khay theo luật bộ quét, nối MỘT lần ở `main.dart` — mục
+  **5l** `NOTIFICATION_FEATURE.md`. Kiểm lại backend sau gộp `2b926d92` (spec đo ở `36f1ea43`): 5 tin bảo trì đều mang `metadata.type`,
+  Admin-web gửi `level` chữ thường — spec còn đúng. Stitch: màn Trung tâm `65dab656…` người dùng xác nhận; màn Cài đặt `065eccd8…` và
+  biến thể 4 dòng nhắc `006c5a2e…` — ba lượt sửa báo `timeout`, **chưa** hiện khi hỏi (không gọi lại). 🚧 Nghiệm thu máy thật chưa.
 - ✅ Chú thích `ten_thiet_bi.dart:10` + khối phiên 11 dưới: CORS đã cho `x-device-name` từ backend `49eafef6` (`1c47b2c9`).
 
 ### 🛰️ Phiên 11 (2026-10-26 chiều) — soát năm mục tài liệu v4 với mã backend `36f1ea43`, làm ba mục người dùng chọn

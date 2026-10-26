@@ -143,6 +143,7 @@ import '../../features/notification/application/nhap_bien_lai.dart';
 import '../../features/notification/application/nhap_phien_ngan_hang.dart';
 import '../../features/notification/data/datasources/nhat_ky_thong_bao.dart';
 import '../../features/notification/application/notification_scanner.dart';
+import '../../features/notification/application/nhan_tin_he_thong.dart';
 import '../../features/notification/data/datasources/os_notifier.dart';
 import '../../features/notification/data/datasources/os_notifier_factory.dart';
 import '../../features/notification/data/notification_prefs_store.dart';
@@ -873,6 +874,13 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       eventDao: sl<AppDatabase>().notificationEventDao,
     ),
   );
+
+  // Tin admin (`system.broadcast`, spec 2026-10-26): ghi Trung tâm + khay. Nối vào kênh ở `main.dart` MỘT lần.
+  sl.registerLazySingleton<NhanTinHeThong>(() => NhanTinHeThong(
+        dao: sl<AppDatabase>().notificationDao,
+        prefsStore: sl<NotificationPrefsStore>(),
+        osNotifier: sl<OsNotifier>(),
+      ));
 
   // ── AI trên máy (Edge AI P3) ───────────────────────────────────────────────
   // Cả ba đều `registerLazySingleton`: không cái nào được dựng cho tới khi màn
