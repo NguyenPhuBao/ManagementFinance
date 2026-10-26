@@ -321,7 +321,7 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 - **166 ca** khai báo trong 18 tệp dưới `test/features/khoa_app/` (đếm bằng Python cùng mẫu 2026-10-26 sau phiên 9: +3 M15, +5 M13); trước đó **158 ca** (2026-10-25 khuya sau phiên 8: +8 M7 · M8 · M12 · `_napCho`; `flutter test` chạy ra 160 vì vòng lặp khổ màn); trước đó **150 ca** (2026-10-25 tối, sau M5 + thanh trạng thái + M14: +5 `lop_khoa_app_back_test.dart`
   (GoRouter thật), +2 `lop_khoa_app_thanh_trang_thai_test.dart`, +1 lớp mờ tấm Quên PIN ở `lop_khoa_app_test.dart`, +2 `MAT_KHOA` (service, cubit); chiều 140, trước đó 128), cộng `test/core/router/theo_doi_route_cong_khai_test.dart` (observer), ca ở `phien_dieu_phoi_that_test.dart`
   (hook `sauXacThucMatKhau` / `xoaKhoaApp` / `datLaiKhoaApp`), `auth_bloc_buoc_dang_xuat_test.dart` (thứ tự mở phiên với `PhienDieuPhoiThat` thật) và `noi_dung_cai_dat_khoa_app_test.dart` (viên *Đang bật*, kể cả `Mo(daBat:false)` và `Tat`).
-- Mốc toàn bộ: **8.090 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-26 sau phiên 9 — M15 + nút Google + M13 + lô bố cục cỡ chữ 1,6 + M16; 8.061 sau M13 — +8 khoá app, +2 `login_page_nut_google_test.dart`; 8.051 đo 2026-10-25 khuya sau phiên 8 — +8 khoá app, +2 socket `realtime_socket_dong_test.dart`, +4 thanh trạng thái; 8.037 sau M14; 8.035 sau M5 + thanh trạng thái `c5010e1b`, trên `flutter_secure_storage` 10.3.4; chiều 8.027 sau F1 + M11 `4c7945ed`; trước đó 8.017 sau `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá `be3bdf26` thêm 4 ca: hai ở
+- Mốc toàn bộ: **8.106 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-26 sau phiên 10 — lượt sửa 2 cỡ chữ 1,6 + `BoCucTheoFont` + quét 39, ngoài mảng khoá app trừ hàng *Tự khoá sau*; 8.090 sau phiên 9 — M15 + nút Google + M13 + lô bố cục cỡ chữ 1,6 + M16; 8.061 sau M13 — +8 khoá app, +2 `login_page_nut_google_test.dart`; 8.051 đo 2026-10-25 khuya sau phiên 8 — +8 khoá app, +2 socket `realtime_socket_dong_test.dart`, +4 thanh trạng thái; 8.037 sau M14; 8.035 sau M5 + thanh trạng thái `c5010e1b`, trên `flutter_secure_storage` 10.3.4; chiều 8.027 sau F1 + M11 `4c7945ed`; trước đó 8.017 sau `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá `be3bdf26` thêm 4 ca: hai ở
   `lop_khoa_app_roi_phien_test.dart` (`/login` tự `showDialog` → gỡ trước van; popup trên trang được bảo vệ không làm tín hiệu `true`) và hai ở `test/core/router/route_cong_khai_ten_route_test.dart`.
 - Mảng mới phải qua các quét sẵn có: 22 (`presentation/` không chạm CSDL), 25 (vị trí tệp — `core/router` là chủ đề sẵn có), 27 (không `<dynamic>` trần ở `data/` +
   `application/`), 38 (không log PII — **không** canh PIN / bí mật, bẫy 19). Không thêm test quét mới.
@@ -577,6 +577,22 @@ tích (nhãn số dư xuống dòng đủ chữ) · Ngân sách (hai tab cùng c
 máy ảo bản debug 320 dp × 1,0 và × 1,6: nút *Google* / *Apple* một dòng. Lộ thêm (người dùng chọn sửa, phiên 9 lượt 2): *Xem tất cả* ở Trang chủ bị cắt; số
 *"Còn 490.000 đ"* ở thẻ ngân sách gãy giữa chữ số; màn Đăng nhập tràn ở *MẬT KHẨU · Quên mật khẩu?* (19 px) và *Chưa có tài khoản? Đăng ký ngay* (87 px);
 lệch cỡ ở thẻ tổng Sổ giao dịch và hai nút Google / Apple.
+
+**Lượt sửa 2 (phiên 10, 2026-10-26 trưa — `b7d30bd6`, `0251284e`, `711c3cf0`; ngoài mảng khoá app trừ hàng *Tự khoá sau*):** thẻ từng ngân sách đo
+bằng `doRongChu` (khuôn thẻ hoá đơn G74) — không vừa một hàng thì hai số tiền xuống dưới căn phải, dòng phụ `formatLienKhoi`; tiêu đề *Giao dịch gần đây*
+(`TieuDeGiaoDichGanDay`, tách từ `home_page.dart`) `Flexible`; màn Đăng nhập: *Quên mật khẩu?* `Flexible` căn phải, chân trang `Wrap` căn giữa; thẻ tổng Sổ
+giao dịch và hai nút Google / Apple dùng `NhanCoDeu` (ô biểu tượng Apple 24 dp như Google). **Đo Realme bản release `b7d30bd6`** (SHA-1 `9ca6af32…`, cài
+11:34, vẫn cỡ chữ 1,6 + 320 dp, mở khoá bằng `keyevent` PIN): ✅ *Xem tất cả* trọn trong lề (tiêu đề 2 dòng) · thẻ *Giáo dục* / *Ăn uống* / *Di chuyển*:
+*"Còn 490.000 đ"* một dòng, *"10.000 đ / 500.000 đ"* dưới căn phải · thẻ tổng Sổ: *"0 đ"* · *"-310.000 đ"* · *"-310.000 đ"* cùng cỡ. **Máy ảo bản debug
+320 dp × 1,6** (màn Đăng nhập — Realme không đăng xuất): ✅ hai hàng hết tràn, 0 điểm sọc dải (250, 250, 58); ❌ lộ lỗi mới — nút **"Googl"** cụt chữ
+khi mở lạnh: `NhanCoDeu` đo trong `builder` của `LayoutBuilder` lúc font Inter (`google_fonts`, không đóng gói) **chưa nạp**, `Text` tự đo lại còn
+`builder` thì không (ràng buộc không đổi). Ép dựng lại (đổi cỡ chữ 1,55 → 1,6) thì trọn chữ — xác nhận gốc. Sửa: `BoCucTheoFont` (`core/ui/do_chu.dart`,
+`LayoutBuilder` dựng lại khi `PaintingBinding.systemFonts` báo đổi) cho `NhanCoDeu`, thẻ ngân sách và — người dùng chọn sửa luôn — chín chỗ đo chữ khác
+(câu hỏi ghi nhầm *"4 chỗ"*, quét đủ `lib/` ra 9; có hai chỗ ở Trang chủ); test quét 39. Mở lạnh máy ảo sau sửa: *"Google"* trọn chữ, cùng cỡ *"Apple"*;
+cỡ thường (420 dpi × 1,0) nhìn như cũ. Thấy thêm, **không** sửa (chưa ai chọn): thẻ *Chưa đặt ngân sách* ở 1,6 cắt dòng phụ *"khoảng 2.010.000 đ …"*
+(trần hai dòng của G78); thẻ D1 *"Tin ngân hàng, biên lai và lần …"* cắt. ⚠️ Máy ảo **mất token** sau lượt đo — mẹo đăng xuất bằng xoá
+`FlutterSecureStorage.xml` rồi chép bản sao về **không còn dùng được** với kho 10.3.4 (`resetOnError` xoá token, *Chạy máy ảo* ở `CLAUDE.md`); SQLite
+còn nguyên, và phiên của máy ảo vốn đã bị backend từ chối từ 2026-10-17 (401, 29 thao tác chờ đẩy).
 
 ⚠️ Bẫy đo: (1) **bản release không vẽ sọc vàng** báo tràn (chỉ debug) — đếm điểm vàng trên ảnh release luôn ra 0, phải chấm bằng mắt; (2) ColorOS lưu cỡ chữ
 ở `settings system font_scale` nhưng chỉ khi kéo **thanh "Cỡ phông chữ"** (lần đầu người dùng đổi chỗ khác, `mGlobalConfiguration` vẫn `{1.0 …}`) — đọc

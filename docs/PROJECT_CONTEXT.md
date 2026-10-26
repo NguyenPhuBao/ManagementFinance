@@ -614,9 +614,20 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-25)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-26)
 
 ### 🔐 Khoá ứng dụng — PIN 6 số + vân tay Keystore (2026-10-25, mã xong + qua review toàn nhánh và đợt sửa cuối; nghiệm thu Realme buổi 1 — F1 + M11; buổi 2 — M5, thanh trạng thái, `flutter_secure_storage` 10; phiên 8 — M7 · M8 · M12, buổi 3)
+
+- **Phiên 10 (2026-10-26 trưa; lượt sửa 2 của phiên 9 — người dùng đã chọn sửa cả bốn chỗ):** (1) **thẻ từng ngân sách** (`budget_tabs_view.dart`)
+  chọn bố cục theo bề rộng thật (`doRongChu`, khuôn G74): không vừa một hàng thì hai số tiền xuống dưới căn phải — Realme 320 dp × 1,6 từng gãy *"Còn
+  49 / 0.000 / đ"*; dòng phụ `formatLienKhoi`; (2) **Trang chủ** tách `TieuDeGiaoDichGanDay` (`home/presentation/widgets/`), tiêu đề `Flexible` — *Xem tất
+  cả* thôi bị cắt; (3) **màn Đăng nhập** *Quên mật khẩu?* `Flexible` căn phải, chân trang `Wrap` căn giữa; (4) **lệch cỡ** thẻ tổng Sổ giao dịch + nút Google /
+  Apple → `NhanCoDeu` (ô biểu tượng Apple 24 dp). Đo Realme (release) + máy ảo (debug, màn Đăng nhập) đạt, nhưng lộ **lỗi font nạp muộn**: Inter tải bằng
+  `google_fonts` (không đóng gói) nạp sau khung đầu, phép đo chữ trong `LayoutBuilder` không chạy lại → nút *"Googl"* cụt khi mở lạnh; bộ test mù vì nạp font
+  trước khi dựng. Sửa bằng **`BoCucTheoFont`** (`core/ui/do_chu.dart` — `LayoutBuilder` dựng lại khi `PaintingBinding.systemFonts` đổi) ở `NhanCoDeu`, thẻ
+  ngân sách và chín chỗ đo chữ khác (người dùng chọn sửa luôn), **test quét 39** `core/ui/do_chu_qua_bo_cuc_theo_font_test.dart`. Chi tiết số đo: mục 10
+  `KHOA_APP_FEATURE.md` (*Lượt sửa 2*). ⚠️ Mẹo đăng xuất máy ảo bằng xoá tệp kho rồi chép bản sao về **hỏng** với `flutter_secure_storage` 10.3.4 (token mất,
+  phải đăng nhập lại — máy ảo đang ở màn Đăng nhập). Test **8.106 / 10 skip**, analyze 20. Commit `b7d30bd6` · `0251284e` · `711c3cf0`; chưa push.
 
 - **Phiên 9 (2026-10-26; người dùng chọn M15 + nút Google, dựng `--release`, nghiệm thu còn lại, rồi soát bảo mật · biên lai MB · M13):** (1) **M15** — hàng
   *Tự khoá sau* đo tiêu đề + giá trị bằng `TextPainter` (họ chữ theme + `textScaler`), không vừa thì giá trị xuống dưới dòng phụ (mục 8 `KHOA_APP_FEATURE.md`);
