@@ -4665,10 +4665,34 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
      - Dàn trải Khối 1 thành lưới 2 cột cân xứng (`grid-cols-1 lg:grid-cols-2`): Cột 1 "Tín Hiệu Xâm Nhập & Tấn Công" (Vector 1 Xác thực & Vector 3 Khai thác), Cột 2 "Sức Chịu Tải & Phần Cứng" (Vector 2 Lưu lượng & Vector 4 Tài nguyên).
      - Biểu đồ xu hướng: Bỏ toàn bộ hàng bộ chọn ngày giờ chi tiết và banner ưu tiên; loại bỏ đường trần nét đứt Max composite tím (`#8b5cf6`), nhãn `"Trần Max"` trong Legend, và dòng `"Threat Score"` trong tooltip để tập trung 100% vào 4 Vector độc lập.
      - Modal Tái hiệu chuẩn Baseline: Hiển thị bảng quy đổi tương quan rõ ràng Baseline $N \times 10$ RPM & Safe Peak $N \times 30$ RPM $\leftrightarrow N / 2$ RPS; input `trafficSpikeRps` có chú thích req/phút tương đương.
+### 4.26. Chuẩn Hóa Module SYNC, Đặc Tả Thu Thập Thiết Bị & IP, Và Cập Nhật Toàn Diện Tài Liệu Admin-Web (2026-10-26)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/superpowers/plans/2026-10-26-sync-device-tracking-and-admin-docs-alignment.md`](docs/superpowers/plans/2026-10-26-sync-device-tracking-and-admin-docs-alignment.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn diện 4 trụ cột nghiệp vụ:
+  1. *CSDL & Module SYNC:* Chuẩn hóa trường đồng bộ của 6 thực thể (Wallets: 13, Categories: 12, Goals: 22, Bills: 21, Budgets: 17, Transactions: 13) khớp 100% với `sync_payload_contract_test.dart`. Cập nhật Backend Module SYNC hỗ trợ `is_deleted` (snake_case) bên cạnh `isDeleted` (camelCase). Ghi nhận chi tiết vào [`docs/superpowers/sync/SYNC_DOCUMENTATION.md`](docs/superpowers/sync/SYNC_DOCUMENTATION.md) kèm Mục V checklist cho Client-app.
+  2. *Đặc tả Thu thập Thông tin Thiết bị & IP:* Ghi nhận cơ chế Diff Check (Đổi IP hoặc Device Name thì INSERT dòng mới không ghi đè; Trùng thì UPDATE `last_active_at`). Thẩm định CSDL Migration 35 (`account_device_history`): Zero constraint conflicts, hoàn toàn an toàn. Hướng dẫn Client-app gửi header `x-device-name` qua Dio Interceptor, Backend tự động bóc tách và che bớt IP (`113.161.xx.xx`) theo Nghị định 13/2023/NĐ-CP. Ghi nhận tại [`docs/Admin-web/IP-Device-ClientApp.md`](docs/Admin-web/IP-Device-ClientApp.md).
+  3. *Hợp đồng Sự kiện & Thông báo:* Ghi nhận 18 sự kiện Socket.io và 9 mã chốt chặn HTTP tại [`docs/Admin-web/Event-Notification-to-ClientApp.md`](docs/Admin-web/Event-Notification-to-ClientApp.md) kèm ma trận hiện trạng và checklist dành cho Client-app.
+  4. *Cập nhật Toàn Diện Thư Mục Tài Liệu Admin-web:* Cập nhật chuẩn hóa 11 tài liệu chức năng từ `01-authentication-and-authorization.md` đến `11-full-realtime-architecture.md` và `README.md` trong `docs/Admin-web/`.
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **Backend Module SYNC (`src/Backend/modules/sync/sync.repository.js`):**
+     - Bổ sung kiểm tra `if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }` trong `mapEntityFields` cho cả 6 entity (`wallet`, `category`, `goal`, `bill`, `budget`, `transaction` [với `deleted_at`]).
+  2. **Đồng Bộ Tài Liệu SYNC (`docs/superpowers/sync/SYNC_DOCUMENTATION.md`):**
+     - Bảo toàn 100% các ghi chú lịch sử phát triển quý giá (G28, G34, G37, G67, G85).
+     - Chuẩn hóa số trường: Wallets: 13, Categories: 12, Goals: 22, Bills: 21, Budgets: 17, Transactions: 13.
+     - Bổ sung **Mục V: Công Việc Phía Client-App Cần Làm & Điều Chỉnh Đồng Bộ** (Xóa mềm `is_deleted`, Tắt nhắc hóa đơn `time_notification: null`, Trạng thái hóa đơn `pay_status: 'Skipped'`, Trạng thái lưu trữ ví `status: 'Active'/'Inactive'`, Tự động giải mã `note` qua HTTPS, Gửi header `x-device-name`).
+  3. **Đặc Tả Thiết Bị & IP (`docs/Admin-web/IP-Device-ClientApp.md`):**
+     - Phân tích ràng buộc CSDL (Không có Unique constraint, Zero conflicts).
+     - Chi tiết cơ chế Diff-Check, Throttle 60s, Nghị định 13/2023/NĐ-CP, hướng dẫn Flutter Dio Interceptor, 2-Tier Testing, và Golden Rules.
+  4. **Hợp Đồng Sự Kiện & Thông Báo (`docs/Admin-web/Event-Notification-to-ClientApp.md`):**
+     - Chuẩn hóa 18 sự kiện thời gian thực Socket.io và 9 mã chốt chặn HTTP/API.
+     - Ma trận đối chiếu hiện trạng và checklist thực thi cho Dev Client-App.
+  5. **Cập Nhật 11 Tài Liệu Chức Năng & README.md Tại `docs/Admin-web/`:**
+     - Phản ánh toàn bộ các nâng cấp mới nhất: `is_first_login`, `created_by_admin_id`, mã PIN cấp 2, Uptime thực tế, bảng rộng x2, CPU/RAM delta ticks, thiết bị & IP `account_device_history`, khôi phục danh mục kèm keyword AI, Migration 36 (`actual_duration_seconds`), Live timer, AIOps tối giản 4 vector độc lập (bỏ Threat Score), SSE Ping 15s.
 - **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
-  - **Admin-web Frontend Tests:** **83/83 tests PASS 100%** trên toàn bộ 8 test suites AIOps (`aiops.page.test.jsx`, `aiops.trend.chart.and.rca.fixes.test.jsx`, `phase3.i18n.test.jsx`, `aiops.ui.fixes.matrix.test.jsx`, `aiops.po_req.2tier.test.jsx`, `aiops.quarantine.forensics.ui.test.jsx`, `aiops.object.and.ip.masking.test.jsx`, `aiops.refinement.service.2tier.test.jsx`).
-  - **Backend Tests:** **438/438 tests PASS 100%** (`aiops.detector.test.js` cùng toàn bộ 79 suites).
-  - **Zero Regressions:** 100% bảo toàn các tính năng phòng vệ tự động, phân tích nguyên nhân gốc rễ (RCA), bộ lọc 5 preset thời gian thực và đồng bộ Socket.io.
+  - **Backend Test Suite:** **438/438 tests PASS 100%** (79 suites).
+  - **Data Security Suite:** **13/13 tests PASS 100%** (`test_data_security_encryption_and_masking.js`).
+  - **Admin-web Frontend Build:** `npm run build` hoàn tất sạch sẽ trong 2.89s, 0 lỗi cú pháp/type.
+  - **Zero Regressions:** 100% bảo toàn các luồng vận hành của hệ thống.
+
 
 
 
