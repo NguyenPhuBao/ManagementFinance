@@ -318,15 +318,15 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 
 ## 7. Test và quét
 
-- **161 ca** khai báo trong 18 tệp dưới `test/features/khoa_app/` (đếm bằng Python cùng mẫu 2026-10-26 sau phiên 9: +3 M15); trước đó **158 ca** (2026-10-25 khuya sau phiên 8: +8 M7 · M8 · M12 · `_napCho`; `flutter test` chạy ra 160 vì vòng lặp khổ màn); trước đó **150 ca** (2026-10-25 tối, sau M5 + thanh trạng thái + M14: +5 `lop_khoa_app_back_test.dart`
+- **166 ca** khai báo trong 18 tệp dưới `test/features/khoa_app/` (đếm bằng Python cùng mẫu 2026-10-26 sau phiên 9: +3 M15, +5 M13); trước đó **158 ca** (2026-10-25 khuya sau phiên 8: +8 M7 · M8 · M12 · `_napCho`; `flutter test` chạy ra 160 vì vòng lặp khổ màn); trước đó **150 ca** (2026-10-25 tối, sau M5 + thanh trạng thái + M14: +5 `lop_khoa_app_back_test.dart`
   (GoRouter thật), +2 `lop_khoa_app_thanh_trang_thai_test.dart`, +1 lớp mờ tấm Quên PIN ở `lop_khoa_app_test.dart`, +2 `MAT_KHOA` (service, cubit); chiều 140, trước đó 128), cộng `test/core/router/theo_doi_route_cong_khai_test.dart` (observer), ca ở `phien_dieu_phoi_that_test.dart`
   (hook `sauXacThucMatKhau` / `xoaKhoaApp` / `datLaiKhoaApp`), `auth_bloc_buoc_dang_xuat_test.dart` (thứ tự mở phiên với `PhienDieuPhoiThat` thật) và `noi_dung_cai_dat_khoa_app_test.dart` (viên *Đang bật*, kể cả `Mo(daBat:false)` và `Tat`).
-- Mốc toàn bộ: **8.056 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-26 sau M15 + nút Google — +3 khoá app, +2 `login_page_nut_google_test.dart`; 8.051 đo 2026-10-25 khuya sau phiên 8 — +8 khoá app, +2 socket `realtime_socket_dong_test.dart`, +4 thanh trạng thái; 8.037 sau M14; 8.035 sau M5 + thanh trạng thái `c5010e1b`, trên `flutter_secure_storage` 10.3.4; chiều 8.027 sau F1 + M11 `4c7945ed`; trước đó 8.017 sau `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá `be3bdf26` thêm 4 ca: hai ở
+- Mốc toàn bộ: **8.061 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-26 sau M15 + nút Google + M13 — +8 khoá app, +2 `login_page_nut_google_test.dart`; 8.051 đo 2026-10-25 khuya sau phiên 8 — +8 khoá app, +2 socket `realtime_socket_dong_test.dart`, +4 thanh trạng thái; 8.037 sau M14; 8.035 sau M5 + thanh trạng thái `c5010e1b`, trên `flutter_secure_storage` 10.3.4; chiều 8.027 sau F1 + M11 `4c7945ed`; trước đó 8.017 sau `be3bdf26`; xem *Lệnh hay dùng* `CLAUDE.md`). Bản vá `be3bdf26` thêm 4 ca: hai ở
   `lop_khoa_app_roi_phien_test.dart` (`/login` tự `showDialog` → gỡ trước van; popup trên trang được bảo vệ không làm tín hiệu `true`) và hai ở `test/core/router/route_cong_khai_ten_route_test.dart`.
 - Mảng mới phải qua các quét sẵn có: 22 (`presentation/` không chạm CSDL), 25 (vị trí tệp — `core/router` là chủ đề sẵn có), 27 (không `<dynamic>` trần ở `data/` +
   `application/`), 38 (không log PII — **không** canh PIN / bí mật, bẫy 19). Không thêm test quét mới.
 - **Ca test còn MÙ** (chỉ máy thật / chưa có ca): dây nối `main.dart` → `phienDauChoKhoaApp` (hàm thuần đã có ca); **I1 bản ffi** (host Windows trả `null`; ca `dong_ho_khoi_dong_test` chỉ canh "null hoặc số không âm đơn điệu"); C1 trên máy thật
-  (ca GoRouter thật phủ ba đường nhưng animation nền tảng khác — cần quay 60 fps); BiometricPrompt thật, ColorOS `inactive` vs `paused`; TalkBack; bàn phím vật lý; bản release R8;
+  (ca GoRouter thật phủ ba đường nhưng animation nền tảng khác — cần quay 60 fps); BiometricPrompt thật, ColorOS `inactive` vs `paused`; TalkBack; bàn phím vật lý trên máy (ca M13 dùng `sendKeyEvent`); bản release R8;
   bước chuyển dữ liệu của `flutter_secure_storage` 10 (mã Android gốc — chỉ logcat trên máy, bẫy 27). Back khi khoá (bẫy 14) nay có ca GoRouter thật, kênh `xuong_nen` vẫn chỉ giả.
 
 ## 8. Việc còn mở (chưa sửa — từ review toàn nhánh 2026-10-25, đáng xem trước khi sửa mã)
@@ -337,7 +337,11 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 - ~~**M11** Mọi đăng nhập mật khẩu tắt khoá **im lặng**~~ — ✅ **đóng 2026-10-25**: người dùng chọn dòng nhắc *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"* (bẫy 24). Nghiệm thu trên máy cần đăng nhập lại bằng mật khẩu → đi cùng bước 10a (cần backend `PersonFinance`).
 - ~~**M12**~~ — ✅ **đóng 2026-10-25 (phiên 8)**: `TIMEOUT` → `HUY` (hộp tự hết giờ: không câu lỗi), `SECURITY_UPDATE_REQUIRED` (hằng API 31, số nguyên — an toàn ở API 28–30) → `KHONG_HO_TRO`; `xoaHet` bọc `try` quanh **từng** `deleteEntry`. Nghiệm thu = ca đọc mã `kenh_sinh_trac_noi_day_test` + `flutter build apk --debug` biên dịch đạt — **không đo được trên máy**: hộp vân tay Realme đứng **78 s không tự hết giờ** (đo 2026-10-25), chưa máy nào cần bản vá bảo mật. Ở màn khoá `KHONG_HO_TRO` và `LOI` cùng một câu `kCauVanTayHong` — đổi mã chỉ khác ở đường bật vân tay.
   Mô tả gốc: `TIMEOUT` → `LOI`, `SECURITY_UPDATE_REQUIRED` → `LOI` (người chờ ở màn khoá thấy câu chung *"Không mở được bằng vân tay — nhập mã PIN"*); một `try` chung quanh `forEach deleteEntry`.
-- **M13** Lớp phủ không nhận phím số của bàn phím vật lý (chỉ Tab + Enter từng phím) — để lại, đã ghi.
+- ~~**M13**~~ — ✅ **mã xong 2026-10-26 (phiên 9)**, người dùng chọn làm: `ManKhoa` bọc `Focus` (nút tiêu điểm riêng, **xin tường minh** sau khung đầu —
+  `autofocus` không chạy khi phạm vi gốc còn nhớ tiêu điểm của route bên dưới) nghe hàng số + bàn số (`digit0–9`, `numpad0–9`) và Backspace; phím khác đi tiếp
+  (Tab / Enter / Space giữ nguyên). Luật tắt số **một** định nghĩa `_tatSo` (đang chờ ∨ đang kiểm) cho cả phím trên màn lẫn bàn phím; tấm Quên PIN mở thì bỏ qua
+  phím. Test: 5 ca ở `lop_khoa_app_test.dart` (gõ + Backspace + bàn số → mở khoá, chấm theo phím, đang chờ không lọt số, tấm Quên PIN, ô đang gõ bên dưới không
+  nhận phím) — năm bản sai đều đỏ. Mô tả gốc: lớp phủ không nhận phím số của bàn phím vật lý (chỉ Tab + Enter từng phím).
 - ~~**M15**~~ — ✅ **mã xong 2026-10-26 (phiên 9)**, người dùng chọn *"giá trị xuống dòng khi chật"*: `_hang(giaTri:)` của `khoa_app_page.dart` đo bề rộng tiêu đề
   và giá trị bằng `TextPainter` (họ chữ của `DefaultTextStyle` + `MediaQuery.textScalerOf` — đỡ cả cỡ chữ lớn); tiêu đề không vừa một dòng bên cạnh giá trị thì giá
   trị + mũi tên xuống dưới dòng phụ, còn lại giữ bố cục Stitch `129c2d77` (lệch Stitch có chủ ý, chỉ ở khổ hẹp). Test: 3 ca ở `khoa_app_page_test.dart` (320 dp +

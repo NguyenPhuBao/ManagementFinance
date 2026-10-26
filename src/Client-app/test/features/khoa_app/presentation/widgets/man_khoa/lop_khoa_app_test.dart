@@ -287,6 +287,83 @@ void main() {
     h.dispose();
   });
 
+  group('M13 — bàn phím vật lý', () {
+    Future<void> phim(WidgetTester t, List<LogicalKeyboardKey> ds) async {
+      for (final k in ds) {
+        await t.sendKeyEvent(k);
+        await t.pump();
+      }
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 50));
+    }
+
+    testWidgets('hàng số + bàn số gõ PIN, Backspace xoá một số → mở khoá', (t) async {
+      await khoaPhien(t);
+      await phim(t, [
+        LogicalKeyboardKey.digit2,
+        LogicalKeyboardKey.digit4,
+        LogicalKeyboardKey.numpad6,
+        LogicalKeyboardKey.digit9,
+        LogicalKeyboardKey.backspace,
+        LogicalKeyboardKey.numpad8,
+        LogicalKeyboardKey.digit1,
+        LogicalKeyboardKey.digit0,
+      ]);
+      expect(find.text('Nhập mã PIN'), findsNothing,
+          reason: 'trước M13 lớp khoá không nghe phím số — bàn phím Bluetooth / bàn phím rời không mở được app');
+    });
+
+    testWidgets('chấm theo phím: ba số → ba chấm đầy', (t) async {
+      await khoaPhien(t);
+      await phim(t, [LogicalKeyboardKey.digit1, LogicalKeyboardKey.digit2, LogicalKeyboardKey.digit3]);
+      expect(chamPin('day'), findsNWidgets(3));
+    });
+
+    testWidgets('đang chờ sau nhiều lần sai: phím số bàn phím không lọt vào PIN kế', (t) async {
+      await khoaPhien(t, soLanSai: 5);
+      await phim(t, [LogicalKeyboardKey.digit1, LogicalKeyboardKey.digit2, LogicalKeyboardKey.digit3]);
+      expect(chamPin('day'), findsNothing, reason: 'đang chờ không nhận số — cùng luật với phím trên màn');
+      nay = nay.add(const Duration(seconds: 31));
+      await t.pump(const Duration(seconds: 31));
+      await go(t, '246810');
+      expect(find.text('Nhập mã PIN'), findsNothing, reason: 'số gõ lúc chờ lọt vào PIN thì 246810 gửi đi sai');
+    });
+
+    testWidgets('tấm Quên PIN đang mở: phím số không gõ vào PIN', (t) async {
+      await khoaPhien(t);
+      await t.tap(find.text('Quên mã PIN?'));
+      await t.pump(const Duration(milliseconds: 300));
+      await phim(t, [LogicalKeyboardKey.digit1, LogicalKeyboardKey.digit2]);
+      await t.tap(find.text('Huỷ'));
+      await t.pump(const Duration(milliseconds: 300));
+      expect(chamPin('day'), findsNothing);
+    });
+
+    testWidgets('ô đang gõ bên dưới: phím số khi khoá vào PIN, không vào ô', (t) async {
+      await sv.datPin(10, '246810');
+      final o = TextEditingController();
+      addTearDown(o.dispose);
+      final tieuDiem = FocusNode();
+      addTearDown(tieuDiem.dispose);
+      await t.pumpWidget(BlocProvider.value(
+        value: cubit,
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          builder: (context, child) => lop(child!),
+          home: Scaffold(body: TextField(controller: o, focusNode: tieuDiem)),
+        ),
+      ));
+      tieuDiem.requestFocus();
+      await t.pump();
+      await cubit.nhanPhien(10);
+      await t.pump();
+      expect(find.text('Nhập mã PIN'), findsOneWidget);
+      await phim(t, [LogicalKeyboardKey.digit5, LogicalKeyboardKey.digit5]);
+      expect(o.text, isEmpty, reason: 'nội dung dưới lớp khoá không được nhận phím');
+      expect(chamPin('day'), findsNWidgets(2));
+    });
+  });
+
   for (final kho in const [Size(360, 640), Size(360, 800)]) {
     testWidgets('khổ ${kho.width.toInt()} × ${kho.height.toInt()}: màn khoá không tràn', (t) async {
       t.view.physicalSize = kho;

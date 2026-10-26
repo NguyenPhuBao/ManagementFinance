@@ -621,7 +621,8 @@ src/Backend/
 - **Phiên 9 (2026-10-26; người dùng chọn M15 + nút Google, dựng `--release`, nghiệm thu còn lại, rồi soát bảo mật · biên lai MB · M13):** (1) **M15** — hàng
   *Tự khoá sau* đo tiêu đề + giá trị bằng `TextPainter` (họ chữ theme + `textScaler`), không vừa thì giá trị xuống dưới dòng phụ (mục 8 `KHOA_APP_FEATURE.md`);
   **nút Google / Apple** màn Đăng nhập (ngoài mảng khoá app): đệm ngang 12 + nhãn một dòng tự co (`FittedBox`). ⚠️ Test khổ hẹp của trang Đăng nhập đặt cỡ chữ
-  **0,55** để font test (rộng ~gấp đôi Inter) có tỷ lệ chữ / đệm gần máy thật — ở cỡ 1 ba hàng khác tràn giả. Test **8.056 / 10 skip**, analyze 20.
+  **0,55** để font test (rộng ~gấp đôi Inter) có tỷ lệ chữ / đệm gần máy thật — ở cỡ 1 ba hàng khác tràn giả. (2) **M13** — màn khoá nhận phím số + Backspace
+  của bàn phím vật lý (`Focus` riêng xin tiêu điểm tường minh; luật tắt số một định nghĩa `_tatSo`; mục 8 `KHOA_APP_FEATURE.md`). Test **8.061 / 10 skip**, analyze 20.
 
 - **Phiên 8 (2026-10-25 khuya; người dùng chọn cả bốn việc mở của bàn giao phiên 7):** (1) **M7 · M8 · M12 · `_napCho`** (`b49217ca`) — mốc chờ sau sai PIN xa hơn
   15 phút kẹp về `nay + kChoToiDa` **và ghi lại** kho (bẫy 28: kẹp không ghi = đếm ngược không về 0), `resumed` khi đang khoá đọc lại kho; lượt làm tươi P9 bỏ bản đọc
