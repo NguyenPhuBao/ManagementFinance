@@ -626,8 +626,10 @@ src/Backend/
 - ✅ **503 quá tải** (`0d3aacc2`): `SERVER_OVERLOADED` (`load-shedding.middleware.js`, event loop > 250 ms, `Retry-After: 5`) và
   `DB_POOL_OVERLOADED` (`db-bulkhead.js`, không header) ở lượt đẩy → `SyncEngine` không tính lượt hỏng, hẹn theo `Retry-After` (sàn
   30 s), kết thúc `pending` — trước đó là chu kỳ `error` → thông báo *"Đồng bộ hỏng"* sau **một** chu kỳ. Trần 3 chu kỳ liên tiếp
-  (`SyncEngine.soLanQuaTaiKhongTinh`), quá thì tính như lỗi thường. Không qua `TrangThaiMayChu` (không dòng nhắc / toast). Bảng
-  *Phân loại lỗi đẩy dữ liệu* (mục 6) cập nhật.
+  (`SyncEngine.soLanQuaTaiKhongTinh`), quá thì tính như lỗi thường; `start()` / `stop()` xoá chuỗi (qua `_resetBackoff`). Không
+  qua `TrangThaiMayChu` (không dòng nhắc / toast). Bảng *Phân loại lỗi đẩy dữ liệu* (mục 6) cập nhật. ⚠️ Giới hạn đã biết: trần đếm
+  **chu kỳ**, mà mỗi lần ghi cục bộ trong lúc chờ vẫn kích một chu kỳ (`scheduleSync` gộp trong 2 s; như bảo trì G89) — bốn lần
+  ghi cách nhau hơn 2 s giữa một đợt quá tải vẫn chạm trần và báo.
 - ✅ **`x-device-name`** (Android): kênh Kotlin `flowmoney/thiet_bi` (`ThietBi.kt`, **không** `device_info_plus`) → `docTenThietBi`
   (`core/api/ten_thiet_bi.dart`, ASCII in được ≤ 150) đọc **một lần** ở `setupDependencies`, gắn vào BaseOptions của Dio chung **và**
   Dio `/auth/refresh`; kênh đăng ký ở **cả** engine app lẫn engine nền (`TuChuyenTien.chayHeadless`) — backend thêm một dòng

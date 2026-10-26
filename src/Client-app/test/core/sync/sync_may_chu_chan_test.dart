@@ -237,6 +237,19 @@ void main() {
     expect(engine.status, SyncStatus.pending);
   });
 
+  test('stop() + start() (đăng xuất / đăng nhập lại) xoá chuỗi quá tải như mọi trạng thái giãn cách', () async {
+    await themThaoTacCho();
+    final engine = await chay(_Adapter(quaTai));
+    for (var i = 1; i < SyncEngine.soLanQuaTaiKhongTinh; i++) {
+      await engine.syncNow();
+    }
+    engine.stop();
+    await engine.start(idaccount: accountId);
+    expect(engine.consecutiveFailures, 0,
+        reason: 'phiên mới không được thừa chuỗi quá tải của phiên trước — `_resetBackoff` xoá mọi thứ khác');
+    expect(engine.status, SyncStatus.pending);
+  });
+
   test('503 KHÔNG code (lỗi lược đồ) → vẫn giãn cách như cũ', () async {
     await themThaoTacCho();
     final engine = await chay(_Adapter((_) => _json(503, {'success': false, 'message': 'x'})));
