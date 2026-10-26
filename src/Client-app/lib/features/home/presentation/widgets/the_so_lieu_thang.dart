@@ -57,7 +57,7 @@ class TheSoLieuThang extends StatelessWidget {
       CurrencyFormatter.formatCoDau(net, thu: net >= 0),
     ];
     const nhan = ['Thu nhập', 'Chi tiêu', 'Thu net'];
-    return LayoutBuilder(builder: (context, rang) {
+    return BoCucTheoFont(builder: (context, rang) {
       final oChu = (rang.maxWidth - 2 * _khe) / 3 - _leTrong;
       final coSo =
           _coChung(context, soTien, _The.kieuSoTien, _coSoToiDa, oChu);

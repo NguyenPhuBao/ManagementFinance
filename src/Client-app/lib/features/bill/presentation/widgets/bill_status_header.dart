@@ -75,7 +75,7 @@ class BillStatusHeader extends StatelessWidget {
     // 320 dp) chip "CHƯA THANH TOÁN" chiếm 110 dp, cột chữ còn 68 dp trong khi
     // "Hạn 25/09/2026" cần 107: ngày gãy hai dòng, tên cụt. Khi ĐO thấy không
     // vừa, chip xuống dưới cột chữ (người dùng chọn); màn đủ chỗ giữ dáng cũ.
-    return LayoutBuilder(builder: (context, rang) {
+    return BoCucTheoFont(builder: (context, rang) {
       final motHang = _vuaMotHang(context, rang.maxWidth);
       final coMeta = meta != null && meta!.isNotEmpty;
       final hang = Row(

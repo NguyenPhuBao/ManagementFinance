@@ -117,7 +117,7 @@ class _BudgetBody extends StatelessWidget {
                   // ngắt ngay trước "/". Không trông vào bộ ngắt dòng: Unicode
                   // cấm ngắt TRƯỚC "/" kể cả sau dấu cách, nên cả cụm
                   // "10.000 đ / 500.000 đ" thành một khối và bị cắt ở số lớn.
-                  LayoutBuilder(builder: (context, rang) {
+                  BoCucTheoFont(builder: (context, rang) {
                     final daDung = CurrencyFormatter.formatLienKhoi(b.spent);
                     final hanMuc = CurrencyFormatter.formatLienKhoi(b.amount);
                     final motDong = 'Đã dùng $daDung / $hanMuc';

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection_container.dart';
+import '../../../../core/ui/do_chu.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
@@ -328,7 +329,7 @@ class _KhoaAppPageState extends State<KhoaAppPage> {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: LayoutBuilder(builder: (context, rang) {
+        child: BoCucTheoFont(builder: (context, rang) {
           var duoi = false;
           if (giaTri != null) {
             final rongGiaTri = _rongChu(context, giaTri, _kieuGiaTri) + 4 + 20;

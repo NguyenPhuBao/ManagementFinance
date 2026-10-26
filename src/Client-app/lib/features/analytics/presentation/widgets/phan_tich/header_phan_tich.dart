@@ -42,7 +42,7 @@ class Header extends StatelessWidget {
     // Khi ấy ô kỳ xuống hàng thứ hai, rộng hết khung (Stitch `7f05fccd…`). Chữ
     // thường vẫn MỘT hàng như Stitch gốc — phép chọn đo bề rộng thật, không đoán
     // theo hệ số cỡ chữ.
-    return LayoutBuilder(builder: (context, rang) {
+    return BoCucTheoFont(builder: (context, rang) {
       if (_vuaMotHang(context, rang.maxWidth)) {
         return Row(
           children: [

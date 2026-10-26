@@ -462,7 +462,7 @@ class _TransactionPageState extends State<TransactionPage> {
                 // NĂM. ĐO bề rộng: không vừa thì lùi về `nhanNgan` ("T10
                 // 2026") — bỏ chữ "Tháng này" chứ không bỏ năm. Cùng lối header
                 // trang Phân tích (G2).
-                child: LayoutBuilder(builder: (context, rang) {
+                child: BoCucTheoFont(builder: (context, rang) {
                   final rong = nhanRong(_ky, DateTime.now());
                   final choChu = rang.maxWidth - _rongLichVaKhe;
                   final nhan =

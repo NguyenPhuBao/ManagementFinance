@@ -635,7 +635,7 @@ class _HangTienMucTieu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phanTramChu = Text(phanTram, style: _kieuPhanTram);
-    return LayoutBuilder(builder: (context, rang) {
+    return BoCucTheoFont(builder: (context, rang) {
       if (_vuaMotHang(context, rang.maxWidth)) {
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
