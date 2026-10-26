@@ -337,18 +337,19 @@ theme) — màn này theo Stitch; (4) màu chữ phụ `#454743` (`kXamChuKhoaAp
 - ~~**M11** Mọi đăng nhập mật khẩu tắt khoá **im lặng**~~ — ✅ **đóng 2026-10-25**: người dùng chọn dòng nhắc *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"* (bẫy 24). Nghiệm thu trên máy cần đăng nhập lại bằng mật khẩu → đi cùng bước 10a (cần backend `PersonFinance`).
 - ~~**M12**~~ — ✅ **đóng 2026-10-25 (phiên 8)**: `TIMEOUT` → `HUY` (hộp tự hết giờ: không câu lỗi), `SECURITY_UPDATE_REQUIRED` (hằng API 31, số nguyên — an toàn ở API 28–30) → `KHONG_HO_TRO`; `xoaHet` bọc `try` quanh **từng** `deleteEntry`. Nghiệm thu = ca đọc mã `kenh_sinh_trac_noi_day_test` + `flutter build apk --debug` biên dịch đạt — **không đo được trên máy**: hộp vân tay Realme đứng **78 s không tự hết giờ** (đo 2026-10-25), chưa máy nào cần bản vá bảo mật. Ở màn khoá `KHONG_HO_TRO` và `LOI` cùng một câu `kCauVanTayHong` — đổi mã chỉ khác ở đường bật vân tay.
   Mô tả gốc: `TIMEOUT` → `LOI`, `SECURITY_UPDATE_REQUIRED` → `LOI` (người chờ ở màn khoá thấy câu chung *"Không mở được bằng vân tay — nhập mã PIN"*); một `try` chung quanh `forEach deleteEntry`.
-- ~~**M13**~~ — ✅ **mã xong 2026-10-26 (phiên 9)**, người dùng chọn làm: `ManKhoa` bọc `Focus` (nút tiêu điểm riêng, **xin tường minh** sau khung đầu —
+- ~~**M13**~~ — ✅ **mã xong + đo Realme đạt 2026-10-26 (phiên 9, buổi 4 — `adb keyevent` hàng số + bàn số + Backspace, bản release)**, người dùng chọn làm: `ManKhoa` bọc `Focus` (nút tiêu điểm riêng, **xin tường minh** sau khung đầu —
   `autofocus` không chạy khi phạm vi gốc còn nhớ tiêu điểm của route bên dưới) nghe hàng số + bàn số (`digit0–9`, `numpad0–9`) và Backspace; phím khác đi tiếp
   (Tab / Enter / Space giữ nguyên). Luật tắt số **một** định nghĩa `_tatSo` (đang chờ ∨ đang kiểm) cho cả phím trên màn lẫn bàn phím; tấm Quên PIN mở thì bỏ qua
   phím. Test: 5 ca ở `lop_khoa_app_test.dart` (gõ + Backspace + bàn số → mở khoá, chấm theo phím, đang chờ không lọt số, tấm Quên PIN, ô đang gõ bên dưới không
   nhận phím) — năm bản sai đều đỏ. Mô tả gốc: lớp phủ không nhận phím số của bàn phím vật lý (chỉ Tab + Enter từng phím).
-- ~~**M15**~~ — ✅ **mã xong 2026-10-26 (phiên 9)**, người dùng chọn *"giá trị xuống dòng khi chật"*: `_hang(giaTri:)` của `khoa_app_page.dart` đo bề rộng tiêu đề
+- ~~**M15**~~ — ✅ **mã xong + đo Realme đạt 2026-10-26 (phiên 9, buổi 4 mục 10 — cả cỡ chữ 1,6)**, người dùng chọn *"giá trị xuống dòng khi chật"*: `_hang(giaTri:)` của `khoa_app_page.dart` đo bề rộng tiêu đề
   và giá trị bằng `TextPainter` (họ chữ của `DefaultTextStyle` + `MediaQuery.textScalerOf` — đỡ cả cỡ chữ lớn); tiêu đề không vừa một dòng bên cạnh giá trị thì giá
   trị + mũi tên xuống dưới dòng phụ, còn lại giữ bố cục Stitch `129c2d77` (lệch Stitch có chủ ý, chỉ ở khổ hẹp). Test: 3 ca ở `khoa_app_page_test.dart` (320 dp +
   *Ngay*, khổ 600 giữ một hàng, cỡ chữ 1,5 ở **480 dp** — ở 411 dp font test chật cả ở cỡ 1 nên ca mù với bản quên `textScaler`, đã thử), ba bản sai đều đỏ. Mô tả gốc
   (Buổi 3, 320 dp): khi giá trị là *"Ngay khi rời app"*, cột phải chiếm chỗ → tiêu đề *"Tự khoá sau"* gãy 2 dòng, dòng phụ gãy 4 dòng (không tràn, 0 điểm vàng —
   chỉ chật). Cùng buổi, ngoài mảng này: nút **Google** màn Đăng nhập gãy *"Goo / gle"* ở 320 dp — sửa cùng phiên (đệm ngang 12 + nhãn một dòng tự co,
   `login_page_nut_google_test.dart`).
+- **M16** (Buổi 4, 2026-10-26) Có phím bàn phím vật lý là Android vẽ **khung tiêu điểm mặc định** (xanh-vàng (167, 209, 39), vài px) quanh cả `FlutterView` — mọi màn, chạm màn là mất; có cả trước M13 (Tab). Người dùng chọn **tắt viền** (đang sửa, phiên 9).
 - ~~**M14**~~ — ✅ **đóng 2026-10-25 tối** (người dùng chọn *sửa câu báo*): Kotlin `mo` trả mã mới **`MAT_KHOA`** khi `getKey` ra `null` (alias không còn) —
   `KeyPermanentlyInvalidatedException` vẫn là `VO_HIEU`; Dart `LoiSinhTrac.matKhoa` → service tự tắt vân tay như `voHieu`, cubit báo **`kCauVanTayDaTat`**
   *"Vân tay đã tắt — nhập mã PIN rồi bật lại trong Cài đặt"*. Thứ tự đăng xuất (`dongPhien` trước POST) **giữ nguyên** (bẫy 4). Test: 4 ca (dịch mã, nối dây Kotlin
@@ -553,3 +554,20 @@ logcat của buổi đã dừng, `adb reverse` trả về `tcp:3000 tcp:3000`, t
 backend (đang giãn sau lần hỏng) — lần mở kế tự kéo. Dấu vết trong CSDL dev `PersonFinance` (cố ý): `auditlog` một cặp khoá / mở tài khoản 10 (admin, lý do
 *"Kiem thu phien 8 - kenh socket, tam thoi"*, 21:33), `refreshtoken` mới của tài khoản 10 và admin. Một `adb logcat` của phiên trước (pid 11868, chạy từ
 17:55) còn sống — không do buổi này mở, để nguyên.
+
+**Buổi 4 — 2026-10-26 sáng (09:27–09:53, phiên 9), Realme, bản RELEASE** (`d7af5559` = M15 + nút Google + M13, `--dart-define=API_BASE_URL=http://127.0.0.1:3000/api`,
+ký khoá debug vì không có `android/key.properties`; 227,0 MB, SHA-1 `a62c0da7…`, cài đè bản debug bằng `adb install -r` — dữ liệu giữ nguyên, cờ gói hết
+`DEBUGGABLE`). Sao lưu trước khi cài (bản release không `run-as` được): `D:\FlowMoney-saoluu\realme-tk10-truoc-phien9-2026-10-26-0927\` (`flowmoney.db` — WAL
+đã gộp — + 11 tệp `shared_prefs/`, cỡ khớp từng tệp). Backend **tắt** cả buổi (khoá app không cần mạng). Người dùng chọn đo bước 1–4; TalkBack và máy ảnh khi
+đang giữ Gemma **chưa đo**; nút Google đo trên máy ảo (Realme phải đăng xuất mới thấy màn Đăng nhập).
+
+| Bước | Kết quả |
+|---|---|
+| 1 — R8 + vân tay (`SinhTrac.kt` đổi ở phiên 8) | ✅ mở lạnh → màn khoá → hộp `OplusBiometricPrompt` tự hiện → người dùng chạm: logcat hệ thống `Authenticated! … IsCrypto: true` (lần đầu sai ngón, lần hai đúng) → Trang chủ. Bản release qua R8 chạy đường Keystore đúng. |
+| 2 — M13 bàn phím vật lý | ✅ xuống nền 33 s (tự khoá 30 giây) → mở lại → Back đóng hộp vân tay (`HUY`, không câu lỗi) → `adb shell input keyevent` 8 · 10 · 12 (*1 3 5*) → **3 chấm** → 16 (*9*) → 4 chấm → 67 (Backspace) → 3 chấm → 151 (**bàn số** *7*) · 16 · 7 → mở khoá. Lặp lại sau khi mở rồi Huỷ tấm *Quên mã PIN?*: gõ phím vẫn mở được. ⚠️ Lộ **M16**: có phím là Android vẽ **khung tiêu điểm mặc định** (xanh-vàng (167, 209, 39), dày vài px) quanh cả `FlutterView` — chạm màn là mất; có cả trước M13 (Tab). |
+| 3 — M15 ở 320 dp | ✅ người dùng đổi cỡ hiển thị (density 540). *30 giây*: giá trị bên phải, tiêu đề một dòng. *Ngay khi rời app*: tiêu đề + dòng phụ mỗi thứ một dòng, giá trị + mũi tên xuống dưới (ảnh). Trả mức về *30 giây*. |
+| 4 — cỡ chữ lớn (1,6) + 320 dp | ✅ khoá app: màn khoá, tấm Quên PIN (nút Huỷ trọn trên màn), trang Khoá ứng dụng (*30 giây* cũng tự xuống dưới — đúng phép đo có `textScaler`; hàng công tắc xuống 2 dòng nhưng đọc được). ❌ ngoài mảng: **Trang chủ** (số tổng gãy giữa chữ số, chip *Số dư thực tế* tràn, chuông bị đẩy ra mép, nhãn nút nhanh dính nhau — có cả ở cỡ 1), **Sổ giao dịch** (thẻ tổng tràn), **Thêm giao dịch** (chip *Giọng nói & Gõ* tràn), **Phân tích** (nhãn *SỐ DƯ ĐẦ…* cắt), **Ngân sách** (hai tab lệch cỡ) — người dùng chọn sửa cả, phiên 9. |
+
+⚠️ Bẫy đo: (1) **bản release không vẽ sọc vàng** báo tràn (chỉ debug) — đếm điểm vàng trên ảnh release luôn ra 0, phải chấm bằng mắt; (2) ColorOS lưu cỡ chữ
+ở `settings system font_scale` nhưng chỉ khi kéo **thanh "Cỡ phông chữ"** (lần đầu người dùng đổi chỗ khác, `mGlobalConfiguration` vẫn `{1.0 …}`) — đọc
+`dumpsys activity | grep mGlobalConfiguration` để chắc; (3) `screencap` lúc hộp vân tay hệ thống đang mở ra tệp **0 byte** (cửa sổ bảo mật).
