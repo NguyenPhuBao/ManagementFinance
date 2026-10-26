@@ -49,7 +49,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 * **Contract-First & Zero-Guesswork:** Tuyệt đối không suy đoán tên sự kiện hay payload. Mọi trường dữ liệu đều được ánh xạ đúng theo mã nguồn Backend đã kiểm thử.
 * **Bảo Vệ Dữ Liệu Riêng Tư (Data Security & Nghị định 13/2023/NĐ-CP):** 
   - Socket events gửi tới người dùng **tuyệt đối không truyền số tài khoản ngân hàng đầy đủ, mật khẩu, mã OTP, số dư thô** (theo `Data_Security.md`).
-  - Sự kiện cưỡng chế xóa tài khoản (`ACCOUNT_DELETED`) bắt buộc Client-app phải dọn dẹp sạch dữ liệu cá nhân cục bộ trong SQLite (`purgeAccountData`).
+  - Sự kiện cưỡng chế xóa tài khoản (`ACCOUNT_DELETED`): Client-app đăng xuất và hiển thị hộp thoại thông báo lý do, bảo lưu SQLite trên máy (tránh mất dữ liệu chưa đồng bộ; dọn dẹp khi tài khoản khác đăng nhập).
 * **Phân Biệt "Đánh Thức Đồng Bộ" và "Sự Kiện Thông Điệp":**
   - Không phải sự kiện nào cũng kích hoạt `syncNow()`. Các sự kiện như nâng cấp gói, cảnh báo bảo trì, thông báo broadcast chỉ cập nhật UI / Local Storage, không ép chạy full-sync tránh nghẽn mạng và tốn pin thiết bị.
 
@@ -104,9 +104,8 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 | **4** | HTTP 403 `AIOPS_QUARANTINED` | Tường lửa Sentinel `aiops.quarantine.js` | IP bị phong tỏa an ninh | Hiển thị Dialog phong tỏa + đếm ngược mở khóa |
 | **5** | HTTP 403 `FEATURE_DISABLED` | Middleware `feature-permission.middleware.js` | Tính năng vượt quá gói cước Basic | Hiển thị BottomSheet mời nâng cấp Premium |
 | **6** | HTTP 401 `ACCOUNT_INACTIVE` | Middleware `auth.js` | Admin khóa tài khoản kèm lý do | Hiển thị Dialog lý do, điều hướng về Login |
-| **7** | HTTP 401 `ACCOUNT_DELETED` | Middleware `auth.js` | Tài khoản đã bị xóa mềm | Xóa sạch SQLite cục bộ, điều hướng Login |
-| **8** | HTTP 400 `PENDING_DELETE_PROTECTED` | Nghiệp vụ tài khoản | Tài khoản chờ thanh lý 30 ngày | Chặn thao tác sửa/xóa, thông báo hủy xóa trước |
-| **9** | WebSocket Handshake Error | `io.use` trong `core/socket.js` | Bắt tay thất bại (Token lỗi/hết hạn/khóa) | Ngắt kết nối socket, làm mới JWT token |
+| **7** | HTTP 401 `ACCOUNT_DELETED` | Middleware `auth.js` | Tài khoản đã bị xóa mềm | Đăng xuất + hiển thị Dialog lý do, bảo lưu SQLite |
+| **8** | WebSocket Handshake Error | `io.use` trong `core/socket.js` | Bắt tay thất bại (Token lỗi/hết hạn/khóa) | Ngắt kết nối socket, làm mới JWT token |
 
 ---
 
@@ -128,7 +127,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 *(Nếu bị xóa: `"reason": "ACCOUNT_DELETED"`, `"message": "Tài khoản của bạn đã bị ngừng hoạt động hoặc xóa bởi quản trị viên."`)*
 * **Xử lý bắt buộc trên Client-app:**
   1. Xóa sạch `accessToken` và `refreshToken` khỏi `FlutterSecureStorage`.
-  2. Nếu `reason == 'ACCOUNT_DELETED'`: Xóa trắng CSDL SQLite (`purgeAccountData`) để tuân thủ quyền riêng tư.
+  2. Nếu `reason == 'ACCOUNT_DELETED'`: Đăng xuất và hiển thị Popup Dialog lý do, bảo lưu SQLite trên máy.
   3. Nếu `reason == 'ACCOUNT_INACTIVE'`: Giữ nguyên dữ liệu SQLite.
   4. Mở Popup Dialog hiển thị đúng nội dung `message`. Bấm "Đồng ý" chuyển về màn hình `LoginPage`.
 
@@ -541,26 +540,11 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
   "message": "Account no longer exists or has been deleted"
 }
 ```
-* **Xử lý trên Client-app:** **Xóa trắng CSDL SQLite (`purgeAccountData`)**, xóa JWT token và điều hướng về Login.
+* **Xử lý trên Client-app:** Hiển thị Dialog thông báo lý do, bảo lưu SQLite trên máy, xóa JWT token và điều hướng về Login.
 
 ---
 
-### 5.8. HTTP 400 `PENDING_DELETE_PROTECTED` — Bảo Vệ Tài Khoản Chờ Thanh Lý 30 Ngày
-* **Phát sinh từ:** Nghiệp vụ tài khoản Backend
-* **Response Body:**
-```json
-{
-  "success": false,
-  "statusCode": 400,
-  "code": "PENDING_DELETE_PROTECTED",
-  "message": "Tài khoản đang trong thời gian ân hạn 30 ngày chờ thanh lý. Vui lòng bấm 'Hủy xóa tài khoản' để tiếp tục sửa đổi dữ liệu."
-}
-```
-* **Xử lý trên Client-app:** Hiển thị SnackBar thông báo, hướng dẫn người dùng khôi phục tài khoản trước khi thực hiện giao dịch mới.
-
----
-
-### 5.9. WebSocket Handshake Rejection — Lỗi Bắt Tay Xác Thực Socket
+### 5.8. WebSocket Handshake Rejection — Lỗi Bắt Tay Xác Thực Socket
 * **Phát sinh từ:** `io.use` trong `src/Backend/core/socket.js`
 * **Cơ chế phản hồi:** Khi Client kết nối socket với token sai, hết hạn hoặc tài khoản bị khóa:
   ```javascript
@@ -618,7 +602,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 | HTTP 403 `AIOPS_QUARANTINED` | ❌ **BỎ SÓT** | Dio Interceptor | Hiển thị Dialog phong tỏa và thời gian mở khóa. |
 | HTTP 403 `FEATURE_DISABLED` | ❌ **BỎ SÓT** | Dio Interceptor | Hiển thị BottomSheet mời nâng cấp gói Premium. |
 | HTTP 401 `ACCOUNT_INACTIVE` | ⚠️ BÁN PHẦN | `buoc_dang_xuat.dart` | Cần hiển thị đúng chuỗi `reason_inactive` của Admin từ payload. |
-| HTTP 401 `ACCOUNT_DELETED` | ⚠️ BÁN PHẦN | `buoc_dang_xuat.dart` | Bắt buộc gọi `purgeAccountData()` xóa sạch SQLite. |
+| HTTP 401 `ACCOUNT_DELETED` | ✅ ĐÃ ĐẠT (G89) | `buoc_dang_xuat.dart` | Đăng xuất + hiện Dialog lý do, bảo lưu SQLite trên máy. |
 
 ---
 
@@ -640,4 +624,4 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
   - Bắt HTTP 403 với `code == 'AIOPS_QUARANTINED'` $\longrightarrow$ hiển thị Dialog cảnh báo an ninh Sentinel.
   - Bắt HTTP 403 với `code == 'FEATURE_DISABLED'` $\longrightarrow$ mở BottomSheet nâng cấp gói.
 - [ ] **4. Tuân thủ Bảo Vệ Dữ Liệu Cá Nhân (Rule 9 & Nghị định 13/2023/NĐ-CP):**
-  - Khi nhận `account.force_logout` với `reason == 'ACCOUNT_DELETED'` hoặc HTTP 401 `ACCOUNT_DELETED`: Bắt buộc kích hoạt `purgeAccountData()` dọn dẹp sạch sẽ CSDL SQLite cục bộ.
+  - Khi nhận `account.force_logout` với `reason == 'ACCOUNT_DELETED'` hoặc HTTP 401 `ACCOUNT_DELETED`: Đăng xuất và hiển thị Dialog lý do, bảo lưu SQLite trên máy.

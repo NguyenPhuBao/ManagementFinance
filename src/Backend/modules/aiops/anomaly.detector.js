@@ -28,11 +28,17 @@ class AnomalyDetector {
     this.hourlyBaselines = this._initializeBaselines();
     this.customThresholds = {
       authFailedLogins: null,
+      authFailureThreshold: null,
       trafficRatio: null,
+      trafficSpikeRps: null,
       exploitSamples: null,
+      exploitLimit: null,
       resourceCpu: null,
+      resourceCpuPercent: null,
       resourceRam: null,
+      resourceMemoryPercent: null,
       resourceLag: null,
+      eventLoopLagMs: null,
       ...(options.customThresholds || {}),
     };
   }
@@ -260,11 +266,12 @@ class AnomalyDetector {
 
     let authScore = 0;
     // Ngưỡng phát hiện Brute-Force động theo quy mô hoặc cấu hình tùy chỉnh của Admin:
+    const customAuth = this.customThresholds.authFailureThreshold ?? this.customThresholds.authFailedLogins;
     const bruteForceThreshold =
-      this.customThresholds.authFailedLogins !== null &&
-      this.customThresholds.authFailedLogins !== undefined &&
-      Number(this.customThresholds.authFailedLogins) > 0
-        ? Number(this.customThresholds.authFailedLogins)
+      customAuth !== null &&
+      customAuth !== undefined &&
+      Number(customAuth) > 0
+        ? Number(customAuth)
         : Math.max(15, Math.round(15 + 10 * Math.log10(N / 100)));
 
     if (this.vectorConfig.auth && sample.failedLogins >= bruteForceThreshold) {
@@ -353,12 +360,16 @@ class AnomalyDetector {
     const trafficRatio = sample.requestsPerMin / expectedRpm;
     const sampleWindowRequests = Math.max(1, Math.round((sample.requestsPerMin / 60) * 10));
     const ipEntropy = sample.distinctIpsCount / sampleWindowRequests;
-    const effectiveTrafficRatio =
+    let effectiveTrafficRatio = 3.5;
+    if (this.customThresholds.trafficSpikeRps !== null && this.customThresholds.trafficSpikeRps !== undefined && Number(this.customThresholds.trafficSpikeRps) > 0) {
+      effectiveTrafficRatio = Math.max(1.1, Number((Number(this.customThresholds.trafficSpikeRps) * 60 / expectedRpm).toFixed(2)));
+    } else if (
       this.customThresholds.trafficRatio !== null &&
       this.customThresholds.trafficRatio !== undefined &&
       Number(this.customThresholds.trafficRatio) > 0
-        ? Number(this.customThresholds.trafficRatio)
-        : 3.5;
+    ) {
+      effectiveTrafficRatio = Number(this.customThresholds.trafficRatio);
+    }
 
     // Chỉ xem xét rủi ro lưu lượng khi RPM đạt tối thiểu 300 req/phút VÀ gấp effectiveTrafficRatio lần baseline
     if (sample.requestsPerMin >= 300 && trafficRatio >= effectiveTrafficRatio) {
@@ -412,11 +423,12 @@ class AnomalyDetector {
     // VECTOR 3: RỦI RO THĂM DÒ LỖ HỔNG & INJECTION (EXPLOITS & PROBES)
     // ─────────────────────────────────────────────────────────────
     let exploitScore = 0;
+    const customExploit = this.customThresholds.exploitLimit ?? this.customThresholds.exploitSamples;
     const exploitThreshold =
-      this.customThresholds.exploitSamples !== null &&
-      this.customThresholds.exploitSamples !== undefined &&
-      Number(this.customThresholds.exploitSamples) > 0
-        ? Number(this.customThresholds.exploitSamples)
+      customExploit !== null &&
+      customExploit !== undefined &&
+      Number(customExploit) > 0
+        ? Number(customExploit)
         : 8;
 
     if (sample.malformedRequests >= exploitThreshold) {
@@ -457,23 +469,26 @@ class AnomalyDetector {
     // ─────────────────────────────────────────────────────────────
     // VECTOR 4: SỨC KHỎE HẠ TẦNG & TÀI NGUYÊN (SYSTEM RESOURCES)
     // ─────────────────────────────────────────────────────────────
+    const customLag = this.customThresholds.eventLoopLagMs ?? this.customThresholds.resourceLag;
     const lagThreshold =
-      this.customThresholds.resourceLag !== null &&
-      this.customThresholds.resourceLag !== undefined &&
-      Number(this.customThresholds.resourceLag) > 0
-        ? Number(this.customThresholds.resourceLag)
+      customLag !== null &&
+      customLag !== undefined &&
+      Number(customLag) > 0
+        ? Number(customLag)
         : 250;
+    const customRam = this.customThresholds.resourceMemoryPercent ?? this.customThresholds.resourceRam;
     const ramThreshold =
-      this.customThresholds.resourceRam !== null &&
-      this.customThresholds.resourceRam !== undefined &&
-      Number(this.customThresholds.resourceRam) > 0
-        ? Number(this.customThresholds.resourceRam)
+      customRam !== null &&
+      customRam !== undefined &&
+      Number(customRam) > 0
+        ? Number(customRam)
         : 92;
+    const customCpu = this.customThresholds.resourceCpuPercent ?? this.customThresholds.resourceCpu;
     const cpuThreshold =
-      this.customThresholds.resourceCpu !== null &&
-      this.customThresholds.resourceCpu !== undefined &&
-      Number(this.customThresholds.resourceCpu) > 0
-        ? Number(this.customThresholds.resourceCpu)
+      customCpu !== null &&
+      customCpu !== undefined &&
+      Number(customCpu) > 0
+        ? Number(customCpu)
         : 85;
 
     let lagScore = 0;

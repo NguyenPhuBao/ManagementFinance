@@ -233,14 +233,17 @@ async function runTests() {
     // CASE 11: Lọc dữ liệu nhạy cảm và mã hóa At-Rest cho trường Note
     // ------------------------------------------------------------------------
     console.log(`\n11. Kiểm thử Lọc thông tin thẻ/CVV/mật khẩu & Mã hóa At-Rest cho Note...`);
-    const testAccount = await prisma.account.findFirst({ where: { status: 'Active' } });
+    const testAccount = await prisma.account.findFirst({ where: { status: 'Active', idrole: 1 } }) 
+      || await prisma.account.findFirst({ where: { status: 'Active' }, orderBy: { idaccount: 'asc' } });
     const idacc = testAccount ? testAccount.idaccount : 1;
 
     let userWallet = await prisma.wallet.findFirst({ where: { idaccount: idacc, delete_at: null } });
+    let createdWalletId = null;
     if (!userWallet) {
+      createdWalletId = crypto.randomUUID();
       userWallet = await prisma.wallet.create({
         data: {
-          idwallet: 'test-wallet-' + Date.now(),
+          idwallet: createdWalletId,
           idaccount: idacc,
           name: 'Ví Test Note',
           type: 'Cash',
@@ -250,38 +253,44 @@ async function runTests() {
     }
 
     const rawNote = 'Thanh toán trực tuyến số thẻ 4532015896321475 và cvv: 999 mật khẩu: mySecret123';
-    const testTranId = 'test-tran-note-' + Date.now();
+    const testTranId = crypto.randomUUID();
 
-    // Upsert transaction qua syncRepository
-    await syncRepository.upsertTransaction({
-      idtran: testTranId,
-      idaccount: idacc,
-      idwallet: userWallet.idwallet,
-      amount: 150000,
-      note: rawNote,
-      provider: 'Manual',
-      update_at: new Date(),
-    });
+    try {
+      // Upsert transaction qua syncRepository
+      await syncRepository.upsertTransaction({
+        idtran: testTranId,
+        idaccount: idacc,
+        idwallet: userWallet.idwallet,
+        amount: 150000,
+        note: rawNote,
+        provider: 'Manual',
+        update_at: new Date(),
+      });
 
-    // Truy vấn trực tiếp từ PostgreSQL để kiểm tra giá trị lưu At-Rest trong CSDL
-    const dbRow = await pgClient.query('SELECT "Note" FROM "transaction" WHERE "Idtran" = $1;', [testTranId]);
-    const storedInDb = dbRow.rows[0]?.Note;
+      // Truy vấn trực tiếp từ PostgreSQL để kiểm tra giá trị lưu At-Rest trong CSDL
+      const dbRow = await pgClient.query('SELECT "Note" FROM "transaction" WHERE "Idtran" = $1;', [testTranId]);
+      const storedInDb = dbRow.rows[0]?.Note;
 
-    assert(storedInDb, 'Phải có giá trị Note trong DB');
-    assert(isEncrypted(storedInDb), 'Note lưu trong CSDL bắt buộc phải là chuỗi mã hóa AES-256 (enc:...)');
-    assert(!storedInDb.includes('4532015896321475'), 'CSDL không được chứa số thẻ dạng rõ!');
+      assert(storedInDb, 'Phải có giá trị Note trong DB');
+      assert(isEncrypted(storedInDb), 'Note lưu trong CSDL bắt buộc phải là chuỗi mã hóa AES-256 (enc:...)');
+      assert(!storedInDb.includes('4532015896321475'), 'CSDL không được chứa số thẻ dạng rõ!');
 
-    // Lấy lại qua syncRepository (đã giải mã cho user)
-    const pulledList = await syncRepository.getTransactionsByAccount(idacc);
-    const pulledItem = pulledList.find(t => t.idtran === testTranId);
-    assert(pulledItem, 'Phải lấy được transaction');
-    assert(pulledItem.note.includes('[THÔNG TIN THẺ ĐÃ ĐƯỢC LƯỢC BỎ]'), 'Số thẻ phải được thay thế');
-    assert(pulledItem.note.includes('[ĐÃ LƯỢC BỎ]'), 'CVV và mật khẩu phải được loại bỏ');
+      // Lấy lại qua syncRepository (đã giải mã cho user)
+      const pulledList = await syncRepository.getTransactionsByAccount(idacc);
+      const pulledItem = pulledList.find(t => t.idtran === testTranId);
+      assert(pulledItem, 'Phải lấy được transaction');
+      assert(pulledItem.note.includes('[THÔNG TIN THẺ ĐÃ ĐƯỢC LƯỢC BỎ]'), 'Số thẻ phải được thay thế');
+      assert(pulledItem.note.includes('[ĐÃ LƯỢC BỎ]'), 'CVV và mật khẩu phải được loại bỏ');
 
-    // Dọn dẹp bản ghi test qua Xóa mềm (tuân thủ trigger protect_transaction_hard_delete)
-    await pgClient.query('UPDATE "transaction" SET "Deleted_at" = NOW() WHERE "Idtran" = $1;', [testTranId]);
-    console.log(`   ${colors.green}✔ Đạt: Note được lọc sạch thẻ/CVV/pwd và mã hóa At-Rest AES-256 trong CSDL${colors.reset}`);
-    passedCount++;
+      console.log(`   ${colors.green}✔ Đạt: Note được lọc sạch thẻ/CVV/pwd và mã hóa At-Rest AES-256 trong CSDL${colors.reset}`);
+      passedCount++;
+    } finally {
+      // Dọn dẹp bản ghi test qua Xóa mềm (tuân thủ trigger protect_transaction_hard_delete)
+      await pgClient.query('UPDATE "transaction" SET "Deleted_at" = NOW(), "Server_update_at" = NOW() WHERE "Idtran" = $1;', [testTranId]);
+      if (createdWalletId) {
+        await pgClient.query('UPDATE "wallet" SET "Delete_at" = NOW(), "Server_update_at" = NOW() WHERE "Idwallet" = $1;', [createdWalletId]);
+      }
+    }
 
     // ------------------------------------------------------------------------
     // CASE 12: Pre-signed URL cho ảnh chứng từ giao dịch (transaction.images)

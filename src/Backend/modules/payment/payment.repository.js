@@ -326,6 +326,15 @@ async function processRefund({ orderId, refundedAmount, refundProof, refundReaso
  * @param {object} data 
  */
 async function recordTransaction(data) {
+  if (data.payosTransactionId) {
+    const existingTx = await prisma.payment_transaction.findFirst({
+      where: { payos_transaction_id: String(data.payosTransactionId) },
+    });
+    if (existingTx) {
+      logger.info('[PAYMENT_REPO] Đã tồn tại giao dịch đối soát với payosTransactionId:', data.payosTransactionId);
+      return existingTx;
+    }
+  }
   return prisma.payment_transaction.create({
     data: {
       id: data.id,

@@ -348,7 +348,8 @@ describe('Admin-web Phase 3 i18n Suite — System & Operations Pages (2-Tier Tes
 
       // Tầng 1: UI Rendering ở chế độ mặc định (Tiếng Việt)
       expect(screen.getByText(/AIOps Sentinel — Giám Sát & Phòng Vệ Tự Động/i)).toBeInTheDocument();
-      expect(screen.getByText('Hệ Số Đe Dọa (Threat Score)')).toBeInTheDocument();
+      expect(screen.getByText('Tín Hiệu Xâm Nhập & Tấn Công')).toBeInTheDocument();
+      expect(screen.getByText('Sức Chịu Tải & Phần Cứng')).toBeInTheDocument();
       expect(screen.getByText(/Quy Mô Người Dùng Mục Tiêu & Mô Hình Chịu Tải/i)).toBeInTheDocument();
       expect(screen.getByText('Áp Dụng')).toBeInTheDocument();
       expect(screen.getByText('4 Vectơ Rủi Ro')).toBeInTheDocument();
@@ -380,8 +381,7 @@ describe('Admin-web Phase 3 i18n Suite — System & Operations Pages (2-Tier Tes
       expect(screen.getByText('IP Quarantine Firewall Threshold')).toBeInTheDocument();
       expect(screen.getByText('Apply')).toBeInTheDocument();
 
-      // Khối 1: Threat Score Gauge & Signals
-      expect(screen.getByText('Threat Score')).toBeInTheDocument();
+      // Khối 1: Attack & Resilience Signals (đã bỏ Threat Score gauge theo PO)
       expect(screen.getByText('Intrusion & Attack Signals')).toBeInTheDocument();
       expect(screen.getByText('Failed Logins')).toBeInTheDocument();
       expect(screen.getByText('Revoked Token Reuse')).toBeInTheDocument();
@@ -403,8 +403,7 @@ describe('Admin-web Phase 3 i18n Suite — System & Operations Pages (2-Tier Tes
       // Khối 3: SVG Chart & Timeline
       expect(screen.getByText(/Multi-Vector Risk Trend Chart/i)).toBeInTheDocument();
       expect(screen.getByText('Observation window preset:')).toBeInTheDocument();
-      expect(screen.getByText(/Time filter:/i)).toBeInTheDocument();
-      expect(screen.getByTestId('apply-custom-range-btn')).toBeInTheDocument();
+      expect(screen.queryByTestId('apply-custom-range-btn')).not.toBeInTheDocument();
 
       // Khối 4: Root Cause Analysis (RCA)
       expect(screen.getByText('Abnormal Incident Overview')).toBeInTheDocument();

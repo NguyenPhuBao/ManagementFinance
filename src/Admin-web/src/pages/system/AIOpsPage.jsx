@@ -1608,84 +1608,10 @@ const AIOpsPage = () => {
       </div>
 
       {/* ======================================================== */}
-      {/* KHỐI 1: THREAT SCORE GAUGE & METRIC HIGHLIGHTS */}
+      {/* KHỐI 1: CHỈ SỐ TÍN HIỆU AN NINH & SỨC CHỊU TẢI HẠ TẦNG */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* CỘT 1: ĐỒNG HỒ ĐO RỦI RO THỜI GIAN THỰC (THREAT SCORE GAUGE) */}
-        <div className={`bg-white rounded-2xl border p-5 shadow-sm space-y-4 flex flex-col justify-between transition-all ${theme.border}`}>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface m-0 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[18px] text-primary">speed</span>
-                {t('aiops.threatScoreTitle', 'Hệ Số Đe Dọa (Threat Score)')}
-              </h2>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${theme.badgeBg}`}>
-                {theme.label}
-              </span>
-            </div>
-
-            {/* SVG Gauge Graphic */}
-            <div className="flex flex-col items-center justify-center py-2 relative">
-              <svg className="w-48 h-28 overflow-visible" viewBox="0 0 200 110">
-                {/* Background Semicircle Arc */}
-                <path
-                  d="M 20 100 A 80 80 0 0 1 180 100"
-                  fill="none"
-                  stroke="#e2e8f0"
-                  strokeWidth="18"
-                  strokeLinecap="round"
-                />
-                {/* Active Colored Arc */}
-                <path
-                  d="M 20 100 A 80 80 0 0 1 180 100"
-                  fill="none"
-                  stroke={theme.color}
-                  strokeWidth="18"
-                  strokeLinecap="round"
-                  strokeDasharray="251.2"
-                  strokeDashoffset={251.2 - (251.2 * Math.min(100, Math.max(0, threatScore))) / 100}
-                  className="transition-all duration-700 ease-out"
-                />
-                {/* Center Score Text */}
-                <text
-                  data-testid="threat-score-value"
-                  x="100"
-                  y="92"
-                  textAnchor="middle"
-                  className="font-bold text-3xl fill-current"
-                  style={{ fill: theme.color }}
-                >
-                  {threatScore}
-                </text>
-                <text x="100" y="108" textAnchor="middle" className="text-[11px] font-medium fill-slate-500">
-                  / 100
-                </text>
-              </svg>
-
-              {/* Chú thích thang điểm: dạng lưới 2x2 badges gọn gàng, tránh dàn ngang chen chúc */}
-              <div className="grid grid-cols-2 gap-1.5 w-full max-w-[240px] text-[10px] font-medium text-slate-600 mt-2">
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span>{t('aiops.gauge.safe', '0-59: An toàn')}</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                  <span>{t('aiops.gauge.elevated', '60-79: Tăng cao')}</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-orange-50 text-orange-800 border border-orange-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                  <span>{t('aiops.gauge.warning', '80-89: Cảnh báo')}</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-50 text-red-800 border border-red-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  <span>{t('aiops.gauge.critical', '90+: Nguy cấp')}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* CỘT 2: CHỈ SỐ TẤN CÔNG & XÂM NHẬP (SECURITY ATTACK SIGNALS) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* CỘT 1: CHỈ SỐ TẤN CÔNG & XÂM NHẬP (SECURITY ATTACK SIGNALS) */}
         <div className="bg-white rounded-2xl border border-outline-variant p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-outline-variant pb-2.5">
             <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface m-0 flex items-center gap-1.5">
@@ -2254,11 +2180,8 @@ const AIOpsPage = () => {
                     className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
                       isSelected
                         ? 'bg-primary text-white border-primary shadow-xs'
-                        : customRange.applied
-                        ? 'bg-white/60 text-slate-400 border-slate-200 hover:bg-white hover:text-slate-700'
                         : 'bg-white text-slate-700 border-outline-variant hover:bg-slate-100'
                     }`}
-                    title={customRange.applied ? t('aiops.chart.reuseSelect', 'Dùng lại bộ chọn') : undefined}
                   >
                     {p.label}
                   </button>
@@ -2273,89 +2196,6 @@ const AIOpsPage = () => {
               </span>
             )}
           </div>
-
-          {/* Hàng 2: Bộ lọc thời gian từ ... đến ... (ngày tháng năm giờ phút) */}
-          <div className="pt-2 border-t border-slate-200/60 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                <span>{t('aiops.chart.timeFilter', 'Bộ lọc thời gian:')}</span>
-              </span>
-
-              {/* Inputs Từ ... Đến ... */}
-              <div className="flex items-center gap-1.5 text-xs flex-wrap">
-                <span className="text-slate-500 font-medium">{t('aiops.chart.from', 'Từ:')}</span>
-                <input
-                  type="datetime-local"
-                  data-testid="filter-from-date"
-                  value={customRange.from}
-                  onChange={(e) => setCustomRange((prev) => ({ ...prev, from: e.target.value }))}
-                  className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-
-                <span className="text-slate-500 font-medium">{t('aiops.chart.to', 'Đến:')}</span>
-                <input
-                  type="datetime-local"
-                  data-testid="filter-to-date"
-                  value={customRange.to}
-                  onChange={(e) => setCustomRange((prev) => ({ ...prev, to: e.target.value }))}
-                  className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
-
-              {/* Action Buttons: Nút Lọc (Icon search) & Làm mới */}
-              <button
-                type="button"
-                data-testid="apply-custom-range-btn"
-                onClick={handleApplyCustomRange}
-                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-[14px]">search</span>
-                <span>{t('aiops.chart.btnApplyFilter', 'Lọc')}</span>
-              </button>
-
-              <button
-                type="button"
-                data-testid="refresh-custom-range-btn"
-                onClick={handleResetCustomRange}
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1"
-                title={t('aiops.chart.refreshFilterTooltip', 'Làm mới bộ lọc thời gian về mặc định')}
-              >
-                <span className="material-symbols-outlined text-[14px]">refresh</span>
-                <span>{t('common.refresh', 'Làm mới')}</span>
-              </button>
-
-              {customRange.applied && (
-                <button
-                  type="button"
-                  data-testid="clear-custom-range-btn"
-                  onClick={handleClearCustomRange}
-                  className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-medium transition-all cursor-pointer inline-flex items-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-[14px]">close</span>
-                  <span>{t('aiops.chart.btnClearFilter', 'Xóa bộ lọc')}</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Banner Ưu Tiên Bộ Lọc Chính Xác (PO Rule) */}
-          {customRange.applied && customRange.from && customRange.to && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-amber-600">verified</span>
-                <span>
-                  {t('aiops.chart.priorityNotice', `ĐANG ƯU TIÊN BỘ LỌC CHÍNH XÁC: Dữ liệu từ ${customRange.from} đến ${customRange.to}. Bộ select nhanh đang tạm thời bị bỏ qua.`, { from: customRange.from, to: customRange.to })}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={handleClearCustomRange}
-                className="text-xs font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer whitespace-nowrap self-end sm:self-auto"
-              >
-                {t('aiops.chart.reuseSelect', 'Dùng lại bộ select')}
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Legend và Điểm số Thời gian thực */}
@@ -2400,13 +2240,6 @@ const AIOpsPage = () => {
               <span className="w-2.5 h-2.5 rounded-full bg-teal-600 inline-block" />
               <span className="text-teal-900">{t('aiops.tabs.resource', '4. Tài Nguyên')}: <strong>{vectorScores.resource ?? 0}</strong></span>
             </span>
-
-            {activeVectorTab === 'all' && (
-              <span className="flex items-center gap-1.5 text-purple-700">
-                <span className="w-2.5 h-0.5 bg-purple-500 inline-block border-b border-dashed border-purple-700" />
-                <span>{t('aiops.chart.maxCeiling', 'Trần Max:')} <strong>{threatScore}</strong></span>
-              </span>
-            )}
           </div>
         </div>
 
@@ -2645,18 +2478,6 @@ const AIOpsPage = () => {
                 </>
               )}
 
-              {/* Đường trần tham chiếu Max composite nếu ở Tab All */}
-              {activeVectorTab === 'all' && chartSvgPaths.composite.path && (
-                <path
-                  d={chartSvgPaths.composite.path}
-                  fill="none"
-                  stroke="#8b5cf6"
-                  strokeWidth="1.5"
-                  strokeDasharray="4 3"
-                  strokeOpacity="0.5"
-                />
-              )}
-
               {/* Cột bắt sự kiện chuột tương tác hover cho từng mẫu thời gian */}
               {chartSvgPaths.samples && chartSvgPaths.samples.map((s, idx) => (
                 <g key={`hover-zone-${idx}`}>
@@ -2766,11 +2587,6 @@ const AIOpsPage = () => {
                         {t('aiops.tabs.resource', '4. Tài Nguyên')}:
                       </span>
                       <strong className="font-mono">{hs.resource.score}/100</strong>
-                    </div>
-
-                    <div className="pt-1 border-t border-slate-700/80 flex items-center justify-between text-purple-300 font-bold">
-                      <span>{t('aiops.threatScoreTitle', 'Threat Score')}:</span>
-                      <span className="font-mono">{hs.composite.score}/100</span>
                     </div>
                   </div>
                 </div>
@@ -3674,12 +3490,16 @@ const AIOpsPage = () => {
                   <span>Quy mô áp dụng:</span>
                 </span>
                 <span className="font-mono text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded-md text-[11px]">
-                  {selectedConcurrency.toLocaleString('vi-VN')} CCU
+                  {targetConcurrency.toLocaleString('vi-VN')} CCU
                 </span>
               </div>
               <p className="text-[11px] text-slate-600">
-                Hệ thống sẽ lấy thông số phần cứng thực tế của máy chủ đang chạy (Số nhân CPU, Tổng RAM vật lý) kết hợp với quy mô <strong>{selectedConcurrency.toLocaleString('vi-VN')} người dùng</strong> để tính toán lại chính xác đường chuẩn 24h và đánh giá năng lực chịu tải thực tế.
+                Hệ thống sẽ lấy thông số phần cứng thực tế của máy chủ đang chạy (Số nhân CPU, Tổng RAM vật lý) kết hợp với quy mô <strong>{targetConcurrency.toLocaleString('vi-VN')} người dùng</strong> để tính toán lại chính xác đường chuẩn 24h và đánh giá năng lực chịu tải thực tế.
               </p>
+              <div className="p-2 rounded-lg bg-blue-100/60 border border-blue-200/80 text-[11px] text-blue-900 font-mono space-y-0.5">
+                <div>• Baseline dự kiến: <strong>{(targetConcurrency * 10).toLocaleString('vi-VN')} req/phút</strong> (10 req/phút/user)</div>
+                <div>• Trần đỉnh an toàn (3x): <strong>{(targetConcurrency * 30).toLocaleString('vi-VN')} req/phút</strong> (tương đương <strong>{Math.round(targetConcurrency / 2).toLocaleString('vi-VN')} RPS</strong>)</div>
+              </div>
               <div className="font-bold text-blue-950 flex items-center gap-1.5 pt-1">
                 <span className="material-symbols-outlined text-[16px] text-blue-600">help</span>
                 <span>{t('aiops.calibrate.warningTitle')}</span>
@@ -3718,6 +3538,9 @@ const AIOpsPage = () => {
                 <div>
                   <label className="block text-[11px] font-medium text-slate-600 mb-1">
                     {t('aiops.calibrate.trafficSpikeRps', 'Ngưỡng bùng nổ RPS (req/giây)')}
+                    <span className="text-[10px] text-slate-500 font-normal ml-1">
+                      (≈ {((Number(customThresholdsInput.trafficSpikeRps) || autoRecommendedThresholds.trafficSpikeRps) * 60).toLocaleString('vi-VN')} req/phút)
+                    </span>
                   </label>
                   <input
                     type="number"

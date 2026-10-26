@@ -186,7 +186,23 @@ Hai mục đạt trọn nên chuyển sang đây. Mục 43 và 44 đạt phần 
 | [CHAN_TRA_HAI_LAN_THEO_KY.md](./CHAN_TRA_HAI_LAN_THEO_KY.md) | ✅ **Mục 41.** Vế kỳ anh em của `chanTraHaiLan` chạy ở cả nhánh tạo lẫn nhánh cập nhật; `BILL_PERIOD_ALREADY_PAID` được ánh xạ trước `BILL_ALREADY_PAID`; test backend 6/6; CSDL dev 0 nhóm kỳ trùng có hơn một khoản chi sống. Client không đổi mã. |
 | [TAI_LIEU_KIEN_TRUC_CLIENT_APP.md](./TAI_LIEU_KIEN_TRUC_CLIENT_APP.md) | ✅ **Mục 42.** `Project.md` §3.3 có đủ sáu dòng xin sửa và câu trỏ sang `docs/KIEN_TRUC_CLIENT_APP.md`. Hai chỗ nhỏ ghi ở banner tệp: liên kết tuyệt đối của máy người viết, và dòng *Repository* lạc hậu theo mã client từ 2026-10-15. |
 
-Thư mục này nay **60** tệp + mục lục (đếm bằng máy 2026-10-18, sau khi chuyển mục 41 và 42).
+## 4j. Hoàn thành và lưu trữ 2026-10-26 (9 mục: 43, 44, 45, 46, 47, 48, 49, 51, 52)
+
+Sau khi PO chính thức phê duyệt kế hoạch thực thi, toàn bộ 9 mục tồn đọng đã được hoàn tất 100%, vượt qua toàn bộ 438 test suites của Backend và 13/13 test an ninh CSDL, mã hóa At-Rest (`test_data_security_encryption_and_masking.js`):
+
+| Tài liệu | Kết quả xử lý & Đóng |
+|---|---|
+| [GIAI_MA_HONG_TRA_BAN_MA.md](./GIAI_MA_HONG_TRA_BAN_MA.md) | ✅ **Mục 52.** `decrypt()` ném lỗi `DECRYPT_FAILED` khi gặp ciphertext hỏng hoặc sai key; `/sync/pull` trả HTTP 500 chặn đứt việc client ghi đè dữ liệu; `maskPhone` & `maskAccountNumber` fallback an toàn. |
+| [TAI_LIEU_XAC_THUC_LECH_MA.md](./TAI_LIEU_XAC_THUC_LECH_MA.md) | ✅ **Mục 51.** Sửa `01_XAC_THUC_VA_BAO_MAT.md` (§2.2 và §2.3) khớp với `FlutterSecureStorage` và Khóa app Keystore BiometricPrompt. |
+| [SOAT_SAU_GOP_EE6A65E5.md](./SOAT_SAU_GOP_EE6A65E5.md) | ✅ **Mục 49.** Sửa `payment.service.js` gọi `activatePremiumSubscription` 1 tham số object; đổi tên migration 27b; bảo lưu SQLite khi `ACCOUNT_DELETED` trong `Event-Notification-to-ClientApp.md`; CORS bổ sung `x-device-name`, `x-platform`. |
+| [DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md](./DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md) | ✅ **Mục 48.** Soft-delete ví rác `test-wallet-1789014227658` và 2 giao dịch test của tài khoản 18; sửa Ca 11 test dùng `crypto.randomUUID()` và dọn dẹp trong `finally`. |
+| [CLIENT_TRO_LY_ONLINE.md](./CLIENT_TRO_LY_ONLINE.md) | ✅ **Mục 47.** Keep-alive SSE `: ping` 15s; nâng `maxOutputTokens: 4096`; lọc tin mở đầu nếu `role !== 'user'`; hủy gọn request Gemini khi client ngắt kết nối. |
+| [NOTIFICATION_CLIENT_APP_LECH_MA.md](./NOTIFICATION_CLIENT_APP_LECH_MA.md) | ✅ **Mục 46.** Khử sạch 30 điểm lệch mã trong `docs/Notification/Notification_Client-app.md` (grep kiểm tra ra 0 dòng sai sót). |
+| [TAT_NHAC_HOA_DON_QUA_DONG_BO.md](./TAT_NHAC_HOA_DON_QUA_DONG_BO.md) | ✅ **Mục 45.** Sửa `sync.repository.js` bảo toàn giá trị `null` cho `time_notification` của hóa đơn khi tạo và cập nhật (`!== undefined ? ... : ...`). |
+| [SOAT_SAU_GOP_D72CCD45.md](./SOAT_SAU_GOP_D72CCD45.md) | ✅ **Mục 44.** Webhook PayOS Idempotency khử trùng theo `payos_transaction_id` và siết chặt kiểm tra trạng thái chỉ xử lý khi ở `PENDING` hoặc `EXPIRED`. |
+| [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | ✅ **Mục 43.** AIOps Controller chuẩn hóa trạng thái tài khoản sang `'Inactive'` thay vì `'Locked'`. |
+
+Thư mục này nay **69** tệp + mục lục (tổng 70 tệp, đếm bằng máy 2026-10-26, sau khi chuyển 9 mục).
 
 ---
 

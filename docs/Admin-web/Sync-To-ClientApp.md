@@ -79,15 +79,15 @@ Cấu trúc lớp Drift SQLite: `Wallets extends Table` trong `wallets_table.dar
 |:---:|---|---|---|---|:---:|---|
 | 1 | `id` | `Idwallet` | `TEXT` | `VARCHAR(36)` | 2 chiều | **Khóa chính (PK):** Chuỗi UUID v4 (36 ký tự). |
 | 2 | `idaccount` | `Idaccount` | `INTEGER` | `INT` | 2 chiều | **Khóa ngoại (FK):** ID tài khoản sở hữu. |
-| 3 | `name` | `NameWallet` | `TEXT` | `VARCHAR(100)` | 2 chiều | Tên ví hiển thị (tối đa 100 ký tự). |
-| 4 | `type` | `Type` | `TEXT` | `VARCHAR(20)` | 2 chiều | **CHECK `chk_wallet_type`:** Client dùng `'cash'`, `'bank'`, `'saving'`, `'banking'`. Khi đẩy lên Backend chuẩn hóa viết hoa. |
+| 3 | `name` | `Name` | `TEXT` | `VARCHAR(100)` | 2 chiều | Tên ví hiển thị (tối đa 100 ký tự). |
+| 4 | `type` | `Type` | `TEXT` | `VARCHAR(7)` | 2 chiều | **CHECK `chk_wallet_type`:** Client dùng `'cash'`, `'bank'`, `'saving'`, `'banking'`. Khi đẩy lên Backend chuẩn hóa viết hoa. |
 | 5 | `balance` | `Balance` | `REAL` | `DECIMAL(15,2)` | **1 CHIỀU (Push)** | ⚠️ **HỢP ĐỒNG 1 CHIỀU:** Client đẩy lên để Server ghi nhận thống kê. **Khi Kéo về (Pull) BẮT BUỘC BỎ QUA (`Value.absent()`)**, tuyệt đối không ghi đè số dư ví từ server vì số dư ví là cache tổng sổ của giao dịch cục bộ! |
 | 6 | `currency` | `Currency` | `TEXT` | `VARCHAR(3)` | 2 chiều | Mặc định `'VND'`. |
 | 7 | `icon` | `Icon` | `TEXT` | `VARCHAR(20)` | 2 chiều | Tên icon nhận diện giao diện. |
-| 8 | `color` | `Color` | `TEXT` | `VARCHAR(9)` | 2 chiều | Mã màu Hex `#RRGGBB`. Client gửi `color` (Normalizer đổi `colour` $\to$ `color`). |
+| 8 | `color` | `Color` | `TEXT` | `VARCHAR(20)` | 2 chiều | Mã màu Hex `#RRGGBB`. Client gửi `color` (Normalizer đổi `colour` $\to$ `color`). |
 | 9 | `is_default` | `Is_default` | `BOOLEAN` | `BOOLEAN` | 2 chiều | Đánh dấu ví mặc định khi tạo giao dịch mới. |
-| 10 | `is_deleted` | `Delete_at` | `BOOLEAN` | `TIMESTAMP(6)` | 2 chiều | Xóa mềm: Push gửi `is_deleted = true` $\to$ Server ghi `Delete_at = now()`. |
-| 11 | `include_in_total`| `Include_in_total`| `BOOLEAN` | `BOOLEAN` | 2 chiều | `true`: số dư ví được tính vào tổng tài sản trên Dashboard. |
+| 10 | `is_deleted` | `Delete_at` | `BOOLEAN` | `TIMESTAMP(6)` | 2 chiều | Xóa mềm: Client gửi `operation: 'delete'` $\to$ Server ghi `Delete_at = now()`. |
+| 11 | `include_in_total`| `IncludeInTotal`| `BOOLEAN` | `BOOLEAN` | 2 chiều | `true`: số dư ví được tính vào tổng tài sản trên Dashboard. |
 | 12 | `status` | `Status` | `TEXT` | `VARCHAR(20)` | 2 chiều | **CHECK `chk_wallet_status`:** **BẮT BUỘC CHỮ HOA ĐẦU:** `'Active'` hoặc `'Inactive'`. Gửi chữ thường `'inactive'` sẽ bị CSDL từ chối! |
 | 13 | `update_at` | `Update_at` | `DATETIME` | `TIMESTAMP(6)` | 2 chiều | Mốc thời gian cập nhật Last-Write-Wins (UTC ISO 8601). |
 
@@ -173,8 +173,8 @@ Cấu trúc lớp Drift SQLite: `Bills extends Table` trong `other_tables.dart`.
 | 8 | `due_date` | `Due_date` | `DATETIME` | `TIMESTAMP(6)` | 2 chiều | Hạn chót thanh toán kỳ hiện tại. |
 | 9 | `pay_status` | `Pay_status` | `TEXT` | `VARCHAR(7)` | 2 chiều | **CHECK `chk_bill_pay_status`:** Nhận đúng 4 chuỗi: `'Pending'`, `'Payed'`, `'Skipped'` (bỏ qua kỳ), `'Overdue'`. |
 | 10 | `recurrence` | `Recurrence` | `BOOLEAN` | `BOOLEAN` | 2 chiều | Có lặp lại định kỳ không (`true`/`false`). |
-| 11 | `time_recurrence`| `Time_recurrence`| `TEXT` | `VARCHAR(7)` | 2 chiều | Chu kỳ lặp: `'Day'`, `'Week'`, `'Month'`, `'Quarter'`, `'Year'`. |
-| 12 | `time_notification`| `Time_notification`| `TEXT` | `VARCHAR(20)` | 2 chiều | Số ngày thông báo nhắc trước khi đến hạn (ví dụ: `'3'`). |
+| 11 | `time_recurrence`| `Time_recurrence`| `TEXT` | `VARCHAR(7)` | 2 chiều | Chu kỳ lặp: `'Week'`, `'Month'`, `'Quarter'`, `'Year'`. |
+| 12 | `time_notification`| `Time_notification`| `TEXT` | `VARCHAR(7)` | 2 chiều | Số ngày thông báo nhắc trước khi đến hạn (ví dụ: `'3'`). Giữ `null` khi tắt nhắc. |
 | 13 | `icon` | `Icon` | `TEXT` | `VARCHAR(20)` | 2 chiều | Icon đại diện. |
 | 14 | `color` | `Color` | `TEXT` | `VARCHAR(20)` | 2 chiều | Màu sắc Hex. |
 | 15 | `note` | `Note` | `TEXT` | `TEXT` | 2 chiều | Ghi chú hóa đơn (được mã hóa an toàn). |
@@ -182,7 +182,7 @@ Cấu trúc lớp Drift SQLite: `Bills extends Table` trong `other_tables.dart`.
 | 17 | `period_end` | `Period_end` | `DATETIME` | `DATE` | 2 chiều | **Ân hạn hóa đơn:** Ngày kết thúc kỳ thực tế tách biệt hạn trả. **Quy định gửi:** lúc `00:00:00.000Z` UTC của ngày cục bộ. |
 | 18 | `auto_pay` | `Auto_pay` | `BOOLEAN` | `BOOLEAN` | 2 chiều | **Công tắc tự động trả:** `true`/`false` kiểu boolean thật. Khi đến hạn, hệ thống tự động sinh khoản chi trả từ `idwallet`. |
 | 19 | `anchor_day` | `Anchor_day` | `INTEGER` | `SMALLINT` | 2 chiều | **Ngày neo gốc trong tháng:** 1 đến 31 (chống trôi ngày thanh toán khi gặp tháng 2). |
-| 20 | `is_deleted` | `Delete_at` | `BOOLEAN` | `TIMESTAMP(6)` | 2 chiều | Xóa mềm hóa đơn. |
+| 20 | `is_deleted` | `Delete_at` | `BOOLEAN` | `TIMESTAMP(6)` | 2 chiều | Xóa mềm: Client gửi `operation: 'delete'` $\to$ Server ghi `Delete_at = now()`. |
 | 21 | `update_at` | `Update_at` | `DATETIME` | `TIMESTAMP(6)` | 2 chiều | Mốc cập nhật LWW UTC ISO 8601. |
 
 ---
@@ -196,19 +196,19 @@ Cấu trúc lớp Drift SQLite: `Budgets extends Table` trong `other_tables.dart
 | 1 | `id` | `Idbudget` | `TEXT` | `VARCHAR(36)` | 2 chiều | **Khóa chính (PK):** Chuỗi UUID v4. |
 | 2 | `idaccount` | `Idaccount` | `INTEGER` | `INT` | 2 chiều | Tài khoản sở hữu ngân sách. |
 | 3 | `idcategory` | `Idcategory` | `TEXT` | `VARCHAR(36)` | 2 chiều | Danh mục áp dụng ngân sách (`null` = ngân sách tổng cho toàn bộ chi tiêu). |
-| 4 | `total_amount` | `Total_amount` | `REAL` | `DECIMAL(15,2)` | 2 chiều | Tổng hạn mức ngân sách được chi trong kỳ. |
+| 4 | `total_amount` | `TotalAmount` | `REAL` | `DECIMAL(15,2)` | 2 chiều | Tổng hạn mức ngân sách được chi trong kỳ. |
 | 5 | `spent` | `Spent` | `REAL` | `DECIMAL(15,2)` | 2 chiều | Số tiền đã chi tiêu (Client tự tính toán tổng sổ từ transactions). |
-| 6 | `threshold_warning_amount`| `Threshold_warning_amount`| `REAL`| `DECIMAL(15,2)`| 2 chiều| Số tiền chạm ngưỡng sẽ phát cảnh báo (tùy chọn). |
-| 7 | `threshold_warning_percent`| `Threshold_warning_percent`| `REAL`/`INTEGER`| `INT`| 2 chiều| **Tỷ lệ phần trăm cảnh báo (vd: 80%):** Lưu kiểu số nguyên từ `0` đến `100`. |
-| 8 | `over_spending` | `Over_spending` | `TEXT` | `VARCHAR(7)` | 2 chiều | **CHECK `chk_budget_over_spending`:** Chỉ nhận `'Stop'` (chặn chi) hoặc `'Over'` (cho phép vượt). |
-| 9 | `over_amount` | `Over_amount` | `REAL` | `DECIMAL(15,2)` | 2 chiều | Số tiền đã chi vượt hạn mức ngân sách. |
+| 6 | `threshold_warning_amount`| `Threshold_Warning_Amount`| `REAL`| `DECIMAL(15,2)`| 2 chiều| Số tiền chạm ngưỡng sẽ phát cảnh báo (tùy chọn). |
+| 7 | `threshold_warning_percent`| `Threshold_Warning_Percent`| `REAL`| `DECIMAL(15,2)`| 2 chiều| **Tỷ lệ phần trăm cảnh báo (vd: 80%):** Lưu kiểu số thực trong dải `0` đến `100`. |
+| 8 | `over_spending` | `OverSpending` | `TEXT` | `VARCHAR(7)` | 2 chiều | **CHECK `ck_budget_overspending`:** Nhận chính sách `'Stop'` (chặn chi) hoặc `'Over'` (cảnh báo). |
+| 9 | `over_amount` | `OverAmount` | `REAL` | `DECIMAL(15,2)` | 2 chiều | Số tiền đã chi vượt hạn mức ngân sách. |
 | 10 | `start` | `Start` | `DATETIME` | `TIMESTAMP(6)` | 2 chiều | Ngày bắt đầu chu kỳ ngân sách. |
 | 11 | `end` | `End` | `DATETIME` | `TIMESTAMP(6)` | 2 chiều | Ngày kết thúc chu kỳ ngân sách. |
 | 12 | `recurrence` | `Recurrence` | `BOOLEAN` | `BOOLEAN` | 2 chiều | Có tự động gia hạn sang kỳ kế tiếp không (`true`/`false`). |
 | 13 | `time_recurrence`| `Time_recurrence`| `TEXT` | `VARCHAR(7)` | 2 chiều | Chu kỳ ngân sách: `'Week'`, `'Month'`, `'Quarter'`, `'Year'`, hoặc `null` nếu là ngày cụ thể. |
 | 14 | `nexttime_recurrence`| `Nexttime_recurrence`| `DATETIME`| `TIMESTAMP(6)`| 2 chiều| Mốc bắt đầu chu kỳ ngân sách kế tiếp (phải đẩy lại nguyên vẹn khi có). |
 | 15 | `note` | `Note` | `TEXT` | `TEXT` | 2 chiều | Ghi chú ngân sách (mã hóa an toàn). |
-| 16 | `is_deleted` | `Delete_at` | `BOOLEAN` | `TIMESTAMP(6)` | 2 chiều | Xóa mềm ngân sách. |
+| 16 | `is_deleted` | `Delete_at` | `BOOLEAN` | `TIMESTAMP(6)` | 2 chiều | Xóa mềm: Client gửi `operation: 'delete'` $\to$ Server ghi `Delete_at = now()`. |
 | 17 | `update_at` | `Update_at` | `DATETIME` | `TIMESTAMP(6)` | 2 chiều | Mốc cập nhật LWW UTC ISO 8601. |
 
 ---
@@ -314,11 +314,9 @@ Nhằm triệt tiêu 100% rủi ro lệch đồng hồ phần cứng giữa đi�
 1. **Khóa Kéo Giờ Server (Migration 20 + 21):**  
    Cả 6 bảng đồng bộ trên PostgreSQL đều có cột `Server_update_at TIMESTAMP(6) NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')` và Trigger tự động cập nhật mỗi khi có thao tác INSERT hoặc UPDATE.
 2. **Quy Trình Kéo Dữ Liệu (`GET /api/sync/pull?since=...`):**
-   - Phía Client-app lưu biến `lastPullTime` theo giá trị `pulledAt` nhận được trong phản hồi kỳ trước của Backend.
-   - Khi gọi API Pull, gửi tham số `since = lastPullTime`.
-   - **Kẹp Dải Thời Gian An Toàn (Safety Margin):** Phía Client-app kẹp dải thời gian:  
-     $$\mathbf{maxSince} = \max(\text{since}, \text{pulledAt} - 2\text{ phút})$$  
-     Điều này giúp bù đắp cho các giao dịch của người dùng khác đang nằm trong transaction chưa kịp commit tại thời điểm pull trước đó, đảm bảo **không bao giờ bỏ sót bất kỳ dữ liệu nào giữa các thiết bị**.
+   - Phía Client-app lưu mốc đồng bộ tính từ `mocTuMaxSince(maxSince, pulledAt)` (kẹp xuống 2 phút trước thời điểm kéo khi dữ liệu nóng, +1ms khi nguội, xem `moc_keo_ve.dart`).
+   - Khi gọi API Pull, gửi tham số `since` tương ứng.
+   - Cơ chế này giúp bù đắp cho các giao dịch đang nằm trong transaction chưa kịp commit tại thời điểm pull trước đó, đảm bảo **không bao giờ bỏ sót bất kỳ dữ liệu nào giữa các thiết bị**.
 
 ---
 
@@ -326,7 +324,7 @@ Nhằm triệt tiêu 100% rủi ro lệch đồng hồ phần cứng giữa đi�
 
 Trước khi build bản phát hành hoặc chạy kiểm thử tích hợp, kiểm tra toàn bộ 10 điều sau:
 
-- [ ] **1. Thứ tự mảng `operations` khi Push:** Bắt buộc: `categories` $\to$ `wallets` $\to$ `goals` $\to$ `bills` $\to$ `budgets` $\to$ `transactions`.
+- [ ] **1. Thứ tự mảng `operations` khi Push:** Server tự động sắp xếp theo `ENTITY_PRIORITY` (Ràng buộc tối thiểu phía Client: `goals` và `bills` phải trước `transactions`).
 - [ ] **2. Tên khóa ngoại `idgoal` và `idbill` trong giao dịch:** Gửi đúng tên `idgoal` (cấm gửi `goal_id`) và `idbill` (cấm gửi `bill_id`).
 - [ ] **3. Quy ước Dấu và Type của giao dịch:**
   - Khoản Chi: gửi `type = 'Transaction'` và `amount < 0` (số âm).
@@ -341,6 +339,6 @@ Trước khi build bản phát hành hoặc chạy kiểm thử tích hợp, ki�
 - [ ] **7. Mục tiêu `priority` và 3 cột trích tự động:**
   - `priority`: số nguyên dương (100, 200, 300...) hoặc `null`; tuyệt đối không gửi `0`.
   - 3 cột trích tự động (`auto_deposit_amount`, `auto_deposit_wallet_id`, `auto_deposit_last_run`) phải đi cùng nhau trong payload.
-- [ ] **8. Ngân sách `threshold_warning_percent`:** Gửi đúng kiểu số nguyên từ `0` đến `100`.
-- [ ] **9. Header Tên Thiết Bị:** Mọi request đều gửi kèm header `x-device-name` lấy từ `device_info_plus`.
+- [ ] **8. Ngân sách `threshold_warning_percent`:** Gửi đúng kiểu số thực trong dải `0` đến `100` (`Decimal(15,2)`).
+- [ ] **9. Header Tên Thiết Bị:** Khuyến nghị gửi kèm header `x-device-name` (tùy chọn) để hỗ trợ nhận diện thiết bị trên Admin-web.
 - [ ] **10. Khóa Cấm Rò Rỉ:** Không được rò rỉ các trường thuần client lên server: `syncStatus`, `isLocalOnly`, `keywords`, `goal_id`, `updatedAt` (phải đổi thành `update_at`).

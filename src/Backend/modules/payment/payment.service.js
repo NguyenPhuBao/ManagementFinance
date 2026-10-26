@@ -133,9 +133,10 @@ async function handlePayOSWebhook(webhookPayload) {
   }
 
   // 3. Xử lý Idempotency - Tránh Replay Attack và chống kéo ngược trạng thái
-  if (['PAID', 'REFUNDED', 'CANCELLED'].includes(order.status)) {
-    logger.info('[PAYMENT_WEBHOOK] Đơn hàng đã ở trạng thái kết thúc (Idempotent)', { orderCode, status: order.status });
-    return { success: true, message: 'Đơn hàng đã được xử lý thành công trước đó' };
+  // Chỉ tiếp tục xử lý thanh toán nếu đơn hàng còn ở trạng thái PENDING hoặc EXPIRED
+  if (!['PENDING', 'EXPIRED'].includes(order.status)) {
+    logger.info('[PAYMENT_WEBHOOK] Đơn hàng đã ở trạng thái đã xử lý hoặc đang trong quy trình đối soát (Idempotent)', { orderCode, status: order.status });
+    return { success: true, message: 'Đơn hàng đã được xử lý hoặc đang trong quy trình đối soát trước đó' };
   }
 
   const now = new Date();
@@ -670,9 +671,10 @@ async function syncOrderWithPayOS(order) {
           paidAt,
         });
 
-        await paymentRepository.activatePremiumSubscription(order.idaccount, {
-          packageType: order.package_type || 'Premium',
+        await paymentRepository.activatePremiumSubscription({
+          idaccount: order.idaccount,
           orderId: order.id,
+          paidAt,
         });
 
         order.status = 'PAID';

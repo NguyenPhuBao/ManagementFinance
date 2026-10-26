@@ -29,6 +29,7 @@ function mapEntityFields(entity, data) {
       if (m.bankCassoId !== undefined) { m.id_bank_casso = m.bankCassoId; delete m.bankCassoId; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
+      if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
       if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
       break;
 
@@ -58,6 +59,7 @@ function mapEntityFields(entity, data) {
       else if (m.create_at !== undefined) { m.date_transaction = new Date(m.create_at); delete m.create_at; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.deleted_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
+      if (m.is_deleted !== undefined) { m.deleted_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
       if (m.delete_at !== undefined) { m.deleted_at = m.delete_at ? new Date(m.delete_at) : null; delete m.delete_at; }
       if (m.deletedAt !== undefined) { m.deleted_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
       break;
@@ -87,6 +89,7 @@ function mapEntityFields(entity, data) {
       else if (m.endDate !== undefined) { m.end = m.endDate ? new Date(m.endDate) : null; delete m.endDate; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
+      if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
       if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
       // Xóa các trường tính toán tĩnh cũ nếu có gửi lên
       delete m.remaining;
@@ -114,7 +117,7 @@ function mapEntityFields(entity, data) {
         m.pay_status = m.pay_status ? 'Payed' : 'Pending';
       }
       if (m.timeRecurrence !== undefined) { m.time_recurrence = m.timeRecurrence; delete m.timeRecurrence; }
-      if (m.timeNotification !== undefined) { m.time_notification = String(m.timeNotification); delete m.timeNotification; }
+      if (m.timeNotification !== undefined) { m.time_notification = m.timeNotification === null ? null : String(m.timeNotification); delete m.timeNotification; }
       if (m.previousBillId !== undefined) { m.previous_bill_id = m.previousBillId; delete m.previousBillId; }
       if (m.generatedFromBillId !== undefined) { m.previous_bill_id = m.generatedFromBillId; delete m.generatedFromBillId; }
       if (m.previous_bill_id !== undefined) { m.previous_bill_id = m.previous_bill_id; }
@@ -127,6 +130,7 @@ function mapEntityFields(entity, data) {
       if (m.anchor_day !== undefined) { m.anchor_day = m.anchor_day !== null ? Number(m.anchor_day) : null; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
+      if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
       if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
       break;
 
@@ -161,6 +165,7 @@ function mapEntityFields(entity, data) {
       if (m.timeRecurrence !== undefined) { m.time_recurrence = m.timeRecurrence; delete m.timeRecurrence; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
+      if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
       if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
       break;
 
@@ -177,6 +182,7 @@ function mapEntityFields(entity, data) {
       if (m.color !== undefined) { m.color = m.color; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
+      if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
       if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
       break;
   }
@@ -525,7 +531,7 @@ const syncRepository = {
           pay_status: mapped.pay_status || 'Pending',
           recurrence: mapped.recurrence ?? false,
           time_recurrence: mapped.time_recurrence || 'Month',
-          time_notification: mapped.time_notification || '3',
+          time_notification: mapped.time_notification !== undefined ? mapped.time_notification : '3',
           icon: mapped.icon || 'receipt',
           color: mapped.color || '#4CAF50',
           note: prepareSafeNote(mapped.note, null),
@@ -551,7 +557,7 @@ const syncRepository = {
           pay_status: mapped.pay_status ?? existing.pay_status,
           recurrence: mapped.recurrence ?? existing.recurrence,
           time_recurrence: mapped.time_recurrence ?? existing.time_recurrence,
-          time_notification: mapped.time_notification ?? existing.time_notification,
+          time_notification: mapped.time_notification !== undefined ? mapped.time_notification : existing.time_notification,
           icon: mapped.icon ?? existing.icon,
           color: mapped.color ?? existing.color,
           previous_bill_id: mapped.previous_bill_id !== undefined ? mapped.previous_bill_id : existing.previous_bill_id,

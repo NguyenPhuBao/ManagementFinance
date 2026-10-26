@@ -35,21 +35,20 @@
    - Nếu đúng: Server trả về Access Token + Refresh Token $\rightarrow$ Client lưu SecureStorage và điều hướng thẳng vào `/home`.
    - Đếm ngược 60 giây trước khi cho phép bấm nút "Gửi lại mã OTP".
 
-### 2.2. Luồng Đăng nhập & Hỗ trợ Ngoại tuyến (Offline-First Login)
+### 2.2. Luồng Đăng nhập & Duy trì Phiên Ngoại tuyến (Offline-First Session)
 1. **Đăng nhập Trực tuyến (Online Login):**
    - Người dùng nhập Username/Email + Mật khẩu.
    - Gửi `POST /api/auth/login`.
-   - Lưu `accessToken`, `refreshToken` vào `FlutterSecureStorage`.
-   - **Lưu Cache Offline:** Lưu băm mật khẩu `offline_password_hash` và thông tin `offline_user_data` vào SharedPreferences.
-2. **Đăng nhập Ngoại tuyến (Offline Fallback Login):**
+   - Lưu `accessToken`, `refreshToken` và thông tin người dùng an toàn vào `FlutterSecureStorage`.
+2. **Khởi chạy Ngoại tuyến (Offline Session Persistence):**
    - Khi thiết bị không có internet (mất sóng/mạng chập chờn):
-   - Thay vì báo lỗi mạng, Client-app tự động kiểm tra thông tin đăng nhập với `offline_password_hash` đã lưu trước đó.
-   - Nếu khớp: Khởi động phiên làm việc Offline (`AuthSuccess` cục bộ) cho phép người dùng truy cập toàn bộ dữ liệu SQLite trên máy.
+   - Client-app đọc token và thông tin người dùng đã được bảo vệ trong `FlutterSecureStorage` để khởi động phiên làm việc Offline (`AuthSuccess` cục bộ), cho phép người dùng truy cập và ghi chép toàn bộ dữ liệu SQLite trên máy.
+   - Không lưu băm mật khẩu ra SharedPreferences để tuân thủ tuyệt đối an toàn thông tin (Data Security).
 
-### 2.3. Luồng Bảo mật Sinh trắc học (Biometrics Login)
-- Hỗ trợ cảm biến Vân tay (Fingerprint) và Nhận diện khuôn mặt (Face ID) thông qua thư viện `local_auth`.
-- Chỉ kích hoạt khi người dùng đã đăng nhập thành công ít nhất một lần và bật tính năng trong Cài đặt.
-- Biometric chỉ xác thực tại tầng thiết bị (Local Device Verification), tuyệt đối không gửi dữ liệu sinh trắc học lên server (tuân thủ nguyên tắc `Data_Security.md`).
+### 2.3. Khóa Ứng Dụng Bằng Mã PIN & Sinh Trắc Học (App Lock)
+- Hỗ trợ bảo vệ ứng dụng bằng Mã PIN 6 chữ số và Sinh trắc học (Vân tay / Khuôn mặt qua `BiometricPrompt` gắn Android Keystore / iOS Keychain, không dùng `local_auth`).
+- Đây là cơ chế Khóa ứng dụng cục bộ (App Lock) khi mở app hoặc quay lại từ nền, độc lập với luồng xác thực đăng nhập tài khoản.
+- Toàn bộ xác thực sinh trắc học và PIN diễn ra 100% tại thiết bị người dùng (On-Device Local Verification), tuyệt đối không gửi lên server (tuân thủ `Data_Security.md`). Chi tiết xem tại `docs/KHOA_APP_FEATURE.md`.
 
 ### 2.4. Vòng đời Xóa tài khoản (PendingDelete 30 Ngày Ân Hạn)
 Tuân thủ Nghị định 13/2023/NĐ-CP và chính sách Google Play Store / Apple Store:

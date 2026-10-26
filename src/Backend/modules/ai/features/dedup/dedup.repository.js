@@ -8,6 +8,15 @@ const logger = require('../../../../core/logger');
 const { removeVietnameseTones } = require('../classify/classify.preprocess');
 const { decrypt } = require('../../../../utils/crypto.util');
 
+function safeDecrypt(note) {
+  if (!note) return '';
+  try {
+    return decrypt(note) || '';
+  } catch (_) {
+    return '';
+  }
+}
+
 const dedupRepository = {
   /**
    * Tìm giao dịch theo mã duy nhất bank_tran_id và provider
@@ -75,7 +84,7 @@ const dedupRepository = {
           txD.getDate() === targetDate.getDate();
         if (!sameDay) return false;
 
-        const plainNote = decrypt(tx.note) || '';
+        const plainNote = safeDecrypt(tx.note);
         const normalizedNote = removeVietnameseTones(plainNote);
         return normalizedNote.includes(normalizedMerchant) || normalizedMerchant.includes(normalizedNote);
       }) || null;
@@ -116,7 +125,7 @@ const dedupRepository = {
 
       // So khớp tên cửa hàng trong note (giải mã note nếu đã mã hóa)
       const matched = candidates.find((c) => {
-        const plainNote = decrypt(c.note) || '';
+        const plainNote = safeDecrypt(c.note);
         const normNote = removeVietnameseTones(plainNote);
         return normNote.includes(normalizedMerchant) || normalizedMerchant.includes(normNote);
       });
@@ -150,7 +159,7 @@ const dedupRepository = {
         if (!sameDay) return false;
 
         if (cleanCounterpart || cleanNote) {
-          const plainNote = (decrypt(tx.note) || '').toLowerCase();
+          const plainNote = safeDecrypt(tx.note).toLowerCase();
           if (cleanCounterpart && plainNote.includes(cleanCounterpart)) return true;
           if (cleanNote && plainNote && (plainNote.includes(cleanNote) || cleanNote.includes(plainNote))) return true;
           return false;
@@ -197,7 +206,7 @@ const dedupRepository = {
       // Hậu lọc: Đối soát số tài khoản hoặc nội dung chuyển tiền (giải mã note nếu đã mã hóa)
       if (cleanCounterpart || cleanNote) {
         const matched = candidates.find((c) => {
-          const plainNote = (decrypt(c.note) || '').toLowerCase();
+          const plainNote = safeDecrypt(c.note).toLowerCase();
           if (cleanCounterpart && plainNote.includes(cleanCounterpart)) return true;
           if (cleanNote && plainNote && (plainNote.includes(cleanNote) || cleanNote.includes(plainNote))) return true;
           return false;

@@ -29,10 +29,22 @@ class ChatbotController {
 
     const abortController = new AbortController();
 
+    // Keep-alive SSE comment ping (mỗi 15s) chống timeout 45s của Client khi Gemini đang suy luận
+    const pingInterval = setInterval(() => {
+      if (!abortController.signal.aborted && !res.writableEnded) {
+        res.write(': ping\n\n');
+      }
+    }, 15000);
+
+    const cleanup = () => {
+      clearInterval(pingInterval);
+    };
+
     // Lắng nghe sự kiện ngắt kết nối từ Client (tắt tab hoặc hủy stream)
     req.on('close', () => {
       logger.info(`[SSE Controller] Client idaccount: ${idaccount} đã ngắt kết nối stream.`);
       req.auditReason = 'Người dùng dừng phản hồi hoặc đổi khung chat mới';
+      cleanup();
       abortController.abort();
     });
 
@@ -44,20 +56,30 @@ class ChatbotController {
         idaccount,
         signal: abortController.signal,
         onMeta: (metaData) => {
-          res.write(`event: meta\ndata: ${JSON.stringify(metaData)}\n\n`);
+          if (!abortController.signal.aborted && !res.writableEnded) {
+            res.write(`event: meta\ndata: ${JSON.stringify(metaData)}\n\n`);
+          }
         },
         onChunk: (textChunk) => {
-          res.write(`event: delta\ndata: ${JSON.stringify({ text: textChunk, content: textChunk })}\n\n`);
+          if (!abortController.signal.aborted && !res.writableEnded) {
+            res.write(`event: delta\ndata: ${JSON.stringify({ text: textChunk, content: textChunk })}\n\n`);
+          }
         },
         onDone: (doneData) => {
-          res.write(`event: done\ndata: ${JSON.stringify(doneData || { status: 'completed' })}\n\n`);
-          res.end();
+          cleanup();
+          if (!abortController.signal.aborted && !res.writableEnded) {
+            res.write(`event: done\ndata: ${JSON.stringify(doneData || { status: 'completed' })}\n\n`);
+            res.end();
+          }
         },
       });
     } catch (error) {
+      cleanup();
       logger.error('[SSE Controller] Lỗi trong quá trình stream:', error);
-      res.write(`event: error\ndata: ${JSON.stringify({ message: error.message })}\n\n`);
-      res.end();
+      if (!abortController.signal.aborted && !res.writableEnded) {
+        res.write(`event: error\ndata: ${JSON.stringify({ message: error.message })}\n\n`);
+        res.end();
+      }
     }
   };
 

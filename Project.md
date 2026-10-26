@@ -4614,3 +4614,85 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
      - Admin-web: Production build (`npm run build`) thành công trong 3.92s sạch sẽ, 0 lỗi cú pháp.
      - Zero Regressions: Toàn bộ hệ thống ổn định tuyệt đối.
 
+### 4.24. Hoàn Tất Thực Thi 9 Mục Khắc Phục Lỗi Tồn Đọng Theo Yêu Cầu Của Client-App (2026-10-26)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/superpowers/backend/DA-XONG/README.md`](docs/superpowers/backend/DA-XONG/README.md), [`docs/superpowers/backend/CAN-LAM/README.md`](docs/superpowers/backend/CAN-LAM/README.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn bộ kế hoạch thực thi 9 mục yêu cầu tồn đọng từ Client-app (Mục 52, 51, 49, 48, 47, 46, 45, 44, 43), bảo lưu duy nhất Mục 50 ([`GIA_DINH_NEN_MONG.md`](docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md) - Tính năng Gia đình nền móng) để triển khai ở giai đoạn tiếp theo.
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **Mục 52 (Hotfix Giải Mã An Ninh & Chống Ghi Đè Bản Mã):**
+     - [`src/Backend/utils/crypto.util.js`](src/Backend/utils/crypto.util.js): Hàm `decrypt()` ném ngoại lệ `DECRYPT_FAILED` khi gặp ciphertext hỏng hoặc sai key (thay vì trả về bản mã thô `enc:...`).
+     - [`src/Backend/modules/sync/sync.controller.js`](src/Backend/modules/sync/sync.controller.js): Bắt lỗi `DECRYPT_FAILED` trong `pull()` và trả về HTTP 500 `{ code: 'DECRYPT_FAILED' }`, ngăn client ghi đè dữ liệu.
+     - [`src/Backend/utils/masking.util.js`](src/Backend/utils/masking.util.js): Bọc try-catch an toàn trong `maskPhone` và `maskAccountNumber`, trả về mask fallback `***-***-****` thay vì làm văng ngoại lệ API.
+  2. **Mục 51 (Đồng Bộ Tài Liệu Xác Thực & Bảo Mật Mobile):**
+     - [`docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md`](docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md): Cập nhật §2.2 và §2.3 loại bỏ SharedPreferences/offline_password_hash và local_auth; chuẩn hóa theo `FlutterSecureStorage` và Khóa app PIN 6 số / Vân tay `BiometricPrompt` gắn Android Keystore.
+  3. **Mục 49 (Sửa Lỗi JIT Sync Nâng Gói PayOS, Migration Trùng & CORS):**
+     - [`src/Backend/modules/payment/payment.service.js`](src/Backend/modules/payment/payment.service.js): Chuyển tham số gọi `paymentRepository.activatePremiumSubscription({ idaccount, orderId, paidAt })` thành đúng 1 object duy nhất, sửa dứt điểm lỗi tài khoản thanh toán thành công mà không lên Premium khi webhook bị miss.
+     - Đổi tên migration trùng số: `src/Backend/database/27_create_aiops_metric_snapshot_table.sql` $\rightarrow$ `src/Backend/database/27b_create_aiops_metric_snapshot_table.sql`.
+     - [`docs/Admin-web/Event-Notification-to-ClientApp.md`](docs/Admin-web/Event-Notification-to-ClientApp.md): Triệt tiêu toàn bộ yêu cầu xóa trắng SQLite khi `ACCOUNT_DELETED`, thay bằng bảo lưu SQLite trên máy và đăng xuất an toàn.
+     - [`src/Backend/app.js`](src/Backend/app.js): Bổ sung `x-device-name` và `x-platform` vào CORS `allowedHeaders`.
+  4. **Mục 48 (Dọn Dẹp Dữ Liệu Test & Sửa Script An Ninh):**
+     - Thực hiện query CSDL soft-delete thành công ví `test-wallet-1789014227658` và 2 giao dịch test của tài khoản 18 (`quangdat`).
+     - [`Test/test_data_security_encryption_and_masking.js`](Test/test_data_security_encryption_and_masking.js): Ca 11 tạo tài khoản test riêng bằng `crypto.randomUUID()` và soft-delete trong khối `finally`.
+  5. **Mục 47 (Nâng Cấp Hạ Tầng Streaming SSE Chatbot AI & Tối Ưu Kết Nối):**
+     - [`src/Backend/modules/ai/features/chatbot/chatbot.controller.js`](src/Backend/modules/ai/features/chatbot/chatbot.controller.js): Bổ sung timer `setInterval` 15s gửi `: ping\n\n` chống timeout 45s; dọn dẹp interval khi client hủy request.
+     - [`src/Backend/modules/ai/features/chatbot/chatbot.service.js`](src/Backend/modules/ai/features/chatbot/chatbot.service.js): Nâng `maxOutputTokens: 4096`; lọc bỏ tin nhắn mở đầu nếu `role !== 'user'`; hủy gọn request Gemini khi client ngắt kết nối mà không mở circuit breaker.
+  6. **Mục 46 (Chuẩn Hóa 30 Điểm Lệch Mã Thông Báo Client-App):**
+     - [`docs/Notification/Notification_Client-app.md`](docs/Notification/Notification_Client-app.md): Sửa sạch 30 điểm lệch mã (đường dẫn `features/notification/`, 20 loại / 8 chip lọc, nhóm `bienDong`, `TheChoXoaTrangChu`, checklist `luonBao`, xóa cứng D1).
+  7. **Mục 45 (Bảo Toàn Trạng Thái Tắt Nhắc Hóa Đơn Qua Đồng Bộ):**
+     - [`src/Backend/modules/sync/sync.repository.js`](src/Backend/modules/sync/sync.repository.js): Giữ `null` khi map snake_case; dòng tạo và cập nhật dùng `!== undefined ? mapped.time_notification : ...` để bảo toàn giá trị `null` (tắt nhắc).
+  8. **Mục 44 (Webhook PayOS Idempotency & Khử Trùng):**
+     - [`src/Backend/modules/payment/payment.repository.js`](src/Backend/modules/payment/payment.repository.js): Kiểm tra trùng `payos_transaction_id` trước khi tạo mới.
+     - [`src/Backend/modules/payment/payment.service.js`](src/Backend/modules/payment/payment.service.js): Siết chặn Idempotency trong Webhook PayOS, chỉ xử lý đơn khi ở `PENDING` hoặc `EXPIRED`.
+  9. **Mục 43 (AIOps Trạng Thái Tài Khoản Chuẩn):**
+     - [`src/Backend/modules/aiops/aiops.controller.js`](src/Backend/modules/aiops/aiops.controller.js): Đổi `status: 'Locked'` thành `status: 'Inactive'` cho cả 2 hàm khóa tài khoản.
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+  - **Backend Test Suite:** **438/438 tests PASS 100%** (79 suites, thời gian chạy ~7.3s).
+  - **Data Security Suite:** **13/13 tests PASS 100%** (`test_data_security_encryption_and_masking.js`).
+  - **Quản lý Tài liệu:** Di chuyển thành công 9 tài liệu hoàn tất sang `docs/superpowers/backend/DA-XONG/`. `CAN-LAM/` hiện chỉ còn Mục 50 ([`GIA_DINH_NEN_MONG.md`](docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md)) theo đúng phê duyệt của PO.
+  - **Zero Regressions:** Bảo toàn 100% kiến trúc CSDL, tính năng thanh toán, đồng bộ dữ liệu và bảo mật thông tin.
+
+### 4.25. Tinh Chỉnh & Khắc Phục Triệt Để Các Issue Tồn Đọng Tại Trang AIOps Sentinel (2026-10-26)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/Admin-web/09-aiops-sentinel-and-quarantine.md`](docs/Admin-web/09-aiops-sentinel-and-quarantine.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn bộ định hướng và chỉ đạo tối cao:
+  1. *Nút "Tái Hiệu Chuẩn Baseline":* Thẩm tra nguồn gốc chỉ số, cung cấp cơ sở lý thuyết khoa học máy tính chuẩn mực (Định luật Little, Đơn luồng Node.js & Amdahl, Co giãn Logarit) để trả lời Hội đồng Giảng viên. Khắc phục lệch số: Modal đọc `targetConcurrency` từ server, hiển thị trực quan quan hệ Baseline $N \times 10$ RPM & Safe Peak $N \times 30$ RPM $\leftrightarrow N / 2$ RPS; Backend hỗ trợ tiếp nhận tham số `trafficSpikeRps`.
+  2. *Box Biểu đồ xu hướng 4 Vector rủi ro:* Loại bỏ hoàn toàn hàng "Bộ chọn thời gian chi tiết: từ ... đến ..." (input Từ, Đến, các nút Lọc, Làm mới, Xóa bộ lọc và banner ưu tiên), giữ lại thanh 5 Preset nhanh (10m, 1h, 24h, 7d, 30d).
+  3. *Hệ số đe dọa (Threat Score):* Bỏ hoàn toàn phần thông số hệ số đe dọa tổng theo chỉ thị PO vì biểu đồ 4 vector đã đo lường từng vector độc lập và trực quan, loại bỏ rủi ro cộng dồn điểm gây báo động giả và bảo trì khẩn cấp oan khi máy chủ bình thường.
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **Backend Engine (`anomaly.detector.js`):**
+     - Bổ sung tiếp nhận cả 2 chuẩn tham số `customThresholds` (`trafficSpikeRps`, `authFailureThreshold`, `exploitLimit`, `resourceCpuPercent`, `resourceMemoryPercent`, `eventLoopLagMs`).
+     - Quy đổi tức thời `trafficSpikeRps` sang `effectiveTrafficRatio = (trafficSpikeRps * 60) / expectedRpm` cho Vector 2 Traffic.
+  2. **Giao Diện Admin-web (`AIOpsPage.jsx`):**
+     - Bỏ hoàn toàn widget đồng hồ đo Threat Score Gauge (0-100) nửa vòng tròn.
+     - Dàn trải Khối 1 thành lưới 2 cột cân xứng (`grid-cols-1 lg:grid-cols-2`): Cột 1 "Tín Hiệu Xâm Nhập & Tấn Công" (Vector 1 Xác thực & Vector 3 Khai thác), Cột 2 "Sức Chịu Tải & Phần Cứng" (Vector 2 Lưu lượng & Vector 4 Tài nguyên).
+     - Biểu đồ xu hướng: Bỏ toàn bộ hàng bộ chọn ngày giờ chi tiết và banner ưu tiên; loại bỏ đường trần nét đứt Max composite tím (`#8b5cf6`), nhãn `"Trần Max"` trong Legend, và dòng `"Threat Score"` trong tooltip để tập trung 100% vào 4 Vector độc lập.
+     - Modal Tái hiệu chuẩn Baseline: Hiển thị bảng quy đổi tương quan rõ ràng Baseline $N \times 10$ RPM & Safe Peak $N \times 30$ RPM $\leftrightarrow N / 2$ RPS; input `trafficSpikeRps` có chú thích req/phút tương đương.
+### 4.26. Chuẩn Hóa Module SYNC, Đặc Tả Thu Thập Thiết Bị & IP, Và Cập Nhật Toàn Diện Tài Liệu Admin-Web (2026-10-26)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/superpowers/plans/2026-10-26-sync-device-tracking-and-admin-docs-alignment.md`](docs/superpowers/plans/2026-10-26-sync-device-tracking-and-admin-docs-alignment.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn diện 4 trụ cột nghiệp vụ:
+  1. *CSDL & Module SYNC:* Chuẩn hóa trường đồng bộ của 6 thực thể (Wallets: 13, Categories: 12, Goals: 22, Bills: 21, Budgets: 17, Transactions: 13) khớp 100% với `sync_payload_contract_test.dart`. Cập nhật Backend Module SYNC hỗ trợ `is_deleted` (snake_case) bên cạnh `isDeleted` (camelCase). Ghi nhận chi tiết vào [`docs/superpowers/sync/SYNC_DOCUMENTATION.md`](docs/superpowers/sync/SYNC_DOCUMENTATION.md) kèm Mục V checklist cho Client-app.
+  2. *Đặc tả Thu thập Thông tin Thiết bị & IP:* Ghi nhận cơ chế Diff Check (Đổi IP hoặc Device Name thì INSERT dòng mới không ghi đè; Trùng thì UPDATE `last_active_at`). Thẩm định CSDL Migration 35 (`account_device_history`): Zero constraint conflicts, hoàn toàn an toàn. Hướng dẫn Client-app gửi header `x-device-name` qua Dio Interceptor, Backend tự động bóc tách và che bớt IP (`113.161.xx.xx`) theo Nghị định 13/2023/NĐ-CP. Ghi nhận tại [`docs/Admin-web/IP-Device-ClientApp.md`](docs/Admin-web/IP-Device-ClientApp.md).
+  3. *Hợp đồng Sự kiện & Thông báo:* Ghi nhận 18 sự kiện Socket.io và 9 mã chốt chặn HTTP tại [`docs/Admin-web/Event-Notification-to-ClientApp.md`](docs/Admin-web/Event-Notification-to-ClientApp.md) kèm ma trận hiện trạng và checklist dành cho Client-app.
+  4. *Cập nhật Toàn Diện Thư Mục Tài Liệu Admin-web:* Cập nhật chuẩn hóa 11 tài liệu chức năng từ `01-authentication-and-authorization.md` đến `11-full-realtime-architecture.md` và `README.md` trong `docs/Admin-web/`.
+- **Phạm vi & Chi Tiết Triển Khai:**
+  1. **Backend Module SYNC (`src/Backend/modules/sync/sync.repository.js`):**
+     - Bổ sung kiểm tra `if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }` trong `mapEntityFields` cho cả 6 entity (`wallet`, `category`, `goal`, `bill`, `budget`, `transaction` [với `deleted_at`]).
+  2. **Đồng Bộ Tài Liệu SYNC (`docs/superpowers/sync/SYNC_DOCUMENTATION.md`):**
+     - Bảo toàn 100% các ghi chú lịch sử phát triển quý giá (G28, G34, G37, G67, G85).
+     - Chuẩn hóa số trường: Wallets: 13, Categories: 12, Goals: 22, Bills: 21, Budgets: 17, Transactions: 13.
+     - Bổ sung **Mục V: Công Việc Phía Client-App Cần Làm & Điều Chỉnh Đồng Bộ** (Xóa mềm `is_deleted`, Tắt nhắc hóa đơn `time_notification: null`, Trạng thái hóa đơn `pay_status: 'Skipped'`, Trạng thái lưu trữ ví `status: 'Active'/'Inactive'`, Tự động giải mã `note` qua HTTPS, Gửi header `x-device-name`).
+  3. **Đặc Tả Thiết Bị & IP (`docs/Admin-web/IP-Device-ClientApp.md`):**
+     - Phân tích ràng buộc CSDL (Không có Unique constraint, Zero conflicts).
+     - Chi tiết cơ chế Diff-Check, Throttle 60s, Nghị định 13/2023/NĐ-CP, hướng dẫn Flutter Dio Interceptor, 2-Tier Testing, và Golden Rules.
+  4. **Hợp Đồng Sự Kiện & Thông Báo (`docs/Admin-web/Event-Notification-to-ClientApp.md`):**
+     - Chuẩn hóa 18 sự kiện thời gian thực Socket.io và 9 mã chốt chặn HTTP/API.
+     - Ma trận đối chiếu hiện trạng và checklist thực thi cho Dev Client-App.
+  5. **Cập Nhật 11 Tài Liệu Chức Năng & README.md Tại `docs/Admin-web/`:**
+     - Phản ánh toàn bộ các nâng cấp mới nhất: `is_first_login`, `created_by_admin_id`, mã PIN cấp 2, Uptime thực tế, bảng rộng x2, CPU/RAM delta ticks, thiết bị & IP `account_device_history`, khôi phục danh mục kèm keyword AI, Migration 36 (`actual_duration_seconds`), Live timer, AIOps tối giản 4 vector độc lập (bỏ Threat Score), SSE Ping 15s.
+- **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
+  - **Backend Test Suite:** **438/438 tests PASS 100%** (79 suites).
+  - **Data Security Suite:** **13/13 tests PASS 100%** (`test_data_security_encryption_and_masking.js`).
+  - **Admin-web Frontend Build:** `npm run build` hoàn tất sạch sẽ trong 2.89s, 0 lỗi cú pháp/type.
+  - **Zero Regressions:** 100% bảo toàn các luồng vận hành của hệ thống.
+
+
+
+
