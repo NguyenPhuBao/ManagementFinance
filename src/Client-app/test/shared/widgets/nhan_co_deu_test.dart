@@ -61,6 +61,29 @@ void main() {
     }
   });
 
+  // Thanh điều hướng dưới: nhãn đang chọn vẽ khác kiểu (đậm). Mỗi ô đo nhóm theo kiểu của chính nó thì ra hai hệ số — ô
+  // nào cũng phải đo theo cùng `kieuDo`. Giãn chữ đứng thay cho "đậm" vì chữ đậm giả của font test không đổi bề rộng.
+  testWidgets('kieuDo: hai ô vẽ khác kiểu vẫn co CÙNG hệ số khi cùng đo theo kieuDo', (t) async {
+    const nhom2 = ['Trang chủ', 'Cá nhân'];
+    Widget o(String n, TextStyle kieu) => SizedBox(
+          width: 60,
+          child: Center(child: NhanCoDeu(n, nhom: nhom2, kieu: kieu, kieuDo: const TextStyle(letterSpacing: 2))),
+        );
+    await t.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Row(mainAxisSize: MainAxisSize.min, children: [
+          o('Trang chủ', const TextStyle(fontSize: 13, letterSpacing: 2)),
+          o('Cá nhân', const TextStyle(fontSize: 13)),
+        ]),
+      ),
+    ));
+    final a = doan(t, 'Trang chủ').text.style!.fontSize!;
+    final b = doan(t, 'Cá nhân').text.style!.fontSize!;
+    expect(a, lessThan(13), reason: 'ô 60 dp: phải co');
+    expect(a, closeTo(b, 0.01), reason: 'ô vẽ thường đo theo kiểu của nó thì to hơn ô vẽ giãn — $a / $b');
+    expect(t.getSize(find.text('Trang chủ')).width, lessThanOrEqualTo(60.5), reason: 'nhãn vẽ giãn vẫn phải vừa ô');
+  });
+
   testWidgets('cỡ chữ hệ thống 1,5, ô hẹp: hệ số tính trên chữ ĐÃ phóng — vẫn vừa ô', (t) async {
     await t.pumpWidget(hang(80, coChu: 1.5));
     for (final n in nhom) {

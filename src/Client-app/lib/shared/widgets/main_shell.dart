@@ -3,12 +3,16 @@ import 'package:go_router/go_router.dart';
 import '../../core/di/injection_container.dart';
 import '../../core/ui/thong_bao_nhanh.dart';
 import '../theme/app_colors.dart';
+import 'nhan_co_deu.dart';
 import 'thoat_hai_lan.dart';
 
 class MainShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
   const MainShell({super.key, required this.navigationShell});
+
+  /// Bốn nhãn tab — một nhóm `NhanCoDeu` (bốn ô `Expanded` bằng nhau).
+  static const _nhanTab = ['Trang chủ', 'Phân tích', 'Giao dịch', 'Cá nhân'];
 
   void _onItemTapped(int index, BuildContext context) {
     if (index == 2) {
@@ -103,9 +107,11 @@ class MainShell extends StatelessWidget {
     final isSelected = itemIndex == currentIndex;
 
     // Ô chiếm phần của nó trong hàng; nền tô chọn rộng TỐI ĐA 72dp như bản
-    // Stitch nhưng co được khi màn hẹp. Nhãn MỘT dòng, `FittedBox.scaleDown`
-    // chỉ co khi không vừa: ở chữ hệ thống ×1,5 bản cũ để "Trang chủ" xuống
-    // hai dòng và tràn đáy ô cao 64dp (G68, vế dọc).
+    // Stitch nhưng co được khi màn hẹp. Nhãn MỘT dòng, chỉ co khi không vừa:
+    // ở chữ hệ thống ×1,5 bản cũ để "Trang chủ" xuống hai dòng và tràn đáy ô
+    // cao 64dp (G68, vế dọc). Bốn nhãn co CÙNG hệ số (`NhanCoDeu`, đo theo
+    // chữ đậm của nhãn đang chọn) — `FittedBox` riêng từng ô để chúng lệch
+    // cỡ ở Realme 320 dp × cỡ chữ 1,6 (2026-10-26).
     return Expanded(
       child: GestureDetector(
         onTap: () => _onItemTapped(itemIndex, context),
@@ -127,17 +133,15 @@ class MainShell extends StatelessWidget {
                   color: isSelected ? AppColors.primary : AppColors.textSecondary,
                 ),
                 const SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                    ),
+                NhanCoDeu(
+                  label,
+                  nhom: _nhanTab,
+                  kieu: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
                   ),
+                  kieuDo: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),

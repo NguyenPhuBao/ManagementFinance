@@ -28,6 +28,40 @@ void main() {
 
   String chu(WidgetTester t) => t.widget<Text>(find.textContaining('rộng ')).data!;
 
+  // `vuaSoDong`: chữ có vẽ trọn trong [soDong] dòng ở bề rộng cho trước không — cùng họ chữ + cỡ chữ hệ thống như `Text`.
+  testWidgets('vuaSoDong: "aaaa bbbb" (font test 1 em/ký tự, cỡ 10) ở 50 dp cần đúng hai dòng', (t) async {
+    late bool mot, hai, ba;
+    await t.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Builder(builder: (context) {
+          const kieu = TextStyle(fontSize: 10, letterSpacing: 0);
+          mot = vuaSoDong(context, 'aaaa bbbb', kieu, 50, 1);
+          hai = vuaSoDong(context, 'aaaa bbbb', kieu, 50, 2);
+          ba = vuaSoDong(context, 'aaaa bbbb', kieu, 200, 1);
+          return const SizedBox();
+        }),
+      ),
+    ));
+    expect(mot, isFalse, reason: '90 dp chữ không vừa một dòng 50 dp');
+    expect(hai, isTrue, reason: 'xuống dòng ở dấu cách: "aaaa" / "bbbb"');
+    expect(ba, isTrue);
+  });
+
+  testWidgets('vuaSoDong tính cỡ chữ hệ thống: ×2 thì "aaaa bbbb" ở 100 dp không còn vừa hai dòng', (t) async {
+    t.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
+    late bool hai;
+    await t.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Builder(builder: (context) {
+          hai = vuaSoDong(context, 'aaaa bbbb', const TextStyle(fontSize: 10, letterSpacing: 0), 70, 2);
+          return const SizedBox();
+        }),
+      ),
+    ));
+    expect(hai, isFalse, reason: 'cỡ 20: mỗi từ 80 dp > 70 dp — bẻ giữa từ, quá hai dòng');
+  });
+
   testWidgets('font nạp SAU khung đầu: builder chạy lại, phép đo theo font thật', (t) async {
     await t.pumpWidget(dung(const ValueKey(1)));
     final truoc = chu(t);

@@ -25,6 +25,22 @@ double doRongChu(BuildContext context, String chu, TextStyle kieu) {
   return rong;
 }
 
+/// [chu] có vẽ trọn trong tối đa [soDong] dòng ở bề rộng [rong] không — cùng kiểu kế thừa và cỡ chữ hệ thống như
+/// [doRongChu]. Cho chỗ chữ được xuống dòng: chọn bố cục khi một khối chữ cạnh nút không còn vừa (thẻ việc chờ duyệt ở
+/// Sổ giao dịch, 2026-10-26).
+bool vuaSoDong(BuildContext context, String chu, TextStyle kieu, double rong, int soDong) {
+  final tp = TextPainter(
+    text: TextSpan(
+        text: chu, style: DefaultTextStyle.of(context).style.merge(kieu)),
+    textScaler: MediaQuery.textScalerOf(context),
+    textDirection: Directionality.of(context),
+    maxLines: soDong,
+  )..layout(maxWidth: rong);
+  final vua = !tp.didExceedMaxLines;
+  tp.dispose();
+  return vua;
+}
+
 /// `LayoutBuilder` dựng lại khi font hệ thống đổi — cho mọi bố cục chọn theo
 /// bề rộng chữ đo lúc dựng ([doRongChu], `TextPainter`).
 ///

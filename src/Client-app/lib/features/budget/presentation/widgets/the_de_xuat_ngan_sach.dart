@@ -148,9 +148,8 @@ class _Dong extends StatelessWidget {
                   // suy ra, không phải mức người dùng đặt.
                   'khoảng ${CurrencyFormatter.formatLienKhoi(deXuat.mucThang)} '
                   'mỗi tháng',
-                  // G78 (2026-10-07): ở màn hẹp (320 dp) chữ phụ này từng cụt "…" — nay xuống tối đa hai dòng.
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  // G78 (2026-10-07): ở màn hẹp (320 dp) chữ phụ này từng cụt "…". Không trần số dòng: câu ngắn, khuôn cố
+                  // định — trần hai dòng của G78 vẫn cụt "khoảng / 2.010.000 đ …" ở Realme 320 dp × cỡ chữ 1,6 (2026-10-26).
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,

@@ -16,7 +16,7 @@ import 'package:flutter/material.dart';
 import '../../core/ui/do_chu.dart';
 
 class NhanCoDeu extends StatelessWidget {
-  const NhanCoDeu(this.chu, {super.key, required this.nhom, this.kieu});
+  const NhanCoDeu(this.chu, {super.key, required this.nhom, this.kieu, this.kieuDo});
 
   final String chu;
 
@@ -26,16 +26,21 @@ class NhanCoDeu extends StatelessWidget {
   /// Kiểu riêng — gộp lên `DefaultTextStyle` (ví dụ kiểu nhãn mà `TabBar` đặt).
   final TextStyle? kieu;
 
+  /// Kiểu dùng để ĐO nhóm, gộp lên [kieu] — khi các ô vẽ nhãn khác kiểu nhau (thanh điều hướng: nhãn đang chọn đậm), mọi ô
+  /// phải đo theo cùng một kiểu (kiểu rộng nhất), nếu không mỗi ô ra một hệ số và nhãn lại lệch cỡ.
+  final TextStyle? kieuDo;
+
   @override
   Widget build(BuildContext context) {
     final goc = DefaultTextStyle.of(context).style.merge(kieu);
+    final gocDo = goc.merge(kieuDo);
     final heChu = MediaQuery.textScalerOf(context);
     final huong = Directionality.of(context);
     double rongNhat(double co) {
       var r = 0.0;
       for (final n in nhom) {
         final p = TextPainter(
-          text: TextSpan(text: n, style: goc.copyWith(fontSize: co)),
+          text: TextSpan(text: n, style: gocDo.copyWith(fontSize: co)),
           textDirection: huong,
           textScaler: TextScaler.noScaling,
           maxLines: 1,
