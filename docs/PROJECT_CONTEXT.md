@@ -617,6 +617,18 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-26)
 
+### 🧭 Phiên 13 (2026-10-26 tối) — ba việc nhỏ của bàn giao phiên 12 + Tin từ FlowMoney + đo Realme
+
+- ✅ **Kéo về bị máy chủ từ chối không còn im lặng** (đơn 53 vế C — ghi chú `enc:…` làm mọi `/sync/pull` 500 `DECRYPT_FAILED`): lượt kéo bị
+  máy chủ **trả lời** bằng lỗi (≥ 400 trừ 401 · 403 · 429 · 503 — `keoVeBiMayChuTuChoi`, người dùng chốt *mọi lỗi máy chủ trả lời*) bật
+  `SyncEngine.keoVeBiTuChoi` (`ValueListenable<bool>`, chủ sở hữu `ApDuLieuKeoVe`) ⇒ Trang chủ hiện **`DongNhacKeoVe`** ngay sau
+  `DongNhacMayChu`: *"Chưa nhận được dữ liệu mới"* / *"Thay đổi từ máy khác chưa về, thay đổi trên máy này vẫn được gửi lên"* (biểu tượng
+  `sync_problem` nền hổ phách; Stitch biến thể 4 màn `006c5a2e…` — lượt sửa báo `timeout`, chờ người dùng nhìn). Lỗi vẫn nuốt: **không**
+  `error` (không thông báo *"Đồng bộ hỏng"*), **không** giãn cách; tắt ở lượt kéo thành công và `stop()`, mất mạng giữ nguyên. ⚠️ Cố ý
+  **không** đi qua `TrangThaiMayChu`: `MayChuInterceptor` đặt lại nó ở mọi phản hồi thành công — lượt đẩy thành công sẽ xoá dòng nhắc dù kéo
+  vẫn hỏng. Ca canh `sync_keo_ve_bi_tu_choi_test.dart` (9) + `dong_nhac_keo_ve_test.dart` (7).
+- ✅ Chú thích `ten_thiet_bi.dart:10` + khối phiên 11 dưới: CORS đã cho `x-device-name` từ backend `49eafef6` (`1c47b2c9`).
+
 ### 🛰️ Phiên 11 (2026-10-26 chiều) — soát năm mục tài liệu v4 với mã backend `36f1ea43`, làm ba mục người dùng chọn
 
 - **Soát** (`Event-Notification-to-ClientApp.md` v4 — tài liệu backend, chỉ đọc): **429 `RETRY_LIMIT_EXCEEDED`** — `retry-guard.middleware.js`

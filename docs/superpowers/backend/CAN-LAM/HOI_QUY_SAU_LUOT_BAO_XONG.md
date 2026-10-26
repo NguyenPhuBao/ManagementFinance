@@ -72,6 +72,10 @@ chỉ phát `payment.success` (không `account.upgraded`), bước ghi `PAID` (`
 
 Trước lượt sửa, các chuỗi ấy chỉ bị trả nguyên về; nay chúng khoá tài khoản.
 
+> Phía client (2026-10-26, phiên 13): lượt kéo bị máy chủ trả lời bằng lỗi nay hiện dòng nhắc *"Chưa nhận được dữ liệu mới"* ở Trang chủ thay
+> vì im lặng (`SYNC_DOCUMENTATION.md` mục 9.2). Đó chỉ là báo cho người dùng biết — **không** thay được việc xin làm dưới đây: dữ liệu máy khác
+> vẫn không về cho tới khi `encrypt()` được sửa và hàng hỏng được xử lý.
+
 **Xin làm.** `encrypt()` luôn mã hoá đầu vào của người dùng — đánh dấu bản mã bằng cách người dùng không gõ ra được, hoặc chỉ coi là bản mã khi
 **giải được** bằng khoá hiện tại. Kèm (đơn 52): lỗi 500 ở `auth` mang `code` (`ResponseHandler.error` không chép `error.code` — `response-handler.js:15-26`);
 log `DECRYPT_FAILED` ghi **bảng + khoá chính** của hàng hỏng.

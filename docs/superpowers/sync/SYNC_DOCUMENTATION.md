@@ -339,9 +339,15 @@ không đụng `delete_at`. Client không cần đổi gì. Chưa đo trên hai 
 ### 9.2 ⚠️ `/sync/pull` trả 500 `DECRYPT_FAILED` cho cả lượt (đơn 52)
 
 Từ `49eafef6`, `decrypt()` ném lỗi; một hàng giải mã hỏng ⇒ `/sync/pull` trả HTTP 500 `{ code: 'DECRYPT_FAILED' }`, không trả phần nào. Client
-nuốt lỗi kéo ⇒ **kéo về đứng im lặng** cho cả tài khoản cho tới khi hàng ấy được sửa (đẩy lên vẫn chạy; máy đăng nhập mới không có dữ liệu). Đi
+nuốt lỗi kéo ⇒ kéo về đứng cho cả tài khoản cho tới khi hàng ấy được sửa (đẩy lên vẫn chạy; máy đăng nhập mới không có dữ liệu). Đi
 kèm một lỗ mức cao: `encrypt()` vẫn giữ nguyên mọi chuỗi dạng `enc:a:b:c` ⇒ người dùng gõ ghi chú `enc:1:2:3` là tự khoá lượt kéo của mình vĩnh
-viễn. Chi tiết và lời xin: đơn 52.
+viễn. Chi tiết và lời xin: đơn 52, đơn 53 vế C.
+
+✅ **Client hết im lặng (2026-10-26, phiên 13):** lượt kéo bị máy chủ **trả lời** bằng lỗi — mọi mã ≥ 400 trừ 401 · 403 · 429 · 503 (luật
+`keoVeBiMayChuTuChoi`, `ap_du_lieu_keo_ve.dart`) — bật `SyncEngine.keoVeBiTuChoi` ⇒ Trang chủ hiện dòng nhắc *"Chưa nhận được dữ liệu mới"*
+(`DongNhacKeoVe`, ngay sau dòng nhắc máy chủ). Lỗi vẫn nuốt: chu kỳ **không** thành `error` (không thông báo *"Đồng bộ hỏng"*), **không** giãn
+cách; cờ tắt ở lượt kéo thành công kế tiếp và ở `stop()`, mất mạng giữ nguyên. Ca canh `test/core/sync/sync_keo_ve_bi_tu_choi_test.dart`.
+Client vẫn không đọc riêng `code` (chỉ ghi log) — câu chữ đúng cho mọi lỗi máy chủ.
 
 ### 9.3 Nhỏ
 

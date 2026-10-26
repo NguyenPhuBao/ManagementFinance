@@ -212,6 +212,12 @@ class SyncEngine {
   /// làm mới — gộp trên dữ liệu cũ là xoá hoá đơn máy khác đã trả.
   int get soLanKeoVeXong => _keoVe.soLanKeoVeXong;
 
+  /// `true` khi lượt kéo về gần nhất bị máy chủ TRẢ LỜI bằng lỗi (2026-10-26, đơn 53 vế C) — Trang chủ hiện dòng nhắc
+  /// *"Chưa nhận được dữ liệu mới"* (`DongNhacKeoVe`). Bước Pull vẫn nuốt lỗi: chu kỳ KHÔNG thành `error` (bộ quét sẽ nổ
+  /// "Đồng bộ hỏng") và KHÔNG giãn cách (lượt đẩy vẫn tốt) — người dùng chốt chỉ dòng nhắc. Tắt khi một lượt kéo thành
+  /// công và khi [stop]; mất mạng giữ nguyên. Luật mã HTTP: `keoVeBiMayChuTuChoi` (`ap_du_lieu_keo_ve.dart`).
+  ValueListenable<bool> get keoVeBiTuChoi => _keoVe.biTuChoi;
+
   /// Việc chạy sau **MỖI** lượt kéo về thành công, trong chính chu kỳ ấy (sau Pull, trước lần thử đẩy lại) — DI nối bộ
   /// gieo danh mục mặc định (quy tắc 8 `CLAUDE.md`; `core/sync` không biết tên mảng). Trả số hàng vừa ghi; > 0 thì hẹn
   /// đẩy. `null` = không có việc gì.

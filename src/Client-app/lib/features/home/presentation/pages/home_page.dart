@@ -9,6 +9,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../widgets/hang_nut_nhanh.dart';
 import '../widgets/home_budget_card.dart';
 import '../widgets/home_goal_card.dart';
+import '../widgets/dong_nhac_keo_ve.dart';
 import '../widgets/dong_nhac_may_chu.dart';
 import '../widgets/the_cho_xoa_trang_chu.dart';
 import '../widgets/drawer_trang_chu.dart';
@@ -68,6 +69,8 @@ class HomePage extends StatelessWidget {
               // G89 — dòng nhắc máy chủ (bảo trì / phong toả), ĐẦU chồng dòng nhắc: nó giải thích vì sao mọi thứ khác chưa
               // đồng bộ. Khoảng 24 phía trên nằm TRONG widget; bình thường không dựng gì.
               const DongNhacMayChu(),
+              // Lượt kéo về bị máy chủ trả lời bằng lỗi (đơn 53 vế C, 2026-10-26) — ngay sau dòng máy chủ, cùng khuôn.
+              const DongNhacKeoVe(),
               // Thẻ nhắc tài khoản đang chờ xoá (G33) — spec cưỡng chế đăng xuất §5.2.
               // Khoảng 24 phía trên nằm trong thẻ: "Để sau" ẩn thẻ thì không còn
               // khoảng trống.
