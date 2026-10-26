@@ -1,5 +1,12 @@
 # Client đã tích hợp trợ lý online (`POST /api/ai/chatbot/chat/stream`) — năm chỗ cố ý không làm theo `ChatbotAI_Moblie.md`, ba điều client phải bù, và việc xin backend (mục 47)
 
+> 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`): **việc 2 đạt** (`chatbot.service.js:152` giữ `history.slice(-6)`);
+> **việc 1, 3–7 chưa làm** — ba tệp chatbot không đổi từ `1cb6bc0e` (2026-10-08): `chatbot.service.js:153` chỉ lọc vai, chưa bỏ
+> tin đầu `model`; `chatbot.controller.js:33` còn `req.on('close')`; `chatbot.service.js:144` còn `maxOutputTokens: 1024`;
+> `: ping` và `finishReason` có 0 lần; `ChatbotAI_Moblie.md` :57–73 chỉ tả `done {fallback}`, không có `error`; `ChatbotAI.md`
+> :286, :296, :420, :443 y nguyên. Mã mặc định đã là `gemini-3.8-flash` (`modules/ai/config.js:19`) nhưng tài liệu chưa ghi
+> `GEMINI_MODEL`.
+
 **Ngày:** 2026-10-17 · **cập nhật 2026-10-18** (nghiệm thu máy thật OnePlus 13R trên backend dev chạy thật, Node v22.19.0 —
 các số đo ghi *"đo 2026-10-18"*) · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat`
 **Loại:** đơn **thông báo + xin** — mức **vừa** (ba việc mức vừa: 5 · 6 · 7 — Dừng không tới server, server im lặng quá 45 s

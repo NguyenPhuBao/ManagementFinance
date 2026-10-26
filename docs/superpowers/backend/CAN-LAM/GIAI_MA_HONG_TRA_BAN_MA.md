@@ -1,5 +1,11 @@
 # Giải mã AES-256-GCM hỏng thì backend trả NGUYÊN BẢN MÃ cho client — client ghi đè ghi chú bằng `enc:…` (mục 52)
 
+> 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`; đơn chỉ lên `main` qua PR #160 tối 2026-10-25, sau commit backend
+> mới nhất `36f1ea43`): **chưa làm.** `utils/crypto.util.js` không đổi từ 2026-10-16: sai định dạng `return str` (:98), giải
+> hỏng `return str` (:114); `encrypt()` :65 vẫn giữ nguyên mọi chuỗi `isEncrypted` (`:125` chỉ đếm `split(':').length === 4`).
+> Các chỗ gọi (`auth.repository.js:18-19`, `auth.service.js`, `sync.repository.js:14`, `bank.repository.js:243`,
+> `dedup.repository.js`) chưa kiểm lỗi giải mã.
+
 **Ngày:** 2026-10-24 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat`
 **Loại:** đơn xin sửa mã backend — mức **cao** (làm hỏng dữ liệu người dùng trên máy, im lặng). Không đổi lược đồ, không đổi
 hình dạng API khi giải mã thành công. Mã backend client **chỉ đọc** (quy tắc 1 `CLAUDE.md`); mọi khẳng định dưới đây đo ngày

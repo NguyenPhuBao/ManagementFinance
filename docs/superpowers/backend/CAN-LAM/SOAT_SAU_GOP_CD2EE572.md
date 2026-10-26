@@ -1,5 +1,23 @@
 # Soát sau gộp `main` @ `cd2ee572`: AIOps khoá tài khoản làm client xoá dữ liệu; webhook PayOS nâng nhầm tài khoản; đăng nhập lúc bảo trì mất `code`; đính chính hợp đồng sự kiện (mục 43)
 
+> 🔎 **Client soát lại 2026-10-26** (mã `main` @ `5bb258ff`, backend mới nhất `36f1ea43` — PR #159, 2026-10-24; truy vấn
+> chỉ đọc trên CSDL Supabase của `.env`): **không vế còn mở nào được làm thêm.** A2 · B · C vẫn đạt.
+> - **A1:** `aiops.controller.js:249`, `:305` còn `status: 'Locked'`.
+> - **A3:** `_syncAccountStatusToDatabase` (`aiops.quarantine.js:663-673`) vẫn mở khoá theo id / tên, không xét ai khoá — thêm hệ
+>   quả: tài khoản `PendingDelete` bị cách ly rồi hết hạn sẽ về `Active`, mất trạng thái chờ xoá.
+> - **A4:** `feature.collector.js:231`, `:235` còn. **A6:** AIOps vẫn không phát `force_logout`.
+> - **A5:** chưa có tệp `database/N`; CSDL: bảng `account` **0** ràng buộc CHECK, `"Status"` hiện chỉ có `Active` (8) / `Deleted` (4).
+> - **D chấm lại trên bản v4.0** (`36f1ea43` viết lại `Event-Notification-to-ClientApp.md`): **3 / 12** chỗ đã sửa (đếm ngược chỉ
+>   phát lúc 00:00 · bỏ câu *"Refresh Token đã bị hủy"* · bỏ ba route sai, nhưng chưa ghi route đúng); **1** sửa một phần (OCR §4.8
+>   `:297-312` ghi `metadata`, mã gửi `data` + `createdAt` — `notification.service.js:98-104`); **8** còn sai: §5.5 `:499-503` `code`
+>   lồng trong `data` (mã phẳng — `response-handler.js:47-53`) · §4.7 `:282` `created/updated/deleted` (mã
+>   `total/synced/conflicts/errors` — `sync.service.js:243`) · §4.4 `:218` `idaccount_type/idfeature` (mã `account_type/feature_id` —
+>   `admin.service.js:743`) · §4.5 `:238-243` chỉ một hình dạng (mã gửi `{type, premiumExpiresAt}` — `payment.service.js:342` — và
+>   `{reason: 'PERMISSIONS_MATRIX_UPDATED', updates}` tới **mọi** client — `socket.js:383-386`) · §4.9 tả `user.notification` như sự
+>   kiện sống (`notifyUser` không còn chỗ gọi) · §4.2 `:170-174` `reason: null` khi tắt bảo trì (mã có thêm `scheduled` /
+>   `scheduledList` — `maintenance.manager.js:665-676` — và tắt không xoá `reason`) · §5.2 `:440` + bảng `:102` ngưỡng 100 ms (mã
+>   250 ms — `event-loop-monitor.js:9`) · §1 chưa ghi sự kiện có thể tới hai lần qua Redis (`event-bus.js:25`).
+>
 > 🟡 **Client soát 2026-10-18 (sau gộp `main` @ `e7570e16`; backend ghi *"✅ Đã xong 100%"* ở `3a5d320c`): đạt phần
 > chính, còn sáu việc.** Đo bằng đọc mã ở `e7570e16`, truy vấn chỉ đọc trên CSDL dev, và `grep` từng hàng bảng mục D trên
 > `docs/Admin-web/Event-Notification-to-ClientApp.md`. Thân đơn bên dưới giữ nguyên: mục *Xin làm* và *Kiểm lại bằng* của

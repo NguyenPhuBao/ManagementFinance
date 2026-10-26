@@ -1,5 +1,16 @@
 # Mục 49 — Soát sau khi client gộp `main` @ `ee6a65e5` (PR #153–#158) — tài liệu lệch mã, migration trùng số, thứ tự áp, lỗi kích hoạt Premium
 
+> 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`; đơn này chỉ lên `main` qua PR #160 tối 2026-10-25, **sau** commit
+> backend mới nhất `36f1ea43`): **chưa vế nào được làm.**
+> - **A:** `SYNC_DOCUMENTATION.md` không bị viết đè lần ba (giữ bản client); lỗi mới của bản v4.0 bổ sung ở cuối vế A.
+> - **B:** còn nguyên (`Event-Notification-to-ClientApp.md` v4.0 dòng 52, 131, 544, 621, 643; câu kiểm của vế B ra thêm 107).
+> - **C:** vẫn trùng số 27, vẫn còn `)2_can_lam_all_migrations.sql`. **D:** `auth.repository.js:28, 39, 50, 64` vẫn `include` không
+>   `select`. **F:** migration 33 không đổi.
+> - **E:** CORS `app.js:32` vẫn thiếu `x-device-name`; `IP-Device-ClientApp.md:325, 372` còn hai route không có trong mã.
+> - **G (CAO) chưa:** `payment.service.js:673` vẫn gọi `activatePremiumSubscription(order.idaccount, {…})`, trong khi hàm khai
+>   `({ idaccount, orderId, paidAt, newExpiresAt, transactionData })` (`payment.repository.js:349`).
+> - **H:** còn nguyên; số dòng trên bản v4.0 + chỗ sai mới bổ sung ở cuối vế H.
+>
 > **Client đặt 2026-10-23.** Người nhận: backend (NPBao). Mức chung: **vừa**, riêng **vế G mức CAO** (lỗi mã thật: đơn đã
 > trả tiền mà tài khoản không lên Premium — bổ sung cùng ngày sau lượt soát bốn tài liệu `docs/Admin-web/`). Ngoài vế G, không
 > có chỗ nào làm hỏng app đang chạy trên backend đã áp đủ migration; các chỗ còn lại là **tài liệu sai** (ai làm theo sẽ gây hỏng
@@ -73,6 +84,20 @@ nhưng còn sai:
 
 **Kiểm lại:** `git show 36f1ea43:docs/superpowers/sync/SYNC_DOCUMENTATION.md | grep -n "16 trường\|18 trường"` (bản v4) so với
 `grep -c "provider\|bank_tran_id" src/Client-app/test/core/sync/sync_payload_contract_test.dart` → 0.
+
+### Soát 2026-10-26 — chỗ sai của bản v4.0 chưa có trong bảng trên
+
+Đọc `git show 36f1ea43:docs/superpowers/sync/SYNC_DOCUMENTATION.md`, đối chiếu `src/Backend/prisma/schema.prisma` và tệp test hợp đồng:
+
+| Bản v4.0 nói | Đúng (theo mã) | Bằng chứng |
+|---|---|---|
+| :67 loại ví `Cash`, `Bank`, `EWallet`, `Credit`, `Savings`, `Other`, `VARCHAR(20)` | `Cash` · `Bank` · `Saving` · `Banking`, `VarChar(7)` — ai làm theo mà gửi giá trị khác là vỡ `chk_wallet_type`, ví kẹt hàng đợi đẩy vĩnh viễn | `schema.prisma` model `wallet`; `prisma/migrations/20260901090000_align_new_database/migration.sql`; `src/Client-app/lib/features/wallet/domain/wallet_type.dart` |
+| :74–75 ví `icon VARCHAR(255)`, `color VARCHAR(50)` | `VarChar(20)` cả hai | `schema.prisma` model `wallet` |
+| :89, :94–96 danh mục `name_category VARCHAR(100)`, `keyword VARCHAR(50)`, `icon VARCHAR(255)`, `color VARCHAR(50)` | `VarChar(200)` · `Text` · `VarChar(20)` · `VarChar(9)` | `schema.prisma` model `category` |
+| Số trường danh mục **14**, ngân sách **19** | Payload đẩy: danh mục **12** (13 khi có `keyword`), ngân sách **17** — bản v4 cộng cả `create_at`, `server_update_at` (hai cột chỉ kéo về) | tệp test hợp đồng |
+| Hoá đơn *"24 trường"* | Bảng của chính mục 3.4 chỉ có **23** hàng; payload đẩy thật **21** | bản v4 mục 3.4 |
+
+(Câu :88 *"`1` nếu danh mục hệ thống"* **đúng** với server — đo 2026-10-26 trên CSDL Supabase: 16 hàng `Is_default` đều `Create_by = 1`; client tự quy về 0 khi kéo về.)
 
 ---
 
@@ -238,3 +263,21 @@ thay vì suy luận; tính năng chưa có thì ghi *"kế hoạch"*, đừng đ
 **Kiểm lại:**
 `grep -n "purgeAccountData\|PENDING_DELETE_PROTECTED\|NameWallet\|Total_amount\|pulledAt - 2\|HOÀN TẤT 100%" docs/Admin-web/*.md` → 0 dòng;
 hàng `time_recurrence` của **hoá đơn** trong `Sync-To-ClientApp.md` không còn `'Day'` (mục tiêu thì `Day` hợp lệ — đừng `grep` chung).
+
+### Soát 2026-10-26 — số dòng trên bản v4.0 (`36f1ea43`) và chỗ sai mới
+
+`Event-Notification-to-ClientApp.md` v4.0 (643 dòng) giữ nguyên các chỗ mức cao của H1. Số dòng mới:
+
+- xoá SQLite khi `ACCOUNT_DELETED`: **52, 131, 544, 621, 643**;
+- body 401 / 403 lồng `"data": {`: **499, 518, 537**;
+- `PENDING_DELETE_PROTECTED`: **108, 548, 555**;
+- *"BỎ SÓT"* cho thứ client đã có: **603** `account.downgraded` · **615** 503 `MAINTENANCE_MODE` · **618** 403 `AIOPS_QUARANTINED` ·
+  **619** 403 `FEATURE_DISABLED` (client: `realtime_event.dart`, `trang_thai_may_chu.dart`, `may_chu_interceptor.dart`).
+
+**Mới ở v4.0:** đòi client mở `MaintenanceScreen` và dừng đồng bộ nền khi bảo trì — **101, 435, 600, 615, 638**. Client cố ý dùng
+dòng nhắc + hẹn thử theo `Retry-After`, không màn chặn, và cố ý không nghe `system.maintenance_changed`. Các chỗ lệch của phần sự kiện
+§4.2–§4.13 chấm lại ở banner đầu mục 43 (vế D) và mục 44 (vế F).
+
+Ba tệp còn lại không đổi từ 2026-10-23: `DEVICE_TRACKING_AND_SYNC_PLAN.md:5` vẫn *"HOÀN TẤT 100%"*; `Sync-To-ClientApp.md` còn
+`NameWallet` (:82), `Total_amount` (:199), `Time_notification VARCHAR(20)` (:177 — thật `VarChar(7)`), và dạng LaTeX
+`\text{pulledAt} - 2\text{ phút}` (:317–320) mà câu kiểm lại ở trên bỏ sót.

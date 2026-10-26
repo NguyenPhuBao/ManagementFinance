@@ -1,5 +1,14 @@
 # Script test backend ghi ví mang id KHÔNG phải UUID vào tài khoản dev thật `quangdat` (18) — ví kẹt hàng đợi đẩy của client; xin dọn dữ liệu test và sửa script (mục 48)
 
+> 🔎 **Client soát lại 2026-10-26** (truy vấn chỉ đọc trên CSDL Supabase của `.env`; `PersonFinance` cục bộ chưa đo):
+> - **Việc 1, bước 1 — đã thực hiện** lúc **2026-10-26 03:58:21Z** (10:58 giờ VN): ví `test-wallet-1789014227658` và 2 giao dịch
+>   còn sống của tài khoản 18 đã có `Delete_at` / `Deleted_at` (9 / 9 giao dịch của ví nay đều đã xoá). Người dùng xác nhận
+>   không phải client làm. Nhờ backend ghi một dòng xác nhận (ai làm, trên CSDL nào) vào đơn.
+> - **Bước 3 chờ:** ví "ma" `00000000-0000-4000-8000-4534d71cc54d` chưa xuất hiện (0 hàng) — chưa máy nào đẩy lại sau bước 1.
+> - **Việc 2, 3 chưa làm:** `Test/test_data_security_encryption_and_masking.js` không đổi từ `b147feeb` (:236–237
+>   `findFirst({status:'Active'})`, :243 `'test-wallet-' + Date.now()`, dọn sau `assert` ở :281, `finally` :337 chỉ đóng
+>   `pgClient`); `Test/test_sync_new_schema.js:21`, `Test/test_can_lam_fixes.js:44` y nguyên.
+
 **Ngày:** 2026-10-20 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat` (HEAD `5794096e`)
 **Loại:** đơn xin, mức **vừa**. Hai việc chính: (1) **dọn dữ liệu test** trên CSDL dev bằng **xoá mềm**, ba bước; (2) **sửa ca 11**
 của `Test/test_data_security_encryption_and_masking.js`. Thêm một việc mức thấp: hai script cùng khuôn. Đơn **không** xin đổi

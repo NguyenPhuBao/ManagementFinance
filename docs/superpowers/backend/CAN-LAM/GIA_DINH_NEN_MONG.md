@@ -1,5 +1,13 @@
 # Mục 50 — Chức năng GIA ĐÌNH (nhà nhiều người): toàn bộ thiết kế + việc backend của phần 1 (nền móng)
 
+> 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`; truy vấn chỉ đọc trên CSDL Supabase của `.env`): **chưa vế nào
+> được làm** — `src/Backend` (`.js` / `.sql` / `.prisma`) có 0 chữ *household*; `database/` dừng ở `36_*`; CSDL: 0 bảng
+> `household*`, 0 cột `Idhousehold`. **Vế A vẫn mở:** nhánh sửa của `/sync/push` chỉ so `update_at` (`upsertWallet`,
+> `sync.repository.js:269-313`), `softDelete` (`:710-752`) xoá theo khoá chính — không kiểm chủ sở hữu. `36f1ea43` (PR #159)
+> thêm `docs/Family/GIA_DINH_NEN_MONG.md` — **bản chép y nguyên** đơn này (cùng blob `d6e786e1`), không kế hoạch, không trả lời
+> mục 6. Nhờ backend trả lời / ghi kế hoạch **vào đơn này**: bản ở `docs/Family/` do backend tạo nên client không cập nhật theo
+> đơn — đọc bản ở `CAN-LAM/`.
+>
 > **Client đặt 2026-10-23.** Người nhận: backend (NPBao). Mức: **cao** — tính năng mới người dùng chọn; client làm phần mình
 > song song bằng API giả, **nghiệm thu chờ đơn này**.
 >

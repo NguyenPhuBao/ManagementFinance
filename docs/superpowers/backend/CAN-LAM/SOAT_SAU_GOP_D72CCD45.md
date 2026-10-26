@@ -1,5 +1,19 @@
 # Soát sau gộp `main` @ `d72ccd45`: hai tệp migration trùng số và script áp migration đồng bộ bị viết đè; webhook xử lý lại đơn đã đối soát; tra mã nhận diện bắt nhầm tiền tố PayOS; hợp đồng thanh toán mới chưa vào tài liệu sự kiện (mục 44)
 
+> 🔎 **Client soát lại 2026-10-26** (mã `main` @ `5bb258ff`, backend mới nhất `36f1ea43`; truy vấn chỉ đọc trên CSDL
+> Supabase của `.env`): **B chưa làm; A và F tái phát.**
+> - **B1:** chốt ở `payment.service.js:136` vẫn chỉ chặn `PAID` / `REFUNDED` / `CANCELLED` — đơn `WAITING_CONFIRMATION` nhận lại
+>   webhook có số tiền khớp rơi xuống nhánh `:313` và được nâng gói.
+> - **B2:** `recordTransaction` vẫn `create` thẳng (`payment.repository.js:328-339`); CSDL: `payment_transaction` chỉ có khoá chính
+>   + hai chỉ mục thường (`order_id`, `idaccount`), **không** unique theo mã giao dịch PayOS.
+> - **C:** phần chính đạt; vế phụ chưa — `findOrderByRecognitionCode` (`payment.repository.js:286`) không lọc `PENDING`.
+>   **D** đạt (CSDL: `payment_order.status` dài 25). **E** đạt.
+> - **A tái phát:** `6cbd248e` (2026-10-23) thêm `27_create_aiops_metric_snapshot_table.sql`, trùng số với `27_add_qr_url…` —
+>   theo dõi ở mục 49 vế C. `apply_migration_20.js:19` vẫn đúng.
+> - **F tái phát:** từ `6cbd248e`, `confirm-upgrade`, ba trạng thái đơn mới và `excessAmount` bị xoá khỏi
+>   `Event-Notification-to-ClientApp.md` (5 lần nhắc → 0); §4.13 `:404-409` ghi `receivedAmount`, mã gửi `amountReceived` +
+>   `excessAmount` / `shortage` / `fee` (`payment.service.js:223-230`, `:266-274`).
+>
 > 🟡 **Client soát 2026-10-18 (sau gộp `main` @ `e7570e16`; backend ghi *"✅ Đã xong 100%"* ở `3a5d320c`): đạt năm
 > mục, mục B còn hai vế.** Đo bằng đọc mã ở `e7570e16`, truy vấn chỉ đọc trên CSDL dev, và `grep` tài liệu hợp đồng sự
 > kiện. Thân đơn bên dưới giữ nguyên: mục *Xin làm* và *Kiểm lại bằng* của vế B vẫn áp dụng.

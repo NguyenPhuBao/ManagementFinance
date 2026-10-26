@@ -1,5 +1,10 @@
 # `docs/Notification/Notification_Client-app.md` tả client lệch mã ở ~30 chỗ — xin sửa chữ (mục 46)
 
+> 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`): **chưa làm** — tệp không đổi từ `3a5d320c` (2026-10-16). Câu
+> `grep` kiểm lại ra **24** dòng: 18 là chỗ đơn nêu, số dòng trôi +3 (4, 52, 119–120, 168, 180, 185–186, 191, 210, 245–246, 261,
+> 275, 284, 294–295, 358); 6 dòng (25, 68, 87–90) là phần tả đường REST của backend — câu kiểm của đơn bắt nhầm, không tính.
+> Dòng 45 (`transaction`) và 50 (7 chip) cũng chưa sửa.
+
 **Ngày:** 2026-10-17 · **Phía gửi:** Client-app · **Nhánh:** `TranQuangDat` (HEAD `172e8ee9`)
 **Loại:** đơn xin — **chỉ sửa chữ** trong một tài liệu do backend quản (`docs/Notification/Notification_Client-app.md`,
 commit cuối `10ab14c3`, 2026-10-03, NPBao; 380 dòng). **Không** đổi mã, lược đồ, payload, endpoint. Client không sửa thẳng

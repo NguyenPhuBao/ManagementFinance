@@ -628,6 +628,9 @@ src/Backend/
   ngân sách và chín chỗ đo chữ khác (người dùng chọn sửa luôn), **test quét 39** `core/ui/do_chu_qua_bo_cuc_theo_font_test.dart`. Chi tiết số đo: mục 10
   `KHOA_APP_FEATURE.md` (*Lượt sửa 2*). ⚠️ Mẹo đăng xuất máy ảo bằng xoá tệp kho rồi chép bản sao về **hỏng** với `flutter_secure_storage` 10.3.4 (token mất,
   phải đăng nhập lại — máy ảo đang ở màn Đăng nhập). Test **8.106 / 10 skip**, analyze 20. Commit `b7d30bd6` · `0251284e` · `711c3cf0`; chưa push.
+  Cùng phiên: **soát bảo mật `00d32976..HEAD`** — 0 lỗ hổng đạt ngưỡng (ứng viên *Quên PIN + đặt lại mật khẩu qua email* bị loại
+  3/10: chỗ yếu là luồng khôi phục tài khoản có từ trước); **soát lại cả 10 đơn `CAN-LAM/`** (người dùng yêu cầu, chỉ đọc mã `main` +
+  CSDL Supabase) — không đơn nào được làm thêm, kết quả ở banner 🔎 README `CAN-LAM/` và đầu từng đơn.
 
 - **Phiên 9 (2026-10-26; người dùng chọn M15 + nút Google, dựng `--release`, nghiệm thu còn lại, rồi soát bảo mật · biên lai MB · M13):** (1) **M15** — hàng
   *Tự khoá sau* đo tiêu đề + giá trị bằng `TextPainter` (họ chữ theme + `textScaler`), không vừa thì giá trị xuống dưới dòng phụ (mục 8 `KHOA_APP_FEATURE.md`);

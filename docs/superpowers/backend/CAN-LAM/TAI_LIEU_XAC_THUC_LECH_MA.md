@@ -1,5 +1,9 @@
 # `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md` tả hai tính năng client KHÔNG có — đăng nhập offline bằng băm mật khẩu và đăng nhập vân tay (mục 51)
 
+> 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`; đơn chỉ lên `main` qua PR #160 tối 2026-10-25): **chưa làm** —
+> `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md` không đổi từ `9d8b5675` (2026-10-19): còn `SharedPreferences` /
+> `offline_password_hash` (:6, :43–46) và `local_auth` / Face ID (:50).
+>
 > **Cập nhật 2026-10-25 (client):** client nay **CÓ khoá ứng dụng** — mã xong 2026-10-25, **chưa nghiệm thu máy**: **PIN 6 số riêng của
 > app + mở nhanh bằng vân tay** (`android.hardware.biometrics.BiometricPrompt` gắn khoá AES-GCM `AndroidKeyStore`, kênh Kotlin
 > `flowmoney/sinh_trac`; **không** `local_auth`, không Face ID). PIN là **cục bộ**: băm PBKDF2 cất trong `flutter_secure_storage`,
