@@ -633,8 +633,8 @@ src/Backend/
 - ✅ **`x-device-name`** (Android): kênh Kotlin `flowmoney/thiet_bi` (`ThietBi.kt`, **không** `device_info_plus`) → `docTenThietBi`
   (`core/api/ten_thiet_bi.dart`, ASCII in được ≤ 150) đọc **một lần** ở `setupDependencies`, gắn vào BaseOptions của Dio chung **và**
   Dio `/auth/refresh`; kênh đăng ký ở **cả** engine app lẫn engine nền (`TuChuyenTien.chayHeadless`) — backend thêm một dòng
-  `account_device_history` mỗi khi tên đổi, nên mọi đường của một máy phải gửi cùng tên. Web / iOS không gửi (CORS `app.js:32` chưa
-  cho header — đơn 49 vế E). **Đo máy ảo** (bản debug trỏ máy chủ thu header tạm): `/auth/profile`, `/payment/subscription-info`,
+  `account_device_history` mỗi khi tên đổi, nên mọi đường của một máy phải gửi cùng tên. Web / iOS không gửi — không có kênh gốc
+  (CORS `app.js:32` **đã** cho header từ backend `49eafef6`, đơn 49 vế E; câu *"chưa cho"* cũ sửa 2026-10-26 phiên 13). **Đo máy ảo** (bản debug trỏ máy chủ thu header tạm): `/auth/profile`, `/payment/subscription-info`,
   `/sync/push`, `/sync/pull` đều mang `"Google sdk_gphone64_x86_64 (Android 16)"`; bắt tay socket không mang (backend không ghi ở đó).
   Engine nền chưa đo trên máy. Hôm nay **chưa ai đọc** bảng ấy (`getDeviceHistory` 0 chỗ gọi ngoài test).
 - ✅ Cùng phiên: `NOT_OWNER` + bốn mã `HOUSEHOLD_*` vào lỗi đẩy vĩnh viễn (`8f8694bd`, khối 🏠 dưới); một câu mục 1b
