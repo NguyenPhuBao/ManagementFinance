@@ -73,6 +73,11 @@ lớp bảo vệ dữ liệu khi kho bị đọc ra:
   sau hết phiên, cưỡng chế đăng xuất, đổi mật khẩu (`change_password_page` → `LogoutRequested`). Người dùng có thể tưởng app còn khoá —
   từ 2026-10-25 có dòng nhắc *"Khoá ứng dụng đã tắt — bật lại trong Cài đặt"* (M11, bẫy 24; trừ khi kho đã bị gói xoá trước đó — bẫy 27). Băm PIN (PBKDF2, trong kho `flutter_secure_storage`) nằm lại trên máy
   từ lúc đăng xuất tới lần đăng nhập mật khẩu kế — chỉ đọc được khi root.
+- **PIN chỉ mạnh bằng mật khẩu + hộp thư email trên chính máy ấy** (lượt soát bảo mật 2026-10-26): Quên PIN = đăng xuất rồi đăng nhập
+  lại bằng mật khẩu (Ruling T12), mà màn Đăng nhập có *Quên mật khẩu?* → mã OTP gửi về email → đặt mật khẩu mới (`/forgot-password` →
+  `/otp` → `/reset-password`, luồng có từ `68e454b7`). Người cầm máy đang mở khoá **mà ứng dụng email trên máy cũng đang đăng nhập** đi
+  trọn được đường ấy: đặt lại mật khẩu, vào app, cấu hình PIN bị xoá theo luật trên. Khoá app không chặn ca này — chỗ yếu thuộc luồng
+  khôi phục tài khoản, và người dùng đã chốt *quên PIN = đăng nhập lại*; đừng hứa khoá app chống được người giữ cả máy lẫn hộp thư.
 - **Quên PIN rồi đăng nhập TÀI KHOẢN KHÁC:** `moPhienCucBo` → `purgeDataForOtherAccounts` dọn dữ liệu cục bộ của tài khoản cũ — phần
   **chưa đồng bộ mất**, lịch sử thông báo / dữ liệu học gợi ý (không có trên server) mất. Tấm xác nhận Quên PIN chỉ nói vế "đăng nhập
   lại đúng tài khoản".
