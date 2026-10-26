@@ -1,5 +1,16 @@
 # `docs/Notification/Notification_Client-app.md` tả client lệch mã ở ~30 chỗ — xin sửa chữ (mục 46)
 
+> 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **đạt phần lớn — giữ ở `DA-XONG/`, còn phần dư dưới đây** (khoảng 24 / 30 hàng đạt; câu `grep` của đơn ra 8 dòng, không dòng nào là
+> chỗ đơn nêu — 6 là đường REST của backend, 2 là `markAsRead` của datasource tài liệu đề xuất).
+> - **Một phần:** `:29` chỉ 5 tên sự kiện — thiếu `account.downgraded`, 6 tên `payment.*` (`realtime_event.dart:77-84`) và `account.force_logout`
+>   (luồng riêng); `:297-300` ánh xạ theo loại thông báo, trong khi `deeplinkTuDedupeKey` rẽ theo tiền tố khoá (`notification_deeplink.dart:87`)
+>   và "route xem chi tiết thông cáo" không tồn tại; `:39` "nhóm `bienDongSoDu`" (đó là tên loại, nhóm là `bienDong`); `:49` "vuốt xoá mềm" thiếu
+>   ngoại lệ xoá cứng của loại 20 và mốc dọn 90 / 30 ngày; `:75` §3 vẫn "cần triển khai 5 hạng mục".
+> - **Chưa:** `:58` "hoàn toàn bị cô lập"; `:62` "không nhận được cảnh báo đếm ngược" (client hiện số ngày lấy từ `/auth/profile`).
+> - **Sai mới / ngoài bảng:** `:289` `dangChoXoa` "lấy từ trường countdown" (thật: `status == 'pendingdelete'` — `user_model.dart:41`); `:64`
+>   client "nhận và hiển thị" `system.maintenance_changed` (cố ý không nghe — `trang_thai_may_chu.dart:8`); `:66` `payment.*` "đang mở rộng" (đã
+>   có `donThanhToanDoi`).
+
 > 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`): **chưa làm** — tệp không đổi từ `3a5d320c` (2026-10-16). Câu
 > `grep` kiểm lại ra **24** dòng: 18 là chỗ đơn nêu, số dòng trôi +3 (4, 52, 119–120, 168, 180, 185–186, 191, 210, 245–246, 261,
 > 275, 284, 294–295, 358); 6 dòng (25, 68, 87–90) là phần tả đường REST của backend — câu kiểm của đơn bắt nhầm, không tính.

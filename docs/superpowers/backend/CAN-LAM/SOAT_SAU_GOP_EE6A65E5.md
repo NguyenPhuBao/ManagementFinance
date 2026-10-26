@@ -1,5 +1,29 @@
 # Mục 49 — Soát sau khi client gộp `main` @ `ee6a65e5` (PR #153–#158) — tài liệu lệch mã, migration trùng số, thứ tự áp, lỗi kích hoạt Premium
 
+> 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`; vế G sửa thành một lỗi CAO khác.**
+> - **G (CAO) — nay thành "Premium vô thời hạn":** `payment.service.js:674-678` gọi `activatePremiumSubscription({ idaccount, orderId, paidAt })`
+>   — đúng chữ ký nhưng **không** `newExpiresAt`, không `transactionData`; `payment.repository.js:394` ghi `premium_expires_at: newExpiresAt` =
+>   `undefined` ⇒ Prisma bỏ qua, cột giữ nguyên. Tài khoản Basic (hạn `NULL`) trả tiền qua đường JIT thành **Premium không hết hạn** — client
+>   (`trang_thai_goi.dart:40`) coi `null` là Premium, hạ cấp định kỳ (`downgradeExpiredPremiumAccounts`, `lte: now`) và
+>   `feature-permission.middleware.js:33` không bắt `null`; tài khoản Premium gia hạn qua đường này **không được cộng hạn**. Không ghi hàng
+>   `payment_transaction`; vẫn chỉ phát `payment.success` (không `account.upgraded`); bước ghi `PAID` (`:667`) vẫn tách khỏi giao tác nâng gói;
+>   không ca test nào đi nhánh PAID. CSDL hôm nay: 0 đơn kẹt, 0 tài khoản Premium hạn `NULL` — **chưa xảy ra, không phải không thể**. Xin: tính
+>   `newExpiresAt` như nhánh webhook (`:299-311`), một giao tác, có ca test. Gom cùng đơn 53.
+> - **A — tái phát lần ba:** `bc4e4f7f` sửa thẳng `SYNC_DOCUMENTATION.md` (lọt qua lượt gộp `3636110d`) — sai thứ tự đẩy (budget 30 / goal 35 /
+>   bill 38), sai thành phần payload danh mục, ghi `images` "đồng bộ URL", Mục V sáu việc client đã làm, xoá đoạn *"tệp test là hợp đồng"*.
+>   Client đã **gộp hai tài liệu đồng bộ thành một tệp đối chiếu mã** (`75126cec`; `docs/Admin-web/Sync-To-ClientApp.md` nay chỉ trỏ về) và mở
+>   mục 14 *Trao đổi* để backend ghi thay vì viết đè. Đi kèm thay đổi mã không ai xin: `is_deleted` → `delete_at` — **đơn 53**.
+> - **B — đạt** (0 chỗ bảo xoá SQLite; 6 chỗ "bảo lưu SQLite").
+> - **C — một phần:** `27b_…` (`uniq -d` rỗng); còn `)2_can_lam_all_migrations.sql`; tên cũ còn ở
+>   `docs/Admin-web/09-aiops-sentinel-and-quarantine.md:8`, `docs/AIOps/AIOPS_SENTINEL_REFINEMENT_PLAN.md:45, 55`.
+> - **D — chưa** (`auth.repository.js:28, 39, 50, 64` vẫn `include` không `select`). **F — chưa:** migration 33 không đổi; câu kiểm của đơn ra
+>   **10 ví, 13 giao dịch, 1 danh mục mồ côi** (tài khoản 2, 42–46, 53, 61, 68; `Create_at` 2026-09-10).
+> - **E — một phần:** CORS đạt (`app.js:32`); hai route `/devices` vẫn không có trong mã, `IP-Device-ClientApp.md:325, 372` không đổi; **mới:**
+>   `04-user-management-and-lifecycle.md:125, :156` ghi route ấy và "Tab Lịch sử thiết bị & IP" mà Admin-web không có.
+> - **H — một phần:** H1 body 401 / 403 vẫn lồng `"data"` (`:498`, `:517`, `:536`); các dòng "BỎ SÓT" / "BÁN PHẦN" cho thứ client đã làm
+>   (`:583`, `:587`, `:599`, `:600`, `:602`–`:604`); `MaintenanceScreen` (`:101`, `:434`, `:584`, `:599`, `:622`). H2 — gộp vào tài liệu đồng bộ
+>   của client (trên). H3 `IP-Device-ClientApp.md` — chưa. H4 — phần chính đạt.
+
 > 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`; đơn này chỉ lên `main` qua PR #160 tối 2026-10-25, **sau** commit
 > backend mới nhất `36f1ea43`): **chưa vế nào được làm.**
 > - **A:** `SYNC_DOCUMENTATION.md` không bị viết đè lần ba (giữ bản client); lỗi mới của bản v4.0 bổ sung ở cuối vế A.

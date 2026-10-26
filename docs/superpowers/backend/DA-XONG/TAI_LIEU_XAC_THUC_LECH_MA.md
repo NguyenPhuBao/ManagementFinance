@@ -1,5 +1,11 @@
 # `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md` tả hai tính năng client KHÔNG có — đăng nhập offline bằng băm mật khẩu và đăng nhập vân tay (mục 51)
 
+> 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **đạt phần chính — giữ ở `DA-XONG/`, còn phần dư:** §2.2 (`:38-46`) đạt; §2.3 đạt (PIN 6 số, `BiometricPrompt` + Keystore, không
+> `local_auth`). Còn: `:49` "iOS Keychain" (`ios/` không có kênh `sinh_trac`; iOS ngoài phạm vi — `KHOA_APP_FEATURE.md`) và "khuôn mặt" không
+> kèm giới hạn (`SinhTrac.kt` chỉ nhận `BIOMETRIC_STRONG` — khuôn mặt Class 2 của phần lớn máy Android không dùng được); `:6` vẫn ghi
+> `SharedPreferences` (Offline cache) — câu kiểm của đơn còn đỏ. Ngoài bảng: `:14` ghi màn `/login` có "Nút Sinh trắc học" (không có) và một
+> link `file:///` chết.
+
 > 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`; đơn chỉ lên `main` qua PR #160 tối 2026-10-25): **chưa làm** —
 > `docs/Functional-Mobile/01_XAC_THUC_VA_BAO_MAT.md` không đổi từ `9d8b5675` (2026-10-19): còn `SharedPreferences` /
 > `offline_password_hash` (:6, :43–46) và `local_auth` / Face ID (:50).

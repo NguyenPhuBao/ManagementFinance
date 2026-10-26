@@ -1,5 +1,21 @@
 # Giải mã AES-256-GCM hỏng thì backend trả NGUYÊN BẢN MÃ cho client — client ghi đè ghi chú bằng `enc:…` (mục 52)
 
+> 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **vế `/sync/pull` đóng — chuyển lại `CAN-LAM/` với phạm vi HẸP dưới đây** (đừng làm lại phần đã đạt).
+> - **Đạt:** `decrypt()` ném `Error` `code='DECRYPT_FAILED'` (`crypto.util.js:98-100`, `:116-119`); `/sync/pull` (`restoreSafeNote`,
+>   `sync.repository.js:12-15`) ⇒ `sync.controller.js:67-74` trả **HTTP 500** `{success:false, code:'DECRYPT_FAILED', message, timestamp}` cho cả
+>   lượt.
+> - **(CAO — mới, do chính lượt sửa) `encrypt()` vẫn giữ nguyên mọi chuỗi dạng `enc:a:b:c`** (`crypto.util.js:65-67`) trong khi `decrypt()` nay
+>   ném ⇒ người dùng gõ ghi chú `enc:1:2:3` (qua `filterSensitiveNote` không đổi) là **mọi lượt `/sync/pull` của tài khoản ấy trả 500, trên mọi
+>   máy**; số điện thoại `enc:a:b:c` (9 ký tự, qua `updateProfileSchema` — `auth.validation.js:43`) là **đăng nhập 500 vĩnh viễn**. Client nuốt
+>   lỗi kéo ⇒ kéo về đứng im lặng, máy đăng nhập mới không có dữ liệu. Xin: `encrypt()` luôn mã hoá đầu vào của người dùng (đánh dấu bản mã bằng
+>   cách khác, hoặc chỉ coi là bản mã khi giải được). Gom cùng đơn 53.
+> - **`auth` — một phần:** có ném nhưng 500 **không** mang `code` (`ResponseHandler.error`, `response-handler.js:15-26`) — `auth.service.js:238`,
+>   `:316`, `:455` (đăng nhập), `:733-734`, `:756-757`, `auth.repository.js:18-19`.
+> - **Log** không ghi bảng + khoá chính của hàng hỏng (đơn xin, để dọn được).
+> - Còn nuốt lỗi: `maskTransactionDescription` (`masking.util.js:160-169` — bản mã đi vào prompt Gemini qua `tools.executor.js:82`),
+>   `dedup.repository.js:11-17`. `maskPhone` / `maskAccountNumber` / `maskAddress` trả chuỗi che sẵn (không lộ bản mã — chấp nhận được).
+> - **Việc 2–3 — chưa:** khoá đúng cho `PersonFinance`, xác nhận khoá trên Render.
+
 > 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`; đơn chỉ lên `main` qua PR #160 tối 2026-10-25, sau commit backend
 > mới nhất `36f1ea43`): **chưa làm.** `utils/crypto.util.js` không đổi từ 2026-10-16: sai định dạng `return str` (:98), giải
 > hỏng `return str` (:114); `encrypt()` :65 vẫn giữ nguyên mọi chuỗi `isEncrypted` (`:125` chỉ đếm `split(':').length === 4`).

@@ -1,5 +1,17 @@
 # Script test backend ghi ví mang id KHÔNG phải UUID vào tài khoản dev thật `quangdat` (18) — ví kẹt hàng đợi đẩy của client; xin dọn dữ liệu test và sửa script (mục 48)
 
+> 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`; việc 2 sửa thành lỗi khác.**
+> - **Việc 1 bước 1 — đạt:** ví `test-wallet-1789014227658` `Delete_at` 03:58:21Z; 9 / 9 giao dịch đã xoá; toàn CSDL 0 ví / giao dịch sống mang
+>   id không phải UUID. Xác nhận *ai làm, trên CSDL nào* chỉ là câu chung ở README (không nêu CSDL, không ghi vào đơn). Bước 3: ví ma
+>   `00000000-…4534d71cc54d` vẫn 0 hàng (chưa máy nào đẩy lại).
+> - **Việc 2 — ⚠️ sai kiểu khác:** UUID (`:243`, `:256`) và dọn trong `finally` (`:287-292`) đạt, nhưng *tài khoản test riêng* không làm: `:236`
+>   đổi thành `findFirst({status:'Active', idrole: 1})` — **role 1 là admin** ⇒ script nay chọn **tài khoản 1 (admin thật)**; nhánh `: 1` còn ở
+>   `:238`. CSDL đo 2026-10-26: **4 giao dịch 150.000 đ** ghi vào ví thật *"Tiết kiệm"* `b1a60d59-…` của tài khoản 1 lúc 04:08 / 04:43 / 05:56 /
+>   06:59Z (đã xoá mềm — máy nào đăng nhập admin vẫn kéo về). Xin: script tự tạo tài khoản test riêng (hoặc lấy từ biến môi trường), không bao giờ
+>   chọn theo role, và chỉ chạy trên CSDL test.
+> - **Việc 3 — chưa:** `test_sync_new_schema.js:21`, `test_can_lam_fixes.js:44` không đổi. Tệp không `require('crypto')` — chạy được nhờ Node
+>   ≥ 19 có `crypto` toàn cục.
+
 > 🔎 **Client soát lại 2026-10-26** (truy vấn chỉ đọc trên CSDL Supabase của `.env`; `PersonFinance` cục bộ chưa đo):
 > - **Việc 1, bước 1 — đã thực hiện** lúc **2026-10-26 03:58:21Z** (10:58 giờ VN): ví `test-wallet-1789014227658` và 2 giao dịch
 >   còn sống của tài khoản 18 đã có `Delete_at` / `Deleted_at` (9 / 9 giao dịch của ví nay đều đã xoá). Người dùng xác nhận

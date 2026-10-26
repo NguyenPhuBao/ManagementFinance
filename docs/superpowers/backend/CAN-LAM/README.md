@@ -1,8 +1,20 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (1 mục chờ backend — mục 50: GIA_DINH_NEN_MONG.md)
+# Backend & Client — DANH SÁCH CẦN LÀM (8 mục chờ backend — 43 · 44 · 47 · 48 · 49 · 50 · 52 · 53)
 
-> 🔎 **Client CHƯA soát lượt báo xong 2026-10-26** (`bc4e4f7f`, `2b926d92` — 9 đơn chuyển sang `DA-XONG/`). Người dùng
-> hoãn việc soát tới sau khi viết xong tài liệu gia đình (khối 🏠 ngay dưới). Tới lúc ấy, banner 🔎 2026-10-26 đầu từng tệp đơn
-> (nay ở `DA-XONG/`) là lượt soát gần nhất của client — đọc mã `36f1ea43`, **trước** lượt sửa của backend.
+> 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD + CSDL Supabase của `.env`, chỉ
+> `SELECT`): trong 9 đơn backend chuyển sang `DA-XONG/`, **chỉ 45 đạt trọn**; **46, 51** đạt phần chính — giữ ở `DA-XONG/` kèm banner phần dư;
+> **43, 44, 47, 48, 49, 52 chuyển lại `CAN-LAM/`** (người dùng chốt) — kết quả từng vế + `tệp:dòng` ở banner 🔎 *"lượt báo xong"* đầu mỗi tệp.
+> - **Ba hồi quy mức CAO do chính lượt sửa gây ra → đơn mới 53** [`HOI_QUY_SAU_LUOT_BAO_XONG.md`](./HOI_QUY_SAU_LUOT_BAO_XONG.md): (A)
+>   `is_deleted: false` gỡ cờ xoá mềm — hàng đã xoá **sống lại** (`bc4e4f7f`); (B) đồng bộ JIT PayOS nâng **Premium vô thời hạn** (sửa 49 G thiếu
+>   `newExpiresAt`); (C) `encrypt()` giữ nguyên chuỗi `enc:…` trong khi `decrypt()` nay ném ⇒ một ghi chú `enc:1:2:3` khoá mọi lượt `/sync/pull`.
+> - **Backend báo làm mà mã không có:** 47 việc 5 (Dừng tới server — vẫn `req.on('close')`, không truyền `signal` cho Gemini); 48 việc 2 (script test
+>   nay chọn **tài khoản admin** — 4 giao dịch ghi vào ví thật của tài khoản 1 hôm nay); 46 *"grep 0 dòng"* (còn 6 hàng); 44 B2 (khử trùng chỉ ở mức
+>   ứng dụng, CSDL không unique); 49 D / F / H3 không làm, không báo. Câu *"438 test pass"* không chứa ca nào cho các vế còn mở.
+> - **`docs/superpowers/sync/SYNC_DOCUMENTATION.md`** bị viết đè lần ba (`bc4e4f7f`) — client đã **gộp hai tài liệu đồng bộ thành một tệp** đối chiếu
+>   mã (`75126cec`; `docs/Admin-web/Sync-To-ClientApp.md` nay chỉ trỏ về), có mục 14 *Trao đổi* để backend ghi thay vì viết đè.
+> - `docs/superpowers/client-app/CAN-LAM/README.md` (việc backend đề nghị client): không mục nào vừa mới vừa cần — trả lời từng mục ở mục 10 tệp
+>   đồng bộ trên. Liên kết `../DA-XONG/…` của 6 đơn chuyển lại trong khối 🌟 / mục 1 dưới (văn của backend, giữ nguyên) nay trỏ sai chỗ — tệp ở
+>   `CAN-LAM/`.
+> - `ls CAN-LAM/` nay: **43 · 44 · 47 · 48 · 49 · 50 · 52 · 53** · `CLIENT_INTEGRATION_GUIDE.md` + README. `DA-XONG/` đếm bằng máy: **63** tệp + mục lục.
 >
 > 🏠 **2026-10-26 — người dùng mở rộng thiết kế gia đình:** mời bằng email, nhiều ví chung, góp / rút quỹ, hạn mức chi từng
 > thành viên, định mức góp, ngân sách + báo cáo của nhà; bỏ *ai nợ ai*. **Bộ tài liệu đã có** ở `docs/Family/` (`00_TONG_QUAN.md` …
@@ -190,11 +202,18 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **1** mục — Mục 50 chờ PO chỉ đạo thời điểm thực thi)
+## 0. Còn phải làm (Hiện tại: **8** mục — đếm bằng `ls` 2026-10-26 sau lượt soát của client: 43, 44, 47, 48, 49, 52 chuyển lại từ `DA-XONG/`; 53 mới; 50 chờ PO)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
+| **43** | [SOAT_SAU_GOP_CD2EE572.md](./SOAT_SAU_GOP_CD2EE572.md) | Backend | AIOps khoá tài khoản. Còn: **A3** mở khoá tự động không xét ai khoá (mất `PendingDelete`), **A4** `feature.collector.js` (require tệp không tồn tại, `'TemporarilyLocked'`), **A5** `database/N` cho `ck_account_status` (CSDL 0 CHECK — áp thẳng được), **A6** (tuỳ chọn), **D** 8 / 12 chỗ `Event-Notification-to-ClientApp.md`; A1 đạt về giá trị nhưng hai khối `updateMany` vẫn đè `reason_inactive`. | 🔁 Chuyển lại 2026-10-26 (backend báo xong; client soát: chỉ A1) |
+| **44** | [SOAT_SAU_GOP_D72CCD45.md](./SOAT_SAU_GOP_D72CCD45.md) | Backend | Webhook PayOS. Còn: **B2** unique `payos_transaction_id` trên CSDL + đường nâng gói qua khử trùng; **C** vế phụ (lọc `PENDING`); **F** tài liệu sự kiện (`confirm-upgrade`, ba trạng thái, `excessAmount`; sai mới §4.12); dư của **B1** (ghi hàng đối soát cho webhook bị chặn). A, B1, D, E đạt. | 🔁 Chuyển lại 2026-10-26 |
+| **47** | [CLIENT_TRO_LY_ONLINE.md](./CLIENT_TRO_LY_ONLINE.md) | Backend | Trợ lý online SSE. Còn: **việc 5** (Dừng tới server — backend báo làm, mã vẫn `req.on('close')`, không `signal` cho Gemini) + xin `requestOptions.timeout` (ping làm mốc 45 s của client không bao giờ nổ); **việc 1, 4** (tài liệu); **7b** `finishReason` (cân nhắc). Đạt: 2, 3, 6, 7a. | 🔁 Chuyển lại 2026-10-26 |
+| **48** | [DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md](./DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md) | Backend (script test) | ⚠️ **Việc 2 sửa thành lỗi khác:** script chọn `idrole: 1` = **tài khoản admin thật** (4 giao dịch ghi vào ví thật hôm nay). Còn: tài khoản test riêng, **việc 3**, ghi xác nhận ai / CSDL nào đã dọn. Việc 1 bước 1 đạt. | 🔁 Chuyển lại 2026-10-26 |
+| **49** | [SOAT_SAU_GOP_EE6A65E5.md](./SOAT_SAU_GOP_EE6A65E5.md) | Backend (mã + chữ) | ⚠️ **G (CAO) sửa thành "Premium vô thời hạn"** (thiếu `newExpiresAt` — cũng ở đơn 53). Còn: **A** tái phát lần ba (client đã gộp tài liệu đồng bộ — `75126cec`), **C** `)2_can_lam_all_migrations.sql` + tên cũ trong tài liệu, **D**, **E** route `/devices` (nay lan sang `04-user-management…`), **F** (10 ví mồ côi), **H1 / H3**. B đạt. | 🔁 Chuyển lại 2026-10-26 |
 | **50** | [GIA_DINH_NEN_MONG.md](./GIA_DINH_NEN_MONG.md) | Backend (tính năng mới) | Chức năng **gia đình** (nhà nhiều người), phần 1 nền móng — người dùng chốt 2026-10-23. **A (cao)** kiểm chủ sở hữu khi sửa / xoá qua `/sync/push` (nhánh sửa chỉ so `update_at`, `softDelete` theo khoá chính) → mã `NOT_OWNER` (client đã xếp `NOT_OWNER` + bốn mã đẩy `HOUSEHOLD_*` vào lỗi vĩnh viễn 2026-10-26). **B (cao)** `database/37_create_household.sql`: `household`, `household_member`, `household_invite`; `Idhousehold INT NULL` cho 5 bảng (không `bill`); chỉ mục trùng tên cá nhân thêm `"Idhousehold" IS NULL`, chỉ mục mới theo nhà; ví của nhà không là ví mặc định. **C (cao)** 12 endpoint `/api/households` (tạo, `me`, mã mời 8 ký tự / 48 giờ / một lần, xem trước, tham gia, đổi vai, chuyển chủ, mời ra, rời, giải tán = xoá mềm). **D (cao)** kéo về `(Idaccount = tôi ∧ Idhousehold trống) ∨ Idhousehold = nhà tôi`; `mapEntityFields` + mọi khối `data` nhận `idhousehold`; mã `HOUSEHOLD_NOT_MEMBER` · `HOUSEHOLD_READ_ONLY` · `HOUSEHOLD_CLOSED` · `HOUSEHOLD_SCOPE_MISMATCH`. **E** khoá `household`, giới hạn `household_members` (server tự thi hành), chủ hết Premium ⇒ `ReadOnly`. **F** `household.changed` + `sync.completed` tới mọi thành viên. **G** sao 13 danh mục mặc định cho nhà. 11 ca kiểm hành vi + câu SQL kiểm. | ⏳ Chờ PO chỉ đạo thời điểm thực thi (backend ghi 2026-10-26) · 🏠 thiết kế đã mở rộng — đọc `docs/Family/00_TONG_QUAN.md` mục 6 trước (banner đầu tệp) · 🔎 soát 2026-10-26: chưa vế nào (0 chữ *household* trong backend, 0 bảng trên CSDL); `36f1ea43` chép y nguyên đơn vào `docs/Family/` |
+| **52** | [GIAI_MA_HONG_TRA_BAN_MA.md](./GIAI_MA_HONG_TRA_BAN_MA.md) | Backend | Phạm vi **hẹp** (vế `/sync/pull` đã đạt — 500 `DECRYPT_FAILED`). Còn: ⚠️ **`encrypt()` giữ nguyên chuỗi `enc:…`** (CAO, cũng ở đơn 53), 500 ở `auth` thiếu `code`, log thiếu bảng + khoá chính, `maskTransactionDescription` / `dedup` nuốt lỗi, việc 2–3 (khoá `PersonFinance`, khoá Render). | 🔁 Chuyển lại 2026-10-26 |
+| **53** | [HOI_QUY_SAU_LUOT_BAO_XONG.md](./HOI_QUY_SAU_LUOT_BAO_XONG.md) | Backend | **Ba hồi quy CAO do lượt sửa 2026-10-26:** (A) `is_deleted: false` ⇒ nhánh sửa ghi `Delete_at = NULL` ⇒ hàng đã xoá **sống lại** khi máy chưa kéo cờ xoá về cập nhật nó (`bc4e4f7f`; xin chỉ áp khi `true`); (B) JIT PayOS Premium vô thời hạn; (C) `encrypt()` + `enc:…` khoá `/sync/pull` / đăng nhập. Mỗi vế có mã, kịch bản, lời xin, ca kiểm. Client không đổi mã. | ⏳ Client đặt 2026-10-26 |
 
 ---
 

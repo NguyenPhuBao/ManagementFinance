@@ -976,8 +976,17 @@ liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà 
   `src/Client-app`** (cây giữ hash `69f561ce` → không chạy lại `flutter test`); `check-ignore` `test/` không khớp.
 - **Backend chuyển đơn 43–49, 51, 52 sang `DA-XONG/`** kèm khối *"PO duyệt & hoàn tất thực thi 9 mục"* ở README; `CAN-LAM/` còn **50** +
   `CLIENT_INTEGRATION_GUIDE.md`. Thêm `docs/superpowers/client-app/CAN-LAM/README.md` (danh sách việc đề nghị client làm — mục 5 ghi *"PO hoãn
-  gia đình"*). **Client CHƯA soát** lượt báo xong này — người dùng hoãn tới sau khi viết xong tài liệu gia đình; banner 🔎 2026-10-26 đầu từng
-  tệp đơn (nay ở `DA-XONG/`) là lượt soát gần nhất, trên mã `36f1ea43`.
+  gia đình"*). Người dùng hoãn soát tới sau khi viết xong tài liệu gia đình, rồi cùng ngày bảo *"quay lại phần đang làm dở"* ⇒ **client soát xong**
+  (bốn agent chỉ đọc song song: mã HEAD + CSDL Supabase `SELECT`): **chỉ 45 đạt trọn**; 46, 51 đạt phần chính (ở lại `DA-XONG/` + banner phần dư);
+  **43, 44, 47, 48, 49, 52 chuyển lại `CAN-LAM/`** (người dùng chốt) — banner 🔎 *"lượt báo xong"* đầu mỗi tệp. Đáng nhớ: 47 việc 5 và 48 việc 2
+  backend báo làm mà mã không đỡ (48: script test nay chọn **tài khoản admin**, 4 giao dịch ghi vào ví thật của tài khoản 1). **Ba hồi quy CAO do
+  chính lượt sửa → đơn mới 53** `CAN-LAM/HOI_QUY_SAU_LUOT_BAO_XONG.md`: `is_deleted: false` gỡ cờ xoá mềm (hàng đã xoá sống lại, `bc4e4f7f`) · JIT
+  PayOS Premium vô thời hạn (49 G thiếu `newExpiresAt`) · `encrypt()` giữ chuỗi `enc:…` trong khi `decrypt()` nay ném (một ghi chú `enc:1:2:3` khoá
+  mọi lượt `/sync/pull`). Danh sách việc backend đề nghị client: không mục nào vừa mới vừa cần (trả lời ở mục 10 tài liệu đồng bộ).
+- **`SYNC_DOCUMENTATION.md` bị backend viết đè lần ba** (`bc4e4f7f`, lọt qua lượt gộp vì không xung đột). Người dùng bảo *"đang có 2 file về sync,
+  đồng bộ về một file duy nhất trong folder sync"* ⇒ **gộp** bản client + `docs/Admin-web/Sync-To-ClientApp.md` (backend, v3.2) thành một
+  `docs/superpowers/sync/SYNC_DOCUMENTATION.md` dựng lại từ mã (`75126cec`): bảng trường lấy bằng máy từ tệp test hợp đồng + `schema.prisma` +
+  `anh_xa_keo_ve.dart`; tệp backend thay bằng vài dòng trỏ (người dùng cho phép đích danh); mục 14 *Trao đổi* để backend ghi thay vì viết đè.
 - **Xung đột duy nhất:** `CAN-LAM/README.md` — lấy bản backend cho khối báo xong + bảng mục 0; banner client đổi thành *"client CHƯA soát"* +
   khối 🏠 báo trước thiết kế gia đình đang mở rộng; hàng 50 giữ bản client.
 - **`.gitignore` của main gỡ 11 dòng** (`docs/superpowers/plans/`, `.superpowers/`, `docs/superpowers/client-app/`, `docs/superpowers/auth/`,

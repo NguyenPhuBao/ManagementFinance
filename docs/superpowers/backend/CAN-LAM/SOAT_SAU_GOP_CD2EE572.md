@@ -1,5 +1,19 @@
 # Soát sau gộp `main` @ `cd2ee572`: AIOps khoá tài khoản làm client xoá dữ liệu; webhook PayOS nâng nhầm tài khoản; đăng nhập lúc bảo trì mất `code`; đính chính hợp đồng sự kiện (mục 43)
 
+> 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.** Lượt sửa chỉ chạm `aiops.controller.js` (2 dòng); `core/`, `middleware/`,
+> `aiops.quarantine.js`, `feature.collector.js` không đổi từ `36f1ea43`.
+> - **A1 — đạt về giá trị:** `aiops.controller.js:249`, `:305` nay ghi `'Inactive'` (grep `'Locked'` trong `modules/` → 0). Nhưng hai khối
+>   `updateMany` vẫn chạy **sau** hàm quarantine và ghi đè `reason_inactive` bằng câu của controller — đơn xin bỏ hẳn; giữ lại là phá dấu
+>   nguồn khi làm A3.
+> - **A3 — chưa:** mở khoá tự động `aiops.quarantine.js:141`, `:153`, `:983` → `_syncAccountStatusToDatabase` (`:657-673`) không xét ai khoá;
+>   `quarantinePair` (`:398`) ghi đè cả `PendingDelete`; chỗ thứ ba cùng khuôn: `unblockAccount` (`aiops.controller.js:210-216`).
+> - **A4 — chưa:** `feature.collector.js:231` `require('../../database/prisma')` (tệp không tồn tại), `:235` `'TemporarilyLocked'`.
+> - **A5 — chưa:** không tệp `database/N` mới; CSDL bảng `account` **0** CHECK, `"Status"` chỉ `Active` (8) / `Deleted` (4) — áp thẳng được.
+> - **A6 (tuỳ chọn) — chưa.** **D — chưa:** vẫn 3 / 12 đạt, 1 một phần, 8 còn sai trên bản HEAD — §5.5 `:498-499` · §4.7 `:281` · §4.4
+>   `:217-218` · §4.5 `:236-243` · §4.9 `:319` + bảng `:86` · §4.2 `:172` · §5.2 `:439` + bảng `:102` · §1 (sự kiện tới hai lần qua Redis);
+>   một phần: OCR `:302` `metadata`.
+> - A2, B, C vẫn đạt. Câu *"438 test pass"* không chứa test nào cho các vế còn mở (`49eafef6` không sửa tệp nào dưới `src/Backend/tests`).
+
 > 🔎 **Client soát lại 2026-10-26** (mã `main` @ `5bb258ff`, backend mới nhất `36f1ea43` — PR #159, 2026-10-24; truy vấn
 > chỉ đọc trên CSDL Supabase của `.env`): **không vế còn mở nào được làm thêm.** A2 · B · C vẫn đạt.
 > - **A1:** `aiops.controller.js:249`, `:305` còn `status: 'Locked'`.
