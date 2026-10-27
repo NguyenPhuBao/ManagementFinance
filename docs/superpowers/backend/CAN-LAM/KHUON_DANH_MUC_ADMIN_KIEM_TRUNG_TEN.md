@@ -21,7 +21,7 @@ uq_category_owner_name    ON category ("Create_by", lower(regexp_replace(btrim(N
                           WHERE "Is_default" = false AND "Delete_at" IS NULL
 ```
 
-Cả hai khoá theo **tên chuẩn hoá — không có `Classify`** (định nghĩa ở `database/)2_can_lam_all_migrations.sql:17`, `:44`). Danh mục
+Cả hai khoá theo **tên chuẩn hoá — không có `Classify`** (định nghĩa từng nằm ở `database/)2_can_lam_all_migrations.sql:17`, `:44` — tệp đã bị xoá ở `850fe23b`, xem bản `6e6a783d`; nay không tệp `database/N` nào chứa định nghĩa đang chạy, chỉ `database/5` mang bản cũ `lower(NameCategory)`). Danh mục
 hệ thống hiện có: 16 hàng sống, 0 hàng xoá mềm.
 
 Lỗi vỡ chỉ mục là `PrismaClientKnownRequestError` mã `P2002`, không mang `statusCode` → `admin.controller.js` (`addCategory`,

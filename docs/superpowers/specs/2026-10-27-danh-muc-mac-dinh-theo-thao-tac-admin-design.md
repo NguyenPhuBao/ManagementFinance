@@ -33,7 +33,7 @@ Hành vi client **trước** spec này:
      `CATEGORY_NAME_DUPLICATE` (vĩnh viễn, bị chặn theo bậc) → lượt kéo sau có danh mục đổi thì
      `mergeDuplicatePersonalCategories` gộp nó vào danh mục Chi và **xoá cứng** → bộ tạo bản sao tạo lại → lặp. Ca test
      `default_category_seeder_test.dart` *"cùng tên nhưng KHÁC loại thì vẫn tạo bản sao"* ghim hành vi này, lý do ghi trong ca
-     viện `uq_category_owner_name_classify` — chỉ mục đã DROP (`database/)2_can_lam_all_migrations.sql`).
+     viện `uq_category_owner_name_classify` — chỉ mục đã DROP (định nghĩa hiện hành đo bằng `pg_indexes` 2026-10-27; tệp `database/)2_can_lam_all_migrations.sql` từng chứa nó đã bị backend xoá ở `850fe23b` — xem bản `6e6a783d`).
   2. Admin **đổi tên** khuôn → bản sao (tên cũ) không còn khớp → mọi tài khoản mọc thêm một bản sao mang tên mới.
   3. Trần Premium *"danh mục riêng"* (`dem_dang_hoat_dong.dart`) loại bản sao bằng khuôn **còn sống** → xoá khuôn là bản sao
      của nó bị đếm oan vào trần Basic (5).
