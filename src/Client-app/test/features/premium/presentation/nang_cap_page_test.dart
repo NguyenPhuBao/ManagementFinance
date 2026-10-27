@@ -113,9 +113,11 @@ void main() {
   setUp(() => suKien = StreamController<RealtimeEvent>.broadcast());
   tearDown(() => suKien.close());
 
-  Future<GoiCubit> goi({required bool premium, DateTime? hetHan}) async {
+  Future<GoiCubit> goi({required bool premium, DateTime? hetHan, TrangThaiGoi? trangThai}) async {
     final kho = InMemoryGoiStore();
-    if (premium) {
+    if (trangThai != null) {
+      await kho.ghi(10, trangThai);
+    } else if (premium) {
       await kho.ghi(
           10,
           TrangThaiGoi(
@@ -141,8 +143,9 @@ void main() {
     _ApiGia? api,
     DateTime? hetHan,
     bool choThayNgay = false,
+    TrangThaiGoi? trangThai,
   }) async {
-    final cubit = await goi(premium: premium, hetHan: hetHan);
+    final cubit = await goi(premium: premium, hetHan: hetHan, trangThai: trangThai);
     final router = GoRouter(initialLocation: '/premium', routes: [
       GoRoute(
         path: '/premium',
@@ -208,12 +211,53 @@ void main() {
     expect(find.byKey(const Key('nang-cap-cau-quyen')), findsOneWidget);
   });
 
-  test('⭐ cauMoDau với trần 0: "không cho tạo thêm", không phải "đã dùng 0/0" (2026-10-27)', () {
-    expect(cauMoDau(LoaiTran.vi, const TranGoi(vi: 0)), 'Gói Basic hiện không cho tạo thêm ví.');
-    expect(cauMoDau(LoaiTran.danhMucRieng, const TranGoi(danhMucRieng: 0)),
-        'Gói Basic hiện không cho tạo thêm danh mục riêng.');
-    expect(cauMoDau(LoaiTran.vi, const TranGoi(vi: 3)), 'Bạn đã dùng 3/3 ví của gói Basic.',
-        reason: 'trần dương giữ câu cũ');
+  group('B1 — câu mở đầu theo trạng thái quyền và trần hiệu lực (spec 2026-10-27 mục 4)', () {
+    testWidgets('⭐ Premium, bảng tắt export_reports, ?quyen=export_reports → "… hiện đang tạm ngừng."', (tester) async {
+      await dung(tester,
+          premium: true,
+          quyen: MaQuyen.exportReports,
+          trangThai: TrangThaiGoi(
+              loai: LoaiGoi.premium,
+              hetHan: DateTime(2026, 11, 5, 8),
+              nhanLuc: now,
+              quyenTinhNang: const {'export_reports': false}));
+      expect(find.text('Xuất báo cáo hiện đang tạm ngừng.'), findsOneWidget);
+      expect(find.text('Xuất báo cáo là tính năng Premium.'), findsNothing);
+    });
+
+    testWidgets('⭐ Premium, trần cột Premium 10 ví, ?tran=vi → "Gói Premium hiện cho tạo tối đa 10 ví."', (tester) async {
+      await dung(tester,
+          premium: true,
+          tran: LoaiTran.vi,
+          trangThai: TrangThaiGoi(
+              loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5, 8), nhanLuc: now, tran: const TranGoi(vi: 10)));
+      expect(find.text('Gói Premium hiện cho tạo tối đa 10 ví.'), findsOneWidget);
+    });
+
+    testWidgets('⭐ G109 trên màn: Premium hết hạn lúc offline, ?tran=vi → câu Basic 3/3 (không phải "null/null")',
+        (tester) async {
+      await dung(tester,
+          premium: false,
+          tran: LoaiTran.vi,
+          trangThai: TrangThaiGoi(
+              loai: LoaiGoi.premium,
+              hetHan: DateTime(2026, 10, 6, 9),
+              nhanLuc: DateTime(2026, 10, 5),
+              tran: const TranGoi()));
+      expect(find.text('Bạn đã dùng 3/3 ví của gói Basic.'), findsOneWidget);
+    });
+
+    testWidgets('Basic, cột Premium cũng tắt → ?quyen= nói tạm ngừng', (tester) async {
+      await dung(tester,
+          premium: false,
+          quyen: MaQuyen.exportReports,
+          trangThai: TrangThaiGoi(
+              loai: LoaiGoi.basic,
+              nhanLuc: now,
+              quyenTinhNang: const {'export_reports': false},
+              quyenPremium: const {'export_reports': false}));
+      expect(find.text('Xuất báo cáo hiện đang tạm ngừng.'), findsOneWidget);
+    });
   });
 
   testWidgets('?tran=vi: câu mở đầu nêu 3/3 ví', (tester) async {

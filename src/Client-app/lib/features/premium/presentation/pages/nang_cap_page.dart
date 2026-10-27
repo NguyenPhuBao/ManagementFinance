@@ -15,25 +15,13 @@ import '../../data/models/dong_lich_su.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
 import '../../domain/don_can_xu_ly.dart';
 import '../../data/repositories/don_thanh_toan_repository.dart';
+import '../../domain/cau_quyen.dart';
 import '../../domain/quyen_tinh_nang.dart';
 import '../../domain/tran_goi.dart';
-import '../../data/models/tran_goi.dart';
 import '../../domain/hang_goi.dart';
 import '../../data/models/trang_thai_goi.dart';
 import '../bloc/goi_cubit.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
-
-/// Câu mở đầu khi đến từ cửa chặn (`/premium?tran=`): *"Bạn đã dùng 3/3 ví của
-/// gói Basic."* — số lấy từ trần đang có hiệu lực, không ghi cứng. Trần 0 (admin
-/// không cho tạo thêm — 2026-10-27) → *"Gói Basic hiện không cho tạo thêm ví."*
-String cauMoDau(LoaiTran tran, TranGoi tranGoi) {
-  final n = tranGoi.cua(tran);
-  if (n == 0) return 'Gói Basic hiện không cho tạo thêm ${tenTran(tran)}.';
-  return 'Bạn đã dùng $n/$n ${tenTran(tran)} của gói Basic.';
-}
-
-/// Câu mở đầu khi đến từ một tính năng bị khoá (`/premium?quyen=`) — spec phân quyền 2026-10-08 mục 4.4.
-String cauMoDauQuyen(MaQuyen ma) => '${ma.ten} là tính năng Premium.';
 
 /// Màn Nâng cấp `/premium` — ngoài shell, `push` từ mọi nơi (spec 9.1). Màn
 /// Stitch *"Nâng cấp Premium - FlowMoney"* `c999da970da94cb4ab4331fc44230884`
@@ -166,6 +154,15 @@ class _NangCapPageState extends State<NangCapPage> {
     final goi = widget.goi?.state ?? context.watch<GoiCubit>().state;
     final now = _now();
     final premium = goi.laPremium(now);
+    final cauTran = widget.tran == null ? null : cauMoDau(widget.tran!, tranHieuLuc(goi, now), laPremium: premium);
+    final ttQuyen = widget.quyen == null ? null : trangThaiQuyen(widget.quyen!, goi, now);
+    // Basic giữ câu cũ kể cả khi quyền đang mở (đến từ nút Quét / Nói); tạm ngừng → câu riêng cho MỌI gói; Premium không
+    // tạm ngừng → im.
+    final cauQuyen = ttQuyen == null
+        ? null
+        : ttQuyen == TrangThaiQuyen.tamNgung
+            ? cauMoDauQuyen(widget.quyen!, tamNgung: true)
+            : (premium ? null : cauMoDauQuyen(widget.quyen!));
     final choXacNhan = donChoXacNhan(_dsDon);
     final choHoan = donChoHoanTien(_dsDon);
     final khoa = choXacNhan.isNotEmpty;
@@ -203,13 +200,12 @@ class _NangCapPageState extends State<NangCapPage> {
                 const SizedBox(height: 12),
               ],
               premium ? _theGoiPremium(goi, now) : _theGoiBasic(),
-              if (!premium && widget.tran != null) ...[
+              if (cauTran != null) ...[
                 const SizedBox(height: 12),
-                _dongTran(cauMoDau(widget.tran!, goi.tran)),
-              ] else if (!premium && widget.quyen != null) ...[
+                _dongTran(cauTran),
+              ] else if (cauQuyen != null) ...[
                 const SizedBox(height: 12),
-                _dongTran(cauMoDauQuyen(widget.quyen!),
-                    key: const Key('nang-cap-cau-quyen')),
+                _dongTran(cauQuyen, key: const Key('nang-cap-cau-quyen')),
               ],
               const SizedBox(height: 24),
               const Text(

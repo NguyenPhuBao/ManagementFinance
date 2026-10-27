@@ -107,4 +107,20 @@ void main() {
     await tester.pumpWidget(boc(TheGoiTaiKhoan(clock: () => now), c: c));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('⭐ B1: Premium có trần cột Premium → thêm dòng tóm tắt trần như Basic', (tester) async {
+    final c = await cubit(
+        kho: TrangThaiGoi(
+            loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5, 8), nhanLuc: now, tran: const TranGoi(vi: 10)));
+    await tester.pumpWidget(boc(TheGoiTaiKhoan(clock: () => now), c: c, khung: const Size(328, 200)));
+    expect(find.byKey(const Key('the-goi-tran-premium')), findsOneWidget);
+    expect(find.text('10 ví'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Premium không trần (mặc định) → không dòng trần', (tester) async {
+    final c = await cubit(kho: TrangThaiGoi(loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5, 8), nhanLuc: now));
+    await tester.pumpWidget(boc(TheGoiTaiKhoan(clock: () => now), c: c));
+    expect(find.byKey(const Key('the-goi-tran-premium')), findsNothing);
+  });
 }
