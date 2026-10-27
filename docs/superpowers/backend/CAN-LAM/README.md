@@ -12,7 +12,7 @@
 > - **Mục 43 (AIOps Sentinel):** Khóa/Mở khóa an toàn: chỉ mở khóa tài khoản `Inactive`, bảo vệ tuyệt đối trạng thái `PendingDelete`, tự động hết hạn chỉ mở tài khoản do AIOps khóa; loại bỏ `updateMany` dư thừa; sửa lỗi require trong feature collector.
 > - **Mục 49 (Cơ sở dữ liệu):** Đã xóa file rác `src/Backend/database/)2_can_lam_all_migrations.sql`.
 >
-> ⚠️ **MỤC DUY NHẤT CHỜ TRIỂN KHAI:** [`GIA_DINH_NEN_MONG.md`](./GIA_DINH_NEN_MONG.md) (Mục 50 - Tính năng Gia đình nền móng). Tính năng mới này được PO định hướng triển khai riêng biệt ở giai đoạn tiếp theo.
+> 🟢 **MỤC ĐƯỢC PO PHÊ DUYỆT TRIỂN KHAI (2026-10-27):** [`GIA_DINH_NEN_MONG.md`](./GIA_DINH_NEN_MONG.md) (Mục 50 - Tính năng Gia đình Phần 1 Nền móng). Đã cập nhật toàn diện theo đặc tả mới nhất `docs/Family/` (mời email, ma trận quyền sync, 16 endpoints). Sẵn sàng thi công!
 
 > 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD + CSDL Supabase của `.env`, chỉ
 > `SELECT`): trong 9 đơn backend chuyển sang `DA-XONG/`, **chỉ 45 đạt trọn**; **46, 51** đạt phần chính — giữ ở `DA-XONG/` kèm banner phần dư;

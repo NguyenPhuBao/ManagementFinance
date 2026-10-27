@@ -1,156 +1,105 @@
-# Mục 50 — Chức năng GIA ĐÌNH (nhà nhiều người): toàn bộ thiết kế + việc backend của phần 1 (nền móng)
+# Mục 50 — Chức năng GIA ĐÌNH (nhà nhiều người): Toàn bộ Thiết kế & Nhiệm vụ Backend Phần 1 (Nền móng)
 
-> 🏠 **2026-10-26 (sau) — thiết kế được mở rộng; ĐỌC `docs/Family/00_TONG_QUAN.md` MỤC 6 TRƯỚC KHI LÀM ĐƠN NÀY.** Người dùng thêm: mời bằng
-> email, nhiều ví chung, góp / rút quỹ (cặp hai khoản, cột `Idfund_pair`), hạn mức chi từng thành viên, định mức góp + tự góp, ngân sách + báo cáo
-> của nhà, mục tiêu chung = công tắc trên ví chung; **bỏ** *ai nợ ai* và *cho nhà xem*. Tám chỗ đổi so với đơn này (bảng mục 6 tệp tổng quan) —
-> đáng chú ý: **ma trận vai × thực thể** khi đẩy + mã `HOUSEHOLD_ROLE_FORBIDDEN` thay đoạn *Tạo / Sửa / xoá* của D.2; **bỏ ngoại lệ `idgoal`** ở
-> D.2; mục 4 (định hướng ba phần con) **không còn đúng**. Bộ `docs/Family/00…03` là tài liệu để backend / PO **xem và thảo luận** — đơn CAN-LAM cho
-> các phần sau đặt khi thảo luận xong. Phần còn lại của đơn này (A, B, C, D trừ đoạn trên, E, F, G) giữ nguyên.
->
-> 🔎 **Client soát lại 2026-10-26** (`main` @ `5bb258ff`; truy vấn chỉ đọc trên CSDL Supabase của `.env`): **chưa vế nào
-> được làm** — `src/Backend` (`.js` / `.sql` / `.prisma`) có 0 chữ *household*; `database/` dừng ở `36_*`; CSDL: 0 bảng
-> `household*`, 0 cột `Idhousehold`. **Vế A vẫn mở:** nhánh sửa của `/sync/push` chỉ so `update_at` (`upsertWallet`,
-> `sync.repository.js:269-313`), `softDelete` (`:710-752`) xoá theo khoá chính — không kiểm chủ sở hữu. `36f1ea43` (PR #159)
-> thêm `docs/Family/GIA_DINH_NEN_MONG.md` — **bản chép y nguyên** đơn này (cùng blob `d6e786e1`), không kế hoạch, không trả lời
-> mục 6. Nhờ backend trả lời / ghi kế hoạch **vào đơn này**: bản ở `docs/Family/` do backend tạo nên client không cập nhật theo
-> đơn — đọc bản ở `CAN-LAM/`.
->
-> **Client đặt 2026-10-23.** Người nhận: backend (NPBao). Mức: **cao** — tính năng mới người dùng chọn; client làm phần mình
-> song song bằng API giả, **nghiệm thu chờ đơn này**.
->
-> **Đọc theo thứ tự:** mục 0 (một trang) → mục 1–2 (tính năng là gì) → mục 3 (việc phải làm, chi tiết) → mục 5 (câu kiểm lại).
-> Mục 4 là định hướng ba phần con sau — **chưa phải việc**, để lược đồ thiết kế một lần không phải đập lại.
->
-> Thiết kế đầy đủ phía client (đã duyệt từng phần với người dùng):
-> `docs/superpowers/specs/2026-10-23-gia-dinh-nen-mong-design.md`. Tên endpoint / tên mã trong đơn là **đề xuất** — backend được
-> đổi, nhưng ghi lại tên chốt khi trả lời (mục 6) để client theo.
+> 👑 **TÀI LIỆU YÊU CẦU KỸ THUẬT NGUỒN SỰ THẬT (SOURCE OF TRUTH) — ĐÃ ĐƯỢC PO DUYỆT 2026-10-27**
+> **Người nhận:** Backend Team (Lead FullStack & Backend Engineers)  
+> **Người giao:** Product Owner (PO) & Lead Business Analyst  
+> **Mức độ ưu tiên:** **CAO (High / P1)** — Tính năng chiến lược mở rộng hệ sinh thái FlowMoney  
+> **Tài liệu nghiệp vụ gốc:** [`docs/Family/00_TONG_QUAN.md`](../../../Family/00_TONG_QUAN.md) & [`docs/Family/01_NEN_MONG.md`](../../../Family/01_NEN_MONG.md)  
+> **Trạng thái:** 🟢 SẴN SÀNG TRIỂN KHAI THEO QUY TRÌNH TDD & DB GUARD  
 
 ---
 
-## 0. Tóm tắt một trang
+## 0. Tóm tắt Tổng quan (Executive Summary)
 
-**Người dùng thấy gì:** một mục mới *"Nhà mình"* trong drawer. Một người có Premium **tạo nhà**, gửi **mã mời 8 ký tự** cho vợ /
-chồng / con / bố mẹ (tối đa 6 người). Người được mời nhập mã là vào nhà (Basic cũng vào được). Trong nhà có **quỹ chung** cả nhà
-cùng ghi, **chi chung** tự trả rồi tính *ai nợ ai*, **mục tiêu chung**, và mỗi người tự chọn ví riêng nào *cho nhà xem*. Dữ liệu
-riêng vẫn riêng; màn cá nhân (Trang chủ, Sổ giao dịch, Phân tích, Ngân sách) **không đổi**.
+**1. Mục tiêu Người dùng:**
+Một người dùng có gói **Premium** tạo một **"Nhà"** trên FlowMoney (quy mô tối đa 6 người). Chủ nhà gửi **Mã mời 8 ký tự** hoặc gửi **Lời mời đích danh qua Email** cho người thân (vợ/chồng/con/bố mẹ). Người được mời có thể dùng gói Basic miễn phí tham gia nhà. Trong nhà có ví chung, chi tiêu chung, hạn mức chi, định mức góp, ngân sách chung và mục tiêu chung. Dữ liệu riêng tư của cá nhân vẫn được cách ly tuyệt đối, không bị trộn lẫn với dữ liệu của nhà.
 
-**Mô hình:** *"nhà là chủ sở hữu thứ ba"* — năm bảng đồng bộ (`wallet`, `transaction`, `goal`, `budget`, `category`) thêm cột
-`Idhousehold` (nullable). Trống = dữ liệu riêng như hôm nay. Có giá trị = bản ghi **của nhà**; `Idaccount` / `Create_by` khi ấy
-chỉ nghĩa **người tạo**.
+**2. Mô hình Kiến trúc: "Nhà là Chủ sở hữu thứ ba":**
+- 5 bảng đồng bộ cốt lõi (`wallet`, `transaction`, `goal`, `budget`, `category`) được bổ sung cột `Idhousehold INT NULL REFERENCES "household"("Idhousehold")`.
+- `Idhousehold IS NULL`: Dữ liệu riêng tư cá nhân.
+- `Idhousehold IS NOT NULL`: Dữ liệu thuộc sở hữu chung của Nhà; cột `Idaccount` khi đó đóng vai trò là **Người ghi (Creator / Author)**.
 
-**Việc backend của phần 1 (đơn này):**
+**3. Danh mục 7 Nhóm Nhiệm vụ Backend Phần 1:**
 
-| # | Việc | Mức |
-|---|---|---|
-| **A** | **Tiền đề — kiểm chủ sở hữu khi sửa / xoá qua `/sync/push`** (lỗ hổng có sẵn: biết UUID là ghi đè / xoá được bản ghi người khác) | **cao** |
-| B | Migration `database/37_*.sql`: ba bảng `household`, `household_member`, `household_invite`; cột `Idhousehold` cho 5 bảng; chỉ mục trùng tên theo nhà | cao |
-| C | Module `households` — 12 endpoint (tạo, trạng thái, tạo / liệt kê / huỷ mã mời, xem trước, tham gia, đổi vai, chuyển chủ, mời ra, rời, giải tán) | cao |
-| D | Đồng bộ: kéo về *"của tôi + của nhà tôi"*; đẩy lên kiểm quyền nhà, **4 mã lỗi mới**; `mapEntityFields` nhận `idhousehold` | cao |
-| E | Premium: khoá quyền `household`, giới hạn `household_members`; chủ hết Premium ⇒ nhà `ReadOnly`, gia hạn ⇒ `Active` | vừa |
-| F | Thời gian thực: sự kiện mới `household.changed`; `sync.completed` tới **mọi** thành viên khi có hàng của nhà được đẩy | vừa |
-| G | Lập nhà ⇒ sao 13 danh mục mặc định thành danh mục của nhà | vừa |
-
-**Client làm (song song, không chờ):** mảng `features/household/`, 5 màn, Drift v32 thêm cột, 25+ truy vấn cá nhân thêm
-`idhousehold IS NULL`, đồng bộ đọc / gửi `idhousehold`, thêm 4 mã vào danh sách lỗi vĩnh viễn. Không đổi gì ở `src/Backend`.
+| # | Nhóm nhiệm vụ | Chi tiết thực thi | Mức độ |
+|---|---|---|:---:|
+| **A** | **Tiền đề an ninh `/sync/push`** | Bổ sung kiểm tra quyền sở hữu (`NOT_OWNER`) khi Sửa/Xóa dữ liệu cá nhân của 6 thực thể. | **Tối khẩn** |
+| **B** | **Migration CSDL** | Script `database/40_create_household_foundation.sql`: 3 bảng `household`, `household_member`, `household_invite` (kèm cột Email, Invitee_idaccount, Declined_at); cột `Idhousehold` cho 5 bảng; Partial Unique Indexes; cập nhật `schema.prisma`. | **Cao** |
+| **C** | **Module `households` API** | Xây dựng 16 REST endpoints chuẩn mực: 12 endpoint quản lý nhà/mã mời + **4 endpoint mời qua Email** (chống dò email, rate limit 20 mail/24h, mẫu thư Brevo/Resend). | **Cao** |
+| **D** | **Chuẩn hóa Sync Engine** | `/sync/pull` kéo `(của tôi AND riêng) OR (của nhà tôi đang ở)`. `/sync/push` áp dụng **Ma trận quyền Vai trò $\times$ Thực thể** kèm mã lỗi đẩy mới: `HOUSEHOLD_ROLE_FORBIDDEN`, `NOT_OWNER`, `HOUSEHOLD_NOT_MEMBER`, `HOUSEHOLD_CLOSED`, `HOUSEHOLD_READ_ONLY`, `HOUSEHOLD_SCOPE_MISMATCH`. Bỏ ngoại lệ `idgoal`. | **Cao** |
+| **E** | **Phân quyền & Gói dịch vụ** | Áp dụng phân quyền trụ cột: quyền `household`, trần `household_members` (mặc định 6). Chủ nhà hết Premium $\rightarrow$ Nhà tự động chuyển `ReadOnly` (chỉ xem, không ai được ghi mới). | **Vừa** |
+| **F** | **Sự kiện Thời gian thực** | Phát Socket.io: `household.changed` khi trạng thái nhà thay đổi; `household.invited` tới tài khoản được mời qua email; `sync.completed` tới **mọi thành viên** khi có giao dịch của nhà được đẩy lên. | **Vừa** |
+| **G** | **Nhân bản Danh mục Nhà** | Khi tạo nhà thành công, server tự động sao chép 13 danh mục mặc định của hệ thống thành danh mục của nhà (`Idhousehold = H`, `Create_by = Owner`, `Is_default = false`). | **Vừa** |
 
 ---
 
-## 1. Tính năng là gì — quyết định của người dùng (2026-10-23)
+## 1. Nghiệp vụ Chi tiết & Quyết định Đã Chốt (Theo `docs/Family/`)
 
-| Câu hỏi | Chốt |
-|---|---|
-| Dùng để làm gì | **Cả bốn**: quỹ chung cùng ghi · xem chung bức tranh tài chính · chia tiền, ai nợ ai · mục tiêu tiết kiệm chung |
-| Quỹ chung là gì | **Cả hai kiểu**: quỹ thật (thẻ / tiền mặt chung) cả nhà cùng ghi vào, **và** khoản mỗi người tự trả rồi tính chung |
-| Quy mô | Gia đình nhiều người, **tối đa 6** (server ghi đè được bằng giới hạn gói) |
-| Vai trò | **Ba vai cố định cho cả nhà**: `Owner` (chủ nhà) · `Member` (thành viên) · `Viewer` (chỉ xem) |
-| Riêng tư | Mặc định chỉ thấy dữ liệu **chung**; mỗi người tự bật *"cho nhà xem"* từng ví riêng (chỉ xem, không sửa) |
-| Gói | **Chủ nhà cần Premium**; người được mời dùng miễn phí; chủ hết Premium ⇒ nhà **chỉ xem**, không mất dữ liệu |
-| Danh mục cho khoản của nhà | **Bộ danh mục riêng của nhà** (sao từ bộ mặc định khi lập nhà; thành viên thêm được) |
-| Giải tán nhà | Dữ liệu chung **biến mất với mọi người** — **xoá mềm** ở server |
-| Một tài khoản | Ở **tối đa một nhà** |
-| Phần server | **Backend làm theo đơn** (client không sửa `src/Backend`) |
-
-**Vai trò làm được gì:**
-
-| Hành động | Owner | Member | Viewer |
-|---|:---:|:---:|:---:|
-| Xem dữ liệu chung của nhà | ✅ | ✅ | ✅ |
-| Ghi / sửa / xoá dữ liệu của nhà (ví, giao dịch, mục tiêu, ngân sách, danh mục của nhà) | ✅ | ✅ | ❌ |
-| Tạo / huỷ mã mời, đổi vai, mời ra, chuyển chủ, giải tán | ✅ | ❌ | ❌ |
-| Rời nhà | ❌ (phải chuyển chủ hoặc giải tán trước) | ✅ | ✅ |
-
-Nhà `ReadOnly` (chủ hết Premium) hoặc `Dissolved`: **không ai** ghi được dữ liệu của nhà; vẫn xem được (`ReadOnly`) hoặc không
-còn gì (`Dissolved`). Thao tác quản lý (đổi vai, rời, mời ra) vẫn chạy khi `ReadOnly`; tạo mã mời / tham gia thì không.
+1. **Quy mô & Giới hạn:**
+   - Mỗi nhà tối đa **6 thành viên** (có thể ghi đè bằng `household.Max_members`).
+   - Một tài khoản tại một thời điểm chỉ được ở **tối đa 1 nhà** (`uq_household_member_active_account`).
+2. **Ba vai trò cố định áp cho cả nhà:**
+   - `Owner` (Chủ nhà): Cần gói Premium; toàn quyền quản trị, cấu hình hạn mức/ngân sách/mục tiêu, mời và giải tán nhà.
+   - `Member` (Thành viên): Dùng miễn phí; ghi chép chi/thu/góp/rút vào ví chung; sửa/xóa khoản do mình ghi; xem hạn mức/định mức của mình.
+   - `Viewer` (Chỉ xem): Xem toàn bộ số liệu, ví chung, báo cáo; không được ghi chép bất kỳ dữ liệu nào.
+3. **Trạng thái Nhà (`household.Status`):**
+   - `Active`: Hoạt động bình thường.
+   - `ReadOnly`: Khi Chủ nhà hết hạn Premium hoặc bị hạ cấp gói. Thành viên và Chủ nhà vẫn xem được dữ liệu, nhưng **mọi thao tác ghi mới vào nhà đều bị từ chối** (`HOUSEHOLD_READ_ONLY`). Thao tác quản lý (rời nhà, mời ra) vẫn cho phép.
+   - `Dissolved`: Khi Chủ nhà giải tán nhà. Dữ liệu chung bị ẩn hoàn toàn (Soft-delete).
+4. **Giải tán nhà:**
+   - Dữ liệu chung bị xóa mềm ở server (`household.Delete_at = now()`, cập nhật `Status = 'Dissolved'`).
+   - Thành viên tự động được giải phóng khỏi nhà (`Left_at = now()`).
+   - Nửa riêng của các khoản góp/rút trên máy cá nhân được bảo toàn nguyên vẹn.
 
 ---
 
-## 2. Bốn phần con và phạm vi đơn này
+## 2. Chi tiết Kỹ thuật Backend Cần Thực Hiện
 
-| # | Phần | Đơn backend |
-|---|---|---|
-| **1** | **Nền móng** — nhà, thành viên, mã mời, vai, Premium, đồng bộ theo phạm vi nhà, danh mục của nhà | **đơn này (mục 50)** |
-| 2 | Quỹ chung (ví của nhà cả nhà cùng ghi) + ví riêng *"cho nhà xem"* + màn tổng hợp *Nhà mình* | đơn riêng, sau |
-| 3 | Chi chung tự trả + ai nợ ai + trả nợ | đơn riêng, sau |
-| 4 | Mục tiêu chung (mỗi người góp từ ví riêng) | đơn riêng, sau |
+### Việc A: Tiền đề an ninh — Kiểm tra quyền sở hữu khi Sửa / Xóa qua `/sync/push`
 
-**Ngoài phạm vi cả bốn phần:** hoá đơn chung (bảng `bill` **không** thêm cột), quét QR, tạo / tham gia nhà khi offline, một tài
-khoản ở nhiều nhà, màn quản trị gia đình ở Admin-web (có thể làm sau, không chặn client).
-
-Đơn này đặt **cột và mã lỗi dùng chung** cho cả bốn phần (cột `Idhousehold`, bốn mã đẩy, `NOT_OWNER`) để các đơn sau phần lớn chỉ
-thêm. **Ngoại lệ đã biết:** luật tham chiếu (D.2) có thể phải nới ở phần 2 — xem dòng *nạp / rút quỹ* ở D.2.
+* **Vấn đề an ninh hiện hữu:** Nhánh Sửa (`upsert*`) và Xóa (`softDelete`) của `sync.repository.js` hiện chỉ tìm bản ghi theo UUID khóa chính rồi so sánh `update_at` mà không kiểm tra `existing.idaccount`. Khi tính năng gia đình mở ra, UUID ví chung và giao dịch được chia sẻ giữa các thành viên, nếu không siết chặt sẽ dẫn tới lỗ hổng sửa/xóa chéo dữ liệu của nhau.
+* **Quy tắc kiểm tra bắt buộc khi Sửa / Xóa:**
+  ```javascript
+  // 1. Nếu là bản ghi cá nhân (Idhousehold IS NULL)
+  if (!existing.Idhousehold) {
+    const ownerId = existing.Idaccount || existing.Create_by;
+    if (ownerId !== req.user.idaccount) {
+      throw new DomainError('NOT_OWNER', 'Bản ghi không thuộc quyền sở hữu của bạn');
+    }
+  }
+  // 2. Nếu là bản ghi của nhà (Idhousehold IS NOT NULL) -> Áp dụng ma trận quyền tại Mục D
+  ```
+* **Mã lỗi trả về:** Ném lỗi với mã `code: 'NOT_OWNER'` (HTTP 200 trong mảng `results[i].code` của `/sync/push`) để Client xếp vào danh sách lỗi vĩnh viễn, không gửi lại.
 
 ---
 
-## 3. Việc backend — phần 1, chi tiết
+### Việc B: Migration CSDL `database/40_create_household_foundation.sql`
 
-### A (cao) — Tiền đề: kiểm chủ sở hữu khi sửa / xoá qua `/sync/push`
-
-**Hiện trạng (đọc mã 2026-10-23):**
-- `modules/sync/sync.service.js:103-113` chỉ so `payload.idaccount` với `req.user.idaccount`; payload để trống `idaccount` thì
-  gán từ token (`:116`).
-- Lỗi *"Ownership mismatch"* ở đó trả `{status:'error', message}` **không có `code`** — client chỉ dừng gửi lại khi mã nằm trong danh
-  sách lỗi vĩnh viễn, nên hàng ấy bị **gửi lại mọi chu kỳ**. Xin trả **`NOT_OWNER`** ở đây luôn.
-- Nhánh **sửa** của `upsertWallet` (`sync.repository.js` ~`:291`), `upsertTransaction` (~`:400`), `upsertBudget` (~`:472`),
-  `upsertBill` (~`:540`), `upsertGoal` (~`:613`) tìm bản ghi theo khoá chính rồi chỉ so `update_at` — **không** so
-  `existing.idaccount`.
-- `upsertCategory` có kiểm chủ (`:209-214`, ném `'Cannot modify category belonging to another user'`) nhưng chuỗi ấy không khớp
-  nhánh bắt lỗi nào nên ra `DB_ERROR` (client coi là lỗi tạm, gửi lại mãi) — đổi sang `NOT_OWNER`.
-- `softDelete` (`:709-752`) xoá theo khoá chính, **không** kiểm chủ ở thực thể nào (nhánh danh mục chỉ chặn `is_default`).
-
-⇒ Ai gửi `{entity:'wallet', operation:'update', payload:{idwallet:'<UUID của người khác>', update_at:<rất mới>, …}}` là ghi đè
-được ví người khác; `operation:'delete'` là xoá mềm được. UUID v4 khó đoán, nhưng gia đình **làm lộ UUID giữa thành viên** (ví
-*cho nhà xem* — phần 2), nên phải đóng trước.
-
-**Xin:** trong nhánh sửa và xoá của cả 6 thực thể, sau khi tìm `existing`:
-- `existing.Idhousehold` **trống** ⇒ chỉ cho khi `existing.idaccount` (danh mục: `existing.create_by`) = người đẩy; sai ⇒ mã
-  **`NOT_OWNER`** (mới, vĩnh viễn).
-- `existing.Idhousehold` **có** ⇒ luật quyền nhà (mục D).
-- Nhánh **tạo** với khoá chính đã tồn tại của người khác cũng đi luật này (không được "tạo đè").
-
-### B (cao) — Migration `database/37_create_household.sql`
-
-Quy ước repo: `docs/Rule_Project/Rule_project.md` §3.2 — tệp `database/N_*.sql`, cột mới nullable / có DEFAULT, cập nhật
-`schema.prisma` rồi chỉ `prisma generate`, áp bằng `scripts/apply_migration_37.js` (khuôn `apply_migration_36.js`: `BEGIN` →
-`query(sql)` → `COMMIT`, nên tệp SQL **không** tự mở giao tác). Số **37**: lớn nhất hiện là 36 (đơn 49 vế C xin đổi tệp 27 trùng
-số — nếu tệp ấy lấy 37 thì đơn này dùng 38; ghi rõ khi trả lời). Ghi vào sổ áp ở `Rule_project.md` (tài liệu của backend).
-
-SQL nháp (đúng quy ước tên cột có nháy kép của repo; backend chỉnh được):
+Viết file migration SQL theo chuẩn Supabase PostgreSQL, không dùng `prisma db push` / `migrate dev`:
 
 ```sql
--- ===== 1. Ba bảng mới =====
+-- ============================================================================
+-- MIGRATION 40: HOUSEHOLD FOUNDATION (GIA ĐÌNH NỀN MÓNG)
+-- ============================================================================
+
+-- 1. Bảng household (Nhà)
 CREATE TABLE IF NOT EXISTS "household" (
   "Idhousehold"     SERIAL PRIMARY KEY,
   "Name"            VARCHAR(100) NOT NULL,
   "Owner_idaccount" INT NOT NULL REFERENCES "account"("Idaccount"),
   "Status"          VARCHAR(10) NOT NULL DEFAULT 'Active',
   "Max_members"     SMALLINT NOT NULL DEFAULT 6,
+  "Max_shared_wallets" SMALLINT NOT NULL DEFAULT 10,
+  "Contribution_due_day" SMALLINT NOT NULL DEFAULT 5,
   "Create_at"       TIMESTAMP(6) NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
   "Update_at"       TIMESTAMP(6) NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
   "Delete_at"       TIMESTAMP(6) NULL,
   CONSTRAINT "chk_household_status"      CHECK ("Status" IN ('Active', 'ReadOnly', 'Dissolved')),
-  CONSTRAINT "chk_household_max_members" CHECK ("Max_members" BETWEEN 2 AND 20)
+  CONSTRAINT "chk_household_max_members" CHECK ("Max_members" BETWEEN 2 AND 20),
+  CONSTRAINT "chk_household_due_day"     CHECK ("Contribution_due_day" BETWEEN 1 AND 31)
 );
 
+-- 2. Bảng household_member (Thành viên nhà)
 CREATE TABLE IF NOT EXISTS "household_member" (
   "Id"          SERIAL PRIMARY KEY,
   "Idhousehold" INT NOT NULL REFERENCES "household"("Idhousehold"),
@@ -160,299 +109,195 @@ CREATE TABLE IF NOT EXISTS "household_member" (
   "Left_at"     TIMESTAMP(6) NULL,
   CONSTRAINT "chk_household_member_role" CHECK ("Role" IN ('Owner', 'Member', 'Viewer'))
 );
--- Một tài khoản ở tối đa một nhà; mỗi nhà đúng một chủ đang ở.
+
+-- Ràng buộc: Mỗi tài khoản tại 1 thời điểm chỉ ở tối đa 1 nhà đang active
 CREATE UNIQUE INDEX IF NOT EXISTS "uq_household_member_active_account"
   ON "household_member" ("Idaccount") WHERE "Left_at" IS NULL;
+
+-- Ràng buộc: Mỗi nhà chỉ có đúng 1 Chủ nhà (Owner) đang active
 CREATE UNIQUE INDEX IF NOT EXISTS "uq_household_one_owner"
   ON "household_member" ("Idhousehold") WHERE "Role" = 'Owner' AND "Left_at" IS NULL;
+
 CREATE INDEX IF NOT EXISTS "idx_household_member_active"
   ON "household_member" ("Idhousehold") WHERE "Left_at" IS NULL;
 
+-- 3. Bảng household_invite (Mã mời & Lời mời Email)
 CREATE TABLE IF NOT EXISTS "household_invite" (
-  "Code"        VARCHAR(8) PRIMARY KEY,
-  "Idhousehold" INT NOT NULL REFERENCES "household"("Idhousehold"),
-  "Role"        VARCHAR(7) NOT NULL,
-  "Created_by"  INT NOT NULL REFERENCES "account"("Idaccount"),
-  "Create_at"   TIMESTAMP(6) NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
-  "Expires_at"  TIMESTAMP(6) NOT NULL,
-  "Used_by"     INT NULL REFERENCES "account"("Idaccount"),
-  "Used_at"     TIMESTAMP(6) NULL,
-  "Revoked_at"  TIMESTAMP(6) NULL,
+  "Code"                VARCHAR(8) PRIMARY KEY,
+  "Idhousehold"         INT NOT NULL REFERENCES "household"("Idhousehold"),
+  "Role"                VARCHAR(7) NOT NULL,
+  "Created_by"          INT NOT NULL REFERENCES "account"("Idaccount"),
+  "Email"               VARCHAR(100) NULL,                                   -- NULL = Mã mời công khai
+  "Invitee_idaccount"   INT NULL REFERENCES "account"("Idaccount"),         -- Tự khớp nếu email đã có tài khoản
+  "Create_at"           TIMESTAMP(6) NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
+  "Expires_at"          TIMESTAMP(6) NOT NULL,
+  "Used_by"             INT NULL REFERENCES "account"("Idaccount"),
+  "Used_at"             TIMESTAMP(6) NULL,
+  "Revoked_at"          TIMESTAMP(6) NULL,
+  "Declined_at"         TIMESTAMP(6) NULL,
   CONSTRAINT "chk_household_invite_role" CHECK ("Role" IN ('Member', 'Viewer'))
 );
 
--- ===== 2. Cột Idhousehold cho 5 bảng đồng bộ (bill KHÔNG) =====
+-- Ràng buộc: Mỗi email chỉ có 1 lời mời active cho mỗi nhà
+CREATE UNIQUE INDEX IF NOT EXISTS "uq_household_invite_email_active"
+  ON "household_invite" ("Idhousehold", "Email")
+  WHERE "Email" IS NOT NULL AND "Used_at" IS NULL AND "Revoked_at" IS NULL AND "Declined_at" IS NULL;
+
+CREATE INDEX IF NOT EXISTS "idx_household_invite_email"
+  ON "household_invite" ("Email") WHERE "Email" IS NOT NULL;
+
+-- 4. Bổ sung cột Idhousehold cho 5 bảng đồng bộ
 ALTER TABLE "wallet"      ADD COLUMN IF NOT EXISTS "Idhousehold" INT NULL REFERENCES "household"("Idhousehold");
 ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS "Idhousehold" INT NULL REFERENCES "household"("Idhousehold");
 ALTER TABLE "goal"        ADD COLUMN IF NOT EXISTS "Idhousehold" INT NULL REFERENCES "household"("Idhousehold");
 ALTER TABLE "budget"      ADD COLUMN IF NOT EXISTS "Idhousehold" INT NULL REFERENCES "household"("Idhousehold");
 ALTER TABLE "category"    ADD COLUMN IF NOT EXISTS "Idhousehold" INT NULL REFERENCES "household"("Idhousehold");
+
 CREATE INDEX IF NOT EXISTS "idx_wallet_household"      ON "wallet"      ("Idhousehold", "Server_update_at") WHERE "Idhousehold" IS NOT NULL;
 CREATE INDEX IF NOT EXISTS "idx_transaction_household" ON "transaction" ("Idhousehold", "Server_update_at") WHERE "Idhousehold" IS NOT NULL;
 CREATE INDEX IF NOT EXISTS "idx_goal_household"        ON "goal"        ("Idhousehold", "Server_update_at") WHERE "Idhousehold" IS NOT NULL;
 CREATE INDEX IF NOT EXISTS "idx_budget_household"      ON "budget"      ("Idhousehold", "Server_update_at") WHERE "Idhousehold" IS NOT NULL;
 CREATE INDEX IF NOT EXISTS "idx_category_household"    ON "category"    ("Idhousehold", "Server_update_at") WHERE "Idhousehold" IS NOT NULL;
 
--- ===== 3. Ràng buộc cá nhân bỏ qua hàng của nhà; thêm ràng buộc theo nhà =====
+-- 5. Chuẩn hóa Partial Unique Index cách ly cá nhân vs nhà
 DROP INDEX IF EXISTS "uq_wallet_account_name_active";
 CREATE UNIQUE INDEX "uq_wallet_account_name_active"
   ON "wallet" ("Idaccount", "Name") WHERE "Delete_at" IS NULL AND "Idhousehold" IS NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS "uq_wallet_household_name_active"
   ON "wallet" ("Idhousehold", "Name") WHERE "Delete_at" IS NULL AND "Idhousehold" IS NOT NULL;
 
 DROP INDEX IF EXISTS "uq_wallet_default_active";
 CREATE UNIQUE INDEX "uq_wallet_default_active"
   ON "wallet" ("Idaccount") WHERE "Is_default" = TRUE AND "Delete_at" IS NULL AND "Idhousehold" IS NULL;
+
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_wallet_household_not_default') THEN
     ALTER TABLE "wallet" ADD CONSTRAINT "chk_wallet_household_not_default"
       CHECK ("Idhousehold" IS NULL OR "Is_default" = FALSE);
   END IF;
-END $$;  -- PostgreSQL không có ADD CONSTRAINT IF NOT EXISTS; khối này cho tệp chạy lại được
+END $$;
 
 DROP INDEX IF EXISTS "uq_category_owner_name";
 CREATE UNIQUE INDEX "uq_category_owner_name"
   ON "category" ("Create_by", lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))
   WHERE "Is_default" = FALSE AND "Delete_at" IS NULL AND "Idhousehold" IS NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS "uq_category_household_name"
   ON "category" ("Idhousehold", lower(regexp_replace(btrim(normalize("NameCategory", NFC)), '\s+', ' ', 'g')))
   WHERE "Delete_at" IS NULL AND "Idhousehold" IS NOT NULL;
 ```
 
-⚠️ **Kiểm trước khi áp:** `New_Database.sql:160` khai ràng buộc **không partial** `"uq_wallet_account_name" UNIQUE ("Idaccount",
-"Name")` và `:175` `uq_wallet_default_one`; không thấy tệp nào DROP chúng. Nếu còn trên CSDL (đo bằng
-`scripts/verify_db_live.js` hoặc câu 5.1), ví của nhà trùng tên ví riêng của người tạo sẽ vỡ — phải DROP trong cùng tệp.
+---
 
-**`schema.prisma`:** ba model mới; trường `idhousehold Int? @map("Idhousehold")` + quan hệ cho 5 model (khuôn `idaccount Int`).
+### Việc C: Xây dựng Module `households` (16 Endpoints RESTful)
 
-### C (cao) — Module `households`
+Khởi tạo cấu trúc thư mục tại `src/Backend/modules/household/`:
+- `household.controller.js`
+- `household.service.js`
+- `household.repository.js`
+- `household.validation.js`
+- Đăng ký route tại `src/Backend/api/households.routes.js` và nạp vào `src/Backend/api/index.js` qua middleware `authenticate`.
 
-Khuôn repo: `api/households.routes.js` đăng ký ở `api/index.js` (cạnh `router.use('/sync', …)`, `:64-70`); thư mục
-`modules/household/{household.controller,household.service,household.repository,household.validation}.js`; mọi route qua
-`authenticate` (`middleware/auth.js`); lỗi nghiệp vụ ném lỗi có `code` để `middleware/error-handler.js:25-38` trả
-`{success:false, statusCode, code, message}` — **`code` ở cấp gốc**, như mọi lỗi client đang đọc.
+#### Danh sách 16 Endpoints hoàn chỉnh:
 
-**Tên hiển thị thành viên:** `user.Fullname` (`schema.prisma:67`), thiếu thì `account.Username`. **Không** trả email / số điện
-thoại của thành viên khác.
+| # | Phương thức & URI | Quyền gọi | Payload Body / Params | Phản hồi chuẩn (`data`) & Mã HTTP |
+|:---:|---|---|---|---|
+| **1** | `POST /api/households` | Có quyền `household` (Premium), chưa ở nhà nào | `{ "name": "Gia đình Tuấn An" }` | `201` Trạng thái nhà đầy đủ |
+| **2** | `GET /api/households/me` | Mọi user đã đăng nhập | — | `200` `{ "household": null }` hoặc thông tin nhà + `myRole` + `members` + `formerMembers` |
+| **3** | `POST /api/households/invites` | `Owner`, nhà `Active`, chưa đủ người | `{ "role": "Member" \| "Viewer" }` | `201` `{ "code": "ABCD2345", "role": "Member", "expiresAt": "..." }` (Hạn 48h) |
+| **4** | `GET /api/households/invites` | `Owner` | — | `200` Danh sách mã mời còn hạn + lời mời email (kèm trạng thái Pending/Declined/Expired) |
+| **5** | `DELETE /api/households/invites/:code` | `Owner` | — | `200` `{ "revoked": true }` |
+| **6** | `GET /api/households/invites/:code` | Mọi user đã đăng nhập | — | `200` Xem trước: `{ householdName, ownerName, memberCount, maxMembers, role, expiresAt }` |
+| **7** | `POST /api/households/join` | User chưa ở nhà nào | `{ "code": "ABCD2345" }` | `200` Trạng thái nhà sau khi gia nhập thành công |
+| **8** | `PATCH /api/households/members/:idaccount` | `Owner`, đích là Member/Viewer | `{ "role": "Member" \| "Viewer" }` | `200` Trạng thái nhà sau cập nhật |
+| **9** | `POST /api/households/transfer-owner` | `Owner`, đích là thành viên trong nhà | `{ "idaccount": 25 }` | `200` Trạng thái nhà (chuyển vai Owner) |
+| **10**| `DELETE /api/households/members/:idaccount` | `Owner`, đích khác chính mình | — | `200` Trạng thái nhà sau khi mời ra |
+| **11**| `POST /api/households/leave` | `Member` / `Viewer` | — | `200` `{ "household": null }` |
+| **12**| `POST /api/households/dissolve` | `Owner` | — | `200` `{ "dissolved": true }` |
+| **13**| `POST /api/households/invites/email` | `Owner`, nhà `Active`, chưa đủ người | `{ "email": "user@gmail.com", "role": "Member" }` | `202` `{ "sent": true, "email": "...", "role": "...", "expiresAt": "..." }` *(Luôn trả 202 để chống dò email; rate limit 20 mail/nhà/24h)* |
+| **14**| `GET /api/households/invitations` | Mọi user đã đăng nhập | — | `200` Danh sách lời mời gửi tới email của user hiện tại |
+| **15**| `POST /api/households/invitations/:code/accept` | User được mời qua email | — | `200` Trạng thái nhà sau khi chấp nhận |
+| **16**| `POST /api/households/invitations/:code/decline` | User được mời qua email | — | `200` `{ "declined": true }` |
 
-| # | Endpoint | Ai được | Thân / tham số | Trả về (`data`) |
-|---|---|---|---|---|
-| 1 | `POST /api/households` | có quyền `household` (mục E), chưa ở nhà nào | `{ name }` (1–100 ký tự, cắt khoảng trắng) | trạng thái nhà (#2) |
-| 2 | `GET /api/households/me` | mọi tài khoản | — | `{ household: null }` hoặc mục 3.C.1 |
-| 3 | `POST /api/households/invites` | `Owner`, nhà `Active`, chưa đủ người | `{ role: 'Member' \| 'Viewer' }` | `{ code, role, expiresAt }` |
-| 4 | `GET /api/households/invites` | `Owner` | — | `[{ code, role, expiresAt, createAt }]` (chỉ mã còn hiệu lực) |
-| 5 | `DELETE /api/households/invites/:code` | `Owner` | — | `{ revoked: true }` |
-| 6 | `GET /api/households/invites/:code` | mọi tài khoản | — | `{ householdName, ownerName, memberCount, maxMembers, role, expiresAt }` |
-| 7 | `POST /api/households/join` | chưa ở nhà nào | `{ code }` | trạng thái nhà (#2) |
-| 8 | `PATCH /api/households/members/:idaccount` | `Owner`; đích là `Member` / `Viewer` | `{ role: 'Member' \| 'Viewer' }` | trạng thái nhà |
-| 9 | `POST /api/households/transfer-owner` | `Owner`; đích là thành viên đang ở | `{ idaccount }` | trạng thái nhà |
-| 10 | `DELETE /api/households/members/:idaccount` | `Owner`; đích khác chính mình | — | trạng thái nhà |
-| 11 | `POST /api/households/leave` | `Member` / `Viewer` | — | `{ household: null }` |
-| 12 | `DELETE /api/households` | `Owner` | — | `{ household: null }` |
-
-**C.1 — Hình dạng trạng thái nhà** (`GET /me` và mọi thao tác trả nó):
-
-```json
-{
-  "household": {
-    "id": 12,
-    "name": "Nhà Đạt – Linh",
-    "status": "Active",
-    "maxMembers": 6,
-    "ownerId": 18,
-    "createAt": "2026-10-23T08:00:00.000Z"
-  },
-  "myRole": "Owner",
-  "members": [
-    { "idaccount": 18, "displayName": "Trần Quang Đạt", "role": "Owner",  "joinedAt": "2026-10-23T08:00:00.000Z" },
-    { "idaccount": 25, "displayName": "Nguyễn Linh",    "role": "Member", "joinedAt": "2026-10-23T09:12:00.000Z" }
-  ]
-}
-```
-
-**C.2 — Luật từng thao tác:**
-- **Mã mời:** 8 ký tự từ bảng `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (bỏ `0 O 1 I`), sinh bằng `crypto.randomInt`; hết hạn **48 giờ**;
-  **dùng một lần**; huỷ được. Tham gia **khoá hàng mời** (`SELECT … FOR UPDATE` trong giao tác) để hai người không cùng dùng một mã.
-- **Đếm trần:** số thành viên đang ở (`Left_at IS NULL`) **cộng mã còn hiệu lực** không được vượt `Max_members` lúc tạo mã; lúc
-  tham gia đếm lại thành viên đang ở. `Max_members` lấy từ giới hạn gói của chủ nhà (mục E) lúc tạo nhà; gói đổi thì cập nhật.
-- **Tham gia:** trong một giao tác: mã hợp lệ → nhà `Active` → người dùng chưa ở nhà nào → chưa đủ người → thêm `household_member`
-  với vai của mã → đánh dấu mã đã dùng. Phát `household.changed` (mục F).
-- **Đổi vai:** chỉ `Member` ↔ `Viewer`; không đổi được vai `Owner` (dùng chuyển chủ).
-- **Chuyển chủ:** một giao tác: chủ cũ → `Member`, đích → `Owner`, `household.Owner_idaccount` = đích; rồi xét lại `Status`
-  theo Premium của chủ mới (mục E).
-- **Mời ra / rời:** đặt `Left_at`; dữ liệu người ấy đã ghi **ở lại nhà** (không đổi `Idhousehold`, không đổi người tạo). Mã mời do
-  người rời tạo vẫn thuộc nhà (chỉ chủ tạo mã nên không phát sinh).
-- **Giải tán:** một giao tác: `household.Status = 'Dissolved'`, `Delete_at = now()`; mọi `household_member` đang ở → `Left_at`; mọi
-  mã còn hiệu lực → `Revoked_at`; **xoá mềm mọi hàng** của nhà ở 5 bảng (`Delete_at` / `transaction."Deleted_at"` = now(),
-  `Update_at` + `Server_update_at` = now() để lượt kéo về của các máy nhận được cờ xoá). **Không xoá cứng** (quy ước repo).
-
-**C.3 — Mã lỗi API** (4xx, `code` ở cấp gốc):
-
-| Mã | HTTP | Khi |
-|---|---|---|
-| `HOUSEHOLD_INVITE_INVALID` | 404 | mã không tồn tại / đã huỷ |
-| `HOUSEHOLD_INVITE_EXPIRED` | 410 | quá 48 giờ |
-| `HOUSEHOLD_INVITE_USED` | 409 | mã đã dùng |
-| `HOUSEHOLD_ALREADY_IN_ONE` | 409 | tạo / tham gia khi đang ở một nhà |
-| `HOUSEHOLD_FULL` | 409 | đủ người (tạo mã hoặc tham gia) |
-| `HOUSEHOLD_NOT_FOUND` | 404 | thao tác cần nhà mà người dùng không ở nhà nào |
-| `HOUSEHOLD_NOT_OWNER` | 403 | thao tác của chủ do người khác gọi |
-| `HOUSEHOLD_OWNER_MUST_TRANSFER` | 409 | chủ gọi *rời* |
-| `HOUSEHOLD_READ_ONLY` | 409 | tạo mã / tham gia khi nhà `ReadOnly` |
-| `HOUSEHOLD_CLOSED` | 410 | nhà `Dissolved` |
-| `FEATURE_DISABLED` (có sẵn) | 403 | tạo nhà mà gói không có `household` |
-| (400 `'Validation failed'` của `middleware/validator.js:33`, có sẵn) | 400 | tên rỗng, vai lạ, mã sai dạng |
-
-**C.4 — Chống dò mã:** giới hạn tần suất cho `GET /invites/:code` và `POST /join` (ví dụ 10 lần / phút / tài khoản) bằng
-`middleware/rate-limiter.js` (`express-rate-limit`, đang dùng ở `api/auth.routes.js`).
-
-### D (cao) — Đồng bộ
-
-**D.1 — Kéo về (`sync.repository.js` các hàm `pull…`, `:239-653`).** Thay điều kiện chủ sở hữu, giữ nguyên điều kiện
-`server_update_at > since` và thứ tự:
-
-```js
-// H = nhà người dùng đang ở (household_member.Left_at IS NULL), hoặc null
-const phamVi = H
-  ? { OR: [{ idaccount, idhousehold: null }, { idhousehold: H }] }
-  : { idaccount, idhousehold: null };
-// wallet / transaction / goal / budget: where: { ...phamVi, server_update_at: … }
-// category: OR: [{ is_default: true }, { create_by: idaccount, idhousehold: null }, ...(H ? [{ idhousehold: H }] : [])]
-```
-
-- Hàng tôi từng ghi vào một nhà **đã rời** không còn về (hàng ấy có `Idhousehold` khác H).
-- `pullCategories` liệt kê cột bằng `select` (`:248-262`) — **phải thêm `idhousehold`**; năm hàm kia trả mọi cột.
-- Trả khoá `idhousehold` (số hoặc `null`) trong mỗi bản ghi. Hàng tombstone (đã xoá mềm) vẫn đi ra như hôm nay — client cần để
-  xoá cục bộ (giải tán nhà).
-- `bill` **không** đổi.
-
-**D.2 — Đẩy lên.** `mapEntityFields` (`:18-184`) thêm cho 5 thực thể: nhận khoá `idhousehold` (client gửi đúng tên này, số
-nguyên hoặc `null`). ⚠️ Phải thêm `idhousehold` vào **mọi khối `data` của nhánh tạo và sửa** (khoảng 10 khối, `:192-230,
-272-308, 377-425, 450-492, 586-638`) — không thêm là trường **bị bỏ qua im lặng** (lớp lỗi quy tắc 4 của repo).
-- **Tạo**, `idhousehold` khác trống: người đẩy phải là thành viên đang ở của nhà ấy, vai `Owner` / `Member`, nhà `Active`;
-  `idaccount` / `create_by` = người đẩy (từ token).
-- **Sửa / xoá** một hàng có `Idhousehold`: cùng điều kiện; **không** đổi `idaccount` / `create_by` (giữ người tạo); **không**
-  cho đổi `Idhousehold` của một hàng đã có (chuyển hàng giữa riêng ↔ nhà là `HOUSEHOLD_SCOPE_MISMATCH`).
-- **Luật tham chiếu** (kiểm khi tạo / sửa):
-  - hàng **của nhà H**: `idwallet`, `idwallet_transfer`, `idcategory`, `idgoal` (ngân sách: `idcategory`) phải trỏ tới hàng của **chính H**;
-  - hàng **riêng**: ví / danh mục phải là của **chính người đẩy** (riêng) — **ngoại lệ duy nhất:** giao dịch riêng được trỏ
-    `idgoal` tới mục tiêu của nhà **người ấy đang ở** (khoản góp từ ví riêng vào mục tiêu chung — phần 4; mở luật ngay để không
-    phải đổi mã về sau).
-  - ⚠️ **Chưa cho phép ở phần 1:** chuyển tiền giữa ví riêng và ví của nhà (**nạp / rút quỹ** — `Transfer` có một đầu riêng, một
-    đầu của nhà) ⇒ `HOUSEHOLD_SCOPE_MISMATCH`. Phần 2 sẽ định luật cho khoản ấy và cách **mọi** thành viên thấy nó (hôm nay giao
-    dịch riêng chỉ về máy chủ của nó, nên số dư quỹ chung sẽ lệch giữa các máy) — có thể phải nới luật này; đơn phần 2 nêu cụ thể.
-
-**D.3 — Bốn mã lỗi mới**, trả theo khuôn kết quả từng thao tác hiện có (`results[i] = {localId, status:'error', code, message}`,
-HTTP 200 cho cả lô — `sync.service.js:94-99, 159-237`). Client xếp cả bốn (và `NOT_OWNER` của mục A) là **lỗi vĩnh viễn**
-(✅ client **đã thêm** cả năm mã 2026-10-26 — `src/Client-app/lib/core/sync/gui_lo_dong_bo.dart`; backend bật mục A hay D lúc nào
-cũng được, hàng bị từ chối không bị đẩy lại mãi):
-
-| Mã | Khi |
-|---|---|
-| `HOUSEHOLD_NOT_MEMBER` | người đẩy không còn là thành viên đang ở của nhà của hàng |
-| `HOUSEHOLD_READ_ONLY` | vai `Viewer`, hoặc nhà `ReadOnly` |
-| `HOUSEHOLD_CLOSED` | nhà `Dissolved` |
-| `HOUSEHOLD_SCOPE_MISMATCH` | vi phạm luật tham chiếu D.2, hoặc đổi `Idhousehold` của hàng đã có |
-| `NOT_OWNER` (mục A) | sửa / xoá hàng riêng của người khác |
-
-Ném trong repository bằng lỗi có `code` riêng và bắt ở `sync.service.js` (cạnh `BILL_ALREADY_PAID`, `:181-184`) — đừng để rơi vào
-`DB_ERROR` (`:178`): client coi `DB_ERROR` là lỗi tạm và **gửi lại mãi**.
-
-**D.4 — Thứ tự đẩy.** `ENTITY_PRIORITY` hiện có (`category 10 → wallet 20 → goal 30 → bill 31 → budget 32 → transaction 40`, xoá
-theo `100 − w`) đã đúng cho hàng của nhà. Không đổi.
-
-**D.5 — Xung đột.** Giữ ghi-sau-thắng theo `update_at` như hôm nay (client chấp nhận rủi ro lệch đồng hồ giữa hai máy — spec
-mục 4.4). Không cần làm gì.
-
-### E (vừa) — Premium
-
-- **Khoá quyền mới** `household` (kiểu `TOGGLE`, tên *"Gia đình"*): Basic `false`, Premium `true`. Thêm một hàng `feature`
-  (`INSERT … ON CONFLICT("id") DO UPDATE`, khuôn `database/30_*.sql`) + hai hàng `account_type_permission` (khuôn `32_*.sql`) — đặt
-  trong tệp migration của mục B hoặc tệp seed kế tiếp. **Thêm cả vào `DEFAULT_PERMISSIONS`** (`permission.repository.js:6-91`),
-  nếu không khoá biến mất khi CSDL lỗi và client coi là *đóng* (client đặt mặc định *thiếu khoá thì đóng* cho tính năng này).
-- **Giới hạn mới** `household_members` (kiểu `LIMIT`): Basic `6`, Premium `6` (để admin chỉnh). Server **tự thi hành** khi tạo mã /
-  tham gia (mục C.2) — hôm nay `limits` không được kiểm ở server nào.
-- `POST /api/households` qua `requireFeature('household')` (`middleware/feature-permission.middleware.js`), trả 403
-  `FEATURE_DISABLED` sẵn có.
-- **Chủ hết Premium ⇒ `ReadOnly`:** trong vòng hạ cấp `core/scheduler.service.js:261-327` (cạnh `emitToAccount(...,
-  'account.downgraded')` ở `:319`), với mỗi tài khoản vừa hạ cấp mà là `Owner` của nhà `Active` ⇒ `Status = 'ReadOnly'`, phát
-  `household.changed`. **Gia hạn / nâng cấp** (webhook `:313`, `confirmUpgrade` `:411`, và nhánh JIT — xem đơn 49 vế G) ⇒ nhà của
-  chủ ấy `ReadOnly` → `Active`, phát `household.changed`. **Chuyển chủ** cũng xét lại theo Premium chủ mới.
-  Phòng hờ cron lỡ: `GET /households/me` xét lại trạng thái theo gói hiện tại của chủ trước khi trả.
-
-### F (vừa) — Thời gian thực
-
-- **Sự kiện mới `household.changed`** tới **mọi thành viên đang ở** (và người vừa bị mời ra / vừa rời): khi tham gia, rời, mời ra,
-  đổi vai, chuyển chủ, `Active` ↔ `ReadOnly`, giải tán. Đề xuất phát bằng `emitToAccount` (`core/socket.js:354-366`) cho từng
-  thành viên — khỏi phải quản phòng `household_<id>` khi vào / ra. Payload tuỳ backend (client chỉ đọc **tên** sự kiện rồi gọi
-  `GET /households/me`), gợi ý `{ idhousehold, reason }`.
-- **`sync.completed` tới mọi thành viên:** hôm nay chỉ tới phòng người đẩy (`sync.service.js:245` → `notification.service.js:
-  139-149` → `emitSyncCompleted`). Khi lô đẩy có ít nhất một hàng của nhà, phát thêm tới mọi thành viên đang ở khác của nhà ấy —
-  máy họ tự kéo về. Payload giữ nguyên.
-
-### G (vừa) — Danh mục của nhà khi lập nhà
-
-Trong giao tác tạo nhà (C #1): với mỗi danh mục mặc định đang sống (`is_default = true, delete_at IS NULL` — 13 hàng, nguồn
-`prisma/seed.js:8-25`, tài liệu `DA-XONG/CATEGORY_STABLE_IDS.md`), tạo một hàng `category` mới: `idcategory` = UUID **mới**,
-`Is_default = false`, `Create_by` = chủ nhà, `Idhousehold` = nhà, giữ `NameCategory`, `Classify`, `Icon`, `Color`, `Keyword`,
-nhóm (`Is_group` / `Idgroup` ánh xạ sang UUID mới của nhóm tương ứng). `Server_update_at` = now() để lượt kéo về của chủ nhà nhận.
+* **Quy cách Thư mời Email (Brevo / Resend):** Tiêu đề: *`Lời mời vào nhà "{tên nhà}" trên FlowMoney`*. Nội dung chứa mã mời, người mời, vai trò và hạn 7 ngày. Gửi lỗi thì ghi log, không trả lỗi 500 cho Chủ nhà.
+* **Quyền riêng tư:** `user.Fullname` (hoặc fallback `account.Username`). Tuyệt đối không trả email/số điện thoại của thành viên khác trong các response chung.
 
 ---
 
-## 4. Định hướng ba phần con sau (chưa phải việc — để thiết kế lược đồ một lần)
+### Việc D: Chuẩn hóa Đồng bộ Sync Engine (`/sync/pull` & `/sync/push`)
 
-- **Phần 2 — quỹ chung + *cho nhà xem*.** Quỹ chung = `wallet` có `Idhousehold` (không cần bảng mới); giao dịch của nhà ghi vào nó
-  đi đúng mục D. *Cho nhà xem* dự kiến một cờ trên ví riêng (ví dụ `Share_with_household BOOLEAN DEFAULT FALSE`): kéo về trả thêm
-  ví riêng có cờ của các thành viên khác **và giao dịch của chúng** dưới dạng **chỉ xem** (đẩy lên sửa / xoá chúng ⇒ `NOT_OWNER`).
-  Đây là lý do mục A phải xong trước.
-- **Phần 3 — chi chung + ai nợ ai.** Khoản *chi chung* là giao dịch **riêng** của người trả kèm thông tin chia (ai chịu bao nhiêu);
-  dự kiến một bảng chia (ví dụ `transaction_split(Idtran, Idaccount, Share_amount)`) hoặc cột trên `transaction`, và giao dịch *trả
-  nợ* đánh dấu cân nợ. Thành viên trong nhà kéo về được các khoản chi chung của nhau (chỉ xem). Thiết kế chốt ở spec phần 3.
-- **Phần 4 — mục tiêu chung.** Mục tiêu = `goal` có `Idhousehold`; khoản góp là giao dịch **riêng** trỏ `idgoal` tới mục tiêu của
-  nhà (đã mở ở luật tham chiếu D.2). `Current_amount` của mục tiêu chung tính từ mọi khoản góp của cả nhà — chốt ở spec phần 4.
-
----
-
-## 5. Kiểm lại
-
-**5.1 CSDL (sau khi áp):**
-
+#### 1. Nhánh Kéo về (`GET /api/sync/pull`):
+Cập nhật truy vấn kéo dữ liệu của 5 bảng (`wallet`, `transaction`, `budget`, `goal`, `category`):
 ```sql
--- ba bảng + cột
-SELECT table_name FROM information_schema.tables WHERE table_name IN ('household','household_member','household_invite');   -- 3 hàng
-SELECT table_name FROM information_schema.columns WHERE column_name = 'Idhousehold'
-  AND table_name IN ('wallet','transaction','goal','budget','category');                                                        -- 5 hàng
--- chỉ mục / ràng buộc
-SELECT indexname FROM pg_indexes WHERE indexname IN ('uq_household_member_active_account','uq_household_one_owner',
-  'uq_wallet_household_name_active','uq_category_household_name','uq_wallet_account_name_active','uq_wallet_default_active',
-  'uq_category_owner_name');                                                                                                    -- 7 hàng
-SELECT indexdef FROM pg_indexes WHERE indexname IN ('uq_wallet_account_name_active','uq_wallet_default_active','uq_category_owner_name');
-  -- cả ba có  "Idhousehold" IS NULL
-SELECT conname FROM pg_constraint WHERE conname IN ('uq_wallet_account_name','uq_wallet_default_one');                          -- 0 hàng
-SELECT conname FROM pg_constraint WHERE conname = 'chk_wallet_household_not_default';                                         -- 1 hàng
--- quyền
-SELECT * FROM "feature" WHERE "id" IN ('household','household_members');                                                     -- 2 hàng
+WHERE ("Idaccount" = :myId AND "Idhousehold" IS NULL) 
+   OR ("Idhousehold" = :myActiveHouseholdId)
 ```
 
-**5.2 Hành vi (gợi ý ca test 2 tầng của backend):**
-1. **Mục A:** tài khoản X đẩy `update` / `delete` ví riêng của Y (biết UUID) ⇒ `NOT_OWNER`, ví Y không đổi.
-2. Basic gọi `POST /households` ⇒ 403 `FEATURE_DISABLED`; Premium ⇒ nhà `Active`, 13 danh mục của nhà, kéo về của chủ có chúng.
-3. Tạo mã `Member` → Y xem trước → tham gia ⇒ `members` có Y; dùng lại mã ⇒ `HOUSEHOLD_INVITE_USED`; mã quá 48 giờ ⇒
-   `HOUSEHOLD_INVITE_EXPIRED`; Y tham gia nhà thứ hai ⇒ `HOUSEHOLD_ALREADY_IN_ONE`; nhà 6 người ⇒ `HOUSEHOLD_FULL`.
-4. Y (`Member`) đẩy tạo ví `idhousehold = H` ⇒ `synced`; X kéo về thấy ví ấy; Z (ngoài nhà) không thấy.
-5. Y bị đổi sang `Viewer` rồi đẩy sửa ví của nhà ⇒ `HOUSEHOLD_READ_ONLY`.
-6. Giao dịch của nhà trỏ ví riêng ⇒ `HOUSEHOLD_SCOPE_MISMATCH`; giao dịch riêng trỏ `idgoal` mục tiêu của nhà mình ⇒ `synced`;
-   trỏ mục tiêu của nhà khác ⇒ `HOUSEHOLD_SCOPE_MISMATCH`.
-7. Y rời ⇒ kéo về của Y không còn hàng của H; hàng Y đã ghi vẫn ở H (X vẫn thấy, người tạo vẫn là Y).
-8. Chủ hết Premium (chạy vòng hạ cấp) ⇒ nhà `ReadOnly`, `household.changed` tới mọi thành viên; gia hạn ⇒ `Active`.
-9. Giải tán ⇒ mọi hàng của H có `Delete_at`, kéo về của X và Y trả tombstone; `GET /me` ⇒ `household: null`.
-10. Lô đẩy có hàng của nhà ⇒ `sync.completed` tới cả X lẫn Y.
-11. Ví của nhà trùng tên ví riêng của người tạo ⇒ tạo được; hai ví của nhà trùng tên ⇒ `WALLET_NAME_DUPLICATE`.
+#### 2. Nhánh Đẩy lên (`POST /api/sync/push`):
+Áp dụng nghiêm ngặt **Ma trận quyền Vai trò $\times$ Thực thể**:
+
+| Thực thể của Nhà | Tạo (Create) | Sửa (Update) | Xóa (Soft Delete) |
+|---|---|---|---|
+| `wallet` (Ví chung) | `Owner` | `Owner` | `Owner` |
+| `goal` (Mục tiêu chung) | `Owner` | `Owner` | `Owner` |
+| `budget` (Ngân sách chung) | `Owner` | `Owner` | `Owner` |
+| `category` (Danh mục của nhà) | `Owner`, `Member` | `Owner`, `Member` | `Owner`, `Member` |
+| `transaction` (Chi/Thu chung) | `Owner`, `Member` | Người ghi (`Idaccount`) HOẶC `Owner` | Người ghi (`Idaccount`) HOẶC `Owner` |
+| `transaction` (`Transfer` giữa 2 ví chung) | `Owner` | `Owner` | `Owner` |
+| `transaction` (Có mã cặp `Idfund_pair`) | `Owner`, `Member` | **CHỈ người ghi** | Người ghi HOẶC `Owner` |
+
+* **Thứ tự kiểm tra mã lỗi đẩy (Ném lỗi vĩnh viễn trong `results[i].code`):**
+  1. Người gửi không phải thành viên active của nhà $\rightarrow$ `HOUSEHOLD_NOT_MEMBER`.
+  2. Nhà đã giải tán $\rightarrow$ `HOUSEHOLD_CLOSED`.
+  3. Người gửi có vai `Viewer` hoặc Nhà ở trạng thái `ReadOnly` $\rightarrow$ `HOUSEHOLD_READ_ONLY`.
+  4. Tham chiếu sai phạm vi (ví dụ: giao dịch riêng trỏ vào ví chung, hoặc trỏ `idgoal` của nhà) $\rightarrow$ `HOUSEHOLD_SCOPE_MISMATCH`.
+  5. Vi phạm ma trận phân quyền ở bảng trên $\rightarrow$ **`HOUSEHOLD_ROLE_FORBIDDEN`** *(Mã lỗi mới)*.
 
 ---
 
-## 6. Trả lời đơn
+### Việc E: Phân quyền Trụ cột & Quản lý Hết hạn Premium
 
-Cập nhật dòng **50** ở bảng mục 0 `CAN-LAM/README.md` (*"✅ Đã xong"* + ngày) và ghi **tên chốt** nếu khác đề xuất: số tệp
-migration, đường dẫn endpoint, tên mã lỗi, khoá quyền, tên sự kiện. Client soát bằng **mã + CSDL** như các đơn trước. Đừng sửa
-tài liệu của client (`docs/superpowers/specs/…`, `docs/superpowers/sync/SYNC_DOCUMENTATION.md`) — thấy chỗ sai thì ghi vào đơn này.
+- Cập nhật ma trận phân quyền `account_type_permission`: Đảm bảo quyền `household` chỉ cấp cho tài khoản gói **Premium**.
+- Kiểm tra giới hạn thành viên: Khi mời/gia nhập, tổng số thành viên active + số lời mời còn hiệu lực $\le$ `Max_members` (mặc định 6). Vượt quá $\rightarrow$ `409 HOUSEHOLD_FULL`.
+- Khi Chủ nhà hết hạn Premium (Job cron hạ cấp hoặc webhook hạ cấp): Cập nhật trạng thái nhà `Status = 'ReadOnly'`, phát socket `household.changed`. Khi Chủ nhà gia hạn Premium thành công $\rightarrow$ Chuyển lại `Status = 'Active'`.
+
+---
+
+### Việc F: Tích hợp Sự kiện Thời gian thực (Socket.io)
+
+- **`household.changed`**: Phát tới room của nhà (`household_<id>`) khi có thay đổi: thành viên tham gia, đổi vai, rời nhà, mời ra, giải tán, hoặc trạng thái nhà đổi sang `ReadOnly`/`Active`.
+- **`household.invited`**: Phát tới socket của tài khoản đích khi có lời mời gửi đích danh qua email.
+- **`sync.completed`**: Khi có bất kỳ bản ghi nào mang `Idhousehold` được đẩy lên thành công qua `/sync/push`, backend **phát sự kiện `sync.completed` tới toàn bộ các thành viên đang hoạt động trong nhà** để các thiết bị khác tự động kích hoạt Delta Pull kéo dữ liệu mới về.
+
+---
+
+### Việc G: Tự động Nhân bản Danh mục Mặc định cho Nhà
+
+Trong giao tác tạo nhà tại `household.service.js`:
+- Sau khi tạo bản ghi `household` và `household_member` (vai Owner), tự động truy vấn 13 danh mục mặc định của hệ thống (`Is_default = true`, `Idhousehold IS NULL`).
+- Sao chép (clone) 13 danh mục này thành danh mục của nhà với:
+  + `Idhousehold` = Id nhà mới tạo.
+  + `Create_by` = Id tài khoản Owner.
+  + `Is_default` = `false` (để nhà có thể tự do chỉnh sửa/đổi tên danh mục sau này).
+  + Tạo UUID mới cho từng danh mục sao chép.
+
+---
+
+## 3. Checklist Kiểm thử & Nghiệm thu 2 Tầng (Lead BA & QA Bắt buộc)
+
+Áp dụng quy tắc kiểm thử 2 tầng **(Rule 11)**:
+
+### 🧱 Tầng 1: Kiểm thử API & Hợp đồng Dữ liệu (Integration & Unit Tests)
+- [ ] 16/16 Endpoints RESTful phản hồi đúng mã HTTP (200, 201, 202, 400, 403, 404, 409, 429).
+- [ ] Validation bắt lỗi: Tên nhà rỗng/quá 100 ký tự; Email sai định dạng; Vai trò không hợp lệ.
+- [ ] Mời qua Email trả `202 Accepted` với cùng một định dạng dù email có tài khoản hay chưa.
+- [ ] Rate limit mời email: Lời mời thứ 21 trong 24 giờ trả về `429 HOUSEHOLD_INVITE_RATE_LIMIT`.
+
+### ⚡ Tầng 2: Kiểm thử Toàn vẹn Hệ thống & DB Impact (System & Security Impact)
+- [ ] **DB Guard & Triggers:** Chạy `rtk npm run db:verify-indexes` xác nhận 100% Partial Unique Indexes và Trigger CSDL nguyên vẹn.
+- [ ] **Lỗ hổng NOT_OWNER:** Thử sửa/xóa bản ghi riêng của người khác qua `/sync/push` $\rightarrow$ Chặn đứng và trả mã `NOT_OWNER`.
+- [ ] **Ma trận Vai trò:** Thành viên thử tạo ví chung hoặc sửa ngân sách nhà qua `/sync/push` $\rightarrow$ Chặn đứng và trả mã `HOUSEHOLD_ROLE_FORBIDDEN`.
+- [ ] **Tự động sao chép danh mục:** Tạo nhà mới $\rightarrow$ Kiểm tra CSDL có đúng 13 danh mục mang `Idhousehold` của nhà mới.
+- [ ] **Realtime Event:** Kiểm tra socket `household.changed`, `household.invited` và `sync.completed` phát đúng room và đúng tài khoản.
+- [ ] **Tự động chuyển ReadOnly:** Giả lập Chủ nhà hết hạn Premium $\rightarrow$ Trạng thái nhà chuyển `ReadOnly`, giao dịch ghi bị chặn đứng với mã `HOUSEHOLD_READ_ONLY`.

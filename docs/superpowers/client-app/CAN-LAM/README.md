@@ -26,11 +26,11 @@
 
 ## 1. TỔNG QUAN CÁC NHÓM NHIỆM VỤ
 
-Để ứng dụng di động **Client-app (Flutter Mobile)** đồng bộ hoàn hảo với CSDL PostgreSQL Supabase và hệ sinh thái Backend/Admin-web sau các đợt chuẩn hóa mới nhất, đội ngũ phát triển Client-app cần hoàn thiện **3 nhóm nhiệm vụ cốt lõi**:
+Để ứng dụng di động **Client-app (Flutter Mobile)** đồng bộ hoàn hảo với CSDL PostgreSQL Supabase và hệ sinh thái Backend/Admin-web sau các đợt chuẩn hóa mới nhất, đội ngũ phát triển Client-app cần hoàn thiện **4 nhóm nhiệm vụ cốt lõi**:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│               3 NHÓM NHIỆM VỤ CỐT LÕI CLIENT-APP CẦN LÀM               │
+│               4 NHÓM NHIỆM VỤ CỐT LÕI CLIENT-APP CẦN LÀM               │
 ├────────────────────────────────┬───────────────────────────────────────┤
 │ 1. ĐỒNG BỘ CSDL (SYNC ENGINE)  │ Chuẩn hóa payload 6 bảng: is_deleted, │
 │                                │ time_notification: null, pay_status,  │
@@ -41,6 +41,9 @@
 ├────────────────────────────────┼───────────────────────────────────────┤
 │ 3. SỰ KIỆN & CHỐT CHẶN HTTP    │ Thêm 3 enum Socket.io; Bắt mã HTTP    │
 │                                │ 503, 429, 403, 401; Bảo lưu SQLite    │
+├────────────────────────────────┼───────────────────────────────────────┤
+│ 4. TÍNH NĂNG GIA ĐÌNH (PHẦN 1) │ Module features/household/; SQLite v32│
+│                                │ Mời Email & Mã 8 ký tự; 6 mã lỗi sync │
 └────────────────────────────────┴───────────────────────────────────────┘
 ```
 
@@ -227,7 +230,7 @@ Trong `src/Client-app/lib/core/api/interceptors/`:
 ## 5. PHẦN IV: ĐIỀU KHOẢN LOẠI TRỪ & GIỚI HẠN PHẠM VI
 
 > ⚠️ **LƯU Ý DÀNH RIÊNG CHO ĐỘI NGŨ CLIENT-APP:**  
-> 1. **Mục 50 ([`GIA_DINH_NEN_MONG.md`](../../backend/CAN-LAM/GIA_DINH_NEN_MONG.md) - Tính năng Gia đình nền móng):** Theo quyết định chính thức từ Product Owner (PO), tính năng Gia đình đã được **hoãn lại để triển khai ở giai đoạn tiếp theo**. Đội ngũ Client-app **CHƯA triển khai** các bảng `household`, `household_member` và các giao diện gia đình trong đợt này.
+> 1. **Mục 50 ([`GIA_DINH_NEN_MONG.md`](./GIA_DINH_NEN_MONG.md) - Tính năng Gia đình Phần 1 Nền móng):** 🟢 **PO ĐÃ PHÊ DUYỆT CHÍNH THỨC TRIỂN KHAI (2026-10-27)**. Đội ngũ Client-app triển khai song song module `features/household/`, nâng cấp SQLite Drift Schema v32 và kết nối 16 REST endpoints đồng bộ theo đặc tả tại [`GIA_DINH_NEN_MONG.md`](./GIA_DINH_NEN_MONG.md).
 > 2. **Module Ngân hàng đối tác (`bank_transaction`):** Đã dừng hoàn toàn theo quyết định ngày 2026-09-18, bỏ qua mọi sự kiện socket liên quan đến bank.
 
 ---
