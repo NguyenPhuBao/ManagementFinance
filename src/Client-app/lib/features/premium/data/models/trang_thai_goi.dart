@@ -17,6 +17,8 @@ class TrangThaiGoi {
     this.gia = kGiaPremium,
     this.soNgayGoi = kSoNgayGoi,
     this.quyenTinhNang = const {},
+    this.quyenPremium = const {},
+    this.tranPremium,
   });
 
   final LoaiGoi loai;
@@ -32,6 +34,14 @@ class TrangThaiGoi {
   /// Bảng quyền bật/tắt server trả (`features`) cho gói HIỆU LỰC lúc [nhanLuc]. Chỉ đọc qua `duocDung`
   /// (`quyen_tinh_nang.dart`) — đọc thẳng là bỏ qua phép xét hạn (test quét 21).
   final Map<String, bool> quyenTinhNang;
+
+  /// Cột PREMIUM của bảng quyền (`premiumFeatures` — server gửi cho tài khoản hiệu lực Basic, đơn CAN-LAM 55 A1). Rỗng =
+  /// server chưa gửi (như trước B1). Chỉ đọc qua `trangThaiQuyen` / `dacQuyenPremium` (`quyen_tinh_nang.dart`) — test quét 21.
+  final Map<String, bool> quyenPremium;
+
+  /// Trần cột Premium (`premiumLimits`, đơn 55 A1). `null` = server chưa gửi — KHÁC `TranGoi.khongGioiHan`. Chỉ
+  /// `dacQuyenPremium` đọc (test quét 21).
+  final TranGoi? tranPremium;
 
   static TrangThaiGoi basicMacDinh(DateTime nhanLuc) =>
       TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: nhanLuc);
@@ -59,6 +69,8 @@ class TrangThaiGoi {
         'gia': gia,
         'soNgayGoi': soNgayGoi,
         'quyenTinhNang': quyenTinhNang,
+        'quyenPremium': quyenPremium,
+        'tranPremium': tranPremium?.toJson(),
       };
 
   /// Đọc lại từ kho. Rác / thiếu `nhanLuc` → `null` (hàng hỏng, kho coi như
@@ -71,10 +83,6 @@ class TrangThaiGoi {
     final hetHan = json['hetHan'];
     final gia = json['gia'];
     final ngay = json['soNgayGoi'];
-    final rawQuyen = json['quyenTinhNang'];
-    final Map<String, bool> quyen = rawQuyen is Map
-        ? rawQuyen.map((k, v) => MapEntry(k.toString(), v == true))
-        : const {};
     return TrangThaiGoi(
       loai: json['loai'] == 'premium' ? LoaiGoi.premium : LoaiGoi.basic,
       hetHan: hetHan is String ? DateTime.tryParse(hetHan) : null,
@@ -82,7 +90,9 @@ class TrangThaiGoi {
       nhanLuc: moc,
       gia: gia is num && gia > 0 ? gia.toInt() : kGiaPremium,
       soNgayGoi: ngay is num && ngay > 0 ? ngay.toInt() : kSoNgayGoi,
-      quyenTinhNang: quyen,
+      quyenTinhNang: _docQuyen(json['quyenTinhNang']),
+      quyenPremium: _docQuyen(json['quyenPremium']),
+      tranPremium: _docTranPremium(json['tranPremium']),
     );
   }
 }
@@ -101,10 +111,6 @@ TrangThaiGoi trangThaiTuJson(
   final hetHan = hetHanTho is String ? DateTime.tryParse(hetHanTho) : null;
   final gia = json['price'];
   final ngay = json['packageDays'];
-  final rawFeatures = json['features'] ?? json['quyenTinhNang'];
-  final Map<String, bool> quyen = rawFeatures is Map
-      ? rawFeatures.map((k, v) => MapEntry(k.toString(), v == true))
-      : const {};
   return TrangThaiGoi(
     loai: loai,
     hetHan: loai == LoaiGoi.premium ? hetHan : null,
@@ -112,9 +118,19 @@ TrangThaiGoi trangThaiTuJson(
     nhanLuc: nhanLuc,
     gia: gia is num && gia > 0 ? gia.toInt() : kGiaPremium,
     soNgayGoi: ngay is num && ngay > 0 ? ngay.toInt() : kSoNgayGoi,
-    quyenTinhNang: quyen,
+    quyenTinhNang: _docQuyen(json['features'] ?? json['quyenTinhNang']),
+    quyenPremium: _docQuyen(json['premiumFeatures']),
+    tranPremium: _docTranPremium(json['premiumLimits']),
   );
 }
+
+Map<String, bool> _docQuyen(Object? raw) =>
+    raw is Map ? raw.map((k, v) => MapEntry(k.toString(), v == true)) : const {};
+
+/// `premiumLimits` / kho: không phải Map → `null` (server chưa gửi). ⚠️ Không đưa rác thẳng vào [TranGoi.tuJson] — hàm ấy
+/// trả trần mặc định cho rác, và "chưa gửi" thành "đã gửi".
+TranGoi? _docTranPremium(Object? raw) =>
+    raw is Map ? TranGoi.tuJson(raw, khiThieu: TranGoi.khongGioiHan) : null;
 
 /// Nhánh rơi về khi kho trống và `/payment/*` hỏng: `type` của `/auth/login`
 /// hay `/auth/profile`. `Premium` → Premium chưa biết hạn.

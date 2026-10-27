@@ -175,4 +175,51 @@ void main() {
       expect(TrangThaiGoi.tuJsonKho(g.toJson())!.quyenTinhNang, g.quyenTinhNang);
     });
   });
+
+  group('B1 — cột Premium (spec 2026-10-27 mục 6)', () {
+    test('đọc premiumFeatures / premiumLimits', () {
+      final g = trangThaiTuJson({
+        'accountType': 'Basic',
+        'premiumFeatures': {'export_reports': false, 'ai_assistant': true},
+        'premiumLimits': {'wallets': 10, 'budgets': null, 'goals': 0},
+      }, nhanLuc: now);
+      expect(g.quyenPremium, {'export_reports': false, 'ai_assistant': true});
+      expect(g.tranPremium!.vi, 10);
+      expect(g.tranPremium!.nganSach, isNull);
+      expect(g.tranPremium!.mucTieu, 0);
+      expect(g.tranPremium!.hoaDon, isNull, reason: 'ô cột Premium thiếu = không giới hạn, KHÔNG phải trần mặc định');
+    });
+
+    test('⭐ vắng / rác → quyenPremium rỗng, tranPremium NULL (chưa gửi — khác "không giới hạn")', () {
+      final vang = trangThaiTuJson({'accountType': 'Basic'}, nhanLuc: now);
+      expect(vang.quyenPremium, isEmpty);
+      expect(vang.tranPremium, isNull);
+      final rac = trangThaiTuJson(
+          {'accountType': 'Basic', 'premiumFeatures': 'x', 'premiumLimits': 7}, nhanLuc: now);
+      expect(rac.quyenPremium, isEmpty);
+      expect(rac.tranPremium, isNull,
+          reason: '`TranGoi.tuJson(rác)` trả trần mặc định — đưa thẳng vào là "server chưa gửi" thành "đã gửi 3/3/3".');
+    });
+
+    test('khứ hồi kho giữ quyenPremium / tranPremium, kể cả tranPremium null', () {
+      final g = TrangThaiGoi(
+          loai: LoaiGoi.basic,
+          nhanLuc: now,
+          quyenPremium: const {'export_reports': false},
+          tranPremium: const TranGoi(vi: 10));
+      final lai = TrangThaiGoi.tuJsonKho(g.toJson())!;
+      expect(lai.quyenPremium, g.quyenPremium);
+      expect(lai.tranPremium, g.tranPremium);
+      expect(TrangThaiGoi.tuJsonKho(TrangThaiGoi.basicMacDinh(now).toJson())!.tranPremium, isNull);
+    });
+
+    test('kho cũ (trước B1, không có hai khoá) đọc được: rỗng / null', () {
+      final cu = TrangThaiGoi.basicMacDinh(now).toJson()
+        ..remove('quyenPremium')
+        ..remove('tranPremium');
+      final lai = TrangThaiGoi.tuJsonKho(cu)!;
+      expect(lai.quyenPremium, isEmpty);
+      expect(lai.tranPremium, isNull);
+    });
+  });
 }

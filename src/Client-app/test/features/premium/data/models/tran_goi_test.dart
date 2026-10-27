@@ -55,5 +55,15 @@ void main() {
       const t = TranGoi(vi: 4, nganSach: 6, mucTieu: 2, hoaDon: 3, danhMucRieng: 5);
       expect(TranGoi.tuJson(t.toJson()), t);
     });
+
+    test('tuJson(khiThieu:) — ô thiếu / rác / không phải Map rơi về mặc định ĐƯỢC TRUYỀN (B1: trần cột Premium)', () {
+      expect(TranGoi.tuJson(null, khiThieu: TranGoi.khongGioiHan), TranGoi.khongGioiHan);
+      final t = TranGoi.tuJson(const {'wallets': 10, 'budgets': 'x'}, khiThieu: TranGoi.khongGioiHan);
+      expect(t.vi, 10);
+      expect(t.nganSach, isNull, reason: 'rác ở cột Premium → không giới hạn, không phải 3');
+      expect(t.mucTieu, isNull, reason: 'thiếu ở cột Premium → không giới hạn');
+      expect(TranGoi.tuJson(const {'wallets': 4}), const TranGoi(vi: 4, nganSach: 3, mucTieu: 3),
+          reason: 'mặc định của tham số giữ hành vi cũ');
+    });
   });
 }

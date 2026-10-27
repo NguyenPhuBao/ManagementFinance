@@ -21,6 +21,10 @@ class TranGoi {
   /// giới hạn (spec phân quyền 2026-10-08 mục 2 #1 — server cũ không trả hai khoá ấy thì giữ chốt 06/10 *"Mở"*).
   static const macDinh = TranGoi(vi: 3, nganSach: 3, mucTieu: 3);
 
+  /// Mọi ô `null` — không giới hạn. Mặc định của ô trần mà cột PREMIUM không gửi (B1, spec 2026-10-27 mục 6), và trần
+  /// hiệu lực của Premium khi bảng đã lưu không dùng được (`tranHieuLuc`).
+  static const khongGioiHan = TranGoi();
+
   int? cua(LoaiTran loai) => switch (loai) {
         LoaiTran.vi => vi,
         LoaiTran.nganSach => nganSach,
@@ -37,12 +41,12 @@ class TranGoi {
         'custom_categories': danhMucRieng,
       };
 
-  /// `limits` của server. Ô thiếu / không phải số → mặc định cho ĐÚNG ô ấy. `null` → không giới hạn (Admin-web tick
-  /// *∞* hoặc xoá trắng ô số). Số ≤ 0 → **0 = không tạo thêm** (người dùng chốt 2026-10-27): Admin-web bỏ tick *∞* là
+  /// `limits` của server. Ô thiếu / không phải số → [khiThieu] cho ĐÚNG ô ấy (mặc định [macDinh] — trần Basic; cột
+  /// Premium truyền [khongGioiHan]). `null` → không giới hạn (Admin-web tick *∞* hoặc xoá trắng ô số). Số ≤ 0 → **0 = không tạo thêm** (người dùng chốt 2026-10-27): Admin-web bỏ tick *∞* là
   /// ô về 0 ngay và tự kẹp số âm về 0 — bản cũ đọc 0 là rác, nên ví / ngân sách / mục tiêu về 3 còn hoá đơn / danh
   /// mục riêng thành KHÔNG giới hạn, ngược hẳn ý admin.
-  static TranGoi tuJson(Object? json) {
-    if (json is! Map) return macDinh;
+  static TranGoi tuJson(Object? json, {TranGoi khiThieu = macDinh}) {
+    if (json is! Map) return khiThieu;
     int? doc(String khoa, int? macDinhO) {
       if (!json.containsKey(khoa)) return macDinhO;
       final v = json[khoa];
@@ -52,11 +56,11 @@ class TranGoi {
     }
 
     return TranGoi(
-      vi: doc('wallets', macDinh.vi),
-      nganSach: doc('budgets', macDinh.nganSach),
-      mucTieu: doc('goals', macDinh.mucTieu),
-      hoaDon: doc('bills', macDinh.hoaDon),
-      danhMucRieng: doc('custom_categories', macDinh.danhMucRieng),
+      vi: doc('wallets', khiThieu.vi),
+      nganSach: doc('budgets', khiThieu.nganSach),
+      mucTieu: doc('goals', khiThieu.mucTieu),
+      hoaDon: doc('bills', khiThieu.hoaDon),
+      danhMucRieng: doc('custom_categories', khiThieu.danhMucRieng),
     );
   }
 
