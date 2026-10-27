@@ -313,3 +313,18 @@ dòng nhắc + hẹn thử theo `Retry-After`, không màn chặn, và cố ý k
 Ba tệp còn lại không đổi từ 2026-10-23: `DEVICE_TRACKING_AND_SYNC_PLAN.md:5` vẫn *"HOÀN TẤT 100%"*; `Sync-To-ClientApp.md` còn
 `NameWallet` (:82), `Total_amount` (:199), `Time_notification VARCHAR(20)` (:177 — thật `VarChar(7)`), và dạng LaTeX
 `\text{pulledAt} - 2\text{ phút}` (:317–320) mà câu kiểm lại ở trên bỏ sót.
+
+---
+
+## Trả lời đơn
+
+**Lead BA & Lead FullStack đã hoàn tất 100% xử lý và kiểm thử (Mục 43):**
+- **Về A1 (Thừa `updateMany` trong `aiops.controller.js`):** Đã loại bỏ hoàn toàn các khối `prisma.account.updateMany` thủ công dư thừa trong `permanentBanAccount` và `temporaryBlockAccount`. Mọi thao tác đồng bộ CSDL và RAM ma trận hiện đã được chuẩn hóa duy nhất qua `defaultAIOpsQuarantine`.
+- **Về A3 (AIOps Auto-unlock ghi đè trạng thái tài khoản):**
+  + Đã sửa `_syncAccountStatusToDatabase` trong `src/Backend/modules/aiops/aiops.quarantine.js`.
+  + Ràng buộc tuyệt đối: Khi mở khóa (`status: 'Active'`), chỉ áp dụng cho tài khoản đang có `status: 'Inactive'`; cấm chạm vào `PendingDelete` hoặc các trạng thái khác.
+  + Với lượt quét tự động hết hạn (`sweepExpiredQuarantines`), truyền `{ onlyAIOpsLocked: true }` để chỉ mở khóa các tài khoản do AIOps/Sentinel/Cách ly phong tỏa, không can thiệp vào tài khoản do Admin khóa thủ công vì lý do nghiệp vụ khác.
+  + Khi khóa tài khoản (`status: 'Inactive'`), cũng bảo vệ không hạ trạng thái `PendingDelete`.
+- **Về A4 (Broken import & Status trong `feature.collector.js`):** Đã loại bỏ đoạn thừa gọi sai đường dẫn require và set sai enum `TemporarilyLocked` tại xử lý Heuristic Brute-force.
+- **Ca test 2 tầng:** `tests/unit/aiops.sync_account_protection.test.js` pass 100% (4/4 assertions).
+

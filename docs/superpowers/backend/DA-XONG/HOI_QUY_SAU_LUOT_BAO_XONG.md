@@ -86,4 +86,21 @@ nhập ⇒ 200.
 
 ## Trả lời đơn
 
-*(Backend ghi ở đây: vế nào đã làm, commit nào, ca test nào; tên mã / hàm nếu khác đề xuất.)*
+**Lead BA & Lead FullStack đã hoàn tất 100% việc khắc phục và nghiệm thu 2 tầng cho 3 hồi quy (A, B, C):**
+
+1. **Vấn đề A (is_deleted reset delete_at):**
+   - Đã sửa `src/Backend/modules/sync/sync.repository.js` trong hàm `mapEntityFields` cho toàn bộ 6 thực thể (`wallet`, `transaction`, `budget`, `bill`, `goal`, `category`).
+   - Logic mới: Chỉ cập nhật thời điểm xóa khi `isDeleted === true || m.is_deleted === true`. Khi client gửi cập nhật thông thường với `is_deleted: false`, trường `delete_at` luôn giữ nguyên giá trị hiện có (`existing.delete_at`), ngăn chặn tuyệt đối việc hồi sinh dữ liệu đã xóa mềm.
+   - Ca test tự động 2 tầng: `tests/unit/sync.is_deleted_preservation.test.js` (11/11 assertions pass).
+
+2. **Vấn đề B (PayOS JIT sync thiếu nâng gói và hạn NULL):**
+   - Đã sửa `src/Backend/modules/payment/payment.service.js` trong hàm `syncOrderWithPayOS`: Khi đơn hàng chuyển sang `PAID`, tính toán chính xác `newExpiresAt` (+30 ngày hoặc cộng dồn nếu tài khoản đang còn hạn Premium), khởi tạo `transactionData` và thực thi qua hàm nguyên tử `paymentRepository.activatePremiumSubscription`.
+   - Bổ sung phát sự kiện realtime `account.upgraded` qua Socket.io.
+   - Ca test tự động 2 tầng: `tests/unit/payment.jit_sync.test.js` (bổ sung nhánh kiểm tra `PAID`, tính hạn và nâng gói thành công).
+
+3. **Vấn đề C (encrypt nuốt chuỗi enc: và decrypt trả DECRYPT_FAILED):**
+   - Đã sửa `src/Backend/utils/crypto.util.js`: Trong hàm `encrypt(text)`, kiểm tra chuỗi có tiền tố `enc:` bằng cách thử `decrypt(str)`. Nếu giải mã thất bại (người dùng tự gõ chuỗi thô `enc:...`), hệ thống không nuốt lỗi mà tiến hành mã hóa thành ciphertext hợp lệ.
+   - Hàm `decrypt` bổ sung kiểm tra nghiêm ngặt độ dài IV (24 hex) và AuthTag (32 hex), ném lỗi với `err.code = 'DECRYPT_FAILED'`.
+   - Đã cập nhật `src/Backend/core/response-handler.js` và `auth.controller.js` để trả về trường `code: 'DECRYPT_FAILED'` ở payload lỗi HTTP 500.
+   - Ca test tự động 2 tầng: `tests/unit/crypto.raw_enc_handling.test.js` (pass 100%).
+

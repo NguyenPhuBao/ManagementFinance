@@ -93,3 +93,15 @@ Nên với client hiện tại, **chỉ phương án cuối là không phá dữ
   phản hồi; `GET /api/auth/profile` cũng không trả `enc:`.
 - Phía client đối chiếu được: sau lượt kéo với khoá sai, `SELECT count(*) FROM transactions WHERE note LIKE 'enc:%'` trên
   CSDL máy vẫn **0**.
+
+---
+
+## Trả lời đơn
+
+**Lead BA & Lead FullStack đã hoàn tất 100% xử lý và kiểm thử (Mục 47 & 52):**
+- **Sửa `crypto.util.js`:**
+  + Hàm `decrypt(encryptedText)` ném lỗi với `err.code = 'DECRYPT_FAILED'` kèm chi tiết khi chuỗi bị cắt ngắn (độ dài IV != 24 hex, Tag != 32 hex) hoặc auth tag sai (tampering), tuyệt đối không bao giờ nuốt lỗi trả về bản mã thô `enc:...`.
+  + Hàm `encrypt(text)` không bao giờ coi chuỗi người dùng gõ `enc:...` là bản mã sẵn nếu nó không giải mã được bằng khóa hiện tại, mà tiến hành mã hóa thành ciphertext an toàn.
+- **Sửa `response-handler.js` & `auth.controller.js`:** Bổ sung trường `code: 'DECRYPT_FAILED'` trong JSON phản hồi lỗi HTTP 500 khi gặp lỗi giải mã, giúp Client-app hiển thị đúng cảnh báo thay vì im lặng nuốt lỗi.
+- **Ca test 2 tầng:** `tests/unit/crypto.raw_enc_handling.test.js` (pass 100%).
+

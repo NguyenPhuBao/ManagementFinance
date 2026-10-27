@@ -132,13 +132,6 @@ async function handlePayOSWebhook(webhookPayload) {
     return { success: true, message: 'Đơn hàng không tồn tại trong hệ thống' };
   }
 
-  // 3. Xử lý Idempotency - Tránh Replay Attack và chống kéo ngược trạng thái
-  // Chỉ tiếp tục xử lý thanh toán nếu đơn hàng còn ở trạng thái PENDING hoặc EXPIRED
-  if (!['PENDING', 'EXPIRED'].includes(order.status)) {
-    logger.info('[PAYMENT_WEBHOOK] Đơn hàng đã ở trạng thái đã xử lý hoặc đang trong quy trình đối soát (Idempotent)', { orderCode, status: order.status });
-    return { success: true, message: 'Đơn hàng đã được xử lý hoặc đang trong quy trình đối soát trước đó' };
-  }
-
   const now = new Date();
   const txTime = transactionDateTime ? new Date(transactionDateTime) : now;
   const receivedAmount = Number(amount);
@@ -161,6 +154,16 @@ async function handlePayOSWebhook(webhookPayload) {
     signatureVerified: true,
     rawWebhookHash,
   };
+
+  // 3. Xử lý Idempotency - Tránh Replay Attack và chống kéo ngược trạng thái
+  // Chỉ tiếp tục xử lý thanh toán nếu đơn hàng còn ở trạng thái PENDING hoặc EXPIRED
+  if (!['PENDING', 'EXPIRED'].includes(order.status)) {
+    logger.info('[PAYMENT_WEBHOOK] Đơn hàng đã ở trạng thái đã xử lý hoặc đang trong quy trình đối soát (Idempotent)', { orderCode, status: order.status });
+    try {
+      await paymentRepository.recordTransaction(txData);
+    } catch (_) {}
+    return { success: true, message: 'Đơn hàng đã được xử lý hoặc đang trong quy trình đối soát trước đó' };
+  }
 
   // -------------------------------------------------------------
   // ĐƠN HÀNG MẪU THỬ NGHIỆM (is_template = true)
@@ -664,17 +667,42 @@ async function syncOrderWithPayOS(order) {
         const receivedAmount = Number(payosInfo.amountPaid || order.amount);
         const paidAt = new Date();
 
-        await paymentRepository.updateOrderPaymentStatus({
-          orderId: order.id,
-          status: 'PAID',
-          amountReceived: receivedAmount,
-          paidAt,
-        });
+        const DURATION_MS = (config.payment?.packageDurationDays || 30) * 24 * 60 * 60 * 1000;
+        let currentExpiry = null;
+        let accountObj = order.account;
+        if (!accountObj && order.idaccount) {
+          accountObj = await paymentRepository.findAccountSubscription(order.idaccount);
+        }
+        if (accountObj && accountObj.type === 'Premium' && accountObj.premium_expires_at) {
+          const expDate = new Date(accountObj.premium_expires_at);
+          if (expDate > paidAt) {
+            currentExpiry = expDate;
+          }
+        }
+        const newExpiresAt = currentExpiry 
+          ? new Date(currentExpiry.getTime() + DURATION_MS) 
+          : new Date(paidAt.getTime() + DURATION_MS);
+
+        const latestTx = Array.isArray(payosInfo.transactions) && payosInfo.transactions.length > 0 
+          ? payosInfo.transactions[payosInfo.transactions.length - 1] 
+          : null;
+        
+        const txData = {
+          id: crypto.randomUUID(),
+          amount: receivedAmount,
+          payosTransactionId: latestTx?.reference || latestTx?.transactionId || `JIT_${order.id}_${Date.now()}`,
+          bankCode: latestTx?.counterAccountBankName || 'PAYOS_JIT',
+          transactionTime: latestTx?.transactionDateTime ? new Date(latestTx.transactionDateTime) : paidAt,
+          signatureVerified: true,
+          rawWebhookHash: 'JIT_SYNC_DIRECT_API',
+        };
 
         await paymentRepository.activatePremiumSubscription({
           idaccount: order.idaccount,
           orderId: order.id,
           paidAt,
+          newExpiresAt,
+          transactionData: txData,
         });
 
         order.status = 'PAID';
@@ -690,6 +718,10 @@ async function syncOrderWithPayOS(order) {
               orderId: order.id,
               orderCode: Number(orderCode),
               status: 'PAID',
+            });
+            emitToAccount(order.idaccount, 'account.upgraded', {
+              type: 'Premium',
+              premiumExpiresAt: newExpiresAt,
             });
           }
           const io = getIO();

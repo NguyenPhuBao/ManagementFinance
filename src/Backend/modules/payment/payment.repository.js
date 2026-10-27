@@ -281,12 +281,22 @@ async function updateOrderPaymentStatus({ orderId, status, amountReceived, paidA
  * Tìm đơn hàng theo mã nhận diện 6 ký tự
  * @param {string} recognitionCode
  */
-async function findOrderByRecognitionCode(recognitionCode) {
+/**
+ * Tìm đơn hàng theo mã nhận diện 6 ký tự
+ * @param {string} recognitionCode
+ * @param {object} options
+ */
+async function findOrderByRecognitionCode(recognitionCode, { status = 'PENDING' } = {}) {
   if (!recognitionCode) return null;
+  const where = {
+    recognition_code: recognitionCode.trim(),
+  };
+  if (status) {
+    where.status = status;
+  }
   const order = await prisma.payment_order.findFirst({
-    where: {
-      recognition_code: recognitionCode.trim(),
-    },
+    where,
+    orderBy: { created_at: 'desc' },
     include: {
       account: {
         select: {
@@ -326,6 +336,16 @@ async function processRefund({ orderId, refundedAmount, refundProof, refundReaso
  * @param {object} data 
  */
 async function recordTransaction(data) {
+  if (data.orderId) {
+    const orderExists = await prisma.payment_order.findUnique({
+      where: { id: data.orderId },
+      select: { id: true },
+    });
+    if (!orderExists) {
+      logger.info('[PAYMENT_REPO] Đơn hàng không tồn tại trong DB, bỏ qua ghi nhật ký đối soát:', data.orderId);
+      return null;
+    }
+  }
   if (data.payosTransactionId) {
     const existingTx = await prisma.payment_transaction.findFirst({
       where: { payos_transaction_id: String(data.payosTransactionId) },
@@ -335,19 +355,33 @@ async function recordTransaction(data) {
       return existingTx;
     }
   }
-  return prisma.payment_transaction.create({
-    data: {
-      id: data.id,
-      order_id: data.orderId,
-      idaccount: data.idaccount,
-      payos_transaction_id: data.payosTransactionId || null,
-      amount: data.amount,
-      bank_code: data.bankCode || null,
-      transaction_time: data.transactionTime || new Date(),
-      signature_verified: data.signatureVerified ?? true,
-      raw_webhook_hash: data.rawWebhookHash || null,
-    },
-  });
+  try {
+    return await prisma.payment_transaction.create({
+      data: {
+        id: data.id,
+        order_id: data.orderId,
+        idaccount: data.idaccount,
+        payos_transaction_id: data.payosTransactionId ? String(data.payosTransactionId) : null,
+        amount: data.amount,
+        bank_code: data.bankCode || null,
+        transaction_time: data.transactionTime || new Date(),
+        signature_verified: data.signatureVerified ?? true,
+        raw_webhook_hash: data.rawWebhookHash || null,
+      },
+    });
+  } catch (err) {
+    if (err.code === 'P2002' || err.message?.includes('23505') || err.message?.includes('unique')) {
+      logger.info('[PAYMENT_REPO] Bắt trùng lặp giao dịch đối soát (Idempotency 23505):', data.payosTransactionId);
+      return prisma.payment_transaction.findFirst({
+        where: { payos_transaction_id: String(data.payosTransactionId) },
+      });
+    }
+    if (err.code === 'P2003' || err.message?.includes('foreign key') || err.message?.includes('Foreign key')) {
+      logger.warn('[PAYMENT_REPO] Bỏ qua ghi nhật ký đối soát do đơn hàng mock/không tồn tại khóa ngoại:', { error: err.message });
+      return null;
+    }
+    throw err;
+  }
 }
 
 /**
@@ -371,19 +405,33 @@ async function activatePremiumSubscription({ idaccount, orderId, paidAt, newExpi
 
     // 2. Ghi nhật ký giao dịch đối soát
     if (transactionData) {
-      await tx.payment_transaction.create({
-        data: {
-          id: transactionData.id,
-          order_id: orderId,
-          idaccount,
-          payos_transaction_id: transactionData.payosTransactionId || null,
-          amount: transactionData.amount,
-          bank_code: transactionData.bankCode || null,
-          transaction_time: transactionData.transactionTime || new Date(),
-          signature_verified: transactionData.signatureVerified ?? true,
-          raw_webhook_hash: transactionData.rawWebhookHash || null,
-        },
-      });
+      let existingTx = null;
+      if (transactionData.payosTransactionId) {
+        existingTx = await tx.payment_transaction.findFirst({
+          where: { payos_transaction_id: String(transactionData.payosTransactionId) },
+        });
+      }
+      if (!existingTx) {
+        try {
+          await tx.payment_transaction.create({
+            data: {
+              id: transactionData.id,
+              order_id: orderId,
+              idaccount,
+              payos_transaction_id: transactionData.payosTransactionId ? String(transactionData.payosTransactionId) : null,
+              amount: transactionData.amount,
+              bank_code: transactionData.bankCode || null,
+              transaction_time: transactionData.transactionTime || new Date(),
+              signature_verified: transactionData.signatureVerified ?? true,
+              raw_webhook_hash: transactionData.rawWebhookHash || null,
+            },
+          });
+        } catch (createErr) {
+          if (createErr.code !== 'P2002' && !createErr.message?.includes('23505') && !createErr.message?.includes('unique')) {
+            throw createErr;
+          }
+        }
+      }
     }
 
     // 3. Nâng cấp loại tài khoản thành Premium và cập nhật ngày hết hạn

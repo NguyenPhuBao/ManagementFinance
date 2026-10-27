@@ -61,9 +61,15 @@ function encrypt(text) {
   const str = String(text);
   if (str === '') return '';
 
-  // Tránh mã hóa lặp nếu đã là chuỗi mã hóa
+  // Tránh mã hóa lặp nếu đã là chuỗi mã hóa hợp lệ với khóa hiện tại
   if (isEncrypted(str)) {
-    return str;
+    try {
+      decrypt(str);
+      return str; // Giải mã thành công bằng khóa hiện tại -> thực sự là bản mã hợp lệ
+    } catch (_) {
+      // Giải mã thất bại -> Đây là chuỗi do người dùng nhập thô (ví dụ "enc:1:2:3")
+      // Tiếp tục xuống dưới để mã hóa thành bản mã AES-GCM hợp lệ!
+    }
   }
 
   const iv = crypto.randomBytes(IV_LENGTH);
@@ -101,6 +107,12 @@ function decrypt(cipherText) {
     }
 
     const [ivHex, authTagHex, encryptedHex] = parts;
+    if (ivHex.length !== IV_LENGTH * 2 || authTagHex.length !== 32) {
+      const err = new Error('Độ dài IV hoặc AuthTag không hợp lệ (DECRYPT_FAILED)');
+      err.code = 'DECRYPT_FAILED';
+      throw err;
+    }
+
     const iv = Buffer.from(ivHex, 'hex');
     const authTag = Buffer.from(authTagHex, 'hex');
 

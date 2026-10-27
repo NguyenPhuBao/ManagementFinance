@@ -177,13 +177,18 @@ const aiopsController = {
       const { ipHash, ip } = req.body;
       const target = ipHash || ip;
       if (!target) {
-        return ResponseHandler.error(res, 'Vui lòng cung cấp ipHash hoặc ip cần khóa vĩnh viễn', 400);
+        return ResponseHandler.error(res, 'Vui lòng cung cấp ipHash hoặc ip cần tạm khóa', 400);
       }
       const adminUser = req.user?.username || req.user?.email || 'Admin';
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
-      const count = await defaultAIOpsQuarantine.permanentBanIp(target, { bannedBy: adminUser });
-      req.auditActionName = `Khóa IP vĩnh viễn [${target}] (${count} liên kết)`;
-      return ResponseHandler.success(res, { count, target }, 'Đã khóa IP vĩnh viễn thành công cho tất cả các bản ghi');
+      // Chuyển hóa sang tạm khóa 4 giờ theo chính sách mới của PO
+      const count = await defaultAIOpsQuarantine.temporaryBlockIp(target, {
+        durationMs: 4 * 60 * 60 * 1000,
+        blockedBy: adminUser,
+        reason: 'Admin tạm khóa IP 4 giờ (Chính sách không khóa vĩnh viễn IP mạng dùng chung CGNAT)'
+      });
+      req.auditActionName = `Tạm khóa IP [${target}] (4 giờ - Chính sách thay thế khóa vĩnh viễn)`;
+      return ResponseHandler.success(res, { count, target, durationMs: 4 * 60 * 60 * 1000, status: 'TEMPORARY' }, 'Hệ thống đã tạm khóa IP trong 4 giờ (Chính sách an ninh không khóa vĩnh viễn IP để bảo vệ người dùng mạng dùng chung)');
     } catch (error) {
       logger.error('[AIOpsController] permanentBanIp failed', { error: error.message });
       return ResponseHandler.error(res, error.message);
@@ -237,23 +242,6 @@ const aiopsController = {
       const target = username || idaccount;
       const count = await defaultAIOpsQuarantine.permanentBanAccount(target, { bannedBy: adminUser });
 
-      // Tác động thực tế CSDL (Tầng 2 System Impact): Khóa vĩnh viễn tài khoản trong database
-      try {
-        const { prisma } = require('../../config/db');
-        const where = {};
-        if (username) where.username = String(username).trim();
-        if (idaccount) where.idaccount = Number(idaccount);
-        await prisma.account.updateMany({
-          where,
-          data: {
-            status: 'Inactive',
-            reason_inactive: 'Quản trị viên khóa vĩnh viễn tài khoản qua AIOps Sentinel do phát hiện vi phạm an ninh',
-          },
-        });
-      } catch (dbErr) {
-        logger.warn('[AIOpsController] Cập nhật DB khi khóa tài khoản gặp cảnh báo', { error: dbErr.message });
-      }
-
       req.auditActionName = `Khóa vĩnh viễn tài khoản [${target}] (${count} liên kết)`;
       return ResponseHandler.success(res, { count, target }, 'Đã khóa vĩnh viễn tài khoản thành công cho tất cả các bản ghi');
     } catch (error) {
@@ -292,23 +280,6 @@ const aiopsController = {
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
       const target = username || idaccount;
       const count = await defaultAIOpsQuarantine.temporaryBlockAccount(target, { durationMs, blockedBy: adminUser });
-
-      // Tác động thực tế CSDL (Tầng 2 System Impact): Tạm khóa tài khoản trong database
-      try {
-        const { prisma } = require('../../config/db');
-        const where = {};
-        if (username) where.username = String(username).trim();
-        if (idaccount) where.idaccount = Number(idaccount);
-        await prisma.account.updateMany({
-          where,
-          data: {
-            status: 'Inactive',
-            reason_inactive: `Quản trị viên tạm khóa tài khoản (${Math.round(durationMs / 3600000)} giờ) qua AIOps Sentinel`,
-          },
-        });
-      } catch (dbErr) {
-        logger.warn('[AIOpsController] Cập nhật DB khi tạm khóa tài khoản gặp cảnh báo', { error: dbErr.message });
-      }
 
       req.auditActionName = `Tạm khóa tài khoản [${target}] (${Math.round(durationMs / 3600000)} giờ)`;
       return ResponseHandler.success(res, { count, target, durationMs }, `Đã tạm khóa tài khoản thành công (${Math.round(durationMs / 3600000)} giờ)`);
