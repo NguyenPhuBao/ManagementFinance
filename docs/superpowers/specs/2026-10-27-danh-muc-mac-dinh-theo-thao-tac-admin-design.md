@@ -172,9 +172,14 @@ Với mỗi `ThayDoiKhuon`, trên các danh mục của tài khoản (`isDefault
    xoá từ nào. Cập nhật luôn hàng từ khoá **của khuôn** thành `tuKhoaMoi` (`replaceKeywords`) để bản sao tạo sau nhận bộ mới và
    lần so sau đúng.
 4. Đổi loại: không làm gì.
-5. Mọi hàng danh mục vừa sửa: `syncStatus = 'pending'`, `updatedAt = now` → đẩy lên (từ khoá đi trong payload danh mục, khoá
+5. Hàng **chưa xoá** vừa sửa: `syncStatus = 'pending'`, `updatedAt = now` → đẩy lên (từ khoá đi trong payload danh mục, khoá
    `keyword`). Máy thứ hai cùng tài khoản nhận qua đồng bộ, hoặc tự áp ra cùng kết quả (luỹ đẳng: lần áp thứ hai không còn hàng
    khớp tên cũ / biểu tượng cũ, từ khoá đã có).
+6. ⚠️ Hàng **đã xoá mềm** đổi tên ở bước 1 **chỉ ghi cục bộ — KHÔNG đánh dấu `pending`, không đổi `updatedAt`.** Hàng xoá mềm mà
+   `pending` được `thu_gom_day.dart` đẩy thành `operation: delete` → server `softDelete` bỏ qua tên mới nhưng vẫn nâng
+   `server_update_at` → lượt kéo kế mang hàng về với **tên cũ** đè lên tên vừa đổi → bộ tạo bản sao thấy tên mới trống và đẻ lại
+   thứ người dùng đã xoá. Không đẩy thì server không đổi, hàng không bị kéo lại; máy khác tự đổi tên bản đã xoá của nó khi thấy
+   cùng `ThayDoiKhuon` (vấp khi soát spec 2026-10-27, trước khi thi công).
 
 ## 6. Sửa bộ tạo bản sao
 
@@ -184,6 +189,8 @@ lật thành *"… thì KHÔNG tạo"*, `reason:` viện chỉ mục thật. M�
 
 ## 7. Giới hạn biết trước (ghi vào tài liệu, không chặn)
 
+- Bản sao đã xoá mềm chỉ đổi tên cục bộ (mục 5 bước 6) → máy kéo toàn bộ lại (cài mới) nhận tên cũ; nếu khuôn đã đổi tên thì bộ
+  tạo bản sao tạo bản tên mới cho tài khoản ấy (thứ người dùng từng xoá mọc lại dưới tên mới) — cùng lớp với gạch dưới.
 - **Máy chưa từng thấy bản cũ của khuôn** (cài mới, đăng nhập máy mới) không lan truyền được. Nếu cả tài khoản không có máy nào
   kéo về giữa lúc admin đổi tên và lúc ấy, bản sao còn tên cũ và bộ tạo bản sao thêm bản tên mới — người dùng thấy cả hai.
 - Cổng `sauKeoVe` hỏng (lỗi CSDL) hoặc phiên đổi giữa lượt → mất lần lan truyền ấy (bộ tạo bản sao tự thử lại ở lượt sau, lan
@@ -202,7 +209,7 @@ lật thành *"… thì KHÔNG tạo"*, `reason:` viện chỉ mục thật. M�
 | Form sửa | widget test `bill_edit_page`, form ngân sách, sửa giao dịch | mở form gắn bản ẩn: không ném, hiện tên |
 | Trùng tên | test repository | tạo / đổi tên trùng bản ẩn → câu mới; trùng hàng thường → câu cũ |
 | Trần Premium | `features/premium/data/dem_dang_hoat_dong_test.dart` | bản ẩn / bản sao khuôn cũ không đếm |
-| Lan truyền | `features/category/application/lan_truyen_khuon_test.dart` | đổi tên cả bản đã xoá · bỏ qua khi tên mới đã có · biểu tượng chỉ khi còn đúng cũ · từ khoá chỉ thêm · từ khoá khuôn cập nhật · `pending` · luỹ đẳng |
+| Lan truyền | `features/category/application/lan_truyen_khuon_test.dart` | đổi tên cả bản đã xoá — bản đã xoá **không** `pending`, giữ `updatedAt` · bỏ qua khi tên mới đã có · biểu tượng chỉ khi còn đúng cũ · từ khoá chỉ thêm · từ khoá khuôn cập nhật · `pending` · luỹ đẳng |
 | Kéo về | `core/sync/…` (ca mới cạnh `sync_gieo_sau_keo_ve_test.dart`) | ghi `ThayDoiKhuon` chỉ khi khuôn đã có trên máy và khác · lượt đầu không ghi · cổng nhận danh sách · thứ tự lan truyền → tạo bản sao |
 | Bộ tạo bản sao | `features/category/application/default_category_seeder_test.dart` | so theo tên (ca lật) · ca G16 xanh |
 | Quét 40 | mục 4 | `getCategoryRows` / `watchCategoryRows` chỉ ở repository |
