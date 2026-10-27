@@ -22,6 +22,9 @@
 > (chạm thông báo khi khoá — app sống và app đã chết) · **17** (320 dp — người dùng đổi *cỡ hiển thị*) · **21** (Quét ảnh khi khoá) · **11** (proxy giữ `/sync/pull`)
 > — **đạt**; lộ **M15** (bố cục 320 dp, mục 8). Người dùng chốt **giữ** `resetOnError` (bẫy 27) và **không** miễn khoá cho lối app tự mở máy ảnh / chọn ảnh
 > (spec mục 8). 🚧 Còn: TalkBack nghe thật; PayOS khi khoá (người dùng chọn bỏ khỏi buổi 3).
+> ✅ **2026-10-27 (phiên 14, Realme, bản debug):** **máy ảnh khi đang giữ Gemma** — app không bị giết (mục 10, *Buổi 5*); cỡ chữ Realme đã
+> về thường (`mGlobalConfiguration {1.0 … sw360dp 480dpi}`). Người dùng **bỏ** lượt nghe TalkBack (*"không cần đo talkback"*) — bước 18
+> giữ ◐ (cây trợ năng, buổi 1).
 > Spec: `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (đã sửa theo thiết kế cuối 2026-10-25).
 > Mảng mã: `src/Client-app/lib/features/khoa_app/` (21 tệp, 2.450 dòng, đếm 2026-10-25 khuya sau phiên 8; tối 2.410, chiều 2.310) +
 > `android/…/SinhTrac.kt` + hàm dùng chung `duaAppXuongNen` (`lib/shared/widgets/thoat_hai_lan.dart`).
@@ -549,7 +552,7 @@ tạm đặt **Ngay** cho bước 21 / 6.
 |---|---|
 | Thanh trạng thái (`81c09b8a`) | ✅ màn khoá, Trang chủ **lúc mở lạnh**, Cá nhân, Phân tích, rồi Trang chủ lại: điểm ảnh thanh trạng thái = nền kem (237, 237, 233) cả năm ảnh — dải xám cũ (~178) đã hết; màn Quét nền đen: biểu tượng **trắng** (người dùng nhìn). |
 | 17 — 320 dp | ✅ ColorOS chặn `wm density` và `settings put system font_scale` (`WRITE_SETTINGS`) → người dùng đổi **cỡ hiển thị** trong Cài đặt máy = density 540 = **320 dp**. Màn khoá, Cá nhân, trang Khoá ứng dụng, bảng chọn *Tự khoá sau*: **0 điểm vàng thuần**, không cụt chữ; lộ **M15** (hàng *Tự khoá sau* gãy dòng khi chọn *Ngay khi rời app*). Cỡ **chữ** (font scale) chưa đo. |
-| 21 — Quét ảnh khi khoá (Ngay) | ✅ Quét → Chọn ảnh (DocumentsUI 21:11:14) → quay về: **màn khoá trước** (người dùng xác nhận) → vân tay → lượt quét chạy tiếp: OCR (STARBUCKS, 262.000) 21:11:33, Gemma đọc ảnh 39 s, danh mục *Ăn uống* 21:12:21 → **form tự điền**; cùng tiến trình suốt lượt (không bị ColorOS giết — lúc mở trình chọn chưa giữ Gemma). Không Lưu. Đường **máy ảnh khi đang giữ Gemma** (ColorOS giết app) chưa đo. PayOS: người dùng chọn bỏ. |
+| 21 — Quét ảnh khi khoá (Ngay) | ✅ Quét → Chọn ảnh (DocumentsUI 21:11:14) → quay về: **màn khoá trước** (người dùng xác nhận) → vân tay → lượt quét chạy tiếp: OCR (STARBUCKS, 262.000) 21:11:33, Gemma đọc ảnh 39 s, danh mục *Ăn uống* 21:12:21 → **form tự điền**; cùng tiến trình suốt lượt (không bị ColorOS giết — lúc mở trình chọn chưa giữ Gemma). Không Lưu. Đường **máy ảnh khi đang giữ Gemma** (ColorOS giết app) chưa đo *(đo 2026-10-27, Buổi 5: app không bị giết)*. PayOS: người dùng chọn bỏ. |
 | 6a — chạm thông báo, app sống + khoá | ✅ *Tổng kết tuần* đặt Chủ nhật, giờ hiện tại + 3 phút → Home → chạm thông báo: **màn khoá trước, không lộ khung nào** (người dùng nhìn) → vân tay → *Xuất Báo cáo* kỳ **12/10 – 18/10** (= `tuanTruoc(now)`, `notification_rules.dart:338` — đúng thiết kế). |
 | 6b — chạm thông báo, app đã chết | ✅ đặt lại giờ → `am crash` (không force-stop — force-stop xoá lịch) → pid 27013 chết, hệ điều hành dựng 5055 cho dịch vụ D1 (không giao diện), lịch còn 3 → chạm thông báo 21:30:15: engine mới, màn khoá → vân tay → đúng *Xuất Báo cáo 12/10 – 18/10*. |
 | `WebSocketConnectionClosed` (`f8ae62ca`) | ✅ backend nền trỏ `PersonFinance` (kiểm danh tính trước: script chỉ đọc), app nối socket → `PATCH /api/admin/updatestatus/10` `Inactive` 21:33:30, mở lại `Active` 21:33:36 (đọc CSDL: `Active`). Logcat: `Bị buộc đăng xuất: biKhoa` → `Đứt kết nối: io server disconnect` (đúng đường gói `41` + đóng) — **0** dòng `WebSocketConnectionClosed` / `Unhandled Exception` cả buổi; hộp thoại *"Tài khoản đã bị vô hiệu hoá"* đúng lý do. |
@@ -613,3 +616,13 @@ cỡ chữ 1,6 + 320 dp): ✅ bốn nhãn thanh dưới cùng cỡ (*Trang chủ
 ⚠️ Bẫy đo: (1) **bản release không vẽ sọc vàng** báo tràn (chỉ debug) — đếm điểm vàng trên ảnh release luôn ra 0, phải chấm bằng mắt; (2) ColorOS lưu cỡ chữ
 ở `settings system font_scale` nhưng chỉ khi kéo **thanh "Cỡ phông chữ"** (lần đầu người dùng đổi chỗ khác, `mGlobalConfiguration` vẫn `{1.0 …}`) — đọc
 `dumpsys activity | grep mGlobalConfiguration` để chắc; (3) `screencap` lúc hộp vân tay hệ thống đang mở ra tệp **0 byte** (cửa sổ bảo mật).
+
+**Buổi 5 — 2026-10-27 sáng (09:01–09:06, phiên 14), Realme, bản DEBUG** (`85b7186f`, `API_BASE_URL=http://127.0.0.1:3000/api`, `adb reverse
+tcp:3000 tcp:3999` qua proxy đo → backend `PersonFinance`; khoá bật, *Tự khoá sau* 30 giây). Sao lưu CSDL máy trước khi cài đè bản release:
+`D:\FlowMoney-saoluu\realme-truoc-phien14-2026-10-27\` (không WAL — app không chạy lúc chép; `integrity_check` ok).
+
+| Bước | Kết quả |
+|---|---|
+| Cỡ chữ thường (còn treo từ phiên 10) | ✅ `font_scale` 1.0, `wm density` không ghi đè (480), `mGlobalConfiguration {1.0 … sw360dp 480dpi}` |
+| 21b — máy ảnh khi đang giữ Gemma | ✅ lượt quét thứ nhất (máy ảnh **chưa** giữ Gemma — người dùng chưa hỏi Trợ lý AI, log không có dòng nào 08:52–09:01) nạp mô hình 09:02:09, form điền 262.000 · Ăn uống. Lượt thứ hai khi app ~3,0 GB PSS (máy còn ~2,07 GB): Quét → Chụp 09:04:43 → về 09:04:52 → **cùng pid**, không `Killing` / `Start proc`, mô hình không nạp lại, Gemma đọc ảnh 35 s (6 món) → form *"Từ ảnh quét · 28/09 14:19 · Đọc bằng AI"*. Máy ảnh mở ~9 s < mức tự khoá 30 s nên không có màn khoá. ⚠️ Đường *ColorOS giết app* không xảy ra — và nếu xảy ra, ảnh có thể mất: màn Quét không gọi `retrieveLostData` (`QUET_ANH_FEATURE.md` mục 5). Không Lưu. |
+| 18 TalkBack | ⏭ người dùng bỏ (*"không cần đo talkback đâu"*) — giữ ◐ của buổi 1 |

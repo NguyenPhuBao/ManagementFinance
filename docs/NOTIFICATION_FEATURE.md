@@ -1408,7 +1408,11 @@ có hàng trong Trung tâm + thông báo trên khay. Loại thứ **21** `tinHeT
   `notification_center_page_test`.
 - ✅ **Nghiệm thu Realme 2026-10-26 tối** (chi tiết khối 🧭 mục 14 `PROJECT_CONTEXT.md`): tin `critical` khi app mở → hàng + khay,
   id khay = `osScheduledId(khoá)` · tin bảo trì (`metadata.type`) → im · tắt nhóm → im (kênh vẫn nhận) · app ở nền → khay, chạm khay →
-  Trung tâm · chip *FlowMoney* lọc đúng, không tràn 360 dp. Chưa đo trên máy: một tin tới hai lần (chỉ unit test).
+  Trung tâm · chip *FlowMoney* lọc đúng, không tràn 360 dp.
+- ✅ **Một tin tới nhiều lần — đo Realme 2026-10-27 (phiên 14, bản debug):** proxy WebSocket giữa app và backend `PersonFinance` gửi lại
+  nguyên khung `42["system.broadcast",…]` của một tin admin (`info`, app mở): bản sao ngay sau (1 ms) và sau 3 s → logcat **3** dòng
+  `[RealtimeChannel] Tin hệ thống <id>` · bảng máy **1** hàng `tinHeThong:<id>` (`os_delivered_at` có) · khay **1** thông báo, id =
+  `osScheduledId(khoá)` · bộ nghe thông báo D1 (`BienDongThu`) thấy **1** lần đăng — hai bản sao không đăng lại, không kêu lại.
 
 ✅ **G71 (2026-10-06 khuya) — ví đã xoá thì thông báo số dư của nó tự gỡ.** Bộ quét đọc ví qua `walletDao.getAll` (từ 2026-10-14, đợt Entity Giao dịch + Ví, qua `WalletRepository.getAll` trả `WalletEntity` — vẫn là `walletDao.getAll` bên dưới), vốn lọc bỏ ví có `deletedAt`, nên ví đã xoá chỉ **biến mất** khỏi danh sách và cả `hangSapCanLoiThoi` lẫn `hangAmDaHoi` rơi vào nhánh *không biết ví thì không đoán*. Nay bộ quét nhận **`ViDaXoaLoader`** (`WalletDao.idDaXoa` — `deletedAt` **hoặc** `isDeleted`, đúng tài khoản; ví lưu trữ **không** tính) và hàm thuần **`hangCuaViDaXoa`** chọn mọi hàng `subjectType == 'wallet'` chưa gỡ của các ví ấy; gỡ chung vòng `dismiss` với hai hàm kia (gom vào một tập để không gỡ hai lần). Chạy **kể cả khi danh sách ví rỗng** (xoá đúng ví duy nhất) và chỉ đọc CSDL khi còn hàng ví chưa gỡ. Ví vắng mà CSDL không ghi đã xoá → vẫn không đoán. Chưa nghiệm thu máy thật.
 

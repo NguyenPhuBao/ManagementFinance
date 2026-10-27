@@ -617,6 +617,26 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-26)
 
+### 🧭 Phiên 14 (2026-10-27 sáng) — push, hai mã lỗi gia đình, đo Realme (tin nhiều lần · biên lai MB thật · máy ảnh khi giữ Gemma)
+
+- ✅ **Push** 10 commit phiên 12–13 (`6e6a783d..3b25da10`, người dùng chọn).
+- ✅ **`HOUSEHOLD_ROLE_FORBIDDEN` + `HOUSEHOLD_WALLET_LIMIT`** vào `_permanentCodes` (`85b7186f`, khối 🏠) — tên do `docs/Family/` đề xuất,
+  backend **chưa** chấp nhận; người dùng chọn thêm sớm.
+- ✅ **Đo Realme** (bản debug `423f84a5…` trỏ `127.0.0.1:3000`, cài đè bản release — cùng khoá debug, dữ liệu giữ; sao lưu CSDL máy
+  `D:\FlowMoney-saoluu\realme-truoc-phien14-2026-10-27\`; `adb reverse tcp:3000 tcp:3999` → proxy WebSocket ở scratchpad → backend
+  `PersonFinance` + khoá dev, danh tính kiểm bằng tài khoản 10 `Active` trên CSDL ấy):
+  - **Cỡ chữ đã về thường** (treo từ phiên 10): `font_scale` 1.0, không ghi đè mật độ, `mGlobalConfiguration {1.0 … sw360dp 480dpi}`.
+  - **Tin admin tới ba lần** (cùng `id`, bản sao ngay + sau 3 s — giả backend phát hai lần qua event bus + Redis): app nhận 3 lần → **1**
+    hàng, **1** thông báo khay (id = `osScheduledId`), hệ điều hành thấy 1 lần đăng. Mục 5l `NOTIFICATION_FEATURE.md`.
+  - **Biên lai MB thật:** `goi=com.mbmobile | khai=false`, mẫu `_mb`, form chọn sẵn Ví MB Bank. Mục 7 `BIEN_DONG_SO_DU_FEATURE.md`.
+  - **Máy ảnh khi đang giữ Gemma** (~3,0 GB PSS): ColorOS **không** giết app, mô hình không nạp lại, form tự điền. ⚠️ Rủi ro còn mở:
+    màn Quét không gọi `retrieveLostData` — tiến trình bị giết lúc máy ảnh mở thì mất ảnh (chưa tái hiện). Mục 5 `QUET_ANH_FEATURE.md`,
+    *Buổi 5* mục 10 `KHOA_APP_FEATURE.md`.
+  - **TalkBack:** người dùng bỏ.
+- Proxy đo (`proxy_nhan_doi.js`, scratchpad — mất khi phiên đóng): Node `http` chuyển thẳng HTTP; WebSocket qua gói `ws` của `src/Backend`
+  (`require.resolve('ws', { paths: [cwd] })`, chạy với cwd `src/Backend`), gửi thêm bản sao của khung `42["system.broadcast"` theo tệp cờ
+  (danh sách độ trễ ms). Không ghi body / token.
+
 ### 🧭 Phiên 13 (2026-10-26 tối) — ba việc nhỏ của bàn giao phiên 12 + Tin từ FlowMoney + đo Realme
 
 - ✅ **Kéo về bị máy chủ từ chối không còn im lặng** (đơn 53 vế C — ghi chú `enc:…` làm mọi `/sync/pull` 500 `DECRYPT_FAILED`): lượt kéo bị
@@ -943,6 +963,8 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   extra. ⚠️ **Chưa đo với app MB thật**: nếu chính app MB đặt `EXTRA_REFERRER` khi chia sẻ thì nay `khai=true`, gói gửi rơi về
   bảng chia sẻ → nguồn *Biên lai* chung (mất mẫu `_mb`, mất học ví theo nguồn) — đo bằng một biên lai MB thật trên bản debug, đọc
   dòng `BienLaiThu: nhan | goi=… | khai=…`. Ca canh `bien_lai_noi_day_test.dart` (gỡ cả hai extra, trước dòng đọc).
+  ✅ **Đo với app MB thật 2026-10-27 (phiên 14):** `goi=com.mbmobile | khai=false` — app MB không đặt extra; hàng *MB Bank* đọc mẫu
+  `_mb`, form chọn sẵn Ví MB Bank (khối 🧭 Phiên 14).
   ⚠️ **Sự cố `enc:` (gốc phía backend, đơn CAN-LAM 52):** Trang chủ hiện ghi chú `enc:24…2106…`. So từng cột bản sao
   `realme-tk10-2026-10-24` với CSDL máy: chỉ cột `note` khác — **64 giao dịch + 1 hoá đơn** (đều `synced`). Gốc: `decrypt()`
   (`src/Backend/utils/crypto.util.js`) giải hỏng thì `return str` (bản mã); dữ liệu `PersonFinance` mã hoá bằng **khoá dev

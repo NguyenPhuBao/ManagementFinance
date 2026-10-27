@@ -210,6 +210,13 @@ OCR lệch nhau), không kèm *"Đọc bằng AI"*. Tách theo danh mục là lu
 Không thêm quyền `CAMERA` (intent máy ảnh hệ thống), không quyền đọc bộ nhớ (trình chọn ảnh hệ thống). Bản `--release`
 dựng được ngày 2026-10-08 (224,9 MB) — R8 không cần quy tắc mới cho `image_picker`.
 
+**Máy ảnh khi đang giữ Gemma — đo Realme 2026-10-27 (phiên 14, bản debug, CPU):** lượt quét đầu nạp mô hình (app ~3,0 GB PSS,
+máy còn ~2,07 GB / 7,7 GB) → Quét → Chụp mở `com.oplus.camera` 09:04:43, quay về 09:04:52 → **cùng tiến trình** (pid giữ nguyên,
+không `Killing` / `Start proc`), mô hình **không** nạp lại, Gemma đọc ảnh 35 s → form *"Từ ảnh quét · Đọc bằng AI"* 262.000 · Ăn uống.
+⚠️ **Rủi ro còn mở:** `quet_anh_page.dart` **không** gọi `ImagePicker.retrieveLostData()` — nếu hệ điều hành giết tiến trình lúc máy
+ảnh đang mở (giả định của bước 21 `KHOA_APP_FEATURE.md`), ảnh vừa chụp nằm trong bộ đệm của `image_picker` và mất khi app dựng lại.
+Lượt đo giữ máy ảnh ~9 s nên đường ấy **không xảy ra** — chưa tái hiện được, không có nghĩa là không thể.
+
 ## 6. Stitch
 
 `8027b781…` sheet chọn nguồn (✅ app theo đúng màn từ 2026-10-22 khuya — trước đó chỉ hai `ListTile` + Huỷ; thêm dòng nhắc
