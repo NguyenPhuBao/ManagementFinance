@@ -66,6 +66,10 @@ class AppColors {
   static const Color khoaCanVien = Color(0xFFECE5CD); // băng "Cần Premium" — viền
   static const Color khoaCanChu = Color(0xFF523F0C); // băng "Cần Premium" — chữ
   static const Color khoaCanIcon = Color(0xFF8C6D1F); // băng "Cần Premium" — ổ khoá
+  static const Color khoaNgungNen = Color(0xFFF6F5F0); // băng "Tạm ngừng" — nền / viền / chữ / ổ khoá (Stitch 02c0d881 khối 3)
+  static const Color khoaNgungVien = Color(0xFFE4E2DC);
+  static const Color khoaNgungChu = Color(0xFF5B5D58);
+  static const Color khoaNgungIcon = Color(0xFF737571);
   static const Color khoaTamDungNen = Color(0xFFFFF4F2); // băng "Tạm dừng — cần Premium" — nền
   static const Color khoaTamDungVien = Color(0xFFFAD7D4); // băng "Tạm dừng — cần Premium" — viền
   static const Color vienNutNangCap = Color(0xFFD5D3CA); // viền nút "Nâng cấp" trên băng công tắc

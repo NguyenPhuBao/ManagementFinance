@@ -21,6 +21,8 @@ void _moNangCap(BuildContext context, MaQuyen ma, VoidCallback? onMo) =>
     onMo != null ? onMo() : context.push(duongNangCap(quyen: ma));
 
 /// Thẻ thay chỗ một khối trong trang khi không có quyền: ổ khoá tròn xám, tên tính năng, *"Dành cho Premium"*, nút đen.
+/// Tạm ngừng (B1): chữ *"Đang tạm ngừng"*, không nút. Lệch có chủ ý so với Stitch `02c0d881…` khối 1 (viền ĐỨT NÉT):
+/// app giữ viền liền (Flutter không có viền đứt dựng sẵn); dấu hiệu tạm ngừng là chữ + không nút.
 class TheKhoaQuyen extends StatelessWidget {
   const TheKhoaQuyen({super.key, required this.ma, this.onMo});
 
@@ -158,7 +160,8 @@ class DongKhoaQuyen extends StatelessWidget {
 }
 
 /// Băng dưới một công tắc bị khoá. [dangBat] — giá trị đang lưu là BẬT (vd. đã bật tự trả khi còn Premium) → băng
-/// hồng *"Tạm dừng — cần Premium"* (chốt *"dừng chạy, giữ công tắc"*); không → băng vàng *"Cần Premium"*.
+/// hồng *"Tạm dừng — cần Premium"* (chốt *"dừng chạy, giữ công tắc"*); không → băng vàng *"Cần Premium"*. Tạm ngừng (B1)
+/// THẮNG [dangBat]: băng xám *"Tạm ngừng"*, không nút.
 class DongKhoaCongTac extends StatelessWidget {
   const DongKhoaCongTac({super.key, required this.ma, required this.dangBat, this.onMo});
 
@@ -170,9 +173,9 @@ class DongKhoaCongTac extends StatelessWidget {
   Widget build(BuildContext context) {
     final tamNgung = context.trangThaiQuyen(ma) == TrangThaiQuyen.tamNgung;
     final dung = dangBat && !tamNgung;
-    final nen = dung ? AppColors.khoaTamDungNen : AppColors.khoaCanNen;
-    final vien = dung ? AppColors.khoaTamDungVien : AppColors.khoaCanVien;
-    final mau = dung ? AppColors.error : AppColors.khoaCanChu;
+    final nen = tamNgung ? AppColors.khoaNgungNen : (dung ? AppColors.khoaTamDungNen : AppColors.khoaCanNen);
+    final vien = tamNgung ? AppColors.khoaNgungVien : (dung ? AppColors.khoaTamDungVien : AppColors.khoaCanVien);
+    final mau = tamNgung ? AppColors.khoaNgungChu : (dung ? AppColors.error : AppColors.khoaCanChu);
     return Container(
       key: Key('dong-khoa-cong-tac-${ma.maServer}'),
       margin: const EdgeInsets.only(top: 8),
@@ -185,7 +188,8 @@ class DongKhoaCongTac extends StatelessWidget {
       child: Row(
         children: [
           Icon(dung ? Icons.lock_clock_outlined : Icons.lock_outline,
-              size: 18, color: dung ? AppColors.error : AppColors.khoaCanIcon),
+              size: 18,
+              color: tamNgung ? AppColors.khoaNgungIcon : (dung ? AppColors.error : AppColors.khoaCanIcon)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

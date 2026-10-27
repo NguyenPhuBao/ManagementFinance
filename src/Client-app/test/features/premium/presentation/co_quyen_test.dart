@@ -6,6 +6,7 @@ import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
 import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flowmoney/features/premium/presentation/bloc/co_quyen.dart';
 import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
+import 'package:flowmoney/features/premium/presentation/widgets/the_khoa_quyen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -77,5 +78,23 @@ void main() {
       }),
     ));
     expect(co, TrangThaiQuyen.tamNgung);
+  });
+
+  testWidgets('trangThaiQuyen đăng ký phụ thuộc: emit sang Premium bảng tắt → DongKhoaQuyen dựng lại (watch)',
+      (tester) async {
+    final cubit = goiBasic(const {'quick_action_shortcuts': false}, now: now);
+    await tester.pumpWidget(BlocProvider<GoiCubit>.value(
+      value: cubit,
+      child: const MaterialApp(home: Scaffold(body: DongKhoaQuyen(ma: MaQuyen.quickActionShortcuts))),
+    ));
+    expect(find.text('Nút ghi nhanh — dành cho Premium'), findsOneWidget);
+    cubit.emit(TrangThaiGoi(
+        loai: LoaiGoi.premium,
+        hetHan: now.add(const Duration(days: 30)),
+        nhanLuc: now,
+        quyenTinhNang: const {'quick_action_shortcuts': false}));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Nút ghi nhanh đang tạm ngừng'), findsOneWidget);
   });
 }

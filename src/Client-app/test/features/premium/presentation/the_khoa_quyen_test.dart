@@ -8,6 +8,7 @@ import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
 import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/premium/presentation/widgets/the_khoa_quyen.dart';
+import 'package:flowmoney/shared/theme/app_colors.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -147,6 +148,38 @@ void main() {
       expect(find.text('Cảnh báo chi bất thường đang tạm ngừng'), findsOneWidget);
       expect(find.byKey(const Key('nut-nang-cap')), findsNothing);
     });
+
+    testWidgets('DongKhoaQuyen: cauTamNgung truyền vào thay câu mặc định khi tạm ngừng', (tester) async {
+      final cubit = goiPremium(const {'anomaly_spending_insights': false}, now: now);
+      await dung(tester, const DongKhoaQuyen(ma: MaQuyen.anomalySpendingInsights, cauTamNgung: 'x'), cubit: cubit);
+      expect(find.text('x'), findsOneWidget);
+      expect(find.text('Cảnh báo chi bất thường đang tạm ngừng'), findsNothing);
+    });
+
+    testWidgets('màu băng công tắc: tạm ngừng xám (khoaNgung*), canPremium giữ vàng (khoaCan*)', (tester) async {
+      Color nenCua(String ma) => ((tester.widget<Container>(find.byKey(Key('dong-khoa-cong-tac-$ma'))).decoration!
+              as BoxDecoration)
+          .color!);
+      Color vienCua(String ma) => (((tester.widget<Container>(find.byKey(Key('dong-khoa-cong-tac-$ma'))).decoration!
+                  as BoxDecoration)
+              .border!) as Border)
+          .top
+          .color;
+
+      await dung(tester, const DongKhoaCongTac(ma: MaQuyen.billAutoPay, dangBat: true),
+          cubit: goiPremium(const {'bill_auto_pay': false}, now: now));
+      expect(nenCua('bill_auto_pay'), AppColors.khoaNgungNen);
+      expect(vienCua('bill_auto_pay'), AppColors.khoaNgungVien);
+      expect(tester.widget<Icon>(find.byIcon(Icons.lock_outline)).color, AppColors.khoaNgungIcon);
+      expect(tester.widget<Text>(find.text('Tạm ngừng')).style!.color, AppColors.khoaNgungChu);
+
+      await dung(tester, const DongKhoaCongTac(ma: MaQuyen.billAutoPay, dangBat: false),
+          cubit: goiBasic(const {'bill_auto_pay': false}, now: now));
+      expect(nenCua('bill_auto_pay'), AppColors.khoaCanNen);
+      expect(vienCua('bill_auto_pay'), AppColors.khoaCanVien);
+      expect(tester.widget<Icon>(find.byIcon(Icons.lock_outline)).color, AppColors.khoaCanIcon);
+      expect(tester.widget<Text>(find.text('Cần Premium')).style!.color, AppColors.khoaCanChu);
+    });
   });
 
   for (final rong in [360.0, 320.0]) {
@@ -190,6 +223,12 @@ void main() {
             cubit: cubit,
             rong: rong);
         expect(tester.takeException(), isNull);
+        if (tamNgung) {
+          expect(find.text('Đang tạm ngừng'), findsNWidgets(MaQuyen.values.length));
+          expect(find.byKey(const Key('nut-nang-cap')), findsNothing);
+        } else {
+          expect(find.text('Đang tạm ngừng'), findsNothing);
+        }
         for (final m in MaQuyen.values) {
           final r = tester.renderObject<RenderParagraph>(find.text(m.ten));
           expect(r.didExceedMaxLines, isFalse, reason: m.ten);
