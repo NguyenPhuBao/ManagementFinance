@@ -180,6 +180,23 @@ void main() {
     expect(await dem().dem(LoaiTran.danhMucRieng, 10), 1);
   });
 
+  test('⭐ bản sao của khuôn ĐÃ XOÁ (ẩn theo khuôn) không tính là danh mục riêng (spec 2026-10-27 mục 4)', () async {
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'khuon_xoa',
+      idaccount: 0,
+      name: 'Thử khuôn',
+      classify: 'chi',
+      isDefault: const Value(true),
+      isDeleted: const Value(true),
+      deletedAt: Value(DateTime.utc(2026, 10, 28)),
+      updatedAt: now,
+    ));
+    await danhMuc('sao', 'Thử khuôn');
+    await danhMuc('rieng', 'Nuôi mèo');
+    expect(await dem().dem(LoaiTran.danhMucRieng, 10), 1,
+        reason: 'Admin xoá khuôn mà bản sao bị đếm oan là Basic mất một chỗ tạo danh mục cho thứ họ không còn thấy.');
+  });
+
   Future<void> hoaDon(String id, {String pay = 'Pending', bool daTra = false, String? truoc}) =>
       db.billDao.insert(BillsCompanion.insert(
         id: id,
