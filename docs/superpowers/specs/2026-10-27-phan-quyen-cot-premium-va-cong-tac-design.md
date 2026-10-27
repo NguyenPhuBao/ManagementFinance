@@ -88,7 +88,7 @@ bool duocDung(MaQuyen ma, TrangThaiGoi goi, DateTime now) => trangThaiQuyen(ma, 
 | `bill_reminder_notifications` | Nhắc trước hạn hóa đơn | loại `billDueSoon` + lịch HĐH nhắc trước hạn; chip *Nhắc trước* ở form hoá đơn và ở Cài đặt | thôi nhắc trước hạn; **quá hạn vẫn báo** |
 | `budget_overspend_alert` | Cảnh báo vượt ngân sách | loại `budgetNearLimit` / `budgetOverspent`; dòng *"Nên chi X/ngày"* (`budget_pace_text.dart`) | bộ quét bỏ hai loại; dòng nhịp chi → dòng khoá |
 | `wallet_balance_adjustment` | Điều chỉnh số dư ví | ô số dư ở Sửa ví (đối soát → khoản bù) | ô chỉ đọc + dòng khoá |
-| `wallet_exclude_total` | Loại ví khỏi tổng tài sản | công tắc *Không tính vào tổng* (Thêm / Sửa ví) | công tắc khoá; ví đã loại vẫn loại |
+| `wallet_exclude_total` | Loại ví khỏi tổng tài sản | công tắc *Tính vào tổng tài sản* (Sửa ví) / *Tính vào tổng số dư tài sản* (Thêm ví) | công tắc khoá; ví đã loại vẫn loại |
 | `goal_deposit_withdraw` | Nạp / rút mục tiêu | nút Nạp / Rút ở Chi tiết mục tiêu | nút tắt + dòng khoá (tự trích theo `goal_auto_deposit`) |
 | `quick_category_assignment` | Gắn danh mục hàng loạt | thẻ *"Có N giao dịch chưa có danh mục"* (Sổ giao dịch) + route `/transactions/gan-danh-muc` | thẻ khoá; route qua `redirectTheoQuyen` |
 | `category_keywords_matching` | Từ khoá nhận diện danh mục | khối *Từ khoá nhận diện* (`category_add_page.dart`) + đề xuất *"Thêm 'x' làm từ khoá…"* (5f) | không sửa / không đề xuất; từ khoá đã có **vẫn** gợi ý |
@@ -167,11 +167,19 @@ giá trị app (`allowed_types` EWallet / Credit / Investment, `supported_banks`
 - (P-N5) `noiKhiQuyenDoi` có thể kích `resync` ở lượt `_phat` đầu từ kho lúc mở app, song song lượt khôi phục của scanner — hai dòng `dat_lich`
   cùng khoá trong nhật ký B5a; `resync` không có khoá loại trừ: quyền tắt đúng lúc lượt khác đã đọc vị từ có thể đặt lại lịch vừa huỷ (tự sửa ở
   lượt quét kế).
-- Trần của kho chỉ đáng tin sau lượt `lamMoi` đầu kể từ bản B1 (kho cũ mang trần 3/3/3 mặc định; rủi ro thấp vì server luôn gửi 5 khoá).
+- (Cuộc đua lúc đăng xuất, review toàn nhánh M1, 2026-10-28 — **không** sửa bằng mã) `PhienDieuPhoi.dongPhien` dừng bộ quét (`stop` → `cancelAll`)
+  trong khi `GoiRepository.idaccount` còn tới lượt `noiPhien(null)`; một lượt `lamMoi` về đúng khe ấy mà lật quyền nhắc thì closure
+  `noiKhiQuyenDoi` ở `main.dart` gọi `ReminderScheduler.resync` cho tài khoản vừa đăng xuất → lịch nhắc của nó có thể được đặt lại sau
+  `cancelAll`. `NotificationScanner` / `ReminderScheduler` không có cờ công khai "đang chạy" (`_idaccount` riêng tư; `chayNen` là chế độ
+  engine nền) nên đợt sửa cuối KHÔNG thêm API mới; khe rất hẹp (cần đúng một lượt `lamMoi` lật quyền giữa hai bước đăng xuất) — xử lý cùng
+  họ P-N5 nếu có lượt sau.
+- Trần của kho chỉ đáng tin sau lượt `lamMoi` đầu kể từ bản B1 (preflight N4): kho Premium cũ đã toàn `null` vì server luôn gửi đủ 5 khoá
+  `limits`; chỉ khi CSDL đang chạy thiếu một hàng LIMIT của cột Premium thì ô ấy giữ mặc định cũ (`3`) tới lượt `lamMoi` kế — mục 10 bước 0 kiểm.
 
 ## 13. Chỗ mã khác bản viết
 
-Mỗi mục: *người dùng / người điều phối chốt 2026-10-27 phiên 17*.
+Mỗi mục: *người dùng / người điều phối chốt* — (1)–(12) 2026-10-27 phiên 17 (kế hoạch, mục *Đã chốt*, preflight); (13)–(18)
+2026-10-28 phiên 18 (soát từng task, review toàn nhánh, đợt sửa cuối).
 
 1. **`bangDungDuoc` thêm vế Premium-không-hạn** (`goi.loai == premium && goi.hetHan == null` → `false`). Thân spec mục 2 chỉ so
    `laPremium(nhanLuc) == laPremium(now)`; Premium không hạn mà server gửi bảng Basic thì mọi thứ Basic tắt hiện *"Đang tạm ngừng"* với
@@ -182,8 +190,8 @@ Mỗi mục: *người dùng / người điều phối chốt 2026-10-27 phiên 
    nơi gọi, không cần mang cờ trong kết quả.
 4. **`TrangThaiGoi.tran` mặc định theo gói** (Premium không giới hạn, Basic `TranGoi.macDinh`) và **`TranGoi.tuJson(khiThieu:)`** — thân
    spec mục 6 chỉ nói "mặc định".
-5. **`tranHieuLuc(goi, now)` là cửa đọc trần duy nhất** (spec không đặt tên): `conTaoDuoc`, `redirectTaoTheoGoi`, câu màn Nâng cấp, thẻ Gói
-   đều gọi nó — đọc `goi.tran` thô là G109.
+5. **`tranHieuLuc(goi, now)` là cửa đọc trần duy nhất** (spec không đặt tên): `conTaoDuoc`, `redirectTaoTheoGoi`, câu màn Nâng cấp, thẻ Gói,
+   và từ đợt sửa cuối `dacQuyenPremium` (18) đều gọi nó — đọc `goi.tran` thô là G109.
 6. **Hai băng khoá AI** (Task 11): màn Trợ lý AI và ô Nhập nhanh có biến thể tạm ngừng riêng (`lyDoKhoa(tamNgung:)`, `DongKhoa(tamNgung)`).
 7. **Công tắc nhắc đẩy của form hoá đơn không khoá** (kết luận 9 kế hoạch): chỉ chip *Nhắc trước* khoá; công tắc ấy vẫn mở (ca canh Task 9).
 8. **`account.permissions_updated` đã nối sẵn** (kết luận 1): không thêm sự kiện — `RealtimeEvent.taiKhoanNangCap` → `lamMoi` đã có từ 2026-10-08.
@@ -202,9 +210,19 @@ Mỗi mục: *người dùng / người điều phối chốt 2026-10-27 phiên 
     ngoài chữ spec mục 3 "dòng nhịp chi → dòng khoá".
 16. **Ô nhập Trợ lý AI / Nhập nhanh khi tạm ngừng** có hint *"Đang tạm ngừng"* (`kTheKhoaTamNgung`) thay *"Tính năng Premium"* / *"Chỉ Premium"*;
     băng Trợ lý AI tạm ngừng dùng icon `smart_toy_outlined` theo Stitch khối 6 (soát Task 11). Kèm lệch Stitch có chủ ý ở `PREMIUM_FEATURE.md` 8.6.
-17. **API chưa có chỗ gọi trong `lib/`** (đo 2026-10-28, ghi nhận — không gỡ ở task tài liệu): `trangThaiQuyenDoc` (`co_quyen.dart:43`, để dành cho chỗ
-    đọc ba trạng thái ngoài các widget khoá hiện có) và tham số `cauTamNgung` của `DongKhoaQuyen` (có ca canh) — người điều phối quyết gỡ hay giữ ở
-    review toàn nhánh. `kCongTacCanPremium` **có** chỗ gọi (`the_khoa_quyen.dart:196`).
+17. **API 0 chỗ gọi — giải quyết ở đợt sửa cuối** (review toàn nhánh đảo phán quyết "ghi, không gỡ" của Task 12, luật *"không ship API 0 chỗ
+    gọi"*): `trangThaiQuyenDoc` (`co_quyen.dart`) nay **có** chỗ gọi — hai getter tạm ngừng `_tamNgungAi` (`ai_chat_page.dart`) và
+    `_tamNgungNhapNhanh` (`add_transaction_page.dart`) thôi chép `try` / `catch`; tham số `cauTamNgung` của `DongKhoaQuyen` **đã gỡ** cùng ca
+    canh (tạm ngừng luôn `cauDongKhoaTamNgung` — đúng Stitch `02c0d881…` khối 2). Câu dòng khoá chi bất thường (*"Có khoản chi bất thường kỳ
+    này — dành cho Premium"*) dời từ `khoi_tong.dart` vào `cau_quyen.dart` (hằng `kDongKhoaChiBatThuong`, ca từng ký tự) — mục 4 *"mọi câu ở
+    MỘT chỗ"*. `kCongTacCanPremium` **có** chỗ gọi (`the_khoa_quyen.dart`).
+18. **`dacQuyenPremium(goi, now)` đọc bảng của gói đang hiệu lực** (review toàn nhánh I1): thân mục 2 chỉ tả danh sách cho Basic (cột Premium
+    server gửi). Bản trước tách theo luật cũ *"bảng chỉ tin khi là của Basic"* (`!laPremium(nhanLuc)`), nên người xem **Premium còn hạn** luôn
+    thấy danh sách mặc định — màn mở đầu *"Gói Premium hiện cho tạo tối đa 10 ví."* mà danh sách ✓ ngay dưới nói *"Không giới hạn ví"*, và
+    Trợ lý AI đang tạm ngừng vẫn được kể là đặc quyền. Nay: Premium còn hạn ∧ `bangDungDuoc` → bảng đã lưu CHÍNH LÀ cột Premium (trần qua
+    `tranHieuLuc` so với `TranGoi.macDinh` → *"Tới 10 ví"*; quyền `false` không kể); Basic bảng dùng được → như cũ (cột Premium server gửi);
+    bảng không dùng được (Premium hết hạn lúc offline, Premium không hạn) → mặc định. Hàm không còn đọc `goi.tran` thô — mọi chỗ đọc trần đi
+    qua `tranHieuLuc` (mục 13 (5)).
 
 ## 9. Kiểm thử (TDD — mọi ca canh thử bằng bản sai có chủ ý và thấy đỏ)
 
@@ -222,6 +240,12 @@ Mỗi mục: *người dùng / người điều phối chốt 2026-10-27 phiên 
 
 Backend + Admin-web trỏ **`PersonFinance` cục bộ** (⚠️ không Supabase dùng chung — ma trận quyền áp cho MỌI tài khoản). Kiểm
 danh tính CSDL trước (*Ghi chú vận hành* `CLAUDE.md`).
+0. **Bước 0 — go / no-go trước phát hành (chỉ đọc, trước mọi bước; kế hoạch câu chốt 7 + preflight N4)** — trên `PersonFinance` **và**
+   Supabase dùng chung (CSDL người dùng thật chạm), qua Prisma từ `src/Backend` (tên cột đối chiếu `database/31` trước khi chạy):
+   (a) `account_type_permission` cột `Premium` có ô `is_enabled = false` nào thuộc 22 mã `MaQuyen` không — phát hành bản B1 là MỌI người
+   Premium thấy mã ấy *"Đang tạm ngừng"* ngay lượt `lamMoi` đầu; Supabase trả hàng nào → **dừng, hỏi người dùng**; (b) đủ 5 hàng LIMIT của
+   cột Premium (`wallets` · `budgets` · `goals` · `bills` · `custom_categories`) — thiếu một hàng thì kho Premium giữ trần cũ cho ô ấy tới
+   lượt `lamMoi` kế. Không sửa ma trận Supabase.
 1. Tài khoản Premium: admin tắt *Xuất báo cáo* ở cột Premium → sau tín hiệu socket, Phân tích → Xuất báo cáo hiện *"đang tạm
    ngừng"*, không nút mua.
 2. Đặt trần Premium ví = số đang có → tạo ví → màn Nâng cấp *"Gói Premium hiện cho tạo tối đa N ví."*

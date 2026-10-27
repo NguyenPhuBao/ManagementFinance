@@ -622,7 +622,7 @@ src/Backend/
 Spec `docs/superpowers/specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md` (chỗ mã khác bản viết = mục 13), tài liệu
 `PREMIUM_FEATURE.md` mục 8 (8.1 chốt 6–7, 8.2 bảng 22 mã, 8.5 bẫy 7–13, 8.6 Stitch `02c0d881…`, 8.8 trạng thái), G109 ở
 `CLIENT_APP_KNOWN_GAPS.md`, thông báo `NOTIFICATION_FEATURE.md` 5m, đơn backend **CAN-LAM 55** (hợp đồng + đính chính `4_TRU_COT.md`).
-✅ **Mã xong Task 1–11** bằng agent con (Fable preflight, Sonnet thực thi, Opus soát); 🚧 **chưa nghiệm thu máy thật** (Task 13, spec mục
+✅ **Mã xong Task 1–11 + đợt sửa cuối sau review toàn nhánh** bằng agent con (Fable preflight, Sonnet thực thi, Opus soát); 🚧 **chưa nghiệm thu máy thật** (Task 13, spec mục
 10 — backend + Admin-web trỏ `PersonFinance` cục bộ, không Supabase dùng chung); schema vẫn **v31**, 0 migration. **Chưa push.**
 
 - **Phạm vi:** Premium cũng theo bảng quyền (`trangThaiQuyen` ba trạng thái `mo` / `canPremium` / `tamNgung`; `duocDung` là vế `bool`);
@@ -632,17 +632,27 @@ Spec `docs/superpowers/specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-desig
 - **Commit** (Task 1–11, dải `e5251822..6cbff979` = **18** commit đếm bằng `git log 2f70e202..HEAD`, kể cả vòng sửa và Task 8b): Task 1 `e5251822` +
   `6f21005d` · Task 2 `222d55bf` · Task 3 `f4d35331` · Task 4 `93d6ac70` + `b80d94b4` · Task 6 `97357a0b` + `d885e16d` · Task 7 `519ed78c` +
   `a282ae6c` · Task 8 `3b85811b` + `85de7df0` · Task 8b `ae816d42` · Task 9 `38989037` + `47f54c30` · Task 10 `ccb564bb` · Task 11 `f68d8738` +
-  `6cbff979`; Task 5 = hỏi người dùng (không mã), Task 12 = commit tài liệu này.
-- **Bảy câu chốt phiên 17** (người dùng / người điều phối): (1) Premium cũng theo bảng, *tạm ngừng* không mời mua · (2) bảng *Câu chữ chốt*
-  duyệt nguyên bảng · (3) đặc quyền Premium kể *"Tới N ví"* chỉ khi lớn hơn trần Basic · (4) giữ tên 11 mã · (5) Premium không hạn giữ hành vi cũ tới
-  B4 (`bangDungDuoc`) · (6) che chip *Tổng số dư* ở Nhận xét Trang chủ khi `net_worth_overview` khoá · (7) nghiệm thu thêm bước nhắc trước hạn hoá
-  đơn + hết hạn lúc offline (G109).
-- **Số đo (2026-10-28, sau Task 11, trước commit tài liệu):** `flutter test` **8349 pass / 10 skip** (+92 so với mốc 8257), `flutter analyze` **20**.
+  `6cbff979`; Task 5 = hỏi người dùng (không mã), Task 12 `8772a902` (tài liệu); **đợt sửa cuối** sau review toàn nhánh + soát Task 12: `457381c6`
+  (mã) + commit tài liệu này.
+- **Tám câu chốt phiên 17** (mục *Đã chốt* của kế hoạch — tệp kế hoạch gitignore): (1) Premium không hạn giữ hành vi trước B1 tới B4 — spec mục 13
+  (1) · (2) quyền nhắc đổi → `resync` thường, không `datLai` — 13 (2) · (3) bỏ `Vuot.laPremium` — 13 (3) · (4) hai băng khoá AI tạm ngừng trong phạm
+  vi B1 (Task 11) — 13 (6) · (5) công tắc *"Bật nhắc nhở thông báo đẩy"* form hoá đơn để mở, chỉ khoá chip *Nhắc trước* — 13 (7) · (6) che chip *Tổng
+  số dư* ở Nhận xét Trang chủ khi `net_worth_overview` khoá (Task 8b) — 13 (9) · (7) ma trận cột Premium đang chạy có ô `false` nào trong 22 mã →
+  **Task 13 Bước 0**, trả lời trước khi phát hành — spec mục 10 bước 0 · (8) tổng tài sản còn ở Trợ lý AI + Nhận xét Quản lý ví, chỉ che Trang chủ —
+  spec mục 8. Người dùng chốt thêm: spec mục 1 hàng 10–12 (phiên 17: *"Tới N ví"*, giữ tên 11 mã, hai bước nghiệm thu) · Task 5 phiên 18 (Stitch
+  `02c0d881…` đủ sáu khối, bảng *Câu chữ chốt* duyệt nguyên bảng).
+- **Số đo (2026-10-28, sau đợt sửa cuối):** `flutter test` **8354 pass / 10 skip** (+97 so với mốc 8257; sau Task 11 là 8349), `flutter analyze` **20**.
   Giữ số: G109 đã dùng, G110 đã mở, kế tiếp **G111**; quét kế tiếp **41**; đơn kế tiếp **56**.
-- **Giới hạn / việc mở:** nghiệm thu máy thật Task 13 chưa làm; A1 / A2 / A3 chờ backend (chưa có `premiumFeatures` thì Basic thấy khoá *cần Premium*);
-  `trangThaiQuyenDoc` và tham số `cauTamNgung` của `DongKhoaQuyen` 0 chỗ gọi `lib/` (chờ quyết định gỡ / giữ ở review toàn nhánh); (P-N5) `noiKhiQuyenDoi`
-  kích `resync` song song lượt khôi phục của scanner (nhật ký B5a có thể hai dòng `dat_lich`); gói số bậc 1 Trợ lý AI + gói Ví vẫn mang tổng tài sản khi
-  `net_worth_overview` khoá; lệch Stitch có chủ ý ở `PREMIUM_FEATURE.md` 8.6 (đối chiếu bằng mắt ở Task 13).
+- **Đợt sửa cuối (`457381c6`):** `dacQuyenPremium(goi, now)` — người xem Premium còn hạn thấy cột Premium (*"Tới 10 ví"*, quyền tạm ngừng không kể;
+  spec mục 13 (18)); `trangThaiQuyenDoc` thay `try` / `catch` ở hai getter tạm ngừng, gỡ `cauTamNgung`, câu khoá chi bất thường vào `cau_quyen.dart`
+  (13 (17)); hộp *"Bắt đầu vòng mới?"* không khuyên *"Rút khỏi mục tiêu"* khi `goal_deposit_withdraw` khoá; khối Nhận xét Trang chủ đọc quyền
+  trong `Builder` riêng (hết dựng lại cả `HomePage` + tạo lại stream Drift mỗi lần `GoiCubit` phát).
+- **Giới hạn / việc mở:** ⚠️ **Task 13 Bước 0 (go / no-go trước phát hành, chỉ đọc)** — cột Premium của ma trận đang chạy (`PersonFinance` và Supabase
+  dùng chung) có ô `false` nào trong 22 mã (có → mọi người Premium thấy mã ấy *"Đang tạm ngừng"*: dừng, hỏi người dùng) và đủ 5 hàng LIMIT (spec mục
+  10 bước 0); nghiệm thu máy thật Task 13 chưa làm; A1 / A2 / A3 chờ backend (chưa có `premiumFeatures` thì Basic thấy khoá *cần Premium*); (P-N5)
+  `noiKhiQuyenDoi` kích `resync` song song lượt khôi phục của scanner (nhật ký B5a có thể hai dòng `dat_lich`) + cuộc đua lúc đăng xuất (review M1 —
+  `resync` lịch của tài khoản vừa đăng xuất; không cờ "đang chạy" công khai, không sửa bằng mã — spec mục 8); gói số bậc 1 Trợ lý AI + gói Ví vẫn mang
+  tổng tài sản khi `net_worth_overview` khoá; lệch Stitch có chủ ý ở `PREMIUM_FEATURE.md` 8.6 (đối chiếu bằng mắt ở Task 13).
 - `main` PR #168 (`7b56d822`) vẫn **chưa gộp**.
 
 ### 🗂️ Danh mục mặc định theo thao tác Admin-web (2026-10-27)
