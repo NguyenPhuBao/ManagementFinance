@@ -66,7 +66,7 @@ class ApDuLieuKeoVe {
   final _biTuChoi = ValueNotifier<bool>(false);
 
   /// Thay đổi khuôn của lượt kéo GẦN NHẤT (spec 2026-10-27 mục 5) — `SyncEngine` chuyển cho cổng `sauKeoVe`. Đặt lại đầu
-  /// mỗi [pullFromBackend]; lượt hỏng để rỗng (cổng chỉ chạy khi kéo xong).
+  /// mỗi [pullFromBackend]; lượt hỏng TRƯỚC bước danh mục để rỗng; hỏng SAU bước ấy thì danh sách đã có nhưng cổng không chạy (cổng chỉ chạy khi kéo xong) — khuôn đã ghi đè nên lần lan truyền ấy mất.
   List<ThayDoiKhuon> get thayDoiKhuonLuotCuoi => _thayDoiKhuon;
   List<ThayDoiKhuon> _thayDoiKhuon = const [];
 
@@ -113,7 +113,8 @@ class ApDuLieuKeoVe {
     final allWallets = await _db.walletDao.getAll(accountId);
     final isLocalDbEmpty = allWallets.isEmpty;
 
-    final since = (isLocalDbEmpty || _lastPullTime == null)
+    final keoToanBo = isLocalDbEmpty || _lastPullTime == null;
+    final since = keoToanBo
         ? '1970-01-01T00:00:00.000Z'
         : _lastPullTime!.toUtc().toIso8601String();
 
@@ -256,9 +257,12 @@ class ApDuLieuKeoVe {
                 cu: existingLocal,
                 moi: companion,
                 laKhuonSong: doiSangBool(c['is_default']) && c['delete_at'] == null,
-                tuKhoaCu: existingLocal?.isDefault == true
-                    ? await _db.categoryDao.getKeywords(accountId, catUuid)
-                    : const <String>[],
+                // Lượt kéo TOÀN BỘ không có trạng thái cũ của tài khoản này để so từ khoá: hàng khuôn (idaccount 0) dùng
+                // chung cả máy và `purgeDataForOtherAccounts` giữ nó, còn từ khoá lưu THEO tài khoản và bị dọn khi đổi
+                // tài khoản trên cùng máy — so sẽ sinh thay đổi từ khoá giả. Tên / biểu tượng của khuôn thì vẫn so.
+                tuKhoaCu: (keoToanBo || existingLocal?.isDefault != true)
+                    ? tuKhoa
+                    : await _db.categoryDao.getKeywords(accountId, catUuid),
                 tuKhoaMoi: tuKhoa,
               );
               if (doi != null) thayDoi.add(doi);

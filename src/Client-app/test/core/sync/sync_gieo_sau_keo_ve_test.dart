@@ -37,7 +37,8 @@ class _Online implements Connectivity {
 /// Mỗi lượt `/sync/pull` lấy phần tử kế của [keoVe] (hết thì lặp phần tử cuối): `null` = server trả 500 (lượt kéo
 /// hỏng — `pullFromBackend` nuốt lỗi), danh sách = các hàng danh mục trả về. Ghi `pull` / `push` vào [nhatKy].
 class _Adapter implements HttpClientAdapter {
-  _Adapter(this.keoVe, this.nhatKy, {this.khiKeo});
+  _Adapter(this.keoVe, this.nhatKy, {this.khiKeo, this.coVi = false});
+  final bool coVi;
   final List<List<Map<String, dynamic>>?> keoVe;
   final List<String> nhatKy;
   final void Function()? khiKeo;
@@ -54,7 +55,21 @@ class _Adapter implements HttpClientAdapter {
       final lo = keoVe[_luot < keoVe.length ? _luot : keoVe.length - 1];
       _luot++;
       if (lo == null) return ResponseBody.fromString('{}', 500, headers: json);
-      return ResponseBody.fromString(jsonEncode({'data': {'categories': lo}}), 200, headers: json);
+      return ResponseBody.fromString(jsonEncode({
+        'data': {
+          'categories': lo,
+          if (coVi)
+            'wallets': [
+              {
+                'idwallet': 'cccccccc-0000-4000-8000-000000000001',
+                'idaccount': 7,
+                'name': 'Ví thử',
+                'balance': 0,
+                'update_at': '2026-10-01T00:00:00.000Z',
+              }
+            ],
+        }
+      }), 200, headers: json);
     }
     nhatKy.add('push');
     final ops = (o.data as Map<String, dynamic>)['operations'] as List<dynamic>;
@@ -123,9 +138,10 @@ void main() {
     List<List<Map<String, dynamic>>?> keoVe, {
     ViecSauKeoVe? sauKeoVe,
     void Function()? khiKeo,
+    bool coVi = false,
   }) {
     final e = _DemHen(
-      dioClient: _Client(_Adapter(keoVe, nhatKy, khiKeo: khiKeo)),
+      dioClient: _Client(_Adapter(keoVe, nhatKy, khiKeo: khiKeo, coVi: coVi)),
       db: db,
       connectivity: _Online(),
       sauKeoVe: sauKeoVe,
@@ -248,25 +264,25 @@ void main() {
     });
     await e.start(idaccount: acc);
     await e.syncNow();
-    expect(nhan.last, isEmpty);
+    expect(nhan.last, isEmpty, reason: 'Cùng tên, biểu tượng, từ khoá — không có gì để lan truyền.');
   });
 
   test('thêm từ khoá ở khuôn → ThayDoiKhuon mang tập cũ / mới', () async {
     final nhan = <List<ThayDoiKhuon>>[];
-    final e = dung([[khuon(keyword: 'an uong')], [khuon(keyword: 'an uong, quan an')]], sauKeoVe: (_, doi) async {
+    final e = dung([[khuon(keyword: 'an uong')], [khuon(keyword: 'an uong, quan an')]], coVi: true, sauKeoVe: (_, doi) async {
       nhan.add(doi);
       return 0;
     });
     await e.start(idaccount: acc);
     await e.syncNow();
     final d = nhan.last.single;
-    expect(d.tuKhoaCu, ['an uong']);
+    expect(d.tuKhoaCu, ['an uong'], reason: 'Tập cũ đọc từ máy (lượt có ví → kéo tăng dần).');
     expect(d.tuKhoaMoi, ['an uong', 'quan an']);
   });
 
   test('khuôn trên máy CHƯA có từ khoá, bản về có → tuKhoaCu rỗng (đọc TRƯỚC khi gieo của chính lượt ấy)', () async {
     final nhan = <List<ThayDoiKhuon>>[];
-    final e = dung([[khuon()], [khuon(keyword: 'quan an')]], sauKeoVe: (_, doi) async {
+    final e = dung([[khuon()], [khuon(keyword: 'quan an')]], coVi: true, sauKeoVe: (_, doi) async {
       nhan.add(doi);
       return 0;
     });
@@ -287,6 +303,34 @@ void main() {
     });
     await e.start(idaccount: acc);
     await e.syncNow();
-    expect(nhan.last, isEmpty);
+    expect(nhan.last, isEmpty, reason: 'Khuôn bị xoá: luật ẩn lo phần ấy, không lan truyền đổi tên.');
+  });
+
+  test('lượt kéo TOÀN BỘ (dữ liệu tài khoản bị dọn, khuôn còn trên máy) → không có ThayDoiKhuon từ khoá', () async {
+    final nhan = <List<ThayDoiKhuon>>[];
+    final e = dung([[khuon(keyword: 'an uong')], [khuon(keyword: 'an uong')]], sauKeoVe: (_, doi) async {
+      nhan.add(doi);
+      return 0;
+    });
+    await e.start(idaccount: acc);
+    await (db.delete(db.categoryKeywords)..where((t) => t.idaccount.equals(acc))).go(); // mô phỏng purge
+    await e.syncNow();
+    expect(nhan.last, isEmpty,
+        reason: 'Đổi tài khoản trên cùng máy: khuôn ở lại, từ khoá của tài khoản bị dọn — so từ khoá sẽ sinh thay đổi giả '
+            'và lan truyền lại những từ khoá người dùng đã xoá.');
+  });
+
+  test('lượt kéo toàn bộ vẫn ghi đổi TÊN', () async {
+    final nhan = <List<ThayDoiKhuon>>[];
+    final e = dung([[khuon(keyword: 'an uong')], [khuon(ten: 'Ăn ngoài', keyword: 'an uong')]],
+        sauKeoVe: (_, doi) async {
+      nhan.add(doi);
+      return 0;
+    });
+    await e.start(idaccount: acc);
+    await e.syncNow();
+    final d = nhan.last.single;
+    expect(d.tenMoi, 'Ăn ngoài', reason: 'Hàng khuôn dùng chung cả máy — phép so tên đúng ở mọi lượt.');
+    expect(d.tuKhoaCu, d.tuKhoaMoi);
   });
 }
