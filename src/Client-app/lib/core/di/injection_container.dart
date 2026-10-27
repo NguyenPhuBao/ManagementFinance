@@ -119,6 +119,7 @@ import '../../features/bill/data/so_ngay_nhac_nguon.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
 import '../../features/category/data/repositories/category_management_repository_impl.dart';
 import '../../features/category/application/default_category_seeder.dart';
+import '../../features/category/application/lan_truyen_khuon.dart';
 import '../../features/category/application/personal_default_categories.dart';
 import '../../features/category/domain/category_suggestion_engine.dart';
 import '../../features/category/data/gan_danh_muc_nguon.dart';
@@ -210,7 +211,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         FlutterSecureStorage(),
       ),
       // Quy tắc 8: bộ gieo danh mục mặc định chạy sau MỌI lượt kéo về thành công — cả lượt nền (`syncMotLuot`).
-      sauKeoVe: (id, _) => sl<DefaultCategorySeeder>().seedForAccount(id),
+      // Quy tắc 8 + spec 2026-10-27 mục 5: sau MỌI lượt kéo về thành công — lan truyền sửa khuôn TRƯỚC, gieo bản sao SAU.
+      sauKeoVe: (id, thayDoi) => viecSauKeoVeDanhMuc(sl<LanTruyenKhuon>(), sl<DefaultCategorySeeder>(), id, thayDoi),
       // G89: lượt bị máy chủ chặn (bảo trì / phong toả) không tính là lượt hỏng, hẹn thử lại đúng mốc.
       trangThaiMayChu: sl<TrangThaiMayChu>(),
     ),
@@ -312,6 +314,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<DefaultCategorySeeder>(
     () => DefaultCategorySeeder(db: sl()),
   );
+  // Spec 2026-10-27 mục 5: Admin-web sửa danh mục mặc định → bản sao đổi theo; chạy trong cổng sauKeoVe, trước bộ tạo bản sao.
+  sl.registerLazySingleton<LanTruyenKhuon>(() => LanTruyenKhuon(db: sl()));
   sl.registerLazySingleton<PersonalDefaultCategories>(
     () => PersonalDefaultCategories(db: sl()),
   );
