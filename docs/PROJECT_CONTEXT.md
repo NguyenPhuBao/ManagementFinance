@@ -658,6 +658,10 @@ Thi công bằng agent con (Sonnet thực thi, Opus soát), Task 1–8 mã + Tas
   mã, nghiệm thu thêm bước nhắc trước hạn hoá đơn + hết hạn lúc offline G109). Kế hoạch `docs/superpowers/plans/2026-10-27-phan-quyen-cot-premium-va-cong-tac.md`
   (gitignore, Task 0–13 + 8b, mục *Đã chốt* 8 điểm — trong đó **che chip "Tổng số dư"** ở Nhận xét Trang chủ khi
   `net_worth_overview` khoá, Trợ lý AI + Quản lý ví không đụng). Chưa preflight, chưa gửi Stitch (Task 0), chưa thi công.
+- **B1 bắt đầu thi công (agent con, cuối phiên):** Task 0 gửi yêu cầu Stitch biến thể *"Đang tạm ngừng"* (trả `timeout`, không
+  gửi lại — Task 5 hỏi người dùng); workspace SDD `.superpowers/sdd/2026-10-27-phan-quyen-cot-premium-va-cong-tac/`; preflight
+  Fable **0 Chặn · 0 Sai im lặng · 12 Nhỏ** (chạy thử nguyên văn Task 1–4 xanh, ca G109 đỏ trên mã cũ), phán quyết ở sổ.
+  **Dừng trước Task 1** theo yêu cầu người dùng.
 - `main` có PR #168 (`7b56d822`) **chưa gộp** (gia đình nền móng + đơn 54; README `CAN-LAM/` sẽ xung đột). Chưa push.
 - Giữ số: **G109** (B1), **G110** đã mở, kế tiếp **G111**; quét kế tiếp **41**; đơn kế tiếp **56**.
 
