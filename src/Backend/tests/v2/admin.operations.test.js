@@ -71,7 +71,7 @@ describe('Admin Operations Suite v2 — Privacy, Lifecycle & Safety Constraints'
 
     it('1.3. Chặn đổi tên danh mục hệ thống trùng với danh mục hệ thống khác đã có', async () => {
       const origFindUnique = prisma.category.findUnique;
-      const origFindFirst = prisma.category.findFirst;
+      const origFindMany = prisma.category.findMany;
 
       prisma.category.findUnique = async () => ({
         idcategory: 'sys-cat-1',
@@ -81,11 +81,13 @@ describe('Admin Operations Suite v2 — Privacy, Lifecycle & Safety Constraints'
       });
 
       // Giả lập danh mục "Mua sắm" đã tồn tại
-      prisma.category.findFirst = async () => ({
-        idcategory: 'sys-cat-2',
-        name_category: 'Mua sắm',
-        is_default: true,
-      });
+      prisma.category.findMany = async () => [
+        {
+          idcategory: 'sys-cat-2',
+          name_category: 'Mua sắm',
+          is_default: true,
+        },
+      ];
 
       try {
         await assert.rejects(
@@ -93,14 +95,14 @@ describe('Admin Operations Suite v2 — Privacy, Lifecycle & Safety Constraints'
             await adminService.updateCategory('sys-cat-1', { name: 'Mua sắm' }, 1);
           },
           (err) => {
-            assert.strictEqual(err.statusCode, 400);
+            assert.strictEqual(err.statusCode, 409, 'Trùng tên danh mục phải trả về mã 409 Conflict');
             assert.ok(err.message.includes('đã tồn tại trong hệ thống. Không được phép đổi tên trùng'));
             return true;
           }
         );
       } finally {
         prisma.category.findUnique = origFindUnique;
-        prisma.category.findFirst = origFindFirst;
+        prisma.category.findMany = origFindMany;
       }
     });
 
@@ -205,24 +207,28 @@ describe('Admin Operations Suite v2 — Privacy, Lifecycle & Safety Constraints'
     });
 
     it('1.7. [Tầng 2 - DB Impact] addCategory khôi phục danh mục đã xóa mềm: bảo toàn 100% bộ từ khóa cũ nếu không truyền keyword mới', async () => {
-      const origFindFirst = prisma.category.findFirst;
+      const origFindMany = prisma.category.findMany;
       const origUpdate = prisma.category.update;
       let capturedRestoreData = null;
 
-      // Giả lập danh mục cũ đã bị xóa mềm và có bộ từ khóa AI
-      prisma.category.findFirst = async ({ where }) => {
-        if (where.delete_at && where.delete_at.not === null) {
-          return {
-            idcategory: 'soft-del-1',
-            name_category: 'Xăng xe',
-            classify: 'Chi',
-            is_default: true,
-            keyword: 'xang, dau, petrolimex, ron95',
-            icon: 'local_gas_station',
-            delete_at: new Date('2026-10-10'),
-          };
+      prisma.category.findMany = async ({ where }) => {
+        if (where && where.delete_at === null) {
+          return []; // Không có active trùng tên
         }
-        return null; // Không có danh mục active trùng tên
+        if (where && where.delete_at && typeof where.delete_at === 'object' && 'not' in where.delete_at) {
+          return [
+            {
+              idcategory: 'soft-del-1',
+              name_category: 'Xăng xe',
+              classify: 'Chi',
+              is_default: true,
+              keyword: 'xang, dau, petrolimex, ron95',
+              icon: 'local_gas_station',
+              delete_at: new Date('2026-10-10'),
+            },
+          ];
+        }
+        return [];
       };
 
       prisma.category.update = async ({ where, data }) => {
@@ -248,13 +254,14 @@ describe('Admin Operations Suite v2 — Privacy, Lifecycle & Safety Constraints'
         );
         assert.strictEqual(result.keyword, 'xang, dau, petrolimex, ron95');
       } finally {
-        prisma.category.findFirst = origFindFirst;
+        prisma.category.findMany = origFindMany;
         prisma.category.update = origUpdate;
       }
     });
 
     it('1.8. [Tầng 2 - DB Impact] restoreCategory khôi phục danh mục trực tiếp theo ID: set delete_at = null, cập nhật server_update_at', async () => {
       const origFindUnique = prisma.category.findUnique;
+      const origFindMany = prisma.category.findMany;
       const origRestore = adminRepository.restoreCategory;
       let restoredCalledWith = null;
 
@@ -271,6 +278,9 @@ describe('Admin Operations Suite v2 — Privacy, Lifecycle & Safety Constraints'
         }
         return null;
       };
+
+      // Giả lập không có danh mục active nào khác tên 'Mua sắm'
+      prisma.category.findMany = async () => [];
 
       adminRepository.restoreCategory = async (idcategory) => {
         restoredCalledWith = idcategory;
@@ -290,6 +300,157 @@ describe('Admin Operations Suite v2 — Privacy, Lifecycle & Safety Constraints'
         assert.strictEqual(result.keyword, 'shopee, lazada, tiki', 'Bộ từ khóa được bảo toàn');
       } finally {
         prisma.category.findUnique = origFindUnique;
+        prisma.category.findMany = origFindMany;
+        adminRepository.restoreCategory = origRestore;
+      }
+    });
+
+    it('1.9. [Đơn 54 - Tầng 1 & 2] restoreCategory: Chặn khôi phục khi đã có danh mục hệ thống sống cùng tên (bất kể hoa/thường, khoảng trắng)', async () => {
+      const origFindUnique = prisma.category.findUnique;
+      const origFindMany = prisma.category.findMany;
+      const origRestore = adminRepository.restoreCategory;
+      let repoRestoreCalled = false;
+
+      prisma.category.findUnique = async ({ where }) => {
+        if (where.idcategory === 'cat-del-tra-no') {
+          return {
+            idcategory: 'cat-del-tra-no',
+            name_category: 'Trả nợ',
+            classify: 'Vay/no',
+            is_default: true,
+            delete_at: new Date('2026-09-01'),
+          };
+        }
+        return null;
+      };
+
+      // Đang có danh mục hệ thống SỐNG tên "Trả   nợ" (2 khoảng trắng, chữ hoa/thường)
+      prisma.category.findMany = async () => [
+        {
+          idcategory: 'cat-live-tra-no',
+          name_category: 'Trả   nợ',
+          is_default: true,
+          delete_at: null,
+        },
+      ];
+
+      adminRepository.restoreCategory = async () => {
+        repoRestoreCalled = true;
+      };
+
+      try {
+        await assert.rejects(
+          async () => {
+            await adminService.restoreCategory('cat-del-tra-no');
+          },
+          (err) => {
+            assert.strictEqual(err.statusCode, 409, 'Phải trả về HTTP 409 Conflict');
+            assert.ok(
+              err.message.includes('đang hoạt động. Vui lòng đổi tên một trong hai trước khi khôi phục'),
+              'Thông điệp lỗi nghiệp vụ phải rõ ràng, hướng dẫn admin đổi tên'
+            );
+            return true;
+          }
+        );
+
+        // Tầng 2: Nghiệp vụ & CSDL không bị gỡ xóa lén lút
+        assert.strictEqual(repoRestoreCalled, false, 'TUYỆT ĐỐI KHÔNG được gọi repo gỡ cờ delete_at khi phát hiện trùng tên sống');
+      } finally {
+        prisma.category.findUnique = origFindUnique;
+        prisma.category.findMany = origFindMany;
+        adminRepository.restoreCategory = origRestore;
+      }
+    });
+
+    it('1.10. [Đơn 54 - Tầng 1 & 2] addCategory: Chặn tạo mới khi trùng tên danh mục hệ thống sống bất kể khác nhóm classify', async () => {
+      const origFindMany = prisma.category.findMany;
+      const origCreate = adminRepository.createCategory;
+      let repoCreateCalled = false;
+
+      // Đang có danh mục sống tên 'Trả nợ' thuộc nhóm 'Vay/no'
+      prisma.category.findMany = async ({ where }) => {
+        if (where && where.delete_at === null) {
+          return [
+            {
+              idcategory: 'cat-live-vay',
+              name_category: 'Trả nợ',
+              classify: 'Vay/no',
+              is_default: true,
+              delete_at: null,
+            },
+          ];
+        }
+        return [];
+      };
+
+      adminRepository.createCategory = async () => {
+        repoCreateCalled = true;
+      };
+
+      try {
+        // Admin cố gắng thêm mới danh mục 'Trả nợ' nhưng lại chọn nhóm 'Chi'
+        await assert.rejects(
+          async () => {
+            await adminService.addCategory({
+              name: '  trả   nợ  ', // Test biến thể khoảng trắng & chữ thường
+              classify: 'Chi',
+            }, 1);
+          },
+          (err) => {
+            assert.strictEqual(err.statusCode, 409, 'Bắt buộc trả về HTTP 409 Conflict');
+            assert.ok(
+              err.message.includes('đã tồn tại và đang hoạt động trong hệ thống. Vui lòng chọn tên khác'),
+              'Thông báo nghiệp vụ phải nêu rõ tên đã tồn tại'
+            );
+            return true;
+          }
+        );
+
+        // Tầng 2: CSDL không tạo thêm bản ghi trùng
+        assert.strictEqual(repoCreateCalled, false, 'TUYỆT ĐỐI KHÔNG tạo bản ghi mới khi trùng tên danh mục hệ thống');
+      } finally {
+        prisma.category.findMany = origFindMany;
+        adminRepository.createCategory = origCreate;
+      }
+    });
+
+    it('1.11. [Đơn 54 - Tầng 1 & 2] Chốt chặn an toàn: Ngoại lệ CSDL P2002 tự động chuyển thành HTTP 409 Conflict', async () => {
+      const origFindUnique = prisma.category.findUnique;
+      const origFindMany = prisma.category.findMany;
+      const origRestore = adminRepository.restoreCategory;
+
+      prisma.category.findUnique = async () => ({
+        idcategory: 'cat-p2002-target',
+        name_category: 'Ăn uống',
+        classify: 'Chi',
+        is_default: true,
+        delete_at: new Date('2026-09-01'),
+      });
+
+      // Giả lập lọt qua bước pre-check
+      prisma.category.findMany = async () => [];
+
+      // Khi repo update chạm vào CSDL, CSDL ném lỗi P2002 (Unique constraint failed)
+      adminRepository.restoreCategory = async () => {
+        const p2002Err = new Error('Unique constraint failed on the constraint: uq_category_default_name');
+        p2002Err.code = 'P2002';
+        throw p2002Err;
+      };
+
+      try {
+        await assert.rejects(
+          async () => {
+            await adminService.restoreCategory('cat-p2002-target');
+          },
+          (err) => {
+            assert.strictEqual(err.statusCode, 409, 'P2002 BẮT BUỘC phải chuyển thành 409 Conflict thay vì 500');
+            assert.ok(err.message.includes('đang hoạt động. Vui lòng đổi tên một trong hai trước khi khôi phục'));
+            return true;
+          }
+        );
+      } finally {
+        prisma.category.findUnique = origFindUnique;
+        prisma.category.findMany = origFindMany;
         adminRepository.restoreCategory = origRestore;
       }
     });

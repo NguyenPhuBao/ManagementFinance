@@ -4687,11 +4687,24 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
      - Ma trận đối chiếu hiện trạng và checklist thực thi cho Dev Client-App.
   5. **Cập Nhật 11 Tài Liệu Chức Năng & README.md Tại `docs/Admin-web/`:**
      - Phản ánh toàn bộ các nâng cấp mới nhất: `is_first_login`, `created_by_admin_id`, mã PIN cấp 2, Uptime thực tế, bảng rộng x2, CPU/RAM delta ticks, thiết bị & IP `account_device_history`, khôi phục danh mục kèm keyword AI, Migration 36 (`actual_duration_seconds`), Live timer, AIOps tối giản 4 vector độc lập (bỏ Threat Score), SSE Ping 15s.
+### 4.27. Triển Khai Xây Dựng Tính Năng Gia Đình (Household) Phạm Vi Backend (2026-10-27)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`family_backend_implementation_plan.md`](file:///C:/Users/Tieu%20Bao/.gemini/antigravity-ide/brain/82524dab-6eff-43af-821f-b333ff7a31ed/family_backend_implementation_plan.md) & [`docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md`](docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn diện kế hoạch xây dựng nền móng chức năng Gia đình tại phạm vi Backend (Client-app do thành viên khác đảm nhận):
+  1. *Việc A — Vá an ninh `NOT_OWNER` trong `/sync/push`:* Chặn đứng tình trạng tài khoản khác sửa/xóa bản ghi riêng tư (`idaccount` khác và `idhousehold` là null) ở cả 6 thực thể (`wallet`, `transaction`, `budget`, `bill`, `goal`, `category`). Ném mã lỗi `NOT_OWNER`.
+  2. *Việc B — CSDL Migration 40 & Partial Unique Indexes:* Tạo 3 bảng mới (`household`, `household_member`, `household_invite`), bổ sung cột `Idhousehold` vào 5 bảng thực thể (`wallet`, `transaction`, `budget`, `goal`, `category`). Tạo Partial Unique Indexes bảo vệ Soft-delete, tránh xung đột tên ví/danh mục cá nhân vs ví/danh mục chung của nhà.
+  3. *Việc C — Xây dựng Module `household`:* Hiện thực trọn vẹn 16 Endpoints RESTful (`/api/households`) với mã HTTP chuẩn mực (200, 201, 202, 400, 403, 404, 409, 429), cơ chế Rate Limiting 20 email/24h, mã mời 8 ký tự hạn 48h, chống timing attack dò email (`POST /invites/email` luôn trả `202 Accepted`).
+  4. *Việc D — Chuẩn hóa Sync Engine 2 Chiều & Ma Trận Phân Quyền:*
+     - `/sync/pull`: Lọc bản ghi cá nhân (`idaccount = reqUser AND idhousehold IS NULL`) + bản ghi gia đình mà người dùng đang tham gia (`idhousehold = activeHouseholdId`).
+     - `/sync/push`: Thi hành ma trận phân quyền Vai trò $\times$ Thực thể (`enforceHouseholdPermission` ném `HOUSEHOLD_ROLE_FORBIDDEN` khi Member tạo ví chung/ngân sách chung hoặc sửa giao dịch do người khác ghi; ném `HOUSEHOLD_READ_ONLY` khi nhà bị chuyển sang ReadOnly do hết hạn gói cước; ném `HOUSEHOLD_SCOPE_MISMATCH` khi giao dịch riêng trỏ vào ví chung).
+  5. *Việc E — Phân quyền Gói cước (Premium):* Chỉ tài khoản có quyền `household` (gói Premium) mới được phép tạo nhà mới. Tự động chuyển trạng thái nhà sang `ReadOnly` khi hết hạn.
+  6. *Việc F — Tích hợp Realtime Socket.io:* Phát sóng các sự kiện `household.changed`, `household.invited`, và `sync.completed` tới phòng `household_{id}` và tới từng thành viên.
+  7. *Việc G — Nhân bản 13 Danh mục Mặc định:* Khi tạo nhà mới, hệ thống tự động clone 13 danh mục hệ thống thành danh mục của nhà (`cloneDefaultCategoriesForHousehold`).
 - **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
-  - **Backend Test Suite:** **438/438 tests PASS 100%** (79 suites).
-  - **Data Security Suite:** **13/13 tests PASS 100%** (`test_data_security_encryption_and_masking.js`).
-  - **Admin-web Frontend Build:** `npm run build` hoàn tất sạch sẽ trong 2.89s, 0 lỗi cú pháp/type.
-  - **Zero Regressions:** 100% bảo toàn các luồng vận hành của hệ thống.
+  - **Tầng 1 (API Contract):** `household.api.test.js` — **18/18 tests PASS 100%**.
+  - **Tầng 2 (System Impact & Security):** `household.system_impact.test.js` — **9/9 tests PASS 100%** (chặn NOT_OWNER, ma trận quyền Vai trò $\times$ Thực thể, ReadOnly, Scope Mismatch, Clone 13 danh mục).
+  - **Toàn bộ Test Suite Backend:** **492/492 tests PASS 100%** (79 suites), Zero Regressions.
+  - **DB Guard & Verify Indexes:** 100% Partial Unique Indexes và Triggers CSDL PostgreSQL Supabase Cloud an toàn tuyệt đối.
+
 
 
 
