@@ -42,9 +42,10 @@ class TranGoi {
       };
 
   /// `limits` của server. Ô thiếu / không phải số → [khiThieu] cho ĐÚNG ô ấy (mặc định [macDinh] — trần Basic; cột
-  /// Premium truyền [khongGioiHan]). `null` → không giới hạn (Admin-web tick *∞* hoặc xoá trắng ô số). Số ≤ 0 → **0 = không tạo thêm** (người dùng chốt 2026-10-27): Admin-web bỏ tick *∞* là
-  /// ô về 0 ngay và tự kẹp số âm về 0 — bản cũ đọc 0 là rác, nên ví / ngân sách / mục tiêu về 3 còn hoá đơn / danh
-  /// mục riêng thành KHÔNG giới hạn, ngược hẳn ý admin.
+  /// Premium truyền [khongGioiHan]). `null` → không giới hạn (Admin-web tick *∞* hoặc xoá trắng ô số). Số ≤ 0 → **0 =
+  /// không tạo thêm** (người dùng chốt 2026-10-27): Admin-web bỏ tick *∞* là ô về 0 ngay và tự kẹp số âm về 0 — bản
+  /// cũ đọc 0 là rác, nên ví / ngân sách / mục tiêu về 3 còn hoá đơn / danh mục riêng thành KHÔNG giới hạn, ngược hẳn
+  /// ý admin.
   static TranGoi tuJson(Object? json, {TranGoi khiThieu = macDinh}) {
     if (json is! Map) return khiThieu;
     int? doc(String khoa, int? macDinhO) {

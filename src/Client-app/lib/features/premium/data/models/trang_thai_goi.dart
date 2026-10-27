@@ -128,7 +128,7 @@ Map<String, bool> _docQuyen(Object? raw) =>
     raw is Map ? raw.map((k, v) => MapEntry(k.toString(), v == true)) : const {};
 
 /// `premiumLimits` / kho: không phải Map → `null` (server chưa gửi). ⚠️ Không đưa rác thẳng vào [TranGoi.tuJson] — hàm ấy
-/// trả trần mặc định cho rác, và "chưa gửi" thành "đã gửi".
+/// trả `khiThieu` cho rác, và "chưa gửi" thành "đã gửi".
 TranGoi? _docTranPremium(Object? raw) =>
     raw is Map ? TranGoi.tuJson(raw, khiThieu: TranGoi.khongGioiHan) : null;
 

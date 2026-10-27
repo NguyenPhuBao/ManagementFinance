@@ -181,13 +181,13 @@ void main() {
       final g = trangThaiTuJson({
         'accountType': 'Basic',
         'premiumFeatures': {'export_reports': false, 'ai_assistant': true},
-        'premiumLimits': {'wallets': 10, 'budgets': null, 'goals': 0},
+        'premiumLimits': {'wallets': 10, 'budgets': null, 'bills': 0},
       }, nhanLuc: now);
       expect(g.quyenPremium, {'export_reports': false, 'ai_assistant': true});
       expect(g.tranPremium!.vi, 10);
       expect(g.tranPremium!.nganSach, isNull);
-      expect(g.tranPremium!.mucTieu, 0);
-      expect(g.tranPremium!.hoaDon, isNull, reason: 'ô cột Premium thiếu = không giới hạn, KHÔNG phải trần mặc định');
+      expect(g.tranPremium!.hoaDon, 0, reason: 'số ≤ 0 → 0 = không tạo thêm');
+      expect(g.tranPremium!.mucTieu, isNull, reason: 'thiếu ở cột Premium → không giới hạn, không phải 3 của trần Basic');
     });
 
     test('⭐ vắng / rác → quyenPremium rỗng, tranPremium NULL (chưa gửi — khác "không giới hạn")', () {
@@ -198,7 +198,7 @@ void main() {
           {'accountType': 'Basic', 'premiumFeatures': 'x', 'premiumLimits': 7}, nhanLuc: now);
       expect(rac.quyenPremium, isEmpty);
       expect(rac.tranPremium, isNull,
-          reason: '`TranGoi.tuJson(rác)` trả trần mặc định — đưa thẳng vào là "server chưa gửi" thành "đã gửi 3/3/3".');
+          reason: '`TranGoi.tuJson(rác)` trả trần mặc định — đưa thẳng vào là "server chưa gửi" thành "đã gửi, không giới hạn".');
     });
 
     test('khứ hồi kho giữ quyenPremium / tranPremium, kể cả tranPremium null', () {
