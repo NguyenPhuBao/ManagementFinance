@@ -1,4 +1,4 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (8 mục chờ backend — 43 · 44 · 47 · 48 · 49 · 50 · 52 · 53)
+# Backend & Client — DANH SÁCH CẦN LÀM (9 mục chờ backend — 43 · 44 · 47 · 48 · 49 · 50 · 52 · 53 · 54)
 
 > 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD + CSDL Supabase của `.env`, chỉ
 > `SELECT`): trong 9 đơn backend chuyển sang `DA-XONG/`, **chỉ 45 đạt trọn**; **46, 51** đạt phần chính — giữ ở `DA-XONG/` kèm banner phần dư;
@@ -202,7 +202,7 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **8** mục — đếm bằng `ls` 2026-10-26 sau lượt soát của client: 43, 44, 47, 48, 49, 52 chuyển lại từ `DA-XONG/`; 53 mới; 50 chờ PO)
+## 0. Còn phải làm (Hiện tại: **9** mục — đếm bằng `ls` 2026-10-27: 43, 44, 47, 48, 49, 52 chuyển lại từ `DA-XONG/` 2026-10-26; 53 mới 2026-10-26; 54 mới 2026-10-27; 50 chờ PO)
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
@@ -214,6 +214,7 @@
 | **50** | [GIA_DINH_NEN_MONG.md](./GIA_DINH_NEN_MONG.md) | Backend (tính năng mới) | Chức năng **gia đình** (nhà nhiều người), phần 1 nền móng — người dùng chốt 2026-10-23. **A (cao)** kiểm chủ sở hữu khi sửa / xoá qua `/sync/push` (nhánh sửa chỉ so `update_at`, `softDelete` theo khoá chính) → mã `NOT_OWNER` (client đã xếp `NOT_OWNER` + bốn mã đẩy `HOUSEHOLD_*` vào lỗi vĩnh viễn 2026-10-26). **B (cao)** `database/37_create_household.sql`: `household`, `household_member`, `household_invite`; `Idhousehold INT NULL` cho 5 bảng (không `bill`); chỉ mục trùng tên cá nhân thêm `"Idhousehold" IS NULL`, chỉ mục mới theo nhà; ví của nhà không là ví mặc định. **C (cao)** 12 endpoint `/api/households` (tạo, `me`, mã mời 8 ký tự / 48 giờ / một lần, xem trước, tham gia, đổi vai, chuyển chủ, mời ra, rời, giải tán = xoá mềm). **D (cao)** kéo về `(Idaccount = tôi ∧ Idhousehold trống) ∨ Idhousehold = nhà tôi`; `mapEntityFields` + mọi khối `data` nhận `idhousehold`; mã `HOUSEHOLD_NOT_MEMBER` · `HOUSEHOLD_READ_ONLY` · `HOUSEHOLD_CLOSED` · `HOUSEHOLD_SCOPE_MISMATCH`. **E** khoá `household`, giới hạn `household_members` (server tự thi hành), chủ hết Premium ⇒ `ReadOnly`. **F** `household.changed` + `sync.completed` tới mọi thành viên. **G** sao 13 danh mục mặc định cho nhà. 11 ca kiểm hành vi + câu SQL kiểm. | ⏳ Chờ PO chỉ đạo thời điểm thực thi (backend ghi 2026-10-26) · 🏠 thiết kế đã mở rộng — đọc `docs/Family/00_TONG_QUAN.md` mục 6 trước (banner đầu tệp) · 🔎 soát 2026-10-26: chưa vế nào (0 chữ *household* trong backend, 0 bảng trên CSDL); `36f1ea43` chép y nguyên đơn vào `docs/Family/` |
 | **52** | [GIAI_MA_HONG_TRA_BAN_MA.md](./GIAI_MA_HONG_TRA_BAN_MA.md) | Backend | Phạm vi **hẹp** (vế `/sync/pull` đã đạt — 500 `DECRYPT_FAILED`). Còn: ⚠️ **`encrypt()` giữ nguyên chuỗi `enc:…`** (CAO, cũng ở đơn 53), 500 ở `auth` thiếu `code`, log thiếu bảng + khoá chính, `maskTransactionDescription` / `dedup` nuốt lỗi, việc 2–3 (khoá `PersonFinance`, khoá Render). | 🔁 Chuyển lại 2026-10-26 |
 | **53** | [HOI_QUY_SAU_LUOT_BAO_XONG.md](./HOI_QUY_SAU_LUOT_BAO_XONG.md) | Backend | **Ba hồi quy CAO do lượt sửa 2026-10-26:** (A) `is_deleted: false` ⇒ nhánh sửa ghi `Delete_at = NULL` ⇒ hàng đã xoá **sống lại** khi máy chưa kéo cờ xoá về cập nhật nó (`bc4e4f7f`; xin chỉ áp khi `true`); (B) JIT PayOS Premium vô thời hạn; (C) `encrypt()` + `enc:…` khoá `/sync/pull` / đăng nhập. Mỗi vế có mã, kịch bản, lời xin, ca kiểm. Client không đổi mã. | ⏳ Client đặt 2026-10-26 |
+| **54** | [KHUON_DANH_MUC_ADMIN_KIEM_TRUNG_TEN.md](./KHUON_DANH_MUC_ADMIN_KIEM_TRUNG_TEN.md) | Backend (Admin) | Danh mục hệ thống ở Admin-web. **A** `restoreCategory` không kiểm trùng tên trước khi gỡ xoá → vỡ `uq_category_default_name` (chỉ có tên, đo `pg_indexes`) → `P2002` → **500**; **B** `addCategory` kiểm (tên, loại) trong khi chỉ mục chỉ có tên → 500. Xin: kiểm cùng chuẩn hoá với chỉ mục + bắt `P2002` → 409 có câu. **C** thông báo: client sẽ theo thao tác admin (xoá → ẩn bản sao, khôi phục → hiện, đổi tên / biểu tượng / thêm từ khoá → lan truyền; đổi loại → không) — spec `specs/2026-10-27-danh-muc-mac-dinh-theo-thao-tac-admin-design.md`; xin giữ `/sync/pull` trả cả danh mục hệ thống đã xoá + nâng `Server_update_at`. | ⏳ Client đặt 2026-10-27 |
 
 ---
 
