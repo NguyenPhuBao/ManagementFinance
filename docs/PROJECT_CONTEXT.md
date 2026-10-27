@@ -641,16 +641,19 @@ Thi công bằng agent con (Sonnet thực thi, Opus soát), Task 1–8 mã + Tas
   `1585c30d` · `857687c8` · `0cba3d70` · `c8921faf` · `6d1bdcd8` · `6fa1884d`; soát lại phạm vi hẹp: đạt (0 Critical / Important).
   Số đo: `flutter test` **8257 pass / 10 skip** (+11 so với 8246), analyze **20**. Giữ số: G108, **G109** (B1), **G110** dùng,
   quét kế tiếp 41, đơn kế tiếp 56.
-- **Còn:** **Task 10 — nghiệm thu máy thật (spec mục 9): CHƯA LÀM.** ⚠️ Đừng tạo / xoá khuôn thử trên Supabase
-  dùng chung để nghiệm thu (mọi tài khoản thật phản ứng) — dùng `PersonFinance` cục bộ.
+- ✅ **Task 10 — nghiệm thu Realme 2026-10-27 tối ĐẠT** (spec mục 9.1): tạo khuôn → bản sao; xoá → mất ở mọi bộ chọn, form sửa
+  giữ, tên vẫn tra được, câu *"đang tạm ngừng"*; khôi phục → hiện lại, không bản thứ hai; đổi tên + biểu tượng + từ khoá → bản
+  sao theo; dọn bằng xoá mềm. Thao tác admin qua API backend (Admin-web chưa cài `node_modules`), backend của nhánh (TRƯỚC PR #168).
+  Chưa đo: hai máy cùng tài khoản. `PersonFinance` đo 2026-10-27: 13 khuôn sống + 5 xoá mềm trước lượt (+1 khuôn thử *Thử đổi tên*
+  xoá mềm sau lượt; bản sao ẩn của nó ở lại tài khoản 10). ⚠️ Đừng tạo / xoá khuôn thử trên Supabase dùng chung.
 
 ### 🧭 Phiên 17 (2026-10-27 khuya) — danh mục theo Admin-web Task 7–9 + review toàn nhánh (agent con); B1: spec duyệt + kế hoạch
 
 - **Danh mục theo Admin-web:** Task 7 (`48f720de` + `78afc043` — lượt kéo toàn bộ bỏ so từ khoá khuôn, vì đổi tài khoản trên
   cùng máy), Task 8 (`55b7c39e`), Task 9 tài liệu (`2c5eb48a` `1f0e2b33` `42469cba` `3bb95de2`), review toàn nhánh (Opus) →
   một đợt sửa (`1585c30d..6fa1884d`) → soát lại đạt; chốt tài liệu `3fe6163e`. Người dùng chốt ba luật mới (khối 🗂️ ở trên).
-  **Xong mã + tài liệu; còn Task 10 nghiệm thu máy thật** — nên sau khi gộp `main` PR #168 (đơn 54 sửa Admin-web kiểm trùng
-  tên). Mốc **8257 pass / 10 skip**, analyze 20.
+  **Xong mã + tài liệu + nghiệm thu Realme (Task 10, spec mục 9.1 — đạt; chưa đo hai máy)**; người dùng chọn đo trước khi gộp
+  `main` PR #168. Mốc **8257 pass / 10 skip**, analyze 20.
 - **B1 (phân quyền theo gói — cột Premium + 22 công tắc):** người dùng duyệt bản viết spec (`aec5cea4`: *"Tới N ví"*, giữ tên 11
   mã, nghiệm thu thêm bước nhắc trước hạn hoá đơn + hết hạn lúc offline G109). Kế hoạch `docs/superpowers/plans/2026-10-27-phan-quyen-cot-premium-va-cong-tac.md`
   (gitignore, Task 0–13 + 8b, mục *Đã chốt* 8 điểm — trong đó **che chip "Tổng số dư"** ở Nhận xét Trang chủ khi

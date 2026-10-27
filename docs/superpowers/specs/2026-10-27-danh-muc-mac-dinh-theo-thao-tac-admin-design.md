@@ -1,6 +1,6 @@
 # Danh mục mặc định theo thao tác Admin-web — thiết kế
 
-> **Ngày:** 2026-10-27 (phiên 15, Opus 5.5, inline) · **Trạng thái:** ✅ mã xong 2026-10-27, chờ nghiệm thu máy thật (mục 9)
+> **Ngày:** 2026-10-27 (phiên 15, Opus 5.5, inline) · **Trạng thái:** ✅ mã xong 2026-10-27, ✅ nghiệm thu Realme 2026-10-27 đạt (mục 9.1; bước hai máy chưa đo)
 > **Phạm vi:** chỉ `src/Client-app` (quy tắc 1). Server, Admin-web, `/sync/*` không đổi; không cần đơn backend để làm phần này.
 > **Liên quan:** `2026-09-07-per-account-default-categories-design.md` (bản sao theo tài khoản — spec này mở rộng nó), quy tắc
 > 7–8 `CLAUDE.md`, `docs/CATEGORY_RATIONALE.md`, G16 `CLIENT_APP_KNOWN_GAPS.md`.
@@ -270,6 +270,28 @@ một ngân sách vào bản sao của nó trước. Kiểm danh tính CSDL trư
 3. Admin đổi tên → bản sao đổi tên, không mọc bản thứ hai; đổi biểu tượng → đổi theo; thêm từ khoá → có thêm.
 4. Hai máy cùng tài khoản nếu có (một máy ảo + một máy thật).
 5. Dọn: xoá khuôn thử **mềm** qua Admin-web (quy tắc 5).
+
+### 9.1 Kết quả — Realme RMX2205, 2026-10-27 tối (phiên 17) — ĐẠT bước 1, 2, 3, 5 và bước "tạo khuôn"; bước 4 (hai máy) chưa đo
+
+Bản debug của `6fa1884d` (mã đợt sửa cuối) · `--dart-define=API_BASE_URL=http://127.0.0.1:3000/api` + `adb reverse` · backend
+nhánh này (TRƯỚC `main` PR #168 — đơn 54) chạy bằng biến môi trường trỏ `PersonFinance` + khoá mã hoá dev · tài khoản **10**
+(Premium) · thao tác admin qua **API backend** mà Admin-web gọi (`/api/admin/addcategory` · `deletecategory` · `restorecategory` ·
+`updatecategory`, đăng nhập admin) — Admin-web dev chưa cài `node_modules` nên không chạy giao diện. Kéo về kích bằng tắt / bật
+Wi-Fi (`svc wifi`; `adb reverse` đi cáp nên không mất kết nối) — khởi động lại app thì khoá ứng dụng đòi vân tay. CSDL máy sao lưu
+trước ở `D:\FlowMoney-saoluu\2026-10-27-phien17-truoc-task10\`. `PersonFinance` đo trước lượt: **13 khuôn sống + 5 xoá mềm** (xoá
+2026-09-07, trước mốc — không bản sao nào bị ẩn).
+
+| Bước | Thấy gì | Đánh giá |
+|---|---|---|
+| Admin tạo khuôn *Thử khuôn* (Chi, biểu tượng `school`, từ khoá `thu khuon`) | lượt kéo đầu: tài khoản 10 có bản sao riêng (`ee16a3f3…`, cùng biểu tượng + từ khoá, đã đẩy lên); ghi 1 giao dịch 1.000 đ + 1 hoá đơn + 1 ngân sách 10.000 đ vào bản sao (thẻ *"Chưa đặt ngân sách"* gợi ý sẵn *Thử khuôn ~10.000 đ*), cả ba `synced` | đạt |
+| 1. Admin xoá | khuôn trên máy `deleted_at` 13:58:21 UTC; bản sao trong SQLite không đổi; **mất** ở màn Danh mục, bộ chọn danh mục (Thêm chi), form Thêm hoá đơn, form Tạo ngân sách (đều *Nhà cửa → Y tế*); Sổ giao dịch + thẻ hoá đơn + trang Ngân sách **vẫn hiện tên**; form Sửa hoá đơn / Sửa ngân sách / Sửa giao dịch mở được và giữ *Thử khuôn*; tạo danh mục *Thử khuôn* → *"‘Thử khuôn’ là danh mục hệ thống đang tạm ngừng — hãy đặt tên khác."* | đạt |
+| 2. Admin khôi phục | hiện lại ở màn Danh mục, bộ chọn, form hoá đơn, form ngân sách; **không** mọc bản thứ hai | đạt |
+| 3. Admin đổi tên → *Thử đổi tên*, biểu tượng → `movie`, thêm từ khoá `kiem thu` (một lần sửa) | bản sao đổi cả ba (`kiem thu` + `thu khuon`), đẩy lên server, không bản thứ hai; giao dịch / hoá đơn / ngân sách vẫn gắn | đạt |
+| 4. Hai máy | không có máy thứ hai trong lượt | chưa đo |
+| 5. Dọn | xoá mềm giao dịch / hoá đơn / ngân sách thử qua app; admin xoá mềm khuôn → bản sao *Thử đổi tên* **ẩn** (app không có thao tác xoá danh mục, nên bản sao ở lại server của tài khoản 10 dưới dạng ẩn) | đạt |
+
+⚠️ Chưa đo trên Admin-web sau `main` PR #168 (đơn 54 đổi kiểm trùng tên khi thêm / khôi phục khuôn) — lượt này dùng backend cũ
+của nhánh.
 
 ## 10. Tài liệu phải sửa cùng lượt
 
