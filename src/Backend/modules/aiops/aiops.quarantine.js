@@ -138,7 +138,7 @@ class AIOpsQuarantine {
             unblockReason: 'Tự động mở khóa do hết thời hạn tạm khóa',
           }).catch(() => { });
         }
-        this._syncAccountStatusToDatabase(record.idaccount || record.username, 'Active', null).catch(() => { });
+        this._syncAccountStatusToDatabase(record.idaccount || record.username, 'Active', null, { onlyAIOpsLocked: true }).catch(() => { });
         hasChanged = true;
         logger.info(`[AIOps Quarantine] Tự động mở khóa Tài khoản [${record.username}] do hết thời gian tạm khóa.`);
       }
@@ -150,7 +150,7 @@ class AIOpsQuarantine {
         const dbResult = await this.repository.autoExpireInDatabase();
         const expiredAccounts = dbResult?.expiredAccounts || [];
         for (const acc of expiredAccounts) {
-          await this._syncAccountStatusToDatabase(acc.idaccount || acc.username, 'Active', null);
+          await this._syncAccountStatusToDatabase(acc.idaccount || acc.username, 'Active', null, { onlyAIOpsLocked: true });
           hasChanged = true;
         }
         if ((dbResult?.expiredIps?.length || 0) > 0) {
@@ -307,19 +307,20 @@ class AIOpsQuarantine {
     const pairKey = `${ipHash}:::${cleanUser ? cleanUser.toLowerCase() : 'all'}`;
 
     let record = this._pairs.get(pairKey);
+    const ipDuration = durationMs !== null ? durationMs : this.defaultDurationMs;
+    const ipExpiresAt = now + ipDuration;
+
     if (record) {
       record.hits += 1;
+      // CHÍNH SÁCH AN NINH PO: IP LUÔN LUÔN LÀ TEMPORARY, KHÔNG BAO GIỜ KHÓA VĨNH VIỄN
+      record.ipStatus = 'temporary';
+      record.ipExpiresAt = record.ipExpiresAt ? Math.max(record.ipExpiresAt, ipExpiresAt) : ipExpiresAt;
+
       if (banType === 'permanent') {
-        record.ipStatus = 'permanent';
-        record.ipExpiresAt = null;
         record.accountStatus = 'permanent';
         record.accountExpiresAt = null;
         record.expiresAt = null;
       } else {
-        if (record.ipStatus !== 'permanent') {
-          record.ipExpiresAt = record.ipExpiresAt ? Math.max(record.ipExpiresAt, expiresAt) : expiresAt;
-          record.ipStatus = 'temporary';
-        }
         if (record.accountStatus !== 'permanent') {
           record.accountExpiresAt = record.accountExpiresAt ? Math.max(record.accountExpiresAt, expiresAt) : expiresAt;
           record.accountStatus = 'temporary';
@@ -340,14 +341,14 @@ class AIOpsQuarantine {
         idaccount: idaccount || null,
         username: cleanUser || 'N/A',
         vector: vector || 'auth',
-        ipStatus: banType === 'permanent' ? 'permanent' : 'temporary',
-        ipExpiresAt: banType === 'permanent' ? null : expiresAt,
+        ipStatus: 'temporary', // CHÍNH SÁCH BẤT BIẾN: IP chỉ tạm khóa 4 giờ
+        ipExpiresAt,           // Luôn có thời hạn hết hạn tự động mở khóa
         accountStatus: banType === 'permanent' ? 'permanent' : 'temporary',
         accountExpiresAt: banType === 'permanent' ? null : expiresAt,
         banType,
         reason,
         bannedAt: new Date(now).toISOString(),
-        expiresAt,
+        expiresAt: banType === 'permanent' ? null : Math.max(ipExpiresAt, expiresAt || 0),
         hits: 1,
       };
       this._pairs.set(pairKey, record);
@@ -614,58 +615,58 @@ class AIOpsQuarantine {
   }
 
   /**
-   * Khóa vĩnh viễn IP: Đồng bộ TẤT CẢ các dòng/bản ghi có cùng địa chỉ IP và cập nhật DB
+   * Khóa IP: Áp dụng chính sách an ninh mới của PO — Tuyệt đối không khóa vĩnh viễn IP
+   * Chuyển hóa toàn bộ sang Tạm khóa 4 giờ (4 * 3600 * 1000 ms) để tránh chặn nhầm người dùng mạng CGNAT/4G.
    * @returns {Promise<number>} Số lượng bản ghi đã được cập nhật
    */
   async permanentBanIp(ipHashOrIp, { bannedBy = null } = {}) {
     if (!ipHashOrIp) return 0;
-    let count = 0;
-    for (const [key, record] of this._pairs.entries()) {
-      if (record.ipHash === ipHashOrIp || record.ip === ipHashOrIp) {
-        record.ipStatus = 'permanent';
-        record.ipExpiresAt = null;
-        count += 1;
-      }
-    }
-    for (const [ip, rec] of this._map.entries()) {
-      if (rec.hash === ipHashOrIp || ip === ipHashOrIp) {
-        rec.expiresAt = null;
-      }
-    }
-
-    // Cập nhật CSDL qua repository
-    if (this.repository && typeof this.repository.updateIpStatus === 'function') {
-      try {
-        await this.repository.updateIpStatus({
-          ipHash: ipHashOrIp,
-          status: 'PERMANENT',
-          bannedBy,
-        });
-      } catch (err) {
-        logger.error('[AIOps Quarantine] Lỗi cập nhật status PERMANENT IP trong DB', { error: err.message });
-      }
-    }
-
-    this._emitUpdatedEvent();
-    return count;
+    logger.warn(`[AIOps Quarantine] Chính sách an ninh PO: Chuyển yêu cầu khóa vĩnh viễn IP [${ipHashOrIp}] sang tạm khóa 4 giờ.`);
+    return this.temporaryBlockIp(ipHashOrIp, {
+      durationMs: 4 * 60 * 60 * 1000,
+      blockedBy: bannedBy,
+      reason: 'Admin tạm khóa IP 4 giờ (Chính sách không khóa vĩnh viễn IP)',
+    });
   }
 
   /**
    * Đồng bộ trạng thái tài khoản xuống CSDL bảng account (Prisma)
    * Đảm bảo tính toàn vẹn và tác động thực tế (Tầng 2 System Impact)
    */
-  async _syncAccountStatusToDatabase(usernameOrId, status, reason = null) {
+  async _syncAccountStatusToDatabase(usernameOrId, status, reason = null, options = {}) {
     if (!usernameOrId || usernameOrId === 'all' || usernameOrId === 'N/A') return;
     try {
       const { prisma } = require('../../config/db');
       if (!prisma || !prisma.account || typeof prisma.account.updateMany !== 'function') return;
       const isNum = !isNaN(Number(usernameOrId)) && typeof usernameOrId !== 'boolean';
-      const where = isNum
+      const identifierCondition = isNum
         ? { OR: [{ idaccount: Number(usernameOrId) }, { username: String(usernameOrId).trim() }] }
         : { username: String(usernameOrId).trim() };
 
+      const andConditions = [identifierCondition];
+
+      if (status === 'Active') {
+        // Chỉ mở khóa nếu tài khoản đang Inactive (bảo vệ tuyệt đối PendingDelete và các trạng thái khác)
+        andConditions.push({ status: 'Inactive' });
+
+        // Nếu là quét tự động hết hạn, chỉ mở khóa tài khoản do AIOps/Sentinel khóa, tránh can thiệp khóa do Admin thủ công
+        if (options && options.onlyAIOpsLocked) {
+          andConditions.push({
+            OR: [
+              { reason_inactive: { contains: 'AIOps', mode: 'insensitive' } },
+              { reason_inactive: { contains: 'Cách ly', mode: 'insensitive' } },
+              { reason_inactive: { contains: 'Sentinel', mode: 'insensitive' } },
+              { reason_inactive: null },
+            ],
+          });
+        }
+      } else {
+        // Khi khóa (Inactive): Tuyệt đối không ghi đè nếu tài khoản đang trong quy trình chờ xóa (PendingDelete)
+        andConditions.push({ status: { not: 'PendingDelete' } });
+      }
+
       await prisma.account.updateMany({
-        where,
+        where: { AND: andConditions },
         data: {
           status,
           reason_inactive: status === 'Active' ? null : reason,

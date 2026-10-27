@@ -871,17 +871,18 @@ const AIOpsPage = () => {
     }
   };
 
-  // Xử lý khóa vĩnh viễn IP (Đồng bộ mọi dòng có cùng IP)
+  // Xử lý tạm khóa IP 4 giờ (Chính sách PO: Không khóa vĩnh viễn IP mạng dùng chung CGNAT)
   const handlePermanentBanIp = async (ipHash, maskedIp) => {
-    if (!window.confirm(`Bạn có chắc muốn KHÓA VĨNH VIỄN địa chỉ IP ${maskedIp || ''}? Toàn bộ kết nối từ IP này sẽ bị chặn vĩnh viễn.`)) return;
+    if (!window.confirm(`Bạn có chắc muốn TẠM KHÓA địa chỉ IP ${maskedIp || ''} trong vòng 4 giờ?\n(Hệ thống áp dụng chính sách tạm khóa 4 giờ thay vì khóa vĩnh viễn để bảo vệ người dùng mạng di động/CGNAT).`)) return;
     const actionKey = `ban_ip_${ipHash}`;
     try {
       setQuarantineActionLoading(actionKey);
       await aiopsApi.permanentBanIp({ ipHash });
-      setQuarantineList(prev => prev.map(item => (item.ipHash === ipHash || item.hash === ipHash) ? { ...item, ipStatus: 'permanent', ipRemainingMinutes: null, ipExpiresAt: null } : item));
-      setFeedback({ ok: true, msg: `Đã khóa vĩnh viễn IP ${maskedIp || ''} thành công.` });
+      const exp = Date.now() + 4 * 60 * 60 * 1000;
+      setQuarantineList(prev => prev.map(item => (item.ipHash === ipHash || item.hash === ipHash) ? { ...item, ipStatus: 'temporary', ipRemainingMinutes: 240, ipExpiresAt: exp } : item));
+      setFeedback({ ok: true, msg: `Đã tạm khóa IP ${maskedIp || ''} trong 4 giờ thành công.` });
     } catch (err) {
-      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Khóa vĩnh viễn IP thất bại.' });
+      setFeedback({ ok: false, msg: err?.response?.data?.message || err?.message || 'Tạm khóa IP thất bại.' });
     } finally {
       setQuarantineActionLoading(null);
     }
@@ -3074,6 +3075,7 @@ const AIOpsPage = () => {
                   {paginatedQuarantineList.map((item, idx) => {
                     const targetIpHash = item.ipHash || item.hash;
                     const targetAccount = item.username || item.idaccount;
+                    const currentClientTime = Date.now();
 
                     // Tính thời gian đếm ngược thực tế (Client countdown)
                     const isIpTemp = item.ipStatus === 'temporary' || item.ipStatus === 'temp';
@@ -3234,9 +3236,9 @@ const AIOpsPage = () => {
                                 type="button"
                                 onClick={() => handlePermanentBanIp(targetIpHash, item.maskedIp)}
                                 disabled={quarantineActionLoading === `ban_ip_${targetIpHash}`}
-                                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/70 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
                               >
-                                Phong tỏa IP
+                                Tạm khóa IP (4h)
                               </button>
                               <button
                                 type="button"

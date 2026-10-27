@@ -10,7 +10,11 @@ const logger = require('../../core/logger');
  */
 class AIOpsQuarantineRepository {
   constructor(options = {}) {
-    this.pool = options.pool !== undefined ? options.pool : pool;
+    if (options && typeof options.query === 'function') {
+      this.pool = options;
+    } else {
+      this.pool = options?.pool !== undefined ? options.pool : pool;
+    }
     // In-memory fallback dự phòng an toàn cho Unit Test hoặc khi gián đoạn CSDL
     this._fallbackIps = new Map(); // key: ip_hash -> record
     this._fallbackAccounts = new Map(); // key: username.toLowerCase() -> record
@@ -133,106 +137,57 @@ class AIOpsQuarantineRepository {
 
     const now = new Date();
     const isPermanent = banType === 'permanent';
-    const expiresAt = isPermanent ? null : new Date(now.getTime() + (durationMs || 15 * 60 * 1000));
-    const status = isPermanent ? 'PERMANENT' : 'TEMPORARY';
+    // CHÍNH SÁCH PO: IP LUÔN LUÔN là TEMPORARY (mặc định 4 tiếng)
+    const ipStatus = 'TEMPORARY';
+    const ipDuration = durationMs !== null ? durationMs : (4 * 60 * 60 * 1000);
+    const ipExpiresAt = new Date(now.getTime() + ipDuration);
+
+    // Account có thể là TEMPORARY hoặc PERMANENT
+    const accountStatus = isPermanent ? 'PERMANENT' : 'TEMPORARY';
+    const accountExpiresAt = isPermanent ? null : new Date(now.getTime() + ipDuration);
 
     const ipId = `ip_${ipHash}`;
     const cleanUsername = String(username || 'N/A').trim();
     const accId = `acc_${Buffer.from(cleanUsername).toString('hex').substring(0, 32)}`;
 
+    const fallbackPayload = {
+      ipId,
+      ipHash,
+      maskedIp: finalMaskedIp,
+      ip,
+      ipStatus,
+      accountStatus,
+      reason,
+      vector,
+      threatScore,
+      now,
+      ipExpiresAt,
+      accountExpiresAt,
+      bannedBy,
+      accId,
+      idaccount,
+      cleanUsername,
+      incidentCode,
+    };
+
     // In-memory fallback
     if (!this.pool || typeof this.pool.query !== 'function') {
-      // 1. Lưu IP
-      let ipRec = this._fallbackIps.get(ipHash);
-      if (ipRec) {
-        ipRec.hits += 1;
-        ipRec.reason = reason;
-        ipRec.status = status;
-        ipRec.expires_at = expiresAt;
-        ipRec.updated_at = now;
-      } else {
-        ipRec = {
-          id: ipId,
-          ip_hash: ipHash,
-          masked_ip: finalMaskedIp,
-          raw_ip: ip,
-          status,
-          reason,
-          violation_vector: vector,
-          threat_score_at_ban: threatScore,
-          hits: 1,
-          banned_at: now,
-          expires_at: expiresAt,
-          unblocked_at: null,
-          banned_by: bannedBy,
-          unblocked_by: null,
-          unblock_reason: null,
-          created_at: now,
-          updated_at: now,
-        };
-        this._fallbackIps.set(ipHash, ipRec);
-      }
-
-      // 2. Lưu Account
-      const accKey = cleanUsername.toLowerCase();
-      let accRec = this._fallbackAccounts.get(accKey);
-      if (accRec) {
-        accRec.hits += 1;
-        accRec.reason = reason;
-        accRec.status = status;
-        accRec.expires_at = expiresAt;
-        if (idaccount && !accRec.idaccount) accRec.idaccount = Number(idaccount);
-        accRec.updated_at = now;
-      } else {
-        accRec = {
-          id: accId,
-          idaccount: idaccount ? Number(idaccount) : null,
-          username: cleanUsername,
-          status,
-          reason,
-          violation_vector: vector,
-          threat_score_at_ban: threatScore,
-          hits: 1,
-          banned_at: now,
-          expires_at: expiresAt,
-          unblocked_at: null,
-          banned_by: bannedBy,
-          unblocked_by: null,
-          unblock_reason: null,
-          created_at: now,
-          updated_at: now,
-        };
-        this._fallbackAccounts.set(accKey, accRec);
-      }
-
-      // 3. Lưu Incident Link N-N
-      const linkRec = {
-        id: this._fallbackLinks.length + 1,
-        ip_quarantine_id: ipId,
-        account_quarantine_id: accId,
-        ip_hash: ipHash,
-        username: cleanUsername,
-        reason,
-        incident_code: incidentCode,
-        detected_at: now,
-      };
-      this._fallbackLinks.push(linkRec);
-
+      this._saveToFallback(fallbackPayload);
       return {
         ipHash,
         username: cleanUsername,
         idaccount,
         maskedIp: finalMaskedIp,
-        ipStatus: status.toLowerCase(),
-        accountStatus: status.toLowerCase(),
+        ipStatus: 'temporary',
+        accountStatus: accountStatus.toLowerCase(),
         reason,
-        expiresAt: expiresAt ? expiresAt.toISOString() : null,
+        expiresAt: ipExpiresAt ? ipExpiresAt.toISOString() : null,
       };
     }
 
     // Ghi vào CSDL PostgreSQL bằng Parameterized Queries an toàn
     try {
-      // 1. Upsert aiops_ip_quarantine
+      // 1. Upsert aiops_ip_quarantine (Tuân thủ Check Constraint: luôn là TEMPORARY có expires_at)
       const ipSql = `
         INSERT INTO "aiops_ip_quarantine" (
           "id", "ip_hash", "masked_ip", "raw_ip", "status", "reason",
@@ -252,12 +207,12 @@ class AIOpsQuarantineRepository {
         ipHash,
         finalMaskedIp,
         ip,
-        status,
+        ipStatus,
         reason,
         vector,
         threatScore,
         now,
-        expiresAt,
+        ipExpiresAt,
         bannedBy,
       ]);
 
@@ -281,12 +236,12 @@ class AIOpsQuarantineRepository {
         accId,
         idaccount ? Number(idaccount) : null,
         cleanUsername,
-        status,
+        accountStatus,
         reason,
         vector,
         threatScore,
         now,
-        expiresAt,
+        accountExpiresAt,
         bannedBy,
       ]);
 
@@ -307,66 +262,127 @@ class AIOpsQuarantineRepository {
       ]);
 
       // Đồng thời cập nhật vào memory fallback cache để tra cứu nhanh
-      this._saveToFallback({
-        ipId,
-        ipHash,
-        maskedIp,
-        ip,
-        status,
-        reason,
-        vector,
-        threatScore,
-        now,
-        expiresAt,
-        bannedBy,
-        accId,
-        idaccount,
-        cleanUsername,
-        incidentCode,
-      });
+      this._saveToFallback(fallbackPayload);
 
       return {
         ipHash,
         username: cleanUsername,
         idaccount,
         maskedIp: finalMaskedIp,
-        ipStatus: status.toLowerCase(),
-        accountStatus: status.toLowerCase(),
+        ipStatus: 'temporary',
+        accountStatus: accountStatus.toLowerCase(),
         reason,
-        expiresAt: expiresAt ? expiresAt.toISOString() : null,
+        expiresAt: ipExpiresAt ? ipExpiresAt.toISOString() : null,
       };
     } catch (err) {
       logger.warn('[AIOps Quarantine Repo] Lỗi DB khi ghi nhận quarantine, chuyển sang fallback bộ nhớ', { error: err.message });
       // Tự động fallback vào bộ nhớ an toàn
-      this._saveToFallback({
-        ipId,
-        ipHash,
-        maskedIp: finalMaskedIp,
-        ip,
-        status,
-        reason,
-        vector,
-        threatScore,
-        now,
-        expiresAt,
-        bannedBy,
-        accId,
-        idaccount,
-        cleanUsername,
-        incidentCode,
-      });
+      this._saveToFallback(fallbackPayload);
 
       return {
         ipHash,
         username: cleanUsername,
         idaccount,
         maskedIp: finalMaskedIp,
-        ipStatus: status.toLowerCase(),
-        accountStatus: status.toLowerCase(),
+        ipStatus: 'temporary',
+        accountStatus: accountStatus.toLowerCase(),
         reason,
-        expiresAt: expiresAt ? expiresAt.toISOString() : null,
+        expiresAt: ipExpiresAt ? ipExpiresAt.toISOString() : null,
       };
     }
+  }
+
+  /**
+   * Lưu trữ nội bộ an toàn vào Fallback Cache
+   */
+  _saveToFallback({
+    ipId,
+    ipHash,
+    maskedIp,
+    ip,
+    ipStatus = 'TEMPORARY',
+    accountStatus = 'TEMPORARY',
+    reason,
+    vector,
+    threatScore,
+    now,
+    ipExpiresAt,
+    accountExpiresAt,
+    bannedBy,
+    accId,
+    idaccount,
+    cleanUsername,
+    incidentCode,
+  }) {
+    let ipRec = this._fallbackIps.get(ipHash);
+    if (ipRec) {
+      ipRec.hits += 1;
+      ipRec.reason = reason;
+      ipRec.status = ipStatus;
+      ipRec.expires_at = ipExpiresAt;
+      ipRec.updated_at = now;
+    } else {
+      this._fallbackIps.set(ipHash, {
+        id: ipId,
+        ip_hash: ipHash,
+        masked_ip: maskedIp,
+        raw_ip: ip,
+        status: ipStatus,
+        reason,
+        violation_vector: vector,
+        threat_score_at_ban: threatScore,
+        hits: 1,
+        banned_at: now,
+        expires_at: ipExpiresAt,
+        unblocked_at: null,
+        banned_by: bannedBy,
+        unblocked_by: null,
+        unblock_reason: null,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    const accKey = cleanUsername.toLowerCase();
+    let accRec = this._fallbackAccounts.get(accKey);
+    if (accRec) {
+      accRec.hits += 1;
+      accRec.reason = reason;
+      accRec.status = accountStatus;
+      accRec.expires_at = accountExpiresAt;
+      if (idaccount && !accRec.idaccount) accRec.idaccount = Number(idaccount);
+      accRec.updated_at = now;
+    } else {
+      this._fallbackAccounts.set(accKey, {
+        id: accId,
+        idaccount: idaccount ? Number(idaccount) : null,
+        username: cleanUsername,
+        status: accountStatus,
+        reason,
+        violation_vector: vector,
+        threat_score_at_ban: threatScore,
+        hits: 1,
+        banned_at: now,
+        expires_at: accountExpiresAt,
+        unblocked_at: null,
+        banned_by: bannedBy,
+        unblocked_by: null,
+        unblock_reason: null,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    this._fallbackLinks.push({
+      id: this._fallbackLinks.length + 1,
+      ip_quarantine_id: ipId,
+      account_quarantine_id: accId,
+      ip_hash: ipHash,
+      username: cleanUsername,
+      reason,
+      incident_code: incidentCode,
+      detected_at: now,
+    });
   }
 
   /**
@@ -488,28 +504,30 @@ class AIOpsQuarantineRepository {
   }
 
   /**
-   * Cập nhật trạng thái IP (Mở khóa hoặc Khóa vĩnh viễn hoặc Tạm khóa)
+   * Cập nhật trạng thái IP (Mở khóa hoặc Tạm khóa 4 giờ)
+   * CHÍNH SÁCH PO: Tuyệt đối không lưu status = 'PERMANENT' cho IP, tự động chuyển thành 'TEMPORARY' 4 giờ
    */
   async updateIpStatus({ ipHash, status, unblockedBy = null, unblockReason = null, expiresAt = null, bannedBy = null }) {
     const now = new Date();
     const isUnblocked = status === 'UNLOCKED';
-    const isPermanent = status === 'PERMANENT';
+    // CHÍNH SÁCH AN NINH PO: Ép toàn bộ yêu cầu PERMANENT về TEMPORARY
+    const safeStatus = isUnblocked ? 'UNLOCKED' : 'TEMPORARY';
+    const safeExpiresAt = isUnblocked 
+      ? null 
+      : (expiresAt || new Date(now.getTime() + 4 * 60 * 60 * 1000));
 
     if (!this.pool || typeof this.pool.query !== 'function') {
       const rec = this._fallbackIps.get(ipHash);
       if (!rec) return 0;
-      rec.status = status;
+      rec.status = safeStatus;
       rec.updated_at = now;
       if (isUnblocked) {
         rec.unblocked_at = now;
         rec.unblocked_by = unblockedBy;
         rec.unblock_reason = unblockReason;
         rec.expires_at = null;
-      } else if (isPermanent) {
-        rec.expires_at = null;
-        if (bannedBy) rec.banned_by = bannedBy;
-      } else if (status === 'TEMPORARY') {
-        if (expiresAt) rec.expires_at = expiresAt;
+      } else {
+        rec.expires_at = safeExpiresAt;
         if (bannedBy) rec.banned_by = bannedBy;
       }
       return 1;
@@ -524,31 +542,28 @@ class AIOpsQuarantineRepository {
           "unblocked_by" = CASE WHEN $1::varchar = 'UNLOCKED' THEN $3::varchar ELSE "unblocked_by" END,
           "unblock_reason" = CASE WHEN $1::varchar = 'UNLOCKED' THEN $4::text ELSE "unblock_reason" END,
           "expires_at" = CASE 
-            WHEN $1::varchar IN ('UNLOCKED', 'PERMANENT') THEN NULL 
+            WHEN $1::varchar = 'UNLOCKED' THEN NULL 
             WHEN $6::timestamptz IS NOT NULL THEN $6::timestamptz 
-            ELSE "expires_at" 
+            ELSE COALESCE("expires_at", $2::timestamptz + INTERVAL '4 hours')
           END,
           "banned_by" = CASE WHEN $7::varchar IS NOT NULL THEN $7::varchar ELSE "banned_by" END,
           "updated_at" = $2::timestamptz
         WHERE "ip_hash" = $5 OR "id" = $5;
       `;
-      const res = await this.pool.query(sql, [status, now, unblockedBy, unblockReason, ipHash, expiresAt, bannedBy]);
+      const res = await this.pool.query(sql, [safeStatus, now, unblockedBy, unblockReason, ipHash, safeExpiresAt, bannedBy]);
       const updatedCount = res.rowCount || 0;
       if (updatedCount === 0) {
         const rec = this._fallbackIps.get(ipHash);
         if (rec) {
-          rec.status = status;
+          rec.status = safeStatus;
           rec.updated_at = now;
           if (isUnblocked) {
             rec.unblocked_at = now;
             rec.unblocked_by = unblockedBy;
             rec.unblock_reason = unblockReason;
             rec.expires_at = null;
-          } else if (isPermanent) {
-            rec.expires_at = null;
-            if (bannedBy) rec.banned_by = bannedBy;
-          } else if (status === 'TEMPORARY') {
-            if (expiresAt) rec.expires_at = expiresAt;
+          } else {
+            rec.expires_at = safeExpiresAt;
             if (bannedBy) rec.banned_by = bannedBy;
           }
           return 1;
@@ -751,97 +766,6 @@ class AIOpsQuarantineRepository {
       const paginated = filtered.slice(offset, offset + l);
       return { total, page: p, limit: l, incidents: paginated };
     }
-  }
-
-  _saveToFallback({
-    ipId,
-    ipHash,
-    maskedIp,
-    ip,
-    status,
-    reason,
-    vector,
-    threatScore,
-    now,
-    expiresAt,
-    bannedBy,
-    accId,
-    idaccount,
-    cleanUsername,
-    incidentCode,
-  }) {
-    let ipRec = this._fallbackIps.get(ipHash);
-    if (ipRec) {
-      ipRec.hits += 1;
-      ipRec.reason = reason;
-      ipRec.status = status;
-      ipRec.expires_at = expiresAt;
-      ipRec.updated_at = now;
-    } else {
-      ipRec = {
-        id: ipId,
-        ip_hash: ipHash,
-        masked_ip: maskedIp,
-        raw_ip: ip,
-        status,
-        reason,
-        violation_vector: vector,
-        threat_score_at_ban: threatScore,
-        hits: 1,
-        banned_at: now,
-        expires_at: expiresAt,
-        unblocked_at: null,
-        banned_by: bannedBy,
-        unblocked_by: null,
-        unblock_reason: null,
-        created_at: now,
-        updated_at: now,
-      };
-      this._fallbackIps.set(ipHash, ipRec);
-    }
-
-    const accKey = cleanUsername.toLowerCase();
-    let accRec = this._fallbackAccounts.get(accKey);
-    if (accRec) {
-      accRec.hits += 1;
-      accRec.reason = reason;
-      accRec.status = status;
-      accRec.expires_at = expiresAt;
-      if (idaccount && !accRec.idaccount) accRec.idaccount = Number(idaccount);
-      accRec.updated_at = now;
-    } else {
-      accRec = {
-        id: accId,
-        idaccount: idaccount ? Number(idaccount) : null,
-        username: cleanUsername,
-        status,
-        reason,
-        violation_vector: vector,
-        threat_score_at_ban: threatScore,
-        hits: 1,
-        banned_at: now,
-        expires_at: expiresAt,
-        unblocked_at: null,
-        banned_by: bannedBy,
-        unblocked_by: null,
-        unblock_reason: null,
-        created_at: now,
-        updated_at: now,
-      };
-      this._fallbackAccounts.set(accKey, accRec);
-    }
-
-    const linkRec = {
-      id: this._fallbackLinks.length + 1,
-      ip_quarantine_id: ipId,
-      account_quarantine_id: accId,
-      ip_hash: ipHash,
-      username: cleanUsername,
-      reason,
-      incident_code: incidentCode,
-      detected_at: now,
-    };
-    this._fallbackLinks.push(linkRec);
   }
 
   // --- Helper Methods Cho Unit Testing & Internal Access ---

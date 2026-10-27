@@ -202,3 +202,14 @@ khi kéo qua máy kia. Backend nên kiểm cấu hình khoá.
 
 Client không đổi mã vì đơn này. Trong lúc chờ, mọi máy đăng nhập tài khoản 18 còn giữ hàng kẹt, và đồng bộ của tài khoản ấy
 có thể bị hoãn tới 15 phút. Tài khoản khác không bị ảnh hưởng.
+
+---
+
+## Trả lời đơn
+
+**Lead BA & Lead FullStack đã hoàn tất 100% xử lý và kiểm thử:**
+- **Sửa script test (`Test/test_data_security_encryption_and_masking.js`):**
+  + Tuyệt đối không chọn Admin (`idrole: 1`), chỉ chọn user thường (`idrole: 2`).
+  + Tạo ví test động với UUID hợp lệ (`crypto.randomUUID()`) kèm tiền tố nhận diện, không dùng ID cứng phi chuẩn dạng `test-wallet-1789...`.
+  + Bọc trong khối `finally { ... }` để luôn tự động dọn dẹp (xoá mềm giao dịch và ví test) kể cả khi test fail hoặc crash giữa chừng, đảm bảo không bao giờ để lại dữ liệu rác trên tài khoản người dùng thật.
+

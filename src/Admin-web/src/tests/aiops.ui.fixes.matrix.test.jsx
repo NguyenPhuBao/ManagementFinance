@@ -265,21 +265,21 @@ describe('AIOps 16 Fixes & Quarantine Matrix 2-Tier Test Suite', () => {
       });
     });
 
-    it('16.3. Khóa IP vĩnh viễn: Gọi permanentBanIp và đồng bộ hiển thị "IP đã bị phong tỏa" trên TẤT CẢ các dòng có cùng IP', async () => {
-      aiopsApi.permanentBanIp.mockResolvedValueOnce({ success: true, message: 'Đã khóa vĩnh viễn IP thành công' });
+    it('16.3. Khóa IP: Gọi permanentBanIp và chuyển sang tạm khóa 4 giờ, đồng bộ trên TẤT CẢ các dòng có cùng IP', async () => {
+      aiopsApi.permanentBanIp.mockResolvedValueOnce({ success: true, message: 'Đã tạm khóa IP trong 4 giờ thành công.' });
 
       render(<AIOpsPage />);
       await waitFor(() => {
-        const banButtons = screen.getAllByRole('button', { name: /Phong tỏa IP/i });
+        const banButtons = screen.getAllByRole('button', { name: /Tạm khóa IP \(4h\)/i });
         expect(banButtons.length).toBeGreaterThan(0);
       });
 
-      const banIpButtons = screen.getAllByRole('button', { name: /Phong tỏa IP/i });
+      const banIpButtons = screen.getAllByRole('button', { name: /Tạm khóa IP \(4h\)/i });
       fireEvent.click(banIpButtons[0]);
 
       await waitFor(() => {
         expect(aiopsApi.permanentBanIp).toHaveBeenCalledWith({ ipHash: 'ip_hash_aaa' });
-        expect(screen.getAllByText('IP đã bị phong tỏa').length).toBeGreaterThanOrEqual(2);
+        expect(screen.getAllByText('4 giờ').length).toBeGreaterThanOrEqual(2);
       });
     });
 

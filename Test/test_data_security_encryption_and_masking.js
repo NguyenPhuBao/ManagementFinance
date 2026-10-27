@@ -232,25 +232,22 @@ async function runTests() {
     // ------------------------------------------------------------------------
     // CASE 11: Lọc dữ liệu nhạy cảm và mã hóa At-Rest cho trường Note
     // ------------------------------------------------------------------------
-    console.log(`\n11. Kiểm thử Lọc thông tin thẻ/CVV/mật khẩu & Mã hóa At-Rest cho Note...`);
-    const testAccount = await prisma.account.findFirst({ where: { status: 'Active', idrole: 1 } }) 
-      || await prisma.account.findFirst({ where: { status: 'Active' }, orderBy: { idaccount: 'asc' } });
-    const idacc = testAccount ? testAccount.idaccount : 1;
+    // Chọn tài khoản người dùng thông thường (idrole: 2, TUYỆT ĐỐI KHÔNG chọn idrole: 1 Admin thật)
+    let testAccount = await prisma.account.findFirst({ where: { status: 'Active', idrole: 2, delete_at: null } })
+      || await prisma.account.findFirst({ where: { status: 'Active', idrole: { not: 1 }, delete_at: null } });
+    const idacc = testAccount ? testAccount.idaccount : 18;
 
-    let userWallet = await prisma.wallet.findFirst({ where: { idaccount: idacc, delete_at: null } });
-    let createdWalletId = null;
-    if (!userWallet) {
-      createdWalletId = crypto.randomUUID();
-      userWallet = await prisma.wallet.create({
-        data: {
-          idwallet: createdWalletId,
-          idaccount: idacc,
-          name: 'Ví Test Note',
-          type: 'Cash',
-          balance: 1000000,
-        },
-      });
-    }
+    // Luôn tạo ví test tạm thời riêng biệt với UUID ngẫu nhiên để không ảnh hưởng ví thật
+    const createdWalletId = crypto.randomUUID();
+    const userWallet = await prisma.wallet.create({
+      data: {
+        idwallet: createdWalletId,
+        idaccount: idacc,
+        name: `Ví Test Note Auto ${Date.now()}`,
+        type: 'Cash',
+        balance: 1000000,
+      },
+    });
 
     const rawNote = 'Thanh toán trực tuyến số thẻ 4532015896321475 và cvv: 999 mật khẩu: mySecret123';
     const testTranId = crypto.randomUUID();

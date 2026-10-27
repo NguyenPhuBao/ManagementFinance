@@ -12,17 +12,23 @@ class ResponseHandler {
     return this.success(res, data, message, 201);
   }
 
-  static error(res, message = 'Internal Server Error', statusCode = 500, errors = null) {
+  static error(res, message = 'Internal Server Error', statusCode = 500, errors = null, code = null) {
     if (res.locals) {
       res.locals.errorMessage = message;
       if (errors) res.locals.errorDetails = errors;
     }
-    return res.status(statusCode).json({
+    const responsePayload = {
       success: false,
       message,
       errors,
       timestamp: new Date().toISOString(),
-    });
+    };
+    if (code) {
+      responsePayload.code = code;
+    } else if (errors && typeof errors === 'object' && errors.code) {
+      responsePayload.code = errors.code;
+    }
+    return res.status(statusCode).json(responsePayload);
   }
 
   static badRequest(res, message = 'Bad Request', errors = null) {

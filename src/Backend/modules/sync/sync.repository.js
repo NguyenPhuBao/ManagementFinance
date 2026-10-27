@@ -28,9 +28,11 @@ function mapEntityFields(entity, data) {
       if (m.idBankCasso !== undefined) { m.id_bank_casso = m.idBankCasso; delete m.idBankCasso; }
       if (m.bankCassoId !== undefined) { m.id_bank_casso = m.bankCassoId; delete m.bankCassoId; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
-      if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
-      if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
-      if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
+      if (m.isDeleted === true || m.is_deleted === true) { m.delete_at = new Date(); }
+      delete m.isDeleted;
+      delete m.is_deleted;
+      if (m.deletedAt) { m.delete_at = new Date(m.deletedAt); delete m.deletedAt; }
+      else if (m.deletedAt !== undefined) { delete m.deletedAt; }
       break;
 
     case 'transaction':
@@ -58,10 +60,13 @@ function mapEntityFields(entity, data) {
       else if (m.createdAt !== undefined) { m.date_transaction = new Date(m.createdAt); delete m.createdAt; }
       else if (m.create_at !== undefined) { m.date_transaction = new Date(m.create_at); delete m.create_at; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
-      if (m.isDeleted !== undefined) { m.deleted_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
-      if (m.is_deleted !== undefined) { m.deleted_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
-      if (m.delete_at !== undefined) { m.deleted_at = m.delete_at ? new Date(m.delete_at) : null; delete m.delete_at; }
-      if (m.deletedAt !== undefined) { m.deleted_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
+      if (m.isDeleted === true || m.is_deleted === true) { m.deleted_at = new Date(); }
+      delete m.isDeleted;
+      delete m.is_deleted;
+      if (m.deletedAt) { m.deleted_at = new Date(m.deletedAt); delete m.deletedAt; }
+      else if (m.deletedAt !== undefined) { delete m.deletedAt; }
+      if (m.delete_at) { m.deleted_at = new Date(m.delete_at); delete m.delete_at; }
+      else if (m.delete_at !== undefined) { delete m.delete_at; }
       break;
 
     case 'budget':
@@ -88,9 +93,11 @@ function mapEntityFields(entity, data) {
       if (m.end !== undefined) { m.end = m.end ? new Date(m.end) : null; }
       else if (m.endDate !== undefined) { m.end = m.endDate ? new Date(m.endDate) : null; delete m.endDate; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
-      if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
-      if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
-      if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
+      if (m.isDeleted === true || m.is_deleted === true) { m.delete_at = new Date(); }
+      delete m.isDeleted;
+      delete m.is_deleted;
+      if (m.deletedAt) { m.delete_at = new Date(m.deletedAt); delete m.deletedAt; }
+      else if (m.deletedAt !== undefined) { delete m.deletedAt; }
       // Xóa các trường tính toán tĩnh cũ nếu có gửi lên
       delete m.remaining;
       delete m.percent_spent;
@@ -129,9 +136,11 @@ function mapEntityFields(entity, data) {
       if (m.anchorDay !== undefined) { m.anchor_day = m.anchorDay !== null ? Number(m.anchorDay) : null; delete m.anchorDay; }
       if (m.anchor_day !== undefined) { m.anchor_day = m.anchor_day !== null ? Number(m.anchor_day) : null; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
-      if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
-      if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
-      if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
+      if (m.isDeleted === true || m.is_deleted === true) { m.delete_at = new Date(); }
+      delete m.isDeleted;
+      delete m.is_deleted;
+      if (m.deletedAt) { m.delete_at = new Date(m.deletedAt); delete m.deletedAt; }
+      else if (m.deletedAt !== undefined) { delete m.deletedAt; }
       break;
 
     case 'goal':
@@ -164,9 +173,11 @@ function mapEntityFields(entity, data) {
       }
       if (m.timeRecurrence !== undefined) { m.time_recurrence = m.timeRecurrence; delete m.timeRecurrence; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
-      if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
-      if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
-      if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
+      if (m.isDeleted === true || m.is_deleted === true) { m.delete_at = new Date(); }
+      delete m.isDeleted;
+      delete m.is_deleted;
+      if (m.deletedAt) { m.delete_at = new Date(m.deletedAt); delete m.deletedAt; }
+      else if (m.deletedAt !== undefined) { delete m.deletedAt; }
       break;
 
     case 'category':
@@ -181,9 +192,11 @@ function mapEntityFields(entity, data) {
       if (m.colour !== undefined) { m.color = m.colour; delete m.colour; }
       if (m.color !== undefined) { m.color = m.color; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
-      if (m.isDeleted !== undefined) { m.delete_at = m.isDeleted ? new Date() : null; delete m.isDeleted; }
-      if (m.is_deleted !== undefined) { m.delete_at = m.is_deleted ? new Date() : null; delete m.is_deleted; }
-      if (m.deletedAt !== undefined) { m.delete_at = m.deletedAt ? new Date(m.deletedAt) : null; delete m.deletedAt; }
+      if (m.isDeleted === true || m.is_deleted === true) { m.delete_at = new Date(); }
+      delete m.isDeleted;
+      delete m.is_deleted;
+      if (m.deletedAt) { m.delete_at = new Date(m.deletedAt); delete m.deletedAt; }
+      else if (m.deletedAt !== undefined) { delete m.deletedAt; }
       break;
   }
   return m;

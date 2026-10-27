@@ -64,7 +64,7 @@ test('AIOps Quarantine Matrix Suite (IP & Account Pairs - 2-Tier Test)', async (
     assert.strictEqual(checkIp.quarantined, false, 'IP đã mở khóa không còn bị chặn');
   });
 
-  await t.test('3. 1 IP liên kết nhiều Tài khoản: Khóa IP vĩnh viễn đồng bộ toàn bộ các dòng có cùng IP', async () => {
+  await t.test('3. 1 IP liên kết nhiều Tài khoản: Khóa IP (permanentBanIp) chuyển sang tạm khóa 4h và đồng bộ toàn bộ các dòng có cùng IP', async () => {
     const q = new AIOpsQuarantine();
     const attackerIp = '198.51.100.25';
     const attackerHash = hashIp(attackerIp);
@@ -72,16 +72,16 @@ test('AIOps Quarantine Matrix Suite (IP & Account Pairs - 2-Tier Test)', async (
     q.quarantinePair({ ip: attackerIp, username: 'user1', reason: 'Tấn công account 1' });
     q.quarantinePair({ ip: attackerIp, username: 'user2', reason: 'Tấn công account 2' });
 
-    // Admin Khóa vĩnh viễn IP
-    const permanentCount = await q.permanentBanIp(attackerHash);
-    assert.strictEqual(permanentCount >= 2, true);
+    // Admin thao tác Khóa IP (chuyển hóa thành tạm khóa 4 giờ theo chính sách PO)
+    const count = await q.permanentBanIp(attackerHash);
+    assert.strictEqual(count >= 2, true);
 
     const list = q.getQuarantinedList();
     const updatedRows = list.filter((r) => r.ipHash === attackerHash);
-    assert.strictEqual(updatedRows[0].ipStatus, 'permanent', 'Dòng 1: IP phải chuyển sang permanent');
-    assert.strictEqual(updatedRows[1].ipStatus, 'permanent', 'Dòng 2: IP phải chuyển sang permanent');
-    assert.strictEqual(updatedRows[0].ipExpiresAt, null, 'Khóa IP vĩnh viễn không có thời hạn hết hạn');
-    assert.strictEqual(updatedRows[0].ipRemainingMinutes, null, 'Khóa IP vĩnh viễn thì thời gian còn lại của IP là null');
+    assert.strictEqual(updatedRows[0].ipStatus, 'temporary', 'Dòng 1: IP chuyển sang temporary (4h)');
+    assert.strictEqual(updatedRows[1].ipStatus, 'temporary', 'Dòng 2: IP chuyển sang temporary (4h)');
+    assert.ok(updatedRows[0].ipExpiresAt !== null, 'Tạm khóa IP 4h bắt buộc có thời hạn hết hạn');
+    assert.ok(updatedRows[0].ipRemainingMinutes > 230 && updatedRows[0].ipRemainingMinutes <= 240, 'Thời gian còn lại xấp xỉ 240 phút');
   });
 
   // -------------------------------------------------------------

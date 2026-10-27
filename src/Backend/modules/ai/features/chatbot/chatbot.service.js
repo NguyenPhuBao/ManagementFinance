@@ -168,9 +168,12 @@ class ChatbotService {
           history: formattedHistory,
         });
 
+        const reqOptions = { timeout: 60000 };
+        if (signal) reqOptions.signal = signal;
+
         // Gửi prompt người dùng (đã che PII)
         const safeUserMessage = this.piiMasker.maskPII(message, { userName });
-        const resultStream = await chatSession.sendMessageStream(safeUserMessage);
+        const resultStream = await chatSession.sendMessageStream(safeUserMessage, reqOptions);
 
         // Xử lý stream
         for await (const chunk of resultStream.stream) {
@@ -184,8 +187,13 @@ class ChatbotService {
           const functionCalls = chunk.functionCalls();
           if (functionCalls && functionCalls.length > 0) {
             for (const call of functionCalls) {
+              if (signal?.aborted) {
+                logger.info('[ChatbotService] Client đã ngắt kết nối — bỏ qua tool call.');
+                break;
+              }
               logger.info(`[Chatbot Function Call] Gemini kích hoạt tool: ${call.name}`);
               const toolResult = await this.toolsExecutor.executeTool(call.name, call.args, idaccount, { userName });
+              if (signal?.aborted) break;
 
               // Bắn kết quả tool ngược lại cho session để Gemini tiếp tục suy luận
               const nextStream = await chatSession.sendMessageStream([
@@ -195,7 +203,7 @@ class ChatbotService {
                     response: toolResult,
                   },
                 },
-              ]);
+              ], reqOptions);
 
               for await (const nextChunk of nextStream.stream) {
                 if (signal?.aborted) break;
@@ -222,8 +230,8 @@ class ChatbotService {
         onDone({ responseTimeMs: duration });
       }
     } catch (error) {
-      if (signal?.aborted) {
-        logger.info('[ChatbotService] Client đã ngắt kết nối trước đó — bỏ qua xử lý fallback.');
+      if (signal?.aborted || error.name === 'AbortError' || error.message?.includes('aborted')) {
+        logger.info('[ChatbotService] Client đã ngắt kết nối hoặc hủy request — bỏ qua xử lý fallback.');
         return;
       }
       const isCircuitOpen = error.name === 'CircuitBreakerOpenError';
