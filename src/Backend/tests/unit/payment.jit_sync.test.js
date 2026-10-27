@@ -248,4 +248,67 @@ test('PayOS Just-in-Time Sync (JIT Sync) Suite', async (t) => {
       payosClient.setPayOSClientMock(null);
     }
   });
+
+  await t.test('Tier 1 & Tier 2: syncOrderWithPayOS() xử lý PAID tính đúng newExpiresAt (+30 ngày) và gọi activatePremiumSubscription nguyên tử', async () => {
+    const dummyOrder = {
+      id: 'paid-order-jit-1',
+      order_code: 555666777,
+      idaccount: 10,
+      status: 'PENDING',
+      amount: 49000,
+      qr_url: 'https://img.vietqr.io/sample.png',
+      account: {
+        idaccount: 10,
+        type: 'Basic',
+        premium_expires_at: null,
+      },
+    };
+
+    let activatedData = null;
+    const origActivate = paymentRepository.activatePremiumSubscription;
+    paymentRepository.activatePremiumSubscription = async (param) => {
+      activatedData = param;
+      return { order: { ...dummyOrder, status: 'PAID' }, account: { type: 'Premium', premium_expires_at: param.newExpiresAt } };
+    };
+
+    payosClient.setPayOSClientMock({
+      paymentRequests: {
+        get: async () => ({
+          status: 'PAID',
+          amountPaid: 49000,
+          transactions: [
+            {
+              reference: 'PAYOS_REF_123456',
+              amount: 49000,
+              counterAccountBankName: 'MBBANK',
+              transactionDateTime: '2026-10-26 12:00:00',
+            },
+          ],
+        }),
+      },
+    });
+
+    try {
+      const result = await paymentService.syncOrderWithPayOS(dummyOrder);
+
+      // Tầng 1: Đơn trả về trạng thái PAID và đã xóa link/QR
+      assert.strictEqual(result.status, 'PAID');
+      assert.strictEqual(result.qr_url, null);
+
+      // Tầng 2: activatePremiumSubscription được gọi với đầy đủ newExpiresAt và transactionData
+      assert.ok(activatedData, 'activatePremiumSubscription bắt buộc phải được gọi');
+      assert.strictEqual(activatedData.idaccount, 10);
+      assert.strictEqual(activatedData.orderId, 'paid-order-jit-1');
+      assert.ok(activatedData.newExpiresAt instanceof Date, 'newExpiresAt bắt buộc phải là Date hợp lệ, không được undefined/null!');
+      
+      const diffDays = Math.round((activatedData.newExpiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+      assert.strictEqual(diffDays, 30, 'Thời hạn nâng cấp gói phải đúng 30 ngày!');
+
+      assert.ok(activatedData.transactionData, 'Bắt buộc phải có transactionData để đối soát');
+      assert.strictEqual(activatedData.transactionData.payosTransactionId, 'PAYOS_REF_123456');
+    } finally {
+      paymentRepository.activatePremiumSubscription = origActivate;
+      payosClient.setPayOSClientMock(null);
+    }
+  });
 });

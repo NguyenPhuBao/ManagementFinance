@@ -225,19 +225,6 @@ class FeatureCollector {
                     reason: `Tấn công dò mật khẩu Brute-Force (${ipStat.failedLogins} lần đăng nhập sai${targetUser ? ` - Mục tiêu: ${targetUser}` : ''})`,
                     durationMs: 15 * 60 * 1000,
                   });
-                  // Tự động tạm khóa tài khoản mục tiêu trong CSDL để chống xâm nhập
-                  if (targetUser) {
-                    try {
-                      const prisma = require('../../database/prisma');
-                      prisma.account.updateMany({
-                        where: { username: targetUser, status: 'Active' },
-                        data: {
-                          status: 'TemporarilyLocked',
-                          reason_inactive: 'AIOps Sentinel tạm khóa do phát hiện hành vi Brute-Force bất thường',
-                        },
-                      }).catch(() => {});
-                    } catch (_) {}
-                  }
                 }
               }
             }

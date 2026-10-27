@@ -236,3 +236,17 @@ sau khi đơn 43 đóng. Nếu thiết kế lúc ấy cần thêm trường ở 
 > `autoExpirePendingOrders` trước khi đọc (`payment.repository.js:106`), phép chuẩn hoá ở `payment.repository.js:30`, và
 > `payment.service.js:713`. Xin giữ hành vi ấy; nếu bỏ cả ba, màn chờ sẽ đứng ở *"Còn 00:00"* tới lượt quét định kỳ
 > (`setInterval`, `payment.service.js:895`). Không phải việc mới cho backend.
+
+---
+
+## Trả lời đơn
+
+**Lead BA & Lead FullStack đã hoàn tất 100% xử lý và kiểm thử (Mục 49):**
+- **Về Dọn dẹp Migration Files:** Đã xóa file rác `src/Backend/database/)2_can_lam_all_migrations.sql`. Tạo file migration chuẩn `src/Backend/database/38_add_unique_payos_transaction_id.sql` bổ sung Partial Unique Index trên `payment_transaction(payos_transaction_id) WHERE payos_transaction_id IS NOT NULL` để ngăn ngừa tuyệt đối ghi trùng giao dịch ngân hàng.
+- **Về PayOS Webhook Idempotency:** Đã cấu trúc lại `handlePayOSWebhook` trong `payment.service.js` và `payment.repository.js`: Khi nhận được webhook lặp cho đơn hàng đã xử lý (PAID, REFUNDED, v.v.), hệ thống thực hiện kiểm toán lưu vết `recordTransaction` an toàn mà không hồi quy trạng thái đơn hàng.
+- **Về Tra cứu Mã nhận diện:** `findOrderByRecognitionCode` đã được giới hạn chỉ tìm trong các đơn `status = 'PENDING'` và sắp xếp theo ngày tạo mới nhất (`orderBy: { created_at: 'desc' }`).
+- **Về Kiểm tra Tham số `confirmUpgrade`:** Đã ràng buộc kiểm tra `typeof accept !== 'boolean'` trả lỗi 400 rõ ràng.
+- **Ca test 2 tầng:**
+  + `tests/unit/payment.reconciliation.test.js` (11/11 tests pass).
+  + `tests/unit/payment.service.test.js` (5/5 tests pass).
+

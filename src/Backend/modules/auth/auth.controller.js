@@ -78,7 +78,7 @@ const authController = {
       if (statusCode === 403 && Object.keys(extra).length > 0) {
         return ResponseHandler.forbidden(res, error.message, extra);
       }
-      return ResponseHandler.error(res, error.message, statusCode);
+      return ResponseHandler.error(res, error.message, statusCode, null, error.code);
     }
   },
 
@@ -122,7 +122,7 @@ const authController = {
         currentClientIp: clientIp || null,
       }, 'Token hợp lệ');
     } catch (error) {
-      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+      return ResponseHandler.error(res, error.message, error.statusCode || 500, null, error.code);
     }
   },
 

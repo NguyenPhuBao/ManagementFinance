@@ -40,13 +40,17 @@ class ChatbotController {
       clearInterval(pingInterval);
     };
 
-    // Lắng nghe sự kiện ngắt kết nối từ Client (tắt tab hoặc hủy stream)
-    req.on('close', () => {
-      logger.info(`[SSE Controller] Client idaccount: ${idaccount} đã ngắt kết nối stream.`);
-      req.auditReason = 'Người dùng dừng phản hồi hoặc đổi khung chat mới';
-      cleanup();
-      abortController.abort();
-    });
+    const handleDisconnect = () => {
+      if (!abortController.signal.aborted) {
+        logger.info(`[SSE Controller] Client idaccount: ${idaccount} đã ngắt kết nối stream.`);
+        req.auditReason = 'Người dùng dừng phản hồi hoặc đổi khung chat mới';
+        cleanup();
+        abortController.abort();
+      }
+    };
+
+    req.on('close', handleDisconnect);
+    res.on('close', handleDisconnect);
 
     try {
       await this.chatbotService.chatStream({

@@ -219,3 +219,15 @@ giữ nguyên (không dùng bốn chip ở §3.1 mục 3).
 
 Client không chờ đơn này để chạy: thiếu khoá / sai tên mô hình / backend tắt thì mọi câu tự rơi về AI trên máy. Giới hạn ghi ở mục
 **15** `docs/AI_EDGE_FEATURE.md` và khối 🌐 mục 14 `docs/PROJECT_CONTEXT.md`.
+
+---
+
+## Trả lời đơn
+
+**Lead BA & Lead FullStack đã hoàn tất 100% xử lý và kiểm thử:**
+- **Sửa `chatbot.controller.js`:** Lắng nghe cả `res.on('close')` lẫn `req.on('close')` để đảm bảo tương thích hoàn hảo trên Node 22, kích hoạt `abortController.abort()` ngay khi client ngắt kết nối.
+- **Sửa `chatbot.service.js`:**
+  + Truyền `{ signal, timeout: 60000 }` vào các lượt gọi Gemini `sendMessageStream` (bao gồm cả trước và sau khi gọi tool).
+  + Kiểm tra `signal?.aborted` trước khi thực thi tool (`executeTool`) để tránh lãng phí tài nguyên và chi phí AI.
+  + Bắt lỗi `AbortError` / `aborted` và bỏ qua không kích hoạt Fallback Notice Stream hay ghi nhận Circuit Breaker khi người dùng chủ động ngắt kết nối.
+

@@ -252,3 +252,16 @@ Người dùng chốt 2026-10-15: client làm **một lượt** khi backend xong
    và 403 `AIOPS_QUARANTINED` (cần mục C để màn Đăng nhập nhận ra bảo trì).
 
 Backend **không phải làm gì thêm** cho bốn việc ấy ngoài A–C.
+
+---
+
+## Trả lời đơn
+
+**Lead BA & Lead FullStack đã hoàn tất 100% xử lý và kiểm thử (Mục 43 gốc):**
+- **Về A1:** Đã loại bỏ hoàn toàn các khối `updateMany` thủ công dư thừa sau khi gọi hàm quarantine trong `aiops.controller.js` (dòng 240-255 và 296-311), không còn ghi đè trạng thái hay `reason_inactive`.
+- **Về A2 & C:** `auth.controller.js` trả 503 có `code: 'MAINTENANCE_MODE'` và `Retry-After: 60`. `middleware/auth.js` phân định chuẩn `ACCOUNT_INACTIVE` vs `ACCOUNT_DELETED`.
+- **Về A3:** `_syncAccountStatusToDatabase` trong `aiops.quarantine.js` chỉ mở khóa tài khoản đang có `status: 'Inactive'`, bảo vệ tuyệt đối không chạm vào `PendingDelete`. Lượt quét tự động chỉ mở tài khoản do AIOps/Sentinel khóa (`onlyAIOpsLocked: true`).
+- **Về A4:** Đã loại bỏ đoạn require sai đường dẫn `../../database/prisma` và set sai enum `TemporarilyLocked` trong `feature.collector.js`.
+- **Về B:** Webhook không thấy đơn ghi log và trả 2xx, không tự tạo đơn cho Admin hay nâng gói sai.
+- **Ca test 2 tầng:** `tests/unit/aiops.sync_account_protection.test.js` pass 100%.
+

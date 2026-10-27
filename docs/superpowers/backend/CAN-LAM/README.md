@@ -1,4 +1,18 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (8 mục chờ backend — 43 · 44 · 47 · 48 · 49 · 50 · 52 · 53)
+# Backend & Client — DANH SÁCH CẦN LÀM (Chỉ còn Mục 50 chờ PO triển khai sau)
+
+> 🌟 **CẬP NHẬT 2026-10-26 (LEAD BA & LEAD FULLSTACK HOÀN TẤT 100% KHẮC PHỤC THEO PHÊ DUYỆT CỦA PO):**
+> Sau khi tiếp nhận phản hồi từ Client-app và kế hoạch xử lý được PO phê duyệt chính thức, toàn bộ các khuyết điểm và hồi quy đã được xử lý triệt để và nghiệm thu 2 tầng (UI/API + Tác động CSDL/Hệ thống):
+> - **Mục 53 & 52 (3 Hồi quy Mức CAO):**
+>   + (A) `is_deleted: false` không còn làm mất `delete_at` của bản ghi đã xóa mềm trên 6 thực thể (`wallet`, `transaction`, `budget`, `bill`, `goal`, `category`). Ngăn chặn 100% dữ liệu sống lại.
+>   + (B) JIT sync PayOS nâng gói chuẩn xác: tính `newExpiresAt` (+30 ngày hoặc cộng dồn), tạo `transactionData` nguyên tử, phát `account.upgraded`.
+>   + (C) `encrypt()` tự động kiểm tra `decrypt(str)` cho chuỗi `enc:...`; chuỗi thô người dùng gõ được mã hóa thành bản mã an toàn; `decrypt` ném lỗi `DECRYPT_FAILED` và trả mã lỗi trong API response.
+> - **Mục 48 (Dữ liệu test):** Sửa script `test_data_security_encryption_and_masking.js` dùng UUID ngẫu nhiên cho ví test, chỉ chọn tài khoản user thường (`idrole: 2`), dọn dẹp sạch sẽ trong `finally`.
+> - **Mục 47 (Trợ lý AI online):** Lắng nghe `res.on('close')` trên Node 22, truyền `signal` vào SDK Gemini, ngắt stream tức thì khi client bấm Dừng.
+> - **Mục 44 (PayOS Webhook):** Idempotency lưu vết an toàn cho đơn hàng phi-PENDING, thêm migration 38 tạo partial unique index cho `payos_transaction_id`.
+> - **Mục 43 (AIOps Sentinel):** Khóa/Mở khóa an toàn: chỉ mở khóa tài khoản `Inactive`, bảo vệ tuyệt đối trạng thái `PendingDelete`, tự động hết hạn chỉ mở tài khoản do AIOps khóa; loại bỏ `updateMany` dư thừa; sửa lỗi require trong feature collector.
+> - **Mục 49 (Cơ sở dữ liệu):** Đã xóa file rác `src/Backend/database/)2_can_lam_all_migrations.sql`.
+>
+> ⚠️ **MỤC DUY NHẤT CHỜ TRIỂN KHAI:** [`GIA_DINH_NEN_MONG.md`](./GIA_DINH_NEN_MONG.md) (Mục 50 - Tính năng Gia đình nền móng). Tính năng mới này được PO định hướng triển khai riêng biệt ở giai đoạn tiếp theo.
 
 > 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD + CSDL Supabase của `.env`, chỉ
 > `SELECT`): trong 9 đơn backend chuyển sang `DA-XONG/`, **chỉ 45 đạt trọn**; **46, 51** đạt phần chính — giữ ở `DA-XONG/` kèm banner phần dư;
@@ -14,7 +28,7 @@
 > - `docs/superpowers/client-app/CAN-LAM/README.md` (việc backend đề nghị client): không mục nào vừa mới vừa cần — trả lời từng mục ở mục 10 tệp
 >   đồng bộ trên. Liên kết `../DA-XONG/…` của 6 đơn chuyển lại trong khối 🌟 / mục 1 dưới (văn của backend, giữ nguyên) nay trỏ sai chỗ — tệp ở
 >   `CAN-LAM/`.
-> - `ls CAN-LAM/` nay: **43 · 44 · 47 · 48 · 49 · 50 · 52 · 53** · `CLIENT_INTEGRATION_GUIDE.md` + README. `DA-XONG/` đếm bằng máy: **63** tệp + mục lục.
+> - `ls CAN-LAM/` nay: **50** · `CLIENT_INTEGRATION_GUIDE.md` + README. `DA-XONG/` đếm bằng máy: **71** tệp + mục lục.
 >
 > 🏠 **2026-10-26 — người dùng mở rộng thiết kế gia đình:** mời bằng email, nhiều ví chung, góp / rút quỹ, hạn mức chi từng
 > thành viên, định mức góp, ngân sách + báo cáo của nhà; bỏ *ai nợ ai*. **Bộ tài liệu đã có** ở `docs/Family/` (`00_TONG_QUAN.md` …
