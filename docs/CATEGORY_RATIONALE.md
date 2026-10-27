@@ -790,7 +790,7 @@ sao của khuôn đã xoá.
 
 ### Giới hạn
 
-17 giới hạn biết trước ở mục 7 spec (đếm bằng máy 2026-10-27) (máy chưa từng thấy bản cũ không lan truyền; cổng hỏng mất một lần lan truyền; lượt kéo
+17 giới hạn biết trước ở mục 7 spec (đếm bằng máy 2026-10-27: máy chưa từng thấy bản cũ không lan truyền; cổng hỏng mất một lần lan truyền; lượt kéo
 toàn bộ bỏ so từ khoá khuôn; `_deletedAtFrom` rơi về `now()`; lối TẠO điền sẵn id bản ẩn rơi về danh mục đầu; v.v.) — không
 giới hạn nào chặn việc ra mắt. Nghiệm thu máy thật (spec mục 9) **chưa làm**.
 

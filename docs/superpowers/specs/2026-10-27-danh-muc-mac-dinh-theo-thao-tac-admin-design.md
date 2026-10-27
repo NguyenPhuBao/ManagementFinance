@@ -132,10 +132,10 @@ Kiểm kê bằng script 2026-10-27: bốn hàm danh sách của `CategoryDao` c
 `TransactionLookup`), `getBangTraTen` / `watchBangTraTen` (báo cáo, phân tích, ngân sách, hoá đơn, tái phân bổ),
 `BaoCaoRepositoryImpl.watchDanhMuc` (bộ lọc Xuất báo cáo — lọc theo lịch sử), `getById`.
 
-**Form SỬA giữ giá trị đang chọn.** Sửa hoá đơn / ngân sách / giao dịch đang gắn một bản ẩn: form hiện nó là giá trị hiện tại,
+**Form SỬA giữ giá trị đang chọn.** Sửa hoá đơn / ngân sách / giao dịch đang gắn một bản ẩn: bản ẩn
 không xuất hiện ở form TẠO và các bộ chọn khác; form SỬA của hoá đơn / ngân sách / giao dịch đang gắn nó thì kèm nó làm giá trị
 hiện tại (bản ẩn CÓ trong `items` của form sửa — `kemDanhMucDangGan`). Bắt buộc vì `DropdownButton` **ném** khi `value` không nằm trong `items`. Kế hoạch soát từng
-form (`bill_edit_page`, form ngân sách, `ThemGiaoDichCubit` / `choose_category_page` khi sửa) và có widget test cho từng form.
+form (`bill_edit_page`, form ngân sách, `ThemGiaoDichCubit` / `choose_category_page` khi sửa) và có test cho từng form — hoá đơn: widget; ngân sách + giao dịch: cubit (mục 8).
 
 **Trần Premium *danh mục riêng*** (`dem_dang_hoat_dong.dart`): so bản sao với **mọi khuôn kể cả đã xoá** (DAO thêm
 `getTatCaKhuon()`), nên bản ẩn và bản sao của khuôn cũ không bị đếm là danh mục tự tạo (đóng lỗi 3 mục 0).
@@ -200,7 +200,7 @@ lật thành *"… thì KHÔNG tạo"*, `reason:` viện chỉ mục thật. M�
 - Admin đổi loại khuôn → bản sao loại cũ không còn khớp `laBanSaoMacDinh` → bị đếm vào trần *danh mục riêng*.
 - Bản client cũ trên máy khác của cùng tài khoản: không ẩn, không lan truyền, nhưng nhận các bản sao đã đổi qua đồng bộ.
 - App chỉ biết thay đổi ở lượt kéo về kế tiếp (không có socket tới app người dùng).
-- (Đo lại ở HEAD 2026-10-27, phán quyết điều phối.) Lan truyền khớp `(tenMoi, loai)` nên danh mục người dùng TỰ TẠO trùng đúng
+- Lan truyền khớp `(tenMoi, loai)` nên danh mục người dùng TỰ TẠO trùng đúng
   tên mới + loại cũ cũng nhận biểu tượng / từ khoá của khuôn — đúng spec, không đổi mã (`lan_truyen_khuon.dart:44`, `:71`).
 - `_deletedAtFrom` (`core/sync/anh_xa_keo_ve.dart:430`) rơi về `DateTime.now()` khi `delete_at` đọc hỏng → khuôn xoá cũ thành
   *"xoá sau mốc"* → bản sao ẩn; và `Delete_at` là timestamp không múi giờ (lệch ≤ 7 giờ quanh mốc nếu CSDL ghi giờ VN) — không
@@ -211,7 +211,7 @@ lật thành *"… thì KHÔNG tạo"*, `reason:` viện chỉ mục thật. M�
   vô hại.
 - Danh mục người dùng tự tạo trùng đúng (tên, loại) một khuôn đã xoá cũng không bị đếm vào trần *danh mục riêng*
   (`dem_dang_hoat_dong.dart:50`) — vô hại (giới hạn bởi số khuôn đã xoá).
-- (Từ soát Task 7, `ap_du_lieu_keo_ve.dart:116`, biến `keoToanBo`.) Lượt kéo TOÀN BỘ (`isLocalDbEmpty || _lastPullTime == null`)
+- (`78afc043`; `ap_du_lieu_keo_ve.dart:116`, biến `keoToanBo`.) Lượt kéo TOÀN BỘ (`isLocalDbEmpty || _lastPullTime == null`)
   bỏ so từ khoá khuôn — vì đổi tài khoản trên cùng máy, purge giữ hàng khuôn nhưng dọn từ khoá của tài khoản; hệ quả: tài khoản
   không còn ví sống (mọi lượt là toàn bộ) hoặc mốc kéo về bị bỏ thì thay đổi từ khoá của khuôn ở lượt ấy không lan truyền.
 - Hàng khuôn dùng chung cả máy → tài khoản kéo về ĐẦU TIÊN sau khi admin sửa nhận `ThayDoiKhuon`, tài khoản thứ hai trên cùng
@@ -219,7 +219,7 @@ lật thành *"… thì KHÔNG tạo"*, `reason:` viện chỉ mục thật. M�
 - Lượt kéo hỏng SAU bước danh mục: hàng khuôn đã ghi đè → mất lần lan truyền tên / biểu tượng ấy (từ khoá có thể được phát hiện
   lại ở lượt sau).
 - Khuôn về LẦN ĐẦU ở trạng thái đã xoá (không được gieo từ khoá) rồi admin khôi phục → `tuKhoaCu` rỗng — hiếm.
-- (Từ soát Task 8, `lan_truyen_khuon.dart`.) Bản sao đã xoá mà lệnh xoá còn `pending` (đẩy hỏng) lúc lan truyền đổi tên → lệnh
+- (`55b7c39e`, `lan_truyen_khuon.dart`.) Bản sao đã xoá mà lệnh xoá còn `pending` (đẩy hỏng) lúc lan truyền đổi tên → lệnh
   xoá vẫn được đẩy, server bỏ tên mới, lượt kéo sau đè tên cũ và bộ tạo bản sao đẻ lại bản mang tên mới — cùng cơ chế bước 6,
   hiếm (đẩy chạy trước kéo).
 - Đua hai máy: máy kia cùng tài khoản tạo danh mục mang đúng tên mới trong khoảng giữa lượt kéo và lượt đẩy đổi tên của máy này →
@@ -238,7 +238,7 @@ lật thành *"… thì KHÔNG tạo"*, `reason:` viện chỉ mục thật. M�
 | Lan truyền | `features/category/application/lan_truyen_khuon_test.dart` | đổi tên cả bản đã xoá — bản đã xoá **không** `pending`, giữ `updatedAt` · bỏ qua khi tên mới đã có · biểu tượng chỉ khi còn đúng cũ · từ khoá chỉ thêm · từ khoá khuôn cập nhật · `pending` · luỹ đẳng |
 | Kéo về | `core/sync/…` (ca mới cạnh `sync_gieo_sau_keo_ve_test.dart`) | ghi `ThayDoiKhuon` chỉ khi khuôn đã có trên máy và khác · lượt đầu không ghi · cổng nhận danh sách · thứ tự lan truyền → tạo bản sao |
 | Bộ tạo bản sao | `features/category/application/default_category_seeder_test.dart` | so theo tên (ca lật) · ca G16 xanh |
-| Quét 40 | mục 4 | `getCategoryRows` / `watchCategoryRows` chỉ ở repository |
+| Quét 40 | mục 4 | `getCategoryRows` / `watchCategoryRows` chỉ ở DAO và cửa `danh_sach_chon_danh_muc.dart` (repository impl cũng bị cấm) |
 
 ## 9. Nghiệm thu máy thật
 
