@@ -625,6 +625,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       // Nhật ký B5a: `dat_lich` / `huy_lich` — B5b suy "đã tới máy" từ chúng.
       nhatKy: sl<NhatKyThongBao>(),
       eventDao: sl<AppDatabase>().notificationEventDao,
+      // B1 (spec 2026-10-27 mục 5): không quyền → không đặt lịch; lịch đã đặt huỷ ở lượt `resync` kế.
+      nhacTruocHanDuocPhep: () => coQuyenNen(MaQuyen.billReminderNotifications),
+      nhacGhiChepDuocPhep: () => coQuyenNen(MaQuyen.dailyRecordingReminder),
     ),
   );
 
@@ -818,6 +821,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       // nguyên là điện thoại vẫn kêu nhắc trả một hoá đơn đã trả.
       resyncLich: (idaccount) =>
           sl<ReminderScheduler>().resync(idaccount),
+      // B1: không quyền → bỏ loại thông báo (sắp hạn hoá đơn; sắp / đã vượt ngân sách). Quá hạn vẫn báo.
+      nhacTruocHanDuocPhep: () => coQuyenNen(MaQuyen.billReminderNotifications),
+      canhBaoNganSachDuocPhep: () => coQuyenNen(MaQuyen.budgetOverspendAlert),
       // Nhật ký B5a: cú Hoãn nằm trong tệp hàng chờ (isolate nền không có CSDL).
       // Một dòng thuộc tài khoản khi khoá khớp một `dat_lich` HOẶC một thông báo
       // của chính tài khoản ấy — không khớp thì bỏ, không đoán (quy tắc 2).

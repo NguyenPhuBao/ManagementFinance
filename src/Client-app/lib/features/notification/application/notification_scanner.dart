@@ -212,6 +212,20 @@ class NotificationScanner {
   /// không liên quan tới thứ đang được canh.
   final Future<void> Function(int idaccount)? resyncLich;
 
+  /// Quyền `bill_reminder_notifications` (B1, spec 2026-10-27 mục 5): `false` → bỏ `billDueSoon` (quá hạn VẪN báo). DI
+  /// nối `coQuyenNen`; `null` → có quyền.
+  final bool Function()? nhacTruocHanDuocPhep;
+
+  /// Quyền `budget_overspend_alert`: `false` → bỏ `budgetNearLimit` / `budgetOverspent`. `null` → có quyền.
+  final bool Function()? canhBaoNganSachDuocPhep;
+
+  /// Loại thông báo này có bị quyền gói chặn không — một chỗ cho bộ lọc ứng viên.
+  bool _quyenChoLoai(NotificationKind k) => switch (k) {
+        NotificationKind.billDueSoon => nhacTruocHanDuocPhep?.call() ?? true,
+        NotificationKind.budgetNearLimit || NotificationKind.budgetOverspent => canhBaoNganSachDuocPhep?.call() ?? true,
+        _ => true,
+      };
+
   /// Nhật ký B5a — cú *Hoãn* nằm trong tệp hàng chờ (isolate nền không có CSDL);
   /// nhập MỘT lần mỗi [start]. `null` thì bỏ qua (test không cần tệp).
   final NhapHangCho? nhapHangCho;
@@ -318,6 +332,8 @@ class NotificationScanner {
     this.badgeUpdater,
     this.prefsStore,
     this.resyncLich,
+    this.nhacTruocHanDuocPhep,
+    this.canhBaoNganSachDuocPhep,
     this.nhapHangCho,
     this.nhapBienDong,
     this.datCoPhien,
@@ -660,7 +676,7 @@ class NotificationScanner {
         // Lọc ở đây chứ không ở bước bắn: tắt một nhóm nghĩa là không sinh
         // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông
         // báo vẫn đầy những mục người dùng đã nói là không muốn thấy.
-      ).where((c) => prefs.chapNhan(c.kind)).toList();
+      ).where((c) => prefs.chapNhan(c.kind) && _quyenChoLoai(c.kind)).toList();
 
       // Gỡ hàng "sắp cạn" đã lỗi thời (ví đã hồi, hoặc đã âm — G81) — ở MỌI lượt quét, nên đứng trước nhánh thoát sớm "không có gì mới"
       // bên dưới. `BadgeUpdater` nghe bảng và huỷ thông báo của hàng đã gỡ khỏi khay.
