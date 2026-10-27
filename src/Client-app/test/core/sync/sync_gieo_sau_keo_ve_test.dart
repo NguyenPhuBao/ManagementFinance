@@ -12,6 +12,7 @@ import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
@@ -62,7 +63,7 @@ class _Adapter implements HttpClientAdapter {
             'wallets': [
               {
                 'idwallet': 'cccccccc-0000-4000-8000-000000000001',
-                'idaccount': 7,
+                'idaccount': acc,
                 'name': 'Ví thử',
                 'balance': 0,
                 'update_at': '2026-10-01T00:00:00.000Z',
@@ -114,12 +115,13 @@ Map<String, dynamic> macDinhServer() => {
       'update_at': '2026-10-01T00:00:00.000Z',
     };
 
-Map<String, dynamic> khuon({String ten = 'Ăn uống', String? keyword, String? deleteAt}) => {
+Map<String, dynamic> khuon({String ten = 'Ăn uống', String? keyword, String? deleteAt, String? icon}) => {
       'idcategory': idMacDinh,
       'name_category': ten,
       'classify': 'Chi',
       'is_default': true,
       if (keyword != null) 'keyword': keyword,
+      if (icon != null) 'icon': icon,
       if (deleteAt != null) 'delete_at': deleteAt,
       'update_at': '2026-10-01T00:00:00.000Z',
     };
@@ -264,7 +266,7 @@ void main() {
     });
     await e.start(idaccount: acc);
     await e.syncNow();
-    expect(nhan.last, isEmpty, reason: 'Cùng tên, biểu tượng, từ khoá — không có gì để lan truyền.');
+    expect(nhan.last, isEmpty, reason: 'Cùng tên, cùng biểu tượng — không có gì để lan truyền.');
   });
 
   test('thêm từ khoá ở khuôn → ThayDoiKhuon mang tập cũ / mới', () async {
@@ -294,7 +296,7 @@ void main() {
     expect(d.tuKhoaMoi, ['quan an']);
   });
 
-  test('khuôn về ở trạng thái ĐÃ XOÁ → không ghi thay đổi (luật ẩn lo phần ấy)', () async {
+  test('⭐ khuôn về ở trạng thái ĐÃ XOÁ vẫn lan truyền đổi TÊN (đổi tên rồi xoá giữa hai lượt kéo)', () async {
     final nhan = <List<ThayDoiKhuon>>[];
     final e = dung([[khuon()], [khuon(ten: 'Ăn ngoài', deleteAt: '2026-10-28T00:00:00.000Z')]],
         sauKeoVe: (_, doi) async {
@@ -303,7 +305,25 @@ void main() {
     });
     await e.start(idaccount: acc);
     await e.syncNow();
-    expect(nhan.last, isEmpty, reason: 'Khuôn bị xoá: luật ẩn lo phần ấy, không lan truyền đổi tên.');
+    final d = nhan.last.single;
+    expect(d.tenMoi, 'Ăn ngoài',
+        reason: 'Bỏ qua khuôn đã xoá thì bản sao "Ăn uống" không khớp khuôn đã xoá nào và vẫn hiện; admin khôi phục là '
+            'bộ tạo bản sao mọc thêm bản "Ăn ngoài" (người dùng chốt 2026-10-27).');
+    expect(d.tuKhoaCu, d.tuKhoaMoi, reason: 'Khuôn đã xoá không so từ khoá.');
+  });
+
+  test('khuôn đã xoá chỉ đổi từ khoá → không ThayDoiKhuon', () async {
+    final nhan = <List<ThayDoiKhuon>>[];
+    final e = dung([
+      [khuon(keyword: 'an uong')],
+      [khuon(keyword: 'an uong, quan an', deleteAt: '2026-10-28T00:00:00.000Z')],
+    ], coVi: true, sauKeoVe: (_, doi) async {
+      nhan.add(doi);
+      return 0;
+    });
+    await e.start(idaccount: acc);
+    await e.syncNow();
+    expect(nhan.last, isEmpty, reason: 'Từ khoá của khuôn đã xoá không còn gì để thêm vào bản sao.');
   });
 
   test('lượt kéo TOÀN BỘ (dữ liệu tài khoản bị dọn, khuôn còn trên máy) → không có ThayDoiKhuon từ khoá', () async {
@@ -315,9 +335,50 @@ void main() {
     await e.start(idaccount: acc);
     await (db.delete(db.categoryKeywords)..where((t) => t.idaccount.equals(acc))).go(); // mô phỏng purge
     await e.syncNow();
+    expect(nhan, hasLength(2), reason: 'Hai lượt kéo — `nhan.last` phải là của lượt SAU purge, không phải lượt đầu.');
     expect(nhan.last, isEmpty,
         reason: 'Đổi tài khoản trên cùng máy: khuôn ở lại, từ khoá của tài khoản bị dọn — so từ khoá sẽ sinh thay đổi giả '
             'và lan truyền lại những từ khoá người dùng đã xoá.');
+  });
+
+  test('⭐ máy CÓ ví nhưng chưa có mốc kéo (lượt kéo toàn bộ) → không so từ khoá', () async {
+    // Khuôn đã có trên máy kèm từ khoá, và có ví (nên CSDL KHÔNG rỗng) — nhưng `_lastPullTime == null` (chưa có checkpoint)
+    // vẫn là lượt kéo toàn bộ: từ khoá lưu theo tài khoản có thể đã bị dọn, so sẽ sinh thay đổi từ khoá giả.
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: idMacDinh,
+      idaccount: 0,
+      name: 'Ăn uống',
+      classify: 'chi',
+      icon: const Value('restaurant'), // đúng biểu tượng mặc định theo tên — không sinh thay đổi biểu tượng giả
+      isDefault: const Value(true),
+      updatedAt: DateTime(2026, 9, 1),
+    ));
+    await db.categoryDao.replaceKeywords(accountId: acc, categoryId: idMacDinh, keywords: ['an uong'], now: DateTime(2026, 9, 1));
+    await db.walletDao.insert(WalletsCompanion.insert(id: 'vi-co-san', idaccount: acc, name: 'Ví có sẵn', updatedAt: DateTime(2026, 9, 1)));
+    final nhan = <List<ThayDoiKhuon>>[];
+    final e = dung([[khuon(keyword: 'an uong, quan an')]], sauKeoVe: (_, doi) async {
+      nhan.add(doi);
+      return 0;
+    });
+    await e.start(idaccount: acc);
+    expect(nhan, hasLength(1));
+    expect(nhan.single, isEmpty,
+        reason: 'Điều kiện `keoToanBo` là `CSDL rỗng || chưa có mốc` — thiếu vế sau thì máy có ví mà mất checkpoint sinh '
+            'thay đổi từ khoá giả.');
+  });
+
+  test('⭐ admin đổi BIỂU TƯỢNG khuôn → ThayDoiKhuon mang iconCu / iconMoi', () async {
+    final nhan = <List<ThayDoiKhuon>>[];
+    final e = dung([[khuon(icon: 'fuel')], [khuon(icon: 'gas')]], sauKeoVe: (_, doi) async {
+      nhan.add(doi);
+      return 0;
+    });
+    await e.start(idaccount: acc);
+    await e.syncNow();
+    final d = nhan.last.single;
+    expect([d.iconCu, d.iconMoi], ['fuel', 'gas'],
+        reason: 'Biểu tượng là một trong ba thứ lan truyền — bỏ qua thì chỉ đổi tên / từ khoá mới tới được bản sao.');
+    expect(d.tenCu, d.tenMoi);
   });
 
   test('lượt kéo toàn bộ vẫn ghi đổi TÊN', () async {
@@ -329,6 +390,7 @@ void main() {
     });
     await e.start(idaccount: acc);
     await e.syncNow();
+    expect(nhan, hasLength(2));
     final d = nhan.last.single;
     expect(d.tenMoi, 'Ăn ngoài', reason: 'Hàng khuôn dùng chung cả máy — phép so tên đúng ở mọi lượt.');
     expect(d.tuKhoaCu, d.tuKhoaMoi);

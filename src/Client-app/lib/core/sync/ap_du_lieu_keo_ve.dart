@@ -256,11 +256,13 @@ class ApDuLieuKeoVe {
               final doi = thayDoiKhuonTu(
                 cu: existingLocal,
                 moi: companion,
-                laKhuonSong: doiSangBool(c['is_default']) && c['delete_at'] == null,
+                laKhuon: doiSangBool(c['is_default']),
                 // Lượt kéo TOÀN BỘ không có trạng thái cũ của tài khoản này để so từ khoá: hàng khuôn (idaccount 0) dùng
                 // chung cả máy và `purgeDataForOtherAccounts` giữ nó, còn từ khoá lưu THEO tài khoản và bị dọn khi đổi
                 // tài khoản trên cùng máy — so sẽ sinh thay đổi từ khoá giả. Tên / biểu tượng của khuôn thì vẫn so.
-                tuKhoaCu: (keoToanBo || existingLocal?.isDefault != true)
+                // Khuôn về ĐÃ XOÁ (admin đổi tên rồi xoá giữa hai lượt kéo) vẫn lan truyền tên / biểu tượng; từ khoá thì không
+                // so (khuôn xoá không còn nguồn từ khoá để thêm) — người dùng chốt 2026-10-27.
+                tuKhoaCu: (keoToanBo || existingLocal?.isDefault != true || c['delete_at'] != null)
                     ? tuKhoa
                     : await _db.categoryDao.getKeywords(accountId, catUuid),
                 tuKhoaMoi: tuKhoa,

@@ -210,8 +210,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       checkpointStore: const SecureStorageSyncCheckpointStore(
         FlutterSecureStorage(),
       ),
-      // Quy tắc 8: bộ gieo danh mục mặc định chạy sau MỌI lượt kéo về thành công — cả lượt nền (`syncMotLuot`).
-      // Quy tắc 8 + spec 2026-10-27 mục 5: sau MỌI lượt kéo về thành công — lan truyền sửa khuôn TRƯỚC, gieo bản sao SAU.
+      // Quy tắc 8 + spec 2026-10-27 mục 5: sau MỌI lượt kéo về thành công — cả lượt nền (`syncMotLuot`) — lan truyền sửa
+      // khuôn TRƯỚC, gieo bản sao SAU.
       sauKeoVe: (id, thayDoi) => viecSauKeoVeDanhMuc(sl<LanTruyenKhuon>(), sl<DefaultCategorySeeder>(), id, thayDoi),
       // G89: lượt bị máy chủ chặn (bảo trì / phong toả) không tính là lượt hỏng, hẹn thử lại đúng mốc.
       trangThaiMayChu: sl<TrangThaiMayChu>(),

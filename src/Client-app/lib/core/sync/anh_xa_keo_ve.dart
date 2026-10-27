@@ -433,8 +433,10 @@ DateTime? _deletedAtFrom(dynamic raw) {
 }
 
 /// So hàng khuôn ĐÃ CÓ trên máy ([cu]) với bản vừa về (tên / biểu tượng SAU ánh xạ — [moi] — và từ khoá [tuKhoaMoi]): khác
-/// thì một [ThayDoiKhuon], còn lại `null` (spec 2026-10-27 mục 5). [laKhuonSong]: hàng về là khuôn chưa xoá — khuôn vừa bị
-/// xoá thì luật ẩn lo, không lan truyền.
+/// thì một [ThayDoiKhuon], còn lại `null` (spec 2026-10-27 mục 5). [laKhuon]: hàng về là khuôn (`is_default`), CÒN SỐNG HAY ĐÃ
+/// XOÁ — khuôn về đã xoá vẫn lan truyền tên / biểu tượng (admin đổi tên rồi xoá giữa hai lượt kéo; bỏ qua thì bản sao không
+/// theo kịp tên mới, và khi admin khôi phục khuôn bộ tạo bản sao mọc thêm một bản). Nơi gọi truyền `tuKhoaCu == tuKhoaMoi`
+/// cho khuôn đã xoá nên từ khoá không bao giờ sinh thay đổi (người dùng chốt 2026-10-27).
 ///
 /// Khuôn trên máy còn `icon = 'category'` (server chưa từng gửi icon) thì `companionDanhMucKeoVe` rơi về
 /// `defaultIconForCategoryName(catName)` → lượt đầu khuôn ấy về lại sinh một [ThayDoiKhuon] biểu tượng "giả"; vô hại và
@@ -442,11 +444,11 @@ DateTime? _deletedAtFrom(dynamic raw) {
 ThayDoiKhuon? thayDoiKhuonTu({
   required Category? cu,
   required CategoriesCompanion moi,
-  required bool laKhuonSong,
+  required bool laKhuon,
   required List<String> tuKhoaCu,
   required List<String> tuKhoaMoi,
 }) {
-  if (cu == null || !cu.isDefault || !laKhuonSong) return null;
+  if (cu == null || !cu.isDefault || !laKhuon) return null;
   final tenMoi = moi.name.value;
   final iconMoi = moi.icon.value;
   final a = {for (final k in tuKhoaCu) normalizeCategoryName(k)}..remove('');
