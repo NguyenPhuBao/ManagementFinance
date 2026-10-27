@@ -1,6 +1,7 @@
 # Phân quyền theo gói — cột Premium và 22 công tắc (B1) — thiết kế
 
-> **Ngày:** 2026-10-27 (phiên 16, Opus 5.5) · **Trạng thái:** bốn phần thiết kế người dùng duyệt từng phần; chờ soát bản viết
+> **Ngày:** 2026-10-27 (phiên 16, Opus 5.5) · **Trạng thái:** bốn phần thiết kế người dùng duyệt từng phần; ✅ **bản viết duyệt
+> 2026-10-27 phiên 17** (ba điểm cuối — mục 1 hàng 10–12)
 > **Phạm vi:** chỉ `src/Client-app` (quy tắc 1) + đơn backend **CAN-LAM 55** (mục 7). Không đổi schema Drift (vẫn v31).
 > **Liên quan:** `2026-10-08-phan-quyen-tinh-nang-client-design.md` (spec gốc — spec này thay luật *"Premium còn hạn = mở hết"*
 > của nó), `docs/PREMIUM_FEATURE.md` mục 8, commit `3ec874aa` (trần 0 = không tạo thêm — việc (a) cùng phiên).
@@ -35,6 +36,9 @@
 | 7 | Lối tiếp cận | `trangThaiQuyen` ba trạng thái; `duocDung` giữ `bool` cho ~30 chỗ gọi |
 | 8 | Khoá `category_keywords_matching` | Khoá sửa từ khoá + đề xuất thêm từ khoá; **từ khoá đã có vẫn dùng để gợi ý** |
 | 9 | Đơn backend | **Một đơn 55** gộp hợp đồng (vế A) + đính chính `4_TRU_COT.md` (vế B, việc (c)) |
+| 10 | Đặc quyền Premium khi trần Premium là một số | ***"Tới 10 ví"*** — chỉ kể khi lớn hơn trần Basic (phiên 17) |
+| 11 | Tên hiển thị 11 mã mới | **Giữ bảng mục 3** (phiên 17) |
+| 12 | Nghiệm thu máy thật | **Thêm hai bước**: hết hạn lúc offline (G109) · nhắc trước hạn hoá đơn bị khoá (mục 10 bước 5–6, phiên 17) |
 
 ## 2. Luật đọc bảng — domain `premium/`
 
@@ -181,7 +185,14 @@ danh tính CSDL trước (*Ghi chú vận hành* `CLAUDE.md`).
 3. Tài khoản Basic: tắt lần lượt một mã mỗi nhóm (Trang chủ · nhắc · ví / mục tiêu · nhập liệu) → thấy khoá đúng chỗ; mở lại
    → như cũ.
 4. Nhắc ghi chép đang bật → admin tắt → lịch huỷ (`dumpsys alarm`); bật lại → lịch về.
-5. Trả ma trận về mặc định (*Khôi phục mặc định* ở Admin-web).
+5. **Nhắc trước hạn hoá đơn** — có một hoá đơn trong khoảng nhắc và một hoá đơn quá hạn: admin tắt `bill_reminder_notifications`
+   ở cột của gói → sau tín hiệu, lịch nhắc trước hạn huỷ (`dumpsys alarm`), chip *Nhắc trước* ở form hoá đơn và ở Cài đặt khoá;
+   hoá đơn quá hạn **vẫn** báo; bật lại → lịch về.
+6. **Hết hạn lúc offline (G109)** — tài khoản Premium có hạn vài phút tới (đặt `premium_expires_at` trên `PersonFinance` — câu
+   `UPDATE` xin phép đích danh lúc đo), mở app cho nhận bảng, tắt mạng (`svc wifi disable` **và** `svc data disable`), chờ quá
+   hạn → tạo ví vượt trần Basic mặc định → bị chặn, màn Nâng cấp câu trần Basic (mã cũ: tạo không giới hạn). Bật lại mạng cuối
+   bước.
+7. Trả ma trận về mặc định (*Khôi phục mặc định* ở Admin-web).
 
 ## 11. Tài liệu phải sửa cùng lượt
 
