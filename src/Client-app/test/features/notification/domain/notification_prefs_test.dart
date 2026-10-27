@@ -295,6 +295,17 @@ void main() {
               'im hẳn thì đã có công tắc tổng cho thông báo hệ điều hành.');
     });
 
+    test('tin từ FlowMoney: nhóm riêng, mặc định BẬT, chịu công tắc nhóm', () {
+      expect(nhomCua(NotificationKind.tinHeThong), NotificationGroup.tinFlowMoney);
+      expect(luonBao(NotificationKind.tinHeThong), isFalse,
+          reason: 'admin gửi dày thì người dùng phải tắt được riêng nhóm này, không phải tắt hết');
+      expect(NotificationPrefs.macDinh.batNhom(NotificationGroup.tinFlowMoney), isTrue);
+      expect(const NotificationPrefs(nhomTat: {NotificationGroup.system}).chapNhan(NotificationKind.tinHeThong), isTrue,
+          reason: 'tắt Hệ thống (đồng bộ hỏng, ví âm) không được kéo theo tin admin — nhóm RIÊNG');
+      expect(const NotificationPrefs(nhomTat: {NotificationGroup.tinFlowMoney}).chapNhan(NotificationKind.tinHeThong),
+          isFalse);
+    });
+
     test('tắt nhóm vẫn chặn các loại KHÁC của chính nhóm ấy', () {
       const p = NotificationPrefs(nhomTat: {
         NotificationGroup.bill,

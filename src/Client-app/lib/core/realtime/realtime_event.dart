@@ -14,6 +14,11 @@
 /// số tiếng Việt do client chọn, còn dữ liệu thật đi đường `/sync/pull` như mọi
 /// khi.
 ///
+/// Hai ngoại lệ, mỗi cái một cửa riêng trên `RealtimeChannel` — không bao giờ
+/// vào enum này: `account.force_logout` (`buocDangXuat`) và `system.broadcast`
+/// (`tinHeThong`, đọc qua `docTinHeThong` — 2026-10-26). Cả hai chỉ phát từ một
+/// hàm phía backend.
+///
 /// ⚠️ `bank_transaction.incoming` **cố ý không nằm ở đây**. Backend vẫn phát
 /// nó (SePay webhook → `workers/bank.worker.js`), nhưng nhóm đã bỏ liên kết
 /// ngân hàng khỏi sản phẩm ngày 2026-09-18, nên client bỏ qua nó đúng như với

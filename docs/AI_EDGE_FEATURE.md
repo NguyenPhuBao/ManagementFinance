@@ -4720,7 +4720,7 @@ ba màn `1896d02b…` *bong bóng online* · `7a6519d6…` *tờ thông tin* · 
 |---|---|---|
 | `XongOnline` | `RoiVeMay('rỗng')` | `HoanTat()` — nhãn *Trợ lý online* |
 | `DuPhongOnline` (`done.fallback` **hoặc** `done.error`) | `RoiVeMay` | `RoiVeMay` — chữ đã có là thông báo của server |
-| `LoiOnline` (HTTP ≠ 200, `event: error`, hết 45 s, mất mạng, mọi lỗi giữa luồng, luồng đóng không `done`) | `RoiVeMay` | `GiuPhanDaCo('kết nối gián đoạn')` |
+| `LoiOnline` (HTTP ≠ 200, `event: error`, hết 45 s, quá trần tổng 120 s, mất mạng, mọi lỗi giữa luồng, luồng đóng không `done`) | `RoiVeMay` | `GiuPhanDaCo('kết nối gián đoạn')` |
 | `ChuOnline` làm sự kiện cuối (chỉ qua khe tiêm test `onHoiOnline` — datasource thật phát `LoiOnline` *"luồng đóng không done"*) | `RoiVeMay` | `GiuPhanDaCo('kết nối gián đoạn')` |
 | người dùng bấm Dừng | không bong bóng | `GiuPhanDaCo('đã dừng')` |
 
@@ -4736,7 +4736,7 @@ lib/core/api/khung_sse.dart                         — BoTachSse / KhungSse: t�
 lib/core/api/interceptors/auth_interceptor.dart     — _retryRequest phát lại sau 401 bằng fetch(copyWith(headers:)) — giữ responseType / receiveTimeout / cancelToken
 lib/features/ai_chat/domain/su_kien_online.dart     — SuKienOnline { ChuOnline · XongOnline · DuPhongOnline · LoiOnline }, TinLichSu
 lib/features/ai_chat/domain/duong_hoi.dart          — nenHoiOnline · quyetDinhSauOnline (HoanTat / RoiVeMay / GiuPhanDaCo) · xepHistory · năm hằng nhãn
-lib/features/ai_chat/data/datasources/tro_ly_online_remote_data_source.dart — POST /ai/chatbot/chat/stream, receiveTimeout 45 s, khung → sự kiện
+lib/features/ai_chat/data/datasources/tro_ly_online_remote_data_source.dart — POST /ai/chatbot/chat/stream, receiveTimeout 45 s, trần tổng 120 s (kTranTongOnline), khung → sự kiện
 lib/features/ai_chat/data/repositories/tro_ly_online_repository.dart      — giao diện `hoi` → `LuotHoiOnline` (2026-10-19)
 lib/features/ai_chat/data/repositories/tro_ly_online_repository_impl.dart — bản thật, bọc datasource SSE
 lib/features/ai_chat/data/models/luot_hoi_online.dart — `LuotHoiOnline`: luồng `SuKienOnline` + `huy` thuần (datasource giữ `CancelToken`)
@@ -4833,6 +4833,11 @@ chỉnh fixture test.
   thật nhưng `req.on('close')` không nổ (Node 22) — đơn 47 việc 5 nay có mốc đo. Câu dài cụt vì `maxOutputTokens: 1024` gồm
   token suy nghĩ — đơn 47 việc 7. Cổng C3 bắt nhầm *"hãy viết 15 lời khuyên tiết kiệm…"* — **G95** (✅ đóng 2026-10-20, vế loại trừ câu xin viết chữ ở mục 9.43).
 - ✅ Tin `user` mồ côi trong `history` (4.54) — đã sửa 2026-10-17 khuya: `xepHistory` ghép theo cặp.
+- ✅ **Trần tổng 120 s (2026-10-26, phiên 13)** — backend đã gửi `: ping` mỗi 15 s (đơn 47 việc 6, `chatbot.controller.js:32`) nên câu suy nghĩ
+  lâu không còn rơi về máy ở giây 45; nhưng cũng vì thế `receiveTimeout` không bao giờ nổ, mà backend không có trần nào cho lời gọi Gemini —
+  Gemini treo là vòng xoay quay mãi. `kTranTongOnline` (người dùng chốt 120 s — vượt ca dài nhất đã đo 91 s): quá trần datasource huỷ chính
+  `CancelToken` của lượt và phát `LoiOnline(http null, 'quá trần tổng 120 s')` ⇒ chưa chữ → *AI trên máy · máy chủ không phản hồi*, có chữ →
+  giữ + *kết nối gián đoạn*. Trang không đổi. Ca canh: ba ca cuối `tro_ly_online_remote_data_source_test.dart` (máy chủ giả chỉ gửi ping).
 - ✅ Ba câu hỏi người dùng (spec mục 10 dòng 14) đã chốt 2026-10-17 khuya: (a) câu định nghĩa / tư vấn khi máy chủ hỏng →
   `kMayChuHongTuChoi`; (b) hàng *Đang nghĩ…* sau tờ thông tin đang mở — giữ; (c) nhánh `catch` khi đã có chữ chưa có ca phủ — vẫn để.
 - ✅ Người dùng đã xác nhận ba màn Stitch (2026-10-17 tối — spec mục 7).

@@ -1,5 +1,11 @@
 # Mục 49 — Soát sau khi client gộp `main` @ `ee6a65e5` (PR #153–#158) — tài liệu lệch mã, migration trùng số, thứ tự áp, lỗi kích hoạt Premium
 
+> 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.**
+> - **G — đạt qua đơn 53 B:** JIT tính `newExpiresAt` (`payment.service.js:682`) + phát `account.upgraded` (`:722`).
+> - **C — đạt phần tệp:** `database/)2_can_lam_all_migrations.sql` đã xoá; tên cũ trong tài liệu chưa soát.
+> - **A, D, E, F, H1, H3 — không có lời trả lời:** ô *"Trả lời đơn"* cuối tệp chép nội dung **đơn 43** (A1 / A3 / A4 AIOps);
+>   `850fe23b` không đổi gì ở các vế ấy.
+
 > 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`; vế G sửa thành một lỗi CAO khác.**
 > - **G (CAO) — nay thành "Premium vô thời hạn":** `payment.service.js:674-678` gọi `activatePremiumSubscription({ idaccount, orderId, paidAt })`
 >   — đúng chữ ký nhưng **không** `newExpiresAt`, không `transactionData`; `payment.repository.js:394` ghi `premium_expires_at: newExpiresAt` =

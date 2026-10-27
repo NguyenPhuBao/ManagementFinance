@@ -1,5 +1,17 @@
 # Soát sau gộp `main` @ `cd2ee572`: AIOps khoá tài khoản làm client xoá dữ liệu; webhook PayOS nâng nhầm tài khoản; đăng nhập lúc bảo trì mất `code`; đính chính hợp đồng sự kiện (mục 43)
 
+> 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.**
+> - **A1 — đạt:** hai khối `prisma.account.updateMany` trong `aiops.controller.js` đã gỡ.
+> - **A3 — đạt phần chính, còn MỘT lối:** `_syncAccountStatusToDatabase` (`aiops.quarantine.js:636`) chỉ mở khoá hàng
+>   `status = 'Inactive'` (bảo vệ `PendingDelete`) và khoá không hạ `PendingDelete`; hai lối hết hạn `:141`, `:153` truyền
+>   `onlyAIOpsLocked`. Nhưng `getQuarantinedList()` (`:965`) — hàm **liệt kê** — tự mở khoá hàng hết hạn ở `:984` **không** kèm
+>   `onlyAIOpsLocked` ⇒ tài khoản admin khoá tay (lý do không chứa *AIOps / Cách ly / Sentinel*) bị mở khi có người mở trang AIOps
+>   sau hạn. Phép lọc theo chữ của `reason_inactive` còn nhận cả `reason_inactive: null`.
+> - **A4 — đạt:** khối `require('../../database/prisma')` + `'TemporarilyLocked'` ở `feature.collector.js` đã gỡ.
+> - **A5 — chưa:** không tệp `database/N` cho `ck_account_status`; bảng `account` vẫn **0** CHECK (đo 2026-10-27).
+> - **D — chưa:** `850fe23b` không đụng `docs/Admin-web/Event-Notification-to-ClientApp.md` (8 / 12 chỗ như banner 2026-10-26 dưới).
+> - Ô *"Trả lời đơn"* ở đơn 49 (`SOAT_SAU_GOP_EE6A65E5.md`) cũng chép nội dung đơn này.
+
 > 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.** Lượt sửa chỉ chạm `aiops.controller.js` (2 dòng); `core/`, `middleware/`,
 > `aiops.quarantine.js`, `feature.collector.js` không đổi từ `36f1ea43`.
 > - **A1 — đạt về giá trị:** `aiops.controller.js:249`, `:305` nay ghi `'Inactive'` (grep `'Locked'` trong `modules/` → 0). Nhưng hai khối

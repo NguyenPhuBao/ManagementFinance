@@ -158,7 +158,8 @@ và quyết định *người ghi + Chủ nhà sửa / xoá* (`00` mục 2, #9 v
 - **Bỏ ngoại lệ `idgoal`** của đơn 50 D.2: giao dịch **riêng** chỉ được trỏ `idgoal` tới mục tiêu **riêng của chính người ấy**; trỏ tới
   mục tiêu của nhà ⇒ `HOUSEHOLD_SCOPE_MISMATCH`. Mục tiêu chung nay là công tắc trên ví chung, góp qua cặp hai khoản (`03`).
 - Phía client: thêm `HOUSEHOLD_ROLE_FORBIDDEN` (và `HOUSEHOLD_WALLET_LIMIT` của `02A`) vào `_permanentCodes`
-  (`lib/core/sync/gui_lo_dong_bo.dart`) **trước** khi backend bật — cùng cách năm mã của đơn 50 đã làm ngày 2026-10-26 — và form chặn
+  (`lib/core/sync/gui_lo_dong_bo.dart`) **trước** khi backend bật — cùng cách năm mã của đơn 50 đã làm ngày 2026-10-26 (✅ **đã thêm
+  2026-10-27**; backend đặt tên khác thì báo client để sửa theo) — và form chặn
   trước theo đúng bảng trên (nút sửa / xoá chỉ hiện khi được phép) nên mã này chỉ nổ khi vai vừa đổi ở máy khác.
 
 ## 4. Trạng thái nhà — phần mở rộng của đơn 50 C.1

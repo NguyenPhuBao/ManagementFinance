@@ -615,7 +615,107 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-26)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-27)
+
+### 🧭 Phiên 15 (2026-10-27 chiều) — danh mục mặc định theo thao tác Admin-web (spec + kế hoạch), đơn 54, gộp `main` @ `5c3547b5` + soát 7 đơn
+
+Không đổi mã client (cây `src/Client-app` giữ hash `458742dc…` — không chạy lại `flutter test`; mốc vẫn **8202 / 10 skip**, analyze **20**).
+
+- 🧩 **Hai câu hỏi người dùng → một thiết kế:** *"Admin-web khôi phục danh mục xoá mềm có ảnh hưởng client không"* và *"Admin-web
+  bật / tắt tính năng Premium, chỉnh trần — client đáp ứng chưa"*. Câu hai **chỉ trả lời, chưa làm**: client đọc 11 / 31 công tắc +
+  5 / 5 trần **của cột Basic**; cột Premium bỏ qua (Premium còn hạn = mở hết, chốt spec 2026-10-08); `scope_config` / `downgrade_policy`
+  không đọc; trần **0** (Admin-web cho đặt, bỏ tick *Không giới hạn* ra 0) bị `TranGoi.tuJson` đọc là rác (ví / ngân sách / mục tiêu → 3,
+  hoá đơn / danh mục → không giới hạn); `account.permissions_updated` / `account.upgraded` → `lamMoi()` chạy đúng. `docs/Functional-Mobile/4_TRU_COT.md`
+  (NPBao) tả client làm những thứ client không làm (chống tua lùi giờ theo `max(date_transaction)`, ân hạn 3 ngày, `READ_ONLY`,
+  mã `FEATURE_LOCKED`) — chưa đặt đơn.
+- 📐 **Spec** `specs/2026-10-27-danh-muc-mac-dinh-theo-thao-tac-admin-design.md` (duyệt từng phần, `6b2b210b` + vá `869c0817` +
+  `4b8b2864`): admin xoá mềm khuôn từ `kMocAnTheoKhuon` (00:00 giờ VN 2026-10-27) → bản sao **ẩn** khỏi mọi danh sách CHỌN (tính lúc
+  đọc, không cột mới; bảng tra tên giữ); khôi phục → hiện; đổi tên / biểu tượng / thêm từ khoá → lan truyền (`ThayDoiKhuon` → `LanTruyenKhuon`
+  trước bộ tạo bản sao); bản sao đã xoá chỉ đổi tên cục bộ (đẩy `delete` là server bỏ tên mới — bắt khi soát spec); bộ tạo bản sao so
+  theo **tên** (đóng vòng đẩy hỏng *"Trả nợ"* Chi ↔ khuôn Vay/nợ — G108 khi thi công); quét 40. **Kế hoạch 10 task** (gitignore):
+  `docs/superpowers/plans/2026-10-27-danh-muc-mac-dinh-theo-thao-tac-admin.md` — **chưa thi công**, người dùng để phiên sau.
+- 📮 **Đơn 54** `CAN-LAM/KHUON_DANH_MUC_ADMIN_KIEM_TRUNG_TEN.md` (`c1c0627b`): `restoreCategory` / `addCategory` không kiểm trùng tên theo
+  đúng chỉ mục `uq_category_default_name` (chỉ tên — đo `pg_indexes` Supabase) → `P2002` → 500; vế C báo trước hành vi client + hai điều
+  client dựa vào (pull trả khuôn đã xoá, nâng `Server_update_at`). Số đơn gia đình nay bắt đầu từ **55**.
+- 🔀 **Gộp `main` @ `5c3547b5`** (khối 🔀 cùng tên dưới) + soát 7 đơn backend báo xong (`ce9d208d`): 47 · 53 đạt; 43 · 44 · 48 · 49 · 52
+  chuyển lại `CAN-LAM/` lần hai (người dùng chốt).
+- Đo trên Supabase dùng chung (chỉ `SELECT`): **16** khuôn danh mục sống, **0** xoá mềm (13 mã ổn định + *Thu nợ*, *Trả nợ*, *Xăng xe*);
+  bảng quyền 36 tính năng (31 công tắc + 5 trần).
+
+### 🔀 Gộp `main` @ `5c3547b5` (2026-10-27, commit gộp `bc0b28ce`, chưa push) — backend báo xong 7 đơn; PO duyệt thi công gia đình
+
+- `850fe23b` (NPBao): ba hồi quy CAO đơn 53 sửa theo mã (`mapEntityFields` chỉ áp `is_deleted === true`; JIT PayOS tính `newExpiresAt`;
+  `encrypt` thử `decrypt` chuỗi `enc:…`); chatbot `res.on('close')` + `signal` + `timeout: 60000`; AIOps chỉ mở khoá `Inactive`, khoá IP
+  vĩnh viễn → tạm 4 giờ; migration **38** (unique `payos_transaction_id`) + **39** (cấm khoá IP vĩnh viễn) — **chưa áp** Supabase (đo);
+  xoá `database/)2_can_lam_all_migrations.sql`. `5c3547b5`: viết lại đơn 50, tạo **đơn cho client**
+  `docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md` (SQLite v32 `idhousehold` 5 bảng, module `features/household/`, 16 endpoint,
+  7 mã đẩy vĩnh viễn — khớp mã client đã có) — **client chưa soát** bản này với `docs/Family/`.
+- Không tệp `src/Client-app` nào đổi; `check-ignore` không khớp; một xung đột (tiêu đề `CAN-LAM/README.md`).
+- Soát (banner 🔎 *"2026-10-27"* đầu mỗi đơn): xem `ce9d208d` và banner đầu README `CAN-LAM/`.
+
+### 🧭 Phiên 14 (2026-10-27 sáng) — push, hai mã lỗi gia đình, đo Realme (tin nhiều lần · biên lai MB thật · máy ảnh khi giữ Gemma)
+
+- ✅ **Push** 10 commit phiên 12–13 (`6e6a783d..3b25da10`, người dùng chọn).
+- ✅ **`HOUSEHOLD_ROLE_FORBIDDEN` + `HOUSEHOLD_WALLET_LIMIT`** vào `_permanentCodes` (`85b7186f`, khối 🏠) — tên do `docs/Family/` đề xuất,
+  backend **chưa** chấp nhận; người dùng chọn thêm sớm.
+- ✅ **Đo Realme** (bản debug `423f84a5…` trỏ `127.0.0.1:3000`, cài đè bản release — cùng khoá debug, dữ liệu giữ; sao lưu CSDL máy
+  `D:\FlowMoney-saoluu\realme-truoc-phien14-2026-10-27\`; `adb reverse tcp:3000 tcp:3999` → proxy WebSocket ở scratchpad → backend
+  `PersonFinance` + khoá dev, danh tính kiểm bằng tài khoản 10 `Active` trên CSDL ấy):
+  - **Cỡ chữ đã về thường** (treo từ phiên 10): `font_scale` 1.0, không ghi đè mật độ, `mGlobalConfiguration {1.0 … sw360dp 480dpi}`.
+  - **Tin admin tới ba lần** (cùng `id`, bản sao ngay + sau 3 s — giả backend phát hai lần qua event bus + Redis): app nhận 3 lần → **1**
+    hàng, **1** thông báo khay (id = `osScheduledId`), hệ điều hành thấy 1 lần đăng. Mục 5l `NOTIFICATION_FEATURE.md`.
+  - **Biên lai MB thật:** `goi=com.mbmobile | khai=false`, mẫu `_mb`, form chọn sẵn Ví MB Bank. Mục 7 `BIEN_DONG_SO_DU_FEATURE.md`.
+  - **Máy ảnh khi đang giữ Gemma** (~3,0 GB PSS): ColorOS **không** giết app, mô hình không nạp lại, form tự điền. Soát mã thấy nếu
+    bị giết thì mất ảnh (màn Quét không gọi `retrieveLostData`) → **G107**, mở và đóng cùng phiên (gạch dưới).
+- ✅ **G107** (người dùng chọn *"mở G107 và sửa ngay"*): `NhanAnhQuetBoDo` (`home/presentation/widgets/`, không vẽ gì, trong cột Trang
+  chủ) gọi `nhanAnhQuetBoDo` (`quet_anh_page.dart` — vẫn là tệp duy nhất import `image_picker`) một lần mỗi lần Trang chủ dựng mới; có
+  ảnh bỏ dở ⇒ `push('/quet')`. 5 ca test, ba ca chính đỏ trước khi sửa, bản sai bỏ `try` đỏ. Nghiệm thu Realme: `am crash` lúc máy ảnh
+  mở (ColorOS chặn *Không giữ hoạt động*) → tiến trình mới đọc ảnh bằng Gemma → màn khoá → *Đang đọc* → form → người dùng Lưu. Mục 5
+  `QUET_ANH_FEATURE.md`, *Buổi 5* mục 10 `KHOA_APP_FEATURE.md`, G107 `CLIENT_APP_KNOWN_GAPS.md`.
+  - **TalkBack:** người dùng bỏ.
+- Proxy đo (`proxy_nhan_doi.js`, scratchpad — mất khi phiên đóng): Node `http` chuyển thẳng HTTP; WebSocket qua gói `ws` của `src/Backend`
+  (`require.resolve('ws', { paths: [cwd] })`, chạy với cwd `src/Backend`), gửi thêm bản sao của khung `42["system.broadcast"` theo tệp cờ
+  (danh sách độ trễ ms). Không ghi body / token.
+
+### 🧭 Phiên 13 (2026-10-26 tối) — ba việc nhỏ của bàn giao phiên 12 + Tin từ FlowMoney + đo Realme
+
+- ✅ **Kéo về bị máy chủ từ chối không còn im lặng** (đơn 53 vế C — ghi chú `enc:…` làm mọi `/sync/pull` 500 `DECRYPT_FAILED`): lượt kéo bị
+  máy chủ **trả lời** bằng lỗi (≥ 400 trừ 401 · 403 · 429 · 503 — `keoVeBiMayChuTuChoi`, người dùng chốt *mọi lỗi máy chủ trả lời*) bật
+  `SyncEngine.keoVeBiTuChoi` (`ValueListenable<bool>`, chủ sở hữu `ApDuLieuKeoVe`) ⇒ Trang chủ hiện **`DongNhacKeoVe`** ngay sau
+  `DongNhacMayChu`: *"Chưa nhận được dữ liệu mới"* / *"Thay đổi từ máy khác chưa về, thay đổi trên máy này vẫn được gửi lên"* (biểu tượng
+  `sync_problem` nền hổ phách; Stitch biến thể 4 màn `006c5a2e…` — lượt sửa báo `timeout`, chờ người dùng nhìn). Lỗi vẫn nuốt: **không**
+  `error` (không thông báo *"Đồng bộ hỏng"*), **không** giãn cách; tắt ở lượt kéo thành công và `stop()`, mất mạng giữ nguyên. ⚠️ Cố ý
+  **không** đi qua `TrangThaiMayChu`: `MayChuInterceptor` đặt lại nó ở mọi phản hồi thành công — lượt đẩy thành công sẽ xoá dòng nhắc dù kéo
+  vẫn hỏng. Ca canh `sync_keo_ve_bi_tu_choi_test.dart` (9) + `dong_nhac_keo_ve_test.dart` (7).
+- ✅ **Trần tổng 120 s cho một lượt Trợ lý online** (`kTranTongOnline`, người dùng chốt): backend gửi `: ping` mỗi 15 s (đơn 47 việc 6) nên
+  `receiveTimeout` 45 s không còn nổ, mà backend không có trần nào cho lời gọi Gemini — Gemini treo là vòng xoay quay mãi. Quá trần
+  datasource huỷ chính `CancelToken` của lượt (đóng socket như Dừng) và phát `LoiOnline(http null, 'quá trần tổng 120 s')` — trang rơi về
+  máy / giữ phần đã hiện như mọi lỗi online, không đổi. G96 vế 2, mục 15.8 `AI_EDGE_FEATURE.md`, mục 10 dòng 24 spec trợ lý online.
+- ✅ **Tin từ FlowMoney** (`system.broadcast`, kế hoạch 7 task phiên 11, làm inline — người dùng chọn): `docTinHeThong` (`3a582a66`) ·
+  luồng `RealtimeChannel.tinHeThong` (`5d62c79f`) · loại thứ 21 `tinHeThong` + nhóm thứ bảy `tinFlowMoney` — chip *FlowMoney*, hàng
+  Cài đặt *Tin từ FlowMoney* (`e8b3b36b`) · `NhanTinHeThong` ghi Trung tâm + khay theo luật bộ quét, nối MỘT lần ở `main.dart` — mục
+  **5l** `NOTIFICATION_FEATURE.md`. Kiểm lại backend sau gộp `2b926d92` (spec đo ở `36f1ea43`): 5 tin bảo trì đều mang `metadata.type`,
+  Admin-web gửi `level` chữ thường — spec còn đúng. Stitch: màn Trung tâm `65dab656…` người dùng xác nhận; màn Cài đặt `065eccd8…` và
+  biến thể 4 dòng nhắc `006c5a2e…` — ba lượt sửa báo `timeout`, **chưa** hiện khi hỏi (không gọi lại).
+- ✅ **Nghiệm thu Realme 2026-10-26 tối** (APK debug `f3098b8b…` trỏ proxy đo `127.0.0.1:3999` qua `adb reverse` → backend dev trên
+  `PersonFinance` + khoá dev; xác nhận danh tính CSDL bằng dòng `account_device_history` của lượt đăng nhập admin trước khi mở app;
+  sao lưu SQLite máy trước khi cài; proxy Node ở scratchpad — ghi `x-device-name` mỗi request, tiêm `500 DECRYPT_FAILED` cho
+  `/sync/pull` theo tệp cờ, không ghi body / token):
+  - **Tin từ FlowMoney:** admin `POST /api/notifications/broadcast` (`critical`, app mở) → log `[RealtimeChannel] Tin hệ thống <id>`,
+    khay đúng tiêu đề / nội dung, id khay = `osScheduledId('tinHeThong:<id>')`, hàng đầu Trung tâm (biểu tượng loa, dải `critical`,
+    nội dung trọn), chip *FlowMoney* cuối dải không tràn ở 360 dp và lọc đúng · tin mang `metadata.type: SCHEDULED_MAINTENANCE` → không
+    hàng, không khay · tắt nhóm ở Cài đặt (hàng *Tin từ FlowMoney* cuối khối *Loại thông báo*) → kênh nhận (log id) nhưng không hàng,
+    không khay · bật lại, app ở nền (`warning`) → khay; người dùng chạm khay → **Trung tâm thông báo** (ảnh màn xác nhận) · bảng máy
+    đúng **2** hàng `tinHeThong`, `osDeliveredAt` có. Chưa đo: một tin tới hai lần (cùng `id`) — chỉ unit test.
+  - **Dòng nhắc kéo về:** proxy tiêm 500 → tắt / bật Wi-Fi (máy không bật dữ liệu di động) → log *"Kéo về bị máy chủ từ chối: HTTP 500
+    code=DECRYPT_FAILED"*, Trang chủ hiện *"Chưa nhận được dữ liệu mới"* (tiêu đề một dòng ở 360 dp) · gỡ cờ, kích lại → dòng **tự ẩn** ·
+    không thêm thông báo *"Đồng bộ chưa thành công"* (bảng giữ 20 hàng `syncFailed`, mới nhất 22/10).
+  - **`x-device-name`:** engine app gửi `Realme RMX2205 (Android 13)` ở mọi request HTTP (bắt tay socket không mang — đã biết) ·
+    **engine nền**: `am crash` + `cmd jobscheduler run -f … 1081` (job một-lần `TuChuyenTienWorker`, tra trong
+    `no_backup/androidx.work.workdb`) → hai `/sync/pull` của lượt nền cùng tên, `[Nen] Xong — mốc kế 06/11 08:00`, job một-lần mới
+    (1082) đã hẹn · backend: **một** dòng `account_device_history` *Realme RMX2205 (Android 13)* (tạo 14:49Z bởi engine app,
+    `last_active_at` 15:00:06Z bởi engine nền), không thêm dòng `Dart/…`.
+- ✅ Chú thích `ten_thiet_bi.dart:10` + khối phiên 11 dưới: CORS đã cho `x-device-name` từ backend `49eafef6` (`1c47b2c9`).
 
 ### 🛰️ Phiên 11 (2026-10-26 chiều) — soát năm mục tài liệu v4 với mã backend `36f1ea43`, làm ba mục người dùng chọn
 
@@ -633,10 +733,10 @@ src/Backend/
 - ✅ **`x-device-name`** (Android): kênh Kotlin `flowmoney/thiet_bi` (`ThietBi.kt`, **không** `device_info_plus`) → `docTenThietBi`
   (`core/api/ten_thiet_bi.dart`, ASCII in được ≤ 150) đọc **một lần** ở `setupDependencies`, gắn vào BaseOptions của Dio chung **và**
   Dio `/auth/refresh`; kênh đăng ký ở **cả** engine app lẫn engine nền (`TuChuyenTien.chayHeadless`) — backend thêm một dòng
-  `account_device_history` mỗi khi tên đổi, nên mọi đường của một máy phải gửi cùng tên. Web / iOS không gửi (CORS `app.js:32` chưa
-  cho header — đơn 49 vế E). **Đo máy ảo** (bản debug trỏ máy chủ thu header tạm): `/auth/profile`, `/payment/subscription-info`,
+  `account_device_history` mỗi khi tên đổi, nên mọi đường của một máy phải gửi cùng tên. Web / iOS không gửi — không có kênh gốc
+  (CORS `app.js:32` **đã** cho header từ backend `49eafef6`, đơn 49 vế E; câu *"chưa cho"* cũ sửa 2026-10-26 phiên 13). **Đo máy ảo** (bản debug trỏ máy chủ thu header tạm): `/auth/profile`, `/payment/subscription-info`,
   `/sync/push`, `/sync/pull` đều mang `"Google sdk_gphone64_x86_64 (Android 16)"`; bắt tay socket không mang (backend không ghi ở đó).
-  Engine nền chưa đo trên máy. Hôm nay **chưa ai đọc** bảng ấy (`getDeviceHistory` 0 chỗ gọi ngoài test).
+  ✅ **Engine nền + máy thật đo 2026-10-26 phiên 13** (Realme, khối 🧭 trên). Hôm nay **chưa ai đọc** bảng ấy (`getDeviceHistory` 0 chỗ gọi ngoài test).
 - ✅ Cùng phiên: `NOT_OWNER` + bốn mã `HOUSEHOLD_*` vào lỗi đẩy vĩnh viễn (`8f8694bd`, khối 🏠 dưới); một câu mục 1b
   `KHOA_APP_FEATURE.md` (Quên PIN chỉ mạnh bằng mật khẩu + hộp thư email trên máy, `89923b55`).
 - 📝 **Tin từ FlowMoney (`system.broadcast`) — spec duyệt, kế hoạch xong, CHƯA có mã** (người dùng chọn *"dừng ở kế hoạch"*). Spec
@@ -903,6 +1003,8 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   extra. ⚠️ **Chưa đo với app MB thật**: nếu chính app MB đặt `EXTRA_REFERRER` khi chia sẻ thì nay `khai=true`, gói gửi rơi về
   bảng chia sẻ → nguồn *Biên lai* chung (mất mẫu `_mb`, mất học ví theo nguồn) — đo bằng một biên lai MB thật trên bản debug, đọc
   dòng `BienLaiThu: nhan | goi=… | khai=…`. Ca canh `bien_lai_noi_day_test.dart` (gỡ cả hai extra, trước dòng đọc).
+  ✅ **Đo với app MB thật 2026-10-27 (phiên 14):** `goi=com.mbmobile | khai=false` — app MB không đặt extra; hàng *MB Bank* đọc mẫu
+  `_mb`, form chọn sẵn Ví MB Bank (khối 🧭 Phiên 14).
   ⚠️ **Sự cố `enc:` (gốc phía backend, đơn CAN-LAM 52):** Trang chủ hiện ghi chú `enc:24…2106…`. So từng cột bản sao
   `realme-tk10-2026-10-24` với CSDL máy: chỉ cột `note` khác — **64 giao dịch + 1 hoá đơn** (đều `synced`). Gốc: `decrypt()`
   (`src/Backend/utils/crypto.util.js`) giải hỏng thì `return str` (bản mã); dữ liệu `PersonFinance` mã hoá bằng **khoá dev
@@ -957,6 +1059,10 @@ liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà 
 - ✅ **2026-10-26 — Task 5 của kế hoạch làm riêng, trước lát 1** (người dùng chọn): `NOT_OWNER` + bốn mã `HOUSEHOLD_*` đẩy vào
   `_permanentCodes` (`core/sync/gui_lo_dong_bo.dart`), năm ca ở `sync_failure_handling_test.dart`, bản sai đỏ. Backend bật vế A
   (kiểm chủ sở hữu) trước cả lát 1 thì hàng bị từ chối không bị đẩy lại mãi. Phần còn lại của lát 1 vẫn chưa có mã.
+- ✅ **2026-10-27 — thêm sớm hai mã của bộ `docs/Family/`** (người dùng chọn, biết backend **chưa** chấp nhận tên):
+  `HOUSEHOLD_ROLE_FORBIDDEN` (`01` mục 3) + `HOUSEHOLD_WALLET_LIMIT` (`02A`) vào `_permanentCodes` — `_permanentCodes` nay 15 mã; hai
+  ca mới trong vòng ca gia đình của `sync_failure_handling_test.dart` đỏ trước khi thêm. Backend đặt tên khác lúc thi công thì sửa cả
+  hai chỗ (mã + ca), không thì mã mới rơi về lỗi tạm và bị gửi lại mãi.
 - 📝 **2026-10-26 (sau) — người dùng MỞ RỘNG thiết kế** (*"tạo nhóm gia đình, ví chung (nhiều ví), mời hoặc mã mời, góp quỹ, chủ ví đặt hạn mức
   từng thành viên — mở rộng giúp tôi"*). Brainstorming loại kiến trúc, 18 quyết định qua câu hỏi chọn được (bảng mục 2 `docs/Family/00_TONG_QUAN.md`):
   **bỏ** *ai nợ ai* và *cho nhà xem* · chỉ Chủ nhà cấu hình (ví chung, hạn mức, định mức, ngân sách, mục tiêu) · vượt hạn mức = **cảnh báo + báo

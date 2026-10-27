@@ -30,6 +30,7 @@ import 'core/nen/chay_nen.dart';
 import 'core/nen/kenh_tu_chuyen_tien.dart';
 import 'core/nen/mui_gio.dart';
 import 'features/notification/application/notification_scanner.dart';
+import 'features/notification/application/nhan_tin_he_thong.dart';
 import 'core/ui/thong_bao_nhanh.dart';
 import 'features/ai_edge/domain/canary_cong_cu.dart';
 import 'features/premium/data/repositories/goi_repository.dart';
@@ -69,6 +70,10 @@ void main() async {
   // cờ ví trùng tên (G63). Đăng ký MỘT lần cho cả vòng đời app, cùng lý do với
   // khối trên — và engine nền của WorkManager gọi CÙNG hàm này (`chay_nen.dart`).
   noiBoNgheKetQuaDay();
+
+  // Tin admin gõ tay (`system.broadcast`) → Trung tâm thông báo + khay. MỘT lần cho cả vòng đời app, cùng lý do với
+  // `noiRealtimeVaoDongBo`: RealtimeChannel là singleton, luồng broadcast. Engine nền không mở socket.
+  sl<NhanTinHeThong>().batDau(sl<RealtimeChannel>().tinHeThong);
 
   // Kiểm tra token trước khi khởi động UI
   // → Có token  = đã đăng nhập → vào /home trực tiếp (offline OK)

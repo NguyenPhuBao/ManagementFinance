@@ -76,10 +76,12 @@ HTTP **200** cho cả lô; `data.results[i] = { localId, status, code?, message?
 
 ### 2.4 Lỗi vĩnh viễn — danh sách TRẮNG
 
-`_permanentCodes` (`src/Client-app/lib/core/sync/gui_lo_dong_bo.dart`, đếm 2026-10-26: **13** mã): `UNIQUE_VIOLATION` · `CATEGORY_NAME_DUPLICATE` ·
+`_permanentCodes` (`src/Client-app/lib/core/sync/gui_lo_dong_bo.dart`, đếm 2026-10-27: **15** mã): `UNIQUE_VIOLATION` · `CATEGORY_NAME_DUPLICATE` ·
 `CONSTRAINT_VIOLATION` · `FORBIDDEN_SYSTEM_DEFAULT` · `WALLET_NAME_DUPLICATE` · `WALLET_DEFAULT_DUPLICATE` · `BILL_ALREADY_PAID` ·
-`BILL_PERIOD_ALREADY_PAID` · `NOT_OWNER` · `HOUSEHOLD_NOT_MEMBER` · `HOUSEHOLD_READ_ONLY` · `HOUSEHOLD_CLOSED` · `HOUSEHOLD_SCOPE_MISMATCH`
-(năm mã cuối thêm sẵn cho chức năng gia đình — `docs/Family/`).
+`BILL_PERIOD_ALREADY_PAID` · `NOT_OWNER` · `HOUSEHOLD_NOT_MEMBER` · `HOUSEHOLD_READ_ONLY` · `HOUSEHOLD_CLOSED` · `HOUSEHOLD_SCOPE_MISMATCH` ·
+`HOUSEHOLD_ROLE_FORBIDDEN` · `HOUSEHOLD_WALLET_LIMIT`
+(bảy mã cuối thêm sẵn cho chức năng gia đình — `docs/Family/`; năm mã đầu của đơn 50 thêm 2026-10-26, hai mã cuối do `docs/Family/`
+đề xuất thêm 2026-10-27 khi backend **chưa** chấp nhận tên — backend đổi tên thì client sửa theo).
 
 - Mã vĩnh viễn ⇒ hàng không bị gửi lại; có bộ nghe gỡ hậu quả (mục 2.6).
 - **Mọi mã khác — kể cả `DB_ERROR` và mã chưa có tên — là lỗi TẠM**: hàng ở lại `pending`, giãn cách luỹ tiến (`syncRetryCount`,
@@ -339,9 +341,16 @@ không đụng `delete_at`. Client không cần đổi gì. Chưa đo trên hai 
 ### 9.2 ⚠️ `/sync/pull` trả 500 `DECRYPT_FAILED` cho cả lượt (đơn 52)
 
 Từ `49eafef6`, `decrypt()` ném lỗi; một hàng giải mã hỏng ⇒ `/sync/pull` trả HTTP 500 `{ code: 'DECRYPT_FAILED' }`, không trả phần nào. Client
-nuốt lỗi kéo ⇒ **kéo về đứng im lặng** cho cả tài khoản cho tới khi hàng ấy được sửa (đẩy lên vẫn chạy; máy đăng nhập mới không có dữ liệu). Đi
+nuốt lỗi kéo ⇒ kéo về đứng cho cả tài khoản cho tới khi hàng ấy được sửa (đẩy lên vẫn chạy; máy đăng nhập mới không có dữ liệu). Đi
 kèm một lỗ mức cao: `encrypt()` vẫn giữ nguyên mọi chuỗi dạng `enc:a:b:c` ⇒ người dùng gõ ghi chú `enc:1:2:3` là tự khoá lượt kéo của mình vĩnh
-viễn. Chi tiết và lời xin: đơn 52.
+viễn. Chi tiết và lời xin: đơn 52, đơn 53 vế C.
+
+✅ **Client hết im lặng (2026-10-26, phiên 13):** lượt kéo bị máy chủ **trả lời** bằng lỗi — mọi mã ≥ 400 trừ 401 · 403 · 429 · 503 (luật
+`keoVeBiMayChuTuChoi`, `ap_du_lieu_keo_ve.dart`) — bật `SyncEngine.keoVeBiTuChoi` ⇒ Trang chủ hiện dòng nhắc *"Chưa nhận được dữ liệu mới"*
+(`DongNhacKeoVe`, ngay sau dòng nhắc máy chủ). Lỗi vẫn nuốt: chu kỳ **không** thành `error` (không thông báo *"Đồng bộ hỏng"*), **không** giãn
+cách; cờ tắt ở lượt kéo thành công kế tiếp và ở `stop()`, mất mạng giữ nguyên. Ca canh `test/core/sync/sync_keo_ve_bi_tu_choi_test.dart`.
+Client vẫn không đọc riêng `code` (chỉ ghi log) — câu chữ đúng cho mọi lỗi máy chủ. Nghiệm thu Realme cùng ngày (proxy tiêm 500
+`DECRYPT_FAILED`): dòng nhắc hiện, tự ẩn ở lượt kéo thành công kế, không sinh thông báo *"Đồng bộ chưa thành công"*.
 
 ### 9.3 Nhỏ
 
