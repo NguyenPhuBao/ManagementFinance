@@ -150,6 +150,7 @@ void main() {
         reason: 'normalizeCategoryName gom khoảng trắng và hạ chữ thường. Tạo '
             'thêm bản thứ hai là vi phạm quy tắc 7 ở client và '
             'uq_category_owner_name khi đẩy lên.');
+    expect(await db.categoryDao.getOwnedIncludingDeleted(7), hasLength(1), reason: 'Chỉ còn hàng người dùng tự tạo.');
   });
 
   test('cùng tên nhưng KHÁC loại thì KHÔNG tạo bản sao (2026-10-27)', () async {
@@ -160,6 +161,7 @@ void main() {
         reason: 'uq_category_owner_name của server khoá (Create_by, tên chuẩn hoá) — KHÔNG có Classify (đo pg_indexes '
             '2026-10-27); quy tắc 7. Tạo bản sao khác loại là đẩy lên CATEGORY_NAME_DUPLICATE vĩnh viễn, rồi gộp – xoá – '
             'tạo lại ở mỗi lượt kéo có danh mục đổi.');
+    expect(await db.categoryDao.getOwnedIncludingDeleted(7), hasLength(1), reason: 'Không có bản sao khác loại.');
   });
 
   test('danh mục khác loại ĐÃ XOÁ mềm cũng chặn (luật "từng có" giữ nguyên)', () async {
@@ -175,6 +177,16 @@ void main() {
       updatedAt: DateTime(2026, 9, 2),
     ));
     expect(await seeder.seedForAccount(7), 0, reason: 'G16: thứ người dùng đã xoá không mọc lại dưới loại khác.');
+  });
+
+  test('⭐ hai khuôn sống cùng TÊN khác loại → chỉ MỘT bản sao trong cùng lượt', () async {
+    await themMacDinh('Thử khuôn', 'chi');
+    await themMacDinh('Thử khuôn', 'vay_no');
+
+    expect(await seeder.seedForAccount(7), 1,
+        reason: 'Tên danh mục duy nhất trong tài khoản (quy tắc 7): bản thứ hai cùng tên là bản trùng đẩy lên hỏng vĩnh viễn.');
+    expect(await db.categoryDao.getOwnedIncludingDeleted(7), hasLength(1));
+    expect(await seeder.seedForAccount(7), 0, reason: 'Luỹ đẳng.');
   });
 
   test('chưa pull được bộ mặc định thì không tạo gì', () async {

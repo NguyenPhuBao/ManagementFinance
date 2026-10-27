@@ -84,6 +84,14 @@ void main() {
       expect(dangAnTheoKhuon(sao('Thử khuôn'), [k('Thử khuôn', xoaLuc: sauMoc), k('Thử khuôn')]), isFalse);
     });
 
+    test('⭐ khuôn cùng TÊN khác loại còn sống → bản sao không ẩn (bước 3 so chỉ tên)', () {
+      expect(
+          dangAnTheoKhuon(sao('Thử khuôn'), [k('Thử khuôn', xoaLuc: sauMoc), k('Thử khuôn', classify: 'Vay/no')]),
+          isFalse,
+          reason: 'Bộ tạo bản sao so chỉ tên nên không bao giờ tạo bản Vay/nợ — ẩn luôn bản Chi là mất cả hai '
+              '(người dùng chốt 2026-10-27).');
+    });
+
     test('bản đã đổi tên, hoặc khác loại → không ẩn', () {
       final khuon = [k('Thử khuôn', xoaLuc: sauMoc)];
       expect(dangAnTheoKhuon(sao('Thử khuôn xe máy'), khuon), isFalse, reason: 'Chốt 2: đổi tên là của người dùng.');

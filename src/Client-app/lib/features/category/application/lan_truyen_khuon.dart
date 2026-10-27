@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../../../core/category/category_name.dart';
 import '../../../core/database/app_database.dart';
@@ -33,7 +34,13 @@ class LanTruyenKhuon {
     if (idaccount <= 0 || thayDoi.isEmpty) return 0;
     var daGhi = 0;
     for (final d in thayDoi) {
-      daGhi += await db.transaction(() => _apMot(idaccount, d));
+      // Một thay đổi hỏng không làm mất cả lượt: giao tác của nó tự huỷ, các thay đổi còn lại và bộ tạo bản sao (nơi gọi) vẫn
+      // chạy. Chỉ log id khuôn — tên / từ khoá là dữ liệu người dùng (quét 38).
+      try {
+        daGhi += await db.transaction(() => _apMot(idaccount, d));
+      } catch (e) {
+        debugPrint('[LanTruyenKhuon] Bỏ qua thay đổi của khuôn ${d.id}: ${e.runtimeType}');
+      }
     }
     return daGhi;
   }

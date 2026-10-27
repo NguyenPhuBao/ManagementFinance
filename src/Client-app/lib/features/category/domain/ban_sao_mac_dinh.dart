@@ -8,7 +8,8 @@ import '../../../core/sync/sync_payload_normalizer.dart';
 /// Một định nghĩa cho hai chỗ: phép đếm *danh mục riêng* của trần Premium (`premium/data/dem_dang_hoat_dong.dart` — bản
 /// sao do bộ tạo bản sao tạo mang `isDefault: false` nhưng không phải thứ người dùng tự tạo, spec phân quyền 2026-10-08
 /// mục 4.2) và luật ẩn `dangAnTheoKhuon` (cùng tệp). `DefaultCategorySeeder` KHÔNG dùng hàm này: từ 2026-10-27 nó so theo
-/// TÊN (quy tắc 7; `uq_category_owner_name` chỉ có tên), còn hàm này nhận diện bản sao bằng tên + loại.
+/// TÊN (quy tắc 7; `uq_category_owner_name` chỉ có tên), còn hàm này nhận diện bản sao bằng tên + loại. Chỗ thứ ba so tên + loại cũng
+/// phải khớp với nó: hàm `khop` trong `LanTruyenKhuon._apMot` (`application/lan_truyen_khuon.dart`) — nhận diện bản sao để lan truyền.
 bool laBanSaoMacDinh(CategoryEntity c, List<CategoryEntity> khuon) {
   final ten = normalizeCategoryName(c.name);
   for (final mau in khuon) {
@@ -29,8 +30,9 @@ final DateTime kMocAnTheoKhuon = DateTime.utc(2026, 10, 26, 17);
 /// mọi danh sách CHỌN (`category/data/danh_sach_chon_danh_muc.dart`) và câu báo trùng tên; bảng TRA tên KHÔNG gọi hàm này.
 ///
 /// Đúng khi: [c] là danh mục của tài khoản (không khuôn, chưa xoá, không nhóm); có khuôn đã xoá mềm từ [moc]
-/// ([kMocAnTheoKhuon] khi vắng) cùng tên chuẩn hoá + loại ([laBanSaoMacDinh]); và KHÔNG khuôn còn sống nào khớp (admin xoá
-/// rồi thêm lại cùng tên). Đổi tên bản sao → không còn khớp → hiện (chốt 2: đổi tên là thành danh mục của người dùng).
+/// ([kMocAnTheoKhuon] khi vắng) cùng tên chuẩn hoá + loại ([laBanSaoMacDinh]); và KHÔNG khuôn còn sống nào cùng TÊN chuẩn
+/// hoá, bất kể loại (admin xoá rồi thêm lại cùng tên — hoặc còn khuôn cùng tên khác loại: bộ tạo bản sao so chỉ tên nên
+/// không tạo bản thứ hai, ẩn bản này là mất cả hai; người dùng chốt 2026-10-27). Đổi tên bản sao → không còn khớp → hiện (chốt 2: đổi tên là thành danh mục của người dùng).
 bool dangAnTheoKhuon(CategoryEntity c, List<CategoryEntity> khuon, {DateTime? moc}) {
   if (c.isDefault || c.isDeleted || c.isGroup) return false;
   final tu = moc ?? kMocAnTheoKhuon;
@@ -39,7 +41,8 @@ bool dangAnTheoKhuon(CategoryEntity c, List<CategoryEntity> khuon, {DateTime? mo
       if (k.isDefault && k.isDeleted && k.deletedAt != null && !k.deletedAt!.isBefore(tu)) k,
   ];
   if (!laBanSaoMacDinh(c, daXoa)) return false;
-  return !laBanSaoMacDinh(c, [for (final k in khuon) if (k.isDefault && !k.isDeleted) k]);
+  final ten = normalizeCategoryName(c.name);
+  return !khuon.any((k) => k.isDefault && !k.isDeleted && normalizeCategoryName(k.name) == ten);
 }
 
 /// Câu báo khi tên người dùng gõ trùng một bản sao đang ẩn (chốt 4) — thay câu chung *"Tên đã tồn tại"*, vốn khó hiểu vì

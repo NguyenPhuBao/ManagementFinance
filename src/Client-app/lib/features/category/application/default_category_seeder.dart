@@ -54,9 +54,11 @@ class DefaultCategorySeeder {
 
     final daCo = (await db.categoryDao.getOwnedIncludingDeleted(idaccount)).map(CategoryEntity.fromDrift).toList();
     var daTao = 0;
+    final tenDaTao = <String>{};
 
     for (final mau in khuon) {
-      if (_daCoBanSao(daCo, mau)) continue;
+      // Hai khuôn sống cùng tên khác loại chỉ đẻ MỘT bản sao: tên vừa tạo cũng chiếm chỗ trong cùng lượt.
+      if (_daCoBanSao(daCo, mau) || tenDaTao.contains(normalizeCategoryName(mau.name))) continue;
 
       // UUID chứ không phải slug: `resolveCategoryId` chỉ chấp nhận danh mục
       // người dùng khi id là UUID hợp lệ, id dạng slug sẽ bị trả null và giao
@@ -100,6 +102,7 @@ class DefaultCategorySeeder {
         toCategoryId: id,
       );
 
+      tenDaTao.add(normalizeCategoryName(mau.name));
       daTao++;
     }
 
