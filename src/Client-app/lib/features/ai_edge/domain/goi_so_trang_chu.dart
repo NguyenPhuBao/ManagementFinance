@@ -39,12 +39,16 @@ class GoiSoTrangChu extends GoiSo {
   /// Thu / chi / còn lại — số THÁNG NÀY (thẻ `TheSoLieuThang`), cho `kyCua`.
   final List<SoLieu> _theoKy;
 
+  /// [boTongSoDu] — tài khoản không có quyền `net_worth_overview` (B1 spec 2026-10-27 mục 3; người dùng chốt 6 phiên 17):
+  /// gói bỏ hẳn mục *"Tổng số dư"* — chip, tập cho phép của `kiemSo` và phần vào prompt cùng mất; thẻ Tổng số dư của trang
+  /// đã là thẻ khoá. Mẫu câu không đọc nhãn ấy nên câu không đổi. Khuôn `GoiSoPhanTich.tu(boChiBatThuong:)`.
   factory GoiSoTrangChu.tu({
     required double thu,
     required double chi,
     required double tongSoDu,
     required List<BudgetView> nganSach,
     required DateTime now,
+    bool boTongSoDu = false,
   }) {
     final v = pickHomeBudget(nganSach, now);
     final pt = v == null ? null : v.budget.rawPercentSpent * 100;
@@ -64,7 +68,7 @@ class GoiSoTrangChu extends GoiSo {
         thuS,
         chiS,
         chenhS,
-        soTien('Tổng số dư', tongSoDu),
+        if (!boTongSoDu) soTien('Tổng số dư', tongSoDu),
         if (pt != null) soPhanTram('Ngân sách căng nhất', pt),
       ],
       theoKy: [thuS, chiS, chenhS],

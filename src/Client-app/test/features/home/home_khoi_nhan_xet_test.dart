@@ -41,4 +41,11 @@ void main() {
     expect(nguon.contains('nenToi: true'), isTrue,
         reason: 'Trang chủ dùng biến thể nền tối, thay đúng chỗ thẻ cũ.');
   });
+
+  test('B1 (chốt 6): gói số Trang chủ bỏ "Tổng số dư" khi quyền net_worth_overview khoá', () {
+    expect(nguon.contains('final khoaTongSoDu = !context.coQuyen(MaQuyen.netWorthOverview);'), isTrue,
+        reason: 'đọc quyền TRONG lượt dựng trang (_buildNhanXet), không trong builder của StreamBuilder');
+    expect(nguon.contains('boTongSoDu: khoaTongSoDu'), isTrue,
+        reason: 'thẻ Tổng số dư đã là thẻ khoá (Task 8) — chip của khối Nhận xét ngay dưới không được nói lại con số');
+  });
 }

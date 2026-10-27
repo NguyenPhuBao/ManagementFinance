@@ -468,6 +468,9 @@ class HomePage extends StatelessWidget {
   /// Mục tiêu và Ngân sách, mà hai thẻ ấy không nên dựng lại theo mỗi giao
   /// dịch.
   Widget _buildNhanXet(BuildContext context, int? idaccount) {
+    // B1 (chốt 6, 2026-10-27 phiên 17): quyền `net_worth_overview` khoá → khối Nhận xét không nói lại tổng số dư mà thẻ
+    // phía trên đã khoá. Đọc TRONG lượt dựng trang — không trong builder của StreamBuilder bên dưới.
+    final khoaTongSoDu = !context.coQuyen(MaQuyen.netWorthOverview);
     final txStream = idaccount != null
         ? sl<TransactionRepository>().watchAll(idaccount)
         : Stream<List<TransactionEntity>>.value(const []);
@@ -493,6 +496,7 @@ class HomePage extends StatelessWidget {
                 tongSoDu: _tongTaiSan(wallets.data ?? const []),
                 nganSach: budgets.data ?? const [],
                 now: now,
+                boTongSoDu: khoaTongSoDu,
               ),
               nenToi: true,
             );
