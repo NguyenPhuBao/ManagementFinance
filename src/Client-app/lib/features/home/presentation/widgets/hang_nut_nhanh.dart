@@ -42,7 +42,16 @@ class HangNutNhanh extends StatelessWidget {
     // Quyền `quick_action_shortcuts` (B1, spec 2026-10-27 mục 3): MỘT dòng khoá mỏng thay cả hàng — nút [+] thanh dưới
     // vẫn mở form Thêm giao dịch.
     if (!context.coQuyen(MaQuyen.quickActionShortcuts)) {
-      return const DongKhoaQuyen(ma: MaQuyen.quickActionShortcuts);
+      // Khung theo Stitch `02c0d881…` khối 4: nền + viền băng khoá, bo 12, đệm 10.
+      return Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.khoaCanNen,
+          border: Border.all(color: AppColors.khoaCanVien),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const DongKhoaQuyen(ma: MaQuyen.quickActionShortcuts),
+      );
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

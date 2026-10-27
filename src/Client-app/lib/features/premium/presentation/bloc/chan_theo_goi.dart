@@ -60,7 +60,7 @@ FutureOr<String?> Function(BuildContext, GoRouterState) redirectTaoTheoGoi(
           dem: sl<NguonDemDangHoatDong>(),
         );
 
-/// Cửa chặn route theo QUYỀN bật/tắt (spec phân quyền 2026-10-08 mục 4.3) — hiện chỉ `/export-report`. Không có
+/// Cửa chặn route theo QUYỀN bật/tắt (spec phân quyền 2026-10-08 mục 4.3) (`/export-report`, `/analytics/export`, `/transactions/gan-danh-muc`…). Không có
 /// quyền → `/premium?quyen=<maServer>`; chưa có phiên → qua (không đoán khi chưa biết tài khoản). Chờ kho như
 /// [chanTheoGoi] (G92) — ở đây chiều hỏng là ngược lại: Basic mặc định không mang khoá nào nên quyền rơi về *mở*.
 Future<String?> chanTheoQuyen(

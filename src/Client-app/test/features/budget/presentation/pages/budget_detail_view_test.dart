@@ -16,6 +16,7 @@ import 'package:flowmoney/features/budget/domain/budget_pace.dart';
 import 'package:flowmoney/features/budget/domain/nhip_chi.dart';
 import 'package:flowmoney/features/budget/presentation/bloc/budget_detail_cubit.dart';
 import 'package:flowmoney/features/budget/presentation/pages/budget_detail_view.dart';
+import 'package:flowmoney/features/budget/presentation/pages/budget_tabs_view.dart' show cardDecoration;
 import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
@@ -115,6 +116,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Nên chi'), findsNothing);
     expect(find.byKey(const Key('dong-khoa-budget_overspend_alert')), findsOneWidget);
+    expect(find.text('NHỊP CHI'), findsOneWidget, reason: 'nhãn mục giữ phía trên dòng khoá');
+    expect(
+      find.ancestor(
+          of: find.byKey(const Key('dong-khoa-budget_overspend_alert')),
+          matching: find.byWidgetPredicate((w) => w is Container && w.decoration == cardDecoration)),
+      findsOneWidget,
+      reason: 'dòng khoá nằm trong card như _PaceCard cũ',
+    );
   });
 
   testWidgets('không tràn ở 411dp với ghi chú dài và số tiền lớn',

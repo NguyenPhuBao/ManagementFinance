@@ -77,7 +77,18 @@ class BudgetDetailView extends StatelessWidget {
               const SizedBox(height: 16),
               context.coQuyen(MaQuyen.budgetOverspendAlert)
                   ? _PaceCard(state: state, line: paceLine)
-                  : const DongKhoaQuyen(ma: MaQuyen.budgetOverspendAlert),
+                  : Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: cardDecoration,
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _SectionLabel('NHỊP CHI'),
+                          SizedBox(height: 8),
+                          DongKhoaQuyen(ma: MaQuyen.budgetOverspendAlert),
+                        ],
+                      ),
+                    ),
             ],
             const SizedBox(height: 16),
             _HistoryCard(

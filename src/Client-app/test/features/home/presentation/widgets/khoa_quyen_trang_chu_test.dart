@@ -8,6 +8,7 @@ import 'package:flowmoney/features/home/presentation/widgets/hang_nut_nhanh.dart
 import 'package:flowmoney/features/home/presentation/widgets/home_budget_card.dart';
 import 'package:flowmoney/features/home/presentation/widgets/the_tong_so_du.dart';
 import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
+import 'package:flowmoney/shared/theme/app_colors.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -69,6 +70,15 @@ void main() {
     await dung(t, HangNutNhanh(nut: nut), goi: goiBasic(const {'quick_action_shortcuts': false}));
     expect(find.byKey(const Key('dong-khoa-quick_action_shortcuts')), findsOneWidget);
     expect(find.text('Nút ghi nhanh — dành cho Premium'), findsOneWidget);
+    final khung = find.ancestor(of: find.byKey(const Key('dong-khoa-quick_action_shortcuts')), matching: find.byType(Container));
+    expect(
+      khung.evaluate().any((e) {
+        final d = (e.widget as Container).decoration;
+        return d is BoxDecoration && d.color == AppColors.khoaCanNen;
+      }),
+      isTrue,
+      reason: 'Stitch 02c0d881 khối 4: dòng khoá nằm trong khung nền khoaCanNen',
+    );
     expect(find.text('Thêm thu'), findsNothing);
     expect(find.text('Nói'), findsNothing);
   });
