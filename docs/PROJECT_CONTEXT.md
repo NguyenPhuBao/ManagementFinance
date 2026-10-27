@@ -617,6 +617,26 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-27)
 
+### 🗂️ Danh mục mặc định theo thao tác Admin-web (2026-10-27)
+
+Spec `docs/superpowers/specs/2026-10-27-danh-muc-mac-dinh-theo-thao-tac-admin-design.md` (✅ mã xong, chờ nghiệm thu máy thật),
+lý do ở `CATEGORY_RATIONALE.md` mục 5h, G108 ở `CLIENT_APP_KNOWN_GAPS.md`, cổng `sauKeoVe` ở `SYNC_DOCUMENTATION.md` mục 3.3.
+Thi công bằng agent con (Sonnet thực thi, Opus soát), Task 1–8 mã + Task 9 tài liệu; schema vẫn **v31**, 0 đơn backend.
+
+- **Tóm tắt:** khuôn danh mục hệ thống bị admin xoá mềm (từ `kMocAnTheoKhuon`) → bản sao cùng tên + loại **ẩn** khỏi mọi danh sách
+  CHỌN (luật `dangAnTheoKhuon`, cửa duy nhất `category/data/danh_sach_chon_danh_muc.dart`, test quét 40; bảng tra tên giữ; form
+  sửa hoá đơn / ngân sách giữ danh mục đang gắn); admin đổi tên / biểu tượng / thêm từ khoá → kéo về ghi `ThayDoiKhuon` → cổng
+  `sauKeoVe` chạy `LanTruyenKhuon` rồi bộ tạo bản sao; bộ tạo bản sao so theo **tên** (G108); trần Premium *danh mục riêng* so
+  mọi khuôn kể cả đã xoá.
+- **Commit** (từ cũ tới mới): `81bab141` (Task 1, luật ẩn) · `37991827` + `a95da3e9` (Task 2+3, cửa danh sách chọn) ·
+  `59fdf5c1` (Task 4, form sửa giữ danh mục ẩn) · `8e5357c6` (Task 5, trần danh mục riêng) · `ca2a0364` (Task 6, G108) ·
+  `48f720de` + `78afc043` (Task 7, `ThayDoiKhuon` + cổng `sauKeoVe`) · `55b7c39e` (Task 8, `LanTruyenKhuon`) + commit tài liệu
+  Task 9. **Chưa push.**
+- **Số đo (2026-10-27, sau Task 8 = trước tài liệu Task 9):** `flutter test` **8246 pass / 10 skip** (từ 8202 đầu kế hoạch),
+  `flutter analyze` **20**, schema v31. Giữ số: **G108** đã dùng, quét kế tiếp **41**, đơn kế tiếp **56**.
+- **Còn:** review toàn nhánh · **Task 10 — nghiệm thu máy thật (spec mục 9): CHƯA LÀM.** ⚠️ Đừng tạo / xoá khuôn thử trên Supabase
+  dùng chung để nghiệm thu (mọi tài khoản thật phản ứng) — dùng `PersonFinance` cục bộ.
+
 ### 🧭 Phiên 16 (2026-10-27 tối) — thi công danh mục theo Admin-web Task 1–6 (agent con), Premium: trần 0 + spec B1 + đơn 55
 
 Mốc `flutter test` **8232 pass / 10 skip** (đầu phiên 8202), analyze **20**, schema v31. **Chưa push** (10 commit).
