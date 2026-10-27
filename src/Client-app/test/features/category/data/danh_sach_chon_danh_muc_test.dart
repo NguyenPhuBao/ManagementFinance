@@ -47,6 +47,8 @@ void main() {
   test('DAO trả kèm MỌI khuôn (kể cả đã xoá) và không lẫn khuôn vào rows', () async {
     final kq = await db.categoryDao.getCategoryRows(10, 'chi');
     expect(kq.rows.every((c) => !c.isDefault), isTrue);
+    expect(kq.rows.map((c) => c.id), containsAll(['sx', 'c1']),
+        reason: 'DAO không tự lọc bản sao ẩn — bộ lọc nằm ở hangChonDuoc (data/), đúng luật kiến trúc.');
     expect(kq.khuon.map((c) => c.id), contains('kx'));
     expect((await db.categoryDao.getTatCaKhuon()).map((c) => c.id), contains('kx'));
   });

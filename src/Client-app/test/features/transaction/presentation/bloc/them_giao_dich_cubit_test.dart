@@ -146,7 +146,7 @@ void main() {
           dangSua: giaoDichCu(categoryId: 'sx'), danhMucDangSua: an);
       await c.moTrang();
       c.ghiChuDoi('đổ xăng');
-      await Future<void>.delayed(const Duration(milliseconds: 350)); // qua hẹn giờ gợi ý 300 ms
+      // Không chờ hẹn giờ gợi ý: danh mục đã gắn nên `ghiChuDoi` thoát sớm (không hẹn tính gợi ý) — chờ chỉ tốn 350 ms.
       expect(c.state.danhMuc?.id, 'sx',
           reason: 'Admin ngừng danh mục hệ thống không được làm form sửa giao dịch cũ mất danh mục.');
     });

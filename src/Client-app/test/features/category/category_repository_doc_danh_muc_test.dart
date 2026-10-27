@@ -90,8 +90,12 @@ void main() {
     });
 
     test('⭐ danh sách CHỌN bỏ bản ẩn: selectableChildren, selectableChildrenAll, loadTree', () async {
-      expect((await repo.selectableChildren(accountId: 10, classify: 'chi')).map((c) => c.id), isNot(contains('sx')));
-      expect((await repo.selectableChildrenAll(accountId: 10)).map((c) => c.id), isNot(contains('sx')));
+      final con = (await repo.selectableChildren(accountId: 10, classify: 'chi')).map((c) => c.id);
+      expect(con, isNot(contains('sx')));
+      expect(con, contains('c1'), reason: 'Bỏ bản ẩn không được kéo theo danh mục thường.');
+      final tatCa = (await repo.selectableChildrenAll(accountId: 10)).map((c) => c.id);
+      expect(tatCa, isNot(contains('sx')));
+      expect(tatCa, contains('c1'));
       final cay = await repo.loadTree(accountId: 10, classify: 'chi');
       expect(cay.ungroupedChildren.map((c) => c.id), isNot(contains('sx')));
       expect(cay.ungroupedChildren.map((c) => c.id), contains('c1'));
@@ -115,6 +119,24 @@ void main() {
           .write(const CategoriesCompanion(isDeleted: Value(false), deletedAt: Value(null)));
       await pumpEventQueue(times: 50);
       expect(tho.last, contains('sx'));
+    });
+
+    test('⭐ watchTree phát lại khi admin XOÁ khuôn sống — bản sao ẩn ngay', () async {
+      await (db.update(db.categories)..where((t) => t.id.equals('kx')))
+          .write(const CategoriesCompanion(isDeleted: Value(false), deletedAt: Value(null)));
+      final tho = <List<String>>[];
+      final sub = repo
+          .watchTree(accountId: 10, classify: 'chi')
+          .listen((t) => tho.add([for (final c in t.ungroupedChildren) c.id]));
+      addTearDown(sub.cancel);
+      await pumpEventQueue(times: 50);
+      expect(tho.last, contains('sx'), reason: 'Khuôn còn sống → bản sao hiện.');
+      await (db.update(db.categories)..where((t) => t.id.equals('kx')))
+          .write(CategoriesCompanion(isDeleted: const Value(true), deletedAt: Value(DateTime.utc(2026, 10, 28))));
+      await pumpEventQueue(times: 50);
+      expect(tho.last, isNot(contains('sx')),
+          reason: 'Chiều ngược của ca khôi phục: hàng khuôn đổi thì stream phải phát lại, không chờ hàng của tài khoản đổi.');
+      expect(tho.last, contains('c1'));
     });
 
     test('⭐ tạo danh mục trùng tên bản ẩn → câu riêng; trùng hàng thường → câu cũ', () async {

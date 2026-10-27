@@ -168,7 +168,9 @@ void main() {
     final dd = tester.widget<DropdownButton<CategoryEntity>>(find.byType(DropdownButton<CategoryEntity>));
     expect(dd.value?.id, 'c1',
         reason: 'Admin ngừng danh mục hệ thống không được bắt người dùng chọn lại danh mục cho hoá đơn cũ.');
-    expect(dd.items!.map((m) => m.value!.id), containsAll(['c1', 'c2']));
+    expect(dd.items!.map((m) => m.value!.id), unorderedEquals(['c1', 'c2']),
+        reason: 'Đúng hai mục: bản ẩn được giữ (không nhân đôi) và không mất danh mục thường.');
+    expect(find.text('Thử khuôn'), findsWidgets, reason: 'Ô chọn hiện tên danh mục đang gắn, không trống.');
     expect(tester.takeException(), isNull);
   });
 

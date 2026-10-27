@@ -45,6 +45,8 @@ class DemDangHoatDong implements NguonDemDangHoatDong {
         // Bản sao bộ mặc định (seeder, `isDefault: false`) KHÔNG tính — nếu không, 13 bản sao của mọi tài khoản đã
         // vượt trần 5 và Basic không tạo được danh mục nào.
         // MỌI khuôn, kể cả đã xoá (spec 2026-10-27 mục 4): bản sao của khuôn admin đã xoá đang ẩn — đếm nó là đếm oan.
+        // Kể cả khuôn xoá TRƯỚC mốc `kMocAnTheoKhuon` (bản sao ấy vẫn hiện nhưng vẫn là bản sao): cố ý KHÔNG dùng mốc —
+        // mốc chỉ quyết việc ẨN, còn trần đếm thứ người dùng tự tạo.
         final khuon = (await db.categoryDao.getTatCaKhuon()).map(CategoryEntity.fromDrift).toList();
         return (await db.categoryDao.getAll(idaccount)) // đã lọc deletedAt
             .where((r) => !r.isDefault && !r.isDeleted && !laBanSaoMacDinh(CategoryEntity.fromDrift(r), khuon))
