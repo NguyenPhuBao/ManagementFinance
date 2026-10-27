@@ -7,6 +7,9 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
+import 'package:flowmoney/features/category/data/models/category_tree.dart';
+import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
+import 'package:flowmoney/features/category/domain/ban_sao_mac_dinh.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
 
 void main() {
@@ -75,5 +78,57 @@ void main() {
         reason:
             'Tên danh mục trên bảng thanh toán hoá đơn phải tra được dù danh mục đã xoá.');
     expect(await repo.getById('x'), isNull);
+  });
+
+  group('bản sao ẩn theo khuôn — spec 2026-10-27 mục 4', () {
+    setUp(() async {
+      await db.into(db.categories).insert(CategoriesCompanion.insert(
+          id: 'kx', name: 'Thử khuôn', idaccount: 0, classify: 'chi', isDefault: const Value(true),
+          isDeleted: const Value(true), deletedAt: Value(DateTime.utc(2026, 10, 28)), updatedAt: moc));
+      await db.into(db.categories).insert(CategoriesCompanion.insert(
+          id: 'sx', name: 'Thử khuôn', idaccount: 10, classify: 'chi', updatedAt: moc));
+    });
+
+    test('⭐ danh sách CHỌN bỏ bản ẩn: selectableChildren, selectableChildrenAll, loadTree', () async {
+      expect((await repo.selectableChildren(accountId: 10, classify: 'chi')).map((c) => c.id), isNot(contains('sx')));
+      expect((await repo.selectableChildrenAll(accountId: 10)).map((c) => c.id), isNot(contains('sx')));
+      final cay = await repo.loadTree(accountId: 10, classify: 'chi');
+      expect(cay.ungroupedChildren.map((c) => c.id), isNot(contains('sx')));
+      expect(cay.ungroupedChildren.map((c) => c.id), contains('c1'));
+    });
+
+    test('bảng TRA giữ bản ẩn: watchAll, loadBangTraTen, getById — lịch sử giữ tên', () async {
+      expect((await repo.watchAll(accountId: 10).first).map((c) => c.id), contains('sx'));
+      expect((await repo.loadBangTraTen(accountId: 10)).map((c) => c.id), contains('sx'));
+      expect((await repo.getById('sx'))?.name, 'Thử khuôn');
+    });
+
+    test('⭐ watchTree phát lại khi admin khôi phục khuôn — bản sao hiện lại', () async {
+      final tho = <List<String>>[];
+      final sub = repo
+          .watchTree(accountId: 10, classify: 'chi')
+          .listen((t) => tho.add([for (final c in t.ungroupedChildren) c.id]));
+      addTearDown(sub.cancel);
+      await pumpEventQueue(times: 50);
+      expect(tho.last, isNot(contains('sx')));
+      await (db.update(db.categories)..where((t) => t.id.equals('kx')))
+          .write(const CategoriesCompanion(isDeleted: Value(false), deletedAt: Value(null)));
+      await pumpEventQueue(times: 50);
+      expect(tho.last, contains('sx'));
+    });
+
+    test('⭐ tạo danh mục trùng tên bản ẩn → câu riêng; trùng hàng thường → câu cũ', () async {
+      CategoryChildDraft nhap(String ten) => CategoryChildDraft(
+          accountId: 10, name: ten, classify: 'chi', parentId: null, icon: 'category', colour: '#4CAF50', keywords: const []);
+      await expectLater(
+        repo.saveChild(nhap('thử  KHUÔN')),
+        throwsA(isA<CategoryValidationException>()
+            .having((e) => e.message, 'message', cauTrungBanSaoDangAn('Thử khuôn'))),
+      );
+      await expectLater(
+        repo.saveChild(nhap('Ăn uống')),
+        throwsA(isA<CategoryValidationException>().having((e) => e.message, 'message', startsWith('Tên danh mục đã tồn tại'))),
+      );
+    });
   });
 }

@@ -4,6 +4,7 @@
 /// bản giả riêng thì giữ nguyên bản ấy.
 library;
 
+import 'package:flowmoney/features/category/data/danh_sach_chon_danh_muc.dart';
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
@@ -69,7 +70,7 @@ class DanhMucGia implements CategoryManagementRepository {
   }
   @override
   Future<List<CategoryEntity>> selectableChildren({required int accountId, required String classify}) async =>
-      (await db.categoryDao.getCategoryRows(accountId, classify))
+      (await hangChonDuoc(db, accountId, classify))
           .where((c) => !c.isGroup)
           .map(CategoryEntity.fromDrift)
           .toList();

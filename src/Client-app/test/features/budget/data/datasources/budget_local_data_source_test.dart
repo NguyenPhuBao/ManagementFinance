@@ -44,6 +44,17 @@ void main() {
 
   tearDown(() => db.close());
 
+  test('⭐ getExpenseCategories bỏ bản sao ẩn theo khuôn (spec 2026-10-27 mục 4)', () async {
+    final moc = DateTime(2026, 10, 10);
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+        id: 'kx', name: 'Thử khuôn', idaccount: 0, classify: 'chi', isDefault: const Value(true),
+        isDeleted: const Value(true), deletedAt: Value(DateTime.utc(2026, 10, 28)), updatedAt: moc));
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+        id: 'sx', name: 'Thử khuôn', idaccount: 10, classify: 'chi', updatedAt: moc));
+    expect((await ds.getExpenseCategories(10)).map((c) => c.id), isNot(contains('sx')),
+        reason: 'Form ngân sách và thẻ "Chưa đặt ngân sách" không được mời người dùng chọn danh mục admin đã ngừng.');
+  });
+
   Future<void> ghiChi(String id, double amount, {String? categoryId, String note = ''}) =>
       db.transactionDao.insert(TransactionsCompanion(
         id: Value(id),

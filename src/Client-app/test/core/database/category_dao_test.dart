@@ -343,8 +343,8 @@ void main() {
       updatedAt: now,
     ));
 
-    final watchedRows = await db.categoryDao.watchCategoryRows(1, 'chi').first;
-    final fetchedRows = await db.categoryDao.getCategoryRows(1, 'chi');
+    final watchedRows = (await db.categoryDao.watchCategoryRows(1, 'chi').first).rows;
+    final fetchedRows = (await db.categoryDao.getCategoryRows(1, 'chi')).rows;
 
     for (final rows in [watchedRows, fetchedRows]) {
       final ids = rows.map((row) => row.id);
@@ -383,7 +383,7 @@ void main() {
       updatedAt: DateTime(2026, 8, 21),
     ));
 
-    final rows = await db.categoryDao.watchCategoryRows(1, 'chi').first;
+    final rows = (await db.categoryDao.watchCategoryRows(1, 'chi').first).rows;
 
     expect(
         rows.map((row) => row.id), containsAll(['group-food', 'child-coffee']));
@@ -1142,7 +1142,7 @@ void main() {
               'người dùng thấy hai bản trùng tên cho mỗi danh mục, và quy tắc '
               'trùng tên chặn họ đổi tên bất kỳ bản nào.');
       expect(
-          (await db.categoryDao.getCategoryRows(7, 'chi')).map((c) => c.id),
+          (await db.categoryDao.getCategoryRows(7, 'chi')).rows.map((c) => c.id),
           ['u1']);
       expect((await db.categoryDao.getByClassify(7, 'chi')).map((c) => c.id),
           ['u1']);
@@ -1150,6 +1150,7 @@ void main() {
           ['u1']);
       expect(
           (await db.categoryDao.watchCategoryRows(7, 'chi').first)
+              .rows
               .map((c) => c.id),
           ['u1']);
     });
