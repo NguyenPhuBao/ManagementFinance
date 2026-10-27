@@ -367,7 +367,8 @@ class _BillEditPageState extends State<BillEditPage> {
                         labelText: 'Nhắc trước hạn',
                         border: OutlineInputBorder(),
                       ),
-                      // Ô khoá vẽ `disabledHint ?? hint`, KHÔNG vẽ giá trị đang chọn — thiếu dòng này là giá trị biến mất.
+                      // Giá trị nằm trong `items` thì ô khoá vẫn vẽ mục đang chọn; `disabledHint` chỉ hiện khi giá trị ngoài danh sách
+                      // (hàng kéo về mang số nhắc lạ — bản release).
                       disabledHint: Text(_nhacTruoc == null ? 'Không nhắc' : '$_nhacTruoc ngày'),
                       items: [
                         const DropdownMenuItem(

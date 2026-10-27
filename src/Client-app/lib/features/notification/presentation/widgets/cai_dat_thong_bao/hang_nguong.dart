@@ -58,7 +58,7 @@ class HangSoNgay extends StatelessWidget {
                 : null,
           ),
         ),
-        // Quyền `bill_reminder_notifications` (B1): ô khoá — `hint` đúng số nên giá trị vẫn hiện.
+        // Quyền `bill_reminder_notifications` (B1): ô khoá vẫn vẽ mục đang chọn khi số nằm trong danh sách; `hint` che giá trị cũ 0 · 2 ngoài danh sách.
         if (!coNhacTruoc)
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 0, 16, 12),

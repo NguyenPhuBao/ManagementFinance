@@ -701,7 +701,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.widget<DropdownButton<int>>(f).onChanged, isNull);
       expect(find.descendant(of: f, matching: find.text('3 ngày')), findsOneWidget,
-          reason: 'DropdownButton khoá vẽ `hint` — hint đúng số nên giá trị không biến mất');
+          reason: 'ô khoá vẫn vẽ mục đang chọn');
       expect(find.byKey(const Key('dong-khoa-cong-tac-bill_reminder_notifications')), findsOneWidget);
     });
 
@@ -711,6 +711,7 @@ void main() {
       await tester.ensureVisible(f);
       await tester.pumpAndSettle();
       expect(tester.widget<Switch>(f).onChanged, isNotNull);
+      expect(tester.widget<DropdownButton<int>>(find.byKey(const ValueKey('nhac-truoc-hoa-don'))).onChanged, isNotNull);
       expect(find.byKey(const Key('dong-khoa-cong-tac-bill_reminder_notifications')), findsNothing);
     });
   });

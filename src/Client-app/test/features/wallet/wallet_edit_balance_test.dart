@@ -190,15 +190,18 @@ void main() {
           goi: goiBasic(const {'wallet_balance_adjustment': false}));
       expect(tester.widget<TextField>(find.byType(TextField).at(1)).readOnly, isTrue);
       expect(find.byKey(const Key('dong-khoa-wallet_balance_adjustment')), findsOneWidget);
+      expect(find.textContaining('Sửa số dư sẽ tạo'), findsNothing, reason: 'câu chú thích nói ngược dòng khoá');
     });
 
     testWidgets('⭐ không quyền điều chỉnh, số dư LẺ → Lưu KHÔNG sinh khoản điều chỉnh', (tester) async {
       final dichVu = _DichVuGia();
-      await _moTrang(tester, _RepoGhiLai(_vi(soDu: 1000000.7)), dichVu,
+      final repo = _RepoGhiLai(_vi(soDu: 1000000.7));
+      await _moTrang(tester, repo, dichVu,
           goi: goiBasic(const {'wallet_balance_adjustment': false}));
       await tester.enterText(find.byType(TextField).first, 'Ví tiền mặt');
       await tester.pumpAndSettle();
       await _chamSauKhiCuon(tester, find.text('Lưu & Cập Nhật Ví'));
+      expect(repo.luoiGoiUpdate.single.name, 'Ví tiền mặt', reason: 'việc lưu ví vẫn xảy ra');
       expect(dichVu.loiGoi, isEmpty,
           reason: 'ô hiện formatSoThoi(balance.toInt()) = 1.000.000 — so với 1.000.000,7 là "đổi"; readOnly không '
               'đủ, phép gọi dieuChinh phải hỏi quyền.');
@@ -211,6 +214,7 @@ void main() {
       expect(sw.onChanged, isNull);
       expect(sw.value, isTrue);
       expect(find.byKey(const Key('dong-khoa-cong-tac-wallet_exclude_total')), findsOneWidget);
+      expect(find.text('Cần Premium'), findsOneWidget);
     });
 
     testWidgets('thiếu khoá → ô số dư sửa được, công tắc mở, không dòng khoá', (tester) async {

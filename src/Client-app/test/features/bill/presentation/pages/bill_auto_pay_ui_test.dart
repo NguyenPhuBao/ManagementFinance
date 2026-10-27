@@ -311,6 +311,10 @@ void main() {
       final chip = find.ancestor(of: find.text('7 ngày'), matching: find.byType(GestureDetector)).first;
       expect(tester.widget<GestureDetector>(chip).onTap, isNull);
       expect(find.byKey(const Key('dong-khoa-cong-tac-bill_reminder_notifications')), findsOneWidget);
+      expect(find.text('Tạm dừng — cần Premium'), findsOneWidget);
+      final hang = find.ancestor(of: find.text('Bật nhắc nhở thông báo đẩy'), matching: find.byType(Row)).at(1);
+      expect(tester.widget<Switch>(find.descendant(of: hang, matching: find.byType(Switch))).onChanged, isNotNull,
+          reason: 'công tắc nhắc đẩy KHÔNG khoá — tắt nhắc là quyền của người dùng (kết luận 9)');
     });
 
     testWidgets('⭐ form Sửa: ô "Nhắc trước hạn" khoá, VẪN hiện "3 ngày" (disabledHint) + băng khoá', (tester) async {
@@ -319,8 +323,9 @@ void main() {
       final o = find.byKey(const ValueKey('bill-reminder-dropdown'));
       expect(tester.widget<DropdownButtonFormField<String?>>(o).onChanged, isNull);
       expect(find.descendant(of: o, matching: find.text('3 ngày')), findsOneWidget,
-          reason: 'DropdownButtonFormField khoá vẽ disabledHint ?? hint — thiếu thì giá trị đang có biến mất');
+          reason: 'ô khoá vẫn vẽ mục đang chọn');
       expect(find.byKey(const Key('dong-khoa-cong-tac-bill_reminder_notifications')), findsOneWidget);
+      expect(find.text('Tạm dừng — cần Premium'), findsOneWidget);
     });
   });
 }

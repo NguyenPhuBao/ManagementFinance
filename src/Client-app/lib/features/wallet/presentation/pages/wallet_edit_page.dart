@@ -396,8 +396,10 @@ class _WalletEditPageState extends State<WalletEditPage> {
           const SizedBox(height: 24.0),
           _buildFormSection(
             title: 'SỐ DƯ VÍ HIỆN TẠI',
-            chuThich: 'Sửa số dư sẽ tạo một khoản điều chỉnh trong sổ giao '
-                'dịch, để lịch sử khớp với số thực tế.',
+            chuThich: coDieuChinh
+                ? 'Sửa số dư sẽ tạo một khoản điều chỉnh trong sổ giao '
+                    'dịch, để lịch sử khớp với số thực tế.'
+                : null,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
