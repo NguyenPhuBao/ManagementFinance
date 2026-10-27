@@ -617,6 +617,28 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-27)
 
+### 🧭 Phiên 16 (2026-10-27 tối) — thi công danh mục theo Admin-web Task 1–6 (agent con), Premium: trần 0 + spec B1 + đơn 55
+
+Mốc `flutter test` **8232 pass / 10 skip** (đầu phiên 8202), analyze **20**, schema v31. **Chưa push** (10 commit).
+
+- 🗂️ **Kế hoạch danh mục theo Admin-web** (spec + kế hoạch phiên 15) — người dùng chọn **agent con** (Fable preflight → Sonnet
+  thực thi → Opus soát). Preflight Fable chạy thử nguyên văn Task 1–8 trên worktree tạm: 0 chặn · 1 sai im lặng (bước thử bản sai
+  Task 7 không đỏ) · 7 nhỏ. Xong **Task 1–6**: `81bab141` luật ẩn `dangAnTheoKhuon` + `CategoryEntity.deletedAt` +
+  `kemDanhMucDangGan` · `37991827` + `a95da3e9` (Task 2+3 gộp) cửa duy nhất `category/data/danh_sach_chon_danh_muc.dart`, DAO
+  `getCategoryRows` / `watchCategoryRows` trả `(rows, khuon)`, `getTatCaKhuon`, câu *"… là danh mục hệ thống đang tạm ngừng"*,
+  **test quét 40** · `59fdf5c1` form sửa hoá đơn / ngân sách giữ danh mục đang ẩn (`BudgetCubit.danhMuc`) · `8e5357c6` trần danh mục
+  riêng so mọi khuôn · `ca2a0364` bộ tạo bản sao so theo **tên** (G108 — ghi vào tệp ở Task 9). **Còn:** Task 7 (`ThayDoiKhuon`) ·
+  8 (`LanTruyenKhuon`) · 9 (tài liệu) · review toàn nhánh · 10 (máy thật). Ledger + phán quyết + minor hoãn ở
+  `.superpowers/sdd/2026-10-27-danh-muc-mac-dinh-theo-thao-tac-admin/progress.md` (git bỏ qua).
+- 💎 **Premium theo Admin-web** (khảo sát chỉ đọc ba phía — `.superpowers/khao-sat-premium-2026-10-27/`): **(a)** trần 0 = **không
+  tạo thêm** (`3ec874aa`, người dùng chốt; bản cũ đọc 0 là rác — hoá đơn / danh mục riêng thành không giới hạn). **(b)** chia B1 cột
+  Premium + công tắc · B2 chính sách hạ cấp · B3 `scope_config` · B4 chống lùi đồng hồ; **spec B1** `bfbd5e5b`
+  `specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md` (`trangThaiQuyen` ba trạng thái, *"bảng của gói đang hiệu lực"*,
+  22 / 31 công tắc, 9 mã không bao giờ khoá, câu *"Đang tạm ngừng"*) — chờ người dùng soát bản viết; lộ **G109** (Basic sau khi
+  Premium hết hạn offline dùng trần Premium đã lưu → tạo không giới hạn). **(c)** **đơn 55**
+  `CAN-LAM/PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md` (`6b40f112`): cột Premium cho Basic, Trụ 1 mã LIMIT → 0, Premium không hạn
+  ba nghĩa, đính chính `docs/Functional-Mobile/4_TRU_COT.md` (31 khẳng định sai).
+
 ### 🧭 Phiên 15 (2026-10-27 chiều) — danh mục mặc định theo thao tác Admin-web (spec + kế hoạch), đơn 54, gộp `main` @ `5c3547b5` + soát 7 đơn
 
 Không đổi mã client (cây `src/Client-app` giữ hash `458742dc…` — không chạy lại `flutter test`; mốc vẫn **8202 / 10 skip**, analyze **20**).
