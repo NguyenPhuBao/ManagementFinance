@@ -458,6 +458,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     () => BudgetCubit(
       repository: sl<BudgetRepository>(),
       taiPhanBoNguon: sl<TaiPhanBoNguon>(),
+      danhMuc: sl<CategoryManagementRepository>(),
     ),
   );
   sl.registerFactory<BudgetDetailCubit>(

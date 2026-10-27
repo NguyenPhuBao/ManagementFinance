@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../domain/bill_recurrence.dart';
+import '../../../category/domain/danh_muc_dang_gan.dart';
 import '../../../category/data/models/category_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../data/models/bill_entity.dart';
@@ -91,8 +92,15 @@ class _BillEditPageState extends State<BillEditPage> {
     final wallets = await sl<WalletRepository>().getActive(accountId);
     // Chỉ danh mục LÁ (người dùng chốt 2026-10-10). Hoá đơn cũ đang gắn vào nhóm
     // thì ô danh mục để trống và nút Lưu đòi chọn lại — không lưu lặng lẽ.
-    final categories =
-        await sl<CategoryManagementRepository>().selectableChildren(accountId: accountId, classify: 'chi');
+    final repoDanhMuc = sl<CategoryManagementRepository>();
+    final chonDuoc = await repoDanhMuc.selectableChildren(accountId: accountId, classify: 'chi');
+    // Danh mục đang gắn bị ẩn theo khuôn (admin ngừng danh mục hệ thống — spec 2026-10-27 mục 4) vẫn là giá trị hiện tại.
+    final idDangGan = widget.bill?.categoryId;
+    final categories = kemDanhMucDangGan(
+      chonDuoc,
+      idDangGan == null || chonDuoc.any((c) => c.id == idDangGan) ? null : await repoDanhMuc.getById(idDangGan),
+      classify: 'chi',
+    );
     if (!mounted) return;
     setState(() {
       _wallets = wallets;

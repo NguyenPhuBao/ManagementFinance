@@ -139,6 +139,18 @@ void main() {
       expect(c.state.viNguon?.id, 'cash');
     });
 
+    test('⭐ đường SỬA: danh mục đang ẩn theo khuôn (vắng khỏi danh sách chọn) vẫn là giá trị hiện tại (spec 2026-10-27)',
+        () async {
+      final an = makeCategory(id: 'sx', name: 'Thử khuôn');
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat], danhMuc: [anUong, diChuyen]),
+          dangSua: giaoDichCu(categoryId: 'sx'), danhMucDangSua: an);
+      await c.moTrang();
+      c.ghiChuDoi('đổ xăng');
+      await Future<void>.delayed(const Duration(milliseconds: 350)); // qua hẹn giờ gợi ý 300 ms
+      expect(c.state.danhMuc?.id, 'sx',
+          reason: 'Admin ngừng danh mục hệ thống không được làm form sửa giao dịch cũ mất danh mục.');
+    });
+
     test('đường SỬA số lẻ giữ dấu chấm thô ("12.5"), không làm tròn', () {
       final c = taoCubit(NguonThemGiaoDichGia(), dangSua: giaoDichCu(amount: 12.5), danhMucDangSua: anUong);
       expect(c.state.chuoiSoTien, '12.5');

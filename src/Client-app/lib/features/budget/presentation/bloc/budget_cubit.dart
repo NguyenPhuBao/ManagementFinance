@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../category/data/repositories/category_management_repository.dart';
+import '../../../category/domain/danh_muc_dang_gan.dart';
 import '../../data/models/budget_entity.dart';
 import '../../data/de_xuat_nguon.dart';
 import '../../data/repositories/budget_repository.dart';
@@ -28,6 +30,10 @@ class BudgetCubit extends Cubit<BudgetState> {
   /// **đồng bộ** như trước, không thêm một microtask nào.
   final TaiPhanBoNguon? taiPhanBoNguon;
 
+  /// Tra danh mục ĐANG GẮN của ngân sách đang sửa khi nó không có trong danh sách chọn (ẩn theo khuôn — spec 2026-10-27
+  /// mục 4). `null` = không giữ (đường test cũ): form rơi về "chưa chọn" như trước.
+  final CategoryManagementRepository? danhMuc;
+
   StreamSubscription<List<BudgetView>>? _subscription;
 
   /// Số thứ tự lượt phát — lượt `nap` chậm về sau lượt mới hơn thì bỏ, không
@@ -38,6 +44,7 @@ class BudgetCubit extends Cubit<BudgetState> {
     required this.repository,
     DateTime Function()? clock,
     this.taiPhanBoNguon,
+    this.danhMuc,
   })  : clock = clock ?? DateTime.now,
         super(const BudgetInitial());
 
@@ -203,8 +210,14 @@ class BudgetCubit extends Cubit<BudgetState> {
           thieu = null;
         }
       }
+      var dsChon = categories;
+      final idDangGan = editing?.categoryId;
+      final tra = danhMuc;
+      if (idDangGan != null && tra != null && !categories.any((c) => c.id == idDangGan)) {
+        dsChon = kemDanhMucDangGan(categories, await tra.getById(idDangGan), classify: 'chi');
+      }
       emit(BudgetEditorReady(
-        categories: categories,
+        categories: dsChon,
         editing: editing,
         soNgayCuaSo: soNgay,
         soNgayConThieu: thieu,

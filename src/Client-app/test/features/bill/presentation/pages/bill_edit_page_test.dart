@@ -154,6 +154,24 @@ void main() {
         reason: 'Hoá đơn cũ gắn vào nhóm: ô trống, nút Lưu đã chặn "Vui lòng chọn danh mục" — không lưu lặng lẽ.');
   });
 
+  testWidgets('⭐ hoá đơn gắn danh mục đang ẩn theo khuôn → form giữ nó làm giá trị hiện tại (spec 2026-10-27 mục 4)',
+      (tester) async {
+    final moc = DateTime(2026, 9, 1);
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+        id: 'kx', idaccount: 0, name: 'Thử khuôn', classify: 'chi', isDefault: const Value(true),
+        isDeleted: const Value(true), deletedAt: Value(DateTime.utc(2026, 10, 28)), updatedAt: moc));
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+        id: 'c1', idaccount: 10, name: 'Thử khuôn', classify: 'chi', updatedAt: moc));
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+        id: 'c2', idaccount: 10, name: 'Dien nuoc', classify: 'chi', updatedAt: moc));
+    await dungTrangSua(tester); // _hoaDon() gắn 'c1'
+    final dd = tester.widget<DropdownButton<CategoryEntity>>(find.byType(DropdownButton<CategoryEntity>));
+    expect(dd.value?.id, 'c1',
+        reason: 'Admin ngừng danh mục hệ thống không được bắt người dùng chọn lại danh mục cho hoá đơn cũ.');
+    expect(dd.items!.map((m) => m.value!.id), containsAll(['c1', 'c2']));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('không tràn bố cục ở 411dp', (tester) async {
     await dungTrangSua(tester);
 

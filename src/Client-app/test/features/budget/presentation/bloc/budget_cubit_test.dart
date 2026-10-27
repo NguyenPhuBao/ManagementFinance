@@ -15,6 +15,7 @@ import 'package:flowmoney/features/budget/domain/budget_history.dart';
 import 'package:flowmoney/features/budget/domain/nhip_chi.dart';
 import 'package:flowmoney/features/budget/presentation/bloc/budget_cubit.dart';
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
+import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
 
@@ -160,6 +161,15 @@ class _FakeRepository implements BudgetRepository {
 
   /// Tuổi dữ liệu mà lớp giả trả về. `null` = chưa có giao dịch.
   int? soNgayCoDuLieuTra;
+}
+
+class _DanhMucTra implements CategoryManagementRepository {
+  _DanhMucTra(this.hang);
+  final Map<String, CategoryEntity> hang;
+  @override
+  Future<CategoryEntity?> getById(String id) async => hang[id];
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
 /// Đồng hồ đóng băng của bộ test này. Việc phân tab hỏi "hết hạn chưa", nên để
@@ -488,6 +498,27 @@ void main() {
       expect(state.isCreating, isTrue,
           reason: 'ĐÒI KẾT QUẢ: số ngày là phần phụ của nhãn, không được '
               'phép đổi cả form thành một màn lỗi');
+    });
+
+    test('⭐ ngân sách gắn danh mục đang ẩn theo khuôn → editor giữ nó trong danh sách (spec 2026-10-27 mục 4)', () async {
+      final ngay = DateTime(2026, 6, 1);
+      repo.categories = [CategoryEntity(id: 'c2', idaccount: 7, name: 'Ăn uống', classify: 'chi', updatedAt: ngay)];
+      repo.budgets = [
+        BudgetView(
+          budget: BudgetEntity(
+            id: 'b1', idaccount: 7, amount: 500000, spent: 0, categoryId: 'sx',
+            startDate: ngay, recurrence: true, updatedAt: ngay,
+          ),
+        ),
+      ];
+      final an = CategoryEntity(id: 'sx', idaccount: 7, name: 'Thử khuôn', classify: 'chi', updatedAt: ngay);
+      final c = BudgetCubit(repository: repo, clock: () => _bayGio, danhMuc: _DanhMucTra({'sx': an}));
+      addTearDown(c.close);
+
+      await c.loadEditor(7, budgetId: 'b1');
+
+      expect((c.state as BudgetEditorReady).categories.map((x) => x.id), ['c2', 'sx'],
+          reason: 'Form rơi về "Hãy chọn danh mục" là bắt người dùng đổi danh mục của ngân sách cũ.');
     });
 
     test('mở ngân sách có thật thì nạp đúng bản ghi', () async {
