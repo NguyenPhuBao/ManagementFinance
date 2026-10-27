@@ -210,6 +210,16 @@ OCR lệch nhau), không kèm *"Đọc bằng AI"*. Tách theo danh mục là lu
 Không thêm quyền `CAMERA` (intent máy ảnh hệ thống), không quyền đọc bộ nhớ (trình chọn ảnh hệ thống). Bản `--release`
 dựng được ngày 2026-10-08 (224,9 MB) — R8 không cần quy tắc mới cho `image_picker`.
 
+**Máy ảnh khi đang giữ Gemma — đo Realme 2026-10-27 (phiên 14, bản debug, CPU):** lượt quét đầu nạp mô hình (app ~3,0 GB PSS,
+máy còn ~2,07 GB / 7,7 GB) → Quét → Chụp mở `com.oplus.camera` 09:04:43, quay về 09:04:52 → **cùng tiến trình** (pid giữ nguyên,
+không `Killing` / `Start proc`), mô hình **không** nạp lại, Gemma đọc ảnh 35 s → form *"Từ ảnh quét · Đọc bằng AI"* 262.000 · Ăn uống.
+✅ **G107 (mở và đóng cùng ngày):** trước đó `lib/` **không** gọi `ImagePicker.retrieveLostData()` — tiến trình chết lúc máy ảnh đang
+mở (giả định của bước 21 `KHOA_APP_FEATURE.md`) thì ảnh vừa chụp nằm trong bộ đệm `image_picker` và mất. Nay `NhanAnhQuetBoDo`
+(`home/presentation/widgets/`, không vẽ gì trong cột Trang chủ) gọi `nhanAnhQuetBoDo` (ở tệp này — vẫn là tệp duy nhất import
+`image_picker`) một lần mỗi lần Trang chủ dựng mới: có ảnh bỏ dở ⇒ `push('/quet')`. Nghiệm thu Realme: `am crash` lúc máy ảnh mở →
+tiến trình mới đọc ảnh bằng Gemma → màn khoá → *Đang đọc* → form → Lưu. Đường này bỏ qua cổng `ocr_receipt` của nút Quét (đã xét lúc
+chọn ảnh). Chi tiết: G107 `CLIENT_APP_KNOWN_GAPS.md`.
+
 ## 6. Stitch
 
 `8027b781…` sheet chọn nguồn (✅ app theo đúng màn từ 2026-10-22 khuya — trước đó chỉ hai `ListTile` + Huỷ; thêm dòng nhắc

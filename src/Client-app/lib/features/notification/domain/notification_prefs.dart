@@ -16,6 +16,10 @@ enum NotificationGroup {
   /// của nó **là công tắc tính năng** — tắt là dịch vụ Kotlin thôi đọc — và vì
   /// nó mặc định TẮT (cờ [NotificationPrefs.docBienDong]), khác mọi nhóm kia.
   bienDong,
+
+  /// Tin từ FlowMoney (2026-10-26) — nhóm RIÊNG: tắt tin admin không kéo theo cảnh báo ví âm / đồng bộ hỏng. Mặc định
+  /// BẬT (kho lưu nhóm bị tắt).
+  tinFlowMoney,
 }
 
 /// Loại thông báo thuộc nhóm nào.
@@ -67,6 +71,8 @@ NotificationGroup nhomCua(NotificationKind kind) {
       return NotificationGroup.summary;
     case NotificationKind.bienDongSoDu:
       return NotificationGroup.bienDong;
+    case NotificationKind.tinHeThong:
+      return NotificationGroup.tinFlowMoney;
   }
 }
 
@@ -132,6 +138,8 @@ bool luonBao(NotificationKind kind) {
     // Tin ngân hàng chờ ghi: không phải tiền rời ví lúc vắng mặt, và là thứ
     // người dùng phải tắt được — công tắc nhóm của nó chính là công tắc tính năng.
     case NotificationKind.bienDongSoDu:
+    // Tin admin: không báo tiền rời ví, và admin gửi dày thì người dùng phải tắt được riêng nhóm này (2026-10-26).
+    case NotificationKind.tinHeThong:
       return false;
   }
 }

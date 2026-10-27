@@ -3,6 +3,7 @@
 /// từ hàng JSON nằm ở `anh_xa_keo_ve.dart` (dời nguyên văn); ở đây còn điều phối và mọi bước có tác dụng phụ.
 library;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' hide Category;
 
 import '../api/dio_client.dart';
@@ -14,6 +15,13 @@ import 'gieo_tu_khoa.dart';
 import 'moc_keo_ve.dart';
 import 'sync_checkpoint_store.dart';
 import 'uuid_dong_bo.dart';
+
+/// `/sync/pull` bị máy chủ TRẢ LỜI bằng lỗi — dữ liệu máy khác không về cho tới khi máy chủ hết lỗi (2026-10-26, đơn 53
+/// vế C: một ghi chú `enc:…` làm mọi lượt kéo 500 `DECRYPT_FAILED`). Người dùng chốt MỌI lỗi máy chủ trả lời, trừ bốn mã đã
+/// có đường riêng: 401 (phiên — `AuthInterceptor`), 403 (phong toả — dòng nhắc G89), 429 / 503 (giới hạn tần suất · bảo trì
+/// · quá tải — thoáng qua hoặc đã có dòng riêng). `null` (không phản hồi — mất mạng) không phải máy chủ từ chối.
+bool keoVeBiMayChuTuChoi(int? status) =>
+    status != null && status >= 400 && status != 401 && status != 403 && status != 429 && status != 503;
 
 /// Chỉ `SyncEngine` dựng lớp này. Nó SỞ HỮU trạng thái kéo — mốc, cờ đã kéo xong, bộ đếm — nên engine chạm trạng thái
 /// ấy qua đúng ba lối: [napMoc] (lúc `start`), [napMocNeuChuaCo] (lúc `syncMotLuot`), [datLaiPhien] (lúc `stop`).
@@ -50,6 +58,12 @@ class ApDuLieuKeoVe {
   int get soLanKeoVeXong => _soLanKeoVeXong;
   int _soLanKeoVeXong = 0;
 
+  /// Lượt kéo gần nhất bị máy chủ từ chối ([keoVeBiMayChuTuChoi]) — lý do ở docstring của `SyncEngine.keoVeBiTuChoi`.
+  /// Bật ở `catch`, tắt ở đúng chỗ đếm [soLanKeoVeXong] và ở [datLaiPhien]; mất mạng thì giữ nguyên (chưa biết máy chủ đã
+  /// hết lỗi chưa). Không `dispose`: sống theo engine (singleton DI), người nghe là widget tự gỡ.
+  ValueListenable<bool> get biTuChoi => _biTuChoi;
+  final _biTuChoi = ValueNotifier<bool>(false);
+
   /// Lúc `SyncEngine.start`: nạp mốc đã lưu của [idaccount].
   Future<void> napMoc(int idaccount) async {
     // Khôi phục mốc pull đã lưu để không phải kéo lại toàn bộ dữ liệu mỗi lần
@@ -79,6 +93,7 @@ class ApDuLieuKeoVe {
     // Phiên sau có thể là tài khoản khác — cờ của phiên này không nói được gì
     // về CSDL cục bộ của tài khoản đó.
     _hasCompletedPull = false;
+    _biTuChoi.value = false;
     // Chỉ xoá mốc trong RAM. Mốc đã lưu được giữ lại theo từng idaccount để lần
     // đăng nhập sau vẫn pull tăng dần; nếu dữ liệu cục bộ đã bị xoá thì
     // pullFromBackend tự ép full pull.
@@ -332,10 +347,19 @@ class ApDuLieuKeoVe {
           // server) sẽ mãi mãi trông như "chưa pull lần nào".
           _hasCompletedPull = true;
           _soLanKeoVeXong++;
+          _biTuChoi.value = false;
         }
       }
     } catch (e) {
       debugPrint('[SyncEngine] HTTP Sync Pull Error: $e');
+      // Lỗi vẫn nuốt như trước (chu kỳ không thành `error`, không giãn cách — lượt đẩy vẫn tốt); chỉ thêm tín hiệu cho dòng
+      // nhắc Trang chủ. Log mã HTTP + `code` ở gốc body (hình dạng `sync.controller.js` `pull`), không log nội dung.
+      if (e is DioException && keoVeBiMayChuTuChoi(e.response?.statusCode)) {
+        final than = e.response?.data;
+        debugPrint('[SyncEngine] Kéo về bị máy chủ từ chối: HTTP ${e.response?.statusCode} '
+            'code=${than is Map ? than['code'] : null}');
+        _biTuChoi.value = true;
+      }
     }
   }
 

@@ -731,13 +731,17 @@ void main() {
 
     // Gia đình (spec 2026-10-23 mục 4.2; đơn 50 mục A + D.3) — thêm TRƯỚC khi
     // backend lên: tập mã vĩnh viễn là danh sách trắng, mã chưa có tên ở đây
-    // bị gửi lại ở MỌI chu kỳ, im lặng (lớp lỗi G31 / G14).
+    // bị gửi lại ở MỌI chu kỳ, im lặng (lớp lỗi G31 / G14). Hai mã cuối do
+    // `docs/Family/` đề xuất (`01` mục 3, `02A`), thêm 2026-10-27 khi backend
+    // CHƯA chấp nhận tên — backend đổi tên thì sửa cả hai chỗ.
     for (final (ma, cau) in const [
       ('NOT_OWNER', 'Bản ghi thuộc tài khoản khác'),
       ('HOUSEHOLD_NOT_MEMBER', 'Bạn không còn là thành viên của nhà này'),
       ('HOUSEHOLD_READ_ONLY', 'Nhà đang ở chế độ chỉ xem'),
       ('HOUSEHOLD_CLOSED', 'Nhà đã giải tán'),
       ('HOUSEHOLD_SCOPE_MISMATCH', 'Tham chiếu sai phạm vi nhà'),
+      ('HOUSEHOLD_ROLE_FORBIDDEN', 'Vai của bạn không đủ cho thao tác này'),
+      ('HOUSEHOLD_WALLET_LIMIT', 'Nhà đã đủ số ví chung'),
     ]) {
       test('Mã $ma là lỗi vĩnh viễn (gia đình, thêm TRƯỚC khi backend lên)',
           () async {
@@ -750,7 +754,8 @@ void main() {
           row?.syncBlockedUntil,
           clock.add(const Duration(seconds: 30)),
           reason: '$ma: đẩy lại y nguyên không đổi được kết quả — hàng không '
-              'thuộc người đẩy / người đẩy hết quyền ghi vào nhà. Rơi xuống '
+              'thuộc người đẩy / người đẩy không được ghi thao tác này vào nhà '
+              '(hết quyền, vai không đủ, nhà hết chỗ ví chung). Rơi xuống '
               'transient là gửi lại mọi chu kỳ, giãn cách luỹ tiến (G2) kéo '
               'chậm cả hàng đợi.',
         );

@@ -7,9 +7,12 @@
 /// `AuthInterceptor` (Bearer, 401 → làm mới token rồi phát lại trọn request —
 /// xảy ra trước khi có chunk nào). `receiveTimeout` riêng 45 s là khoảng lặng
 /// giữa hai gói: Gemini gọi tool rồi suy luận lượt hai có thể lâu hơn 30 s mặc định.
+/// Từ khi backend gửi `: ping` mỗi 15 s khoảng lặng ấy không còn nổ — lưới an toàn
+/// là trần TỔNG [kTranTongOnline] (2026-10-26).
 /// Log chỉ loại sự kiện / mã HTTP — không in câu hỏi, câu trả lời.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -31,9 +34,19 @@ abstract class TroLyOnlineRemoteDataSource {
   });
 }
 
+/// Trần TỔNG một lượt (2026-10-26, người dùng chốt 120 s). Từ khi backend gửi `: ping` mỗi 15 s (`chatbot.controller.js:32`,
+/// đơn 47 việc 6) thì [kChoGoiOnline] không bao giờ nổ, mà backend không có trần nào cho lời gọi Gemini — Gemini treo là
+/// vòng xoay quay mãi. Phải vượt ca dài nhất đã đo (G96: nghĩ 49,9 s, một lượt curl 91 s) cộng thời gian chạy chữ. Quá trần
+/// thì huỷ chính `CancelToken` của lượt (đóng socket như Dừng) và phát [LoiOnline] mang lý do riêng — trang rơi về máy khi
+/// chưa có chữ, giữ phần đã hiện khi đã có (`quyetDinhSauOnline`, không đổi).
+const Duration kTranTongOnline = Duration(seconds: 120);
+
 class TroLyOnlineRemoteDataSourceImpl implements TroLyOnlineRemoteDataSource {
-  TroLyOnlineRemoteDataSourceImpl(this._dio);
+  TroLyOnlineRemoteDataSourceImpl(this._dio, {Duration tranTong = kTranTongOnline}) : _tranTong = tranTong;
   final Dio _dio;
+
+  /// [kTranTongOnline]; test tiêm trần ngắn.
+  final Duration _tranTong;
 
   @override
   Stream<SuKienOnline> hoi({
@@ -44,6 +57,15 @@ class TroLyOnlineRemoteDataSourceImpl implements TroLyOnlineRemoteDataSource {
   }) async* {
     final boTach = BoTachSse();
     final batDau = DateTime.now();
+    var quaTran = false;
+    final henTran = Timer(_tranTong, () {
+      quaTran = true;
+      debugPrint('[Online] quá trần tổng ${_tranTong.inSeconds} s — huỷ lượt');
+      cancel.cancel('quá trần tổng');
+    });
+    // Sau khi huỷ vì trần, mọi đường kết thúc (DioException cancel, lỗi luồng, luồng đóng không `done`) đều đổi thành lỗi
+    // này — log và lý do phải phân biệt được với Dừng của người dùng (cùng một CancelToken).
+    LoiOnline loiTran() => LoiOnline(http: null, lyDo: 'quá trần tổng ${_tranTong.inSeconds} s');
     try {
       final res = await _dio.post<ResponseBody>(
         kDuongChatStream,
@@ -74,15 +96,17 @@ class TroLyOnlineRemoteDataSourceImpl implements TroLyOnlineRemoteDataSource {
         yield sk;
         if (_laKet(sk, batDau)) return;
       }
-      yield const LoiOnline(http: 200, lyDo: 'luồng đóng không done');
+      yield quaTran ? loiTran() : const LoiOnline(http: 200, lyDo: 'luồng đóng không done');
     } on DioException catch (e) {
       debugPrint('[Online] lỗi ${e.type.name} http=${e.response?.statusCode} sau ${DateTime.now().difference(batDau).inMilliseconds} ms');
-      yield LoiOnline(http: e.response?.statusCode, lyDo: '${e.type.name}: ${e.message ?? ''}');
+      yield quaTran ? loiTran() : LoiOnline(http: e.response?.statusCode, lyDo: '${e.type.name}: ${e.message ?? ''}');
     } catch (e) {
       // Mất mạng giữa luồng (HttpException), thân cụt giữa ký tự UTF-8
       // (FormatException)…: không ném ra ngoài; chỉ ghi kiểu lỗi, không nội dung.
       debugPrint('[Online] lỗi ${e.runtimeType} sau ${DateTime.now().difference(batDau).inMilliseconds} ms');
-      yield LoiOnline(http: null, lyDo: '${e.runtimeType}');
+      yield quaTran ? loiTran() : LoiOnline(http: null, lyDo: '${e.runtimeType}');
+    } finally {
+      henTran.cancel();
     }
   }
 

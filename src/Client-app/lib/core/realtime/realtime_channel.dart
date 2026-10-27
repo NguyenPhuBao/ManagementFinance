@@ -9,11 +9,16 @@ import '../constants/app_constants.dart';
 import 'realtime_event.dart';
 import 'realtime_socket.dart';
 import 'socket_base_url.dart';
+import 'tin_he_thong.dart';
 
 /// Tên sự kiện cưỡng chế đăng xuất, đúng chuỗi backend phát ở
 /// `emitForceLogout` (`core/socket.js`). Cố ý KHÔNG nằm trong `realtimeEventFromName`: nó
 /// không phải tin "server vừa có dữ liệu mới" và không được đánh thức đồng bộ.
 const _tenBuocDangXuat = 'account.force_logout';
+
+/// Tin admin phát (`emitSystemBroadcast` ở `core/socket.js`) — ngoại lệ hộp đen thứ hai, payload đọc qua
+/// `docTinHeThong` (spec 2026-10-26). Không nằm trong `realtimeEventFromName`: không đánh thức đồng bộ.
+const _tenTinHeThong = 'system.broadcast';
 
 /// Bảng giãn cách giữa các lần nối lại.
 ///
@@ -83,6 +88,11 @@ class RealtimeChannel {
 
   Stream<ThongBaoBuocDangXuat> get buocDangXuat =>
       _buocDangXuatController.stream;
+
+  /// Tin admin gõ tay — **luồng riêng** như [buocDangXuat], cùng lý do: [events] không đọc payload.
+  final _tinHeThongController = StreamController<TinHeThongNhan>.broadcast();
+
+  Stream<TinHeThongNhan> get tinHeThong => _tinHeThongController.stream;
 
   RealtimeSocket? _socket;
   int? _idaccount;
@@ -229,8 +239,8 @@ class RealtimeChannel {
     if (_daDung) return;
 
     // Bắt TRƯỚC `realtimeEventFromName`: sự kiện này không nằm trong
-    // `RealtimeEvent`, không đánh thức đồng bộ, và là chỗ DUY NHẤT trong lớp
-    // này được đọc payload (§3.2).
+    // `RealtimeEvent`, không đánh thức đồng bộ, và là một trong HAI chỗ trong
+    // lớp này được đọc payload (§3.2) — cùng `system.broadcast` ngay dưới.
     if (ten == _tenBuocDangXuat) {
       final thongBao = tuSuKienSocket(payload);
       // Gói tin của tài khoản khác: không xảy ra khi room đúng, nhưng nếu xảy
@@ -246,6 +256,17 @@ class RealtimeChannel {
       if (!_buocDangXuatController.isClosed) {
         _buocDangXuatController.add(thongBao);
       }
+      return;
+    }
+
+    // Tin admin gõ tay (spec 2026-10-26 mục 3.1): payload đọc qua MỘT hàm thuần; tin bảo trì tự động / payload hỏng → im.
+    // Kèm tài khoản của phiên đang nối — bộ nhận ghi hàng theo nó (danh tính chỉ từ phiên). Chỉ log `id` (quét 38).
+    if (ten == _tenTinHeThong) {
+      final id = _idaccount;
+      final tin = docTinHeThong(payload);
+      if (id == null || tin == null) return;
+      debugPrint('[RealtimeChannel] Tin hệ thống ${tin.id}');
+      if (!_tinHeThongController.isClosed) _tinHeThongController.add((idaccount: id, tin: tin));
       return;
     }
 

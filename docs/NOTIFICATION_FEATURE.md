@@ -1,6 +1,6 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** **2026-10-15** (đợt Entity Thông báo + gạch 5 + gạch 6, G88 — mọi đường dẫn `lib/core/notification/…` và `test/core/notification/…` đổi sang `features/notification/{domain,data,application}` (hoặc `core/nen` · `core/ocr` · `core/utils`); cổng `ThongBaoNguon` thành `ThongBaoRepository`, bảng vẫn cục bộ; không đổi hành vi). Trước đó **2026-10-03** (**nhắc ghi sau khi dùng app ngân hàng** — nguồn thứ ba của loại 20, mục **5j**; dải hoàn tác vuốt xoá phải `persist: false`, mục **5c**) · trước đó **2026-09-30** (**đọc biến động số dư — D1**, mục **5j**: loại thứ **20** `bienDongSoDu`, nhóm thứ **sáu** `bienDong`, **ngoại lệ xoá cứng** ở mục 4.3; tài liệu chính `docs/BIEN_DONG_SO_DU_FEATURE.md`) · trước đó **2026-09-29** tối (**học giờ và đề xuất — B5b**, mục **5i**: đề xuất giờ nhắc hoá đơn / tổng kết / ghi chép và tắt nhóm bị lờ, chỉ đề xuất; kèm **G59** — đổi giờ nhắc nay dời lịch đang chờ, `resync(datLai: true)`) · trước đó **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
+> **Cập nhật:** **2026-10-26** (**Tin từ FlowMoney** — tin admin qua socket `system.broadcast`, loại thứ **21** `tinHeThong`, nhóm thứ **bảy** `tinFlowMoney`, mục **5l**). Trước đó **2026-10-15** (đợt Entity Thông báo + gạch 5 + gạch 6, G88 — mọi đường dẫn `lib/core/notification/…` và `test/core/notification/…` đổi sang `features/notification/{domain,data,application}` (hoặc `core/nen` · `core/ocr` · `core/utils`); cổng `ThongBaoNguon` thành `ThongBaoRepository`, bảng vẫn cục bộ; không đổi hành vi). Trước đó **2026-10-03** (**nhắc ghi sau khi dùng app ngân hàng** — nguồn thứ ba của loại 20, mục **5j**; dải hoàn tác vuốt xoá phải `persist: false`, mục **5c**) · trước đó **2026-09-30** (**đọc biến động số dư — D1**, mục **5j**: loại thứ **20** `bienDongSoDu`, nhóm thứ **sáu** `bienDong`, **ngoại lệ xoá cứng** ở mục 4.3; tài liệu chính `docs/BIEN_DONG_SO_DU_FEATURE.md`) · trước đó **2026-09-29** tối (**học giờ và đề xuất — B5b**, mục **5i**: đề xuất giờ nhắc hoá đơn / tổng kết / ghi chép và tắt nhóm bị lờ, chỉ đề xuất; kèm **G59** — đổi giờ nhắc nay dời lịch đang chờ, `resync(datLai: true)`) · trước đó **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
@@ -100,6 +100,7 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | | Số dư ví sắp cạn | `walletLowBalance` | |
 | Tổng kết | **Tổng kết tuần** | `weeklySummary` | |
 | **Biến động** | **Biến động số dư** (D1, 2026-09-30) — ⚠️ không do scanner sinh, `NhapBienDong` chèn từ hàng chờ của Kotlin; công tắc là cờ riêng `docBienDong` (mặc định TẮT), mục 5j | `bienDongSoDu` | |
+| **Tin từ FlowMoney** | **Tin admin** (2026-10-26) — ⚠️ không do scanner sinh, `NhanTinHeThong` ghi từ socket `system.broadcast`; nhóm riêng `tinFlowMoney`, mặc định BẬT, mục 5l | `tinHeThong` | |
 
 **`walletLowBalance`** (2026-09-07) và **`largeExpense`** (2026-09-17) là hai loại **tắt sẵn**, và cả hai tắt theo cùng một cách — bằng chính con số ngưỡng. Với `walletLowBalance`: nó chỉ sinh
 khi `NotificationPrefs.nguongSoDuThap > 0`, mà mặc định là `0`. Con số ấy vừa
@@ -1375,6 +1376,43 @@ Ca canh: `dot_am_test.dart` (mốc đứng yên khi chi thêm, mốc mới khi �
 `hangAmDaHoi`), `notification_scanner_test` (chỉ đọc sổ cho ví đang âm; gỡ khi hồi rồi đợt sau báo lại). ⚠️ Bộ dựng
 `dungScanner` của test bộ quét đếm id lại từ `id-0` mỗi lần gọi — hai bộ quét ghi cùng CSDL thì hàng sau **trùng khoá
 chính** và bị bỏ qua im lặng; nay có `tienToId`.
+
+## 5l. Tin từ FlowMoney — `system.broadcast` (2026-10-26)
+
+Spec `docs/superpowers/specs/2026-10-26-tin-tu-flowmoney-broadcast-design.md`. Admin gõ tin ở màn *Phát thông báo* (Admin-web,
+`POST /api/notifications/broadcast`) → backend `io.emit('system.broadcast', …)` tới **mọi** socket đang nối → máy đang mở app
+có hàng trong Trung tâm + thông báo trên khay. Loại thứ **21** `tinHeThong`, nhóm thứ **bảy** `tinFlowMoney` (chip
+*FlowMoney*, hàng Cài đặt *Tin từ FlowMoney*, biểu tượng `campaign`).
+
+- **Đường đi:** `RealtimeChannel._khiCoSuKien` bắt tên `system.broadcast` **trước** `realtimeEventFromName` (khuôn
+  `account.force_logout` — ngoại lệ hộp đen thứ **hai**) → **`docTinHeThong`** (`core/realtime/tin_he_thong.dart`, hàm thuần
+  DUY NHẤT đọc payload) → luồng riêng `RealtimeChannel.tinHeThong` mang `(idaccount của phiên, TinHeThong)` →
+  **`NhanTinHeThong`** (`notification/application/`, nối MỘT lần ở `main.dart`) ghi hàng + bắn khay. Không vào `events`
+  (không đánh thức đồng bộ), sau `stop()` thì im.
+- **Lọc:** `metadata.type` là chuỗi khác rỗng ⇒ tin bảo trì tự động (5 chỗ phát ở `maintenance.manager.js`) ⇒ bỏ — người
+  dùng chốt chỉ hiện tin admin gõ tay, bảo trì đã có dòng nhắc G89. Thiếu `id` / tiêu đề và nội dung cùng rỗng ⇒ bỏ. Tiêu
+  đề rỗng ⇒ *"Tin từ FlowMoney"*; cắt tiêu đề 120 / nội dung 1.000 **code point** (không cắt đôi emoji); `level` không
+  phân biệt hoa thường, lạ ⇒ `info`.
+- **Khoá `tinHeThong:<id>`** — backend có thể phát một tin **hai lần** (event bus cục bộ + Redis), cùng `id` ⇒ một hàng.
+- **Luật ghi / bắn khay = luật `NotificationScanner`:** nhóm tắt ⇒ không hàng, không khay; ghi bằng `insertIfAbsent` và
+  **chỉ hàng mới** mới bắn; công tắc tổng tắt / giờ im lặng ⇒ có hàng, không khay; `osDeliveredAt` chỉ ghi khi có quyền.
+  Không `deeplink` — chạm trong Trung tâm = đánh dấu đã đọc; chạm khay rơi nhánh mặc định của `deeplinkTuDedupeKey` ⇒
+  Trung tâm. Không bao giờ ném; log chỉ `id` (quét 38).
+- **Giới hạn (người dùng chốt, không đơn backend):** chỉ máy **đang nối socket** nhận — app đóng hẳn, mất mạng, chưa đăng
+  nhập lúc phát ⇒ **mất tin**, không nhận bù; không đồng bộ giữa các máy (bảng cục bộ, quy tắc 9); đăng nhập tài khoản
+  khác không thấy tin của tài khoản trước; không màn chi tiết — nội dung dài hiện trọn trong hàng Trung tâm, khay tự cắt;
+  engine nền (WorkManager) không mở socket.
+- **Ca canh:** `test/core/realtime/tin_he_thong_test.dart` (11), `realtime_tin_he_thong_test.dart` (4),
+  `notification/application/nhan_tin_he_thong_test.dart` (10, kể cả ca đọc mã nối dây `main.dart` + DI), ca nhóm ở
+  `notification_prefs_test`, ca khoá ở `notification_deeplink_test` (`ngoaiBoQuet` thêm `tinHeThong`), chip ở
+  `notification_center_page_test`.
+- ✅ **Nghiệm thu Realme 2026-10-26 tối** (chi tiết khối 🧭 mục 14 `PROJECT_CONTEXT.md`): tin `critical` khi app mở → hàng + khay,
+  id khay = `osScheduledId(khoá)` · tin bảo trì (`metadata.type`) → im · tắt nhóm → im (kênh vẫn nhận) · app ở nền → khay, chạm khay →
+  Trung tâm · chip *FlowMoney* lọc đúng, không tràn 360 dp.
+- ✅ **Một tin tới nhiều lần — đo Realme 2026-10-27 (phiên 14, bản debug):** proxy WebSocket giữa app và backend `PersonFinance` gửi lại
+  nguyên khung `42["system.broadcast",…]` của một tin admin (`info`, app mở): bản sao ngay sau (1 ms) và sau 3 s → logcat **3** dòng
+  `[RealtimeChannel] Tin hệ thống <id>` · bảng máy **1** hàng `tinHeThong:<id>` (`os_delivered_at` có) · khay **1** thông báo, id =
+  `osScheduledId(khoá)` · bộ nghe thông báo D1 (`BienDongThu`) thấy **1** lần đăng — hai bản sao không đăng lại, không kêu lại.
 
 ✅ **G71 (2026-10-06 khuya) — ví đã xoá thì thông báo số dư của nó tự gỡ.** Bộ quét đọc ví qua `walletDao.getAll` (từ 2026-10-14, đợt Entity Giao dịch + Ví, qua `WalletRepository.getAll` trả `WalletEntity` — vẫn là `walletDao.getAll` bên dưới), vốn lọc bỏ ví có `deletedAt`, nên ví đã xoá chỉ **biến mất** khỏi danh sách và cả `hangSapCanLoiThoi` lẫn `hangAmDaHoi` rơi vào nhánh *không biết ví thì không đoán*. Nay bộ quét nhận **`ViDaXoaLoader`** (`WalletDao.idDaXoa` — `deletedAt` **hoặc** `isDeleted`, đúng tài khoản; ví lưu trữ **không** tính) và hàm thuần **`hangCuaViDaXoa`** chọn mọi hàng `subjectType == 'wallet'` chưa gỡ của các ví ấy; gỡ chung vòng `dismiss` với hai hàm kia (gom vào một tập để không gỡ hai lần). Chạy **kể cả khi danh sách ví rỗng** (xoá đúng ví duy nhất) và chỉ đọc CSDL khi còn hàng ví chưa gỡ. Ví vắng mà CSDL không ghi đã xoá → vẫn không đoán. Chưa nghiệm thu máy thật.
 

@@ -274,6 +274,9 @@ App ngân hàng: Chia sẻ → "Ghi vào FlowMoney"
   (2026-10-24, đợt 7): `NhanBienLaiActivity` gỡ `EXTRA_REFERRER` / `EXTRA_REFERRER_NAME` trước khi đọc `referrer` — hai extra
   ấy do bên gửi tự đặt, app lạ từng khai được `com.mbmobile` (hàng *"MB Bank"*, chọn sẵn ví MB, ảnh đọc theo mẫu vị trí MB).
   Bảng chia sẻ ColorOS mở activity thay bên gửi (uid 1000) và không đặt extra — đo Realme: gói gửi đúng, `khai=false`.
+  ✅ **Đo với app MB thật 2026-10-27** (Realme, bản debug): `nhan | goi=com.mbmobile | khai=false` — app MB **không** tự đặt
+  `EXTRA_REFERRER`, lượt sửa đợt 7 không làm mất nhận diện; hàng *"−10.000 đ · MB Bank"* đọc mẫu `_mb` (`doc=mau`), form
+  *"Từ biên lai MB Bank"* chọn sẵn **Ví MB Bank**, giờ in trên biên lai đúng.
 - **Biên lai MB Bank KHÔNG có nhãn** (*Số tiền*, *Nội dung*…): mẫu riêng đọc theo vị trí — tiêu đề *"Chuyển tiền thành
   công"* → hàng số tiền → hàng giờ → … → nội dung ngay trên chân *"Giao dịch được xác nhận bởi MB."*. Hàng chữ liền
   số là **tài khoản người nhận** (người dùng xác nhận; ví dụ dạng `PSP…` của ví MoMo) — không làm mã giao dịch, không

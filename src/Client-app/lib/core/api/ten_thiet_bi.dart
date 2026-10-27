@@ -7,8 +7,8 @@
 /// (`DioClient`), Dio làm mới token (`AuthInterceptor`), engine app lẫn engine nền (kênh đăng ký ở cả `MainActivity` và
 /// `TuChuyenTien.chayHeadless`). DI đọc MỘT lần (`setupDependencies`).
 ///
-/// Chỉ Android: bản web gửi header lạ là preflight CORS hỏng (`app.js:32` chưa cho `x-device-name`) — mọi request bị chặn;
-/// iOS chưa có mã gốc.
+/// Chỉ Android: tên đọc qua kênh gốc — web không có kênh nên không gửi (CORS `app.js:32` đã cho `x-device-name` từ backend
+/// `49eafef6`, nhưng tên máy có dấu ngoài Latin-1 thì trình duyệt vẫn từ chối header); iOS chưa có mã gốc.
 library;
 
 import 'package:flutter/foundation.dart';

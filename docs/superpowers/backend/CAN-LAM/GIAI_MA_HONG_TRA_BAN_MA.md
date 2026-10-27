@@ -1,5 +1,12 @@
 # Giải mã AES-256-GCM hỏng thì backend trả NGUYÊN BẢN MÃ cho client — client ghi đè ghi chú bằng `enc:…` (mục 52)
 
+> 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **đạt vế CAO — chuyển lại `CAN-LAM/` vì phần dư.**
+> - **Đạt:** `encrypt()` gặp chuỗi `enc:…` thì thử `decrypt` — giải không được thì mã hoá thật (`crypto.util.js:65`); `decrypt` kiểm
+>   độ dài IV / tag (`:111`); 500 ở `auth.controller.js` mang `code` qua `ResponseHandler.error(…, code)`.
+> - **Chưa:** log giải mã hỏng vẫn thiếu bảng + khoá chính; `maskTransactionDescription` / `dedup` vẫn nuốt lỗi; việc 2–3 (khoá
+>   `PersonFinance`, khoá Render) không có trả lời. Hàng đã lưu sẵn chuỗi `enc:…` hỏng (trước bản sửa) — chưa có bước dọn, client
+>   chưa đo có hàng nào như thế.
+
 > 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **vế `/sync/pull` đóng — chuyển lại `CAN-LAM/` với phạm vi HẸP dưới đây** (đừng làm lại phần đã đạt).
 > - **Đạt:** `decrypt()` ném `Error` `code='DECRYPT_FAILED'` (`crypto.util.js:98-100`, `:116-119`); `/sync/pull` (`restoreSafeNote`,
 >   `sync.repository.js:12-15`) ⇒ `sync.controller.js:67-74` trả **HTTP 500** `{success:false, code:'DECRYPT_FAILED', message, timestamp}` cho cả

@@ -59,6 +59,35 @@ Future<String?> _chonAnhThat(NguonAnh n) async {
   return x?.path;
 }
 
+/// Ảnh của lượt chụp / chọn bị bỏ dở → đường dẫn tệp; `null` = không có. Tiêm cho test.
+typedef LayAnhBoDo = Future<String?> Function();
+
+/// G107: Android huỷ activity (thường cả tiến trình) của FlowMoney khi app máy ảnh / trình chọn ảnh cần bộ nhớ — app
+/// đang giữ Gemma ~3 GB là ca dễ gặp nhất. `pickImage` của lượt ấy không bao giờ trả về; `image_picker` cất ảnh tới khi
+/// app gọi `retrieveLostData()` (chỉ Android, lấy xong thì gói tự xoá). Lỗi của lượt chọn (`exception`) = không ảnh.
+Future<String?> layAnhQuetBoDoThat() async {
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return null;
+  final r = await ImagePicker().retrieveLostData();
+  if (r.isEmpty) return null;
+  final ds = r.files;
+  if (ds != null && ds.isNotEmpty) return ds.first.path;
+  return r.file?.path;
+}
+
+/// G107 — có ảnh của lượt Quét bị bỏ dở thì mở `/quet` với nó, như `moQuet` vừa chọn xong (`NhanAnhQuetBoDo` ở Trang
+/// chủ gọi một lần mỗi lần trang dựng mới). Không bao giờ ném: hỏng thì coi như không có ảnh.
+Future<void> nhanAnhQuetBoDo(BuildContext context, {LayAnhBoDo? layAnh}) async {
+  String? duongDan;
+  try {
+    duongDan = await (layAnh ?? layAnhQuetBoDoThat)();
+  } catch (e) {
+    debugPrint('[Quet] đọc ảnh bỏ dở lỗi: ${e.runtimeType}');
+    return;
+  }
+  if (duongDan == null || !context.mounted) return;
+  await context.push('/quet', extra: duongDan);
+}
+
 /// Lời nhắc chụp ở sheet chọn nguồn (G105, người dùng chọn 2026-10-22): vật có chữ lọt vào mép ảnh thì chữ của nó có thể
 /// thắng tên cửa hàng trên form (Realme: thẻ tiếng Anh ở mép → ghi chú *"ral Setl Ths cad rd effect"*).
 const kNhacChupSat = 'Chụp sát tờ hoá đơn, đừng để vật có chữ lọt vào khung';

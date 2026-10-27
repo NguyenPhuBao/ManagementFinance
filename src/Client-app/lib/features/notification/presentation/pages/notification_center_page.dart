@@ -350,7 +350,7 @@ class _TheGoiY extends StatelessWidget {
 /// (2026-09-09) đã lọt qua đúng khe ấy và thông báo Tổng kết tuần chỉ hiện ở
 /// "Tất cả". Phép canh còn thiếu nay nằm ở `notification_center_page_test`:
 /// số `ChoiceChip` phải bằng `NotificationGroup.values.length + 2`.
-enum _Loc { tatCa, chuaDoc, hoaDon, nganSach, mucTieu, heThong, tongKet, bienDong }
+enum _Loc { tatCa, chuaDoc, hoaDon, nganSach, mucTieu, heThong, tongKet, bienDong, tinFlowMoney }
 
 extension on _Loc {
   String get nhan => switch (this) {
@@ -362,6 +362,7 @@ extension on _Loc {
         _Loc.heThong => 'Hệ thống',
         _Loc.tongKet => 'Tổng kết',
         _Loc.bienDong => 'Biến động',
+        _Loc.tinFlowMoney => 'FlowMoney',
       };
 
   /// Nhóm tương ứng — `null` với hai chip không lọc theo nhóm.
@@ -372,6 +373,7 @@ extension on _Loc {
         _Loc.heThong => NotificationGroup.system,
         _Loc.tongKet => NotificationGroup.summary,
         _Loc.bienDong => NotificationGroup.bienDong,
+        _Loc.tinFlowMoney => NotificationGroup.tinFlowMoney,
         _Loc.tatCa || _Loc.chuaDoc => null,
       };
 
@@ -574,6 +576,8 @@ class _ThongBaoTile extends StatelessWidget {
         'bill' => Icons.receipt_long,
         'goal' => Icons.savings_outlined,
         'sync' => Icons.sync_problem,
+        // Tin admin (`system.broadcast`, 2026-10-26) — Stitch `65dab656…`.
+        'tinHeThong' => Icons.campaign_outlined,
         _ => Icons.notifications_none,
       };
 

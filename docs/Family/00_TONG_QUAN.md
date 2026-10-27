@@ -151,8 +151,8 @@ nguyên**.
 |---|---|---|---|
 | `NOT_OWNER` | đơn 50 A | sửa / xoá hàng riêng của người khác | ✅ đã xếp 2026-10-26 |
 | `HOUSEHOLD_NOT_MEMBER` · `HOUSEHOLD_READ_ONLY` · `HOUSEHOLD_CLOSED` · `HOUSEHOLD_SCOPE_MISMATCH` | đơn 50 D.3 | như đơn 50 | ✅ đã xếp 2026-10-26 |
-| `HOUSEHOLD_ROLE_FORBIDDEN` | **mới** (`01` mục 3) | vai đủ quyền ghi vào nhà nhưng **không** đủ cho thao tác này (Thành viên sửa ví chung / ngân sách / mục tiêu; sửa khoản của người khác; chuyển giữa hai ví chung; Chủ nhà **sửa** khoản góp / rút của người khác) | chưa — thêm cùng lượt với phần 1 (hoặc sớm hơn, như năm mã trên) |
-| `HOUSEHOLD_WALLET_LIMIT` | **mới** (`02A`) | tạo ví chung vượt trần của nhà | chưa |
+| `HOUSEHOLD_ROLE_FORBIDDEN` | **mới** (`01` mục 3) | vai đủ quyền ghi vào nhà nhưng **không** đủ cho thao tác này (Thành viên sửa ví chung / ngân sách / mục tiêu; sửa khoản của người khác; chuyển giữa hai ví chung; Chủ nhà **sửa** khoản góp / rút của người khác) | ✅ đã xếp sớm 2026-10-27 (tên do tài liệu này đề xuất — backend đổi tên thì báo client) |
+| `HOUSEHOLD_WALLET_LIMIT` | **mới** (`02A`) | tạo ví chung vượt trần của nhà | ✅ đã xếp sớm 2026-10-27 (như trên) |
 
 ⚠️ Mã nào rơi vào `DB_ERROR` là client **gửi lại mãi** (lỗi tạm) — mọi mã trên phải ném có `code` riêng và bắt ở `sync.service.js`
 cạnh `BILL_ALREADY_PAID` (đơn 50 D.3).

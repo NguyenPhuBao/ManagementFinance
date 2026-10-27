@@ -1,5 +1,11 @@
 # Client đã tích hợp trợ lý online (`POST /api/ai/chatbot/chat/stream`) — năm chỗ cố ý không làm theo `ChatbotAI_Moblie.md`, ba điều client phải bù, và việc xin backend (mục 47)
 
+> 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **đạt phần chính — giữ ở `DA-XONG/`.**
+> - **Việc 5 — đạt theo mã:** `chatbot.controller.js` nghe cả `res.on('close')`; `chatbot.service.js:171` truyền `{ signal, timeout:
+>   60000 }` cho mọi `sendMessageStream`, bỏ tool khi đã huỷ. **Chưa đo trên máy thật** (đo lại như lượt 2026-10-18: ESTABLISHED tới
+>   :3000 + log `[SSE Controller] … ngắt kết nối stream`).
+> - Phần dư, không chặn: việc 1, 4 (tài liệu), 7b `finishReason` (tuỳ chọn).
+
 > 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.**
 > - **Đạt:** việc 2 (`chatbot.service.js:152` `history.slice(-6)`); việc 3 (`:162-165` bỏ tin đầu không phải `user` trước `startChat`); việc 6
 >   theo mã (`chatbot.controller.js:33-37` `: ping` mỗi 15 s từ ngay sau `flushHeaders`, dọn ở `onDone` `:69` và `catch` `:77`; middleware timeout
@@ -12,6 +18,9 @@
 >   cả hai vẫn `false` khi socket chết. Gợi ý: `res.on('close')` (hoặc `req.socket`), truyền `signal` + `timeout` vào `requestOptions`.
 > - **Rủi ro mới của việc 6:** `: ping` làm `receiveTimeout` 45 s của client không bao giờ nổ khi server còn sống, mà server không có trần tổng
 >   cho một lượt (SDK không `timeout`) ⇒ Gemini treo thì client chờ tới khi người dùng bấm Dừng. Xin `requestOptions.timeout`.
+>   ✅ **Client đã bù (2026-10-26, phiên 13):** trần TỔNG một lượt **120 s** (`kTranTongOnline`, người dùng chốt; vượt ca dài nhất đã đo 91 s) —
+>   quá trần client huỷ request (đóng socket như Dừng) và rơi về máy. Đó là lưới an toàn phía client: server vẫn chạy Gemini tới cùng (việc 5),
+>   nên lời xin `requestOptions.timeout` + `signal` **giữ nguyên**.
 > - **Việc 1 — chưa** (`ChatbotAI.md`, `.env.example` không có `GEMINI_MODEL`). **Việc 4 — chưa** (`ChatbotAI_Moblie.md:61-73` chỉ
 >   `done {fallback}`; `ChatbotAI.md` `:286`, `:296`, `:420`, `:443` y nguyên). **Việc 7 vế (b)** `finishReason` — chưa (đơn ghi "cân nhắc").
 
