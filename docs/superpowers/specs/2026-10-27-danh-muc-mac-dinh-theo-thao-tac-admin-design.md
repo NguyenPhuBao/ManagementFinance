@@ -92,8 +92,11 @@ bool dangAnTheoKhuon(CategoryEntity c, List<CategoryEntity> khuon, {DateTime? mo
 1. `c` là danh mục của tài khoản: `!c.isDefault`, `!c.isDeleted`, `!c.isGroup` (bản sao không bao giờ là nhóm).
 2. Có khuôn `t` **đã xoá mềm** (`t.isDeleted`, `t.deletedAt != null`) với `t.deletedAt >= moc` và `laBanSaoMacDinh(c, [t])`
    (tên chuẩn hoá + loại).
-3. **Không** có khuôn **còn sống** nào mà `laBanSaoMacDinh(c, [khuôn ấy])` — admin xoá một *"Trả nợ"* rồi thêm *"Trả nợ"* khác
-   thì bản sao vẫn hiện.
+3. **Không** có khuôn **còn sống** nào cùng **TÊN** chuẩn hoá với `c`, **bất kể loại** (người dùng chốt 2026-10-27 — bước 3 so
+   chỉ tên, không so loại như bước 2). Admin xoá *"Trả nợ"* rồi thêm *"Trả nợ"* khác thì bản sao vẫn hiện; admin xoá
+   *"Trả nợ"* loại Chi mà *"Trả nợ"* loại Vay/nợ vẫn sống thì bản Chi cũng KHÔNG ẩn. Lý do: bộ tạo bản sao so chỉ tên
+   (mục 6; `uq_category_owner_name` không có loại) nên không bao giờ tạo bản Vay/nợ khi đã có bản Chi — ẩn bản Chi là người
+   dùng không còn *"Trả nợ"* nào để chọn. Bước 2 (khớp khuôn ĐÃ XOÁ) giữ tên + loại.
 4. (hệ quả của 1–3, ghi ra để test) đổi tên → không còn khớp → hiện; khác loại → không khớp → hiện.
 
 Ghi chú:
@@ -147,10 +150,15 @@ tên khác.')`; trường hợp khác giữ câu cũ.
 ## 5. Lan truyền khi admin sửa khuôn
 
 **Thu thay đổi lúc kéo về** (`core/sync/ap_du_lieu_keo_ve.dart`, nhánh *3. Categories*): trước khi `upsertAll` ghi đè, với mỗi
-hàng về có `is_default = true`, `delete_at == null` mà `existingLocal` là **khuôn đã có trên máy**, so cũ / mới:
+hàng về có `is_default = true` — **còn sống HAY ĐÃ XOÁ** (người dùng chốt 2026-10-27) — mà `existingLocal` là **khuôn đã có
+trên máy**, so cũ / mới:
 
 - tên (`normalizeCategoryName`), biểu tượng, tập từ khoá (cũ = hàng `CategoryKeywords` của khuôn trên máy; mới = chuỗi
   `keyword` tách dấu phẩy, như nhánh hiện có).
+- Khuôn về **đã xoá** (`delete_at != null`) vẫn lan truyền **tên và biểu tượng**, KHÔNG so từ khoá (nơi gọi truyền
+  `tuKhoaCu = tuKhoaMoi`). Lý do: admin đổi *"Ăn uống"* → *"Ăn ngoài"* RỒI xoá, cả hai giữa hai lượt kéo → hàng về đã xoá; bỏ
+  qua nó thì bản sao *"Ăn uống"* không khớp khuôn đã xoá nào (*"Ăn ngoài"*) nên vẫn HIỆN, và khi admin khôi phục khuôn bộ tạo
+  bản sao mọc thêm bản *"Ăn ngoài"* thứ hai.
 - Khác ít nhất một thứ → một bản ghi thuần **`ThayDoiKhuon`** `{id, loai, tenCu, tenMoi, iconCu, iconMoi, tuKhoaCu, tuKhoaMoi}`
   — `loai` là loại **cũ** (bản sao giữ loại cũ khi admin đổi loại, chốt 3).
 - `existingLocal == null` (máy chưa từng thấy khuôn) → không ghi gì.
@@ -211,6 +219,11 @@ lật thành *"… thì KHÔNG tạo"*, `reason:` viện chỉ mục thật. M�
   vô hại.
 - Danh mục người dùng tự tạo trùng đúng (tên, loại) một khuôn đã xoá cũng không bị đếm vào trần *danh mục riêng*
   (`dem_dang_hoat_dong.dart:50`) — vô hại (giới hạn bởi số khuôn đã xoá).
+- ⚠️ **G110** (người dùng chốt 2026-10-27): danh mục người dùng TỰ TẠO trùng (tên, loại) một khuôn — khi admin xoá khuôn nó ẩn
+  y như bản sao (luật ẩn không phân biệt hai loại), và màn Danh mục không có lối nào để đổi tên một danh mục đang ẩn (dữ liệu còn
+  nguyên, admin khôi phục khuôn là hiện lại). Đề xuất lối thoát ở `CLIENT_APP_KNOWN_GAPS.md` G110 (mục *"Đang tạm ngừng"*).
+- Bản sao còn mang tên cũ (đổi tên bị bỏ vì tên mới đã có, hoặc lần lan truyền bị mất) bị đếm vào trần *danh mục riêng* —
+  `laBanSaoMacDinh` không còn khớp khuôn nào.
 - (`78afc043`; `ap_du_lieu_keo_ve.dart:116`, biến `keoToanBo`.) Lượt kéo TOÀN BỘ (`isLocalDbEmpty || _lastPullTime == null`)
   bỏ so từ khoá khuôn — vì đổi tài khoản trên cùng máy, purge giữ hàng khuôn nhưng dọn từ khoá của tài khoản; hệ quả: tài khoản
   không còn ví sống (mọi lượt là toàn bộ) hoặc mốc kéo về bị bỏ thì thay đổi từ khoá của khuôn ở lượt ấy không lan truyền.
@@ -229,15 +242,15 @@ lật thành *"… thì KHÔNG tạo"*, `reason:` viện chỉ mục thật. M�
 
 | Lớp | Tệp (dưới `test/`) | Ca chính |
 |---|---|---|
-| Domain luật ẩn | `features/category/domain/ban_sao_mac_dinh_test.dart` | xoá sau mốc → ẩn · trước mốc → hiện · còn khuôn sống cùng (tên, loại) → hiện · đổi tên → hiện · khác loại → hiện · bản tự xoá / nhóm → không xét |
-| Repository | `features/category/category_repository_doc_danh_muc_test.dart` (Drift bộ nhớ) | `watchTree` / `loadTree` / `selectableChildren(All)` bỏ bản ẩn · `watchAll` / bảng tra tên giữ · stream **phát lại** khi khuôn xoá rồi khôi phục |
+| Domain luật ẩn | `features/category/domain/ban_sao_mac_dinh_test.dart` | xoá sau mốc → ẩn · trước mốc → hiện · còn khuôn sống cùng (tên, loại) → hiện · **còn khuôn sống cùng TÊN khác loại → hiện** · đổi tên → hiện · khác loại → hiện · bản tự xoá / nhóm → không xét |
+| Repository | `features/category/category_repository_doc_danh_muc_test.dart` (Drift bộ nhớ) | `watchTree` / `loadTree` / `selectableChildren(All)` bỏ bản ẩn · `watchAll` / bảng tra tên giữ · stream **phát lại** khi khuôn xoá rồi khôi phục **và khi khuôn sống bị xoá** (bản sao ẩn ngay) · `saveGroup` không gỡ nhóm của bản sao ẩn (giữ `parentId`, `syncStatus`, `updatedAt`) |
 | Ngân sách | `features/budget/data/datasources/budget_local_data_source_test.dart` | `getExpenseCategories` bỏ bản ẩn |
 | Form sửa | hoá đơn = widget test (`bill_edit_page`); ngân sách + giao dịch = test cubit (`BudgetCubit.danhMuc`, `ThemGiaoDichCubit`) | mở form gắn bản ẩn: không ném, hiện tên. ⚠️ `budget_form.dart` tự chặn `value` không nằm trong `items`, nên widget test ngân sách không canh được — canh ở cubit |
 | Trùng tên | test repository | tạo / đổi tên trùng bản ẩn → câu mới; trùng hàng thường → câu cũ |
 | Trần Premium | `features/premium/data/dem_dang_hoat_dong_test.dart` | bản ẩn / bản sao khuôn cũ không đếm |
 | Lan truyền | `features/category/application/lan_truyen_khuon_test.dart` | đổi tên cả bản đã xoá — bản đã xoá **không** `pending`, giữ `updatedAt` · bỏ qua khi tên mới đã có · biểu tượng chỉ khi còn đúng cũ · từ khoá chỉ thêm · từ khoá khuôn cập nhật · `pending` · luỹ đẳng |
-| Kéo về | `core/sync/…` (ca mới cạnh `sync_gieo_sau_keo_ve_test.dart`) | ghi `ThayDoiKhuon` chỉ khi khuôn đã có trên máy và khác · lượt đầu không ghi · cổng nhận danh sách · thứ tự lan truyền → tạo bản sao |
-| Bộ tạo bản sao | `features/category/application/default_category_seeder_test.dart` | so theo tên (ca lật) · ca G16 xanh |
+| Kéo về | `core/sync/…` (ca mới cạnh `sync_gieo_sau_keo_ve_test.dart`) | ghi `ThayDoiKhuon` chỉ khi khuôn đã có trên máy và khác · lượt đầu không ghi · cổng nhận danh sách · thứ tự lan truyền → tạo bản sao · **khuôn về đã xoá vẫn ghi đổi tên, không ghi từ khoá** · máy có ví mà chưa có mốc → không so từ khoá · đổi biểu tượng |
+| Bộ tạo bản sao | `features/category/application/default_category_seeder_test.dart` | so theo tên (ca lật) · ca G16 xanh · hai khuôn cùng tên khác loại → một bản sao |
 | Quét 40 | mục 4 | `getCategoryRows` / `watchCategoryRows` chỉ ở DAO và cửa `danh_sach_chon_danh_muc.dart` (repository impl cũng bị cấm) |
 
 ## 9. Nghiệm thu máy thật

@@ -142,7 +142,7 @@ nghe phải chịu được **hai** lượt phát cho cùng một thất bại.
 - **Cổng `sauKeoVe`** (`SyncEngine.sauKeoVe`, 2026-10-27): việc chạy sau MỖI lượt kéo về thành công, chữ ký
   `ViecSauKeoVe = Future<int> Function(int idaccount, List<ThayDoiKhuon> thayDoiKhuon)` (`sync_models.dart`), trả số hàng vừa ghi
   (> 0 → hẹn đẩy). `ThayDoiKhuon` (id, loại cũ, tên / biểu tượng / từ khoá cũ và mới) được `ap_du_lieu_keo_ve.dart` ghi **chỉ khi
-  khuôn đã có trên máy và khác bản vừa về** (khuôn vừa bị xoá thì luật ẩn lo; lượt kéo toàn bộ không so từ khoá khuôn). DI nối
+  khuôn đã có trên máy và khác bản vừa về** (khuôn về đã xoá vẫn lan truyền tên / biểu tượng nhưng không so từ khoá; lượt kéo toàn bộ cũng không so từ khoá khuôn). DI nối
   `viecSauKeoVeDanhMuc`: **lan truyền khuôn (`LanTruyenKhuon`) → tạo bản sao (`DefaultCategorySeeder`)** — bản sao vừa đổi tên chặn
   bộ tạo đẻ thêm bản mang tên mới. ⚠️ Client **dựa vào `/sync/pull` trả cả khuôn đã xoá kèm `delete_at`** (thứ Admin-web xoá / khôi
   phục): luật ẩn tính lúc đọc từ `delete_at` ≥ mốc 2026-10-27; không đổi payload, không cần đơn backend.

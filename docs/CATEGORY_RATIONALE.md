@@ -767,16 +767,21 @@ sao của khuôn đã xoá.
 ### Bốn cơ chế
 
 - **Luật ẩn tính lúc đọc** (`dangAnTheoKhuon`, `category/domain/ban_sao_mac_dinh.dart`): bản sao đang ẩn ⇔ có khuôn đã xoá mềm
-  `deletedAt >= kMocAnTheoKhuon` khớp (tên chuẩn hoá, loại) và KHÔNG có khuôn còn sống nào khớp. Không cột mới, không ghi gì —
+  `deletedAt >= kMocAnTheoKhuon` khớp (tên chuẩn hoá, loại) và KHÔNG có khuôn còn sống nào cùng **tên** (bất kể loại — sửa
+  sau review toàn nhánh, người dùng chốt 2026-10-27: bộ tạo bản sao so chỉ tên nên không tạo bản Vay/nợ khi đã có bản Chi, ẩn
+  bản Chi là mất cả hai; phương án loại: giữ so tên + loại ở bước 3 — vừa mất lối chọn *"Trả nợ"* nào vừa lệch G108). Không cột mới, không ghi gì —
   mọi máy cùng tài khoản cho cùng kết quả, khôi phục / xoá có hiệu lực ngay khi hàng khuôn về. Mốc `kMocAnTheoKhuon` =
   00:00 giờ VN 2026-10-27: khuôn xoá TRƯỚC mốc (lượt dọn về 13 mã ổn định) không làm ai ẩn. Chỉ **danh sách CHỌN** bỏ bản ẩn
   (cửa duy nhất `category/data/danh_sach_chon_danh_muc.dart`, quét 40); bảng TRA tên giữ để lịch sử không mất tên. Form SỬA
   giữ danh mục đang gắn (`kemDanhMucDangGan`) vì `DropdownButton` ném khi `value` không nằm trong `items`.
 - **Lan truyền khi khuôn đổi** (`ThayDoiKhuon` ghi ở nhánh kéo về → cổng `sauKeoVe` → `LanTruyenKhuon`, chạy TRƯỚC bộ tạo bản
-  sao): đổi tên / biểu tượng (chỉ khi bản sao còn đúng biểu tượng cũ) / thêm từ khoá (không xoá từ nào). ⚠️ **Bẫy bản đã xoá:**
+  sao): đổi tên / biểu tượng (chỉ khi bản sao còn đúng biểu tượng cũ) / thêm từ khoá (không xoá từ nào). Khuôn về **đã xoá** vẫn
+  lan truyền tên + biểu tượng, không so từ khoá (sửa sau review, người dùng chốt 2026-10-27: admin đổi tên rồi xoá giữa hai lượt
+  kéo mà bỏ qua thì bản sao tên cũ vẫn hiện và khôi phục khuôn đẻ bản thứ hai; phương án loại: chỉ lan truyền khuôn sống). Một
+  `ThayDoiKhuon` hỏng không làm mất cả lượt (bọc `try` từng thay đổi). ⚠️ **Bẫy bản đã xoá:**
   bản sao đã xoá mềm đổi tên **chỉ cục bộ** — không `pending`, không đổi `updatedAt`; hàng xoá mà `pending` bị đẩy thành `delete`,
   server bỏ tên mới nhưng nâng `server_update_at`, lượt kéo sau đè tên cũ và bộ tạo bản sao đẻ lại thứ người dùng đã xoá.
-- **Bộ tạo bản sao so theo TÊN** (G108): `uq_category_owner_name` khoá `(Create_by, tên chuẩn hoá)` — không có loại (đo
+- **Bộ tạo bản sao so theo TÊN** (G108; cùng lượt, hai khuôn cùng tên khác loại chỉ đẻ MỘT bản sao): `uq_category_owner_name` khoá `(Create_by, tên chuẩn hoá)` — không có loại (đo
   `pg_indexes` 2026-10-27). Vẫn đếm cả hàng đã xoá mềm (G16).
 - **Trần Premium** so bản sao với MỌI khuôn kể cả đã xoá (`getTatCaKhuon`).
 
@@ -792,7 +797,7 @@ sao của khuôn đã xoá.
 
 17 giới hạn biết trước ở mục 7 spec (đếm bằng máy 2026-10-27: máy chưa từng thấy bản cũ không lan truyền; cổng hỏng mất một lần lan truyền; lượt kéo
 toàn bộ bỏ so từ khoá khuôn; `_deletedAtFrom` rơi về `now()`; lối TẠO điền sẵn id bản ẩn rơi về danh mục đầu; v.v.) — không
-giới hạn nào chặn việc ra mắt. Nghiệm thu máy thật (spec mục 9) **chưa làm**.
+giới hạn nào chặn việc ra mắt — thêm **G110** (danh mục tự tạo trùng khuôn cũng bị ẩn, chưa có lối đổi tên). Nghiệm thu máy thật (spec mục 9) **chưa làm**.
 
 ---
 
