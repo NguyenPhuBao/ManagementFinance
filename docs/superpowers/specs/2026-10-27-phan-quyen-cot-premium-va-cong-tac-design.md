@@ -162,6 +162,49 @@ giá trị app (`allowed_types` EWallet / Credit / Investment, `supported_banks`
 - Trụ 1 của mã LIMIT chờ đơn 55 A2.
 - Khoá giữa chừng một tính năng đang bật: dừng chạy, giữ công tắc; mở lại → chạy tiếp (lịch nhắc đặt lại ở `resync`).
 - Khoá `category_keywords_matching`: từ khoá đã có vẫn gợi ý (chốt 8) — người dùng không thêm được từ khoá mới.
+- (Thêm khi thi công, 2026-10-28) Gói số bậc 1 của Trợ lý AI (`ai_edge/data/nguon_goi_so.dart:125-131`) và gói Ví (`ai_edge/domain/goi_so_vi.dart:147`)
+  vẫn mang tổng tài sản khi `net_worth_overview` khoá — ngoài chốt 6 (che chip *Tổng số dư* ở Nhận xét Trang chủ).
+- (P-N5) `noiKhiQuyenDoi` có thể kích `resync` ở lượt `_phat` đầu từ kho lúc mở app, song song lượt khôi phục của scanner — hai dòng `dat_lich`
+  cùng khoá trong nhật ký B5a; `resync` không có khoá loại trừ: quyền tắt đúng lúc lượt khác đã đọc vị từ có thể đặt lại lịch vừa huỷ (tự sửa ở
+  lượt quét kế).
+- Trần của kho chỉ đáng tin sau lượt `lamMoi` đầu kể từ bản B1 (kho cũ mang trần 3/3/3 mặc định; rủi ro thấp vì server luôn gửi 5 khoá).
+
+## 13. Chỗ mã khác bản viết
+
+Mỗi mục: *người dùng / người điều phối chốt 2026-10-27 phiên 17*.
+
+1. **`bangDungDuoc` thêm vế Premium-không-hạn** (`goi.loai == premium && goi.hetHan == null` → `false`). Thân spec mục 2 chỉ so
+   `laPremium(nhanLuc) == laPremium(now)`; Premium không hạn mà server gửi bảng Basic thì mọi thứ Basic tắt hiện *"Đang tạm ngừng"* với
+   người Premium. Giữ hành vi cũ tới B4 (người dùng chốt).
+2. **`resync` thường thay `datLai`** khi quyền nhắc đổi (`main.dart`, `noiKhiQuyenDoi`): quyền tắt là lịch rời tập muốn (bị huỷ), quyền
+   bật là lịch chưa chờ (được đặt); `datLai` chỉ cho đổi giờ (G59). Mục 5 thân spec ghi `resync(datLai: true)`.
+3. **`Vuot.laPremium` không thêm** (mục 2 dòng "`Vuot` mang thêm `laPremium`"): câu mở đầu chọn gói bằng `tranHieuLuc(…)` / trạng thái gói
+   nơi gọi, không cần mang cờ trong kết quả.
+4. **`TrangThaiGoi.tran` mặc định theo gói** (Premium không giới hạn, Basic `TranGoi.macDinh`) và **`TranGoi.tuJson(khiThieu:)`** — thân
+   spec mục 6 chỉ nói "mặc định".
+5. **`tranHieuLuc(goi, now)` là cửa đọc trần duy nhất** (spec không đặt tên): `conTaoDuoc`, `redirectTaoTheoGoi`, câu màn Nâng cấp, thẻ Gói
+   đều gọi nó — đọc `goi.tran` thô là G109.
+6. **Hai băng khoá AI** (Task 11): màn Trợ lý AI và ô Nhập nhanh có biến thể tạm ngừng riêng (`lyDoKhoa(tamNgung:)`, `DongKhoa(tamNgung)`).
+7. **Công tắc nhắc đẩy của form hoá đơn không khoá** (kết luận 9 kế hoạch): chỉ chip *Nhắc trước* khoá; công tắc ấy vẫn mở (ca canh Task 9).
+8. **`account.permissions_updated` đã nối sẵn** (kết luận 1): không thêm sự kiện — `RealtimeEvent.taiKhoanNangCap` → `lamMoi` đã có từ 2026-10-08.
+9. **Nhận xét Trang chủ che chip *Tổng số dư* khi `net_worth_overview` khoá** (chốt 6, Task 8b; `GoiSoTrangChu.tu(boTongSoDu:)`).
+10. **`premiumLimits` không phải Map (rác) → `tranPremium = null`** (P-N12, `trang_thai_goi.dart` `_docTranPremium`): thân spec mục 6 nói
+    "vắng / rác → mặc định"; mã coi rác như "server chưa gửi" (khác `TranGoi.khongGioiHan`), vì đưa rác vào `TranGoi.tuJson` biến "chưa gửi"
+    thành "đã gửi, không giới hạn". Map có ô thiếu / lạ vẫn → `khiThieu: khongGioiHan`.
+11. **`chanTheoGoi` tắt sớm theo `tranHieuLuc(...).cua(loai) == null`** (`chan_theo_goi.dart`) thay vì "`conTaoDuoc` quyết" (mục 2): trần không giới hạn
+    → qua, không trả một lượt đếm CSDL cho kết quả chắc chắn.
+12. **`KhoaTheoQuyen` / `chanTheoQuyen` vẫn đọc vế `bool`** (`duocDung`); chỉ `TheKhoaQuyen` / `DongKhoa*` / màn Nâng cấp đọc ba trạng thái.
+13. **Hai chuỗi *"Không giới hạn <tenTran>"* / *"Tới N <tenTran>"* của `dacQuyenPremium` ở `quyen_tinh_nang.dart`**, không ở `cau_quyen.dart`
+    (bảng *Câu chữ chốt* ghi "một chỗ"): `dacQuyenPremium` vốn sống ở đó từ trước B1, chuỗi là phần tử danh sách của hàm domain.
+14. **Đính chính kết luận 10 của kế hoạch** (sau phép đo Task 9): `DropdownButton` khoá vẫn vẽ mục đang chọn khi giá trị nằm trong `items`;
+    `disabledHint` giữ cho giá trị ngoài danh sách (hàng kéo về mang số nhắc lạ).
+15. **Dòng khoá Trang chủ có khung** (`khoaCanNen` / `khoaCanVien`) **+ trang Chi tiết ngân sách giữ card *NHỊP CHI*** — theo Stitch khối 4,
+    ngoài chữ spec mục 3 "dòng nhịp chi → dòng khoá".
+16. **Ô nhập Trợ lý AI / Nhập nhanh khi tạm ngừng** có hint *"Đang tạm ngừng"* (`kTheKhoaTamNgung`) thay *"Tính năng Premium"* / *"Chỉ Premium"*;
+    băng Trợ lý AI tạm ngừng dùng icon `smart_toy_outlined` theo Stitch khối 6 (soát Task 11). Kèm lệch Stitch có chủ ý ở `PREMIUM_FEATURE.md` 8.6.
+17. **API chưa có chỗ gọi trong `lib/`** (đo 2026-10-28, ghi nhận — không gỡ ở task tài liệu): `trangThaiQuyenDoc` (`co_quyen.dart:43`, để dành cho chỗ
+    đọc ba trạng thái ngoài các widget khoá hiện có) và tham số `cauTamNgung` của `DongKhoaQuyen` (có ca canh) — người điều phối quyết gỡ hay giữ ở
+    review toàn nhánh. `kCongTacCanPremium` **có** chỗ gọi (`the_khoa_quyen.dart:196`).
 
 ## 9. Kiểm thử (TDD — mọi ca canh thử bằng bản sai có chủ ý và thấy đỏ)
 

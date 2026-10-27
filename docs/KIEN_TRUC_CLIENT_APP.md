@@ -177,7 +177,7 @@ G86) rồi `batThoiGianThuc` · kiểm `_vanLaPhien` · `batDongBo`; `dongPhien`
 **(1) Một định nghĩa duy nhất.** Mỗi luật hỏng-im-lặng có đúng một hàm, mọi nơi gọi lại nó: `khoanVaoThongKe` (khoản nào
 vào thống kê), `viTinhVaoTong` (ví nào cộng vào tổng), `normalizeCategoryName` (trùng tên danh mục),
 `CurrencyFormatter` (hiển thị tiền), `kyKeTiepCua` (kỳ hoá đơn kế), `BudgetEntity.mocKy` (lưới kỳ ngân sách),
-`cuaSoNhinLai` (trung bình mỗi tháng), `duocDung` (quyền theo gói), `SoDuViService` (ghi số dư). Chép tay lần thứ hai là
+`cuaSoNhinLai` (trung bình mỗi tháng), `trangThaiQuyen` / `duocDung` (quyền theo gói), `SoDuViService` (ghi số dư). Chép tay lần thứ hai là
 lỗi đã xảy ra thật ở mỗi chỗ — ví dụ G41/G47 (bảng tra tên danh mục chép ba lần).
 
 **(2) Test quét mã nguồn.** Luật nào bộ test hành vi không thấy được (một import lọt, một handler rỗng, một `?? 1`) thì
@@ -211,7 +211,7 @@ tệp. Test quét mới lấy số **40**.
 | 18 | `features/premium/chi_mot_noi_import_url_launcher_test.dart` | chỉ `datasources/mo_lien_ket.dart` import `url_launcher` | cây | 2026-10-06 |
 | 19 | `core/ui/khong_snackbar_test.dart` | không `SnackBar` / `ScaffoldMessenger` | cây | 2026-10-06 |
 | 20 | `features/transaction/chi_mot_noi_import_image_picker_test.dart` | chỉ `quet_anh_page.dart` import `image_picker` | cây | 2026-10-08 |
-| 21 | `features/premium/quyen_tinh_nang_mot_noi_test.dart` | quyền theo gói chỉ đọc qua `duocDung` | cây | 2026-10-08 |
+| 21 | `features/premium/quyen_tinh_nang_mot_noi_test.dart` | quyền theo gói chỉ đọc qua `trangThaiQuyen` (`duocDung` là vế bool; B1 2026-10-27) | cây | 2026-10-08 |
 | **22** | `core/ui/presentation_khong_cham_csdl_test.dart` | `presentation/` và `shared/` không cầm `AppDatabase` / DAO; `conCho` rỗng | cây | **2026-10-10** |
 | **23** | `core/ui/tep_presentation_khong_qua_dai_test.dart` | tệp `presentation` ≤ 1.200 dòng; `mienTru` **rỗng** từ 2026-10-13 (G88 gạch 2; từng 4 tệp, rút `add_transaction_page` 2026-10-11) | cây `features/` | **2026-10-10** |
 | **24** | `features/auth/auth_bloc_khong_sl_test.dart` | `auth_bloc.dart` không gọi service locator, không import `core/di` | một tệp | **2026-10-10** |

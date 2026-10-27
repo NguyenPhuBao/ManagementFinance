@@ -39,7 +39,7 @@ class GoiSoTrangChu extends GoiSo {
   /// Thu / chi / còn lại — số THÁNG NÀY (thẻ `TheSoLieuThang`), cho `kyCua`.
   final List<SoLieu> _theoKy;
 
-  /// [boTongSoDu] — tài khoản không có quyền `net_worth_overview` (B1 spec 2026-10-27 mục 3; người dùng chốt 6 phiên 17):
+  /// [boTongSoDu] — tài khoản không có quyền `net_worth_overview` (B1 spec 2026-10-27 mục 13 (9); người dùng chốt 6 phiên 17):
   /// gói bỏ hẳn mục *"Tổng số dư"* — chip, tập cho phép của `kiemSo` và phần vào prompt cùng mất; thẻ Tổng số dư của trang
   /// đã là thẻ khoá. Mẫu câu không đọc nhãn ấy nên câu không đổi. Khuôn `GoiSoPhanTich.tu(boChiBatThuong:)`.
   factory GoiSoTrangChu.tu({

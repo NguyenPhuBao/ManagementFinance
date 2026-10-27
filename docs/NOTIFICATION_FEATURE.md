@@ -1414,6 +1414,33 @@ có hàng trong Trung tâm + thông báo trên khay. Loại thứ **21** `tinHeT
   `[RealtimeChannel] Tin hệ thống <id>` · bảng máy **1** hàng `tinHeThong:<id>` (`os_delivered_at` có) · khay **1** thông báo, id =
   `osScheduledId(khoá)` · bộ nghe thông báo D1 (`BienDongThu`) thấy **1** lần đăng — hai bản sao không đăng lại, không kêu lại.
 
+## 5m. Quyền theo gói gác thông báo — B1 (2026-10-27 phiên 17–18)
+
+Spec `docs/superpowers/specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md` mục 5; `docs/PREMIUM_FEATURE.md` mục 8. Ba
+quyền bật / tắt ở Admin-web `/permissions` gác ba nhóm thông báo (`macDinhKhiThieu = true` — vắng khoá là mở). Vị từ quyền đi bằng
+**closure từ DI** (`injection_container.dart`: `coQuyenNen(MaQuyen.…)`), không để `notification/` import `premium/data/`.
+
+| Quyền | Vị từ | Gác | Khi không quyền |
+|---|---|---|---|
+| `bill_reminder_notifications` | `nhacTruocHanDuocPhep` | `NotificationScanner` loại `billDueSoon` + `ReminderScheduler` (lịch nhắc trước hạn) | thôi nhắc trước hạn; **quá hạn (`billOverdue`) vẫn báo** |
+| `daily_recording_reminder` | `nhacGhiChepDuocPhep` | `ReminderScheduler` (nhắc ghi chép hằng ngày, mục 4.7) | công tắc Cài đặt khoá, **giữ giá trị**; lịch huỷ |
+| `budget_overspend_alert` | `canhBaoNganSachDuocPhep` | `NotificationScanner` loại `budgetNearLimit` · `budgetOverspent` | bộ quét bỏ hai loại |
+
+- **Quyền đổi → `resync` THƯỜNG, không `datLai`:** admin đổi bảng → socket `account.permissions_updated` →
+  `GoiRepository.lamMoi()` → `noiKhiQuyenDoi` (`premium/data/co_quyen_nen.dart`, nối ở `main.dart` cho hai quyền lịch) gọi
+  `ReminderScheduler.resync(id)` khi `duocDung` của một trong hai quyền ĐỔI giữa hai lượt phát liên tiếp. Quyền tắt là lịch rời
+  tập muốn (bị huỷ), quyền bật là lịch chưa chờ (được đặt) — `datLai` chỉ cho đổi giờ (G59).
+- ⚠️ **Chặn quyền ở điều kiện NHÁNH đặt lịch, không trong vòng `khongHuy`** (`reminder_scheduler.dart:171`, `:289`): đặt trong vòng
+  thì lịch cũ được đánh dấu "không huỷ" và sống tiếp sau khi mất quyền. Hệ quả cố ý: lịch đã *Hoãn* của hoá đơn cũng bị huỷ khi
+  mất quyền.
+- Không quyền → bỏ lượt, **không ghi gì**. Hàng thông báo đã sinh trước khi mất quyền giữ nguyên (chỉ chặn sinh mới).
+- ⚠️ **Giới hạn (P-N5, Nhỏ):** `noiKhiQuyenDoi` có thể kích `resync` ở lượt `_phat` đầu từ kho lúc mở app, song song lượt khôi
+  phục của scanner → hai dòng `dat_lich` cùng khoá trong nhật ký B5a (5h; B5b đếm "tới máy" lệch một lần). `resync` không có khoá
+  loại trừ: quyền tắt đúng lúc một lượt khác đã đọc vị từ `true` có thể đặt lại lịch vừa huỷ — tự sửa ở lượt quét kế.
+- Ca canh: `notification/application/` (scanner, scheduler theo quyền), `premium/data/co_quyen_nen_test.dart`,
+  `quyen_nen_noi_day_test.dart` (đọc mã nối dây DI + `main.dart` — vùng `flutter test` không dựng). Nghiệm thu máy thật
+  (spec mục 10 bước 4–5, `dumpsys alarm`) thuộc Task 13, **chưa làm**.
+
 ✅ **G71 (2026-10-06 khuya) — ví đã xoá thì thông báo số dư của nó tự gỡ.** Bộ quét đọc ví qua `walletDao.getAll` (từ 2026-10-14, đợt Entity Giao dịch + Ví, qua `WalletRepository.getAll` trả `WalletEntity` — vẫn là `walletDao.getAll` bên dưới), vốn lọc bỏ ví có `deletedAt`, nên ví đã xoá chỉ **biến mất** khỏi danh sách và cả `hangSapCanLoiThoi` lẫn `hangAmDaHoi` rơi vào nhánh *không biết ví thì không đoán*. Nay bộ quét nhận **`ViDaXoaLoader`** (`WalletDao.idDaXoa` — `deletedAt` **hoặc** `isDeleted`, đúng tài khoản; ví lưu trữ **không** tính) và hàm thuần **`hangCuaViDaXoa`** chọn mọi hàng `subjectType == 'wallet'` chưa gỡ của các ví ấy; gỡ chung vòng `dismiss` với hai hàm kia (gom vào một tập để không gỡ hai lần). Chạy **kể cả khi danh sách ví rỗng** (xoá đúng ví duy nhất) và chỉ đọc CSDL khi còn hàng ví chưa gỡ. Ví vắng mà CSDL không ghi đã xoá → vẫn không đoán. Chưa nghiệm thu máy thật.
 
 ## 6. Từng lát đã làm gì
