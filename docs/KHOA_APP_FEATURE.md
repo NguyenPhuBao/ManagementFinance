@@ -22,7 +22,8 @@
 > (chạm thông báo khi khoá — app sống và app đã chết) · **17** (320 dp — người dùng đổi *cỡ hiển thị*) · **21** (Quét ảnh khi khoá) · **11** (proxy giữ `/sync/pull`)
 > — **đạt**; lộ **M15** (bố cục 320 dp, mục 8). Người dùng chốt **giữ** `resetOnError` (bẫy 27) và **không** miễn khoá cho lối app tự mở máy ảnh / chọn ảnh
 > (spec mục 8). 🚧 Còn: TalkBack nghe thật; PayOS khi khoá (người dùng chọn bỏ khỏi buổi 3).
-> ✅ **2026-10-27 (phiên 14, Realme, bản debug):** **máy ảnh khi đang giữ Gemma** — app không bị giết (mục 10, *Buổi 5*); cỡ chữ Realme đã
+> ✅ **2026-10-27 (phiên 14, Realme, bản debug):** **máy ảnh khi đang giữ Gemma** — app không bị giết; **app bị giết lúc máy ảnh mở**
+> (`am crash`) — ảnh về lại nhờ **G107** (`retrieveLostData`), màn khoá → *Đang đọc* → form (mục 10, *Buổi 5*, bước 21 đạt trọn); cỡ chữ Realme đã
 > về thường (`mGlobalConfiguration {1.0 … sw360dp 480dpi}`). Người dùng **bỏ** lượt nghe TalkBack (*"không cần đo talkback"*) — bước 18
 > giữ ◐ (cây trợ năng, buổi 1).
 > Spec: `docs/superpowers/specs/2026-10-24-khoa-app-pin-sinh-trac-design.md` (đã sửa theo thiết kế cuối 2026-10-25).
@@ -624,5 +625,6 @@ tcp:3000 tcp:3999` qua proxy đo → backend `PersonFinance`; khoá bật, *Tự
 | Bước | Kết quả |
 |---|---|
 | Cỡ chữ thường (còn treo từ phiên 10) | ✅ `font_scale` 1.0, `wm density` không ghi đè (480), `mGlobalConfiguration {1.0 … sw360dp 480dpi}` |
-| 21b — máy ảnh khi đang giữ Gemma | ✅ lượt quét thứ nhất (máy ảnh **chưa** giữ Gemma — người dùng chưa hỏi Trợ lý AI, log không có dòng nào 08:52–09:01) nạp mô hình 09:02:09, form điền 262.000 · Ăn uống. Lượt thứ hai khi app ~3,0 GB PSS (máy còn ~2,07 GB): Quét → Chụp 09:04:43 → về 09:04:52 → **cùng pid**, không `Killing` / `Start proc`, mô hình không nạp lại, Gemma đọc ảnh 35 s (6 món) → form *"Từ ảnh quét · 28/09 14:19 · Đọc bằng AI"*. Máy ảnh mở ~9 s < mức tự khoá 30 s nên không có màn khoá. ⚠️ Đường *ColorOS giết app* không xảy ra — và nếu xảy ra, ảnh có thể mất: màn Quét không gọi `retrieveLostData` (`QUET_ANH_FEATURE.md` mục 5). Không Lưu. |
+| 21b — máy ảnh khi đang giữ Gemma | ✅ lượt quét thứ nhất (máy ảnh **chưa** giữ Gemma — người dùng chưa hỏi Trợ lý AI, log không có dòng nào 08:52–09:01) nạp mô hình 09:02:09, form điền 262.000 · Ăn uống. Lượt thứ hai khi app ~3,0 GB PSS (máy còn ~2,07 GB): Quét → Chụp 09:04:43 → về 09:04:52 → **cùng pid**, không `Killing` / `Start proc`, mô hình không nạp lại, Gemma đọc ảnh 35 s (6 món) → form *"Từ ảnh quét · 28/09 14:19 · Đọc bằng AI"*. Máy ảnh mở ~9 s < mức tự khoá 30 s nên không có màn khoá. Đường *ColorOS giết app* không xảy ra — soát mã thấy nếu xảy ra thì ảnh mất (màn Quét không gọi `retrieveLostData`) → **G107**, hàng dưới. Không Lưu. |
+| 21 — app bị giết lúc máy ảnh đang mở (G107) | ✅ bản debug `89c85b38…` có `NhanAnhQuetBoDo`. ColorOS chặn *Không giữ hoạt động* (`settings put global always_finish_activities` → SecurityException) → script chờ `mCurrentFocus` = `com.oplus.camera` rồi `am crash`: pid 12695 chết 09:59:45 (`reason=4`, không native — canary không lật), máy ảnh vẫn trên cùng → chụp + ✓ → tiến trình mới 16769 → người dùng thấy **màn khoá → *Đang đọc…* → form** (đúng kỳ vọng bước 21) → Gemma đọc ảnh trong tiến trình mới 39,8 s, *Ăn uống* → người dùng **Lưu**. |
 | 18 TalkBack | ⏭ người dùng bỏ (*"không cần đo talkback đâu"*) — giữ ◐ của buổi 1 |

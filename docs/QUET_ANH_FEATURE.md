@@ -213,9 +213,12 @@ dựng được ngày 2026-10-08 (224,9 MB) — R8 không cần quy tắc mới 
 **Máy ảnh khi đang giữ Gemma — đo Realme 2026-10-27 (phiên 14, bản debug, CPU):** lượt quét đầu nạp mô hình (app ~3,0 GB PSS,
 máy còn ~2,07 GB / 7,7 GB) → Quét → Chụp mở `com.oplus.camera` 09:04:43, quay về 09:04:52 → **cùng tiến trình** (pid giữ nguyên,
 không `Killing` / `Start proc`), mô hình **không** nạp lại, Gemma đọc ảnh 35 s → form *"Từ ảnh quét · Đọc bằng AI"* 262.000 · Ăn uống.
-⚠️ **Rủi ro còn mở:** `quet_anh_page.dart` **không** gọi `ImagePicker.retrieveLostData()` — nếu hệ điều hành giết tiến trình lúc máy
-ảnh đang mở (giả định của bước 21 `KHOA_APP_FEATURE.md`), ảnh vừa chụp nằm trong bộ đệm của `image_picker` và mất khi app dựng lại.
-Lượt đo giữ máy ảnh ~9 s nên đường ấy **không xảy ra** — chưa tái hiện được, không có nghĩa là không thể.
+✅ **G107 (mở và đóng cùng ngày):** trước đó `lib/` **không** gọi `ImagePicker.retrieveLostData()` — tiến trình chết lúc máy ảnh đang
+mở (giả định của bước 21 `KHOA_APP_FEATURE.md`) thì ảnh vừa chụp nằm trong bộ đệm `image_picker` và mất. Nay `NhanAnhQuetBoDo`
+(`home/presentation/widgets/`, không vẽ gì trong cột Trang chủ) gọi `nhanAnhQuetBoDo` (ở tệp này — vẫn là tệp duy nhất import
+`image_picker`) một lần mỗi lần Trang chủ dựng mới: có ảnh bỏ dở ⇒ `push('/quet')`. Nghiệm thu Realme: `am crash` lúc máy ảnh mở →
+tiến trình mới đọc ảnh bằng Gemma → màn khoá → *Đang đọc* → form → Lưu. Đường này bỏ qua cổng `ocr_receipt` của nút Quét (đã xét lúc
+chọn ảnh). Chi tiết: G107 `CLIENT_APP_KNOWN_GAPS.md`.
 
 ## 6. Stitch
 

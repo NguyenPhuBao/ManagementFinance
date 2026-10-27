@@ -11,6 +11,7 @@ import '../widgets/home_budget_card.dart';
 import '../widgets/home_goal_card.dart';
 import '../widgets/dong_nhac_keo_ve.dart';
 import '../widgets/dong_nhac_may_chu.dart';
+import '../widgets/nhan_anh_quet_bo_do.dart';
 import '../widgets/the_cho_xoa_trang_chu.dart';
 import '../widgets/drawer_trang_chu.dart';
 import '../widgets/the_so_lieu_thang.dart';
@@ -71,6 +72,8 @@ class HomePage extends StatelessWidget {
               const DongNhacMayChu(),
               // Lượt kéo về bị máy chủ trả lời bằng lỗi (đơn 53 vế C, 2026-10-26) — ngay sau dòng máy chủ, cùng khuôn.
               const DongNhacKeoVe(),
+              // G107 — ảnh của lượt Quét bị bỏ dở (tiến trình chết lúc máy ảnh mở) → mở lại `/quet`. Không vẽ gì.
+              const NhanAnhQuetBoDo(),
               // Thẻ nhắc tài khoản đang chờ xoá (G33) — spec cưỡng chế đăng xuất §5.2.
               // Khoảng 24 phía trên nằm trong thẻ: "Để sau" ẩn thẻ thì không còn
               // khoảng trống.

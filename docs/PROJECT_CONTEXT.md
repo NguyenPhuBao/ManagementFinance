@@ -629,9 +629,13 @@ src/Backend/
   - **Tin admin tới ba lần** (cùng `id`, bản sao ngay + sau 3 s — giả backend phát hai lần qua event bus + Redis): app nhận 3 lần → **1**
     hàng, **1** thông báo khay (id = `osScheduledId`), hệ điều hành thấy 1 lần đăng. Mục 5l `NOTIFICATION_FEATURE.md`.
   - **Biên lai MB thật:** `goi=com.mbmobile | khai=false`, mẫu `_mb`, form chọn sẵn Ví MB Bank. Mục 7 `BIEN_DONG_SO_DU_FEATURE.md`.
-  - **Máy ảnh khi đang giữ Gemma** (~3,0 GB PSS): ColorOS **không** giết app, mô hình không nạp lại, form tự điền. ⚠️ Rủi ro còn mở:
-    màn Quét không gọi `retrieveLostData` — tiến trình bị giết lúc máy ảnh mở thì mất ảnh (chưa tái hiện). Mục 5 `QUET_ANH_FEATURE.md`,
-    *Buổi 5* mục 10 `KHOA_APP_FEATURE.md`.
+  - **Máy ảnh khi đang giữ Gemma** (~3,0 GB PSS): ColorOS **không** giết app, mô hình không nạp lại, form tự điền. Soát mã thấy nếu
+    bị giết thì mất ảnh (màn Quét không gọi `retrieveLostData`) → **G107**, mở và đóng cùng phiên (gạch dưới).
+- ✅ **G107** (người dùng chọn *"mở G107 và sửa ngay"*): `NhanAnhQuetBoDo` (`home/presentation/widgets/`, không vẽ gì, trong cột Trang
+  chủ) gọi `nhanAnhQuetBoDo` (`quet_anh_page.dart` — vẫn là tệp duy nhất import `image_picker`) một lần mỗi lần Trang chủ dựng mới; có
+  ảnh bỏ dở ⇒ `push('/quet')`. 5 ca test, ba ca chính đỏ trước khi sửa, bản sai bỏ `try` đỏ. Nghiệm thu Realme: `am crash` lúc máy ảnh
+  mở (ColorOS chặn *Không giữ hoạt động*) → tiến trình mới đọc ảnh bằng Gemma → màn khoá → *Đang đọc* → form → người dùng Lưu. Mục 5
+  `QUET_ANH_FEATURE.md`, *Buổi 5* mục 10 `KHOA_APP_FEATURE.md`, G107 `CLIENT_APP_KNOWN_GAPS.md`.
   - **TalkBack:** người dùng bỏ.
 - Proxy đo (`proxy_nhan_doi.js`, scratchpad — mất khi phiên đóng): Node `http` chuyển thẳng HTTP; WebSocket qua gói `ws` của `src/Backend`
   (`require.resolve('ws', { paths: [cwd] })`, chạy với cwd `src/Backend`), gửi thêm bản sao của khung `42["system.broadcast"` theo tệp cờ
