@@ -72,6 +72,31 @@ async function verifyDatabase() {
         table: 'transaction',
         name: 'idx_transaction_goal',
         expectedClause: 'WHERE ("Idgoal" IS NOT NULL)'
+      },
+      {
+        table: 'household_member',
+        name: 'uq_household_member_active_account',
+        expectedClause: '("Left_at" IS NULL)'
+      },
+      {
+        table: 'household_member',
+        name: 'uq_household_one_owner',
+        expectedClause: '("Left_at" IS NULL)'
+      },
+      {
+        table: 'household_invite',
+        name: 'uq_household_invite_email_active',
+        expectedClause: '("Email" IS NOT NULL)'
+      },
+      {
+        table: 'wallet',
+        name: 'uq_wallet_household_name_active',
+        expectedClause: '("Idhousehold" IS NOT NULL)'
+      },
+      {
+        table: 'category',
+        name: 'uq_category_household_name',
+        expectedClause: '("Idhousehold" IS NOT NULL)'
       }
     ];
 

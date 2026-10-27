@@ -7,6 +7,11 @@ const { defaultMaintenanceManager } = require('../../core/resilience/maintenance
 const { maskEmail, maskPhone, maskAddress } = require('../../utils/masking.util');
 const { validateReasonInactive } = require('../../utils/content-filter.util');
 
+function normalizeCategoryName(name) {
+  if (!name || typeof name !== 'string') return '';
+  return name.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 /**
  * Thời điểm server khởi động — ghi nhận 1 lần khi module được load.
  * Bền vững trong suốt vòng đời process (dev lẫn production).
@@ -379,70 +384,106 @@ const adminService = {
     }
 
     const { prisma } = require('../../config/db');
+    const normalizedInput = normalizeCategoryName(trimmedName);
 
-    // Check unique cặp [Tên danh mục + Loại danh mục] đang active
-    const existingDefault = await prisma.category.findFirst({
+    // 1. Check unique tên danh mục hệ thống đang active (KHÔNG phân biệt classify)
+    const activeDefaults = await prisma.category.findMany({
       where: {
-        name_category: { equals: trimmedName, mode: 'insensitive' },
-        classify: canonicalClassify,
         is_default: true,
         delete_at: null,
       },
+      select: {
+        idcategory: true,
+        name_category: true,
+        classify: true,
+      },
     });
-    if (existingDefault) {
-      throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" (${canonicalClassify}) đã tồn tại và đang hoạt động trong hệ thống.`), { statusCode: 400 });
+
+    const duplicateActive = activeDefaults.find(
+      (c) => normalizeCategoryName(c.name_category) === normalizedInput
+    );
+    if (duplicateActive) {
+      throw Object.assign(
+        new Error(`Danh mục hệ thống "${duplicateActive.name_category}" đã tồn tại và đang hoạt động trong hệ thống. Vui lòng chọn tên khác.`),
+        { statusCode: 409 }
+      );
     }
 
-    // Nếu phát hiện cặp [Tên danh mục + Loại danh mục] đã bị xóa mềm: tiến hành mở lại (restore) và bảo toàn mọi dữ liệu hiện có
-    const softDeleted = await prisma.category.findFirst({
+    // 2. Nếu phát hiện cặp [Tên danh mục + Loại danh mục] đã bị xóa mềm: tiến hành mở lại (restore) và bảo toàn mọi dữ liệu hiện có
+    const softDeletedCandidates = await prisma.category.findMany({
       where: {
-        name_category: { equals: trimmedName, mode: 'insensitive' },
         classify: canonicalClassify,
         is_default: true,
         delete_at: { not: null },
       },
       orderBy: { delete_at: 'desc' },
     });
+
+    const softDeleted = softDeletedCandidates.find(
+      (c) => normalizeCategoryName(c.name_category) === normalizedInput
+    );
+
     if (softDeleted) {
       // ⚠️ BẢO TOÀN DỮ LIỆU: Nếu data.keyword không truyền hoặc để rỗng, BẮT BUỘC giữ nguyên softDeleted.keyword!
       const resolvedKeyword = (data.keyword && data.keyword.trim())
         ? data.keyword.trim()
         : softDeleted.keyword;
 
-      const restored = await prisma.category.update({
-        where: { idcategory: softDeleted.idcategory },
-        data: {
-          name_category: trimmedName,
-          classify: canonicalClassify,
-          keyword: resolvedKeyword,
-          icon: data.icon || softDeleted.icon,
-          delete_at: null,
-          update_at: new Date(),
-          server_update_at: new Date(),
-        },
-      });
-      const resultData = { id: restored.idcategory, name: restored.name_category, classify: restored.classify, keyword: restored.keyword };
       try {
-        const { emitCategoryUpdated } = require('../../core/socket');
-        emitCategoryUpdated({ action: 'create', category: resultData });
-      } catch (_) {}
-      return resultData;
+        const restored = await prisma.category.update({
+          where: { idcategory: softDeleted.idcategory },
+          data: {
+            name_category: trimmedName,
+            classify: canonicalClassify,
+            keyword: resolvedKeyword,
+            icon: data.icon || softDeleted.icon,
+            delete_at: null,
+            update_at: new Date(),
+            server_update_at: new Date(),
+          },
+        });
+        const resultData = { id: restored.idcategory, name: restored.name_category, classify: restored.classify, keyword: restored.keyword };
+        try {
+          const { emitCategoryUpdated } = require('../../core/socket');
+          emitCategoryUpdated({ action: 'create', category: resultData });
+        } catch (_) {}
+        return resultData;
+      } catch (err) {
+        if (err.code === 'P2002') {
+          throw Object.assign(
+            new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Vui lòng chọn tên khác.`),
+            { statusCode: 409 }
+          );
+        }
+        throw err;
+      }
     }
 
-    const result = await adminRepository.createCategory({
-      name: trimmedName,
-      classify: canonicalClassify,
-      is_default: true,
-      keyword: data.keyword ? data.keyword.trim() : null,
-      icon: data.icon,
-      created_by: idaccount ? Number(idaccount) : 1,
-    });
-    const createdData = { id: result.idcategory, name: result.name_category, classify: result.classify, keyword: result.keyword };
+    // 3. Tạo mới danh mục hệ thống hoàn toàn
     try {
-      const { emitCategoryUpdated } = require('../../core/socket');
-      emitCategoryUpdated({ action: 'create', category: createdData });
-    } catch (_) {}
-    return createdData;
+      const result = await adminRepository.createCategory({
+        name: trimmedName,
+        classify: canonicalClassify,
+        is_default: true,
+        keyword: data.keyword ? data.keyword.trim() : null,
+        icon: data.icon,
+        created_by: idaccount ? Number(idaccount) : 1,
+      });
+      const createdData = { id: result.idcategory, name: result.name_category, classify: result.classify, keyword: result.keyword };
+      try {
+        const { emitCategoryUpdated } = require('../../core/socket');
+        emitCategoryUpdated({ action: 'create', category: createdData });
+      } catch (_) {}
+      return createdData;
+    } catch (err) {
+      if (err.code === 'P2002') {
+        throw Object.assign(
+          new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Vui lòng chọn tên khác.`),
+          { statusCode: 409 }
+        );
+      }
+      throw err;
+    }
   },
 
   async updateCategory(idcategory, data, idaccount) {
@@ -475,32 +516,54 @@ const adminService = {
       throw Object.assign(new Error('Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa danh mục của người dùng.'), { statusCode: 403 });
     }
 
+    const normalizedInput = normalizeCategoryName(trimmedName);
+
     // Check unique [Is_default & namecategory] khi sửa (loại trừ chính idcategory đang sửa)
-    const existingDefault = await prisma.category.findFirst({
+    const activeDefaults = await prisma.category.findMany({
       where: {
         idcategory: { not: idcategory },
-        name_category: { equals: trimmedName, mode: 'insensitive' },
         is_default: true,
         delete_at: null,
       },
+      select: {
+        idcategory: true,
+        name_category: true,
+      },
     });
-    if (existingDefault) {
-      throw Object.assign(new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép đổi tên trùng.`), { statusCode: 400 });
+
+    const duplicateActive = activeDefaults.find(
+      (c) => normalizeCategoryName(c.name_category) === normalizedInput
+    );
+    if (duplicateActive) {
+      throw Object.assign(
+        new Error(`Danh mục hệ thống "${duplicateActive.name_category}" đã tồn tại trong hệ thống. Không được phép đổi tên trùng.`),
+        { statusCode: 409 }
+      );
     }
 
-    const result = await adminRepository.updateCategory(idcategory, {
-      name: trimmedName,
-      classify: canonicalClassify,
-      is_default: true,
-      keyword: data.keyword !== undefined ? (data.keyword ? data.keyword.trim() : null) : undefined,
-      icon: data.icon,
-    });
-    const updatedData = { id: result.idcategory, name: result.name_category, classify: result.classify, keyword: result.keyword };
     try {
-      const { emitCategoryUpdated } = require('../../core/socket');
-      emitCategoryUpdated({ action: 'update', category: updatedData });
-    } catch (_) {}
-    return updatedData;
+      const result = await adminRepository.updateCategory(idcategory, {
+        name: trimmedName,
+        classify: canonicalClassify,
+        is_default: true,
+        keyword: data.keyword !== undefined ? (data.keyword ? data.keyword.trim() : null) : undefined,
+        icon: data.icon,
+      });
+      const updatedData = { id: result.idcategory, name: result.name_category, classify: result.classify, keyword: result.keyword };
+      try {
+        const { emitCategoryUpdated } = require('../../core/socket');
+        emitCategoryUpdated({ action: 'update', category: updatedData });
+      } catch (_) {}
+      return updatedData;
+    } catch (err) {
+      if (err.code === 'P2002') {
+        throw Object.assign(
+          new Error(`Danh mục hệ thống "${trimmedName}" đã tồn tại trong hệ thống. Không được phép đổi tên trùng.`),
+          { statusCode: 409 }
+        );
+      }
+      throw err;
+    }
   },
 
   async deleteCategory(idcategory) {
@@ -532,13 +595,54 @@ const adminService = {
     if (!cat.is_default) {
       throw Object.assign(new Error('Vi phạm quyền riêng tư: Tuyệt đối cấm thao tác trên danh mục của người dùng.'), { statusCode: 403 });
     }
-    const restored = await adminRepository.restoreCategory(idcategory);
-    const resultData = { id: restored.idcategory, name: restored.name_category, classify: restored.classify, keyword: restored.keyword };
+
+    // Nếu danh mục chưa bị xóa mềm thì trả về luôn
+    if (!cat.delete_at) {
+      return { id: cat.idcategory, name: cat.name_category, classify: cat.classify, keyword: cat.keyword };
+    }
+
+    const normalizedCatName = normalizeCategoryName(cat.name_category);
+
+    // Kiểm tra xem đã có danh mục hệ thống SỐNG khác cùng tên chuẩn hóa hay chưa
+    const activeDefaults = await prisma.category.findMany({
+      where: {
+        idcategory: { not: idcategory },
+        is_default: true,
+        delete_at: null,
+      },
+      select: {
+        idcategory: true,
+        name_category: true,
+      },
+    });
+
+    const duplicateActive = activeDefaults.find(
+      (c) => normalizeCategoryName(c.name_category) === normalizedCatName
+    );
+    if (duplicateActive) {
+      throw Object.assign(
+        new Error(`Đã có danh mục hệ thống "${duplicateActive.name_category}" đang hoạt động. Vui lòng đổi tên một trong hai trước khi khôi phục.`),
+        { statusCode: 409 }
+      );
+    }
+
     try {
-      const { emitCategoryUpdated } = require('../../core/socket');
-      emitCategoryUpdated({ action: 'create', category: resultData });
-    } catch (_) {}
-    return resultData;
+      const restored = await adminRepository.restoreCategory(idcategory);
+      const resultData = { id: restored.idcategory, name: restored.name_category, classify: restored.classify, keyword: restored.keyword };
+      try {
+        const { emitCategoryUpdated } = require('../../core/socket');
+        emitCategoryUpdated({ action: 'create', category: resultData });
+      } catch (_) {}
+      return resultData;
+    } catch (err) {
+      if (err.code === 'P2002') {
+        throw Object.assign(
+          new Error(`Đã có danh mục hệ thống "${cat.name_category}" đang hoạt động. Vui lòng đổi tên một trong hai trước khi khôi phục.`),
+          { statusCode: 409 }
+        );
+      }
+      throw err;
+    }
   },
 
   async getLoginStats(params = 'today') {

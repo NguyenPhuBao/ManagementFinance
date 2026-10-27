@@ -54,6 +54,11 @@ model account {
   payment_order payment_order[]
   payment_transaction payment_transaction[]
   account_device_history account_device_history[]
+  owned_households       household[]
+  household_members      household_member[]
+  household_invites_created household_invite[] @relation("HouseholdInviteCreatedBy")
+  household_invites_received household_invite[] @relation("HouseholdInviteInvitee")
+  household_invites_used    household_invite[] @relation("HouseholdInviteUsedBy")
 
   @@index([idrole], map: "idx_account_role")
   @@index([username], map: "idx_account_username")
@@ -129,9 +134,11 @@ model category {
   create_at     DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
   update_at     DateTime  @default(now()) @db.Timestamp(6) @map("Update_at")
   server_update_at DateTime @default(now()) @db.Timestamp(6) @map("Server_update_at")
+  idhousehold   Int?      @map("Idhousehold")
   delete_at     DateTime? @db.Timestamp(6) @map("Delete_at")
 
   account    account      @relation(fields: [create_by], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_category_account")
+  household  household?   @relation(fields: [idhousehold], references: [idhousehold], onDelete: SetNull, onUpdate: NoAction, map: "fk_category_household")
   parent     category?    @relation("CategoryTree", fields: [idgroup], references: [idcategory], onDelete: SetNull, onUpdate: NoAction, map: "fk_category_parent")
   children   category[]   @relation("CategoryTree")
   budget     budget[]
@@ -142,6 +149,7 @@ model category {
   @@index([idgroup], map: "idx_category_group")
   @@index([create_by], map: "idx_category_create_by")
   @@index([create_by, server_update_at], map: "idx_category_server_updated")
+  @@index([idhousehold, server_update_at], map: "idx_category_household")
   @@map("category")
 }
 
@@ -186,9 +194,11 @@ model wallet {
   create_at       DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
   update_at       DateTime  @default(now()) @db.Timestamp(6) @map("Update_at")
   server_update_at DateTime @default(now()) @db.Timestamp(6) @map("Server_update_at")
+  idhousehold     Int?      @map("Idhousehold")
   delete_at       DateTime? @db.Timestamp(6) @map("Delete_at")
 
   account         account       @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_wallet_account")
+  household       household?    @relation(fields: [idhousehold], references: [idhousehold], onDelete: SetNull, onUpdate: NoAction, map: "fk_wallet_household")
   bank_account    bank_account? @relation(fields: [id_bank_casso], references: [id_bank_account], onDelete: SetNull, onUpdate: NoAction, map: "fk_wallet_bank")
   transaction     transaction[] @relation("WalletTx")
   transfer_tx     transaction[] @relation("TransferWallet")
@@ -199,6 +209,7 @@ model wallet {
   @@index([id_bank_casso], map: "idx_wallet_bank")
   @@index([update_at], map: "idx_wallet_updated")
   @@index([idaccount, server_update_at], map: "idx_wallet_server_updated")
+  @@index([idhousehold, server_update_at], map: "idx_wallet_household")
   @@map("wallet")
 }
 
@@ -222,14 +233,17 @@ model budget {
   create_at                  DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
   update_at                  DateTime  @default(now()) @db.Timestamp(6) @map("Update_at")
   server_update_at           DateTime  @default(now()) @db.Timestamp(6) @map("Server_update_at")
+  idhousehold                Int?      @map("Idhousehold")
   delete_at                  DateTime? @db.Timestamp(6) @map("Delete_at")
 
-  account  account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_budget_account")
-  category category? @relation(fields: [idcategory], references: [idcategory], onDelete: SetNull, onUpdate: NoAction, map: "fk_budget_category")
+  account   account    @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_budget_account")
+  household household? @relation(fields: [idhousehold], references: [idhousehold], onDelete: SetNull, onUpdate: NoAction, map: "fk_budget_household")
+  category  category?  @relation(fields: [idcategory], references: [idcategory], onDelete: SetNull, onUpdate: NoAction, map: "fk_budget_category")
 
   @@index([idaccount], map: "idx_budget_account")
   @@index([idcategory], map: "idx_budget_category")
   @@index([idaccount, server_update_at], map: "idx_budget_server_updated")
+  @@index([idhousehold, server_update_at], map: "idx_budget_household")
   @@map("budget")
 }
 
@@ -299,15 +313,18 @@ model goal {
   create_at              DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
   update_at              DateTime  @default(now()) @db.Timestamp(6) @map("Update_at")
   server_update_at       DateTime  @default(now()) @db.Timestamp(6) @map("Server_update_at")
+  idhousehold            Int?      @map("Idhousehold")
   delete_at              DateTime? @db.Timestamp(6) @map("Delete_at")
 
   account     account       @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_goal_account")
+  household   household?    @relation(fields: [idhousehold], references: [idhousehold], onDelete: SetNull, onUpdate: NoAction, map: "fk_goal_household")
   wallet      wallet?       @relation(fields: [idwallet], references: [idwallet], onDelete: SetNull, onUpdate: NoAction, map: "fk_goal_wallet")
   transaction transaction[]
 
   @@index([idaccount], map: "idx_goal_account")
   @@index([idwallet], map: "idx_goal_wallet")
   @@index([idaccount, server_update_at], map: "idx_goal_server_updated")
+  @@index([idhousehold, server_update_at], map: "idx_goal_household")
   @@map("goal")
 }
 
@@ -330,9 +347,11 @@ model transaction {
   date_transaction   DateTime  @default(now()) @db.Timestamp(6) @map("DateTransaction")
   update_at          DateTime  @default(now()) @db.Timestamp(6) @map("Update_at")
   server_update_at   DateTime  @default(now()) @db.Timestamp(6) @map("Server_update_at")
+  idhousehold        Int?      @map("Idhousehold")
   deleted_at         DateTime? @db.Timestamp(6) @map("Deleted_at")
 
   account         account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_account")
+  household       household? @relation(fields: [idhousehold], references: [idhousehold], onDelete: SetNull, onUpdate: NoAction, map: "fk_transaction_household")
   category        category? @relation(fields: [idcategory], references: [idcategory], onUpdate: NoAction, map: "fk_transaction_category")
   wallet          wallet    @relation("WalletTx", fields: [idwallet], references: [idwallet], onDelete: Cascade, onUpdate: NoAction, map: "fk_transaction_wallet")
   transfer_wallet wallet?   @relation("TransferWallet", fields: [idwallet_transfer], references: [idwallet], onDelete: SetNull, onUpdate: NoAction, map: "fk_transaction_wallet_transfer")
@@ -348,6 +367,7 @@ model transaction {
   @@index([status], map: "idx_transaction_status")
   @@index([date_transaction], map: "idx_transaction_create")
   @@index([update_at], map: "idx_transaction_updated")
+  @@index([idhousehold, server_update_at], map: "idx_transaction_household")
   @@index([idaccount, server_update_at], map: "idx_transaction_server_updated")
   @@index([provider], map: "idx_transaction_provider")
   @@map("transaction")
@@ -608,4 +628,68 @@ model account_device_history {
   @@index([ip_address], map: "idx_device_history_ip")
   @@map("account_device_history")
 }
+
+/// Bảng hộ gia đình (Nhà) — Quản lý tài chính chung (Mục 50)
+model household {
+  idhousehold            Int                 @id @default(autoincrement()) @map("Idhousehold")
+  name                   String              @db.VarChar(100) @map("Name")
+  owner_idaccount        Int                 @map("Owner_idaccount")
+  status                 String              @default("Active") @db.VarChar(10) @map("Status")
+  max_members            Int                 @default(6) @db.SmallInt @map("Max_members")
+  max_shared_wallets     Int                 @default(10) @db.SmallInt @map("Max_shared_wallets")
+  contribution_due_day   Int                 @default(5) @db.SmallInt @map("Contribution_due_day")
+  create_at              DateTime            @default(now()) @db.Timestamp(6) @map("Create_at")
+  update_at              DateTime            @default(now()) @db.Timestamp(6) @map("Update_at")
+  delete_at              DateTime?           @db.Timestamp(6) @map("Delete_at")
+
+  owner                  account             @relation(fields: [owner_idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_household_owner")
+  household_member       household_member[]
+  household_invite       household_invite[]
+  wallet                 wallet[]
+  transaction            transaction[]
+  budget                 budget[]
+  goal                   goal[]
+  category               category[]
+
+  @@map("household")
+}
+
+/// Bảng thành viên gia đình (Mục 50)
+model household_member {
+  id          Int       @id @default(autoincrement()) @map("Id")
+  idhousehold Int       @map("Idhousehold")
+  idaccount   Int       @map("Idaccount")
+  role        String    @db.VarChar(7) @map("Role")
+  joined_at   DateTime  @default(now()) @db.Timestamp(6) @map("Joined_at")
+  left_at     DateTime? @db.Timestamp(6) @map("Left_at")
+
+  household   household @relation(fields: [idhousehold], references: [idhousehold], onDelete: Cascade, onUpdate: NoAction, map: "fk_household_member_household")
+  account     account   @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_household_member_account")
+
+  @@map("household_member")
+}
+
+/// Bảng mã mời & lời mời email gia đình (Mục 50)
+model household_invite {
+  code               String    @id @db.VarChar(8) @map("Code")
+  idhousehold        Int       @map("Idhousehold")
+  role               String    @db.VarChar(7) @map("Role")
+  created_by         Int       @map("Created_by")
+  email              String?   @db.VarChar(100) @map("Email")
+  invitee_idaccount  Int?      @map("Invitee_idaccount")
+  create_at          DateTime  @default(now()) @db.Timestamp(6) @map("Create_at")
+  expires_at         DateTime  @db.Timestamp(6) @map("Expires_at")
+  used_by            Int?      @map("Used_by")
+  used_at            DateTime? @db.Timestamp(6) @map("Used_at")
+  revoked_at         DateTime? @db.Timestamp(6) @map("Revoked_at")
+  declined_at        DateTime? @db.Timestamp(6) @map("Declined_at")
+
+  household          household @relation(fields: [idhousehold], references: [idhousehold], onDelete: Cascade, onUpdate: NoAction, map: "fk_household_invite_household")
+  creator            account   @relation("HouseholdInviteCreatedBy", fields: [created_by], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_household_invite_creator")
+  invitee            account?  @relation("HouseholdInviteInvitee", fields: [invitee_idaccount], references: [idaccount], onDelete: SetNull, onUpdate: NoAction, map: "fk_household_invite_invitee")
+  user               account?  @relation("HouseholdInviteUsedBy", fields: [used_by], references: [idaccount], onDelete: SetNull, onUpdate: NoAction, map: "fk_household_invite_user")
+
+  @@map("household_invite")
+}
+
 
