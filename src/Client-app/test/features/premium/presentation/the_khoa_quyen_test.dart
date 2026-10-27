@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../helpers/font_that.dart';
+import '../../../helpers/goi_gia.dart';
 
 class _ApiIm implements PaymentApi {
   @override
@@ -104,6 +105,50 @@ void main() {
     expect(find.text('NÂNG CẤP goal_auto_deposit'), findsOneWidget);
   });
 
+  group('B1 — biến thể tạm ngừng (spec 2026-10-27 mục 4)', () {
+    testWidgets('⭐ Premium bảng tắt → thẻ "Đang tạm ngừng", KHÔNG nút Nâng cấp', (tester) async {
+      final cubit = goiPremium(const {'cashflow_forecast': false}, now: now);
+      await dung(tester, const KhoaTheoQuyen(ma: MaQuyen.cashflowForecast, child: Text('BIỂU ĐỒ DỰ BÁO')),
+          cubit: cubit);
+      expect(find.text('BIỂU ĐỒ DỰ BÁO'), findsNothing);
+      expect(find.byKey(const Key('the-khoa-cashflow_forecast')), findsOneWidget);
+      expect(find.text('Đang tạm ngừng'), findsOneWidget);
+      expect(find.text('Dành cho Premium'), findsNothing);
+      expect(find.byKey(const Key('nut-nang-cap')), findsNothing, reason: 'chốt 3 — mua không mở, không mời mua');
+    });
+
+    testWidgets('⭐ Basic, cột Premium cũng tắt → thẻ tạm ngừng', (tester) async {
+      final cubit = goiBasic(const {'export_reports': false},
+          quyenPremium: const {'export_reports': false}, now: now);
+      await dung(tester, const KhoaTheoQuyen(ma: MaQuyen.exportReports, child: SizedBox()), cubit: cubit);
+      expect(find.text('Đang tạm ngừng'), findsOneWidget);
+      expect(find.byKey(const Key('nut-nang-cap')), findsNothing);
+    });
+
+    testWidgets('DongKhoaCongTac tạm ngừng → "Tạm ngừng", không nút (dù giá trị đang bật)', (tester) async {
+      final cubit = goiPremium(const {'bill_auto_pay': false}, now: now);
+      await dung(tester, const DongKhoaCongTac(ma: MaQuyen.billAutoPay, dangBat: true), cubit: cubit);
+      expect(find.text('Tạm ngừng'), findsOneWidget);
+      expect(find.text('Tạm dừng — cần Premium'), findsNothing);
+      expect(find.byKey(const Key('nut-nang-cap')), findsNothing);
+    });
+
+    testWidgets('DongKhoaQuyen: câu mặc định; tạm ngừng → câu tạm ngừng, không nút', (tester) async {
+      await dung(tester, const DongKhoaQuyen(ma: MaQuyen.quickActionShortcuts));
+      expect(find.text('Nút ghi nhanh — dành cho Premium'), findsOneWidget);
+      expect(find.byKey(const Key('nut-nang-cap')), findsOneWidget);
+
+      final cubit = goiPremium(const {'anomaly_spending_insights': false}, now: now);
+      await dung(
+          tester,
+          const DongKhoaQuyen(
+              ma: MaQuyen.anomalySpendingInsights, cau: 'Có khoản chi bất thường kỳ này — dành cho Premium'),
+          cubit: cubit);
+      expect(find.text('Cảnh báo chi bất thường đang tạm ngừng'), findsOneWidget);
+      expect(find.byKey(const Key('nut-nang-cap')), findsNothing);
+    });
+  });
+
   for (final rong in [360.0, 320.0]) {
     testWidgets('${rong.toInt()} dp, font thật: tên dài nhất và câu dòng khoá không cắt, không tràn', (tester) async {
       await napFontThat();
@@ -129,6 +174,27 @@ void main() {
         final r = tester.renderObject<RenderParagraph>(find.text(t));
         expect(r.didExceedMaxLines, isFalse, reason: t);
         expect(r.size.width, lessThanOrEqualTo(rong), reason: t);
+      }
+    });
+
+    testWidgets('${rong.toInt()} dp, font thật: thẻ khoá của MỌI MaQuyen (22 tên) không cắt, không tràn — cả hai trạng thái',
+        (tester) async {
+      await napFontThat();
+      for (final tamNgung in [false, true]) {
+        final cubit = tamNgung
+            ? goiPremium({for (final m in MaQuyen.values) m.maServer: false}, now: now)
+            : await goi(const {});
+        await dung(
+            tester,
+            SingleChildScrollView(child: Column(children: [for (final m in MaQuyen.values) TheKhoaQuyen(ma: m)])),
+            cubit: cubit,
+            rong: rong);
+        expect(tester.takeException(), isNull);
+        for (final m in MaQuyen.values) {
+          final r = tester.renderObject<RenderParagraph>(find.text(m.ten));
+          expect(r.didExceedMaxLines, isFalse, reason: m.ten);
+          expect(r.size.width, lessThanOrEqualTo(rong), reason: m.ten);
+        }
       }
     });
   }

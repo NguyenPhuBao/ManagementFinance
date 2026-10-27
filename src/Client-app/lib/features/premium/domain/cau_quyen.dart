@@ -21,3 +21,16 @@ String? cauMoDau(LoaiTran tran, TranGoi tranGoi, {bool laPremium = false}) {
 /// Câu mở đầu khi đến từ một tính năng bị khoá (`/premium?quyen=`) — spec phân quyền 2026-10-08 mục 4.4; [tamNgung] (B1).
 String cauMoDauQuyen(MaQuyen ma, {bool tamNgung = false}) =>
     tamNgung ? '${ma.ten} hiện đang tạm ngừng.' : '${ma.ten} là tính năng Premium.';
+
+/// Dòng phụ thẻ khoá (`TheKhoaQuyen`).
+const String kTheKhoaCanPremium = 'Dành cho Premium';
+const String kTheKhoaTamNgung = 'Đang tạm ngừng';
+
+/// Băng khoá công tắc (`DongKhoaCongTac`): đang bật → tạm dừng (chốt dừng chạy, giữ công tắc); tạm ngừng không nút.
+const String kCongTacTamDungCanPremium = 'Tạm dừng — cần Premium';
+const String kCongTacCanPremium = 'Cần Premium';
+const String kCongTacTamNgung = 'Tạm ngừng';
+
+/// Câu mặc định của dòng khoá trong khối (`DongKhoaQuyen`).
+String cauDongKhoa(MaQuyen ma) => '${ma.ten} — dành cho Premium';
+String cauDongKhoaTamNgung(MaQuyen ma) => '${ma.ten} đang tạm ngừng';

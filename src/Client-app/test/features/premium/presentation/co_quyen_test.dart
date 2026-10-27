@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../helpers/goi_gia.dart';
+
 class _ApiIm implements PaymentApi {
   @override
   Future<Map<String, Object?>> thongTinGoi() => throw UnimplementedError();
@@ -55,5 +57,25 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('KHOÁ'), findsOneWidget);
+  });
+
+  testWidgets('trangThaiQuyen: không provider → mo; Premium bảng tắt → tamNgung', (tester) async {
+    late TrangThaiQuyen khongCo;
+    await tester.pumpWidget(Builder(builder: (c) {
+      khongCo = c.trangThaiQuyen(MaQuyen.exportReports);
+      return const SizedBox();
+    }));
+    expect(khongCo, TrangThaiQuyen.mo);
+
+    final cubit = goiPremium(const {'export_reports': false}, now: now);
+    late TrangThaiQuyen co;
+    await tester.pumpWidget(BlocProvider<GoiCubit>.value(
+      value: cubit,
+      child: Builder(builder: (c) {
+        co = c.trangThaiQuyen(MaQuyen.exportReports);
+        return const SizedBox();
+      }),
+    ));
+    expect(co, TrangThaiQuyen.tamNgung);
   });
 }

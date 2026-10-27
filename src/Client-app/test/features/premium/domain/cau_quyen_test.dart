@@ -28,4 +28,14 @@ void main() {
     expect(cauMoDauQuyen(MaQuyen.exportReports), 'Xuất báo cáo là tính năng Premium.');
     expect(cauMoDauQuyen(MaQuyen.exportReports, tamNgung: true), 'Xuất báo cáo hiện đang tạm ngừng.');
   });
+
+  test('câu widget khoá — từng ký tự', () {
+    expect(kTheKhoaCanPremium, 'Dành cho Premium');
+    expect(kTheKhoaTamNgung, 'Đang tạm ngừng');
+    expect(kCongTacTamDungCanPremium, 'Tạm dừng — cần Premium');
+    expect(kCongTacCanPremium, 'Cần Premium');
+    expect(kCongTacTamNgung, 'Tạm ngừng');
+    expect(cauDongKhoa(MaQuyen.quickActionShortcuts), 'Nút ghi nhanh — dành cho Premium');
+    expect(cauDongKhoaTamNgung(MaQuyen.anomalySpendingInsights), 'Cảnh báo chi bất thường đang tạm ngừng');
+  });
 }

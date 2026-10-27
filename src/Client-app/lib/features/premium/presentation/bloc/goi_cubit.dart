@@ -28,6 +28,10 @@ class GoiCubit extends Cubit<TrangThaiGoi> {
   /// 2026-10-08 mục 4.1).
   bool coQuyen(MaQuyen ma) => duocDung(ma, state, _now());
 
+  /// Ba trạng thái của quyền [ma] theo giờ máy lúc hỏi (`trangThaiQuyen`, spec B1 2026-10-27 mục 2) — giao diện khoá
+  /// chọn biến thể cần Premium / tạm ngừng.
+  TrangThaiQuyen trangThaiCua(MaQuyen ma) => trangThaiQuyen(ma, state, _now());
+
   Future<void> lamMoi() => _repo.lamMoi();
 
   @override

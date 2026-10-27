@@ -28,4 +28,23 @@ extension CoQuyenContext on BuildContext {
       return true;
     }
   }
+
+  /// Ba trạng thái (B1) — đăng ký phụ thuộc như [coQuyen]. Không provider → [TrangThaiQuyen.mo] (cùng quy ước).
+  TrangThaiQuyen trangThaiQuyen(MaQuyen ma) {
+    try {
+      watch<GoiCubit>();
+      return read<GoiCubit>().trangThaiCua(ma);
+    } on ProviderNotFoundException {
+      return TrangThaiQuyen.mo;
+    }
+  }
+
+  /// Không đăng ký phụ thuộc — handler / `initState`-sau.
+  TrangThaiQuyen trangThaiQuyenDoc(MaQuyen ma) {
+    try {
+      return read<GoiCubit>().trangThaiCua(ma);
+    } on ProviderNotFoundException {
+      return TrangThaiQuyen.mo;
+    }
+  }
 }
