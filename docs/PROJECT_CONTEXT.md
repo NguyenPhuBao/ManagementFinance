@@ -644,6 +644,20 @@ Thi công bằng agent con (Sonnet thực thi, Opus soát), Task 1–8 mã + Tas
 - **Còn:** **Task 10 — nghiệm thu máy thật (spec mục 9): CHƯA LÀM.** ⚠️ Đừng tạo / xoá khuôn thử trên Supabase
   dùng chung để nghiệm thu (mọi tài khoản thật phản ứng) — dùng `PersonFinance` cục bộ.
 
+### 🧭 Phiên 17 (2026-10-27 khuya) — danh mục theo Admin-web Task 7–9 + review toàn nhánh (agent con); B1: spec duyệt + kế hoạch
+
+- **Danh mục theo Admin-web:** Task 7 (`48f720de` + `78afc043` — lượt kéo toàn bộ bỏ so từ khoá khuôn, vì đổi tài khoản trên
+  cùng máy), Task 8 (`55b7c39e`), Task 9 tài liệu (`2c5eb48a` `1f0e2b33` `42469cba` `3bb95de2`), review toàn nhánh (Opus) →
+  một đợt sửa (`1585c30d..6fa1884d`) → soát lại đạt; chốt tài liệu `3fe6163e`. Người dùng chốt ba luật mới (khối 🗂️ ở trên).
+  **Xong mã + tài liệu; còn Task 10 nghiệm thu máy thật** — nên sau khi gộp `main` PR #168 (đơn 54 sửa Admin-web kiểm trùng
+  tên). Mốc **8257 pass / 10 skip**, analyze 20.
+- **B1 (phân quyền theo gói — cột Premium + 22 công tắc):** người dùng duyệt bản viết spec (`aec5cea4`: *"Tới N ví"*, giữ tên 11
+  mã, nghiệm thu thêm bước nhắc trước hạn hoá đơn + hết hạn lúc offline G109). Kế hoạch `docs/superpowers/plans/2026-10-27-phan-quyen-cot-premium-va-cong-tac.md`
+  (gitignore, Task 0–13 + 8b, mục *Đã chốt* 8 điểm — trong đó **che chip "Tổng số dư"** ở Nhận xét Trang chủ khi
+  `net_worth_overview` khoá, Trợ lý AI + Quản lý ví không đụng). Chưa preflight, chưa gửi Stitch (Task 0), chưa thi công.
+- `main` có PR #168 (`7b56d822`) **chưa gộp** (gia đình nền móng + đơn 54; README `CAN-LAM/` sẽ xung đột). Chưa push.
+- Giữ số: **G109** (B1), **G110** đã mở, kế tiếp **G111**; quét kế tiếp **41**; đơn kế tiếp **56**.
+
 ### 🧭 Phiên 16 (2026-10-27 tối) — thi công danh mục theo Admin-web Task 1–6 (agent con), Premium: trần 0 + spec B1 + đơn 55
 
 Mốc `flutter test` **8232 pass / 10 skip** (đầu phiên 8202), analyze **20**, schema v31. **Chưa push** (10 commit).
