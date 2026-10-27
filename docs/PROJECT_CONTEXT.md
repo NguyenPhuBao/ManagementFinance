@@ -615,7 +615,43 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-26)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-27)
+
+### 🧭 Phiên 15 (2026-10-27 chiều) — danh mục mặc định theo thao tác Admin-web (spec + kế hoạch), đơn 54, gộp `main` @ `5c3547b5` + soát 7 đơn
+
+Không đổi mã client (cây `src/Client-app` giữ hash `458742dc…` — không chạy lại `flutter test`; mốc vẫn **8202 / 10 skip**, analyze **20**).
+
+- 🧩 **Hai câu hỏi người dùng → một thiết kế:** *"Admin-web khôi phục danh mục xoá mềm có ảnh hưởng client không"* và *"Admin-web
+  bật / tắt tính năng Premium, chỉnh trần — client đáp ứng chưa"*. Câu hai **chỉ trả lời, chưa làm**: client đọc 11 / 31 công tắc +
+  5 / 5 trần **của cột Basic**; cột Premium bỏ qua (Premium còn hạn = mở hết, chốt spec 2026-10-08); `scope_config` / `downgrade_policy`
+  không đọc; trần **0** (Admin-web cho đặt, bỏ tick *Không giới hạn* ra 0) bị `TranGoi.tuJson` đọc là rác (ví / ngân sách / mục tiêu → 3,
+  hoá đơn / danh mục → không giới hạn); `account.permissions_updated` / `account.upgraded` → `lamMoi()` chạy đúng. `docs/Functional-Mobile/4_TRU_COT.md`
+  (NPBao) tả client làm những thứ client không làm (chống tua lùi giờ theo `max(date_transaction)`, ân hạn 3 ngày, `READ_ONLY`,
+  mã `FEATURE_LOCKED`) — chưa đặt đơn.
+- 📐 **Spec** `specs/2026-10-27-danh-muc-mac-dinh-theo-thao-tac-admin-design.md` (duyệt từng phần, `6b2b210b` + vá `869c0817` +
+  `4b8b2864`): admin xoá mềm khuôn từ `kMocAnTheoKhuon` (00:00 giờ VN 2026-10-27) → bản sao **ẩn** khỏi mọi danh sách CHỌN (tính lúc
+  đọc, không cột mới; bảng tra tên giữ); khôi phục → hiện; đổi tên / biểu tượng / thêm từ khoá → lan truyền (`ThayDoiKhuon` → `LanTruyenKhuon`
+  trước bộ tạo bản sao); bản sao đã xoá chỉ đổi tên cục bộ (đẩy `delete` là server bỏ tên mới — bắt khi soát spec); bộ tạo bản sao so
+  theo **tên** (đóng vòng đẩy hỏng *"Trả nợ"* Chi ↔ khuôn Vay/nợ — G108 khi thi công); quét 40. **Kế hoạch 10 task** (gitignore):
+  `docs/superpowers/plans/2026-10-27-danh-muc-mac-dinh-theo-thao-tac-admin.md` — **chưa thi công**, người dùng để phiên sau.
+- 📮 **Đơn 54** `CAN-LAM/KHUON_DANH_MUC_ADMIN_KIEM_TRUNG_TEN.md` (`c1c0627b`): `restoreCategory` / `addCategory` không kiểm trùng tên theo
+  đúng chỉ mục `uq_category_default_name` (chỉ tên — đo `pg_indexes` Supabase) → `P2002` → 500; vế C báo trước hành vi client + hai điều
+  client dựa vào (pull trả khuôn đã xoá, nâng `Server_update_at`). Số đơn gia đình nay bắt đầu từ **55**.
+- 🔀 **Gộp `main` @ `5c3547b5`** (khối 🔀 cùng tên dưới) + soát 7 đơn backend báo xong (`ce9d208d`): 47 · 53 đạt; 43 · 44 · 48 · 49 · 52
+  chuyển lại `CAN-LAM/` lần hai (người dùng chốt).
+- Đo trên Supabase dùng chung (chỉ `SELECT`): **16** khuôn danh mục sống, **0** xoá mềm (13 mã ổn định + *Thu nợ*, *Trả nợ*, *Xăng xe*);
+  bảng quyền 36 tính năng (31 công tắc + 5 trần).
+
+### 🔀 Gộp `main` @ `5c3547b5` (2026-10-27, commit gộp `bc0b28ce`, chưa push) — backend báo xong 7 đơn; PO duyệt thi công gia đình
+
+- `850fe23b` (NPBao): ba hồi quy CAO đơn 53 sửa theo mã (`mapEntityFields` chỉ áp `is_deleted === true`; JIT PayOS tính `newExpiresAt`;
+  `encrypt` thử `decrypt` chuỗi `enc:…`); chatbot `res.on('close')` + `signal` + `timeout: 60000`; AIOps chỉ mở khoá `Inactive`, khoá IP
+  vĩnh viễn → tạm 4 giờ; migration **38** (unique `payos_transaction_id`) + **39** (cấm khoá IP vĩnh viễn) — **chưa áp** Supabase (đo);
+  xoá `database/)2_can_lam_all_migrations.sql`. `5c3547b5`: viết lại đơn 50, tạo **đơn cho client**
+  `docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md` (SQLite v32 `idhousehold` 5 bảng, module `features/household/`, 16 endpoint,
+  7 mã đẩy vĩnh viễn — khớp mã client đã có) — **client chưa soát** bản này với `docs/Family/`.
+- Không tệp `src/Client-app` nào đổi; `check-ignore` không khớp; một xung đột (tiêu đề `CAN-LAM/README.md`).
+- Soát (banner 🔎 *"2026-10-27"* đầu mỗi đơn): xem `ce9d208d` và banner đầu README `CAN-LAM/`.
 
 ### 🧭 Phiên 14 (2026-10-27 sáng) — push, hai mã lỗi gia đình, đo Realme (tin nhiều lần · biên lai MB thật · máy ảnh khi giữ Gemma)
 
