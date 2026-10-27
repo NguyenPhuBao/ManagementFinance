@@ -9,10 +9,13 @@ library;
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/presentation/pages/category_add_page.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../helpers/goi_gia.dart';
 import 'category_test_fakes.dart';
 
 CategoryEntity _anUong() => CategoryEntity(
@@ -135,5 +138,22 @@ void main() {
     final o = tester.getRect(_oTuKhoa);
     expect(o.right, lessThanOrEqualTo(360));
     expect(o.width, greaterThan(200), reason: 'ô nhập phải đủ rộng để gõ ở 360 dp');
+  });
+
+  testWidgets('⭐ B1: category_keywords_matching tắt → thẻ từ khoá không gỡ được, ô nhập tắt, Lưu giữ nguyên danh sách',
+      (tester) async {
+    final kho = _kho();
+    await _dung(
+        tester,
+        BlocProvider<GoiCubit>.value(
+          value: goiBasic(const {'category_keywords_matching': false}),
+          child: CategoryAddPage(categoryId: 'au', repository: kho, accountId: 1),
+        ));
+    expect(tester.widget<TextField>(_oTuKhoa).enabled, isFalse);
+    expect(find.byTooltip('Gỡ từ khóa grab'), findsNothing);
+    expect(find.byKey(const Key('dong-khoa-category_keywords_matching')), findsOneWidget);
+    await tester.tap(find.text('Lưu danh mục'));
+    await tester.pump();
+    expect(kho.savedChild?.keywords.toList(), ['food', 'grab'], reason: 'từ khoá đã có giữ nguyên (chốt 8)');
   });
 }

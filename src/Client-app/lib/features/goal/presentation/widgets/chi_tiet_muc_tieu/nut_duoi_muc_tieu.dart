@@ -6,6 +6,9 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../../../shared/theme/app_colors.dart';
+import '../../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../../../data/models/goal_entity.dart';
 
 class NutDuoiMucTieu extends StatelessWidget {
@@ -23,6 +26,8 @@ class NutDuoiMucTieu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Quyền goal_deposit_withdraw (B1) — đây là lối vào DUY NHẤT của hai phiếu nạp / rút.
+    final coNapRut = context.coQuyen(MaQuyen.goalDepositWithdraw);
     return Container(
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
@@ -65,7 +70,7 @@ class NutDuoiMucTieu extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           ElevatedButton(
-            onPressed: onNap,
+            onPressed: coNapRut ? onNap : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
@@ -88,7 +93,7 @@ class NutDuoiMucTieu extends StatelessWidget {
           if (goal.currentAmount > 0) ...[
             const SizedBox(height: 12),
             OutlinedButton(
-              onPressed: onRut,
+              onPressed: coNapRut ? onRut : null,
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 minimumSize: const Size(double.infinity, 48),
@@ -103,6 +108,10 @@ class NutDuoiMucTieu extends StatelessWidget {
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               ),
             ),
+          ],
+          if (!coNapRut) ...[
+            const SizedBox(height: 12),
+            const DongKhoaQuyen(ma: MaQuyen.goalDepositWithdraw),
           ],
           const SizedBox(height: 12),
           OutlinedButton(
