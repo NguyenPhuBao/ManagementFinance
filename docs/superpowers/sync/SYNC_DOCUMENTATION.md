@@ -76,10 +76,12 @@ HTTP **200** cho cả lô; `data.results[i] = { localId, status, code?, message?
 
 ### 2.4 Lỗi vĩnh viễn — danh sách TRẮNG
 
-`_permanentCodes` (`src/Client-app/lib/core/sync/gui_lo_dong_bo.dart`, đếm 2026-10-26: **13** mã): `UNIQUE_VIOLATION` · `CATEGORY_NAME_DUPLICATE` ·
+`_permanentCodes` (`src/Client-app/lib/core/sync/gui_lo_dong_bo.dart`, đếm 2026-10-27: **15** mã): `UNIQUE_VIOLATION` · `CATEGORY_NAME_DUPLICATE` ·
 `CONSTRAINT_VIOLATION` · `FORBIDDEN_SYSTEM_DEFAULT` · `WALLET_NAME_DUPLICATE` · `WALLET_DEFAULT_DUPLICATE` · `BILL_ALREADY_PAID` ·
-`BILL_PERIOD_ALREADY_PAID` · `NOT_OWNER` · `HOUSEHOLD_NOT_MEMBER` · `HOUSEHOLD_READ_ONLY` · `HOUSEHOLD_CLOSED` · `HOUSEHOLD_SCOPE_MISMATCH`
-(năm mã cuối thêm sẵn cho chức năng gia đình — `docs/Family/`).
+`BILL_PERIOD_ALREADY_PAID` · `NOT_OWNER` · `HOUSEHOLD_NOT_MEMBER` · `HOUSEHOLD_READ_ONLY` · `HOUSEHOLD_CLOSED` · `HOUSEHOLD_SCOPE_MISMATCH` ·
+`HOUSEHOLD_ROLE_FORBIDDEN` · `HOUSEHOLD_WALLET_LIMIT`
+(bảy mã cuối thêm sẵn cho chức năng gia đình — `docs/Family/`; năm mã đầu của đơn 50 thêm 2026-10-26, hai mã cuối do `docs/Family/`
+đề xuất thêm 2026-10-27 khi backend **chưa** chấp nhận tên — backend đổi tên thì client sửa theo).
 
 - Mã vĩnh viễn ⇒ hàng không bị gửi lại; có bộ nghe gỡ hậu quả (mục 2.6).
 - **Mọi mã khác — kể cả `DB_ERROR` và mã chưa có tên — là lỗi TẠM**: hàng ở lại `pending`, giãn cách luỹ tiến (`syncRetryCount`,

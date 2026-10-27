@@ -207,7 +207,8 @@ cục với giá trị lớn nhất*).
   (`gopQuyBiTraVe`, `gopQuyBiXoa` — mục 6).
 - **Chiều phụ thuộc:** `household/domain` **không** import `notification`; luật thông báo của gia đình ở `notification/domain` đọc kiểu thuần
   của `household/domain` (chiều `notification → household`) — giữ đồ thị mảng không vòng (quét 29).
-- Thêm `HOUSEHOLD_WALLET_LIMIT` vào `_permanentCodes` cùng lượt `HOUSEHOLD_ROLE_FORBIDDEN` (`01` mục 3).
+- Thêm `HOUSEHOLD_WALLET_LIMIT` vào `_permanentCodes` cùng lượt `HOUSEHOLD_ROLE_FORBIDDEN` (`01` mục 3) — ✅ **đã thêm 2026-10-27**,
+  trước khi backend chấp nhận tên.
 
 ## 13. Kiểm thử và nghiệm thu
 

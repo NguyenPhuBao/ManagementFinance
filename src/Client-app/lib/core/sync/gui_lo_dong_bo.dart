@@ -330,6 +330,12 @@ class GuiLoDongBo {
     'HOUSEHOLD_READ_ONLY',
     'HOUSEHOLD_CLOSED',
     'HOUSEHOLD_SCOPE_MISMATCH',
+    // Hai mã `docs/Family/` đề xuất (`01_NEN_MONG.md` mục 3 — vai không đủ cho
+    // thao tác; `02A_VI_CHUNG_GOP_QUY.md` — vượt trần ví chung). Thêm
+    // 2026-10-27 khi backend CHƯA chấp nhận tên: backend đổi tên thì sửa ở đây,
+    // không thì mã mới rơi về transient và bị gửi lại mãi.
+    'HOUSEHOLD_ROLE_FORBIDDEN',
+    'HOUSEHOLD_WALLET_LIMIT',
   };
 
   /// Khoá ngoại trỏ tới bảng `account` bị vỡ nghĩa là `idaccount` đang dùng

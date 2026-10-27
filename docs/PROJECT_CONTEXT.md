@@ -997,6 +997,10 @@ liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà 
 - ✅ **2026-10-26 — Task 5 của kế hoạch làm riêng, trước lát 1** (người dùng chọn): `NOT_OWNER` + bốn mã `HOUSEHOLD_*` đẩy vào
   `_permanentCodes` (`core/sync/gui_lo_dong_bo.dart`), năm ca ở `sync_failure_handling_test.dart`, bản sai đỏ. Backend bật vế A
   (kiểm chủ sở hữu) trước cả lát 1 thì hàng bị từ chối không bị đẩy lại mãi. Phần còn lại của lát 1 vẫn chưa có mã.
+- ✅ **2026-10-27 — thêm sớm hai mã của bộ `docs/Family/`** (người dùng chọn, biết backend **chưa** chấp nhận tên):
+  `HOUSEHOLD_ROLE_FORBIDDEN` (`01` mục 3) + `HOUSEHOLD_WALLET_LIMIT` (`02A`) vào `_permanentCodes` — `_permanentCodes` nay 15 mã; hai
+  ca mới trong vòng ca gia đình của `sync_failure_handling_test.dart` đỏ trước khi thêm. Backend đặt tên khác lúc thi công thì sửa cả
+  hai chỗ (mã + ca), không thì mã mới rơi về lỗi tạm và bị gửi lại mãi.
 - 📝 **2026-10-26 (sau) — người dùng MỞ RỘNG thiết kế** (*"tạo nhóm gia đình, ví chung (nhiều ví), mời hoặc mã mời, góp quỹ, chủ ví đặt hạn mức
   từng thành viên — mở rộng giúp tôi"*). Brainstorming loại kiến trúc, 18 quyết định qua câu hỏi chọn được (bảng mục 2 `docs/Family/00_TONG_QUAN.md`):
   **bỏ** *ai nợ ai* và *cho nhà xem* · chỉ Chủ nhà cấu hình (ví chung, hạn mức, định mức, ngân sách, mục tiêu) · vượt hạn mức = **cảnh báo + báo
