@@ -210,7 +210,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         FlutterSecureStorage(),
       ),
       // Quy tắc 8: bộ gieo danh mục mặc định chạy sau MỌI lượt kéo về thành công — cả lượt nền (`syncMotLuot`).
-      sauKeoVe: (id) => sl<DefaultCategorySeeder>().seedForAccount(id),
+      sauKeoVe: (id, _) => sl<DefaultCategorySeeder>().seedForAccount(id),
       // G89: lượt bị máy chủ chặn (bảo trì / phong toả) không tính là lượt hỏng, hẹn thử lại đúng mốc.
       trangThaiMayChu: sl<TrangThaiMayChu>(),
     ),

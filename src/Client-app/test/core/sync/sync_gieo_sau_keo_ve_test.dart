@@ -99,6 +99,16 @@ Map<String, dynamic> macDinhServer() => {
       'update_at': '2026-10-01T00:00:00.000Z',
     };
 
+Map<String, dynamic> khuon({String ten = 'Ăn uống', String? keyword, String? deleteAt}) => {
+      'idcategory': idMacDinh,
+      'name_category': ten,
+      'classify': 'Chi',
+      'is_default': true,
+      if (keyword != null) 'keyword': keyword,
+      if (deleteAt != null) 'delete_at': deleteAt,
+      'update_at': '2026-10-01T00:00:00.000Z',
+    };
+
 void main() {
   late AppDatabase db;
   late List<String> nhatKy;
@@ -111,7 +121,7 @@ void main() {
 
   _DemHen dung(
     List<List<Map<String, dynamic>>?> keoVe, {
-    Future<int> Function(int)? sauKeoVe,
+    ViecSauKeoVe? sauKeoVe,
     void Function()? khiKeo,
   }) {
     final e = _DemHen(
@@ -129,7 +139,7 @@ void main() {
 
   test('⭐ lượt kéo ĐẦU hỏng, lượt sau kéo về được → bản sao danh mục mặc định có ngay ở lượt ấy', () async {
     final seeder = DefaultCategorySeeder(db: db);
-    final e = dung([null, [macDinhServer()]], sauKeoVe: seeder.seedForAccount);
+    final e = dung([null, [macDinhServer()]], sauKeoVe: (id, _) => seeder.seedForAccount(id));
 
     await e.start(idaccount: acc);
     expect(await banSao(), isEmpty, reason: 'Lượt kéo hỏng: CSDL cục bộ chưa đáng tin, không tạo gì (G14).');
@@ -146,7 +156,7 @@ void main() {
 
   test('gọi ĐÚNG MỘT lần mỗi lượt kéo về thành công, không gọi khi lượt kéo hỏng', () async {
     var goi = 0;
-    final e = dung([[], [], null, []], sauKeoVe: (_) async { goi++; return 0; });
+    final e = dung([[], [], null, []], sauKeoVe: (_, __) async { goi++; return 0; });
 
     await e.start(idaccount: acc);
     expect(goi, 1);
@@ -159,7 +169,7 @@ void main() {
   });
 
   test('chạy SAU bước Pull trong cùng chu kỳ, nhận idaccount của chu kỳ', () async {
-    final e = dung([[]], sauKeoVe: (id) async { nhatKy.add('gieo $id'); return 0; });
+    final e = dung([[]], sauKeoVe: (id, _) async { nhatKy.add('gieo $id'); return 0; });
     await e.start(idaccount: acc);
     expect(nhatKy, ['pull', 'gieo $acc']);
   });
@@ -167,7 +177,7 @@ void main() {
   test('luỹ đẳng qua hai lượt kéo cùng bộ mặc định — một bản sao, chỉ lượt tạo được mới hẹn đẩy', () async {
     final seeder = DefaultCategorySeeder(db: db);
     final ketQua = <int>[];
-    final e = dung([[macDinhServer()]], sauKeoVe: (id) async {
+    final e = dung([[macDinhServer()]], sauKeoVe: (id, _) async {
       final n = await seeder.seedForAccount(id);
       ketQua.add(n);
       return n;
@@ -187,7 +197,7 @@ void main() {
 
   test('việc sau kéo về ném lỗi → chu kỳ vẫn kết thúc idle, lượt kéo sau thử lại', () async {
     var goi = 0;
-    final e = dung([[]], sauKeoVe: (_) async {
+    final e = dung([[]], sauKeoVe: (_, __) async {
       goi++;
       if (goi == 1) throw StateError('CSDL hỏng giữa chừng');
       return 0;
@@ -203,7 +213,7 @@ void main() {
   test('phiên đóng giữa lượt kéo → không gọi (stop() đặt lại tài khoản)', () async {
     var goi = 0;
     late _DemHen e;
-    e = dung([[]], sauKeoVe: (_) async { goi++; return 0; }, khiKeo: () => e.stop());
+    e = dung([[]], sauKeoVe: (_, __) async { goi++; return 0; }, khiKeo: () => e.stop());
 
     await e.start(idaccount: acc);
     expect(goi, 0, reason: 'Gieo cho phiên đã đóng là ghi danh mục vào tài khoản vừa đăng xuất.');
@@ -214,5 +224,69 @@ void main() {
     await e.start(idaccount: acc);
     expect(e.status, SyncStatus.idle);
     expect(await banSao(), isEmpty);
+  });
+
+  test('⭐ admin đổi tên khuôn → cổng nhận MỘT ThayDoiKhuon (tên cũ → mới, loại cũ); lượt đầu không có', () async {
+    final nhan = <List<ThayDoiKhuon>>[];
+    final e = dung([[khuon()], [khuon(ten: 'Ăn ngoài')]], sauKeoVe: (_, doi) async {
+      nhan.add(doi);
+      return 0;
+    });
+    await e.start(idaccount: acc);
+    await e.syncNow();
+
+    expect(nhan.first, isEmpty, reason: 'Máy chưa từng thấy khuôn — không có bản cũ để so (spec mục 7).');
+    final d = nhan.last.single;
+    expect([d.id, d.tenCu, d.tenMoi, d.loai], [idMacDinh, 'Ăn uống', 'Ăn ngoài', 'chi']);
+  });
+
+  test('khuôn về không đổi gì → danh sách rỗng', () async {
+    final nhan = <List<ThayDoiKhuon>>[];
+    final e = dung([[khuon()], [khuon()]], sauKeoVe: (_, doi) async {
+      nhan.add(doi);
+      return 0;
+    });
+    await e.start(idaccount: acc);
+    await e.syncNow();
+    expect(nhan.last, isEmpty);
+  });
+
+  test('thêm từ khoá ở khuôn → ThayDoiKhuon mang tập cũ / mới', () async {
+    final nhan = <List<ThayDoiKhuon>>[];
+    final e = dung([[khuon(keyword: 'an uong')], [khuon(keyword: 'an uong, quan an')]], sauKeoVe: (_, doi) async {
+      nhan.add(doi);
+      return 0;
+    });
+    await e.start(idaccount: acc);
+    await e.syncNow();
+    final d = nhan.last.single;
+    expect(d.tuKhoaCu, ['an uong']);
+    expect(d.tuKhoaMoi, ['an uong', 'quan an']);
+  });
+
+  test('khuôn trên máy CHƯA có từ khoá, bản về có → tuKhoaCu rỗng (đọc TRƯỚC khi gieo của chính lượt ấy)', () async {
+    final nhan = <List<ThayDoiKhuon>>[];
+    final e = dung([[khuon()], [khuon(keyword: 'quan an')]], sauKeoVe: (_, doi) async {
+      nhan.add(doi);
+      return 0;
+    });
+    await e.start(idaccount: acc);
+    await e.syncNow();
+    final d = nhan.last.single;
+    expect(d.tuKhoaCu, isEmpty,
+        reason: 'Đọc từ khoá cũ SAU gieoTuKhoaKhiTrong là thấy bộ mới — mất thay đổi, không lan truyền từ khoá.');
+    expect(d.tuKhoaMoi, ['quan an']);
+  });
+
+  test('khuôn về ở trạng thái ĐÃ XOÁ → không ghi thay đổi (luật ẩn lo phần ấy)', () async {
+    final nhan = <List<ThayDoiKhuon>>[];
+    final e = dung([[khuon()], [khuon(ten: 'Ăn ngoài', deleteAt: '2026-10-28T00:00:00.000Z')]],
+        sauKeoVe: (_, doi) async {
+      nhan.add(doi);
+      return 0;
+    });
+    await e.start(idaccount: acc);
+    await e.syncNow();
+    expect(nhan.last, isEmpty);
   });
 }

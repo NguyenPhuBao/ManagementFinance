@@ -220,8 +220,9 @@ class SyncEngine {
 
   /// Việc chạy sau **MỖI** lượt kéo về thành công, trong chính chu kỳ ấy (sau Pull, trước lần thử đẩy lại) — DI nối bộ
   /// gieo danh mục mặc định (quy tắc 8 `CLAUDE.md`; `core/sync` không biết tên mảng). Trả số hàng vừa ghi; > 0 thì hẹn
-  /// đẩy. `null` = không có việc gì.
-  final Future<int> Function(int idaccount)? _sauKeoVe;
+  /// đẩy. `null` = không có việc gì. Nhận kèm các thay đổi khuôn của lượt (`ApDuLieuKeoVe.thayDoiKhuonLuotCuoi`, spec
+  /// 2026-10-27 mục 5).
+  final ViecSauKeoVe? _sauKeoVe;
 
   /// Trạng thái máy chủ (spec G89 mục 3.3) — `null` = hành vi như trước G89 (test cũ không truyền). DI truyền bản thật.
   final TrangThaiMayChu? _trangThaiMayChu;
@@ -234,7 +235,7 @@ class SyncEngine {
     Connectivity? connectivity,
     SyncCheckpointStore? checkpointStore,
     DateTime Function()? now,
-    Future<int> Function(int idaccount)? sauKeoVe,
+    ViecSauKeoVe? sauKeoVe,
     TrangThaiMayChu? trangThaiMayChu,
   })  : _now = now ?? DateTime.now,
         _connectivity = connectivity ?? Connectivity(),
@@ -544,7 +545,7 @@ class SyncEngine {
     final viec = _sauKeoVe;
     if (viec == null || _currentIdaccount != accountId) return;
     try {
-      final daGhi = await viec(accountId);
+      final daGhi = await viec(accountId, _keoVe.thayDoiKhuonLuotCuoi);
       if (daGhi > 0) {
         debugPrint('[SyncEngine] Việc sau kéo về ghi $daGhi hàng — hẹn đẩy');
         scheduleSync(); // hàng vừa ghi nằm sau bước đẩy của chu kỳ này

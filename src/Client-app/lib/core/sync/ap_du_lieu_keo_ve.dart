@@ -14,6 +14,7 @@ import 'cong_so_du_vi.dart';
 import 'gieo_tu_khoa.dart';
 import 'moc_keo_ve.dart';
 import 'sync_checkpoint_store.dart';
+import 'sync_models.dart';
 import 'uuid_dong_bo.dart';
 
 /// `/sync/pull` bị máy chủ TRẢ LỜI bằng lỗi — dữ liệu máy khác không về cho tới khi máy chủ hết lỗi (2026-10-26, đơn 53
@@ -64,6 +65,11 @@ class ApDuLieuKeoVe {
   ValueListenable<bool> get biTuChoi => _biTuChoi;
   final _biTuChoi = ValueNotifier<bool>(false);
 
+  /// Thay đổi khuôn của lượt kéo GẦN NHẤT (spec 2026-10-27 mục 5) — `SyncEngine` chuyển cho cổng `sauKeoVe`. Đặt lại đầu
+  /// mỗi [pullFromBackend]; lượt hỏng để rỗng (cổng chỉ chạy khi kéo xong).
+  List<ThayDoiKhuon> get thayDoiKhuonLuotCuoi => _thayDoiKhuon;
+  List<ThayDoiKhuon> _thayDoiKhuon = const [];
+
   /// Lúc `SyncEngine.start`: nạp mốc đã lưu của [idaccount].
   Future<void> napMoc(int idaccount) async {
     // Khôi phục mốc pull đã lưu để không phải kéo lại toàn bộ dữ liệu mỗi lần
@@ -103,6 +109,7 @@ class ApDuLieuKeoVe {
   // ── Pull data from backend to local SQLite ────────────────────────────────
 
   Future<void> pullFromBackend(int accountId) async {
+    _thayDoiKhuon = const [];
     final allWallets = await _db.walletDao.getAll(accountId);
     final isLocalDbEmpty = allWallets.isEmpty;
 
@@ -206,6 +213,7 @@ class ApDuLieuKeoVe {
             // Từ khoá phân loại backend gửi kèm mỗi danh mục, gom lại để gieo
             // SAU khi hàng danh mục đã tồn tại ở local.
             final Map<String, List<String>> tuKhoaTheoDanhMuc = {};
+            final thayDoi = <ThayDoiKhuon>[];
             for (final c in categories) {
               final catUuid = (c['idcategory'] ?? c['uuid'] ?? c['id'])
                   .toString();
@@ -220,12 +228,13 @@ class ApDuLieuKeoVe {
               if (existingLocal?.isLocalOnly == true) {
                 continue;
               }
-              companions.add(companionDanhMucKeoVe(
+              final companion = companionDanhMucKeoVe(
                 c,
                 catUuid: catUuid,
                 catName: catName,
                 existingLocal: existingLocal,
-              ));
+              );
+              companions.add(companion);
 
               // Backend lưu từ khoá thành MỘT chuỗi nối bằng dấu phẩy trên hàng
               // category (`classify.repository.js` ghi bằng `join(',')`), client
@@ -241,8 +250,21 @@ class ApDuLieuKeoVe {
               if (tuKhoa.isNotEmpty && c['delete_at'] == null) {
                 tuKhoaTheoDanhMuc[catUuid] = tuKhoa;
               }
+              // Admin-web sửa khuôn → ghi lại cho mảng danh mục lan truyền sang bản sao (spec 2026-10-27 mục 5). Từ khoá CŨ
+              // đọc TRƯỚC `gieoTuKhoaKhiTrong` của chính lượt này.
+              final doi = thayDoiKhuonTu(
+                cu: existingLocal,
+                moi: companion,
+                laKhuonSong: doiSangBool(c['is_default']) && c['delete_at'] == null,
+                tuKhoaCu: existingLocal?.isDefault == true
+                    ? await _db.categoryDao.getKeywords(accountId, catUuid)
+                    : const <String>[],
+                tuKhoaMoi: tuKhoa,
+              );
+              if (doi != null) thayDoi.add(doi);
             }
             await _db.categoryDao.upsertAll(companions);
+            _thayDoiKhuon = List.unmodifiable(thayDoi);
             await gieoTuKhoaKhiTrong(_db, accountId, tuKhoaTheoDanhMuc);
             // Repair TRƯỚC: cập nhật categoryId từ 'cat_food' → UUID trong các
             // pending transactions. PHẢI chạy trước removeDuplicateLocalSeedCategories()
