@@ -37,5 +37,7 @@ void main() {
     expect(kCongTacTamNgung, 'Tạm ngừng');
     expect(cauDongKhoa(MaQuyen.quickActionShortcuts), 'Nút ghi nhanh — dành cho Premium');
     expect(cauDongKhoaTamNgung(MaQuyen.anomalySpendingInsights), 'Cảnh báo chi bất thường đang tạm ngừng');
+    expect(kDongKhoaChiBatThuong, 'Có khoản chi bất thường kỳ này — dành cho Premium',
+        reason: 'câu dòng khoá khối Nhận xét Phân tích (khoi_tong.dart) — dời vào cau_quyen.dart, giữ từng ký tự');
   });
 }

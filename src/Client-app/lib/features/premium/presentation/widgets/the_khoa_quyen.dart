@@ -108,17 +108,15 @@ class KhoaTheoQuyen extends StatelessWidget {
       context.coQuyen(ma) ? child : TheKhoaQuyen(ma: ma, onMo: onMo);
 }
 
-/// Một dòng khoá nằm TRONG một khối (vd. câu chi bất thường ở khối Nhận xét): ổ khoá vàng, [cau], nút viên vàng.
+/// Một dòng khoá nằm TRONG một khối (vd. câu chi bất thường ở khối Nhận xét): ổ khoá vàng, [cau], nút viên vàng. Tạm ngừng
+/// (B1) → luôn [cauDongKhoaTamNgung] (Stitch `02c0d881…` khối 2), không nút.
 class DongKhoaQuyen extends StatelessWidget {
-  const DongKhoaQuyen({super.key, required this.ma, this.cau, this.cauTamNgung, this.onMo});
+  const DongKhoaQuyen({super.key, required this.ma, this.cau, this.onMo});
 
   final MaQuyen ma;
 
   /// Câu khi cần Premium — vắng thì [cauDongKhoa].
   final String? cau;
-
-  /// Câu khi tạm ngừng — vắng thì [cauDongKhoaTamNgung].
-  final String? cauTamNgung;
   final VoidCallback? onMo;
 
   @override
@@ -135,7 +133,7 @@ class DongKhoaQuyen extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(tamNgung ? (cauTamNgung ?? cauDongKhoaTamNgung(ma)) : (cau ?? cauDongKhoa(ma)),
+          child: Text(tamNgung ? cauDongKhoaTamNgung(ma) : (cau ?? cauDongKhoa(ma)),
               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         ),
         if (!tamNgung) ...[

@@ -468,9 +468,6 @@ class HomePage extends StatelessWidget {
   /// Mục tiêu và Ngân sách, mà hai thẻ ấy không nên dựng lại theo mỗi giao
   /// dịch.
   Widget _buildNhanXet(BuildContext context, int? idaccount) {
-    // B1 (chốt 6, 2026-10-27 phiên 17): quyền `net_worth_overview` khoá → khối Nhận xét không nói lại tổng số dư mà thẻ
-    // phía trên đã khoá. Đọc TRONG lượt dựng trang — không trong builder của StreamBuilder bên dưới.
-    final khoaTongSoDu = !context.coQuyen(MaQuyen.netWorthOverview);
     final txStream = idaccount != null
         ? sl<TransactionRepository>().watchAll(idaccount)
         : Stream<List<TransactionEntity>>.value(const []);
@@ -480,29 +477,36 @@ class HomePage extends StatelessWidget {
     final budgetStream = idaccount != null
         ? sl<BudgetRepository>().watchBudgets(idaccount)
         : Stream<List<BudgetView>>.value(const []);
-    return StreamBuilder<List<TransactionEntity>>(
-      stream: txStream,
-      builder: (_, tx) => StreamBuilder<List<WalletEntity>>(
-        stream: walletStream,
-        builder: (_, wallets) => StreamBuilder<List<BudgetView>>(
-          stream: budgetStream,
-          builder: (_, budgets) {
-            final now = DateTime.now();
-            final thang = thuChiThangCua(tx.data ?? const [], now);
-            return KhoiNhanXet(
-              goi: GoiSoTrangChu.tu(
-                thu: thang.thu,
-                chi: thang.chi,
-                tongSoDu: _tongTaiSan(wallets.data ?? const []),
-                nganSach: budgets.data ?? const [],
-                now: now,
-                boTongSoDu: khoaTongSoDu,
-              ),
-              nenToi: true,
-            );
-          },
+    // B1 (chốt 6, 2026-10-27 phiên 17): quyền `net_worth_overview` khoá → khối Nhận xét không nói lại tổng số dư mà thẻ
+    // phía trên đã khoá. `coQuyen` là watch: đọc bằng context của Builder RIÊNG này, không bằng context của HomePage (mỗi
+    // lần GoiCubit phát sẽ dựng lại cả trang và tạo lại ba stream trên). Stream tạo NGOÀI Builder — Builder dựng lại thì
+    // StreamBuilder nhận lại đúng stream cũ, không đăng ký lại.
+    return Builder(builder: (ctx) {
+      final khoaTongSoDu = !ctx.coQuyen(MaQuyen.netWorthOverview);
+      return StreamBuilder<List<TransactionEntity>>(
+        stream: txStream,
+        builder: (_, tx) => StreamBuilder<List<WalletEntity>>(
+          stream: walletStream,
+          builder: (_, wallets) => StreamBuilder<List<BudgetView>>(
+            stream: budgetStream,
+            builder: (_, budgets) {
+              final now = DateTime.now();
+              final thang = thuChiThangCua(tx.data ?? const [], now);
+              return KhoiNhanXet(
+                goi: GoiSoTrangChu.tu(
+                  thu: thang.thu,
+                  chi: thang.chi,
+                  tongSoDu: _tongTaiSan(wallets.data ?? const []),
+                  nganSach: budgets.data ?? const [],
+                  now: now,
+                  boTongSoDu: khoaTongSoDu,
+                ),
+                nenToi: true,
+              );
+            },
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 }

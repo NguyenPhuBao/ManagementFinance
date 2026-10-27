@@ -86,20 +86,27 @@ TrangThaiQuyen trangThaiQuyen(MaQuyen ma, TrangThaiGoi goi, DateTime now) {
 /// Vế `bool` của [trangThaiQuyen] — giữ chữ ký cho mọi chỗ chỉ cần "được dùng không".
 bool duocDung(MaQuyen ma, TrangThaiGoi goi, DateTime now) => trangThaiQuyen(ma, goi, now) == TrangThaiQuyen.mo;
 
-/// Danh sách *"Đặc quyền Premium"* ở màn Nâng cấp — đúng những thứ Basic đang THIẾU (người dùng chốt 2026-10-08). Bảng đã
-/// lưu là của Basic → mỗi trần có số + mỗi quyền Basic bị tắt; bảng là của Premium → mặc định ([TranGoi.macDinh] + quyền
-/// `macDinhKhiThieu == false`). B1 (spec 2026-10-27 mục 2, chốt 10): server đã gửi cột Premium → trần Premium `null` kể
-/// *"Không giới hạn ví"*, số kể *"Tới 10 ví"* chỉ khi lớn hơn trần Basic; quyền Premium cũng tắt thì KHÔNG kể.
-List<String> dacQuyenPremium(TrangThaiGoi goi) {
-  final bangCuaBasic = !goi.laPremium(goi.nhanLuc);
-  final tran = bangCuaBasic ? goi.tran : TranGoi.macDinh;
-  final tranPremium = bangCuaBasic ? goi.tranPremium : null;
+/// Danh sách *"Đặc quyền Premium"* ở màn Nâng cấp — đúng những thứ Basic đang THIẾU (người dùng chốt 2026-10-08), theo bảng
+/// của gói đang hiệu lực ([bangDungDuoc]); trần đọc qua [tranHieuLuc], không đọc `goi.tran` thô (G109):
+/// - bảng là của **Basic** → mỗi trần có số + mỗi quyền Basic bị tắt; server đã gửi cột Premium (B1, chốt 10) → trần Premium
+///   `null` kể *"Không giới hạn ví"*, số kể *"Tới 10 ví"* chỉ khi lớn hơn trần Basic; quyền Premium cũng tắt thì KHÔNG kể;
+/// - người xem **Premium còn hạn** → bảng đã lưu CHÍNH LÀ cột Premium, so với mặc định Basic ([TranGoi.macDinh] +
+///   `macDinhKhiThieu`) — màn mở đầu *"Gói Premium hiện cho tạo tối đa 10 ví."* thì danh sách nói *"Tới 10 ví"*;
+/// - bảng không dùng được (Premium hết hạn lúc offline, Premium không hạn) → mặc định, như trước B1.
+List<String> dacQuyenPremium(TrangThaiGoi goi, DateTime now) {
+  final premium = goi.laPremium(now);
+  final bang = bangDungDuoc(goi, now);
+  // Bên "Basic": Basic với bảng dùng được → trần đã lưu; còn lại → mặc định (`tranHieuLuc` của Basic hết hạn offline cũng
+  // là macDinh; Premium không hạn thì tranHieuLuc là không giới hạn — không phải mức Basic).
+  final tranBasic = premium ? TranGoi.macDinh : tranHieuLuc(goi, now);
+  final TranGoi? tranPremium = !bang ? null : (premium ? tranHieuLuc(goi, now) : goi.tranPremium);
+  final Map<String, bool> cotPremium = !bang ? const {} : (premium ? goi.quyenTinhNang : goi.quyenPremium);
   bool basicCo(MaQuyen m) =>
-      bangCuaBasic ? (goi.quyenTinhNang[m.maServer] ?? m.macDinhKhiThieu) : m.macDinhKhiThieu;
-  bool premiumCo(MaQuyen m) => !bangCuaBasic || goi.quyenPremium[m.maServer] != false;
+      bang && !premium ? (goi.quyenTinhNang[m.maServer] ?? m.macDinhKhiThieu) : m.macDinhKhiThieu;
+  bool premiumCo(MaQuyen m) => cotPremium[m.maServer] != false;
   return [
     for (final l in LoaiTran.values)
-      if (_dongTranPremium(l, tran.cua(l), tranPremium) case final d?) d,
+      if (_dongTranPremium(l, tranBasic.cua(l), tranPremium) case final d?) d,
     for (final m in MaQuyen.values)
       if (!basicCo(m) && premiumCo(m)) m.ten,
   ];

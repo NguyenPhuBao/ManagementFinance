@@ -11,7 +11,7 @@ import '../../domain/hang_goi.dart';
 import '../../data/dem_dang_hoat_dong.dart';
 import '../../data/repositories/goi_repository.dart';
 
-/// Cửa chặn DUY NHẤT của trần Basic (spec Premium 2026-10-06 mục 7.1): gắn vào
+/// Cửa chặn DUY NHẤT của trần gói hiệu lực — Basic, và từ B1 cả Premium (spec Premium 2026-10-06 mục 7.1): gắn vào
 /// `redirect` của `/wallets/add` · `/budget/rules` · `/goals/add`, nên mọi lối
 /// vào form (nút +, thẻ *Chưa đặt ngân sách*, lệnh tạo C3, deeplink) đều qua
 /// đây. Trần hiệu lực không giới hạn → qua không đếm (rẻ); có số (Basic, hoặc

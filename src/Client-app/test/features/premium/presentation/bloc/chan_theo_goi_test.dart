@@ -1,5 +1,5 @@
-/// `chanTheoGoi` — phần async của cửa chặn trần Basic (spec Premium 7.1):
-/// Premium → qua và KHÔNG đếm; Basic → đếm → `conTaoDuoc` →
+/// `chanTheoGoi` — phần async của cửa chặn trần gói hiệu lực (spec Premium 7.1; B1: cả trần cột Premium):
+/// trần hiệu lực không giới hạn → qua, KHÔNG đếm; có số (Basic, hoặc Premium có trần) → đếm → `conTaoDuoc` →
 /// `chuyenHuongTheoGoi`; đếm ném → qua (một lỗi đọc CSDL không được biến thành
 /// một màn Nâng cấp sai chỗ); chưa có phiên → qua.
 library;

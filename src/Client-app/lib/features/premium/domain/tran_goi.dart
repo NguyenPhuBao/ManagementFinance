@@ -21,7 +21,8 @@ class Vuot extends KetQuaTran {
 
 /// Trần đang áp dụng (spec B1 mục 2): bảng đã lưu nếu là của gói đang hiệu lực ([bangDungDuoc]); không thì Premium →
 /// không giới hạn, Basic → [TranGoi.macDinh] (G109: Premium hết hạn lúc offline giữ trần của Premium — toàn `null`). MỌI
-/// chỗ đọc trần đi qua đây: [conTaoDuoc], cửa route, câu màn Nâng cấp, thẻ Gói — đọc `goi.tran` thô là G109.
+/// chỗ đọc trần đi qua đây: [conTaoDuoc], cửa route, câu màn Nâng cấp, đặc quyền Premium, thẻ Gói — đọc `goi.tran` thô
+/// là G109.
 TranGoi tranHieuLuc(TrangThaiGoi goi, DateTime now) {
   if (bangDungDuoc(goi, now)) return goi.tran;
   return goi.laPremium(now) ? TranGoi.khongGioiHan : TranGoi.macDinh;

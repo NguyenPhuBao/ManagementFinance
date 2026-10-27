@@ -234,6 +234,19 @@ void main() {
       expect(find.text('Gói Premium hiện cho tạo tối đa 10 ví.'), findsOneWidget);
     });
 
+    testWidgets('⭐ I1: Premium, trần cột Premium 10 ví, ?tran=vi → đặc quyền "Tới 10 ví", KHÔNG "Không giới hạn ví"',
+        (tester) async {
+      await dung(tester,
+          premium: true,
+          tran: LoaiTran.vi,
+          trangThai: TrangThaiGoi(
+              loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5, 8), nhanLuc: now, tran: const TranGoi(vi: 10)));
+      expect(find.text('Gói Premium hiện cho tạo tối đa 10 ví.'), findsOneWidget);
+      expect(find.text('Không giới hạn ví'), findsNothing,
+          reason: 'câu mở đầu nói tối đa 10 ví — danh sách ✓ ngay dưới không được nói "Không giới hạn ví"');
+      expect(find.text('Tới 10 ví'), findsOneWidget);
+    });
+
     testWidgets('⭐ G109 trên màn: Premium hết hạn lúc offline, ?tran=vi → câu Basic 3/3 (không phải "null/null")',
         (tester) async {
       await dung(tester,

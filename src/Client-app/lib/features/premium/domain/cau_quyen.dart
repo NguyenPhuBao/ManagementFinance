@@ -34,3 +34,7 @@ const String kCongTacTamNgung = 'Tạm ngừng';
 /// Câu mặc định của dòng khoá trong khối (`DongKhoaQuyen`).
 String cauDongKhoa(MaQuyen ma) => '${ma.ten} — dành cho Premium';
 String cauDongKhoaTamNgung(MaQuyen ma) => '${ma.ten} đang tạm ngừng';
+
+/// Câu riêng của dòng khoá chi bất thường ở khối Nhận xét Phân tích (`khoi_tong.dart`) — chỉ hiện khi THẬT có bất thường.
+/// Tạm ngừng → câu mặc định [cauDongKhoaTamNgung].
+const String kDongKhoaChiBatThuong = 'Có khoản chi bất thường kỳ này — dành cho Premium';

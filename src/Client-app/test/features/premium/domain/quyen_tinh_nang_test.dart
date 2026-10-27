@@ -6,7 +6,8 @@ import 'package:flowmoney/features/premium/data/models/tran_goi.dart';
 import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
 import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 
-/// Spec phân quyền client 2026-10-08 mục 4.1 — `duocDung` là định nghĩa duy nhất.
+/// Spec phân quyền client 2026-10-08 mục 4.1; B1 (spec 2026-10-27 mục 2) — `trangThaiQuyen` là định nghĩa duy nhất,
+/// `duocDung` là vế `bool` của nó.
 void main() {
   final now = DateTime.utc(2026, 10, 8, 12);
   TrangThaiGoi goi(LoaiGoi loai,
@@ -168,7 +169,7 @@ void main() {
           nhanLuc: now,
           tran: const TranGoi(vi: 3, nganSach: 3, mucTieu: 3, hoaDon: 3, danhMucRieng: 5),
           quyenTinhNang: const {'ocr_receipt': true, 'export_reports': false, 'cashflow_forecast': false});
-      final d = dacQuyenPremium(g);
+      final d = dacQuyenPremium(g, now);
       expect(d, containsAll(['Không giới hạn ví', 'Không giới hạn hóa đơn định kỳ', 'Không giới hạn danh mục riêng']));
       expect(d, containsAll([MaQuyen.exportReports.ten, MaQuyen.cashflowForecast.ten, MaQuyen.aiAssistant.ten]));
       expect(d, isNot(contains(MaQuyen.ocrReceipt.ten)),
@@ -184,7 +185,7 @@ void main() {
           nhanLuc: now,
           tran: const TranGoi(vi: 3, nganSach: 3, mucTieu: 3, hoaDon: 3, danhMucRieng: 5),
           tranPremium: const TranGoi(vi: 10, mucTieu: 3, hoaDon: 2));
-      final d = dacQuyenPremium(g);
+      final d = dacQuyenPremium(g, now);
       expect(d, contains('Tới 10 ví'));
       expect(d, contains('Không giới hạn ngân sách'));
       expect(d, contains('Không giới hạn danh mục riêng'));
@@ -199,26 +200,62 @@ void main() {
           nhanLuc: now,
           quyenTinhNang: const {'export_reports': false, 'cashflow_forecast': false},
           quyenPremium: const {'export_reports': false});
-      final d = dacQuyenPremium(g);
+      final d = dacQuyenPremium(g, now);
       expect(d, isNot(contains(MaQuyen.exportReports.ten)), reason: 'kể là hứa thứ mua rồi vẫn khoá');
       expect(d, contains(MaQuyen.cashflowForecast.ten));
     });
 
     test('trần null (không giới hạn với Basic) không được kể', () {
       final g = TrangThaiGoi(loai: LoaiGoi.basic, nhanLuc: now, tran: const TranGoi(vi: 3));
-      final d = dacQuyenPremium(g);
+      final d = dacQuyenPremium(g, now);
       expect(d, contains('Không giới hạn ví'));
       expect(d.where((x) => x.startsWith('Không giới hạn')), hasLength(1));
     });
 
-    test('bảng lưu là của Premium → dùng mặc định: 3 trần + 3 quyền AI', () {
+    test('⭐ B1 (I1): Premium còn hạn, trần 10 ví → "Tới 10 ví", KHÔNG "Không giới hạn ví"', () {
+      final g = TrangThaiGoi(
+          loai: LoaiGoi.premium, hetHan: now.add(const Duration(days: 30)), nhanLuc: now, tran: const TranGoi(vi: 10));
+      final d = dacQuyenPremium(g, now);
+      expect(d, contains('Tới 10 ví'),
+          reason: 'bảng đã lưu của người Premium còn hạn CHÍNH LÀ cột Premium — màn mở đầu "Gói Premium hiện cho tạo tối '
+              'đa 10 ví." thì danh sách ✓ ngay dưới không được nói ngược');
+      expect(d, isNot(contains('Không giới hạn ví')));
+      expect(d, contains('Không giới hạn ngân sách'), reason: 'ô trần Premium null → không giới hạn, lớn hơn Basic mặc định 3');
+    });
+
+    test('⭐ B1 (I1): Premium còn hạn, cột Premium tắt ai_assistant → KHÔNG kể "Trợ lý AI"', () {
+      final g = TrangThaiGoi(
+          loai: LoaiGoi.premium,
+          hetHan: now.add(const Duration(days: 30)),
+          nhanLuc: now,
+          quyenTinhNang: const {'ai_assistant': false});
+      final d = dacQuyenPremium(g, now);
+      expect(d, isNot(contains(MaQuyen.aiAssistant.ten)),
+          reason: 'người Premium đang thấy Trợ lý AI "Đang tạm ngừng" — kể nó là đặc quyền là hứa thứ mua rồi vẫn khoá');
+      expect(d, contains(MaQuyen.aiQuickInput.ten), reason: 'cột Premium vắng khoá → mở → vẫn là đặc quyền so với Basic mặc định');
+    });
+
+    test('bảng không dùng được (Premium hết hạn lúc offline) → mặc định, cột Premium đã lưu KHÔNG đọc', () {
+      final g = TrangThaiGoi(
+          loai: LoaiGoi.premium,
+          hetHan: now.subtract(const Duration(hours: 1)),
+          nhanLuc: now.subtract(const Duration(days: 2)),
+          tran: const TranGoi(vi: 10),
+          quyenTinhNang: const {'ai_assistant': false});
+      final d = dacQuyenPremium(g, now);
+      expect(d, contains('Không giới hạn ví'), reason: 'bảng lưu là của gói đã hết — không biết cột Premium hiện tại');
+      expect(d, isNot(contains('Tới 10 ví')));
+      expect(d, contains(MaQuyen.aiAssistant.ten));
+    });
+
+    test('Premium còn hạn, bảng Premium mở hết và trần vô hạn → 3 trần + 3 quyền AI (so với mặc định Basic)', () {
       final g = TrangThaiGoi(
           loai: LoaiGoi.premium,
           hetHan: now.add(const Duration(days: 10)),
           nhanLuc: now,
           tran: const TranGoi(),
           quyenTinhNang: {for (final m in MaQuyen.values) m.maServer: true});
-      expect(dacQuyenPremium(g), [
+      expect(dacQuyenPremium(g, now), [
         'Không giới hạn ví',
         'Không giới hạn ngân sách',
         'Không giới hạn mục tiêu tiết kiệm',

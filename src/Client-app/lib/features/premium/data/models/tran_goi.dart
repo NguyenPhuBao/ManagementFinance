@@ -1,7 +1,8 @@
 import '../../domain/hang_goi.dart';
 
-/// Trần của gói Basic theo loại (spec Premium 2026-10-06 mục 5.2) — model của `limits`
-/// (`/payment/subscription-info`) và của kho. Luật *"được tạo thêm không"* ở `domain/tran_goi.dart` (`conTaoDuoc`).
+/// Trần theo loại (spec Premium 2026-10-06 mục 5.2) — model của `limits` (gói hiệu lực) và của cột Premium (B1, spec
+/// 2026-10-27 mục 6) ở `/payment/subscription-info`, và của kho. `null` = không giới hạn. Luật *"được tạo thêm không"* ở
+/// `domain/tran_goi.dart` (`conTaoDuoc`, đọc trần qua `tranHieuLuc`).
 class TranGoi {
   const TranGoi({
     this.vi,
@@ -17,8 +18,8 @@ class TranGoi {
   final int? hoaDon;
   final int? danhMucRieng;
 
-  /// 3/3/3 — server đè bằng `limits` của `/payment/subscription-info`. Hoá đơn và danh mục riêng: thiếu khoá = không
-  /// giới hạn (spec phân quyền 2026-10-08 mục 2 #1 — server cũ không trả hai khoá ấy thì giữ chốt 06/10 *"Mở"*).
+  /// Mặc định của Basic (ô server không gửi): ví / ngân sách / mục tiêu 3; hoá đơn và danh mục riêng không giới hạn
+  /// (spec phân quyền 2026-10-08 mục 2 #1 — server cũ không trả hai khoá ấy thì giữ chốt 06/10 *"Mở"*).
   static const macDinh = TranGoi(vi: 3, nganSach: 3, mucTieu: 3);
 
   /// Mọi ô `null` — không giới hạn. Mặc định của ô trần mà cột PREMIUM không gửi (B1, spec 2026-10-27 mục 6), và trần

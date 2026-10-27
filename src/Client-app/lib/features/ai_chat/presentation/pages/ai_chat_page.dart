@@ -59,6 +59,7 @@ import '../../../ai_edge/domain/the_cua_cau.dart';
 import '../../../premium/data/repositories/goi_repository.dart';
 import '../../../premium/domain/cau_quyen.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../data/cong_tac_online.dart';
 import '../../data/models/luot_hoi_online.dart';
@@ -324,14 +325,8 @@ class _AiChatPageState extends State<AiChatPage> {
   }
 
   /// B1: `ai_assistant` TẠM NGỪNG (admin tắt ở cột của gói) — băng khoá không mời Nâng cấp. Tiêm `laPremium` (test) → không.
-  bool get _tamNgungAi {
-    if (widget.laPremium != null) return false;
-    try {
-      return context.read<GoiCubit>().trangThaiCua(MaQuyen.aiAssistant) == TrangThaiQuyen.tamNgung;
-    } on ProviderNotFoundException {
-      return false;
-    }
-  }
+  bool get _tamNgungAi =>
+      widget.laPremium == null && context.trangThaiQuyenDoc(MaQuyen.aiAssistant) == TrangThaiQuyen.tamNgung;
 
   // ── Trợ lý online (spec 2026-10-11) ──
   late final String _conversationId = const Uuid().v4();

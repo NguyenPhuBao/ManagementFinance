@@ -149,13 +149,6 @@ void main() {
       expect(find.byKey(const Key('nut-nang-cap')), findsNothing);
     });
 
-    testWidgets('DongKhoaQuyen: cauTamNgung truyền vào thay câu mặc định khi tạm ngừng', (tester) async {
-      final cubit = goiPremium(const {'anomaly_spending_insights': false}, now: now);
-      await dung(tester, const DongKhoaQuyen(ma: MaQuyen.anomalySpendingInsights, cauTamNgung: 'x'), cubit: cubit);
-      expect(find.text('x'), findsOneWidget);
-      expect(find.text('Cảnh báo chi bất thường đang tạm ngừng'), findsNothing);
-    });
-
     testWidgets('màu băng công tắc: tạm ngừng xám (khoaNgung*), canPremium giữ vàng (khoaCan*)', (tester) async {
       Color nenCua(String ma) => ((tester.widget<Container>(find.byKey(Key('dong-khoa-cong-tac-$ma'))).decoration!
               as BoxDecoration)

@@ -26,6 +26,8 @@ import '../widgets/chi_tiet_muc_tieu/nut_duoi_muc_tieu.dart';
 import '../widgets/chi_tiet_muc_tieu/phieu_nap_tien.dart';
 import '../widgets/chi_tiet_muc_tieu/phieu_rut_tien.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
 
 class GoalDetailPage extends StatefulWidget {
   final String id;
@@ -626,6 +628,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
   /// đâu cả**.
   Future<void> _xacNhanVongMoi() async {
     final goal = _goal!;
+    // Nút Rút khoá theo quyền `goal_deposit_withdraw` (B1) → không khuyên bấm nó. Handler: đọc không đăng ký phụ thuộc.
+    final coRut = context.coQuyenDoc(MaQuyen.goalDepositWithdraw);
     final dongY = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -634,8 +638,8 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
           'Tiến độ của "${goal.name}" sẽ về 0 và hạn định dời sang kỳ tiếp '
           'theo.\n\n'
           '${CurrencyFormatter.format(goal.currentAmount)} đã tích được vẫn nằm nguyên '
-          'trong ví — không đồng nào bị chuyển đi. Muốn tiêu số ấy thì dùng '
-          '"Rút khỏi mục tiêu".',
+          'trong ví — không đồng nào bị chuyển đi.'
+          '${coRut ? ' Muốn tiêu số ấy thì dùng "Rút khỏi mục tiêu".' : ''}',
         ),
         actions: [
           TextButton(
