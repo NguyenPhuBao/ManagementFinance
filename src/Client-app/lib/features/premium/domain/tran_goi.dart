@@ -38,6 +38,17 @@ KetQuaTran conTaoDuoc({
       : const Duoc();
 }
 
+/// Bảng quyền / trần đã lưu có phải của gói ĐANG hiệu lực không (spec B1 2026-10-27 mục 2): lúc nhận
+/// ([TrangThaiGoi.nhanLuc]) và bây giờ cùng là Premium còn hạn, hoặc cùng không. Premium hết hạn lúc offline → bảng lưu là
+/// của Premium → `false`.
+///
+/// ⚠️ Vế đầu (thêm khi lập kế hoạch, ngoài thân spec): Premium **không có hạn** (`hetHan == null` — `premium_expires_at`
+/// trống, hoặc chỉ biết `type` của phiên) → `false`. Server coi tài khoản ấy là Basic (`payment.service.js`, `isExpired` khi
+/// thiếu hạn) và trả bảng Basic, còn client coi là Premium còn hạn: đọc bảng ấy là mọi thứ Basic tắt hiện *"Đang tạm ngừng"*
+/// với người Premium. Giữ hành vi trước B1 (mở hết, không giới hạn) tới B4.
+bool bangDungDuoc(TrangThaiGoi goi, DateTime now) =>
+    !(goi.loai == LoaiGoi.premium && goi.hetHan == null) && goi.laPremium(goi.nhanLuc) == goi.laPremium(now);
+
 /// Mã trong query `?tran=` của `/premium`.
 String maTran(LoaiTran loai) => switch (loai) {
       LoaiTran.vi => 'vi',

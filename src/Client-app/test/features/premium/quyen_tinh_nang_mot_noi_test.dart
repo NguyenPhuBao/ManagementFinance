@@ -7,7 +7,7 @@ import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 /// Test quét `lib/` thứ 21 (spec phân quyền client 2026-10-08 mục 6). Từ B1 (2026-10-27) quét cả `quyenPremium` /
 /// `tranPremium` (cột Premium).
 ///
-/// Bảng quyền server chỉ được đọc qua `duocDung` — đọc thẳng `quyenTinhNang` là bỏ qua phép xét hạn (Premium hết hạn
+/// Bảng quyền server chỉ được đọc qua `trangThaiQuyen` / `duocDung` / `dacQuyenPremium` — đọc thẳng `quyenTinhNang` là bỏ qua phép xét hạn (Premium hết hạn
 /// offline vẫn mở mọi tính năng — lỗi 1 của mã backend viết sẵn). Và mã quyền server chỉ nằm ở `MaQuyen`: chuỗi rải
 /// rác là chỗ thứ hai phải đổi khi admin… không, khi BACKEND đổi tên khoá.
 void main() {
