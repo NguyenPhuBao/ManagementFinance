@@ -1,5 +1,11 @@
 # Mục 53 — Ba hồi quy mức CAO do lượt sửa *"hoàn tất 9 mục"* (2026-10-26) gây ra
 
+> 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **đạt theo mã — giữ ở `DA-XONG/`.**
+> - **A — đạt:** `mapEntityFields` chỉ áp `is_deleted === true` (`sync.repository.js:31`, `:63`, … sáu thực thể); client chỉ gửi khoá
+>   `is_deleted` — không `delete_at` / `deleted_at` (`thu_gom_day.dart`) — nên `false` không còn đè cờ xoá.
+> - **B — đạt:** JIT tính `newExpiresAt` (`payment.service.js:682`) + `account.upgraded`. **C — đạt:** như đơn 52.
+> - Chưa đo trên hai máy.
+
 > **Client đặt 2026-10-26**, sau khi soát lượt báo xong của backend (`49eafef6` · `bc4e4f7f` · `2b926d92`, client gộp ở `3636110d`). Người nhận:
 > backend (NPBao). Mức: **CAO** cả ba vế — mỗi vế là một lỗi **mới**, sinh ra từ chính lượt sửa, không có trước đó.
 >

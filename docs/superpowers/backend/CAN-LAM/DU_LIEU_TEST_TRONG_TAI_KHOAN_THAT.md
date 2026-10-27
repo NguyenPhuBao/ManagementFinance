@@ -1,5 +1,13 @@
 # Script test backend ghi ví mang id KHÔNG phải UUID vào tài khoản dev thật `quangdat` (18) — ví kẹt hàng đợi đẩy của client; xin dọn dữ liệu test và sửa script (mục 48)
 
+> 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.**
+> - **Đạt:** script không còn chọn admin (`idrole: 1`); ví test UUID ngẫu nhiên; dọn trong `finally`.
+> - **Việc 2 — vẫn sai hướng:** `Test/test_data_security_encryption_and_masking.js:236-238` chọn **người dùng thật** đầu tiên có
+>   `idrole: 2` (không thấy → cứng `18`) rồi ghi ví + giao dịch test vào đó. Đơn xin **tài khoản test riêng** (tạo / chọn theo tên cố
+>   định, không phải người dùng thật). `finally` không thay được: lượt hỏng giữa chừng hay hai lượt song song vẫn đụng dữ liệu thật, và
+>   đồng bộ của người ấy có thể kéo hàng test về máy trước khi bị xoá mềm.
+> - **Việc 3** và phần *ghi xác nhận ai / CSDL nào đã dọn*: chưa có.
+
 > 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`; việc 2 sửa thành lỗi khác.**
 > - **Việc 1 bước 1 — đạt:** ví `test-wallet-1789014227658` `Delete_at` 03:58:21Z; 9 / 9 giao dịch đã xoá; toàn CSDL 0 ví / giao dịch sống mang
 >   id không phải UUID. Xác nhận *ai làm, trên CSDL nào* chỉ là câu chung ở README (không nêu CSDL, không ghi vào đơn). Bước 3: ví ma

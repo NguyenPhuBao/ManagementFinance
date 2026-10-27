@@ -1,5 +1,15 @@
 # Soát sau gộp `main` @ `d72ccd45`: hai tệp migration trùng số và script áp migration đồng bộ bị viết đè; webhook xử lý lại đơn đã đối soát; tra mã nhận diện bắt nhầm tiền tố PayOS; hợp đồng thanh toán mới chưa vào tài liệu sự kiện (mục 44)
 
+> 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.**
+> - **C — đạt:** `findOrderByRecognitionCode` (`payment.repository.js:289`) mặc định lọc `status = 'PENDING'`, lấy đơn mới nhất.
+> - **B1 (phần dư) — đạt:** webhook cho đơn không còn `PENDING` / `EXPIRED` vẫn ghi `recordTransaction` (lỗi trùng nuốt) trước khi
+>   trả 2xx (`payment.service.js:159`).
+> - **B2 — chưa xong:** có tệp `database/38_add_unique_payos_transaction_id.sql` nhưng **chưa áp** — Supabase không có chỉ mục nào trên
+>   `payos_transaction_id` (đo `pg_indexes` 2026-10-27), không mã nào áp nó lúc khởi động. Cùng lượt: `database/39` (cấm khoá IP vĩnh
+>   viễn) cũng chưa áp (bảng `aiops_ip_quarantine` 0 CHECK).
+> - **F — chưa:** `850fe23b` không đụng tài liệu sự kiện.
+> - ⚠️ Ô *"Trả lời đơn"* cuối tệp mang nhãn *"(Mục 49)"* — nội dung là của đơn này cộng mục 49 vế C.
+
 > 🔎 **Client soát lượt báo xong 2026-10-26** (`49eafef6` · `bc4e4f7f` · `2b926d92`, gộp `3636110d`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.**
 > - **B1 — đạt phần nguy hiểm:** `payment.service.js:137-140` chỉ xử lý webhook khi đơn `PENDING` / `EXPIRED`. Còn dư: webhook bị chặn
 >   không ghi hàng `payment_transaction` để đối soát; `amount_received` không cộng dồn qua nhiều lần chuyển; không có test.
