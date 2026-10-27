@@ -214,7 +214,12 @@ class BudgetCubit extends Cubit<BudgetState> {
       final idDangGan = editing?.categoryId;
       final tra = danhMuc;
       if (idDangGan != null && tra != null && !categories.any((c) => c.id == idDangGan)) {
-        dsChon = kemDanhMucDangGan(categories, await tra.getById(idDangGan), classify: 'chi');
+        // Phần phụ như `soNgayCuaSo`: đọc danh mục đang gắn hỏng thì giữ danh sách cũ, không vỡ cả form.
+        try {
+          dsChon = kemDanhMucDangGan(categories, await tra.getById(idDangGan), classify: 'chi');
+        } catch (_) {
+          dsChon = categories;
+        }
       }
       emit(BudgetEditorReady(
         categories: dsChon,

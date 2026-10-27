@@ -172,6 +172,13 @@ class _DanhMucTra implements CategoryManagementRepository {
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
+class _DanhMucNem implements CategoryManagementRepository {
+  @override
+  Future<CategoryEntity?> getById(String id) async => throw StateError('đọc danh mục hỏng');
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
+
 /// Đồng hồ đóng băng của bộ test này. Việc phân tab hỏi "hết hạn chưa", nên để
 /// giờ thật thì kết quả đổi theo ngày chạy test.
 final _bayGio = DateTime(2026, 6, 15, 12);
@@ -519,6 +526,27 @@ void main() {
 
       expect((c.state as BudgetEditorReady).categories.map((x) => x.id), ['c2', 'sx'],
           reason: 'Form rơi về "Hãy chọn danh mục" là bắt người dùng đổi danh mục của ngân sách cũ.');
+    });
+
+    test('⭐ đọc danh mục đang gắn ném lỗi → form vẫn mở với danh sách cũ, không thành màn lỗi', () async {
+      final ngay = DateTime(2026, 6, 1);
+      repo.categories = [CategoryEntity(id: 'c2', idaccount: 7, name: 'Ăn uống', classify: 'chi', updatedAt: ngay)];
+      repo.budgets = [
+        BudgetView(
+          budget: BudgetEntity(
+            id: 'b1', idaccount: 7, amount: 500000, spent: 0, categoryId: 'sx',
+            startDate: ngay, recurrence: true, updatedAt: ngay,
+          ),
+        ),
+      ];
+      final c = BudgetCubit(repository: repo, clock: () => _bayGio, danhMuc: _DanhMucNem());
+      addTearDown(c.close);
+
+      await c.loadEditor(7, budgetId: 'b1');
+
+      expect(c.state, isA<BudgetEditorReady>(),
+          reason: 'Giữ danh mục đang gắn là phần phụ — nó hỏng không được đổi cả form sửa ngân sách thành BudgetError.');
+      expect((c.state as BudgetEditorReady).categories.map((x) => x.id), ['c2']);
     });
 
     test('mở ngân sách có thật thì nạp đúng bản ghi', () async {
