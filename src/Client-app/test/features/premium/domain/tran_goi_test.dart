@@ -71,6 +71,14 @@ void main() {
           isA<Vuot>());
     });
 
+    test('⭐ server trả trần 0 → Basic chưa có cái nào cũng không tạo được (2026-10-27)', () {
+      final goi = TrangThaiGoi(
+          loai: LoaiGoi.basic, nhanLuc: now, tran: TranGoi.tuJson(const {'bills': 0}));
+      final kq = conTaoDuoc(loai: LoaiTran.hoaDon, dangCo: 0, goi: goi, now: now);
+      expect(kq, isA<Vuot>(), reason: 'Trần 0 = không tạo thêm; bản cũ đọc 0 thành không giới hạn cho hoá đơn.');
+      expect((kq as Vuot).tran, 0);
+    });
+
     test('trần null (không giới hạn) → luôn được tạo', () {
       final goi = TrangThaiGoi(
           loai: LoaiGoi.basic,

@@ -16,6 +16,7 @@ import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
 import 'package:flowmoney/features/premium/data/repositories/don_thanh_toan_repository_impl.dart';
 import 'package:flowmoney/features/premium/data/models/don_thanh_toan.dart';
+import 'package:flowmoney/features/premium/data/models/tran_goi.dart';
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
@@ -205,6 +206,14 @@ void main() {
     await dung(tester, premium: false, quyen: MaQuyen.cashflowForecast);
     expect(find.text('Dự báo 30 ngày tới là tính năng Premium.'), findsOneWidget);
     expect(find.byKey(const Key('nang-cap-cau-quyen')), findsOneWidget);
+  });
+
+  test('⭐ cauMoDau với trần 0: "không cho tạo thêm", không phải "đã dùng 0/0" (2026-10-27)', () {
+    expect(cauMoDau(LoaiTran.vi, const TranGoi(vi: 0)), 'Gói Basic hiện không cho tạo thêm ví.');
+    expect(cauMoDau(LoaiTran.danhMucRieng, const TranGoi(danhMucRieng: 0)),
+        'Gói Basic hiện không cho tạo thêm danh mục riêng.');
+    expect(cauMoDau(LoaiTran.vi, const TranGoi(vi: 3)), 'Bạn đã dùng 3/3 ví của gói Basic.',
+        reason: 'trần dương giữ câu cũ');
   });
 
   testWidgets('?tran=vi: câu mở đầu nêu 3/3 ví', (tester) async {

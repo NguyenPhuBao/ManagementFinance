@@ -241,6 +241,11 @@ nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
 2. Tính năng bị tắt **hiện khoá + Nâng cấp**, không ẩn.
 3. Đã bật tự trả / tự trích rồi về Basic → **dừng chạy, giữ công tắc** (không sửa dữ liệu; lên lại Premium chạy tiếp).
 4. Quyền chỉ chặn việc **tạo / bật mới** — dữ liệu đang có giữ nguyên.
+5. **Trần 0 = không tạo thêm** (người dùng chốt 2026-10-27). Admin-web bỏ tick *∞* là ô về **0** ngay (xoá trắng ô số mới
+   là `null` = vô hạn) và tự kẹp số âm về 0. `TranGoi.tuJson` đọc số ≤ 0 thành 0 (chuỗi / kiểu lạ vẫn về mặc định của ô);
+   `conTaoDuoc` chặn ngay lần tạo đầu, thứ đang có giữ nguyên; màn Nâng cấp mở đầu *"Gói Basic hiện không cho tạo thêm
+   ví."* (`cauMoDau`). Bản trước đọc 0 là rác: ví / ngân sách / mục tiêu về 3, hoá đơn / danh mục riêng thành **không giới
+   hạn**. Backend không thi hành trần nào (đo mã 2026-10-27) — chỉ client chặn.
 
 ### 8.2 Bảng quyền ↔ chỗ trong app
 

@@ -37,15 +37,18 @@ class TranGoi {
         'custom_categories': danhMucRieng,
       };
 
-  /// `limits` của server. Ô thiếu / rác → mặc định cho ĐÚNG ô ấy.
-  /// Nếu server gửi rõ ràng `null` → coi là không giới hạn (`null`).
+  /// `limits` của server. Ô thiếu / không phải số → mặc định cho ĐÚNG ô ấy. `null` → không giới hạn (Admin-web tick
+  /// *∞* hoặc xoá trắng ô số). Số ≤ 0 → **0 = không tạo thêm** (người dùng chốt 2026-10-27): Admin-web bỏ tick *∞* là
+  /// ô về 0 ngay và tự kẹp số âm về 0 — bản cũ đọc 0 là rác, nên ví / ngân sách / mục tiêu về 3 còn hoá đơn / danh
+  /// mục riêng thành KHÔNG giới hạn, ngược hẳn ý admin.
   static TranGoi tuJson(Object? json) {
     if (json is! Map) return macDinh;
     int? doc(String khoa, int? macDinhO) {
       if (!json.containsKey(khoa)) return macDinhO;
       final v = json[khoa];
       if (v == null) return null; // Server trả null = không giới hạn
-      return v is num && v > 0 ? v.toInt() : macDinhO;
+      if (v is! num) return macDinhO;
+      return v > 0 ? v.toInt() : 0;
     }
 
     return TranGoi(

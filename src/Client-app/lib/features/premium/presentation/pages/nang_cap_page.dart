@@ -24,9 +24,11 @@ import '../bloc/goi_cubit.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 
 /// Câu mở đầu khi đến từ cửa chặn (`/premium?tran=`): *"Bạn đã dùng 3/3 ví của
-/// gói Basic."* — số lấy từ trần đang có hiệu lực, không ghi cứng.
+/// gói Basic."* — số lấy từ trần đang có hiệu lực, không ghi cứng. Trần 0 (admin
+/// không cho tạo thêm — 2026-10-27) → *"Gói Basic hiện không cho tạo thêm ví."*
 String cauMoDau(LoaiTran tran, TranGoi tranGoi) {
   final n = tranGoi.cua(tran);
+  if (n == 0) return 'Gói Basic hiện không cho tạo thêm ${tenTran(tran)}.';
   return 'Bạn đã dùng $n/$n ${tenTran(tran)} của gói Basic.';
 }
 

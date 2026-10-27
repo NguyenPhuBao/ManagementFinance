@@ -69,7 +69,7 @@ Client-app) là việc của client, làm sau khi bước 3 có hợp đồng AP
 | Thứ | Ở đâu |
 |---|---|
 | Trần 3/3/3 và luật *"được tạo thêm không"* (`conTaoDuoc`) | `lib/features/premium/domain/tran_goi.dart` |
-| Đọc `limits` từ server nếu có (`{wallets, budgets, goals}`, ô thiếu / không dương → 3) | `TranGoi.tuJson`, `trang_thai_goi.dart:103` |
+| Đọc `limits` từ server nếu có (`{wallets, budgets, goals}`, ô thiếu / không dương → 3; ⚠️ từ 2026-10-27 số ≤ 0 → **0 = không tạo thêm** — `PREMIUM_FEATURE.md` 8.1 câu 5) | `TranGoi.tuJson`, `trang_thai_goi.dart:103` |
 | Phép đếm *"đang hoạt động"* | `lib/features/premium/data/dem_dang_hoat_dong.dart` |
 | Cửa chặn duy nhất cho ba loại tài nguyên: `redirect` ở ba route tạo | `app_router.dart:256` (`/wallets/add`), `:281` (`/budget/rules`), `:404` (`/goals/add`) |
 | Khoá Trợ lý AI (xét gói **trước** mọi lý do khác) | `ai_chat_page.dart:102-106` (`lyDoKhoa`) |
