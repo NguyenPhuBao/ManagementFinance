@@ -7,6 +7,9 @@ import 'package:flutter/material.dart';
 import '../../../domain/notification_prefs.dart';
 import '../../../../bill/domain/bill_nhac_truoc.dart';
 import '../../../../../core/utils/currency_formatter.dart';
+import '../../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import 'khung_cai_dat.dart';
 
 class HangSoNgay extends StatelessWidget {
@@ -23,31 +26,45 @@ class HangSoNgay extends StatelessWidget {
     // chip của form Thêm hoá đơn (`kMucNhacTruoc`); giá trị cũ 0 · 2 hiện bằng
     // `hint`, form chọn sẵn chip 3 cho chúng (`mucNhacChonSan`).
     const luaChon = kMucNhacTruoc;
+    final coNhacTruoc = context.coQuyen(MaQuyen.billReminderNotifications);
 
-    return KhungCaiDat(
-      icon: Icons.event_outlined,
-      nhan: 'Nhắc trước',
-      // Hai nghĩa, nói cả hai (người dùng chốt 2026-10-17): mặc định cho hoá đơn
-      // MỚI (form Thêm chọn sẵn chip), và ngưỡng nhãn "Sắp đến hạn" của hoá đơn
-      // đã tắt nhắc — những hoá đơn ấy không được nhắc (tắt là tắt thật, 2026-10-16).
-      phu: 'Chọn sẵn khi tạo hoá đơn mới; cũng là ngưỡng "Sắp đến hạn" của '
-          'hoá đơn đã tắt nhắc.',
-      trailing: DropdownButton<int>(
-        key: const ValueKey('nhac-truoc-hoa-don'),
-        value: luaChon.contains(prefs.soNgayNhacHoaDon)
-            ? prefs.soNgayNhacHoaDon
-            : null,
-        hint: Text('${prefs.soNgayNhacHoaDon} ngày'),
-        underline: const SizedBox.shrink(),
-        items: [
-          for (final n in luaChon)
-            DropdownMenuItem(value: n, child: Text('$n ngày')),
-        ],
-        onChanged: (v) {
-          if (v == null) return;
-          onGhi(prefs.copyWith(soNgayNhacHoaDon: v));
-        },
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        KhungCaiDat(
+          icon: Icons.event_outlined,
+          nhan: 'Nhắc trước',
+          // Hai nghĩa, nói cả hai (người dùng chốt 2026-10-17): mặc định cho hoá đơn
+          // MỚI (form Thêm chọn sẵn chip), và ngưỡng nhãn "Sắp đến hạn" của hoá đơn
+          // đã tắt nhắc — những hoá đơn ấy không được nhắc (tắt là tắt thật, 2026-10-16).
+          phu: 'Chọn sẵn khi tạo hoá đơn mới; cũng là ngưỡng "Sắp đến hạn" của '
+              'hoá đơn đã tắt nhắc.',
+          trailing: DropdownButton<int>(
+            key: const ValueKey('nhac-truoc-hoa-don'),
+            value: luaChon.contains(prefs.soNgayNhacHoaDon)
+                ? prefs.soNgayNhacHoaDon
+                : null,
+            hint: Text('${prefs.soNgayNhacHoaDon} ngày'),
+            underline: const SizedBox.shrink(),
+            items: [
+              for (final n in luaChon)
+                DropdownMenuItem(value: n, child: Text('$n ngày')),
+            ],
+            onChanged: coNhacTruoc
+                ? (v) {
+                    if (v == null) return;
+                    onGhi(prefs.copyWith(soNgayNhacHoaDon: v));
+                  }
+                : null,
+          ),
+        ),
+        // Quyền `bill_reminder_notifications` (B1): ô khoá — `hint` đúng số nên giá trị vẫn hiện.
+        if (!coNhacTruoc)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: DongKhoaCongTac(ma: MaQuyen.billReminderNotifications, dangBat: true),
+          ),
+      ],
     );
   }
 }

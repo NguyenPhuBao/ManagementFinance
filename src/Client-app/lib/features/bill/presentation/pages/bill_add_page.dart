@@ -502,6 +502,10 @@ class _BillAddPageState extends State<BillAddPage> {
                 for (final n in kMucNhacTruoc) _buildReminderDayChip('$n ngày', '$n'),
               ],
             ),
+            // Quyền `bill_reminder_notifications` (B1): chip khoá, giữ lựa chọn. Công tắc nhắc đẩy phía trên KHÔNG khoá —
+            // tắt nhắc là quyền của người dùng.
+            if (!context.coQuyen(MaQuyen.billReminderNotifications))
+              const DongKhoaCongTac(ma: MaQuyen.billReminderNotifications, dangBat: true),
           ],
           const SizedBox(height: 16),
           const Divider(height: 1),
@@ -794,10 +798,12 @@ class _BillAddPageState extends State<BillAddPage> {
   Widget _buildReminderDayChip(String label, String value) {
     final isSelected = _selectedReminderDay == value;
     return GestureDetector(
-      onTap: () => setState(() {
-        _selectedReminderDay = value;
-        _daChonNhacTay = true;
-      }),
+      onTap: context.coQuyen(MaQuyen.billReminderNotifications)
+          ? () => setState(() {
+                _selectedReminderDay = value;
+                _daChonNhacTay = true;
+              })
+          : null,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(

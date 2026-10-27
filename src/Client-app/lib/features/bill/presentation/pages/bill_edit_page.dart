@@ -367,14 +367,21 @@ class _BillEditPageState extends State<BillEditPage> {
                         labelText: 'Nhắc trước hạn',
                         border: OutlineInputBorder(),
                       ),
+                      // Ô khoá vẽ `disabledHint ?? hint`, KHÔNG vẽ giá trị đang chọn — thiếu dòng này là giá trị biến mất.
+                      disabledHint: Text(_nhacTruoc == null ? 'Không nhắc' : '$_nhacTruoc ngày'),
                       items: [
                         const DropdownMenuItem(
                             value: null, child: Text('Không nhắc')),
                         for (final n in kMucNhacTruoc)
                           DropdownMenuItem(value: '$n', child: Text('$n ngày')),
                       ],
-                      onChanged: (v) => setState(() => _nhacTruoc = v),
+                      // Quyền `bill_reminder_notifications` (B1): khoá, Lưu giữ nguyên giá trị.
+                      onChanged: context.coQuyen(MaQuyen.billReminderNotifications)
+                          ? (v) => setState(() => _nhacTruoc = v)
+                          : null,
                     ),
+                    if (!context.coQuyen(MaQuyen.billReminderNotifications))
+                      DongKhoaCongTac(ma: MaQuyen.billReminderNotifications, dangBat: _nhacTruoc != null),
                     const SizedBox(height: 8),
                     Row(
                       children: [

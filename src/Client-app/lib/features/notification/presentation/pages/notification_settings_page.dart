@@ -16,6 +16,9 @@ import '../../../transaction/domain/doc_tin_bien_dong.dart';
 import 'dong_y_bien_dong_page.dart';
 import 'dong_y_nhac_sau_ngan_hang_page.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../widgets/cai_dat_thong_bao/dong_goi_y.dart';
 import '../widgets/cai_dat_thong_bao/hang_nguong.dart';
 import '../widgets/cai_dat_thong_bao/khung_cai_dat.dart';
@@ -741,9 +744,17 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                             phu: 'Nhắc vào cuối ngày nếu hôm đó bạn chưa ghi '
                                 'giao dịch nào.',
                             giaTri: _prefs.nhacGhiChepBat,
-                            onChanged: (v) =>
-                                _ghi(_prefs.copyWith(nhacGhiChepBat: v)),
+                            // Quyền `daily_recording_reminder` (B1): khoá, GIỮ giá trị; lịch do ReminderScheduler tự huỷ.
+                            onChanged: context.coQuyen(MaQuyen.dailyRecordingReminder)
+                                ? (v) => _ghi(_prefs.copyWith(nhacGhiChepBat: v))
+                                : null,
                           ),
+                          if (!context.coQuyen(MaQuyen.dailyRecordingReminder))
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: DongKhoaCongTac(
+                                  ma: MaQuyen.dailyRecordingReminder, dangBat: _prefs.nhacGhiChepBat),
+                            ),
                           // Giờ chỉ hiện khi công tắc bật, cùng lý lẽ với hai
                           // mốc giờ im lặng bên trên.
                           if (_prefs.nhacGhiChepBat) ...[
