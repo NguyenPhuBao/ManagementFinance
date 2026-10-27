@@ -209,7 +209,11 @@ lật thành *"… thì KHÔNG tạo"*, `reason:` viện chỉ mục thật. M�
 - Bản client cũ trên máy khác của cùng tài khoản: không ẩn, không lan truyền, nhưng nhận các bản sao đã đổi qua đồng bộ.
 - App chỉ biết thay đổi ở lượt kéo về kế tiếp (không có socket tới app người dùng).
 - Lan truyền khớp `(tenMoi, loai)` nên danh mục người dùng TỰ TẠO trùng đúng
-  tên mới + loại cũ cũng nhận biểu tượng / từ khoá của khuôn — đúng spec, không đổi mã (`lan_truyen_khuon.dart:44`, `:71`).
+  tên mới + loại cũ cũng nhận biểu tượng / từ khoá của khuôn — đúng spec, không đổi mã (`lan_truyen_khuon.dart:51` hàm `khop`,
+  `:78` bộ lọc `song`; đo 2026-10-27 sau đợt sửa review toàn nhánh).
+- Khuôn bị xoá TRƯỚC `kMocAnTheoKhuon` mà vẫn được đổi tên lúc về (mục 5 — khuôn đã xoá vẫn lan truyền tên / biểu tượng) → bản
+  sao đổi theo tên mới nhưng **không** ẩn (mốc chỉ quyết việc ẩn); vẫn không bị đếm trần vì khớp khuôn đã xoá theo tên mới.
+  Supabase đo 2026-10-27: 0 khuôn xoá mềm.
 - `_deletedAtFrom` (`core/sync/anh_xa_keo_ve.dart:430`) rơi về `DateTime.now()` khi `delete_at` đọc hỏng → khuôn xoá cũ thành
   *"xoá sau mốc"* → bản sao ẩn; và `Delete_at` là timestamp không múi giờ (lệch ≤ 7 giờ quanh mốc nếu CSDL ghi giờ VN) — không
   đổi mã vì server luôn gửi ISO, Supabase đo 2026-10-27 có 0 khuôn xoá mềm.
@@ -248,7 +252,8 @@ lật thành *"… thì KHÔNG tạo"*, `reason:` viện chỉ mục thật. M�
 | Form sửa | hoá đơn = widget test (`bill_edit_page`); ngân sách + giao dịch = test cubit (`BudgetCubit.danhMuc`, `ThemGiaoDichCubit`) | mở form gắn bản ẩn: không ném, hiện tên. ⚠️ `budget_form.dart` tự chặn `value` không nằm trong `items`, nên widget test ngân sách không canh được — canh ở cubit |
 | Trùng tên | test repository | tạo / đổi tên trùng bản ẩn → câu mới; trùng hàng thường → câu cũ |
 | Trần Premium | `features/premium/data/dem_dang_hoat_dong_test.dart` | bản ẩn / bản sao khuôn cũ không đếm |
-| Lan truyền | `features/category/application/lan_truyen_khuon_test.dart` | đổi tên cả bản đã xoá — bản đã xoá **không** `pending`, giữ `updatedAt` · bỏ qua khi tên mới đã có · biểu tượng chỉ khi còn đúng cũ · từ khoá chỉ thêm · từ khoá khuôn cập nhật · `pending` · luỹ đẳng |
+| Lan truyền | `features/category/application/lan_truyen_khuon_test.dart` | đổi tên cả bản đã xoá — bản đã xoá **không** `pending`, giữ `updatedAt` · bỏ qua khi tên mới đã có · biểu tượng chỉ khi còn đúng cũ · từ khoá chỉ thêm · từ khoá khuôn cập nhật · `pending` · luỹ đẳng · đổi tên theo khuôn đã xoá → bản sao mang tên mới và **ẩn** · một thay đổi hỏng (TRIGGER `RAISE(ABORT)`) không làm mất các thay đổi sau |
+| Ngân sách — đọc danh mục gắn ném | `features/budget/presentation/bloc/budget_cubit_test.dart` | `getById` ném → form không `BudgetError`, rơi về danh sách cũ |
 | Kéo về | `core/sync/…` (ca mới cạnh `sync_gieo_sau_keo_ve_test.dart`) | ghi `ThayDoiKhuon` chỉ khi khuôn đã có trên máy và khác · lượt đầu không ghi · cổng nhận danh sách · thứ tự lan truyền → tạo bản sao · **khuôn về đã xoá vẫn ghi đổi tên, không ghi từ khoá** · máy có ví mà chưa có mốc → không so từ khoá · đổi biểu tượng |
 | Bộ tạo bản sao | `features/category/application/default_category_seeder_test.dart` | so theo tên (ca lật) · ca G16 xanh · hai khuôn cùng tên khác loại → một bản sao |
 | Quét 40 | mục 4 | `getCategoryRows` / `watchCategoryRows` chỉ ở DAO và cửa `danh_sach_chon_danh_muc.dart` (repository impl cũng bị cấm) |

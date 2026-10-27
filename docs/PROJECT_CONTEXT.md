@@ -637,9 +637,11 @@ Thi công bằng agent con (Sonnet thực thi, Opus soát), Task 1–8 mã + Tas
 - **Đợt sửa sau review toàn nhánh (2026-10-27, phiên 17):** review kết luận *"gộp được sau khi sửa"*; sửa gồm `saveGroup` không gỡ nhóm
   của bản sao đang ẩn · khuôn về đã xoá vẫn lan truyền tên / biểu tượng (người dùng chốt) · luật ẩn bước 3 so chỉ **tên**
   (người dùng chốt) · một `ThayDoiKhuon` hỏng không mất cả lượt · bộ tạo bản sao nạp tên vừa tạo · `BudgetCubit` không vỡ form
-  khi đọc danh mục gắn ném · chú thích chỉ mục `uq_category_owner_name` cho đúng · mẻ test bổ sung · mở **G110**. Số đo:
-  `flutter test` **8257 pass / 10 skip** (+11 so với 8246), analyze **20**. Giữ số: G108, **G110** dùng, quét kế tiếp 41, đơn kế tiếp 56.
-- **Còn:** review toàn nhánh · **Task 10 — nghiệm thu máy thật (spec mục 9): CHƯA LÀM.** ⚠️ Đừng tạo / xoá khuôn thử trên Supabase
+  khi đọc danh mục gắn ném · chú thích chỉ mục `uq_category_owner_name` cho đúng · mẻ test bổ sung · mở **G110**. Commit
+  `1585c30d` · `857687c8` · `0cba3d70` · `c8921faf` · `6d1bdcd8` · `6fa1884d`; soát lại phạm vi hẹp: đạt (0 Critical / Important).
+  Số đo: `flutter test` **8257 pass / 10 skip** (+11 so với 8246), analyze **20**. Giữ số: G108, **G109** (B1), **G110** dùng,
+  quét kế tiếp 41, đơn kế tiếp 56.
+- **Còn:** **Task 10 — nghiệm thu máy thật (spec mục 9): CHƯA LÀM.** ⚠️ Đừng tạo / xoá khuôn thử trên Supabase
   dùng chung để nghiệm thu (mọi tài khoản thật phản ứng) — dùng `PersonFinance` cục bộ.
 
 ### 🧭 Phiên 16 (2026-10-27 tối) — thi công danh mục theo Admin-web Task 1–6 (agent con), Premium: trần 0 + spec B1 + đơn 55
