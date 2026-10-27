@@ -200,6 +200,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
   }
 
+  /// B1: `ai_quick_input` TẠM NGỪNG — ô Nhập nhanh không mời Nâng cấp. Tiêm `laPremium` (test) → không.
+  bool get _tamNgungNhapNhanh {
+    if (widget.laPremium != null) return false;
+    try {
+      return context.read<GoiCubit>().trangThaiCua(MaQuyen.aiQuickInput) == TrangThaiQuyen.tamNgung;
+    } on ProviderNotFoundException {
+      return false;
+    }
+  }
+
   /// Lõi form (số tiền, 16 phím, chiều, ví, danh mục, chiều nợ, ngày, phần tách) nằm ở [ThemGiaoDichCubit] — spec
   /// `2026-10-11-tach-trang-them-giao-dich-cubit-design.md`. ⚠️ Đoạn `huong` là LỐI VÀO, không phải sự thật: `type` ghi
   /// xuống SQLite suy từ danh mục (`loaiGhi`, luật 2026-09-05).
@@ -292,6 +302,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         controller: _nhapNhanhController,
         focusNode: _nhapNhanhFocus,
         laPremium: _laPremium,
+        tamNgung: _tamNgungNhapNhanh,
         dangDocAi: _s.dangDocAi,
         ketQua: _s.ketQuaDien,
         onDien: _dienTuCau,

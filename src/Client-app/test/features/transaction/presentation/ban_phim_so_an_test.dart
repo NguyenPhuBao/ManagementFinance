@@ -17,10 +17,13 @@ import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../helpers/goi_gia.dart';
 import '../../category/presentation/category_test_fakes.dart';
 
 void main() {
@@ -47,7 +50,7 @@ void main() {
   late FakeTransactionRepository repo;
   setUp(() => repo = FakeTransactionRepository());
 
-  Widget app({EditTransactionArgs? initial}) {
+  Widget app({EditTransactionArgs? initial, GoiCubit? goi}) {
     final bloc = TransactionBloc(transactionRepository: repo);
     final router = GoRouter(
       initialLocation: '/start/add',
@@ -71,7 +74,8 @@ void main() {
         ),
       ],
     );
-    return MaterialApp.router(routerConfig: router);
+    final ung = MaterialApp.router(routerConfig: router);
+    return goi == null ? ung : BlocProvider<GoiCubit>.value(value: goi, child: ung);
   }
 
   final banPhim = find.byKey(const Key('ban-phim-so'));
@@ -211,6 +215,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(banPhim, findsOneWidget);
     expect(luuTieuDe, findsNothing);
+  });
+
+  testWidgets('⭐ B1: Basic tắt in_app_calculator → trang truyền choPhepTinh: phím + không đổi số tiền', (tester) async {
+    await tester.pumpWidget(app(goi: goiBasic({'in_app_calculator': false})));
+    await tester.pumpAndSettle();
+    for (final k in ['5', '+', '3']) {
+      await tester.tap(find.descendant(of: banPhim, matching: find.text(k)));
+      await tester.pump();
+    }
+    expect(find.text('53 đ'), findsOneWidget,
+        reason: 'phím + bị khoá ở trang — nối dây choPhepTinh: context.coQuyen(inAppCalculator); xoá tham số là ra 8 đ');
   });
 
   testWidgets('360 × 640: sửa giao dịch không tràn, cả khi ẩn lẫn khi hiện bàn phím', (tester) async {

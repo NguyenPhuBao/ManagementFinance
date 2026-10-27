@@ -7,6 +7,14 @@ import 'package:flowmoney/features/ai_chat/presentation/pages/ai_chat_page.dart'
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('⭐ B1: tạm ngừng xét TRƯỚC Basic — câu tạm ngừng, không câu "Nâng cấp"', () {
+    expect(lyDoKhoa(laPremium: false, tamNgung: true, coTep: true, congTacBat: true), LyDoKhoaHoiDap.tamNgung);
+    expect(lyDoKhoa(laPremium: false, tamNgung: true, coTep: false, congTacBat: false, onlineBat: true),
+        LyDoKhoaHoiDap.tamNgung);
+    expect(cauKhoa(LyDoKhoaHoiDap.tamNgung), 'Trợ lý AI hiện đang tạm ngừng.');
+    expect(cauKhoa(LyDoKhoaHoiDap.tamNgung), isNot(contains('Nâng cấp')));
+  });
+
   test('Basic xét TRƯỚC — không mời người không dùng được tải 2,41 GB', () {
     expect(lyDoKhoa(laPremium: false, coTep: false, congTacBat: false),
         LyDoKhoaHoiDap.goiBasic);

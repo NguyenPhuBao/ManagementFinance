@@ -5,6 +5,8 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../../../shared/theme/app_colors.dart';
+import '../../../../premium/domain/cau_quyen.dart';
+import '../../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../../premium/presentation/widgets/nut_nang_cap.dart';
 import '../../bloc/nghe_giong_noi_state.dart' show TrangThaiNghe;
 import '../../bloc/them_giao_dich_state.dart' show KetQuaDien;
@@ -27,6 +29,7 @@ class ONhapNhanh extends StatelessWidget {
     required this.ketQua,
     required this.onDien,
     required this.onHuy,
+    this.tamNgung = false,
     this.coMicro = false,
     this.trangThaiNghe = TrangThaiNghe.cho,
     this.giayGhi = 0,
@@ -38,6 +41,9 @@ class ONhapNhanh extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool laPremium;
+
+  /// B1: ai_quick_input tạm ngừng — không nút Nâng cấp.
+  final bool tamNgung;
   final bool dangDocAi;
   final KetQuaDien? ketQua;
   final VoidCallback onDien;
@@ -213,17 +219,19 @@ class ONhapNhanh extends StatelessWidget {
                     onPressed: dangDocAi || trangThaiNghe != TrangThaiNghe.cho ? null : onDien,
                     child: const Text('Điền'),
                   )
-                else
+                else if (!tamNgung)
                   const NutNangCap(),
               ],
             ),
           ),
           if (!laPremium)
-            const Padding(
-              padding: EdgeInsets.only(top: 6),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
               child: Text(
-                'Nâng cấp để đọc câu bằng AI',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                tamNgung
+                    ? cauMoDauQuyen(MaQuyen.aiQuickInput, tamNgung: true)
+                    : 'Nâng cấp để đọc câu bằng AI',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
             ),
           if (dangDocAi)

@@ -16,10 +16,14 @@ class DongKhoa extends StatelessWidget {
     required this.cau,
     required this.goiBasic,
     required this.onCaiDatAi,
+    this.tamNgung = false,
   });
 
   final String cau;
   final bool goiBasic;
+
+  /// B1: admin tắt — không nút nào (mua không mở, Cài đặt AI không giúp).
+  final bool tamNgung;
   final VoidCallback onCaiDatAi;
 
   @override
@@ -28,9 +32,9 @@ class DongKhoa extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              goiBasic
-                  ? Icons.workspace_premium_outlined
-                  : Icons.info_outline,
+              tamNgung
+                  ? Icons.lock_outline
+                  : (goiBasic ? Icons.workspace_premium_outlined : Icons.info_outline),
               size: 16,
               color: AppColors.onSurfaceVariant,
             ),
@@ -44,7 +48,7 @@ class DongKhoa extends StatelessWidget {
             ),
             if (goiBasic)
               const NutNangCap()
-            else
+            else if (!tamNgung)
               TextButton(
                 onPressed: onCaiDatAi,
                 child: const Text('Cài đặt AI'),
