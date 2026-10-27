@@ -685,10 +685,11 @@ class _BudgetCard extends StatelessWidget {
             // cũng trả null ở đó, nhưng khỏi tính cho đỡ tốn.
             if (!expired) ...[
               const SizedBox(height: 8),
-              Builder(builder: (_) {
+              Builder(builder: (ctx) {
                 final line =
                     budgetPaceLine(budgetPaceOf(b, now ?? DateTime.now()));
                 if (line == null) return const SizedBox.shrink();
+                if (!ctx.coQuyen(MaQuyen.budgetOverspendAlert)) return const DongKhoaQuyen(ma: MaQuyen.budgetOverspendAlert);
                 return Align(
                   alignment: Alignment.centerLeft,
                   child: Text(

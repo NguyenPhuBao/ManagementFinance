@@ -256,7 +256,7 @@ class _NoiDung extends StatelessWidget {
         KhoiDongTienTuDo(tk: thongKe),
         // Chốt lớp thứ nhất: chuỗi rỗng thì không dựng. Lớp thứ hai nằm
         // trong chính widget; bản sai phải phá cả hai mới làm test đỏ.
-        if (thongKe.taiSan.isNotEmpty) KhoiTongTaiSan(tk: thongKe),
+        if (thongKe.taiSan.isNotEmpty) KhoaTheoQuyen(ma: MaQuyen.netWorthOverview, child: KhoiTongTaiSan(tk: thongKe)),
       ]),
       // Lịch chi tiêu đứng ngay sau Số liệu nhanh: nó kể **chi tiết** đúng
       // con số mà khối trên vừa nêu — "ngày chi nhiều nhất" — và hai khối

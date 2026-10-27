@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/budget/data/models/budget_entity.dart';
@@ -15,9 +16,11 @@ import 'package:flowmoney/features/budget/domain/budget_pace.dart';
 import 'package:flowmoney/features/budget/domain/nhip_chi.dart';
 import 'package:flowmoney/features/budget/presentation/bloc/budget_detail_cubit.dart';
 import 'package:flowmoney/features/budget/presentation/pages/budget_detail_view.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
 
+import '../../../../helpers/goi_gia.dart';
 import '../../domain/nhip_chi_mau.dart';
 
 void main() {
@@ -100,6 +103,19 @@ void main() {
     ));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('⭐ B1: quyền budget_overspend_alert tắt → thẻ nhịp chi thành dòng khoá', (tester) async {
+    tester.view.physicalSize = const Size(411, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(BlocProvider<GoiCubit>.value(
+      value: goiBasic(const {'budget_overspend_alert': false}),
+      child: MaterialApp(home: BudgetDetailView(state: loaded(), onEdit: null, onTapTransaction: (_) {})),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Nên chi'), findsNothing);
+    expect(find.byKey(const Key('dong-khoa-budget_overspend_alert')), findsOneWidget);
+  });
 
   testWidgets('không tràn ở 411dp với ghi chú dài và số tiền lớn',
       (tester) async {

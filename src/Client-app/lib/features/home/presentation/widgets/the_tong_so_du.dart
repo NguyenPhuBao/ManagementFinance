@@ -6,7 +6,10 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
+/// Quyền `net_worth_overview` (B1) → thẻ khoá thay thẻ.
 class TheTongSoDu extends StatelessWidget {
   const TheTongSoDu({super.key, required this.tongSoDu});
 
@@ -14,7 +17,7 @@ class TheTongSoDu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return KhoaTheoQuyen(ma: MaQuyen.netWorthOverview, child: Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.7),
@@ -88,6 +91,6 @@ class TheTongSoDu extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }

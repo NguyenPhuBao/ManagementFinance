@@ -2305,6 +2305,17 @@ void main() {
               'Trang chủ — mốc để người dùng tin cả biểu đồ.');
     });
 
+    testWidgets('⭐ B1: không có quyền net_worth_overview → thẻ khoá thay khối, không con số', (tester) async {
+      tester.view.physicalSize = const Size(411, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await moTrang(tester, quyen: const {'net_worth_overview': false});
+      await phat(tester, _tk(taiSan: chuoiTaiSan()));
+      expect(find.byKey(const Key('the-khoa-net_worth_overview')), findsOneWidget);
+      expect(find.text('Tổng tài sản 6 tháng gần đây'), findsNothing);
+      expect(find.text('13.590.000 đ'), findsNothing);
+    });
+
     testWidgets('tiêu đề đổi theo đơn vị đang xem', (tester) async {
       await moTrang(tester);
       await phat(tester, _tk(ky: Ky.quy(2026, 3), taiSan: chuoiTaiSan()));

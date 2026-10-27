@@ -13,7 +13,9 @@ import 'package:flutter/material.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/nhan_co_deu.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/widgets/nut_nang_cap.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 class NutNhanh {
   const NutNhanh({required this.bieuTuong, required this.nhan, required this.dam, required this.onTap, this.khoa});
@@ -36,12 +38,19 @@ class HangNutNhanh extends StatelessWidget {
   final List<NutNhanh> nut;
 
   @override
-  Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final n in nut) Expanded(child: _Nut(n, nhom: [for (final m in nut) m.nhan]))
-        ],
-      );
+  Widget build(BuildContext context) {
+    // Quyền `quick_action_shortcuts` (B1, spec 2026-10-27 mục 3): MỘT dòng khoá mỏng thay cả hàng — nút [+] thanh dưới
+    // vẫn mở form Thêm giao dịch.
+    if (!context.coQuyen(MaQuyen.quickActionShortcuts)) {
+      return const DongKhoaQuyen(ma: MaQuyen.quickActionShortcuts);
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final n in nut) Expanded(child: _Nut(n, nhom: [for (final m in nut) m.nhan]))
+      ],
+    );
+  }
 }
 
 class _Nut extends StatelessWidget {

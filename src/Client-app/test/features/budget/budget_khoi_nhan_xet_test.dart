@@ -239,6 +239,17 @@ void main() {
         reason: 'Cùng lối `onOpenAnalytics`: thà thiếu còn hơn một nút chết.');
   });
 
+  testWidgets('B1 — quyền budget_overspend_alert tắt → dòng nhịp chi thành dòng khoá trên thẻ ngân sách', (tester) async {
+    await _dung(tester,
+        active: [_view(id: 'b1', amount: 3000000, spent: 1000000)], quyen: const {'budget_overspend_alert': false});
+    expect(find.byKey(const Key('dong-khoa-budget_overspend_alert')), findsOneWidget);
+  });
+
+  testWidgets('B1 — Basic thiếu khoá budget_overspend_alert → không dòng khoá', (tester) async {
+    await _dung(tester, active: [_view(id: 'b1', amount: 3000000, spent: 1000000)], quyen: const {});
+    expect(find.byKey(const Key('dong-khoa-budget_overspend_alert')), findsNothing);
+  });
+
   testWidgets('chưa có ngân sách nào → KHÔNG dựng khối', (tester) async {
     await _dung(tester);
 
