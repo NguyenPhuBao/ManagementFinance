@@ -9,10 +9,13 @@ import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../helpers/goi_gia.dart';
 import '../../category/presentation/category_test_fakes.dart';
 
 void main() {
@@ -60,6 +63,19 @@ void main() {
     expect(find.text('Nâng cấp để đọc câu bằng AI'), findsOneWidget);
     expect(find.byKey(const Key('ghi-chu-giao-dich')), findsOneWidget,
         reason: 'phần còn lại của form không đổi');
+  });
+
+  testWidgets('⭐ B1: ai_quick_input tạm ngừng (không tiêm laPremium) → câu tạm ngừng, không Nâng cấp, ô tắt', (tester) async {
+    await tester.pumpWidget(BlocProvider<GoiCubit>.value(
+      value: goiPremium({'ai_quick_input': false}),
+      child: app(laPremium: null),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Nhập nhanh bằng câu hiện đang tạm ngừng.'), findsOneWidget);
+    expect(find.byKey(const Key('nut-nang-cap')), findsNothing, reason: 'chốt 3 — mua không mở');
+    final o = oNhapNhanh(tester);
+    expect(o.enabled, isFalse);
+    expect(o.decoration?.hintText, 'Đang tạm ngừng');
   });
 
   testWidgets('Premium: như cũ', (tester) async {

@@ -169,7 +169,7 @@ class ONhapNhanh extends StatelessWidget {
                       // Đang nghe thì trạng thái nằm ở nhãn đầu thẻ (Stitch) — ô để trống chờ chữ chép lời.
                       hintText: dangThu
                           ? null
-                          : (laPremium ? (coMicro ? '45k tiền mặt' : 'phở 45k tiền mặt') : 'Chỉ Premium'),
+                          : (laPremium ? (coMicro ? '45k tiền mặt' : 'phở 45k tiền mặt') : (tamNgung ? kTheKhoaTamNgung : 'Chỉ Premium')),
                       hintStyle: const TextStyle(
                           fontSize: 14, color: AppColors.outlineVariant),
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),

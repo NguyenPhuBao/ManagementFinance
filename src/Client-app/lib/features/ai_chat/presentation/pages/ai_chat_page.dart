@@ -106,7 +106,7 @@ String cauKhoaHoiDap({required bool coTep}) =>
 const String kGoiBasic =
     'Trợ lý AI là tính năng Premium. Nâng cấp để hỏi về số liệu của bạn.';
 
-/// Ba lý do ô nhập bị khoá (spec Premium 2026-10-06 mục 8.1).
+/// Bốn lý do ô nhập bị khoá (spec Premium 2026-10-06 mục 8.1).
 enum LyDoKhoaHoiDap { goiBasic, tamNgung, chuaCoMoHinh, congTacTat }
 
 /// ⚠️ Basic xét TRƯỚC: không mời người không dùng được đi tải 2,41 GB. Hai lý
@@ -360,7 +360,7 @@ class _AiChatPageState extends State<AiChatPage> {
   LyDoKhoaHoiDap? get _lyDoKhoa => lyDoKhoa(
       laPremium: _laPremium, tamNgung: _tamNgungAi, coTep: _coTep, congTacBat: _batCongTac, onlineBat: _onlineBat);
 
-  /// Chỉ Basic khoá CẢ ô (kể cả lệnh tạo C3 — người dùng chốt câu 3); hai lý do
+  /// Basic hoặc tạm ngừng khoá CẢ ô (kể cả lệnh tạo C3 — người dùng chốt câu 3); hai lý do
   /// cũ vẫn để ô mở cho lệnh tạo (chốt 2026-09-30).
   bool get _khoaCaO => _lyDoKhoa == LyDoKhoaHoiDap.goiBasic || _lyDoKhoa == LyDoKhoaHoiDap.tamNgung;
 
@@ -435,7 +435,7 @@ class _AiChatPageState extends State<AiChatPage> {
   Future<void> _hoi(String cauHoi) async {
     final c = cauHoi.trim();
     // Ô nhập mở cả khi chưa có mô hình (C3, người dùng chốt 2026-09-30): lệnh tạo chỉ luật.
-    // Basic thì khoá cả ô — kể cả lệnh tạo (spec Premium 8.1); hết hạn giữa phiên lộ ở đây, câu đang sinh không bị cắt.
+    // Basic / tạm ngừng thì khoá cả ô — kể cả lệnh tạo (spec Premium 8.1); hết hạn giữa phiên lộ ở đây, câu đang sinh không bị cắt.
     if (c.isEmpty || _dangHoi || _khoaCaO) return;
 
     setState(() {
@@ -1117,7 +1117,7 @@ class _AiChatPageState extends State<AiChatPage> {
             Expanded(
               child: TextField(
                 controller: _oNhap,
-                // Basic khoá cả ô (kể cả lệnh tạo) — spec Premium 8.1.
+                // Basic / tạm ngừng khoá cả ô (kể cả lệnh tạo) — spec Premium 8.1.
                 enabled: !_dangHoi && !_khoaCaO,
                 maxLines: 4,
                 minLines: 1,
@@ -1128,7 +1128,7 @@ class _AiChatPageState extends State<AiChatPage> {
                 decoration: InputDecoration(
                   // Chưa có mô hình: ô vẫn gõ được lệnh tạo (C3) — gợi ý nói đúng thứ gõ được.
                   hintText: _khoaCaO
-                      ? 'Tính năng Premium'
+                      ? (_lyDoKhoa == LyDoKhoaHoiDap.tamNgung ? kTheKhoaTamNgung : 'Tính năng Premium')
                       : _coMoHinh
                           ? 'Hỏi về số liệu của bạn…'
                           : 'VD: tạo hoá đơn Netflix 100k',

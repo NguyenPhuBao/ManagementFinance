@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../../premium/presentation/widgets/nut_nang_cap.dart';
 
-/// Băng khoá — một câu + một nút theo lý do. Basic → *Nâng cấp*
+/// Băng khoá — một câu + một nút theo lý do (tạm ngừng: không nút). Basic → *Nâng cấp*
 /// (spec Premium 8.1; màn Stitch *"Trợ lý AI - Khoá Premium (Basic)"*
 /// `2b3fa0f69486498584fdf3a243f30147`); hai lý do cũ → *Cài đặt AI* như trước.
 class DongKhoa extends StatelessWidget {
@@ -33,7 +33,7 @@ class DongKhoa extends StatelessWidget {
           children: [
             Icon(
               tamNgung
-                  ? Icons.lock_outline
+                  ? Icons.smart_toy_outlined
                   : (goiBasic ? Icons.workspace_premium_outlined : Icons.info_outline),
               size: 16,
               color: AppColors.onSurfaceVariant,

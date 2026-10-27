@@ -1,4 +1,4 @@
-/// Vì sao ô nhập màn Trợ lý AI bị khoá — BA lý do, ba câu, ba nút (spec Premium
+/// Vì sao ô nhập màn Trợ lý AI bị khoá — BỐN lý do, bốn câu (tạm ngừng không nút) (spec Premium
 /// 2026-10-06 mục 8.1). ⚠️ Basic xét TRƯỚC: không mời người không dùng được
 /// đi tải 2,41 GB.
 library;

@@ -43,5 +43,8 @@ void main() {
     await dung(t, tamNgung: true);
     expect(find.byKey(const Key('nut-nang-cap')), findsNothing);
     expect(find.text('Nhập nhanh bằng câu hiện đang tạm ngừng.'), findsOneWidget);
+    final o = t.widget<TextField>(find.byKey(const Key('nhap-nhanh-o')));
+    expect(o.enabled, isFalse);
+    expect(o.decoration?.hintText, 'Đang tạm ngừng', reason: 'hint cũng không mời Premium');
   });
 }

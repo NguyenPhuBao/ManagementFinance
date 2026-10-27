@@ -11,6 +11,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -30,8 +31,10 @@ import 'package:flowmoney/features/ai_edge/domain/chu_de_chan.dart';
 import 'package:flowmoney/features/ai_edge/domain/gac_cau.dart';
 import 'package:flowmoney/features/ai_edge/domain/lenh_tao.dart';
 import 'package:flowmoney/features/premium/data/repositories/goi_repository.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
+import '../../helpers/goi_gia.dart';
 import '../../helpers/kho_gia.dart';
 
 void main() {
@@ -60,6 +63,21 @@ void main() {
   testWidgets('có mô hình: ô nhập mở', (t) async {
     await t.pumpWidget(boc(const AiChatPage(coMoHinh: true)));
     expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+  });
+
+  testWidgets('⭐ B1: ai_assistant tạm ngừng (không tiêm laPremium) → câu băng, không Nâng cấp, ô tắt, hint tạm ngừng',
+      (t) async {
+    await t.pumpWidget(BlocProvider<GoiCubit>.value(
+      value: goiPremium({'ai_assistant': false}),
+      child: boc(const AiChatPage(coMoHinh: true)),
+    ));
+    await t.pump();
+    await t.pump();
+    expect(find.text('Trợ lý AI hiện đang tạm ngừng.'), findsOneWidget);
+    expect(find.byKey(const Key('nut-nang-cap')), findsNothing, reason: 'chốt 3 — mua không mở');
+    final o = t.widget<TextField>(find.byType(TextField));
+    expect(o.enabled, isFalse, reason: 'tạm ngừng khoá cả ô như Basic');
+    expect(o.decoration?.hintText, 'Đang tạm ngừng');
   });
 
   testWidgets('bốn chip gợi ý đúng tên spec', (t) async {
