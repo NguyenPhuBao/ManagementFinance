@@ -16,6 +16,33 @@ void main() {
       loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5), nhanLuc: now);
 
   group('conTaoDuoc', () {
+
+    test('⭐ G109: Premium hết hạn LÚC OFFLINE (bảng lưu là của Premium) → trần Basic mặc định, không phải "không giới hạn"',
+        () {
+      final hetLucOffline = TrangThaiGoi(
+          loai: LoaiGoi.premium,
+          hetHan: DateTime(2026, 10, 6, 12),
+          nhanLuc: now, // 10:00 — lúc nhận còn Premium
+          tran: const TranGoi()); // trần cột Premium: toàn null
+      final kq =
+          conTaoDuoc(loai: LoaiTran.vi, dangCo: 3, goi: hetLucOffline, now: DateTime(2026, 10, 6, 13));
+      expect(kq, isA<Vuot>(),
+          reason: 'G109 — mã cũ đọc goi.tran (trần của Premium, toàn null) → người đã về Basic tạo không giới hạn '
+              'tới lượt lamMoi kế.');
+      expect((kq as Vuot).tran, 3);
+    });
+
+    test('⭐ B1: Premium còn hạn, trần cột Premium 10 ví → 10/10 vượt, 9/10 được', () {
+      final g = TrangThaiGoi(
+          loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5), nhanLuc: now, tran: const TranGoi(vi: 10));
+      expect(conTaoDuoc(loai: LoaiTran.vi, dangCo: 10, goi: g, now: now), isA<Vuot>());
+      expect(conTaoDuoc(loai: LoaiTran.vi, dangCo: 9, goi: g, now: now), isA<Duoc>());
+    });
+
+    test('Premium KHÔNG hạn (bảng không dùng được) mang trần 3 → vẫn được (giữ hành vi cũ tới B4)', () {
+      final g = TrangThaiGoi(loai: LoaiGoi.premium, nhanLuc: now, tran: const TranGoi(vi: 3));
+      expect(conTaoDuoc(loai: LoaiTran.vi, dangCo: 99, goi: g, now: now), isA<Duoc>());
+    });
     // Trần như server trả cho Basic (migration 23): 3/3/3/3/5.
     final basicServer = TrangThaiGoi(
       loai: LoaiGoi.basic,

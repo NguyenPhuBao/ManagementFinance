@@ -14,8 +14,8 @@ import '../../data/repositories/goi_repository.dart';
 /// Cửa chặn DUY NHẤT của trần Basic (spec Premium 2026-10-06 mục 7.1): gắn vào
 /// `redirect` của `/wallets/add` · `/budget/rules` · `/goals/add`, nên mọi lối
 /// vào form (nút +, thẻ *Chưa đặt ngân sách*, lệnh tạo C3, deeplink) đều qua
-/// đây. Premium → qua không đếm (rẻ); Basic → đếm → `conTaoDuoc` →
-/// `chuyenHuongTheoGoi` (đường sửa `?id=` tự cho qua). Đếm ném → qua: một lỗi
+/// đây. Trần hiệu lực không giới hạn → qua không đếm (rẻ); có số (Basic, hoặc
+/// Premium có trần cột Premium — B1) → đếm → `conTaoDuoc` → `chuyenHuongTheoGoi` (đường sửa `?id=` tự cho qua). Đếm ném → qua: một lỗi
 /// đọc CSDL không được biến thành một màn Nâng cấp sai chỗ.
 ///
 /// Chờ kho gói của phiên nạp xong TRƯỚC khi đọc (G92): router chạy lại
@@ -34,7 +34,9 @@ Future<String?> chanTheoGoi(
   final id = goi.idaccount;
   if (id == null) return null;
   final trangThai = goi.hienTai;
-  if (trangThai.laPremium(now)) return null;
+  // Trần không giới hạn (Premium thường gặp) → qua, KHÔNG đếm: không trả giá một lượt đọc CSDL cho kết quả chắc chắn. Bản
+  // trước tắt theo "Premium → qua" — từ B1 trần cột Premium cũng áp, nên phép tắt theo TRẦN, không theo gói.
+  if (tranHieuLuc(trangThai, now).cua(loai) == null) return null;
   try {
     final dangCo = await dem.dem(loai, id);
     return chuyenHuongTheoGoi(

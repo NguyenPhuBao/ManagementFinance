@@ -177,6 +177,22 @@ void main() {
   });
 
   group('B1 — cột Premium (spec 2026-10-27 mục 6)', () {
+
+    test('⭐ trạng thái Premium dựng không kèm trần → KHÔNG giới hạn; Basic → 3/3/3', () {
+      expect(TrangThaiGoi(loai: LoaiGoi.premium, nhanLuc: now).tran, TranGoi.khongGioiHan,
+          reason: 'từ B1 trần của Premium được áp — mặc định 3/3/3 là chặn người Premium ở 3 ví');
+      expect(TrangThaiGoi.basicMacDinh(now).tran, TranGoi.macDinh);
+      expect(trangThaiTuLoaiPhien('Premium', nhanLuc: now).tran, TranGoi.khongGioiHan);
+    });
+
+    test('⭐ server Premium còn hạn KHÔNG gửi limits → không giới hạn; Premium đã hết hạn ở server → 3/3/3', () {
+      final p = trangThaiTuJson(
+          {'accountType': 'Premium', 'premiumExpiresAt': '2026-11-05T00:00:00.000Z'}, nhanLuc: now);
+      expect(p.tran, TranGoi.khongGioiHan);
+      final h = trangThaiTuJson(
+          {'accountType': 'Premium', 'premiumExpiresAt': '2026-10-01T00:00:00.000Z'}, nhanLuc: now);
+      expect(h.tran, TranGoi.macDinh, reason: 'server coi là Basic (effectiveType) — ô thiếu thì của Basic');
+    });
     test('đọc premiumFeatures / premiumLimits', () {
       final g = trangThaiTuJson({
         'accountType': 'Basic',
