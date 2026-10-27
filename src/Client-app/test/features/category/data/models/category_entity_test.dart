@@ -1,5 +1,5 @@
 /// `CategoryEntity.fromDrift` — Entity Danh mục, kiểu duy nhất từ repository trở lên (spec Entity Danh mục 2026-10-15, 4.1).
-/// Đếm cột bằng máy: Entity = cột bảng − 5 (`isLocalOnly` · `deletedAt` · `syncRetryCount` · `syncError` · `syncBlockedUntil`).
+/// Đếm cột bằng máy: Entity = cột bảng − 4 (`isLocalOnly` · `syncRetryCount` · `syncError` · `syncBlockedUntil`).
 /// Đẳng thức theo giá trị là bắt buộc: `DropdownButton<CategoryEntity>` ở Thêm / Sửa hoá đơn so `value` với `items` bằng `==`.
 library;
 
@@ -32,13 +32,13 @@ void main() {
         updatedAt: moc,
       );
 
-  test('fromDrift chép đủ 13 trường, không chép 5 cột ngoài Entity', () async {
+  test('fromDrift chép đủ 14 trường, không chép 4 cột ngoài Entity', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
     final e = CategoryEntity.fromDrift(hang());
-    expect(e.props.length, db.categories.$columns.length - 5,
+    expect(e.props.length, db.categories.$columns.length - 4,
         reason:
-            'Thêm cột vào bảng Categories thì quyết định: vào Entity, hay ghi vào danh sách 5 cột không chép.');
+            'Thêm cột vào bảng Categories thì quyết định: vào Entity, hay ghi vào danh sách 4 cột không chép.');
     expect(e.id, 'c-1');
     expect(e.idaccount, 10);
     expect(e.name, 'Ăn uống');
@@ -52,6 +52,8 @@ void main() {
     expect(e.aiCoDinh, isTrue);
     expect(e.syncStatus, 'synced');
     expect(e.updatedAt, moc);
+    expect(e.deletedAt, moc,
+        reason: 'Luật ẩn theo khuôn (spec 2026-10-27 mục 3) so `deletedAt` của KHUÔN với kMocAnTheoKhuon.');
   });
 
   test(
