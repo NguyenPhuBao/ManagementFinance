@@ -247,6 +247,12 @@ void main() {
       expect(find.text('Bạn đã dùng 3/3 ví của gói Basic.'), findsOneWidget);
     });
 
+    testWidgets('Premium còn hạn, quyền mở, ?quyen= → không câu khoá', (tester) async {
+      await dung(tester, premium: true, quyen: MaQuyen.cashflowForecast);
+      expect(find.byKey(const Key('nang-cap-cau-quyen')), findsNothing);
+      expect(find.byKey(const Key('nang-cap-han')), findsOneWidget);
+    });
+
     testWidgets('Basic, cột Premium cũng tắt → ?quyen= nói tạm ngừng', (tester) async {
       await dung(tester,
           premium: false,

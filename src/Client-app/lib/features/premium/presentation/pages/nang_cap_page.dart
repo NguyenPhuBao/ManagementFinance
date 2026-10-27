@@ -37,7 +37,8 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 /// tín hiệu `payment.*` / `account.upgraded`; đọc hỏng → không thẻ, nút mở
 /// (không chặn mua vì mạng — KIEN_TRUC mục 7) — đã đọc được thì giữ kết quả cũ.
 /// Lệch Stitch có chủ ý: không chép dòng *"Tự động gia hạn · Hủy bất cứ lúc
-/// nào"* (gói không tự gia hạn — lời hứa sai), không đổi thẻ gói hiện tại.
+/// nào"* (gói không tự gia hạn — lời hứa sai), không đổi thẻ gói hiện tại. Màn Stitch `02c0d881…` khối 5 vẽ biểu tượng
+/// `account_balance_wallet` cho dải trần Premium; app giữ `info_outline` màu warning của dải hiện có (không đổi kiểu dáng).
 class NangCapPage extends StatefulWidget {
   const NangCapPage(
       {super.key,
@@ -51,7 +52,7 @@ class NangCapPage extends StatefulWidget {
   /// Loại trần vừa chạm (từ query `?tran=`); `null` = mở từ thẻ Cá nhân / băng khoá.
   final LoaiTran? tran;
 
-  /// Tính năng bị khoá vừa chạm (query `?quyen=`); `tran` khác `null` thì câu trần thắng.
+  /// Tính năng bị khoá vừa chạm (query `?quyen=`); câu trần (khi có) thắng.
   final MaQuyen? quyen;
 
   /// `null` → `sl<DonThanhToanRepository>()`; test tiêm bản giả.

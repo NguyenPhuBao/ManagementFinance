@@ -8,6 +8,7 @@ import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
 import 'package:flowmoney/features/premium/data/models/tran_goi.dart';
 import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
 import 'package:flowmoney/features/premium/domain/hang_goi.dart';
+import 'package:flowmoney/features/premium/domain/tran_goi.dart';
 import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/premium/presentation/widgets/the_goi_tai_khoan.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
@@ -114,13 +115,34 @@ void main() {
             loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5, 8), nhanLuc: now, tran: const TranGoi(vi: 10)));
     await tester.pumpWidget(boc(TheGoiTaiKhoan(clock: () => now), c: c, khung: const Size(328, 200)));
     expect(find.byKey(const Key('the-goi-tran-premium')), findsOneWidget);
-    expect(find.text('10 ví'), findsOneWidget);
+    expect(find.text('10\u00A0ví'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('Premium không trần (mặc định) → không dòng trần', (tester) async {
     final c = await cubit(kho: TrangThaiGoi(loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5, 8), nhanLuc: now));
     await tester.pumpWidget(boc(TheGoiTaiKhoan(clock: () => now), c: c));
+    expect(find.byKey(const Key('the-goi-tran-premium')), findsNothing);
+  });
+
+  testWidgets('⭐ G109: Premium hết hạn lúc offline → thẻ nói trần Basic, không dòng trần Premium', (tester) async {
+    final c = await cubit(
+        kho: TrangThaiGoi(
+            loai: LoaiGoi.premium,
+            hetHan: DateTime(2026, 10, 6, 9),
+            nhanLuc: DateTime(2026, 10, 5),
+            tran: const TranGoi()));
+    await tester.pumpWidget(boc(TheGoiTaiKhoan(clock: () => now), c: c));
+    expect(find.text('Gói Basic'), findsOneWidget);
+    expect(find.text(tomTatTran(TranGoi.macDinh)), findsOneWidget);
+    expect(find.byKey(const Key('the-goi-tran-premium')), findsNothing);
+  });
+
+  testWidgets('Premium chưa biết hạn mà kho lưu trần 10 ví → không dòng trần (bảng không đáng tin)', (tester) async {
+    final c = await cubit(
+        kho: TrangThaiGoi(loai: LoaiGoi.premium, nhanLuc: now, tran: const TranGoi(vi: 10)), loaiPhien: 'Premium');
+    await tester.pumpWidget(boc(TheGoiTaiKhoan(clock: () => now), c: c));
+    expect(find.text('Premium'), findsOneWidget);
     expect(find.byKey(const Key('the-goi-tran-premium')), findsNothing);
   });
 }
