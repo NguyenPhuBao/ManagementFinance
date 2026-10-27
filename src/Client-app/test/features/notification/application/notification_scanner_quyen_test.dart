@@ -64,11 +64,27 @@ void main() {
     categoryName: 'Ăn uống',
   );
 
+  // Chưa vượt nhưng đã qua ngưỡng cảnh báo (95% >= defaultWarningRatio 0.9) → sinh `budgetNearLimit`. Fixture `vuot` một
+  // mình không bao giờ sinh loại này (vượt thì `budgetOverspent` rồi `continue`; `isNearLimit` false khi vượt).
+  final sapVuot = BudgetView(
+    budget: BudgetEntity(
+      id: 'ns2',
+      idaccount: 1,
+      categoryId: 'c2',
+      amount: 1000000,
+      spent: 950000,
+      startDate: DateTime(2026, 10, 1),
+      recurrence: true,
+      updatedAt: DateTime(2026, 10, 1),
+    ),
+    categoryName: 'Đi lại',
+  );
+
   NotificationScanner dung({bool Function()? nhacTruocHan, bool Function()? canhBaoNganSach}) {
     var soId = 0;
     return NotificationScanner(
       dao: db.notificationDao,
-      loadBudgets: (_, __) async => [vuot],
+      loadBudgets: (_, __) async => [vuot, sapVuot],
       loadBills: (_, __) async => [hd('sap', DateTime(2026, 10, 12)), hd('qua', DateTime(2026, 10, 8))],
       nhacTruocHanDuocPhep: nhacTruocHan,
       canhBaoNganSachDuocPhep: canhBaoNganSach,
@@ -82,7 +98,7 @@ void main() {
 
   test('tiền đề: có quyền (không truyền vị từ) → sắp hạn, quá hạn, vượt ngân sách đều sinh', () async {
     await dung().scan(1, now: now);
-    expect(await loai(), containsAll(['billDueSoon', 'billOverdue', 'budgetOverspent']));
+    expect(await loai(), containsAll(['billDueSoon', 'billOverdue', 'budgetOverspent', 'budgetNearLimit']));
   });
 
   test('⭐ không quyền bill_reminder_notifications → bỏ billDueSoon; billOverdue VẪN báo', () async {

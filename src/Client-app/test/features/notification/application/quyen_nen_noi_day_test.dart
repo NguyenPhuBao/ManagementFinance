@@ -7,7 +7,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final di = File('lib/core/di/injection_container.dart').readAsStringSync();
+  // Bỏ dòng chú thích (khuôn quét 21): một dòng nối bị comment không được tính là còn nối.
+  String boChuThich(String nguon) =>
+      nguon.split('\n').where((d) => !d.trim().startsWith('//')).join('\n');
+  final di = boChuThich(File('lib/core/di/injection_container.dart').readAsStringSync());
 
   test('DI nối nhacTruocHanDuocPhep ở CẢ ReminderScheduler lẫn NotificationScanner', () {
     expect('nhacTruocHanDuocPhep: () => coQuyenNen(MaQuyen.billReminderNotifications)'.allMatches(di).length, 2,
@@ -20,7 +23,7 @@ void main() {
   });
 
   test('main.dart nối quyền nhắc đổi → ReminderScheduler.resync', () {
-    final main = File('lib/main.dart').readAsStringSync();
+    final main = boChuThich(File('lib/main.dart').readAsStringSync());
     expect(main, contains('noiKhiQuyenDoi('));
     expect(main, contains('MaQuyen.dailyRecordingReminder'));
     expect(main, contains('MaQuyen.billReminderNotifications'));
