@@ -252,6 +252,9 @@ Mỗi mục: *người dùng / người điều phối chốt* — (1)–(12) 20
 
 ## 10. Nghiệm thu máy thật
 
+> ✅ **Đã đo 2026-10-28 phiên 19 — đạt mọi bước** (Realme tài khoản 10 Premium + máy ảo tài khoản Basic mới 29; ma trận đổi qua
+> `PUT /api/admin/permissions` thay Admin-web, trả lại bằng API — không *Khôi phục mặc định*). Bảng kết quả: `PREMIUM_FEATURE.md` 8.9.
+
 Backend + Admin-web trỏ **`PersonFinance` cục bộ** (⚠️ không Supabase dùng chung — ma trận quyền áp cho MỌI tài khoản). Kiểm
 danh tính CSDL trước (*Ghi chú vận hành* `CLAUDE.md`).
 0. **Bước 0 — go / no-go trước phát hành (chỉ đọc, trước mọi bước; kế hoạch câu chốt 7 + preflight N4)** — trên `PersonFinance` **và**

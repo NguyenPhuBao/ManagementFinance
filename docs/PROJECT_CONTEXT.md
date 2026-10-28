@@ -622,8 +622,8 @@ src/Backend/
 Spec `docs/superpowers/specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md` (chỗ mã khác bản viết = mục 13), tài liệu
 `PREMIUM_FEATURE.md` mục 8 (8.1 chốt 6–7, 8.2 bảng 22 mã, 8.5 bẫy 7–13, 8.6 Stitch `02c0d881…`, 8.8 trạng thái), G109 ở
 `CLIENT_APP_KNOWN_GAPS.md`, thông báo `NOTIFICATION_FEATURE.md` 5m, đơn backend **CAN-LAM 55** (hợp đồng + đính chính `4_TRU_COT.md`).
-✅ **Mã xong Task 1–11 + đợt sửa cuối sau review toàn nhánh** bằng agent con (Fable preflight, Sonnet thực thi, Opus soát); 🚧 **chưa nghiệm thu máy thật** (Task 13, spec mục
-10 — backend + Admin-web trỏ `PersonFinance` cục bộ, không Supabase dùng chung); schema vẫn **v31**, 0 migration. **Chưa push.**
+✅ **Mã xong Task 1–11 + đợt sửa cuối sau review toàn nhánh** bằng agent con (Fable preflight, Sonnet thực thi, Opus soát); ✅ **nghiệm thu máy thật đạt** (Task 13, 2026-10-28
+phiên 19 — Realme + máy ảo, backend trỏ `PersonFinance` cục bộ, ma trận đổi qua API admin; `PREMIUM_FEATURE.md` 8.9); schema vẫn **v31**, 0 migration. **Chưa push.**
 
 - **Phạm vi:** Premium cũng theo bảng quyền (`trangThaiQuyen` ba trạng thái `mo` / `canPremium` / `tamNgung`; `duocDung` là vế `bool`);
   admin tắt ở cột Premium → *"Đang tạm ngừng"*, không nút Nâng cấp; trần Premium cũng áp (màn Nâng cấp *"Gói Premium hiện cho tạo tối đa N
@@ -657,14 +657,15 @@ Spec `docs/superpowers/specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-desig
   `limit_value = null` = không giới hạn) → **go**. Cột Basic tắt 9 mã (ba AI, `anomaly_spending_insights`, `bill_auto_pay`, `cashflow_forecast`,
   `export_reports`, `goal_auto_deposit`, `smart_budget_rebalancing`); trần Basic 3 / 3 / 3 / 3 / 5. `PersonFinance` cục bộ đo cùng ngày: **trùng
   từng dòng**.
-- **Task 13 nghiệm thu Realme (2026-10-28 phiên 19, tài khoản 10 Premium, backend `PersonFinance`) — ◐ đạt phần người Premium** (bảng
-  `PREMIUM_FEATURE.md` 8.9): bước 1 (Xuất báo cáo tạm ngừng qua drawer + `/analytics/export`, không giá / nút mua) · I2 qua nút Quét · I3 (ví *test*
-  bật lại được, Lưu rồi khoá) · mọi khối tạm ngừng hiện qua socket ≤ 3 s · bước 2 (*"tối đa 6 ví"*, *"Tới 6 ví"*) · bước 4 (3 lịch nhắc ghi chép huỷ
-  / về) · bước 7 ma trận trả qua API, khớp mốc Bước 0. **Chưa đo:** bước 3 (Basic — máy chỉ có tài khoản Premium), 5 (không hoá đơn sắp tới
-  hạn), 6 (G109 — cần `UPDATE premium_expires_at`, xin phép đích danh).
+- **Task 13 nghiệm thu (2026-10-28 phiên 19, backend `PersonFinance`) — ✅ đạt mọi bước** (bảng `PREMIUM_FEATURE.md` 8.9). Realme, tài khoản 10
+  Premium: bước 1 (Xuất báo cáo tạm ngừng qua drawer + `/analytics/export`, không giá / nút mua) · I2 qua nút Quét · I3 (ví *test* bật lại được, Lưu
+  rồi khoá) · mọi khối tạm ngừng hiện qua socket ≤ 3 s · bước 2 (*"tối đa 6 ví"*, *"Tới 6 ví"*) · bước 4 (3 lịch nhắc ghi chép huỷ / về) · bước 6
+  G109 (người dùng cho phép đích danh `UPDATE premium_expires_at`; offline quá hạn → *"Bạn đã dùng 3/3 ví của gói Basic."*; hạn trả nguyên).
+  Máy ảo, tài khoản Basic mới **29** `thub1t13`: bước 3 (*"… dành cho Premium"* + Nâng cấp; màn Nâng cấp có giá + Thanh toán — đối chứng I2) ·
+  bước 5 (lịch nhắc hoá đơn 01/11 huỷ / về). Bước 7: ma trận trả qua API, khớp mốc Bước 0. Chưa nhìn: *quá hạn vẫn báo*, chip *Nhắc trước* khoá.
 - **Giới hạn / việc mở:** ⚠️ **Task 13 Bước 0 (go / no-go trước phát hành, chỉ đọc)** — cột Premium của ma trận đang chạy (`PersonFinance` và Supabase
   dùng chung) có ô `false` nào trong 22 mã (có → mọi người Premium thấy mã ấy *"Đang tạm ngừng"*: dừng, hỏi người dùng) và đủ 5 hàng LIMIT (spec mục
-  10 bước 0 — ✅ đo 2026-10-28: go); nghiệm thu máy thật Task 13 còn bước 3 · 5 · 6; A1 / A2 / A3 chờ backend (chưa có `premiumFeatures` thì Basic thấy khoá *cần Premium*); (P-N5)
+  10 bước 0 — ✅ đo 2026-10-28: go); nghiệm thu máy thật Task 13 ✅ đạt (8.9); A1 / A2 / A3 chờ backend (chưa có `premiumFeatures` thì Basic thấy khoá *cần Premium*); (P-N5)
   `noiKhiQuyenDoi` kích `resync` song song lượt khôi phục của scanner (nhật ký B5a có thể hai dòng `dat_lich`) + cuộc đua lúc đăng xuất (review M1 —
   `resync` lịch của tài khoản vừa đăng xuất; không cờ "đang chạy" công khai, không sửa bằng mã — spec mục 8); gói số bậc 1 Trợ lý AI + gói Ví vẫn mang
   tổng tài sản khi `net_worth_overview` khoá; lệch Stitch có chủ ý ở `PREMIUM_FEATURE.md` 8.6 (đối chiếu bằng mắt ở Task 13).

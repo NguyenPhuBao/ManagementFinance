@@ -442,8 +442,8 @@ không có Quét / Đọc biến động; thẻ Gói tab Cá nhân nay **`tomTat
 toàn nhánh** (`457381c6`: `dacQuyenPremium(goi, now)` theo bảng gói hiệu lực — spec mục 13 (18); `trangThaiQuyenDoc` có chỗ gọi, `cauTamNgung` gỡ,
 `kDongKhoaChiBatThuong` vào `cau_quyen.dart` — 13 (17); hộp *"Bắt đầu vòng mới?"* bỏ vế khuyên Rút khi `goal_deposit_withdraw` khoá; khối Nhận xét
 Trang chủ đọc quyền trong `Builder` riêng); `flutter test` **8354 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-28 sau đợt sửa cuối).
-◐ **Nghiệm thu máy thật một phần** (Task 13, 2026-10-28 phiên 19 — mục **8.9**: Bước 0 go trên cả hai CSDL; bước 1 · 2 · 4 · 7 + I2 / I3 đạt;
-bước 3 (Basic) · 5 · 6 chưa đo). ⚠️ **Trước phát hành: Task 13 Bước 0** (✅ đo 2026-10-28 — go; đo lại nếu ma trận đổi) (spec mục 10 bước 0, go / no-go, chỉ đọc) — cột Premium trên ma trận đang chạy (cả Supabase dùng chung) có ô `false` nào
+✅ **Nghiệm thu máy thật đạt** (Task 13, 2026-10-28 phiên 19 — mục **8.9**: Bước 0 go trên cả hai CSDL; bước 1–7 + I2 / I3 đạt trên Realme
+(Premium) và máy ảo (Basic); còn vài chỗ chưa nhìn, liệt kê cuối 8.9). ⚠️ **Trước phát hành: Task 13 Bước 0** (✅ đo 2026-10-28 — go; đo lại nếu ma trận đổi) (spec mục 10 bước 0, go / no-go, chỉ đọc) — cột Premium trên ma trận đang chạy (cả Supabase dùng chung) có ô `false` nào
 trong 22 mã (có → mọi người Premium thấy mã ấy *"Đang tạm ngừng"* — dừng, hỏi người dùng) và đủ 5 hàng LIMIT (bẫy 13).
 Phần dự phòng cột Premium cho Basic chờ đơn **CAN-LAM 55 A1 / A2 / A3**; chưa có thì Basic thấy khoá *"cần Premium"* như trước B1.
 
@@ -455,14 +455,14 @@ Giới hạn biết trước (spec mục 8, bản đã thêm): app chỉ thấy 
 ở lượt quét kế) · cuộc đua lúc đăng xuất (review M1): bộ quét đã `cancelAll` mà `GoiRepository` còn tài khoản — một lượt `lamMoi` lật quyền nhắc đúng
 khe ấy làm `noiKhiQuyenDoi` `resync` lịch của tài khoản vừa đăng xuất; không có cờ "đang chạy" công khai nên không sửa bằng mã (spec mục 8).
 
-### 8.9 B1 Task 13 — nghiệm thu máy thật (Realme RMX2205, 2026-10-28 phiên 19) — ◐ đạt phần người Premium
+### 8.9 B1 Task 13 — nghiệm thu máy thật (Realme RMX2205 + máy ảo, 2026-10-28 phiên 19) — ✅ đạt mọi bước
 
 Bản debug `a3d3820d…` (sau I2 / I3, mã `eb1f7380`), `API_BASE_URL=http://127.0.0.1:3000/api` + `adb reverse`; backend dev trỏ `PersonFinance`
 (log `PostgreSQL connected {"database":"PersonFinance"}`), tài khoản **10 — Premium tới 05/11/2026**; ma trận đổi qua `PUT /api/admin/permissions`
 (gửi đủ `is_enabled` + `limit_value` — backend ghi `limit_value = null` khi vắng); CSDL máy sao lưu trước ở
 `D:\FlowMoney-saoluu\realme-2026-10-28-phien19-truoc-task13\`. Mở lạnh không hỏi PIN: cấu hình khoá ứng dụng **vắng** trên máy (kho bảo mật
-không có khoá `khoa_app_10`, công tắc *Khoá FlowMoney* tắt — kiểm sau lượt đo); bàn giao phiên 18 ghi *"khoá bật"* — chưa rõ tắt từ lúc nào
-(người dùng tắt, hoặc một lần đăng nhập lại bằng mật khẩu xoá cấu hình theo I4 `KHOA_APP_FEATURE.md`); hỏi người dùng, không mở lỗ hổng.
+không có khoá `khoa_app_10`, công tắc *Khoá FlowMoney* tắt — kiểm sau lượt đo); bàn giao phiên 18 ghi *"khoá bật"*; **người dùng xác nhận tự
+tắt** — không phải lỗi.
 Công tắc bị khoá vẽ **giống hệt** công tắc mở (xanh đậm) — chỉ băng bên dưới báo khoá (có từ B1, chưa sửa).
 
 | Bước | Kịch bản | Kết quả |
@@ -474,10 +474,13 @@ Công tắc bị khoá vẽ **giống hệt** công tắc mở (xanh đậm) —
 | — | Tạm ngừng các khối khác (tín hiệu socket ≤ 3 s, không chạm máy) | ✅ thẻ *Dự báo 30 ngày tới — Đang tạm ngừng* (viền liền); băng Trợ lý AI icon robot + ô nhập *"Đang tạm ngừng"*; băng *Tự động thanh toán* form hoá đơn xám; Trang chủ: thẻ *Tổng tài sản — Đang tạm ngừng* + dòng *"Nút ghi nhanh đang tạm ngừng"* có khung; phím **+ / −** mờ; ô số dư Sửa ví chỉ đọc + *"Điều chỉnh số dư ví đang tạm ngừng"*; công tắc *Nhắc ghi chép hằng ngày* giữ BẬT + băng *"Tạm ngừng"* |
 | 2 | Trần ví cột Premium = 6 (= số ví đang hoạt động) → *Thêm ví mới* | ✅ *"Gói Premium hiện cho tạo tối đa 6 ví."*, đặc quyền *"Tới 6 ví"*; giá + *Gia hạn* ở lại (màn nói trần, không phải tạm ngừng) |
 | 4 | Tắt `daily_recording_reminder` → `dumpsys alarm`; bật lại | ✅ 3 lịch 20:00 (28 · 29 · 30/10) huỷ trong ≤ 6 s, *Tổng kết tuần* còn; bật lại → 3 lịch về |
-| 7 | Trả ma trận | ✅ qua API (không dùng *Khôi phục mặc định* — nạp lại cả ma trận từ tệp seed); chạy lại script Bước 0: **khớp từng dòng** mốc trước đo |
+| 6 | **G109** (người dùng cho phép đích danh `UPDATE premium_expires_at`): hạn tài khoản 10 = bây giờ + 4 phút → PUT ma trận giữ nguyên để app nhận hạn (*"Còn 0 ngày · đến 28/10/2026"*) → gỡ `adb reverse` (app không với tới máy chủ) → quá hạn → *Thêm ví mới* (ví thứ 7) | ✅ *"Gói hiện tại: Basic"*, *"Bạn đã dùng 3/3 ví của gói Basic."*, bị chặn (mã cũ: không giới hạn); trả hạn `2026-11-05 14:54:58.037` + nối lại → máy về *Premium — Còn 8 ngày*; `Type`, `Update_at`, `payment_order` (0 hàng) không đổi |
+| 3 | Máy ảo `FlowMoney_16G`, tài khoản **Basic mới** `thub1t13` (idaccount **29**, `POST /api/auth/register` trên `PersonFinance`; CSDL máy ảo của tài khoản 10 sao lưu trước ở `D:\FlowMoney-saoluu\mayao-2026-10-28-phien19-truoc-dangnhap-29\`); tắt ở **cột Basic** `quick_action_shortcuts` · `net_worth_overview` · `wallet_exclude_total` · `in_app_calculator` · `bill_reminder_notifications` | ✅ Trang chủ: *Tổng tài sản — Dành cho Premium* + **Nâng cấp**; *"Nút ghi nhanh — dành cho Premium"* + **Nâng cấp** → màn Nâng cấp *"Nút ghi nhanh là tính năng Premium."* **có** giá + *Thanh toán* (đối chứng I2), đặc quyền kể đủ 5 mã vừa tắt |
+| 5 | Hoá đơn *Internet* hàng tuần hạn 04/11 (nhắc trước 3 ngày) trên tài khoản 29 → tắt `bill_reminder_notifications` cột Basic → bật lại | ✅ lịch `01/11 08:00` có → **huỷ** trong ≤ 7 s → **về**; *quá hạn vẫn báo* chưa đo (không có hoá đơn quá hạn) |
+| 7 | Trả ma trận | ✅ qua API (không dùng *Khôi phục mặc định* — nạp lại cả ma trận từ tệp seed); chạy lại script Bước 0 sau mỗi đợt (Premium rồi Basic): **khớp từng dòng** mốc trước đo |
 
-**Chưa đo:** bước 3 (tài khoản **Basic** — máy chỉ có tài khoản 10 Premium; đổi tài khoản là dọn dữ liệu cục bộ), bước 5 (lịch nhắc trước hạn —
-4 hoá đơn của tài khoản đều đã quá hạn, không lịch nào để huỷ), bước 6 (G109 hết hạn offline — cần `UPDATE premium_expires_at` trên
-`PersonFinance`, xin phép đích danh), bước 3 phần dòng khoá *nhịp chi* ngân sách / nạp rút mục tiêu / gắn danh mục / từ khoá (cùng widget đã thấy).
+**Chưa đo trên máy:** *quá hạn vẫn báo* khi tắt nhắc trước hạn; chip *Nhắc trước* khoá (form hoá đơn / Cài đặt); dòng khoá *nhịp chi* ngân sách / nạp rút
+mục tiêu / gắn danh mục / từ khoá (cùng widget đã thấy, có widget test). Tài khoản 29 (`thub1t13`) và hoá đơn *Internet* của nó **để lại** trên
+`PersonFinance` dev (dùng cho lần đo sau); máy ảo đang đăng nhập tài khoản 29.
 **Ghi nhận để người dùng đối chiếu Stitch `02c0d881…`:** dòng khoá tạm ngừng (*"Điều chỉnh số dư ví đang tạm ngừng"*, *"Nút ghi nhanh đang tạm
 ngừng"*) dùng ổ khoá **vàng** như *"cần Premium"*, còn băng công tắc tạm ngừng thì **xám**.
