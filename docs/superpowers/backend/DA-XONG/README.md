@@ -209,6 +209,18 @@ Thư mục này nay **69** tệp + mục lục (tổng 70 tệp, đếm bằng m
 > banner 🔎 *"lượt báo xong"* đầu mỗi tệp; ba hồi quy mức cao do lượt sửa gây ra ở đơn mới **53** (`CAN-LAM/HOI_QUY_SAU_LUOT_BAO_XONG.md`).
 > Thư mục nay **63** tệp + mục lục (đếm bằng máy 2026-10-26, sau khi chuyển sáu mục về).
 
+## 4k. Client soát và chuyển 2026-10-28 (mục 54 — sau gộp `main` @ `7b56d822`)
+
+Backend báo đơn 50 và 54 *"hoàn tất 100%"* ở `177dd0e1` (PR #168) nhưng không chuyển tệp. Client soát bằng mã + CSDL Supabase (chỉ
+`SELECT`). Đơn 54 đạt trọn nên chuyển sang đây; đơn 50 ở lại `CAN-LAM/` — banner 🔎 đầu tệp (bảy vế còn, ba vế mức cao về quyền của
+hàng thuộc nhà). Giữa hai lượt, 2026-10-27 hai mục **47** và **53** do backend chuyển sang đây đã được client soát đạt (banner 🔎 đầu tệp).
+
+| Tài liệu | Kết quả soát |
+|---|---|
+| [KHUON_DANH_MUC_ADMIN_KIEM_TRUNG_TEN.md](./KHUON_DANH_MUC_ADMIN_KIEM_TRUNG_TEN.md) | ✅ **Mục 54.** `restoreCategory` / `addCategory` / `updateCategory` so tên chuẩn hoá (cùng thứ tự biểu thức chỉ mục), không xét `classify`, trùng → 409, `P2002` → 409; `/sync/pull` vẫn trả khuôn đã xoá kèm `delete_at`; `Server_update_at` nâng ở mọi thao tác — đổi tên / biểu tượng / từ khoá nhờ trigger `trg_set_server_update_at_category`, không nhờ mã repository. Client không đổi mã. |
+
+Thư mục nay **66** tệp + mục lục (đếm bằng máy 2026-10-28, sau khi chuyển mục 54).
+
 ---
 
 ## 5. Hai chỗ dễ đọc nhầm

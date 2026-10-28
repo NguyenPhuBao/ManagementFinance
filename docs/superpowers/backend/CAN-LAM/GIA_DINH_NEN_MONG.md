@@ -1,5 +1,54 @@
 # Mục 50 — Chức năng GIA ĐÌNH (nhà nhiều người): Toàn bộ Thiết kế & Nhiệm vụ Backend Phần 1 (Nền móng)
 
+> 🔎 **Client soát lượt báo xong 2026-10-28** (`177dd0e1`, PR #168, client gộp `a630c4c8`; đọc mã HEAD + CSDL Supabase của `.env`, chỉ
+> `SELECT`). Soát khoanh ở chỗ client phụ thuộc (đồng bộ, quyền, socket, migration) — **chưa** đối chiếu 16 endpoint với `docs/Family/`
+> (việc của lượt client bắt đầu gia đình). Đơn **ở lại `CAN-LAM/`**: hàng riêng tư đã an toàn, nhưng mọi chốt chặn của **hàng thuộc nhà**
+> đều không chạy — trên CSDL hiện có 0 nhà, nên chưa ai bị ảnh hưởng; phải sửa trước khi client mở tính năng.
+>
+> **Đạt**
+> - **A — hàng riêng tư.** Sửa / xoá hàng `Idhousehold IS NULL` của tài khoản khác → `NOT_OWNER` ở cả sáu thực thể (`sync.repository.js`
+>   `:251` `:347` `:471` `:558` `:640` `:721`, `softDelete` `:834` `:855` `:878`); nhánh tạo ép `idaccount` theo token
+>   (`sync.service.js:156-167`). Client đã xếp `NOT_OWNER` là lỗi vĩnh viễn (`gui_lo_dong_bo.dart:326-338`).
+> - **B — migration 40** đã áp Supabase: 3 bảng, cột `Idhousehold` ở 5 bảng, `chk_wallet_household_not_default`, chỉ mục trùng tên
+>   cá nhân thêm `"Idhousehold" IS NULL` (`uq_wallet_account_name_active`, `uq_wallet_default_active`, `uq_category_owner_name`) + hai chỉ
+>   mục theo nhà — định nghĩa đo bằng `pg_indexes` khớp tệp. Đo: 0 nhà, 0 thành viên, 0 hàng mang `Idhousehold`.
+> - **D — kéo về.** `(Idaccount = tôi ∧ Idhousehold trống) ∨ Idhousehold = nhà tôi` (`sync.repository.js:374` `:505` `:588` `:756`),
+>   danh mục giữ `{ is_default: true }` (`:284-310`, vẫn trả khuôn đã xoá kèm `delete_at` — đơn 54 C1). Với tài khoản không ở nhà nào, tập kéo
+>   về **y như trước** (0 hàng mang `Idhousehold`). `findActiveMemberByAccount` lọc `left_at: null` (`household.repository.js:36-46`).
+> - **E — trần thành viên** thi hành ở mời mã / mời email / vào nhà (`household.service.js:179` `:312` `:494`, `HOUSEHOLD_FULL` 409).
+> - **G** sao mọi khuôn sống (Supabase: 16, không phải 13) cho nhà trong giao tác tạo nhà (`household.service.js:63`, `:75-107`).
+>
+> **Còn — xin sửa**
+> 1. **(CAO) Ma trận vai + `ReadOnly` không bao giờ chạy qua `/sync/push`.** `sync.service.js:200` gọi
+>    `householdRepository.findMember(targetHhId, idaccount)` — hàm này **không tồn tại** (`household.repository.js` chỉ có
+>    `findHouseholdById` `:27`, `findActiveMemberByAccount` `:36`; `grep findMember` toàn backend: 1 dòng, chính lời gọi ấy). `TypeError`
+>    bị `catch {}` nuốt → `userRole = null`, `householdStatus = 'Active'` → `enforceHouseholdPermission` không ném gì. Hệ quả: không bao giờ có
+>    `HOUSEHOLD_ROLE_FORBIDDEN` / `HOUSEHOLD_READ_ONLY` từ đường đẩy. Ca test *"Thành viên bị chặn"* gọi thẳng
+>    `enforceHouseholdPermission({ userRole: 'Member' })` (`household.system_impact.test.js:105-173`) nên không bắt được dây nối hỏng — xin
+>    một ca đi qua `processPush`.
+> 2. **(CAO) Người ngoài nhà ghi được vào nhà.** Kể cả khi sửa (1): `enforceHouseholdPermission` (`sync.service.js:69-95`) chỉ xét
+>    `userRole === 'Member'` — **Viewer** (vai chỉ xem) và **người không phải thành viên** (`userRole = null`) đi qua; nhánh sửa / xoá hàng
+>    của nhà bỏ qua `NOT_OWNER` vì `isShared` (`sync.repository.js:249` …). Tức biết UUID một hàng của nhà là ghi đè / xoá được, và tạo hàng
+>    mang `idhousehold` của nhà bất kỳ. Xin: không phải thành viên → `HOUSEHOLD_NOT_MEMBER` (mã đơn này đã xin, client đã xếp vĩnh viễn);
+>    Viewer → `HOUSEHOLD_ROLE_FORBIDDEN` cho mọi lệnh ghi; đổi `idhousehold` của một hàng có sẵn chỉ cho thành viên của **cả** nhà cũ lẫn mới.
+> 3. **(CAO) Basic tạo được nhà.** `household.controller.js:27` chỉ chặn khi `req.user.permissions` là mảng — payload JWT không bao giờ mang
+>    trường ấy (`auth.service.js:399-408` đăng nhập, `:197` / `:275` đăng ký: `idaccount, username, idrole, rolename, type, status, …`), nên
+>    phép kiểm luôn bị bỏ qua. Xin kiểm quyền `household` qua ma trận gói (như `requireFeature`) tại route `POST /api/households`.
+> 4. **(VỪA) Chủ hết Premium ⇒ nhà `ReadOnly`: không có mã ghi.** Toàn backend chỉ có chỗ **đọc** `'ReadOnly'` (`sync.service.js:70`); không
+>    tác vụ hạ cấp / cron nào đặt `household.Status = 'ReadOnly'`.
+> 5. **(VỪA) Phòng `household_<id>` không ai vào.** `household.changed` phát tới `household_${id}` (`sync.service.js:362`,
+>    `household.service.js:655`) nhưng `core/socket.js:67-72` chỉ `join` phòng tài khoản và `admin_room` → máy thành viên khác không được
+>    đánh thức khi một người ghi vào nhà (đơn này xin `sync.completed` tới **mọi** thành viên — hiện chỉ tới phòng của người đẩy).
+> 6. **(VỪA) `HOUSEHOLD_SCOPE_MISMATCH` không chạy với giao dịch của client.** `validateEntityScope` (`sync.service.js:100-115`) đọc
+>    `payload.idwallet` **trước** `mapEntityFields`; payload giao dịch của client mang khoá **`walletId`** (hợp đồng
+>    `src/Client-app/test/core/sync/sync_payload_contract_test.dart:391`) → phép kiểm bỏ qua đúng ca nó sinh ra để chặn (giao dịch riêng
+>    trỏ vào ví chung). Chỉ ngân sách / mục tiêu (khoá `idwallet`) được kiểm. Ca test 7 dựng payload bằng `idwallet` nên không lộ.
+> 7. **(THẤP)** `max_shared_wallets` không chỗ nào thi hành (không có `HOUSEHOLD_WALLET_LIMIT`); danh mục sao cho nhà không chép
+>    `keyword` (`household.service.js:90-103`) nên nhà không có từ khoá nhận diện.
+>
+> ⚠️ **Vận hành:** `schema.prisma` thêm `idhousehold` cho 5 model — máy chạy backend phải `prisma generate` (Prisma Client cũ từ chối khoá
+> `idhousehold` trong `where` ⇒ `/sync/pull` hỏng với **mọi** tài khoản). CSDL nào chưa áp `database/40` thì `generate` xong là `P2022`.
+
 > 👑 **TÀI LIỆU YÊU CẦU KỸ THUẬT NGUỒN SỰ THẬT (SOURCE OF TRUTH) — ĐÃ ĐƯỢC PO DUYỆT 2026-10-27**
 > **Người nhận:** Backend Team (Lead FullStack & Backend Engineers)  
 > **Người giao:** Product Owner (PO) & Lead Business Analyst  

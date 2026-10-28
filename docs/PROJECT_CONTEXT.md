@@ -617,6 +617,30 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-28)
 
+### 🔀 Gộp `main` @ `7b56d822` (2026-10-28 phiên 20, commit gộp `a630c4c8`, chưa push) — backend báo xong đơn 50 (gia đình nền móng) và 54
+
+- `177dd0e1` (NPBao, PR #168): module `household` (16 endpoint `/api/households`); migration **40** (ba bảng `household*`, cột
+  `Idhousehold` ở `wallet` · `transaction` · `goal` · `budget` · `category`, dựng lại `uq_wallet_account_name_active` /
+  `uq_wallet_default_active` / `uq_category_owner_name` kèm `"Idhousehold" IS NULL`) — **đã áp Supabase** (đo chỉ `SELECT`: 3 bảng, 5 cột,
+  định nghĩa chỉ mục khớp tệp; 0 nhà, 0 hàng mang `Idhousehold`); `/sync/push` kiểm chủ sở hữu (`NOT_OWNER`) + ma trận vai; `/sync/pull`
+  lọc theo `idhousehold`; `admin.service.js` kiểm trùng tên khuôn danh mục theo tên chuẩn hoá, 409.
+- Không tệp `src/Client-app` nào đổi (hash cây `a90688b8…` trước = sau → không chạy lại `flutter test`, mốc giữ **8361 / 10 skip**);
+  `check-ignore` không khớp; `SYNC_DOCUMENTATION.md` · `app_constants.dart` · `.gitignore` · `package.json` không đổi; một xung đột (đầu
+  `CAN-LAM/README.md` — tiêu đề giữ bản client có đơn 55, banner backend giữ nguyên văn, dán lại banner client 2026-10-27 bị xoá).
+- **Soát:** **54 đạt trọn → `DA-XONG/`** (mục lục 4k, banner 🔎 đầu tệp; C2 đứng nhờ trigger `trg_set_server_update_at_category`, không nhờ
+  mã repository). **50 ở lại `CAN-LAM/`** — đạt `NOT_OWNER` cho hàng riêng tư + phạm vi kéo về (tài khoản không ở nhà nào kéo về y như
+  trước); còn **bảy vế, ba CAO**: `/sync/push` gọi `householdRepository.findMember` **không tồn tại** (lỗi bị nuốt → vai lẫn `ReadOnly`
+  không bao giờ xét), Viewer và người ngoài nhà ghi được vào nhà, kiểm Premium khi tạo nhà đọc trường JWT không có → Basic tạo được nhà;
+  thêm không gì đặt `ReadOnly`, phòng `household_<id>` không ai `join`, kiểm phạm vi đọc `idwallet` trong khi client gửi `walletId` —
+  banner 🔎 đầu tệp, có `tệp:dòng`. **55** không được đụng. Bốn mã đẩy backend phát (`NOT_OWNER`, `HOUSEHOLD_ROLE_FORBIDDEN` / `_READ_ONLY`
+  / `_SCOPE_MISMATCH`) đã nằm trong `_permanentCodes` (`gui_lo_dong_bo.dart:326-338`); `HOUSEHOLD_NOT_MEMBER` / `_CLOSED` / `_WALLET_LIMIT`
+  client có, backend chưa phát. Đơn cho client `docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md` và 16 endpoint **chưa** đối chiếu
+  `docs/Family/` — việc của lượt client bắt đầu gia đình.
+- ⚠️ **Bật backend dev sau lượt gộp này** (backend đang tắt): Prisma Client trên máy (sinh 2026-10-24) chưa có `household` / `idhousehold`
+  → `/sync/pull` vỡ với **mọi** tài khoản cho tới khi `npx prisma generate` (phép đích danh, quy tắc 1; `package.json` không đổi nên không
+  cần `npm install`). Backend cho Realme trỏ **`PersonFinance`** — tệp `database/40` mới, chưa lượt nào áp lên CSDL ấy (chưa đo — cần mật
+  khẩu postgres) → phải áp `database/40` **trước** `generate`, không thì `P2022` cả đăng nhập. Hai phép, hỏi đích danh từng phép.
+
 ### 💎 B1 — Phân quyền theo gói: cột Premium và 22 công tắc (2026-10-27/28)
 
 Spec `docs/superpowers/specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md` (chỗ mã khác bản viết = mục 13), tài liệu
