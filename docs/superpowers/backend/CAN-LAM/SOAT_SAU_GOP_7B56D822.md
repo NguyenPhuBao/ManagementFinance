@@ -147,8 +147,12 @@ async function kiemGhiVaoNha({ entity, operation, idaccount, hhId, existing, pay
 Kết hợp với việc 2 (nhà xét theo payload) và việc bỏ `NOT_OWNER` khi hàng là của nhà (`isShared`, `sync.repository.js:249` …), một
 thao tác đẩy có thể: kéo một hàng của nhà A sang nhà B; biến hàng của nhà thành hàng riêng của người ghi (đặt `idhousehold: null`).
 
-**Đặc tả.** `docs/Family/GIA_DINH_NEN_MONG.md:268`: dữ liệu đã ghi *"ở lại nhà (không đổi `Idhousehold`, không đổi người tạo)"*. Ví chung
-là ví **tạo mới** trong nhà (phần 2a), không phải ví riêng đổi phạm vi.
+**Vì sao chặn.** Lý do chính là **an ninh**: mọi phép kiểm quyền của nhà xét theo nhà của hàng; cho đổi `Idhousehold` qua một lượt đẩy là cho
+người ghi tự chọn nhà sẽ xét mình — kéo hàng của nhà sang nhà khác, hoặc tư hữu hoá hàng của nhà (sau đó `NOT_OWNER` lại bảo vệ nó như hàng
+riêng của họ). Đặc tả cũng không có luồng nào cần đổi: ví chung là hàng `wallet` **tạo mới** mang `Idhousehold`, chỉ Chủ nhà tạo
+(`docs/Family/02A_VI_CHUNG_GOP_QUY.md` mục 2 *"Là hàng `wallet` có `Idhousehold` … Chỉ Chủ nhà tạo"*); góp / rút là **cặp hai giao dịch** riêng
+biệt, không đổi phạm vi hàng nào (`02A` mục 5); người rời nhà thì khoản đã ghi *"ở lại nhà (không đổi `Idhousehold`, không đổi người tạo)"*
+(`docs/Family/GIA_DINH_NEN_MONG.md:268`). Nếu sau này cần đổi phạm vi, làm bằng endpoint riêng có kiểm quyền cả hai phía, không qua `/sync/push`.
 
 **Xin làm.** Hàng đã có: payload mang `idhousehold` **khác** giá trị đang lưu (kể cả `null` khi đang có nhà, hoặc một số khi đang `null`) ⇒
 `HOUSEHOLD_SCOPE_MISMATCH`, không ghi gì. Payload không mang khoá `idhousehold` ⇒ giữ giá trị đang lưu (như hiện nay).
@@ -189,8 +193,9 @@ là ví **tạo mới** trong nhà (phần 2a), không phải ví riêng đổi 
    COMMIT;
    ```
 
-   Tên / nhóm / chính sách hạ cấp do PO chốt; cột `scope_schema` / `scope_config` điền như các mã TOGGLE / LIMIT khác nếu bắt buộc. Tối thiểu
-   phải có dòng `('Basic', 'household', false)`.
+   Chạy được nguyên văn: các cột bỏ qua đều có mặc định — `scope_schema` / `scope_config` `'{}'::jsonb`, `created_at` / `updated_at`
+   `(now() AT TIME ZONE 'UTC')` (đo `information_schema.columns` trên Supabase 2026-10-28). Tên / nhóm / chính sách hạ cấp / trần do PO chốt;
+   tối thiểu phải có dòng `('Basic', 'household', false)`.
 2. `api/households.routes.js:10` → `router.post('/', requireFeature('household'), householdController.createHousehold);` và gỡ phép kiểm chết ở
    `household.controller.js:26-34`.
 3. (Tuỳ PO) Trần thành viên đọc `household_members` của gói Chủ nhà thay vì chỉ cột `household.Max_members` — đơn 50 Việc E, gạch đầu dòng thứ hai.
@@ -291,8 +296,8 @@ mời ra / nhà giải tán cho tới khi tự mở lại màn Nhà.
 
 ## Việc 9 (THẤP)
 
-1. **Trần ví chung** (`household.Max_shared_wallets`, mặc định 10; `docs/Family/02A_VI_CHUNG_GOP_QUY.md` mục 2) không chỗ nào thi hành. Tạo ví
-   mang `idhousehold` khi nhà đã đủ số ví chung đang sống ⇒ `HOUSEHOLD_WALLET_LIMIT` (client đã xếp mã này vĩnh viễn). Có thể để tới phần 2a.
+1. **Trần ví chung** (`household.Max_shared_wallets`, mặc định 10; `docs/Family/02A_VI_CHUNG_GOP_QUY.md` mục 2 và mục 11) không chỗ nào thi hành. Tạo ví
+   mang `idhousehold` khi nhà đã đủ số ví chung **đang hoạt động** (không lưu trữ, chưa xoá) ⇒ `HOUSEHOLD_WALLET_LIMIT` (client đã xếp mã này vĩnh viễn). Có thể để tới phần 2a.
 2. **Danh mục sao cho nhà** (`household.service.js:90-103`) không chép `keyword` — nhà không có từ khoá nhận diện; không chép `idgroup` — mất
    cấu trúc nhóm. Chép cả hai (nhóm cha cần ánh xạ id cũ → id mới trong cùng giao tác).
 
