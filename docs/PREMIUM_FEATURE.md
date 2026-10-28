@@ -460,7 +460,10 @@ khe ấy làm `noiKhiQuyenDoi` `resync` lịch của tài khoản vừa đăng x
 Bản debug `a3d3820d…` (sau I2 / I3, mã `eb1f7380`), `API_BASE_URL=http://127.0.0.1:3000/api` + `adb reverse`; backend dev trỏ `PersonFinance`
 (log `PostgreSQL connected {"database":"PersonFinance"}`), tài khoản **10 — Premium tới 05/11/2026**; ma trận đổi qua `PUT /api/admin/permissions`
 (gửi đủ `is_enabled` + `limit_value` — backend ghi `limit_value = null` khi vắng); CSDL máy sao lưu trước ở
-`D:\FlowMoney-saoluu\realme-2026-10-28-phien19-truoc-task13\`. Khoá ứng dụng không chặn lúc mở (bản cài mới).
+`D:\FlowMoney-saoluu\realme-2026-10-28-phien19-truoc-task13\`. Mở lạnh không hỏi PIN: cấu hình khoá ứng dụng **vắng** trên máy (kho bảo mật
+không có khoá `khoa_app_10`, công tắc *Khoá FlowMoney* tắt — kiểm sau lượt đo); bàn giao phiên 18 ghi *"khoá bật"* — chưa rõ tắt từ lúc nào
+(người dùng tắt, hoặc một lần đăng nhập lại bằng mật khẩu xoá cấu hình theo I4 `KHOA_APP_FEATURE.md`); hỏi người dùng, không mở lỗ hổng.
+Công tắc bị khoá vẽ **giống hệt** công tắc mở (xanh đậm) — chỉ băng bên dưới báo khoá (có từ B1, chưa sửa).
 
 | Bước | Kịch bản | Kết quả |
 |---|---|---|
