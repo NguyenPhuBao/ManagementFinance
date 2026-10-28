@@ -1,6 +1,7 @@
 /// Nhánh kéo về đọc `idhousehold` của năm thực thể (gia đình, schema v32 — đơn 50 D.1: server trả khoá này, số hoặc
 /// `null`). Server im lặng (thiếu khoá — backend chưa lên đơn 50) nghĩa là CHƯA BIẾT: giữ giá trị cục bộ (`Value.absent`),
-/// cùng luật `idgoal` / `idbill`; an toàn vì server cấm chuyển một hàng giữa riêng ↔ nhà (`HOUSEHOLD_SCOPE_MISMATCH`).
+/// cùng luật `idgoal` / `idbill`; đặc tả không có luồng đổi phạm vi một hàng riêng ↔ nhà và server SẼ từ chối đổi
+/// `Idhousehold` của hàng đã có (đơn 56.3, chưa đóng — backend đang chạy vẫn cho đổi).
 library;
 
 import 'dart:convert';
@@ -167,8 +168,8 @@ void main() {
 
   test('server trả `idhousehold: null` TƯỜNG MINH cho hàng riêng → giữ giá trị cục bộ (cùng luật thiếu khoá)',
       () async {
-    // Backend trả `null` cho mọi hàng riêng ở năm bảng (`findMany` không `select`). `Value.absent()` ở đây là đúng vì
-    // server cấm đổi phạm vi một hàng (đơn 56.3: `HOUSEHOLD_SCOPE_MISMATCH`) — không có đường "nhà → riêng" để phải nghe.
+    // Backend trả `null` cho mọi hàng riêng ở năm bảng (`findMany` không `select`). `null` tường minh đọc là "chưa biết"
+    // như thiếu khoá: đặc tả không có đường "nhà → riêng" để phải nghe, server SẼ từ chối đổi (đơn 56.3, chưa đóng).
     await db.walletDao.insert(WalletsCompanion(
       id: const Value(viId),
       idaccount: const Value(accountId),

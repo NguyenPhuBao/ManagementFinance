@@ -25,7 +25,8 @@ WalletsCompanion companionViKeoVe(dynamic w, int accountId) {
     idaccount:
         Value(int.tryParse(w['idaccount'].toString()) ?? accountId),
     // Gia đình (schema v32, đơn 50 D.1): server im lặng = CHƯA BIẾT (backend chưa lên đơn 50) → giữ giá trị cục bộ, cùng
-    // luật `idgoal`. An toàn vì server cấm chuyển một hàng giữa riêng ↔ nhà (`HOUSEHOLD_SCOPE_MISMATCH`).
+    // luật `idgoal`. Đặc tả không có luồng đổi phạm vi một hàng riêng ↔ nhà; server SẼ từ chối đổi `Idhousehold` của hàng
+    // đã có (đơn 56.3, chưa đóng — backend đang chạy vẫn cho đổi), nên `null` tường minh đọc là "chưa biết" như thiếu khoá.
     idhousehold: w['idhousehold'] != null ? Value(int.tryParse(w['idhousehold'].toString())) : const Value.absent(),
     name: Value(w['name'].toString()),
     type: Value(SyncPayloadNormalizer.walletTypeFromBackend(
