@@ -1,5 +1,9 @@
 # Soát sau gộp `main` @ `cd2ee572`: AIOps khoá tài khoản làm client xoá dữ liệu; webhook PayOS nâng nhầm tài khoản; đăng nhập lúc bảo trì mất `code`; đính chính hợp đồng sự kiện (mục 43)
 
+> 🗂️ **2026-10-28 — đơn 43 đã gộp vào [`../VIEC_BACKEND_CON_LAI.md`](../VIEC_BACKEND_CON_LAI.md), mục 2 (`43.A3`, `43.A5`, `43.A6`) và 8.1 (vế D).**
+> Tệp này nay chỉ là **lịch sử** (lý do, số đo, các lượt soát cũ): không cập nhật nữa, đừng ghi trả lời vào đây — việc còn lại và
+> bảng trả lời ở tệp gộp. Số dòng mã / tài liệu trong tệp này là ảnh chụp lúc viết.
+
 > 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.**
 > - **A1 — đạt:** hai khối `prisma.account.updateMany` trong `aiops.controller.js` đã gỡ.
 > - **A3 — đạt phần chính, còn MỘT lối:** `_syncAccountStatusToDatabase` (`aiops.quarantine.js:636`) chỉ mở khoá hàng

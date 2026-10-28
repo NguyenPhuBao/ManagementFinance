@@ -1,5 +1,9 @@
 # Giải mã AES-256-GCM hỏng thì backend trả NGUYÊN BẢN MÃ cho client — client ghi đè ghi chú bằng `enc:…` (mục 52)
 
+> 🗂️ **2026-10-28 — đơn 52 đã gộp vào [`../VIEC_BACKEND_CON_LAI.md`](../VIEC_BACKEND_CON_LAI.md), mục 4 (`52.1` – `52.5`).**
+> Tệp này nay chỉ là **lịch sử** (lý do, số đo, các lượt soát cũ): không cập nhật nữa, đừng ghi trả lời vào đây — việc còn lại và
+> bảng trả lời ở tệp gộp. Số dòng mã / tài liệu trong tệp này là ảnh chụp lúc viết.
+
 > 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **đạt vế CAO — chuyển lại `CAN-LAM/` vì phần dư.**
 > - **Đạt:** `encrypt()` gặp chuỗi `enc:…` thì thử `decrypt` — giải không được thì mã hoá thật (`crypto.util.js:65`); `decrypt` kiểm
 >   độ dài IV / tag (`:111`); 500 ở `auth.controller.js` mang `code` qua `ResponseHandler.error(…, code)`.

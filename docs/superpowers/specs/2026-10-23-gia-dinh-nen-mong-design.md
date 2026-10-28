@@ -6,7 +6,7 @@
 > **Phạm vi spec này:** nhà / thành viên / lời mời, ba vai, cửa Premium, luật đồng bộ theo phạm vi nhà, cột `idhousehold`.
 > Ba phần con còn lại (quỹ chung · chi chung + ai nợ ai · mục tiêu chung) mỗi phần một spec + một đơn backend riêng, viết sau.
 > **Phía server** do backend làm theo đơn CAN-LAM (người dùng chốt) — client không sửa `src/Backend` (quy tắc 1).
-> **Đơn backend:** mục **50** `docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md` (2026-10-23, người dùng nhờ viết tài liệu cho
+> **Đơn backend:** mục **50** `docs/superpowers/backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md` (2026-10-23, người dùng nhờ viết tài liệu cho
 > backend đọc) — chi tiết SQL nháp, 12 endpoint, mã lỗi, đồng bộ, Premium, sự kiện, câu kiểm.
 > ⚠️ **2026-10-26 — người dùng mở rộng thiết kế; bộ tài liệu đầy đủ ở `docs/Family/` (`00_TONG_QUAN.md` … `03_MUC_TIEU_CHUNG.md`) THẮNG spec
 > này khi lệch.** Thay mục 2 (lộ trình: bỏ *ai nợ ai* và *cho nhà xem*; phần 2 tách 2a–2d; mục tiêu chung = công tắc trên ví chung), bổ sung phần
@@ -269,7 +269,7 @@ tới tab dùng `go`, không `push` (bẫy điều hướng nhóm D).
 - Drawer — thêm mục *Nhà mình* vào `kMucDrawer` (`features/home/presentation/widgets/drawer_trang_chu.dart`); ca *"MỌI trang tính
   năng vào được từ menu"* tự canh.
 
-## 8. Hợp đồng với backend (tóm tắt — bản đầy đủ là đơn 50 `CAN-LAM/GIA_DINH_NEN_MONG.md`; đơn thắng mục này nếu lệch)
+## 8. Hợp đồng với backend (tóm tắt — bản đầy đủ là đơn 50 `CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md`; đơn thắng mục này nếu lệch)
 
 ### 8.1 CSDL — một tệp `database/N_*.sql` (N = số kế tiếp chưa dùng; đơn 49 vế C đang xin đổi tệp 27 trùng số sang 37)
 - Bảng `household`, `household_member`, `household_invite` (3.1) + CHECK vai / trạng thái + chỉ mục duy nhất *một nhà đang ở mỗi

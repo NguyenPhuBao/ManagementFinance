@@ -1,5 +1,9 @@
 # Mục 56 — Gia đình phần 1: các chốt chặn ghi vào nhà chưa chạy (soát sau gộp `main` @ `7b56d822`)
 
+> 🗂️ **2026-10-28 — đơn 56 đã gộp vào [`../VIEC_BACKEND_CON_LAI.md`](../VIEC_BACKEND_CON_LAI.md), mục 1 (`56.1` – `56.9`).**
+> Tệp này nay chỉ là **lịch sử** (lý do, số đo, các lượt soát cũ): không cập nhật nữa, đừng ghi trả lời vào đây — việc còn lại và
+> bảng trả lời ở tệp gộp. Số dòng mã / tài liệu trong tệp này là ảnh chụp lúc viết.
+
 > **Client đặt 2026-10-28** (phiên 20). Người nhận: backend (NPBao). Mức: **CAO** — chặn client bắt đầu tính năng gia đình.
 > **Hiện chưa ai bị ảnh hưởng:** Supabase có 0 nhà, 0 hàng mang `Idhousehold`, và app chưa gửi `idhousehold`. Nhưng khi client mở
 > tính năng thì mọi lỗi dưới đây chạy thật — nên xin sửa **trước** khi client làm lát 1.

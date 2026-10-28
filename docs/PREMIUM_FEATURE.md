@@ -15,7 +15,7 @@ MÃ XONG 2026-10-18 tối, chờ nghiệm thu máy thật:** backend thêm ba tr
 `POST /payment/confirm-upgrade` và ba sự kiện `payment.*`, và rút hạn đơn còn **10 phút**
 (`docs/Payment/PAYMENT_WORKFLOW_SPEC.md` v2.0.0).
 - **Phía backend:** đơn 44 đạt A, C, D, E, F khi client soát 2026-10-18. Mục B còn hai vế (đơn đang chờ xác nhận / chờ
-  hoàn tiền vẫn bị webhook xử lý lại; chưa khử trùng theo `reference`) — banner đầu `CAN-LAM/SOAT_SAU_GOP_D72CCD45.md`.
+  hoàn tiền vẫn bị webhook xử lý lại; chưa khử trùng theo `reference`) — banner đầu `CAN-LAM/LICH-SU/SOAT_SAU_GOP_D72CCD45.md`.
 - **Phía client:** gộp `e7570e16` mang mã backend viết thẳng vào mảng này — ba trạng thái đơn, hai nút xác nhận chuyển
   thừa ở màn Chờ thanh toán, nhãn lịch sử, hạn 10 phút. ✅ **2026-10-18 tối** (đợt sửa hai lỗi mở đầu lượt G89 + G94):
   đồng hồ trên máy chỉ còn để hiện số giây — màn sang *"Đơn đã hết hạn"* duy nhất khi `order-status` trả `EXPIRED` (server

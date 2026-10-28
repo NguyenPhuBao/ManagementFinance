@@ -1,5 +1,9 @@
 # Mục 49 — Soát sau khi client gộp `main` @ `ee6a65e5` (PR #153–#158) — tài liệu lệch mã, migration trùng số, thứ tự áp, lỗi kích hoạt Premium
 
+> 🗂️ **2026-10-28 — đơn 49 đã gộp vào [`../VIEC_BACKEND_CON_LAI.md`](../VIEC_BACKEND_CON_LAI.md), mục 7 (`49.D`, `49.F`) và 8.1 (H1) · 8.2 (E, H3) · 8.4 (C) · 8.5 (A).**
+> Tệp này nay chỉ là **lịch sử** (lý do, số đo, các lượt soát cũ): không cập nhật nữa, đừng ghi trả lời vào đây — việc còn lại và
+> bảng trả lời ở tệp gộp. Số dòng mã / tài liệu trong tệp này là ảnh chụp lúc viết.
+
 > 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.**
 > - **G — đạt qua đơn 53 B:** JIT tính `newExpiresAt` (`payment.service.js:682`) + phát `account.upgraded` (`:722`).
 > - **C — đạt phần tệp:** `database/)2_can_lam_all_migrations.sql` đã xoá; tên cũ trong tài liệu chưa soát.

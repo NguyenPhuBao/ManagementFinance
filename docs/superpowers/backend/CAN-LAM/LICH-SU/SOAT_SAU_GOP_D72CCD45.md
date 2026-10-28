@@ -1,5 +1,9 @@
 # Soát sau gộp `main` @ `d72ccd45`: hai tệp migration trùng số và script áp migration đồng bộ bị viết đè; webhook xử lý lại đơn đã đối soát; tra mã nhận diện bắt nhầm tiền tố PayOS; hợp đồng thanh toán mới chưa vào tài liệu sự kiện (mục 44)
 
+> 🗂️ **2026-10-28 — đơn 44 đã gộp vào [`../VIEC_BACKEND_CON_LAI.md`](../VIEC_BACKEND_CON_LAI.md), mục 3 (`44.B2`) và 8.1 (vế F).**
+> Tệp này nay chỉ là **lịch sử** (lý do, số đo, các lượt soát cũ): không cập nhật nữa, đừng ghi trả lời vào đây — việc còn lại và
+> bảng trả lời ở tệp gộp. Số dòng mã / tài liệu trong tệp này là ảnh chụp lúc viết.
+
 > 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.**
 > - **C — đạt:** `findOrderByRecognitionCode` (`payment.repository.js:289`) mặc định lọc `status = 'PENDING'`, lấy đơn mới nhất.
 > - **B1 (phần dư) — đạt:** webhook cho đơn không còn `PENDING` / `EXPIRED` vẫn ghi `recordTransaction` (lỗi trùng nuốt) trước khi

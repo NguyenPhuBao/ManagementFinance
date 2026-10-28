@@ -213,7 +213,7 @@ Thư mục này nay **69** tệp + mục lục (tổng 70 tệp, đếm bằng m
 
 Backend báo đơn 50 và 54 *"hoàn tất 100%"* ở `177dd0e1` (PR #168) nhưng không chuyển tệp. Client soát bằng mã + CSDL Supabase (chỉ
 `SELECT`). Đơn 54 đạt trọn nên chuyển sang đây; đơn 50 ở lại `CAN-LAM/` — banner 🔎 đầu tệp (bảy vế còn, ba vế mức cao về quyền của
-hàng thuộc nhà); việc cụ thể cho backend ở đơn mới **56** `CAN-LAM/SOAT_SAU_GOP_7B56D822.md`. Giữa hai lượt, 2026-10-27 hai mục **47** và **53** do backend chuyển sang đây đã được client soát đạt (banner 🔎 đầu tệp).
+hàng thuộc nhà); việc cụ thể cho backend ở đơn mới **56** — nay gộp cùng mọi đơn còn mở vào `../CAN-LAM/VIEC_BACKEND_CON_LAI.md` (tệp gốc ở `CAN-LAM/LICH-SU/`). Giữa hai lượt, 2026-10-27 hai mục **47** và **53** do backend chuyển sang đây đã được client soát đạt (banner 🔎 đầu tệp).
 
 | Tài liệu | Kết quả soát |
 |---|---|

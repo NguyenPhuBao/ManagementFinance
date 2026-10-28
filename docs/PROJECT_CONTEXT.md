@@ -636,12 +636,20 @@ src/Backend/
   / `_SCOPE_MISMATCH`) đã nằm trong `_permanentCodes` (`gui_lo_dong_bo.dart:326-338`); `HOUSEHOLD_NOT_MEMBER` / `_CLOSED` / `_WALLET_LIMIT`
   client có, backend chưa phát. Đơn cho client `docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md` và 16 endpoint **chưa** đối chiếu
   `docs/Family/` — việc của lượt client bắt đầu gia đình.
-- ✉️ **Đơn 56** `CAN-LAM/SOAT_SAU_GOP_7B56D822.md` (người dùng bảo viết việc backend vào `CAN-LAM/`): 9 việc (5 CAO) kèm cách sửa, SQL seed
+- ✉️ **Đơn 56** `CAN-LAM/LICH-SU/SOAT_SAU_GOP_7B56D822.md` (người dùng bảo viết việc backend vào `CAN-LAM/`): 9 việc (5 CAO) kèm cách sửa, SQL seed
   `database/41` cho khoá quyền `household` / `household_members` (ma trận Supabase 36 mã, không có hai khoá ấy — `requireFeature` chỉ chặn
   khi đọc được đúng `false`), 17 ca kiểm qua `processPush`, bảng trả lời. Viết đơn lộ thêm ba chỗ: đổi `Idhousehold` của hàng đã có qua
   `/sync/push`; `upsertCategory` từ chối bằng `Error` trơn → `DB_ERROR` → client gửi lại mãi (Member sửa danh mục của nhà); bảng quyền
   lệch đơn 50 Việc D (mục tiêu chung Member sửa được, danh mục nhà Member không sửa được, chuyển khoản giữa ví chung không chặn). Đóng 56
   là đóng 50. Đơn dẫn đơn 50 bằng **tên mục**, không bằng số dòng (banner client đầu đơn 50 làm số dòng trôi).
+- 🗂️ **Gộp mọi việc backend vào MỘT tệp** `CAN-LAM/VIEC_BACKEND_CON_LAI.md` (người dùng yêu cầu cùng ngày, chọn *dời tệp gốc vào thư mục
+  con*): soát lại 8 đơn trên mã HEAD + Supabase (chỉ `SELECT`) — **không đơn nào xong trọn**; tệp gộp có bảng việc theo mức (mã giữ số
+  đơn: `56.1`, `43.A3`…), phần tài liệu backend **gom theo tệp** (`Event-Notification-to-ClientApp.md` gộp 43 D · 44 F · 49 H1), vế đã
+  đạt, một bảng trả lời. Đo thêm cho tệp gộp: `account` chỉ `Active` 8 / `Deleted` 4 (CHECK 43.A5 áp thẳng được), 0 nhóm
+  `payos_transaction_id` trùng (migration 38 áp được), 10 ví · 13 giao dịch · 1 danh mục mồ côi (49.F). Tám tệp gốc → `CAN-LAM/LICH-SU/`
+  (dòng 🗂️ đầu mỗi tệp, không cập nhật nữa); đường dẫn trong tài liệu client đã đổi theo; `Project.md` và `database/40` (của backend) còn
+  dẫn chỗ cũ, cùng `client-app/CAN-LAM/GIA_DINH_NEN_MONG.md:8` (đơn backend viết cho client). Đơn mới về sau thêm mục vào tệp gộp,
+  số kế tiếp **57**.
 - ⚠️ **Bật backend dev sau lượt gộp này** (backend đang tắt): Prisma Client trên máy (sinh 2026-10-24) chưa có `household` / `idhousehold`
   → `/sync/pull` vỡ với **mọi** tài khoản cho tới khi `npx prisma generate` (phép đích danh, quy tắc 1; `package.json` không đổi nên không
   cần `npm install`). Backend cho Realme trỏ **`PersonFinance`** — tệp `database/40` mới, chưa lượt nào áp lên CSDL ấy (chưa đo — cần mật
@@ -770,7 +778,7 @@ Mốc `flutter test` **8232 pass / 10 skip** (đầu phiên 8202), analyze **20*
   `specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md` (`trangThaiQuyen` ba trạng thái, *"bảng của gói đang hiệu lực"*,
   22 / 31 công tắc, 9 mã không bao giờ khoá, câu *"Đang tạm ngừng"*) — chờ người dùng soát bản viết; lộ **G109** (Basic sau khi
   Premium hết hạn offline dùng trần Premium đã lưu → tạo không giới hạn). **(c)** **đơn 55**
-  `CAN-LAM/PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md` (`6b40f112`): cột Premium cho Basic, Trụ 1 mã LIMIT → 0, Premium không hạn
+  `CAN-LAM/LICH-SU/PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md` (`6b40f112`): cột Premium cho Basic, Trụ 1 mã LIMIT → 0, Premium không hạn
   ba nghĩa, đính chính `docs/Functional-Mobile/4_TRU_COT.md` (31 khẳng định sai).
 
 ### 🧭 Phiên 15 (2026-10-27 chiều) — danh mục mặc định theo thao tác Admin-web (spec + kế hoạch), đơn 54, gộp `main` @ `5c3547b5` + soát 7 đơn
@@ -1197,7 +1205,7 @@ sở hữu thứ ba** (cột `idhousehold` cho ví, giao dịch, mục tiêu, ng
 liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà · giải tán = xoá mềm · phần server **backend làm theo đơn**.
 - **Spec** `docs/superpowers/specs/2026-10-23-gia-dinh-nen-mong-design.md` — phần 1/4 (nền móng); ba phần con sau mỗi phần một
   spec + đơn. Hoá đơn chung, QR, offline tạo nhà, nhiều nhà / tài khoản: ngoài phạm vi.
-- **Đơn 50** `CAN-LAM/GIA_DINH_NEN_MONG.md` (người dùng: *"viết file trình bày chi tiết cho backend đọc"*) — agent gom điểm nối
+- **Đơn 50** `CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md` (người dùng: *"viết file trình bày chi tiết cho backend đọc"*) — agent gom điểm nối
   backend có `file:line`; SQL nháp migration 37, 12 endpoint + hình dạng trạng thái nhà, mã lỗi API, phạm vi kéo về, luật tham chiếu,
   4 mã đẩy mới, khoá quyền `household` + giới hạn `household_members`, `ReadOnly` theo Premium chủ, `household.changed`, sao danh mục,
   11 ca kiểm + câu SQL.
@@ -1290,7 +1298,7 @@ Người dùng: *"lấy code mới nhất về kiểm tra"*. 33 commit, 179 tệ
   (`auth.repository.js` `include` không `select`). Phải áp 30–36 **trước** `npm install` — phép đích danh (quy tắc 1). 27 và 36
   tự tạo lúc khởi động; thiếu 30–32 thì quyền rơi về mặc định; thiếu 35 thì log lỗi mỗi request, không hỏng. ✅ **2026-10-24
   tối:** đã áp 26–36 lên `PersonFinance` cục bộ (Supabase của `.env` vốn đã có) + `prisma generate` — khối 🔒 đầu mục 14.
-- **Đơn 49** `CAN-LAM/SOAT_SAU_GOP_EE6A65E5.md` (người dùng chọn một đơn gộp): A tài liệu client bị viết lại (bảng đối chiếu)
+- **Đơn 49** `CAN-LAM/LICH-SU/SOAT_SAU_GOP_EE6A65E5.md` (người dùng chọn một đơn gộp): A tài liệu client bị viết lại (bảng đối chiếu)
   + soát `Sync-To-ClientApp.md` cùng lỗi · B `Event-Notification-to-ClientApp.md` bảo xoá SQLite khi `ACCOUNT_DELETED` (ngược G89)
   · C trùng số migration **27** lần hai + tệp `)2_can_lam_all_migrations.sql` · D thứ tự áp trước `npm install` · E (thấp) hai
   route `devices` không có trong mã, CORS thiếu `x-device-name` (bản web sẽ hỏng preflight) · F (thấp) migration 33 xoá cứng
@@ -2276,7 +2284,7 @@ câu hỏi chọn được:
   `pending` → **G94** (`CLIENT_APP_KNOWN_GAPS.md`): người chuyển thừa / thiếu thấy *"Đơn đã hết hạn"*, không có lối gọi
   `confirm-upgrade`, lịch sử ghi đơn đã hoàn tiền là *"Chờ thanh toán"*, năm chỗ chữ *30 phút* nay sai. Người dùng
   chốt: làm **cùng lượt G89**, sau khi backend đóng đơn 43.
-- **Đơn 44** `CAN-LAM/SOAT_SAU_GOP_D72CCD45.md`:
+- **Đơn 44** `CAN-LAM/LICH-SU/SOAT_SAU_GOP_D72CCD45.md`:
   - **A (cao):** tệp thanh toán số 20 và 24 **trùng số** với `20_add_server_update_at_sync_tables.sql` /
     `24_add_actor_role_to_aiops_incident.sql`; `apply_migration_20.js` bị viết đè sang tệp thanh toán, nên migration
     đồng bộ `Server_update_at` không còn script áp (`git grep`: 0 chỗ nhắc).
@@ -2494,7 +2502,7 @@ Người dùng chốt 2026-10-11 làm **trước C4** (C4 giọng nói chạm đ
   `aiops_*quarantine*` — `database/26`, backend tạo bằng DDL `IF NOT EXISTS` lúc khởi động; **chưa có** trên CSDL dev vì backend
   chưa chạy từ khi gộp — đo: chỉ `aiops_incident`, `aiops_setting`) → khởi động lại backend **không còn** xoá danh sách;
   loopback vẫn không thể bị đưa vào.
-- **Đơn 43** `CAN-LAM/SOAT_SAU_GOP_CD2EE572.md` (mức cao): **A** AIOps khoá tài khoản ghi `Status = 'Locked'` — CSDL dev **không
+- **Đơn 43** `CAN-LAM/LICH-SU/SOAT_SAU_GOP_CD2EE572.md` (mức cao): **A** AIOps khoá tài khoản ghi `Status = 'Locked'` — CSDL dev **không
   có** `ck_account_status` (đo: bảng `account` 0 CHECK) nên ghi được — `auth.js` trả `ACCOUNT_DELETED` → client **xoá SQLite**
   (mất phần chưa đồng bộ); kích hoạt bằng 15 lần đăng nhập sai cho tên của người khác. **B** webhook `orderCode` lạ → đơn gắn
   tài khoản `idaccount` nhỏ nhất → nâng Premium nhầm. **C** 503 đăng nhập lúc bảo trì mất `code`. **D** 12 chỗ hợp đồng lệch mã.

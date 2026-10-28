@@ -1,5 +1,9 @@
 # Mục 55 — Phân quyền theo gói: hợp đồng `/subscription-info` cho cột Premium + đính chính `4_TRU_COT.md`
 
+> 🗂️ **2026-10-28 — đơn 55 đã gộp vào [`../VIEC_BACKEND_CON_LAI.md`](../VIEC_BACKEND_CON_LAI.md), mục 5 (`55.A1` – `55.A3`) và 8.3 (vế B).**
+> Tệp này nay chỉ là **lịch sử** (lý do, số đo, các lượt soát cũ): không cập nhật nữa, đừng ghi trả lời vào đây — việc còn lại và
+> bảng trả lời ở tệp gộp. Số dòng mã / tài liệu trong tệp này là ảnh chụp lúc viết.
+
 > **Client đặt 2026-10-27** (phiên 16). Người nhận: backend (NPBao). Mức: **TRUNG BÌNH** — không hỏng dữ liệu; vế A làm ma trận
 > Admin-web `/permissions` có tác dụng đúng trên app, vế B sửa một tài liệu đang tả app làm những việc app không làm.
 >

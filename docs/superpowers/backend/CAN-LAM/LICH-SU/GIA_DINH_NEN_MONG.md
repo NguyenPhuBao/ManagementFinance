@@ -1,5 +1,9 @@
 # Mục 50 — Chức năng GIA ĐÌNH (nhà nhiều người): Toàn bộ Thiết kế & Nhiệm vụ Backend Phần 1 (Nền móng)
 
+> 🗂️ **2026-10-28 — đơn 50 đã gộp vào [`../VIEC_BACKEND_CON_LAI.md`](../VIEC_BACKEND_CON_LAI.md), mục 1 (`56.1` – `56.9`, đóng cùng đơn 56).**
+> Tệp này nay chỉ là **lịch sử** (lý do, số đo, các lượt soát cũ): không cập nhật nữa, đừng ghi trả lời vào đây — việc còn lại và
+> bảng trả lời ở tệp gộp. Số dòng mã / tài liệu trong tệp này là ảnh chụp lúc viết.
+
 > 🔎 **Client soát lượt báo xong 2026-10-28** (`177dd0e1`, PR #168, client gộp `a630c4c8`; đọc mã HEAD + CSDL Supabase của `.env`, chỉ
 > `SELECT`). Soát khoanh ở chỗ client phụ thuộc (đồng bộ, quyền, socket, migration) — **chưa** đối chiếu 16 endpoint với `docs/Family/`
 > (việc của lượt client bắt đầu gia đình). Đơn **ở lại `CAN-LAM/`**: hàng riêng tư đã an toàn, nhưng mọi chốt chặn của **hàng thuộc nhà**
@@ -60,7 +64,7 @@
 > **Người nhận:** Backend Team (Lead FullStack & Backend Engineers)  
 > **Người giao:** Product Owner (PO) & Lead Business Analyst  
 > **Mức độ ưu tiên:** **CAO (High / P1)** — Tính năng chiến lược mở rộng hệ sinh thái FlowMoney  
-> **Tài liệu nghiệp vụ gốc:** [`docs/Family/00_TONG_QUAN.md`](../../../Family/00_TONG_QUAN.md) & [`docs/Family/01_NEN_MONG.md`](../../../Family/01_NEN_MONG.md)  
+> **Tài liệu nghiệp vụ gốc:** [`docs/Family/00_TONG_QUAN.md`](../../../../Family/00_TONG_QUAN.md) & [`docs/Family/01_NEN_MONG.md`](../../../../Family/01_NEN_MONG.md)  
 > **Trạng thái:** 🎉 ĐÃ HOÀN TẤT TRIỂN KHAI 100% TRÊN BACKEND (PASS 492 TESTS & DB VERIFIED) — SẴN SÀNG CHO CLIENT-APP TÍCH HỢP!  
 
 ---
