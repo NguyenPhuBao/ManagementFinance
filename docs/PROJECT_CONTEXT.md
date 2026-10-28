@@ -655,10 +655,16 @@ Spec `docs/superpowers/specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-desig
   cũ, 3 ca domain, 1 ca Sửa ví, 2 ca Thêm ví — mỗi ca canh thử bằng bản sai), `flutter analyze` **20**.
 - **Task 13 Bước 0 trên Supabase dùng chung (chỉ đọc, 2026-10-28 phiên 19):** cột Premium **0 ô `false`** trong 22 mã; đủ 5 hàng LIMIT (đều
   `limit_value = null` = không giới hạn) → **go**. Cột Basic tắt 9 mã (ba AI, `anomaly_spending_insights`, `bill_auto_pay`, `cashflow_forecast`,
-  `export_reports`, `goal_auto_deposit`, `smart_budget_rebalancing`); trần Basic 3 / 3 / 3 / 3 / 5.
+  `export_reports`, `goal_auto_deposit`, `smart_budget_rebalancing`); trần Basic 3 / 3 / 3 / 3 / 5. `PersonFinance` cục bộ đo cùng ngày: **trùng
+  từng dòng**.
+- **Task 13 nghiệm thu Realme (2026-10-28 phiên 19, tài khoản 10 Premium, backend `PersonFinance`) — ◐ đạt phần người Premium** (bảng
+  `PREMIUM_FEATURE.md` 8.9): bước 1 (Xuất báo cáo tạm ngừng qua drawer + `/analytics/export`, không giá / nút mua) · I2 qua nút Quét · I3 (ví *test*
+  bật lại được, Lưu rồi khoá) · mọi khối tạm ngừng hiện qua socket ≤ 3 s · bước 2 (*"tối đa 6 ví"*, *"Tới 6 ví"*) · bước 4 (3 lịch nhắc ghi chép huỷ
+  / về) · bước 7 ma trận trả qua API, khớp mốc Bước 0. **Chưa đo:** bước 3 (Basic — máy chỉ có tài khoản Premium), 5 (không hoá đơn sắp tới
+  hạn), 6 (G109 — cần `UPDATE premium_expires_at`, xin phép đích danh).
 - **Giới hạn / việc mở:** ⚠️ **Task 13 Bước 0 (go / no-go trước phát hành, chỉ đọc)** — cột Premium của ma trận đang chạy (`PersonFinance` và Supabase
   dùng chung) có ô `false` nào trong 22 mã (có → mọi người Premium thấy mã ấy *"Đang tạm ngừng"*: dừng, hỏi người dùng) và đủ 5 hàng LIMIT (spec mục
-  10 bước 0); nghiệm thu máy thật Task 13 chưa làm; A1 / A2 / A3 chờ backend (chưa có `premiumFeatures` thì Basic thấy khoá *cần Premium*); (P-N5)
+  10 bước 0 — ✅ đo 2026-10-28: go); nghiệm thu máy thật Task 13 còn bước 3 · 5 · 6; A1 / A2 / A3 chờ backend (chưa có `premiumFeatures` thì Basic thấy khoá *cần Premium*); (P-N5)
   `noiKhiQuyenDoi` kích `resync` song song lượt khôi phục của scanner (nhật ký B5a có thể hai dòng `dat_lich`) + cuộc đua lúc đăng xuất (review M1 —
   `resync` lịch của tài khoản vừa đăng xuất; không cờ "đang chạy" công khai, không sửa bằng mã — spec mục 8); gói số bậc 1 Trợ lý AI + gói Ví vẫn mang
   tổng tài sản khi `net_worth_overview` khoá; lệch Stitch có chủ ý ở `PREMIUM_FEATURE.md` 8.6 (đối chiếu bằng mắt ở Task 13).

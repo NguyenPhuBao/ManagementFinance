@@ -442,8 +442,8 @@ không có Quét / Đọc biến động; thẻ Gói tab Cá nhân nay **`tomTat
 toàn nhánh** (`457381c6`: `dacQuyenPremium(goi, now)` theo bảng gói hiệu lực — spec mục 13 (18); `trangThaiQuyenDoc` có chỗ gọi, `cauTamNgung` gỡ,
 `kDongKhoaChiBatThuong` vào `cau_quyen.dart` — 13 (17); hộp *"Bắt đầu vòng mới?"* bỏ vế khuyên Rút khi `goal_deposit_withdraw` khoá; khối Nhận xét
 Trang chủ đọc quyền trong `Builder` riêng); `flutter test` **8354 pass / 10 skip**, `flutter analyze` **20** (đo 2026-10-28 sau đợt sửa cuối).
-🚧 **Chưa nghiệm thu máy thật** (spec mục 10, Task 13 — backend + Admin-web trỏ `PersonFinance` cục bộ, **không** Supabase dùng chung). ⚠️ **Trước
-phát hành: Task 13 Bước 0** (spec mục 10 bước 0, go / no-go, chỉ đọc) — cột Premium trên ma trận đang chạy (cả Supabase dùng chung) có ô `false` nào
+◐ **Nghiệm thu máy thật một phần** (Task 13, 2026-10-28 phiên 19 — mục **8.9**: Bước 0 go trên cả hai CSDL; bước 1 · 2 · 4 · 7 + I2 / I3 đạt;
+bước 3 (Basic) · 5 · 6 chưa đo). ⚠️ **Trước phát hành: Task 13 Bước 0** (✅ đo 2026-10-28 — go; đo lại nếu ma trận đổi) (spec mục 10 bước 0, go / no-go, chỉ đọc) — cột Premium trên ma trận đang chạy (cả Supabase dùng chung) có ô `false` nào
 trong 22 mã (có → mọi người Premium thấy mã ấy *"Đang tạm ngừng"* — dừng, hỏi người dùng) và đủ 5 hàng LIMIT (bẫy 13).
 Phần dự phòng cột Premium cho Basic chờ đơn **CAN-LAM 55 A1 / A2 / A3**; chưa có thì Basic thấy khoá *"cần Premium"* như trước B1.
 
@@ -454,3 +454,27 @@ Giới hạn biết trước (spec mục 8, bản đã thêm): app chỉ thấy 
 `dat_lich` cùng khoá trong nhật ký B5a; `resync` không có khoá loại trừ, quyền tắt đúng lúc lượt khác đã đọc vị từ có thể đặt lại lịch vừa huỷ (tự sửa
 ở lượt quét kế) · cuộc đua lúc đăng xuất (review M1): bộ quét đã `cancelAll` mà `GoiRepository` còn tài khoản — một lượt `lamMoi` lật quyền nhắc đúng
 khe ấy làm `noiKhiQuyenDoi` `resync` lịch của tài khoản vừa đăng xuất; không có cờ "đang chạy" công khai nên không sửa bằng mã (spec mục 8).
+
+### 8.9 B1 Task 13 — nghiệm thu máy thật (Realme RMX2205, 2026-10-28 phiên 19) — ◐ đạt phần người Premium
+
+Bản debug `a3d3820d…` (sau I2 / I3, mã `eb1f7380`), `API_BASE_URL=http://127.0.0.1:3000/api` + `adb reverse`; backend dev trỏ `PersonFinance`
+(log `PostgreSQL connected {"database":"PersonFinance"}`), tài khoản **10 — Premium tới 05/11/2026**; ma trận đổi qua `PUT /api/admin/permissions`
+(gửi đủ `is_enabled` + `limit_value` — backend ghi `limit_value = null` khi vắng); CSDL máy sao lưu trước ở
+`D:\FlowMoney-saoluu\realme-2026-10-28-phien19-truoc-task13\`. Khoá ứng dụng không chặn lúc mở (bản cài mới).
+
+| Bước | Kịch bản | Kết quả |
+|---|---|---|
+| 0 | Ma trận cột Premium, chỉ đọc — Supabase dùng chung **và** `PersonFinance` | ✅ go: 0 ô `false` trong 22 mã, đủ 5 hàng LIMIT (`null`); cột Basic tắt 9 mã, trần 3/3/3/3/5 — hai CSDL trùng nhau |
+| 1 | Tắt `export_reports` cột Premium → drawer *Xuất báo cáo* và nút tải trang Phân tích (`/analytics/export`) | ✅ màn Nâng cấp *"Xuất báo cáo hiện đang tạm ngừng."*, **không giá, không nút mua** (I2) |
+| I2 | Tắt `ocr_receipt` → nút *Quét* Trang chủ | ✅ *"Quét hóa đơn, biên lai hiện đang tạm ngừng."*, không giá / nút; thẻ gói, đặc quyền, *Lịch sử mua* còn |
+| I3 | Ví *test* đã lưu "không tính" (loại khi còn quyền) → tắt `wallet_exclude_total` → Sửa ví | ✅ băng xám *"Tạm ngừng"*; công tắc **mở**: bật → tắt lại → bật (trước Lưu); Lưu "tính" → mở lại: công tắc **khoá ở BẬT**; ví về trạng thái ban đầu (tổng -3.518.000 đ, 6 ví) |
+| — | Tạm ngừng các khối khác (tín hiệu socket ≤ 3 s, không chạm máy) | ✅ thẻ *Dự báo 30 ngày tới — Đang tạm ngừng* (viền liền); băng Trợ lý AI icon robot + ô nhập *"Đang tạm ngừng"*; băng *Tự động thanh toán* form hoá đơn xám; Trang chủ: thẻ *Tổng tài sản — Đang tạm ngừng* + dòng *"Nút ghi nhanh đang tạm ngừng"* có khung; phím **+ / −** mờ; ô số dư Sửa ví chỉ đọc + *"Điều chỉnh số dư ví đang tạm ngừng"*; công tắc *Nhắc ghi chép hằng ngày* giữ BẬT + băng *"Tạm ngừng"* |
+| 2 | Trần ví cột Premium = 6 (= số ví đang hoạt động) → *Thêm ví mới* | ✅ *"Gói Premium hiện cho tạo tối đa 6 ví."*, đặc quyền *"Tới 6 ví"*; giá + *Gia hạn* ở lại (màn nói trần, không phải tạm ngừng) |
+| 4 | Tắt `daily_recording_reminder` → `dumpsys alarm`; bật lại | ✅ 3 lịch 20:00 (28 · 29 · 30/10) huỷ trong ≤ 6 s, *Tổng kết tuần* còn; bật lại → 3 lịch về |
+| 7 | Trả ma trận | ✅ qua API (không dùng *Khôi phục mặc định* — nạp lại cả ma trận từ tệp seed); chạy lại script Bước 0: **khớp từng dòng** mốc trước đo |
+
+**Chưa đo:** bước 3 (tài khoản **Basic** — máy chỉ có tài khoản 10 Premium; đổi tài khoản là dọn dữ liệu cục bộ), bước 5 (lịch nhắc trước hạn —
+4 hoá đơn của tài khoản đều đã quá hạn, không lịch nào để huỷ), bước 6 (G109 hết hạn offline — cần `UPDATE premium_expires_at` trên
+`PersonFinance`, xin phép đích danh), bước 3 phần dòng khoá *nhịp chi* ngân sách / nạp rút mục tiêu / gắn danh mục / từ khoá (cùng widget đã thấy).
+**Ghi nhận để người dùng đối chiếu Stitch `02c0d881…`:** dòng khoá tạm ngừng (*"Điều chỉnh số dư ví đang tạm ngừng"*, *"Nút ghi nhanh đang tạm
+ngừng"*) dùng ổ khoá **vàng** như *"cần Premium"*, còn băng công tắc tạm ngừng thì **xám**.
