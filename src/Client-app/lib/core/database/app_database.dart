@@ -599,9 +599,18 @@ class AppDatabase extends _$AppDatabase {
   /// GIỮ NGUYÊN danh mục mặc định (`idaccount = 0`) — đó là dữ liệu dùng chung,
   /// không thuộc tài khoản nào.
   ///
+  /// **Gia đình** (schema v32, spec 2026-10-23 mục 4.6 đường 1): năm bảng có cột `idhousehold` GIỮ hàng của nhà [nhaGiu] —
+  /// nhà tài khoản mới đang ở theo bản lưu trạng thái nhà — dù người tạo là ai, và XOÁ hàng của mọi nhà khác, kể cả hàng
+  /// chính [keepIdaccount] đã ghi vào nhà cũ. [nhaGiu] `null` (chưa biết) → xoá mọi hàng của nhà; bộ điều phối gia đình
+  /// kéo lại toàn bộ khi lượt làm mới đầu thấy nhà (`SyncEngine.keoLaiToanBo`) — pull tăng dần KHÔNG tự mang chúng về.
+  ///
   /// Xoá bảng con trước bảng cha vì `beforeOpen` bật `PRAGMA foreign_keys = ON`.
-  Future<int> purgeDataForOtherAccounts(int keepIdaccount) async {
+  Future<int> purgeDataForOtherAccounts(int keepIdaccount, {int? nhaGiu}) async {
     if (keepIdaccount <= 0) return 0;
+    // Hàng của nhà đang ở. ⚠️ Vế `isNotNull()` bắt buộc: `idhousehold = x` trên hàng NULL là NULL, và `NOT (… OR NULL)`
+    // là NULL — hàng riêng của tài khoản cũ sẽ thoát phép xoá.
+    Expression<bool> cuaNhaGiu(Expression<int> idhousehold) =>
+        nhaGiu == null ? const Constant(false) : idhousehold.isNotNull() & idhousehold.equals(nhaGiu);
     var removed = 0;
     await transaction(() async {
       removed += await (delete(categoryKeywords)
@@ -611,25 +620,30 @@ class AppDatabase extends _$AppDatabase {
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
       removed += await (delete(transactions)
-            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+            ..where((t) =>
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
           .go();
       removed += await (delete(budgets)
-            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+            ..where((t) =>
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
           .go();
       removed += await (delete(bills)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
       removed += await (delete(goals)
-            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+            ..where((t) =>
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
           .go();
       // idaccount = 0 là danh mục mặc định dùng chung → giữ lại.
       removed += await (delete(categories)
-            ..where((t) =>
-                t.idaccount.equals(keepIdaccount).not() &
-                t.idaccount.equals(0).not()))
+            ..where((t) => ((t.idhousehold.isNull() &
+                        (t.idaccount.equals(keepIdaccount) | t.idaccount.equals(0))) |
+                    cuaNhaGiu(t.idhousehold))
+                .not()))
           .go();
       removed += await (delete(wallets)
-            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+            ..where((t) =>
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
           .go();
       // Thông báo cũng phải đi theo: bỏ sót là thông báo tài chính của người
       // đăng nhập trước hiện trên máy người sau. Bảng này không có khoá ngoại
@@ -664,6 +678,36 @@ class AppDatabase extends _$AppDatabase {
       removed += await (delete(danhMucAiDoans)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
+    });
+    return removed;
+  }
+
+  /// Xoá **trên máy** mọi hàng của nhà [idhousehold] — đường dọn 2 của gia đình (spec 2026-10-23 mục 4.6): rời nhà, bị
+  /// mời ra, nhà giải tán. Xoá vật lý chỉ bản SAO cục bộ của dữ liệu không còn thuộc người dùng — server giữ nguyên hoặc
+  /// đã xoá mềm — nên không trái quy tắc 5. Từ khoá / quan hệ nhóm trỏ vào danh mục của nhà đi theo. Bảng con trước bảng
+  /// cha (`PRAGMA foreign_keys = ON`). Trả số hàng đã xoá. Người gọi duy nhất: bộ điều phối `DieuPhoiDoiNha`.
+  Future<int> xoaHangCuaNha(int idhousehold) async {
+    var removed = 0;
+    await transaction(() async {
+      removed += await (delete(categoryKeywords)
+            ..where((k) => k.categoryId.isInQuery(selectOnly(categories)
+              ..addColumns([categories.id])
+              ..where(categories.idhousehold.equals(idhousehold)))))
+          .go();
+      removed += await (delete(categoryGroupMemberships)
+            ..where((g) =>
+                g.categoryId.isInQuery(selectOnly(categories)
+                  ..addColumns([categories.id])
+                  ..where(categories.idhousehold.equals(idhousehold))) |
+                g.groupId.isInQuery(selectOnly(categories)
+                  ..addColumns([categories.id])
+                  ..where(categories.idhousehold.equals(idhousehold)))))
+          .go();
+      removed += await (delete(transactions)..where((t) => t.idhousehold.equals(idhousehold))).go();
+      removed += await (delete(budgets)..where((t) => t.idhousehold.equals(idhousehold))).go();
+      removed += await (delete(goals)..where((t) => t.idhousehold.equals(idhousehold))).go();
+      removed += await (delete(categories)..where((t) => t.idhousehold.equals(idhousehold))).go();
+      removed += await (delete(wallets)..where((t) => t.idhousehold.equals(idhousehold))).go();
     });
     return removed;
   }

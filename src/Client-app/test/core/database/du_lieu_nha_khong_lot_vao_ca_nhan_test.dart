@@ -44,9 +44,6 @@ const _mienTru = <String, String>{
   'lib/core/database/daos/budget_dao.dart#getPending': _lyDoDay,
   'lib/core/database/daos/goal_dao.dart#getPending': _lyDoDay,
   'lib/core/database/daos/category_dao.dart#getSyncableCategories': _lyDoDay,
-  // TẠM (Task 2, 2026-10-28): Task 3 thêm vế `idhousehold` vào năm câu xoá của phép dọn — Task 3 GỠ dòng này; ca thứ ba
-  // đỏ nếu quên.
-  'lib/core/database/app_database.dart#purgeDataForOtherAccounts': 'TẠM — Task 3 sửa, gỡ ngay khi Task 3 xong',
 };
 
 /// Mọi câu lệnh trong `lib/` có truy vấn năm bảng VÀ lọc tài khoản, kèm `tệp#thành viên` chứa nó.
