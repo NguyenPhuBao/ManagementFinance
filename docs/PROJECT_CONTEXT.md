@@ -639,7 +639,9 @@ src/Backend/
 - ⚠️ **Bật backend dev sau lượt gộp này** (backend đang tắt): Prisma Client trên máy (sinh 2026-10-24) chưa có `household` / `idhousehold`
   → `/sync/pull` vỡ với **mọi** tài khoản cho tới khi `npx prisma generate` (phép đích danh, quy tắc 1; `package.json` không đổi nên không
   cần `npm install`). Backend cho Realme trỏ **`PersonFinance`** — tệp `database/40` mới, chưa lượt nào áp lên CSDL ấy (chưa đo — cần mật
-  khẩu postgres) → phải áp `database/40` **trước** `generate`, không thì `P2022` cả đăng nhập. Hai phép, hỏi đích danh từng phép.
+  khẩu postgres) → phải áp `database/40` **trước** `generate`, không thì `P2022` ở mọi truy vấn Prisma vào 5 bảng mang cột mới (kéo về,
+  đẩy, mọi API dữ liệu). Đăng nhập thì không vỡ theo: `model account` chỉ thêm **quan hệ**, không thêm cột, và `modules/auth` không truy vấn
+  5 bảng ấy (đo bằng `grep` 2026-10-28 — khác vấp 2026-10-06, khi cột mới nằm ngay trên `account`). Hai phép, hỏi đích danh từng phép.
 
 ### 💎 B1 — Phân quyền theo gói: cột Premium và 22 công tắc (2026-10-27/28)
 
