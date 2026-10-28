@@ -297,6 +297,14 @@ Tên duy nhất trong tài khoản, tính cả danh mục mặc định, so bằ
 | `update_at` | `Update_at` timestamp | `update_at` (`updated_at`) | |
 | `idhousehold` | `Idhousehold` int, `NULL` = riêng | `idhousehold` | gia đình (v32): hàng riêng gửi `null`, hàng của nhà gửi id nhà; kéo về `null` tường minh = *chưa biết* (`Value.absent()`) |
 
+### 4.7 Gia đình (lát 1 mã xong 2026-10-28) — `idhousehold` và `keoLaiToanBo`
+
+`docs/Family/`, khối 🏠 mục 14 `PROJECT_CONTEXT.md`. Năm payload (ví, giao dịch, ngân sách, mục tiêu, danh mục — không có hoá đơn) gửi khoá **`idhousehold`** (hàng riêng `null`, hàng của nhà gửi id nhà; hàng `idhousehold` ở bảng 4.1–4.4, 4.6); nhánh kéo về đọc khoá ấy (vắng hoặc `null` tường minh ⇒ `Value.absent()`, giữ giá trị cục bộ). Lối ĐẨY cố ý **KHÔNG** ràng `idhousehold` (năm lối miễn trừ của quét 37: `getPending` ×4, `getSyncableCategories`) — hàng tôi ghi vào nhà phải lên được server; nợ lát 2 về lọc `idaccount` ở `getSyncableCategories` / khối 1b: G113. Bảy mã đẩy vĩnh viễn của gia đình đã nằm ở mục 2.4. `idfund_pair` (cặp góp / rút) để phần 2.
+
+⚠️ **Backend đang chạy vẫn cho đổi `Idhousehold` của hàng đã có** — đơn 56.3 xin cấm, CHƯA đóng; nhánh kéo về coi `null` tường minh là *"chưa biết"* dựa trên giả định server sẽ cấm đổi phạm vi.
+
+**`SyncEngine.keoLaiToanBo(idaccount)`**: vào phạm vi dữ liệu mới (vào nhà) ⇒ xoá mốc kéo về rồi kéo lại toàn bộ. Dùng **thế hệ yêu cầu** trong `ApDuLieuKeoVe`: lượt kéo bắt đầu trước yêu cầu không ghi mốc; lượt hỏng giữ yêu cầu cho lượt sau; chỉ xoá kho (`SyncCheckpointStore.clear`) là KHÔNG đủ vì mốc nằm trong RAM. Lượt kéo toàn bộ theo yêu cầu vẫn so từ khoá khuôn danh mục.
+
 ## 5. Phép đổi giá trị (tóm tắt — `sync_payload_normalizer.dart`)
 
 | Trường | SQLite / client | Gửi lên | Kéo về |
@@ -330,7 +338,7 @@ secure storage (`GoiRepository`); tên máy không lưu (mục 8).
 
 Backend phát **`sync.completed`** (`sync.service.js:245` → event bus → phòng `account_<id>`) sau mỗi `/sync/push`. Client nghe tên sự kiện
 (`RealtimeEvent.dongBoXong`) ⇒ `syncNow()`, **im lặng** (máy vừa đẩy cũng nhận lại sự kiện của chính mình). Payload là hộp đen — client chỉ đọc
-tên sự kiện (cam kết của kênh thời gian thực; ngoại lệ `account.force_logout`). Gia đình (2026-10-28): `household.changed` → `RealtimeEvent.nhaDoi` (làm mới trạng thái nhà; backend phát vào phòng `household_<id>` không ai `join` — đơn 56.8, chưa tới máy nào), `household.invited` → `RealtimeEvent.loiMoiNha` (tới phòng tài khoản).
+tên sự kiện (cam kết của kênh thời gian thực; ngoại lệ `account.force_logout`). Gia đình (2026-10-28): `household.changed` → `RealtimeEvent.nhaDoi` (làm mới trạng thái nhà; backend phát vào phòng `household_<id>` không ai `join` — đơn 56.8, chưa tới máy nào), `household.invited` → `RealtimeEvent.loiMoiNha` (tới phòng tài khoản). ⚠️ Hiện CHƯA có kênh thời gian thực nào đưa dữ liệu nhà sang máy thành viên khác (`sync.completed` chỉ tới phòng của người đẩy — 56.8 vế hai); dữ liệu nhà về ở chu kỳ đồng bộ kế / khi app trở lại.
 
 ## 8. Header thiết bị
 
@@ -389,9 +397,6 @@ Gom từ Mục V của bản backend viết đè (`bc4e4f7f`), checklist §6 c�
 ## 11. Không đồng bộ / ngoài phạm vi
 
 Ảnh đính kèm giao dịch (`Images`) · liên kết ngân hàng (SePay / Casso — bỏ 2026-09-18) · nhật ký kiểm toán (`auditlog`) · thông báo (cục bộ).
-**Gia đình (lát 1 mã xong 2026-10-28, `docs/Family/`, khối 🏠 mục 14 `PROJECT_CONTEXT.md`):** năm payload (ví, giao dịch, ngân sách, mục tiêu, danh mục — không có hoá đơn) gửi khoá **`idhousehold`** (hàng riêng `null`, hàng của nhà gửi id nhà; bảng 4.1–4.4, 4.6); nhánh kéo về đọc khoá ấy (vắng hoặc `null` tường minh ⇒ `Value.absent()`, giữ giá trị cục bộ). Lối ĐẨY chỉ lấy hàng `idhousehold IS NULL` (lô đẩy không mang hàng của nhà — quét 37). Bảy mã đẩy vĩnh viễn của gia đình đã nằm ở mục 2.4 (`NOT_OWNER` + sáu `HOUSEHOLD_*`). `idfund_pair` (cặp góp / rút) để phần 2.
-
-**`SyncEngine.keoLaiToanBo(idaccount)`** (lát 1): vào phạm vi dữ liệu mới (vào nhà) ⇒ xoá mốc kéo về rồi kéo lại toàn bộ. Dùng **thế hệ yêu cầu** trong `ApDuLieuKeoVe`: lượt kéo bắt đầu trước yêu cầu không ghi mốc; lượt hỏng giữ yêu cầu cho lượt sau; chỉ xoá kho (`SyncCheckpointStore.clear`) là KHÔNG đủ vì mốc nằm trong RAM. Lượt kéo toàn bộ theo yêu cầu vẫn so từ khoá khuôn danh mục.
 
 ## 12. Bẫy đã gặp (đọc trước khi sửa vùng tương ứng)
 

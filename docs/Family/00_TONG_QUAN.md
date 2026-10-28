@@ -1,6 +1,6 @@
 # Gia đình (nhà nhiều người) — 00. Tổng quan
 
-> **Ngày:** 2026-10-26 · **Trạng thái:** thiết kế đã được người dùng (PO) duyệt từng phần qua brainstorming; **chưa có mã**
+> **Ngày:** 2026-10-26 · **Trạng thái:** thiết kế đã được người dùng (PO) duyệt từng phần qua brainstorming; **lát 1 client đã có mã (2026-10-28, phần ngầm — chưa màn; chờ backend đơn 56 / 57)**
 > ở client lẫn backend · **Người đọc:** backend, Admin-web, PO, client — để **xem và thảo luận** trước khi đặt đơn CAN-LAM.
 > **Phía client viết** (nhánh `TranQuangDat`). Mỗi tệp có mục *Câu hỏi để thảo luận* và mục *Trả lời / thảo luận* ở cuối —
 > backend ghi thẳng vào đó (hoặc trả lời trong đơn CAN-LAM khi có).

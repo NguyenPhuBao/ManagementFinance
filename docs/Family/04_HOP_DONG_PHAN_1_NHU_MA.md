@@ -57,8 +57,9 @@ backend trả lời).
   (`nhaGiu`, test quét 37).
 - **Mã đẩy backend phát:** `NOT_OWNER`, `HOUSEHOLD_ROLE_FORBIDDEN`, `HOUSEHOLD_READ_ONLY`, `HOUSEHOLD_SCOPE_MISMATCH`; ba mã
   `HOUSEHOLD_NOT_MEMBER` · `_CLOSED` · `_WALLET_LIMIT` app đã xếp nhưng backend chưa phát (56.2, 56.9).
-- **Socket:** `household.changed` — backend phát ở **hai nơi, hai hình dạng** (đổi thành viên / trạng thái nhà; và sau MỖI `/sync/push`
-  chạm hàng của nhà) `{idhousehold, eventType, payload, timestamp}`; client không đọc payload (đo 2026-10-28) — app chỉ đọc tên sự kiện (cam kết hộp đen) rồi gọi
+- **Socket:** `household.changed` — backend phát ở **hai nơi, hai hình dạng**: (a) đổi thành viên / trạng thái nhà `{idhousehold, eventType, payload, timestamp}`;
+  (b) sau MỖI `/sync/push` chạm hàng của nhà `{idhousehold, eventType: 'SYNC_COMPLETED', timestamp}` — không có `payload` (`src/Backend/modules/sync/sync.service.js:362`, chỉ đọc).
+  Client không đọc payload (đo 2026-10-28) — app chỉ đọc tên sự kiện (cam kết hộp đen) rồi gọi
   lại `/me`; hiện phát vào phòng `household_<id>` không ai `join` (56.8). `household.invited` tới phòng tài khoản — chạy.
 
 ## 4. Đơn backend viết cho client (`docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md`) — chỗ không làm theo
