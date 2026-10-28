@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../application/dieu_chinh_so_du_service.dart';
+import '../../domain/cong_tac_tinh_vao_tong.dart';
 import '../../domain/wallet_status.dart';
 import '../../domain/wallet_type.dart';
 import '../../../../core/di/injection_container.dart';
@@ -593,9 +594,10 @@ class _WalletEditPageState extends State<WalletEditPage> {
             khoa: const Key('vi-tinh-vao-tong'),
             title: 'Tính vào tổng tài sản',
             value: _includeInTotal,
-            // Quyền `wallet_exclude_total` (B1): khoá cả hai chiều; ví đã loại vẫn loại.
-            onChanged:
-                coLoai ? (val) => setState(() => _includeInTotal = val) : null,
+            // Quyền `wallet_exclude_total` (B1): chỉ chặn LOẠI MỚI — ví đã lưu là "không tính" vẫn bật lại được (I3).
+            onChanged: doiDuocTinhVaoTong(coQuyen: coLoai, daLuuTinhVaoTong: _wallet?.includeInTotal ?? true)
+                ? (val) => setState(() => _includeInTotal = val)
+                : null,
           ),
           if (!coLoai)
             const Padding(

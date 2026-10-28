@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/models/wallet_entity.dart';
 import '../../data/repositories/wallet_repository.dart';
+import '../../domain/cong_tac_tinh_vao_tong.dart';
 import '../../domain/rang_buoc_vi.dart';
 import '../../domain/wallet_type.dart';
 import '../../domain/wallet_status.dart';
@@ -457,8 +458,10 @@ class _WalletAddFormState extends State<_WalletAddForm> {
           _buildSwitchTile(
             title: 'Tính vào tổng số dư tài sản',
             value: _includeInTotal,
-            // Quyền `wallet_exclude_total` (B1): khoá cả hai chiều.
-            onChanged: context.coQuyen(MaQuyen.walletExcludeTotal) ? (val) => setState(() => _includeInTotal = val) : null,
+            // Quyền `wallet_exclude_total` (B1): chỉ chặn LOẠI MỚI — ví mới chưa lưu gì nên mọi "không tính" là loại mới (I3).
+            onChanged: doiDuocTinhVaoTong(coQuyen: context.coQuyen(MaQuyen.walletExcludeTotal), daLuuTinhVaoTong: true)
+                ? (val) => setState(() => _includeInTotal = val)
+                : null,
           ),
           if (!context.coQuyen(MaQuyen.walletExcludeTotal))
             const Padding(

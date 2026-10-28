@@ -217,6 +217,26 @@ void main() {
       expect(find.text('Cần Premium'), findsOneWidget);
     });
 
+    testWidgets('⭐ I3: không quyền, ví ĐÃ LƯU là "không tính" → công tắc mở: bật lại được, tắt lại (trước Lưu) được; băng vẫn hiện',
+        (tester) async {
+      final repo = _RepoGhiLai(_vi().copyWith(includeInTotal: false));
+      await _moTrang(tester, repo, _DichVuGia(), goi: goiBasic(const {'wallet_exclude_total': false}));
+      final cong = find.byKey(const Key('vi-tinh-vao-tong'));
+      expect(tester.widget<Switch>(cong).value, isFalse);
+      expect(tester.widget<Switch>(cong).onChanged, isNotNull,
+          reason: 'I3 (người dùng chốt 2026-10-28): quyền chỉ chặn LOẠI MỚI — ví loại từ khi còn Premium phải bật lại được');
+      expect(find.byKey(const Key('dong-khoa-cong-tac-wallet_exclude_total')), findsOneWidget,
+          reason: 'băng nói "loại khỏi tổng cần Premium" — sau khi Lưu "tính" thì không loại lại được');
+
+      await _chamSauKhiCuon(tester, cong);
+      expect(tester.widget<Switch>(cong).value, isTrue);
+      expect(tester.widget<Switch>(cong).onChanged, isNotNull,
+          reason: 'neo vào giá trị ĐÃ LƯU: chạm nhầm còn gỡ được trước khi Lưu (tắt lại = giá trị cũ, không phải loại mới)');
+
+      await _chamSauKhiCuon(tester, find.text('Lưu & Cập Nhật Ví'));
+      expect(repo.luoiGoiUpdate.single.includeInTotal, isTrue, reason: 'Lưu ghi đúng giá trị vừa bật');
+    });
+
     testWidgets('thiếu khoá → ô số dư sửa được, công tắc mở, không dòng khoá', (tester) async {
       await _moTrang(tester, _RepoGhiLai(_vi()), _DichVuGia(), goi: goiBasic(const {}));
       expect(tester.widget<TextField>(find.byType(TextField).at(1)).readOnly, isFalse);
