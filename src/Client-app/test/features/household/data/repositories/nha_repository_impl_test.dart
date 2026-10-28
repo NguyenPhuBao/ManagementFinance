@@ -279,7 +279,8 @@ void main() {
     test('chapNhanLoiMoi → trạng thái nhà + DoiNha; tuChoiLoiMoi → làm mới danh sách lời mời', () async {
       api.traVe = nhaJson();
       await repo.chapNhanLoiMoi('abcd-2345');
-      expect(api.goi, ['chapNhanLoiMoi:ABCD2345']);
+      expect(api.goi, ['chapNhanLoiMoi:ABCD2345', 'dsLoiMoiToi'],
+          reason: 'spec 01 mục 2.8: sau mỗi thao tác 13–16 danh sách lời mời được làm mới');
       expect(repo.hienTai.nha!.id, 12);
       await _nghi();
       expect(doi.map((d) => (d.tu, d.den)), [(null, 12)]);
@@ -363,4 +364,160 @@ void main() {
       await kq.close();
     });
   });
+
+  group('lượt làm mới đang bay (cuộc đua — vòng sửa 1)', () {
+    late ApiTreoCuaToi tre;
+    late NhaRepositoryImpl r;
+    late InMemoryNhaStore k;
+    late List<DoiNha> d;
+
+    setUp(() {
+      tre = ApiTreoCuaToi();
+      k = InMemoryNhaStore();
+      r = NhaRepositoryImpl(api: tre, kho: k, clock: () => now);
+      d = [];
+      r.doiNha.listen(d.add);
+    });
+    tearDown(() => r.dispose());
+
+    List<(int?, int?)> doiLa() => d.map((x) => (x.tu, x.den)).toList();
+
+    test('A: thamGia giữa một /me cũ đang bay → DoiNha đúng một lần (null → 12), còn nhà', () async {
+      await r.datTaiKhoan(18);
+      tre.cuaToiJson = const {'household': null};
+      tre.treoCuaToi = Completer<void>();
+      final l1 = r.lamMoi();
+      await _nghi();
+      tre.traVe = nhaJson();
+      tre.cuaToiJson = nhaJson(); // server sau khi tham gia
+      await r.thamGia('ABCD2345');
+      tre.treoCuaToi!.complete();
+      await l1;
+      await _nghi();
+      expect(doiLa(), [(null, 12)], reason: 'ảnh chụp /me TRƯỚC thao tác không được đè lên kết quả của chính thao tác');
+      expect(r.hienTai.coNha, isTrue);
+    });
+
+    test("A': roiNha giữa một /me cũ đang bay → DoiNha (12 → null), hết nhà", () async {
+      k.values[18] = nhaCuaToiTuJson(nhaJson(myRole: 'Member'), nhanLuc: now);
+      await r.datTaiKhoan(18);
+      tre.cuaToiJson = nhaJson(myRole: 'Member');
+      tre.treoCuaToi = Completer<void>();
+      final l1 = r.lamMoi();
+      await _nghi();
+      tre.traVe = const {'household': null};
+      tre.cuaToiJson = const {'household': null};
+      await r.roiNha();
+      tre.treoCuaToi!.complete();
+      await l1;
+      await _nghi();
+      expect(doiLa(), [(12, null)]);
+      expect(r.hienTai.coNha, isFalse);
+    });
+
+    test('B: giaiTan giữa một /me cũ đang bay → xong là hết nhà, DoiNha (12 → null)', () async {
+      k.values[18] = nhaCuaToiTuJson(nhaJson(), nhanLuc: now);
+      await r.datTaiKhoan(18);
+      tre.cuaToiJson = nhaJson();
+      tre.treoCuaToi = Completer<void>();
+      final l1 = r.lamMoi();
+      await _nghi();
+      tre.traVe = const {'dissolved': true};
+      tre.cuaToiJson = const {'household': null};
+      final g = r.giaiTan();
+      await _nghi();
+      tre.treoCuaToi!.complete();
+      await g;
+      expect(r.hienTai.coNha, isFalse, reason: 'giaiTan() xong thì trạng thái phải là của một lượt GỬI SAU thao tác');
+      await l1;
+      await _nghi();
+      expect(doiLa(), [(12, null)]);
+    });
+
+    test('C: household.changed tới giữa một lượt đang bay → thêm một lời gọi /me sau lượt ấy', () async {
+      await r.datTaiKhoan(18);
+      tre.treoCuaToi = Completer<void>();
+      final l1 = r.lamMoi();
+      await _nghi();
+      final suKien = StreamController<RealtimeEvent>();
+      r.noiSuKien(suKien.stream);
+      tre.cuaToiJson = nhaJson();
+      suKien.add(RealtimeEvent.nhaDoi);
+      await _nghi();
+      tre.treoCuaToi!.complete();
+      await l1;
+      await _nghi();
+      expect(tre.goi.where((g) => g == 'cuaToi'), hasLength(2), reason: 'sự kiện không được bị nuốt vào lượt đã gửi');
+      expect(r.hienTai.coNha, isTrue);
+      await suKien.close();
+    });
+
+    test('D: đổi phiên 18 → 25 giữa /me của 18 → 25 hỏi /me riêng, trạng thái là của 25', () async {
+      tre.cuaToiJson = nhaJson(id: 12);
+      await r.datTaiKhoan(18);
+      tre.treoCuaToi = Completer<void>();
+      final l1 = r.lamMoi();
+      await _nghi();
+      r.xoaPhien();
+      tre.cuaToiJson = nhaJson(id: 77);
+      await r.datTaiKhoan(25);
+      final l2 = r.lamMoi();
+      tre.treoCuaToi!.complete();
+      await Future.wait([l1, l2]);
+      await _nghi();
+      expect(tre.goi.where((g) => g == 'cuaToi'), hasLength(2));
+      expect(r.idaccount, 25);
+      expect(r.hienTai.nha!.id, 77);
+    });
+
+    test('đổi tài khoản xoá lời mời của tài khoản cũ', () async {
+      await r.datTaiKhoan(18);
+      tre.dsLoiMoiToiJson = const [
+        {'code': 'ABCD2345', 'householdName': 'Nhà', 'inviterName': 'An', 'role': 'Member'},
+      ];
+      await r.lamMoiLoiMoi();
+      expect(r.loiMoiToi, hasLength(1));
+      await r.datTaiKhoan(25);
+      expect(r.loiMoiToi, isEmpty);
+    });
+
+    test('F: lời mời đã chết (hết hạn / không có / đã dùng / đã từ chối) → ném LoiNha và làm mới danh sách lời mời',
+        () async {
+      await r.datTaiKhoan(18);
+      for (final ma in [
+        'HOUSEHOLD_INVITE_EXPIRED',
+        'HOUSEHOLD_INVITE_USED',
+        'HOUSEHOLD_INVITE_NOT_FOUND',
+        'HOUSEHOLD_INVITE_DECLINED'
+      ]) {
+        tre.goi.clear();
+        tre.loi = loiServer(400, ma);
+        await expectLater(r.chapNhanLoiMoi('ABCD2345'), throwsA(isA<LoiNha>()));
+        tre.loi = null; // lượt làm mới không được ném lại cùng lỗi
+        await _nghi();
+        await _nghi();
+        expect(tre.goi, ['chapNhanLoiMoi:ABCD2345', 'dsLoiMoiToi'], reason: ma);
+      }
+      tre.goi.clear();
+      tre.loi = loiServer(400, 'HOUSEHOLD_INVITE_EXPIRED');
+      await expectLater(r.tuChoiLoiMoi('ABCD2345'), throwsA(isA<LoiNha>()));
+      tre.loi = null;
+      await _nghi();
+      expect(tre.goi, ['tuChoiLoiMoi:ABCD2345', 'dsLoiMoiToi']);
+    });
+  });
+}
+
+/// Chỉ giữ `cuaToi`; thân trả về là ẢNH CHỤP lúc gửi (server xử lý yêu cầu trước thao tác khác).
+class ApiTreoCuaToi extends HouseholdApiGia {
+  Completer<void>? treoCuaToi;
+
+  @override
+  Future<Map<String, Object?>> cuaToi() async {
+    goi.add('cuaToi');
+    final anhChup = cuaToiJson;
+    final t = treoCuaToi;
+    if (t != null) await t.future;
+    return anhChup;
+  }
 }

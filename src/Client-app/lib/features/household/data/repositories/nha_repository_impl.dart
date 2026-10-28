@@ -35,6 +35,15 @@ class NhaRepositoryImpl implements NhaRepository {
   int? _idaccount;
   Future<void>? _dangLamMoi;
   Future<void>? _dangLamMoiLoiMoi;
+  _Luot _luotNha = _Luot();
+  _Luot _luotLoiMoi = _Luot();
+
+  /// Thế hệ trạng thái nhà: tăng khi một thao tác thành công (trước khi áp) và khi tài khoản đổi. Lượt /me ghi thế hệ TRƯỚC khi
+  /// gửi; về mà thế hệ đã đổi thì ảnh chụp server là của trước thao tác — bỏ, lượt chạy bù (cờ [_Luot.bu]) hỏi lại.
+  int _theHe = 0;
+
+  /// Kỳ phiên: tăng khi tài khoản đổi — lượt lời mời của phiên cũ về muộn bị bỏ.
+  int _kyPhien = 0;
   Future<void>? _dangNapKho;
 
   /// Hàng đợi áp trạng thái: hai lượt (làm mới + thao tác) cùng đọc nhà cũ trước khi lượt kia ghi là phát [DoiNha] hai lần.
@@ -68,6 +77,7 @@ class NhaRepositoryImpl implements NhaRepository {
 
   @override
   Future<void> datTaiKhoan(int idaccount) {
+    if (_idaccount != idaccount) _doiPhien();
     _idaccount = idaccount;
     return _dangNapKho = _napKho(idaccount);
   }
@@ -80,33 +90,67 @@ class NhaRepositoryImpl implements NhaRepository {
 
   @override
   void xoaPhien() {
+    _doiPhien();
     _idaccount = null;
     _dangNapKho = null;
     _phat(NhaCuaToi.khongCo(_now()));
     _phatLoiMoi(const []);
   }
 
+  /// Tài khoản đổi: gỡ hai `Future` gộp (lượt của phiên cũ không được nhận làm lượt của phiên mới — nếu không tài khoản mới
+  /// không bao giờ hỏi `/me`), tăng thế hệ / kỳ phiên để lượt cũ về muộn bị bỏ, xoá lời mời của tài khoản cũ.
+  void _doiPhien() {
+    _theHe++;
+    _kyPhien++;
+    _dangLamMoi = null;
+    _dangLamMoiLoiMoi = null;
+    if (_loiMoiToi.isNotEmpty) _phatLoiMoi(const []);
+  }
+
   @override
   Future<int?> nhaDaLuu(int idaccount) async => (await _kho.doc(idaccount))?.nha?.id;
 
   /// Nhà TRƯỚC, lời mời SAU — tuần tự để thứ tự lời gọi cố định (test canh) và `/me` không phải chờ `/invitations`.
+  ///
+  /// Lời gọi tới khi lượt đang bay CHƯA gửi `/me` thì gộp (một lời gọi). Tới SAU khi lượt đã gửi thì ảnh chụp server của lượt
+  /// ấy có thể là của trước thao tác / sự kiện người gọi vừa biết → đặt cờ chạy bù: lượt đang bay chạy thêm một vòng, gửi
+  /// SAU yêu cầu, rồi mới hoàn tất — `await lamMoi()` luôn nhận kết quả của một lượt gửi sau lời gọi.
   @override
   Future<void> lamMoi() {
     final dang = _dangLamMoi;
-    if (dang != null) return dang;
-    final f = _lamMoiNhaThat().then((_) => lamMoiLoiMoi()).whenComplete(() => _dangLamMoi = null);
+    if (dang != null) {
+      if (_luotNha.daGui) _luotNha.bu = true;
+      return dang;
+    }
+    final luot = _luotNha = _Luot();
+    late final Future<void> f;
+    f = _chayLamMoi(luot).whenComplete(() {
+      if (identical(_dangLamMoi, f)) _dangLamMoi = null;
+    });
     _dangLamMoi = f;
     return f;
   }
 
-  Future<void> _lamMoiNhaThat() async {
+  Future<void> _chayLamMoi(_Luot luot) async {
     final id = _idaccount;
     if (id == null) return;
+    do {
+      luot.bu = false;
+      luot.daGui = false;
+      await _vongNha(luot, id);
+      await lamMoiLoiMoi();
+    } while (luot.bu && _idaccount == id);
+  }
+
+  Future<void> _vongNha(_Luot luot, int id) async {
     try {
       await choNapKho(); // nhà "cũ" để so phải là bản trong kho
+      if (_idaccount != id) return;
+      final he = _theHe;
+      luot.daGui = true;
       final json = await _api.cuaToi();
       if (_idaccount != id) return;
-      await _apDung(id, nhaCuaToiTuJson(json, nhanLuc: _now()));
+      await _apDung(id, nhaCuaToiTuJson(json, nhanLuc: _now()), he: he);
     } catch (e) {
       debugPrint('[GiaDinh] lamMoi hỏng, giữ trạng thái cũ: ${e.runtimeType}');
     }
@@ -115,25 +159,36 @@ class NhaRepositoryImpl implements NhaRepository {
   @override
   Future<void> lamMoiLoiMoi() {
     final dang = _dangLamMoiLoiMoi;
-    if (dang != null) return dang;
-    final f = _lamMoiLoiMoiThat().whenComplete(() => _dangLamMoiLoiMoi = null);
+    if (dang != null) {
+      if (_luotLoiMoi.daGui) _luotLoiMoi.bu = true;
+      return dang;
+    }
+    final luot = _luotLoiMoi = _Luot();
+    late final Future<void> f;
+    f = _chayLoiMoi(luot).whenComplete(() {
+      if (identical(_dangLamMoiLoiMoi, f)) _dangLamMoiLoiMoi = null;
+    });
     _dangLamMoiLoiMoi = f;
     return f;
   }
 
-  Future<void> _lamMoiLoiMoiThat() async {
+  Future<void> _chayLoiMoi(_Luot luot) async {
     final id = _idaccount;
     if (id == null) return;
-    try {
-      final ds = [
-        for (final j in await _api.dsLoiMoiToi())
-          if (loiMoiToiTuJson(j) case final m?) m,
-      ];
-      if (_idaccount != id) return;
-      _phatLoiMoi(ds);
-    } catch (e) {
-      debugPrint('[GiaDinh] lamMoiLoiMoi hỏng, giữ danh sách cũ: ${e.runtimeType}');
-    }
+    do {
+      luot.bu = false;
+      final ky = _kyPhien;
+      try {
+        luot.daGui = true;
+        final ds = [
+          for (final j in await _api.dsLoiMoiToi())
+            if (loiMoiToiTuJson(j) case final m?) m,
+        ];
+        if (_idaccount == id && _kyPhien == ky) _phatLoiMoi(ds);
+      } catch (e) {
+        debugPrint('[GiaDinh] lamMoiLoiMoi hỏng, giữ danh sách cũ: ${e.runtimeType}');
+      }
+    } while (luot.bu && _idaccount == id);
   }
 
   @override
@@ -143,14 +198,15 @@ class NhaRepositoryImpl implements NhaRepository {
     return lamMoi();
   }
 
-  Future<void> _apDung(int id, NhaCuaToi moi) {
-    final f = _hangApDung.then((_) => _apDungNgay(id, moi));
+  Future<void> _apDung(int id, NhaCuaToi moi, {int? he}) {
+    final f = _hangApDung.then((_) => _apDungNgay(id, moi, he));
     _hangApDung = f.catchError((Object _) {});
     return f;
   }
 
-  Future<void> _apDungNgay(int id, NhaCuaToi moi) async {
+  Future<void> _apDungNgay(int id, NhaCuaToi moi, int? he) async {
     if (_idaccount != id) return;
+    if (he != null && he != _theHe) return; // ảnh chụp trước một thao tác đã thành công — bỏ
     final tu = _hienTai.nha?.id;
     await _kho.ghi(id, moi);
     if (_idaccount != id) return;
@@ -185,6 +241,7 @@ class NhaRepositoryImpl implements NhaRepository {
     await choNapKho();
     final json = await _goi(goi);
     if (id == null || _idaccount != id) return;
+    _theHe++; // ảnh chụp /me gửi trước thao tác này (đang bay) không còn được áp
     if (!laThanTrangThaiNha(json)) {
       await lamMoi();
       return;
@@ -238,12 +295,31 @@ class NhaRepositoryImpl implements NhaRepository {
   Future<KetQuaMoiEmail> moiQuaEmail(String email, VaiNha vai) async =>
       ketQuaMoiEmailTuJson(await _goi(() => _api.moiQuaEmail(email.trim().toLowerCase(), khoaServerCuaVai(vai))));
 
+  static bool _loiMoiDaChet(LoaiLoiNha l) =>
+      l == LoaiLoiNha.maHetHan ||
+      l == LoaiLoiNha.maKhongCo ||
+      l == LoaiLoiNha.maDaDung ||
+      l == LoaiLoiNha.loiMoiDaTuChoi;
+
   @override
-  Future<void> chapNhanLoiMoi(String ma) => _thaoTac(() => _api.chapNhanLoiMoi(chuanHoaMaMoi(ma)));
+  Future<void> chapNhanLoiMoi(String ma) async {
+    try {
+      await _thaoTac(() => _api.chapNhanLoiMoi(chuanHoaMaMoi(ma)));
+    } on LoiNha catch (e) {
+      if (_loiMoiDaChet(e.loai)) await lamMoiLoiMoi();
+      rethrow;
+    }
+    await lamMoiLoiMoi(); // 01 mục 2.8: lời mời vừa nhận không còn nằm trong danh sách
+  }
 
   @override
   Future<void> tuChoiLoiMoi(String ma) async {
-    await _goi(() => _api.tuChoiLoiMoi(chuanHoaMaMoi(ma)));
+    try {
+      await _goi(() => _api.tuChoiLoiMoi(chuanHoaMaMoi(ma)));
+    } on LoiNha catch (e) {
+      if (_loiMoiDaChet(e.loai)) await lamMoiLoiMoi();
+      rethrow;
+    }
     await lamMoiLoiMoi();
   }
 
@@ -295,4 +371,10 @@ class NhaRepositoryImpl implements NhaRepository {
     await _doiNha.close();
     await _theoDoiLoiMoi.close();
   }
+}
+
+/// Một lượt làm mới: [daGui] = đã gửi lời gọi mạng của vòng hiện tại; [bu] = có yêu cầu tới sau đó, cần chạy thêm một vòng.
+class _Luot {
+  bool daGui = false;
+  bool bu = false;
 }
