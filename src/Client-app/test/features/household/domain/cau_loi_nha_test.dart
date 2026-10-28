@@ -37,7 +37,7 @@ void main() {
       'HOUSEHOLD_INVITE_WRONG_ACCOUNT': LoaiLoiNha.loiMoiKhongPhaiCuaBan,
       'HOUSEHOLD_INVITE_DECLINED': LoaiLoiNha.loiMoiDaTuChoi,
       'HOUSEHOLD_INVITE_RATE_LIMIT': LoaiLoiNha.guiMoiQuaNhieu,
-      'FEATURE_DISABLED': LoaiLoiNha.canPremium,
+      'FEATURE_DISABLED': LoaiLoiNha.tinhNangKhongMo,
       // Mã thật của backend 177dd0e1 (household.service.js / .controller.js) — tới khi đơn 57.7 chốt bảng mã
       'HOUSEHOLD_INVITE_NOT_FOUND': LoaiLoiNha.maKhongCo,
       'INVALID_INVITE_CODE': LoaiLoiNha.maKhongCo,

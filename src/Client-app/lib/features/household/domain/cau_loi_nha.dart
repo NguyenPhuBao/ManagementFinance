@@ -26,6 +26,10 @@ enum LoaiLoiNha {
   guiMoiQuaNhieu,
   emailKhongHopLe,
   canPremium,
+
+  /// `FEATURE_DISABLED`: Basic bị tắt quyền HOẶC Premium bị admin tạm ngừng — mã không phân biệt được (B1, người dùng chốt
+  /// 2026-10-27: Premium tạm ngừng KHÔNG được mời nâng cấp) ⇒ câu trung tính; lát 2 chọn câu theo `trangThaiQuyen`.
+  tinhNangKhongMo,
   phienHetHan,
   mayChu,
   matMang,
@@ -66,7 +70,8 @@ LoaiLoiNha? loaiLoiTuMa(String? ma) => switch (ma) {
       'HOUSEHOLD_INVITE_DECLINED' => LoaiLoiNha.loiMoiDaTuChoi,
       'HOUSEHOLD_INVITE_RATE_LIMIT' => LoaiLoiNha.guiMoiQuaNhieu,
       'INVALID_EMAIL' => LoaiLoiNha.emailKhongHopLe,
-      'FEATURE_DISABLED' || 'PREMIUM_REQUIRED' => LoaiLoiNha.canPremium,
+      'PREMIUM_REQUIRED' => LoaiLoiNha.canPremium,
+      'FEATURE_DISABLED' => LoaiLoiNha.tinhNangKhongMo,
       _ => null,
     };
 
@@ -111,6 +116,7 @@ String cauLoiNha(LoaiLoiNha l) => switch (l) {
       LoaiLoiNha.guiMoiQuaNhieu => 'Nhà này đã gửi quá nhiều lời mời. Thử lại sau.',
       LoaiLoiNha.emailKhongHopLe => 'Địa chỉ email không hợp lệ.',
       LoaiLoiNha.canPremium => 'Tạo nhà cần gói Premium.',
+      LoaiLoiNha.tinhNangKhongMo => 'Tính năng gia đình hiện không dùng được với tài khoản này.',
       LoaiLoiNha.phienHetHan => 'Phiên đăng nhập hết hạn. Hãy đăng nhập lại.',
       LoaiLoiNha.mayChu => 'Máy chủ chưa phản hồi. Thử lại sau.',
       LoaiLoiNha.matMang => 'Cần có mạng để làm việc này.',
