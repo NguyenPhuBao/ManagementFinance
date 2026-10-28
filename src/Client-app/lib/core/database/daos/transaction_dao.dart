@@ -15,7 +15,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   Future<List<Transaction>> getAll(int idaccount) {
     return (select(transactions)
           ..where(
-              (t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
+              (t) => t.idaccount.equals(idaccount) & t.idhousehold.isNull() & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .get();
   }
@@ -38,7 +38,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     final moc = transactions.date.max();
     final q = selectOnly(transactions)
       ..addColumns([moc])
-      ..where(transactions.idaccount.equals(idaccount) &
+      ..where(transactions.idaccount.equals(idaccount) & transactions.idhousehold.isNull() &
           transactions.deletedAt.isNull());
     return (await q.getSingle()).read(moc);
   }
@@ -59,7 +59,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     final moc = transactions.date.min();
     final q = selectOnly(transactions)
       ..addColumns([moc])
-      ..where(transactions.idaccount.equals(idaccount) &
+      ..where(transactions.idaccount.equals(idaccount) & transactions.idhousehold.isNull() &
           transactions.deletedAt.isNull());
     return (await q.getSingle()).read(moc);
   }
@@ -68,15 +68,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   Stream<List<Transaction>> watchAll(int idaccount) {
     return (select(transactions)
           ..where(
-              (t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
-          ..orderBy([(t) => OrderingTerm.desc(t.date)]))
-        .watch();
-  }
-
-  /// Stream tất cả giao dịch chưa xóa realtime (dùng cho fallback/Home)
-  Stream<List<Transaction>> watchAllNonDeleted() {
-    return (select(transactions)
-          ..where((t) => t.deletedAt.isNull())
+              (t) => t.idaccount.equals(idaccount) & t.idhousehold.isNull() & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .watch();
   }
@@ -102,7 +94,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return (select(transactions)
           ..where((t) =>
               t.deletedAt.isNull() &
-              t.idaccount.equals(idaccount) &
+              t.idaccount.equals(idaccount) & t.idhousehold.isNull() &
               (t.goalId.equals(goalId) |
                   (t.goalId.isNull() & t.note.like('%$pattern%'))))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
@@ -113,7 +105,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return (select(transactions)
           ..where((t) =>
               t.deletedAt.isNull() &
-              t.idaccount.equals(idaccount) &
+              t.idaccount.equals(idaccount) & t.idhousehold.isNull() &
               t.note.like('%$pattern%'))
           ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .watch();
@@ -175,7 +167,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   /// từng có tiền để cạn.
   Future<Set<String>> viDaDung(int idaccount) async {
     final rows = await (select(transactions)
-          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull()))
+          ..where((t) => t.idaccount.equals(idaccount) & t.idhousehold.isNull() & t.deletedAt.isNull()))
         .get();
     return {
       for (final t in rows) ...[t.walletId, if (t.walletTransfer != null) t.walletTransfer!],
@@ -190,7 +182,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   ) {
     return (select(transactions)
           ..where((t) =>
-              t.idaccount.equals(idaccount) &
+              t.idaccount.equals(idaccount) & t.idhousehold.isNull() &
               t.deletedAt.isNull() &
               t.date.isBiggerOrEqualValue(from) &
               t.date.isSmallerOrEqualValue(to))
@@ -223,7 +215,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   ) {
     return (select(transactions)
           ..where((t) =>
-              t.idaccount.equals(idaccount) &
+              t.idaccount.equals(idaccount) & t.idhousehold.isNull() &
               t.deletedAt.isNull() &
               t.date.isBiggerOrEqualValue(from) &
               t.date.isSmallerThanValue(to))
@@ -249,7 +241,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   ) async {
     final hang = await (select(transactions)
           ..where((t) =>
-              t.idaccount.equals(idaccount) &
+              t.idaccount.equals(idaccount) & t.idhousehold.isNull() &
               t.deletedAt.isNull() &
               t.date.isBiggerOrEqualValue(from) &
               t.date.isSmallerThanValue(to))
@@ -273,7 +265,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   Future<List<Transaction>> getChiTuNgay(int idaccount, DateTime from) {
     return (select(transactions)
           ..where((t) =>
-              t.idaccount.equals(idaccount) &
+              t.idaccount.equals(idaccount) & t.idhousehold.isNull() &
               t.deletedAt.isNull() &
               t.type.equals('chi') &
               t.date.isBiggerOrEqualValue(from))
@@ -348,7 +340,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   Future<Map<String, Transaction>> getBillPayments(int idaccount) async {
     final rows = await (select(transactions)
           ..where((t) =>
-              t.idaccount.equals(idaccount) &
+              t.idaccount.equals(idaccount) & t.idhousehold.isNull() &
               t.billId.isNotNull() &
               t.deletedAt.isNull()))
         .get();

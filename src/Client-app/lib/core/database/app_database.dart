@@ -592,8 +592,9 @@ class AppDatabase extends _$AppDatabase {
   /// Vì sao cần: dữ liệu sót lại của một tài khoản cũ trên cùng thiết bị là
   /// dữ liệu chết — mọi truy vấn `getPending`/`getSyncableCategories` đều lọc
   /// theo tài khoản hiện tại nên chúng không bao giờ được đẩy lên nữa, nhưng
-  /// chúng vẫn có thể bị đọc nhầm (ví dụ các truy vấn `*NonDeleted` không lọc
-  /// tài khoản) và làm sống lại một `idaccount` đã chết.
+  /// chúng vẫn có thể bị đọc nhầm (ví dụ một truy vấn không lọc tài khoản — bốn
+  /// hàm `*NonDeleted` từng như thế, gỡ 2026-10-24) và làm sống lại một
+  /// `idaccount` đã chết.
   ///
   /// GIỮ NGUYÊN danh mục mặc định (`idaccount = 0`) — đó là dữ liệu dùng chung,
   /// không thuộc tài khoản nào.
@@ -685,6 +686,7 @@ class AppDatabase extends _$AppDatabase {
       moved += await (update(transactions)
             ..where((t) =>
                 t.idaccount.equals(idaccount) &
+                t.idhousehold.isNull() &
                 t.categoryId.equals(fromCategoryId)))
           .write(TransactionsCompanion(
         categoryId: Value(toCategoryId),
@@ -694,6 +696,7 @@ class AppDatabase extends _$AppDatabase {
       moved += await (update(budgets)
             ..where((t) =>
                 t.idaccount.equals(idaccount) &
+                t.idhousehold.isNull() &
                 t.categoryId.equals(fromCategoryId)))
           .write(BudgetsCompanion(
         categoryId: Value(toCategoryId),

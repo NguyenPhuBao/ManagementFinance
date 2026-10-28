@@ -20,6 +20,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     final list = await (select(categories)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
+              t.idhousehold.isNull() &
               t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.desc(t.idaccount),
@@ -39,6 +40,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     return (select(categories)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
+              t.idhousehold.isNull() &
               t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.desc(t.idaccount),
@@ -78,7 +80,10 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// khuôn* (spec 2026-10-27 mục 4) cần khuôn; một truy vấn để stream phát lại khi khuôn đổi.
   SimpleSelectStatement<$CategoriesTable, Category> _hangKemKhuon(int accountId, String classify) => select(categories)
     ..where((t) =>
-        (t.idaccount.equals(accountId) & t.classify.equals(classify) & t.isDeleted.equals(false)) |
+        (t.idaccount.equals(accountId) &
+            t.idhousehold.isNull() &
+            t.classify.equals(classify) &
+            t.isDeleted.equals(false)) |
         t.isDefault.equals(true))
     ..orderBy([
       (t) => OrderingTerm.desc(t.idaccount),
@@ -87,7 +92,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
 
   ({List<Category> rows, List<Category> khuon}) _tachKhuon(List<Category> list, int accountId, String classify) => (
         rows: _khuTrungTheoTen(
-            list.where((c) => c.idaccount == accountId && c.classify == classify && !c.isDeleted)),
+            list.where((c) => c.idaccount == accountId && c.idhousehold == null && c.classify == classify && !c.isDeleted)),
         khuon: [for (final c in list) if (c.isDefault) c],
       );
 
@@ -115,6 +120,9 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   ///    quy `is_default = true` thành **`idaccount = 0`**
   ///    (`ap_du_lieu_keo_ve.dart`, nhánh kéo danh mục), nên hàng mặc định toàn cục không mang mã tài
   ///    khoản nào. Thiếu vế ấy thì giao dịch trỏ vào chúng **mất tên**.
+  /// 3. **Giữ danh mục của NHÀ** (gia đình, schema v32 — spec 2026-10-23 mục 7.2): khoản của nhà phải có tên ở mọi máy
+  ///    trong nhà, mà danh mục nhà mang `idaccount` của người tạo (bộ sao: chủ nhà) — thành viên tra bằng tài khoản mình
+  ///    sẽ không thấy. Sau `purgeDataForOtherAccounts` trên máy chỉ còn danh mục của nhà đang ở.
   ///
   /// Vế thứ hai vốn thiếu ở **cả hai** repository cho tới 2026-09-15, mỗi nơi
   /// một bản chép tay. Đo trên CSDL dev hôm ấy: tài khoản 10 có hai danh mục
@@ -128,7 +136,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   SimpleSelectStatement<$CategoriesTable, Category> _bangTraTen(int accountId) =>
       select(categories)
         ..where((t) =>
-            t.idaccount.equals(accountId) | t.isDefault.equals(true));
+            t.idaccount.equals(accountId) | t.isDefault.equals(true) | t.idhousehold.isNotNull());
 
   Future<List<Category>> getBangTraTen(int accountId) => _bangTraTen(accountId).get();
 
@@ -152,6 +160,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     return (select(categories)
           ..where((t) =>
               (t.idaccount.equals(accountId) | t.isDefault.equals(true)) &
+              t.idhousehold.isNull() &
               t.isDeleted.equals(false) &
               t.deletedAt.isNull()))
         .get();
@@ -182,10 +191,12 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// ra khỏi phép đếm là tái hiện **G16**: danh mục người dùng vừa xoá sẽ mọc
   /// lại ở mỗi lần mở app, và mỗi lần mọc lại là một thao tác đẩy hỏng vĩnh
   /// viễn. Đọc G16 trong `docs/CLIENT_APP_KNOWN_GAPS.md` trước khi sửa hàm này.
+  ///
+  /// ⚠️ Ràng `idhousehold IS NULL` (spec gia đình 3.3): danh mục của nhà cùng tên bộ mặc định — đếm nó là bản sao riêng không bao giờ được tạo; và `LanTruyenKhuon` (2026-10-27, cũng đọc hàm này) không đổi tên / biểu tượng danh mục CỦA NHÀ theo khuôn admin — hàng ấy server tạo, mọi máy trong nhà cùng có, sửa cục bộ là đẩy xung đột.
   Future<List<Category>> getOwnedIncludingDeleted(int accountId) {
     return (select(categories)
           ..where((t) =>
-              t.idaccount.equals(accountId) & t.isDefault.equals(false)))
+              t.idaccount.equals(accountId) & t.idhousehold.isNull() & t.isDefault.equals(false)))
         .get();
   }
 
@@ -341,6 +352,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     final list = await (select(categories)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
+              t.idhousehold.isNull() &
               t.classify.equals(classify) &
               t.deletedAt.isNull())
           ..orderBy([
@@ -479,6 +491,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     final rows = await (select(categories)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
+              t.idhousehold.isNull() &
               t.isDefault.equals(false) &
               t.isDeleted.equals(false) &
               t.deletedAt.isNull()))
@@ -534,7 +547,7 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
       // đứt ở giữa vì `parentId` trỏ vào một hàng đã bị xoá vật lý.
       await (update(categories)
             ..where((t) =>
-                t.idaccount.equals(idaccount) & t.parentId.equals(fromId)))
+                t.idaccount.equals(idaccount) & t.idhousehold.isNull() & t.parentId.equals(fromId)))
           .write(CategoriesCompanion(
         parentId: Value(toId),
         syncStatus: const Value('pending'),

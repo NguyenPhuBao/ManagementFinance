@@ -301,6 +301,22 @@ void main() {
           reason: 'Số dư trên báo cáo phải khớp với số tiền người dùng thấy ở '
               'trang chủ; trang ấy cũng bỏ ví đã xoá.');
     });
+
+    test('ví của NHÀ (gia đình, schema v32) không tính vào số dư hiện tại', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w_nha',
+        idaccount: 1,
+        name: 'Quỹ chung',
+        balance: const Value(5000000.0),
+        idhousehold: const Value(5),
+        updatedAt: now,
+      ));
+
+      final bc = await repo.layBaoCao(1, loc: locThang9);
+
+      expect(bc.dongTien!.cuoiKy, 10000000,
+          reason: 'báo cáo cá nhân phải khớp Trang chủ — quỹ chung do tôi tạo không phải tiền riêng (quét 37, soát chéo C1)');
+    });
   });
 
   group('ngân sách của kỳ', () {

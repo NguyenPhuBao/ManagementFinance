@@ -34,7 +34,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   /// Lấy tất cả ví của user (không xóa mềm)
   Future<List<Wallet>> getAll(int idaccount) {
     return (select(wallets)
-          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
+          ..where((t) => t.idaccount.equals(idaccount) & t.idhousehold.isNull() & t.deletedAt.isNull())
           ..orderBy(_thuTuHienThi))
         .get();
   }
@@ -57,17 +57,10 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     return rows.where((w) => WalletStatus.laHoatDong(w.status)).toList();
   }
 
-  Future<List<Wallet>> getAllNonDeleted() {
-    return (select(wallets)
-          ..where((t) => t.deletedAt.isNull())
-          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
-        .get();
-  }
-
   /// Stream tất cả ví của user realtime — dùng trong BlocBuilder
   Stream<List<Wallet>> watchAll(int idaccount) {
     return (select(wallets)
-          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
+          ..where((t) => t.idaccount.equals(idaccount) & t.idhousehold.isNull() & t.deletedAt.isNull())
           ..orderBy(_thuTuHienThi))
         .watch();
   }
@@ -88,9 +81,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   Future<Wallet?> getDefault(int idaccount) {
     return (select(wallets)
           ..where((t) =>
-              t.idaccount.equals(idaccount) &
-              t.isDefault.equals(true) &
-              t.deletedAt.isNull())
+              t.idaccount.equals(idaccount) & t.idhousehold.isNull() & t.isDefault.equals(true) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
           ..limit(1))
         .getSingleOrNull();
@@ -112,6 +103,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     await (update(wallets)
           ..where((t) =>
               t.idaccount.equals(idaccount) &
+              t.idhousehold.isNull() &
               t.id.equals(keepId).not() &
               t.isDefault.equals(true) &
               t.deletedAt.isNull()))
@@ -140,15 +132,16 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
 
   /// Cập nhật ví
   Future<void> update_(WalletsCompanion entry) async {
-    await (update(wallets)..where((t) => t.id.equals(entry.id.value)))
-        .write(entry);
+    await (update(wallets)..where((t) => t.id.equals(entry.id.value))).write(entry);
   }
 
   /// Id các ví **đã xoá mềm** của [idaccount] — bộ quét thông báo gỡ cảnh báo số dư của chúng (G71).
   Future<Set<String>> idDaXoa(int idaccount) async {
     final q = selectOnly(wallets)
       ..addColumns([wallets.id])
-      ..where(wallets.idaccount.equals(idaccount) & (wallets.deletedAt.isNotNull() | wallets.isDeleted.equals(true)));
+      ..where(wallets.idaccount.equals(idaccount) &
+          wallets.idhousehold.isNull() &
+          (wallets.deletedAt.isNotNull() | wallets.isDeleted.equals(true)));
     return {for (final r in await q.get()) r.read(wallets.id)!};
   }
 
@@ -207,8 +200,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   /// G63 — server vừa từ chối ví [id] vì trùng tên. Cột CỤC BỘ; xem
   /// `Wallets.biTuChoiTrungTen`. Không đổi `syncStatus`: ví vẫn chờ đẩy.
   Future<void> danhDauTrungTen(String id) async {
-    await (update(wallets)..where((t) => t.id.equals(id)))
-        .write(const WalletsCompanion(biTuChoiTrungTen: Value(true)));
+    await (update(wallets)..where((t) => t.id.equals(id))).write(const WalletsCompanion(biTuChoiTrungTen: Value(true)));
   }
 
   /// G63 — gỡ cờ trùng tên, và gỡ **luôn** mốc chặn theo giờ của lần bị từ
@@ -234,8 +226,7 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
   /// đợi. Xem chú thích ở định nghĩa bảng để biết vì sao không dùng
   /// syncStatus = 'failed'.
   Future<void> markSyncBlocked(String id, DateTime until, String error) async {
-    final current =
-        await (select(wallets)..where((t) => t.id.equals(id))).getSingleOrNull();
+    final current = await (select(wallets)..where((t) => t.id.equals(id))).getSingleOrNull();
     await (update(wallets)..where((t) => t.id.equals(id))).write(
       WalletsCompanion(
         syncRetryCount: Value((current?.syncRetryCount ?? 0) + 1),

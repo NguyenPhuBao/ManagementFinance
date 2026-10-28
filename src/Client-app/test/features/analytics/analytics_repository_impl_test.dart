@@ -638,6 +638,23 @@ void main() {
       expect(tk.dongTien!.cuoiKy, 10000000,
           reason: 'ví người dùng đã loại khỏi tổng không được phình con số');
     });
+
+    test('ví của NHÀ (gia đình, schema v32) không vào số dư cuối kỳ — kể cả quỹ chung do chính tôi tạo', () async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'w_nha',
+        idaccount: 1,
+        name: 'Quỹ chung',
+        balance: const Value(5000000.0),
+        idhousehold: const Value(5),
+        updatedAt: now,
+      ));
+
+      final tk = await lanDau();
+
+      expect(tk.dongTien!.cuoiKy, 10000000,
+          reason: 'quỹ chung mang idaccount người tạo — `db.select(db.wallets)` lọc theo tài khoản thôi là tiền của nhà phình '
+              'số dư cuối kỳ, tổng tài sản và dự báo cá nhân (quét 37, soát chéo C1)');
+    });
   });
 
   // ── Hai biểu đồ vay/nợ — A8 #4 và #5 (2026-09-15) ────────────────────────

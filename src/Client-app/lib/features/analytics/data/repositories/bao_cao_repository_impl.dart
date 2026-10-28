@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart' show BooleanExpressionOperators;
+
 import '../../../../core/database/app_database.dart';
 import '../../../budget/data/models/budget_entity.dart';
 import '../../../budget/data/repositories/budget_repository.dart';
@@ -33,8 +35,9 @@ class BaoCaoRepositoryImpl implements BaoCaoRepository {
     // Ví và danh mục thì lấy **kể cả hàng đã xoá mềm**: giao dịch cũ vẫn trỏ
     // vào chúng và tên thật vẫn nằm trong hàng. Cùng luật với trang Phân tích;
     // lọc `deletedAt` ở đây là mọi khoản cũ mất tên sau một lần dọn danh mục.
+    // Nhưng BỎ ví của NHÀ (gia đình, schema v32) — báo cáo cá nhân khớp Trang chủ (quét 37).
     final vi = await (db.select(db.wallets)
-          ..where((t) => t.idaccount.equals(idaccount)))
+          ..where((t) => t.idaccount.equals(idaccount) & t.idhousehold.isNull()))
         .get();
     final cats = await db.categoryDao.getBangTraTen(idaccount);
 
