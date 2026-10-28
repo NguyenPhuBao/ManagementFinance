@@ -40,19 +40,26 @@ async function runAllCanLamTests() {
   console.log(`${colors.cyan}${colors.bright}      KIỂM THỬ TOÀN DIỆN CÁC BẢN VÁ THEO THƯ MỤC CAN-LAM              ${colors.reset}`);
   console.log(`${colors.cyan}${colors.bright}======================================================================${colors.reset}\n`);
 
-  // Lấy 2 account test từ DB (chọn tài khoản đang Active để test logic xác thực)
-  const accounts = await prisma.account.findMany({
-    where: { idrole: 2, status: 'Active', delete_at: null },
-    take: 2,
+  // Task 48.3: Tạo 2 account test riêng biệt (không dùng tài khoản có sẵn)
+  const ts = Date.now();
+  const userA = await prisma.account.create({
+    data: {
+      username: `test_canlam_a_${ts}`,
+      email: `test_canlam_a_${ts}@anonymized.local`,
+      password: '$2a$10$TESTPASSWORDHASH00000000000000000000000000000000000',
+      status: 'Active',
+      idrole: 2,
+    },
   });
-
-  if (accounts.length < 2) {
-    console.error('Cần ít nhất 2 tài khoản người dùng trong CSDL để chạy test.');
-    process.exit(1);
-  }
-
-  const userA = accounts[0];
-  const userB = accounts[1];
+  const userB = await prisma.account.create({
+    data: {
+      username: `test_canlam_b_${ts}`,
+      email: `test_canlam_b_${ts}@anonymized.local`,
+      password: '$2a$10$TESTPASSWORDHASH00000000000000000000000000000000000',
+      status: 'Active',
+      idrole: 2,
+    },
+  });
   console.log(`${colors.yellow}User A: id=${userA.idaccount} (${userA.username}), User B: id=${userB.idaccount} (${userB.username})${colors.reset}\n`);
 
   const cleanupIds = {
@@ -440,6 +447,12 @@ async function runAllCanLamTests() {
     }
     if (cleanupIds.categories.length > 0) {
       await prisma.category.deleteMany({ where: { idcategory: { in: cleanupIds.categories } } }).catch(() => {});
+    }
+    if (userA && userB) {
+      await prisma.account.updateMany({
+        where: { idaccount: { in: [userA.idaccount, userB.idaccount] } },
+        data: { status: 'Deleted', countdown: 0, delete_at: new Date() },
+      }).catch(() => {});
     }
     console.log(`${colors.green}Dọn dẹp hoàn tất.${colors.reset}\n`);
   }

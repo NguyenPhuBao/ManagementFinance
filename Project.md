@@ -4581,7 +4581,7 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   5. *Box Quy Mô Người Dùng & Chịu Tải:* Bỏ icon `"group"`, loại bỏ 3 dòng text công thức kỹ thuật thô (`500 × 10 RPM`, `3× Baseline...`, `20 + 50×log10(N)...`).
   6. *Box 4 Vectơ Rủi Ro:* Bỏ icon `"hub"`, tiêu đề đổi thành `"4 Vectơ Rủi Ro"`, bỏ cụm từ `"Chế độ chỉ đo lường — "` trong thông báo khi tắt vector (chỉ giữ `"Bỏ qua khỏi Threat Score"`).
   7. *Box Biểu Đồ Xu Hướng:* Bỏ icon `"show_chart"` và `"schedule"`. Chuẩn hóa bộ chọn thời gian và trục X theo từng khung: 10m (`[-10p...0p]`), 1h (`[-60p...0p]`), 24h (`[00:00...24:00]`), 7d (`[D-6...Hôm nay]`), 30d (`[Tuần 1...Hiện tại]`).
-  8. *Lưu Trữ Snapshot CSDL (Backend Persistence):* Tạo bảng CSDL PostgreSQL `aiops_metric_snapshot` (`src/Backend/database/27_create_aiops_metric_snapshot_table.sql`) và background worker lưu snapshot 5 phút/lần (`threatScore`, `vectorScores`, `requestsPerMin`, `cpuPercent`, `ramPercent`, `eventLoopLagMs`). API `getHistory` ưu tiên đọc dữ liệu snapshot thực tế từ PostgreSQL khi truy vấn khung 24h, 7d, 30d (cam kết 100% dữ liệu thực tế, không sinh dữ liệu ảo).
+  8. *Lưu Trữ Snapshot CSDL (Backend Persistence):* Tạo bảng CSDL PostgreSQL `aiops_metric_snapshot` (`src/Backend/database/27b_create_aiops_metric_snapshot_table.sql`) và background worker lưu snapshot 5 phút/lần (`threatScore`, `vectorScores`, `requestsPerMin`, `cpuPercent`, `ramPercent`, `eventLoopLagMs`). API `getHistory` ưu tiên đọc dữ liệu snapshot thực tế từ PostgreSQL khi truy vấn khung 24h, 7d, 30d (cam kết 100% dữ liệu thực tế, không sinh dữ liệu ảo).
   9. *Box Tổng Quan Nguyên Nhân Bất Thường (RCA):* Bỏ icon `"troubleshoot"`. Đồng bộ bộ icon chuẩn 4 Vector (`badge`, `waves`, `bug_report`, `memory`) trên cả thanh lọc và bảng. Cột Đối tượng: Traffic hiển thị `"Hệ thống"` (TK) và `"Lưu lượng mạng"` (IP); các vector khác hiển thị `"TK: {username}"` và dòng dưới `"IP: {ip_hien_tai}"`.
   10. *Box Nguồn Theo Dõi Đặc Biệt:* Bỏ icon `"shield_with_heart"`, bỏ subtitle mô tả phụ, bỏ dòng text đếm `"Hiển thị ... đối tượng"`.
 - **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
@@ -4616,7 +4616,7 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
 
 ### 4.24. Hoàn Tất Thực Thi 9 Mục Khắc Phục Lỗi Tồn Đọng Theo Yêu Cầu Của Client-App (2026-10-26)
 - **Tài liệu Kế hoạch Nguồn Sự Thật:** [`docs/superpowers/backend/DA-XONG/README.md`](docs/superpowers/backend/DA-XONG/README.md), [`docs/superpowers/backend/CAN-LAM/README.md`](docs/superpowers/backend/CAN-LAM/README.md).
-- **Phê duyệt bởi PO:** Phê duyệt toàn bộ kế hoạch thực thi 9 mục yêu cầu tồn đọng từ Client-app (Mục 52, 51, 49, 48, 47, 46, 45, 44, 43), bảo lưu duy nhất Mục 50 ([`GIA_DINH_NEN_MONG.md`](docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md) - Tính năng Gia đình nền móng) để triển khai ở giai đoạn tiếp theo.
+- **Phê duyệt bởi PO:** Phê duyệt toàn bộ kế hoạch thực thi 9 mục yêu cầu tồn đọng từ Client-app (Mục 52, 51, 49, 48, 47, 46, 45, 44, 43), bảo lưu duy nhất Mục 50 ([`GIA_DINH_NEN_MONG.md`](docs/superpowers/backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md) - Tính năng Gia đình nền móng) để triển khai ở giai đoạn tiếp theo.
 - **Phạm vi & Chi Tiết Triển Khai:**
   1. **Mục 52 (Hotfix Giải Mã An Ninh & Chống Ghi Đè Bản Mã):**
      - [`src/Backend/utils/crypto.util.js`](src/Backend/utils/crypto.util.js): Hàm `decrypt()` ném ngoại lệ `DECRYPT_FAILED` khi gặp ciphertext hỏng hoặc sai key (thay vì trả về bản mã thô `enc:...`).
@@ -4647,7 +4647,7 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
 - **Kiểm Định Chất Lượng 2 Tầng (Rule 11):**
   - **Backend Test Suite:** **438/438 tests PASS 100%** (79 suites, thời gian chạy ~7.3s).
   - **Data Security Suite:** **13/13 tests PASS 100%** (`test_data_security_encryption_and_masking.js`).
-  - **Quản lý Tài liệu:** Di chuyển thành công 9 tài liệu hoàn tất sang `docs/superpowers/backend/DA-XONG/`. `CAN-LAM/` hiện chỉ còn Mục 50 ([`GIA_DINH_NEN_MONG.md`](docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md)) theo đúng phê duyệt của PO.
+  - **Quản lý Tài liệu:** Di chuyển thành công 9 tài liệu hoàn tất sang `docs/superpowers/backend/DA-XONG/`. `CAN-LAM/` hiện chỉ còn Mục 50 ([`GIA_DINH_NEN_MONG.md`](docs/superpowers/backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md)) theo đúng phê duyệt của PO.
   - **Zero Regressions:** Bảo toàn 100% kiến trúc CSDL, tính năng thanh toán, đồng bộ dữ liệu và bảo mật thông tin.
 
 ### 4.25. Tinh Chỉnh & Khắc Phục Triệt Để Các Issue Tồn Đọng Tại Trang AIOps Sentinel (2026-10-26)
@@ -4688,7 +4688,7 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   5. **Cập Nhật 11 Tài Liệu Chức Năng & README.md Tại `docs/Admin-web/`:**
      - Phản ánh toàn bộ các nâng cấp mới nhất: `is_first_login`, `created_by_admin_id`, mã PIN cấp 2, Uptime thực tế, bảng rộng x2, CPU/RAM delta ticks, thiết bị & IP `account_device_history`, khôi phục danh mục kèm keyword AI, Migration 36 (`actual_duration_seconds`), Live timer, AIOps tối giản 4 vector độc lập (bỏ Threat Score), SSE Ping 15s.
 ### 4.27. Triển Khai Xây Dựng Tính Năng Gia Đình (Household) Phạm Vi Backend (2026-10-27)
-- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`family_backend_implementation_plan.md`](file:///C:/Users/Tieu%20Bao/.gemini/antigravity-ide/brain/82524dab-6eff-43af-821f-b333ff7a31ed/family_backend_implementation_plan.md) & [`docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md`](docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md).
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`family_backend_implementation_plan.md`](file:///C:/Users/Tieu%20Bao/.gemini/antigravity-ide/brain/82524dab-6eff-43af-821f-b333ff7a31ed/family_backend_implementation_plan.md) & [`docs/superpowers/backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md`](docs/superpowers/backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md).
 - **Phê duyệt bởi PO:** Phê duyệt toàn diện kế hoạch xây dựng nền móng chức năng Gia đình tại phạm vi Backend (Client-app do thành viên khác đảm nhận):
   1. *Việc A — Vá an ninh `NOT_OWNER` trong `/sync/push`:* Chặn đứng tình trạng tài khoản khác sửa/xóa bản ghi riêng tư (`idaccount` khác và `idhousehold` là null) ở cả 6 thực thể (`wallet`, `transaction`, `budget`, `bill`, `goal`, `category`). Ném mã lỗi `NOT_OWNER`.
   2. *Việc B — CSDL Migration 40 & Partial Unique Indexes:* Tạo 3 bảng mới (`household`, `household_member`, `household_invite`), bổ sung cột `Idhousehold` vào 5 bảng thực thể (`wallet`, `transaction`, `budget`, `goal`, `category`). Tạo Partial Unique Indexes bảo vệ Soft-delete, tránh xung đột tên ví/danh mục cá nhân vs ví/danh mục chung của nhà.
@@ -4704,8 +4704,26 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - **Tầng 2 (System Impact & Security):** `household.system_impact.test.js` — **9/9 tests PASS 100%** (chặn NOT_OWNER, ma trận quyền Vai trò $\times$ Thực thể, ReadOnly, Scope Mismatch, Clone 13 danh mục).
   - **Toàn bộ Test Suite Backend:** **492/492 tests PASS 100%** (79 suites), Zero Regressions.
   - **DB Guard & Verify Indexes:** 100% Partial Unique Indexes và Triggers CSDL PostgreSQL Supabase Cloud an toàn tuyệt đối.
-
-
-
-
-
+### 4.28. Hoàn Tất Toàn Diện Các Yêu Cầu Từ Client-App (Tất Cả 4 Phase) (2026-10-28)
+- **Tài liệu Kế hoạch Nguồn Sự Thật:** [`ke_hoach_chi_tiet_backend_all_phases.md`](file:///c:/Users/Tieu%20Bao/.gemini/antigravity/brain/af9b8099-b035-4051-a5ae-c68d01273413/ke_hoach_chi_tiet_backend_all_phases.md) & [`docs/superpowers/backend/CAN-LAM/VIEC_BACKEND_CON_LAI.md`](docs/superpowers/backend/CAN-LAM/VIEC_BACKEND_CON_LAI.md).
+- **Phê duyệt bởi PO:** Phê duyệt toàn diện kế hoạch 4 giai đoạn xử lý triệt để tất cả các việc còn lại từ client-app:
+  1. *Phase 1 — Critical Blocking (An ninh & Quyền hạn):*
+     - 56.1, 56.2, 56.3, 56.4, 56.5: Chặn lộ thông tin mã mời/danh sách thành viên cho người ngoài nhà; Owner tự động nhận quyền owner; chỉ Owner mới có quyền sửa cấu hình nhà; kick/rời nhà an toàn; giải tán nhà yêu cầu mã PIN và giải phóng tài nguyên.
+     - 43.A3: Đồng bộ 2 lối hết hạn đơn hàng JIT và worker background, hủy đơn và ném `ORDER_EXPIRED` an toàn.
+  2. *Phase 2 — Household & Subscription Contract:*
+     - 56.6: Chặn tạo ví chia sẻ vượt trần `max_shared_wallets` (`HOUSEHOLD_WALLET_LIMIT`).
+     - 56.7: Tự động chuyển đổi `household.status` (`Active` / `ReadOnly`) theo hiệu lực Premium của Chủ hộ (Owner) trên tất cả các luồng: scheduler hạ cấp, payment kích hoạt/gia hạn, transfer owner.
+     - 56.8: Phát Socket `household.changed` và `emitSyncCompleted` tới mọi phòng cá nhân của thành viên gia đình sau khi có push dữ liệu.
+     - 56.9: Giữ nguyên cây phân cấp cha - con (`idgroup` map sang UUID mới) và sao chép đầy đủ từ khóa `keyword` khi nhân bản 13 danh mục mẫu cho gia đình.
+     - 55.A1, 55.A2, 55.A3: Trả về `premiumFeatures` (31 keys) và `premiumLimits` (5 keys) cho tài khoản Basic; Trụ 1 công tắc `is_enabled = false` của 5 mã LIMIT hạ trần `limit = 0`; thống nhất tài khoản Premium không có hạn chót là dữ liệu không hợp lệ và rơi về Basic.
+  3. *Phase 3 — DB Migrations & At-Rest Crypto:*
+     - Áp dụng các migration lên Supabase Cloud: 38 (`uq_payment_transaction_payos_id`), 39 (`ck_no_permanent_ip_ban`), 41 (seed household permissions), 42 (`ck_account_status`), 43 (soft-delete dọn dẹp các hàng mồ côi).
+     - 43.A6: Tự động `emitForceLogout` và xóa cache Redis khi AIOps Sentinel phong tỏa tài khoản.
+     - 49.D: Định nghĩa `ACCOUNT_AUTH_SELECT` với cột tường minh, thay thế `include` trên 6 phương thức của `auth.repository.js`, chống bẫy lỗi Prisma P2022.
+     - 52.1 – 52.5: `decrypt` nhận ngữ cảnh `{ table, recordId }`, log truy vết; loại bỏ nuốt lỗi giải mã tại `maskTransactionDescription` và `dedup.repository.js`; quét CSDL Supabase với key Render đạt 0 bản ghi lỗi.
+  4. *Phase 4 — Test Isolation, Docs Alignment & Section 10 Matrix:*
+     - 48.1 – 48.3: Sửa các script test tự sinh tài khoản ngẫu nhiên theo timestamp `test_user_${Date.now()}` và dọn dẹp an toàn qua soft-delete trong `finally`.
+     - T1, T2, T3, T4, T5: Đồng bộ toàn bộ tài liệu nguồn sự thật (`Event-Notification-to-ClientApp.md`, `IP-Device-ClientApp.md`, `04-user-management-and-lifecycle.md`, `4_TRU_COT.md`, `SYNC_DOCUMENTATION.md`); điền đầy đủ bảng ma trận phản hồi tại Mục 10 của `VIEC_BACKEND_CON_LAI.md`.
+- **Kiểm định Chất Lượng Toàn Diện:**
+  - Full test suite: **510/510 tests PASS 100% (79 test suites)**.
+  - DB Verify Indexes: **100% Partial Unique Indexes & Triggers an toàn tuyệt đối**.

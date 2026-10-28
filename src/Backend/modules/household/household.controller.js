@@ -23,16 +23,6 @@ const householdController = {
         });
       }
 
-      // Kiểm tra quyền gói cước (chỉ tài khoản Premium có quyền household mới được tạo nhà)
-      if (req.user?.permissions && Array.isArray(req.user.permissions) && !req.user.permissions.includes('household')) {
-        return res.status(403).json({
-          success: false,
-          statusCode: 403,
-          code: 'PREMIUM_REQUIRED',
-          message: 'Chức năng tạo gia đình yêu cầu gói cước Premium',
-        });
-      }
-
       const house = await householdService.createHousehold(req.user.idaccount, req.body);
       return res.status(201).json({
         success: true,

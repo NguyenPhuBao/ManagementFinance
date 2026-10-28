@@ -544,27 +544,27 @@ ghi. **Xin:** xác nhận trong ô trả lời — muốn sửa thì ghi ở m�
 
 | Mã | Đã làm (commit, tệp) | Ca test / câu kiểm | Ghi chú |
 |---|---|---|---|
-| 56.1 | | | |
-| 56.2 | | | |
-| 56.3 | | | |
-| 56.4 | | | |
-| 56.5 | | | |
-| 56.6 | | | |
-| 56.7 | | | |
-| 56.8 | | | |
-| 56.9 | | | |
-| 43.A3 | | | |
-| 43.A5 | | | |
-| 43.A6 | | | |
-| 44.B2 | | | |
-| 52.1 – 52.2 (sửa mã) | | | |
-| 52.3 – 52.5 (khoá, dọn dữ liệu) | | | |
-| 55.A1 – 55.A3 | | | |
-| 48.1 – 48.3 | | | |
-| 49.D | | | |
-| 49.F | | | |
-| T1 | | | |
-| T2 | | | |
-| T3 | | | |
-| T4 | | | |
-| T5 | | | |
+| 56.1 | Sửa `household.controller.js` (`getHouseholds`), `household.repository.js` (`findHouseholdById`), `households.routes.js` | `tests/unit/household.system_impact.test.js` (Ca 13 & 14, PASS) | Chặn rò rỉ mã mời, danh sách thành viên cho người dùng chưa vào nhà; trả về rỗng hoặc 403 `NOT_A_MEMBER`. |
+| 56.2 | Sửa `household.controller.js` (`createHousehold`) | `tests/unit/household.system_impact.test.js` (Ca 13, PASS) | Gán `household_permission` cho Owner là `owner` (full quyền), ghi audit log. |
+| 56.3 | Sửa `household.controller.js` (`updateHousehold`) | `tests/unit/household.system_impact.test.js` (Ca 15, PASS) | Chỉ Owner mới có quyền đổi tên/cấu hình nhà; Admin hoặc thành viên khác bị chặn 403 `FORBIDDEN`. |
+| 56.4 | Sửa `household.controller.js` (`removeMember`) | `tests/unit/household.system_impact.test.js` (Ca 11 & 12, PASS) | Xử lý rời nhà / kick thành viên an toàn, bảo toàn giao dịch và ví chia sẻ (soft-delete mapping). |
+| 56.5 | Sửa `household.controller.js` (`deleteHousehold`) | `tests/unit/household.system_impact.test.js` (Ca 10, PASS) | Giải tán nhà yêu cầu xác thực mã PIN quản trị; giải phóng toàn bộ tài nguyên chia sẻ về ví cá nhân. |
+| 56.6 | Sửa `modules/sync/sync.service.js` (bổ sung kiểm tra `HOUSEHOLD_WALLET_LIMIT` trong `processPush` khi `entity === 'wallet' && operation === 'create'`) | `tests/unit/household.system_impact.test.js` (Ca 16, PASS) | Chặn tạo ví chia sẻ khi đã đạt trần `house.max_shared_wallets || 10`. |
+| 56.7 | Sửa `household.service.js` (`updateHouseholdStatusByOwner`), tích hợp vào `core/scheduler.service.js`, `payment.service.js`, `household.service.js` (`transferOwner`) | `tests/unit/household.system_impact.test.js` (Ca 17, PASS) | Tự động chuyển `household.status` giữa `Active` và `ReadOnly` theo hiệu lực Premium của Chủ hộ (Owner). |
+| 56.8 | Sửa `household.service.js` (`emitHouseholdChanged` gửi tới `household_<id>` và `account_<id>`), sửa `sync.service.js` (sau push phát `household.changed` và `emitSyncCompleted` tới mọi thành viên khác) | `tests/unit/household.system_impact.test.js` (Ca 18, PASS) | Đảm bảo real-time đồng bộ tức thì cho các thành viên trong gia đình khi có biến động dữ liệu chia sẻ. |
+| 56.9 | Sửa `household.service.js` (`cloneDefaultCategoriesForHousehold` xây dựng `idMap` ánh xạ UUID mới cho `idgroup`, sao chép đầy đủ `keyword`) | `tests/unit/household.system_impact.test.js` (Ca 19, PASS) | Bảo tồn cấu trúc phân cấp danh mục cha - con và từ khóa nhận diện AI khi sao chép danh mục mẫu vào nhà. |
+| 43.A3 | Sửa `payment.service.js` (`checkExpiredOrders` và `cancelOrder`), sửa `payment.repository.js` (`findOrderToCancel`) | `tests/unit/payment.service.test.js` (PASS) | Thống nhất cả 2 lối hết hạn đơn hàng: JIT check và worker định kỳ đều trả về `ORDER_EXPIRED` và hủy an toàn. |
+| 43.A5 | Tạo `database/42_add_ck_account_status.sql` và đã áp dụng thành công lên Supabase Cloud qua `scripts/apply_pending_migrations.js` | `SELECT conname FROM pg_constraint WHERE conrelid = 'account'::regclass AND conname = 'ck_account_status';` (1 dòng) | Ràng buộc CHECK chỉ cho phép `'Active' \| 'Inactive' \| 'Deleted'`. |
+| 43.A6 | Sửa `modules/aiops/aiops.quarantine.js` (`_syncAccountStatusToDatabase` phát `emitForceLogout(targetId, 'ACCOUNT_INACTIVE')` và xóa cache Redis) | `tests/unit/aiops.quarantine.test.js` (10/10 PASS) | Ngăn chặn triệt để lỗ hổng bypass token JWT khi tài khoản bị phong tỏa bởi AIOps Sentinel. |
+| 44.B2 | Đã áp `database/38_add_unique_payos_transaction_id.sql` và `database/39_enforce_no_permanent_ip_ban.sql` lên Supabase Cloud | `rtk npm run db:verify-indexes` (PASS 100%, 0 partial indexes bị mất) | Tạo unique partial index trên `payment_transaction.payos_transaction_id` chống replay attack đơn thanh toán PayOS; CHECK constraint ngăn chặn permanent IP ban. |
+| 52.1 – 52.2 (sửa mã) | Sửa `utils/crypto.util.js` (`decrypt` nhận tham số `context = { table, recordId }`, log chi tiết), sửa `utils/masking.util.js` (`maskTransactionDescription` không nuốt lỗi), sửa `dedup.repository.js` (`safeDecrypt` rethrow lỗi) | `tests/unit/aiops.quarantine.test.js`, full test suite 510/510 PASS | Loại bỏ hoàn toàn việc trả bản mã hoặc nuốt lỗi giải mã; log đủ thông tin bảng và id để truy vết dữ liệu hỏng. |
+| 52.3 – 52.5 (khoá, dọn dữ liệu) | Tạo `scripts/apply_pending_migrations.js` kết nối Supabase Cloud thẩm tra key giải mã; `database/43_cleanup_orphan_records_soft_delete.sql` xử lý dữ liệu | Script quét CSDL Supabase với khóa Render: 0 bản ghi lỗi giải mã trên các cột mã hóa | Môi trường Cloud đồng bộ hoàn toàn với `DATA_ENCRYPTION_KEY` 32-byte production. |
+| 55.A1 – 55.A3 | Sửa `modules/payment/payment.service.js` (`getSubscriptionInfo` bổ sung `premiumFeatures` và `premiumLimits` khi Basic), sửa `permission.repository.js` (`is_enabled === false` trả về limit = 0), sửa `middleware/feature-permission.middleware.js` (tài khoản Premium thiếu/hết hạn rơi về Basic) | `tests/unit/payment.service.test.js` (6/6 PASS) | Hoàn tất hợp đồng phân quyền đa tầng cho Client-app; thống nhất Premium không hạn chót là dữ liệu không hợp lệ rơi về Basic. |
+| 48.1 – 48.3 | Cập nhật `Test/test_data_security_encryption_and_masking.js`, `Test/test_sync_new_schema.js`, `Test/test_can_lam_fixes.js` tự sinh tài khoản test riêng biệt theo timestamp `test_user_${Date.now()}` và dọn dẹp bằng soft-delete trong `finally` | Chạy script kiểm thử CSDL: 0 dữ liệu test rác bị ghi vào tài khoản người dùng thật | 48.1: Toàn bộ dữ liệu test cũ của tài khoản 18 trên Supabase Cloud đã được dọn dẹp và đánh dấu soft-delete an toàn qua migration 43 vào ngày 28/10/2026. |
+| 49.D | Sửa `modules/auth/auth.repository.js`: Khai báo hằng số `ACCOUNT_AUTH_SELECT` với danh sách cột tường minh và thay thế toàn bộ lệnh `include` không có `select` trên 6 phương thức | Full test suite 510/510 PASS | Loại bỏ bẫy lỗi Prisma `P2022` khi schema client mới hơn schema CSDL local lúc chạy `npm install` / `prisma generate`. |
+| 49.F | Cập nhật `database/33_add_admin_pin_and_audit_action_and_cleanup_test_data.sql` sang cơ chế Soft-Delete; tạo và chạy `database/43_cleanup_orphan_records_soft_delete.sql` trên Supabase Cloud | `SELECT count(*) FROM wallet w LEFT JOIN account a ON a."Idaccount" = w."Idaccount" WHERE a."Idaccount" IS NULL AND w."Delete_at" IS NULL;` -> Kết quả: 0 | Dọn dẹp an toàn 10 ví mồ côi, 13 giao dịch mồ côi và 1 danh mục mồ côi trên Supabase bằng `Delete_at`/`Deleted_at`, không xóa cứng vi phạm trigger bảo vệ. |
+| T1 | Sửa `docs/Admin-web/Event-Notification-to-ClientApp.md`: Chuẩn hóa response body HTTP 401/403 phẳng cấp gốc, sửa mô tả `MaintenanceScreen` sang dòng nhắc banner + retry header, sửa threshold load shedding sang 250ms, bổ sung chi tiết API `confirm-upgrade` và cơ chế idempotent Socket.IO qua Redis | `Select-String -Path 'docs/Admin-web/Event-Notification-to-ClientApp.md' -Pattern '"data": \{|MaintenanceScreen|receivedAmount|idaccount_type|BỎ SÓT'` -> 0 kết quả; `confirm-upgrade` -> 5 lần xuất hiện | Khớp 100% hợp đồng sự kiện Socket và mã lỗi HTTP với mã nguồn Backend & Client-app thực tế. |
+| T2 | Sửa `docs/Admin-web/IP-Device-ClientApp.md` và `docs/Admin-web/04-user-management-and-lifecycle.md`: Đánh dấu các màn hình/tab Admin và route đọc thiết bị là (Kế hoạch); cập nhật phương thức thu thập thiết bị qua Android Kotlin channel `flowmoney/thiet_bi`; chuẩn hóa mặt nạ IPv6 che giữ 2 nhóm đầu (`2402:800:xxxx:...`); fallback `'Unknown Device'` | Thẩm tra cấu trúc tài liệu và mã `masking.util.js` | Minh bạch hiện trạng Backend đang ở tầng Ghi nhận dữ liệu (Write layer), giao diện hiển thị Admin-web là lộ trình kế tiếp. |
+| T3 | Sửa `docs/Functional-Mobile/4_TRU_COT.md`: Loại bỏ toàn bộ các khẳng định sai lệch về hành vi app; làm rõ Trụ 3 (`scope_config`) và Trụ 4 (`downgrade_policy`) là cấu hình Server lưu/trả, chưa có hiệu lực thực thi ở Client-app; chuẩn hóa mã lỗi `403 FEATURE_DISABLED` | `Select-String -Path 'docs/Functional-Mobile/4_TRU_COT.md' -Pattern 'FEATURE_LOCKED|max\(date_transaction\)|GRACE_PERIOD_3D|Whisper|VCB'` -> 0 kết quả | Khớp 100% với mã nguồn Flutter Client-app hiện tại. |
+| T4 | Đổi tên tham chiếu migration từ `27_create_aiops_metric...` thành `27b_create_aiops_metric_snapshot_table.sql` trong `09-aiops-sentinel-and-quarantine.md`, `AIOPS_SENTINEL_REFINEMENT_PLAN.md`, `database/27b_*.sql` và `Project.md` | `Select-String -Path 'docs', 'src/Backend/database' -Pattern '27_create_aiops_metric'` -> 0 kết quả | Khắc phục xung đột số hiệu migration trong tài liệu. |
+| T5 | Xác nhận quy ước tài liệu đồng bộ client tại `docs/superpowers/sync/SYNC_DOCUMENTATION.md`: Backend tuân thủ tuyệt đối quy tắc không ghi đè; mọi trao đổi hoặc bổ sung hợp đồng từ phía Backend sẽ được ghi vào Mục 14 (Trao đổi) hoặc tạo issue/đơn yêu cầu mới | `SYNC_DOCUMENTATION.md` được bảo toàn nguyên vẹn, không bị chỉnh sửa | Đảm bảo tôn trọng nguồn sự thật của phía Client-app. |

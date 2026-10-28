@@ -87,13 +87,21 @@ const householdService = {
         return { count: 0 };
       }
 
+      // Task 56.9: Ánh xạ UUID cha-con (idgroup) và sao chép keyword
+      const idMap = new Map();
+      for (const cat of defaultCats) {
+        idMap.set(cat.idcategory, crypto.randomUUID());
+      }
+
       const clones = defaultCats.map((cat) => ({
-        idcategory: crypto.randomUUID(),
+        idcategory: idMap.get(cat.idcategory),
         create_by: Number(ownerIdaccount),
         name_category: cat.name_category,
         classify: cat.classify,
         is_default: false,
         is_group: cat.is_group || false,
+        idgroup: cat.idgroup ? (idMap.get(cat.idgroup) || null) : null,
+        keyword: cat.keyword || null,
         icon: cat.icon || 'category',
         color: cat.color || '#4CAF50',
         idhousehold: Number(idhousehold),
@@ -394,6 +402,10 @@ const householdService = {
       newOwnerId,
     });
 
+    // Cập nhật trạng thái nhà dựa trên gói cước của chủ mới (Task 56.7)
+    await householdService.updateHouseholdStatusByOwner(newOwnerId);
+    await householdService.updateHouseholdStatusByOwner(currentOwnerId);
+
     return householdService.getMyHousehold(currentOwnerId);
   },
 
@@ -417,7 +429,7 @@ const householdService = {
 
     householdService.emitHouseholdChanged(ownerMembership.idhousehold, 'MEMBER_REMOVED', {
       idaccount: targetIdaccount,
-    });
+    }, [targetIdaccount]);
 
     return true;
   },
@@ -435,7 +447,7 @@ const householdService = {
 
     await householdRepository.removeMember(membership.idhousehold, idaccount);
 
-    householdService.emitHouseholdChanged(membership.idhousehold, 'MEMBER_LEFT', { idaccount });
+    householdService.emitHouseholdChanged(membership.idhousehold, 'MEMBER_LEFT', { idaccount }, [idaccount]);
 
     return true;
   },
@@ -646,21 +658,94 @@ const householdService = {
     return member ? member.role : null;
   },
 
-  // ── Helper phát socket realtime cho nhà ────────────────────
-  emitHouseholdChanged(idhousehold, eventType, payload) {
+  // ── Helper phát socket realtime cho nhà (Task 56.8: Phát tán đa kênh) ──
+  async emitHouseholdChanged(idhousehold, eventType, payload, extraRecipients = []) {
     try {
-      const { getIO } = require('../../core/socket');
+      const { getIO, emitToAccount } = require('../../core/socket');
       const io = getIO ? getIO() : null;
+      const data = {
+        idhousehold: Number(idhousehold),
+        eventType,
+        payload,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Kênh 1: Room socket của nhà
       if (io) {
-        io.to(`household_${idhousehold}`).emit('household.changed', {
-          idhousehold,
-          eventType,
-          payload,
-          timestamp: new Date().toISOString(),
-        });
+        io.to(`household_${idhousehold}`).emit('household.changed', data);
+      }
+
+      // Kênh 2: Room cá nhân (account_<idaccount>) của từng thành viên
+      const activeMembers = await householdRepository.findActiveMembersByHousehold(idhousehold);
+      const recipientIds = new Set((activeMembers || []).map((m) => Number(m.idaccount)));
+      for (const extra of extraRecipients) {
+        if (extra) recipientIds.add(Number(extra));
+      }
+
+      for (const accId of recipientIds) {
+        emitToAccount(accId, 'household.changed', data);
       }
     } catch (err) {
       logger.warn('[Household] Không thể phát socket household.changed', { error: err.message, idhousehold });
+    }
+  },
+
+  // ── Cập nhật trạng thái nhà theo gói Premium của Chủ nhà (Task 56.7) ────
+  async updateHouseholdStatusByOwner(idaccount) {
+    try {
+      const ownerId = Number(idaccount);
+      const owner = await prisma.account.findUnique({
+        where: { idaccount: ownerId },
+        select: {
+          idaccount: true,
+          type: true,
+          premium_expires_at: true,
+          status: true,
+          delete_at: true,
+        },
+      });
+
+      if (!owner || owner.delete_at || owner.status !== 'Active') {
+        return;
+      }
+
+      const isPremium = owner.type === 'Premium' &&
+        Boolean(owner.premium_expires_at) &&
+        new Date(owner.premium_expires_at) > new Date();
+
+      const targetStatus = isPremium ? 'Active' : 'ReadOnly';
+
+      const ownedHouses = await prisma.household.findMany({
+        where: {
+          owner_idaccount: ownerId,
+          delete_at: null,
+          status: { not: 'Dissolved' },
+        },
+        select: {
+          idhousehold: true,
+          status: true,
+        },
+      });
+
+      for (const house of ownedHouses) {
+        if (house.status !== targetStatus) {
+          await prisma.household.update({
+            where: { idhousehold: house.idhousehold },
+            data: {
+              status: targetStatus,
+              update_at: new Date(),
+            },
+          });
+          logger.info(`[Household] Cập nhật trạng thái nhà ${house.idhousehold} sang ${targetStatus} do trạng thái Premium của chủ hộ ${ownerId}`);
+
+          householdService.emitHouseholdChanged(house.idhousehold, 'STATUS_CHANGED', {
+            status: targetStatus,
+            reason: isPremium ? 'OWNER_PREMIUM_ACTIVE' : 'OWNER_PREMIUM_EXPIRED',
+          });
+        }
+      }
+    } catch (err) {
+      logger.error('[Household] Lỗi khi cập nhật trạng thái nhà theo chủ hộ', { error: err.message, idaccount });
     }
   },
 };

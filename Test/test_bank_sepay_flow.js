@@ -10,6 +10,7 @@
  */
 
 const assert = require('assert');
+const TEST_MOCK_ACCOUNT_ID = 999999;
 
 async function runTests() {
   console.log('\n=============================================================');
@@ -68,7 +69,7 @@ async function runTests() {
 
     // Test 1.2: Sinh Hosted Link Token
     sepayClient._setLinkTokenFetcher(async (body) => {
-      assert.strictEqual(body.customer_id, 'account_18', 'Customer ID phải đúng định danh user');
+      assert.strictEqual(body.customer_id, `account_${TEST_MOCK_ACCOUNT_ID}`, 'Customer ID phải đúng định danh user');
       assert.strictEqual(body.company_xid, 'mock_company_xid', 'Company XID phải khớp');
       return {
         link_token: 'link_tok_abc123',
@@ -77,7 +78,7 @@ async function runTests() {
     });
 
     const linkResult = await sepayClient.createLinkToken({
-      idaccount: 18,
+      idaccount: TEST_MOCK_ACCOUNT_ID,
       companyXid: 'mock_company_xid',
       customerName: 'Nguyen Phu Bao',
       customerEmail: 'baonguyen@example.com',
@@ -225,7 +226,7 @@ async function runTests() {
     // Test 4.1: POST /api/bank/link-url
     const mockReqLink = {
       user: {
-        idaccount: 18,
+        idaccount: TEST_MOCK_ACCOUNT_ID,
         fullname: 'Nguyen Phu Bao',
         email: 'baonguyen@example.com',
       },
@@ -274,7 +275,7 @@ async function runTests() {
     // Test 4.3: POST /api/bank/register-account (Khai báo tài khoản thủ công từ App)
     let registeredPayload = null;
     const mockReqRegister = {
-      user: { idaccount: 18 },
+      user: { idaccount: TEST_MOCK_ACCOUNT_ID },
       body: {
         account_number: '1017588888',
         bank_name: 'Vietcombank',
@@ -328,7 +329,7 @@ async function runTests() {
 
     let mockDbBankAccount = {
       id_bank_account: 'uuid-bank-acc-001',
-      idaccount: 18,
+      idaccount: TEST_MOCK_ACCOUNT_ID,
       id_casso_account: 'ba_01j7xyz987654321',
       account_number: '0987654321',
       bank_name: 'MBBank',
@@ -338,7 +339,7 @@ async function runTests() {
 
     let mockDbWallet = {
       idwallet: 'uuid-wallet-001',
-      idaccount: 18,
+      idaccount: TEST_MOCK_ACCOUNT_ID,
       id_bank_casso: 'uuid-bank-acc-001',
       name: 'MBBank - 0987654321',
       type: 'Banking',
@@ -351,7 +352,7 @@ async function runTests() {
     const mockPrisma = {
       bank_account: {
         findFirst: async ({ where }) => {
-          if (where.account_number === '0987654321') return mockDbBankAccount;
+          if (where.account_number === '0987654321' || where.id_casso_account === 'ba_01j7xyz987654321') return mockDbBankAccount;
           return null;
         },
         update: async ({ where, data }) => {
@@ -395,6 +396,12 @@ async function runTests() {
       },
     };
 
+    const eventBus = require('../src/Backend/core/event-bus');
+    eventBus.subscribe('bank_transaction.pending', (payload) => {
+      mockSocket.emitToUser(payload.idaccount, 'bank_transaction.incoming', payload);
+      mockSocket.emitToAdmin('admin.bank_transaction_created', payload);
+    });
+
     const mockClassifyService = {
       classifySingle: async (idaccount, info) => {
         return {
@@ -437,7 +444,7 @@ async function runTests() {
     // Kiểm tra Socket realtime phát đi
     const userEvent = emittedSocketEvents.find((e) => e.event === 'bank_transaction.incoming');
     assert(userEvent, 'Phải phát sự kiện bank_transaction.incoming tới user');
-    assert.strictEqual(userEvent.target, 'user_18');
+    assert.strictEqual(userEvent.target, `user_${TEST_MOCK_ACCOUNT_ID}`);
 
     const adminEvent = emittedSocketEvents.find((e) => e.event === 'admin.bank_transaction_created');
     assert(adminEvent, 'Phải phát sự kiện admin.bank_transaction_created tới admin');

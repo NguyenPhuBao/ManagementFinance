@@ -322,6 +322,14 @@ async function handlePayOSWebhook(webhookPayload) {
     transactionData: txData,
   });
 
+  // Cập nhật trạng thái Active cho household nếu là chủ hộ (Task 56.7)
+  try {
+    const householdService = require('../household/household.service');
+    await householdService.updateHouseholdStatusByOwner(order.idaccount);
+  } catch (hhErr) {
+    logger.warn('[PAYMENT] Không thể cập nhật trạng thái household sau khi kích hoạt Premium:', hhErr.message);
+  }
+
   // Xóa cache xác thực tài khoản để cập nhật tức thì quyền hạn
   try {
     const { invalidateAccountCache } = require('../../middleware/auth');
@@ -427,6 +435,12 @@ async function confirmUpgrade(idaccount, { orderCode, accept } = {}) {
         rawWebhookHash: 'CONFIRMED_BY_USER',
       },
     });
+
+    // Cập nhật trạng thái Active cho household nếu là chủ hộ (Task 56.7)
+    try {
+      const householdService = require('../household/household.service');
+      await householdService.updateHouseholdStatusByOwner(order.idaccount);
+    } catch (_) {}
 
     try {
       const { invalidateAccountCache } = require('../../middleware/auth');
@@ -705,6 +719,12 @@ async function syncOrderWithPayOS(order) {
           transactionData: txData,
         });
 
+        // Cập nhật trạng thái Active cho household nếu là chủ hộ (Task 56.7)
+        try {
+          const householdService = require('../household/household.service');
+          await householdService.updateHouseholdStatusByOwner(order.idaccount);
+        } catch (_) {}
+
         order.status = 'PAID';
         order.qr_url = null;
         order.checkout_url = null;
@@ -818,8 +838,9 @@ async function getSubscriptionInfo(idaccount) {
   const effectiveType = (!isExpired && isPremium) ? 'Premium' : 'Basic';
   const { limits, features, scopes, policies } = await permissionRepository.getPermissionsByAccountType(effectiveType);
 
-  return {
+  const result = {
     accountType: account.type,
+    isPremium: effectiveType === 'Premium',
     premiumExpiresAt: account.premium_expires_at,
     daysRemaining,
     isExpired,
@@ -830,6 +851,15 @@ async function getSubscriptionInfo(idaccount) {
     price: config.payment.premiumPriceVnd || 49000,
     packageDays: config.payment.packageDurationDays || 30,
   };
+
+  // Task 55.A1: Khi effectiveType === 'Basic', đính kèm cột quyền hạn Premium
+  if (effectiveType === 'Basic') {
+    const premiumPerms = await permissionRepository.getPermissionsByAccountType('Premium');
+    result.premiumFeatures = premiumPerms.features;
+    result.premiumLimits = premiumPerms.limits;
+  }
+
+  return result;
 }
 
 /**

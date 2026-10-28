@@ -23,12 +23,11 @@ BEGIN
      OR "Email" LIKE '%retention_%@example.com';
 
   IF v_test_account_ids IS NOT NULL AND array_length(v_test_account_ids, 1) > 0 THEN
-    DELETE FROM refreshtoken WHERE "Idaccount" = ANY(v_test_account_ids);
-    DELETE FROM otp_code WHERE "Idaccount" = ANY(v_test_account_ids);
-    DELETE FROM audit_log WHERE "Idaccount" = ANY(v_test_account_ids);
-    DELETE FROM "user" WHERE "Idaccount" = ANY(v_test_account_ids);
-    DELETE FROM account WHERE "Idaccount" = ANY(v_test_account_ids);
-    RAISE NOTICE 'Đã dọn dẹp thành công các tài khoản test giả lập khỏi CSDL.';
+    -- Task 49.F: Chuyển sang xóa mềm (Soft-Delete) tuân thủ Rule 9 & DB Guard, bảo toàn tính toàn vẹn
+    UPDATE refreshtoken SET "status" = true, "update_at" = NOW() WHERE "Idaccount" = ANY(v_test_account_ids);
+    UPDATE "user" SET "Delete_at" = NOW(), "update_at" = NOW() WHERE "Idaccount" = ANY(v_test_account_ids);
+    UPDATE account SET "Status" = 'Deleted', "Countdown" = 0, "Delete_at" = NOW(), "update_at" = NOW() WHERE "Idaccount" = ANY(v_test_account_ids);
+    RAISE NOTICE 'Đã xóa mềm thành công các tài khoản test giả lập trong CSDL.';
   ELSE
     RAISE NOTICE 'Không có tài khoản test rác cần xóa.';
   END IF;

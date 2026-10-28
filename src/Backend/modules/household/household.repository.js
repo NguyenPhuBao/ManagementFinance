@@ -25,10 +25,44 @@ const householdRepository = {
   },
 
   async findHouseholdById(idhousehold) {
+    if (!idhousehold) return null;
     return prisma.household.findFirst({
       where: {
         idhousehold: Number(idhousehold),
         delete_at: null,
+      },
+    });
+  },
+
+  async findHouseholdAnyStatus(idhousehold) {
+    if (!idhousehold) return null;
+    return prisma.household.findFirst({
+      where: {
+        idhousehold: Number(idhousehold),
+      },
+    });
+  },
+
+  async findMember(idhousehold, idaccount) {
+    if (!idhousehold || !idaccount) return null;
+    return prisma.household_member.findFirst({
+      where: {
+        idhousehold: Number(idhousehold),
+        idaccount: Number(idaccount),
+        left_at: null,
+      },
+      include: {
+        household: true,
+      },
+    });
+  },
+
+  async findFormerMember(idhousehold, idaccount) {
+    if (!idhousehold || !idaccount) return null;
+    return prisma.household_member.findFirst({
+      where: {
+        idhousehold: Number(idhousehold),
+        idaccount: Number(idaccount),
       },
     });
   },

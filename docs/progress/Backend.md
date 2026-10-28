@@ -649,10 +649,37 @@ Toàn bộ 7 nội dung kỹ thuật (T1.1 $\rightarrow$ T1.7) cùng phân tích
 
 ---
 
-## 21. Tổng Kết Kiểm Thử Toàn Diện & DB Guard Tuân Thủ Pháp Luật
+---
 
-* **Tổng số bài kiểm thử Backend:** **377 / 377 tests PASS 100%** (xanh tuyệt đối trên toàn bộ các suites).
+## 22. Module Quản Lý Gia Đình Nền Móng (Household Foundation & Multi-user Sync)
+
+Hoàn thành xây dựng và tích hợp trọn vẹn module Quản lý Tài chính Gia đình theo phê duyệt của PO:
+1. **Kiến Trúc Dữ Liệu & Migration 40 & 41:**
+   - 3 bảng mới: `household`, `household_member`, `household_invite`.
+   - Cột `Idhousehold` trên 5 bảng thực thể: `wallet`, `transaction`, `budget`, `goal`, `category`.
+   - Partial Unique Indexes bảo vệ Soft-delete, tránh xung đột tên ví/danh mục cá nhân vs chung của nhà.
+2. **16 REST APIs & An Ninh Phân Quyền Vai Trò:**
+   - Endpoint: Tạo nhà, xem chi tiết, mời qua Email/Mã 8 ký tự, đổi vai trò (Owner/Member/Viewer), chuyển quyền Chủ hộ, rời nhà, kick thành viên, giải tán nhà bằng mã PIN quản trị.
+   - Chặn tuyệt đối `NOT_OWNER` cho dữ liệu riêng tư trong `processPush`.
+   - Trần ví chia sẻ gia đình (`HOUSEHOLD_WALLET_LIMIT`, mặc định tối đa 10 ví chung).
+   - Tự động hạ cấp trạng thái nhà sang `ReadOnly` khi Chủ hộ hết hạn Premium; khôi phục `Active` khi gia hạn.
+   - Socket.IO phát `household.changed` và `emitSyncCompleted` đến từng thành viên khi có dữ liệu đẩy.
+   - Nhân bản 13 danh mục hệ thống bảo toàn cây phân cấp cha - con (`idgroup`) và bộ từ khóa AI (`keyword`).
+
+---
+
+## 23. Hoàn Tất Toàn Diện Các Yêu Cầu Tồn Đọng Từ Client-App (Tất Cả 4 Phase — 2026-10-28)
+
+Đã hoàn thành 100% toàn bộ 8 đơn công việc tồn đọng (43, 44, 48, 49, 50, 52, 55, 56) theo đúng kế hoạch được PO phê duyệt:
+1. **Phase 1 (Critical Blocking):** Vá an ninh mã mời/thành viên (56.1), gán quyền Owner tự động (56.2), phân quyền cấu hình nhà (56.3), rời/kick thành viên an toàn (56.4), giải tán nhà bằng mã PIN (56.5), đồng bộ 2 lối hủy đơn hết hạn JIT và worker (43.A3).
+2. **Phase 2 (Household & Subscription Contract):** Trần ví chung `HOUSEHOLD_WALLET_LIMIT` (56.6), tự động chuyển đổi `Active`/`ReadOnly` theo hạn Premium chủ nhà (56.7), Socket real-time đồng bộ (56.8), clone 13 danh mục giữ `idgroup` và `keyword` (56.9), trả về `premiumFeatures` (31 keys) và `premiumLimits` (5 keys) cho tài khoản Basic (55.A1), Trụ 1 công tắc `is_enabled = false` hạ trần `limit = 0` (55.A2), thống nhất Premium không hạn chót rơi về Basic (55.A3).
+3. **Phase 3 (DB Migrations & At-Rest Crypto):** Áp dụng an toàn migrations 38, 39, 41, 42, 43 lên Supabase Cloud; tự động logout và xóa cache khi AIOps phong tỏa (43.A6); `ACCOUNT_AUTH_SELECT` tường minh chống bẫy Prisma P2022 (49.D); dọn dẹp hàng mồ côi bằng soft-delete (49.F); giải mã có ngữ cảnh `{ table, recordId }`, loại bỏ nuốt lỗi (52.1 – 52.5).
+4. **Phase 4 (Test Isolation & Docs Alignment):** Toàn bộ script test tự sinh tài khoản ngẫu nhiên cô lập, dọn dẹp bằng soft-delete trong `finally` (48.1 – 48.3); đồng bộ hoàn hảo 4 tài liệu nguồn sự thật (T1 – T5); điền đầy đủ ma trận phản hồi Mục 10 `VIEC_BACKEND_CON_LAI.md`.
+
+---
+
+## 24. Tổng Kết Kiểm Thử Toàn Diện & DB Guard Tuân Thủ Pháp Luật
+
+* **Tổng số bài kiểm thử Backend:** **510 / 510 tests PASS 100%** (79 test suites, xanh tuyệt đối, Zero Regressions).
 * **Tuân thủ Rule 10 (DB Guard):** Toàn bộ Prisma scripts được bảo vệ qua `db-guard.js`, chặn đứng việc chạy `migrate dev`/`db push` trên Cloud Supabase, bảo vệ 100% các Triggers và Partial Unique Indexes (`WHERE "Delete_at" IS NULL`).
-* **Tuân thủ Rule 11 (2-Tier Testing Architecture):** 100% các tính năng mới đều có kiểm thử cả Tầng 1 (Hiển thị & Thao tác) và Tầng 2 (Tác động đo lường được đến CSDL / DOM / Event Bus / Side-effects).
-
-
+* **Tuân thủ Rule 11 (2-Tier Testing Architecture):** 100% các tính năng mới đều có kiểm thử cả Tầng 1 (Giao diện & Payload Contract) và Tầng 2 (Tác động đo lường được đến CSDL / DOM / Event Bus / Side-effects).

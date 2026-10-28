@@ -38,10 +38,12 @@
 4. **Phối hợp với Hệ thống Tường lửa AIOps Sentinel:**
    - Cung cấp dữ liệu nhận diện thiết bị cho cơ chế phát hiện mối đe dọa (Threat Detection) và tự động phong tỏa IP vi phạm mà không làm ảnh hưởng nhầm đến người dùng hợp pháp khác.
 
-### 1.2. Các Tính Năng / Màn Hình Tại Admin-Web Sử Dụng Dữ Liệu Này
-* **Màn hình Chi tiết Người dùng (`/admin/users/:idaccount`):** Tab **"Lịch sử Thiết bị & Phiên truy cập"** hiển thị danh sách toàn bộ các thiết bị người dùng từng sử dụng kèm: Tên thiết bị, Địa chỉ IP (đã che bớt), Lần đầu truy cập (`first_seen_at`), Hoạt động gần nhất (`last_active_at`), và Trạng thái đang hoạt động.
-* **Màn hình Giám sát An ninh Tổng thể (`/admin/security/device-history`):** Danh sách luồng truy cập thiết bị theo thời gian thực (Real-time Device Access Stream).
-* **Bảng Cảnh báo Đăng nhập Lạ (Unusual Login Alert):** Khi phát hiện IP mới khác subnet thông thường hoặc Device mới lần đầu xuất hiện, hiển thị cờ cảnh báo màu vàng để Admin lưu ý.
+### 1.2. Các Tính Năng / Màn Hình Tại Admin-Web Sử Dụng Dữ Liệu Này (Kế Hoạch)
+> ⚠️ **Lưu ý hiện trạng:** Các giao diện hiển thị và API truy vấn lịch sử thiết bị trên Admin-web hiện đang ở trạng thái **kế hoạch phát triển** (Planned Roadmap). Ở giai đoạn hiện tại, CSDL Backend đang thực thi việc thu thập và ghi nhận (Write-only) vào bảng `account_device_history` qua mỗi request từ Client-app.
+
+* **Màn hình Chi tiết Người dùng (`/admin/users/:idaccount`) *(Kế hoạch)*:** Tab **"Lịch sử Thiết bị & Phiên truy cập"** hiển thị danh sách toàn bộ các thiết bị người dùng từng sử dụng kèm: Tên thiết bị, Địa chỉ IP (đã che bớt), Lần đầu truy cập (`first_seen_at`), Hoạt động gần nhất (`last_active_at`), và Trạng thái đang hoạt động.
+* **Màn hình Giám sát An ninh Tổng thể (`/admin/security/device-history`) *(Kế hoạch)*:** Danh sách luồng truy cập thiết bị theo thời gian thực (Real-time Device Access Stream).
+* **Bảng Cảnh báo Đăng nhập Lạ (Unusual Login Alert) *(Kế hoạch)*:** Khi phát hiện IP mới khác subnet thông thường hoặc Device mới lần đầu xuất hiện, hiển thị cờ cảnh báo màu vàng để Admin lưu ý.
 
 ---
 
@@ -79,14 +81,14 @@ flowchart TD
   + Duy trì bộ đệm trong bộ nhớ (`accessCache`) với khóa: `${idaccount}:${deviceName}:${maskedIp}`.
   + Chu kỳ tiết lưu (`THROTTLE_MS`): **60 giây**.
   + Nếu trong vòng 60 giây, người dùng dùng cùng một thiết bị và cùng một IP tiếp tục gửi các request API bình thường, hệ thống **bỏ qua ghi nhận CSDL** để tối ưu tài nguyên.
-  + **Ngoại lệ bắt buộc:** Khi người dùng thực hiện **Đăng nhập (`POST /api/auth/login`)**, cờ `skipThrottle = true` luôn được kích hoạt để đảm bảo ghi nhận ngay lập tức mà không bị bỏ sót.
+  + **Ngoại lệ bắt buộc:** Khi người dùng thực hiện **Đăng nhập (`POST /api/auth/login`)**, **Đăng ký** hoặc **Xác thực OTP**, cờ `skipThrottle = true` luôn được kích hoạt để đảm bảo ghi nhận ngay lập tức mà không bị bỏ sót.
 
 ### 2.3. Tuân Thủ Pháp Luật & Bảo Vệ Quyền Riêng Tư (Nghị Định 13/2023/NĐ-CP & Rule 9)
 Theo tài liệu [`Data_Security.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Rule_Project/Data_Security.md) và Điều 17 Nghị định 13/2023/NĐ-CP:
 1. **Mặt nạ hóa địa chỉ IP (IP Masking):**
-   - Địa chỉ IP là dữ liệu có khả năng định danh thiết bị mạng của người dùng. Backend **bắt buộc chạy qua hàm `maskIp()`** trước khi lưu vào CSDL hoặc hiển thị lên Admin-web:
+   - Địa chỉ IP là dữ liệu có khả năng định danh thiết bị mạng của người dùng. Backend **bắt buộc chạy qua hàm `maskIp()`** (`utils/masking.util.js`) trước khi lưu vào CSDL hoặc hiển thị lên Admin-web:
      + IPv4: Che 2 byte cuối $\longrightarrow$ Ví dụ: `113.161.45.12` thành `113.161.xx.xx`.
-     + IPv6: Che các nhóm sau $\longrightarrow$ Ví dụ: `2402:800:6390:e388:...` thành `2402:800:6390:xxxx:...`.
+     + IPv6: Giữ 2 nhóm đầu, che các nhóm sau $\longrightarrow$ Ví dụ: `2402:800:6390:e388:...` thành `2402:800:xxxx:xxxx:...`.
 2. **Nguyên tắc Tối thiểu hóa Dữ liệu (Data Minimization):**
    - **ĐƯỢC PHÉP thu thập:** Tên dòng máy (Model), Hãng sản xuất (Manufacturer), Phiên bản Hệ điều hành (OS Version), Địa chỉ IP mạng công cộng (đã che bớt).
    - **TUYỆT ĐỐI CẤM THU THẬP:** Danh bạ điện thoại, vị trí GPS thời gian thực liên tục (chỉ cho phép gắn vị trí giao dịch khi người dùng chủ động cho phép từng lần), nội dung SMS cá nhân ngoài biến động số dư ngân hàng, số IMEI/Serial phần cứng không được cấp phép.
@@ -149,7 +151,7 @@ CREATE INDEX IF NOT EXISTS "idx_device_history_ip" ON "account_device_history" (
   - `iPhone 15 Pro Max (iOS 17.5.1)`
   - `Xiaomi Redmi Note 13 (Android 13)`
   - `iPad Air 5 (iPadOS 17.4)`
-* **Nếu không lấy được thông tin phần cứng:** Client-app gửi fallback là `"Unknown Mobile Device"`.
+* **Nếu không lấy được thông tin phần cứng:** Client-app gửi fallback là `"Unknown Device"`.
 
 ### 4.2. Header Tiêu Chuẩn: `User-Agent`
 * **Tên Header:** `User-Agent`
@@ -178,129 +180,19 @@ Ngoài header HTTP, trong body của API đăng nhập, Client-app nên gửi k�
 
 ---
 
-## 5. HƯỚNG DẪN TRIỂN KHAI CHI TIẾT CHO ĐỘI NGŨ CLIENT-APP (FLUTTER)
+## 5. HIỆN TRẠNG TRIỂN KHAI PHÍA CLIENT-APP (FLUTTER)
 
-### 5.1. Bước 1: Khai Báo Thư Viện Trong `pubspec.yaml`
-Sử dụng thư viện chính thức của Flutter Community để đọc thông tin thiết bị:
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  device_info_plus: ^10.1.0
-  dio: ^5.4.0
-```
+### 5.1. Triển Khai Thực Tế Trên Android (Native Kotlin MethodChannel)
+- **Phương thức thực tế:** Phía Client-app (Flutter) hiện tại thu thập tên thiết bị **chỉ trên nền tảng Android** thông qua MethodChannel Kotlin `flowmoney/thiet_bi` (không sử dụng package `device_info_plus`).
+- **Định dạng gửi lên:** Chuỗi chuẩn hóa `"[Hãng sản xuất] [Model] (Android [Phiên bản])"` (ví dụ: `Samsung SM-S928B (Android 14)`).
+- **Gắn tự động:** Được tự động đính kèm vào header `x-device-name` ở tất cả các luồng:
+  + Dio instance chung của app (mọi request API thông thường).
+  + Dio xử lý làm mới phiên (`POST /api/auth/refresh`).
+  + Luồng đồng bộ chạy nền (background sync engine).
+- **Nền tảng khác (iOS / Web):** Hiện tại chưa triển khai MethodChannel tương ứng; khi gửi request sẽ nhận fallback `"Unknown Device"` từ server nếu header vắng mặt.
+- **Tuân thủ quyền riêng tư:** Tuyệt đối không sử dụng `iosInfo.name` hay `computerName` (vốn là tên do người dùng tự đặt trên thiết bị, vi phạm nguyên tắc bảo vệ dữ liệu cá nhân theo §2.3).
 
-### 5.2. Bước 2: Viết Service `DeviceInfoService`
-Tạo file `lib/core/services/device_info_service.dart`:
-
-```dart
-import 'dart:io';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flutter/foundation.dart';
-
-class DeviceInfoService {
-  static final DeviceInfoPlugin _deviceInfoPlugin = DeviceInfoPlugin();
-  static String? _cachedDeviceName;
-
-  /// Lấy tên thiết bị chuẩn hóa phục vụ gắn header x-device-name
-  static Future<String> getDeviceName() async {
-    if (_cachedDeviceName != null && _cachedDeviceName!.isNotEmpty) {
-      return _cachedDeviceName!;
-    }
-
-    try {
-      if (kIsWeb) {
-        final webInfo = await _deviceInfoPlugin.webBrowserInfo;
-        _cachedDeviceName = '${webInfo.browserName.name} (Web)';
-      } else if (Platform.isAndroid) {
-        final androidInfo = await _deviceInfoPlugin.androidInfo;
-        final manufacturer = _capitalize(androidInfo.manufacturer);
-        final model = androidInfo.model;
-        final release = androidInfo.version.release;
-        _cachedDeviceName = '$manufacturer $model (Android $release)';
-      } else if (Platform.isIOS) {
-        final iosInfo = await _deviceInfoPlugin.iosInfo;
-        final name = iosInfo.name;
-        final systemVersion = iosInfo.systemVersion;
-        _cachedDeviceName = '$name (iOS $systemVersion)';
-      } else if (Platform.isMacOS) {
-        final macInfo = await _deviceInfoPlugin.macOsInfo;
-        _cachedDeviceName = '${macInfo.computerName} (macOS)';
-      } else if (Platform.isWindows) {
-        final winInfo = await _deviceInfoPlugin.windowsInfo;
-        _cachedDeviceName = '${winInfo.computerName} (Windows)';
-      } else {
-        _cachedDeviceName = 'Unknown Mobile Device';
-      }
-    } catch (e) {
-      _cachedDeviceName = 'Unknown Mobile Device';
-    }
-
-    // Cắt tối đa 150 ký tự theo đúng schema VARCHAR(150) của CSDL Backend
-    if (_cachedDeviceName!.length > 150) {
-      _cachedDeviceName = _cachedDeviceName!.substring(0, 150);
-    }
-
-    return _cachedDeviceName!;
-  }
-
-  static String _capitalize(String s) {
-    if (s.isEmpty) return s;
-    return s[0].toUpperCase() + s.substring(1);
-  }
-}
-```
-
-### 5.3. Bước 3: Cấu Hình `DioInterceptor` Tự Động Gắn Header
-Tạo hoặc cập nhật Interceptor trong `lib/core/api/interceptors/device_header_interceptor.dart`:
-
-```dart
-import 'package:dio/dio.dart';
-import '../services/device_info_service.dart';
-
-class DeviceHeaderInterceptor extends Interceptor {
-  @override
-  Future<void> onRequest(
-    RequestOptions options,
-    RequestInterceptorHandler handler,
-  ) async {
-    // 1. Lấy tên thiết bị từ Service
-    final deviceName = await DeviceInfoService.getDeviceName();
-
-    // 2. Tự động gắn header x-device-name cho mọi request gửi lên Backend
-    options.headers['x-device-name'] = deviceName;
-
-    // 3. Tiếp tục chuỗi xử lý request
-    return handler.next(options);
-  }
-}
-```
-
-*Đăng ký Interceptor vào `DioClient`:*
-```dart
-dio.interceptors.add(DeviceHeaderInterceptor());
-```
-
-### 5.4. Bước 4: Tích Hợp Vào Luồng Đăng Nhập (`POST /api/auth/login`)
-Trong `AuthRepository` của Client-app:
-```dart
-Future<AuthResponse> login({
-  required String username,
-  required String password,
-}) async {
-  final deviceName = await DeviceInfoService.getDeviceName();
-
-  final response = await dio.post('/api/auth/login', data: {
-    'username': username,
-    'password': password,
-    'deviceName': deviceName, // Gửi kèm trong payload body
-  });
-
-  return AuthResponse.fromJson(response.data);
-}
-```
-
-### 5.5. Bước 5: Bảng Lưu Vết Cục Bộ SQLite (`device_tracking`) Tại Client-App
+### 5.2. Bảng Lưu Vết Cục Bộ SQLite (`device_tracking`) Tại Client-App (Tham Chiếu)
 Để Client-app có thể nắm bắt trạng thái thiết bị của chính mình khi ngoại tuyến (Offline-First), định nghĩa bảng Drift SQLite:
 
 ```dart
@@ -319,9 +211,11 @@ class DeviceTracking extends Table {
 
 ---
 
-## 6. ĐẶC TẢ CÁC API ENDPOINTS BACKEND PHỤC VỤ ADMIN-WEB
+## 6. ĐẶC TẢ CÁC API ENDPOINTS BACKEND PHỤC VỤ ADMIN-WEB (KẾ HOẠCH)
 
-### 6.1. Lấy Lịch Sử Thiết Bị Của Một Tài Khoản
+> ⚠️ **Lưu ý hiện trạng:** Hai route `GET /api/admin/accounts/:idaccount/devices` và `GET /api/admin/devices/recent-access` hiện ở trạng thái **kế hoạch triển khai**. Phía Backend hiện tập trung hoàn tất tầng ghi nhận dữ liệu (Write layer) vào `account_device_history` và bảo vệ dữ liệu theo chuẩn Nghị định 13.
+
+### 6.1. Lấy Lịch Sử Thiết Bị Của Một Tài Khoản (Kế hoạch)
 * **Endpoint:** `GET /api/admin/accounts/:idaccount/devices`
 * **Quyền hạn truy cập:** Admin Token (`idrole: 1` hoặc `rolename: 'admin'`).
 * **Query Parameters:**
@@ -368,7 +262,7 @@ class DeviceTracking extends Table {
 }
 ```
 
-### 6.2. Luồng Theo Dõi Truy Cập Thiết Bị Toàn Hệ Thống (Real-time Stream)
+### 6.2. Luồng Theo Dõi Truy Cập Thiết Bị Toàn Hệ Thống (Real-time Stream) (Kế hoạch)
 * **Endpoint:** `GET /api/admin/devices/recent-access`
 * **Query Parameters:** `page=1&limit=50&search=Samsung`
 * **Dữ liệu trả về:** Danh sách bản ghi truy cập gần nhất của tất cả người dùng, phục vụ màn hình Giám sát An ninh Tổng thể của Admin.
@@ -380,9 +274,9 @@ class DeviceTracking extends Table {
 Áp dụng nghiêm ngặt theo **Rule 11 (2-Tier Testing Architecture)** của dự án FinanceManagement:
 
 ### 🧱 TẦNG 1: KIỂM THỬ HIỂN THỊ & GIAO DIỆN (UI Rendering & Payload Contract)
-- [x] **Test 1.1:** Màn hình Admin-web hiển thị đầy đủ bảng danh sách thiết bị: Cột Tên thiết bị, Địa chỉ IP Masked, Thời điểm phát hiện lần đầu, Lần hoạt động cuối.
-- [x] **Test 1.2:** Thẻ Badge trạng thái hiển thị chuẩn: Màu xanh `"Đang hoạt động"` cho thiết bị truy cập trong vòng 15 phút qua; màu xám cho các thiết bị cũ.
-- [x] **Test 1.3:** Client-app gửi request có đính kèm chính xác Header `x-device-name` với độ dài $\le 150$ ký tự.
+- [ ] **Test 1.1 (Kế hoạch):** Màn hình Admin-web hiển thị đầy đủ bảng danh sách thiết bị: Cột Tên thiết bị, Địa chỉ IP Masked, Thời điểm phát hiện lần đầu, Lần hoạt động cuối.
+- [ ] **Test 1.2 (Kế hoạch):** Thẻ Badge trạng thái hiển thị chuẩn: Màu xanh `"Đang hoạt động"` cho thiết bị truy cập trong vòng 15 phút qua; màu xám cho các thiết bị cũ.
+- [x] **Test 1.3:** Client-app gửi request có đính kèm chính xác Header `x-device-name` với độ dài $\le 150$ ký tự trên nền tảng Android.
 
 ### ⚡ TẦNG 2: KIỂM THỬ TÁC ĐỘNG HỆ THỐNG THỰC TẾ (Real System Impact & DB Persistence)
 - [x] **Test 2.1 (Lần đầu truy cập):** Người dùng đăng nhập lần đầu $\longrightarrow$ CSDL PostgreSQL có **chính xác 1 dòng mới** trong `account_device_history` với đúng `idaccount`, `device_name`, và `ip_address` (đã mask).

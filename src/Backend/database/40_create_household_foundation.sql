@@ -1,7 +1,7 @@
 -- ============================================================================
 -- MIGRATION 40: HOUSEHOLD FOUNDATION (GIA ĐÌNH NỀN MÓNG)
 -- Hệ thống: FlowMoney / ManagementFinance
--- Nguồn sự thật: docs/Family/01_NEN_MONG.md & docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md
+-- Nguồn sự thật: docs/Family/01_NEN_MONG.md & docs/superpowers/backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md
 -- ============================================================================
 
 -- 1. Bảng household (Nhà)

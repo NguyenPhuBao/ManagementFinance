@@ -247,20 +247,24 @@ const syncRepository = {
       });
     }
     const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    const existingHh = existing.idhousehold ?? existing.Idhousehold ?? null;
+    if (mapped.idhousehold !== undefined && Number(mapped.idhousehold || 0) !== Number(existingHh || 0)) {
+      throw Object.assign(new Error('Không thể thay đổi phạm vi gia đình của bản ghi đã có'), { code: 'HOUSEHOLD_SCOPE_MISMATCH' });
+    }
     if (!existing.is_default && !isShared && reqUserId !== undefined && reqUserId !== null && Number(existing.create_by) !== Number(reqUserId)) {
       throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
     }
-    if (existing.is_default && existing.create_by !== mapped.create_by) {
-      throw new Error('Cannot modify system default category');
+    if (existing.is_default) {
+      throw Object.assign(new Error('Cannot modify system default category'), { code: 'FORBIDDEN_SYSTEM_DEFAULT' });
     }
-    if (!existing.is_default && mapped.create_by && existing.create_by !== mapped.create_by) {
-      throw new Error('Cannot modify category belonging to another user');
+    if (!existing.is_default && !isShared && mapped.create_by && existing.create_by !== mapped.create_by) {
+      throw Object.assign(new Error('Cannot modify category belonging to another user'), { code: 'NOT_OWNER' });
     }
     if (new Date(mapped.update_at) > new Date(existing.update_at)) {
       return prisma.category.update({
         where: { idcategory: existing.idcategory },
         data: {
-          idhousehold: mapped.idhousehold !== undefined ? mapped.idhousehold : existing.idhousehold,
+          idhousehold: existing.idhousehold,
           name_category: mapped.name_category || mapped.name || existing.name_category,
           classify: mapped.classify || existing.classify,
           is_group: mapped.is_group ?? existing.is_group,
@@ -343,6 +347,10 @@ const syncRepository = {
 
     const ownerId = existing.idaccount ?? existing.Idaccount;
     const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    const existingHh = existing.idhousehold ?? existing.Idhousehold ?? null;
+    if (mapped.idhousehold !== undefined && Number(mapped.idhousehold || 0) !== Number(existingHh || 0)) {
+      throw Object.assign(new Error('Không thể thay đổi phạm vi gia đình của bản ghi đã có'), { code: 'HOUSEHOLD_SCOPE_MISMATCH' });
+    }
     if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(ownerId) !== Number(reqUserId)) {
       throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
     }
@@ -351,7 +359,7 @@ const syncRepository = {
       return prisma.wallet.update({
         where: { idwallet: existing.idwallet },
         data: {
-          idhousehold: mapped.idhousehold !== undefined ? mapped.idhousehold : existing.idhousehold,
+          idhousehold: existing.idhousehold,
           name: typeof mapped.name === 'string' && mapped.name.trim() !== '' ? mapped.name.trim().substring(0, 100) : existing.name,
           type: mapped.type ?? existing.type,
           balance: mapped.balance ?? existing.balance,
@@ -467,6 +475,10 @@ const syncRepository = {
 
     const ownerId = existing.idaccount ?? existing.Idaccount;
     const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    const existingHh = existing.idhousehold ?? existing.Idhousehold ?? null;
+    if (mapped.idhousehold !== undefined && Number(mapped.idhousehold || 0) !== Number(existingHh || 0)) {
+      throw Object.assign(new Error('Không thể thay đổi phạm vi gia đình của bản ghi đã có'), { code: 'HOUSEHOLD_SCOPE_MISMATCH' });
+    }
     if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(ownerId) !== Number(reqUserId)) {
       throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
     }
@@ -479,7 +491,7 @@ const syncRepository = {
       return prisma.transaction.update({
         where: { idtran: existing.idtran },
         data: {
-          idhousehold: mapped.idhousehold !== undefined ? mapped.idhousehold : existing.idhousehold,
+          idhousehold: existing.idhousehold,
           idwallet: mapped.idwallet ?? existing.idwallet,
           idcategory: mapped.idcategory !== undefined ? mapped.idcategory : existing.idcategory,
           idwallet_transfer: mapped.idwallet_transfer !== undefined ? mapped.idwallet_transfer : existing.idwallet_transfer,
@@ -554,6 +566,10 @@ const syncRepository = {
 
     const ownerId = existing.idaccount ?? existing.Idaccount;
     const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    const existingHh = existing.idhousehold ?? existing.Idhousehold ?? null;
+    if (mapped.idhousehold !== undefined && Number(mapped.idhousehold || 0) !== Number(existingHh || 0)) {
+      throw Object.assign(new Error('Không thể thay đổi phạm vi gia đình của bản ghi đã có'), { code: 'HOUSEHOLD_SCOPE_MISMATCH' });
+    }
     if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(ownerId) !== Number(reqUserId)) {
       throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
     }
@@ -562,7 +578,7 @@ const syncRepository = {
       return prisma.budget.update({
         where: { idbudget: existing.idbudget },
         data: {
-          idhousehold: mapped.idhousehold !== undefined ? mapped.idhousehold : existing.idhousehold,
+          idhousehold: existing.idhousehold,
           idcategory: mapped.idcategory !== undefined ? mapped.idcategory : existing.idcategory,
           total_amount: mapped.total_amount ?? existing.total_amount,
           spent: mapped.spent ?? existing.spent,
@@ -717,6 +733,10 @@ const syncRepository = {
 
     const ownerId = existing.idaccount ?? existing.Idaccount;
     const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    const existingHh = existing.idhousehold ?? existing.Idhousehold ?? null;
+    if (mapped.idhousehold !== undefined && Number(mapped.idhousehold || 0) !== Number(existingHh || 0)) {
+      throw Object.assign(new Error('Không thể thay đổi phạm vi gia đình của bản ghi đã có'), { code: 'HOUSEHOLD_SCOPE_MISMATCH' });
+    }
     if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(ownerId) !== Number(reqUserId)) {
       throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
     }
@@ -725,7 +745,7 @@ const syncRepository = {
       return prisma.goal.update({
         where: { idgoal: existing.idgoal },
         data: {
-          idhousehold: mapped.idhousehold !== undefined ? mapped.idhousehold : existing.idhousehold,
+          idhousehold: existing.idhousehold,
           idwallet: mapped.idwallet !== undefined ? mapped.idwallet : existing.idwallet,
           name: mapped.name ?? existing.name,
           target_amount: mapped.target_amount ?? existing.target_amount,
@@ -828,7 +848,11 @@ const syncRepository = {
     if (entity === 'category') {
       const cat = await prisma.category.findUnique({ where: { idcategory: id } });
       if (!cat) return null;
-      if (cat.is_default) throw new Error('Cannot delete system default category');
+      if (cat.is_default) {
+        throw Object.assign(new Error('Cannot delete system default category'), {
+          code: 'FORBIDDEN_SYSTEM_DEFAULT',
+        });
+      }
       const isShared = Boolean(cat.idhousehold || cat.Idhousehold);
       if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(cat.create_by) !== Number(reqUserId)) {
         throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });

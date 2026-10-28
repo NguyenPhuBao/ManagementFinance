@@ -5,7 +5,7 @@
 > **Người giao:** Product Owner (PO) & Lead Business Analyst  
 > **Mức độ ưu tiên:** **CAO (High / P1)** — Tính năng chiến lược mở rộng trải nghiệm người dùng  
 > **Tài liệu nghiệp vụ gốc:** [`docs/Family/00_TONG_QUAN.md`](../../../Family/00_TONG_QUAN.md) & [`docs/Family/01_NEN_MONG.md`](../../../Family/01_NEN_MONG.md)  
-> **Tài liệu phía Backend:** [`docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md`](../../backend/CAN-LAM/GIA_DINH_NEN_MONG.md)  
+> **Tài liệu phía Backend:** [`docs/superpowers/backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md`](../../backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md)  
 > **Trạng thái:** 🟢 SẴN SÀNG TRIỂN KHAI — ĂN KHỚP 100% VỚI HỆ THỐNG BACKEND  
 
 ---

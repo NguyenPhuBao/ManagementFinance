@@ -232,10 +232,19 @@ async function runTests() {
     // ------------------------------------------------------------------------
     // CASE 11: Lọc dữ liệu nhạy cảm và mã hóa At-Rest cho trường Note
     // ------------------------------------------------------------------------
-    // Chọn tài khoản người dùng thông thường (idrole: 2, TUYỆT ĐỐI KHÔNG chọn idrole: 1 Admin thật)
-    let testAccount = await prisma.account.findFirst({ where: { status: 'Active', idrole: 2, delete_at: null } })
-      || await prisma.account.findFirst({ where: { status: 'Active', idrole: { not: 1 }, delete_at: null } });
-    const idacc = testAccount ? testAccount.idaccount : 18;
+    // Task 48.2: Tạo tài khoản test riêng biệt, tuyệt đối không ghi vào tài khoản người dùng thật
+    const testUsername = `test_crypto_note_${Date.now()}`;
+    const testEmail = `${testUsername}@anonymized.local`;
+    const testAccount = await prisma.account.create({
+      data: {
+        username: testUsername,
+        email: testEmail,
+        password: '$2a$10$TESTPASSWORDHASH00000000000000000000000000000000000',
+        status: 'Active',
+        idrole: 2,
+      },
+    });
+    const idacc = testAccount.idaccount;
 
     // Luôn tạo ví test tạm thời riêng biệt với UUID ngẫu nhiên để không ảnh hưởng ví thật
     const createdWalletId = crypto.randomUUID();
@@ -282,10 +291,13 @@ async function runTests() {
       console.log(`   ${colors.green}✔ Đạt: Note được lọc sạch thẻ/CVV/pwd và mã hóa At-Rest AES-256 trong CSDL${colors.reset}`);
       passedCount++;
     } finally {
-      // Dọn dẹp bản ghi test qua Xóa mềm (tuân thủ trigger protect_transaction_hard_delete)
+      // Dọn dẹp bản ghi test qua Xóa mềm (tuân thủ trigger protect_transaction_hard_delete và DB Guard)
       await pgClient.query('UPDATE "transaction" SET "Deleted_at" = NOW(), "Server_update_at" = NOW() WHERE "Idtran" = $1;', [testTranId]);
       if (createdWalletId) {
         await pgClient.query('UPDATE "wallet" SET "Delete_at" = NOW(), "Server_update_at" = NOW() WHERE "Idwallet" = $1;', [createdWalletId]);
+      }
+      if (testAccount) {
+        await pgClient.query('UPDATE "account" SET "Delete_at" = NOW(), "Status" = \'Deleted\', "Countdown" = 0, "Update_at" = NOW() WHERE "Idaccount" = $1;', [testAccount.idaccount]);
       }
     }
 

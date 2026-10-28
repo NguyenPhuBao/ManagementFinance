@@ -187,6 +187,11 @@ test('Payment Service Suite', async (t) => {
     assert.strictEqual(basicInfo.features.ocr_receipt, true);
     assert.strictEqual(basicInfo.price, 49000);
     assert.strictEqual(basicInfo.packageDays, 30);
+    // Task 55.A1: Basic trả về thêm premiumFeatures và premiumLimits
+    assert.ok(basicInfo.premiumFeatures, 'basicInfo phải có premiumFeatures');
+    assert.ok(basicInfo.premiumLimits, 'basicInfo phải có premiumLimits');
+    assert.strictEqual(basicInfo.premiumFeatures.ai_assistant, true);
+    assert.strictEqual(basicInfo.premiumLimits.wallets, null);
 
     // Ca 2: Tài khoản Premium còn 15 ngày
     const futureDate = new Date(Date.now() + 15 * 86400000);
@@ -208,6 +213,9 @@ test('Payment Service Suite', async (t) => {
     assert.strictEqual(premiumInfo.features.export_reports, true);
     assert.strictEqual(premiumInfo.price, 49000);
     assert.strictEqual(premiumInfo.packageDays, 30);
+    // Tài khoản Premium không gửi kèm premiumFeatures và premiumLimits
+    assert.strictEqual(premiumInfo.premiumFeatures, undefined);
+    assert.strictEqual(premiumInfo.premiumLimits, undefined);
 
     // Ca 3: Tài khoản Premium nhưng đã hết hạn (phân quyền fallback về Basic)
     const pastDate = new Date(Date.now() - 5 * 86400000);
@@ -225,6 +233,9 @@ test('Payment Service Suite', async (t) => {
     assert.strictEqual(expiredInfo.limits.goals, 3);
     assert.strictEqual(expiredInfo.features.ai_assistant, false);
     assert.strictEqual(expiredInfo.features.ai_quick_input, false);
+    // Khi expiredInfo (effectiveType Basic) cũng có premiumFeatures và premiumLimits
+    assert.ok(expiredInfo.premiumFeatures, 'expiredInfo phải có premiumFeatures');
+    assert.ok(expiredInfo.premiumLimits, 'expiredInfo phải có premiumLimits');
 
     paymentRepository.findAccountSubscription = origFind;
   });
