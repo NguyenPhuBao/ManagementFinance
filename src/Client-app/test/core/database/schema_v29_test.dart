@@ -6,6 +6,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../helpers/bang_toi_thieu_v32.dart';
 
 PhanTichThuTuPhanHoisCompanion _ph(String id, {int idaccount = 7, String cum = 'co_cau', String ketQua = 'dua_len'}) =>
     PhanTichThuTuPhanHoisCompanion.insert(
@@ -16,7 +17,7 @@ void main() {
   setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
   tearDown(() => db.close());
 
-  test('schema hiện tại là v31 (v29 còn nguyên)', () => expect(db.schemaVersion, 31));
+  test('schema hiện tại là v32 (v29 còn nguyên)', () => expect(db.schemaVersion, 32));
 
   test('hai bảng KHÔNG có cột đồng bộ', () async {
     for (final bang in ['phan_tich_giay_xems', 'phan_tich_thu_tu_phan_hois']) {
@@ -72,6 +73,7 @@ void main() {
       // chứng minh nó còn nguyên.
       d.execute('CREATE TABLE wallets (id TEXT NOT NULL PRIMARY KEY)');
       d.execute("INSERT INTO wallets VALUES ('w1')");
+      dungBangThieuChoV32(d); // v32 thêm `idhousehold` vào năm bảng — fixture phải có đủ năm bảng
       d.execute('PRAGMA user_version = 28');
     }));
     addTearDown(cu.close);

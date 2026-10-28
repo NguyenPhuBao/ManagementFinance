@@ -23,6 +23,7 @@ library;
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../helpers/bang_toi_thieu_v32.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 
@@ -118,6 +119,7 @@ void main() {
           VALUES ('vi-dang-cho', 7, 'Cho day', 'inactive', 'pending', 0, ${_giay(2026, 9, 1)})
         ''');
 
+        dungBangThieuChoV32(database); // v32 thêm `idhousehold` vào năm bảng — fixture phải có đủ năm bảng
         // Drift đọc phiên bản CSDL từ `PRAGMA user_version`; đặt 21 để chuỗi
         // migration chạy đúng một bước sang v22. Thiếu dòng này thì Drift coi
         // đây là CSDL mới và không migration nào chạy cả.

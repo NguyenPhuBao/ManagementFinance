@@ -7,6 +7,7 @@ library;
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../helpers/bang_toi_thieu_v32.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 
@@ -92,6 +93,7 @@ void main() {
           VALUES ('hd-cu', 7, 'Tien dien', 250000, ${_s(2026, 8, 20)},
             ${_s(2026, 9, 20)}, 1, 20, 'synced', ${_s(2026, 9, 1)})
         ''');
+        dungBangThieuChoV32(database); // v32 thêm `idhousehold` vào năm bảng — fixture phải có đủ năm bảng
         // Drift đọc phiên bản từ `PRAGMA user_version`; đặt 20 để chuỗi
         // migration chạy đúng một bước sang v21.
         database.execute('PRAGMA user_version = 20');
@@ -115,7 +117,7 @@ void main() {
     expect(hang.anchorDay, 20, reason: 'Cột v18 không được đụng tới.');
   });
 
-  test('schemaVersion là 31', () {
+  test('schemaVersion là 32', () {
     // Tệp này canh bước v20→v21, nhưng con số ở đây là **phiên bản hiện tại**
     // của lược đồ — nó tăng theo mỗi migration mới. v22 thêm ngày 2026-09-14
     // cho G28 (lưu trữ ví qua đồng bộ), không đụng cột nào của `bills`; v25
@@ -124,7 +126,7 @@ void main() {
     // ngày, B2) thêm bảng phản hồi gợi ý hoá đơn, cũng không đụng; v28
     // (2026-10-05, G63) thêm cột cục bộ trên `wallets`, cũng không đụng; v29
     // (cùng ngày, dự án C việc ba) thêm hai bảng cục bộ thứ tự khối, cũng không đụng; v30 (2026-10-10) khoá thuê
-    // tự chuyển tiền, cũng không đụng; v31 (2026-10-16) bảng dấu danh mục do AI chọn, cũng không đụng.
-    expect(db.schemaVersion, 31);
+    // tự chuyển tiền, cũng không đụng; v31 (2026-10-16) bảng dấu danh mục do AI chọn, cũng không đụng; v32 (2026-10-28) cột idhousehold cho năm bảng đồng bộ — hoá đơn KHÔNG có, cũng không đụng.
+    expect(db.schemaVersion, 32);
   });
 }

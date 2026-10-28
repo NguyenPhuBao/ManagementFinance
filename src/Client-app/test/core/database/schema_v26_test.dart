@@ -6,6 +6,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../helpers/bang_toi_thieu_v32.dart';
 
 AppNotificationEventsCompanion _sk({
   required String id,
@@ -122,6 +123,7 @@ void main() {
           // Bước v28 (G63) thêm một cột vào `wallets` — CSDL thật luôn có bảng ấy
           // (từ v1), nên fixture tối thiểu cũng phải có.
           database.execute('CREATE TABLE wallets (id TEXT NOT NULL PRIMARY KEY)');
+          dungBangThieuChoV32(database); // v32 thêm `idhousehold` vào năm bảng — fixture phải có đủ năm bảng
           database.execute('PRAGMA user_version = 25');
         },
       ));

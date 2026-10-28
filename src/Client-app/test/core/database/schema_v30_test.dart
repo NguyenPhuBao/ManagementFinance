@@ -7,12 +7,13 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../helpers/bang_toi_thieu_v32.dart';
 
 void main() {
-  test('schema hiện tại là v31 (v30 còn nguyên)', () async {
+  test('schema hiện tại là v32 (v30 còn nguyên)', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
-    expect(db.schemaVersion, 31);
+    expect(db.schemaVersion, 32);
   });
 
   test('bảng KHÔNG có cột đồng bộ', () async {
@@ -73,6 +74,7 @@ void main() {
     final cu = AppDatabase.forTesting(NativeDatabase.memory(setup: (d) {
       d.execute('CREATE TABLE wallets (id TEXT NOT NULL PRIMARY KEY)');
       d.execute("INSERT INTO wallets VALUES ('w1')");
+      dungBangThieuChoV32(d); // v32 thêm `idhousehold` vào năm bảng — fixture phải có đủ năm bảng
       d.execute('PRAGMA user_version = 29');
     }));
     addTearDown(cu.close);

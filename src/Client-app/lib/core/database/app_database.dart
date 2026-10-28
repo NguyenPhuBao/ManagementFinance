@@ -87,7 +87,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 31;
+  int get schemaVersion => 32;
 
   @override
   MigrationStrategy get migration {
@@ -290,7 +290,8 @@ class AppDatabase extends _$AppDatabase {
           // `threshold_warning_percent` trong bảng cũ và câu SELECT sẽ hỏng.
           await m.alterTable(TableMigration(
             budgets,
-            newColumns: [budgets.thresholdWarningPercent],
+            // `idhousehold` (v32) cũng phải khai: bảng cũ chưa có, Drift dựng lại theo lược đồ HIỆN TẠI.
+            newColumns: [budgets.thresholdWarningPercent, budgets.idhousehold],
           ));
         }
         if (from < 12) {
@@ -304,7 +305,8 @@ class AppDatabase extends _$AppDatabase {
           // `TableMigration` không có `newColumns`: cột đã tồn tại, chỉ đổi
           // ràng buộc NOT NULL. Drift dựng bảng theo lược đồ mới rồi chép dữ
           // liệu sang, nên giá trị cũ ('Week', 'Month'…) giữ nguyên.
-          await m.alterTable(TableMigration(budgets));
+          // Riêng `idhousehold` (v32) là cột mới với bảng cũ: phải khai `newColumns` (xem bước v11).
+          await m.alterTable(TableMigration(budgets, newColumns: [budgets.idhousehold]));
         }
         if (from < 13) {
           // Bảng thông báo cục bộ. Không có dữ liệu cũ để chép sang: thông báo
@@ -541,6 +543,21 @@ class AppDatabase extends _$AppDatabase {
           // Vòng lặp học sai của B1 (người dùng chốt 2026-10-16, mục 5d `CATEGORY_RATIONALE.md`): dấu "danh mục do AI
           // chọn, lưu nguyên" — CỤC BỘ, không đi qua đồng bộ (test quét 15). Chỉ tạo bảng; giao dịch cũ không có dấu.
           await m.createTable(danhMucAiDoans);
+        }
+        if (from < 32) {
+          // Gia đình phần 1 (spec 2026-10-23 mục 3.2, 7.2): cột `idhousehold` cho năm bảng đồng bộ — ĐI QUA đồng bộ, khác
+          // v24–v31. Không điền dữ liệu cũ: mọi hàng có sẵn là hàng riêng (NULL). ⚠️ Lần đầu từ v24 có bước `addColumn` trên
+          // CẢ năm bảng: fixture di trú cũ phải có đủ năm bảng (`test/helpers/bang_toi_thieu_v32.dart`).
+          await m.addColumn(wallets, wallets.idhousehold);
+          await m.addColumn(transactions, transactions.idhousehold);
+          await m.addColumn(goals, goals.idhousehold);
+          // ⚠️ Riêng `budgets`: bước v11 / v12 dựng lại bảng theo lược đồ HIỆN TẠI (đã mang `idhousehold`), nên máy lên
+          // từ < v12 đã có cột — thêm lần nữa là `duplicate column name`. Chỉ thêm khi chưa có.
+          final cotNganSach = await customSelect("PRAGMA table_info('budgets')").get();
+          if (!cotNganSach.any((r) => r.read<String>('name') == 'idhousehold')) {
+            await m.addColumn(budgets, budgets.idhousehold);
+          }
+          await m.addColumn(categories, categories.idhousehold);
         }
       },
       beforeOpen: (details) async {
