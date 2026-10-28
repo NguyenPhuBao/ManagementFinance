@@ -104,6 +104,20 @@ class ApDuLieuKeoVe {
     // đăng nhập sau vẫn pull tăng dần; nếu dữ liệu cục bộ đã bị xoá thì
     // pullFromBackend tự ép full pull.
     _lastPullTime = null;
+    _theHeDaKeo = _theHeYeuCau; // yêu cầu thuộc phiên cũ — mốc đã lưu của nó đã xoá
+  }
+
+  /// Thế hệ yêu cầu kéo toàn bộ ([yeuCauKeoToanBo]). Lượt kéo bắt đầu khi [_theHeDaKeo] < [_theHeYeuCau] thì đi từ 1970;
+  /// thành công thì [_theHeDaKeo] = thế hệ lúc nó BẮT ĐẦU — yêu cầu tới giữa lượt còn nguyên cho lượt sau, lượt hỏng không
+  /// đổi gì.
+  int _theHeYeuCau = 0;
+  int _theHeDaKeo = 0;
+
+  /// Lượt kéo kế tiếp đi từ 1970 (`SyncEngine.keoLaiToanBo`). Xoá luôn mốc ĐÃ LƯU: app bị giết trước lượt ấy thì lần mở
+  /// sau vẫn kéo toàn bộ (`napMoc` đọc `null`).
+  Future<void> yeuCauKeoToanBo(int idaccount) async {
+    _theHeYeuCau++;
+    await _checkpointStore?.clear(idaccount);
   }
 
   // ── Pull data from backend to local SQLite ────────────────────────────────
@@ -113,7 +127,8 @@ class ApDuLieuKeoVe {
     final allWallets = await _db.walletDao.getAll(accountId);
     final isLocalDbEmpty = allWallets.isEmpty;
 
-    final keoToanBo = isLocalDbEmpty || _lastPullTime == null;
+    final theHe = _theHeYeuCau;
+    final keoToanBo = isLocalDbEmpty || _lastPullTime == null || _theHeDaKeo < theHe;
     final since = keoToanBo
         ? '1970-01-01T00:00:00.000Z'
         : _lastPullTime!.toUtc().toIso8601String();
@@ -354,7 +369,9 @@ class ApDuLieuKeoVe {
                   ? mocTuMaxSince(topData['maxSince'],
                       pulledAt: topData['pulledAt'])
                   : newestUpdateAt(payloadData));
-          if (newest != null) {
+          // Yêu cầu kéo toàn bộ tới GIỮA lượt này (vào nhà khi lượt đang chạy): mốc của lượt không chứa phạm vi mới — không
+          // ghi, để lượt sau (và lần mở app sau) đi từ 1970.
+          if (newest != null && _theHeYeuCau == theHe) {
             _lastPullTime = newest;
             await _checkpointStore?.write(accountId, newest);
           }
@@ -377,6 +394,7 @@ class ApDuLieuKeoVe {
           // server) sẽ mãi mãi trông như "chưa pull lần nào".
           _hasCompletedPull = true;
           _soLanKeoVeXong++;
+          _theHeDaKeo = theHe;
           _biTuChoi.value = false;
         }
       }

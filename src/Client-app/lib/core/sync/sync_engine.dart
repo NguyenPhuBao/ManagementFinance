@@ -312,6 +312,17 @@ class SyncEngine {
     await _runSync();
   }
 
+  /// Lượt kéo về KẾ TIẾP đi từ 1970 rồi chạy ngay — cho khi tài khoản vừa VÀO một phạm vi dữ liệu mà mốc tăng dần đã vượt
+  /// qua (gia đình: vào nhà — dữ liệu cũ của nhà mang `Server_update_at` dưới mốc; spec 2026-10-23 mục 4.3). `core/sync`
+  /// không biết khái niệm nhà: người gọi là bộ điều phối của mảng gia đình, nối ở DI.
+  ///
+  /// Yêu cầu giữ tới khi MỘT lượt kéo bắt đầu SAU nó thành công: lượt đang chạy lúc gọi không ghi mốc, lượt hỏng không xoá
+  /// yêu cầu, mốc đã lưu bị xoá ngay. Chu kỳ đang chạy thì `syncNow` ghi nợ một lượt bù — lượt bù ấy là lượt kéo toàn bộ.
+  Future<void> keoLaiToanBo(int idaccount) async {
+    await _keoVe.yeuCauKeoToanBo(idaccount);
+    if (_currentIdaccount == idaccount) await syncNow();
+  }
+
   /// MỘT lượt đồng bộ cho lượt nền của WorkManager (spec tự chuyển tiền chạy
   /// nền mục 3.3).
   ///
