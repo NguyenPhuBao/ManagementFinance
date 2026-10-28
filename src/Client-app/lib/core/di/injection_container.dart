@@ -73,6 +73,11 @@ import '../../features/wallet/application/gop_vi_service.dart';
 import '../../features/wallet/data/vi_bi_giu_dong_bo.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
+import '../../features/household/application/dieu_phoi_doi_nha.dart';
+import '../../features/household/data/datasources/household_api.dart';
+import '../../features/household/data/nha_store.dart';
+import '../../features/household/data/repositories/nha_repository.dart';
+import '../../features/household/data/repositories/nha_repository_impl.dart';
 import '../../features/khoa_app/application/khoa_app_service.dart';
 import '../../features/khoa_app/data/datasources/kenh_sinh_trac.dart';
 import '../../features/khoa_app/data/khoa_app_store.dart';
@@ -252,7 +257,11 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       thoiGianThuc: sl<RealtimeChannel>(),
       boQuet: sl<NotificationScanner>(),
       interceptor: sl<AuthInterceptor>(),
-      donTaiKhoanKhac: sl<AppDatabase>().purgeDataForOtherAccounts,
+      // Gia đình (spec 4.6 đường 1): giữ hàng của nhà mà tài khoản MỚI đang ở, theo KHO trạng thái nhà của nó (kho trống
+      // → xoá mọi hàng của nhà; `DieuPhoiDoiNha` kéo lại toàn bộ khi lượt làm mới đầu thấy nhà). Chạy TRƯỚC mọi thứ của
+      // phiên nên đọc kho thẳng, không chờ `NhaRepository.datTaiKhoan`.
+      donTaiKhoanKhac: (id) async =>
+          sl<AppDatabase>().purgeDataForOtherAccounts(id, nhaGiu: await sl<NhaRepository>().nhaDaLuu(id)),
       xoaCacheSlm: () => sl<SlmCache>().xoaHet(),
       chuyenHangSeedCu: (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id),
       seedTaiKhoanMoi: (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id),
@@ -539,6 +548,19 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       () => DemDangHoatDong(db: sl()));
   sl.registerLazySingleton<GoiCubit>(() => GoiCubit(sl()));
   sl.registerLazySingleton<AnNhacHetHan>(AnNhacHetHan.new);
+
+  // ── Features — Gia đình (spec 2026-10-23, phần 1 nền móng — lát 1) ─────────
+  // Trạng thái nhà là MỘT cho cả app; năm nguồn làm mới nối ở `main.dart` (phiên, vòng đời, socket `household.changed` /
+  // `household.invited`) và ở `noiBoNgheKetQuaDay` (năm mã đẩy `kMaDayLoiNha`). Bộ điều phối nghe `doiNha` — nối ở `main.dart`. Đăng ký cả chế độ nền
+  // (không gate theo `cheDoNen`): `noiBoNgheKetQuaDay` của engine nền cũng resolve repository; ở nền nó không có phiên nên
+  // `lamMoi` không gọi mạng.
+  sl.registerLazySingleton<HouseholdApi>(() => DioHouseholdApi(sl<DioClient>().dio));
+  sl.registerLazySingleton<NhaStore>(() => SecureStorageNhaStore(sl<FlutterSecureStorage>()));
+  sl.registerLazySingleton<NhaRepository>(() => NhaRepositoryImpl(api: sl(), kho: sl()));
+  sl.registerLazySingleton<DieuPhoiDoiNha>(() => DieuPhoiDoiNha(
+        db: sl(),
+        keoLaiToanBo: (id) => sl<SyncEngine>().keoLaiToanBo(id),
+      ));
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
@@ -1105,6 +1127,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
 ///   (máy khác trả trước). Lượt nền đẩy mà không nối thì khoản chi lỗi vĩnh viễn, không ai gỡ (spec tự chuyển tiền
 ///   chạy nền mục 4).
 /// - `ViTrungTenResolver` (G63): ví bị từ chối vì trùng tên thì đặt cờ — engine giữ nó lại.
+/// - `NhaRepository` (gia đình, 2026-10-28): năm mã đẩy `kMaDayLoiNha` → làm mới trạng thái nhà (máy đang giữ nhà / vai đã cũ).
 ///
 /// `pushResultStream` là broadcast và singleton, nên nối hai lần trong CÙNG engine là hoàn tác chạy hai lượt cho cùng
 /// một khoản chi. Ở DI (điểm ghép) từ 2026-10-15 — trước ở `core/sync/noi_bo_nghe_ket_qua_day.dart`, hạ tầng `core` phải
@@ -1112,4 +1135,5 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
 void noiBoNgheKetQuaDay() {
   sl<BillPaymentConflictResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
   sl<ViTrungTenResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
+  sl<NhaRepository>().noiKetQuaDay(sl<SyncEngine>().pushResultStream);
 }

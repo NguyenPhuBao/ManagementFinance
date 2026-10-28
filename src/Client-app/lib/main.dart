@@ -43,6 +43,8 @@ import 'shared/widgets/app_toast.dart';
 import 'shared/theme/app_theme.dart';
 import 'shared/widgets/vung_thanh_trang_thai_goc.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/household/application/dieu_phoi_doi_nha.dart';
+import 'features/household/data/repositories/nha_repository.dart';
 import 'features/khoa_app/application/khoa_app_service.dart';
 import 'features/khoa_app/presentation/bloc/khoa_app_cubit.dart';
 import 'features/khoa_app/presentation/bloc/khoa_app_state.dart';
@@ -99,6 +101,17 @@ void main() async {
   // vòng đời app, cùng lý do với ba khối trên.
   sl<GoiRepository>()
     ..noiPhien(authBloc.stream.map(phienGoiTu))
+    ..noiVongDoi(sl<AppLifecycleWatcher>().stream)
+    ..noiSuKien(sl<RealtimeChannel>().events);
+
+  // Gia đình (spec 2026-10-23 mục 5.8; docs/Family/01 mục 2.8): bộ điều phối nghe nhà ĐỔI (rời → dọn trên máy, vào → kéo lại
+  // toàn bộ) — nối TRƯỚC khi trạng thái nhà nối phiên: `doiNha` là broadcast, nối sau là lỡ lượt làm mới đầu. Trạng thái
+  // nhà đọc phiên từ ĐÚNG bloc của app và CHỈ trạng thái phiên rõ (`laTrangThaiPhienRo` — cùng cách khoá ứng dụng ở dưới:
+  // `idaccountTuTrangThai` trả null với AuthLoading, không lọc là xoaPhien oan mỗi lượt chuyển tiếp), làm mới khi app quay lại
+  // (giãn 5 phút) và khi socket báo `household.changed` / `household.invited`. Nối MỘT lần.
+  sl<DieuPhoiDoiNha>().batDauNghe(sl<NhaRepository>().doiNha);
+  sl<NhaRepository>()
+    ..noiPhien(authBloc.stream.where(laTrangThaiPhienRo).map(idaccountTuTrangThai))
     ..noiVongDoi(sl<AppLifecycleWatcher>().stream)
     ..noiSuKien(sl<RealtimeChannel>().events);
 
