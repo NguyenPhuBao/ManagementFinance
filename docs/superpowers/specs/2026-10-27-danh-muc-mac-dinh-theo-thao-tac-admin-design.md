@@ -226,6 +226,9 @@ lật thành *"… thì KHÔNG tạo"*, `reason:` viện chỉ mục thật. M�
 - ⚠️ **G110** (người dùng chốt 2026-10-27): danh mục người dùng TỰ TẠO trùng (tên, loại) một khuôn — khi admin xoá khuôn nó ẩn
   y như bản sao (luật ẩn không phân biệt hai loại), và màn Danh mục không có lối nào để đổi tên một danh mục đang ẩn (dữ liệu còn
   nguyên, admin khôi phục khuôn là hiện lại). Đề xuất lối thoát ở `CLIENT_APP_KNOWN_GAPS.md` G110 (mục *"Đang tạm ngừng"*).
+  ✅ **Đóng 2026-10-28 (phiên 21)**: mục *"Đang tạm ngừng (N)"* thu gọn cuối màn Danh mục (`MucDangTamNgung`, Stitch `2dd819da…`) liệt kê
+  mọi hàng đang ẩn theo khuôn (`CategoryTree.dangTamNgung`, tách từ cùng truy vấn ở cửa `hangChonVaAn`), bút mở form Sửa `?tamNgung=1`
+  có dải nhắc; đổi tên → hiện lại (chốt 2).
 - Bản sao còn mang tên cũ (đổi tên bị bỏ vì tên mới đã có, hoặc lần lan truyền bị mất) bị đếm vào trần *danh mục riêng* —
   `laBanSaoMacDinh` không còn khớp khuôn nào.
 - (`78afc043`; `ap_du_lieu_keo_ve.dart:116`, biến `keoToanBo`.) Lượt kéo TOÀN BỘ (`isLocalDbEmpty || _lastPullTime == null`)

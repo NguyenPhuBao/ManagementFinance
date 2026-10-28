@@ -33,15 +33,17 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     // (toàn cục) vào nhóm của từng tài khoản. Nay mỗi tài khoản có bản sao
     // riêng nên việc gán nhóm nằm gọn trong `parentId` của chính hàng danh
     // mục, và dòng thứ hai không còn ảnh hưởng gì tới cây.
-    return theoDoiHangChonDuoc(db, accountId, classify).map((rows) => _treeFromRows(rows, accountId));
+    return theoDoiHangChonVaAn(db, accountId, classify).map((kq) => _treeFromRows(kq.chon, accountId, an: kq.an));
   }
 
   @override
   Future<CategoryTree> loadTree({
     required int accountId,
     required String classify,
-  }) async =>
-      _treeFromRows(await hangChonDuoc(db, accountId, classify), accountId);
+  }) async {
+    final kq = await hangChonVaAn(db, accountId, classify);
+    return _treeFromRows(kq.chon, accountId, an: kq.an);
+  }
 
   @override
   Future<void> saveChild(CategoryChildDraft draft) async {
@@ -356,7 +358,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     ];
   }
 
-  CategoryTree _treeFromRows(List<Category> rows, int accountId) {
+  CategoryTree _treeFromRows(List<Category> rows, int accountId, {List<Category> an = const []}) {
     final groups = rows
         .where((category) =>
             category.idaccount == accountId &&
@@ -389,6 +391,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
               child.parentId == null || !groupIds.contains(child.parentId))
           .toList(),
       defaultChildren: const [],
+      dangTamNgung: an.map(CategoryEntity.fromDrift).toList(),
     );
   }
 

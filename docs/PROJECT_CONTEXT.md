@@ -617,6 +617,14 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-28)
 
+### 🗂️ G110 — mục "Đang tạm ngừng" ở màn Danh mục (2026-10-28 phiên 21)
+
+- Người dùng duyệt thiết kế (khối thu gọn cuối màn Danh mục + dải nhắc ở form Sửa) rồi duyệt màn Stitch `2dd819da…` *"Danh mục - Mục
+  Đang tạm ngừng"* (lượt tạo `timeout`, màn hiện sau ~1 giờ). Cửa `hangChonVaAn` tách *chọn được / đang ẩn* từ cùng truy vấn →
+  `CategoryTree.dangTamNgung` → `MucDangTamNgung` (`category/presentation/widgets/muc_dang_tam_ngung.dart`); bút mở
+  `/categories/child/:id/edit?tamNgung=1` → `DaiNhacTamNgung`. ⚠️ Form Sửa phải đọc cả `tree.dangTamNgung` (thiếu là form trống).
+  10 ca test mới. Chưa nhìn trên máy (cần khuôn bị xoá — chỉ dựng được trên `PersonFinance`). Chi tiết: G110 `CLIENT_APP_KNOWN_GAPS.md`.
+
 ### 🏠 Gia đình — đối chiếu hợp đồng phần 1 với mã (2026-10-28 phiên 21)
 
 - Soát (agent con chỉ đọc + tự kiểm lại ba vế CAO) 16 endpoint `/api/households` + migration 40 + đơn backend viết cho client với
