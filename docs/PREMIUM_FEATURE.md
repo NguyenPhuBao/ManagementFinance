@@ -489,9 +489,31 @@ Công tắc bị khoá vẽ **giống hệt** công tắc mở (xanh đậm) —
 | 5 | Hoá đơn *Internet* hàng tuần hạn 04/11 (nhắc trước 3 ngày) trên tài khoản 29 → tắt `bill_reminder_notifications` cột Basic → bật lại | ✅ lịch `01/11 08:00` có → **huỷ** trong ≤ 7 s → **về**; *quá hạn vẫn báo* chưa đo (không có hoá đơn quá hạn) |
 | 7 | Trả ma trận | ✅ qua API (không dùng *Khôi phục mặc định* — nạp lại cả ma trận từ tệp seed); chạy lại script Bước 0 sau mỗi đợt (Premium rồi Basic): **khớp từng dòng** mốc trước đo |
 
-**Chưa đo trên máy:** *quá hạn vẫn báo* khi tắt nhắc trước hạn; chip *Nhắc trước* khoá (form hoá đơn / Cài đặt); dòng khoá *nhịp chi* ngân sách / nạp rút
+**Chưa đo trên máy:** *quá hạn vẫn báo* khi tắt nhắc trước hạn; ~~chip *Nhắc trước* khoá (form hoá đơn / Cài đặt)~~ (✅ 8.10); dòng khoá *nhịp chi* ngân sách / nạp rút
 mục tiêu / gắn danh mục / từ khoá (cùng widget đã thấy, có widget test). Tài khoản 29 (`thub1t13`) và hoá đơn *Internet* của nó **để lại** trên
 `PersonFinance` dev (dùng cho lần đo sau); máy ảo đang đăng nhập tài khoản 29.
 **Đối chiếu Stitch `02c0d881…` — xong 2026-10-28 phiên 21, khớp** (mục 8.6, đoạn *Lệch Stitch có chủ ý*): dòng khoá tạm ngừng (*"Điều chỉnh số dư
 ví đang tạm ngừng"*, *"Nút ghi nhanh đang tạm ngừng"*) vàng theo Stitch khối 2, băng công tắc tạm ngừng xám theo khối 3. Ghi nhận
 *"công tắc bị khoá vẽ giống công tắc mở"* là lỗi thật — **G111**, sửa cùng ngày (mục 8.5 (16)).
+
+### 8.10 Nhìn lại trên bản G110 + G111 (Realme RMX2205, 2026-10-28 phiên 22)
+
+Không phải nghiệm thu Task 13 lần hai (8.9 đã đủ bảy bước) — lượt này **nhìn G111** trên máy và lấp một vế *chưa đo* của 8.9. Bản
+debug `4bd0b14d…` (HEAD `52cee782`, có G110 + G111), `API_BASE_URL=http://127.0.0.1:3000/api` + `adb reverse`; backend dev trỏ
+`PersonFinance` sau hai phép đích danh (áp `database/40` — 3 bảng gia đình + cột `Idhousehold` ở 5 bảng; `prisma generate`); tài
+khoản **10, Premium tới 05/11/2026**, không đăng xuất; CSDL máy sao lưu trước ở `D:\FlowMoney-saoluu\realme-2026-10-28-phien22\`.
+Ma trận đổi qua `PUT /api/admin/permissions` bằng script giữ nguyên `limit_value` / `scope_config` theo **ảnh chụp 72 ô** lấy đầu
+buổi; trả lại bằng chính ảnh chụp (không *Khôi phục mặc định*), so lại từng ô sau mỗi đợt — khớp.
+
+| Bước | Kịch bản | Kết quả |
+|---|---|---|
+| 0 | Ma trận cột Premium, chỉ đọc — Supabase dùng chung **và** `PersonFinance` | ✅ go: 0 ô `false` trong 22 mã, không trần Premium nào được đặt; cột Basic tắt 9 mã, trần 3/3/3/3/5 — y như 8.9 |
+| 1 | Tắt `export_reports` + `cashflow_forecast` cột Premium | ✅ app hỏi lại `/subscription-info` ngay (tín hiệu socket); nút tải Phân tích → *"Xuất báo cáo hiện đang tạm ngừng."*, không giá / nút mua; thẻ *Dự báo 30 ngày tới — Đang tạm ngừng* có ổ khoá, không nút |
+| G111 | Tắt `daily_recording_reminder` · `bill_reminder_notifications` · `wallet_exclude_total` · `bill_auto_pay` · `goal_auto_deposit` · `bank_notification_parser` | ✅ năm loại công tắc mờ + ổ khoá trong núm + *Tạm ngừng* (thân G111 `CLIENT_APP_KNOWN_GAPS.md`); ✅ **chip *Nhắc trước* ở form Thêm hoá đơn mờ** (giữ chip *3 ngày* đã chọn) + *Tạm ngừng*, ô *Nhắc trước* ở Cài đặt vẫn hiện *3 ngày* + *Tạm ngừng* — vế *chưa đo* của 8.9 |
+| 2 | Trần ví cột Premium = 6 (= số ví đang hoạt động) → *Thêm ví mới* | ✅ *"Gói Premium hiện cho tạo tối đa 6 ví."*, đặc quyền *"Tới 6 ví"* |
+| 4 | Tắt **riêng** `daily_recording_reminder` → `dumpsys alarm`; bật lại | ✅ 4 báo thức → 1 → 4; báo thức còn lại là `ebaa7a1` (01/11 21:30 — Tổng kết tuần, cùng đối tượng suốt lượt), ba lịch 20:00 (28 · 29 · 30/10) dựng lại với id mới |
+| 5 | Nhắc trước hạn | ⚪ **không đo được trên tài khoản 10**: không hoá đơn nào trong khoảng nhắc (kỳ chưa trả gần nhất 04/12) nên không có lịch 08:00 nào để huỷ; *quá hạn vẫn báo* — chỉ thấy thông báo quá hạn cũ còn nguyên, không có kỳ quá hạn mới → **chưa đo** (như 8.9) |
+| 7 | Trả ma trận | ✅ ảnh chụp 72 ô, so từng dòng — khớp; khối Dự báo hiện lại |
+
+Dò sọc tràn: 24 ảnh bản debug ở 360 dp, 0 điểm vàng. Lượt này lộ **G112** (vuốt cuộn trang Mục tiêu từ một thẻ là đổi thứ tự ưu tiên —
+đã sửa; thứ tự trên máy trả lại MuaXe 50 · MuaDT 100). Danh mục *"Thử đổi tên"* đi một vòng đổi tên rồi trả tên (G110).

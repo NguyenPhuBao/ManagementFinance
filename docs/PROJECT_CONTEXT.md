@@ -617,13 +617,30 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-28)
 
+### 📱 G110 + G111 trên Realme · G112 · G105 phần hai (2026-10-28 phiên 22)
+
+- **Backend dev → `PersonFinance`** sau hai phép đích danh của người dùng: áp `database/40` (một giao tác: 3 bảng gia đình + cột
+  `Idhousehold` ở 5 bảng) rồi `npx prisma generate`; chạy với `DATABASE_URL` / `DIRECT_URL` / `DATA_ENCRYPTION_KEY` dev (không sửa `.env`).
+  Realme cài bản debug `4bd0b14d…` (HEAD `52cee782`) trỏ `127.0.0.1` + `adb reverse`, tài khoản 10; CSDL máy sao lưu ở
+  `D:\FlowMoney-saoluu\realme-2026-10-28-phien22\`.
+- **G110 đạt trên máy** (khuôn *"Thử đổi tên"* xoá mềm 27/10 trên `PersonFinance` đã có sẵn — không xoá khuôn nào): mục *"Đang tạm ngừng
+  (1)"*, dải nhắc form Sửa, vòng đổi tên → hiện lại → trả tên. **G111 đạt** ở cả năm loại công tắc (tắt mã ở cột Premium qua API admin,
+  trả ma trận bằng ảnh chụp 72 ô). Lặp lại Task 13 bước 0 · 1 · 2 · 4 đạt; chip *Nhắc trước* khoá — vế chưa đo của phiên 19 — đạt; nhắc
+  trước hạn không đo được (tài khoản 10 không có hoá đơn trong khoảng nhắc). `PREMIUM_FEATURE.md` 8.10.
+- **G112** (lộ trong lượt ấy, mã + test): vuốt cuộn trang Mục tiêu từ một thẻ là kéo đổi ưu tiên (`ReorderableDragStartListener`) — nay
+  `ReorderableDelayedDragStartListener`; thứ tự trên Realme trả lại (MuaXe 50 · MuaDT 100); nhìn lại trên máy: cú vuốt cũ nay cuộn
+  trang. Mục 3.22 `GOAL_FEATURE.md`.
+- **G105 đóng** (người dùng chọn làm phần còn lại bằng mã + test): tờ `N01c` vào bộ chữ thật; khối ≥ 2 dòng Latin ở đầu nhường dòng
+  viết hoa có dấu ngay sau; 35 tờ cũ không đổi; còn hở biết trước ghi ở chốt 12 `QUET_ANH_FEATURE.md`. Chưa chụp lại trên máy.
+- Mốc: `flutter test` **8382 / 10 skip**, `flutter analyze` **20**.
+
 ### 🗂️ G110 — mục "Đang tạm ngừng" ở màn Danh mục (2026-10-28 phiên 21)
 
 - Người dùng duyệt thiết kế (khối thu gọn cuối màn Danh mục + dải nhắc ở form Sửa) rồi duyệt màn Stitch `2dd819da…` *"Danh mục - Mục
   Đang tạm ngừng"* (lượt tạo `timeout`, màn hiện sau ~1 giờ). Cửa `hangChonVaAn` tách *chọn được / đang ẩn* từ cùng truy vấn →
   `CategoryTree.dangTamNgung` → `MucDangTamNgung` (`category/presentation/widgets/muc_dang_tam_ngung.dart`); bút mở
   `/categories/child/:id/edit?tamNgung=1` → `DaiNhacTamNgung`. ⚠️ Form Sửa phải đọc cả `tree.dangTamNgung` (thiếu là form trống).
-  10 ca test mới. Chưa nhìn trên máy (cần khuôn bị xoá — chỉ dựng được trên `PersonFinance`). Chi tiết: G110 `CLIENT_APP_KNOWN_GAPS.md`.
+  10 ca test mới. ~~Chưa nhìn trên máy~~ — ✅ nhìn Realme phiên 22 (khối 📱 trên). Chi tiết: G110 `CLIENT_APP_KNOWN_GAPS.md`.
 
 ### 🏠 Gia đình — đối chiếu hợp đồng phần 1 với mã (2026-10-28 phiên 21)
 
