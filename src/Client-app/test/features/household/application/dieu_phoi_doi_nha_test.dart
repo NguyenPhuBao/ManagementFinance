@@ -90,4 +90,26 @@ void main() {
     await luong.close();
     await luong2.close();
   });
+
+  test('dọn nhà 5 hỏng (khoá ngoại) khi đổi 5 → 12: VẪN kéo lại, lượt sau vẫn chạy', () async {
+    // Giao dịch RIÊNG (idhousehold NULL) trỏ vào ví của nhà 5: xoá ví nhà 5 vỡ khoá ngoại, CSDL bộ nhớ thật.
+    await db.into(db.transactions).insert(TransactionsCompanion.insert(
+        id: 'gd-mac-ket',
+        walletId: 'vi-nha-5',
+        idaccount: 10,
+        amount: 1000,
+        type: 'chi',
+        date: DateTime(2026, 10, 24),
+        updatedAt: DateTime(2026, 10, 24)));
+    final luong = StreamController<DoiNha>();
+    dieuPhoi.batDauNghe(luong.stream);
+    luong.add(const DoiNha(idaccount: 10, tu: 5, den: 12));
+    luong.add(const DoiNha(idaccount: 10, tu: 7, den: null));
+    await Future<void>.delayed(Duration.zero);
+    await dieuPhoi.choXong();
+    expect(nhatKy, ['keo:10'],
+        reason: 'lỗi dọn không được nuốt lượt kéo của CÙNG sự kiện — kho đã mang nhà 12, không ai phát lại');
+    expect(await idVi(), isNot(contains('vi-nha-7')), reason: 'lượt sau trong hàng đợi vẫn chạy');
+    await luong.close();
+  });
 }

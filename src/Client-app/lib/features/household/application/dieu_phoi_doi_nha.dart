@@ -15,6 +15,7 @@ import '../data/models/nha_cua_toi.dart';
 /// - Vào nhà [DoiNha.den] → `keoLaiToanBo`: dữ liệu cũ của nhà nằm dưới mốc kéo tăng dần.
 ///
 /// Tuần tự (hàng đợi): dọn trước, kéo sau; sự kiện sau chờ sự kiện trước; lỗi một lượt không chặn lượt sau.
+/// Lỗi dọn cũng không chặn lượt kéo của CÙNG sự kiện (dọn hỏng vẫn kéo, rồi ném lại lỗi dọn cho hàng đợi ghi log).
 class DieuPhoiDoiNha {
   DieuPhoiDoiNha({required AppDatabase db, required Future<void> Function(int idaccount) keoLaiToanBo})
       : _db = db,
@@ -37,8 +38,20 @@ class DieuPhoiDoiNha {
 
   Future<void> xuLy(DoiNha d) async {
     final tu = d.tu;
-    if (tu != null) await _db.xoaHangCuaNha(tu);
+    Object? loiDon;
+    StackTrace? dauVetDon;
+    if (tu != null) {
+      try {
+        await _db.xoaHangCuaNha(tu);
+      } catch (e, s) {
+        // Giữ lỗi, KHÔNG thoát: kho trạng thái nhà đã mang nhà [DoiNha.den] nên không lượt làm mới nào phát lại sự kiện
+        // này — bỏ lượt kéo là lịch sử nhà mới không bao giờ về máy, im lặng.
+        loiDon = e;
+        dauVetDon = s;
+      }
+    }
     if (d.den != null) await _keoLaiToanBo(d.idaccount);
+    if (loiDon != null) Error.throwWithStackTrace(loiDon, dauVetDon!);
   }
 
   /// Chờ hàng việc hiện tại xong (test).
