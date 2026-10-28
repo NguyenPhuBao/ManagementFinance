@@ -5,6 +5,12 @@
 > (việc của lượt client bắt đầu gia đình). Đơn **ở lại `CAN-LAM/`**: hàng riêng tư đã an toàn, nhưng mọi chốt chặn của **hàng thuộc nhà**
 > đều không chạy — trên CSDL hiện có 0 nhà, nên chưa ai bị ảnh hưởng; phải sửa trước khi client mở tính năng.
 >
+> ➡️ **Việc cụ thể cho backend: đơn 56 [`SOAT_SAU_GOP_7B56D822.md`](./SOAT_SAU_GOP_7B56D822.md)** — 9 việc, cách sửa đề xuất, 17 ca kiểm qua
+> `processPush`. Đơn 56 gồm cả bảy vế dưới **và** ba chỗ thấy thêm khi viết đơn: đổi `Idhousehold` của hàng đã có qua `/sync/push`; danh
+> mục của nhà bị từ chối bằng `Error` trơn → `DB_ERROR` → client gửi lại mãi; bảng quyền lệch đơn này D.2 (Member sửa được mục tiêu chung,
+> không sửa được danh mục nhà, chuyển khoản giữa ví chung không chặn). Đóng đơn 56 là đóng đơn này. Danh sách dưới chỉ là bản tóm tắt
+> lúc soát.
+>
 > **Đạt**
 > - **A — hàng riêng tư.** Sửa / xoá hàng `Idhousehold IS NULL` của tài khoản khác → `NOT_OWNER` ở cả sáu thực thể (`sync.repository.js`
 >   `:251` `:347` `:471` `:558` `:640` `:721`, `softDelete` `:834` `:855` `:878`); nhánh tạo ép `idaccount` theo token
@@ -30,7 +36,8 @@
 >    `userRole === 'Member'` — **Viewer** (vai chỉ xem) và **người không phải thành viên** (`userRole = null`) đi qua; nhánh sửa / xoá hàng
 >    của nhà bỏ qua `NOT_OWNER` vì `isShared` (`sync.repository.js:249` …). Tức biết UUID một hàng của nhà là ghi đè / xoá được, và tạo hàng
 >    mang `idhousehold` của nhà bất kỳ. Xin: không phải thành viên → `HOUSEHOLD_NOT_MEMBER` (mã đơn này đã xin, client đã xếp vĩnh viễn);
->    Viewer → `HOUSEHOLD_ROLE_FORBIDDEN` cho mọi lệnh ghi; đổi `idhousehold` của một hàng có sẵn chỉ cho thành viên của **cả** nhà cũ lẫn mới.
+>    Viewer → `HOUSEHOLD_READ_ONLY` cho mọi lệnh ghi (đúng thứ tự mã của chính đơn này, Việc D phần *2. Nhánh Đẩy lên*); không cho đổi `idhousehold` của
+>    một hàng có sẵn (đơn 56 việc 3).
 > 3. **(CAO) Basic tạo được nhà.** `household.controller.js:27` chỉ chặn khi `req.user.permissions` là mảng — payload JWT không bao giờ mang
 >    trường ấy (`auth.service.js:399-408` đăng nhập, `:197` / `:275` đăng ký: `idaccount, username, idrole, rolename, type, status, …`), nên
 >    phép kiểm luôn bị bỏ qua. Xin kiểm quyền `household` qua ma trận gói (như `requireFeature`) tại route `POST /api/households`.

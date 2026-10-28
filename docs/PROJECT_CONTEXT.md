@@ -636,6 +636,12 @@ src/Backend/
   / `_SCOPE_MISMATCH`) đã nằm trong `_permanentCodes` (`gui_lo_dong_bo.dart:326-338`); `HOUSEHOLD_NOT_MEMBER` / `_CLOSED` / `_WALLET_LIMIT`
   client có, backend chưa phát. Đơn cho client `docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md` và 16 endpoint **chưa** đối chiếu
   `docs/Family/` — việc của lượt client bắt đầu gia đình.
+- ✉️ **Đơn 56** `CAN-LAM/SOAT_SAU_GOP_7B56D822.md` (người dùng bảo viết việc backend vào `CAN-LAM/`): 9 việc (5 CAO) kèm cách sửa, SQL seed
+  `database/41` cho khoá quyền `household` / `household_members` (ma trận Supabase 36 mã, không có hai khoá ấy — `requireFeature` chỉ chặn
+  khi đọc được đúng `false`), 17 ca kiểm qua `processPush`, bảng trả lời. Viết đơn lộ thêm ba chỗ: đổi `Idhousehold` của hàng đã có qua
+  `/sync/push`; `upsertCategory` từ chối bằng `Error` trơn → `DB_ERROR` → client gửi lại mãi (Member sửa danh mục của nhà); bảng quyền
+  lệch đơn 50 Việc D (mục tiêu chung Member sửa được, danh mục nhà Member không sửa được, chuyển khoản giữa ví chung không chặn). Đóng 56
+  là đóng 50. Đơn dẫn đơn 50 bằng **tên mục**, không bằng số dòng (banner client đầu đơn 50 làm số dòng trôi).
 - ⚠️ **Bật backend dev sau lượt gộp này** (backend đang tắt): Prisma Client trên máy (sinh 2026-10-24) chưa có `household` / `idhousehold`
   → `/sync/pull` vỡ với **mọi** tài khoản cho tới khi `npx prisma generate` (phép đích danh, quy tắc 1; `package.json` không đổi nên không
   cần `npm install`). Backend cho Realme trỏ **`PersonFinance`** — tệp `database/40` mới, chưa lượt nào áp lên CSDL ấy (chưa đo — cần mật
