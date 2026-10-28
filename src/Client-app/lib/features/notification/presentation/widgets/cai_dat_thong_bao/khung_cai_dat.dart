@@ -95,7 +95,8 @@ class HangCongTac extends StatelessWidget {
   final String nhan;
   final String phu;
   final bool giaTri;
-  final ValueChanged<bool> onChanged;
+  /// `null` → công tắc khoá (quyền gói — B1).
+  final ValueChanged<bool>? onChanged;
 
   @override
   Widget build(BuildContext context) {

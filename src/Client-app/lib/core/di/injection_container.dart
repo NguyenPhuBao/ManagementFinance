@@ -119,6 +119,7 @@ import '../../features/bill/data/so_ngay_nhac_nguon.dart';
 import '../../features/category/data/repositories/category_management_repository.dart';
 import '../../features/category/data/repositories/category_management_repository_impl.dart';
 import '../../features/category/application/default_category_seeder.dart';
+import '../../features/category/application/lan_truyen_khuon.dart';
 import '../../features/category/application/personal_default_categories.dart';
 import '../../features/category/domain/category_suggestion_engine.dart';
 import '../../features/category/data/gan_danh_muc_nguon.dart';
@@ -209,8 +210,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       checkpointStore: const SecureStorageSyncCheckpointStore(
         FlutterSecureStorage(),
       ),
-      // Quy tắc 8: bộ gieo danh mục mặc định chạy sau MỌI lượt kéo về thành công — cả lượt nền (`syncMotLuot`).
-      sauKeoVe: (id) => sl<DefaultCategorySeeder>().seedForAccount(id),
+      // Quy tắc 8 + spec 2026-10-27 mục 5: sau MỌI lượt kéo về thành công — cả lượt nền (`syncMotLuot`) — lan truyền sửa
+      // khuôn TRƯỚC, gieo bản sao SAU.
+      sauKeoVe: (id, thayDoi) => viecSauKeoVeDanhMuc(sl<LanTruyenKhuon>(), sl<DefaultCategorySeeder>(), id, thayDoi),
       // G89: lượt bị máy chủ chặn (bảo trì / phong toả) không tính là lượt hỏng, hẹn thử lại đúng mốc.
       trangThaiMayChu: sl<TrangThaiMayChu>(),
     ),
@@ -312,6 +314,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<DefaultCategorySeeder>(
     () => DefaultCategorySeeder(db: sl()),
   );
+  // Spec 2026-10-27 mục 5: Admin-web sửa danh mục mặc định → bản sao đổi theo; chạy trong cổng sauKeoVe, trước bộ tạo bản sao.
+  sl.registerLazySingleton<LanTruyenKhuon>(() => LanTruyenKhuon(db: sl()));
   sl.registerLazySingleton<PersonalDefaultCategories>(
     () => PersonalDefaultCategories(db: sl()),
   );
@@ -458,6 +462,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
     () => BudgetCubit(
       repository: sl<BudgetRepository>(),
       taiPhanBoNguon: sl<TaiPhanBoNguon>(),
+      danhMuc: sl<CategoryManagementRepository>(),
     ),
   );
   sl.registerFactory<BudgetDetailCubit>(
@@ -620,6 +625,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       // Nhật ký B5a: `dat_lich` / `huy_lich` — B5b suy "đã tới máy" từ chúng.
       nhatKy: sl<NhatKyThongBao>(),
       eventDao: sl<AppDatabase>().notificationEventDao,
+      // B1 (spec 2026-10-27 mục 5): không quyền → không đặt lịch; lịch đã đặt huỷ ở lượt `resync` kế.
+      nhacTruocHanDuocPhep: () => coQuyenNen(MaQuyen.billReminderNotifications),
+      nhacGhiChepDuocPhep: () => coQuyenNen(MaQuyen.dailyRecordingReminder),
     ),
   );
 
@@ -813,6 +821,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       // nguyên là điện thoại vẫn kêu nhắc trả một hoá đơn đã trả.
       resyncLich: (idaccount) =>
           sl<ReminderScheduler>().resync(idaccount),
+      // B1: không quyền → bỏ loại thông báo (sắp hạn hoá đơn; sắp / đã vượt ngân sách). Quá hạn vẫn báo.
+      nhacTruocHanDuocPhep: () => coQuyenNen(MaQuyen.billReminderNotifications),
+      canhBaoNganSachDuocPhep: () => coQuyenNen(MaQuyen.budgetOverspendAlert),
       // Nhật ký B5a: cú Hoãn nằm trong tệp hàng chờ (isolate nền không có CSDL).
       // Một dòng thuộc tài khoản khi khoá khớp một `dat_lich` HOẶC một thông báo
       // của chính tài khoản ấy — không khớp thì bỏ, không đoán (quy tắc 2).

@@ -4,6 +4,9 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/presentation/widgets/transaction_row_content.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../../data/models/budget_entity.dart';
 import '../../domain/budget_history.dart';
 import '../bloc/budget_detail_cubit.dart';
@@ -72,7 +75,20 @@ class BudgetDetailView extends StatelessWidget {
             _HeaderCard(state: state, colour: mau),
             if (paceLine != null) ...[
               const SizedBox(height: 16),
-              _PaceCard(state: state, line: paceLine),
+              context.coQuyen(MaQuyen.budgetOverspendAlert)
+                  ? _PaceCard(state: state, line: paceLine)
+                  : Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: cardDecoration,
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _SectionLabel('NHỊP CHI'),
+                          SizedBox(height: 8),
+                          DongKhoaQuyen(ma: MaQuyen.budgetOverspendAlert),
+                        ],
+                      ),
+                    ),
             ],
             const SizedBox(height: 16),
             _HistoryCard(

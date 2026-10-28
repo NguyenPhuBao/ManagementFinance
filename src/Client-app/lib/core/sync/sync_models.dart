@@ -157,3 +157,37 @@ extension SyncStatusX on SyncStatus {
       this == SyncStatus.error ||
       this == SyncStatus.authExpired;
 }
+
+/// Một thay đổi của danh mục KHUÔN (danh mục mặc định toàn cục) do Admin-web sửa, thấy được lúc kéo về vì máy đã có bản cũ
+/// (spec `2026-10-27-danh-muc-mac-dinh-theo-thao-tac-admin-design.md` mục 5). `core/sync` chỉ GHI LẠI — lan truyền sang bản
+/// sao là việc của mảng danh mục (`LanTruyenKhuon`, qua cổng [ViecSauKeoVe]). [loai] là loại CŨ ở dạng cục bộ (`'chi'` /
+/// `'thu'` / `'vay_no'`) — bản sao giữ loại cũ khi admin đổi loại (chốt 3).
+class ThayDoiKhuon {
+  const ThayDoiKhuon({
+    required this.id,
+    required this.loai,
+    required this.tenCu,
+    required this.tenMoi,
+    required this.iconCu,
+    required this.iconMoi,
+    required this.tuKhoaCu,
+    required this.tuKhoaMoi,
+  });
+
+  final String id;
+  final String loai;
+  final String tenCu;
+  final String tenMoi;
+  final String iconCu;
+  final String iconMoi;
+  final List<String> tuKhoaCu;
+  final List<String> tuKhoaMoi;
+
+  @override
+  String toString() =>
+      'ThayDoiKhuon($id: "$tenCu"→"$tenMoi", $iconCu→$iconMoi, ${tuKhoaCu.length}→${tuKhoaMoi.length} từ khoá)';
+}
+
+/// Việc chạy sau MỖI lượt kéo về thành công (`SyncEngine.sauKeoVe`): nhận tài khoản của chu kỳ và các thay đổi khuôn của
+/// lượt ấy; trả số hàng vừa ghi (> 0 → hẹn đẩy).
+typedef ViecSauKeoVe = Future<int> Function(int idaccount, List<ThayDoiKhuon> thayDoiKhuon);

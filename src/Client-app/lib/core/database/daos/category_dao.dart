@@ -55,52 +55,8 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  Stream<List<Category>> watchCategoryRows(int accountId, String classify) {
-    return (select(categories)
-          ..where((t) =>
-              t.idaccount.equals(accountId) &
-              t.classify.equals(classify) &
-              t.isDeleted.equals(false))
-          ..orderBy([
-            (t) => OrderingTerm.desc(t.idaccount),
-            (t) => OrderingTerm.asc(t.name),
-          ]))
-        .watch()
-        .map((list) {
-      // Khử trùng lặp theo tên — ưu tiên giữ bản có UUID hợp lệ từ backend
-      final uuidRegex = RegExp(
-        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-        caseSensitive: false,
-      );
-      final Map<String, Category> uniqueMap = {};
-      for (final cat in list) {
-        final key = normalizeCategoryName(cat.name);
-        final existing = uniqueMap[key];
-        if (existing == null) {
-          uniqueMap[key] = cat;
-        } else if (uuidRegex.hasMatch(cat.id) && !uuidRegex.hasMatch(existing.id)) {
-          // Ưu tiên bản UUID (từ backend) hơn bản seed cục bộ
-          uniqueMap[key] = cat;
-        }
-      }
-      return uniqueMap.values.toList()
-        ..sort((a, b) => a.name.compareTo(b.name));
-    });
-  }
-
-  Future<List<Category>> getCategoryRows(int accountId, String classify) async {
-    final list = await (select(categories)
-          ..where((t) =>
-              t.idaccount.equals(accountId) &
-              t.classify.equals(classify) &
-              t.isDeleted.equals(false))
-          ..orderBy([
-            (t) => OrderingTerm.desc(t.idaccount),
-            (t) => OrderingTerm.asc(t.name),
-          ]))
-        .get();
-
-    // Khử trùng lặp theo tên — ưu tiên giữ bản có UUID hợp lệ từ backend
+  /// Khử trùng lặp theo tên — ưu tiên bản có UUID hợp lệ từ backend hơn bản seed cục bộ (`cat_food`…), rồi xếp theo tên.
+  static List<Category> _khuTrungTheoTen(Iterable<Category> list) {
     final uuidRegex = RegExp(
       r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
       caseSensitive: false,
@@ -115,9 +71,38 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
         uniqueMap[key] = cat;
       }
     }
-    return uniqueMap.values.toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+    return uniqueMap.values.toList()..sort((a, b) => a.name.compareTo(b.name));
   }
+
+  /// Hàng của [accountId] theo [classify] (chưa xoá) **và** MỌI hàng khuôn (kể cả đã xoá) trong MỘT truy vấn — luật *ẩn theo
+  /// khuôn* (spec 2026-10-27 mục 4) cần khuôn; một truy vấn để stream phát lại khi khuôn đổi.
+  SimpleSelectStatement<$CategoriesTable, Category> _hangKemKhuon(int accountId, String classify) => select(categories)
+    ..where((t) =>
+        (t.idaccount.equals(accountId) & t.classify.equals(classify) & t.isDeleted.equals(false)) |
+        t.isDefault.equals(true))
+    ..orderBy([
+      (t) => OrderingTerm.desc(t.idaccount),
+      (t) => OrderingTerm.asc(t.name),
+    ]);
+
+  ({List<Category> rows, List<Category> khuon}) _tachKhuon(List<Category> list, int accountId, String classify) => (
+        rows: _khuTrungTheoTen(
+            list.where((c) => c.idaccount == accountId && c.classify == classify && !c.isDeleted)),
+        khuon: [for (final c in list) if (c.isDefault) c],
+      );
+
+  /// ⚠️ Chỉ `features/category/data/danh_sach_chon_danh_muc.dart` được gọi (test quét 40) — nơi bỏ bản sao ẩn theo khuôn.
+  Stream<({List<Category> rows, List<Category> khuon})> watchCategoryRows(int accountId, String classify) =>
+      _hangKemKhuon(accountId, classify).watch().map((list) => _tachKhuon(list, accountId, classify));
+
+  /// ⚠️ Chỉ `features/category/data/danh_sach_chon_danh_muc.dart` được gọi (test quét 40).
+  Future<({List<Category> rows, List<Category> khuon})> getCategoryRows(int accountId, String classify) async =>
+      _tachKhuon(await _hangKemKhuon(accountId, classify).get(), accountId, classify);
+
+  /// MỌI hàng khuôn (danh mục mặc định toàn cục), KỂ CẢ đã xoá mềm — luật ẩn theo khuôn và phép đếm danh mục riêng (Premium)
+  /// cần biết khuôn nào đã xoá. Khác [getBackendDefaults] (chỉ khuôn còn sống — để sao chép).
+  Future<List<Category>> getTatCaKhuon() =>
+      (select(categories)..where((t) => t.isDefault.equals(true))).get();
 
   /// **Bảng tra tên danh mục** cho báo cáo và thống kê — định nghĩa DUY NHẤT.
   ///

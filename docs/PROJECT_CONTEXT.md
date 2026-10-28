@@ -615,7 +615,171 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-27)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-28)
+
+### 🔀 Gộp `main` @ `7b56d822` (2026-10-28 phiên 20, commit gộp `a630c4c8`, chưa push) — backend báo xong đơn 50 (gia đình nền móng) và 54
+
+- `177dd0e1` (NPBao, PR #168): module `household` (16 endpoint `/api/households`); migration **40** (ba bảng `household*`, cột
+  `Idhousehold` ở `wallet` · `transaction` · `goal` · `budget` · `category`, dựng lại `uq_wallet_account_name_active` /
+  `uq_wallet_default_active` / `uq_category_owner_name` kèm `"Idhousehold" IS NULL`) — **đã áp Supabase** (đo chỉ `SELECT`: 3 bảng, 5 cột,
+  định nghĩa chỉ mục khớp tệp; 0 nhà, 0 hàng mang `Idhousehold`); `/sync/push` kiểm chủ sở hữu (`NOT_OWNER`) + ma trận vai; `/sync/pull`
+  lọc theo `idhousehold`; `admin.service.js` kiểm trùng tên khuôn danh mục theo tên chuẩn hoá, 409.
+- Không tệp `src/Client-app` nào đổi (hash cây `a90688b8…` trước = sau → không chạy lại `flutter test`, mốc giữ **8361 / 10 skip**);
+  `check-ignore` không khớp; `SYNC_DOCUMENTATION.md` · `app_constants.dart` · `.gitignore` · `package.json` không đổi; một xung đột (đầu
+  `CAN-LAM/README.md` — tiêu đề giữ bản client có đơn 55, banner backend giữ nguyên văn, dán lại banner client 2026-10-27 bị xoá).
+- **Soát:** **54 đạt trọn → `DA-XONG/`** (mục lục 4k, banner 🔎 đầu tệp; C2 đứng nhờ trigger `trg_set_server_update_at_category`, không nhờ
+  mã repository). **50 ở lại `CAN-LAM/`** — đạt `NOT_OWNER` cho hàng riêng tư + phạm vi kéo về (tài khoản không ở nhà nào kéo về y như
+  trước); còn **bảy vế, ba CAO**: `/sync/push` gọi `householdRepository.findMember` **không tồn tại** (lỗi bị nuốt → vai lẫn `ReadOnly`
+  không bao giờ xét), Viewer và người ngoài nhà ghi được vào nhà, kiểm Premium khi tạo nhà đọc trường JWT không có → Basic tạo được nhà;
+  thêm không gì đặt `ReadOnly`, phòng `household_<id>` không ai `join`, kiểm phạm vi đọc `idwallet` trong khi client gửi `walletId` —
+  banner 🔎 đầu tệp, có `tệp:dòng`. **55** không được đụng. Bốn mã đẩy backend phát (`NOT_OWNER`, `HOUSEHOLD_ROLE_FORBIDDEN` / `_READ_ONLY`
+  / `_SCOPE_MISMATCH`) đã nằm trong `_permanentCodes` (`gui_lo_dong_bo.dart:326-338`); `HOUSEHOLD_NOT_MEMBER` / `_CLOSED` / `_WALLET_LIMIT`
+  client có, backend chưa phát. Đơn cho client `docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md` và 16 endpoint **chưa** đối chiếu
+  `docs/Family/` — việc của lượt client bắt đầu gia đình.
+- ✉️ **Đơn 56** `CAN-LAM/LICH-SU/SOAT_SAU_GOP_7B56D822.md` (người dùng bảo viết việc backend vào `CAN-LAM/`): 9 việc (5 CAO) kèm cách sửa, SQL seed
+  `database/41` cho khoá quyền `household` / `household_members` (ma trận Supabase 36 mã, không có hai khoá ấy — `requireFeature` chỉ chặn
+  khi đọc được đúng `false`), 17 ca kiểm qua `processPush`, bảng trả lời. Viết đơn lộ thêm ba chỗ: đổi `Idhousehold` của hàng đã có qua
+  `/sync/push`; `upsertCategory` từ chối bằng `Error` trơn → `DB_ERROR` → client gửi lại mãi (Member sửa danh mục của nhà); bảng quyền
+  lệch đơn 50 Việc D (mục tiêu chung Member sửa được, danh mục nhà Member không sửa được, chuyển khoản giữa ví chung không chặn). Đóng 56
+  là đóng 50. Đơn dẫn đơn 50 bằng **tên mục**, không bằng số dòng (banner client đầu đơn 50 làm số dòng trôi).
+- 🗂️ **Gộp mọi việc backend vào MỘT tệp** `CAN-LAM/VIEC_BACKEND_CON_LAI.md` (người dùng yêu cầu cùng ngày, chọn *dời tệp gốc vào thư mục
+  con*): soát lại 8 đơn trên mã HEAD + Supabase (chỉ `SELECT`) — **không đơn nào xong trọn**; tệp gộp có bảng việc theo mức (mã giữ số
+  đơn: `56.1`, `43.A3`…), phần tài liệu backend **gom theo tệp** (`Event-Notification-to-ClientApp.md` gộp 43 D · 44 F · 49 H1), vế đã
+  đạt, một bảng trả lời. Đo thêm cho tệp gộp: `account` chỉ `Active` 8 / `Deleted` 4 (CHECK 43.A5 áp thẳng được), 0 nhóm
+  `payos_transaction_id` trùng (migration 38 áp được), 10 ví · 13 giao dịch · 1 danh mục mồ côi (49.F). Tám tệp gốc → `CAN-LAM/LICH-SU/`
+  (dòng 🗂️ đầu mỗi tệp, không cập nhật nữa); đường dẫn trong tài liệu client đã đổi theo; `Project.md` và `database/40` (của backend) còn
+  dẫn chỗ cũ, cùng `client-app/CAN-LAM/GIA_DINH_NEN_MONG.md:8` (đơn backend viết cho client). Đơn mới về sau thêm mục vào tệp gộp,
+  số kế tiếp **57**.
+- ⚠️ **Bật backend dev sau lượt gộp này** (backend đang tắt): Prisma Client trên máy (sinh 2026-10-24) chưa có `household` / `idhousehold`
+  → `/sync/pull` vỡ với **mọi** tài khoản cho tới khi `npx prisma generate` (phép đích danh, quy tắc 1; `package.json` không đổi nên không
+  cần `npm install`). Backend cho Realme trỏ **`PersonFinance`** — tệp `database/40` mới, chưa lượt nào áp lên CSDL ấy (chưa đo — cần mật
+  khẩu postgres) → phải áp `database/40` **trước** `generate`, không thì `P2022` ở mọi truy vấn Prisma vào 5 bảng mang cột mới (kéo về,
+  đẩy, mọi API dữ liệu). Đăng nhập thì không vỡ theo: `model account` chỉ thêm **quan hệ**, không thêm cột, và `modules/auth` không truy vấn
+  5 bảng ấy (đo bằng `grep` 2026-10-28 — khác vấp 2026-10-06, khi cột mới nằm ngay trên `account`). Hai phép, hỏi đích danh từng phép.
+
+### 💎 B1 — Phân quyền theo gói: cột Premium và 22 công tắc (2026-10-27/28)
+
+Spec `docs/superpowers/specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md` (chỗ mã khác bản viết = mục 13), tài liệu
+`PREMIUM_FEATURE.md` mục 8 (8.1 chốt 6–7, 8.2 bảng 22 mã, 8.5 bẫy 7–13, 8.6 Stitch `02c0d881…`, 8.8 trạng thái), G109 ở
+`CLIENT_APP_KNOWN_GAPS.md`, thông báo `NOTIFICATION_FEATURE.md` 5m, đơn backend **CAN-LAM 55** (hợp đồng + đính chính `4_TRU_COT.md`).
+✅ **Mã xong Task 1–11 + đợt sửa cuối sau review toàn nhánh** bằng agent con (Fable preflight, Sonnet thực thi, Opus soát); ✅ **nghiệm thu máy thật đạt** (Task 13, 2026-10-28
+phiên 19 — Realme + máy ảo, backend trỏ `PersonFinance` cục bộ, ma trận đổi qua API admin; `PREMIUM_FEATURE.md` 8.9); schema vẫn **v31**, 0 migration. **Chưa push.**
+
+- **Phạm vi:** Premium cũng theo bảng quyền (`trangThaiQuyen` ba trạng thái `mo` / `canPremium` / `tamNgung`; `duocDung` là vế `bool`);
+  admin tắt ở cột Premium → *"Đang tạm ngừng"*, không nút Nâng cấp; trần Premium cũng áp (màn Nâng cấp *"Gói Premium hiện cho tạo tối đa N
+  ví."*); `MaQuyen` 11 → **22** mã (nút ghi nhanh, Tổng tài sản, ba loại nhắc, số dư ví, loại ví khỏi tổng, nạp / rút mục tiêu, gắn danh mục
+  hàng loạt, từ khoá danh mục, phép tính bàn phím số); `tranHieuLuc` là cửa đọc trần duy nhất (**G109** ✅ mở và đóng).
+- **Commit** (Task 1–11, dải `e5251822..6cbff979` = **18** commit đếm bằng `git log 2f70e202..HEAD`, kể cả vòng sửa và Task 8b): Task 1 `e5251822` +
+  `6f21005d` · Task 2 `222d55bf` · Task 3 `f4d35331` · Task 4 `93d6ac70` + `b80d94b4` · Task 6 `97357a0b` + `d885e16d` · Task 7 `519ed78c` +
+  `a282ae6c` · Task 8 `3b85811b` + `85de7df0` · Task 8b `ae816d42` · Task 9 `38989037` + `47f54c30` · Task 10 `ccb564bb` · Task 11 `f68d8738` +
+  `6cbff979`; Task 5 = hỏi người dùng (không mã), Task 12 `8772a902` (tài liệu); **đợt sửa cuối** sau review toàn nhánh + soát Task 12: `457381c6`
+  (mã) + commit tài liệu này.
+- **Tám câu chốt phiên 17** (mục *Đã chốt* của kế hoạch — tệp kế hoạch gitignore): (1) Premium không hạn giữ hành vi trước B1 tới B4 — spec mục 13
+  (1) · (2) quyền nhắc đổi → `resync` thường, không `datLai` — 13 (2) · (3) bỏ `Vuot.laPremium` — 13 (3) · (4) hai băng khoá AI tạm ngừng trong phạm
+  vi B1 (Task 11) — 13 (6) · (5) công tắc *"Bật nhắc nhở thông báo đẩy"* form hoá đơn để mở, chỉ khoá chip *Nhắc trước* — 13 (7) · (6) che chip *Tổng
+  số dư* ở Nhận xét Trang chủ khi `net_worth_overview` khoá (Task 8b) — 13 (9) · (7) ma trận cột Premium đang chạy có ô `false` nào trong 22 mã →
+  **Task 13 Bước 0**, trả lời trước khi phát hành — spec mục 10 bước 0 · (8) tổng tài sản còn ở Trợ lý AI + Nhận xét Quản lý ví, chỉ che Trang chủ —
+  spec mục 8. Người dùng chốt thêm: spec mục 1 hàng 10–12 (phiên 17: *"Tới N ví"*, giữ tên 11 mã, hai bước nghiệm thu) · Task 5 phiên 18 (Stitch
+  `02c0d881…` đủ sáu khối, bảng *Câu chữ chốt* duyệt nguyên bảng).
+- **Số đo (2026-10-28, sau đợt sửa cuối):** `flutter test` **8354 pass / 10 skip** (+97 so với mốc 8257; sau Task 11 là 8349), `flutter analyze` **20**.
+  Giữ số: G109 đã dùng, G110 đã mở, kế tiếp **G111**; quét kế tiếp **41**; đơn kế tiếp **56**.
+- **Đợt sửa cuối (`457381c6`):** `dacQuyenPremium(goi, now)` — người xem Premium còn hạn thấy cột Premium (*"Tới 10 ví"*, quyền tạm ngừng không kể;
+  spec mục 13 (18)); `trangThaiQuyenDoc` thay `try` / `catch` ở hai getter tạm ngừng, gỡ `cauTamNgung`, câu khoá chi bất thường vào `cau_quyen.dart`
+  (13 (17)); hộp *"Bắt đầu vòng mới?"* không khuyên *"Rút khỏi mục tiêu"* khi `goal_deposit_withdraw` khoá; khối Nhận xét Trang chủ đọc quyền
+  trong `Builder` riêng (hết dựng lại cả `HomePage` + tạo lại stream Drift mỗi lần `GoiCubit` phát).
+- **I2 / I3 (phiên 19, 2026-10-28 — người dùng trả lời bằng câu hỏi chọn được):** **I2** màn Nâng cấp đến từ quyền tạm ngừng (`?quyen=`, không
+  `?tran=`) **ẩn giá + nút Thanh toán / Gia hạn** (`anNutMua`, `nang_cap_page.dart`; một chỗ phủ cửa route, nút Quét / Nói, deeplink) — spec
+  mục 13 (19); **I3** công tắc *"Tính vào tổng tài sản"* chỉ chặn **loại mới**: `doiDuocTinhVaoTong(coQuyen:, daLuuTinhVaoTong:)`
+  (`wallet/domain/cong_tac_tinh_vao_tong.dart`), neo giá trị **đã lưu** — ví đã loại bật lại được (và tắt lại trước Lưu), màn Thêm như cũ — spec
+  mục 13 (20). Bẫy `PREMIUM_FEATURE.md` 8.5 (14) (15). Số đo: `flutter test` **8361 pass / 10 skip** (+7: 1 ca màn Nâng cấp kèm mở rộng 3 ca
+  cũ, 3 ca domain, 1 ca Sửa ví, 2 ca Thêm ví — mỗi ca canh thử bằng bản sai), `flutter analyze` **20**.
+- **Task 13 Bước 0 trên Supabase dùng chung (chỉ đọc, 2026-10-28 phiên 19):** cột Premium **0 ô `false`** trong 22 mã; đủ 5 hàng LIMIT (đều
+  `limit_value = null` = không giới hạn) → **go**. Cột Basic tắt 9 mã (ba AI, `anomaly_spending_insights`, `bill_auto_pay`, `cashflow_forecast`,
+  `export_reports`, `goal_auto_deposit`, `smart_budget_rebalancing`); trần Basic 3 / 3 / 3 / 3 / 5. `PersonFinance` cục bộ đo cùng ngày: **trùng
+  từng dòng**.
+- **Task 13 nghiệm thu (2026-10-28 phiên 19, backend `PersonFinance`) — ✅ đạt mọi bước** (bảng `PREMIUM_FEATURE.md` 8.9). Realme, tài khoản 10
+  Premium: bước 1 (Xuất báo cáo tạm ngừng qua drawer + `/analytics/export`, không giá / nút mua) · I2 qua nút Quét · I3 (ví *test* bật lại được, Lưu
+  rồi khoá) · mọi khối tạm ngừng hiện qua socket ≤ 3 s · bước 2 (*"tối đa 6 ví"*, *"Tới 6 ví"*) · bước 4 (3 lịch nhắc ghi chép huỷ / về) · bước 6
+  G109 (người dùng cho phép đích danh `UPDATE premium_expires_at`; offline quá hạn → *"Bạn đã dùng 3/3 ví của gói Basic."*; hạn trả nguyên).
+  Máy ảo, tài khoản Basic mới **29** `thub1t13`: bước 3 (*"… dành cho Premium"* + Nâng cấp; màn Nâng cấp có giá + Thanh toán — đối chứng I2) ·
+  bước 5 (lịch nhắc hoá đơn 01/11 huỷ / về). Bước 7: ma trận trả qua API, khớp mốc Bước 0. Chưa nhìn: *quá hạn vẫn báo*, chip *Nhắc trước* khoá.
+- **Giới hạn / việc mở:** ⚠️ **Task 13 Bước 0 (go / no-go trước phát hành, chỉ đọc)** — cột Premium của ma trận đang chạy (`PersonFinance` và Supabase
+  dùng chung) có ô `false` nào trong 22 mã (có → mọi người Premium thấy mã ấy *"Đang tạm ngừng"*: dừng, hỏi người dùng) và đủ 5 hàng LIMIT (spec mục
+  10 bước 0 — ✅ đo 2026-10-28: go); nghiệm thu máy thật Task 13 ✅ đạt (8.9); A1 / A2 / A3 chờ backend (chưa có `premiumFeatures` thì Basic thấy khoá *cần Premium*); (P-N5)
+  `noiKhiQuyenDoi` kích `resync` song song lượt khôi phục của scanner (nhật ký B5a có thể hai dòng `dat_lich`) + cuộc đua lúc đăng xuất (review M1 —
+  `resync` lịch của tài khoản vừa đăng xuất; không cờ "đang chạy" công khai, không sửa bằng mã — spec mục 8); gói số bậc 1 Trợ lý AI + gói Ví vẫn mang
+  tổng tài sản khi `net_worth_overview` khoá; lệch Stitch có chủ ý ở `PREMIUM_FEATURE.md` 8.6 (đối chiếu bằng mắt ở Task 13).
+- `main` PR #168 (`7b56d822`) vẫn **chưa gộp**.
+
+### 🗂️ Danh mục mặc định theo thao tác Admin-web (2026-10-27)
+
+Spec `docs/superpowers/specs/2026-10-27-danh-muc-mac-dinh-theo-thao-tac-admin-design.md` (✅ mã xong, chờ nghiệm thu máy thật),
+lý do ở `CATEGORY_RATIONALE.md` mục 5h, G108 ở `CLIENT_APP_KNOWN_GAPS.md`, cổng `sauKeoVe` ở `SYNC_DOCUMENTATION.md` mục 3.3.
+Thi công bằng agent con (Sonnet thực thi, Opus soát), Task 1–8 mã + Task 9 tài liệu; schema vẫn **v31**, 0 đơn backend.
+
+- **Tóm tắt:** khuôn danh mục hệ thống bị admin xoá mềm (từ `kMocAnTheoKhuon`) → bản sao cùng tên + loại **ẩn** khỏi mọi danh sách
+  CHỌN (luật `dangAnTheoKhuon`, cửa duy nhất `category/data/danh_sach_chon_danh_muc.dart`, test quét 40; bảng tra tên giữ; form
+  sửa hoá đơn / ngân sách giữ danh mục đang gắn); admin đổi tên / biểu tượng / thêm từ khoá → kéo về ghi `ThayDoiKhuon` → cổng
+  `sauKeoVe` chạy `LanTruyenKhuon` rồi bộ tạo bản sao; bộ tạo bản sao so theo **tên** (G108); trần Premium *danh mục riêng* so
+  mọi khuôn kể cả đã xoá.
+- **Commit** (từ cũ tới mới): `81bab141` (Task 1, luật ẩn) · `37991827` + `a95da3e9` (Task 2+3, cửa danh sách chọn) ·
+  `59fdf5c1` (Task 4, form sửa giữ danh mục ẩn) · `8e5357c6` (Task 5, trần danh mục riêng) · `ca2a0364` (Task 6, G108) ·
+  `48f720de` + `78afc043` (Task 7, `ThayDoiKhuon` + cổng `sauKeoVe`) · `55b7c39e` (Task 8, `LanTruyenKhuon`) + commit tài liệu
+  Task 9. **Chưa push.**
+- **Số đo (2026-10-27, sau Task 8 = trước tài liệu Task 9):** `flutter test` **8246 pass / 10 skip** (từ 8202 đầu kế hoạch),
+  `flutter analyze` **20**, schema v31. Giữ số: **G108** đã dùng, quét kế tiếp **41**, đơn kế tiếp **56**.
+- **Đợt sửa sau review toàn nhánh (2026-10-27, phiên 17):** review kết luận *"gộp được sau khi sửa"*; sửa gồm `saveGroup` không gỡ nhóm
+  của bản sao đang ẩn · khuôn về đã xoá vẫn lan truyền tên / biểu tượng (người dùng chốt) · luật ẩn bước 3 so chỉ **tên**
+  (người dùng chốt) · một `ThayDoiKhuon` hỏng không mất cả lượt · bộ tạo bản sao nạp tên vừa tạo · `BudgetCubit` không vỡ form
+  khi đọc danh mục gắn ném · chú thích chỉ mục `uq_category_owner_name` cho đúng · mẻ test bổ sung · mở **G110**. Commit
+  `1585c30d` · `857687c8` · `0cba3d70` · `c8921faf` · `6d1bdcd8` · `6fa1884d`; soát lại phạm vi hẹp: đạt (0 Critical / Important).
+  Số đo: `flutter test` **8257 pass / 10 skip** (+11 so với 8246), analyze **20**. Giữ số: G108, **G109** (B1), **G110** dùng,
+  quét kế tiếp 41, đơn kế tiếp 56.
+- ✅ **Task 10 — nghiệm thu Realme 2026-10-27 tối ĐẠT** (spec mục 9.1): tạo khuôn → bản sao; xoá → mất ở mọi bộ chọn, form sửa
+  giữ, tên vẫn tra được, câu *"đang tạm ngừng"*; khôi phục → hiện lại, không bản thứ hai; đổi tên + biểu tượng + từ khoá → bản
+  sao theo; dọn bằng xoá mềm. Thao tác admin qua API backend (Admin-web chưa cài `node_modules`), backend của nhánh (TRƯỚC PR #168).
+  Chưa đo: hai máy cùng tài khoản. `PersonFinance` đo 2026-10-27: 13 khuôn sống + 5 xoá mềm trước lượt (+1 khuôn thử *Thử đổi tên*
+  xoá mềm sau lượt; bản sao ẩn của nó ở lại tài khoản 10). ⚠️ Đừng tạo / xoá khuôn thử trên Supabase dùng chung.
+
+### 🧭 Phiên 17 (2026-10-27 khuya) — danh mục theo Admin-web Task 7–9 + review toàn nhánh (agent con); B1: spec duyệt + kế hoạch
+
+- **Danh mục theo Admin-web:** Task 7 (`48f720de` + `78afc043` — lượt kéo toàn bộ bỏ so từ khoá khuôn, vì đổi tài khoản trên
+  cùng máy), Task 8 (`55b7c39e`), Task 9 tài liệu (`2c5eb48a` `1f0e2b33` `42469cba` `3bb95de2`), review toàn nhánh (Opus) →
+  một đợt sửa (`1585c30d..6fa1884d`) → soát lại đạt; chốt tài liệu `3fe6163e`. Người dùng chốt ba luật mới (khối 🗂️ ở trên).
+  **Xong mã + tài liệu + nghiệm thu Realme (Task 10, spec mục 9.1 — đạt; chưa đo hai máy)**; người dùng chọn đo trước khi gộp
+  `main` PR #168. Mốc **8257 pass / 10 skip**, analyze 20.
+- **B1 (phân quyền theo gói — cột Premium + 22 công tắc):** người dùng duyệt bản viết spec (`aec5cea4`: *"Tới N ví"*, giữ tên 11
+  mã, nghiệm thu thêm bước nhắc trước hạn hoá đơn + hết hạn lúc offline G109). Kế hoạch `docs/superpowers/plans/2026-10-27-phan-quyen-cot-premium-va-cong-tac.md`
+  (gitignore, Task 0–13 + 8b, mục *Đã chốt* 8 điểm — trong đó **che chip "Tổng số dư"** ở Nhận xét Trang chủ khi
+  `net_worth_overview` khoá, Trợ lý AI + Quản lý ví không đụng). Chưa preflight, chưa gửi Stitch (Task 0), chưa thi công.
+- **B1 bắt đầu thi công (agent con, cuối phiên):** Task 0 gửi yêu cầu Stitch biến thể *"Đang tạm ngừng"* (trả `timeout`, không
+  gửi lại — Task 5 hỏi người dùng); workspace SDD `.superpowers/sdd/2026-10-27-phan-quyen-cot-premium-va-cong-tac/`; preflight
+  Fable **0 Chặn · 0 Sai im lặng · 12 Nhỏ** (chạy thử nguyên văn Task 1–4 xanh, ca G109 đỏ trên mã cũ), phán quyết ở sổ.
+  **Dừng trước Task 1** theo yêu cầu người dùng.
+- `main` có PR #168 (`7b56d822`) **chưa gộp** (gia đình nền móng + đơn 54; README `CAN-LAM/` sẽ xung đột). Chưa push.
+- Giữ số: **G109** (B1), **G110** đã mở, kế tiếp **G111**; quét kế tiếp **41**; đơn kế tiếp **56**.
+
+### 🧭 Phiên 16 (2026-10-27 tối) — thi công danh mục theo Admin-web Task 1–6 (agent con), Premium: trần 0 + spec B1 + đơn 55
+
+Mốc `flutter test` **8232 pass / 10 skip** (đầu phiên 8202), analyze **20**, schema v31. **Chưa push** (10 commit).
+
+- 🗂️ **Kế hoạch danh mục theo Admin-web** (spec + kế hoạch phiên 15) — người dùng chọn **agent con** (Fable preflight → Sonnet
+  thực thi → Opus soát). Preflight Fable chạy thử nguyên văn Task 1–8 trên worktree tạm: 0 chặn · 1 sai im lặng (bước thử bản sai
+  Task 7 không đỏ) · 7 nhỏ. Xong **Task 1–6**: `81bab141` luật ẩn `dangAnTheoKhuon` + `CategoryEntity.deletedAt` +
+  `kemDanhMucDangGan` · `37991827` + `a95da3e9` (Task 2+3 gộp) cửa duy nhất `category/data/danh_sach_chon_danh_muc.dart`, DAO
+  `getCategoryRows` / `watchCategoryRows` trả `(rows, khuon)`, `getTatCaKhuon`, câu *"… là danh mục hệ thống đang tạm ngừng"*,
+  **test quét 40** · `59fdf5c1` form sửa hoá đơn / ngân sách giữ danh mục đang ẩn (`BudgetCubit.danhMuc`) · `8e5357c6` trần danh mục
+  riêng so mọi khuôn · `ca2a0364` bộ tạo bản sao so theo **tên** (G108 — ghi vào tệp ở Task 9). **Còn:** Task 7 (`ThayDoiKhuon`) ·
+  8 (`LanTruyenKhuon`) · 9 (tài liệu) · review toàn nhánh · 10 (máy thật). Ledger + phán quyết + minor hoãn ở
+  `.superpowers/sdd/2026-10-27-danh-muc-mac-dinh-theo-thao-tac-admin/progress.md` (git bỏ qua).
+- 💎 **Premium theo Admin-web** (khảo sát chỉ đọc ba phía — `.superpowers/khao-sat-premium-2026-10-27/`): **(a)** trần 0 = **không
+  tạo thêm** (`3ec874aa`, người dùng chốt; bản cũ đọc 0 là rác — hoá đơn / danh mục riêng thành không giới hạn). **(b)** chia B1 cột
+  Premium + công tắc · B2 chính sách hạ cấp · B3 `scope_config` · B4 chống lùi đồng hồ; **spec B1** `bfbd5e5b`
+  `specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md` (`trangThaiQuyen` ba trạng thái, *"bảng của gói đang hiệu lực"*,
+  22 / 31 công tắc, 9 mã không bao giờ khoá, câu *"Đang tạm ngừng"*) — chờ người dùng soát bản viết; lộ **G109** (Basic sau khi
+  Premium hết hạn offline dùng trần Premium đã lưu → tạo không giới hạn). **(c)** **đơn 55**
+  `CAN-LAM/LICH-SU/PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md` (`6b40f112`): cột Premium cho Basic, Trụ 1 mã LIMIT → 0, Premium không hạn
+  ba nghĩa, đính chính `docs/Functional-Mobile/4_TRU_COT.md` (31 khẳng định sai).
 
 ### 🧭 Phiên 15 (2026-10-27 chiều) — danh mục mặc định theo thao tác Admin-web (spec + kế hoạch), đơn 54, gộp `main` @ `5c3547b5` + soát 7 đơn
 
@@ -1041,7 +1205,7 @@ sở hữu thứ ba** (cột `idhousehold` cho ví, giao dịch, mục tiêu, ng
 liệu nhà **chỉ ở khu *Nhà mình*** · bộ danh mục riêng của nhà · giải tán = xoá mềm · phần server **backend làm theo đơn**.
 - **Spec** `docs/superpowers/specs/2026-10-23-gia-dinh-nen-mong-design.md` — phần 1/4 (nền móng); ba phần con sau mỗi phần một
   spec + đơn. Hoá đơn chung, QR, offline tạo nhà, nhiều nhà / tài khoản: ngoài phạm vi.
-- **Đơn 50** `CAN-LAM/GIA_DINH_NEN_MONG.md` (người dùng: *"viết file trình bày chi tiết cho backend đọc"*) — agent gom điểm nối
+- **Đơn 50** `CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md` (người dùng: *"viết file trình bày chi tiết cho backend đọc"*) — agent gom điểm nối
   backend có `file:line`; SQL nháp migration 37, 12 endpoint + hình dạng trạng thái nhà, mã lỗi API, phạm vi kéo về, luật tham chiếu,
   4 mã đẩy mới, khoá quyền `household` + giới hạn `household_members`, `ReadOnly` theo Premium chủ, `household.changed`, sao danh mục,
   11 ca kiểm + câu SQL.
@@ -1134,7 +1298,7 @@ Người dùng: *"lấy code mới nhất về kiểm tra"*. 33 commit, 179 tệ
   (`auth.repository.js` `include` không `select`). Phải áp 30–36 **trước** `npm install` — phép đích danh (quy tắc 1). 27 và 36
   tự tạo lúc khởi động; thiếu 30–32 thì quyền rơi về mặc định; thiếu 35 thì log lỗi mỗi request, không hỏng. ✅ **2026-10-24
   tối:** đã áp 26–36 lên `PersonFinance` cục bộ (Supabase của `.env` vốn đã có) + `prisma generate` — khối 🔒 đầu mục 14.
-- **Đơn 49** `CAN-LAM/SOAT_SAU_GOP_EE6A65E5.md` (người dùng chọn một đơn gộp): A tài liệu client bị viết lại (bảng đối chiếu)
+- **Đơn 49** `CAN-LAM/LICH-SU/SOAT_SAU_GOP_EE6A65E5.md` (người dùng chọn một đơn gộp): A tài liệu client bị viết lại (bảng đối chiếu)
   + soát `Sync-To-ClientApp.md` cùng lỗi · B `Event-Notification-to-ClientApp.md` bảo xoá SQLite khi `ACCOUNT_DELETED` (ngược G89)
   · C trùng số migration **27** lần hai + tệp `)2_can_lam_all_migrations.sql` · D thứ tự áp trước `npm install` · E (thấp) hai
   route `devices` không có trong mã, CORS thiếu `x-device-name` (bản web sẽ hỏng preflight) · F (thấp) migration 33 xoá cứng
@@ -2120,7 +2284,7 @@ câu hỏi chọn được:
   `pending` → **G94** (`CLIENT_APP_KNOWN_GAPS.md`): người chuyển thừa / thiếu thấy *"Đơn đã hết hạn"*, không có lối gọi
   `confirm-upgrade`, lịch sử ghi đơn đã hoàn tiền là *"Chờ thanh toán"*, năm chỗ chữ *30 phút* nay sai. Người dùng
   chốt: làm **cùng lượt G89**, sau khi backend đóng đơn 43.
-- **Đơn 44** `CAN-LAM/SOAT_SAU_GOP_D72CCD45.md`:
+- **Đơn 44** `CAN-LAM/LICH-SU/SOAT_SAU_GOP_D72CCD45.md`:
   - **A (cao):** tệp thanh toán số 20 và 24 **trùng số** với `20_add_server_update_at_sync_tables.sql` /
     `24_add_actor_role_to_aiops_incident.sql`; `apply_migration_20.js` bị viết đè sang tệp thanh toán, nên migration
     đồng bộ `Server_update_at` không còn script áp (`git grep`: 0 chỗ nhắc).
@@ -2338,7 +2502,7 @@ Người dùng chốt 2026-10-11 làm **trước C4** (C4 giọng nói chạm đ
   `aiops_*quarantine*` — `database/26`, backend tạo bằng DDL `IF NOT EXISTS` lúc khởi động; **chưa có** trên CSDL dev vì backend
   chưa chạy từ khi gộp — đo: chỉ `aiops_incident`, `aiops_setting`) → khởi động lại backend **không còn** xoá danh sách;
   loopback vẫn không thể bị đưa vào.
-- **Đơn 43** `CAN-LAM/SOAT_SAU_GOP_CD2EE572.md` (mức cao): **A** AIOps khoá tài khoản ghi `Status = 'Locked'` — CSDL dev **không
+- **Đơn 43** `CAN-LAM/LICH-SU/SOAT_SAU_GOP_CD2EE572.md` (mức cao): **A** AIOps khoá tài khoản ghi `Status = 'Locked'` — CSDL dev **không
   có** `ck_account_status` (đo: bảng `account` 0 CHECK) nên ghi được — `auth.js` trả `ACCOUNT_DELETED` → client **xoá SQLite**
   (mất phần chưa đồng bộ); kích hoạt bằng 15 lần đăng nhập sai cho tên của người khác. **B** webhook `orderCode` lạ → đơn gắn
   tài khoản `idaccount` nhỏ nhất → nâng Premium nhầm. **C** 503 đăng nhập lúc bảo trì mất `code`. **D** 12 chỗ hợp đồng lệch mã.

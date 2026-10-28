@@ -12,11 +12,15 @@ class BanPhimSo extends StatelessWidget {
       {super.key,
       required this.isSubmitting,
       required this.onKey,
-      required this.onLuu});
+      required this.onLuu,
+      this.choPhepTinh = true});
 
   final bool isSubmitting;
   final ValueChanged<String> onKey;
   final VoidCallback onLuu;
+
+  /// Quyền in_app_calculator (B1): false → + / − mờ, chạm không báo phím.
+  final bool choPhepTinh;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +65,7 @@ class BanPhimSo extends StatelessWidget {
         bool isOperator =
             keyStr == 'backspace' || keyStr == '+' || keyStr == '-';
         bool isDone = keyStr == 'done';
+        final khoaTinh = !choPhepTinh && (keyStr == kToanTuCong || keyStr == kToanTuTru);
 
         return Material(
           color: isDone
@@ -72,7 +77,11 @@ class BanPhimSo extends StatelessWidget {
           child: InkWell(
             // ✓ là nút lưu (từng là phím chết: `themPhimSoTien` trả nguyên
             // chuỗi với 'done').
-            onTap: isDone ? (isSubmitting ? null : onLuu) : () => onKey(keyStr),
+            onTap: isDone
+                ? (isSubmitting ? null : onLuu)
+                : khoaTinh
+                    ? null
+                    : () => onKey(keyStr),
             borderRadius: BorderRadius.circular(12),
             child: Container(
               decoration: BoxDecoration(
@@ -87,7 +96,7 @@ class BanPhimSo extends StatelessWidget {
                 ],
               ),
               child: Center(
-                child: _noiDungPhim(keyStr, isDone),
+                child: _noiDungPhim(keyStr, isDone, mo: !khoaTinh),
               ),
             ),
           ),
@@ -96,7 +105,7 @@ class BanPhimSo extends StatelessWidget {
     );
   }
 
-  Widget _noiDungPhim(String keyStr, bool isDone) {
+  Widget _noiDungPhim(String keyStr, bool isDone, {bool mo = true}) {
     if (keyStr == 'backspace') {
       return const Icon(Icons.backspace_outlined,
           size: 24, color: AppColors.primary);
@@ -109,10 +118,10 @@ class BanPhimSo extends StatelessWidget {
         // Dấu trừ THẬT (U+2212), cùng ký hiệu với dòng số; gạch nối ASCII ở
         // ngay trước một con số đọc như dấu âm. Giá trị nội bộ vẫn là '-'.
         keyStr == kToanTuTru ? '−' : keyStr,
-        style: const TextStyle(
+        style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.normal,
-            color: AppColors.primary),
+            color: mo ? AppColors.primary : AppColors.outlineVariant),
       );
     }
     return Text(

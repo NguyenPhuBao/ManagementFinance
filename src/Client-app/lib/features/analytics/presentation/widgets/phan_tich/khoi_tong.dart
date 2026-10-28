@@ -12,6 +12,7 @@ import '../../../../../shared/theme/app_colors.dart';
 import '../../../data/models/thong_ke_ky.dart';
 import '../../../domain/dong_tien_tu_do.dart';
 import '../../../domain/moc_so_sanh.dart';
+import '../../../../premium/domain/cau_quyen.dart';
 import '../../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../../premium/presentation/widgets/the_khoa_quyen.dart';
@@ -102,7 +103,7 @@ class KhoiTong extends StatelessWidget {
                 ? const DongKhoaQuyen(
                     key: Key('dong-khoa-bat-thuong'),
                     ma: MaQuyen.anomalySpendingInsights,
-                    cau: 'Có khoản chi bất thường kỳ này — dành cho Premium',
+                    cau: kDongKhoaChiBatThuong,
                   )
                 : null,
           );

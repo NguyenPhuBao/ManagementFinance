@@ -34,11 +34,15 @@ class TheGoiTaiKhoan extends StatelessWidget {
     final premium = goi.laPremium(now);
     final hetHan = goi.hetHan;
     final conLai = goi.soNgayConLai(now);
+    // Trần qua `tranHieuLuc` (G109 — trần thô của kho là của Premium khi hết hạn lúc offline). Premium có trần có số → thêm
+    // dòng như Basic (B1, spec 2026-10-27 mục 4).
+    final tran = tomTatTran(tranHieuLuc(goi, now));
     final dongPhu = premium
         ? (hetHan == null || conLai == null
             ? null
             : 'Còn $conLai ngày · đến ${DateFormatter.formatDate(hetHan.toLocal())}')
-        : tomTatTran(goi.tran);
+        : tran;
+    final dongTranPremium = premium && tran.isNotEmpty ? tran : null;
 
     return Container(
       key: const Key('the-goi-tai-khoan'),
@@ -69,6 +73,10 @@ class TheGoiTaiKhoan extends StatelessWidget {
                 ),
                 if (dongPhu != null)
                   Text(dongPhu,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                if (dongTranPremium != null)
+                  Text(dongTranPremium,
+                      key: const Key('the-goi-tran-premium'),
                       style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               ],
             ),

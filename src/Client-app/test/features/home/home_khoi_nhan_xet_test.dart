@@ -41,4 +41,18 @@ void main() {
     expect(nguon.contains('nenToi: true'), isTrue,
         reason: 'Trang chủ dùng biến thể nền tối, thay đúng chỗ thẻ cũ.');
   });
+
+  test('B1 (chốt 6): gói số Trang chủ bỏ "Tổng số dư" khi quyền net_worth_overview khoá', () {
+    // Bỏ dòng chú thích: một lời gọi bị comment không được tính là có.
+    final ma = nguon.split('\n').where((d) => !d.trimLeft().startsWith('//')).join('\n');
+    expect(ma.contains('builder: (ctx) {'), isTrue,
+        reason: 'khối Nhận xét bọc trong một Builder riêng — chỉ Builder ấy dựng lại khi GoiCubit phát');
+    expect(ma.contains('final khoaTongSoDu = !ctx.coQuyen(MaQuyen.netWorthOverview);'), isTrue,
+        reason: 'đọc quyền bằng context của Builder (ctx), không bằng context của HomePage');
+    expect(ma.contains('!context.coQuyen(MaQuyen.netWorthOverview)'), isFalse,
+        reason: 'context.coQuyen = watch<GoiCubit> ở cấp HomePage: mỗi lần GoiCubit phát là dựng lại CẢ trang và tạo lại '
+            'mọi stream Drift (M2 review toàn nhánh B1)');
+    expect(ma.contains('boTongSoDu: khoaTongSoDu'), isTrue,
+        reason: 'thẻ Tổng số dư đã là thẻ khoá (Task 8) — chip của khối Nhận xét ngay dưới không được nói lại con số');
+  });
 }

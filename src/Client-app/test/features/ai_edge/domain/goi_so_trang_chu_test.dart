@@ -145,4 +145,34 @@ void main() {
       expect(kiemSo(g.mauCau().cau, g), isTrue, reason: g.mauCau().cau);
     }
   });
+
+  test('⭐ B1 (chốt 6): boTongSoDu — gói KHÔNG có mục "Tổng số dư"; mẫu câu không đổi, vẫn qua kiemSo', () {
+    final mo = GoiSoTrangChu.tu(
+        thu: 15000000, chi: 8200000, tongSoDu: 13054000, nganSach: const [], now: now);
+    final khoa = GoiSoTrangChu.tu(
+        thu: 15000000, chi: 8200000, tongSoDu: 13054000, nganSach: const [], now: now, boTongSoDu: true);
+    expect(mo.soLieu.map((s) => s.nhan), contains('Tổng số dư'), reason: 'tiền đề: mặc định vẫn có mục');
+    expect(khoa.soLieu.map((s) => s.nhan), isNot(contains('Tổng số dư')),
+        reason: 'SoLieu là chip người dùng thấy + tập cho phép của kiemSo + phần vào prompt — khoá net_worth_overview '
+            'mà còn mục này là số tổng tài sản lộ ra ở khối Nhận xét ngay dưới thẻ khoá.');
+    expect(khoa.mauCau().theSoLieu.map((s) => s.nhan), isNot(contains('Tổng số dư')));
+    expect(khoa.soLieu.map((s) => s.chuoi), isNot(contains(mo.soLieu.firstWhere((s) => s.nhan == 'Tổng số dư').chuoi)));
+    expect(khoa.mauCau().cau, mo.mauCau().cau,
+        reason: 'mẫu câu không đọc nhãn "Tổng số dư" (chuoiTheoNhan chỉ tra Thu / Chi / Còn lại / Chi vượt thu / '
+            'Ngân sách căng nhất) — gỡ mục không được đổi câu');
+    expect(kiemSo(khoa.mauCau().cau, khoa), isTrue);
+  });
+
+  test('B1: boTongSoDu + có ngân sách → vẫn có "Ngân sách căng nhất", câu vẫn qua kiemSo', () {
+    final g = GoiSoTrangChu.tu(
+      thu: 15000000,
+      chi: 8200000,
+      tongSoDu: 13054000,
+      nganSach: [_ns('Ăn uống', 3000000, 2100000)],
+      now: now,
+      boTongSoDu: true,
+    );
+    expect(g.soLieu.map((s) => s.nhan).toList(), ['Thu', 'Chi', 'Còn lại', 'Ngân sách căng nhất']);
+    expect(kiemSo(g.mauCau().cau, g), isTrue);
+  });
 }

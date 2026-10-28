@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
+import 'package:flowmoney/features/category/domain/ban_sao_mac_dinh.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository.dart';
 import 'package:flowmoney/features/category/data/repositories/category_management_repository_impl.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
@@ -371,6 +372,42 @@ void main() {
           reason: 'So tên bỏ qua hoa/thường và khoảng trắng, nên đây vẫn là '
               'cùng một tên — không được coi là đổi tên rồi chặn.');
     });
+  });
+
+  test('saveGroup không gỡ nhóm của bản sao đang ẨN theo khuôn — chỉ gỡ con màn Nhóm thấy', () async {
+    // Khuôn "Thử khuôn" bị admin xoá mềm sau mốc → bản sao của tài khoản đang ẩn, màn Nhóm không liệt kê nó.
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'khuon-tk',
+      idaccount: 0,
+      name: 'Thử khuôn',
+      classify: 'chi',
+      isDefault: const Value(true),
+      isDeleted: const Value(true),
+      deletedAt: Value(kMocAnTheoKhuon.add(const Duration(days: 1))),
+      updatedAt: DateTime(2026, 10, 28),
+    ));
+    await insertCategory(id: 'nhom-an', name: 'Nhóm ăn', isGroup: true);
+    await insertCategory(id: 'con-an', name: 'Thử khuôn', parentId: 'nhom-an', isLocalOnly: false);
+    await insertCategory(id: 'con-thuong', name: 'Con thường', parentId: 'nhom-an', isLocalOnly: false);
+    final truoc = (await db.categoryDao.getById('con-an'))!;
+
+    await repository.saveGroup(CategoryGroupDraft(
+      id: 'nhom-an',
+      accountId: 1,
+      name: 'Nhóm ăn',
+      classify: 'chi',
+      icon: 'restaurant',
+      colour: '#FF5722',
+      childIds: const [],
+    ));
+
+    final sau = (await db.categoryDao.getById('con-an'))!;
+    expect(sau.parentId, 'nhom-an',
+        reason: 'Bản sao ẩn không hiện ở màn Nhóm nên người dùng không thể bỏ chọn nó — gỡ nó là mất nhóm im lặng.');
+    expect(sau.syncStatus, truoc.syncStatus, reason: 'Không đánh dấu pending: đẩy lên sẽ mang Idgroup = null.');
+    expect(sau.updatedAt, truoc.updatedAt);
+    expect((await db.categoryDao.getById('con-thuong'))!.parentId, isNull,
+        reason: 'Con thường không còn trong childIds vẫn bị gỡ như cũ.');
   });
 
   test('rejects a duplicate child name regardless of which group it goes into',

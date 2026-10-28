@@ -361,13 +361,14 @@ class GuiLoDongBo {
   ///
   /// Đường kích hoạt đã gặp thật (G16): người dùng xoá một danh mục cá nhân
   /// mặc định, `PersonalDefaultCategories.ensureMissing()` tạo lại nó với UUID
-  /// mới ở **mỗi lần mở app**, rồi đẩy lên đụng `uq_category_owner_name_classify`
-  /// — index đó không có mệnh đề `WHERE` nên hàng đã xoá mềm vẫn giữ chỗ tên.
+  /// mới ở **mỗi lần mở app**, rồi đẩy lên đụng chỉ mục tên danh mục của server —
+  /// khi ấy chưa có mệnh đề `WHERE` nên hàng đã xoá mềm vẫn giữ chỗ tên. Chỉ mục hiện hành là
+  /// `uq_category_owner_name` (khoá `(Create_by, tên chuẩn hoá)`, có `WHERE "Delete_at" IS NULL`, G108).
   ///
   /// ⚠️ Đường **tự lặp** ấy đã đóng ngày 2026-09-05: `ensureMissing()` không
   /// còn, năm danh mục kia nay thuộc bộ mặc định của backend. Nhưng phép phân
   /// loại này vẫn cần — người dùng xoá rồi tạo lại một danh mục **của chính họ**
-  /// cùng tên vẫn đụng đúng index đó. Khác biệt là nay nó chỉ xảy ra khi người
+  /// cùng tên (hoặc hai máy cùng tạo một tên) vẫn đụng chỉ mục tên. Khác biệt là nay nó chỉ xảy ra khi người
   /// dùng thật sự làm điều ấy, chứ không tự sinh ở mỗi lần mở app.
   static final RegExp _uniqueConstraintPattern = RegExp(
     r'23505|violates unique constraint|unique constraint failed',

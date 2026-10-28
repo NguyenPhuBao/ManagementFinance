@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../auth/presentation/bloc/current_account.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../../domain/category_classify.dart';
 import '../../data/models/category_entity.dart';
 import '../../../../core/di/injection_container.dart';
@@ -302,10 +305,15 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
             onSubmitted: _addKeywordText,
             onChanged: _onKeywordChanged,
             onRemoved: (keyword) => setState(() => _keywords.remove(keyword)),
+            khoa: !context.coQuyen(MaQuyen.categoryKeywordsMatching),
           ),
+          if (!context.coQuyen(MaQuyen.categoryKeywordsMatching)) ...[
+            const SizedBox(height: 8),
+            const DongKhoaQuyen(ma: MaQuyen.categoryKeywordsMatching),
+          ],
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: _saving ? null : _save,
+            onPressed: _saving || !context.coQuyen(MaQuyen.categoryKeywordsMatching) ? null : _save,
             child: Text(_saving ? 'Đang lưu...' : 'Lưu từ khóa'),
           ),
         ],
@@ -419,8 +427,13 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
                       onChanged: _onKeywordChanged,
                       onRemoved: (keyword) =>
                           setState(() => _keywords.remove(keyword)),
+                      khoa: !context.coQuyen(MaQuyen.categoryKeywordsMatching),
                     ),
                   ),
+                  if (!context.coQuyen(MaQuyen.categoryKeywordsMatching)) ...[
+                    const SizedBox(height: 8),
+                    const DongKhoaQuyen(ma: MaQuyen.categoryKeywordsMatching),
+                  ],
                 ],
               ),
             ),
@@ -517,6 +530,7 @@ class _KeywordsEditor extends StatelessWidget {
     required this.onSubmitted,
     required this.onChanged,
     required this.onRemoved,
+    this.khoa = false,
   });
 
   final TextEditingController controller;
@@ -524,6 +538,9 @@ class _KeywordsEditor extends StatelessWidget {
   final ValueChanged<String> onSubmitted;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onRemoved;
+
+  /// Quyền category_keywords_matching (B1): không thêm / gỡ; từ khoá đã có VẪN dùng để gợi ý (chốt 8).
+  final bool khoa;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -536,13 +553,14 @@ class _KeywordsEditor extends StatelessWidget {
                 .map((keyword) => InputChip(
                       label: Text(keyword),
                       deleteButtonTooltipMessage: 'Gỡ từ khóa $keyword',
-                      onDeleted: () => onRemoved(keyword),
+                      onDeleted: khoa ? null : () => onRemoved(keyword),
                     ))
                 .toList(),
           ),
           const SizedBox(height: 12),
           TextField(
             key: const Key('keyword-input'),
+            enabled: !khoa,
             controller: controller,
             onChanged: onChanged,
             onSubmitted: onSubmitted,

@@ -33,7 +33,10 @@ import 'features/notification/application/notification_scanner.dart';
 import 'features/notification/application/nhan_tin_he_thong.dart';
 import 'core/ui/thong_bao_nhanh.dart';
 import 'features/ai_edge/domain/canary_cong_cu.dart';
+import 'features/notification/application/reminder_scheduler.dart';
+import 'features/premium/data/co_quyen_nen.dart';
 import 'features/premium/data/repositories/goi_repository.dart';
+import 'features/premium/domain/quyen_tinh_nang.dart';
 import 'features/premium/presentation/bloc/goi_cubit.dart';
 import 'features/premium/presentation/bloc/phien_goi_tu_auth.dart';
 import 'shared/widgets/app_toast.dart';
@@ -98,6 +101,15 @@ void main() async {
     ..noiPhien(authBloc.stream.map(phienGoiTu))
     ..noiVongDoi(sl<AppLifecycleWatcher>().stream)
     ..noiSuKien(sl<RealtimeChannel>().events);
+
+  // B1 (spec 2026-10-27 mục 5): admin đổi quyền nhắc (socket → lamMoi) → lịch hệ điều hành đặt / huỷ NGAY, không chờ lượt
+  // quét kế. `resync` THƯỜNG đủ: quyền tắt là lịch rời tập muốn (bị huỷ), quyền bật là lịch chưa chờ (được đặt) — `datLai`
+  // chỉ cho đổi giờ (G59). Nối MỘT lần cho cả vòng đời app, cùng lý do với khối trên.
+  noiKhiQuyenDoi(
+    sl<GoiRepository>(),
+    const {MaQuyen.dailyRecordingReminder, MaQuyen.billReminderNotifications},
+    (id) => sl<ReminderScheduler>().resync(id),
+  );
 
   // Tự chuyển tiền chạy nền (spec 2026-10-10 mục 3.2): worker tới giờ mà app
   // đang mở → quét trong CHÍNH engine này (không mở kết nối SQLite thứ hai).

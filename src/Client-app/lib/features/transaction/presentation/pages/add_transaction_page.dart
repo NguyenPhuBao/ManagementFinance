@@ -41,6 +41,7 @@ import '../../../category/domain/category_suggestion_engine.dart';
 import '../../../../features/category/domain/phan_loai_ghi_chu.dart';
 import '../../../../features/category/domain/phan_loai_so_tien.dart';
 import '../../../../features/premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/transaction_entity.dart';
@@ -199,6 +200,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     }
   }
 
+  /// B1: `ai_quick_input` TẠM NGỪNG — ô Nhập nhanh không mời Nâng cấp. Tiêm `laPremium` (test) → không.
+  bool get _tamNgungNhapNhanh =>
+      widget.laPremium == null && context.trangThaiQuyenDoc(MaQuyen.aiQuickInput) == TrangThaiQuyen.tamNgung;
+
   /// Lõi form (số tiền, 16 phím, chiều, ví, danh mục, chiều nợ, ngày, phần tách) nằm ở [ThemGiaoDichCubit] — spec
   /// `2026-10-11-tach-trang-them-giao-dich-cubit-design.md`. ⚠️ Đoạn `huong` là LỐI VÀO, không phải sự thật: `type` ghi
   /// xuống SQLite suy từ danh mục (`loaiGhi`, luật 2026-09-05).
@@ -291,6 +296,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         controller: _nhapNhanhController,
         focusNode: _nhapNhanhFocus,
         laPremium: _laPremium,
+        tamNgung: _tamNgungNhapNhanh,
         dangDocAi: _s.dangDocAi,
         ketQua: _s.ketQuaDien,
         onDien: _dienTuCau,
@@ -749,6 +755,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                         isSubmitting: isSubmitting,
                         onKey: _onKeyPress,
                         onLuu: () => _luu(context),
+                        choPhepTinh: context.coQuyen(MaQuyen.inAppCalculator),
                       ),
                     ),
                   ),
@@ -868,7 +875,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       onThemPhan: _themPhan,
       nhacTrung:
           _bienDong != null && _s.trungTrongSo.isNotEmpty ? NhacTrung(d: _bienDong!, trung: _s.trungTrongSo) : null,
-      deXuatTuKhoa: _s.deXuat != null || _s.daThemTuKhoa != null
+      // Quyền `category_keywords_matching` (B1): không đề xuất thêm từ khoá; từ khoá đã có vẫn gợi ý danh mục (chốt 8).
+      deXuatTuKhoa: context.coQuyen(MaQuyen.categoryKeywordsMatching) &&
+              (_s.deXuat != null || _s.daThemTuKhoa != null)
           ? DongDeXuatTuKhoa(
               daThem: _s.daThemTuKhoa,
               deXuat: _s.deXuat,

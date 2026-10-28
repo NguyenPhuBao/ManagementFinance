@@ -1,5 +1,7 @@
 # Danh mục mặc định thành bản sao riêng của từng tài khoản
 
+> ⚠️ 2026-10-27: bản sao nay ẨN khi admin xoá khuôn, đổi theo khi admin sửa tên / biểu tượng / từ khoá, và bộ tạo bản sao so theo TÊN (không xét loại) — spec 2026-10-27-danh-muc-mac-dinh-theo-thao-tac-admin-design.md.
+
 > **Trạng thái: ĐÃ THI CÔNG XONG 2026-09-07** (`2c1055e` … `47dad96`).
 > Kiểm trên `emulator-5554`: tạo 13 bản sao, đẩy `36/36 succeeded`, từ khoá đi
 > cùng, bộ mặc định vẫn nguyên 18 hàng. `flutter test` 1304/1304.
@@ -88,14 +90,14 @@ client cũ, một việc khác hẳn, và vẫn cần cho máy đã cài từ tr
 ## 4. Luật seed — và vì sao nó KHÔNG phải `ensureMissing()`
 
 > Với **mỗi** danh mục mặc định, nếu tài khoản **chưa từng** có danh mục riêng
-> nào cùng (tên chuẩn hoá, `classify`) — **tính cả hàng đã xoá mềm** — thì tạo
+> nào cùng (tên chuẩn hoá, `classify`) (⚠️ từ 2026-10-27 so theo **tên** chuẩn hoá, không xét `classify` — G108) — **tính cả hàng đã xoá mềm** — thì tạo
 > một bản.
 
 ⚠️ "Danh mục riêng nào" nghĩa là **bất kỳ** danh mục thuộc tài khoản, không
 riêng bản do lần seed trước tạo ra. Dự án không đánh dấu "hàng này do seed sinh
 ra", và cũng **không nên** thêm dấu ấy: người dùng tự tay tạo "Ăn uống" trước
 khi seed chạy thì bản sao thứ hai cùng tên vi phạm quy tắc 7 ngay ở client, và
-vi phạm `uq_category_owner_name_classify` khi đẩy lên.
+vi phạm `uq_category_owner_name_classify` khi đẩy lên. (⚠️ chỉ mục hiện hành là `uq_category_owner_name` — chỉ có tên)
 
 Phép đếm theo **từng danh mục**, không theo tài khoản. Đây là chỗ gỡ mâu thuẫn
 giữa hai quyết định đã chốt: "ẩn mặc định cho mọi tài khoản" khiến tài khoản 10

@@ -301,6 +301,33 @@ void main() {
       expect(find.textContaining('Tự trả'), findsNothing);
     });
   });
+
+  group('B1 — quyền bill_reminder_notifications (spec 2026-10-27 mục 3)', () {
+    const tat = {'bill_reminder_notifications': false};
+
+    testWidgets('⭐ form Thêm: chip "Nhắc trước" khoá + băng "Tạm dừng — cần Premium"; công tắc nhắc đẩy VẪN mở',
+        (tester) async {
+      await dung(tester, const BillAddPage(), bloc: BillBloc(repository: _GhiLaiRepository()), quyen: tat);
+      final chip = find.ancestor(of: find.text('7 ngày'), matching: find.byType(GestureDetector)).first;
+      expect(tester.widget<GestureDetector>(chip).onTap, isNull);
+      expect(find.byKey(const Key('dong-khoa-cong-tac-bill_reminder_notifications')), findsOneWidget);
+      expect(find.text('Tạm dừng — cần Premium'), findsOneWidget);
+      final hang = find.ancestor(of: find.text('Bật nhắc nhở thông báo đẩy'), matching: find.byType(Row)).at(1);
+      expect(tester.widget<Switch>(find.descendant(of: hang, matching: find.byType(Switch))).onChanged, isNotNull,
+          reason: 'công tắc nhắc đẩy KHÔNG khoá — tắt nhắc là quyền của người dùng (kết luận 9)');
+    });
+
+    testWidgets('⭐ form Sửa: ô "Nhắc trước hạn" khoá, VẪN hiện "3 ngày" (disabledHint) + băng khoá', (tester) async {
+      await dung(tester, BillEditPage(id: 'b1', bill: _hoaDon(tuTra: false)),
+          bloc: BillBloc(repository: _GhiLaiRepository()), quyen: tat);
+      final o = find.byKey(const ValueKey('bill-reminder-dropdown'));
+      expect(tester.widget<DropdownButtonFormField<String?>>(o).onChanged, isNull);
+      expect(find.descendant(of: o, matching: find.text('3 ngày')), findsOneWidget,
+          reason: 'ô khoá vẫn vẽ mục đang chọn');
+      expect(find.byKey(const Key('dong-khoa-cong-tac-bill_reminder_notifications')), findsOneWidget);
+      expect(find.text('Tạm dừng — cần Premium'), findsOneWidget);
+    });
+  });
 }
 
 class _ApiGoiIm extends Fake implements PaymentApi {

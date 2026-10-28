@@ -13,14 +13,17 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/notification/domain/cham_hdh.dart';
 import 'package:flowmoney/features/notification/data/datasources/os_notifier.dart';
 import 'package:flowmoney/features/notification/domain/notification_prefs.dart';
 import 'package:flowmoney/features/notification/data/notification_prefs_store.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_settings_page.dart';
 import 'package:flowmoney/features/notification/presentation/widgets/cai_dat_thong_bao/hang_nguong.dart';
+import '../../helpers/goi_gia.dart';
 
 class _OsGia implements OsNotifier {
   int soLanXinQuyen = 0;
@@ -667,6 +670,49 @@ void main() {
       expect(store.values, isEmpty,
           reason: 'idaccount CHỈ đến từ phiên đăng nhập. Mặc định về 1 là ghi '
               'tuỳ chọn vào hồ sơ tài khoản admin thật.');
+    });
+  });
+
+  group('B1 — quyền nhắc (spec 2026-10-27 mục 3)', () {
+    Future<void> moTrangCoGoi(WidgetTester tester, GoiCubit goi) async {
+      await tester.pumpWidget(BlocProvider<GoiCubit>.value(
+        value: goi,
+        child: MaterialApp(home: NotificationSettingsPage(idaccount: accountId, store: store, osNotifier: os)),
+      ));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('⭐ daily_recording_reminder tắt → công tắc khoá, GIỮ giá trị; băng "Tạm dừng — cần Premium"', (tester) async {
+      await store.write(accountId, const NotificationPrefs(nhacGhiChepBat: true));
+      await moTrangCoGoi(tester, goiBasic(const {'daily_recording_reminder': false}));
+      final f = find.byKey(NotificationSettingsPage.khoaCongTacGhiChep);
+      await tester.ensureVisible(f);
+      await tester.pumpAndSettle();
+      expect(tester.widget<Switch>(f).onChanged, isNull);
+      expect(tester.widget<Switch>(f).value, isTrue, reason: 'chốt "dừng chạy, giữ công tắc"');
+      expect(find.byKey(const Key('dong-khoa-cong-tac-daily_recording_reminder')), findsOneWidget);
+      expect(find.text('Tạm dừng — cần Premium'), findsOneWidget);
+    });
+
+    testWidgets('⭐ bill_reminder_notifications tắt → ô "Nhắc trước" khoá (vẫn hiện số) + băng khoá', (tester) async {
+      await moTrangCoGoi(tester, goiBasic(const {'bill_reminder_notifications': false}));
+      final f = find.byKey(const ValueKey('nhac-truoc-hoa-don'));
+      await tester.ensureVisible(f);
+      await tester.pumpAndSettle();
+      expect(tester.widget<DropdownButton<int>>(f).onChanged, isNull);
+      expect(find.descendant(of: f, matching: find.text('3 ngày')), findsOneWidget,
+          reason: 'ô khoá vẫn vẽ mục đang chọn');
+      expect(find.byKey(const Key('dong-khoa-cong-tac-bill_reminder_notifications')), findsOneWidget);
+    });
+
+    testWidgets('thiếu khoá → hai chỗ mở như cũ', (tester) async {
+      await moTrangCoGoi(tester, goiBasic(const {}));
+      final f = find.byKey(NotificationSettingsPage.khoaCongTacGhiChep);
+      await tester.ensureVisible(f);
+      await tester.pumpAndSettle();
+      expect(tester.widget<Switch>(f).onChanged, isNotNull);
+      expect(tester.widget<DropdownButton<int>>(find.byKey(const ValueKey('nhac-truoc-hoa-don'))).onChanged, isNotNull);
+      expect(find.byKey(const Key('dong-khoa-cong-tac-bill_reminder_notifications')), findsNothing);
     });
   });
 }

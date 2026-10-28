@@ -208,6 +208,8 @@ class AppRouter {
                     GoRoute(
                       path: 'gan-danh-muc',
                       parentNavigatorKey: _rootNavigatorKey,
+                      // B1 — quyền `quick_category_assignment`.
+                      redirect: redirectTheoQuyen(MaQuyen.quickCategoryAssignment),
                       builder: (ctx, __) => GanDanhMucPage(
                         idaccount: currentAccountIdOrNull(ctx),
                       ),

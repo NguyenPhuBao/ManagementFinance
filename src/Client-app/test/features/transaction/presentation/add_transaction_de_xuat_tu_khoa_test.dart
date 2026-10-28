@@ -7,14 +7,17 @@ import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_suggestion.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/category/domain/phan_loai_ghi_chu.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart';
 import 'package:flowmoney/features/transaction/presentation/pages/choose_category_page.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../helpers/goi_gia.dart';
 import '../../category/presentation/category_test_fakes.dart';
 
 MauGhiChu _m(String c, String ghiChu) =>
@@ -57,7 +60,7 @@ void main() {
 
   late FakeCategoryRepository repo;
 
-  Widget app({Map<String, List<String>> keywords = const {}, GoiYPhanHoiStore? store, ThemeData? theme}) {
+  Widget app({Map<String, List<String>> keywords = const {}, GoiYPhanHoiStore? store, ThemeData? theme, Map<String, bool>? quyen}) {
     repo = FakeCategoryRepository(
       trees: {'chi': treeOf([anUong, diChuyen]), 'thu': treeOf(const []), 'vay_no': treeOf(const [])},
       selectable: [anUong, diChuyen],
@@ -91,7 +94,8 @@ void main() {
         ),
       ],
     );
-    return MaterialApp.router(theme: theme, routerConfig: router);
+    final ung = MaterialApp.router(theme: theme, routerConfig: router);
+    return quyen == null ? ung : BlocProvider<GoiCubit>.value(value: goiBasic(quyen), child: ung);
   }
 
   Future<void> goGhiChu(WidgetTester tester, String ghiChu) async {
@@ -115,6 +119,15 @@ void main() {
 
   final dongThem = find.text('Thêm ‘trà sữa’ làm từ khoá của Ăn uống?', findRichText: true);
   final khoiDeXuat = find.byKey(const Key('de-xuat-tu-khoa'));
+
+  testWidgets('⭐ B1: category_keywords_matching tắt → không đề xuất thêm từ khoá', (tester) async {
+    await tester.pumpWidget(app(quyen: const {'category_keywords_matching': false}));
+    await tester.pumpAndSettle();
+    await goGhiChu(tester, 'trà sữa');
+    await chonQuaBang(tester, 'Ăn uống');
+    expect(khoiDeXuat, findsNothing);
+    expect(dongThem, findsNothing);
+  });
 
   testWidgets('⭐ theme THẬT, 360 × 640: dòng hiện dưới hàng Danh mục, không tràn (bẫy 4.11)', (tester) async {
     tester.view.physicalSize = const Size(360, 640);

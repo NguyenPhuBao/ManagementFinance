@@ -13,6 +13,7 @@ import 'package:flowmoney/core/di/injection_container.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository.dart';
 import 'package:flowmoney/features/transaction/presentation/bloc/transaction_bloc.dart';
@@ -25,6 +26,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'dart:async';
+
+import '../../../helpers/goi_gia.dart';
 
 class _StubAuthRepository implements AuthRepository {
   @override
@@ -71,7 +74,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
   }
 
-  Future<void> moTrang(WidgetTester tester, {Stream<int> Function(int idaccount)? nguon}) async {
+  Future<void> moTrang(WidgetTester tester, {Stream<int> Function(int idaccount)? nguon, GoiCubit? goi}) async {
     final auth = _FixedAuthBloc(AuthSuccess(
       user: UserModel(id: '7', username: 'dat', name: 'Đạt', email: 'dat@example.com'),
     ));
@@ -92,9 +95,10 @@ void main() {
       ],
     );
     addTearDown(router.dispose);
+    final app = MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router);
     await tester.pumpWidget(BlocProvider<AuthBloc>.value(
       value: auth,
-      child: MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+      child: goi == null ? app : BlocProvider<GoiCubit>.value(value: goi, child: app),
     ));
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 50));
@@ -202,6 +206,22 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Gắn nhanh'), findsOneWidget);
 
+    await dongTrang(tester);
+  });
+
+  testWidgets('⭐ B1: quick_category_assignment tắt → thẻ khoá thay thẻ, không nút Gắn nhanh', (tester) async {
+    await moTrang(tester,
+        nguon: (_) => Stream.value(3), goi: goiBasic(const {'quick_category_assignment': false}));
+    expect(find.byKey(const Key('the-khoa-quick_category_assignment')), findsOneWidget);
+    expect(find.text('Gắn nhanh'), findsNothing);
+    expect(find.text('Có 3 giao dịch chưa có danh mục'), findsNothing);
+    await dongTrang(tester);
+  });
+
+  testWidgets('B1: quyền tắt nhưng N = 0 → không thẻ khoá (không có gì để khoá)', (tester) async {
+    await moTrang(tester,
+        nguon: (_) => Stream.value(0), goi: goiBasic(const {'quick_category_assignment': false}));
+    expect(find.byKey(const Key('the-khoa-quick_category_assignment')), findsNothing);
     await dongTrang(tester);
   });
 }

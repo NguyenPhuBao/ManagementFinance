@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../domain/ban_sao_mac_dinh.dart';
 import '../../domain/category_classify.dart';
 import '../../../../core/category/category_name.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/sync/sync_engine.dart';
+import '../danh_sach_chon_danh_muc.dart';
 import '../models/category_entity.dart';
 import '../models/category_tree.dart';
 import 'category_management_repository.dart';
@@ -31,9 +33,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     // (toàn cục) vào nhóm của từng tài khoản. Nay mỗi tài khoản có bản sao
     // riêng nên việc gán nhóm nằm gọn trong `parentId` của chính hàng danh
     // mục, và dòng thứ hai không còn ảnh hưởng gì tới cây.
-    return db.categoryDao
-        .watchCategoryRows(accountId, classify)
-        .map((rows) => _treeFromRows(rows, accountId));
+    return theoDoiHangChonDuoc(db, accountId, classify).map((rows) => _treeFromRows(rows, accountId));
   }
 
   @override
@@ -41,10 +41,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     required int accountId,
     required String classify,
   }) async =>
-      _treeFromRows(
-        await db.categoryDao.getCategoryRows(accountId, classify),
-        accountId,
-      );
+      _treeFromRows(await hangChonDuoc(db, accountId, classify), accountId);
 
   @override
   Future<void> saveChild(CategoryChildDraft draft) async {
@@ -75,16 +72,12 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       parentId: draft.parentId,
     );
     final classify = parent?.classify ?? draft.classify;
-    if (await _hasDuplicateName(
+    await _nemNeuTrungTen(
       accountId: draft.accountId,
       excludingId: draft.id,
       name: name,
       currentName: existing?.name,
-    )) {
-      throw const CategoryValidationException(
-        'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
-      );
-    }
+    );
 
     final id = draft.id ?? const Uuid().v4();
     final now = DateTime.now();
@@ -129,16 +122,12 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         throw const CategoryValidationException(
             'Danh mục con không thể là nhóm.');
       }
-      if (await _hasDuplicateName(
+      await _nemNeuTrungTen(
         accountId: draft.accountId,
         excludingId: draft.id,
         name: name,
         currentName: existing?.name,
-      )) {
-        throw const CategoryValidationException(
-          'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
-        );
-      }
+      );
 
       final childIds = draft.childIds.toSet();
       final personalChildren = <Category>[];
@@ -181,11 +170,20 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         updatedAt: now,
       ));
 
-      // Gỡ các danh mục con cũ ra khỏi nhóm — parentId đổi nên phải đẩy lại.
+      // Gỡ các danh mục con cũ ra khỏi nhóm — parentId đổi nên phải đẩy lại. TRỪ con đang ẩn theo khuôn: màn Nhóm chỉ
+      // liệt kê con không ẩn nên người dùng không thể bỏ chọn nó — gỡ là mất nhóm im lặng và đẩy Idgroup = null lên server.
+      final khuon = (await db.categoryDao.getTatCaKhuon()).map(CategoryEntity.fromDrift).toList();
+      final conDangAn = [
+        for (final c in await (db.select(db.categories)
+              ..where((row) => row.idaccount.equals(draft.accountId) & row.parentId.equals(id)))
+            .get())
+          if (dangAnTheoKhuon(CategoryEntity.fromDrift(c), khuon)) c.id,
+      ];
       await (db.update(db.categories)
             ..where((row) =>
                 row.idaccount.equals(draft.accountId) &
-                row.parentId.equals(id)))
+                row.parentId.equals(id) &
+                row.id.isNotIn(conDangAn)))
           .write(CategoriesCompanion(
         parentId: const Value(null),
         syncStatus: const Value('pending'),
@@ -325,7 +323,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     required int accountId,
     required String classify,
   }) async =>
-      (await db.categoryDao.getCategoryRows(accountId, classify))
+      (await hangChonDuoc(db, accountId, classify))
           .where((category) => !category.isGroup)
           .map(CategoryEntity.fromDrift)
           .toList();
@@ -345,7 +343,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
   @override
   Future<List<CategoryEntity>> selectableChildrenAll({required int accountId}) async {
     // Đi qua `selectableChildren` từng classify để hưởng đúng phép khử trùng
-    // lặp theo tên của `getCategoryRows` (bản seed cũ ↔ bản UUID từ backend).
+    // lặp theo tên của `hangChonDuoc` (bản seed cũ ↔ bản UUID từ backend; cũng là cửa lọc bản sao ẩn theo khuôn).
     final perClassify = await Future.wait(kCategoryClassifies.map(
       (classify) =>
           selectableChildren(accountId: accountId, classify: classify),
@@ -367,8 +365,9 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         .map(CategoryEntity.fromDrift)
         .toList();
     // Danh mục mặc định KHÔNG còn có mặt ở đây: `rows` đến từ
-    // `watchCategoryRows`/`getCategoryRows`, và từ 2026-09-07 hai hàm ấy chỉ
-    // trả danh mục của chính tài khoản. Mỗi người có bản sao riêng, nên việc
+    // `theoDoiHangChonDuoc`/`hangChonDuoc` (`danh_sach_chon_danh_muc.dart`), và
+    // từ 2026-09-07 chúng chỉ trả danh mục của chính tài khoản (từ 2026-10-27
+    // còn bỏ bản sao đang ẩn theo khuôn). Mỗi người có bản sao riêng, nên việc
     // gán nhóm nay biểu diễn được bằng `parentId` — thứ vốn đã đồng bộ lên
     // backend qua cột `Idgroup`.
     final children =
@@ -416,14 +415,14 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
   /// dùng chung một không gian tên, vì người dùng nhìn thấy tất cả trong cùng
   /// một danh sách chọn.
   ///
-  /// Lưu ý về mức chặt: PostgreSQL hiện vẫn ràng buộc theo
-  /// `(Create_by, NameCategory, Classify)` — tức KHÁC quy tắc này ở cả hai
-  /// chiều. Client chặt hơn ở chỗ bỏ `classify` và tính cả danh mục mặc định;
-  /// nhưng CSDL lại chặt hơn ở chỗ hàng đã xoá mềm vẫn giữ chỗ và tên phân biệt
-  /// hoa/thường. Cho tới khi backend thay hai unique index, đây là nơi DUY NHẤT
-  /// bảo đảm quy tắc — mà `/sync/push` chỉ đánh dấu thao tác hỏng là `failed`
-  /// nên vi phạm lọt qua sẽ không hiện ra màn hình.
-  Future<bool> _hasDuplicateName({
+  /// Lưu ý về mức chặt: chỉ mục hiện hành của PostgreSQL là `uq_category_owner_name`
+  /// — khoá `(Create_by, tên chuẩn hoá NFC)`, KHÔNG có `Classify` — nên cùng quy
+  /// tắc với client (ngược với bản mô tả cũ ở đây, G108). Hàng đã xoá mềm không
+  /// giữ chỗ phía server (`WHERE "Delete_at" IS NULL`), còn client vẫn đếm cả
+  /// chúng cho bộ tạo bản sao. `/sync/push` chỉ đánh dấu thao tác hỏng là
+  /// `failed` nên vi phạm lọt qua không hiện ra màn hình — chốt ở đây cộng chốt
+  /// ở CSDL là hai lớp bảo đảm quy tắc.
+  Future<Category?> _hangTrungTen({
     required int accountId,
     required String? excludingId,
     required String name,
@@ -436,11 +435,33 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     // có thể đang giữ một danh mục riêng trùng tên với danh mục mặc định.
     // Chặn tuyệt đối sẽ khiến họ không sửa nổi danh mục đó nữa — kể cả chỉ đổi
     // icon — và không có cách nào thoát ngoài việc đổi tên.
-    if (currentName != null && _normalize(currentName) == target) return false;
+    if (currentName != null && _normalize(currentName) == target) return null;
 
     final inUse = await db.categoryDao.getNamesInUse(accountId);
-    return inUse.any((category) =>
-        category.id != excludingId && _normalize(category.name) == target);
+    for (final category in inUse) {
+      if (category.id != excludingId && _normalize(category.name) == target) return category;
+    }
+    return null;
+  }
+
+  /// Ném [CategoryValidationException] khi trùng tên. Hàng va chạm là bản sao đang ẩn theo khuôn → câu riêng (chốt 4
+  /// spec 2026-10-27): bản ẩn VẪN chiếm tên — server cũng tính nó (`uq_category_owner_name`, chỉ có tên).
+  Future<void> _nemNeuTrungTen({
+    required int accountId,
+    required String? excludingId,
+    required String name,
+    String? currentName,
+  }) async {
+    final trung = await _hangTrungTen(
+        accountId: accountId, excludingId: excludingId, name: name, currentName: currentName);
+    if (trung == null) return;
+    final khuon = (await db.categoryDao.getTatCaKhuon()).map(CategoryEntity.fromDrift).toList();
+    if (dangAnTheoKhuon(CategoryEntity.fromDrift(trung), khuon)) {
+      throw CategoryValidationException(cauTrungBanSaoDangAn(trung.name));
+    }
+    throw const CategoryValidationException(
+      'Tên danh mục đã tồn tại. Mỗi tài khoản không được có hai danh mục trùng tên, kể cả khác loại hay khác nhóm.',
+    );
   }
 
   bool _hasDuplicateAssignedChildName(Iterable<Category> children) {

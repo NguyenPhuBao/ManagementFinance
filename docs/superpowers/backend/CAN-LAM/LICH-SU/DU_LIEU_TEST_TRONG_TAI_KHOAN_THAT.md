@@ -1,5 +1,9 @@
 # Script test backend ghi ví mang id KHÔNG phải UUID vào tài khoản dev thật `quangdat` (18) — ví kẹt hàng đợi đẩy của client; xin dọn dữ liệu test và sửa script (mục 48)
 
+> 🗂️ **2026-10-28 — đơn 48 đã gộp vào [`../VIEC_BACKEND_CON_LAI.md`](../VIEC_BACKEND_CON_LAI.md), mục 6 (`48.1` – `48.3`).**
+> Tệp này nay chỉ là **lịch sử** (lý do, số đo, các lượt soát cũ): không cập nhật nữa, đừng ghi trả lời vào đây — việc còn lại và
+> bảng trả lời ở tệp gộp. Số dòng mã / tài liệu trong tệp này là ảnh chụp lúc viết.
+
 > 🔎 **Client soát lượt báo xong 2026-10-27** (`850fe23b`, client gộp `bc0b28ce`; đọc mã HEAD, CSDL Supabase của `.env` chỉ `SELECT`): **chưa xong — chuyển lại `CAN-LAM/`.**
 > - **Đạt:** script không còn chọn admin (`idrole: 1`); ví test UUID ngẫu nhiên; dọn trong `finally`.
 > - **Việc 2 — vẫn sai hướng:** `Test/test_data_security_encryption_and_masking.js:236-238` chọn **người dùng thật** đầu tiên có

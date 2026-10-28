@@ -1,9 +1,9 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/category/category_name.dart';
 import '../../../core/database/app_database.dart';
 import '../data/models/category_entity.dart';
-import '../domain/ban_sao_mac_dinh.dart';
 
 /// Tạo cho mỗi tài khoản một **bản sao riêng** của bộ danh mục mặc định.
 ///
@@ -20,8 +20,8 @@ import '../domain/ban_sao_mac_dinh.dart';
 /// ## Luật
 ///
 /// Với **mỗi** danh mục mặc định: nếu tài khoản **chưa từng** có danh mục riêng
-/// nào cùng (tên chuẩn hoá, `classify`) — **tính cả hàng đã xoá mềm** — thì tạo
-/// một bản.
+/// nào cùng **tên chuẩn hoá** (không xét `classify` — từ 2026-10-27, khớp quy tắc 7
+/// và `uq_category_owner_name`) — **tính cả hàng đã xoá mềm** — thì tạo một bản.
 ///
 /// ⚠️ Ba chữ "kể cả đã xoá" là khác biệt **duy nhất** với `ensureMissing()` cũ,
 /// thứ đã sinh ra **G16**: nó chỉ nhìn hàng đang sống, nên xoá một danh mục là
@@ -54,9 +54,11 @@ class DefaultCategorySeeder {
 
     final daCo = (await db.categoryDao.getOwnedIncludingDeleted(idaccount)).map(CategoryEntity.fromDrift).toList();
     var daTao = 0;
+    final tenDaTao = <String>{};
 
     for (final mau in khuon) {
-      if (_daCoBanSao(daCo, mau)) continue;
+      // Hai khuôn sống cùng tên khác loại chỉ đẻ MỘT bản sao: tên vừa tạo cũng chiếm chỗ trong cùng lượt.
+      if (_daCoBanSao(daCo, mau) || tenDaTao.contains(normalizeCategoryName(mau.name))) continue;
 
       // UUID chứ không phải slug: `resolveCategoryId` chỉ chấp nhận danh mục
       // người dùng khi id là UUID hợp lệ, id dạng slug sẽ bị trả null và giao
@@ -100,21 +102,21 @@ class DefaultCategorySeeder {
         toCategoryId: id,
       );
 
+      tenDaTao.add(normalizeCategoryName(mau.name));
       daTao++;
     }
 
     return daTao;
   }
 
-  /// Tài khoản đã **từng** có bản sao của [mau] chưa.
+  /// Tài khoản đã **từng** có (kể cả đã xoá mềm — [daCo]) một danh mục cùng **TÊN** chuẩn hoá với [mau] chưa.
   ///
-  /// "Từng" chứ không phải "đang có": [daCo] cố ý bao gồm cả hàng đã xoá mềm.
-  ///
-  /// So **cả tên lẫn `classify`**: hai thứ cùng tên khác loại là hai khái niệm
-  /// khác nhau, và `uq_category_owner_name_classify` phía CSDL cũng cho chúng
-  /// cùng tồn tại.
+  /// So theo TÊN, không theo loại (2026-10-27): chỉ mục `uq_category_owner_name` của server khoá (Create_by, tên chuẩn hoá)
+  /// — không có `Classify` — và quy tắc 7 cũng vậy. So cả loại (bản trước) là tạo bản sao *"Trả nợ"* Vay/nợ cho người đã
+  /// có *"Trả nợ"* Chi → đẩy lên hỏng vĩnh viễn → `mergeDuplicatePersonalCategories` xoá cứng → tạo lại, lặp mãi.
+  /// `laBanSaoMacDinh` (tên + loại) vẫn là phép NHẬN DIỆN bản sao cho luật ẩn và trần Premium.
   bool _daCoBanSao(List<CategoryEntity> daCo, Category mau) {
-    final khuon = [CategoryEntity.fromDrift(mau)];
-    return daCo.any((c) => laBanSaoMacDinh(c, khuon));
+    final ten = normalizeCategoryName(mau.name);
+    return daCo.any((c) => normalizeCategoryName(c.name) == ten);
   }
 }

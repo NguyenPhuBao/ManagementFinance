@@ -4,9 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 
-/// Test quét `lib/` thứ 21 (spec phân quyền client 2026-10-08 mục 6).
+/// Test quét `lib/` thứ 21 (spec phân quyền client 2026-10-08 mục 6). Từ B1 (2026-10-27) quét cả `quyenPremium` /
+/// `tranPremium` (cột Premium).
 ///
-/// Bảng quyền server chỉ được đọc qua `duocDung` — đọc thẳng `quyenTinhNang` là bỏ qua phép xét hạn (Premium hết hạn
+/// Bảng quyền server chỉ được đọc qua `trangThaiQuyen` / `duocDung` / `dacQuyenPremium` — đọc thẳng `quyenTinhNang` là bỏ qua phép xét hạn (Premium hết hạn
 /// offline vẫn mở mọi tính năng — lỗi 1 của mã backend viết sẵn). Và mã quyền server chỉ nằm ở `MaQuyen`: chuỗi rải
 /// rác là chỗ thứ hai phải đổi khi admin… không, khi BACKEND đổi tên khoá.
 void main() {
@@ -29,15 +30,20 @@ void main() {
     final tep = quetLib();
     expect(tep.keys, contains(noiMaQuyen));
     expect(tep[noiMaQuyen], contains('quyenTinhNang'));
+    expect(tep['lib/features/premium/data/models/trang_thai_goi.dart'], contains('tranPremium'));
   });
 
-  test('quyenTinhNang chỉ được đọc ở quyen_tinh_nang.dart (và kho ở trang_thai_goi.dart)', () {
+  // So chuỗi con, phân biệt hoa thường — tên biến chứa `tranPremium` / `quyenPremium` ở ngoài hai tệp cho phép là đỏ,
+  // đặt tên khác.
+  test('quyenTinhNang / quyenPremium / tranPremium chỉ được đọc ở quyen_tinh_nang.dart (và kho ở trang_thai_goi.dart)', () {
     final viPham = [
       for (final e in quetLib().entries)
-        if (e.value.contains('quyenTinhNang') && !choPhepDoc.contains(e.key)) e.key,
+        for (final ten in const ['quyenTinhNang', 'quyenPremium', 'tranPremium'])
+          if (e.value.contains(ten) && !choPhepDoc.contains(e.key)) '${e.key}: $ten',
     ];
     expect(viPham, isEmpty,
-        reason: 'Đọc bảng quyền ngoài `duocDung` là bỏ qua phép xét hạn — dùng `GoiCubit.coQuyen(MaQuyen.…)`.');
+        reason: 'Đọc bảng quyền / cột Premium ngoài `trangThaiQuyen` / `dacQuyenPremium` là bỏ qua phép xét bảng của '
+            'gói hiệu lực — dùng `GoiCubit.coQuyen` / `trangThaiCua(MaQuyen.…)` (B1, spec 2026-10-27 mục 2).');
   });
 
   test('mã quyền server chỉ nằm ở MaQuyen', () {

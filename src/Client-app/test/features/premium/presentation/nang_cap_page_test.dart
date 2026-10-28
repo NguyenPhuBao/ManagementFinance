@@ -16,6 +16,7 @@ import 'package:flowmoney/features/premium/data/goi_store.dart';
 import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
 import 'package:flowmoney/features/premium/data/repositories/don_thanh_toan_repository_impl.dart';
 import 'package:flowmoney/features/premium/data/models/don_thanh_toan.dart';
+import 'package:flowmoney/features/premium/data/models/tran_goi.dart';
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
@@ -112,9 +113,11 @@ void main() {
   setUp(() => suKien = StreamController<RealtimeEvent>.broadcast());
   tearDown(() => suKien.close());
 
-  Future<GoiCubit> goi({required bool premium, DateTime? hetHan}) async {
+  Future<GoiCubit> goi({required bool premium, DateTime? hetHan, TrangThaiGoi? trangThai}) async {
     final kho = InMemoryGoiStore();
-    if (premium) {
+    if (trangThai != null) {
+      await kho.ghi(10, trangThai);
+    } else if (premium) {
       await kho.ghi(
           10,
           TrangThaiGoi(
@@ -140,8 +143,9 @@ void main() {
     _ApiGia? api,
     DateTime? hetHan,
     bool choThayNgay = false,
+    TrangThaiGoi? trangThai,
   }) async {
-    final cubit = await goi(premium: premium, hetHan: hetHan);
+    final cubit = await goi(premium: premium, hetHan: hetHan, trangThai: trangThai);
     final router = GoRouter(initialLocation: '/premium', routes: [
       GoRoute(
         path: '/premium',
@@ -205,6 +209,103 @@ void main() {
     await dung(tester, premium: false, quyen: MaQuyen.cashflowForecast);
     expect(find.text('Dự báo 30 ngày tới là tính năng Premium.'), findsOneWidget);
     expect(find.byKey(const Key('nang-cap-cau-quyen')), findsOneWidget);
+    expect(find.byKey(const Key('nang-cap-gia')), findsOneWidget,
+        reason: 'đối chứng của I2: quyền CẦN Premium thì mua là mở — giá + nút ở lại');
+    expect(find.byKey(const Key('nang-cap-thanh-toan')), findsOneWidget);
+  });
+
+  group('B1 — câu mở đầu theo trạng thái quyền và trần hiệu lực (spec 2026-10-27 mục 4)', () {
+    testWidgets('⭐ Premium, bảng tắt export_reports, ?quyen=export_reports → "… hiện đang tạm ngừng."', (tester) async {
+      await dung(tester,
+          premium: true,
+          quyen: MaQuyen.exportReports,
+          trangThai: TrangThaiGoi(
+              loai: LoaiGoi.premium,
+              hetHan: DateTime(2026, 11, 5, 8),
+              nhanLuc: now,
+              quyenTinhNang: const {'export_reports': false}));
+      expect(find.text('Xuất báo cáo hiện đang tạm ngừng.'), findsOneWidget);
+      expect(find.text('Xuất báo cáo là tính năng Premium.'), findsNothing);
+      // I2 (người dùng chốt 2026-10-28): tạm ngừng không mở lại bằng tiền → ẩn giá + nút Gia hạn; Lịch sử mua ở lại.
+      expect(find.byKey(const Key('nang-cap-gia')), findsNothing, reason: 'tạm ngừng: không chào giá');
+      expect(find.byKey(const Key('nang-cap-thanh-toan')), findsNothing,
+          reason: 'mua / gia hạn cũng không mở được tính năng admin đang tắt');
+      expect(find.byKey(const Key('nang-cap-lich-su')), findsOneWidget);
+      expect(find.text('ĐẶC QUYỀN PREMIUM'), findsOneWidget);
+    });
+
+    testWidgets('⭐ I2: có cả ?tran= lẫn ?quyen= tạm ngừng → câu TRẦN thắng, nút mua ở lại', (tester) async {
+      await dung(tester,
+          premium: false,
+          tran: LoaiTran.vi,
+          quyen: MaQuyen.exportReports,
+          trangThai: TrangThaiGoi(
+              loai: LoaiGoi.basic,
+              nhanLuc: now,
+              quyenTinhNang: const {'export_reports': false},
+              quyenPremium: const {'export_reports': false}));
+      expect(find.text('Bạn đã dùng 3/3 ví của gói Basic.'), findsOneWidget);
+      expect(find.byKey(const Key('nang-cap-cau-quyen')), findsNothing);
+      expect(find.byKey(const Key('nang-cap-thanh-toan')), findsOneWidget,
+          reason: 'màn đang nói về TRẦN ví — mua Premium là nới trần, nút phải còn');
+    });
+
+    testWidgets('⭐ Premium, trần cột Premium 10 ví, ?tran=vi → "Gói Premium hiện cho tạo tối đa 10 ví."', (tester) async {
+      await dung(tester,
+          premium: true,
+          tran: LoaiTran.vi,
+          trangThai: TrangThaiGoi(
+              loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5, 8), nhanLuc: now, tran: const TranGoi(vi: 10)));
+      expect(find.text('Gói Premium hiện cho tạo tối đa 10 ví.'), findsOneWidget);
+    });
+
+    testWidgets('⭐ I1: Premium, trần cột Premium 10 ví, ?tran=vi → đặc quyền "Tới 10 ví", KHÔNG "Không giới hạn ví"',
+        (tester) async {
+      await dung(tester,
+          premium: true,
+          tran: LoaiTran.vi,
+          trangThai: TrangThaiGoi(
+              loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5, 8), nhanLuc: now, tran: const TranGoi(vi: 10)));
+      expect(find.text('Gói Premium hiện cho tạo tối đa 10 ví.'), findsOneWidget);
+      expect(find.text('Không giới hạn ví'), findsNothing,
+          reason: 'câu mở đầu nói tối đa 10 ví — danh sách ✓ ngay dưới không được nói "Không giới hạn ví"');
+      expect(find.text('Tới 10 ví'), findsOneWidget);
+    });
+
+    testWidgets('⭐ G109 trên màn: Premium hết hạn lúc offline, ?tran=vi → câu Basic 3/3 (không phải "null/null")',
+        (tester) async {
+      await dung(tester,
+          premium: false,
+          tran: LoaiTran.vi,
+          trangThai: TrangThaiGoi(
+              loai: LoaiGoi.premium,
+              hetHan: DateTime(2026, 10, 6, 9),
+              nhanLuc: DateTime(2026, 10, 5),
+              tran: const TranGoi()));
+      expect(find.text('Bạn đã dùng 3/3 ví của gói Basic.'), findsOneWidget);
+    });
+
+    testWidgets('Premium còn hạn, quyền mở, ?quyen= → không câu khoá', (tester) async {
+      await dung(tester, premium: true, quyen: MaQuyen.cashflowForecast);
+      expect(find.byKey(const Key('nang-cap-cau-quyen')), findsNothing);
+      expect(find.byKey(const Key('nang-cap-han')), findsOneWidget);
+    });
+
+    testWidgets('Basic, cột Premium cũng tắt → ?quyen= nói tạm ngừng', (tester) async {
+      await dung(tester,
+          premium: false,
+          quyen: MaQuyen.exportReports,
+          trangThai: TrangThaiGoi(
+              loai: LoaiGoi.basic,
+              nhanLuc: now,
+              quyenTinhNang: const {'export_reports': false},
+              quyenPremium: const {'export_reports': false}));
+      expect(find.text('Xuất báo cáo hiện đang tạm ngừng.'), findsOneWidget);
+      expect(find.byKey(const Key('nang-cap-gia')), findsNothing);
+      expect(find.byKey(const Key('nang-cap-thanh-toan')), findsNothing,
+          reason: 'I2: Basic mua Premium cũng không mở — cột Premium cũng tắt');
+      expect(find.byKey(const Key('nang-cap-lich-su')), findsOneWidget);
+    });
   });
 
   testWidgets('?tran=vi: câu mở đầu nêu 3/3 ví', (tester) async {

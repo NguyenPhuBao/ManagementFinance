@@ -417,7 +417,7 @@ Mã màn ghi vào bảng mục 5 `PREMIUM_FEATURE.md`.
 - `CLAUDE.md` — hàng Premium (hôm nay còn ghi *mở `checkoutUrl`*, *hỏi 3 s*, các tệp ở chỗ cũ).
 - Spec `2026-10-06-premium-payos-client-design.md` — khối 🔧 ở câu 7 (QR) và mục 9.3 (không tự mở trang PayOS), trỏ sang
   bản này; không sửa thân.
-- `docs/superpowers/backend/CAN-LAM/SOAT_SAU_GOP_D72CCD45.md` — ghi chú: client đã có lối xác nhận ở Lịch sử mua (mặc định
+- `docs/superpowers/backend/CAN-LAM/LICH-SU/SOAT_SAU_GOP_D72CCD45.md` — ghi chú: client đã có lối xác nhận ở Lịch sử mua (mặc định
   của câu hỏi *không hạn chờ* nay thành hiện thực).
 - `docs/PROJECT_CONTEXT.md` mục 14 — khối của lượt.
 

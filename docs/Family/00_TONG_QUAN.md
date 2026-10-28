@@ -18,7 +18,7 @@
 > | `03_MUC_TIEU_CHUNG.md` | 3 | Mục tiêu chung = công tắc *"Đặt mục tiêu"* trên ví chung |
 >
 > **Nền của bộ này:** spec `docs/superpowers/specs/2026-10-23-gia-dinh-nen-mong-design.md` (phần 1, mục 11 = chỗ kế hoạch
-> thi công lát 1 khác thân) và đơn **50** `docs/superpowers/backend/CAN-LAM/GIA_DINH_NEN_MONG.md` (bản chép ở
+> thi công lát 1 khác thân) và đơn **50** `docs/superpowers/backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md` (bản chép ở
 > `docs/Family/GIA_DINH_NEN_MONG.md`). **Bộ tài liệu này thắng hai tệp ấy khi lệch** — chỗ lệch liệt kê ở mục 6.
 
 ---

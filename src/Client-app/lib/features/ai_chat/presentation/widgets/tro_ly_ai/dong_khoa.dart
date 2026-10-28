@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../../premium/presentation/widgets/nut_nang_cap.dart';
 
-/// Băng khoá — một câu + một nút theo lý do. Basic → *Nâng cấp*
+/// Băng khoá — một câu + một nút theo lý do (tạm ngừng: không nút). Basic → *Nâng cấp*
 /// (spec Premium 8.1; màn Stitch *"Trợ lý AI - Khoá Premium (Basic)"*
 /// `2b3fa0f69486498584fdf3a243f30147`); hai lý do cũ → *Cài đặt AI* như trước.
 class DongKhoa extends StatelessWidget {
@@ -16,10 +16,14 @@ class DongKhoa extends StatelessWidget {
     required this.cau,
     required this.goiBasic,
     required this.onCaiDatAi,
+    this.tamNgung = false,
   });
 
   final String cau;
   final bool goiBasic;
+
+  /// B1: admin tắt — không nút nào (mua không mở, Cài đặt AI không giúp).
+  final bool tamNgung;
   final VoidCallback onCaiDatAi;
 
   @override
@@ -28,9 +32,9 @@ class DongKhoa extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              goiBasic
-                  ? Icons.workspace_premium_outlined
-                  : Icons.info_outline,
+              tamNgung
+                  ? Icons.smart_toy_outlined
+                  : (goiBasic ? Icons.workspace_premium_outlined : Icons.info_outline),
               size: 16,
               color: AppColors.onSurfaceVariant,
             ),
@@ -44,7 +48,7 @@ class DongKhoa extends StatelessWidget {
             ),
             if (goiBasic)
               const NutNangCap()
-            else
+            else if (!tamNgung)
               TextButton(
                 onPressed: onCaiDatAi,
                 child: const Text('Cài đặt AI'),

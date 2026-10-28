@@ -25,6 +25,7 @@ import 'package:flowmoney/core/utils/gioi_han_do_dai.dart';
 import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/repositories/wallet_repository.dart';
 import 'package:flowmoney/features/wallet/domain/rang_buoc_vi.dart';
@@ -34,6 +35,7 @@ import 'package:flowmoney/shared/theme/app_theme.dart';
 
 import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
 import '../../helpers/bat_thong_bao.dart';
+import '../../helpers/goi_gia.dart';
 
 class _StubAuthRepository implements AuthRepository {
   @override
@@ -110,7 +112,7 @@ Future<void> _chamSauKhiCuon(WidgetTester tester, Finder f) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _moTrang(WidgetTester tester, _RepoGia repo, {double rong = 411}) async {
+Future<void> _moTrang(WidgetTester tester, _RepoGia repo, {double rong = 411, GoiCubit? goi}) async {
   if (sl.isRegistered<WalletRepository>()) {
     await sl.unregister<WalletRepository>();
   }
@@ -160,17 +162,23 @@ Future<void> _moTrang(WidgetTester tester, _RepoGia repo, {double rong = 411}) a
   );
   addTearDown(router.dispose);
 
+  final app = MaterialApp.router(
+    theme: AppTheme.lightTheme,
+    routerConfig: router,
+  );
   await tester.pumpWidget(
     BlocProvider<AuthBloc>.value(
       value: auth,
-      child: MaterialApp.router(
-        theme: AppTheme.lightTheme,
-        routerConfig: router,
-      ),
+      child: goi == null ? app : BlocProvider<GoiCubit>.value(value: goi, child: app),
     ),
   );
   await tester.pumpAndSettle();
 }
+
+/// Công tắc "Tính vào tổng số dư tài sản" — hàng không mang `Key`, tìm theo nhãn.
+Switch _congTacTinhVaoTong(WidgetTester tester) => tester.widget<Switch>(find.descendant(
+    of: find.ancestor(of: find.text('Tính vào tổng số dư tài sản'), matching: find.byType(Row)).first,
+    matching: find.byType(Switch)));
 
 /// Ô tên ví tìm theo hint, KHÔNG theo thứ tự: ô đầu tiên trên màn là ô số dư
 /// (theo thiết kế Stitch), và gõ tên vào đó là tên rỗng — trang dừng ở "Vui
@@ -312,5 +320,23 @@ void main() {
             'bản này mọi lỗi thêm ví đều im lặng: trang pop, ví không có.');
     expect(find.text('Thêm Ví Mới'), findsOneWidget);
     expect(find.text('GỐC'), findsNothing);
+  });
+
+  group('B1 — quyền wallet_exclude_total ở màn Thêm (I3, người dùng chốt 2026-10-28)', () {
+    testWidgets('⭐ không quyền → công tắc "Tính vào tổng" KHOÁ ở BẬT + băng "Cần Premium" (ví mới tắt = loại mới)',
+        (tester) async {
+      await _moTrang(tester, _RepoGia([_vi('a', name: 'Tiền mặt')]),
+          goi: goiBasic(const {'wallet_exclude_total': false}));
+      final cong = _congTacTinhVaoTong(tester);
+      expect(cong.value, isTrue);
+      expect(cong.onChanged, isNull, reason: 'màn Thêm: chưa có giá trị đã lưu — mọi "không tính" là loại mới');
+      expect(find.byKey(const Key('dong-khoa-cong-tac-wallet_exclude_total')), findsOneWidget);
+    });
+
+    testWidgets('có quyền → công tắc mở, không băng', (tester) async {
+      await _moTrang(tester, _RepoGia([_vi('a', name: 'Tiền mặt')]), goi: goiBasic(const {}));
+      expect(_congTacTinhVaoTong(tester).onChanged, isNotNull);
+      expect(find.byKey(const Key('dong-khoa-cong-tac-wallet_exclude_total')), findsNothing);
+    });
   });
 }

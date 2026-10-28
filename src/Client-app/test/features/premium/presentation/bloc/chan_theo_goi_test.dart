@@ -1,5 +1,5 @@
-/// `chanTheoGoi` — phần async của cửa chặn trần Basic (spec Premium 7.1):
-/// Premium → qua và KHÔNG đếm; Basic → đếm → `conTaoDuoc` →
+/// `chanTheoGoi` — phần async của cửa chặn trần gói hiệu lực (spec Premium 7.1; B1: cả trần cột Premium):
+/// trần hiệu lực không giới hạn → qua, KHÔNG đếm; có số (Basic, hoặc Premium có trần) → đếm → `conTaoDuoc` →
 /// `chuyenHuongTheoGoi`; đếm ném → qua (một lỗi đọc CSDL không được biến thành
 /// một màn Nâng cấp sai chỗ); chưa có phiên → qua.
 library;
@@ -14,6 +14,7 @@ import 'package:flowmoney/features/premium/data/datasources/payment_api.dart';
 import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flowmoney/features/premium/domain/tran_goi.dart';
 import 'package:flowmoney/features/premium/domain/hang_goi.dart';
+import 'package:flowmoney/features/premium/data/models/tran_goi.dart';
 import 'package:flowmoney/features/premium/data/models/trang_thai_goi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -91,6 +92,21 @@ void main() {
         isNull);
   });
 
+
+  test('⭐ B1: Premium có trần cột Premium 10 ví → 10/10 chặn (/premium?tran=vi), 9/10 qua', () async {
+    final kho = InMemoryGoiStore();
+    await kho.ghi(
+        10,
+        TrangThaiGoi(
+            loai: LoaiGoi.premium, hetHan: DateTime(2026, 11, 5), nhanLuc: now, tran: const TranGoi(vi: 10)));
+    final r = GoiRepository(api: ApiIm(), kho: kho, clock: () => now);
+    addTearDown(r.dispose);
+    await r.datTaiKhoan(10);
+    expect(await chanTheoGoi(Uri.parse('/wallets/add'), LoaiTran.vi, goi: r, dem: DemGia(10), clock: () => now),
+        '/premium?tran=vi');
+    expect(await chanTheoGoi(Uri.parse('/wallets/add'), LoaiTran.vi, goi: r, dem: DemGia(9), clock: () => now),
+        isNull);
+  });
   test('Premium → null và KHÔNG đếm', () async {
     final r = await repo(premium: true);
     final d = DemGia(99);

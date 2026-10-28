@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../application/dieu_chinh_so_du_service.dart';
+import '../../domain/cong_tac_tinh_vao_tong.dart';
 import '../../domain/wallet_status.dart';
 import '../../domain/wallet_type.dart';
 import '../../../../core/di/injection_container.dart';
@@ -29,6 +33,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
   WalletEntity? _wallet;
 
   int _selectedTypeIndex = 0;
+
   /// Ví liên kết ngân hàng thì KHÔNG cho đổi loại — xem `_loaiCoDinh`.
   bool _loaiCoDinh = false;
 
@@ -40,7 +45,13 @@ class _WalletEditPageState extends State<WalletEditPage> {
     Icons.savings,
     Icons.account_balance,
   ];
-  final List<String> _iconKeys = ['wallet', 'payments', 'credit_card', 'savings', 'bank'];
+  final List<String> _iconKeys = [
+    'wallet',
+    'payments',
+    'credit_card',
+    'savings',
+    'bank'
+  ];
 
   int _selectedColorIndex = 0;
   final List<Color> _colorOptions = [
@@ -51,7 +62,14 @@ class _WalletEditPageState extends State<WalletEditPage> {
     const Color(0xFFA142F4),
     const Color(0xFF00ACC1),
   ];
-  final List<String> _colorHexes = ['#4CAF50', '#1A73E8', '#F4B400', '#EA4335', '#A142F4', '#00ACC1'];
+  final List<String> _colorHexes = [
+    '#4CAF50',
+    '#1A73E8',
+    '#F4B400',
+    '#EA4335',
+    '#A142F4',
+    '#00ACC1'
+  ];
 
   bool _isDefault = false;
   bool _includeInTotal = true;
@@ -84,7 +102,8 @@ class _WalletEditPageState extends State<WalletEditPage> {
         setState(() {
           _wallet = wallet;
           _nameController.text = wallet.name;
-          _balanceController.text = CurrencyFormatter.formatSoThoi(wallet.balance.toInt());
+          _balanceController.text =
+              CurrencyFormatter.formatSoThoi(wallet.balance.toInt());
 
           // Ví `banking` do luồng liên kết ngân hàng tạo ra và KHÔNG nằm
           // trong danh sách chọn được. Bản trước dùng `indexOf` rồi bỏ qua khi
@@ -126,6 +145,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
 
   Future<void> _saveWallet() async {
     if (_wallet == null) return;
+    final coDieuChinh = context.coQuyenDoc(MaQuyen.walletBalanceAdjustment);
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       baoNhanh('Vui lòng nhập tên ví', loai: LoaiThongBao.loi);
@@ -141,24 +161,24 @@ class _WalletEditPageState extends State<WalletEditPage> {
     setState(() => _isSaving = true);
     try {
       final updatedWallet = _wallet!.copyWith(
-        name:           name,
+        name: name,
         // Loại cố định thì giữ nguyên chữ đang có, đừng dựng lại từ ô chọn.
-        type:           _loaiCoDinh
+        type: _loaiCoDinh
             ? (_wallet?.type ?? WalletType.cash.khoa)
             : WalletType.chonDuoc[_selectedTypeIndex].khoa,
         // Số dư giữ NGUYÊN ở đây. Nó đi đường riêng ngay dưới — đường duy
         // nhất sinh ra một khoản trong sổ giao dịch, để lịch sử và số dư
         // không trôi khỏi nhau.
-        balance:        _wallet!.balance,
-        icon:           iconKey,
-        colour:         colour,
-        isDefault:      _isDefault,
+        balance: _wallet!.balance,
+        icon: iconKey,
+        colour: colour,
+        isDefault: _isDefault,
         includeInTotal: _includeInTotal,
-        allowNegative:  _choPhepAm,
+        allowNegative: _choPhepAm,
         // Trạng thái lưu trữ cố ý GIỮ NGUYÊN ở đây — nó đi đường riêng
         // ngay dưới, đường duy nhất có chốt chặn.
-        status:         _wallet!.status,
-        updatedAt:      DateTime.now(),
+        status: _wallet!.status,
+        updatedAt: DateTime.now(),
       );
 
       await sl<WalletRepository>().updateWallet(updatedWallet);
@@ -178,7 +198,8 @@ class _WalletEditPageState extends State<WalletEditPage> {
       //
       // Dịch vụ tự bỏ qua khi hai số bằng nhau, nên không cần so ở đây;
       // nhưng vẫn so, để sửa mỗi tên ví không kéo theo một lượt đọc CSDL.
-      if (balance != _wallet!.balance) {
+      // B1 — không quyền thì không đối soát; readOnly chưa đủ vì ô hiện số dư làm tròn, ví số dư lẻ luôn "đổi".
+      if (coDieuChinh && balance != _wallet!.balance) {
         await sl<DieuChinhSoDuService>().dieuChinh(
           walletId: widget.id,
           soDuThucTe: balance,
@@ -289,6 +310,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
   }
 
   Widget _buildFormCard() {
+    final coDieuChinh = context.coQuyen(MaQuyen.walletBalanceAdjustment);
     return Container(
       padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
@@ -313,14 +335,16 @@ class _WalletEditPageState extends State<WalletEditPage> {
               decoration: InputDecoration(
                 filled: true,
                 fillColor: AppColors.surfaceContainerLow,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 16.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  borderSide:
+                      const BorderSide(color: AppColors.primary, width: 2),
                 ),
               ),
               style: const TextStyle(fontSize: 16, color: AppColors.onSurface),
@@ -341,12 +365,16 @@ class _WalletEditPageState extends State<WalletEditPage> {
                       : () => setState(() => _selectedTypeIndex = index),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 8.0),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.secondary : Colors.transparent,
+                      color:
+                          isSelected ? AppColors.secondary : Colors.transparent,
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: isSelected ? Colors.transparent : AppColors.outlineVariant,
+                        color: isSelected
+                            ? Colors.transparent
+                            : AppColors.outlineVariant,
                       ),
                     ),
                     child: Text(
@@ -356,7 +384,9 @@ class _WalletEditPageState extends State<WalletEditPage> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
-                        color: isSelected ? AppColors.onSecondary : AppColors.onSurfaceVariant,
+                        color: isSelected
+                            ? AppColors.onSecondary
+                            : AppColors.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -367,64 +397,78 @@ class _WalletEditPageState extends State<WalletEditPage> {
           const SizedBox(height: 24.0),
           _buildFormSection(
             title: 'SỐ DƯ VÍ HIỆN TẠI',
-            chuThich: 'Sửa số dư sẽ tạo một khoản điều chỉnh trong sổ giao '
-                'dịch, để lịch sử khớp với số thực tế.',
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _balanceController,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                        letterSpacing: -0.02,
-                      ),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                      ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        // Ô này sinh khoản ĐIỀU CHỈNH số dư, nên con số gõ vào
-                        // đi thẳng vào `wallet."Balance"` — `numeric(15,2)`.
-                        // Xem `kSoChuSoToiDaSoTien`.
-                        const GioiHanSoChuSo(kSoChuSoToiDaSoTien),
-                      ],
-                      onChanged: (value) {
-                        final digitsOnly = value.replaceAll('.', '');
-                        if (digitsOnly.isNotEmpty) {
-                          final number = int.tryParse(digitsOnly) ?? 0;
-                          final formatted = CurrencyFormatter.formatSoThoi(number);
-                          if (_balanceController.text != formatted) {
-                            _balanceController.value = TextEditingValue(
-                              text: formatted,
-                              selection: TextSelection.collapsed(offset: formatted.length),
-                            );
-                          }
-                        }
-                      },
-                    ),
+            chuThich: coDieuChinh
+                ? 'Sửa số dư sẽ tạo một khoản điều chỉnh trong sổ giao '
+                    'dịch, để lịch sử khớp với số thực tế.'
+                : null,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const Text(
-                    'đ',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _balanceController,
+                          readOnly: !coDieuChinh,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                            letterSpacing: -0.02,
+                          ),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            // Ô này sinh khoản ĐIỀU CHỈNH số dư, nên con số gõ vào
+                            // đi thẳng vào `wallet."Balance"` — `numeric(15,2)`.
+                            // Xem `kSoChuSoToiDaSoTien`.
+                            const GioiHanSoChuSo(kSoChuSoToiDaSoTien),
+                          ],
+                          onChanged: (value) {
+                            final digitsOnly = value.replaceAll('.', '');
+                            if (digitsOnly.isNotEmpty) {
+                              final number = int.tryParse(digitsOnly) ?? 0;
+                              final formatted =
+                                  CurrencyFormatter.formatSoThoi(number);
+                              if (_balanceController.text != formatted) {
+                                _balanceController.value = TextEditingValue(
+                                  text: formatted,
+                                  selection: TextSelection.collapsed(
+                                      offset: formatted.length),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      ),
+                      const Text(
+                        'đ',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                if (!coDieuChinh) ...[
+                  const SizedBox(height: 8),
+                  const DongKhoaQuyen(ma: MaQuyen.walletBalanceAdjustment),
                 ],
-              ),
+              ],
             ),
           ),
           const SizedBox(height: 24.0),
@@ -440,7 +484,9 @@ class _WalletEditPageState extends State<WalletEditPage> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFF96f592) : AppColors.surfaceContainerLow,
+                      color: isSelected
+                          ? const Color(0xFF96f592)
+                          : AppColors.surfaceContainerLow,
                       shape: BoxShape.circle,
                       border: isSelected
                           ? Border.all(color: AppColors.secondary, width: 2)
@@ -448,7 +494,9 @@ class _WalletEditPageState extends State<WalletEditPage> {
                     ),
                     child: Icon(
                       _iconOptions[index],
-                      color: isSelected ? const Color(0xFF0a7320) : AppColors.onSurfaceVariant,
+                      color: isSelected
+                          ? const Color(0xFF0a7320)
+                          : AppColors.onSurfaceVariant,
                     ),
                   ),
                 );
@@ -521,6 +569,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
   }
 
   Widget _buildWalletOptionsCard() {
+    final coLoai = context.coQuyen(MaQuyen.walletExcludeTotal);
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
@@ -542,10 +591,20 @@ class _WalletEditPageState extends State<WalletEditPage> {
           ),
           const Divider(height: 1, color: AppColors.borderSubtle),
           _buildSwitchTile(
+            khoa: const Key('vi-tinh-vao-tong'),
             title: 'Tính vào tổng tài sản',
             value: _includeInTotal,
-            onChanged: (val) => setState(() => _includeInTotal = val),
+            // Quyền `wallet_exclude_total` (B1): chỉ chặn LOẠI MỚI — ví đã lưu là "không tính" vẫn bật lại được (I3).
+            onChanged: doiDuocTinhVaoTong(coQuyen: coLoai, daLuuTinhVaoTong: _wallet?.includeInTotal ?? true)
+                ? (val) => setState(() => _includeInTotal = val)
+                : null,
           ),
+          if (!coLoai)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: DongKhoaCongTac(
+                  ma: MaQuyen.walletExcludeTotal, dangBat: false),
+            ),
           const Divider(height: 1, color: AppColors.borderSubtle),
           _buildSwitchTile(
             title: 'Cho phép số dư âm',
@@ -568,8 +627,9 @@ class _WalletEditPageState extends State<WalletEditPage> {
   Widget _buildSwitchTile({
     required String title,
     required bool value,
-    required ValueChanged<bool> onChanged,
+    required ValueChanged<bool>? onChanged,
     String? subtitle,
+    Key? khoa,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
@@ -610,6 +670,7 @@ class _WalletEditPageState extends State<WalletEditPage> {
             ),
           ),
           Switch(
+            key: khoa,
             value: value,
             onChanged: onChanged,
             activeThumbColor: Colors.white,
@@ -671,7 +732,8 @@ class _WalletEditPageState extends State<WalletEditPage> {
                 color: Color(0xFFFFDAD6),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.delete_outline, color: Color(0xFFBA1A1A), size: 32),
+              child: const Icon(Icons.delete_outline,
+                  color: Color(0xFFBA1A1A), size: 32),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -700,9 +762,14 @@ class _WalletEditPageState extends State<WalletEditPage> {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       side: const BorderSide(color: AppColors.outlineVariant),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Hủy', style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text('Hủy',
+                        style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -715,10 +782,15 @@ class _WalletEditPageState extends State<WalletEditPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFBA1A1A),
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       elevation: 0,
                     ),
-                    child: const Text('Xóa ví', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text('Xóa ví',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -747,7 +819,8 @@ class _WalletEditPageState extends State<WalletEditPage> {
           ? const SizedBox(
               width: 24,
               height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white),
             )
           : const Text(
               'Lưu & Cập Nhật Ví',

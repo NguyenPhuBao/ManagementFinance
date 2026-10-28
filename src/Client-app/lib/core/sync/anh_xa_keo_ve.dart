@@ -11,9 +11,11 @@ import '../../features/bill/domain/bill_pay_status.dart';
 import '../../features/bill/domain/bill_recurrence.dart';
 import '../../features/goal/domain/uu_tien_hop_le.dart';
 import '../../features/wallet/domain/wallet_status.dart';
+import '../category/category_name.dart';
 import '../database/app_database.dart';
 import 'backend_bool.dart';
 import 'bieu_tuong_danh_muc_mac_dinh.dart';
+import 'sync_models.dart';
 import 'sync_payload_normalizer.dart';
 
 /// 1. Ví.
@@ -428,4 +430,39 @@ GoalsCompanion companionMucTieuKeoVe(dynamic g, int accountId) {
 DateTime? _deletedAtFrom(dynamic raw) {
   if (raw == null) return null;
   return DateTime.tryParse(raw.toString()) ?? DateTime.now();
+}
+
+/// So hàng khuôn ĐÃ CÓ trên máy ([cu]) với bản vừa về (tên / biểu tượng SAU ánh xạ — [moi] — và từ khoá [tuKhoaMoi]): khác
+/// thì một [ThayDoiKhuon], còn lại `null` (spec 2026-10-27 mục 5). [laKhuon]: hàng về là khuôn (`is_default`), CÒN SỐNG HAY ĐÃ
+/// XOÁ — khuôn về đã xoá vẫn lan truyền tên / biểu tượng (admin đổi tên rồi xoá giữa hai lượt kéo; bỏ qua thì bản sao không
+/// theo kịp tên mới, và khi admin khôi phục khuôn bộ tạo bản sao mọc thêm một bản). Nơi gọi truyền `tuKhoaCu == tuKhoaMoi`
+/// cho khuôn đã xoá nên từ khoá không bao giờ sinh thay đổi (người dùng chốt 2026-10-27).
+///
+/// Khuôn trên máy còn `icon = 'category'` (server chưa từng gửi icon) thì `companionDanhMucKeoVe` rơi về
+/// `defaultIconForCategoryName(catName)` → lượt đầu khuôn ấy về lại sinh một [ThayDoiKhuon] biểu tượng "giả"; vô hại và
+/// luỹ đẳng (lan truyền chỉ đụng bản sao còn đúng icon cũ, lượt sau hết).
+ThayDoiKhuon? thayDoiKhuonTu({
+  required Category? cu,
+  required CategoriesCompanion moi,
+  required bool laKhuon,
+  required List<String> tuKhoaCu,
+  required List<String> tuKhoaMoi,
+}) {
+  if (cu == null || !cu.isDefault || !laKhuon) return null;
+  final tenMoi = moi.name.value;
+  final iconMoi = moi.icon.value;
+  final a = {for (final k in tuKhoaCu) normalizeCategoryName(k)}..remove('');
+  final b = {for (final k in tuKhoaMoi) normalizeCategoryName(k)}..remove('');
+  final cungTuKhoa = a.length == b.length && a.containsAll(b);
+  if (normalizeCategoryName(cu.name) == normalizeCategoryName(tenMoi) && cu.icon == iconMoi && cungTuKhoa) return null;
+  return ThayDoiKhuon(
+    id: cu.id,
+    loai: cu.classify,
+    tenCu: cu.name,
+    tenMoi: tenMoi,
+    iconCu: cu.icon,
+    iconMoi: iconMoi,
+    tuKhoaCu: List.unmodifiable(tuKhoaCu),
+    tuKhoaMoi: List.unmodifiable(tuKhoaMoi),
+  );
 }

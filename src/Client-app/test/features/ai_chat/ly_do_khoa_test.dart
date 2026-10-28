@@ -1,4 +1,4 @@
-/// Vì sao ô nhập màn Trợ lý AI bị khoá — BA lý do, ba câu, ba nút (spec Premium
+/// Vì sao ô nhập màn Trợ lý AI bị khoá — BỐN lý do, bốn câu (tạm ngừng không nút) (spec Premium
 /// 2026-10-06 mục 8.1). ⚠️ Basic xét TRƯỚC: không mời người không dùng được
 /// đi tải 2,41 GB.
 library;
@@ -7,6 +7,14 @@ import 'package:flowmoney/features/ai_chat/presentation/pages/ai_chat_page.dart'
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('⭐ B1: tạm ngừng xét TRƯỚC Basic — câu tạm ngừng, không câu "Nâng cấp"', () {
+    expect(lyDoKhoa(laPremium: false, tamNgung: true, coTep: true, congTacBat: true), LyDoKhoaHoiDap.tamNgung);
+    expect(lyDoKhoa(laPremium: false, tamNgung: true, coTep: false, congTacBat: false, onlineBat: true),
+        LyDoKhoaHoiDap.tamNgung);
+    expect(cauKhoa(LyDoKhoaHoiDap.tamNgung), 'Trợ lý AI hiện đang tạm ngừng.');
+    expect(cauKhoa(LyDoKhoaHoiDap.tamNgung), isNot(contains('Nâng cấp')));
+  });
+
   test('Basic xét TRƯỚC — không mời người không dùng được tải 2,41 GB', () {
     expect(lyDoKhoa(laPremium: false, coTep: false, congTacBat: false),
         LyDoKhoaHoiDap.goiBasic);

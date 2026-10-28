@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/theme/app_colors.dart';
+import '../../domain/cau_quyen.dart';
 import '../../domain/quyen_tinh_nang.dart';
 import '../bloc/co_quyen.dart';
 import 'nut_nang_cap.dart';
@@ -10,6 +11,9 @@ import 'nut_nang_cap.dart';
 /// `595529bf…` *"Thống kê - Khối bị khoá theo gói (Basic)"* (thẻ khoá + dòng khoá) và `68593384…` *"Thêm hóa đơn - Tự
 /// trả bị khoá (Basic)"* (băng khoá công tắc) — người dùng xác nhận 2026-10-08.
 ///
+/// Biến thể tạm ngừng (B1, spec 2026-10-27 mục 4; Stitch `02c0d88174b641faa14f931174d40b99`): không nút Nâng cấp, chạm
+/// không làm gì.
+///
 /// Chữ KHÔNG cắt `…` (luật G74–G78): tên tính năng dài nhất phải xuống dòng thay vì mất chữ.
 
 /// Nút chạm → `/premium?quyen=…`. [onMo] là khe tiêm cho test.
@@ -17,6 +21,8 @@ void _moNangCap(BuildContext context, MaQuyen ma, VoidCallback? onMo) =>
     onMo != null ? onMo() : context.push(duongNangCap(quyen: ma));
 
 /// Thẻ thay chỗ một khối trong trang khi không có quyền: ổ khoá tròn xám, tên tính năng, *"Dành cho Premium"*, nút đen.
+/// Tạm ngừng (B1): chữ *"Đang tạm ngừng"*, không nút. Lệch có chủ ý so với Stitch `02c0d881…` khối 1 (viền ĐỨT NÉT):
+/// app giữ viền liền (Flutter không có viền đứt dựng sẵn); dấu hiệu tạm ngừng là chữ + không nút.
 class TheKhoaQuyen extends StatelessWidget {
   const TheKhoaQuyen({super.key, required this.ma, this.onMo});
 
@@ -25,6 +31,7 @@ class TheKhoaQuyen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tamNgung = context.trangThaiQuyen(ma) == TrangThaiQuyen.tamNgung;
     return Container(
       key: Key('the-khoa-${ma.maServer}'),
       width: double.infinity,
@@ -58,28 +65,30 @@ class TheKhoaQuyen extends StatelessWidget {
                 fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 2),
-          const Text(
-            'Dành cho Premium',
+          Text(
+            tamNgung ? kTheKhoaTamNgung : kTheKhoaCanPremium,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 32,
-            child: FilledButton(
-              key: const Key('nut-nang-cap'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(0, 32),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          if (!tamNgung) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 32,
+              child: FilledButton(
+                key: const Key('nut-nang-cap'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                onPressed: () => _moNangCap(context, ma, onMo),
+                child: const Text('Nâng cấp'),
               ),
-              onPressed: () => _moNangCap(context, ma, onMo),
-              child: const Text('Nâng cấp'),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -99,16 +108,20 @@ class KhoaTheoQuyen extends StatelessWidget {
       context.coQuyen(ma) ? child : TheKhoaQuyen(ma: ma, onMo: onMo);
 }
 
-/// Một dòng khoá nằm TRONG một khối (vd. câu chi bất thường ở khối Nhận xét): ổ khoá vàng, [cau], nút viên vàng.
+/// Một dòng khoá nằm TRONG một khối (vd. câu chi bất thường ở khối Nhận xét): ổ khoá vàng, [cau], nút viên vàng. Tạm ngừng
+/// (B1) → luôn [cauDongKhoaTamNgung] (Stitch `02c0d881…` khối 2), không nút.
 class DongKhoaQuyen extends StatelessWidget {
-  const DongKhoaQuyen({super.key, required this.ma, required this.cau, this.onMo});
+  const DongKhoaQuyen({super.key, required this.ma, this.cau, this.onMo});
 
   final MaQuyen ma;
-  final String cau;
+
+  /// Câu khi cần Premium — vắng thì [cauDongKhoa].
+  final String? cau;
   final VoidCallback? onMo;
 
   @override
   Widget build(BuildContext context) {
+    final tamNgung = context.trangThaiQuyen(ma) == TrangThaiQuyen.tamNgung;
     return Row(
       key: Key('dong-khoa-${ma.maServer}'),
       children: [
@@ -120,30 +133,33 @@ class DongKhoaQuyen extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(cau,
+          child: Text(tamNgung ? cauDongKhoaTamNgung(ma) : (cau ?? cauDongKhoa(ma)),
               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         ),
-        const SizedBox(width: 8),
-        TextButton(
-          key: const Key('nut-nang-cap'),
-          style: TextButton.styleFrom(
-            backgroundColor: AppColors.khoaNenVang,
-            foregroundColor: AppColors.khoaVang,
-            minimumSize: const Size(0, 28),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            shape: const StadiumBorder(),
-            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+        if (!tamNgung) ...[
+          const SizedBox(width: 8),
+          TextButton(
+            key: const Key('nut-nang-cap'),
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.khoaNenVang,
+              foregroundColor: AppColors.khoaVang,
+              minimumSize: const Size(0, 28),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              shape: const StadiumBorder(),
+              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+            onPressed: () => _moNangCap(context, ma, onMo),
+            child: const Text('Nâng cấp'),
           ),
-          onPressed: () => _moNangCap(context, ma, onMo),
-          child: const Text('Nâng cấp'),
-        ),
+        ],
       ],
     );
   }
 }
 
 /// Băng dưới một công tắc bị khoá. [dangBat] — giá trị đang lưu là BẬT (vd. đã bật tự trả khi còn Premium) → băng
-/// hồng *"Tạm dừng — cần Premium"* (chốt *"dừng chạy, giữ công tắc"*); không → băng vàng *"Cần Premium"*.
+/// hồng *"Tạm dừng — cần Premium"* (chốt *"dừng chạy, giữ công tắc"*); không → băng vàng *"Cần Premium"*. Tạm ngừng (B1)
+/// THẮNG [dangBat]: băng xám *"Tạm ngừng"*, không nút.
 class DongKhoaCongTac extends StatelessWidget {
   const DongKhoaCongTac({super.key, required this.ma, required this.dangBat, this.onMo});
 
@@ -153,9 +169,11 @@ class DongKhoaCongTac extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nen = dangBat ? AppColors.khoaTamDungNen : AppColors.khoaCanNen;
-    final vien = dangBat ? AppColors.khoaTamDungVien : AppColors.khoaCanVien;
-    final mau = dangBat ? AppColors.error : AppColors.khoaCanChu;
+    final tamNgung = context.trangThaiQuyen(ma) == TrangThaiQuyen.tamNgung;
+    final dung = dangBat && !tamNgung;
+    final nen = tamNgung ? AppColors.khoaNgungNen : (dung ? AppColors.khoaTamDungNen : AppColors.khoaCanNen);
+    final vien = tamNgung ? AppColors.khoaNgungVien : (dung ? AppColors.khoaTamDungVien : AppColors.khoaCanVien);
+    final mau = tamNgung ? AppColors.khoaNgungChu : (dung ? AppColors.error : AppColors.khoaCanChu);
     return Container(
       key: Key('dong-khoa-cong-tac-${ma.maServer}'),
       margin: const EdgeInsets.only(top: 8),
@@ -167,30 +185,33 @@ class DongKhoaCongTac extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(dangBat ? Icons.lock_clock_outlined : Icons.lock_outline,
-              size: 18, color: dangBat ? AppColors.error : AppColors.khoaCanIcon),
+          Icon(dung ? Icons.lock_clock_outlined : Icons.lock_outline,
+              size: 18,
+              color: tamNgung ? AppColors.khoaNgungIcon : (dung ? AppColors.error : AppColors.khoaCanIcon)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              dangBat ? 'Tạm dừng — cần Premium' : 'Cần Premium',
+              tamNgung ? kCongTacTamNgung : (dangBat ? kCongTacTamDungCanPremium : kCongTacCanPremium),
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: mau),
             ),
           ),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            key: const Key('nut-nang-cap'),
-            style: OutlinedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.textPrimary,
-              side: const BorderSide(color: AppColors.vienNutNangCap),
-              minimumSize: const Size(0, 30),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          if (!tamNgung) ...[
+            const SizedBox(width: 8),
+            OutlinedButton(
+              key: const Key('nut-nang-cap'),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: AppColors.vienNutNangCap),
+                minimumSize: const Size(0, 30),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              onPressed: () => _moNangCap(context, ma, onMo),
+              child: const Text('Nâng cấp'),
             ),
-            onPressed: () => _moNangCap(context, ma, onMo),
-            child: const Text('Nâng cấp'),
-          ),
+          ],
         ],
       ),
     );

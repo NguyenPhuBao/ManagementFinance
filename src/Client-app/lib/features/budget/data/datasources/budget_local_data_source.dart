@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../category/data/danh_sach_chon_danh_muc.dart';
 import '../../../category/data/models/category_entity.dart';
 import '../../../transaction/domain/khoan_vao_thong_ke.dart';
 import '../models/budget_entity.dart';
@@ -174,8 +175,9 @@ class BudgetLocalDataSourceImpl implements BudgetLocalDataSource {
   @override
   Future<List<CategoryEntity>> getExpenseCategories(int idaccount) async {
     // `classify` ở SQLite lưu dạng chuẩn hoá chữ thường ('chi'/'thu'/'vay_no'),
-    // không phải 'Chi' như backend — xem `SyncPayloadNormalizer`.
-    return (await db.categoryDao.getCategoryRows(idaccount, 'chi')).map(CategoryEntity.fromDrift).toList();
+    // không phải 'Chi' như backend — xem `SyncPayloadNormalizer`. Qua cửa danh sách CHỌN: bỏ bản sao ẩn theo khuôn
+    // (spec 2026-10-27 mục 4, quét 40).
+    return (await hangChonDuoc(db, idaccount, 'chi')).map(CategoryEntity.fromDrift).toList();
   }
 
   @override

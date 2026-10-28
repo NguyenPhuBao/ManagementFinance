@@ -1,5 +1,20 @@
 # Mục 54 — Danh mục mặc định ở Admin-web: khôi phục / thêm không kiểm trùng tên (500); client nay theo thao tác admin
 
+> 🔎 **Client soát lượt báo xong 2026-10-28 — ĐẠT TRỌN, chuyển `DA-XONG/`** (`177dd0e1`, PR #168, client gộp `a630c4c8`; đọc mã HEAD +
+> CSDL Supabase của `.env`, chỉ `SELECT`; chưa bấm thử trên Admin-web).
+> - **A** `restoreCategory` (`admin.service.js:588-646`): hàng chưa xoá trả ngay; tìm danh mục hệ thống **sống** khác cùng tên chuẩn hoá →
+>   409 kèm câu *"Đã có danh mục hệ thống … đổi tên một trong hai trước khi khôi phục"*; lệnh ghi bọc bắt `P2002` → 409.
+> - **B** `addCategory` (`:370-487`): phép kiểm *"đã tồn tại"* bỏ vế `classify`, so bằng `normalizeCategoryName` (`:10-13` — NFC → `trim`
+>   → gom khoảng trắng → chữ thường, cùng thứ tự biểu thức của `uq_category_default_name`); nhánh mở lại hàng đã xoá vẫn khớp tên + loại như
+>   đơn xin; cả nhánh mở lại lẫn nhánh tạo bắt `P2002` → 409. `updateCategory` cũng đổi sang so chuẩn hoá + 409 (ngoài đơn, cùng chiều).
+> - **C1** `/sync/pull` vẫn trả khuôn kể cả đã xoá mềm, kèm `delete_at` (`sync.repository.js:284-310`, vế `{ is_default: true }` không lọc
+>   `delete_at`; lượt gộp này thêm vế gia đình mà không đụng vế ấy).
+> - **C2** mọi thao tác nâng `Server_update_at`: xoá / khôi phục ghi thẳng (`admin.repository.js:273-295`); tạo nhận mặc định cột
+>   `(now() AT TIME ZONE 'UTC')`; đổi tên / biểu tượng / từ khoá đi qua trigger `trg_set_server_update_at_category` (BEFORE UPDATE, gán
+>   giờ server vô điều kiện) — đo `pg_trigger` + `pg_get_functiondef` trên Supabase. ⚠️ `createCategory` / `updateCategory` của repository
+>   **không** tự ghi cột ấy — C2 đứng nhờ trigger; ai bỏ trigger là đổi tên khuôn không còn tới máy.
+> - Khuôn trên Supabase lúc soát: 16 sống, 0 xoá mềm. Test backend 1.9–1.11 (`tests/v2/admin.operations.test.js:308-417` — **3** ca; banner backend ghi *"4 unit tests mới (1.9, 1.10, 1.11, 1.12)"*, tệp không có 1.12).
+
 > **Client đặt 2026-10-27** (phiên 15). Người nhận: backend (NPBao). Mức: **TRUNG BÌNH** — admin nhận 500 thay vì một câu báo; dữ
 > liệu không hỏng (giao tác bị CSDL từ chối nguyên vẹn).
 >

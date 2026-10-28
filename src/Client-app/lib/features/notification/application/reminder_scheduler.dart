@@ -35,6 +35,8 @@ class ReminderScheduler {
     this.prefsStore,
     this.nhatKy,
     this.eventDao,
+    this.nhacTruocHanDuocPhep,
+    this.nhacGhiChepDuocPhep,
     this.chayNen = false,
     DateTime Function()? clock,
   }) : clock = clock ?? DateTime.now;
@@ -71,6 +73,13 @@ class ReminderScheduler {
   /// Nhật ký B5a: tra `dat_lich` gần nhất của một id để `huy_lich` biết khoá —
   /// lời gọi `cancel` chỉ có id.
   final NotificationEventDao? eventDao;
+
+  /// Quyền `bill_reminder_notifications` (B1, spec 2026-10-27 mục 5) — DI nối `coQuyenNen`. `false` → không lịch nhắc
+  /// trước hạn nào được phép tồn tại; lịch đã đặt bị huỷ ở lượt `resync` kế. `null` → có quyền (test cũ, web).
+  final bool Function()? nhacTruocHanDuocPhep;
+
+  /// Quyền `daily_recording_reminder` — cùng khuôn [nhacTruocHanDuocPhep].
+  final bool Function()? nhacGhiChepDuocPhep;
 
   final DateTime Function() clock;
 
@@ -156,7 +165,10 @@ class ReminderScheduler {
     // phép tồn tại. Vẫn chạy tiếp xuống phần dọn dẹp bên dưới: lịch đã đặt
     // trước đó nằm trong AlarmManager và không tự biến mất khi người dùng gạt
     // công tắc.
-    if (prefs.osBat && prefs.batNhom(NotificationGroup.bill)) {
+    // Quyền nhắc trước hạn (B1) chặn ở ĐIỀU KIỆN NHÁNH, cùng chỗ công tắc nhóm — KHÔNG trong vòng: `khongHuy.add` bên
+    // dưới đứng trước phép lọc theo mốc, và vòng huỷ bỏ qua mọi id trong `khongHuy` — chặn sau dòng ấy là lịch đã đặt
+    // không bao giờ bị huỷ.
+    if (prefs.osBat && prefs.batNhom(NotificationGroup.bill) && (nhacTruocHanDuocPhep?.call() ?? true)) {
       final bills = await loadBills(idaccount, at);
       final ungVien = <_Lich>[];
 
@@ -274,7 +286,7 @@ class ReminderScheduler {
     // `AppNotifications` — xem chú thích ở `NotificationPrefs.nhacGhiChepBat`.
     // Cũng không chịu công tắc nhóm nào: nó không phải một `NotificationKind`.
     final docMoc = loadLastTransactionAt;
-    if (docMoc != null && prefs.osBat && prefs.nhacGhiChepBat) {
+    if (docMoc != null && prefs.osBat && prefs.nhacGhiChepBat && (nhacGhiChepDuocPhep?.call() ?? true)) {
       final homNay = _dauNgay(at);
       final mocCuoi = await docMoc(idaccount);
 

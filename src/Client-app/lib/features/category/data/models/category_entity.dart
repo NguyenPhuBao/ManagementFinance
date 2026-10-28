@@ -4,8 +4,8 @@ import '../../../../core/database/app_database.dart';
 
 /// Entity danh mục — kiểu **duy nhất** từ repository trở lên (G88 gạch 3, đợt 3/4; spec `2026-10-15-entity-danh-muc-design.md` 4.1).
 ///
-/// Ảnh **chỉ đọc** của hàng Drift `Category`: 13 trường = 18 cột − 5 cột cố ý không chép — `isLocalOnly`, `deletedAt` (chỉ `core/sync`,
-/// DAO và impl đọc) và ba cột lỗi đồng bộ `syncRetryCount` · `syncError` · `syncBlockedUntil` (của hàng đợi đẩy). `category_entity_test`
+/// Ảnh **chỉ đọc** của hàng Drift `Category`: 14 trường = 18 cột − 4 cột cố ý không chép — `isLocalOnly` và ba cột lỗi đồng bộ
+/// `syncRetryCount` · `syncError` · `syncBlockedUntil` (của hàng đợi đẩy). `deletedAt` vào Entity từ 2026-10-27 (luật ẩn theo khuôn). `category_entity_test`
 /// đếm cột bảng để canh. Không có `toCompanion`: mọi đường ghi danh mục đi qua `CategoryChildDraft` / `CategoryGroupDraft`
 /// (`category_tree.dart`) → Companion trong `CategoryManagementRepositoryImpl`. Phép ánh xạ `fromDrift` ở đây là MỘT định nghĩa.
 ///
@@ -24,6 +24,10 @@ class CategoryEntity extends Equatable {
   /// Hàng khuôn toàn cục (`idaccount = 0`) — quy tắc 8 `CLAUDE.md`: không hiện ở danh sách nào, chỉ nuôi seeder và bảng tra tên.
   final bool isDefault;
   final bool isDeleted;
+
+  /// Lúc xoá mềm. Hàng KHUÔN cần nó: luật *ẩn theo khuôn* (`ban_sao_mac_dinh.dart`) chỉ áp khuôn xoá từ `kMocAnTheoKhuon`
+  /// (spec 2026-10-27 mục 3). Hàng của người dùng vẫn đọc [isDeleted].
+  final DateTime? deletedAt;
   final String? parentId;
   final bool isGroup;
 
@@ -41,6 +45,7 @@ class CategoryEntity extends Equatable {
     this.colour = '#4CAF50',
     this.isDefault = false,
     this.isDeleted = false,
+    this.deletedAt,
     this.parentId,
     this.isGroup = false,
     this.aiCoDinh = false,
@@ -57,6 +62,7 @@ class CategoryEntity extends Equatable {
         colour: c.colour,
         isDefault: c.isDefault,
         isDeleted: c.isDeleted,
+        deletedAt: c.deletedAt,
         parentId: c.parentId,
         isGroup: c.isGroup,
         aiCoDinh: c.aiCoDinh,
@@ -74,6 +80,7 @@ class CategoryEntity extends Equatable {
         colour,
         isDefault,
         isDeleted,
+        deletedAt,
         parentId,
         isGroup,
         aiCoDinh,

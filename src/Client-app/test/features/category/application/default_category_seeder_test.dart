@@ -102,7 +102,7 @@ void main() {
     expect(cua7.map((c) => c.name).toSet(), {'Ăn uống', 'Lương'});
     expect(cua7.every((c) => !c.isDefault), isTrue,
         reason: 'Bản sao mang isDefault = true sẽ đụng thẳng '
-            'uq_category_default_name_classify khi đẩy lên.');
+            'uq_category_default_name khi đẩy lên.');
     expect(cua7.every((c) => c.syncStatus == 'pending'), isTrue,
         reason: 'Không đánh dấu pending thì bản sao không bao giờ lên server, '
             'và cả tính năng chỉ tồn tại trên một máy.');
@@ -149,17 +149,44 @@ void main() {
     expect(await seeder.seedForAccount(7), 0,
         reason: 'normalizeCategoryName gom khoảng trắng và hạ chữ thường. Tạo '
             'thêm bản thứ hai là vi phạm quy tắc 7 ở client và '
-            'uq_category_owner_name_classify khi đẩy lên.');
+            'uq_category_owner_name khi đẩy lên.');
+    expect(await db.categoryDao.getOwnedIncludingDeleted(7), hasLength(1), reason: 'Chỉ còn hàng người dùng tự tạo.');
   });
 
-  test('cùng tên nhưng KHÁC loại thì vẫn tạo bản sao', () async {
+  test('cùng tên nhưng KHÁC loại thì KHÔNG tạo bản sao (2026-10-27)', () async {
     await themMacDinh('Thưởng', 'thu');
     await themRieng(7, 'Thưởng', 'chi');
 
+    expect(await seeder.seedForAccount(7), 0,
+        reason: 'uq_category_owner_name của server khoá (Create_by, tên chuẩn hoá) — KHÔNG có Classify (đo pg_indexes '
+            '2026-10-27); quy tắc 7. Tạo bản sao khác loại là đẩy lên CATEGORY_NAME_DUPLICATE vĩnh viễn, rồi gộp – xoá – '
+            'tạo lại ở mỗi lượt kéo có danh mục đổi.');
+    expect(await db.categoryDao.getOwnedIncludingDeleted(7), hasLength(1), reason: 'Không có bản sao khác loại.');
+  });
+
+  test('danh mục khác loại ĐÃ XOÁ mềm cũng chặn (luật "từng có" giữ nguyên)', () async {
+    await themMacDinh('Trả nợ', 'vay_no');
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'rieng-tra-no',
+      idaccount: 7,
+      name: 'Trả nợ',
+      classify: 'chi',
+      isDefault: const Value(false),
+      isDeleted: const Value(true),
+      deletedAt: Value(DateTime(2026, 9, 2)),
+      updatedAt: DateTime(2026, 9, 2),
+    ));
+    expect(await seeder.seedForAccount(7), 0, reason: 'G16: thứ người dùng đã xoá không mọc lại dưới loại khác.');
+  });
+
+  test('⭐ hai khuôn sống cùng TÊN khác loại → chỉ MỘT bản sao trong cùng lượt', () async {
+    await themMacDinh('Thử khuôn', 'chi');
+    await themMacDinh('Thử khuôn', 'vay_no');
+
     expect(await seeder.seedForAccount(7), 1,
-        reason: 'Phép đối chiếu ở đây so cả tên LẪN classify. Khác loại là hai '
-            'khái niệm khác nhau, và uq_category_owner_name_classify cũng cho '
-            'chúng cùng tồn tại.');
+        reason: 'Tên danh mục duy nhất trong tài khoản (quy tắc 7): bản thứ hai cùng tên là bản trùng đẩy lên hỏng vĩnh viễn.');
+    expect(await db.categoryDao.getOwnedIncludingDeleted(7), hasLength(1));
+    expect(await seeder.seedForAccount(7), 0, reason: 'Luỹ đẳng.');
   });
 
   test('chưa pull được bộ mặc định thì không tạo gì', () async {

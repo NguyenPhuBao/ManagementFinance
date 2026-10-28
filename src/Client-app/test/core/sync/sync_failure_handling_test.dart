@@ -524,12 +524,12 @@ void main() {
       await seedPendingCategory();
 
       // Dạng Prisma bọc: đây là thứ client thật sự nhận khi danh mục trùng tên
-      // với một hàng ĐÃ XOÁ MỀM trên server — `uq_category_owner_name_classify`
-      // không có mệnh đề WHERE nên hàng đã xoá vẫn giữ chỗ tên.
+      // với một hàng khác trên server — chỉ mục hiện hành là `uq_category_owner_name`
+      // (khoá theo tên, không có phân loại; hàng đã xoá mềm không giữ chỗ từ G108).
       await runOnce(_FailingAdapter(
         'Invalid `prisma.category.create()` invocation. '
         'Unique constraint failed on the fields: '
-        '(`Create_by`,`NameCategory`,`Classify`)',
+        '(`Create_by`,`NameCategory`)',
       ));
 
       final row = await db.categoryDao.getById(catId);

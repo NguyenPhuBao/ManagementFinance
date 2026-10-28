@@ -13,6 +13,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
+import '../../helpers/goi_gia.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/di/injection_container.dart';
@@ -74,8 +77,9 @@ Future<void> _chamSauKhiCuon(WidgetTester tester, Finder f) async {
 Future<void> _moTrang(
   WidgetTester tester,
   WalletRepository repo,
-  DieuChinhSoDuService dichVu,
-) async {
+  DieuChinhSoDuService dichVu, {
+  GoiCubit? goi,
+}) async {
   for (final huy in [
     () async {
       if (sl.isRegistered<WalletRepository>()) {
@@ -98,12 +102,11 @@ Future<void> _moTrang(
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
 
-  await tester.pumpWidget(
-    MaterialApp(
-      theme: AppTheme.lightTheme,
-      home: const WalletEditPage(id: 'w1'),
-    ),
+  final app = MaterialApp(
+    theme: AppTheme.lightTheme,
+    home: const WalletEditPage(id: 'w1'),
   );
+  await tester.pumpWidget(goi == null ? app : BlocProvider<GoiCubit>.value(value: goi, child: app));
   await tester.pumpAndSettle();
 }
 
@@ -179,5 +182,66 @@ void main() {
         reason: 'Đây là đổi HÀNH VI của một ô đang chạy: hôm qua sửa số dư là '
             'ghi đè lặng lẽ, hôm nay là ghi một dòng vào sổ. Không nói ra thì '
             'người dùng thấy sổ giao dịch mọc thêm dòng lạ.');
+  });
+
+  group('B1 — quyền wallet_balance_adjustment / wallet_exclude_total (spec 2026-10-27 mục 3)', () {
+    testWidgets('⭐ không quyền điều chỉnh: ô số dư CHỈ ĐỌC + dòng khoá', (tester) async {
+      await _moTrang(tester, _RepoGhiLai(_vi()), _DichVuGia(),
+          goi: goiBasic(const {'wallet_balance_adjustment': false}));
+      expect(tester.widget<TextField>(find.byType(TextField).at(1)).readOnly, isTrue);
+      expect(find.byKey(const Key('dong-khoa-wallet_balance_adjustment')), findsOneWidget);
+      expect(find.textContaining('Sửa số dư sẽ tạo'), findsNothing, reason: 'câu chú thích nói ngược dòng khoá');
+    });
+
+    testWidgets('⭐ không quyền điều chỉnh, số dư LẺ → Lưu KHÔNG sinh khoản điều chỉnh', (tester) async {
+      final dichVu = _DichVuGia();
+      final repo = _RepoGhiLai(_vi(soDu: 1000000.7));
+      await _moTrang(tester, repo, dichVu,
+          goi: goiBasic(const {'wallet_balance_adjustment': false}));
+      await tester.enterText(find.byType(TextField).first, 'Ví tiền mặt');
+      await tester.pumpAndSettle();
+      await _chamSauKhiCuon(tester, find.text('Lưu & Cập Nhật Ví'));
+      expect(repo.luoiGoiUpdate.single.name, 'Ví tiền mặt', reason: 'việc lưu ví vẫn xảy ra');
+      expect(dichVu.loiGoi, isEmpty,
+          reason: 'ô hiện formatSoThoi(balance.toInt()) = 1.000.000 — so với 1.000.000,7 là "đổi"; readOnly không '
+              'đủ, phép gọi dieuChinh phải hỏi quyền.');
+    });
+
+    testWidgets('⭐ không quyền loại ví: công tắc "Tính vào tổng tài sản" khoá, GIỮ giá trị + băng "Cần Premium"',
+        (tester) async {
+      await _moTrang(tester, _RepoGhiLai(_vi()), _DichVuGia(), goi: goiBasic(const {'wallet_exclude_total': false}));
+      final sw = tester.widget<Switch>(find.byKey(const Key('vi-tinh-vao-tong')));
+      expect(sw.onChanged, isNull);
+      expect(sw.value, isTrue);
+      expect(find.byKey(const Key('dong-khoa-cong-tac-wallet_exclude_total')), findsOneWidget);
+      expect(find.text('Cần Premium'), findsOneWidget);
+    });
+
+    testWidgets('⭐ I3: không quyền, ví ĐÃ LƯU là "không tính" → công tắc mở: bật lại được, tắt lại (trước Lưu) được; băng vẫn hiện',
+        (tester) async {
+      final repo = _RepoGhiLai(_vi().copyWith(includeInTotal: false));
+      await _moTrang(tester, repo, _DichVuGia(), goi: goiBasic(const {'wallet_exclude_total': false}));
+      final cong = find.byKey(const Key('vi-tinh-vao-tong'));
+      expect(tester.widget<Switch>(cong).value, isFalse);
+      expect(tester.widget<Switch>(cong).onChanged, isNotNull,
+          reason: 'I3 (người dùng chốt 2026-10-28): quyền chỉ chặn LOẠI MỚI — ví loại từ khi còn Premium phải bật lại được');
+      expect(find.byKey(const Key('dong-khoa-cong-tac-wallet_exclude_total')), findsOneWidget,
+          reason: 'băng nói "loại khỏi tổng cần Premium" — sau khi Lưu "tính" thì không loại lại được');
+
+      await _chamSauKhiCuon(tester, cong);
+      expect(tester.widget<Switch>(cong).value, isTrue);
+      expect(tester.widget<Switch>(cong).onChanged, isNotNull,
+          reason: 'neo vào giá trị ĐÃ LƯU: chạm nhầm còn gỡ được trước khi Lưu (tắt lại = giá trị cũ, không phải loại mới)');
+
+      await _chamSauKhiCuon(tester, find.text('Lưu & Cập Nhật Ví'));
+      expect(repo.luoiGoiUpdate.single.includeInTotal, isTrue, reason: 'Lưu ghi đúng giá trị vừa bật');
+    });
+
+    testWidgets('thiếu khoá → ô số dư sửa được, công tắc mở, không dòng khoá', (tester) async {
+      await _moTrang(tester, _RepoGhiLai(_vi()), _DichVuGia(), goi: goiBasic(const {}));
+      expect(tester.widget<TextField>(find.byType(TextField).at(1)).readOnly, isFalse);
+      expect(tester.widget<Switch>(find.byKey(const Key('vi-tinh-vao-tong'))).onChanged, isNotNull);
+      expect(find.byKey(const Key('dong-khoa-wallet_balance_adjustment')), findsNothing);
+    });
   });
 }

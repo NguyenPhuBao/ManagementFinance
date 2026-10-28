@@ -57,7 +57,9 @@ import '../../../ai_edge/domain/lenh_tao.dart';
 import '../../../ai_edge/domain/slm_prompt.dart';
 import '../../../ai_edge/domain/the_cua_cau.dart';
 import '../../../premium/data/repositories/goi_repository.dart';
+import '../../../premium/domain/cau_quyen.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/bloc/goi_cubit.dart';
 import '../../data/cong_tac_online.dart';
 import '../../data/models/luot_hoi_online.dart';
@@ -105,19 +107,22 @@ String cauKhoaHoiDap({required bool coTep}) =>
 const String kGoiBasic =
     'Trợ lý AI là tính năng Premium. Nâng cấp để hỏi về số liệu của bạn.';
 
-/// Ba lý do ô nhập bị khoá (spec Premium 2026-10-06 mục 8.1).
-enum LyDoKhoaHoiDap { goiBasic, chuaCoMoHinh, congTacTat }
+/// Bốn lý do ô nhập bị khoá (spec Premium 2026-10-06 mục 8.1).
+enum LyDoKhoaHoiDap { goiBasic, tamNgung, chuaCoMoHinh, congTacTat }
 
 /// ⚠️ Basic xét TRƯỚC: không mời người không dùng được đi tải 2,41 GB. Hai lý
 /// do còn lại giữ nguyên bài học ở [cauKhoaHoiDap] (hai câu khác nhau, không
 /// gộp). Từ 2026-10-11 (trợ lý online §3.5): có đường online thì ô mở dù máy
 /// chưa sẵn — mất mạng lúc hỏi mới nói [kKhongMangKhongMoHinh]. `null` = không khoá.
+/// Tạm ngừng (B1) xét trước cả Basic.
 LyDoKhoaHoiDap? lyDoKhoa({
   required bool laPremium,
+  bool tamNgung = false,
   required bool coTep,
   required bool congTacBat,
   bool onlineBat = false,
 }) {
+  if (tamNgung) return LyDoKhoaHoiDap.tamNgung; // B1: admin tắt — mua không mở, không mời Nâng cấp
   if (!laPremium) return LyDoKhoaHoiDap.goiBasic;
   if (onlineBat) return null;
   if (!coTep) return LyDoKhoaHoiDap.chuaCoMoHinh;
@@ -140,6 +145,7 @@ const String kDangHoiOnline = 'Đang hỏi trợ lý online…';
 
 String cauKhoa(LyDoKhoaHoiDap ly) => switch (ly) {
       LyDoKhoaHoiDap.goiBasic => kGoiBasic,
+      LyDoKhoaHoiDap.tamNgung => cauMoDauQuyen(MaQuyen.aiAssistant, tamNgung: true),
       LyDoKhoaHoiDap.chuaCoMoHinh => kChuaCoMoHinh,
       LyDoKhoaHoiDap.congTacTat => kCongTacDangTat,
     };
@@ -318,6 +324,10 @@ class _AiChatPageState extends State<AiChatPage> {
     }
   }
 
+  /// B1: `ai_assistant` TẠM NGỪNG (admin tắt ở cột của gói) — băng khoá không mời Nâng cấp. Tiêm `laPremium` (test) → không.
+  bool get _tamNgungAi =>
+      widget.laPremium == null && context.trangThaiQuyenDoc(MaQuyen.aiAssistant) == TrangThaiQuyen.tamNgung;
+
   // ── Trợ lý online (spec 2026-10-11) ──
   late final String _conversationId = const Uuid().v4();
   void Function(String lyDo)? _huyOnline;
@@ -343,11 +353,11 @@ class _AiChatPageState extends State<AiChatPage> {
   }
 
   LyDoKhoaHoiDap? get _lyDoKhoa => lyDoKhoa(
-      laPremium: _laPremium, coTep: _coTep, congTacBat: _batCongTac, onlineBat: _onlineBat);
+      laPremium: _laPremium, tamNgung: _tamNgungAi, coTep: _coTep, congTacBat: _batCongTac, onlineBat: _onlineBat);
 
-  /// Chỉ Basic khoá CẢ ô (kể cả lệnh tạo C3 — người dùng chốt câu 3); hai lý do
+  /// Basic hoặc tạm ngừng khoá CẢ ô (kể cả lệnh tạo C3 — người dùng chốt câu 3); hai lý do
   /// cũ vẫn để ô mở cho lệnh tạo (chốt 2026-09-30).
-  bool get _khoaCaO => _lyDoKhoa == LyDoKhoaHoiDap.goiBasic;
+  bool get _khoaCaO => _lyDoKhoa == LyDoKhoaHoiDap.goiBasic || _lyDoKhoa == LyDoKhoaHoiDap.tamNgung;
 
   /// Ô nhập mở (chip, hint, băng khoá). Khi online bật, ô mở dù máy chưa có mô hình — xem [_maySan].
   bool get _coMoHinh => _lyDoKhoa == null;
@@ -420,7 +430,7 @@ class _AiChatPageState extends State<AiChatPage> {
   Future<void> _hoi(String cauHoi) async {
     final c = cauHoi.trim();
     // Ô nhập mở cả khi chưa có mô hình (C3, người dùng chốt 2026-09-30): lệnh tạo chỉ luật.
-    // Basic thì khoá cả ô — kể cả lệnh tạo (spec Premium 8.1); hết hạn giữa phiên lộ ở đây, câu đang sinh không bị cắt.
+    // Basic / tạm ngừng thì khoá cả ô — kể cả lệnh tạo (spec Premium 8.1); hết hạn giữa phiên lộ ở đây, câu đang sinh không bị cắt.
     if (c.isEmpty || _dangHoi || _khoaCaO) return;
 
     setState(() {
@@ -913,6 +923,7 @@ class _AiChatPageState extends State<AiChatPage> {
             DongKhoa(
               cau: cauKhoa(ly),
               goiBasic: ly == LyDoKhoaHoiDap.goiBasic,
+              tamNgung: ly == LyDoKhoaHoiDap.tamNgung,
               onCaiDatAi: _moCaiDatAi,
             ),
           _thanhNhap(),
@@ -1101,7 +1112,7 @@ class _AiChatPageState extends State<AiChatPage> {
             Expanded(
               child: TextField(
                 controller: _oNhap,
-                // Basic khoá cả ô (kể cả lệnh tạo) — spec Premium 8.1.
+                // Basic / tạm ngừng khoá cả ô (kể cả lệnh tạo) — spec Premium 8.1.
                 enabled: !_dangHoi && !_khoaCaO,
                 maxLines: 4,
                 minLines: 1,
@@ -1112,7 +1123,7 @@ class _AiChatPageState extends State<AiChatPage> {
                 decoration: InputDecoration(
                   // Chưa có mô hình: ô vẫn gõ được lệnh tạo (C3) — gợi ý nói đúng thứ gõ được.
                   hintText: _khoaCaO
-                      ? 'Tính năng Premium'
+                      ? (_lyDoKhoa == LyDoKhoaHoiDap.tamNgung ? kTheKhoaTamNgung : 'Tính năng Premium')
                       : _coMoHinh
                           ? 'Hỏi về số liệu của bạn…'
                           : 'VD: tạo hoá đơn Netflix 100k',

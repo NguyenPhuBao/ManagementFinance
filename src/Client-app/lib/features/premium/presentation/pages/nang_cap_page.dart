@@ -15,23 +15,13 @@ import '../../data/models/dong_lich_su.dart';
 import '../../domain/cau_loi_thanh_toan.dart';
 import '../../domain/don_can_xu_ly.dart';
 import '../../data/repositories/don_thanh_toan_repository.dart';
+import '../../domain/cau_quyen.dart';
 import '../../domain/quyen_tinh_nang.dart';
 import '../../domain/tran_goi.dart';
-import '../../data/models/tran_goi.dart';
 import '../../domain/hang_goi.dart';
 import '../../data/models/trang_thai_goi.dart';
 import '../bloc/goi_cubit.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
-
-/// Câu mở đầu khi đến từ cửa chặn (`/premium?tran=`): *"Bạn đã dùng 3/3 ví của
-/// gói Basic."* — số lấy từ trần đang có hiệu lực, không ghi cứng.
-String cauMoDau(LoaiTran tran, TranGoi tranGoi) {
-  final n = tranGoi.cua(tran);
-  return 'Bạn đã dùng $n/$n ${tenTran(tran)} của gói Basic.';
-}
-
-/// Câu mở đầu khi đến từ một tính năng bị khoá (`/premium?quyen=`) — spec phân quyền 2026-10-08 mục 4.4.
-String cauMoDauQuyen(MaQuyen ma) => '${ma.ten} là tính năng Premium.';
 
 /// Màn Nâng cấp `/premium` — ngoài shell, `push` từ mọi nơi (spec 9.1). Màn
 /// Stitch *"Nâng cấp Premium - FlowMoney"* `c999da970da94cb4ab4331fc44230884`
@@ -47,7 +37,12 @@ String cauMoDauQuyen(MaQuyen ma) => '${ma.ten} là tính năng Premium.';
 /// tín hiệu `payment.*` / `account.upgraded`; đọc hỏng → không thẻ, nút mở
 /// (không chặn mua vì mạng — KIEN_TRUC mục 7) — đã đọc được thì giữ kết quả cũ.
 /// Lệch Stitch có chủ ý: không chép dòng *"Tự động gia hạn · Hủy bất cứ lúc
-/// nào"* (gói không tự gia hạn — lời hứa sai), không đổi thẻ gói hiện tại.
+/// nào"* (gói không tự gia hạn — lời hứa sai), không đổi thẻ gói hiện tại. Màn Stitch `02c0d881…` khối 5 vẽ biểu tượng
+/// `account_balance_wallet` cho dải trần Premium; app giữ `info_outline` màu warning của dải hiện có (không đổi kiểu dáng).
+///
+/// Đến từ quyền ĐANG TẠM NGỪNG (`?quyen=`, admin tắt ở cột Premium — B1, I2 người dùng chốt 2026-10-28): màn chỉ báo câu
+/// *"X hiện đang tạm ngừng."*, ẩn giá + nút *Thanh toán* / *Gia hạn* (mua cũng không mở), giữ thẻ gói, đặc quyền, *Lịch sử
+/// mua*. Lệch có chủ ý với Stitch `c999da97…` (luôn vẽ nút).
 class NangCapPage extends StatefulWidget {
   const NangCapPage(
       {super.key,
@@ -61,7 +56,7 @@ class NangCapPage extends StatefulWidget {
   /// Loại trần vừa chạm (từ query `?tran=`); `null` = mở từ thẻ Cá nhân / băng khoá.
   final LoaiTran? tran;
 
-  /// Tính năng bị khoá vừa chạm (query `?quyen=`); `tran` khác `null` thì câu trần thắng.
+  /// Tính năng bị khoá vừa chạm (query `?quyen=`); câu trần (khi có) thắng.
   final MaQuyen? quyen;
 
   /// `null` → `sl<DonThanhToanRepository>()`; test tiêm bản giả.
@@ -164,6 +159,18 @@ class _NangCapPageState extends State<NangCapPage> {
     final goi = widget.goi?.state ?? context.watch<GoiCubit>().state;
     final now = _now();
     final premium = goi.laPremium(now);
+    final cauTran = widget.tran == null ? null : cauMoDau(widget.tran!, tranHieuLuc(goi, now), laPremium: premium);
+    final ttQuyen = widget.quyen == null ? null : trangThaiQuyen(widget.quyen!, goi, now);
+    // Basic giữ câu cũ kể cả khi quyền đang mở (đến từ nút Quét / Nói); tạm ngừng → câu riêng cho MỌI gói; Premium không
+    // tạm ngừng → im.
+    final cauQuyen = ttQuyen == null
+        ? null
+        : ttQuyen == TrangThaiQuyen.tamNgung
+            ? cauMoDauQuyen(widget.quyen!, tamNgung: true)
+            : (premium ? null : cauMoDauQuyen(widget.quyen!));
+    // I2 (người dùng chốt 2026-10-28): màn đang nói "X hiện đang tạm ngừng" → ẩn giá + nút Thanh toán / Gia hạn — admin tắt
+    // ở cột Premium thì mua cũng không mở. Neo vào câu ĐANG HIỆN: có `?tran=` thì câu trần thắng và mua là nới trần, nút ở lại.
+    final anNutMua = cauTran == null && ttQuyen == TrangThaiQuyen.tamNgung;
     final choXacNhan = donChoXacNhan(_dsDon);
     final choHoan = donChoHoanTien(_dsDon);
     final khoa = choXacNhan.isNotEmpty;
@@ -201,13 +208,12 @@ class _NangCapPageState extends State<NangCapPage> {
                 const SizedBox(height: 12),
               ],
               premium ? _theGoiPremium(goi, now) : _theGoiBasic(),
-              if (!premium && widget.tran != null) ...[
+              if (cauTran != null) ...[
                 const SizedBox(height: 12),
-                _dongTran(cauMoDau(widget.tran!, goi.tran)),
-              ] else if (!premium && widget.quyen != null) ...[
+                _dongTran(cauTran),
+              ] else if (cauQuyen != null) ...[
                 const SizedBox(height: 12),
-                _dongTran(cauMoDauQuyen(widget.quyen!),
-                    key: const Key('nang-cap-cau-quyen')),
+                _dongTran(cauQuyen, key: const Key('nang-cap-cau-quyen')),
               ],
               const SizedBox(height: 24),
               const Text(
@@ -219,55 +225,57 @@ class _NangCapPageState extends State<NangCapPage> {
                     color: AppColors.textSecondary),
               ),
               const SizedBox(height: 8),
-              _theDacQuyen(goi),
-              const SizedBox(height: 24),
-              Text(
-                '${CurrencyFormatter.format(goi.gia.toDouble())} / ${goi.soNgayGoi} ngày',
-                key: const Key('nang-cap-gia'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                key: const Key('nang-cap-thanh-toan'),
-                onPressed: _dangTao || khoa ? null : _thanhToan,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.outlineVariant,
-                  disabledForegroundColor: AppColors.textSecondary,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+              _theDacQuyen(goi, now),
+              if (!anNutMua) ...[
+                const SizedBox(height: 24),
+                Text(
+                  '${CurrencyFormatter.format(goi.gia.toDouble())} / ${goi.soNgayGoi} ngày',
+                  key: const Key('nang-cap-gia'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary),
                 ),
-                child: _dangTao
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : Text(premium
-                        ? 'Gia hạn thêm ${goi.soNgayGoi} ngày'
-                        : 'Thanh toán'),
-              ),
-              if (khoa) ...[
-                const SizedBox(height: 8),
-                const Row(
-                  key: Key('nang-cap-ly-do-khoa'),
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.lock, size: 14, color: AppColors.textSecondary),
-                    SizedBox(width: 6),
-                    Flexible(
-                      child: Text('Xác nhận đơn chuyển thừa trước khi tạo đơn mới',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    ),
-                  ],
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  key: const Key('nang-cap-thanh-toan'),
+                  onPressed: _dangTao || khoa ? null : _thanhToan,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppColors.outlineVariant,
+                    disabledForegroundColor: AppColors.textSecondary,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: _dangTao
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : Text(premium
+                          ? 'Gia hạn thêm ${goi.soNgayGoi} ngày'
+                          : 'Thanh toán'),
                 ),
+                if (khoa) ...[
+                  const SizedBox(height: 8),
+                  const Row(
+                    key: Key('nang-cap-ly-do-khoa'),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock, size: 14, color: AppColors.textSecondary),
+                      SizedBox(width: 6),
+                      Flexible(
+                        child: Text('Xác nhận đơn chuyển thừa trước khi tạo đơn mới',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      ),
+                    ],
+                  ),
+                ],
               ],
               const SizedBox(height: 12),
               TextButton(
@@ -477,12 +485,13 @@ class _NangCapPageState extends State<NangCapPage> {
         ),
       );
 
-  /// Đặc quyền theo bảng của server (`dacQuyenPremium`, 2026-10-08) — thôi danh sách cố định 4 dòng của 06/10. Cố ý
-  /// KHÔNG có "đồng bộ đa thiết bị tức thì": đồng bộ không tách theo gói (spec Premium câu 4).
-  Widget _theDacQuyen(TrangThaiGoi goi) => _the(
+  /// Đặc quyền theo bảng của server (`dacQuyenPremium`, 2026-10-08; B1: bảng của gói đang hiệu lực, người Premium thấy cột
+  /// Premium) — thôi danh sách cố định 4 dòng của 06/10. Cố ý KHÔNG có "đồng bộ đa thiết bị tức thì": đồng bộ không tách
+  /// theo gói (spec Premium câu 4).
+  Widget _theDacQuyen(TrangThaiGoi goi, DateTime now) => _the(
         child: Column(
           children: [
-            for (final d in dacQuyenPremium(goi))
+            for (final d in dacQuyenPremium(goi, now))
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(

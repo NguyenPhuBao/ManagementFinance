@@ -1,6 +1,6 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** **2026-10-26** (**Tin từ FlowMoney** — tin admin qua socket `system.broadcast`, loại thứ **21** `tinHeThong`, nhóm thứ **bảy** `tinFlowMoney`, mục **5l**). Trước đó **2026-10-15** (đợt Entity Thông báo + gạch 5 + gạch 6, G88 — mọi đường dẫn `lib/core/notification/…` và `test/core/notification/…` đổi sang `features/notification/{domain,data,application}` (hoặc `core/nen` · `core/ocr` · `core/utils`); cổng `ThongBaoNguon` thành `ThongBaoRepository`, bảng vẫn cục bộ; không đổi hành vi). Trước đó **2026-10-03** (**nhắc ghi sau khi dùng app ngân hàng** — nguồn thứ ba của loại 20, mục **5j**; dải hoàn tác vuốt xoá phải `persist: false`, mục **5c**) · trước đó **2026-09-30** (**đọc biến động số dư — D1**, mục **5j**: loại thứ **20** `bienDongSoDu`, nhóm thứ **sáu** `bienDong`, **ngoại lệ xoá cứng** ở mục 4.3; tài liệu chính `docs/BIEN_DONG_SO_DU_FEATURE.md`) · trước đó **2026-09-29** tối (**học giờ và đề xuất — B5b**, mục **5i**: đề xuất giờ nhắc hoá đơn / tổng kết / ghi chép và tắt nhóm bị lờ, chỉ đề xuất; kèm **G59** — đổi giờ nhắc nay dời lịch đang chờ, `resync(datLai: true)`) · trước đó **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
+> **Cập nhật:** **2026-10-28** (**quyền theo gói gác thông báo — B1**, mục **5m**: ba vị từ `nhacTruocHanDuocPhep` · `nhacGhiChepDuocPhep` · `canhBaoNganSachDuocPhep` qua closure DI; quyền nhắc đổi → `resync` thường qua `noiKhiQuyenDoi`; bẫy `khongHuy`). Trước đó **2026-10-26** (**Tin từ FlowMoney** — tin admin qua socket `system.broadcast`, loại thứ **21** `tinHeThong`, nhóm thứ **bảy** `tinFlowMoney`, mục **5l**). Trước đó **2026-10-15** (đợt Entity Thông báo + gạch 5 + gạch 6, G88 — mọi đường dẫn `lib/core/notification/…` và `test/core/notification/…` đổi sang `features/notification/{domain,data,application}` (hoặc `core/nen` · `core/ocr` · `core/utils`); cổng `ThongBaoNguon` thành `ThongBaoRepository`, bảng vẫn cục bộ; không đổi hành vi). Trước đó **2026-10-03** (**nhắc ghi sau khi dùng app ngân hàng** — nguồn thứ ba của loại 20, mục **5j**; dải hoàn tác vuốt xoá phải `persist: false`, mục **5c**) · trước đó **2026-09-30** (**đọc biến động số dư — D1**, mục **5j**: loại thứ **20** `bienDongSoDu`, nhóm thứ **sáu** `bienDong`, **ngoại lệ xoá cứng** ở mục 4.3; tài liệu chính `docs/BIEN_DONG_SO_DU_FEATURE.md`) · trước đó **2026-09-29** tối (**học giờ và đề xuất — B5b**, mục **5i**: đề xuất giờ nhắc hoá đơn / tổng kết / ghi chép và tắt nhóm bị lờ, chỉ đề xuất; kèm **G59** — đổi giờ nhắc nay dời lịch đang chờ, `resync(datLai: true)`) · trước đó **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
@@ -1413,6 +1413,35 @@ có hàng trong Trung tâm + thông báo trên khay. Loại thứ **21** `tinHeT
   nguyên khung `42["system.broadcast",…]` của một tin admin (`info`, app mở): bản sao ngay sau (1 ms) và sau 3 s → logcat **3** dòng
   `[RealtimeChannel] Tin hệ thống <id>` · bảng máy **1** hàng `tinHeThong:<id>` (`os_delivered_at` có) · khay **1** thông báo, id =
   `osScheduledId(khoá)` · bộ nghe thông báo D1 (`BienDongThu`) thấy **1** lần đăng — hai bản sao không đăng lại, không kêu lại.
+
+## 5m. Quyền theo gói gác thông báo — B1 (2026-10-27 phiên 17–18)
+
+Spec `docs/superpowers/specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md` mục 5; `docs/PREMIUM_FEATURE.md` mục 8. Ba
+quyền bật / tắt ở Admin-web `/permissions` gác ba nhóm thông báo (`macDinhKhiThieu = true` — vắng khoá là mở). Vị từ quyền đi bằng
+**closure từ DI** (`injection_container.dart`: `coQuyenNen(MaQuyen.…)`), không để `notification/` import `premium/data/`.
+
+| Quyền | Vị từ | Gác | Khi không quyền |
+|---|---|---|---|
+| `bill_reminder_notifications` | `nhacTruocHanDuocPhep` | `NotificationScanner` loại `billDueSoon` + `ReminderScheduler` (lịch nhắc trước hạn) | thôi nhắc trước hạn; **quá hạn (`billOverdue`) vẫn báo** |
+| `daily_recording_reminder` | `nhacGhiChepDuocPhep` | `ReminderScheduler` (nhắc ghi chép hằng ngày, mục 4.7) | công tắc Cài đặt khoá, **giữ giá trị**; lịch huỷ |
+| `budget_overspend_alert` | `canhBaoNganSachDuocPhep` | `NotificationScanner` loại `budgetNearLimit` · `budgetOverspent` | bộ quét bỏ hai loại |
+
+- **Quyền đổi → `resync` THƯỜNG, không `datLai`:** admin đổi bảng → socket `account.permissions_updated` →
+  `GoiRepository.lamMoi()` → `noiKhiQuyenDoi` (`premium/data/co_quyen_nen.dart`, nối ở `main.dart` cho hai quyền lịch) gọi
+  `ReminderScheduler.resync(id)` khi `duocDung` của một trong hai quyền ĐỔI giữa hai lượt phát liên tiếp. Quyền tắt là lịch rời
+  tập muốn (bị huỷ), quyền bật là lịch chưa chờ (được đặt) — `datLai` chỉ cho đổi giờ (G59).
+- ⚠️ **Chặn quyền ở điều kiện NHÁNH đặt lịch, không trong vòng `khongHuy`** (`reminder_scheduler.dart:171`, `:289`): đặt trong vòng
+  thì lịch cũ được đánh dấu "không huỷ" và sống tiếp sau khi mất quyền. Hệ quả cố ý: lịch đã *Hoãn* của hoá đơn cũng bị huỷ khi
+  mất quyền.
+- Không quyền → bỏ lượt, **không ghi gì**. Hàng thông báo đã sinh trước khi mất quyền giữ nguyên (chỉ chặn sinh mới).
+- ⚠️ **Giới hạn (P-N5, Nhỏ):** `noiKhiQuyenDoi` có thể kích `resync` ở lượt `_phat` đầu từ kho lúc mở app, song song lượt khôi
+  phục của scanner → hai dòng `dat_lich` cùng khoá trong nhật ký B5a (5h; B5b đếm "tới máy" lệch một lần). `resync` không có khoá
+  loại trừ: quyền tắt đúng lúc một lượt khác đã đọc vị từ `true` có thể đặt lại lịch vừa huỷ — tự sửa ở lượt quét kế. Cùng họ (review toàn
+  nhánh M1, không sửa bằng mã): đăng xuất dừng bộ quét (`cancelAll`) trước khi `GoiRepository` bỏ tài khoản — một lượt `lamMoi` lật quyền
+  nhắc đúng khe ấy làm `noiKhiQuyenDoi` `resync` lịch của tài khoản vừa đăng xuất (spec B1 mục 8).
+- Ca canh: `notification/application/` (scanner, scheduler theo quyền), `premium/data/co_quyen_nen_test.dart`,
+  `quyen_nen_noi_day_test.dart` (đọc mã nối dây DI + `main.dart` — vùng `flutter test` không dựng). Nghiệm thu máy thật
+  (spec mục 10 bước 4–5, `dumpsys alarm`) thuộc Task 13, **chưa làm**.
 
 ✅ **G71 (2026-10-06 khuya) — ví đã xoá thì thông báo số dư của nó tự gỡ.** Bộ quét đọc ví qua `walletDao.getAll` (từ 2026-10-14, đợt Entity Giao dịch + Ví, qua `WalletRepository.getAll` trả `WalletEntity` — vẫn là `walletDao.getAll` bên dưới), vốn lọc bỏ ví có `deletedAt`, nên ví đã xoá chỉ **biến mất** khỏi danh sách và cả `hangSapCanLoiThoi` lẫn `hangAmDaHoi` rơi vào nhánh *không biết ví thì không đoán*. Nay bộ quét nhận **`ViDaXoaLoader`** (`WalletDao.idDaXoa` — `deletedAt` **hoặc** `isDeleted`, đúng tài khoản; ví lưu trữ **không** tính) và hàm thuần **`hangCuaViDaXoa`** chọn mọi hàng `subjectType == 'wallet'` chưa gỡ của các ví ấy; gỡ chung vòng `dismiss` với hai hàm kia (gom vào một tập để không gỡ hai lần). Chạy **kể cả khi danh sách ví rỗng** (xoá đúng ví duy nhất) và chỉ đọc CSDL khi còn hàng ví chưa gỡ. Ví vắng mà CSDL không ghi đã xoá → vẫn không đoán. Chưa nghiệm thu máy thật.
 

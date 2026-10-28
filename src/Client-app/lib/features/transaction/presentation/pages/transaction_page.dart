@@ -16,6 +16,9 @@ import '../../../analytics/presentation/widgets/chon_pham_vi_sheet.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../category/data/repositories/category_management_repository.dart';
 import '../../domain/gan_hang_loat.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../../../wallet/data/repositories/wallet_repository.dart';
 import '../../data/hoa_don_da_xoa_nguon.dart';
 import '../../data/repositories/transaction_repository.dart';
@@ -417,6 +420,13 @@ class _TransactionPageState extends State<TransactionPage> {
       builder: (context, snap) {
         final n = snap.data ?? 0;
         if (n <= 0) return const SizedBox.shrink();
+        // Quyền `quick_category_assignment` (B1): thẻ khoá thay thẻ; route `gan-danh-muc` có cửa riêng.
+        if (!context.coQuyen(MaQuyen.quickCategoryAssignment)) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: TheKhoaQuyen(ma: MaQuyen.quickCategoryAssignment),
+          );
+        }
         return TheChuaGanDanhMuc(
           soGiaoDich: n,
           onGanNhanh: () => context.push('/transactions/gan-danh-muc'),

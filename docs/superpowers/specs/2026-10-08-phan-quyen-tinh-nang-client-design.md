@@ -1,5 +1,8 @@
 # Phân quyền tính năng theo gói — phần Client-app (bước 5 của đơn 39)
 
+> ⚠️ Luật "Premium còn hạn = mở hết" (mục 4.1) bị THAY bởi spec B1 `2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md` mục 2:
+> Premium cũng theo bảng (`false` → *tạm ngừng*), trần Premium cũng áp, cột Premium cho Basic.
+
 **Ngày:** 2026-10-08 · **Trạng thái:** thiết kế đã duyệt trong chat (ba phần), chờ người dùng đọc lại bản viết.
 **Đầu vào:** đơn `CAN-LAM/PHAN_QUYEN_THEO_GOI_KHAO_SAT.md` (nay `DA-XONG/`, chuyển 2026-10-09) (mục 39, client viết 2026-10-07); backend làm bước 3–4 ở
 `main` @ `0eb4a05f` (migration 22–23, `permission.repository.js`, trang `/permissions` Admin-web); CSDL dev đã áp 21–23

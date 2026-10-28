@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/models/wallet_entity.dart';
 import '../../data/repositories/wallet_repository.dart';
+import '../../domain/cong_tac_tinh_vao_tong.dart';
 import '../../domain/rang_buoc_vi.dart';
 import '../../domain/wallet_type.dart';
 import '../../domain/wallet_status.dart';
@@ -14,6 +15,9 @@ import '../bloc/wallet_cubit.dart';
 import '../widgets/o_so_du_vi.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 class WalletAddPage extends StatelessWidget {
   const WalletAddPage({super.key});
@@ -454,8 +458,16 @@ class _WalletAddFormState extends State<_WalletAddForm> {
           _buildSwitchTile(
             title: 'Tính vào tổng số dư tài sản',
             value: _includeInTotal,
-            onChanged: (val) => setState(() => _includeInTotal = val),
+            // Quyền `wallet_exclude_total` (B1): chỉ chặn LOẠI MỚI — ví mới chưa lưu gì nên mọi "không tính" là loại mới (I3).
+            onChanged: doiDuocTinhVaoTong(coQuyen: context.coQuyen(MaQuyen.walletExcludeTotal), daLuuTinhVaoTong: true)
+                ? (val) => setState(() => _includeInTotal = val)
+                : null,
           ),
+          if (!context.coQuyen(MaQuyen.walletExcludeTotal))
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: DongKhoaCongTac(ma: MaQuyen.walletExcludeTotal, dangBat: false),
+            ),
           const Divider(height: 1, color: AppColors.borderSubtle, indent: 20, endIndent: 20),
           _buildSwitchTile(
             title: 'Cho phép số dư âm',
@@ -472,7 +484,7 @@ class _WalletAddFormState extends State<_WalletAddForm> {
     required String title,
     String? subtitle,
     required bool value,
-    required ValueChanged<bool> onChanged,
+    required ValueChanged<bool>? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.all(20.0),

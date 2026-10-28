@@ -8,6 +8,9 @@ import '../../../budget/domain/budget_pace.dart';
 import '../../../budget/domain/pick_home_budget.dart';
 import '../../../budget/presentation/widgets/budget_pace_text.dart';
 import '../../../budget/presentation/widgets/budget_visuals.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../../../../core/ui/do_chu.dart';
 
 /// Thẻ "Ngân sách" trên trang chủ — theo Stitch màn Home: một ngân sách, "Đã
@@ -156,14 +159,17 @@ class _BudgetBody extends StatelessWidget {
         ),
         if (paceLine != null) ...[
           const SizedBox(height: 8),
-          Text(
-            paceLine,
-            // G75: hai dòng ở màn hẹp, ngắt sau "·" (xem `budgetPaceLine`).
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style:
-                const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-          ),
+          // Quyền `budget_overspend_alert` (B1): dòng nhịp chi thành dòng khoá.
+          if (context.coQuyen(MaQuyen.budgetOverspendAlert))
+            Text(
+              paceLine,
+              // G75: hai dòng ở màn hẹp, ngắt sau "·" (xem `budgetPaceLine`).
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            )
+          else
+            const DongKhoaQuyen(ma: MaQuyen.budgetOverspendAlert),
         ],
       ],
     );
