@@ -296,7 +296,10 @@ Lịch sử: [`LICH-SU/SOAT_SAU_GOP_D72CCD45.md`](./LICH-SU/SOAT_SAU_GOP_D72CCD4
 
 Mã đã bắt trùng ở mọi đường ghi `payment_transaction` (`payment.repository.js:373`, `:430`), nhưng chỉ mục unique **chưa có** trên
 Supabase: `database/38_add_unique_payos_transaction_id.sql` chưa áp (đo 2026-10-28: 0 chỉ mục chứa `payos_transaction_id`). Không có nhóm
-trùng nào (0) ⇒ áp không vỡ. Cùng lượt `database/39_enforce_no_permanent_ip_ban.sql` cũng chưa áp (`aiops_ip_quarantine` 0 CHECK).
+trùng nào (0) ⇒ áp không vỡ. Cùng lượt `database/39_enforce_no_permanent_ip_ban.sql` cũng chưa áp (`aiops_ip_quarantine` 0 CHECK). ⚠️ 39
+khác 38: nó chạy một `UPDATE` **đổi dữ liệu** trước khi thêm CHECK — mọi phong toả `PERMANENT` (hoặc trạng thái lạ) thành `TEMPORARY`
+hạn 4 giờ. Đo Supabase 2026-10-28: 142 hàng, **tất cả `UNLOCKED`** ⇒ hôm nay không hàng nào bị đổi; chạy lại
+`SELECT status, count(*) FROM aiops_ip_quarantine GROUP BY 1;` ngay trước khi áp, có hàng `PERMANENT` thì để AIOps / PO quyết trước.
 
 **Xin làm:** áp 38 và 39 lên Supabase (và mọi CSDL đang chạy backend), ghi sổ tệp đã áp.
 **Kiểm lại:**
@@ -427,7 +430,7 @@ Số dòng đo trên bản hiện tại (2026-10-28; tệp không đổi từ `4
 | 217–218 (§4.4) | Khoá `idaccount_type` / `idfeature` | `account_type` / `feature_id` (`admin.service.js` cập nhật ma trận) | vừa |
 | 236–243 (§4.5) | Một hình dạng payload `{type, message, expiresAt}` | `account.upgraded` gửi `{ type, premiumExpiresAt }` (`payment.service.js` `:346`, `:438`, `:722`); ma trận đổi gửi `{ reason: 'PERMISSIONS_MATRIX_UPDATED', updates }` tới **mọi** client (`core/socket.js`) | vừa |
 | 281 (§4.7) | `summary: { created, updated, deleted }` | `total / synced / conflicts / errors` (`sync.service.js` `processPush`) | vừa |
-| 287 | `sync.completed` chỉ khi máy khác đẩy; app gọi `processPull()` | Phát cả tới máy vừa đẩy; app gọi `syncNow()` (đẩy rồi kéo), im lặng | thấp |
+| 287 | `sync.completed` chỉ khi máy khác đẩy; app gọi `processPull()` | Phát tới **mọi máy của tài khoản vừa đẩy**, kể cả chính máy ấy (`sync.service.js:346` → `notification.service.js:139-145` → `core/socket.js:216-224`, phòng `account_<id>`); app gọi `syncNow()` (đẩy rồi kéo), im lặng | thấp |
 | 302 (§4.8) | OCR mang `metadata` | Mã gửi `data` + `createdAt` (`notification.service.js:98-104`) | thấp |
 | 86, 319 (§4.9) | `user.notification` là sự kiện sống | `notifyUser` không còn chỗ gọi (ngoài test) | thấp |
 | 87–89, 339–367, 592–594 | `payment.success` do webhook; `order_expired` do worker; huỷ đơn → `order_cancelled` | Webhook phát `account.upgraded` (`payment.service.js:346`, `:438`); ba sự kiện ấy tới phòng tài khoản chỉ phát từ đường đồng bộ JIT (`:610` `order_cancelled`, `:646` `order_expired`, `:717` `success`); tác vụ hết hạn đơn chỉ phát `payment.order_expired` tới `admin_room` (`:940`) | vừa |
@@ -554,7 +557,8 @@ ghi. **Xin:** xác nhận trong ô trả lời — muốn sửa thì ghi ở m�
 | 43.A5 | | | |
 | 43.A6 | | | |
 | 44.B2 | | | |
-| 52.1 – 52.5 | | | |
+| 52.1 – 52.2 (sửa mã) | | | |
+| 52.3 – 52.5 (khoá, dọn dữ liệu) | | | |
 | 55.A1 – 55.A3 | | | |
 | 48.1 – 48.3 | | | |
 | 49.D | | | |
