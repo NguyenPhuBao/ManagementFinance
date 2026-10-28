@@ -6,7 +6,8 @@
 /// Cùng 15 tờ R01–R16 với `hoa_don_that_du_lieu.dart` (ảnh rộng 1280 của buổi 08/10), nhưng chữ KHÁC: tệp ấy đọc bằng màn
 /// spike, còn ở đây ảnh đã qua `image_picker` (R08 98.970 → 83.192 byte). Đây mới là đầu vào thật của `/quet` — G101.
 /// Dữ liệu cho `hoa_don_quet_that_test.dart`; bảng kết quả ở mục 7 `docs/QUET_ANH_FEATURE.md`. Thêm 2026-10-22 tối: `N01b`
-/// — tờ N01 chụp lại bằng máy ảnh (bản `16b71a1e…`), ảnh dính chữ lạ ở mép trên (G105); 17 mục.
+/// — tờ N01 chụp lại bằng máy ảnh (bản `16b71a1e…`), ảnh dính chữ lạ ở mép trên (G105). Thêm 2026-10-28 phiên 22: `N01c`
+/// — cùng tờ chụp dính một tấm thẻ in chữ tiếng Anh (sáu dòng rác lẫn hoa thường, G105 phần còn hở); 18 mục.
 library;
 
 const Map<String, String> kHoaDonQuetRealme = {
@@ -118,6 +119,66 @@ là ng lién hệ hotline nhé
 MR realme Shot on O3 Pro 5G 2026 10 22 19:57
 Cảm on Quy Khách
 Powered by iPOs.vn''',
+  // ỦA TEA N01 chụp LẠI 2026-10-22 21:31 (Realme, bản `5129e9df…`) — ảnh dính một tấm thẻ in chữ tiếng Anh ở mép trên:
+  // SÁU dòng rác lẫn hoa thường đứng trước *"ỦA TEA"* (dòng 7) — luật cũ ra *"ral Setl Ths cad rd effect"*. G105 phần còn
+  // hở; chép từ khối thứ hai mục G105 `CLIENT_APP_KNOWN_GAPS.md` (số khách đã che).
+  'N01c': r'''
+ral Setl Ths cad rd effect
+LDIVNE.BEAST/EFEECT o Normal Saon ifthis cae etroy ais onstes O00 DE ODEF/400
+Norma thes card
+keqires 1Trbtes
+eflects c
+trok This card can
+ỦA TEA
+Dla chi: Kios 01, quang trưong Dianmond, Dirh Thi
+Thi, Van phủc
+Hottine: 0934803456
+HỎA ĐƠN THANH TOẢN
+So HÐ: UAO068
+Må HD: #TH8HW TN: THU NGÁN
+Bàn. HUB (GRABF00D) Ngày: 14/10/2026
+(GF-264.THBHW) Giò ra: 1407
+Giò vào: 1407
+Don Thành
+STT Ten mỏn SL giá tien
+MATCHA OATMILK 142,000 42,000
+SIZE M
+100% NGOT
+100% ĐẢ
+sÜA TƯƠI TRẢN 39,000 39,000
+CHÅU ĐUỜNG ĐẾN-L
+50% NGOT
+100% ĐA
+MATCHA LATTE 39 000 39000
+SIZE İM
+50% ĐÁ
+MATCHA LATTE 39,000|39,000
+4gr bột Matcha 12,000 12,009|
+-SIZE M
+MATCHA LATTE 39,000 39000
+-S1ZE M
+-50% NGOT
+TRA NHO XANH
+0 THACH DỪA- L 245,000 90,000|
+NHÃN DỮA SỬA 149,000 49,000
+TRA TRÁI CAY NHIỆT
+145,090 45,000
+ĐO-L
+HÓP TRÁI CẦY NHỎ
+MIX 3 LOAI 129,000 29,000
+Töng số mon. 10
+Thành tien: 423,000 d
+Tiên chiết khäu: 24,200 d
+Tong tien: 398,800d
++Ihaph 1oản (GRAB_ONLINE) 398,800 d
+Ghi chú: (GRABFOOD-GF 264.THEHW-DEL-2026
+10 14 1407.30].. Hoa đon áp dụng bản hàng theo
+kenn
+Khách hang - 8490000000 -
+null
+Moi thảc Inàc, khiéu nại dun hang, quy kihách vuị
+long liên hệ hotline nhé
+AR realme Shot on A03 Pro 5G 2026 10 22 21:31''',
   // Starbucks
   'R01': r'''
 STARBUCKS"

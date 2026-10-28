@@ -143,9 +143,19 @@ Không đọc ra chữ / số tiền → form vẫn mở + toast *"Chưa đọc 
     dòng đầu *"card n"* thắng *"ỦA TEA 2DEE"* ở dòng 3. Người dùng chọn xếp theo chữ hoa; bản *"viết hoa thắng"* làm R06
     thật (*"NHÀ THUỐc"* → dòng khẩu hiệu viết hoa bên dưới) và tên viết thường (*Quán Phở Hùng* thua *DELIVERS*) hỏng, nên
     chỉ dòng toàn chữ thường bị đẩy xuống — vẫn được lấy khi không còn dòng nào khác. Đuôi rác *2DEE* **không** cắt (tên
-    kiểu *7ELEVEN*, *24H*). Dữ liệu: tờ `N01b` ở `hoa_don_quet_that_du_lieu.dart`. ⚠️ Chữ rác **lẫn hoa thường** (tấm thẻ
-    tiếng Anh ở mép, đo Realme khuya) vẫn thắng — không luật nào tách được mà không hỏng tờ thật; người dùng chọn **nhắc lúc
-    chụp** thay vì thêm luật: sheet chọn nguồn có dòng *"Chụp sát tờ hoá đơn, đừng để vật có chữ lọt vào khung"*.
+    kiểu *7ELEVEN*, *24H*). Dữ liệu: tờ `N01b` ở `hoa_don_quet_that_du_lieu.dart`. Chữ rác **lẫn hoa thường** (tấm thẻ
+    tiếng Anh ở mép, đo Realme khuya 2026-10-22) khi ấy vẫn thắng; người dùng chọn **nhắc lúc chụp**: sheet chọn nguồn có
+    dòng *"Chụp sát tờ hoá đơn, đừng để vật có chữ lọt vào khung"* (giữ nguyên).
+    ✅ **Khối chữ Latin ở đầu nhường dòng viết hoa có dấu ngay sau** (G105 phần hai, 2026-10-28 phiên 22 — người dùng chọn
+    *"G105 phần còn lại — mã + test"*, đè lựa chọn *"không thêm luật"* hôm 22/10): khi các ứng viên ĐẦU TIÊN là một khối
+    **≥ 2 dòng** không chữ nào ngoài ASCII và không viết hoa toàn bộ, và ứng viên **NGAY SAU** khối viết hoa toàn bộ có chữ
+    ngoài ASCII → lấy ứng viên ấy (`_laDongLatin` / `_laDongHoaCoDau`, `doc_hoa_don.dart`). Tờ `N01c` (sáu dòng chữ tấm thẻ
+    trước *"ỦA TEA"*) nay ra *ỦA TEA*; 35 tờ chữ thật cũ (đếm 2026-10-28: 15 tờ 08/10 + 3 tờ OnePlus + 17 tờ `/quet`) **không
+    đổi**. Hai vế hẹp có
+    ca canh (bỏ vế nào cũng đỏ): một dòng Latin + dòng mô tả tiếng Việt viết hoa (*Circle K* / *CỬA HÀNG TIỆN LỢI*) giữ
+    thương hiệu; dòng ngay sau khối không viết hoa thì giữ luật cũ. ⚠️ **Còn hở biết trước:** thương hiệu Latin hai dòng mà
+    dòng ngay sau là khẩu hiệu tiếng Việt viết hoa sẽ lấy khẩu hiệu; chữ rác có dấu / viết hoa toàn bộ vẫn lọt. Hướng chắc
+    hơn là cỡ chữ / độ tin của ML Kit — chưa làm: chữ đã lưu không mang toạ độ, phải đo lại bằng tờ giấy trên máy.
     Dữ liệu test: `test/features/transaction/domain/hoa_don_that_du_lieu.dart` (chữ OCR thật, đã che số điện thoại).
     ⚠️ Luật sửa trên **chính** 15 tờ này — cần hoá đơn mới để biết nó có chỉ khớp riêng bộ này không. Chỗ dễ vỡ nhất:
     *"dòng trên chỉ-có-số thắng"* (đo đúng 5 ca) — một dòng món đứng ngay trước nhãn tổng sẽ bị bốc nhầm.
@@ -295,6 +305,7 @@ Các mục khác:
 |---|---|
 | N01 chụp lại (máy ảnh) | 398.800 · *ỦA TEA* · 14/10/2026 **14:07** · Ăn uống · *Đọc bằng AI*; Gemma 55,9 s (10 món) |
 | N01 chụp lần đầu | 398.800 · 14/10 14:07 đúng, ghi chú **"card n"** (dòng rác mép ảnh) — **G105**, ✅ sửa cùng tối (luật nay ra *ỦA TEA 2DEE*, chưa chạy lại trên máy); Gemma 23,3 s |
+| N01 chụp dính tấm thẻ (21:31) | 398.800 · 14/10 14:07 · Ăn uống đúng, ghi chú **"ral Setl Ths cad rd effect"** — G105 phần hai, ✅ sửa 2026-10-28 phiên 22 (luật trên chữ ấy — tờ `N01c` — nay ra *ỦA TEA*; chưa chụp lại trên máy) |
 | R01 (thư viện) | 262.000 · *STARBUCKS* · 28/09 14:19 |
 | R02 (thư viện) | 158.000 · *ỦA TEA* · Ăn uống · *Đọc bằng AI*; Gemma 32,6 s |
 | Huỷ pha AI ×4 | form ngay, kết quả luật; logcat mỗi lần **một** dòng gộp + **một** dòng huỷ; lượt bỏ xong 5–7 s sau |

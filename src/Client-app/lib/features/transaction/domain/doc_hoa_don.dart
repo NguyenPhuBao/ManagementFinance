@@ -291,19 +291,40 @@ bool _khongPhaiTenCuaHang(String dong) {
 /// tên viết thường (*"Quán Phở Hùng"*) thua dòng *DELIVERS*. Không thấy → `null`: ô trống để người dùng gõ tốt hơn một
 /// tên đoán sai (MAXIDI bị cắt mất logo chỉ còn dòng địa chỉ chợ). Tên trả về đã cắt ký tự rác ở hai đầu ([_racDauTen],
 /// [_racCuoiTen]).
+///
+/// G105 phần hai (2026-10-28, tờ N01c): tấm thẻ in chữ tiếng Anh ở mép ảnh cho SÁU dòng rác lẫn hoa thường trước *"ỦA
+/// TEA"*. Khi các ứng viên ĐẦU TIÊN là một khối ≥ 2 dòng Latin ([_laDongLatin]) và ứng viên NGAY SAU khối viết hoa toàn bộ
+/// có chữ ngoài ASCII ([_laDongHoaCoDau]) thì lấy ứng viên ấy. Hai vế hẹp là cố ý: một dòng Latin rồi dòng mô tả tiếng
+/// Việt viết hoa (*"Circle K"* / *"CỬA HÀNG TIỆN LỢI"*) giữ thương hiệu; dòng ngay sau khối không viết hoa thì giữ luật
+/// cũ. ⚠️ Còn hở biết trước: thương hiệu Latin hai dòng (*"The Coffee"* / *"House"*) mà dòng ngay sau là khẩu hiệu tiếng
+/// Việt viết hoa sẽ lấy khẩu hiệu; và chữ rác có dấu / viết hoa vẫn lọt. Hướng chắc hơn là cỡ chữ / độ tin của ML Kit —
+/// chưa làm (chữ đã lưu không mang toạ độ).
 String? _cuaHang(List<String> dong, List<String> bo) {
-  String? thuong;
+  final ungVien = <(String, List<RegExpMatch>)>[];
   for (var i = 0; i < dong.length; i++) {
     final b = bo[i];
     if (_thanHoaDon.hasMatch(b) || tienTrenDong(_dongTien(dong[i])).isNotEmpty) break;
     final tu = _tuChu.allMatches(dong[i]).toList();
     if (tu.isEmpty || (tu.length == 1 && tu.first.group(0)!.length <= 4)) continue;
     if (_khongPhaiTenCuaHang(dong[i])) continue;
+    ungVien.add((dong[i], tu));
+  }
+  var khoiLatin = 0;
+  while (khoiLatin < ungVien.length && _laDongLatin(ungVien[khoiLatin].$1, ungVien[khoiLatin].$2)) {
+    khoiLatin++;
+  }
+  if (khoiLatin >= 2 &&
+      khoiLatin < ungVien.length &&
+      _laDongHoaCoDau(ungVien[khoiLatin].$1, ungVien[khoiLatin].$2)) {
+    return _catRacTen(ungVien[khoiLatin].$1);
+  }
+  String? thuong;
+  for (final (d, tu) in ungVien) {
     if (_toanChuThuong(tu)) {
-      thuong ??= dong[i];
+      thuong ??= d;
       continue;
     }
-    return _catRacTen(dong[i]);
+    return _catRacTen(d);
   }
   return thuong == null ? null : _catRacTen(thuong);
 }
@@ -313,5 +334,21 @@ bool _toanChuThuong(List<RegExpMatch> tu) {
   final chu = tu.map((m) => m.group(0)!).join();
   return chu == chu.toLowerCase() && chu != chu.toUpperCase();
 }
+
+/// Mọi chữ cái của dòng đều là chữ HOA (*"ỦA TEA"*, *"MAXIDI ORE"* có; *"NHÀ THUỐc"* không).
+bool _vietHoaToanBo(List<RegExpMatch> tu) {
+  final chu = tu.map((m) => m.group(0)!).join();
+  return chu == chu.toUpperCase() && chu != chu.toLowerCase();
+}
+
+/// Chữ cái (hoặc dấu tổ hợp) ngoài ASCII — dấu tiếng Việt, và cả chữ Latin có dấu OCR hay đọc nhầm từ chữ Việt (*"Töng"*).
+final RegExp _chuNgoaiAscii = RegExp(r'(?![\x00-\x7F])[\p{L}\p{M}]', unicode: true);
+
+/// Dòng chữ Latin trơn, không viết hoa toàn bộ (*"ral Setl Ths cad rd effect"*, *"eflects c"*) — dáng chữ tiếng Anh in
+/// trên đồ vật lọt vào mép ảnh.
+bool _laDongLatin(String dong, List<RegExpMatch> tu) => !_chuNgoaiAscii.hasMatch(dong) && !_vietHoaToanBo(tu);
+
+/// Dòng viết hoa toàn bộ có chữ ngoài ASCII (*"ỦA TEA"*) — dáng tên cửa hàng Việt in đầu tờ.
+bool _laDongHoaCoDau(String dong, List<RegExpMatch> tu) => _chuNgoaiAscii.hasMatch(dong) && _vietHoaToanBo(tu);
 
 String _catRacTen(String dong) => dong.replaceFirst(_racDauTen, '').replaceFirst(_racCuoiTen, '');
