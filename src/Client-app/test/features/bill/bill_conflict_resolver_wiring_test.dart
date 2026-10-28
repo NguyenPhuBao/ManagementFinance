@@ -94,24 +94,24 @@ void main() {
 
   test('resolver được BẮT ĐẦU NGHE, không chỉ được dựng', () {
     // Dựng mà quên `batDauNghe` là lớp nằm im — cùng hậu quả với không dựng,
-    // nhưng khó thấy hơn vì DI trông đã đủ.
+    // nhưng khó thấy hơn vì DI trông đã đủ. Đếm LỜI GỌI của đúng resolver hoá
+    // đơn bằng regex chứ không đếm chữ chung `batDauNghe(`: từ 2026-10-05 có bộ
+    // nghe thứ hai (G63, `ViTrungTenResolver`, test nối riêng ở
+    // `wallet/vi_trung_ten_resolver_wiring_test.dart`) và từ 2026-10-28 bộ thứ
+    // ba `DieuPhoiDoiNha` (test nối riêng ở
+    // `household/application/noi_day_gia_dinh_test.dart`); regex cũng không khớp
+    // dòng ĐỊNH NGHĨA `void batDauNghe(`.
+    final loiGoi = RegExp(r'sl<BillPaymentConflictResolver>\(\)\s*\.batDauNghe\(');
     final choGoi = <String>[];
     for (final f in Directory('lib').listSync(recursive: true).whereType<File>()) {
       if (!f.path.endsWith('.dart')) continue;
-      // Bỏ các tệp ĐỊNH NGHĨA bộ nghe: `void batDauNghe(` ở đó cũng khớp chuỗi,
-      // và đếm nó vào là test tự xanh mà chẳng chứng minh điều gì. Từ 2026-10-05
-      // có bộ nghe thứ hai (G63, `ViTrungTenResolver`) — nó có test nối riêng ở
-      // `test/features/wallet/vi_trung_ten_resolver_wiring_test.dart`.
-      final p = f.path.replaceAll(r'\', '/');
-      if (p.endsWith(
-              'features/bill/application/bill_payment_conflict_resolver.dart') ||
-          p.endsWith('features/wallet/application/vi_trung_ten_resolver.dart')) {
-        continue;
+      for (final _ in loiGoi.allMatches(f.readAsStringSync())) {
+        choGoi.add(f.path);
       }
-      if (f.readAsStringSync().contains('batDauNghe(')) choGoi.add(f.path);
     }
     expect(choGoi, hasLength(1),
         reason: 'Dựng mà quên batDauNghe là lớp nằm im — cùng hậu quả với '
-            'không dựng, nhưng khó thấy hơn vì DI trông đã đủ. Thấy: $choGoi');
+            'không dựng, nhưng khó thấy hơn vì DI trông đã đủ; nối hai lần là '
+            'hoàn tác chạy hai lượt. Thấy: $choGoi');
   });
 }
