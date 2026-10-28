@@ -88,7 +88,7 @@ bool duocDung(MaQuyen ma, TrangThaiGoi goi, DateTime now) => trangThaiQuyen(ma, 
 | `bill_reminder_notifications` | Nhắc trước hạn hóa đơn | loại `billDueSoon` + lịch HĐH nhắc trước hạn; chip *Nhắc trước* ở form hoá đơn và ở Cài đặt | thôi nhắc trước hạn; **quá hạn vẫn báo** |
 | `budget_overspend_alert` | Cảnh báo vượt ngân sách | loại `budgetNearLimit` / `budgetOverspent`; dòng *"Nên chi X/ngày"* (`budget_pace_text.dart`) | bộ quét bỏ hai loại; dòng nhịp chi → dòng khoá |
 | `wallet_balance_adjustment` | Điều chỉnh số dư ví | ô số dư ở Sửa ví (đối soát → khoản bù) | ô chỉ đọc + dòng khoá |
-| `wallet_exclude_total` | Loại ví khỏi tổng tài sản | công tắc *Tính vào tổng tài sản* (Sửa ví) / *Tính vào tổng số dư tài sản* (Thêm ví) | công tắc khoá; ví đã loại vẫn loại |
+| `wallet_exclude_total` | Loại ví khỏi tổng tài sản | công tắc *Tính vào tổng tài sản* (Sửa ví) / *Tính vào tổng số dư tài sản* (Thêm ví) | chỉ chặn **loại mới**: ví đã lưu "tính" → công tắc khoá; ví đã loại vẫn loại, **bật lại được** (mục 13 (20)) |
 | `goal_deposit_withdraw` | Nạp / rút mục tiêu | nút Nạp / Rút ở Chi tiết mục tiêu | nút tắt + dòng khoá (tự trích theo `goal_auto_deposit`) |
 | `quick_category_assignment` | Gắn danh mục hàng loạt | thẻ *"Có N giao dịch chưa có danh mục"* (Sổ giao dịch) + route `/transactions/gan-danh-muc` | thẻ khoá; route qua `redirectTheoQuyen` |
 | `category_keywords_matching` | Từ khoá nhận diện danh mục | khối *Từ khoá nhận diện* (`category_add_page.dart`) + đề xuất *"Thêm 'x' làm từ khoá…"* (5f) | không sửa / không đề xuất; từ khoá đã có **vẫn** gợi ý |
@@ -111,7 +111,7 @@ Mọi thành phần khoá (`premium/presentation/widgets/the_khoa_quyen.dart`: `
 | Trạng thái | Thẻ khoá | Dòng khoá công tắc | Cửa route |
 |---|---|---|---|
 | `canPremium` | *"Dành cho Premium"* + nút **Nâng cấp** (như nay) | *"Tạm dừng — cần Premium"* / *"Cần Premium"* (như nay) | `/premium?quyen=…` → *"X là tính năng Premium."* |
-| `tamNgung` | *"Đang tạm ngừng"*, **không** nút, chạm không làm gì | *"Tạm ngừng"* | `/premium?quyen=…` → *"X hiện đang tạm ngừng."* |
+| `tamNgung` | *"Đang tạm ngừng"*, **không** nút, chạm không làm gì | *"Tạm ngừng"* | `/premium?quyen=…` → *"X hiện đang tạm ngừng."*, **không giá, không nút mua** (mục 13 (19)) |
 
 - Trần Premium: `/premium?tran=…` với người Premium → *"Gói Premium hiện cho tạo tối đa 10 ví."*; trần 0 → *"Gói Premium hiện
   không cho tạo thêm ví."* (Basic giữ câu của `3ec874aa`).
@@ -179,7 +179,7 @@ giá trị app (`allowed_types` EWallet / Credit / Investment, `supported_banks`
 ## 13. Chỗ mã khác bản viết
 
 Mỗi mục: *người dùng / người điều phối chốt* — (1)–(12) 2026-10-27 phiên 17 (kế hoạch, mục *Đã chốt*, preflight); (13)–(18)
-2026-10-28 phiên 18 (soát từng task, review toàn nhánh, đợt sửa cuối).
+2026-10-28 phiên 18 (soát từng task, review toàn nhánh, đợt sửa cuối); (19)–(20) 2026-10-28 phiên 19 (người dùng trả lời I2 / I3).
 
 1. **`bangDungDuoc` thêm vế Premium-không-hạn** (`goi.loai == premium && goi.hetHan == null` → `false`). Thân spec mục 2 chỉ so
    `laPremium(nhanLuc) == laPremium(now)`; Premium không hạn mà server gửi bảng Basic thì mọi thứ Basic tắt hiện *"Đang tạm ngừng"* với
@@ -223,6 +223,20 @@ Mỗi mục: *người dùng / người điều phối chốt* — (1)–(12) 20
     `tranHieuLuc` so với `TranGoi.macDinh` → *"Tới 10 ví"*; quyền `false` không kể); Basic bảng dùng được → như cũ (cột Premium server gửi);
     bảng không dùng được (Premium hết hạn lúc offline, Premium không hạn) → mặc định. Hàm không còn đọc `goi.tran` thô — mọi chỗ đọc trần đi
     qua `tranHieuLuc` (mục 13 (5)).
+19. **Màn Nâng cấp ẩn giá + nút mua khi đến từ quyền tạm ngừng** (I2, *người dùng chốt*): thân spec tự mâu thuẫn — bảng mục 4 cho cửa
+    tạm ngừng đi `/premium?quyen=…`, mục 10 bước 1 đòi *"không nút mua"*, còn bản B1 đầu vẫn vẽ giá + *Gia hạn thêm 30 ngày* / *Thanh
+    toán* (mua cũng không mở tính năng admin đang tắt). Nay `nang_cap_page.dart` (`anNutMua`) ẩn giá, nút và dòng *"Xác nhận đơn chuyển
+    thừa…"*; giữ thẻ gói, câu *"X hiện đang tạm ngừng."*, danh sách đặc quyền, *Lịch sử mua*, thẻ đơn cần xử lý. Neo vào **câu đang
+    hiện**: có `?tran=` thì câu trần thắng (mục 4) và mua là nới trần → nút ở lại. Một chỗ phủ mọi lối vào (cửa route Xuất báo cáo / Gắn
+    danh mục, nút Quét / Nói Trang chủ, deeplink thông báo Tổng kết tuần). Phương án đã loại: báo nhanh tại chỗ, không mở màn (~5 lối vào
+    phải sửa, deeplink vẫn cần chỗ rơi). Lệch có chủ ý với Stitch `c999da97…` (luôn vẽ nút).
+20. **Công tắc *"Tính vào tổng tài sản"* chỉ chặn loại mới** (I3, *người dùng chốt*; thân mục 3 + kế hoạch ghi *"khoá cả hai chiều"*):
+    khoá hai chiều làm ví người bị hạ cấp đã loại khỏi tổng kẹt ngoài tổng tới khi mua lại Premium — trái luật *"hạ cấp giữ dữ liệu, chỉ
+    chặn tạo / bật mới"*. Một định nghĩa `doiDuocTinhVaoTong(coQuyen:, daLuuTinhVaoTong:)` (`wallet/domain/cong_tac_tinh_vao_tong.dart`),
+    hai màn gọi. Neo vào giá trị **ĐÃ LƯU** (người soát chỉ ra): ví đã lưu "không tính" → công tắc mở **cả hai chiều tới khi Lưu** (tắt
+    lại trước Lưu chỉ là về giá trị cũ); Lưu "tính" rồi thì lần mở sau khoá. Neo vào giá trị đang chọn thì bật lại xong là khoá ngay, chạm
+    nhầm không gỡ được. Màn Thêm truyền `daLuuTinhVaoTong: true` (ví mới — mọi "không tính" là loại mới) → hành vi như cũ. Băng *"Cần
+    Premium"* vẫn hiện dưới công tắc mở (nói loại khỏi tổng là Premium — Lưu "tính" thì không loại lại được).
 
 ## 9. Kiểm thử (TDD — mọi ca canh thử bằng bản sai có chủ ý và thấy đỏ)
 

@@ -647,6 +647,15 @@ Spec `docs/superpowers/specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-desig
   spec mục 13 (18)); `trangThaiQuyenDoc` thay `try` / `catch` ở hai getter tạm ngừng, gỡ `cauTamNgung`, câu khoá chi bất thường vào `cau_quyen.dart`
   (13 (17)); hộp *"Bắt đầu vòng mới?"* không khuyên *"Rút khỏi mục tiêu"* khi `goal_deposit_withdraw` khoá; khối Nhận xét Trang chủ đọc quyền
   trong `Builder` riêng (hết dựng lại cả `HomePage` + tạo lại stream Drift mỗi lần `GoiCubit` phát).
+- **I2 / I3 (phiên 19, 2026-10-28 — người dùng trả lời bằng câu hỏi chọn được):** **I2** màn Nâng cấp đến từ quyền tạm ngừng (`?quyen=`, không
+  `?tran=`) **ẩn giá + nút Thanh toán / Gia hạn** (`anNutMua`, `nang_cap_page.dart`; một chỗ phủ cửa route, nút Quét / Nói, deeplink) — spec
+  mục 13 (19); **I3** công tắc *"Tính vào tổng tài sản"* chỉ chặn **loại mới**: `doiDuocTinhVaoTong(coQuyen:, daLuuTinhVaoTong:)`
+  (`wallet/domain/cong_tac_tinh_vao_tong.dart`), neo giá trị **đã lưu** — ví đã loại bật lại được (và tắt lại trước Lưu), màn Thêm như cũ — spec
+  mục 13 (20). Bẫy `PREMIUM_FEATURE.md` 8.5 (14) (15). Số đo: `flutter test` **8361 pass / 10 skip** (+7: 1 ca màn Nâng cấp kèm mở rộng 3 ca
+  cũ, 3 ca domain, 1 ca Sửa ví, 2 ca Thêm ví — mỗi ca canh thử bằng bản sai), `flutter analyze` **20**.
+- **Task 13 Bước 0 trên Supabase dùng chung (chỉ đọc, 2026-10-28 phiên 19):** cột Premium **0 ô `false`** trong 22 mã; đủ 5 hàng LIMIT (đều
+  `limit_value = null` = không giới hạn) → **go**. Cột Basic tắt 9 mã (ba AI, `anomaly_spending_insights`, `bill_auto_pay`, `cashflow_forecast`,
+  `export_reports`, `goal_auto_deposit`, `smart_budget_rebalancing`); trần Basic 3 / 3 / 3 / 3 / 5.
 - **Giới hạn / việc mở:** ⚠️ **Task 13 Bước 0 (go / no-go trước phát hành, chỉ đọc)** — cột Premium của ma trận đang chạy (`PersonFinance` và Supabase
   dùng chung) có ô `false` nào trong 22 mã (có → mọi người Premium thấy mã ấy *"Đang tạm ngừng"*: dừng, hỏi người dùng) và đủ 5 hàng LIMIT (spec mục
   10 bước 0); nghiệm thu máy thật Task 13 chưa làm; A1 / A2 / A3 chờ backend (chưa có `premiumFeatures` thì Basic thấy khoá *cần Premium*); (P-N5)

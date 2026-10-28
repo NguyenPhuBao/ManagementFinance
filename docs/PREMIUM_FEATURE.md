@@ -250,7 +250,9 @@ nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
    hạn**. Backend không thi hành trần nào (đo mã 2026-10-27) — chỉ client chặn.
 6. **B1 — Premium cũng theo bảng; *tạm ngừng*; cột Premium cho Basic** (người dùng chốt 2026-10-27, câu hỏi chọn được; spec
    `specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md`). Admin tắt một tính năng ở cột **Premium** → người Premium thấy
-   khoá *"Đang tạm ngừng"*, **không** nút Nâng cấp (mua không mở được); trần Premium cũng áp (*"Gói Premium hiện cho tạo tối đa N
+   khoá *"Đang tạm ngừng"*, **không** nút Nâng cấp (mua không mở được) — lối vào nào vẫn tới màn Nâng cấp (`?quyen=` tạm ngừng: cửa
+   route, nút Quét / Nói, deeplink) thì màn **ẩn giá + nút Thanh toán / Gia hạn** (I2, người dùng chốt 2026-10-28; spec mục 13 (19));
+   trần Premium cũng áp (*"Gói Premium hiện cho tạo tối đa N
    ví."* ở màn Nâng cấp, trần 0 → *"…không cho tạo thêm ví."*). Server chỉ gửi bảng của gói đang hiệu lực, nên người Basic không
    thấy cột Premium: đơn **CAN-LAM 55 A1** xin `premiumFeatures` + `premiumLimits` cho Basic; client đã đọc sẵn (`TrangThaiGoi.
    quyenPremium` / `tranPremium`), **chưa có thì như trước B1** (khoá = *cần Premium*). Số công tắc client đọc: **11 → 22**
@@ -283,7 +285,7 @@ nối nó sang `RealtimeEvent.taiKhoanNangCap` → `GoiRepository.lamMoi()`.
 | `bill_reminder_notifications` (B1) | loại `billDueSoon` của `NotificationScanner` + lịch HĐH nhắc trước hạn (`nhacTruocHanDuocPhep`); chip *Nhắc trước* ở form hoá đơn và ở Cài đặt (`hang_nguong`) khoá; **quá hạn vẫn báo**; công tắc nhắc đẩy của form **không** khoá | mở |
 | `budget_overspend_alert` (B1) | loại `budgetNearLimit` / `budgetOverspent` (`canhBaoNganSachDuocPhep`); dòng *"Nên chi X/ngày"* (`budget_pace_text`) → dòng khoá ở thẻ ngân sách Trang chủ (`home_budget_card`), tab Ngân sách (`budget_tabs_view`) và card *NHỊP CHI* trang Chi tiết (`budget_detail_view` — card giữ, dòng khoá thay nội dung) | mở |
 | `wallet_balance_adjustment` (B1) | ô số dư màn Sửa ví → chỉ đọc + dòng khoá; còn chặn ở lúc lưu (`wallet_edit_page.dart`, `coQuyenDoc` — không sinh khoản bù khi không quyền) | mở |
-| `wallet_exclude_total` (B1) | công tắc *Tính vào tổng tài sản* (Sửa ví, `wallet_edit_page`) / *Tính vào tổng số dư tài sản* (Thêm ví, `wallet_add_page`) → băng khoá; ví đã loại vẫn loại | mở |
+| `wallet_exclude_total` (B1) | công tắc *Tính vào tổng tài sản* (Sửa ví, `wallet_edit_page`) / *Tính vào tổng số dư tài sản* (Thêm ví, `wallet_add_page`) → băng khoá; chỉ chặn **loại mới** (`doiDuocTinhVaoTong`, `wallet/domain/cong_tac_tinh_vao_tong.dart`, neo giá trị **đã lưu**): ví đã lưu "tính" → công tắc khoá; ví đã loại vẫn loại, **bật lại được** (I3, người dùng chốt 2026-10-28; spec mục 13 (20)) | mở |
 | `goal_deposit_withdraw` (B1) | nút *Nạp* / *Rút* ở Chi tiết mục tiêu (`nut_duoi_muc_tieu`) → tắt + dòng khoá (tự trích theo `goal_auto_deposit`); hộp *"Bắt đầu vòng mới?"* (`goal_detail_page`) bỏ vế khuyên bấm *"Rút khỏi mục tiêu"* (đợt sửa cuối) | mở |
 | `quick_category_assignment` (B1) | thẻ *"Có N giao dịch chưa có danh mục"* (Sổ giao dịch) → thẻ khoá; route `/transactions/gan-danh-muc` qua `redirectTheoQuyen` | mở |
 | `category_keywords_matching` (B1) | khối *Từ khoá nhận diện* (form danh mục + trang `keywordOnly`) → khoá, nút *Lưu từ khóa* tắt; thẻ *"Thêm ‘x’ làm từ khoá…"* ở màn Thêm giao dịch không dựng (`DongDeXuatTuKhoa` — phản hồi chỉ ghi khi người dùng bấm nút). **Từ khoá đã có vẫn dùng để gợi ý** (chốt 8) | mở |
@@ -381,6 +383,12 @@ Backend tự sửa 7 tệp client (`TranGoi` thêm `hoaDon` · `danhMucRieng`, `
     **thiếu một hàng LIMIT** của cột Premium thì ô ấy giữ mặc định cũ (`3` với ví / ngân sách / mục tiêu) tới lượt `lamMoi` kế. Không liên
     quan `premiumLimits`. Task 13
     Bước 0 kiểm đủ 5 hàng (spec mục 10).
+14. **Màn Nâng cấp ẩn nút mua theo CÂU ĐANG HIỆN** (`anNutMua = cauTran == null && tamNgung`, I2): có cả `?tran=` lẫn `?quyen=`
+    tạm ngừng thì câu trần thắng và mua là nới trần → nút ở lại (ca đối chứng ở `nang_cap_page_test.dart`, thử bằng bản sai bỏ vế
+    `cauTran == null`). Ẩn theo riêng `ttQuyen` là mất nút trên màn đang nói về trần.
+15. **Công tắc *"Tính vào tổng"* neo vào giá trị ĐÃ LƯU** (`_wallet?.includeInTotal`, I3), không vào `_includeInTotal` của form: neo vào
+    giá trị đang chọn thì người bị hạ cấp bật lại xong là khoá ngay, chạm nhầm không gỡ được trước khi Lưu (ca canh thử bằng đúng bản
+    sai ấy). Màn Thêm truyền `daLuuTinhVaoTong: true`.
 
 ### 8.6 Màn Stitch (người dùng xác nhận 2026-10-08; cả ba lượt gọi `timeout`, màn hiện sau ~10 phút)
 
@@ -395,7 +403,8 @@ Backend tự sửa 7 tệp client (`TranGoi` thêm `hoaDon` · `danhMucRieng`, `
 viền đứt dựng sẵn, phải tự vẽ `CustomPainter`); khối 3 băng tạm ngừng **xám** theo Stitch (token `AppColors.khoaNgung{Nen,Vien,Chu,Icon}`,
 không tô vàng như *"Cần Premium"*); khối 4 khung dòng *Nút ghi nhanh* dùng `khoaCanNen` / `khoaCanVien` (gần `#fbf9f2` / `#eedca8`);
 khối 5 dải trần Premium giữ `info_outline` (Stitch `account_balance_wallet`); ổ khoá `lock_outline` (Stitch glyph `lock` đặc);
-khối 6 băng Trợ lý AI tạm ngừng dùng `smart_toy_outlined` theo Stitch.
+khối 6 băng Trợ lý AI tạm ngừng dùng `smart_toy_outlined` theo Stitch. Màn Nâng cấp `c999da97…` / `9db35f88…` luôn vẽ giá + nút; app
+**ẩn** chúng khi đến từ quyền tạm ngừng (I2, 2026-10-28 — mục 8.5 (14)), không dựng màn Stitch riêng cho biến thể này.
 
 ### 8.7 Nghiệm thu máy thật — ✅ đạt (OnePlus 13R, 2026-10-08 khuya, bản debug trỏ `127.0.0.1` + `adb reverse`)
 
