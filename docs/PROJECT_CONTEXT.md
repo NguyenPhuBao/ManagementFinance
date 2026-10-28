@@ -642,6 +642,45 @@ src/Backend/
   `/categories/child/:id/edit?tamNgung=1` → `DaiNhacTamNgung`. ⚠️ Form Sửa phải đọc cả `tree.dangTamNgung` (thiếu là form trống).
   10 ca test mới. ~~Chưa nhìn trên máy~~ — ✅ nhìn Realme phiên 22 (khối 📱 trên). Chi tiết: G110 `CLIENT_APP_KNOWN_GAPS.md`.
 
+### 🏠 Gia đình LÁT 1 — mã xong (lõi + dữ liệu + trạng thái nhà + lời mời), 2026-10-28 phiên 23
+
+✅ 19 commit `95d33ecc..24f8a258` (kế hoạch `plans/2026-10-24-gia-dinh-nen-mong-lat-1.md`, gitignore; spec `specs/2026-10-23-gia-dinh-nen-mong-design.md`
+mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ Stitch 6 màn.** `flutter test` **8498 pass / 10 skip** (trước đợt 8382; đo
+2026-10-28), `flutter analyze` 20 (mức nền). Phần client của đơn 50 / `docs/Family/` mà **không** chờ đơn 56 / 57 (người dùng chốt).
+
+- **Dữ liệu:** Drift **v32** — cột `idhousehold` cho năm bảng đồng bộ (ví · giao dịch · ngân sách · mục tiêu · danh mục; hoá đơn không có); mọi
+  truy vấn cá nhân thêm `isNull()`; quét **37** `core/database/du_lieu_nha_khong_lot_vao_ca_nhan_test.dart` (thấy cả `db.select(db.wallets)` có tiền
+  tố `db.` — năm câu ngoài DAO: danh sách ví Phân tích `watchKy` / Báo cáo `layBaoCao`, `saveGroup` ×2, `deleteGroup`). Bẫy di trú (Task 1):
+  `alterTable(TableMigration(budgets))` ở bước v11 / v12 dựng lại bảng theo lược đồ HIỆN TẠI ⇒ thêm cột vào `budgets` phải khai `newColumns` ở hai
+  bước ấy, và bước v32 chỉ `addColumn` khi `PRAGMA table_info` chưa có cột. `purgeDataForOtherAccounts(…, nhaGiu)` + `xoaHangCuaNha` (hai đường dọn).
+- **Đồng bộ:** năm payload gửi `idhousehold` (hàng riêng `null`); kéo về đọc, `null` tường minh = *chưa biết* (`Value.absent()`); bảy mã đẩy vĩnh viễn
+  (đã có từ 2026-10-26/27); `SyncEngine.keoLaiToanBo` (thế hệ yêu cầu: lượt đang chạy không ghi mốc, lượt hỏng giữ yêu cầu; chỉ xoá kho không đủ vì
+  mốc nằm RAM); `RealtimeEvent` **tám** giá trị (+ `nhaDoi` ← `household.changed`, `loiMoiNha` ← `household.invited`; `nhaDoi` chưa tới máy nào — 56.8).
+- **Mảng `household`** (đếm 2026-10-28, 11 tệp): `domain/` 4 (`vai_nha` · `quyen_nha` · `ma_moi` · `cau_loi_nha`, `LoaiLoiNha` 21 giá trị) ·
+  `data/` 6 (`household_api` 16 endpoint kể cả mời email · `nha_cua_toi` + `loi_moi` · `nha_store` · `nha_repository` + `_impl`) · `application/` 1
+  (`dieu_phoi_doi_nha`: rời nhà ⇒ `xoaHangCuaNha`, vào nhà ⇒ `keoLaiToanBo`; dọn hỏng vẫn kéo lại toàn bộ của cùng sự kiện rồi ném lại lỗi). Bộ đọc
+  `nhaCuaToiTuJson` nhận **ba hình dạng** (lồng · `/me` phẳng · `POST /` thô — gỡ hai nhánh sau khi 57.1 đóng); thân #8 / #10 / #12 không phải trạng
+  thái nhà ⇒ `lamMoi()`. `FEATURE_DISABLED` → `tinhNangKhongMo` (không phân biệt Basic bị tắt với Premium tạm ngừng — lát 2 chọn câu theo
+  `trangThaiQuyen`). `NhaRepository`: bộ đếm thế hệ + cờ chạy bù, đổi tài khoản gỡ lượt cũ, làm mới lời mời sau mỗi thao tác 13–16.
+  Nối dây: DI + `main.dart` (`batDauNghe`) + hook dọn đọc KHO nhà thẳng (không thêm hook `datNha` — spec #3).
+- **Lỗ hổng đã biết:** **G113** (`CLIENT_APP_KNOWN_GAPS.md`) — lịch sử nhà mới có thể vắng, yêu cầu kéo toàn bộ mất khi chết tiến trình, dọn hỏng ⇒ hàng nhà
+  cũ nằm lại và **neo "Số dư ban đầu" `idhousehold` NULL trỏ ví nhà làm purge vỡ khoá ngoại ⇒ có thể khoá người dùng ở cửa đăng nhập — lát 2 PHẢI sửa
+  neo trước khi mở lối tạo ví chung**. Nợ lát 2 gom ở thân G113.
+
+**Nghiệm thu máy thật (người dùng chốt: không chờ đơn 56 / 57) — đo được / không đo được** (backend dev trỏ `PersonFinance`; tài khoản 10 Realme,
+29 máy ảo). Lát 1 chưa có màn nên bảng này chỉ chứng minh **đường dữ liệu**:
+
+| Đo được trên máy thật (đường dữ liệu) | KHÔNG đo được — chờ backend | Vì sao |
+|---|---|---|
+| Tạo nhà (`POST /`) → `/me` phẳng đọc ra nhà; danh mục nhà (13 bản sao) về máy, **không** lọt danh sách danh mục cá nhân; `DoiNha(null → id)` → `keoLaiToanBo` | Basic bị chặn tạo nhà (`FEATURE_DISABLED`) | 56.4 — `requireFeature` chưa gắn, bảng `feature` không có `household` |
+| Tạo mã → tham gia trên máy kia → `/me` của cả hai đúng vai; ví / giao dịch nhà kéo về mang `idhousehold`, không hiện ở Trang chủ / Sổ / Phân tích | Member / Viewer / người ngoài bị `/sync/push` từ chối; `HOUSEHOLD_READ_ONLY` khi nhà `ReadOnly` | 56.1 (`findMember` không tồn tại → `catch {}` → ai cũng ghi được), 56.2, 56.7 |
+| Mời email tới tài khoản đã có → `household.invited` tới máy kia → `/invitations` có lời mời → chấp nhận / từ chối | Thư tới hộp thư; xem trước mã email (`GET /invites/:code` luôn 403); người **đăng ký sau** khi được mời thấy lời mời | 57.3 (`mail.service` không tồn tại), 57.2 (`req.user` không có `email`) |
+| Đổi vai / mời ra / chuyển chủ / rời / giải tán trên máy A → máy A đúng (`lamMoi` sau thao tác); máy B đúng **sau** `resumed` 5 phút hoặc đăng nhập lại | Máy B đổi NGAY qua `household.changed` (`RealtimeEvent.nhaDoi`) | 56.8 — phát vào phòng `household_<id>` không ai `join` |
+| Rời / bị mời ra / giải tán → máy mình chạy `xoaHangCuaNha` (dữ liệu nhà biến mất, dữ liệu riêng còn) | Máy khác nhận tombstone của hàng nhà khi giải tán | 57.6 — giải tán không xoá mềm 5 bảng (client dọn theo `/me`, không chờ cờ xoá) |
+| Chủ nhà sửa khoản của thành viên (app gửi `idaccount` người ghi) | — được chấp nhận | 57.4 — chốt *Ownership mismatch* chạy trước ma trận vai; lát 1 chưa có màn ghi vào nhà nên chưa gặp |
+
+> Bảng này là **kế hoạch đo**; kết quả từng dòng trên máy ghi ở tệp bàn giao cuối phiên 23, không ở đây.
+
 ### 🏠 Gia đình — đối chiếu hợp đồng phần 1 với mã (2026-10-28 phiên 21)
 
 - Soát (agent con chỉ đọc + tự kiểm lại ba vế CAO) 16 endpoint `/api/households` + migration 40 + đơn backend viết cho client với
@@ -1243,7 +1282,7 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   `logger.quiet` (`warn` bị chế độ im của Gradle nuốt — đo bằng `gradlew -q assembleRelease --dry-run` với JDK
   `D:/Android/AndroidStudio/jbr`; `gradlew` trần dùng Java 8 hệ thống và gãy). Sau đợt 4: **7.868 / 10 skip** (+3), analyze 20.
 
-### 🏠 Chức năng GIA ĐÌNH (nhà nhiều người) — brainstorming + spec 1/4 nền móng + đơn backend 50 (2026-10-23) — chưa có mã
+### 🏠 Chức năng GIA ĐÌNH (nhà nhiều người) — brainstorming + spec 1/4 nền móng + đơn backend 50 (2026-10-23) — (lúc viết chưa có mã; lát 1 mã xong 2026-10-28, khối 🏠 đầu mục 14)
 
 Người dùng: *"bổ sung chức năng dành cho vợ chồng"*. Brainstorming loại **kiến trúc**; mỗi quyết định chọn qua câu hỏi (bảng mục 1
 spec): cả bốn nhu cầu (quỹ chung cùng ghi · xem chung · ai nợ ai · mục tiêu chung) · quỹ thật **và** chi tự trả · **gia đình nhiều

@@ -1251,9 +1251,9 @@ tầng domain. **Đừng viết lại vế nào của luật ở chỗ gọi.**
 | **Mốc neo** của nhịp trích | `timeCycleTakeMoney` | `time_cycle_take_money` | `Time_cycle_take_money` |
 | **Thứ tự ưu tiên** | `priority` (v19) | `priority` | `Priority` |
 
-Payload mục tiêu có **22 trường**. Hợp đồng đầy đủ ở
+Payload mục tiêu có **23 trường** (22 + `idhousehold`, v32 gia đình; đếm lại 2026-10-28). Hợp đồng đầy đủ ở
 `test/core/sync/sync_payload_contract_test.dart` — **nơi duy nhất** ghi tên
-trường giữa hai phía; con số trên đếm bằng máy từ chính tệp ấy (2026-09-08).
+trường giữa hai phía; con số trên đếm bằng máy từ chính tệp ấy (2026-09-08; đếm lại 2026-10-28).
 
 > ⚠️ Dòng này từng ghi **19 trường** ("18 + `priority`"). Sai: phép cộng ấy bỏ
 > quên ba cột `auto_deposit_*` vào payload ngày 2026-09-07, và con số 18 vốn là

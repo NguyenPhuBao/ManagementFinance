@@ -13,6 +13,7 @@
 - **Dựng được ngay trên mã hiện tại:** 16 đường dẫn + method (bảng mục 2), migration 40 (ba bảng + cột `Idhousehold` ở 5 bảng, không có
   ở `bill`), khoá đồng bộ `idhousehold` hai chiều (mục 3), bảy mã đẩy vĩnh viễn (đã xếp ở `gui_lo_dong_bo.dart`), `household.invited` tới
   phòng tài khoản ⇒ đủ để dựng `HouseholdApi`, Drift v32 + DAO `IS NULL`, `purgeDataForOtherAccounts(…, nhaGiu)`, `NhaRepository`.
+- **Lát 1 mã xong 2026-10-28 — client đọc cả hai hình dạng `/me` tới khi 57.1 đóng** (`nha_cua_toi.dart`: lồng · phẳng · `POST /` thô; gỡ hai nhánh sau khi 57.1 đóng).
 - **Model trạng thái nhà dựng theo `01` mục 4** (một hình dạng lồng `household` + `myRole` + `members` + `formerMembers`) — người dùng chốt
   2026-10-28 xin backend theo `docs/Family` (đơn **57.1**), **không** theo hình dạng phẳng của `/me` hiện nay.
 - **Chủ nhà sửa khoản của thành viên:** client **giữ** gửi `idaccount` người ghi của hàng (như hiện nay); backend bỏ chốt *"Ownership
@@ -49,14 +50,15 @@ backend trả lời).
 ## 3. Đồng bộ (`/sync/push`, `/sync/pull`)
 
 - **Đẩy:** backend nhận khoá **`idhousehold`** (số hoặc `null`) ở wallet · transaction · budget · goal · category (không ở bill); cũng đọc
-  `idHousehold` / `householdId` / `Idhousehold` nhưng app chỉ gửi **một** tên — `idhousehold`. Payload app **chưa** có khoá này
-  (`sync_payload_contract_test.dart`) → lát 1 thêm vào `thu_gom_day.dart` + normalizer + khoá tên trong hợp đồng.
+  `idHousehold` / `householdId` / `Idhousehold` nhưng app chỉ gửi **một** tên — `idhousehold`. Payload năm thực thể gửi
+  `idhousehold` từ lát 1 (normalizer không lọc khoá — không sửa; tập khoá ở `sync_payload_contract_test.dart`).
 - **Kéo:** mỗi bảng trả hàng `(Idaccount = tôi ∧ Idhousehold trống) ∨ Idhousehold = nhà tôi`, kèm khoá `idhousehold`. Hàng của nhà mang
   `idaccount` **người ghi** — mọi truy vấn `idaccount.equals` và `purgeDataForOtherAccounts` phải theo spec 2026-10-23 mục 4.6 (1) / 7.2
   (`nhaGiu`, test quét 37).
 - **Mã đẩy backend phát:** `NOT_OWNER`, `HOUSEHOLD_ROLE_FORBIDDEN`, `HOUSEHOLD_READ_ONLY`, `HOUSEHOLD_SCOPE_MISMATCH`; ba mã
   `HOUSEHOLD_NOT_MEMBER` · `_CLOSED` · `_WALLET_LIMIT` app đã xếp nhưng backend chưa phát (56.2, 56.9).
-- **Socket:** `household.changed` `{idhousehold, eventType, payload, timestamp}` — app chỉ đọc tên sự kiện (cam kết hộp đen) rồi gọi
+- **Socket:** `household.changed` — backend phát ở **hai nơi, hai hình dạng** (đổi thành viên / trạng thái nhà; và sau MỖI `/sync/push`
+  chạm hàng của nhà) `{idhousehold, eventType, payload, timestamp}`; client không đọc payload (đo 2026-10-28) — app chỉ đọc tên sự kiện (cam kết hộp đen) rồi gọi
   lại `/me`; hiện phát vào phòng `household_<id>` không ai `join` (56.8). `household.invited` tới phòng tài khoản — chạy.
 
 ## 4. Đơn backend viết cho client (`docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md`) — chỗ không làm theo
@@ -72,8 +74,15 @@ rời / giải tán, `household.changed` → `/me`, `household.invited` → danh
 5. Mục 3 #2 tả `/me` theo C.1 — đúng ý `docs/Family` nhưng **sai với mã hiện tại** (đơn 57.1).
 6. Mục 3 #6 xem trước lời mời email — hiện trả 403 với mọi người (đơn 57.2).
 
-## 5. Chưa kiểm
+## 5. Đã kiểm / chưa kiểm
 
-- Hai ràng buộc không-partial `uq_wallet_account_name` / `uq_wallet_default_one` còn trên CSDL không (migration 40 không `DROP`).
-- Migration 40 đã áp `PersonFinance` chưa (CLAUDE.md: chưa).
-- `account.Email` lưu chữ thường hay nguyên dạng (ảnh hưởng phép so email của 57.2).
+**Đã kiểm (phiên chính, 2026-10-28, trước lát 1):**
+
+- Hai ràng buộc không-partial `uq_wallet_account_name` / `uq_wallet_default_one` → **không còn** trên cả `PersonFinance` lẫn Supabase.
+  Chỉ mục unique của `wallet` / `category` nay: `uq_wallet_account_name_active` (`Idaccount, Name` WHERE `Delete_at IS NULL AND
+  Idhousehold IS NULL`), `uq_wallet_default_active` (… `Idhousehold IS NULL`), `uq_wallet_household_name_active` (`Idhousehold, Name`
+  WHERE … `Idhousehold IS NOT NULL`), `uq_wallet_bank_active`, `uq_category_owner_name` (… `Idhousehold IS NULL`),
+  `uq_category_household_name`, `uq_category_default_name`.
+- Migration 40 → **đã áp cả hai** (`PersonFinance` + Supabase, 2026-10-28).
+- `account.Email` → **0 hàng có chữ hoa** (21 / 21 `PersonFinance`, 12 / 12 Supabase) — phép so email của 57.2 không bị chữ hoa cản;
+  Supabase 0 nhà.

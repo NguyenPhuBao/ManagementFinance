@@ -157,7 +157,7 @@ hỏng làm **mọi** lượt kéo của tài khoản trả 500.
 Cột *Đẩy* = khoá trong payload `/sync/push` (tệp test). Cột *Kéo* = khoá `anh_xa_keo_ve.dart` đọc từ `/sync/pull` (khoá trong ngoặc = dạng thay
 thế cũng nhận). Cột PostgreSQL = `@map` + kiểu trong `schema.prisma`.
 
-### 4.1 Ví — `wallet` (đẩy **13** khoá)
+### 4.1 Ví — `wallet` (đẩy **14** khoá, đếm 2026-10-28)
 
 | Đẩy | PostgreSQL | Kéo | Ghi chú |
 |---|---|---|---|
@@ -174,10 +174,11 @@ thế cũng nhận). Cột PostgreSQL = `@map` + kiểu trong `schema.prisma`.
 | `include_in_total` | `IncludeInTotal` bool | `include_in_total` | vắng ⇒ giữ cục bộ |
 | `status` | `Status` varchar(20) | `status` | `active`/`inactive` ↔ `Active`/`Inactive` (`chk_wallet_status`, G28; máy chủ chưa áp `database/7` từ chối `Inactive`) |
 | `update_at` | `Update_at` timestamp | `update_at` | LWW |
+| `idhousehold` | `Idhousehold` int, `NULL` = riêng | `idhousehold` | gia đình (v32): hàng riêng gửi `null`, hàng của nhà gửi id nhà; kéo về `null` tường minh = *chưa biết* (`Value.absent()`) |
 
 Không đi chiều nào: `Id_bank_casso` (nhóm bỏ liên kết ngân hàng 2026-09-18).
 
-### 4.2 Giao dịch — `transaction` (đẩy **13** khoá)
+### 4.2 Giao dịch — `transaction` (đẩy **14** khoá (đếm 2026-10-28))
 
 | Đẩy | PostgreSQL | Kéo | Ghi chú |
 |---|---|---|---|
@@ -194,10 +195,11 @@ Không đi chiều nào: `Id_bank_casso` (nhóm bỏ liên kết ngân hàng 202
 | `idbill` | `Idbill` varchar(36)? | `idbill` (`bill_id`) | hoá đơn phải lên trước (2.2) |
 | `is_deleted` | `Deleted_at` (có **d**) | `deleted_at` | |
 | `update_at` | `Update_at` timestamp | `update_at` | |
+| `idhousehold` | `Idhousehold` int, `NULL` = riêng | `idhousehold` | gia đình (v32): hàng riêng gửi `null`, hàng của nhà gửi id nhà; kéo về `null` tường minh = *chưa biết* (`Value.absent()`) |
 
 Không đi chiều nào, **cố ý** (quy tắc 4): `Provider`, `Bank_tran_id`, `Status`, `Images` — đừng thêm vào payload.
 
-### 4.3 Danh mục — `category` (đẩy **12** khoá, **13** khi có từ khoá)
+### 4.3 Danh mục — `category` (đẩy **13** khoá, **14** khi có từ khoá (đếm 2026-10-28))
 
 | Đẩy | PostgreSQL | Kéo | Ghi chú |
 |---|---|---|---|
@@ -213,11 +215,12 @@ Không đi chiều nào, **cố ý** (quy tắc 4): `Provider`, `Bank_tran_id`, 
 | `keyword` | `Keyword` text | `keyword` (gieo khi trống) | **chỉ gửi khi có từ khoá** — chuỗi rỗng là lệnh xoá ở server |
 | `is_deleted` | `Delete_at` timestamp | `delete_at` | |
 | `update_at` | `Update_at` timestamp | `update_at` | |
+| `idhousehold` | `Idhousehold` int, `NULL` = riêng | `idhousehold` | gia đình (v32): hàng riêng gửi `null`, hàng của nhà gửi id nhà; kéo về `null` tường minh = *chưa biết* (`Value.absent()`) |
 
 Tên duy nhất trong tài khoản, tính cả danh mục mặc định, so bằng `normalizeCategoryName` (quy tắc 7) — server: `uq_category_owner_name`,
 `uq_category_default_name` ⇒ `CATEGORY_NAME_DUPLICATE`.
 
-### 4.4 Ngân sách — `budget` (đẩy **17** khoá)
+### 4.4 Ngân sách — `budget` (đẩy **18** khoá (đếm 2026-10-28))
 
 | Đẩy | PostgreSQL | Kéo | Ghi chú |
 |---|---|---|---|
@@ -238,6 +241,7 @@ Tên duy nhất trong tài khoản, tính cả danh mục mặc định, so bằ
 | `note` | `Note` text | `note` | |
 | `is_deleted` | `Delete_at` timestamp | `delete_at` | |
 | `update_at` | `Update_at` timestamp | `update_at` (`updated_at`) | |
+| `idhousehold` | `Idhousehold` int, `NULL` = riêng | `idhousehold` | gia đình (v32): hàng riêng gửi `null`, hàng của nhà gửi id nhà; kéo về `null` tường minh = *chưa biết* (`Value.absent()`) |
 
 ### 4.5 Hoá đơn — `bill` (đẩy **21** khoá)
 
@@ -265,7 +269,7 @@ Tên duy nhất trong tài khoản, tính cả danh mục mặc định, so bằ
 | `is_deleted` | `Delete_at` timestamp | `delete_at` | |
 | `update_at` | `Update_at` timestamp | `update_at` (`updated_at`) | |
 
-### 4.6 Mục tiêu — `goal` (đẩy **22** khoá)
+### 4.6 Mục tiêu — `goal` (đẩy **23** khoá (đếm 2026-10-28))
 
 | Đẩy | PostgreSQL | Kéo | Ghi chú |
 |---|---|---|---|
@@ -291,6 +295,7 @@ Tên duy nhất trong tài khoản, tính cả danh mục mặc định, so bằ
 | `priority` | `Priority` int? | `priority` | kéo thả, khe 100; `null` = chưa sắp (xếp cuối); `0` cũ gửi lên thành `null` (G32) |
 | `is_deleted` | `Delete_at` timestamp | `delete_at` | |
 | `update_at` | `Update_at` timestamp | `update_at` (`updated_at`) | |
+| `idhousehold` | `Idhousehold` int, `NULL` = riêng | `idhousehold` | gia đình (v32): hàng riêng gửi `null`, hàng của nhà gửi id nhà; kéo về `null` tường minh = *chưa biết* (`Value.absent()`) |
 
 ## 5. Phép đổi giá trị (tóm tắt — `sync_payload_normalizer.dart`)
 
@@ -308,7 +313,7 @@ Tên duy nhất trong tài khoản, tính cả danh mục mặc định, so bằ
 
 ## 6. Chỉ có ở client — KHÔNG đồng bộ
 
-**Bảng cục bộ** (Drift v31): `CategoryKeywords`, `CategoryGroupMemberships` (cấu trúc nhóm cục bộ — server dựng từ `isGroup` / `parentId`),
+**Bảng cục bộ** (Drift v32; v24–v31 là bảng cục bộ, v32 là cột `idhousehold` — ĐI QUA đồng bộ): `CategoryKeywords`, `CategoryGroupMemberships` (cấu trúc nhóm cục bộ — server dựng từ `isGroup` / `parentId`),
 `AppNotifications`, `AppNotificationEvents` (thông báo suy lại được trên từng máy — quy tắc 9), `AiRebalancingFeedbacks`, `GoiYDanhMucPhanHois`,
 `GoiYHoaDonPhanHois`, `PhanTichGiayXems`, `PhanTichThuTuPhanHois`, `KhoaTuChuyenTiens` (khoá thuê bộ chạy nền), `DanhMucAiDoans`. Thêm chúng vào
 `SyncEntityType` là sai (test quét 15 canh các bảng v24–v31).
@@ -325,7 +330,7 @@ secure storage (`GoiRepository`); tên máy không lưu (mục 8).
 
 Backend phát **`sync.completed`** (`sync.service.js:245` → event bus → phòng `account_<id>`) sau mỗi `/sync/push`. Client nghe tên sự kiện
 (`RealtimeEvent.dongBoXong`) ⇒ `syncNow()`, **im lặng** (máy vừa đẩy cũng nhận lại sự kiện của chính mình). Payload là hộp đen — client chỉ đọc
-tên sự kiện (cam kết của kênh thời gian thực; ngoại lệ duy nhất `account.force_logout`).
+tên sự kiện (cam kết của kênh thời gian thực; ngoại lệ `account.force_logout`). Gia đình (2026-10-28): `household.changed` → `RealtimeEvent.nhaDoi` (làm mới trạng thái nhà; backend phát vào phòng `household_<id>` không ai `join` — đơn 56.8, chưa tới máy nào), `household.invited` → `RealtimeEvent.loiMoiNha` (tới phòng tài khoản).
 
 ## 8. Header thiết bị
 
@@ -384,8 +389,9 @@ Gom từ Mục V của bản backend viết đè (`bc4e4f7f`), checklist §6 c�
 ## 11. Không đồng bộ / ngoài phạm vi
 
 Ảnh đính kèm giao dịch (`Images`) · liên kết ngân hàng (SePay / Casso — bỏ 2026-09-18) · nhật ký kiểm toán (`auditlog`) · thông báo (cục bộ).
-**Gia đình** (`docs/Family/`, chưa có mã): sẽ thêm `idhousehold` cho ví, giao dịch, mục tiêu, ngân sách, danh mục (phạm vi kéo về *của tôi ∨ của nhà
-tôi*) và `idfund_pair` cho giao dịch — khi thi công, sửa tệp test và tệp này cùng lượt.
+**Gia đình (lát 1 mã xong 2026-10-28, `docs/Family/`, khối 🏠 mục 14 `PROJECT_CONTEXT.md`):** năm payload (ví, giao dịch, ngân sách, mục tiêu, danh mục — không có hoá đơn) gửi khoá **`idhousehold`** (hàng riêng `null`, hàng của nhà gửi id nhà; bảng 4.1–4.4, 4.6); nhánh kéo về đọc khoá ấy (vắng hoặc `null` tường minh ⇒ `Value.absent()`, giữ giá trị cục bộ). Lối ĐẨY chỉ lấy hàng `idhousehold IS NULL` (lô đẩy không mang hàng của nhà — quét 37). Bảy mã đẩy vĩnh viễn của gia đình đã nằm ở mục 2.4 (`NOT_OWNER` + sáu `HOUSEHOLD_*`). `idfund_pair` (cặp góp / rút) để phần 2.
+
+**`SyncEngine.keoLaiToanBo(idaccount)`** (lát 1): vào phạm vi dữ liệu mới (vào nhà) ⇒ xoá mốc kéo về rồi kéo lại toàn bộ. Dùng **thế hệ yêu cầu** trong `ApDuLieuKeoVe`: lượt kéo bắt đầu trước yêu cầu không ghi mốc; lượt hỏng giữ yêu cầu cho lượt sau; chỉ xoá kho (`SyncCheckpointStore.clear`) là KHÔNG đủ vì mốc nằm trong RAM. Lượt kéo toàn bộ theo yêu cầu vẫn so từ khoá khuôn danh mục.
 
 ## 12. Bẫy đã gặp (đọc trước khi sửa vùng tương ứng)
 
