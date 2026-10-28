@@ -202,4 +202,54 @@ void main() {
     await engine.syncNow();
     expect(client.adapter.sinces.last, tuDau, reason: 'lượt hỏng không được xoá yêu cầu');
   });
+
+  test('⚠️ kéo toàn bộ theo yêu cầu VẪN so từ khoá khuôn — từ khoá admin thêm giữa hai lượt phải lan sang bản sao',
+      () async {
+    const idKhuon = 'bbbbbbbb-0000-4000-8000-000000000001';
+    Map<String, dynamic> khuon(String keyword) => {
+          'idcategory': idKhuon,
+          'name_category': 'Ăn uống',
+          'classify': 'Chi',
+          'is_default': true,
+          'keyword': keyword,
+          'update_at': '2026-10-20T10:00:00.000Z',
+        };
+    List<ThayDoiKhuon> thayDoi = const [];
+    final e = SyncEngine(
+      dioClient: client,
+      db: db,
+      connectivity: _Online(),
+      checkpointStore: store,
+      soDuVi: congSoDuViThat(db),
+      viBiGiu: congViBiGiuThat(db),
+      sauKeoVe: (_, doi) async {
+        thayDoi = doi;
+        return 0;
+      },
+    );
+    addTearDown(e.dispose);
+    // Lượt kéo thường đầu tiên mang khuôn về; từ khoá của tài khoản này là 'cu'.
+    client.adapter.pullData = {
+      'categories': [khuon('')],
+    };
+    final xong = e.statusStream.where((s) => s.isTerminal).first;
+    e.start(idaccount: accountId);
+    await xong.timeout(const Duration(seconds: 5));
+    await db.categoryDao
+        .replaceKeywords(accountId: accountId, categoryId: idKhuon, keywords: const ['cu'], now: DateTime.now());
+
+    // Admin thêm từ khoá 'moi' vào khuôn; rồi tài khoản vào nhà.
+    client.adapter.pullData = {
+      'categories': [khuon('cu,moi')],
+    };
+    await e.keoLaiToanBo(accountId);
+
+    expect(client.adapter.sinces.last, tuDau, reason: 'tiền đề: đây là lượt kéo toàn bộ');
+    final doi = thayDoi.where((d) => d.id == idKhuon).toList();
+    expect(doi, hasLength(1), reason: 'khuôn đổi từ khoá phải được báo cho bộ lan truyền');
+    expect(doi.single.tuKhoaCu, ['cu']);
+    expect(doi.single.tuKhoaMoi, ['cu', 'moi'],
+        reason:
+            'kéo toàn bộ theo thế hệ vẫn có trạng thái cũ của tài khoản — so từ khoá bị bỏ là từ khoá mới không bao giờ về bản sao');
+  });
 }

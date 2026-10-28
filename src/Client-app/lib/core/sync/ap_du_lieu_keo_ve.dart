@@ -128,7 +128,10 @@ class ApDuLieuKeoVe {
     final isLocalDbEmpty = allWallets.isEmpty;
 
     final theHe = _theHeYeuCau;
-    final keoToanBo = isLocalDbEmpty || _lastPullTime == null || _theHeDaKeo < theHe;
+    // Hai nghĩa KHÁC nhau: [khongCoTrangThaiCu] = máy này chưa có gì của tài khoản để so (dùng cho phép so từ khoá khuôn);
+    // [keoToanBo] = lượt này đi từ 1970 — thêm cả lượt do yêu cầu (vào nhà), nơi trạng thái cũ vẫn còn nguyên.
+    final khongCoTrangThaiCu = isLocalDbEmpty || _lastPullTime == null;
+    final keoToanBo = khongCoTrangThaiCu || _theHeDaKeo < theHe;
     final since = keoToanBo
         ? '1970-01-01T00:00:00.000Z'
         : _lastPullTime!.toUtc().toIso8601String();
@@ -274,12 +277,14 @@ class ApDuLieuKeoVe {
                 cu: existingLocal,
                 moi: companion,
                 laKhuon: doiSangBool(c['is_default']),
-                // Lượt kéo TOÀN BỘ không có trạng thái cũ của tài khoản này để so từ khoá: hàng khuôn (idaccount 0) dùng
+                // Lượt kéo KHÔNG CÓ trạng thái cũ ([khongCoTrangThaiCu], không phải [keoToanBo] — lượt kéo toàn bộ do yêu cầu
+                // vẫn có từ khoá cũ của tài khoản, bỏ so là từ khoá admin thêm giữa hai lượt không lan sang bản sao) không có
+                // gì của tài khoản này để so từ khoá: hàng khuôn (idaccount 0) dùng
                 // chung cả máy và `purgeDataForOtherAccounts` giữ nó, còn từ khoá lưu THEO tài khoản và bị dọn khi đổi
                 // tài khoản trên cùng máy — so sẽ sinh thay đổi từ khoá giả. Tên / biểu tượng của khuôn thì vẫn so.
                 // Khuôn về ĐÃ XOÁ (admin đổi tên rồi xoá giữa hai lượt kéo) vẫn lan truyền tên / biểu tượng; từ khoá thì không
                 // so (khuôn xoá không còn nguồn từ khoá để thêm) — người dùng chốt 2026-10-27.
-                tuKhoaCu: (keoToanBo || existingLocal?.isDefault != true || c['delete_at'] != null)
+                tuKhoaCu: (khongCoTrangThaiCu || existingLocal?.isDefault != true || c['delete_at'] != null)
                     ? tuKhoa
                     : await _db.categoryDao.getKeywords(accountId, catUuid),
                 tuKhoaMoi: tuKhoa,
