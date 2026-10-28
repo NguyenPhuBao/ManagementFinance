@@ -1,4 +1,4 @@
-/// Sáu giá trị (mười hai tên) sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
+/// Tám giá trị (mười bốn tên) sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
 /// backend phát tới room `account_<idaccount>` (riêng `emitPermissionsUpdated` — `account.permissions_updated` /
 /// `account.upgraded` — phát tới MỌI socket).
 ///
@@ -61,6 +61,17 @@ enum RealtimeEvent {
   /// lại server; không đọc payload (cam kết hộp đen), không toast (người dùng chốt 2026-10-18), không kéo đồng bộ.
   /// `GoiRepository` KHÔNG làm mới gói theo nó — gói chỉ theo `account.upgraded` (spec G94 2026-10-18 mục 5.8).
   donThanhToanDoi,
+
+  /// `household.changed` — gia đình (spec 2026-10-23 mục 4.5; đơn 50 mục F): server phát tới mọi thành viên khi có người
+  /// vào / rời / bị mời ra, đổi vai, chuyển chủ, đổi trạng thái nhà, có lời mời bị từ chối. **Tín hiệu**: không đọc payload,
+  /// `NhaRepository` gọi lại `/households/me` (và danh sách lời mời). Im, không kéo đồng bộ — nhà đổi thì bộ điều phối gia
+  /// đình tự dọn / kéo lại toàn bộ. ⚠️ Backend `177dd0e1` phát vào phòng `household_<id>` không ai ở (đơn 56.8) — chưa tới.
+  nhaDoi,
+
+  /// `household.invited` — gia đình (`docs/Family/01` mục 2.7): server phát tới phòng TÀI KHOẢN người được mời khi chủ nhà
+  /// mời bằng email mà email ấy đã có tài khoản (`createEmailInvite` → `emitToAccount`). **Tín hiệu**: không đọc payload,
+  /// `NhaRepository` gọi lại `/households/invitations`. Im, không kéo đồng bộ.
+  loiMoiNha,
 }
 
 /// Dịch tên sự kiện của backend sang enum. Tên lạ trả `null` — backend thêm sự
@@ -88,6 +99,10 @@ RealtimeEvent? realtimeEventFromName(String name) {
     case 'payment.order_expired':
     case 'payment.order_cancelled':
       return RealtimeEvent.donThanhToanDoi;
+    case 'household.changed':
+      return RealtimeEvent.nhaDoi;
+    case 'household.invited':
+      return RealtimeEvent.loiMoiNha;
     default:
       return null;
   }
@@ -103,7 +118,9 @@ extension RealtimeEventX on RealtimeEvent {
       this != RealtimeEvent.ocrTrung &&
       this != RealtimeEvent.taiKhoanNangCap &&
       this != RealtimeEvent.taiKhoanHaCap &&
-      this != RealtimeEvent.donThanhToanDoi;
+      this != RealtimeEvent.donThanhToanDoi &&
+      this != RealtimeEvent.nhaDoi &&
+      this != RealtimeEvent.loiMoiNha;
 
   /// Câu hiện trên toast. Hằng số, cố ý không nêu số liệu.
   ///
@@ -122,6 +139,10 @@ extension RealtimeEventX on RealtimeEvent {
       case RealtimeEvent.taiKhoanHaCap:
         return null;
       case RealtimeEvent.donThanhToanDoi:
+        return null;
+      case RealtimeEvent.nhaDoi:
+        return null;
+      case RealtimeEvent.loiMoiNha:
         return null;
     }
   }
