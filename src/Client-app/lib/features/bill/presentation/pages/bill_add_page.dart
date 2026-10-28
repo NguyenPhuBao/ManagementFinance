@@ -560,13 +560,12 @@ class _BillAddPageState extends State<BillAddPage> {
                 ],
               ),
             ),
-            Switch(
-              key: const ValueKey('bill-autopay-switch'),
+            CongTacTheoQuyen(
+              khoaCongTac: const ValueKey('bill-autopay-switch'),
               value: _autoPayEnabled,
               // Quyền `bill_auto_pay` (spec phân quyền 2026-10-08): không có → công tắc khoá, băng Nâng cấp dưới.
-              onChanged: context.coQuyen(MaQuyen.billAutoPay)
-                  ? (val) => setState(() => _autoPayEnabled = val)
-                  : null,
+              onChanged: (val) => setState(() => _autoPayEnabled = val),
+              biKhoa: !context.coQuyen(MaQuyen.billAutoPay),
               activeThumbColor: Colors.white,
               activeTrackColor: AppColors.primary,
             ),

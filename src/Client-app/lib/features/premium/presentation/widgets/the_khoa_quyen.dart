@@ -157,6 +157,71 @@ class DongKhoaQuyen extends StatelessWidget {
   }
 }
 
+/// Độ mờ của công tắc bị khoá — Stitch `68593384…` (`opacity-50`).
+const double kDoMoCongTacKhoa = 0.5;
+
+/// Công tắc của một tính năng theo quyền — chỗ DUY NHẤT vẽ công tắc bị khoá (test quét 41). [biKhoa] → mờ
+/// [kDoMoCongTacKhoa], ổ khoá trong núm, không chạm được, GIỮ giá trị — Stitch `68593384…` (cả khi tắt lẫn khi đang bật),
+/// spec phân quyền 2026-10-08 mục 4.3 (2) *"công tắc mờ"*. Băng [DongKhoaCongTac] bên dưới là chỗ duy nhất có nút.
+///
+/// Đừng khoá bằng `Switch(onChanged: null)` trần: màu đặt cứng (`activeTrackColor`, `inactiveTrackColor`) thắng màu khoá
+/// mặc định của Material 3, nên công tắc bị khoá vẽ y hệt công tắc mở (đo 2026-10-28, G111). Khi khoá, rãnh giữ đúng màu
+/// của chỗ gọi (thiếu màu → màu mở mặc định của theme) rồi mờ cả khối — không chồng thêm lớp mờ mặc định của Material.
+/// [khoaCongTac] gắn vào chính `Switch` để test tìm `Switch` theo khoá như cũ.
+class CongTacTheoQuyen extends StatelessWidget {
+  const CongTacTheoQuyen({
+    super.key,
+    this.khoaCongTac,
+    required this.value,
+    required this.onChanged,
+    required this.biKhoa,
+    this.activeThumbColor,
+    this.activeTrackColor,
+    this.inactiveThumbColor,
+    this.inactiveTrackColor,
+  });
+
+  final Key? khoaCongTac;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final bool biKhoa;
+  final Color? activeThumbColor;
+  final Color? activeTrackColor;
+  final Color? inactiveThumbColor;
+  final Color? inactiveTrackColor;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!biKhoa) {
+      return Switch(
+        key: khoaCongTac,
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: activeThumbColor,
+        activeTrackColor: activeTrackColor,
+        inactiveThumbColor: inactiveThumbColor,
+        inactiveTrackColor: inactiveTrackColor,
+      );
+    }
+    final cs = Theme.of(context).colorScheme;
+    final rayBat = activeTrackColor ?? cs.primary;
+    return Opacity(
+      opacity: kDoMoCongTacKhoa,
+      child: Switch(
+        key: khoaCongTac,
+        value: value,
+        onChanged: null,
+        activeThumbColor: Colors.white,
+        activeTrackColor: rayBat,
+        inactiveThumbColor: Colors.white,
+        inactiveTrackColor: inactiveTrackColor ?? cs.surfaceContainerHighest,
+        thumbIcon: WidgetStatePropertyAll(
+            Icon(Icons.lock, size: 14, color: value ? rayBat : AppColors.textSecondary)),
+      ),
+    );
+  }
+}
+
 /// Băng dưới một công tắc bị khoá. [dangBat] — giá trị đang lưu là BẬT (vd. đã bật tự trả khi còn Premium) → băng
 /// hồng *"Tạm dừng — cần Premium"* (chốt *"dừng chạy, giữ công tắc"*); không → băng vàng *"Cần Premium"*. Tạm ngừng (B1)
 /// THẮNG [dangBat]: băng xám *"Tạm ngừng"*, không nút.

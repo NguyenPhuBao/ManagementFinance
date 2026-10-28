@@ -322,7 +322,8 @@ miễn phí mọi gói) · `payment_history` (Lịch sử mua là lối vào Chi
   `premium/presentation/bloc/co_quyen.dart` — không provider thì **không khoá** (test cũ). Widget ở
   `premium/presentation/widgets/the_khoa_quyen.dart`: `TheKhoaQuyen` (thẻ 🔒 + `NutNangCap(quyen:)`), `KhoaTheoQuyen`
   (bọc con), `DongKhoaQuyen` (dòng khoá trong khối Nhận xét), `DongKhoaCongTac` (*"Cần Premium"* / *"Tạm dừng — cần
-  Premium"* khi giá trị đang lưu là bật). Biến thể **tạm ngừng** (B1, Stitch `02c0d881…`): thẻ *"Đang tạm ngừng"*, dòng
+  Premium"* khi giá trị đang lưu là bật), `CongTacTheoQuyen` (chính công tắc: `biKhoa` → mờ 50 % + ổ khoá trong núm, Stitch
+  `68593384…` — G111, 2026-10-28; mọi công tắc khoá theo quyền đi qua nó, test quét 41). Biến thể **tạm ngừng** (B1, Stitch `02c0d881…`): thẻ *"Đang tạm ngừng"*, dòng
   `cauDongKhoaTamNgung` (*"<tên> đang tạm ngừng"*), băng *"Tạm ngừng"* xám (`khoaNgung*`) — cả ba **không** nút Nâng cấp; mọi câu ở
   `premium/domain/cau_quyen.dart`. Màu của thẻ / dòng / băng khoá ở `AppColors` (nhóm `khoa*` + `vienNutNangCap`, giá trị Stitch 2026-10-08; widget không ghi cứng `Color(0x…)` — ca canh ở `the_khoa_quyen_test.dart`, 2026-10-19).
 - **Ngoài cây widget:** `coQuyenNen(MaQuyen)` (`premium/data/co_quyen_nen.dart`) đọc `GoiRepository.hienTai`; chưa có
@@ -389,6 +390,11 @@ Backend tự sửa 7 tệp client (`TranGoi` thêm `hoaDon` · `danhMucRieng`, `
 15. **Công tắc *"Tính vào tổng"* neo vào giá trị ĐÃ LƯU** (`_wallet?.includeInTotal`, I3), không vào `_includeInTotal` của form: neo vào
     giá trị đang chọn thì người bị hạ cấp bật lại xong là khoá ngay, chạm nhầm không gỡ được trước khi Lưu (ca canh thử bằng đúng bản
     sai ấy). Màn Thêm truyền `daLuuTinhVaoTong: true`.
+16. ⚠️ **Đừng khoá công tắc bằng `Switch(onChanged: null)` trần** (G111, 2026-10-28): màu đặt cứng (`activeTrackColor`,
+    `inactiveTrackColor`) thắng màu khoá mặc định của Material 3 — công tắc bị khoá vẽ y hệt công tắc mở (đo bằng `paints..rrect`).
+    Đi qua `CongTacTheoQuyen(onChanged: f, biKhoa: !context.coQuyen(…))`; `HangCongTac` nhận `biKhoa`. Test quét 41
+    (`test/features/premium/cong_tac_khoa_mot_noi_test.dart`) cấm `Switch(` / `HangCongTac(` hỏi `coQuyen(` trong đối số mà không
+    qua `biKhoa:`.
 
 ### 8.6 Màn Stitch (người dùng xác nhận 2026-10-08; cả ba lượt gọi `timeout`, màn hiện sau ~10 phút)
 
@@ -403,7 +409,11 @@ Backend tự sửa 7 tệp client (`TranGoi` thêm `hoaDon` · `danhMucRieng`, `
 viền đứt dựng sẵn, phải tự vẽ `CustomPainter`); khối 3 băng tạm ngừng **xám** theo Stitch (token `AppColors.khoaNgung{Nen,Vien,Chu,Icon}`,
 không tô vàng như *"Cần Premium"*); khối 4 khung dòng *Nút ghi nhanh* dùng `khoaCanNen` / `khoaCanVien` (gần `#fbf9f2` / `#eedca8`);
 khối 5 dải trần Premium giữ `info_outline` (Stitch `account_balance_wallet`); ổ khoá `lock_outline` (Stitch glyph `lock` đặc);
-khối 6 băng Trợ lý AI tạm ngừng dùng `smart_toy_outlined` theo Stitch. Màn Nâng cấp `c999da97…` / `9db35f88…` luôn vẽ giá + nút; app
+khối 6 băng Trợ lý AI tạm ngừng dùng `smart_toy_outlined` theo Stitch. **Đối chiếu khối 2 / 4 (2026-10-28 phiên 21, tải HTML Stitch):**
+khối 2 dòng khoá **tạm ngừng** Stitch vẫn tô **vàng** (nền `#fef9ee`, ổ khoá `#b37700`), chỉ bỏ nút — app khớp (`DongKhoaQuyen` giữ
+`khoaVang` / `khoaNenVang`); bất đối xứng *dòng vàng / băng xám* là của chính Stitch (khối 2 vàng, khối 3 xám). Khối 4 (Trang chủ, nút
+ghi nhanh) Stitch **chỉ vẽ** bản *"dành cho Premium"*; bản tạm ngừng của app (khung vàng, *"Nút ghi nhanh đang tạm ngừng"*, không nút)
+theo luật khối 2 — người dùng chốt **giữ** 2026-10-28. Màn Nâng cấp `c999da97…` / `9db35f88…` luôn vẽ giá + nút; app
 **ẩn** chúng khi đến từ quyền tạm ngừng (I2, 2026-10-28 — mục 8.5 (14)), không dựng màn Stitch riêng cho biến thể này.
 
 ### 8.7 Nghiệm thu máy thật — ✅ đạt (OnePlus 13R, 2026-10-08 khuya, bản debug trỏ `127.0.0.1` + `adb reverse`)
@@ -482,5 +492,6 @@ Công tắc bị khoá vẽ **giống hệt** công tắc mở (xanh đậm) —
 **Chưa đo trên máy:** *quá hạn vẫn báo* khi tắt nhắc trước hạn; chip *Nhắc trước* khoá (form hoá đơn / Cài đặt); dòng khoá *nhịp chi* ngân sách / nạp rút
 mục tiêu / gắn danh mục / từ khoá (cùng widget đã thấy, có widget test). Tài khoản 29 (`thub1t13`) và hoá đơn *Internet* của nó **để lại** trên
 `PersonFinance` dev (dùng cho lần đo sau); máy ảo đang đăng nhập tài khoản 29.
-**Ghi nhận để người dùng đối chiếu Stitch `02c0d881…`:** dòng khoá tạm ngừng (*"Điều chỉnh số dư ví đang tạm ngừng"*, *"Nút ghi nhanh đang tạm
-ngừng"*) dùng ổ khoá **vàng** như *"cần Premium"*, còn băng công tắc tạm ngừng thì **xám**.
+**Đối chiếu Stitch `02c0d881…` — xong 2026-10-28 phiên 21, khớp** (mục 8.6, đoạn *Lệch Stitch có chủ ý*): dòng khoá tạm ngừng (*"Điều chỉnh số dư
+ví đang tạm ngừng"*, *"Nút ghi nhanh đang tạm ngừng"*) vàng theo Stitch khối 2, băng công tắc tạm ngừng xám theo khối 3. Ghi nhận
+*"công tắc bị khoá vẽ giống công tắc mở"* là lỗi thật — **G111**, sửa cùng ngày (mục 8.5 (16)).

@@ -595,9 +595,8 @@ class _WalletEditPageState extends State<WalletEditPage> {
             title: 'Tính vào tổng tài sản',
             value: _includeInTotal,
             // Quyền `wallet_exclude_total` (B1): chỉ chặn LOẠI MỚI — ví đã lưu là "không tính" vẫn bật lại được (I3).
-            onChanged: doiDuocTinhVaoTong(coQuyen: coLoai, daLuuTinhVaoTong: _wallet?.includeInTotal ?? true)
-                ? (val) => setState(() => _includeInTotal = val)
-                : null,
+            onChanged: (val) => setState(() => _includeInTotal = val),
+            biKhoa: !doiDuocTinhVaoTong(coQuyen: coLoai, daLuuTinhVaoTong: _wallet?.includeInTotal ?? true),
           ),
           if (!coLoai)
             const Padding(
@@ -627,9 +626,10 @@ class _WalletEditPageState extends State<WalletEditPage> {
   Widget _buildSwitchTile({
     required String title,
     required bool value,
-    required ValueChanged<bool>? onChanged,
+    required ValueChanged<bool> onChanged,
     String? subtitle,
     Key? khoa,
+    bool biKhoa = false,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
@@ -669,10 +669,11 @@ class _WalletEditPageState extends State<WalletEditPage> {
               ],
             ),
           ),
-          Switch(
-            key: khoa,
+          CongTacTheoQuyen(
+            khoaCongTac: khoa,
             value: value,
             onChanged: onChanged,
+            biKhoa: biKhoa,
             activeThumbColor: Colors.white,
             activeTrackColor: AppColors.secondary,
             inactiveThumbColor: Colors.white,

@@ -23,6 +23,7 @@ import 'package:flowmoney/features/notification/domain/notification_prefs.dart';
 import 'package:flowmoney/features/notification/data/notification_prefs_store.dart';
 import 'package:flowmoney/features/notification/presentation/pages/notification_settings_page.dart';
 import 'package:flowmoney/features/notification/presentation/widgets/cai_dat_thong_bao/hang_nguong.dart';
+import '../../helpers/cong_tac_khoa.dart';
 import '../../helpers/goi_gia.dart';
 
 class _OsGia implements OsNotifier {
@@ -690,6 +691,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.widget<Switch>(f).onChanged, isNull);
       expect(tester.widget<Switch>(f).value, isTrue, reason: 'chốt "dừng chạy, giữ công tắc"');
+      expect(laCongTacKhoa(tester, f), isTrue, reason: 'G111: đang BẬT mà khoá — vẫn phải mờ + ổ khoá');
       expect(find.byKey(const Key('dong-khoa-cong-tac-daily_recording_reminder')), findsOneWidget);
       expect(find.text('Tạm dừng — cần Premium'), findsOneWidget);
     });
@@ -711,6 +713,7 @@ void main() {
       await tester.ensureVisible(f);
       await tester.pumpAndSettle();
       expect(tester.widget<Switch>(f).onChanged, isNotNull);
+      expect(laCongTacKhoa(tester, f), isFalse);
       expect(tester.widget<DropdownButton<int>>(find.byKey(const ValueKey('nhac-truoc-hoa-don'))).onChanged, isNotNull);
       expect(find.byKey(const Key('dong-khoa-cong-tac-bill_reminder_notifications')), findsNothing);
     });

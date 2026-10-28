@@ -403,14 +403,13 @@ class _BillEditPageState extends State<BillEditPage> {
                             ],
                           ),
                         ),
-                        Switch(
-                          key: const ValueKey('bill-autopay-switch'),
+                        CongTacTheoQuyen(
+                          khoaCongTac: const ValueKey('bill-autopay-switch'),
                           value: _tuTra,
                           // Quyền `bill_auto_pay`: không có → khoá; giá trị đang lưu GIỮ NGUYÊN khi Lưu (chốt "dừng
                           // chạy, giữ công tắc").
-                          onChanged: context.coQuyen(MaQuyen.billAutoPay)
-                              ? (v) => setState(() => _tuTra = v)
-                              : null,
+                          onChanged: (v) => setState(() => _tuTra = v),
+                          biKhoa: !context.coQuyen(MaQuyen.billAutoPay),
                         ),
                       ],
                     ),

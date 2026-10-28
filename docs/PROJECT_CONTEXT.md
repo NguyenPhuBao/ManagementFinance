@@ -617,6 +617,18 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-28)
 
+### 🔒 G111 — công tắc khoá theo quyền vẽ mờ + ổ khoá (2026-10-28 phiên 21)
+
+- Đối chiếu Stitch `02c0d881…` (biến thể *Đang tạm ngừng*, tải HTML): **khớp** — dòng khoá tạm ngừng vàng (khối 2), băng công tắc tạm
+  ngừng xám (khối 3); khối 4 (nút ghi nhanh, Trang chủ) Stitch chỉ vẽ bản Premium, người dùng chốt **giữ** bản tạm ngừng hiện có.
+  Ghi chép ở `PREMIUM_FEATURE.md` 8.6.
+- **G111** (ghi nhận phiên 19): bảy công tắc khoá theo quyền (tự trả hoá đơn ×2, tính vào tổng ví ×2, trích tự động mục tiêu, D1, nhắc
+  ghi chép) vẽ y hệt công tắc mở — `Switch(onChanged: null)` kèm màu đặt cứng; màu đặt cứng thắng màu khoá mặc định của Material 3 (đo
+  bằng widget test). Nay qua **`CongTacTheoQuyen`** (`premium/presentation/widgets/the_khoa_quyen.dart`): mờ 50 %, ổ khoá trong núm,
+  giữ màu của chỗ gọi — Stitch `68593384…`. Helper `test/helpers/cong_tac_khoa.dart`, **test quét 41**
+  `test/features/premium/cong_tac_khoa_mot_noi_test.dart`; bảy ca khoá sẵn có đỏ trên mã cũ. Chi tiết: G111 `CLIENT_APP_KNOWN_GAPS.md`,
+  bẫy 8.5 (16) `PREMIUM_FEATURE.md`.
+
 ### 🔀 Gộp `main` @ `7b56d822` (2026-10-28 phiên 20, commit gộp `a630c4c8`, chưa push) — backend báo xong đơn 50 (gia đình nền móng) và 54
 
 - `177dd0e1` (NPBao, PR #168): module `household` (16 endpoint `/api/households`); migration **40** (ba bảng `household*`, cột

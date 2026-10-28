@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../../../../shared/theme/app_colors.dart';
+import '../../../../premium/presentation/widgets/the_khoa_quyen.dart';
 
 class TheCaiDat extends StatelessWidget {
   const TheCaiDat({
@@ -88,6 +89,7 @@ class HangCongTac extends StatelessWidget {
     required this.phu,
     required this.giaTri,
     required this.onChanged,
+    this.biKhoa = false,
   });
 
   final Key khoa;
@@ -95,8 +97,10 @@ class HangCongTac extends StatelessWidget {
   final String nhan;
   final String phu;
   final bool giaTri;
-  /// `null` → công tắc khoá (quyền gói — B1).
-  final ValueChanged<bool>? onChanged;
+  final ValueChanged<bool> onChanged;
+
+  /// Công tắc khoá theo quyền gói (B1) — vẽ mờ + ổ khoá qua [CongTacTheoQuyen] (G111).
+  final bool biKhoa;
 
   @override
   Widget build(BuildContext context) {
@@ -104,10 +108,11 @@ class HangCongTac extends StatelessWidget {
       icon: icon,
       nhan: nhan,
       phu: phu,
-      trailing: Switch(
-        key: khoa,
+      trailing: CongTacTheoQuyen(
+        khoaCongTac: khoa,
         value: giaTri,
         onChanged: onChanged,
+        biKhoa: biKhoa,
         activeThumbColor: Colors.white,
         activeTrackColor: const Color(0xFF006E1C),
       ),
