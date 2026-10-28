@@ -27,6 +27,10 @@ function mapEntityFields(entity, data) {
       if (m.includeInTotal !== undefined) { m.include_in_total = m.includeInTotal; delete m.includeInTotal; }
       if (m.idBankCasso !== undefined) { m.id_bank_casso = m.idBankCasso; delete m.idBankCasso; }
       if (m.bankCassoId !== undefined) { m.id_bank_casso = m.bankCassoId; delete m.bankCassoId; }
+      if (m.idhousehold !== undefined) { m.idhousehold = m.idhousehold !== null ? Number(m.idhousehold) : null; }
+      else if (m.idHousehold !== undefined) { m.idhousehold = m.idHousehold !== null ? Number(m.idHousehold) : null; delete m.idHousehold; }
+      else if (m.householdId !== undefined) { m.idhousehold = m.householdId !== null ? Number(m.householdId) : null; delete m.householdId; }
+      else if (m.Idhousehold !== undefined) { m.idhousehold = m.Idhousehold !== null ? Number(m.Idhousehold) : null; delete m.Idhousehold; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted === true || m.is_deleted === true) { m.delete_at = new Date(); }
       delete m.isDeleted;
@@ -51,6 +55,10 @@ function mapEntityFields(entity, data) {
       if (m.billId !== undefined) { m.idbill = m.billId; delete m.billId; }
       if (m.bill_id !== undefined) { m.idbill = m.bill_id; delete m.bill_id; }
       if (m.idBill !== undefined) { m.idbill = m.idBill; delete m.idBill; }
+      if (m.idhousehold !== undefined) { m.idhousehold = m.idhousehold !== null ? Number(m.idhousehold) : null; }
+      else if (m.idHousehold !== undefined) { m.idhousehold = m.idHousehold !== null ? Number(m.idHousehold) : null; delete m.idHousehold; }
+      else if (m.householdId !== undefined) { m.idhousehold = m.householdId !== null ? Number(m.householdId) : null; delete m.householdId; }
+      else if (m.Idhousehold !== undefined) { m.idhousehold = m.Idhousehold !== null ? Number(m.Idhousehold) : null; delete m.Idhousehold; }
       if (m.type !== undefined && ['Expense', 'Income', 'Debt', 'Loan'].includes(m.type)) {
         m.type = 'Transaction';
       }
@@ -88,6 +96,10 @@ function mapEntityFields(entity, data) {
       if (m.timeRecurrence !== undefined) { m.time_recurrence = m.timeRecurrence; delete m.timeRecurrence; }
       if (m.nexttimeRecurrence !== undefined) { m.nexttime_recurrence = m.nexttimeRecurrence ? new Date(m.nexttimeRecurrence) : null; delete m.nexttimeRecurrence; }
       if (m.nextTimeRecurrence !== undefined) { m.nexttime_recurrence = m.nextTimeRecurrence ? new Date(m.nextTimeRecurrence) : null; delete m.nextTimeRecurrence; }
+      if (m.idhousehold !== undefined) { m.idhousehold = m.idhousehold !== null ? Number(m.idhousehold) : null; }
+      else if (m.idHousehold !== undefined) { m.idhousehold = m.idHousehold !== null ? Number(m.idHousehold) : null; delete m.idHousehold; }
+      else if (m.householdId !== undefined) { m.idhousehold = m.householdId !== null ? Number(m.householdId) : null; delete m.householdId; }
+      else if (m.Idhousehold !== undefined) { m.idhousehold = m.Idhousehold !== null ? Number(m.Idhousehold) : null; delete m.Idhousehold; }
       if (m.start !== undefined) { m.start = new Date(m.start); }
       else if (m.startDate !== undefined) { m.start = new Date(m.startDate); delete m.startDate; }
       if (m.end !== undefined) { m.end = m.end ? new Date(m.end) : null; }
@@ -158,6 +170,10 @@ function mapEntityFields(entity, data) {
       if (m.autoDepositWalletId !== undefined) { m.auto_deposit_wallet_id = m.autoDepositWalletId; delete m.autoDepositWalletId; }
       if (m.autoDepositLastRun !== undefined) { m.auto_deposit_last_run = m.autoDepositLastRun ? new Date(m.autoDepositLastRun) : null; delete m.autoDepositLastRun; }
       if (m.priority !== undefined) { m.priority = m.priority === null ? null : Number(m.priority); }
+      if (m.idhousehold !== undefined) { m.idhousehold = m.idhousehold !== null ? Number(m.idhousehold) : null; }
+      else if (m.idHousehold !== undefined) { m.idhousehold = m.idHousehold !== null ? Number(m.idHousehold) : null; delete m.idHousehold; }
+      else if (m.householdId !== undefined) { m.idhousehold = m.householdId !== null ? Number(m.householdId) : null; delete m.householdId; }
+      else if (m.Idhousehold !== undefined) { m.idhousehold = m.Idhousehold !== null ? Number(m.Idhousehold) : null; delete m.Idhousehold; }
       if (m.statusComplete !== undefined) {
         if (typeof m.statusComplete === 'boolean') {
           m.status_complete = m.statusComplete ? 'True' : 'False';
@@ -191,6 +207,10 @@ function mapEntityFields(entity, data) {
       if (m.idGroup !== undefined) { m.idgroup = m.idGroup; delete m.idGroup; }
       if (m.colour !== undefined) { m.color = m.colour; delete m.colour; }
       if (m.color !== undefined) { m.color = m.color; }
+      if (m.idhousehold !== undefined) { m.idhousehold = m.idhousehold !== null ? Number(m.idhousehold) : null; }
+      else if (m.idHousehold !== undefined) { m.idhousehold = m.idHousehold !== null ? Number(m.idHousehold) : null; delete m.idHousehold; }
+      else if (m.householdId !== undefined) { m.idhousehold = m.householdId !== null ? Number(m.householdId) : null; delete m.householdId; }
+      else if (m.Idhousehold !== undefined) { m.idhousehold = m.Idhousehold !== null ? Number(m.Idhousehold) : null; delete m.Idhousehold; }
       if (m.updatedAt !== undefined) { m.update_at = new Date(m.updatedAt); delete m.updatedAt; }
       if (m.isDeleted === true || m.is_deleted === true) { m.delete_at = new Date(); }
       delete m.isDeleted;
@@ -204,7 +224,7 @@ function mapEntityFields(entity, data) {
 
 const syncRepository = {
   // ── Category ────────────────────────────────────────────
-  async upsertCategory(data) {
+  async upsertCategory(data, reqUserId) {
     const mapped = mapEntityFields('category', data);
     const existing = await prisma.category.findUnique({ where: { idcategory: mapped.idcategory } });
     if (!existing) {
@@ -212,6 +232,7 @@ const syncRepository = {
         data: {
           idcategory: mapped.idcategory,
           create_by: mapped.create_by ?? 1,
+          idhousehold: mapped.idhousehold || null,
           name_category: mapped.name_category || mapped.name || 'Chưa đặt tên',
           classify: mapped.classify || 'Chi',
           is_default: mapped.is_default ?? false,
@@ -225,6 +246,10 @@ const syncRepository = {
         },
       });
     }
+    const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    if (!existing.is_default && !isShared && reqUserId !== undefined && reqUserId !== null && Number(existing.create_by) !== Number(reqUserId)) {
+      throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
+    }
     if (existing.is_default && existing.create_by !== mapped.create_by) {
       throw new Error('Cannot modify system default category');
     }
@@ -235,6 +260,7 @@ const syncRepository = {
       return prisma.category.update({
         where: { idcategory: existing.idcategory },
         data: {
+          idhousehold: mapped.idhousehold !== undefined ? mapped.idhousehold : existing.idhousehold,
           name_category: mapped.name_category || mapped.name || existing.name_category,
           classify: mapped.classify || existing.classify,
           is_group: mapped.is_group ?? existing.is_group,
@@ -255,13 +281,17 @@ const syncRepository = {
     return prisma.category.findUnique({ where: { idcategory } });
   },
 
-  async getCategoriesByAccount(idaccount, since) {
+  async getCategoriesByAccount(idaccount, since, activeHouseholdId = null) {
+    const conditions = [
+      { is_default: true },
+      { create_by: Number(idaccount), idhousehold: null },
+    ];
+    if (activeHouseholdId) {
+      conditions.push({ idhousehold: Number(activeHouseholdId) });
+    }
     return prisma.category.findMany({
       where: {
-        OR: [
-          { is_default: true },
-          { create_by: idaccount },
-        ],
+        OR: conditions,
         server_update_at: since ? { gt: new Date(since) } : undefined,
       },
       select: {
@@ -276,6 +306,7 @@ const syncRepository = {
         keyword: true,
         icon: true,
         color: true,
+        idhousehold: true,
         delete_at: true,
         update_at: true,
         server_update_at: true,
@@ -285,7 +316,7 @@ const syncRepository = {
   },
 
   // ── Wallet ──────────────────────────────────────────────
-  async upsertWallet(data) {
+  async upsertWallet(data, reqUserId) {
     const mapped = mapEntityFields('wallet', data);
     const existing = await prisma.wallet.findUnique({ where: { idwallet: mapped.idwallet } });
     if (!existing) {
@@ -293,6 +324,7 @@ const syncRepository = {
         data: {
           idwallet: mapped.idwallet,
           idaccount: mapped.idaccount,
+          idhousehold: mapped.idhousehold || null,
           name: typeof mapped.name === 'string' && mapped.name.trim() !== '' ? mapped.name.trim().substring(0, 100) : 'Ví mới',
           type: mapped.type || 'Cash',
           balance: mapped.balance ?? 0,
@@ -308,10 +340,18 @@ const syncRepository = {
         },
       });
     }
+
+    const ownerId = existing.idaccount ?? existing.Idaccount;
+    const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(ownerId) !== Number(reqUserId)) {
+      throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
+    }
+
     if (new Date(mapped.update_at) > new Date(existing.update_at)) {
       return prisma.wallet.update({
         where: { idwallet: existing.idwallet },
         data: {
+          idhousehold: mapped.idhousehold !== undefined ? mapped.idhousehold : existing.idhousehold,
           name: typeof mapped.name === 'string' && mapped.name.trim() !== '' ? mapped.name.trim().substring(0, 100) : existing.name,
           type: mapped.type ?? existing.type,
           balance: mapped.balance ?? existing.balance,
@@ -331,10 +371,16 @@ const syncRepository = {
     return null;
   },
 
-  async getWalletsByAccount(idaccount, since) {
+  async getWalletsByAccount(idaccount, since, activeHouseholdId = null) {
+    const conditions = [
+      { idaccount: Number(idaccount), idhousehold: null },
+    ];
+    if (activeHouseholdId) {
+      conditions.push({ idhousehold: Number(activeHouseholdId) });
+    }
     return prisma.wallet.findMany({
       where: {
-        idaccount,
+        OR: conditions,
         server_update_at: since ? { gt: new Date(since) } : undefined,
       },
       orderBy: { server_update_at: 'asc' },
@@ -342,7 +388,7 @@ const syncRepository = {
   },
 
   // ── Transaction ─────────────────────────────────────────
-  async upsertTransaction(data, dangXoaTrongLo = new Set()) {
+  async upsertTransaction(data, dangXoaTrongLo = new Set(), reqUserId) {
     const mapped = mapEntityFields('transaction', data);
     const existing = await prisma.transaction.findUnique({ where: { idtran: mapped.idtran } });
 
@@ -398,6 +444,7 @@ const syncRepository = {
         data: {
           idtran: mapped.idtran,
           idaccount: mapped.idaccount,
+          idhousehold: mapped.idhousehold || null,
           idwallet: mapped.idwallet,
           idcategory: mapped.idcategory || null,
           idwallet_transfer: mapped.idwallet_transfer || null,
@@ -417,6 +464,13 @@ const syncRepository = {
         },
       });
     }
+
+    const ownerId = existing.idaccount ?? existing.Idaccount;
+    const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(ownerId) !== Number(reqUserId)) {
+      throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
+    }
+
     if (new Date(mapped.update_at) > new Date(existing.update_at)) {
       const targetIdbill = mapped.idbill !== undefined ? mapped.idbill : existing.idbill;
       const targetDeletedAt = mapped.deleted_at !== undefined ? mapped.deleted_at : existing.deleted_at;
@@ -425,6 +479,7 @@ const syncRepository = {
       return prisma.transaction.update({
         where: { idtran: existing.idtran },
         data: {
+          idhousehold: mapped.idhousehold !== undefined ? mapped.idhousehold : existing.idhousehold,
           idwallet: mapped.idwallet ?? existing.idwallet,
           idcategory: mapped.idcategory !== undefined ? mapped.idcategory : existing.idcategory,
           idwallet_transfer: mapped.idwallet_transfer !== undefined ? mapped.idwallet_transfer : existing.idwallet_transfer,
@@ -447,10 +502,16 @@ const syncRepository = {
     return null;
   },
 
-  async getTransactionsByAccount(idaccount, since) {
+  async getTransactionsByAccount(idaccount, since, activeHouseholdId = null) {
+    const conditions = [
+      { idaccount: Number(idaccount), idhousehold: null },
+    ];
+    if (activeHouseholdId) {
+      conditions.push({ idhousehold: Number(activeHouseholdId) });
+    }
     const list = await prisma.transaction.findMany({
       where: {
-        idaccount,
+        OR: conditions,
         server_update_at: since ? { gt: new Date(since) } : undefined,
       },
       orderBy: { server_update_at: 'asc' },
@@ -463,7 +524,7 @@ const syncRepository = {
   },
 
   // ── Budget ──────────────────────────────────────────────
-  async upsertBudget(data) {
+  async upsertBudget(data, reqUserId) {
     const mapped = mapEntityFields('budget', data);
     const existing = await prisma.budget.findUnique({ where: { idbudget: mapped.idbudget } });
     if (!existing) {
@@ -471,6 +532,7 @@ const syncRepository = {
         data: {
           idbudget: mapped.idbudget,
           idaccount: mapped.idaccount,
+          idhousehold: mapped.idhousehold || null,
           idcategory: mapped.idcategory || null,
           total_amount: mapped.total_amount ?? 0,
           spent: mapped.spent ?? 0,
@@ -489,10 +551,18 @@ const syncRepository = {
         },
       });
     }
+
+    const ownerId = existing.idaccount ?? existing.Idaccount;
+    const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(ownerId) !== Number(reqUserId)) {
+      throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
+    }
+
     if (new Date(mapped.update_at) > new Date(existing.update_at)) {
       return prisma.budget.update({
         where: { idbudget: existing.idbudget },
         data: {
+          idhousehold: mapped.idhousehold !== undefined ? mapped.idhousehold : existing.idhousehold,
           idcategory: mapped.idcategory !== undefined ? mapped.idcategory : existing.idcategory,
           total_amount: mapped.total_amount ?? existing.total_amount,
           spent: mapped.spent ?? existing.spent,
@@ -515,10 +585,16 @@ const syncRepository = {
     return null;
   },
 
-  async getBudgetsByAccount(idaccount, since) {
+  async getBudgetsByAccount(idaccount, since, activeHouseholdId = null) {
+    const conditions = [
+      { idaccount: Number(idaccount), idhousehold: null },
+    ];
+    if (activeHouseholdId) {
+      conditions.push({ idhousehold: Number(activeHouseholdId) });
+    }
     const list = await prisma.budget.findMany({
       where: {
-        idaccount,
+        OR: conditions,
         server_update_at: since ? { gt: new Date(since) } : undefined,
       },
       orderBy: { server_update_at: 'asc' },
@@ -527,7 +603,7 @@ const syncRepository = {
   },
 
   // ── Bill ────────────────────────────────────────────────
-  async upsertBill(data) {
+  async upsertBill(data, reqUserId) {
     const mapped = mapEntityFields('bill', data);
     const existing = await prisma.bill.findUnique({ where: { idbill: mapped.idbill } });
     if (!existing) {
@@ -557,6 +633,13 @@ const syncRepository = {
         },
       });
     }
+
+    const ownerId = existing.idaccount ?? existing.Idaccount;
+    const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(ownerId) !== Number(reqUserId)) {
+      throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
+    }
+
     if (new Date(mapped.update_at) > new Date(existing.update_at)) {
       return prisma.bill.update({
         where: { idbill: existing.idbill },
@@ -599,7 +682,7 @@ const syncRepository = {
   },
 
   // ── Goal ────────────────────────────────────────────────
-  async upsertGoal(data) {
+  async upsertGoal(data, reqUserId) {
     const mapped = mapEntityFields('goal', data);
     const existing = await prisma.goal.findUnique({ where: { idgoal: mapped.idgoal } });
     if (!existing) {
@@ -607,6 +690,7 @@ const syncRepository = {
         data: {
           idgoal: mapped.idgoal,
           idaccount: mapped.idaccount,
+          idhousehold: mapped.idhousehold || null,
           idwallet: mapped.idwallet || null,
           name: mapped.name || 'Mục tiêu',
           target_amount: mapped.target_amount ?? 0,
@@ -630,10 +714,18 @@ const syncRepository = {
         },
       });
     }
+
+    const ownerId = existing.idaccount ?? existing.Idaccount;
+    const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(ownerId) !== Number(reqUserId)) {
+      throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
+    }
+
     if (new Date(mapped.update_at) > new Date(existing.update_at)) {
       return prisma.goal.update({
         where: { idgoal: existing.idgoal },
         data: {
+          idhousehold: mapped.idhousehold !== undefined ? mapped.idhousehold : existing.idhousehold,
           idwallet: mapped.idwallet !== undefined ? mapped.idwallet : existing.idwallet,
           name: mapped.name ?? existing.name,
           target_amount: mapped.target_amount ?? existing.target_amount,
@@ -661,10 +753,16 @@ const syncRepository = {
     return null;
   },
 
-  async getGoalsByAccount(idaccount, since) {
+  async getGoalsByAccount(idaccount, since, activeHouseholdId = null) {
+    const conditions = [
+      { idaccount: Number(idaccount), idhousehold: null },
+    ];
+    if (activeHouseholdId) {
+      conditions.push({ idhousehold: Number(activeHouseholdId) });
+    }
     const list = await prisma.goal.findMany({
       where: {
-        idaccount,
+        OR: conditions,
         server_update_at: since ? { gt: new Date(since) } : undefined,
       },
       orderBy: { server_update_at: 'asc' },
@@ -726,11 +824,15 @@ const syncRepository = {
   },
 
   // ── Soft delete utility ─────────────────────────────────
-  async softDelete(entity, id) {
+  async softDelete(entity, id, reqUserId) {
     if (entity === 'category') {
       const cat = await prisma.category.findUnique({ where: { idcategory: id } });
       if (!cat) return null;
       if (cat.is_default) throw new Error('Cannot delete system default category');
+      const isShared = Boolean(cat.idhousehold || cat.Idhousehold);
+      if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(cat.create_by) !== Number(reqUserId)) {
+        throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
+      }
       if (cat.is_group) {
         await prisma.category.updateMany({
           where: { idgroup: id },
@@ -747,6 +849,11 @@ const syncRepository = {
     if (entity === 'transaction') {
       const existing = await prisma.transaction.findUnique({ where: { idtran: id } });
       if (!existing) return null;
+      const ownerId = existing.idaccount ?? existing.Idaccount;
+      const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+      if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(ownerId) !== Number(reqUserId)) {
+        throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
+      }
       return prisma.transaction.update({
         where: { idtran: id },
         data: { deleted_at: new Date(), update_at: new Date(), server_update_at: new Date() },
@@ -764,6 +871,12 @@ const syncRepository = {
 
     const existing = await def.model.findUnique({ where: { [def.pk]: id } });
     if (!existing) return null;
+
+    const ownerId = existing.idaccount ?? existing.Idaccount;
+    const isShared = Boolean(existing.idhousehold || existing.Idhousehold);
+    if (!isShared && reqUserId !== undefined && reqUserId !== null && Number(ownerId) !== Number(reqUserId)) {
+      throw Object.assign(new Error('Bản ghi không thuộc quyền sở hữu của bạn'), { code: 'NOT_OWNER' });
+    }
 
     return def.model.update({
       where: { [def.pk]: id },

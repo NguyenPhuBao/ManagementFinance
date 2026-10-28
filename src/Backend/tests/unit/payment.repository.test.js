@@ -69,6 +69,7 @@ test('Payment Repository Suite', async (t) => {
         },
         payment_transaction: {
           create: async ({ data }) => data,
+          findFirst: async () => null,
         },
         account: {
           update: async ({ where, data }) => ({ idaccount: where.idaccount, ...data }),
