@@ -24,6 +24,9 @@ WalletsCompanion companionViKeoVe(dynamic w, int accountId) {
     id: Value((w['idwallet'] ?? w['id']).toString()),
     idaccount:
         Value(int.tryParse(w['idaccount'].toString()) ?? accountId),
+    // Gia đình (schema v32, đơn 50 D.1): server im lặng = CHƯA BIẾT (backend chưa lên đơn 50) → giữ giá trị cục bộ, cùng
+    // luật `idgoal`. An toàn vì server cấm chuyển một hàng giữa riêng ↔ nhà (`HOUSEHOLD_SCOPE_MISMATCH`).
+    idhousehold: w['idhousehold'] != null ? Value(int.tryParse(w['idhousehold'].toString())) : const Value.absent(),
     name: Value(w['name'].toString()),
     type: Value(SyncPayloadNormalizer.walletTypeFromBackend(
         w['type']?.toString() ?? 'Cash')),
@@ -92,6 +95,8 @@ TransactionsCompanion companionGiaoDichKeoVe(dynamic t, int accountId) {
     id: Value((t['idtran'] ?? t['id']).toString()),
     idaccount:
         Value(int.tryParse(t['idaccount'].toString()) ?? accountId),
+    // Cùng luật idhousehold của ví.
+    idhousehold: t['idhousehold'] != null ? Value(int.tryParse(t['idhousehold'].toString())) : const Value.absent(),
     walletId: Value((t['idwallet'] ?? t['wallet_id']).toString()),
     categoryId: Value((t['idcategory'] ?? t['category_id'])?.toString()),
     walletTransfer: Value(
@@ -187,6 +192,8 @@ CategoriesCompanion companionDanhMucKeoVe(
                 (c['create_by'] ?? c['created_by'] ?? c['idaccount'] ?? 0)
                     .toString()) ??
             0)),
+    // Cùng luật idhousehold của ví.
+    idhousehold: c['idhousehold'] != null ? Value(int.tryParse(c['idhousehold'].toString())) : const Value.absent(),
     name: Value(catName),
     classify: Value(SyncPayloadNormalizer.categoryClassifyFromBackend(
         c['classify']?.toString() ?? 'Chi')),
@@ -221,6 +228,8 @@ BudgetsCompanion companionNganSachKeoVe(dynamic b, int accountId) {
     id: Value((b['idbudget'] ?? b['id']).toString()),
     idaccount:
         Value(int.tryParse(b['idaccount'].toString()) ?? accountId),
+    // Cùng luật idhousehold của ví.
+    idhousehold: b['idhousehold'] != null ? Value(int.tryParse(b['idhousehold'].toString())) : const Value.absent(),
     categoryId: Value((b['idcategory'] ?? b['category_id'])?.toString()),
     amount: Value((num.tryParse(
                 (b['total_amount'] ?? b['amount']).toString()) ??
@@ -359,6 +368,8 @@ GoalsCompanion companionMucTieuKeoVe(dynamic g, int accountId) {
     id: Value((g['idgoal'] ?? g['id']).toString()),
     idaccount:
         Value(int.tryParse(g['idaccount'].toString()) ?? accountId),
+    // Cùng luật idhousehold của ví.
+    idhousehold: g['idhousehold'] != null ? Value(int.tryParse(g['idhousehold'].toString())) : const Value.absent(),
     name: Value(g['name'].toString()),
     targetAmount: Value(
         (num.tryParse(g['target_amount'].toString()) ?? 0.0)

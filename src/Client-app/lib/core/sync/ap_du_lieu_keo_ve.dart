@@ -248,7 +248,9 @@ class ApDuLieuKeoVe {
                       .where((k) => k.isNotEmpty)
                       .toList() ??
                   const <String>[];
-              if (tuKhoa.isNotEmpty && c['delete_at'] == null) {
+              // Danh mục của NHÀ (gia đình phần 1): không gieo vào bảng từ khoá của tài khoản đang đăng nhập — chưa màn
+              // nào dùng chúng; phần con cần từ khoá của nhà sẽ thiết kế chỗ lưu riêng.
+              if (tuKhoa.isNotEmpty && c['delete_at'] == null && c['idhousehold'] == null) {
                 tuKhoaTheoDanhMuc[catUuid] = tuKhoa;
               }
               // Admin-web sửa khuôn → ghi lại cho mảng danh mục lan truyền sang bản sao (spec 2026-10-27 mục 5). Từ khoá CŨ

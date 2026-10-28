@@ -277,6 +277,8 @@ void main() {
           'status',
           'update_at', // normalizer đổi updated_at → update_at
           'idaccount',
+          // Gia đình (schema v32, đơn 50 D.2): hàng riêng gửi `null`, hàng của nhà gửi id nhà — server đọc đúng tên này.
+          'idhousehold',
         },
       );
     });
@@ -376,6 +378,8 @@ void main() {
           'isGroup', // mapEntityFields: isGroup → Is_group
           'parentId', // mapEntityFields: parentId → Idgroup
           'update_at', 'idaccount',
+          // Gia đình (schema v32, đơn 50 D.2): hàng riêng gửi `null`, hàng của nhà gửi id nhà — server đọc đúng tên này.
+          'idhousehold',
           // `keyword` KHÔNG có mặt ở đây có chủ đích: danh mục trong bộ dựng
           // này không có từ khoá nào, và gửi chuỗi rỗng là lệnh XOÁ phía
           // server. Nhóm "PUSH — từ khoá phân loại của danh mục" canh ca có.
@@ -394,6 +398,8 @@ void main() {
           'amount', 'type', 'note',
           'dateTransaction', // normalizer đổi date → dateTransaction
           'is_deleted', 'update_at', 'idaccount',
+          // Gia đình (schema v32, đơn 50 D.2): hàng riêng gửi `null`, hàng của nhà gửi id nhà — server đọc đúng tên này.
+          'idhousehold',
           // Khoá nối tới mục tiêu, mở khoá 2026-09-07 khi backend thêm cột
           // `transaction.Idgoal`. Tên payload là `idgoal` — KHÔNG phải
           // `goal_id`, vốn là tên cột Drift cục bộ và vẫn nằm trong danh sách
@@ -557,6 +563,8 @@ void main() {
           'start', 'end', 'recurrence', 'time_recurrence',
           'nexttime_recurrence', 'note', 'is_deleted', 'update_at',
           'idaccount',
+          // Gia đình (schema v32, đơn 50 D.2): hàng riêng gửi `null`, hàng của nhà gửi id nhà — server đọc đúng tên này.
+          'idhousehold',
         },
       );
     });
@@ -651,6 +659,8 @@ void main() {
           'time_cycle_take_money', 'status_complete', 'recurrence',
           'time_recurrence', 'icon', 'color', 'note', 'is_deleted',
           'update_at', 'idaccount',
+          // Gia đình (schema v32, đơn 50 D.2): hàng riêng gửi `null`, hàng của nhà gửi id nhà — server đọc đúng tên này.
+          'idhousehold',
           // Ba cột trích tự động, mở khoá 2026-09-07 khi backend thêm chúng
           // vào bảng `goal`. Chúng phải đi CÙNG NHAU: thiếu `last_run` thì mỗi
           // máy giữ một mốc riêng và cả hai cùng chuyển tiền khi tới kỳ — hỏng
@@ -702,6 +712,69 @@ void main() {
           expect(payload.containsKey(forbidden), false,
               reason: '${op['entity']} không được gửi "$forbidden"');
         }
+      }
+    });
+  });
+
+  group('PUSH — idhousehold mang GIÁ TRỊ của chính hàng (gia đình, schema v32)', () {
+    setUp(() async {
+      final now = DateTime.now();
+      await db.walletDao.insert(WalletsCompanion(
+        id: const Value(walletId),
+        idaccount: const Value(accountId),
+        name: const Value('Quỹ chung'),
+        idhousehold: const Value(12),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: categoryId,
+        idaccount: accountId,
+        name: 'Ăn uống',
+        classify: 'chi',
+        idhousehold: const Value(12),
+        updatedAt: now,
+      ));
+      await db.goalDao.insert(GoalsCompanion(
+        id: const Value(goalId),
+        idaccount: const Value(accountId),
+        name: const Value('Du lịch'),
+        targetAmount: const Value(10000000),
+        targetDate: Value(now),
+        idhousehold: const Value(12),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
+      await db.budgetDao.insert(BudgetsCompanion(
+        id: const Value('44444444-4444-4444-8444-444444444444'),
+        idaccount: const Value(accountId),
+        categoryId: const Value(categoryId),
+        amount: const Value(500000),
+        startDate: Value(now),
+        idhousehold: const Value(12),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
+      await db.transactionDao.insert(TransactionsCompanion(
+        id: const Value('33333333-3333-4333-8333-333333333333'),
+        idaccount: const Value(accountId),
+        walletId: const Value(walletId),
+        categoryId: const Value(categoryId),
+        amount: const Value(45000),
+        type: const Value('chi'),
+        date: Value(now),
+        idhousehold: const Value(12),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(now),
+      ));
+      await runSync();
+    });
+
+    test('năm thực thể đẩy idhousehold = 12', () {
+      for (final e in ['wallet', 'category', 'goal', 'budget', 'transaction']) {
+        expect(payloadOf(e)['idhousehold'], 12,
+            reason: '$e: đúng tên khoá mà sai giá trị thì server coi là hàng RIÊNG — quỹ chung thành ví riêng của người '
+                'đẩy, im lặng (quy tắc 4)');
       }
     });
   });
