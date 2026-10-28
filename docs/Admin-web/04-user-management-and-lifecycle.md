@@ -122,7 +122,7 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
    - **Xác Thực PIN Bảo Mật Cấp 2:** Mọi thao tác khóa tài khoản hoặc xóa mềm người dùng đều kích hoạt `SecurityConfirmModal` yêu cầu nhập đúng mã PIN quản trị viên trước khi thực thi.
 2. **Modal & Trang Chi Tiết Người Dùng (`UserDetailModal.jsx` / `UserDetailPage.jsx`):**
    - Hiển thị ngày tạo tài khoản, ngày cập nhật, gói tài khoản, lý do khóa và số ngày đếm ngược chờ xóa.
-   - **Tab Lịch Sử Thiết Bị & IP Truy Cập (`account_device_history`):** Hiển thị danh sách thiết bị người dùng từng sử dụng kèm tên thiết bị (`deviceName`), địa chỉ IP đã mask (`maskedIp`), User-Agent, thời điểm phát hiện lần đầu (`firstSeenAt`), lần hoạt động cuối (`lastActiveAt`) và badge trạng thái đang hoạt động (xanh trong 15 phút).
+   - **Tab Lịch Sử Thiết Bị & IP Truy Cập (`account_device_history`) *(Kế hoạch)*:** Hiển thị danh sách thiết bị người dùng từng sử dụng kèm tên thiết bị (`deviceName`), địa chỉ IP đã mask (`maskedIp`), User-Agent, thời điểm phát hiện lần đầu (`firstSeenAt`), lần hoạt động cuối (`lastActiveAt`) và badge trạng thái đang hoạt động (xanh trong 15 phút).
 3. **Modal Khóa Tài Khoản Kèm Kiểm Tra Ràng Buộc:**
    - Textarea nhập lý do có đếm ký tự và thông báo lỗi trực tiếp, nút vô hiệu hóa tự động bị khóa khi chưa nhập lý do.
 4. **Cập Nhật Real-Time Không Cần F5:**
@@ -140,7 +140,7 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
   - **Khóa tài khoản:** Client nhận Socket `force_logout`, bị xóa JWT, chuyển về màn hình đăng nhập. Mọi API sau đó đều trả về HTTP 401/403 kèm thông báo lý do Admin đã nhập.
   - **Mở khóa tài khoản:** Người dùng có thể đăng nhập lại bình thường trên điện thoại.
   - **Xóa mềm:** Toàn bộ liên kết ngân hàng bị ngắt kết nối an toàn, các giao dịch offline trên SQLite Drift sẽ không thể push sync lên máy chủ.
-  - **Gửi Device Name:** Client-app đính kèm header `x-device-name` trên mọi request API để hệ thống ghi nhận lịch sử thiết bị.
+  - **Gửi Device Name:** Client-app (bản Android) đính kèm header `x-device-name` trên các request API (qua kênh Kotlin `flowmoney/thiet_bi`) để hệ thống ghi nhận lịch sử thiết bị.
 
 ---
 
@@ -153,7 +153,7 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
 | `GET` | `/api/admin/getuser/:id` | Lấy chi tiết thông tin tài khoản và người dùng | Admin |
 | `PATCH` | `/api/admin/updatestatus/:id` | Khóa hoặc mở khóa tài khoản người dùng | Admin |
 | `DELETE` | `/api/admin/deleteuser/:id` | Xóa mềm tài khoản an toàn 5 bước | Admin |
-| `GET` | `/api/admin/accounts/:idaccount/devices` | Lấy danh sách lịch sử thiết bị & IP người dùng | Admin |
+| `GET` | `/api/admin/accounts/:idaccount/devices` | Lấy danh sách lịch sử thiết bị & IP người dùng *(Kế hoạch)* | Admin |
 
 ### Socket.io Events
 - **Lắng nghe (`Client -> Server`):**

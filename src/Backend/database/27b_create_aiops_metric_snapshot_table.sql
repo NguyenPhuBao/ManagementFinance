@@ -1,5 +1,5 @@
 -- ==============================================================================
--- Migration 27: Tạo bảng aiops_metric_snapshot lưu trữ định kỳ các mẫu đo lường AIOps
+-- Migration 27b: Tạo bảng aiops_metric_snapshot lưu trữ định kỳ các mẫu đo lường AIOps
 -- Tuân thủ: Phương án A đã được PO phê duyệt, lưu trữ mẫu định kỳ (mỗi 5 phút)
 -- phục vụ hiển thị biểu đồ xu hướng 4 Vector cho các khung 24h, 7 ngày, 1 tháng
 -- ==============================================================================

@@ -315,4 +315,27 @@ test('AIOps Active Quarantine & Mitigation Suite', async (t) => {
     assert.strictEqual(q.isQuarantined(officeIp).quarantined, false, 'IP must be immediately unquarantined');
     assert.strictEqual(q.isProtectedIp(officeIp), true);
   });
+
+  await t.test('16. [43.A3] getQuarantinedList chỉ mở khóa tài khoản AIOps cách ly, không can thiệp tài khoản Admin khóa tay', async () => {
+    const q = new AIOpsQuarantine();
+    let syncCalledWithOptions = null;
+    q._syncAccountStatusToDatabase = async (idOrUser, status, reason, options) => {
+      syncCalledWithOptions = options;
+    };
+
+    // Tạo bản ghi hết hạn cách ly
+    q._pairs.set('user:hacker', {
+      ipStatus: 'unlocked',
+      ipExpiresAt: null,
+      accountStatus: 'temporary',
+      accountExpiresAt: Date.now() - 5000, // Đã hết hạn
+      idaccount: 99,
+      username: 'hacker',
+    });
+
+    q.getQuarantinedList();
+
+    assert.ok(syncCalledWithOptions, 'Phải gọi _syncAccountStatusToDatabase');
+    assert.strictEqual(syncCalledWithOptions.onlyAIOpsLocked, true, 'Bắt buộc truyền onlyAIOpsLocked: true để bảo vệ khóa tay của Admin');
+  });
 });

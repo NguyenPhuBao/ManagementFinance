@@ -17,15 +17,18 @@ async function runSyncTests() {
   console.log(`${colors.cyan}${colors.bright}         KIỂM THỬ TOÀN DIỆN MODULE SYNC THEO CSDL MỚI                 ${colors.reset}`);
   console.log(`${colors.cyan}${colors.bright}======================================================================${colors.reset}\n`);
 
-  // 1. Tạo account test
-  const testAccount = await prisma.account.findFirst({
-    where: { idrole: 2, delete_at: null },
+  // 1. Tạo account test riêng biệt (Task 48.3)
+  const testUsername = `test_sync_${Date.now()}`;
+  const testEmail = `${testUsername}@anonymized.local`;
+  const testAccount = await prisma.account.create({
+    data: {
+      username: testUsername,
+      email: testEmail,
+      password: '$2a$10$TESTPASSWORDHASH00000000000000000000000000000000000',
+      status: 'Active',
+      idrole: 2,
+    },
   });
-
-  if (!testAccount) {
-    console.error('Không tìm thấy tài khoản test. Vui lòng đảm bảo CSDL có ít nhất 1 account.');
-    process.exit(1);
-  }
 
   const idaccount = testAccount.idaccount;
   console.log(`Đang kiểm thử với idaccount: ${idaccount} (${testAccount.username})\n`);
@@ -239,14 +242,11 @@ async function runSyncTests() {
     console.log(`   ${colors.green}✔ Soft Delete: Tất cả các bảng đã được đánh dấu Deleted_at / Delete_at thành công!${colors.reset}\n`);
   }
 
-  // 4. Dọn dẹp bản ghi test vật lý
-  await prisma.transaction.delete({ where: { idtran: tranId } }).catch(() => {});
-  await prisma.bill.delete({ where: { idbill: billId } }).catch(() => {});
-  await prisma.budget.delete({ where: { idbudget: budgetId } }).catch(() => {});
-  await prisma.goal.delete({ where: { idgoal: goalId } }).catch(() => {});
-  await prisma.wallet.delete({ where: { idwallet: wallet1Id } }).catch(() => {});
-  await prisma.wallet.delete({ where: { idwallet: wallet2Id } }).catch(() => {});
-  await prisma.category.delete({ where: { idcategory: categoryId } }).catch(() => {});
+  // 4. Dọn dẹp tài khoản test qua xóa mềm (Task 48.3, tuân thủ DB Guard không xóa cứng)
+  await prisma.account.update({
+    where: { idaccount },
+    data: { status: 'Deleted', countdown: 0, delete_at: new Date() },
+  }).catch(() => {});
 
   console.log(`${colors.green}${colors.bright}======================================================================${colors.reset}`);
   console.log(`${colors.green}${colors.bright}   🎉 MODULE SYNC ĐÃ ĐƯỢC CẬP NHẬT VÀ KIỂM THỬ CHUẨN XÁC 100%!        ${colors.reset}`);

@@ -30,7 +30,7 @@ function requireFeature(featureId) {
 
         if (account) {
           effectiveType = account.type || 'Basic';
-          if (effectiveType === 'Premium' && account.premium_expires_at && new Date(account.premium_expires_at) < new Date()) {
+          if (effectiveType === 'Premium' && (!account.premium_expires_at || new Date(account.premium_expires_at) <= new Date())) {
             effectiveType = 'Basic';
           }
         }
@@ -41,8 +41,12 @@ function requireFeature(featureId) {
       // 3. Đọc cấu hình quyền từ permissionRepository
       const { features } = await permissionRepository.getPermissionsByAccountType(effectiveType);
 
-      // 4. Nếu tính năng bị tắt (false), từ chối với HTTP 403 Forbidden
-      if (features && features[featureId] === false) {
+      // 4. Nếu tính năng bị tắt (false) hoặc mặc định trong mã nguồn là false (chống lỗi unseeded), từ chối với HTTP 403 Forbidden
+      const isExplicitlyDisabled = features && features[featureId] === false;
+      const isDefaultDisabled = (features?.[featureId] === undefined) &&
+        permissionRepository.DEFAULT_PERMISSIONS?.[effectiveType]?.features?.[featureId] === false;
+
+      if (isExplicitlyDisabled || isDefaultDisabled) {
         logger.warn(`[Permission Guard] Chặn truy cập tính năng '${featureId}' cho tài khoản ${idaccount} (Gói ${effectiveType})`);
         return ResponseHandler.forbidden(
           res,

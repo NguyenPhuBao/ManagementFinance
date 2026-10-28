@@ -156,16 +156,10 @@ function maskTransactionDescription(text, options = {}) {
   if (!text || typeof text !== 'string') return '';
 
   let raw = text;
-  // Tự động giải mã nếu text ở dạng chuỗi mã hóa hex AES (chứa dấu hai chấm iv:authTag:content)
-  if (raw.includes(':') && raw.length > 32) {
-    try {
-      const decrypted = decrypt(raw);
-      if (decrypted && decrypted !== raw) {
-        raw = decrypted;
-      }
-    } catch (_) {
-      // Giữ nguyên chuỗi nếu không phải ciphertext
-    }
+  // Task 52.2: Tự động giải mã nếu text ở dạng chuỗi mã hóa AES-256-GCM. Không nuốt lỗi giải mã!
+  const { isEncrypted } = require('./crypto.util');
+  if (isEncrypted(raw)) {
+    raw = decrypt(raw, options.context || { table: 'transaction', id: options.idtran || options.id });
   }
 
   // 1. Loại bỏ số thẻ tín dụng (Luhn check), CVV, mật khẩu

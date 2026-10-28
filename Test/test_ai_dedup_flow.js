@@ -15,21 +15,23 @@ const ocrService = require('../src/Backend/modules/ai/features/ocr/ocr.service')
 const classifyService = require('../src/Backend/modules/ai/features/classify/classify.service');
 const notificationService = require('../src/Backend/modules/notification/notification.service');
 
+const TEST_MOCK_ACCOUNT_ID = 999999;
+
 const MOCK_EXISTING_TRANSACTIONS = [
   {
     idtran: 'tx-uuid-001',
-    idaccount: 18,
+    idaccount: TEST_MOCK_ACCOUNT_ID,
     amount: 57000,
     date_transaction: new Date('2026-08-30T21:33:37.000Z'),
     type: 'Transaction',
-    provider: 'ORC',
+    provider: 'OCR',
     bank_tran_id: 'INV-121023427',
     note: 'ĐỒNG MART: Bột giặt Robot 800g',
     status: 'Confirmed',
   },
   {
     idtran: 'tx-uuid-002',
-    idaccount: 18,
+    idaccount: TEST_MOCK_ACCOUNT_ID,
     amount: 5000000,
     date_transaction: new Date('2026-09-03T10:15:00.000Z'),
     type: 'Transfer',
@@ -40,22 +42,22 @@ const MOCK_EXISTING_TRANSACTIONS = [
   },
   {
     idtran: 'tx-uuid-003',
-    idaccount: 18,
+    idaccount: TEST_MOCK_ACCOUNT_ID,
     amount: 45000,
     date_transaction: new Date('2026-09-03T08:00:00.000Z'),
     type: 'Transaction',
-    provider: 'ORC',
+    provider: 'OCR',
     bank_tran_id: null,
     note: 'Cà phê Highland Coffee: 1 Cà phê sữa',
     status: 'Confirmed',
   },
   {
     idtran: 'tx-uuid-004',
-    idaccount: 18,
+    idaccount: TEST_MOCK_ACCOUNT_ID,
     amount: 60000,
     date_transaction: new Date('2026-09-03T09:00:00.000Z'),
     type: 'Transaction',
-    provider: 'ORC',
+    provider: 'OCR',
     bank_tran_id: 'INV-SPLIT-999_grp_1',
     note: 'Hóa đơn nhóm 1',
     status: 'Confirmed',
@@ -88,10 +90,9 @@ async function runTests() {
   // ----------------------------------------------------
   console.log('--- Test Group 1: Quy tắc 1 (Strict Unique Code Matching) ---');
 
-  const dupCodeCheck = await dedupService.checkDuplicate(
-    18,
+  const dupCodeCheck = await dedupService.checkDuplicate(TEST_MOCK_ACCOUNT_ID,
     { document_type: 'RECEIPT', invoice_no: 'INV-121023427', total_amount: 57000 },
-    'ORC',
+    'OCR',
     'INV-121023427',
     { _mockExistingTransactions: MOCK_EXISTING_TRANSACTIONS }
   );
@@ -103,10 +104,9 @@ async function runTests() {
     assert.strictEqual(dupCodeCheck.existing_transaction.idtran, 'tx-uuid-001');
   });
 
-  const dupGroupedCheck = await dedupService.checkDuplicate(
-    18,
+  const dupGroupedCheck = await dedupService.checkDuplicate(TEST_MOCK_ACCOUNT_ID,
     { document_type: 'RECEIPT', invoice_no: 'INV-SPLIT-999', total_amount: 120000 },
-    'ORC',
+    'OCR',
     'INV-SPLIT-999',
     { _mockExistingTransactions: MOCK_EXISTING_TRANSACTIONS }
   );
@@ -117,10 +117,9 @@ async function runTests() {
     assert.strictEqual(dupGroupedCheck.existing_transaction.idtran, 'tx-uuid-004');
   });
 
-  const nonDupCodeCheck = await dedupService.checkDuplicate(
-    18,
+  const nonDupCodeCheck = await dedupService.checkDuplicate(TEST_MOCK_ACCOUNT_ID,
     { document_type: 'RECEIPT', invoice_no: 'INV-NEW-999', total_amount: 57000 },
-    'ORC',
+    'OCR',
     'INV-NEW-999',
     { _mockExistingTransactions: MOCK_EXISTING_TRANSACTIONS }
   );
@@ -136,15 +135,14 @@ async function runTests() {
   console.log('\n--- Test Group 2: Quy tắc 2 (Fuzzy Invoice Matching) ---');
 
   // Hóa đơn giấy không có số hóa đơn (invoice_no = null) nhưng trùng quán Highland, số tiền 45.000đ, cùng ngày
-  const dupFuzzyCheck = await dedupService.checkDuplicate(
-    18,
+  const dupFuzzyCheck = await dedupService.checkDuplicate(TEST_MOCK_ACCOUNT_ID,
     {
       document_type: 'RECEIPT',
       merchant_name: 'Highland Coffee',
       total_amount: 45000,
       transaction_date: '2026-09-03T11:30:00.000Z',
     },
-    'ORC',
+    'OCR',
     null,
     { _mockExistingTransactions: MOCK_EXISTING_TRANSACTIONS }
   );
@@ -156,15 +154,14 @@ async function runTests() {
   });
 
   // Cùng quán Highland nhưng số tiền khác (65.000đ) -> Không trùng
-  const diffAmountFuzzyCheck = await dedupService.checkDuplicate(
-    18,
+  const diffAmountFuzzyCheck = await dedupService.checkDuplicate(TEST_MOCK_ACCOUNT_ID,
     {
       document_type: 'RECEIPT',
       merchant_name: 'Highland Coffee',
       total_amount: 65000,
       transaction_date: '2026-09-03T11:30:00.000Z',
     },
-    'ORC',
+    'OCR',
     null,
     { _mockExistingTransactions: MOCK_EXISTING_TRANSACTIONS }
   );
@@ -178,8 +175,7 @@ async function runTests() {
   // ----------------------------------------------------
   console.log('\n--- Test Group 3: Quy tắc 3 (Transfer / SMS Matching) ---');
 
-  const dupTransferCheck = await dedupService.checkDuplicate(
-    18,
+  const dupTransferCheck = await dedupService.checkDuplicate(TEST_MOCK_ACCOUNT_ID,
     {
       document_type: 'BANK_TRANSFER',
       amount: 5000000,
@@ -216,7 +212,7 @@ async function runTests() {
   // Chạy thử OCR với ảnh hóa đơn trùng mã 'INV-121023427'
   let thrownError = null;
   try {
-    await ocrService.processReceipt(18, {
+    await ocrService.processReceipt(TEST_MOCK_ACCOUNT_ID, {
       _mockExtraction: {
         document_type: 'RECEIPT',
         invoice_no: 'INV-121023427',
@@ -244,7 +240,7 @@ async function runTests() {
 
   test('Phát sự kiện ocr.duplicate tới EventBus và Notification Module', () => {
     assert.ok(duplicateEventPayload, 'Phải có sự kiện ocr.duplicate được phát ra');
-    assert.strictEqual(duplicateEventPayload.idaccount, 18);
+    assert.strictEqual(duplicateEventPayload.idaccount, TEST_MOCK_ACCOUNT_ID);
     assert.strictEqual(duplicateEventPayload.bank_tran_id, 'INV-121023427');
     assert.strictEqual(duplicateEventPayload.reason, 'duplicate_bank_tran_id');
   });
@@ -258,7 +254,7 @@ async function runTests() {
   // ----------------------------------------------------
   console.log('\n--- Test Group 5: Giao dịch mới không trùng -> Chuyển tiếp bình thường ---');
 
-  const validNewReceipt = await ocrService.processReceipt(18, {
+  const validNewReceipt = await ocrService.processReceipt(TEST_MOCK_ACCOUNT_ID, {
     _mockExtraction: {
       document_type: 'RECEIPT',
       invoice_no: 'INV-FRESH-BRAND-NEW',
@@ -271,7 +267,7 @@ async function runTests() {
 
 
   test('Giao dịch chưa có trong CSDL được xử lý thành công (HTTP 200 DTO)', () => {
-    assert.strictEqual(validNewReceipt.provider, 'ORC');
+    assert.strictEqual(validNewReceipt.provider, 'OCR');
     assert.strictEqual(validNewReceipt.detected_type, 'Transaction');
     assert.strictEqual(validNewReceipt.bank_tran_id, 'INV-FRESH-BRAND-NEW');
     assert.ok(validNewReceipt.option_single);

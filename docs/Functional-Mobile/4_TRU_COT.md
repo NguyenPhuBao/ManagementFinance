@@ -39,16 +39,18 @@ Hệ thống phân quyền được thiết kế độc lập, chặt chẽ và 
 
 | Trụ Cột | Tên Cột CSDL | Kiểu Dữ Liệu | Bảng Lưu Trữ | Định Nghĩa Nghiệp Vụ |
 |:---|:---|:---:|:---:|:---|
-| **Trụ 1: Access Control (Quyền truy cập)** | `is_enabled` | `BOOLEAN` | `account_type_permission` | Kiểm soát bật (`true`) hoặc khóa (`false`) tính năng đối với gói cước. Khi `false`, UI hiển thị huy hiệu khóa 🔒 hoặc điều hướng sang trang giới thiệu nâng cấp; Backend trả lỗi `403 Feature_Forbidden`. |
+| **Trụ 1: Access Control (Quyền truy cập)** | `is_enabled` | `BOOLEAN` | `account_type_permission` | Kiểm soát bật (`true`) hoặc khóa (`false`) tính năng đối với gói cước. Khi `false`, UI hiển thị huy hiệu khóa 🔒 hoặc điều hướng sang trang giới thiệu nâng cấp; Backend trả lỗi `403 FEATURE_DISABLED`. |
 | **Trụ 2: Quota Limiting (Hạn mức số lượng)** | `limit_value` | `INTEGER` (hoặc `NULL`) | `account_type_permission` | Hạn mức số lượng tối đa của thực thể tài nguyên (`3`, `5`...). Giá trị `NULL` đại diện cho **Không giới hạn (Unlimited)** của gói Premium. |
-| **Trụ 3: Scope Config (Phạm vi & Quyền năng con)** | `scope_schema`<br/>`scope_config` | `JSONB` | `feature` (schema)<br/>`account_type_permission` (config) | Cấu hình chi tiết các thuộc tính con, định dạng file, hạn mức tần suất (rate limits con), độ dài thời gian hoặc các tùy chọn chuyên sâu bên trong tính năng. |
-| **Trụ 4: Downgrade Policy (Chính sách khi hạ cấp)** | `default_downgrade_policy`<br/>`downgrade_policy` | `VARCHAR(50)` | `feature` (default)<br/>`account_type_permission` (áp dụng) | Quy tắc xử lý an toàn dữ liệu và hành vi ứng dụng khi tài khoản Premium hết hạn hoặc bị hủy gói trở về gói Basic. |
+| **Trụ 3: Scope Config (Phạm vi & Quyền năng con)** | `scope_schema`<br/>`scope_config` | `JSONB` | `feature` (schema)<br/>`account_type_permission` (config) | Cấu hình chi tiết các thuộc tính con, định dạng file, hạn mức tần suất bên trong tính năng. *(Hiện trạng: Server lưu trữ và trả về, chưa có hiệu lực ở Client-app)*. |
+| **Trụ 4: Downgrade Policy (Chính sách khi hạ cấp)** | `default_downgrade_policy`<br/>`downgrade_policy` | `VARCHAR(50)` | `feature` (default)<br/>`account_type_permission` (áp dụng) | Quy tắc xử lý khi tài khoản Premium hết hạn trở về gói Basic. *(Hiện trạng: Server lưu trữ; Client-app khi hết hạn gói sẽ dừng ngay quyền lợi Premium)*. |
 
 ---
 
-## 2. QUY CHUẨN 5 CHÍNH SÁCH HẠ CẤP (TRỤ 4)
+## 2. QUY CHUẨN CÁC CHÍNH SÁCH HẠ CẤP (TRỤ 4)
 
-Hệ thống định nghĩa 5 chính sách chuẩn hóa để xử lý tự động khi tài khoản hết hạn:
+> ⚠️ **Lưu ý hiện trạng:** Trụ 3 (`scope_config`) và Trụ 4 (`downgrade_policy`) hiện tại do Server lưu trữ và trả về; Client-app hiện tại chỉ đọc `accountType`, `premiumExpiresAt`, 22 cờ `features` và 5 trần `limits`. Khi hết hạn gói Premium, Client-app dừng ngay các quyền lợi Premium.
+
+Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự động khi tài khoản hết hạn:
 
 1. **`BLOCK_CREATE` (Bảo toàn dữ liệu — Chặn tạo mới vượt trần):**
    - **Mục đích:** Bảo vệ quyền sở hữu dữ liệu của người dùng, tôn trọng nguyên tắc bảo toàn tài sản.
@@ -57,14 +59,14 @@ Hệ thống định nghĩa 5 chính sách chuẩn hóa để xử lý tự đ�
      - Người dùng **vẫn ghi chép thu/chi, chuyển tiền và xem lịch sử** trên cả 5 ví bình thường.
      - Hệ thống **chỉ chặn bấm nút "+ Tạo ví mới"**; khi bấm vào sẽ hiển thị dialog giải thích và mời gia hạn.
 2. **`LOCK_FEATURE` (Khóa quyền truy cập tính năng):**
-   - **Mục đích:** Khóa các tính năng đặc quyền cao cấp (Copilot AI, Ghi chép giọng nói Whisper, Báo cáo nâng cao).
+   - **Mục đích:** Khóa các tính năng đặc quyền cao cấp (Copilot AI, Ghi chép giọng nói On-Device, Báo cáo nâng cao).
    - **Hành vi:** Tính năng bị vô hiệu hóa, hiển thị icon ổ khóa 🔒; khi click sẽ mở trang nâng cấp `/premium?quyen=...`.
 3. **`READ_ONLY` (Chỉ xem dữ liệu lịch sử):**
    - **Mục đích:** Áp dụng cho các tính năng phân tích xu hướng hoặc dự báo (Dự báo dòng tiền 30 ngày).
    - **Hành vi:** Cho phép xem lại các biểu đồ/dữ liệu đã sinh ra trong thời gian còn Premium, nhưng khóa nút "Chạy phân tích lại kỳ này".
-4. **`GRACE_PERIOD_3D` (Ân hạn 3 ngày):**
+4. **Ân hạn 3 ngày (Server lưu/trả, chưa có hiệu lực ở app):**
    - **Mục đích:** Áp dụng cho các tiến trình tự động hóa nền (Tự động thanh toán hóa đơn `bill_auto_pay`, tự động trích quỹ mục tiêu `goal_auto_deposit`).
-   - **Hành vi:** Hệ thống duy trì chạy tự động thêm 3 ngày sau ngày hết hạn, đồng thời gửi thông báo khẩn cấp nhắc người dùng gia hạn gói để không làm gián đoạn thanh toán hóa đơn thiết yếu.
+   - **Hành vi:** Quy định ân hạn trên server; ở Client-app khi hết hạn Premium thì dừng ngay các quyền lợi tự động.
 5. **`FALLBACK_DEFAULT` (Tự động rơi về cấu hình mặc định Basic):**
    - **Mục đích:** Áp dụng cho các thông số vận hành (Tần số đồng bộ, số lượt quét OCR, số ảnh đính kèm).
    - **Hành vi:** Tự động điều chỉnh các giá trị trong `scope_config` về ngưỡng an toàn của gói Basic (ví dụ: chu kỳ đồng bộ từ 2s chuyển về 10s; số ảnh đính kèm từ 5 giảm về 1).
@@ -192,9 +194,9 @@ Hệ thống định nghĩa 5 chính sách chuẩn hóa để xử lý tự đ�
   - `scope_config` (Premium): `{"max_photos_per_tx": 5, "search_history_days": null}`
 - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
 
-#### 10. `ai_quick_input` — Ghi chép bằng giọng nói (Voice Whisper)
+#### 10. `ai_quick_input` — Ghi chép bằng giọng nói (Voice Input)
 - **Loại tính năng:** `TOGGLE` | **Nhóm:** `Sổ giao dịch Thu Chi`
-- **Mô tả:** Bóc tách câu nói tự nhiên tiếng Việt thành giao dịch tự động qua mô hình Whisper.
+- **Mô tả:** Bóc tách câu nói tiếng Việt thành giao dịch tự động (App thi hành qua `speech_to_text` Android, dự phòng Gemma; Server lưu cấu hình).
 - **Trụ 1 (Access Control):** Basic: 🔒 `false` (Khóa) | Premium: ✅ `true` (Mở)
 - **Trụ 2 (Quota Limit):** Basic: `NULL` | Premium: `NULL`
 - **Trụ 3 (Scope Schema & Config):**
@@ -326,7 +328,7 @@ Hệ thống định nghĩa 5 chính sách chuẩn hóa để xử lý tự đ�
   - `scope_schema`: `{"auto_deduct_wallet": {"type": "boolean"}, "retry_on_fail": {"type": "integer"}}`
   - `scope_config` (Basic): `{"auto_deduct_wallet": false, "retry_on_fail": 0}`
   - `scope_config` (Premium): `{"auto_deduct_wallet": true, "retry_on_fail": 3}`
-- **Trụ 4 (Downgrade Policy):** `GRACE_PERIOD_3D` (Duy trì tự động thanh toán ân hạn trong 3 ngày kèm thông báo gia hạn).
+- **Trụ 4 (Downgrade Policy):** Ân hạn 3 ngày (Server lưu/trả; ở app khi hết hạn Premium thì dừng ngay tính năng, chưa có hiệu lực ân hạn ở app).
 
 #### 21. `bill_reminder_notifications` — Nhắc hẹn hóa đơn đa tầng
 - **Loại tính năng:** `TOGGLE` | **Nhóm:** `Hóa đơn định kỳ`
@@ -364,7 +366,7 @@ Hệ thống định nghĩa 5 chính sách chuẩn hóa để xử lý tự đ�
   - `scope_schema`: `{"frequency": {"type": "array", "items": "string"}, "auto_pause_on_low_balance": {"type": "boolean"}}`
   - `scope_config` (Basic): `{"frequency": [], "auto_pause_on_low_balance": false}`
   - `scope_config` (Premium): `{"frequency": ["DAILY", "WEEKLY", "MONTHLY"], "auto_pause_on_low_balance": true}`
-- **Trụ 4 (Downgrade Policy):** `GRACE_PERIOD_3D`
+- **Trụ 4 (Downgrade Policy):** Ân hạn 3 ngày (Server lưu/trả; chưa có hiệu lực ở app).
 
 #### 24. `goal_deposit_withdraw` — Nạp & Rút tiền mục tiêu
 - **Loại tính năng:** `TOGGLE` | **Nhóm:** `Mục tiêu Tích lũy`
@@ -450,7 +452,7 @@ Hệ thống định nghĩa 5 chính sách chuẩn hóa để xử lý tự đ�
 - **Trụ 3 (Scope Schema & Config):**
   - `scope_schema`: `{"allow_offline_inference": {"type": "boolean"}, "models": {"type": "array", "items": "string"}}`
   - `scope_config` (Basic): `{"allow_offline_inference": false, "models": []}`
-  - `scope_config` (Premium): `{"allow_offline_inference": true, "models": ["whisper-tiny", "finance-slm"]}`
+  - `scope_config` (Premium - Server lưu; App thực tế dùng Gemma 4 E2B `.litertlm`): `{"allow_offline_inference": true, "models": ["gemma-4-e2b", "finance-slm"]}`
 - **Trụ 4 (Downgrade Policy):** `LOCK_FEATURE`
 
 #### 31. `ai_model_management` — Quản lý bộ nhớ mô hình AI
@@ -476,7 +478,7 @@ Hệ thống định nghĩa 5 chính sách chuẩn hóa để xử lý tự đ�
 - **Trụ 2 (Quota Limit):** Basic: `NULL` | Premium: `NULL`
 - **Trụ 3 (Scope Schema & Config):**
   - `scope_schema`: `{"supported_banks": {"type": "array", "items": "string"}, "auto_fill_category": {"type": "boolean"}}`
-  - `scope_config` (Basic): `{"supported_banks": ["VCB", "MB", "TCB", "ACB"], "auto_fill_category": false}`
+  - `scope_config` (Basic - Server lưu; App thực tế hỗ trợ MB Bank, MoMo, ZaloPay không theo gói): `{"supported_banks": ["MB", "MOMO", "ZALOPAY"], "auto_fill_category": false}`
   - `scope_config` (Premium): `{"supported_banks": ["ALL"], "auto_fill_category": true}`
 - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
 
@@ -549,7 +551,7 @@ Hệ thống định nghĩa 5 chính sách chuẩn hóa để xử lý tự đ�
 | 7 | `wallet_balance_adjustment` | Điều chỉnh số dư ví | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
 | 8 | `wallet_exclude_total` | Loại trừ ví khỏi tổng tài sản | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
 | 9 | `transaction_management` | Sổ giao dịch thu chi | `TOGGLE` | ✅ Mở (1 ảnh/tx) | ✅ Mở (5 ảnh/tx) | `FALLBACK_DEFAULT` |
-| 10 | `ai_quick_input` | Ghi chép giọng nói (Whisper) | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
+| 10 | `ai_quick_input` | Ghi chép giọng nói (Voice Input) | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
 | 11 | `ocr_receipt` | Quét hóa đơn / Biên lai (OCR) | `TOGGLE` | ✅ Mở (15 lượt/tháng) | 🔓 **Không giới hạn** | `FALLBACK_DEFAULT` |
 | 12 | `quick_category_assignment` | Gán danh mục nhanh (C1) | `TOGGLE` | ✅ Mở (20 tx/lần) | ✅ Mở (100 tx/lần) | `FALLBACK_DEFAULT` |
 | 13 | `in_app_calculator` | Bàn phím máy tính tích hợp | `TOGGLE` | ✅ Mở | ✅ Mở | `LOCK_FEATURE` |
@@ -559,10 +561,10 @@ Hệ thống định nghĩa 5 chính sách chuẩn hóa để xử lý tự đ�
 | 17 | `smart_budget_rebalancing` | Tái phân bổ ngân sách AI | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
 | 18 | `budget_overspend_alert` | Dự báo vỡ hạn mức chi tiêu | `TOGGLE` | ✅ Mở | ✅ Mở (+ Burn-rate) | `FALLBACK_DEFAULT` |
 | 19 | `bills` | Quản lý hóa đơn định kỳ | `LIMIT` | **Trần: 3 hóa đơn** | **Không giới hạn** | `BLOCK_CREATE` |
-| 20 | `bill_auto_pay` | Tự động thanh toán hóa đơn | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `GRACE_PERIOD_3D` |
+| 20 | `bill_auto_pay` | Tự động thanh toán hóa đơn | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | Ân hạn 3 ngày (Server lưu, chưa hiệu lực ở app) |
 | 21 | `bill_reminder_notifications`| Nhắc hẹn hóa đơn đa tầng | `TOGGLE` | ✅ Mở (1 ngày) | ✅ Mở (1, 3, 7 ngày) | `FALLBACK_DEFAULT` |
 | 22 | `goals` | Mục tiêu tích lũy tiết kiệm | `LIMIT` | **Trần: 3 mục tiêu** | **Không giới hạn** | `BLOCK_CREATE` |
-| 23 | `goal_auto_deposit` | Tự động trích tiền mục tiêu | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `GRACE_PERIOD_3D` |
+| 23 | `goal_auto_deposit` | Tự động trích tiền mục tiêu | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | Ân hạn 3 ngày (Server lưu, chưa hiệu lực ở app) |
 | 24 | `goal_deposit_withdraw` | Nạp & Rút tiền mục tiêu | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
 | 25 | `export_reports` | Xuất báo cáo PDF / Excel | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
 | 26 | `financial_health_fhs` | Chỉ số sức khỏe tài chính | `TOGGLE` | ✅ Mở (Điểm cơ bản) | ✅ Mở (AI Deep Insights) | `FALLBACK_DEFAULT` |
@@ -595,7 +597,7 @@ Hệ thống định nghĩa 5 chính sách chuẩn hóa để xử lý tự đ�
 4. **Tầng 4: Bộ máy Giải mã Thời hạn Tự động (Autonomous Expiry Clock):**
    - So sánh thời gian thực của máy (`DateTime.now()`) với mốc `hetHan` lưu trong máy.
    - Ngay khi hết hạn lúc offline, Client tự động hạ cấp về gói Basic mà không cần đợi Backend kích hoạt.
-   - Tích hợp cơ chế kiểm tra chống tua lùi thời gian thiết bị (Time-travel fraud prevention) thông qua đối soát mốc giao dịch gần nhất `max(date_transaction)`.
+   - Client đối soát thời hạn gói bằng so sánh `DateTime.now()` với hạn lưu trên máy; Backend kiểm tra đối chiếu thời hạn chính xác theo giờ UTC của máy chủ.
 5. **Tầng 5: Bộ đệm & Kênh Đồng bộ Thời gian thực (Realtime Sync & Cache):**
    - Đồng bộ bảng quyền và hạn mức mới nhất mỗi khi mở app hoặc resume từ background qua API `GET /payment/subscription-info`.
    - Lắng nghe sự kiện Socket.IO `account.permissions_updated` từ Admin-web để cập nhật tức thì toàn bộ giao diện trong < 1 giây.
@@ -605,15 +607,15 @@ Hệ thống định nghĩa 5 chính sách chuẩn hóa để xử lý tự đ�
 ### LÁ CHẮN AN NINH CẤP ĐỘ API TẠI BACKEND (NODEJS)
 
 1. **Middleware Kiểm soát Phân quyền (`feature-permission.middleware.js`):**
-   - Bắt buộc kiểm tra quyền cho mọi endpoint CRUD tài nguyên và các tác vụ tính toán nặng.
+   - Bắt buộc kiểm tra quyền cho các endpoint có cấu hình (ví dụ chatbot, OCR).
    - Kiểm tra `account.premium_expires_at`: Nếu đã hết hạn so với thời gian máy chủ UTC (`NOW() AT TIME ZONE 'UTC'`), tự động coi là gói `Basic`.
-   - Nếu vi phạm hạn mức hoặc quyền truy cập: Trả về mã lỗi HTTP `403 Forbidden` kèm cấu trúc mã lỗi chuẩn:
+   - Nếu vi phạm quyền truy cập: Trả về mã lỗi HTTP `403 Forbidden` kèm cấu trúc mã lỗi chuẩn:
      ```json
      {
        "success": false,
-       "error": "FEATURE_PERMISSION_DENIED",
-       "code": "FEATURE_LOCKED",
-       "feature_id": "export_reports",
+       "code": "FEATURE_DISABLED",
+       "featureId": "export_reports",
+       "accountType": "Basic",
        "message": "Tính năng này chỉ dành riêng cho tài khoản gói Premium."
      }
      ```

@@ -1,7 +1,7 @@
 /**
  * TEST SUITE: RECEIPT & BANK TRANSFER OCR (F013)
  * Kiểm thử toàn diện:
- * 1. Bóc tách Hóa đơn mua sắm (RECEIPT -> Provider 'ORC', Option Single & Grouped)
+ * 1. Bóc tách Hóa đơn mua sắm (RECEIPT -> Provider 'OCR', Option Single & Grouped)
  * 2. Bóc tách Biên lai chuyển tiền nội bộ (BANK_TRANSFER -> Provider 'BankSync', Transfer, Idcategory = null, Bank_tran_id)
  * 3. Bóc tách Biên lai thanh toán bên thứ 3 (BANK_TRANSFER -> Provider 'BankSync', Transaction, Category)
  * 4. Bóc tách Tin nhắn SMS (SMS_BANKING -> Provider 'SMS', Bank_tran_id)
@@ -15,10 +15,12 @@ const eventBus = require('../src/Backend/core/event-bus');
 const ocrService = require('../src/Backend/modules/ai/features/ocr/ocr.service');
 const notificationService = require('../src/Backend/modules/notification/notification.service');
 
+const TEST_MOCK_ACCOUNT_ID = 999999;
+
 // Dữ liệu giả lập người dùng và ví
 const MOCK_USER = {
-  iduser: 18,
-  idaccount: 18,
+  iduser: TEST_MOCK_ACCOUNT_ID,
+  idaccount: TEST_MOCK_ACCOUNT_ID,
   fullname: 'Nguyễn Phú Bảo',
   email: 'tadd1632004@gmail.com',
 };
@@ -78,14 +80,14 @@ async function runTests() {
     ],
   };
 
-  const receiptResult = await ocrService.processReceipt(18, {
+  const receiptResult = await ocrService.processReceipt(TEST_MOCK_ACCOUNT_ID, {
     _mockExtraction: receiptExtraction,
     _mockUser: MOCK_USER,
     _mockWallets: MOCK_WALLETS,
   });
 
   test('Gán đúng Provider là "ORC" cho hóa đơn mua sắm', () => {
-    assert.strictEqual(receiptResult.provider, 'ORC');
+    assert.strictEqual(receiptResult.provider, 'OCR');
   });
 
   test('Phân loại đúng Loại giao dịch là "Transaction"', () => {
@@ -125,7 +127,7 @@ async function runTests() {
     note: 'Chuyen tien sang Techcombank tiet kiem',
   };
 
-  const transferResult = await ocrService.processReceipt(18, {
+  const transferResult = await ocrService.processReceipt(TEST_MOCK_ACCOUNT_ID, {
     _mockExtraction: transferExtraction,
     _mockUser: MOCK_USER,
     _mockWallets: MOCK_WALLETS,
@@ -171,7 +173,7 @@ async function runTests() {
     note: 'Thanh toan don hang Shopee 2611',
   };
 
-  const thirdPartyResult = await ocrService.processReceipt(18, {
+  const thirdPartyResult = await ocrService.processReceipt(TEST_MOCK_ACCOUNT_ID, {
     _mockExtraction: thirdPartyExtraction,
     _mockUser: MOCK_USER,
     _mockWallets: MOCK_WALLETS,
@@ -205,7 +207,7 @@ async function runTests() {
     note: 'Thanh toan tien dien EVN',
   };
 
-  const smsResult = await ocrService.processReceipt(18, {
+  const smsResult = await ocrService.processReceipt(TEST_MOCK_ACCOUNT_ID, {
     _mockExtraction: smsExtraction,
     _mockUser: MOCK_USER,
     _mockWallets: MOCK_WALLETS,
@@ -233,7 +235,7 @@ async function runTests() {
     ],
   };
 
-  const healedResult = await ocrService.processReceipt(18, {
+  const healedResult = await ocrService.processReceipt(TEST_MOCK_ACCOUNT_ID, {
     _mockExtraction: missingTotalExtraction,
     _mockUser: MOCK_USER,
     _mockWallets: MOCK_WALLETS,
@@ -259,7 +261,7 @@ async function runTests() {
 
   let errorThrown = null;
   try {
-    await ocrService.processReceipt(18, {
+    await ocrService.processReceipt(TEST_MOCK_ACCOUNT_ID, {
       _mockExtraction: blurryExtraction,
       _mockUser: MOCK_USER,
       _mockWallets: MOCK_WALLETS,
@@ -284,7 +286,7 @@ async function runTests() {
   });
 
   // Gọi lại 1 lần processReceipt để kiểm tra event phát ra
-  await ocrService.processReceipt(18, {
+  await ocrService.processReceipt(TEST_MOCK_ACCOUNT_ID, {
     _mockExtraction: receiptExtraction,
     _mockUser: MOCK_USER,
     _mockWallets: MOCK_WALLETS,
@@ -292,8 +294,8 @@ async function runTests() {
 
   test('Phát sự kiện ocr.completed tới EventBus & Notification Module', () => {
     assert.ok(eventReceived, 'EventBus phải nhận được ocr.completed');
-    assert.strictEqual(eventReceived.idaccount, 18);
-    assert.strictEqual(eventReceived.provider, 'ORC');
+    assert.strictEqual(eventReceived.idaccount, TEST_MOCK_ACCOUNT_ID);
+    assert.strictEqual(eventReceived.provider, 'OCR');
     assert.strictEqual(eventReceived.detected_type, 'Transaction');
   });
 

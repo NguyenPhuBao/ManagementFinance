@@ -656,7 +656,6 @@ class AIOpsQuarantine {
               { reason_inactive: { contains: 'AIOps', mode: 'insensitive' } },
               { reason_inactive: { contains: 'Cách ly', mode: 'insensitive' } },
               { reason_inactive: { contains: 'Sentinel', mode: 'insensitive' } },
-              { reason_inactive: null },
             ],
           });
         }
@@ -673,6 +672,28 @@ class AIOpsQuarantine {
         },
       });
       logger.info(`[AIOps Quarantine] Đã đồng bộ CSDL bảng account -> ${status} cho [${usernameOrId}]`);
+
+      // Task 43.A6: Khi AIOps cách ly khóa tài khoản (Inactive), phát socket account.force_logout
+      if (status === 'Inactive') {
+        try {
+          const { emitForceLogout } = require('../../core/socket');
+          const { invalidateAccountCache } = require('../../middleware/auth');
+          let targetId = isNum ? Number(usernameOrId) : null;
+          if (!targetId) {
+            const acc = await prisma.account.findFirst({
+              where: { username: String(usernameOrId).trim() },
+              select: { idaccount: true },
+            });
+            if (acc) targetId = acc.idaccount;
+          }
+          if (targetId) {
+            invalidateAccountCache(targetId);
+            emitForceLogout(targetId, 'ACCOUNT_INACTIVE', reason || 'Tài khoản của bạn đã bị cách ly tạm khóa để bảo vệ an toàn.');
+          }
+        } catch (socketErr) {
+          logger.warn('[AIOps Quarantine] Không thể phát force_logout:', socketErr.message);
+        }
+      }
     } catch (err) {
       logger.warn(`[AIOps Quarantine] Cảnh báo đồng bộ CSDL bảng account cho [${usernameOrId}]`, { error: err.message });
     }
@@ -981,7 +1002,7 @@ class AIOpsQuarantine {
         if (this.repository && typeof this.repository.updateAccountStatus === 'function') {
           this.repository.updateAccountStatus({ username: record.username, idaccount: record.idaccount, status: 'UNLOCKED' }).catch(() => { });
         }
-        this._syncAccountStatusToDatabase(record.idaccount || record.username, 'Active', null).catch(() => { });
+        this._syncAccountStatusToDatabase(record.idaccount || record.username, 'Active', null, { onlyAIOpsLocked: true }).catch(() => { });
       }
 
       // Thời gian còn lại cho IP: chỉ tính khi đang tạm khóa

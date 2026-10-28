@@ -83,11 +83,12 @@ function encrypt(text) {
 }
 
 /**
- * Giải mã chuỗi AES-256-GCM
+ * Giải mã chuỗi AES-256-GCM (Task 52.1: Nhận context chứa tên bảng + khóa chính để ghi log rõ ràng khi lỗi)
  * @param {string|null} cipherText 
+ * @param {object|null} [context] { table: string, id: string|number }
  * @returns {string|null}
  */
-function decrypt(cipherText) {
+function decrypt(cipherText, context = null) {
   if (cipherText === null || cipherText === undefined) return null;
   const str = String(cipherText);
   if (str === '') return '';
@@ -100,7 +101,7 @@ function decrypt(cipherText) {
   try {
     const parts = str.slice(PREFIX.length).split(':');
     if (parts.length !== 3) {
-      logger.warn('[Crypto] Chuỗi mã hóa sai định dạng:', str);
+      logger.warn('[Crypto] Chuỗi mã hóa sai định dạng:', { str, table: context?.table, recordId: context?.id || context?.recordId });
       const err = new Error('Chuỗi mã hóa không đúng định dạng (DECRYPT_FAILED)');
       err.code = 'DECRYPT_FAILED';
       throw err;
@@ -124,10 +125,16 @@ function decrypt(cipherText) {
 
     return decrypted;
   } catch (err) {
-    logger.error('[Crypto] Lỗi giải mã AES-256-GCM:', { error: err.message });
+    logger.error('[Crypto] Lỗi giải mã AES-256-GCM:', {
+      error: err.message,
+      table: context?.table || undefined,
+      recordId: context?.id || context?.recordId || undefined,
+    });
     const decryptErr = new Error('Lỗi giải mã dữ liệu an ninh (DECRYPT_FAILED)');
     decryptErr.code = 'DECRYPT_FAILED';
     decryptErr.originalMessage = err.message;
+    decryptErr.table = context?.table || null;
+    decryptErr.recordId = context?.id || context?.recordId || null;
     throw decryptErr;
   }
 }
