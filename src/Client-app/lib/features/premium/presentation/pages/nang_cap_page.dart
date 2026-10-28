@@ -39,6 +39,10 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 /// Lệch Stitch có chủ ý: không chép dòng *"Tự động gia hạn · Hủy bất cứ lúc
 /// nào"* (gói không tự gia hạn — lời hứa sai), không đổi thẻ gói hiện tại. Màn Stitch `02c0d881…` khối 5 vẽ biểu tượng
 /// `account_balance_wallet` cho dải trần Premium; app giữ `info_outline` màu warning của dải hiện có (không đổi kiểu dáng).
+///
+/// Đến từ quyền ĐANG TẠM NGỪNG (`?quyen=`, admin tắt ở cột Premium — B1, I2 người dùng chốt 2026-10-28): màn chỉ báo câu
+/// *"X hiện đang tạm ngừng."*, ẩn giá + nút *Thanh toán* / *Gia hạn* (mua cũng không mở), giữ thẻ gói, đặc quyền, *Lịch sử
+/// mua*. Lệch có chủ ý với Stitch `c999da97…` (luôn vẽ nút).
 class NangCapPage extends StatefulWidget {
   const NangCapPage(
       {super.key,
@@ -164,6 +168,9 @@ class _NangCapPageState extends State<NangCapPage> {
         : ttQuyen == TrangThaiQuyen.tamNgung
             ? cauMoDauQuyen(widget.quyen!, tamNgung: true)
             : (premium ? null : cauMoDauQuyen(widget.quyen!));
+    // I2 (người dùng chốt 2026-10-28): màn đang nói "X hiện đang tạm ngừng" → ẩn giá + nút Thanh toán / Gia hạn — admin tắt
+    // ở cột Premium thì mua cũng không mở. Neo vào câu ĐANG HIỆN: có `?tran=` thì câu trần thắng và mua là nới trần, nút ở lại.
+    final anNutMua = cauTran == null && ttQuyen == TrangThaiQuyen.tamNgung;
     final choXacNhan = donChoXacNhan(_dsDon);
     final choHoan = donChoHoanTien(_dsDon);
     final khoa = choXacNhan.isNotEmpty;
@@ -219,54 +226,56 @@ class _NangCapPageState extends State<NangCapPage> {
               ),
               const SizedBox(height: 8),
               _theDacQuyen(goi, now),
-              const SizedBox(height: 24),
-              Text(
-                '${CurrencyFormatter.format(goi.gia.toDouble())} / ${goi.soNgayGoi} ngày',
-                key: const Key('nang-cap-gia'),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                key: const Key('nang-cap-thanh-toan'),
-                onPressed: _dangTao || khoa ? null : _thanhToan,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.outlineVariant,
-                  disabledForegroundColor: AppColors.textSecondary,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
+              if (!anNutMua) ...[
+                const SizedBox(height: 24),
+                Text(
+                  '${CurrencyFormatter.format(goi.gia.toDouble())} / ${goi.soNgayGoi} ngày',
+                  key: const Key('nang-cap-gia'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary),
                 ),
-                child: _dangTao
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : Text(premium
-                        ? 'Gia hạn thêm ${goi.soNgayGoi} ngày'
-                        : 'Thanh toán'),
-              ),
-              if (khoa) ...[
-                const SizedBox(height: 8),
-                const Row(
-                  key: Key('nang-cap-ly-do-khoa'),
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.lock, size: 14, color: AppColors.textSecondary),
-                    SizedBox(width: 6),
-                    Flexible(
-                      child: Text('Xác nhận đơn chuyển thừa trước khi tạo đơn mới',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    ),
-                  ],
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  key: const Key('nang-cap-thanh-toan'),
+                  onPressed: _dangTao || khoa ? null : _thanhToan,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppColors.outlineVariant,
+                    disabledForegroundColor: AppColors.textSecondary,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: _dangTao
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : Text(premium
+                          ? 'Gia hạn thêm ${goi.soNgayGoi} ngày'
+                          : 'Thanh toán'),
                 ),
+                if (khoa) ...[
+                  const SizedBox(height: 8),
+                  const Row(
+                    key: Key('nang-cap-ly-do-khoa'),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock, size: 14, color: AppColors.textSecondary),
+                      SizedBox(width: 6),
+                      Flexible(
+                        child: Text('Xác nhận đơn chuyển thừa trước khi tạo đơn mới',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      ),
+                    ],
+                  ),
+                ],
               ],
               const SizedBox(height: 12),
               TextButton(
