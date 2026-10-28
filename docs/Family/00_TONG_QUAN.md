@@ -16,6 +16,7 @@
 > | `02C_DINH_MUC_GOP.md` | 2c | Định mức góp hằng tháng, nhắc góp, tự góp định kỳ |
 > | `02D_NGAN_SACH_BAO_CAO.md` | 2d | Ngân sách chung của nhà, báo cáo tháng, báo khi có người chi / góp |
 > | `03_MUC_TIEU_CHUNG.md` | 3 | Mục tiêu chung = công tắc *"Đặt mục tiêu"* trên ví chung |
+> | `04_HOP_DONG_PHAN_1_NHU_MA.md` | 1 | (2026-10-28) Ảnh chụp hợp đồng phần 1 như mã backend `177dd0e1` — 16 endpoint, khoá đồng bộ, chỗ lệch `01` (đơn 57) — cho lát 1 client |
 >
 > **Nền của bộ này:** spec `docs/superpowers/specs/2026-10-23-gia-dinh-nen-mong-design.md` (phần 1, mục 11 = chỗ kế hoạch
 > thi công lát 1 khác thân) và đơn **50** `docs/superpowers/backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md` (bản chép ở

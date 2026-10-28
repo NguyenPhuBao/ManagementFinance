@@ -1,4 +1,4 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (một tệp việc: `VIEC_BACKEND_CON_LAI.md` — gộp 8 đơn 43 · 44 · 48 · 49 · 50 · 52 · 55 · 56)
+# Backend & Client — DANH SÁCH CẦN LÀM (một tệp việc: `VIEC_BACKEND_CON_LAI.md` — gộp 9 đơn 43 · 44 · 48 · 49 · 50 · 52 · 55 · 56 · 57)
 
 > 🗂️ **2026-10-28 — client gộp mọi việc backend còn lại vào MỘT tệp: [`VIEC_BACKEND_CON_LAI.md`](./VIEC_BACKEND_CON_LAI.md)** (người
 > dùng yêu cầu, để backend dễ đọc). Tệp ấy tự đủ: bảng việc xếp theo mức (mã việc giữ số đơn — `56.1`, `43.A3`…), mỗi việc có
@@ -9,7 +9,12 @@
 >   Ba tệp của backend cũng còn dẫn đường dẫn cũ: `Project.md` (3 chỗ), `src/Backend/database/40_create_household_foundation.sql:4` và
 >   `docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md:8` (đơn backend viết cho client).
 > - `ls CAN-LAM/` nay: `VIEC_BACKEND_CON_LAI.md` · `README.md` · `CLIENT_INTEGRATION_GUIDE.md` (hướng dẫn PayOS của backend, không phải
->   đơn) · `LICH-SU/` (8 tệp). Đơn mới về sau: thêm mục vào tệp gộp (số kế tiếp **57**), không tạo tệp rời.
+>   đơn) · `LICH-SU/` (8 tệp). Đơn mới về sau: thêm mục vào tệp gộp (số kế tiếp **58**), không tạo tệp rời.
+> - ✉️ **Đơn 57 (2026-10-28 phiên 21) — đơn đầu tiên đặt thẳng vào tệp gộp** (mục 1, *Đơn 57*; bảng mục 0 hàng `57.1`–`57.8`): client soát
+>   **16 endpoint `/api/households`** + migration 40 với `docs/Family/01` và đơn 50 C. Ba CAO: một hình dạng *trạng thái nhà* cho mọi
+>   endpoint trả nó (người dùng chốt theo `docs/Family`; `/me` đang phẳng, tạo nhà trả hàng thô); `req.user` không có `email` → mọi đường
+>   mời email hỏng; thư mời không bao giờ gửi (`core/mail.service` không tồn tại). Bốn VỪA: chốt *"Ownership mismatch"* chặn Chủ nhà sửa
+>   khoản của thành viên, tạo nhà nhận trần từ body, giải tán không xoá mềm dữ liệu chung, mã lỗi lệch tài liệu. Không trùng 56.
 
 > 🔎 **Client soát lượt báo xong 2026-10-28** (`177dd0e1`, PR #168, client gộp `a630c4c8`; đọc mã HEAD + CSDL Supabase của `.env`, chỉ
 > `SELECT`): trong hai đơn backend báo *"hoàn tất 100%"* (khối 🌟 ngay dưới — tệp không được chuyển):
@@ -259,9 +264,9 @@
 
 ---
 
-## 0. Còn phải làm (Hiện tại: **8** đơn, gộp trong `VIEC_BACKEND_CON_LAI.md` từ 2026-10-28 — trước đó đếm bằng `ls` 2026-10-28 sau lượt soát gộp `7b56d822`: 54 đạt, chuyển `DA-XONG/`; 50 backend báo xong, client soát còn bảy vế → việc cụ thể ở 56 mới; 43 · 44 · 48 · 49 · 52 chuyển lại lần hai (2026-10-27); 55 chờ backend)
+## 0. Còn phải làm (Hiện tại: **9** đơn, gộp trong `VIEC_BACKEND_CON_LAI.md` từ 2026-10-28 — đơn 57 đặt thẳng vào tệp gộp cùng ngày (phiên 21); trước đó đếm bằng `ls` 2026-10-28 sau lượt soát gộp `7b56d822`: 54 đạt, chuyển `DA-XONG/`; 50 backend báo xong, client soát còn bảy vế → việc cụ thể ở 56 mới; 43 · 44 · 48 · 49 · 52 chuyển lại lần hai (2026-10-27); 55 chờ backend)
 
-➡️ **Việc cần làm của cả 8 đơn: [`VIEC_BACKEND_CON_LAI.md`](./VIEC_BACKEND_CON_LAI.md)** (bảng việc mục 0, trả lời mục 10). Bảng dưới chỉ còn là tóm tắt từng đơn; cột *Tài liệu* trỏ tệp lịch sử trong `LICH-SU/`.
+➡️ **Việc cần làm của cả 9 đơn: [`VIEC_BACKEND_CON_LAI.md`](./VIEC_BACKEND_CON_LAI.md)** (bảng việc mục 0, trả lời mục 10). Bảng dưới chỉ còn là tóm tắt từng đơn; cột *Tài liệu* trỏ tệp lịch sử trong `LICH-SU/`.
 
 | # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
 |---|---|---|---|---|
@@ -273,6 +278,7 @@
 | **52** | [GIAI_MA_HONG_TRA_BAN_MA.md](./LICH-SU/GIAI_MA_HONG_TRA_BAN_MA.md) | Backend | Còn: log giải mã hỏng thiếu bảng + khoá chính, `maskTransactionDescription` / `dedup` nuốt lỗi, việc 2–3 (khoá `PersonFinance`, khoá Render). Đạt: `encrypt()` + `enc:…` (CAO), 500 ở `auth` có `code`. | 🔁 Chuyển lại lần hai 2026-10-27 |
 | **55** | [PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md](./LICH-SU/PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md) | Backend (hợp đồng + tài liệu) | Phân quyền theo gói (ma trận Admin-web `/permissions`). **A1** `/payment/subscription-info` gửi thêm `premiumFeatures` (31 công tắc) + `premiumLimits` (5 trần) cho tài khoản Basic — app biết nâng cấp có mở không; **A2** Trụ 1 của 5 mã LIMIT mất trên đường đi (`permission.repository.js:127-128`) → xin `limits[mã] = 0` khi `is_enabled = false` (client đọc 0 = không tạo thêm, `3ec874aa`); **A3** Premium không `premium_expires_at` mang ba nghĩa (service → Basic, `requireFeature` → Premium, client → Premium) — xin chốt một. **B** đính chính `docs/Functional-Mobile/4_TRU_COT.md`: 31 khẳng định sai (27 về app — chống tua giờ, ân hạn 3 ngày, `READ_ONLY`, Trụ 3 / 4 không ai thi hành… — 4 về backend: `FEATURE_LOCKED` không tồn tại, `requireFeature` không phủ CRUD, `downgrade_policy` không áp, seed `scope_config` ngoài miền app). Spec client `specs/2026-10-27-phan-quyen-cot-premium-va-cong-tac-design.md`. | ⏳ Client đặt 2026-10-27 · **client đã thi công phần dự phòng (B1, `e5251822..6cbff979`, mã Task 1–11 — đọc `premiumFeatures` / `premiumLimits` khi có, vắng thì như trước) — chờ A1 / A2 / A3**; chưa nghiệm thu máy thật |
 | **56** | [SOAT_SAU_GOP_7B56D822.md](./LICH-SU/SOAT_SAU_GOP_7B56D822.md) | Backend (gia đình — đồng bộ, quyền, socket) | Chốt chặn ghi vào nhà của đơn 50 chưa chạy. **1** `householdRepository.findMember` không tồn tại (`sync.service.js:200`) → vai và `ReadOnly` không bao giờ xét khi đẩy; **2** thi hành đúng bảng quyền + thứ tự mã của đơn 50 Việc D (người ngoài nhà → `HOUSEHOLD_NOT_MEMBER`, nhà giải tán → `HOUSEHOLD_CLOSED`, Viewer → `HOUSEHOLD_READ_ONLY`, mục tiêu chung chỉ Owner, danh mục nhà cho Member, chuyển khoản giữa ví chung chỉ Owner); **3** không cho đổi `Idhousehold` của hàng đã có; **4** Basic tạo được nhà — seed `household` / `household_members` (`database/41`) + `requireFeature`; **5** `Error` trơn → `DB_ERROR` → client gửi lại mãi; **6** kiểm phạm vi đọc `idwallet` trước chuẩn hoá (client gửi `walletId`), thêm `idwallet_transfer` / `idgoal`; **7** ReadOnly ↔ Active theo gói Chủ nhà; **8** sự kiện tới phòng `household_<id>` không ai ở → phát theo phòng tài khoản từng thành viên; **9** trần ví chung, từ khoá danh mục sao. 17 ca kiểm qua `processPush`. | ⏳ Client đặt 2026-10-28 (phiên 20) · chặn lát 1 gia đình phía client |
+| **57** | [VIEC_BACKEND_CON_LAI.md](./VIEC_BACKEND_CON_LAI.md) mục 1 *Đơn 57* (không có tệp lịch sử) | Backend (gia đình — API `/api/households`) | Hợp đồng 16 endpoint lệch `docs/Family/01` + đơn 50 C. **1** một hình dạng *trạng thái nhà* (`household` lồng + `myRole` + `members` + `formerMembers`) cho tạo nhà · `/me` · tham gia · chuyển chủ · chấp nhận lời mời; **2** `req.user` không có `email` → xem trước lời mời email luôn 403, tham gia bằng mã email không kiểm, người đăng ký sau không thấy lời mời; **3** thư mời không gửi (`require` sai module, mất `this`, `text` ≠ `html`); **4** chốt *"Ownership mismatch"* chặn Chủ nhà sửa khoản của thành viên trước ma trận vai; **5** tạo nhà nhận `maxMembers` / `maxSharedWallets` / `contributionDueDay` từ body; **6** giải tán không xoá mềm 5 bảng, không thu hồi mã; **7** mã lỗi lệch tài liệu; **8** tám chỗ nhỏ. | ⏳ Client đặt 2026-10-28 (phiên 21) · 57.1 đổi hợp đồng lát 1 gia đình phía client |
 
 ---
 

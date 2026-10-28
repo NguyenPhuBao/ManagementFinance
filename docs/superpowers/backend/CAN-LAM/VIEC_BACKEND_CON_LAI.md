@@ -1,4 +1,4 @@
-# Việc backend còn phải làm — MỘT tệp (gộp đơn 43 · 44 · 48 · 49 · 50 · 52 · 55 · 56)
+# Việc backend còn phải làm — MỘT tệp (gộp đơn 43 · 44 · 48 · 49 · 50 · 52 · 55 · 56 · 57)
 
 > **Client gộp 2026-10-28** (phiên 20). Người nhận: backend (NPBao).
 >
@@ -26,6 +26,9 @@
 | 56.3 | Không cho đổi `Idhousehold` của hàng đã có qua `/sync/push` | **CAO** | mã | 1 |
 | 56.4 | Basic tạo được nhà — seed khoá quyền `household` + `requireFeature` | **CAO** | mã + migration | 1 |
 | 56.5 | Từ chối quyền bằng `Error` trơn → `DB_ERROR` → app gửi lại **mãi** | **CAO** | mã | 1 |
+| 57.1 | Một hình dạng *trạng thái nhà* cho mọi endpoint trả nó — theo `docs/Family/01` mục 4 (`/me` đang phẳng, tạo nhà trả hàng thô) | **CAO** | hợp đồng | 1 |
+| 57.2 | `req.user` không có `email` → mọi đường mời **email** hỏng (xem trước 403, ai cầm mã cũng vào, người đăng ký sau không thấy lời mời) | **CAO** | mã | 1 |
+| 57.3 | Thư mời không bao giờ gửi — `require('../../core/mail.service')` không tồn tại, lỗi bị nuốt | **CAO** | mã | 1 |
 | 43.A3 | Mở trang AIOps sau hạn cách ly là mở khoá cả tài khoản **admin khoá tay** | **CAO** | mã | 2 |
 | 44.B2 | Áp migration 38 (unique `payos_transaction_id`) — kèm 39 | VỪA | migration | 3 |
 | 43.A5 | Ràng buộc `ck_account_status` — bảng `account` 0 CHECK | VỪA | migration | 2 |
@@ -34,6 +37,10 @@
 | 56.6 | Kiểm phạm vi đọc sai khoá → không chạy với giao dịch của app | VỪA | mã | 1 |
 | 56.7 | Chủ nhà hết / gia hạn Premium không đổi trạng thái nhà | VỪA | mã | 1 |
 | 56.8 | `household.changed` / `sync.completed` phát vào phòng không ai ở | VỪA | mã | 1 |
+| 57.4 | Chủ nhà sửa khoản của thành viên bị chặn ở chốt *"Ownership mismatch"* trước ma trận vai | VỪA | mã | 1 |
+| 57.5 | `POST /api/households` nhận `maxMembers` / `maxSharedWallets` / `contributionDueDay` từ body | VỪA | mã | 1 |
+| 57.6 | Giải tán không xoá mềm dữ liệu chung, không thu hồi mã mời | VỪA | mã | 1 |
+| 57.7 | Mã lỗi API của nhà lệch `docs/Family/01` mục 2.5 + đơn 50 C.3 (tên, HTTP, `_DECLINED` không bao giờ phát) | VỪA | hợp đồng | 1 |
 | 48.2 – 48.3 | Script test ghi vào tài khoản người dùng thật | VỪA | script | 6 |
 | 49.D | Bẫy thứ tự `npm install` / migration trên máy dev | VỪA | mã hoặc tài liệu | 7 |
 | 49.F | Migration 33 xoá cứng → 10 ví · 13 giao dịch · 1 danh mục mồ côi trên Supabase | VỪA | migration + dọn | 7 |
@@ -42,6 +49,7 @@
 | T3 | Đính chính `docs/Functional-Mobile/4_TRU_COT.md` (55.B — 31 khẳng định sai) | VỪA | tài liệu | 8.3 |
 | 43.A6 | (Tuỳ chọn) AIOps khoá tài khoản thì phát `account.force_logout` | THẤP | mã | 2 |
 | 56.9 | Trần ví chung; danh mục sao cho nhà thiếu từ khoá / nhóm | THẤP | mã | 1 |
+| 57.8 | Tám chỗ nhỏ của API nhà (lọc thành viên khi mời email, tên người mời, khoá hàng mời, giới hạn gọi, trạng thái lời mời, độ dài email…) | THẤP | mã | 1 |
 | 48.1 | Ghi xác nhận ai / CSDL nào đã dọn dữ liệu test | THẤP | trả lời | 6 |
 | T4 | Tên migration cũ `27_create_aiops_metric…` còn trong hai tài liệu (49.C) | THẤP | tài liệu | 8.4 |
 | T5 | Xác nhận quy ước: không viết đè tài liệu client (49.A) | THẤP | trả lời | 8.5 |
@@ -220,6 +228,96 @@ qua event bus `sync.service.js:346`); đặc tả (đơn 50 Việc F) xin tới 
    nhà đã đủ ví chung **đang hoạt động** (không lưu trữ, chưa xoá) ⇒ `HOUSEHOLD_WALLET_LIMIT`. Có thể để tới phần 2a.
 2. Danh mục sao cho nhà (`household.service.js:90-103`) không chép `keyword` và `idgroup` — chép cả hai (ánh xạ id nhóm cha cũ → mới trong
    cùng giao tác).
+
+### Đơn 57 — soát hợp đồng API của nhà (client, 2026-10-28 phiên 21)
+
+Đơn 56 soát `/sync/push`; đơn này soát **16 endpoint `/api/households`** (`api/households.routes.js` →
+`household.controller.js` / `.service.js` / `.repository.js`) và migration 40, đối chiếu `docs/Family/01_NEN_MONG.md` và đơn 50 C.
+Mọi `tệp:dòng` đọc ở `177dd0e1`; viết tắt **S** = `modules/household/household.service.js`, **R** = `…/household.repository.js`,
+**C** = `…/household.controller.js`, **SS** = `modules/sync/sync.service.js`. Không trùng việc nào của 56.
+
+#### 57.1 (CAO) — Một hình dạng *trạng thái nhà* (người dùng chốt 2026-10-28: theo `docs/Family`)
+
+`docs/Family/01` mục 4 (mở rộng đơn 50 C.1): `GET /me` **và mọi thao tác trả nó** dùng **một** hình dạng —
+
+```json
+{ "household": { "id": 12, "name": "…", "status": "Active", "maxMembers": 6, "ownerId": 18, "createAt": "…", "maxSharedWallets": 10 },
+  "myRole": "Owner",
+  "members": [ { "idaccount": 18, "displayName": "…", "role": "Owner", "joinedAt": "…" } ],
+  "formerMembers": [ { "idaccount": 31, "displayName": "…", "leftAt": "…" } ] }
+```
+
+Mã đang trả ba hình dạng: `/me` **phẳng** `{idhousehold, name, ownerIdaccount, status, maxMembers, maxSharedWallets, contributionDueDay,
+createdAt, myRole, members[{idaccount, username, fullname, role, joinedAt}], formerMembers[…]}` (S:143-155); không ở nhà nào →
+`{household: null}` (C:61); `POST /api/households` trả **hàng Prisma thô** snake_case + `myRole` (S:68-71).
+
+**Xin:** một hàm dựng hình dạng trên, dùng cho #1 tạo nhà, #2 `/me`, #7 `/join`, #9 `/transfer-owner`, #15 `…/accept`. Không ở nhà →
+`{ "household": null, "myRole": null, "members": [], "formerMembers": [] }`. `displayName` = `fullname` (rỗng thì `username`) — không trả
+email (`00` mục 4 nguyên tắc 7). `contributionDueDay` (cột đã có, `02C`) đặt **trong** `household` nếu giữ. Ca test: so khoá của năm
+endpoint với một mẫu chung.
+
+#### 57.2 (CAO) — `req.user` không có `email`: mọi đường mời email hỏng
+
+Payload JWT không có `email` (`modules/auth/auth.service.js:196-203`; hai chỗ ký khác `:275-282`, `:399-408`; refresh ký lại cùng payload),
+`middleware/auth.js:118` gán `req.user = decoded`. Ba hệ quả:
+1. `GET /invites/:code` với lời mời email luôn **403 `HOUSEHOLD_INVITE_WRONG_ACCOUNT`** (`callerEmail = ''`, S:262-267) — đúng người cũng bị từ chối.
+2. `POST /join`, `…/accept`, `…/decline` **bỏ kiểm** (`invite.email && callerEmail`, S:305-309, S:622-626) — ai cầm mã trong thư cũng vào được.
+3. `GET /invitations` chỉ khớp `Invitee_idaccount` (R:295-304 với `email = ''`) — người **đăng ký sau khi được mời** không thấy lời mời
+   (`docs/Family/01` mục 2.2 khớp theo `Email` lúc đọc).
+
+Test mock `user = {idaccount, email, permissions}` (`tests/unit/household.api.test.js:9`) nên không lộ. **Xin:** service tra `account.Email`
+theo `req.user.idaccount` (hoặc đưa `email` vào JWT — nhưng token cũ trong máy người dùng không có, vẫn phải tra); ca test đi qua route
+với token thật.
+
+#### 57.3 (CAO) — Thư mời không bao giờ gửi
+
+S:571 `require('../../core/mail.service')` — `core/` chỉ có `email.service.js` ⇒ `MODULE_NOT_FOUND`, `catch` S:589-594 nuốt thành `warn`;
+`POST /invites/email` vẫn trả 202. Sửa đường dẫn chưa đủ: `const { sendMail } = require(…)` tách hàm khỏi đối tượng nên mất `this`
+(`email.service.js:95-99` gọi `this.sendViaBrevo`), và S:586 truyền `text` trong khi hàm nhận `html`. **Xin:** gọi qua đối tượng service,
+truyền đúng trường; ca test kiểm hàm gửi được gọi với `to`, `subject`, nội dung có mã.
+
+#### 57.4 (VỪA) — Chủ nhà sửa khoản của thành viên bị chặn trước ma trận vai
+
+SS:155-164 so `payload.idaccount` với token **trước** `enforceHouseholdPermission`, trả `error` *"Ownership mismatch…"* không `code`. App
+gửi `idaccount` **của hàng** — tức người ghi (`thu_gom_day.dart`; hàng kéo về giữ `Idaccount` người ghi) — nên lượt Chủ nhà sửa giao dịch
+của Member (`docs/Family/01` mục 3: được phép) bị từ chối, và app xếp chuỗi ấy **vĩnh viễn** (`gui_lo_dong_bo.dart:406-408`): mất im lặng.
+**Xin:** hàng mang `idhousehold` (hoặc hàng đã có `Idhousehold`) không qua chốt này — ma trận vai quyết; `Idaccount` của hàng giữ người ghi
+(ca 13 *Kiểm lại mục 1*). App **giữ** gửi `idaccount` người ghi; gửi người sửa là ghi đè mất người ghi.
+
+#### 57.5 (VỪA) — Tạo nhà nhận trần từ body
+
+S:45-47 đọc `maxMembers`, `maxSharedWallets`, `contributionDueDay` từ `req.body` (C:36) ⇒ client tự đặt 20 người (CHECK 2–20). Đơn 50 C.2:
+`Max_members` lấy từ giới hạn gói; `02A` Q-A2: trần ví chung do server chọn. **Xin:** bỏ ba trường khỏi body (cùng việc 56.4.3).
+
+#### 57.6 (VỪA) — Giải tán không xoá mềm dữ liệu chung
+
+R:231-250 chỉ đặt nhà `Dissolved` + `Delete_at` và `Left_at` thành viên; không đụng `wallet` / `transaction` / `goal` / `budget` / `category`
+mang `Idhousehold`, không thu hồi mã mời. `docs/Family/00` quyết định 7: *"Dữ liệu chung biến mất với mọi người (xoá mềm ở server)"*;
+đơn 50 C.2: xoá mềm 5 bảng + `Revoked_at` mã. Hệ quả: máy thứ hai kéo về không có tombstone (hàng chỉ rơi khỏi phạm vi), mã còn hiệu
+lực vẫn mở được xem trước. **Xin:** trong cùng giao tác — xoá mềm hàng của nhà ở 5 bảng (cột xoá + giờ sửa mới), `Revoked_at` mã chưa dùng.
+
+#### 57.7 (VỪA) — Mã lỗi API của nhà lệch tài liệu
+
+`docs/Family/01` mục 2.5 + đơn 50 C.3 ↔ mã: `HOUSEHOLD_INVITE_EXPIRED` trả **400** (đơn 50: 410); `HOUSEHOLD_INVITE_DECLINED` **không
+bao giờ phát** (lời mời đã từ chối rơi vào `_USED` S:254 / S:297, `_INVALID` S:618); ReadOnly và Dissolved gộp `HOUSEHOLD_NOT_ACTIVE` 400;
+mã thêm chưa có trong tài liệu: `FORBIDDEN_NOT_OWNER`, `NOT_IN_HOUSEHOLD`, `OWNER_CANNOT_LEAVE`, `MEMBER_NOT_IN_HOUSEHOLD`,
+`TARGET_NOT_IN_HOUSEHOLD`, `HOUSEHOLD_INVITE_NOT_FOUND`, `CANNOT_*`, `INVALID_*`. **Xin:** theo tên + HTTP của tài liệu; mã nào giữ khác thì
+ghi **bảng mã chốt** vào mục 10 — app dựng câu báo lỗi theo bảng ấy.
+
+#### 57.8 (THẤP)
+
+1. `alreadyMember` (S:499-502) đọc `m.account.email` nhưng `findActiveMembersByHousehold` không `select` email (R:55-63) ⇒ luôn `false` ⇒
+   mời email người đang ở nhà vẫn tạo lời mời và chiếm chỗ trần (`01` mục 2.2: 202, không tạo).
+2. `inviterName` (S:554) đọc `membership.account` mà `findActiveMemberByAccount` chỉ `include household` (R:42-44) ⇒ thư luôn ghi *"Chủ nhà"*.
+3. Tham gia không khoá hàng mời (S:285-333; đơn 50 C.2 `SELECT … FOR UPDATE`).
+4. Không giới hạn số lần gọi `GET /invites/:code` / `POST /join` (đơn 50 C.4) — `api/households.routes.js` chỉ `authenticate`.
+5. `GET /invites` trả 5 trạng thái `Pending|Declined|Revoked|Used|Expired` (S:211-216; `01` mục 2.4 nói 3) và nhánh email trả mọi lời mời
+   email trong 7 ngày kể cả đã dùng / huỷ (R:146-150) — ghi rõ trong tài liệu hoặc lọc.
+6. `GET /invitations` thiếu `memberCount`, `maxMembers` (`01` mục 2.4 #14; S:601-607).
+7. Email > 100 ký tự không bị chặn (C:309 / S:461 chỉ kiểm `@`) ⇒ vỡ cột ⇒ 500 `HOUSEHOLD_ERROR` (`01` mục 2.1: 400). Thêm trần 5 thư / giờ
+   (S:484) chưa có trong tài liệu — ghi vào `01` mục 2.2 nếu giữ.
+8. Migration 40 dùng `ON DELETE CASCADE` (M40:11, :27-28, :49, :51) và `SET NULL` cho `Idhousehold` 5 bảng (M40:72-76) — xoá cứng tài khoản /
+   nhà kéo theo xoá cứng; đơn 50 B dùng `REFERENCES` thường. Xác nhận chủ ý hoặc đổi.
 
 ### Kiểm lại mục 1
 
@@ -553,6 +651,14 @@ ghi. **Xin:** xác nhận trong ô trả lời — muốn sửa thì ghi ở m�
 | 56.7 | | | |
 | 56.8 | | | |
 | 56.9 | | | |
+| 57.1 | | | |
+| 57.2 | | | |
+| 57.3 | | | |
+| 57.4 | | | |
+| 57.5 | | | |
+| 57.6 | | | |
+| 57.7 (bảng mã chốt nếu giữ khác) | | | |
+| 57.8 | | | |
 | 43.A3 | | | |
 | 43.A5 | | | |
 | 43.A6 | | | |

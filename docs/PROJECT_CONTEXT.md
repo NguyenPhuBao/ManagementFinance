@@ -617,6 +617,16 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-28)
 
+### 🏠 Gia đình — đối chiếu hợp đồng phần 1 với mã (2026-10-28 phiên 21)
+
+- Soát (agent con chỉ đọc + tự kiểm lại ba vế CAO) 16 endpoint `/api/households` + migration 40 + đơn backend viết cho client với
+  `docs/Family/01` và đơn 50 C. Kết quả: **đơn 57** trong `CAN-LAM/VIEC_BACKEND_CON_LAI.md` (mục 1, *Đơn 57*; 8 việc, 3 CAO — một hình dạng
+  trạng thái nhà, `req.user` không có `email` nên mọi đường mời email hỏng, thư mời không gửi; không trùng 56) và ảnh chụp hợp đồng như mã
+  cho lát 1 client ở **`docs/Family/04_HOP_DONG_PHAN_1_NHU_MA.md`**.
+- Người dùng chốt: model trạng thái nhà theo `docs/Family/01` mục 4 (xin backend sửa — 57.1, không theo `/me` phẳng hiện nay). Theo
+  `docs/Family/01` mục 3: Chủ nhà sửa khoản của thành viên thì app vẫn gửi `idaccount` người ghi; backend bỏ chốt *"Ownership mismatch"*
+  cho hàng của nhà (57.4). Số đơn kế tiếp **58**.
+
 ### 🔒 G111 — công tắc khoá theo quyền vẽ mờ + ổ khoá (2026-10-28 phiên 21)
 
 - Đối chiếu Stitch `02c0d881…` (biến thể *Đang tạm ngừng*, tải HTML): **khớp** — dòng khoá tạm ngừng vàng (khối 2), băng công tắc tạm
