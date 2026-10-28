@@ -32,13 +32,13 @@ void main() {
         updatedAt: moc,
       );
 
-  test('fromDrift chép đủ 14 trường, không chép 4 cột ngoài Entity', () async {
+  test('fromDrift chép đủ 14 trường, không chép 5 cột ngoài Entity', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
     final e = CategoryEntity.fromDrift(hang());
-    expect(e.props.length, db.categories.$columns.length - 4,
+    expect(e.props.length, db.categories.$columns.length - 5,
         reason:
-            'Thêm cột vào bảng Categories thì quyết định: vào Entity, hay ghi vào danh sách 4 cột không chép.');
+            'Thêm cột vào bảng Categories thì quyết định: vào Entity, hay ghi vào danh sách 5 cột không chép.');
     expect(e.id, 'c-1');
     expect(e.idaccount, 10);
     expect(e.name, 'Ăn uống');

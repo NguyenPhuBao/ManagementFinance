@@ -64,7 +64,8 @@ class WalletEntity extends Equatable {
   });
 
   /// Dời nguyên văn từ `WalletLocalDataSourceImpl._toEntity` (2026-10-14). Không chép `bankCassoId`, `deletedAt`
-  /// và ba cột lỗi đồng bộ — `wallet_entity_test` đếm cột bảng để canh.
+  /// và ba cột lỗi đồng bộ, và `idhousehold` (lát 1 gia đình, 2026-10-28: truy vấn cá nhân bỏ hàng của nhà ở DAO nên Entity luôn là
+  /// hàng riêng; lát 2 (ví chung) mới đưa vào Entity) — `wallet_entity_test` đếm cột bảng để canh.
   factory WalletEntity.fromDrift(Wallet w) => WalletEntity(
         id: w.id,
         idaccount: w.idaccount,

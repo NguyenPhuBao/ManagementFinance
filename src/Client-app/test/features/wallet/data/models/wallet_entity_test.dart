@@ -35,13 +35,13 @@ void main() {
     deletedAt: moc,
   );
 
-  test('fromDrift chép đủ 16 trường, không chép 5 cột ngoài Entity', () async {
+  test('fromDrift chép đủ 16 trường, không chép 6 cột ngoài Entity', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
     final e = WalletEntity.fromDrift(hang);
-    expect(e.props.length, db.wallets.$columns.length - 5,
+    expect(e.props.length, db.wallets.$columns.length - 6,
         reason:
-            'Thêm cột vào bảng Wallets thì quyết định: vào Entity, hay ghi vào danh sách 5 cột không chép.');
+            'Thêm cột vào bảng Wallets thì quyết định: vào Entity, hay ghi vào danh sách 6 cột không chép.');
     expect(e.id, 'w-1');
     expect(e.idaccount, 10);
     expect(e.name, 'Ví MB');
