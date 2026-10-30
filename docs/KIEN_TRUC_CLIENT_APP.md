@@ -295,7 +295,7 @@ trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng
 
 ## 9. Ưu điểm, nhược điểm, nợ có tên
 
-**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (45 tệp test quét, CI — đếm bằng bảng 2026-10-28 sau quét 41). Ranh
+**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (45 tệp test quét, CI — đếm bằng bảng 2026-10-28 sau quét 37). Ranh
 giới nền tảng thay được bằng bản giả, nên **7.597** ca test (đo 2026-10-20, +10 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 

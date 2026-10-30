@@ -644,7 +644,8 @@ src/Backend/
 
 ### 🏠 Gia đình LÁT 1 — mã xong (lõi + dữ liệu + trạng thái nhà + lời mời), 2026-10-28 phiên 23
 
-✅ 18 commit (đếm `git rev-list --count`, 2026-10-28) `95d33ecc..24f8a258` (kế hoạch `plans/2026-10-24-gia-dinh-nen-mong-lat-1.md`, gitignore; spec `specs/2026-10-23-gia-dinh-nen-mong-design.md`
+✅ 26 commit (đếm `git rev-list --count`, 2026-10-30) `95d33ecc..91663b71` — 18 commit thi công 13 task (`..24f8a258`) + tài liệu Task 13 +
+lượt sửa sau **review toàn nhánh (Opus, 2026-10-30 phiên 24: With fixes → 18 / 18 mục đã sửa, soát lại sạch)** (kế hoạch `plans/2026-10-24-gia-dinh-nen-mong-lat-1.md`, gitignore; spec `specs/2026-10-23-gia-dinh-nen-mong-design.md`
 mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ Stitch 6 màn.** `flutter test` **8503 pass / 10 skip** (trước đợt 8382; đo
 2026-10-30 sau lượt sửa review toàn nhánh), `flutter analyze` 20 (mức nền). Phần client của đơn 50 / `docs/Family/` mà **không** chờ đơn 56 / 57 (người dùng chốt).
 
@@ -655,7 +656,7 @@ mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ S
   bước ấy, và bước v32 chỉ `addColumn` khi `PRAGMA table_info` chưa có cột. `purgeDataForOtherAccounts(…, nhaGiu)` + `xoaHangCuaNha` (hai đường dọn).
 - **Đồng bộ:** năm payload gửi `idhousehold` (hàng riêng `null`); kéo về đọc, `null` tường minh = *chưa biết* (`Value.absent()`); bảy mã đẩy vĩnh viễn
   (đã có từ 2026-10-26/27); `SyncEngine.keoLaiToanBo` (thế hệ yêu cầu: lượt đang chạy không ghi mốc, lượt hỏng giữ yêu cầu; chỉ xoá kho không đủ vì
-  mốc nằm RAM); `RealtimeEvent` **tám** giá trị (+ `nhaDoi` ← `household.changed`, `loiMoiNha` ← `household.invited`; `nhaDoi` chưa tới máy nào — 56.8; hiện CHƯA có kênh thời gian thực nào đưa dữ liệu nhà sang máy thành viên khác, dữ liệu về ở chu kỳ đồng bộ kế: hẹn giờ 15 phút / mạng nối lại / mở lại app).
+  mốc nằm RAM); `RealtimeEvent` **tám** giá trị (+ `nhaDoi` ← `household.changed`, `loiMoiNha` ← `household.invited`; `nhaDoi` chưa tới máy nào — 56.8; hiện CHƯA có kênh thời gian thực nào đưa dữ liệu nhà sang máy thành viên khác, dữ liệu về ở chu kỳ đồng bộ kế: hẹn giờ 15 phút / mạng nối lại / mở lại app sau khi tiến trình đã tắt — đưa app từ nền lên KHÔNG kéo, mã không có `resumed → syncNow`).
 - **Mảng `household`** (đếm 2026-10-28, 11 tệp): `domain/` 4 (`vai_nha` · `quyen_nha` · `ma_moi` · `cau_loi_nha`, `LoaiLoiNha` 21 giá trị) ·
   `data/` 6 (`household_api` 16 endpoint kể cả mời email · `nha_cua_toi` + `loi_moi` · `nha_store` · `nha_repository` + `_impl`) · `application/` 1
   (`dieu_phoi_doi_nha`: rời nhà ⇒ `xoaHangCuaNha`, vào nhà ⇒ `keoLaiToanBo`; dọn hỏng vẫn kéo lại toàn bộ của cùng sự kiện rồi ném lại lỗi). Bộ đọc
