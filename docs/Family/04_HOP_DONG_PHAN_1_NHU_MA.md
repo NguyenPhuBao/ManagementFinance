@@ -9,8 +9,8 @@
 > client biết chỗ nào dựng được ngay, chỗ nào chờ backend. Gộp `main` lần sau thì đo lại, đừng tin bảng này.
 >
 > 🔎 **Đo lại 2026-10-30 (phiên 24) — backend `e3248955` (PR #170 = `5be3b4c0`, client gộp `ba5cd3c5`), mã đọc ở HEAD `ba5cd3c5`.** Ảnh chụp ban đầu ở `177dd0e1`
-> (2026-10-28); phần nào đổi sau PR #170 ghi **🔎 2026-10-30**. Kết quả soát từng việc: `VIEC_BACKEND_CON_LAI.md` mục 0 và mục 9 (đạt 56.1, 56.3–56.7; một phần 56.2, 56.8, 56.9;
-> **đơn 57 chưa làm một việc nào**; lỗi mới do PR → đơn 58). **Đo lại sau mỗi lần gộp `main`** — ngày đo gần nhất: 2026-10-30 / backend `e3248955`.
+> (2026-10-28); phần nào đổi sau PR #170 ghi **🔎 2026-10-30**. Kết quả soát (đạt 56.1, 56.3–56.7; một phần 56.2, 56.8, 56.9 — phần còn ở 58.x / 57.4;
+> **đơn 57 chưa làm một việc nào**; lỗi mới do PR → đơn 58); việc còn mở ở `VIEC_BACKEND_CON_LAI.md` mục 0. **Đo lại sau mỗi lần gộp `main`** — ngày đo gần nhất: 2026-10-30 / backend `e3248955`.
 
 ## 1. Kết luận cho lát 1
 
