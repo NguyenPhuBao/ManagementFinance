@@ -645,8 +645,8 @@ src/Backend/
 ### 🏠 Gia đình LÁT 1 — mã xong (lõi + dữ liệu + trạng thái nhà + lời mời), 2026-10-28 phiên 23
 
 ✅ 18 commit (đếm `git rev-list --count`, 2026-10-28) `95d33ecc..24f8a258` (kế hoạch `plans/2026-10-24-gia-dinh-nen-mong-lat-1.md`, gitignore; spec `specs/2026-10-23-gia-dinh-nen-mong-design.md`
-mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ Stitch 6 màn.** `flutter test` **8498 pass / 10 skip** (trước đợt 8382; đo
-2026-10-28), `flutter analyze` 20 (mức nền). Phần client của đơn 50 / `docs/Family/` mà **không** chờ đơn 56 / 57 (người dùng chốt).
+mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ Stitch 6 màn.** `flutter test` **8503 pass / 10 skip** (trước đợt 8382; đo
+2026-10-30 sau lượt sửa review toàn nhánh), `flutter analyze` 20 (mức nền). Phần client của đơn 50 / `docs/Family/` mà **không** chờ đơn 56 / 57 (người dùng chốt).
 
 - **Dữ liệu:** Drift **v32** — cột `idhousehold` cho năm bảng đồng bộ (ví · giao dịch · ngân sách · mục tiêu · danh mục; hoá đơn không có); mọi
   truy vấn cá nhân thêm `isNull()`; quét **37** `core/database/du_lieu_nha_khong_lot_vao_ca_nhan_test.dart` (thấy cả `db.select(db.wallets)` có tiền
