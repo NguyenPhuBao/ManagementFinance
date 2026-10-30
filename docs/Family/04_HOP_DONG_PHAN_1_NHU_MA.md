@@ -7,6 +7,10 @@
 >
 > Tệp này **không thay** `01_NEN_MONG.md`: `01` là hợp đồng **muốn có** (thắng khi lệch); tệp này là **ảnh chụp** mã đang chạy để
 > client biết chỗ nào dựng được ngay, chỗ nào chờ backend. Gộp `main` lần sau thì đo lại, đừng tin bảng này.
+>
+> 🔎 **Đo lại 2026-10-30 (phiên 24) — backend `e3248955` (PR #170 = `5be3b4c0`, client gộp `ba5cd3c5`), mã đọc ở HEAD `ba5cd3c5`.** Ảnh chụp ban đầu ở `177dd0e1`
+> (2026-10-28); phần nào đổi sau PR #170 ghi **🔎 2026-10-30**. Kết quả soát từng việc: `VIEC_BACKEND_CON_LAI.md` mục 0 và mục 9 (đạt 56.1, 56.3–56.7; một phần 56.2, 56.8, 56.9;
+> **đơn 57 chưa làm một việc nào**; lỗi mới do PR → đơn 58). **Đo lại sau mỗi lần gộp `main`** — ngày đo gần nhất: 2026-10-30 / backend `e3248955`.
 
 ## 1. Kết luận cho lát 1
 
@@ -21,6 +25,10 @@
 - **Chặn nghiệm thu máy thật:** mọi chốt hàng của nhà khi đẩy (56.1–56.6, 57.4), cả đường mời email (57.2 + 57.3), `household.changed`
   không ai nhận (56.8), giải tán không có tombstone (57.6). Lát 1 dọn dữ liệu nhà theo spec 2026-10-23 mục 4.6 **không chờ** cờ xoá từ
   server.
+- 🔎 **2026-10-30 — sau PR #170 danh sách chặn rút còn:** **57.1–57.8 (tám việc, chưa làm)**, chốt 57.4 (*"Ownership mismatch"* chặn Chủ nhà sửa khoản của thành viên; ca 10, 12, 13 hỏng với
+  payload app thật), 56.2 phần `Transfer` (**58.1**: chốt chỉ ở `operation === 'create'`, app luôn gửi `update`), `HOUSEHOLD_DISSOLVED` không tới ai (**58.3**), `household.changed` phát theo
+  `payload.idhousehold` chưa kiểm (**58.4**). Đã hết chặn: 56.1 (`findMember` có thật), 56.3 (đổi `Idhousehold` → `SCOPE_MISMATCH`), 56.4 (Basic bị chặn tạo nhà), 56.5, 56.6, 56.7.
+  **Lát 1 không phải đổi mã** (chưa có đường ghi vào nhà; Supabase 0 nhà). Ba việc phải xong **trước** khi lát 2 mở đường ghi: 57.4 (rồi mới sửa G113 nợ 4), 58.1 / 58.2, 58.4 (client đã giãn cách 30 s phía mình).
 
 ## 2. Mười sáu endpoint (như mã — `/api/households`, mọi route qua `authenticate`)
 
@@ -30,8 +38,8 @@ backend trả lời).
 
 | # | Method · đường | Ai gọi được | Body | `data` khi thành công | Mã lỗi (`code` · HTTP) |
 |---|---|---|---|---|---|
-| 1 | `POST /` | mọi tài khoản chưa ở nhà (Premium **chưa** kiểm — 56.4) | `{name}` 1–100 ký tự | 201 — hàng thô + `myRole` (→ 57.1) | `INVALID_HOUSEHOLD_NAME` 400 · `HOUSEHOLD_ALREADY_IN_ONE` 409 |
-| 2 | `GET /me` | mọi tài khoản | — | `{household: null}` hoặc hình dạng phẳng (→ 57.1) | — |
+| 1 | `POST /` | tài khoản chưa ở nhà **và** có quyền `household` — 🔎 2026-10-30 route gác `requireFeature('household')` (`households.routes.js:11`): Basic → 403 `FEATURE_DISABLED` (cấp gốc thân, `core/response-handler.js:50-59`; client đã map `tinhNangKhongMo`, `cau_loi_nha.dart:74`); CSDL **chưa áp migration 41** (`PersonFinance`): Basic vẫn 403 nhờ `DEFAULT_PERMISSIONS`, Premium còn hạn **vẫn tạo được**, Premium không `premium_expires_at` bị coi Basic ⇒ 403 | `{name}` 1–100 ký tự (trần nhà vẫn đọc được từ body — 57.5) | 201 — hàng thô + `myRole` (→ 57.1; **không đổi** 2026-10-30) | `INVALID_HOUSEHOLD_NAME` 400 · `HOUSEHOLD_ALREADY_IN_ONE` 409 · `FEATURE_DISABLED` 403 |
+| 2 | `GET /me` | mọi tài khoản | — | `{household: null}` hoặc hình dạng phẳng (→ 57.1) — 🔎 2026-10-30 **không đổi**: `household.service.js:151-163`, không nhà `{household: null}` (`household.controller.js:51`; `data` không bao giờ `null`); nhà đã giải tán cũng `{household: null}` (`:125`) | — |
 | 3 | `POST /invites` | Owner, nhà `Active`, còn chỗ | `{role?: Member\|Viewer}` | 201 `{code, role, expiresAt}` — 8 ký tự, 48 giờ | `INVALID_INVITE_ROLE` 400 · `FORBIDDEN_NOT_OWNER` 403 · `HOUSEHOLD_NOT_ACTIVE` 400 · `HOUSEHOLD_FULL` 409 |
 | 4 | `GET /invites` | Owner | — | `[{code, role, email\|null, createAt, expiresAt, status}]` — `status` ∈ `Pending · Declined · Revoked · Used · Expired` | `FORBIDDEN_NOT_OWNER` 403 |
 | 5 | `DELETE /invites/:code` | Owner của nhà có mã | — | `{revoked: true}` | `HOUSEHOLD_INVITE_NOT_FOUND` 404 · `FORBIDDEN_NOT_OWNER` 403 |
@@ -55,12 +63,19 @@ backend trả lời).
 - **Kéo:** mỗi bảng trả hàng `(Idaccount = tôi ∧ Idhousehold trống) ∨ Idhousehold = nhà tôi`, kèm khoá `idhousehold`. Hàng của nhà mang
   `idaccount` **người ghi** — mọi truy vấn `idaccount.equals` và `purgeDataForOtherAccounts` phải theo spec 2026-10-23 mục 4.6 (1) / 7.2
   (`nhaGiu`, test quét 37).
-- **Mã đẩy backend phát:** `NOT_OWNER`, `HOUSEHOLD_ROLE_FORBIDDEN`, `HOUSEHOLD_READ_ONLY`, `HOUSEHOLD_SCOPE_MISMATCH`; ba mã
-  `HOUSEHOLD_NOT_MEMBER` · `_CLOSED` · `_WALLET_LIMIT` app đã xếp nhưng backend chưa phát (56.2, 56.9).
+- **Mã đẩy backend phát:** 🔎 2026-10-30 — **bảy mã gia đình / quyền nay CHẠY thật** (56.1 / 56.2): `NOT_OWNER`, `HOUSEHOLD_NOT_MEMBER`, `HOUSEHOLD_CLOSED`, `HOUSEHOLD_READ_ONLY`,
+  `HOUSEHOLD_SCOPE_MISMATCH`, `HOUSEHOLD_ROLE_FORBIDDEN` (+ `FORBIDDEN_SYSTEM_DEFAULT` cho hàng khuôn). Tập mã trong `sync.service.js` + `sync.repository.js` khớp từng ký tự với `_permanentCodes`
+  (`gui_lo_dong_bo.dart:302-342`) — client không cần đổi. Riêng `HOUSEHOLD_WALLET_LIMIT` đã có mã nhưng **chết với app** (chỉ chạy khi `operation === 'create'`, app luôn gửi `update` — 58.2).
+  Lệch nhỏ: người ngoài nhà đổi `idhousehold` của hàng đã có nhận `HOUSEHOLD_SCOPE_MISMATCH` thay vì `_NOT_MEMBER` (chốt 56.3 đứng trước kiểm thành viên — 58.6). Chốt *"Ownership mismatch"* (57.4)
+  vẫn trả `error` **không `code`**, client xếp vĩnh viễn (`gui_lo_dong_bo.dart:409-411`).
 - **Socket:** `household.changed` — backend phát ở **hai nơi, hai hình dạng**: (a) đổi thành viên / trạng thái nhà `{idhousehold, eventType, payload, timestamp}`;
-  (b) sau MỖI `/sync/push` chạm hàng của nhà `{idhousehold, eventType: 'SYNC_COMPLETED', timestamp}` — không có `payload` (`src/Backend/modules/sync/sync.service.js:362`, chỉ đọc).
+  (b) sau MỖI `/sync/push` chạm hàng của nhà `{idhousehold, eventType: 'SYNC_COMPLETED', timestamp}` — không có `payload` (`src/Backend/modules/sync/sync.service.js:475-506`, chỉ đọc).
   Client không đọc payload (đo 2026-10-28) — app chỉ đọc tên sự kiện (cam kết hộp đen) rồi gọi
-  lại `/me`; hiện phát vào phòng `household_<id>` không ai `join` (56.8). `household.invited` tới phòng tài khoản — chạy.
+  lại `/me`. 🔎 **2026-10-30 — sự kiện nay tới đúng phòng:** `emitHouseholdChanged` (`household.service.js:662-…`) phát tới phòng **`account_<id>` của từng thành viên** + người nhận thêm
+  (`MEMBER_REMOVED` `:430-432`, `MEMBER_LEFT` `:450`); sau `/sync/push` (`sync.service.js:475-506`) phát `household.changed` **và** `sync.completed` (payload `{source: 'household_sync', idhousehold, timestamp}`) tới mọi thành viên **khác**
+  ⇒ dữ liệu nhà về gần thời gian thực (client đọc `dongBoXong` → `syncNow()`). Còn thiếu: `HOUSEHOLD_DISSOLVED` không tới ai (`Left_at` đặt trước khi phát — 58.3); nhà lấy từ `payload.idhousehold` chưa kiểm, kể cả op bị từ chối (58.4);
+  `household.changed` sau đẩy là thừa (58.4). **Client giãn cách `nhaDoi`:** 30 s giữa hai lượt `lamMoi()` (`kGianCachNhaDoi`, `nha_repository_impl.dart`, commit `1227d8a2`), có một lượt chạy bù cuối cửa sổ; `loiMoiNha` và thao tác của chính máy không qua bộ giãn.
+  `household.invited` tới phòng tài khoản — chạy.
 
 ## 4. Đơn backend viết cho client (`docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md`) — chỗ không làm theo
 
@@ -87,3 +102,11 @@ rời / giải tán, `household.changed` → `/me`, `household.invited` → danh
 - Migration 40 → **đã áp cả hai** (`PersonFinance` + Supabase, 2026-10-28).
 - `account.Email` → **0 hàng có chữ hoa** (21 / 21 `PersonFinance`, 12 / 12 Supabase) — phép so email của 57.2 không bị chữ hoa cản;
   Supabase 0 nhà.
+
+**Đã kiểm 2026-10-30 (phiên 24, HEAD `ba5cd3c5`, chỉ đọc):**
+
+- Supabase: `account_type_permission` có 4 hàng (`Basic/household=false`, `Premium/household=true`, `Basic/household_members=false`, `Premium/household_members=true,6`) + `feature` 2 hàng ⇒ **migration 41 đã áp**; 0 nhà. `PersonFinance` **chưa áp 41** (cần phép đích danh; không bắt buộc cho đường tạo nhà — mục 2 hàng #1).
+- 17 ca *Kiểm lại mục 1* chấm theo payload app gửi thật: 13 đạt (1–9, 14–17; ca 16, 17 theo mã, chưa chạy được); **4 không đạt** — ca 10, 12, 13 (payload mang `idaccount` người ghi ⇒ *"Ownership mismatch"* không `code`, 57.4) và ca 11 (`Transfer` qua `update` — 58.1).
+- Bộ test backend (`household.system_impact.test.js`) payload không có `idaccount` và dùng `operation: 'create'` — không phản ánh app; đừng coi *"test backend xanh"* là bằng chứng.
+- Mã lỗi API của nhà (`household.service.js` + `household.controller.js`): tập mã trước / sau PR giống hệt (57.7 chưa làm); `loaiLoiTuMa` (`cau_loi_nha.dart:57-76`) đọc cả hai bộ tên, không cần đổi. `'PREMIUM_REQUIRED'` ở `cau_loi_nha.dart:73` nay là mã chết (vô hại).
+- Chưa kiểm: toàn bộ đường ghi vào nhà trên máy thật (không có nhà nào; CSDL 0 nhà).
