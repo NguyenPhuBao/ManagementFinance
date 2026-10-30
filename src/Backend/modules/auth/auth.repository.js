@@ -20,15 +20,33 @@ function formatUser(user) {
   };
 }
 
+// Task 49.D: Select tường minh các trường của account và quan hệ, chống lỗi P2022 khi CSDL chưa áp cột mới
+const ACCOUNT_AUTH_SELECT = {
+  idaccount: true,
+  idrole: true,
+  email: true,
+  username: true,
+  password: true,
+  pin_hash: true,
+  status: true,
+  type: true,
+  reason_inactive: true,
+  countdown: true,
+  premium_expires_at: true,
+  is_first_login: true,
+  create_at: true,
+  update_at: true,
+  delete_at: true,
+  role: { select: { idrole: true, rolename: true } },
+  User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
+};
+
 const authRepository = {
   async findAccountsByUsername(username) {
     if (!username) return [];
     return prisma.account.findMany({
       where: { username: { equals: username, mode: 'insensitive' } },
-      include: {
-        role: { select: { idrole: true, rolename: true } },
-        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
-      },
+      select: ACCOUNT_AUTH_SELECT,
     });
   },
 
@@ -36,10 +54,7 @@ const authRepository = {
     if (!username) return null;
     return prisma.account.findFirst({
       where: { username: { equals: username, mode: 'insensitive' } },
-      include: {
-        role: { select: { idrole: true, rolename: true } },
-        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
-      },
+      select: ACCOUNT_AUTH_SELECT,
     });
   },
 
@@ -47,10 +62,7 @@ const authRepository = {
     if (!email) return null;
     return prisma.account.findFirst({
       where: { email: { equals: email, mode: 'insensitive' } },
-      include: {
-        role: { select: { idrole: true, rolename: true } },
-        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
-      },
+      select: ACCOUNT_AUTH_SELECT,
     });
   },
 
@@ -61,10 +73,7 @@ const authRepository = {
         email: { equals: email, mode: 'insensitive' },
         delete_at: null,
       },
-      include: {
-        role: { select: { idrole: true, rolename: true } },
-        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
-      },
+      select: ACCOUNT_AUTH_SELECT,
     });
   },
 
@@ -77,10 +86,7 @@ const authRepository = {
           { email: identifier },
         ],
       },
-      include: {
-        role: { select: { idrole: true, rolename: true } },
-        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
-      },
+      select: ACCOUNT_AUTH_SELECT,
     });
   },
 
@@ -177,10 +183,7 @@ const authRepository = {
   async findAccountById(idaccount) {
     return prisma.account.findUnique({
       where: { idaccount },
-      include: {
-        role: { select: { idrole: true, rolename: true } },
-        User: { select: { iduser: true, fullname: true, email: true, phone: true, country_code: true, address: true } },
-      },
+      select: ACCOUNT_AUTH_SELECT,
     });
   },
 

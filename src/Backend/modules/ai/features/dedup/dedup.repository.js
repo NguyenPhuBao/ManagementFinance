@@ -8,13 +8,14 @@ const logger = require('../../../../core/logger');
 const { removeVietnameseTones } = require('../classify/classify.preprocess');
 const { decrypt } = require('../../../../utils/crypto.util');
 
-function safeDecrypt(note) {
+// Task 52.2: Không nuốt lỗi giải mã của giao dịch
+function safeDecrypt(note, txId = null) {
   if (!note) return '';
-  try {
-    return decrypt(note) || '';
-  } catch (_) {
-    return '';
+  const { isEncrypted } = require('../../../../utils/crypto.util');
+  if (isEncrypted(note)) {
+    return decrypt(note, { table: 'transaction', id: txId }) || '';
   }
+  return String(note);
 }
 
 const dedupRepository = {

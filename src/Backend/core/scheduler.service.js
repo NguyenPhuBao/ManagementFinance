@@ -321,6 +321,12 @@ async function runDailyPremiumExpirationTask() {
           message: 'Gói Premium đã hết hạn, tài khoản chuyển về gói Basic',
         });
       } catch (_) {}
+
+      // Cập nhật trạng thái household nếu tài khoản là chủ hộ (Task 56.7)
+      try {
+        const householdService = require('../modules/household/household.service');
+        await householdService.updateHouseholdStatusByOwner(acc.idaccount);
+      } catch (_) {}
     }
     logger.info(`Đã hạ cấp thành công ${downgradedCount} tài khoản Premium hết hạn về Basic`);
 

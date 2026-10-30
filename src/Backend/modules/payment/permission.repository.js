@@ -44,6 +44,7 @@ const DEFAULT_PERMISSIONS = {
       vietqr_payment: true,
       payment_history: true,
       offline_first_sync: true,
+      household: false,
     },
   },
   Premium: {
@@ -53,6 +54,7 @@ const DEFAULT_PERMISSIONS = {
       goals: null,
       bills: null,
       custom_categories: null,
+      household_members: 6,
     },
     features: {
       biometric_auth: true,
@@ -86,11 +88,13 @@ const DEFAULT_PERMISSIONS = {
       vietqr_payment: true,
       payment_history: true,
       offline_first_sync: true,
+      household: true,
     },
   },
 };
 
 const permissionRepository = {
+  DEFAULT_PERMISSIONS,
   /**
    * Lấy cấu hình phân quyền theo loại tài khoản (Basic / Premium)
    * Trả về định dạng chuẩn { limits, features }
@@ -125,7 +129,7 @@ const permissionRepository = {
         const featureType = row.feature?.type || 'TOGGLE';
 
         if (featureType === 'LIMIT') {
-          limits[featureId] = row.limit_value; // null = không giới hạn
+          limits[featureId] = row.is_enabled === false ? 0 : row.limit_value; // 0 nếu bị tắt theo Trụ 1, null = không giới hạn
         } else {
           features[featureId] = Boolean(row.is_enabled);
         }

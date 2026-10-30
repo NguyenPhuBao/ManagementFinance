@@ -2,12 +2,13 @@ const express = require('express');
 const router = express.Router();
 const householdController = require('../modules/household/household.controller');
 const { authenticate } = require('../middleware/auth');
+const { requireFeature } = require('../middleware/feature-permission.middleware');
 
 // Tất cả household routes yêu cầu xác thực JWT Bearer
 router.use(authenticate);
 
 // 1. Quản lý Nhà
-router.post('/', householdController.createHousehold);
+router.post('/', requireFeature('household'), householdController.createHousehold);
 router.get('/me', householdController.getMyHousehold);
 router.post('/leave', householdController.leaveHousehold);
 router.post('/dissolve', householdController.dissolveHousehold);

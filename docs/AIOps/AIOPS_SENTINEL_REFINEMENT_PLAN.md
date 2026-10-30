@@ -42,7 +42,7 @@ Toàn bộ các issue log tại trang **AIOps Sentinel** (`src/Admin-web/src/pag
 
 ### 2.2. Suy Luận Chiều Sâu (Vertical / Deep-Impact Reasoning):
 - **Bảo vệ CSDL & DB Guard (Rule 10):**
-  - Việc tạo bảng `aiops_metric_snapshot` được viết dưới dạng file script migration an toàn: `database/27_create_aiops_metric_snapshot_table.sql` và bọc qua `initTable()` của repository, tuyệt đối KHÔNG chạy `prisma migrate dev` hoặc `prisma db push` trên Supabase.
+  - Việc tạo bảng `aiops_metric_snapshot` được viết dưới dạng file script migration an toàn: `database/27b_create_aiops_metric_snapshot_table.sql` và bọc qua `initTable()` của repository, tuyệt đối KHÔNG chạy `prisma migrate dev` hoặc `prisma db push` trên Supabase.
 - **Không sinh lỗi hồi quy (Zero Regressions):**
   - Các chức năng bảo vệ cốt lõi (Active Quarantine, Rate Limiting, Threat Score calculation, Socket Realtime) hoàn toàn giữ nguyên logic 100%.
   - Cập nhật các bộ test hiện tại (`aiops.page.test.jsx`, `aiops.trend.chart.and.rca.fixes.test.jsx`, `aiops.object.and.ip.masking.test.jsx`).
@@ -52,7 +52,7 @@ Toàn bộ các issue log tại trang **AIOps Sentinel** (`src/Admin-web/src/pag
 ## 📅 3. KẾ HOẠCH TRIỂN KHAI THEO 4 GIAI ĐOẠN
 
 ### Giai Đoạn 1: Backend Snapshot Engine & Custom Baseline API
-1. Viết script DDL `src/Backend/database/27_create_aiops_metric_snapshot_table.sql` tạo bảng `aiops_metric_snapshot`.
+1. Viết script DDL `src/Backend/database/27b_create_aiops_metric_snapshot_table.sql` tạo bảng `aiops_metric_snapshot`.
 2. Bổ sung `initSnapshotTable()`, `saveSnapshot()`, `getHistoricalSnapshots(startTime, endTime, bucketMs)` trong `aiops.repository.js`.
 3. Trong `aiops.service.js`:
    - Thiết lập interval 5 phút tự động lưu 1 snapshot gồm: `threatScore`, `vectorScores` (4 vector), `requestsPerMin`, `cpuPercent`, `ramPercent`, `eventLoopLagMs`.

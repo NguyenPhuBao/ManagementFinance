@@ -62,27 +62,106 @@ function getOperationWeight(op) {
   return entityWeight;
 }
 
+async function chuConPremium(ownerId) {
+  if (!ownerId) return false;
+  try {
+    const { prisma } = require('../../config/db');
+    const owner = await prisma.account.findUnique({
+      where: { idaccount: Number(ownerId) },
+      select: { type: true, premium_expires_at: true },
+    });
+    if (!owner) return false;
+    if (owner.type !== 'Premium') return false;
+    if (owner.premium_expires_at && new Date(owner.premium_expires_at) < new Date()) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const syncService = {
   /**
    * Kiểm tra quyền thao tác thực thể gia đình (Ma trận Vai trò x Thực thể)
    */
-  enforceHouseholdPermission({ entity, operation, idaccount, existingCreatorId, idhousehold, householdStatus, userRole }) {
-    if (householdStatus === 'ReadOnly' || householdStatus === 'Inactive') {
-      throw Object.assign(new Error('Nhà đang ở trạng thái ReadOnly, không thể ghi dữ liệu'), {
+  async enforceHouseholdPermission({ entity, operation, idaccount, existingRecord, payload, targetHhId }) {
+    if (!targetHhId) return true;
+
+    const householdRepository = require('../household/household.repository');
+    const house = await householdRepository.findHouseholdAnyStatus(targetHhId);
+    if (!house) {
+      throw Object.assign(new Error('Gia đình không tồn tại'), {
+        code: 'HOUSEHOLD_NOT_MEMBER',
+      });
+    }
+
+    const membership = await householdRepository.findMember(targetHhId, idaccount);
+    if (!membership) {
+      if (house.status === 'Dissolved') {
+        const former = await householdRepository.findFormerMember(targetHhId, idaccount);
+        if (former) {
+          throw Object.assign(new Error('Gia đình đã giải tán'), {
+            code: 'HOUSEHOLD_CLOSED',
+          });
+        }
+      }
+      throw Object.assign(new Error('Bạn không phải là thành viên của gia đình này'), {
+        code: 'HOUSEHOLD_NOT_MEMBER',
+      });
+    }
+
+    const isOwnerPremium = await chuConPremium(house.owner_idaccount);
+    if (membership.role === 'Viewer' || house.status === 'ReadOnly' || !isOwnerPremium) {
+      throw Object.assign(new Error('Gia đình đang ở trạng thái ReadOnly hoặc bạn chỉ có quyền xem'), {
         code: 'HOUSEHOLD_READ_ONLY',
       });
     }
 
-    if (userRole === 'Member') {
-      if (['wallet', 'budget', 'category'].includes(entity) && ['create', 'update', 'delete'].includes(operation)) {
+    // Kiểm tra phạm vi
+    await syncService.validateEntityScope(payload, targetHhId);
+
+    // Bảng quyền theo vai trò (Đơn 50 Việc D.2 & Đơn 56 Việc 2)
+    if (['wallet', 'budget', 'goal'].includes(entity)) {
+      if (membership.role !== 'Owner') {
         throw Object.assign(new Error(`Thành viên không có quyền ${operation} ${entity} chung của nhà`), {
           code: 'HOUSEHOLD_ROLE_FORBIDDEN',
         });
       }
+    }
 
-      if (entity === 'transaction') {
-        if (operation === 'update' || operation === 'delete') {
-          if (existingCreatorId !== undefined && existingCreatorId !== null && Number(existingCreatorId) !== Number(idaccount)) {
+    // Task 56.6: Giới hạn số lượng ví dùng chung trong gia đình (max_shared_wallets)
+    if (entity === 'wallet' && operation === 'create') {
+      const { prisma } = require('../../config/db');
+      const activeSharedWalletsCount = await prisma.wallet.count({
+        where: {
+          idhousehold: Number(targetHhId),
+          delete_at: null,
+          status: 'Active',
+        },
+      });
+      const maxWallets = house.max_shared_wallets || 10;
+      if (activeSharedWalletsCount >= maxWallets) {
+        throw Object.assign(new Error(`Gia đình đã đạt giới hạn tối đa ${maxWallets} ví dùng chung`), {
+          code: 'HOUSEHOLD_WALLET_LIMIT',
+        });
+      }
+    }
+
+    if (entity === 'transaction') {
+      if (operation === 'create') {
+        const isTransfer = String(payload.type || '').toLowerCase() === 'transfer';
+        if (isTransfer) {
+          if (membership.role !== 'Owner') {
+            throw Object.assign(new Error('Chỉ Chủ nhà mới có quyền chuyển khoản giữa các ví chung'), {
+              code: 'HOUSEHOLD_ROLE_FORBIDDEN',
+            });
+          }
+        }
+      } else if (operation === 'update' || operation === 'delete') {
+        const creatorId = existingRecord ? (existingRecord.idaccount ?? existingRecord.Idaccount ?? existingRecord.create_by ?? null) : null;
+        if (membership.role !== 'Owner') {
+          if (creatorId !== null && Number(creatorId) !== Number(idaccount)) {
             throw Object.assign(new Error('Thành viên chỉ được sửa/xóa giao dịch do chính mình ghi'), {
               code: 'HOUSEHOLD_ROLE_FORBIDDEN',
             });
@@ -97,15 +176,41 @@ const syncService = {
   /**
    * Kiểm tra phạm vi dữ liệu (Tránh giao dịch riêng trỏ vào ví chung hoặc ngược lại)
    */
-  async validateEntityScope(payload) {
-    if (payload.idwallet) {
-      const { prisma } = require('../../config/db');
-      const wallet = await prisma.wallet.findUnique({ where: { idwallet: payload.idwallet } });
+  async validateEntityScope(payload, targetHhId = null) {
+    const { prisma } = require('../../config/db');
+    const walletKey = payload.idwallet || payload.walletId || payload.idWallet;
+    if (walletKey) {
+      const wallet = await prisma.wallet.findUnique({ where: { idwallet: walletKey } });
       if (wallet) {
         const walletHh = wallet.idhousehold ?? wallet.Idhousehold ?? null;
-        const payloadHh = payload.idhousehold ?? payload.Idhousehold ?? null;
-        if (Number(walletHh || 0) !== Number(payloadHh || 0)) {
+        if (Number(walletHh || 0) !== Number(targetHhId || 0)) {
           throw Object.assign(new Error('Phạm vi không khớp: giao dịch và ví phải cùng thuộc cá nhân hoặc cùng thuộc một nhà'), {
+            code: 'HOUSEHOLD_SCOPE_MISMATCH',
+          });
+        }
+      }
+    }
+
+    const transferWalletKey = payload.idwallet_transfer || payload.walletTransferId;
+    if (transferWalletKey) {
+      const transferWallet = await prisma.wallet.findUnique({ where: { idwallet: transferWalletKey } });
+      if (transferWallet) {
+        const twHh = transferWallet.idhousehold ?? transferWallet.Idhousehold ?? null;
+        if (Number(twHh || 0) !== Number(targetHhId || 0)) {
+          throw Object.assign(new Error('Phạm vi không khớp: ví chuyển tiền phải cùng thuộc cá nhân hoặc cùng thuộc một nhà'), {
+            code: 'HOUSEHOLD_SCOPE_MISMATCH',
+          });
+        }
+      }
+    }
+
+    const goalKey = payload.idgoal || payload.goalId;
+    if (goalKey) {
+      const goal = await prisma.goal.findUnique({ where: { idgoal: goalKey } });
+      if (goal) {
+        const goalHh = goal.idhousehold ?? goal.Idhousehold ?? null;
+        if (Number(goalHh || 0) !== Number(targetHhId || 0)) {
+          throw Object.assign(new Error('Phạm vi không khớp: giao dịch và mục tiêu phải cùng thuộc cá nhân hoặc cùng thuộc một nhà'), {
             code: 'HOUSEHOLD_SCOPE_MISMATCH',
           });
         }
@@ -180,42 +285,47 @@ const syncService = {
           }
         }
 
-        // 2. Kiểm tra Scope & Quyền gia đình nếu có
-        await syncService.validateEntityScope(payload);
-
-        let targetHhId = payload.idhousehold ?? payload.idHousehold ?? null;
+        // 2. Tra cứu bản ghi đã có (nếu có id)
         let existingRecord = null;
         if (payload.id) {
           existingRecord = await syncRepository[`get${entity.charAt(0).toUpperCase() + entity.slice(1)}ById`]?.(payload.id);
-          if (!targetHhId && existingRecord) {
-            targetHhId = existingRecord.idhousehold ?? existingRecord.Idhousehold ?? null;
+        }
+
+        // Kiểm tra không cho đổi Idhousehold của bản ghi đã có (Task 56.3)
+        const hasHhKey = 'idhousehold' in payload || 'idHousehold' in payload || 'householdId' in payload || 'Idhousehold' in payload;
+        const payloadHh = payload.idhousehold !== undefined
+          ? payload.idhousehold
+          : (payload.idHousehold !== undefined
+              ? payload.idHousehold
+              : (payload.householdId !== undefined
+                  ? payload.householdId
+                  : payload.Idhousehold));
+
+        if (existingRecord && hasHhKey) {
+          const existingHh = existingRecord.idhousehold ?? existingRecord.Idhousehold ?? null;
+          if (Number(payloadHh || 0) !== Number(existingHh || 0)) {
+            throw Object.assign(new Error('Không thể thay đổi phạm vi gia đình của bản ghi đã có'), {
+              code: 'HOUSEHOLD_SCOPE_MISMATCH',
+            });
           }
         }
 
+        const targetHhId = existingRecord
+          ? (existingRecord.idhousehold ?? existingRecord.Idhousehold ?? null)
+          : (hasHhKey ? (payloadHh !== null && payloadHh !== undefined ? Number(payloadHh) : null) : null);
+
         if (targetHhId) {
-          let userRole = null;
-          let householdStatus = 'Active';
-          try {
-            const householdRepository = require('../household/household.repository');
-            const membership = await householdRepository.findMember(targetHhId, idaccount);
-            const house = membership?.household || await householdRepository.findHouseholdById(targetHhId);
-            userRole = membership?.role || null;
-            householdStatus = house?.status || 'Active';
-          } catch {
-            // Fallback
-          }
-
-          const existingCreatorId = existingRecord ? (existingRecord.idaccount ?? existingRecord.create_by ?? null) : null;
-
-          syncService.enforceHouseholdPermission({
+          await syncService.enforceHouseholdPermission({
             entity,
             operation,
             idaccount,
-            existingCreatorId,
-            idhousehold: targetHhId,
-            householdStatus,
-            userRole,
+            existingRecord,
+            payload,
+            targetHhId,
           });
+        } else {
+          // Kiểm tra scope cho hàng riêng tư (giao dịch riêng trỏ ví chung / mục tiêu chung)
+          await syncService.validateEntityScope(payload, null);
         }
 
         // Handle delete — idempotent: không tìm thấy nghĩa là ĐÃ ở trạng thái mong muốn
@@ -270,15 +380,27 @@ const syncService = {
         if (err.code === 'NOT_OWNER') {
           code = 'NOT_OWNER';
           friendlyMessage = err.message || 'Bản ghi không thuộc quyền sở hữu của bạn';
+        } else if (err.code === 'HOUSEHOLD_NOT_MEMBER') {
+          code = 'HOUSEHOLD_NOT_MEMBER';
+          friendlyMessage = err.message || 'Bạn không phải là thành viên của gia đình này';
+        } else if (err.code === 'HOUSEHOLD_CLOSED') {
+          code = 'HOUSEHOLD_CLOSED';
+          friendlyMessage = err.message || 'Gia đình đã giải tán';
         } else if (err.code === 'HOUSEHOLD_ROLE_FORBIDDEN') {
           code = 'HOUSEHOLD_ROLE_FORBIDDEN';
           friendlyMessage = err.message || 'Bạn không có quyền thực hiện thao tác này trong gia đình';
+        } else if (err.code === 'HOUSEHOLD_WALLET_LIMIT') {
+          code = 'HOUSEHOLD_WALLET_LIMIT';
+          friendlyMessage = err.message || 'Gia đình đã đạt giới hạn số lượng ví dùng chung';
         } else if (err.code === 'HOUSEHOLD_READ_ONLY') {
           code = 'HOUSEHOLD_READ_ONLY';
           friendlyMessage = err.message || 'Gia đình đang ở trạng thái ReadOnly, không thể ghi dữ liệu';
         } else if (err.code === 'HOUSEHOLD_SCOPE_MISMATCH') {
           code = 'HOUSEHOLD_SCOPE_MISMATCH';
           friendlyMessage = err.message || 'Phạm vi dữ liệu cá nhân và gia đình không khớp';
+        } else if (err.code === 'FORBIDDEN_SYSTEM_DEFAULT' || /cannot (delete|modify) system default category/i.test(rawMsg)) {
+          code = 'FORBIDDEN_SYSTEM_DEFAULT';
+          friendlyMessage = err.message || 'Không thể xóa hoặc sửa danh mục mặc định của hệ thống';
         } else if (err.code === 'BILL_PERIOD_ALREADY_PAID' || /BILL_PERIOD_ALREADY_PAID/i.test(rawMsg)) {
           code = 'BILL_PERIOD_ALREADY_PAID';
           friendlyMessage = err.message || 'Kỳ hoá đơn này đã được thanh toán ở một kỳ trùng';
@@ -324,9 +446,9 @@ const syncService = {
                    || err?.name === 'PrismaClientValidationError') {
           code = 'CONSTRAINT_VIOLATION';
           friendlyMessage = 'Dữ liệu thiếu trường bắt buộc hoặc sai kiểu';
-        } else if (/cannot delete system default category/i.test(rawMsg)) {
+        } else if (/cannot (delete|modify) system default category/i.test(rawMsg)) {
           code = 'FORBIDDEN_SYSTEM_DEFAULT';
-          friendlyMessage = 'Không thể xóa danh mục mặc định của hệ thống';
+          friendlyMessage = 'Không thể xóa hoặc sửa danh mục mặc định của hệ thống';
         }
 
         results[idx] = {
@@ -348,22 +470,39 @@ const syncService = {
       // Event bus failure không ảnh hưởng response
     }
 
-    // Phát realtime socket cho các nhà có liên quan
+    // Phát realtime socket cho các nhà có liên quan (Task 56.8: Đa kênh)
     try {
       const affectedHouseholds = new Set(
         operations
           .map((o) => o?.payload?.idhousehold || o?.payload?.idHousehold)
           .filter(Boolean)
       );
-      const { getIO } = require('../../core/socket');
-      const io = getIO ? getIO() : null;
-      if (io && affectedHouseholds.size > 0) {
+      if (affectedHouseholds.size > 0) {
+        const { getIO, emitToAccount, emitSyncCompleted } = require('../../core/socket');
+        const io = getIO ? getIO() : null;
+        const householdRepository = require('../household/household.repository');
+
         for (const hhId of affectedHouseholds) {
-          io.to(`household_${hhId}`).emit('household.changed', {
+          const syncEventData = {
             idhousehold: Number(hhId),
             eventType: 'SYNC_COMPLETED',
             timestamp: new Date().toISOString(),
-          });
+          };
+          if (io) {
+            io.to(`household_${hhId}`).emit('household.changed', syncEventData);
+          }
+          // Đa kênh: Phát tới room cá nhân (account_<idaccount>) của từng thành viên gia đình
+          const activeMembers = await householdRepository.findActiveMembersByHousehold(hhId);
+          for (const member of (activeMembers || [])) {
+            if (member.idaccount && Number(member.idaccount) !== Number(idaccount)) {
+              emitToAccount(member.idaccount, 'household.changed', syncEventData);
+              emitSyncCompleted(member.idaccount, {
+                source: 'household_sync',
+                idhousehold: Number(hhId),
+                timestamp: new Date().toISOString(),
+              });
+            }
+          }
         }
       }
     } catch {

@@ -100,3 +100,5 @@ src/Backend/Test/
 # Cấu hình cục bộ của AI assistant — không thuộc mã nguồn ứng dụng.
 # Đã từng bị đẩy nhầm lên (commit 5e7018b) rồi phải gỡ ra (0cbb7cd).
 .claude/
+
+NCKH/*
