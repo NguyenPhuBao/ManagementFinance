@@ -35,6 +35,7 @@ import 'package:flowmoney/shared/theme/app_theme.dart';
 
 import 'package:flowmoney/core/ui/thong_bao_nhanh.dart';
 import '../../helpers/bat_thong_bao.dart';
+import '../../helpers/cong_tac_khoa.dart';
 import '../../helpers/goi_gia.dart';
 
 class _StubAuthRepository implements AuthRepository {
@@ -176,9 +177,11 @@ Future<void> _moTrang(WidgetTester tester, _RepoGia repo, {double rong = 411, Go
 }
 
 /// Công tắc "Tính vào tổng số dư tài sản" — hàng không mang `Key`, tìm theo nhãn.
-Switch _congTacTinhVaoTong(WidgetTester tester) => tester.widget<Switch>(find.descendant(
+Switch _congTacTinhVaoTong(WidgetTester tester) => tester.widget<Switch>(_timCongTacTinhVaoTong());
+
+Finder _timCongTacTinhVaoTong() => find.descendant(
     of: find.ancestor(of: find.text('Tính vào tổng số dư tài sản'), matching: find.byType(Row)).first,
-    matching: find.byType(Switch)));
+    matching: find.byType(Switch));
 
 /// Ô tên ví tìm theo hint, KHÔNG theo thứ tự: ô đầu tiên trên màn là ô số dư
 /// (theo thiết kế Stitch), và gõ tên vào đó là tên rỗng — trang dừng ở "Vui
@@ -330,12 +333,15 @@ void main() {
       final cong = _congTacTinhVaoTong(tester);
       expect(cong.value, isTrue);
       expect(cong.onChanged, isNull, reason: 'màn Thêm: chưa có giá trị đã lưu — mọi "không tính" là loại mới');
+      expect(laCongTacKhoa(tester, _timCongTacTinhVaoTong()), isTrue,
+          reason: 'G111: công tắc mang activeTrackColor đặt cứng — chỉ onChanged null thì trông y hệt công tắc mở');
       expect(find.byKey(const Key('dong-khoa-cong-tac-wallet_exclude_total')), findsOneWidget);
     });
 
     testWidgets('có quyền → công tắc mở, không băng', (tester) async {
       await _moTrang(tester, _RepoGia([_vi('a', name: 'Tiền mặt')]), goi: goiBasic(const {}));
       expect(_congTacTinhVaoTong(tester).onChanged, isNotNull);
+      expect(laCongTacKhoa(tester, _timCongTacTinhVaoTong()), isFalse);
       expect(find.byKey(const Key('dong-khoa-cong-tac-wallet_exclude_total')), findsNothing);
     });
   });

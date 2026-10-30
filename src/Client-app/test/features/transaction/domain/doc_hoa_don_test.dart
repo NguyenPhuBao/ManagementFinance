@@ -141,6 +141,23 @@ Tien thoi lai            8.138
     });
   });
 
+  // G105 phần còn hở (2026-10-28 phiên 22, tờ N01c): tấm thẻ in chữ tiếng Anh ở mép ảnh cho SÁU dòng rác lẫn hoa thường
+  // trước *"ỦA TEA"*. Luật hẹp: khối ≥ 2 dòng Latin (không chữ ngoài ASCII, không viết hoa toàn bộ) ở ĐẦU, và ứng viên NGAY
+  // SAU khối viết hoa toàn bộ có dấu → lấy ứng viên ấy. Ba ca dưới canh hai vế hẹp — nới vế nào cũng là một ca đỏ.
+  group('tên cửa hàng: khối chữ Latin ở mép ảnh nhường dòng viết hoa có dấu ngay sau', () {
+    test('⭐ khối Latin hai dòng rồi "ỦA TEA" → ỦA TEA', () {
+      expect(docHoaDonTuChu('ral Setl Ths cad rd effect\ntrok This card can\nỦA TEA\nDia chi Kios 01\nTổng tiền: 398,800 d').cuaHang,
+          'ỦA TEA');
+    });
+    test('MỘT dòng Latin rồi dòng tiếng Việt viết hoa → giữ dòng Latin (thương hiệu + dòng mô tả)', () {
+      expect(docHoaDonTuChu('Circle K\nCỬA HÀNG TIỆN LỢI\nTổng tiền: 50.000').cuaHang, 'Circle K');
+    });
+    test('khối Latin hai dòng, dòng NGAY SAU không viết hoa toàn bộ → giữ luật cũ (không nhảy tới dòng hoa xa hơn)', () {
+      expect(docHoaDonTuChu('Phuc Long Coffee\nand Tea\nĐịa điểm Vincom\nPHIẾU TẠM TÍNH\nTổng tiền: 50.000').cuaHang,
+          'Phuc Long Coffee');
+    });
+  });
+
   test('kNhanTongHoaDon / kNhanLoaiHoaDon công khai, cùng nội dung spike', () {
     expect(kNhanTongHoaDon.first, 'tong thanh toan');
     expect(kNhanLoaiHoaDon, contains('khach dua'));

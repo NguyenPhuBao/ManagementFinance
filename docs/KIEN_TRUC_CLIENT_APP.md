@@ -96,7 +96,7 @@ Các hàng `core/sync` · `core/ocr` và `features/` (tổng + `transaction` · 
 | `presentation/` | Trang, widget, Bloc/Cubit; giữ trạng thái màn, gọi repository | `domain/`, `data/` của chính mảng và mảng khác (repository, nguồn), `application/` (bộ điều phối), `core/` — kể `core/database` để dùng **kiểu** hàng Drift — chỉ cho mảng chưa có Entity (danh sách chờ của quét 27); Hoá đơn, Ví, Giao dịch, Danh mục, Thông báo: Entity (danh sách chờ rỗng từ 2026-10-15) — `core/di` để lấy repository qua service locator, `core/ui`, `core/utils`, `core/constants` — và `shared/` | cầm `AppDatabase` / gọi DAO (**test quét 22** — kiểu hàng thì được, lối truy cập thì không); tệp quá 1.200 dòng ngoài danh sách miễn trừ (**quét 23**) |
 | `domain/` | Hàm thuần: luật nghiệp vụ, phép tính, định dạng câu — kể cả hàm thuần dùng chung nhiều mảng, đặt ở `core/utils` · `core/category` (tiền lệ `tuan_iso`, `normalizeCategoryName`) | Dart thuần, `domain/` khác, Entity ở `data/models/` (kéo Drift bắc cầu qua `fromDrift` — cái giá đã nhận) | Flutter, Drift, `sl`, `application/` (quét 25 luật 7) |
 | `data/` | Repository (interface + bản thi hành), datasource, Entity, các dịch vụ **bị datasource / repository gọi** (`so_du_vi_service`, `tha_vi_bi_giu`) | `core/database`, `core/api`, `domain/` | widget, `application/` (quét 25 luật 7), Drift trong interface repository (quét 27 luật 4) |
-| `application/` (từ 2026-10-15, G88 gạch 6) | Bộ điều phối nhiều bước — ghi qua nhiều repository, quét, nhập, đặt lịch (`features/<x>/application/`: ví 4 · danh mục 2 · hoá đơn 2 · mục tiêu 1 · thông báo 8 · giao dịch 1 = **18** tệp, đếm 2026-10-19) | `data/`, `domain/`, `core/` | widget; được điểm ghép (`core/di` · `core/nen/chay_nen` · `phien_dieu_phoi_that`), `main.dart` và `presentation/` gọi; (`core/sync/noi_bo_nghe_ket_qua_day` — nợ gạch 4 — đã về DI 2026-10-16, không còn ngoại lệ); còn `data/` và `domain/` **không** import nó |
+| `application/` (từ 2026-10-15, G88 gạch 6) | Bộ điều phối nhiều bước — ghi qua nhiều repository, quét, nhập, đặt lịch (`features/<x>/application/`: ví 4 · danh mục 3 · hoá đơn 2 · mục tiêu 1 · thông báo 9 · giao dịch 1 · khoá app 1 · gia đình 1 = **22** tệp, đếm 2026-10-28; mục "gia đình" = `dieu_phoi_doi_nha.dart`, nghe `NhaRepository.doiNha`) | `data/`, `domain/`, `core/` | widget; được điểm ghép (`core/di` · `core/nen/chay_nen` · `phien_dieu_phoi_that`), `main.dart` và `presentation/` gọi; (`core/sync/noi_bo_nghe_ket_qua_day` — nợ gạch 4 — đã về DI 2026-10-16, không còn ngoại lệ); còn `data/` và `domain/` **không** import nó |
 
 Chiều import một hướng **presentation → application → data / domain** (spec mục 8; luật 7 quét 25 canh vế data / domain).
 
@@ -184,9 +184,11 @@ lỗi đã xảy ra thật ở mỗi chỗ — ví dụ G41/G47 (bảng tra tên
 thành một test **đọc `lib/`** và đỏ khi luật bị phá. Bảng dưới khoá theo **tên tệp**: dãy số tự xưng 1–36 phủ **37
 tệp** — số **14** được hai tệp cùng nhận (cả hai docstring đều ghi *"thứ mười bốn"*, va chạm có từ 2026-09-21) — cộng
 **3** tệp cùng khuôn không đánh số, tổng **40** (đếm bằng bảng 2026-10-20, sau quét 36; helper `test/helpers/duong_dong_bo.dart` — `tepDuongDongBo()` trả mọi tệp `lib/core/sync/` cho ba quét cột cục bộ — không đếm, như `chi_thi_dart.dart`). Đếm (2026-10-20, từ `src/Client-app`, bằng awk — `grep` qua rtk bóp méo mẫu): tệp `test/` (trừ `helpers/`) chứa `Directory('lib` ra **35** tệp quét cây (gồm quét 34, 35 và 36; quét 31 duyệt cây qua biến `goc` nên khuôn ấy không thấy nó — cộng 1 là 36); chứa `tepDuongDongBo` ra **3** tệp (ba quét cột cục bộ); 36 + 3 = 39, **1** tệp còn lại đọc danh sách tệp cố định — tổng 40 khớp bảng (đếm lại 2026-10-20 sau G89). Từ 2026-10-24 thêm quét **38** (soát bảo mật: log không lộ dữ liệu người
-dùng ở bản release) — số **37** dành cho quét gia đình (spec `2026-10-23-gia-dinh-nen-mong-design.md` mục 7.2, chưa thi
-công) — tổng **41** tệp. Từ 2026-10-26 thêm quét **39** (đo bề rộng chữ lúc dựng phải qua `BoCucTheoFont`) — tổng **42**
-tệp. Test quét mới lấy số **40**.
+dùng ở bản release) — số **37** dành cho quét gia đình (spec `2026-10-23-gia-dinh-nen-mong-design.md` mục 7.2; để trống tới 2026-10-28, xem cuối
+đoạn) — tổng **41** tệp. Từ 2026-10-26 thêm quét **39** (đo bề rộng chữ lúc dựng phải qua `BoCucTheoFont`) — tổng **42**
+tệp; 2026-10-27 quét **40** (danh sách chọn danh mục qua một cửa) — **43**; 2026-10-28 quét **41** (công tắc khoá theo quyền qua
+`CongTacTheoQuyen`, G111) — tổng **44** tệp; 2026-10-28 (đợt gia đình lát 1) quét **37** — tổng **45** tệp (đếm bằng bảng
+2026-10-28). Test quét mới lấy số **42**.
 
 | Số | Tệp (dưới `test/`) | Luật | Phạm vi | Từ |
 |---|---|---|---|---|
@@ -227,13 +229,16 @@ tệp. Test quét mới lấy số **40**.
 | **34** | `core/sync/sync_tep_khong_qua_dai_test.dart` | tệp dưới `lib/core/sync/` > 800 dòng ngoài `mienTru` (trần riêng chỉ giảm; rỗng từ 2026-10-19) | cây | **2026-10-19** |
 | **35** | `core/sync/chi_core_sync_import_tep_noi_bo_test.dart` | ngoài `lib/core/sync/` chỉ thị vào `core/sync` không qua `cuaCongKhai` (sáu tệp); tệp mới trong `core/sync` mặc định nội bộ; `conCho` rỗng | cây | **2026-10-20** |
 | **36** | `core/api/may_chu_interceptor_chi_trong_dio_client_test.dart` | `MayChuInterceptor` (interceptor trạng thái máy chủ) dựng ngoài `core/api/dio_client.dart` | cây `lib/` | **2026-10-20** |
+| **37** | `core/database/du_lieu_nha_khong_lot_vao_ca_nhan_test.dart` | câu truy vấn năm bảng đồng bộ lọc `idaccount` mà không ràng `idhousehold` — cả `select(wallets)` trong DAO lẫn `db.select(db.wallets)` ở repository; năm lối ĐẨY miễn trừ có lý do | cây `lib/` | **2026-10-28** |
 | **38** | `core/utils/log_khong_lo_du_lieu_nguoi_dung_test.dart` | lệnh `debugPrint` / `print` / `log` in `.balance` · `.amount` · `.note` · `.args` · `.noiDung` · `.ghiChu` (thêm 2026-10-24) mà không qua `kDebugMode` (trong câu lệnh, hoặc khối bao quanh mở bằng dòng có `kDebugMode` / `assert(`) — `debugPrint` không bị lược ở bản release; có sáu ca mẫu viết tay cho bộ đọc | cây `lib/` | **2026-10-24** |
 | **39** | `core/ui/do_chu_qua_bo_cuc_theo_font_test.dart` | tệp có `doRongChu(` / `TextPainter(` (dòng mã, bỏ phần sau `//`) không có `LayoutBuilder(` — phải qua `BoCucTheoFont` (`core/ui/do_chu.dart`, miễn trừ): font Inter (`google_fonts`, không đóng gói) nạp sau khung đầu, `Text` tự đo lại còn `builder` của `LayoutBuilder` thì không; ca tiền đề ≥ 10 tệp đo chữ; đỏ đúng 9 chỗ lúc thêm | cây `lib/` | **2026-10-26** |
+| **40** | `features/category/danh_sach_chon_danh_muc_mot_cua_test.dart` | gọi `getCategoryRows` / `watchCategoryRows` ngoài DAO và cửa `features/category/data/danh_sach_chon_danh_muc.dart` — mọi danh sách CHỌN bỏ bản sao đang ẩn theo khuôn qua cửa ấy (spec 2026-10-27 mục 4) | cây `lib/` | **2026-10-27** |
+| **41** | `features/premium/cong_tac_khoa_mot_noi_test.dart` | `Switch(` / `HangCongTac(` khoá theo quyền bằng `onChanged` (đối số hỏi `coQuyen(` / `coQuyenDoc(` / `coQuyenNen(` mà không qua `biKhoa:`) — công tắc khoá đi qua `CongTacTheoQuyen` (mờ 50 % + ổ khoá trong núm; màu đặt cứng thắng màu khoá mặc định của Material 3, G111); có ca tiền đề | cây `lib/` | **2026-10-28** |
 | — | `features/wallet/vi_trung_ten_resolver_wiring_test.dart` | `ViTrungTenResolver` dựng một chỗ và được nối | cây | 2026-10-05 |
 | — | `features/wallet/vi_trung_ten_cuc_bo_test.dart` | cờ `bi_tu_choi_trung_ten` không lọt vào đồng bộ | mọi tệp `core/sync` (`tepDuongDongBo()`, từ 2026-10-19; trước: danh sách tệp) | 2026-10-05 |
 | — | `core/nen/noi_bo_nghe_hai_noi_test.dart` | hai engine (app + nền) mỗi engine nối bộ nghe kết quả đẩy đúng một lần | cây | 2026-10-10 |
 
-(Bảng có 42 hàng sau khi thêm quét 39 ngày 2026-10-26 — đếm bằng `awk` hàng bắt đầu `| <số>`, `| **<số>**` hoặc `| —` có `_test.dart` (awk `/^\| (\*\*)?[0-9—]/`) = 42; 41 sau quét 38, 38 sau quét 34, 37 sau quét 32 / 33, 35 trước đó. Bộ đọc chỉ thị dùng chung `test/helpers/chi_thi_dart.dart` và test của nó là test helper, không vào bảng.) Ngoài các tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
+(Bảng có 44 hàng sau khi thêm quét 40 và 41 ngày 2026-10-28; 42 hàng sau quét 39 ngày 2026-10-26 — đếm bằng `awk` hàng bắt đầu `| <số>`, `| **<số>**` hoặc `| —` có `_test.dart` (awk `/^\| (\*\*)?[0-9—]/`) = 42; 41 sau quét 38, 38 sau quét 34, 37 sau quét 32 / 33, 35 trước đó. Bộ đọc chỉ thị dùng chung `test/helpers/chi_thi_dart.dart` và test của nó là test helper, không vào bảng.) Ngoài các tệp trên còn chừng chục test đọc **một** tệp `lib/` cụ thể (manifest, router, một hằng) — không vào dãy số.
 ⚠️ Các test quét của đợt 2026-10-10 có **ca tiền đề** (phép quét phải thấy ít nhất một tệp) để không xanh giả khi chạy sai thư mục; một số test quét cũ chưa có; chạy từ
 `src/Client-app`.
 
@@ -290,7 +295,7 @@ trong số `bloc/` · `widgets/` · `state/` là đúng, và hàng *"hạ tầng
 
 ## 9. Ưu điểm, nhược điểm, nợ có tên
 
-**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (42 tệp test quét, CI — đếm bằng bảng 2026-10-26 sau quét 39). Ranh
+**Ưu điểm.** Chạy trọn không mạng, kể cả AI. Luật hỏng-im-lặng có một chỗ và có máy canh (45 tệp test quét, CI — đếm bằng bảng 2026-10-28 sau quét 37). Ranh
 giới nền tảng thay được bằng bản giả, nên **7.597** ca test (đo 2026-10-20, +10 skip) chạy trên Windows và Ubuntu không cần thiết bị. Tách mảng theo
 nghiệp vụ nên một việc thường chạm một thư mục.
 

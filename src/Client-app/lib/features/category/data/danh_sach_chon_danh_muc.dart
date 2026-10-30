@@ -14,10 +14,24 @@ Future<List<Category>> hangChonDuoc(AppDatabase db, int accountId, String classi
 Stream<List<Category>> theoDoiHangChonDuoc(AppDatabase db, int accountId, String classify) =>
     db.categoryDao.watchCategoryRows(accountId, classify).map(_boHangAn);
 
-List<Category> _boHangAn(({List<Category> rows, List<Category> khuon}) kq) {
+/// Hàng của tài khoản tách đôi: [chon] — đúng [hangChonDuoc]; [an] — đúng những hàng mọi bộ chọn bỏ đi (`dangAnTheoKhuon`).
+/// [an] nuôi mục *"Đang tạm ngừng"* của màn Danh mục (G110), nơi duy nhất người dùng thấy và đổi tên được chúng.
+typedef HangChonVaAn = ({List<Category> chon, List<Category> an});
+
+Future<HangChonVaAn> hangChonVaAn(AppDatabase db, int accountId, String classify) async =>
+    _tach(await db.categoryDao.getCategoryRows(accountId, classify));
+
+Stream<HangChonVaAn> theoDoiHangChonVaAn(AppDatabase db, int accountId, String classify) =>
+    db.categoryDao.watchCategoryRows(accountId, classify).map(_tach);
+
+List<Category> _boHangAn(({List<Category> rows, List<Category> khuon}) kq) => _tach(kq).chon;
+
+HangChonVaAn _tach(({List<Category> rows, List<Category> khuon}) kq) {
   final khuon = kq.khuon.map(CategoryEntity.fromDrift).toList();
-  return [
-    for (final r in kq.rows)
-      if (!dangAnTheoKhuon(CategoryEntity.fromDrift(r), khuon)) r,
-  ];
+  final chon = <Category>[];
+  final an = <Category>[];
+  for (final r in kq.rows) {
+    (dangAnTheoKhuon(CategoryEntity.fromDrift(r), khuon) ? an : chon).add(r);
+  }
+  return (chon: chon, an: an);
 }

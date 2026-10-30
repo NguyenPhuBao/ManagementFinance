@@ -1,8 +1,8 @@
 # Gia đình (nhà nhiều người) — spec 1/4: NỀN MÓNG + hợp đồng mô hình dữ liệu
 
 > **Ngày:** 2026-10-23 · **Trạng thái:** thiết kế đã duyệt từng phần trong phiên brainstorming, chờ người dùng đọc spec ·
-> **2026-10-24:** kế hoạch thi công lát 1 viết xong; **mục 11** ghi 12 chỗ kế hoạch khác thân spec (người dùng duyệt bốn chỗ chính)
-> — **mục 11 thắng thân khi lệch**; chưa có mã ·
+> **2026-10-24:** kế hoạch thi công lát 1 viết xong; **mục 11** ghi chỗ kế hoạch khác thân spec (#1–#12 người dùng duyệt 10-24, #13–#16 thêm 10-28)
+> — **mục 11 thắng thân khi lệch**; **lát 1 mã xong 2026-10-28** (khối 🏠 mục 14 `PROJECT_CONTEXT.md`) ·
 > **Phạm vi spec này:** nhà / thành viên / lời mời, ba vai, cửa Premium, luật đồng bộ theo phạm vi nhà, cột `idhousehold`.
 > Ba phần con còn lại (quỹ chung · chi chung + ai nợ ai · mục tiêu chung) mỗi phần một spec + một đơn backend riêng, viết sau.
 > **Phía server** do backend làm theo đơn CAN-LAM (người dùng chốt) — client không sửa `src/Backend` (quy tắc 1).
@@ -154,7 +154,8 @@ một đơn riêng.
 
 ### 4.5 Báo cho máy khác (thời gian thực)
 
-- Server phát `sync.completed` tới **mọi thành viên** khi có hàng của nhà được đẩy (hôm nay chỉ tới phòng `account_<người đẩy>`).
+- Server phát `sync.completed` tới **mọi thành viên** khi có hàng của nhà được đẩy (lúc viết spec chỉ tới phòng `account_<người đẩy>`; từ backend `e3248955` — PR #170,
+  2026-10-28 — tới mọi thành viên, đơn 56.8; kèm `household.changed` sau mỗi lượt đẩy, client giãn cách 30 s).
 - Sự kiện mới **`household.changed`** tới mọi thành viên khi: có người vào / rời / bị mời ra, đổi vai, chuyển chủ, đổi trạng
   thái (`ReadOnly` / `Active` / `Dissolved`). Client chỉ đọc **tên** sự kiện (payload hộp đen — cam kết của kênh thời gian thực),
   thêm một giá trị `RealtimeEvent`, im lặng (`loiNhan null`), không đồng bộ lại (`canDongBoLai false`), chỉ làm mới trạng thái nhà.
@@ -259,7 +260,7 @@ tới tab dùng `go`, không `push` (bẫy điều hướng nhóm D).
 - **Đồng bộ** — `thu_gom_day.dart` / `sync_payload_normalizer.dart` gửi `idhousehold`; `anh_xa_keo_ve.dart` đọc (`Value.absent`
   khi thiếu); `_permanentCodes` +4 mã; hợp đồng `sync_payload_contract_test.dart`.
 - **`purgeDataForOtherAccounts(keep, {nhaGiu})`** — luật 4.6 (1).
-- **Kênh thời gian thực** — `RealtimeEvent` thêm một giá trị cho `household.changed` (enum **bảy** giá trị).
+- **Kênh thời gian thực** — `RealtimeEvent` thêm một giá trị cho `household.changed` (enum **tám** giá trị — thêm cả `loiMoiNha`, #16; đếm 2026-10-28).
 
 ### 7.3 Điểm ghép
 - `core/di` — đăng ký `HouseholdApi` (`sl<DioClient>().dio`), `NhaRepository`, hai bộ điều phối; nối bộ nghe `household.changed`.
@@ -347,12 +348,16 @@ trần (`household_members`), chỉ là client không đọc trần từ `limits
 | **4** ✅ | 5.7: trần thành viên từ `limits.household_members` | Từ `household.maxMembers` của `/households/me` | Server đặt trần theo gói của chủ; màn Mời chỉ có khi đã có nhà. Thêm `LoaiTran` là Basic thấy *"6 thành viên"* thành trần ở `tomTatTran` / `dacQuyenPremium` |
 | 5 | 4.6 đường 2 (a) đẩy nốt hàng của nhà; (d) tính lại số dư | Bỏ ở phần 1 | Phần 1 không có hàng của nhà nào do máy ghi; sau khi rời, server từ chối (`HOUSEHOLD_NOT_MEMBER`). Phần 2 định |
 | 6 | 7.2: Drift v32 *"+ chỉ mục"* | Không chỉ mục | Không bảng nào có chỉ mục `idaccount` (không tiền lệ); bảng cỡ hàng nghìn hàng |
-| 7 | 7.2: 25 truy vấn ví (6) · giao dịch (13) · ngân sách (3) · mục tiêu (3) | 5 · 12 · 2 · 2 thêm `isNull()` + 4 `getPending` miễn trừ; danh mục 9 + `getSyncableCategories` miễn trừ; `repointCategoryReferences` 2; **gỡ** bốn hàm `*NonDeleted` (0 chỗ gọi) | Lối ĐẨY thêm `isNull()` là hàng của nhà không bao giờ lên server; hàm không lọc gì thì quét 37 không thấy |
+| 7 | 7.2: 25 truy vấn ví (6) · giao dịch (13) · ngân sách (3) · mục tiêu (3) | 5 · 12 · 2 · 2 thêm `isNull()` + 4 `getPending` miễn trừ; danh mục 9 + `getSyncableCategories` miễn trừ; `repointCategoryReferences` 2; **gỡ** bốn hàm `*NonDeleted` (0 chỗ gọi); + 5 câu ngoài DAO: danh sách ví Phân tích / Báo cáo, gỡ con khỏi nhóm danh mục (soát chéo 2026-10-28) | Lối ĐẨY thêm `isNull()` là hàng của nhà không bao giờ lên server; hàm không lọc gì thì quét 37 không thấy |
 | 8 | 7.2: bảng tra tên giữ danh mục nhà | `_bangTraTen` thêm `\| idhousehold.isNotNull()` | Danh mục nhà mang `idaccount` của người tạo — thành viên tra bằng tài khoản mình sẽ không thấy |
 | 9 | (không nói) | Danh mục của nhà KHÔNG gieo từ khoá vào bảng `CategoryKeywords` của người dùng | Chưa màn nào dùng; bộ gợi ý cá nhân đọc cả bảng |
 | 10 | 5.7: `MaQuyen.giaDinh` | Dời sang **lát 2** (cùng cửa route `/nha/tao`) | Thêm sớm là màn Nâng cấp kể *"Gia đình"* là đặc quyền khi chưa có màn nào; kèm miễn trừ quét 21 cho khoá JSON `'household'` ở `nha_cua_toi.dart` |
-| 11 | 4.2: gặp bốn mã ⇒ làm mới trạng thái nhà | Chỉ bốn mã `HOUSEHOLD_*`; `NOT_OWNER` thì không | `NOT_OWNER` là hàng RIÊNG của người khác — không nói gì về nhà |
+| 11 | 4.2: gặp bốn mã ⇒ làm mới trạng thái nhà | Chỉ bốn mã `HOUSEHOLD_*`; `NOT_OWNER` thì không **(thay bằng #14: năm mã)** | `NOT_OWNER` là hàng RIÊNG của người khác — không nói gì về nhà |
 | 12 | 7.1: `VaiNha` / `TrangThaiNha` ở `data/models/` | Ở `domain/vai_nha.dart` | Enum + ánh xạ chữ là Dart thuần — tiền lệ `premium/domain/trang_thai_don.dart` |
+| **13** (2026-10-28) | 5.8 / `01` mục 4: `/households/me` một hình dạng lồng | Bộ đọc `nhaCuaToiTuJson` nhận CẢ phẳng (`/me`, #7, #9, #15) lẫn thô (`POST /`) của backend `177dd0e1`; thân #8 / #10 / #12 không phải trạng thái nhà → `lamMoi()` thay vì áp; `taoNha` áp hàng thô rồi `lamMoi()` lấy thành viên | Người dùng chốt làm lát 1 khi backend chưa đóng 57.1 — đọc lồng thôi là app không bao giờ thấy nhà; áp thân #8 / #10 / #12 là `DoiNha(nhà → null)` → máy chủ nhà tự xoá dữ liệu nhà sau một lần đổi vai. Gỡ hai nhánh khi 57.1 đóng (khuôn `trang_thai_goi.dart` `accountType` / `type`) |
+| **14** (2026-10-28) | 4.2: bốn mã `HOUSEHOLD_*` ⇒ làm mới | `kMaDayLoiNha` NĂM mã: + `HOUSEHOLD_ROLE_FORBIDDEN`; `HOUSEHOLD_WALLET_LIMIT` không | `01` mục 3: `ROLE_FORBIDDEN` chỉ nổ khi vai vừa đổi ở máy khác — trạng thái nhà trên máy đã cũ; trần ví chung không nói gì về vai |
+| **15** (2026-10-28) | 8.2 mã lỗi API tên tài liệu; `DELETE /households` | `loaiLoiTuMa` đọc CẢ tên tài liệu lẫn mã thật (`FORBIDDEN_NOT_OWNER`, `NOT_IN_HOUSEHOLD`, `OWNER_CANNOT_LEAVE`, `HOUSEHOLD_NOT_ACTIVE` → `nhaChiXem`…); giải tán là `POST /households/dissolve`; `FEATURE_DISABLED` → `tinhNangKhongMo` (không phân biệt Basic bị tắt với Premium tạm ngừng — lát 2 chọn câu theo `trangThaiQuyen`), `PREMIUM_REQUIRED` → `canPremium` | Đơn 57.7 chưa chốt bảng mã; route `DELETE /` không tồn tại (`households.routes.js:13`) |
+| **16** (2026-10-28) | Lát 1 = 12 thao tác mã mời; `RealtimeEvent` + 1 | `01` mục 2: + 4 API mời email (#13–#16), `LoiMoiToiEntity` / `KetQuaMoiEmail` / `MaMoiEntity.trangThai`, `NhaRepository.loiMoiToi` (RAM) + ba thao tác, `RealtimeEvent.loiMoiNha` ← `household.invited`; thông báo `loiMoiNha` + màn ở lát 2 | Người dùng chốt 2026-10-28 (`01` mục 2.8: lát 1 chỉ API + model + repository); `household.invited` đã tới phòng tài khoản ở `177dd0e1` |
 
 - **#1 — vì sao xoá kho không đủ** (đọc mã 2026-10-24): `ApDuLieuKeoVe.napMocNeuChuaCo` (`core/sync/ap_du_lieu_keo_ve.dart`) chỉ
   đọc kho khi mốc trong RAM đang `null`; chỉ `start()` (`napMoc`) đọc lại kho. `SyncCheckpointStore.clear` chưa có chỗ gọi nào

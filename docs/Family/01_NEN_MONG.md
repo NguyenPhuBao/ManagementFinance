@@ -1,6 +1,6 @@
 # Gia đình — 01. Nền móng (phần 1): mời bằng email + luật quyền khi đẩy
 
-> **Ngày:** 2026-10-26 · **Trạng thái:** thiết kế người dùng đã duyệt, chưa có mã · **Người đọc:** backend, PO, client.
+> **Ngày:** 2026-10-26 · **Trạng thái:** thiết kế người dùng đã duyệt, lát 1 client đã có mã (2026-10-28, phần ngầm — chưa màn; chờ backend đơn 56 / 57) · **Người đọc:** backend, PO, client.
 > **Nền:** phần 1 đã có spec `docs/superpowers/specs/2026-10-23-gia-dinh-nen-mong-design.md` và đơn **50**
 > `docs/superpowers/backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md` — **giữ nguyên** (nhà, thành viên, ba vai, mã mời 8 ký tự / 48 giờ, Premium,
 > phạm vi kéo về, `Idhousehold` cho 5 bảng, danh mục của nhà, ba đường dọn dữ liệu). Tệp này chỉ ghi **phần thêm và phần đổi**;

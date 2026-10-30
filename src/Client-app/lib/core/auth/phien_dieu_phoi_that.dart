@@ -68,7 +68,9 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
   Future<void> moPhienCucBo(int idaccount) async {
     if (_dongBo == null) return; // khối `if (sl.isRegistered<SyncEngine>())` cũ
     final daDon = await _donTaiKhoanKhac(idaccount);
-    // Cache SLM chỉ xoá khi máy vừa đổi người dùng — đăng nhập lại cùng tài khoản thì giữ (AuthBloc cũ).
+    // Cache SLM xoá khi phép dọn xoá được hàng nào. Thường là máy vừa đổi người dùng (đăng nhập lại cùng tài khoản thì giữ,
+    // AuthBloc cũ); nhưng số trả về nay gồm cả hàng của nhà mà chính tài khoản không còn giữ (kho trạng thái nhà trống /
+    // nhà cũ), nên cache có thể bị xoá dù không đổi người — vô hại, tạo lại một lần.
     if (daDon > 0) await _xoaCacheSlm?.call();
     await _chuyenHangSeedCu?.call(idaccount);
     // G93: gói (kho đã lưu) phải có tài khoản TRƯỚC lượt quét đầu — pha này chạy trước `AuthSuccess`, còn gói chỉ nghe

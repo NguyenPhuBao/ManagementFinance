@@ -30,6 +30,8 @@ import 'package:flowmoney/features/premium/domain/hang_goi.dart';
 import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
 import 'package:flowmoney/shared/theme/app_theme.dart';
 
+import '../../../../helpers/cong_tac_khoa.dart';
+
 class _StubAuthRepository implements AuthRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -188,6 +190,7 @@ void main() {
       final sw = tester.widget<Switch>(find.byType(Switch).first);
       expect(sw.value, isFalse, reason: 'mặc định form là bật — Basic không có quyền thì tạo mục tiêu không trích');
       expect(sw.onChanged, isNull);
+      expect(laCongTacKhoa(tester, find.byType(Switch).first), isTrue, reason: 'G111: mờ 50 % + ổ khoá trong núm');
       expect(find.text('Cần Premium'), findsOneWidget);
     } finally {
       debugNetworkImageHttpClientProvider = null;

@@ -781,6 +781,11 @@ cùng đúng một đơn vị. `viTriThaThucTe` là chỗ duy nhất sửa việ
 ✅ *(2026-10-09: trang dùng `onReorderItem` của Flutter 3.47 — SDK tự trừ một khi kéo xuống và bỏ qua lần thả không đổi
 chỗ, đúng phép của `viTriThaThucTe`, nên hàm ấy và nhóm test của nó đã bỏ. Quay về `onReorder` là phải tự trừ lại.)*
 
+⚠️ **Kéo chỉ bắt đầu sau khi NHẤN GIỮ** (G112, 2026-10-28): thẻ bọc `ReorderableDelayedDragStartListener`. Bản trước dùng
+`ReorderableDragStartListener` — nhận kéo ngay khi ngón tay di chuyển — nên trong `SingleChildScrollView` của trang, vuốt để cuộn từ
+một thẻ là đổi thứ tự ưu tiên và đồng bộ lên, im lặng (đo Realme: ưu tiên 1 / 3 → 100 / 200 sau một cú vuốt). Chữ dưới danh sách
+(*"Nhấn giữ một mục tiêu để kéo…"*) là lời hứa của luật này. Ca canh `goal_page_keo_tha_test.dart`.
+
 **Chỉ tab "Đang theo đuổi" dùng ưu tiên.** Tab "Đã hoàn thành" giữ nguyên thứ
 tự cũ (mới đạt lên đầu): đã xong rồi thì "quan trọng hơn" không còn nghĩa gì,
 và áp ưu tiên ở đó sẽ đẩy mục tiêu vừa đạt được xuống đáy chỉ vì nó từng được
@@ -1246,9 +1251,9 @@ tầng domain. **Đừng viết lại vế nào của luật ở chỗ gọi.**
 | **Mốc neo** của nhịp trích | `timeCycleTakeMoney` | `time_cycle_take_money` | `Time_cycle_take_money` |
 | **Thứ tự ưu tiên** | `priority` (v19) | `priority` | `Priority` |
 
-Payload mục tiêu có **22 trường**. Hợp đồng đầy đủ ở
+Payload mục tiêu có **23 trường** (22 + `idhousehold`, v32 gia đình; đếm lại 2026-10-28). Hợp đồng đầy đủ ở
 `test/core/sync/sync_payload_contract_test.dart` — **nơi duy nhất** ghi tên
-trường giữa hai phía; con số trên đếm bằng máy từ chính tệp ấy (2026-09-08).
+trường giữa hai phía; con số trên đếm bằng máy từ chính tệp ấy (2026-09-08; đếm lại 2026-10-28).
 
 > ⚠️ Dòng này từng ghi **19 trường** ("18 + `priority`"). Sai: phép cộng ấy bỏ
 > quên ba cột `auto_deposit_*` vào payload ngày 2026-09-07, và con số 18 vốn là

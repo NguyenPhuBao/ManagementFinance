@@ -126,6 +126,9 @@ class ThuGomThaoTacDay {
           'isGroup': c.isGroup,
           'parentId': c.parentId != null ? toValidUuid(c.parentId!) : null,
           'updated_at': c.updatedAt.toUtc().toIso8601String(),
+          // Gia đình (schema v32, đơn 50 D.2): `null` = hàng riêng, số = hàng của nhà. Gửi ở MỌI payload của năm thực
+          // thể (khối 1, 1b, 2, 3, 5, 6) — thiếu ở một khối là hàng của nhà lên server thành hàng riêng của người đẩy.
+          'idhousehold': c.idhousehold,
           'idaccount': c.idaccount > 0 ? c.idaccount : idaccount,
         },
         createdAt: now,
@@ -160,6 +163,7 @@ class ThuGomThaoTacDay {
           // tầng hợp đồng — cùng khuôn `type` ngay trên. (G28, 2026-09-14.)
           'status': w.status,
           'updated_at': w.updatedAt.toUtc().toIso8601String(),
+          'idhousehold': w.idhousehold,
           'idaccount': w.idaccount > 0 ? w.idaccount : idaccount,
         },
         createdAt: now,
@@ -219,6 +223,7 @@ class ThuGomThaoTacDay {
           'parentId':
               cat.parentId != null ? toValidUuid(cat.parentId!) : null,
           'updated_at': cat.updatedAt.toUtc().toIso8601String(),
+          'idhousehold': cat.idhousehold,
           'idaccount': currentAccount,
         },
         createdAt: now,
@@ -280,6 +285,7 @@ class ThuGomThaoTacDay {
           'note': g.note,
           'is_deleted': g.isDeleted,
           'updated_at': g.updatedAt.toUtc().toIso8601String(),
+          'idhousehold': g.idhousehold,
           'idaccount': g.idaccount > 0 ? g.idaccount : idaccount,
         },
         createdAt: now,
@@ -403,6 +409,7 @@ class ThuGomThaoTacDay {
           'date': t.date.toUtc().toIso8601String(),
           'is_deleted': t.isDeleted,
           'updated_at': t.updatedAt.toUtc().toIso8601String(),
+          'idhousehold': t.idhousehold,
           'idaccount': t.idaccount > 0 ? t.idaccount : idaccount,
         },
         createdAt: now,
@@ -442,6 +449,7 @@ class ThuGomThaoTacDay {
           'note': b.note,
           'is_deleted': b.isDeleted,
           'updated_at': b.updatedAt.toUtc().toIso8601String(),
+          'idhousehold': b.idhousehold,
           'idaccount': b.idaccount > 0 ? b.idaccount : idaccount,
         },
         createdAt: now,

@@ -745,9 +745,8 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage>
                                 'giao dịch nào.',
                             giaTri: _prefs.nhacGhiChepBat,
                             // Quyền `daily_recording_reminder` (B1): khoá, GIỮ giá trị; lịch do ReminderScheduler tự huỷ.
-                            onChanged: context.coQuyen(MaQuyen.dailyRecordingReminder)
-                                ? (v) => _ghi(_prefs.copyWith(nhacGhiChepBat: v))
-                                : null,
+                            onChanged: (v) => _ghi(_prefs.copyWith(nhacGhiChepBat: v)),
+                            biKhoa: !context.coQuyen(MaQuyen.dailyRecordingReminder),
                           ),
                           if (!context.coQuyen(MaQuyen.dailyRecordingReminder))
                             Padding(

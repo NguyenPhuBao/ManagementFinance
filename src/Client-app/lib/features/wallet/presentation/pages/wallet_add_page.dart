@@ -459,9 +459,8 @@ class _WalletAddFormState extends State<_WalletAddForm> {
             title: 'Tính vào tổng số dư tài sản',
             value: _includeInTotal,
             // Quyền `wallet_exclude_total` (B1): chỉ chặn LOẠI MỚI — ví mới chưa lưu gì nên mọi "không tính" là loại mới (I3).
-            onChanged: doiDuocTinhVaoTong(coQuyen: context.coQuyen(MaQuyen.walletExcludeTotal), daLuuTinhVaoTong: true)
-                ? (val) => setState(() => _includeInTotal = val)
-                : null,
+            onChanged: (val) => setState(() => _includeInTotal = val),
+            biKhoa: !doiDuocTinhVaoTong(coQuyen: context.coQuyen(MaQuyen.walletExcludeTotal), daLuuTinhVaoTong: true),
           ),
           if (!context.coQuyen(MaQuyen.walletExcludeTotal))
             const Padding(
@@ -484,7 +483,8 @@ class _WalletAddFormState extends State<_WalletAddForm> {
     required String title,
     String? subtitle,
     required bool value,
-    required ValueChanged<bool>? onChanged,
+    required ValueChanged<bool> onChanged,
+    bool biKhoa = false,
   }) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -516,9 +516,10 @@ class _WalletAddFormState extends State<_WalletAddForm> {
               ],
             ),
           ),
-          Switch(
+          CongTacTheoQuyen(
             value: value,
             onChanged: onChanged,
+            biKhoa: biKhoa,
             activeThumbColor: Colors.white,
             activeTrackColor: AppColors.secondary,
             inactiveThumbColor: Colors.white,

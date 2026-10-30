@@ -6,6 +6,11 @@ import 'package:drift/drift.dart';
 class Budgets extends Table {
   TextColumn get id          => text()();
   IntColumn  get idaccount   => integer()();
+
+  /// Gia đình (schema v32, spec 2026-10-23 mục 3.2): `NULL` = dữ liệu RIÊNG như trước; có giá trị = hàng của NHÀ ấy, khi
+  /// đó [idaccount] chỉ nghĩa người tạo. ĐI QUA đồng bộ (khoá `idhousehold`) — khác các cột cục bộ v23–v31. Mọi truy vấn
+  /// "của tôi" ràng `idhousehold IS NULL` (test quét 37).
+  IntColumn get idhousehold => integer().nullable()();
   TextColumn get categoryId  => text().nullable()();
   // null = ngân sách tổng (không theo category)
 
@@ -258,6 +263,11 @@ class Bills extends Table {
 class Goals extends Table {
   TextColumn get id         => text()();
   IntColumn  get idaccount  => integer()();
+
+  /// Gia đình (schema v32, spec 2026-10-23 mục 3.2): `NULL` = dữ liệu RIÊNG như trước; có giá trị = hàng của NHÀ ấy, khi
+  /// đó [idaccount] chỉ nghĩa người tạo. ĐI QUA đồng bộ (khoá `idhousehold`) — khác các cột cục bộ v23–v31. Mọi truy vấn
+  /// "của tôi" ràng `idhousehold IS NULL` (test quét 37).
+  IntColumn get idhousehold => integer().nullable()();
 
   TextColumn   get name          => text()();
   RealColumn   get targetAmount  => real()();

@@ -226,12 +226,15 @@ class _GoalPageContent extends StatelessWidget {
               itemBuilder: (context, i) => Padding(
                 key: ValueKey(goals[i].id),
                 padding: const EdgeInsets.only(bottom: 16),
-                child: ReorderableDragStartListener(
+                child: ReorderableDelayedDragStartListener(
                   index: i,
                   // Nghe trên cả thẻ chứ không chỉ một tay nắm nhỏ: thẻ mục
                   // tiêu cao và không có chỗ nào đặt tay nắm mà không đè lên
-                  // nội dung. Cú CHẠM vẫn mở trang chi tiết như cũ —
-                  // `ReorderableDragStartListener` chỉ bắt thao tác kéo dài.
+                  // nội dung. Cú CHẠM vẫn mở trang chi tiết như cũ. Kéo chỉ bắt
+                  // đầu sau khi NHẤN GIỮ — đúng chữ hướng dẫn dưới danh sách.
+                  // ⚠️ G112: đừng đổi về `ReorderableDragStartListener` — nó bắt
+                  // kéo NGAY khi ngón tay di chuyển, nên vuốt để cuộn trang từ
+                  // một thẻ là đổi ưu tiên (và đồng bộ lên) mà không ai định.
                   child: _theMucTieu(context, goals[i]),
                 ),
               ),

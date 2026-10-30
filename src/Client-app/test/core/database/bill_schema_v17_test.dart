@@ -10,6 +10,7 @@ library;
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../helpers/bang_toi_thieu_v32.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
 
@@ -125,6 +126,7 @@ void main() {
           )
         ''');
         _createWallets(database);
+        dungBangThieuChoV32(database); // v32 thêm `idhousehold` vào năm bảng — fixture phải có đủ năm bảng
         database.execute('PRAGMA user_version = 16');
       },
     ));

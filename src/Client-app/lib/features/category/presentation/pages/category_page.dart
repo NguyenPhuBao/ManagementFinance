@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../domain/category_classify.dart';
 import '../widgets/category_visuals.dart';
+import '../widgets/muc_dang_tam_ngung.dart';
 import '../../data/models/category_entity.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
@@ -131,6 +132,11 @@ class _CategoryPageState extends State<CategoryPage> {
                               .toList(),
                         ),
                 ),
+                // G110: danh mục đang ẩn theo khuôn — chỉ dựng khi có (Stitch `2dd819da…`).
+                if (tree.dangTamNgung.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  MucDangTamNgung(danhMuc: tree.dangTamNgung),
+                ],
               ],
             );
           },

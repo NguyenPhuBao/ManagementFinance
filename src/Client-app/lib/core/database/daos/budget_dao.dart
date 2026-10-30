@@ -12,14 +12,14 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
 
   Future<List<Budget>> getAll(int idaccount) {
     return (select(budgets)
-          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
+          ..where((t) => t.idaccount.equals(idaccount) & t.idhousehold.isNull() & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
         .get();
   }
 
   Stream<List<Budget>> watchAll(int idaccount) {
     return (select(budgets)
-          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull()))
+          ..where((t) => t.idaccount.equals(idaccount) & t.idhousehold.isNull() & t.deletedAt.isNull()))
         .watch();
   }
 
@@ -48,8 +48,7 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
   /// mới, và `updatedAt` nhảy lên sẽ khiến LWW cho client thắng oan trước một
   /// thay đổi thật từ máy khác.
   Future<void> updateSpent(String id, double spent) async {
-    await (update(budgets)..where((t) => t.id.equals(id)))
-        .write(BudgetsCompanion(spent: Value(spent)));
+    await (update(budgets)..where((t) => t.id.equals(id))).write(BudgetsCompanion(spent: Value(spent)));
   }
 
   Future<void> softDelete(String id) async {
@@ -96,8 +95,7 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
   /// đợi. Xem chú thích ở định nghĩa bảng để biết vì sao không dùng
   /// syncStatus = 'failed'.
   Future<void> markSyncBlocked(String id, DateTime until, String error) async {
-    final current =
-        await (select(budgets)..where((t) => t.id.equals(id))).getSingleOrNull();
+    final current = await (select(budgets)..where((t) => t.id.equals(id))).getSingleOrNull();
     await (update(budgets)..where((t) => t.id.equals(id))).write(
       BudgetsCompanion(
         syncRetryCount: Value((current?.syncRetryCount ?? 0) + 1),

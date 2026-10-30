@@ -410,6 +410,63 @@ void main() {
         reason: 'Con thường không còn trong childIds vẫn bị gỡ như cũ.');
   });
 
+  test('gia đình (schema v32): sửa / xoá nhóm cá nhân không chạm danh mục của NHÀ dù nó mang idaccount của tôi', () async {
+    await insertCategory(id: 'nhom-an', name: 'Nhóm ăn', isGroup: true);
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'dm-nha',
+      idaccount: 1,
+      name: 'Ăn uống nhà',
+      classify: 'chi',
+      parentId: const Value('nhom-an'),
+      isLocalOnly: const Value(false),
+      idhousehold: const Value(5),
+      syncStatus: const Value('synced'),
+      updatedAt: DateTime(2026, 8, 21),
+    ));
+
+    await repository.saveGroup(CategoryGroupDraft(
+      id: 'nhom-an',
+      accountId: 1,
+      name: 'Nhóm ăn',
+      classify: 'chi',
+      icon: 'restaurant',
+      colour: '#FF5722',
+      childIds: const [],
+    ));
+    var nha = (await db.categoryDao.getById('dm-nha'))!;
+    expect((nha.parentId, nha.syncStatus), ('nhom-an', 'synced'),
+        reason: 'saveGroup gỡ con theo `idaccount` + `parentId` — thiếu ràng nhà là đẩy hàng của nhà với Idgroup = null');
+
+    await repository.deleteGroup(accountId: 1, groupId: 'nhom-an');
+    nha = (await db.categoryDao.getById('dm-nha'))!;
+    expect((nha.parentId, nha.syncStatus), ('nhom-an', 'synced'), reason: 'deleteGroup — cùng lý do');
+  });
+
+  test('⭐ G110: watchTree / loadTree đưa hàng đang ẩn theo khuôn vào dangTamNgung — kể cả hàng nằm trong nhóm', () async {
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'khuon-tk',
+      idaccount: 0,
+      name: 'Thử khuôn',
+      classify: 'chi',
+      isDefault: const Value(true),
+      isDeleted: const Value(true),
+      deletedAt: Value(kMocAnTheoKhuon.add(const Duration(days: 1))),
+      updatedAt: DateTime(2026, 10, 28),
+    ));
+    await insertCategory(id: 'nhom-an', name: 'Nhóm ăn', isGroup: true);
+    await insertCategory(id: 'con-an', name: 'Thử khuôn', parentId: 'nhom-an');
+    await insertCategory(id: 'con-thuong', name: 'Con thường');
+
+    for (final tree in [
+      await repository.loadTree(accountId: 1, classify: 'chi'),
+      await repository.watchTree(accountId: 1, classify: 'chi').first,
+    ]) {
+      expect(tree.dangTamNgung.map((c) => c.id), ['con-an']);
+      expect(tree.ungroupedChildren.map((c) => c.id), ['con-thuong']);
+      expect(tree.groups.single.children, isEmpty, reason: 'hàng ẩn không lọt vào nhóm — chỉ hiện ở mục Đang tạm ngừng');
+    }
+  });
+
   test('rejects a duplicate child name regardless of which group it goes into',
       () async {
     await repository.saveGroup(CategoryGroupDraft(

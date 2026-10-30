@@ -120,4 +120,20 @@ void main() {
     expect(RealtimeEvent.taiKhoanHaCap.canDongBoLai, isFalse, reason: 'hạ gói là chuyện của bảng account, không bảng đồng bộ');
     expect(RealtimeEvent.taiKhoanHaCap.loiNhan, isNull, reason: 'thông báo tối giản — thẻ gói ở tab Cá nhân tự đổi');
   });
+
+  test('household.changed → nhaDoi: tín hiệu im, không kéo đồng bộ (gia đình — spec 2026-10-23 mục 4.5)', () {
+    expect(realtimeEventFromName('household.changed'), RealtimeEvent.nhaDoi);
+    expect(RealtimeEvent.nhaDoi.canDongBoLai, isFalse,
+        reason: 'vào / rời / đổi vai / giải tán là chuyện của bảng nhà — NhaRepository hỏi lại /households/me; kéo dữ liệu '
+            'khi nhà đổi là việc của bộ điều phối gia đình (vào nhà → kéo TOÀN BỘ, pull thường không đủ)');
+    expect(RealtimeEvent.nhaDoi.loiNhan, isNull, reason: 'payload là hộp đen — toast sẽ nói sai trên máy vừa thao tác');
+  });
+
+  test('household.invited → loiMoiNha: tín hiệu im, không kéo đồng bộ (docs/Family/01 mục 2.7)', () {
+    expect(realtimeEventFromName('household.invited'), RealtimeEvent.loiMoiNha);
+    expect(RealtimeEvent.loiMoiNha.canDongBoLai, isFalse,
+        reason: 'lời mời không phải dữ liệu đồng bộ — NhaRepository gọi lại /households/invitations (nguồn sự thật)');
+    expect(RealtimeEvent.loiMoiNha.loiNhan, isNull,
+        reason: 'thông báo "Lời mời vào nhà" là luật cục bộ của mảng thông báo (lát 2), không phải toast của kênh');
+  });
 }

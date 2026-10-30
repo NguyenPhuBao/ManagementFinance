@@ -5,13 +5,19 @@ class CategoryTree {
     required List<CategoryGroupNode> groups,
     required List<CategoryEntity> ungroupedChildren,
     required List<CategoryEntity> defaultChildren,
+    List<CategoryEntity> dangTamNgung = const [],
   })  : groups = List.unmodifiable(groups),
         ungroupedChildren = List.unmodifiable(ungroupedChildren),
-        defaultChildren = List.unmodifiable(defaultChildren);
+        defaultChildren = List.unmodifiable(defaultChildren),
+        dangTamNgung = List.unmodifiable(dangTamNgung);
 
   final List<CategoryGroupNode> groups;
   final List<CategoryEntity> ungroupedChildren;
   final List<CategoryEntity> defaultChildren;
+
+  /// Danh mục đang ẩn theo khuôn (`dangAnTheoKhuon`) — không nằm trong [groups] / [ungroupedChildren]; mục *"Đang tạm
+  /// ngừng"* của màn Danh mục liệt kê chúng để người dùng đổi tên dùng tiếp (G110).
+  final List<CategoryEntity> dangTamNgung;
 }
 
 class CategoryGroupNode {

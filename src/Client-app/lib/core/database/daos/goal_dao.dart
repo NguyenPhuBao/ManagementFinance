@@ -12,28 +12,13 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
 
   Future<List<Goal>> getAll(int idaccount) {
     return (select(goals)
-          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull())
-          ..orderBy([(t) => OrderingTerm.asc(t.targetDate)]))
-        .get();
-  }
-
-  Future<List<Goal>> getAllNonDeleted() {
-    return (select(goals)
-          ..where((t) => t.deletedAt.isNull())
+          ..where((t) => t.idaccount.equals(idaccount) & t.idhousehold.isNull() & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.asc(t.targetDate)]))
         .get();
   }
 
   Stream<List<Goal>> watchAll(int idaccount) {
-    return (select(goals)
-          ..where((t) => t.idaccount.equals(idaccount) & t.deletedAt.isNull()))
-        .watch();
-  }
-
-  Stream<List<Goal>> watchAllNonDeleted() {
-    return (select(goals)
-          ..where((t) => t.deletedAt.isNull())
-          ..orderBy([(t) => OrderingTerm.asc(t.targetDate)]))
+    return (select(goals)..where((t) => t.idaccount.equals(idaccount) & t.idhousehold.isNull() & t.deletedAt.isNull()))
         .watch();
   }
 
@@ -62,8 +47,7 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
     if (!entry.id.present) {
       throw ArgumentError('GoalsCompanion phải có id để biết cập nhật hàng nào');
     }
-    await (update(goals)..where((t) => t.id.equals(entry.id.value)))
-        .write(entry);
+    await (update(goals)..where((t) => t.id.equals(entry.id.value))).write(entry);
   }
 
   Future<void> softDelete(String id) async {
@@ -103,14 +87,14 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
       ),
     );
   }
+
   /// Chặn bản ghi khỏi hàng đợi đẩy cho tới [until] sau một lần đẩy thất bại.
   ///
   /// KHÔNG bỏ trạng thái 'pending': hết hạn chặn là bản ghi tự quay lại hàng
   /// đợi. Xem chú thích ở định nghĩa bảng để biết vì sao không dùng
   /// syncStatus = 'failed'.
   Future<void> markSyncBlocked(String id, DateTime until, String error) async {
-    final current =
-        await (select(goals)..where((t) => t.id.equals(id))).getSingleOrNull();
+    final current = await (select(goals)..where((t) => t.id.equals(id))).getSingleOrNull();
     await (update(goals)..where((t) => t.id.equals(id))).write(
       GoalsCompanion(
         syncRetryCount: Value((current?.syncRetryCount ?? 0) + 1),

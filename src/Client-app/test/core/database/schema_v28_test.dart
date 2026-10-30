@@ -4,6 +4,7 @@ library;
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../helpers/bang_toi_thieu_v32.dart';
 
 void main() {
   test('schema từ v28 trở lên', () async {
@@ -38,6 +39,7 @@ void main() {
         ''');
         database.execute(
             "INSERT INTO wallets (id, idaccount, name, updated_at) VALUES ('w-cu', 7, 'Tiền mặt', 1791219600)");
+        dungBangThieuChoV32(database); // v32 thêm `idhousehold` vào năm bảng — fixture phải có đủ năm bảng
         database.execute('PRAGMA user_version = 27');
       },
     ));

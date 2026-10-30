@@ -615,7 +615,130 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-28)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-30)
+
+### 🔀 Gộp `main` @ `e3248955` (2026-10-30 phiên 24, commit gộp `ba5cd3c5`, chưa push) — backend báo xong đơn 43 · 44 · 48 · 49 · 52 · 55 · 56 + T1–T5 (PR #170)
+
+- `5be3b4c0` (NPBao, PR #170 — một commit backend): migration **41** (seed khoá `household` / `household_members`), **42** (`ck_account_status`), **43** (xoá mềm hàng mồ côi) — **đã áp Supabase**
+  (đo chỉ `SELECT` 2026-10-30; `PersonFinance` **chưa** áp 41); `/sync/push` thi hành ma trận vai (`findMember`, `Dissolved` / `ReadOnly`, phạm vi đọc đúng khoá, `SCOPE_MISMATCH` khi đổi
+  `Idhousehold`, `NOT_OWNER` chỉ hàng riêng); `updateHouseholdStatusByOwner` (`household.service.js:694`, việc 56.7 — client xin tên `capNhatTrangThaiNhaTheoChu`); `household.changed` / `sync.completed` tới `account_<id>` từng thành viên; AIOps khoá phát `account.force_logout`;
+  `getSubscriptionInfo` gửi `premiumFeatures` + `premiumLimits` khi Basic; `decrypt(cipherText, context)`; `auth.repository.js` `select` tường minh.
+- **43 tệp** đổi (`git diff --stat ba5cd3c5^1 ba5cd3c5`), **0 tệp `src/Client-app`**; `git check-ignore --no-index -v src/Client-app/test/x_test.dart` **không khớp** (exit 1; `.gitignore:17`
+  vẫn `/Test/`, `:104` thêm `NCKH/*`). Hai xung đột CAN-LAM: `README.md` (lấy hàng 52 · 55 · 56 của `main` — chỉ khác cột trạng thái; giữ hàng 57 của nhánh) và `VIEC_BACKEND_CON_LAI.md` mục 10
+  (giữ dòng trả lời của backend nguyên văn, chèn lại tám dòng 57.x trống).
+- **Soát** (hai agent chỉ đọc + đọc lại bằng mã, chấm theo **câu hỏi gốc**, không theo bảng Trả lời mục 10 — bảng ấy nhắc `getHouseholds`, `updateHousehold`, `deleteHousehold`, `NOT_A_MEMBER`,
+  `household_permission`: grep 0 dòng): **56** 6 đạt (56.1, 56.3–56.7) · 3 một phần (56.2, 56.8, 56.9); **57** 0 / 8 (chưa làm); **43** 3 / 3; **44** 1 / 1; **48** 2 đạt · 1 một phần; **49** 1 · 1;
+  **52** 1 đạt · 1 một phần · 2 không đạt · 1 không kiểm được; **55** 2 đạt · 1 một phần; **T1–T5** 2 đạt (T4, T5) · 3 một phần. Bộ test backend (`household.system_impact.test.js`) không đi payload thật
+  (không `idaccount`; `operation: 'create'` trong khi app luôn gửi `update`) nên che 57.4 và lỗi 58.1.
+- ✉️ **Đơn 58** (`VIEC_BACKEND_CON_LAI.md` mục 1, *Đơn 58*; số kế tiếp **59**) — lỗi do PR đưa vào: **58.1 CAO** Member tạo được `Transfer` giữa hai ví chung (chốt chỉ ở `create`); **58.5 CAO** khoá tự động
+  của AIOps không bao giờ tự mở + `force_logout` ⇒ ai biết username khoá được tài khoản vô thời hạn; 58.2 `HOUSEHOLD_WALLET_LIMIT` chết với app; 58.3 `HOUSEHOLD_DISSOLVED` không tới ai; 58.4 `household.changed`
+  phát theo `payload.idhousehold` chưa kiểm; 58.6 gom lỗi nhỏ.
+- ⚠️ **52.4 / 52.5**: `transaction.Note` Supabase có 25 hàng `enc:` của **hai khoá** (khoá `.env` hỏng 19, khoá dev hỏng 6) ⇒ `/sync/pull` 500 `DECRYPT_FAILED` cả lượt, vĩnh viễn với mọi lượt kéo **toàn bộ** của
+  3 tài khoản Active trên Supabase (tính theo khoá `.env`; nếu Render dùng khoá dev: 2); client không mất dữ liệu (500 → `keoVeBiTuChoi` → dòng nhắc, không ghi mốc).
+- **Client đổi một chỗ — giãn cách `nhaDoi`** (commit `1227d8a2`, G113 nợ 12): `NhaRepositoryImpl` giữ cửa sổ `kGianCachNhaDoi` = 30 s giữa hai lượt `lamMoi()` do `household.changed`, một lượt chạy bù cuối cửa sổ;
+  `loiMoiNha` và thao tác của chính máy không qua bộ giãn; huỷ ở `_doiPhien` và `dispose()`. `flutter test test/features/household` **89 pass**, `flutter analyze` 20 (mức nền); chưa chạy lại toàn bộ
+  `flutter test` sau commit này. Vẫn chờ 58.4 phía server.
+- **Client KHÔNG đổi:** 55.A3 (Premium không hạn — backend chưa về một nghĩa: `chuConPremium` mới coi là Premium, ba nơi khác coi Basic; Supabase 0 tài khoản như vậy; đổi `trangThaiTuJson` chờ backend — ghi ở G113 nợ lát 2 số 15, không mở G riêng);
+  `nha_cua_toi.dart` vẫn đọc ba hình dạng (57.1 chưa làm); `_permanentCodes` đủ.
+- **Thứ tự bắt buộc:** 57.4 phải đóng **trước** khi client sửa G113 nợ 4 (đẩy hàng nhà do người khác ghi) — làm ngược là *"Ownership mismatch"* vĩnh viễn, mất dữ liệu im lặng. Lối thay thế "gửi `idaccount` của phiên
+  cho hàng nhà khi sửa" đảo quyết định cũ (57.4) — **cần người dùng chốt, chưa làm**.
+
+### 📱 G110 + G111 trên Realme · G112 · G105 phần hai (2026-10-28 phiên 22)
+
+- **Backend dev → `PersonFinance`** sau hai phép đích danh của người dùng: áp `database/40` (một giao tác: 3 bảng gia đình + cột
+  `Idhousehold` ở 5 bảng) rồi `npx prisma generate`; chạy với `DATABASE_URL` / `DIRECT_URL` / `DATA_ENCRYPTION_KEY` dev (không sửa `.env`).
+  Realme cài bản debug `4bd0b14d…` (HEAD `52cee782`) trỏ `127.0.0.1` + `adb reverse`, tài khoản 10; CSDL máy sao lưu ở
+  `D:\FlowMoney-saoluu\realme-2026-10-28-phien22\`.
+- **G110 đạt trên máy** (khuôn *"Thử đổi tên"* xoá mềm 27/10 trên `PersonFinance` đã có sẵn — không xoá khuôn nào): mục *"Đang tạm ngừng
+  (1)"*, dải nhắc form Sửa, vòng đổi tên → hiện lại → trả tên. **G111 đạt** ở cả năm loại công tắc (tắt mã ở cột Premium qua API admin,
+  trả ma trận bằng ảnh chụp 72 ô). Lặp lại Task 13 bước 0 · 1 · 2 · 4 đạt; chip *Nhắc trước* khoá — vế chưa đo của phiên 19 — đạt; nhắc
+  trước hạn không đo được (tài khoản 10 không có hoá đơn trong khoảng nhắc). `PREMIUM_FEATURE.md` 8.10.
+- **G112** (lộ trong lượt ấy, mã + test): vuốt cuộn trang Mục tiêu từ một thẻ là kéo đổi ưu tiên (`ReorderableDragStartListener`) — nay
+  `ReorderableDelayedDragStartListener`; thứ tự trên Realme trả lại (MuaXe 50 · MuaDT 100); nhìn lại trên máy: cú vuốt cũ nay cuộn
+  trang. Mục 3.22 `GOAL_FEATURE.md`.
+- **G105 đóng** (người dùng chọn làm phần còn lại bằng mã + test): tờ `N01c` vào bộ chữ thật; khối ≥ 2 dòng Latin ở đầu nhường dòng
+  viết hoa có dấu ngay sau; 35 tờ cũ không đổi; còn hở biết trước ghi ở chốt 12 `QUET_ANH_FEATURE.md`. Chưa chụp lại trên máy.
+- Mốc: `flutter test` **8382 / 10 skip**, `flutter analyze` **20**.
+
+### 🗂️ G110 — mục "Đang tạm ngừng" ở màn Danh mục (2026-10-28 phiên 21)
+
+- Người dùng duyệt thiết kế (khối thu gọn cuối màn Danh mục + dải nhắc ở form Sửa) rồi duyệt màn Stitch `2dd819da…` *"Danh mục - Mục
+  Đang tạm ngừng"* (lượt tạo `timeout`, màn hiện sau ~1 giờ). Cửa `hangChonVaAn` tách *chọn được / đang ẩn* từ cùng truy vấn →
+  `CategoryTree.dangTamNgung` → `MucDangTamNgung` (`category/presentation/widgets/muc_dang_tam_ngung.dart`); bút mở
+  `/categories/child/:id/edit?tamNgung=1` → `DaiNhacTamNgung`. ⚠️ Form Sửa phải đọc cả `tree.dangTamNgung` (thiếu là form trống).
+  10 ca test mới. ~~Chưa nhìn trên máy~~ — ✅ nhìn Realme phiên 22 (khối 📱 trên). Chi tiết: G110 `CLIENT_APP_KNOWN_GAPS.md`.
+
+### 🏠 Gia đình LÁT 1 — mã xong (lõi + dữ liệu + trạng thái nhà + lời mời), 2026-10-28 phiên 23
+
+✅ 26 commit (đếm `git rev-list --count`, 2026-10-30) `95d33ecc..91663b71` — 18 commit thi công 13 task (`..24f8a258`) + tài liệu Task 13 +
+lượt sửa sau **review toàn nhánh (Opus, 2026-10-30 phiên 24: With fixes → 18 / 18 mục đã sửa, soát lại sạch)** (kế hoạch `plans/2026-10-24-gia-dinh-nen-mong-lat-1.md`, gitignore; spec `specs/2026-10-23-gia-dinh-nen-mong-design.md`
+mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ Stitch 6 màn.** `flutter test` **8503 pass / 10 skip** (trước đợt 8382; đo
+2026-10-30 sau lượt sửa review toàn nhánh), `flutter analyze` 20 (mức nền). Phần client của đơn 50 / `docs/Family/` mà **không** chờ đơn 56 / 57 (người dùng chốt).
+
+- **Dữ liệu:** Drift **v32** — cột `idhousehold` cho năm bảng đồng bộ (ví · giao dịch · ngân sách · mục tiêu · danh mục; hoá đơn không có); mọi
+  truy vấn cá nhân thêm `isNull()`; quét **37** `core/database/du_lieu_nha_khong_lot_vao_ca_nhan_test.dart` (thấy cả `db.select(db.wallets)` có tiền
+  tố `db.` — năm câu ngoài DAO: danh sách ví Phân tích `watchKy` / Báo cáo `layBaoCao`, `saveGroup` ×2, `deleteGroup`). Bẫy di trú (Task 1):
+  `alterTable(TableMigration(budgets))` ở bước v11 / v12 dựng lại bảng theo lược đồ HIỆN TẠI ⇒ thêm cột vào `budgets` phải khai `newColumns` ở hai
+  bước ấy, và bước v32 chỉ `addColumn` khi `PRAGMA table_info` chưa có cột. `purgeDataForOtherAccounts(…, nhaGiu)` + `xoaHangCuaNha` (hai đường dọn).
+- **Đồng bộ:** năm payload gửi `idhousehold` (hàng riêng `null`); kéo về đọc, `null` tường minh = *chưa biết* (`Value.absent()`); bảy mã đẩy vĩnh viễn
+  (đã có từ 2026-10-26/27); `SyncEngine.keoLaiToanBo` (thế hệ yêu cầu: lượt đang chạy không ghi mốc, lượt hỏng giữ yêu cầu; chỉ xoá kho không đủ vì
+  mốc nằm RAM); `RealtimeEvent` **tám** giá trị (+ `nhaDoi` ← `household.changed`, `loiMoiNha` ← `household.invited`; 🔎 2026-10-30: `household.changed` nay tới phòng `account_<id>` của từng thành viên (56.8 đạt phần chính — gộp `e3248955`) và `sync.completed` tới thành viên khác sau mỗi `/sync/push` chạm hàng nhà, nên dữ liệu nhà về gần thời gian thực (`dongBoXong` → `syncNow()`); client giãn cách `nhaDoi` 30 s (`kGianCachNhaDoi`, `1227d8a2`, G113 nợ 12); còn thiếu `HOUSEHOLD_DISSOLVED` (58.3) và nhà lấy từ `payload` chưa kiểm (58.4); trước gộp 2026-10-28 `nhaDoi` chưa tới máy nào; đưa app từ nền lên KHÔNG kéo, mã không có `resumed → syncNow` — đúng ở cả hai thời điểm).
+- **Mảng `household`** (đếm 2026-10-28, 11 tệp): `domain/` 4 (`vai_nha` · `quyen_nha` · `ma_moi` · `cau_loi_nha`, `LoaiLoiNha` 21 giá trị) ·
+  `data/` 6 (`household_api` 16 endpoint kể cả mời email · `nha_cua_toi` + `loi_moi` · `nha_store` · `nha_repository` + `_impl`) · `application/` 1
+  (`dieu_phoi_doi_nha`: rời nhà ⇒ `xoaHangCuaNha`, vào nhà ⇒ `keoLaiToanBo`; dọn hỏng vẫn kéo lại toàn bộ của cùng sự kiện rồi ném lại lỗi). Bộ đọc
+  `nhaCuaToiTuJson` nhận **ba hình dạng** (lồng · `/me` phẳng · `POST /` thô — gỡ hai nhánh sau khi 57.1 đóng); thân #8 / #10 / #12 không phải trạng
+  thái nhà ⇒ `lamMoi()`. `FEATURE_DISABLED` → `tinhNangKhongMo` (không phân biệt Basic bị tắt với Premium tạm ngừng — lát 2 chọn câu theo
+  `trangThaiQuyen`). `NhaRepository`: bộ đếm thế hệ + cờ chạy bù, đổi tài khoản gỡ lượt cũ, làm mới lời mời sau mỗi thao tác 13–16.
+  Nối dây: DI + `main.dart` (`batDauNghe`) + hook dọn đọc KHO nhà thẳng (không thêm hook `datNha` — spec #3).
+- **Lỗ hổng đã biết:** **G113** (`CLIENT_APP_KNOWN_GAPS.md`) — lịch sử nhà mới có thể vắng, yêu cầu kéo toàn bộ xoá mốc kho ngay (chết tiến trình trước lượt kế thì lượt kéo toàn bộ VẪN chạy, chỉ bỏ so từ khoá khuôn), dọn hỏng ⇒ hàng nhà
+  cũ nằm lại và **neo "Số dư ban đầu" `idhousehold` NULL trỏ ví nhà làm purge vỡ khoá ngoại ⇒ có thể khoá người dùng ở cửa đăng nhập — lát 2 PHẢI sửa
+  neo trước khi mở lối tạo ví chung**. Nợ lát 2 gom ở thân G113.
+
+**Nghiệm thu máy thật (người dùng chốt: không chờ đơn 56 / 57) — đo được / không đo được** (backend dev trỏ `PersonFinance`; tài khoản 10 Realme,
+29 máy ảo). Lát 1 chưa có màn nên bảng này chỉ chứng minh **đường dữ liệu**:
+
+| Đo được trên máy thật (đường dữ liệu) | KHÔNG đo được — chờ backend | Vì sao |
+|---|---|---|
+| Tạo nhà (`POST /`) → `/me` phẳng đọc ra nhà; danh mục nhà (13 bản sao) về máy, **không** lọt danh sách danh mục cá nhân; `DoiNha(null → id)` → `keoLaiToanBo` | ~~Basic bị chặn tạo nhà~~ → 🔎 **đo được từ 2026-10-30 (theo mã)**: `requireFeature` đã gắn (`households.routes.js:11`), Basic 403 `FEATURE_DISABLED` — Supabase đã áp migration 41; **`PersonFinance` chưa áp 41–43** (chưa có phép đích danh; chưa đo; Basic vẫn 403 nhờ `DEFAULT_PERMISSIONS`, Premium còn hạn vẫn tạo được) | 56.4 đạt; còn chưa chạy trên máy thật |
+| Tạo mã → tham gia trên máy kia → `/me` của cả hai đúng vai; ví / giao dịch nhà kéo về mang `idhousehold`, không hiện ở Trang chủ / Sổ / Phân tích | 🔎 **2026-10-30 (theo mã, chưa chạy trên máy):** Member / Viewer / người ngoài bị `/sync/push` từ chối, `HOUSEHOLD_READ_ONLY` khi nhà `ReadOnly` (56.1, 56.2 phần đạt, 56.7 đạt). **Vẫn không đo được:** Member tạo `Transfer` giữa ví chung bị chặn (58.1), Chủ nhà sửa khoản của Member (57.4 — ca 10, 12, 13) | 58.1: chốt chỉ ở `create`, app luôn gửi `update`; 57.4 chốt *Ownership mismatch* chạy trước ma trận |
+| Mời email tới tài khoản đã có → `household.invited` tới máy kia → `/invitations` có lời mời → chấp nhận / từ chối | Thư tới hộp thư; xem trước mã email (`GET /invites/:code` luôn 403); người **đăng ký sau** khi được mời thấy lời mời | 57.3 (`mail.service` không tồn tại), 57.2 (`req.user` không có `email`) |
+| Đổi vai / mời ra / chuyển chủ / rời / giải tán trên máy A → máy A đúng (`lamMoi` sau thao tác); máy B đúng **sau** `resumed` 5 phút hoặc đăng nhập lại | 🔎 **2026-10-30 (theo mã):** máy B đổi qua `household.changed` (`RealtimeEvent.nhaDoi`) — nay tới phòng `account_<id>` của từng thành viên (56.8), client giãn cách 30 s; **vẫn không đo được** `HOUSEHOLD_DISSOLVED` (58.3) | 58.3: `Left_at` đặt trước khi phát nên người nhận rỗng |
+| — | 🔎 **2026-10-30 (theo mã):** máy B nhận ví / giao dịch của nhà gần thời gian thực — `sync.completed` nay tới thành viên khác sau mỗi `/sync/push` (`sync.service.js:475-506`) → `dongBoXong` → `syncNow()` | 56.8 đạt phần chính; chưa chạy trên hai máy (CSDL 0 nhà) |
+| Rời / bị mời ra / giải tán → máy mình chạy `xoaHangCuaNha` (dữ liệu nhà biến mất, dữ liệu riêng còn) | Máy khác nhận tombstone của hàng nhà khi giải tán | 57.6 — giải tán không xoá mềm 5 bảng (client dọn theo `/me`, không chờ cờ xoá) |
+| Chủ nhà sửa khoản của thành viên (app gửi `idaccount` người ghi) | — được chấp nhận | 57.4 — chốt *Ownership mismatch* chạy trước ma trận vai; lát 1 chưa có màn ghi vào nhà nên chưa gặp |
+
+> Bảng này là **kế hoạch đo**; kết quả từng dòng trên máy ghi ở tệp bàn giao, không ở đây.
+> ✅ **Đo 2026-10-30 phiên 24** (máy ảo `FlowMoney_16G` tài khoản 10 + API cho tài khoản Basic thử 30; backend `e3248955` trên `PersonFinance`,
+> CHƯA áp 41–43; APK debug `5bcb2392…`) — bàn giao phiên 24 mục 4c: **đạt** tạo nhà → `/me` phẳng → kéo từ 1970 → 13 danh mục nhà, danh
+> mục cá nhân giữ 30 (tạo nhà không phát sự kiện — máy biết khi mở lại app) · vào nhà bằng mã → `household.changed` tới `account_10` → `/me` ngay ·
+> ví + khoản chi của thành viên về máy < 1 s (56.8), mang `idhousehold`, **Trang chủ không đổi** (tổng −3.518.000, chi 310.000) · Viewer đẩy →
+> `HOUSEHOLD_READ_ONLY` (56.1) · Basic tạo nhà → 403 `FEATURE_DISABLED` (56.4, dù chưa áp 41) · giãn cách `nhaDoi` trên máy (sự kiện 16:37:30 →
+> `/me` ngay, 16:37:32 gom, bù 16:38:00) · giải tán → **không sự kiện nào** (58.3) → mở lại app → dọn sạch hàng nhà, dữ liệu riêng y nguyên.
+> Thấy thêm: lượt đẩy BỊ TỪ CHỐI vẫn phát `household.changed` (58.4); ví chung thành `pending` sau tính lại số dư (G113 nợ 9). Chưa đo: hai máy
+> thật (Realme), mời qua email (57.2 / 57.3).
+> 🔎 **2026-10-30:** các ô đánh dấu 🔎 là kết quả đọc mã sau gộp `e3248955` (PR #170), **chưa** chạy trên máy thật; trên `PersonFinance` chưa áp migration 41–43 (chưa có phép đích danh; chưa đo). Cột *không đo được* còn nguyên cho 57.x và các vế một phần.
+
+### 🏠 Gia đình — đối chiếu hợp đồng phần 1 với mã (2026-10-28 phiên 21)
+
+- Soát (agent con chỉ đọc + tự kiểm lại ba vế CAO) 16 endpoint `/api/households` + migration 40 + đơn backend viết cho client với
+  `docs/Family/01` và đơn 50 C. Kết quả: **đơn 57** trong `CAN-LAM/VIEC_BACKEND_CON_LAI.md` (mục 1, *Đơn 57*; 8 việc, 3 CAO — một hình dạng
+  trạng thái nhà, `req.user` không có `email` nên mọi đường mời email hỏng, thư mời không gửi; không trùng 56) và ảnh chụp hợp đồng như mã
+  cho lát 1 client ở **`docs/Family/04_HOP_DONG_PHAN_1_NHU_MA.md`**.
+- Người dùng chốt: model trạng thái nhà theo `docs/Family/01` mục 4 (xin backend sửa — 57.1, không theo `/me` phẳng hiện nay). Theo
+  `docs/Family/01` mục 3: Chủ nhà sửa khoản của thành viên thì app vẫn gửi `idaccount` người ghi; backend bỏ chốt *"Ownership mismatch"*
+  cho hàng của nhà (57.4). Số đơn kế tiếp **58**.
+
+### 🔒 G111 — công tắc khoá theo quyền vẽ mờ + ổ khoá (2026-10-28 phiên 21)
+
+- Đối chiếu Stitch `02c0d881…` (biến thể *Đang tạm ngừng*, tải HTML): **khớp** — dòng khoá tạm ngừng vàng (khối 2), băng công tắc tạm
+  ngừng xám (khối 3); khối 4 (nút ghi nhanh, Trang chủ) Stitch chỉ vẽ bản Premium, người dùng chốt **giữ** bản tạm ngừng hiện có.
+  Ghi chép ở `PREMIUM_FEATURE.md` 8.6.
+- **G111** (ghi nhận phiên 19): bảy công tắc khoá theo quyền (tự trả hoá đơn ×2, tính vào tổng ví ×2, trích tự động mục tiêu, D1, nhắc
+  ghi chép) vẽ y hệt công tắc mở — `Switch(onChanged: null)` kèm màu đặt cứng; màu đặt cứng thắng màu khoá mặc định của Material 3 (đo
+  bằng widget test). Nay qua **`CongTacTheoQuyen`** (`premium/presentation/widgets/the_khoa_quyen.dart`): mờ 50 %, ổ khoá trong núm,
+  giữ màu của chỗ gọi — Stitch `68593384…`. Helper `test/helpers/cong_tac_khoa.dart`, **test quét 41**
+  `test/features/premium/cong_tac_khoa_mot_noi_test.dart`; bảy ca khoá sẵn có đỏ trên mã cũ. Chi tiết: G111 `CLIENT_APP_KNOWN_GAPS.md`,
+  bẫy 8.5 (16) `PREMIUM_FEATURE.md`.
 
 ### 🔀 Gộp `main` @ `7b56d822` (2026-10-28 phiên 20, commit gộp `a630c4c8`, chưa push) — backend báo xong đơn 50 (gia đình nền móng) và 54
 
@@ -1196,7 +1319,7 @@ không salt của mật khẩu 2/10 (kho Keystore; mã chết).
   `logger.quiet` (`warn` bị chế độ im của Gradle nuốt — đo bằng `gradlew -q assembleRelease --dry-run` với JDK
   `D:/Android/AndroidStudio/jbr`; `gradlew` trần dùng Java 8 hệ thống và gãy). Sau đợt 4: **7.868 / 10 skip** (+3), analyze 20.
 
-### 🏠 Chức năng GIA ĐÌNH (nhà nhiều người) — brainstorming + spec 1/4 nền móng + đơn backend 50 (2026-10-23) — chưa có mã
+### 🏠 Chức năng GIA ĐÌNH (nhà nhiều người) — brainstorming + spec 1/4 nền móng + đơn backend 50 (2026-10-23) — (lúc viết chưa có mã; lát 1 mã xong 2026-10-28, khối 🏠 đầu mục 14)
 
 Người dùng: *"bổ sung chức năng dành cho vợ chồng"*. Brainstorming loại **kiến trúc**; mỗi quyết định chọn qua câu hỏi (bảng mục 1
 spec): cả bốn nhu cầu (quỹ chung cùng ghi · xem chung · ai nợ ai · mục tiêu chung) · quỹ thật **và** chi tự trả · **gia đình nhiều

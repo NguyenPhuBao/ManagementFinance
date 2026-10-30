@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show BooleanExpressionOperators;
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../../../core/database/app_database.dart';
@@ -142,9 +143,11 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
 
     // Ví lấy **kể cả hàng đã xoá mềm**, cùng luật với danh mục: giao dịch cũ
     // vẫn trỏ vào ví đã xoá và tên thật vẫn nằm trong hàng. Lọc `deletedAt` ở
-    // đây là mọi khoản cũ mất tên ví sau một lần dọn.
+    // đây là mọi khoản cũ mất tên ví sau một lần dọn. Nhưng BỎ ví của NHÀ (gia
+    // đình, schema v32): quỹ chung mang `idaccount` người tạo, lọt vào là số dư
+    // cuối kỳ / tổng tài sản / dự báo cá nhân cộng cả tiền của nhà (quét 37).
     final subVi = (db.select(db.wallets)
-          ..where((t) => t.idaccount.equals(idaccount)))
+          ..where((t) => t.idaccount.equals(idaccount) & t.idhousehold.isNull()))
         .watch()
         .listen((rows) {
       vi = rows.map(WalletEntity.fromDrift).toList();

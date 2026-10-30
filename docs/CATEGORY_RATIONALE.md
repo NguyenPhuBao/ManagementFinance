@@ -797,7 +797,9 @@ sao của khuôn đã xoá.
 
 20 giới hạn biết trước ở mục 7 spec (đếm bằng máy 2026-10-27 sau đợt sửa review toàn nhánh: máy chưa từng thấy bản cũ không lan truyền; cổng hỏng mất một lần lan truyền; lượt kéo
 toàn bộ bỏ so từ khoá khuôn; `_deletedAtFrom` rơi về `now()`; lối TẠO điền sẵn id bản ẩn rơi về danh mục đầu; v.v.) — không
-giới hạn nào chặn việc ra mắt — thêm **G110** (danh mục tự tạo trùng khuôn cũng bị ẩn, chưa có lối đổi tên). Nghiệm thu máy thật (spec mục 9) **chưa làm**.
+giới hạn nào chặn việc ra mắt — thêm **G110** (danh mục tự tạo trùng khuôn cũng bị ẩn, chưa có lối đổi tên; ✅ **đóng 2026-10-28**: mục
+*"Đang tạm ngừng (N)"* cuối màn Danh mục liệt kê mọi hàng đang ẩn — kể cả bản sao, vì không phân biệt được với danh mục tự gõ — và mở
+form Sửa có dải nhắc; đổi tên là hiện lại). Nghiệm thu máy thật (spec mục 9) **chưa làm**.
 
 ---
 

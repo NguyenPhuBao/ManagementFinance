@@ -5,6 +5,7 @@ library;
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../helpers/bang_toi_thieu_v32.dart';
 
 GoiYDanhMucPhanHoisCompanion _dong({required int idaccount, String id = 'p'}) =>
     GoiYDanhMucPhanHoisCompanion.insert(
@@ -86,6 +87,7 @@ void main() {
           // (từ v1), nên fixture tối thiểu cũng phải có, nếu không chuỗi di trú
           // dừng ở "no such table: wallets".
           database.execute('CREATE TABLE wallets (id TEXT NOT NULL PRIMARY KEY)');
+          dungBangThieuChoV32(database); // v32 thêm `idhousehold` vào năm bảng — fixture phải có đủ năm bảng
           database.execute('PRAGMA user_version = 24');
         },
       ));

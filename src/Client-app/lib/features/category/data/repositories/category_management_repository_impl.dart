@@ -33,15 +33,17 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     // (toàn cục) vào nhóm của từng tài khoản. Nay mỗi tài khoản có bản sao
     // riêng nên việc gán nhóm nằm gọn trong `parentId` của chính hàng danh
     // mục, và dòng thứ hai không còn ảnh hưởng gì tới cây.
-    return theoDoiHangChonDuoc(db, accountId, classify).map((rows) => _treeFromRows(rows, accountId));
+    return theoDoiHangChonVaAn(db, accountId, classify).map((kq) => _treeFromRows(kq.chon, accountId, an: kq.an));
   }
 
   @override
   Future<CategoryTree> loadTree({
     required int accountId,
     required String classify,
-  }) async =>
-      _treeFromRows(await hangChonDuoc(db, accountId, classify), accountId);
+  }) async {
+    final kq = await hangChonVaAn(db, accountId, classify);
+    return _treeFromRows(kq.chon, accountId, an: kq.an);
+  }
 
   @override
   Future<void> saveChild(CategoryChildDraft draft) async {
@@ -172,16 +174,19 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
 
       // Gỡ các danh mục con cũ ra khỏi nhóm — parentId đổi nên phải đẩy lại. TRỪ con đang ẩn theo khuôn: màn Nhóm chỉ
       // liệt kê con không ẩn nên người dùng không thể bỏ chọn nó — gỡ là mất nhóm im lặng và đẩy Idgroup = null lên server.
+      // Không chạm danh mục của NHÀ (gia đình, schema v32 — quét 37): nhóm cá nhân không chứa hàng của nhà.
       final khuon = (await db.categoryDao.getTatCaKhuon()).map(CategoryEntity.fromDrift).toList();
       final conDangAn = [
         for (final c in await (db.select(db.categories)
-              ..where((row) => row.idaccount.equals(draft.accountId) & row.parentId.equals(id)))
+              ..where((row) =>
+                  row.idaccount.equals(draft.accountId) & row.idhousehold.isNull() & row.parentId.equals(id)))
             .get())
           if (dangAnTheoKhuon(CategoryEntity.fromDrift(c), khuon)) c.id,
       ];
       await (db.update(db.categories)
             ..where((row) =>
                 row.idaccount.equals(draft.accountId) &
+                row.idhousehold.isNull() &
                 row.parentId.equals(id) &
                 row.id.isNotIn(conDangAn)))
           .write(CategoriesCompanion(
@@ -255,7 +260,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       // Gỡ con ra khỏi nhóm trước — parentId đổi nên phải đẩy lại.
       await (db.update(db.categories)
             ..where((row) =>
-                row.idaccount.equals(accountId) & row.parentId.equals(groupId)))
+                row.idaccount.equals(accountId) & row.idhousehold.isNull() & row.parentId.equals(groupId)))
           .write(CategoriesCompanion(
         parentId: const Value(null),
         syncStatus: const Value('pending'),
@@ -356,7 +361,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     ];
   }
 
-  CategoryTree _treeFromRows(List<Category> rows, int accountId) {
+  CategoryTree _treeFromRows(List<Category> rows, int accountId, {List<Category> an = const []}) {
     final groups = rows
         .where((category) =>
             category.idaccount == accountId &&
@@ -389,6 +394,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
               child.parentId == null || !groupIds.contains(child.parentId))
           .toList(),
       defaultChildren: const [],
+      dangTamNgung: an.map(CategoryEntity.fromDrift).toList(),
     );
   }
 

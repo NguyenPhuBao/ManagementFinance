@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
+import '../../helpers/cong_tac_khoa.dart';
 import '../../helpers/goi_gia.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -213,6 +214,8 @@ void main() {
       final sw = tester.widget<Switch>(find.byKey(const Key('vi-tinh-vao-tong')));
       expect(sw.onChanged, isNull);
       expect(sw.value, isTrue);
+      expect(laCongTacKhoa(tester, find.byKey(const Key('vi-tinh-vao-tong'))), isTrue,
+          reason: 'G111: ĐANG BẬT mà khoá, activeTrackColor đặt cứng — chỉ onChanged null thì trông y hệt công tắc mở');
       expect(find.byKey(const Key('dong-khoa-cong-tac-wallet_exclude_total')), findsOneWidget);
       expect(find.text('Cần Premium'), findsOneWidget);
     });
@@ -225,6 +228,7 @@ void main() {
       expect(tester.widget<Switch>(cong).value, isFalse);
       expect(tester.widget<Switch>(cong).onChanged, isNotNull,
           reason: 'I3 (người dùng chốt 2026-10-28): quyền chỉ chặn LOẠI MỚI — ví loại từ khi còn Premium phải bật lại được');
+      expect(laCongTacKhoa(tester, cong), isFalse, reason: 'G111: công tắc chạm được thì không vẽ dạng khoá');
       expect(find.byKey(const Key('dong-khoa-cong-tac-wallet_exclude_total')), findsOneWidget,
           reason: 'băng nói "loại khỏi tổng cần Premium" — sau khi Lưu "tính" thì không loại lại được');
 

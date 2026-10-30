@@ -1,7 +1,7 @@
 # Gia đình (nhà nhiều người) — 00. Tổng quan
 
-> **Ngày:** 2026-10-26 · **Trạng thái:** thiết kế đã được người dùng (PO) duyệt từng phần qua brainstorming; **chưa có mã**
-> ở client lẫn backend · **Người đọc:** backend, Admin-web, PO, client — để **xem và thảo luận** trước khi đặt đơn CAN-LAM.
+> **Ngày:** 2026-10-26 · **Trạng thái:** thiết kế đã được người dùng (PO) duyệt từng phần qua brainstorming; **lát 1 client đã có mã (2026-10-28, phần ngầm — chưa màn; chờ backend đơn 56 / 57)**
+> · **Người đọc:** backend, Admin-web, PO, client — để **xem và thảo luận** trước khi đặt đơn CAN-LAM.
 > **Phía client viết** (nhánh `TranQuangDat`). Mỗi tệp có mục *Câu hỏi để thảo luận* và mục *Trả lời / thảo luận* ở cuối —
 > backend ghi thẳng vào đó (hoặc trả lời trong đơn CAN-LAM khi có).
 >
@@ -16,6 +16,7 @@
 > | `02C_DINH_MUC_GOP.md` | 2c | Định mức góp hằng tháng, nhắc góp, tự góp định kỳ |
 > | `02D_NGAN_SACH_BAO_CAO.md` | 2d | Ngân sách chung của nhà, báo cáo tháng, báo khi có người chi / góp |
 > | `03_MUC_TIEU_CHUNG.md` | 3 | Mục tiêu chung = công tắc *"Đặt mục tiêu"* trên ví chung |
+> | `04_HOP_DONG_PHAN_1_NHU_MA.md` | 1 | (2026-10-28) Ảnh chụp hợp đồng phần 1 như mã backend `177dd0e1` — 16 endpoint, khoá đồng bộ, chỗ lệch `01` (đơn 57) — cho lát 1 client |
 >
 > **Nền của bộ này:** spec `docs/superpowers/specs/2026-10-23-gia-dinh-nen-mong-design.md` (phần 1, mục 11 = chỗ kế hoạch
 > thi công lát 1 khác thân) và đơn **50** `docs/superpowers/backend/CAN-LAM/LICH-SU/GIA_DINH_NEN_MONG.md` (bản chép ở

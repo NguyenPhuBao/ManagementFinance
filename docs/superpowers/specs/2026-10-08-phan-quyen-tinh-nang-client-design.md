@@ -120,6 +120,9 @@ công tắc, thẻ cân đối nằm trong trang.
      có cho test cũ). Không có quyền → **thẻ khoá**: biểu tượng 🔒, tên tính năng (`MaQuyen.ten`), *"dành cho Premium"*,
      `NutNangCap(quyen: ma)`.
    - Biến thể công tắc `CongTacTheoQuyen`: không có quyền → công tắc mờ (không đổi giá trị), chạm → `/premium?quyen=…`;
+     *(Thi công 2026-10-08 thay bằng `DongKhoaCongTac` đặt cạnh `Switch(onChanged: null)` — nút Nâng cấp ở băng, công tắc chạm không
+     làm gì. Widget `CongTacTheoQuyen` có từ 2026-10-28 (G111) nhưng **chỉ vẽ** dạng khoá — mờ 50 % + ổ khoá trong núm, Stitch
+     `68593384…` — vì `Switch(onChanged: null)` kèm màu đặt cứng vẽ y hệt công tắc mở; chạm vẫn không làm gì.)*
      nếu giá trị đang lưu là **bật** thì kèm dòng *"Tạm dừng — cần Premium"* (chốt 3), ngược lại *"Cần Premium"*.
 3. **Bộ chạy nền.** `BillAutoPayRunner`, `GoalAutoDepositRunner` và luật thông báo `budgetRebalance` nhận một hàm
    `bool Function(MaQuyen) coQuyen` (DI nối sang `duocDung(…, GoiRepository.hienTai, now)`); không có quyền → bỏ lượt,

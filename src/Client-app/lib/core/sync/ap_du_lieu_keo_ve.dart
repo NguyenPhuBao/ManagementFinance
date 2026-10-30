@@ -25,7 +25,8 @@ bool keoVeBiMayChuTuChoi(int? status) =>
     status != null && status >= 400 && status != 401 && status != 403 && status != 429 && status != 503;
 
 /// Chỉ `SyncEngine` dựng lớp này. Nó SỞ HỮU trạng thái kéo — mốc, cờ đã kéo xong, bộ đếm — nên engine chạm trạng thái
-/// ấy qua đúng ba lối: [napMoc] (lúc `start`), [napMocNeuChuaCo] (lúc `syncMotLuot`), [datLaiPhien] (lúc `stop`).
+/// ấy qua đúng bốn lối: [napMoc] (lúc `start`), [napMocNeuChuaCo] (lúc `syncMotLuot`), [datLaiPhien] (lúc `stop`),
+/// [yeuCauKeoToanBo] (lúc `keoLaiToanBo`).
 class ApDuLieuKeoVe {
   ApDuLieuKeoVe({
     required DioClient dioClient,
@@ -104,6 +105,20 @@ class ApDuLieuKeoVe {
     // đăng nhập sau vẫn pull tăng dần; nếu dữ liệu cục bộ đã bị xoá thì
     // pullFromBackend tự ép full pull.
     _lastPullTime = null;
+    _theHeDaKeo = _theHeYeuCau; // yêu cầu thuộc phiên cũ — mốc đã lưu của nó đã xoá
+  }
+
+  /// Thế hệ yêu cầu kéo toàn bộ ([yeuCauKeoToanBo]). Lượt kéo bắt đầu khi [_theHeDaKeo] < [_theHeYeuCau] thì đi từ 1970;
+  /// thành công thì [_theHeDaKeo] = thế hệ lúc nó BẮT ĐẦU — yêu cầu tới giữa lượt còn nguyên cho lượt sau, lượt hỏng không
+  /// đổi gì.
+  int _theHeYeuCau = 0;
+  int _theHeDaKeo = 0;
+
+  /// Lượt kéo kế tiếp đi từ 1970 (`SyncEngine.keoLaiToanBo`). Xoá luôn mốc ĐÃ LƯU: app bị giết trước lượt ấy thì lần mở
+  /// sau vẫn kéo toàn bộ (`napMoc` đọc `null`).
+  Future<void> yeuCauKeoToanBo(int idaccount) async {
+    _theHeYeuCau++;
+    await _checkpointStore?.clear(idaccount);
   }
 
   // ── Pull data from backend to local SQLite ────────────────────────────────
@@ -113,7 +128,11 @@ class ApDuLieuKeoVe {
     final allWallets = await _db.walletDao.getAll(accountId);
     final isLocalDbEmpty = allWallets.isEmpty;
 
-    final keoToanBo = isLocalDbEmpty || _lastPullTime == null;
+    final theHe = _theHeYeuCau;
+    // Hai nghĩa KHÁC nhau: [khongCoTrangThaiCu] = máy này chưa có gì của tài khoản để so (dùng cho phép so từ khoá khuôn);
+    // [keoToanBo] = lượt này đi từ 1970 — thêm cả lượt do yêu cầu (vào nhà), nơi trạng thái cũ vẫn còn nguyên.
+    final khongCoTrangThaiCu = isLocalDbEmpty || _lastPullTime == null;
+    final keoToanBo = khongCoTrangThaiCu || _theHeDaKeo < theHe;
     final since = keoToanBo
         ? '1970-01-01T00:00:00.000Z'
         : _lastPullTime!.toUtc().toIso8601String();
@@ -248,7 +267,9 @@ class ApDuLieuKeoVe {
                       .where((k) => k.isNotEmpty)
                       .toList() ??
                   const <String>[];
-              if (tuKhoa.isNotEmpty && c['delete_at'] == null) {
+              // Danh mục của NHÀ (gia đình phần 1): không gieo vào bảng từ khoá của tài khoản đang đăng nhập — chưa màn
+              // nào dùng chúng; phần con cần từ khoá của nhà sẽ thiết kế chỗ lưu riêng.
+              if (tuKhoa.isNotEmpty && c['delete_at'] == null && c['idhousehold'] == null) {
                 tuKhoaTheoDanhMuc[catUuid] = tuKhoa;
               }
               // Admin-web sửa khuôn → ghi lại cho mảng danh mục lan truyền sang bản sao (spec 2026-10-27 mục 5). Từ khoá CŨ
@@ -257,12 +278,14 @@ class ApDuLieuKeoVe {
                 cu: existingLocal,
                 moi: companion,
                 laKhuon: doiSangBool(c['is_default']),
-                // Lượt kéo TOÀN BỘ không có trạng thái cũ của tài khoản này để so từ khoá: hàng khuôn (idaccount 0) dùng
+                // Lượt kéo KHÔNG CÓ trạng thái cũ ([khongCoTrangThaiCu], không phải [keoToanBo] — lượt kéo toàn bộ do yêu cầu
+                // vẫn có từ khoá cũ của tài khoản, bỏ so là từ khoá admin thêm giữa hai lượt không lan sang bản sao) không có
+                // gì của tài khoản này để so từ khoá: hàng khuôn (idaccount 0) dùng
                 // chung cả máy và `purgeDataForOtherAccounts` giữ nó, còn từ khoá lưu THEO tài khoản và bị dọn khi đổi
                 // tài khoản trên cùng máy — so sẽ sinh thay đổi từ khoá giả. Tên / biểu tượng của khuôn thì vẫn so.
                 // Khuôn về ĐÃ XOÁ (admin đổi tên rồi xoá giữa hai lượt kéo) vẫn lan truyền tên / biểu tượng; từ khoá thì không
                 // so (khuôn xoá không còn nguồn từ khoá để thêm) — người dùng chốt 2026-10-27.
-                tuKhoaCu: (keoToanBo || existingLocal?.isDefault != true || c['delete_at'] != null)
+                tuKhoaCu: (khongCoTrangThaiCu || existingLocal?.isDefault != true || c['delete_at'] != null)
                     ? tuKhoa
                     : await _db.categoryDao.getKeywords(accountId, catUuid),
                 tuKhoaMoi: tuKhoa,
@@ -352,7 +375,9 @@ class ApDuLieuKeoVe {
                   ? mocTuMaxSince(topData['maxSince'],
                       pulledAt: topData['pulledAt'])
                   : newestUpdateAt(payloadData));
-          if (newest != null) {
+          // Yêu cầu kéo toàn bộ tới GIỮA lượt này (vào nhà khi lượt đang chạy): mốc của lượt không chứa phạm vi mới — không
+          // ghi, để lượt sau (và lần mở app sau) đi từ 1970.
+          if (newest != null && _theHeYeuCau == theHe) {
             _lastPullTime = newest;
             await _checkpointStore?.write(accountId, newest);
           }
@@ -375,6 +400,7 @@ class ApDuLieuKeoVe {
           // server) sẽ mãi mãi trông như "chưa pull lần nào".
           _hasCompletedPull = true;
           _soLanKeoVeXong++;
+          _theHeDaKeo = theHe;
           _biTuChoi.value = false;
         }
       }
@@ -400,7 +426,10 @@ class ApDuLieuKeoVe {
       if (w is! Map) continue;
       if (w['delete_at'] != null) continue;
       if (!doiSangBool(w['is_default'])) continue;
-      id = (w['idwallet'] ?? w['id']).toString();
+      // Ví của NHÀ không bao giờ là ví mặc định của tôi: `clearDefaultExcept` chỉ chạm ví riêng, nên lấy ví nhà làm
+      // `keepId` là gỡ cờ của MỌI ví riêng (server không cấm cờ mặc định trên ví nhà).
+      if (w['idhousehold'] != null) continue;
+      id =(w['idwallet'] ?? w['id']).toString();
     }
     return id;
   }

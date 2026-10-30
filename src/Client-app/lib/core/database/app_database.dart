@@ -87,7 +87,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 31;
+  int get schemaVersion => 32;
 
   @override
   MigrationStrategy get migration {
@@ -290,7 +290,8 @@ class AppDatabase extends _$AppDatabase {
           // `threshold_warning_percent` trong bảng cũ và câu SELECT sẽ hỏng.
           await m.alterTable(TableMigration(
             budgets,
-            newColumns: [budgets.thresholdWarningPercent],
+            // `idhousehold` (v32) cũng phải khai: bảng cũ chưa có, Drift dựng lại theo lược đồ HIỆN TẠI.
+            newColumns: [budgets.thresholdWarningPercent, budgets.idhousehold],
           ));
         }
         if (from < 12) {
@@ -301,10 +302,11 @@ class AppDatabase extends _$AppDatabase {
           // ràng buộc `chk_budget_time_recurrence` là `IS NULL OR IN (...)` —
           // chỉ client là không lưu nổi.
           //
-          // `TableMigration` không có `newColumns`: cột đã tồn tại, chỉ đổi
-          // ràng buộc NOT NULL. Drift dựng bảng theo lược đồ mới rồi chép dữ
-          // liệu sang, nên giá trị cũ ('Week', 'Month'…) giữ nguyên.
-          await m.alterTable(TableMigration(budgets));
+          // Về `time_recurrence`, `TableMigration` không cần `newColumns`: cột đã
+          // tồn tại, chỉ đổi ràng buộc NOT NULL. Drift dựng bảng theo lược đồ mới
+          // rồi chép dữ liệu sang, nên giá trị cũ ('Week', 'Month'…) giữ nguyên.
+          // Riêng `idhousehold` (v32) là cột mới với bảng cũ: phải khai `newColumns` (xem bước v11).
+          await m.alterTable(TableMigration(budgets, newColumns: [budgets.idhousehold]));
         }
         if (from < 13) {
           // Bảng thông báo cục bộ. Không có dữ liệu cũ để chép sang: thông báo
@@ -542,6 +544,21 @@ class AppDatabase extends _$AppDatabase {
           // chọn, lưu nguyên" — CỤC BỘ, không đi qua đồng bộ (test quét 15). Chỉ tạo bảng; giao dịch cũ không có dấu.
           await m.createTable(danhMucAiDoans);
         }
+        if (from < 32) {
+          // Gia đình phần 1 (spec 2026-10-23 mục 3.2, 7.2): cột `idhousehold` cho năm bảng đồng bộ — ĐI QUA đồng bộ, khác
+          // v24–v31. Không điền dữ liệu cũ: mọi hàng có sẵn là hàng riêng (NULL). ⚠️ Lần đầu từ v24 có bước `addColumn` trên
+          // CẢ năm bảng: fixture di trú cũ phải có đủ năm bảng (`test/helpers/bang_toi_thieu_v32.dart`).
+          await m.addColumn(wallets, wallets.idhousehold);
+          await m.addColumn(transactions, transactions.idhousehold);
+          await m.addColumn(goals, goals.idhousehold);
+          // ⚠️ Riêng `budgets`: bước v11 / v12 dựng lại bảng theo lược đồ HIỆN TẠI (đã mang `idhousehold`), nên máy lên
+          // từ < v12 đã có cột — thêm lần nữa là `duplicate column name`. Chỉ thêm khi chưa có.
+          final cotNganSach = await customSelect("PRAGMA table_info('budgets')").get();
+          if (!cotNganSach.any((r) => r.read<String>('name') == 'idhousehold')) {
+            await m.addColumn(budgets, budgets.idhousehold);
+          }
+          await m.addColumn(categories, categories.idhousehold);
+        }
       },
       beforeOpen: (details) async {
         // Bật foreign key constraints (SQLite tắt mặc định)
@@ -575,15 +592,25 @@ class AppDatabase extends _$AppDatabase {
   /// Vì sao cần: dữ liệu sót lại của một tài khoản cũ trên cùng thiết bị là
   /// dữ liệu chết — mọi truy vấn `getPending`/`getSyncableCategories` đều lọc
   /// theo tài khoản hiện tại nên chúng không bao giờ được đẩy lên nữa, nhưng
-  /// chúng vẫn có thể bị đọc nhầm (ví dụ các truy vấn `*NonDeleted` không lọc
-  /// tài khoản) và làm sống lại một `idaccount` đã chết.
+  /// chúng vẫn có thể bị đọc nhầm (ví dụ một truy vấn không lọc tài khoản — bốn
+  /// hàm `*NonDeleted` từng như thế, gỡ 2026-10-28 ở `d4f0b284`) và làm sống lại một
+  /// `idaccount` đã chết.
   ///
   /// GIỮ NGUYÊN danh mục mặc định (`idaccount = 0`) — đó là dữ liệu dùng chung,
   /// không thuộc tài khoản nào.
   ///
+  /// **Gia đình** (schema v32, spec 2026-10-23 mục 4.6 đường 1): năm bảng có cột `idhousehold` GIỮ hàng của nhà [nhaGiu] —
+  /// nhà tài khoản mới đang ở theo bản lưu trạng thái nhà — dù người tạo là ai, và XOÁ hàng của mọi nhà khác, kể cả hàng
+  /// chính [keepIdaccount] đã ghi vào nhà cũ. [nhaGiu] `null` (chưa biết) → xoá mọi hàng của nhà; bộ điều phối gia đình
+  /// kéo lại toàn bộ khi lượt làm mới đầu thấy nhà (`SyncEngine.keoLaiToanBo`) — pull tăng dần KHÔNG tự mang chúng về.
+  ///
   /// Xoá bảng con trước bảng cha vì `beforeOpen` bật `PRAGMA foreign_keys = ON`.
-  Future<int> purgeDataForOtherAccounts(int keepIdaccount) async {
+  Future<int> purgeDataForOtherAccounts(int keepIdaccount, {int? nhaGiu}) async {
     if (keepIdaccount <= 0) return 0;
+    // Hàng của nhà đang ở. ⚠️ Vế `isNotNull()` bắt buộc: `idhousehold = x` trên hàng NULL là NULL, và `NOT (… OR NULL)`
+    // là NULL — hàng riêng của tài khoản cũ sẽ thoát phép xoá.
+    Expression<bool> cuaNhaGiu(Expression<int> idhousehold) =>
+        nhaGiu == null ? const Constant(false) : idhousehold.isNotNull() & idhousehold.equals(nhaGiu);
     var removed = 0;
     await transaction(() async {
       removed += await (delete(categoryKeywords)
@@ -593,25 +620,30 @@ class AppDatabase extends _$AppDatabase {
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
       removed += await (delete(transactions)
-            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+            ..where((t) =>
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
           .go();
       removed += await (delete(budgets)
-            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+            ..where((t) =>
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
           .go();
       removed += await (delete(bills)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
       removed += await (delete(goals)
-            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+            ..where((t) =>
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
           .go();
       // idaccount = 0 là danh mục mặc định dùng chung → giữ lại.
       removed += await (delete(categories)
-            ..where((t) =>
-                t.idaccount.equals(keepIdaccount).not() &
-                t.idaccount.equals(0).not()))
+            ..where((t) => ((t.idhousehold.isNull() &
+                        (t.idaccount.equals(keepIdaccount) | t.idaccount.equals(0))) |
+                    cuaNhaGiu(t.idhousehold))
+                .not()))
           .go();
       removed += await (delete(wallets)
-            ..where((t) => t.idaccount.equals(keepIdaccount).not()))
+            ..where((t) =>
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
           .go();
       // Thông báo cũng phải đi theo: bỏ sót là thông báo tài chính của người
       // đăng nhập trước hiện trên máy người sau. Bảng này không có khoá ngoại
@@ -650,6 +682,36 @@ class AppDatabase extends _$AppDatabase {
     return removed;
   }
 
+  /// Xoá **trên máy** mọi hàng của nhà [idhousehold] — đường dọn 2 của gia đình (spec 2026-10-23 mục 4.6): rời nhà, bị
+  /// mời ra, nhà giải tán. Xoá vật lý chỉ bản SAO cục bộ của dữ liệu không còn thuộc người dùng — server giữ nguyên hoặc
+  /// đã xoá mềm — nên không trái quy tắc 5. Từ khoá / quan hệ nhóm trỏ vào danh mục của nhà đi theo. Bảng con trước bảng
+  /// cha (`PRAGMA foreign_keys = ON`). Trả số hàng đã xoá. Người gọi duy nhất: bộ điều phối `DieuPhoiDoiNha`.
+  Future<int> xoaHangCuaNha(int idhousehold) async {
+    var removed = 0;
+    await transaction(() async {
+      removed += await (delete(categoryKeywords)
+            ..where((k) => k.categoryId.isInQuery(selectOnly(categories)
+              ..addColumns([categories.id])
+              ..where(categories.idhousehold.equals(idhousehold)))))
+          .go();
+      removed += await (delete(categoryGroupMemberships)
+            ..where((g) =>
+                g.categoryId.isInQuery(selectOnly(categories)
+                  ..addColumns([categories.id])
+                  ..where(categories.idhousehold.equals(idhousehold))) |
+                g.groupId.isInQuery(selectOnly(categories)
+                  ..addColumns([categories.id])
+                  ..where(categories.idhousehold.equals(idhousehold)))))
+          .go();
+      removed += await (delete(transactions)..where((t) => t.idhousehold.equals(idhousehold))).go();
+      removed += await (delete(budgets)..where((t) => t.idhousehold.equals(idhousehold))).go();
+      removed += await (delete(goals)..where((t) => t.idhousehold.equals(idhousehold))).go();
+      removed += await (delete(categories)..where((t) => t.idhousehold.equals(idhousehold))).go();
+      removed += await (delete(wallets)..where((t) => t.idhousehold.equals(idhousehold))).go();
+    });
+    return removed;
+  }
+
   /// Chuyển mọi tham chiếu danh mục của [idaccount] từ [fromCategoryId] sang
   /// [toCategoryId], ở cả ba bảng có cột `categoryId`.
   ///
@@ -668,6 +730,7 @@ class AppDatabase extends _$AppDatabase {
       moved += await (update(transactions)
             ..where((t) =>
                 t.idaccount.equals(idaccount) &
+                t.idhousehold.isNull() &
                 t.categoryId.equals(fromCategoryId)))
           .write(TransactionsCompanion(
         categoryId: Value(toCategoryId),
@@ -677,6 +740,7 @@ class AppDatabase extends _$AppDatabase {
       moved += await (update(budgets)
             ..where((t) =>
                 t.idaccount.equals(idaccount) &
+                t.idhousehold.isNull() &
                 t.categoryId.equals(fromCategoryId)))
           .write(BudgetsCompanion(
         categoryId: Value(toCategoryId),

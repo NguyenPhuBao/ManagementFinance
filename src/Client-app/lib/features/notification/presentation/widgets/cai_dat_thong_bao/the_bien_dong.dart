@@ -286,13 +286,12 @@ class TheBienDong extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Switch(
-                    key: khoaCongTac,
+                  CongTacTheoQuyen(
+                    khoaCongTac: khoaCongTac,
                     value: bat,
                     // Quyền `bank_notification_parser` (spec phân quyền 2026-10-08).
-                    onChanged: context.coQuyen(MaQuyen.bankNotificationParser)
-                        ? onDoiBienDong
-                        : null,
+                    onChanged: onDoiBienDong,
+                    biKhoa: !context.coQuyen(MaQuyen.bankNotificationParser),
                     activeThumbColor: Colors.white,
                     activeTrackColor: const Color(0xFF006E1C),
                   ),

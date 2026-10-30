@@ -340,6 +340,8 @@ class AppRouter {
             path: '/categories/child/:id/edit',
             builder: (_, state) => CategoryAddPage(
               categoryId: state.pathParameters['id']!,
+              // Mở từ mục "Đang tạm ngừng" của màn Danh mục (G110) → dải nhắc đầu form.
+              tamNgung: state.uri.queryParameters['tamNgung'] == '1',
             ),
           ),
           GoRoute(

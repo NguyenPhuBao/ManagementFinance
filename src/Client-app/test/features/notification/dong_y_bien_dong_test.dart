@@ -28,6 +28,8 @@ import 'package:flowmoney/features/notification/presentation/pages/dong_y_bien_d
 import 'package:flowmoney/features/notification/presentation/pages/notification_settings_page.dart';
 import 'package:flowmoney/features/transaction/domain/doc_tin_bien_dong.dart';
 
+import '../../helpers/cong_tac_khoa.dart';
+
 class _KenhGia implements KenhBienDong {
   bool quyen = false;
   bool chayNen = false;
@@ -188,6 +190,8 @@ void main() {
       await moTrang(tester, quyen: const {'bank_notification_parser': false});
       await tester.ensureVisible(find.byKey(khoa));
       expect(tester.widget<Switch>(find.byKey(khoa)).onChanged, isNull);
+      expect(laCongTacKhoa(tester, find.byKey(khoa)), isTrue,
+          reason: 'G111: công tắc mang activeTrackColor đặt cứng — chỉ onChanged null thì trông y hệt công tắc mở');
       expect(find.text('Cần Premium'), findsOneWidget);
     });
 

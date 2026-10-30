@@ -13,6 +13,7 @@ import '../../data/models/category_tree.dart';
 import '../../data/repositories/category_management_repository.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../widgets/muc_dang_tam_ngung.dart';
 
 class CategoryAddPage extends StatefulWidget {
   const CategoryAddPage({
@@ -21,10 +22,14 @@ class CategoryAddPage extends StatefulWidget {
     this.keywordOnly = false,
     this.repository,
     this.accountId,
+    this.tamNgung = false,
   });
 
   final String? categoryId;
   final bool keywordOnly;
+
+  /// Mở từ mục *"Đang tạm ngừng"* của màn Danh mục (`?tamNgung=1`, G110) → dải nhắc [DaiNhacTamNgung] đầu form.
+  final bool tamNgung;
   final CategoryManagementRepository? repository;
   final int? accountId;
 
@@ -55,6 +60,9 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
 
   late final CategoryManagementRepository _repository;
   final _nameController = TextEditingController();
+
+  /// Tên lúc nạp form — dải nhắc tạm ngừng nói theo tên này, không theo ô đang gõ.
+  String? _tenGoc;
   final _keywordController = TextEditingController();
   final List<String> _keywords = [];
   List<CategoryEntity> _groups = [];
@@ -117,9 +125,12 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
     final groups = <CategoryEntity>[];
     for (final tree in trees) {
       groups.addAll(tree.groups.map((node) => node.group));
+      // `dangTamNgung` (G110): hàng đang ẩn theo khuôn không nằm ở nhánh nào của cây — thiếu vế này là mở từ mục "Đang tạm
+      // ngừng" ra form trống.
       categories
         ..addAll(tree.ungroupedChildren)
-        ..addAll(tree.defaultChildren);
+        ..addAll(tree.defaultChildren)
+        ..addAll(tree.dangTamNgung);
       for (final node in tree.groups) {
         categories.addAll(node.children);
       }
@@ -142,6 +153,7 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
         return;
       }
       _nameController.text = current.name;
+      _tenGoc = current.name;
       _classify = current.classify;
       _parentId = current.parentId;
       _icon = current.icon;
@@ -326,6 +338,10 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 children: [
+                  if (widget.tamNgung && _tenGoc != null) ...[
+                    DaiNhacTamNgung(ten: _tenGoc!),
+                    const SizedBox(height: 16),
+                  ],
                   const Text('Loại giao dịch',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),

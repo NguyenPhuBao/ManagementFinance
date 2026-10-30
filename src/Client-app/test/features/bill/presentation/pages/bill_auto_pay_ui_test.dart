@@ -9,6 +9,7 @@ library;
 
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/bill/data/models/bill_entity.dart';
+import '../../../../helpers/cong_tac_khoa.dart';
 import '../../../../helpers/nguon_doc_gia.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
@@ -217,6 +218,8 @@ void main() {
       await dung(tester, const BillAddPage(),
           bloc: BillBloc(repository: _GhiLaiRepository()), quyen: tat);
       expect(tester.widget<Switch>(find.byKey(khoa)).onChanged, isNull);
+      expect(laCongTacKhoa(tester, find.byKey(khoa)), isTrue,
+          reason: 'G111: công tắc mang activeTrackColor đặt cứng — chỉ onChanged null thì trông y hệt công tắc mở');
       expect(find.text('Cần Premium'), findsOneWidget);
     });
 
@@ -226,6 +229,7 @@ void main() {
       await dung(tester, BillEditPage(id: 'b1', bill: _hoaDon(tuTra: true)),
           bloc: BillBloc(repository: repo), quyen: tat);
       expect(tester.widget<Switch>(find.byKey(khoa)).onChanged, isNull);
+      expect(laCongTacKhoa(tester, find.byKey(khoa)), isTrue, reason: 'G111: đang BẬT mà khoá — vẫn phải mờ + ổ khoá');
       expect(find.text('Tạm dừng — cần Premium'), findsOneWidget);
       await tester.tap(find.text('Cập nhật'));
       await tester.pumpAndSettle();
@@ -238,6 +242,7 @@ void main() {
       await dung(tester, const BillAddPage(),
           bloc: BillBloc(repository: _GhiLaiRepository()), quyen: const {});
       expect(tester.widget<Switch>(find.byKey(khoa)).onChanged, isNotNull);
+      expect(laCongTacKhoa(tester, find.byKey(khoa)), isFalse);
       expect(find.text('Cần Premium'), findsNothing);
     });
   });

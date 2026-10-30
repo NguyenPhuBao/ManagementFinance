@@ -343,7 +343,8 @@ void main() {
 
   test('⭐ máy CÓ ví nhưng chưa có mốc kéo (lượt kéo toàn bộ) → không so từ khoá', () async {
     // Khuôn đã có trên máy kèm từ khoá, và có ví (nên CSDL KHÔNG rỗng) — nhưng `_lastPullTime == null` (chưa có checkpoint)
-    // vẫn là lượt kéo toàn bộ: từ khoá lưu theo tài khoản có thể đã bị dọn, so sẽ sinh thay đổi từ khoá giả.
+    // vẫn là lượt KHÔNG CÓ trạng thái cũ (`khongCoTrangThaiCu`): từ khoá lưu theo tài khoản có thể đã bị dọn, so sẽ sinh thay
+    // đổi từ khoá giả.
     await db.categoryDao.insert(CategoriesCompanion.insert(
       id: idMacDinh,
       idaccount: 0,
@@ -363,8 +364,8 @@ void main() {
     await e.start(idaccount: acc);
     expect(nhan, hasLength(1));
     expect(nhan.single, isEmpty,
-        reason: 'Điều kiện `keoToanBo` là `CSDL rỗng || chưa có mốc` — thiếu vế sau thì máy có ví mà mất checkpoint sinh '
-            'thay đổi từ khoá giả.');
+        reason: 'Điều kiện `khongCoTrangThaiCu` là `CSDL rỗng || chưa có mốc` — thiếu vế sau thì máy có ví mà mất '
+            'checkpoint sinh thay đổi từ khoá giả.');
   });
 
   test('⭐ admin đổi BIỂU TƯỢNG khuôn → ThayDoiKhuon mang iconCu / iconMoi', () async {

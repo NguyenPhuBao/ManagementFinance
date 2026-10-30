@@ -42,6 +42,10 @@ void main() {
       expect(mau.allMatches(ngoai).length, 0,
           reason: '$r nối NGOÀI thân noiBoNgheKetQuaDay (vd. trong factory registerLazySingleton): engine nền không resolve nó nên không nối.');
     }
+    // Gia đình (2026-10-24): trạng thái nhà nghe mã đẩy HOUSEHOLD_* — cùng luật một lần trong thân hàm nối chung.
+    final nha = RegExp(r'NhaRepository>\(\)\s*\.noiKetQuaDay');
+    expect(nha.allMatches(than).length, 1, reason: 'NhaRepository phải nghe kết quả đẩy ĐÚNG MỘT lần trong hàm nối chung');
+    expect(nha.allMatches(ngoai).length, 0);
   });
 
   test('main.dart khai entrypoint nền đúng tên, có @pragma (bản release bỏ hàm không ai gọi)', () {

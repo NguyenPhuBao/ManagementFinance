@@ -89,14 +89,11 @@ class TheTrichTuDong extends StatelessWidget {
                   ),
                 ],
               ),
-              Switch(
+              CongTacTheoQuyen(
                 value: autoDeposit,
                 // Quyền `goal_auto_deposit` (spec phân quyền 2026-10-08).
-                onChanged: context.coQuyen(MaQuyen.goalAutoDeposit)
-                    ? (val) {
-                        onDoiTrich(val);
-                      }
-                    : null,
+                onChanged: onDoiTrich,
+                biKhoa: !context.coQuyen(MaQuyen.goalAutoDeposit),
                 activeThumbColor: AppColors.income,
               ),
             ],

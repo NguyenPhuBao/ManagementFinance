@@ -11,6 +11,11 @@ class Categories extends Table {
   // ── Ownership ────────────────────────────────────────────────────────────
   IntColumn  get idaccount  => integer()();
   // Với danh mục default: idaccount = 0 (không thuộc ai)
+
+  /// Gia đình (schema v32, spec 2026-10-23 mục 3.2–3.3): `NULL` = danh mục riêng / mặc định như trước; có giá trị = danh mục
+  /// của NHÀ ấy (bộ server sao từ bộ mặc định khi lập nhà, `idaccount` = người tạo — với bộ sao là chủ nhà, CÙNG TÊN bộ mặc
+  /// định). ĐI QUA đồng bộ. Mọi danh sách danh mục cá nhân ràng `idhousehold IS NULL` (test quét 37).
+  IntColumn get idhousehold => integer().nullable()();
   
   // ── Business fields ──────────────────────────────────────────────────────
   TextColumn get name      => text()();

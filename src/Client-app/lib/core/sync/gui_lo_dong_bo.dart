@@ -324,7 +324,10 @@ class GuiLoDongBo {
     // Gia đình (spec `2026-10-23-gia-dinh-nen-mong-design.md` mục 4.2; đơn 50
     // mục A + D.3). Thêm TRƯỚC khi backend lên (2026-10-26) — danh sách trắng.
     // `NOT_OWNER`: sửa / xoá hàng của tài khoản khác (tiền đề kiểm chủ sở
-    // hữu); bốn mã `HOUSEHOLD_*`: hết quyền ghi vào nhà.
+    // hữu); bốn mã `HOUSEHOLD_*` dưới: hết quyền ghi vào nhà. Năm mã
+    // `HOUSEHOLD_*` (bốn mã này + `_ROLE_FORBIDDEN` bên dưới, KHÔNG `_WALLET_LIMIT`)
+    // khớp TAY với `kMaDayLoiNha` (`features/household/domain/cau_loi_nha.dart`
+    // — core không import mảng; ca đọc tệp ở `cau_loi_nha_test` canh).
     'NOT_OWNER',
     'HOUSEHOLD_NOT_MEMBER',
     'HOUSEHOLD_READ_ONLY',

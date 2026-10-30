@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../helpers/cong_tac_khoa.dart';
 import '../../../helpers/font_that.dart';
 import '../../../helpers/goi_gia.dart';
 
@@ -172,6 +173,50 @@ void main() {
       expect(vienCua('bill_auto_pay'), AppColors.khoaCanVien);
       expect(tester.widget<Icon>(find.byIcon(Icons.lock_outline)).color, AppColors.khoaCanIcon);
       expect(tester.widget<Text>(find.text('Cần Premium')).style!.color, AppColors.khoaCanChu);
+    });
+  });
+
+  group('G111 — CongTacTheoQuyen (Stitch 68593384…: mờ 50 %, ổ khoá trong núm)', () {
+    const k = Key('cong-tac-thu');
+    Future<void> congTac(WidgetTester tester, {required bool bat, required bool biKhoa, ValueChanged<bool>? onChanged}) =>
+        dung(
+            tester,
+            CongTacTheoQuyen(
+              khoaCongTac: k,
+              value: bat,
+              onChanged: onChanged ?? (_) {},
+              biKhoa: biKhoa,
+              activeThumbColor: Colors.white,
+              activeTrackColor: AppColors.secondary,
+              inactiveThumbColor: Colors.white,
+              inactiveTrackColor: AppColors.surfaceContainerHighest,
+            ));
+
+    for (final bat in [true, false]) {
+      testWidgets('⭐ khoá, ${bat ? 'đang BẬT' : 'tắt'}: mờ 50 % + ổ khoá + không chạm được; rãnh GIỮ màu của chỗ gọi',
+          (tester) async {
+        var lanGoi = 0;
+        await congTac(tester, bat: bat, biKhoa: true, onChanged: (_) => lanGoi++);
+        expect(laCongTacKhoa(tester, find.byKey(k)), isTrue);
+        expect(Material.of(tester.element(find.byKey(k))),
+            paints..rrect(color: bat ? AppColors.secondary : AppColors.surfaceContainerHighest),
+            reason: 'mờ là của Opacity (đúng Stitch: opacity-50) — rãnh không đổi sang xám mặc định của Material 3');
+        await tester.tap(find.byKey(k));
+        await tester.pump();
+        expect(lanGoi, 0);
+        expect(tester.widget<Switch>(find.byKey(k)).value, bat, reason: 'khoá GIỮ giá trị (chốt "dừng chạy, giữ công tắc")');
+      });
+    }
+
+    testWidgets('không khoá: Switch như cũ — không mờ, không ổ khoá, chạm gọi onChanged', (tester) async {
+      final nhan = <bool>[];
+      await congTac(tester, bat: false, biKhoa: false, onChanged: nhan.add);
+      expect(laCongTacKhoa(tester, find.byKey(k)), isFalse);
+      expect(find.ancestor(of: find.byKey(k), matching: find.byType(Opacity)), findsNothing);
+      expect(tester.widget<Switch>(find.byKey(k)).thumbIcon, isNull);
+      await tester.tap(find.byKey(k));
+      await tester.pump();
+      expect(nhan, [true]);
     });
   });
 
