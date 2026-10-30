@@ -1,6 +1,7 @@
 /// Tám giá trị (mười bốn tên) sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
 /// backend phát tới room `account_<idaccount>` (riêng `emitPermissionsUpdated` — `account.permissions_updated` /
-/// `account.upgraded` — phát tới MỌI socket; riêng `household.changed` — [nhaDoi] — phát tới room `household_<id>`).
+/// `account.upgraded` — phát tới MỌI socket; riêng `household.changed` — [nhaDoi] — phát tới cả room `household_<id>` lẫn
+/// room tài khoản của từng thành viên, từ PR #170).
 ///
 /// ## Vì sao chỉ có tên, không có dữ liệu
 ///
@@ -66,8 +67,9 @@ enum RealtimeEvent {
   /// vào / rời / bị mời ra, đổi vai, chuyển chủ, đổi trạng thái nhà, có lời mời bị từ chối. **Tín hiệu**: không đọc payload,
   /// `NhaRepository` gọi lại `/households/me` (và danh sách lời mời). Im, không kéo đồng bộ — nhà đổi thì bộ điều phối gia
   /// đình tự dọn / kéo lại toàn bộ. Backend phát ở HAI nơi: khi đổi thành viên / trạng thái nhà, và sau MỖI `/sync/push`
-  /// chạm hàng của nhà (hai hình dạng payload — client không đọc cả hai). ⚠️ Backend `177dd0e1` phát vào phòng
-  /// `household_<id>` không ai ở (đơn 56.8) — chưa tới.
+  /// chạm hàng của nhà (hai hình dạng payload — client không đọc cả hai). Từ backend `e3248955` (PR #170) sự kiện tới phòng
+  /// `account_<id>` của từng thành viên (trước đó vào phòng `household_<id>` không ai ở — đơn 56.8) — kể cả sau lượt đẩy bị
+  /// từ chối (đơn 58.4), nên `NhaRepositoryImpl` giãn cách nó (`kGianCachNhaDoi`).
   nhaDoi,
 
   /// `household.invited` — gia đình (`docs/Family/01` mục 2.7): server phát tới phòng TÀI KHOẢN người được mời khi chủ nhà

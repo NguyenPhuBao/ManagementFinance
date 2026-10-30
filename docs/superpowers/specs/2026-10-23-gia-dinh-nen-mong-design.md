@@ -154,7 +154,8 @@ một đơn riêng.
 
 ### 4.5 Báo cho máy khác (thời gian thực)
 
-- Server phát `sync.completed` tới **mọi thành viên** khi có hàng của nhà được đẩy (hôm nay chỉ tới phòng `account_<người đẩy>`).
+- Server phát `sync.completed` tới **mọi thành viên** khi có hàng của nhà được đẩy (lúc viết spec chỉ tới phòng `account_<người đẩy>`; từ backend `e3248955` — PR #170,
+  2026-10-28 — tới mọi thành viên, đơn 56.8; kèm `household.changed` sau mỗi lượt đẩy, client giãn cách 30 s).
 - Sự kiện mới **`household.changed`** tới mọi thành viên khi: có người vào / rời / bị mời ra, đổi vai, chuyển chủ, đổi trạng
   thái (`ReadOnly` / `Active` / `Dissolved`). Client chỉ đọc **tên** sự kiện (payload hộp đen — cam kết của kênh thời gian thực),
   thêm một giá trị `RealtimeEvent`, im lặng (`loiNhan null`), không đồng bộ lại (`canDongBoLai false`), chỉ làm mới trạng thái nhà.
