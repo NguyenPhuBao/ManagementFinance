@@ -12,6 +12,7 @@ import 'package:flowmoney/features/household/data/nha_store.dart';
 import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
 import 'package:flowmoney/features/household/domain/vai_nha.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -561,6 +562,123 @@ void main() {
       tre.loi = null;
       await _nghi();
       expect(tre.goi, ['tuChoiLoiMoi:ABCD2345', 'dsLoiMoiToi']);
+    });
+  });
+
+  group('giãn cách household.changed (G113 nợ 12 — PR #170 phát sau mỗi lượt đẩy)', () {
+    // Mỗi ca dựng kho + repo + luồng sự kiện TRONG fakeAsync (hẹn giờ thuộc vùng của chỗ gọi `listen`).
+    void chay(
+        void Function(FakeAsync fa, NhaRepositoryImpl r, HouseholdApiGia a, StreamController<RealtimeEvent> sk)
+            thanCa) {
+      fakeAsync((fa) {
+        final a = HouseholdApiGia();
+        final r = NhaRepositoryImpl(api: a, kho: InMemoryNhaStore(), clock: () => now);
+        final sk = StreamController<RealtimeEvent>();
+        r.datTaiKhoan(18);
+        fa.flushMicrotasks();
+        r.noiSuKien(sk.stream);
+        thanCa(fa, r, a, sk);
+        sk.close();
+        r.dispose();
+        fa.flushMicrotasks();
+      });
+    }
+
+    int soCuaToi(HouseholdApiGia a) => a.goi.where((g) => g == 'cuaToi').length;
+
+    test('a: 5 sự kiện nhaDoi trong 1 s → 1 lượt ngay + đúng 1 lượt bù sau 30 s', () {
+      chay((fa, r, a, sk) {
+        for (var i = 0; i < 5; i++) {
+          sk.add(RealtimeEvent.nhaDoi);
+          fa.elapse(const Duration(milliseconds: 200));
+        }
+        expect(soCuaToi(a), 1, reason: 'đầu cửa sổ chạy ngay, bốn sự kiện sau chỉ bật cờ chờ bù');
+        fa.elapse(kGianCachNhaDoi);
+        expect(soCuaToi(a), 2, reason: 'hết cửa sổ có cờ bù → đúng một lượt bù');
+        fa.elapse(kGianCachNhaDoi * 2);
+        expect(soCuaToi(a), 2, reason: 'lượt bù không có sự kiện mới theo sau → không lượt thứ ba');
+      });
+    });
+
+    test('b: một sự kiện đơn lẻ → 1 lượt ngay, không lượt bù', () {
+      chay((fa, r, a, sk) {
+        sk.add(RealtimeEvent.nhaDoi);
+        fa.flushMicrotasks();
+        expect(soCuaToi(a), 1);
+        fa.elapse(kGianCachNhaDoi * 3);
+        expect(soCuaToi(a), 1);
+      });
+    });
+
+    test('c: sự kiện tới ở giây 29 → lượt bù chạy ở giây 30, không bị nuốt', () {
+      chay((fa, r, a, sk) {
+        sk.add(RealtimeEvent.nhaDoi);
+        fa.elapse(const Duration(seconds: 29));
+        sk.add(RealtimeEvent.nhaDoi);
+        fa.elapse(const Duration(milliseconds: 500));
+        expect(soCuaToi(a), 1, reason: 'chưa hết cửa sổ');
+        fa.elapse(const Duration(milliseconds: 600));
+        expect(soCuaToi(a), 2, reason: 'sự kiện cuối cửa sổ phải được bù ngay khi hết cửa sổ');
+      });
+    });
+
+    test('d: loiMoiNha không bị giãn — 3 sự kiện liền → 3 lần hỏi lời mời, không đụng /me', () {
+      chay((fa, r, a, sk) {
+        for (var i = 0; i < 3; i++) {
+          sk.add(RealtimeEvent.loiMoiNha);
+          fa.flushMicrotasks();
+        }
+        expect(a.goi.where((g) => g == 'dsLoiMoiToi').length, 3);
+        expect(soCuaToi(a), 0);
+      });
+    });
+
+    test('e: xoaPhien / đổi tài khoản trong cửa sổ có cờ bù → không lượt bù nào của phiên cũ', () {
+      chay((fa, r, a, sk) {
+        sk.add(RealtimeEvent.nhaDoi);
+        fa.elapse(const Duration(seconds: 1));
+        sk.add(RealtimeEvent.nhaDoi); // cờ chờ bù
+        fa.elapse(const Duration(seconds: 1));
+        expect(soCuaToi(a), 1);
+        r.xoaPhien();
+        fa.elapse(kGianCachNhaDoi * 2);
+        expect(soCuaToi(a), 1, reason: 'xoaPhien: lượt bù của phiên cũ không được chạy');
+
+        r.datTaiKhoan(18);
+        fa.flushMicrotasks();
+        sk.add(RealtimeEvent.nhaDoi); // cửa sổ mới
+        fa.elapse(const Duration(seconds: 1));
+        sk.add(RealtimeEvent.nhaDoi);
+        fa.elapse(const Duration(seconds: 1));
+        expect(soCuaToi(a), 2);
+        r.datTaiKhoan(25); // phiên khác
+        fa.flushMicrotasks();
+        a.goi.clear();
+        fa.elapse(kGianCachNhaDoi * 2);
+        expect(soCuaToi(a), 0, reason: 'đổi tài khoản: cờ bù và hẹn giờ của phiên 18 phải bị xoá');
+      });
+    });
+
+    test('f: dispose() trong cửa sổ có cờ bù → không lượt bù, không ném', () {
+      fakeAsync((fa) {
+        final a = HouseholdApiGia();
+        final r = NhaRepositoryImpl(api: a, kho: InMemoryNhaStore(), clock: () => now);
+        final sk = StreamController<RealtimeEvent>();
+        r.datTaiKhoan(18);
+        fa.flushMicrotasks();
+        r.noiSuKien(sk.stream);
+        sk.add(RealtimeEvent.nhaDoi);
+        fa.elapse(const Duration(seconds: 1));
+        sk.add(RealtimeEvent.nhaDoi);
+        fa.elapse(const Duration(seconds: 1));
+        r.dispose();
+        fa.flushMicrotasks();
+        final truoc = a.goi.length;
+        fa.elapse(kGianCachNhaDoi * 2);
+        expect(a.goi.length, truoc, reason: 'dispose phải huỷ hẹn giờ — lượt bù sau khi đóng là Bad state');
+        sk.close();
+        fa.flushMicrotasks();
+      });
     });
   });
 }

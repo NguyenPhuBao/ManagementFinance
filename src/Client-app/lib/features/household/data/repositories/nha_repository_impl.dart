@@ -14,6 +14,12 @@ import '../models/nha_cua_toi.dart';
 import '../nha_store.dart';
 import 'nha_repository.dart';
 
+/// Cửa sổ giãn cách cho `household.changed`. Từ PR #170 backend phát sự kiện này tới MỌI thành viên sau MỖI `/sync/push` có hàng
+/// mang `idhousehold` (kể cả thao tác bị từ chối) — làm mới mỗi sự kiện là hai GET (`/me`, `/invitations`) theo nhịp đẩy của cả
+/// nhà. Luật: sự kiện đầu cửa sổ chạy ngay, các sự kiện trong cửa sổ gộp thành MỘT lượt bù lúc hết cửa sổ (đơn 58 xin backend
+/// bỏ / lọc phía phát). Chỉ áp cho `nhaDoi`; `loiMoiNha` hiếm và nhắm đúng người nên không giãn.
+const Duration kGianCachNhaDoi = Duration(seconds: 30);
+
 class NhaRepositoryImpl implements NhaRepository {
   NhaRepositoryImpl({required HouseholdApi api, required NhaStore kho, DateTime Function()? clock})
       : _api = api,
@@ -104,6 +110,7 @@ class NhaRepositoryImpl implements NhaRepository {
     _kyPhien++;
     _dangLamMoi = null;
     _dangLamMoiLoiMoi = null;
+    _huyGianCachNhaDoi();
     if (_loiMoiToi.isNotEmpty) _phatLoiMoi(const []);
   }
 
@@ -355,9 +362,34 @@ class NhaRepositoryImpl implements NhaRepository {
   @override
   void noiSuKien(Stream<RealtimeEvent> suKien) {
     _subs.add(suKien.listen((e) {
-      if (e == RealtimeEvent.nhaDoi) unawaited(lamMoi());
+      if (e == RealtimeEvent.nhaDoi) _khiNhaDoi();
       if (e == RealtimeEvent.loiMoiNha) unawaited(lamMoiLoiMoi());
     }));
+  }
+
+  Timer? _henNhaDoi; // != null ⇔ cửa sổ đang mở
+  bool _choBuNhaDoi = false;
+
+  void _khiNhaDoi() {
+    if (_henNhaDoi != null) {
+      _choBuNhaDoi = true;
+      return;
+    }
+    unawaited(lamMoi());
+    _henNhaDoi = Timer(kGianCachNhaDoi, _hetCuaSoNhaDoi);
+  }
+
+  void _hetCuaSoNhaDoi() {
+    _henNhaDoi = null;
+    if (!_choBuNhaDoi) return;
+    _choBuNhaDoi = false;
+    _khiNhaDoi();
+  }
+
+  void _huyGianCachNhaDoi() {
+    _henNhaDoi?.cancel();
+    _henNhaDoi = null;
+    _choBuNhaDoi = false;
   }
 
   @override
@@ -369,6 +401,7 @@ class NhaRepositoryImpl implements NhaRepository {
 
   @override
   Future<void> dispose() async {
+    _huyGianCachNhaDoi();
     for (final s in _subs) {
       await s.cancel();
     }
