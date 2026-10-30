@@ -336,9 +336,9 @@ secure storage (`GoiRepository`); tên máy không lưu (mục 8).
 
 ## 7. Thời gian thực
 
-Backend phát **`sync.completed`** (`sync.service.js:245` → event bus → phòng `account_<id>`) sau mỗi `/sync/push`. Client nghe tên sự kiện
+Backend phát **`sync.completed`** (`sync.service.js:346` → event bus → phòng `account_<id>`) sau mỗi `/sync/push`. Client nghe tên sự kiện
 (`RealtimeEvent.dongBoXong`) ⇒ `syncNow()`, **im lặng** (máy vừa đẩy cũng nhận lại sự kiện của chính mình). Payload là hộp đen — client chỉ đọc
-tên sự kiện (cam kết của kênh thời gian thực; ngoại lệ `account.force_logout`). Gia đình (2026-10-28): `household.changed` → `RealtimeEvent.nhaDoi` (làm mới trạng thái nhà; backend phát vào phòng `household_<id>` không ai `join` — đơn 56.8, chưa tới máy nào), `household.invited` → `RealtimeEvent.loiMoiNha` (tới phòng tài khoản). ⚠️ Hiện CHƯA có kênh thời gian thực nào đưa dữ liệu nhà sang máy thành viên khác (`sync.completed` chỉ tới phòng của người đẩy — 56.8 vế hai); dữ liệu nhà về ở chu kỳ đồng bộ kế / khi app trở lại.
+tên sự kiện (cam kết của kênh thời gian thực; ngoại lệ `account.force_logout`). Gia đình (2026-10-28): `household.changed` → `RealtimeEvent.nhaDoi` (làm mới trạng thái nhà; backend phát vào phòng `household_<id>` không ai `join` — đơn 56.8, chưa tới máy nào), `household.invited` → `RealtimeEvent.loiMoiNha` (tới phòng tài khoản). ⚠️ Hiện CHƯA có kênh thời gian thực nào đưa dữ liệu nhà sang máy thành viên khác (`sync.completed` chỉ tới phòng của người đẩy — 56.8 vế hai); dữ liệu nhà về ở chu kỳ đồng bộ kế (hẹn giờ 15 phút / mạng nối lại / mở lại app; không có `resumed → syncNow`).
 
 ## 8. Header thiết bị
 

@@ -655,7 +655,7 @@ mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ S
   bước ấy, và bước v32 chỉ `addColumn` khi `PRAGMA table_info` chưa có cột. `purgeDataForOtherAccounts(…, nhaGiu)` + `xoaHangCuaNha` (hai đường dọn).
 - **Đồng bộ:** năm payload gửi `idhousehold` (hàng riêng `null`); kéo về đọc, `null` tường minh = *chưa biết* (`Value.absent()`); bảy mã đẩy vĩnh viễn
   (đã có từ 2026-10-26/27); `SyncEngine.keoLaiToanBo` (thế hệ yêu cầu: lượt đang chạy không ghi mốc, lượt hỏng giữ yêu cầu; chỉ xoá kho không đủ vì
-  mốc nằm RAM); `RealtimeEvent` **tám** giá trị (+ `nhaDoi` ← `household.changed`, `loiMoiNha` ← `household.invited`; `nhaDoi` chưa tới máy nào — 56.8; hiện CHƯA có kênh thời gian thực nào đưa dữ liệu nhà sang máy thành viên khác, dữ liệu về ở chu kỳ đồng bộ kế / khi app trở lại).
+  mốc nằm RAM); `RealtimeEvent` **tám** giá trị (+ `nhaDoi` ← `household.changed`, `loiMoiNha` ← `household.invited`; `nhaDoi` chưa tới máy nào — 56.8; hiện CHƯA có kênh thời gian thực nào đưa dữ liệu nhà sang máy thành viên khác, dữ liệu về ở chu kỳ đồng bộ kế: hẹn giờ 15 phút / mạng nối lại / mở lại app).
 - **Mảng `household`** (đếm 2026-10-28, 11 tệp): `domain/` 4 (`vai_nha` · `quyen_nha` · `ma_moi` · `cau_loi_nha`, `LoaiLoiNha` 21 giá trị) ·
   `data/` 6 (`household_api` 16 endpoint kể cả mời email · `nha_cua_toi` + `loi_moi` · `nha_store` · `nha_repository` + `_impl`) · `application/` 1
   (`dieu_phoi_doi_nha`: rời nhà ⇒ `xoaHangCuaNha`, vào nhà ⇒ `keoLaiToanBo`; dọn hỏng vẫn kéo lại toàn bộ của cùng sự kiện rồi ném lại lỗi). Bộ đọc
@@ -676,7 +676,7 @@ mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ S
 | Tạo mã → tham gia trên máy kia → `/me` của cả hai đúng vai; ví / giao dịch nhà kéo về mang `idhousehold`, không hiện ở Trang chủ / Sổ / Phân tích | Member / Viewer / người ngoài bị `/sync/push` từ chối; `HOUSEHOLD_READ_ONLY` khi nhà `ReadOnly` | 56.1 (`findMember` không tồn tại → `catch {}` → ai cũng ghi được), 56.2, 56.7 |
 | Mời email tới tài khoản đã có → `household.invited` tới máy kia → `/invitations` có lời mời → chấp nhận / từ chối | Thư tới hộp thư; xem trước mã email (`GET /invites/:code` luôn 403); người **đăng ký sau** khi được mời thấy lời mời | 57.3 (`mail.service` không tồn tại), 57.2 (`req.user` không có `email`) |
 | Đổi vai / mời ra / chuyển chủ / rời / giải tán trên máy A → máy A đúng (`lamMoi` sau thao tác); máy B đúng **sau** `resumed` 5 phút hoặc đăng nhập lại | Máy B đổi NGAY qua `household.changed` (`RealtimeEvent.nhaDoi`) | 56.8 — phát vào phòng `household_<id>` không ai `join` |
-| — | Máy B nhận ví / giao dịch của nhà NGAY (thời gian thực) | 56.8 vế hai — `sync.completed` hôm nay chỉ tới phòng của người đẩy; dữ liệu nhà về ở chu kỳ đồng bộ kế / khi app trở lại |
+| — | Máy B nhận ví / giao dịch của nhà NGAY (thời gian thực) | 56.8 vế hai — `sync.completed` hôm nay chỉ tới phòng của người đẩy; dữ liệu nhà về ở chu kỳ đồng bộ kế (hẹn giờ 15 phút / mạng nối lại / mở lại app; mã không có `resumed → syncNow`) |
 | Rời / bị mời ra / giải tán → máy mình chạy `xoaHangCuaNha` (dữ liệu nhà biến mất, dữ liệu riêng còn) | Máy khác nhận tombstone của hàng nhà khi giải tán | 57.6 — giải tán không xoá mềm 5 bảng (client dọn theo `/me`, không chờ cờ xoá) |
 | Chủ nhà sửa khoản của thành viên (app gửi `idaccount` người ghi) | — được chấp nhận | 57.4 — chốt *Ownership mismatch* chạy trước ma trận vai; lát 1 chưa có màn ghi vào nhà nên chưa gặp |
 
