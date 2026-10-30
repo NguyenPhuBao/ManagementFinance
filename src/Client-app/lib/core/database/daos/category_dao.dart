@@ -147,7 +147,8 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   ///
   /// Gồm danh mục do chính tài khoản tạo **và** danh mục mặc định (dùng chung,
   /// `idaccount = 0`): người dùng nhìn thấy cả hai trong cùng một danh sách nên
-  /// hai mục trùng tên là không phân biệt được. Hàng đã xoá mềm không chiếm chỗ.
+  /// hai mục trùng tên là không phân biệt được. Hàng đã xoá mềm không chiếm chỗ; danh mục của NHÀ (`idhousehold` khác
+  /// `NULL`) cũng không — quy tắc trùng tên cá nhân không đếm chúng.
   ///
   /// Quy tắc: tên là duy nhất trong phạm vi này, **bất kể `classify`** và
   /// **bất kể nằm trong nhóm nào**; nhóm và danh mục con dùng chung không gian

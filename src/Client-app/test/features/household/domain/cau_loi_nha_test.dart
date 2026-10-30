@@ -96,6 +96,16 @@ void main() {
           reason: '$ma thiếu ở _permanentCodes — hàng bị gửi lại mọi chu kỳ, im lặng (core không import mảng nên hai '
               'danh sách khớp tay)');
     }
+    // Chiều ngược (Ruling Q1): mã `HOUSEHOLD_*` nào vĩnh viễn ở core mà không ở đây (trừ trần ví chung) thì mảng gia đình
+    // không bao giờ làm mới khi gặp nó.
+    final dau = nguon.indexOf('_permanentCodes = {');
+    expect(dau, isNonNegative);
+    final khoi = nguon.substring(dau, nguon.indexOf('};', dau));
+    final maCore =
+        RegExp(r"^\s*'(HOUSEHOLD_[A-Z_]+)',", multiLine: true).allMatches(khoi).map((m) => m.group(1)!).toSet();
+    expect(maCore, hasLength(6), reason: 'tiền đề: đọc được sáu mã HOUSEHOLD_* ở _permanentCodes (không đọc rỗng)');
+    expect(maCore.difference({'HOUSEHOLD_WALLET_LIMIT'}), kMaDayLoiNha,
+        reason: 'mã gia đình vĩnh viễn ở core mà thiếu ở kMaDayLoiNha: trạng thái nhà trên máy cũ mà không ai làm mới');
     expect(nguon.contains('kMaDayLoiNha'), isTrue,
         reason:
             'chú thích ở _permanentCodes phải trỏ ngược về tập này — ai sửa một bên mới biết bên kia (Task 8 bước 3b)');

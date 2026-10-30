@@ -69,6 +69,17 @@ void main() {
       expect(doi.map((d) => (d.tu, d.den)), [(12, null)]);
     });
 
+    test('/me trả thân KHÔNG phải trạng thái nhà ({}) khi kho có nhà 12 → giữ nhà, không phát DoiNha', () async {
+      kho.values[18] = trangThai();
+      api.cuaToiJson = const <String, Object?>{};
+      await repo.datTaiKhoan(18);
+      await repo.lamMoi();
+      expect(repo.hienTai.nha!.id, 12, reason: 'thân lạ đọc thành "không nhà" là xoá dữ liệu nhà (M2)');
+      expect((await kho.doc(18))!.nha!.id, 12);
+      await _nghi();
+      expect(doi, isEmpty);
+    });
+
     test('cùng nhà → không phát', () async {
       kho.values[18] = trangThai();
       api.cuaToiJson = nhaJson();
@@ -470,6 +481,52 @@ void main() {
       expect(r.hienTai.nha!.id, 77);
     });
 
+    const loiMoiA = [
+      {'code': 'ABCD2345', 'householdName': 'Nhà A', 'inviterName': 'An', 'role': 'Member'},
+    ];
+    const loiMoiB = [
+      {'code': 'EFGH2345', 'householdName': 'Nhà B', 'inviterName': 'Bình', 'role': 'Member'},
+      {'code': 'JKLM2345', 'householdName': 'Nhà C', 'inviterName': 'Chi', 'role': 'Viewer'},
+    ];
+
+    test('E: đổi phiên 18 → 25 giữa /invitations của 18 → 25 hỏi RIÊNG, danh sách lời mời là của 25', () async {
+      final api2 = ApiTreoLoiMoi();
+      final r2 = NhaRepositoryImpl(api: api2, kho: InMemoryNhaStore(), clock: () => now);
+      addTearDown(r2.dispose);
+      api2.dsLoiMoiToiJson = loiMoiA;
+      await r2.datTaiKhoan(18);
+      api2.treoLoiMoi = Completer<void>();
+      final l1 = r2.lamMoiLoiMoi();
+      await _nghi();
+      api2.dsLoiMoiToiJson = loiMoiB;
+      await r2.datTaiKhoan(25);
+      final l2 = r2.lamMoiLoiMoi();
+      api2.treoLoiMoi!.complete();
+      await Future.wait([l1, l2]);
+      await _nghi();
+      expect(api2.goi.where((g) => g == 'dsLoiMoiToi'), hasLength(2),
+          reason: 'lượt của 18 không được nhận làm lượt của 25 (gỡ `_dangLamMoiLoiMoi` khi đổi phiên)');
+      expect(r2.loiMoiToi.map((m) => m.ma), ['EFGH2345', 'JKLM2345']);
+    });
+
+    test('G: đăng xuất rồi đăng nhập lại CÙNG tài khoản giữa /invitations → kết quả của kỳ phiên cũ bị bỏ', () async {
+      final api2 = ApiTreoLoiMoi();
+      final r2 = NhaRepositoryImpl(api: api2, kho: InMemoryNhaStore(), clock: () => now);
+      addTearDown(r2.dispose);
+      api2.dsLoiMoiToiJson = loiMoiA;
+      await r2.datTaiKhoan(18);
+      api2.treoLoiMoi = Completer<void>();
+      final l1 = r2.lamMoiLoiMoi();
+      await _nghi();
+      r2.xoaPhien();
+      await r2.datTaiKhoan(18);
+      api2.treoLoiMoi!.complete();
+      await l1;
+      await _nghi();
+      expect(r2.loiMoiToi, isEmpty,
+          reason: 'kết quả muộn của phiên đã đăng xuất không được hiện ở phiên mới (`_kyPhien`)');
+    });
+
     test('đổi tài khoản xoá lời mời của tài khoản cũ', () async {
       await r.datTaiKhoan(18);
       tre.dsLoiMoiToiJson = const [
@@ -517,6 +574,20 @@ class ApiTreoCuaToi extends HouseholdApiGia {
     goi.add('cuaToi');
     final anhChup = cuaToiJson;
     final t = treoCuaToi;
+    if (t != null) await t.future;
+    return anhChup;
+  }
+}
+
+/// Chỉ giữ `dsLoiMoiToi`; thân trả về là ẢNH CHỤP lúc gửi (bản đối xứng của [ApiTreoCuaToi]).
+class ApiTreoLoiMoi extends HouseholdApiGia {
+  Completer<void>? treoLoiMoi;
+
+  @override
+  Future<List<Map<String, Object?>>> dsLoiMoiToi() async {
+    goi.add('dsLoiMoiToi');
+    final anhChup = dsLoiMoiToiJson;
+    final t = treoLoiMoi;
     if (t != null) await t.future;
     return anhChup;
   }

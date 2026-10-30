@@ -25,7 +25,8 @@ bool keoVeBiMayChuTuChoi(int? status) =>
     status != null && status >= 400 && status != 401 && status != 403 && status != 429 && status != 503;
 
 /// Chỉ `SyncEngine` dựng lớp này. Nó SỞ HỮU trạng thái kéo — mốc, cờ đã kéo xong, bộ đếm — nên engine chạm trạng thái
-/// ấy qua đúng ba lối: [napMoc] (lúc `start`), [napMocNeuChuaCo] (lúc `syncMotLuot`), [datLaiPhien] (lúc `stop`).
+/// ấy qua đúng bốn lối: [napMoc] (lúc `start`), [napMocNeuChuaCo] (lúc `syncMotLuot`), [datLaiPhien] (lúc `stop`),
+/// [yeuCauKeoToanBo] (lúc `keoLaiToanBo`).
 class ApDuLieuKeoVe {
   ApDuLieuKeoVe({
     required DioClient dioClient,
@@ -425,7 +426,10 @@ class ApDuLieuKeoVe {
       if (w is! Map) continue;
       if (w['delete_at'] != null) continue;
       if (!doiSangBool(w['is_default'])) continue;
-      id = (w['idwallet'] ?? w['id']).toString();
+      // Ví của NHÀ không bao giờ là ví mặc định của tôi: `clearDefaultExcept` chỉ chạm ví riêng, nên lấy ví nhà làm
+      // `keepId` là gỡ cờ của MỌI ví riêng (server không cấm cờ mặc định trên ví nhà).
+      if (w['idhousehold'] != null) continue;
+      id =(w['idwallet'] ?? w['id']).toString();
     }
     return id;
   }

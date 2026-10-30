@@ -27,6 +27,16 @@ void main() {
     expect(lam(ViecNha.roiNha, VaiNha.chiXem, hd), isTrue);
   });
 
+  test('nhà hoạt động: Thành viên / Chỉ xem KHÔNG làm được việc quản lý nào (chỉ Chủ)', () {
+    const hd = TrangThaiNha.hoatDong;
+    for (final vai in [VaiNha.thanhVien, VaiNha.chiXem]) {
+      for (final v in [ViecNha.huyMa, ViecNha.doiVai, ViecNha.moiRa, ViecNha.chuyenChu, ViecNha.giaiTan]) {
+        expect(lam(v, vai, hd), isFalse, reason: '${vai.name} × ${v.name}');
+      }
+    }
+    expect(lam(ViecNha.taoMa, VaiNha.chiXem, hd), isFalse, reason: 'tạo mã chỉ Chủ');
+  });
+
   test('nhà chỉ xem (chủ hết Premium): không ai ghi, không tạo mã; quản lý / rời vẫn chạy', () {
     const cx = TrangThaiNha.chiXem;
     expect(lam(ViecNha.ghiDuLieu, VaiNha.chu, cx), isFalse);

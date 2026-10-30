@@ -150,6 +150,12 @@ class NhaRepositoryImpl implements NhaRepository {
       luot.daGui = true;
       final json = await _api.cuaToi();
       if (_idaccount != id) return;
+      // Cùng chốt với `_thaoTac`: thân 200 không có khoá `household` / `idhousehold` (rỗng, hình dạng lạ) đọc thành
+      // "không nhà" → `DoiNha(nhà → null)` → xoá hàng nhà. `{household: null}` có khoá nên vẫn qua.
+      if (!laThanTrangThaiNha(json)) {
+        debugPrint('[GiaDinh] lamMoi: thân /me không phải trạng thái nhà, giữ trạng thái cũ');
+        return;
+      }
       await _apDung(id, nhaCuaToiTuJson(json, nhanLuc: _now()), he: he);
     } catch (e) {
       debugPrint('[GiaDinh] lamMoi hỏng, giữ trạng thái cũ: ${e.runtimeType}');

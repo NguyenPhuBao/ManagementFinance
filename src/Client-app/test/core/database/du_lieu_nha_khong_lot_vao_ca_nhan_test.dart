@@ -16,7 +16,10 @@
 /// Giới hạn đã biết (đo 2026-10-24, đo lại 2026-10-28): không đọc SQL thô (`customSelect` / `customStatement`) — ngoài bước di
 /// trú không câu thô nào chạm năm bảng; không bắt truy vấn KHÔNG lọc tài khoản (tra theo id, theo cờ `isDefault`) — bốn hàm
 /// không lọc gì đã gỡ cùng đợt; không bắt bộ lọc Dart (`_tachKhuon` của `category_dao.dart` lọc lại trong Dart — ca hành vi
-/// `du_lieu_nha_khong_lot_test` canh).
+/// `du_lieu_nha_khong_lot_test` canh); không thấy VỊ TRÍ của vế ràng nhà trong biểu thức — chỉ đòi nó CÓ MẶT trong câu, nên
+/// `(a & b) | t.idhousehold.isNull()` (vế ràng đứng cạnh `|`, hàng của nhà lọt qua) vẫn xanh; không thấy bộ lọc Dart trên
+/// JSON kéo về (vd. `_idViMacDinhTrongLo` ở `ap_du_lieu_keo_ve.dart` từng chọn ví mặc định của nhà — không phải câu Drift,
+/// ca hành vi ở `sync_pull_idhousehold_test` canh).
 library;
 
 import 'dart:io';

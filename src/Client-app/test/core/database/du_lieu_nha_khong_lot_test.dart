@@ -147,7 +147,9 @@ void main() {
     });
 
     test('quy tắc trùng tên cá nhân KHÔNG đếm danh mục của nhà', () async {
-      expect((await db.categoryDao.getNamesInUse(_toi)).map((c) => c.id), isNot(contains('dm-nha')));
+      final ids = (await db.categoryDao.getNamesInUse(_toi)).map((c) => c.id);
+      expect(ids, contains('dm-rieng'), reason: 'tiền đề: danh mục riêng vẫn chiếm chỗ tên — không chỉ vắng mặt');
+      expect(ids, isNot(contains('dm-nha')));
     });
 
     test('⚠️ bộ gieo bản sao mặc định không coi danh mục của nhà là "đã có bản sao" (spec 3.3)', () async {

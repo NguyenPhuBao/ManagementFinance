@@ -29,8 +29,8 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   /// Dùng `MAX` chứ không `getAll().first`: hàm kia nạp cả bảng về Dart chỉ để
   /// đọc một mốc, và trang này chạy ở mỗi lượt `resync()`.
   ///
-  /// ⚠️ Đếm **mọi** hàng, kể cả giao dịch do bộ tự trả hoá đơn và bộ trích mục
-  /// tiêu sinh ra. Nghĩa là có hôm app tự tạo giao dịch và lời nhắc bị bỏ qua
+  /// ⚠️ Đếm mọi hàng **riêng** (bỏ khoản của nhà — `idhousehold IS NULL`), kể cả giao dịch do bộ tự trả hoá đơn và bộ
+  /// trích mục tiêu sinh ra. Nghĩa là có hôm app tự tạo giao dịch và lời nhắc bị bỏ qua
   /// oan. Chấp nhận có chủ ý: lọc theo `billId`/`goalId` sai theo chiều tệ hơn
   /// vì trả hoá đơn **bằng tay** cũng đặt `billId`, và đây là một lời nhắc chứ
   /// không phải một phép kiểm toán.

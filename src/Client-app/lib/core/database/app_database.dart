@@ -302,9 +302,9 @@ class AppDatabase extends _$AppDatabase {
           // ràng buộc `chk_budget_time_recurrence` là `IS NULL OR IN (...)` —
           // chỉ client là không lưu nổi.
           //
-          // `TableMigration` không có `newColumns`: cột đã tồn tại, chỉ đổi
-          // ràng buộc NOT NULL. Drift dựng bảng theo lược đồ mới rồi chép dữ
-          // liệu sang, nên giá trị cũ ('Week', 'Month'…) giữ nguyên.
+          // Về `time_recurrence`, `TableMigration` không cần `newColumns`: cột đã
+          // tồn tại, chỉ đổi ràng buộc NOT NULL. Drift dựng bảng theo lược đồ mới
+          // rồi chép dữ liệu sang, nên giá trị cũ ('Week', 'Month'…) giữ nguyên.
           // Riêng `idhousehold` (v32) là cột mới với bảng cũ: phải khai `newColumns` (xem bước v11).
           await m.alterTable(TableMigration(budgets, newColumns: [budgets.idhousehold]));
         }
@@ -593,7 +593,7 @@ class AppDatabase extends _$AppDatabase {
   /// dữ liệu chết — mọi truy vấn `getPending`/`getSyncableCategories` đều lọc
   /// theo tài khoản hiện tại nên chúng không bao giờ được đẩy lên nữa, nhưng
   /// chúng vẫn có thể bị đọc nhầm (ví dụ một truy vấn không lọc tài khoản — bốn
-  /// hàm `*NonDeleted` từng như thế, gỡ 2026-10-24) và làm sống lại một
+  /// hàm `*NonDeleted` từng như thế, gỡ 2026-10-28 ở `d4f0b284`) và làm sống lại một
   /// `idaccount` đã chết.
   ///
   /// GIỮ NGUYÊN danh mục mặc định (`idaccount = 0`) — đó là dữ liệu dùng chung,

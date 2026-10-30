@@ -317,7 +317,8 @@ class SyncEngine {
   /// không biết khái niệm nhà: người gọi là bộ điều phối của mảng gia đình, nối ở DI.
   ///
   /// Yêu cầu giữ tới khi MỘT lượt kéo bắt đầu SAU nó thành công: lượt đang chạy lúc gọi không ghi mốc, lượt hỏng không xoá
-  /// yêu cầu, mốc đã lưu bị xoá ngay. Chu kỳ đang chạy thì `syncNow` ghi nợ một lượt bù — lượt bù ấy là lượt kéo toàn bộ.
+  /// yêu cầu, mốc đã lưu bị xoá ngay. `stop()` BỎ yêu cầu còn trong RAM (phiên sau có thể là tài khoản khác) — chỉ kho mốc
+  /// đã xoá mang yêu cầu qua `stop()` / tiến trình chết (lần `start` sau đọc mốc `null` → kéo toàn bộ). Chu kỳ đang chạy thì `syncNow` ghi nợ một lượt bù — lượt bù ấy là lượt kéo toàn bộ.
   Future<void> keoLaiToanBo(int idaccount) async {
     await _keoVe.yeuCauKeoToanBo(idaccount);
     if (_currentIdaccount == idaccount) await syncNow();

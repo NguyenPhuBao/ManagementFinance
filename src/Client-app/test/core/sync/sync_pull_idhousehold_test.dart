@@ -183,7 +183,7 @@ void main() {
         {
           'idwallet': viId,
           'idaccount': accountId,
-          'name': 'Quỹ chung',
+          'name': 'Quỹ chung (đổi tên)',
           'type': 'Cash',
           'idhousehold': null,
           'update_at': iso
@@ -191,7 +191,38 @@ void main() {
       ],
     };
     await runSync();
-    expect((await db.walletDao.getById(viId))!.idhousehold, 12);
+    final w = (await db.walletDao.getById(viId))!;
+    expect(w.name, 'Quỹ chung (đổi tên)', reason: 'tiền đề: hàng đã được ghi đè bởi lượt kéo');
+    expect(w.idhousehold, 12);
+  });
+
+  test('ví NHÀ mang is_default trong lô kéo về: ví riêng mặc định còn cờ và KHÔNG thành pending', () async {
+    await db.walletDao.insert(WalletsCompanion(
+      id: const Value('99999999-9999-4999-8999-999999999999'),
+      idaccount: const Value(accountId),
+      name: const Value('Ví riêng'),
+      isDefault: const Value(true),
+      syncStatus: const Value('synced'),
+      updatedAt: Value(DateTime.utc(2026, 10, 1)),
+    ));
+    client.adapter.pullData = {
+      'wallets': [
+        {
+          'idwallet': viId,
+          'idaccount': 18,
+          'name': 'Quỹ chung',
+          'type': 'Cash',
+          'is_default': true,
+          'idhousehold': 12,
+          'update_at': iso
+        },
+      ],
+    };
+    await runSync();
+    final rieng = (await db.walletDao.getById('99999999-9999-4999-8999-999999999999'))!;
+    expect(rieng.isDefault, isTrue, reason: 'ví nhà không được làm keepId: gỡ cờ mặc định của ví riêng (I1)');
+    expect(rieng.syncStatus, 'synced', reason: 'không có gì để đẩy: ví riêng không bị chạm');
+    expect((await db.walletDao.getById(viId))!.idhousehold, 12, reason: 'tiền đề: ví nhà đã về máy');
   });
 
   test('server KHÔNG trả khoá idhousehold → giá trị cục bộ còn nguyên', () async {
