@@ -707,7 +707,15 @@ mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ S
 | Rời / bị mời ra / giải tán → máy mình chạy `xoaHangCuaNha` (dữ liệu nhà biến mất, dữ liệu riêng còn) | Máy khác nhận tombstone của hàng nhà khi giải tán | 57.6 — giải tán không xoá mềm 5 bảng (client dọn theo `/me`, không chờ cờ xoá) |
 | Chủ nhà sửa khoản của thành viên (app gửi `idaccount` người ghi) | — được chấp nhận | 57.4 — chốt *Ownership mismatch* chạy trước ma trận vai; lát 1 chưa có màn ghi vào nhà nên chưa gặp |
 
-> Bảng này là **kế hoạch đo**; kết quả từng dòng trên máy ghi ở tệp bàn giao cuối phiên 23, không ở đây.
+> Bảng này là **kế hoạch đo**; kết quả từng dòng trên máy ghi ở tệp bàn giao, không ở đây.
+> ✅ **Đo 2026-10-30 phiên 24** (máy ảo `FlowMoney_16G` tài khoản 10 + API cho tài khoản Basic thử 30; backend `e3248955` trên `PersonFinance`,
+> CHƯA áp 41–43; APK debug `5bcb2392…`) — bàn giao phiên 24 mục 4c: **đạt** tạo nhà → `/me` phẳng → kéo từ 1970 → 13 danh mục nhà, danh
+> mục cá nhân giữ 30 (tạo nhà không phát sự kiện — máy biết khi mở lại app) · vào nhà bằng mã → `household.changed` tới `account_10` → `/me` ngay ·
+> ví + khoản chi của thành viên về máy < 1 s (56.8), mang `idhousehold`, **Trang chủ không đổi** (tổng −3.518.000, chi 310.000) · Viewer đẩy →
+> `HOUSEHOLD_READ_ONLY` (56.1) · Basic tạo nhà → 403 `FEATURE_DISABLED` (56.4, dù chưa áp 41) · giãn cách `nhaDoi` trên máy (sự kiện 16:37:30 →
+> `/me` ngay, 16:37:32 gom, bù 16:38:00) · giải tán → **không sự kiện nào** (58.3) → mở lại app → dọn sạch hàng nhà, dữ liệu riêng y nguyên.
+> Thấy thêm: lượt đẩy BỊ TỪ CHỐI vẫn phát `household.changed` (58.4); ví chung thành `pending` sau tính lại số dư (G113 nợ 9). Chưa đo: hai máy
+> thật (Realme), mời qua email (57.2 / 57.3).
 > 🔎 **2026-10-30:** các ô đánh dấu 🔎 là kết quả đọc mã sau gộp `e3248955` (PR #170), **chưa** chạy trên máy thật; trên `PersonFinance` chưa áp migration 41–43 (chưa có phép đích danh; chưa đo). Cột *không đo được* còn nguyên cho 57.x và các vế một phần.
 
 ### 🏠 Gia đình — đối chiếu hợp đồng phần 1 với mã (2026-10-28 phiên 21)

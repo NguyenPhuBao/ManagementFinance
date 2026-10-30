@@ -418,6 +418,8 @@ SS:134-148 cùng điều kiện `operation === 'create'` (cùng gốc 58.1); ví
 HS:462 đặt `Left_at` cho mọi thành viên (HR:276-282) **rồi mới** phát (HS:464-466) không `extraRecipients` ⇒ danh sách người nhận rỗng. Cùng 57.6 (không tombstone) ⇒ máy thành viên
 giữ dữ liệu nhà đã giải tán tới lượt `/me` kế (resume 5 phút). **Xin:** lấy `findActiveMembersByHousehold` **trước** `dissolveHousehold`, truyền vào `extraRecipients`.
 **Kiểm lại:** nhà H có A (Owner), B, C, mỗi người một socket nối `account_<id>`; A gọi `POST /api/households/dissolve` (giải tán) ⇒ B và C mỗi người nhận đúng một `household.changed` có `eventType: 'HOUSEHOLD_DISSOLVED'` ở phòng tài khoản; A cũng nhận.
+🔎 *Client đo 2026-10-30 (backend `e3248955` trên CSDL dev):* nhà 1 có tài khoản 10 (Owner) + 30 (Member); 10 gọi `POST /dissolve` lúc 16:39:04 ⇒ log backend
+**không có dòng `Emitted household.changed` nào**; máy của 10 chỉ biết nhà đã giải tán khi mở lại app.
 
 #### 58.4 (VỪA) — `household.changed` sau `/sync/push` phát theo `payload.idhousehold` chưa kiểm
 
@@ -427,6 +429,8 @@ mang `eventType: 'SYNC_COMPLETED'` — thừa (`sync.completed` đã đủ cho d
 **Xin:** bỏ `household.changed` sau `/sync/push` (chỉ giữ cho đổi thành viên / trạng thái); chỉ phát cho nhà của op **đã ghi**, lấy từ `existing.idhousehold` / hàng vừa ghi.
 *Phía client:* đã giãn cách 30 s giữa hai lượt làm mới do `nhaDoi` (`kGianCachNhaDoi`, commit `1227d8a2`, G113 nợ 12) — giảm khuếch đại chứ không thay việc sửa ở server.
 **Kiểm lại:** D (ngoài nhà) đẩy một giao dịch `idhousehold = H` ⇒ op trả `HOUSEHOLD_NOT_MEMBER` và A / B / C **không** nhận `household.changed` lẫn `sync.completed`; B đẩy giao dịch hợp lệ vào H ⇒ A, C nhận `sync.completed` ở `account_<id>` và **không** nhận `household.changed` (eventType `SYNC_COMPLETED`).
+🔎 *Client đo 2026-10-30 (backend `e3248955` trên CSDL dev):* tài khoản 30 (Viewer của nhà 1) đẩy một giao dịch `idhousehold = 1` lúc 16:36:01 ⇒ op trả
+`HOUSEHOLD_READ_ONLY` (đúng — 56.1) **nhưng** log ghi `Emitted household.changed to room account_10` lúc 16:36:02 và máy của tài khoản 10 nhận nó.
 
 #### 58.5 (CAO) — Khoá tự động của AIOps không bao giờ tự mở khi hết hạn (đơn 43)
 

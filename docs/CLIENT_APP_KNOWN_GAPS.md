@@ -1755,6 +1755,8 @@ là **chấp nhận có điều kiện**, không phải lỗi đang chạy.
    bị đẩy lại sau mỗi lượt kéo chạm nó, `updatedAt = now` thắng LWW trước sửa thật của người khác, và thành vòng `HOUSEHOLD_ROLE_FORBIDDEN` khi 56.2 lên mà
    người tạo ví không còn là Chủ. Lát 2 phải cho số dư ví nhà là **cache cục bộ** (không `pending`) hoặc chỉ Chủ đẩy.
     🔎 2026-10-30: 56.2 đã chạy sau gộp `e3248955` (Member không đụng ví chung, `sync.service.js:125-131`) — vòng `HOUSEHOLD_ROLE_FORBIDDEN` nay xảy ra thật ngay khi có ví chung do người không còn là Chủ tạo; lát 1 chưa có đường tạo ví chung nên chưa gặp.
+    🔎 Thấy trên máy ảo 2026-10-30 (nghiệm thu phiên 24): ví chung do tài khoản 10 (Chủ, người tạo) đẩy qua API kéo về thành `pending`, số dư −50.000
+    sau khoản chi của thành viên; ~76 s sau máy đẩy lại ví (server nhận vì là Chủ) — đúng hành vi mô tả ở trên.
 10. **Chạm hàng nhà khi vắng mặt người dùng (M2 đã sửa; còn lại):** trước khi gộp `main` (`e3248955`, có thể đã đóng 57.1) phải đo hình dạng `/me` mới với
     `nhaCuaToiTuJson` + chốt `laThanTrangThaiNha` (thân không có khoá `household` / `idhousehold` nay KHÔNG được áp — giữ trạng thái cũ).
     ✅ **Đã đo 2026-10-30** (gộp `e3248955`): 57.1 **chưa** làm — `/me` vẫn phẳng, không nhà `{household: null}` (`data` không bao giờ `null`), `POST /` hàng thô + `myRole`; `nhaCuaToiTuJson` + `laThanTrangThaiNha`
