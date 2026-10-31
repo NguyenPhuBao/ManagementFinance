@@ -206,23 +206,6 @@ const aiopsController = {
       const target = username || idaccount;
       const count = await defaultAIOpsQuarantine.unblockAccount(target, { unblockedBy: adminUser });
 
-      // Tác động thực tế CSDL (Tầng 2 System Impact): Kích hoạt lại tài khoản trong database
-      try {
-        const { prisma } = require('../../config/db');
-        const where = {};
-        if (username) where.username = String(username).trim();
-        if (idaccount) where.idaccount = Number(idaccount);
-        await prisma.account.updateMany({
-          where,
-          data: {
-            status: 'Active',
-            reason_inactive: null,
-          },
-        });
-      } catch (dbErr) {
-        logger.warn('[AIOpsController] Cập nhật DB khi mở khóa tài khoản gặp cảnh báo', { error: dbErr.message });
-      }
-
       req.auditActionName = `Mở khóa tài khoản [${target}] (${count} liên kết)`;
       return ResponseHandler.success(res, { count, target }, 'Đã mở khóa tài khoản thành công cho tất cả các bản ghi');
     } catch (error) {

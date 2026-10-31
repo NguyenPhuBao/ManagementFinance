@@ -37,12 +37,12 @@ function maskEmail(email) {
  * @param {string|null} phone 
  * @returns {string|null}
  */
-function maskPhone(phone) {
+function maskPhone(phone, context = null) {
   if (!phone || typeof phone !== 'string') return phone;
   // Tự động giải mã nếu là ciphertext
   let plain;
   try {
-    plain = decrypt(phone).trim();
+    plain = decrypt(phone, context).trim();
   } catch (err) {
     // Không để lộ ciphertext hỏng ra giao diện và không crash API
     return '***-***-****';
@@ -73,11 +73,11 @@ function maskPhone(phone) {
  * @param {string|null} accountNumber 
  * @returns {string|null}
  */
-function maskAccountNumber(accountNumber) {
+function maskAccountNumber(accountNumber, context = null) {
   if (!accountNumber || typeof accountNumber !== 'string') return accountNumber;
   let plain;
   try {
-    plain = decrypt(accountNumber).trim();
+    plain = decrypt(accountNumber, context).trim();
   } catch (err) {
     return '**** **** **** ****';
   }
@@ -113,11 +113,11 @@ function maskFullname(fullname) {
  * @param {string|null} address 
  * @returns {string|null}
  */
-function maskAddress(address) {
+function maskAddress(address, context = null) {
   if (!address || typeof address !== 'string') return address;
   let plain;
   try {
-    plain = decrypt(address).trim();
+    plain = decrypt(address, context).trim();
   } catch (err) {
     return '***';
   }

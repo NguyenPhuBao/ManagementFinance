@@ -62,4 +62,25 @@ const authLimiter = isRateLimitDisabled
       },
     });
 
-module.exports = { generalLimiter, authLimiter };
+// Limiter dành riêng cho Household Invite (Preview / Join by code) chống brute-force mã 8 ký tự (Task 57.8 #4)
+const householdInviteLimiter = isRateLimitDisabled
+  ? (req, res, next) => next()
+  : rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 phút
+      max: config.env === 'development' ? 1000 : 30, // 30 requests / 15 phút
+      standardHeaders: true,
+      skip: (req) => {
+        if (req.method === 'OPTIONS') return true;
+        if (req.isAdmin === true) return true;
+        return false;
+      },
+      message: {
+        success: false,
+        statusCode: 429,
+        code: 'HOUSEHOLD_INVITE_RATE_LIMIT',
+        message: 'Bạn đã thử mã mời quá nhiều lần. Vui lòng thử lại sau 15 phút.',
+        timestamp: new Date().toISOString(),
+      },
+    });
+
+module.exports = { generalLimiter, authLimiter, householdInviteLimiter };

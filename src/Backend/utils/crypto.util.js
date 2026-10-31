@@ -4,7 +4,15 @@
  */
 
 const crypto = require('crypto');
+const path = require('path');
 const logger = require('../core/logger');
+
+// Tự động nạp .env nếu chưa được nạp (chống race-condition khi chạy test suite cô lập)
+if (!process.env.DATA_ENCRYPTION_KEY) {
+  try {
+    require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+  } catch (_) {}
+}
 
 // Khóa mã hóa 32 bytes (256-bit) lấy từ biến môi trường
 const _rawKey = process.env.DATA_ENCRYPTION_KEY;

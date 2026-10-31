@@ -18,6 +18,20 @@
 >   * `src/Client-app/lib/core/realtime/` (`realtime_event.dart`, `realtime_channel.dart`, `realtime_socket.dart`)
 >   * `src/Client-app/lib/core/api/interceptors/` (`auth_interceptor.dart`, `buoc_dang_xuat.dart`)
 
+
+> 📌 **Ghi chú đối chiếu thực tế với Client-app (Flutter) theo đo đạc 2026-10-30 (Task T1):**
+> - Server phát các sự kiện WebSocket Socket.IO và HTTP signals theo chuẩn đặc tả. Phía Client-app:
+>   1. `system.broadcast`: Tin hệ thống đi vào bảng lưu trữ cục bộ SQLite (`NhanTinHeThong`), hiển thị In-App.
+>   2. `account.countdown`: Số ngày đếm ngược lấy trực tiếp từ trường `countdown` trong API `/auth/profile`.
+>   3. `system.maintenance_changed`: Client-app theo dõi trạng thái bảo trì qua HTTP 503 `Retry-After` (không lắng nghe sự kiện này).
+>   4. `account.upgraded` / `downgraded`: Lắng nghe ngầm để refresh trạng thái gói qua `/subscription-info`, không hiện toast nếu loiNhan null.
+>   5. `sync.completed`: Kích hoạt `syncNow()` (đẩy rồi kéo) ngầm im lặng.
+>   6. `ocr.completed` & `ocr.duplicate`: Hiển thị Toast thông báo và kích hoạt sync kéo giao dịch mới.
+>   7. `payment.*`: Gộp trong enum `donThanhToanDoi`, dùng làm tín hiệu để màn hình đang mở hỏi lại server.
+>   8. `household.changed` & `household.invited`: Đã được Client-app lắng nghe qua `nhaDoi` và `loiMoiNha`.
+>   9. `x-device-name`: Header HTTP chỉ được gửi từ phiên bản Android (kênh Kotlin).
+>   10. HTTP 503 / 429 / 403: Xử lý qua `may_chu_interceptor.dart` với cơ chế retry backoff và làm mới gói cước.
+
 ---
 
 ## 📌 MỤC LỤC

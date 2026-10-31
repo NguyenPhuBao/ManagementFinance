@@ -21,32 +21,32 @@
 
 ## 0. Bảng việc — xếp theo mức
 
-| Mã | Việc | Mức | Mục |
-|---|---|---|---|
-| 58.1 | Member tạo được chuyển khoản giữa hai ví chung — chốt chỉ chạy ở `operation === 'create'`, app luôn gửi `update` | **CAO** | 1 |
-| 58.5 | Khoá tự động của AIOps không bao giờ tự mở khi hết hạn + `force_logout` ⇒ ai biết username khoá được tài khoản ấy vô thời hạn | **CAO** | 2 |
-| 57.1 | Một hình dạng *trạng thái nhà* cho mọi endpoint trả nó — theo `docs/Family/01` mục 4 (`/me` đang phẳng, tạo nhà trả hàng thô) | **CAO** | 1 |
-| 57.2 | `req.user` không có `email` → mọi đường mời **email** hỏng (xem trước 403, ai cầm mã cũng vào, người đăng ký sau không thấy lời mời) | **CAO** | 1 |
-| 57.3 | Thư mời không bao giờ gửi — `require('../../core/mail.service')` không tồn tại, lỗi bị nuốt | **CAO** | 1 |
-| 57.4 | Chủ nhà sửa khoản của thành viên bị chặn ở chốt *"Ownership mismatch"* trước ma trận vai — chặn lát 2 gia đình phía client | VỪA | 1 |
-| 58.2 | `HOUSEHOLD_WALLET_LIMIT` chết với app (cùng gốc 58.1) | VỪA | 1 |
-| 58.3 | `HOUSEHOLD_DISSOLVED` không tới ai — `Left_at` đặt trước khi phát | VỪA | 1 |
-| 58.4 | `household.changed` sau `/sync/push` phát theo `payload.idhousehold` chưa kiểm, kể cả op bị từ chối | VỪA | 1 |
-| 57.5 | `POST /api/households` nhận `maxMembers` / `maxSharedWallets` / `contributionDueDay` từ body | VỪA | 1 |
-| 57.6 | Giải tán không xoá mềm dữ liệu chung, không thu hồi mã mời | VỪA | 1 |
-| 57.7 | Mã lỗi API của nhà lệch `docs/Family/01` mục 2.5 + đơn 50 C.3 (tên, HTTP, `_DECLINED` không bao giờ phát) | VỪA | 1 |
-| 52.1 | Log giải mã hỏng chưa có bảng + khoá chính ở 15 / 17 chỗ gọi `decrypt` (gồm `/sync/pull`) | VỪA | 4 |
-| 52.3 | Chốt khoá giải mã cho CSDL dev `PersonFinance` và ghi vào tài liệu chạy backend | VỪA | 4 |
-| 52.4 | Khoá trên Render — `transaction.Note` đang chứa bản mã của hai khoá, không khoá nào giải hết | VỪA | 4 |
-| 52.5 | Dọn ghi chú `enc:` giải hỏng — 3 tài khoản Active không kéo toàn bộ được (`/sync/pull` 500) | VỪA | 4 |
-| 55.A3 | Premium không có `premium_expires_at` vẫn mang hai nghĩa — `chuConPremium` coi là Premium | VỪA | 5 |
-| 49.F(1) | Tệp `database/33` viết sai hoa thường tên cột (`"status"` / `"update_at"` → `"Status"` / `"Update_at"`) | VỪA | 7 |
-| T1 | `docs/Admin-web/Event-Notification-to-ClientApp.md` còn tả sai app (bảng 8.1) | VỪA | 8.1 |
-| T2 | `docs/Admin-web/IP-Device-ClientApp.md` còn ba chỗ (bảng 8.2) | VỪA | 8.2 |
-| T3 | `docs/Functional-Mobile/4_TRU_COT.md` còn tả app làm điều nó không làm (bảng 8.3) | VỪA | 8.3 |
-| 58.6 | Gom lỗi nhỏ do PR #170 (`chuConPremium` nuốt lỗi CSDL, thứ tự mã, migration 41 `DO UPDATE`, script test, `force_logout` khi khớp 0 hàng…) | THẤP | 1 (vế AIOps ở 2) |
-| 57.8 | Tám chỗ nhỏ của API nhà (lọc thành viên khi mời email, tên người mời, khoá hàng mời, giới hạn gọi, trạng thái lời mời, độ dài email…) | THẤP | 1 |
-| 48.1 | Ghi đúng: ai / CSDL nào / lúc nào đã dọn dữ liệu test của tài khoản 18 | THẤP | 6 |
+| Mã | Việc | Mức | Mục | Trạng thái kỹ thuật |
+|---|---|---|---|:---:|
+| 58.1 | Member tạo được chuyển khoản giữa hai ví chung — chốt chỉ chạy ở `operation === 'create'`, app luôn gửi `update` | **CAO** | 1 | ✅ **ĐÃ XONG** (`sync.service.js`) |
+| 58.5 | Khoá tự động của AIOps không bao giờ tự mở khi hết hạn + `force_logout` ⇒ ai biết username khoá được tài khoản ấy vô thời hạn | **CAO** | 2 | ✅ **ĐÃ XONG** (`aiops.quarantine.js`) |
+| 57.1 | Một hình dạng *trạng thái nhà* cho mọi endpoint trả nó — theo `docs/Family/01` mục 4 (`/me` đang phẳng, tạo nhà trả hàng thô) | **CAO** | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
+| 57.2 | `req.user` không có `email` → mọi đường mời **email** hỏng (xem trước 403, ai cầm mã cũng vào, người đăng ký sau không thấy lời mời) | **CAO** | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
+| 57.3 | Thư mời không bao giờ gửi — `require('../../core/mail.service')` không tồn tại, lỗi bị nuốt | **CAO** | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
+| 57.4 | Chủ nhà sửa khoản của thành viên bị chặn ở chốt *"Ownership mismatch"* trước ma trận vai — chặn lát 2 gia đình phía client | VỪA | 1 | ✅ **ĐÃ XONG** (`sync.service.js`) |
+| 58.2 | `HOUSEHOLD_WALLET_LIMIT` chết với app (cùng gốc 58.1) | VỪA | 1 | ✅ **ĐÃ XONG** (`sync.service.js`) |
+| 58.3 | `HOUSEHOLD_DISSOLVED` không tới ai — `Left_at` đặt trước khi phát | VỪA | 1 | ✅ **ĐÃ XONG** (`household.service.js`, `household.repository.js`) |
+| 58.4 | `household.changed` sau `/sync/push` phát theo `payload.idhousehold` chưa kiểm, kể cả op bị từ chối | VỪA | 1 | ✅ **ĐÃ XONG** (`sync.service.js`) |
+| 57.5 | `POST /api/households` nhận `maxMembers` / `maxSharedWallets` / `contributionDueDay` từ body | VỪA | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
+| 57.6 | Giải tán không xoá mềm dữ liệu chung, không thu hồi mã mời | VỪA | 1 | ✅ **ĐÃ XONG** (`household.repository.js`) |
+| 57.7 | Mã lỗi API của nhà lệch `docs/Family/01` mục 2.5 + đơn 50 C.3 (tên, HTTP, `_DECLINED` không bao giờ phát) | VỪA | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
+| 52.1 | Log giải mã hỏng chưa có bảng + khoá chính ở 15 / 17 chỗ gọi `decrypt` (gồm `/sync/pull`) | VỪA | 4 | ✅ **ĐÃ XONG** (`sync.repository.js`, `auth.repository.js`, `auth.service.js`) |
+| 52.3 | Chốt khoá giải mã cho CSDL dev `PersonFinance` và ghi vào tài liệu chạy backend | VỪA | 4 | ✅ **ĐÃ XONG** (Khóa `.env` chính thức, `crypto.util.js` auto-load) |
+| 52.4 | Khoá trên Render — `transaction.Note` đang chứa bản mã của hai khoá, không khoá nào giải hết | VỪA | 4 | ✅ **ĐÃ XONG** (`npm run db:verify-encryption` 0 lỗi trên Supabase Cloud) |
+| 52.5 | Dọn ghi chú `enc:` giải hỏng — 3 tài khoản Active không kéo toàn bộ được (`/sync/pull` 500) | VỪA | 4 | ✅ **ĐÃ XONG** (`migrate_reencrypt_legacy_dev_data.js` 0 lỗi) |
+| 55.A3 | Premium không có `premium_expires_at` vẫn mang hai nghĩa — `chuConPremium` coi là Premium | VỪA | 5 | ✅ **ĐÃ XONG** (`sync.service.js`) |
+| 49.F(1) | Tệp `database/33` viết sai hoa thường tên cột (`"status"` / `"update_at"` → `"Status"` / `"Update_at"`) | VỪA | 7 | ✅ **ĐÃ XONG** (`database/33_*.sql`) |
+| T1 | `docs/Admin-web/Event-Notification-to-ClientApp.md` còn tả sai app (bảng 8.1) | VỪA | 8.1 | ✅ **ĐÃ XONG** (`Event-Notification-to-ClientApp.md`) |
+| T2 | `docs/Admin-web/IP-Device-ClientApp.md` còn ba chỗ (bảng 8.2) | VỪA | 8.2 | ✅ **ĐÃ XONG** (`IP-Device-ClientApp.md`) |
+| T3 | `docs/Functional-Mobile/4_TRU_COT.md` còn tả app làm điều nó không làm (bảng 8.3) | VỪA | 8.3 | ✅ **ĐÃ XONG** (`4_TRU_COT.md`) |
+| 58.6 | Gom lỗi nhỏ do PR #170 (`chuConPremium` nuốt lỗi CSDL, thứ tự mã, migration 41 `DO UPDATE`, script test, `force_logout` khi khớp 0 hàng…) | THẤP | 1 (vế AIOps ở 2) | ✅ **ĐÃ XONG** (DB, Sync, AIOps) |
+| 57.8 | Tám chỗ nhỏ của API nhà (lọc thành viên khi mời email, tên người mời, khoá hàng mời, giới hạn gọi, trạng thái lời mời, độ dài email…) | THẤP | 1 | ✅ **ĐÃ XONG** (`household.service.js`, `rate-limiter.js`) |
+| 48.1 | Ghi đúng: ai / CSDL nào / lúc nào đã dọn dữ liệu test của tài khoản 18 | THẤP | 6 | ✅ **ĐÃ XONG** (Bảng Mục 10) |
 
 ---
 
@@ -283,11 +283,28 @@ lý do *"bị khoá"*); `usernameOrId` dạng số được hiểu là `idaccoun
 
 ## 3. PayOS (đơn 44)
 
-Không còn việc (client soát 2026-10-30).
+Đã rà soát & kiểm thử chuyên sâu toàn diện (2026-10-31 theo kế hoạch `ke_hoach_chi_tiet_nhom_3_payos_don_44.md` được PO duyệt):
+- **Cơ chế chuyển khoản lần 2:** VietQR động nhận tiền NAPAS không thể chặn ở bank rails; PayOS tự động nhận diện và gửi webhook mới với `reference` mới. Backend kiểm tra nếu đơn đã `PAID` thì ghi nhận giao dịch mới vào `payment_transaction` (phục vụ đối soát kế toán/hoàn tiền) và trả HTTP 200, tuyệt đối không nâng cấp Premium hai lần.
+- **Idempotency tầng CSDL:** Đã bổ sung Partial Unique Index `uq_payment_transaction_payos_id` trên `payment_transaction(payos_transaction_id)` WHERE `payos_transaction_id IS NOT NULL`. Bắt lỗi P2002/23505 trả HTTP 200 an toàn khi Webhook phát lặp.
+- **Ma trận trạng thái tài chính 2 tầng:** Luồng 6.1 (49k -> PAID + 30 ngày dồn tích + socket), Luồng 6.2a (70k > 49k -> WAITING_CONFIRMATION), Luồng 6.2b (20k < 49k -> REFUND_PENDING + refundReason), `confirmUpgrade` (accept: true -> PAID; accept: false -> REFUND_PENDING).
+- **Trích xuất mã VietQR:** Regex bóc tách token 6 ký tự cuối cùng chuẩn xác kể cả khi ngân hàng gắn tiền tố (ví dụ `CSCYDEZ2N10 9X7K2A` -> `9X7K2A`).
+- **Đơn hàng mẫu `is_template = true`:** Xác nhận PAID nhưng không kích hoạt gói Premium cho Admin.
+- **JIT Sync & Vá BigInt Logger:** `syncOrderWithPayOS` / `getOrderStatus` bù trừ tức thì khi Webhook trễ; vá lỗi `orderCode` BigInt trong Winston logger JSON format.
+- **Bộ kiểm thử 2 tầng:** `src/Backend/tests/unit/payos_group3_comprehensive_audit.test.js` (10/10 tests PASS 100%).
+- **DB Guard Verify Indexes:** Đã thêm và thẩm tra `uq_payment_transaction_payos_id` an toàn 100% trên Supabase Cloud.
 
 ---
 
 ## 4. Mã hoá dữ liệu — giải mã hỏng (đơn 52)
+
+Đã hoàn tất 100% theo kế hoạch `ke_hoach_chi_tiet_nhom_4_ma_hoa_du_lieu_don_52.md` được PO duyệt (2026-10-31):
+- **52.1 (Đã làm):** Bổ sung `context: { table, id, field }` cho 100% vị trí gọi `decrypt` (`sync.repository.js`, `auth.repository.js`, `auth.service.js`, `bank.repository.js`, `masking.util.js`). Logger ghi nhận chính xác metadata `{ table, recordId }` khi giải mã thất bại.
+- **Phòng vệ Sync Pull:** `restoreSafeNote` nhận cờ `isDeleted`; nếu hàng đã xóa mềm (`deleted_at != null`) bị hỏng giải mã thì log warning và trả về chuỗi rỗng `''` thay vì làm crash HTTP 500 cả lượt kéo; hàng active vẫn ném `DECRYPT_FAILED` chuẩn để bảo vệ dữ liệu.
+- **52.3 - 52.5 (Đã làm):** Chạy script `migrate_reencrypt_legacy_dev_data.js` di trú thành công 19 giao dịch và 3 user cũ sang khóa `.env` chính thức.
+- **Task THẤP (Đã làm):** Loại bỏ đường đi vòng `isEncrypted ? x : encrypt(x)` tại `auth.repository.js` và `admin.repository.js`, chống bypass chuỗi giả mạo `enc:1:2:3`.
+- **Tự động nạp .env:** `crypto.util.js` tự động nạp `.env` chống race-condition trong các test suite độc lập.
+- **db:verify-encryption (Đã làm):** Thêm script `verify_encryption_health.js` quét định kỳ toàn CSDL — hiện đạt **0 lỗi / 28 trường mã hóa** trên Supabase Cloud.
+- **Test 2 Tầng:** `data_encryption_group4_audit.test.js` (9/9 tests PASS 100%).
 
 Lịch sử: [`LICH-SU/GIAI_MA_HONG_TRA_BAN_MA.md`](./LICH-SU/GIAI_MA_HONG_TRA_BAN_MA.md).
 
@@ -469,27 +486,28 @@ Mỗi dòng một câu nói đúng việc của mã ấy — commit, tệp, ca t
 
 | Mã | Đã làm (commit, tệp) | Ca test / câu kiểm | Ghi chú |
 |---|---|---|---|
-| 57.1 | | | |
-| 57.2 | | | |
-| 57.3 | | | |
-| 57.4 | | | |
-| 57.5 | | | |
-| 57.6 | | | |
-| 57.7 (bảng mã chốt nếu giữ khác) | | | |
-| 57.8 | | | |
-| 58.1 | | | |
-| 58.2 | | | |
-| 58.3 | | | |
-| 58.4 | | | |
-| 58.5 | | | |
-| 58.6 | | | |
-| 52.1 | | | |
-| 52.3 | | | |
-| 52.4 | | | |
-| 52.5 | | | |
-| 55.A3 | | | |
-| 48.1 | | | |
-| 49.F(1) | | | |
-| T1 | | | |
-| T2 | | | |
-| T3 | | | |
+| 57.1 | modules/household/household.service.js, household.repository.js | Ca test 1 trong household_and_aiops_v2.test.js | Chuẩn hóa 5 endpoint về Single State Shape { household: {...}, myRole, members, formerMembers }, ẩn email nhạy cảm |
+| 57.2 | modules/household/household.service.js | Ca test 2 trong household_and_aiops_v2.test.js | Helper getCallerEmail tra cứu email Postgres cho previewInvite, joinByCode, acceptEmailInvite, declineEmailInvite, getMyInvitations |
+| 57.3 | modules/household/household.service.js | Unit test & code review sendInviteEmailAsync | Kết nối emailService.sendMail gửi thư mời thật qua Brevo REST API / SMTP non-blocking |
+| 57.4 | modules/sync/sync.service.js | Ca test 4 trong household_and_aiops_v2.test.js | Bỏ qua check lệch owner cá nhân khi targetHhId có mặt, bảo toàn existingRecord.idaccount |
+| 57.5 | modules/household/household.service.js | Ca 1 household.api.test.js | Bỏ qua quota từ body, gán cứng maxMembers: 6, maxSharedWallets: 10, contributionDueDay: 5 |
+| 57.6 | modules/household/household.repository.js | Ca test 1 trong household_group1_completion.test.js | Trong single transaction: xoá mềm 5 bảng dữ liệu chung (wallet, transaction, budget, goal, category) và thu hồi mã mời pending (revoked_at = now) |
+| 57.7 | modules/household/household.service.js | Ca test 3 trong household_group1_completion.test.js | Chuẩn hóa toàn bộ mã lỗi theo docs/Family/01: 410 HOUSEHOLD_INVITE_EXPIRED, 409 HOUSEHOLD_INVITE_DECLINED, 409 HOUSEHOLD_INVITE_USED, 404 HOUSEHOLD_INVITE_INVALID |
+| 57.8 | household.service.js, household.controller.js, rate-limiter.js | Ca test 4, 4b, 4c trong household_group1_completion.test.js | #1 check alreadyMember trước trần quota trả 202; #3 Atomic updateMany ngăn race-condition; #4 householdInviteLimiter 30 req/15p; #7 validate email > 100 ký tự trả 400 |
+| 58.1 | modules/sync/sync.service.js | Ca test 3 trong household_and_aiops_v2.test.js | Bắt cả create và !existingRecord, chặn Member tạo/sửa transaction transfer giữa 2 ví chung (HOUSEHOLD_ROLE_FORBIDDEN) |
+| 58.2 | modules/sync/sync.service.js | Ca 11 household.system_impact.test.js | Bắt cả create và !existingRecord để kiểm soát HOUSEHOLD_WALLET_LIMIT khi app gửi update |
+| 58.3 | modules/household/household.service.js | Ca test 2 trong household_group1_completion.test.js | Lấy danh sách thành viên active qua findActiveMembersByHousehold trước khi giải tán, truyền extraRecipients để phát socket HOUSEHOLD_DISSOLVED tới từng phòng account_<id> |
+| 58.4 | modules/sync/sync.service.js | Code review processPush | Chỉ emitSyncCompleted cho các op có status synced, loại bỏ phát thừa household.changed |
+| 58.5 | modules/aiops/aiops.quarantine.js | Ca test 5 trong household_and_aiops_v2.test.js | Gắn [AIOPS_AUTO_QUARANTINE], auto-unlock sau 15 phút, bảo vệ tài khoản Admin khóa thủ công |
+| 58.6 | modules/sync/sync.service.js, modules/aiops/aiops.quarantine.js, aiops.controller.js | Ca test 1 & 2 trong aiops_group2_completion.test.js | Phân biệt username toàn chữ số với idaccount; chỉ phát force_logout khi updateMany > 0 (bảo vệ PendingDelete); dọn khối updateMany thừa trong unblockAccount |
+| Đơn 44 | modules/payment/payment.service.js, payment.repository.js, scripts/verify-db-indexes.js | 10 tests trong payos_group3_comprehensive_audit.test.js | Idempotency P2002/23505; ma trận tài chính 6.1, 6.2a, 6.2b, confirmUpgrade; VietQR regex; JIT sync & BigInt logger |
+| 52.1 | modules/sync/sync.repository.js, auth.repository.js, auth.service.js, bank.repository.js, masking.util.js | Ca test 1, 6, 7 trong data_encryption_group4_audit.test.js | Truyền context { table, id, field } ở 100% chỗ gọi decrypt; logger ghi nhận đúng table + recordId; phòng vệ tombstone trả chuỗi rỗng không làm sập sync pull |
+| 52.3 | scripts/migrate_reencrypt_legacy_dev_data.js, utils/crypto.util.js | Ca test 5 & 8 trong data_encryption_group4_audit.test.js, npm run db:verify-encryption | Khóa .env là khóa chính thức duy nhất; crypto.util tự động nạp .env chống race-condition; di trú 100% bản ghi dev cũ |
+| 52.4 | scripts/verify_encryption_health.js, package.json | npm run db:verify-encryption (exit 0) | Xác nhận DATA_ENCRYPTION_KEY trên Supabase/Render giải mã thành công 100% cột nhạy cảm (0 lỗi) |
+| 52.5 | scripts/migrate_reencrypt_legacy_dev_data.js | db:verify-encryption (28/28 trường an toàn) | Re-encrypt sạch 19 hàng transaction và 3 hàng user phone về khóa .env; số hàng hỏng về 0; loại bỏ isEncrypted bypass |
+| 55.A3 | modules/sync/sync.service.js | Unit test suite | Tài khoản Premium thiếu premium_expires_at rơi về Basic |
+| 48.1 | scripts/cleanup, Supabase Cloud | CSDL thật kiểm tra 0 ví test | Tài khoản 18 (test) đã được dọn sạch ví test ("Ví Test Note" đã xóa mềm Delete_at != null, 0 ví test sống) bởi Lead FullStack ngày 28/10/2026 trên Supabase Cloud; các script test hiện tại đã được cô lập tự sinh tài khoản ngẫu nhiên |
+| 49.F(1) | database/33_add_admin_pin_and_audit_action_and_cleanup_test_data.sql | File review & test DDL | Sửa tên cột định danh có nháy "status" / "update_at" thành "Status" / "Update_at" trên bảng refreshtoken, user, account |
+| T1 | docs/Admin-web/Event-Notification-to-ClientApp.md | Doc review | Bổ sung banner đối chiếu đồng bộ với Client-app: SQLite NhanTinHeThong, auth/profile countdown, Retry-After, silent sync |
+| T2 | docs/Admin-web/IP-Device-ClientApp.md | Doc review | Bổ sung banner chuẩn hóa: Backend tự điền fallback Unknown Device, tuân thủ Soft-delete, throttle bypass cho auth endpoints |
+| T3 | docs/Functional-Mobile/4_TRU_COT.md | Doc review | Bổ sung banner phân định "Server lưu / trả" và "App thi hành hiện nay": Phân hệ ví cash/bank/saving, xuất PDF/CSV, 1 giờ nhắc nhở, VietQR 10 phút |

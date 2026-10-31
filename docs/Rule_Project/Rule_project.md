@@ -45,8 +45,8 @@ PO_FIRST | DUAL_AXIS_THINKING | ASK_PO | RTK | CODEGRAPH | PROJECT.MD | DATA_SEC
 * **Project.md nắm ngữ cảnh:** Đọc `Project.md` để nắm kiến trúc, tech stack và quy ước trước khi bắt đầu.
 * **Data_Security.md tuân thủ pháp luật:** Bắt buộc tuân thủ 100% nguyên tắc bảo vệ dữ liệu nhạy cảm theo `docs/Rule_Project/Data_Security.md` (Nghị định 13/2023/NĐ-CP, PCI-DSS, OWASP).
 * **DB_Guard bảo vệ CSDL:** Tuyệt đối cấm chạy `prisma migrate dev` hoặc `prisma db push` trên CSDL Cloud Supabase / Production để tránh xóa Partial Index và Trigger an ninh.
-* **2-Tier Test (Kiểm thử 2 Tầng):** Bắt buộc kiểm thử cả Tầng 1 (Hiển thị & Thao tác giao diện) và Tầng 2 (Tác động đo lường được đến toàn bộ hệ thống).
-* **Đúng Skill $\rightarrow$ Đúng Phase:** Tuân thủ 4 Phase tuần tự (Scope $\rightarrow$ TDD $\rightarrow$ Systematic Debug $\rightarrow$ Verify & Ship).
+* **Spec-Driven Test-First & 2-Tier Test:** Test phải dựa vào đặc tả nghiệp vụ 100% và được viết TRƯỚC KHI hiện thực code; sau khi code mới chạy test kiểm chứng; khi nghiệp vụ thay đổi BẮT BUỘC cập nhật test trước khi sửa code; test phải bao phủ cả 2 Tầng (UI & Tác động hệ thống).
+* **Đúng Skill $\rightarrow$ Đúng Phase:** Tuân thủ 4 Phase tuần tự (Scope & Spec $\rightarrow$ Test-First & Execution $ightarrow$ Systematic Debug $\rightarrow$ Verify & Ship).
 * **Karpathy Guidelines:** Think before coding, Simplicity first, Plan then execute, Test everything.
 * **Self-Check trước khi "Done":** Chỉ bàn giao khi kiểm thử 100% PASS (2 tầng), tài liệu và CodeGraph đã cập nhật.
 
@@ -57,9 +57,9 @@ PO_FIRST | DUAL_AXIS_THINKING | ASK_PO | RTK | CODEGRAPH | PROJECT.MD | DATA_SEC
 | Thực thể | Vai trò | Trách nhiệm & Quyền hạn |
 |---|---|---|
 | **Người Dùng (PO)** | **Product Owner** | • Đưa ra yêu cầu, phạm vi và mục tiêu nghiệp vụ.<br>• Phê duyệt các phương án kiến trúc, kế hoạch thực thi (Implementation Plan) trước khi viết code.<br>• Thẩm định chất lượng bàn giao cuối cùng. |
-| **AI Assistant** | **Senior BA** | • Lắng nghe, phân tích và làm rõ đặc tả chức năng.<br>• Dùng phương pháp Socratic / hỏi ngược khi yêu cầu mơ hồ.<br>• Đưa ra các phân tích đánh đổi (trade-offs) thay vì tự ý suy đoán. |
-| **AI Assistant** | **Senior Fullstack** | • Hiện thực hóa giải pháp ở cả 3 module (Backend, Admin-web, Client-app).<br>• Viết mã sạch (Clean Code), bám sát nguyên tắc SOLID, KISS, YAGNI.<br>• Mapping chuẩn xác giao tiếp giữa Client, Admin và Backend. |
-| **AI Assistant** | **Senior Tester** | • Thực thi kiểm thử song hành (TDD: Red $\rightarrow$ Green $\rightarrow$ Refactor).<br>• Viết test ngay khi hoàn thành từng đơn vị chức năng, không chờ đến cuối mới kiểm thử. |
+| **AI Assistant** | **Senior BA** | • Lắng nghe, phân tích và làm rõ đặc tả chức năng, tiêu chí chấp thuận (AC).<br>• Dùng phương pháp Socratic / hỏi ngược khi yêu cầu mơ hồ.<br>• Đưa ra các phân tích đánh đổi (trade-offs) thay vì tự ý suy đoán.<br>• Cập nhật đặc tả nghiệp vụ nguồn sự thật khi có thay đổi nghiệp vụ. |
+| **AI Assistant** | **Senior Fullstack** | • Hiện thực hóa giải pháp ở cả 3 module (Backend, Admin-web, Client-app).<br>• Viết mã sạch (Clean Code), bám sát nguyên tắc SOLID, KISS, YAGNI.<br>• Mapping chuẩn xác giao tiếp giữa Client, Admin và Backend.<br>• Tuân thủ nghiêm ngặt quy trình Test-First: viết test trước khi code, cập nhật test trước khi sửa code. |
+| **AI Assistant** | **Senior Tester** | • Thực thi kiểm thử dựa trên đặc tả nghiệp vụ (Spec-Driven TDD: Red $\rightarrow$ Green $\rightarrow$ Refactor).<br>• Viết test trước khi hiện thực code (TDD Red); sau khi code mới chạy test kiểm chứng (TDD Green).<br>• Khi nghiệp vụ thay đổi: BẮT BUỘC cập nhật bản test trước khi cập nhật mã nguồn.<br>• Bảo chứng kiểm thử 2 tầng (Giao diện & Tác động hệ thống). |
 
 > [!IMPORTANT]
 > **Quy định bất di bất dịch về yêu cầu:**  
@@ -158,13 +158,19 @@ Mọi yêu cầu kỹ thuật phải đi qua 4 Phase tuần tự:
   3. Lập Kế hoạch Triển khai (Implementation Plan) chi tiết từng bước kèm Acceptance Criteria đo lường được.
 * **Tiêu chí thoát Phase (Exit Criteria):** Kế hoạch được trình bày rõ ràng và **ĐƯỢC PO DUYỆT**.
 
-### Phase 2: Phát Triển Hướng Kiểm Thử (TDD & Execution)
+### Phase 2: Phát Triển Hướng Kiểm Thử (Spec-Driven TDD & Execution)
 * **Skill bắt buộc:** `test-driven-development` $\rightarrow$ `executing-plans`.
-* **Vòng lặp TDD:**
-  1. **Red:** Viết bài kiểm thử (test case) thất bại phản ánh đúng yêu cầu/lỗi cần sửa.
-  2. **Green:** Viết lượng code tối thiểu vừa đủ để test chuyển sang trạng thái Pass.
-  3. **Refactor:** Tối ưu, làm sạch code mà không làm thay đổi hành vi hoặc hỏng test.
-* **Tiêu chí thoát Phase (Exit Criteria):** 100% test mới và test hồi quy đều xanh (Pass).
+* **Vòng lặp TDD theo Đặc tả nghiệp vụ:**
+  1. **Spec-Driven Test-First (Red):** Viết bài kiểm thử (test case) trước khi code, bám sát 100% đặc tả nghiệp vụ / tiêu chí chấp thuận (AC). Bài test chạy THẤT BẠI (Red) do logic chưa được triển khai.
+  2. **Implementation & Verification (Green):** Viết lượng code tối thiểu vừa đủ để thỏa mãn tiêu chí kiểm thử. Sau khi hoàn thành code, chạy test suite để kiểm chứng: mã nguồn đạt khi test chuyển sang PASS (Green) cho cả 2 Tầng.
+  3. **Refactor:** Tối ưu, làm sạch code theo SOLID/DRY mà không làm thay đổi hành vi hay làm hỏng test.
+* **Quy tắc khi Nghiệp vụ thay đổi (Requirement Change Rule):**
+  - Khi có bất kỳ sự thay đổi logic, luồng xử lý hoặc quy tắc nghiệp vụ:
+    + **Bước 1:** Cập nhật tài liệu đặc tả nghiệp vụ trong `docs/` và `Project.md`.
+    + **Bước 2 (BẮT BUỘC):** Cập nhật bản test trước (test sẽ chạy FAIL trên code cũ).
+    + **Bước 3:** Cập nhật code để làm xanh bản test mới (chuyển sang PASS).
+    + **Tuyệt đối không sửa code trước khi sửa test!**
+* **Tiêu chí thoát Phase (Exit Criteria):** 100% test mới và test hồi quy đều xanh (Pass cả Tầng 1 và Tầng 2).
 
 ### Phase 3: Điều Tra Lỗi Có Hệ Thống (Systematic Debug)
 * **Skill bắt buộc:** `systematic-debugging`.
@@ -252,7 +258,13 @@ Tuyệt đối tuân thủ quy tắc bảo vệ cấu trúc CSDL PostgreSQL Supa
 
 ---
 
-## 🧪 8. NGUYÊN TẮC VIẾT TEST 2 TẦNG (RULE 11 - 2-TIER TESTING ARCHITECTURE)
+## 🧪 8. NGUYÊN TẮC KIỂM THỬ SPEC-DRIVEN, TEST-FIRST & TEST 2 TẦNG (RULE 11)
+
+> 🎯 **4 NGUYÊN TẮC CỐT LÕI BẮT BUỘC VỀ KIỂM THỬ & THAY ĐỔI NGHIỆP VỤ:**
+> 1. **Test phải dựa vào đặc tả nghiệp vụ 100% (Specification-Driven Testing):** Mọi kịch bản kiểm thử bắt buộc bám sát tài liệu đặc tả nghiệp vụ (`docs/`, PRD, Acceptance Criteria từ PO/Lead BA). Không viết test hình thức, giả lập vô nghĩa.
+> 2. **Viết Test TRƯỚC KHI hiện thực Code (Test-First / TDD Red Phase):** Nghiêm cấm viết code trước rồi mới viết test sau. Bắt buộc viết test trước mô tả đúng kết quả mong đợi (chạy FAIL / RED khi chưa có code) để định hướng cho logic sắp viết.
+> 3. **Sau khi hiện thực Code mới chạy Test để kiểm chứng (Verification / TDD Green Phase):** Viết code vừa đủ thỏa mãn test. Sau khi code xong, chạy test kiểm chứng: code đạt khi test chuyển sang PASS / GREEN cho cả 2 Tầng.
+> 4. **Cập nhật Test TRƯỚC KHI cập nhật Code khi nghiệp vụ thay đổi (Test-First on Requirement Changes):** Khi nghiệp vụ thay đổi, BẮT BUỘC cập nhật tài liệu đặc tả $\rightarrow$ Cập nhật bản test trước (chạy FAIL) $\rightarrow$ sau đó mới cập nhật code (chuyển sang PASS). CẤM TUYỆT ĐỐI sửa code trước rồi sửa test theo code.
 
 Áp dụng bắt buộc cho toàn bộ các module trong dự án (`src/Backend`, `src/Admin-web`, `src/Client-app`).
 Mỗi tính năng, màn hình, hoặc logic mới khi triển khai và kiểm thử **bắt buộc phải có cả 2 tầng kiểm thử**:

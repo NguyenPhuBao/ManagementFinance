@@ -479,8 +479,8 @@ const adminRepository = {
     const rawFullName = fullName && String(fullName).trim() ? String(fullName).trim() : `Quản trị viên ${username.trim()}`;
 
     // Mã hóa số điện thoại & địa chỉ AES-256-GCM để tuân thủ trigger CSDL trg_check_phone_encrypted & Nghị định 13
-    const encPhone = rawPhone ? (isEncrypted(rawPhone) ? rawPhone : encrypt(rawPhone)) : null;
-    const encAddress = rawAddress ? (isEncrypted(rawAddress) ? rawAddress : encrypt(rawAddress)) : null;
+    const encPhone = rawPhone ? encrypt(rawPhone) : null;
+    const encAddress = rawAddress ? encrypt(rawAddress) : null;
 
     return prisma.$transaction(async (tx) => {
       const newAccount = await tx.account.create({

@@ -24,6 +24,7 @@ const GROUP_I18N_KEYS = {
   'Thông báo & Giám sát': 'notifications',
   'Gói cước & Thanh toán': 'payment',
   'Đồng bộ Ngoại tuyến': 'sync',
+  'Gia đình': 'family',
 };
 
 const getTranslatedGroupName = (groupName, t) => {

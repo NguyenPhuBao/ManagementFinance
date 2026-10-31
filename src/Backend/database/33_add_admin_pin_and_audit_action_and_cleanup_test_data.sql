@@ -24,9 +24,9 @@ BEGIN
 
   IF v_test_account_ids IS NOT NULL AND array_length(v_test_account_ids, 1) > 0 THEN
     -- Task 49.F: Chuyển sang xóa mềm (Soft-Delete) tuân thủ Rule 9 & DB Guard, bảo toàn tính toàn vẹn
-    UPDATE refreshtoken SET "status" = true, "update_at" = NOW() WHERE "Idaccount" = ANY(v_test_account_ids);
-    UPDATE "user" SET "Delete_at" = NOW(), "update_at" = NOW() WHERE "Idaccount" = ANY(v_test_account_ids);
-    UPDATE account SET "Status" = 'Deleted', "Countdown" = 0, "Delete_at" = NOW(), "update_at" = NOW() WHERE "Idaccount" = ANY(v_test_account_ids);
+    UPDATE refreshtoken SET "Status" = true, "Update_at" = NOW() WHERE "Idaccount" = ANY(v_test_account_ids);
+    UPDATE "user" SET "Delete_at" = NOW(), "Update_at" = NOW() WHERE "Idaccount" = ANY(v_test_account_ids);
+    UPDATE account SET "Status" = 'Deleted', "Countdown" = 0, "Delete_at" = NOW(), "Update_at" = NOW() WHERE "Idaccount" = ANY(v_test_account_ids);
     RAISE NOTICE 'Đã xóa mềm thành công các tài khoản test giả lập trong CSDL.';
   ELSE
     RAISE NOTICE 'Không có tài khoản test rác cần xóa.';
