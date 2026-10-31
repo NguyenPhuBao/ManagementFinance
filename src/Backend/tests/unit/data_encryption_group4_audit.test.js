@@ -231,6 +231,46 @@ test('Nhóm 4: Data Encryption & Safe Decryption Audit Suite (Đơn 52)', async 
   });
 
   // ═════════════════════════════════════════════════════════════════════
+  // TC7b. Task 52.1: adminService.getUsers truyền context khi gọi mask*
+  // ═════════════════════════════════════════════════════════════════════
+  await t.test('7b. [Tier 2 - Task 52.1] adminService.getUsers truyền context { table: "user", id } vào maskPhone & maskAddress khi giải mã', async () => {
+    const adminService = require('../../modules/admin/admin.service');
+    const adminRepository = require('../../modules/admin/admin.repository');
+    const origGetAllUsers = adminRepository.getAllUsers;
+    const origError = logger.error;
+    let loggedContexts = [];
+
+    logger.error = (msg, meta) => {
+      loggedContexts.push(meta);
+    };
+
+    const corruptedCipher = 'enc:0123456789abcdef01234567:0123456789abcdef0123456789abcdef:deadbeef';
+    adminRepository.getAllUsers = async () => [
+      {
+        iduser: 123,
+        fullname: 'Test User',
+        email: 'test@example.com',
+        phone: corruptedCipher,
+        address: corruptedCipher,
+        account: { idaccount: 456, status: 'Active' },
+      },
+    ];
+
+    try {
+      const users = await adminService.getUsers();
+      assert.strictEqual(users.length, 1);
+      assert.strictEqual(users[0].phone, '***-***-****');
+      assert.strictEqual(users[0].address, '***');
+
+      const phoneLog = loggedContexts.find(c => c && c.table === 'user' && c.recordId === 123);
+      assert.ok(phoneLog, 'Logger phải ghi nhận { table: "user", recordId: 123 }');
+    } finally {
+      adminRepository.getAllUsers = origGetAllUsers;
+      logger.error = origError;
+    }
+  });
+
+  // ═════════════════════════════════════════════════════════════════════
   // TC8. CSDL Supabase hiện tại: 100% dữ liệu giải mã thành công (0 lỗi)
   // ═════════════════════════════════════════════════════════════════════
   await t.test('8. [Tier 1] CSDL Supabase Cloud: Toàn bộ 25 transaction và 3 user giải mã thành công 100% bằng khóa .env', async () => {

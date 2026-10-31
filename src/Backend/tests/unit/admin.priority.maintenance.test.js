@@ -11,6 +11,7 @@ const { MaintenanceManager } = require('../../core/resilience/maintenance.manage
 const { createMaintenanceMiddleware } = require('../../middleware/maintenance.middleware');
 const authService = require('../../modules/auth/auth.service');
 const authRepository = require('../../modules/auth/auth.repository');
+const { prisma } = require('../../config/db');
 const config = require('../../config');
 
 const mockMaintenanceRepo = {
@@ -513,8 +514,10 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
 
     const origFind = authRepository.findAccountsByUsername;
     const origSave = authRepository.saveRefreshToken;
+    const origPrismaRf = prisma.refreshtoken.create;
     authRepository.findAccountsByUsername = async () => [adminAcc];
     authRepository.saveRefreshToken = async () => ({ idtoken: 1 });
+    prisma.refreshtoken.create = async () => ({ idtoken: 1 });
 
     try {
       const res = await authService.login('test_admin', 'CorrectPass123!');
@@ -525,6 +528,7 @@ test('Admin Resilience — Làn ưu tiên & Công tắc bảo trì khẩn cấp'
     } finally {
       authRepository.findAccountsByUsername = origFind;
       authRepository.saveRefreshToken = origSave;
+      prisma.refreshtoken.create = origPrismaRf;
       defaultMaintenanceManager.setMaintenance(false);
     }
   });
