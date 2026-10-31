@@ -367,3 +367,112 @@ trần (`household_members`), chỉ là client không đọc trần từ `limits
   lại trạng thái nhà (sự kiện `household.changed` hoặc lần làm mới kế).
 - **Ghi chú (không phải chỗ lệch):** 7.2 viết `_permanentCodes` *"+4 mã"* — đúng là **+5** (bốn mã `HOUSEHOLD_*` + `NOT_OWNER`, như
   4.2 đã ghi); kế hoạch thêm năm.
+
+## 12. Lát 2 — màn hình + nợ G113 (duyệt 2026-10-31 phiên 26) — **mục này thắng thân và mục 11 khi lệch**
+
+Người dùng duyệt 8 màn Stitch, sáu quyết định và thứ tự **lát 2 → G113 nợ 1, 9 → đo hai máy** qua câu hỏi chọn được ngày 2026-10-31.
+Nền backend: `main` @ `5ff06db4` (`docs/Family/04` mục 2a). Lát 2 đóng **phần 1**; phần 2a–2d, 3 (`Family/00` mục 4) không thuộc spec này.
+
+### 12.1 Màn Stitch (dự án `5106367939423432838`, design system `assets/e8b7d56ef9284443bfacb7474e52c74a`)
+
+| Màn | Mã màn |
+|---|---|
+| Nhà mình - Chưa có nhà | `56739d1906084322b551898c2200771f` |
+| Nhà mình - Có nhà, vai Chủ nhà | `e462a7e8c56549bb9a374f3bfd1ca6d8` |
+| Nhà mình - Vai Thành viên, nhà chỉ xem, có lời mời khác | `e3306197127d4af585f2db928a8e0147` |
+| Tạo nhà | `411a20c12bd349278ae3fda79aaef65d` |
+| Mời thành viên | `b017710c58064de18e566e364803ff70` |
+| Tham gia bằng mã | `c1a372b4246641ca99eff9789ce66208` |
+| Quản lý thành viên | `456078e550ea4dcaa23fb10d6225d3ac` |
+| Gia đình - Năm hộp xác nhận | `ca283a41ef44446592ce9b6163ef8e24` |
+| Drawer tám mục (sửa màn có sẵn) | `250229e651a74a83a85c6e9e7091f321` |
+
+Sáu màn trong spec mục 6 thành tám vì Nhà mình khác nhau rõ theo vai và trạng thái nhà. ⚠️ Ảnh của màn Drawer tải qua API ngày 2026-10-31
+vẫn vẽ sáu mục dù `edit_screens` báo xong; người dùng nhìn trên Stitch và duyệt. Mã làm theo **tám mục**: thứ tự Quản lý ví · Mục tiêu tiết
+kiệm · Ngân sách · Hóa đơn & Dịch vụ · **Nhà mình** · Danh mục · Xuất báo cáo · Trợ lý AI.
+
+### 12.2 Chỗ app KHÔNG làm theo màn Stitch
+
+Stitch tự thêm các chi tiết dưới đây; app bám bố cục của màn, chữ theo `Family/01` và mục này.
+
+| Màn | Stitch vẽ | App làm | Vì sao |
+|---|---|---|---|
+| Quản lý thành viên | Email dưới tên mình; *"HẠN MỨC GÓI GIA ĐÌNH"*; nút ⋮ | Bỏ cả ba; dòng phụ = ngày vào nhà (`vaoLuc`) | Server không trả email thành viên (`01` mục 2.4); không có gói gia đình; ⋮ không có việc gì |
+| Nhà mình (cả ba trạng thái) | Tên + *"(Bạn)"* cắt chung thành *"Trần Quang Đạt (B…"*; dòng phụ *"Chủ tài khoản gói"*, *"Quyền thành viên"*; nút ⋮ | Chữ *"Bạn"* thành nhãn riêng không bị cắt, chỉ tên bị cắt; bỏ dòng phụ và ⋮ | Tên dài làm mất chữ quan trọng nhất của dòng |
+| Nhà mình chỉ xem | Nhãn *"Chỉ xem"* cạnh tên nhà | Bỏ — dải vàng đã nói | Hai chỗ một ý, và trùng chữ vai *Chỉ xem* |
+| Tạo nhà | Dòng phụ *"…đồng bộ hóa tức thời…"*, *"…theo dõi tài chính gia đình minh bạch"*, *"…gói thành viên"* | Chỉ ba dòng chính | Phần 1 chưa có tiền chung; app không hứa đồng bộ tức thì |
+| Tham gia bằng mã | Nhãn *"Khả dụng"* | Bỏ | Thẻ xem trước hiện được đã nghĩa là mã dùng được |
+| Mời thành viên | *"Vai trò trong nhà"*, *"Cấp quyền khi nhập mã"* | Một nhãn *"Vai"* cho cả hai khối | Thuật ngữ thống nhất với mọi màn |
+| Năm hộp xác nhận | Bộ đếm *"0/13"*; tiêu đề bảng tham chiếu | Không bộ đếm | Luật ô tên của dự án; tiêu đề chỉ là khung của bảng |
+
+### 12.3 Người dùng thấy gì
+
+- **Drawer** có *Nhà mình* ở mọi gói. `/nha` là route gốc ngoài shell (không thanh tab, tới tab dùng `go`, bẫy nhóm D); `/nha/tao`, `/nha/moi`,
+  `/nha/tham-gia`, `/nha/thanh-vien` là route gốc cùng khuôn.
+- **Chưa có nhà:** minh hoạ, hai nút. Nhãn *Premium* trên *Tạo nhà* chỉ hiện khi `trangThaiQuyen(giaDinh) == canPremium`. **Không** có ô chờ
+  cho phần 2a–3 trên màn nào (nút không làm gì trái quét 10).
+- **Có nhà:** Chủ thấy *Mời thành viên* + *Quản lý thành viên*; Thành viên / Chỉ xem thấy *Rời nhà*. Nhà `ReadOnly`: dải vàng *"Nhà đang ở chế độ
+  chỉ xem — chủ nhà cần gia hạn Premium"*, *Mời* khoá theo `duocLamViecNha(taoMa)`, vẫn đổi vai / chuyển chủ / giải tán / rời được.
+- **Thẻ *Lời mời đang chờ*** hiện ở cả hai trạng thái; đang ở nhà ⇒ *Chấp nhận* khoá kèm *"Rời nhà hiện tại trước"*; *Từ chối* luôn bấm được.
+- **Thông báo:** loại `loiMoiNha`, nhóm mới `NotificationGroup.giaDinh`, mặc định bật, hàng trong Cài đặt thông báo cùng khuôn các nhóm khác;
+  khoá `loiMoiNha:<code>`; deeplink `/nha`; câu *"{người mời} mời bạn vào nhà {tên nhà}"*.
+- **Đang xem màn của Chủ mà mất vai / bị mời ra / nhà giải tán** (sự kiện từ máy khác): `/nha/moi`, `/nha/thanh-vien` tự về `/nha` kèm `baoNhanh`.
+- Sau thao tác: rời / giải tán ⇒ về `/nha` trạng thái chưa có nhà; tạo / tham gia ⇒ về `/nha` có nhà; dữ liệu nhà tải ngầm, không có màn chờ.
+
+### 12.4 Quyền gói
+
+- `MaQuyen.giaDinh('household', 'Gia đình', false)`: thiếu khoá thì đóng. Chỉ gác **tạo nhà**: `/nha/tao` qua `redirectTheoQuyen` (Basic ⇒ màn Nâng
+  cấp; Premium tạm ngừng ⇒ màn Nâng cấp ẩn giá + nút mua, chốt B1).
+- `MaQuyen.thamGiaNha('household_join', 'Tham gia nhà', true)`: thiếu khoá thì mở. **Không** qua `redirectTheoQuyen` vì quyền này mặc định mở với
+  Basic, bị tắt nghĩa là admin chủ động: màn Tham gia và nút *Chấp nhận* khoá kèm câu trung tính `cauLoiNha(tinhNangKhongMo)`, **không** mời mua.
+- Lỗi 403 `FEATURE_DISABLED` lọt tới (bảng quyền trên máy cũ): `/nha/tao` đọc `trangThaiQuyen(giaDinh)` chọn câu (G113 nợ 7); `/nha/tham-gia`, thẻ lời
+  mời luôn câu trung tính. `/me` không qua quyền (Basic ở nhà vẫn thấy nhà).
+- `limits.household_wallets`, `household_members` tiếp tục bỏ qua (mục 11 #4).
+
+### 12.5 Đường backend đang hỏng (`04` mục 2a) — dựng đủ, nghiệm thu ghi *chờ*
+
+| Đường | Lúc này người dùng thấy | Đóng khi |
+|---|---|---|
+| `GET /invitations` (500) | Thẻ lời mời + thông báo `loiMoiNha` không bao giờ hiện (lỗi bị nuốt, `nha_repository_impl.dart:201-203`) | 57.2 |
+| `…/accept`, `…/decline` (500) | Không tới được từ app (không có thẻ); đo bằng cách giả danh sách trong test | 57.2 |
+| `POST /dissolve` (500) | Nút *Giải tán* báo *"Máy chủ chưa phản hồi. Thử lại sau."*, nhà giữ nguyên | 57.6 |
+| `POST /invites/email` (202) | Chạy được (`04` mục 2a #13); email chưa có tài khoản vẫn cùng một câu | Đo gửi thư thật ở nghiệm thu |
+
+`nha_cua_toi.dart` **giữ** nhánh phẳng / thô, `kGianCachNhaDoi` giữ nguyên: gỡ thuộc lượt soát sau khi backend gộp (`bàn giao phiên 25` mục 5). Cubit dựng
+theo `NhaCuaToi`, không biết hình dạng JSON.
+
+### 12.6 Cấu trúc mã (mục 8 `KIEN_TRUC_CLIENT_APP.md`)
+
+- `domain/`: `quyen_nha.dart` giữ; thêm `moi_thanh_vien.dart` (`conChoMoi` = thành viên + lời mời còn hiệu lực < trần — nguồn câu khoá hai nút màn Mời,
+  server vẫn thi hành lại; `emailHopLeSoBo`); `ma_moi.dart` thêm phép hết hạn. Hàm thuần có test như tài liệu.
+- `data/models/loi_moi.dart`: `MaMoiEntity.conHieuLucLuc(now)` xét cả `hetHan` thay `conHieuLuc` (nợ 8).
+- `data/datasources/chia_se_chu.dart`: cổng chia sẻ chữ, bản thật gọi `share_plus` (gói đã có, không quét mới).
+- `presentation/bloc/`: `nha_cubit.dart` (trạng thái nhà + lời mời từ `NhaRepository`, thao tác, đổi lỗi `LoiNha` thành câu) · `moi_thanh_vien_cubit.dart` (danh
+  sách lời mời, tạo mã, gửi email, huỷ) · `tham_gia_nha_cubit.dart` (xem trước, tham gia). Trang đọc qua cubit, chờ `NhaRepository.choNapKho()`.
+- `presentation/pages/`: `nha_minh_page` · `tao_nha_page` · `moi_thanh_vien_page` · `tham_gia_nha_page` · `quan_ly_thanh_vien_page`.
+- `presentation/widgets/`: `nha_minh/`, `moi_thanh_vien/`, `quan_ly_thanh_vien/` theo trang; `the_loi_moi_dang_cho.dart`, `hop_xac_nhan_nha.dart` dùng chung.
+- **Hộp xác nhận** bằng `showDialog` (trang nằm trong `Navigator`). Giải tán hai bước; bước hai so tên bằng `normalizeCategoryName`.
+- **Ô nhập:** tên nhà `GioiHanDoRong(100)`, chặn rỗng tại form (nợ 8); email `GioiHanDoRong(100)`; mã 8 ký tự tự in hoa, bỏ khoảng trắng (`chuanHoaMaMoi`).
+- **Thông báo** đi qua cổng trong mảng `notification` (không import repository nhà vào luật); `theoDoiLoiMoi` đánh thức bộ quét, nối ở `main.dart` như các nguồn hiện có.
+- **Quét:** 21 miễn trừ `nha_cua_toi.dart` (nợ 5); `kMucDrawer` tám mục (`drawer_trang_chu_test`, *"MỌI trang tính năng vào được từ menu"*); quét 10, 12, 19, 22, 23, 25, 31 áp cho trang mới.
+  `HouseholdApiGia` sửa theo hình dạng thật `{targetIdaccount,newRole}` · `{removed}` · `{dissolved}` **trước** khi viết test cubit (nợ 11).
+- **Dấu bền** (G113 lỗ hổng 1): kho theo tài khoản ghi *"đã xử lý tới nhà X"*; `DieuPhoiDoiNha` ghi dấu sau `xuLy` thành công; mở phiên so dấu với kho nhà, lệch ⇒ chạy lại `xuLy` với cặp nhà ấy.
+
+Nợ G113 chưa thuộc lát 2: 2, 3, 4, 6, 14 (cần đường ghi vào nhà — phần 2a), 13.
+
+### 12.7 G113 nợ 1, 9 (làm sau mã màn, trước đo hai máy; theo `Family/02A` mục 1, 7.1)
+
+- **Nợ 1 — neo của ví nhà:** `_datNeoNeuThieu` ghi neo mang `idhousehold` của ví, và ví nhà chỉ đặt neo khi `vi.idaccount` là tài khoản phiên (người tạo ví, `02A`:
+  *"chỉ máy tạo ví đặt neo"*; máy khác nhận qua kéo về). Phép vá neo `viDaCoTruocPull` thấy thêm ví nhà do tôi tạo (không thì khoản của thành viên kéo về làm tính lại
+  nuốt số dư ban đầu — G85).
+- **Lối thoát khoá đăng nhập:** `xoaHangCuaNha` và `purgeDataForOtherAccounts` xoá cả giao dịch trỏ tới ví sắp xoá dù `idhousehold` NULL (hàng neo cũ từ các lượt đo), nên vỡ khoá ngoại không còn khoá
+  cửa đăng nhập. Không đổi hàng riêng trỏ ví riêng.
+- **Nợ 9 — số dư ví nhà là cache cục bộ:** `SoDuViService.tinhLaiSoDu` ghi ví nhà qua `updateBalance(…, cucBo: true)`: chỉ đổi `balance`, không `pending`, không `updatedAt`. Mọi máy tính cùng số
+  từ sổ (`02A` 7.1). Sửa thật của Chủ nhà vẫn đi đường thường. Quét 6 giữ `SoDuViService` là nơi duy nhất ghi `balance`.
+
+### 12.8 Kiểm thử và nghiệm thu
+
+- **Test:** hàm thuần; ba cubit bằng `HouseholdApiGia` đã sửa; trang ở **360 dp, có ca bàn phím mở**, mỗi trạng thái của ba màn Nhà mình, tên dài (*"Bạn"* không mất), nhà đủ người, mất vai giữa chừng; quyền (22 → 24 mã, đếm lại khi thi công);
+  thông báo một lần mỗi mã; router thật cho `/nha/*` và deeplink. Nợ 1, 9: ca đỏ trước (neo mang nhà, máy thành viên không đặt neo, ví nhà không `pending`, purge có neo cũ không ném).
+- **Trước khi báo xong:** `flutter test` + `flutter analyze` so với mức nền; máy ảo 411 dp đi hết các màn (điều hướng là vùng mù của test).
+- **Đo hai máy thật, hai tài khoản** (`PersonFinance`; Realme + máy thứ hai): tạo nhà · mời mã · xem trước · tham gia · đổi vai · chuyển chủ · mời ra · rời · Basic bị chặn tạo nhưng tham gia được; tạo ví chung qua API rồi xem dữ liệu nhà về máy kia, không lẫn Trang chủ; rời nhà không khoá đăng nhập. **Ghi *chờ*, không tính đạt:** thẻ lời mời + thông báo + chấp nhận / từ chối (57.2), giải tán (57.6), gửi thư thật tới hộp thư nếu chưa đo được.
