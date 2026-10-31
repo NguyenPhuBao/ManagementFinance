@@ -144,6 +144,9 @@ class NotificationScanner {
   /// với `loadChiLon`.
   final KeHoachTaiPhanBoLoader? loadKeHoach;
 
+  /// Lời mời vào nhà đang nhớ trên máy. DI ánh xạ từ `NhaRepository.loiMoiToi`; `null` ở đường nền.
+  final List<LoiMoiNhaThongBao> Function(int idaccount)? loadLoiMoiNha;
+
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
   final OverdueMarker? markOverdue;
 
@@ -323,6 +326,7 @@ class NotificationScanner {
     this.loadWeekActivity,
     this.loadChiLon,
     this.loadKeHoach,
+    this.loadLoiMoiNha,
     required this.syncStatus,
     this.appLifecycle,
     this.markOverdue,
@@ -464,6 +468,8 @@ class NotificationScanner {
   /// màn hình khoá** sau khi người khác đăng nhập — dữ liệu tài chính ra khỏi
   /// app hoàn toàn.
   Future<void> stop() async {
+    // Đầu tiên, trước mọi `await`: lượt bù là một `scan` đầy đủ.
+    _quetBuCho = null;
     await _sub?.cancel();
     _sub = null;
     await _subVongDoi?.cancel();
@@ -513,6 +519,19 @@ class NotificationScanner {
     try {
       await osNotifier?.cancelAll();
     } catch (_) {}
+  }
+
+  /// Tài khoản đang nợ MỘT lượt bù. [stop] xoá: đăng xuất giữa lượt quét không được đẻ thêm lượt cho tài khoản cũ.
+  int? _quetBuCho;
+
+  /// Cho nguồn sự kiện ngoài đồng bộ (lời mời vào nhà vừa về). [scan] bỏ qua khi đang có lượt chạy, nên lượt ấy có thể đã đọc
+  /// xong nguồn và bỏ sót sự kiện: ở đây ghi nợ MỘT lượt bù chạy sau nó.
+  Future<void> quetKhiRanh(int idaccount) async {
+    if (_dangQuet) {
+      _quetBuCho = idaccount;
+      return;
+    }
+    await scan(idaccount);
   }
 
   /// Trả về **số hàng thật sự được ghi** — tín hiệu duy nhất để quyết định có
@@ -672,6 +691,7 @@ class NotificationScanner {
           chiLon: chiLon,
           nguongChiLon: prefs.nguongChiLon,
           keHoachTaiPhanBo: keHoach,
+          loiMoiNha: loadLoiMoiNha?.call(idaccount) ?? const [],
         ),
         // Lọc ở đây chứ không ở bước bắn: tắt một nhóm nghĩa là không sinh
         // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông
@@ -735,6 +755,9 @@ class NotificationScanner {
       return moi.length;
     } finally {
       _dangQuet = false;
+      final bu = _quetBuCho;
+      _quetBuCho = null;
+      if (bu != null) unawaited(scan(bu).catchError((_) => 0));
     }
   }
 

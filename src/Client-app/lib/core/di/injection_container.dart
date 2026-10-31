@@ -825,6 +825,13 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         return keHoachTaiPhanBoTu(
             sl<TaiPhanBoNguon>(), idaccount, dangChay, now);
       },
+      // Lời mời vào nhà (spec 12.3): chỉ khi trạng thái nhà đang là của đúng tài khoản quét. Đường nền không có phiên nhà nên rỗng.
+      loadLoiMoiNha: (id) => sl<NhaRepository>().idaccount != id
+          ? const []
+          : [
+              for (final m in sl<NhaRepository>().loiMoiToi)
+                (ma: m.ma, tenNha: m.tenNha, tenNguoiMoi: m.tenNguoiMoi, hetHan: m.hetHan),
+            ],
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,

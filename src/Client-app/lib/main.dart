@@ -115,6 +115,18 @@ void main() async {
     ..noiVongDoi(sl<AppLifecycleWatcher>().stream)
     ..noiSuKien(sl<RealtimeChannel>().events);
 
+  // Có mã lời mời MỚI → đánh thức bộ quét (spec 12.6). So tập mã vì `theoDoiLoiMoi` phát sau mỗi lần làm mới, và mỗi lần đánh
+  // thức là một lượt `scan()` đầy đủ, kể cả bộ tự trả / tự trích. `quetKhiRanh` không làm mất lượt khi bộ quét đang bận.
+  var maLoiMoiDaBao = const <String>{};
+  sl<NhaRepository>().theoDoiLoiMoi.listen((ds) {
+    final ma = {for (final m in ds) m.ma};
+    final coMaMoi = ma.difference(maLoiMoiDaBao).isNotEmpty;
+    maLoiMoiDaBao = ma;
+    if (!coMaMoi) return;
+    final id = idaccountTuTrangThai(authBloc.state);
+    if (id != null) unawaited(sl<NotificationScanner>().quetKhiRanh(id).catchError((Object _) {}));
+  });
+
   // B1 (spec 2026-10-27 mục 5): admin đổi quyền nhắc (socket → lamMoi) → lịch hệ điều hành đặt / huỷ NGAY, không chờ lượt
   // quét kế. `resync` THƯỜNG đủ: quyền tắt là lịch rời tập muốn (bị huỷ), quyền bật là lịch chưa chờ (được đặt) — `datLai`
   // chỉ cho đổi giờ (G59). Nối MỘT lần cho cả vòng đời app, cùng lý do với khối trên.

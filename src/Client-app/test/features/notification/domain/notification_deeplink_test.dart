@@ -220,6 +220,7 @@ void main() {
             vi(id: 'vi-can', soDu: 1000),
           ],
           lowBalanceThreshold: 100000,
+          loiMoiNha: const [(ma: 'ABCD2345', tenNha: 'Nhà An', tenNguoiMoi: 'Trần An', hetHan: null)],
           autoDeposits: [
             GoalAutoDepositEvent(
               goalId: 'mt-trich',
@@ -313,6 +314,13 @@ void main() {
       // `tinHeThong:<id>` rơi nhánh mặc định → Trung tâm thông báo — canh ở ca "tin admin" ngay dưới.
       NotificationKind.tinHeThong,
     };
+
+    test('lời mời vào nhà: khoá → /nha (route gốc, push được từ /notifications), loaiTuKhoa nhận ra', () {
+      expect(deeplinkTuDedupeKey('loiMoiNha:ABCD2345'), '/nha');
+      expect(thuocThanhTab('/nha'), isFalse,
+          reason: 'đặt nhầm vào thanh tab là `go` thay cả stack, thanh tab biến mất');
+      expect(loaiTuKhoa('loiMoiNha:ABCD2345'), NotificationKind.loiMoiNha);
+    });
 
     test('tin admin: khoá tinHeThong:<id> → Trung tâm thông báo, loaiTuKhoa nhận ra', () {
       expect(deeplinkTuDedupeKey('tinHeThong:8f1c'), routeThongBao,

@@ -22,6 +22,8 @@ String tenNhomThongBao(NotificationGroup nhom) {
       return 'Biến động số dư';
     case NotificationGroup.tinFlowMoney:
       return 'Tin từ FlowMoney';
+    case NotificationGroup.giaDinh:
+      return 'Gia đình';
   }
 }
 
@@ -41,6 +43,8 @@ String moTaNhomThongBao(NotificationGroup nhom) {
       return 'Đọc thông báo ngân hàng / ví điện tử trên máy để điền sẵn giao dịch.';
     case NotificationGroup.tinFlowMoney:
       return 'Thông báo chung do đội ngũ FlowMoney gửi.';
+    case NotificationGroup.giaDinh:
+      return 'Lời mời vào nhà.';
   }
 }
 
@@ -60,6 +64,8 @@ IconData iconNhomThongBao(NotificationGroup nhom) {
       return Icons.account_balance_outlined;
     case NotificationGroup.tinFlowMoney:
       return Icons.campaign_outlined;
+    case NotificationGroup.giaDinh:
+      return Icons.home_outlined;
   }
 }
 

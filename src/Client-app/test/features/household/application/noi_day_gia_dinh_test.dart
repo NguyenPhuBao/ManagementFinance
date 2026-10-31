@@ -44,4 +44,11 @@ void main() {
     expect(khoi, contains('..noiSuKien(sl<RealtimeChannel>().events)'),
         reason: 'thiếu là household.changed / household.invited không bao giờ tới NhaRepository');
   });
+
+  test('main.dart: lời mời vừa về đánh thức bộ quét; DI ánh xạ lời mời cho bộ luật', () {
+    expect(mainDart, contains('ma.difference(maLoiMoiDaBao).isNotEmpty'),
+        reason: 'thiếu là thông báo lời mời chỉ hiện ở lượt quét sau đồng bộ kế tiếp');
+    expect(mainDart, contains('quetKhiRanh(id)'), reason: '`scan` bỏ qua khi đang quét, mất lượt im lặng');
+    expect(di, contains('loadLoiMoiNha: (id) => sl<NhaRepository>().idaccount != id'));
+  });
 }

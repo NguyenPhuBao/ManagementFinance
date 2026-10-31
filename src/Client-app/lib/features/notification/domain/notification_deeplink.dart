@@ -180,6 +180,10 @@ String deeplinkTuDedupeKey(String key) {
     case 'bienDong':
       return routeThongBao;
 
+    // Lời mời vào nhà: `/nha` là route gốc ngoài shell, thuocThanhTab = false nên nơi gọi dùng `push`.
+    case 'loiMoiNha':
+      return '/nha';
+
     // `syncFailed` và mọi khoá lạ: không có màn nào để mở.
     default:
       return routeThongBao;
