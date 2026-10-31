@@ -617,7 +617,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-31)
 
-### 🔀 Gộp `main` @ `5ff06db4` (2026-10-31 phiên 25, fast-forward nên không có commit gộp, chưa push) — backend báo xong 24 việc (PR #172); client soát: **chưa xong**
+### 🔀 Gộp `main` @ `5ff06db4` (2026-10-31 phiên 25, fast-forward nên không có commit gộp, đã push) — backend báo xong 24 việc (PR #172); client soát: **chưa xong**
 
 - `d7fcaf07` · `cf876e10` · `23b3685e` (NPBao, PR #172): 42 tệp, **0 tệp `src/Client-app`** (cây giữ hash `b7fcb406`, không chạy lại `flutter test`); `git check-ignore --no-index -v src/Client-app/test/x_test.dart` không khớp; `schema.prisma`, `SYNC_DOCUMENTATION.md`, `docs/Family` không đổi. Migration **44** (`household_join`, `household_wallets`) đã áp Supabase (đo chỉ đọc), chưa `PersonFinance` (không chặn gì: khoá vắng dùng mặc định trong mã). `crypto.util.js` tự nạp `.env` khi chưa có khoá, không `override` ⇒ lệnh chạy `PersonFinance` ở `CLAUDE.md` vẫn đúng. `package.json` chỉ thêm script: không cần `npm install`.
 - **Soát** (bốn agent Opus chỉ đọc + phiên chính kiểm lại mọi lỗi CAO; báo cáo gitignore ở `.superpowers/soat-pr172/`), chấm theo thân việc + *Kiểm lại*: **5 đạt** (57.4, 57.5, 58.1, 58.2, 49.F(1)) · **15 một phần** (57.1, 57.2, 57.3, 57.7, 57.8, 58.3, 58.4, 58.5, 58.6, 52.1, 52.5, 55.A3, T1, T2, T3) · **4 chưa** (57.6, 52.3, 52.4, 48.1). **Đơn 59** mới: 59.1 (CAO), 59.2, 59.3.
