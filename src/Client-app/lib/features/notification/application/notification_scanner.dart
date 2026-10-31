@@ -470,12 +470,13 @@ class NotificationScanner {
   Future<void> stop() async {
     // Đầu tiên, trước mọi `await`: lượt bù là một `scan` đầy đủ.
     _quetBuCho = null;
+    // Cùng chỗ: `quetKhiRanh` chốt theo `_idaccount`, nên phải hạ trước mọi `await` (sự kiện mời có thể phát giữa chừng).
+    final id = _idaccount;
+    _idaccount = null;
     await _sub?.cancel();
     _sub = null;
     await _subVongDoi?.cancel();
     _subVongDoi = null;
-    final id = _idaccount;
-    _idaccount = null;
     // TRƯỚC `cancelAll()`: updater còn sống mà khay vừa bị dọn sạch thì lượt
     // đẩy cuối cùng sẽ dựng lại đúng bản tóm tắt vừa gỡ đi — và nó mang tên
     // app của người vừa đăng xuất.
@@ -527,6 +528,8 @@ class NotificationScanner {
   /// Cho nguồn sự kiện ngoài đồng bộ (lời mời vào nhà vừa về). [scan] bỏ qua khi đang có lượt chạy, nên lượt ấy có thể đã đọc
   /// xong nguồn và bỏ sót sự kiện: ở đây ghi nợ MỘT lượt bù chạy sau nó.
   Future<void> quetKhiRanh(int idaccount) async {
+    // Cùng chốt phiên với các lối vào `scan` theo sự kiện khác: sau `stop()` (hoặc cho tài khoản khác) thì không quét.
+    if (_idaccount != idaccount) return;
     if (_dangQuet) {
       _quetBuCho = idaccount;
       return;

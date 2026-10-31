@@ -36,42 +36,77 @@ void main() {
     expect(await quet((_) => const []).scan(18), 0);
   });
 
-  test('quetKhiRanh trong lúc một lượt đang chạy → đúng MỘT lượt bù', () async {
+  // `start` có `await scan`, nên cờ giữ chỉ bật SAU khi start xong.
+  Future<(NotificationScanner, Completer<void>, int Function())> phienDangMo() async {
     var soLanDoc = 0;
+    var giuBat = false;
     final giu = Completer<void>();
     final s = quet((_) {
       soLanDoc++;
       return const [];
-    }, giuBills: () => giu.future);
+    }, giuBills: () => giuBat ? giu.future : Future.value());
+    await s.start(18);
+    soLanDoc = 0;
+    giuBat = true;
+    return (s, giu, () => soLanDoc);
+  }
+
+  Future<void> xa() async {
+    for (var i = 0; i < 20; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+  }
+
+  test('quetKhiRanh trong lúc một lượt đang chạy → đúng MỘT lượt bù', () async {
+    final (s, giu, doc) = await phienDangMo();
     final luotDau = s.scan(18);
     await Future<void>.delayed(Duration.zero);
     await s.quetKhiRanh(18);
     await s.quetKhiRanh(18); // ghi nợ hai lần vẫn chỉ MỘT lượt bù
-    expect(soLanDoc, 0);
+    expect(doc(), 0);
     giu.complete();
     await luotDau;
-    for (var i = 0; i < 20; i++) {
-      await Future<void>.delayed(Duration.zero);
-    }
-    expect(soLanDoc, 2, reason: 'lượt đầu + đúng một lượt bù');
+    await xa();
+    expect(doc(), 2, reason: 'lượt đầu + đúng một lượt bù');
+    await s.stop();
   });
 
   test('đăng xuất giữa lượt quét: lượt bù đang nợ bị bỏ', () async {
-    var soLanDoc = 0;
-    final giu = Completer<void>();
-    final s = quet((_) {
-      soLanDoc++;
-      return const [];
-    }, giuBills: () => giu.future);
+    final (s, giu, doc) = await phienDangMo();
     final luotDau = s.scan(18);
     await Future<void>.delayed(Duration.zero);
     await s.quetKhiRanh(18);
     await s.stop();
     giu.complete();
     await luotDau;
-    for (var i = 0; i < 20; i++) {
-      await Future<void>.delayed(Duration.zero);
-    }
-    expect(soLanDoc, 1, reason: 'lượt bù sau stop() tự chuyển tiền và đặt lại lịch nhắc cho tài khoản đã đăng xuất');
+    await xa();
+    expect(doc(), 1, reason: 'lượt bù sau stop() tự chuyển tiền và đặt lại lịch nhắc cho tài khoản đã đăng xuất');
+  });
+
+  test('lượt đang chạy → stop() → quetKhiRanh: không ghi nợ lượt bù', () async {
+    final (s, giu, doc) = await phienDangMo();
+    final luotDau = s.scan(18);
+    await Future<void>.delayed(Duration.zero);
+    await s.stop();
+    await s.quetKhiRanh(18);
+    giu.complete();
+    await luotDau;
+    await xa();
+    expect(doc(), 1, reason: 'household.invited có thể phát giữa stop() và lúc phiên đóng hẳn');
+  });
+
+  test('rảnh → stop() → quetKhiRanh: không quét', () async {
+    final (s, _, doc) = await phienDangMo();
+    await s.stop();
+    await s.quetKhiRanh(18);
+    expect(doc(), 0);
+  });
+
+  test('rảnh, phiên đang mở → quetKhiRanh quét đúng một lần', () async {
+    final (s, giu, doc) = await phienDangMo();
+    giu.complete();
+    await s.quetKhiRanh(18);
+    expect(doc(), 1);
+    await s.stop();
   });
 }
