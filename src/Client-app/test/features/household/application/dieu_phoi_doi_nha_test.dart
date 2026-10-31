@@ -112,4 +112,44 @@ void main() {
     expect(await idVi(), isNot(contains('vi-nha-7')), reason: 'lượt sau trong hàng đợi vẫn chạy');
     await luong.close();
   });
+
+  group('G113 lỗ hổng 1: dấu bền', () {
+    late List<(int, int?)> dau;
+    setUp(() {
+      dau = [];
+      dieuPhoi = DieuPhoiDoiNha(
+        db: db,
+        keoLaiToanBo: (id) async => nhatKy.add('keo:$id'),
+        ghiDau: (id, nha) async => dau.add((id, nha)),
+      );
+    });
+
+    test('xử lý xong mới ghi dấu; dấu = nhà đến', () async {
+      await dieuPhoi.xuLy(const DoiNha(idaccount: 10, tu: null, den: 5));
+      expect(dau, [(10, 5)]);
+      expect(nhatKy, ['keo:10']);
+    });
+
+    test('rời nhà: dấu về null', () async {
+      await dieuPhoi.xuLy(const DoiNha(idaccount: 10, tu: 5, den: null));
+      expect(dau, [(10, null)]);
+    });
+
+    test('keoLaiToanBo ném: KHÔNG ghi dấu, lần mở phiên sau chạy lại', () async {
+      dieuPhoi = DieuPhoiDoiNha(
+        db: db,
+        keoLaiToanBo: (_) async => throw StateError('mạng'),
+        ghiDau: (id, nha) async => dau.add((id, nha)),
+      );
+      await expectLater(dieuPhoi.xuLy(const DoiNha(idaccount: 10, tu: null, den: 5)), throwsStateError);
+      expect(dau, isEmpty);
+    });
+
+    test('dọn hỏng: KHÔNG ghi dấu dù kéo xong', () async {
+      await db.close();
+      await expectLater(dieuPhoi.xuLy(const DoiNha(idaccount: 10, tu: 5, den: 7)), throwsA(anything));
+      expect(dau, isEmpty);
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+    });
+  });
 }

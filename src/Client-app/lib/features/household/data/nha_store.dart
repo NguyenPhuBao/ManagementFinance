@@ -11,6 +11,12 @@ abstract class NhaStore {
   /// `null` = chưa có / hàng hỏng. Không bao giờ ném.
   Future<NhaCuaToi?> doc(int idaccount);
   Future<void> ghi(int idaccount, NhaCuaToi trangThai);
+
+  /// Nhà mà `DieuPhoiDoiNha` đã xử lý xong (G113 lỗ hổng 1). Vắng = `null` = chưa xử lý nhà nào.
+  Future<int?> docDauXuLy(int idaccount);
+
+  /// [idNha] `null` là xoá dấu.
+  Future<void> ghiDauXuLy(int idaccount, int? idNha);
 }
 
 class SecureStorageNhaStore implements NhaStore {
@@ -39,6 +45,30 @@ class SecureStorageNhaStore implements NhaStore {
       // Bỏ qua — xem chú thích đầu lớp.
     }
   }
+
+  static String khoaDau(int idaccount) => 'nha_da_xu_ly_$idaccount';
+
+  @override
+  Future<int?> docDauXuLy(int idaccount) async {
+    try {
+      return int.tryParse(await _storage.read(key: khoaDau(idaccount)) ?? '');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> ghiDauXuLy(int idaccount, int? idNha) async {
+    try {
+      if (idNha == null) {
+        await _storage.delete(key: khoaDau(idaccount));
+      } else {
+        await _storage.write(key: khoaDau(idaccount), value: '$idNha');
+      }
+    } catch (_) {
+      // Bỏ qua: mất dấu chỉ làm lần mở sau kéo toàn bộ một lần.
+    }
+  }
 }
 
 /// Kho trong RAM cho test.
@@ -50,4 +80,18 @@ class InMemoryNhaStore implements NhaStore {
 
   @override
   Future<void> ghi(int idaccount, NhaCuaToi trangThai) async => values[idaccount] = trangThai;
+
+  final Map<int, int> dau = {};
+
+  @override
+  Future<int?> docDauXuLy(int idaccount) async => dau[idaccount];
+
+  @override
+  Future<void> ghiDauXuLy(int idaccount, int? idNha) async {
+    if (idNha == null) {
+      dau.remove(idaccount);
+    } else {
+      dau[idaccount] = idNha;
+    }
+  }
 }

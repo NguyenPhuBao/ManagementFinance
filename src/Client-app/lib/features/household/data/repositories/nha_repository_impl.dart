@@ -348,8 +348,17 @@ class NhaRepositoryImpl implements NhaRepository {
       if (id == daNoi) return;
       daNoi = id;
       await datTaiKhoan(id);
+      await _doiChieuDauXuLy(id);
       await lamMoi();
     }));
+  }
+
+  /// Dấu "đã xử lý tới nhà X" lệch kho ⇒ lần trước tiến trình chết giữa chừng, phát lại đúng cặp (G113 lỗ hổng 1). Chỉ ở đây, từ
+  /// kho: `DoiNha` của `lamMoi` chỉ phát khi server khác kho, nên không chạy hai lần cho một cặp.
+  Future<void> _doiChieuDauXuLy(int id) async {
+    final dau = await _kho.docDauXuLy(id);
+    final nha = _hienTai.nha?.id;
+    if (_idaccount == id && dau != nha && !_doiNha.isClosed) _doiNha.add(DoiNha(idaccount: id, tu: dau, den: nha));
   }
 
   @override

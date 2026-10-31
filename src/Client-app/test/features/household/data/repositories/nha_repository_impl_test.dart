@@ -313,6 +313,59 @@ void main() {
     });
   });
 
+  group('G113 lỗ hổng 1: mở phiên so dấu với kho', () {
+    test('kho nhà 12, dấu vắng → phát DoiNha(null → 12) để chạy lại xử lý', () async {
+      kho.values[18] = trangThai();
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.cuaToiJson = nhaJson();
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(null, 12)]);
+    });
+
+    test('dấu = kho → không phát gì, kể cả /me cùng nhà', () async {
+      kho.values[18] = trangThai();
+      await kho.ghiDauXuLy(18, 12);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.cuaToiJson = nhaJson();
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi, isEmpty, reason: 'phát oan là kéo toàn bộ mỗi lần mở app');
+    });
+
+    test('dấu 7, kho 12 → DoiNha(7 → 12): dọn nhà cũ rồi kéo nhà mới', () async {
+      kho.values[18] = trangThai();
+      await kho.ghiDauXuLy(18, 7);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.cuaToiJson = nhaJson();
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(7, 12)]);
+    });
+
+    test('dấu 12, kho trống → DoiNha(12 → null) dọn; /me thấy nhà thì DoiNha(null → 12) kéo lại', () async {
+      await kho.ghiDauXuLy(18, 12);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.cuaToiJson = nhaJson();
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(12, null), (null, 12)],
+          reason: 'mất kho thì bản sao cục bộ không còn được tin; hai bước, dữ liệu không mất');
+    });
+  });
+
   group('nguồn làm mới', () {
     test('noiPhien: id → datTaiKhoan + lamMoi; null → xoaPhien', () async {
       api.cuaToiJson = nhaJson();

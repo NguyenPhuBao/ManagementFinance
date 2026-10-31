@@ -130,4 +130,10 @@ class _KhoTreo implements NhaStore {
 
   @override
   Future<void> ghi(int idaccount, NhaCuaToi trangThai) async {}
+
+  @override
+  Future<int?> docDauXuLy(int idaccount) async => null;
+
+  @override
+  Future<void> ghiDauXuLy(int idaccount, int? idNha) async {}
 }

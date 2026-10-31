@@ -15,4 +15,14 @@ void main() {
     expect((await kho.doc(18))!.nha!.id, 12);
     expect(await kho.doc(25), isNull);
   });
+
+  test('InMemory: dấu vắng là null; ghi null là xoá', () async {
+    final k = InMemoryNhaStore();
+    expect(await k.docDauXuLy(18), isNull);
+    await k.ghiDauXuLy(18, 12);
+    expect(await k.docDauXuLy(18), 12);
+    await k.ghiDauXuLy(18, null);
+    expect(await k.docDauXuLy(18), isNull);
+    expect(await k.docDauXuLy(19), isNull, reason: 'theo tài khoản');
+  });
 }

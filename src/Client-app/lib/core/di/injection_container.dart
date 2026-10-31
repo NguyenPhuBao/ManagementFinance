@@ -561,6 +561,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<DieuPhoiDoiNha>(() => DieuPhoiDoiNha(
         db: sl(),
         keoLaiToanBo: (id) => sl<SyncEngine>().keoLaiToanBo(id),
+        ghiDau: (id, nha) => sl<NhaStore>().ghiDauXuLy(id, nha),
       ));
 
   sl.registerLazySingleton<ChiaSeChu>(() => const ChiaSeChuThat());

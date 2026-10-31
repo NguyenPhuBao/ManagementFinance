@@ -21,6 +21,13 @@ void main() {
             'mỗi lần mở app xoá sạch dữ liệu nhà trong khi kho vẫn mang nhà (không DoiNha, lịch sử không về lại)');
   });
 
+  test('DI: bộ điều phối ghi dấu vào kho nhà', () {
+    final i = di.indexOf('registerLazySingleton<DieuPhoiDoiNha>');
+    expect(i, isNonNegative);
+    expect(di.substring(i, di.indexOf('));', i)), contains('ghiDau: (id, nha) => sl<NhaStore>().ghiDauXuLy(id, nha)'),
+        reason: 'thiếu là dấu không bao giờ dời, mỗi lần mở app đều kéo toàn bộ');
+  });
+
   test('main.dart: bộ điều phối nghe TRƯỚC khi trạng thái nhà nối phiên; nối đúng một lần', () {
     final nghe = RegExp(r'DieuPhoiDoiNha>\(\)\s*\.batDauNghe\(').allMatches(mainDart).toList();
     expect(nghe, hasLength(1));
