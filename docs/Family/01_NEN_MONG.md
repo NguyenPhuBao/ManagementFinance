@@ -55,6 +55,8 @@ hiệu lực có nút *Huỷ*. Nhà đủ người ⇒ cả hai nút khoá kèm 
 - **Từ chối** ⇒ `Declined_at`; lời mời không dùng được nữa (`409 HOUSEHOLD_INVITE_DECLINED`); phát `household.changed` tới Chủ nhà để
   danh sách lời mời của họ cập nhật.
 
+> **Backend trả lời 2026-10-31 (đơn 57.8, đối chiếu với mã: khớp):** #7 giữ trần **5 thư / giờ**, tối đa **20 thư / 24 giờ / nhà**, đếm theo nhà. #8 `ON DELETE CASCADE` / `SET NULL` ở `database/40_create_household_foundation.sql` là chủ ý, vì hệ thống xoá mềm và không có đường xoá cứng từ phía người dùng / client.
+
 ### 2.3 Dữ liệu (SQL nháp — cùng tệp migration của phần 1 hoặc tệp kế, câu hỏi Q1 `00`)
 
 ```sql
@@ -89,6 +91,8 @@ CREATE INDEX IF NOT EXISTS "idx_household_invite_email"
 
 `#5 DELETE /api/households/invites/:code` dùng cho cả hai loại. Tên hiển thị người mời: `user.Fullname`, thiếu thì `account.Username`
 (đơn 50 C). **Không** trả email của ai ngoài chính email Chủ nhà đã gõ ở #4.
+
+> **Backend trả lời 2026-10-31 (đơn 57.8 #5):** `GET /invites` giữ **5 trạng thái** `Pending · Declined · Revoked · Used · Expired`. Màn Mời chỉ hiện *Đang chờ / Đã từ chối / Hết hạn* (mục 2.1).
 
 ### 2.5 Mã lỗi API mới (4xx, `code` ở cấp gốc)
 

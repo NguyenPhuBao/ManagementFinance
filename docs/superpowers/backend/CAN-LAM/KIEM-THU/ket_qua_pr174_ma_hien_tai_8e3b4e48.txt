@@ -1,0 +1,75 @@
+Thư mục: D:\test_kltn\ManagementFinance\.superpowers\thu-sua-pr174\goc\src\Backend
+TỔNG: 10 đạt / 24 ca
+
+ĐẠT  [T1 :67] ocr.completed có một trong hai khối chi tiết
+     mong: true
+     thực: true
+SAI  [T1 :67] socket KHÔNG mang số tài khoản đầy đủ
+     mong: false
+     thực: true
+ĐẠT  [T1 :67] socket còn 4 số cuối để nhận ra tài khoản
+     mong: true
+     thực: true
+ĐẠT  [T1 :67] DTO trả về chủ tài khoản giữ số đầy đủ
+     mong: true
+     thực: true
+SAI  [T1] hết câu nói ngược mã
+     mong: không
+     thực: In-App Banner | Banner cam | Hiển thị Banner | exponential backoff | Dialog phong tỏa | Đóng popup VietQR | đếm ngược tự động thử lại | thông báo người dùng tạm nghỉ | Từ Thiết Bị Khác | từ thiết bị khác | Toast thông báo chúc mừng | NotificationBell | Backoff đếm ngược | 9 Tín Hiệu | 9 TÍN HIỆU | Phát hiện hóa đơn trùng lặp
+SAI  [T1] bảng 3.1 có hai sự kiện nhà
+     mong: true
+     thực: false
+SAI  [T1] ma trận có hai sự kiện nhà
+     mong: true
+     thực: false
+SAI  [T3] hết câu nói ngược mã
+     mong: không
+     thực: lộ trình tương lai | Chạy phân tích lại kỳ này | Giới hạn tối đa 15 lượt | Vẫn xem lại được kết quả dự báo | 15 lượt/tháng | 1 ảnh/tx | 20 tx/lần | 5 từ/cat | Điểm cơ bản | 4 banks | Tải hóa đơn | Debounce 10s | Chuyển chu kỳ đồng bộ về 10s | "supported_banks": ["MB", "MOMO", "ZALOPAY"]
+SAI  [T3] có đủ dòng App thi hành (≥ 8)
+     mong: true
+     thực: false
+SAI  [T3] trả lại /export-report
+     mong: true
+     thực: false
+SAI  [T6] mã chạy thật không còn nhánh chỉ để hợp bản giả
+     mong: false
+     thực: true
+SAI  [T6] hết nhãn [Tier 2] trên ca giả repository
+     mong: false
+     thực: true
+SAI  [T6] năm webhook đua nhau cùng reference: không ném, đúng một hàng
+     mong: không ném|1
+     thực: NÉM ReferenceError: logger is not defined
+ĐẠT  [T6] kích hoạt hai lần cùng reference: không ném, vẫn một hàng
+     mong: không ném|1
+     thực: không ném|1
+ĐẠT  [55.A3] /subscription-info: isPremium false, isExpired true
+     mong: false|true
+     thực: false|true
+ĐẠT  [55.A3] requireFeature(household): chặn FEATURE_DISABLED
+     mong: chặn
+     thực: chặn
+ĐẠT  [55.A3] chủ nhà Premium + NULL: nhà về ReadOnly
+     mong: ReadOnly
+     thực: ReadOnly
+ĐẠT  [55.A3] job hạ cấp: Type về Basic
+     mong: Basic
+     thực: Basic
+SAI  [55.A3] có ca test trong repo
+     mong: true
+     thực: false
+SAI  [60.1] Test/test_sync_new_schema.js từ chối db.khong-co-that.supabase.co
+     mong: từ chối
+     thực: cho chạy
+ĐẠT  [60.1] Test/test_sync_new_schema.js từ chối aws-0.pooler.supabase.com
+     mong: từ chối
+     thực: từ chối
+SAI  [60.1] Test/test_can_lam_fixes.js từ chối db.khong-co-that.supabase.co
+     mong: từ chối
+     thực: cho chạy
+ĐẠT  [60.1] Test/test_can_lam_fixes.js từ chối aws-0.pooler.supabase.com
+     mong: từ chối
+     thực: từ chối
+SAI  [60.2] kết quả verify:household không ghi vào cây mã, hoặc đã ignore
+     mong: true
+     thực: false

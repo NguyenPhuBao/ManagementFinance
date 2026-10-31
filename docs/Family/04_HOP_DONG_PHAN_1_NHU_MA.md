@@ -14,6 +14,8 @@
 
 > 🔎 **Đo lại 2026-10-31 (phiên 25) — backend `5ff06db4` (PR #172), chạy thật trên bản sao + CSDL tạm, không phải máy thật.** Bảng dưới vẫn là ảnh chụp `e3248955`; chỗ đã khác ở **mục 2a**. Trạng thái việc: `CAN-LAM/VIEC_BACKEND_CON_LAI.md`. **Đo lại sau mỗi lần gộp `main`.**
 
+> 🔎 **Đo lại 2026-10-31 (phiên 27) — backend `8e3b4e48` (PR #174), kịch bản 50 / 50.** Hợp đồng hiện hành ở **mục 2b**, thắng mục 2 và 2a.
+
 ## 1. Kết luận cho lát 1
 
 - **Dựng được ngay trên mã hiện tại:** 16 đường dẫn + method (bảng mục 2), migration 40 (ba bảng + cột `Idhousehold` ở 5 bảng, không có
@@ -75,6 +77,42 @@ Không có route mới, không đổi đường dẫn. Dòng không nêu là kh�
 | 16 | Trước bước hỏng: `_INVALID` 404, `_DECLINED` 409, `_USED` 409, `_EXPIRED` 410. 🛑 **Lời mời hợp lệ: 500** (57.2) |
 
 Đồng bộ (mục 3) ở `5ff06db4`: 57.4, 58.1, 58.2 **đạt, đã chạy thật với payload app** (Member đẩy khoản của Chủ ⇒ `_ROLE_FORBIDDEN`; Member đẩy danh mục nhà ⇒ `synced`; Chủ đẩy khoản của Member ⇒ `synced`, `Idaccount` giữ người ghi; `Transfer` chỉ Chủ, xét vai hiện tại; trần ví chung chạy với `operation: 'update'`). `household.changed` sau `/sync/push` **đã bỏ**, chỉ còn `sync.completed` tới thành viên khác; nhà của sự kiện còn đọc từ payload (58.4). Không mã đẩy mới; `_permanentCodes` không phải đổi. Hàng mới mang `idaccount` khác phiên hiện **vẫn ghi được** (59.1; app không gửi vậy).
+
+## 2b. Hợp đồng ở `8e3b4e48` (PR #174, đo 2026-10-31) — **thắng bảng mục 2 và mục 2a khi lệch**
+
+Đo bằng `CAN-LAM/KIEM-THU/chay_kiem.js` trên bản sao + CSDL tạm: **50 / 50**. Chưa đo trên máy thật. Không có route mới, không đổi đường dẫn.
+
+- **Hết bốn dòng 🛑 của mục 2a:** #12 `POST /dissolve` chạy, trả `{dissolved: true}`, phát `HOUSEHOLD_DISSOLVED` cho từng thành viên. #14, #15, #16 chạy.
+- **Hình dạng trạng thái nhà một kiểu lồng** ở #1, #2, #7, #9, #11, #15: `{household: {id, name, status, maxMembers, ownerId, createAt, maxSharedWallets, contributionDueDay} | null, myRole, members: [{idaccount, displayName, role, joinedAt}], formerMembers: [{idaccount, displayName, role, leftAt}]}`. Không nhà: `household: null, myRole: null`, hai mảng rỗng. Thân khác: #8 `{targetIdaccount, newRole}` · #10 `{removed}` · #12 `{dissolved}` · #16 `{declined}`.
+- **#14** khớp cả theo email; thêm `memberCount` (đếm đúng) và `maxMembers`.
+- **Đồng bộ:** `household.changed` chỉ phát khi thao tác đã `synced` và đã qua kiểm quyền (58.4). Hàng mới mang `idhousehold` phải có `idaccount` = chủ token, không thì `NOT_OWNER` (59.1). `bill` luôn đi nhánh hàng riêng. Client không gửi lệch, không phải đổi mã.
+
+**Bảng mã lỗi chốt (57.7, đối chiếu từng mã với `household.service.js`, `middleware/rate-limiter.js`: khớp):**
+
+| Mã | HTTP | Endpoint | Khi nào |
+|---|---|---|---|
+| `HOUSEHOLD_INVITE_INVALID` | 404 | #6, #7, #15, #16 | Không có mã, nhà đã giải tán, mã đã huỷ |
+| `HOUSEHOLD_INVITE_EXPIRED` | 410 | #6, #7, #15, #16 | Quá hạn |
+| `HOUSEHOLD_INVITE_USED` | 409 | #6, #7, #15, #16 | Đã dùng |
+| `HOUSEHOLD_INVITE_DECLINED` | 409 | #6, #7, #15, #16 | Đã từ chối |
+| `HOUSEHOLD_INVITE_WRONG_ACCOUNT` | 403 | #6, #7, #15, #16 | Email tài khoản khác email lời mời |
+| `HOUSEHOLD_INVITE_RATE_LIMIT` | 429 | #13 | 20 thư / nhà / 24 giờ hoặc 5 thư / giờ |
+| `HOUSEHOLD_INVITE_ATTEMPT_LIMIT` | 429 | #6, #7 | 30 lượt / 15 phút / IP |
+| `HOUSEHOLD_READ_ONLY` | 409 | #3, #6, #7, #13, #15 | Nhà `ReadOnly` |
+| `HOUSEHOLD_CLOSED` | 410 | #3, #13 | Nhà đã giải tán. ⚠️ Thực tế khó tới: giải tán đặt `left_at`, Chủ cũ nhận `FORBIDDEN_NOT_OWNER` trước |
+| `HOUSEHOLD_ALREADY_IN_ONE` | 409 | #1, #7, #15 | Đang ở nhà khác |
+| `HOUSEHOLD_FULL` | 409 | #3, #7, #13, #15 | Đủ người |
+| `FEATURE_DISABLED` | 403 | #1, #7, #15 | Gói không có `household` / `household_join` |
+| `FORBIDDEN_NOT_OWNER` | 403 | #3, #4, #5, #8, #9, #10, #12, #13 | Không phải Chủ nhà |
+| `NOT_IN_HOUSEHOLD` · `OWNER_CANNOT_LEAVE` | 404 · 400 | #11 | Không ở nhà nào · Chủ nhà rời |
+| `HOUSEHOLD_INVITE_NOT_FOUND` | 404 | #5 | Huỷ mã không có |
+| `MEMBER_NOT_IN_HOUSEHOLD` / `TARGET_NOT_IN_HOUSEHOLD` | 404 | #8, #10 / #9 | Đích không ở nhà |
+| `INVALID_HOUSEHOLD_NAME`, `INVALID_INVITE_CODE`, `INVALID_INVITE_ROLE`, `INVALID_MEMBER_ROLE`, `INVALID_TARGET_USER`, `INVALID_EMAIL` | 400 | #1, #7, #3 + #13, #8, #9, #13 | Dữ liệu sai |
+| `CANNOT_CHANGE_OWNER_ROLE`, `CANNOT_TRANSFER_TO_SELF`, `CANNOT_REMOVE_SELF` | 400 | #8, #9, #10 | Thao tác lên chính mình / Chủ |
+
+Ngoài bảng chỉ còn `HOUSEHOLD_ERROR` 500 (dự phòng trong mọi `catch` của controller); client đọc là lỗi máy chủ. `HOUSEHOLD_NOT_ACTIVE` đã hết.
+
+**Quyền:** chỉ `household` (#1) và `household_join` (#7, #15) được thi hành. Trần thật lấy từ cột từng nhà (`max_members`, `max_shared_wallets`), client đọc ở `/me`; `limits.household_*` và `scopes` client bỏ qua. Sửa `limit_value` ở Admin-web không đổi trần nhà đang có. Migration 41 và 44 đổi sang `DO NOTHING` sau khi đã áp: CSDL mới và CSDL cũ có thể khác nhau ở `scope_config`, hiện không tác động vì client không đọc.
 
 ## 3. Đồng bộ (`/sync/push`, `/sync/pull`)
 

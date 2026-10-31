@@ -261,7 +261,7 @@ Tuyệt đối tuân thủ quy tắc bảo vệ cấu trúc CSDL PostgreSQL Supa
 ## 🧪 8. NGUYÊN TẮC KIỂM THỬ SPEC-DRIVEN, TEST-FIRST & TEST 2 TẦNG (RULE 11)
 
 > 🎯 **4 NGUYÊN TẮC CỐT LÕI BẮT BUỘC VỀ KIỂM THỬ & THAY ĐỔI NGHIỆP VỤ:**
-> 1. **Test phải dựa vào đặc tả nghiệp vụ 100% (Specification-Driven Testing):** Mọi kịch bản kiểm thử bắt buộc bám sát tài liệu đặc tả nghiệp vụ (`docs/`, PRD, Acceptance Criteria từ PO/Lead BA). Không viết test hình thức, giả lập vô nghĩa.
+> 1. **Test phải dựa vào đặc tả nghiệp vụ 100% (Specification-Driven Testing):** Mọi kịch bản kiểm thử bắt buộc bám sát tài liệu đặc tả nghiệp vụ (`docs/`, PRD, Acceptance Criteria từ PO Cấp cao / Lead PO). Không viết test hình thức, giả lập vô nghĩa.
 > 2. **Viết Test TRƯỚC KHI hiện thực Code (Test-First / TDD Red Phase):** Nghiêm cấm viết code trước rồi mới viết test sau. Bắt buộc viết test trước mô tả đúng kết quả mong đợi (chạy FAIL / RED khi chưa có code) để định hướng cho logic sắp viết.
 > 3. **Sau khi hiện thực Code mới chạy Test để kiểm chứng (Verification / TDD Green Phase):** Viết code vừa đủ thỏa mãn test. Sau khi code xong, chạy test kiểm chứng: code đạt khi test chuyển sang PASS / GREEN cho cả 2 Tầng.
 > 4. **Cập nhật Test TRƯỚC KHI cập nhật Code khi nghiệp vụ thay đổi (Test-First on Requirement Changes):** Khi nghiệp vụ thay đổi, BẮT BUỘC cập nhật tài liệu đặc tả $\rightarrow$ Cập nhật bản test trước (chạy FAIL) $\rightarrow$ sau đó mới cập nhật code (chuyển sang PASS). CẤM TUYỆT ĐỐI sửa code trước rồi sửa test theo code.
