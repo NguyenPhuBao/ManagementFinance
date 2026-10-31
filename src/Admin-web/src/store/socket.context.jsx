@@ -28,10 +28,11 @@ export const SocketProvider = ({ children, serverUrl = defaultSocketUrl, options
   } catch (_) {
     // Dự phòng khi chạy trong môi trường test không có AuthProvider
   }
-  const isAuthenticated = authContext?.isAuthenticated ?? Boolean(localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN));
+  const tokenInStorage = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) : null;
+  const isAuthenticated = Boolean(authContext?.isAuthenticated || tokenInStorage);
 
   useEffect(() => {
-    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    const token = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) : null;
 
     // Nếu không có token và không xác thực, dọn dẹp socket cũ nếu có
     if (!token && !isAuthenticated) {
@@ -45,14 +46,20 @@ export const SocketProvider = ({ children, serverUrl = defaultSocketUrl, options
       return;
     }
 
+    // Nếu socket hiện tại đã tồn tại và token khớp, không cần tái tạo socket instance
+    if (socketRef.current && socketRef.current.auth?.token === token) {
+      return;
+    }
+
     const targetUrl = serverUrl || (typeof window !== 'undefined' && window.location.hostname === 'localhost'
       ? 'http://localhost:3000'
       : 'https://managementfinance.onrender.com');
 
     // Khởi tạo DUY NHẤT một instance socket client cho toàn bộ ứng dụng Admin-web
+    // Sử dụng transports: ['polling', 'websocket'] (chuẩn Socket.IO): kết nối tức thì qua HTTP polling (<50ms) rồi nâng cấp mượt mà lên WebSocket mà không bị treo khi cold start / Cloudflare proxy
     const client = io(targetUrl, {
       path: '/socket.io',
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 10,

@@ -58,6 +58,29 @@ test('Payment Repository Suite', async (t) => {
     }
   });
 
+  await t.test('2b. recordTransaction(): hai webhook đua nhau, create vỡ P2002 → trả hàng đã có, không ném', async () => {
+    const hang = { id: 'tx-da-co', payos_transaction_id: 'REF-1' };
+    const origFind = prisma.payment_transaction.findFirst;
+    const origCreate = prisma.payment_transaction.create;
+    const origOrder = prisma.payment_order.findUnique;
+    prisma.payment_order.findUnique = async () => ({ id: 'o' });
+    let lanTim = 0;
+    // Lượt tìm đầu chưa thấy (hàng của lượt kia chưa ghi), create vỡ unique, lượt tìm sau thấy: đúng nhánh P2002 của repository.
+    prisma.payment_transaction.findFirst = async () => (++lanTim === 1 ? null : hang);
+    prisma.payment_transaction.create = async () => {
+      throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+    };
+    try {
+      const r = await paymentRepository.recordTransaction({ id: 'tx-moi', orderId: 'o', idaccount: 1, payosTransactionId: 'REF-1', amount: 49000 });
+      assert.strictEqual(r, hang);
+      assert.strictEqual(lanTim, 2, 'nhánh P2002 phải tìm lại hàng đã có');
+    } finally {
+      prisma.payment_transaction.findFirst = origFind;
+      prisma.payment_transaction.create = origCreate;
+      prisma.payment_order.findUnique = origOrder;
+    }
+  });
+
   await t.test('3. activatePremiumSubscription() thực thi nguyên tử cập nhật order, ghi transaction và nâng cấp account', async () => {
     let transactionExecuted = false;
     const origTx = prisma.$transaction;
@@ -68,7 +91,7 @@ test('Payment Repository Suite', async (t) => {
           update: async () => ({ id: 'mock-order-uuid', status: 'PAID' }),
         },
         payment_transaction: {
-          create: async ({ data }) => data,
+          createMany: async ({ data }) => ({ count: data.length }),
           findFirst: async () => null,
         },
         account: {

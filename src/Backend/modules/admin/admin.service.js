@@ -736,10 +736,19 @@ const adminService = {
       }
     } catch (_) {}
 
+    const { getRuntimeHardwareSpecs } = require('../../core/resilience/runtime-environment');
+    const specs = getRuntimeHardwareSpecs();
     const cpus = os.cpus() || [];
+    const cpuCores = hwMetrics?.cpu?.cores ?? specs.cpuCores ?? cpus.length ?? 1;
     const cpuPercent = hwMetrics ? hwMetrics.cpu.percent : 0;
+    const environment = hwMetrics?.environment || {
+      mode: specs.mode,
+      provider: specs.provider,
+      isContainer: specs.isContainer,
+      source: specs.source,
+    };
     const ramInfo = hwMetrics ? hwMetrics.ram : {
-      totalMb: Math.round(os.totalmem() / 1024 / 1024),
+      totalMb: specs.ramTotalMb || Math.round(os.totalmem() / 1024 / 1024),
       usedMb: Math.round((os.totalmem() - os.freemem()) / 1024 / 1024),
       freeMb: Math.round(os.freemem() / 1024 / 1024),
       percent: Math.round(((os.totalmem() - os.freemem()) / os.totalmem()) * 100),
@@ -758,7 +767,8 @@ const adminService = {
     const downtimeSeconds = uptimeResult.downtimeSeconds;
 
     return {
-      cpu: { cores: cpus.length, percent: cpuPercent },
+      environment,
+      cpu: { cores: cpuCores, percent: cpuPercent },
       ram: {
         usedMb: ramInfo.usedMb,
         totalMb: ramInfo.totalMb,

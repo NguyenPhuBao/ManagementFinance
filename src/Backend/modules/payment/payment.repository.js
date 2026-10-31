@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { prisma } = require('../../config/db');
 const payosClient = require('./payos.client');
+const logger = require('../../core/logger');
 
 /**
  * Chuyển đổi các trường BigInt trong object thành Number để an toàn khi serialize JSON
@@ -412,36 +413,20 @@ async function activatePremiumSubscription({ idaccount, orderId, paidAt, newExpi
         });
       }
       if (!existingTx) {
-        if (typeof tx.payment_transaction?.createMany === 'function') {
-          await tx.payment_transaction.createMany({
-            data: [{
-              id: transactionData.id,
-              order_id: orderId,
-              idaccount,
-              payos_transaction_id: transactionData.payosTransactionId ? String(transactionData.payosTransactionId) : null,
-              amount: transactionData.amount,
-              bank_code: transactionData.bankCode || null,
-              transaction_time: transactionData.transactionTime || new Date(),
-              signature_verified: transactionData.signatureVerified ?? true,
-              raw_webhook_hash: transactionData.rawWebhookHash || null,
-            }],
-            skipDuplicates: true,
-          });
-        } else if (typeof tx.payment_transaction?.create === 'function') {
-          await tx.payment_transaction.create({
-            data: {
-              id: transactionData.id,
-              order_id: orderId,
-              idaccount,
-              payos_transaction_id: transactionData.payosTransactionId ? String(transactionData.payosTransactionId) : null,
-              amount: transactionData.amount,
-              bank_code: transactionData.bankCode || null,
-              transaction_time: transactionData.transactionTime || new Date(),
-              signature_verified: transactionData.signatureVerified ?? true,
-              raw_webhook_hash: transactionData.rawWebhookHash || null,
-            },
-          });
-        }
+        await tx.payment_transaction.createMany({
+          data: [{
+            id: transactionData.id,
+            order_id: orderId,
+            idaccount,
+            payos_transaction_id: transactionData.payosTransactionId ? String(transactionData.payosTransactionId) : null,
+            amount: transactionData.amount,
+            bank_code: transactionData.bankCode || null,
+            transaction_time: transactionData.transactionTime || new Date(),
+            signature_verified: transactionData.signatureVerified ?? true,
+            raw_webhook_hash: transactionData.rawWebhookHash || null,
+          }],
+          skipDuplicates: true,
+        });
       }
     }
 
@@ -573,7 +558,6 @@ async function downgradeExpiredPremiumAccounts(now = new Date()) {
       });
     }
   } catch (histErr) {
-    const logger = require('../../core/logger');
     logger.warn('[Payment] Lỗi ghi nhận lịch sử hết hạn gói:', { error: histErr.message });
   }
 

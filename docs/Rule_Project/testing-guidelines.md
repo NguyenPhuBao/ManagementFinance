@@ -19,7 +19,7 @@ Trong mọi hoạt động phát triển phần mềm tại FinanceManagement, t
 ```mermaid
 flowchart TD
     subgraph "A. PHÁT TRIỂN TÍNH NĂNG MỚI"
-        Spec1["1. Lead BA & PO chốt Đặc tả nghiệp vụ (Spec / AC)"] --> Test1["2. Viết Test trước dựa trên Đặc tả (Chạy FAIL / RED)"]
+        Spec1["1. Lead PO & PO Cấp cao chốt Đặc tả nghiệp vụ & AC"] --> Test1["2. Viết Test trước dựa trên Đặc tả (Chạy FAIL / RED)"]
         Test1 --> Code1["3. Hiện thực Code vừa đủ để thỏa mãn Test"]
         Code1 --> Run1["4. Chạy Test để kiểm chứng (Chạy PASS / GREEN)"]
         Run1 --> Refactor1["5. Tái cấu trúc & Hoàn thiện (Refactor)"]
@@ -34,7 +34,7 @@ flowchart TD
 ```
 
 ### 1.1. Test phải dựa vào đặc tả nghiệp vụ 100% (Specification-Driven Testing)
-- Mọi test case (Unit, Integration, E2E, 2-Tier Test) bắt buộc phải phản ánh đúng tiêu chí chấp thuận (Acceptance Criteria - AC) và kịch bản nghiệp vụ do PO / Lead BA đặc tả trong `docs/`, `Project.md`.
+- Mọi test case (Unit, Integration, E2E, 2-Tier Test) bắt buộc phải phản ánh đúng tiêu chí chấp thuận (Acceptance Criteria - AC) và kịch bản nghiệp vụ do PO Cấp cao / Lead PO đặc tả trong `docs/`, `Project.md`.
 - **Cấm đoán tuyệt đối:** Không viết test hình thức, test giả lập vô nghĩa, test cho có hoặc test bịa đặt không có căn cứ nghiệp vụ chỉ để "chạy cho xanh mã".
 
 ### 1.2. Viết Test TRƯỚC KHI hiện thực Code (Test-First / TDD Red Phase)

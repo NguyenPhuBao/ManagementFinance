@@ -39,7 +39,7 @@
 2. [Đặc Tả Thu Thập Thông Tin Thiết Bị & IP Người Dùng](#2-đặc-tả-thu-thập-thông-tin-thiết-bị--ip-người-dùng)
 3. [Bảng Tổng Hợp Toàn Bộ Các Sự Kiện & Tín Hiệu](#3-bảng-tổng-hợp-toàn-bộ-các-sự-kiện--tín-hiệu)
 4. [Phần I: Đặc Tả Chi Tiết Toàn Bộ Sự Kiện Kênh Thời Gian Thực Cho Client-App](#4-phần-i-đặc-tả-chi-tiết-toàn-bộ-sự-kiện-kênh-thời-gian-thực-cho-client-app)
-5. [Phần II: Đặc Tả Chi Tiết 9 Tín Hiệu Chốt Chặn HTTP/API & Socket Handshake](#5-phần-ii-đặc-tả-chi-tiết-9-tín-hiệu-chốt-chặn-httpapi--socket-handshake)
+5. [Phần II: Đặc Tả Chi Tiết 8 Tín Hiệu Chốt Chặn HTTP/API & Socket Handshake](#5-phần-ii-đặc-tả-chi-tiết-8-tín-hiệu-chốt-chặn-httpapi--socket-handshake)
 6. [Phần III: Phân Định Các Sự Kiện Dành Riêng Cho Quản Trị Viên (Admin-Web Only)](#6-phần-iii-phân-định-các-sự-kiện-dành-riêng-cho-quản-trị-viên-admin-web-only)
 7. [Phần IV: Ma Trận Đối Chiếu Hiện Trạng Phía Client-App](#7-phần-iv-ma-trận-đối-chiếu-hiện-trạng-phía-client-app)
 8. [Phần V: Checklist & Hướng Dẫn Thực Thi Cho Dev Client-App (Flutter)](#8-phần-v-checklist--hướng-dẫn-thực-thi-cho-dev-client-app-flutter)
@@ -57,14 +57,14 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 2. **Kênh Chốt Chặn Yêu Cầu (Pull/Request via REST API / Dio):**
    - Hoạt động khi Client-app chủ động gọi API (đồng bộ dữ liệu, xác thực, lấy thông tin gói, bóc tách OCR, AI chat...).
    - Các Middleware bảo vệ tại Backend (Maintenance, Load Shedding, Retry Guard, AIOps Firewall, Feature Gate, Auth) đóng vai trò là "chốt chặn bảo vệ cuối cùng", trả về mã HTTP kèm JSON DTO chuẩn hóa.
-   - Client-app bắt các mã này qua Dio Interceptor để có phản ứng phù hợp (hiển thị thông báo bảo trì/dòng nhắc hẹn thử lại, Mời nâng cấp gói, Backoff đếm ngược...).
+   - Client-app bắt các mã này qua Dio Interceptor để có phản ứng phù hợp (dòng nhắc bảo trì / phong toả + hẹn thử lại, làm mới gói khi bị tắt quyền).
 * **Khả Năng Xử Lý Idempotent & Trùng Lặp Sự Kiện:**
   - Một sự kiện Socket.IO có thể được đẩy tới **hai lần** qua kênh Redis pub/sub (`event-bus.js`), Client-app đã được thiết kế sẵn khả năng chịu tải và xử lý idempotent (không thực hiện đúp hành động).
 
 ### 1.2. Các Nguyên Tắc Bắt Buộc (Invariant Rules)
 * **Contract-First & Zero-Guesswork:** Tuyệt đối không suy đoán tên sự kiện hay payload. App đọc payload dạng hộp đen trừ `account.force_logout` và `system.broadcast`.
 * **Bảo Vệ Dữ Liệu Riêng Tư (Data Security & Nghị định 13/2023/NĐ-CP):** 
-  - Socket events gửi tới người dùng che thông tin số tài khoản (`transfer_details`), mật khẩu, mã OTP, số dư thô.
+  - Socket events gửi tới người dùng che số tài khoản (`transfer_details`, `transaction_info`: chỉ còn 4 số cuối), không mang mật khẩu, mã OTP, số dư thô.
   - Sự kiện cưỡng chế xóa tài khoản (`ACCOUNT_DELETED`): Client-app đăng xuất và hiển thị hộp thoại thông báo lý do, bảo lưu SQLite trên máy (tránh mất dữ liệu chưa đồng bộ; dọn dẹp khi tài khoản khác đăng nhập).
 * **Phân Biệt "Đánh Thức Đồng Bộ" và "Sự Kiện Thông Điệp":**
   - Không phải sự kiện nào cũng kích hoạt `syncNow()`. Các sự kiện như nâng cấp gói, cảnh báo bảo trì, thông báo broadcast chỉ cập nhật UI / Local Storage, không ép chạy full-sync tránh nghẽn mạng và tốn pin thiết bị.
@@ -91,33 +91,35 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 |:---:|---|:---:|---|---|:---:|
 | **1** | `account.force_logout` / `force_logout` | `account_<id>` | Admin Khóa / Xóa tài khoản | Cưỡng chế đăng xuất tức thì, xóa session | 🚨 Khẩn cấp |
 | **2** | `system.maintenance_changed` | Toàn hệ thống (`io.emit`) | Admin Bật/Tắt bảo trì (Khẩn cấp / Định kỳ) | Mở/đóng Màn hình Bảo trì toàn cục | 🚨 Khẩn cấp |
-| **3** | `system.broadcast` | Toàn hệ thống (`io.emit`) | Admin Phát thông báo hệ thống | In-App Banner, lưu SQLite notification | ⚠️ Cao |
+| **3** | `system.broadcast` | Toàn hệ thống (`io.emit`) | Admin Phát thông báo hệ thống | Trung tâm thông báo + khay hệ điều hành (luồng riêng `tinHeThong`) | ⚠️ Cao |
 | **4** | `account.permissions_updated` | Toàn hệ thống (`io.emit`) | Admin Lưu ma trận phân quyền | Cập nhật 4 Trụ cột quyền hạn (`GoiCubit`) | ℹ️ Tiêu chuẩn |
 | **5** | `account.upgraded` | `account_<id>` & `io.emit` | PayOS Webhook / Admin duyệt gói | Nâng cấp tài khoản lên Premium | ℹ️ Tiêu chuẩn |
 | **6** | `account.downgraded` | `account_<id>` | Cron 00:00 hạ cấp hết hạn Premium | Chuyển tài khoản về gói Basic | ⚠️ Cao |
-| **7** | `account.countdown` | `account_<id>` | Cron 00:00 đếm ngược xóa 30 ngày | Thông báo số ngày còn lại trước khi xóa | ℹ️ Tiêu chuẩn |
-| **8** | `sync.completed` | `account_<id>` | Push thành công từ thiết bị khác | Đánh thức thiết bị kéo Delta Pull về | 🔇 Im lặng |
+| **7** | `account.countdown` | `account_<id>` | Cron 00:00 đếm ngược xóa 30 ngày | App không nghe; số ngày lấy từ `countdown` của `/auth/profile` | ℹ️ Tiêu chuẩn |
+| **8** | `sync.completed` | `account_<id>` | Push thành công (phát cho mọi máy của tài khoản, cả máy vừa đẩy) | Đánh thức thiết bị kéo Delta Pull về | 🔇 Im lặng |
 | **9** | `ocr.completed` | `account_<id>` | Worker hoàn tất bóc tách OCR | Thông báo bóc tách xong, kích hoạt sync | ℹ️ Tiêu chuẩn |
 | **10** | `ocr.duplicate` | `account_<id>` | AI phát hiện hóa đơn trùng lặp | Cảnh báo hóa đơn đã tồn tại | ⚠️ Cảnh báo |
-| **11** | `user.notification` | `account_<id>` | Hệ thống gửi tin nhắn riêng | Lưu hộp thư cá nhân trên điện thoại | ℹ️ Tiêu chuẩn |
-| **12** | `payment.success` | `account_<id>` | Webhook PayOS xác nhận thanh toán | Cập nhật màn hình Chờ/Chi tiết đơn hàng | ℹ️ Tiêu chuẩn |
+| **11** | `user.notification` | `account_<id>` | Chưa dùng: server chưa phát | App không nghe | ℹ️ Tiêu chuẩn |
+| **12** | `payment.success` | `account_<id>` | JIT sync đơn (`getOrderStatus`); webhook chỉ tới `admin_room` | Tín hiệu: màn đang mở hỏi lại server | ℹ️ Tiêu chuẩn |
 | **13** | `payment.order_cancelled` | `account_<id>` | Người dùng / Hệ thống hủy đơn | Cập nhật trạng thái đơn thành CANCELLED | ℹ️ Tiêu chuẩn |
-| **14** | `payment.order_expired` | `account_<id>` | Worker 30s quét hủy đơn quá 10 phút | Đóng popup VietQR, báo hết hạn mã | ℹ️ Tiêu chuẩn |
+| **14** | `payment.order_expired` | `account_<id>` | JIT sync đơn; worker 30s chỉ tới `admin_room` | Tín hiệu: màn đang mở hỏi lại server; không popup | ℹ️ Tiêu chuẩn |
 | **15** | `payment.refunded` | `account_<id>` | Admin duyệt hoàn tiền kèm minh chứng | Thông báo hoàn tiền + link xem ảnh biên lai | ℹ️ Tiêu chuẩn |
 | **16** | `payment.overpaid_confirmation` | `account_<id>` | Webhook PayOS thừa tiền đơn hàng | Cảnh báo chuyển thừa, người dùng xác nhận qua `POST /api/payment/confirm-upgrade` | ⚠️ Cao |
 | **17** | `payment.underpaid_warning` | `account_<id>` | Webhook PayOS thiếu tiền đơn hàng | Cảnh báo chuyển thiếu, chuyển trạng thái `REFUND_PENDING` | ⚠️ Cảnh báo |
 | **18** | `bank_transaction.incoming` | `account_<id>` | Webhook biến động ngân hàng (Legacy) | Thông báo giao dịch (đã dừng module Bank) | 🔇 Legacy |
+| **19** | `household.changed` | `account_<id>` từng thành viên | Đổi thành viên / trạng thái nhà, giải tán | Tín hiệu: gọi lại `/households/me` | 🔇 Im lặng |
+| **20** | `household.invited` | `account_<id>` người được mời | Có lời mời email tới tài khoản | Tín hiệu: gọi lại `/households/invitations` | 🔇 Im lặng |
 
 ---
 
-### 3.2. Nhóm 2: Tín Hiệu Chốt Chặn HTTP/API & Socket Handshake (9 Tín Hiệu)
+### 3.2. Nhóm 2: Tín Hiệu Chốt Chặn HTTP/API & Socket Handshake (8 Tín Hiệu)
 
 | STT | Mã HTTP / Tín Hiệu | Cơ Chế Kích Hoạt | Ý Nghĩa Nghiệp Vụ | Phản Ứng Của Client-App |
 |:---:|---|---|---|---|
-| **1** | HTTP 503 `MAINTENANCE_MODE` | Middleware `maintenance.middleware.js` | Hệ thống đang bật bảo trì | Hiển thị Banner thông báo bảo trì, đếm ngược thử lại theo `Retry-After` |
-| **2** | HTTP 503 `SERVER_OVERLOADED` | Middleware `load-shedding.middleware.js` | Cắt tải CPU khi Event Loop lag > 250ms | Đọc header `Retry-After`, đếm ngược thử lại |
-| **3** | HTTP 429 `RETRY_LIMIT_EXCEEDED` | Middleware `retry-guard.middleware.js` | Chống bão request lặp (> 3 retries) | Dừng retry ngay lập tức, exponential backoff |
-| **4** | HTTP 403 `AIOPS_QUARANTINED` | Tường lửa Sentinel `aiops.quarantine.js` | IP bị phong tỏa an ninh | Hiển thị Dialog phong tỏa + đếm ngược mở khóa |
+| **1** | HTTP 503 `MAINTENANCE_MODE` | Middleware `maintenance.middleware.js` | Hệ thống đang bật bảo trì | Dòng nhắc Trang chủ + toast + câu Đăng nhập; hẹn thử lại theo `Retry-After` (sàn 30 s), không đếm ngược trên màn |
+| **2** | HTTP 503 `SERVER_OVERLOADED` | Middleware `load-shedding.middleware.js` | Cắt tải CPU khi Event Loop lag > 250ms | Chỉ `/sync/push` hẹn lại theo `Retry-After` (sàn 30 s); không hiện gì |
+| **3** | HTTP 429 `RETRY_LIMIT_EXCEEDED` | Middleware `retry-guard.middleware.js` | Chống bão request lặp (> 3 retries) | App không có nhánh riêng cho mã này |
+| **4** | HTTP 403 `AIOPS_QUARANTINED` | Tường lửa Sentinel `aiops.quarantine.js` | IP bị phong tỏa an ninh | Dòng nhắc Trang chủ + toast + câu Đăng nhập + hẹn thử lại |
 | **5** | HTTP 403 `FEATURE_DISABLED` | Middleware `feature-permission.middleware.js` | Tính năng vượt quá gói cước Basic | Làm mới gói cước (`may_chu_interceptor.dart:77-87`) |
 | **6** | HTTP 401 `ACCOUNT_INACTIVE` | Middleware `auth.js` | Admin khóa tài khoản kèm lý do | Hiển thị Dialog lý do, điều hướng về Login |
 | **7** | HTTP 401 `ACCOUNT_DELETED` | Middleware `auth.js` | Tài khoản đã bị xóa mềm | Đăng xuất + hiển thị Dialog lý do, bảo lưu SQLite |
@@ -190,13 +192,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 }
 ```
 
-* **Xử lý trên Client-app:**
-  1. Khi `active == true`:
-     - **Nếu `isEmergency: true` (`EMERGENCY`):** Hiển thị Banner cảnh báo màu đỏ, tạm hoãn các thao tác ghi dữ liệu nhạy cảm, tạm dừng toàn bộ luồng background sync. Cho phép người dùng duyệt dữ liệu SQLite cục bộ ở chế độ Read-only.
-     - **Nếu `isEmergency: false` (`SCHEDULED`):** Hiển thị Banner màu cam thông báo bảo trì theo lịch, cho phép người dùng xem dữ liệu offline.
-  2. Khi `active == false`:
-     - Ẩn Banner thông báo bảo trì, hiển thị Toast xanh thông báo hệ thống đã sẵn sàng hoạt động bình thường trở lại.
-     - Tự động kích hoạt đồng bộ bù `syncNow()`.
+* **Xử lý trên Client-app:** Cố ý bỏ qua sự kiện này. App biết bảo trì qua HTTP 503 `MAINTENANCE_MODE` + `Retry-After` (mục 5.1), nên không biết giờ kết thúc và không hứa giờ ấy.
 
 ---
 
@@ -262,7 +258,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 ```
 * **Xử lý trên Client-app:**
   - Gọi lại `GET /api/payment/subscription-info` để nạp hạn mức mới vào `GoiCubit`.
-  - Hiển thị Toast thông báo chúc mừng nâng cấp hoặc thông báo hết hạn gói. Không kích hoạt sync dữ liệu tài chính vì bảng nghiệp vụ không thay đổi.
+  - Không hiện Toast: chỉ làm mới gói qua `/subscription-info`. Không kích hoạt sync dữ liệu tài chính vì bảng nghiệp vụ không thay đổi.
 
 ---
 
@@ -280,12 +276,12 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 }
 ```
 * **Xử lý trên Client-app:**
-  - Hiển thị Banner cam cảnh báo đếm ngược ở đầu màn hình Trang chủ (`HomeScreen`).
-  - Đính kèm nút "Hủy yêu cầu xóa tài khoản" gọi API `POST /api/auth/cancel-delete`.
+  - App không nghe sự kiện này. Thẻ chờ xoá ở Trang chủ và Cài đặt đọc số ngày từ `countdown` của `/auth/profile`.
+  - Thẻ có nút huỷ yêu cầu xoá tài khoản.
 
 ---
 
-### 4.7. `sync.completed` — Hoàn Tất Đợt Đồng Bộ Từ Thiết Bị Khác
+### 4.7. `sync.completed` — Hoàn Tất Đợt Đồng Bộ
 * **Kênh phát:** `account_<idaccount>`.
 * **Nguồn kích hoạt:** Backend xử lý xong một batch `/api/sync/push` (phát cho mọi máy của tài khoản, cả máy vừa đẩy).
 * **Cấu trúc Payload:**
@@ -318,10 +314,11 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 
 // ocr.duplicate:
 {
-  "idaccount": 50,
-  "title": "Phát hiện hóa đơn trùng lặp",
-  "message": "Hóa đơn này có số tiền và thời gian trùng với một giao dịch đã ghi nhận.",
-  "type": "OcrDuplicate"
+  "title": "Giao dịch đã tồn tại",
+  "message": "Hình ảnh này trùng khớp với giao dịch đã được ghi nhận trên hệ thống trước đó.",
+  "type": "OcrDuplicate",
+  "data": { "idaccount": 50, "provider": "OCR", "bank_tran_id": null, "reason": "...", "existing_transaction": {}, "timestamp": "2026-10-24T08:35:00.000Z" },
+  "createdAt": "2026-10-24T08:35:00.000Z"
 }
 ```
 * **Xử lý trên Client-app:**
@@ -344,14 +341,12 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
   "createdAt": "2026-10-24T08:35:00.000Z"
 }
 ```
-* **Xử lý trên Client-app:**
-  - Lưu vào bảng SQLite `notification` trên thiết bị.
-  - Tăng số đếm Badge chưa đọc tại biểu tượng Chuông thông báo (`NotificationBell`).
+* **Xử lý trên Client-app:** Chưa có. Mẫu trên là thiết kế, không có đường nào phát.
 
 ---
 
 ### 4.10. `payment.success` & `payment.order_cancelled` — Thanh Toán Thành Công & Hủy Đơn
-* **Kênh phát:** `account_<idaccount>`.
+* **Kênh phát:** `payment.success` tới `admin_room` khi webhook, tới `account_<idaccount>` khi JIT sync. `payment.order_cancelled` tới `account_<idaccount>`.
 * **Nguồn kích hoạt:**
   - `payment.success`: Webhook PayOS xác nhận chuyển khoản khớp chính xác số tiền đơn hàng (phát tới admin_room; tới tài khoản ở JIT).
   - `payment.order_cancelled`: Người dùng hủy đơn trên giao diện hoặc đơn bị hủy thủ công.
@@ -379,7 +374,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 ---
 
 ### 4.11. `payment.order_expired` — Đơn Hàng Thanh Toán Quá Hạn (10 Phút)
-* **Kênh phát:** `account_<idaccount>`.
+* **Kênh phát:** worker tới `admin_room`, JIT sync tới `account_<idaccount>`.
 * **Nguồn kích hoạt:** Worker 30s quét và hủy các đơn hàng VietQR chưa thanh toán sau 10 phút (phát tới admin_room { count }; tới tài khoản ở JIT).
 * **Cấu trúc Payload:**
 ```json
@@ -450,7 +445,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 
 ---
 
-## 5. PHẦN II: ĐẶC TẢ CHI TIẾT 9 TÍN HIỆU CHỐT CHẶN HTTP/API & SOCKET HANDSHAKE
+## 5. PHẦN II: ĐẶC TẢ CHI TIẾT 8 TÍN HIỆU CHỐT CHẶN HTTP/API & SOCKET HANDSHAKE
 
 ### 5.1. HTTP 503 `MAINTENANCE_MODE` — Hệ Thống Đang Bảo Trì
 * **Phát sinh từ:** `src/Backend/middleware/maintenance.middleware.js`
@@ -495,7 +490,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
   "message": "Phát hiện tần suất gửi lại yêu cầu quá dày đặc. Vui lòng dừng thao tác và đợi ít phút."
 }
 ```
-* **Xử lý trên Client-app:** Dừng lặp request (App không có nhánh riêng cho 429).
+* **Xử lý trên Client-app:** App không có nhánh riêng cho 429; lời gọi ấy thất bại như lỗi mạng thường.
 
 ---
 
@@ -620,9 +615,11 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 | `payment.overpaid_confirmation` | ✅ ĐÃ CÓ | `RealtimeEvent.donThanhToanDoi` | Đã gộp trong enum đơn thanh toán, mở màn Chi tiết đơn để xác nhận qua `POST /api/payment/confirm-upgrade`. |
 | `payment.underpaid_warning` | ✅ ĐÃ CÓ | `RealtimeEvent.donThanhToanDoi` | Đã gộp trong enum đơn thanh toán. |
 | `bank_transaction.incoming` | 🔇 BỎ QUA | `null` (Bỏ qua chuẩn) | Giữ nguyên hành vi bỏ qua (Module Bank đã dừng). |
-| HTTP 503 `MAINTENANCE_MODE` | ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Bắt mã 503, hiển thị Banner thông báo bảo trì, đếm ngược thử lại theo `Retry-After`. |
-| HTTP 503 `SERVER_OVERLOADED` | ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Đọc `Retry-After`, đếm ngược tự động thử lại. |
-| HTTP 429 `RETRY_LIMIT_EXCEEDED`| ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Dừng lặp request, thông báo người dùng tạm nghỉ. |
+| `household.changed` | ✅ ĐÃ CÓ | `RealtimeEvent.nhaDoi` | Tín hiệu, gọi lại `/households/me` (giãn cách 30 s). |
+| `household.invited` | ✅ ĐÃ CÓ | `RealtimeEvent.loiMoiNha` | Tín hiệu, gọi lại `/households/invitations`. |
+| HTTP 503 `MAINTENANCE_MODE` | ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Dòng nhắc Trang chủ + toast + câu Đăng nhập; hẹn thử lại theo `Retry-After`. |
+| HTTP 503 `SERVER_OVERLOADED` | ✅ ĐÃ CÓ | `sync_engine.dart` (`mocThuLaiKhiQuaTai`) | Chỉ `/sync/push` hẹn lại, sàn 30 s; không hiện gì. |
+| HTTP 429 `RETRY_LIMIT_EXCEEDED`| 🔇 KHÔNG CÓ NHÁNH RIÊNG | N/A | Lời gọi thất bại như lỗi thường. |
 | HTTP 403 `AIOPS_QUARANTINED` | ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Dòng nhắc Trang chủ + toast + câu Đăng nhập + hẹn thử lại. |
 | HTTP 403 `FEATURE_DISABLED` | ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Chỉ làm mới gói cước (`may_chu_interceptor.dart:77-87`). |
 | HTTP 401 `ACCOUNT_INACTIVE` | ✅ ĐÃ CÓ | `buoc_dang_xuat.dart` | Đăng xuất, hiển thị Dialog kèm lý do `reason_inactive`. |
@@ -637,8 +634,8 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 - [x] **2. Mở rộng `realtime_event.dart`:**
   - Hỗ trợ đầy đủ `taiKhoanNangCap`, `taiKhoanHaCap`, `dongBoXong`, `ocrXong`, `donThanhToanDoi`.
 - [x] **3. Chốt chặn `may_chu_interceptor.dart` (Dio Interceptor):**
-  - Bắt HTTP 503 với `code == 'MAINTENANCE_MODE'` $\longrightarrow$ hiển thị Banner và hẹn thử lại theo `Retry-After`.
-  - Bắt HTTP 503 với `code == 'SERVER_OVERLOADED'` $\longrightarrow$ kích hoạt Backoff đếm ngược theo header `Retry-After`.
+  - Bắt HTTP 503 với `code == 'MAINTENANCE_MODE'` $\longrightarrow$ dòng nhắc Trang chủ + toast, hẹn thử lại theo `Retry-After`.
+  - Bắt HTTP 503 với `code == 'SERVER_OVERLOADED'` $\longrightarrow$ `SyncEngine` hẹn lại đồng bộ theo header `Retry-After` (sàn 30 s).
   - Bắt HTTP 403 với `code == 'AIOPS_QUARANTINED'` $\longrightarrow$ dòng nhắc Trang chủ và câu Đăng nhập.
   - Bắt HTTP 403 với `code == 'FEATURE_DISABLED'` $\longrightarrow$ làm mới gói cước.
 - [x] **4. Tuân thủ Bảo Vệ Dữ Liệu Cá Nhân (Rule 9 & Nghị định 13/2023/NĐ-CP):**

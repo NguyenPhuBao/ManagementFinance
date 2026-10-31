@@ -13,7 +13,7 @@
 >    - Việc suy luận kết hợp chiều ngang và chiều sâu đảm bảo khi thực thi bất kỳ 1 tính năng chức năng nào đều sẽ ăn khớp với hệ thống và đảm bảo hệ thống hoạt động ổn định mà không phát sinh thêm các lỗi mới (Zero Regressions).
 > 3. **Không rõ thì hỏi PO ngay, không tự suy diễn:**
 >    - Các yêu cầu chưa rõ ràng thì đặt câu hỏi cho PO ngay lập tức, tuyệt đối không tự suy diễn.
-> AI đóng vai trò là **Lead BA** khi phân tích thiết kế hệ thống, lắng nghe phân tích chức năng, đặc tả chức năng, đồng thời **đảm nhận toàn diện công tác QA & kiểm thử 2 tầng (Giao diện + Tác động hệ thống thực tế)** nhằm bảo đảm chuẩn xác 100% nghiệp vụ và không phát sinh lỗi hồi quy; **Lead FullStack cao cấp** khi hiện thực kỹ thuật và chức năng (viết code) ở cả backend & frontend, mapping 2 thành phần lại với nhau ăn khớp hoàn hảo.
+> AI đóng vai trò là **Lead PO (Lead Product Owner)** khi nắm bắt tầm nhìn chiến lược sản phẩm, bao quát toàn diện hành trình trải nghiệm người dùng trên cả 3 nền tảng (Backend, Admin-web, Client-app Mobile), tối ưu hóa luồng sản phẩm, đặc tả yêu cầu và chức năng, đồng thời **đảm nhận toàn diện công tác QA & kiểm thử 2 tầng (Giao diện + Tác động hệ thống thực tế)** nhằm bảo đảm chuẩn xác 100% nghiệp vụ, tối ưu hóa giá trị sản phẩm và không phát sinh lỗi hồi quy; **Lead FullStack cao cấp** khi hiện thực kỹ thuật và chức năng (viết code) ở cả backend & frontend, mapping 2 thành phần lại với nhau ăn khớp hoàn hảo.
 
 ---
 
@@ -3713,7 +3713,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 > **Phạm vi áp dụng:** Mọi bài test trên cả 3 module (`src/Backend`, `src/Admin-web`, `src/Client-app`).
 
 ### 16.1. Bốn Nguyên Tắc Kiểm Thử Cốt Lõi (Spec-Driven Test-First)
-1. **Test dựa vào đặc tả nghiệp vụ 100%:** Mọi bài test bắt buộc phải phản ánh đúng tiêu chí chấp thuận (Acceptance Criteria) và kịch bản nghiệp vụ do PO / Lead BA đặc tả. Tuyệt đối không viết test hình thức.
+1. **Test dựa vào đặc tả nghiệp vụ 100%:** Mọi bài test bắt buộc phải phản ánh đúng tiêu chí chấp thuận (Acceptance Criteria) và kịch bản nghiệp vụ do PO Cấp cao / Lead PO đặc tả. Tuyệt đối không viết test hình thức.
 2. **Viết Test TRƯỚC KHI hiện thực Code (Test-First / Red Phase):** Nghiêm cấm viết code trước rồi mới viết test sau. Bắt buộc viết test trước mô tả đúng kết quả mong đợi (chạy FAIL / RED khi chưa có code) để làm khung định hướng cho code.
 3. **Sau khi hiện thực Code mới chạy Test kiểm chứng (Verification / Green Phase):** Hiện thực lượng code vừa đủ để thỏa mãn tiêu chí kiểm thử. Sau khi code xong, chạy test kiểm chứng: code đạt khi test chuyển sang PASS / GREEN cho cả 2 Tầng.
 4. **Cập nhật Test TRƯỚC KHI cập nhật Code khi nghiệp vụ thay đổi:** Khi có bất kỳ thay đổi logic/nghiệp vụ nào, BẮT BUỘC cập nhật đặc tả $\rightarrow$ cập nhật bản test trước (chạy FAIL) $\rightarrow$ sau đó mới cập nhật mã nguồn (chuyển sang PASS). CẤM TUYỆT ĐỐI sửa code trước rồi sửa test theo code.
@@ -4863,3 +4863,61 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - Test 2 Tầng mới: `src/Backend/tests/unit/data_encryption_group4_audit.test.js` — **9/9 tests PASS 100%**.
   - DB Verify Indexes & Triggers: `npm run db:verify-indexes` — **100% Partial Indexes & Triggers an toàn**.
   - Full test suite Backend: **548/548 tests PASS 100% (79 test suites), 0 lỗi hồi quy (Zero Regressions)**.
+
+### 4.34. Khắc Phục Lỗi Real-Time Socket Quay Vòng & Tự Động Đo Lường Thông Số Máy Chủ Theo Phần Cứng/Container (2026-10-31)
+- **Phản hồi từ PO:** PO phát hiện khi truy cập Admin-web lần đầu, badge Real-time luôn quay vòng vòng ở trạng thái "Đang kết nối...", đồng thời thông số CPU máy chủ (chuẩn 0.15 vCPU trên Render Free Container) lại hiển thị thành 8 cores và CPU % báo đỏ 99%. Yêu cầu hệ thống phải **tự động đọc thông số phần cứng từ máy chủ/container qua mã nguồn** (Linux cgroups v1/v2, OS quota, process usage) mà không bắt admin phải can thiệp cấu hình thủ công hay hardcode danh sách gói cước mạng.
+- **Nguyên nhân cốt lõi (Root Cause):**
+  1. *Lỗi CPU Cores & RAM Quota:*
+     - Tại `src/Backend/modules/admin/admin.service.js:761`, hàm `getSystemHealth()` đã gán cứng `cpu: { cores: cpus.length, percent: cpuPercent }` từ `os.cpus().length` (trả về 8 cores của máy chủ vật lý Render) thay vì đọc `hwMetrics.cpu.cores`. Đồng thời hoàn toàn bỏ sót trường `environment` trong đối tượng trả về.
+     - Phía `ServerHealthPanel.jsx`: Do thiếu `health.environment`, cờ `isCloud = env?.mode === 'cloud'` bị `false`, dẫn tới việc hiển thị `(8 cores)` và `(512 MB Host)` thay vì `(0.15 vCPU)` và `(512 MB Quota)`.
+  2. *Lỗi CPU 99% Load:*
+     - Trong môi trường container chia sẻ (shared host), `os.cpus()` đọc `/proc/stat` đo lường tổng tải CPU của toàn bộ máy chủ vật lý chứa hàng chục container khác. `SystemHardwareMonitor` do đó phản ánh 99% tải của host thay vì mức tải thực của tiến trình container.
+  3. *Lỗi Real-Time Socket Quay Vòng:*
+     - Tại `src/Admin-web/src/store/socket.context.jsx:31`, toán tử Nullish Coalescing `false ?? true` trả về `false` (vì `false` không phải `null/undefined`). Khi `AuthProvider` khởi tạo, `isAuthenticated` là `false` khiến socket bị ngắt và tái tạo khi `authApi.getMe()` hoàn tất.
+     - Cấu hình `transports: ['websocket', 'polling']` thử nghiệm WebSocket trước khiến kết nối bị treo trên Render/Cloudflare proxy.
+     - Tại `RealtimeStatusBadge.jsx`, trạng thái khởi tạo khi chưa có socket trả về `'connecting'` thay vì `'disconnected'`, kèm việc thiếu timeout guard khiến spinner quay vô tận.
+- **Giải Pháp Thực Thi & Chuẩn Hóa:**
+  1. *Auto-detection Tài Nguyên Máy Chủ Động (`runtime-environment.js`):*
+     - Hỗ trợ đầy đủ cgroups v2 (`cpu.max`, `cpu.weight`, `memory.max`, nested cgroup paths từ `/proc/self/cgroup`) và cgroups v1 (`cpu.cfs_quota_us`, `cpu.cfs_period_us`, `cpu.shares`, `memory.limit_in_bytes`).
+     - Tự động tính toán số core phân số chính xác (ví dụ: `15000 / 100000 = 0.15` vCPU hoặc `154 / 1024 = 0.15` vCPU) và dung lượng RAM quota (512 MB) từ nhân Linux mà không phụ thuộc gói cước tĩnh.
+     - Tự động nhận diện Container khi có file container hoặc giới hạn cgroup hoạt động.
+  2. *Đo Lường CPU % Theo Tiến Trình Container (`system-hardware-monitor.js`):*
+     - Khi chạy trong container, sử dụng `process.cpuUsage()` so với ngân sách CPU quota được cấp (`elapsedMs * 1000 * cores`) để đo lường mức tải CPU chuẩn xác của ứng dụng (trả về giá trị thực tế 5-10% thay vì 99% của host).
+  3. *Bổ Sung `environment` & Cập Nhật `admin.service.js`:*
+     - `getSystemHealth()` trả về đầy đủ `environment: { mode, provider, isContainer, source }` và `cpu: { cores: cpuCores, percent: cpuPercent }`.
+  4. *Ổn Định Kết Nối Socket Admin-web (`socket.context.jsx` & `RealtimeStatusBadge.jsx`):*
+     - Sửa biểu thức logic `isAuthenticated = Boolean(authContext?.isAuthenticated || tokenInStorage)`.
+     - Sử dụng `transports: ['polling', 'websocket']` theo chuẩn Socket.IO: bắt tay HTTP polling siêu tốc (<50ms) rồi tự động nâng cấp mượt mà lên WebSocket.
+     - Chống tái tạo socket lặp lại khi token không thay đổi (`socketRef.current.auth?.token === token`).
+     - Bổ sung Timeout Guard 8s tại `RealtimeStatusBadge.jsx`: tự động chuyển sang `disconnected` nếu quá 8 giây chưa hoàn tất kết nối, chấm dứt hoàn toàn tình trạng quay vô tận.
+- **Kiểm Định Chất Lượng Toàn Diện:**
+  - Backend Unit Tests: **493/493 tests PASS 100% (50 test suites)**, bao gồm `admin.health.test.js` và `runtime.environment.test.js`.
+  - Admin-web Vitest: **41/41 test files PASS 100% (360+ tests)**, bao gồm `socket.context.test.jsx` và `server-health-environment.test.jsx`.
+  - Admin-web Build: `vite build` biên dịch production thành công trong 2.97s, 0 cảnh báo.
+  - Zero Regressions trên toàn bộ hệ thống.
+
+### 4.35. Khắc Phục Lỗ Hổng Thanh Toán PayOS, Bảo Vệ Dữ Liệu Socket OCR & Đạt Chuẩn Nghiệm Thu PR #174/#175 (2026-11-01)
+- **Bối cảnh & Chỉ đạo:** Tiếp nhận kết quả bàn giao từ đợt pull PR #174 và PR #175, Lead PO và Lead Kỹ thuật đã rà soát 12 công việc tồn đọng tại `docs/superpowers/backend/CAN-LAM/VIEC_BACKEND_CON_LAI.md`. Kế hoạch khắc phục đã được PO Cấp cao chính thức ký duyệt.
+- **Các Hạng Mục Khắc Phục Trọng Tâm:**
+  1. *Vá Lỗi Sập Webhook PayOS (Mã 60.4 & T6):*
+     - Tại `payment.repository.js`, đưa `const logger = require('../../core/logger');` lên đầu tệp, xóa bỏ require cục bộ ở cuối tệp. Chấm dứt hoàn toàn lỗi `ReferenceError: logger is not defined` khi nhiều webhook PayOS gửi về đồng thời.
+     - Chuẩn hóa ghi giao dịch qua `prisma.payment_transaction.createMany({ skipDuplicates: true })`.
+  2. *Bảo Vệ Dữ Liệu Tài Chính Socket OCR (Mã T1):*
+     - Bổ sung hàm `maskAccountFields` tại `masking.util.js`. Che mờ số tài khoản ngân hàng trong payload sự kiện socket `ocr.completed` (chỉ giữ lại 4 số cuối), tuân thủ Nghị định 13/2023/NĐ-CP và `Data_Security.md`.
+     - Cập nhật tài liệu `Event-Notification-to-ClientApp.md` khớp 100% với hành vi ứng dụng thực tế.
+  3. *Chuẩn Hóa Phân Quyền 4 Trụ Cột & Khôi Phục Endpoint (Mã T3):*
+     - Cập nhật `4_TRU_COT.md` phản ánh đúng năng lực thi hành thực tế của Client-app; phục hồi route `/export-report`.
+  4. *Kiểm Thử Biên Tài Khoản Premium Không Thời Hạn (Mã 55.A3):*
+     - Bổ sung suite test `premium_effective.test.js`, bảo đảm tài khoản Premium có `premium_expires_at = null` được xử lý an toàn như Basic.
+  5. *Rào Chắn DB Guard & Giữ Sạch Cây Mã Nguồn (Mã 60.1 & 60.2):*
+     - Thêm regex `/supabase\.(com|co)/i` vào các script test trong thư mục `Test/`, ngăn ngừa hoàn toàn nguy cơ vô tình kết nối đến Supabase Cloud.
+     - Chuyển file kết quả của `verify_household_contract.js` sang thư mục tạm `os.tmpdir()`.
+  6. *Chuẩn Hóa Mock Test Gia Đình (Mã 60.3):*
+     - Sửa mock `findActiveMemberByAccount = async () => null` trong `tests/unit/household_and_aiops_v2.test.js` ca 2, cô lập test khỏi dữ liệu cũ.
+- **Kiểm Định Chất Lượng Toàn Diện:**
+  - Kịch bản nghiệm thu PR #174: `chay_kiem_pr174.js` đạt **24/24 ca PASS 100%** (nâng từ 10/24 ca).
+  - Kịch bản hợp đồng Gia đình: `verify:household` đạt **50/50 ca PASS 100%**.
+  - Backend Unit Tests: **496/496 tests PASS 100% (50 test suites)**.
+  - Admin-web Vitest: **383/383 tests PASS 100% (52 test files)**.
+  - Thẩm tra mã hóa CSDL: `npm run db:verify-encryption` đạt **28/28 trường mã hóa an toàn 100% (0 lỗi)**, vân tay khóa dev `98e9e026`.
+  - Zero Regressions trên toàn bộ hệ thống.

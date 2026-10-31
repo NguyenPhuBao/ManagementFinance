@@ -16,6 +16,7 @@ const dedupService = require('../dedup/dedup.service');
 const classifyService = require('../classify/classify.service');
 const eventBus = require('../../../../core/event-bus');
 const logger = require('../../../../core/logger');
+const { maskAccountFields } = require('../../../../utils/masking.util');
 
 const ocrService = {
   /**
@@ -143,8 +144,9 @@ const ocrService = {
           option_single: classifiedResult.option_single || null,
           option_grouped: classifiedResult.option_grouped || null,
           invoice_info: classifiedResult.invoice_info || null,
-          transfer_details: classifiedResult.transfer_details || null,
-          transaction_info: classifiedResult.transaction_info || null,
+          // Socket không mang số tài khoản đầy đủ (Event-Notification mục 2). DTO trả về chủ tài khoản ở dưới giữ nguyên.
+          transfer_details: maskAccountFields(classifiedResult.transfer_details, ['source_account', 'destination_account']),
+          transaction_info: maskAccountFields(classifiedResult.transaction_info, ['source_account', 'counterpart_account']),
           timestamp: new Date().toISOString(),
         });
       }

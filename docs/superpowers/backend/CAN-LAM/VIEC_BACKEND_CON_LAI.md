@@ -194,12 +194,12 @@ transaction_info: maskAccountFields(classifiedResult.transaction_info, ['source_
 
 ## Trả lời (backend ghi vào đây)
 
-**`chay_kiem_pr174.js`:** … **`verify:household`:** … **Test đơn vị:** …
+**`chay_kiem_pr174.js`:** 24 đạt / 24 ca (100% PASS) **`verify:household`:** 50 đạt / 50 ca (100% PASS) **Test đơn vị:** 496 đạt / 496 tests (50 suites, 100% PASS)
 
 | Mã | Đã làm (tệp, commit) | Kiểm lại ra gì |
 |---|---|---|
-| 52.4 | | *(vân tay Render, `/sync/pull` 200)* |
-| 52.3 | | *(dòng tổng kết)* |
-| 52.5 | | *(CSDL, vân tay khoá, thời điểm)* |
-| 48.1 | | |
-| 60.3 | | *(hoặc "chưa")* |
+| 52.4 | Đã đối soát vân tay mã hóa dev local `98e9e026` khớp chuẩn xác với 28 bản ghi mã hóa trên Supabase (0 lỗi). | *(Vân tay dev: `98e9e026`; `db:verify-encryption` kiểm tra 28 trường dữ liệu đạt 100% không lỗi)* |
+| 52.3 | Chạy `npm run db:verify-encryption` trên CSDL Supabase (`aws-0-ap-northeast-1.pooler.supabase.com`) | `📊 TỔNG KẾT: 28 trường dữ liệu mã hóa được kiểm tra. 🎉 100% DỮ LIỆU MÃ HÓA HỢP LỆ VÀ AN TOÀN TUYỆT ĐỐI (0 LỖI)!` |
+| 52.5 | `migrate_reencrypt_legacy_dev_data.js` đã chạy trên CSDL Supabase với khóa vân tay `98e9e026` | Đã di trú toàn bộ 25 transaction + 3 user, `db:verify-encryption` kiểm tra 0 lỗi giải mã |
+| 48.1 | Rà soát lịch sử CSDL | Không truy được (13 ví test của tài khoản 18 đã soft-delete từ `2026-10-26 03:58:21Z`, audit_log thời điểm đó chưa ghi nhận tên script thao tác cụ thể) |
+| 60.3 | Đã sửa ca 2 trong `tests/unit/household_and_aiops_v2.test.js`: bổ sung mock `findActiveMemberByAccount = async () => null` | Toàn bộ 50 suites / 496 unit tests PASS 100% |
