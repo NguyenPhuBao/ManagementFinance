@@ -25,6 +25,7 @@ import '../../features/budget/presentation/pages/budget_detail_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
 import '../../features/household/presentation/pages/moi_thanh_vien_page.dart';
 import '../../features/household/presentation/pages/nha_minh_page.dart';
+import '../../features/household/presentation/pages/tham_gia_nha_page.dart';
 import '../../features/household/presentation/pages/tao_nha_page.dart';
 import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/goal/domain/dien_san_muc_tieu.dart';
@@ -302,6 +303,8 @@ class AppRouter {
           // `pop`, không `go('/nha')`: `go` thay cả stack, Back sau đó thoát app.
           GoRoute(path: '/nha', builder: (_, __) => const NhaMinhPage()),
           GoRoute(path: '/nha/moi', builder: (_, __) => const MoiThanhVienPage()),
+          // KHÔNG qua `redirectTheoQuyen`: quyền này mặc định mở với Basic, bị tắt là admin chủ động (spec 12.4).
+          GoRoute(path: '/nha/tham-gia', builder: (_, __) => const ThamGiaNhaPage()),
           // Basic → màn Nâng cấp; Premium tạm ngừng → màn Nâng cấp ẩn giá + nút mua (chốt B1, spec 12.4).
           GoRoute(
             path: '/nha/tao',
