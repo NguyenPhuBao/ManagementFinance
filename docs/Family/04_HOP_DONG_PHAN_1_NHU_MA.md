@@ -12,6 +12,8 @@
 > (2026-10-28); phần nào đổi sau PR #170 ghi **🔎 2026-10-30**. Kết quả soát (đạt 56.1, 56.3–56.7; một phần 56.2, 56.8, 56.9 — phần còn ở 58.x / 57.4;
 > **đơn 57 chưa làm một việc nào**; lỗi mới do PR → đơn 58); việc còn mở ở `VIEC_BACKEND_CON_LAI.md` mục 0. **Đo lại sau mỗi lần gộp `main`** — ngày đo gần nhất: 2026-10-30 / backend `e3248955`.
 
+> 🔎 **Đo lại 2026-10-31 (phiên 25) — backend `5ff06db4` (PR #172), chạy thật trên bản sao + CSDL tạm, không phải máy thật.** Bảng dưới vẫn là ảnh chụp `e3248955`; chỗ đã khác ở **mục 2a**. Trạng thái việc: `CAN-LAM/VIEC_BACKEND_CON_LAI.md`. **Đo lại sau mỗi lần gộp `main`.**
+
 ## 1. Kết luận cho lát 1
 
 - **Dựng được ngay trên mã hiện tại:** 16 đường dẫn + method (bảng mục 2), migration 40 (ba bảng + cột `Idhousehold` ở 5 bảng, không có
@@ -54,6 +56,25 @@ backend trả lời).
 | 14 | `GET /invitations` | mọi tài khoản | — | `[{code, householdName, inviterName, role, expiresAt}]` — hiện chỉ lời mời đã gắn `Invitee_idaccount` (57.2) | — |
 | 15 | `POST /invitations/:code/accept` | như #7 | — | như #2 | như #7 |
 | 16 | `POST /invitations/:code/decline` | người được mời | — | `{declined: true}` | `HOUSEHOLD_INVITE_INVALID` 404 · `_WRONG_ACCOUNT` 403 |
+
+## 2a. Khác biệt ở `5ff06db4` so với bảng trên (đo 2026-10-31)
+
+Không có route mới, không đổi đường dẫn. Dòng không nêu là không đổi (#3, #4, #5, #8, #10, #11). ⚠️ Bốn dòng đánh dấu 🛑 đang **hỏng ở backend** (đơn 57.2, 57.6) — đừng dựng lát 2 theo chúng trước khi backend sửa và đo lại.
+
+| # | Khác ở HEAD |
+|---|---|
+| 1 | Body chỉ đọc `name` (trần cố định 6 / 10 / 5). `data` 201 là hình dạng **lồng**, hết hàng thô |
+| 2 | `data` **lồng** theo `01` mục 4; không nhà: `{household: null, myRole: null, members: [], formerMembers: []}`. `contributionDueDay` nằm trong `household` |
+| 6 | Thêm limiter 30 lượt / 15 phút / IP (429). Lời mời email hết *luôn 403*, đúng người xem được. `_EXPIRED` 410. Thêm `_DECLINED` 409. Nhà `ReadOnly` xem được (lỗi, 57.7). Nhà đã giải tán: `_INVALID` 404 |
+| 7 | Thêm `requireFeature('household_join')` (403 `FEATURE_DISABLED`; mặc định `true` nên CSDL chưa áp 44 vẫn qua) và limiter. `data` lồng. `_EXPIRED` 410, thêm `_DECLINED` 409. `_WRONG_ACCOUNT` chạy thật. Nhà `ReadOnly` vào được (lỗi, 57.7) |
+| 9 | `data` lồng, của chủ cũ |
+| 12 | 🛑 **500 `HOUSEHOLD_ERROR` với mọi lần gọi hợp lệ** (57.6, đã chạy xác nhận) |
+| 13 | Email > 100: 400 `INVALID_EMAIL`. Người đang ở nhà: 202 trước cả rate limit và `HOUSEHOLD_FULL`. Thư gửi thật |
+| 14 | 🛑 **500 với mọi tài khoản** (57.2, đã chạy xác nhận). Sau khi sửa: khớp cả email, thêm `maxMembers`, `memberCount` (hiện luôn 1 — đừng hiện tới khi 57.8 #6 đóng) |
+| 15 | Thêm `requireFeature('household_join')`. 🛑 **500 với token thật** (57.2). Sau khi sửa: như #7, không có limiter |
+| 16 | Trước bước hỏng: `_INVALID` 404, `_DECLINED` 409, `_USED` 409, `_EXPIRED` 410. 🛑 **Lời mời hợp lệ: 500** (57.2) |
+
+Đồng bộ (mục 3) ở `5ff06db4`: 57.4, 58.1, 58.2 **đạt, đã chạy thật với payload app** (Member đẩy khoản của Chủ ⇒ `_ROLE_FORBIDDEN`; Member đẩy danh mục nhà ⇒ `synced`; Chủ đẩy khoản của Member ⇒ `synced`, `Idaccount` giữ người ghi; `Transfer` chỉ Chủ, xét vai hiện tại; trần ví chung chạy với `operation: 'update'`). `household.changed` sau `/sync/push` **đã bỏ**, chỉ còn `sync.completed` tới thành viên khác; nhà của sự kiện còn đọc từ payload (58.4). Không mã đẩy mới; `_permanentCodes` không phải đổi. Hàng mới mang `idaccount` khác phiên hiện **vẫn ghi được** (59.1; app không gửi vậy).
 
 ## 3. Đồng bộ (`/sync/push`, `/sync/pull`)
 
@@ -110,6 +131,8 @@ rời / giải tán, `household.changed` → `/me`, `household.invited` → danh
 - Bộ test backend (`household.system_impact.test.js`) payload không có `idaccount` và dùng `operation: 'create'` — không phản ánh app; đừng coi *"test backend xanh"* là bằng chứng.
 - Mã lỗi API của nhà (`household.service.js` + `household.controller.js`): tập mã trước / sau PR giống hệt (57.7 chưa làm); `loaiLoiTuMa` (`cau_loi_nha.dart:57-76`) đọc cả hai bộ tên, không cần đổi. `'PREMIUM_REQUIRED'` ở `cau_loi_nha.dart:73` nay là mã chết (vô hại).
 - Chưa kiểm: toàn bộ đường ghi vào nhà trên máy thật (không có nhà nào; CSDL 0 nhà).
+
+⚠️ **Mẫu dưới là của `ba5cd3c5`, đã lỗi thời từ `5ff06db4`** (hình dạng lồng ở mục 2a); giữ tới khi client gỡ nhánh phẳng / thô của `nha_cua_toi.dart`.
 
 **Mẫu JSON dựng từ đúng danh sách khoá ở HEAD `ba5cd3c5`** (cho ca test hợp đồng; giá trị là minh hoạ; `household.service.js:151-163` — `/me`, `:135-149` — thành viên, `:68-71` — tạo nhà, `household.controller.js:27-32, :51`):
 
