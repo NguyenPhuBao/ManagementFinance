@@ -7,15 +7,15 @@ import '../../../domain/vai_nha.dart';
 import '../nha_minh/khung_the_nha.dart';
 
 class DanhSachLoiMoi extends StatelessWidget {
-  const DanhSachLoiMoi({super.key, required this.ds, required this.now, required this.onHuy, this.dangHuy});
+  const DanhSachLoiMoi({super.key, required this.ds, required this.now, required this.onHuy, this.dangHuy = const {}});
 
   /// Đã lọc qua `dongLoiMoiHien`.
   final List<MaMoiEntity> ds;
   final DateTime now;
   final ValueChanged<String> onHuy;
 
-  /// Mã đang huỷ: nút của dòng ấy khoá.
-  final String? dangHuy;
+  /// Các mã đang huỷ: nút của dòng ấy khoá.
+  final Set<String> dangHuy;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +41,7 @@ class DanhSachLoiMoi extends StatelessWidget {
                 if (ds[i].conHieuLucLuc(now))
                   TextButton(
                     style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                    onPressed: dangHuy == ds[i].ma ? null : () => onHuy(ds[i].ma),
+                    onPressed: dangHuy.contains(ds[i].ma) ? null : () => onHuy(ds[i].ma),
                     child: const Text('Huỷ'),
                   )
                 else
@@ -55,9 +55,7 @@ class DanhSachLoiMoi extends StatelessWidget {
   }
 }
 
-/// Stitch `b017710c…`: dòng phụ nêu loại · vai · *Đang chờ* (khi còn hiệu lực); trạng thái đã kết thúc (Đã từ chối / Hết hạn)
-/// chỉ ở nhãn bên phải, không in hai lần.
-String _dongPhu(MaMoiEntity m, DateTime now) {
-  final dau = '${m.email == null ? 'Mã mời' : 'Email'} · ${tenVai(m.vai)}';
-  return m.conHieuLucLuc(now) ? '$dau · ${nhanTrangThaiLoiMoi(TrangThaiLoiMoi.dangCho)}' : dau;
-}
+/// Stitch `b017710c…` (dòng 3 in cả `Email · Chỉ xem · Đã từ chối` lẫn chip *Đã từ chối*): dòng phụ luôn nêu loại · vai ·
+/// trạng thái (Đang chờ / Đã từ chối / Hết hạn); chip bên phải chỉ cho trạng thái đã kết thúc.
+String _dongPhu(MaMoiEntity m, DateTime now) =>
+    '${m.email == null ? 'Mã mời' : 'Email'} · ${tenVai(m.vai)} · ${nhanTrangThaiLoiMoi(m.trangThaiLuc(now))}';

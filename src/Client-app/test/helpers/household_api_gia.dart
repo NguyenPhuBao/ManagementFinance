@@ -20,6 +20,9 @@ class HouseholdApiGia implements HouseholdApi {
 
   /// Chỉ giữ lời gọi `dsMaMoi` (không đụng `treo`); [loiHuy] chỉ ném ở `huyMaMoi`.
   Completer<void>? treoDsMaMoi;
+
+  /// Giữ riêng `huyMaMoi` của từng mã.
+  final treoHuyTheoMa = <String, Completer<void>>{};
   Object? loiHuy;
   final goi = <String>[];
   Map<String, Object?> maMoiJson = const {
@@ -68,7 +71,8 @@ class HouseholdApiGia implements HouseholdApi {
     return r;
   }
   @override
-  Future<void> huyMaMoi(String ma) => _chay('huyMaMoi:$ma', () {
+  Future<void> huyMaMoi(String ma) => _chay('huyMaMoi:$ma', () async {
+        await treoHuyTheoMa[ma]?.future;
         final l = loiHuy;
         if (l != null) throw l;
       });

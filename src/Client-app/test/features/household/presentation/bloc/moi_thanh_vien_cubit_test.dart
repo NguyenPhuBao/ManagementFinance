@@ -88,12 +88,12 @@ void main() {
     api.treo = Completer<void>();
     final a = c.huy('AAAA2222');
     await Future<void>.delayed(Duration.zero);
-    expect(c.state.dangHuy, 'AAAA2222');
+    expect(c.state.dangHuy, {'AAAA2222'});
     final b = c.huy('AAAA2222');
     api.treo!.complete();
     await Future.wait([a, b]);
     expect(api.goi.where((g) => g == 'huyMaMoi:AAAA2222'), hasLength(1), reason: 'lượt hai 404 hiện toast lỗi oan');
-    expect(c.state.dangHuy, isNull);
+    expect(c.state.dangHuy, isEmpty);
     expect(bao, isEmpty);
   });
 
@@ -126,12 +126,12 @@ void main() {
     final a = c.huy('AAAA2222');
     await Future<void>.delayed(Duration.zero);
     await Future<void>.delayed(Duration.zero);
-    expect(c.state.dangHuy, 'AAAA2222', reason: 'xoá trước lượt nạp là để dòng còn trên màn với nút mở');
+    expect(c.state.dangHuy, {'AAAA2222'}, reason: 'xoá trước lượt nạp là để dòng còn trên màn với nút mở');
     final b = c.huy('AAAA2222');
     api.treoDsMaMoi!.complete();
     await Future.wait([a, b]);
     expect(api.goi.where((g) => g == 'huyMaMoi:AAAA2222'), hasLength(1));
-    expect(c.state.dangHuy, isNull);
+    expect(c.state.dangHuy, isEmpty);
     expect(bao, isEmpty);
   });
 
@@ -147,6 +147,36 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(bao, [cauLoiNha(LoaiLoiNha.maKhongCo)]);
     expect(c.soConHieuLuc, 0);
-    expect(c.state.dangHuy, isNull);
+    expect(c.state.dangHuy, isEmpty);
+  });
+
+  int xoa(HouseholdApiGia api, String ma) => api.goi.where((g) => g == 'huyMaMoi:$ma').length;
+
+  test('hai dòng huỷ chồng nhau (A đang nạp, chạm B): chạm lại A không gửi DELETE hai', () async {
+    final (c, api, _) = await dung();
+    api.treoDsMaMoi = Completer<void>();
+    final a = c.huy('AAAA2222');
+    await Future<void>.delayed(Duration.zero);
+    final b = c.huy('BBBB3333');
+    await Future<void>.delayed(Duration.zero);
+    await c.huy('AAAA2222');
+    expect(xoa(api, 'AAAA2222'), 1, reason: 'dangHuy một ô: chạm B làm nút A mở lại');
+    api.treoDsMaMoi!.complete();
+    await Future.wait([a, b]);
+    expect(xoa(api, 'BBBB3333'), 1);
+    expect(c.state.dangHuy, isEmpty);
+  });
+
+  test('A xong khi DELETE của B còn bay: chạm lại B không gửi DELETE hai', () async {
+    final (c, api, _) = await dung();
+    api.treoHuyTheoMa['BBBB3333'] = Completer<void>();
+    final b = c.huy('BBBB3333');
+    await Future<void>.delayed(Duration.zero);
+    await c.huy('AAAA2222');
+    await c.huy('BBBB3333');
+    expect(xoa(api, 'BBBB3333'), 1, reason: 'lượt A xong xoá dangHuy của B');
+    api.treoHuyTheoMa['BBBB3333']!.complete();
+    await b;
+    expect(c.state.dangHuy, isEmpty);
   });
 }

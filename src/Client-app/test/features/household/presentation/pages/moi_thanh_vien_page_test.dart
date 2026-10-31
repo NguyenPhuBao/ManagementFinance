@@ -142,6 +142,7 @@ void main() {
     await t.ensureVisible(find.text('binh@x.vn'));
     expect(find.text('Huỷ'), findsOneWidget);
     expect(find.text('Đã từ chối'), findsOneWidget);
+    expect(find.text('Email · Chỉ xem · Đã từ chối'), findsOneWidget, reason: 'Stitch: dòng phụ luôn kèm trạng thái, chip giữ như mockup');
     await t.tap(find.text('Huỷ'));
     await t.pumpAndSettle();
     expect(api.goi, contains('huyMaMoi:AAAA2222'));

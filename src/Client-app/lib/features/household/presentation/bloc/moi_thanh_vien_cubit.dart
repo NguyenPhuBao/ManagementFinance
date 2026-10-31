@@ -15,7 +15,7 @@ class MoiThanhVienState {
     this.emailVuaGui,
     this.dangTaoMa = false,
     this.dangGuiEmail = false,
-    this.dangHuy,
+    this.dangHuy = const {},
   });
 
   final List<MaMoiEntity> ds;
@@ -25,8 +25,8 @@ class MoiThanhVienState {
   final bool dangTaoMa;
   final bool dangGuiEmail;
 
-  /// Mã đang huỷ (chặn chạm đôi: lượt hai 404 hiện lỗi oan sau khi huỷ thành công).
-  final String? dangHuy;
+  /// Các mã đang huỷ, mỗi lượt tự vào / ra phần của nó (một ô thì dòng này đè dòng kia, nút dòng cũ mở lại giữa chừng).
+  final Set<String> dangHuy;
 }
 
 /// Màn Mời (`01` mục 2.1). Trần và vai do trang đọc từ `NhaCubit`; cubit này chỉ giữ danh sách lời mời và hai thao tác tạo.
@@ -52,8 +52,7 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
     String? emailVuaGui,
     bool? dangTaoMa,
     bool? dangGuiEmail,
-    String? dangHuy,
-    bool xongHuy = false,
+    Set<String>? dangHuy,
   }) {
     if (isClosed) return;
     final s = state;
@@ -64,7 +63,7 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
       emailVuaGui: emailVuaGui ?? s.emailVuaGui,
       dangTaoMa: dangTaoMa ?? s.dangTaoMa,
       dangGuiEmail: dangGuiEmail ?? s.dangGuiEmail,
-      dangHuy: xongHuy ? null : (dangHuy ?? s.dangHuy),
+      dangHuy: dangHuy ?? s.dangHuy,
     ));
   }
 
@@ -128,9 +127,9 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
   }
 
   Future<void> huy(String ma) async {
-    if (state.dangHuy == ma) return;
+    if (state.dangHuy.contains(ma)) return;
     _napHong = false;
-    _phat(dangHuy: ma);
+    _phat(dangHuy: {...state.dangHuy, ma});
     try {
       await _repo.huyMaMoi(ma);
       _phat(boMa: state.maVuaTao?.ma == ma);
@@ -140,8 +139,8 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
       // Mã đã chết ở server: dòng ấy vẫn bị `soConHieuLuc` đếm (khoá nhầm hai nút) tới khi nạp lại.
       if (loaiLoiNhaCua(e) == LoaiLoiNha.maKhongCo) await nap();
     } finally {
-      // Sau lượt nạp: xoá trước là dòng còn trên màn với nút mở suốt một vòng GET.
-      _phat(xongHuy: true);
+      // Sau lượt nạp, và chỉ gỡ mã của CHÍNH lượt này.
+      _phat(dangHuy: {...state.dangHuy}..remove(ma));
     }
   }
 
