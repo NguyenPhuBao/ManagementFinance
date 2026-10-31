@@ -101,12 +101,7 @@ VALUES
     ('Premium', 'household_join',    true,  NULL, '{}'::jsonb,                                                                                                     'FALLBACK_DEFAULT', NOW()),
     ('Premium', 'household_members', true,  6,    '{"invite_methods": ["code", "email"], "code_expire_hours": 48, "email_invite_expire_days": 7}'::jsonb,      'BLOCK_CREATE',    NOW()),
     ('Premium', 'household_wallets', true,  10,   '{"max_shared_wallets": 10}'::jsonb,                                                                          'BLOCK_CREATE',    NOW())
-ON CONFLICT ("account_type", "feature_id") DO UPDATE SET
-    "is_enabled" = EXCLUDED."is_enabled",
-    "limit_value" = EXCLUDED."limit_value",
-    "scope_config" = EXCLUDED."scope_config",
-    "downgrade_policy" = EXCLUDED."downgrade_policy",
-    "updated_at" = NOW();
+ON CONFLICT ("account_type", "feature_id") DO NOTHING;
 
 COMMIT;
 

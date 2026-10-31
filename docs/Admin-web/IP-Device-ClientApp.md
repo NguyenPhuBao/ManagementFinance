@@ -14,7 +14,7 @@
 > 📌 **Ghi chú đối chiếu thực tế với Client-app theo đo đạc 2026-10-30 (Task T2):**
 > - Fallback thiết bị: Client-app không gửi chuỗi `Unknown Device`, Backend tự điền fallback khi vắng header `x-device-name`.
 > - Quản lý CSDL: Luôn tuân thủ cơ chế xóa mềm (Soft-delete), không xóa cứng cascade trên bảng `account`.
-> - Throttle bypass: Cả Login, Register và OTP đều được cấu hình linh hoạt theo hạ tầng rate-limiter.
+> - Throttle bypass: Cơ chế `skipThrottle: true` của lịch sử thiết bị được áp dụng trực tiếp tại 4 đường: `verifyRegisterOtp`, `register`, `login`, `refresh` (`auth.service.js:211, 289, 414, 542`).
 
 ---
 
@@ -285,11 +285,12 @@ class DeviceTracking extends Table {
 - [x] **Test 1.3:** Client-app gửi request có đính kèm chính xác Header `x-device-name` với độ dài $\le 150$ ký tự trên nền tảng Android.
 
 ### ⚡ TẦNG 2: KIỂM THỬ TÁC ĐỘNG HỆ THỐNG THỰC TẾ (Real System Impact & DB Persistence)
-- [x] **Test 2.1 (Lần đầu truy cập):** Người dùng đăng nhập lần đầu $\longrightarrow$ CSDL PostgreSQL có **chính xác 1 dòng mới** trong `account_device_history` với đúng `idaccount`, `device_name`, và `ip_address` (đã mask).
+*(Kiểm thử đơn vị và mock Prisma theo `device.tracking.2tier.test.js:38-80`)*
+- [x] **Test 2.1 (Lần đầu truy cập):** Người dùng đăng nhập lần đầu $\longrightarrow$ CSDL có **chính xác 1 dòng mới** trong `account_device_history` với đúng `idaccount`, `device_name`, và `ip_address` (đã mask).
 - [x] **Test 2.2 (Cùng Device & Cùng IP):** Người dùng tiếp tục lướt app / gửi request $\longrightarrow$ **KHÔNG sinh thêm dòng mới**, bản ghi hiện tại được cập nhật timestamp `last_active_at` mới hơn.
 - [x] **Test 2.3 (Thay đổi IP - Chuyển mạng Wi-Fi sang 4G):** Người dùng chuyển từ mạng Wi-Fi (IP `113.161.xx.xx`) sang 4G (IP `14.232.xx.xx`) $\longrightarrow$ CSDL **INSERT thêm 1 dòng mới**, bảo toàn 100% dòng cũ của Wi-Fi trước đó.
 - [x] **Test 2.4 (Thay đổi Thiết bị - Đăng nhập máy mới):** Người dùng đăng nhập trên điện thoại thứ 2 $\longrightarrow$ CSDL **INSERT thêm 1 dòng mới** mang tên thiết bị mới, dữ liệu thiết bị cũ vẫn nguyên vẹn.
-- [x] **Test 2.5 (Bảo vệ Xung đột Khóa ngoại):** Khi tài khoản bị Admin xóa cứng (`DELETE FROM account`) $\longrightarrow$ Toàn bộ lịch sử thiết bị trong `account_device_history` tự động bị xóa theo nhờ cơ chế `CASCADE DELETE`, không bị treo Orphan Records.
+- [x] **Test 2.5 (Thứ tự sắp xếp & Giới hạn):** Hàm `getDeviceHistory` sắp xếp theo thứ tự `last_active_at DESC` và áp dụng phân trang/giới hạn đúng chuẩn.
 
 ---
 
@@ -302,6 +303,6 @@ class DeviceTracking extends Table {
 | **3** | **Tuyệt đối không ghi đè khi đổi IP/Device** | Backend | Vi phạm yêu cầu nghiệp vụ của PO, làm mất lịch sử truy vết an ninh số khi có khiếu nại. |
 | **4** | **Phải chạy hàm `maskIp()` trước khi lưu/hiển thị** | Backend | Vi phạm Nghị định 13/2023/NĐ-CP và Rule 9 (Data Security), bị cơ quan quản lý phạt pháp lý. |
 | **5** | **Áp dụng Throttle Cache 60s cho request thường** | Backend | CSDL bị dồn ép hàng nghìn truy vấn ghi liên tục khi người dùng lướt app, gây sập pool kết nối. |
-| **6** | **Luôn bypass throttle khi đăng nhập Login** | Backend | Đăng nhập từ IP mới nhưng không được ghi nhận ngay lập tức, làm sai lệch cảnh báo an ninh. |
+| **6** | **Luôn bypass throttle khi Login/Register/OTP/Refresh** | Backend | Đăng nhập/xác thực từ IP mới nhưng không được ghi nhận ngay lập tức, làm sai lệch cảnh báo an ninh. |
 | **7** | **Không đặt ràng buộc `UNIQUE` trên Device/IP** | CSDL / DBA | Gây lỗi văng ngoại lệ `UniqueConstraintViolation` ngay khi người dùng đăng nhập lại lần thứ hai. |
 | **8** | **Cắt chuỗi `deviceName` tối đa 150 ký tự** | Cả hai phía | Tránh lỗi tràn bộ đệm `StringDataRightTruncation` (`value too long for type character varying(150)`). |

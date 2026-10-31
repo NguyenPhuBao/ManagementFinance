@@ -67,7 +67,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
    - **Hành vi:** Nếu người dùng đang sở hữu số lượng thực thể vượt trần Basic (ví dụ: đang có 5 ví > trần Basic 3 ví):
      - Toàn bộ 5 ví cũ **vẫn hiển thị 100% đầy đủ** trên giao diện Mobile.
      - Người dùng **vẫn ghi chép thu/chi, chuyển tiền và xem lịch sử** trên cả 5 ví bình thường.
-     - Hệ thống **chỉ chặn bấm nút "+ Tạo ví mới"**; khi bấm vào sẽ hiển thị dialog giải thích và mời gia hạn.
+     - Hệ thống **chỉ chặn bấm nút "+ Tạo ví mới"**; khi bấm vào sẽ chuyển sang `/premium?tran=vi` để mời nâng cấp.
 2. **`LOCK_FEATURE` (Khóa quyền truy cập tính năng):**
    - **Mục đích:** Khóa các tính năng đặc quyền cao cấp (Copilot AI, Ghi chép giọng nói On-Device, Báo cáo nâng cao).
    - **Hành vi:** Tính năng bị vô hiệu hóa, hiển thị icon ổ khóa 🔒; khi click sẽ mở trang nâng cấp `/premium?quyen=...`.
@@ -596,11 +596,11 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
 ### KIẾN TRÚC 5 TẦNG PHÒNG THỦ TẠI CLIENT-APP (FLUTTER)
 
 1. **Tầng 1: Cửa chặn Router Guards (`chan_theo_goi.dart` & `GoRouter`):**
-   - Đặt chặn trực tiếp tại `redirect` của các route thêm mới (`/wallets/add`, `/budget/rules`, `/goals/add`) và route chức năng cao cấp (`/export-report`, `/ai-assistant`).
+   - Đặt chặn trực tiếp tại `redirect` của các route thêm mới (`/wallets/add`, `/budget/rules`, `/goals/add`) và route chức năng cao cấp (`/analytics/export`, `/ai-chat`, khoá trong trang).
    - Nếu chạm trần số lượng (`dangCo >= limit_value`) hoặc không có quyền (`is_enabled == false`), tự động chuyển hướng sang màn hình `/premium?tran=...` hoặc `/premium?quyen=...`.
 2. **Tầng 2: Kiểm soát Trạng thái UI (`GoiCubit` & `quyen_tinh_nang.dart`):**
    - Mọi Widget trên màn hình kiểm tra qua `duocDung(MaQuyen ma, TrangThaiGoi goi, DateTime now)`.
-   - Các nút chức năng độc quyền bị ẩn hoặc gắn icon ổ khóa 🔒; khi bấm vào sẽ hiển thị Modal BottomSheet giới thiệu quyền lợi gói Premium thay vì ném ngoại lệ.
+   - Các nút chức năng độc quyền bị ẩn hoặc gắn icon ổ khóa 🔒; khi bấm vào sẽ hiển thị Thẻ khoá và chuyển hướng `/premium?quyen=...` giới thiệu quyền lợi gói Premium.
 3. **Tầng 3: Bộ đếm Hạn mức Nội bộ SQLite (`dem_dang_hoat_dong.dart`):**
    - Đếm số lượng thực tế trực tiếp từ SQLite cục bộ (Drift ORM) với độ trễ 0ms.
    - Hoạt động trơn tru ngay cả khi tắt toàn bộ kết nối mạng (Airplane mode).

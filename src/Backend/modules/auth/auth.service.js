@@ -1,3 +1,4 @@
+const { lyDoChoNguoiDung } = require('../aiops/aiops.reason');
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -361,13 +362,14 @@ const authService = {
         code: 'ACCOUNT_DELETED',
       });
     } else if (account.status !== 'Active') {
-      const msg = account.reason_inactive
-        ? `Tài khoản đã bị vô hiệu hóa. Lý do: ${account.reason_inactive}`
+      const lyDo = lyDoChoNguoiDung(account.reason_inactive);
+      const msg = lyDo
+        ? `Tài khoản đã bị vô hiệu hóa. Lý do: ${lyDo}`
         : "Tai khoan da bi vo hieu hoa";
       throw Object.assign(new Error(msg), {
         statusCode: 403,
         code: 'ACCOUNT_INACTIVE',
-        reason_inactive: account.reason_inactive || null,
+        reason_inactive: lyDo || null,
       });
     }
 

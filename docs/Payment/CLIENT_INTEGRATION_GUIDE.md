@@ -185,6 +185,9 @@ Authorization: Bearer <ACCESS_TOKEN_CUA_USER>
   ```
   *(Nếu là tài khoản Basic: `accountType: "Basic"`, `premiumExpiresAt: null`, `daysRemaining: 0`, `isExpired: true`, `limits: { "wallets": 3, "budgets": 3, "goals": 3 }`, `price: 49000`, `packageDays: 30`)*
 
+> [!NOTE]
+> `premium_expires_at` NULL với `Type = 'Premium'` là dữ liệu hỏng, coi là Basic: `accountType: 'Premium'`, `isPremium: false`, `isExpired: true`; job hạ cấp đưa về `Basic` ở lượt quét kế.
+
 ---
 
 ### 4.4. Lấy lịch sử giao dịch mua gói dịch vụ

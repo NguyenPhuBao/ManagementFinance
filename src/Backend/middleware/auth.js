@@ -1,3 +1,4 @@
+const { lyDoChoNguoiDung } = require('../modules/aiops/aiops.reason');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const ResponseHandler = require('../core/response-handler');
@@ -58,6 +59,7 @@ async function getAccountValidity(idaccount) {
 }
 
 function accountRejection(info, idaccount) {
+  const lyDo = lyDoChoNguoiDung(info?.reason_inactive);
   // Tài khoản hợp lệ thì không có lý do từ chối. Nơi gọi phải xử lý
   // `errorType === 'SCHEMA_ERROR'` TRƯỚC khi gọi hàm này — xem authenticate.
   if (info?.valid) return null;
@@ -65,14 +67,14 @@ function accountRejection(info, idaccount) {
   const isInactive = !isDeleted;
   return {
     message: isInactive
-      ? (info?.reason_inactive
-          ? `Tài khoản đã bị vô hiệu hóa. Lý do: ${info.reason_inactive}`
+      ? (lyDo
+          ? `Tài khoản đã bị vô hiệu hóa. Lý do: ${lyDo}`
           : 'Tài khoản đã bị vô hiệu hóa')
       : 'Account no longer exists or has been deleted',
     data: {
       code: isInactive ? 'ACCOUNT_INACTIVE' : 'ACCOUNT_DELETED',
       idaccount: Number(idaccount),
-      reason_inactive: info?.reason_inactive || null,
+      reason_inactive: lyDo || null,
     },
   };
 }

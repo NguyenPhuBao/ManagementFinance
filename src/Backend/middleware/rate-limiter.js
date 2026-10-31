@@ -77,7 +77,7 @@ const householdInviteLimiter = isRateLimitDisabled
       message: {
         success: false,
         statusCode: 429,
-        code: 'HOUSEHOLD_INVITE_RATE_LIMIT',
+        code: 'HOUSEHOLD_INVITE_ATTEMPT_LIMIT',
         message: 'Bạn đã thử mã mời quá nhiều lần. Vui lòng thử lại sau 15 phút.',
         timestamp: new Date().toISOString(),
       },

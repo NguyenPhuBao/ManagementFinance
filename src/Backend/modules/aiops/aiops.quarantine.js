@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const logger = require('../../core/logger');
 const { defaultAIOpsQuarantineRepository } = require('./aiops.quarantine.repository');
+const { AIOPS_AUTO_REASON_PREFIX, lyDoChoNguoiDung } = require('./aiops.reason');
 
 /**
  * Che bớt thông tin IP để tuân thủ Data_Security.md & Nghị định 13/2023/NĐ-CP
@@ -50,8 +51,6 @@ const PROTECTED_ACTOR_HASHES = new Set([
   'system_core',
   'system_host',
 ]);
-
-const AIOPS_AUTO_REASON_PREFIX = '[AIOPS_AUTO_QUARANTINE]';
 
 /**
  * AIOps Quarantine & Active Auto-Blocking Shield
@@ -161,6 +160,10 @@ class AIOpsQuarantine {
       } catch (err) {
         logger.warn('[AIOps Quarantine] Lỗi quét CSDL autoExpireInDatabase', { error: err.message });
       }
+    }
+
+    if (await this._reconcileAutoLocks()) {
+      hasChanged = true;
     }
 
     if (hasChanged) {
@@ -402,7 +405,7 @@ class AIOpsQuarantine {
       const autoReason = reason && String(reason).startsWith(AIOPS_AUTO_REASON_PREFIX)
         ? reason
         : `${AIOPS_AUTO_REASON_PREFIX}: ${reason || 'Cách ly tự động do phát hiện vi phạm an ninh'}`;
-      this._syncAccountStatusToDatabase(idaccount || cleanUser, 'Inactive', autoReason, { idaccount, username: cleanUser }).catch(() => { });
+      this._syncAccountStatusToDatabase(idaccount || cleanUser, 'Inactive', autoReason, { idaccount, username: cleanUser, autoQuarantine: true }).catch(() => { });
     }
 
     this._emitQuarantineEvents(record);
@@ -417,6 +420,7 @@ class AIOpsQuarantine {
     if (!this.repository || typeof this.repository.loadActiveQuarantines !== 'function') return 0;
     try {
       const activeData = await this.repository.loadActiveQuarantines();
+      await this._reconcileAutoLocks();
       const ips = activeData.ips || [];
       const accounts = activeData.accounts || [];
       const links = activeData.links || [];
@@ -680,19 +684,11 @@ class AIOpsQuarantine {
 
         // Nếu là quét tự động hết hạn, chỉ mở khóa tài khoản do AIOps/Sentinel khóa, tránh can thiệp khóa do Admin thủ công (Task 58.5)
         if (options && options.onlyAIOpsLocked) {
-          andConditions.push({
-            OR: [
-              { reason_inactive: { contains: '[AIOPS_AUTO_QUARANTINE]' } },
-              { reason_inactive: { contains: 'Cách ly tự động' } },
-              { reason_inactive: { contains: 'AIOps', mode: 'insensitive' } },
-              { reason_inactive: { contains: 'Sentinel', mode: 'insensitive' } },
-            ],
-            NOT: [
-              { reason_inactive: { contains: 'Quản trị viên' } },
-              { reason_inactive: { contains: 'Admin' } },
-            ],
-          });
+          andConditions.push({ reason_inactive: { startsWith: AIOPS_AUTO_REASON_PREFIX } });
         }
+      } else if (options.autoQuarantine) {
+        // Khoá tự động chỉ đụng hàng đang Active: không ghi đè khoá của admin, không đụng PendingDelete / Deleted
+        andConditions.push({ status: 'Active' });
       } else {
         // Khi khóa (Inactive): Tuyệt đối không ghi đè nếu tài khoản đang trong quy trình chờ xóa (PendingDelete)
         andConditions.push({ status: { not: 'PendingDelete' } });
@@ -717,7 +713,7 @@ class AIOpsQuarantine {
           const targetId = resolvedTargetId;
           if (targetId) {
             invalidateAccountCache(targetId);
-            emitForceLogout(targetId, 'ACCOUNT_INACTIVE', reason || 'Tài khoản của bạn đã bị cách ly tạm khóa để bảo vệ an toàn.');
+            emitForceLogout(targetId, 'ACCOUNT_INACTIVE', lyDoChoNguoiDung(reason) || 'Tài khoản của bạn đã bị cách ly tạm khóa để bảo vệ an toàn.');
           }
         } catch (socketErr) {
           logger.warn('[AIOps Quarantine] Không thể phát force_logout:', socketErr.message);
@@ -725,6 +721,41 @@ class AIOpsQuarantine {
       }
     } catch (err) {
       logger.warn(`[AIOps Quarantine] Cảnh báo đồng bộ CSDL bảng account cho [${usernameOrId}]`, { error: err.message });
+    }
+  }
+
+  /**
+   * Đối soát không phụ thuộc RAM (Task 58.5): account mang dấu AIOps mà không còn hàng phong tỏa hiệu lực ⇒ mở.
+   * Chạy lúc khởi động và mỗi lượt quét, nên máy chủ dừng qua mốc hết hạn vẫn tự lành.
+   */
+  async _reconcileAutoLocks() {
+    if (!this.repository || typeof this.repository.getAccountByUsername !== 'function') return false;
+    try {
+      const { prisma } = require('../../config/db');
+      if (!prisma?.account?.findMany) return false;
+      const locked = await prisma.account.findMany({
+        where: { status: 'Inactive', reason_inactive: { startsWith: AIOPS_AUTO_REASON_PREFIX } },
+        select: { idaccount: true, username: true },
+      });
+      const now = Date.now();
+      let changed = false;
+      for (const acc of locked) {
+        const clean = String(acc.username).toLowerCase();
+        // Hàng vừa khoá có thể chưa ghi xong aiops_account_quarantine: RAM còn hiệu lực thì bỏ qua
+        const conTrongRam = [...this._pairs.values()].some((r) => r.username && r.username.toLowerCase() === clean
+          && (r.accountStatus === 'permanent' || (r.accountStatus === 'temporary' && r.accountExpiresAt > now)));
+        if (conTrongRam) continue;
+        const row = await this.repository.getAccountByUsername(acc.username);
+        const conHieuLuc = row && (row.status === 'PERMANENT'
+          || (row.status === 'TEMPORARY' && row.expires_at && new Date(row.expires_at).getTime() > now));
+        if (conHieuLuc) continue;
+        await this._syncAccountStatusToDatabase(acc.idaccount, 'Active', null, { onlyAIOpsLocked: true, idaccount: acc.idaccount, username: acc.username });
+        changed = true;
+      }
+      return changed;
+    } catch (err) {
+      logger.warn('[AIOps Quarantine] Lỗi đối soát khoá tự động', { error: err.message });
+      return false;
     }
   }
 

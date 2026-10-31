@@ -67,6 +67,8 @@ async function runMigration() {
   console.log(`📋 Tìm thấy ${txs.length} giao dịch có chứa chuỗi mã hóa enc:...`);
   let txReencrypted = 0;
 
+  let soKhongXuLy = 0;
+
   for (const tx of txs) {
     // Nếu khóa env không giải được nhưng khóa dev giải được -> cần re-encrypt
     if (!canDecryptEnv(tx.note)) {
@@ -80,6 +82,7 @@ async function runMigration() {
         txReencrypted++;
         console.log(`  ✔ [transaction] Đã re-encrypt idtran: ${tx.idtran} (account: ${tx.idaccount})`);
       } else {
+        soKhongXuLy++;
         console.warn(`  ⚠️ [transaction] Không thể giải mã cả dev lẫn env cho idtran: ${tx.idtran}`);
       }
     }
@@ -100,6 +103,9 @@ async function runMigration() {
       if (plainPhone !== null) {
         updateData.phone = encrypt(plainPhone);
         needsUpdate = true;
+      } else {
+        soKhongXuLy++;
+        console.warn(`  ⚠️ [user] Không thể giải mã phone cả dev lẫn env cho iduser: ${u.iduser}`);
       }
     }
 
@@ -108,6 +114,9 @@ async function runMigration() {
       if (plainAddress !== null) {
         updateData.address = encrypt(plainAddress);
         needsUpdate = true;
+      } else {
+        soKhongXuLy++;
+        console.warn(`  ⚠️ [user] Không thể giải mã address cả dev lẫn env cho iduser: ${u.iduser}`);
       }
     }
 
@@ -122,6 +131,10 @@ async function runMigration() {
   }
 
   console.log('-----------------------------------------------------------');
+  if (soKhongXuLy > 0) {
+    console.error(`❌ CÒN HÀNG HỎNG: Có ${soKhongXuLy} ô dữ liệu không giải được bằng cả hai khóa.`);
+    process.exit(1);
+  }
   console.log(`🎉 HOÀN TẤT DI TRÚ: Re-encrypt thành công ${txReencrypted} transactions và ${userReencrypted} users.`);
 }
 

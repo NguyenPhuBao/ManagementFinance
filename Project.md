@@ -4816,7 +4816,7 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
        + Kiểm tra trạng thái đơn: Nếu đơn đã ở trạng thái `PAID`, `payment.service.js` ghi nhận giao dịch mới vào bảng `payment_transaction` phục vụ đối soát/hoàn tiền kế toán và phản hồi HTTP 200 mà TUYỆT ĐỐI KHÔNG kích hoạt/cộng dồn Premium hai lần.
        + Idempotency tầng CSDL: Bổ sung ràng buộc Partial Unique Index `uq_payment_transaction_payos_id` trên cột `payos_transaction_id` (WHERE `payos_transaction_id IS NOT NULL`). Khi Webhook trùng lặp được phát lại, Prisma bắt mã lỗi `P2002` / PostgreSQL `23505` và trả HTTP 200 an toàn mà không sinh trùng lặp giao dịch.
   2. *Thẩm định Ma trận Trạng thái Tài chính 2 Tầng (Flow 6.1, 6.2a, 6.2b):*
-     - **Flow 6.1 (Khớp đúng tiền 49k):** Chuyển trạng thái đơn sang `PAID`, cộng dồn thời hạn 30 ngày (nếu đã có hạn dùng tương lai thì dồn từ mốc tương lai; nếu chưa có thì tính từ thời điểm thanh toán), xóa `qr_url` / `checkout_url`, đồng bộ trạng thái `Active` cho hộ gia đình nếu là chủ hộ, phát socket `payment.success` và `account.upgraded`.
+     - **Flow 6.1 (Khớp đúng tiền 49k):** Chuyển trạng thái đơn sang `PAID`, cộng dồn thời hạn 30 ngày (nếu đã có hạn dùng tương lai thì dồn từ mốc tương lai; nếu chưa có thì tính từ thời điểm thanh toán), xóa `qr_url` / `checkout_url`, đồng bộ trạng thái `Active` cho hộ gia đình nếu là chủ hộ, phát socket `account.upgraded` tới tài khoản.
      - **Flow 6.2a (Chuyển thừa tiền > 49k):** Đơn chuyển sang `WAITING_CONFIRMATION`, giữ nguyên gói Basic, phát socket cảnh báo người dùng xác nhận (`confirmUpgrade`).
      - **Flow 6.2b (Chuyển thiếu tiền < 49k):** Đơn chuyển sang `REFUND_PENDING`, lưu lý do hoàn tiền `refundReason = 'Số tiền thanh toán không hợp lệ'`, phát socket cảnh báo thiếu tiền kèm số tiền còn thiếu.
      - **Xác nhận `confirmUpgrade`:** Hỗ trợ `accept: true` (kích hoạt `PAID` và nâng cấp Premium) hoặc `accept: false` (chuyển sang `REFUND_PENDING` để hoàn tiền).
@@ -4825,7 +4825,7 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   4. *Đơn hàng Thử nghiệm (`is_template = true`):*
      - Đơn mẫu của Admin khi nhận Webhook đối soát được xác nhận `PAID` trên CSDL nhưng TUYỆT ĐỐI KHÔNG kích hoạt hay gia hạn gói cước Premium cho tài khoản Admin.
   5. *Cơ chế JIT Sync (Just-in-Time Sync) & Vá Lỗi BigInt Logger:*
-     - Khi người dùng gọi `GET /api/payments/orders/:orderCode`, nếu đơn vẫn ở trạng thái `PENDING` (do Webhook từ cổng thanh toán bị trễ hoặc rớt mạng), hệ thống chủ động gọi PayOS REST API kiểm tra và kích hoạt bù trừ tức thì.
+     - Khi người dùng gọi `GET /api/payment/order-status/:orderCode`, nếu đơn vẫn ở trạng thái `PENDING` (do Webhook từ cổng thanh toán bị trễ hoặc rớt mạng), hệ thống chủ động gọi PayOS REST API kiểm tra và kích hoạt bù trừ tức thì.
      - Vá lỗi `TypeError: Do not know how to serialize a BigInt` bằng cách ép kiểu `Number(order.order_code)` trước khi truyền vào metadata Winston JSON logger.
   6. *Hàng Rào Bảo Vệ CSDL (DB Guard):*
      - Bổ sung định nghĩa `uq_payment_transaction_payos_id` vào `requiredIndexes` trong `src/Backend/scripts/verify-db-indexes.js`.

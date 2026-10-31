@@ -54,7 +54,7 @@ test('AIOps Sentinel & Account Status — 2-Tier Verification Suite (Tasks 58.5,
       // Kiểm tra điều kiện WHERE bảo vệ PendingDelete
       assert.ok(updateWhereExecuted, 'Phải có truy vấn update CSDL');
       const andArr = updateWhereExecuted.AND;
-      assert.ok(andArr.some(c => c.status && c.status.not === 'PendingDelete'), 'WHERE phải chứa NOT PendingDelete');
+      assert.ok(andArr.some(c => c.status === 'Active'), 'Khoá tự động chỉ được đụng hàng đang Active');
 
       // Tác động hệ thống Tầng 2: update khớp 0 hàng -> TUYỆT ĐỐI KHÔNG phát force_logout
       assert.strictEqual(forceLogoutEmitted, false, 'updateMany khớp 0 hàng tuyệt đối không được phát force_logout');
@@ -178,10 +178,9 @@ test('AIOps Sentinel & Account Status — 2-Tier Verification Suite (Tasks 58.5,
       assert.ok(updateCalled, 'Phải gọi updateMany để giải phóng hết hạn');
       const andArr = updateWhere.AND;
       // Phải có điều kiện loại trừ Admin / Quản trị viên
-      const notAdminCond = andArr.find(c => c.NOT !== undefined);
-      assert.ok(notAdminCond, 'Phải có điều kiện NOT admin');
-      assert.ok(notAdminCond.NOT.some(n => n.reason_inactive?.contains === 'Quản trị viên'));
-      assert.ok(notAdminCond.NOT.some(n => n.reason_inactive?.contains === 'Admin'));
+      const dauCond = andArr.find(c => c.reason_inactive?.startsWith);
+      assert.ok(dauCond, 'Chỉ mở hàng mang dấu khoá tự động');
+      assert.strictEqual(dauCond.reason_inactive.startsWith, '[AIOPS_AUTO_QUARANTINE]');
     } finally {
       prisma.account.updateMany = origUpdateMany;
       prisma.account.findFirst = origFindFirst;

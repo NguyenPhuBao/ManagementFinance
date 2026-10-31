@@ -225,9 +225,9 @@ class AIOpsQuarantineRepository {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, 1, $8, $9, $10, $8, $8)
         ON CONFLICT ("id") DO UPDATE SET
           "hits" = "aiops_account_quarantine"."hits" + 1,
-          "status" = EXCLUDED."status",
-          "reason" = EXCLUDED."reason",
-          "expires_at" = EXCLUDED."expires_at",
+          "status" = CASE WHEN "aiops_account_quarantine"."status" = 'PERMANENT' THEN 'PERMANENT' ELSE EXCLUDED."status" END,
+          "reason" = CASE WHEN "aiops_account_quarantine"."status" = 'PERMANENT' THEN "aiops_account_quarantine"."reason" ELSE EXCLUDED."reason" END,
+          "expires_at" = CASE WHEN "aiops_account_quarantine"."status" = 'PERMANENT' THEN NULL ELSE EXCLUDED."expires_at" END,
           "idaccount" = COALESCE(EXCLUDED."idaccount", "aiops_account_quarantine"."idaccount"),
           "updated_at" = EXCLUDED."updated_at"
         RETURNING *;

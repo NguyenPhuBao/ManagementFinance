@@ -2,6 +2,7 @@ const ResponseHandler = require('../core/response-handler');
 const permissionRepository = require('../modules/payment/permission.repository');
 const { prisma } = require('../config/db');
 const logger = require('../core/logger');
+const { isPremiumEffective } = require('../utils/premium.util');
 
 /**
  * Middleware kiểm tra quyền sử dụng tính năng theo loại tài khoản (Role/Account Type)
@@ -30,7 +31,7 @@ function requireFeature(featureId) {
 
         if (account) {
           effectiveType = account.type || 'Basic';
-          if (effectiveType === 'Premium' && (!account.premium_expires_at || new Date(account.premium_expires_at) <= new Date())) {
+          if (effectiveType === 'Premium' && !isPremiumEffective(account)) {
             effectiveType = 'Basic';
           }
         }

@@ -42,11 +42,7 @@ VALUES
     ('Premium', 'household',         true,  NULL, 'LOCK_FEATURE', NOW()),
     ('Basic',   'household_members', false, NULL, 'BLOCK_CREATE', NOW()),
     ('Premium', 'household_members', true,  6,    'BLOCK_CREATE', NOW())
-ON CONFLICT ("account_type", "feature_id") DO UPDATE SET
-    "is_enabled" = EXCLUDED."is_enabled",
-    "limit_value" = EXCLUDED."limit_value",
-    "downgrade_policy" = EXCLUDED."downgrade_policy",
-    "updated_at" = NOW();
+ON CONFLICT ("account_type", "feature_id") DO NOTHING;
 
 COMMIT;
 

@@ -27,12 +27,19 @@ test('Household Module — Tầng 1: API Controller & Contract Verification Suit
   await t.test('1. createHousehold: Trả về HTTP 201 và thông tin nhà khi người dùng có quyền household', async () => {
     const origCreate = householdService.createHousehold;
     householdService.createHousehold = async (idaccount, data) => ({
-      idhousehold: 1,
-      name: data.name,
-      ownerIdaccount: idaccount,
-      status: 'Active',
-      maxMembers: 6,
+      household: {
+        id: 1,
+        name: data.name,
+        status: 'Active',
+        maxMembers: 6,
+        ownerId: idaccount,
+        createAt: new Date().toISOString(),
+        maxSharedWallets: 10,
+        contributionDueDay: 5,
+      },
       myRole: 'Owner',
+      members: [],
+      formerMembers: [],
     });
 
     const { req, res, getStatus, getBody } = createMockContext({
@@ -43,7 +50,7 @@ test('Household Module — Tầng 1: API Controller & Contract Verification Suit
       await householdController.createHousehold(req, res);
       assert.strictEqual(getStatus(), 201);
       assert.strictEqual(getBody().success, true);
-      assert.strictEqual(getBody().data.name, 'Gia đình Tuấn An');
+      assert.strictEqual(getBody().data.household.name, 'Gia đình Tuấn An');
       assert.strictEqual(getBody().data.myRole, 'Owner');
     } finally {
       householdService.createHousehold = origCreate;
@@ -168,9 +175,19 @@ test('Household Module — Tầng 1: API Controller & Contract Verification Suit
   await t.test('7. joinByCode: Trả về HTTP 200 và thông tin nhà sau khi vào thành công', async () => {
     const origJoin = householdService.joinByCode;
     householdService.joinByCode = async (idaccount, code) => ({
-      idhousehold: 1,
-      name: 'Gia đình Tuấn An',
+      household: {
+        id: 1,
+        name: 'Gia đình Tuấn An',
+        status: 'Active',
+        maxMembers: 6,
+        ownerId: 1,
+        createAt: new Date().toISOString(),
+        maxSharedWallets: 10,
+        contributionDueDay: 5,
+      },
       myRole: 'Member',
+      members: [],
+      formerMembers: [],
     });
 
     const { req, res, getStatus, getBody } = createMockContext({
@@ -212,9 +229,19 @@ test('Household Module — Tầng 1: API Controller & Contract Verification Suit
   await t.test('9. transferOwner: Trả về HTTP 200 khi chuyển quyền Chủ nhà thành công', async () => {
     const origTransfer = householdService.transferOwner;
     householdService.transferOwner = async (ownerId, newOwnerId) => ({
-      idhousehold: 1,
-      ownerIdaccount: newOwnerId,
+      household: {
+        id: 1,
+        name: 'Gia đình Tuấn An',
+        status: 'Active',
+        maxMembers: 6,
+        ownerId: newOwnerId,
+        createAt: new Date().toISOString(),
+        maxSharedWallets: 10,
+        contributionDueDay: 5,
+      },
       myRole: 'Member',
+      members: [],
+      formerMembers: [],
     });
 
     const { req, res, getStatus, getBody } = createMockContext({
@@ -224,7 +251,7 @@ test('Household Module — Tầng 1: API Controller & Contract Verification Suit
     try {
       await householdController.transferOwner(req, res);
       assert.strictEqual(getStatus(), 200);
-      assert.strictEqual(getBody().data.ownerIdaccount, 25);
+      assert.strictEqual(getBody().data.household.ownerId, 25);
     } finally {
       householdService.transferOwner = origTransfer;
     }
@@ -329,9 +356,19 @@ test('Household Module — Tầng 1: API Controller & Contract Verification Suit
   await t.test('15. acceptEmailInvitation: Trả về HTTP 200 khi chấp nhận lời mời email', async () => {
     const origAccept = householdService.acceptEmailInvite;
     householdService.acceptEmailInvite = async (idaccount, code) => ({
-      idhousehold: 1,
-      name: 'Gia đình Tuấn An',
+      household: {
+        id: 1,
+        name: 'Gia đình Tuấn An',
+        status: 'Active',
+        maxMembers: 6,
+        ownerId: 1,
+        createAt: new Date().toISOString(),
+        maxSharedWallets: 10,
+        contributionDueDay: 5,
+      },
       myRole: 'Member',
+      members: [],
+      formerMembers: [],
     });
 
     const { req, res, getStatus, getBody } = createMockContext({

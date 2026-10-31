@@ -65,7 +65,7 @@ const bankService = {
     const list = await bankRepository.getBankAccountsByUser(idaccount);
     return list.map((acc) => ({
       ...acc,
-      account_number: maskAccountNumber(acc.account_number),
+      account_number: maskAccountNumber(acc.account_number, { table: 'bank_account', id: acc.id_bank_account, field: 'account_number' }),
     }));
   },
 

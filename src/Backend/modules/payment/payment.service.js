@@ -1,3 +1,4 @@
+const { isPremiumEffective } = require('../../utils/premium.util');
 const crypto = require('crypto');
 const config = require('../../config');
 const logger = require('../../core/logger');
@@ -827,7 +828,7 @@ async function getSubscriptionInfo(idaccount) {
   const isPremium = account.type === 'Premium';
   const hasExpiry = Boolean(account.premium_expires_at);
   const expiryDate = hasExpiry ? new Date(account.premium_expires_at) : null;
-  const isExpired = !isPremium || !hasExpiry || expiryDate <= now;
+  const isExpired = !isPremiumEffective(account, now);
 
   let daysRemaining = 0;
   if (!isExpired && expiryDate) {

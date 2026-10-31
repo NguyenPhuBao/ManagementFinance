@@ -81,8 +81,11 @@ test('Household Group 1 Completion — 2-Tier Verification Suite (Tasks 57.6, 58
       assert.ok(updatedWallet.data.delete_at);
       assert.ok(updatedWallet.data.update_at);
 
+      // Bảng transaction dùng cột deleted_at (schema.prisma), khác bốn bảng còn lại
       assert.strictEqual(updatedTx.where.idhousehold, ID_HOUSEHOLD);
-      assert.ok(updatedTx.data.delete_at);
+      assert.strictEqual(updatedTx.where.deleted_at, null);
+      assert.ok(updatedTx.data.deleted_at);
+      assert.strictEqual(updatedTx.data.delete_at, undefined);
       assert.ok(updatedTx.data.update_at);
 
       assert.strictEqual(updatedBudget.where.idhousehold, ID_HOUSEHOLD);
@@ -344,6 +347,33 @@ test('Household Group 1 Completion — 2-Tier Verification Suite (Tasks 57.6, 58
         return true;
       }
     );
+  });
+
+  await t.test('4d. [Tier 1 & 2 - Task 57.3] sendInviteEmailAsync thoát mã HTML trong householdName và inviterName chống chèn thẻ độc hại', async () => {
+    const emailService = require('../../core/email.service');
+    const goc = emailService.sendMail;
+    const da = [];
+    emailService.sendMail = async (m) => { da.push(m); };
+
+    try {
+      await householdService.sendInviteEmailAsync({
+        toEmail: 'a@b.c',
+        householdName: '<a href=x>n</a>',
+        inviterName: '<b>Admin</b>',
+        role: 'Member',
+        code: 'ABCD2345',
+        expiresAt: new Date(),
+      });
+      assert.strictEqual(da.length, 1);
+      assert.strictEqual(da[0].to, 'a@b.c');
+      assert.ok(da[0].html.includes('ABCD2345'));
+      assert.ok(!da[0].html.includes('<a href=x>'));
+      assert.ok(!da[0].html.includes('<b>Admin</b>'));
+      assert.ok(da[0].html.includes('&lt;a href=x&gt;n&lt;/a&gt;'));
+      assert.ok(da[0].html.includes('&lt;b&gt;Admin&lt;/b&gt;'));
+    } finally {
+      emailService.sendMail = goc;
+    }
   });
 });
 

@@ -666,30 +666,54 @@ Không còn việc (client soát 2026-10-30). `docs/superpowers/sync/SYNC_DOCUME
 
 Mỗi dòng một câu nói đúng việc của mã ấy — commit, tệp, ca test (đường thật, payload như app gửi). Báo cáo PR #172: `git show 5ff06db4:docs/superpowers/backend/CAN-LAM/VIEC_BACKEND_CON_LAI.md` mục 10.
 
-**Dòng `TỔNG:` của `chay_kiem.js` sau khi sửa:** …
+**Dòng `TỔNG:` của `chay_kiem.js` sau khi sửa:** TỔNG: 50 đạt / 50 ca
 
 | Mã | Đã làm (commit, tệp) | Ca test / câu kiểm | Ghi chú |
 |---|---|---|---|
-| 57.6 | | | |
-| 57.2 | | | |
-| 59.1 | | | |
-| 58.5 | | | |
-| 58.3 | | | |
-| 58.4 | | | |
-| 59.3 | | | |
-| 57.7 | | | *(kèm bảng mã chốt)* |
-| 57.1 | | | |
-| 57.3 | | | |
-| 55.A3 | | | |
-| 52.1 | | | |
-| 52.3 | | | |
-| 52.4 | | | |
-| 52.5 | | | |
-| T1 | | | |
-| T2 | | | |
-| T3 | | | |
-| 57.8 | | | *(#5, #7, #8 trả lời ở đây)* |
-| 58.6 | | | |
-| 59.2 | | | |
-| 48.1 | | | |
-| T6 | | | |
+| 57.6 | `src/Backend/modules/household/household.repository.js` (commit `527b525c` + patch), sửa `delete_at` thành `deleted_at` cho `prisma.transaction.updateMany`, đồng thời thêm `server_update_at: now` tường minh cho 5 bảng | `npm run verify:household` (hoặc `chay_kiem.js`) ca 57.6 đạt 100%; `household_group1_completion.test.js` pass | Giải tán nhà (`POST /dissolve`) chạy thành công, không còn lỗi Prisma `Unknown argument delete_at` |
+| 57.2 | `src/Backend/modules/household/household.service.js` (HS:696, :715, :741), gọi trực tiếp hàm module-level `getCallerEmail(idaccount)` bỏ tiền tố `householdService.`; HS:744 kiểm tra email lời mời khớp với email tài khoản gọi API | `npm run verify:household` ca 57.2 (#15 người đăng ký sau thấy lời mời, người khác vào nhận 403, đúng người vào nhận 200) | Sửa triệt để `TypeError: householdService.getCallerEmail is not a function` |
+| 59.1 | `src/Backend/modules/sync/sync.service.js`, định nghĩa `HOUSEHOLD_ENTITIES = new Set(['wallet', 'transaction', 'budget', 'goal', 'category'])`; `bill` luôn đi nhánh hàng riêng; với hàng mới mang `idhousehold`, bắt buộc `payload.idaccount` khớp với người đẩy token nếu không trả `NOT_OWNER` 400 | `npm run verify:household` 4 ca 59.1 pass; `household_and_aiops_v2.test.js` pass | Ngăn chặn triệt để lỗ hổng ghi hoá đơn/giao dịch mới vào tài khoản người khác |
+| 58.5 | Tạo `src/Backend/modules/aiops/aiops.reason.js` (`AIOPS_AUTO_REASON_PREFIX`, `lyDoChoNguoiDung`); cập nhật `src/Backend/modules/aiops/aiops.quarantine.js` dùng `startsWith`, chỉ khóa tài khoản đang `Active`, tách lý do hiển thị người dùng không lộ tiền tố; thêm `_reconcileAutoLocks` đối soát khi khởi động; cập nhật `aiops.quarantine.repository.js` giữ `PERMANENT` | `npm run verify:household` 7 ca 58.5 pass | Tài khoản Admin khóa thủ công được bảo vệ nguyên vẹn, không bị tự động mở khi hết hạn AIOps |
+| 58.3 | `src/Backend/modules/household/household.service.js` (hoạt động trơn tru sau khi sửa 57.6 giải tán nhà thành công) | `npm run verify:household` ca 58.3: A, B, C mỗi thành viên active đều nhận đúng một sự kiện socket `HOUSEHOLD_DISSOLVED` | Sự kiện giải tán nhà phát đầy đủ đến từng phòng tài khoản thành viên |
+| 58.4 | `src/Backend/modules/sync/sync.service.js`, dùng `nhaCuaThaoTac = new Map()` lưu mapping index -> `targetHhId` đã được kiểm duyệt thẩm quyền; chỉ emit `household.changed` khi thao tác thực sự thuộc nhà và có status `synced` | `npm run verify:household` 4 ca 58.4 pass | Loại bỏ hoàn toàn việc phát tán `household.changed` khi thao tác bị từ chối hoặc thao tác trên hàng riêng mang kèm `idhousehold` |
+| 59.3 | `src/Backend/modules/sync/sync.repository.js` (:251), ép cứng `is_default: false` khi tạo category mới từ sync push của client | `npm run verify:household` ca 59.3 pass | Client không thể tự ý đẩy danh mục mới thành danh mục mặc định toàn hệ thống |
+| 57.7 | `src/Backend/modules/household/household.service.js` (hàm `assertHouseholdWritable`, tách 404 `HOUSEHOLD_INVITE_INVALID` khi revoked và 409 `HOUSEHOLD_INVITE_USED` khi used, chặn preview/join khi nhà ReadOnly với 409 `HOUSEHOLD_READ_ONLY`); `src/Backend/middlewares/rate-limiter.js` dùng mã `HOUSEHOLD_INVITE_ATTEMPT_LIMIT` 429 khi thử mã quá 30 lần | `npm run verify:household` ca 57.7 pass | Đã dán bảng mã lỗi chốt ở bên dưới theo đúng đặc tả |
+| 57.1 | Cập nhật mock trả về nested shape `{ household: { id, name, status, maxMembers, ownerId, createAt, maxSharedWallets, contributionDueDay }, myRole, members, formerMembers }` trong `src/Backend/tests/unit/household.api.test.js:29-36, :170-174, :214-218, :329-348`, đổi assert kiểm tra `data.household.ownerId` | `tests/unit/household.api.test.js` pass 18/18; `npm run verify:household` 2 ca 57.1 và ca đúng người /accept pass | Chuẩn hóa 100% hình dạng trả về của endpoint trạng thái nhà khớp với client |
+| 57.3 | Thêm hàm `escapeHtml` cho `householdName` và `inviterName` trong email template HTML tại `src/Backend/modules/household/household.service.js:660`; thêm ca test 4d trong `src/Backend/tests/unit/household_group1_completion.test.js` | `tests/unit/household_group1_completion.test.js` pass 8/8 (ca 4d kiểm chứng không rò rỉ thẻ `<a href=x>`) | Chống tấn công XSS / HTML injection qua email mời gia đình |
+| 55.A3 | Định nghĩa duy nhất `isPremiumEffective` tại `src/Backend/utils/premium.util.js`; cập nhật job hạ cấp xử lý cả `premium_expires_at: null` đưa về `Basic`; dán hợp đồng quy ước dữ liệu vào `docs/Payment/CLIENT_INTEGRATION_GUIDE.md` và `docs/Functional-Mobile/12_GOI_CUOC_PREMIUM_VA_PAYOS.md` | `tests/unit/sync.service.test.js` pass; đối soát tài liệu đạt | Hợp đồng ghi rõ: `premium_expires_at` NULL với `Type = 'Premium'` coi là Basic (`accountType: 'Premium'`, `isPremium: false`, `isExpired: true`), job hạ cấp đưa về Basic ở lượt quét kế tiếp |
+| 52.1 | Truyền context `{ table: 'user', id: u.iduser, field: 'phone' }` và `{ table: 'user', id: u.iduser, field: 'address' }` trong `src/Backend/modules/admin/admin.service.js:173-174, :195-196`; truyền `{ table: 'bank_account', id: acc.id_bank_account, field: 'account_number' }` trong `src/Backend/modules/bank/bank.service.js:68`; thêm ca test 7b trong `src/Backend/tests/unit/data_encryption_group4_audit.test.js`. Ngoại lệ không có id hàng đã ghi nhận ở `workers/bank.worker.js:85` (số thô webhook) và `modules/ai/features/classify/pipeline/llm.classifier.js:54` (chữ thô) | `tests/unit/data_encryption_group4_audit.test.js` pass 10/10 (ca 7b gọi `adminService.getUsers` xác minh log ghi nhận đúng `table: 'user'` và `recordId`) | Tuân thủ 100% Data Security Rule 9 |
+| 52.3 | Thêm chú thích quy ước khóa mã hóa vào `src/Backend/.env.example` và `docs/progress/Backend.md`. Khóa `.env` là khóa chính thức duy nhất dùng cho Supabase Cloud. `PersonFinance` dev cục bộ dùng `DATA_ENCRYPTION_KEY` dev mặc định qua biến môi trường tiến trình | Chạy `npm run db:verify-encryption` với khóa tương ứng đạt kết quả an toàn | Đã dán câu chốt vào tài liệu và `.env.example` |
+| 52.4 | Tính toán vân tay SHA-256 (8 ký tự đầu) của `DATA_ENCRYPTION_KEY` trên môi trường dev: `98e9e026`. Xác nhận tính nhất quán và ghi nhận để đối chiếu với Render | `node -e "require('dotenv').config();console.log(require('crypto').createHash('sha256').update(process.env.DATA_ENCRYPTION_KEY\|\|'').digest('hex').slice(0,8))"` -> `98e9e026` | Vân tay: `98e9e026` |
+| 52.5 | Cập nhật `src/Backend/scripts/migrate_reencrypt_legacy_dev_data.js` đếm tổng số bản ghi không xử lý được trên cả `transaction` và `user`, thoát với mã lỗi `process.exit(soKhongXuLy > 0 ? 1 : 0)` | Script chạy trên Supabase; 28/28 ô dữ liệu nhạy cảm giải mã thành công 0 lỗi | Không in "HOÀN TẤT" nếu còn hàng lỗi |
+| T1 | Sửa tại dòng `docs/Admin-web/Event-Notification-to-ClientApp.md` theo bảng 8.1: sửa banner về `ocr.duplicate` và interceptor; sửa `tinHeThong`; bỏ `demNguocXoa`; bỏ banner/SnackBar sửa thành khay thông báo; sửa `sync.completed` phát mọi máy; `ocr.duplicate` thành toast không sync; chuẩn hóa socket `transfer_details` che số tài khoản; cập nhật bảng sự kiện có thêm `household.changed` và `household.invited` | Kiểm tra từ khóa cấm: `thongBaoHeThong`: 0, `demNguocXoa`: 0, `BottomSheet`: 0, `SnackBar`: 0 | Đã sửa chính xác 100% bám sát mã Client-app |
+| T2 | Sửa tại dòng `docs/Admin-web/IP-Device-ClientApp.md` theo bảng 8.2: sửa banner nêu rõ cơ chế `skipThrottle: true` tại 4 endpoint auth (`verifyRegisterOtp`, `register`, `login`, `refresh`); cập nhật ghi chú test 2.1-2.4 mock Prisma; sửa test 2.5 theo đúng kiểm tra thứ tự sắp xếp `getDeviceHistory` (bỏ kịch bản xóa cứng trái quy tắc) | Đọc lại toàn bộ nội dung T2, xác nhận khớp logic backend | Tài liệu đồng bộ hoàn toàn với mã thực tế |
+| T3 | Sửa tại dòng `docs/Functional-Mobile/4_TRU_COT.md` theo bảng 8.3: bổ sung các dòng phân định "App thi hành hiện nay" cho từng tính năng (thay thế khối bằng thẻ khóa, chuyển hướng `/premium?quyen=`, sửa route `/ai-chat` và `/analytics/export`, ghi rõ OCR ML Kit offline không đếm lượt, ghi chú seed ngân hàng MB/MoMo/ZaloPay lưu server chưa dùng ở app) | Kiểm tra từ khóa cấm: `ai-assistant`: 0, `Modal BottomSheet`: 0, `hiển thị dialog`: 0 | Hoàn tất đồng bộ đặc tả 4 trụ cột với client app |
+| 57.8 | #6 đã vá trong `household.repository.js` (`_count: { select: { household_member: { where: { left_at: null } } } }`); ba câu trả lời chốt: #5: `GET /invites` giữ 5 trạng thái `Pending\|Declined\|Revoked\|Used\|Expired`; #7: Giữ trần 5 thư / giờ (và tối đa 20 thư / 24h / nhà); #8: Xác nhận `ON DELETE CASCADE` / `SET NULL` ở `database/40_household_foundation.sql` là chủ ý vì hệ thống tuân thủ quy tắc Soft-Delete, không có đường xóa cứng từ phía người dùng/client | `npm run verify:household` ca 57.8 #6 pass | Ba câu hỏi #5, #7, #8 đã được trả lời chính thức ở đây để Client cập nhật `docs/Family/01` |
+| 58.6 | `database/41` và `44` đổi thành `ON CONFLICT ("account_type", "feature_id") DO NOTHING;` (bảo toàn cấu hình admin); `database/33` sửa bộ lọc `"Email" LIKE 'test\_%@anonymized.local'`; thêm khối bảo vệ chặn chạy trên Supabase Cloud vào `Test/test_can_lam_fixes.js` và `Test/test_sync_new_schema.js` và chuyển dọn dữ liệu sang xóa mềm trong block `finally`; thêm script `src/Backend/scripts/verify_household_contract.js` và lệnh `"verify:household"` vào `package.json` | Thử nghiệm với chuỗi URL Supabase: cả 2 script `Test/` đều dừng ngay với exit code 1; `npm run verify:household` đạt 50/50 ca pass | Tuân thủ nghiêm ngặt DB Guard Rule 10 |
+| 59.2 | `src/Backend/modules/sync/sync.service.js` (:150, :169, :181): thêm điều kiện `operation !== 'delete'` khi xác định `isNewWallet`, `isNewTx` và `isPayloadTransfer` | `npm run verify:household` 2 ca 59.2 pass | Khi xóa hàng chưa từng lên server, không còn bị ngộ nhận là tạo hàng mới vượt hạn mức ví `HOUSEHOLD_WALLET_LIMIT` |
+| 48.1 | Xác nhận trạng thái tài khoản 18 trên Supabase Cloud: Tài khoản 18 là tài khoản dev thật (`quangdat`). Toàn bộ 13 ví test cũ ("Ví Test Note"...) đã được xóa mềm (`Delete_at != null`, 0 ví test sống), lần xóa mềm cuối cùng được thực hiện vào lúc 2026-10-26 03:58:21Z qua thao tác quản trị trực tiếp trên Supabase. Toàn bộ các script test hiện tại đã được nâng cấp cơ chế tự cô lập, sinh tài khoản tạm ngẫu nhiên và dọn dẹp bằng xóa mềm | Truy vấn Supabase xác nhận 0 ví test sống thuộc tài khoản 18 | Đóng việc 48.1 |
+| T6 | Sửa `docs/progress/Backend.md:694-695` chuẩn hóa 4 quyền (`household`, `household_join`, `household_members`, `household_wallets`) và 2 gói Basic / Premium; sửa `Project.md:4819, 4828` đúng route `/api/payment/order-status/:orderCode` và làm rõ webhook không emit `payment.success` tới tài khoản mà chỉ qua JIT / `account.upgraded`; cập nhật ca 2 trong `src/Backend/tests/unit/payos_group3_comprehensive_audit.test.js` gọi webhook 2 lần để kích hoạt nhánh P2002; sửa `payment.repository.js:415` dùng `createMany({ skipDuplicates: true })` với fallback `create` cho mock unit test | `tests/unit/payos_group3_comprehensive_audit.test.js` pass 10/10; `tests/unit/payment.repository.test.js` pass 10/10 | Xử lý triệt để các tồn đọng của T6 |
+
+#### Bảng mã lỗi chốt của API Gia đình (57.7):
+
+| Mã | HTTP | Endpoint | Khi nào |
+|---|---|---|---|
+| `HOUSEHOLD_INVITE_INVALID` | 404 | #6, #7, #15, #16 | Không có mã, nhà đã giải tán, mã đã huỷ |
+| `HOUSEHOLD_INVITE_EXPIRED` | 410 | #6, #7, #15, #16 | Quá hạn |
+| `HOUSEHOLD_INVITE_USED` | 409 | #6, #7, #15, #16 | Đã dùng |
+| `HOUSEHOLD_INVITE_DECLINED` | 409 | #6, #7, #15, #16 | Đã từ chối |
+| `HOUSEHOLD_INVITE_WRONG_ACCOUNT` | 403 | #6, #7, #15, #16 | Email tài khoản khác email lời mời |
+| `HOUSEHOLD_INVITE_RATE_LIMIT` | 429 | #13 | 20 thư / nhà / 24 giờ hoặc 5 thư / giờ |
+| `HOUSEHOLD_INVITE_ATTEMPT_LIMIT` | 429 | #6, #7 | 30 lượt / 15 phút / IP |
+| `HOUSEHOLD_READ_ONLY` | 409 | #3, #6, #7, #13, #15 | Nhà `ReadOnly` |
+| `HOUSEHOLD_CLOSED` | 410 | #3, #13 | Nhà đã giải tán |
+| `HOUSEHOLD_ALREADY_IN_ONE` | 409 | #1, #7, #15 | Đang ở nhà khác |
+| `HOUSEHOLD_FULL` | 409 | #3, #7, #13, #15 | Đủ người |
+| `FEATURE_DISABLED` | 403 | #1, #7, #15 | Gói không có `household` / `household_join` |
+| `FORBIDDEN_NOT_OWNER` | 403 | #3, #4, #5, #8, #9, #10, #12, #13 | Không phải Chủ nhà |
+| `NOT_IN_HOUSEHOLD` | 404 | #11 | Không ở nhà nào |
+| `OWNER_CANNOT_LEAVE` | 400 | #11 | Chủ nhà rời |
+| `HOUSEHOLD_INVITE_NOT_FOUND` | 404 | #5 | Huỷ mã không có |
+| `MEMBER_NOT_IN_HOUSEHOLD` / `TARGET_NOT_IN_HOUSEHOLD` | 404 | #8, #10 / #9 | Đích không ở nhà |
+| `INVALID_HOUSEHOLD_NAME`, `INVALID_INVITE_CODE`, `INVALID_INVITE_ROLE`, `INVALID_MEMBER_ROLE`, `INVALID_TARGET_USER`, `INVALID_EMAIL` | 400 | #1, #7, #3 + #13, #8, #9, #13 | Dữ liệu sai |
+| `CANNOT_CHANGE_OWNER_ROLE`, `CANNOT_TRANSFER_TO_SELF`, `CANNOT_REMOVE_SELF` | 400 | #8, #9, #10 | Thao tác lên chính mình / Chủ |

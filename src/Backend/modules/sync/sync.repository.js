@@ -248,7 +248,8 @@ const syncRepository = {
           idhousehold: mapped.idhousehold || null,
           name_category: mapped.name_category || mapped.name || 'Chưa đặt tên',
           classify: mapped.classify || 'Chi',
-          is_default: mapped.is_default ?? false,
+          // Task 59.3: khuôn mặc định chỉ tạo qua Admin-web, /sync/push không bao giờ tạo khuôn
+          is_default: false,
           is_group: mapped.is_group ?? false,
           idgroup: mapped.idgroup || null,
           keyword: mapped.keyword || null,
