@@ -24,24 +24,30 @@ class ThamGiaNhaCubit extends Cubit<ThamGiaNhaState> {
   final NhaRepository _repo;
   final _bao = StreamController<String>.broadcast();
 
+  /// Thế hệ lượt xem trước: tăng mỗi lần `xem()` bắt đầu và mỗi lần đổi mã. Lượt cũ về muộn (kể cả cùng mã, A → B → A) bị bỏ,
+  /// không thì nó emit state cũ và xoá cờ `dangThamGia` của lượt đang chạy.
+  int _theHeXem = 0;
+
   Stream<String> get canBao => _bao.stream;
 
   void doiMa(String s) {
     if (state.dangThamGia) return;
     final ma = chuanHoaMaMoi(s);
     if (ma == state.ma) return;
+    _theHeXem++;
     emit(ThamGiaNhaState(ma: ma));
   }
 
   Future<void> xem() async {
     final ma = state.ma;
     if (!maMoiHopLe(ma) || state.dangXem || state.dangThamGia) return;
+    final the = ++_theHeXem;
     emit(ThamGiaNhaState(ma: ma, xemTruoc: state.xemTruoc, dangXem: true));
     try {
       final x = await _repo.xemTruoc(ma);
-      if (!isClosed && state.ma == ma) emit(ThamGiaNhaState(ma: ma, xemTruoc: x));
+      if (!isClosed && _theHeXem == the) emit(ThamGiaNhaState(ma: ma, xemTruoc: x));
     } catch (e) {
-      if (isClosed || state.ma != ma) return;
+      if (isClosed || _theHeXem != the) return;
       final loai = loaiLoiNhaCua(e);
       if (!_bao.isClosed) _bao.add(cauLoiNha(loai));
       emit(ThamGiaNhaState(ma: ma, xemTruoc: loiThuLaiDuoc(loai) ? state.xemTruoc : null));

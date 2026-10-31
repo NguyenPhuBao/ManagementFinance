@@ -43,7 +43,8 @@ final _maSauNhanMaMoi = RegExp(
 final _maDungRieng = RegExp(r'(?<![\p{L}\p{N}])([' '$kBangKyTuMaMoi' r']{8})(?![\p{L}\p{N}])', unicode: true);
 
 /// Mã từ chữ người dùng gõ / dán. Chuỗi dài hơn [kDoDaiMaMoi] (dán nguyên tin chia sẻ `cauChiaSeMaMoi`) thì lấy cụm 8 ký tự
-/// trong bảng đứng riêng — ưu tiên cụm ngay sau *"Mã mời:"*, rồi cụm đứng riêng đầu tiên; không thấy thì giữ luật cũ
+/// trong bảng đứng riêng — ưu tiên cụm ngay sau nhãn *"Mã mời:"* CUỐI cùng (tên nhà do người dùng đặt có thể chứa chính chuỗi
+/// *"Mã mời: …"*, còn nhãn thật do app chèn nằm SAU tên nhà), rồi cụm đứng riêng đầu tiên; không thấy thì giữ luật cũ
 /// ([chuanHoaMaMoi]) để `ab cd 23 45 67` vẫn thành `ABCD234567`.
 String trichMaMoi(String s) {
   final chuan = chuanHoaMaMoi(s);

@@ -92,16 +92,20 @@ void main() {
     api.treo = treo;
     api.traVe = nhaJson();
     final f = c.thamGia();
-    await c.xem();
+    final x = c.xem();
+    final lai = c.thamGia();
+    await Future<void>.delayed(Duration.zero);
     expect(c.state.dangThamGia, isTrue);
-    expect(await c.thamGia(), isFalse);
+    expect(api.goi.where((g) => g.startsWith('thamGia')), hasLength(1));
     treo.complete();
+    await x;
+    expect(await lai, isFalse);
     expect(await f, isTrue);
     expect(api.goi.where((g) => g.startsWith('thamGia')), hasLength(1));
     expect(api.goi.where((g) => g.startsWith('xemTruoc')), hasLength(1));
   });
 
-  test('Tham gia khi đang xem trước: từ chối; cờ dangThamGia không bị xem() xoá', () async {
+  test('Tham gia khi đang xem trước: từ chối, không gọi POST', () async {
     final (c, api, _) = await dung();
     c.doiMa('ABCD2345');
     await c.xem();
@@ -109,11 +113,41 @@ void main() {
     api.treo = treo;
     final f = c.xem();
     expect(c.state.dangXem, isTrue);
-    expect(await c.thamGia(), isFalse);
+    final v = c.thamGia();
+    await Future<void>.delayed(Duration.zero);
     expect(c.state.dangThamGia, isFalse);
+    expect(api.goi.where((g) => g.startsWith('thamGia')), isEmpty);
     treo.complete();
+    expect(await v, isFalse);
     await f;
     expect(api.goi.where((g) => g.startsWith('thamGia')), isEmpty);
+  });
+
+  test('A → B → A: lượt xem A cũ về muộn không xoá cờ dangThamGia, chỉ một POST', () async {
+    final (c, api, _) = await dung();
+    c.doiMa('ABCD2345');
+    final t1 = Completer<void>();
+    api.treo = t1;
+    final f1 = c.xem();
+    c.doiMa('ABCD2346');
+    c.doiMa('ABCD2345');
+    api.treo = null;
+    await c.xem();
+    expect(c.state.xemTruoc, isNotNull);
+    final t2 = Completer<void>();
+    api.treo = t2;
+    api.traVe = nhaJson();
+    final post1 = c.thamGia();
+    expect(c.state.dangThamGia, isTrue);
+    t1.complete();
+    await f1;
+    expect(c.state.dangThamGia, isTrue, reason: 'lượt xem cũ không được xoá cờ');
+    final post2 = c.thamGia();
+    await Future<void>.delayed(Duration.zero);
+    expect(api.goi.where((g) => g.startsWith('thamGia')), hasLength(1));
+    t2.complete();
+    expect(await post1, isTrue);
+    expect(await post2, isFalse);
   });
 
   test('mọi mã lỗi ra đúng câu', () async {

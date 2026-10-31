@@ -210,4 +210,29 @@ void main() {
     treoVao.complete();
     await t.pumpAndSettle();
   });
+
+  testWidgets('thẻ đã hiện, bấm Xem trước lại: nút Tham gia khoá suốt lúc xem', (t) async {
+    dat360(t);
+    batThongBao();
+    final api = HouseholdApiGia();
+    final repo = await repoNhaThu(api);
+    await t.pumpWidget(bocTrangNha(ThamGiaNhaPage(repo: repo), goi: goiBasic(const {})));
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField), 'abcd2345');
+    await t.pump();
+    await t.tap(find.text('Xem trước'));
+    await t.pumpAndSettle();
+    FilledButton vao() => t.widget(find.ancestor(of: find.text('Tham gia'), matching: find.byType(FilledButton)));
+    expect(vao().onPressed, isNotNull);
+    final treo = Completer<void>();
+    api.treo = treo;
+    await t.tap(find.text('Xem trước'));
+    await t.pump();
+    expect(find.text('Nhà An – Bình'), findsOneWidget, reason: 'thẻ cũ còn trong lúc xem lại');
+    expect(vao().onPressed, isNull);
+    api.treo = null;
+    treo.complete();
+    await t.pumpAndSettle();
+    expect(vao().onPressed, isNotNull);
+  });
 }
