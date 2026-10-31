@@ -615,7 +615,17 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-31)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-01)
+
+### 🔀 Gộp `main` @ `13fddd09` (2026-11-01 phiên 28, fast-forward, chưa push) — PR #176; client soát: **còn 52.4 + 60.3 tuỳ chọn**
+
+- PR #176 (NPBao, `60dede0a` + `7e7fd8ef`): 24 tệp, **0 tệp `src/Client-app`** (cây giữ hash `b7fcb406`, không chạy lại `flutter test`); `git check-ignore --no-index -v src/Client-app/test/x_test.dart` không khớp. Diff không có `schema.prisma`, `database/`, `package.json`, `.gitignore`, `SYNC_DOCUMENTATION.md`, nên không cần `npm install`, `prisma generate` hay migration. Phần Admin-web và đo phần cứng container (`runtime-environment.js`) không đụng client.
+- **Chạy thật trên bản sao + CSDL tạm** (cổng 55432, đã tắt và xoá): `chay_kiem_pr174.js` **24 / 24** (trước PR 10 / 24), `chay_kiem.js` **50 / 50**, `tests/unit` **494 / 496** (hai dòng là ca 5 của `data_encryption_group4_audit`, cần khoá `.env`, và bộ test cha; backend báo 496 / 496 trên máy có `.env`). Bản vá `ban_sua_pr174.patch` áp nguyên văn: `git apply -R --check` đạt, nên client xoá nó và tệp kết quả đối chiếu khỏi `KIEM-THU/`.
+- **Đóng:** 60.4, T1, T3, T6, 55.A3 (phần backend), 60.1, 60.2, 48.1 (*"không truy được"*, đúng điều kiện đóng). **52.5** đóng dù thiếu thời điểm di trú: đã có CSDL và vân tay, và phép đo dưới đây cho thấy dữ liệu đọc được, nên thời điểm không đổi kết luận nào.
+- ⚠️ **52.4 (CAO) vẫn mở, dù bảng trả lời có điền:** backend so khoá dev với Supabase, không phải khoá trên Render; không có log Render, không có `/sync/pull` trên `onrender.com`. Client đo lại phần đã làm (chỉ đọc, 2026-11-01): `db:verify-encryption` trên Supabase 28 trường (25 giao dịch + 3 người dùng), 0 lỗi; vân tay khoá `.env` là `98e9e026`.
+- **52.3 đổi chủ:** đơn cũ của client xin backend chạy trên `PersonFinance`, mà CSDL ấy chỉ có ở máy client. Phép kiểm chuyển sang client, chạy lúc chuẩn bị đo hai máy (cùng lúc người dùng đưa mật khẩu postgres cục bộ).
+- **60.3:** ca 2 đã sửa; ca 3, 4, 5 còn lại, tuỳ chọn.
+- `VIEC_BACKEND_CON_LAI.md` và `README.md` viết lại chỉ còn hai việc ấy. Vẫn còn việc phía client chưa xếp lịch: **55.A3** (app coi Premium không hạn là Premium; khối dưới).
 
 ### 🔀 Gộp `main` @ `8e3b4e48` (2026-10-31 phiên 27, commit gộp `9a607156`, chưa push) — PR #174; client soát: **mã gia đình phần 1 đạt, hết chặn lát 2**
 
