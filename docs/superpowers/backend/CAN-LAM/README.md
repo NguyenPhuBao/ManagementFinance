@@ -1,4 +1,14 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (một tệp việc: `VIEC_BACKEND_CON_LAI.md` — còn đơn 48 · 52 · 55 · 57 · 58 · 59 + T1–T3, T6)
+# Backend & Client — DANH SÁCH CẦN LÀM (một tệp việc: `VIEC_BACKEND_CON_LAI.md` — còn đơn 48 · 52 · 55 · 60 + T1, T3, T6)
+
+> 🔎 **Client soát lượt báo xong 2026-10-31 tối** (PR #174, backend `8e3b4e48`, client gộp `9a607156`, 0 tệp `src/Client-app` đổi): **mã gia đình phần 1 đạt, còn việc tài liệu và khoá — 23 việc: 15 đạt · 7 một phần · 1 chưa**, kèm **đơn 60** (ba việc nhỏ).
+> - Chạy thật trên bản sao + CSDL tạm: `KIEM-THU/chay_kiem.js` **50 / 50** (lượt trước 23 / 50), `tests/unit` 486 / 488 (hai dòng là một ca cần khoá `.env`). Phần tay chấm theo thân việc, không theo ô trả lời.
+> - ✅ Đạt (đã xoá khỏi tệp việc): 57.1, 57.2, 57.3, 57.6, 57.7, 57.8, 58.3, 58.4, 58.5, 58.6, 59.1, 59.2, 59.3, 52.1, T2. **Không còn việc nào chặn client làm lát 2.**
+> - 🟡 Còn mở: **52.4** khoá trên Render chưa so (rủi ro `/sync/pull` 500 nếu khác khoá) · **T1** có câu sai mới ở `:67` (nói đã che `transfer_details`, mã chưa che) · **T3** 13 / 15 hàng chưa sửa · 52.3, 52.5, 55.A3, T6, 48.1 một phần.
+> - Chín câu trong ô trả lời không khớp mã: mục 11 của tệp việc.
+> - `KIEM-THU/ban_sua_pr172.patch` và `ket_qua_ma_hien_tai_5ff06db4.txt` nay chỉ là lịch sử; `chay_kiem.js` vẫn là kịch bản nghiệm thu (backend đã chép thành `npm run verify:household`).
+> - Số đơn kế tiếp: **61**. `ls CAN-LAM/`: `VIEC_BACKEND_CON_LAI.md` · `README.md` · `CLIENT_INTEGRATION_GUIDE.md` · `LICH-SU/` · `KIEM-THU/`.
+>
+> --------------------------------------------------
 
 > 🔎 **Client soát lượt báo xong 2026-10-31** (PR #172, backend `5ff06db4`, client fast-forward, 0 tệp `src/Client-app` đổi): **chưa xong — 24 việc: 5 đạt · 15 một phần · 4 chưa**, kèm **đơn 59** (lỗi do chính PR).
 > Chấm theo thân việc + *Kiểm lại* của `VIEC_BACKEND_CON_LAI.md`: đọc mã, đo **chỉ đọc** trên Supabase, và **chạy thật** trên bản sao mã + CSDL tạm (`KIEM-THU/chay_kiem.js`, payload như app): **mã hiện tại 23 / 50 ca**, sau bản vá thử nghiệm **50 / 50**.

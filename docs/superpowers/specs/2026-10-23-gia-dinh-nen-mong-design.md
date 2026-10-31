@@ -371,7 +371,7 @@ trần (`household_members`), chỉ là client không đọc trần từ `limits
 ## 12. Lát 2 — màn hình + nợ G113 (duyệt 2026-10-31 phiên 26) — **mục này thắng thân và mục 11 khi lệch**
 
 Người dùng duyệt 8 màn Stitch, sáu quyết định và thứ tự **lát 2 → G113 nợ 1, 9 → đo hai máy** qua câu hỏi chọn được ngày 2026-10-31.
-Nền backend: `main` @ `5ff06db4` (`docs/Family/04` mục 2a). Lát 2 đóng **phần 1**; phần 2a–2d, 3 (`Family/00` mục 4) không thuộc spec này.
+Nền backend: `main` @ `8e3b4e48` (`docs/Family/04` mục 2b; lúc duyệt là `5ff06db4`). Lát 2 đóng **phần 1**; phần 2a–2d, 3 (`Family/00` mục 4) không thuộc spec này.
 
 ### 12.1 Màn Stitch (dự án `5106367939423432838`, design system `assets/e8b7d56ef9284443bfacb7474e52c74a`)
 
@@ -429,17 +429,19 @@ Stitch tự thêm các chi tiết dưới đây; app bám bố cục của màn,
   mời luôn câu trung tính. `/me` không qua quyền (Basic ở nhà vẫn thấy nhà).
 - `limits.household_wallets`, `household_members` tiếp tục bỏ qua (mục 11 #4).
 
-### 12.5 Đường backend đang hỏng (`04` mục 2a) — dựng đủ, nghiệm thu ghi *chờ*
+### 12.5 Đường backend (`04` mục 2b) — 🔄 đổi 2026-10-31 sau PR #174
 
-| Đường | Lúc này người dùng thấy | Đóng khi |
-|---|---|---|
-| `GET /invitations` (500) | Thẻ lời mời + thông báo `loiMoiNha` không bao giờ hiện (lỗi bị nuốt, `nha_repository_impl.dart:201-203`) | 57.2 |
-| `…/accept`, `…/decline` (500) | Không tới được từ app (không có thẻ); đo bằng cách giả danh sách trong test | 57.2 |
-| `POST /dissolve` (500) | Nút *Giải tán* báo *"Máy chủ chưa phản hồi. Thử lại sau."*, nhà giữ nguyên | 57.6 |
-| `POST /invites/email` (202) | Chạy được (`04` mục 2a #13); email chưa có tài khoản vẫn cùng một câu | Đo gửi thư thật ở nghiệm thu |
+Bản duyệt phiên 26 ghi `/invitations`, `/accept`, `/decline`, `/dissolve` đang 500 và nghiệm thu *chờ*. Backend gộp `main` @ `8e3b4e48` cùng ngày; kịch bản `chay_kiem.js` chạy thật trên bản sao + CSDL tạm đạt **50 / 50**. Người dùng đã duyệt đổi này (phiên 27), nên:
 
-`nha_cua_toi.dart` **giữ** nhánh phẳng / thô, `kGianCachNhaDoi` giữ nguyên: gỡ thuộc lượt soát sau khi backend gộp (`bàn giao phiên 25` mục 5). Cubit dựng
-theo `NhaCuaToi`, không biết hình dạng JSON.
+| Đường | Nghiệm thu |
+|---|---|
+| Thẻ lời mời + thông báo `loiMoiNha`, chấp nhận, từ chối | Đo thật trên máy |
+| Giải tán | Đo thật trên máy. Lỗi máy chủ vẫn phải báo *"Máy chủ chưa phản hồi. Thử lại sau."*, nhà giữ nguyên (ca test) |
+| `POST /invites/email` | Đo gửi thư thật; email chưa có tài khoản vẫn cùng một câu |
+
+Làm thêm trong lát 2 (bàn giao phiên 25 mục 5, điều kiện đã thoả): gỡ nhánh phẳng / thô của `nha_cua_toi.dart`, bản giả `_EXPIRED` 410, chú thích lạc hậu, mã `HOUSEHOLD_INVITE_ATTEMPT_LIMIT`. `kGianCachNhaDoi` giữ làm lớp phòng. Cubit dựng theo `NhaCuaToi`, không biết hình dạng JSON.
+
+Chưa thuộc lát 2: `Premium` không hạn (55.A3). Backend đã ghi hợp đồng *"coi là Basic"*, app còn coi là Premium; Supabase đo 2026-10-31 có 0 tài khoản như vậy, nên là việc riêng của mảng Premium.
 
 ### 12.6 Cấu trúc mã (mục 8 `KIEN_TRUC_CLIENT_APP.md`)
 
@@ -475,4 +477,4 @@ Nợ G113 chưa thuộc lát 2: 2, 3, 4, 6, 14 (cần đường ghi vào nhà �
 - **Test:** hàm thuần; ba cubit bằng `HouseholdApiGia` đã sửa; trang ở **360 dp, có ca bàn phím mở**, mỗi trạng thái của ba màn Nhà mình, tên dài (*"Bạn"* không mất), nhà đủ người, mất vai giữa chừng; quyền (22 → 24 mã, đếm lại khi thi công);
   thông báo một lần mỗi mã; router thật cho `/nha/*` và deeplink. Nợ 1, 9: ca đỏ trước (neo mang nhà, máy thành viên không đặt neo, ví nhà không `pending`, purge có neo cũ không ném).
 - **Trước khi báo xong:** `flutter test` + `flutter analyze` so với mức nền; máy ảo 411 dp đi hết các màn (điều hướng là vùng mù của test).
-- **Đo hai máy thật, hai tài khoản** (`PersonFinance`; Realme + máy thứ hai): tạo nhà · mời mã · xem trước · tham gia · đổi vai · chuyển chủ · mời ra · rời · Basic bị chặn tạo nhưng tham gia được; tạo ví chung qua API rồi xem dữ liệu nhà về máy kia, không lẫn Trang chủ; rời nhà không khoá đăng nhập. **Ghi *chờ*, không tính đạt:** thẻ lời mời + thông báo + chấp nhận / từ chối (57.2), giải tán (57.6), gửi thư thật tới hộp thư nếu chưa đo được.
+- **Đo hai máy thật, hai tài khoản** (`PersonFinance`; Realme + máy thứ hai): tạo nhà · mời mã · xem trước · tham gia · đổi vai · chuyển chủ · mời ra · rời · Basic bị chặn tạo nhưng tham gia được; tạo ví chung qua API rồi xem dữ liệu nhà về máy kia, không lẫn Trang chủ; rời nhà không khoá đăng nhập. Sau PR #174 đo thật cả thẻ lời mời + thông báo + chấp nhận / từ chối, giải tán, gửi thư thật tới hộp thư.
