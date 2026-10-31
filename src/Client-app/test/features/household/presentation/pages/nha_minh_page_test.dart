@@ -1,3 +1,4 @@
+import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
 import 'package:flowmoney/features/household/presentation/pages/nha_minh_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,11 +19,12 @@ Map<String, Object?> _loiMoiJson() => {
 
 void main() {
   setUpAll(napFontThat);
+  late BatThongBao bat;
 
   Future<HouseholdApiGia> mo(WidgetTester t,
       {Map<String, Object?>? nha, List<Map<String, Object?>> loiMoi = const [], bool basic = true, bool banPhim = false}) async {
     dat360(t, banPhim: banPhim);
-    batThongBao();
+    bat = batThongBao();
     final api = HouseholdApiGia()
       ..cuaToiJson = nha ?? const {'household': null, 'myRole': null, 'members': [], 'formerMembers': []}
       ..dsLoiMoiToiJson = loiMoi;
@@ -43,15 +45,17 @@ void main() {
 
   testWidgets('chưa có nhà, Premium còn hạn: không nhãn PREMIUM', (t) async {
     await mo(t, basic: false);
+    expect(find.text('Tạo nhà'), findsOneWidget);
     expect(find.text('PREMIUM'), findsNothing);
   });
 
   testWidgets('Premium tạm ngừng: không mời mua (không nhãn PREMIUM)', (t) async {
     dat360(t);
-    batThongBao();
+    bat = batThongBao();
     final repo = await repoNhaThu(HouseholdApiGia());
     await t.pumpWidget(bocTrangNha(NhaMinhPage(repo: repo), goi: goiPremium(const {'household': false})));
     await t.pumpAndSettle();
+    expect(find.text('Tạo nhà'), findsOneWidget);
     expect(find.text('PREMIUM'), findsNothing);
   });
 
@@ -61,6 +65,7 @@ void main() {
     expect(find.text('Bạn là Chủ nhà · 2/6 thành viên'), findsOneWidget);
     expect(find.text('Mời thành viên'), findsOneWidget);
     expect(find.text('Quản lý thành viên'), findsOneWidget);
+    expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Mời thành viên')).onPressed, isNotNull);
     expect(find.text('Rời nhà'), findsNothing);
   });
 
@@ -124,13 +129,36 @@ void main() {
 
   testWidgets('admin tắt quyền tham gia: Chấp nhận khoá, câu trung tính, không chữ Premium', (t) async {
     dat360(t);
-    batThongBao();
+    bat = batThongBao();
     final api = HouseholdApiGia()..dsLoiMoiToiJson = [_loiMoiJson()];
     final repo = await repoNhaThu(api);
     await t.pumpWidget(bocTrangNha(NhaMinhPage(repo: repo), goi: goiBasic(const {'household_join': false})));
     await t.pumpAndSettle();
     expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Chấp nhận')).onPressed, isNull);
     expect(find.text('Tính năng gia đình hiện không dùng được với tài khoản này.'), findsOneWidget);
+  });
+
+  testWidgets('admin tắt quyền tham gia khi đang ở nhà: câu trung tính, không bảo rời nhà', (t) async {
+    dat360(t);
+    bat = batThongBao();
+    final api = HouseholdApiGia()
+      ..cuaToiJson = nhaJson(myRole: 'Member')
+      ..dsLoiMoiToiJson = [_loiMoiJson()];
+    final repo = await repoNhaThu(api);
+    await t.pumpWidget(bocTrangNha(NhaMinhPage(repo: repo), goi: goiBasic(const {'household_join': false})));
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.text(cauLoiNha(LoaiLoiNha.tinhNangKhongMo)));
+    expect(find.text('Tính năng gia đình hiện không dùng được với tài khoản này.'), findsOneWidget);
+    expect(find.text('Rời nhà hiện tại trước'), findsNothing, reason: 'rời nhà không mở được khoá, chỉ mất dữ liệu nhà');
+    expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Chấp nhận')).onPressed, isNull);
+  });
+
+  testWidgets('Từ chối lỗi: câu lỗi của cauLoiNha đi qua kênh báo nhanh', (t) async {
+    final api = await mo(t, loiMoi: [_loiMoiJson()]);
+    api.loi = const LoiNha(LoaiLoiNha.maHetHan);
+    await t.tap(find.widgetWithText(OutlinedButton, 'Từ chối'));
+    await t.pumpAndSettle();
+    expect(bat.cuoi?.cau, cauLoiNha(LoaiLoiNha.maHetHan));
   });
 
   testWidgets('ba trạng thái ở 360 dp có bàn phím mở: không tràn', (t) async {

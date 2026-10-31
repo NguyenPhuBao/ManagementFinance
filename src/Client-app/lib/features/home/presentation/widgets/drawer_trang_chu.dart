@@ -103,7 +103,7 @@ class DrawerTrangChu extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 // Vạch ngăn giữa danh sách đã bỏ cùng nhóm tài khoản
-                // (2026-09-19): sáu mục còn lại là một nhóm duy nhất — "mọi
+                // (2026-09-19): tám mục còn lại là một nhóm duy nhất — "mọi
                 // thứ không có ở thanh dưới".
                 children: [for (final m in kMucDrawer) _muc(m)],
               ),

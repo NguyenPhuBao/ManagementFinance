@@ -32,10 +32,13 @@ class TheLoiMoiDangCho extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chu = Theme.of(context).textTheme;
-    // Chủ nhà không rời được (`duocLamViecNha(roiNha)` false) nên câu chung sẽ chỉ sai đường (spec 12.3, chốt 2026-11-01).
-    final lyDo = dangONha
-        ? (laChu ? cauLoiNha(LoaiLoiNha.chuPhaiChuyen) : 'Rời nhà hiện tại trước')
-        : (duocThamGia ? null : cauLoiNha(LoaiLoiNha.tinhNangKhongMo));
+    // Admin tắt quyền thắng: rời nhà không mở khoá được, chỉ làm mất dữ liệu nhà trên máy. Chủ nhà không rời được
+    // (`duocLamViecNha(roiNha)` false) nên câu chung sẽ chỉ sai đường (spec 12.3, chốt 2026-11-01).
+    final lyDo = !duocThamGia
+        ? cauLoiNha(LoaiLoiNha.tinhNangKhongMo)
+        : dangONha
+            ? (laChu ? cauLoiNha(LoaiLoiNha.chuPhaiChuyen) : 'Rời nhà hiện tại trước')
+            : null;
     final han = loiMoi.hetHan;
     return KhungTheNha(
       child: Column(
