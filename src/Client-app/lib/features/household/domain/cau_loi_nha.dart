@@ -3,6 +3,8 @@
 /// mã, URL, số (bài học `cauLoiTai`).
 library;
 
+import '../../premium/domain/quyen_tinh_nang.dart';
+
 enum LoaiLoiNha {
   maKhongCo,
   maHetHan,
@@ -103,6 +105,14 @@ const kMaDayLoiNha = {
   'HOUSEHOLD_SCOPE_MISMATCH',
   'HOUSEHOLD_ROLE_FORBIDDEN',
 };
+
+/// Lỗi `FEATURE_DISABLED` lọt tới `/nha/tao` (bảng quyền trên máy cũ — G113 nợ 7): chọn câu theo trạng thái quyền. Tham gia
+/// bằng mã và thẻ lời mời KHÔNG dùng hàm này, luôn câu trung tính `tinhNangKhongMo` (spec 12.4).
+String cauTaoNhaBiTat(TrangThaiQuyen t) => switch (t) {
+      TrangThaiQuyen.canPremium => cauLoiNha(LoaiLoiNha.canPremium),
+      TrangThaiQuyen.tamNgung => 'Tính năng gia đình đang tạm ngừng.',
+      TrangThaiQuyen.mo => cauLoiNha(LoaiLoiNha.tinhNangKhongMo),
+    };
 
 String cauLoiNha(LoaiLoiNha l) => switch (l) {
       LoaiLoiNha.maKhongCo => 'Mã mời không đúng hoặc đã bị huỷ.',

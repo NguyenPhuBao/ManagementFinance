@@ -1,10 +1,19 @@
 import 'dart:io';
 
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
+import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Câu lỗi của mảng gia đình — MỘT chỗ (spec 7.1), không in mã / URL / số.
 void main() {
+  test('G113 nợ 7: tạo nhà bị tắt — Basic mời nâng cấp, tạm ngừng không mời mua', () {
+    expect(cauTaoNhaBiTat(TrangThaiQuyen.canPremium), cauLoiNha(LoaiLoiNha.canPremium));
+    expect(cauTaoNhaBiTat(TrangThaiQuyen.tamNgung), 'Tính năng gia đình đang tạm ngừng.');
+    expect(cauTaoNhaBiTat(TrangThaiQuyen.tamNgung), isNot(contains('Premium')));
+    expect(cauTaoNhaBiTat(TrangThaiQuyen.mo), cauLoiNha(LoaiLoiNha.tinhNangKhongMo),
+        reason: 'bảng trên máy còn mở mà server từ chối → bảng cũ, nói trung tính');
+  });
+
   test('mỗi loại một câu, không câu nào trùng, không chữ số, không mã server', () {
     final cau = LoaiLoiNha.values.map(cauLoiNha).toList();
     expect(cau.toSet(), hasLength(cau.length),

@@ -324,6 +324,7 @@ void main() {
     expect(find.widgetWithText(ElevatedButton, 'Gia hạn thêm 30 ngày'),
         findsOneWidget);
     expect(find.text('Gói hiện tại: Basic'), findsNothing);
+    await tester.ensureVisible(find.text('Lịch sử mua'));
     await tester.tap(find.text('Lịch sử mua'));
     await tester.pumpAndSettle();
     expect(find.text('LỊCH SỬ'), findsOneWidget);
