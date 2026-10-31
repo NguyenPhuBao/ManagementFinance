@@ -54,7 +54,7 @@ void main() {
     expect(find.text('Nhà mình'), findsOneWidget);
     r.push('/nha/thanh-vien');
     await t.pumpAndSettle();
-    expect(find.text('Quản lý thành viên'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Quản lý thành viên'), findsOneWidget);
     expect(t.takeException(), isNull, reason: 'màn đỏ `keyReservation` là dấu hiệu đã đặt nhầm route vào shell');
     r.pop();
     await t.pumpAndSettle();

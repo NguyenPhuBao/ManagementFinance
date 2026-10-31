@@ -17,6 +17,17 @@ void roiVeNhaMinh(BuildContext context) {
   }
 }
 
+bool laChuNha(NhaState s) => s.nha.coNha && s.nha.vai == VaiNha.chu;
+
+/// Báo mất vai rồi về Nhà mình: MỘT định nghĩa cho [GacVaiChu] và cho màn nào tự thao tác rồi thất bại khi cạnh mất vai đã bị
+/// nuốt lúc cờ tự thao tác bật. Nhận [cubit] chứ không đọc từ [ctx]: màn đứng TRÊN `BlocProvider` của chính nó.
+void baoMatVaiRoiVe(BuildContext ctx, NhaCubit cubit) {
+  // Phiên đóng (đăng xuất cưỡng chế): `xoaPhien` đặt id về null rồi mới phát `khongCo` — không phải mất nhà.
+  if (cubit.idToi == null) return;
+  baoNhanh(cubit.state.nha.coNha ? 'Bạn không còn là chủ nhà.' : 'Bạn không còn ở nhà này.');
+  roiVeNhaMinh(ctx);
+}
+
 /// Màn chỉ dành cho Chủ nhà (Mời, Quản lý thành viên): sự kiện từ máy khác làm mất vai, bị mời ra, nhà giải tán ⇒ tự về kèm câu
 /// (spec 12.3). [dangTuThaoTac] = thao tác của chính màn này gây ra đổi trạng thái (chuyển chủ, giải tán): màn tự pop, ở đây
 /// không làm gì, nếu không là pop hai lần.
@@ -26,17 +37,12 @@ class GacVaiChu extends StatelessWidget {
   final Widget child;
   final bool Function() dangTuThaoTac;
 
-  static bool _laChu(NhaState s) => s.nha.coNha && s.nha.vai == VaiNha.chu;
-
   @override
   Widget build(BuildContext context) => BlocListener<NhaCubit, NhaState>(
-        listenWhen: (a, b) => _laChu(a) && !_laChu(b),
+        listenWhen: (a, b) => laChuNha(a) && !laChuNha(b),
         listener: (ctx, s) {
-          // Phiên đóng (đăng xuất cưỡng chế): `xoaPhien` đặt id về null rồi mới phát `khongCo` — không phải mất nhà.
-          if (ctx.read<NhaCubit>().idToi == null) return;
           if (dangTuThaoTac()) return;
-          baoNhanh(s.nha.coNha ? 'Bạn không còn là chủ nhà.' : 'Bạn không còn ở nhà này.');
-          roiVeNhaMinh(ctx);
+          baoMatVaiRoiVe(ctx, ctx.read<NhaCubit>());
         },
         child: child,
       );

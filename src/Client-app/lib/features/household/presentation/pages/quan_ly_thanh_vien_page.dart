@@ -59,6 +59,8 @@ class _QuanLyThanhVienPageState extends State<QuanLyThanhVienPage> {
       return;
     }
     _tuThaoTac = false;
+    // Mất vai trong lúc thao tác đang bay: `GacVaiChu` chỉ nổ ở cạnh chủ → không-chủ và cạnh ấy đã bị nuốt bởi cờ — xét lại.
+    if (mounted && !laChuNha(_cubit.state)) baoMatVaiRoiVe(context, _cubit);
   }
 
   Future<void> _chuyenChu(ThanhVienNhaEntity tv) async {
@@ -103,7 +105,15 @@ class _QuanLyThanhVienPageState extends State<QuanLyThanhVienPage> {
                               children: [
                                 AvatarChuCai(ten: tv.tenHienThi, co: 44),
                                 const SizedBox(width: 12),
-                                Expanded(child: TenThanhVien(ten: tv.tenHienThi, laToi: true)),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      TenThanhVien(ten: tv.tenHienThi, laToi: true),
+                                      if (tv.vaoLuc != null) NgayVaoNha(vao: tv.vaoLuc!),
+                                    ],
+                                  ),
+                                ),
                                 const SizedBox(width: 8),
                                 NhanVai(vai: tv.vai),
                               ],
@@ -125,12 +135,23 @@ class _QuanLyThanhVienPageState extends State<QuanLyThanhVienPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text('VÙNG NGUY HIỂM', style: chu.labelMedium?.copyWith(color: AppColors.error, fontWeight: FontWeight.w700)),
+                            Row(
+                              children: [
+                                const Icon(Icons.warning_amber_rounded, size: 20, color: AppColors.error),
+                                const SizedBox(width: 8),
+                                Text('VÙNG NGUY HIỂM',
+                                    style: chu.labelMedium?.copyWith(color: AppColors.error, fontWeight: FontWeight.w700)),
+                              ],
+                            ),
                             const SizedBox(height: 8),
                             const Text('Quỹ chung, sổ chung và danh mục của nhà sẽ biến mất với mọi người.'),
                             const SizedBox(height: 12),
                             OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(foregroundColor: AppColors.error, side: const BorderSide(color: AppColors.error)),
+                              // Khoá thì viền xám như chữ (Material tự đổi `foregroundColor`, còn `side` đặt cứng thì không).
+                              style: OutlinedButton.styleFrom(foregroundColor: AppColors.error).copyWith(
+                                side: WidgetStateProperty.resolveWith((st) => BorderSide(
+                                    color: st.contains(WidgetState.disabled) ? AppColors.outlineVariant : AppColors.error)),
+                              ),
                               onPressed: s.dangXuLy ? null : () => unawaited(_giaiTan(nha.ten)),
                               icon: const Icon(Icons.delete_forever_outlined),
                               label: const Text('Giải tán nhà'),
