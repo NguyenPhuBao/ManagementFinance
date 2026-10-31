@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flowmoney/features/household/presentation/pages/tao_nha_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,7 +44,7 @@ void main() {
     expect(t.widget<TextField>(find.byType(TextField)).controller!.text.length, 100);
   });
 
-  testWidgets('tạo thành công: pop về trang trước, không thay stack', (t) async {
+  testWidgets('tạo thành công: pop về trang trước', (t) async {
     dat360(t);
     batThongBao();
     final api = HouseholdApiGia();
@@ -60,6 +62,28 @@ void main() {
     expect(find.text('GOC'), findsOneWidget);
   });
 
+  testWidgets('nút khoá suốt lúc chờ mạng, xong thì pop về trang trước', (t) async {
+    dat360(t);
+    batThongBao();
+    final api = HouseholdApiGia();
+    final repo = await repoNhaThu(api);
+    final r = routerThu(TaoNhaPage(repo: repo));
+    await t.pumpWidget(bocRouterNha(r, goi: goiPremium(const {})));
+    r.push('/dich');
+    await t.pumpAndSettle();
+    api.traVe = nhaJson(ten: 'Nhà An');
+    final treo = api.treo = Completer<void>();
+    await t.enterText(find.byType(TextField), 'Nhà An');
+    await t.pump();
+    await t.tap(find.widgetWithText(FilledButton, 'Tạo nhà'));
+    await t.pump();
+    expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Tạo nhà')).onPressed, isNull,
+        reason: 'đang chờ POST mà nút còn mở là chạm đôi tạo hai nhà');
+    treo.complete();
+    await t.pumpAndSettle();
+    expect(find.text('GOC'), findsOneWidget);
+  });
+
   testWidgets('403 FEATURE_DISABLED, Premium tạm ngừng: báo câu tạm ngừng, ở lại màn', (t) async {
     dat360(t);
     final bat = batThongBao();
@@ -73,7 +97,7 @@ void main() {
     await t.tap(find.widgetWithText(FilledButton, 'Tạo nhà'));
     await t.pumpAndSettle();
     expect(bat.cau, ['Tính năng gia đình đang tạm ngừng.']);
-    expect(find.text('Tạo nhà'), findsWidgets);
+    expect(find.byType(TaoNhaPage), findsOneWidget, reason: 'lỗi thì ở lại màn, không pop');
   });
 
   testWidgets('360 dp, bàn phím mở: không tràn, nút còn trên màn', (t) async {

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection_container.dart';
@@ -55,7 +56,6 @@ class _TaoNhaPageState extends State<TaoNhaPage> {
 
   @override
   Widget build(BuildContext context) {
-    final mo = tenNhaHopLe(_ten.text) && !_cubit.state.dangXuLy;
     return Scaffold(
       appBar: AppBar(title: const Text('Tạo nhà')),
       body: SafeArea(
@@ -93,9 +93,12 @@ class _TaoNhaPageState extends State<TaoNhaPage> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: SizedBox(
                 width: double.infinity,
-                child: FilledButton(
-                  onPressed: mo ? () => unawaited(_tao().then((_) => mounted ? setState(() {}) : null)) : null,
-                  child: const Text('Tạo nhà'),
+                child: BlocBuilder<NhaCubit, NhaState>(
+                  bloc: _cubit,
+                  builder: (_, s) => FilledButton(
+                    onPressed: tenNhaHopLe(_ten.text) && !s.dangXuLy ? () => unawaited(_tao()) : null,
+                    child: const Text('Tạo nhà'),
+                  ),
                 ),
               ),
             ),
