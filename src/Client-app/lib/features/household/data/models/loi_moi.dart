@@ -46,8 +46,8 @@ MaMoiEntity? maMoiTuJson(Map<String, Object?> j) {
   );
 }
 
-/// Lời mời gửi tới tôi — #14 `GET /households/invitations` (`01` mục 2.4). Server `177dd0e1` không trả `memberCount` /
-/// `maxMembers` (đơn 57.8.6) → `null`, không bịa.
+/// Lời mời gửi tới tôi — #14 `GET /households/invitations` (`01` mục 2.4). Từ PR #174 server trả `memberCount` /
+/// `maxMembers` (mục 2b); thiếu khoá (bản backend cũ) → `null`, không bịa.
 class LoiMoiToiEntity {
   const LoiMoiToiEntity({
     required this.ma,

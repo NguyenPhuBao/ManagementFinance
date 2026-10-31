@@ -10,6 +10,8 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flowmoney/features/household/data/datasources/household_api.dart';
 
+/// `doiVai`, `moiRa`, `giaiTan` không trả trạng thái nhà, nên repository hỏi lại `/me` ([cuaToiJson]): test muốn giả nhà
+/// đổi sau thao tác thì đổi [cuaToiJson] trước khi gọi.
 class HouseholdApiGia implements HouseholdApi {
   Map<String, Object?> cuaToiJson = const {'household': null};
   Map<String, Object?>? traVe;
@@ -64,15 +66,17 @@ class HouseholdApiGia implements HouseholdApi {
   @override
   Future<Map<String, Object?>> thamGia(String ma) => _chay('thamGia:$ma', _trangThai);
   @override
-  Future<Map<String, Object?>> doiVai(int idaccount, String vai) => _chay('doiVai:$idaccount:$vai', _trangThai);
+  Future<Map<String, Object?>> doiVai(int idaccount, String vai) =>
+      _chay('doiVai:$idaccount:$vai', () => traVe ?? {'targetIdaccount': idaccount, 'newRole': vai});
   @override
   Future<Map<String, Object?>> chuyenChu(int idaccount) => _chay('chuyenChu:$idaccount', _trangThai);
   @override
-  Future<Map<String, Object?>> moiRa(int idaccount) => _chay('moiRa:$idaccount', _trangThai);
+  Future<Map<String, Object?>> moiRa(int idaccount) =>
+      _chay('moiRa:$idaccount', () => traVe ?? const {'removed': true});
   @override
-  Future<Map<String, Object?>> roiNha() => _chay('roiNha', _trangThai);
+  Future<Map<String, Object?>> roiNha() => _chay('roiNha', () => traVe ?? const {'household': null, 'myRole': null, 'members': [], 'formerMembers': []});
   @override
-  Future<Map<String, Object?>> giaiTan() => _chay('giaiTan', _trangThai);
+  Future<Map<String, Object?>> giaiTan() => _chay('giaiTan', () => traVe ?? const {'dissolved': true});
   @override
   Future<Map<String, Object?>> moiQuaEmail(String email, String vai) =>
       _chay('moiQuaEmail:$email:$vai', () => moiEmailJson);

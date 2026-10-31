@@ -16,7 +16,7 @@ import 'nha_repository.dart';
 
 /// Cửa sổ giãn cách cho `household.changed`. Từ PR #170 backend phát sự kiện này tới MỌI thành viên sau MỖI `/sync/push` có hàng
 /// mang `idhousehold` (kể cả thao tác bị từ chối) — làm mới mỗi sự kiện là hai GET (`/me`, `/invitations`) theo nhịp đẩy của cả
-/// nhà. Luật: sự kiện đầu cửa sổ chạy ngay, các sự kiện trong cửa sổ gộp thành MỘT lượt bù lúc hết cửa sổ (đơn 58 xin backend
+/// nhà. Từ PR #174 `household.changed` không còn phát theo op bị từ chối (58.4); giữ làm lớp phòng. Luật: sự kiện đầu cửa sổ chạy ngay, các sự kiện trong cửa sổ gộp thành MỘT lượt bù lúc hết cửa sổ (đơn 58 xin backend
 /// bỏ / lọc phía phát). Chỉ áp cho `nhaDoi`; `loiMoiNha` hiếm và nhắm đúng người nên không giãn.
 const Duration kGianCachNhaDoi = Duration(seconds: 30);
 

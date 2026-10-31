@@ -37,6 +37,7 @@ void main() {
       'HOUSEHOLD_INVITE_WRONG_ACCOUNT': LoaiLoiNha.loiMoiKhongPhaiCuaBan,
       'HOUSEHOLD_INVITE_DECLINED': LoaiLoiNha.loiMoiDaTuChoi,
       'HOUSEHOLD_INVITE_RATE_LIMIT': LoaiLoiNha.guiMoiQuaNhieu,
+      'HOUSEHOLD_INVITE_ATTEMPT_LIMIT': LoaiLoiNha.thuMaQuaNhieu,
       'FEATURE_DISABLED': LoaiLoiNha.tinhNangKhongMo,
       // Mã thật của backend 177dd0e1 (household.service.js / .controller.js) — tới khi đơn 57.7 chốt bảng mã
       'HOUSEHOLD_INVITE_NOT_FOUND': LoaiLoiNha.maKhongCo,
@@ -55,6 +56,11 @@ void main() {
     expect(loaiLoiTuMa('CANNOT_REMOVE_SELF'), isNull,
         reason: 'form không cho chọn chính mình — tới đây là lỗi lập trình, rơi khac');
     expect(loaiLoiTuMa(null), isNull);
+  });
+
+  test('thử mã quá nhiều khác gửi thư quá nhiều: hai câu, hai việc phải làm', () {
+    expect(cauLoiNha(LoaiLoiNha.thuMaQuaNhieu), isNot(cauLoiNha(LoaiLoiNha.guiMoiQuaNhieu)),
+        reason: 'người tham gia không gửi thư nào — câu "nhà đã gửi quá nhiều lời mời" là nói sai người');
   });
 
   test('LoiNha mang loại; lỗi khác → khac', () {

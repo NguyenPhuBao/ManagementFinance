@@ -2,15 +2,15 @@ import 'package:dio/dio.dart';
 
 import '../../domain/cau_loi_nha.dart';
 
-/// 16 API của module gia đình backend — đường dẫn / method như mã `177dd0e1` (`api/households.routes.js:10-31`; `docs/Family/04`
-/// mục 2; backend đổi thì sửa ở đây và ca hợp đồng `household_api_test`). Bọc sau interface để repository test được bằng bản
+/// 16 API của module gia đình backend — đường dẫn / method như mã `8e3b4e48` (PR #174; `docs/Family/04`
+/// mục 2b; backend đổi thì sửa ở đây và ca hợp đồng `household_api_test`). Bọc sau interface để repository test được bằng bản
 /// giả (`test/helpers/household_api_gia.dart`). Vai gửi lên là chữ server (`khoaServerCuaVai`). Trả `data` thô — đọc bằng bộ
 /// đọc ở `data/models/`; thân nào KHÔNG phải trạng thái nhà (#8, #10, #12, #16) repository không áp (`laThanTrangThaiNha`).
 abstract class HouseholdApi {
-  /// #2 `GET /households/me` → trạng thái nhà (hiện PHẲNG — đơn 57.1; `{household: null}` khi không ở nhà).
+  /// #2 `GET /households/me` → trạng thái nhà (một kiểu lồng, `Family/04` mục 2b; `{household: null, myRole: null, …}` khi không ở nhà).
   Future<Map<String, Object?>> cuaToi();
 
-  /// #1 `POST /households {name}` → hiện hàng thô + `myRole`, không `members` (đơn 57.1). Cần Premium (hiện chưa chặn — 56.4).
+  /// #1 `POST /households {name}` → trạng thái nhà dạng lồng (mục 2b). Cần quyền `household` (Premium).
   Future<Map<String, Object?>> taoNha(String ten);
 
   /// #3 `POST /households/invites {role}` → `{code, role, expiresAt}`.
@@ -23,7 +23,7 @@ abstract class HouseholdApi {
   /// #5 `DELETE /households/invites/:code` — cả mã thường lẫn lời mời email.
   Future<void> huyMaMoi(String ma);
 
-  /// #6 `GET /households/invites/:code` → bản xem trước (lời mời email: hiện luôn 403 — đơn 57.2).
+  /// #6 `GET /households/invites/:code` → bản xem trước (cả mã thường lẫn lời mời email).
   Future<Map<String, Object?>> xemTruoc(String ma);
 
   /// #7 `POST /households/join {code}` → trạng thái nhà.
@@ -48,7 +48,7 @@ abstract class HouseholdApi {
   /// #13 `POST /households/invites/email {email, role}` → `202 {sent, email, role, expiresAt}` — luôn cùng hình dạng.
   Future<Map<String, Object?>> moiQuaEmail(String email, String vai);
 
-  /// #14 `GET /households/invitations` → mảng lời mời gửi tới tôi (hiện chỉ lời mời đã gắn `Invitee_idaccount` — đơn 57.2).
+  /// #14 `GET /households/invitations` → mảng lời mời gửi tới tôi (khớp cả theo email; có `memberCount` / `maxMembers` — mục 2b).
   Future<List<Map<String, Object?>>> dsLoiMoiToi();
 
   /// #15 `POST /households/invitations/:code/accept` → trạng thái nhà (như #7).

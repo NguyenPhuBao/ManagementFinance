@@ -102,8 +102,8 @@ void main() {
         DioException(requestOptions: RequestOptions(path: '/households'), type: t);
 
     test('code ở cấp gốc thân 4xx → loại (đơn 50 C.3)', () {
-      expect(loaiLoiNhaTu(loiServer(400, 'HOUSEHOLD_INVITE_EXPIRED')), LoaiLoiNha.maHetHan,
-          reason: 'mã thật trả 400 (đơn 50 viết 410) — phân loại theo `code`, không theo status');
+      expect(loaiLoiNhaTu(loiServer(410, 'HOUSEHOLD_INVITE_EXPIRED')), LoaiLoiNha.maHetHan,
+          reason: 'bảng mã chốt 57.7: 410; phân loại theo `code`, không theo status');
       expect(loaiLoiNhaTu(loiServer(409, 'HOUSEHOLD_ALREADY_IN_ONE')), LoaiLoiNha.daONhaKhac);
       expect(loaiLoiNhaTu(loiServer(403, 'FEATURE_DISABLED')), LoaiLoiNha.tinhNangKhongMo);
       expect(loaiLoiNhaTu(loiServer(400, 'VALIDATION_LA')), LoaiLoiNha.khac);
