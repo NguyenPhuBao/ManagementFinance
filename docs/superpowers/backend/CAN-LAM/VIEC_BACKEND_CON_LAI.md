@@ -25,7 +25,9 @@ Client đã **thử toàn bộ phần sửa mã trên một bản sao + CSDL t�
 | [`chay_kiem.js`](./KIEM-THU/chay_kiem.js) | Kịch bản nghiệm thu 50 ca chạy **thật** trên CSDL riêng, payload như app; thay socket + email bằng bản ghi nhận; tự từ chối chạy nếu `DATABASE_URL` không phải CSDL `flowmoney_kiem_thu` trên máy này |
 | [`ket_qua_ma_hien_tai_5ff06db4.txt`](./KIEM-THU/ket_qua_ma_hien_tai_5ff06db4.txt) | Kết quả trên mã hiện tại, để đối chiếu: **23 đạt / 50 ca** |
 
-Số đo của client: mã hiện tại **23 / 50**, sau bản vá **50 / 50**; `tests/unit/*.test.js` **481 / 486 trước và sau bản vá** (đo không có `.env`; 3 ca hỏng ở cả hai bản vì cần dữ liệu / khoá thật: `data_encryption_group4_audit` ca 5, 8 và `household_and_aiops_v2` ca 2). Bản vá đã sửa kèm 4 tệp test đang khẳng định hành vi cũ.
+Số đo của client: mã hiện tại **23 / 50**, sau bản vá **50 / 50**; `tests/unit/*.test.js` **481 / 486 trước và sau bản vá**. Ba ca hỏng ở cả hai bản đều do môi trường đo, không do bản vá: `data_encryption_group4_audit` ca 5, 8 cần khoá `.env` / dữ liệu Supabase (client đo không có `.env`); `household_and_aiops_v2` ca 2 dùng id cứng 104 mà gọi thật `findActiveMemberByAccount`, nên hỏng khi CSDL thử đã có tài khoản ấy (vì thế bước 5 dùng CSDL mới). Bản vá đã sửa kèm 4 tệp test đang khẳng định hành vi cũ.
+
+⚠️ **Đặt `DATABASE_URL` TRƯỚC mọi lệnh `prisma`.** Thiếu biến thì Prisma rơi về `.env` = **Supabase dùng chung**. Không dùng `--force-reset` ở đâu trong việc này. Dòng `Datasource "db"` Prisma in ra phải ghi đúng tên CSDL thử.
 
 **Các bước** (Git Bash, từ gốc repo; PowerShell thì đặt biến bằng `$env:TEN = '…'`):
 
@@ -45,7 +47,10 @@ cd ../.. && git apply --ignore-whitespace docs/superpowers/backend/CAN-LAM/KIEM-
 # 4. Chạy lại: phải ra "TỔNG: 50 đạt / 50 ca". Không xoá ca nào cho xanh.
 node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem.js . kq_sau.txt
 
-# 5. Bộ test đơn vị, vẫn trỏ CSDL riêng ở trên
+# 5. Bộ test đơn vị, trên một CSDL riêng MỚI (bước 2, 4 đã ghi dữ liệu vào CSDL kia)
+export DATABASE_URL="postgresql://postgres:<mật khẩu>@127.0.0.1:5432/flowmoney_kiem_thu_unit"
+export DIRECT_URL="$DATABASE_URL"
+npx prisma db push --skip-generate --schema prisma/schema.prisma
 NODE_ENV=test node --test --test-force-exit tests/unit/*.test.js
 ```
 
@@ -448,6 +453,8 @@ async _reconcileAutoLocks() {
 // middleware/auth.js accountRejection và auth.service.js:364-370: dùng lyDoChoNguoiDung(...) cho cả message lẫn reason_inactive trả về
 const lyDo = lyDoChoNguoiDung(info?.reason_inactive);
 ```
+
+**Lưu ý chưa có trong bản vá, chưa chạy:** `aiops_account_quarantine` có một hàng mỗi username theo chuỗi gõ thô (`accId`, AQR:151), còn `getAccountByUsername` so `LOWER` + `LIMIT 1` không `ORDER BY` (AQR:789). Cùng tên khác hoa thường có thể ra hai hàng và đọc nhầm hàng cũ, khiến `_reconcileAutoLocks` mở khoá sớm. Nên thêm vào câu truy vấn ấy `ORDER BY ("status" <> 'UNLOCKED') DESC, "updated_at" DESC`.
 
 Ba tệp test đang khẳng định bộ lọc cũ (`aiops.sync_account_protection.test.js:42-46`, `aiops_group2_completion.test.js` ca 1, 3, `household_and_aiops_v2.test.js` ca 5) đổi sang `startsWith` / `status: 'Active'` — bản vá đã làm.
 **Kiểm lại:** `chay_kiem.js` bảy ca 58.5 và ca `PendingDelete` của 58.6.
