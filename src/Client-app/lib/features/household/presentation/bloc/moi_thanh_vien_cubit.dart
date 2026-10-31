@@ -133,10 +133,14 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
     _phat(dangHuy: ma);
     try {
       await _repo.huyMaMoi(ma);
-      _phat(boMa: state.maVuaTao?.ma == ma, xongHuy: true);
+      _phat(boMa: state.maVuaTao?.ma == ma);
       await nap();
     } catch (e) {
       _baoLoi(e);
+      // Mã đã chết ở server: dòng ấy vẫn bị `soConHieuLuc` đếm (khoá nhầm hai nút) tới khi nạp lại.
+      if (loaiLoiNhaCua(e) == LoaiLoiNha.maKhongCo) await nap();
+    } finally {
+      // Sau lượt nạp: xoá trước là dòng còn trên màn với nút mở suốt một vòng GET.
       _phat(xongHuy: true);
     }
   }

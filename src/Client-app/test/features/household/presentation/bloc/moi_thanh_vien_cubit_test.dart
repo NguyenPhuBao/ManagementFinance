@@ -119,4 +119,34 @@ void main() {
     await c.napTuDong();
     expect(api.goi.where((g) => g == 'dsMaMoi').length, sau + 1, reason: 'người dùng thao tác đặt lại cờ');
   });
+
+  test('huy chạm đôi khi chỉ nạp lại bị treo: dangHuy còn tới hết lượt nạp, chỉ một DELETE', () async {
+    final (c, api, bao) = await dung();
+    api.treoDsMaMoi = Completer<void>();
+    final a = c.huy('AAAA2222');
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(c.state.dangHuy, 'AAAA2222', reason: 'xoá trước lượt nạp là để dòng còn trên màn với nút mở');
+    final b = c.huy('AAAA2222');
+    api.treoDsMaMoi!.complete();
+    await Future.wait([a, b]);
+    expect(api.goi.where((g) => g == 'huyMaMoi:AAAA2222'), hasLength(1));
+    expect(c.state.dangHuy, isNull);
+    expect(bao, isEmpty);
+  });
+
+  test('huy 404 (mã đã chết): báo, nạp lại để dòng chết thôi bị đếm', () async {
+    final (c, api, bao) = await dung();
+    api.dsMaMoiJson = [dong('AAAA2222')];
+    await c.nap();
+    expect(c.soConHieuLuc, 1);
+    api
+      ..dsMaMoiJson = const []
+      ..loiHuy = loiServer(404, 'HOUSEHOLD_INVITE_NOT_FOUND');
+    await c.huy('AAAA2222');
+    await Future<void>.delayed(Duration.zero);
+    expect(bao, [cauLoiNha(LoaiLoiNha.maKhongCo)]);
+    expect(c.soConHieuLuc, 0);
+    expect(c.state.dangHuy, isNull);
+  });
 }

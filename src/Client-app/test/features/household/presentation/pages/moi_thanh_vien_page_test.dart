@@ -169,7 +169,7 @@ void main() {
     expect(find.text('Nhà đã đủ người, kể cả lời mời còn hiệu lực.'), findsOneWidget);
     api
       ..dsMaMoiJson = const []
-      ..cuaToiJson = nhaJson(maxMembers: 4);
+      ..cuaToiJson = nhaJson(maxMembers: 3);
     await repoCuoi.lamMoi();
     await t.pumpAndSettle();
     expect(find.text('Nhà đã đủ người, kể cả lời mời còn hiệu lực.'), findsNothing);
@@ -215,5 +215,22 @@ void main() {
     await t.tap(find.text('Chép mã'));
     await t.pumpAndSettle();
     expect(bat.cuoi!.cau, cauLoiNha(LoaiLoiNha.khac));
+  });
+
+  testWidgets('Huỷ: nút của đúng dòng khoá tới hết lượt nạp lại, chỉ một DELETE', (t) async {
+    final han = DateTime.now().add(const Duration(days: 1)).toUtc().toIso8601String();
+    final (api, _, _) = await mo(t, ds: [
+      {'code': 'AAAA2222', 'role': 'Member', 'email': 'an@x.vn', 'expiresAt': han, 'status': 'Pending'},
+    ]);
+    api.treoDsMaMoi = Completer<void>();
+    await t.ensureVisible(find.text('Huỷ'));
+    await t.tap(find.text('Huỷ'));
+    await t.pump();
+    await t.pump();
+    final nut = t.widget<TextButton>(find.ancestor(of: find.text('Huỷ'), matching: find.byType(TextButton)));
+    expect(nut.onPressed, isNull, reason: 'nút còn mở suốt vòng GET là chạm hai gửi DELETE thứ hai');
+    api.treoDsMaMoi!.complete();
+    await t.pumpAndSettle();
+    expect(api.goi.where((g) => g == 'huyMaMoi:AAAA2222'), hasLength(1));
   });
 }

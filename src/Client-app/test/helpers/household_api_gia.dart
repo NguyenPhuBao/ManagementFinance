@@ -17,6 +17,10 @@ class HouseholdApiGia implements HouseholdApi {
   Map<String, Object?>? traVe;
   Object? loi;
   Completer<void>? treo;
+
+  /// Chỉ giữ lời gọi `dsMaMoi` (không đụng `treo`); [loiHuy] chỉ ném ở `huyMaMoi`.
+  Completer<void>? treoDsMaMoi;
+  Object? loiHuy;
   final goi = <String>[];
   Map<String, Object?> maMoiJson = const {
     'code': 'ABCD2345',
@@ -58,9 +62,16 @@ class HouseholdApiGia implements HouseholdApi {
   @override
   Future<Map<String, Object?>> taoMaMoi(String vai) => _chay('taoMaMoi:$vai', () => maMoiJson);
   @override
-  Future<List<Map<String, Object?>>> dsMaMoi() => _chay('dsMaMoi', () => dsMaMoiJson);
+  Future<List<Map<String, Object?>>> dsMaMoi() async {
+    final r = await _chay('dsMaMoi', () => dsMaMoiJson);
+    await treoDsMaMoi?.future;
+    return r;
+  }
   @override
-  Future<void> huyMaMoi(String ma) => _chay('huyMaMoi:$ma', () {});
+  Future<void> huyMaMoi(String ma) => _chay('huyMaMoi:$ma', () {
+        final l = loiHuy;
+        if (l != null) throw l;
+      });
   @override
   Future<Map<String, Object?>> xemTruoc(String ma) => _chay('xemTruoc:$ma', () => xemTruocJson);
   @override

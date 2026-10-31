@@ -55,7 +55,9 @@ class DanhSachLoiMoi extends StatelessWidget {
   }
 }
 
-/// Mã thường chỉ hiện khi còn hiệu lực nên không cần nhãn; lời mời email kèm trạng thái (`01` mục 2.1): Đang chờ / Đã từ chối / Hết hạn.
-String _dongPhu(MaMoiEntity m, DateTime now) => m.email == null
-    ? 'Mã mời · ${tenVai(m.vai)}'
-    : 'Email · ${tenVai(m.vai)} · ${nhanTrangThaiLoiMoi(m.trangThaiLuc(now))}';
+/// Stitch `b017710c…`: dòng phụ nêu loại · vai · *Đang chờ* (khi còn hiệu lực); trạng thái đã kết thúc (Đã từ chối / Hết hạn)
+/// chỉ ở nhãn bên phải, không in hai lần.
+String _dongPhu(MaMoiEntity m, DateTime now) {
+  final dau = '${m.email == null ? 'Mã mời' : 'Email'} · ${tenVai(m.vai)}';
+  return m.conHieuLucLuc(now) ? '$dau · ${nhanTrangThaiLoiMoi(TrangThaiLoiMoi.dangCho)}' : dau;
+}
