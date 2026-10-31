@@ -1,200 +1,205 @@
-# Việc backend còn phải làm — MỘT tệp (đơn 52 · 55 · 60 + việc nhỏ 48.1 + tài liệu T1, T3, T6)
+# Việc backend còn phải làm
 
-> **Người nhận:** backend (NPBao). Tệp này **chỉ còn việc phải làm** — client soát PR #174 ngày **2026-10-31** (backend `8e3b4e48`).
-> **Kết quả soát 23 việc PR #174 trả lời: 15 đạt · 7 một phần · 1 chưa.**
-> - **Đạt, đã xoá khỏi tệp:** 57.1, 57.2, 57.3, 57.6, 57.7, 57.8, 58.3, 58.4, 58.5, 58.6, 59.1, 59.2, 59.3, 52.1, T2.
-> - **Toàn bộ mã gia đình phần 1 đã đạt khi chạy thật:** `chay_kiem.js` **50 / 50** trên bản sao `8e3b4e48` + CSDL tạm (client tự chạy); `tests/unit` 486 / 488, hai dòng hỏng là ca 5 của `data_encryption_group4_audit` cần khoá `.env` và bộ test cha của nó. **Không còn việc nào chặn client làm lát 2.**
-> - Bản có báo cáo của backend: `git show 8e3b4e48:docs/superpowers/backend/CAN-LAM/VIEC_BACKEND_CON_LAI.md`; bản đề bài có mã sửa từng việc: `git show 6180af17:…`. Bảng mã lỗi chốt (57.7) client đã chép sang `docs/Family/04_HOP_DONG_PHAN_1_NHU_MA.md` mục 2b.
-> - Mỗi việc có **mã** giữ số đơn cũ. Tám tệp đơn gốc ở `LICH-SU/` là lịch sử, đừng ghi trả lời vào đó.
->
-> **Lưu ý chung:**
-> - Trước khi báo xong: `npm run verify:household` trên CSDL riêng phải vẫn `TỔNG: 50 đạt / 50 ca` (bạn đã chép kịch bản vào `src/Backend/scripts/verify_household_contract.js`).
-> - **Ô trả lời chỉ ghi điều có trong diff.** Lượt này có chín câu không khớp mã (mục 11). Việc chưa làm thì ghi *"chưa"*, không sao.
-> - Trả lời ghi vào bảng mục 10. Bảng mục 0, văn ở các mục khác và README mục 0 + banner là vùng client cập nhật.
->
-> Số dòng đọc ở HEAD client `9a607156` (gộp `8e3b4e48`). Đơn mới thêm mục vào tệp này, số kế tiếp **61**.
+> **Người nhận:** backend (NPBao). Tệp này **chỉ có việc còn phải làm**, đo trên backend `8e3b4e48`. Việc xong thì client xoá khỏi tệp; lịch sử xem bằng git.
+> Bước 1 và 2 chạy lệnh có sẵn, xong phần lớn danh sách. Bước 3 là **4 việc tay** vì chúng cần Render, khoá thật hoặc trí nhớ của người làm, cộng một việc tuỳ chọn.
+> Đơn mới thêm vào tệp này, số kế tiếp **61**.
 
----
+## Tổng quan
 
-## 0. Bảng việc
-
-| Mã | Việc | Mức | Mục | Còn thiếu |
-|---|---|---|---|---|
-| 52.4 | Chưa xác nhận khoá **trên Render** | VỪA | 4 | So vân tay Render, `/sync/pull` 200 |
-| T1 | `Event-Notification-to-ClientApp.md` — câu sai MỚI ở `:67`, 11 / 20 hàng chưa đạt | VỪA | 8.1 | Sửa tại dòng |
-| T3 | `4_TRU_COT.md` — 13 / 15 hàng chưa đạt, xoá nhầm `/export-report` | VỪA | 8.3 | Sửa tại dòng |
-| 52.3 | Câu chốt đã có; chưa chạy trên `PersonFinance` | VỪA | 4 | Một dòng tổng kết |
-| 52.5 | Script đạt; thiếu khoá, thời điểm, hai vế đo | VỪA | 4 | Ghi mục 10 |
-| 55.A3 | Mã + hợp đồng đạt; không có ca test Premium + NULL | VỪA | 5 | Một ca test |
-| T6 | Tài liệu đạt; ca 2 PayOS không chạy nhánh nó nêu; mã thật mang nhánh của test | THẤP | 8.6 | Sửa ca, gỡ nhánh |
-| 48.1 | Không có tên, công cụ | THẤP | 6 | Một câu ở mục 10 |
-| 60.1 | Hai script `Test/` chặn `supabase\.com`, có thể lọt `*.supabase.co` | THẤP | 7 | Sửa regex |
-| 60.2 | `kq_household_contract.txt` không bị ignore | THẤP | 7 | Thêm ignore hoặc đổi nơi ghi |
-| 60.3 | Ca test nhãn `[Tier 2]` mock trúng hàm cần chứng minh | THẤP | 7 | Sửa nhãn hoặc ca |
+| Mã | Việc | Mức | Cách xong |
+|---|---|---|---|
+| 52.4 | Chưa so khoá mã hoá trên Render. Khác khoá thì kéo toàn bộ trả 500 | **CAO** | Tay |
+| 60.4 | `recordTransaction` ném `ReferenceError` khi hai webhook đua nhau: thiếu `require` logger | VỪA | Bản vá |
+| T1 | `Event-Notification-to-ClientApp.md` sai 11 / 20 hàng; socket `ocr.completed` phát số tài khoản đầy đủ | VỪA | Bản vá |
+| T3 | `4_TRU_COT.md` sai 13 / 15 hàng; xoá nhầm `/export-report` | VỪA | Bản vá |
+| 55.A3 | Chưa có ca test Premium không có hạn | VỪA | Bản vá |
+| 52.3 | Chưa chạy kiểm mã hoá trên `PersonFinance` | VỪA | Tay |
+| 52.5 | Chưa ghi đã di trú trên CSDL nào, khoá nào, lúc nào | VỪA | Tay |
+| T6 | Mã thật mang nhánh chỉ để hợp bản giả; nhãn `[Tier 2]` trên ca giả | THẤP | Bản vá |
+| 60.1 | Hai script `Test/` không chặn URL `*.supabase.co` | THẤP | Bản vá |
+| 60.2 | `verify:household` ghi tệp kết quả vào cây mã, không bị ignore | THẤP | Bản vá |
+| 60.3 | Bốn ca test mock trúng hàm cần chứng minh | THẤP | Tay (tuỳ chọn) |
+| 48.1 | Chưa ghi ai / công cụ nào đã xoá ví test của tài khoản 18 | THẤP | Tay |
 
 ---
 
-## 4. Mã hoá dữ liệu (đơn 52)
+## Bước 1. Tạo CSDL riêng, đo mốc
 
-Lịch sử: [`LICH-SU/GIAI_MA_HONG_TRA_BAN_MA.md`](./LICH-SU/GIAI_MA_HONG_TRA_BAN_MA.md). ⚠️ Hàng **còn sống** giải hỏng làm `/sync/pull` 500 cả lượt (`sync.controller.js:67-73`), nên 52.4 là việc quan trọng nhất tệp này.
+⚠️ Đặt `DATABASE_URL` **trước** mọi lệnh `prisma`. Thiếu biến là rơi về `.env` = Supabase dùng chung. Không dùng `--force-reset`. Dòng `Datasource "db"` Prisma in ra phải ghi đúng tên CSDL thử, sai thì DỪNG.
 
-### 52.4 (VỪA) — chưa làm
+Git Bash, từ gốc repo:
 
-Ô trả lời chỉ có vân tay **máy dev** (`98e9e026`) và câu *"xác nhận tính nhất quán"*: chưa so với Render. **Rủi ro còn mở:** 25 + 3 hàng trên Supabase mang khoá `.env`; Render khác khoá thì mọi lượt kéo toàn bộ của tài khoản có hàng còn sống trả 500.
+```bash
+cd src/Backend
+export DATABASE_URL="postgresql://postgres:<mật khẩu>@127.0.0.1:5432/flowmoney_kiem_thu"
+export DIRECT_URL="$DATABASE_URL" NODE_ENV=development LOG_LEVEL=error REDIS_PROVIDER=none REDIS_URL=
+npx prisma db push --skip-generate --schema prisma/schema.prisma
 
-**Cách làm:** so vân tay, không in khoá. Thêm tạm vào `index.js` sau khi nạp `.env`, deploy, đọc log Render, rồi gỡ:
+# Phải ra "TỔNG: 10 đạt / 24 ca" (bản đối chiếu: KIEM-THU/ket_qua_pr174_ma_hien_tai_8e3b4e48.txt)
+node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_pr174.js . kq_truoc.txt
+```
+
+Kịch bản chỉ chạy trên CSDL tên `flowmoney_kiem_thu` ở máy này; không gửi thư, không phát socket, không gọi Gemini.
+
+## Bước 2. Áp bản vá, đo lại
+
+Bản vá 12 tệp, client đã thử trên một bản sao + CSDL tạm. Nó phủ **60.4, T1, T3, 55.A3, T6, 60.1, 60.2** và nhãn hai ca của 60.3. Không cần `npm install`, `prisma generate` hay migration mới.
+
+```bash
+cd ../.. && git apply --ignore-whitespace docs/superpowers/backend/CAN-LAM/KIEM-THU/ban_sua_pr174.patch && cd src/Backend
+
+# Phải ra "TỔNG: 24 đạt / 24 ca"
+node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_pr174.js . kq_sau.txt
+
+# Phải vẫn "TỔNG: 50 đạt / 50 ca"
+npm run verify:household -- . kq_nha.txt
+
+# Test đơn vị, trên một CSDL riêng MỚI
+export DATABASE_URL="postgresql://postgres:<mật khẩu>@127.0.0.1:5432/flowmoney_kiem_thu_unit"
+export DIRECT_URL="$DATABASE_URL"
+npx prisma db push --skip-generate --schema prisma/schema.prisma
+NODE_ENV=test node --test --test-force-exit tests/unit/*.test.js
+```
+
+Số đo của client: **24 / 24**, **50 / 50**, test đơn vị **489 / 491**. Hai dòng hỏng là một ca: `data_encryption_group4_audit` ca 5 và bộ test cha của nó, cần khoá `.env` (client đo không có `.env`, máy bạn có thể xanh). Không xoá ca nào cho xanh. Mã đã đổi so với `8e3b4e48` mà không áp được thì sửa tay theo *Nội dung bản vá* dưới đây.
+
+## Bước 3. Bốn việc tay
+
+### 52.4 (CAO) — So khoá mã hoá trên Render
+
+Vân tay máy dev đã có: `98e9e026`. Chưa có số nào của Render. 25 + 3 hàng trên Supabase mang khoá `.env`; Render khác khoá thì mọi lượt kéo toàn bộ của tài khoản có hàng còn sống trả 500 (`sync.controller.js:67-73`).
+
+So vân tay, không in khoá. Thêm tạm vào `index.js` sau khi nạp `.env`, deploy, đọc log Render, rồi gỡ:
 
 ```js
 logger.info('DATA_KEY_FP', { fp: require('crypto').createHash('sha256').update(process.env.DATA_ENCRYPTION_KEY || '').digest('hex').slice(0, 8) });
 ```
 
-**Kiểm lại:** vân tay Render = `98e9e026`; `GET https://managementfinance.onrender.com/api/sync/pull` không `since` của một tài khoản có hàng đã di trú trả 200. Ghi cả hai vào mục 10.
+**Xong khi:** vân tay Render = `98e9e026`, và `GET https://managementfinance.onrender.com/api/sync/pull` không `since` của một tài khoản có hàng đã di trú trả 200. Khác vân tay thì đừng đổi khoá trên Render khi chưa di trú dữ liệu: báo client và PO trước.
 
-### 52.3 (VỪA) — phần còn thiếu
-
-Câu chốt đã có (`docs/progress/Backend.md` mục 25, `.env.example:95`). Ô chỉ ghi *"đạt kết quả an toàn"*. Chạy và dán **dòng tổng kết** vào mục 10:
+### 52.3 (VỪA) — Kiểm mã hoá trên `PersonFinance`
 
 ```bash
-DATABASE_URL=<PersonFinance> DIRECT_URL=<PersonFinance> DATA_ENCRYPTION_KEY=<khoá dev> npm run db:verify-encryption
+DATABASE_URL=<PersonFinance> DIRECT_URL=<PersonFinance> DATA_ENCRYPTION_KEY=<khoá dev mặc định của crypto.util.js> npm run db:verify-encryption
 ```
 
-### 52.5 (VỪA) — phần còn thiếu
+**Xong khi:** dán nguyên dòng tổng kết vào mục Trả lời. Câu chốt khoá đã có ở `docs/progress/Backend.md` và `.env.example`, không phải viết lại.
 
-Script và mã thoát đạt. Ghi vào mục 10: script đã chạy trên CSDL nào, khoá nào (vân tay), lúc nào. Hai vế còn lại đo theo 52.3 và 52.4.
+### 52.5 (VỪA) — Ghi lần di trú
 
----
+Script và mã thoát đã đúng. **Xong khi:** mục Trả lời ghi `migrate_reencrypt_legacy_dev_data.js` đã chạy trên CSDL nào, khoá nào (vân tay, không ghi khoá), lúc nào.
 
-## 5. Phân quyền theo gói (đơn 55)
+### 48.1 (THẤP) — Ai đã xoá ví test của tài khoản 18
 
-### 55.A3 (VỪA) — phần còn thiếu
+13 ví test đã xoá mềm, lần cuối `2026-10-26 03:58:21Z`. **Xong khi:** mục Trả lời ghi tên người + công cụ (`UPDATE` tay? Admin-web? script nào?). Không nhớ thì ghi *"không truy được"*: câu ấy cũng đóng việc.
 
-Mã (`utils/premium.util.js`, job `payment.repository.js:520-525`) và hai câu hợp đồng đạt. Ô trả lời viện `tests/unit/sync.service.test.js`: **tệp không tồn tại**. `isPremiumEffective` có 0 lần xuất hiện trong `tests/` và `scripts/`.
+### 60.3 (THẤP, tuỳ chọn) — Bốn ca test nói nhiều hơn điều chúng chứng minh
 
-**Cách làm:** thêm một ca trên CSDL riêng: tài khoản `Premium` + `premium_expires_at` NULL ⇒ `chuConPremium`, `requireFeature`, `updateHouseholdStatusByOwner`, `/subscription-info` cùng ra Basic; chạy job xong `Type = 'Basic'`.
+Bằng chứng đường thật của gia đình là `verify:household`, không phải các ca này. Chỉ cần làm khi có thời gian.
 
-Phía client: app đang coi hàng ấy là còn Premium, client tự đổi theo câu hợp đồng, không cần backend làm gì thêm.
-
----
-
-## 6. Script test ghi vào dữ liệu thật (đơn 48)
-
-### 48.1 (THẤP) — phần còn thiếu
-
-Hết `scripts/cleanup`, mốc giờ đúng `2026-10-26 03:58:21Z`. Ô ghi *"thao tác quản trị trực tiếp trên Supabase"*: không có tên người, không nói công cụ (`UPDATE` tay? Admin-web? script nào?). Không nhớ thì ghi *"không truy được"*: câu ấy cũng đóng việc.
-
----
-
-## 7. Việc nhỏ phát hiện khi soát PR #174 (đơn 60)
-
-### 60.1 (THẤP) — Khối chặn của hai script `Test/`
-
-`Test/test_can_lam_fixes.js:15-23`, `Test/test_sync_new_schema.js:1-9` chặn URL khớp `supabase\.com`. Câu ấy do tệp việc của client đề nghị và **chưa kiểm** với URL thật (client không đọc `.env`). URL dạng `*.supabase.co` sẽ lọt. **Cách sửa:** đổi thành `/supabase\.(com|co)/i`. **Kiểm lại:** chạy thử với `DATABASE_URL` giả mỗi dạng, script phải dừng trước `require` CSDL.
-
-### 60.2 (THẤP) — Tệp kết quả của `verify:household`
-
-`scripts/verify_household_contract.js` mặc định ghi `src/Backend/kq_household_contract.txt`, không bị ignore: chạy xong có tệp lạ trong `git status`. **Cách sửa:** thêm vào `.gitignore` hoặc mặc định ghi `os.tmpdir()`.
-
-### 60.3 (THẤP) — Nhãn ca test nói quá
-
-Bằng chứng đường thật của 57.6, 58.3, 58.5 là kịch bản 50 / 50, không phải bộ unit. Chính khuôn của `household_group1` ca 1 từng xanh trên lỗi `delete_at`.
-
-| Ca | Vì sao chưa canh được | Cách sửa |
+| Ca trong `tests/unit/household_and_aiops_v2.test.js` | Vì sao chưa canh được | Cách sửa |
 |---|---|---|
-| `household_group1_completion` ca 1 (57.6) | Giả `$transaction` + `updateMany`; Prisma không kiểm tên cột | Bỏ `[Tier 2]`, ghi *"ghim tham số"* |
-| `household_group1_completion` ca 2 (58.3) | Giả `emitHouseholdChanged`, chính hàm cần chứng minh | Chỉ giả tầng socket |
-| `household_and_aiops_v2` ca 3 (58.1) | `operation: 'create'`, khoá `to_idwallet`: app không gửi | Chép payload từ `sync_payload_contract_test.dart` |
-| `household_and_aiops_v2` ca 4 (57.4 + 59.1) | Giả `enforceHouseholdPermission`; không kiểm *không ghi* | Giả ở tầng Prisma, kiểm số lần ghi |
-| `household_and_aiops_v2` ca 5 (58.5) | Đi qua `isAccountQuarantined`, 0 chỗ gọi ngoài test | Gọi `sweepExpiredQuarantines`, `_reconcileAutoLocks` |
-| `household_and_aiops_v2` ca 2 (57.2) | Gọi thật `findActiveMemberByAccount` với id cứng 104, có truy vấn CSDL theo `.env` | Giả hàm ấy |
+| Ca 2 (57.2) | Gọi thật `findActiveMemberByAccount` với id cứng 104, có truy vấn CSDL theo `.env` | Giả hàm ấy |
+| Ca 3 (58.1) | `operation: 'create'`, khoá `to_idwallet`: app không gửi | Chép payload từ `src/Client-app/test/core/sync/sync_payload_contract_test.dart` |
+| Ca 4 (57.4 + 59.1) | Giả `enforceHouseholdPermission`, không kiểm *không ghi* | Giả ở tầng Prisma, kiểm số lần ghi |
+| Ca 5 (58.5) | Đi qua `isAccountQuarantined`, 0 chỗ gọi ngoài test | Gọi `sweepExpiredQuarantines`, `_reconcileAutoLocks` |
+
+## Bước 4. Commit và ghi Trả lời
+
+Commit, push, rồi điền bảng cuối tệp. Chỉ ghi điều có trong diff; việc chưa làm thì ghi *"chưa"*.
 
 ---
 
-## 8. Tài liệu backend cần sửa — gom theo tệp
+## Nội dung bản vá (đối chiếu khi không áp được)
 
-Các tệp dưới là tài liệu **của backend** (client không sửa). Đường dẫn *Mã thật* dưới `src/Client-app/lib/` trừ khi ghi khác. **Cách làm:** mở từng dòng, sửa ngay tại dòng theo cột bên phải (hoặc ghi rõ *"Server lưu / chưa có hiệu lực ở app"*). Tính năng chưa có thì ghi *"kế hoạch"*, đừng đánh `[x]` / *"100%"*.
+**60.4** — `modules/payment/payment.repository.js`: `logger` chỉ khai cục bộ ở `:576`, nên `:345, :354, :374, :380` ném `ReferenceError` khi webhook trùng hoặc đơn không có. Đã chạy xác nhận trên CSDL thật. Đường đơn đã xử lý (`payment.service.js:163-165`) nuốt lỗi bằng `catch (_) {}` nên không ai thấy; ba chỗ gọi không có `catch` (`:175, :218, :260`) thì webhook đua nhau sẽ lỗi thay vì trả 200.
 
-### 8.1 (T1) — `docs/Admin-web/Event-Notification-to-ClientApp.md`
+```js
+// đầu tệp, sau payosClient
+const logger = require('../../core/logger');
+// và xoá dòng `const logger = require('../../core/logger');` ở :576
+```
 
-9 / 20 hàng đã đạt, đã bỏ khỏi bảng. Số dòng là dòng hiện tại.
+Ca mới `2b` trong `tests/unit/payment.repository.test.js` đi đúng nhánh P2002.
 
-| Dòng | Đang nói | Xin sửa theo mã |
-|---|---|---|
-| **67** | **Câu MỚI của PR #174:** *"che thông tin số tài khoản (`transfer_details`)"* | **Sai: mã vẫn phát thô** (`ocr.service.js:146`, nguồn `classify.service.js:325, 328`; `notification.service.js:102` gửi nguyên `data`). Hai tệp ấy không có trong diff. **Chọn một:** che thật `source_account` / `destination_account` trước `eventBus.publish('ocr.completed')` (đọc `maskAccountNumber` trước vì nó gọi `decrypt` đầu vào; client không đọc payload này nên không phải đổi app), hoặc sửa câu cho đúng |
-| 99, 288 | `sync.completed` *"từ thiết bị khác"* | Phát cho mọi máy của tài khoản, cả máy vừa đẩy (`:290` đã đúng) |
-| 320-325 | Mẫu `ocr.duplicate` | Thiếu `data`, `createdAt`; `title` / `message` khác mã (`notification.service.js:116-117, 129-135`) |
-| 102, 347-349 | `user.notification` lưu SQLite + badge | Tiêu đề `:333` đã ghi *"Chưa dùng"*; sửa theo hai chỗ này |
-| 103, 354 | `payment.success` tới phòng tài khoản do webhook | `:356` đã đúng; sửa theo (`payment.service.js:343, 361, 738`) |
-| 105 | *"Đóng popup VietQR"* | `payment.*` là tín hiệu, không popup |
-| 624 | *"đếm ngược tự động thử lại"* | Không toast; chỉ `/sync/push` hẹn lại, sàn 30 s (`core/sync/gui_lo_dong_bo.dart:214`) |
-| 498, 625 | 429: *"dừng lặp request (App không có nhánh riêng cho 429)"* tự mâu thuẫn; *"thông báo người dùng tạm nghỉ"* | App không có nhánh riêng cho 429 |
-| 120 | *"Dialog phong tỏa + đếm ngược"* | Dòng nhắc Trang chủ + toast + câu Đăng nhập + hẹn thử (PR sửa `:121` kế bên, sót dòng này) |
-| 88-109, 605-629 | Bảng 3.1 và ma trận không có `household.*`; ô trả lời nói đã thêm | Thêm `household.changed`, `household.invited` |
-| 42, 113, 453 | *"9 tín hiệu"* | Bảng 3.2 có 8 hàng |
+**T1, mã** — `ocr.completed` phát `transfer_details`, `transaction_info` chứa số tài khoản đầy đủ (`ocr.service.js:146-147`), trong khi tài liệu dòng 67 ghi đã che. Client không đọc payload này nên không phải đổi app. DTO trả về chủ tài khoản giữ nguyên.
 
-Cùng tệp còn nói ngược mã ngoài bảng cũ: `:94` (*In-App Banner*), `:98` + `:283-284` (*Banner cam* cho `account.countdown`, app không nghe), `:117` + `:623` (*Banner* bảo trì), `:119` (*exponential backoff*), `:118` + `:641`, `:193-199` (xử lý `system.maintenance_changed` trong khi `:608` ghi *cố ý bỏ qua*), `:265` (*Toast chúc mừng*: `loiNhan` của hai sự kiện gói là `null`, `realtime_event.dart`).
+```js
+// utils/masking.util.js, thêm và export
+function maskAccountFields(obj, khoa) {
+  if (!obj) return obj ?? null;
+  const ra = { ...obj };
+  for (const k of khoa) {
+    if (ra[k]) ra[k] = maskAccountNumber(String(ra[k]));
+  }
+  return ra;
+}
 
-### 8.3 (T3) — `docs/Functional-Mobile/4_TRU_COT.md`
+// modules/ai/features/ocr/ocr.service.js
+transfer_details: maskAccountFields(classifiedResult.transfer_details, ['source_account', 'destination_account']),
+transaction_info: maskAccountFields(classifiedResult.transaction_info, ['source_account', 'counterpart_account']),
+```
 
-Diff PR chỉ 3 dòng; ô trả lời kể *"bổ sung… cho từng tính năng… OCR ML Kit… seed ngân hàng"*, không có trong diff. Gốc chung: app **không** đọc `scopes` / `scope_config` lẫn `policies` / `downgrade_policy`. Cách sửa gọn: dưới mỗi tính năng thêm một dòng *"App thi hành: …"*; dòng `scope_config` chưa dùng ghi *"Server lưu, chưa có hiệu lực ở app"*.
+**T1, tài liệu** — `docs/Admin-web/Event-Notification-to-ClientApp.md` (số dòng ở `8e3b4e48`):
 
-| Dòng | Đang nói | App thi hành |
-|---|---|---|
-| 599 | PR **xoá mất** `/export-report` | Trả lại: route vẫn có (`core/router/app_router.dart:229`), cùng `/analytics/export` |
-| 74-76, 428 | `READ_ONLY` xem lại dự báo | Thẻ khoá thay cả khối; dự báo tính tại chỗ, không lưu (`features/analytics/presentation/pages/analytics_page.dart:179-185`) |
-| 225-227, 565 | OCR 15 lượt | ML Kit, không đếm lượt |
-| 203-204, 563 | 1 / 5 ảnh, 90 ngày | Không đính ảnh vào giao dịch; Sổ xem mọi kỳ |
-| 236-237, 566 | 20 / 100 | Không trần |
-| 274-275, 569 | 5 / 25 từ khoá | Không trần |
-| 580 | FHS | App không có màn |
-| 529-530, 589 | Tải hoá đơn | Không có; chỉ *Lưu mã QR* |
-| 545-547, 590 | Sao lưu ảnh, về 10 s | 2 s mọi gói, không sao lưu ảnh |
-| 110-112, 556 | `cache_token_days` | Không có; mở lạnh dùng phiên đã lưu rồi `verifySession()` |
-| 491, 586 | MB / MOMO / ZALOPAY, *"4 banks"* | Seed `database/32:196, 260` vẫn VCB / MB / TCB / ACB. **Chọn một:** viết migration sửa seed, hoặc ghi đúng seed + *"Server lưu, không dùng"*. App: MB Bank · MoMo · ZaloPay, không theo gói |
-| 518-519 | `countdown_minutes: 15` | **Chọn một:** migration đổi seed về 10 (`database/32:208, 262, 309`), hoặc ghi *"Server lưu, không dùng"* |
-| 11 | *"lộ trình tương lai"* | Bỏ, trừ khi có quyết định PO |
-
-### 8.6 (T6, THẤP) — phần còn thiếu
-
-Hai tài liệu và `createMany` đạt.
-
-| Chỗ | Cách sửa |
+| Dòng | Sửa thành |
 |---|---|
-| `tests/unit/payos_group3_comprehensive_audit.test.js` ca 2 | Ca giả `recordTransaction` (`:72-81`), tự ném P2002 và tự đếm, nên nhánh `payment.repository.js:373-378` không chạy; ô trả lời *"để kích hoạt nhánh P2002"* không đúng. Gọi `recordTransaction` thật trên CSDL thử hai lần cùng `reference`, đếm một hàng |
-| Cùng tệp `:122, 198, 271, 345, 395, 450, 516` | Bỏ nhãn `[Tier 2]` ở ca giả `paymentRepository` |
-| `payment.repository.js:415-444` | Bỏ nhánh `typeof … === 'function'` chỉ để hợp bản giả (ô tự ghi *"fallback `create` cho mock unit test"*): mã chạy thật không nên mang nhánh của test. Sửa bản giả cho có `createMany` |
+| 42, 113, 453 | *8 tín hiệu* (bảng 3.2 có 8 hàng) |
+| 60 | Bỏ *"Backoff đếm ngược"*: dòng nhắc bảo trì / phong toả + hẹn thử lại, làm mới gói khi bị tắt quyền |
+| 67 | Che số tài khoản ở `transfer_details`, `transaction_info`: chỉ còn 4 số cuối |
+| 94 | Trung tâm thông báo + khay hệ điều hành (luồng `tinHeThong`), không banner |
+| 98, 283-284 | App không nghe `account.countdown`; số ngày từ `countdown` của `/auth/profile` |
+| 99, 288 | `sync.completed` phát cho mọi máy của tài khoản, cả máy vừa đẩy |
+| 102, 347-349 | `user.notification`: chưa dùng, server chưa phát, app không nghe |
+| 103, 354 | `payment.success`: webhook tới `admin_room`, JIT sync tới tài khoản |
+| 105, 383 | `payment.order_expired`: worker tới `admin_room`, JIT sync tới tài khoản; không popup |
+| 117, 623, 640 | Bảo trì: dòng nhắc Trang chủ + toast + câu Đăng nhập, hẹn theo `Retry-After`, không đếm ngược trên màn |
+| 118, 624, 641 | Quá tải: chỉ `/sync/push` hẹn lại, sàn 30 s, không hiện gì |
+| 119, 498, 625 | 429: app không có nhánh riêng |
+| 120 | Phong toả: dòng nhắc Trang chủ + toast + câu Đăng nhập + hẹn thử lại |
+| 193-199 | `system.maintenance_changed`: app cố ý bỏ qua, biết bảo trì qua HTTP 503 |
+| 265 | Nâng / hạ gói: không Toast, chỉ làm mới gói |
+| 320-325 | Mẫu `ocr.duplicate` theo `notification.service.js:116-117, 129-135`: `title`, `message`, `type`, `data`, `createdAt` |
+| Bảng 3.1 + ma trận | Thêm `household.changed`, `household.invited` |
+
+**T3** — `docs/Functional-Mobile/4_TRU_COT.md`: app không đọc `scopes` / `scope_config` lẫn `downgrade_policy`, nên dưới mỗi `scope_config` chưa có hiệu lực thêm một dòng *"App thi hành: …"*:
+
+| Dòng | App thi hành |
+|---|---|
+| 11 | Bỏ *"lộ trình tương lai"*: các loại ví ấy không có trong app |
+| 74-76, 428 | `READ_ONLY` chưa có hiệu lực: thẻ khoá thay cả khối, dự báo tính tại chỗ, không lưu |
+| 110-112, 556 | Không có `cache_token_days`; `offline_login` app không có |
+| 203-204, 563 | Không đính ảnh vào giao dịch; Sổ xem mọi kỳ |
+| 225-229, 565 | ML Kit trên máy, không đếm lượt |
+| 236-237, 566 | Không trần số giao dịch mỗi lần gắn |
+| 274-275, 569 | Không trần số từ khoá |
+| 491, 586 | Seed thật VCB / MB / TCB / ACB, server lưu, không dùng. App: MB Bank, MoMo, ZaloPay, không theo gói |
+| 518-519 | `countdown_minutes` server lưu, không dùng; đơn hết hạn sau 10 phút |
+| 529-530, 589 | Không có tải hoá đơn; chỉ *Lưu mã QR* |
+| 545-549, 590 | Giãn đồng bộ 2 s mọi gói, không sao lưu ảnh |
+| 580 | FHS: app không có màn |
+| 599 | Trả lại `/export-report`, kèm `/analytics/export`; `/ai-chat` khoá trong trang |
+
+**55.A3** — tệp mới `tests/unit/premium_effective.test.js`: `isPremiumEffective` các biên, job hạ cấp quét cả hàng không có hạn.
+
+**T6** — `payment.repository.js:415-444`: bỏ nhánh `typeof … === 'function'`, chỉ giữ `createMany({ skipDuplicates: true })`; bản giả ở `payment.repository.test.js` đổi sang `createMany`. `payos_group3_comprehensive_audit.test.js`: 7 nhãn `[Tier 2]` thành `[Unit: giả paymentRepository]`.
+
+**60.1** — `Test/test_sync_new_schema.js`, `Test/test_can_lam_fixes.js`: `/supabase\.(com|co)/i`.
+
+**60.2** — `scripts/verify_household_contract.js`: mặc định ghi `path.join(require('os').tmpdir(), 'kq_household_contract.txt')`.
+
+**60.3, phần nhãn** — `household_group1_completion.test.js` ca 1, 2: bỏ `[Tier 2]`, ghi rõ *chỉ ghim tham số* / *giả `emitHouseholdChanged`*.
 
 ---
 
-## 10. Trả lời (backend ghi vào đây)
+## Trả lời (backend ghi vào đây)
 
-Mỗi dòng một câu nói đúng việc của mã ấy — commit, tệp, ca test (đường thật). Báo cáo PR #174: `git show 8e3b4e48:docs/superpowers/backend/CAN-LAM/VIEC_BACKEND_CON_LAI.md` mục 10.
+**`chay_kiem_pr174.js`:** … **`verify:household`:** … **Test đơn vị:** …
 
-| Mã | Đã làm (tệp, commit) | Kiểm lại ra gì | Ghi chú |
-|---|---|---|---|
-| 52.4 | | | *(vân tay Render, `/sync/pull` 200)* |
-| T1 | | | |
-| T3 | | | |
-| 52.3 | | | *(dòng tổng kết `db:verify-encryption`)* |
-| 52.5 | | | *(CSDL, vân tay khoá, thời điểm)* |
-| 55.A3 | | | |
-| T6 | | | |
-| 48.1 | | | |
-| 60.1 | | | |
-| 60.2 | | | |
-| 60.3 | | | |
-
----
-
-## 11. Ô trả lời PR #174 không khớp mã (để lần sau tránh)
-
-| Ô | Câu | Thực tế |
+| Mã | Đã làm (tệp, commit) | Kiểm lại ra gì |
 |---|---|---|
-| T1 | *"chuẩn hóa socket `transfer_details` che số tài khoản"* | Không có mã (`ocr.service.js:146`) |
-| T1 | *"cập nhật bảng sự kiện có thêm `household.changed`…"* | Bảng 3.1 và ma trận không có |
-| T1 | *"Đã sửa chính xác 100%"* | 9 / 20 hàng đạt |
-| T3 | *"bổ sung… cho từng tính năng… OCR ML Kit… seed ngân hàng"* | Diff 3 dòng |
-| T6 | *"để kích hoạt nhánh P2002"* | `recordTransaction` bị giả |
-| 55.A3 | `tests/unit/sync.service.test.js` pass | Tệp không tồn tại |
-| 57.7 | `src/Backend/middlewares/rate-limiter.js` | Tệp thật ở `middleware/` |
-| 57.8 | `database/40_household_foundation.sql` | Tệp thật `40_create_household_foundation.sql` |
-| 52.4 | *"Xác nhận tính nhất quán"* | Không có số đo Render |
+| 52.4 | | *(vân tay Render, `/sync/pull` 200)* |
+| 52.3 | | *(dòng tổng kết)* |
+| 52.5 | | *(CSDL, vân tay khoá, thời điểm)* |
+| 48.1 | | |
+| 60.3 | | *(hoặc "chưa")* |
