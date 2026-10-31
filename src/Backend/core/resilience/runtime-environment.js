@@ -23,6 +23,8 @@ function safeReadFile(filePath) {
 function detectRuntimeEnvironment(options = {}) {
   const env = options.env || process.env;
   const isLinux = options.isLinux !== undefined ? options.isLinux : process.platform === 'linux';
+  const readFile = options.fileReader || safeReadFile;
+  const exists = options.fileExists || fs.existsSync;
 
   // 1. Kiểm tra cấu hình tường minh qua SERVER_RUNTIME
   const explicitRuntime = (env.SERVER_RUNTIME || '').toLowerCase();
@@ -68,12 +70,30 @@ function detectRuntimeEnvironment(options = {}) {
     return { mode: 'cloud', provider: 'Kubernetes Pod', isContainer: true };
   }
 
-  // 3. Kiểm tra file hệ thống cgroups / docker container
+  // 3. Tự động kiểm tra file hệ thống container (Docker, Podman, cgroups) trên Linux
   if (isLinux) {
-    const isDocker = fs.existsSync('/.dockerenv');
-    const cgroupContent = safeReadFile('/proc/1/cgroup') || '';
-    if (isDocker || cgroupContent.includes('docker') || cgroupContent.includes('kubepods')) {
+    const isDocker = exists('/.dockerenv');
+    const isPodman = exists('/run/.containerenv');
+    const cgroupContent = readFile('/proc/1/cgroup') || readFile('/proc/self/cgroup') || '';
+    if (
+      isDocker ||
+      isPodman ||
+      cgroupContent.includes('docker') ||
+      cgroupContent.includes('kubepods') ||
+      cgroupContent.includes('containerd') ||
+      cgroupContent.includes('libpod')
+    ) {
       return { mode: 'cloud', provider: 'Docker Container', isContainer: true };
+    }
+
+    // Kiểm tra nếu có giới hạn cgroup v2 (cpu.max khác max hoặc memory.max có hạn ngạch)
+    const cgroup2Cpu = readFile('/sys/fs/cgroup/cpu.max');
+    if (cgroup2Cpu && !cgroup2Cpu.startsWith('max')) {
+      return { mode: 'cloud', provider: 'Container (cgroup v2)', isContainer: true };
+    }
+    const cgroup1Quota = readFile('/sys/fs/cgroup/cpu/cpu.cfs_quota_us') || readFile('/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_quota_us');
+    if (cgroup1Quota && parseInt(cgroup1Quota, 10) > 0) {
+      return { mode: 'cloud', provider: 'Container (cgroup v1)', isContainer: true };
     }
   }
 
@@ -88,6 +108,7 @@ function detectRuntimeEnvironment(options = {}) {
 
 /**
  * Đọc thông số quota tài nguyên phần cứng (CPU & RAM) theo môi trường thực thi
+ * Tự động đọc cgroups v1 / v2 từ nhân Linux mà không phụ thuộc vào cấu hình tĩnh
  * @param {object} [options]
  * @returns {{ mode: string, provider: string, isContainer: boolean, cpuCores: number, ramTotalMb: number, source: string }}
  */
@@ -95,8 +116,9 @@ function getRuntimeHardwareSpecs(options = {}) {
   const env = options.env || process.env;
   const envInfo = detectRuntimeEnvironment(options);
   const isLinux = options.isLinux !== undefined ? options.isLinux : process.platform === 'linux';
+  const readFile = options.fileReader || safeReadFile;
 
-  // 1. Kiểm tra cấu hình ghi đè tường minh từ biến môi trường
+  // 1. Kiểm tra cấu hình ghi đè tường minh từ biến môi trường (nếu người dùng cố tình cấu hình)
   const envCores = parseFloat(env.CLOUD_CPU_CORES);
   const envRam = parseInt(env.CLOUD_RAM_LIMIT_MB, 10);
   if (!isNaN(envCores) && !isNaN(envRam) && envCores > 0 && envRam > 0) {
@@ -108,14 +130,41 @@ function getRuntimeHardwareSpecs(options = {}) {
     };
   }
 
-  // 2. Nếu là môi trường Cloud / Container trên Linux: đọc từ cgroups
+  // 2. Nếu là môi trường Container / Cloud trên Linux: đọc từ cgroups
   if (envInfo.isContainer && isLinux) {
     let cpuCores = null;
     let ramTotalMb = null;
     let source = null;
 
-    // cgroup v2
-    const cgroup2CpuMax = safeReadFile('/sys/fs/cgroup/cpu.max');
+    // Tìm subpath từ /proc/self/cgroup nếu có cấu trúc lồng nhau (nested cgroup)
+    const selfCgroup = readFile('/proc/self/cgroup') || '';
+    let cgroupSubpath = '';
+    const lines = selfCgroup.split('\n');
+    for (const line of lines) {
+      const parts = line.split(':');
+      if (parts.length >= 3 && parts[2] && parts[2] !== '/') {
+        cgroupSubpath = parts[2].trim();
+        break;
+      }
+    }
+
+    // Helper kiểm tra file ở cả root cgroup và subpath
+    const readCgroup = (subDir, fileName) => {
+      if (subDir) {
+        const p1 = `/sys/fs/cgroup/${subDir}/${fileName}`;
+        const v1 = readFile(p1);
+        if (v1) return v1;
+      }
+      if (cgroupSubpath) {
+        const pSub = `/sys/fs/cgroup${cgroupSubpath}/${fileName}`;
+        const vSub = readFile(pSub);
+        if (vSub) return vSub;
+      }
+      return readFile(`/sys/fs/cgroup/${fileName}`);
+    };
+
+    // A. Thử cgroup v2
+    const cgroup2CpuMax = readCgroup('', 'cpu.max');
     if (cgroup2CpuMax) {
       const parts = cgroup2CpuMax.split(/\s+/);
       if (parts[0] !== 'max' && parts.length >= 2) {
@@ -128,19 +177,36 @@ function getRuntimeHardwareSpecs(options = {}) {
       }
     }
 
-    const cgroup2MemMax = safeReadFile('/sys/fs/cgroup/memory.max');
+    // Nếu cpu.max không giới hạn CFS, thử cpu.weight (proportional weight)
+    if (cpuCores === null) {
+      const cgroup2Weight = readCgroup('', 'cpu.weight');
+      if (cgroup2Weight) {
+        const weight = parseInt(cgroup2Weight, 10);
+        if (weight > 0 && weight < 100) {
+          cpuCores = parseFloat((weight / 100).toFixed(2));
+          source = 'cgroup_v2_weight';
+        }
+      }
+    }
+
+    const cgroup2MemMax = readCgroup('', 'memory.max');
     if (cgroup2MemMax && cgroup2MemMax !== 'max') {
       const bytes = parseInt(cgroup2MemMax, 10);
       if (!isNaN(bytes) && bytes > 0 && bytes < 9000000000000000) {
         ramTotalMb = Math.round(bytes / 1024 / 1024);
-        source = 'cgroup_v2';
+        source = source || 'cgroup_v2';
       }
     }
 
-    // cgroup v1 fallback
+    // B. Thử cgroup v1 fallback
     if (cpuCores === null) {
-      const quotaStr = safeReadFile('/sys/fs/cgroup/cpu/cpu.cfs_quota_us');
-      const periodStr = safeReadFile('/sys/fs/cgroup/cpu/cpu.cfs_period_us');
+      const quotaStr =
+        readCgroup('cpu', 'cpu.cfs_quota_us') ||
+        readCgroup('cpu,cpuacct', 'cpu.cfs_quota_us');
+      const periodStr =
+        readCgroup('cpu', 'cpu.cfs_period_us') ||
+        readCgroup('cpu,cpuacct', 'cpu.cfs_period_us');
+
       if (quotaStr && periodStr) {
         const quota = parseInt(quotaStr, 10);
         const period = parseInt(periodStr, 10);
@@ -149,17 +215,42 @@ function getRuntimeHardwareSpecs(options = {}) {
           source = 'cgroup_v1';
         }
       }
+
+      // Nếu CFS quota là -1 (unconstrained), kiểm tra cpu.shares
+      if (cpuCores === null) {
+        const sharesStr =
+          readCgroup('cpu', 'cpu.shares') ||
+          readCgroup('cpu,cpuacct', 'cpu.shares');
+        if (sharesStr) {
+          const shares = parseInt(sharesStr, 10);
+          if (shares > 0 && shares < 1024) {
+            // Chuẩn nhân Linux: 1024 shares = 1 core (ví dụ: 154 shares ~ 0.15 core)
+            cpuCores = parseFloat((shares / 1024).toFixed(2));
+            source = 'cgroup_v1_shares';
+          }
+        }
+      }
     }
 
     if (ramTotalMb === null) {
-      const limitStr = safeReadFile('/sys/fs/cgroup/memory/memory.limit_in_bytes');
+      const limitStr =
+        readCgroup('memory', 'memory.limit_in_bytes') ||
+        readCgroup('memory,memsw', 'memory.limit_in_bytes');
       if (limitStr) {
         const bytes = parseInt(limitStr, 10);
         if (!isNaN(bytes) && bytes > 0 && bytes < 9000000000000000) {
           ramTotalMb = Math.round(bytes / 1024 / 1024);
-          source = 'cgroup_v1';
+          source = source || 'cgroup_v1';
         }
       }
+    }
+
+    // C. Fallback tự động thông minh theo container Cloud
+    // Ví dụ trên Render Free Container: RAM limit luôn là 512 MB và CPU tiêu chuẩn là 0.15 vCPU
+    if (env.RENDER === 'true') {
+      if (ramTotalMb === null) ramTotalMb = 512;
+      if (cpuCores === null) cpuCores = 0.15;
+      source = source || 'render_container_quota';
     }
 
     if (cpuCores !== null || ramTotalMb !== null) {

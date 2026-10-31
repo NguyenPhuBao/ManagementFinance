@@ -23,9 +23,9 @@ const RealtimeStatusBadge = ({ connected: propConnected, className = '' }) => {
       return propConnected ? 'connected' : 'disconnected';
     }
     if (socket) {
-      return socket.connected ? 'connected' : 'connecting';
+      return socket.connected ? 'connected' : (contextConnected ? 'connected' : 'connecting');
     }
-    return contextConnected ? 'connected' : 'connecting';
+    return contextConnected ? 'connected' : 'disconnected';
   });
 
   useEffect(() => {
@@ -41,7 +41,7 @@ const RealtimeStatusBadge = ({ connected: propConnected, className = '' }) => {
     }
 
     // Khởi tạo theo socket hiện tại
-    setInternalStatus(socket.connected ? 'connected' : 'connecting');
+    setInternalStatus(socket.connected ? 'connected' : (contextConnected ? 'connected' : 'connecting'));
 
     const handleConnect = () => setInternalStatus('connected');
     const handleDisconnect = () => setInternalStatus('disconnected');
@@ -66,6 +66,22 @@ const RealtimeStatusBadge = ({ connected: propConnected, className = '' }) => {
       socket.off('error', handleError);
     };
   }, [socket, propConnected, contextConnected]);
+
+  // Timeout guard: Nếu trạng thái 'connecting' kéo dài quá 8 giây mà socket vẫn chưa connect,
+  // tự động chuyển sang 'disconnected' để chống treo vòng xoay vô tận
+  useEffect(() => {
+    let timer = null;
+    if (internalStatus === 'connecting') {
+      timer = setTimeout(() => {
+        if (!socket?.connected) {
+          setInternalStatus('disconnected');
+        }
+      }, 8000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [internalStatus, socket]);
 
   if (internalStatus === 'connected') {
     return (
@@ -103,10 +119,10 @@ const RealtimeStatusBadge = ({ connected: propConnected, className = '' }) => {
       data-testid="realtime-status-badge"
       data-status="disconnected"
       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 font-label-md text-[11px] font-medium border border-rose-200 shadow-2xs transition-all duration-200 select-none ${className}`}
-      title={t('dashboard.recentActivities.disconnectedTooltip', 'Mất kết nối thời gian thực tới máy chủ')}
+      title={t('dashboard.recentActivities.disconnectedTooltip', 'Chế độ thời gian thực đang ngắt kết nối. Dữ liệu sẽ tự động đồng bộ khi kết nối lại.')}
     >
       <span className="relative flex h-2 w-2">
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+        <span className="inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
       </span>
       <span>{t('dashboard.recentActivities.disconnected', 'Mất kết nối')}</span>
     </span>

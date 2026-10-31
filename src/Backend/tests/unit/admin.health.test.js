@@ -51,4 +51,14 @@ describe('getSystemHealth', () => {
     assert.strictEqual(typeof result.loadShedding.shedCount24h, 'number');
     assert.ok(result.loadShedding.shedCount24h >= 0);
   });
+
+  it('should return environment metadata and accurate cpu cores (Tier 2 System Impact)', async () => {
+    const result = await adminService.getSystemHealth();
+    assert.ok(result.environment, 'Should return environment metadata object');
+    assert.strictEqual(typeof result.environment.mode, 'string');
+    assert.strictEqual(typeof result.environment.isContainer, 'boolean');
+    assert.strictEqual(typeof result.environment.provider, 'string');
+    assert.strictEqual(typeof result.cpu.cores, 'number');
+    assert.ok(result.cpu.cores > 0, 'cpu.cores must be a positive number');
+  });
 });

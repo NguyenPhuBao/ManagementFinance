@@ -6,12 +6,15 @@ const { getRuntimeHardwareSpecs } = require('./runtime-environment');
  * SystemHardwareMonitor
  * Đo lường mức tải CPU và dung lượng RAM thực tế của máy tính mà server đang chạy
  * Hỗ trợ nhận diện tự động môi trường Cloud Container (cgroups v1/v2, Quota) vs Bare-metal Host
- * Sử dụng kỹ thuật Delta Ticks đo lường thời gian thực (Real-time CPU Usage)
+ * Trong Container: Đo lường CPU % tiến trình dựa trên Quota phân bổ (chống sai lệch do các tenant khác trên host)
+ * Trên Bare-metal: Đo lường Delta Ticks phần cứng toàn máy
  */
 class SystemHardwareMonitor {
   constructor(options = {}) {
     this.intervalMs = options.intervalMs || 1000;
     this.prevCpus = null;
+    this.prevCpuUsage = null;
+    this.prevCpuTime = null;
     this.currentCpuPercent = 0;
     this.currentRamPercent = 0;
     this.currentRamUsedMb = 0;
@@ -29,6 +32,8 @@ class SystemHardwareMonitor {
     // Lấy mẫu khởi tạo ban đầu
     try {
       this.prevCpus = os.cpus();
+      this.prevCpuUsage = process.cpuUsage();
+      this.prevCpuTime = Date.now();
       this._sampleRam();
     } catch (_) {}
 
@@ -81,34 +86,61 @@ class SystemHardwareMonitor {
     // 1. Đo RAM
     this._sampleRam();
 
-    // 2. Đo CPU theo Delta Ticks tức thời
+    // 2. Đo CPU
     try {
-      const currCpus = os.cpus();
-      if (!this.prevCpus || !currCpus || this.prevCpus.length !== currCpus.length) {
+      const specs = getRuntimeHardwareSpecs();
+
+      if (specs.isContainer) {
+        // Trong môi trường Container (Docker/Render/K8s/Cloud):
+        // /proc/stat là của toàn bộ máy chủ vật lý dùng chung (shared host 8 cores chứa hàng chục container khác)
+        // Đo CPU bằng process.cpuUsage() so với Quota cores phân bổ của container này
+        const now = Date.now();
+        const elapsedMs = Math.max(1, now - (this.prevCpuTime || (now - this.intervalMs)));
+
+        if (this.prevCpuUsage) {
+          const diff = process.cpuUsage(this.prevCpuUsage);
+          const totalProcessMicros = diff.user + diff.system;
+          const cores = specs.cpuCores > 0 ? specs.cpuCores : 1;
+          const availableMicros = elapsedMs * 1000 * cores;
+
+          if (availableMicros > 0) {
+            const pct = Math.round((totalProcessMicros / availableMicros) * 100);
+            this.currentCpuPercent = Math.max(0, Math.min(100, pct));
+          }
+        }
+
+        this.prevCpuUsage = process.cpuUsage();
+        this.prevCpuTime = now;
+      } else {
+        // Trên máy chủ vật lý riêng biệt hoặc máy phát triển cục bộ:
+        // Đo lường tổng thể hệ điều hành theo Delta Ticks của tất cả CPU cores
+        const currCpus = os.cpus();
+        if (!this.prevCpus || !currCpus || this.prevCpus.length !== currCpus.length) {
+          this.prevCpus = currCpus;
+          return;
+        }
+
+        let totalDelta = 0;
+        let idleDelta = 0;
+
+        for (let i = 0; i < currCpus.length; i++) {
+          const prevTimes = this.prevCpus[i].times;
+          const currTimes = currCpus[i].times;
+
+          const prevTotal = Object.values(prevTimes).reduce((a, b) => a + b, 0);
+          const currTotal = Object.values(currTimes).reduce((a, b) => a + b, 0);
+
+          totalDelta += (currTotal - prevTotal);
+          idleDelta += (currTimes.idle - prevTimes.idle);
+        }
+
         this.prevCpus = currCpus;
-        return;
-      }
 
-      let totalDelta = 0;
-      let idleDelta = 0;
-
-      for (let i = 0; i < currCpus.length; i++) {
-        const prevTimes = this.prevCpus[i].times;
-        const currTimes = currCpus[i].times;
-
-        const prevTotal = Object.values(prevTimes).reduce((a, b) => a + b, 0);
-        const currTotal = Object.values(currTimes).reduce((a, b) => a + b, 0);
-
-        totalDelta += (currTotal - prevTotal);
-        idleDelta += (currTimes.idle - prevTimes.idle);
-      }
-
-      this.prevCpus = currCpus;
-
-      if (totalDelta > 0) {
-        const activeDelta = totalDelta - idleDelta;
-        const pct = Math.round((activeDelta / totalDelta) * 100);
-        this.currentCpuPercent = Math.max(0, Math.min(100, pct));
+        if (totalDelta > 0) {
+          const activeDelta = totalDelta - idleDelta;
+          const pct = Math.round((activeDelta / totalDelta) * 100);
+          this.currentCpuPercent = Math.max(0, Math.min(100, pct));
+        }
       }
     } catch (_) {}
   }
