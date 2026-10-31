@@ -10,6 +10,12 @@
 > - **Backend (Node.js/Express/Prisma):** Trích xuất IP, mặt nạ hóa (Masked IP), kiểm tra biến động (Diff Check) và ghi nhận vào PostgreSQL.
 > - **Admin-web (React/Vite):** Hiển thị màn hình Quản lý người dùng, Lịch sử thiết bị, Truy vết kiểm toán và Cảnh báo an ninh AIOps.
 
+
+> 📌 **Ghi chú đối chiếu thực tế với Client-app theo đo đạc 2026-10-30 (Task T2):**
+> - Fallback thiết bị: Client-app không gửi chuỗi `Unknown Device`, Backend tự điền fallback khi vắng header `x-device-name`.
+> - Quản lý CSDL: Luôn tuân thủ cơ chế xóa mềm (Soft-delete), không xóa cứng cascade trên bảng `account`.
+> - Throttle bypass: Cả Login, Register và OTP đều được cấu hình linh hoạt theo hạ tầng rate-limiter.
+
 ---
 
 ## 📌 MỤC LỤC

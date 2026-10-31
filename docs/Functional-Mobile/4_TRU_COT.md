@@ -6,6 +6,16 @@
 > **Phiên bản:** 2.0 — Chuẩn hóa 36 tính năng bám sát 13 Phân hệ chức năng & 48 Màn hình Client-app.  
 > **Cập nhật ngày:** 2026-10-17.
 
+
+> 📌 **Phân định "Server lưu / trả" và "App thi hành hiện nay" (Đo đạc 2026-10-30 - Task T3):**
+> - Phân hệ Ví: App hiện chỉ hỗ trợ `cash`, `bank`, `saving` (CSDL có ràng buộc `chk_wallet_type`). Các loại ví EWallet/Credit/Investment thuộc lộ trình tương lai.
+> - Báo cáo: App hỗ trợ xuất PDF và CSV (tài khoản Basic bị khóa tính năng xuất báo cáo).
+> - Nhắc nhở: App hỗ trợ nhắc ghi chép 1 khung giờ trong ngày (mặc định tắt). Nhắc hóa đơn hỗ trợ các mốc 1, 3, 5, 7 ngày trước hạn cho mọi gói.
+> - Chu kỳ ngân sách & hóa đơn: Cho phép chọn linh hoạt Tuần / Tháng / Quý / Năm trên giao diện.
+> - Sync & Realtime: Đồng bộ debounce 2s trên toàn bộ các gói (`core/sync/sync_engine.dart`).
+> - Thời gian thanh toán VietQR: Đơn hàng hết hạn sau 10 phút (khớp với PayOS VietQR và `payment.repository.js`).
+> - Trụ 3 & Trụ 4: Server hiện lưu trữ và phản hồi đầy đủ cấu hình chính sách, app đang áp dụng các chính sách cốt lõi của Trụ 1 & Trụ 2.
+
 ---
 
 ## 📑 MỤC LỤC

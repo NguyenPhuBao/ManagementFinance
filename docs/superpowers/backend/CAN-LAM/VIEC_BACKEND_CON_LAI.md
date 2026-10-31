@@ -35,18 +35,18 @@
 | 57.5 | `POST /api/households` nhận `maxMembers` / `maxSharedWallets` / `contributionDueDay` từ body | VỪA | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
 | 57.6 | Giải tán không xoá mềm dữ liệu chung, không thu hồi mã mời | VỪA | 1 | ✅ **ĐÃ XONG** (`household.repository.js`) |
 | 57.7 | Mã lỗi API của nhà lệch `docs/Family/01` mục 2.5 + đơn 50 C.3 (tên, HTTP, `_DECLINED` không bao giờ phát) | VỪA | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
-| 52.1 | Log giải mã hỏng chưa có bảng + khoá chính ở 15 / 17 chỗ gọi `decrypt` (gồm `/sync/pull`) | VỪA | 4 | ⏳ *Chưa làm* |
-| 52.3 | Chốt khoá giải mã cho CSDL dev `PersonFinance` và ghi vào tài liệu chạy backend | VỪA | 4 | ⏳ *Chưa làm* |
-| 52.4 | Khoá trên Render — `transaction.Note` đang chứa bản mã của hai khoá, không khoá nào giải hết | VỪA | 4 | ⏳ *Chưa làm* |
-| 52.5 | Dọn ghi chú `enc:` giải hỏng — 3 tài khoản Active không kéo toàn bộ được (`/sync/pull` 500) | VỪA | 4 | ⏳ *Chưa làm* |
+| 52.1 | Log giải mã hỏng chưa có bảng + khoá chính ở 15 / 17 chỗ gọi `decrypt` (gồm `/sync/pull`) | VỪA | 4 | ✅ **ĐÃ XONG** (`sync.repository.js`, `auth.repository.js`, `auth.service.js`) |
+| 52.3 | Chốt khoá giải mã cho CSDL dev `PersonFinance` và ghi vào tài liệu chạy backend | VỪA | 4 | ✅ **ĐÃ XONG** (Khóa `.env` chính thức, `crypto.util.js` auto-load) |
+| 52.4 | Khoá trên Render — `transaction.Note` đang chứa bản mã của hai khoá, không khoá nào giải hết | VỪA | 4 | ✅ **ĐÃ XONG** (`npm run db:verify-encryption` 0 lỗi trên Supabase Cloud) |
+| 52.5 | Dọn ghi chú `enc:` giải hỏng — 3 tài khoản Active không kéo toàn bộ được (`/sync/pull` 500) | VỪA | 4 | ✅ **ĐÃ XONG** (`migrate_reencrypt_legacy_dev_data.js` 0 lỗi) |
 | 55.A3 | Premium không có `premium_expires_at` vẫn mang hai nghĩa — `chuConPremium` coi là Premium | VỪA | 5 | ✅ **ĐÃ XONG** (`sync.service.js`) |
-| 49.F(1) | Tệp `database/33` viết sai hoa thường tên cột (`"status"` / `"update_at"` → `"Status"` / `"Update_at"`) | VỪA | 7 | ⏳ *Chưa làm* |
-| T1 | `docs/Admin-web/Event-Notification-to-ClientApp.md` còn tả sai app (bảng 8.1) | VỪA | 8.1 | ⏳ *Chưa làm* |
-| T2 | `docs/Admin-web/IP-Device-ClientApp.md` còn ba chỗ (bảng 8.2) | VỪA | 8.2 | ⏳ *Chưa làm* |
-| T3 | `docs/Functional-Mobile/4_TRU_COT.md` còn tả app làm điều nó không làm (bảng 8.3) | VỪA | 8.3 | ⏳ *Chưa làm* |
+| 49.F(1) | Tệp `database/33` viết sai hoa thường tên cột (`"status"` / `"update_at"` → `"Status"` / `"Update_at"`) | VỪA | 7 | ✅ **ĐÃ XONG** (`database/33_*.sql`) |
+| T1 | `docs/Admin-web/Event-Notification-to-ClientApp.md` còn tả sai app (bảng 8.1) | VỪA | 8.1 | ✅ **ĐÃ XONG** (`Event-Notification-to-ClientApp.md`) |
+| T2 | `docs/Admin-web/IP-Device-ClientApp.md` còn ba chỗ (bảng 8.2) | VỪA | 8.2 | ✅ **ĐÃ XONG** (`IP-Device-ClientApp.md`) |
+| T3 | `docs/Functional-Mobile/4_TRU_COT.md` còn tả app làm điều nó không làm (bảng 8.3) | VỪA | 8.3 | ✅ **ĐÃ XONG** (`4_TRU_COT.md`) |
 | 58.6 | Gom lỗi nhỏ do PR #170 (`chuConPremium` nuốt lỗi CSDL, thứ tự mã, migration 41 `DO UPDATE`, script test, `force_logout` khi khớp 0 hàng…) | THẤP | 1 (vế AIOps ở 2) | ✅ **ĐÃ XONG** (DB, Sync, AIOps) |
 | 57.8 | Tám chỗ nhỏ của API nhà (lọc thành viên khi mời email, tên người mời, khoá hàng mời, giới hạn gọi, trạng thái lời mời, độ dài email…) | THẤP | 1 | ✅ **ĐÃ XONG** (`household.service.js`, `rate-limiter.js`) |
-| 48.1 | Ghi đúng: ai / CSDL nào / lúc nào đã dọn dữ liệu test của tài khoản 18 | THẤP | 6 | ⏳ *Chưa làm* |
+| 48.1 | Ghi đúng: ai / CSDL nào / lúc nào đã dọn dữ liệu test của tài khoản 18 | THẤP | 6 | ✅ **ĐÃ XONG** (Bảng Mục 10) |
 
 ---
 
@@ -506,8 +506,8 @@ Mỗi dòng một câu nói đúng việc của mã ấy — commit, tệp, ca t
 | 52.4 | scripts/verify_encryption_health.js, package.json | npm run db:verify-encryption (exit 0) | Xác nhận DATA_ENCRYPTION_KEY trên Supabase/Render giải mã thành công 100% cột nhạy cảm (0 lỗi) |
 | 52.5 | scripts/migrate_reencrypt_legacy_dev_data.js | db:verify-encryption (28/28 trường an toàn) | Re-encrypt sạch 19 hàng transaction và 3 hàng user phone về khóa .env; số hàng hỏng về 0; loại bỏ isEncrypted bypass |
 | 55.A3 | modules/sync/sync.service.js | Unit test suite | Tài khoản Premium thiếu premium_expires_at rơi về Basic |
-| 48.1 | | | |
-| 49.F(1) | | | |
-| T1 | | | |
-| T2 | | | |
-| T3 | | | |
+| 48.1 | scripts/cleanup, Supabase Cloud | CSDL thật kiểm tra 0 ví test | Tài khoản 18 (test) đã được dọn sạch ví test ("Ví Test Note" đã xóa mềm Delete_at != null, 0 ví test sống) bởi Lead FullStack ngày 28/10/2026 trên Supabase Cloud; các script test hiện tại đã được cô lập tự sinh tài khoản ngẫu nhiên |
+| 49.F(1) | database/33_add_admin_pin_and_audit_action_and_cleanup_test_data.sql | File review & test DDL | Sửa tên cột định danh có nháy "status" / "update_at" thành "Status" / "Update_at" trên bảng refreshtoken, user, account |
+| T1 | docs/Admin-web/Event-Notification-to-ClientApp.md | Doc review | Bổ sung banner đối chiếu đồng bộ với Client-app: SQLite NhanTinHeThong, auth/profile countdown, Retry-After, silent sync |
+| T2 | docs/Admin-web/IP-Device-ClientApp.md | Doc review | Bổ sung banner chuẩn hóa: Backend tự điền fallback Unknown Device, tuân thủ Soft-delete, throttle bypass cho auth endpoints |
+| T3 | docs/Functional-Mobile/4_TRU_COT.md | Doc review | Bổ sung banner phân định "Server lưu / trả" và "App thi hành hiện nay": Phân hệ ví cash/bank/saving, xuất PDF/CSV, 1 giờ nhắc nhở, VietQR 10 phút |
