@@ -3706,12 +3706,19 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 
 ---
 
-## 16. Quy Chuẩn Kiểm Thử 2 Tầng Bắt Buộc (2-Tier Testing Architecture)
+## 16. Quy Chuẩn Kiểm Thử Spec-Driven, Test-First & Kiểm Thử 2 Tầng (Rule 11)
 
-> **Cập nhật:** 2026-10-08  
+> **Cập nhật:** 2026-10-31  
 > **Nguồn sự thật:** `docs/Rule_Project/testing-guidelines.md` và `.agents/AGENTS.md` (Rule 11)  
 > **Phạm vi áp dụng:** Mọi bài test trên cả 3 module (`src/Backend`, `src/Admin-web`, `src/Client-app`).
 
+### 16.1. Bốn Nguyên Tắc Kiểm Thử Cốt Lõi (Spec-Driven Test-First)
+1. **Test dựa vào đặc tả nghiệp vụ 100%:** Mọi bài test bắt buộc phải phản ánh đúng tiêu chí chấp thuận (Acceptance Criteria) và kịch bản nghiệp vụ do PO / Lead BA đặc tả. Tuyệt đối không viết test hình thức.
+2. **Viết Test TRƯỚC KHI hiện thực Code (Test-First / Red Phase):** Nghiêm cấm viết code trước rồi mới viết test sau. Bắt buộc viết test trước mô tả đúng kết quả mong đợi (chạy FAIL / RED khi chưa có code) để làm khung định hướng cho code.
+3. **Sau khi hiện thực Code mới chạy Test kiểm chứng (Verification / Green Phase):** Hiện thực lượng code vừa đủ để thỏa mãn tiêu chí kiểm thử. Sau khi code xong, chạy test kiểm chứng: code đạt khi test chuyển sang PASS / GREEN cho cả 2 Tầng.
+4. **Cập nhật Test TRƯỚC KHI cập nhật Code khi nghiệp vụ thay đổi:** Khi có bất kỳ thay đổi logic/nghiệp vụ nào, BẮT BUỘC cập nhật đặc tả $\rightarrow$ cập nhật bản test trước (chạy FAIL) $\rightarrow$ sau đó mới cập nhật mã nguồn (chuyển sang PASS). CẤM TUYỆT ĐỐI sửa code trước rồi sửa test theo code.
+
+### 16.2. Kiến Trúc Kiểm Thử 2 Tầng Bắt Buộc (2-Tier Testing)
 Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao quát 2 tầng:
 1. **Tầng 1 — Hiển thị & Thao tác tại Giao diện:** Kiểm tra render đầy đủ components/controls, xử lý đúng tương tác của người dùng mà không bị crash hay throw unhandled exception.
 2. **Tầng 2 — Hoạt động Thực tế & Tác động Hệ thống:** Kiểm tra tính năng thực sự hoạt động và tạo ra tác động đo lường được (Database persistence, Root DOM attributes, Socket events, Web Audio API, Authorization enforcement, Toast timer tự đóng).
