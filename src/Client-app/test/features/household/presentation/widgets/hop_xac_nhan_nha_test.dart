@@ -80,4 +80,19 @@ void main() {
     await t.pumpAndSettle();
     expect(t.takeException(), isNull);
   });
+
+  testWidgets('hộp gõ tên: tên 100 ký tự + bàn phím mở ở 360 dp không tràn, ô nhập còn thấy', (t) async {
+    dat360(t, banPhim: true);
+    late BuildContext ctx;
+    await t.pumpWidget(bocTrangNha(Builder(builder: (c) {
+      ctx = c;
+      return const Scaffold();
+    })));
+    hoiGiaiTan(ctx, 'Nhà ${'a' * 96}');
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(FilledButton, 'Tiếp tục'));
+    await t.pumpAndSettle();
+    expect(find.byType(TextField), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
 }

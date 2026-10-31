@@ -65,7 +65,8 @@ class NhaCubit extends Cubit<NhaState> {
       return true;
     } catch (e) {
       final loai = loaiLoiNhaCua(e);
-      _bao.add(loai == LoaiLoiNha.tinhNangKhongMo && cauKhiTatQuyen != null ? cauKhiTatQuyen : cauLoiNha(loai));
+      final cau = loai == LoaiLoiNha.tinhNangKhongMo && cauKhiTatQuyen != null ? cauKhiTatQuyen : cauLoiNha(loai);
+      if (!_bao.isClosed) _bao.add(cau);
       return false;
     } finally {
       if (!isClosed) emit(state.copyWith(dangXuLy: false));

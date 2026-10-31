@@ -1,3 +1,8 @@
+import 'dart:async';
+
+import 'package:flowmoney/features/household/data/models/nha_cua_toi.dart';
+import 'package:flowmoney/features/household/data/nha_store.dart';
+import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
 import 'package:flowmoney/features/household/domain/vai_nha.dart';
 import 'package:flowmoney/features/household/presentation/bloc/nha_cubit.dart';
@@ -86,4 +91,43 @@ void main() {
     await f1;
     expect(api.goi.where((g) => g == 'roiNha'), hasLength(1));
   });
+
+  test('đóng cubit giữa chừng rồi API hỏng: trả false, không ném StateError', () async {
+    final api = HouseholdApiGia()..cuaToiJson = nhaJson();
+    final repo = await repoNhaThu(api);
+    final c = NhaCubit(repo);
+    api.treo = Completer<void>();
+    final f = c.giaiTan();
+    await c.close();
+    api.loi = loiServer(500, 'HOUSEHOLD_ERROR');
+    api.treo!.complete();
+    expect(await f, isFalse);
+  });
+
+  test('daNap chờ kho: trước khi kho trả lời thì chưa nạp, sau đó đúng nhà từ kho', () async {
+    final kho = _KhoTreo();
+    final repo = NhaRepositoryImpl(api: HouseholdApiGia(), kho: kho);
+    addTearDown(repo.dispose);
+    unawaited(repo.datTaiKhoan(18));
+    final c = NhaCubit(repo);
+    addTearDown(c.close);
+    final xong = c.moTrang();
+    await Future<void>.delayed(Duration.zero);
+    expect(c.state.daNap, isFalse);
+    expect(c.state.nha.coNha, isFalse);
+    kho.cho.complete(nhaCuaToiTuJson(nhaJson(), nhanLuc: DateTime(2026, 11, 1)));
+    await xong;
+    expect(c.state.daNap, isTrue);
+    expect(c.state.nha.coNha, isTrue);
+  });
+}
+
+class _KhoTreo implements NhaStore {
+  final cho = Completer<NhaCuaToi?>();
+
+  @override
+  Future<NhaCuaToi?> doc(int idaccount) => cho.future;
+
+  @override
+  Future<void> ghi(int idaccount, NhaCuaToi trangThai) async {}
 }
