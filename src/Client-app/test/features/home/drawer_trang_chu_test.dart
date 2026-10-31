@@ -81,6 +81,7 @@ void main() {
       '/goals': 'Mục tiêu tiết kiệm',
       '/budget': 'Ngân sách',
       '/bills': 'Hoá đơn',
+      '/nha': 'Nhà mình',
       '/categories': 'Quản lý danh mục',
       '/export-report': 'Xuất báo cáo',
       '/ai-chat': 'Trợ lý AI',
@@ -102,12 +103,13 @@ void main() {
     }
   });
 
-  test('drawer còn đúng bảy mục, giữ nguyên thứ tự đã chốt', () {
+  test('drawer còn đúng tám mục, giữ nguyên thứ tự đã chốt', () {
     expect(kMucDrawer.map((m) => m.nhan).toList(), [
       'Quản lý ví',
       'Mục tiêu tiết kiệm',
       'Ngân sách',
       'Hóa đơn & Dịch vụ',
+      'Nhà mình',
       'Danh mục',
       'Xuất báo cáo',
       'Trợ lý AI',
