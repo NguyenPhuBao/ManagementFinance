@@ -242,7 +242,7 @@ void main() {
       expect(doi.map((d) => (d.tu, d.den)), [(12, null)]);
     });
 
-    test('tạo mã / danh sách mã (mọi trạng thái, conHieuLuc để lọc) / xem trước đọc model', () async {
+    test('tạo mã / danh sách mã (mọi trạng thái, conHieuLucLuc để lọc) / xem trước đọc model', () async {
       final m = await repo.taoMaMoi(VaiNha.thanhVien);
       expect((m.ma, m.vai), ('ABCD2345', VaiNha.thanhVien));
       api.dsMaMoiJson = const [
@@ -251,8 +251,8 @@ void main() {
         {'role': 'Member'},
       ];
       final ds = await repo.dsMaMoi();
-      expect(ds.map((m) => (m.ma, m.conHieuLuc)), [('ABCD2345', true), ('EMAIL123', false)],
-          reason: 'phần tử không mã bị bỏ; #4 trả cả mã chết — repository giữ, màn lọc conHieuLuc');
+      expect(ds.map((m) => (m.ma, m.conHieuLucLuc(now))), [('ABCD2345', true), ('EMAIL123', false)],
+          reason: 'phần tử không mã bị bỏ; #4 trả cả mã chết — repository giữ, màn lọc conHieuLucLuc');
       final x = await repo.xemTruoc('ABCD2345');
       expect(x.tenNha, 'Nhà An – Bình');
       expect(api.goi, ['taoMaMoi:Member', 'dsMaMoi', 'xemTruoc:ABCD2345']);

@@ -52,7 +52,7 @@ abstract class NhaRepository {
   Future<void> taoNha(String ten);
   Future<MaMoiEntity> taoMaMoi(VaiNha vai);
 
-  /// Mọi mã / lời mời #4 trả, kể cả đã hết hiệu lực — nơi gọi lọc `conHieuLuc`.
+  /// Mọi mã / lời mời #4 trả, kể cả đã hết hiệu lực — nơi gọi lọc `conHieuLucLuc`.
   Future<List<MaMoiEntity>> dsMaMoi();
   Future<void> huyMaMoi(String ma);
   Future<XemTruocLoiMoi> xemTruoc(String ma);

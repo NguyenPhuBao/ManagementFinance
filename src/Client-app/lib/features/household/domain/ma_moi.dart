@@ -25,3 +25,14 @@ TrangThaiLoiMoi trangThaiLoiMoiTuServer(String? s) => switch (s) {
       'Expired' => TrangThaiLoiMoi.hetHan,
       _ => TrangThaiLoiMoi.hetHan,
     };
+
+/// `hetHan` `null` là server không nói → coi như còn; đúng mốc là đã hết.
+bool maMoiConHan(DateTime? hetHan, DateTime now) => hetHan == null || hetHan.isAfter(now);
+
+String nhanTrangThaiLoiMoi(TrangThaiLoiMoi t) => switch (t) {
+      TrangThaiLoiMoi.dangCho => 'Đang chờ',
+      TrangThaiLoiMoi.daTuChoi => 'Đã từ chối',
+      TrangThaiLoiMoi.daHuy => 'Đã huỷ',
+      TrangThaiLoiMoi.daDung => 'Đã dùng',
+      TrangThaiLoiMoi.hetHan => 'Hết hạn',
+    };

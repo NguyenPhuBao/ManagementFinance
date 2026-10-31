@@ -7,7 +7,8 @@ void main() {
   test('mã mời (đơn 50 C #3/#4): hình dạng cũ không có status → đang chờ, còn hiệu lực', () {
     final m = maMoiTuJson(const {'code': 'ABCD2345', 'role': 'Viewer', 'expiresAt': '2026-10-26T08:00:00.000Z'})!;
     expect((m.ma, m.vai, m.hetHan), ('ABCD2345', VaiNha.chiXem, DateTime.utc(2026, 10, 26, 8)));
-    expect((m.email, m.taoLuc, m.trangThai, m.conHieuLuc), (null, null, TrangThaiLoiMoi.dangCho, true));
+    expect((m.email, m.taoLuc, m.trangThai, m.conHieuLucLuc(DateTime.utc(2026, 10, 25))),
+        (null, null, TrangThaiLoiMoi.dangCho, true));
     expect(maMoiTuJson(const {'role': 'Member'}), isNull, reason: 'không mã thì không có gì để chia sẻ');
   });
 
@@ -23,11 +24,37 @@ void main() {
     expect(m.email, 'an@x.com');
     expect(m.taoLuc, DateTime.utc(2026, 10, 25, 8));
     expect(m.trangThai, TrangThaiLoiMoi.daHuy);
-    expect(m.conHieuLuc, isFalse,
+    expect(m.conHieuLucLuc(DateTime.utc(2026, 10, 26)), isFalse,
         reason:
             '#4 trả cả lời mời email đã huỷ / dùng / từ chối / hết hạn 7 ngày (đơn 57.8.5) — coi là còn hiệu lực thì danh '
             'sách mã có nút Huỷ trỏ vào mã chết');
-    expect(maMoiTuJson(const {'code': 'X', 'status': 'Pending'})!.conHieuLuc, isTrue);
+    expect(maMoiTuJson(const {'code': 'X', 'status': 'Pending'})!.conHieuLucLuc(DateTime.utc(2026, 10, 26)), isTrue);
+  });
+
+  group('G113 nợ 8: hiệu lực xét cả giờ', () {
+    final now = DateTime.utc(2026, 11, 1, 8);
+    MaMoiEntity m({TrangThaiLoiMoi t = TrangThaiLoiMoi.dangCho, DateTime? han, String? email}) =>
+        MaMoiEntity(ma: 'ABCD2345', vai: VaiNha.thanhVien, trangThai: t, hetHan: han, email: email);
+
+    test('Pending mà quá hạn trên máy → hết hạn, không còn hiệu lực', () {
+      final q = m(han: now.subtract(const Duration(minutes: 1)));
+      expect(q.conHieuLucLuc(now), isFalse, reason: 'nút Huỷ / phép đếm chỗ không được tính mã đã chết');
+      expect(q.trangThaiLuc(now), TrangThaiLoiMoi.hetHan);
+      expect(m(han: now.add(const Duration(minutes: 1))).conHieuLucLuc(now), isTrue);
+    });
+
+    test('dongLoiMoiHien: mã thường chỉ khi còn hiệu lực; email ẩn đã dùng / đã huỷ (01 mục 2.1)', () {
+      final ds = [
+        m(), // mã thường đang chờ — hiện
+        m(han: now.subtract(const Duration(days: 1))), // mã thường hết hạn — ẩn
+        m(email: 'a@x.vn'), // email đang chờ — hiện
+        m(email: 'b@x.vn', t: TrangThaiLoiMoi.daTuChoi), // hiện
+        m(email: 'c@x.vn', han: now.subtract(const Duration(days: 1))), // hiện, nhãn Hết hạn
+        m(email: 'd@x.vn', t: TrangThaiLoiMoi.daDung), // ẩn
+        m(email: 'e@x.vn', t: TrangThaiLoiMoi.daHuy), // ẩn
+      ];
+      expect(dongLoiMoiHien(ds, now).map((x) => x.email), [null, 'a@x.vn', 'b@x.vn', 'c@x.vn']);
+    });
   });
 
   test('lời mời gửi tới tôi (#14 — 01 mục 2.4; server hiện KHÔNG trả memberCount / maxMembers, đơn 57.8.6)', () {

@@ -34,4 +34,19 @@ void main() {
     expect(trangThaiLoiMoiTuServer('Cancelled'), TrangThaiLoiMoi.hetHan,
         reason: 'trạng thái lạ đọc là CÒN HIỆU LỰC thì nút Huỷ trỏ vào một mã server đã bỏ — quyền ít nhất');
   });
+
+  test('maMoiConHan: không có hạn là còn; đúng mốc là hết', () {
+    final now = DateTime.utc(2026, 11, 1);
+    expect(maMoiConHan(null, now), isTrue);
+    expect(maMoiConHan(now.add(const Duration(seconds: 1)), now), isTrue);
+    expect(maMoiConHan(now, now), isFalse);
+  });
+
+  test('nhanTrangThaiLoiMoi: mỗi trạng thái một nhãn', () {
+    final nhan = TrangThaiLoiMoi.values.map(nhanTrangThaiLoiMoi).toList();
+    expect(nhan.toSet(), hasLength(nhan.length));
+    expect(nhanTrangThaiLoiMoi(TrangThaiLoiMoi.dangCho), 'Đang chờ');
+    expect(nhanTrangThaiLoiMoi(TrangThaiLoiMoi.daTuChoi), 'Đã từ chối');
+    expect(nhanTrangThaiLoiMoi(TrangThaiLoiMoi.hetHan), 'Hết hạn');
+  });
 }
