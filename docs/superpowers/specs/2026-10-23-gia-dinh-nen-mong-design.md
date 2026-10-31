@@ -413,7 +413,7 @@ Stitch tự thêm các chi tiết dưới đây; app bám bố cục của màn,
   cho phần 2a–3 trên màn nào (nút không làm gì trái quét 10).
 - **Có nhà:** Chủ thấy *Mời thành viên* + *Quản lý thành viên*; Thành viên / Chỉ xem thấy *Rời nhà*. Nhà `ReadOnly`: dải vàng *"Nhà đang ở chế độ
   chỉ xem — chủ nhà cần gia hạn Premium"*, *Mời* khoá theo `duocLamViecNha(taoMa)`, vẫn đổi vai / chuyển chủ / giải tán / rời được.
-- **Thẻ *Lời mời đang chờ*** hiện ở cả hai trạng thái; đang ở nhà ⇒ *Chấp nhận* khoá kèm *"Rời nhà hiện tại trước"*; *Từ chối* luôn bấm được.
+- **Thẻ *Lời mời đang chờ*** hiện ở cả hai trạng thái; đang ở nhà ⇒ *Chấp nhận* khoá kèm *"Rời nhà hiện tại trước"*; *Từ chối* luôn bấm được. 🔄 2026-11-01: **Chủ nhà** thấy *"Chuyển quyền chủ nhà hoặc giải tán trước."* (`cauLoiNha(chuPhaiChuyen)`), vì Chủ không rời được; câu *"Rời nhà…"* chỉ dành cho Thành viên / Chỉ xem. Khác `01` mục 2.1; mục này thắng.
 - **Thông báo:** loại `loiMoiNha`, nhóm mới `NotificationGroup.giaDinh`, mặc định bật, hàng trong Cài đặt thông báo cùng khuôn các nhóm khác;
   khoá `loiMoiNha:<code>`; deeplink `/nha`; câu *"{người mời} mời bạn vào nhà {tên nhà}"*.
 - **Đang xem màn của Chủ mà mất vai / bị mời ra / nhà giải tán** (sự kiện từ máy khác): `/nha/moi`, `/nha/thanh-vien` tự về `/nha` kèm `baoNhanh`.
