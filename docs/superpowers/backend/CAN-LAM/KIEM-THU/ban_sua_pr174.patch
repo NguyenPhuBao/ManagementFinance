@@ -1,0 +1,703 @@
+diff --git a/Test/test_can_lam_fixes.js b/Test/test_can_lam_fixes.js
+index bd2e9f6..ec79a74 100644
+--- a/Test/test_can_lam_fixes.js
++++ b/Test/test_can_lam_fixes.js
+@@ -17,7 +17,7 @@ try {
+ } catch (e) {
+   require('../src/Backend/node_modules/dotenv').config({ path: require('path').resolve(__dirname, '../src/Backend/.env') });
+ }
+-if (/supabase\.com/i.test(process.env.DATABASE_URL || '')) {
++if (/supabase\.(com|co)/i.test(process.env.DATABASE_URL || '')) {
+   console.error('Script này ghi dữ liệu: từ chối chạy trên Supabase dùng chung.');
+   process.exit(1);
+ }
+diff --git a/Test/test_sync_new_schema.js b/Test/test_sync_new_schema.js
+index 1dbb49c..2359586 100644
+--- a/Test/test_sync_new_schema.js
++++ b/Test/test_sync_new_schema.js
+@@ -3,7 +3,7 @@ try {
+ } catch (e) {
+   require('../src/Backend/node_modules/dotenv').config({ path: require('path').resolve(__dirname, '../src/Backend/.env') });
+ }
+-if (/supabase\.com/i.test(process.env.DATABASE_URL || '')) {
++if (/supabase\.(com|co)/i.test(process.env.DATABASE_URL || '')) {
+   console.error('Script này ghi dữ liệu: từ chối chạy trên Supabase dùng chung.');
+   process.exit(1);
+ }
+diff --git a/docs/Admin-web/Event-Notification-to-ClientApp.md b/docs/Admin-web/Event-Notification-to-ClientApp.md
+index 9454f80..6c18899 100644
+--- a/docs/Admin-web/Event-Notification-to-ClientApp.md
++++ b/docs/Admin-web/Event-Notification-to-ClientApp.md
+@@ -39,7 +39,7 @@
+ 2. [Đặc Tả Thu Thập Thông Tin Thiết Bị & IP Người Dùng](#2-đặc-tả-thu-thập-thông-tin-thiết-bị--ip-người-dùng)
+ 3. [Bảng Tổng Hợp Toàn Bộ Các Sự Kiện & Tín Hiệu](#3-bảng-tổng-hợp-toàn-bộ-các-sự-kiện--tín-hiệu)
+ 4. [Phần I: Đặc Tả Chi Tiết Toàn Bộ Sự Kiện Kênh Thời Gian Thực Cho Client-App](#4-phần-i-đặc-tả-chi-tiết-toàn-bộ-sự-kiện-kênh-thời-gian-thực-cho-client-app)
+-5. [Phần II: Đặc Tả Chi Tiết 9 Tín Hiệu Chốt Chặn HTTP/API & Socket Handshake](#5-phần-ii-đặc-tả-chi-tiết-9-tín-hiệu-chốt-chặn-httpapi--socket-handshake)
++5. [Phần II: Đặc Tả Chi Tiết 8 Tín Hiệu Chốt Chặn HTTP/API & Socket Handshake](#5-phần-ii-đặc-tả-chi-tiết-8-tín-hiệu-chốt-chặn-httpapi--socket-handshake)
+ 6. [Phần III: Phân Định Các Sự Kiện Dành Riêng Cho Quản Trị Viên (Admin-Web Only)](#6-phần-iii-phân-định-các-sự-kiện-dành-riêng-cho-quản-trị-viên-admin-web-only)
+ 7. [Phần IV: Ma Trận Đối Chiếu Hiện Trạng Phía Client-App](#7-phần-iv-ma-trận-đối-chiếu-hiện-trạng-phía-client-app)
+ 8. [Phần V: Checklist & Hướng Dẫn Thực Thi Cho Dev Client-App (Flutter)](#8-phần-v-checklist--hướng-dẫn-thực-thi-cho-dev-client-app-flutter)
+@@ -57,14 +57,14 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+ 2. **Kênh Chốt Chặn Yêu Cầu (Pull/Request via REST API / Dio):**
+    - Hoạt động khi Client-app chủ động gọi API (đồng bộ dữ liệu, xác thực, lấy thông tin gói, bóc tách OCR, AI chat...).
+    - Các Middleware bảo vệ tại Backend (Maintenance, Load Shedding, Retry Guard, AIOps Firewall, Feature Gate, Auth) đóng vai trò là "chốt chặn bảo vệ cuối cùng", trả về mã HTTP kèm JSON DTO chuẩn hóa.
+-   - Client-app bắt các mã này qua Dio Interceptor để có phản ứng phù hợp (hiển thị thông báo bảo trì/dòng nhắc hẹn thử lại, Mời nâng cấp gói, Backoff đếm ngược...).
++   - Client-app bắt các mã này qua Dio Interceptor để có phản ứng phù hợp (dòng nhắc bảo trì / phong toả + hẹn thử lại, làm mới gói khi bị tắt quyền).
+ * **Khả Năng Xử Lý Idempotent & Trùng Lặp Sự Kiện:**
+   - Một sự kiện Socket.IO có thể được đẩy tới **hai lần** qua kênh Redis pub/sub (`event-bus.js`), Client-app đã được thiết kế sẵn khả năng chịu tải và xử lý idempotent (không thực hiện đúp hành động).
+ 
+ ### 1.2. Các Nguyên Tắc Bắt Buộc (Invariant Rules)
+ * **Contract-First & Zero-Guesswork:** Tuyệt đối không suy đoán tên sự kiện hay payload. App đọc payload dạng hộp đen trừ `account.force_logout` và `system.broadcast`.
+ * **Bảo Vệ Dữ Liệu Riêng Tư (Data Security & Nghị định 13/2023/NĐ-CP):** 
+-  - Socket events gửi tới người dùng che thông tin số tài khoản (`transfer_details`), mật khẩu, mã OTP, số dư thô.
++  - Socket events gửi tới người dùng che số tài khoản (`transfer_details`, `transaction_info`: chỉ còn 4 số cuối), không mang mật khẩu, mã OTP, số dư thô.
+   - Sự kiện cưỡng chế xóa tài khoản (`ACCOUNT_DELETED`): Client-app đăng xuất và hiển thị hộp thoại thông báo lý do, bảo lưu SQLite trên máy (tránh mất dữ liệu chưa đồng bộ; dọn dẹp khi tài khoản khác đăng nhập).
+ * **Phân Biệt "Đánh Thức Đồng Bộ" và "Sự Kiện Thông Điệp":**
+   - Không phải sự kiện nào cũng kích hoạt `syncNow()`. Các sự kiện như nâng cấp gói, cảnh báo bảo trì, thông báo broadcast chỉ cập nhật UI / Local Storage, không ép chạy full-sync tránh nghẽn mạng và tốn pin thiết bị.
+@@ -91,33 +91,35 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+ |:---:|---|:---:|---|---|:---:|
+ | **1** | `account.force_logout` / `force_logout` | `account_<id>` | Admin Khóa / Xóa tài khoản | Cưỡng chế đăng xuất tức thì, xóa session | 🚨 Khẩn cấp |
+ | **2** | `system.maintenance_changed` | Toàn hệ thống (`io.emit`) | Admin Bật/Tắt bảo trì (Khẩn cấp / Định kỳ) | Mở/đóng Màn hình Bảo trì toàn cục | 🚨 Khẩn cấp |
+-| **3** | `system.broadcast` | Toàn hệ thống (`io.emit`) | Admin Phát thông báo hệ thống | In-App Banner, lưu SQLite notification | ⚠️ Cao |
++| **3** | `system.broadcast` | Toàn hệ thống (`io.emit`) | Admin Phát thông báo hệ thống | Trung tâm thông báo + khay hệ điều hành (luồng riêng `tinHeThong`) | ⚠️ Cao |
+ | **4** | `account.permissions_updated` | Toàn hệ thống (`io.emit`) | Admin Lưu ma trận phân quyền | Cập nhật 4 Trụ cột quyền hạn (`GoiCubit`) | ℹ️ Tiêu chuẩn |
+ | **5** | `account.upgraded` | `account_<id>` & `io.emit` | PayOS Webhook / Admin duyệt gói | Nâng cấp tài khoản lên Premium | ℹ️ Tiêu chuẩn |
+ | **6** | `account.downgraded` | `account_<id>` | Cron 00:00 hạ cấp hết hạn Premium | Chuyển tài khoản về gói Basic | ⚠️ Cao |
+-| **7** | `account.countdown` | `account_<id>` | Cron 00:00 đếm ngược xóa 30 ngày | Thông báo số ngày còn lại trước khi xóa | ℹ️ Tiêu chuẩn |
+-| **8** | `sync.completed` | `account_<id>` | Push thành công từ thiết bị khác | Đánh thức thiết bị kéo Delta Pull về | 🔇 Im lặng |
++| **7** | `account.countdown` | `account_<id>` | Cron 00:00 đếm ngược xóa 30 ngày | App không nghe; số ngày lấy từ `countdown` của `/auth/profile` | ℹ️ Tiêu chuẩn |
++| **8** | `sync.completed` | `account_<id>` | Push thành công (phát cho mọi máy của tài khoản, cả máy vừa đẩy) | Đánh thức thiết bị kéo Delta Pull về | 🔇 Im lặng |
+ | **9** | `ocr.completed` | `account_<id>` | Worker hoàn tất bóc tách OCR | Thông báo bóc tách xong, kích hoạt sync | ℹ️ Tiêu chuẩn |
+ | **10** | `ocr.duplicate` | `account_<id>` | AI phát hiện hóa đơn trùng lặp | Cảnh báo hóa đơn đã tồn tại | ⚠️ Cảnh báo |
+-| **11** | `user.notification` | `account_<id>` | Hệ thống gửi tin nhắn riêng | Lưu hộp thư cá nhân trên điện thoại | ℹ️ Tiêu chuẩn |
+-| **12** | `payment.success` | `account_<id>` | Webhook PayOS xác nhận thanh toán | Cập nhật màn hình Chờ/Chi tiết đơn hàng | ℹ️ Tiêu chuẩn |
++| **11** | `user.notification` | `account_<id>` | Chưa dùng: server chưa phát | App không nghe | ℹ️ Tiêu chuẩn |
++| **12** | `payment.success` | `account_<id>` | JIT sync đơn (`getOrderStatus`); webhook chỉ tới `admin_room` | Tín hiệu: màn đang mở hỏi lại server | ℹ️ Tiêu chuẩn |
+ | **13** | `payment.order_cancelled` | `account_<id>` | Người dùng / Hệ thống hủy đơn | Cập nhật trạng thái đơn thành CANCELLED | ℹ️ Tiêu chuẩn |
+-| **14** | `payment.order_expired` | `account_<id>` | Worker 30s quét hủy đơn quá 10 phút | Đóng popup VietQR, báo hết hạn mã | ℹ️ Tiêu chuẩn |
++| **14** | `payment.order_expired` | `account_<id>` | JIT sync đơn; worker 30s chỉ tới `admin_room` | Tín hiệu: màn đang mở hỏi lại server; không popup | ℹ️ Tiêu chuẩn |
+ | **15** | `payment.refunded` | `account_<id>` | Admin duyệt hoàn tiền kèm minh chứng | Thông báo hoàn tiền + link xem ảnh biên lai | ℹ️ Tiêu chuẩn |
+ | **16** | `payment.overpaid_confirmation` | `account_<id>` | Webhook PayOS thừa tiền đơn hàng | Cảnh báo chuyển thừa, người dùng xác nhận qua `POST /api/payment/confirm-upgrade` | ⚠️ Cao |
+ | **17** | `payment.underpaid_warning` | `account_<id>` | Webhook PayOS thiếu tiền đơn hàng | Cảnh báo chuyển thiếu, chuyển trạng thái `REFUND_PENDING` | ⚠️ Cảnh báo |
+ | **18** | `bank_transaction.incoming` | `account_<id>` | Webhook biến động ngân hàng (Legacy) | Thông báo giao dịch (đã dừng module Bank) | 🔇 Legacy |
++| **19** | `household.changed` | `account_<id>` từng thành viên | Đổi thành viên / trạng thái nhà, giải tán | Tín hiệu: gọi lại `/households/me` | 🔇 Im lặng |
++| **20** | `household.invited` | `account_<id>` người được mời | Có lời mời email tới tài khoản | Tín hiệu: gọi lại `/households/invitations` | 🔇 Im lặng |
+ 
+ ---
+ 
+-### 3.2. Nhóm 2: Tín Hiệu Chốt Chặn HTTP/API & Socket Handshake (9 Tín Hiệu)
++### 3.2. Nhóm 2: Tín Hiệu Chốt Chặn HTTP/API & Socket Handshake (8 Tín Hiệu)
+ 
+ | STT | Mã HTTP / Tín Hiệu | Cơ Chế Kích Hoạt | Ý Nghĩa Nghiệp Vụ | Phản Ứng Của Client-App |
+ |:---:|---|---|---|---|
+-| **1** | HTTP 503 `MAINTENANCE_MODE` | Middleware `maintenance.middleware.js` | Hệ thống đang bật bảo trì | Hiển thị Banner thông báo bảo trì, đếm ngược thử lại theo `Retry-After` |
+-| **2** | HTTP 503 `SERVER_OVERLOADED` | Middleware `load-shedding.middleware.js` | Cắt tải CPU khi Event Loop lag > 250ms | Đọc header `Retry-After`, đếm ngược thử lại |
+-| **3** | HTTP 429 `RETRY_LIMIT_EXCEEDED` | Middleware `retry-guard.middleware.js` | Chống bão request lặp (> 3 retries) | Dừng retry ngay lập tức, exponential backoff |
+-| **4** | HTTP 403 `AIOPS_QUARANTINED` | Tường lửa Sentinel `aiops.quarantine.js` | IP bị phong tỏa an ninh | Hiển thị Dialog phong tỏa + đếm ngược mở khóa |
++| **1** | HTTP 503 `MAINTENANCE_MODE` | Middleware `maintenance.middleware.js` | Hệ thống đang bật bảo trì | Dòng nhắc Trang chủ + toast + câu Đăng nhập; hẹn thử lại theo `Retry-After` (sàn 30 s), không đếm ngược trên màn |
++| **2** | HTTP 503 `SERVER_OVERLOADED` | Middleware `load-shedding.middleware.js` | Cắt tải CPU khi Event Loop lag > 250ms | Chỉ `/sync/push` hẹn lại theo `Retry-After` (sàn 30 s); không hiện gì |
++| **3** | HTTP 429 `RETRY_LIMIT_EXCEEDED` | Middleware `retry-guard.middleware.js` | Chống bão request lặp (> 3 retries) | App không có nhánh riêng cho mã này |
++| **4** | HTTP 403 `AIOPS_QUARANTINED` | Tường lửa Sentinel `aiops.quarantine.js` | IP bị phong tỏa an ninh | Dòng nhắc Trang chủ + toast + câu Đăng nhập + hẹn thử lại |
+ | **5** | HTTP 403 `FEATURE_DISABLED` | Middleware `feature-permission.middleware.js` | Tính năng vượt quá gói cước Basic | Làm mới gói cước (`may_chu_interceptor.dart:77-87`) |
+ | **6** | HTTP 401 `ACCOUNT_INACTIVE` | Middleware `auth.js` | Admin khóa tài khoản kèm lý do | Hiển thị Dialog lý do, điều hướng về Login |
+ | **7** | HTTP 401 `ACCOUNT_DELETED` | Middleware `auth.js` | Tài khoản đã bị xóa mềm | Đăng xuất + hiển thị Dialog lý do, bảo lưu SQLite |
+@@ -190,13 +192,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+ }
+ ```
+ 
+-* **Xử lý trên Client-app:**
+-  1. Khi `active == true`:
+-     - **Nếu `isEmergency: true` (`EMERGENCY`):** Hiển thị Banner cảnh báo màu đỏ, tạm hoãn các thao tác ghi dữ liệu nhạy cảm, tạm dừng toàn bộ luồng background sync. Cho phép người dùng duyệt dữ liệu SQLite cục bộ ở chế độ Read-only.
+-     - **Nếu `isEmergency: false` (`SCHEDULED`):** Hiển thị Banner màu cam thông báo bảo trì theo lịch, cho phép người dùng xem dữ liệu offline.
+-  2. Khi `active == false`:
+-     - Ẩn Banner thông báo bảo trì, hiển thị Toast xanh thông báo hệ thống đã sẵn sàng hoạt động bình thường trở lại.
+-     - Tự động kích hoạt đồng bộ bù `syncNow()`.
++* **Xử lý trên Client-app:** Cố ý bỏ qua sự kiện này. App biết bảo trì qua HTTP 503 `MAINTENANCE_MODE` + `Retry-After` (mục 5.1), nên không biết giờ kết thúc và không hứa giờ ấy.
+ 
+ ---
+ 
+@@ -262,7 +258,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+ ```
+ * **Xử lý trên Client-app:**
+   - Gọi lại `GET /api/payment/subscription-info` để nạp hạn mức mới vào `GoiCubit`.
+-  - Hiển thị Toast thông báo chúc mừng nâng cấp hoặc thông báo hết hạn gói. Không kích hoạt sync dữ liệu tài chính vì bảng nghiệp vụ không thay đổi.
++  - Không hiện Toast: chỉ làm mới gói qua `/subscription-info`. Không kích hoạt sync dữ liệu tài chính vì bảng nghiệp vụ không thay đổi.
+ 
+ ---
+ 
+@@ -280,12 +276,12 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+ }
+ ```
+ * **Xử lý trên Client-app:**
+-  - Hiển thị Banner cam cảnh báo đếm ngược ở đầu màn hình Trang chủ (`HomeScreen`).
+-  - Đính kèm nút "Hủy yêu cầu xóa tài khoản" gọi API `POST /api/auth/cancel-delete`.
++  - App không nghe sự kiện này. Thẻ chờ xoá ở Trang chủ và Cài đặt đọc số ngày từ `countdown` của `/auth/profile`.
++  - Thẻ có nút huỷ yêu cầu xoá tài khoản.
+ 
+ ---
+ 
+-### 4.7. `sync.completed` — Hoàn Tất Đợt Đồng Bộ Từ Thiết Bị Khác
++### 4.7. `sync.completed` — Hoàn Tất Đợt Đồng Bộ
+ * **Kênh phát:** `account_<idaccount>`.
+ * **Nguồn kích hoạt:** Backend xử lý xong một batch `/api/sync/push` (phát cho mọi máy của tài khoản, cả máy vừa đẩy).
+ * **Cấu trúc Payload:**
+@@ -318,10 +314,11 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+ 
+ // ocr.duplicate:
+ {
+-  "idaccount": 50,
+-  "title": "Phát hiện hóa đơn trùng lặp",
+-  "message": "Hóa đơn này có số tiền và thời gian trùng với một giao dịch đã ghi nhận.",
+-  "type": "OcrDuplicate"
++  "title": "Giao dịch đã tồn tại",
++  "message": "Hình ảnh này trùng khớp với giao dịch đã được ghi nhận trên hệ thống trước đó.",
++  "type": "OcrDuplicate",
++  "data": { "idaccount": 50, "provider": "OCR", "bank_tran_id": null, "reason": "...", "existing_transaction": {}, "timestamp": "2026-10-24T08:35:00.000Z" },
++  "createdAt": "2026-10-24T08:35:00.000Z"
+ }
+ ```
+ * **Xử lý trên Client-app:**
+@@ -344,14 +341,12 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+   "createdAt": "2026-10-24T08:35:00.000Z"
+ }
+ ```
+-* **Xử lý trên Client-app:**
+-  - Lưu vào bảng SQLite `notification` trên thiết bị.
+-  - Tăng số đếm Badge chưa đọc tại biểu tượng Chuông thông báo (`NotificationBell`).
++* **Xử lý trên Client-app:** Chưa có. Mẫu trên là thiết kế, không có đường nào phát.
+ 
+ ---
+ 
+ ### 4.10. `payment.success` & `payment.order_cancelled` — Thanh Toán Thành Công & Hủy Đơn
+-* **Kênh phát:** `account_<idaccount>`.
++* **Kênh phát:** `payment.success` tới `admin_room` khi webhook, tới `account_<idaccount>` khi JIT sync. `payment.order_cancelled` tới `account_<idaccount>`.
+ * **Nguồn kích hoạt:**
+   - `payment.success`: Webhook PayOS xác nhận chuyển khoản khớp chính xác số tiền đơn hàng (phát tới admin_room; tới tài khoản ở JIT).
+   - `payment.order_cancelled`: Người dùng hủy đơn trên giao diện hoặc đơn bị hủy thủ công.
+@@ -379,7 +374,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+ ---
+ 
+ ### 4.11. `payment.order_expired` — Đơn Hàng Thanh Toán Quá Hạn (10 Phút)
+-* **Kênh phát:** `account_<idaccount>`.
++* **Kênh phát:** worker tới `admin_room`, JIT sync tới `account_<idaccount>`.
+ * **Nguồn kích hoạt:** Worker 30s quét và hủy các đơn hàng VietQR chưa thanh toán sau 10 phút (phát tới admin_room { count }; tới tài khoản ở JIT).
+ * **Cấu trúc Payload:**
+ ```json
+@@ -450,7 +445,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+ 
+ ---
+ 
+-## 5. PHẦN II: ĐẶC TẢ CHI TIẾT 9 TÍN HIỆU CHỐT CHẶN HTTP/API & SOCKET HANDSHAKE
++## 5. PHẦN II: ĐẶC TẢ CHI TIẾT 8 TÍN HIỆU CHỐT CHẶN HTTP/API & SOCKET HANDSHAKE
+ 
+ ### 5.1. HTTP 503 `MAINTENANCE_MODE` — Hệ Thống Đang Bảo Trì
+ * **Phát sinh từ:** `src/Backend/middleware/maintenance.middleware.js`
+@@ -495,7 +490,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+   "message": "Phát hiện tần suất gửi lại yêu cầu quá dày đặc. Vui lòng dừng thao tác và đợi ít phút."
+ }
+ ```
+-* **Xử lý trên Client-app:** Dừng lặp request (App không có nhánh riêng cho 429).
++* **Xử lý trên Client-app:** App không có nhánh riêng cho 429; lời gọi ấy thất bại như lỗi mạng thường.
+ 
+ ---
+ 
+@@ -620,9 +615,11 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+ | `payment.overpaid_confirmation` | ✅ ĐÃ CÓ | `RealtimeEvent.donThanhToanDoi` | Đã gộp trong enum đơn thanh toán, mở màn Chi tiết đơn để xác nhận qua `POST /api/payment/confirm-upgrade`. |
+ | `payment.underpaid_warning` | ✅ ĐÃ CÓ | `RealtimeEvent.donThanhToanDoi` | Đã gộp trong enum đơn thanh toán. |
+ | `bank_transaction.incoming` | 🔇 BỎ QUA | `null` (Bỏ qua chuẩn) | Giữ nguyên hành vi bỏ qua (Module Bank đã dừng). |
+-| HTTP 503 `MAINTENANCE_MODE` | ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Bắt mã 503, hiển thị Banner thông báo bảo trì, đếm ngược thử lại theo `Retry-After`. |
+-| HTTP 503 `SERVER_OVERLOADED` | ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Đọc `Retry-After`, đếm ngược tự động thử lại. |
+-| HTTP 429 `RETRY_LIMIT_EXCEEDED`| ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Dừng lặp request, thông báo người dùng tạm nghỉ. |
++| `household.changed` | ✅ ĐÃ CÓ | `RealtimeEvent.nhaDoi` | Tín hiệu, gọi lại `/households/me` (giãn cách 30 s). |
++| `household.invited` | ✅ ĐÃ CÓ | `RealtimeEvent.loiMoiNha` | Tín hiệu, gọi lại `/households/invitations`. |
++| HTTP 503 `MAINTENANCE_MODE` | ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Dòng nhắc Trang chủ + toast + câu Đăng nhập; hẹn thử lại theo `Retry-After`. |
++| HTTP 503 `SERVER_OVERLOADED` | ✅ ĐÃ CÓ | `sync_engine.dart` (`mocThuLaiKhiQuaTai`) | Chỉ `/sync/push` hẹn lại, sàn 30 s; không hiện gì. |
++| HTTP 429 `RETRY_LIMIT_EXCEEDED`| 🔇 KHÔNG CÓ NHÁNH RIÊNG | N/A | Lời gọi thất bại như lỗi thường. |
+ | HTTP 403 `AIOPS_QUARANTINED` | ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Dòng nhắc Trang chủ + toast + câu Đăng nhập + hẹn thử lại. |
+ | HTTP 403 `FEATURE_DISABLED` | ✅ ĐÃ CÓ | `may_chu_interceptor.dart` | Chỉ làm mới gói cước (`may_chu_interceptor.dart:77-87`). |
+ | HTTP 401 `ACCOUNT_INACTIVE` | ✅ ĐÃ CÓ | `buoc_dang_xuat.dart` | Đăng xuất, hiển thị Dialog kèm lý do `reason_inactive`. |
+@@ -637,8 +634,8 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng
+ - [x] **2. Mở rộng `realtime_event.dart`:**
+   - Hỗ trợ đầy đủ `taiKhoanNangCap`, `taiKhoanHaCap`, `dongBoXong`, `ocrXong`, `donThanhToanDoi`.
+ - [x] **3. Chốt chặn `may_chu_interceptor.dart` (Dio Interceptor):**
+-  - Bắt HTTP 503 với `code == 'MAINTENANCE_MODE'` $\longrightarrow$ hiển thị Banner và hẹn thử lại theo `Retry-After`.
+-  - Bắt HTTP 503 với `code == 'SERVER_OVERLOADED'` $\longrightarrow$ kích hoạt Backoff đếm ngược theo header `Retry-After`.
++  - Bắt HTTP 503 với `code == 'MAINTENANCE_MODE'` $\longrightarrow$ dòng nhắc Trang chủ + toast, hẹn thử lại theo `Retry-After`.
++  - Bắt HTTP 503 với `code == 'SERVER_OVERLOADED'` $\longrightarrow$ `SyncEngine` hẹn lại đồng bộ theo header `Retry-After` (sàn 30 s).
+   - Bắt HTTP 403 với `code == 'AIOPS_QUARANTINED'` $\longrightarrow$ dòng nhắc Trang chủ và câu Đăng nhập.
+   - Bắt HTTP 403 với `code == 'FEATURE_DISABLED'` $\longrightarrow$ làm mới gói cước.
+ - [x] **4. Tuân thủ Bảo Vệ Dữ Liệu Cá Nhân (Rule 9 & Nghị định 13/2023/NĐ-CP):**
+diff --git a/docs/Functional-Mobile/4_TRU_COT.md b/docs/Functional-Mobile/4_TRU_COT.md
+index 4e7837f..7c56723 100644
+--- a/docs/Functional-Mobile/4_TRU_COT.md
++++ b/docs/Functional-Mobile/4_TRU_COT.md
+@@ -8,7 +8,7 @@
+ 
+ 
+ > 📌 **Phân định "Server lưu / trả" và "App thi hành hiện nay" (Đo đạc 2026-10-30 - Task T3):**
+-> - Phân hệ Ví: App hiện chỉ hỗ trợ `cash`, `bank`, `saving` (CSDL có ràng buộc `chk_wallet_type`). Các loại ví EWallet/Credit/Investment thuộc lộ trình tương lai.
++> - Phân hệ Ví: App hiện chỉ hỗ trợ `cash`, `bank`, `saving` (CSDL có ràng buộc `chk_wallet_type`). Các loại ví EWallet/Credit/Investment không có trong app.
+ > - Báo cáo: App hỗ trợ xuất PDF và CSV (tài khoản Basic bị khóa tính năng xuất báo cáo).
+ > - Nhắc nhở: App hỗ trợ nhắc ghi chép 1 khung giờ trong ngày (mặc định tắt). Nhắc hóa đơn hỗ trợ các mốc 1, 3, 5, 7 ngày trước hạn cho mọi gói.
+ > - Chu kỳ ngân sách & hóa đơn: Cho phép chọn linh hoạt Tuần / Tháng / Quý / Năm trên giao diện.
+@@ -73,7 +73,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+    - **Hành vi:** Tính năng bị vô hiệu hóa, hiển thị icon ổ khóa 🔒; khi click sẽ mở trang nâng cấp `/premium?quyen=...`.
+ 3. **`READ_ONLY` (Chỉ xem dữ liệu lịch sử):**
+    - **Mục đích:** Áp dụng cho các tính năng phân tích xu hướng hoặc dự báo (Dự báo dòng tiền 30 ngày).
+-   - **Hành vi:** Cho phép xem lại các biểu đồ/dữ liệu đã sinh ra trong thời gian còn Premium, nhưng khóa nút "Chạy phân tích lại kỳ này".
++   - **Hành vi:** Server lưu, chưa có hiệu lực ở app. App hiện thẻ khoá thay cả khối; dự báo tính tại chỗ, không lưu nên không có gì để xem lại.
+ 4. **Ân hạn 3 ngày (Server lưu/trả, chưa có hiệu lực ở app):**
+    - **Mục đích:** Áp dụng cho các tiến trình tự động hóa nền (Tự động thanh toán hóa đơn `bill_auto_pay`, tự động trích quỹ mục tiêu `goal_auto_deposit`).
+    - **Hành vi:** Quy định ân hạn trên server; ở Client-app khi hết hạn Premium thì dừng ngay các quyền lợi tự động.
+@@ -110,6 +110,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+   - `scope_schema`: `{"cache_token_days": {"type": "integer"}, "allow_pin_fallback": {"type": "boolean"}}`
+   - `scope_config` (Basic): `{"cache_token_days": 30, "allow_pin_fallback": true}`
+   - `scope_config` (Premium): `{"cache_token_days": 30, "allow_pin_fallback": true}`
++  - **App thi hành:** Không có `cache_token_days`. Mở lạnh dùng phiên đã lưu rồi `verifySession()`.
+ - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
+ 
+ #### 3. `account_deletion` — Quyền xóa tài khoản & Ân hạn
+@@ -202,6 +203,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+   - `scope_schema`: `{"max_photos_per_tx": {"type": "integer"}, "search_history_days": {"type": "integer", "nullable": true}}`
+   - `scope_config` (Basic): `{"max_photos_per_tx": 1, "search_history_days": 90}`
+   - `scope_config` (Premium): `{"max_photos_per_tx": 5, "search_history_days": null}`
++  - **App thi hành:** Không đính ảnh vào giao dịch; Sổ giao dịch xem mọi kỳ.
+ - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
+ 
+ #### 10. `ai_quick_input` — Ghi chép bằng giọng nói (Voice Input)
+@@ -224,7 +226,8 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+   - `scope_schema`: `{"monthly_scans": {"type": "integer", "nullable": true}, "max_file_mb": {"type": "integer"}, "auto_crop": {"type": "boolean"}}`
+   - `scope_config` (Basic): `{"monthly_scans": 15, "max_file_mb": 5, "auto_crop": false}`
+   - `scope_config` (Premium): `{"monthly_scans": null, "max_file_mb": 20, "auto_crop": true}`
+-- **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT` (Giới hạn tối đa 15 lượt quét/tháng).
++  - **App thi hành:** Quét bằng ML Kit trên máy, không đếm lượt.
++- **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT` (Server lưu, không có hiệu lực ở app).
+ 
+ #### 12. `quick_category_assignment` — Gán danh mục nhanh (C1)
+ - **Loại tính năng:** `TOGGLE` | **Nhóm:** `Sổ giao dịch Thu Chi`
+@@ -235,6 +238,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+   - `scope_schema`: `{"batch_assign_max": {"type": "integer"}}`
+   - `scope_config` (Basic): `{"batch_assign_max": 20}`
+   - `scope_config` (Premium): `{"batch_assign_max": 100}`
++  - **App thi hành:** Không có trần số giao dịch mỗi lần gắn.
+ - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
+ 
+ #### 13. `in_app_calculator` — Bàn phím máy tính tích hợp
+@@ -273,6 +277,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+   - `scope_schema`: `{"max_keywords_per_cat": {"type": "integer"}}`
+   - `scope_config` (Basic): `{"max_keywords_per_cat": 5}`
+   - `scope_config` (Premium): `{"max_keywords_per_cat": 25}`
++  - **App thi hành:** Không có trần số từ khoá.
+ - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
+ 
+ ---
+@@ -425,7 +430,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+   - `scope_schema`: `{"forecast_days": {"type": "integer"}, "scenario_model": {"type": "boolean"}}`
+   - `scope_config` (Basic): `{"forecast_days": 0, "scenario_model": false}`
+   - `scope_config` (Premium): `{"forecast_days": 30, "scenario_model": true}`
+-- **Trụ 4 (Downgrade Policy):** `READ_ONLY` (Vẫn xem lại được kết quả dự báo của 30 ngày cũ, không chạy phân tích mới).
++- **Trụ 4 (Downgrade Policy):** `READ_ONLY` (Server lưu, chưa có hiệu lực ở app: thẻ khoá thay cả khối).
+ 
+ #### 28. `anomaly_spending_insights` — Cảnh báo chi tiêu bất thường
+ - **Loại tính năng:** `TOGGLE` | **Nhóm:** `Báo cáo & Phân tích`
+@@ -488,7 +493,8 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+ - **Trụ 2 (Quota Limit):** Basic: `NULL` | Premium: `NULL`
+ - **Trụ 3 (Scope Schema & Config):**
+   - `scope_schema`: `{"supported_banks": {"type": "array", "items": "string"}, "auto_fill_category": {"type": "boolean"}}`
+-  - `scope_config` (Basic - Server lưu; App thực tế hỗ trợ MB Bank, MoMo, ZaloPay không theo gói): `{"supported_banks": ["MB", "MOMO", "ZALOPAY"], "auto_fill_category": false}`
++  - `scope_config` (Basic): `{"supported_banks": ["VCB", "MB", "TCB", "ACB"], "auto_fill_category": false}` (seed `database/32`; server lưu, không dùng)
++  - **App thi hành:** MB Bank, MoMo, ZaloPay, không theo gói.
+   - `scope_config` (Premium): `{"supported_banks": ["ALL"], "auto_fill_category": true}`
+ - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
+ 
+@@ -517,6 +523,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+   - `scope_schema`: `{"gateway": {"type": "string"}, "countdown_minutes": {"type": "integer"}, "support_jit_sync": {"type": "boolean"}}`
+   - `scope_config` (Basic): `{"gateway": "PayOS", "countdown_minutes": 15, "support_jit_sync": true}`
+   - `scope_config` (Premium): `{"gateway": "PayOS", "countdown_minutes": 15, "support_jit_sync": true}`
++  - **App thi hành:** `countdown_minutes` server lưu, không dùng. Đơn hết hạn sau 10 phút do server tính.
+ - **Trụ 4 (Downgrade Policy):** `BLOCK_CREATE`
+ 
+ #### 35. `payment_history` — Lịch sử thanh toán gói cước
+@@ -528,6 +535,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+   - `scope_schema`: `{"exclude_template_orders": {"type": "boolean"}, "allow_download_invoice": {"type": "boolean"}}`
+   - `scope_config` (Basic): `{"exclude_template_orders": true, "allow_download_invoice": false}`
+   - `scope_config` (Premium): `{"exclude_template_orders": true, "allow_download_invoice": true}`
++  - **App thi hành:** Không có tải hoá đơn; chỉ *Lưu mã QR*.
+ - **Trụ 4 (Downgrade Policy):** `BLOCK_CREATE`
+ 
+ ---
+@@ -544,7 +552,8 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+   - `scope_schema`: `{"debounce_seconds": {"type": "integer"}, "cloud_photo_backup": {"type": "boolean"}, "realtime_priority": {"type": "boolean"}}`
+   - `scope_config` (Basic): `{"debounce_seconds": 10, "cloud_photo_backup": false, "realtime_priority": false}`
+   - `scope_config` (Premium): `{"debounce_seconds": 2, "cloud_photo_backup": true, "realtime_priority": true}`
+-- **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT` (Chuyển chu kỳ đồng bộ về 10s, ngắt tải ảnh hóa đơn mới lên đám mây).
++  - **App thi hành:** Giãn đồng bộ 2 s cho mọi gói, không sao lưu ảnh.
++- **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT` (Server lưu, không có hiệu lực ở app).
+ 
+ ---
+ 
+@@ -553,20 +562,20 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+ | STT | Mã Tính Năng | Tên Tính Năng | Loại | Gói Basic | Gói Premium | Trụ 4: Downgrade Policy |
+ |:---:|:---|:---|:---:|:---:|:---:|:---:|
+ | 1 | `biometric_auth` | Xác thực sinh trắc học | `TOGGLE` | ✅ Mở | ✅ Mở | `LOCK_FEATURE` |
+-| 2 | `offline_login` | Đăng nhập ngoại tuyến | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
++| 2 | `offline_login` | Đăng nhập ngoại tuyến | `TOGGLE` | — (app không có) | — (app không có) | `FALLBACK_DEFAULT` |
+ | 3 | `account_deletion` | Quyền xóa tài khoản & Ân hạn | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
+ | 4 | `net_worth_overview` | Tổng quan tài sản ròng | `TOGGLE` | ✅ Mở (30 ngày) | ✅ Mở (Toàn thời gian) | `FALLBACK_DEFAULT` |
+ | 5 | `quick_action_shortcuts` | Phím tắt ghi chép nhanh | `TOGGLE` | ✅ Mở (4 slots) | ✅ Mở (8 slots + Voice) | `FALLBACK_DEFAULT` |
+ | 6 | `wallets` | Quản lý ví tiền | `LIMIT` | **Trần: 3 ví** | **Không giới hạn** | `BLOCK_CREATE` |
+ | 7 | `wallet_balance_adjustment` | Điều chỉnh số dư ví | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
+ | 8 | `wallet_exclude_total` | Loại trừ ví khỏi tổng tài sản | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
+-| 9 | `transaction_management` | Sổ giao dịch thu chi | `TOGGLE` | ✅ Mở (1 ảnh/tx) | ✅ Mở (5 ảnh/tx) | `FALLBACK_DEFAULT` |
++| 9 | `transaction_management` | Sổ giao dịch thu chi | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
+ | 10 | `ai_quick_input` | Ghi chép giọng nói (Voice Input) | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
+-| 11 | `ocr_receipt` | Quét hóa đơn / Biên lai (OCR) | `TOGGLE` | ✅ Mở (15 lượt/tháng) | 🔓 **Không giới hạn** | `FALLBACK_DEFAULT` |
+-| 12 | `quick_category_assignment` | Gán danh mục nhanh (C1) | `TOGGLE` | ✅ Mở (20 tx/lần) | ✅ Mở (100 tx/lần) | `FALLBACK_DEFAULT` |
++| 11 | `ocr_receipt` | Quét hóa đơn / Biên lai (OCR) | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
++| 12 | `quick_category_assignment` | Gán danh mục nhanh (C1) | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
+ | 13 | `in_app_calculator` | Bàn phím máy tính tích hợp | `TOGGLE` | ✅ Mở | ✅ Mở | `LOCK_FEATURE` |
+ | 14 | `custom_categories` | Quản lý danh mục tùy chỉnh | `LIMIT` | **Trần: 5 danh mục** | **Không giới hạn** | `BLOCK_CREATE` |
+-| 15 | `category_keywords_matching`| Từ khóa nhận diện danh mục | `TOGGLE` | ✅ Mở (5 từ/cat) | ✅ Mở (25 từ/cat) | `FALLBACK_DEFAULT` |
++| 15 | `category_keywords_matching`| Từ khóa nhận diện danh mục | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
+ | 16 | `budgets` | Quản lý ngân sách chi tiêu | `LIMIT` | **Trần: 3 ngân sách** | **Không giới hạn** | `BLOCK_CREATE` |
+ | 17 | `smart_budget_rebalancing` | Tái phân bổ ngân sách AI | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
+ | 18 | `budget_overspend_alert` | Dự báo vỡ hạn mức chi tiêu | `TOGGLE` | ✅ Mở | ✅ Mở (+ Burn-rate) | `FALLBACK_DEFAULT` |
+@@ -577,17 +586,17 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+ | 23 | `goal_auto_deposit` | Tự động trích tiền mục tiêu | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | Ân hạn 3 ngày (Server lưu, chưa hiệu lực ở app) |
+ | 24 | `goal_deposit_withdraw` | Nạp & Rút tiền mục tiêu | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
+ | 25 | `export_reports` | Xuất báo cáo PDF / Excel | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
+-| 26 | `financial_health_fhs` | Chỉ số sức khỏe tài chính | `TOGGLE` | ✅ Mở (Điểm cơ bản) | ✅ Mở (AI Deep Insights) | `FALLBACK_DEFAULT` |
++| 26 | `financial_health_fhs` | Chỉ số sức khỏe tài chính | `TOGGLE` | — (app không có) | — (app không có) | `FALLBACK_DEFAULT` |
+ | 27 | `cashflow_forecast` | Dự báo dòng tiền 30 ngày | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `READ_ONLY` |
+ | 28 | `anomaly_spending_insights` | Cảnh báo chi tiêu bất thường | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
+ | 29 | `ai_assistant` | Trợ lý Copilot AI Gemini | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
+ | 30 | `ai_edge_model` | Mô hình AI Offline trên máy | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
+ | 31 | `ai_model_management` | Quản lý bộ nhớ mô hình AI | `TOGGLE` | ✅ Mở (500 MB) | ✅ Mở (2000 MB) | `FALLBACK_DEFAULT` |
+-| 32 | `bank_notification_parser` | Đọc biến động số dư ngân hàng| `TOGGLE` | ✅ Mở (4 banks) | ✅ Mở (Tất cả banks) | `FALLBACK_DEFAULT` |
++| 32 | `bank_notification_parser` | Đọc biến động số dư ngân hàng| `TOGGLE` | ✅ Mở (MB Bank, MoMo, ZaloPay) | ✅ Mở (MB Bank, MoMo, ZaloPay) | `FALLBACK_DEFAULT` |
+ | 33 | `daily_recording_reminder` | Nhắc nhở ghi chép hàng ngày | `TOGGLE` | ✅ Mở (1 khung giờ)| ✅ Mở (3 khung giờ) | `FALLBACK_DEFAULT` |
+ | 34 | `vietqr_payment` | Thanh toán tự động VietQR | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
+-| 35 | `payment_history` | Lịch sử thanh toán gói cước | `TOGGLE` | ✅ Mở | ✅ Mở (+ Tải hóa đơn) | `BLOCK_CREATE` |
+-| 36 | `offline_first_sync` | Đồng bộ 2 chiều Offline-First | `TOGGLE` | ✅ Mở (Debounce 10s)| ⚡ **Mở (Realtime 2s)** | `FALLBACK_DEFAULT` |
++| 35 | `payment_history` | Lịch sử thanh toán gói cước | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
++| 36 | `offline_first_sync` | Đồng bộ 2 chiều Offline-First | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
+ 
+ ---
+ 
+@@ -596,7 +605,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự 
+ ### KIẾN TRÚC 5 TẦNG PHÒNG THỦ TẠI CLIENT-APP (FLUTTER)
+ 
+ 1. **Tầng 1: Cửa chặn Router Guards (`chan_theo_goi.dart` & `GoRouter`):**
+-   - Đặt chặn trực tiếp tại `redirect` của các route thêm mới (`/wallets/add`, `/budget/rules`, `/goals/add`) và route chức năng cao cấp (`/analytics/export`, `/ai-chat`, khoá trong trang).
++   - Đặt chặn trực tiếp tại `redirect` của các route thêm mới (`/wallets/add`, `/budget/rules`, `/goals/add`) và route chức năng cao cấp (`/export-report`, `/analytics/export`); `/ai-chat` khoá trong trang.
+    - Nếu chạm trần số lượng (`dangCo >= limit_value`) hoặc không có quyền (`is_enabled == false`), tự động chuyển hướng sang màn hình `/premium?tran=...` hoặc `/premium?quyen=...`.
+ 2. **Tầng 2: Kiểm soát Trạng thái UI (`GoiCubit` & `quyen_tinh_nang.dart`):**
+    - Mọi Widget trên màn hình kiểm tra qua `duocDung(MaQuyen ma, TrangThaiGoi goi, DateTime now)`.
+diff --git a/src/Backend/modules/ai/features/ocr/ocr.service.js b/src/Backend/modules/ai/features/ocr/ocr.service.js
+index 109f227..ba96f78 100644
+--- a/src/Backend/modules/ai/features/ocr/ocr.service.js
++++ b/src/Backend/modules/ai/features/ocr/ocr.service.js
+@@ -16,6 +16,7 @@ const dedupService = require('../dedup/dedup.service');
+ const classifyService = require('../classify/classify.service');
+ const eventBus = require('../../../../core/event-bus');
+ const logger = require('../../../../core/logger');
++const { maskAccountFields } = require('../../../../utils/masking.util');
+ 
+ const ocrService = {
+   /**
+@@ -143,8 +144,9 @@ const ocrService = {
+           option_single: classifiedResult.option_single || null,
+           option_grouped: classifiedResult.option_grouped || null,
+           invoice_info: classifiedResult.invoice_info || null,
+-          transfer_details: classifiedResult.transfer_details || null,
+-          transaction_info: classifiedResult.transaction_info || null,
++          // Socket không mang số tài khoản đầy đủ (Event-Notification mục 2). DTO trả về chủ tài khoản ở dưới giữ nguyên.
++          transfer_details: maskAccountFields(classifiedResult.transfer_details, ['source_account', 'destination_account']),
++          transaction_info: maskAccountFields(classifiedResult.transaction_info, ['source_account', 'counterpart_account']),
+           timestamp: new Date().toISOString(),
+         });
+       }
+diff --git a/src/Backend/modules/payment/payment.repository.js b/src/Backend/modules/payment/payment.repository.js
+index 0c106e7..56d3e9e 100644
+--- a/src/Backend/modules/payment/payment.repository.js
++++ b/src/Backend/modules/payment/payment.repository.js
+@@ -1,6 +1,7 @@
+ const crypto = require('crypto');
+ const { prisma } = require('../../config/db');
+ const payosClient = require('./payos.client');
++const logger = require('../../core/logger');
+ 
+ /**
+  * Chuyển đổi các trường BigInt trong object thành Number để an toàn khi serialize JSON
+@@ -412,36 +413,20 @@ async function activatePremiumSubscription({ idaccount, orderId, paidAt, newExpi
+         });
+       }
+       if (!existingTx) {
+-        if (typeof tx.payment_transaction?.createMany === 'function') {
+-          await tx.payment_transaction.createMany({
+-            data: [{
+-              id: transactionData.id,
+-              order_id: orderId,
+-              idaccount,
+-              payos_transaction_id: transactionData.payosTransactionId ? String(transactionData.payosTransactionId) : null,
+-              amount: transactionData.amount,
+-              bank_code: transactionData.bankCode || null,
+-              transaction_time: transactionData.transactionTime || new Date(),
+-              signature_verified: transactionData.signatureVerified ?? true,
+-              raw_webhook_hash: transactionData.rawWebhookHash || null,
+-            }],
+-            skipDuplicates: true,
+-          });
+-        } else if (typeof tx.payment_transaction?.create === 'function') {
+-          await tx.payment_transaction.create({
+-            data: {
+-              id: transactionData.id,
+-              order_id: orderId,
+-              idaccount,
+-              payos_transaction_id: transactionData.payosTransactionId ? String(transactionData.payosTransactionId) : null,
+-              amount: transactionData.amount,
+-              bank_code: transactionData.bankCode || null,
+-              transaction_time: transactionData.transactionTime || new Date(),
+-              signature_verified: transactionData.signatureVerified ?? true,
+-              raw_webhook_hash: transactionData.rawWebhookHash || null,
+-            },
+-          });
+-        }
++        await tx.payment_transaction.createMany({
++          data: [{
++            id: transactionData.id,
++            order_id: orderId,
++            idaccount,
++            payos_transaction_id: transactionData.payosTransactionId ? String(transactionData.payosTransactionId) : null,
++            amount: transactionData.amount,
++            bank_code: transactionData.bankCode || null,
++            transaction_time: transactionData.transactionTime || new Date(),
++            signature_verified: transactionData.signatureVerified ?? true,
++            raw_webhook_hash: transactionData.rawWebhookHash || null,
++          }],
++          skipDuplicates: true,
++        });
+       }
+     }
+ 
+@@ -573,7 +558,6 @@ async function downgradeExpiredPremiumAccounts(now = new Date()) {
+       });
+     }
+   } catch (histErr) {
+-    const logger = require('../../core/logger');
+     logger.warn('[Payment] Lỗi ghi nhận lịch sử hết hạn gói:', { error: histErr.message });
+   }
+ 
+diff --git a/src/Backend/scripts/verify_household_contract.js b/src/Backend/scripts/verify_household_contract.js
+index e74ab14..3557a58 100644
+--- a/src/Backend/scripts/verify_household_contract.js
++++ b/src/Backend/scripts/verify_household_contract.js
+@@ -7,7 +7,7 @@ const fs = require('fs');
+ const { randomUUID } = require('crypto');
+ 
+ const ROOT = process.argv[2] ? path.resolve(process.argv[2]) : path.resolve(__dirname, '..');
+-const DST = process.argv[3] ? path.resolve(process.argv[3]) : path.resolve(__dirname, '../kq_household_contract.txt');
++const DST = process.argv[3] ? path.resolve(process.argv[3]) : path.join(require('os').tmpdir(), 'kq_household_contract.txt');
+ 
+ if (!/@(127\.0\.0\.1|localhost)(:\d+)?\/flowmoney_kiem_thu(\?|$)/.test(process.env.DATABASE_URL || '')) {
+   console.error('Từ chối chạy: DATABASE_URL phải là CSDL flowmoney_kiem_thu trên máy này (kịch bản này GHI dữ liệu).');
+diff --git a/src/Backend/tests/unit/household_group1_completion.test.js b/src/Backend/tests/unit/household_group1_completion.test.js
+index 832adbe..118b10c 100644
+--- a/src/Backend/tests/unit/household_group1_completion.test.js
++++ b/src/Backend/tests/unit/household_group1_completion.test.js
+@@ -15,7 +15,7 @@ test('Household Group 1 Completion — 2-Tier Verification Suite (Tasks 57.6, 58
+   // ═════════════════════════════════════════════════════════════════════
+   // 1. Task 57.6: Xóa mềm 5 bảng dữ liệu chung & Thu hồi mã mời
+   // ═════════════════════════════════════════════════════════════════════
+-  await t.test('1. [Tier 2 - Task 57.6] dissolveHousehold xóa mềm toàn bộ 5 bảng thực thể chung và thu hồi mã mời pending', async () => {
++  await t.test('1. [Unit: chỉ ghim tham số, bằng chứng thật ở verify:household - Task 57.6] dissolveHousehold xóa mềm toàn bộ 5 bảng thực thể chung và thu hồi mã mời pending', async () => {
+     let transactionOperations = [];
+     const origTransaction = prisma.$transaction;
+ 
+@@ -115,7 +115,7 @@ test('Household Group 1 Completion — 2-Tier Verification Suite (Tasks 57.6, 58
+   // ═════════════════════════════════════════════════════════════════════
+   // 2. Task 58.3: Socket HOUSEHOLD_DISSOLVED phát tới tất cả thành viên
+   // ═════════════════════════════════════════════════════════════════════
+-  await t.test('2. [Tier 2 - Task 58.3] dissolveHousehold lấy danh sách thành viên trước khi gắn left_at và phát socket tới từng phòng tài khoản', async () => {
++  await t.test('2. [Unit: giả emitHouseholdChanged, bằng chứng thật ở verify:household - Task 58.3] dissolveHousehold lấy danh sách thành viên trước khi gắn left_at và phát socket tới từng phòng tài khoản', async () => {
+     const origFindActiveMember = householdRepository.findActiveMemberByAccount;
+     const origFindActiveMembers = householdRepository.findActiveMembersByHousehold;
+     const origDissolve = householdRepository.dissolveHousehold;
+diff --git a/src/Backend/tests/unit/payment.repository.test.js b/src/Backend/tests/unit/payment.repository.test.js
+index dd504fa..d576261 100644
+--- a/src/Backend/tests/unit/payment.repository.test.js
++++ b/src/Backend/tests/unit/payment.repository.test.js
+@@ -58,6 +58,29 @@ test('Payment Repository Suite', async (t) => {
+     }
+   });
+ 
++  await t.test('2b. recordTransaction(): hai webhook đua nhau, create vỡ P2002 → trả hàng đã có, không ném', async () => {
++    const hang = { id: 'tx-da-co', payos_transaction_id: 'REF-1' };
++    const origFind = prisma.payment_transaction.findFirst;
++    const origCreate = prisma.payment_transaction.create;
++    const origOrder = prisma.payment_order.findUnique;
++    prisma.payment_order.findUnique = async () => ({ id: 'o' });
++    let lanTim = 0;
++    // Lượt tìm đầu chưa thấy (hàng của lượt kia chưa ghi), create vỡ unique, lượt tìm sau thấy: đúng nhánh P2002 của repository.
++    prisma.payment_transaction.findFirst = async () => (++lanTim === 1 ? null : hang);
++    prisma.payment_transaction.create = async () => {
++      throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
++    };
++    try {
++      const r = await paymentRepository.recordTransaction({ id: 'tx-moi', orderId: 'o', idaccount: 1, payosTransactionId: 'REF-1', amount: 49000 });
++      assert.strictEqual(r, hang);
++      assert.strictEqual(lanTim, 2, 'nhánh P2002 phải tìm lại hàng đã có');
++    } finally {
++      prisma.payment_transaction.findFirst = origFind;
++      prisma.payment_transaction.create = origCreate;
++      prisma.payment_order.findUnique = origOrder;
++    }
++  });
++
+   await t.test('3. activatePremiumSubscription() thực thi nguyên tử cập nhật order, ghi transaction và nâng cấp account', async () => {
+     let transactionExecuted = false;
+     const origTx = prisma.$transaction;
+@@ -68,7 +91,7 @@ test('Payment Repository Suite', async (t) => {
+           update: async () => ({ id: 'mock-order-uuid', status: 'PAID' }),
+         },
+         payment_transaction: {
+-          create: async ({ data }) => data,
++          createMany: async ({ data }) => ({ count: data.length }),
+           findFirst: async () => null,
+         },
+         account: {
+diff --git a/src/Backend/tests/unit/payos_group3_comprehensive_audit.test.js b/src/Backend/tests/unit/payos_group3_comprehensive_audit.test.js
+index 3f14ccf..f37cb27 100644
+--- a/src/Backend/tests/unit/payos_group3_comprehensive_audit.test.js
++++ b/src/Backend/tests/unit/payos_group3_comprehensive_audit.test.js
+@@ -119,7 +119,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
+   // ═════════════════════════════════════════════════════════════════════
+   // TC3. Luồng 6.1: Khớp tiền chính xác (49,000đ = 49,000đ)
+   // ═════════════════════════════════════════════════════════════════════
+-  await t.test('3. [Tier 2] Luồng 6.1: Khớp tiền 49k -> Kích hoạt PAID, cộng 30 ngày và phát socket realtime', async () => {
++  await t.test('3. [Unit: giả paymentRepository] Luồng 6.1: Khớp tiền 49k -> Kích hoạt PAID, cộng 30 ngày và phát socket realtime', async () => {
+     const origFindOrder = paymentRepository.findOrderByCode;
+     const origActivate = paymentRepository.activatePremiumSubscription;
+     const origEmitToAccount = socket.emitToAccount;
+@@ -195,7 +195,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
+   // ═════════════════════════════════════════════════════════════════════
+   // TC4. Luồng 6.2a: Chuyển THỪA tiền (70,000đ > 49,000đ)
+   // ═════════════════════════════════════════════════════════════════════
+-  await t.test('4. [Tier 2] Luồng 6.2a: Chuyển THỪA tiền (70k > 49k) -> Đổi WAITING_CONFIRMATION, không kích hoạt gói', async () => {
++  await t.test('4. [Unit: giả paymentRepository] Luồng 6.2a: Chuyển THỪA tiền (70k > 49k) -> Đổi WAITING_CONFIRMATION, không kích hoạt gói', async () => {
+     const origFindOrder = paymentRepository.findOrderByCode;
+     const origRecordTx = paymentRepository.recordTransaction;
+     const origUpdateStatus = paymentRepository.updateOrderPaymentStatus;
+@@ -268,7 +268,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
+   // ═════════════════════════════════════════════════════════════════════
+   // TC5. Luồng 6.2b: Chuyển THIẾU tiền (20,000đ < 49,000đ)
+   // ═════════════════════════════════════════════════════════════════════
+-  await t.test('5. [Tier 2] Luồng 6.2b: Chuyển THIẾU tiền (20k < 49k) -> Đổi REFUND_PENDING và lưu lý do', async () => {
++  await t.test('5. [Unit: giả paymentRepository] Luồng 6.2b: Chuyển THIẾU tiền (20k < 49k) -> Đổi REFUND_PENDING và lưu lý do', async () => {
+     const origFindOrder = paymentRepository.findOrderByCode;
+     const origRecordTx = paymentRepository.recordTransaction;
+     const origUpdateStatus = paymentRepository.updateOrderPaymentStatus;
+@@ -342,7 +342,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
+   // ═════════════════════════════════════════════════════════════════════
+   // TC6. Người dùng xác nhận chuyển thừa (confirmUpgrade)
+   // ═════════════════════════════════════════════════════════════════════
+-  await t.test('6. [Tier 2] confirmUpgrade(): accept = true -> kích hoạt PAID; accept = false -> REFUND_PENDING', async () => {
++  await t.test('6. [Unit: giả paymentRepository] confirmUpgrade(): accept = true -> kích hoạt PAID; accept = false -> REFUND_PENDING', async () => {
+     const origFindByCode = paymentRepository.findOrderByCode;
+     const origActivate = paymentRepository.activatePremiumSubscription;
+     const origUpdateStatus = paymentRepository.updateOrderPaymentStatus;
+@@ -392,7 +392,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
+   // ═════════════════════════════════════════════════════════════════════
+   // TC7. Trích xuất mã nhận diện 6 ký tự VietQR chuẩn xác
+   // ═════════════════════════════════════════════════════════════════════
+-  await t.test('7. [Tier 2] Trích xuất mã nhận diện VietQR có tiền tố ngân hàng "CSCYDEZ2N10 9X7K2A"', async () => {
++  await t.test('7. [Unit: giả paymentRepository] Trích xuất mã nhận diện VietQR có tiền tố ngân hàng "CSCYDEZ2N10 9X7K2A"', async () => {
+     const origFindByCode = paymentRepository.findOrderByCode;
+     const origFindByRecog = paymentRepository.findOrderByRecognitionCode;
+     const origActivate = paymentRepository.activatePremiumSubscription;
+@@ -447,7 +447,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
+   // ═════════════════════════════════════════════════════════════════════
+   // TC8. Đơn hàng thử nghiệm (is_template = true)
+   // ═════════════════════════════════════════════════════════════════════
+-  await t.test('8. [Tier 2] Đơn hàng thử nghiệm is_template = true: Xác nhận PAID nhưng KHÔNG nâng cấp tài khoản Admin', async () => {
++  await t.test('8. [Unit: giả paymentRepository] Đơn hàng thử nghiệm is_template = true: Xác nhận PAID nhưng KHÔNG nâng cấp tài khoản Admin', async () => {
+     const origFindOrder = paymentRepository.findOrderByCode;
+     const origRecordTx = paymentRepository.recordTransaction;
+     const origUpdateStatus = paymentRepository.updateOrderPaymentStatus;
+@@ -513,7 +513,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
+   // ═════════════════════════════════════════════════════════════════════
+   // TC9. Cơ chế JIT Sync (syncOrderWithPayOS / getOrderStatus)
+   // ═════════════════════════════════════════════════════════════════════
+-  await t.test('9. [Tier 2] JIT Sync (getOrderStatus) chủ động kích hoạt Premium khi Webhook bị chậm', async () => {
++  await t.test('9. [Unit: giả paymentRepository] JIT Sync (getOrderStatus) chủ động kích hoạt Premium khi Webhook bị chậm', async () => {
+     const origFindOrder = paymentRepository.findOrderByCode;
+     const origActivate = paymentRepository.activatePremiumSubscription;
+     const origGetInfo = payosClient.getPaymentLinkInfo;
+diff --git a/src/Backend/tests/unit/premium_effective.test.js b/src/Backend/tests/unit/premium_effective.test.js
+new file mode 100644
+index 0000000..d2c2466
+--- /dev/null
++++ b/src/Backend/tests/unit/premium_effective.test.js
+@@ -0,0 +1,27 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { isPremiumEffective } = require('../../utils/premium.util');
++const paymentRepository = require('../../modules/payment/payment.repository');
++const { prisma } = require('../../config/db');
++
++// Task 55.A3: Premium không có hạn là dữ liệu hỏng, coi là Basic. Đường thật bốn nơi + job: KIEM-THU/chay_kiem_pr174.js.
++test('isPremiumEffective', () => {
++  const now = new Date('2026-11-01T00:00:00Z');
++  assert.strictEqual(isPremiumEffective({ type: 'Premium', premium_expires_at: null }, now), false);
++  assert.strictEqual(isPremiumEffective({ type: 'Premium', premium_expires_at: now }, now), false, 'đúng mốc là hết');
++  assert.strictEqual(isPremiumEffective({ type: 'Premium', premium_expires_at: new Date('2026-11-02T00:00:00Z') }, now), true);
++  assert.strictEqual(isPremiumEffective({ type: 'Basic', premium_expires_at: new Date('2026-11-02T00:00:00Z') }, now), false);
++  assert.strictEqual(isPremiumEffective(null, now), false);
++});
++
++test('job hạ cấp quét cả hàng không có hạn', async () => {
++  let where;
++  const orig = prisma.account.findMany;
++  prisma.account.findMany = async (a) => { where = a.where; return []; };
++  try {
++    await paymentRepository.downgradeExpiredPremiumAccounts(new Date());
++    assert.ok(where.OR.some((d) => d.premium_expires_at === null));
++  } finally {
++    prisma.account.findMany = orig;
++  }
++});
+diff --git a/src/Backend/utils/masking.util.js b/src/Backend/utils/masking.util.js
+index 36a7dc9..7b0c10d 100644
+--- a/src/Backend/utils/masking.util.js
++++ b/src/Backend/utils/masking.util.js
+@@ -87,6 +87,22 @@ function maskAccountNumber(accountNumber, context = null) {
+   return `**** **** **** ${last4}`;
+ }
+ 
++/**
++ * Trả bản sao của [obj] với các khoá [khoa] đã che số tài khoản. Dùng cho payload socket (Nghị định 13): DTO trả về trực tiếp
++ * cho chủ tài khoản vẫn giữ số đầy đủ. Không sửa object gốc.
++ * @param {object|null} obj
++ * @param {string[]} khoa
++ * @returns {object|null}
++ */
++function maskAccountFields(obj, khoa) {
++  if (!obj) return obj ?? null;
++  const ra = { ...obj };
++  for (const k of khoa) {
++    if (ra[k]) ra[k] = maskAccountNumber(String(ra[k]));
++  }
++  return ra;
++}
++
+ /**
+  * Che Họ tên người dùng khi xuất báo cáo công cộng
+  * Giữ nguyên họ, viết tắt chữ cái đầu của tên đệm và tên chính
+@@ -216,6 +232,7 @@ module.exports = {
+   maskEmail,
+   maskPhone,
+   maskAccountNumber,
++  maskAccountFields,
+   maskFullname,
+   maskAddress,
+   maskTransactionDescription,

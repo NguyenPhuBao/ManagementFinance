@@ -1748,6 +1748,7 @@ là **chấp nhận có điều kiện**, không phải lỗi đang chạy.
    gửi `idaccount` của **phiên** cho hàng nhà khi sửa (nhánh update `sync.repository.js:491-512` không ghi đè `idaccount` nên người ghi vẫn giữ) — **đảo** quyết định cũ *"app giữ gửi `idaccount` người ghi"*
    (57.4): **CẦN người dùng chốt, chưa làm**.
    🔎 **2026-10-31: 57.4 đạt khi chạy thật** (ba ca Chủ / Member ra đúng, `Idaccount` giữ người ghi) ⇒ chốt thứ tự trên đã gỡ, lối thay thế *"gửi `idaccount` của phiên"* không còn cần, không phải hỏi người dùng nữa. Vẫn đo lại trên máy thật khi làm nợ này.
+   🔎 **2026-10-31 phiên 27 (`8e3b4e48`, PR #174):** kịch bản 50 / 50 trên CSDL tạm: `/invitations`, `/accept`, `/decline`, `/dissolve` đã chạy. Lát 2 hết chờ backend; nợ 1, 5, 7, 8, 9, 11 + lỗ hổng 1, 3 có task ở `docs/superpowers/plans/2026-10-31-gia-dinh-lat-2-man-hinh.md` và `…-g113-no-1-9.md` (chưa thi công).
 5. Thêm `MaQuyen` `'household'` ⇒ quét 21 va khoá JSON `'household'` ở `nha_cua_toi.dart` — cần miễn trừ.
 6. `quyen_nha.dart` `ghiDuLieu` gộp mọi thực thể; `docs/Family/01` mục 3: ví / mục tiêu / ngân sách chung chỉ Chủ nhà.
 7. `tinhNangKhongMo`: chọn câu theo `trangThaiQuyen(MaQuyen.giaDinh)` (Basic → mời nâng cấp; Premium tạm ngừng → *"Đang tạm ngừng"*).
