@@ -52,7 +52,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
   // ═════════════════════════════════════════════════════════════════════
   // TC2. Chống Race-Condition & Replay Attack (Idempotency & Partial Unique Index)
   // ═════════════════════════════════════════════════════════════════════
-  await t.test('2. [Tier 2] Idempotency & Unique Violation 23505: Webhook trùng lặp không ghi đúp giao dịch', async () => {
+  await t.test('2. [Unit] Idempotency & Unique Violation 23505: Webhook trùng lặp không ghi đúp giao dịch', async () => {
     const origFindOrder = paymentRepository.findOrderByCode;
     const origRecordTx = paymentRepository.recordTransaction;
     const origActivate = paymentRepository.activatePremiumSubscription;
@@ -96,10 +96,18 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
         },
       };
 
-      // Gọi webhook lần 2 cho đơn đã PAID
-      const res = await paymentService.handlePayOSWebhook(webhookPayload);
-      assert.strictEqual(res.success, true);
-      assert.ok(res.message.includes('Đơn hàng đã được xử lý hoặc đang trong quy trình đối soát trước đó'));
+      // Gọi webhook lần 1: Ghi nhận giao dịch đối soát thành công
+      const res1 = await paymentService.handlePayOSWebhook(webhookPayload);
+      assert.strictEqual(res1.success, true);
+      assert.strictEqual(recordTxCalls, 1);
+      assert.strictEqual(capturedTransactions.length, 1);
+
+      // Gọi webhook lần 2 cùng reference: Bị trùng lặp P2002 nhưng bắt lỗi trả 200 an toàn, không ghi thêm
+      const res2 = await paymentService.handlePayOSWebhook(webhookPayload);
+      assert.strictEqual(res2.success, true);
+      assert.strictEqual(recordTxCalls, 2);
+      assert.strictEqual(capturedTransactions.length, 1); // Vẫn bảo toàn đúng 1 hàng
+      assert.ok(res2.message.includes('Đơn hàng đã được xử lý hoặc đang trong quy trình đối soát trước đó'));
     } finally {
       paymentRepository.findOrderByCode = origFindOrder;
       paymentRepository.recordTransaction = origRecordTx;

@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const householdRepository = require('./household.repository');
 const { prisma } = require('../../config/db');
 const logger = require('../../core/logger');
+const { isPremiumEffective } = require('../../utils/premium.util');
 
 // Ký tự cho mã mời (bỏ các ký tự dễ nhầm lẫn như 0, O, 1, I)
 const INVITE_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -20,6 +21,25 @@ function createError(message, code, statusCode = 400) {
   err.code = code;
   err.statusCode = statusCode;
   return err;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Task 57.7: nhà chỉ nhận thao tác mời khi Active; ReadOnly và Dissolved có hai mã riêng (docs/Family/GIA_DINH_NEN_MONG.md C.3). */
+function assertHouseholdWritable(status) {
+  if (status === 'ReadOnly') {
+    throw createError('Nhà đang ở chế độ chỉ xem', 'HOUSEHOLD_READ_ONLY', 409);
+  }
+  if (status !== 'Active') {
+    throw createError('Nhà đã giải tán', 'HOUSEHOLD_CLOSED', 410);
+  }
 }
 
 /**
@@ -194,9 +214,7 @@ const householdService = {
       throw createError('Chỉ Chủ nhà mới có quyền tạo mã mời', 'FORBIDDEN_NOT_OWNER', 403);
     }
 
-    if (membership.household.status !== 'Active') {
-      throw createError('Nhà không ở trạng thái Active', 'HOUSEHOLD_NOT_ACTIVE', 400);
-    }
+    assertHouseholdWritable(membership.household.status);
 
     // Kiểm tra trần thành viên
     const [activeMembersCount, activeInvitesCount] = await Promise.all([
@@ -279,12 +297,20 @@ const householdService = {
       throw createError('Mã mời không tồn tại hoặc nhà đã giải tán', 'HOUSEHOLD_INVITE_INVALID', 404);
     }
 
+    if (invite.household.status === 'ReadOnly') {
+      throw createError('Nhà đang ở chế độ chỉ xem', 'HOUSEHOLD_READ_ONLY', 409);
+    }
+
     if (invite.declined_at) {
       throw createError('Lời mời này đã bị từ chối', 'HOUSEHOLD_INVITE_DECLINED', 409);
     }
 
-    if (invite.revoked_at || invite.used_at) {
-      throw createError('Mã mời đã được sử dụng hoặc đã bị hủy', 'HOUSEHOLD_INVITE_USED', 409);
+    if (invite.revoked_at) {
+      throw createError('Mã mời không còn hiệu lực', 'HOUSEHOLD_INVITE_INVALID', 404);
+    }
+
+    if (invite.used_at) {
+      throw createError('Mã mời đã được sử dụng', 'HOUSEHOLD_INVITE_USED', 409);
     }
 
     if (invite.expires_at <= now) {
@@ -326,12 +352,20 @@ const householdService = {
       throw createError('Mã mời không tồn tại hoặc nhà đã giải tán', 'HOUSEHOLD_INVITE_INVALID', 404);
     }
 
+    if (invite.household.status === 'ReadOnly') {
+      throw createError('Nhà đang ở chế độ chỉ xem', 'HOUSEHOLD_READ_ONLY', 409);
+    }
+
     if (invite.declined_at) {
       throw createError('Lời mời này đã bị từ chối', 'HOUSEHOLD_INVITE_DECLINED', 409);
     }
 
-    if (invite.revoked_at || invite.used_at) {
-      throw createError('Mã mời đã được sử dụng hoặc đã bị hủy', 'HOUSEHOLD_INVITE_USED', 409);
+    if (invite.revoked_at) {
+      throw createError('Mã mời không còn hiệu lực', 'HOUSEHOLD_INVITE_INVALID', 404);
+    }
+
+    if (invite.used_at) {
+      throw createError('Mã mời đã được sử dụng', 'HOUSEHOLD_INVITE_USED', 409);
     }
 
     if (invite.expires_at <= now) {
@@ -542,9 +576,7 @@ const householdService = {
       throw createError('Chỉ Chủ nhà mới có quyền gửi lời mời', 'FORBIDDEN_NOT_OWNER', 403);
     }
 
-    if (membership.household.status !== 'Active') {
-      throw createError('Nhà không ở trạng thái Active', 'HOUSEHOLD_NOT_ACTIVE', 400);
-    }
+    assertHouseholdWritable(membership.household.status);
 
     const expiresAt = new Date(Date.now() + 7 * 86400 * 1000); // 7 ngày
 
@@ -657,7 +689,7 @@ const householdService = {
         <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;border:1px solid #e0e0e0;border-radius:8px;">
           <h2 style="color:#1565C0;">FlowMoney — Lời Mời Gia Đình</h2>
           <p>Xin chào,</p>
-          <p><strong>${inviterName}</strong> đã mời bạn tham gia vào tổ ấm <strong>"${householdName}"</strong> với vai trò <strong>${roleText}</strong>.</p>
+          <p><strong>${escapeHtml(inviterName)}</strong> đã mời bạn tham gia vào tổ ấm <strong>"${escapeHtml(householdName)}"</strong> với vai trò <strong>${roleText}</strong>.</p>
           <div style="background-color:#e3f2fd;border-radius:8px;padding:16px;text-align:center;margin:20px 0;">
             <p style="margin:0 0 8px 0;font-size:13px;color:#555;">MÃ THAM GIA</p>
             <div style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#1565C0;">
@@ -672,6 +704,7 @@ const householdService = {
             <li>Nhập mã <strong>${code}</strong> và xác nhận.</li>
           </ol>
           <p style="font-size:12px;color:#888;">* Lưu ý: Nếu bạn chưa có tài khoản FlowMoney, hãy tải app và đăng ký bằng chính địa chỉ email này để được chấp nhận lời mời.</p>
+          <p style="font-size:12px;color:#888;">Nếu bạn không biết người mời, hãy bỏ qua thư này.</p>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0;" />
           <p style="color:#9e9e9e;font-size:11px;text-align:center;">Đây là email tự động từ hệ thống FlowMoney, vui lòng không trả lời thư này.</p>
         </div>
@@ -693,7 +726,7 @@ const householdService = {
   async getMyInvitations(idaccount, email) {
     let resolvedEmail = email;
     if (!resolvedEmail) {
-      resolvedEmail = await householdService.getCallerEmail(idaccount);
+      resolvedEmail = await getCallerEmail(idaccount);
     }
     const invites = await householdRepository.findPendingInvitationsForEmail(resolvedEmail, idaccount);
 
@@ -702,7 +735,7 @@ const householdService = {
       householdName: inv.household?.name || 'Gia đình',
       inviterName: inv.creator?.User?.fullname || inv.creator?.username || 'Chủ nhà',
       role: inv.role,
-      memberCount: inv.household?.member_count || 1,
+      memberCount: inv.household?._count?.household_member ?? 1,
       maxMembers: inv.household?.max_members || 6,
       expiresAt: inv.expires_at.toISOString(),
     }));
@@ -712,7 +745,7 @@ const householdService = {
   async acceptEmailInvite(idaccount, code, callerEmail) {
     let resolvedEmail = callerEmail;
     if (!resolvedEmail) {
-      resolvedEmail = await householdService.getCallerEmail(idaccount);
+      resolvedEmail = await getCallerEmail(idaccount);
     }
     return householdService.joinByCode(idaccount, code, resolvedEmail);
   },
@@ -728,8 +761,12 @@ const householdService = {
       throw createError('Lời mời này đã bị từ chối', 'HOUSEHOLD_INVITE_DECLINED', 409);
     }
 
-    if (invite.revoked_at || invite.used_at) {
-      throw createError('Mã mời đã được sử dụng hoặc đã bị hủy', 'HOUSEHOLD_INVITE_USED', 409);
+    if (invite.revoked_at) {
+      throw createError('Mã mời không còn hiệu lực', 'HOUSEHOLD_INVITE_INVALID', 404);
+    }
+
+    if (invite.used_at) {
+      throw createError('Mã mời đã được sử dụng', 'HOUSEHOLD_INVITE_USED', 409);
     }
 
     if (invite.expires_at <= new Date()) {
@@ -738,11 +775,11 @@ const householdService = {
 
     let resolvedEmail = callerEmail;
     if (!resolvedEmail) {
-      resolvedEmail = await householdService.getCallerEmail(idaccount);
+      resolvedEmail = await getCallerEmail(idaccount);
     }
 
-    if (invite.email && resolvedEmail) {
-      if (resolvedEmail.trim().toLowerCase() !== invite.email.toLowerCase()) {
+    if (invite.email) {
+      if (!resolvedEmail || resolvedEmail.trim().toLowerCase() !== invite.email.toLowerCase()) {
         throw createError('Lời mời này được gửi đích danh cho tài khoản email khác', 'HOUSEHOLD_INVITE_WRONG_ACCOUNT', 403);
       }
     }
@@ -819,9 +856,7 @@ const householdService = {
         return;
       }
 
-      const isPremium = owner.type === 'Premium' &&
-        Boolean(owner.premium_expires_at) &&
-        new Date(owner.premium_expires_at) > new Date();
+      const isPremium = isPremiumEffective(owner);
 
       const targetStatus = isPremium ? 'Active' : 'ReadOnly';
 

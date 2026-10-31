@@ -19,7 +19,7 @@ BEGIN
   SELECT ARRAY_AGG("Idaccount") INTO v_test_account_ids
   FROM account
   WHERE "Username" LIKE 'user_ret_%' 
-     OR "Email" LIKE '%anonymized.local%'
+     OR "Email" LIKE 'test\_%@anonymized.local'
      OR "Email" LIKE '%retention_%@example.com';
 
   IF v_test_account_ids IS NOT NULL AND array_length(v_test_account_ids, 1) > 0 THEN

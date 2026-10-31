@@ -305,23 +305,24 @@ const householdRepository = {
       // Task 57.6: Xóa mềm toàn bộ dữ liệu chung ở 5 bảng thực thể
       prisma.wallet.updateMany({
         where: { idhousehold: hhId, delete_at: null },
-        data: { delete_at: now, update_at: now },
+        data: { delete_at: now, update_at: now, server_update_at: now },
       }),
+      // Bảng transaction dùng cột deleted_at, khác bốn bảng còn lại
       prisma.transaction.updateMany({
-        where: { idhousehold: hhId, delete_at: null },
-        data: { delete_at: now, update_at: now },
+        where: { idhousehold: hhId, deleted_at: null },
+        data: { deleted_at: now, update_at: now, server_update_at: now },
       }),
       prisma.budget.updateMany({
         where: { idhousehold: hhId, delete_at: null },
-        data: { delete_at: now, update_at: now },
+        data: { delete_at: now, update_at: now, server_update_at: now },
       }),
       prisma.goal.updateMany({
         where: { idhousehold: hhId, delete_at: null },
-        data: { delete_at: now, update_at: now },
+        data: { delete_at: now, update_at: now, server_update_at: now },
       }),
       prisma.category.updateMany({
         where: { idhousehold: hhId, delete_at: null },
-        data: { delete_at: now, update_at: now },
+        data: { delete_at: now, update_at: now, server_update_at: now },
       }),
     ]);
   },
@@ -389,7 +390,11 @@ const householdRepository = {
         },
       },
       include: {
-        household: true,
+        household: {
+          include: {
+            _count: { select: { household_member: { where: { left_at: null } } } },
+          },
+        },
         creator: {
           select: {
             idaccount: true,

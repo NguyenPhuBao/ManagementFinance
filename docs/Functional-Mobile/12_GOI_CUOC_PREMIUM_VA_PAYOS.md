@@ -22,6 +22,9 @@
 
 Hệ thống phân quyền được thiết kế tập trung tại tầng domain ([`quyen_tinh_nang.dart`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Client-app/lib/features/premium/domain/quyen_tinh_nang.dart) và [`tran_goi.dart`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Client-app/lib/features/premium/domain/tran_goi.dart)), đồng bộ động từ server qua endpoint `/payment/subscription-info`.
 
+> [!NOTE]
+> `premium_expires_at` NULL với `Type = 'Premium'` là dữ liệu hỏng, coi là Basic: `accountType: 'Premium'`, `isPremium: false`, `isExpired: true`; job hạ cấp đưa về `Basic` ở lượt quét kế.
+
 ### 2.1. Trần hạn mức gói Basic (`TranGoi` & `LoaiTran`)
 
 | Loại tài nguyên (`LoaiTran`) | Giới hạn Basic mặc định | Giới hạn gói Premium | Hành vi khi chạm trần |

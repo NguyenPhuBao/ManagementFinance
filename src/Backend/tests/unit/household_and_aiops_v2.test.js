@@ -259,6 +259,14 @@ test('Household & AIOps v2 — 2-Tier System Impact & Security Suite (Tasks 57.1
       return true;
     };
 
+    // Hàng ĐÃ CÓ trên server: nếu không giả, ca này rơi vào nhánh hàng mới và không chứng minh gì
+    const origGetTx = syncRepository.getTransactionById;
+    syncRepository.getTransactionById = async () => ({
+      idtran: '00000000-0000-4000-8000-000000000001',
+      idaccount: ID_OWNER,
+      idhousehold: 99,
+    });
+
     const origUpsertTx = syncRepository.upsertTransaction;
     syncRepository.upsertTransaction = async (data, idaccount) => {
       // Bảo toàn idaccount của người tạo gốc
@@ -287,9 +295,29 @@ test('Household & AIOps v2 — 2-Tier System Impact & Security Suite (Tasks 57.1
 
       assert.strictEqual(res.summary.synced, 1);
       assert.strictEqual(enforced, true);
+
+      // Task 59.1: hàng MỚI mang idaccount của người khác bị từ chối, không ghi
+      syncRepository.getTransactionById = async () => null;
+      const hangMoi = await syncService.processPush(ID_MEMBER, [
+        {
+          localId: 'hang-moi',
+          entity: 'transaction',
+          operation: 'update',
+          payload: {
+            idtran: '00000000-0000-4000-8000-000000000002',
+            idaccount: ID_OWNER,
+            idhousehold: 99,
+            idwallet: '11111111-1111-4111-8111-111111111111',
+            amount: 250000,
+            type: 'Expense',
+          },
+        },
+      ]);
+      assert.strictEqual(hangMoi.results[0].code, 'NOT_OWNER');
     } finally {
       syncService.enforceHouseholdPermission = origEnforce;
       syncRepository.upsertTransaction = origUpsertTx;
+      syncRepository.getTransactionById = origGetTx;
     }
   });
 
@@ -346,10 +374,10 @@ test('Household & AIOps v2 — 2-Tier System Impact & Security Suite (Tasks 57.1
 
       const andConditions = unlockCall.where.AND;
       assert.ok(andConditions.some(c => c.status === 'Inactive'));
-      // Có ràng buộc NOT chứa 'Quản trị viên' hoặc 'Admin'
-      const onlyAIOpsCond = andConditions.find(c => c.NOT !== undefined);
+      // Chỉ mở hàng mang dấu khoá tự động
+      const onlyAIOpsCond = andConditions.find(c => c.reason_inactive?.startsWith);
       assert.ok(onlyAIOpsCond);
-      assert.ok(onlyAIOpsCond.NOT.some(n => n.reason_inactive.contains === 'Quản trị viên'));
+      assert.strictEqual(onlyAIOpsCond.reason_inactive.startsWith, '[AIOPS_AUTO_QUARANTINE]');
     } finally {
       prisma.account.updateMany = origUpdateMany;
     }

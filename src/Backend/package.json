@@ -21,7 +21,8 @@
     "db:verify-encryption": "node scripts/verify_encryption_health.js",
     "payos:test": "node scripts/test_payos_connection.js",
     "payos:confirm-webhook": "node scripts/confirm_payos_webhook.js",
-    "redis:test": "node scripts/test_redis_connection.js"
+    "redis:test": "node scripts/test_redis_connection.js",
+    "verify:household": "node scripts/verify_household_contract.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

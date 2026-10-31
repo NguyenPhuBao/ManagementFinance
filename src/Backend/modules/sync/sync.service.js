@@ -1,3 +1,4 @@
+const { isPremiumEffective } = require('../../utils/premium.util');
 const syncRepository = require('./sync.repository');
 const { VALID_ENTITIES, validateOperation } = require('./sync.validation');
 const eventBus = require('../../core/event-bus');
@@ -62,6 +63,9 @@ function getOperationWeight(op) {
   return entityWeight;
 }
 
+// Năm bảng có cột Idhousehold; bill KHÔNG có nên luôn đi nhánh hàng riêng (Task 59.1)
+const HOUSEHOLD_ENTITIES = new Set(['wallet', 'transaction', 'budget', 'goal', 'category']);
+
 async function chuConPremium(ownerId) {
   if (!ownerId) return false;
   const { prisma } = require('../../config/db');
@@ -69,14 +73,7 @@ async function chuConPremium(ownerId) {
     where: { idaccount: Number(ownerId) },
     select: { type: true, premium_expires_at: true },
   });
-  if (!owner) return false;
-  if (owner.type !== 'Premium') return false;
-  // Task 55.A3: Premium không có premium_expires_at là dữ liệu hỏng / không hợp lệ -> coi là Basic
-  if (!owner.premium_expires_at) return false;
-  if (new Date(owner.premium_expires_at) <= new Date()) {
-    return false;
-  }
-  return true;
+  return isPremiumEffective(owner);
 }
 
 const syncService = {
@@ -147,7 +144,7 @@ const syncService = {
     }
 
     // Task 56.6 & 58.2: Giới hạn số lượng ví dùng chung trong gia đình (max_shared_wallets)
-    const isNewWallet = operation === 'create' || !existingRecord;
+    const isNewWallet = operation !== 'delete' && (operation === 'create' || !existingRecord);
     if (entity === 'wallet' && isNewWallet) {
       const { prisma } = require('../../config/db');
       const activeSharedWalletsCount = await prisma.wallet.count({
@@ -166,7 +163,7 @@ const syncService = {
     }
 
     if (entity === 'transaction') {
-      const isNewTx = operation === 'create' || !existingRecord;
+      const isNewTx = operation !== 'delete' && (operation === 'create' || !existingRecord);
       if (isNewTx) {
         const isTransfer = String(payload.type || '').toLowerCase() === 'transfer';
         if (isTransfer) {
@@ -178,7 +175,7 @@ const syncService = {
         }
       } else if (operation === 'update' || operation === 'delete') {
         const isExistingTransfer = existingRecord && String(existingRecord.type || '').toLowerCase() === 'transfer';
-        const isPayloadTransfer = String(payload.type || '').toLowerCase() === 'transfer';
+        const isPayloadTransfer = operation !== 'delete' && String(payload.type || '').toLowerCase() === 'transfer';
         if ((isExistingTransfer || isPayloadTransfer) && membership.role !== 'Owner') {
           throw Object.assign(new Error('Chỉ Chủ nhà mới có quyền sửa/xóa giao dịch chuyển khoản giữa các ví chung'), {
             code: 'HOUSEHOLD_ROLE_FORBIDDEN',
@@ -264,6 +261,8 @@ const syncService = {
 
     // Sắp xếp operations theo thứ tự phụ thuộc (FK dependency)
     const indexedOps = operations.map((op, idx) => ({ op, idx }));
+    // Task 58.4: nhà của từng thao tác lấy từ hàng cũ / nhà đã qua kiểm quyền, không bao giờ đọc lại payload khi phát sự kiện
+    const nhaCuaThaoTac = new Map();
     indexedOps.sort((a, b) => getOperationWeight(a.op) - getOperationWeight(b.op));
 
     for (const { op, idx } of indexedOps) {
@@ -314,9 +313,11 @@ const syncService = {
                   ? payload.householdId
                   : payload.Idhousehold));
 
-        const targetHhId = existingRecord
-          ? (existingRecord.idhousehold ?? existingRecord.Idhousehold ?? null)
-          : (hasHhKey ? (payloadHh !== null && payloadHh !== undefined ? Number(payloadHh) : null) : null);
+        const targetHhId = !HOUSEHOLD_ENTITIES.has(entity)
+          ? null
+          : existingRecord
+            ? (existingRecord.idhousehold ?? existingRecord.Idhousehold ?? null)
+            : (hasHhKey ? (payloadHh !== null && payloadHh !== undefined ? Number(payloadHh) : null) : null);
 
         if (targetHhId) {
           // BẢN GHI THUỘC GIA ĐÌNH: Chuyển toàn bộ thẩm quyền phân quyền cho ma trận vai trò (Task 57.4)
@@ -333,8 +334,20 @@ const syncService = {
           if (existingRecord) {
             payload.idaccount = Number(existingRecord.idaccount ?? existingRecord.Idaccount ?? payload.idaccount ?? idaccount);
           } else {
-            payload.idaccount = Number(payload.idaccount ?? idaccount);
+            // Task 59.1: hàng MỚI thì người ghi luôn là chủ token
+            if (payload.idaccount !== undefined && payload.idaccount !== null && Number(payload.idaccount) !== Number(idaccount)) {
+              results[idx] = {
+                localId,
+                status: 'error',
+                code: 'NOT_OWNER',
+                message: 'Hàng mới phải mang idaccount của người đẩy',
+              };
+              errors++;
+              continue;
+            }
+            payload.idaccount = Number(idaccount);
           }
+          nhaCuaThaoTac.set(idx, Number(targetHhId));
         } else {
           // BẢN GHI RIÊNG TƯ: Áp dụng chốt chặn quyền sở hữu cá nhân
           if (payload.idaccount !== undefined && payload.idaccount !== null && Number(payload.idaccount) !== Number(idaccount)) {
@@ -498,12 +511,8 @@ const syncService = {
     try {
       const affectedHouseholds = new Set();
       for (let i = 0; i < results.length; i++) {
-        if (results[i]?.status === 'synced') {
-          const op = operations[i];
-          const hhId = op?.payload?.idhousehold || op?.payload?.idHousehold || op?.payload?.householdId || op?.payload?.Idhousehold;
-          if (hhId) {
-            affectedHouseholds.add(Number(hhId));
-          }
+        if (results[i]?.status === 'synced' && nhaCuaThaoTac.has(i)) {
+          affectedHouseholds.add(nhaCuaThaoTac.get(i));
         }
       }
 

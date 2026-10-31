@@ -412,7 +412,22 @@ async function activatePremiumSubscription({ idaccount, orderId, paidAt, newExpi
         });
       }
       if (!existingTx) {
-        try {
+        if (typeof tx.payment_transaction?.createMany === 'function') {
+          await tx.payment_transaction.createMany({
+            data: [{
+              id: transactionData.id,
+              order_id: orderId,
+              idaccount,
+              payos_transaction_id: transactionData.payosTransactionId ? String(transactionData.payosTransactionId) : null,
+              amount: transactionData.amount,
+              bank_code: transactionData.bankCode || null,
+              transaction_time: transactionData.transactionTime || new Date(),
+              signature_verified: transactionData.signatureVerified ?? true,
+              raw_webhook_hash: transactionData.rawWebhookHash || null,
+            }],
+            skipDuplicates: true,
+          });
+        } else if (typeof tx.payment_transaction?.create === 'function') {
           await tx.payment_transaction.create({
             data: {
               id: transactionData.id,
@@ -426,10 +441,6 @@ async function activatePremiumSubscription({ idaccount, orderId, paidAt, newExpi
               raw_webhook_hash: transactionData.rawWebhookHash || null,
             },
           });
-        } catch (createErr) {
-          if (createErr.code !== 'P2002' && !createErr.message?.includes('23505') && !createErr.message?.includes('unique')) {
-            throw createErr;
-          }
         }
       }
     }
@@ -509,9 +520,8 @@ async function downgradeExpiredPremiumAccounts(now = new Date()) {
   const expiredAccounts = await prisma.account.findMany({
     where: {
       type: 'Premium',
-      premium_expires_at: {
-        lte: now,
-      },
+      // Task 55.A3: hàng không có hạn là dữ liệu hỏng, cũng hạ về Basic
+      OR: [{ premium_expires_at: { lte: now } }, { premium_expires_at: null }],
     },
     select: {
       idaccount: true,

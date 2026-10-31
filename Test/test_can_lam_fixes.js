@@ -12,6 +12,16 @@
  * 10. Mock query param prevention on production
  */
 
+try {
+  require('dotenv').config({ path: require('path').resolve(__dirname, '../src/Backend/.env') });
+} catch (e) {
+  require('../src/Backend/node_modules/dotenv').config({ path: require('path').resolve(__dirname, '../src/Backend/.env') });
+}
+if (/supabase\.com/i.test(process.env.DATABASE_URL || '')) {
+  console.error('Script này ghi dữ liệu: từ chối chạy trên Supabase dùng chung.');
+  process.exit(1);
+}
+
 const { randomUUID: uuidv4 } = require('crypto');
 const { prisma } = require('../src/Backend/config/db');
 const syncService = require('../src/Backend/modules/sync/sync.service');
@@ -314,20 +324,9 @@ async function runAllCanLamTests() {
     // TEST 7: Quy tắc Danh mục Mới (Template & Cloned)
     // -------------------------------------------------------------------------
     console.log(`\n${colors.bright}7. Kiểm thử Quy tắc Danh mục Mới: Cho phép trùng tên với hệ thống, cấm trùng tên trong cùng tài khoản${colors.reset}`);
-    const testDefaultCatName = `TemplateTest_${Date.now()}`;
-    const testDefaultCatId = uuidv4();
-    cleanupIds.categories.push(testDefaultCatId);
-
-    // Admin tạo danh mục hệ thống
-    await prisma.category.create({
-      data: {
-        idcategory: testDefaultCatId,
-        create_by: 1, // Admin
-        name_category: testDefaultCatName,
-        classify: 'Chi',
-        is_default: true,
-      },
-    });
+    // Tìm danh mục hệ thống có sẵn (tránh tạo khuôn is_default: true làm ô nhiễm dữ liệu)
+    const existingDefaultCat = await prisma.category.findFirst({ where: { is_default: true, delete_at: null } });
+    const testDefaultCatName = existingDefaultCat ? existingDefaultCat.name_category : `MauHeThong_${Date.now()}`;
 
     let userCatSameAsDefaultCreated = false;
     let userCatCreatedId = uuidv4();
@@ -434,10 +433,10 @@ async function runAllCanLamTests() {
       }).catch(() => {});
     }
     if (cleanupIds.goals.length > 0) {
-      await prisma.goal.deleteMany({ where: { idgoal: { in: cleanupIds.goals } } }).catch(() => {});
+      await prisma.goal.updateMany({ where: { idgoal: { in: cleanupIds.goals } }, data: { delete_at: new Date() } }).catch(() => {});
     }
     if (cleanupIds.budgets.length > 0) {
-      await prisma.budget.deleteMany({ where: { idbudget: { in: cleanupIds.budgets } } }).catch(() => {});
+      await prisma.budget.updateMany({ where: { idbudget: { in: cleanupIds.budgets } }, data: { delete_at: new Date() } }).catch(() => {});
     }
     if (cleanupIds.wallets.length > 0) {
       await prisma.wallet.updateMany({
@@ -446,7 +445,7 @@ async function runAllCanLamTests() {
       }).catch(() => {});
     }
     if (cleanupIds.categories.length > 0) {
-      await prisma.category.deleteMany({ where: { idcategory: { in: cleanupIds.categories } } }).catch(() => {});
+      await prisma.category.updateMany({ where: { idcategory: { in: cleanupIds.categories } }, data: { delete_at: new Date() } }).catch(() => {});
     }
     if (userA && userB) {
       await prisma.account.updateMany({

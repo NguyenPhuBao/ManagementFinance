@@ -691,8 +691,11 @@ Hoàn thành xây dựng và tích hợp trọn vẹn module Quản lý Tài ch�
 
 Đã hoàn thành 100% các hạng mục công việc lớn theo đúng định hướng và phê duyệt của PO:
 1. **Phân Quyền Family 4 Trụ Cột (Admin-Web & Backend):**
-   - Áp dụng migration an toàn `44_expand_household_4_pillars_permissions.sql`, bổ sung 3 quyền quản trị gia đình: `household.create`, `household.dissolve`, `household.member_limit`.
-   - Cập nhật giao diện Admin-web (`PermissionManagementPage.jsx`) hỗ trợ song ngữ (Anh - Việt), cấu hình trực quan bật/tắt quyền theo từng gói `Free`, `Plus`, `Premium`.
+   - Áp dụng migration an toàn `44_expand_household_4_pillars_permissions.sql`, chuẩn hóa 4 quyền quản trị gia đình: `household`, `household_join`, `household_members`, `household_wallets`.
+   - Cập nhật cấu hình phân quyền theo từng gói `Basic` và `Premium`.
+
+> [!IMPORTANT]
+> **Quy ước Khóa Mã hóa Dữ liệu (Task 52.3):** CSDL dev cục bộ `PersonFinance` chạy với `DATA_ENCRYPTION_KEY` = khoá dev mặc định của `utils/crypto.util.js` (đặt qua biến môi trường của tiến trình, không sửa `.env`). Khoá trong `.env` là của Supabase. Tuyệt đối không trộn hai khoá trên cùng một CSDL.
 2. **Nhóm 1: Hoàn Tất Dứt Điểm Nghiệp Vụ Gia Đình (Tasks 57.6, 58.3, 57.7, 57.8):**
    - Giải tán nhà (`dissolveHousehold`): Xóa mềm đồng loạt 5 bảng dữ liệu chung (`wallet`, `transaction`, `budget`, `goal`, `category`), thu hồi mã mời pending, gán `left_at = now` trong single `prisma.$transaction`.
    - Realtime Socket: Trích xuất danh sách thành viên trước khi gắn `left_at` để phát socket `HOUSEHOLD_DISSOLVED` tới từng phòng tài khoản cá nhân `account_<id>`.

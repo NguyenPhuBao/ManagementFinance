@@ -1,3 +1,13 @@
+try {
+  require('dotenv').config({ path: require('path').resolve(__dirname, '../src/Backend/.env') });
+} catch (e) {
+  require('../src/Backend/node_modules/dotenv').config({ path: require('path').resolve(__dirname, '../src/Backend/.env') });
+}
+if (/supabase\.com/i.test(process.env.DATABASE_URL || '')) {
+  console.error('Script này ghi dữ liệu: từ chối chạy trên Supabase dùng chung.');
+  process.exit(1);
+}
+
 const { randomUUID: uuidv4 } = require('crypto');
 const { prisma } = require('../src/Backend/config/db');
 const syncService = require('../src/Backend/modules/sync/sync.service');
@@ -43,7 +53,8 @@ async function runSyncTests() {
 
   const now = new Date().toISOString();
 
-  const operations = [
+  try {
+    const operations = [
     // 1. Category
     {
       localId: 'op_cat_1',
@@ -242,11 +253,22 @@ async function runSyncTests() {
     console.log(`   ${colors.green}✔ Soft Delete: Tất cả các bảng đã được đánh dấu Deleted_at / Delete_at thành công!${colors.reset}\n`);
   }
 
-  // 4. Dọn dẹp tài khoản test qua xóa mềm (Task 48.3, tuân thủ DB Guard không xóa cứng)
-  await prisma.account.update({
-    where: { idaccount },
-    data: { status: 'Deleted', countdown: 0, delete_at: new Date() },
-  }).catch(() => {});
+  } finally {
+    // 4. Dọn dẹp an toàn bằng xóa mềm trong khối finally
+    await syncRepository.softDelete('transaction', tranId).catch(() => {});
+    await syncRepository.softDelete('bill', billId).catch(() => {});
+    await syncRepository.softDelete('budget', budgetId).catch(() => {});
+    await syncRepository.softDelete('goal', goalId).catch(() => {});
+    await syncRepository.softDelete('wallet', wallet1Id).catch(() => {});
+    await syncRepository.softDelete('wallet', wallet2Id).catch(() => {});
+    await syncRepository.softDelete('category', categoryId).catch(() => {});
+    if (idaccount) {
+      await prisma.account.update({
+        where: { idaccount },
+        data: { status: 'Deleted', countdown: 0, delete_at: new Date() },
+      }).catch(() => {});
+    }
+  }
 
   console.log(`${colors.green}${colors.bright}======================================================================${colors.reset}`);
   console.log(`${colors.green}${colors.bright}   🎉 MODULE SYNC ĐÃ ĐƯỢC CẬP NHẬT VÀ KIỂM THỬ CHUẨN XÁC 100%!        ${colors.reset}`);
