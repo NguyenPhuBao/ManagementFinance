@@ -35,7 +35,7 @@ class ThamGiaNhaCubit extends Cubit<ThamGiaNhaState> {
 
   Future<void> xem() async {
     final ma = state.ma;
-    if (!maMoiHopLe(ma) || state.dangXem) return;
+    if (!maMoiHopLe(ma) || state.dangXem || state.dangThamGia) return;
     emit(ThamGiaNhaState(ma: ma, xemTruoc: state.xemTruoc, dangXem: true));
     try {
       final x = await _repo.xemTruoc(ma);
@@ -50,15 +50,16 @@ class ThamGiaNhaCubit extends Cubit<ThamGiaNhaState> {
 
   Future<bool> thamGia() async {
     final s = state;
-    if (s.xemTruoc == null || s.dangThamGia) return false;
+    if (s.xemTruoc == null || s.dangThamGia || s.dangXem) return false;
     emit(ThamGiaNhaState(ma: s.ma, xemTruoc: s.xemTruoc, dangThamGia: true));
     try {
       await _repo.thamGia(s.ma);
       return true;
     } catch (e) {
       if (!isClosed) {
-        if (!_bao.isClosed) _bao.add(cauLoiNha(loaiLoiNhaCua(e)));
-        emit(ThamGiaNhaState(ma: s.ma, xemTruoc: s.xemTruoc));
+        final loai = loaiLoiNhaCua(e);
+        if (!_bao.isClosed) _bao.add(cauLoiNha(loai));
+        emit(ThamGiaNhaState(ma: s.ma, xemTruoc: loiThuLaiDuoc(loai) ? s.xemTruoc : null));
       }
       return false;
     }

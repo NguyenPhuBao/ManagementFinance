@@ -139,8 +139,8 @@ void main() {
     await t.pumpAndSettle();
     await t.enterText(find.byType(TextField), '0O1I');
     await t.pump();
-    expect(t.widget<TextField>(find.byType(TextField)).controller?.text ?? '', isEmpty);
-    expect(find.text('0O1I'), findsNothing);
+    expect(find.byType(EditableText), findsOneWidget);
+    expect(t.widget<EditableText>(find.byType(EditableText)).controller.text, isEmpty);
     final o = t.widget<TextField>(find.byType(TextField));
     expect(o.keyboardType, TextInputType.visiblePassword);
     expect(o.enableSuggestions, isFalse);
@@ -204,6 +204,7 @@ void main() {
     api.treo = treoVao;
     await t.tap(find.text('Tham gia'));
     await t.pump();
+    expect(xem().onPressed, isNull, reason: 'đang tham gia thì không xem trước lại');
     expect(t.widget<TextField>(find.byType(TextField)).enabled, isFalse);
     api.treo = null;
     treoVao.complete();

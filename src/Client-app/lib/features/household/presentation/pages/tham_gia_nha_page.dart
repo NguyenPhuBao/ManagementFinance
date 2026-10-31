@@ -106,7 +106,7 @@ class _ThamGiaNhaPageState extends State<ThamGiaNhaPage> {
                       ),
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
-                        onPressed: duoc && maMoiHopLe(s.ma) && !s.dangXem
+                        onPressed: duoc && maMoiHopLe(s.ma) && !s.dangXem && !s.dangThamGia
                             ? () => unawaited(_cubit.xem())
                             : null,
                         icon: const Icon(Icons.visibility_outlined),
@@ -136,7 +136,7 @@ class _ThamGiaNhaPageState extends State<ThamGiaNhaPage> {
                   child: SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: duoc && s.xemTruoc != null && !s.dangThamGia
+                      onPressed: duoc && s.xemTruoc != null && !s.dangThamGia && !s.dangXem
                           ? () => unawaited(_thamGia())
                           : null,
                       child: const Row(

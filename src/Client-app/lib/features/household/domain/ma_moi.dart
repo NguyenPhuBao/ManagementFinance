@@ -49,6 +49,6 @@ String trichMaMoi(String s) {
   final chuan = chuanHoaMaMoi(s);
   if (chuan.length <= kDoDaiMaMoi) return chuan;
   final hoa = s.toUpperCase();
-  final m = _maSauNhanMaMoi.firstMatch(hoa) ?? _maDungRieng.firstMatch(hoa);
+  final m = _maSauNhanMaMoi.allMatches(hoa).lastOrNull ?? _maDungRieng.firstMatch(hoa);
   return m?.group(1) ?? chuan;
 }

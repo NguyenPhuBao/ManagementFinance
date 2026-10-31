@@ -58,7 +58,12 @@ void main() {
     });
 
     test('tên nhà có từ 8 ký tự hợp lệ không thắng mã sau "Mã mời:"', () {
-      final tin = cauChiaSeMaMoi(tenNha: 'Giadinhx', ma: 'ZZYY2345');
+      final tin = cauChiaSeMaMoi(tenNha: 'NGUYENXX', ma: 'ZZYY2345');
+      expect(trichMaMoi(tin), 'ZZYY2345');
+    });
+
+    test('tên nhà chứa nguyên "Mã mời: AAAA2222": lấy nhãn CUỐI, mã thật', () {
+      final tin = cauChiaSeMaMoi(tenNha: 'Mã mời: AAAA2222', ma: 'ZZYY2345');
       expect(trichMaMoi(tin), 'ZZYY2345');
     });
 

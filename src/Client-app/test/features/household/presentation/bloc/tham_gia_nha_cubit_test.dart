@@ -42,6 +42,7 @@ void main() {
     final (c, _, _) = await dung();
     c.doiMa('ABCD2345');
     await c.xem();
+    expect(c.state.xemTruoc, isNotNull, reason: 'phải có thẻ trước khi đổi mã');
     c.doiMa('ABCD2346');
     expect(c.state.xemTruoc, isNull);
   });
@@ -53,7 +54,7 @@ void main() {
     expect(api.goi.where((g) => g.startsWith('thamGia')), isEmpty);
   });
 
-  test('tham gia hỏng: báo đúng câu, giữ bản xem trước để thử lại', () async {
+  test('tham gia hỏng vì nhà đầy: báo đúng câu, bỏ thẻ (muốn thử lại thì bấm Xem trước)', () async {
     final (c, api, bao) = await dung();
     c.doiMa('ABCD2345');
     await c.xem();
@@ -61,8 +62,58 @@ void main() {
     expect(await c.thamGia(), isFalse);
     await Future<void>.delayed(Duration.zero);
     expect(bao, [cauLoiNha(LoaiLoiNha.nhaDu)]);
+    expect(c.state.xemTruoc, isNull);
+    expect(c.state.dangThamGia, isFalse);
+  });
+
+  test('tham gia: mã chết thì bỏ thẻ; mất mạng thì giữ thẻ', () async {
+    for (final ma in ['HOUSEHOLD_INVITE_USED', 'HOUSEHOLD_INVITE_EXPIRED', 'HOUSEHOLD_INVITE_INVALID', 'HOUSEHOLD_CLOSED']) {
+      final (c, api, _) = await dung();
+      c.doiMa('ABCD2345');
+      await c.xem();
+      api.loi = loiServer(410, ma);
+      expect(await c.thamGia(), isFalse);
+      expect(c.state.xemTruoc, isNull, reason: ma);
+    }
+    final (c, api, _) = await dung();
+    c.doiMa('ABCD2345');
+    await c.xem();
+    api.loi = DioException(requestOptions: RequestOptions(path: '/x'), type: DioExceptionType.connectionError);
+    expect(await c.thamGia(), isFalse);
     expect(c.state.xemTruoc, isNotNull);
     expect(c.state.dangThamGia, isFalse);
+  });
+
+  test('Xem trước lại khi đang tham gia: từ chối, cờ dangThamGia còn, chỉ một POST', () async {
+    final (c, api, _) = await dung();
+    c.doiMa('ABCD2345');
+    await c.xem();
+    final treo = Completer<void>();
+    api.treo = treo;
+    api.traVe = nhaJson();
+    final f = c.thamGia();
+    await c.xem();
+    expect(c.state.dangThamGia, isTrue);
+    expect(await c.thamGia(), isFalse);
+    treo.complete();
+    expect(await f, isTrue);
+    expect(api.goi.where((g) => g.startsWith('thamGia')), hasLength(1));
+    expect(api.goi.where((g) => g.startsWith('xemTruoc')), hasLength(1));
+  });
+
+  test('Tham gia khi đang xem trước: từ chối; cờ dangThamGia không bị xem() xoá', () async {
+    final (c, api, _) = await dung();
+    c.doiMa('ABCD2345');
+    await c.xem();
+    final treo = Completer<void>();
+    api.treo = treo;
+    final f = c.xem();
+    expect(c.state.dangXem, isTrue);
+    expect(await c.thamGia(), isFalse);
+    expect(c.state.dangThamGia, isFalse);
+    treo.complete();
+    await f;
+    expect(api.goi.where((g) => g.startsWith('thamGia')), isEmpty);
   });
 
   test('mọi mã lỗi ra đúng câu', () async {
