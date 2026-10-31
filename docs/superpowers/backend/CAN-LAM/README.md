@@ -1,18 +1,13 @@
-# Backend & Client — DANH SÁCH CẦN LÀM (một tệp việc: `VIEC_BACKEND_CON_LAI.md` — gộp 10 đơn 43 · 44 · 48 · 49 · 50 · 52 · 55 · 56 · 57 · 58)
+# Backend & Client — DANH SÁCH CẦN LÀM (một tệp việc: `VIEC_BACKEND_CON_LAI.md` — còn đơn 48 · 52 · 55 · 57 · 58 · 59 + T1–T3, T6)
 
-> 🌟 **CẬP NHẬT 2026-10-31 (LEAD BA & LEAD FULLSTACK HOÀN TẤT 100% TOÀN BỘ DANH MỤC VIỆC CAN-LAM — 10/10 ĐƠN ĐẠT TRỌN):**
-> Dưới sự chỉ đạo và phê duyệt từ PO, toàn bộ 10 đơn (43 · 44 · 48 · 49 · 50 · 52 · 55 · 56 · 57 · 58) cùng 3 tài liệu căn chỉnh T1 · T2 · T3 đã được xử lý triệt để 100% trong mã nguồn, kiểm thử 2 tầng (Test 2 Tầng Rule 11) và đồng bộ tài liệu:
-> 1. **Nhóm 1 (Gia đình / Đơn 50, 56, 57, 58.1–58.4):**
->    - Chuẩn hóa 5 API về Single State Shape `{ household, myRole, members, formerMembers }` (57.1); tra cứu `account.Email` từ DB cho lời mời email (57.2); kết nối gửi email thật qua Brevo/SMTP (57.3); bỏ qua check lệch owner cá nhân khi có `idhousehold` (57.4); gán cứng quota an toàn (57.5); xoá mềm 5 bảng dữ liệu chung và thu hồi mã mời pending trong single transaction (57.6); chuẩn hóa toàn bộ mã lỗi theo docs/Family/01 (57.7); bảo vệ race-condition, rate-limiter 30 req/15p (57.8).
->    - Bắt cả create và `!existingRecord` chống Member tạo/sửa transfer giữa 2 ví chung (58.1) và siết ví chung `HOUSEHOLD_WALLET_LIMIT` khi app gửi update (58.2); phát socket `HOUSEHOLD_DISSOLVED` tới từng phòng `account_<id>` thành viên trước khi đổi trạng thái (58.3); lọc chỉ phát socket sync cho các op thực tế (58.4).
-> 2. **Nhóm 2 (AIOps Sentinel & Account Status / Đơn 43, 58.5, 58.6):**
->    - Thêm cờ `[AIOPS_AUTO_QUARANTINE]` tự động mở khóa sau 15 phút, bảo vệ tuyệt đối tài khoản Admin khóa thủ công (58.5); phân biệt username toàn số và `idaccount`, chỉ `force_logout` khi update thực sự $>0$, dọn khối thừa trong `unblockAccount` (58.6).
-> 3. **Nhóm 3 (PayOS Idempotency & Financial Matrix / Đơn 44):**
->    - Hoàn tất 100% ma trận tài chính (6.1 hoàn tiền không nâng cấp, 6.2a nâng gói `PAID`, 6.2b đơn lạ `CONFIRMATION_PENDING` đối soát an toàn); cơ chế nhận diện chuyển khoản lặp `uq_payment_transaction_payos_id`; JIT sync & BigInt serialization an toàn.
-> 4. **Nhóm 4 (Mã hoá Dữ liệu & An toàn Bảo mật / Đơn 52, 48.1, 49.F(1), 55.A3, T1–T3):**
->    - Truyền context `{ table, id, field }` tại 100% chỗ gọi `decrypt` (52.1); khóa `.env` chính thức duy nhất, tự động nạp trong `crypto.util.js` (52.3); xác nhận 100% (28/28) trường dữ liệu mã hóa giải mã thành công trên Supabase Cloud (52.4); di trú re-encrypt toàn bộ 19 ghi chú giao dịch và 3 số điện thoại dev cũ về khóa `.env` (52.5); tombstone an toàn trả chuỗi rỗng cho bản ghi đã xoá mềm không làm sập `/sync/pull`.
->    - Tài khoản 18 đã dọn sạch ví test ("Ví Test Note" xóa mềm, 0 ví test sống) (48.1); sửa casing SQL 33 `"status"` / `"update_at"` thành `"Status"` / `"Update_at"` (49.F(1)); `chuConPremium` phân định `null` rơi về Basic (55.A3); căn chỉnh toàn diện banner cho T1 (`Event-Notification-to-ClientApp.md`), T2 (`IP-Device-ClientApp.md`), T3 (`4_TRU_COT.md`).
-> 5. **Toàn bộ kiểm thử:** Đạt 100% 548/548 tests Backend PASS, DB Guard verify-indexes PASS, DB verify-encryption 28/28 trường đạt 0 lỗi. Zero Regressions.
+> 🔎 **Client soát lượt báo xong 2026-10-31** (PR #172, backend `5ff06db4`, client fast-forward, 0 tệp `src/Client-app` đổi): **chưa xong — 24 việc: 5 đạt · 15 một phần · 4 chưa**, kèm **đơn 59** (lỗi do chính PR).
+> Chấm theo thân việc + *Kiểm lại* của `VIEC_BACKEND_CON_LAI.md`: đọc mã, đo **chỉ đọc** trên Supabase, và **chạy thật** trên bản sao mã + CSDL tạm (`KIEM-THU/chay_kiem.js`, payload như app): **mã hiện tại 23 / 50 ca**, sau bản vá thử nghiệm **50 / 50**.
+> - 🧰 **Hướng dẫn sửa chi tiết ở `VIEC_BACKEND_CON_LAI.md`** (mục *Cách làm* + *Cách sửa* từng việc), kèm bản vá đã thử `KIEM-THU/ban_sua_pr172.patch` (23 tệp) và kịch bản nghiệm thu. Client **không** sửa `src/Backend`; bản vá chỉ là đề xuất để backend áp.
+> - ✅ Đạt (đã xoá khỏi tệp việc): 57.4, 58.1, 58.2 (đã chạy thật), 57.5, 49.F(1) (đọc mã).
+> - 🛑 **Bốn lỗi CAO:** **57.6** `POST /dissolve` luôn 500 (`transaction.delete_at` không tồn tại — đã chạy xác nhận) · **57.2** `GET /invitations`, `…/accept`, `…/decline` 500 (`householdService.getCallerEmail` không tồn tại — đã chạy xác nhận; app gọi `/invitations` mỗi lần đăng nhập, lỗi bị nuốt) · **59.1** hàng mới mang `idhousehold` không kiểm `idaccount` ⇒ ghi được hoá đơn vào tài khoản người khác (đã chạy xác nhận) · **58.5** admin khoá rồi AIOps ghi đè lý do ⇒ tự mở sau hạn (đã chạy xác nhận). Ca test của 57.6 khẳng định đúng tên cột sai.
+> - Đo Supabase (chỉ đọc): migration 44 đã áp · 0 nhà · khoá `.env` giải hết 25 + 3 hàng `enc:` · 0 tài khoản `Inactive` / Premium không hạn. `PersonFinance` chưa áp 41–44 (không chặn gì: quyền thiếu khoá dùng mặc định trong mã).
+> - ⚠️ Lượt soát này **thay** khối *"🌟 CẬP NHẬT 2026-10-31 … HOÀN TẤT 100%"* và mục 0 *"10/10 ĐÃ XONG"* do PR #172 ghi vào vùng client của tệp này (bản gốc: `git show 5ff06db4:docs/superpowers/backend/CAN-LAM/README.md`). Khối ấy còn ghi đảo ma trận tài chính (6.1 thực tế: khớp → `PAID`; 6.2a thừa → `WAITING_CONFIRMATION`; 6.2b thiếu → `REFUND_PENDING`) và mã `CONFIRMATION_PENDING` không có trong mã. Backend ghi báo cáo ở mục 10 tệp việc.
+> - Số đơn kế tiếp: **60**. `ls CAN-LAM/`: `VIEC_BACKEND_CON_LAI.md` · `README.md` · `CLIENT_INTEGRATION_GUIDE.md` · `LICH-SU/` · `KIEM-THU/`.
 >
 > --------------------------------------------------
 
@@ -300,22 +295,24 @@
 
 ---
 
-## 0. Tiến độ & Trạng thái 10 Đơn (Hiện tại: **10/10** đơn ĐÃ HOÀN TẤT 100% — 0 mục tồn đọng)
+## 0. Còn phải làm (soát 2026-10-31: **24 việc PR #172 báo xong — 5 đạt · 15 một phần · 4 chưa**; 43, 44, 49, 50, 56 không còn việc riêng)
 
-➡️ **Chi tiết kỹ thuật từng mã việc: [`VIEC_BACKEND_CON_LAI.md`](./VIEC_BACKEND_CON_LAI.md)** (bảng việc mục 0, trả lời chi tiết mục 10). Bảng dưới đây tóm tắt kết quả xử lý toàn diện 10 đơn; 100% việc đã được kiểm chứng 2 tầng qua test suites của Backend:
+➡️ **Việc cần làm: [`VIEC_BACKEND_CON_LAI.md`](./VIEC_BACKEND_CON_LAI.md)** (bảng việc mục 0, trả lời mục 10). Cột *Kết quả* là client soát theo thân việc + *Kiểm lại*, không theo ô trả lời; `tệp:dòng` ở HEAD `5ff06db4`.
 
-| # | Tài liệu | Trách nhiệm | Nội dung & Tiến độ | Trạng thái |
+| # | Tài liệu | Trách nhiệm | Còn phải làm | Kết quả soát 2026-10-31 |
 |---|---|---|---|---|
-| **43** | [SOAT_SAU_GOP_CD2EE572.md](./LICH-SU/SOAT_SAU_GOP_CD2EE572.md) | Backend | AIOps khoá tài khoản chuẩn hóa 'Inactive', bảo vệ Admin khóa tay, ck_account_status. Đã hoàn tất 100% kèm 58.5, 58.6 và T1. | ✅ **ĐÃ XONG 100%** |
-| **44** | [SOAT_SAU_GOP_D72CCD45.md](./LICH-SU/SOAT_SAU_GOP_D72CCD45.md) | Backend | Webhook PayOS Idempotency: Ma trận trạng thái 6.1, 6.2a, 6.2b, confirmUpgrade; uq_payment_transaction_payos_id; JIT sync; tài liệu sự kiện T1. | ✅ **ĐÃ XONG 100%** |
-| **48** | [DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md](./LICH-SU/DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md) | Backend (script test) | Soft-delete sạch ví test tài khoản 18; cô lập test script sinh UUID ngẫu nhiên và dọn dẹp trong finally (48.1, 48.2, 48.3). | ✅ **ĐÃ XONG 100%** |
-| **49** | [SOAT_SAU_GOP_EE6A65E5.md](./LICH-SU/SOAT_SAU_GOP_EE6A65E5.md) | Backend (mã + chữ) | Đổi tên migration 27b; sửa chữ hoa thường SQL 33 (49.F(1)); chuẩn hóa T1, T2, T4, T5; kích hoạt Premium JIT 1 tham số. | ✅ **ĐÃ XONG 100%** |
-| **50** | [GIA_DINH_NEN_MONG.md](./LICH-SU/GIA_DINH_NEN_MONG.md) | Backend (tính năng mới) | Chức năng gia đình nền móng: Migration 40-41; 16 APIs /api/households; sync bảo vệ NOT_OWNER & vai trò Owner/Member/Viewer; socket realtime. Đóng cùng 56, 57, 58. | ✅ **ĐÃ XONG 100%** |
-| **52** | [GIAI_MA_HONG_TRA_BAN_MA.md](./LICH-SU/GIAI_MA_HONG_TRA_BAN_MA.md) | Backend | Truyền context ở 100% chỗ gọi decrypt (52.1); khóa .env chính thức (52.3); 0 lỗi giải mã Supabase Cloud (52.4); re-encrypt sạch 100% dữ liệu cũ (52.5); tombstone an toàn. | ✅ **ĐÃ XONG 100%** |
-| **55** | [PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md](./LICH-SU/PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md) | Backend (hợp đồng + tài liệu) | Phân quyền theo gói: 55.A1, 55.A2, 55.A3 (chuConPremium null rơi về Basic); chuẩn hóa tài liệu T3 4_TRU_COT.md. | ✅ **ĐÃ XONG 100%** |
-| **56** | [SOAT_SAU_GOP_7B56D822.md](./LICH-SU/SOAT_SAU_GOP_7B56D822.md) | Backend (gia đình — đồng bộ, quyền, socket) | Đóng trọn vẹn 9/9 việc: 56.1–56.7 và phần chuyển tiếp vào 58.1–58.4, 58.6, 57.4. Sync Engine và Socket gia đình chuẩn 100%. | ✅ **ĐÃ XONG 100%** |
-| **57** | [VIEC_BACKEND_CON_LAI.md](./VIEC_BACKEND_CON_LAI.md) | Backend (gia đình — API /api/households) | Hoàn tất 8/8 việc: 57.1 Single State Shape; 57.2 lookup Email Postgres; 57.3 Brevo/SMTP; 57.4 skip owner mismatch cho ví chung; 57.5 quota cứng; 57.6 xoá mềm 5 bảng; 57.7 mã lỗi docs/Family/01; 57.8 rate limit & race condition. | ✅ **ĐÃ XONG 100%** |
-| **58** | [VIEC_BACKEND_CON_LAI.md](./VIEC_BACKEND_CON_LAI.md) | Backend (lỗi do PR #170 đưa vào) | Hoàn tất 6/6 việc: 58.1 chặn Member transfer giữa 2 ví chung; 58.2 siết quota ví chung khi update; 58.3 socket HOUSEHOLD_DISSOLVED; 58.4 socket sync lọc op; 58.5 auto-unlock 15p AIOps; 58.6 gom lỗi nhỏ. | ✅ **ĐÃ XONG 100%** |
+| **43** | [SOAT_SAU_GOP_CD2EE572.md](./LICH-SU/SOAT_SAU_GOP_CD2EE572.md) | Backend | Không còn việc riêng; AIOps còn ở 58.5 | Đạt từ 2026-10-30 |
+| **44** | [SOAT_SAU_GOP_D72CCD45.md](./LICH-SU/SOAT_SAU_GOP_D72CCD45.md) | Backend | Không còn việc riêng; ca test PayOS của PR #172 ở T6 | Đạt từ 2026-10-30 |
+| **48** | [DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md](./LICH-SU/DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md) | Backend (script test) | **48.1** ghi đúng ai / lúc nào dọn tài khoản 18; hai script test ở 58.6 | Chưa |
+| **49** | [SOAT_SAU_GOP_EE6A65E5.md](./LICH-SU/SOAT_SAU_GOP_EE6A65E5.md) | Backend | Không còn việc (49.F(1) đạt theo đọc mã) | Đạt |
+| **50** | [GIA_DINH_NEN_MONG.md](./LICH-SU/GIA_DINH_NEN_MONG.md) | Backend (tính năng mới) | Đóng cùng 57 + 58.3 / 58.4 / 58.6 | Chờ 57, 58 |
+| **52** | [GIAI_MA_HONG_TRA_BAN_MA.md](./LICH-SU/GIAI_MA_HONG_TRA_BAN_MA.md) | Backend | **52.1** 6 chỗ gọi `mask*` chưa truyền `context`; **52.3** chốt khoá `PersonFinance`; **52.4** xác nhận khoá trên Render; **52.5** `/sync/pull` 200 + `PersonFinance` | 52.1, 52.5 một phần · 52.3, 52.4 chưa · Supabase + khoá `.env` đạt (client đo) |
+| **55** | [PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md](./LICH-SU/PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md) | Backend (hợp đồng + tài liệu) | **55.A3** hàm chung, ghi hợp đồng, job hạ cấp | Một phần |
+| **56** | [SOAT_SAU_GOP_7B56D822.md](./LICH-SU/SOAT_SAU_GOP_7B56D822.md) | Backend | Không còn việc riêng; phần còn gộp vào 58.3 / 58.4 / 58.6 | Chờ 58 |
+| **57** | [VIEC_BACKEND_CON_LAI.md](./VIEC_BACKEND_CON_LAI.md) mục 1 *Đơn 57* | Backend (API `/api/households`) | **57.6 (CAO)** `/dissolve` luôn 500; **57.2 (CAO)** `/invitations`, accept, decline 500; 57.1, 57.3, 57.7, 57.8 phần còn lại | 2 đạt (57.4, 57.5) · 5 một phần · 1 chưa |
+| **58** | [VIEC_BACKEND_CON_LAI.md](./VIEC_BACKEND_CON_LAI.md) mục 1, 2 *Đơn 58* | Backend (lỗi do PR #170) | **58.5 (CAO)** AIOps tự mở khoá của admin; 58.3 (chết theo 57.6); 58.4; 58.6 năm gạch | 2 đạt (58.1, 58.2) · 4 một phần |
+| **59** | [VIEC_BACKEND_CON_LAI.md](./VIEC_BACKEND_CON_LAI.md) mục 1 *Đơn 59* | Backend (lỗi do PR #172 / phát hiện khi soát) | **59.1 (CAO)** không kiểm `idaccount` hàng mới; 59.2 xoá ví chưa lên server; 59.3 `is_default` từ client | Mới |
+| **T** | [VIEC_BACKEND_CON_LAI.md](./VIEC_BACKEND_CON_LAI.md) mục 8 | Backend (tài liệu) | **T1, T2, T3** sửa tại dòng, banner có chỗ sai; **T6** câu sai mới viết | T1 3 / 18 · T2 1 / 3 · T3 5 / 19 hàng được banner phủ đúng |
 
 ---
 

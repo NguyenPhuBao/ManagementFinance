@@ -615,7 +615,16 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-30)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-31)
+
+### 🔀 Gộp `main` @ `5ff06db4` (2026-10-31 phiên 25, fast-forward nên không có commit gộp, chưa push) — backend báo xong 24 việc (PR #172); client soát: **chưa xong**
+
+- `d7fcaf07` · `cf876e10` · `23b3685e` (NPBao, PR #172): 42 tệp, **0 tệp `src/Client-app`** (cây giữ hash `b7fcb406`, không chạy lại `flutter test`); `git check-ignore --no-index -v src/Client-app/test/x_test.dart` không khớp; `schema.prisma`, `SYNC_DOCUMENTATION.md`, `docs/Family` không đổi. Migration **44** (`household_join`, `household_wallets`) đã áp Supabase (đo chỉ đọc), chưa `PersonFinance` (không chặn gì: khoá vắng dùng mặc định trong mã). `crypto.util.js` tự nạp `.env` khi chưa có khoá, không `override` ⇒ lệnh chạy `PersonFinance` ở `CLAUDE.md` vẫn đúng. `package.json` chỉ thêm script: không cần `npm install`.
+- **Soát** (bốn agent Opus chỉ đọc + phiên chính kiểm lại mọi lỗi CAO; báo cáo gitignore ở `.superpowers/soat-pr172/`), chấm theo thân việc + *Kiểm lại*: **5 đạt** (57.4, 57.5, 58.1, 58.2, 49.F(1)) · **15 một phần** (57.1, 57.2, 57.3, 57.7, 57.8, 58.3, 58.4, 58.5, 58.6, 52.1, 52.5, 55.A3, T1, T2, T3) · **4 chưa** (57.6, 52.3, 52.4, 48.1). **Đơn 59** mới: 59.1 (CAO), 59.2, 59.3.
+- 🛑 **Hồi quy CAO do PR #172, đã chạy xác nhận:** `POST /dissolve` luôn 500 (`transaction.delete_at`, ca test khẳng định đúng cột sai) · `GET /invitations`, `…/accept`, `…/decline` 500 (`householdService.getCallerEmail` không tồn tại; app gọi `/invitations` mỗi lần đăng nhập và mỗi `resumed` sau 5 phút, lỗi bị nuốt, kho lời mời luôn trống — chưa màn nào đọc nên người dùng chưa thấy) · hàng mới mang `idhousehold` không kiểm `idaccount` ⇒ ghi được hoá đơn vào tài khoản người khác · admin khoá rồi AIOps ghi đè ⇒ tự mở sau hạn.
+- **Chạy thật lần đầu trên CSDL tạm** (cụm PostgreSQL riêng ở cổng 55432 trong scratchpad, `prisma db push` từ bản sao không có `.env`, đã tắt): kịch bản 50 ca payload như app — mã hiện tại **23 / 50**, sau bản vá thử **50 / 50**; `tests/unit` **481 / 486** trước và sau (3 ca cần `.env` / dữ liệu thật). Chính bộ test backend bắt một lỗi của bản vá thử (`isPremium` bị xoá) trước khi gửi đi.
+- **Người dùng yêu cầu "hướng dẫn chi tiết cách sửa để bên backend thực hiện theo"** ⇒ `CAN-LAM/VIEC_BACKEND_CON_LAI.md` viết lại: mục *Cách làm* + *Cách sửa* từng việc, thư mục `CAN-LAM/KIEM-THU/` (`ban_sua_pr172.patch`, `chay_kiem.js`, kết quả mốc). Client **không** sửa `src/Backend`.
+- **Phía client sau khi backend gộp + đo lại (chưa làm, chưa cần sửa mã hôm nay):** gỡ nhánh phẳng / thô `nha_cua_toi.dart` + nhóm test; bản giả `400` của `_EXPIRED` ở `household_api_test.dart:105-106` đổi 410; chú thích lạc hậu `realtime_event.dart:66-72`, `nha_repository_impl.dart:17-20`, `household_api.dart:10-14`, `loi_moi.dart:49-50`; đọc thêm `HOUSEHOLD_INVITE_ATTEMPT_LIMIT`; đừng hiện `memberCount` tới khi 57.8 #6 đóng; `docs/Family/01` mục 2.2, 2.4 ghi theo câu trả lời 57.8 #5, #7. Lát 2: **Stitch chưa có màn gia đình nào** (lọc 148 màn, 2026-10-31).
 
 ### 🔀 Gộp `main` @ `e3248955` (2026-10-30 phiên 24, commit gộp `ba5cd3c5`, chưa push) — backend báo xong đơn 43 · 44 · 48 · 49 · 52 · 55 · 56 + T1–T5 (PR #170)
 

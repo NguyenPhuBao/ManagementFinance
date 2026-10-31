@@ -1,352 +1,526 @@
-# Việc backend còn phải làm — MỘT tệp (đơn 48 · 49 · 52 · 55 · 57 · 58 + tài liệu T1–T3)
+# Việc backend còn phải làm — MỘT tệp (đơn 52 · 55 · 57 · 58 · 59 + việc nhỏ 48.1 + tài liệu T1–T3, T6)
 
-> **Người nhận:** backend (NPBao). Tệp này **chỉ còn việc phải làm** — client soát bằng mã ngày 2026-10-30 (backend `e3248955`, PR #170).
-> Việc đã đạt không còn ở đây — xem git log (`git show 2b832f16:docs/superpowers/backend/CAN-LAM/VIEC_BACKEND_CON_LAI.md`) / [`LICH-SU/`](./LICH-SU/).
-> Mỗi việc có **mã** giữ số đơn cũ (`57.1`, `52.3`…). Tám tệp đơn gốc ở `LICH-SU/` là lịch sử, không cập nhật — đừng ghi trả lời vào đó.
+> **Người nhận:** backend (NPBao). Tệp này **chỉ còn việc phải làm** — client soát PR #172 ngày **2026-10-31** (backend `5ff06db4`).
+> **Kết quả soát 24 việc PR #172 báo `✅ ĐÃ XONG`: 5 đạt · 15 một phần · 4 chưa.** Đạt (đã xoá khỏi tệp): 57.4, 58.1, 58.2 (đã chạy thật với payload app), 57.5, 49.F(1) (đọc mã).
+> Việc đã đạt không còn ở đây — xem git log: bản có báo cáo của backend `git show 5ff06db4:docs/superpowers/backend/CAN-LAM/VIEC_BACKEND_CON_LAI.md`, bản đề bài trước đó `git show 55c727d9:…` / [`LICH-SU/`](./LICH-SU/).
+> Mỗi việc có **mã** giữ số đơn cũ (`57.2`, `52.3`…). Tám tệp đơn gốc ở `LICH-SU/` là lịch sử, không cập nhật — đừng ghi trả lời vào đó.
 >
 > **Lưu ý chung cho mọi việc:**
-> - **Ca test đi đường thật** (route HTTP / `syncService.processPush`) với **payload như app gửi** — chép từ
->   `src/Client-app/test/core/sync/sync_payload_contract_test.dart` và `docs/superpowers/sync/SYNC_DOCUMENTATION.md`. App luôn gửi `idaccount`
->   **của hàng** (người ghi) và `operation: 'update'` / `'delete'` — **không bao giờ** `'create'`. Ca test thiếu `idaccount` hoặc dùng `'create'`
->   sẽ xanh trong khi app thật vẫn hỏng (57.4, 58.1, 58.2 lọt qua đúng cách ấy).
-> - Migration theo tệp `src/Backend/database/N_*.sql` áp tay (`docs/Rule_Project/Rule_project.md` §3.2).
-> - Không xoá cứng dữ liệu người dùng — xoá mềm (`Delete_at` / `Deleted_at`).
-> - Thử trên **CSDL riêng**, không trên Supabase dùng chung (hàng thử đi vào `/sync/pull` của tài khoản thật).
-> - **Trả lời** ghi vào bảng mục 10, mỗi dòng **một câu nói đúng việc của mã ấy** (commit, tệp, ca test). Lần trước nhiều dòng tả hàm / mã không
->   có trong mã (`getHouseholds`, `NOT_A_MEMBER`…); client chấm theo câu hỏi ở thân việc, không theo ô trả lời.
+> - 🛑 **Hai lỗi đang làm hỏng đường chạy do chính PR #172 — sửa trước tiên:** 57.2 (`GET /invitations`, `…/accept`, `…/decline` 500; app gọi `/invitations` mỗi lần đăng nhập) và 57.6 (`POST /dissolve` luôn 500).
+> - **Ca test đi đường thật** (route HTTP / `syncService.processPush`, CSDL riêng hoặc giả ở tầng Prisma; không giả chính hàm cần chứng minh) với **payload như app gửi** — `src/Client-app/test/core/sync/sync_payload_contract_test.dart`. App luôn gửi `idaccount` **của hàng** (người ghi) và `operation: 'update'` / `'delete'` — **không bao giờ** `'create'`. Ca xanh cả trên mã cũ là chưa canh gì.
+> - Migration theo tệp `src/Backend/database/N_*.sql` áp tay (`docs/Rule_Project/Rule_project.md` §3.2). Không xoá cứng dữ liệu người dùng. Thử trên **CSDL riêng**, không trên Supabase dùng chung.
+> - **Trả lời** ghi vào bảng mục 10. Bảng mục 0, văn ở các mục khác và README mục 0 + banner là vùng client cập nhật — đừng ghi đè.
 >
-> Mọi `tệp:dòng` của backend đọc ở HEAD `e3248955` (trừ khi ghi khác). Đơn mới thêm mục vào tệp này — số kế tiếp **59**.
+> Mọi `tệp:dòng` của backend đọc ở HEAD `5ff06db4`. Đơn mới thêm mục vào tệp này — số kế tiếp **60**.
+
+---
+
+## Cách làm — đọc trước
+
+Client đã **thử toàn bộ phần sửa mã trên một bản sao + CSDL tạm** (không đụng `src/Backend`, Supabase, `PersonFinance`). Trong thư mục [`KIEM-THU/`](./KIEM-THU/):
+
+| Tệp | Là gì |
+|---|---|
+| [`ban_sua_pr172.patch`](./KIEM-THU/ban_sua_pr172.patch) | Bản vá 23 tệp, áp sạch lên `5ff06db4` (đã kiểm `git apply`). Phủ các việc đánh dấu **[vá]** ở bảng mục 0 |
+| [`chay_kiem.js`](./KIEM-THU/chay_kiem.js) | Kịch bản nghiệm thu 50 ca chạy **thật** trên CSDL riêng, payload như app; thay socket + email bằng bản ghi nhận; tự từ chối chạy nếu `DATABASE_URL` không phải CSDL `flowmoney_kiem_thu` trên máy này |
+| [`ket_qua_ma_hien_tai_5ff06db4.txt`](./KIEM-THU/ket_qua_ma_hien_tai_5ff06db4.txt) | Kết quả trên mã hiện tại, để đối chiếu: **23 đạt / 50 ca** |
+
+Số đo của client: mã hiện tại **23 / 50**, sau bản vá **50 / 50**; `tests/unit/*.test.js` **481 / 486 trước và sau bản vá** (đo không có `.env`; 3 ca hỏng ở cả hai bản vì cần dữ liệu / khoá thật: `data_encryption_group4_audit` ca 5, 8 và `household_and_aiops_v2` ca 2). Bản vá đã sửa kèm 4 tệp test đang khẳng định hành vi cũ.
+
+**Các bước** (Git Bash, từ gốc repo; PowerShell thì đặt biến bằng `$env:TEN = '…'`):
+
+```bash
+# 1. Tạo CSDL riêng. Prisma tự tạo CSDL; dòng in ra phải ghi "flowmoney_kiem_thu" — sai thì DỪNG.
+cd src/Backend
+export DATABASE_URL="postgresql://postgres:<mật khẩu>@127.0.0.1:5432/flowmoney_kiem_thu"
+export DIRECT_URL="$DATABASE_URL" NODE_ENV=development LOG_LEVEL=error REDIS_PROVIDER=none REDIS_URL=
+npx prisma db push --skip-generate --schema prisma/schema.prisma
+
+# 2. Đo mốc trên mã hiện tại: phải ra "TỔNG: 23 đạt / 50 ca"
+node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem.js . kq_truoc.txt
+
+# 3. Áp bản vá (từ gốc repo). Mã đã đổi so với 5ff06db4 mà không áp được thì sửa tay theo "Cách sửa" từng việc bên dưới.
+cd ../.. && git apply --ignore-whitespace docs/superpowers/backend/CAN-LAM/KIEM-THU/ban_sua_pr172.patch && cd src/Backend
+
+# 4. Chạy lại: phải ra "TỔNG: 50 đạt / 50 ca". Không xoá ca nào cho xanh.
+node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem.js . kq_sau.txt
+
+# 5. Bộ test đơn vị, vẫn trỏ CSDL riêng ở trên
+NODE_ENV=test node --test --test-force-exit tests/unit/*.test.js
+```
+
+6. Làm các việc **ngoài bản vá** (bảng mục 0, cột *Phần tay*): ca test, tài liệu, khoá.
+7. Chép `chay_kiem.js` vào `src/Backend/scripts/verify_household_contract.js` (sửa đường dẫn trong lời dặn đầu tệp) và thêm `"verify:household"` vào `package.json`, để lần sau chạy lại được.
+8. Commit, ghi mục 10 (dán dòng `TỔNG:` của bước 4). **Không cần** `npm install`, `prisma generate` hay migration mới: `schema.prisma` không đổi; ba tệp SQL trong bản vá (33, 41, 44) chỉ có tác dụng khi áp trên CSDL mới hoặc áp lại.
 
 ---
 
 ## 0. Bảng việc — xếp theo mức
 
-| Mã | Việc | Mức | Mục | Trạng thái kỹ thuật |
-|---|---|---|---|:---:|
-| 58.1 | Member tạo được chuyển khoản giữa hai ví chung — chốt chỉ chạy ở `operation === 'create'`, app luôn gửi `update` | **CAO** | 1 | ✅ **ĐÃ XONG** (`sync.service.js`) |
-| 58.5 | Khoá tự động của AIOps không bao giờ tự mở khi hết hạn + `force_logout` ⇒ ai biết username khoá được tài khoản ấy vô thời hạn | **CAO** | 2 | ✅ **ĐÃ XONG** (`aiops.quarantine.js`) |
-| 57.1 | Một hình dạng *trạng thái nhà* cho mọi endpoint trả nó — theo `docs/Family/01` mục 4 (`/me` đang phẳng, tạo nhà trả hàng thô) | **CAO** | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
-| 57.2 | `req.user` không có `email` → mọi đường mời **email** hỏng (xem trước 403, ai cầm mã cũng vào, người đăng ký sau không thấy lời mời) | **CAO** | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
-| 57.3 | Thư mời không bao giờ gửi — `require('../../core/mail.service')` không tồn tại, lỗi bị nuốt | **CAO** | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
-| 57.4 | Chủ nhà sửa khoản của thành viên bị chặn ở chốt *"Ownership mismatch"* trước ma trận vai — chặn lát 2 gia đình phía client | VỪA | 1 | ✅ **ĐÃ XONG** (`sync.service.js`) |
-| 58.2 | `HOUSEHOLD_WALLET_LIMIT` chết với app (cùng gốc 58.1) | VỪA | 1 | ✅ **ĐÃ XONG** (`sync.service.js`) |
-| 58.3 | `HOUSEHOLD_DISSOLVED` không tới ai — `Left_at` đặt trước khi phát | VỪA | 1 | ✅ **ĐÃ XONG** (`household.service.js`, `household.repository.js`) |
-| 58.4 | `household.changed` sau `/sync/push` phát theo `payload.idhousehold` chưa kiểm, kể cả op bị từ chối | VỪA | 1 | ✅ **ĐÃ XONG** (`sync.service.js`) |
-| 57.5 | `POST /api/households` nhận `maxMembers` / `maxSharedWallets` / `contributionDueDay` từ body | VỪA | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
-| 57.6 | Giải tán không xoá mềm dữ liệu chung, không thu hồi mã mời | VỪA | 1 | ✅ **ĐÃ XONG** (`household.repository.js`) |
-| 57.7 | Mã lỗi API của nhà lệch `docs/Family/01` mục 2.5 + đơn 50 C.3 (tên, HTTP, `_DECLINED` không bao giờ phát) | VỪA | 1 | ✅ **ĐÃ XONG** (`household.service.js`) |
-| 52.1 | Log giải mã hỏng chưa có bảng + khoá chính ở 15 / 17 chỗ gọi `decrypt` (gồm `/sync/pull`) | VỪA | 4 | ✅ **ĐÃ XONG** (`sync.repository.js`, `auth.repository.js`, `auth.service.js`) |
-| 52.3 | Chốt khoá giải mã cho CSDL dev `PersonFinance` và ghi vào tài liệu chạy backend | VỪA | 4 | ✅ **ĐÃ XONG** (Khóa `.env` chính thức, `crypto.util.js` auto-load) |
-| 52.4 | Khoá trên Render — `transaction.Note` đang chứa bản mã của hai khoá, không khoá nào giải hết | VỪA | 4 | ✅ **ĐÃ XONG** (`npm run db:verify-encryption` 0 lỗi trên Supabase Cloud) |
-| 52.5 | Dọn ghi chú `enc:` giải hỏng — 3 tài khoản Active không kéo toàn bộ được (`/sync/pull` 500) | VỪA | 4 | ✅ **ĐÃ XONG** (`migrate_reencrypt_legacy_dev_data.js` 0 lỗi) |
-| 55.A3 | Premium không có `premium_expires_at` vẫn mang hai nghĩa — `chuConPremium` coi là Premium | VỪA | 5 | ✅ **ĐÃ XONG** (`sync.service.js`) |
-| 49.F(1) | Tệp `database/33` viết sai hoa thường tên cột (`"status"` / `"update_at"` → `"Status"` / `"Update_at"`) | VỪA | 7 | ✅ **ĐÃ XONG** (`database/33_*.sql`) |
-| T1 | `docs/Admin-web/Event-Notification-to-ClientApp.md` còn tả sai app (bảng 8.1) | VỪA | 8.1 | ✅ **ĐÃ XONG** (`Event-Notification-to-ClientApp.md`) |
-| T2 | `docs/Admin-web/IP-Device-ClientApp.md` còn ba chỗ (bảng 8.2) | VỪA | 8.2 | ✅ **ĐÃ XONG** (`IP-Device-ClientApp.md`) |
-| T3 | `docs/Functional-Mobile/4_TRU_COT.md` còn tả app làm điều nó không làm (bảng 8.3) | VỪA | 8.3 | ✅ **ĐÃ XONG** (`4_TRU_COT.md`) |
-| 58.6 | Gom lỗi nhỏ do PR #170 (`chuConPremium` nuốt lỗi CSDL, thứ tự mã, migration 41 `DO UPDATE`, script test, `force_logout` khi khớp 0 hàng…) | THẤP | 1 (vế AIOps ở 2) | ✅ **ĐÃ XONG** (DB, Sync, AIOps) |
-| 57.8 | Tám chỗ nhỏ của API nhà (lọc thành viên khi mời email, tên người mời, khoá hàng mời, giới hạn gọi, trạng thái lời mời, độ dài email…) | THẤP | 1 | ✅ **ĐÃ XONG** (`household.service.js`, `rate-limiter.js`) |
-| 48.1 | Ghi đúng: ai / CSDL nào / lúc nào đã dọn dữ liệu test của tài khoản 18 | THẤP | 6 | ✅ **ĐÃ XONG** (Bảng Mục 10) |
+**[vá]** = mã đã có trong `ban_sua_pr172.patch` và đã chạy thử.
+
+| Mã | Việc | Mức | Mục | Bản vá | Phần tay |
+|---|---|---|---|---|---|
+| 57.6 | `POST /dissolve` **luôn 500** — `transaction` dùng sai cột `delete_at` (hồi quy PR #172) | **CAO** | 1 | [vá] | — |
+| 57.2 | `GET /invitations` **500 với mọi tài khoản**; `…/accept`, `…/decline` 500 với lời mời hợp lệ (hồi quy PR #172) | **CAO** | 1 | [vá] | — |
+| 59.1 | Hàng mới mang `idhousehold` không kiểm `idaccount` ⇒ ghi được hoá đơn vào tài khoản người khác (hồi quy PR #172) | **CAO** | 1 | [vá] | — |
+| 58.5 | AIOps: admin khoá rồi AIOps ghi đè ⇒ **tự mở sau hạn** (hồi quy PR #172); khởi động lại không mở; dấu lộ ra app | **CAO** | 2 | [vá] | — |
+| 58.3 | `HOUSEHOLD_DISSOLVED` không bao giờ chạy vì 57.6 | VỪA | 1 | [vá] | — |
+| 58.4 | Nhà của `sync.completed` vẫn lấy từ `payload.idhousehold` | VỪA | 1 | [vá] | — |
+| 59.3 | Tài khoản nào cũng đẩy được danh mục mới thành khuôn toàn cục (có sẵn) | VỪA | 1 | [vá] | — |
+| 57.7 | Nhà `ReadOnly` `/join` được (hồi quy PR #172); mã lệch; chưa có bảng mã chốt | VỪA | 1 | [vá] | Dán bảng mã chốt vào mục 10 |
+| 57.1 | Hàm đạt; #15 hỏng theo 57.2; test còn hình dạng phẳng | VỪA | 1 | [vá] | Sửa `household.api.test.js` |
+| 57.3 | Tên nhà chèn HTML không thoát; không có ca test | VỪA | 1 | [vá] | Thêm một ca test |
+| 55.A3 | Hàm chung, job hạ cấp hàng hạn NULL; chưa ghi hợp đồng | VỪA | 5 | [vá] | Ghi hai tài liệu |
+| 52.1 | `mask*` có `context` nhưng 6 chỗ gọi không truyền | VỪA | 4 | [vá] | Thêm một ca test |
+| 52.3 | Chưa chốt khoá cho `PersonFinance` ở tài liệu nào | VỪA | 4 | — | Dán câu chốt, chạy kiểm |
+| 52.4 | Chưa xác nhận khoá **trên Render** | VỪA | 4 | — | So vân tay khoá |
+| 52.5 | Supabase + khoá `.env` đạt; còn `/sync/pull` 200, `PersonFinance`, mã thoát của script | VỪA | 4 | — | Sửa script, ghi mục 10 |
+| T1 | `Event-Notification-to-ClientApp.md` — 0 dòng sửa, banner phủ 3 / 18, banner sai hai mục | VỪA | 8.1 | — | Sửa tại dòng |
+| T2 | `IP-Device-ClientApp.md` — banner phủ 1 / 3, banner sai cơ chế throttle | VỪA | 8.2 | — | Sửa tại dòng |
+| T3 | `4_TRU_COT.md` — banner phủ 5 / 19 | VỪA | 8.3 | — | Sửa tại dòng |
+| 57.8 | Đạt #1–#4; #6 `memberCount` luôn 1 | THẤP | 1 | [vá] #6 | Ba câu trả lời #5, #7, #8 |
+| 58.6 | Đạt `chuConPremium`, thứ tự mã, vế AIOps; 41 + 44 `DO UPDATE`, 33 lọc rộng | THẤP | 1 | [vá] 33, 41, 44 | Hai script `Test/`, script nghiệm thu |
+| 59.2 | Xoá hàng chưa từng lên server bị tính là hàng mới (hồi quy PR #172) | THẤP | 1 | [vá] | — |
+| 48.1 | Ô trả lời viện dẫn `scripts/cleanup` không tồn tại, ngày lệch, không có tên | THẤP | 6 | — | Một câu ở mục 10 |
+| T6 | Câu sai mới viết ở `Backend.md`, `Project.md`; ca test PayOS không đi nhánh nó nêu | THẤP | 8.6 | — | Sửa tại dòng |
 
 ---
 
 ## 1. Gia đình phần 1 — chặn client mở đường ghi vào nhà (lát 2)
 
 **Đặc tả** (không đổi): `docs/Family/01_NEN_MONG.md` (thắng khi lệch) và đơn 50 —
-[`LICH-SU/GIA_DINH_NEN_MONG.md`](./LICH-SU/GIA_DINH_NEN_MONG.md) (Việc C, Việc D phần *2. Nhánh Đẩy lên*, Việc E, Việc F). Supabase đo
-2026-10-30: 0 nhà; app chưa có đường ghi vào nhà ⇒ chưa ai bị ảnh hưởng — phải sửa trước khi client mở lát 2.
-
-**Phần còn lại của đơn 56 (và đơn 50)** nằm ở: 58.1 (= 56.2 (f)), 58.2 (= 56.9 (1)), 58.3 + 58.4 (= phần còn của 56.8), 58.6 gạch *thứ tự mã*
-(của 56.2) và 57.4 (ca 10, 12, 13). Đóng các việc ấy là đóng 56 và 50.
+[`LICH-SU/GIA_DINH_NEN_MONG.md`](./LICH-SU/GIA_DINH_NEN_MONG.md). Supabase đo 2026-10-31: 0 nhà, 0 thành viên, 0 lời mời; migration 44 đã áp. Đóng 57 + 58.3 / 58.4 / 58.6 là đóng 56 và 50.
 
 Viết tắt: **SS** = `modules/sync/sync.service.js`, **SR** = `modules/sync/sync.repository.js`, **HS** = `modules/household/household.service.js`,
 **HR** = `modules/household/household.repository.js`, **HC** = `modules/household/household.controller.js`.
 
 ### Đơn 57 — hợp đồng API `/api/households`
 
-Soát 16 endpoint (`api/households.routes.js` → HC / HS / HR) và migration 40, đối chiếu `docs/Family/01_NEN_MONG.md` và đơn 50 C. PR #170
-chưa đụng việc nào.
+#### 57.6 (CAO, hồi quy PR #172) — `POST /dissolve` luôn 500 · [vá]
 
-#### 57.1 (CAO) — Một hình dạng *trạng thái nhà* (người dùng chốt 2026-10-28: theo `docs/Family`)
+**Chỗ sai:** HR:310-313 dùng `delete_at` cho bảng `transaction`; cột là `deleted_at` (`prisma/schema.prisma:351`; ví, ngân sách, mục tiêu, danh mục đúng là `delete_at`). Cả lô `$transaction` bị từ chối, không giải tán được nhà nào, HS:512 không chạy. Trước PR đường này chạy. Ca `household_group1_completion.test.js:18-110` mock Prisma rồi khẳng định đúng cột sai (`:85`).
+**Đã chạy xác nhận:** `PrismaClientValidationError: Unknown argument delete_at. Did you mean deleted_at?`.
 
-`docs/Family/01` mục 4 (mở rộng đơn 50 C.1): `GET /me` **và mọi thao tác trả nó** dùng **một** hình dạng —
+**Cách sửa** — trong `dissolveHousehold` của HR:
 
-```json
-{ "household": { "id": 12, "name": "…", "status": "Active", "maxMembers": 6, "ownerId": 18, "createAt": "…", "maxSharedWallets": 10 },
-  "myRole": "Owner",
-  "members": [ { "idaccount": 18, "displayName": "…", "role": "Owner", "joinedAt": "…" } ],
-  "formerMembers": [ { "idaccount": 31, "displayName": "…", "leftAt": "…" } ] }
+```js
+prisma.wallet.updateMany({
+  where: { idhousehold: hhId, delete_at: null },
+  data: { delete_at: now, update_at: now, server_update_at: now },
+}),
+// Bảng transaction dùng cột deleted_at, khác bốn bảng còn lại
+prisma.transaction.updateMany({
+  where: { idhousehold: hhId, deleted_at: null },
+  data: { deleted_at: now, update_at: now, server_update_at: now },
+}),
+// budget, goal, category: như wallet, thêm server_update_at: now
 ```
 
-Mã đang trả ba hình dạng: `/me` **phẳng** `{idhousehold, name, ownerIdaccount, status, maxMembers, maxSharedWallets, contributionDueDay,
-createdAt, myRole, members[{idaccount, username, fullname, role, joinedAt}], formerMembers[…]}` (HS:151-163); không ở nhà nào →
-`{household: null}` (HC:51); `POST /api/households` trả **hàng Prisma thô** snake_case + `myRole` (HS:68-71).
+`server_update_at` đặt tường minh: `/sync/pull` lọc theo cột ấy, đừng chỉ dựa vào trigger. Ca test `:85` đổi sang `updatedTx.data.deleted_at` + `updatedTx.where.deleted_at === null`.
+**Kiểm lại:** `chay_kiem.js` các ca 57.6.
 
-**Xin:** một hàm dựng hình dạng trên, dùng cho #1 tạo nhà, #2 `/me`, #7 `/join`, #9 `/transfer-owner`, #15 `…/accept`. Không ở nhà →
-`{ "household": null, "myRole": null, "members": [], "formerMembers": [] }`. `displayName` = `fullname` (rỗng thì `username`) — không trả
-email (`00` mục 4 nguyên tắc 7). `contributionDueDay` (cột đã có, `02C`) đặt **trong** `household` nếu giữ.
-**Kiểm lại:** ca test so khoá của năm endpoint với một mẫu chung. App đang đọc cả ba hình dạng (`nha_cua_toi.dart`) và gỡ hai nhánh thừa khi
-57.1 đóng.
+#### 57.2 (CAO, hồi quy PR #172) — `getCallerEmail` không tồn tại trên đối tượng service · [vá]
 
-#### 57.2 (CAO) — `req.user` không có `email`: mọi đường mời email hỏng
+**Chỗ sai:** `getCallerEmail` là hàm cấp module (HS:28), nhưng HS:696, :715, :741 gọi `householdService.getCallerEmail(...)`. JWT không có `email` (`auth.service.js:197-204`) nên nhánh ấy luôn chạy. Trước PR ba đường này chạy.
+**Đã chạy xác nhận:** `TypeError: householdService.getCallerEmail is not a function`.
 
-Payload JWT không có `email` (`modules/auth/auth.service.js:196-203`; hai chỗ ký khác `:275-282`, `:399-408`; refresh ký lại cùng payload),
-`middleware/auth.js:118` gán `req.user = decoded`; HC:129, :159, :329, :352, :377 đọc `req.user.email` ⇒ luôn rỗng. Ba hệ quả:
-1. `GET /invites/:code` với lời mời email luôn **403 `HOUSEHOLD_INVITE_WRONG_ACCOUNT`** (`callerEmail = ''`) — đúng người cũng bị từ chối.
-2. `POST /join`, `…/accept`, `…/decline` **bỏ kiểm** (`invite.email && callerEmail`) — ai cầm mã trong thư cũng vào được.
-3. `GET /invitations` chỉ khớp `Invitee_idaccount` (với `email = ''`) — người **đăng ký sau khi được mời** không thấy lời mời
-   (`docs/Family/01` mục 2.2 khớp theo `Email` lúc đọc).
+**Cách sửa:** ở HS:696, :715, :741:
 
-**Xin:** service tra `account.Email` theo `req.user.idaccount` (hoặc đưa `email` vào JWT — nhưng token cũ trong máy người dùng không có, vẫn
-phải tra).
-**Kiểm lại:** ca test đi qua route với token thật (mock `req.user` có sẵn `email` là che lỗi): đúng người xem trước được lời mời email; người
-khác cầm mã bị từ chối ở `/join` / `…/accept`; người đăng ký sau khi được mời thấy lời mời ở `GET /invitations`.
+```js
+resolvedEmail = await getCallerEmail(idaccount);   // bỏ tiền tố householdService.
+```
 
-#### 57.3 (CAO) — Thư mời không bao giờ gửi
+và HS:744, để email rỗng không còn được bỏ qua kiểm:
 
-HS:583 `require('../../core/mail.service')` — `core/` chỉ có `email.service.js` ⇒ `MODULE_NOT_FOUND`, `catch` HS:601-606 nuốt thành `warn`;
-`POST /invites/email` vẫn trả 202. Sửa đường dẫn chưa đủ: `const { sendMail } = require(…)` tách hàm khỏi đối tượng nên mất `this`
-(`email.service.js:95-99` gọi `this.sendViaBrevo`), và HS:598 truyền `text` trong khi hàm nhận `html` (`email.service.js:95`).
-**Xin:** gọi qua đối tượng service, truyền đúng trường.
-**Kiểm lại:** ca test kiểm hàm gửi được gọi với `to`, `subject`, nội dung có mã.
+```js
+if (invite.email) {
+  if (!resolvedEmail || resolvedEmail.trim().toLowerCase() !== invite.email.toLowerCase()) {
+    throw createError('Lời mời này được gửi đích danh cho tài khoản email khác', 'HOUSEHOLD_INVITE_WRONG_ACCOUNT', 403);
+  }
+}
+```
 
-#### 57.4 (VỪA) — Chủ nhà sửa khoản của thành viên bị chặn trước ma trận vai
+**Kiểm lại:** `chay_kiem.js` các ca 57.2: người đăng ký sau thấy lời mời; người khác `/join`, `/accept`, `/decline` ⇒ 403; đúng người `/accept` 200 hình dạng lồng, `/decline` 200.
 
-SS:260-268 so `payload.idaccount` với token **trước** `enforceHouseholdPermission`, trả `error` *"Ownership mismatch…"* **không `code`**. App
-gửi `idaccount` **của hàng** — tức người ghi (hàng kéo về giữ `Idaccount` người ghi; danh mục kéo về mang `idaccount = create_by`) — nên lượt
-Chủ nhà sửa giao dịch của Member (`docs/Family/01` mục 3: được phép) và lượt Member sửa danh mục nhà do người khác tạo bị từ chối, và app xếp
-chuỗi ấy **vĩnh viễn** (`src/Client-app/lib/core/sync/gui_lo_dong_bo.dart:409-411`): mất im lặng. Ma trận vai cần cho việc này (đơn 50 Việc D
-phần 2, đã thi hành ở `enforceHouseholdPermission`): `transaction` thu / chi — sửa / xoá: người ghi hoặc Owner; `category` của nhà — tạo / sửa
-/ xoá: Owner, Member.
-**Xin:** hàng mang `idhousehold` (hoặc hàng đã có `Idhousehold`) không qua chốt này — ma trận vai quyết; `Idaccount` của hàng giữ người ghi.
-**Thứ tự với client:** client chưa đẩy hàng nhà do người khác ghi (mọi đường đẩy hiện lọc `idaccount = tôi`) cho tới khi 57.4 đóng — làm ngược
-là *"Ownership mismatch"* vĩnh viễn, mất dữ liệu im lặng. Client đang cân nhắc một lối khác (gửi `idaccount` của phiên cho hàng nhà khi sửa),
-**chưa chốt** — nếu đổi sẽ ghi lại ở đây.
-**Kiểm lại** (ca 10, 12, 13 — hiện **hỏng**): dựng nhà H (Owner A Premium, Member B); giao dịch T của B và T′ của A trong H (`Idaccount` =
-người ghi); danh mục nhà K do A tạo. Mỗi ca gọi `syncService.processPush(<người đẩy>, operations)`, payload chép từ
-`sync_payload_contract_test.dart`, `operation: 'update'`, `idaccount` = người ghi của hàng (như app gửi):
-- ca 10 — B đẩy T′ (`idaccount = A`) ⇒ `HOUSEHOLD_ROLE_FORBIDDEN` (không phải *"Ownership mismatch"* không `code`);
-- ca 12 — B đẩy K (`idaccount = A`) ⇒ `synced`;
-- ca 13 — A đẩy T (`idaccount = B`) ⇒ `synced`, `Idaccount` của T vẫn là B.
+#### 57.1 (VỪA) — phần còn lại
 
-#### 57.5 (VỪA) — Tạo nhà nhận trần từ body
+Hàm dựng hình dạng đạt (HS:138-184, đối chiếu từng khoá với bộ đọc của app: không khoá nào đọc thành null). #15 tới được hàm ấy sau khi sửa 57.2.
+**Cách sửa (tay):** `tests/unit/household.api.test.js:29-36, :170-174, :214-218, :329-348` đang giả service trả hình dạng phẳng và kiểm `data.ownerIdaccount` (`:227`). Đổi bản giả sang `{ household: { id, name, status, maxMembers, ownerId, createAt, maxSharedWallets, contributionDueDay }, myRole, members, formerMembers }`, đổi `:227` thành `data.household.ownerId`.
+**Kiểm lại:** `chay_kiem.js` hai ca 57.1 và ca *"đúng người /accept"*; `household.api.test.js` xanh.
 
-HS:45-47 đọc `maxMembers`, `maxSharedWallets`, `contributionDueDay` từ `req.body` (HC:26) ⇒ client tự đặt 20 người (CHECK 2–20). Đơn 50 C.2:
-`Max_members` lấy từ giới hạn gói; `02A` Q-A2: trần ví chung do server chọn. App chỉ gửi `{name}`.
-**Xin:** bỏ ba trường khỏi body. (Tuỳ PO) trần thành viên đọc `household_members` của gói Chủ nhà (migration 41 đã seed) thay vì chỉ cột
-`household.Max_members`.
-**Kiểm lại:** `POST /api/households` với body `{ name, maxMembers: 20, maxSharedWallets: 50, contributionDueDay: 9 }` ⇒ nhà tạo ra không mang
-ba giá trị ấy.
+#### 57.3 (VỪA) — phần còn lại · [vá] phần thoát HTML
 
-#### 57.6 (VỪA) — Giải tán không xoá mềm dữ liệu chung
+Mã gửi thư đạt. Còn: thư HTML nhúng `householdName`, `inviterName` không thoát (HS:660) — Chủ nhà đặt tên nhà chứa `<a href=…>` rồi gửi tới địa chỉ bất kỳ, từ miền gửi thật của FlowMoney. Không có ca test nào nhắc `sendInviteEmailAsync`.
 
-HR:265-284 chỉ đặt nhà `Dissolved` + `Delete_at` và `Left_at` thành viên; không đụng `wallet` / `transaction` / `goal` / `budget` / `category`
-mang `Idhousehold`, không thu hồi mã mời. `docs/Family/00` quyết định 7: *"Dữ liệu chung biến mất với mọi người (xoá mềm ở server)"*;
-đơn 50 C.2: xoá mềm 5 bảng + `Revoked_at` mã. Hệ quả: máy thành viên kéo về không có tombstone (hàng chỉ rơi khỏi phạm vi) — cộng 58.3, máy
-giữ dữ liệu nhà đã giải tán tới lượt `/me` kế; mã còn hiệu lực vẫn mở được xem trước.
-**Xin:** trong cùng giao tác — xoá mềm hàng của nhà ở 5 bảng (cột xoá + giờ sửa mới), `Revoked_at` mã chưa dùng.
-**Kiểm lại:** giải tán nhà H ⇒ mọi hàng `Idhousehold = H` ở 5 bảng có cột xoá + giờ sửa mới; mã mời chưa dùng của H có `Revoked_at`,
-`GET /invites/:code` của mã ấy bị từ chối.
+**Cách sửa:**
 
-#### 57.7 (VỪA) — Mã lỗi API của nhà lệch tài liệu
+```js
+function escapeHtml(value) {
+  return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+// HS:660
+<p><strong>${escapeHtml(inviterName)}</strong> đã mời bạn tham gia vào tổ ấm <strong>"${escapeHtml(householdName)}"</strong> …
+// cuối thư (mẫu docs/Family/01 mục 2.6)
+<p style="font-size:12px;color:#888;">Nếu bạn không biết người mời, hãy bỏ qua thư này.</p>
+```
 
-`docs/Family/01` mục 2.5 + đơn 50 C.3 ↔ mã: `HOUSEHOLD_INVITE_EXPIRED` trả **400** (HS:267, :310; đơn 50: 410); `HOUSEHOLD_INVITE_DECLINED`
-**không bao giờ phát** (lời mời đã từ chối rơi vào `_USED` / `_INVALID`, HS:262, :305, :630); ReadOnly và Dissolved gộp `HOUSEHOLD_NOT_ACTIVE`
-400 (HS:178, :487); mã thêm chưa có trong tài liệu: `FORBIDDEN_NOT_OWNER`, `NOT_IN_HOUSEHOLD`, `OWNER_CANNOT_LEAVE`, `MEMBER_NOT_IN_HOUSEHOLD`,
-`TARGET_NOT_IN_HOUSEHOLD`, `HOUSEHOLD_INVITE_NOT_FOUND`, `CANNOT_*`, `INVALID_*`.
-**Xin:** theo tên + HTTP của tài liệu; mã nào giữ khác thì ghi **bảng mã chốt** vào mục 10 — app dựng câu báo lỗi theo bảng ấy.
-**Kiểm lại:** mỗi mã ở `docs/Family/01` mục 2.5 phát đúng tên + HTTP, hoặc có trong bảng mã chốt ở mục 10.
+`subject` và `text` là chữ thuần, giữ nguyên. **Ca test thêm tay** (`tests/unit/household_group1_completion.test.js`):
 
-#### 57.8 (THẤP)
+```js
+const emailService = require('../../core/email.service');
+const goc = emailService.sendMail; const da = [];
+emailService.sendMail = async (m) => { da.push(m); };
+await householdService.sendInviteEmailAsync({ toEmail: 'a@b.c', householdName: '<a href=x>n</a>', inviterName: 'B', role: 'Member', code: 'ABCD2345', expiresAt: new Date() });
+emailService.sendMail = goc;
+assert.strictEqual(da[0].to, 'a@b.c');
+assert.ok(da[0].html.includes('ABCD2345'));
+assert.ok(!da[0].html.includes('<a href=x>'));
+```
 
-1. `alreadyMember` (HS:511-514) đọc `m.account.email` nhưng `findActiveMembersByHousehold` không `select` email (HR:88-97) ⇒ luôn `false` ⇒
-   mời email người đang ở nhà vẫn tạo lời mời và chiếm chỗ trần (`01` mục 2.2: 202, không tạo).
-2. `inviterName` (HS:566) đọc `membership.account` mà `findActiveMemberByAccount` chỉ `include household` (HR:70-80) ⇒ thư luôn ghi *"Chủ nhà"*.
-3. Tham gia không khoá hàng mời (HS:319-341 kiểm ngoài giao tác; đơn 50 C.2 `SELECT … FOR UPDATE`).
-4. Không giới hạn số lần gọi `GET /invites/:code` / `POST /join` (đơn 50 C.4) — `api/households.routes.js:8` chỉ `authenticate`.
-5. `GET /invites` trả 5 trạng thái `Pending|Declined|Revoked|Used|Expired` (HS:219-233; `01` mục 2.4 nói 3) và nhánh email trả mọi lời mời
-   email trong 7 ngày kể cả đã dùng / huỷ (HR:167-189) — ghi rõ trong tài liệu hoặc lọc.
-6. `GET /invitations` thiếu `memberCount`, `maxMembers` (`01` mục 2.4 #14; HS:613-619).
-7. Email > 100 ký tự không bị chặn (HS:473 chỉ kiểm `@`) ⇒ vỡ cột ⇒ 500 `HOUSEHOLD_ERROR` (`01` mục 2.1: 400). Trần 5 thư / giờ chưa có trong
-   tài liệu — ghi vào `01` mục 2.2 nếu giữ.
-8. `database/40_create_household_foundation.sql` dùng `ON DELETE CASCADE` và `SET NULL` cho `Idhousehold` 5 bảng — xoá cứng tài khoản / nhà
-   kéo theo xoá cứng; đơn 50 B dùng `REFERENCES` thường. Xác nhận chủ ý hoặc đổi.
+#### 57.7 (VỪA) — phần còn lại · [vá] mã; bảng mã chốt dán tay
 
-**Kiểm lại:** (1) mời email người đang ở nhà ⇒ 202, không tạo lời mời; (2) thư ghi tên người mời; (3) hai lượt `/join` song song bằng một mã
-dùng một lần ⇒ chỉ một lượt vào; (4) gọi quá trần ⇒ bị chặn; (5) (6) trạng thái / khoá trả về khớp `01` mục 2.4 (hoặc tài liệu ghi rõ);
-(7) email > 100 ký tự ⇒ 400; (8) câu trả lời ở mục 10.
+**Chỗ sai:** HS:278, :325 đổi từ `status !== 'Active'` sang `status === 'Dissolved'` ⇒ nhà `ReadOnly` xem trước và **tham gia được** (đã chạy xác nhận). HS:198, :546 gộp ReadOnly + Dissolved thành `HOUSEHOLD_NOT_ACTIVE` 400. Mã đã huỷ ra `_USED` (HS:286, :333, :731; tài liệu `_INVALID` 404). Limiter (`rate-limiter.js:80`) dùng lại `HOUSEHOLD_INVITE_RATE_LIMIT` ⇒ người gõ sai mã 30 lần nhận câu *"Nhà này đã gửi quá nhiều lời mời"*.
 
-### Đơn 58 — lỗi do PR #170 đưa vào (phần gia đình; 58.5 và vế AIOps của 58.6 ở mục 2)
+**Cách sửa:**
 
-#### 58.1 (CAO) — Member tạo được chuyển khoản giữa hai ví chung
+```js
+// HS, cạnh createError
+function assertHouseholdWritable(status) {
+  if (status === 'ReadOnly') throw createError('Nhà đang ở chế độ chỉ xem', 'HOUSEHOLD_READ_ONLY', 409);
+  if (status !== 'Active') throw createError('Nhà đã giải tán', 'HOUSEHOLD_CLOSED', 410);
+}
+// HS:198, :546: thay khối HOUSEHOLD_NOT_ACTIVE
+assertHouseholdWritable(membership.household.status);
 
-Ma trận (đơn 50 Việc D phần 2): `transaction` `Transfer` giữa hai ví chung — tạo / sửa / xoá **chỉ Owner**. Chốt ấy chạy **chỉ** khi
-`operation === 'create'` (SS:152-169). App **không bao giờ** gửi `create`: mọi khối của `src/Client-app/lib/core/sync/thu_gom_day.dart` gửi
-`update` / `delete` (`:104-105`, `:148-149`, `:203`, `:248-249`, `:311-313`, `:389-390`, `:432-433`), nên `existingRecord = null` ⇒
-`creatorId = null` ⇒ **ghi được**. Hệ quả: (1) Member tạo được chuyển khoản giữa hai ví chung; (2) Member đổi khoản thu / chi của mình thành
-`Transfer` qua nhánh update; (3) người từng là Chủ vẫn sửa / xoá `Transfer` của mình sau khi chuyển chủ. Test backend dùng `create`
-(`tests/unit/household.system_impact.test.js:375`) nên không lộ.
-**Xin:** xét `!existingRecord` thay cho `operation === 'create'`; với update / delete: hàng cũ **hoặc** payload là `Transfer` ⇒ chỉ Owner.
-**Kiểm lại** (nhà H: Owner A, Member B, hai ví chung W1, W2; mọi ca qua `processPush`, payload chép từ `sync_payload_contract_test.dart`, có
-`idaccount`, `operation: 'update'`):
-- ca 11 — B đẩy giao dịch `Transfer` **mới** (id chưa có trên server) `walletId = W1`, `idwallet_transfer = W2`, `idhousehold = H`,
-  `idaccount = B` ⇒ `HOUSEHOLD_ROLE_FORBIDDEN` (hiện: **ghi được**);
-- B có giao dịch `Expense` của mình trong H, đẩy `update` đổi `type` → `Transfer` giữa W1, W2 ⇒ `HOUSEHOLD_ROLE_FORBIDDEN`;
-- A tạo `Transfer` rồi chuyển chủ cho B; A đẩy `update` / `delete` Transfer ấy ⇒ `HOUSEHOLD_ROLE_FORBIDDEN`.
+// previewInvite và joinByCode, ngay sau khối HOUSEHOLD_INVITE_INVALID
+if (invite.household.status === 'ReadOnly') {
+  throw createError('Nhà đang ở chế độ chỉ xem', 'HOUSEHOLD_READ_ONLY', 409);
+}
 
-#### 58.2 (VỪA) — `HOUSEHOLD_WALLET_LIMIT` chết với app
+// HS:286, :333, :731: tách đôi
+if (invite.revoked_at) throw createError('Mã mời không còn hiệu lực', 'HOUSEHOLD_INVITE_INVALID', 404);
+if (invite.used_at) throw createError('Mã mời đã được sử dụng', 'HOUSEHOLD_INVITE_USED', 409);
 
-SS:134-148 cùng điều kiện `operation === 'create'` (cùng gốc 58.1); ví luôn `update` (`thu_gom_day.dart:148-149`). Phép đếm đúng (`delete_at`
-null, `status 'Active'`). Trần: `household.Max_shared_wallets` (mặc định 10; `docs/Family/02A` mục 2 và 11).
-**Xin:** xét `!existingRecord`.
-**Kiểm lại:** nhà H `Max_shared_wallets = 2`, đã có 2 ví chung `Active`; Owner A đẩy ví mới (id mới, `idhousehold = H`, `operation: 'update'`)
-⇒ `HOUSEHOLD_WALLET_LIMIT`; lưu trữ một ví (`status 'Inactive'`) rồi đẩy lại ⇒ `synced`.
+// rate-limiter.js:80
+code: 'HOUSEHOLD_INVITE_ATTEMPT_LIMIT',
+```
 
-#### 58.3 (VỪA) — `HOUSEHOLD_DISSOLVED` không tới ai
+**Dán vào mục 10 làm bảng mã chốt** (đã khớp mã sau bản vá; các tên khác `docs/Family` được giữ vì app đã đọc cả hai bộ tên — `cau_loi_nha.dart`; sửa bảng nếu đổi mã):
 
-HS:462 đặt `Left_at` cho mọi thành viên (HR:276-282) **rồi mới** phát (HS:464-466) không `extraRecipients` ⇒ danh sách người nhận rỗng. Cùng
-57.6 (không tombstone) ⇒ máy thành viên giữ dữ liệu nhà đã giải tán tới lượt `/me` kế (resume 5 phút). Client đo 2026-10-30 (backend
-`e3248955`, CSDL dev): nhà 1 có tài khoản 10 (Owner) + 30 (Member); 10 gọi `POST /dissolve` ⇒ log backend **không có dòng
-`Emitted household.changed` nào**.
-**Xin:** lấy `findActiveMembersByHousehold` **trước** `dissolveHousehold`, truyền vào `extraRecipients`.
-**Kiểm lại:** nhà H có A (Owner), B, C, mỗi người một socket nối `account_<id>`; A gọi `POST /api/households/dissolve` ⇒ B và C mỗi người nhận
-đúng một `household.changed` có `eventType: 'HOUSEHOLD_DISSOLVED'` ở phòng tài khoản; A cũng nhận.
+| Mã | HTTP | Endpoint | Khi nào |
+|---|---|---|---|
+| `HOUSEHOLD_INVITE_INVALID` | 404 | #6, #7, #15, #16 | Không có mã, nhà đã giải tán, mã đã huỷ |
+| `HOUSEHOLD_INVITE_EXPIRED` | 410 | #6, #7, #15, #16 | Quá hạn |
+| `HOUSEHOLD_INVITE_USED` | 409 | #6, #7, #15, #16 | Đã dùng |
+| `HOUSEHOLD_INVITE_DECLINED` | 409 | #6, #7, #15, #16 | Đã từ chối |
+| `HOUSEHOLD_INVITE_WRONG_ACCOUNT` | 403 | #6, #7, #15, #16 | Email tài khoản khác email lời mời |
+| `HOUSEHOLD_INVITE_RATE_LIMIT` | 429 | #13 | 20 thư / nhà / 24 giờ hoặc 5 thư / giờ |
+| `HOUSEHOLD_INVITE_ATTEMPT_LIMIT` | 429 | #6, #7 | 30 lượt / 15 phút / IP |
+| `HOUSEHOLD_READ_ONLY` | 409 | #3, #6, #7, #13, #15 | Nhà `ReadOnly` |
+| `HOUSEHOLD_CLOSED` | 410 | #3, #13 | Nhà đã giải tán |
+| `HOUSEHOLD_ALREADY_IN_ONE` | 409 | #1, #7, #15 | Đang ở nhà khác |
+| `HOUSEHOLD_FULL` | 409 | #3, #7, #13, #15 | Đủ người |
+| `FEATURE_DISABLED` | 403 | #1, #7, #15 | Gói không có `household` / `household_join` |
+| `FORBIDDEN_NOT_OWNER` | 403 | #3, #4, #5, #8, #9, #10, #12, #13 | Không phải Chủ nhà |
+| `NOT_IN_HOUSEHOLD` | 404 | #11 | Không ở nhà nào |
+| `OWNER_CANNOT_LEAVE` | 400 | #11 | Chủ nhà rời |
+| `HOUSEHOLD_INVITE_NOT_FOUND` | 404 | #5 | Huỷ mã không có |
+| `MEMBER_NOT_IN_HOUSEHOLD` / `TARGET_NOT_IN_HOUSEHOLD` | 404 | #8, #10 / #9 | Đích không ở nhà |
+| `INVALID_HOUSEHOLD_NAME`, `INVALID_INVITE_CODE`, `INVALID_INVITE_ROLE`, `INVALID_MEMBER_ROLE`, `INVALID_TARGET_USER`, `INVALID_EMAIL` | 400 | #1, #7, #3 + #13, #8, #9, #13 | Dữ liệu sai |
+| `CANNOT_CHANGE_OWNER_ROLE`, `CANNOT_TRANSFER_TO_SELF`, `CANNOT_REMOVE_SELF` | 400 | #8, #9, #10 | Thao tác lên chính mình / Chủ |
 
-#### 58.4 (VỪA) — `household.changed` sau `/sync/push` phát theo `payload.idhousehold` chưa kiểm
+**Kiểm lại:** `chay_kiem.js` ca 57.7; bảng có ở mục 10. Client sẽ đọc thêm `HOUSEHOLD_INVITE_ATTEMPT_LIMIT` sau khi backend gộp.
 
-SS:475-506 phát `household.changed` + `sync.completed` tới mọi thành viên của nhà lấy từ `payload.idhousehold`, **kể cả op bị từ chối**
-(`HOUSEHOLD_NOT_MEMBER`). Id nhà là `SERIAL` (đoán được) và không có trần số nhà mỗi lượt đẩy ⇒ người ngoài khuếch đại `GET /me` +
-`GET /invitations` + một chu kỳ kéo trên **mọi máy** của một nhà bất kỳ. Thêm: `household.changed` sau đẩy mang `eventType: 'SYNC_COMPLETED'` —
-thừa (`sync.completed` đã đủ cho dữ liệu; client không đọc payload nên vẫn hỏi `/me`). Client đo 2026-10-30 (backend `e3248955`, CSDL dev):
-tài khoản 30 (Viewer của nhà 1) đẩy một giao dịch `idhousehold = 1` ⇒ op trả `HOUSEHOLD_READ_ONLY` (đúng) **nhưng** log ghi
-`Emitted household.changed to room account_10` và máy của tài khoản 10 nhận nó. (Client đã giãn cách 30 s giữa hai lượt làm mới do sự kiện này
-— giảm khuếch đại chứ không thay việc sửa ở server.)
-**Xin:** bỏ `household.changed` sau `/sync/push` (chỉ giữ cho đổi thành viên / trạng thái); chỉ phát cho nhà của op **đã ghi**, lấy từ
-`existing.idhousehold` / hàng vừa ghi.
-**Kiểm lại:** D (ngoài nhà) đẩy một giao dịch `idhousehold = H` ⇒ op trả `HOUSEHOLD_NOT_MEMBER` và A / B / C **không** nhận `household.changed`
-lẫn `sync.completed`; B đẩy giao dịch hợp lệ vào H ⇒ A, C nhận `sync.completed` ở `account_<id>` và **không** nhận `household.changed`
-(eventType `SYNC_COMPLETED`).
+#### 57.8 (THẤP) — phần còn lại
 
-#### 58.6 (THẤP) — gom lỗi nhỏ do PR #170
+Đạt #1, #2, #3, #4.
+- **#6 [vá]:** `memberCount` ở HS:705 đọc cột không tồn tại ⇒ luôn 1.
 
-- `chuConPremium` (SS:65-82) nuốt lỗi CSDL thành `false` ⇒ `HOUSEHOLD_READ_ONLY` (client xếp vĩnh viễn) cho một lỗi tạm. Để lỗi nổi lên ⇒
-  `DB_ERROR` (tạm, app gửi lại).
-- Ba định nghĩa *Premium hiệu lực* lệch → làm ở **55.A3** (mục 5).
-- Thứ tự mã: chốt *không đổi `idhousehold` của hàng đã có* (SS:303-311) đứng trước kiểm thành viên (SS:316) ⇒ người ngoài đổi `idhousehold`
-  nhận `HOUSEHOLD_SCOPE_MISMATCH` thay vì `HOUSEHOLD_NOT_MEMBER`. Dời chốt vào sau bước kiểm thành viên. Thứ tự đúng: (1) `HOUSEHOLD_NOT_MEMBER`
-  · (2) `HOUSEHOLD_CLOSED` · (3) `HOUSEHOLD_READ_ONLY` · (4) `HOUSEHOLD_SCOPE_MISMATCH` · (5) `HOUSEHOLD_ROLE_FORBIDDEN`.
-- `database/41_seed_household_permissions.sql:26-29`, `:45-49` dùng `ON CONFLICT … DO UPDATE` — ghi đè cấu hình admin đã chỉnh (`is_enabled`,
-  `limit_value`) mỗi lần áp lại. Đổi về `DO NOTHING`.
-- `Test/test_can_lam_fixes.js:322-330`, `:437-449` vẫn tạo **khuôn danh mục toàn cục** (`is_default: true`, `TemplateTest_<ts>`) trên CSDL
-  `.env` (Supabase dùng chung), `finally` xoá **cứng** danh mục / mục tiêu / ngân sách: nếu chạy, mọi máy đang đồng bộ nhận khuôn, sao thành
-  danh mục riêng rồi khuôn biến mất không tombstone ⇒ bản sao ở lại vĩnh viễn (hôm nay 0 hàng `TemplateTest%` ⇒ chưa chạy). Chặn chạy trên
-  Supabase.
-- `Test/test_sync_new_schema.js` dọn ở cuối luồng chính `:246`, không `finally`, không xoá mềm ví / giao dịch / hoá đơn / mục tiêu / danh mục nó
-  tạo (chỉ xoá mềm `account`).
-- Bộ lọc `Email LIKE '%anonymized.local%'` ở `database/33` trùng cả tài khoản bị ẩn danh hoá theo lịch xoá 30 ngày **và** tài khoản test mới
-  của các script 48 (cùng đuôi `@anonymized.local`) — xem thêm 49.F(1).
-- Bộ test hệ thống gia đình (`tests/unit/household.system_impact.test.js:229-413`) không dùng payload app thật (thiếu `idaccount`, dùng
-  `create`) ⇒ che 57.4, 58.1, 58.2. Chép payload từ `sync_payload_contract_test.dart`.
-- Vế AIOps (`force_logout` khi khớp 0 hàng, username toàn chữ số) → mục 2.
+```js
+// HR, findPendingInvitationsForEmail: thay `household: true`
+household: { include: { _count: { select: { household_member: { where: { left_at: null } } } } } },
+// HS:705
+memberCount: inv.household?._count?.household_member ?? 1,
+```
 
-**Kiểm lại (từng gạch):** `chuConPremium` — giả lỗi CSDL khi tra Chủ ⇒ op trả `DB_ERROR`, không `HOUSEHOLD_READ_ONLY`; người ngoài đổi
-`idhousehold` hàng đã có ⇒ `HOUSEHOLD_NOT_MEMBER`; migration 41 — đổi tay `is_enabled` rồi áp lại 41 ⇒ giá trị admin giữ nguyên;
-`test_can_lam_fixes.js` từ chối chạy trên CSDL Supabase (hoặc không tạo khuôn toàn cục); script test dọn bằng `finally`, xoá mềm hết hàng nó
-tạo; ca test hệ thống gia đình chép payload từ `sync_payload_contract_test.dart`.
+- **#5, #7, #8 (tay — chỉ cần một câu ở mục 10):** #5 trả lời *"`GET /invites` giữ 5 trạng thái `Pending|Declined|Revoked|Used|Expired`"*; #7 *"giữ trần 5 thư / giờ"*; #8 xác nhận *"`ON DELETE CASCADE` / `SET NULL` ở `database/40` là chủ ý vì không có đường xoá cứng"*, hoặc viết migration đổi. Có câu trả lời, client tự ghi vào `docs/Family/01` mục 2.2, 2.4. Muốn khác thì nói rõ ở mục 10.
+
+**Kiểm lại:** `chay_kiem.js` ca 57.8 #6; ba câu ở mục 10.
+
+### Đơn 58 — lỗi do PR #170 đưa vào (58.1, 58.2 đạt; 58.5 ở mục 2)
+
+#### 58.3 (VỪA) — phần còn lại · [vá theo 57.6]
+
+Thứ tự phát đúng (HS:506-520), chỉ không chạy tới vì 57.6. Sửa 57.6 là đủ.
+**Kiểm lại:** `chay_kiem.js`: A, B, C mỗi người đúng một `HOUSEHOLD_DISSOLVED`.
+
+#### 58.4 (VỪA) — phần còn lại · [vá]
+
+**Chỗ sai:** SS:503 đọc nhà từ `op.payload.idhousehold`. Người bất kỳ xoá hàng riêng của mình kèm `idhousehold: H` ⇒ `synced` ⇒ mọi thành viên H nhận `sync.completed` (đã chạy xác nhận); ngược lại, hàng của nhà đẩy không có khoá ấy thì không ai được báo.
+
+**Cách sửa:**
+
+```js
+// SS, ngay sau indexedOps
+const nhaCuaThaoTac = new Map();
+
+// trong nhánh if (targetHhId), sau khi enforceHouseholdPermission qua
+nhaCuaThaoTac.set(idx, Number(targetHhId));
+
+// SS:501-507, thay khối đọc payload
+if (results[i]?.status === 'synced' && nhaCuaThaoTac.has(i)) {
+  affectedHouseholds.add(nhaCuaThaoTac.get(i));
+}
+```
+
+**Kiểm lại:** `chay_kiem.js` bốn ca 58.4.
+
+#### 58.6 (THẤP) — phần còn lại
+
+Đạt: `chuConPremium`, thứ tự 5 bậc (người ngoài đổi `idhousehold` hàng của nhà ⇒ `NOT_MEMBER`, đã chạy), vế AIOps.
+- **`database/41:45-49`, `database/44:104-109` [vá]:** `account_type_permission` đổi thành `ON CONFLICT ("account_type", "feature_id") DO NOTHING;`. Giữ `DO UPDATE` của bảng `feature`. **Kiểm lại:** đổi tay `is_enabled` rồi áp lại 41, 44 ⇒ giá trị admin giữ nguyên.
+- **`database/33:22` [vá]:** `"Email" LIKE 'test\_%@anonymized.local'` — bộ lọc cũ trùng cả tài khoản ẩn danh hoá thật. Script test đang dùng đúng tiền tố `test_`.
+- **`Test/test_can_lam_fixes.js`, `Test/test_sync_new_schema.js` (tay):** thêm ngay đầu tệp, trước mọi `require` tới CSDL:
+
+```js
+require('dotenv').config({ path: require('path').resolve(__dirname, '../src/Backend/.env') });
+if (/supabase\.com/i.test(process.env.DATABASE_URL || '')) {
+  console.error('Script này ghi dữ liệu: từ chối chạy trên Supabase dùng chung.');
+  process.exit(1);
+}
+```
+
+  `test_can_lam_fixes.js:437, :440, :449`: thay `deleteMany` bằng xoá mềm; bỏ phần tạo khuôn `is_default: true` ở `:322-330`. `test_sync_new_schema.js`: dời khối dọn `:228-234`, `:246-249` vào `finally`. **Kiểm lại:** chạy với URL Supabase ⇒ thoát trước mọi ghi; ép lỗi ở bước đẩy ⇒ hàng vẫn được xoá mềm.
+- **Ca test payload app:** `tests/unit/household.system_impact.test.js` vẫn `create`, không `idaccount`. Thay bằng bước 7 *Cách làm* (`chay_kiem.js` đã có đủ ca Chủ / Member / `Transfer` / trần ví). Tệp cũ giữ hoặc bỏ tuỳ backend, nhưng đừng viện dẫn nó làm bằng chứng.
+
+### Đơn 59 — lỗi do PR #172 đưa vào / phát hiện khi soát PR #172
+
+#### 59.1 (CAO, hồi quy PR #172) — Hàng mới mang `idhousehold` không bị kiểm `idaccount` · [vá]
+
+**Chỗ sai:** bản sửa 57.4 dời chốt *"Ownership mismatch"* vào nhánh hàng riêng. SS:336 nhận nguyên `payload.idaccount` cho hàng mới có `idhousehold`.
+**Đã chạy xác nhận:** Member của một nhà đẩy `bill` mới với `idaccount: E` ⇒ `synced`, tài khoản E có thêm một hoá đơn, kéo về qua `/sync/pull` (`bill` không có cột `Idhousehold`). Member tạo khoản mới mang tên Chủ ⇒ `synced`. Trước PR bị chặn. Chỉ xảy ra với yêu cầu tự dựng: hàng mới của app luôn mang `idaccount` của phiên.
+
+**Cách sửa:**
+
+```js
+// SS, đầu tệp
+const HOUSEHOLD_ENTITIES = new Set(['wallet', 'transaction', 'budget', 'goal', 'category']);
+
+// SS:317-319: bill không có cột nên luôn đi nhánh hàng riêng
+const targetHhId = !HOUSEHOLD_ENTITIES.has(entity)
+  ? null
+  : existingRecord
+    ? (existingRecord.idhousehold ?? existingRecord.Idhousehold ?? null)
+    : (hasHhKey ? (payloadHh !== null && payloadHh !== undefined ? Number(payloadHh) : null) : null);
+
+// SS:335-337: hàng MỚI thì người ghi luôn là chủ token
+} else {
+  if (payload.idaccount !== undefined && payload.idaccount !== null && Number(payload.idaccount) !== Number(idaccount)) {
+    results[idx] = { localId, status: 'error', code: 'NOT_OWNER', message: 'Hàng mới phải mang idaccount của người đẩy' };
+    errors++;
+    continue;
+  }
+  payload.idaccount = Number(idaccount);
+}
+```
+
+Ca 4 `household_and_aiops_v2.test.js` phải giả `getTransactionById` trả hàng đã có (hiện nó rơi vào nhánh hàng mới nên đang khẳng định đúng lỗi này) và thêm vế hàng mới ⇒ `NOT_OWNER` — bản vá đã làm.
+**Kiểm lại:** `chay_kiem.js` bốn ca 59.1.
+
+#### 59.2 (THẤP, hồi quy PR #172) — `delete` hàng chưa từng lên server bị tính là hàng mới · [vá]
+
+**Đã chạy xác nhận:** Chủ nhà xoá ví chưa từng lên server khi nhà đủ trần ⇒ `HOUSEHOLD_WALLET_LIMIT`; client xếp mã này là vĩnh viễn.
+
+```js
+// SS:150
+const isNewWallet = operation !== 'delete' && (operation === 'create' || !existingRecord);
+// SS:169
+const isNewTx = operation !== 'delete' && (operation === 'create' || !existingRecord);
+// SS:181: khi xoá chỉ xét hàng cũ, không tin type trong payload
+const isPayloadTransfer = operation !== 'delete' && String(payload.type || '').toLowerCase() === 'transfer';
+```
+
+**Kiểm lại:** `chay_kiem.js` hai ca 59.2. Chủ cũ xoá `Transfer` đã có vẫn phải ra `HOUSEHOLD_ROLE_FORBIDDEN` (ca 58.1).
+
+#### 59.3 (VỪA, có sẵn trước PR) — Danh mục mới `is_default: true` từ client · [vá]
+
+**Đã chạy xác nhận:** tài khoản thường đẩy danh mục mới `is_default: true` ⇒ hàng `Is_default = true`, trả cho **mọi** tài khoản ở `/sync/pull` (SR:303), mọi máy sao thành danh mục riêng. `FORBIDDEN_SYSTEM_DEFAULT` (SR:270) chỉ áp hàng đã có. App không gửi vậy.
+
+```js
+// SR:251, trong nhánh prisma.category.create
+is_default: false,   // khuôn mặc định chỉ tạo qua Admin-web
+```
+
+**Kiểm lại:** `chay_kiem.js` ca 59.3.
 
 ---
 
 ## 2. AIOps và trạng thái tài khoản (đơn 43)
 
-Viết tắt: **AQ** = `modules/aiops/aiops.quarantine.js`. Lịch sử: [`LICH-SU/SOAT_SAU_GOP_CD2EE572.md`](./LICH-SU/SOAT_SAU_GOP_CD2EE572.md).
+Viết tắt: **AQ** = `modules/aiops/aiops.quarantine.js`, **AQR** = `aiops.quarantine.repository.js`. Lịch sử: [`LICH-SU/SOAT_SAU_GOP_CD2EE572.md`](./LICH-SU/SOAT_SAU_GOP_CD2EE572.md). Vế AIOps của 58.6 đạt.
 
-### 58.5 (CAO) — Khoá tự động của AIOps không bao giờ tự mở khi hết hạn
+### 58.5 (CAO) — còn thiếu sau PR #172 · [vá]
 
-Cả ba lối hết hạn (AQ:141, AQ:153, AQ:1005) lọc `reason_inactive` chứa `AIOps` / `Cách ly` / `Sentinel` (AQ:651-659), nhưng lý do do AIOps
-tự ghi là *"Tấn công dò mật khẩu Brute-Force (…)"* (`feature.collector.js:225`), *"Phát hiện tái sử dụng Token đã thu hồi liên tục (…)"*
-(`:244`) hoặc mặc định *"Phát hiện hành vi bất thường"* (AQ:282) — không chuỗi nào khớp ⇒ khoá 15 phút thành khoá **vô hạn** tới khi admin mở
-tay. Kết hợp: gõ sai mật khẩu 15 lần cho **tên đăng nhập người khác** là đủ kích hoạt khoá, và `force_logout` (AQ:676-695) đăng xuất ngay mọi
-máy ⇒ ai biết username là khoá được tài khoản ấy vô thời hạn. Ca 16 của `tests/unit/aiops.quarantine.test.js` chỉ kiểm tham số truyền, không đi
-CSDL.
-**Xin:** đánh dấu khoá của AIOps bằng cột / tiền tố cố định (không dựa vào chữ tự do của `reason_inactive`) để ba lối hết hạn nhận ra.
-**Kiểm lại:** ca test đi CSDL — AIOps khoá X → hết hạn → mở X; admin khoá X lý do riêng → hết hạn AIOps → X vẫn `Inactive`, `Reason_inactive`
-vẫn là lý do của admin.
+Dấu `[AIOPS_AUTO_QUARANTINE]` đã ghi, tài khoản AIOps khoá đã tự mở (đã chạy, ca 1). **Đã chạy xác nhận** các lỗi còn lại trên CSDL thật + `sweepExpiredQuarantines`:
 
-### 58.6 — vế AIOps (THẤP)
+| Ca | Kịch bản | Hiện tại | Phải là |
+|---|---|---|---|
+| 2 | Admin khoá lý do R → gõ sai đủ ngưỡng → sau hạn | `Active`, mất lý do ⇒ **người bị khoá tự mở được** | `Inactive`, lý do R |
+| 3 | Khoá vĩnh viễn → AIOps khoá lại từ IP khác → sau hạn | `Active` | `Inactive` |
+| 4 | AIOps khoá → backend tắt qua mốc hạn → bật lại | `Inactive` mãi | `Active` |
+| 5 | Username chứa `Admin` bị AIOps khoá → sau hạn | `Inactive` mãi | `Active` |
+| 6 | Admin khoá lý do chứa chữ `AIOps` → sau hạn | `Active` | `Inactive` |
+| 7 | `message` socket, 401, 403 | chứa `[AIOPS_AUTO_QUARANTINE]` | không chứa |
 
-AQ:640-643, :676-695: phát `force_logout` kể cả khi `updateMany` khớp 0 hàng (tài khoản `PendingDelete` được bảo vệ khỏi khoá vẫn bị đẩy ra với
-lý do *"bị khoá"*); `usernameOrId` dạng số được hiểu là `idaccount` ⇒ username toàn chữ số có thể đẩy nhầm tài khoản mang id ấy.
-**Kiểm lại:** AIOps khoá tài khoản `PendingDelete` ⇒ không `force_logout`; username toàn chữ số không đẩy nhầm `idaccount`. (Trả lời chung dòng
-58.6 ở mục 10.)
+Ca 2 nguy hiểm vì `login` trả 401 khi sai mật khẩu **trước** khi xét trạng thái (`auth.service.js:341-343` trước `:363`), nên tài khoản đang khoá vẫn bị đếm. Ca test viện dẫn đi qua `isAccountQuarantined` — hàm không chỗ nào gọi ngoài test (AQ:904).
+
+**Cách sửa:**
+
+```js
+// modules/aiops/aiops.reason.js — tệp mới
+const AIOPS_AUTO_REASON_PREFIX = '[AIOPS_AUTO_QUARANTINE]';
+function lyDoChoNguoiDung(reason) {
+  if (!reason) return reason;
+  const s = String(reason);
+  return s.startsWith(AIOPS_AUTO_REASON_PREFIX) ? s.slice(AIOPS_AUTO_REASON_PREFIX.length).replace(/^[:\s]+/, '') : s;
+}
+module.exports = { AIOPS_AUTO_REASON_PREFIX, lyDoChoNguoiDung };
+
+// AQ: require hằng + hàm từ tệp trên, bỏ const cũ. AQ:405: báo đây là khoá tự động
+this._syncAccountStatusToDatabase(idaccount || cleanUser, 'Inactive', autoReason, { idaccount, username: cleanUser, autoQuarantine: true })
+
+// AQ:683-694: một dấu cố định, bỏ contains và NOT
+andConditions.push({ reason_inactive: { startsWith: AIOPS_AUTO_REASON_PREFIX } });
+
+// AQ:696-699: khoá tự động chỉ đụng hàng đang Active
+} else if (options.autoQuarantine) {
+  andConditions.push({ status: 'Active' });
+} else {
+  andConditions.push({ status: { not: 'PendingDelete' } });
+}
+
+// AQ:720
+emitForceLogout(targetId, 'ACCOUNT_INACTIVE', lyDoChoNguoiDung(reason) || 'Tài khoản của bạn đã bị cách ly tạm khóa để bảo vệ an toàn.');
+
+// AQ: hàm mới, gọi ở hydrateFromDatabase (sau loadActiveQuarantines) và cuối sweepExpiredQuarantines
+async _reconcileAutoLocks() {
+  if (!this.repository || typeof this.repository.getAccountByUsername !== 'function') return false;
+  try {
+    const { prisma } = require('../../config/db');
+    if (!prisma?.account?.findMany) return false;
+    const locked = await prisma.account.findMany({
+      where: { status: 'Inactive', reason_inactive: { startsWith: AIOPS_AUTO_REASON_PREFIX } },
+      select: { idaccount: true, username: true },
+    });
+    const now = Date.now();
+    let changed = false;
+    for (const acc of locked) {
+      const clean = String(acc.username).toLowerCase();
+      // Hàng vừa khoá có thể chưa ghi xong aiops_account_quarantine: RAM còn hiệu lực thì bỏ qua
+      const conTrongRam = [...this._pairs.values()].some((r) => r.username && r.username.toLowerCase() === clean
+        && (r.accountStatus === 'permanent' || (r.accountStatus === 'temporary' && r.accountExpiresAt > now)));
+      if (conTrongRam) continue;
+      const row = await this.repository.getAccountByUsername(acc.username);
+      const conHieuLuc = row && (row.status === 'PERMANENT'
+        || (row.status === 'TEMPORARY' && row.expires_at && new Date(row.expires_at).getTime() > now));
+      if (conHieuLuc) continue;
+      await this._syncAccountStatusToDatabase(acc.idaccount, 'Active', null, { onlyAIOpsLocked: true, idaccount: acc.idaccount, username: acc.username });
+      changed = true;
+    }
+    return changed;
+  } catch (err) {
+    logger.warn('[AIOps Quarantine] Lỗi đối soát khoá tự động', { error: err.message });
+    return false;
+  }
+}
+```
+
+```sql
+-- AQR:226-233: khoá vĩnh viễn không bị hạ xuống tạm thời
+"status" = CASE WHEN "aiops_account_quarantine"."status" = 'PERMANENT' THEN 'PERMANENT' ELSE EXCLUDED."status" END,
+"reason" = CASE WHEN "aiops_account_quarantine"."status" = 'PERMANENT' THEN "aiops_account_quarantine"."reason" ELSE EXCLUDED."reason" END,
+"expires_at" = CASE WHEN "aiops_account_quarantine"."status" = 'PERMANENT' THEN NULL ELSE EXCLUDED."expires_at" END,
+```
+
+```js
+// middleware/auth.js accountRejection và auth.service.js:364-370: dùng lyDoChoNguoiDung(...) cho cả message lẫn reason_inactive trả về
+const lyDo = lyDoChoNguoiDung(info?.reason_inactive);
+```
+
+Ba tệp test đang khẳng định bộ lọc cũ (`aiops.sync_account_protection.test.js:42-46`, `aiops_group2_completion.test.js` ca 1, 3, `household_and_aiops_v2.test.js` ca 5) đổi sang `startsWith` / `status: 'Active'` — bản vá đã làm.
+**Kiểm lại:** `chay_kiem.js` bảy ca 58.5 và ca `PendingDelete` của 58.6.
+
+*Ghi nhận, không phải việc của đơn này:* (a) ai biết username vẫn giữ khoá được mãi — mỗi 15 phút một loạt 15 lần sai, mỗi lần `force_logout` mọi máy (`feature.collector.js:220`). Cân nhắc gõ sai chỉ khoá IP. (b) `findFirst` theo `username` (AQ:658-661) có thể nhầm khi trùng username; Supabase đo 2026-10-31: 0 username trùng, 0 username chứa `Admin`, 0 khoá AIOps cũ không dấu.
 
 ---
 
 ## 3. PayOS (đơn 44)
 
-Đã rà soát & kiểm thử chuyên sâu toàn diện (2026-10-31 theo kế hoạch `ke_hoach_chi_tiet_nhom_3_payos_don_44.md` được PO duyệt):
-- **Cơ chế chuyển khoản lần 2:** VietQR động nhận tiền NAPAS không thể chặn ở bank rails; PayOS tự động nhận diện và gửi webhook mới với `reference` mới. Backend kiểm tra nếu đơn đã `PAID` thì ghi nhận giao dịch mới vào `payment_transaction` (phục vụ đối soát kế toán/hoàn tiền) và trả HTTP 200, tuyệt đối không nâng cấp Premium hai lần.
-- **Idempotency tầng CSDL:** Đã bổ sung Partial Unique Index `uq_payment_transaction_payos_id` trên `payment_transaction(payos_transaction_id)` WHERE `payos_transaction_id IS NOT NULL`. Bắt lỗi P2002/23505 trả HTTP 200 an toàn khi Webhook phát lặp.
-- **Ma trận trạng thái tài chính 2 tầng:** Luồng 6.1 (49k -> PAID + 30 ngày dồn tích + socket), Luồng 6.2a (70k > 49k -> WAITING_CONFIRMATION), Luồng 6.2b (20k < 49k -> REFUND_PENDING + refundReason), `confirmUpgrade` (accept: true -> PAID; accept: false -> REFUND_PENDING).
-- **Trích xuất mã VietQR:** Regex bóc tách token 6 ký tự cuối cùng chuẩn xác kể cả khi ngân hàng gắn tiền tố (ví dụ `CSCYDEZ2N10 9X7K2A` -> `9X7K2A`).
-- **Đơn hàng mẫu `is_template = true`:** Xác nhận PAID nhưng không kích hoạt gói Premium cho Admin.
-- **JIT Sync & Vá BigInt Logger:** `syncOrderWithPayOS` / `getOrderStatus` bù trừ tức thì khi Webhook trễ; vá lỗi `orderCode` BigInt trong Winston logger JSON format.
-- **Bộ kiểm thử 2 tầng:** `src/Backend/tests/unit/payos_group3_comprehensive_audit.test.js` (10/10 tests PASS 100%).
-- **DB Guard Verify Indexes:** Đã thêm và thẩm tra `uq_payment_transaction_payos_id` an toàn 100% trên Supabase Cloud.
+Không còn việc (client soát 2026-10-30; PR #172 chỉ đổi hai dòng ép `Number`, không ảnh hưởng client). Ca test PayOS của PR: xem T6 (mục 8.6).
 
 ---
 
 ## 4. Mã hoá dữ liệu — giải mã hỏng (đơn 52)
 
-Đã hoàn tất 100% theo kế hoạch `ke_hoach_chi_tiet_nhom_4_ma_hoa_du_lieu_don_52.md` được PO duyệt (2026-10-31):
-- **52.1 (Đã làm):** Bổ sung `context: { table, id, field }` cho 100% vị trí gọi `decrypt` (`sync.repository.js`, `auth.repository.js`, `auth.service.js`, `bank.repository.js`, `masking.util.js`). Logger ghi nhận chính xác metadata `{ table, recordId }` khi giải mã thất bại.
-- **Phòng vệ Sync Pull:** `restoreSafeNote` nhận cờ `isDeleted`; nếu hàng đã xóa mềm (`deleted_at != null`) bị hỏng giải mã thì log warning và trả về chuỗi rỗng `''` thay vì làm crash HTTP 500 cả lượt kéo; hàng active vẫn ném `DECRYPT_FAILED` chuẩn để bảo vệ dữ liệu.
-- **52.3 - 52.5 (Đã làm):** Chạy script `migrate_reencrypt_legacy_dev_data.js` di trú thành công 19 giao dịch và 3 user cũ sang khóa `.env` chính thức.
-- **Task THẤP (Đã làm):** Loại bỏ đường đi vòng `isEncrypted ? x : encrypt(x)` tại `auth.repository.js` và `admin.repository.js`, chống bypass chuỗi giả mạo `enc:1:2:3`.
-- **Tự động nạp .env:** `crypto.util.js` tự động nạp `.env` chống race-condition trong các test suite độc lập.
-- **db:verify-encryption (Đã làm):** Thêm script `verify_encryption_health.js` quét định kỳ toàn CSDL — hiện đạt **0 lỗi / 28 trường mã hóa** trên Supabase Cloud.
-- **Test 2 Tầng:** `data_encryption_group4_audit.test.js` (9/9 tests PASS 100%).
+Lịch sử: [`LICH-SU/GIAI_MA_HONG_TRA_BAN_MA.md`](./LICH-SU/GIAI_MA_HONG_TRA_BAN_MA.md). Đạt: bỏ đường đi vòng `isEncrypted ? x : encrypt(x)`; `restoreSafeNote` trả `''` cho hàng đã xoá giải hỏng. ⚠️ Hàng **còn sống** giải hỏng vẫn làm `/sync/pull` 500 cả lượt (`sync.controller.js:67-73`), nên 52.4 còn quan trọng.
 
-Lịch sử: [`LICH-SU/GIAI_MA_HONG_TRA_BAN_MA.md`](./LICH-SU/GIAI_MA_HONG_TRA_BAN_MA.md).
+**Client đo Supabase 2026-10-31** (chỉ đọc, hàm `decrypt` của backend, khoá `.env`): `transaction.Note` 25 hàng `enc:`, **0 hỏng**; `user.Phone` 3 hàng, **0 hỏng**; `user.Address`, `bill` / `goal` / `budget.Note`, `bank_account.Account_number`: 0 hàng. *"28 trường"* ở ô trả lời là 28 **ô dữ liệu**, không phải 28 cột.
 
-**Vì sao cần làm** (client đo Supabase 2026-10-30, script chỉ đọc, khoá `.env` và khoá dev mặc định của `crypto.util.js`): `processPull`
-(`sync.service.js:518-560`) gọi tuần tự từng `pullFn` không `try` ⇒ một ghi chú giải hỏng làm `restoreSafeNote` ném `DECRYPT_FAILED` ⇒
-`sync.controller.js:66-74` trả HTTP **500** cho **cả lượt**. Câu kéo giao dịch (`sync.repository.js:517-535`) không lọc `deleted_at` ⇒ mọi lượt
-kéo **toàn bộ** (máy mới / cài lại / vào nhà) của tài khoản có hàng hỏng 500 ở mọi chu kỳ, vĩnh viễn — tính theo khoá `.env`: **3 tài khoản
-Active**. App không mất dữ liệu (không ghi mốc) nhưng máy mới của các tài khoản ấy kéo về **không được gì**.
+### 52.1 (VỪA) — phần còn thiếu · [vá]
 
-### 52.1 (VỪA) — Log giải mã hỏng thiếu tên bảng + khoá chính (phần còn thiếu)
+`mask*` nhận `context` nhưng chỗ gọi không truyền.
 
-`crypto.util.js:91` `decrypt(cipherText, context)` log `table` / `recordId` khi người gọi truyền `context`, nhưng chỉ **2 / 17** chỗ gọi truyền
-(`dedup.repository.js:16`, `masking.util.js:162`). Còn trần — đường cần nhất là `/sync/pull` (`restoreSafeNote`, `sync.repository.js:12-15`,
-dùng ở `:533/618/697/790`); thêm `auth.service.js:238/316/455/733/734/756/757`, `auth.repository.js:18-19`, `bank.repository.js:243`.
-**Xin:** truyền `context` (tên bảng + khoá chính của hàng) ở mọi chỗ gọi `decrypt`, trước hết `restoreSafeNote`.
-**Kiểm lại:** kéo về một tài khoản có ghi chú giải hỏng ⇒ dòng log lỗi giải mã có tên bảng + khoá chính của hàng.
+```js
+// modules/admin/admin.service.js:173-174 và :195-196
+phone: maskPhone(u.phone, { table: 'user', id: u.iduser, field: 'phone' }),
+address: maskAddress(u.address, { table: 'user', id: u.iduser, field: 'address' }),
+// modules/bank/bank.service.js:68
+account_number: maskAccountNumber(acc.account_number, { table: 'bank_account', id: acc.id_bank_account, field: 'account_number' }),
+```
 
-### 52.3 (VỪA) — Khoá của CSDL dev `PersonFinance`
+Hai chỗ không có hàng để nêu, ghi rõ là ngoại lệ ở mục 10: `workers/bank.worker.js:85` (số thô từ webhook), `modules/ai/features/classify/pipeline/llm.classifier.js:54` (chữ thô).
+**Ca test thêm tay:** gọi `adminService.getUsers` với một hàng `user.Phone` giải hỏng, kiểm dòng log có `table: 'user'` + `recordId`. Đừng gọi thẳng `maskPhone` như ca 7 hiện nay (ca ấy tự truyền context nên che đúng chỗ thiếu).
 
-Chọn một và ghi vào tài liệu chạy backend — (a) chạy với `DATA_ENCRYPTION_KEY` = khoá dev mặc định của `crypto.util.js`, hoặc (b) script mã hoá
-lại `PersonFinance` sang khoá `.env` (đọc khoá cũ, ghi khoá mới, mỗi bảng một giao tác). Hiện chưa có câu chốt khoá nào (`grep PersonFinance`
-trong `docs/progress/Backend.md`, `Project.md` → 0, ngoài tiêu đề cũ `Project.md:138`); `scripts/apply_pending_migrations.js` chỉ áp migration
-rồi chạy 5 câu SELECT, **0** lời gọi `decrypt` / `isEncrypted` — không thẩm tra khoá.
+### 52.3 (VỪA) — chưa làm
 
-### 52.4 (VỪA) — Khoá trên Render
+Chưa có câu chốt khoá cho `PersonFinance`. Dữ liệu ở đó mã hoá bằng khoá dev mặc định (`crypto.util.js:43`), script di trú chưa chạy trên đó; bật backend trỏ `PersonFinance` với khoá `.env` ⇒ `/sync/pull` 500.
 
-Production: xác nhận `DATA_ENCRYPTION_KEY` trên Render đúng khoá đã mã hoá dữ liệu Supabase — script đếm hàng giải hỏng trả 0. Client không có
-khoá Render, nhưng số đo cho thấy hiện **không khoá nào** cho 0: `transaction.Note` có **25** hàng `enc:` — khoá `.env`: **19 hỏng**; khoá dev
-mặc định: **6 hỏng** (đúng 6 hàng khoá `.env` giải được) ⇒ bảng chứa bản mã của **hai khoá**. `user.Phone` 3 `enc:` — khoá `.env` 3 hỏng, khoá
-dev 0 (cả 3 tài khoản `Deleted`). `bill/goal/budget.Note`, `user.Address`, `bank_account.Account_number`: 0 `enc:`.
+**Cách làm (đề xuất lối a, không đụng dữ liệu):** dán vào `docs/progress/Backend.md` và thành chú thích `.env.example`:
 
-### 52.5 (VỪA) — Dọn hàng `enc:…` hỏng có sẵn
+> CSDL dev cục bộ `PersonFinance` chạy với `DATA_ENCRYPTION_KEY` = khoá dev mặc định của `utils/crypto.util.js` (đặt qua biến môi trường của tiến trình, không sửa `.env`). Khoá trong `.env` là của Supabase. Không trộn hai khoá trên một CSDL.
 
-Đếm và dọn (script ở 52.4 cho ra danh sách). Với khoá `.env`: 19 hàng giao dịch hỏng thuộc **4** tài khoản (3 `Active`, 1 không còn), 1 hàng
-còn sống; với khoá dev: 6 hàng / 2 tài khoản `Active`. Migration 43 không đụng cột mã hoá.
+Rồi chạy và dán dòng tổng kết vào mục 10:
 
-**Kiểm lại 52.3 – 52.5:** script chỉ đọc (từ `src/Backend`) duyệt các cột đã mã hoá (`transaction."Note"`, `bill."Note"`, `user.phone`,
-`user.address`, …), đếm `isEncrypted(x) && decrypt ném lỗi` → **0** trên Supabase với khoá Render; trên `PersonFinance` = 0 sau 52.3; `/sync/pull`
-toàn bộ của ba tài khoản Active nói trên trả 200.
+```bash
+DATABASE_URL=<PersonFinance> DIRECT_URL=<PersonFinance> DATA_ENCRYPTION_KEY=<khoá dev> npm run db:verify-encryption
+```
 
-**Ghi chú (THẤP, có sẵn):** `auth.repository.js:94-95` và `admin.repository.js:482-483` dùng `isEncrypted(x) ? x : encrypt(x)` — đi vòng
-`encrypt()`, nên số điện thoại / địa chỉ người dùng gõ đúng dạng `enc:a:b:c` được lưu thô rồi làm `/auth/profile` 500.
+Muốn lối b (mã hoá lại sang khoá `.env`) thì `migrate_reencrypt_legacy_dev_data.js` phải phủ thêm `bill` · `budget` · `goal` · `bank_account`, có giao tác theo bảng, `--dry-run`, sao lưu trước.
+
+### 52.4 (VỪA) — chưa làm
+
+`npm run db:verify-encryption` ở máy dev dùng khoá của máy dev, không chứng minh gì về Render. **Rủi ro đã tăng:** 19 + 3 hàng nay mang khoá `.env`; Render khác khoá thì mọi lượt kéo toàn bộ của tài khoản có hàng còn sống trả 500.
+
+**Cách làm:** so vân tay, không in khoá. Thêm tạm vào `index.js` sau khi nạp `.env`, deploy, đọc log Render, rồi gỡ:
+
+```js
+logger.info('DATA_KEY_FP', { fp: require('crypto').createHash('sha256').update(process.env.DATA_ENCRYPTION_KEY || '').digest('hex').slice(0, 8) });
+```
+
+Trên máy dev (từ `src/Backend`):
+
+```bash
+node -e "require('dotenv').config();console.log(require('crypto').createHash('sha256').update(process.env.DATA_ENCRYPTION_KEY||'').digest('hex').slice(0,8))"
+```
+
+**Kiểm lại:** hai vân tay giống nhau; `GET https://managementfinance.onrender.com/api/sync/pull` không `since` của một tài khoản có hàng đã di trú trả 200; ghi cả hai vào mục 10.
+
+### 52.5 (VỪA) — phần còn thiếu
+
+Supabase với khoá `.env` đạt (số đo trên). Còn: `/sync/pull` toàn bộ trả 200 (theo 52.4), `PersonFinance` = 0 (theo 52.3).
+**Cách sửa `scripts/migrate_reencrypt_legacy_dev_data.js`:** đếm hàng không giải được bằng cả hai khoá (`:83`; phía `user` `:98-112` đang im hẳn), cuối script in số ấy và `process.exit(soKhongXuLy > 0 ? 1 : 0)`, không in *"HOÀN TẤT"* khi còn hàng hỏng. Ghi vào mục 10: script chạy trên CSDL nào, khoá nào, lúc nào.
 
 ---
 
@@ -354,120 +528,114 @@ toàn bộ của ba tài khoản Active nói trên trả 200.
 
 Lịch sử: [`LICH-SU/PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md`](./LICH-SU/PHAN_QUYEN_THEO_GOI_HOP_DONG_VA_TAI_LIEU.md).
 
-### 55.A3 (VỪA) — Premium không có `premium_expires_at` vẫn mang hai nghĩa
+### 55.A3 (VỪA) — còn lại sau PR #172 · [vá] mã; tài liệu tay
 
-Đã thành **Basic**: `getSubscriptionInfo` (`payment.service.js:830`), `requireFeature` (`middleware/feature-permission.middleware.js:33`),
-`updateHouseholdStatusByOwner` (`household.service.js:712-714`). Còn **Premium**: `chuConPremium` (`sync.service.js:65-80`:
-`if (expires && < now) return false; return true;` ⇒ `null` = Premium) ⇒ nhà của Chủ Premium-không-hạn có thể bị ghi `ReadOnly` trong khi lượt
-đẩy vẫn qua khi `Status` còn `Active`. Job hạ cấp `downgradeExpiredPremiumAccounts` (`payment.repository.js:507-516`) chỉ quét
-`premium_expires_at <= now` ⇒ hàng không hạn giữ `Type = 'Premium'` mãi (đăng nhập / `/auth/profile` vẫn trả `Premium`). Nghĩa đã chọn mới chỉ
-là một dòng ở `docs/progress/Backend.md:675`, không ở tài liệu API. Supabase hôm nay: 0 tài khoản như vậy (mọi đường nâng cấp đều ghi hạn).
-**Xin:** chốt một nghĩa (đề nghị: hàng không hạn là dữ liệu hỏng → Basic) ở mọi chỗ server — sửa `chuConPremium` (`null` → không Premium), dùng
-chung một hàm *Premium hiệu lực* — và ghi nghĩa ấy vào tài liệu hợp đồng `/subscription-info`. App đổi theo sau khi có trả lời.
-**Kiểm lại:** tài khoản `Type = 'Premium'`, `premium_expires_at` NULL (trên CSDL riêng) ⇒ `getSubscriptionInfo`, `requireFeature`,
-`updateHouseholdStatusByOwner`, `chuConPremium` cho cùng một kết quả.
+Bốn nơi đã cùng ra Basic nhưng là bốn công thức chép tay; job hạ cấp bỏ hàng hạn NULL ⇒ giữ `Type = 'Premium'` mãi, trong khi mọi lượt đẩy vào nhà nhận `HOUSEHOLD_READ_ONLY`. Supabase đo 2026-10-31: 0 tài khoản như vậy — vá phòng xa.
+
+```js
+// utils/premium.util.js — tệp mới, định nghĩa duy nhất
+function isPremiumEffective(account, now = new Date()) {
+  if (!account || account.type !== 'Premium' || !account.premium_expires_at) return false;
+  return new Date(account.premium_expires_at) > now;
+}
+module.exports = { isPremiumEffective };
+
+// Gọi ở: SS chuConPremium; middleware/feature-permission.middleware.js:33;
+// HS updateHouseholdStatusByOwner; payment.service.js:830 (const isExpired = !isPremiumEffective(account, now);
+//   GIỮ const isPremium ở :827, biến ấy còn dùng ở dưới).
+
+// payment.repository.js:510-515
+type: 'Premium',
+OR: [{ premium_expires_at: { lte: now } }, { premium_expires_at: null }],
+```
+
+**Tay:** dán vào `docs/Payment/CLIENT_INTEGRATION_GUIDE.md:173-186` và `docs/Functional-Mobile/12_GOI_CUOC_PREMIUM_VA_PAYOS.md:23`:
+
+> `premium_expires_at` NULL với `Type = 'Premium'` là dữ liệu hỏng, coi là Basic: `accountType: 'Premium'`, `isPremium: false`, `isExpired: true`; job hạ cấp đưa về `Basic` ở lượt quét kế.
+
+**Kiểm lại:** chỉ còn `utils/premium.util.js` chứa công thức hạn; ca test (CSDL riêng) tài khoản `Premium` + NULL ⇒ bốn nơi cùng kết quả và sau job `Type = 'Basic'`. App đổi theo sau khi có câu hợp đồng.
 
 ---
 
 ## 6. Script test ghi vào dữ liệu thật (đơn 48)
 
-Lịch sử: [`LICH-SU/DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md`](./LICH-SU/DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md).
+Lịch sử: [`LICH-SU/DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md`](./LICH-SU/DU_LIEU_TEST_TRONG_TAI_KHOAN_THAT.md). Hai rủi ro script test còn lại → 58.6.
 
-### 48.1 (THẤP) — Ghi ai / CSDL nào / lúc nào đã dọn dữ liệu test của tài khoản 18
+### 48.1 (THẤP) — ô trả lời chưa khớp
 
-Dữ liệu đã sạch (0 ví sống tên chứa *test* của tài khoản 18; `Ví Test Note` đã xoá mềm). Ô trả lời cũ nói dọn *"qua migration 43 ngày 28/10"* —
-không khớp: tài khoản 18 còn `Active`, mà migration 43 chỉ chạm hàng của tài khoản **không còn tồn tại**.
-**Xin:** ghi vào mục 10: ai đã dọn dữ liệu test của tài khoản 18, trên CSDL nào, lúc nào.
-**Kiểm lại:** cách dọn ghi trong ô trả lời khớp CSDL.
-
-Hai rủi ro script test còn lại (`test_can_lam_fixes.js` tạo khuôn danh mục toàn cục trên Supabase; `test_sync_new_schema.js` không `finally`) →
-58.6.
+Ô trả lời ghi `scripts/cleanup` (không tồn tại, chưa từng có trong git), *"Lead FullStack"* (không phải tên), *"28/10/2026"*. Client đo Supabase 2026-10-31: tài khoản 18 có 0 ví sống tên chứa *test*, 13 ví đã xoá mềm, lần xoá mới nhất **2026-10-26 03:58:21Z**, không hàng nào ngày 28/10. Tài khoản 18 là tài khoản dev thật `quangdat`, không phải tài khoản test.
+**Cách làm:** ghi ở mục 10: tên người / công cụ đã chạy (câu `UPDATE` tay? Admin-web? script nào?), trên Supabase, lúc 2026-10-26 03:58:21Z nếu đúng. Không nhớ thì ghi *"không truy được"* — câu ấy cũng đóng việc.
 
 ---
 
 ## 7. Migration và máy dev (đơn 49)
 
-Lịch sử: [`LICH-SU/SOAT_SAU_GOP_EE6A65E5.md`](./LICH-SU/SOAT_SAU_GOP_EE6A65E5.md).
-
-### 49.F(1) (VỪA) — Tệp `database/33` viết sai hoa thường tên cột
-
-Bản xoá mềm của `database/33_…sql:26-29` viết `UPDATE refreshtoken SET "status" … "update_at"`, `UPDATE "user" … "update_at"`,
-`UPDATE account … "update_at"`, nhưng cột thật (`pg_attribute`, Supabase) là `"Status"`, `"Update_at"` (định danh có nháy phân biệt hoa thường)
-⇒ PL/pgSQL ném `column "status" does not exist` khi có tài khoản test khớp. Supabase / `PersonFinance` đã áp 33 từ trước nên chỉ hại CSDL mới.
-Bộ lọc `Email LIKE '%anonymized.local%'` của tệp này → 58.6.
-**Xin:** sửa tên cột cho đúng hoa thường.
-**Kiểm lại:** áp tệp 33 lên một CSDL mới có tài khoản test khớp bộ lọc ⇒ không lỗi; tài khoản ấy `Status = 'Deleted'`, có `Delete_at`.
+Không còn việc (49.F(1) đạt theo đọc mã 2026-10-31; bộ lọc `anonymized.local` của cùng tệp ở 58.6).
 
 ---
 
 ## 8. Tài liệu backend cần sửa — gom theo tệp
 
-Các tệp dưới là tài liệu **của backend** (client không sửa). Chỗ nói về app: đối chiếu `src/Client-app/test/core/sync/sync_payload_contract_test.dart`
-và mã `src/Client-app/lib/`, đừng suy luận; tính năng chưa có thì ghi *"kế hoạch"*, đừng đánh `[x]` / *"100%"*. Số dòng là của tài liệu ở HEAD
-`e3248955`; cột *Mã thật* trỏ tệp dưới `src/Client-app/lib/` trừ khi ghi khác.
-**Kiểm lại** (cả 8.1 – 8.3): từng dòng trong bảng không còn tả app làm điều ấy (hoặc ghi rõ *"Server lưu / chưa có hiệu lực ở app"*). Câu `grep`
-theo từ khoá cũ không đủ — đổi từ khoá mà giữ nội dung vẫn qua.
+Các tệp dưới là tài liệu **của backend** (client không sửa). Số dòng là của tài liệu ở HEAD `5ff06db4`; đường dẫn *Mã thật* dưới `src/Client-app/lib/` trừ khi ghi khác.
+**Banner không thay được dòng sai:** PR #172 không đổi dòng cũ nào của ba tệp T1–T3 (`git diff --stat`: +14 / +6 / +10, 0 dòng xoá), T1 mục 7 vẫn ghi *"ĐÃ CÓ"* dưới khối ghi chú nói ngược lại. Hàng được banner phủ đúng đã bỏ khỏi bảng dưới. Tính năng chưa có thì ghi *"kế hoạch"*, đừng đánh `[x]` / *"100%"*.
+**Cách làm:** mở từng dòng trong bảng, sửa ngay tại dòng theo cột bên phải (hoặc ghi rõ *"Server lưu / chưa có hiệu lực ở app"*).
+**Kiểm lại** (cả 8.1 – 8.3): đọc lại từng dòng; tìm bổ trợ phải ra 0 dòng: `thongBaoHeThong`, `demNguocXoa`, `BottomSheet`, `SnackBar` (T1); `ai-assistant`, `Modal BottomSheet`, `hiển thị dialog` (T3). Đổi từ khoá mà giữ nội dung vẫn không qua.
 
-### 8.1 (T1) — `docs/Admin-web/Event-Notification-to-ClientApp.md` (633 dòng)
+### 8.1 (T1) — `docs/Admin-web/Event-Notification-to-ClientApp.md`
 
-| Dòng | Tài liệu nói | Mã thật |
+| Dòng | Đang nói | Xin sửa theo mã |
 |---|---|---|
-| 597, 626 | `system.broadcast` ánh xạ `RealtimeEvent.thongBaoHeThong` | Không có giá trị ấy. Luồng riêng `tinHeThong`, đọc qua `docTinHeThong` (`core/realtime/tin_he_thong.dart`, `realtime_channel.dart:258-266`) |
-| 84, 258-273, 600, 626 | `account.countdown` → `RealtimeEvent.demNguocXoa`, banner cam | Không có. Số ngày đến từ `countdown` của `/auth/profile`; huỷ qua `POST /auth/cancel-delete` (`auth_remote_data_source.dart:188`) |
-| 179-185 | Xử lý `system.maintenance_changed`: banner đỏ / cam, dừng sync nền, Toast xanh, `syncNow()` | App **cố ý không nghe** (`trang_thai_may_chu.dart:8-9`); chính dòng 596 của tài liệu cũng nói vậy — tự mâu thuẫn |
-| 204-209 | `system.broadcast`: banner theo `level`, SnackBar 4 s | App không dùng SnackBar; tin đi vào bảng thông báo cục bộ (`NhanTinHeThong`) |
-| 252-254 | `account.upgraded` / `downgraded`: hiện Toast chúc mừng / hết hạn | `loiNhan == null` cả hai (`realtime_event.dart:131-150`) — im lặng |
-| 85, 279 | `sync.completed` "từ thiết bị khác" | Phát tới mọi máy của tài khoản kể cả máy vừa đẩy (vì thế app im lặng) |
-| 315-317, 603 | `ocr.duplicate` → Dialog vàng | Toast *"Hoá đơn này đã được ghi nhận trước đó"* (`realtime_event.dart:135-136`) |
-| 304 | `ocr.completed` mang `metadata` | Mã backend gửi `data` + `createdAt` (`src/Backend/…/notification.service.js:98-104`) |
-| 53 | Socket "tuyệt đối không truyền số tài khoản đầy đủ" | `ocr.completed` vẫn chuyển nguyên `data` có `source_account` / `destination_account` (`src/Backend/…/classify.service.js:303-304, 325-328`) — **sửa mã (che số) hoặc sửa câu** |
-| 51 | "Zero-Guesswork — mọi trường được ánh xạ" | App đọc payload như hộp đen trừ `account.force_logout` / `system.broadcast` (`realtime_event.dart:7-20`) |
-| 88-91, 321-337, 341-379, 604-606 | `user.notification` sống, lưu SQLite + badge; `payment.success` do webhook; `order_expired` do worker; app "đóng popup QR" | App không nghe `user.notification`; `payment.*` gộp `donThanhToanDoi` — chỉ là tín hiệu để màn đang mở hỏi lại server, không popup |
-| 396, 607 | `payment.refunded` → Dialog "Xem biên lai" | Không có |
-| 471, 612 | 503 `SERVER_OVERLOADED` → Top Toast cam + exponential backoff | Không toast; chỉ `SyncEngine` hẹn thử lại có sàn 30 s (`trang_thai_may_chu.dart:85-100`, `kSanThuLai`) |
-| 486, 613 | 429 `RETRY_LIMIT_EXCEEDED` → dừng retry, báo người dùng | App không có nhánh riêng |
-| 508, 614, 630 | 403 `AIOPS_QUARANTINED` → Dialog toàn màn + đếm ngược | Dòng nhắc Trang chủ + toast + câu ở màn Đăng nhập + hẹn thử (`trang_thai_may_chu.dart:1-3, 70`) |
-| 524, 615, 631 | 403 `FEATURE_DISABLED` → BottomSheet (524) / điều hướng `/premium?quyen=` (615, 631) | Chỉ làm mới gói (`may_chu_interceptor.dart:79-80` → `GoiRepository.lamMoi()`); hai dòng của tài liệu còn mâu thuẫn nhau |
-| 66 | `x-device-name` gửi trong mọi request | Chỉ bản Android |
-| 74-95, 99 | 18 sự kiện / "9 tín hiệu" | Thiếu `household.changed`, `household.invited` (app nghe — `realtime_event.dart` `nhaDoi`, `loiMoiNha`); bảng 3.2 có 8 dòng |
+| 24-33 | Banner: `ocr.duplicate` kích hoạt sync; 503 / 429 / 403 qua interceptor với retry backoff | **Banner sai — sửa trước.** `ocr.duplicate` không sync (`core/realtime/realtime_event.dart:121-127`). Interceptor chỉ phân loại `MAINTENANCE_MODE`, `AIOPS_QUARANTINED`, báo `FEATURE_DISABLED` (`core/api/interceptors/may_chu_interceptor.dart:56-87`) |
+| 611 | `system.broadcast` = `thongBaoHeThong` | Luồng riêng `tinHeThong`, đọc qua `docTinHeThong` (`core/realtime/tin_he_thong.dart:32`), không thuộc enum |
+| 614, 640 | `demNguocXoa` | App không nghe `account.countdown`, không có enum ấy; số ngày từ `countdown` của `/auth/profile` |
+| 218-223 | Banner theo `level`, SnackBar 4 s | Trung tâm thông báo + khay hệ điều hành (`nhan_tin_he_thong.dart:53-72`); không banner, không SnackBar |
+| 99, 291, 293 | `sync.completed` *từ thiết bị khác* | Phát cho mọi máy của tài khoản, cả máy vừa đẩy |
+| 329-331, 617 | `ocr.duplicate` Dialog vàng | Toast hằng số *"Hoá đơn này đã được ghi nhận trước đó"*; không sync |
+| 318, 321-327 | `metadata`; mẫu `ocr.duplicate` | `src/Backend/…/notification.service.js:98-104, 129-135` gửi `title, message, type, data, createdAt` |
+| **67** | Socket không truyền số tài khoản đầy đủ | **Chọn một:** che `transfer_details.source_account` / `destination_account` trước `eventBus.publish('ocr.completed')` (`ocr.service.js:133-149`; đọc `maskAccountNumber` trước vì nó gọi `decrypt` đầu vào), hoặc sửa câu cho đúng. Nguồn: `classify.service.js:325, 328`, `notification.service.js:102`. Client không đọc payload này nên che số không phải đổi app |
+| 65 | Mọi trường được ánh xạ | App đọc hộp đen trừ `account.force_logout`, `system.broadcast` |
+| 102, 335-351 | `user.notification` lưu SQLite + badge | Client không nghe; server cũng không phát: `sendDirectNotification` / `notifyUser` 0 chỗ gọi ngoài test. Ghi *"chưa dùng"* hoặc xoá |
+| 103, 358 | `payment.success` do webhook | Webhook chỉ `eventBus.publish` không ai subscribe (`payment.service.js:342`) + `admin_room`; tới tài khoản chỉ ở JIT (`:737`). Hoặc thêm `emitToAccount`, hoặc sửa chữ |
+| 105, 385, 393 | Worker phát `order_expired`, đóng popup | Worker chỉ `admin_room { count }` (`:970`); tới tài khoản chỉ ở JIT (`:660`) |
+| 378-379, 618 | Đóng popup QR | `payment.*` là tín hiệu, màn đang mở hỏi lại server; không popup |
+| 410, 621 | Dialog, *"hỗ trợ xem biên lai"* | Không có trong app |
+| 485, 626 | Top Toast cam + exponential backoff | Không toast; chỉ `/sync/push` hẹn lại, sàn 30 s (`core/sync/gui_lo_dong_bo.dart:214`, `core/network/trang_thai_may_chu.dart:19, 95-103`) |
+| 500, 627 | 429 dừng retry, báo người dùng | App không có nhánh riêng |
+| 120, 522, 628, 644 | Dialog phong toả + đếm ngược | Dòng nhắc Trang chủ + toast + câu Đăng nhập + hẹn thử |
+| 121, 538, 629, 645 | BottomSheet / điều hướng `/premium?quyen=` | Chỉ làm mới gói (`may_chu_interceptor.dart:77-87`) |
+| 88-109, 607-631 | 18 sự kiện, không có `household.*` | Thêm `household.changed`, `household.invited` vào bảng 3.1 và ma trận |
+| 42, 113, 455 | 9 tín hiệu | Bảng 3.2 có 8 hàng, mục 5 có 5.1-5.8 |
 
 ### 8.2 (T2) — `docs/Admin-web/IP-Device-ClientApp.md`
 
-| Dòng | Tài liệu nói | Thực tế |
+| Dòng | Đang nói | Xin sửa theo mã |
 |---|---|---|
-| 154 | *"Client-app gửi fallback `Unknown Device`"* | App không gửi — server tự điền khi vắng header (đúng như dòng 192 của chính tài liệu) |
-| 282-286 | Test 2.x đánh `[x]`; Test 2.5 *"Admin **xoá cứng** `DELETE FROM account` → CASCADE"* | Tầng CSDL trong test dùng Prisma giả; xoá cứng trái quy tắc xoá mềm và trái chính bản sửa migration 33 |
-| 299 | *"chỉ bypass throttle khi Login"* | Đăng ký / OTP cũng bỏ throttle |
+| 17 | Banner: *"cấu hình linh hoạt theo hạ tầng rate-limiter"* | **Banner sai.** Là `skipThrottle: true` của lịch sử thiết bị ở `verifyRegisterOtp`, `register`, `login`, `refresh` (`auth.service.js:211, 289, 414, 542`) |
+| 305 | Luôn bypass khi Login | Nêu đủ bốn đường trên |
+| 287-291 | Test 2.x `[x]` *"CSDL PostgreSQL có…"* | Ghi rõ ca dùng Prisma giả (`device.tracking.2tier.test.js:38-80`), hoặc viết ca chạm CSDL thật có dọn dữ liệu |
+| 292 | Test 2.5 xoá cứng → CASCADE, `[x]` | Ca này **không tồn tại**: 2.5 thật là thứ tự `getDeviceHistory` (`:247`). Sửa cho đúng tên ca; bỏ kịch bản xoá cứng (trái quy tắc xoá mềm) |
 
-### 8.3 (T3) — `docs/Functional-Mobile/4_TRU_COT.md` (638 dòng)
+### 8.3 (T3) — `docs/Functional-Mobile/4_TRU_COT.md`
 
-Gốc chung: app **không** đọc `scopes` / `scope_config` lẫn `policies` / `downgrade_policy` — Trụ 3 và Trụ 4 chưa có hiệu lực ở app. Các dòng dưới
-còn tả app làm những việc nó không làm, không kèm *"Server lưu / chưa có hiệu lực ở app"*:
+Gốc chung: app **không** đọc `scopes` / `scope_config` lẫn `policies` / `downgrade_policy`. Cách sửa gọn: dưới mỗi tính năng thêm một dòng *"App thi hành: …"*; dòng `scope_config` chưa dùng ghi *"Server lưu, chưa có hiệu lực ở app"*.
 
-| Dòng | Tài liệu nói | Mã thật |
+| Dòng | Đang nói | App thi hành |
 |---|---|---|
-| 64-66, 418 | `READ_ONLY` — "cho phép xem lại biểu đồ / dự báo cũ, khoá nút chạy lại" | Basic: cả khối *Dự báo 30 ngày tới* thay bằng thẻ khoá; dự báo tính tại chỗ, không lưu |
-| 56-58 | `BLOCK_CREATE` — bấm *Tạo ví mới* "hiển thị dialog giải thích" | `redirectTaoTheoGoi` đưa sang màn Nâng cấp `/premium?tran=…` |
-| 589 | Route chặn `/export-report`, `/ai-assistant` | Màn Trợ lý là `/ai-chat` (khoá trong trang); xuất báo cáo qua `/analytics/export` |
-| 593 | Nút độc quyền mở "Modal BottomSheet giới thiệu Premium" | Thẻ khoá điều hướng `/premium?quyen=…` |
-| 555 (#11), 215-217 | OCR "15 lượt/tháng" (Basic) | ML Kit, không đếm lượt |
-| 553 (#9), 193-194 | "1 ảnh/tx · 5 ảnh/tx", tìm kiếm 90 ngày | Không đính ảnh vào giao dịch; Sổ xem mọi kỳ |
-| 556 (#12), 226-227 | Gắn hàng loạt "20 tx/lần · 100 tx/lần" | Không trần |
-| 559 (#15), 264-265 | "5 từ/cat · 25 từ/cat" | Không trần |
-| 565 (#21), 340-341 | Nhắc hoá đơn Basic [1], Premium [1, 3, 7] | Mọi gói 1 · 3 · 5 · 7 |
-| 569 (#25), 387-395 | "Xuất báo cáo PDF / Excel", `EXCEL`, watermark | Chỉ PDF + CSV; Basic bị chặn hẳn |
-| 570 (#26) | FHS "Điểm cơ bản / AI Deep Insights" | App không có màn FHS |
-| 577 (#33), 492-493 | Nhắc ghi chép 1 / 3 khung giờ | Một giờ nhắc, mặc định tắt |
-| 579 (#35), 519-520 | Premium "+ Tải hoá đơn" | Không có; chỉ *Lưu mã QR* |
-| 580 (#36), 535-537 | "Debounce 10 s / Realtime 2 s", sao lưu ảnh | 2 s mọi gói (`core/sync/sync_engine.dart:91`), không sao lưu ảnh |
-| 155-156 | `allowed_types` có `EWallet/Credit/Investment` | App chỉ `cash · bank · saving`; CSDL `chk_wallet_type` không nhận ba giá trị kia |
-| 100-102, 546 (#2) | Đăng nhập ngoại tuyến `cache_token_days: 30` | Không có; mở lạnh dùng phiên đã lưu rồi `verifySession()` |
-| 280, 318-319 (#16, #19) | Chu kỳ ngân sách / hoá đơn Basic chỉ `MONTHLY` | Mọi gói chọn Tuần / Tháng / Quý / Năm |
-| 481 | `scope_config` Basic `supported_banks: ["MB","MOMO","ZALOPAY"]` | Seed `account_type_permission` trên Supabase vẫn `["VCB","MB","TCB","ACB"]` — tài liệu lệch **chính CSDL** |
-| 508-509 (#34) | `countdown_minutes: 15` | App + `payment.repository.js` 10 phút (seed CSDL cũng 15 — sửa seed hoặc ghi "server lưu, không dùng") |
-
-**Gợi ý viết lại:** mỗi tính năng tách *"Server lưu / trả"* và *"App thi hành hiện nay"* (chỉ ghi điều mã app làm); Trụ 3 / 4 chưa thi hành thì
-ghi *"chưa có hiệu lực ở app"*.
+| 74-76, 428 | `READ_ONLY` xem lại dự báo | Thẻ khoá thay cả khối; dự báo tính tại chỗ, không lưu (`features/analytics/presentation/pages/analytics_page.dart:179-185`) |
+| 70 | Dialog | Chuyển `/premium?tran=…` (`chuyen_huong_theo_goi.dart:13`) |
+| 599 | `/ai-assistant` | `/ai-chat`, khoá trong trang. `/export-report` đúng, thêm `/analytics/export` |
+| 603 | Modal BottomSheet | Thẻ khoá → `/premium?quyen=…` |
+| 225-227, 565 | OCR 15 lượt | ML Kit, không đếm lượt |
+| 203-204, 563 | 1 / 5 ảnh, 90 ngày | Không đính ảnh vào giao dịch; Sổ xem mọi kỳ |
+| 236-237, 566 | 20 / 100 | Không trần |
+| 274-275, 569 | 5 / 25 từ khoá | Không trần |
+| 580 | FHS | App không có màn |
+| 529-530, 589 | Tải hoá đơn | Không có; chỉ *Lưu mã QR* |
+| 545-547, 590 | Sao lưu ảnh, về 10 s | 2 s mọi gói, không sao lưu ảnh |
+| 110-112, 556 | `cache_token_days` | Không có; mở lạnh dùng phiên đã lưu rồi `verifySession()` |
+| 491, 586 | MB / MOMO / ZALOPAY, *"4 banks"* | Seed `database/32:196, 260` vẫn VCB / MB / TCB / ACB. **Chọn một:** viết migration sửa seed, hoặc ghi đúng seed + *"Server lưu, không dùng"*. App: MB Bank · MoMo · ZaloPay, không theo gói |
+| 518-519 | `countdown_minutes: 15` | **Chọn một:** migration đổi seed về 10 (`database/32:208, 262, 309`), hoặc ghi *"Server lưu, không dùng"* |
+| 11 | *"lộ trình tương lai"* | Bỏ, trừ khi có quyết định PO |
 
 ### 8.4 (T4) — Tên migration cũ
 
@@ -475,39 +643,46 @@ Không còn việc (client soát 2026-10-30).
 
 ### 8.5 (T5) — Quy ước tài liệu client
 
-Không còn việc (client soát 2026-10-30). `docs/superpowers/sync/SYNC_DOCUMENTATION.md` là tài liệu **của client** — muốn sửa thì ghi ở mục 14
-*Trao đổi* của tệp ấy hoặc đặt đơn, không viết đè.
+Không còn việc (client soát 2026-10-30). `docs/superpowers/sync/SYNC_DOCUMENTATION.md` là tài liệu **của client** — muốn sửa thì ghi ở mục 14 *Trao đổi* của tệp ấy hoặc đặt đơn, không viết đè.
+
+### 8.6 (T6, THẤP) — Câu sai PR #172 vừa viết thêm
+
+| Tệp, dòng | Cách sửa |
+|---|---|
+| `docs/progress/Backend.md:694-695` | *"3 quyền `household.create`, `household.dissolve`, `household.member_limit`"*, gói *`Free`, `Plus`* không tồn tại. Thay bằng 4 quyền thật (`household`, `household_join`, `household_members`, `household_wallets`) và gói Basic / Premium |
+| `Project.md:4828, 4819` | Đường đúng là `/api/payment/order-status/:orderCode`; 6.1 tới tài khoản chỉ `account.upgraded`, webhook không phát `payment.success` tới tài khoản |
+| `tests/unit/payos_group3_comprehensive_audit.test.js` ca 2 | Mô tả P2002 nhưng webhook chỉ gọi một lần nên nhánh `payment.repository.js:373-378` không chạy. Gọi webhook hai lần cùng `reference` với `recordTransaction` thật trên CSDL thử, hoặc tách ca đơn vị; đếm một hàng. Bỏ nhãn `[Tier 2]` ở ca mock. **Thêm:** `activatePremiumSubscription:429-433` — bắt lỗi trong transaction không cứu được giao tác đã huỷ; dùng `createMany({ skipDuplicates: true })` hoặc bỏ `catch` |
 
 ---
 
 ## 10. Trả lời (backend ghi vào đây)
 
-Mỗi dòng một câu nói đúng việc của mã ấy — commit, tệp, ca test (đường thật, payload như app gửi).
+Mỗi dòng một câu nói đúng việc của mã ấy — commit, tệp, ca test (đường thật, payload như app gửi). Báo cáo PR #172: `git show 5ff06db4:docs/superpowers/backend/CAN-LAM/VIEC_BACKEND_CON_LAI.md` mục 10.
+
+**Dòng `TỔNG:` của `chay_kiem.js` sau khi sửa:** …
 
 | Mã | Đã làm (commit, tệp) | Ca test / câu kiểm | Ghi chú |
 |---|---|---|---|
-| 57.1 | modules/household/household.service.js, household.repository.js | Ca test 1 trong household_and_aiops_v2.test.js | Chuẩn hóa 5 endpoint về Single State Shape { household: {...}, myRole, members, formerMembers }, ẩn email nhạy cảm |
-| 57.2 | modules/household/household.service.js | Ca test 2 trong household_and_aiops_v2.test.js | Helper getCallerEmail tra cứu email Postgres cho previewInvite, joinByCode, acceptEmailInvite, declineEmailInvite, getMyInvitations |
-| 57.3 | modules/household/household.service.js | Unit test & code review sendInviteEmailAsync | Kết nối emailService.sendMail gửi thư mời thật qua Brevo REST API / SMTP non-blocking |
-| 57.4 | modules/sync/sync.service.js | Ca test 4 trong household_and_aiops_v2.test.js | Bỏ qua check lệch owner cá nhân khi targetHhId có mặt, bảo toàn existingRecord.idaccount |
-| 57.5 | modules/household/household.service.js | Ca 1 household.api.test.js | Bỏ qua quota từ body, gán cứng maxMembers: 6, maxSharedWallets: 10, contributionDueDay: 5 |
-| 57.6 | modules/household/household.repository.js | Ca test 1 trong household_group1_completion.test.js | Trong single transaction: xoá mềm 5 bảng dữ liệu chung (wallet, transaction, budget, goal, category) và thu hồi mã mời pending (revoked_at = now) |
-| 57.7 | modules/household/household.service.js | Ca test 3 trong household_group1_completion.test.js | Chuẩn hóa toàn bộ mã lỗi theo docs/Family/01: 410 HOUSEHOLD_INVITE_EXPIRED, 409 HOUSEHOLD_INVITE_DECLINED, 409 HOUSEHOLD_INVITE_USED, 404 HOUSEHOLD_INVITE_INVALID |
-| 57.8 | household.service.js, household.controller.js, rate-limiter.js | Ca test 4, 4b, 4c trong household_group1_completion.test.js | #1 check alreadyMember trước trần quota trả 202; #3 Atomic updateMany ngăn race-condition; #4 householdInviteLimiter 30 req/15p; #7 validate email > 100 ký tự trả 400 |
-| 58.1 | modules/sync/sync.service.js | Ca test 3 trong household_and_aiops_v2.test.js | Bắt cả create và !existingRecord, chặn Member tạo/sửa transaction transfer giữa 2 ví chung (HOUSEHOLD_ROLE_FORBIDDEN) |
-| 58.2 | modules/sync/sync.service.js | Ca 11 household.system_impact.test.js | Bắt cả create và !existingRecord để kiểm soát HOUSEHOLD_WALLET_LIMIT khi app gửi update |
-| 58.3 | modules/household/household.service.js | Ca test 2 trong household_group1_completion.test.js | Lấy danh sách thành viên active qua findActiveMembersByHousehold trước khi giải tán, truyền extraRecipients để phát socket HOUSEHOLD_DISSOLVED tới từng phòng account_<id> |
-| 58.4 | modules/sync/sync.service.js | Code review processPush | Chỉ emitSyncCompleted cho các op có status synced, loại bỏ phát thừa household.changed |
-| 58.5 | modules/aiops/aiops.quarantine.js | Ca test 5 trong household_and_aiops_v2.test.js | Gắn [AIOPS_AUTO_QUARANTINE], auto-unlock sau 15 phút, bảo vệ tài khoản Admin khóa thủ công |
-| 58.6 | modules/sync/sync.service.js, modules/aiops/aiops.quarantine.js, aiops.controller.js | Ca test 1 & 2 trong aiops_group2_completion.test.js | Phân biệt username toàn chữ số với idaccount; chỉ phát force_logout khi updateMany > 0 (bảo vệ PendingDelete); dọn khối updateMany thừa trong unblockAccount |
-| Đơn 44 | modules/payment/payment.service.js, payment.repository.js, scripts/verify-db-indexes.js | 10 tests trong payos_group3_comprehensive_audit.test.js | Idempotency P2002/23505; ma trận tài chính 6.1, 6.2a, 6.2b, confirmUpgrade; VietQR regex; JIT sync & BigInt logger |
-| 52.1 | modules/sync/sync.repository.js, auth.repository.js, auth.service.js, bank.repository.js, masking.util.js | Ca test 1, 6, 7 trong data_encryption_group4_audit.test.js | Truyền context { table, id, field } ở 100% chỗ gọi decrypt; logger ghi nhận đúng table + recordId; phòng vệ tombstone trả chuỗi rỗng không làm sập sync pull |
-| 52.3 | scripts/migrate_reencrypt_legacy_dev_data.js, utils/crypto.util.js | Ca test 5 & 8 trong data_encryption_group4_audit.test.js, npm run db:verify-encryption | Khóa .env là khóa chính thức duy nhất; crypto.util tự động nạp .env chống race-condition; di trú 100% bản ghi dev cũ |
-| 52.4 | scripts/verify_encryption_health.js, package.json | npm run db:verify-encryption (exit 0) | Xác nhận DATA_ENCRYPTION_KEY trên Supabase/Render giải mã thành công 100% cột nhạy cảm (0 lỗi) |
-| 52.5 | scripts/migrate_reencrypt_legacy_dev_data.js | db:verify-encryption (28/28 trường an toàn) | Re-encrypt sạch 19 hàng transaction và 3 hàng user phone về khóa .env; số hàng hỏng về 0; loại bỏ isEncrypted bypass |
-| 55.A3 | modules/sync/sync.service.js | Unit test suite | Tài khoản Premium thiếu premium_expires_at rơi về Basic |
-| 48.1 | scripts/cleanup, Supabase Cloud | CSDL thật kiểm tra 0 ví test | Tài khoản 18 (test) đã được dọn sạch ví test ("Ví Test Note" đã xóa mềm Delete_at != null, 0 ví test sống) bởi Lead FullStack ngày 28/10/2026 trên Supabase Cloud; các script test hiện tại đã được cô lập tự sinh tài khoản ngẫu nhiên |
-| 49.F(1) | database/33_add_admin_pin_and_audit_action_and_cleanup_test_data.sql | File review & test DDL | Sửa tên cột định danh có nháy "status" / "update_at" thành "Status" / "Update_at" trên bảng refreshtoken, user, account |
-| T1 | docs/Admin-web/Event-Notification-to-ClientApp.md | Doc review | Bổ sung banner đối chiếu đồng bộ với Client-app: SQLite NhanTinHeThong, auth/profile countdown, Retry-After, silent sync |
-| T2 | docs/Admin-web/IP-Device-ClientApp.md | Doc review | Bổ sung banner chuẩn hóa: Backend tự điền fallback Unknown Device, tuân thủ Soft-delete, throttle bypass cho auth endpoints |
-| T3 | docs/Functional-Mobile/4_TRU_COT.md | Doc review | Bổ sung banner phân định "Server lưu / trả" và "App thi hành hiện nay": Phân hệ ví cash/bank/saving, xuất PDF/CSV, 1 giờ nhắc nhở, VietQR 10 phút |
+| 57.6 | | | |
+| 57.2 | | | |
+| 59.1 | | | |
+| 58.5 | | | |
+| 58.3 | | | |
+| 58.4 | | | |
+| 59.3 | | | |
+| 57.7 | | | *(kèm bảng mã chốt)* |
+| 57.1 | | | |
+| 57.3 | | | |
+| 55.A3 | | | |
+| 52.1 | | | |
+| 52.3 | | | |
+| 52.4 | | | |
+| 52.5 | | | |
+| T1 | | | |
+| T2 | | | |
+| T3 | | | |
+| 57.8 | | | *(#5, #7, #8 trả lời ở đây)* |
+| 58.6 | | | |
+| 59.2 | | | |
+| 48.1 | | | |
+| T6 | | | |
