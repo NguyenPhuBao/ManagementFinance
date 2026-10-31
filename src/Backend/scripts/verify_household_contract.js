@@ -7,7 +7,7 @@ const fs = require('fs');
 const { randomUUID } = require('crypto');
 
 const ROOT = process.argv[2] ? path.resolve(process.argv[2]) : path.resolve(__dirname, '..');
-const DST = process.argv[3] ? path.resolve(process.argv[3]) : path.resolve(__dirname, '../kq_household_contract.txt');
+const DST = process.argv[3] ? path.resolve(process.argv[3]) : path.join(require('os').tmpdir(), 'kq_household_contract.txt');
 
 if (!/@(127\.0\.0\.1|localhost)(:\d+)?\/flowmoney_kiem_thu(\?|$)/.test(process.env.DATABASE_URL || '')) {
   console.error('Từ chối chạy: DATABASE_URL phải là CSDL flowmoney_kiem_thu trên máy này (kịch bản này GHI dữ liệu).');

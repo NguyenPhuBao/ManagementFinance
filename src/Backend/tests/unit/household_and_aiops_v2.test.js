@@ -118,7 +118,9 @@ test('Household & AIOps v2 — 2-Tier System Impact & Security Suite (Tasks 57.1
   await t.test('2. [Task 57.2] previewInvite & joinByCode tra cứu Caller Email từ CSDL và chặn khi gửi cho email khác', async () => {
     const origFindInvite = householdRepository.findInviteByCode;
     const origFindAccount = prisma.account.findUnique;
+    const origFindActiveMember = householdRepository.findActiveMemberByAccount;
 
+    householdRepository.findActiveMemberByAccount = async () => null;
     householdRepository.findInviteByCode = async (code) => {
       if (code === 'INVITE_TARGETED') {
         return {
@@ -170,6 +172,7 @@ test('Household & AIOps v2 — 2-Tier System Impact & Security Suite (Tasks 57.1
     } finally {
       householdRepository.findInviteByCode = origFindInvite;
       prisma.account.findUnique = origFindAccount;
+      householdRepository.findActiveMemberByAccount = origFindActiveMember;
     }
   });
 

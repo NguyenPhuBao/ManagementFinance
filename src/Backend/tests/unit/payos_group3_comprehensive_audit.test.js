@@ -119,7 +119,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
   // ═════════════════════════════════════════════════════════════════════
   // TC3. Luồng 6.1: Khớp tiền chính xác (49,000đ = 49,000đ)
   // ═════════════════════════════════════════════════════════════════════
-  await t.test('3. [Tier 2] Luồng 6.1: Khớp tiền 49k -> Kích hoạt PAID, cộng 30 ngày và phát socket realtime', async () => {
+  await t.test('3. [Unit: giả paymentRepository] Luồng 6.1: Khớp tiền 49k -> Kích hoạt PAID, cộng 30 ngày và phát socket realtime', async () => {
     const origFindOrder = paymentRepository.findOrderByCode;
     const origActivate = paymentRepository.activatePremiumSubscription;
     const origEmitToAccount = socket.emitToAccount;
@@ -195,7 +195,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
   // ═════════════════════════════════════════════════════════════════════
   // TC4. Luồng 6.2a: Chuyển THỪA tiền (70,000đ > 49,000đ)
   // ═════════════════════════════════════════════════════════════════════
-  await t.test('4. [Tier 2] Luồng 6.2a: Chuyển THỪA tiền (70k > 49k) -> Đổi WAITING_CONFIRMATION, không kích hoạt gói', async () => {
+  await t.test('4. [Unit: giả paymentRepository] Luồng 6.2a: Chuyển THỪA tiền (70k > 49k) -> Đổi WAITING_CONFIRMATION, không kích hoạt gói', async () => {
     const origFindOrder = paymentRepository.findOrderByCode;
     const origRecordTx = paymentRepository.recordTransaction;
     const origUpdateStatus = paymentRepository.updateOrderPaymentStatus;
@@ -268,7 +268,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
   // ═════════════════════════════════════════════════════════════════════
   // TC5. Luồng 6.2b: Chuyển THIẾU tiền (20,000đ < 49,000đ)
   // ═════════════════════════════════════════════════════════════════════
-  await t.test('5. [Tier 2] Luồng 6.2b: Chuyển THIẾU tiền (20k < 49k) -> Đổi REFUND_PENDING và lưu lý do', async () => {
+  await t.test('5. [Unit: giả paymentRepository] Luồng 6.2b: Chuyển THIẾU tiền (20k < 49k) -> Đổi REFUND_PENDING và lưu lý do', async () => {
     const origFindOrder = paymentRepository.findOrderByCode;
     const origRecordTx = paymentRepository.recordTransaction;
     const origUpdateStatus = paymentRepository.updateOrderPaymentStatus;
@@ -342,7 +342,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
   // ═════════════════════════════════════════════════════════════════════
   // TC6. Người dùng xác nhận chuyển thừa (confirmUpgrade)
   // ═════════════════════════════════════════════════════════════════════
-  await t.test('6. [Tier 2] confirmUpgrade(): accept = true -> kích hoạt PAID; accept = false -> REFUND_PENDING', async () => {
+  await t.test('6. [Unit: giả paymentRepository] confirmUpgrade(): accept = true -> kích hoạt PAID; accept = false -> REFUND_PENDING', async () => {
     const origFindByCode = paymentRepository.findOrderByCode;
     const origActivate = paymentRepository.activatePremiumSubscription;
     const origUpdateStatus = paymentRepository.updateOrderPaymentStatus;
@@ -392,7 +392,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
   // ═════════════════════════════════════════════════════════════════════
   // TC7. Trích xuất mã nhận diện 6 ký tự VietQR chuẩn xác
   // ═════════════════════════════════════════════════════════════════════
-  await t.test('7. [Tier 2] Trích xuất mã nhận diện VietQR có tiền tố ngân hàng "CSCYDEZ2N10 9X7K2A"', async () => {
+  await t.test('7. [Unit: giả paymentRepository] Trích xuất mã nhận diện VietQR có tiền tố ngân hàng "CSCYDEZ2N10 9X7K2A"', async () => {
     const origFindByCode = paymentRepository.findOrderByCode;
     const origFindByRecog = paymentRepository.findOrderByRecognitionCode;
     const origActivate = paymentRepository.activatePremiumSubscription;
@@ -447,7 +447,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
   // ═════════════════════════════════════════════════════════════════════
   // TC8. Đơn hàng thử nghiệm (is_template = true)
   // ═════════════════════════════════════════════════════════════════════
-  await t.test('8. [Tier 2] Đơn hàng thử nghiệm is_template = true: Xác nhận PAID nhưng KHÔNG nâng cấp tài khoản Admin', async () => {
+  await t.test('8. [Unit: giả paymentRepository] Đơn hàng thử nghiệm is_template = true: Xác nhận PAID nhưng KHÔNG nâng cấp tài khoản Admin', async () => {
     const origFindOrder = paymentRepository.findOrderByCode;
     const origRecordTx = paymentRepository.recordTransaction;
     const origUpdateStatus = paymentRepository.updateOrderPaymentStatus;
@@ -513,7 +513,7 @@ test('PayOS Group 3 Comprehensive Audit Suite — 2-Tier Financial & Idempotency
   // ═════════════════════════════════════════════════════════════════════
   // TC9. Cơ chế JIT Sync (syncOrderWithPayOS / getOrderStatus)
   // ═════════════════════════════════════════════════════════════════════
-  await t.test('9. [Tier 2] JIT Sync (getOrderStatus) chủ động kích hoạt Premium khi Webhook bị chậm', async () => {
+  await t.test('9. [Unit: giả paymentRepository] JIT Sync (getOrderStatus) chủ động kích hoạt Premium khi Webhook bị chậm', async () => {
     const origFindOrder = paymentRepository.findOrderByCode;
     const origActivate = paymentRepository.activatePremiumSubscription;
     const origGetInfo = payosClient.getPaymentLinkInfo;

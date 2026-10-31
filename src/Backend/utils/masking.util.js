@@ -88,6 +88,22 @@ function maskAccountNumber(accountNumber, context = null) {
 }
 
 /**
+ * Trả bản sao của [obj] với các khoá [khoa] đã che số tài khoản. Dùng cho payload socket (Nghị định 13): DTO trả về trực tiếp
+ * cho chủ tài khoản vẫn giữ số đầy đủ. Không sửa object gốc.
+ * @param {object|null} obj
+ * @param {string[]} khoa
+ * @returns {object|null}
+ */
+function maskAccountFields(obj, khoa) {
+  if (!obj) return obj ?? null;
+  const ra = { ...obj };
+  for (const k of khoa) {
+    if (ra[k]) ra[k] = maskAccountNumber(String(ra[k]));
+  }
+  return ra;
+}
+
+/**
  * Che Họ tên người dùng khi xuất báo cáo công cộng
  * Giữ nguyên họ, viết tắt chữ cái đầu của tên đệm và tên chính
  * Ví dụ: Nguyễn Phú Bảo -> Nguyễn P. B.
@@ -216,6 +232,7 @@ module.exports = {
   maskEmail,
   maskPhone,
   maskAccountNumber,
+  maskAccountFields,
   maskFullname,
   maskAddress,
   maskTransactionDescription,

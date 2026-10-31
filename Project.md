@@ -4895,3 +4895,29 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - Admin-web Vitest: **41/41 test files PASS 100% (360+ tests)**, bao gồm `socket.context.test.jsx` và `server-health-environment.test.jsx`.
   - Admin-web Build: `vite build` biên dịch production thành công trong 2.97s, 0 cảnh báo.
   - Zero Regressions trên toàn bộ hệ thống.
+
+### 4.35. Khắc Phục Lỗ Hổng Thanh Toán PayOS, Bảo Vệ Dữ Liệu Socket OCR & Đạt Chuẩn Nghiệm Thu PR #174/#175 (2026-11-01)
+- **Bối cảnh & Chỉ đạo:** Tiếp nhận kết quả bàn giao từ đợt pull PR #174 và PR #175, Lead PO và Lead Kỹ thuật đã rà soát 12 công việc tồn đọng tại `docs/superpowers/backend/CAN-LAM/VIEC_BACKEND_CON_LAI.md`. Kế hoạch khắc phục đã được PO Cấp cao chính thức ký duyệt.
+- **Các Hạng Mục Khắc Phục Trọng Tâm:**
+  1. *Vá Lỗi Sập Webhook PayOS (Mã 60.4 & T6):*
+     - Tại `payment.repository.js`, đưa `const logger = require('../../core/logger');` lên đầu tệp, xóa bỏ require cục bộ ở cuối tệp. Chấm dứt hoàn toàn lỗi `ReferenceError: logger is not defined` khi nhiều webhook PayOS gửi về đồng thời.
+     - Chuẩn hóa ghi giao dịch qua `prisma.payment_transaction.createMany({ skipDuplicates: true })`.
+  2. *Bảo Vệ Dữ Liệu Tài Chính Socket OCR (Mã T1):*
+     - Bổ sung hàm `maskAccountFields` tại `masking.util.js`. Che mờ số tài khoản ngân hàng trong payload sự kiện socket `ocr.completed` (chỉ giữ lại 4 số cuối), tuân thủ Nghị định 13/2023/NĐ-CP và `Data_Security.md`.
+     - Cập nhật tài liệu `Event-Notification-to-ClientApp.md` khớp 100% với hành vi ứng dụng thực tế.
+  3. *Chuẩn Hóa Phân Quyền 4 Trụ Cột & Khôi Phục Endpoint (Mã T3):*
+     - Cập nhật `4_TRU_COT.md` phản ánh đúng năng lực thi hành thực tế của Client-app; phục hồi route `/export-report`.
+  4. *Kiểm Thử Biên Tài Khoản Premium Không Thời Hạn (Mã 55.A3):*
+     - Bổ sung suite test `premium_effective.test.js`, bảo đảm tài khoản Premium có `premium_expires_at = null` được xử lý an toàn như Basic.
+  5. *Rào Chắn DB Guard & Giữ Sạch Cây Mã Nguồn (Mã 60.1 & 60.2):*
+     - Thêm regex `/supabase\.(com|co)/i` vào các script test trong thư mục `Test/`, ngăn ngừa hoàn toàn nguy cơ vô tình kết nối đến Supabase Cloud.
+     - Chuyển file kết quả của `verify_household_contract.js` sang thư mục tạm `os.tmpdir()`.
+  6. *Chuẩn Hóa Mock Test Gia Đình (Mã 60.3):*
+     - Sửa mock `findActiveMemberByAccount = async () => null` trong `tests/unit/household_and_aiops_v2.test.js` ca 2, cô lập test khỏi dữ liệu cũ.
+- **Kiểm Định Chất Lượng Toàn Diện:**
+  - Kịch bản nghiệm thu PR #174: `chay_kiem_pr174.js` đạt **24/24 ca PASS 100%** (nâng từ 10/24 ca).
+  - Kịch bản hợp đồng Gia đình: `verify:household` đạt **50/50 ca PASS 100%**.
+  - Backend Unit Tests: **496/496 tests PASS 100% (50 test suites)**.
+  - Admin-web Vitest: **383/383 tests PASS 100% (52 test files)**.
+  - Thẩm tra mã hóa CSDL: `npm run db:verify-encryption` đạt **28/28 trường mã hóa an toàn 100% (0 lỗi)**, vân tay khóa dev `98e9e026`.
+  - Zero Regressions trên toàn bộ hệ thống.

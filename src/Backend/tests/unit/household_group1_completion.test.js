@@ -15,7 +15,7 @@ test('Household Group 1 Completion — 2-Tier Verification Suite (Tasks 57.6, 58
   // ═════════════════════════════════════════════════════════════════════
   // 1. Task 57.6: Xóa mềm 5 bảng dữ liệu chung & Thu hồi mã mời
   // ═════════════════════════════════════════════════════════════════════
-  await t.test('1. [Tier 2 - Task 57.6] dissolveHousehold xóa mềm toàn bộ 5 bảng thực thể chung và thu hồi mã mời pending', async () => {
+  await t.test('1. [Unit: chỉ ghim tham số, bằng chứng thật ở verify:household - Task 57.6] dissolveHousehold xóa mềm toàn bộ 5 bảng thực thể chung và thu hồi mã mời pending', async () => {
     let transactionOperations = [];
     const origTransaction = prisma.$transaction;
 
@@ -115,7 +115,7 @@ test('Household Group 1 Completion — 2-Tier Verification Suite (Tasks 57.6, 58
   // ═════════════════════════════════════════════════════════════════════
   // 2. Task 58.3: Socket HOUSEHOLD_DISSOLVED phát tới tất cả thành viên
   // ═════════════════════════════════════════════════════════════════════
-  await t.test('2. [Tier 2 - Task 58.3] dissolveHousehold lấy danh sách thành viên trước khi gắn left_at và phát socket tới từng phòng tài khoản', async () => {
+  await t.test('2. [Unit: giả emitHouseholdChanged, bằng chứng thật ở verify:household - Task 58.3] dissolveHousehold lấy danh sách thành viên trước khi gắn left_at và phát socket tới từng phòng tài khoản', async () => {
     const origFindActiveMember = householdRepository.findActiveMemberByAccount;
     const origFindActiveMembers = householdRepository.findActiveMembersByHousehold;
     const origDissolve = householdRepository.dissolveHousehold;

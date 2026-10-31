@@ -17,7 +17,7 @@ try {
 } catch (e) {
   require('../src/Backend/node_modules/dotenv').config({ path: require('path').resolve(__dirname, '../src/Backend/.env') });
 }
-if (/supabase\.com/i.test(process.env.DATABASE_URL || '')) {
+if (/supabase\.(com|co)/i.test(process.env.DATABASE_URL || '')) {
   console.error('Script này ghi dữ liệu: từ chối chạy trên Supabase dùng chung.');
   process.exit(1);
 }

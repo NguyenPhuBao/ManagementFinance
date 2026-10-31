@@ -8,7 +8,7 @@
 
 
 > 📌 **Phân định "Server lưu / trả" và "App thi hành hiện nay" (Đo đạc 2026-10-30 - Task T3):**
-> - Phân hệ Ví: App hiện chỉ hỗ trợ `cash`, `bank`, `saving` (CSDL có ràng buộc `chk_wallet_type`). Các loại ví EWallet/Credit/Investment thuộc lộ trình tương lai.
+> - Phân hệ Ví: App hiện chỉ hỗ trợ `cash`, `bank`, `saving` (CSDL có ràng buộc `chk_wallet_type`). Các loại ví EWallet/Credit/Investment không có trong app.
 > - Báo cáo: App hỗ trợ xuất PDF và CSV (tài khoản Basic bị khóa tính năng xuất báo cáo).
 > - Nhắc nhở: App hỗ trợ nhắc ghi chép 1 khung giờ trong ngày (mặc định tắt). Nhắc hóa đơn hỗ trợ các mốc 1, 3, 5, 7 ngày trước hạn cho mọi gói.
 > - Chu kỳ ngân sách & hóa đơn: Cho phép chọn linh hoạt Tuần / Tháng / Quý / Năm trên giao diện.
@@ -73,7 +73,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
    - **Hành vi:** Tính năng bị vô hiệu hóa, hiển thị icon ổ khóa 🔒; khi click sẽ mở trang nâng cấp `/premium?quyen=...`.
 3. **`READ_ONLY` (Chỉ xem dữ liệu lịch sử):**
    - **Mục đích:** Áp dụng cho các tính năng phân tích xu hướng hoặc dự báo (Dự báo dòng tiền 30 ngày).
-   - **Hành vi:** Cho phép xem lại các biểu đồ/dữ liệu đã sinh ra trong thời gian còn Premium, nhưng khóa nút "Chạy phân tích lại kỳ này".
+   - **Hành vi:** Server lưu, chưa có hiệu lực ở app. App hiện thẻ khoá thay cả khối; dự báo tính tại chỗ, không lưu nên không có gì để xem lại.
 4. **Ân hạn 3 ngày (Server lưu/trả, chưa có hiệu lực ở app):**
    - **Mục đích:** Áp dụng cho các tiến trình tự động hóa nền (Tự động thanh toán hóa đơn `bill_auto_pay`, tự động trích quỹ mục tiêu `goal_auto_deposit`).
    - **Hành vi:** Quy định ân hạn trên server; ở Client-app khi hết hạn Premium thì dừng ngay các quyền lợi tự động.
@@ -110,6 +110,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
   - `scope_schema`: `{"cache_token_days": {"type": "integer"}, "allow_pin_fallback": {"type": "boolean"}}`
   - `scope_config` (Basic): `{"cache_token_days": 30, "allow_pin_fallback": true}`
   - `scope_config` (Premium): `{"cache_token_days": 30, "allow_pin_fallback": true}`
+  - **App thi hành:** Không có `cache_token_days`. Mở lạnh dùng phiên đã lưu rồi `verifySession()`.
 - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
 
 #### 3. `account_deletion` — Quyền xóa tài khoản & Ân hạn
@@ -202,6 +203,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
   - `scope_schema`: `{"max_photos_per_tx": {"type": "integer"}, "search_history_days": {"type": "integer", "nullable": true}}`
   - `scope_config` (Basic): `{"max_photos_per_tx": 1, "search_history_days": 90}`
   - `scope_config` (Premium): `{"max_photos_per_tx": 5, "search_history_days": null}`
+  - **App thi hành:** Không đính ảnh vào giao dịch; Sổ giao dịch xem mọi kỳ.
 - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
 
 #### 10. `ai_quick_input` — Ghi chép bằng giọng nói (Voice Input)
@@ -224,7 +226,8 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
   - `scope_schema`: `{"monthly_scans": {"type": "integer", "nullable": true}, "max_file_mb": {"type": "integer"}, "auto_crop": {"type": "boolean"}}`
   - `scope_config` (Basic): `{"monthly_scans": 15, "max_file_mb": 5, "auto_crop": false}`
   - `scope_config` (Premium): `{"monthly_scans": null, "max_file_mb": 20, "auto_crop": true}`
-- **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT` (Giới hạn tối đa 15 lượt quét/tháng).
+  - **App thi hành:** Quét bằng ML Kit trên máy, không đếm lượt.
+- **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT` (Server lưu, không có hiệu lực ở app).
 
 #### 12. `quick_category_assignment` — Gán danh mục nhanh (C1)
 - **Loại tính năng:** `TOGGLE` | **Nhóm:** `Sổ giao dịch Thu Chi`
@@ -235,6 +238,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
   - `scope_schema`: `{"batch_assign_max": {"type": "integer"}}`
   - `scope_config` (Basic): `{"batch_assign_max": 20}`
   - `scope_config` (Premium): `{"batch_assign_max": 100}`
+  - **App thi hành:** Không có trần số giao dịch mỗi lần gắn.
 - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
 
 #### 13. `in_app_calculator` — Bàn phím máy tính tích hợp
@@ -273,6 +277,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
   - `scope_schema`: `{"max_keywords_per_cat": {"type": "integer"}}`
   - `scope_config` (Basic): `{"max_keywords_per_cat": 5}`
   - `scope_config` (Premium): `{"max_keywords_per_cat": 25}`
+  - **App thi hành:** Không có trần số từ khoá.
 - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
 
 ---
@@ -425,7 +430,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
   - `scope_schema`: `{"forecast_days": {"type": "integer"}, "scenario_model": {"type": "boolean"}}`
   - `scope_config` (Basic): `{"forecast_days": 0, "scenario_model": false}`
   - `scope_config` (Premium): `{"forecast_days": 30, "scenario_model": true}`
-- **Trụ 4 (Downgrade Policy):** `READ_ONLY` (Vẫn xem lại được kết quả dự báo của 30 ngày cũ, không chạy phân tích mới).
+- **Trụ 4 (Downgrade Policy):** `READ_ONLY` (Server lưu, chưa có hiệu lực ở app: thẻ khoá thay cả khối).
 
 #### 28. `anomaly_spending_insights` — Cảnh báo chi tiêu bất thường
 - **Loại tính năng:** `TOGGLE` | **Nhóm:** `Báo cáo & Phân tích`
@@ -488,7 +493,8 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
 - **Trụ 2 (Quota Limit):** Basic: `NULL` | Premium: `NULL`
 - **Trụ 3 (Scope Schema & Config):**
   - `scope_schema`: `{"supported_banks": {"type": "array", "items": "string"}, "auto_fill_category": {"type": "boolean"}}`
-  - `scope_config` (Basic - Server lưu; App thực tế hỗ trợ MB Bank, MoMo, ZaloPay không theo gói): `{"supported_banks": ["MB", "MOMO", "ZALOPAY"], "auto_fill_category": false}`
+  - `scope_config` (Basic): `{"supported_banks": ["VCB", "MB", "TCB", "ACB"], "auto_fill_category": false}` (seed `database/32`; server lưu, không dùng)
+  - **App thi hành:** MB Bank, MoMo, ZaloPay, không theo gói.
   - `scope_config` (Premium): `{"supported_banks": ["ALL"], "auto_fill_category": true}`
 - **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT`
 
@@ -517,6 +523,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
   - `scope_schema`: `{"gateway": {"type": "string"}, "countdown_minutes": {"type": "integer"}, "support_jit_sync": {"type": "boolean"}}`
   - `scope_config` (Basic): `{"gateway": "PayOS", "countdown_minutes": 15, "support_jit_sync": true}`
   - `scope_config` (Premium): `{"gateway": "PayOS", "countdown_minutes": 15, "support_jit_sync": true}`
+  - **App thi hành:** `countdown_minutes` server lưu, không dùng. Đơn hết hạn sau 10 phút do server tính.
 - **Trụ 4 (Downgrade Policy):** `BLOCK_CREATE`
 
 #### 35. `payment_history` — Lịch sử thanh toán gói cước
@@ -528,6 +535,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
   - `scope_schema`: `{"exclude_template_orders": {"type": "boolean"}, "allow_download_invoice": {"type": "boolean"}}`
   - `scope_config` (Basic): `{"exclude_template_orders": true, "allow_download_invoice": false}`
   - `scope_config` (Premium): `{"exclude_template_orders": true, "allow_download_invoice": true}`
+  - **App thi hành:** Không có tải hoá đơn; chỉ *Lưu mã QR*.
 - **Trụ 4 (Downgrade Policy):** `BLOCK_CREATE`
 
 ---
@@ -544,7 +552,8 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
   - `scope_schema`: `{"debounce_seconds": {"type": "integer"}, "cloud_photo_backup": {"type": "boolean"}, "realtime_priority": {"type": "boolean"}}`
   - `scope_config` (Basic): `{"debounce_seconds": 10, "cloud_photo_backup": false, "realtime_priority": false}`
   - `scope_config` (Premium): `{"debounce_seconds": 2, "cloud_photo_backup": true, "realtime_priority": true}`
-- **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT` (Chuyển chu kỳ đồng bộ về 10s, ngắt tải ảnh hóa đơn mới lên đám mây).
+  - **App thi hành:** Giãn đồng bộ 2 s cho mọi gói, không sao lưu ảnh.
+- **Trụ 4 (Downgrade Policy):** `FALLBACK_DEFAULT` (Server lưu, không có hiệu lực ở app).
 
 ---
 
@@ -553,20 +562,20 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
 | STT | Mã Tính Năng | Tên Tính Năng | Loại | Gói Basic | Gói Premium | Trụ 4: Downgrade Policy |
 |:---:|:---|:---|:---:|:---:|:---:|:---:|
 | 1 | `biometric_auth` | Xác thực sinh trắc học | `TOGGLE` | ✅ Mở | ✅ Mở | `LOCK_FEATURE` |
-| 2 | `offline_login` | Đăng nhập ngoại tuyến | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
+| 2 | `offline_login` | Đăng nhập ngoại tuyến | `TOGGLE` | — (app không có) | — (app không có) | `FALLBACK_DEFAULT` |
 | 3 | `account_deletion` | Quyền xóa tài khoản & Ân hạn | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
 | 4 | `net_worth_overview` | Tổng quan tài sản ròng | `TOGGLE` | ✅ Mở (30 ngày) | ✅ Mở (Toàn thời gian) | `FALLBACK_DEFAULT` |
 | 5 | `quick_action_shortcuts` | Phím tắt ghi chép nhanh | `TOGGLE` | ✅ Mở (4 slots) | ✅ Mở (8 slots + Voice) | `FALLBACK_DEFAULT` |
 | 6 | `wallets` | Quản lý ví tiền | `LIMIT` | **Trần: 3 ví** | **Không giới hạn** | `BLOCK_CREATE` |
 | 7 | `wallet_balance_adjustment` | Điều chỉnh số dư ví | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
 | 8 | `wallet_exclude_total` | Loại trừ ví khỏi tổng tài sản | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
-| 9 | `transaction_management` | Sổ giao dịch thu chi | `TOGGLE` | ✅ Mở (1 ảnh/tx) | ✅ Mở (5 ảnh/tx) | `FALLBACK_DEFAULT` |
+| 9 | `transaction_management` | Sổ giao dịch thu chi | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
 | 10 | `ai_quick_input` | Ghi chép giọng nói (Voice Input) | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
-| 11 | `ocr_receipt` | Quét hóa đơn / Biên lai (OCR) | `TOGGLE` | ✅ Mở (15 lượt/tháng) | 🔓 **Không giới hạn** | `FALLBACK_DEFAULT` |
-| 12 | `quick_category_assignment` | Gán danh mục nhanh (C1) | `TOGGLE` | ✅ Mở (20 tx/lần) | ✅ Mở (100 tx/lần) | `FALLBACK_DEFAULT` |
+| 11 | `ocr_receipt` | Quét hóa đơn / Biên lai (OCR) | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
+| 12 | `quick_category_assignment` | Gán danh mục nhanh (C1) | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
 | 13 | `in_app_calculator` | Bàn phím máy tính tích hợp | `TOGGLE` | ✅ Mở | ✅ Mở | `LOCK_FEATURE` |
 | 14 | `custom_categories` | Quản lý danh mục tùy chỉnh | `LIMIT` | **Trần: 5 danh mục** | **Không giới hạn** | `BLOCK_CREATE` |
-| 15 | `category_keywords_matching`| Từ khóa nhận diện danh mục | `TOGGLE` | ✅ Mở (5 từ/cat) | ✅ Mở (25 từ/cat) | `FALLBACK_DEFAULT` |
+| 15 | `category_keywords_matching`| Từ khóa nhận diện danh mục | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
 | 16 | `budgets` | Quản lý ngân sách chi tiêu | `LIMIT` | **Trần: 3 ngân sách** | **Không giới hạn** | `BLOCK_CREATE` |
 | 17 | `smart_budget_rebalancing` | Tái phân bổ ngân sách AI | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
 | 18 | `budget_overspend_alert` | Dự báo vỡ hạn mức chi tiêu | `TOGGLE` | ✅ Mở | ✅ Mở (+ Burn-rate) | `FALLBACK_DEFAULT` |
@@ -577,17 +586,17 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
 | 23 | `goal_auto_deposit` | Tự động trích tiền mục tiêu | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | Ân hạn 3 ngày (Server lưu, chưa hiệu lực ở app) |
 | 24 | `goal_deposit_withdraw` | Nạp & Rút tiền mục tiêu | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
 | 25 | `export_reports` | Xuất báo cáo PDF / Excel | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
-| 26 | `financial_health_fhs` | Chỉ số sức khỏe tài chính | `TOGGLE` | ✅ Mở (Điểm cơ bản) | ✅ Mở (AI Deep Insights) | `FALLBACK_DEFAULT` |
+| 26 | `financial_health_fhs` | Chỉ số sức khỏe tài chính | `TOGGLE` | — (app không có) | — (app không có) | `FALLBACK_DEFAULT` |
 | 27 | `cashflow_forecast` | Dự báo dòng tiền 30 ngày | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `READ_ONLY` |
 | 28 | `anomaly_spending_insights` | Cảnh báo chi tiêu bất thường | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
 | 29 | `ai_assistant` | Trợ lý Copilot AI Gemini | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
 | 30 | `ai_edge_model` | Mô hình AI Offline trên máy | `TOGGLE` | 🔒 **Khóa** | 🔓 **Mở toàn diện** | `LOCK_FEATURE` |
 | 31 | `ai_model_management` | Quản lý bộ nhớ mô hình AI | `TOGGLE` | ✅ Mở (500 MB) | ✅ Mở (2000 MB) | `FALLBACK_DEFAULT` |
-| 32 | `bank_notification_parser` | Đọc biến động số dư ngân hàng| `TOGGLE` | ✅ Mở (4 banks) | ✅ Mở (Tất cả banks) | `FALLBACK_DEFAULT` |
+| 32 | `bank_notification_parser` | Đọc biến động số dư ngân hàng| `TOGGLE` | ✅ Mở (MB Bank, MoMo, ZaloPay) | ✅ Mở (MB Bank, MoMo, ZaloPay) | `FALLBACK_DEFAULT` |
 | 33 | `daily_recording_reminder` | Nhắc nhở ghi chép hàng ngày | `TOGGLE` | ✅ Mở (1 khung giờ)| ✅ Mở (3 khung giờ) | `FALLBACK_DEFAULT` |
 | 34 | `vietqr_payment` | Thanh toán tự động VietQR | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
-| 35 | `payment_history` | Lịch sử thanh toán gói cước | `TOGGLE` | ✅ Mở | ✅ Mở (+ Tải hóa đơn) | `BLOCK_CREATE` |
-| 36 | `offline_first_sync` | Đồng bộ 2 chiều Offline-First | `TOGGLE` | ✅ Mở (Debounce 10s)| ⚡ **Mở (Realtime 2s)** | `FALLBACK_DEFAULT` |
+| 35 | `payment_history` | Lịch sử thanh toán gói cước | `TOGGLE` | ✅ Mở | ✅ Mở | `BLOCK_CREATE` |
+| 36 | `offline_first_sync` | Đồng bộ 2 chiều Offline-First | `TOGGLE` | ✅ Mở | ✅ Mở | `FALLBACK_DEFAULT` |
 
 ---
 
@@ -596,7 +605,7 @@ Hệ thống định nghĩa các chính sách chuẩn hóa để xử lý tự �
 ### KIẾN TRÚC 5 TẦNG PHÒNG THỦ TẠI CLIENT-APP (FLUTTER)
 
 1. **Tầng 1: Cửa chặn Router Guards (`chan_theo_goi.dart` & `GoRouter`):**
-   - Đặt chặn trực tiếp tại `redirect` của các route thêm mới (`/wallets/add`, `/budget/rules`, `/goals/add`) và route chức năng cao cấp (`/analytics/export`, `/ai-chat`, khoá trong trang).
+   - Đặt chặn trực tiếp tại `redirect` của các route thêm mới (`/wallets/add`, `/budget/rules`, `/goals/add`) và route chức năng cao cấp (`/export-report`, `/analytics/export`); `/ai-chat` khoá trong trang.
    - Nếu chạm trần số lượng (`dangCo >= limit_value`) hoặc không có quyền (`is_enabled == false`), tự động chuyển hướng sang màn hình `/premium?tran=...` hoặc `/premium?quyen=...`.
 2. **Tầng 2: Kiểm soát Trạng thái UI (`GoiCubit` & `quyen_tinh_nang.dart`):**
    - Mọi Widget trên màn hình kiểm tra qua `duocDung(MaQuyen ma, TrangThaiGoi goi, DateTime now)`.
