@@ -15,17 +15,23 @@ import '../../data/models/loi_moi.dart';
 import '../../data/repositories/nha_repository.dart';
 import '../../domain/cau_loi_nha.dart';
 import '../../domain/ma_moi.dart';
-import '../../domain/vai_nha.dart';
 import '../bloc/tham_gia_nha_cubit.dart';
+import '../widgets/nha_minh/danh_sach_thanh_vien.dart';
 import '../widgets/nha_minh/khung_the_nha.dart';
 
 /// Ô mã mời: in hoa, bỏ khoảng trắng / gạch nối ngay lúc gõ, tối đa [kDoDaiMaMoi] ký tự.
 class MaMoiFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final s = chuanHoaMaMoi(newValue.text);
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    final s = trichMaMoi(newValue.text)
+        .split('')
+        .where(kBangKyTuMaMoi.contains)
+        .join();
     final cat = s.length > kDoDaiMaMoi ? s.substring(0, kDoDaiMaMoi) : s;
-    return TextEditingValue(text: cat, selection: TextSelection.collapsed(offset: cat.length));
+    if (cat == newValue.text) return newValue;
+    return TextEditingValue(
+        text: cat, selection: TextSelection.collapsed(offset: cat.length));
   }
 }
 
@@ -79,21 +85,30 @@ class _ThamGiaNhaPageState extends State<ThamGiaNhaPage> {
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      Text(duoc ? 'Nhập mã 8 ký tự chủ nhà gửi cho bạn.' : cauLoiNha(LoaiLoiNha.tinhNangKhongMo),
-                          style: chu.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+                      Text(
+                          duoc
+                              ? 'Nhập mã 8 ký tự chủ nhà gửi cho bạn.'
+                              : cauLoiNha(LoaiLoiNha.tinhNangKhongMo),
+                          style: chu.bodyMedium
+                              ?.copyWith(color: AppColors.textSecondary)),
                       const SizedBox(height: 12),
                       TextField(
-                        enabled: duoc,
+                        enabled: duoc && !s.dangThamGia,
+                        keyboardType: TextInputType.visiblePassword,
+                        enableSuggestions: false,
                         textAlign: TextAlign.center,
                         autocorrect: false,
                         textCapitalization: TextCapitalization.characters,
-                        style: chu.titleLarge?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 4),
+                        style: chu.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700, letterSpacing: 4),
                         inputFormatters: [MaMoiFormatter()],
                         onChanged: _cubit.doiMa,
                       ),
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
-                        onPressed: duoc && maMoiHopLe(s.ma) && !s.dangXem ? () => unawaited(_cubit.xem()) : null,
+                        onPressed: duoc && maMoiHopLe(s.ma) && !s.dangXem
+                            ? () => unawaited(_cubit.xem())
+                            : null,
                         icon: const Icon(Icons.visibility_outlined),
                         label: const Text('Xem trước'),
                       ),
@@ -101,8 +116,17 @@ class _ThamGiaNhaPageState extends State<ThamGiaNhaPage> {
                         const SizedBox(height: 16),
                         _TheXemTruoc(x: s.xemTruoc!),
                         const SizedBox(height: 8),
-                        Text('Vào nhà xong, dữ liệu của nhà sẽ tải về máy này.',
-                            style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),
+                        Row(children: [
+                          const Icon(Icons.info_outline,
+                              size: 16, color: AppColors.textSecondary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                                'Vào nhà xong, dữ liệu của nhà sẽ tải về máy này.',
+                                style: chu.bodySmall
+                                    ?.copyWith(color: AppColors.textSecondary)),
+                          ),
+                        ]),
                       ],
                     ],
                   ),
@@ -112,8 +136,17 @@ class _ThamGiaNhaPageState extends State<ThamGiaNhaPage> {
                   child: SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: duoc && s.xemTruoc != null && !s.dangThamGia ? () => unawaited(_thamGia()) : null,
-                      child: const Text('Tham gia'),
+                      onPressed: duoc && s.xemTruoc != null && !s.dangThamGia
+                          ? () => unawaited(_thamGia())
+                          : null,
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Tham gia'),
+                          SizedBox(width: 8),
+                          Icon(Icons.arrow_forward, size: 18)
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -134,27 +167,64 @@ class _TheXemTruoc extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chu = Theme.of(context).textTheme;
-    Widget dong(String nhan, String gt) => Padding(
+    Widget dongWidget(String nhan, Widget gt) => Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Row(
             children: [
-              Text(nhan, style: chu.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+              Text(nhan,
+                  style:
+                      chu.bodyMedium?.copyWith(color: AppColors.textSecondary)),
               const SizedBox(width: 12),
-              Expanded(child: Text(gt, textAlign: TextAlign.end, maxLines: 2, overflow: TextOverflow.ellipsis)),
+              Expanded(child: gt),
             ],
           ),
         );
+    Widget dong(String nhan, String gt) => dongWidget(
+        nhan,
+        Text(gt,
+            textAlign: TextAlign.end,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis));
     return KhungTheNha(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('XEM TRƯỚC NHÀ', style: chu.labelSmall?.copyWith(color: AppColors.textSecondary)),
-          Text(x.tenNha, style: chu.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Row(children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12)),
+              child:
+                  const Icon(Icons.home_outlined, color: AppColors.textPrimary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('XEM TRƯỚC NHÀ',
+                        style: chu.labelSmall
+                            ?.copyWith(color: AppColors.textSecondary)),
+                    Text(x.tenNha,
+                        style: chu.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis),
+                  ]),
+            ),
+          ]),
           const Divider(height: 20),
           dong('Chủ nhà', x.tenChuNha),
           dong('Thành viên', '${x.soThanhVien}/${x.toiDa}'),
-          dong('Vai của bạn', tenVai(x.vai)),
-          if (x.hetHan != null) dong('Hạn mã', DateFormatter.formatDateTime(x.hetHan!.toLocal())),
+          dongWidget(
+              'Vai của bạn',
+              Align(
+                  alignment: Alignment.centerRight,
+                  child: NhanVai(vai: x.vai))),
+          if (x.hetHan != null)
+            dong('Hạn mã', DateFormatter.formatDateTime(x.hetHan!.toLocal())),
         ],
       ),
     );

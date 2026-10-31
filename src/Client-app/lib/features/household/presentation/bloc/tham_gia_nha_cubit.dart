@@ -27,6 +27,7 @@ class ThamGiaNhaCubit extends Cubit<ThamGiaNhaState> {
   Stream<String> get canBao => _bao.stream;
 
   void doiMa(String s) {
+    if (state.dangThamGia) return;
     final ma = chuanHoaMaMoi(s);
     if (ma == state.ma) return;
     emit(ThamGiaNhaState(ma: ma));
@@ -35,14 +36,15 @@ class ThamGiaNhaCubit extends Cubit<ThamGiaNhaState> {
   Future<void> xem() async {
     final ma = state.ma;
     if (!maMoiHopLe(ma) || state.dangXem) return;
-    emit(ThamGiaNhaState(ma: ma, dangXem: true));
+    emit(ThamGiaNhaState(ma: ma, xemTruoc: state.xemTruoc, dangXem: true));
     try {
       final x = await _repo.xemTruoc(ma);
       if (!isClosed && state.ma == ma) emit(ThamGiaNhaState(ma: ma, xemTruoc: x));
     } catch (e) {
-      if (isClosed) return;
-      _bao.add(cauLoiNha(loaiLoiNhaCua(e)));
-      emit(ThamGiaNhaState(ma: state.ma));
+      if (isClosed || state.ma != ma) return;
+      final loai = loaiLoiNhaCua(e);
+      if (!_bao.isClosed) _bao.add(cauLoiNha(loai));
+      emit(ThamGiaNhaState(ma: ma, xemTruoc: loiThuLaiDuoc(loai) ? state.xemTruoc : null));
     }
   }
 
@@ -55,7 +57,7 @@ class ThamGiaNhaCubit extends Cubit<ThamGiaNhaState> {
       return true;
     } catch (e) {
       if (!isClosed) {
-        _bao.add(cauLoiNha(loaiLoiNhaCua(e)));
+        if (!_bao.isClosed) _bao.add(cauLoiNha(loaiLoiNhaCua(e)));
         emit(ThamGiaNhaState(ma: s.ma, xemTruoc: s.xemTruoc));
       }
       return false;

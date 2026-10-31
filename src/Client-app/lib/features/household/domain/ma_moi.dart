@@ -36,3 +36,19 @@ String nhanTrangThaiLoiMoi(TrangThaiLoiMoi t) => switch (t) {
       TrangThaiLoiMoi.daDung => 'Đã dùng',
       TrangThaiLoiMoi.hetHan => 'Hết hạn',
     };
+
+final _maSauNhanMaMoi = RegExp(
+    r'MÃ MỜI\s*:?\s*(?<![\p{L}\p{N}])([' '$kBangKyTuMaMoi' r']{8})(?![\p{L}\p{N}])',
+    unicode: true);
+final _maDungRieng = RegExp(r'(?<![\p{L}\p{N}])([' '$kBangKyTuMaMoi' r']{8})(?![\p{L}\p{N}])', unicode: true);
+
+/// Mã từ chữ người dùng gõ / dán. Chuỗi dài hơn [kDoDaiMaMoi] (dán nguyên tin chia sẻ `cauChiaSeMaMoi`) thì lấy cụm 8 ký tự
+/// trong bảng đứng riêng — ưu tiên cụm ngay sau *"Mã mời:"*, rồi cụm đứng riêng đầu tiên; không thấy thì giữ luật cũ
+/// ([chuanHoaMaMoi]) để `ab cd 23 45 67` vẫn thành `ABCD234567`.
+String trichMaMoi(String s) {
+  final chuan = chuanHoaMaMoi(s);
+  if (chuan.length <= kDoDaiMaMoi) return chuan;
+  final hoa = s.toUpperCase();
+  final m = _maSauNhanMaMoi.firstMatch(hoa) ?? _maDungRieng.firstMatch(hoa);
+  return m?.group(1) ?? chuan;
+}

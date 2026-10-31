@@ -1,4 +1,5 @@
 import 'package:flowmoney/features/household/domain/ma_moi.dart';
+import 'package:flowmoney/features/household/domain/moi_thanh_vien.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -48,5 +49,27 @@ void main() {
     expect(nhanTrangThaiLoiMoi(TrangThaiLoiMoi.dangCho), 'Đang chờ');
     expect(nhanTrangThaiLoiMoi(TrangThaiLoiMoi.daTuChoi), 'Đã từ chối');
     expect(nhanTrangThaiLoiMoi(TrangThaiLoiMoi.hetHan), 'Hết hạn');
+  });
+
+  group('trichMaMoi', () {
+    test('tin chia sẻ của chính app: lấy đúng mã sau "Mã mời:"', () {
+      final tin = cauChiaSeMaMoi(tenNha: 'Nhà An – Bình', ma: 'ABCD2345', hetHan: DateTime.utc(2026, 11, 2, 8));
+      expect(trichMaMoi(tin), 'ABCD2345');
+    });
+
+    test('tên nhà có từ 8 ký tự hợp lệ không thắng mã sau "Mã mời:"', () {
+      final tin = cauChiaSeMaMoi(tenNha: 'Giadinhx', ma: 'ZZYY2345');
+      expect(trichMaMoi(tin), 'ZZYY2345');
+    });
+
+    test('không tìm thấy cụm đứng riêng: giữ luật cũ', () {
+      expect(trichMaMoi('ab cd 23 45 67'), 'ABCD234567');
+      expect(trichMaMoi('abcd-2345'), 'ABCD2345');
+      expect(trichMaMoi('abcd2345'), 'ABCD2345');
+    });
+
+    test('cụm 9 ký tự liền không bị cắt lấy 8', () {
+      expect(trichMaMoi('xin chao ABCD23456 nhe'), isNot('ABCD2345'));
+    });
   });
 }

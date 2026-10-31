@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:flowmoney/core/utils/date_formatter.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
+import 'package:flowmoney/features/household/domain/moi_thanh_vien.dart';
+import 'package:flowmoney/features/household/presentation/widgets/nha_minh/danh_sach_thanh_vien.dart';
 import 'package:flowmoney/features/household/presentation/pages/tham_gia_nha_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -110,6 +113,8 @@ void main() {
     expect(find.text('Tính năng gia đình hiện không dùng được với tài khoản này.'), findsOneWidget);
     expect(find.textContaining('Premium'), findsNothing);
     expect(t.widget<TextField>(find.byType(TextField)).enabled, isFalse);
+    expect(t.widget<OutlinedButton>(find.ancestor(of: find.text('Xem trước'), matching: find.byType(OutlinedButton))).onPressed, isNull);
+    expect(t.widget<FilledButton>(find.ancestor(of: find.text('Tham gia'), matching: find.byType(FilledButton))).onPressed, isNull);
   });
 
   testWidgets('360 dp, bàn phím mở, có thẻ xem trước: không tràn', (t) async {
@@ -124,5 +129,84 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text('Nhà An – Bình'), findsOneWidget);
     expect(t.takeException(), isNull);
+  });
+
+  testWidgets('ký tự ngoài bảng (0 O 1 I) không vào ô; ô bật cờ chống Telex', (t) async {
+    dat360(t);
+    batThongBao();
+    final repo = await repoNhaThu(HouseholdApiGia());
+    await t.pumpWidget(bocTrangNha(ThamGiaNhaPage(repo: repo), goi: goiBasic(const {})));
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField), '0O1I');
+    await t.pump();
+    expect(t.widget<TextField>(find.byType(TextField)).controller?.text ?? '', isEmpty);
+    expect(find.text('0O1I'), findsNothing);
+    final o = t.widget<TextField>(find.byType(TextField));
+    expect(o.keyboardType, TextInputType.visiblePassword);
+    expect(o.enableSuggestions, isFalse);
+    expect(o.autocorrect, isFalse);
+  });
+
+  testWidgets('dán nguyên tin chia sẻ của app: lấy đúng mã', (t) async {
+    dat360(t);
+    batThongBao();
+    final api = HouseholdApiGia();
+    final repo = await repoNhaThu(api);
+    await t.pumpWidget(bocTrangNha(ThamGiaNhaPage(repo: repo), goi: goiBasic(const {})));
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField),
+        cauChiaSeMaMoi(tenNha: 'Nhà An – Bình', ma: 'ABCD2345', hetHan: DateTime.utc(2026, 11, 2, 8)));
+    await t.pump();
+    await t.tap(find.text('Xem trước'));
+    await t.pumpAndSettle();
+    expect(api.goi, contains('xemTruoc:ABCD2345'));
+  });
+
+  testWidgets('thẻ xem trước: vai và hạn mã đúng giá trị; chip vai; mũi tên và biểu tượng theo Stitch', (t) async {
+    dat360(t);
+    batThongBao();
+    final repo = await repoNhaThu(HouseholdApiGia());
+    await t.pumpWidget(bocTrangNha(ThamGiaNhaPage(repo: repo), goi: goiBasic(const {})));
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField), 'abcd2345');
+    await t.pump();
+    await t.tap(find.text('Xem trước'));
+    await t.pumpAndSettle();
+    expect(find.descendant(of: find.byType(NhanVai), matching: find.text('Thành viên')), findsOneWidget);
+    expect(find.text(DateFormatter.formatDateTime(DateTime.parse('2026-10-26T08:00:00.000Z').toLocal())), findsOneWidget);
+    expect(find.byIcon(Icons.home_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_forward), findsOneWidget);
+  });
+
+  testWidgets('đang xem trước: nút Xem trước khoá; đang tham gia: ô nhập khoá', (t) async {
+    dat360(t);
+    batThongBao();
+    final api = HouseholdApiGia();
+    final repo = await repoNhaThu(api);
+    final r = routerThu(ThamGiaNhaPage(repo: repo));
+    await t.pumpWidget(bocRouterNha(r, goi: goiBasic(const {})));
+    r.push('/dich');
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField), 'abcd2345');
+    await t.pump();
+    OutlinedButton xem() =>
+        t.widget(find.ancestor(of: find.text('Xem trước'), matching: find.byWidgetPredicate((w) => w is OutlinedButton)));
+    final treoXem = Completer<void>();
+    api.treo = treoXem;
+    await t.tap(find.text('Xem trước'));
+    await t.pump();
+    expect(xem().onPressed, isNull);
+    api.treo = null;
+    treoXem.complete();
+    await t.pumpAndSettle();
+    final treoVao = Completer<void>();
+    api.treo = treoVao;
+    await t.tap(find.text('Tham gia'));
+    await t.pump();
+    expect(t.widget<TextField>(find.byType(TextField)).enabled, isFalse);
+    api.treo = null;
+    treoVao.complete();
+    await t.pumpAndSettle();
   });
 }

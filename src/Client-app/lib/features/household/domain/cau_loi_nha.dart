@@ -138,3 +138,7 @@ String cauLoiNha(LoaiLoiNha l) => switch (l) {
       LoaiLoiNha.matMang => 'Cần có mạng để làm việc này.',
       LoaiLoiNha.khac => 'Có lỗi xảy ra. Thử lại sau.',
     };
+
+/// Lỗi thử lại được trên cùng mã (mất mạng, máy chủ trục trặc, chưa phân loại): màn Tham gia giữ thẻ xem trước. Mọi loại
+/// còn lại nói mã / nhà / quyền đã không dùng được — giữ thẻ là mời bấm lại và tốn thêm một lượt của giới hạn 30 / 15 phút.
+bool loiThuLaiDuoc(LoaiLoiNha l) => l == LoaiLoiNha.matMang || l == LoaiLoiNha.mayChu || l == LoaiLoiNha.khac;
