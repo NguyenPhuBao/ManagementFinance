@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
 import 'package:flowmoney/features/household/domain/vai_nha.dart';
 import 'package:flowmoney/features/household/presentation/bloc/moi_thanh_vien_cubit.dart';
@@ -79,5 +81,42 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(c.state.daNap, isTrue);
     expect(bao, [cauLoiNha(LoaiLoiNha.mayChu)]);
+  });
+
+  test('huy chạm đôi: chỉ một DELETE trong lúc lượt đầu chưa xong, dangHuy giữ mã', () async {
+    final (c, api, bao) = await dung();
+    api.treo = Completer<void>();
+    final a = c.huy('AAAA2222');
+    await Future<void>.delayed(Duration.zero);
+    expect(c.state.dangHuy, 'AAAA2222');
+    final b = c.huy('AAAA2222');
+    api.treo!.complete();
+    await Future.wait([a, b]);
+    expect(api.goi.where((g) => g == 'huyMaMoi:AAAA2222'), hasLength(1), reason: 'lượt hai 404 hiện toast lỗi oan');
+    expect(c.state.dangHuy, isNull);
+    expect(bao, isEmpty);
+  });
+
+  test('napTuDong: danh sách mới về khi gọi; 403 lặp thì không vòng (một lần gọi)', () async {
+    final (c, api, _) = await dung();
+    api.dsMaMoiJson = [dong('AAAA2222')];
+    await c.napTuDong();
+    expect(c.soConHieuLuc, 1);
+    api.dsMaMoiJson = const [];
+    await c.napTuDong();
+    expect(c.soConHieuLuc, 0, reason: 'nhà đổi từ máy khác phải nạp lại');
+
+    api.loi = loiServer(403, 'HOUSEHOLD_NOT_OWNER');
+    final truoc = api.goi.where((g) => g == 'dsMaMoi').length;
+    await c.napTuDong();
+    await c.napTuDong();
+    await c.napTuDong();
+    expect(api.goi.where((g) => g == 'dsMaMoi').length - truoc, 1, reason: 'lượt trước hỏng thì lượt tự động bị bỏ');
+
+    api.loi = null;
+    await c.taoMa(VaiNha.thanhVien);
+    final sau = api.goi.where((g) => g == 'dsMaMoi').length;
+    await c.napTuDong();
+    expect(api.goi.where((g) => g == 'dsMaMoi').length, sau + 1, reason: 'người dùng thao tác đặt lại cờ');
   });
 }

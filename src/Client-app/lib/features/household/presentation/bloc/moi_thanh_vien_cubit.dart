@@ -15,6 +15,7 @@ class MoiThanhVienState {
     this.emailVuaGui,
     this.dangTaoMa = false,
     this.dangGuiEmail = false,
+    this.dangHuy,
   });
 
   final List<MaMoiEntity> ds;
@@ -23,6 +24,9 @@ class MoiThanhVienState {
   final String? emailVuaGui;
   final bool dangTaoMa;
   final bool dangGuiEmail;
+
+  /// Mã đang huỷ (chặn chạm đôi: lượt hai 404 hiện lỗi oan sau khi huỷ thành công).
+  final String? dangHuy;
 }
 
 /// Màn Mời (`01` mục 2.1). Trần và vai do trang đọc từ `NhaCubit`; cubit này chỉ giữ danh sách lời mời và hai thao tác tạo.
@@ -48,6 +52,8 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
     String? emailVuaGui,
     bool? dangTaoMa,
     bool? dangGuiEmail,
+    String? dangHuy,
+    bool xongHuy = false,
   }) {
     if (isClosed) return;
     final s = state;
@@ -58,6 +64,7 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
       emailVuaGui: emailVuaGui ?? s.emailVuaGui,
       dangTaoMa: dangTaoMa ?? s.dangTaoMa,
       dangGuiEmail: dangGuiEmail ?? s.dangGuiEmail,
+      dangHuy: xongHuy ? null : (dangHuy ?? s.dangHuy),
     ));
   }
 
@@ -65,18 +72,35 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
     if (!_bao.isClosed) _bao.add(cauLoiNha(loaiLoiNhaCua(e)));
   }
 
+  /// Lượt nạp gần nhất hỏng: lượt TỰ ĐỘNG bị bỏ tới khi có lượt nạp thành công hoặc người dùng thao tác (chặn vòng
+  /// nạp → 403 → làm mới nhà → nạp).
+  bool _napHong = false;
+  bool _dangNap = false;
+
   Future<void> nap() async {
+    _dangNap = true;
     try {
       final ds = await _repo.dsMaMoi();
+      _napHong = false;
       _phat(ds: ds, daNap: true);
     } catch (e) {
+      _napHong = true;
       _baoLoi(e);
       _phat(daNap: true);
+    } finally {
+      _dangNap = false;
     }
+  }
+
+  /// Nạp lại khi nhà đổi từ máy khác (người được mời nhận mã, từ chối...): trang chỉ gọi khi vẫn là Chủ.
+  Future<void> napTuDong() async {
+    if (_napHong || _dangNap || isClosed) return;
+    await nap();
   }
 
   Future<void> taoMa(VaiNha vai) async {
     if (state.dangTaoMa) return;
+    _napHong = false;
     _phat(dangTaoMa: true);
     try {
       final m = await _repo.taoMaMoi(vai);
@@ -90,6 +114,7 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
 
   Future<void> guiEmail(String email, VaiNha vai) async {
     if (state.dangGuiEmail) return;
+    _napHong = false;
     final sach = email.trim().toLowerCase();
     _phat(dangGuiEmail: true);
     try {
@@ -103,12 +128,16 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
   }
 
   Future<void> huy(String ma) async {
+    if (state.dangHuy == ma) return;
+    _napHong = false;
+    _phat(dangHuy: ma);
     try {
       await _repo.huyMaMoi(ma);
-      _phat(boMa: state.maVuaTao?.ma == ma);
+      _phat(boMa: state.maVuaTao?.ma == ma, xongHuy: true);
       await nap();
     } catch (e) {
       _baoLoi(e);
+      _phat(xongHuy: true);
     }
   }
 

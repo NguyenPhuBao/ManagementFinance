@@ -7,12 +7,15 @@ import '../../../domain/vai_nha.dart';
 import '../nha_minh/khung_the_nha.dart';
 
 class DanhSachLoiMoi extends StatelessWidget {
-  const DanhSachLoiMoi({super.key, required this.ds, required this.now, required this.onHuy});
+  const DanhSachLoiMoi({super.key, required this.ds, required this.now, required this.onHuy, this.dangHuy});
 
   /// Đã lọc qua `dongLoiMoiHien`.
   final List<MaMoiEntity> ds;
   final DateTime now;
   final ValueChanged<String> onHuy;
+
+  /// Mã đang huỷ: nút của dòng ấy khoá.
+  final String? dangHuy;
 
   @override
   Widget build(BuildContext context) {
@@ -31,14 +34,14 @@ class DanhSachLoiMoi extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(ds[i].email ?? ds[i].ma, maxLines: 1, overflow: TextOverflow.ellipsis, style: chu.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                      Text('${ds[i].email == null ? 'Mã mời' : 'Email'} · ${tenVai(ds[i].vai)}', style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),
+                      Text(_dongPhu(ds[i], now), style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),
                     ],
                   ),
                 ),
                 if (ds[i].conHieuLucLuc(now))
                   TextButton(
                     style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                    onPressed: () => onHuy(ds[i].ma),
+                    onPressed: dangHuy == ds[i].ma ? null : () => onHuy(ds[i].ma),
                     child: const Text('Huỷ'),
                   )
                 else
@@ -51,3 +54,8 @@ class DanhSachLoiMoi extends StatelessWidget {
     );
   }
 }
+
+/// Mã thường chỉ hiện khi còn hiệu lực nên không cần nhãn; lời mời email kèm trạng thái (`01` mục 2.1): Đang chờ / Đã từ chối / Hết hạn.
+String _dongPhu(MaMoiEntity m, DateTime now) => m.email == null
+    ? 'Mã mời · ${tenVai(m.vai)}'
+    : 'Email · ${tenVai(m.vai)} · ${nhanTrangThaiLoiMoi(m.trangThaiLuc(now))}';

@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flowmoney/features/household/data/datasources/chia_se_chu.dart';
+import 'package:flowmoney/features/household/data/repositories/nha_repository.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
 import 'package:flowmoney/features/household/presentation/pages/moi_thanh_vien_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../../helpers/bat_thong_bao.dart';
@@ -13,12 +15,19 @@ import '../../../../helpers/nha_gia.dart';
 
 class _ChiaSeGia implements ChiaSeChu {
   final da = <String>[];
+  Object? loi;
   @override
-  Future<void> chiaSe(String chu) async => da.add(chu);
+  Future<void> chiaSe(String chu) async {
+    final l = loi;
+    if (l != null) throw l;
+    da.add(chu);
+  }
 }
 
 void main() {
   setUpAll(napFontThat);
+
+  late NhaRepository repoCuoi;
 
   Future<(HouseholdApiGia, _ChiaSeGia, BatThongBao)> mo(WidgetTester t,
       {Map<String, Object?>? nha, bool banPhim = false, List<Map<String, Object?>> ds = const []}) async {
@@ -29,6 +38,7 @@ void main() {
       ..dsMaMoiJson = ds;
     final chiaSe = _ChiaSeGia();
     final repo = await repoNhaThu(api);
+    repoCuoi = repo;
     await t.pumpWidget(bocTrangNha(MoiThanhVienPage(repo: repo, chiaSe: chiaSe)));
     await t.pumpAndSettle();
     return (api, chiaSe, bat);
@@ -140,5 +150,70 @@ void main() {
   testWidgets('360 dp, bàn phím mở: không tràn', (t) async {
     await mo(t, banPhim: true);
     expect(t.takeException(), isNull);
+  });
+
+  testWidgets('lời mời email còn hiệu lực có nhãn Đang chờ ở dòng phụ', (t) async {
+    final han = DateTime.now().add(const Duration(days: 1)).toUtc().toIso8601String();
+    await mo(t, ds: [
+      {'code': 'AAAA2222', 'role': 'Member', 'email': 'an@x.vn', 'expiresAt': han, 'status': 'Pending'},
+    ]);
+    await t.ensureVisible(find.text('an@x.vn'));
+    expect(find.text('Email · Thành viên · Đang chờ'), findsOneWidget);
+  });
+
+  testWidgets('nhà đổi từ máy khác: người được mời nhận mã thì danh sách nạp lại, hết câu "đã đủ người"', (t) async {
+    final han = DateTime.now().add(const Duration(days: 1)).toUtc().toIso8601String();
+    final (api, _, _) = await mo(t, nha: nhaJson(maxMembers: 3), ds: [
+      {'code': 'AAAA2222', 'role': 'Member', 'email': null, 'expiresAt': han, 'status': 'Pending'},
+    ]);
+    expect(find.text('Nhà đã đủ người, kể cả lời mời còn hiệu lực.'), findsOneWidget);
+    api
+      ..dsMaMoiJson = const []
+      ..cuaToiJson = nhaJson(maxMembers: 4);
+    await repoCuoi.lamMoi();
+    await t.pumpAndSettle();
+    expect(find.text('Nhà đã đủ người, kể cả lời mời còn hiệu lực.'), findsNothing);
+  });
+
+  testWidgets('đã không còn là Chủ: nhà đổi không kéo thêm danh sách lời mời', (t) async {
+    final (api, _, _) = await mo(t, nha: nhaJson(myRole: 'Member'));
+    final truoc = api.goi.where((g) => g == 'dsMaMoi').length;
+    api.cuaToiJson = nhaJson(myRole: 'Member', maxMembers: 5);
+    await repoCuoi.lamMoi();
+    await t.pumpAndSettle();
+    expect(api.goi.where((g) => g == 'dsMaMoi').length, truoc, reason: '403 → lamMoi → nạp lại là vòng lặp');
+  });
+
+  testWidgets('Chia sẻ lỗi: có toast lỗi', (t) async {
+    final (_, chiaSe, bat) = await mo(t);
+    await t.ensureVisible(find.text('Tạo mã'));
+    await t.tap(find.text('Tạo mã'));
+    await t.pumpAndSettle();
+    chiaSe.loi = StateError('x');
+    await t.ensureVisible(find.text('Chia sẻ'));
+    await t.tap(find.text('Chia sẻ'));
+    await t.pumpAndSettle();
+    expect(bat.cuoi!.cau, cauLoiNha(LoaiLoiNha.khac));
+  });
+
+  testWidgets('Chép mã: ghi được thì báo đã chép; clipboard hỏng thì báo lỗi, không nói đã chép', (t) async {
+    final (_, _, bat) = await mo(t);
+    var hong = false;
+    t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData' && hong) throw PlatformException(code: 'x');
+      return null;
+    });
+    addTearDown(() => t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    await t.ensureVisible(find.text('Tạo mã'));
+    await t.tap(find.text('Tạo mã'));
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.text('Chép mã'));
+    await t.tap(find.text('Chép mã'));
+    await t.pumpAndSettle();
+    expect(bat.cuoi!.cau, 'Đã chép mã mời');
+    hong = true;
+    await t.tap(find.text('Chép mã'));
+    await t.pumpAndSettle();
+    expect(bat.cuoi!.cau, cauLoiNha(LoaiLoiNha.khac));
   });
 }

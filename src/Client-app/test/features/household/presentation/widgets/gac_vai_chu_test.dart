@@ -62,4 +62,12 @@ void main() {
     expect(find.text('HOP'), findsNothing);
     expect(find.text('GOC'), findsOneWidget);
   });
+
+  testWidgets('phiên đóng (đăng xuất cưỡng chế): không báo, không pop', (t) async {
+    final (_, repo, bat) = await mo(t);
+    repo.xoaPhien();
+    await t.pumpAndSettle();
+    expect(find.text('MAN CHU'), findsOneWidget, reason: 'xoaPhien phát khongCo nhưng không phải mất nhà');
+    expect(bat.cau, isEmpty);
+  });
 }

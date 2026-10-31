@@ -32,6 +32,8 @@ class GacVaiChu extends StatelessWidget {
   Widget build(BuildContext context) => BlocListener<NhaCubit, NhaState>(
         listenWhen: (a, b) => _laChu(a) && !_laChu(b),
         listener: (ctx, s) {
+          // Phiên đóng (đăng xuất cưỡng chế): `xoaPhien` đặt id về null rồi mới phát `khongCo` — không phải mất nhà.
+          if (ctx.read<NhaCubit>().idToi == null) return;
           if (dangTuThaoTac()) return;
           baoNhanh(s.nha.coNha ? 'Bạn không còn là chủ nhà.' : 'Bạn không còn ở nhà này.');
           roiVeNhaMinh(ctx);

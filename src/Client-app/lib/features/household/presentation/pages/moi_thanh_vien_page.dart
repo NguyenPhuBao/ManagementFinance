@@ -42,6 +42,7 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
   late final NhaCubit _nha;
   late final MoiThanhVienCubit _moi;
   final _subs = <StreamSubscription<String>>[];
+  StreamSubscription<NhaState>? _subNha;
   VaiNha _vaiEmail = VaiNha.thanhVien;
   VaiNha _vaiMa = VaiNha.thanhVien;
 
@@ -53,6 +54,14 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
     _moi = MoiThanhVienCubit(repo);
     void bao(String c) => baoNhanh(c, loai: LoaiThongBao.loi);
     _subs..add(_nha.canBao.listen(bao))..add(_moi.canBao.listen(bao));
+    // Nhà đổi từ máy khác (người được mời nhận mã / từ chối): nạp lại danh sách, nếu không `conChoMoi` đếm mã đã chết. Chỉ khi
+    // vẫn là Chủ (người khác gọi `/invites` là 403 → làm mới nhà → vòng lặp) và khi chính `nha` đổi (không phải cờ dangXuLy).
+    var nhaTruoc = _nha.state.nha;
+    _subNha = _nha.stream.listen((s) {
+      if (identical(s.nha, nhaTruoc)) return;
+      nhaTruoc = s.nha;
+      if (s.daNap && s.nha.coNha && s.nha.vai == VaiNha.chu) unawaited(_moi.napTuDong());
+    });
     unawaited(_nha.moTrang());
     unawaited(_moi.nap());
   }
@@ -60,6 +69,7 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
   @override
   void dispose() {
     _email.dispose();
+    unawaited(_subNha?.cancel());
     for (final s in _subs) {
       unawaited(s.cancel());
     }
@@ -68,9 +78,22 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
     super.dispose();
   }
 
-  void _chepMa(String ma) {
-    Clipboard.setData(ClipboardData(text: ma));
-    baoNhanh('Đã chép mã mời', loai: LoaiThongBao.xong);
+  Future<void> _chepMa(String ma) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: ma));
+    } catch (_) {
+      if (mounted) baoNhanh(cauLoiNha(LoaiLoiNha.khac), loai: LoaiThongBao.loi);
+      return;
+    }
+    if (mounted) baoNhanh('Đã chép mã mời', loai: LoaiThongBao.xong);
+  }
+
+  Future<void> _chiaSeMa(String chu) async {
+    try {
+      await (widget.chiaSe ?? sl<ChiaSeChu>()).chiaSe(chu);
+    } catch (_) {
+      if (mounted) baoNhanh(cauLoiNha(LoaiLoiNha.khac), loai: LoaiThongBao.loi);
+    }
   }
 
   @override
@@ -174,8 +197,8 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => unawaited((widget.chiaSe ?? sl<ChiaSeChu>())
-                          .chiaSe(cauChiaSeMaMoi(tenNha: nha?.ten ?? '', ma: ma.ma, hetHan: ma.hetHan))),
+                      onPressed: () => unawaited(_chiaSeMa(
+                          cauChiaSeMaMoi(tenNha: nha?.ten ?? '', ma: ma.ma, hetHan: ma.hetHan))),
                       icon: const Icon(Icons.share_outlined),
                       label: const Text('Chia sẻ'),
                     ),
@@ -183,7 +206,7 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _chepMa(ma.ma),
+                      onPressed: () => unawaited(_chepMa(ma.ma)),
                       icon: const Icon(Icons.copy_outlined),
                       label: const Text('Chép mã'),
                     ),
@@ -200,7 +223,7 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text('LỜI MỜI', style: chu.labelMedium?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
         ),
-        DanhSachLoiMoi(ds: hien, now: now, onHuy: (x) => unawaited(_moi.huy(x))),
+        DanhSachLoiMoi(ds: hien, now: now, onHuy: (x) => unawaited(_moi.huy(x)), dangHuy: m.dangHuy),
       ],
     ];
   }
