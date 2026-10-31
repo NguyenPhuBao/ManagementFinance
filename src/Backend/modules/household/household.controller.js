@@ -296,12 +296,12 @@ const householdController = {
   async createEmailInvite(req, res) {
     try {
       const { email, role } = req.body || {};
-      if (!email || !String(email).includes('@')) {
+      if (!email || typeof email !== 'string' || !email.includes('@') || email.trim().length > 100) {
         return res.status(400).json({
           success: false,
           statusCode: 400,
           code: 'INVALID_EMAIL',
-          message: 'Địa chỉ email không đúng định dạng',
+          message: 'Địa chỉ email không đúng định dạng hoặc dài quá 100 ký tự',
         });
       }
 

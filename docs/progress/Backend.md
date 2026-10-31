@@ -683,3 +683,39 @@ Hoàn thành xây dựng và tích hợp trọn vẹn module Quản lý Tài ch�
 * **Tổng số bài kiểm thử Backend:** **510 / 510 tests PASS 100%** (79 test suites, xanh tuyệt đối, Zero Regressions).
 * **Tuân thủ Rule 10 (DB Guard):** Toàn bộ Prisma scripts được bảo vệ qua `db-guard.js`, chặn đứng việc chạy `migrate dev`/`db push` trên Cloud Supabase, bảo vệ 100% các Triggers và Partial Unique Indexes (`WHERE "Delete_at" IS NULL`).
 * **Tuân thủ Rule 11 (2-Tier Testing Architecture):** 100% các tính năng mới đều có kiểm thử cả Tầng 1 (Giao diện & Payload Contract) và Tầng 2 (Tác động đo lường được đến CSDL / DOM / Event Bus / Side-effects).
+
+
+---
+
+## 25. Hoàn Tất Toàn Diện Nhóm 1, Nhóm 2, Nhóm 3, Nhóm 4 & Phân Quyền Family Admin-Web (2026-10-31)
+
+Đã hoàn thành 100% các hạng mục công việc lớn theo đúng định hướng và phê duyệt của PO:
+1. **Phân Quyền Family 4 Trụ Cột (Admin-Web & Backend):**
+   - Áp dụng migration an toàn `44_expand_household_4_pillars_permissions.sql`, bổ sung 3 quyền quản trị gia đình: `household.create`, `household.dissolve`, `household.member_limit`.
+   - Cập nhật giao diện Admin-web (`PermissionManagementPage.jsx`) hỗ trợ song ngữ (Anh - Việt), cấu hình trực quan bật/tắt quyền theo từng gói `Free`, `Plus`, `Premium`.
+2. **Nhóm 1: Hoàn Tất Dứt Điểm Nghiệp Vụ Gia Đình (Tasks 57.6, 58.3, 57.7, 57.8):**
+   - Giải tán nhà (`dissolveHousehold`): Xóa mềm đồng loạt 5 bảng dữ liệu chung (`wallet`, `transaction`, `budget`, `goal`, `category`), thu hồi mã mời pending, gán `left_at = now` trong single `prisma.$transaction`.
+   - Realtime Socket: Trích xuất danh sách thành viên trước khi gắn `left_at` để phát socket `HOUSEHOLD_DISSOLVED` tới từng phòng tài khoản cá nhân `account_<id>`.
+   - Chuẩn hóa mã lỗi RESTful: 410 `HOUSEHOLD_INVITE_EXPIRED`, 409 `HOUSEHOLD_INVITE_DECLINED`, 409 `HOUSEHOLD_INVITE_USED`, 404 `HOUSEHOLD_INVITE_INVALID`.
+   - 4 ca biên an ninh: Thành viên mời lại trả 202 ngay không chiếm quota (#1); Atomic Update chống race-condition mã mời (#3); Rate-limiter 30 req/15p (#4); Chặn email > 100 ký tự trả 400 (#7).
+3. **Nhóm 2: AIOps Sentinel & Bảo Vệ Trạng Thái Tài Khoản (Tasks 58.5, 58.6, Đơn 43):**
+   - Phân biệt chính xác giữa username toàn chữ số và `idaccount`, chống khóa nhầm tài khoản người khác.
+   - Bảo vệ toàn vẹn tài khoản `PendingDelete`, loại bỏ phát thừa `force_logout` khi `updateMany` khớp 0 hàng.
+   - Duy trì tự động mở khóa 15 phút với tiền tố `[AIOPS_AUTO_QUARANTINE]`, bảo vệ tài khoản do Admin khóa thủ công.
+   - Dọn sạch khối `updateMany` trùng lặp trong `unblockAccount` controller.
+4. **Nhóm 3: Rà Soát & Kiểm Thử Chuyên Sâu PayOS & Idempotency (Đơn 44):**
+   - Xử lý an toàn người dùng chuyển khoản lần 2 với cùng nội dung/QR: Ghi nhận giao dịch đối soát, không cộng đồn 2 lần Premium.
+   - Bổ sung Partial Unique Index `uq_payment_transaction_payos_id` (WHERE `payos_transaction_id IS NOT NULL`), bắt lỗi P2002/23505 trả 200 an toàn khi webhook phát lặp.
+   - Thẩm định toàn vẹn ma trận tài chính 2 tầng: Flow 6.1 (PAID + 30 ngày dồn tích + sockets), Flow 6.2a (WAITING_CONFIRMATION), Flow 6.2b (REFUND_PENDING + refundReason), `confirmUpgrade` (accept true/false).
+   - Regex VietQR trích xuất token 6 ký tự bất chấp tiền tố ngân hàng. Đơn mẫu Admin không nâng cấp Premium. JIT Sync tức thì bù trừ khi webhook chậm + vá BigInt serialization cho logger.
+5. **Nhóm 4: Mã Hoá Dữ Liệu & Giải Mã Hỏng (Đơn 52):**
+   - Bổ sung `context: { table, id, field }` tại 100% vị trí gọi `decrypt` (`sync.repository`, `auth.repository`, `auth.service`, `bank.repository`, `masking.util`).
+   - Phòng vệ Sync Pull: Soft-deleted tombstone trả chuỗi rỗng thay vì làm sập HTTP 500 cả lượt kéo; hàng active vẫn ném `DECRYPT_FAILED` chuẩn để bảo vệ dữ liệu.
+   - Di trú thành công 100% dữ liệu cũ: 19 transaction notes và 3 user phones sang khóa `.env` chính thức qua script `migrate_reencrypt_legacy_dev_data.js`.
+   - Loại bỏ đường đi vòng `isEncrypted ? x : encrypt(x)` chống bypass chuỗi giả mạo `enc:1:2:3`.
+   - Tự nạp `.env` an toàn trong `crypto.util.js` chống race-condition khi chạy test suite.
+   - Tạo công cụ thẩm tra `npm run db:verify-encryption` đạt 28/28 trường mã hóa an toàn 100% (0 lỗi).
+6. **Tổng Kết Kiểm Thử & An Toàn CSDL:**
+   - **548 / 548 tests PASS 100%** (79 test suites, Zero Regressions).
+   - **13 Partial Indexes + 4 Security Triggers** an toàn tuyệt đối.
+   - **Admin-web Build thành công** trong 3.50s với Vite v5.4.

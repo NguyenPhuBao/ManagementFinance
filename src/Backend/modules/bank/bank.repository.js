@@ -240,7 +240,7 @@ const bankRepository = {
 
     return list.map((tx) => ({
       ...tx,
-      note: tx.note ? decrypt(tx.note) : tx.note,
+      note: tx.note ? decrypt(tx.note, { table: 'transaction', id: tx.idtran || tx.id }) : tx.note,
     }));
   },
 

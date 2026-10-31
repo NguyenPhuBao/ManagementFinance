@@ -4727,3 +4727,132 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
 - **Kiểm định Chất Lượng Toàn Diện:**
   - Full test suite: **510/510 tests PASS 100% (79 test suites)**.
   - DB Verify Indexes: **100% Partial Unique Indexes & Triggers an toàn tuyệt đối**.
+
+
+### 4.29. Hoàn Tất 6 Việc Mức Cao Từ Client-App & Quản Lý Phân Quyền Gia Đình 4 Trụ Cột (2026-10-31)
+- **Phê duyệt bởi PO:** Phê duyệt toàn diện kế hoạch xử lý 6 việc mức cao từ Client-app (58.1, 58.5, 57.1, 57.2, 57.3, 57.4) và yêu cầu bổ sung phân quyền tính năng gia đình tại Admin-web theo 4 Trụ cột (`ke_hoach_chi_tiet_6_viec_cao_va_phan_quyen_gia_dinh.md`).
+- **Nội dung thực thi chi tiết:**
+  1. *Phân quyền Gia đình 4 Trụ cột trên Admin-web & Supabase Cloud:*
+     - Migration 44 (`44_expand_household_4_pillars_permissions.sql`): Khởi tạo 4 quyền chuẩn: `household` (TOGGLE), `household_join` (TOGGLE), `household_members` (LIMIT: 6), `household_wallets` (LIMIT: 10).
+     - Backend API: Gắn middleware `requireFeature('household')` cho tạo nhà, `requireFeature('household_join')` cho gia nhập nhà. Fallback đầy đủ trong `permission.repository.js`.
+     - Admin-web: Cập nhật Ma trận phân quyền `PermissionManagementPage.jsx`, hỗ trợ nhóm `Gia đình` (Family), đa ngôn ngữ Việt - Anh, cấu hình tối ưu chunk bundle `vite.config.js`.
+  2. *Giải quyết 6 Việc Mức Cao từ Client-app:*
+     - **58.1 & 58.2:** Sync Engine bắt cả `create` lẫn upsert `!existingRecord`. Chặn triệt để Member tạo/sửa transaction transfer giữa 2 ví chung (`HOUSEHOLD_ROLE_FORBIDDEN`). Áp dụng giới hạn ví chung `HOUSEHOLD_WALLET_LIMIT`.
+     - **57.4:** Sync Engine chấp nhận record gia đình khi `idaccount` trong payload là người tạo gốc (`existingRecord.idaccount`), bỏ qua check lệch token sở hữu cá nhân và ủy quyền toàn bộ cho `enforceHouseholdPermission`.
+     - **57.1:** Chuẩn hóa 5 endpoint (`createHousehold`, `getMyHousehold`, `joinByCode`, `transferOwner`, `acceptEmailInvite`) về chuẩn Single State Shape `{ household: {...}, myRole, members, formerMembers }` (bảo vệ Data_Security: ẩn email nhạy cảm của người khác trong danh sách members).
+     - **57.2:** Thêm helper `getCallerEmail` tra cứu email thực từ Postgres do JWT không chứa claim email. Chặn đứng việc xem trước/tham gia mã mời gửi đích danh email khác (`HOUSEHOLD_INVITE_WRONG_ACCOUNT`). Cập nhật `getMyInvitations`, `acceptEmailInvite`, `declineEmailInvite`.
+     - **57.3:** Kết nối `emailService.sendMail` (Brevo API REST / Nodemailer SMTP) trong `sendInviteEmailAsync` gửi email mời thật không gây nghẽn client (non-blocking).
+     - **58.5:** AIOps Sentinel Auto-Unlock sau 15 phút. Gắn tiền tố `[AIOPS_AUTO_QUARANTINE]`, cơ chế quét định kỳ và lazy check tự động khôi phục `Active` trong CSDL PostgreSQL, đồng thời bảo vệ tuyệt đối không mở khóa các tài khoản do Admin khóa thủ công.
+     - **58.4, 55.A3, 58.6:** Tối ưu phát socket sau sync, xử lý tài khoản Premium không có hạn chót và để lỗi DB văng tự nhiên.
+- **Kiểm định Chất Lượng Toàn Diện:**
+  - Full test suite: **516/516 tests PASS 100% (79 test suites)**.
+  - Test 2 Tầng mới: `household_and_aiops_v2.test.js` — **6/6 tests PASS 100%**.
+  - DB Verify Indexes: **100% Partial Unique Indexes & Triggers an toàn tuyệt đối**.
+  - Admin-web build: **Vite build thành công trong 2.65s, sạch 100% cảnh báo**.
+
+
+### 4.30. Hoàn Tất Toàn Bộ Các Nội Dung Chưa Làm Của Nhóm 1 (Gia Đình / Household) (2026-10-31)
+- **Phê duyệt bởi PO:** Phê duyệt toàn diện kế hoạch xử lý dứt điểm các nội dung còn lại của Nhóm 1 (`ke_hoach_chi_tiet_xu_ly_nhom_1_gia_dinh.md`): bao gồm 57.6, 58.3, 57.7, 57.8.
+- **Nội dung thực thi chi tiết:**
+  1. *Task 57.6 — Giải tán gia đình & Xóa mềm toàn vẹn 5 bảng thực thể chung:*
+     - Triển khai trong `householdRepository.dissolveHousehold` bọc toàn bộ trong single `prisma.$transaction`.
+     - Cập nhật `household.status = 'Dissolved'`, `delete_at = now`.
+     - Đặt `left_at = now` cho toàn bộ thành viên đang hoạt động trong `household_member`.
+     - Thu hồi toàn bộ mã mời đang pending: `household_invite.revoked_at = now` (nơi `used_at = null, revoked_at = null, declined_at = null`).
+     - Xóa mềm đồng loạt 5 bảng thực thể chung (`wallet`, `transaction`, `budget`, `goal`, `category`) bằng cách gán `delete_at = now, update_at = now` theo `idhousehold`, sinh tombstone chuẩn cho Sync Engine client.
+  2. *Task 58.3 — Socket HOUSEHOLD_DISSOLVED phát tới tất cả thành viên qua phòng tài khoản:*
+     - Trong `householdService.dissolveHousehold`, gọi `findActiveMembersByHousehold` để trích xuất danh sách `idaccount` của toàn bộ thành viên TRƯỚC KHI cập nhật `left_at`.
+     - Truyền mảng `memberAccountIds` vào `extraRecipients` của `emitHouseholdChanged`, bảo đảm phát thông báo giải tán tới đúng từng phòng `account_<id>` của cả Owner và các Member.
+  3. *Task 57.7 — Chuẩn hóa mã lỗi API theo docs/Family/01 mục 2.5:*
+     - Cập nhật `previewInvite`, `joinByCode`, `declineEmailInvite` ném đúng chuẩn mã lỗi RESTful:
+       + 410 `HOUSEHOLD_INVITE_EXPIRED`: Mã mời đã quá hạn 48 giờ.
+       + 409 `HOUSEHOLD_INVITE_DECLINED`: Mã mời đã bị từ chối trước đó.
+       + 409 `HOUSEHOLD_INVITE_USED`: Mã mời đã được sử dụng trước đó.
+       + 404 `HOUSEHOLD_INVITE_INVALID`: Mã mời không tồn tại hoặc đã bị thu hồi.
+  4. *Task 57.8 — Xử lý triệt để 4 ca biên & phòng thủ an ninh:*
+     - **#1:** Trong `createEmailInvite`, đảo thứ tự kiểm tra `alreadyMember` lên trước kiểm tra trần quota `HOUSEHOLD_FULL`. Nếu đã là thành viên thì trả HTTP 202 ngay mà không chiếm quota hoặc quăng lỗi 409.
+     - **#3:** Phòng chống Race-condition trong `joinByCode` bằng cơ chế Atomic Update: dùng `tx.household_invite.updateMany({ where: { code, used_at: null, revoked_at: null, declined_at: null } })`. Nếu 2 request đồng thời, chỉ 1 request có `count === 1`, request còn lại có `count === 0` bị rollback và ném 409 `HOUSEHOLD_INVITE_USED`.
+     - **#4:** Tích hợp middleware `householdInviteLimiter` (30 requests / 15 phút) vào các endpoint nhạy cảm `GET /api/households/invites/:code` và `POST /api/households/join` trong `households.routes.js`.
+     - **#7:** Bổ sung ràng buộc độ dài email <= 100 ký tự tại controller và service (`INVALID_EMAIL`, HTTP 400), chống lỗi tràn cột CSDL hoặc nuốt lỗi 500.
+- **Kiểm định Chất Lượng Toàn Diện:**
+  - Test 2 Tầng mới: `household_group1_completion.test.js` — **7/7 tests PASS 100%**.
+  - Full test suite Backend: **523/523 tests PASS 100% (79 test suites)**.
+  - DB Verify Indexes & Triggers: **100% Partial Unique Indexes & Triggers an toàn tuyệt đối**.
+
+
+### 4.31. Hoàn Tất Toàn Bộ Các Nội Dung Của Nhóm 2 (AIOps Sentinel & Trạng Thái Tài Khoản) (2026-10-31)
+- **Phê duyệt bởi PO:** Phê duyệt toàn diện kế hoạch xử lý Nhóm 2 (`ke_hoach_chi_tiet_nhom_2_aiops_account_status.md`): bao gồm 58.5, 58.6 vế AIOps và Đơn 43 (A1).
+- **Nội dung thực thi chi tiết:**
+  1. *Task 58.6 #1 — Khắc phục phát force_logout khi updateMany khớp 0 hàng:*
+     - Trong `_syncAccountStatusToDatabase` (`aiops.quarantine.js`), kiểm tra chặt chẽ `updateResult.count > 0` trước khi gọi `emitForceLogout` và `invalidateAccountCache`.
+     - Bảo vệ toàn diện tài khoản ở trạng thái `PendingDelete`: khi AIOps kích hoạt cách ly, điều kiện `{ status: { not: 'PendingDelete' } }` khiến `updateMany` trả về `count = 0`, hệ thống tuyệt đối không đổi trạng thái CSDL và không phát socket `force_logout` gây kick văng người dùng vô cớ.
+  2. *Task 58.6 #2 — Phân biệt chính xác giữa username toàn chữ số và idaccount:*
+     - Loại bỏ việc suy đoán `isNum` gán nhầm sang `targetId` trong `force_logout`.
+     - Phân tách tường minh: khi truyền `idaccount` (number), tìm theo `{ idaccount }`; khi truyền `username` (string), truy vấn CSDL tìm đúng tài khoản mang username đó để trích xuất `idaccount` chính xác.
+     - Loại bỏ hoàn toàn nguy cơ User A có username toàn chữ số (ví dụ `"123456"`) làm khóa nhầm hoặc kick nhầm User B có `idaccount = 123456`.
+  3. *Đơn 43 A1 — Dọn dẹp khối updateMany trùng lặp trong Controller:*
+     - Loại bỏ khối `prisma.account.updateMany` độc lập tại `unblockAccount` (`aiops.controller.js`), giao quyền quản lý cập nhật CSDL tập trung cho `_syncAccountStatusToDatabase` trong service, ngăn ngừa nguy cơ ghi đè trạng thái `PendingDelete`.
+  4. *Task 58.5 — Bảo toàn 3 lối tự động mở khóa 15 phút:*
+     - Quét định kỳ RAM/DB, lazy auto-unlock khi request và danh sách cách ly đều sử dụng tiền tố chuẩn `[AIOPS_AUTO_QUARANTINE]` và bảo vệ an toàn tài khoản do Admin khóa thủ công.
+- **Kiểm định Chất Lượng Toàn Diện:**
+  - Test 2 Tầng mới: `aiops_group2_completion.test.js` — **6/6 tests PASS 100%**.
+  - Full test suite Backend: **529/529 tests PASS 100% (79 test suites)**.
+  - DB Verify Indexes & Triggers: **100% Partial Unique Indexes & Triggers an toàn tuyệt đối**.
+
+
+### 4.32. Hoàn Tất Toàn Bộ Các Nội Dung Của Nhóm 3 (Rà Soát Chuyên Sâu PayOS & Idempotency — Đơn 44) (2026-10-31)
+- **Phê duyệt bởi PO:** Phê duyệt toàn diện kế hoạch kiểm thử và rà soát chuyên sâu PayOS (`ke_hoach_chi_tiet_nhom_3_payos_don_44.md`): bao gồm audit cơ chế xử lý chuyển khoản lần 2, idempotency, ma trận trạng thái tài chính 6.1 / 6.2a / 6.2b, và JIT Sync.
+- **Nội dung thực thi & Rà soát chi tiết:**
+  1. *Cơ chế Chuyển khoản lần 2 (Đúng nội dung/mã nhận diện cũ) & Idempotency:*
+     - Khảo sát chính sách PayOS: VietQR động nhận tiền từ hệ thống liên ngân hàng NAPAS không thể từ chối ở tầng mạng lưới ngân hàng; nếu người dùng chuyển lần 2 với cùng mã VietQR/nội dung, PayOS tự động ghi nhận và phát Webhook mới với mã tham chiếu giao dịch (`reference`) mới.
+     - Xử lý Backend:
+       + Kiểm tra trạng thái đơn: Nếu đơn đã ở trạng thái `PAID`, `payment.service.js` ghi nhận giao dịch mới vào bảng `payment_transaction` phục vụ đối soát/hoàn tiền kế toán và phản hồi HTTP 200 mà TUYỆT ĐỐI KHÔNG kích hoạt/cộng dồn Premium hai lần.
+       + Idempotency tầng CSDL: Bổ sung ràng buộc Partial Unique Index `uq_payment_transaction_payos_id` trên cột `payos_transaction_id` (WHERE `payos_transaction_id IS NOT NULL`). Khi Webhook trùng lặp được phát lại, Prisma bắt mã lỗi `P2002` / PostgreSQL `23505` và trả HTTP 200 an toàn mà không sinh trùng lặp giao dịch.
+  2. *Thẩm định Ma trận Trạng thái Tài chính 2 Tầng (Flow 6.1, 6.2a, 6.2b):*
+     - **Flow 6.1 (Khớp đúng tiền 49k):** Chuyển trạng thái đơn sang `PAID`, cộng dồn thời hạn 30 ngày (nếu đã có hạn dùng tương lai thì dồn từ mốc tương lai; nếu chưa có thì tính từ thời điểm thanh toán), xóa `qr_url` / `checkout_url`, đồng bộ trạng thái `Active` cho hộ gia đình nếu là chủ hộ, phát socket `payment.success` và `account.upgraded`.
+     - **Flow 6.2a (Chuyển thừa tiền > 49k):** Đơn chuyển sang `WAITING_CONFIRMATION`, giữ nguyên gói Basic, phát socket cảnh báo người dùng xác nhận (`confirmUpgrade`).
+     - **Flow 6.2b (Chuyển thiếu tiền < 49k):** Đơn chuyển sang `REFUND_PENDING`, lưu lý do hoàn tiền `refundReason = 'Số tiền thanh toán không hợp lệ'`, phát socket cảnh báo thiếu tiền kèm số tiền còn thiếu.
+     - **Xác nhận `confirmUpgrade`:** Hỗ trợ `accept: true` (kích hoạt `PAID` và nâng cấp Premium) hoặc `accept: false` (chuyển sang `REFUND_PENDING` để hoàn tiền).
+  3. *Trích xuất Mã Nhận diện VietQR Bất Bại:*
+     - Khắc phục triệt để trường hợp ứng dụng ngân hàng tự động chèn tiền tố chuyển tiền (ví dụ `CSCYDEZ2N10 9X7K2A`): Regex bóc tách chính xác 6 ký tự nhận diện cuối cùng để tra cứu đơn hàng dự phòng khi `orderCode` không khớp.
+  4. *Đơn hàng Thử nghiệm (`is_template = true`):*
+     - Đơn mẫu của Admin khi nhận Webhook đối soát được xác nhận `PAID` trên CSDL nhưng TUYỆT ĐỐI KHÔNG kích hoạt hay gia hạn gói cước Premium cho tài khoản Admin.
+  5. *Cơ chế JIT Sync (Just-in-Time Sync) & Vá Lỗi BigInt Logger:*
+     - Khi người dùng gọi `GET /api/payments/orders/:orderCode`, nếu đơn vẫn ở trạng thái `PENDING` (do Webhook từ cổng thanh toán bị trễ hoặc rớt mạng), hệ thống chủ động gọi PayOS REST API kiểm tra và kích hoạt bù trừ tức thì.
+     - Vá lỗi `TypeError: Do not know how to serialize a BigInt` bằng cách ép kiểu `Number(order.order_code)` trước khi truyền vào metadata Winston JSON logger.
+  6. *Hàng Rào Bảo Vệ CSDL (DB Guard):*
+     - Bổ sung định nghĩa `uq_payment_transaction_payos_id` vào `requiredIndexes` trong `src/Backend/scripts/verify-db-indexes.js`.
+     - Chạy script kiểm tra thực tế: 100% partial indexes và triggers trên Supabase Cloud được xác nhận an toàn.
+- **Kiểm định Chất Lượng Toàn Diện:**
+  - Test 2 Tầng mới: `src/Backend/tests/unit/payos_group3_comprehensive_audit.test.js` — **10/10 tests PASS 100%**.
+  - Full test suite Backend: **539/539 tests PASS 100% (79 test suites)**.
+  - DB Verify Indexes & Triggers: **100% Partial Unique Indexes & Triggers an toàn tuyệt đối**.
+
+
+
+### 4.33. Hoàn Tất Toàn Bộ Các Nội Dung Của Nhóm 4 (Mã Hoá Dữ Liệu & Giải Mã Hỏng — Đơn 52) (2026-10-31)
+- **Phê duyệt bởi PO:** Phê duyệt toàn diện kế hoạch xử lý Nhóm 4 (`ke_hoach_chi_tiet_nhom_4_ma_hoa_du_lieu_don_52.md`): bao gồm 52.1, 52.3, 52.4, 52.5, vá đường đi vòng `isEncrypted`, script di trú re-encryption và công cụ thẩm tra `db:verify-encryption`.
+- **Nội dung thực thi & Rà soát chi tiết:**
+  1. *Task 52.1 — Bổ sung Context (Bảng + Khóa chính) cho 100% các vị trí gọi `decrypt`:*
+     - `src/Backend/modules/sync/sync.repository.js`: Cập nhật `restoreSafeNote(note, context, isDeleted)` nhận `context` `{ table, id }`. Truyền context đầy đủ tại `getTransactionsByAccount` (`{ table: 'transaction', id: item.idtran }`), `getBudgetsByAccount` (`{ table: 'budget', id: item.idbudget }`), `getBillsByAccount` (`{ table: 'bill', id: item.idbill }`), `getGoalsByAccount` (`{ table: 'goal', id: item.idgoal }`).
+     - `src/Backend/modules/auth/auth.repository.js`: `formatUser` truyền `{ table: 'user', id: user.iduser || user.idaccount, field: 'phone'/'address' }`.
+     - `src/Backend/modules/auth/auth.service.js`: `register`, `login`, `verifyOtp`, `getProfile`, `updateProfile` truyền context rõ ràng tới `decrypt`.
+     - `src/Backend/modules/bank/bank.repository.js`: `getUnapprovedTransactions` truyền `{ table: 'transaction', id: tx.idtran || tx.id }`.
+     - `src/Backend/utils/masking.util.js`: `maskPhone`, `maskAccountNumber`, `maskAddress` chuyển tiếp `context` vào `decrypt`.
+  2. *Phòng vệ Sync Pull với hàng đã xóa mềm (Graceful Tombstone):*
+     - Trong `restoreSafeNote`: Nếu bản ghi đã soft-deleted (`isDeleted = true`) gặp lỗi giải mã, hệ thống ghi log warning chứa `{ table, recordId, error }` nhưng trả về chuỗi rỗng `''` thay vì quăng lỗi HTTP 500 làm tê liệt cả batch pull của người dùng. Đối với bản ghi active (`isDeleted = false`), tiếp tục ném `DECRYPT_FAILED` chuẩn theo hợp đồng để bảo vệ dữ liệu.
+  3. *Task 52.3 - 52.5 — Di Trú và Mã Hóa Lại Dữ Liệu Dev Cũ (Re-encryption Migration):*
+     - Viết và chạy script `src/Backend/scripts/migrate_reencrypt_legacy_dev_data.js`: Quét sạch 19 hàng `transaction.note` và 3 hàng `user.phone` được mã hóa bằng khóa dev mặc định cũ (`0123456789abcdef...`), giải mã bản rõ và mã hóa lại bằng khóa `.env` chính thức (`encrypt(...)`).
+     - Kết quả: 100% bản ghi mã hóa trên Supabase Cloud (25 transactions, 3 users) đều giải mã thành công bằng khóa `.env`. Tỷ lệ bản ghi hỏng đạt **0%**.
+  4. *Task THẤP — Loại bỏ hoàn toàn đường đi vòng `isEncrypted ? x : encrypt(x)`:*
+     - Cập nhật `auth.repository.js:94-95` và `admin.repository.js:482-483`: Gọi trực tiếp `encrypt(...)`. Nếu người dùng hoặc kẻ tấn công cố tình nhập chuỗi giả mạo `enc:1:2:3`, hệ thống sẽ mã hóa thành bản mã AES-256-GCM hợp lệ thay vì lưu thô gây crash 500 tại `/auth/profile`.
+  5. *Tự động nạp `.env` an toàn trong `crypto.util.js`:*
+     - Bổ sung cơ chế auto-load `.env` nếu `process.env.DATA_ENCRYPTION_KEY` chưa có tại thời điểm load module, triệt tiêu hoàn toàn race-condition khi chạy test suite độc lập hoặc qua npm runner.
+  6. *Công cụ Thẩm định Định kỳ `npm run db:verify-encryption`:*
+     - Tạo script `src/Backend/scripts/verify_encryption_health.js` và tích hợp vào `package.json`.
+     - Quét toàn bộ CSDL (`transaction`, `user`, `bank_account`, `bill`, `budget`, `goal`), tự động cảnh báo đỏ nếu phát hiện bản ghi hỏng giải mã.
+- **Kiểm định Chất Lượng Toàn Diện:**
+  - Script thẩm tra CSDL: `npm run db:verify-encryption` — **28/28 trường mã hóa hợp lệ 100%, 0 lỗi**.
+  - Test 2 Tầng mới: `src/Backend/tests/unit/data_encryption_group4_audit.test.js` — **9/9 tests PASS 100%**.
+  - DB Verify Indexes & Triggers: `npm run db:verify-indexes` — **100% Partial Indexes & Triggers an toàn**.
+  - Full test suite Backend: **548/548 tests PASS 100% (79 test suites), 0 lỗi hồi quy (Zero Regressions)**.

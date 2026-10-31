@@ -838,6 +838,8 @@ export default {
       paymentDesc: 'Automated VietQR Napas 247 payments and order transaction logs',
       sync: 'Offline Sync Engine',
       syncDesc: 'Two-way Offline-First synchronization and secure local SQLite storage',
+      family: 'Family Management',
+      familyDesc: 'Configure household creation, join permissions, member limits, and shared wallet ceilings',
       other: 'Other',
       defaultGroupDesc: 'Features categorized under group {name}',
     },

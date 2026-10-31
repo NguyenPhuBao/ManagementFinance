@@ -75,6 +75,16 @@ const householdRepository = {
       },
       include: {
         household: true,
+        account: {
+          select: {
+            idaccount: true,
+            username: true,
+            email: true,
+            User: {
+              select: { fullname: true },
+            },
+          },
+        },
       },
     });
   },
@@ -90,6 +100,7 @@ const householdRepository = {
           select: {
             idaccount: true,
             username: true,
+            email: true,
             User: {
               select: { fullname: true },
             },
@@ -264,9 +275,10 @@ const householdRepository = {
 
   async dissolveHousehold(idhousehold) {
     const now = new Date();
+    const hhId = Number(idhousehold);
     return prisma.$transaction([
       prisma.household.update({
-        where: { idhousehold: Number(idhousehold) },
+        where: { idhousehold: hhId },
         data: {
           status: 'Dissolved',
           delete_at: now,
@@ -275,10 +287,41 @@ const householdRepository = {
       }),
       prisma.household_member.updateMany({
         where: {
-          idhousehold: Number(idhousehold),
+          idhousehold: hhId,
           left_at: null,
         },
         data: { left_at: now },
+      }),
+      // Task 57.6: Thu hồi tất cả mã mời chưa sử dụng của gia đình
+      prisma.household_invite.updateMany({
+        where: {
+          idhousehold: hhId,
+          used_at: null,
+          revoked_at: null,
+          declined_at: null,
+        },
+        data: { revoked_at: now },
+      }),
+      // Task 57.6: Xóa mềm toàn bộ dữ liệu chung ở 5 bảng thực thể
+      prisma.wallet.updateMany({
+        where: { idhousehold: hhId, delete_at: null },
+        data: { delete_at: now, update_at: now },
+      }),
+      prisma.transaction.updateMany({
+        where: { idhousehold: hhId, delete_at: null },
+        data: { delete_at: now, update_at: now },
+      }),
+      prisma.budget.updateMany({
+        where: { idhousehold: hhId, delete_at: null },
+        data: { delete_at: now, update_at: now },
+      }),
+      prisma.goal.updateMany({
+        where: { idhousehold: hhId, delete_at: null },
+        data: { delete_at: now, update_at: now },
+      }),
+      prisma.category.updateMany({
+        where: { idhousehold: hhId, delete_at: null },
+        data: { delete_at: now, update_at: now },
       }),
     ]);
   },

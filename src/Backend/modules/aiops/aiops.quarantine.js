@@ -51,6 +51,8 @@ const PROTECTED_ACTOR_HASHES = new Set([
   'system_host',
 ]);
 
+const AIOPS_AUTO_REASON_PREFIX = '[AIOPS_AUTO_QUARANTINE]';
+
 /**
  * AIOps Quarantine & Active Auto-Blocking Shield
  * Quản lý danh sách IP bị cô lập trong bộ nhớ In-Memory, tự động ngắt kết nối HTTP 403
@@ -138,7 +140,7 @@ class AIOpsQuarantine {
             unblockReason: 'Tự động mở khóa do hết thời hạn tạm khóa',
           }).catch(() => { });
         }
-        this._syncAccountStatusToDatabase(record.idaccount || record.username, 'Active', null, { onlyAIOpsLocked: true }).catch(() => { });
+        this._syncAccountStatusToDatabase(record.idaccount || record.username, 'Active', null, { onlyAIOpsLocked: true, idaccount: record.idaccount, username: record.username }).catch(() => { });
         hasChanged = true;
         logger.info(`[AIOps Quarantine] Tự động mở khóa Tài khoản [${record.username}] do hết thời gian tạm khóa.`);
       }
@@ -150,7 +152,7 @@ class AIOpsQuarantine {
         const dbResult = await this.repository.autoExpireInDatabase();
         const expiredAccounts = dbResult?.expiredAccounts || [];
         for (const acc of expiredAccounts) {
-          await this._syncAccountStatusToDatabase(acc.idaccount || acc.username, 'Active', null, { onlyAIOpsLocked: true });
+          await this._syncAccountStatusToDatabase(acc.idaccount || acc.username, 'Active', null, { onlyAIOpsLocked: true, idaccount: acc.idaccount, username: acc.username });
           hasChanged = true;
         }
         if ((dbResult?.expiredIps?.length || 0) > 0) {
@@ -294,15 +296,16 @@ class AIOpsQuarantine {
       return null;
     }
 
-    const duration = durationMs !== null ? durationMs : this.defaultDurationMs;
+    const cleanUser = username ? String(username).trim() : null;
+    const accountDefaultDuration = 15 * 60 * 1000; // 15 phút theo chuẩn Task 58.5 cho tài khoản
+    const accountDuration = durationMs !== null ? durationMs : (cleanUser ? accountDefaultDuration : this.defaultDurationMs);
     const now = Date.now();
-    const expiresAt = banType === 'permanent' ? null : now + duration;
+    const expiresAt = banType === 'permanent' ? null : now + accountDuration;
     const ipHash = ipHashParam || (rawIp ? hashIp(rawIp) : '0000000000000000');
     let masked = maskedIpParam || (rawIp ? maskIp(rawIp) : '192.168.xxx.xxx');
     if (!masked || masked === 'xx.xx.xx.xx' || masked === 'xx.xx.xxx.xxx' || masked === 'traffic_cluster_ip') {
       masked = rawIp ? maskIp(rawIp) : '192.168.xxx.xxx';
     }
-    const cleanUser = username ? String(username).trim() : null;
 
     const pairKey = `${ipHash}:::${cleanUser ? cleanUser.toLowerCase() : 'all'}`;
 
@@ -396,7 +399,10 @@ class AIOpsQuarantine {
 
     // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Vô hiệu hóa tài khoản trong database
     if (cleanUser && cleanUser !== 'all' && cleanUser !== 'N/A') {
-      this._syncAccountStatusToDatabase(idaccount || cleanUser, 'Inactive', reason || 'Cách ly tự động do phát hiện vi phạm an ninh').catch(() => { });
+      const autoReason = reason && String(reason).startsWith(AIOPS_AUTO_REASON_PREFIX)
+        ? reason
+        : `${AIOPS_AUTO_REASON_PREFIX}: ${reason || 'Cách ly tự động do phát hiện vi phạm an ninh'}`;
+      this._syncAccountStatusToDatabase(idaccount || cleanUser, 'Inactive', autoReason, { idaccount, username: cleanUser }).catch(() => { });
     }
 
     this._emitQuarantineEvents(record);
@@ -638,10 +644,33 @@ class AIOpsQuarantine {
     try {
       const { prisma } = require('../../config/db');
       if (!prisma || !prisma.account || typeof prisma.account.updateMany !== 'function') return;
+
+      // Task 58.6 #2: Phân biệt chính xác giữa idaccount (số nguyên) và username (chuỗi)
+      let resolvedTargetId = null;
+      const isExplicitId = (typeof options.idaccount === 'number' && Number.isInteger(options.idaccount))
+        || (typeof usernameOrId === 'number' && Number.isInteger(usernameOrId));
+
+      if (isExplicitId) {
+        resolvedTargetId = Number(options.idaccount || usernameOrId);
+      } else if (options.username || typeof usernameOrId === 'string') {
+        const userVal = String(options.username || usernameOrId).trim();
+        if (typeof prisma.account.findFirst === 'function') {
+          const acc = await prisma.account.findFirst({
+            where: { username: userVal },
+            select: { idaccount: true },
+          });
+          if (acc) resolvedTargetId = acc.idaccount;
+        }
+      }
+
       const isNum = !isNaN(Number(usernameOrId)) && typeof usernameOrId !== 'boolean';
-      const identifierCondition = isNum
-        ? { OR: [{ idaccount: Number(usernameOrId) }, { username: String(usernameOrId).trim() }] }
-        : { username: String(usernameOrId).trim() };
+      const identifierCondition = resolvedTargetId
+        ? { idaccount: resolvedTargetId }
+        : (options.username
+            ? { username: String(options.username).trim() }
+            : (isNum
+                ? { OR: [{ idaccount: Number(usernameOrId) }, { username: String(usernameOrId).trim() }] }
+                : { username: String(usernameOrId).trim() }));
 
       const andConditions = [identifierCondition];
 
@@ -649,13 +678,18 @@ class AIOpsQuarantine {
         // Chỉ mở khóa nếu tài khoản đang Inactive (bảo vệ tuyệt đối PendingDelete và các trạng thái khác)
         andConditions.push({ status: 'Inactive' });
 
-        // Nếu là quét tự động hết hạn, chỉ mở khóa tài khoản do AIOps/Sentinel khóa, tránh can thiệp khóa do Admin thủ công
+        // Nếu là quét tự động hết hạn, chỉ mở khóa tài khoản do AIOps/Sentinel khóa, tránh can thiệp khóa do Admin thủ công (Task 58.5)
         if (options && options.onlyAIOpsLocked) {
           andConditions.push({
             OR: [
+              { reason_inactive: { contains: '[AIOPS_AUTO_QUARANTINE]' } },
+              { reason_inactive: { contains: 'Cách ly tự động' } },
               { reason_inactive: { contains: 'AIOps', mode: 'insensitive' } },
-              { reason_inactive: { contains: 'Cách ly', mode: 'insensitive' } },
               { reason_inactive: { contains: 'Sentinel', mode: 'insensitive' } },
+            ],
+            NOT: [
+              { reason_inactive: { contains: 'Quản trị viên' } },
+              { reason_inactive: { contains: 'Admin' } },
             ],
           });
         }
@@ -664,28 +698,23 @@ class AIOpsQuarantine {
         andConditions.push({ status: { not: 'PendingDelete' } });
       }
 
-      await prisma.account.updateMany({
+      const updateResult = await prisma.account.updateMany({
         where: { AND: andConditions },
         data: {
           status,
           reason_inactive: status === 'Active' ? null : reason,
         },
       });
-      logger.info(`[AIOps Quarantine] Đã đồng bộ CSDL bảng account -> ${status} cho [${usernameOrId}]`);
 
-      // Task 43.A6: Khi AIOps cách ly khóa tài khoản (Inactive), phát socket account.force_logout
-      if (status === 'Inactive') {
+      const updatedCount = updateResult?.count ?? 0;
+      logger.info(`[AIOps Quarantine] Đã đồng bộ CSDL bảng account -> ${status} cho [${usernameOrId}] (${updatedCount} hàng)`);
+
+      // Task 58.6 & 43.A6: Chỉ phát socket account.force_logout khi thực sự có ít nhất 1 hàng chuyển sang Inactive thành công
+      if (status === 'Inactive' && updatedCount > 0) {
         try {
           const { emitForceLogout } = require('../../core/socket');
           const { invalidateAccountCache } = require('../../middleware/auth');
-          let targetId = isNum ? Number(usernameOrId) : null;
-          if (!targetId) {
-            const acc = await prisma.account.findFirst({
-              where: { username: String(usernameOrId).trim() },
-              select: { idaccount: true },
-            });
-            if (acc) targetId = acc.idaccount;
-          }
+          const targetId = resolvedTargetId;
           if (targetId) {
             invalidateAccountCache(targetId);
             emitForceLogout(targetId, 'ACCOUNT_INACTIVE', reason || 'Tài khoản của bạn đã bị cách ly tạm khóa để bảo vệ an toàn.');
@@ -771,11 +800,11 @@ class AIOpsQuarantine {
       }
     }
 
-    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Vô hiệu hóa tài khoản
+    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Vô hiệu hóa tài khoản thủ công bởi Admin
     await this._syncAccountStatusToDatabase(
       usernameOrId,
       'Inactive',
-      'Quản trị viên vô hiệu hóa tài khoản qua AIOps Sentinel do phát hiện vi phạm an ninh'
+      'Quản trị viên vô hiệu hóa tài khoản thủ công do phát hiện vi phạm an ninh'
     );
 
     this._emitUpdatedEvent();
@@ -857,15 +886,63 @@ class AIOpsQuarantine {
       }
     }
 
-    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Vô hiệu hóa tài khoản tạm thời
+    // Tác động thực tế CSDL bảng account (Tầng 2 System Impact): Vô hiệu hóa tài khoản tạm thời bởi Admin
     await this._syncAccountStatusToDatabase(
       usernameOrId,
       'Inactive',
-      reason || `Quản trị viên tạm khóa tài khoản (${Math.round(dur / 3600000)} giờ) qua AIOps Sentinel`
+      reason || `Quản trị viên tạm khóa tài khoản (${Math.round(dur / 3600000)} giờ) thủ công`
     );
 
     this._emitUpdatedEvent();
     return count;
+  }
+
+  /**
+   * Kiểm tra xem Tài khoản có đang bị cách ly tạm thời hay vĩnh viễn không ($O(1)$)
+   * Kèm cơ chế Lazy Auto-Unlock nếu đã hết thời gian cách ly (Task 58.5)
+   */
+  isAccountQuarantined(usernameOrId) {
+    if (!usernameOrId || usernameOrId === 'all' || usernameOrId === 'N/A') {
+      return { quarantined: false };
+    }
+    const clean = String(usernameOrId).toLowerCase().trim();
+    const now = Date.now();
+
+    for (const [key, record] of this._pairs.entries()) {
+      if (
+        (record.username && record.username.toLowerCase() === clean) ||
+        String(record.idaccount) === String(usernameOrId)
+      ) {
+        // Lazy auto-unlock nếu đã quá hạn 15 phút
+        if (record.accountStatus === 'temporary' && record.accountExpiresAt !== null && now >= record.accountExpiresAt) {
+          record.accountStatus = 'unlocked';
+          record.accountExpiresAt = null;
+          if (this.repository && typeof this.repository.updateAccountStatus === 'function') {
+            this.repository.updateAccountStatus({
+              username: record.username,
+              idaccount: record.idaccount,
+              status: 'UNLOCKED',
+              unblockedBy: 'AIOps Sentinel Auto-Expire',
+              unblockReason: 'Tự động mở khóa do hết thời hạn tạm khóa 15 phút',
+            }).catch(() => { });
+          }
+          this._syncAccountStatusToDatabase(record.idaccount || record.username, 'Active', null, { onlyAIOpsLocked: true, idaccount: record.idaccount, username: record.username }).catch(() => { });
+          continue;
+        }
+
+        if (record.accountStatus === 'temporary' || record.accountStatus === 'permanent') {
+          return {
+            quarantined: true,
+            status: record.accountStatus,
+            reason: record.reason,
+            expiresAt: record.accountExpiresAt,
+            remainingMinutes: record.accountExpiresAt ? Math.max(0, Math.ceil((record.accountExpiresAt - now) / 60000)) : null,
+          };
+        }
+      }
+    }
+
+    return { quarantined: false };
   }
 
   /**
@@ -1002,7 +1079,7 @@ class AIOpsQuarantine {
         if (this.repository && typeof this.repository.updateAccountStatus === 'function') {
           this.repository.updateAccountStatus({ username: record.username, idaccount: record.idaccount, status: 'UNLOCKED' }).catch(() => { });
         }
-        this._syncAccountStatusToDatabase(record.idaccount || record.username, 'Active', null, { onlyAIOpsLocked: true }).catch(() => { });
+        this._syncAccountStatusToDatabase(record.idaccount || record.username, 'Active', null, { onlyAIOpsLocked: true, idaccount: record.idaccount, username: record.username }).catch(() => { });
       }
 
       // Thời gian còn lại cho IP: chỉ tính khi đang tạm khóa

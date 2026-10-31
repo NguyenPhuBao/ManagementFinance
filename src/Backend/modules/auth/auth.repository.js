@@ -13,10 +13,11 @@ function normalizePurpose(p) {
 
 function formatUser(user) {
   if (!user) return user;
+  const id = user.iduser || user.idaccount;
   return {
     ...user,
-    phone: user.phone ? decrypt(user.phone) : null,
-    address: user.address ? decrypt(user.address) : null,
+    phone: user.phone ? decrypt(user.phone, { table: 'user', id, field: 'phone' }) : null,
+    address: user.address ? decrypt(user.address, { table: 'user', id, field: 'address' }) : null,
   };
 }
 
@@ -91,8 +92,8 @@ const authRepository = {
   },
 
   async createAccountWithUser(data) {
-    const encPhone = data.phone ? (isEncrypted(data.phone) ? data.phone : encrypt(data.phone)) : null;
-    const encAddress = data.address ? (isEncrypted(data.address) ? data.address : encrypt(data.address)) : null;
+    const encPhone = data.phone ? encrypt(data.phone) : null;
+    const encAddress = data.address ? encrypt(data.address) : null;
 
     return prisma.$transaction(async (tx) => {
       const account = await tx.account.create({
@@ -326,6 +327,7 @@ const authRepository = {
       items,
     };
   },
+  formatUser,
 };
 
 module.exports = authRepository;

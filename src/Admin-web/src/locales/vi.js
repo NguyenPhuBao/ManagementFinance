@@ -838,6 +838,8 @@ export default {
       paymentDesc: 'Cổng thanh toán tự động VietQR Napas 247 và lịch sử giao dịch mua gói cước',
       sync: 'Đồng bộ Ngoại tuyến',
       syncDesc: 'Cơ chế đồng bộ 2 chiều Offline-First và lưu trữ dữ liệu an toàn SQLite cục bộ',
+      family: 'Quản lý Gia đình',
+      familyDesc: 'Thiết lập quyền tạo nhà, tham gia gia đình, hạn mức thành viên và trần ví dùng chung',
       other: 'Khác',
       defaultGroupDesc: 'Các chức năng thuộc nhóm {name}',
     },

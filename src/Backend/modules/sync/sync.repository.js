@@ -2,6 +2,7 @@ const { prisma } = require('../../config/db');
 const { encrypt, decrypt } = require('../../utils/crypto.util');
 const { filterSensitiveNote } = require('../../utils/content-filter.util');
 const { cleanStorageKey, getPresignedReceiptUrl } = require('../../utils/storage.util');
+const logger = require('../../core/logger');
 
 function prepareSafeNote(note, defaultVal = null) {
   if (note === undefined) return undefined;
@@ -9,9 +10,21 @@ function prepareSafeNote(note, defaultVal = null) {
   return encrypt(filterSensitiveNote(note));
 }
 
-function restoreSafeNote(note) {
+function restoreSafeNote(note, context = null, isDeleted = false) {
   if (!note) return note;
-  return decrypt(note);
+  try {
+    return decrypt(note, context);
+  } catch (err) {
+    if (isDeleted) {
+      logger.warn('[Sync] Bỏ qua lỗi giải mã trên bản ghi đã xóa mềm (Tombstone):', {
+        table: context?.table,
+        recordId: context?.id || context?.recordId,
+        error: err.message,
+      });
+      return '';
+    }
+    throw err;
+  }
 }
 
 // Map field client (camelCase hoặc alias) → DB model fields theo CSDL mới
@@ -530,7 +543,7 @@ const syncRepository = {
     });
     return list.map((item) => ({
       ...item,
-      note: restoreSafeNote(item.note),
+      note: restoreSafeNote(item.note, { table: 'transaction', id: item.idtran }, Boolean(item.deleted_at)),
       images: item.images ? getPresignedReceiptUrl(item.images) : null,
     }));
   },
@@ -615,7 +628,10 @@ const syncRepository = {
       },
       orderBy: { server_update_at: 'asc' },
     });
-    return list.map((item) => ({ ...item, note: restoreSafeNote(item.note) }));
+    return list.map((item) => ({
+      ...item,
+      note: restoreSafeNote(item.note, { table: 'budget', id: item.idbudget }, Boolean(item.delete_at)),
+    }));
   },
 
   // ── Bill ────────────────────────────────────────────────
@@ -694,7 +710,10 @@ const syncRepository = {
       },
       orderBy: { server_update_at: 'asc' },
     });
-    return list.map((item) => ({ ...item, note: restoreSafeNote(item.note) }));
+    return list.map((item) => ({
+      ...item,
+      note: restoreSafeNote(item.note, { table: 'bill', id: item.idbill }, Boolean(item.delete_at)),
+    }));
   },
 
   // ── Goal ────────────────────────────────────────────────
@@ -787,7 +806,10 @@ const syncRepository = {
       },
       orderBy: { server_update_at: 'asc' },
     });
-    return list.map((item) => ({ ...item, note: restoreSafeNote(item.note) }));
+    return list.map((item) => ({
+      ...item,
+      note: restoreSafeNote(item.note, { table: 'goal', id: item.idgoal }, Boolean(item.delete_at)),
+    }));
   },
 
   // ── Lookup by ID (for conflict resolution) ──────────────
@@ -907,6 +929,7 @@ const syncRepository = {
       data: { delete_at: new Date(), update_at: new Date(), server_update_at: new Date() },
     });
   },
+  restoreSafeNote,
 };
 
 module.exports = syncRepository;

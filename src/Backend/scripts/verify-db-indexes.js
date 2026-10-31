@@ -97,6 +97,11 @@ async function verifyDatabase() {
         table: 'category',
         name: 'uq_category_household_name',
         expectedClause: '("Idhousehold" IS NOT NULL)'
+      },
+      {
+        table: 'payment_transaction',
+        name: 'uq_payment_transaction_payos_id',
+        expectedClause: 'payos_transaction_id IS NOT NULL'
       }
     ];
 

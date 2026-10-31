@@ -11,6 +11,8 @@ const DEFAULT_PERMISSIONS = {
       goals: 3,
       bills: 3,
       custom_categories: 5,
+      household_members: 0,
+      household_wallets: 0,
     },
     features: {
       biometric_auth: true,
@@ -45,6 +47,7 @@ const DEFAULT_PERMISSIONS = {
       payment_history: true,
       offline_first_sync: true,
       household: false,
+      household_join: true,
     },
   },
   Premium: {
@@ -55,6 +58,7 @@ const DEFAULT_PERMISSIONS = {
       bills: null,
       custom_categories: null,
       household_members: 6,
+      household_wallets: 10,
     },
     features: {
       biometric_auth: true,
@@ -89,6 +93,7 @@ const DEFAULT_PERMISSIONS = {
       payment_history: true,
       offline_first_sync: true,
       household: true,
+      household_join: true,
     },
   },
 };

@@ -596,7 +596,7 @@ async function syncOrderWithPayOS(order) {
     return order;
   }
 
-  const orderCode = order.order_code;
+  const orderCode = order.order_code ? Number(order.order_code) : null;
   if (!orderCode) {
     return order;
   }
@@ -797,7 +797,7 @@ async function getOrderStatus(orderCode, idaccount) {
   }
   return {
     orderId: order.id,
-    orderCode: order.order_code,
+    orderCode: Number(order.order_code),
     status: order.status,
     amount: order.amount,
     amountReceived: order.amount_received,

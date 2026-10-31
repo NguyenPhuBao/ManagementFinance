@@ -18,6 +18,7 @@
     "prisma:push": "node scripts/db-guard.js db push",
     "prisma:studio": "node scripts/db-guard.js studio",
     "db:verify-indexes": "node scripts/verify-db-indexes.js",
+    "db:verify-encryption": "node scripts/verify_encryption_health.js",
     "payos:test": "node scripts/test_payos_connection.js",
     "payos:confirm-webhook": "node scripts/confirm_payos_webhook.js",
     "redis:test": "node scripts/test_redis_connection.js"
