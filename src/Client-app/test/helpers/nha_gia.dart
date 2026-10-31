@@ -9,6 +9,7 @@ import 'package:flowmoney/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'household_api_gia.dart';
 
@@ -22,6 +23,21 @@ Future<NhaRepositoryImpl> repoNhaThu(HouseholdApiGia api, {int id = 18}) async {
 
 Widget bocTrangNha(Widget trang, {GoiCubit? goi}) {
   final app = MaterialApp(theme: AppTheme.lightTheme, home: trang);
+  return goi == null ? app : BlocProvider<GoiCubit>.value(value: goi, child: app);
+}
+
+/// Stack thật `/` → `/dich` để ca canh `pop` về đúng trang trước. `go` thay cả stack: ca sẽ không còn thấy chữ GOC khi Back.
+GoRouter routerThu(Widget trang) {
+  final r = GoRouter(initialLocation: '/', routes: [
+    GoRoute(path: '/', builder: (_, __) => const Scaffold(body: Text('GOC'))),
+    GoRoute(path: '/dich', builder: (_, __) => trang),
+  ]);
+  addTearDown(r.dispose);
+  return r;
+}
+
+Widget bocRouterNha(GoRouter r, {GoiCubit? goi}) {
+  final app = MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: r);
   return goi == null ? app : BlocProvider<GoiCubit>.value(value: goi, child: app);
 }
 

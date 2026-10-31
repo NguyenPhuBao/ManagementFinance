@@ -51,4 +51,12 @@ void main() {
     expect(mainDart, contains('quetKhiRanh(id)'), reason: '`scan` bỏ qua khi đang quét, mất lượt im lặng');
     expect(di, contains('loadLoiMoiNha: (id) => sl<NhaRepository>().idaccount != id'));
   });
+
+  test('router: /nha/tao qua cửa quyền giaDinh', () {
+    final router = File('lib/core/router/app_router.dart').readAsStringSync().replaceAll('\r\n', '\n');
+    final i = router.indexOf("path: '/nha/tao'");
+    expect(i, isNonNegative);
+    expect(router.substring(i, router.indexOf('builder:', i)), contains('redirectTheoQuyen(MaQuyen.giaDinh)'),
+        reason: 'thiếu là Basic vào được form, bị server trả 403 sau khi đã gõ xong');
+  });
 }

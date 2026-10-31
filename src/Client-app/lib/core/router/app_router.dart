@@ -24,6 +24,7 @@ import '../../features/transaction/presentation/pages/transaction_page.dart';
 import '../../features/budget/presentation/pages/budget_detail_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
 import '../../features/household/presentation/pages/nha_minh_page.dart';
+import '../../features/household/presentation/pages/tao_nha_page.dart';
 import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/goal/domain/dien_san_muc_tieu.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -299,6 +300,12 @@ class AppRouter {
           // Gia đình (spec 2026-10-23 mục 12.3): route GỐC ngoài shell như `/budget`, mở từ drawer bằng `push`. Màn con về lại bằng
           // `pop`, không `go('/nha')`: `go` thay cả stack, Back sau đó thoát app.
           GoRoute(path: '/nha', builder: (_, __) => const NhaMinhPage()),
+          // Basic → màn Nâng cấp; Premium tạm ngừng → màn Nâng cấp ẩn giá + nút mua (chốt B1, spec 12.4).
+          GoRoute(
+            path: '/nha/tao',
+            redirect: redirectTheoQuyen(MaQuyen.giaDinh),
+            builder: (_, __) => const TaoNhaPage(),
+          ),
 
           // Budget rules
           // `?id=<uuid>` = sửa ngân sách đã có; không có tham số = tạo mới.
