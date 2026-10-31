@@ -1,0 +1,144 @@
+import 'dart:async';
+
+import 'package:flowmoney/features/household/data/datasources/chia_se_chu.dart';
+import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
+import 'package:flowmoney/features/household/presentation/pages/moi_thanh_vien_page.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../../../../helpers/bat_thong_bao.dart';
+import '../../../../helpers/font_that.dart';
+import '../../../../helpers/household_api_gia.dart';
+import '../../../../helpers/nha_gia.dart';
+
+class _ChiaSeGia implements ChiaSeChu {
+  final da = <String>[];
+  @override
+  Future<void> chiaSe(String chu) async => da.add(chu);
+}
+
+void main() {
+  setUpAll(napFontThat);
+
+  Future<(HouseholdApiGia, _ChiaSeGia, BatThongBao)> mo(WidgetTester t,
+      {Map<String, Object?>? nha, bool banPhim = false, List<Map<String, Object?>> ds = const []}) async {
+    dat360(t, banPhim: banPhim);
+    final bat = batThongBao();
+    final api = HouseholdApiGia()
+      ..cuaToiJson = nha ?? nhaJson()
+      ..dsMaMoiJson = ds;
+    final chiaSe = _ChiaSeGia();
+    final repo = await repoNhaThu(api);
+    await t.pumpWidget(bocTrangNha(MoiThanhVienPage(repo: repo, chiaSe: chiaSe)));
+    await t.pumpAndSettle();
+    return (api, chiaSe, bat);
+  }
+
+  testWidgets('hai khối, một nhãn Vai; không chữ Stitch tự thêm', (t) async {
+    await mo(t);
+    expect(find.text('Mời qua email'), findsOneWidget);
+    expect(find.text('Mã mời'), findsOneWidget);
+    expect(find.text('Vai'), findsNWidgets(2));
+    expect(find.text('Vai trò trong nhà'), findsNothing);
+    expect(find.text('Cấp quyền khi nhập mã'), findsNothing);
+  });
+
+  testWidgets('email sai dạng: nút khoá; gửi xong dòng đã gửi, chung một câu', (t) async {
+    final (api, _, _) = await mo(t);
+    FilledButton nut() => t.widget(find.ancestor(of: find.text('Gửi lời mời'), matching: find.byWidgetPredicate((w) => w is FilledButton)));
+    await t.enterText(find.byType(TextField).first, 'an@');
+    await t.pump();
+    expect(nut().onPressed, isNull);
+    await t.enterText(find.byType(TextField).first, 'an@gmail.com');
+    await t.pump();
+    expect(nut().onPressed, isNotNull, reason: 'email đúng dạng và nhà còn chỗ thì nút phải mở');
+    await t.tap(find.text('Gửi lời mời'));
+    await t.pumpAndSettle();
+    expect(api.goi, contains('moiQuaEmail:an@gmail.com:Member'));
+    expect(find.text('Đã gửi lời mời tới an@gmail.com'), findsOneWidget);
+  });
+
+  testWidgets('nút Gửi khoá suốt lúc chờ mạng (không gửi hai lần)', (t) async {
+    final (api, _, _) = await mo(t);
+    await t.enterText(find.byType(TextField).first, 'an@gmail.com');
+    await t.pump();
+    api.treo = Completer<void>();
+    await t.tap(find.text('Gửi lời mời'));
+    await t.pump();
+    final nut = t.widget<FilledButton>(find.ancestor(of: find.text('Gửi lời mời'), matching: find.byWidgetPredicate((w) => w is FilledButton)));
+    expect(nut.onPressed, isNull, reason: 'trang phải nghe dangGuiEmail, không đọc state một lần');
+    api.treo!.complete();
+    await t.pumpAndSettle();
+  });
+
+  testWidgets('tạo mã vai Chỉ xem: hiện mã; Chia sẻ soạn sẵn câu có mã', (t) async {
+    final (api, chiaSe, _) = await mo(t);
+    await t.ensureVisible(find.text('Tạo mã'));
+    await t.tap(find.descendant(of: find.byKey(const Key('vai-ma')), matching: find.text('Chỉ xem')));
+    await t.pump();
+    await t.tap(find.text('Tạo mã'));
+    await t.pumpAndSettle();
+    expect(api.goi, contains('taoMaMoi:Viewer'));
+    expect(find.text('ABCD2345'), findsWidgets);
+    await t.ensureVisible(find.text('Chia sẻ'));
+    await t.tap(find.text('Chia sẻ'));
+    await t.pump();
+    expect(chiaSe.da.single, contains('ABCD2345'));
+    expect(chiaSe.da.single, contains('Nhà An – Bình'));
+  });
+
+  testWidgets('lỗi tạo mã: kênh báo đúng câu', (t) async {
+    final (api, _, bat) = await mo(t);
+    api.loi = loiServer(500, 'HOUSEHOLD_ERROR');
+    await t.ensureVisible(find.text('Tạo mã'));
+    await t.tap(find.text('Tạo mã'));
+    await t.pumpAndSettle();
+    expect(bat.cuoi!.cau, cauLoiNha(LoaiLoiNha.mayChu));
+  });
+
+  testWidgets('nhà đủ (gồm cả lời mời còn hiệu lực): hai nút khoá kèm câu lý do', (t) async {
+    await mo(t,
+        nha: nhaJson(maxMembers: 3),
+        ds: [
+          {'code': 'AAAA2222', 'role': 'Member', 'email': null, 'expiresAt': DateTime.now().add(const Duration(days: 1)).toUtc().toIso8601String(), 'status': 'Pending'},
+        ]);
+    expect(find.text('Nhà đã đủ người, kể cả lời mời còn hiệu lực.'), findsOneWidget);
+    await t.enterText(find.byType(TextField).first, 'an@gmail.com');
+    await t.pump();
+    expect(t.widget<FilledButton>(find.ancestor(of: find.text('Gửi lời mời'), matching: find.byWidgetPredicate((w) => w is FilledButton))).onPressed, isNull);
+    expect(t.widget<OutlinedButton>(find.ancestor(of: find.text('Tạo mã'), matching: find.byWidgetPredicate((w) => w is OutlinedButton))).onPressed, isNull);
+  });
+
+  testWidgets('vai Thành viên lọt vào màn Mời: nút khoá, nói "chỉ chủ nhà", không nói "chỉ xem"', (t) async {
+    await mo(t, nha: nhaJson(myRole: 'Member'));
+    expect(find.text('Chỉ chủ nhà làm được việc này.'), findsOneWidget);
+    expect(find.textContaining('chế độ chỉ xem'), findsNothing);
+    expect(t.widget<OutlinedButton>(find.ancestor(of: find.text('Tạo mã'), matching: find.byWidgetPredicate((w) => w is OutlinedButton))).onPressed, isNull);
+  });
+
+  testWidgets('Chủ nhà, nhà chỉ xem: câu chỉ xem, nút khoá', (t) async {
+    await mo(t, nha: nhaJson(status: 'ReadOnly'));
+    expect(find.text('Nhà đang ở chế độ chỉ xem — chủ nhà cần gia hạn Premium.'), findsOneWidget);
+    expect(find.text('Chỉ chủ nhà làm được việc này.'), findsNothing);
+    expect(t.widget<OutlinedButton>(find.ancestor(of: find.text('Tạo mã'), matching: find.byWidgetPredicate((w) => w is OutlinedButton))).onPressed, isNull);
+  });
+
+  testWidgets('danh sách: dòng còn hiệu lực có Huỷ, dòng đã từ chối có nhãn, không nút', (t) async {
+    final han = DateTime.now().add(const Duration(days: 1)).toUtc().toIso8601String();
+    final (api, _, _) = await mo(t, ds: [
+      {'code': 'AAAA2222', 'role': 'Member', 'email': 'an@x.vn', 'expiresAt': han, 'status': 'Pending'},
+      {'code': 'BBBB3333', 'role': 'Viewer', 'email': 'binh@x.vn', 'expiresAt': han, 'status': 'Declined'},
+    ]);
+    await t.ensureVisible(find.text('binh@x.vn'));
+    expect(find.text('Huỷ'), findsOneWidget);
+    expect(find.text('Đã từ chối'), findsOneWidget);
+    await t.tap(find.text('Huỷ'));
+    await t.pumpAndSettle();
+    expect(api.goi, contains('huyMaMoi:AAAA2222'));
+  });
+
+  testWidgets('360 dp, bàn phím mở: không tràn', (t) async {
+    await mo(t, banPhim: true);
+    expect(t.takeException(), isNull);
+  });
+}

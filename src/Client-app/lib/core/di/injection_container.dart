@@ -74,6 +74,7 @@ import '../../features/wallet/data/vi_bi_giu_dong_bo.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import '../../features/household/application/dieu_phoi_doi_nha.dart';
+import '../../features/household/data/datasources/chia_se_chu.dart';
 import '../../features/household/data/datasources/household_api.dart';
 import '../../features/household/data/nha_store.dart';
 import '../../features/household/data/repositories/nha_repository.dart';
@@ -561,6 +562,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         db: sl(),
         keoLaiToanBo: (id) => sl<SyncEngine>().keoLaiToanBo(id),
       ));
+
+  sl.registerLazySingleton<ChiaSeChu>(() => const ChiaSeChuThat());
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 

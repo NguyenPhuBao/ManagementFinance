@@ -1,0 +1,207 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../core/di/injection_container.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/utils/gioi_han_do_dai.dart';
+import '../../../../shared/theme/app_colors.dart';
+import '../../data/datasources/chia_se_chu.dart';
+import '../../data/models/loi_moi.dart';
+import '../../data/repositories/nha_repository.dart';
+import '../../domain/cau_loi_nha.dart';
+import '../../domain/moi_thanh_vien.dart';
+import '../../domain/quyen_nha.dart';
+import '../../domain/vai_nha.dart';
+import '../bloc/moi_thanh_vien_cubit.dart';
+import '../bloc/nha_cubit.dart';
+import '../widgets/gac_vai_chu.dart';
+import '../widgets/moi_thanh_vien/chon_vai_moi.dart';
+import '../widgets/moi_thanh_vien/danh_sach_loi_moi.dart';
+import '../widgets/nha_minh/khung_the_nha.dart';
+
+/// Màn Mời thành viên `/nha/moi` (`01` mục 2.1; spec 5.2, 12.2; Stitch `b017710c…`).
+class MoiThanhVienPage extends StatefulWidget {
+  const MoiThanhVienPage({super.key, this.repo, this.chiaSe});
+
+  /// `null` → `sl<NhaRepository>()`.
+  final NhaRepository? repo;
+
+  /// `null` → `sl<ChiaSeChu>()`.
+  final ChiaSeChu? chiaSe;
+
+  @override
+  State<MoiThanhVienPage> createState() => _MoiThanhVienPageState();
+}
+
+class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
+  final _email = TextEditingController();
+  late final NhaCubit _nha;
+  late final MoiThanhVienCubit _moi;
+  final _subs = <StreamSubscription<String>>[];
+  VaiNha _vaiEmail = VaiNha.thanhVien;
+  VaiNha _vaiMa = VaiNha.thanhVien;
+
+  @override
+  void initState() {
+    super.initState();
+    final repo = widget.repo ?? sl<NhaRepository>();
+    _nha = NhaCubit(repo);
+    _moi = MoiThanhVienCubit(repo);
+    void bao(String c) => baoNhanh(c, loai: LoaiThongBao.loi);
+    _subs..add(_nha.canBao.listen(bao))..add(_moi.canBao.listen(bao));
+    unawaited(_nha.moTrang());
+    unawaited(_moi.nap());
+  }
+
+  @override
+  void dispose() {
+    _email.dispose();
+    for (final s in _subs) {
+      unawaited(s.cancel());
+    }
+    unawaited(_nha.close());
+    unawaited(_moi.close());
+    super.dispose();
+  }
+
+  void _chepMa(String ma) {
+    Clipboard.setData(ClipboardData(text: ma));
+    baoNhanh('Đã chép mã mời', loai: LoaiThongBao.xong);
+  }
+
+  @override
+  Widget build(BuildContext context) => MultiBlocProvider(
+        providers: [BlocProvider.value(value: _nha), BlocProvider.value(value: _moi)],
+        child: GacVaiChu(
+          dangTuThaoTac: () => false,
+          child: Scaffold(
+            appBar: AppBar(title: const Text('Mời thành viên')),
+            body: SafeArea(
+              child: BlocBuilder<NhaCubit, NhaState>(
+                builder: (context, n) => BlocBuilder<MoiThanhVienCubit, MoiThanhVienState>(
+                  builder: (context, m) => ListView(padding: const EdgeInsets.all(16), children: _than(n, m)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+  List<Widget> _than(NhaState n, MoiThanhVienState m) {
+    final chu = Theme.of(context).textTheme;
+    final nha = n.nha.nha;
+    final now = DateTime.now();
+    final choPhep = duocLamViecNha(ViecNha.taoMa, vai: n.nha.vai, trangThai: nha?.trangThai);
+    final conCho = nha == null ||
+        conChoMoi(soThanhVien: n.nha.thanhVien.length, soLoiMoiConHieuLuc: _moi.soConHieuLuc, toiDa: nha.toiDaThanhVien);
+    // Kho chưa nạp thì `vai` còn null: `choPhep` false nhưng chưa có gì để nói.
+    final lyDo = !n.daNap
+        ? null
+        : n.nha.vai != VaiNha.chu
+            ? cauLoiNha(LoaiLoiNha.khongPhaiChu)
+            : !choPhep
+                ? cauLoiNha(LoaiLoiNha.nhaChiXem)
+                : (conCho ? null : 'Nhà đã đủ người, kể cả lời mời còn hiệu lực.');
+    final khoa = !n.daNap || lyDo != null;
+    final hien = dongLoiMoiHien(m.ds, now);
+    final ma = m.maVuaTao;
+    return [
+      if (lyDo != null) ...[
+        Text(lyDo, style: chu.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+        const SizedBox(height: 12),
+      ],
+      KhungTheNha(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Mời qua email', style: chu.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+              inputFormatters: const [GioiHanDoRong(DoRongCot.email)],
+              decoration: const InputDecoration(labelText: 'Email'),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            ChonVaiMoi(vai: _vaiEmail, onDoi: (v) => setState(() => _vaiEmail = v)),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: !khoa && emailHopLeSoBo(_email.text) && !m.dangGuiEmail
+                  ? () => unawaited(_moi.guiEmail(_email.text, _vaiEmail))
+                  : null,
+              icon: const Icon(Icons.send_outlined),
+              label: const Text('Gửi lời mời'),
+            ),
+            // Một câu cho mọi email hợp lệ: không cho biết email có tài khoản hay không (`01` mục 2.2).
+            if (m.emailVuaGui != null) ...[
+              const SizedBox(height: 8),
+              Text('Đã gửi lời mời tới ${m.emailVuaGui}', style: chu.bodySmall?.copyWith(color: AppColors.onSecondaryContainer)),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: 16),
+      KhungTheNha(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Mã mời', style: chu.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            KeyedSubtree(
+              key: const Key('vai-ma'),
+              child: ChonVaiMoi(vai: _vaiMa, onDoi: (v) => setState(() => _vaiMa = v)),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: !khoa && !m.dangTaoMa ? () => unawaited(_moi.taoMa(_vaiMa)) : null,
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('Tạo mã'),
+            ),
+            if (ma != null) ...[
+              const SizedBox(height: 12),
+              Text(ma.ma, textAlign: TextAlign.center, style: chu.headlineSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 4)),
+              if (ma.hetHan != null)
+                Text('Hết hạn ${DateFormatter.formatDateTime(ma.hetHan!.toLocal())}',
+                    textAlign: TextAlign.center, style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => unawaited((widget.chiaSe ?? sl<ChiaSeChu>())
+                          .chiaSe(cauChiaSeMaMoi(tenNha: nha?.ten ?? '', ma: ma.ma, hetHan: ma.hetHan))),
+                      icon: const Icon(Icons.share_outlined),
+                      label: const Text('Chia sẻ'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _chepMa(ma.ma),
+                      icon: const Icon(Icons.copy_outlined),
+                      label: const Text('Chép mã'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+      if (hien.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text('LỜI MỜI', style: chu.labelMedium?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+        ),
+        DanhSachLoiMoi(ds: hien, now: now, onHuy: (x) => unawaited(_moi.huy(x))),
+      ],
+    ];
+  }
+}
