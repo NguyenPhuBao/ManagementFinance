@@ -66,6 +66,29 @@ void main() {
     expect(nhatKy, isEmpty);
   });
 
+  test('DoiNha xếp hàng từ tài khoản CŨ khi phiên đã sang tài khoản khác: bỏ qua, không dọn, không kéo, không ghi dấu', () async {
+    final dau = <String>[];
+    final phienKhac = DieuPhoiDoiNha(
+      db: db,
+      keoLaiToanBo: (id) async => nhatKy.add('keo:$id'),
+      ghiDau: (id, nha) async => dau.add('dau:$id:$nha'),
+      taiKhoanPhien: () => 11,
+    );
+    await phienKhac.xuLy(const DoiNha(idaccount: 10, tu: 5, den: 12));
+    expect(await idVi(), hasLength(3), reason: 'dọn theo sự kiện của tài khoản khác là xoá nhầm hàng nhà của phiên hiện tại');
+    expect(nhatKy, isEmpty);
+    expect(dau, isEmpty, reason: 'dấu còn nguyên nên phiên sau của tài khoản 10 phát lại đúng cặp này');
+    // Cùng tài khoản thì chạy bình thường.
+    await DieuPhoiDoiNha(
+      db: db,
+      keoLaiToanBo: (id) async => nhatKy.add('keo:$id'),
+      ghiDau: (id, nha) async => dau.add('dau:$id:$nha'),
+      taiKhoanPhien: () => 10,
+    ).xuLy(const DoiNha(idaccount: 10, tu: 5, den: 12));
+    expect(await idVi(), isNot(contains('vi-nha-5')));
+    expect(dau, ['dau:10:12']);
+  });
+
   test('vào nhà 12 → kéo lại toàn bộ cho đúng tài khoản, không xoá gì', () async {
     await dieuPhoi.xuLy(const DoiNha(idaccount: 10, tu: null, den: 12));
     expect(nhatKy, ['keo:10']);

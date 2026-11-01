@@ -87,7 +87,9 @@ NotificationGroup nhomCua(NotificationKind kind) {
 ///
 /// Các loại này là những loại DUY NHẤT báo việc máy **đụng tiền thật** trong lúc
 /// người dùng vắng mặt: bốn loại tiền rời ví (hai chỗ trong app tự chuyển tiền
-/// hộ họ) và hai loại gỡ khoản góp / rút quỹ rồi trả tiền về ví riêng.
+/// hộ họ), một loại gỡ khoản trả hoá đơn thua cuộc đua hai máy rồi hoàn tiền
+/// (`billPaidOnOtherDevice`) và hai loại gỡ khoản góp / rút quỹ rồi trả tiền về
+/// ví riêng — bảy loại.
 ///
 /// "Đừng nhắc tôi hoá đơn sắp tới hạn" và "đừng cho tôi biết app vừa rút tiền
 /// của tôi" là hai câu hoàn toàn khác nhau, nhưng trước đây người dùng chỉ gạt

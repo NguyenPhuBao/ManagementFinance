@@ -92,6 +92,10 @@ class DieuPhoiDoiNha {
   }
 
   Future<void> xuLy(DoiNha d) async {
+    // Sự kiện xếp hàng từ tài khoản cũ: dọn / kéo theo nó là xoá nhầm hàng nhà của phiên hiện tại. Không ghi dấu — dấu còn
+    // nên phiên sau của tài khoản ấy phát lại (cùng khuôn [donHangKet]).
+    final phien = _taiKhoanPhien;
+    if (phien != null && phien() != d.idaccount) return;
     final tu = d.tu;
     Object? loiDon;
     StackTrace? dauVetDon;
