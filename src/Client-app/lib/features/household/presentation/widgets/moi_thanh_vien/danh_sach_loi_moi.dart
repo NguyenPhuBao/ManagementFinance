@@ -4,7 +4,7 @@ import '../../../../../shared/theme/app_colors.dart';
 import '../../../data/models/loi_moi.dart';
 import '../../../domain/ma_moi.dart';
 import '../../../domain/vai_nha.dart';
-import '../nha_minh/khung_the_nha.dart';
+import '../khung_the_nha.dart';
 
 class DanhSachLoiMoi extends StatelessWidget {
   const DanhSachLoiMoi({super.key, required this.ds, required this.now, required this.onHuy, this.dangHuy = const {}});

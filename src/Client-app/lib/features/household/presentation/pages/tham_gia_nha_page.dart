@@ -16,8 +16,8 @@ import '../../data/repositories/nha_repository.dart';
 import '../../domain/cau_loi_nha.dart';
 import '../../domain/ma_moi.dart';
 import '../bloc/tham_gia_nha_cubit.dart';
-import '../widgets/nha_minh/danh_sach_thanh_vien.dart';
-import '../widgets/nha_minh/khung_the_nha.dart';
+import '../widgets/nhan_vai.dart';
+import '../widgets/khung_the_nha.dart';
 
 /// Ô mã mời: in hoa, bỏ khoảng trắng / gạch nối ngay lúc gõ, tối đa [kDoDaiMaMoi] ký tự.
 class MaMoiFormatter extends TextInputFormatter {

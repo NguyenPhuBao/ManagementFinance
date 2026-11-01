@@ -15,7 +15,7 @@ import '../../domain/cau_loi_nha.dart';
 import '../../domain/moi_thanh_vien.dart';
 import '../../domain/vai_nha.dart';
 import '../bloc/nha_cubit.dart';
-import '../widgets/nha_minh/khung_the_nha.dart';
+import '../widgets/khung_the_nha.dart';
 
 /// Màn Tạo nhà `/nha/tao` (spec 5.1, 12.2; Stitch `411a20c1…`). Basic và Premium tạm ngừng bị cửa route chặn trước khi tới đây.
 class TaoNhaPage extends StatefulWidget {

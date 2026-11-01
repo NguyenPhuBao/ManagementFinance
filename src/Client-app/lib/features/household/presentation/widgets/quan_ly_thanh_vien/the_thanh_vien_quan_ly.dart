@@ -4,8 +4,9 @@ import '../../../../../core/utils/date_formatter.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../data/models/nha_cua_toi.dart';
 import '../../../domain/vai_nha.dart';
-import '../nha_minh/danh_sach_thanh_vien.dart';
-import '../nha_minh/khung_the_nha.dart';
+import '../avatar_chu_cai.dart';
+import '../ten_thanh_vien.dart';
+import '../khung_the_nha.dart';
 
 /// Dòng phụ dưới tên thành viên (spec 12.2: dòng phụ = ngày vào nhà), dùng cho cả dòng của mình lẫn dòng người khác.
 class NgayVaoNha extends StatelessWidget {

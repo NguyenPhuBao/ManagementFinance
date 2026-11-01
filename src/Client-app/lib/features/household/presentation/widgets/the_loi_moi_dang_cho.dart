@@ -5,7 +5,7 @@ import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/loi_moi.dart';
 import '../../domain/cau_loi_nha.dart';
 import '../../domain/vai_nha.dart';
-import 'nha_minh/khung_the_nha.dart';
+import 'khung_the_nha.dart';
 
 /// Thẻ *Lời mời đang chờ* (`01` mục 2.1, spec 12.3). Đang ở nhà ⇒ *Chấp nhận* khoá kèm câu theo vai. Admin tắt quyền tham
 /// gia ⇒ khoá kèm câu trung tính, KHÔNG mời mua (spec 12.4). *Từ chối* luôn bấm được.

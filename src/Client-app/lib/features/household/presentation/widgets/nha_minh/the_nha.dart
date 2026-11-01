@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../data/models/nha_cua_toi.dart';
 import '../../../domain/vai_nha.dart';
-import 'khung_the_nha.dart';
+import '../khung_the_nha.dart';
 
 class TheNha extends StatelessWidget {
   const TheNha({super.key, required this.trangThai});

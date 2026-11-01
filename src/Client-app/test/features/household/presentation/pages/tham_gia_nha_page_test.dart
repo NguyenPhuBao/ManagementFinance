@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flowmoney/core/utils/date_formatter.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
 import 'package:flowmoney/features/household/domain/moi_thanh_vien.dart';
-import 'package:flowmoney/features/household/presentation/widgets/nha_minh/danh_sach_thanh_vien.dart';
+import 'package:flowmoney/features/household/presentation/widgets/nhan_vai.dart';
 import 'package:flowmoney/features/household/presentation/pages/tham_gia_nha_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

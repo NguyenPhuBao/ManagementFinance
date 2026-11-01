@@ -11,8 +11,10 @@ import '../../data/repositories/nha_repository.dart';
 import '../bloc/nha_cubit.dart';
 import '../widgets/gac_vai_chu.dart';
 import '../widgets/hop_xac_nhan_nha.dart';
-import '../widgets/nha_minh/danh_sach_thanh_vien.dart';
-import '../widgets/nha_minh/khung_the_nha.dart';
+import '../widgets/avatar_chu_cai.dart';
+import '../widgets/nhan_vai.dart';
+import '../widgets/ten_thanh_vien.dart';
+import '../widgets/khung_the_nha.dart';
 import '../widgets/quan_ly_thanh_vien/the_thanh_vien_quan_ly.dart';
 
 /// Màn Quản lý thành viên `/nha/thanh-vien` (spec 5.4, 5.5, 12.2; Stitch `456078e5…`). Nhà `ReadOnly` vẫn đổi vai / chuyển chủ /

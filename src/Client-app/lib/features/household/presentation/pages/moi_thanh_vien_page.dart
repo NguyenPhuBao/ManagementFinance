@@ -21,7 +21,7 @@ import '../bloc/nha_cubit.dart';
 import '../widgets/gac_vai_chu.dart';
 import '../widgets/moi_thanh_vien/chon_vai_moi.dart';
 import '../widgets/moi_thanh_vien/danh_sach_loi_moi.dart';
-import '../widgets/nha_minh/khung_the_nha.dart';
+import '../widgets/khung_the_nha.dart';
 
 /// Màn Mời thành viên `/nha/moi` (`01` mục 2.1; spec 5.2, 12.2; Stitch `b017710c…`).
 class MoiThanhVienPage extends StatefulWidget {
