@@ -99,6 +99,21 @@ void main() {
     }
   });
 
+  test('ví: uuTien đứng đầu, viGiuLai giữ ví lưu trữ trong bộ chọn', () async {
+    await db.walletDao.insert(WalletsCompanion.insert(
+        id: 'vc2', idaccount: 10, name: 'vc2', idhousehold: const Value(5), updatedAt: moc));
+    final repo = DuLieuNhaRepositoryImpl(
+      db: db,
+      localDataSource: WalletLocalDataSourceImpl(db: db),
+      soDuVi: SoDuViService(db: db, taiKhoanPhien: () => 10),
+      syncEngine: _SyncEngineGia(),
+    );
+    final theo = ThemGiaoDichNguonNha(
+        idNha: 5, duLieu: repo, categoryDao: db.categoryDao, viUuTien: 'vc2', viGiuLai: {'vc-luu-tru'});
+    expect((await theo.napViDangDung(10)).map((v) => v.id), ['vc2', 'vc', 'vc-luu-tru'],
+        reason: 'ví ưu tiên đứng đầu; ví lưu trữ của khoản đang sửa vẫn có mặt; ví đã xoá / nhà khác thì không');
+  });
+
   test('danh mục: chỉ của nhà (không nhóm, không đã xoá), không danh mục riêng; từ khoá rỗng', () async {
     final (ds, tuKhoa) = await nguon.napDanhMucVaTuKhoa(10);
     expect(ds.map((c) => c.id), ['dn']);

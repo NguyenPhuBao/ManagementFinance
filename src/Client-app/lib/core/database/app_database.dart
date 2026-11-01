@@ -745,6 +745,47 @@ class AppDatabase extends _$AppDatabase {
         await dem(categories, categories.idhousehold, categories.syncStatus);
   }
 
+  /// Như [demHangChuaDayCuaNha] nhưng tách theo loại, cho hộp hỏi lại trước Rời nhà / Giải tán (gia đình 1B).
+  ///
+  /// Giao dịch có mã cặp VÀ do [idaccount] ghi mới tách `gop` (nửa nhà `thu`) / `rut` (nửa nhà `chi`): rời nhà chỉ trả tiền nửa
+  /// của tôi (`traVeKhiBoNha`), nửa người khác (Chủ xoá hộ khi offline) vào `khoan`. [idaccount] `null` (không phiên) thì mọi
+  /// giao dịch vào `khoan`. `khac` = ngân sách + mục tiêu.
+  Future<({int khoan, int gop, int rut, int vi, int danhMuc, int khac})> hangChuaDayCuaNha(int idhousehold,
+      {required int? idaccount}) async {
+    Future<int> dem<T extends HasResultSet, D>(
+        ResultSetImplementation<T, D> bang, Expression<int> nha, Expression<String> trangThai) async {
+      final tong = countAll();
+      final q = selectOnly(bang)
+        ..addColumns([tong])
+        ..where(nha.equals(idhousehold) & trangThai.equals('pending'));
+      return (await q.getSingle()).read(tong) ?? 0;
+    }
+
+    var khoan = 0, gop = 0, rut = 0;
+    final giaoDich = await (select(transactions)
+          ..where((t) => t.idhousehold.equals(idhousehold) & t.syncStatus.equals('pending')))
+        .get();
+    for (final t in giaoDich) {
+      final nuaCuaToi = idaccount != null && t.fundPairId != null && t.idaccount == idaccount;
+      if (!nuaCuaToi) {
+        khoan++;
+      } else if (t.type == 'thu') {
+        gop++;
+      } else {
+        rut++;
+      }
+    }
+    return (
+      khoan: khoan,
+      gop: gop,
+      rut: rut,
+      vi: await dem(wallets, wallets.idhousehold, wallets.syncStatus),
+      danhMuc: await dem(categories, categories.idhousehold, categories.syncStatus),
+      khac: await dem(budgets, budgets.idhousehold, budgets.syncStatus) +
+          await dem(goals, goals.idhousehold, goals.syncStatus),
+    );
+  }
+
   /// Mọi `idhousehold` còn trên máy ở năm bảng đồng bộ (kể cả hàng đã xoá mềm / `pending`). Phép dọn hàng nhà kẹt của
   /// `DieuPhoiDoiNha` so với nhà `/me` vừa xác nhận: nhà nào khác thì không còn thuộc người dùng.
   Future<List<int>> cacNhaConTrenMay() async {

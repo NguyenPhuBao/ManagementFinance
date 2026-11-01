@@ -293,4 +293,186 @@ void main() {
     expect((await db.walletDao.getById(v.id))!.name, 'Chung');
     expect((await db.walletDao.getById(v.id))!.idhousehold, 7);
   });
+
+  group('lối đọc / ghi của 1B', () {
+    test('viChungChoForm: ví lưu trữ chỉ hiện khi ở giuLai, ví ưu tiên đứng đầu', () async {
+      await themVi('A', nha: 7, ten: 'A');
+      await themVi('B', nha: 7, ten: 'B');
+      await themVi('C', nha: 7, ten: 'C', status: 'inactive');
+      await themVi('D', nha: 8, ten: 'D');
+      final mo = await repo.viChungChoForm(7, uuTien: 'B');
+      expect(mo.map((v) => v.id), ['B', 'A'], reason: 'ví lưu trữ và ví nhà khác không vào bộ chọn');
+      final sua = await repo.viChungChoForm(7, giuLai: {'C'});
+      expect(sua.map((v) => v.id).toSet(), {'A', 'B', 'C'},
+          reason: 'sửa khoản trên ví đã lưu trữ mà ví vắng là form đổi ví im lặng');
+      final uuTienChet = await repo.viChungChoForm(7, uuTien: 'C');
+      expect(uuTienChet.map((v) => v.id), isNot(contains('C')),
+          reason: 'ví ưu tiên đã lưu trữ thì bỏ qua, form chọn ví đầu');
+    });
+
+    test('suaViChung giữ status của hàng, form mở lâu không bỏ lưu trữ', () async {
+      final cu = await taoVi('Cũ');
+      await repo.luuTruViChung(idNha: 7, id: cu.id, luuTru: true);
+      await repo.suaViChung(cu.copyWith(name: 'Mới'));
+      final hang = (await db.walletDao.getById(cu.id))!;
+      expect(hang.status, 'inactive', reason: 'entity cũ mang status active; ghi đè là bỏ lưu trữ im lặng');
+      expect(hang.name, 'Mới');
+    });
+
+    test('luuTruViChung: đổi status, hẹn đồng bộ, KHÔNG bị chốt ví hoạt động cuối cùng', () async {
+      final v = await taoVi('Duy nhất');
+      sync.soLanHen = 0;
+      await repo.luuTruViChung(idNha: 7, id: v.id, luuTru: true);
+      expect((await db.walletDao.getById(v.id))!.status, 'inactive',
+          reason: 'ví chung duy nhất vẫn lưu trữ được: chốt "ví cuối" của ví riêng đếm ví của tài khoản');
+      expect((await db.walletDao.getById(v.id))!.syncStatus, 'pending');
+      expect(sync.soLanHen, 1);
+      await repo.luuTruViChung(idNha: 7, id: v.id, luuTru: false);
+      expect((await db.walletDao.getById(v.id))!.status, 'active');
+    });
+
+    test('luuTruViChung từ chối ví không thuộc nhà', () async {
+      await themVi('rieng');
+      await themVi('nha-khac', nha: 8);
+      await themVi('xoa', nha: 7, daXoa: true);
+      for (final id in ['rieng', 'nha-khac', 'xoa', 'khong-co']) {
+        await expectLater(repo.luuTruViChung(idNha: 7, id: id, luuTru: true), throwsA(isA<CacheException>()),
+            reason: 'ví $id không phải ví sống của nhà 7');
+      }
+      expect((await db.walletDao.getById('rieng'))!.status, 'active');
+      expect((await db.walletDao.getById('nha-khac'))!.status, 'active');
+    });
+
+    test('xoaViChung: còn số dư hoặc còn giao dịch thì từ chối, ví trống thì xoá mềm', () async {
+      final coSoDu = await taoVi('Có tiền', soDu: 100000);
+      await expectLater(
+          repo.xoaViChung(idNha: 7, id: coSoDu.id),
+          throwsA(isA<CacheException>().having((e) => e.message, 'message', contains('lưu trữ'))),
+          reason: 'câu phải chỉ lối sang lưu trữ');
+      expect((await db.walletDao.getById(coSoDu.id))!.deletedAt, isNull);
+
+      await themVi('co-gd', nha: 7, ten: 'Có giao dịch');
+      await themKhoan('k1', 'co-gd', nha: 7);
+      await expectLater(repo.xoaViChung(idNha: 7, id: 'co-gd'), throwsA(isA<CacheException>()),
+          reason: 'số dư 0 nhưng đã có giao dịch: lịch sử phải được giữ');
+      expect((await db.walletDao.getById('co-gd'))!.deletedAt, isNull);
+
+      final trong = await taoVi('Trống');
+      sync.soLanHen = 0;
+      await repo.xoaViChung(idNha: 7, id: trong.id);
+      final h = (await db.walletDao.getById(trong.id))!;
+      expect(h.deletedAt, isNotNull);
+      expect(h.syncStatus, 'pending');
+      expect(sync.soLanHen, 1);
+
+      await themVi('rieng');
+      await expectLater(repo.xoaViChung(idNha: 7, id: 'rieng'), throwsA(isA<CacheException>()),
+          reason: 'ví riêng không xoá qua đường ví chung');
+    });
+
+    test('napCayDanhMuc: nhóm, con, chưa nhóm của đúng nhà, đúng classify', () async {
+      Future<void> dm(String id, {int? nha, String classify = 'chi', bool nhom = false, String? cha, bool xoa = false}) =>
+          db.categoryDao.insert(CategoriesCompanion.insert(
+            id: id,
+            idaccount: 10,
+            name: id,
+            classify: classify,
+            idhousehold: Value(nha),
+            isGroup: Value(nhom),
+            parentId: Value(cha),
+            deletedAt: Value(xoa ? moc : null),
+            updatedAt: moc,
+          ));
+      await dm('g', nha: 7, nhom: true);
+      await dm('con', nha: 7, cha: 'g');
+      await dm('le', nha: 7);
+      await dm('mo-coi', nha: 7, cha: 'nhom-khong-co');
+      await dm('thu', nha: 7, classify: 'thu');
+      await dm('nha-khac', nha: 8);
+      await dm('rieng');
+      await dm('da-xoa', nha: 7, xoa: true);
+
+      final cay = await repo.napCayDanhMuc(7, 'chi');
+      expect(cay.groups.map((g) => g.group.id), ['g']);
+      expect(cay.groups.single.children.map((c) => c.id), ['con']);
+      expect(cay.ungroupedChildren.map((c) => c.id).toSet(), {'le', 'mo-coi'},
+          reason: 'con của nhóm không còn trong nhà đứng ở "chưa nhóm"');
+      expect(cay.defaultChildren, isEmpty);
+      expect(cay.dangTamNgung, isEmpty);
+      expect(cay.groups.single.group.idhousehold, 7, reason: 'Entity phải mang nhà để màn Sửa chốt phạm vi (ruling I-2)');
+
+      final thu = await repo.napCayDanhMuc(7, 'thu');
+      expect(thu.ungroupedChildren.map((c) => c.id), ['thu']);
+
+      final theoDoi = await repo.theoDoiCayDanhMuc(7, 'chi').first;
+      expect(theoDoi.groups.map((g) => g.group.id), ['g'], reason: 'luồng theo dõi cùng cây với phép đọc một lần');
+    });
+
+    group('hangChuaDay', () {
+      Future<void> khoanCho(String id, String vi,
+              {int idaccount = 20, int nha = 7, String loai = 'chi', String? cap, String st = 'pending', bool xoa = false}) =>
+          db.transactionDao.insert(TransactionsCompanion.insert(
+            id: id,
+            walletId: vi,
+            idaccount: idaccount,
+            idhousehold: Value(nha),
+            fundPairId: Value(cap),
+            amount: 1000,
+            type: loai,
+            date: moc,
+            syncStatus: Value(st),
+            deletedAt: Value(xoa ? moc : null),
+            updatedAt: moc,
+          ));
+
+      test('phân loại góp, rút, khoản, ví, danh mục, mục tiêu', () async {
+        await themVi('v7', nha: 7);
+        await db.walletDao.insert(WalletsCompanion.insert(
+            id: 'v8', idaccount: 20, name: 'v8', idhousehold: const Value(8), updatedAt: moc, syncStatus: const Value('pending')));
+        await khoanCho('chi-thuong', 'v7');
+        await khoanCho('gop', 'v7', loai: 'thu', cap: 'cap-1');
+        await khoanCho('rut', 'v7', loai: 'chi', cap: 'cap-2');
+        await khoanCho('da-dong-bo', 'v7', st: 'synced');
+        await khoanCho('nha-khac', 'v8', nha: 8);
+        await db.categoryDao.insert(CategoriesCompanion.insert(
+            id: 'dm', idaccount: 20, name: 'dm', classify: 'chi', idhousehold: const Value(7), updatedAt: moc));
+        await db.goalDao.insert(GoalsCompanion(
+            id: const Value('mt'),
+            idaccount: const Value(20),
+            name: const Value('mt'),
+            targetAmount: const Value(1),
+            targetDate: Value(moc),
+            idhousehold: const Value(7),
+            syncStatus: const Value('pending'),
+            updatedAt: Value(moc)));
+
+        final h = await repo.hangChuaDay(7, idaccount: 20);
+        // `themVi('v7')` mặc định đã `pending`, nên ví đếm 1.
+        expect((h.khoan, h.gop, h.rut, h.vi, h.danhMuc, h.khac), (1, 1, 1, 1, 1, 1));
+        expect(h.rong, isFalse);
+        expect(h.coTienTraVe, isTrue);
+        expect(await db.demHangChuaDayCuaNha(7), h.khoan + h.gop + h.rut + h.vi + h.danhMuc + h.khac,
+            reason: 'tổng sáu loại phải bằng phép đếm cũ của cổng Rời nhà');
+      });
+
+      test('nửa góp pending của người khác đếm vào khoan, không vào gop', () async {
+        await themVi('v7', nha: 7);
+        await db.walletDao.markSynced('v7');
+        // Chủ (20) xoá hộ offline nửa góp do tài khoản 10 ghi: lệnh xoá pending vẫn mang mã cặp.
+        await khoanCho('gop-cua-10', 'v7', idaccount: 10, loai: 'thu', cap: 'cap-1', xoa: true);
+        final h = await repo.hangChuaDay(7, idaccount: 20);
+        expect((h.khoan, h.gop, h.coTienTraVe), (1, 0, false),
+            reason: 'traVeKhiBoNha chỉ trả nửa của tôi; hộp nói được trả tiền là sai');
+      });
+
+      test('không phiên: mọi hàng vào khoan', () async {
+        await themVi('v7', nha: 7);
+        await db.walletDao.markSynced('v7');
+        await khoanCho('gop', 'v7', loai: 'thu', cap: 'c1');
+        await khoanCho('rut', 'v7', loai: 'chi', cap: 'c2');
+        final h = await repo.hangChuaDay(7, idaccount: null);
+        expect((h.khoan, h.gop, h.rut), (2, 0, 0));
+      });
+    });
+  });
 }

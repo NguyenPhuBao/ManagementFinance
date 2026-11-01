@@ -11,9 +11,10 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final moc = DateTime(2026, 10, 15, 7);
   // Mọi trường khác mặc định của Entity (icon 'category', colour '#4CAF50', bốn cờ false, parentId null, syncStatus 'pending').
-  Category hang({String id = 'c-1'}) => Category(
+  Category hang({String id = 'c-1', int nha = 7}) => Category(
         id: id,
         idaccount: 10,
+        idhousehold: nha,
         name: 'Ăn uống',
         classify: 'thu',
         icon: 'food',
@@ -32,13 +33,14 @@ void main() {
         updatedAt: moc,
       );
 
-  test('fromDrift chép đủ 14 trường, không chép 5 cột ngoài Entity', () async {
+  test('fromDrift chép đủ 15 trường, không chép 4 cột ngoài Entity', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
     final e = CategoryEntity.fromDrift(hang());
-    expect(e.props.length, db.categories.$columns.length - 5,
+    expect(e.props.length, db.categories.$columns.length - 4,
         reason:
-            'Thêm cột vào bảng Categories thì quyết định: vào Entity, hay ghi vào danh sách 5 cột không chép.');
+            'Thêm cột vào bảng Categories thì quyết định: vào Entity, hay ghi vào danh sách 4 cột không chép.');
+    expect(e.idhousehold, 7, reason: 'màn Sửa danh mục của nhà chốt phạm vi theo nhà của hàng (gia đình 1B, ruling I-2)');
     expect(e.id, 'c-1');
     expect(e.idaccount, 10);
     expect(e.name, 'Ăn uống');
@@ -66,5 +68,7 @@ void main() {
         CategoryEntity.fromDrift(hang()).hashCode);
     expect(CategoryEntity.fromDrift(hang()),
         isNot(CategoryEntity.fromDrift(hang(id: 'c-2'))));
+    expect(CategoryEntity.fromDrift(hang()), isNot(CategoryEntity.fromDrift(hang(nha: 8))),
+        reason: 'thiếu idhousehold trong props thì hai Entity khác nhà so bằng nhau');
   });
 }

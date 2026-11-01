@@ -20,17 +20,39 @@ import '../../transaction/domain/doc_mon_hang.dart';
 import '../../wallet/data/models/wallet_entity.dart';
 import 'repositories/du_lieu_nha_repository.dart';
 
+/// Tham số dựng [ThemGiaoDichNguonNha] qua DI (`sl<ThemGiaoDichNguon>(param1: …)`): nhà của trang, ví đứng đầu bộ chọn và các ví
+/// phải giữ trong bộ chọn dù đã lưu trữ (khoản đang sửa nằm trên ví ấy).
+class ThamSoNguonNha {
+  const ThamSoNguonNha({required this.idNha, this.uuTien, this.giuLai = const {}});
+
+  final int idNha;
+  final String? uuTien;
+  final Set<String> giuLai;
+}
+
 class ThemGiaoDichNguonNha implements ThemGiaoDichNguon {
-  ThemGiaoDichNguonNha({required this.idNha, required DuLieuNhaRepository duLieu, required CategoryDao categoryDao})
-      : _duLieu = duLieu,
+  ThemGiaoDichNguonNha({
+    required this.idNha,
+    required DuLieuNhaRepository duLieu,
+    required CategoryDao categoryDao,
+    this.viUuTien,
+    this.viGiuLai = const {},
+  })  : _duLieu = duLieu,
         _categoryDao = categoryDao;
 
   final int idNha;
   final DuLieuNhaRepository _duLieu;
   final CategoryDao _categoryDao;
 
+  /// Ví đứng đầu bộ chọn (ví đang xem ở trang Ví chung), nếu còn hoạt động.
+  final String? viUuTien;
+
+  /// Ví phải còn trong bộ chọn dù đã lưu trữ: sửa khoản trên ví ấy mà ví vắng là form đổi ví im lặng.
+  final Set<String> viGiuLai;
+
   @override
-  Future<List<WalletEntity>> napViDangDung(int? idaccount) => _duLieu.viChungDangDung(idNha);
+  Future<List<WalletEntity>> napViDangDung(int? idaccount) =>
+      _duLieu.viChungChoForm(idNha, giuLai: viGiuLai, uuTien: viUuTien);
 
   // Không học từ khoản của nhà: `LichSuHoc` rỗng (bảng ví hay dùng rỗng, không mô hình).
   @override

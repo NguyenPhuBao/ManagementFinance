@@ -126,9 +126,13 @@ class GopQuyService {
   }
 
   /// Đổi số tiền, ngày, ghi chú của CẢ HAI nửa trong một giao tác. Ví và chiều tiền không đổi.
-  Future<void> sua({required String maCap, required double soTien, required DateTime ngay, required String ghiChu}) async {
+  ///
+  /// Trả `false` khi máy không còn nửa nào của mã ấy (cặp đã bị gỡ ở máy khác rồi kéo về) — tầng trên báo cho người dùng thay vì
+  /// im lặng coi là đã sửa.
+  Future<bool> sua({required String maCap, required double soTien, required DateTime ngay, required String ghiChu}) async {
     if (!(soTien > 0)) throw const CacheException('Số tiền phải lớn hơn 0.');
     final cap = await docCap(maCap);
+    if (cap.rieng == null && cap.nha == null) return false;
     final vi = _viCuaCap(cap);
     final noteRieng = await _ghiChuRieng(cap, ghiChu);
     await _soDuVi.datNeoNhieuVi(vi);
@@ -148,6 +152,7 @@ class GopQuyService {
     });
     await _soDuVi.tinhLaiNhieuVi(vi);
     _henDongBo();
+    return true;
   }
 
   /// Ghi chú mới của nửa riêng: dựng lại từ tiền tố + TÊN ví chung (đọc từ ví), không tách ghi chú cũ theo dấu `·` —
@@ -164,9 +169,10 @@ class GopQuyService {
   }
 
   /// Xoá mềm cả hai nửa còn trên máy, rồi tính lại hai ví. Máy chỉ còn một nửa (Chủ nhà xoá hộ, hoặc tiền mặt trao tay)
-  /// thì xoá nửa ấy.
-  Future<void> xoa(String maCap) async {
+  /// thì xoá nửa ấy. Trả `false` khi máy không còn nửa nào của mã ấy.
+  Future<bool> xoa(String maCap) async {
     final cap = await docCap(maCap);
+    if (cap.rieng == null && cap.nha == null) return false;
     final vi = _viCuaCap(cap);
     await _soDuVi.datNeoNhieuVi(vi);
     await _db.transaction(() async {
@@ -176,6 +182,7 @@ class GopQuyService {
     });
     await _soDuVi.tinhLaiNhieuVi(vi);
     _henDongBo();
+    return true;
   }
 
   Set<String> _viCuaCap(({TransactionEntity? rieng, TransactionEntity? nha}) cap) =>

@@ -399,4 +399,16 @@ void main() {
       expect(ds.singleWhere((t) => t.fundPairId != null).note, 'Rút quỹ · Tiền chợ');
     });
   });
+
+  test('sua và xoa trả false khi mã không còn hàng nào, true khi có', () async {
+    expect(await s.sua(maCap: 'la', soTien: 1, ngay: DateTime(2026), ghiChu: ''), isFalse,
+        reason: 'cặp đã bị gỡ ở máy khác: tầng trên phải biết để báo, không coi là đã sửa');
+    expect(await s.xoa('la'), isFalse);
+    expect(soLanHen, 0, reason: 'không làm gì thì không hẹn đồng bộ');
+
+    final p = await s.gop(idNha: 7, idaccount: 10, viChungId: 'vn', tenViChung: 'T', soTien: 1000, viRiengId: 'vr', ngay: ngay);
+    expect(await s.sua(maCap: p, soTien: 2000, ngay: ngay, ghiChu: 'x'), isTrue);
+    expect(await s.xoa(p), isTrue);
+    expect(await s.xoa(p), isFalse, reason: 'xoá lần hai: cả hai nửa đã xoá mềm, docCap không thấy nữa');
+  });
 }
