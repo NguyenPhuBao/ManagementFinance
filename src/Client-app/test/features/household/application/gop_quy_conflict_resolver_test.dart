@@ -158,7 +158,8 @@ void main() {
         expect(await soDu('vr'), 5000000, reason: 'tiền về ví riêng');
         expect(await soDu('vn'), 1000000, reason: 'ví chung về đúng số cũ');
         expect((await hang(nuaNha.id)).syncStatus, 'synced',
-            reason: 'mã vĩnh viễn KHÔNG làm hàng thôi pending: không markSynced thì cờ xoá bị đẩy lên mãi (server chưa có hàng)');
+            reason: 'mã vĩnh viễn KHÔNG làm hàng thôi pending: không markSynced thì lệnh xoá bị đẩy lại mãi và lần nào cũng bị chính mã ấy từ chối ở '
+                'kiểm quyền, trước khi tới xoá (hàng server CÒN nếu bản sửa bị từ chối — G119)');
         expect((await hang(nuaRieng.id)).syncStatus, 'pending', reason: 'nửa riêng đã/ sẽ lên server: cờ xoá phải đi lên');
         final tb = await thongBao();
         expect(tb, hasLength(1));

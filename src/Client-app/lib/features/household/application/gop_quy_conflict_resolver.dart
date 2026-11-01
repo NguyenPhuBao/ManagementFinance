@@ -22,7 +22,9 @@ import 'gop_quy_service.dart';
 ///
 /// ⚠️ Mã từ chối VĨNH VIỄN không làm hàng thôi `pending` (`gui_lo_dong_bo.dart` chỉ chặn theo thời gian): nửa của nhà phải tự
 /// `markSynced`, nếu không nó bị đẩy lại mãi và lần nào cũng bị từ chối. Xoá mềm đặt lại `pending` nên `markSynced` đứng SAU
-/// xoá mềm — khuôn của Bill resolver (server chưa bao giờ có hàng này, đẩy cờ xoá lên là `Record not found` mỗi chu kỳ).
+/// xoá mềm — khuôn của Bill resolver. Lý do thật: lệnh xoá của hàng nhà bị chính mã ấy từ chối ở bước kiểm quyền của server,
+/// TRƯỚC khi tới xoá — đẩy lại là bị từ chối lại mỗi chu kỳ. (Không phải vì server "chưa có hàng": xoá hàng server không có
+/// được trả `synced`, còn bản sửa bị từ chối thì server CÒN hàng — lệch hai nửa đó là G119.)
 class GopQuyConflictResolver {
   GopQuyConflictResolver({
     required AppDatabase db,
@@ -188,7 +190,8 @@ class GopQuyConflictResolver {
     await _db.transaction(() async {
       if (rieng != null) await _db.transactionDao.softDelete(rieng.id);
       await _db.transactionDao.softDelete(nua.id);
-      // Sau xoá mềm (nó đặt lại `pending`): hàng này server chưa bao giờ có, không được đẩy cờ xoá lên.
+      // Sau xoá mềm (nó đặt lại `pending`): lệnh xoá của hàng nhà sẽ bị chính mã từ chối này chặn lại mỗi chu kỳ (kiểm quyền
+      // đứng trước xoá) — thoát hàng đợi thay vì đẩy lại mãi. Server có thể còn hàng (G119).
       await _db.transactionDao.markSynced(nua.id);
     });
     await _soDuVi.tinhLaiNhieuVi(vi);
