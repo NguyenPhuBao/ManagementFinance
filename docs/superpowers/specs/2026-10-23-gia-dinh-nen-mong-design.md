@@ -424,6 +424,12 @@ Stitch tự thêm các chi tiết dưới đây; app bám bố cục của màn,
   khoá `loiMoiNha:<code>`; deeplink `/nha`; câu *"{người mời} mời bạn vào nhà {tên nhà}"*.
 - **Đang xem màn của Chủ mà mất vai / bị mời ra / nhà giải tán** (sự kiện từ máy khác): `/nha/moi`, `/nha/thanh-vien` tự về `/nha` kèm `baoNhanh`.
 - Sau thao tác: rời / giải tán ⇒ về `/nha` trạng thái chưa có nhà; tạo / tham gia ⇒ về `/nha` có nhà; dữ liệu nhà tải ngầm, không có màn chờ.
+- **Chỗ mã khác bản duyệt (Ruling trong sổ đợt, 2026-11-01):**
+  - **Tham gia bằng mã:** ô nhận nguyên tin chia sẻ — `trichMaMoi` tách mã 8 ký tự ra khỏi tin (formatter lọc theo bảng ký tự, bàn phím `visiblePassword`); khoá ô lúc đang vào nhà; lượt xem trước theo số thế hệ, mã chết (`_INVALID` / `_EXPIRED` / `_USED` / `_DECLINED`) bỏ thẻ xem trước; **`nhaDu` (nhà đã đủ người) không phải lỗi thử lại được** — thamGia hỏng vì nhà đủ thì bỏ thẻ, bấm *Xem trước* để thử lại. Tham gia thành công cũng làm mới danh sách lời mời (`thamGia` gọi `lamMoiLoiMoi`, I2).
+  - **Thông báo lời mời:** bộ quét chỉ được đánh thức khi có **mã** lời mời mới (so tập mã `maLoiMoiDaBao`), không mỗi lần phát — mỗi lần là một `scan` đầy đủ kể cả tự trả / tự trích. Quét sau `stop()` bị chặn (`quetKhiRanh`, I3).
+  - **Chủ nhà đứng đầu danh sách thành viên** ở cả Nhà mình và Quản lý (một hàm chung `chuNhaDungDau`; Quản lý ban đầu theo thứ tự server, sửa 2026-11-01 sau máy ảo).
+  - **Màn Mời:** `_lamRoiVe` giữ cờ tự thao tác khi thành công và khi mất vai giữa chừng (tránh pop đôi, I1); `dangHuy` theo tập mã; nạp lại lời mời theo `theoDoi` khi vẫn là Chủ; `GacVaiChu` im khi phiên đóng; khối mã chỉ hiện khi mã còn hiệu lực, huỷ mã xong thì bỏ (M6).
+  - **Đổi tài khoản trên máy (G114):** sau phép dọn xoá được hàng nào, `moPhienCucBo` xin kéo toàn bộ (`a5ef5111`).
 
 ### 12.4 Quyền gói
 
@@ -438,9 +444,9 @@ Stitch tự thêm các chi tiết dưới đây; app bám bố cục của màn,
   mời luôn câu trung tính. `/me` không qua quyền (Basic ở nhà vẫn thấy nhà).
 - `limits.household_wallets`, `household_members` tiếp tục bỏ qua (mục 11 #4).
 
-### 12.5 Đường backend (`04` mục 2b) — 🔄 đổi 2026-10-31 sau PR #174
+### 12.5 Đường backend (`04` mục 2b) — ✅ **đã đóng** (PR #174, 2026-10-31); máy ảo đạt 2026-11-01, hai máy thật còn đo
 
-Bản duyệt phiên 26 ghi `/invitations`, `/accept`, `/decline`, `/dissolve` đang 500 và nghiệm thu *chờ*. Backend gộp `main` @ `8e3b4e48` cùng ngày; kịch bản `chay_kiem.js` chạy thật trên bản sao + CSDL tạm đạt **50 / 50**. Người dùng đã duyệt đổi này (phiên 27), nên:
+Bản duyệt phiên 26 ghi `/invitations`, `/accept`, `/decline`, `/dissolve` đang 500 và nghiệm thu *chờ*. Backend gộp `main` @ `8e3b4e48` cùng ngày; kịch bản `chay_kiem.js` chạy thật trên bản sao + CSDL tạm đạt **50 / 50**. Người dùng đã duyệt đổi này (phiên 27); nghiệm thu máy ảo 411 dp 2026-11-01 (HEAD `a102173a`, backend `8e3b4e48` trên CSDL tạm, 18 dòng: 16 đạt trọn, 2 một phần) chạy thật cả bốn đường dưới đây, trừ thư gửi thật (backend dev giả lập):
 
 | Đường | Nghiệm thu |
 |---|---|
@@ -467,6 +473,7 @@ Chưa thuộc lát 2: `Premium` không hạn (55.A3). Backend đã ghi hợp đ�
 - **Thông báo** đi qua cổng trong mảng `notification` (không import repository nhà vào luật); `theoDoiLoiMoi` đánh thức bộ quét, nối ở `main.dart` như các nguồn hiện có.
 - **Quét:** 21 miễn trừ `nha_cua_toi.dart` (nợ 5); `kMucDrawer` tám mục (`drawer_trang_chu_test`, *"MỌI trang tính năng vào được từ menu"*); quét 10, 12, 19, 22, 23, 25, 31 áp cho trang mới.
   `HouseholdApiGia` sửa theo hình dạng thật `{targetIdaccount,newRole}` · `{removed}` · `{dissolved}` **trước** khi viết test cubit (nợ 11).
+- **Quét 42** (`household/divider_co_mau_test.dart`, 2026-11-01): `Divider` trong `household/presentation` phải nêu `color:`. Widget dùng chung của nhiều trang (`KhungTheNha`, `AvatarChuCai`, `NhanVai`, `TenThanhVien`) ở `widgets/`, không ở `widgets/nha_minh/` (M5, `cb6ffa6e`).
 - **Dấu bền** (G113 lỗ hổng 1): kho theo tài khoản ghi *"đã xử lý tới nhà X"*; `DieuPhoiDoiNha` ghi dấu sau `xuLy` thành công; mở phiên so dấu với kho nhà, lệch ⇒ chạy lại `xuLy` với cặp nhà ấy.
 
 Nợ G113 chưa thuộc lát 2: 2, 3, 4, 6, 14 (cần đường ghi vào nhà — phần 2a), 13.
@@ -486,4 +493,5 @@ Nợ G113 chưa thuộc lát 2: 2, 3, 4, 6, 14 (cần đường ghi vào nhà �
 - **Test:** hàm thuần; ba cubit bằng `HouseholdApiGia` đã sửa; trang ở **360 dp, có ca bàn phím mở**, mỗi trạng thái của ba màn Nhà mình, tên dài (*"Bạn"* không mất), nhà đủ người, mất vai giữa chừng; quyền (22 → 24 mã, đếm lại khi thi công);
   thông báo một lần mỗi mã; router thật cho `/nha/*` và deeplink. Nợ 1, 9: ca đỏ trước (neo mang nhà, máy thành viên không đặt neo, ví nhà không `pending`, purge có neo cũ không ném).
 - **Trước khi báo xong:** `flutter test` + `flutter analyze` so với mức nền; máy ảo 411 dp đi hết các màn (điều hướng là vùng mù của test).
-- **Đo hai máy thật, hai tài khoản** (`PersonFinance`; Realme + máy thứ hai): tạo nhà · mời mã · xem trước · tham gia · đổi vai · chuyển chủ · mời ra · rời · Basic bị chặn tạo nhưng tham gia được; tạo ví chung qua API rồi xem dữ liệu nhà về máy kia, không lẫn Trang chủ; rời nhà không khoá đăng nhập. Sau PR #174 đo thật cả thẻ lời mời + thông báo + chấp nhận / từ chối, giải tán, gửi thư thật tới hộp thư.
+- **Kết quả đã có (2026-11-01):** `flutter test` cả bộ + `flutter analyze` (số ở khối 🏠 `PROJECT_CONTEXT.md` mục 14); máy ảo 411 dp trên backend CSDL tạm đi hết tám màn, drawer tám mục, hộp xác nhận, cỡ chữ 2,0 + bàn phím thật: **không lỗi chức năng**; lần đo thứ hai sau đợt sửa giao diện bắt L1 (chip Mời cắt chữ), L2 (nút giải tán tràn 320 dp), L3 (gợi ý xám) — đã sửa ở `cbe89339`, **chưa đo lại trên máy** (có ca đo trực tiếp + ảnh thăm dò). **Chưa đo:** thư lời mời thật, neo ví nhà trên máy thật (chưa có đường tạo ví chung), TalkBack (chấm trạng thái chỉ có màu), bản release, 320 dp cho Mời / Tạo / Tham gia.
+- **Đo hai máy thật, hai tài khoản** (`PersonFinance`; Realme + máy thứ hai) — **còn đo, cần người dùng**: tạo nhà · mời mã · xem trước · tham gia · đổi vai · chuyển chủ · mời ra · rời · Basic bị chặn tạo nhưng tham gia được; tạo ví chung qua API rồi xem dữ liệu nhà về máy kia, không lẫn Trang chủ; rời nhà không khoá đăng nhập. Sau PR #174 đo thật cả thẻ lời mời + thông báo + chấp nhận / từ chối, giải tán, gửi thư thật tới hộp thư.

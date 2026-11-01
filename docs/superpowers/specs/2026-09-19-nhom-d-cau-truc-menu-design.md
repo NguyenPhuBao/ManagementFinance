@@ -118,7 +118,7 @@ trí 2. **Số nhánh không đổi** (vẫn bốn) nên phép lệch giữ nguy
 (chỉ số 2, hiện UI ở vị trí 3) đổi **route** từ `/budget` sang `/transactions`,
 cùng với nhãn và icon.
 
-## 4. Drawer — còn bảy mục
+## 4. Drawer — còn bảy mục *(ảnh chụp 2026-09-19; từ 2026-11-01 drawer có **tám** mục — thêm *Nhà mình* thứ năm, spec gia đình mục 12.3)*
 
 ```
 Quản lý ví           /wallets
