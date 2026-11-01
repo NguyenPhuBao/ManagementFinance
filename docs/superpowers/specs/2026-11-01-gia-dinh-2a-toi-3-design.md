@@ -75,12 +75,13 @@ CREATE INDEX IF NOT EXISTS "idx_transaction_fund_pair"
 
 **`modules/sync/sync.repository.js`:**
 - `mapEntityFields('transaction', …)` nhận `idfund_pair`, `fundPairId`, cạnh khối `idwallet_transfer` (dòng 61–64).
-- Ghi ở **cả hai** khối `data`: tạo (dòng 472) và sửa (dòng 511, `!== undefined`). Thiếu là bị bỏ qua im lặng.
+- Ghi ở **cả hai** khối `data`: tạo và sửa. Thiếu là bị bỏ qua im lặng. Khối sửa dùng `mapped.idfund_pair || existing.idfund_pair` — **server không bao giờ gỡ mã cặp đã gắn** (máy có cột cục bộ `null` gửi `null` sẽ xoá mã nếu dùng `!== undefined`; đã đổi sau 1A, mục 15).
 - `/sync/pull` trả khoá `idfund_pair` (chuỗi hoặc `null`).
 
 **`modules/sync/sync.service.js`:**
 - `Transfer` mang `idfund_pair` ⇒ `HOUSEHOLD_SCOPE_MISMATCH`.
-- Hàng của nhà có `Idfund_pair`: **sửa** chỉ người ghi (`existing.Idaccount`), khác ⇒ `HOUSEHOLD_ROLE_FORBIDDEN`. Chủ nhà vẫn **xoá** được. Bảng `01` mục 3.
+- Hàng của nhà có `Idfund_pair`: **sửa** chỉ người ghi (`existing.Idaccount`), khác ⇒ `HOUSEHOLD_ROLE_FORBIDDEN`. Chủ nhà vẫn **xoá** được; "xoá" là `operation === 'delete'` (không đọc `is_deleted` trong payload; client thật luôn xoá bằng op `delete`). `isNewTx` loại op `delete`. Bảng `01` mục 3.
+- Mọi thao tác mang `idcategory` / `categoryId` trỏ danh mục có `Idhousehold` khác phạm vi đích (riêng ↔ nhà, nhà A ↔ nhà B, **kể cả khuôn mặc định** vốn không có `Idhousehold`) ⇒ `HOUSEHOLD_SCOPE_MISMATCH` (`validateEntityScope`, thêm ở 1B, `6684cc6c`). Client 1B không tạo được ca này (danh mục chọn từ cây của nhà); đây là lưới.
 - Giao dịch riêng trỏ `idgoal` tới mục tiêu của nhà ⇒ `HOUSEHOLD_SCOPE_MISMATCH` (`validateEntityScope` đã có; thêm ca canh).
 
 **Kiểm chứng:** `KIEM-THU/chay_kiem_gia_dinh_2.js` chạy trên CSDL thử `flowmoney_kiem_thu` (khuôn `chay_kiem.js`), không `.env`. Ca tối thiểu: khứ hồi `idfund_pair` qua push + pull ở cả tạo lẫn sửa · `Transfer` có mã cặp bị từ chối · Chủ nhà sửa nửa của nhà của người khác bị từ chối, xoá thì được · người ghi sửa được · hàng riêng mang mã cặp về đúng máy chủ nhân. `verify:household` vẫn 50 / 50.
@@ -106,6 +107,9 @@ CREATE INDEX IF NOT EXISTS "idx_transaction_fund_pair"
 | Sửa khoản thu / chi thường | mọi khoản | khoản của mình | |
 | Sửa khoản có mã cặp | chỉ của mình | của mình | |
 | Xoá khoản | mọi khoản | khoản của mình | |
+| Sửa / xoá khoản **chuyển** (`Transfer`) | ✓ | | |
+
+Hàm `duocSuaKhoanNha` / `duocXoaKhoanNha` nhận thêm `laChuyen` (mã: `household/domain/quyen_nha.dart`): khoản chuyển chỉ Chủ, kể cả khoản do Thành viên ghi (đường thật là Chủ cũ bị hạ xuống Thành viên). Nơi gọi tính `laChuyen` từ cả `type` hiện có lẫn `type` mới của form.
 | Xem ví, hoạt động, bảng góp, báo cáo | ✓ | ✓ | ✓ |
 
 Chủ nhà hết Premium ⇒ nhà `ReadOnly` ⇒ mọi người như cột cuối.
@@ -118,14 +122,14 @@ Viết ca đỏ trước cho từng lỗi. Cả ba đều hỏng im lặng.
 
 **7.1 Hàng sửa hộ không bao giờ lên server.** `transactionDao`, `walletDao`, `goalDao`, `budgetDao`.`getPending(idaccount)` và `categoryDao.getSyncableCategories` lọc `idaccount = tôi`, trong khi `idaccount` của hàng nhà là **người ghi**. Chủ nhà sửa khoản của Thành viên, Chủ mới sửa ví của Chủ cũ, Thành viên sửa danh mục người khác tạo: hàng nằm `pending` mãi. Đổi thành `idaccount = tôi ∨ idhousehold = nhà đang ở`, truyền nhà từ `NhaRepository` vào `ThuGomThaoTacDay`. Khối 1b thêm ca khoá `idhousehold` (G113 nợ 4). Backend giữ `Idaccount` người ghi đã đo (57.4).
 
-**7.2 Sửa danh mục của nhà làm mất `idhousehold`.** Đường sửa đi `categoryDao.insert` (= `insertOrReplace`), companion từ draft không có trường này (G113 nợ 3). Phải mang trường theo; đường đọc danh mục cá nhân đang lọc `idhousehold IS NULL` giữ nguyên. Từ khoá, kiểm trùng tên, bộ chọn danh mục của nhà đọc theo nhà; danh sách chọn vẫn qua cửa quét 40.
+**7.2 Sửa danh mục của nhà làm mất `idhousehold`.** Đường sửa đi `categoryDao.insert` (= `insertOrReplace`), companion từ draft không có trường này (G113 nợ 3). Phải mang trường theo; đường đọc danh mục cá nhân đang lọc `idhousehold IS NULL` giữ nguyên. Kiểm trùng tên và bộ chọn danh mục của nhà đọc **`getCuaNha`** (theo nhà), **không** qua cửa quét 40 (cửa ấy tồn tại để ẩn theo khuôn mặc định, danh mục nhà không có luật đó). Từ khoá: danh mục nhà **không có từ khoá** ở 1B (draft `keywords: []`, không `replaceKeywords`; từ khoá nhà không đọc được trên máy thành viên) — mục 16.
 
 **7.3 Dọn nhà xoá hàng chưa đẩy.** `purgeDataForOtherAccounts` (khi `nhaGiu` null) và `xoaHangCuaNha` xoá cả `pending` (G113 nợ 2):
 
 | Tình huống | Xử lý |
 |---|---|
 | Người dùng bấm *Rời nhà* / *Giải tán* | Đẩy một lượt trước khi gọi API; còn hàng chưa đẩy được thì hỏi lại |
-| Mở app, kho trạng thái nhà vắng hoặc đọc hỏng | Không xoá hàng `pending` của nhà do mình ghi, cùng ví chúng trỏ tới (khoá ngoại). Giữ tới khi đẩy được hoặc server từ chối rõ |
+| Mở app, kho trạng thái nhà vắng hoặc đọc hỏng | Không xoá hàng `pending` của nhà do mình ghi, cùng ví chúng trỏ tới (khoá ngoại), ở **cả năm bảng**. Còn dấu bền "đã xử lý tới nhà H" thì **hỏi `/me` rồi mới quyết** (người dùng chốt 2026-11-01): còn ở H ⇒ giữ và đẩy; đã bị mời ra ⇒ `DoiNha(H → null)`; offline ⇒ giữ, chờ. Giữ tới khi đẩy được hoặc server từ chối rõ |
 | Bị mời ra / nhà giải tán khi offline | Lượt đẩy nhận mã vĩnh viễn ⇒ hàng lỗi được dọn; khoản góp qua mục 8 |
 | Đăng nhập tài khoản khác | Như cũ: mọi dữ liệu tài khoản cũ bị dọn |
 
@@ -137,11 +141,11 @@ Theo `02A` mục 5–6.
 
 - **`GopQuyService`** (`household/application/`): tạo / sửa / xoá **hai nửa trong một giao tác Drift**, khuôn `addTransactions` (neo số dư trước khi ghi). *Tiền mặt trao tay* chỉ có nửa của nhà, vẫn mang `fundPairId`. Mã cặp là UUID v4.
 - **`GopQuyConflictResolver`:** nghe `pushResultStream`, khuôn `BillPaymentConflictResolver`, đăng ký và bắt đầu nghe cùng chỗ với nó (quét 5 có khuôn). Mã từ chối nửa của nhà ⇒ xoá mềm nửa riêng + thông báo `gopQuyBiTraVe`. Chịu **hai** lượt phát cho cùng một thất bại; khoá `gopTraVe:<cặp>` chống trùng.
-- **Bộ gỡ khi Chủ nhà xoá:** kéo về thấy nửa của nhà mang cờ xoá mà nửa riêng còn sống ⇒ đọc `/me`. Nhà `Active` và mình còn ở ⇒ gỡ + `gopQuyBiXoa`. Nhà giải tán hoặc mình đã rời ⇒ giữ. Offline ⇒ hoãn lượt sau.
+- **Bộ gỡ khi Chủ nhà xoá:** kéo về thấy nửa của nhà mang cờ xoá mà nửa riêng còn sống ⇒ đọc `/me`. Mình còn ở đúng nhà của nửa riêng (`coNha`, gồm cả nhà `ReadOnly`) ⇒ gỡ + `gopQuyBiXoa`. Nhà giải tán hoặc mình đã rời ⇒ giữ. Offline ⇒ hoãn lượt sau.
 - **Rời nhà:** nửa riêng ở lại thành khoản riêng thường.
-- **Thông báo:** `NotificationKind` thêm hai loại nhóm `giaDinh`, sửa hai `switch` không `default` và `tatCaUngVien()`. Chiều phụ thuộc `notification → household`, không tạo vòng (quét 29).
+- **Thông báo:** `NotificationKind` thêm hai loại nhóm `giaDinh`, sửa hai `switch` không `default` và `tatCaUngVien()`. Chiều phụ thuộc thật là `household/application → notification/domain` (cạnh từ `application/`, không vào quét 29).
 
-**Số liệu cá nhân** (`02A` mục 7.2): nửa riêng tính chi / thu qua `khoanVaoThongKe`; các khối gom theo danh mục dùng nhãn ảo *"Góp quỹ gia đình"* / *"Rút quỹ gia đình"*; `thuNhapCua` không gồm nửa rút; `laGhiChuMay`, `xetGan` bỏ mọi hàng có mã cặp; ngân sách theo danh mục không tính. Mở nửa riêng từ Sổ giao dịch thì vào form góp, không form thường.
+**Số liệu cá nhân** (`02A` mục 7.2): nửa riêng tính chi / thu qua `khoanVaoThongKe`; các khối gom theo danh mục dùng nhãn ảo *"Góp quỹ gia đình"* / *"Rút quỹ gia đình"*; `thuNhapCua` không gồm nửa rút (cờ `KhoanThuChi.laRutQuy` / `DiemVayNo.rutQuy`, mã ảo chỉ để gom nhãn); `xetGan` bỏ mọi hàng có mã cặp; `khoaNhomCua` (khoản lặp) bỏ khoản có mã cặp; `laGhiChuMay` **nhận thêm** hai tiền tố `kTienToGopQuy` / `kTienToRutQuy` (sau khi rời nhà mà gắn danh mục thì nửa riêng vẫn không vào mẫu học — 1B, Task 9); ngân sách theo danh mục không tính. Mở nửa riêng từ Sổ giao dịch thì vào form góp, không form thường.
 
 ## 9. Form chế độ nhà
 
@@ -217,7 +221,7 @@ Stitch vẽ thêm vài chi tiết không nằm trong yêu cầu, ví dụ chấm
 
 ## 15. Chỗ mã đợt 1A khác spec
 
-Ghi 2026-11-01 sau đợt 1A (dải mã `2c18bf77..9cfca7bd`; nguồn: sổ đợt `Ruling:` và báo cáo review toàn nhánh). Thân spec ở trên **không** viết lại; khi lệch thì mục này và mã thắng. Chưa đo trên máy thật (thuộc 1B).
+Ghi 2026-11-01 sau đợt 1A (dải mã `2c18bf77..9cfca7bd`; nguồn: sổ đợt `Ruling:` và báo cáo review toàn nhánh). Cuối 1B (2026-11-02) các chỗ lệch ở mục 4, 6, 7.2, 7.3 hàng 2 và 8 của thân spec đã được **sửa chữ** theo bảng này (chỉ chữ, không đổi quyết định); phần còn lại của thân giữ nguyên. Khi lệch thì mục này, mục 16 và mã thắng.
 
 | Mục spec | Spec viết | Mã làm | Lý do |
 |---|---|---|---|
@@ -233,3 +237,76 @@ Ghi 2026-11-01 sau đợt 1A (dải mã `2c18bf77..9cfca7bd`; nguồn: sổ đ�
 | 8 (thông báo) | nhóm `giaDinh`, chịu công tắc nhóm; chiều `notification → household` | hai loại **`luonBao = true`**; chiều thật **`household/application → notification/domain`** (cạnh từ `application/`, không vào quét 29) | tiền hoàn về ví lúc người dùng vắng, cùng lý lẽ `billPaidOnOtherDevice`; chữ spec về chiều là sai |
 | 8 (số liệu cá nhân) | "`laGhiChuMay`, `xetGan` bỏ mọi hàng có mã cặp" | `laGhiChuMay` **không đổi** (mẫu học đã đòi danh mục); `xetGan` bỏ hàng có mã cặp; thêm `khoaNhomCua` (khoản lặp) bỏ khoản có mã cặp | góp đều mỗi tháng sẽ hiện thẻ "Có vẻ là khoản lặp"; bấm Tạo ra hoá đơn cá nhân không có nửa nhà |
 | 5 / đồng bộ | — | khối 1b gửi danh mục kèm theo bỏ qua giao dịch đang bị chặn theo thời gian; năm mã `HOUSEHOLD_*` thuần không tính chu kỳ hỏng, bậc chặn theo `syncRetryCount` của hàng; Pull giữ lệnh xoá chưa đẩy của giao dịch khi bản server còn sống | tránh vòng nóng G63; một khoản nhà bị từ chối không kéo cả đồng bộ cá nhân xuống 1 lần/giờ (đo: giãn cách tới 3.600 s) — `docs/superpowers/sync/SYNC_DOCUMENTATION.md` |
+
+## 16. Chỗ mã đợt 1B khác spec
+
+Ghi 2026-11-02 sau đợt 1B (28 commit `503fc9d5..9f4e5e97`, đếm `git rev-list --count` 2026-11-02; trong đó 1 commit backend `6684cc6c` và 1 commit chỉ sửa `CLAUDE.md`). Nguồn: sổ đợt (`Ruling:`), kế hoạch `docs/superpowers/plans/2026-11-01-gia-dinh-dot-1b-man-hinh.md` (gitignore), báo cáo soát toàn nhánh. **Trạng thái: mã xong + soát toàn nhánh (Opus: 0 Critical, 3 Important đã sửa ở đợt sửa cuối, soát lại đạt); CHƯA đo trên máy thật** (Task 13 thuộc phiên chính; đừng ghi "đạt trên máy" trước khi có bảng đo). Cột "sai thì sao" ghi hệ quả nếu quyết định này hoá ra sai.
+
+### 16.1 Quyết định về Stitch (dự án `5106367939423432838`)
+
+Mã màn: Nhà mình `d2a8c9bb`, Tạo ví `3bfb38b3`, Chi tiết ví `ac57e216` + `6d63311f`, Góp `f77f5bc0`, Form nhà `5a53df6e`, Hoạt động `50af4171`, Danh mục + Hộp xoá `6dc96c4a`; thêm 2026-11-01 (phiên 32): Sửa ví `be328002`, Rút `c39ac4f7`, Chi tiết khoản `a8d53198`, Hàng chưa đồng bộ `1e99ebfa` (người dùng chốt "Dùng luôn, xem sau": có thể đổi sau khi nhìn máy).
+
+| Chi tiết Stitch | Xử lý | Lý do |
+|---|---|---|
+| Chấm xanh cạnh tên nhà, nút ba chấm `more_vert` Nhà mình | Bỏ | Không có nghĩa, nút chết (quét 10) |
+| Phím `.` | Bỏ | Bàn phím thật đã bỏ (A12: số lẻ đọc sai) |
+| Phím `+` `−`, thứ tự 7-8-9 ở trên | Theo `BanPhimSo` thật | Spec mục 10 |
+| ✓ thanh tiêu đề + ✓ bàn phím | Theo luật G58: ✓ tiêu đề chỉ khi 16 phím không trên màn | Đã có ở form cá nhân |
+| "VNĐ - VIỆT NAM ĐỒNG" | Giữ | `KhoiSoTien` in dòng này khi không có phép toán; nhất quán với form (bảng Stitch ghi sai là không có) |
+| Chip *Thu nhập* ở form nhà | Giữ | `02A` mục 3 có *Thu khác* |
+| Chip *Chuyển khoản* | Chỉ Chủ nhà | Mục 6 |
+| Hai nút "Lưu" + "Tạo ví chung" | Giữ cả hai | `WalletAddPage` cá nhân cũng có cặp này |
+| Số dư ban đầu dạng chữ ở Tạo ví | Dùng `OSoDuVi` thật | Stitch không vẽ bàn phím, ô phải nhập được |
+| Huy hiệu "Đã góp" ở Bảng góp | Bỏ, chỉ giữ "Đã rời" | Không có điều kiện ở 2a; đủ / thiếu thuộc `02C` |
+| "Cập nhật tháng này" | Bỏ | Bảng có cả cột từ trước tới nay, câu sai |
+| "Chế độ gia đình · Đồng bộ thời gian thực", thanh Home, thanh trạng thái giả | Bỏ | Không thuộc app; không có đồng bộ thời gian thực |
+| "Chỉ các thành viên trong nhà mới có thể xem hoạt động" | Giữ | Câu đúng |
+| Hai tab Chi / Thu ở Danh mục của nhà | Ba tab `kCategoryClassifies` | Server sao cả danh mục vay / nợ vào nhà; hai tab là không sửa được chúng |
+| Dòng phụ "Từ ví riêng" / "Về ví riêng" ở Chi tiết ví | Hiện theo màn 3, hoặc ghi chú nếu có; khoản góp không ghi chú đổi thành "Góp vào quỹ" (trung tính) | Máy người khác không có nửa riêng nên không biết tên ví; tiền mặt trao tay không có ví riêng |
+| Nhà mình (người dùng chốt 2026-11-01 "Giữ màn đã đo") | Giữ bố cục lát 2, chèn khối Ví chung + hai lối vào giữa thẻ lời mời và THÀNH VIÊN | Màn đã đo trên máy |
+| Màu chênh rất nhỏ so với token (`#767873` ~ `#767872`, `#1a1a19` ~ `#1A1C1A`, `#e8e7e1` ~ outlineVariant, `#f2f1ec` ~ surfaceContainerLow) | Coi là trùng token | Mắt không phân biệt; nhất quán với cả app. Khác hẳn (`#868882`, `#9a9c95` người đã rời, đỏ hộp 8B) thì theo hex Stitch |
+
+### 16.2 Không mở ở 1B (quyết định #4 chỉ thêm, sửa)
+
+- **Không mở xoá danh mục của nhà** (G120 dòng 16 phần xoá còn mở): màn *Danh mục của nhà* chỉ xem, thêm, sửa. Sai thì chỉ thiếu tính năng.
+- **Danh mục của nhà không có từ khoá** (M-17): form nhà không nhập từ khoá, draft `keywords: []`, không `replaceKeywords`. Sai thì chỉ thiếu tính năng từ khoá nhà.
+- **Ba tab** `kCategoryClassifies` thay vì hai (bảng 16.1). Sai thì thừa một tab.
+- **Form danh mục nhà dùng lại `CategoryAddPage` thêm `idNha`** (có sẵn thiết kế), không dựng màn mới. Sai thì trang thêm vài nhánh.
+- **Backend chặn danh mục sai phạm vi** (mục 4): nằm trong phép đích danh "sửa backend trong worktree". Client 1B không tạo được ca này; sai thì thừa một luật.
+- Vế "xét lại `tinhLaiViNha` khi có đường tạo ví chung" **đã kiểm, không cần việc**: purge giữ ví `pending` của người ghi, `tinhLaiViNha` đọc `getTatCaViNha` nên ví chung mới tạo được tính lại.
+
+### 16.3 Ruling của sổ đợt 1B
+
+| Ruling | Mã làm | Khác spec / `02A` | Sai thì sao |
+|---|---|---|---|
+| Thu nhập rút + nhãn ảo làm cùng đợt (Task 10) | `thuNhapCua` loại nửa rút; nhãn ảo *"Góp quỹ gia đình"* / *"Rút quỹ gia đình"* ở các khối gom | `02A` 7.2 chưa ra mã | Dài kế hoạch, không đổi hành vi |
+| I-1: `nhanAoQuy(id)` trả record là định nghĩa duy nhất của nhãn ảo (`transaction/domain/danh_muc_ao_quy.dart`) | Mã ảo không vào danh sách `Category` Drift; `dungKhoan` giữ chữ ký | Spec 8 nói "mã ảo" mơ hồ | Một chỗ tra tên sót hiện "Danh mục đã xoá" |
+| I-7: `KhoanThuChi.laRutQuy`, `DiemVayNo.rutQuy`; `chuoiVayNo` cộng theo cờ rồi `continue`; mã ảo chỉ để gom nhãn | Thu nhập quyết bằng **cờ**, không bằng mã ảo; `continue` bắt buộc (nửa rút gắn danh mục vay nợ mà không `continue` sẽ trừ thu nhập hai lần) | `02A` 7.2 không có ngoại lệ danh mục | Một chỗ dựng `KhoanThuChi` thiếu cờ sẽ tính rút là thu nhập; có ca canh `tai_phan_bo_nguon` |
+| Chi bất thường giữ nửa góp dưới nhãn *"Góp quỹ gia đình"* (Task 10) | `analytics_repository_impl` | Trước đây `categoryId` null bị bỏ qua | Nhận xét có thể nhắc một khoản góp chủ ý là "bất thường"; đổi sau được |
+| I-2: `CategoryEntity` thêm `idhousehold` (`fromDrift`, `props`) | Để `getById` chốt nhà | — | Thêm một trường |
+| I-3: `hangChuaDay(idNha, {required int? idaccount})`: chỉ nửa của tôi vào *gop* / *rut*, nửa người khác vào *khoan*; nửa của tôi đã xoá mềm vào *khoan* | Hộp rời nhà nói đúng tiền nào được trả | Spec 7.3 chưa phân loại | Hộp đếm sai loại, không mất tiền |
+| I-4: hàm thuần `huongFormNha` chặn `huong=transfer` khi không `choChuyen` | `che_do_nha_form.dart` | — | Khoản chuyển của Thành viên bị server từ chối rồi biến mất im lặng |
+| I-5: vuốt xoá nửa riêng: `confirmDismiss` luôn `return false`, tự `baoNhanh` | Trả `true` là gỡ một nửa, lệch cặp | — | Hàng biến mất chậm một nhịp stream |
+| M-4: giữ dòng "VNĐ - VIỆT NAM ĐỒNG" | Bảng 16.1 | — | Thừa một dòng chữ |
+| M-6: bộ vẽ icon ví chung là `categoryIconFor`, thêm `account_balance`, `bank`, `shopping_basket`, `wallet` | `kIconViChung` dùng `account_balance` | — | Icon rơi về mặc định |
+| M-8: `theoDoiBangTraDanhMuc(idaccount)` bọc `watchBangTraTen`, không thêm DAO | Quy tắc 8: một định nghĩa bảng tra | — | Bảng tra thừa hàng riêng, vô hại |
+| M-10: nhánh đếm lại rỗng mà vẫn vướng thì tự `baoNhanh`; `dayVaCho` chạy hai lần chấp nhận | Hộp rời nhà | — | Chờ thêm tối đa 30 s |
+| M-11: route `/nha/vi/:id` thuộc Task 7; nút trỏ route chưa có không bao giờ hiện giữa các task | — | — | Thiếu lối tạm |
+| M-16: chấp nhận redirect `/nha` chồng thêm một `NhaMinhPage` | — | — | Phải Back thêm một lần |
+| T3: form `/nha/khoan` đọc `final nha = t.nha`, `null` thì trả `NhaMinhPage` | Lệch nguyên văn kế hoạch (`t.nha!`) | — | Nhà có thể về `null` lúc form đang mở (giải tán, bị mời ra): người dùng mất chữ đang gõ, khoản đó vốn không lưu được nữa |
+| T5: ô đổi số dư ví chung áp `MaQuyen.walletBalanceAdjustment` như ví riêng (ô chỉ đọc + `DongKhoaQuyen`); `_luu` / `_xoa` kiểm lại vai và id nhà đầu hàm; ô số dư trống ở Sửa = không đổi; khoá khi ví đang lưu trữ | `02A` mục 2 "như ví riêng" | Server không có chốt trên đường đẩy | Chủ nhà Basic không đối soát được ví chung (một dòng đổi) |
+| T6/T7: hộp xoá khoản cặp không hứa trả tiền cho người đã rời; câu "Chủ xoá hộ" có điều kiện (*"Nếu góp từ ví riêng, tiền được trả về đó."*) vì máy Chủ không phân biệt tiền mặt trao tay | `02A` 107 + mục 6 | Chữ về tiền phải đúng | Câu dài hơn |
+| T7: nối `SheetKhoanNha` vào dòng giao dịch ở Chi tiết ví (chạm mở sheet, sửa / xoá như Hoạt động); người ngoài danh sách không gắn "đã rời"; chi tiết chỉ thoát khi route đang trên cùng (`ModalRoute.isCurrent`) | Kế hoạch ghi *Consumes* mà không task nào nhận | — | Thừa một lối vào |
+| T8: cubit gop / rut nhận cặp phải so người ghi (nửa của người khác ⇒ `cauDong`, không sửa) | Spec mục 6 "sửa khoản có mã cặp chỉ của mình" | — | Trang đóng, không mất dữ liệu |
+| T9: sửa, xoá nửa riêng từ Sổ giao dịch và Chi tiết ngân sách đi theo **cả cặp** (`CapGopQuyNguon`, `doc_cap_gop_quy.dart`); Bill không đổi (nửa riêng không bao giờ có `billId`) | `02A` 7.2 "mở nửa riêng thì vào form góp" | Thêm `laGhiChuMay` nhận tiền tố góp / rút | Dây DI mất thì âm thầm về đường cũ (có ca đọc mã) |
+| FINAL I-1: sửa nửa riêng đã rời ở form thường: trang khoá chiều (`khoaChieu`), cubit thêm đúng hai chốt (chiều không đổi; danh mục không bắt buộc) | Lệch luật "không thêm logic vào `ThemGiaoDichCubit`" (mục 9); cubit 1.140 dòng, trần 1.200 | — | Không chặn thì hàng kẹt `pending` vĩnh viễn, im lặng, số dư đã đổi |
+| FINAL I-2: khử trùng thành viên cũ **một chỗ** khi đọc `/me` ở client (`nhaCuaToiTuJson` bỏ id đang ở và khử trùng theo id), không sửa backend lượt này | Đơn backend **64** (`CAN-LAM/VIEC_BACKEND_CON_LAI.md`) | `addMember` tạo hàng mới, không khoá duy nhất theo (nhà, tài khoản) | Backend vẫn trả trùng nhưng client đã chịu được |
+| FINAL I-3: helper `conDuocLamViecNha(repo, idNha, viec)` (`household/application/quyen_hien_tai.dart`) cho cả bốn form ghi; `transaction` / `category` nhận closure từ router, không import `household` | Kiểm lại quyền lúc Lưu một định nghĩa | — | Thừa một tham số |
+| FINAL mục 9 (sheet 13 chữ số): ca ×1,6 chưa đỏ khi bỏ hẳn `FittedBox` (chỉ đỏ với `BoxFit.none`) | Park, không mở đợt sửa thứ hai | — | Sau này bỏ `FittedBox` mà không ca nào đỏ; đo bằng mắt ở Task 13 |
+| Phân loại minor sau soát toàn nhánh | Sửa trước đo máy: `choNapKho` ở DI đọc cặp, `tenVi` lỗi rơi về câu chung, chữ tiền rút không nửa riêng, `moTa` ném thì báo, `conDuocGhi`, nạp lại bộ chọn danh mục; đóng sổ: context sau await, `detail_sheet`, `_goSo` | — | Một mục để sau lộ khi đo, sửa khi ấy |
+
+### 16.4 Chỗ hay hỏng im lặng của 1B (đọc trước khi sửa)
+
+- Route mới (`app_router.dart`): `/nha/vi/tao`, `/nha/vi/:id/sua`, `/nha/vi/:id`, `/nha/hoat-dong`, `/nha/khoan` (+ `/nha/khoan/category`), `/nha/danh-muc`, `/nha/danh-muc/them`, `/nha/danh-muc/:id/sua`, `/nha/gop`. Cửa quyền route chỉ kiểm bằng đọc chuỗi, chưa có ca `GoRouter` thật cho Viewer và nhà `null` (G121). `/nha/khoan` không xét `duocSuaKhoanNha`: cửa gọi phải chặn.
+- Chế độ nhà của form: `CheDoNhaForm` ở `transaction/presentation/state/che_do_nha_form.dart` (không import `household`); nguồn dữ liệu `household/data/them_giao_dich_nguon_nha.dart`.
+- Nhãn ảo chỉ ở **tầng gom thống kê**; đừng đưa vào bảng chọn danh mục hay đồng bộ.

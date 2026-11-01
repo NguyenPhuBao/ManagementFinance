@@ -1,6 +1,6 @@
 # Gia đình — 02a. Ví chung, góp / rút quỹ, bảng góp, dòng hoạt động
 
-> **Ngày:** 2026-10-26 · **Trạng thái:** thiết kế người dùng đã duyệt, chưa có mã · **Người đọc:** backend, PO, client.
+> **Ngày:** 2026-10-26 · **Trạng thái:** thiết kế người dùng đã duyệt; **mã xong ở đợt 1A + 1B trên nhánh `TranQuangDat-backend` (2026-11-02), chưa đo trên máy thật** — chỗ mã khác bản gốc đã sửa chữ ngay trong tài liệu này, danh sách đầy đủ ở spec `2026-11-01-gia-dinh-2a-toi-3-design.md` mục 15–16 · **Người đọc:** backend, PO, client.
 > **Cần trước:** phần 1 (`01_NEN_MONG.md` + đơn 50). Quyết định gốc: `00_TONG_QUAN.md` mục 2 (#12 cặp hai khoản, #14 nửa riêng tính là
 > chi *"Góp quỹ gia đình"*, #15 người ghi + Chủ nhà sửa / xoá).
 
@@ -23,7 +23,7 @@ mục tiêu (`03`), Nhập nhanh / quét ảnh / giọng nói ở chế độ nh
   nhân không gồm ví chung — quyết định #5).
 - **Số dư ban đầu:** giao dịch neo *"Số dư ban đầu"* như ví riêng (id tất định từ `walletId`, chỉ máy tạo ví đặt neo; máy khác nhận qua
   kéo về — thứ tự G85 áp nguyên). Neo **không** tính là tiền góp của ai.
-- **Đối soát số dư** (sửa số dư ở màn Sửa ví chung): sinh khoản điều chỉnh của nhà như ví riêng (`DieuChinhSoDuService`) — Chủ nhà.
+- **Đối soát số dư** (sửa số dư ở màn Sửa ví chung): sinh khoản điều chỉnh của nhà như ví riêng (`DieuChinhSoDuService`) — Chủ nhà. Áp quyền gói **`MaQuyen.walletBalanceAdjustment` như ví riêng** (1B, Task 5): không quyền ⇒ ô chỉ đọc kèm `DongKhoaQuyen`, không sinh khoản bù (server không có chốt riêng trên đường đẩy). Ô trống ở Sửa = không đổi; ô khoá khi ví đang lưu trữ.
 - **Còn giao dịch thì không xoá được, chỉ lưu trữ** (luật G45 của ví riêng); lưu trữ ⇒ ẩn khỏi bộ chọn ví của nhà, giữ trong danh sách.
 - **Trần số ví chung** mỗi nhà: `household.maxSharedWallets` (đề xuất **10**, đếm ví chung **đang hoạt động** — không lưu trữ, chưa xoá).
   Client chặn trước ở nút *Tạo ví chung*; server thi hành khi **tạo** qua `/sync/push` ⇒ lỗi đẩy vĩnh viễn **`HOUSEHOLD_WALLET_LIMIT`**.
@@ -131,12 +131,16 @@ ví riêng. Mọi máy trong nhà có cùng tập hàng của nhà ⇒ cùng s�
   *"Góp quỹ gia đình"* / *"Rút quỹ gia đình"* (nhận qua `fundPairId`, không phải danh mục — không đồng bộ, không chọn được trong bảng chọn).
   Ngân sách **theo danh mục** không tính chúng.
 - *"Thu nhập"* (`thuNhapCua` — định nghĩa duy nhất, ANALYTICS 3.24) **không** gồm nửa riêng của rút (tiền quay về, không phải tiền kiếm
-  được — cùng lý do loại tiền đi vay); *tổng thu* thì gồm.
+  được — cùng lý do loại tiền đi vay); *tổng thu* thì gồm. Mã (1B, 2026-11-02): **`KhoanThuChi.laRutQuy`** (tính bằng `laNuaRutQuy`,
+  `transaction/domain/danh_muc_ao_quy.dart`) → `DiemVayNo.rutQuy`; `chuoiVayNo` cộng theo cờ rồi `continue` (không `continue` thì nửa rút gắn
+  danh mục vay nợ bị trừ thu nhập hai lần). Thu nhập quyết bằng **cờ**, không bằng mã ảo; mã ảo (`nhanAoQuy(id)`) chỉ để gom nhãn, không vào
+  danh sách `Category` Drift. Cả `tai_phan_bo_nguon` (thu nhập tháng nuôi phép neo ngưỡng) dùng cùng cờ.
 - **Không** là mẫu học / khoản cần gắn / khoản lặp (đúng theo mã, 2026-11-01):
   - `xetGan` (thẻ *"Có N giao dịch chưa có danh mục"*, C1) bỏ mọi hàng có `fundPairId` — nếu không, thẻ đếm mọi khoản góp là *"chưa có danh mục"*.
-  - `laGhiChuMay` **không đổi**: mẫu học (`mauHocTu` / `mauSoTienTu`) đã đòi `categoryId` khác `null`, nửa riêng không có danh mục nên không vào mẫu (bản spec cũ nói `laGhiChuMay` bỏ hàng có `fundPairId` — không cần).
+  - `laGhiChuMay` **nhận thêm hai tiền tố `kTienToGopQuy` / `kTienToRutQuy`** (đổi ở 1B, Task 9; trước đó 1A ghi "không đổi" vì mẫu học đã đòi `categoryId` khác `null`): nửa riêng sau khi RỜI nhà là khoản thường, sửa ở form có thể gắn danh mục — ghi chú *"Góp quỹ · …"* vẫn do máy sinh nên không được vào mẫu học. Kèm ca ở `mau_hoc_danh_muc_test.dart`.
   - `khoaNhomCua` (`bill/domain/khoan_lap.dart`, thẻ *"Có vẻ là khoản lặp"*) **bỏ khoản có `fundPairId`**: góp đều mỗi tháng mà không bỏ thì hiện thẻ gợi ý, bấm *Tạo* ra hoá đơn cá nhân không có nửa nhà.
-  - ⚠️ Nửa riêng sau khi RỜI nhà là khoản riêng thường: nếu 1B cho sửa nó ở form thường với danh mục + ghi chú *"Góp quỹ · …"* thì nó vào `mauHocTu` — xét khi làm đường mở nửa riêng.
+  - Nửa riêng sau khi RỜI nhà là khoản riêng thường: form thường **khoá chiều** (`khoaChieu`, bỏ chip Chuyển khoản) và **không đòi danh mục** (`ThemGiaoDichCubit.chuanBiLuu`, FINAL I-1) — không thì hàng kẹt `pending` vĩnh viễn, im lặng. Sửa số tiền của nó thì cặp lệch số với nửa nhà (thiết kế có sẵn, mục 6 hàng *Rời nhà*).
+  - **Nửa riêng còn cặp** (người còn trong nhà): mở từ Sổ giao dịch hay Chi tiết ngân sách thì sửa / xoá đi theo **cả cặp** (`CapGopQuyNguon` → form góp; `doc_cap_gop_quy.dart`; vuốt xoá hỏi qua `hoiCap` + `onXoaCap`).
 
 ### 7.3 Số liệu của nhà
 
@@ -149,7 +153,7 @@ ví riêng. Mọi máy trong nhà có cùng tập hàng của nhà ⇒ cùng s�
 
 ## 8. Bảng ai góp bao nhiêu
 
-Ở Chi tiết ví chung (theo ví) và Nhà mình (cả nhà). Mỗi người — thành viên đang ở, rồi người đã rời có khoản trong ví (tên lấy từ
+Ở Chi tiết ví chung (theo ví; tab *Bảng góp*, `BangGopView`). ⚠️ Bản **cả nhà** ở Nhà mình **chưa làm ở 1B** (mục 10.1 chỉ có tổng quỹ, danh sách ví chung và lối vào Hoạt động; đúng theo mã 2026-11-02) — muốn có thì cộng bảng của từng ví qua `bang_gop.dart`. Mỗi người — thành viên đang ở, rồi người đã rời có khoản trong ví (tên lấy từ
 `formerMembers`, kèm *"(đã rời)"*):
 
 | Cột | Định nghĩa (cho một ví, hoặc mọi ví chung khi xem cả nhà) |
