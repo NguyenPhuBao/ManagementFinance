@@ -214,7 +214,7 @@ Ca 2 đã sửa ở PR #176. Bằng chứng đường thật của gia đình l�
 
 ### Bản vá cho 62.1–62.5
 
-Bản vá 6 tệp, +216 / −142 dòng (3 tệp mã trong `modules/payment/`, 3 tệp test). Không cần migration, không đổi hợp đồng API, client không phải sửa gì. Client đã thử trên bản sao của `13fddd09`, không đụng `src/Backend`: kịch bản **4 / 14 trước khi vá, 14 / 14 sau khi vá**; 78 ca unit thanh toán đều pass; ca 62.3 còn chạy thật trên `PersonFinance`.
+Bản vá 6 tệp, +231 / −142 dòng (3 tệp mã trong `modules/payment/`, 3 tệp test). Không cần migration, không đổi hợp đồng API, client không phải sửa gì. Client đã thử trên bản sao của `13fddd09`, không đụng `src/Backend`: kịch bản **4 / 14 trước khi vá, 14 / 14 sau khi vá**; 78 ca unit thanh toán đều pass (không `.env`, trên CSDL cục bộ); ca 62.3 còn chạy thật trên `PersonFinance`.
 
 ```bash
 # Từ gốc repo
@@ -222,8 +222,11 @@ git apply docs/superpowers/backend/CAN-LAM/KIEM-THU/ban_sua_62.patch
 
 cd src/Backend
 node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_62.js . kq_62.txt   # dòng cuối: 14 đạt / 14 ca
+# Đặt DATABASE_URL + DIRECT_URL trỏ CSDL dev của bạn trước lệnh dưới, đừng để nó đọc `.env` trỏ CSDL dùng chung
 node --test --test-force-exit tests/unit/payment.*.test.js tests/unit/admin.payment.test.js tests/unit/payos*.test.js
 ```
+
+⚠️ **Bộ test này không hoàn toàn cô lập.** `admin.payment.test.js` ca 4, 11, 12 chạm CSDL mà `DATABASE_URL` trỏ tới: `autoExpirePendingOrders` là một `UPDATE` thật, chuyển đơn `PENDING` quá hạn sang `EXPIRED`. Trước bản vá, ca 7 và 9 còn gọi PayOS thật khi có khoá (mỗi lượt là một liên kết trên kênh); bản vá đã giả hai ca ấy. Prisma client còn tự nạp `.env` theo đường dẫn lúc `generate`, nên `node_modules` nối junction cũng kéo theo `.env` của thư mục gốc.
 
 Kịch bản không cần CSDL, không gọi PayOS: `core/socket`, repository và PayOS bị thay bằng bản giả trong tiến trình. Làm xong bản vá vẫn còn ba việc tay: **Admin-web + tài liệu** (cuối 62.1) và **62.6**.
 
