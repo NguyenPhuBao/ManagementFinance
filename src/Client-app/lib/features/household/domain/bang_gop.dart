@@ -37,13 +37,14 @@ List<DongBangGop> bangGop(Iterable<TransactionEntity> ds, {required DateTime now
             gopTuTruoc: cu.gopTuTruoc,
             daRut: cu.daRut + t.amount,
             chiThangNay: cu.chiThangNay);
-      case LoaiKhoanNha.chiNha when thangNay(t):
+      // Chi tháng trước KHÔNG cộng vào `chiThangNay` nhưng người ghi vẫn phải có dòng (02A mục 8: người đã rời có khoản trong ví).
+      case LoaiKhoanNha.chiNha:
         theoNguoi[t.idaccount] = DongBangGop(
             idaccount: t.idaccount,
             gopThangNay: cu.gopThangNay,
             gopTuTruoc: cu.gopTuTruoc,
             daRut: cu.daRut,
-            chiThangNay: cu.chiThangNay + t.amount);
+            chiThangNay: cu.chiThangNay + (thangNay(t) ? t.amount : 0));
       default:
         break;
     }

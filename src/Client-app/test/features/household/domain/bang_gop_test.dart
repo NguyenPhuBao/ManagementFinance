@@ -74,6 +74,15 @@ void main() {
     expect(dong(b, 10)!.gopThangNay, 1, reason: '29/2 năm nhuận còn trong tháng 2, 1/3 thì không');
   });
 
+  test('người chỉ có khoản chi CŨ (tháng trước) vẫn có dòng, các số bằng 0 — "người đã rời có khoản trong ví" (02A mục 8)', () {
+    final b = bangGop([gd(40, DateTime(2026, 10, 5), ai: 55)], now: now);
+    final d = dong(b, 55);
+    expect(d, isNotNull, reason: 'khoản chi tháng trước bị bỏ qua thì người ấy mất hẳn khỏi bảng');
+    expect(d!.chiThangNay, 0);
+    expect(d.gopTuTruoc, 0);
+    expect(d.daRut, 0);
+  });
+
   test('người đã rời vẫn có dòng theo idaccount; xoá mềm bị bỏ', () {
     final b = bangGop([
       gd(5, DateTime(2026, 11, 2), ai: 99, type: 'thu', cap: 'p'),
