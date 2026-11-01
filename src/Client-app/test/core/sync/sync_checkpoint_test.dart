@@ -372,6 +372,32 @@ void main() {
     });
   });
 
+  // G114: sau phép dọn lúc đổi tài khoản, lượt kéo ĐẦU hỏng (hay xảy ra ở máy dùng chung — bẫy danh tính CSDL) mà mốc tăng
+  // dần của tài khoản còn trong kho thì lượt kéo kế tiếp đi từ mốc ấy và dữ liệu đã dọn không bao giờ về. `keoLaiToanBo`
+  // (hook `xinKeoToanBo` của PhienDieuPhoiThat) xoá mốc đã lưu + ghi nợ một lượt từ 1970 TRƯỚC khi engine `start`.
+  group('G114: xin kéo toàn bộ trước start, lượt kéo đầu hỏng', () {
+    Future<void> kichBan({required bool xin}) async {
+      store.values[accountId] = DateTime.utc(2026, 10, 1);
+      if (xin) await engine.keoLaiToanBo(accountId); // chưa start: chỉ xoá mốc + ghi nợ
+      client.adapter.loiPull = true;
+      await runSync(); // lượt kéo đầu hỏng (500, bị nuốt)
+      await seedWallet(); // máy có dữ liệu → isLocalDbEmpty không còn ép kéo toàn bộ giúp
+      client.adapter.loiPull = false;
+      await engine.syncNow();
+    }
+
+    test('đã xin kéo toàn bộ → lượt kéo thành công kế tiếp đi từ 1970', () async {
+      await kichBan(xin: true);
+      expect(client.adapter.lastPullSince, startsWith('1970'),
+          reason: 'yêu cầu phải sống qua lượt kéo hỏng và qua start; nếu không dữ liệu đã dọn không về');
+    });
+
+    test('đối chứng: KHÔNG xin → lượt kéo kế tiếp đi từ mốc cũ (đó là lỗ hổng)', () async {
+      await kichBan(xin: false);
+      expect(client.adapter.lastPullSince, '2026-10-01T00:00:00.000Z');
+    });
+  });
+
   // G87 (2026-10-09): bước Pull NUỐT lỗi, nên "chu kỳ xong" không nói được dữ liệu đã mới chưa. Lượt quét chỉ gộp kỳ
   // hoá đơn trùng khi con đếm này vừa tăng — gộp trên dữ liệu cũ là xoá hoá đơn máy khác đã trả.
   group('soLanKeoVeXong', () {

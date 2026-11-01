@@ -264,6 +264,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       donTaiKhoanKhac: (id) async =>
           sl<AppDatabase>().purgeDataForOtherAccounts(id, nhaGiu: await sl<NhaRepository>().nhaDaLuu(id)),
       xoaCacheSlm: () => sl<SlmCache>().xoaHet(),
+      // G114: `SyncEngine` chưa `start` ở pha này (`batDongBo` sau) → `keoLaiToanBo` chỉ xoá mốc đã lưu + ghi nợ một lượt kéo
+      // toàn bộ; không chạy `syncNow`.
+      xinKeoToanBo: (id) => sl<SyncEngine>().keoLaiToanBo(id),
       chuyenHangSeedCu: (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id),
       seedTaiKhoanMoi: (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id),
       xoaAnhQuet: () => sl<KhoAnhQuet>().xoaHet(),

@@ -20,6 +20,7 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     required AuthInterceptor? interceptor,
     required Future<int> Function(int idaccount) donTaiKhoanKhac,
     Future<void> Function()? xoaCacheSlm,
+    Future<void> Function(int idaccount)? xinKeoToanBo,
     Future<void> Function(int idaccount)? chuyenHangSeedCu,
     Future<void> Function(int idaccount)? seedTaiKhoanMoi,
     Future<void> Function()? xoaAnhQuet,
@@ -28,7 +29,7 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     Future<void> Function()? xoaKhoaApp,
     Future<void> Function(int idaccount)? datLaiKhoaApp,
   })  : _dongBo = dongBo, _thoiGianThuc = thoiGianThuc, _boQuet = boQuet,
-        _donTaiKhoanKhac = donTaiKhoanKhac, _xoaCacheSlm = xoaCacheSlm,
+        _donTaiKhoanKhac = donTaiKhoanKhac, _xoaCacheSlm = xoaCacheSlm, _xinKeoToanBo = xinKeoToanBo,
         _chuyenHangSeedCu = chuyenHangSeedCu,
         _seedTaiKhoanMoi = seedTaiKhoanMoi, _xoaAnhQuet = xoaAnhQuet, _datLaiCoGiaoDien = datLaiCoGiaoDien,
         _datGoi = datGoi, _xoaKhoaApp = xoaKhoaApp, _datLaiKhoaApp = datLaiKhoaApp {
@@ -47,6 +48,7 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
   final NotificationScanner? _boQuet;
   final Future<int> Function(int) _donTaiKhoanKhac;
   final Future<void> Function()? _xoaCacheSlm;
+  final Future<void> Function(int)? _xinKeoToanBo;
   final Future<void> Function(int)? _chuyenHangSeedCu;
   final Future<void> Function(int)? _seedTaiKhoanMoi;
   final Future<void> Function()? _xoaAnhQuet;
@@ -71,7 +73,13 @@ class PhienDieuPhoiThat implements PhienDieuPhoi {
     // Cache SLM xoá khi phép dọn xoá được hàng nào. Thường là máy vừa đổi người dùng (đăng nhập lại cùng tài khoản thì giữ,
     // AuthBloc cũ); nhưng số trả về nay gồm cả hàng của nhà mà chính tài khoản không còn giữ (kho trạng thái nhà trống /
     // nhà cũ), nên cache có thể bị xoá dù không đổi người — vô hại, tạo lại một lần.
-    if (daDon > 0) await _xoaCacheSlm?.call();
+    if (daDon > 0) {
+      await _xoaCacheSlm?.call();
+      // G114: phép dọn vừa xoá hàng của tài khoản khác (hoặc hàng nhà không còn giữ) mà mốc kéo tăng dần của TÀI KHOẢN NÀY
+      // còn nguyên trong kho: lượt kéo đầu hỏng thì dữ liệu đã dọn không tự về. Xin lượt kéo kế tiếp đi từ 1970 (engine chưa
+      // `start` nên chỉ xoá mốc; `start` sẽ đọc `null` → kéo toàn bộ). Không xin khi không dọn gì: đăng nhập lại cùng tài khoản.
+      await _xinKeoToanBo?.call(idaccount);
+    }
     await _chuyenHangSeedCu?.call(idaccount);
     // G93: gói (kho đã lưu) phải có tài khoản TRƯỚC lượt quét đầu — pha này chạy trước `AuthSuccess`, còn gói chỉ nghe
     // phiên qua `AuthSuccess`; thiếu bước này thì cửa quyền của bộ chạy nền trả `true` và Basic bị tự trả / tự trích.

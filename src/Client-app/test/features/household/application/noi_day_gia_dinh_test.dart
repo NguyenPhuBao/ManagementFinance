@@ -21,6 +21,13 @@ void main() {
             'mỗi lần mở app xoá sạch dữ liệu nhà trong khi kho vẫn mang nhà (không DoiNha, lịch sử không về lại)');
   });
 
+  test('G114: PhienDieuPhoiThat được nối hook xinKeoToanBo → SyncEngine.keoLaiToanBo', () {
+    final i = di.indexOf('xinKeoToanBo:');
+    expect(i, isNonNegative, reason: 'thiếu là hook không bao giờ chạy: sau phép dọn lượt kéo đầu hỏng làm mất dữ liệu');
+    expect(di.substring(i, di.indexOf('\n', i)), contains('sl<SyncEngine>().keoLaiToanBo(id)'));
+    expect(i, greaterThan(di.indexOf('donTaiKhoanKhac:')), reason: 'cùng lời dựng PhienDieuPhoiThat');
+  });
+
   test('DI: bộ điều phối ghi dấu vào kho nhà', () {
     final i = di.indexOf('registerLazySingleton<DieuPhoiDoiNha>');
     expect(i, isNonNegative);
