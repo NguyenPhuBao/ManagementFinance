@@ -15,6 +15,7 @@ import 'package:flowmoney/features/household/data/models/nha_cua_toi.dart';
 import 'package:flowmoney/features/household/data/nha_store.dart';
 import 'package:flowmoney/features/household/data/repositories/nha_repository.dart';
 import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
+import 'package:flowmoney/features/household/domain/cau_loi_nha.dart' show kMaDayLoiNha;
 import 'package:flowmoney/features/household/domain/vai_nha.dart';
 import 'package:flowmoney/features/notification/domain/notification_rules.dart';
 import 'package:flowmoney/features/transaction/data/datasources/transaction_local_data_source.dart';
@@ -139,7 +140,7 @@ void main() {
   }
 
   group('server từ chối nửa của nhà', () {
-    for (final m in GopQuyConflictResolver.maTuChoi) {
+    for (final m in kMaDayLoiNha) {
       test('mã $m: gỡ cả hai nửa, số dư về, nửa nhà thôi pending, một thông báo', () async {
         final p = await gopMau();
         final nuaNha = (await gop.docCap(p)).nha!;
@@ -162,6 +163,7 @@ void main() {
         expect(tb.single.kind, NotificationKind.gopQuyBiTraVe.name);
         expect(tb.single.body, 'Chưa góp được vào quỹ Tiền chợ, đã trả tiền về Ví MB.');
         expect(tb.single.deeplink, '/transactions');
+        expect(tb.single.subjectType, 'nha', reason: 'biểu tượng ngôi nhà ở trung tâm thông báo');
       });
     }
 
@@ -196,6 +198,8 @@ void main() {
       final kq = _thatBai(nuaNha.id, 'HOUSEHOLD_NOT_MEMBER');
       await Future.wait([resolver.xuLy(kq), resolver.xuLy(kq)]);
       expect(await thongBao(), hasLength(1));
+      expect(soLanHen, 1,
+          reason: 'tuần tự: lượt hai thấy nửa nhà đã xoá nên chỉ markSynced. Chạy chồng thì cả hai cùng gỡ và xin đồng bộ hai lần');
       expect(await soDu('vr'), 5000000);
       expect(await soDu('vn'), 1000000);
     });

@@ -220,7 +220,11 @@ class ApDuLieuKeoVe {
           // vừa về — nếu có — là một giao dịch, về cùng lượt.
           await _soDuVi.datNeoNhieuVi(viDungToi.intersection(viDaCoTruocPull));
           if (transactions.isNotEmpty) {
-            final companions = transactions.map((t) => companionGiaoDichKeoVe(t, accountId)).toList();
+            var companions = transactions.map((t) => companionGiaoDichKeoVe(t, accountId)).toList();
+            // Lệnh xoá chưa đẩy THẮNG bản sống server trả về: xoá giữa lượt đẩy và lượt kéo (vd. gỡ khoản bị từ chối) mà
+            // bị ghi đè là hàng sống lại với `synced`, lệnh xoá không bao giờ lên, số dư trừ lần nữa. Lượt đẩy sau mang lệnh xoá đi.
+            final xoaChoDay = await _db.transactionDao.idDaXoaChuaDay([for (final c in companions) c.id.value]);
+            if (xoaChoDay.isNotEmpty) companions = [for (final c in companions) if (!xoaChoDay.contains(c.id.value)) c];
             await _db.transactionDao.upsertAll(companions);
             debugPrint(
                 '[SyncEngine] Pulled & Saved ${transactions.length} transactions into SQLite local.');

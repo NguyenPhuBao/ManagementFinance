@@ -607,6 +607,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         ghiDau: (id, nha) => sl<NhaStore>().ghiDauXuLy(id, nha),
         // Rời nhà khi khoản góp / rút chưa đẩy: trả tiền về ví riêng TRƯỚC khi xoá hàng của nhà.
         truocKhiDon: (idNha, id) => sl<GopQuyConflictResolver>().traVeKhiBoNha(idNha, id),
+        // Sự kiện `NhaDaDoc` xếp hàng từ tài khoản cũ không được dọn hàng của tài khoản đang đăng nhập.
+        taiKhoanPhien: () => sl<NhaRepository>().idaccount,
       ));
 
   // Ví chung và khoản của nhà (gia đình 1A): ghi qua datasource ví + `SoDuViService` (neo mang `idhousehold`).

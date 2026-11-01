@@ -26,15 +26,21 @@ class DieuPhoiDoiNha {
     required Future<void> Function(int idaccount) keoLaiToanBo,
     Future<void> Function(int idaccount, int? idNha)? ghiDau,
     Future<void> Function(int idNha, int idaccount)? truocKhiDon,
+    int? Function()? taiKhoanPhien,
   })  : _db = db,
         _keoLaiToanBo = keoLaiToanBo,
         _ghiDau = ghiDau,
-        _truocKhiDon = truocKhiDon;
+        _truocKhiDon = truocKhiDon,
+        _taiKhoanPhien = taiKhoanPhien;
 
   final Future<void> Function(int idaccount, int? idNha)? _ghiDau;
 
   /// Việc phải làm TRƯỚC khi xoá hàng của nhà [idNha] (DI: trả tiền về ví riêng cho khoản góp / rút chưa đẩy).
   final Future<void> Function(int idNha, int idaccount)? _truocKhiDon;
+  /// Tài khoản phiên HIỆN TẠI (DI: `NhaRepository.idaccount`); `null` (không truyền) = không kiểm. Sự kiện [NhaDaDoc] xếp hàng
+  /// từ tài khoản cũ không được xoá hàng của tài khoản đang đăng nhập.
+  final int? Function()? _taiKhoanPhien;
+  NhaDaDoc? _daDocMoiNhat;
   final AppDatabase _db;
   final Future<void> Function(int idaccount) _keoLaiToanBo;
   StreamSubscription<DoiNha>? _sub;
@@ -53,35 +59,28 @@ class DieuPhoiDoiNha {
       });
     });
     _subDaDoc = daDocNha?.listen((d) {
+      _daDocMoiNhat = d;
       _hang = _hang.then((_) => donHangKet(d)).catchError((Object e) {
         debugPrint('[GiaDinh] dọn hàng nhà kẹt hỏng: ${e.runtimeType}');
       });
     });
   }
 
-  /// Trả tiền (nếu có) RỒI xoá hàng của nhà [idNha]. Lỗi của bước trước KHÔNG chặn bước sau (nửa riêng ở lại như một khoản
-  /// riêng còn hơn hàng kẹt mãi); ném lỗi đầu tiên sau khi cả hai bước đã chạy.
+  /// Trả tiền (nếu có) RỒI xoá hàng của nhà [idNha]. Trả tiền ném thì KHÔNG xoá (lỗi nhất thời như `database is locked`
+  /// không được làm mất tiền): ném lại, lần `/me` sau [donHangKet] làm lại.
   Future<void> _donNha(int idNha, int idaccount) async {
-    Object? loi;
-    StackTrace? dau;
-    try {
-      await _truocKhiDon?.call(idNha, idaccount);
-    } catch (e, s) {
-      loi = e;
-      dau = s;
-    }
-    try {
-      await _db.xoaHangCuaNha(idNha);
-    } catch (e, s) {
-      loi ??= e;
-      dau ??= s;
-    }
-    if (loi != null) Error.throwWithStackTrace(loi, dau!);
+    await _truocKhiDon?.call(idNha, idaccount);
+    await _db.xoaHangCuaNha(idNha);
   }
 
   /// Dọn hàng của mọi nhà còn trên máy mà KHÔNG phải nhà `/me` vừa xác nhận. Không dựa vào dấu, không xin kéo toàn bộ;
   /// lỗi một nhà không chặn nhà khác.
   Future<void> donHangKet(NhaDaDoc d) async {
+    // Sự kiện cũ xếp hàng: tài khoản đã đổi, hoặc đã có lần đọc `/me` mới hơn (nhà đã khác) — dọn theo nó là xoá nhầm.
+    final phien = _taiKhoanPhien;
+    if (phien != null && phien() != d.idaccount) return;
+    final moiNhat = _daDocMoiNhat;
+    if (moiNhat != null && !identical(moiNhat, d)) return;
     for (final x in await _db.cacNhaConTrenMay()) {
       if (x == d.idNha) continue;
       try {

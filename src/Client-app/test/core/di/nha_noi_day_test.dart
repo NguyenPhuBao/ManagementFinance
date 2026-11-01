@@ -87,6 +87,7 @@ void main() {
     final khoi = _khoi(nguon, 'sl.registerLazySingleton<DieuPhoiDoiNha>(');
     expect(khoi, contains('truocKhiDon:'), reason: 'thiếu thì rời nhà xoá hàng chưa đẩy mà tiền không về ví riêng');
     expect(khoi, contains('traVeKhiBoNha('));
+    expect(khoi, contains('taiKhoanPhien:'), reason: 'thiếu thì sự kiện NhaDaDoc cũ dọn nhầm hàng của tài khoản đang đăng nhập');
     final main = File('lib/main.dart').readAsStringSync().replaceAll('\r\n', '\n');
     expect(main, contains('daDocNha: sl<NhaRepository>().daDocNha'),
         reason: 'thiếu thì hàng nhà kẹt (không có cặp DoiNha) không bao giờ được dọn');

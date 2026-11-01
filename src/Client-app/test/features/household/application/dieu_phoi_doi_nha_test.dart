@@ -215,11 +215,18 @@ void main() {
       expect(await idVi(), isNot(contains('vi-nha-7')));
     });
 
-    test('truocKhiDon ném: vẫn dọn hàng và vẫn kéo lại; lỗi được ném ra cho hàng đợi ghi log', () async {
-      dung(truoc: (_, __) async => throw StateError('trả tiền hỏng'));
+    test('truocKhiDon ném: KHÔNG xoá nhà ấy (lỗi nhất thời không được làm mất tiền), vẫn kéo cho nhà đến, không ghi dấu', () async {
+      final dau = <(int, int?)>[];
+      dieuPhoi = DieuPhoiDoiNha(
+        db: db,
+        keoLaiToanBo: (id) async => nhatKy.add('keo:$id'),
+        ghiDau: (id, nha) async => dau.add((id, nha)),
+        truocKhiDon: (_, __) async => throw StateError('database is locked'),
+      );
       await expectLater(dieuPhoi.xuLy(const DoiNha(idaccount: 10, tu: 5, den: 12)), throwsStateError);
-      expect(await idVi(), isNot(contains('vi-nha-5')), reason: 'lỗi trả tiền không được chặn phần dọn');
-      expect(nhatKy, ['keo:10'], reason: 'cũng không được chặn lượt kéo của cùng sự kiện');
+      expect(await idVi(), contains('vi-nha-5'), reason: 'xoá hàng khi chưa trả tiền là mất tiền');
+      expect(nhatKy, ['keo:10'], reason: 'lượt kéo của cùng sự kiện không bị chặn');
+      expect(dau, isEmpty, reason: 'chưa xử lý xong thì chưa ghi dấu');
     });
   });
 
@@ -268,7 +275,7 @@ void main() {
         },
       );
       await dieuPhoi.donHangKet(const NhaDaDoc(idaccount: 10, idNha: null));
-      expect(await idVi(), {'vi-rieng'});
+      expect(await idVi(), {'vi-rieng', 'vi-nha-5'}, reason: 'nhà 5 trả tiền hỏng nên GIỮ; nhà 7 vẫn được dọn');
     });
 
     test('qua luồng: tuần tự với xuLy — vào nhà 12 đang kéo thì lượt dọn chờ', () async {
@@ -285,6 +292,48 @@ void main() {
       giuKeo!.complete();
       await dieuPhoi.choXong();
       expect(await idVi(), {'vi-rieng'}, reason: '/me = 12 nên cả 5 và 7 đều không còn thuộc người dùng');
+      await doi.close();
+      await daDoc.close();
+    });
+
+    test('sự kiện cũ của tài khoản đã đổi (hàng việc đang bận): bỏ, không xoá hàng của tài khoản mới', () async {
+      var phien = 10;
+      dieuPhoi = DieuPhoiDoiNha(
+        db: db,
+        keoLaiToanBo: (id) async {
+          nhatKy.add('keo:$id');
+          await giuKeo?.future;
+        },
+        taiKhoanPhien: () => phien,
+      );
+      final doi = StreamController<DoiNha>();
+      final daDoc = StreamController<NhaDaDoc>();
+      dieuPhoi.batDauNghe(doi.stream, daDocNha: daDoc.stream);
+      giuKeo = Completer<void>();
+      doi.add(const DoiNha(idaccount: 10, tu: null, den: 12));
+      daDoc.add(const NhaDaDoc(idaccount: 10, idNha: null)); // xếp hàng sau lượt kéo đang bận
+      await Future<void>.delayed(Duration.zero);
+      phien = 11; // tài khoản B đăng nhập trong lúc chờ
+      giuKeo!.complete();
+      await dieuPhoi.choXong();
+      expect(await idVi(), hasLength(3), reason: 'NhaDaDoc của tài khoản 10 chạy khi phiên là 11: xoá hàng của B là sai');
+      await doi.close();
+      await daDoc.close();
+    });
+
+    test('sự kiện cũ bị lần đọc /me mới hơn thay thế (hàng việc đang bận): chỉ lần mới nhất được dọn', () async {
+      final doi = StreamController<DoiNha>();
+      final daDoc = StreamController<NhaDaDoc>();
+      dieuPhoi.batDauNghe(doi.stream, daDocNha: daDoc.stream);
+      giuKeo = Completer<void>();
+      doi.add(const DoiNha(idaccount: 10, tu: null, den: 12));
+      daDoc.add(const NhaDaDoc(idaccount: 10, idNha: null)); // cũ: dọn theo nó sẽ xoá cả nhà 7
+      daDoc.add(const NhaDaDoc(idaccount: 10, idNha: 7)); // mới: đã vào nhà 7
+      await Future<void>.delayed(Duration.zero);
+      giuKeo!.complete();
+      await dieuPhoi.choXong();
+      expect(await idVi(), {'vi-rieng', 'vi-nha-7'}, reason: 'bản cũ NhaDaDoc(null) xoá hàng pending của nhà vừa vào');
+      expect(truoc, ['5:10']);
       await doi.close();
       await daDoc.close();
     });

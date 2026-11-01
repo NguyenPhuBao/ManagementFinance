@@ -518,6 +518,17 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Trong [ids], những giao dịch cục bộ ĐÃ xoá mềm mà lệnh xoá còn chờ đẩy (`pending`). Kéo về không được ghi đè chúng:
+  /// server còn bản sống (lệnh xoá chưa lên) nên ghi đè là làm sống lại hàng vừa xoá, kèm `synced` — lệnh xoá mất.
+  Future<Set<String>> idDaXoaChuaDay(Iterable<String> ids) async {
+    final ds = ids.toSet().toList();
+    if (ds.isEmpty) return {};
+    final hang = await (select(transactions)
+          ..where((t) => t.id.isIn(ds) & t.isDeleted.equals(true) & t.syncStatus.equals('pending')))
+        .get();
+    return {for (final h in hang) h.id};
+  }
+
   /// Cập nhật categoryId của transaction (dùng khi repair cat_food → UUID)
   Future<void> updateCategoryId(String transactionId, String? newCategoryId) async {
     await (update(transactions)..where((t) => t.id.equals(transactionId))).write(

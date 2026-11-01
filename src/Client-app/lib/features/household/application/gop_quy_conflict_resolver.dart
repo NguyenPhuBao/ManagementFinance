@@ -9,6 +9,7 @@ import '../../../core/sync/sync_models.dart';
 import '../../notification/domain/notification_rules.dart';
 import '../../wallet/data/so_du_vi_service.dart';
 import '../data/repositories/nha_repository.dart';
+import '../domain/cau_loi_nha.dart';
 import 'gop_quy_service.dart';
 
 /// Giữ hai nửa của khoản góp / rút khớp nhau (`docs/Family/02A` mục 6). Đứng riêng khỏi `SyncEngine` như
@@ -36,15 +37,6 @@ class GopQuyConflictResolver {
         _soDuVi = soDuVi,
         _taiKhoanPhien = taiKhoanPhien,
         _henDongBo = henDongBo;
-
-  /// Năm mã server từ chối của gia đình (khớp `_permanentCodes` của `GuiLoDongBo` + `kMaDayLoiNha`).
-  static const Set<String> maTuChoi = {
-    'HOUSEHOLD_NOT_MEMBER',
-    'HOUSEHOLD_READ_ONLY',
-    'HOUSEHOLD_CLOSED',
-    'HOUSEHOLD_SCOPE_MISMATCH',
-    'HOUSEHOLD_ROLE_FORBIDDEN',
-  };
 
   final AppDatabase _db;
   final GopQuyService _gopQuy;
@@ -75,15 +67,10 @@ class GopQuyConflictResolver {
     });
   }
 
-  Future<void> dung() async {
-    await _sub?.cancel();
-    _sub = null;
-  }
-
   @visibleForTesting
   Future<void> xuLy(SyncResult ketQua) => _tuanTu(() async {
         for (final f in ketQua.failures) {
-          if (f.entity != SyncEntityType.transaction || !maTuChoi.contains(f.code)) continue;
+          if (f.entity != SyncEntityType.transaction || !kMaDayLoiNha.contains(f.code)) continue;
           final nua = await _db.transactionDao.getById(f.localId);
           final maCap = nua?.fundPairId;
           if (nua == null || maCap == null || nua.idhousehold == null) continue;
@@ -198,6 +185,7 @@ class GopQuyConflictResolver {
         title: title,
         body: body,
         severity: NotificationSeverity.info.name,
+        subjectType: const Value('nha'),
         deeplink: const Value('/transactions'),
         createdAt: DateTime.now(),
       ));
