@@ -409,7 +409,8 @@ class SyncEngine {
   /// xem còn hàng chưa đẩy không. Không ném (lỗi của chu kỳ đã được `_chayMotChuKy` nuốt thành trạng thái `error`).
   Future<void> dayVaCho({Duration tran = kTranDayTruocKhiRoi}) async {
     // Thao tác CHỦ ĐỘNG của người dùng — như [start]: bỏ giãn cách của các chu kỳ hỏng trước, nếu không (tới 60 phút) lượt
-    // này chỉ hẹn lại rồi về và hàng chưa đẩy bị coi như đã đẩy. Chỉ bỏ giãn cách của ENGINE (số lần hỏng giữ nguyên: lượt
+    // này chỉ hẹn lại rồi về, không đẩy gì, nên phép đếm hàng chưa đẩy ngay sau thấy hàng còn đó và Rời nhà / Giải tán bị
+    // từ chối oan bằng `hangChuaDay` dù mạng vẫn tốt. Chỉ bỏ giãn cách của ENGINE (số lần hỏng giữ nguyên: lượt
     // này mà hỏng nữa thì giãn cách dựng lại); bậc chặn từng hàng (`syncBlockedUntil`) nằm ở CSDL, `ThuGomThaoTacDay` vẫn tôn trọng.
     _nextAllowedSyncAt = null;
     _cancelBackoffRetry();

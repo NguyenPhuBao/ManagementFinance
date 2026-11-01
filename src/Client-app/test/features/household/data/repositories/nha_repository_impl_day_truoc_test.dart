@@ -109,13 +109,27 @@ void main() {
       await dung();
       day = () => treo.future;
       final f = viec == 'roiNha' ? repo.roiNha() : repo.giaiTan();
-      final ket = expectLater(f, throwsA(isA<LoiNha>()));
+      final ket = expectLater(f, throwsA(isA<LoiNha>().having((e) => e.loai, 'loai', LoaiLoiNha.phienHetHan)));
       await Future<void>.delayed(const Duration(milliseconds: 20));
       repo.xoaPhien(); // đăng xuất giữa lúc đẩy
       await repo.datTaiKhoan(19); // tài khoản khác đăng nhập
       treo.complete();
       await ket;
       expect(api.goi, isEmpty, reason: 'gọi API ở đây là rời/giải tán nhà của tài khoản mới đăng nhập');
+    });
+
+    test('$viec: phiên đổi trong lúc ĐẾM hàng → bỏ (phienHetHan), KHÔNG gọi API', () async {
+      final treoDem = Completer<int>();
+      await dung();
+      dem = (n) => treoDem.future;
+      final f = viec == 'roiNha' ? repo.roiNha() : repo.giaiTan();
+      final ket = expectLater(f, throwsA(isA<LoiNha>().having((e) => e.loai, 'loai', LoaiLoiNha.phienHetHan)));
+      await Future<void>.delayed(const Duration(milliseconds: 20)); // đã qua bước đẩy, đang chờ phép đếm
+      repo.xoaPhien();
+      await repo.datTaiKhoan(19);
+      treoDem.complete(0); // đếm xong, hết hàng — nhưng phiên đã khác
+      await ket;
+      expect(api.goi, isEmpty, reason: 'thiếu kiểm phiên sau phép đếm là API chạy theo tài khoản mới');
     });
   }
 

@@ -34,7 +34,9 @@ void main() {
     final thanHam = khoi.substring(i, khoi.indexOf('xoaCacheSlm:'));
     expect(thanHam, contains('tinhLaiViNha()'),
         reason: 'thiếu thì ví nhà bị giữ mà sổ bị cắt: kéo toàn bộ đặt neo từ số dư cũ, tiền cộng hai lần và bị đẩy cho cả nhà');
-    expect(thanHam, contains('nhaGiu == null'), reason: 'chỉ khi chưa biết nhà; đã biết nhà thì sổ của nhà giữ nguyên');
+    expect(thanHam, contains('donVaTinhLaiViNha('),
+        reason: 'phải qua hàm bọc catch (core/auth/don_tai_khoan_khac.dart): lỗi tính lại ném thẳng là khoá cửa đăng nhập');
+    expect(thanHam, contains('nhaGiu: nhaGiu'), reason: 'chỉ tính lại khi chưa biết nhà; đã biết nhà thì sổ của nhà giữ nguyên');
   });
 
   test('đăng ký repository nhà truyền dayTruocKhiRoi và demHangChuaDay', () {

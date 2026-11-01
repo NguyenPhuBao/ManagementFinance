@@ -168,7 +168,7 @@ void main() {
     await engine.dayVaCho();
 
     expect(adapter.soLanPush, greaterThan(soLanDayTruoc),
-        reason: 'giãn cách tới 60 phút: syncNow trần chỉ hẹn lại rồi về — Rời nhà sẽ coi như đã đẩy mà chưa có lượt nào');
+        reason: 'giãn cách tới 60 phút: syncNow trần chỉ hẹn lại rồi về, không đẩy gì — phép đếm sau đó thấy hàng còn và Rời nhà bị từ chối oan bằng hangChuaDay');
     expect((await db.walletDao.getById('w1'))!.syncStatus, 'synced');
   });
 

@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api/interceptors/auth_interceptor.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/api/ten_thiet_bi.dart';
+import '../../core/auth/don_tai_khoan_khac.dart';
 import '../../core/auth/phien_dieu_phoi.dart';
 import '../../core/auth/phien_dieu_phoi_that.dart';
 import '../../core/database/app_database.dart';
@@ -271,9 +272,11 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       // bộ đặt neo từ số dư cũ và tiền cộng hai lần.
       donTaiKhoanKhac: (id) async {
         final nhaGiu = await sl<NhaRepository>().nhaDaLuu(id);
-        final daDon = await sl<AppDatabase>().purgeDataForOtherAccounts(id, nhaGiu: nhaGiu);
-        if (nhaGiu == null) await sl<SoDuViService>().tinhLaiViNha();
-        return daDon;
+        return donVaTinhLaiViNha(
+          nhaGiu: nhaGiu,
+          don: () => sl<AppDatabase>().purgeDataForOtherAccounts(id, nhaGiu: nhaGiu),
+          tinhLaiViNha: () => sl<SoDuViService>().tinhLaiViNha(),
+        );
       },
       xoaCacheSlm: () => sl<SlmCache>().xoaHet(),
       // G114: `SyncEngine` chưa `start` ở pha này (`batDongBo` sau) → `keoLaiToanBo` chỉ xoá mốc đã lưu + ghi nợ một lượt kéo
