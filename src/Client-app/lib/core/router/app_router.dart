@@ -33,6 +33,7 @@ import '../../features/household/presentation/pages/nha_minh_page.dart';
 import '../../features/household/presentation/pages/quan_ly_thanh_vien_page.dart';
 import '../../features/household/presentation/pages/tham_gia_nha_page.dart';
 import '../../features/household/presentation/pages/tao_nha_page.dart';
+import '../../features/household/presentation/pages/vi_chung_form_page.dart';
 import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/goal/domain/dien_san_muc_tieu.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -113,6 +114,15 @@ Future<String?> _veNhaNeuKhongGhiDuoc() async {
   await n.choNapKho();
   final t = n.hienTai;
   return duocLamViecNha(ViecNha.ghiKhoan, vai: t.vai, trangThai: t.nha?.trangThai) ? null : '/nha';
+}
+
+/// Cửa quyền QUẢN LÝ ví chung (`/nha/vi/tao`, `/nha/vi/:id/sua`): chỉ Chủ nhà, nhà đang hoạt động. Cùng khuôn G92 như
+/// [_veNhaNeuKhongGhiDuoc]. Form còn tự kiểm lúc mở (vai đổi giữa chừng không qua `redirect`).
+Future<String?> _veNhaNeuKhongQuanLyViChungDuoc() async {
+  final n = sl<NhaRepository>();
+  await n.choNapKho();
+  final t = n.hienTai;
+  return duocLamViecNha(ViecNha.quanLyViChung, vai: t.vai, trangThai: t.nha?.trangThai) ? null : '/nha';
 }
 
 class AppRouter {
@@ -327,6 +337,20 @@ class AppRouter {
             path: '/nha/tao',
             redirect: redirectTheoQuyen(MaQuyen.giaDinh),
             builder: (_, __) => const TaoNhaPage(),
+          ),
+          // Ví chung (1B Task 5): `tao` đứng TRƯỚC mọi route `:id` (Task 7 thêm `/nha/vi/:id`) — thứ tự ngược là `tao` bị đọc
+          // thành id. Builder đọc nhà MỘT lần: nhà đã mất (giải tán / bị mời ra) → Nhà mình, không `!`.
+          GoRoute(
+            path: '/nha/vi/tao',
+            redirect: (_, __) => _veNhaNeuKhongQuanLyViChungDuoc(),
+            builder: (_, __) => sl<NhaRepository>().hienTai.nha == null ? const NhaMinhPage() : const ViChungFormPage(),
+          ),
+          GoRoute(
+            path: '/nha/vi/:id/sua',
+            redirect: (_, __) => _veNhaNeuKhongQuanLyViChungDuoc(),
+            builder: (_, state) => sl<NhaRepository>().hienTai.nha == null
+                ? const NhaMinhPage()
+                : ViChungFormPage(idVi: state.pathParameters['id']),
           ),
           // Ghi / sửa khoản của nhà (1B): MỘT cửa — không có quyền ghi thì về Nhà mình. KHÔNG dùng `/add`: nút + thanh dưới
           // và deeplink cũ không được vào phạm vi nhà (test `duong_nha_noi_day_test`). `?vi=` ví đứng đầu bộ chọn,

@@ -25,6 +25,11 @@ bool duocLamViecNha(ViecNha viec, {required VaiNha? vai, required TrangThaiNha? 
   };
 }
 
+/// Nhà còn chỗ cho một ví chung nữa không. [toiDa] `null` là CHƯA BIẾT (server cũ không trả trần) chứ không phải vô hạn hay
+/// 0: bịa một trần là khoá nút nhầm, nên chưa biết thì mở và để server từ chối nếu thật sự đủ. [dangHoatDong] chỉ đếm ví
+/// chưa lưu trữ (server cũng đếm vậy).
+bool conTaoDuocViChung(int dangHoatDong, int? toiDa) => toiDa == null || dangHoatDong < toiDa;
+
 /// Sửa một khoản của nhà (`Family/01` mục 3). Khoản có mã cặp chỉ người ghi sửa được: nửa riêng chỉ nằm trên máy họ.
 /// Khoản chuyển ([laChuyen]) chỉ Chủ nhà sửa, xoá — server chỉ cho Owner (`sync.service.js`); Chủ cũ đã bị hạ vai thì
 /// khoản chuyển người ấy từng ghi không còn sửa, xoá được.

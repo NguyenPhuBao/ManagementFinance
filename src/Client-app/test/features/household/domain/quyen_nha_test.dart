@@ -139,4 +139,11 @@ void main() {
       expect(lam(v, null, null), isFalse, reason: v.name);
     }
   });
+
+  test('conTaoDuocViChung: null là chưa biết thì không khoá', () {
+    expect(conTaoDuocViChung(10, null), isTrue, reason: 'bịa trần là khoá nhầm');
+    expect(conTaoDuocViChung(9, 10), isTrue);
+    expect(conTaoDuocViChung(10, 10), isFalse, reason: 'bằng trần là hết chỗ');
+    expect(conTaoDuocViChung(11, 10), isFalse, reason: 'vượt trần (hạ trần sau khi đã tạo) cũng khoá');
+  });
 }

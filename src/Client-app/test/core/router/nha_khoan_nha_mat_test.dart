@@ -41,6 +41,9 @@ class _AuthCoDinh extends AuthBloc {
 }
 
 class _DuLieuNhaGia implements DuLieuNhaRepository {
+  // Nhà mình dựng khối Ví chung từ nguồn đã đăng ký (1B Task 5): ca này không xem ví, chỉ cần luồng không ném.
+  @override
+  Stream<List<WalletEntity>> theoDoiViChung(int idNha) => const Stream.empty();
   @override
   Future<List<WalletEntity>> viChungChoForm(int idNha, {Set<String> giuLai = const {}, String? uuTien}) async => const [];
   @override
