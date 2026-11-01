@@ -190,6 +190,14 @@ const syncService = {
             });
           }
         }
+        // Khoản có mã cặp: chỉ người ghi được SỬA, Chủ nhà chỉ xoá (01 mục 3).
+        const laXoa = operation === 'delete' || payload.is_deleted === true || payload.isDeleted === true;
+        const coMaCap = existingRecord && (existingRecord.idfund_pair ?? existingRecord.Idfund_pair);
+        if (coMaCap && !laXoa && creatorId !== null && Number(creatorId) !== Number(idaccount)) {
+          throw Object.assign(new Error('Khoản góp / rút chỉ người ghi được sửa'), {
+            code: 'HOUSEHOLD_ROLE_FORBIDDEN',
+          });
+        }
       }
     }
 
