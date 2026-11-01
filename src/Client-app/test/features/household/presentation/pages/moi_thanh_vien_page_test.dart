@@ -68,12 +68,24 @@ void main() {
     final chon = t.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Thành viên').first);
     final chua = t.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Chỉ xem').first);
     expect(chon.selected, isTrue);
-    expect(chon.showCheckmark, isFalse);
+    expect(chon.showCheckmark, isTrue, reason: 'Stitch `moi`: chip đang chọn có ✓ (màn Quản lý thì không)');
+    final r1 = t.getRect(find.widgetWithText(ChoiceChip, 'Thành viên').first);
+    final r2 = t.getRect(find.widgetWithText(ChoiceChip, 'Chỉ xem').first);
+    expect((r1.width - r2.width).abs(), lessThan(1), reason: 'hai chip rộng đều');
+    expect(r2.right - r1.left, closeTo(360 - 2 * 16 - 2 * 16 - 2, 4), reason: 'chiếm hết hàng của thẻ');
     expect(chon.selectedColor, AppColors.primary);
     expect((chon.labelStyle)?.color, AppColors.onPrimary);
     expect(chua.selected, isFalse);
     expect(chua.backgroundColor, AppColors.surfaceContainerLow);
     expect((chua.labelStyle)?.color, AppColors.textPrimary);
+  });
+
+  testWidgets('hai chip vai ở 360 dp + cỡ chữ lớn: không tràn', (t) async {
+    t.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
+    await mo(t);
+    expect(t.takeException(), isNull);
+    expect(find.widgetWithText(ChoiceChip, 'Chỉ xem'), findsNWidgets(2));
   });
 
   testWidgets('email sai dạng: nút khoá; gửi xong dòng đã gửi, chung một câu', (t) async {

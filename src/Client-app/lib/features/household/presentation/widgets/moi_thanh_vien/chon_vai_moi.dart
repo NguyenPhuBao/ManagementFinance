@@ -16,11 +16,13 @@ class ChonVaiMoi extends StatelessWidget {
         children: [
           Text('Vai', style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
+          // Hai chip rộng đều chiếm hết hàng, chip chọn có dấu ✓ (Stitch `moi`).
+          Row(
             children: [
-              for (final v in const [VaiNha.thanhVien, VaiNha.chiXem])
-                ChipVaiNha(vai: v, chon: vai == v, onChon: () => onDoi(v)),
+              for (final v in const [VaiNha.thanhVien, VaiNha.chiXem]) ...[
+                if (v == VaiNha.chiXem) const SizedBox(width: 8),
+                Expanded(child: ChipVaiNha(vai: v, chon: vai == v, onChon: () => onDoi(v), dauTick: true, canGiua: true)),
+              ],
             ],
           ),
         ],
