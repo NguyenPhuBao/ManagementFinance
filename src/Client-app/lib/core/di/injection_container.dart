@@ -348,6 +348,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       localDataSource: sl(),
       db: sl<AppDatabase>(),
       syncEngine: sl(),
+      // Như hoá đơn: nạp / rút từ ví nhà phải đi qua dịch vụ biết tài khoản đăng nhập (G113 nợ 1).
+      soDuVi: sl<SoDuViService>(),
     ),
   );
   sl.registerFactory<GoalCubit>(
@@ -386,6 +388,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       dataSource: sl<BillLocalDataSource>(),
       db: sl<AppDatabase>(),
       syncEngine: sl<SyncEngine>(),
+      // Cùng một dịch vụ có nguồn phiên: ví nhà chỉ đặt neo được khi biết ai là người tạo (G113 nợ 1).
+      soDuVi: sl<SoDuViService>(),
     ),
   );
   // Gỡ khoản trả mà server từ chối bằng `BILL_ALREADY_PAID` — máy khác đã trả

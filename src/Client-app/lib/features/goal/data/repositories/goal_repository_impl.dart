@@ -16,11 +16,17 @@ class GoalRepositoryImpl implements GoalRepository {
   final AppDatabase? db;
   final SyncEngine? syncEngine;
 
+  /// Nơi duy nhất ghi số dư. Bỏ trống thì tự dựng từ [db] (test cũ dựng bằng hai tham số); DI luôn tiêm bản có nguồn phiên.
+  final SoDuViService? _soDuViTiem;
+
   GoalRepositoryImpl({
     required this.localDataSource,
     this.db,
     this.syncEngine,
-  });
+    SoDuViService? soDuVi,
+  }) : _soDuViTiem = soDuVi;
+
+  SoDuViService get _soDuVi => _soDuViTiem ?? SoDuViService(db: db!);
 
   @override
   Future<List<GoalEntity>> getGoals(int idaccount) {
@@ -476,7 +482,7 @@ class GoalRepositoryImpl implements GoalRepository {
       // ⚠️ Đặt neo TRƯỚC khi ghi hàng `transfer` bên dưới — cho CẢ HAI ví. Neo
       // tính bằng `balance − Σ sổ`, nên đặt sau là nó hấp thụ luôn khoản vừa
       // chuyển. Ví ĐÍCH chỉ biết được ở đây, nên chỗ đặt neo phải ở đây.
-      await SoDuViService(db: db!).datNeoNhieuVi(viCanTinhLai);
+      await _soDuVi.datNeoNhieuVi(viCanTinhLai);
 
       // MỘT hàng duy nhất, kiểu 'transfer' — cùng quy ước với chuyển khoản của
       // tính năng giao dịch thường. Trước đây chỗ này ghi hai hàng rời ('chi' ở
@@ -533,7 +539,7 @@ class GoalRepositoryImpl implements GoalRepository {
     // ⚠️ NGOÀI khối nguyên tử: `tinhLaiSoDu` đọc lại chính bảng vừa ghi, và gọi
     // nó bên trong transaction của Drift là đọc trạng thái chưa commit.
     if (db != null) {
-      await SoDuViService(db: db!).tinhLaiNhieuVi(viCanTinhLai);
+      await _soDuVi.tinhLaiNhieuVi(viCanTinhLai);
     }
 
     syncEngine?.scheduleSync();
@@ -628,7 +634,7 @@ class GoalRepositoryImpl implements GoalRepository {
       // Số dư hai ví suy từ sổ — hàng `transfer` bên dưới chính là phép chuyển.
       viCanTinhLai.addAll({viTichLuy, walletId});
       // ⚠️ Đặt neo trước khi ghi, cho cả hai ví — cùng lý do với nhánh nạp.
-      await SoDuViService(db: db!).datNeoNhieuVi(viCanTinhLai);
+      await _soDuVi.datNeoNhieuVi(viCanTinhLai);
 
       await db!.transactionDao.insert(
         TransactionsCompanion.insert(
@@ -656,7 +662,7 @@ class GoalRepositoryImpl implements GoalRepository {
 
     // ⚠️ Ngoài khối nguyên tử, cùng lý do với nhánh nạp tiền.
     if (db != null) {
-      await SoDuViService(db: db!).tinhLaiNhieuVi(viCanTinhLai);
+      await _soDuVi.tinhLaiNhieuVi(viCanTinhLai);
     }
 
     syncEngine?.scheduleSync();
