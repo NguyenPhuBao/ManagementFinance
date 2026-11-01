@@ -100,8 +100,10 @@ Minh góp 2.000.000 đ từ *Ví MB* vào *Tiền chợ*:
 |---|---|---|
 | Người góp sửa khoản góp (khi còn là thành viên, nhà `Active`) | Form góp mở cả cặp; lưu đổi **cả hai** nửa trong một giao tác. Mở nửa riêng từ Sổ giao dịch cá nhân cũng vào form góp | client |
 | Người góp xoá | Xoá mềm cả hai nửa; hộp xác nhận *"Quỹ Tiền chợ cũng giảm 2.000.000 đ"* | client |
-| **Chủ nhà xoá** nửa của nhà của người khác (sửa ghi nhầm — Chủ nhà **không sửa** được, `01` mục 3) | Máy người góp, khi kéo về thấy nửa của nhà mang cờ xoá mà nửa riêng còn sống: **đọc lại trạng thái nhà trước**; nhà vẫn `Active` và mình vẫn là thành viên ⇒ xoá mềm nửa riêng (tiền về ví riêng) + thông báo *"Chủ nhà đã xoá khoản góp … — đã trả tiền về Ví MB"*. Không đọc được (offline) ⇒ hoãn tới lượt sau | `household/application` |
-| **Server từ chối** nửa của nhà (`HOUSEHOLD_NOT_MEMBER` · `_READ_ONLY` · `_CLOSED` · `_SCOPE_MISMATCH` · `_ROLE_FORBIDDEN`) | Bộ nghe `pushResultStream` gỡ nửa riêng (xoá mềm, tính lại số dư) + thông báo *"Chưa góp được vào quỹ Tiền chợ — đã trả tiền về Ví MB"*. Chịu được **hai** lượt phát cho cùng một thất bại (cam kết thứ tự của `SyncEngine`) | `household/application` (khuôn `BillPaymentConflictResolver`) |
+| **Chủ nhà xoá** nửa của nhà của người khác (sửa ghi nhầm — Chủ nhà **không sửa** được, `01` mục 3) | Máy người góp, khi kéo về thấy nửa của nhà mang cờ xoá mà nửa riêng còn sống: **đọc lại trạng thái nhà trước**; mình **còn ở đúng nhà ấy** (mã: `hienTai.coNha` và `idNha` của nửa riêng bằng nhà hiện tại — gồm cả nhà `ReadOnly`, không chỉ `Active`: Chủ xoá lúc `Active`, kéo về lúc nhà đã thành chỉ xem thì nửa riêng vẫn phải gỡ, không thì mồ côi mãi) ⇒ xoá mềm nửa riêng (tiền về ví riêng) + thông báo *"Chủ nhà đã xoá khoản góp … — đã trả tiền về Ví MB"*. Không đọc được (offline) ⇒ hoãn tới lượt sau | `household/application` |
+| **Server từ chối** nửa của nhà (`HOUSEHOLD_NOT_MEMBER` · `_READ_ONLY` · `_CLOSED` · `_SCOPE_MISMATCH` · `_ROLE_FORBIDDEN`) | Bộ nghe `pushResultStream` (`GopQuyConflictResolver`) gỡ **cả hai nửa**: xoá mềm nửa riêng và nửa của nhà **ở máy này** (không xoá cứng), `markSynced` nửa của nhà SAU xoá mềm để nó thoát hàng đợi (xoá mềm đặt lại `pending`; lệnh xoá của hàng nhà sẽ bị chính mã ấy từ chối lại mỗi chu kỳ), tính lại số dư hai ví, thông báo *"Chưa góp được vào quỹ …, đã trả tiền về …"*. Chịu được **hai** lượt phát cho cùng một thất bại (cam kết thứ tự của `SyncEngine`). Chỉ gỡ khi nửa ấy **do chính phiên ghi** (`idaccount` = tài khoản phiên): Chủ nhà xoá hộ nửa của người khác bị từ chối thì chỉ `markSynced`, không xoá nửa của người khác. Nửa đã xoá mà lệnh xoá bị từ chối cũng chỉ `markSynced`. Ca tiền mặt trao tay (chỉ có nửa nhà) cũng gỡ nửa nhà, câu thông báo không nói "trả tiền". ⚠️ **Server có thể còn hàng** (bản sửa bị từ chối, hay đẩy thành công mà mất phản hồi) — lệch hai nửa, ghi ở **G119** | `household/application` (khuôn `BillPaymentConflictResolver`) |
+| **Rời nhà khi nửa của nhà chưa đẩy** | `NhaRepository.roiNha` / `giaiTan` đẩy trước (`SyncEngine.dayVaCho`, trần 30 s); còn hàng nhà chưa đẩy thì ném `LoiNha(hangChuaDay)`, trừ khi gọi `boQuaHangChuaDay: true` (hộp hỏi lại của 1B). Khi bỏ qua: `traVeKhiBoNha` trả tiền về ví riêng (cùng đường gỡ trên, thông báo `gopQuyBiTraVe`) TRƯỚC khi `xoaHangCuaNha`. Mở phiên mà máy còn nửa nhà của nhà cũ (kho đã nói nhà khác) cũng trả tiền trước khi dọn (`donVaTinhLaiViNha`) | `household/application`, `core/auth` |
+| **Vai mất khi offline** (`HOUSEHOLD_ROLE_FORBIDDEN` trên hàng KHÔNG phải nửa do phiên ghi: Chủ cũ sửa / xoá hộ, khoản thường, ví, danh mục) | Vai không đủ sẽ không tự hết: xoá mềm nếu chưa xoá + `markSynced` (+ tính lại số dư ví), rồi xin MỘT lượt `keoLaiToanBo` để lấy bản server. Mục tiêu / ngân sách / hoá đơn: chưa xử lý (G120) | `household/application` |
 | Rời nhà / bị mời ra / nhà giải tán | **Giữ** nửa riêng — tiền đã thật sự đưa ra. Đường dọn 2 (spec 2026-10-23 mục 4.6) chỉ xoá hàng của nhà trên máy; nửa riêng còn lại thành khoản riêng thường (vẫn hiện nhãn *"Góp quỹ gia đình"*), sửa / xoá như khoản riêng | client |
 | Kéo về thấy nửa của nhà bị xoá **vì giải tán** | Không gỡ nửa riêng: phép đọc lại trạng thái nhà ở dòng *Chủ nhà xoá* thấy nhà `Dissolved` / mình không còn ở ⇒ không gỡ | client |
 
@@ -109,10 +111,10 @@ Minh góp 2.000.000 đ từ *Ví MB* vào *Tiền chợ*:
 
 | Loại | Khi | Khoá chống trùng | Câu |
 |---|---|---|---|
-| `gopQuyBiTraVe` | server từ chối nửa của nhà, nửa riêng đã gỡ | `gopTraVe:<fundPairId>` | *"Chưa góp được vào quỹ {Tiền chợ} — đã trả tiền về {Ví MB}"* |
-| `gopQuyBiXoa` | Chủ nhà xoá nửa của nhà, nửa riêng đã gỡ | `gopBiXoa:<fundPairId>` | *"Chủ nhà đã xoá khoản góp vào {Tiền chợ} — đã trả tiền về {Ví MB}"* |
+| `gopQuyBiTraVe` | server từ chối nửa của nhà, hoặc rời nhà khi nửa chưa đẩy; nửa riêng đã gỡ | `gopTraVe:<fundPairId>` | *"Chưa góp được vào quỹ {Tiền chợ}, đã trả tiền về {Ví MB}."* (rút: *"Chưa rút được từ quỹ …, đã huỷ khoản nhận ở …"*; không có nửa riêng: *"Chưa ghi được khoản góp vào quỹ …"*) |
+| `gopQuyBiXoa` | Chủ nhà xoá nửa của nhà, nửa riêng đã gỡ | `gopBiXoa:<fundPairId>` | *"Chủ nhà đã xoá khoản góp vào quỹ {Tiền chợ}, đã trả tiền về {Ví MB}."* (rút: *"…khoản rút từ quỹ …, đã huỷ khoản nhận ở …"*) |
 
-Khoá theo mã cặp ⇒ hai lượt phát của `pushResultStream` cho cùng một thất bại chỉ ra một thông báo.
+Khoá theo mã cặp ⇒ hai lượt phát của `pushResultStream` cho cùng một thất bại chỉ ra một thông báo. **Cả hai là `luonBao`** (không chịu công tắc nhóm *Gia đình*; ruling Task 9, 2026-11-01 — khác chữ *"mặc định bật"* ở trên): tiền được hoàn về ví lúc người dùng vắng mặt, cùng lý lẽ `billPaidOnOtherDevice`. Deeplink `/transactions`. Resolver chèn thẳng vào bảng thông báo (`insertIfAbsent`), không qua bộ quét. Mục `5o` `docs/NOTIFICATION_FEATURE.md`.
 
 ## 7. Số liệu
 
@@ -130,8 +132,11 @@ ví riêng. Mọi máy trong nhà có cùng tập hàng của nhà ⇒ cùng s�
   Ngân sách **theo danh mục** không tính chúng.
 - *"Thu nhập"* (`thuNhapCua` — định nghĩa duy nhất, ANALYTICS 3.24) **không** gồm nửa riêng của rút (tiền quay về, không phải tiền kiếm
   được — cùng lý do loại tiền đi vay); *tổng thu* thì gồm.
-- **Không** là mẫu học / khoản cần gắn: `laGhiChuMay` (B1, đề xuất từ khoá) và `xetGan` (thẻ *"Có N giao dịch chưa có danh mục"*, C1) bỏ
-  mọi hàng có `fundPairId` — nếu không, thẻ C1 sẽ đếm mọi khoản góp là *"chưa có danh mục"*.
+- **Không** là mẫu học / khoản cần gắn / khoản lặp (đúng theo mã, 2026-11-01):
+  - `xetGan` (thẻ *"Có N giao dịch chưa có danh mục"*, C1) bỏ mọi hàng có `fundPairId` — nếu không, thẻ đếm mọi khoản góp là *"chưa có danh mục"*.
+  - `laGhiChuMay` **không đổi**: mẫu học (`mauHocTu` / `mauSoTienTu`) đã đòi `categoryId` khác `null`, nửa riêng không có danh mục nên không vào mẫu (bản spec cũ nói `laGhiChuMay` bỏ hàng có `fundPairId` — không cần).
+  - `khoaNhomCua` (`bill/domain/khoan_lap.dart`, thẻ *"Có vẻ là khoản lặp"*) **bỏ khoản có `fundPairId`**: góp đều mỗi tháng mà không bỏ thì hiện thẻ gợi ý, bấm *Tạo* ra hoá đơn cá nhân không có nửa nhà.
+  - ⚠️ Nửa riêng sau khi RỜI nhà là khoản riêng thường: nếu 1B cho sửa nó ở form thường với danh mục + ghi chú *"Góp quỹ · …"* thì nó vào `mauHocTu` — xét khi làm đường mở nửa riêng.
 
 ### 7.3 Số liệu của nhà
 
@@ -184,8 +189,10 @@ cục với giá trị lớn nhất*).
   (không trỏ tới hàng nào).
 - **Khoá payload** `idfund_pair` (cùng kiểu `idwallet_transfer` / `idgoal`): `mapEntityFields` nhận ở **mọi khối `data` của nhánh tạo và sửa**
   giao dịch (đơn 50 D.2 — thiếu là bị bỏ qua im lặng); `/sync/pull` trả khoá (chuỗi hoặc `null`). Hàng riêng **và** hàng của nhà đều được mang.
-- **Luật:** `Idfund_pair` không được đặt trên `Transfer` ⇒ `HOUSEHOLD_SCOPE_MISMATCH`; hàng của nhà có `Idfund_pair` chỉ **người ghi** được
-  sửa (`01` mục 3 — Chủ nhà chỉ xoá). Server **không cần** kiểm hai nửa có khớp nhau — client giữ khớp (mục 6); câu hỏi Q-A3.
+- **Luật (đã chạy, backend + kịch bản `CAN-LAM/KIEM-THU/`):** `Idfund_pair` không được đặt trên `Transfer` ⇒ `HOUSEHOLD_SCOPE_MISMATCH`; hàng của nhà có `Idfund_pair` chỉ **người ghi** được
+  sửa (`01` mục 3 — Chủ nhà chỉ xoá; "xoá" = `operation === 'delete'`, không đọc `is_deleted` trong payload). **Server không bao giờ gỡ mã
+  đã gắn** (`mapped.idfund_pair || existing.idfund_pair`): máy gửi `null` không xoá được mã — khác bản spec cũ dùng `!== undefined`. Khoản
+  chuyển trong nhà (`Transfer`) chỉ Chủ sửa / xoá. Server **không cần** kiểm hai nửa có khớp nhau — client giữ khớp (mục 6); câu hỏi Q-A3.
 - **Trần ví chung:** tạo `wallet` có `Idhousehold` khi nhà đã có `maxSharedWallets` ví chung đang hoạt động ⇒ `HOUSEHOLD_WALLET_LIMIT`
   (vĩnh viễn). `maxSharedWallets` trả trong `household` của `/me` (`01` mục 4); nguồn: cột trên `household` hoặc giới hạn gói của chủ
   (`limits.household_wallets`) — backend chọn (Q-A2).
@@ -205,8 +212,9 @@ cục với giá trị lớn nhất*).
 - **Mảng có sẵn chạm tới:** `wallet` (đọc ví chung của nhà — quét 2 phân loại thêm *bộ chọn ví của nhà*), `transaction` (form chế độ nhà;
   `laGhiChuMay` / `xetGan` / nhãn ảo; `khoanVaoThongKe` không đổi chữ ký nếu nhãn ảo làm ở tầng gom), `analytics` (nhãn ảo), `notification`
   (`gopQuyBiTraVe`, `gopQuyBiXoa` — mục 6).
-- **Chiều phụ thuộc:** `household/domain` **không** import `notification`; luật thông báo của gia đình ở `notification/domain` đọc kiểu thuần
-  của `household/domain` (chiều `notification → household`) — giữ đồ thị mảng không vòng (quét 29).
+- **Chiều phụ thuộc (đúng theo mã 1A):** `household/domain` **không** import `notification`; chiều thật là `household/application → notification/domain`
+  (`GopQuyConflictResolver` import `notification_rules.dart` để lấy `NotificationKind` / `NotificationSeverity`), cạnh từ `application/` nên
+  quét 29 (nguồn chỉ `domain/`) không xét; bản spec cũ viết `notification → household` — sai chiều.
 - Thêm `HOUSEHOLD_WALLET_LIMIT` vào `_permanentCodes` cùng lượt `HOUSEHOLD_ROLE_FORBIDDEN` (`01` mục 3) — ✅ **đã thêm 2026-10-27**,
   trước khi backend chấp nhận tên.
 

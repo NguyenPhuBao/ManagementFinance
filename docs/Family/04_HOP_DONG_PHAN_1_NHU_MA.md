@@ -135,6 +135,13 @@ Ngoài bảng chỉ còn `HOUSEHOLD_ERROR` 500 (dự phòng trong mọi `catch` 
   ⇒ dữ liệu nhà về gần thời gian thực (client đọc `dongBoXong` → `syncNow()`). Còn thiếu: `HOUSEHOLD_DISSOLVED` không tới ai (`Left_at` đặt trước khi phát — 58.3); nhà lấy từ `payload.idhousehold` chưa kiểm, kể cả op bị từ chối (58.4);
   `household.changed` sau đẩy là thừa (58.4) — ⚠️ **đã bỏ từ `5ff06db4`** (đoạn này là ảnh chụp 2026-10-30, trước PR #172). **Client giãn cách `nhaDoi`:** 30 s giữa hai lượt `lamMoi()` (`kGianCachNhaDoi`, `nha_repository_impl.dart`, commit `1227d8a2`), có một lượt chạy bù cuối cửa sổ; `loiMoiNha` và thao tác của chính máy không qua bộ giãn.
   `household.invited` tới phòng tài khoản — chạy.
+- **Mã cặp góp / rút `idfund_pair` (đợt 1A, 2026-11-01, `235be596..3cd7aa5f`)** — phần 2 của hợp đồng đồng bộ, đã chạy trên CSDL thử:
+  - Cột `transaction."Idfund_pair"` VARCHAR(36) NULL + chỉ mục từng phần (`database/45_add_transaction_fund_pair.sql`, luỹ đẳng); payload đẩy khoá **`idfund_pair`**, `/sync/pull` trả khoá (chuỗi hoặc `null`). **Migration 45 đã áp `PersonFinance` (sao lưu trước `D:\FlowMoney-saoluu\PersonFinance-truoc-45-2026-11-01.dump`), CHƯA áp Supabase** — việc backend, đơn 63.1.
+  - **Server không bao giờ gỡ mã đã gắn** (`mapped.idfund_pair || existing.idfund_pair`, `sync.repository.js`) — spec `02A` mục 11 / spec 2026-11-01 mục 4 từng viết `!== undefined` (cho gỡ); đổi vì máy có cột cục bộ `null` gửi `null` sẽ xoá mã.
+  - Mã cặp trên `Transfer` ⇒ `HOUSEHOLD_SCOPE_MISMATCH`. Hàng của nhà có mã cặp: chỉ **người ghi** sửa; Chủ nhà chỉ **xoá** — "xoá" là `operation === 'delete'` (`laXoa`), không đọc `is_deleted` trong payload (đo được chuỗi hai lượt đẩy gỡ mã rồi đổi tiền; client thật luôn xoá bằng op `delete`). Khoản chuyển giữa ví chung chỉ Chủ sửa / xoá.
+  - `isNewTx = operation !== 'delete' && !existingRecord` (sửa lỗi có từ trước: trước đó nhánh "mới" bắt cả op `delete`; chốt mới dựa vào nhánh ấy).
+  - Kịch bản `CAN-LAM/KIEM-THU/chay_kiem_gia_dinh_2.js` 21 / 21 và hồi quy `chay_kiem.js` 50 / 50 (CSDL `flowmoney_kiem_thu`, đo trong đợt). Ngoài phạm vi, ghi lại: chuỗi khác rỗng khác mã cũ vẫn ghi đè ở `sync.repository.js:519` (chỉ người ghi của hàng; client không có đường này); `sync.service.js:147` `isNewWallet` còn `operation === 'create' || !existingRecord` (client luôn gửi `update`, chưa gặp).
+  - Server **chưa** chốt phạm vi danh mục cho khoản của nhà — đơn 63.2.
 
 ## 4. Đơn backend viết cho client (`docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md`) — chỗ không làm theo
 
