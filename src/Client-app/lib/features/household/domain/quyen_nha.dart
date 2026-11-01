@@ -1,5 +1,6 @@
-/// MỘT định nghĩa "vai × trạng thái nhà ⇒ làm được việc ấy không" — bảng mục 1 đơn 50 (spec gia đình 2026-10-23 mục 1,
-/// 5.4–5.6). Server thi hành lại mọi luật; client dùng để khoá nút và chọn câu, không thay phép kiểm của server.
+/// MỘT định nghĩa "vai × trạng thái nhà ⇒ làm được việc ấy không" — luật quyền ở `docs/Family/01_NEN_MONG.md` mục 3 (thay
+/// đoạn D.2 của đơn 50; khi hai nơi lệch thì `docs/Family/` thắng) và bảng trạng thái nhà mục 4. Server thi hành lại mọi luật;
+/// client dùng để khoá nút và chọn câu, không thay phép kiểm của server.
 library;
 
 import 'vai_nha.dart';

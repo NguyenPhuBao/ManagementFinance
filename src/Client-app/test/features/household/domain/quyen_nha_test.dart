@@ -2,7 +2,8 @@ import 'package:flowmoney/features/household/domain/quyen_nha.dart';
 import 'package:flowmoney/features/household/domain/vai_nha.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Bảng vai × trạng thái × việc — đơn 50 mục 1 (server thi hành lại; client chỉ khoá nút).
+/// Bảng vai × trạng thái × việc — `docs/Family/01_NEN_MONG.md` mục 3 (thắng đơn 50 khi lệch; server thi hành lại, client chỉ
+/// khoá nút).
 void main() {
   bool lam(ViecNha v, VaiNha? vai, TrangThaiNha? tt) => duocLamViecNha(v, vai: vai, trangThai: tt);
 
@@ -119,6 +120,17 @@ void main() {
       expect(sua(VaiNha.chu, cuaToi: true, coMaCap: false, t: TrangThaiNha.daGiaiTan), isFalse);
       expect(xoa(VaiNha.chu, cuaToi: true, t: TrangThaiNha.daGiaiTan), isFalse);
     });
+  });
+
+  test('MỘT nửa null (vai null hoặc trạng thái null): từ chối mặc định — cửa của nút 1B không mở khi chưa biết đủ', () {
+    for (final v in ViecNha.values) {
+      expect(lam(v, null, TrangThaiNha.hoatDong), isFalse, reason: '${v.name}: chưa biết vai');
+      expect(lam(v, VaiNha.chu, null), isFalse, reason: '${v.name}: chưa biết trạng thái nhà');
+    }
+    expect(duocSuaKhoanNha(vai: null, trangThai: TrangThaiNha.hoatDong, cuaToi: true, coMaCap: false, laChuyen: false), isFalse);
+    expect(duocSuaKhoanNha(vai: VaiNha.chu, trangThai: null, cuaToi: true, coMaCap: false, laChuyen: false), isFalse);
+    expect(duocXoaKhoanNha(vai: null, trangThai: TrangThaiNha.hoatDong, cuaToi: true, laChuyen: false), isFalse);
+    expect(duocXoaKhoanNha(vai: VaiNha.chu, trangThai: null, cuaToi: true, laChuyen: false), isFalse);
   });
 
   test('nhà giải tán / chưa có nhà: không làm được gì', () {
