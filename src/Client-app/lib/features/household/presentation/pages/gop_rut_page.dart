@@ -376,7 +376,8 @@ class _GopRutPageState extends State<GopRutPage> {
   }
 
   String _chuThich(GopRutState s, bool gop) {
-    if (!gop) return 'Số tiền được trừ khỏi quỹ và cộng vào ví riêng của bạn.';
+    // Sửa khoản rút mà máy không có nửa riêng (`tienMat`): `sua` chỉ đổi nửa nhà, không có ví riêng nào được cộng.
+    if (!gop) return s.tienMat ? 'Số tiền được trừ khỏi quỹ.' : 'Số tiền được trừ khỏi quỹ và cộng vào ví riêng của bạn.';
     return s.tienMat
         ? 'Số tiền được cộng vào quỹ, không trừ ví nào của bạn.'
         : 'Số tiền được trừ khỏi ví riêng của bạn và cộng vào quỹ.';

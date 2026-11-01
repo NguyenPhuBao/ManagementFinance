@@ -218,6 +218,17 @@ void main() {
     expect(find.text('Từ ví chung'), findsOneWidget);
   });
 
+  testWidgets('FINAL: sửa khoản rút mà máy không có nửa riêng — chú thích chỉ nói quỹ, không hứa cộng ví riêng', (t) async {
+    gq
+      ..nha = _nua(type: 'chi')
+      ..rieng = null;
+    await mo(t, maCap: 'p');
+    expect(find.text('Sửa khoản rút'), findsOneWidget, reason: 'tiền đề: đây là sửa khoản rút, chỉ còn nửa nhà');
+    expect(find.text('Số tiền được trừ khỏi quỹ.'), findsOneWidget);
+    expect(find.text('Số tiền được trừ khỏi quỹ và cộng vào ví riêng của bạn.'), findsNothing,
+        reason: '`sua` chỉ đổi nửa nhà: không có nửa riêng để cộng');
+  });
+
   testWidgets('Sửa mà khoản không còn lúc mở: báo và đóng', (t) async {
     await mo(t, maCap: 'p'); // docCap trả hai nửa rỗng
     expect(bat.cau, ['Khoản này không còn.']);
