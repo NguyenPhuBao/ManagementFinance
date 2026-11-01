@@ -634,6 +634,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         soDuVi: sl(),
         taiKhoanPhien: () => sl<GoiRepository>().idaccount,
         henDongBo: () => sl<SyncEngine>().scheduleSync(),
+        // Hàng sửa / xoá hộ bị `HOUSEHOLD_ROLE_FORBIDDEN` được gỡ khỏi máy → kéo toàn bộ trả bản server (I-2).
+        xinKeoLai: (id) => sl<SyncEngine>().keoLaiToanBo(id),
       ));
 
   sl.registerLazySingleton<ChiaSeChu>(() => const ChiaSeChuThat());

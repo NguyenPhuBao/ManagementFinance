@@ -74,6 +74,7 @@ void main() {
   late GopQuyConflictResolver resolver;
   int? phien;
   var soLanHen = 0;
+  final xinKeoLaiGoi = <int>[];
   final ngay = DateTime(2026, 11, 1, 9);
   final moc = DateTime(2026, 10, 1);
 
@@ -94,10 +95,12 @@ void main() {
         soDuVi: soDuVi,
         taiKhoanPhien: () => phien,
         henDongBo: () => soLanHen++,
+        xinKeoLai: (id) async => xinKeoLaiGoi.add(id),
       );
 
   setUp(() async {
     soLanHen = 0;
+    xinKeoLaiGoi.clear();
     phien = 10;
     db = AppDatabase.forTesting(NativeDatabase.memory());
     sync = DummySyncEngine();
@@ -231,16 +234,133 @@ void main() {
       expect(await soDu('vr'), 3000000);
     });
 
-    test('nửa của nhà do NGƯỜI KHÁC ghi (Chủ nhà sửa / xoá hộ bị từ chối): không đụng nửa nào', () async {
+    test('nửa của nhà do NGƯỜI KHÁC ghi (sửa / xoá hộ bị ROLE_FORBIDDEN): trả bản server, KHÔNG đụng nửa riêng', () async {
       final p = await gopMau();
       final nuaNha = (await gop.docCap(p)).nha!;
       await db.transactionDao.updateRow(nuaNha.id, const TransactionsCompanion(idaccount: Value(99), syncStatus: Value('pending')));
       await resolver.xuLy(_thatBai(nuaNha.id, 'HOUSEHOLD_ROLE_FORBIDDEN'));
-      expect((await db.transactionDao.getById(nuaNha.id))!.deletedAt, isNull,
-          reason: 'bản xoá hộ bị từ chối không được gỡ nửa của người khác');
+      final sau = await hang(nuaNha.id);
+      expect(sau.deletedAt, isNotNull,
+          reason: 'bản sửa / xoá hộ vĩnh viễn bị từ chối: gỡ khỏi máy để kéo toàn bộ trả bản server (hàng kẹt pending ở lại chặn '
+              'Pull, số dư ví chung lệch mãi — I-2)');
+      expect(sau.syncStatus, 'synced', reason: 'thoát hàng đợi: không đẩy lại mãi');
       expect((await gop.docCap(p)).rieng, isNotNull, reason: 'nửa riêng là của người ghi, không thuộc máy này');
       expect(await soDu('vr'), 3000000);
-      expect(await thongBao(), isEmpty);
+      expect(await soDu('vn'), 1000000, reason: 'ví chung tính lại không còn nửa vừa gỡ; kéo toàn bộ sẽ đưa nó về');
+      expect(await thongBao(), isEmpty, reason: 'nhánh này không báo người dùng');
+      expect(xinKeoLaiGoi, [10], reason: 'xin kéo toàn bộ đúng một lần, cho tài khoản phiên');
+    });
+
+    test('hai lượt phát chồng nhau cho hàng sửa hộ: gỡ và xin kéo toàn bộ một lần', () async {
+      final p = await gopMau();
+      final nuaNha = (await gop.docCap(p)).nha!;
+      await db.transactionDao.updateRow(nuaNha.id, const TransactionsCompanion(idaccount: Value(99), syncStatus: Value('pending')));
+      final kq = _thatBai(nuaNha.id, 'HOUSEHOLD_ROLE_FORBIDDEN');
+      await Future.wait([resolver.xuLy(kq), resolver.xuLy(kq)]);
+      expect(xinKeoLaiGoi, [10], reason: 'lượt hai thấy hàng đã gỡ + synced thì không làm gì, không xin kéo thêm');
+    });
+
+    test('khoản thường của người khác trong nhà (không mã cặp): cũng trả bản server', () async {
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+          id: 'tn',
+          walletId: 'vn',
+          idaccount: 99,
+          idhousehold: const Value(7),
+          amount: 30000,
+          type: 'chi',
+          date: ngay,
+          syncStatus: const Value('pending'),
+          updatedAt: moc));
+      await resolver.xuLy(_thatBai('tn', 'HOUSEHOLD_ROLE_FORBIDDEN'));
+      expect((await hang('tn')).deletedAt, isNotNull);
+      expect((await hang('tn')).syncStatus, 'synced');
+      expect(xinKeoLaiGoi, [10]);
+    });
+
+    test('khoản thường của TÔI trong nhà bị ROLE_FORBIDDEN: gỡ, xin kéo toàn bộ', () async {
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+          id: 'tt',
+          walletId: 'vn',
+          idaccount: 10,
+          idhousehold: const Value(7),
+          amount: 30000,
+          type: 'chi',
+          date: ngay,
+          syncStatus: const Value('pending'),
+          updatedAt: moc));
+      await resolver.xuLy(_thatBai('tt', 'HOUSEHOLD_ROLE_FORBIDDEN'));
+      expect((await hang('tt')).deletedAt, isNotNull);
+      expect((await hang('tt')).syncStatus, 'synced');
+      expect(xinKeoLaiGoi, [10]);
+    });
+
+    test('mã KHÁC ROLE_FORBIDDEN trên khoản thường của nhà: không đụng, không xin kéo', () async {
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+          id: 'tk',
+          walletId: 'vn',
+          idaccount: 99,
+          idhousehold: const Value(7),
+          amount: 30000,
+          type: 'chi',
+          date: ngay,
+          syncStatus: const Value('pending'),
+          updatedAt: moc));
+      await resolver.xuLy(_thatBai('tk', 'HOUSEHOLD_READ_ONLY'));
+      expect((await hang('tk')).deletedAt, isNull,
+          reason: 'READ_ONLY có thể tự hết (Chủ gia hạn): hàng ở lại pending, KHÔNG gỡ');
+      expect((await hang('tk')).syncStatus, 'pending');
+      expect(xinKeoLaiGoi, isEmpty);
+    });
+
+    test('khoản thường KHÔNG thuộc nhà bị ROLE_FORBIDDEN: không đụng', () async {
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+          id: 'tr',
+          walletId: 'vr',
+          idaccount: 10,
+          amount: 30000,
+          type: 'chi',
+          date: ngay,
+          syncStatus: const Value('pending'),
+          updatedAt: moc));
+      await resolver.xuLy(_thatBai('tr', 'HOUSEHOLD_ROLE_FORBIDDEN'));
+      expect((await hang('tr')).deletedAt, isNull);
+      expect(xinKeoLaiGoi, isEmpty);
+    });
+
+    test('ví của nhà sửa hộ bị ROLE_FORBIDDEN: gỡ khỏi máy, thoát hàng đợi, xin kéo toàn bộ', () async {
+      await resolver.xuLy(_thatBai('vn', 'HOUSEHOLD_ROLE_FORBIDDEN', entity: SyncEntityType.wallet));
+      final v = (await db.walletDao.getById('vn'))!;
+      expect(v.isDeleted, isTrue);
+      expect(v.syncStatus, 'synced');
+      expect(xinKeoLaiGoi, [10]);
+    });
+
+    test('ví KHÔNG thuộc nhà bị ROLE_FORBIDDEN: không đụng', () async {
+      await resolver.xuLy(_thatBai('vr', 'HOUSEHOLD_ROLE_FORBIDDEN', entity: SyncEntityType.wallet));
+      expect((await db.walletDao.getById('vr'))!.isDeleted, isFalse);
+      expect(xinKeoLaiGoi, isEmpty);
+    });
+
+    test('danh mục của nhà sửa hộ bị ROLE_FORBIDDEN: gỡ khỏi máy, thoát hàng đợi, xin kéo toàn bộ', () async {
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+          id: 'dm',
+          idaccount: 99,
+          name: 'Điện',
+          classify: 'chi',
+          idhousehold: const Value(7),
+          syncStatus: const Value('pending'),
+          updatedAt: moc));
+      await resolver.xuLy(_thatBai('dm', 'HOUSEHOLD_ROLE_FORBIDDEN', entity: SyncEntityType.category));
+      final c = (await db.categoryDao.getById('dm'))!;
+      expect(c.isDeleted, isTrue);
+      expect(c.syncStatus, 'synced');
+      expect(xinKeoLaiGoi, [10]);
+    });
+
+    test('mục tiêu / ngân sách bị ROLE_FORBIDDEN: không đụng (ghi G)', () async {
+      await resolver.xuLy(_thatBai('g1', 'HOUSEHOLD_ROLE_FORBIDDEN', entity: SyncEntityType.goal));
+      await resolver.xuLy(_thatBai('b1', 'HOUSEHOLD_ROLE_FORBIDDEN', entity: SyncEntityType.budget));
+      expect(xinKeoLaiGoi, isEmpty);
     });
 
     test('chưa có phiên (taiKhoanPhien null): không gỡ gì', () async {

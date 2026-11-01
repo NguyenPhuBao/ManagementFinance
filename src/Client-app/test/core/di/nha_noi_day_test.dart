@@ -58,6 +58,8 @@ void main() {
     final khoi = _khoi(nguon, 'sl.registerLazySingleton<GopQuyConflictResolver>(');
     expect(khoi, contains('taiKhoanPhien: () => sl<GoiRepository>().idaccount'),
         reason: 'thiếu thì không biết nửa nào là của mình (gỡ nhầm nửa của người khác); null (lượt nền chưa đặt tài khoản) = không gỡ');
+    expect(khoi, contains('xinKeoLai: (id) => sl<SyncEngine>().keoLaiToanBo(id)'),
+        reason: 'thiếu thì hàng sửa / xoá hộ bị ROLE_FORBIDDEN được gỡ nhưng không có lượt kéo toàn bộ trả bản server (I-2)');
     for (final tham in ['db:', 'gopQuy:', 'nha:', 'soDuVi:', 'henDongBo:']) {
       expect(khoi, contains(tham), reason: 'thiếu $tham thì resolver dựng sai / gỡ xong không xin đồng bộ');
     }

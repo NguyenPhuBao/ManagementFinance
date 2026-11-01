@@ -31,12 +31,14 @@ class GopQuyConflictResolver {
     required SoDuViService soDuVi,
     required int? Function() taiKhoanPhien,
     required void Function() henDongBo,
+    Future<void> Function(int idaccount)? xinKeoLai,
   })  : _db = db,
         _gopQuy = gopQuy,
         _nha = nha,
         _soDuVi = soDuVi,
         _taiKhoanPhien = taiKhoanPhien,
-        _henDongBo = henDongBo;
+        _henDongBo = henDongBo,
+        _xinKeoLai = xinKeoLai;
 
   final AppDatabase _db;
   final GopQuyService _gopQuy;
@@ -47,11 +49,16 @@ class GopQuyConflictResolver {
   /// (vd. lượt nền chưa đặt tài khoản) thì KHÔNG gỡ gì.
   final int? Function() _taiKhoanPhien;
   final void Function() _henDongBo;
+
+  /// Xin một lượt kéo TOÀN BỘ cho tài khoản (DI: `SyncEngine.keoLaiToanBo`) sau khi gỡ hàng sửa / xoá hộ bị `ROLE_FORBIDDEN`.
+  /// `null` = không xin (test). ⚠️ Gọi NGOÀI [_tuanTu]: lượt kéo gọi `xuLyNuaNhaBiXoa` (cũng trong [_tuanTu]) — chờ lượt kéo
+  /// ngay trong hàng việc là tự khoá chết.
+  final Future<void> Function(int idaccount)? _xinKeoLai;
   StreamSubscription<SyncResult>? _sub;
   Future<void> _hang = Future.value();
 
   /// Hai lượt phát cho cùng một thất bại, hoặc lượt đẩy và lượt kéo cùng lúc, không được chạy chồng lên nhau.
-  Future<void> _tuanTu(Future<void> Function() viec) {
+  Future<T> _tuanTu<T>(Future<T> Function() viec) {
     final f = _hang.then((_) => viec());
     _hang = f.then<void>((_) {}, onError: (Object _) {});
     return f;
@@ -68,25 +75,85 @@ class GopQuyConflictResolver {
   }
 
   @visibleForTesting
-  Future<void> xuLy(SyncResult ketQua) => _tuanTu(() async {
-        for (final f in ketQua.failures) {
-          if (f.entity != SyncEntityType.transaction || !kMaDayLoiNha.contains(f.code)) continue;
-          final nua = await _db.transactionDao.getById(f.localId);
-          final maCap = nua?.fundPairId;
-          if (nua == null || maCap == null || nua.idhousehold == null) continue;
-          // Chỉ nửa do CHÍNH TÔI ghi. Bản xoá / sửa hộ của Chủ nhà bị từ chối là việc của người ghi, không được gỡ nửa
-          // riêng của người khác (máy này cũng không có nửa riêng ấy).
-          final phien = _taiKhoanPhien();
-          if (phien == null || nua.idaccount != phien) continue;
-          if (nua.deletedAt != null) {
-            // Người ghi xoá cặp khi offline, lệnh xoá bị từ chối: cả hai nửa đã xoá, chỉ cho nửa nhà thoát hàng đợi.
-            // Giới hạn đã biết: server còn hàng ấy (G119).
-            await _db.transactionDao.markSynced(nua.id);
-            continue;
-          }
-          await _traVe(nua, idaccount: phien);
+  Future<void> xuLy(SyncResult ketQua) async {
+    final canKeoLai = await _tuanTu(() async {
+      var keoLai = false;
+      for (final f in ketQua.failures) {
+        if (!kMaDayLoiNha.contains(f.code)) continue;
+        final phien = _taiKhoanPhien();
+        if (phien == null) continue;
+        final vaiKhongDu = f.code == _maVaiKhongDu;
+        switch (f.entity) {
+          case SyncEntityType.transaction:
+            final nua = await _db.transactionDao.getById(f.localId);
+            if (nua == null || nua.idhousehold == null) continue;
+            if (nua.fundPairId != null && nua.idaccount == phien) {
+              // Nửa do CHÍNH TÔI ghi: gỡ cả cặp.
+              if (nua.deletedAt != null) {
+                // Người ghi xoá cặp khi offline, lệnh xoá bị từ chối: cả hai nửa đã xoá, chỉ cho nửa nhà thoát hàng đợi.
+                // Giới hạn đã biết: server còn hàng ấy (G119).
+                await _db.transactionDao.markSynced(nua.id);
+              } else {
+                await _traVe(nua, idaccount: phien);
+              }
+            } else if (vaiKhongDu && await _traBanServerGiaoDich(nua)) {
+              // Sửa / xoá hộ (Chủ nhà bị hạ vai khi offline), hoặc khoản thường của nhà: vai không đủ nên không tự hết.
+              keoLai = true;
+            }
+          case SyncEntityType.wallet:
+            if (vaiKhongDu && await _traBanServerVi(f.localId)) keoLai = true;
+          case SyncEntityType.category:
+            if (vaiKhongDu && await _traBanServerDanhMuc(f.localId)) keoLai = true;
+          // Mục tiêu, ngân sách: chưa xử lý — hàng ở lại `pending` với bậc chặn riêng (G).
+          case SyncEntityType.budget || SyncEntityType.bill || SyncEntityType.goal:
+            break;
         }
-      });
+      }
+      return keoLai ? _taiKhoanPhien() : null;
+    });
+    if (canKeoLai == null || _xinKeoLai == null) return;
+    try {
+      await _xinKeoLai(canKeoLai);
+    } catch (e) {
+      debugPrint('[GopQuy] xin kéo toàn bộ hỏng: ${e.runtimeType}');
+    }
+  }
+
+  /// `HOUSEHOLD_ROLE_FORBIDDEN`: vai của tôi không đủ cho thao tác — không tự hết như `READ_ONLY` (Chủ gia hạn là xong).
+  static const _maVaiKhongDu = 'HOUSEHOLD_ROLE_FORBIDDEN';
+
+  /// Hàng của nhà bị server từ chối vì vai: máy này giữ bản sửa / xoá mà server sẽ không bao giờ nhận, và hàng `pending` ở lại
+  /// còn chặn kéo về ghi đè nó — số dư lệch mãi. Gỡ khỏi máy (xoá mềm nếu chưa xoá) + `markSynced` để thoát hàng đợi; lượt kéo
+  /// TOÀN BỘ ngay sau đó trả bản server (hàng server chưa từng có thì ở lại đã xoá). Trả `true` nếu đã gỡ lần này; hàng đã
+  /// gỡ + `synced` (lượt phát thứ hai cho cùng thất bại) thì không làm gì.
+  Future<bool> _traBanServerGiaoDich(Transaction nua) async {
+    if (nua.deletedAt != null && nua.syncStatus == 'synced') return false;
+    final vi = {nua.walletId, if (nua.walletTransfer != null) nua.walletTransfer!};
+    await _soDuVi.datNeoNhieuVi(vi);
+    if (nua.deletedAt == null) await _db.transactionDao.softDelete(nua.id);
+    // Sau xoá mềm (nó đặt lại `pending`).
+    await _db.transactionDao.markSynced(nua.id);
+    await _soDuVi.tinhLaiNhieuVi(vi);
+    return true;
+  }
+
+  Future<bool> _traBanServerVi(String id) async {
+    final vi = await _db.walletDao.getById(id);
+    if (vi == null || vi.idhousehold == null) return false;
+    if (vi.deletedAt != null && vi.syncStatus == 'synced') return false;
+    if (vi.deletedAt == null) await _db.walletDao.softDelete(id);
+    await _db.walletDao.markSynced(id);
+    return true;
+  }
+
+  Future<bool> _traBanServerDanhMuc(String id) async {
+    final dm = await _db.categoryDao.getById(id);
+    if (dm == null || dm.idhousehold == null) return false;
+    if (dm.deletedAt != null && dm.syncStatus == 'synced') return false;
+    if (dm.deletedAt == null) await _db.categoryDao.softDelete(id);
+    await _db.categoryDao.markSynced(id);
+    return true;
+  }
 
   /// Chủ nhà xoá nửa của nhà: nửa riêng còn sống trên máy người góp bị gỡ theo. Gọi sau mỗi lượt kéo về.
   Future<void> xuLyNuaNhaBiXoa(int idaccount) => _tuanTu(() async {

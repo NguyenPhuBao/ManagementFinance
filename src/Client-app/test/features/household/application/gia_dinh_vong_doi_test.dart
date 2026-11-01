@@ -245,7 +245,13 @@ class May {
         localDataSource: TransactionLocalDataSourceImpl(db), syncEngine: engine, soDuVi: soDu);
     gop = GopQuyService(giaoDich: repo, db: db, soDuVi: soDu, henDongBo: () {});
     resolver = GopQuyConflictResolver(
-        db: db, gopQuy: gop, nha: nhaGia, soDuVi: soDu, taiKhoanPhien: () => phien, henDongBo: () {});
+        db: db,
+        gopQuy: gop,
+        nha: nhaGia,
+        soDuVi: soDu,
+        taiKhoanPhien: () => phien,
+        henDongBo: () {},
+        xinKeoLai: (id) => engine.keoLaiToanBo(id));
     resolver.batDauNghe(engine.pushResultStream);
     duLieu = DuLieuNhaRepositoryImpl(
         db: db, localDataSource: WalletLocalDataSourceImpl(db: db), soDuVi: soDu, syncEngine: engine);
@@ -394,5 +400,80 @@ void main() {
         reason: 'một lỗi KHÔNG phải từ chối phạm vi nhà trong cùng lô: chu kỳ vẫn tính hỏng, giãn cách như cũ');
     m.engine.dispose();
     await m.db.close();
+  });
+
+  test('I-2: Chủ bị hạ xuống Thành viên, xoá hộ khi offline: kéo toàn bộ trả bản server, số dư ví chung khớp', () async {
+    final s = ServerGia();
+    s.thanhVien[20] = (nha: 5, vai: 'Owner');
+    s.thanhVien[10] = (nha: 5, vai: 'Member');
+    final o = May(20, s, 5);
+    final m = May(10, s, 5);
+    final vr = const Uuid().v4();
+    await m.db.walletDao.insert(WalletsCompanion.insert(
+        id: vr, idaccount: 10, name: 'Ví', balance: const Value(1000000), updatedAt: DateTime(2026, 10, 1)));
+    await m.soDu.datNeoNhieuVi({vr});
+    final vc = await o.duLieu.taoViChung(
+        idNha: 5, idaccount: 20, ten: 'Quỹ', loai: 'cash', soDuBanDau: 500000, icon: 'wallet', mau: '#000000');
+    await o.dongBo();
+    await m.dongBo();
+    final p = await m.gop.gop(
+        idNha: 5,
+        idaccount: 10,
+        viChungId: vc.id,
+        tenViChung: 'Quỹ',
+        soTien: 200000,
+        viRiengId: vr,
+        ngay: DateTime(2026, 11, 1));
+    await m.dongBo();
+    await o.dongBo();
+    expect(await o.du(vc.id), 700000, reason: 'tiền đề: hai máy cùng thấy khoản góp 200k');
+    // O offline xoá hộ nửa nhà của M; trong lúc đó bị chuyển xuống Thành viên.
+    await o.gop.xoa(p);
+    s.thanhVien[20] = (nha: 5, vai: 'Member');
+    await o.dongBo();
+    expect(s.tuChoi.any((x) => x.endsWith('HOUSEHOLD_ROLE_FORBIDDEN')), isTrue, reason: 'tiền đề: lệnh xoá hộ bị từ chối');
+    // M sửa khoản góp trên server (đổi đúng hàng ấy).
+    await Future<void>.delayed(const Duration(milliseconds: 1100));
+    await m.gop.sua(maCap: p, soTien: 250000, ngay: DateTime(2026, 11, 2), ghiChu: 'x');
+    await m.dongBo();
+    // Lượt kéo toàn bộ do resolver xin: O trả về bản server.
+    await o.dongBo();
+    await o.dongBo();
+    final tongServer = soDuServer(s, vc.id);
+    expect(tongServer, 750000, reason: 'tiền đề: server cộng 500k mở sổ + 250k góp');
+    expect(await o.du(vc.id), tongServer,
+        reason: 'O (Chủ cũ) phải thấy đúng quỹ như server; trước sửa: 500.000 vì hàng xoá-hộ pending chặn Pull ghi đè mãi (I-2)');
+    expect(await o.dem(5), 0, reason: 'không còn hàng chưa đẩy của nhà: Rời nhà không bị chặn oan');
+    expect((await o.db.transactionDao.theoMaCap(p)).where((t) => t.idhousehold != null), hasLength(1),
+        reason: 'nửa nhà của M sống lại trên máy O');
+    expect(await o.soThongBao(), 0, reason: 'nhánh này không báo người dùng');
+    o.engine.dispose();
+    m.engine.dispose();
+    await o.db.close();
+    await m.db.close();
+  });
+
+  test('I-2: Chủ cũ tự sửa ví chung của mình sau khi bị hạ vai: kéo toàn bộ trả bản server, hàng thoát hàng đợi', () async {
+    final s = ServerGia();
+    s.thanhVien[20] = (nha: 5, vai: 'Owner');
+    final o = May(20, s, 5);
+    final vc = await o.duLieu.taoViChung(
+        idNha: 5, idaccount: 20, ten: 'Quỹ', loai: 'cash', soDuBanDau: 500000, icon: 'wallet', mau: '#000000');
+    await o.dongBo();
+    s.thanhVien[20] = (nha: 5, vai: 'Member');
+    await (o.db.update(o.db.wallets)..where((w) => w.id.equals(vc.id))).write(WalletsCompanion(
+        name: const Value('Tên mới offline'), syncStatus: const Value('pending'), updatedAt: Value(DateTime.now())));
+    await o.dongBo();
+    expect(s.tuChoi.any((x) => x.startsWith('wallet:') && x.endsWith('HOUSEHOLD_ROLE_FORBIDDEN')), isTrue,
+        reason: 'tiền đề: sửa ví bị từ chối vì vai');
+    await o.dongBo();
+    await o.dongBo();
+    final v = (await o.db.walletDao.getById(vc.id))!;
+    expect(v.name, 'Quỹ', reason: 'bản server thắng: tên cũ trở lại');
+    expect(v.isDeleted, isFalse);
+    expect(v.syncStatus, 'synced', reason: 'thoát hàng đợi: không bị đẩy lại mãi');
+    expect(await o.du(vc.id), 500000);
+    o.engine.dispose();
+    await o.db.close();
   });
 }
