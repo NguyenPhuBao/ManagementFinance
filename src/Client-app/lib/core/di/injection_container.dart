@@ -82,6 +82,7 @@ import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
 import '../../features/household/application/gop_quy_conflict_resolver.dart';
 import '../../features/household/application/gop_quy_service.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository_impl.dart';
+import '../../features/household/data/them_giao_dich_nguon_nha.dart';
 import '../../features/household/data/repositories/nha_repository.dart';
 import '../../features/household/data/repositories/nha_repository_impl.dart';
 import '../../features/khoa_app/application/khoa_app_service.dart';
@@ -621,6 +622,14 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         localDataSource: sl(),
         soDuVi: sl(),
         syncEngine: sl(),
+      ));
+  // Nguồn của form Thêm giao dịch ở chế độ nhà (1B): dựng theo nhà của trang, nên đăng ký theo tham số (route `/nha/khoan`).
+  sl.registerFactoryParam<ThemGiaoDichNguonNha, ThamSoNguonNha, void>((p, _) => ThemGiaoDichNguonNha(
+        idNha: p.idNha,
+        duLieu: sl(),
+        categoryDao: sl<AppDatabase>().categoryDao,
+        viUuTien: p.uuTien,
+        viGiuLai: p.giuLai,
       ));
   // Cặp góp / rút: hai nửa một giao tác qua repository giao dịch (neo số dư trước khi ghi).
   sl.registerLazySingleton<GopQuyService>(() => GopQuyService(

@@ -23,6 +23,11 @@ import '../../features/category/presentation/pages/gan_danh_muc_page.dart';
 import '../../features/transaction/presentation/pages/transaction_page.dart';
 import '../../features/budget/presentation/pages/budget_detail_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
+import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
+import '../../features/household/data/repositories/nha_repository.dart';
+import '../../features/household/data/them_giao_dich_nguon_nha.dart';
+import '../../features/household/domain/quyen_nha.dart';
+import '../../features/transaction/presentation/state/che_do_nha_form.dart';
 import '../../features/household/presentation/pages/moi_thanh_vien_page.dart';
 import '../../features/household/presentation/pages/nha_minh_page.dart';
 import '../../features/household/presentation/pages/quan_ly_thanh_vien_page.dart';
@@ -99,6 +104,16 @@ const _publicRoutes = {
   '/otp',
   '/reset-password'
 };
+
+/// Cửa quyền GHI khoản của nhà (`/nha/khoan` và route con). Khuôn G92: chờ kho trước khi đọc vai, vì router chạy `redirect`
+/// lúc phiên vừa nối mà kho chưa trả lời. Không được ghi (Chỉ xem, nhà chỉ xem, đã rời) → về Nhà mình; mọi lối vào qua đây.
+/// Sửa khoản mà nhà đổi trạng thái giữa chừng: `redirect` chỉ chạy lúc vào, server từ chối sau đó đã có resolver.
+Future<String?> _veNhaNeuKhongGhiDuoc() async {
+  final n = sl<NhaRepository>();
+  await n.choNapKho();
+  final t = n.hienTai;
+  return duocLamViecNha(ViecNha.ghiKhoan, vai: t.vai, trangThai: t.nha?.trangThai) ? null : '/nha';
+}
 
 class AppRouter {
   /// Tạo GoRouter với:
@@ -312,6 +327,50 @@ class AppRouter {
             path: '/nha/tao',
             redirect: redirectTheoQuyen(MaQuyen.giaDinh),
             builder: (_, __) => const TaoNhaPage(),
+          ),
+          // Ghi / sửa khoản của nhà (1B): MỘT cửa — không có quyền ghi thì về Nhà mình. KHÔNG dùng `/add`: nút + thanh dưới
+          // và deeplink cũ không được vào phạm vi nhà (test `duong_nha_noi_day_test`). `?vi=` ví đứng đầu bộ chọn,
+          // `?huong=` đoạn mở sẵn (Thành viên mà `transfer` thì về Chi tiêu — `huongFormNha`), `extra: EditTransactionArgs` = sửa.
+          GoRoute(
+            path: '/nha/khoan',
+            redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
+            builder: (_, state) {
+              final t = sl<NhaRepository>().hienTai;
+              final sua = state.extra is EditTransactionArgs ? state.extra as EditTransactionArgs : null;
+              final choChuyen = duocLamViecNha(ViecNha.chuyenGiuaViChung, vai: t.vai, trangThai: t.nha!.trangThai);
+              return AddTransactionPage(
+                initial: sua,
+                huongBanDau: huongFormNha(state.uri.queryParameters['huong'], choChuyen: choChuyen),
+                nguon: sl<ThemGiaoDichNguonNha>(
+                  param1: ThamSoNguonNha(
+                    idNha: t.nha!.id,
+                    uuTien: state.uri.queryParameters['vi'],
+                    giuLai: {
+                      if (sua != null) sua.transaction.walletId,
+                      if (sua?.transaction.walletTransfer != null) sua!.transaction.walletTransfer!,
+                    },
+                  ),
+                ),
+                nha: CheDoNhaForm(
+                  idNha: t.nha!.id,
+                  tenNha: t.nha!.ten,
+                  choChuyen: choChuyen,
+                  duongChonDanhMuc: '/nha/khoan/category',
+                ),
+              );
+            },
+            routes: [
+              GoRoute(
+                path: 'category',
+                redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
+                builder: (_, state) => ChooseCategoryPage(
+                  classify: state.extra as String? ?? 'chi',
+                  napCay: (c) => sl<DuLieuNhaRepository>().napCayDanhMuc(sl<NhaRepository>().hienTai.nha!.id, c),
+                  // T11 đổi thành '/nha/danh-muc' cùng lúc tạo route: không có lúc nào nút trỏ route chưa có.
+                  duongQuanLy: null,
+                ),
+              ),
+            ],
           ),
 
           // Budget rules

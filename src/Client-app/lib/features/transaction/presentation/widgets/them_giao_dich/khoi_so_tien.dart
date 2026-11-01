@@ -10,10 +10,13 @@ import '../../../domain/ban_phim_so_tien.dart';
 import '../so_tien_lon.dart';
 
 class ThanhChonChieu extends StatelessWidget {
-  const ThanhChonChieu({super.key, required this.huong, required this.onChon});
+  const ThanhChonChieu({super.key, required this.huong, required this.onChon, this.coChuyen = true});
 
   final String huong;
   final ValueChanged<String> onChon;
+
+  /// `false` (Thành viên ở chế độ nhà) → bỏ đoạn *Chuyển khoản*; hai đoạn còn lại chia đều hàng.
+  final bool coChuyen;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +30,7 @@ class ThanhChonChieu extends StatelessWidget {
         children: [
           Expanded(child: _nut('chi', 'Chi tiêu', AppColors.expense)),
           Expanded(child: _nut('thu', 'Thu nhập', AppColors.income)),
-          Expanded(child: _nut('transfer', 'Chuyển khoản', AppColors.primary)),
+          if (coChuyen) Expanded(child: _nut('transfer', 'Chuyển khoản', AppColors.primary)),
         ],
       ),
     );

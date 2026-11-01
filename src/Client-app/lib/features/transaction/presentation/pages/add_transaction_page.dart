@@ -29,7 +29,9 @@ import '../widgets/sheet_them_phan.dart';
 import '../widgets/them_giao_dich/ban_phim_so.dart';
 import '../widgets/them_giao_dich/bang_chon_vi.dart';
 import '../widgets/them_giao_dich/dai_nguon_bien_dong.dart';
+import '../state/che_do_nha_form.dart';
 import '../widgets/them_giao_dich/khoi_so_tien.dart';
+import '../widgets/them_giao_dich/nhan_nha.dart';
 import '../widgets/them_giao_dich/o_nhap_nhanh.dart';
 import '../widgets/them_giao_dich/the_form.dart';
 import '../widgets/them_giao_dich/the_goi_y.dart';
@@ -155,6 +157,13 @@ class AddTransactionPage extends StatefulWidget {
   /// `/add?noi=1` — mở form rồi nghe ngay.
   final bool batDauNghe;
 
+  /// Chế độ NHÀ (gia đình 1B, `02A` mục 4): ghi vào quỹ chung của nhà. Chỉ route `/nha/khoan` truyền; `/add` của cá nhân
+  /// không bao giờ — nút + thanh dưới không được vào phạm vi nhà. Ẩn Nhập nhanh, micro, tách, gợi ý, từ khoá, nút ba chấm.
+  final CheDoNhaForm? nha;
+
+  /// Nguồn dữ liệu tiêm vào (chế độ nhà dùng `ThemGiaoDichNguonNha`). `null` → nguồn thật của form cá nhân.
+  final ThemGiaoDichNguon? nguon;
+
   const AddTransactionPage({
     super.key,
     this.idaccount,
@@ -181,6 +190,8 @@ class AddTransactionPage extends StatefulWidget {
     this.laPremium,
     this.giongNoi,
     this.batDauNghe = false,
+    this.nha,
+    this.nguon,
   });
 
   @override
@@ -226,29 +237,32 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   late final NgheGiongNoiCubit? _nghe = () {
     final n = _nguonGiongNoi;
-    return n == null || widget.initial != null || widget.bienDong != null ? null : NgheGiongNoiCubit(nguon: n);
+    return n == null || widget.initial != null || widget.bienDong != null || widget.nha != null
+        ? null
+        : NgheGiongNoiCubit(nguon: n);
   }();
 
   /// Khoá của thẻ gợi ý — để [_cuonToiTheGoiY] đưa thẻ nguồn số tiền vào khung nhìn.
   final GlobalKey _khoaTheGoiY = GlobalKey();
 
   /// Mọi đọc / ghi dữ liệu của form (spec 2026-10-11 mục 4.3). Dựng một lần từ tham số khởi tạo.
-  late final ThemGiaoDichNguon _nguon = ThemGiaoDichNguonThat(
-    danhMuc: widget.categoryRepository,
-    viTiem: widget.wallets,
-    viHayDungTiem: widget.viHayDung,
-    boPhanLoaiTiem: widget.boPhanLoai,
-    boSoTienTiem: widget.boSoTien,
-    phanHoi: widget.phanHoiGoiY,
-    docAi: widget.docAi,
-    viTheoNguon: widget.viTheoNguon,
-    xoaBienDong: widget.xoaBienDong,
-    khoanTrongSo: widget.khoanTrongSo,
-    hangBienDongCho: widget.hangBienDongCho,
-    khoBienLai: widget.khoBienLai,
-    khoAnhQuet: widget.khoAnhQuet,
-    traNganSach: widget.budgetLookup,
-  );
+  late final ThemGiaoDichNguon _nguon = widget.nguon ??
+      ThemGiaoDichNguonThat(
+        danhMuc: widget.categoryRepository,
+        viTiem: widget.wallets,
+        viHayDungTiem: widget.viHayDung,
+        boPhanLoaiTiem: widget.boPhanLoai,
+        boSoTienTiem: widget.boSoTien,
+        phanHoi: widget.phanHoiGoiY,
+        docAi: widget.docAi,
+        viTheoNguon: widget.viTheoNguon,
+        xoaBienDong: widget.xoaBienDong,
+        khoanTrongSo: widget.khoanTrongSo,
+        hangBienDongCho: widget.hangBienDongCho,
+        khoBienLai: widget.khoBienLai,
+        khoAnhQuet: widget.khoAnhQuet,
+        traNganSach: widget.budgetLookup,
+      );
 
   final TextEditingController _noteController = TextEditingController();
 
@@ -275,7 +289,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     });
     unawaited(_cubit.moTrang());
     // `/add?noi=1` (nút Nói ở Trang chủ): mở form rồi nghe ngay.
-    if (widget.batDauNghe) WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_batDauNgheNgay()));
+    if (widget.batDauNghe && widget.nha == null) WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_batDauNgheNgay()));
   }
 
   /// C2 — đọc câu ô *Nhập nhanh* rồi điền sẵn (Cubit lo toàn bộ); trang chỉ đóng bàn phím trước.
@@ -501,13 +515,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         }
         _cubit.daGuiLuu(r);
         final bloc = context.read<TransactionBloc>();
+        // Chế độ nhà: khoản MỚI mang `idhousehold` (thiếu là lưu thành khoản riêng trỏ ví nhà). Sửa thì hàng cũ đã mang nhà.
+        final idNha = widget.nha?.idNha;
+        TransactionEntity ganNha(TransactionEntity t) => idNha == null ? t : t.copyWith(idhousehold: idNha);
         final truoc = r.truoc;
         if (truoc != null) {
           bloc.add(UpdateTransactionEvent(before: truoc, after: r.giaoDich.single));
         } else if (r.laTach) {
-          bloc.add(AddTransactionsEvent(transactions: r.giaoDich));
+          bloc.add(AddTransactionsEvent(transactions: [for (final t in r.giaoDich) ganNha(t)]));
         } else {
-          final tx = r.giaoDich.single;
+          final tx = ganNha(r.giaoDich.single);
           bloc.add(AddTransactionEvent(transaction: tx, destinationWalletId: tx.walletTransfer));
         }
     }
@@ -634,7 +651,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             title: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                _isEditing ? 'Sửa giao dịch' : 'Thêm giao dịch',
+                widget.nha != null
+                    ? tieuDeFormNha(_isEditing, _s.huong)
+                    : (_isEditing ? 'Sửa giao dịch' : 'Thêm giao dịch'),
                 maxLines: 1,
                 style: const TextStyle(
                   color: AppColors.primary,
@@ -656,11 +675,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 if (luuTieuDe != null) luuTieuDe,
               ] else ...[
                 if (luuTieuDe != null) luuTieuDe,
-                IconButton(
-                  tooltip: 'Thêm tuỳ chọn',
-                  icon: const Icon(Icons.more_vert, color: AppColors.primary),
-                  onPressed: () {},
-                ),
+                // Nút ba chấm chưa có việc gì để làm (handler rỗng): chế độ nhà không dựng.
+                if (widget.nha == null)
+                  IconButton(
+                    tooltip: 'Thêm tuỳ chọn',
+                    icon: const Icon(Icons.more_vert, color: AppColors.primary),
+                    onPressed: () {},
+                  ),
               ],
             ],
           ),
@@ -675,7 +696,15 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: ThanhChonChieu(huong: _s.huong, onChon: _chonHuong),
+                  child: Column(
+                    children: [
+                      ThanhChonChieu(huong: _s.huong, onChon: _chonHuong, coChuyen: widget.nha?.choChuyen ?? true),
+                      if (widget.nha case final nha?) ...[
+                        const SizedBox(height: 8),
+                        NhanNha(tenNha: nha.tenNha),
+                      ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
                 KhoiSoTien(
@@ -710,7 +739,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             TheGoiYChuyen(gy: gy, onApDung: _cubit.apGoiYChuyen),
                             const SizedBox(height: 12),
                           ],
-                        ] else if (!_isEditing) ...[
+                        ] else if (!_isEditing && widget.nha == null) ...[
                           // Khối hai chip của câu nói / Nhập nhanh nằm TRONG thẻ (`_oNhapNhanh`, Stitch `d696e81e…`).
                           _nghe == null
                               ? _oNhapNhanh(null)
@@ -864,19 +893,21 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       onChonDanhMuc: () async {
         // Mở đúng tab của danh mục đang chọn; lần đầu thì tab chi.
         final selected = await context.push<CategoryEntity>(
-          '/add/category',
+          widget.nha?.duongChonDanhMuc ?? '/add/category',
           // Chưa có danh mục thì mở tab của đoạn đang chọn (C3).
           extra: selectedCategory?.classify ?? (_s.huong == 'thu' ? 'thu' : kCategoryClassifies.first),
         );
         if (selected != null) _chonDanhMuc(selected);
       },
       onPickDate: _pickDate,
-      hienDongTach: _s.choTach && _s.phanTach.isEmpty,
+      nhanVi: widget.nha == null ? 'Ví thanh toán' : 'Ví chung',
+      hienDongTach: widget.nha == null && _s.choTach && _s.phanTach.isEmpty,
       onThemPhan: _themPhan,
       nhacTrung:
           _bienDong != null && _s.trungTrongSo.isNotEmpty ? NhacTrung(d: _bienDong!, trung: _s.trungTrongSo) : null,
       // Quyền `category_keywords_matching` (B1): không đề xuất thêm từ khoá; từ khoá đã có vẫn gợi ý danh mục (chốt 8).
-      deXuatTuKhoa: context.coQuyen(MaQuyen.categoryKeywordsMatching) &&
+      deXuatTuKhoa: widget.nha == null &&
+              context.coQuyen(MaQuyen.categoryKeywordsMatching) &&
               (_s.deXuat != null || _s.daThemTuKhoa != null)
           ? DongDeXuatTuKhoa(
               daThem: _s.daThemTuKhoa,
@@ -891,7 +922,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
               onChon: _cubit.chonChieuNo,
             )
           : null,
-      theGoiY: s == null
+      theGoiY: s == null || widget.nha != null
           ? null
           : TheGoiYDanhMuc(
               key: _khoaTheGoiY,

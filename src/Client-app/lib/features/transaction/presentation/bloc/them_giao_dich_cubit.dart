@@ -635,6 +635,7 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     if (!s.laChuyen && danhMuc == null) return const LoiLuu('Vui lòng chọn danh mục');
     final viDich = s.viDich;
     if (s.laChuyen && viDich == null) return const LoiLuu('Vui lòng chọn ví đích');
+    if (s.laChuyen && viDich!.id == viNguon.id) return const LoiLuu('Ví đích phải khác ví nguồn');
     final type = s.loaiGhi;
     if (type == null) return const LoiLuu('Vui lòng chọn chiều tiền');
     // ⚠️ Chốt cuối, và là chốt quan trọng nhất trong chuỗi này: KHÔNG ghi giao dịch khi chưa biết nó thuộc về ai. Trước

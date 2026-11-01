@@ -696,6 +696,18 @@ void main() {
       expect(await c.chuanBiLuu(), isA<SanSangLuu>(), reason: 'chọn ví đích thì qua chốt');
     });
 
+    test('chuyển khoản mà ví đích TRÙNG ví nguồn → "Ví đích phải khác ví nguồn"; một ví thì không chuyển được', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tcb]));
+      c.chonVi(tcb);
+      c.chonHuong('transfer');
+      c.goPhim('5');
+      c.chonViDich(tcb);
+      expect((await c.chuanBiLuu() as LoiLuu).cau, 'Ví đích phải khác ví nguồn',
+          reason: 'ví nhà thường chỉ có 1–2 ví: chuyển cùng ví thì hai nửa triệt tiêu, server từ chối hoặc ghi vô nghĩa');
+      c.chonViDich(tienMat);
+      expect(await c.chuanBiLuu(), isA<SanSangLuu>(), reason: 'đổi sang ví khác thì qua chốt');
+    });
+
     test('chốt chiều tiền: danh mục vay/nợ mà chưa có chiều → "Vui lòng chọn chiều tiền" (nhánh phòng thủ)', () async {
       // Nhánh này không dẫn tới được bằng API công khai (xem `_CubitEpState`) — ép state để ghim câu chữ của chốt.
       final c = _CubitEpState(NguonThemGiaoDichGia());
