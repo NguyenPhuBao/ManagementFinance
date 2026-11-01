@@ -363,6 +363,51 @@ void main() {
     await m.db.close();
   });
 
+  test('I-1: khoản nhà đang bị chặn KHÔNG kéo danh mục riêng của nó vào lô ở các chu kỳ sau (khối 1b, không vòng nóng)', () async {
+    final s = ServerGia();
+    s.thanhVien[10] = (nha: 5, vai: 'Viewer');
+    var gio = DateTime(2026, 11, 1, 8);
+    final m = May(10, s, 5, now: () => gio);
+    final vcId = const Uuid().v4();
+    final catId = const Uuid().v4();
+    await m.db.walletDao.insert(WalletsCompanion.insert(
+        id: vcId,
+        idaccount: 20,
+        name: 'Quỹ',
+        idhousehold: const Value(5),
+        syncStatus: const Value('synced'),
+        updatedAt: DateTime(2026, 10, 1)));
+    await m.db.categoryDao.insert(CategoriesCompanion.insert(
+        id: catId,
+        idaccount: 10,
+        name: 'Ăn',
+        classify: 'chi',
+        syncStatus: const Value('synced'),
+        updatedAt: DateTime(2026, 10, 1)));
+    await m.db.transactionDao.insert(TransactionsCompanion.insert(
+        id: const Uuid().v4(),
+        walletId: vcId,
+        idaccount: 10,
+        idhousehold: const Value(5),
+        categoryId: Value(catId),
+        amount: 50000,
+        type: 'chi',
+        date: DateTime(2026, 11, 1),
+        syncStatus: const Value('pending'),
+        updatedAt: DateTime(2026, 11, 1)));
+    await m.dongBo();
+    expect(s.soLanPush, 1, reason: 'tiền đề: lượt đầu đẩy (khoản nhà + danh mục đi kèm) và bị từ chối');
+    for (var i = 0; i < 3; i++) {
+      gio = gio.add(const Duration(seconds: 2)); // hàng nhà còn bị chặn (bậc ≥ 30 s)
+      await m.dongBo();
+    }
+    expect(s.soLanPush, 1,
+        reason: 'khoản nhà đang bị chặn thì danh mục của nó cũng không đi kèm: gửi lại ở mọi chu kỳ → conflict (không lỗi, '
+            'không giãn cách) → sync.completed đánh thức chính máy này → vòng nóng (G63, 291 chu kỳ / 5 giây)');
+    m.engine.dispose();
+    await m.db.close();
+  });
+
   test('I-1: lượt có cả lỗi khác vẫn tính hỏng như cũ', () async {
     final s = ServerGia();
     s.thanhVien[10] = (nha: 5, vai: 'Viewer');

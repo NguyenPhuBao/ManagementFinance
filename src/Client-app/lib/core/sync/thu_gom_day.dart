@@ -193,6 +193,10 @@ class ThuGomThaoTacDay {
       // chu kỳ → xung đột (không lỗi, nên không giãn cách) → server phát
       // `sync.completed` về chính máy này → `syncNow` → chạy bù → đẩy lại.
       if (giu.giaoDich.contains(t.id)) continue;
+      // Cùng lý do với dòng trên cho giao dịch đang bị CHẶN theo thời gian (vd. hàng nhà bị từ chối vì vai): nó không lên
+      // lô thì danh mục của nó cũng không đi kèm. Từ I-1 chu kỳ chỉ có từ chối phạm vi nhà không giãn cách engine nữa, nên
+      // khe này không còn được cửa giãn cách che.
+      if (_isSyncBlocked(t.syncBlockedUntil)) continue;
       final resolvedId = await resolveCategoryId(_db, t.categoryId);
       if (resolvedId == null) continue;
       if (alreadyInBatch.contains(resolvedId)) continue;
