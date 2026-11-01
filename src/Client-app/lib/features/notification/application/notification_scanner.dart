@@ -386,6 +386,8 @@ class NotificationScanner {
       // Bỏ qua có chủ ý.
     }
     await _nhapBienDong(idaccount);
+    // `stop()` có thể chạy trong khe nhập (nhập biên lai chạy ML Kit): đừng nghe / quét cho phiên đã đóng.
+    if (_idaccount != idaccount) return;
 
     // Trước khi nghe: badge phải đúng ngay từ lúc mở app, không chờ lượt quét
     // đầu. Người dùng đọc hết rồi đóng app thì lần mở sau chấm phải đã tắt.
@@ -415,7 +417,8 @@ class NotificationScanner {
       if (s != AppLifecycleState.resumed) return;
       final id = _idaccount;
       if (id == null) return;
-      unawaited(_nhapBienDong(id).then((_) => scan(id)).catchError((_) => 0));
+      // Khe nhập có thể dài (ML Kit): `stop()` chạy trong đó thì không quét — lịch nhắc đặt SAU `cancelAll` nổ trên màn khoá.
+      unawaited(_nhapBienDong(id).then((_) => _idaccount == id ? scan(id) : 0).catchError((_) => 0));
     });
 
     // Quét NGAY, không chờ sự kiện đồng bộ nào.

@@ -96,7 +96,9 @@ void main() {
   });
 
   test('rảnh → stop() → quetKhiRanh: không quét', () async {
-    final (s, _, doc) = await phienDangMo();
+    final (s, giu, doc) = await phienDangMo();
+    // Xả cờ giữ TRƯỚC: hồi quy (quet sau stop) phải đỏ bằng assertion, không treo ở `await` chờ `giu` vô tận.
+    giu.complete();
     await s.stop();
     await s.quetKhiRanh(18);
     expect(doc(), 0);

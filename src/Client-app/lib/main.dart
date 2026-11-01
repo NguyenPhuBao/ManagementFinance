@@ -143,7 +143,8 @@ void main() async {
     if (call.method != 'quetNgay') return null;
     final id = idaccountTuTrangThai(authBloc.state);
     if (id == null) return null;
-    await sl<NotificationScanner>().scan(id);
+    // Chốt phiên của bộ quét: đường cưỡng chế đăng xuất giữ `AuthSuccess` suốt `dongPhien`, `scan` trần vẫn chạy sau `stop()`.
+    await sl<NotificationScanner>().quetKhiRanh(id);
     await sl<SyncEngine>().syncNow();
     return null;
   });
