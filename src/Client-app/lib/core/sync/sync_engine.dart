@@ -407,7 +407,9 @@ class SyncEngine {
   ///
   /// Dùng cho nơi cần "đã đẩy xong" thật, không chỉ "đã xin đẩy": [syncNow] khi chu kỳ khác đang chạy chỉ ghi nợ một lượt
   /// bù rồi trả về ngay (xem `_noMotLanChay`). Hết hạn thì trả về BÌNH THƯỜNG — chu kỳ vẫn chạy tiếp ở nền; nơi gọi tự đo lại
-  /// xem còn hàng chưa đẩy không. Không ném (lỗi của chu kỳ đã được `_chayMotChuKy` nuốt thành trạng thái `error`).
+  /// xem còn hàng chưa đẩy không. Lỗi TRONG chu kỳ đã được `_chayMotChuKy` nuốt thành trạng thái `error`; nhưng lỗi ở bước
+  /// kiểm kết nối (`checkConnectivity`, nằm ngoài khối `try` của chu kỳ) thì lan ra — nơi gọi phải bọc `catch`
+  /// (`NhaRepositoryImpl._chuanBiRoi` đã làm).
   Future<void> dayVaCho({Duration tran = kTranDayTruocKhiRoi}) async {
     // Thao tác CHỦ ĐỘNG của người dùng — như [start]: bỏ giãn cách của các chu kỳ hỏng trước, nếu không (tới 60 phút) lượt
     // này chỉ hẹn lại rồi về, không đẩy gì, nên phép đếm hàng chưa đẩy ngay sau thấy hàng còn đó và Rời nhà / Giải tán bị

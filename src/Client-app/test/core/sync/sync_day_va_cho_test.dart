@@ -29,6 +29,15 @@ class _Online implements Connectivity {
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
+class _Offline implements Connectivity {
+  @override
+  Future<List<ConnectivityResult>> checkConnectivity() async => [ConnectivityResult.none];
+  @override
+  Stream<List<ConnectivityResult>> get onConnectivityChanged => const Stream.empty();
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
+
 class _Client implements DioClient {
   _Client(this.adapter) {
     dio.httpClientAdapter = adapter;
@@ -170,6 +179,46 @@ void main() {
     expect(adapter.soLanPush, greaterThan(soLanDayTruoc),
         reason: 'giãn cách tới 60 phút: syncNow trần chỉ hẹn lại rồi về, không đẩy gì — phép đếm sau đó thấy hàng còn và Rời nhà bị từ chối oan bằng hangChuaDay');
     expect((await db.walletDao.getById('w1'))!.syncStatus, 'synced');
+  });
+
+  // Hộp hỏi lại của Rời nhà / Giải tán (đợt 1B) dựa vào ba nhánh dưới đây: dayVaCho trả về BÌNH THƯỜNG (không ném, không treo)
+  // và nơi gọi tự đếm lại hàng chưa đẩy.
+  test('chưa có phiên (chưa start): dayVaCho trả về ngay, không gọi mạng', () async {
+    final adapter = _Adapter(giuLuot: const {});
+    final engine = taoSyncEngineThu(dioClient: _Client(adapter), db: db, connectivity: _Online());
+    addTearDown(engine.dispose);
+
+    await engine.dayVaCho();
+
+    expect(adapter.soLanPull, 0, reason: 'chưa có phiên thì chu kỳ bỏ qua (danh tính chỉ đến từ phiên)');
+    expect(adapter.soLanPush, 0);
+  });
+
+  test('mất mạng: dayVaCho trả về bình thường, không gọi mạng, trạng thái pending', () async {
+    final adapter = _Adapter(giuLuot: const {});
+    final engine = taoSyncEngineThu(dioClient: _Client(adapter), db: db, connectivity: _Offline());
+    addTearDown(engine.dispose);
+    await engine.start(idaccount: accountId);
+
+    await engine.dayVaCho();
+
+    expect(adapter.soLanPull, 0);
+    expect(engine.status, SyncStatus.pending, reason: 'offline: hoãn, không phải lỗi');
+  });
+
+  test('engine bị dispose giữa lúc đang chờ: dayVaCho được đánh thức ngay, không chờ hết trần 30 giây', () async {
+    final adapter = _Adapter();
+    final engine = taoSyncEngineThu(dioClient: _Client(adapter), db: db, connectivity: _Online());
+    addTearDown(adapter.tha);
+    unawaited(engine.start(idaccount: accountId));
+    await _doiToiKhi(() => adapter.soLanPull == 1, vi: 'chu kỳ thứ nhất đi tới /sync/pull');
+
+    final f = engine.dayVaCho(); // trần mặc định 30 s
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    engine.dispose();
+
+    await f.timeout(const Duration(seconds: 5),
+        onTimeout: () => fail('dispose không đánh thức dayVaCho: Rời nhà treo tới hết trần'));
   });
 
   test('trần mặc định của dayVaCho là 30 giây (kTranDayTruocKhiRoi)', () {
