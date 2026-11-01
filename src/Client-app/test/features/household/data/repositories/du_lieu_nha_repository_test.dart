@@ -22,6 +22,13 @@ class _SyncEngineGia implements SyncEngine {
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
+/// Đặt neo luôn ném — mô phỏng tiến trình chết / `database is locked` giữa insert ví và đặt neo.
+class _SoDuNemLoi extends SoDuViService {
+  _SoDuNemLoi(AppDatabase db) : super(db: db, taiKhoanPhien: () => 10);
+  @override
+  Future<void> datNeoNhieuVi(Iterable<String> walletIds) async => throw StateError('chết giữa chừng');
+}
+
 void main() {
   late AppDatabase db;
   late DuLieuNhaRepositoryImpl repo;
@@ -143,6 +150,24 @@ void main() {
     expect(neo, isNotNull, reason: 'thiếu nguồn phiên hoặc thiếu bước neo thì không có khoản mở sổ');
     expect(neo!.idhousehold, 7, reason: 'neo NULL nhà làm dọn nhà vỡ khoá ngoại, G113 lỗ hổng 3');
     expect((await db.walletDao.getById(v.id))!.balance, 500000);
+  });
+
+  test('taoViChung: đặt neo hỏng giữa chừng thì KHÔNG còn ví mồ côi thiếu khoản mở sổ (một giao tác)', () async {
+    final hong = DuLieuNhaRepositoryImpl(
+      db: db,
+      localDataSource: WalletLocalDataSourceImpl(db: db),
+      soDuVi: _SoDuNemLoi(db),
+      syncEngine: sync,
+    );
+    await expectLater(
+      hong.taoViChung(
+          idNha: 7, idaccount: 10, ten: 'Mồ côi', loai: 'cash', soDuBanDau: 500000, icon: 'wallet', mau: '#000000'),
+      throwsA(isA<StateError>()),
+    );
+    expect(await db.walletDao.getViNha(7), isEmpty,
+        reason: 'tiến trình chết giữa insert ví và đặt neo: ví ở lại với số dư 500.000 mà không có khoản mở sổ, tính lại '
+            'sau này đưa số dư về 0 — mất số dư ban đầu (insert + neo phải cùng một giao tác)');
+    expect(sync.soLanHen, 0, reason: 'chưa tạo được thì không hẹn đồng bộ');
   });
 
   test('tên trùng trong nhà bị từ chối, trùng với ví riêng thì được, và ngược lại', () async {

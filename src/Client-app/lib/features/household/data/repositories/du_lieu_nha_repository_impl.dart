@@ -65,9 +65,13 @@ class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
       syncStatus: 'pending',
       updatedAt: DateTime.now(),
     );
-    await _local.insert(vi);
-    // Neo trước khi có khoản nào của ví; số dư 0 thì không sinh neo (xem `SoDuViService`). Neo kế thừa `idhousehold` của ví.
-    await _soDuVi.datNeoNhieuVi({vi.id});
+    // Một giao tác: chết giữa insert ví và đặt neo thì ví ở lại mang số dư mà không có khoản mở sổ, tính lại sau này đưa số
+    // dư về 0 — mất số dư ban đầu.
+    await _db.transaction(() async {
+      await _local.insert(vi);
+      // Neo trước khi có khoản nào của ví; số dư 0 thì không sinh neo (xem `SoDuViService`). Neo kế thừa `idhousehold` của ví.
+      await _soDuVi.datNeoNhieuVi({vi.id});
+    });
     _syncEngine.scheduleSync();
     return vi;
   }
