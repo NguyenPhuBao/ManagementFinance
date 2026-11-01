@@ -157,6 +157,25 @@ void main() {
         updatedAt: now,
       ));
 
+  test('HỒI QUY (1B Task 11): trần danh mục riêng không đếm danh mục của nhà do chính tài khoản ấy tạo', () async {
+    await danhMuc('rieng_1', 'Nuôi mèo', idaccount: 20);
+    await danhMuc('rieng_2', 'Cà phê sáng', idaccount: 20);
+    for (var i = 0; i < 5; i++) {
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'nha_$i',
+        idaccount: 20,
+        name: 'Của nhà $i',
+        classify: 'chi',
+        idhousehold: const Value(7),
+        isDefault: const Value(false),
+        updatedAt: now,
+      ));
+    }
+    expect(await dem().dem(LoaiTran.danhMucRieng, 20), 2,
+        reason: 'đếm cả hàng của nhà là Basic bị chặn tạo danh mục riêng vì đã thêm danh mục cho nhà '
+            '(xanh ngay: category_dao.dart đã lọc idhousehold từ 1A)');
+  });
+
   test('⭐ 13 bản sao danh mục mặc định KHÔNG tính là danh mục riêng (lỗi 2)', () async {
     const ten = [
       'Ăn uống', 'Di chuyển', 'Giáo dục', 'Giải trí', 'Hóa đơn', 'Mua sắm', 'Nhà cửa',

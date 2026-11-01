@@ -54,9 +54,11 @@ void main() {
     expect(gop.contains('nha: '), isFalse, reason: 'không phải form Thêm giao dịch — /nha/gop không mang CheDoNhaForm');
   });
 
-  test('/nha/khoan/category dùng napCay của nhà và ẩn nút quản lý (T11 mới bật)', () {
+  test('/nha/khoan/category dùng napCay của nhà và nút quản lý trỏ /nha/danh-muc (Task 11 bật)', () {
     final nha = than('/nha/khoan');
     expect(nha.contains('napCayDanhMuc('), isTrue);
-    expect(nha.contains('duongQuanLy: null'), isTrue);
+    expect(nha.contains("duongQuanLy: '/nha/danh-muc'"), isTrue,
+        reason: 'null là ẩn nút; trỏ về /danh-muc cá nhân là đưa người dùng sang danh mục riêng');
+    expect(nha.contains('duongQuanLy: null'), isFalse);
   });
 }

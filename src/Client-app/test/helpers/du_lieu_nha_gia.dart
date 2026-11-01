@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
+import 'package:flowmoney/features/category/data/models/category_tree.dart';
 import 'package:flowmoney/features/household/data/repositories/du_lieu_nha_repository.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/household/domain/hang_chua_day.dart';
@@ -99,6 +100,28 @@ class DuLieuNhaGia implements DuLieuNhaRepository {
     goiBangTra.add(idaccount);
     yield _danhMuc;
     yield* _ctlDanhMuc.stream;
+  }
+
+  final _cay = <String, CategoryTree>{};
+  final _ctlCay = StreamController<MapEntry<String, CategoryTree>>.broadcast();
+
+  /// Lời gọi `theoDoiCayDanhMuc` (idNha, classify).
+  final goiCay = <(int, String)>[];
+
+  /// Đặt cây của một phân loại (phát ngay cho người đang nghe); phân loại chưa đặt là cây rỗng.
+  void datCay(String classify, CategoryTree cay) {
+    _cay[classify] = cay;
+    _ctlCay.add(MapEntry(classify, cay));
+  }
+
+  static CategoryTree _cayRong() =>
+      CategoryTree(groups: const [], ungroupedChildren: const [], defaultChildren: const []);
+
+  @override
+  Stream<CategoryTree> theoDoiCayDanhMuc(int idNha, String classify) async* {
+    goiCay.add((idNha, classify));
+    yield _cay[classify] ?? _cayRong();
+    yield* _ctlCay.stream.where((e) => e.key == classify).map((e) => e.value);
   }
 
   @override

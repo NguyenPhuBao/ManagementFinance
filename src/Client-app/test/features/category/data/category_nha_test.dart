@@ -362,6 +362,67 @@ void main() {
     expect(dong.map((h) => h.id), ['a']);
   });
 
+  test('saveKeywords từ chối hàng của nhà (1B Task 11)', () async {
+    await them('dn', 'Tiền chợ', idaccount: 10, idhousehold: 7, tuKhoa: ['cho']);
+    await expectLater(
+      repo.saveKeywords(accountId: 10, categoryId: 'dn', keywords: const ['x']),
+      throwsA(isA<CategoryValidationException>()
+          .having((e) => e.message, 'message', 'Danh mục của nhà không có từ khoá.')),
+      reason: 'cột Keyword chung, các thành viên đè nhau; người tạo cũng không được mở cửa sau này',
+    );
+    final tu = (await (db.select(db.categoryKeywords)..where((k) => k.categoryId.equals('dn'))).get())
+        .map((k) => k.keyword)
+        .toSet();
+    expect(tu, {'cho'}, reason: 'từ chối thì bộ từ khoá đang có giữ nguyên');
+  });
+
+  test('saveKeywords hàng riêng của tôi vẫn ghi được (không mở nhầm chốt)', () async {
+    await them('r', 'Riêng', idaccount: 10);
+    await repo.saveKeywords(accountId: 10, categoryId: 'r', keywords: const ['a']);
+    expect((await db.select(db.categoryKeywords).get()).map((k) => k.keyword), ['a']);
+  });
+
+  test('trùng tên trong nhà báo câu nói "trong nhà" (form nhà hiện nguyên câu này)', () async {
+    await them('dn', 'Tiền chợ', idaccount: 20, idhousehold: 7);
+    await expectLater(
+      repo.saveChild(draft(ten: 'tiền chợ', accountId: 10, idhousehold: 7)),
+      throwsA(isA<CategoryValidationException>().having((e) => e.message, 'message', contains('trong nhà'))),
+    );
+  });
+
+  test('HỒI QUY: Thành viên sửa danh mục nhà giữ aiCoDinh, parentId và người tạo', () async {
+    await them('nhom', 'Sinh hoạt', idaccount: 10, idhousehold: 7, isGroup: true);
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'dn',
+      idaccount: 10,
+      name: 'Điện nước',
+      classify: 'chi',
+      idhousehold: const Value(7),
+      parentId: const Value('nhom'),
+      aiCoDinh: const Value(true),
+      isLocalOnly: const Value(false),
+      syncStatus: const Value('synced'),
+      updatedAt: DateTime(2026, 8, 21),
+    ));
+    await repo.saveChild(CategoryChildDraft(
+      id: 'dn',
+      accountId: 20, // thành viên khác sửa
+      name: 'Điện nước mới',
+      classify: 'chi',
+      parentId: 'nhom',
+      icon: 'icon',
+      colour: '#FFFFFF',
+      keywords: const [],
+      aiCoDinh: true,
+      idhousehold: 7,
+    ));
+    final h = (await db.categoryDao.getById('dn'))!;
+    expect(h.aiCoDinh, isTrue, reason: 'insertOrReplace: thiếu dòng aiCoDinh là mỗi lần sửa tắt cờ Cố định (xanh ngay: 1A đã đúng)');
+    expect(h.parentId, 'nhom');
+    expect(h.idaccount, 10, reason: 'người tạo không đổi khi người khác sửa (xanh ngay: 1A đã đúng)');
+    expect(h.idhousehold, 7);
+  });
+
   test('danh mục riêng vẫn không có idhousehold sau khi sửa', () async {
     await them('r', 'Riêng', idaccount: 10);
     await repo.saveChild(draft(id: 'r', ten: 'Riêng mới', accountId: 10));

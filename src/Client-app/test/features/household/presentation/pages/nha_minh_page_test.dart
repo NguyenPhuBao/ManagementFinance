@@ -428,11 +428,29 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text('Hoạt động'), findsOneWidget);
     expect(find.text('Mọi khoản của nhà'), findsOneWidget);
-    expect(find.byKey(const Key('loi-vao-danh-muc')), findsNothing, reason: 'Danh mục của nhà do Task 11 bật: không dòng trỏ route chưa có');
     await t.ensureVisible(find.byKey(const Key('loi-vao-hoat-dong')));
     await t.tap(find.byKey(const Key('loi-vao-hoat-dong')));
     await t.pumpAndSettle();
     expect(find.text('HOAT-DONG'), findsOneWidget);
+  });
+
+  testWidgets('lối vào Danh mục của nhà (Task 11): dòng thứ hai của thẻ, chạm mở /nha/danh-muc', (t) async {
+    dat360(t);
+    bat = batThongBao();
+    final repo = await repoNhaThu(HouseholdApiGia()..cuaToiJson = nhaJson(myRole: 'Viewer'));
+    final nguon = DuLieuNhaGia(vi: [tienCho]);
+    final r = GoRouter(initialLocation: '/nha', routes: [
+      GoRoute(path: '/nha', builder: (_, __) => NhaMinhPage(repo: repo, duLieu: nguon)),
+      GoRoute(path: '/nha/danh-muc', builder: (_, __) => const Scaffold(body: Text('DANH-MUC'))),
+    ]);
+    addTearDown(r.dispose);
+    await t.pumpWidget(bocRouterNha(r, goi: goiPremium(const {}), idaccount: 18));
+    await t.pumpAndSettle();
+    expect(find.text('Danh mục của nhà'), findsOneWidget, reason: 'mọi vai có thành viên thấy lối vào (Chỉ xem cũng xem được)');
+    await t.ensureVisible(find.byKey(const Key('loi-vao-danh-muc')));
+    await t.tap(find.byKey(const Key('loi-vao-danh-muc')));
+    await t.pumpAndSettle();
+    expect(find.text('DANH-MUC'), findsOneWidget);
   });
 
   testWidgets('không có nguồn dữ liệu nhà (test cũ, chưa đăng ký DI): không dựng khối, không ném', (t) async {

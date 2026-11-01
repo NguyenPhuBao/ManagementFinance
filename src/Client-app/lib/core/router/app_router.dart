@@ -31,6 +31,7 @@ import '../../features/transaction/presentation/state/che_do_nha_form.dart';
 import '../../features/household/presentation/pages/chi_tiet_vi_chung_page.dart';
 import '../../features/household/presentation/bloc/gop_rut_cubit.dart';
 import '../../features/household/presentation/pages/gop_rut_page.dart';
+import '../../features/household/presentation/pages/danh_muc_nha_page.dart';
 import '../../features/household/presentation/pages/hoat_dong_nha_page.dart';
 import '../../features/household/presentation/pages/moi_thanh_vien_page.dart';
 import '../../features/household/presentation/pages/nha_minh_page.dart';
@@ -127,6 +128,16 @@ Future<String?> _veNhaNeuKhongQuanLyViChungDuoc() async {
   await n.choNapKho();
   final t = n.hienTai;
   return duocLamViecNha(ViecNha.quanLyViChung, vai: t.vai, trangThai: t.nha?.trangThai) ? null : '/nha';
+}
+
+/// Cửa quyền SỬA danh mục của nhà (`/nha/danh-muc/them`, `/nha/danh-muc/:id/sua`): Chủ hoặc Thành viên, nhà đang hoạt động
+/// (`ViecNha.suaDanhMuc`). Xem (`/nha/danh-muc`) không qua cửa này — mọi vai xem được. Cùng khuôn G92 như
+/// [_veNhaNeuKhongGhiDuoc].
+Future<String?> _veNhaNeuKhongSuaDanhMucDuoc() async {
+  final n = sl<NhaRepository>();
+  await n.choNapKho();
+  final t = n.hienTai;
+  return duocLamViecNha(ViecNha.suaDanhMuc, vai: t.vai, trangThai: t.nha?.trangThai) ? null : '/nha';
 }
 
 class AppRouter {
@@ -416,12 +427,37 @@ class AppRouter {
                   return ChooseCategoryPage(
                     classify: state.extra as String? ?? 'chi',
                     napCay: (c) => sl<DuLieuNhaRepository>().napCayDanhMuc(idNha, c),
-                    // T11 đổi thành '/nha/danh-muc' cùng lúc tạo route: không có lúc nào nút trỏ route chưa có.
-                    duongQuanLy: null,
+                    duongQuanLy: '/nha/danh-muc',
                   );
                 },
               ),
             ],
+          ),
+
+          // Danh mục của nhà (1B Task 11): XEM mọi vai; thêm / sửa khoá theo `ViecNha.suaDanhMuc`. KHÔNG `redirectTaoTheoGoi`: trần
+          // danh mục riêng của Basic không đếm hàng của nhà. `them` đứng TRƯỚC `:id/sua`. Nhà đã mất → Nhà mình; form không nhận
+          // `idNha` null (chế độ cá nhân sẽ tạo danh mục RIÊNG).
+          GoRoute(
+            path: '/nha/danh-muc',
+            builder: (_, __) => sl<NhaRepository>().hienTai.nha == null ? const NhaMinhPage() : const DanhMucNhaPage(),
+          ),
+          GoRoute(
+            path: '/nha/danh-muc/them',
+            redirect: (_, __) => _veNhaNeuKhongSuaDanhMucDuoc(),
+            builder: (_, __) {
+              final idNha = sl<NhaRepository>().hienTai.nha?.id;
+              return idNha == null ? const NhaMinhPage() : CategoryAddPage(idNha: idNha);
+            },
+          ),
+          GoRoute(
+            path: '/nha/danh-muc/:id/sua',
+            redirect: (_, __) => _veNhaNeuKhongSuaDanhMucDuoc(),
+            builder: (_, state) {
+              final idNha = sl<NhaRepository>().hienTai.nha?.id;
+              return idNha == null
+                  ? const NhaMinhPage()
+                  : CategoryAddPage(categoryId: state.pathParameters['id'], idNha: idNha);
+            },
           ),
 
           // Góp vào quỹ / Rút về ví riêng (1B Task 8): cùng cửa quyền ghi như `/nha/khoan`. `?vi=` ví chung chọn sẵn, `?che=gop|rut`,

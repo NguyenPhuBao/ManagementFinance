@@ -326,6 +326,11 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       throw const CategoryValidationException(
           'Danh mục không tồn tại hoặc không thuộc tài khoản.');
     }
+    // Danh mục của NHÀ không có từ khoá (1B Task 11, ruling M-17): `categoryKeywords.idaccount` theo người sửa rồi đẩy lên
+    // cột `Keyword` chung, các thành viên đè nhau. Người tạo cũng không được (chặn theo nhà, không theo người).
+    if (category.idhousehold != null) {
+      throw const CategoryValidationException('Danh mục của nhà không có từ khoá.');
+    }
     final now = DateTime.now();
     await db.transaction(() async {
       await db.categoryDao.replaceKeywords(

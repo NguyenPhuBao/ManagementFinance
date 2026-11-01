@@ -68,11 +68,23 @@ class FakeCategoryRepository implements CategoryManagementRepository {
   Future<List<CategoryEntity>> loadBangTraTen({required int accountId}) => throw UnimplementedError();
   @override
   Stream<List<CategoryEntity>> watchAll({required int accountId}) => throw UnimplementedError();
+  /// Hàng trả về cho `getById` (form chế độ nhà đọc một hàng, không đọc cây); id lạ → `null`. Không khai thì ném như cũ.
+  final Map<String, CategoryEntity>? hangTheoId;
+
+  /// Các id mà trang đã hỏi `getById` (form nhà không được đi qua `loadTree`).
+  final List<String> idDaHoi = [];
+
   @override
-  Future<CategoryEntity?> getById(String id) => throw UnimplementedError();
+  Future<CategoryEntity?> getById(String id) {
+    idDaHoi.add(id);
+    final m = hangTheoId;
+    if (m == null) throw UnimplementedError();
+    return Future.value(m[id]);
+  }
 
   FakeCategoryRepository(
-      {CategoryTree? tree,
+      {this.hangTheoId,
+      CategoryTree? tree,
       Map<String, CategoryTree>? trees,
       List<CategoryEntity> selectable = const [],
       Future<List<CategoryEntity>> Function(int accountId, String classify)?
@@ -165,8 +177,13 @@ class FakeCategoryRepository implements CategoryManagementRepository {
     return _keywords;
   }
 
+  /// Ném ở `saveChild` (nếu khác `null`) — ca báo câu lỗi của repository.
+  Object? loiSaveChild;
+
   @override
   Future<void> saveChild(CategoryChildDraft draft) async {
+    final loi = loiSaveChild;
+    if (loi != null) throw loi;
     savedChild = draft;
   }
 

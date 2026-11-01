@@ -181,7 +181,10 @@ class _NhaMinhPageState extends State<NhaMinhPage> {
       ),
       const SizedBox(height: 16),
       // Lối vào Hoạt động đi cùng khối ví chung: cùng cần nguồn dữ liệu nhà.
-      TheLoiVaoNha(onHoatDong: () => unawaited(context.push('/nha/hoat-dong'))),
+      TheLoiVaoNha(
+        onHoatDong: () => unawaited(context.push('/nha/hoat-dong')),
+        onDanhMuc: () => unawaited(context.push('/nha/danh-muc')),
+      ),
       const SizedBox(height: 16),
     ];
   }
