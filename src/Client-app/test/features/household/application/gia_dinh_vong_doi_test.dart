@@ -25,11 +25,6 @@ import 'package:flowmoney/features/wallet/data/datasources/wallet_local_data_sou
 import 'package:flowmoney/features/wallet/data/so_du_vi_service.dart';
 import 'package:flowmoney/features/wallet/data/vi_bi_giu_dong_bo.dart';
 
-void row(String s) {
-  // ignore: avoid_print
-  print('ROW| $s');
-}
-
 class _Online implements Connectivity {
   @override
   Future<List<ConnectivityResult>> checkConnectivity() async => [ConnectivityResult.wifi];
@@ -38,6 +33,9 @@ class _Online implements Connectivity {
   @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
+
+// Vòng đời hàng của nhà trên hai máy (gia đình 1A, đợt sửa sau review toàn nhánh): engine, thu gom, gửi lô, kéo về, resolver,
+// điều phối thật; hai CSDL SQLite trong bộ nhớ = hai máy. Chỉ server giả (bám `sync.service.js`).
 
 /// Server giả: bám `processPush` / `enforceHouseholdPermission` / `softDelete` / `getTransactionsByAccount`.
 class ServerGia {
@@ -204,8 +202,8 @@ class _Client implements DioClient {
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
-class _NhaGia implements NhaRepository {
-  _NhaGia(this.tk, this.hien);
+class NhaGiaMay implements NhaRepository {
+  NhaGiaMay(this.tk, this.hien);
   final int tk;
   NhaCuaToi hien;
   @override
@@ -227,7 +225,7 @@ NhaCuaToi dangO(int id) => NhaCuaToi(
 class May {
   May(this.tk, this.server, int? nha, {DateTime Function()? now}) {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    nhaGia = _NhaGia(tk, nha == null ? NhaCuaToi.khongCo(DateTime(2026)) : dangO(nha));
+    nhaGia = NhaGiaMay(tk, nha == null ? NhaCuaToi.khongCo(DateTime(2026)) : dangO(nha));
     soDu = SoDuViService(db: db, taiKhoanPhien: () => phien);
     engine = SyncEngine(
       dioClient: _Client(server, tk),
@@ -266,7 +264,7 @@ class May {
   final int tk;
   final ServerGia server;
   late AppDatabase db;
-  late _NhaGia nhaGia;
+  late NhaGiaMay nhaGia;
   late SoDuViService soDu;
   late SyncEngine engine;
   late GopQuyService gop;
