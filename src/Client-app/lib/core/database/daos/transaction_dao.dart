@@ -518,16 +518,26 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
-  /// Trong [ids], những giao dịch cục bộ ĐÃ xoá mềm mà lệnh xoá còn chờ đẩy (`pending`). Kéo về không được ghi đè chúng:
-  /// server còn bản sống (lệnh xoá chưa lên) nên ghi đè là làm sống lại hàng vừa xoá, kèm `synced` — lệnh xoá mất.
-  Future<Set<String>> idDaXoaChuaDay(Iterable<String> ids) async {
-    final ds = ids.toSet().toList();
-    if (ds.isEmpty) return {};
-    final hang = await (select(transactions)
-          ..where((t) => t.id.isIn(ds) & t.isDeleted.equals(true) & t.syncStatus.equals('pending')))
-        .get();
-    return {for (final h in hang) h.id};
-  }
+  /// Ghi giao dịch kéo về, GIỮ lệnh xoá còn chờ đẩy. Giao dịch cục bộ ĐÃ xoá mềm mà lệnh xoá còn `pending` không bị ghi đè khi
+  /// bản server còn SỐNG (`isDeleted == false`): server còn bản sống (lệnh xoá chưa lên) nên ghi đè là làm sống lại hàng vừa
+  /// xoá, kèm `synced` — lệnh xoá mất, số dư trừ lần nữa. Bản server đã xoá thì cho qua: hàng thoát hàng đợi.
+  ///
+  /// Đọc và ghi cùng một giao tác: lệnh xoá của người dùng xen vào giữa hai bước là bị bản sống đè. Đọc MỌI hàng xoá-chưa-đẩy
+  /// rồi giao trong Dart (không `isIn` theo lô — lô kéo về dài hơn trần tham số SQLite thì ném). Trả số hàng được giữ lại.
+  Future<int> upsertKeoVe(List<TransactionsCompanion> entries) => transaction(() async {
+        final xoaChoDay = {
+          for (final h in await (select(transactions)
+                ..where((t) => t.isDeleted.equals(true) & t.syncStatus.equals('pending')))
+              .get())
+            h.id,
+        };
+        final ghi = [
+          for (final c in entries)
+            if (!(xoaChoDay.contains(c.id.value) && c.isDeleted.value == false)) c,
+        ];
+        await upsertAll(ghi);
+        return entries.length - ghi.length;
+      });
 
   /// Cập nhật categoryId của transaction (dùng khi repair cat_food → UUID)
   Future<void> updateCategoryId(String transactionId, String? newCategoryId) async {
