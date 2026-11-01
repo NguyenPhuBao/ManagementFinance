@@ -1,7 +1,7 @@
 # Việc backend còn phải làm
 
 > **Người nhận:** backend (NPBao). Tệp này **chỉ có việc còn phải làm**, đo trên backend `13fddd09` (PR #176) ngày 2026-11-01. Việc xong thì client xoá khỏi tệp; lịch sử xem bằng git.
-> Đơn mới thêm vào tệp này, số kế tiếp **64**.
+> Đơn mới thêm vào tệp này, số kế tiếp **65**.
 
 ## Tổng quan
 
@@ -16,6 +16,7 @@
 | 62.3 | Webhook hợp lệ tới đơn `CANCELLED`: tiền vào nhưng đơn đứng yên, không ai được báo | VỪA | Bản vá |
 | 62.6 | Xác nhận kênh PayOS của `.env` và URL webhook; client cần để đóng G94 | VỪA | Trả lời 4 câu |
 | 63.2 | Khoản thuộc nhà trỏ danh mục riêng: server không kiểm phạm vi danh mục (suy từ mã, chưa đo) | VỪA | Quyết định + bản vá nhỏ |
+| 64.1 | `formerMembers` chứa người đang ở hoặc một người nhiều lần: `addMember` luôn tạo hàng mới, không khoá duy nhất theo (nhà, tài khoản) (client đã khử trùng khi đọc) | THẤP | Quyết định + bản vá nhỏ |
 | 61.4 | Cửa sổ thời gian của cầu dao không bao giờ reset | THẤP | Bản vá |
 | 61.1 | Lời mời email nhận địa chỉ có dấu | THẤP | Bản vá |
 | 61.5 | Hàng còn sống trong nhà giải tán trước bản sửa 57.6 | THẤP | Chạy SQL, có thể không cần |
@@ -507,6 +508,38 @@ SELECT indexname FROM pg_indexes WHERE tablename = 'transaction' AND indexname =
 
 **Đề nghị (backend chọn một, báo lại):** (a) thêm vào `validateEntityScope` một nhánh cho `payload.idcategory` / `categoryId`: danh mục phải là hàng của đúng nhà đó hoặc danh mục mặc định, lệch thì `HOUSEHOLD_SCOPE_MISMATCH` (mã đã có trong `_permanentCodes` của client, không cần thêm mã); hoặc (b) giữ như hiện tại và ghi rõ vào `01` mục 3 rằng khoản nhà được dùng danh mục riêng (client sẽ thôi cấm ở 1B). Client nghiêng về (a). **Trước khi sửa** hãy chạy một ca thật (Thành viên đẩy khoản có `idhousehold` mà `idcategory` là danh mục riêng) để biết server trả gì — client chưa chạy ca ấy.
 
+**Cập nhật 2026-11-02 (client làm (a) trên nhánh dự phòng `TranQuangDat-backend`, commit `6684cc6c`; phần gộp sang backend chính vẫn là việc của bạn).** Nhánh này thêm vào `validateEntityScope` đúng nhánh `payload.idcategory` / `categoryId` / `idCategory`: danh mục tìm thấy mà `Idhousehold` khác phạm vi đích (`Number(catHh || 0) !== Number(targetHhId || 0)`) ⇒ `HOUSEHOLD_SCOPE_MISMATCH`. ⚠️ Khác (a) ở một chỗ: **không có ngoại lệ "danh mục mặc định"** — khuôn mặc định có `Idhousehold` trống nên khoản của nhà trỏ thẳng khuôn bị từ chối, và đúng như vậy với client 1B (bản sao của nhà do server tạo, client chọn từ cây của nhà). Khối này chạy cho mọi thao tác đi qua `validateEntityScope` (giao dịch, và theo mã cả ngân sách, hoá đơn); câu lỗi nói *"giao dịch và danh mục"*. Kịch bản `KIEM-THU/chay_kiem_gia_dinh_2.js` có thêm ca (24 / 24 trên `flowmoney_kiem_thu`, hồi quy `chay_kiem.js` 50 / 50, đo trong đợt 1B). **Còn thiếu / hỏng, ghi ra để bạn quyết:** (1) hàng nhà **cũ** trỏ danh mục riêng cũng không **xoá** được vì `validateEntityScope` chạy trước nhánh xoá — chưa có hàng thật nào, client đọc log `HOUSEHOLD_SCOPE_MISMATCH` ở buổi đo; có thì xét cho xoá bỏ qua kiểm; (2) kịch bản chưa có ca ngân sách nhà trỏ danh mục riêng và khoản nhà trỏ khuôn mặc định. **Xong khi:** nhánh này (hoặc bản tương đương) đã vào backend chính, hai ca (1) (2) có kết luận.
+
+---
+
+## 64 — `formerMembers` có thể chứa người đang ở nhà hoặc một người nhiều lần (gia đình đợt 1B, 2026-11-02)
+
+### 64.1 (THẤP, client đã chịu được) — `addMember` luôn tạo hàng mới, không khoá duy nhất theo (nhà, tài khoản)
+
+**Đo gì (CSDL `PersonFinance`, 2026-11-02, phiên chính đo khi soát đợt 1B).** Nhà 3 có **3 hàng** `household_member` của tài khoản 30 (vào, rời, vào lại khi thử). Theo mã dưới đây, `GET /api/households/me` trả mọi hàng đã rời của tài khoản ấy trong `formerMembers`, kể cả khi họ đang ở lại (có hàng sống trong `members`) — client chưa chụp thân phản hồi, nên số hàng sống và số lần xuất hiện cụ thể hãy lấy từ câu kiểm. Câu kiểm:
+
+```sql
+SELECT "Idhousehold", "Idaccount", count(*) AS so_hang,
+       count(*) FILTER (WHERE "Left_at" IS NULL) AS dang_o
+  FROM "household_member" GROUP BY 1, 2 HAVING count(*) > 1 ORDER BY so_hang DESC;
+-- hôm nay: có dòng (3, 30, 3, <0 hoặc 1>) — 3 hàng của tài khoản 30 ở nhà 3
+```
+
+**Chỗ mã.**
+- `src/Backend/modules/household/household.repository.js:17` — `addMember` là `tx.household_member.create(...)`, luôn tạo hàng mới. Hai nơi gọi: tạo nhà (`household.service.js:90`) và nhận lời mời (`household.service.js:410`).
+- Chỉ có chỉ mục duy nhất `uq_household_member_active_account` (`database/40_create_household_foundation.sql:36`): **một hàng sống mỗi tài khoản** (`WHERE "Left_at" IS NULL`). Không có ràng buộc theo (nhà, tài khoản) cho hàng đã rời; mỗi lần rời đặt `Left_at` trên hàng cũ rồi lần vào kế tạo hàng mới.
+- `findFormerMembersByHousehold` (`household.repository.js:114`) trả **mọi** hàng `Left_at IS NOT NULL`, nên một người vào lại vẫn nằm ở `formerMembers`, và rời hai lần nằm hai lần (`household.service.js:182-187` ánh xạ từng hàng).
+
+**Vì sao quan trọng.** Tên người đã rời (kèm *"(đã rời)"*) ở bảng góp và dòng hoạt động đọc từ `formerMembers`; đúng ý `01` mục 4 là danh sách **người đã rời**. Người đang ở mà vẫn có trong danh sách ấy, hoặc xuất hiện hai lần, làm bộ lọc theo người ở Hoạt động trùng khoá (client đã gặp `Duplicate keys found: Key("chon-25")`) và gắn nhầm *"(đã rời)"* cho người đang ở.
+
+**Client đã làm (không cần backend để chạy đúng).** `nhaCuaToiTuJson` bỏ id đang ở và khử trùng theo id khi đọc `/me` (commit `658edf45`; ca `nha_cua_toi_test`). Phần backend là để trả đúng ngay từ nguồn.
+
+**Đề nghị.** Chọn một, báo lại: (a) `findFormerMembersByHousehold` loại tài khoản đang có hàng sống ở nhà ấy và lấy một hàng mỗi tài khoản (hàng có `Left_at` mới nhất) — sửa ở đọc, không đụng dữ liệu; hoặc (b) `addMember` tái dùng hàng cũ khi cùng (nhà, tài khoản) (đặt lại `Left_at = NULL`, `Joined_at` mới) — sửa ở ghi, đổi nghĩa `Joined_at`, cần thêm chỉ mục duy nhất theo (nhà, tài khoản) và dọn hàng trùng sẵn có. Client nghiêng về (a) (nhỏ, không migration). Nếu chọn (b) thì **xin phép đích danh** trước khi áp migration.
+
+**Kiểm lại.** Sau khi sửa, `GET /me` của nhà 3 không còn tài khoản 30 trong `formerMembers` khi đang ở, và mỗi tài khoản đã rời xuất hiện đúng một lần; `npm run verify:household` vẫn 50 / 50; thêm một ca vào `KIEM-THU/chay_kiem_gia_dinh_2.js` (rời, vào lại, rời lần hai, kiểm `formerMembers`).
+
+**Xong khi:** câu SQL trên và `GET /me` cho kết quả như mô tả, ca kịch bản đạt.
+
 ---
 
 ## Giữ nguyên khi sửa backend
@@ -540,4 +573,5 @@ node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_gia_dinh_2.js . k
 | 62.6 | | *(bốn câu trả lời)* |
 | 63.1 | | *(hai câu kiểm: cột và chỉ mục, trên từng CSDL dùng thật)* |
 | 63.2 | | *(chọn (a) hay (b); kết quả ca thật; kịch bản nếu thêm)* |
+| 64.1 | | *(chọn (a) hay (b); câu SQL và `GET /me` sau khi sửa; ca kịch bản)* |
 | 60.3 | | *(hoặc "chưa")* |
