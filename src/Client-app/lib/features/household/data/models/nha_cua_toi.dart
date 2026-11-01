@@ -168,6 +168,12 @@ NhaCuaToi nhaCuaToiTuJson(Map<String, Object?> json, {required DateTime nhanLuc}
   if (id == null || trangThai == TrangThaiNha.daGiaiTan) return NhaCuaToi.khongCo(nhanLuc);
   final ds = json['members'];
   final cu = json['formerMembers'];
+  // `addMember` luôn tạo hàng mới khi vào lại nhà: `formerMembers` có thể chứa người ĐANG Ở, hoặc một người nhiều lần. Khử
+  // trùng MỘT chỗ này (FINAL I-2) — dòng "(đã rời)" cạnh tên thật và `Key('chon-<id>')` trùng ở mọi màn đọc danh sách.
+  final dangO = <int>{
+    for (final m in ds is List ? ds : const <Object?>[])
+      if (m is Map && _soNguyen(m['idaccount']) != null) _soNguyen(m['idaccount'])!,
+  };
   return NhaCuaToi(
     nha: NhaEntity(
       id: id,
@@ -191,7 +197,7 @@ NhaCuaToi nhaCuaToiTuJson(Map<String, Object?> json, {required DateTime nhanLuc}
     ],
     thanhVienCu: [
       for (final m in cu is List ? cu : const <Object?>[])
-        if (m is Map && _soNguyen(m['idaccount']) != null)
+        if (m is Map && _soNguyen(m['idaccount']) != null && dangO.add(_soNguyen(m['idaccount'])!))
           ThanhVienCuEntity(
             idaccount: _soNguyen(m['idaccount'])!,
             tenHienThi: _tenHienThi(m),

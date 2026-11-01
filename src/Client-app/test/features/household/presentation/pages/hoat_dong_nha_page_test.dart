@@ -211,6 +211,24 @@ void main() {
     expect(find.text('Chưa có khoản nào.'), findsOneWidget, reason: 'Bình × Quỹ du lịch không có khoản');
   });
 
+  testWidgets('FINAL I-2: người vào lại nhà (formerMembers trùng thành viên / trùng nhau) không trùng dòng, không trùng Key',
+      (t) async {
+    final nha = nhaJson();
+    nha['formerMembers'] = [
+      {'idaccount': 25, 'displayName': 'Nguyễn Bình', 'leftAt': '2026-10-20T03:00:00.000Z'},
+      {'idaccount': 31, 'displayName': 'Lê Bình', 'leftAt': '2026-10-24T03:00:00.000Z'},
+      {'idaccount': 31, 'displayName': 'Lê Bình', 'leftAt': '2026-10-25T03:00:00.000Z'},
+    ];
+    await mo(t, nha: nha);
+    await t.tap(find.byKey(const Key('chip-nguoi')));
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull, reason: 'Duplicate keys found: Key("chon-25") / Key("chon-31") dựng hai lần');
+    expect(find.byKey(const Key('chon-25')), findsOneWidget);
+    expect(find.byKey(const Key('chon-31')), findsOneWidget);
+    expect(find.text('Nguyễn Bình (đã rời)'), findsNothing, reason: 'người đang ở không được gắn "(đã rời)"');
+    expect(find.text('Lê Bình (đã rời)'), findsOneWidget);
+  });
+
   testWidgets('lọc ví gồm cả khoản chuyển ĐẾN ví ấy', (t) async {
     await mo(t);
     await t.tap(find.byKey(const Key('chip-vi')));
