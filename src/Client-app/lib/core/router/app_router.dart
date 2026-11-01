@@ -23,6 +23,7 @@ import '../../features/category/presentation/pages/gan_danh_muc_page.dart';
 import '../../features/transaction/presentation/pages/transaction_page.dart';
 import '../../features/budget/presentation/pages/budget_detail_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
+import '../../features/household/application/quyen_hien_tai.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
 import '../../features/household/data/repositories/nha_repository.dart';
 import '../../features/household/data/them_giao_dich_nguon_nha.dart';
@@ -113,7 +114,8 @@ const _publicRoutes = {
 
 /// Cửa quyền GHI khoản của nhà (`/nha/khoan` và route con). Khuôn G92: chờ kho trước khi đọc vai, vì router chạy `redirect`
 /// lúc phiên vừa nối mà kho chưa trả lời. Không được ghi (Chỉ xem, nhà chỉ xem, đã rời) → về Nhà mình; mọi lối vào qua đây.
-/// Sửa khoản mà nhà đổi trạng thái giữa chừng: `redirect` chỉ chạy lúc vào, server từ chối sau đó đã có resolver.
+/// Vai đổi khi form đang mở: `redirect` chỉ chạy lúc vào, nên mỗi form tự hỏi lại lúc Lưu qua `conDuocGhi` (closure gọi
+/// `conDuocLamViecNha`); đổi sau lúc ấy thì server từ chối và resolver xử lý.
 Future<String?> _veNhaNeuKhongGhiDuoc() async {
   final n = sl<NhaRepository>();
   await n.choNapKho();
@@ -413,6 +415,9 @@ class AppRouter {
                   tenNha: nha.ten,
                   choChuyen: choChuyen,
                   duongChonDanhMuc: '/nha/khoan/category',
+                  // Hỏi lại vai lúc Lưu (FINAL I-3): `redirect` chỉ chạy lúc vào, vai có thể đổi khi form đang mở.
+                  conDuocGhi: (laChuyen) => conDuocLamViecNha(
+                      sl<NhaRepository>(), nha.id, laChuyen ? ViecNha.chuyenGiuaViChung : ViecNha.ghiKhoan),
                 ),
               );
             },
@@ -446,7 +451,12 @@ class AppRouter {
             redirect: (_, __) => _veNhaNeuKhongSuaDanhMucDuoc(),
             builder: (_, __) {
               final idNha = sl<NhaRepository>().hienTai.nha?.id;
-              return idNha == null ? const NhaMinhPage() : CategoryAddPage(idNha: idNha);
+              return idNha == null
+                  ? const NhaMinhPage()
+                  : CategoryAddPage(
+                      idNha: idNha,
+                      conDuocGhi: () => conDuocLamViecNha(sl<NhaRepository>(), idNha, ViecNha.suaDanhMuc),
+                    );
             },
           ),
           GoRoute(
@@ -456,7 +466,11 @@ class AppRouter {
               final idNha = sl<NhaRepository>().hienTai.nha?.id;
               return idNha == null
                   ? const NhaMinhPage()
-                  : CategoryAddPage(categoryId: state.pathParameters['id'], idNha: idNha);
+                  : CategoryAddPage(
+                      categoryId: state.pathParameters['id'],
+                      idNha: idNha,
+                      conDuocGhi: () => conDuocLamViecNha(sl<NhaRepository>(), idNha, ViecNha.suaDanhMuc),
+                    );
             },
           ),
 

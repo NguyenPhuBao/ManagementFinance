@@ -85,6 +85,27 @@ void main() {
     expect(d.id, isNull);
   });
 
+  testWidgets('FINAL I-3: mất quyền sửa danh mục nhà giữa chừng — Lưu không gọi saveChild, báo câu, thoát form', (t) async {
+    final bat = batThongBao();
+    final kho = FakeCategoryRepository();
+    await mo(t, CategoryAddPage(idNha: 7, repository: kho, accountId: 20, conDuocGhi: () => false), router: true);
+    await t.enterText(find.byType(TextField).first, 'Tiền chợ');
+    await t.tap(find.text('Lưu danh mục'));
+    await t.pumpAndSettle();
+    expect(kho.savedChild, isNull, reason: 'READ_ONLY / ROLE_FORBIDDEN ở server: hàng kẹt pending hoặc bị xoá im lặng');
+    expect(bat.cau, isNotEmpty, reason: 'phải có câu, không im lặng');
+    expect(find.text('GOC'), findsOneWidget, reason: 'thoát form về trang trước');
+  });
+
+  testWidgets('FINAL I-3: còn quyền (conDuocGhi => true) hoặc đường cá nhân (null) — lưu như cũ', (t) async {
+    final kho = FakeCategoryRepository();
+    await mo(t, CategoryAddPage(idNha: 7, repository: kho, accountId: 20, conDuocGhi: () => true));
+    await t.enterText(find.byType(TextField).first, 'Tiền chợ');
+    await t.tap(find.text('Lưu danh mục'));
+    await t.pump();
+    expect(kho.savedChild?.name, 'Tiền chợ');
+  });
+
   testWidgets('form SỬA đọc một hàng qua getById (không loadTree), điền sẵn và giữ cờ Cố định + nhóm cha khi Lưu', (t) async {
     final kho = FakeCategoryRepository(hangTheoId: {'dn': _hang('dn', cha: 'nhom')});
     await mo(t, CategoryAddPage(idNha: 7, categoryId: 'dn', repository: kho, accountId: 20));

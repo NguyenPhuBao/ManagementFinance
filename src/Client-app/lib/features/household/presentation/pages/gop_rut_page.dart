@@ -20,6 +20,7 @@ import '../../../transaction/presentation/widgets/them_giao_dich/khoi_so_tien.da
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../wallet/data/repositories/wallet_repository.dart';
 import '../../application/gop_quy_service.dart';
+import '../../application/quyen_hien_tai.dart';
 import '../../data/repositories/du_lieu_nha_repository.dart';
 import '../../data/repositories/nha_repository.dart';
 import '../../domain/hoat_dong_nha.dart';
@@ -138,9 +139,8 @@ class _GopRutPageState extends State<GopRutPage> {
 
   /// Đọc lại vai và nhà NGAY trước khi ghi.
   bool _conDuocGhi() {
-    final t = _nhaRepo.hienTai;
-    final nha = t.nha;
-    final duoc = nha != null && nha.id == _idNha && duocLamViecNha(ViecNha.ghiKhoan, vai: t.vai, trangThai: nha.trangThai);
+    final idNha = _idNha;
+    final duoc = idNha != null && conDuocLamViecNha(_nhaRepo, idNha, ViecNha.ghiKhoan);
     if (!duoc) _dong(_cauKhongQuyen);
     return duoc;
   }

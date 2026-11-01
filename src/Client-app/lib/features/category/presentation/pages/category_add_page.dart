@@ -24,7 +24,12 @@ class CategoryAddPage extends StatefulWidget {
     this.accountId,
     this.tamNgung = false,
     this.idNha,
+    this.conDuocGhi,
   });
+
+  /// Chế độ nhà: hỏi lại quyền sửa danh mục NGAY lúc Lưu (FINAL I-3). Router truyền closure (mảng danh mục không import gia
+  /// đình). `null` = đường cá nhân, không kiểm.
+  final bool Function()? conDuocGhi;
 
   /// Chế độ NHÀ (gia đình 1B Task 11): form tạo / sửa danh mục của nhà `idNha`. `null` = danh mục riêng như cũ.
   final int? idNha;
@@ -266,6 +271,13 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
 
   Future<void> _save() async {
     if (_saving) return;
+    // Chế độ nhà: hỏi lại vai trước mọi thứ (FINAL I-3) — không thì báo thành công mà server từ chối, hàng kẹt `pending`.
+    final hoiQuyen = widget.conDuocGhi;
+    if (hoiQuyen != null && !hoiQuyen()) {
+      _showError('Bạn không còn quyền sửa danh mục của nhà này.');
+      if (context.canPop()) context.pop();
+      return;
+    }
     final accountId = _accountId;
     if (accountId == null) {
       _showError('Chưa xác định được tài khoản đăng nhập. '

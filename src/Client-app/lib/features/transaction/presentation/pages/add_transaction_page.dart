@@ -501,6 +501,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   /// ✓ (16 phím hoặc thanh tiêu đề). Kiểm + dựng ở Cubit; hộp thoại và event ở đây.
   Future<void> _luu(BuildContext context) async {
+    // Chế độ nhà: hỏi lại vai ĐẦU hàm, trước `await` (FINAL I-3). Vai đổi lúc form mở mà vẫn gửi event thì app báo thành công
+    // trong khi server từ chối (ROLE_FORBIDDEN xoá hàng, READ_ONLY để nó kẹt `pending`) — không ai biết.
+    final hoiQuyen = widget.nha?.conDuocGhi;
+    if (hoiQuyen != null && !hoiQuyen(_s.laChuyen)) {
+      baoNhanh('Bạn không còn quyền ghi khoản trong nhà này.', loai: LoaiThongBao.loi);
+      context.pop();
+      return;
+    }
     final r = await _cubit.chuanBiLuu();
     if (!context.mounted) return;
     switch (r) {

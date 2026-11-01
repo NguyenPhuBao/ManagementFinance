@@ -8,6 +8,7 @@ class CheDoNhaForm {
     required this.tenNha,
     required this.choChuyen,
     required this.duongChonDanhMuc,
+    this.conDuocGhi,
   });
 
   final int idNha;
@@ -19,6 +20,10 @@ class CheDoNhaForm {
 
   /// Route bộ chọn danh mục của nhà (thay cho `/add/category`).
   final String duongChonDanhMuc;
+
+  /// Hỏi lại quyền NGAY lúc Lưu (FINAL I-3): `laChuyen` → việc *chuyển giữa ví chung*, còn lại → *ghi khoản*. Router truyền
+  /// closure đọc vai hiện tại (mảng giao dịch không import gia đình). `null` = không kiểm thêm.
+  final bool Function(bool laChuyen)? conDuocGhi;
 }
 
 /// Đoạn mở sẵn của form nhà. Thành viên (không [choChuyen]) mở `?huong=transfer` thì về Chi tiêu: ô Chuyển khoản không có, và

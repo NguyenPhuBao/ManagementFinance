@@ -19,6 +19,7 @@ import '../../../wallet/domain/rang_buoc_vi.dart';
 import '../../../wallet/domain/wallet_status.dart';
 import '../../../wallet/domain/wallet_type.dart';
 import '../../../wallet/presentation/widgets/o_so_du_vi.dart';
+import '../../application/quyen_hien_tai.dart';
 import '../../data/repositories/du_lieu_nha_repository.dart';
 import '../../data/repositories/nha_repository.dart';
 import '../../domain/cau_loi_nha.dart';
@@ -153,11 +154,8 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
   /// thì tự thoát kèm câu và KHÔNG ghi gì — server từ chối sau đó, ví biến mất sau khi đã báo thành công, còn khoản bù số dư
   /// của người đã mất vai lọt vào quỹ cả nhà.
   bool _conDuocGhi() {
-    final t = (widget.nha ?? sl<NhaRepository>()).hienTai;
-    final nha = t.nha;
-    final duoc = nha != null &&
-        nha.id == _idNha &&
-        duocLamViecNha(ViecNha.quanLyViChung, vai: t.vai, trangThai: nha.trangThai);
+    final idNha = _idNha;
+    final duoc = idNha != null && conDuocLamViecNha(widget.nha ?? sl<NhaRepository>(), idNha, ViecNha.quanLyViChung);
     if (!duoc) _thoat(cauLoiNha(LoaiLoiNha.khongPhaiChu));
     return duoc;
   }

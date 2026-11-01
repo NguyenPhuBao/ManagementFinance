@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../helpers/bat_thong_bao.dart';
 import '../../../helpers/nha_gia.dart';
 import '../../../helpers/them_giao_dich_nguon_gia.dart';
 import '../../category/presentation/category_test_fakes.dart';
@@ -28,6 +29,7 @@ void main() {
     EditTransactionArgs? sua,
     String? huong,
     List<CategoryEntity> danhMuc = const [],
+    bool Function(bool laChuyen)? conDuocGhi,
   }) {
     final bloc = TransactionBloc(transactionRepository: repo);
     addTearDown(bloc.close);
@@ -53,6 +55,7 @@ void main() {
                   tenNha: 'Nhà An Bình',
                   choChuyen: choChuyen,
                   duongChonDanhMuc: '/nha/khoan/category',
+                  conDuocGhi: conDuocGhi,
                 ),
               ),
             ),
@@ -177,6 +180,57 @@ void main() {
     expect(e.idaccount, 10, reason: 'server giữ Idaccount người ghi; đổi là ROLE_FORBIDDEN');
     expect(e.idhousehold, 7);
     expect(e.id, 'tx-nha');
+  });
+
+  group('FINAL I-3 — kiểm lại quyền lúc Lưu', () {
+    testWidgets('mất quyền giữa chừng: Lưu không ghi hàng nào, báo câu, thoát form (tạo mới)', (t) async {
+      final bat = batThongBao();
+      final repo = FakeTransactionRepository();
+      await t.pumpWidget(dung(repo, conDuocGhi: (_) => false));
+      await t.pumpAndSettle();
+      await goVaChon(t);
+      await luu(t);
+      expect(repo.added, isEmpty, reason: 'ROLE_FORBIDDEN / READ_ONLY ở server: hàng bị xoá hoặc kẹt pending, không báo gì');
+      expect(bat.cau, isNotEmpty, reason: 'phải có câu, không im lặng');
+      expect(find.text('Trang trước'), findsOneWidget, reason: 'thoát form về trang trước');
+    });
+
+    testWidgets('mất quyền giữa chừng khi SỬA: không phát UpdateTransactionEvent', (t) async {
+      final repo = FakeTransactionRepository();
+      final cu = TransactionEntity(
+        id: 'tx-nha',
+        walletId: 'chung',
+        idaccount: 10,
+        idhousehold: 7,
+        categoryId: 'food',
+        amount: 45000,
+        type: 'chi',
+        note: 'đi chợ',
+        date: DateTime(2026, 11, 1, 7, 30),
+        images: const [],
+        syncStatus: 'synced',
+        isDeleted: false,
+        updatedAt: DateTime(2026, 11, 1),
+      );
+      await t.pumpWidget(dung(repo, sua: EditTransactionArgs(transaction: cu, category: anUong), conDuocGhi: (_) => false));
+      await t.pumpAndSettle();
+      await luu(t);
+      expect(repo.updated, isEmpty);
+    });
+
+    testWidgets('closure nhận ĐÚNG chiều: khoản chi hỏi laChuyen=false', (t) async {
+      final hoi = <bool>[];
+      final repo = FakeTransactionRepository();
+      await t.pumpWidget(dung(repo, conDuocGhi: (c) {
+        hoi.add(c);
+        return true;
+      }));
+      await t.pumpAndSettle();
+      await goVaChon(t);
+      await luu(t);
+      expect(hoi, [false], reason: 'chi / thu → ghiKhoan; chuyển → chuyenGiuaViChung (Chủ bị hạ vai ghi chuyển: ROLE_FORBIDDEN)');
+      expect(repo.added, hasLength(1), reason: 'còn quyền thì ghi như cũ');
+    });
   });
 
   testWidgets('360 dp, 13 chữ số, có và không có bàn phím hệ thống: không tràn', (t) async {
