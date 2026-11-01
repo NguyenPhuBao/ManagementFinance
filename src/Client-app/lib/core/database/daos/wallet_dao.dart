@@ -244,13 +244,16 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     );
   }
 
-  /// Cập nhật balance sau khi giao dịch
-  Future<void> updateBalance(String id, double newBalance) async {
+  /// Cập nhật balance sau khi giao dịch.
+  ///
+  /// [cucBo] = true cho ví CỦA NHÀ (G113 nợ 9, `docs/Family/02A` mục 7.1): chỉ đổi con số trên máy. Số dư suy từ sổ nên mọi máy
+  /// tính ra cùng số; đánh `pending` là máy thành viên kẹt hàng mãi và máy người tạo đẩy đè sửa thật của người khác.
+  Future<void> updateBalance(String id, double newBalance, {bool cucBo = false}) async {
     await (update(wallets)..where((t) => t.id.equals(id))).write(
       WalletsCompanion(
         balance: Value(newBalance),
-        syncStatus: const Value('pending'),
-        updatedAt: Value(DateTime.now()),
+        syncStatus: cucBo ? const Value.absent() : const Value('pending'),
+        updatedAt: cucBo ? const Value.absent() : Value(DateTime.now()),
       ),
     );
   }

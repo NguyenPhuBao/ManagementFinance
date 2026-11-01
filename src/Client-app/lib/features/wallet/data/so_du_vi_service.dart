@@ -59,7 +59,7 @@ class SoDuViService implements CongSoDuVi {
 
     final tong = await _db.transactionDao.tongTheoVi(walletId);
     if ((tong - vi.balance).abs() < _nguongBangNhau) return;
-    await _db.walletDao.updateBalance(walletId, tong);
+    await _db.walletDao.updateBalance(walletId, tong, cucBo: vi.idhousehold != null);
   }
 
   /// Tính lại cho nhiều ví; id trùng nhau chỉ chạy một lần.
