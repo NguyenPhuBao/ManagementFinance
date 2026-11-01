@@ -801,17 +801,9 @@ async function getOrderDetailForAdmin(orderId) {
   const isPendingAndActive = sanitized.status === 'PENDING' && (!sanitized.expired_at || new Date(sanitized.expired_at) > new Date());
 
   if (isPendingAndActive) {
-    const bin = '970422';
-    const accountNumber = '2512070399999';
-    const accountName = 'NGUYEN PHU BAO';
-    const description = sanitized.transfer_content || sanitized.recognition_code || '';
-    sanitized.qr_url = sanitized.qr_url || `https://img.vietqr.io/image/${bin}-${accountNumber}-compact2.png?amount=${sanitized.amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
-    sanitized.bank_info = {
-      bin,
-      bankName: 'MB Bank (Quân Đội)',
-      accountNumber,
-      accountName,
-    };
+    // Đọc từ QR đã lưu của đơn, không ghi cứng tài khoản (đơn 62.1)
+    const nhanTien = payosClient.thongTinTuQrUrl(sanitized.qr_url);
+    sanitized.bank_info = nhanTien ? { ...nhanTien, bankName: tenNganHang(nhanTien.bin) } : null;
   } else {
     // Đơn hoàn tất hoặc đã hết hạn: Triệt tiêu mã QR và thông tin chuyển khoản tránh thanh toán trùng
     sanitized.qr_url = null;
@@ -823,43 +815,43 @@ async function getOrderDetailForAdmin(orderId) {
 }
 
 /**
+ * Tên ngân hàng theo mã BIN; chưa biết thì để trống để giao diện không ghi nhầm.
+ * @param {string} bin
+ */
+function tenNganHang(bin) {
+  return bin === '970422' ? 'MB Bank (Quân Đội)' : null;
+}
+
+/**
  * Lấy hoặc tạo mã QR thanh toán từ kênh PayOS thật
  * @param {object} param0 { amount, packageType }
  */
 async function getOrCreatePayosQr({ amount = 49000, packageType = 'Premium', persistOrder = false, idaccount } = {}) {
   const orderCode = payosClient.generateOrderCode();
   const recognitionCode = payosClient.generateRecognitionCode();
-  let description = recognitionCode;
-  let bin = '970422';
-  let accountNumber = '2512070399999';
-  let accountName = 'NGUYEN PHU BAO';
-  let checkoutUrl = `https://pay.payos.vn/web/${orderCode}`;
-  let paymentLinkId = `sample-link-${orderCode}`;
-  let qrCode = null;
   const now = new Date();
   const expiredAt = new Date(now.getTime() + 10 * 60 * 1000); // 10 phút đếm ngược
 
+  // PayOS hỏng thì báo lỗi cho admin, không dựng QR đoán tài khoản (đơn 62.1)
+  let payosRes;
   try {
-    const payosRes = await payosClient.createPaymentLink({
+    payosRes = await payosClient.createPaymentLink({
       orderCode,
       amount: Number(amount),
       description: recognitionCode,
       expiredAt: Math.floor(expiredAt.getTime() / 1000),
     });
-    if (payosRes) {
-      checkoutUrl = payosRes.checkoutUrl || checkoutUrl;
-      paymentLinkId = payosRes.paymentLinkId || paymentLinkId;
-      bin = payosRes.bin || bin;
-      accountNumber = payosRes.accountNumber || accountNumber;
-      accountName = payosRes.accountName || accountName;
-      description = payosRes.description || description;
-      qrCode = payosRes.qrCode || null;
-    }
   } catch (err) {
-    console.warn('[PAYOS] Không thể tạo payment link PayOS trực tiếp:', err.message);
+    const error = new Error(`Không thể tạo liên kết thanh toán PayOS: ${err.message}`);
+    error.statusCode = 502;
+    throw error;
   }
+  const { bin, accountNumber, accountName, description: moTa } = payosClient.thongTinNhanTien(payosRes);
+  const description = moTa || recognitionCode;
+  const { checkoutUrl, paymentLinkId } = payosRes;
+  const qrCode = payosRes.qrCode || null;
 
-  // URL ảnh VietQR chuẩn Napas với kênh MB Bank thật của người dùng
+  // URL ảnh VietQR chuẩn Napas theo tài khoản PayOS trả về
   const qrUrl = `https://img.vietqr.io/image/${bin}-${accountNumber}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
 
   let orderId = crypto.randomUUID();
@@ -910,7 +902,7 @@ async function getOrCreatePayosQr({ amount = 49000, packageType = 'Premium', per
     amount: Number(amount),
     packageType,
     bin,
-    bankName: 'MB Bank (Quân Đội)',
+    bankName: tenNganHang(bin),
     accountNumber,
     accountName,
     description,

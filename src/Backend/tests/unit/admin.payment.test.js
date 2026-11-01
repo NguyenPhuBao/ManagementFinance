@@ -320,6 +320,20 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       return data;
     };
 
+    const payosClient = require('../../modules/payment/payos.client');
+    payosClient.setPayOSClientMock({
+      paymentRequests: {
+        create: async () => ({
+          bin: '970422',
+          accountNumber: '1234567890',
+          accountName: 'KENH THU',
+          description: 'CSTHU ABC123',
+          checkoutUrl: 'https://pay.payos.vn/web/thu',
+          paymentLinkId: 'link-thu',
+        }),
+      },
+    });
+
     try {
       const sample = await paymentRepository.createSampleOrder({
         simulateWebhook: true,
@@ -339,6 +353,7 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       prisma.account.findFirst = origFindFirst;
       prisma.payment_order.create = origCreateOrder;
       prisma.payment_transaction.create = origCreateTx;
+      payosClient.setPayOSClientMock(null);
     }
   });
 
@@ -379,14 +394,40 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
   });
 
   await t.test('9. Tầng 2: paymentRepository.getOrCreatePayosQr sinh mã QR và link thanh toán trực tiếp từ kênh PayOS thật', async () => {
-    const qrData = await paymentRepository.getOrCreatePayosQr({ amount: 49000, packageType: 'PREMIUM_1_MONTH' });
-    assert.ok(qrData);
-    assert.strictEqual(qrData.accountNumber, '2512070399999');
-    assert.strictEqual(qrData.accountName, 'NGUYEN PHU BAO');
-    assert.strictEqual(qrData.bin, '970422');
-    assert.strictEqual(qrData.amount, 49000);
-    assert.ok(qrData.qrUrl.includes('2512070399999'));
-    assert.ok(qrData.checkoutUrl);
+    const payosClient = require('../../modules/payment/payos.client');
+    payosClient.setPayOSClientMock({
+      paymentRequests: {
+        create: async () => ({
+          bin: '970422',
+          accountNumber: '1234567890',
+          accountName: 'KENH THU',
+          description: 'CSTHU ABC123',
+          checkoutUrl: 'https://pay.payos.vn/web/thu',
+          paymentLinkId: 'link-thu',
+        }),
+      },
+    });
+    try {
+      const qrData = await paymentRepository.getOrCreatePayosQr({ amount: 49000, packageType: 'PREMIUM_1_MONTH' });
+      assert.ok(qrData);
+      assert.strictEqual(qrData.accountNumber, '1234567890');
+      assert.strictEqual(qrData.accountName, 'KENH THU');
+      assert.strictEqual(qrData.bin, '970422');
+      assert.strictEqual(qrData.amount, 49000);
+      assert.ok(qrData.qrUrl.includes('1234567890'));
+      assert.ok(qrData.checkoutUrl);
+
+      // PayOS hỏng thì báo lỗi, không dựng QR đoán tài khoản (đơn 62.1)
+      payosClient.setPayOSClientMock({
+        paymentRequests: { create: async () => { throw new Error('mat ket noi'); } },
+      });
+      await assert.rejects(
+        paymentRepository.getOrCreatePayosQr({ amount: 49000 }),
+        (e) => e.statusCode === 502,
+      );
+    } finally {
+      payosClient.setPayOSClientMock(null);
+    }
   });
 
   await t.test('10. Tầng 1: paymentController.getPayosQr trả về HTTP 200 kèm thông tin PayOS', async () => {
