@@ -88,6 +88,7 @@ void main() {
       ),
       GoRoute(path: '/nha/vi/:id/sua', builder: (_, s) => Scaffold(body: Text('SUA-${s.pathParameters['id']}'))),
       GoRoute(path: '/nha/khoan', builder: (_, s) => Scaffold(body: Text('KHOAN ${s.uri}'))),
+      GoRoute(path: '/nha/gop', builder: (_, s) => Scaffold(body: Text('GOP ${s.uri}'))),
     ]);
     addTearDown(router.dispose);
     await t.pumpWidget(bocRouterNha(router, idaccount: 18));
@@ -97,24 +98,28 @@ void main() {
   }
 
   group('hàng nút theo vai', () {
-    testWidgets('Chủ nhà: Chi · Thu · Chuyển theo thứ tự màn 3; thẻ số dư, huy hiệu, dòng loại ví, bút sửa', (t) async {
+    testWidgets('Chủ nhà: Chi · Thu · Góp · Rút · Chuyển theo thứ tự màn 3; thẻ số dư, huy hiệu, dòng loại ví, bút sửa', (t) async {
       await mo(t);
       expect(find.text('Tiền chợ'), findsOneWidget, reason: 'tiêu đề thanh trên');
       expect(find.text('SỐ DƯ'), findsOneWidget);
       expect(find.text('Chủ nhà'), findsOneWidget);
       expect(find.text('3.200.000 đ'), findsOneWidget);
       expect(find.text('Tiền mặt · Ví chung'), findsOneWidget, reason: 'WalletType.nhan + " · Ví chung"');
-      final x = [for (final k in ['nut-chi', 'nut-thu', 'nut-chuyen']) t.getTopLeft(find.byKey(Key(k))).dx];
-      expect(x[0], lessThan(x[1]));
-      expect(x[1], lessThan(x[2]), reason: 'thứ tự Chi, Thu, Chuyển');
+      final x = [for (final k in ['nut-chi', 'nut-thu', 'nut-gop', 'nut-rut', 'nut-chuyen']) t.getTopLeft(find.byKey(Key(k))).dx];
+      for (var i = 1; i < x.length; i++) {
+        expect(x[i - 1], lessThan(x[i]), reason: 'thứ tự Chi, Thu, Góp, Rút, Chuyển (Góp · Rút giữa Thu và Chuyển)');
+      }
+      expect(t.takeException(), isNull, reason: 'năm nút ở 360 dp không tràn');
       expect(find.byKey(const Key('nut-sua-vi')), findsOneWidget);
       expect(t.takeException(), isNull);
     });
 
-    testWidgets('Thành viên: Chi · Thu, không Chuyển, không bút sửa', (t) async {
+    testWidgets('Thành viên: Chi · Thu · Góp · Rút, không Chuyển, không bút sửa', (t) async {
       await mo(t, vai: 'Member');
       expect(find.byKey(const Key('nut-chi')), findsOneWidget);
       expect(find.byKey(const Key('nut-thu')), findsOneWidget);
+      expect(find.byKey(const Key('nut-gop')), findsOneWidget);
+      expect(find.byKey(const Key('nut-rut')), findsOneWidget);
       expect(find.byKey(const Key('nut-chuyen')), findsNothing, reason: 'chuyển giữa ví chung chỉ Chủ nhà');
       expect(find.byKey(const Key('nut-sua-vi')), findsNothing);
       expect(find.text('Thành viên'), findsOneWidget, reason: 'huy hiệu vai');
@@ -122,8 +127,8 @@ void main() {
 
     testWidgets('Chỉ xem: không hàng nút, vẫn có số dư, hai tab và danh sách', (t) async {
       await mo(t, vai: 'Viewer', ds: [_k('chi')]);
-      for (final k in ['nut-chi', 'nut-thu', 'nut-chuyen']) {
-        expect(find.byKey(Key(k)), findsNothing);
+      for (final k in ['nut-chi', 'nut-thu', 'nut-gop', 'nut-rut', 'nut-chuyen']) {
+        expect(find.byKey(Key(k)), findsNothing, reason: '$k — Chỉ xem không ghi được gì');
       }
       expect(find.text('3.200.000 đ'), findsOneWidget);
       expect(find.byKey(const Key('tab-giao-dich')), findsOneWidget);
@@ -153,6 +158,15 @@ void main() {
         await t.tap(find.byKey(Key(khoa)));
         await t.pumpAndSettle();
         expect(find.text('KHOAN /nha/khoan?vi=v1&huong=$huong'), findsOneWidget, reason: khoa);
+      }
+    });
+
+    testWidgets('Góp / Rút đẩy /nha/gop với ví chung và chế độ', (t) async {
+      for (final (khoa, che) in [('nut-gop', 'gop'), ('nut-rut', 'rut')]) {
+        await mo(t);
+        await t.tap(find.byKey(Key(khoa)));
+        await t.pumpAndSettle();
+        expect(find.text('GOP /nha/gop?vi=v1&che=$che'), findsOneWidget, reason: khoa);
       }
     });
 

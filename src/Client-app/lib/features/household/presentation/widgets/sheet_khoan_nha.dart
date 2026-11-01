@@ -50,7 +50,7 @@ Future<HanhDongKhoanNha?> moSheetKhoanNha(
     );
 
 /// Nội dung sheet. Nút theo [quyen]: không quyền nào thì không hàng nút. Nút Sửa chỉ do chỗ gọi cấp (`quyen.sua`); khoản cặp
-/// chưa có đường sửa ở Task 6 nên chỗ gọi truyền `sua: false` cho chúng.
+/// sửa qua `/nha/gop?ma=` (Task 8), chỉ người ghi (`duocSuaKhoanNha`).
 class SheetKhoanNha extends StatelessWidget {
   const SheetKhoanNha({
     super.key,

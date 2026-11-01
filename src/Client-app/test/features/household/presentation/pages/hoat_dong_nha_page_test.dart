@@ -270,13 +270,67 @@ void main() {
       expect(find.byKey(const Key('sheet-sua')), findsNothing, reason: 'nửa riêng chỉ trên máy người ghi');
     });
 
-    testWidgets('khoản cặp CỦA CHÍNH Chủ cũng chưa có Sửa ở Task 6 (bật ở Task 8)', (t) async {
+    testWidgets('khoản cặp CỦA CHÍNH người ghi có cả Sửa lẫn Xoá (sửa cặp, Task 8)', (t) async {
       await mo(t, ds: [_k('gop', ai: 18, type: 'thu', tien: 2000000, cap: 'p1', cat: null)]);
       await t.tap(find.byKey(const ValueKey('khoan-gop')));
       await t.pumpAndSettle();
-      expect(find.byKey(const Key('sheet-sua')), findsNothing);
+      expect(find.byKey(const Key('sheet-sua')), findsOneWidget);
       expect(find.byKey(const Key('sheet-xoa')), findsOneWidget);
     });
+
+    testWidgets('Thành viên ghi khoản cặp của mình: có Sửa; của người khác: không', (t) async {
+      await mo(t, nha: _nhaThanhVien(), ds: [
+        _k('cua-toi', ai: 18, type: 'chi', tien: 500000, cap: 'p2', cat: null),
+        _k('cua-binh', ai: 25, type: 'thu', tien: 700000, cap: 'p3', cat: null),
+      ]);
+      await t.tap(find.byKey(const ValueKey('khoan-cua-toi')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('sheet-sua')), findsOneWidget);
+      await t.tapAt(const Offset(10, 10));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const ValueKey('khoan-cua-binh')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('sheet-sua')), findsNothing);
+    });
+  });
+
+  testWidgets('Sửa khoản cặp: push /nha/gop?ma=<mã>&che=<gop|rut> theo chiều của nửa nhà', (t) async {
+    final uris = <String>[];
+    dat360(t);
+    bat = batThongBao();
+    nguon = DuLieuNhaGia(vi: _vi)
+      ..datKhoan([
+        _k('gop', type: 'thu', tien: 2000000, cap: 'p1', cat: null),
+        _k('rut', type: 'chi', tien: 500000, cap: 'p2', cat: null),
+      ]);
+    final repo = await repoNhaThu(HouseholdApiGia()..cuaToiJson = nhaJson());
+    final router = GoRouter(initialLocation: '/nha/hoat-dong', routes: [
+      GoRoute(
+        path: '/nha/hoat-dong',
+        builder: (_, __) => HoatDongNhaPage(repo: repo, duLieu: nguon, thaoTac: _ThaoTacGia(), dongHo: () => _homNay),
+      ),
+      GoRoute(
+        path: '/nha/gop',
+        builder: (_, s) {
+          uris.add(s.uri.toString());
+          return const Scaffold(body: Text('FORM-GOP'));
+        },
+      ),
+    ]);
+    addTearDown(router.dispose);
+    await t.pumpWidget(bocRouterNha(router));
+    await t.pumpAndSettle();
+    for (final id in ['gop', 'rut']) {
+      await t.tap(find.byKey(ValueKey('khoan-$id')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('sheet-sua')));
+      await t.pumpAndSettle();
+      expect(find.text('FORM-GOP'), findsOneWidget);
+      router.pop();
+      await t.pumpAndSettle();
+    }
+    expect(uris, ['/nha/gop?ma=p1&che=gop', '/nha/gop?ma=p2&che=rut'],
+        reason: 'chiều theo phanLoaiKhoanNha, không tự viết type == thu ở trang');
   });
 
   testWidgets('Sửa khoản thường: push /nha/khoan với EditTransactionArgs mang cả danh mục tra từ bảng nhà', (t) async {

@@ -97,6 +97,7 @@ void main() {
     'features/bill/presentation/pages/bill_edit_page.dart',
     'features/bill/presentation/widgets/bill_actions.dart',
     'features/goal/presentation/pages/goal_detail_page.dart',
+    'features/household/presentation/pages/gop_rut_page.dart',
   };
 
   late Map<String, String> noiDung;

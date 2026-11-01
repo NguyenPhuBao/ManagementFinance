@@ -39,7 +39,7 @@ const _chuHuyHieu = Color(0xFF454743);
 ///
 /// - Ví bị xoá / không còn trong nhà (máy khác xoá, kéo về) → tự đóng kèm câu; không đoán một ví khác.
 /// - Số dư đọc từ `theoDoiViChung` (cột `balance`, cache của sổ), không tính lại ở đây.
-/// - Hàng nút nhận danh sách [NutVi]: Task 8 chèn *Góp · Rút* vào đúng chỗ giữa *Thu* và *Chuyển* theo màn 3.
+/// - Hàng nút nhận danh sách [NutVi]: *Góp · Rút* đứng giữa *Thu* và *Chuyển* theo màn 3 (Task 8).
 /// - Dòng giao dịch chưa mở sheet chi tiết (Hoạt động mới có): chạm vào không làm gì.
 class ChiTietViChungPage extends StatefulWidget {
   const ChiTietViChungPage({super.key, required this.idVi, this.repo, this.duLieu, this.dongHo});
@@ -207,9 +207,13 @@ class _ChiTietViChungPageState extends State<ChiTietViChungPage> {
     final ghi = duocLamViecNha(ViecNha.ghiKhoan, vai: s.nha.vai, trangThai: trangThai);
     final chuyen = duocLamViecNha(ViecNha.chuyenGiuaViChung, vai: s.nha.vai, trangThai: trangThai);
     void moForm(String huong) => unawaited(context.push('/nha/khoan?vi=${Uri.encodeQueryComponent(vi.id)}&huong=$huong'));
+    void moGop(String che) => unawaited(context.push('/nha/gop?vi=${Uri.encodeQueryComponent(vi.id)}&che=$che'));
     final nut = [
       if (ghi) NutVi(khoa: 'nut-chi', nhan: 'Chi', icon: Icons.arrow_upward, onCham: () => moForm('chi')),
       if (ghi) NutVi(khoa: 'nut-thu', nhan: 'Thu', icon: Icons.arrow_downward, onCham: () => moForm('thu')),
+      // Góp · Rút giữa Thu và Chuyển (màn 3): cùng quyền ghi khoản; mọi vai ghi được đều góp, rút về ví riêng của mình.
+      if (ghi) NutVi(khoa: 'nut-gop', nhan: 'Góp', icon: Icons.savings_outlined, onCham: () => moGop('gop')),
+      if (ghi) NutVi(khoa: 'nut-rut', nhan: 'Rút', icon: Icons.output, onCham: () => moGop('rut')),
       if (chuyen) NutVi(khoa: 'nut-chuyen', nhan: 'Chuyển', icon: Icons.sync_alt, onCham: () => moForm('transfer')),
     ];
     if (nut.isEmpty) return const [];

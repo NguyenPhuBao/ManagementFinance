@@ -107,6 +107,21 @@ class DuLieuNhaGia implements DuLieuNhaRepository {
     return tra;
   }
 
+  /// Lời gọi `viChungChoForm` (idNha, giuLai, uuTien); ném `loiChoForm` nếu có.
+  final goiChoForm = <(int, Set<String>, String?)>[];
+  Object? loiChoForm;
+
+  /// Như bản thật: ví đang hoạt động cộng ví trong [giuLai] dù lưu trữ, ví [uuTien] đứng đầu.
+  @override
+  Future<List<WalletEntity>> viChungChoForm(int idNha, {Set<String> giuLai = const {}, String? uuTien}) async {
+    goiChoForm.add((idNha, giuLai, uuTien));
+    final loi = loiChoForm;
+    if (loi != null) throw loi;
+    final ds = [for (final v in _vi) if (!v.isDeleted && (v.status == 'active' || giuLai.contains(v.id))) v];
+    final dau = ds.where((v) => v.id == uuTien).toList();
+    return [...dau, ...ds.where((v) => v.id != uuTien)];
+  }
+
   @override
   Future<WalletEntity> taoViChung({
     required int idNha,

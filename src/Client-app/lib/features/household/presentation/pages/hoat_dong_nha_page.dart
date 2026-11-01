@@ -153,8 +153,8 @@ class _HoatDongNhaPageState extends State<HoatDongNhaPage> {
   Future<void> _moKhoan(TransactionEntity t, NhaState s, KhoanNhaState k, List<WalletEntity> vi) async {
     final nha = s.nha;
     final goc = quyenKhoanNha(t, vai: nha.vai, trangThai: nha.nha?.trangThai, idToi: _cubit.idToi);
-    // Khoản cặp: nút Sửa bật ở Task 8 (route `/nha/gop`), tới đó Xoá vẫn dùng được.
-    final quyen = (sua: goc.sua && t.fundPairId == null, xoa: goc.xoa);
+    // Khoản cặp sửa qua `/nha/gop?ma=` (1B Task 8); `duocSuaKhoanNha` đã chỉ cho người ghi sửa khoản có mã cặp.
+    final quyen = goc;
     final dich = t.walletTransfer;
     final hanhDong = await moSheetKhoanNha(
       context,
@@ -170,6 +170,13 @@ class _HoatDongNhaPageState extends State<HoatDongNhaPage> {
     if (hanhDong == null || !mounted) return;
     switch (hanhDong) {
       case HanhDongKhoanNha.sua:
+        final maCap = t.fundPairId;
+        if (maCap != null) {
+          // Chiều theo nửa của nhà (góp là `thu`, rút là `chi`) — cùng luật `phanLoaiKhoanNha`, không tự viết ở đây.
+          final che = phanLoaiKhoanNha(t) == LoaiKhoanNha.rutNha ? 'rut' : 'gop';
+          unawaited(context.push('/nha/gop?ma=${Uri.encodeQueryComponent(maCap)}&che=$che'));
+          return;
+        }
         CategoryEntity? dm;
         for (final c in k.danhMuc) {
           if (c.id == t.categoryId) dm = c;
@@ -195,7 +202,7 @@ class _HoatDongNhaPageState extends State<HoatDongNhaPage> {
       final cau = await _cauXoaCap(t, maCap, nha, vi);
       if (cau == null || !mounted) return;
       // Hàng của nhà: góp là `thu`, rút là `chi` (`phanLoaiKhoanNha`).
-      final gop = t.type == 'thu';
+      final gop = phanLoaiKhoanNha(t) == LoaiKhoanNha.gopNha;
       if (!await hoiXoaKhoanGop(context, tieuDe: gop ?'Xoá khoản góp?' : 'Xoá khoản rút?', cau: cau)) return;
     }
     if (!mounted) return;

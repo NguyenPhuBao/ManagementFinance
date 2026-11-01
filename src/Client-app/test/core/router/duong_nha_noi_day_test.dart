@@ -42,6 +42,18 @@ void main() {
     expect(cua.contains('ViecNha.ghiKhoan'), isTrue);
   });
 
+  test('/nha/gop qua cùng cửa ghiKhoan, đọc che / vi / ma từ query, nhà mất thì Nhà mình (không `!`)', () {
+    final gop = than('/nha/gop');
+    expect(gop.contains('redirect: (_, __) => _veNhaNeuKhongGhiDuoc()'), isTrue,
+        reason: 'Chỉ xem / nhà chỉ xem không được vào form góp, rút');
+    expect(gop.contains("queryParameters['che'] == 'rut'"), isTrue);
+    expect(gop.contains("queryParameters['vi']"), isTrue);
+    expect(gop.contains("queryParameters['ma']"), isTrue);
+    expect(gop.contains('const NhaMinhPage()'), isTrue, reason: 'redirect chỉ bảo đảm có nhà lúc VÀO');
+    expect(gop.contains('nha!'), isFalse);
+    expect(gop.contains('nha: '), isFalse, reason: 'không phải form Thêm giao dịch — /nha/gop không mang CheDoNhaForm');
+  });
+
   test('/nha/khoan/category dùng napCay của nhà và ẩn nút quản lý (T11 mới bật)', () {
     final nha = than('/nha/khoan');
     expect(nha.contains('napCayDanhMuc('), isTrue);

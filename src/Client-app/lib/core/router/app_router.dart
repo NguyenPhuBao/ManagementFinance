@@ -29,6 +29,8 @@ import '../../features/household/data/them_giao_dich_nguon_nha.dart';
 import '../../features/household/domain/quyen_nha.dart';
 import '../../features/transaction/presentation/state/che_do_nha_form.dart';
 import '../../features/household/presentation/pages/chi_tiet_vi_chung_page.dart';
+import '../../features/household/presentation/bloc/gop_rut_cubit.dart';
+import '../../features/household/presentation/pages/gop_rut_page.dart';
 import '../../features/household/presentation/pages/hoat_dong_nha_page.dart';
 import '../../features/household/presentation/pages/moi_thanh_vien_page.dart';
 import '../../features/household/presentation/pages/nha_minh_page.dart';
@@ -420,6 +422,20 @@ class AppRouter {
                 },
               ),
             ],
+          ),
+
+          // Góp vào quỹ / Rút về ví riêng (1B Task 8): cùng cửa quyền ghi như `/nha/khoan`. `?vi=` ví chung chọn sẵn, `?che=gop|rut`,
+          // `?ma=` mã cặp = sửa khoản (chiều lấy theo nửa của nhà, `che` bị bỏ qua). Nhà đã mất → Nhà mình, không `!`.
+          GoRoute(
+            path: '/nha/gop',
+            redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
+            builder: (_, state) => sl<NhaRepository>().hienTai.nha == null
+                ? const NhaMinhPage()
+                : GopRutPage(
+                    cheDo: state.uri.queryParameters['che'] == 'rut' ? CheDoQuy.rut : CheDoQuy.gop,
+                    viChungId: state.uri.queryParameters['vi'],
+                    maCap: state.uri.queryParameters['ma'],
+                  ),
           ),
 
           // Budget rules
