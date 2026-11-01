@@ -50,6 +50,35 @@ void main() {
         reason: 'T3 chưa có route quản lý danh mục nhà: nút trỏ route chưa có là màn đỏ');
   });
 
+  testWidgets('FINAL: quay về từ Quản lý danh mục thì NẠP LẠI cây — danh mục vừa tạo hiện ra', (t) async {
+    var soLan = 0;
+    late GoRouter router;
+    router = GoRouter(initialLocation: '/chon', routes: [
+      GoRoute(
+        path: '/chon',
+        builder: (_, __) => ChooseCategoryPage(
+          napCay: (c) async => cay(soLan++ == 0 ? 'Cũ' : 'Mới tạo'),
+          duongQuanLy: '/quan-ly',
+        ),
+      ),
+      GoRoute(
+        path: '/quan-ly',
+        builder: (_, __) => Scaffold(body: TextButton(onPressed: () => router.pop(), child: const Text('XONG'))),
+      ),
+    ]);
+    addTearDown(router.dispose);
+    await t.pumpWidget(MaterialApp.router(routerConfig: router));
+    await t.pumpAndSettle();
+    expect(find.text('Cũ'), findsOneWidget, reason: 'tiền đề: lượt nạp đầu');
+    await t.tap(find.text('Quản lý danh mục'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('XONG'));
+    await t.pumpAndSettle();
+    expect(find.text('Mới tạo'), findsOneWidget,
+        reason: 'thiếu là người vừa tạo danh mục ở Quản lý quay về không thấy nó trong bộ chọn');
+    expect(find.text('Cũ'), findsNothing);
+  });
+
   testWidgets('nút dưới push đúng duongQuanLy', (t) async {
     final router = GoRouter(initialLocation: '/chon', routes: [
       GoRoute(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -166,7 +168,11 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               child: OutlinedButton.icon(
-                onPressed: () => context.push(duong),
+                // Quay về từ Quản lý thì nạp lại: danh mục vừa tạo / sửa phải hiện trong bộ chọn (áp cả đường cá nhân).
+                onPressed: () async {
+                  await context.push(duong);
+                  if (mounted) unawaited(_loadTree());
+                },
                 icon: const Icon(Icons.settings_outlined),
                 label: const Text('Quản lý danh mục'),
                 style: OutlinedButton.styleFrom(
