@@ -265,6 +265,7 @@ class SyncEngine {
       db: db,
       now: _now,
       bacChan: _bacChanHienTai,
+      bacChanTheoHang: (n) => _backoffSteps[n.clamp(0, _backoffSteps.length - 1)],
     );
   }
 
@@ -552,7 +553,9 @@ class SyncEngine {
       // bản ghi còn `pending` nên lần thử lại đã bao gồm cả những thao tác hỏng
       // vĩnh viễn của lần đầu.
       final lastPush = retryResult ?? pushResult;
-      final stillFailing = lastPush != null && lastPush.failed > 0;
+      // Hàng của nhà bị từ chối vì vai / trạng thái nhà (`SyncResult.chiTuChoiPhamViNha`) KHÔNG làm chu kỳ hỏng: giãn cách
+      // cả tài khoản vì một hàng không tự hết sẽ chặn luôn đẩy và kéo dữ liệu riêng tới 60 phút. Hàng ấy có bậc chặn riêng.
+      final stillFailing = lastPush != null && lastPush.failed > 0 && !lastPush.chiTuChoiPhamViNha;
       // G89 (spec mục 3.3): máy chủ bảo trì / phong toả có giờ → KHÔNG tính lượt hỏng (không đụng `_consecutiveFailures`
       // lẫn `_nextAllowedSyncAt` — đổi mạng vẫn thử ngay được), hẹn thử lại đúng mốc server cho (sàn `kSanThuLai`), và kết
       // thúc `pending` chứ không `error`: `error` là bộ quét thông báo nổ "Đồng bộ hỏng" (`NotificationKind.syncFailed`) cho

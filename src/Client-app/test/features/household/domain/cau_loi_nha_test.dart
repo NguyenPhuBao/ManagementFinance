@@ -125,4 +125,16 @@ void main() {
         reason:
             'chú thích ở _permanentCodes phải trỏ ngược về tập này — ai sửa một bên mới biết bên kia (Task 8 bước 3b)');
   });
+
+  test('⚠️ năm mã ĐẨY khớp tay với SyncResult.maPhamViNha (chu kỳ chỉ có từ chối phạm vi nhà không giãn cách)', () {
+    final nguon = File('lib/core/sync/sync_models.dart').readAsStringSync();
+    final dau = nguon.indexOf('maPhamViNha = {');
+    expect(dau, isNonNegative, reason: 'tiền đề: tìm được tập mã ở sync_models.dart');
+    final khoi = nguon.substring(dau, nguon.indexOf('};', dau));
+    final ma = RegExp(r"'([A-Z_]+)'").allMatches(khoi).map((m) => m.group(1)!).toSet();
+    expect(ma, hasLength(5), reason: 'tiền đề: đọc được năm mã, không rỗng');
+    expect(ma, kMaDayLoiNha,
+        reason: 'lệch tay: mã thiếu ở core thì hàng bị từ chối vì vai vẫn làm cả tài khoản giãn cách tới 60 phút; thừa thì '
+            'lỗi thật bị coi là từ chối phạm vi nhà và không giãn cách');
+  });
 }
