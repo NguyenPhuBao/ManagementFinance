@@ -58,7 +58,7 @@ double thuNhapCua({
   required TongThuChi tong,
   required DiemVayNo vayNo,
 }) =>
-    tong.thu - vayNo.diVay - vayNo.thuNo - vayNo.khacVao;
+    tong.thu - vayNo.diVay - vayNo.thuNo - vayNo.khacVao - vayNo.rutQuy;
 
 /// Tỉ lệ tiết kiệm của một kỳ: phần **thu nhập** chưa tiêu, trong `[-∞, 1]`.
 ///

@@ -13,6 +13,7 @@ import '../../ai_edge/domain/ap_dung_ke_hoach.dart';
 import '../../ai_edge/domain/tai_phan_bo.dart';
 import '../../analytics/domain/thong_ke_thang.dart';
 import '../../analytics/domain/thu_nhap_moi_thang.dart';
+import '../../transaction/domain/danh_muc_ao_quy.dart';
 import '../data/models/budget_entity.dart';
 import '../domain/cua_so_nhin_lai.dart';
 import '../domain/nhip_chi.dart';
@@ -181,15 +182,29 @@ class TaiPhanBoNguonImpl implements TaiPhanBoNguon {
     final tenTheoId = {for (final c in cats) c.id: c.name};
     final khoan = [
       for (final t in txs)
-        KhoanThuChi(
-          ngay: t.date,
-          soTien: t.amount,
-          loai: t.type,
-          categoryId: t.categoryId,
-          classify: t.categoryId == null ? null : classifyTheoId[t.categoryId],
-          ghiChu: t.note,
-          tenDanhMuc: t.categoryId == null ? null : tenTheoId[t.categoryId],
-        ),
+        () {
+          // Cùng định nghĩa với `AnalyticsRepositoryImpl.dungKhoan`: mã ảo chỉ để gom nhãn, cờ `laRutQuy` quyết thu nhập.
+          final id = categoryIdThongKe(
+            categoryId: t.categoryId,
+            fundPairId: t.fundPairId,
+            idhousehold: t.idhousehold,
+            loai: t.type,
+          );
+          return KhoanThuChi(
+            ngay: t.date,
+            soTien: t.amount,
+            loai: t.type,
+            categoryId: id,
+            laRutQuy: laNuaRutQuy(
+              fundPairId: t.fundPairId,
+              idhousehold: t.idhousehold,
+              loai: t.type,
+            ),
+            classify: id == null ? null : (classifyTheoId[id] ?? nhanAoQuy(id)?.classify),
+            ghiChu: t.note,
+            tenDanhMuc: id == null ? null : (tenTheoId[id] ?? nhanAoQuy(id)?.ten),
+          );
+        }(),
     ];
     // Phần thuần dời về `analytics/domain/thu_nhap_moi_thang.dart` (B3,
     // 2026-09-29) — trang Phân tích dùng cùng một định nghĩa.

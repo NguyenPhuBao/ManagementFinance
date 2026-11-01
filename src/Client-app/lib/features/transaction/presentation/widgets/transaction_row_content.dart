@@ -4,6 +4,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../category/presentation/widgets/category_visuals.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/transaction_entity.dart';
+import '../../domain/danh_muc_ao_quy.dart';
 import '../../domain/tieu_de_giao_dich.dart';
 import '../../domain/transaction_lookup.dart';
 
@@ -55,7 +56,15 @@ TransactionRowContent buildTransactionRowContent(
   final isExpense = tx.type == 'chi';
   final typeColour = isExpense ? AppColors.error : AppColors.income;
   final category = lookup.category(tx.categoryId);
-  final categoryName = category?.name;
+  // Nửa riêng của góp / rút quỹ gia đình chưa có danh mục: nhãn ảo (Task 10), cùng định nghĩa với thống kê.
+  final categoryName = category?.name ??
+      nhanAoQuy(categoryIdThongKe(
+        categoryId: tx.categoryId,
+        fundPairId: tx.fundPairId,
+        idhousehold: tx.idhousehold,
+        loai: tx.type,
+      ))
+          ?.ten;
   return TransactionRowContent(
     title: tieuDeGiaoDich(loai: tx.type, ghiChu: tx.note, tenDanhMuc: categoryName),
     // Danh mục chỉ xuống dòng phụ khi tiêu đề đã bị ghi chú chiếm; không thì
