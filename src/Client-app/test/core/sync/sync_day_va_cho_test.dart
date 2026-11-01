@@ -10,6 +10,7 @@ import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -44,6 +45,10 @@ class _Adapter implements HttpClientAdapter {
   final Set<int> giuLuot;
   final Completer<void> _cho = Completer<void>();
   int soLanPull = 0;
+  int soLanPush = 0;
+
+  /// `true` thì `/sync/push` trả 500 (chu kỳ hỏng → engine giãn cách).
+  bool pushLoi = false;
 
   void tha() {
     if (!_cho.isCompleted) _cho.complete();
@@ -56,6 +61,20 @@ class _Adapter implements HttpClientAdapter {
       if (giuLuot.contains(soLanPull)) await _cho.future;
       return ResponseBody.fromString(jsonEncode({'data': const <String, dynamic>{}}), 200,
           headers: {Headers.contentTypeHeader: ['application/json']});
+    }
+    if (o.path.contains('/sync/push')) {
+      soLanPush++;
+      if (pushLoi) return ResponseBody.fromString('{}', 500);
+      final ops = (o.data as Map<String, dynamic>)['operations'] as List<dynamic>;
+      return ResponseBody.fromString(
+          jsonEncode({
+            'status': 'success',
+            'results': [for (final op in ops) {'localId': op['localId'], 'status': 'synced'}],
+          }),
+          200,
+          headers: {
+            Headers.contentTypeHeader: ['application/json']
+          });
     }
     return ResponseBody.fromString('{}', 404);
   }
@@ -130,6 +149,27 @@ void main() {
 
     expect(dongHo.elapsedMilliseconds, inInclusiveRange(150, 3000), reason: 'hết trần thì trả về, lượt đẩy vẫn treo');
     expect(engine.status, SyncStatus.syncing, reason: 'chứng tỏ trả về vì hết hạn chứ không phải vì đồng bộ xong');
+  });
+
+  test('đang GIÃN CÁCH sau chu kỳ hỏng: dayVaCho vẫn thật sự đẩy (người dùng chủ động, như start())', () async {
+    final adapter = _Adapter(giuLuot: const {});
+    adapter.pushLoi = true;
+    var dongHo = DateTime(2026, 11, 1, 9);
+    final engine = taoSyncEngineThu(dioClient: _Client(adapter), db: db, connectivity: _Online(), now: () => dongHo);
+    addTearDown(engine.dispose);
+    await db.walletDao.insert(WalletsCompanion(
+        id: const Value('w1'), idaccount: const Value(accountId), name: const Value('Vi'), updatedAt: Value(dongHo)));
+    await engine.start(idaccount: accountId); // chu kỳ đầu: đẩy hỏng → giãn cách
+    expect(engine.nextAllowedSyncAt, isNotNull, reason: 'tiền đề: engine đang giãn cách');
+    final soLanDayTruoc = adapter.soLanPush;
+
+    adapter.pushLoi = false;
+    dongHo = dongHo.add(const Duration(seconds: 5)); // vẫn trong cửa sổ giãn cách (≥ 30 s)
+    await engine.dayVaCho();
+
+    expect(adapter.soLanPush, greaterThan(soLanDayTruoc),
+        reason: 'giãn cách tới 60 phút: syncNow trần chỉ hẹn lại rồi về — Rời nhà sẽ coi như đã đẩy mà chưa có lượt nào');
+    expect((await db.walletDao.getById('w1'))!.syncStatus, 'synced');
   });
 
   test('trần mặc định của dayVaCho là 30 giây (kTranDayTruocKhiRoi)', () {

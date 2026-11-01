@@ -16,7 +16,7 @@ void main() {
     final dong = di.substring(i, di.indexOf('\n      xoaCacheSlm:', i));
     expect(dong, contains('nhaGiu:'), reason: 'thiếu là mọi lần mở app xoá sạch dữ liệu của nhà');
     expect(dong, contains('NhaRepository>().nhaDaLuu('));
-    expect(dong, matches(RegExp(r'\(id\) async =>[\s\S]*nhaDaLuu\(id\)')),
+    expect(dong, matches(RegExp(r'\(id\) async (=>|\{)[\s\S]*nhaDaLuu\(id\)')),
         reason: 'nhaDaLuu phải đọc kho của CHÍNH tài khoản mới (id), không phải id khác: đọc nhầm thì nhaGiu luôn null và '
             'mỗi lần mở app xoá sạch dữ liệu nhà trong khi kho vẫn mang nhà (không DoiNha, lịch sử không về lại)');
   });

@@ -490,6 +490,28 @@ void main() {
       expect(doi.map((d) => (d.idaccount, d.tu, d.den)), [(19, null, 7)]);
     });
 
+    test('lamMoi ĐUA về trước lúc đọc dấu (kho vắng, dấu 12, /me nhà 7): vẫn phát DoiNha(12 → 7), không mất', () async {
+      final cham = _KhoDocDauCham();
+      cham.dau[18] = 12;
+      final r = NhaRepositoryImpl(api: api, kho: cham, clock: () => now);
+      addTearDown(r.dispose);
+      final ds = <DoiNha>[];
+      r.doiNha.listen(ds.add);
+      api.cuaToiJson = nhaJson(id: 7);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      r.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      await r.lamMoi(); // thắng cuộc đua: ghi kho nhà 7 trước khi dấu đọc xong
+      cham.choDau.complete();
+      await _nghi();
+      await _nghi();
+      expect(ds.map((d) => (d.tu, d.den)), contains((12, 7)),
+          reason: 'kho đã GHI sau lamMoi nên không còn là "vắng"; giữ cờ vắng là nuốt mất cặp dọn nhà 12');
+    });
+
     test('kho GHI "không nhà" + dấu 12 (tiến trình chết giữa chừng) → vẫn phát DoiNha(12 → null) ngay như cũ', () async {
       kho.values[18] = NhaCuaToi.khongCo(now);
       await kho.ghiDauXuLy(18, 12);
@@ -901,5 +923,16 @@ class ApiTreoLoiMoi extends HouseholdApiGia {
     final t = treoLoiMoi;
     if (t != null) await t.future;
     return anhChup;
+  }
+}
+
+/// Kho mà `docDauXuLy` chờ [choDau] — dựng cuộc đua "lamMoi về trước lúc đọc dấu".
+class _KhoDocDauCham extends InMemoryNhaStore {
+  final choDau = Completer<void>();
+
+  @override
+  Future<int?> docDauXuLy(int idaccount) async {
+    await choDau.future;
+    return super.docDauXuLy(idaccount);
   }
 }

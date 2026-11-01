@@ -27,6 +27,16 @@ void main() {
     expect(khoi, contains('nhaPhien:'), reason: 'thiếu thì lô đẩy chỉ có hàng của tôi — hàng sửa hộ nằm pending mãi');
   });
 
+  test('phép dọn tài khoản khác tính lại số dư ví nhà khi chưa biết nhà', () {
+    final khoi = _khoi(nguon, 'sl.registerLazySingleton<PhienDieuPhoi>(');
+    final i = khoi.indexOf('donTaiKhoanKhac:');
+    expect(i, isNonNegative);
+    final thanHam = khoi.substring(i, khoi.indexOf('xoaCacheSlm:'));
+    expect(thanHam, contains('tinhLaiViNha()'),
+        reason: 'thiếu thì ví nhà bị giữ mà sổ bị cắt: kéo toàn bộ đặt neo từ số dư cũ, tiền cộng hai lần và bị đẩy cho cả nhà');
+    expect(thanHam, contains('nhaGiu == null'), reason: 'chỉ khi chưa biết nhà; đã biết nhà thì sổ của nhà giữ nguyên');
+  });
+
   test('đăng ký repository nhà truyền dayTruocKhiRoi và demHangChuaDay', () {
     final khoi = _khoi(nguon, 'sl.registerLazySingleton<NhaRepository>(');
     expect(khoi, contains('dayTruocKhiRoi:'), reason: 'thiếu thì Rời nhà / Giải tán không đẩy trước khi gọi API');

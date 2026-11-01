@@ -253,6 +253,7 @@ class NhaRepositoryImpl implements NhaRepository {
     await _kho.ghi(id, moi);
     if (_idaccount != id) return;
     _dauChoXacNhan = null;
+    _khoVang = false; // kho đã GHI: lamMoi đua về trước lúc đọc dấu thì [_doiChieuDauXuLy] phải phát cặp bình thường
     _phat(moi);
     if (tu != den && !_doiNha.isClosed) _doiNha.add(DoiNha(idaccount: id, tu: tu, den: den));
   }
@@ -331,12 +332,16 @@ class NhaRepositoryImpl implements NhaRepository {
 
   /// Trước khi Rời / Giải tán (spec 2026-11-01 mục 7.3): đẩy (lỗi của hook chỉ ghi log — mất mạng thì API cũng tự báo đúng
   /// câu), đếm hàng của nhà còn chưa đẩy, còn mà không [boQua] thì ném — API CHƯA được gọi. Phép đếm hỏng coi như còn hàng.
-  Future<void> _chuanBiRoi({required bool boQua}) async {
+  ///
+  /// [id] là tài khoản lúc người dùng bấm: đăng xuất / đổi tài khoản trong lúc chờ đẩy thì BỎ (ném `phienHetHan`), tuyệt đối
+  /// không để lời gọi API sau đó chạy theo phiên mới.
+  Future<void> _chuanBiRoi(int? id, {required bool boQua}) async {
     try {
       await _dayTruocKhiRoi?.call();
     } catch (e) {
       debugPrint('[GiaDinh] đẩy trước khi rời hỏng: ${e.runtimeType}');
     }
+    if (_idaccount != id) throw const LoiNha(LoaiLoiNha.phienHetHan);
     final dem = _demHangChuaDay;
     final nha = _hienTai.nha?.id; // đọc SAU lượt đẩy: lượt đẩy có thể đã làm mới trạng thái nhà
     if (boQua || dem == null || nha == null) return;
@@ -346,18 +351,19 @@ class NhaRepositoryImpl implements NhaRepository {
     } catch (e) {
       debugPrint('[GiaDinh] đếm hàng chưa đẩy hỏng, coi như còn: ${e.runtimeType}');
     }
+    if (_idaccount != id) throw const LoiNha(LoaiLoiNha.phienHetHan);
     if (con > 0) throw const LoiNha(LoaiLoiNha.hangChuaDay);
   }
 
   @override
   Future<void> roiNha({bool boQuaHangChuaDay = false}) async {
-    await _chuanBiRoi(boQua: boQuaHangChuaDay);
+    await _chuanBiRoi(_idaccount, boQua: boQuaHangChuaDay);
     await _thaoTac(_api.roiNha);
   }
 
   @override
   Future<void> giaiTan({bool boQuaHangChuaDay = false}) async {
-    await _chuanBiRoi(boQua: boQuaHangChuaDay);
+    await _chuanBiRoi(_idaccount, boQua: boQuaHangChuaDay);
     await _thaoTac(_api.giaiTan);
   }
 

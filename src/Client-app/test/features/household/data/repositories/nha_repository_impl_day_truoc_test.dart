@@ -103,6 +103,22 @@ void main() {
     });
   }
 
+  for (final viec in ['roiNha', 'giaiTan']) {
+    test('$viec: phiên đổi trong lúc chờ đẩy → bỏ, KHÔNG gọi API theo tài khoản mới', () async {
+      final treo = Completer<void>();
+      await dung();
+      day = () => treo.future;
+      final f = viec == 'roiNha' ? repo.roiNha() : repo.giaiTan();
+      final ket = expectLater(f, throwsA(isA<LoiNha>()));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      repo.xoaPhien(); // đăng xuất giữa lúc đẩy
+      await repo.datTaiKhoan(19); // tài khoản khác đăng nhập
+      treo.complete();
+      await ket;
+      expect(api.goi, isEmpty, reason: 'gọi API ở đây là rời/giải tán nhà của tài khoản mới đăng nhập');
+    });
+  }
+
   test('không có hook (test cũ, chế độ nền): hành vi như trước, gọi API thẳng', () async {
     await dung(voiHook: false);
     await repo.roiNha();

@@ -264,10 +264,17 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       boQuet: sl<NotificationScanner>(),
       interceptor: sl<AuthInterceptor>(),
       // Gia đình (spec 4.6 đường 1): giữ hàng của nhà mà tài khoản MỚI đang ở, theo KHO trạng thái nhà của nó (kho trống
-      // → xoá mọi hàng của nhà; `DieuPhoiDoiNha` kéo lại toàn bộ khi lượt làm mới đầu thấy nhà). Chạy TRƯỚC mọi thứ của
-      // phiên nên đọc kho thẳng, không chờ `NhaRepository.datTaiKhoan`.
-      donTaiKhoanKhac: (id) async =>
-          sl<AppDatabase>().purgeDataForOtherAccounts(id, nhaGiu: await sl<NhaRepository>().nhaDaLuu(id)),
+      // → xoá hàng ĐÃ ĐỒNG BỘ của nhà, GIỮ hàng chưa đẩy do tôi ghi, spec 2026-11-01 mục 7.3; bộ điều phối kéo lại toàn bộ
+      // khi lượt làm mới đầu thấy nhà). Chạy TRƯỚC mọi thứ của phiên nên đọc kho thẳng, không chờ `NhaRepository.datTaiKhoan`.
+      // ⚠️ Chưa biết nhà thì phép dọn giữ ví nhà nhưng cắt sổ của nó: tính lại số dư mọi ví nhà NGAY SAU, MỖI lần mở (luỹ
+      // đẳng, không phụ thuộc số hàng đã dọn — tiến trình chết giữa hai bước thì lần mở sau làm lại), nếu không lượt kéo toàn
+      // bộ đặt neo từ số dư cũ và tiền cộng hai lần.
+      donTaiKhoanKhac: (id) async {
+        final nhaGiu = await sl<NhaRepository>().nhaDaLuu(id);
+        final daDon = await sl<AppDatabase>().purgeDataForOtherAccounts(id, nhaGiu: nhaGiu);
+        if (nhaGiu == null) await sl<SoDuViService>().tinhLaiViNha();
+        return daDon;
+      },
       xoaCacheSlm: () => sl<SlmCache>().xoaHet(),
       // G114: `SyncEngine` chưa `start` ở pha này (`batDongBo` sau) → `keoLaiToanBo` chỉ xoá mốc đã lưu + ghi nợ một lượt kéo
       // toàn bộ; không chạy `syncNow`.

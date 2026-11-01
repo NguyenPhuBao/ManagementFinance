@@ -11,7 +11,9 @@ import '../data/models/nha_cua_toi.dart';
 /// — kể cả máy thứ hai của cùng tài khoản và kho bị mất.
 ///
 /// - Rời nhà [DoiNha.tu] → `xoaHangCuaNha`: bản sao cục bộ của dữ liệu không còn thuộc người dùng (server giữ / đã xoá
-///   mềm — không trái quy tắc 5). Phần 1 không có hàng của nhà nào do máy ghi, nên không có gì phải đẩy nốt.
+///   mềm — không trái quy tắc 5). ⚠️ Xoá CẢ hàng `pending`: hàng chưa đẩy phải được đẩy TRƯỚC khi rời (`NhaRepository.roiNha`
+///   / `giaiTan` đẩy-và-chờ rồi từ chối nếu còn hàng, spec 2026-11-01 mục 7.3), và `NhaRepositoryImpl` không phát `DoiNha(X → null)`
+///   khi kho nhà vắng mà chưa hỏi `/me` — nếu không đường này xoá luôn hàng chưa đẩy mà phép dọn lúc mở phiên vừa giữ.
 /// - Vào nhà [DoiNha.den] → `keoLaiToanBo`: dữ liệu cũ của nhà nằm dưới mốc kéo tăng dần.
 ///
 /// Tuần tự (hàng đợi): dọn trước, kéo sau; sự kiện sau chờ sự kiện trước; lỗi một lượt không chặn lượt sau.

@@ -47,6 +47,12 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
         .get();
   }
 
+  /// MỌI ví của nhà còn trên máy (bất kể ai tạo, kể cả đã xoá mềm) — phép tính lại số dư sau khi dọn nhà
+  /// (`SoDuViService.tinhLaiViNha`). Không lọc tài khoản: ví nhà của người khác cũng bị cắt sổ.
+  Future<List<Wallet>> getTatCaViNha() {
+    return (select(wallets)..where((t) => t.idhousehold.isNotNull())).get();
+  }
+
   /// Ví **đang hoạt động** — thứ mà mọi bộ chọn ví phải gọi.
   ///
   /// Tách khỏi [getAll] chứ không lọc luôn ở đó: ví lưu trữ vẫn phải đọc được
