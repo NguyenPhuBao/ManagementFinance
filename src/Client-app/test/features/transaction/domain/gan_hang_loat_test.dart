@@ -195,6 +195,26 @@ void main() {
     });
   });
 
+  test('xetGan bỏ mọi nửa của cặp góp / rút (mã cặp khác null)', () {
+    TransactionEntity nua({int? nha, String type = 'chi'}) => TransactionEntity(
+          id: 'cap-${_dem++}',
+          walletId: 'v1',
+          idaccount: 10,
+          amount: 50000,
+          type: type,
+          note: '',
+          date: DateTime(2026, 9, 10),
+          syncStatus: 'synced',
+          updatedAt: DateTime(2026, 9, 10),
+          idhousehold: nha,
+          fundPairId: 'p',
+        );
+    expect(xetGan(_gd('')), isTrue, reason: 'tiền đề: khoản chi không danh mục thường vẫn được xét');
+    for (final t in [nua(), nua(nha: 7), nua(type: 'thu'), nua(nha: 7, type: 'thu')]) {
+      expect(xetGan(t), isFalse, reason: 'thẻ C1 sẽ đếm mọi khoản góp là chưa có danh mục');
+    }
+  });
+
   test('cauKetQuaGan: tối giản, không nêu số, phân biệt xong với còn kẹt', () {
     expect(cauKetQuaGan(thanhCong: 3, loi: 0), 'Đã gắn danh mục');
     expect(cauKetQuaGan(thanhCong: 2, loi: 1), 'Đã gắn danh mục — có giao dịch chưa lưu được');

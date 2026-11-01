@@ -91,5 +91,13 @@ void main() {
     test('ghi chú do người gõ không làm mất mẫu', () {
       expect(mauSoTienTu([_gd('food', 30000, ghiChu: 'cafe sáng')]), hasLength(1));
     });
+
+    test('nửa riêng của cặp góp / rút (không danh mục) không vào mẫu nào, kể cả có ghi chú', () {
+      // Nửa riêng của cặp không có danh mục: cả hai bộ mẫu đều đòi categoryId nên bỏ nó, không cần đổi laGhiChuMay.
+      final ra1 = mauHocTu([(loai: 'chi', categoryId: null, ghiChu: 'góp quỹ nhà', ngay: DateTime(2026, 9, 1))]);
+      final ra2 = mauSoTienTu([_gd(null, 30000, ghiChu: 'góp quỹ nhà')]);
+      expect(ra1, isEmpty, reason: 'nửa riêng không danh mục không được dạy B1');
+      expect(ra2, isEmpty, reason: 'nửa riêng không danh mục không được dạy gợi ý theo số tiền');
+    });
   });
 }
