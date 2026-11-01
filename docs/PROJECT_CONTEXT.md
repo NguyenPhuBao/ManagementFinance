@@ -617,6 +617,10 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-01)
 
+### 🌿 Nhánh dự phòng `TranQuangDat-backend` (2026-11-01 phiên 30)
+
+Người dùng yêu cầu: worktree `.superpowers/backend-worktree`, nhánh `TranQuangDat-backend`, để client tự sửa backend cho xong phần gia đình; backend chưa xong thì **lấy nhánh này làm nhánh chính**. Sửa backend CHỈ trong đó; `src/Backend` của `TranQuangDat` vẫn theo quy tắc 1. Worktree cố ý không có `.env`: chạy bằng biến môi trường trỏ CSDL cục bộ. Đã áp bản vá đơn 61 + 62, chưa push. Migration vẫn xin phép đích danh theo từng CSDL (`PersonFinance` đã được phép cho `Idfund_pair`; Supabase thì không).
+
 ### 💳 PayOS (G94 + Premium Task 16) — đo đạt bằng webhook tự ký, chưa có giao dịch ngân hàng thật (2026-11-01 phiên 30)
 
 **Đo trên:** máy ảo (tài khoản thử 30, debug + release) + Realme (`dat`, 360 dp), backend `13fddd09` trên `PersonFinance`; 14 liên kết thật trên kênh PayOS, không ai chuyển tiền. Bảng đủ ở `PREMIUM_FEATURE.md` mục 6. 0 tệp `src/` đổi.
