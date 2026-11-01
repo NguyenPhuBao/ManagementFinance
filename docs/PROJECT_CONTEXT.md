@@ -627,7 +627,7 @@ Kế hoạch `docs/superpowers/plans/2026-11-01-gia-dinh-dot-1b-man-hinh.md` (gi
 - **Quyền:** `MaQuyen.walletBalanceAdjustment` áp cho ví chung (`PREMIUM_FEATURE.md` 8.2); kiểm lại vai lúc Lưu bằng **một** helper `household/application/quyen_hien_tai.dart` cho bốn form.
 - **Backend (nhánh dự phòng):** `validateEntityScope` từ chối khoản trỏ danh mục sai phạm vi (`HOUSEHOLD_SCOPE_MISMATCH`, `6684cc6c`); kịch bản `chay_kiem_gia_dinh_2.js` **24 / 24** và `chay_kiem.js` **50 / 50** trên `flowmoney_kiem_thu` (đo trong đợt). Đơn **63.2** cập nhật theo bản vá này; đơn mới **64** (`formerMembers` chứa người đang ở / một người nhiều lần — `addMember` luôn tạo hàng mới; client đã khử trùng khi đọc `/me`, `658edf45`).
 - **Số đo (phiên chính, 2026-11-02, Head `9f4e5e97`):** `flutter test` **9358 pass / 10 skip, 0 fail** (mốc trước đợt 9007 / 10); `flutter analyze` **20** (mức nền); schema **v33** (đợt không đổi bảng Drift). Toàn bộ chạy ở `da8084be` cho ra +9331 ~10 (5:45); sau đợt sửa cuối thêm ca nên số cuối là 9358.
-- **Nợ mới:** **G121** (nợ còn lại của đợt, mười lăm dòng) và **G119** ca 7; **G120** dòng 3, 6, 12, 16, 17 cập nhật — `CLIENT_APP_KNOWN_GAPS.md`. Nợ bắt buộc xét ở Đợt 2 (`03`): `xoaViChung` chưa chặn mục tiêu của nhà trỏ ví.
+- **Nợ mới:** **G121** (nợ còn lại của đợt, mười bảy dòng, hai dòng cuối do đo lộ ra) và **G119** ca 7; **G120** dòng 3, 6, 12, 16, 17 cập nhật — `CLIENT_APP_KNOWN_GAPS.md`. Nợ bắt buộc xét ở Đợt 2 (`03`): `xoaViChung` chưa chặn mục tiêu của nhà trỏ ví.
 - **Đo Task 13 (2026-11-02, APK `9f4e5e97` SHA-1 `ef8b718a…`, backend worktree cổng 3001 trỏ `PersonFinance`, máy ảo tài khoản 30 Chủ nhà + Realme `dat` Thành viên, nhà thử 8, đã giải tán):**
 
 | Kịch bản | Kết quả đo |
