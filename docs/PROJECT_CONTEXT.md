@@ -617,9 +617,9 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-02)
 
-### 🏠 Gia đình ĐỢT 1B — màn hình cho ví chung, góp / rút, hoạt động, danh mục của nhà: mã xong + soát toàn nhánh, CHƯA đo trên máy thật (2026-11-02)
+### 🏠 Gia đình ĐỢT 1B — màn hình cho ví chung, góp / rút, hoạt động, danh mục của nhà: mã xong + soát toàn nhánh, ĐO máy ảo + Realme đạt (2026-11-02, bảng ở cuối khối)
 
-Kế hoạch `docs/superpowers/plans/2026-11-01-gia-dinh-dot-1b-man-hinh.md` (gitignore), spec `specs/2026-11-01-gia-dinh-2a-toi-3-design.md` (**mục 16 = chỗ mã 1B khác spec**, kèm bảng *Quyết định về Stitch* và mọi `Ruling:`). Trên nhánh dự phòng `TranQuangDat-backend` (client + backend). **Trạng thái đúng chữ: mã xong, Opus soát toàn nhánh (0 Critical, 3 Important đã sửa, soát lại đạt); Task 13 (đo máy ảo + Realme) chưa xong khi ghi khối này — đừng ghi "đạt trên máy" ở đây cho tới khi có bảng đo.**
+Kế hoạch `docs/superpowers/plans/2026-11-01-gia-dinh-dot-1b-man-hinh.md` (gitignore), spec `specs/2026-11-01-gia-dinh-2a-toi-3-design.md` (**mục 16 = chỗ mã 1B khác spec**, kèm bảng *Quyết định về Stitch* và mọi `Ruling:`). Trên nhánh dự phòng `TranQuangDat-backend` (client + backend). **Trạng thái đúng chữ: mã xong, Opus soát toàn nhánh (0 Critical, 3 Important đã sửa, soát lại đạt); Task 13 đo máy ảo + một máy thật (Realme, 360 dp) bản debug đạt 2026-11-02, bảng ở cuối khối. Chưa lên `origin`, chưa áp Supabase, nên người dùng thật chưa dùng được.**
 
 - **Phạm vi:** 12 task thi công + Task 13 đo; 28 commit `503fc9d5..9f4e5e97` (đếm `git rev-list --count`, 2026-11-02) gồm 1 commit backend `6684cc6c` và 1 commit chỉ sửa `CLAUDE.md`; `src/Client-app/lib` 67 tệp +5.125 / −158, `test` 56 tệp +6.182 / −14 (`git diff --stat`, 2026-11-02). Cách làm: Fable preflight (0 Critical · 7 Important · 21 Minor, đã vào kế hoạch) → Sonnet viết + Opus soát từng task → Opus review toàn nhánh (*With fixes*) → đợt sửa cuối 9 commit `da8084be..9f4e5e97` → soát lại (mục 1–8 đạt, mục 9 chỉ còn phần sheet 13 chữ số, park).
 - **Màn mới (mười trang `household/presentation/pages/`, route gốc ngoài shell):** khối **Ví chung** ở Nhà mình (tổng quỹ + danh sách + lối vào Hoạt động / Danh mục; giữ bố cục lát 2 đã đo) · Tạo / Sửa ví chung · **Chi tiết ví chung** (tab Giao dịch · Bảng góp; nút Chi / Thu / Góp / Rút theo vai) · **Góp vào quỹ / Rút về ví riêng** (một trang hai chế độ) · **Hoạt động** (lọc người, ví; chạm mở sheet sửa / xoá) · **Danh mục của nhà** (ba tab, thêm / sửa, không xoá) · hộp **hỏi lại khi Rời nhà / Giải tán còn hàng chưa đẩy** (điều kiện chặn phát hành của 1A đã đóng). Form **Thêm giao dịch chế độ nhà** (`CheDoNhaForm`) dùng lại `AddTransactionPage`. 12 màn Stitch (8 của 2026-11-01 + 4 thêm phiên 32), bảng xử lý ở spec 16.1.
@@ -628,7 +628,24 @@ Kế hoạch `docs/superpowers/plans/2026-11-01-gia-dinh-dot-1b-man-hinh.md` (gi
 - **Backend (nhánh dự phòng):** `validateEntityScope` từ chối khoản trỏ danh mục sai phạm vi (`HOUSEHOLD_SCOPE_MISMATCH`, `6684cc6c`); kịch bản `chay_kiem_gia_dinh_2.js` **24 / 24** và `chay_kiem.js` **50 / 50** trên `flowmoney_kiem_thu` (đo trong đợt). Đơn **63.2** cập nhật theo bản vá này; đơn mới **64** (`formerMembers` chứa người đang ở / một người nhiều lần — `addMember` luôn tạo hàng mới; client đã khử trùng khi đọc `/me`, `658edf45`).
 - **Số đo (phiên chính, 2026-11-02, Head `9f4e5e97`):** `flutter test` **9358 pass / 10 skip, 0 fail** (mốc trước đợt 9007 / 10); `flutter analyze` **20** (mức nền); schema **v33** (đợt không đổi bảng Drift). Toàn bộ chạy ở `da8084be` cho ra +9331 ~10 (5:45); sau đợt sửa cuối thêm ca nên số cuối là 9358.
 - **Nợ mới:** **G121** (nợ còn lại của đợt, mười lăm dòng) và **G119** ca 7; **G120** dòng 3, 6, 12, 16, 17 cập nhật — `CLIENT_APP_KNOWN_GAPS.md`. Nợ bắt buộc xét ở Đợt 2 (`03`): `xoaViChung` chưa chặn mục tiêu của nhà trỏ ví.
-- **Việc kế (Task 13, phiên chính):** đo máy ảo + Realme — xem nhà thử có người từng rời rồi vào lại (đơn 64); dùng backend của worktree thay tiến trình cũ chạy từ `src/Backend` (mã cũ bỏ `idfund_pair`); đọc log `HOUSEHOLD_SCOPE_MISMATCH`; nhìn máy bảng màu G121 dòng 7; 13 chữ số ở sheet Hoạt động. Khoản góp từ ví riêng của `dat` trên Realme đã được người dùng cho phép ghi (khoản nhỏ, ghi lại số tiền và mã cặp).
+- **Đo Task 13 (2026-11-02, APK `9f4e5e97` SHA-1 `ef8b718a…`, backend worktree cổng 3001 trỏ `PersonFinance`, máy ảo tài khoản 30 Chủ nhà + Realme `dat` Thành viên, nhà thử 8, đã giải tán):**
+
+| Kịch bản | Kết quả đo |
+|---|---|
+| 1. Chủ tạo hai ví chung, neo | Đạt: số dư và tổng quỹ 1.500.000 đ khớp hai máy |
+| 2. Thành viên góp từ ví riêng | Đạt: khoản nhỏ 10.000 đ, Chủ thấy sau vài giây, hai nửa cùng `Idfund_pair` trên server |
+| 3. Thành viên chi | Đạt: số dư, Bảng góp, Hoạt động đúng hai máy |
+| 4. Chủ sửa khoản của Thành viên | Đạt: server giữ `Idaccount` = 10, Realme nhận |
+| 5. Chủ xoá khoản góp | Đạt: Chủ chỉ có nút Xoá; hai nửa xoá trên server; ví riêng trả đúng; thông báo *"Khoản góp đã bị xoá"* |
+| 6. Thành viên sửa danh mục nhà | Đạt: `Create_by` giữ 30, `Idhousehold` giữ |
+| 7. Offline góp rồi bị mời ra | Đạt: thông báo *"Chưa góp được vào quỹ"*, ví riêng đúng số (mất mạng giả bằng proxy) |
+| 8. Rời nhà còn hàng chưa đẩy | Đạt: hộp nêu *1 khoản của nhà, 1 khoản góp* + câu trả tiền; Vẫn rời: tiền về ví, hai hàng không lên server (proxy chặn `/sync/push`) |
+| 9. Thống kê cá nhân | Đạt: nhãn Góp / Rút quỹ ở thác nước và chip, không có khoản chi của nhà ở Trang chủ, Phân tích. Con số *Thu nhập* của `thuNhapCua` trên máy chưa đọc riêng: phủ bằng ca test |
+| 10. Quyền | Đạt: Chỉ xem không nút, Sổ chặn Sửa / Xoá + vuốt; nhà chỉ xem đo bằng proxy đổi trạng thái `/me` (đường server thật từ Premium hết hạn chưa đo). Trần 10 ví không chạm trên máy, có ca test |
+| 11. 360 dp | Đạt: 14 chữ số, 13 chữ số, tên dài ở Nhà mình, Chi tiết ví. Sheet Hoạt động 13 chữ số và bản release chưa nhìn |
+| Thêm | Đạt: chuyển giữa ví, đối soát, từ chối xoá ví còn giao dịch, lưu trữ ví, sửa / xoá cặp từ Sổ, form thường khoá chiều với nửa đã rời, vào lại nhà không trùng ở bảng lọc, giải tán hai bước. Log `HOUSEHOLD_SCOPE_MISMATCH`: 0 dòng |
+
+Dữ liệu `dat` trên Realme: khoản thử đã xoá qua hộp cặp, Tổng số dư về đúng −3.518.000 đ như trước đo; sao lưu `D:\FlowMoney-saoluu\realme-truoc-1b-2026-11-02\`. Chưa đo: máy thật thứ hai, G120 #17 (`/me` trễ so Premium). Lỗi đo lộ ra: G121 dòng 16, 17.
 - **Giữ số (đếm lại 2026-11-02):** lỗ hổng kế tiếp **G122**, test quét kế tiếp **43**, đơn kế tiếp **65**. Tài liệu đã cập nhật: spec mục 4, 6, 7, 8, 15–16, `Family/02A`, `Family/04`, `SYNC_DOCUMENTATION.md` (đợt 1B), `KIEN_TRUC_CLIENT_APP.md` (mục 3), `ANALYTICS_FEATURE.md` 3.24, `PREMIUM_FEATURE.md` 8.2, `CAN-LAM/VIEC_BACKEND_CON_LAI.md` (63.2, 64.1).
 
 ### 🏠 Gia đình ĐỢT 1A — nền dữ liệu cho ví chung và góp quỹ: mã xong, chưa có màn, chưa đo máy thật (2026-11-01)
