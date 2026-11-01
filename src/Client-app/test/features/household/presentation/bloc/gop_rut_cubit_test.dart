@@ -22,10 +22,11 @@ WalletEntity _rieng(String id, String ten, double soDu, {String loai = 'bank', b
       updatedAt: DateTime(2026, 11, 1),
     );
 
-TransactionEntity _nuaNha({String type = 'thu', String vi = 'v1', double tien = 2000000, String note = 'tiền chợ'}) => TransactionEntity(
+TransactionEntity _nuaNha({String type = 'thu', String vi = 'v1', double tien = 2000000, String note = 'tiền chợ', int ai = 18}) =>
+    TransactionEntity(
       id: 'n',
       walletId: vi,
-      idaccount: 18,
+      idaccount: ai,
       idhousehold: 12,
       fundPairId: 'p',
       amount: tien,
@@ -260,7 +261,18 @@ void main() {
     expect(c.state.tienMat, isTrue, reason: 'không còn nửa riêng trên máy này');
   });
 
-  test('sửa mà mã không còn lúc mở: đóng kèm câu', () async {
+  test('sửa khoản cặp của NGƯỜI KHÁC (Chủ mở deeplink): đóng kèm câu, không ghi gì', () async {
+    gq.nha = _nuaNha(ai: 25); // nửa riêng nằm trên máy người ghi, máy này chỉ có nửa nhà
+    final c = dung(maCap: 'p'); // phiên = 18
+    addTearDown(c.close);
+    await c.moTrang();
+    expect(c.state.cauDong, 'Chỉ người ghi mới sửa được khoản này.');
+    expect(c.state.daNap, isTrue);
+    expect(await c.luu(), 'Chỉ người ghi mới sửa được khoản này.');
+    expect(gq.sua_, isEmpty, reason: 'GopQuyService.sua không kiểm quyền; server sẽ trả HOUSEHOLD_ROLE_FORBIDDEN sau khi nửa nhà đã đổi');
+  });
+
+  test('sửa mã không còn lúc mở: đóng kèm câu', () async {
     final c = dung(maCap: 'p'); // docCap trả hai nửa rỗng
     addTearDown(c.close);
     await c.moTrang();

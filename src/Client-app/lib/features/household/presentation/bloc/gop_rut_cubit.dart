@@ -127,6 +127,12 @@ class GopRutCubit extends Cubit<GopRutState> {
           emit(state.copyWith(daNap: true, dangSua: true, cauDong: _cauKhoanMat));
           return;
         }
+        // Chỉ người ghi sửa khoản có mã cặp (`Family/01` mục 3): nửa riêng chỉ nằm trên máy họ, máy khác sửa nửa nhà là lệch cặp
+        // và server từ chối. `GopQuyService.sua` không kiểm quyền nên chốt ở đây, không chỉ ở nút Sửa của sheet.
+        if (nuaNha.idaccount != _taiKhoan()) {
+          emit(state.copyWith(daNap: true, dangSua: true, cauDong: 'Chỉ người ghi mới sửa được khoản này.'));
+          return;
+        }
         // Nửa của nhà: `thu` là góp, `chi` là rút (cùng luật `phanLoaiKhoanNha`).
         cheDo = nuaNha.type == 'thu' ? CheDoQuy.gop : CheDoQuy.rut;
       }
@@ -146,7 +152,7 @@ class GopRutCubit extends Cubit<GopRutState> {
         viRieng: viRieng,
         chonChung: chung,
         chonRieng: riengDaChon,
-        // Sửa mà máy không còn nửa riêng (tiền mặt trao tay, hoặc Chủ sửa hộ): chỉ còn nửa của nhà để sửa.
+        // Sửa mà máy không còn nửa riêng (tiền mặt trao tay, hoặc nửa riêng đã bị gỡ): chỉ còn nửa của nhà để sửa.
         tienMat: nuaNha != null && nuaRieng == null,
         ngay: nuaNha?.date ?? state.ngay,
         ghiChu: nuaNha?.note ?? '',

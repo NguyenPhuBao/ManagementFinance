@@ -28,13 +28,13 @@ WalletEntity _rieng(String id, String ten, double soDu, {bool macDinh = false}) 
       updatedAt: DateTime(2026, 11, 1),
     );
 
-TransactionEntity _nua({required String type, String vi = 'v1', int? nha = 12}) => TransactionEntity(
+TransactionEntity _nua({required String type, String vi = 'v1', int? nha = 12, double tien = 2000000}) => TransactionEntity(
       id: nha == null ? 'r' : 'n',
       walletId: vi,
       idaccount: 18,
       idhousehold: nha,
       fundPairId: 'p',
-      amount: 2000000,
+      amount: tien,
       type: type,
       note: 'tiền chợ',
       date: DateTime(2026, 11, 1),
@@ -277,11 +277,17 @@ void main() {
     expect(gq.gop_, isEmpty);
   });
 
-  testWidgets('bàn phím hệ thống mở: ✓ lên tiêu đề, 16 phím ẩn, vẫn lưu được', (t) async {
-    await mo(t, banPhim: true);
+  testWidgets('bàn phím hệ thống mở: ✓ lên tiêu đề, 16 phím ẩn, bấm ✓ lưu thật', (t) async {
+    gq
+      ..nha = _nua(type: 'thu')
+      ..rieng = _nua(type: 'chi', vi: 'r1', nha: null);
+    await mo(t, banPhim: true, maCap: 'p');
     expect(banPhim(), findsNothing);
     expect(find.byKey(const Key('luu-thanh-tieu-de')), findsOneWidget);
     expect(t.takeException(), isNull);
+    await bam(t, find.byKey(const Key('luu-thanh-tieu-de')));
+    expect(gq.sua_.single.soTien, 2000000, reason: '✓ tiêu đề là đường lưu duy nhất khi 16 phím không trên màn');
+    expect(find.text('GOC'), findsOneWidget);
   });
 
   testWidgets('chạm khối số tiền: ẩn rồi hiện lại 16 phím', (t) async {
@@ -293,7 +299,7 @@ void main() {
     expect(banPhim(), findsOneWidget);
   });
 
-  testWidgets('13 chữ số ở 360 dp không tràn (có và không có bàn phím hệ thống)', (t) async {
+  testWidgets('13 chữ số gõ bằng 16 phím ở 360 dp không tràn, gõ quá trần bị chặn', (t) async {
     await mo(t);
     await go(t, ['9', '000', '000', '000', '000', '000']);
     expect(find.text('9.000.000.000.000 đ'), findsOneWidget, reason: 'gõ quá 13 chữ số bị chặn');
@@ -304,11 +310,21 @@ void main() {
     expect(khung.right, lessThanOrEqualTo(360), reason: 'chữ không tràn phải ở 360 dp');
   });
 
-  testWidgets('13 chữ số + bàn phím hệ thống mở ở ô ghi chú không tràn', (t) async {
-    await mo(t, banPhim: true);
+  testWidgets('13 chữ số + bàn phím hệ thống mở ở ô ghi chú: không tràn, ✓ tiêu đề lưu đúng số', (t) async {
+    gq
+      ..nha = _nua(type: 'thu', tien: 9999999999999)
+      ..rieng = _nua(type: 'chi', vi: 'r1', nha: null, tien: 9999999999999);
+    await mo(t, banPhim: true, maCap: 'p');
+    expect(find.text('9.999.999.999.999 đ'), findsOneWidget, reason: 'số tiền 13 chữ số đã nạp vào khối số');
     await t.enterText(find.byKey(const Key('o-ghi-chu')), 'Ghi chú khá dài để thử xem hàng có tràn hay không nhé');
     await t.pumpAndSettle();
     expect(t.takeException(), isNull);
+    final khung = t.getRect(find.text('9.999.999.999.999 đ'));
+    expect(khung.left, greaterThanOrEqualTo(0));
+    expect(khung.right, lessThanOrEqualTo(360), reason: 'chữ số tiền (sau thu nhỏ) không tràn phải ở 360 dp');
+    await bam(t, find.byKey(const Key('luu-thanh-tieu-de')));
+    expect(gq.sua_.single.soTien, 9999999999999);
+    expect(gq.sua_.single.ghiChu, startsWith('Ghi chú khá dài'));
   });
 
   testWidgets('phép tính theo quyền: tắt in_app_calculator thì + và − không đổi chuỗi', (t) async {
