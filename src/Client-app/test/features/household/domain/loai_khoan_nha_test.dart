@@ -35,6 +35,11 @@ void main() {
     expect(phanLoaiKhoanNha(gd(nha: 7, type: 'thu', note: '$tienToDieuChinh tăng')), LoaiKhoanNha.khongTinh);
   });
 
+  test('neo âm và điều chỉnh giảm (type chi) cũng là khongTinh', () {
+    expect(phanLoaiKhoanNha(gd(nha: 7, note: tienToMoSo)), LoaiKhoanNha.khongTinh, reason: 'neo âm');
+    expect(phanLoaiKhoanNha(gd(nha: 7, note: '$tienToDieuChinh giảm')), LoaiKhoanNha.khongTinh, reason: 'điều chỉnh giảm');
+  });
+
   test('khoản có danh mục mang ghi chú giống neo vẫn là khoản thật', () {
     expect(phanLoaiKhoanNha(gd(nha: 7, type: 'thu', cat: 'c', note: tienToMoSo)), LoaiKhoanNha.thuKhac,
         reason: 'nhận dạng neo là CẶP không danh mục + tiền tố');

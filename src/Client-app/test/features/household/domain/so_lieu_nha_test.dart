@@ -47,11 +47,20 @@ void main() {
       gd(10, cat: 'c'),
       gd(20, cap: 'p'),
       gd(40, type: 'transfer'),
-      gd(80, type: 'thu', note: tienToMoSo),
-      gd(160, type: 'thu', note: '$tienToDieuChinh giảm'),
+      gd(80, note: tienToMoSo),
+      gd(160, note: '$tienToDieuChinh giảm'),
       gd(5, nha: null, cat: 'c'),
     ];
-    expect(chiCuaNha(ds), 10, reason: 'chỉ chi thường của nhà');
+    expect(chiCuaNha(ds), 10, reason: 'neo âm và điều chỉnh giảm là type chi: không có luật khongTinh thì lọt vào chi');
+  });
+
+  test('tiền vào quỹ không gồm neo, điều chỉnh tăng', () {
+    final ds = [
+      gd(100, type: 'thu', note: tienToMoSo),
+      gd(200, type: 'thu', note: '$tienToDieuChinh tăng'),
+      gd(7, type: 'thu', cat: 'c'),
+    ];
+    expect(tienVaoQuy(ds), 7, reason: 'neo, điều chỉnh thu không phải tiền vào quỹ');
   });
 
   test('biên [tu, den): khoản đúng mốc den không tính', () {
