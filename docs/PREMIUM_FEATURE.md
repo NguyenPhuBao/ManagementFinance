@@ -517,3 +517,11 @@ buổi; trả lại bằng chính ảnh chụp (không *Khôi phục mặc đị
 
 Dò sọc tràn: 24 ảnh bản debug ở 360 dp, 0 điểm vàng. Lượt này lộ **G112** (vuốt cuộn trang Mục tiêu từ một thẻ là đổi thứ tự ưu tiên —
 đã sửa; thứ tự trên máy trả lại MuaXe 50 · MuaDT 100). Danh mục *"Thử đổi tên"* đi một vòng đổi tên rồi trả tên (G110).
+
+### 8.11 Gia đình lát 2: hai mã quyền mới, **24 mã** (2026-11-01)
+
+`MaQuyen` từ 22 → **24** (đếm 2026-11-01 bằng đếm giá trị enum ở `quyen_tinh_nang.dart`): `giaDinh` (`'household'`, thiếu khoá thì **đóng**, gác **tạo nhà**) và `thamGiaNha` (`'household_join'`, thiếu khoá thì **mở**, gác **tham gia / chấp nhận lời mời**). Chi tiết hành vi: spec `2026-10-23-gia-dinh-nen-mong-design.md` mục 12.4.
+
+- **`giaDinh`** vào danh sách đặc quyền màn Nâng cấp (*"Gia đình"*), `/nha/tao` qua `redirectTheoQuyen`; Premium bị admin tắt → *"Đang tạm ngừng"*, ẩn giá + nút mua (I2).
+- **`thamGiaNha` KHÔNG vào đặc quyền** (`dacQuyenPremium` loại nó, M3): Basic mặc định được tham gia nhà; quyền chỉ để admin chủ động tắt, và khi tắt màn Tham gia / nút *Chấp nhận* khoá với câu trung tính (`cauLoiNha(tinhNangKhongMo)`), **không** mời mua. Quyền tắt thắng cả trạng thái đang-ở-nhà (Ruling Task 6).
+- Quét 21 (`quyen_tinh_nang_mot_noi_test`) có miễn trừ cho khoá JSON `'household'` của `nha_cua_toi.dart` (G113 nợ 5, đã đóng). Bước 0 go / no-go (spec B1 mục 10) **chưa đo lại** cho hai mã mới: đo khi ma trận đổi.

@@ -617,6 +617,17 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-01)
 
+### 🏠 Gia đình LÁT 2 (tám màn) + G113 nợ 1, 5, 7, 8, 9, 11 + G114 — mã xong, máy ảo đạt, **hai máy thật chưa đo** (2026-11-01 phiên 28)
+
+✅ **40 commit** `a2c58234..cbe89339` (đếm `git rev-list --count a2c58234..HEAD`, 2026-11-01; 101 tệp `src/` đổi, `git diff --stat`), nhánh `TranQuangDat`, **chưa push**. Thi công kiểu agent con (Fable soát kế hoạch, Opus soát từng task + review toàn nhánh, Sonnet thi công); hai kế hoạch `plans/2026-10-31-gia-dinh-lat-2-man-hinh.md` + `…-g113-no-1-9.md` (gitignore), sổ ở `.superpowers/sdd/2026-10-31-*`. **Số đo 2026-11-01:** `flutter test` **8732 pass / 10 skip / 0 fail** (+223 so với 8509 đầu đợt), `flutter analyze` **20** (mức nền); mốc giữa đợt 8713 ở `a102173a`.
+
+- **Màn hình** (mảng `household/presentation/`, **23 tệp** đếm 2026-11-01: `bloc/` 3 cubit · `pages/` 5 trang · `widgets/`): Nhà mình (ba trạng thái: chưa có nhà · Chủ · Thành viên / Chỉ xem, thẻ *Lời mời đang chờ*) · Tạo nhà · Mời thành viên (mã, chia sẻ, email, huỷ, chip vai) · Tham gia bằng mã (nhận nguyên tin chia sẻ) · Quản lý thành viên (đổi vai, chuyển chủ, mời ra, giải tán hai bước). Năm hộp xác nhận `hop_xac_nhan_nha.dart`. **Drawer tám mục** (*Nhà mình* thứ năm), route gốc `/nha*` ngoài shell. Mảng nay có 7 tệp `domain/` · 7 `data/` · 1 `application/` · 23 `presentation/` · 29 tệp test (đếm 2026-11-01).
+- **Quyền:** `MaQuyen` 22 → **24** (`giaDinh` đóng khi thiếu khoá, `thamGiaNha` mở khi thiếu khoá, không vào đặc quyền Premium); `PREMIUM_FEATURE.md` 8.11. **Thông báo:** loại thứ **22** `loiMoiNha`, nhóm thứ **tám** `giaDinh` (`NOTIFICATION_FEATURE.md` 5n); bộ quét chốt phiên (`quetKhiRanh`, `stop()` xoá lượt bù). Quét **42** `household/divider_co_mau_test.dart`; số kế tiếp **43**.
+- **G113 / G114 / G115:** nợ 1 (neo ví nhà mang `idhousehold`, chỉ máy tạo ví đặt neo), 5, 7, 8, 9 (số dư ví nhà là cache cục bộ), 11 + lỗ hổng 1 vế (c) (dấu bền *đã xử lý tới nhà X*) + lỗ hổng 3 (phép dọn xoá cả hàng trỏ ví sắp xoá) đóng; **G114** (đổi tài khoản mà lượt kéo đầu hỏng) mở và đóng cùng ngày `a5ef5111`; **G115 mới, mở** (`scan` đang chạy lúc `stop()`). Còn mở: lỗ hổng 1 vế (a), (b); nợ 2, 3, 4, 6, 10, 12, 13, 14, 15; các dòng triage `N` ở thân G113.
+- **Máy ảo 411 dp** (`FlowMoney_16G`, backend `8e3b4e48` trên CSDL tạm, báo cáo `.superpowers/may-ao-lat-2/bao_cao.md` + `bao_cao_lan2.md`): bảng 18 dòng — **16 đạt trọn · 2 đạt một phần** (8: `am start` không có deeplink URL, `force-stop` xoá khay, đo bằng `kill -9`; 17: neo ví nhà chưa có đường tạo) · 0 lỗi chức năng. Lần đo giao diện thứ hai bắt thêm chip *Thành viên* cắt chữ ở cỡ chữ lớn, nút giải tán tràn 320 dp, gợi ý ô Email đen — sửa ở `cbe89339`, **chưa đo lại trên máy** (có ca đo trực tiếp + ảnh thăm dò). Cỡ chữ 2,0 + bàn phím thật ở Tạo / Mời / Tham gia / Quản lý / hộp gõ tên: 0 điểm vàng.
+- **Chưa đo:** **hai máy thật** (Realme + máy thứ hai, `PersonFinance`; cần người dùng cắm máy, mật khẩu postgres cục bộ và mật khẩu tài khoản `dat`; chạy `scripts/verify_encryption_health.js` trước, 52.3), thư lời mời thật, neo ví nhà trên máy thật, đường A → B → A với lượt kéo đầu bị chặn trên Realme (G114), TalkBack, bản release, 320 dp cho Mời / Tạo / Tham gia. Lỗi hẹp đã biết và hoãn: G115, G113 nợ 13.
+- **Chỗ mã khác bản duyệt:** spec `2026-10-23-gia-dinh-nen-mong-design.md` mục 12.2–12.4 (quyền tắt thắng đang-ở-nhà, `nhaDu` bỏ thẻ, trích mã từ tin chia sẻ, đánh thức theo tập mã, Chủ đứng đầu, Chủ nhà thấy *"Chuyển quyền chủ nhà hoặc giải tán trước."*); hợp đồng `docs/Family/04` mục 2b (một hình dạng lồng, `household.changed` không phát từ đường đồng bộ, #11 thân `{household: null}`). Client chỉ đọc **một** hình dạng `/me` từ `9396cd25`.
+
 ### 🔀 Gộp `main` @ `13fddd09` (2026-11-01 phiên 28, fast-forward, chưa push) — PR #176; client soát: **còn 52.4 + 60.3 tuỳ chọn**
 
 - PR #176 (NPBao, `60dede0a` + `7e7fd8ef`): 24 tệp, **0 tệp `src/Client-app`** (cây giữ hash `b7fcb406`, không chạy lại `flutter test`); `git check-ignore --no-index -v src/Client-app/test/x_test.dart` không khớp. Diff không có `schema.prisma`, `database/`, `package.json`, `.gitignore`, `SYNC_DOCUMENTATION.md`, nên không cần `npm install`, `prisma generate` hay migration. Phần Admin-web và đo phần cứng container (`runtime-environment.js`) không đụng client.
@@ -700,7 +711,7 @@ src/Backend/
 
 ✅ 26 commit (đếm `git rev-list --count`, 2026-10-30) `95d33ecc..91663b71` — 18 commit thi công 13 task (`..24f8a258`) + tài liệu Task 13 +
 lượt sửa sau **review toàn nhánh (Opus, 2026-10-30 phiên 24: With fixes → 18 / 18 mục đã sửa, soát lại sạch)** (kế hoạch `plans/2026-10-24-gia-dinh-nen-mong-lat-1.md`, gitignore; spec `specs/2026-10-23-gia-dinh-nen-mong-design.md`
-mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ Stitch 6 màn.** `flutter test` **8503 pass / 10 skip** (trước đợt 8382; đo
+mục 11 = **#1–#16** chỗ khác thân). ~~Chưa màn nào — lát 2 chờ Stitch 6 màn~~ → lát 2 mã xong 2026-11-01 (khối 🏠 đầu mục 14). `flutter test` **8503 pass / 10 skip** (trước đợt 8382; đo
 2026-10-30 sau lượt sửa review toàn nhánh), `flutter analyze` 20 (mức nền). Phần client của đơn 50 / `docs/Family/` mà **không** chờ đơn 56 / 57 (người dùng chốt).
 
 - **Dữ liệu:** Drift **v32** — cột `idhousehold` cho năm bảng đồng bộ (ví · giao dịch · ngân sách · mục tiêu · danh mục; hoá đơn không có); mọi
@@ -714,7 +725,7 @@ mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ S
 - **Mảng `household`** (đếm 2026-10-28, 11 tệp): `domain/` 4 (`vai_nha` · `quyen_nha` · `ma_moi` · `cau_loi_nha`, `LoaiLoiNha` 21 giá trị) ·
   `data/` 6 (`household_api` 16 endpoint kể cả mời email · `nha_cua_toi` + `loi_moi` · `nha_store` · `nha_repository` + `_impl`) · `application/` 1
   (`dieu_phoi_doi_nha`: rời nhà ⇒ `xoaHangCuaNha`, vào nhà ⇒ `keoLaiToanBo`; dọn hỏng vẫn kéo lại toàn bộ của cùng sự kiện rồi ném lại lỗi). Bộ đọc
-  `nhaCuaToiTuJson` nhận **ba hình dạng** (lồng · `/me` phẳng · `POST /` thô — gỡ hai nhánh sau khi 57.1 đóng); thân #8 / #10 / #12 không phải trạng
+  `nhaCuaToiTuJson` nhận **một hình dạng lồng** (lúc lát 1 là ba: lồng · `/me` phẳng · `POST /` thô — hai nhánh sau đã gỡ ở `9396cd25`, 2026-11-01, khi 57.1 đóng); thân #8 / #10 / #12 không phải trạng
   thái nhà ⇒ `lamMoi()`. `FEATURE_DISABLED` → `tinhNangKhongMo` (không phân biệt Basic bị tắt với Premium tạm ngừng — lát 2 chọn câu theo
   `trangThaiQuyen`). `NhaRepository`: bộ đếm thế hệ + cờ chạy bù, đổi tài khoản gỡ lượt cũ, làm mới lời mời sau mỗi thao tác 13–16.
   Nối dây: DI + `main.dart` (`batDauNghe`) + hook dọn đọc KHO nhà thẳng (không thêm hook `datNha` — spec #3).
