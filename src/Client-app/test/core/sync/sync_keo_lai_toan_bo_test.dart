@@ -147,6 +147,22 @@ void main() {
         reason: 'lượt kéo không có dữ liệu thì không ghi mốc; app bị giết giữa chừng vẫn kéo toàn bộ ở lần mở sau');
   });
 
+  test('tiến trình chết sau keoLaiToanBo: engine MỚI đọc cùng kho mốc vẫn kéo từ 1970 (lý lẽ an toàn của dấu bền)', () async {
+    await batDau();
+    await engine.keoLaiToanBo(accountId);
+    engine.dispose(); // tiến trình chết: RAM mất, chỉ còn kho mốc
+    client.adapter.sinces.clear();
+
+    final moi = taoSyncEngineThu(dioClient: client, db: db, connectivity: _Online(), checkpointStore: store);
+    addTearDown(moi.dispose);
+    final done = moi.statusStream.where((s) => s.isTerminal).first;
+    moi.start(idaccount: accountId);
+    await done.timeout(const Duration(seconds: 5));
+
+    expect(client.adapter.sinces.first, tuDau,
+        reason: 'mốc đã lưu bị xoá lúc xin kéo toàn bộ; engine mới đọc kho trống nên đi lại từ 1970');
+  });
+
   test('sau lượt kéo toàn bộ thành công, lượt sau lại tăng dần', () async {
     await batDau();
     client.adapter.pullData = {

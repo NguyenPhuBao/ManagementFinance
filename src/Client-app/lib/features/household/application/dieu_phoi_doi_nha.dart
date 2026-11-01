@@ -57,7 +57,9 @@ class DieuPhoiDoiNha {
     }
     if (d.den != null) await _keoLaiToanBo(d.idaccount);
     if (loiDon != null) Error.throwWithStackTrace(loiDon, dauVetDon!);
-    // Sau khi dọn xong và đã kéo xong (G113 lỗ hổng 1). Tiến trình chết TRƯỚC dòng này thì lần mở phiên sau chạy lại đúng cặp.
+    // Sau khi dọn xong và đã xin kéo toàn bộ (G113 lỗ hổng 1; mốc đã lưu đã xoá nên lượt kéo hỏng vẫn đi lại từ 1970).
+    // Tiến trình chết TRƯỚC dòng này thì lần mở phiên sau chạy lại đúng cặp. Dấu KHÔNG nói dữ liệu đã về. Còn hở: lượt nền
+    // ghi mốc đè, hoặc xoá mốc hỏng rồi tiến trình chết (G113 lỗ hổng 1a, 1b).
     await _ghiDau?.call(d.idaccount, d.den);
   }
 

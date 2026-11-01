@@ -149,6 +149,7 @@ void main() {
       await db.close();
       await expectLater(dieuPhoi.xuLy(const DoiNha(idaccount: 10, tu: 5, den: 7)), throwsA(anything));
       expect(dau, isEmpty);
+      expect(nhatKy, ['keo:10'], reason: 'dọn hỏng vẫn phải xin kéo');
       db = AppDatabase.forTesting(NativeDatabase.memory());
     });
   });

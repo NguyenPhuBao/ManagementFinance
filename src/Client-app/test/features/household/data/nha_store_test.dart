@@ -16,6 +16,10 @@ void main() {
     expect(await kho.doc(25), isNull);
   });
 
+  test('khoá dấu theo tài khoản', () {
+    expect(SecureStorageNhaStore.khoaDau(18), 'nha_da_xu_ly_18');
+  });
+
   test('InMemory: dấu vắng là null; ghi null là xoá', () async {
     final k = InMemoryNhaStore();
     expect(await k.docDauXuLy(18), isNull);
