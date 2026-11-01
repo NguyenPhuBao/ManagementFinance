@@ -78,6 +78,8 @@ import '../../features/household/application/dieu_phoi_doi_nha.dart';
 import '../../features/household/data/datasources/chia_se_chu.dart';
 import '../../features/household/data/datasources/household_api.dart';
 import '../../features/household/data/nha_store.dart';
+import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
+import '../../features/household/data/repositories/du_lieu_nha_repository_impl.dart';
 import '../../features/household/data/repositories/nha_repository.dart';
 import '../../features/household/data/repositories/nha_repository_impl.dart';
 import '../../features/khoa_app/application/khoa_app_service.dart';
@@ -592,6 +594,14 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         db: sl(),
         keoLaiToanBo: (id) => sl<SyncEngine>().keoLaiToanBo(id),
         ghiDau: (id, nha) => sl<NhaStore>().ghiDauXuLy(id, nha),
+      ));
+
+  // Ví chung và khoản của nhà (gia đình 1A): ghi qua datasource ví + `SoDuViService` (neo mang `idhousehold`).
+  sl.registerLazySingleton<DuLieuNhaRepository>(() => DuLieuNhaRepositoryImpl(
+        db: sl(),
+        localDataSource: sl(),
+        soDuVi: sl(),
+        syncEngine: sl(),
       ));
 
   sl.registerLazySingleton<ChiaSeChu>(() => const ChiaSeChuThat());

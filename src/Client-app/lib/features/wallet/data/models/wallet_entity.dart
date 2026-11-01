@@ -41,6 +41,10 @@ class WalletEntity extends Equatable {
   /// `WalletDao`. Cột cục bộ — xem `Wallets.biTuChoiTrungTen`.
   final bool biTuChoiTrungTen;
 
+  /// Nhà sở hữu ví (ví chung); `null` = ví riêng. Khi có, [idaccount] chỉ là người TẠO. Ghi qua `toCompanion` để sửa ví chung
+  /// không biến nó thành ví riêng.
+  final int? idhousehold;
+
   final String syncStatus;
   final DateTime updatedAt;
 
@@ -59,13 +63,14 @@ class WalletEntity extends Equatable {
     this.status = 'active',
     this.allowNegative = false,
     this.biTuChoiTrungTen = false,
+    this.idhousehold,
     this.syncStatus = 'pending',
     required this.updatedAt,
   });
 
   /// Dời nguyên văn từ `WalletLocalDataSourceImpl._toEntity` (2026-10-14). Không chép `bankCassoId`, `deletedAt`
-  /// và ba cột lỗi đồng bộ, và `idhousehold` (lát 1 gia đình, 2026-10-28: truy vấn cá nhân bỏ hàng của nhà ở DAO nên Entity thường là
-  /// hàng của danh sách cá nhân — `getById` cố ý không lọc (giới hạn quét 37); lát 2 (ví chung) mới đưa vào Entity) — `wallet_entity_test` đếm cột bảng để canh.
+  /// và ba cột lỗi đồng bộ — `wallet_entity_test` đếm cột bảng để canh. `idhousehold` được chép từ gia đình 1A (2026-11-01):
+  /// truy vấn cá nhân vẫn bỏ hàng của nhà ở DAO, nhưng ví chung đọc qua `DuLieuNhaRepository` cần biết nó thuộc nhà nào.
   factory WalletEntity.fromDrift(Wallet w) => WalletEntity(
         id: w.id,
         idaccount: w.idaccount,
@@ -81,6 +86,7 @@ class WalletEntity extends Equatable {
         status: w.status,
         allowNegative: w.allowNegative,
         biTuChoiTrungTen: w.biTuChoiTrungTen,
+        idhousehold: w.idhousehold,
         syncStatus: w.syncStatus,
         updatedAt: w.updatedAt,
       );
@@ -103,6 +109,7 @@ class WalletEntity extends Equatable {
     String? status,
     bool? allowNegative,
     bool? biTuChoiTrungTen,
+    int? idhousehold,
     String? syncStatus,
     DateTime? updatedAt,
   }) {
@@ -121,6 +128,7 @@ class WalletEntity extends Equatable {
       status: status ?? this.status,
       allowNegative: allowNegative ?? this.allowNegative,
       biTuChoiTrungTen: biTuChoiTrungTen ?? this.biTuChoiTrungTen,
+      idhousehold: idhousehold ?? this.idhousehold,
       syncStatus: syncStatus ?? this.syncStatus,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -142,6 +150,7 @@ class WalletEntity extends Equatable {
         status,
         allowNegative,
         biTuChoiTrungTen,
+        idhousehold,
         syncStatus,
         updatedAt
       ];

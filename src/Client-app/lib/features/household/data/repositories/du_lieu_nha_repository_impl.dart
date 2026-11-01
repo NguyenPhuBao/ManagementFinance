@@ -1,0 +1,85 @@
+import 'package:uuid/uuid.dart';
+
+import '../../../../core/database/app_database.dart';
+import '../../../../core/sync/sync_engine.dart';
+import '../../../transaction/data/models/transaction_entity.dart';
+import '../../../wallet/data/datasources/wallet_local_data_source.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
+import '../../../wallet/data/so_du_vi_service.dart';
+import 'du_lieu_nha_repository.dart';
+
+class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
+  final AppDatabase _db;
+  final WalletLocalDataSource _local;
+  final SoDuViService _soDuVi;
+  final SyncEngine _syncEngine;
+
+  static const _uuid = Uuid();
+
+  DuLieuNhaRepositoryImpl({
+    required AppDatabase db,
+    required WalletLocalDataSource localDataSource,
+    required SoDuViService soDuVi,
+    required SyncEngine syncEngine,
+  })  : _db = db,
+        _local = localDataSource,
+        _soDuVi = soDuVi,
+        _syncEngine = syncEngine;
+
+  @override
+  Stream<List<WalletEntity>> theoDoiViChung(int idNha) =>
+      _db.walletDao.watchViNha(idNha).map((rows) => rows.map(WalletEntity.fromDrift).toList());
+
+  @override
+  Future<List<WalletEntity>> viChungDangDung(int idNha) async =>
+      (await _db.walletDao.getViNhaDangDung(idNha)).map(WalletEntity.fromDrift).toList();
+
+  @override
+  Stream<List<TransactionEntity>> theoDoiKhoan(int idNha, {String? walletId}) => _db.transactionDao
+      .watchTheoNha(idNha, walletId: walletId)
+      .map((rows) => rows.map(TransactionEntity.fromDrift).toList());
+
+  @override
+  Future<WalletEntity> taoViChung({
+    required int idNha,
+    required int idaccount,
+    required String ten,
+    required String loai,
+    required double soDuBanDau,
+    required String icon,
+    required String mau,
+  }) async {
+    // Ví nhà không mặc định (index `chk_wallet_household_not_default`) và không cộng vào tổng tài sản cá nhân.
+    final vi = WalletEntity(
+      id: _uuid.v4(),
+      idaccount: idaccount,
+      idhousehold: idNha,
+      name: ten,
+      type: loai,
+      balance: soDuBanDau,
+      icon: icon,
+      colour: mau,
+      isDefault: false,
+      includeInTotal: false,
+      syncStatus: 'pending',
+      updatedAt: DateTime.now(),
+    );
+    await _local.insert(vi);
+    // Neo trước khi có khoản nào của ví; số dư 0 thì không sinh neo (xem `SoDuViService`). Neo kế thừa `idhousehold` của ví.
+    await _soDuVi.datNeoNhieuVi({vi.id});
+    _syncEngine.scheduleSync();
+    return vi;
+  }
+
+  @override
+  Future<void> suaViChung(WalletEntity vi) async {
+    // Ép lại hai cờ: ví nhà mang cờ mặc định đẩy lên vỡ `chk_wallet_household_not_default` (CONSTRAINT_VIOLATION, kẹt hàng đợi).
+    await _local.update(vi.copyWith(
+      isDefault: false,
+      includeInTotal: false,
+      syncStatus: 'pending',
+      updatedAt: DateTime.now(),
+    ));
+    _syncEngine.scheduleSync();
+  }
+}

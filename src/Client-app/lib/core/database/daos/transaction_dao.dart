@@ -223,6 +223,20 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Mọi khoản sống của nhà, kể cả do người khác ghi. Lọc theo NHÀ, không theo tài khoản (Family 01: `idaccount` là người ghi).
+  /// Có [walletId] thì gồm cả khoản chuyển ĐẾN ví ấy.
+  Stream<List<Transaction>> watchTheoNha(int idhousehold, {String? walletId}) {
+    return (select(transactions)
+          ..where((t) =>
+              t.idhousehold.equals(idhousehold) &
+              t.deletedAt.isNull() &
+              (walletId == null
+                  ? const Constant(true)
+                  : (t.walletId.equals(walletId) | t.walletTransfer.equals(walletId))))
+          ..orderBy([(t) => OrderingTerm.desc(t.date), (t) => OrderingTerm.desc(t.updatedAt)]))
+        .watch();
+  }
+
   /// Khoảng `[from, to)` có giao dịch nào không.
   ///
   /// Trả **bool** chứ không phải tổng: thông báo Tổng kết tuần cố ý không nêu

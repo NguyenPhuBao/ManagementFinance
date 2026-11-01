@@ -48,6 +48,8 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     // Cùng lý do với `status` ngay trên: thiếu cột này thì mỗi lần người
     // dùng sửa tên ví là cờ 'cho phép âm' tự tắt — im lặng.
     allowNegative:  Value(e.allowNegative),
+    // Thiếu cột này thì sửa ví chung biến nó thành ví riêng của người sửa — im lặng, và ví rời khỏi nhà khi đẩy.
+    idhousehold:    Value(e.idhousehold),
     // Cố ý KHÔNG mang `biTuChoiTrungTen` (G63): form Sửa ví không sửa cờ ấy, và
     // mang nó ở đây là mỗi lần lưu ví ghi đè cờ bằng giá trị entity đọc lúc mở
     // trang. Ba chỗ ghi ở `WalletDao`: danhDauTrungTen · goCoTrungTen · markSynced.
@@ -123,8 +125,11 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   /// đều đi qua datasource. Đọc `getAll` chứ không `getActive`: ví lưu trữ vẫn
   /// nằm trong index của server.
   Future<void> _kiemRangBuocServer(WalletEntity wallet) async {
-    final viHienCo =
-        (await _db.walletDao.getAll(wallet.idaccount)).map(WalletEntity.fromDrift);
+    // Ví chung: tên duy nhất TRONG NHÀ (`uq_wallet_household_name_active`), không đụng ví riêng và ngược lại.
+    final hang = wallet.idhousehold == null
+        ? await _db.walletDao.getAll(wallet.idaccount)
+        : await _db.walletDao.getViNha(wallet.idhousehold!);
+    final viHienCo = hang.map(WalletEntity.fromDrift);
     if (viTrungTen(viHienCo, wallet.name, boQuaId: wallet.id) != null) {
       throw CacheException(thongBaoTrungTen(wallet.name));
     }

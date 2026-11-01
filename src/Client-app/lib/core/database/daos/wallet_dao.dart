@@ -53,6 +53,24 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     return (select(wallets)..where((t) => t.idhousehold.isNotNull())).get();
   }
 
+  /// Ví chung của nhà, kể cả ví lưu trữ. Lọc theo NHÀ, không theo tài khoản (`idaccount` chỉ là người tạo).
+  Stream<List<Wallet>> watchViNha(int idhousehold) => (select(wallets)
+        ..where((t) => t.idhousehold.equals(idhousehold) & t.deletedAt.isNull())
+        ..orderBy(_thuTuHienThi))
+      .watch();
+
+  /// Như [watchViNha] nhưng đọc một lần — chốt trùng tên ở datasource không được chờ phần tử đầu của một stream.
+  Future<List<Wallet>> getViNha(int idhousehold) => (select(wallets)
+        ..where((t) => t.idhousehold.equals(idhousehold) & t.deletedAt.isNull())
+        ..orderBy(_thuTuHienThi))
+      .get();
+
+  /// Ví chung **đang hoạt động**: bộ chọn ví của chế độ nhà. Lọc status qua [WalletStatus.laHoatDong] như [getActive].
+  Future<List<Wallet>> getViNhaDangDung(int idhousehold) async {
+    final rows = await getViNha(idhousehold);
+    return rows.where((w) => WalletStatus.laHoatDong(w.status)).toList();
+  }
+
   /// Ví **đang hoạt động** — thứ mà mọi bộ chọn ví phải gọi.
   ///
   /// Tách khỏi [getAll] chứ không lọc luôn ở đó: ví lưu trữ vẫn phải đọc được
