@@ -12,6 +12,9 @@ import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../wallet/domain/wallet_status.dart';
 import '../../../wallet/domain/wallet_type.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
+import '../../application/gop_quy_service.dart';
+import '../../application/thao_tac_khoan_nha.dart';
 import '../../data/models/nha_cua_toi.dart';
 import '../../data/repositories/du_lieu_nha_repository.dart';
 import '../../data/repositories/nha_repository.dart';
@@ -28,6 +31,7 @@ import '../widgets/chi_tiet_vi/hang_nut_vi.dart';
 import '../widgets/dong_khoan_nha.dart';
 import '../widgets/gac_vai_chu.dart';
 import '../widgets/khung_the_nha.dart';
+import '../widgets/mo_khoan_nha.dart';
 import '../widgets/tra_ten_nha.dart';
 
 /// Màu của Stitch `ac57e216…` không trùng token nào của `AppColors` (chấm xanh, chữ huy hiệu).
@@ -40,9 +44,10 @@ const _chuHuyHieu = Color(0xFF454743);
 /// - Ví bị xoá / không còn trong nhà (máy khác xoá, kéo về) → tự đóng kèm câu; không đoán một ví khác.
 /// - Số dư đọc từ `theoDoiViChung` (cột `balance`, cache của sổ), không tính lại ở đây.
 /// - Hàng nút nhận danh sách [NutVi]: *Góp · Rút* đứng giữa *Thu* và *Chuyển* theo màn 3 (Task 8).
-/// - Dòng giao dịch chưa mở sheet chi tiết (Hoạt động mới có): chạm vào không làm gì.
+/// - Chạm dòng giao dịch mở sheet khoản + Sửa / Xoá, y như Hoạt động (`moKhoanNha`).
 class ChiTietViChungPage extends StatefulWidget {
-  const ChiTietViChungPage({super.key, required this.idVi, this.repo, this.duLieu, this.dongHo});
+  const ChiTietViChungPage(
+      {super.key, required this.idVi, this.repo, this.duLieu, this.thaoTac, this.gopQuy, this.viRieng, this.dongHo});
 
   final String idVi;
 
@@ -52,6 +57,11 @@ class ChiTietViChungPage extends StatefulWidget {
 
   /// Đồng hồ tiêm được cho nhóm *Hôm nay / Hôm qua* và *tháng này* của Bảng góp; `null` → giờ máy.
   final DateTime Function()? dongHo;
+
+  /// Cho sheet khoản (xoá, đọc nửa kia của cặp): `null` → `sl<…>()`, chỉ chạm khi cần.
+  final ThaoTacKhoanNha? thaoTac;
+  final GopQuyService? gopQuy;
+  final WalletRepository? viRieng;
 
   @override
   State<ChiTietViChungPage> createState() => _ChiTietViChungPageState();
@@ -138,8 +148,14 @@ class _ChiTietViChungPageState extends State<ChiTietViChungPage> {
                 builder: (context, v) {
                   final vi = v.vi.where((w) => w.id == widget.idVi && !w.isDeleted).firstOrNull;
                   if (v.daNap && vi == null) {
-                    // `pop` không được gọi trong lúc dựng.
-                    WidgetsBinding.instance.addPostFrameCallback((_) => _thoatVeVi());
+                    // Chỉ thoát khi route này đang ở TRÊN CÙNG: form `/nha/khoan`, `/nha/gop`, `/sua` đang đè lên thì `pop` đóng
+                    // nhầm form. Đọc `ModalRoute` ở đây là phụ thuộc vào nó, nên builder chạy lại khi route được lộ ra.
+                    if (ModalRoute.of(context)?.isCurrent == true) {
+                      // `pop` không được gọi trong lúc dựng.
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && ModalRoute.of(context)?.isCurrent == true) _thoatVeVi();
+                      });
+                    }
                     return Scaffold(appBar: AppBar());
                   }
                   return BlocBuilder<KhoanNhaCubit, KhoanNhaState>(
@@ -246,6 +262,19 @@ class _ChiTietViChungPageState extends State<ChiTietViChungPage> {
           nguoi: nguoi,
           tieuDe: dm == null ? cau : '$cau · $dm',
           dongPhu: _dongPhu(t, dsVi),
+          onCham: () => unawaited(moKhoanNha(
+            context,
+            conSong: () => mounted,
+            khoan: t,
+            nha: nha,
+            idToi: _cubit.idToi,
+            bayGio: _bayGio,
+            vi: dsVi,
+            danhMuc: k.danhMuc,
+            thaoTac: widget.thaoTac,
+            gopQuy: widget.gopQuy,
+            viRieng: widget.viRieng,
+          )),
         );
       },
     );
@@ -263,7 +292,8 @@ class _ChiTietViChungPageState extends State<ChiTietViChungPage> {
     final ghiChu = t.note.trim();
     if (ghiChu.isNotEmpty) return ghiChu;
     return switch (loai) {
-      LoaiKhoanNha.gopNha => 'Từ ví riêng',
+      // Không "Từ ví riêng": tiền mặt trao tay cũng có mã cặp (màn Góp nói "Không trừ ví nào của bạn", 02A:91).
+      LoaiKhoanNha.gopNha => 'Góp vào quỹ',
       LoaiKhoanNha.rutNha => 'Về ví riêng',
       _ => '',
     };
@@ -282,9 +312,11 @@ class _ChiTietViChungPageState extends State<ChiTietViChungPage> {
       final d = dong[m.idaccount];
       if (d != null && daCo.add(m.idaccount)) the.add((dong: d, daRoi: true));
     }
+    // Id không có ở cả hai danh sách thường là người MỚI vào mà `/me` của máy chưa cập nhật: không gắn "đã rời". Cờ lấy từ MỘT
+    // nguồn như tab Giao dịch (`tenNguoiNha`).
     final conLai = dong.keys.where((id) => !daCo.contains(id)).toList()..sort();
     for (final id in conLai) {
-      the.add((dong: dong[id]!, daRoi: true));
+      the.add((dong: dong[id]!, daRoi: tenNguoiNha(nha, id).daRoi));
     }
     return BangGopView(the: the, tenNguoi: (id) => tenNguoiNha(nha, id));
   }

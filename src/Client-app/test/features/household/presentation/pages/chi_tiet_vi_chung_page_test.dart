@@ -2,7 +2,10 @@
 import 'dart:async';
 
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
+import 'package:flowmoney/features/household/application/gop_quy_service.dart';
+import 'package:flowmoney/features/household/application/thao_tac_khoan_nha.dart';
 import 'package:flowmoney/features/household/domain/bang_gop.dart';
+import 'package:flowmoney/features/transaction/presentation/pages/add_transaction_page.dart' show EditTransactionArgs;
 import 'package:flowmoney/features/household/domain/hoat_dong_nha.dart';
 import 'package:flowmoney/features/household/presentation/pages/chi_tiet_vi_chung_page.dart';
 import 'package:flowmoney/features/household/presentation/widgets/bang_gop_view.dart';
@@ -20,6 +23,27 @@ import '../../../../helpers/household_api_gia.dart';
 import '../../../../helpers/nha_gia.dart';
 
 final _homNay = DateTime(2026, 11, 2, 10);
+
+class _ThaoTacGia implements ThaoTacKhoanNha {
+  final daXoa = <TransactionEntity>[];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #xoa) {
+      daXoa.add(invocation.positionalArguments.first as TransactionEntity);
+      return Future<void>.value();
+    }
+    return super.noSuchMethod(invocation);
+  }
+}
+
+class _GopQuyGia implements GopQuyService {
+  @override
+  Future<({TransactionEntity? rieng, TransactionEntity? nha})> docCap(String maCap) async => (rieng: null, nha: null);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 TransactionEntity _k(
   String id, {
@@ -65,6 +89,9 @@ void main() {
   late GoRouter router;
 
   /// Mở `/nha/vi/<id>` trên stack thật `/` → chi tiết, để `pop` về GOC. Mọi route đích ghi lại vị trí.
+  late _ThaoTacGia thaoTac;
+  Object? extraKhoan;
+
   Future<void> mo(
     WidgetTester t, {
     String vai = 'Owner',
@@ -76,6 +103,8 @@ void main() {
   }) async {
     dat360(t);
     bat = batThongBao();
+    thaoTac = _ThaoTacGia();
+    extraKhoan = null;
     nguon = DuLieuNhaGia(vi: vi ?? [viChungGia('v1', 'Tiền chợ', 3200000), viChungGia('v2', 'Điện nước', 1250000)])
       ..datKhoan(ds ?? [])
       ..datDanhMuc([_dm('c1', 'Ăn uống'), _dm('c2', 'Đi lại')]);
@@ -84,10 +113,17 @@ void main() {
       GoRoute(path: '/', builder: (_, __) => const Scaffold(body: Text('GOC'))),
       GoRoute(
         path: '/nha/vi/:id',
-        builder: (_, s) => ChiTietViChungPage(idVi: s.pathParameters['id']!, repo: repo, duLieu: nguon, dongHo: () => _homNay),
+        builder: (_, s) => ChiTietViChungPage(
+            idVi: s.pathParameters['id']!, repo: repo, duLieu: nguon, thaoTac: thaoTac, gopQuy: _GopQuyGia(), dongHo: () => _homNay),
       ),
       GoRoute(path: '/nha/vi/:id/sua', builder: (_, s) => Scaffold(body: Text('SUA-${s.pathParameters['id']}'))),
-      GoRoute(path: '/nha/khoan', builder: (_, s) => Scaffold(body: Text('KHOAN ${s.uri}'))),
+      GoRoute(
+        path: '/nha/khoan',
+        builder: (_, s) {
+          extraKhoan = s.extra;
+          return Scaffold(body: Text('KHOAN ${s.uri}'));
+        },
+      ),
       GoRoute(path: '/nha/gop', builder: (_, s) => Scaffold(body: Text('GOP ${s.uri}'))),
     ]);
     addTearDown(router.dispose);
@@ -148,6 +184,64 @@ void main() {
       expect(find.byKey(const Key('nut-chi')), findsNothing);
       expect(find.text('Ví đã lưu trữ'), findsOneWidget);
       expect(find.byKey(const Key('nut-sua-vi')), findsOneWidget);
+    });
+  });
+
+  group('sheet khoản (vòng sửa 1)', () {
+    testWidgets('Thành viên: khoản của mình có Sửa / Xoá, khoản người khác không có', (t) async {
+      await mo(t, vai: 'Member', ds: [_k('cua-toi'), _k('cua-binh', ai: 25, tien: 90000)]);
+      await t.tap(find.byKey(const ValueKey('khoan-cua-binh')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('sheet-tieu-de')), findsOneWidget, reason: 'chạm dòng phải mở sheet');
+      expect(find.byKey(const Key('sheet-sua')), findsNothing);
+      expect(find.byKey(const Key('sheet-xoa')), findsNothing);
+      await t.tapAt(const Offset(10, 10));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const ValueKey('khoan-cua-toi')));
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('sheet-sua')), findsOneWidget);
+      expect(find.byKey(const Key('sheet-xoa')), findsOneWidget);
+    });
+
+    testWidgets('xoá khoản thường từ đây gọi ThaoTacKhoanNha.xoa đúng khoản', (t) async {
+      await mo(t, ds: [_k('chi')]);
+      await t.tap(find.byKey(const ValueKey('khoan-chi')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('sheet-xoa')));
+      await t.pumpAndSettle();
+      expect(thaoTac.daXoa, isEmpty, reason: 'chưa xác nhận thì chưa xoá');
+      await t.tap(find.widgetWithText(ElevatedButton, 'Xoá'));
+      await t.pumpAndSettle();
+      expect(thaoTac.daXoa.map((e) => e.id), ['chi']);
+      expect(bat.cau, contains('Đã xoá khoản.'));
+    });
+
+    testWidgets('Sửa khoản thường đẩy /nha/khoan với EditTransactionArgs mang danh mục', (t) async {
+      await mo(t, ds: [_k('chi')]);
+      await t.tap(find.byKey(const ValueKey('khoan-chi')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('sheet-sua')));
+      await t.pumpAndSettle();
+      final args = extraKhoan as EditTransactionArgs;
+      expect(args.transaction.id, 'chi');
+      expect(args.category?.name, 'Ăn uống', reason: 'thiếu category là form sửa báo "Vui lòng chọn danh mục"');
+    });
+  });
+
+  group('thoát khi mất ví chỉ lúc route đang ở trên cùng (vòng sửa 1)', () {
+    testWidgets('form đè lên: ví bị xoá không đóng nhầm form; về lại thì chi tiết tự thoát kèm câu', (t) async {
+      await mo(t);
+      unawaited(router.push('/nha/khoan?vi=v1&huong=chi'));
+      await t.pumpAndSettle();
+      nguon.datVi([viChungGia('v2', 'Điện nước', 1250000)]);
+      await t.pumpAndSettle();
+      expect(find.textContaining('KHOAN'), findsOneWidget, reason: 'form đang mở không bị pop nhầm');
+      expect(bat.cau, isNot(contains('Ví chung này không còn nữa.')), reason: 'chưa thoát thì chưa báo');
+      router.pop();
+      await t.pumpAndSettle();
+      expect(find.text('GOC'), findsOneWidget, reason: 'lộ ra thì chi tiết tự thoát, không còn Scaffold trắng');
+      expect(bat.cau, contains('Ví chung này không còn nữa.'));
+      expect(t.takeException(), isNull);
     });
   });
 
@@ -217,7 +311,9 @@ void main() {
       expect(find.text('Đi chợ sáng'), findsOneWidget, reason: 'dòng phụ là ghi chú khi có');
       expect(find.text('-120.000 đ'), findsOneWidget);
       expect(find.text('Nguyễn Bình góp'), findsOneWidget);
-      expect(find.text('Từ ví riêng'), findsOneWidget, reason: 'góp không ghi chú');
+      expect(find.text('Góp vào quỹ'), findsOneWidget,
+          reason: 'góp không ghi chú: tiền mặt trao tay cũng có mã cặp, nên KHÔNG nói "từ ví riêng"');
+      expect(find.text('Từ ví riêng'), findsNothing);
       expect(find.text('+2.000.000 đ'), findsOneWidget);
       expect(find.text('Nguyễn Bình rút'), findsOneWidget);
       expect(find.text('Về ví riêng'), findsOneWidget);
@@ -314,10 +410,13 @@ void main() {
       expect(find.text('Thành viên ví (3)'), findsOneWidget);
     });
 
-    testWidgets('người ngoài danh sách (không còn thành viên lẫn người cũ) mà có khoản vẫn hiện, như đã rời', (t) async {
+    testWidgets('người ngoài danh sách (thường là người MỚI vào mà /me chưa cập nhật): thẻ xếp cuối, KHÔNG gắn "đã rời"', (t) async {
       await sangBangGop(t, du: [_k('la', ai: 77, type: 'thu', tien: 100000, cap: 'p9', cat: null)]);
       expect(find.byKey(const Key('the-gop-77')), findsOneWidget, reason: 'tiền của họ vẫn nằm trong ví');
-      expect(find.text('Thành viên #77 (đã rời)'), findsOneWidget);
+      expect(find.text('Thành viên #77'), findsOneWidget);
+      expect(find.textContaining('đã rời'), findsNothing, reason: 'không biết họ đã rời; tab Giao dịch cũng không nói vậy');
+      expect(find.text('Đã rời'), findsNothing);
+      expect(t.getTopLeft(find.byKey(const Key('the-gop-77'))).dy, greaterThan(t.getTopLeft(find.byKey(const Key('the-gop-25'))).dy));
     });
 
     testWidgets('chuyển sang tab và về lại: danh sách giao dịch quay lại', (t) async {

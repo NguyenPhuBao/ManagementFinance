@@ -2,16 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection_container.dart';
-import '../../../../core/errors/app_exceptions.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../shared/theme/app_colors.dart';
-import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../category/data/models/category_entity.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
-import '../../../transaction/presentation/pages/add_transaction_page.dart' show EditTransactionArgs;
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../wallet/data/repositories/wallet_repository.dart';
 import '../../application/gop_quy_service.dart';
@@ -19,7 +15,6 @@ import '../../application/thao_tac_khoan_nha.dart';
 import '../../data/models/nha_cua_toi.dart';
 import '../../data/repositories/du_lieu_nha_repository.dart';
 import '../../data/repositories/nha_repository.dart';
-import '../../domain/cau_xoa_khoan_gop.dart';
 import '../../domain/hoat_dong_nha.dart';
 import '../../domain/loai_khoan_nha.dart';
 import '../bloc/khoan_nha_cubit.dart';
@@ -27,7 +22,7 @@ import '../bloc/nha_cubit.dart';
 import '../bloc/vi_chung_cubit.dart';
 import '../widgets/dong_khoan_nha.dart';
 import '../widgets/gac_vai_chu.dart';
-import '../widgets/sheet_khoan_nha.dart';
+import '../widgets/mo_khoan_nha.dart';
 import '../widgets/tra_ten_nha.dart';
 
 const _mauChanTrang = Color(0xFF9DA099);
@@ -151,101 +146,20 @@ class _HoatDongNhaPageState extends State<HoatDongNhaPage> {
   }
 
   Future<void> _moKhoan(TransactionEntity t, NhaState s, KhoanNhaState k, List<WalletEntity> vi) async {
-    final nha = s.nha;
-    final goc = quyenKhoanNha(t, vai: nha.vai, trangThai: nha.nha?.trangThai, idToi: _cubit.idToi);
-    // Khoản cặp sửa qua `/nha/gop?ma=` (1B Task 8); `duocSuaKhoanNha` đã chỉ cho người ghi sửa khoản có mã cặp.
-    final quyen = goc;
-    final dich = t.walletTransfer;
-    final hanhDong = await moSheetKhoanNha(
+    // Sheet + Sửa / Xoá dùng chung với Chi tiết ví chung: `widgets/mo_khoan_nha.dart`.
+    await moKhoanNha(
       context,
+      conSong: () => mounted,
       khoan: t,
-      nguoi: _tenNguoi(nha, t.idaccount),
-      nhanNgay: nhanNhomNgay(t.date, _bayGio),
-      viHienThi: phanLoaiKhoanNha(t) == LoaiKhoanNha.chuyen && dich != null
-          ? '${_tenVi(vi, t.walletId)} → ${_tenVi(vi, dich)}'
-          : _tenVi(vi, t.walletId),
-      tenDanhMuc: _tenDanhMuc(k.danhMuc, t),
-      quyen: quyen,
+      nha: s.nha,
+      idToi: _cubit.idToi,
+      bayGio: _bayGio,
+      vi: vi,
+      danhMuc: k.danhMuc,
+      thaoTac: widget.thaoTac,
+      gopQuy: widget.gopQuy,
+      viRieng: widget.viRieng,
     );
-    if (hanhDong == null || !mounted) return;
-    switch (hanhDong) {
-      case HanhDongKhoanNha.sua:
-        final maCap = t.fundPairId;
-        if (maCap != null) {
-          // Chiều theo nửa của nhà (góp là `thu`, rút là `chi`) — cùng luật `phanLoaiKhoanNha`, không tự viết ở đây.
-          final che = phanLoaiKhoanNha(t) == LoaiKhoanNha.rutNha ? 'rut' : 'gop';
-          unawaited(context.push('/nha/gop?ma=${Uri.encodeQueryComponent(maCap)}&che=$che'));
-          return;
-        }
-        CategoryEntity? dm;
-        for (final c in k.danhMuc) {
-          if (c.id == t.categoryId) dm = c;
-        }
-        // Thiếu `category` là cubit `danhMuc == null` và lưu sửa báo *Vui lòng chọn danh mục*.
-        unawaited(context.push('/nha/khoan', extra: EditTransactionArgs(transaction: t, category: dm)));
-      case HanhDongKhoanNha.xoa:
-        await _xoa(t, nha, vi);
-    }
-  }
-
-  Future<void> _xoa(TransactionEntity t, NhaCuaToi nha, List<WalletEntity> vi) async {
-    final maCap = t.fundPairId;
-    if (maCap == null) {
-      if (!await ConfirmDialog.show(context,
-          title: 'Xoá khoản này?',
-          message: 'Khoản sẽ bị xoá khỏi nhà và số dư ví chung được tính lại.',
-          confirmText: 'Xoá',
-          cancelText: 'Huỷ')) {
-        return;
-      }
-    } else {
-      final cau = await _cauXoaCap(t, maCap, nha, vi);
-      if (cau == null || !mounted) return;
-      // Hàng của nhà: góp là `thu`, rút là `chi` (`phanLoaiKhoanNha`).
-      final gop = phanLoaiKhoanNha(t) == LoaiKhoanNha.gopNha;
-      if (!await hoiXoaKhoanGop(context, tieuDe: gop ?'Xoá khoản góp?' : 'Xoá khoản rút?', cau: cau)) return;
-    }
-    if (!mounted) return;
-    try {
-      await (widget.thaoTac ?? sl<ThaoTacKhoanNha>()).xoa(t);
-      baoNhanh('Đã xoá khoản.');
-    } on CacheException catch (e) {
-      baoNhanh(e.message, loai: LoaiThongBao.loi);
-    } catch (_) {
-      baoNhanh('Không xoá được khoản này. Thử lại sau.', loai: LoaiThongBao.loi);
-    }
-  }
-
-  /// Câu hộp xoá khoản cặp, đọc nửa kia của cặp trên máy này. `null` khi đọc hỏng (đã báo).
-  Future<String?> _cauXoaCap(TransactionEntity t, String maCap, NhaCuaToi nha, List<WalletEntity> vi) async {
-    try {
-      final cap = await (widget.gopQuy ?? sl<GopQuyService>()).docCap(maCap);
-      final nuaNha = cap.nha ?? t;
-      final rieng = cap.rieng;
-      String? tenViRieng;
-      String? tenNguoiKhac;
-      var nguoiDaRoi = false;
-      if (rieng != null) {
-        final v = await (widget.viRieng ?? sl<WalletRepository>()).getById(rieng.walletId);
-        tenViRieng = v?.name ?? 'ví riêng';
-      } else if (t.idaccount != _cubit.idToi) {
-        // Chủ xoá hộ: nửa riêng nằm trên máy người ghi, máy này không có.
-        final nguoi = _tenNguoi(nha, t.idaccount);
-        tenNguoiKhac = nguoi.ten;
-        nguoiDaRoi = nguoi.daRoi;
-      }
-      return cauXoaKhoanGop(
-        gop: nuaNha.type == 'thu',
-        tenQuy: _tenVi(vi, nuaNha.walletId),
-        soTien: t.amount,
-        tenViRieng: tenViRieng,
-        tenNguoiKhac: tenNguoiKhac,
-        nguoiDaRoi: nguoiDaRoi,
-      );
-    } catch (_) {
-      baoNhanh('Không đọc được khoản này. Thử lại sau.', loai: LoaiThongBao.loi);
-      return null;
-    }
   }
 
   @override
