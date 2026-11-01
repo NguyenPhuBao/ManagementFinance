@@ -624,7 +624,7 @@ src/Backend/
 - **Đạt:** QR + lưu ảnh (cả release) · MB Bank *Quét từ ảnh* (người dùng đọc) · đủ tiền, gia hạn cộng từ hạn cũ · chuyển thừa *Đồng ý* / *Từ chối* · chuyển thiếu · admin hoàn tiền, màn tự đổi · hết hạn · đồng hồ không tự chuyển màn khi mất mạng · huỷ trên PayOS thật · mất mạng giữa chừng · sai chữ ký · phát lại · trả muộn · hạ cấp theo giờ máy.
 - **Chưa đo:** đoạn ngân hàng → PayOS → webhook · nhánh `PAID` của JIT · hoàn tiền ngân hàng · OnePlus · máy thứ hai · Trợ lý AI có mô hình khi vừa nâng cấp.
 - ⚠️ **Kênh trong `.env` trả tài khoản MB tên NGUYEN PHU BAO** (trùng tên người làm backend, chưa ai xác nhận), không có dấu hiệu là kênh thử: đừng chuyển thử vào QR này nếu không chủ ý.
-- **Đơn 62** (`CAN-LAM/VIEC_BACKEND_CON_LAI.md`): 62.1 **CAO** dự phòng tài khoản cá nhân khi PayOS không trả thông tin nhận tiền · 62.2 JIT bỏ qua số tiền (đọc mã) · 62.3 webhook tới đơn đã huỷ · 62.4 hai dòng giao dịch · 62.5 múi giờ `paid_at`. **G118** mới (client, mức thấp).
+- **Đơn 62** (`CAN-LAM/VIEC_BACKEND_CON_LAI.md`, kèm `KIEM-THU/ban_sua_62.patch`, `chay_kiem_62.js`, `webhook_tu_ky.js`; thử trên bản sao: 4 / 14 → 14 / 14, 78 ca unit thanh toán pass): 62.1 **CAO** dự phòng tài khoản cá nhân khi PayOS không trả thông tin nhận tiền · 62.2 JIT bỏ qua số tiền (chạy bằng PayOS giả, chưa có phản hồi thật) · 62.3 webhook tới đơn đã huỷ · 62.4 hai dòng giao dịch · 62.5 múi giờ `paid_at` · 62.6 xác nhận kênh + URL webhook, cần để đóng G94. Sau khi backend áp: chạy lại `chay_kiem_62.js`, `src/Backend` client không sửa. **G118** mới (client, mức thấp).
 
 ### 🏠 Gia đình LÁT 2 — đo Realme + máy ảo: đạt, hai lỗi đã sửa (2026-11-01 phiên 29)
 
