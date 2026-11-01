@@ -1,4 +1,5 @@
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
+import 'package:flowmoney/shared/theme/app_colors.dart';
 import 'package:flowmoney/features/household/presentation/pages/nha_minh_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -88,6 +89,33 @@ void main() {
     expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Mời thành viên')).onPressed, isNull);
     expect(t.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Quản lý thành viên')).onPressed, isNotNull);
     expect(find.text('Chỉ xem'), findsNothing, reason: 'spec 12.2: dải đã nói, không nhãn thứ hai');
+  });
+
+  testWidgets('chấm trạng thái bên phải thẻ nhà: xanh khi Active', (t) async {
+    Color mau() =>
+        ((t.widget<Container>(find.byKey(const Key('cham-trang-thai-nha')))).decoration! as BoxDecoration).color!;
+    await mo(t, nha: nhaJson());
+    expect(find.byKey(const Key('cham-trang-thai-nha')), findsOneWidget);
+    expect(mau(), AppColors.income);
+    expect(t.getRect(find.byKey(const Key('cham-trang-thai-nha'))).center.dx, greaterThan(300),
+        reason: 'chấm nằm bên PHẢI thẻ');
+  });
+
+  testWidgets('chấm trạng thái: vàng khi nhà chỉ xem', (t) async {
+    await mo(t, nha: nhaJson(status: 'ReadOnly'));
+    final d = t.widget<Container>(find.byKey(const Key('cham-trang-thai-nha'))).decoration! as BoxDecoration;
+    expect(d.color, AppColors.warning);
+  });
+
+  testWidgets('danh sách thành viên: Chủ nhà đứng đầu, còn lại giữ thứ tự server', (t) async {
+    await mo(t, nha: nhaJson(members: [
+      {'idaccount': 25, 'displayName': 'Nguyễn Bình', 'role': 'Member', 'joinedAt': '2026-10-23T09:12:00.000Z'},
+      {'idaccount': 31, 'displayName': 'Lê Chi', 'role': 'Viewer', 'joinedAt': '2026-10-23T09:30:00.000Z'},
+      {'idaccount': 18, 'displayName': 'Trần An', 'role': 'Owner', 'joinedAt': '2026-10-23T08:00:00.000Z'},
+    ]));
+    double y(String s) => t.getTopLeft(find.text(s)).dy;
+    expect(y('Trần An'), lessThan(y('Nguyễn Bình')), reason: 'Chủ nhà đứng đầu dù server trả ở cuối');
+    expect(y('Nguyễn Bình'), lessThan(y('Lê Chi')), reason: 'hai người còn lại giữ thứ tự server');
   });
 
   testWidgets('tên thành viên dài: nhãn "Bạn" không bị cắt, chỉ tên cắt, không tràn', (t) async {

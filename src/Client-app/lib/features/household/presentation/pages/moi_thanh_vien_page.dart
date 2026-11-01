@@ -18,6 +18,7 @@ import '../../domain/quyen_nha.dart';
 import '../../domain/vai_nha.dart';
 import '../bloc/moi_thanh_vien_cubit.dart';
 import '../bloc/nha_cubit.dart';
+import '../widgets/chu_don_cach.dart';
 import '../widgets/gac_vai_chu.dart';
 import '../widgets/moi_thanh_vien/chon_vai_moi.dart';
 import '../widgets/moi_thanh_vien/danh_sach_loi_moi.dart';
@@ -148,12 +149,15 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
               Text('Mời qua email', style: chu.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
             ]),
             const SizedBox(height: 12),
+            // Nhãn đặt TRÊN ô, gợi ý trong ô (Stitch `b017710c…`), không dùng nhãn nổi của ô.
+            Text('Email', style: chu.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+            const SizedBox(height: 6),
             TextField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
               autocorrect: false,
               inputFormatters: const [GioiHanDoRong(DoRongCot.email)],
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: const InputDecoration(hintText: 'ten@gmail.com'),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
@@ -225,7 +229,7 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(ma.ma, textAlign: TextAlign.center, style: chu.headlineSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 4)),
+                    Text(ma.ma, textAlign: TextAlign.center, style: chu.headlineSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 4, fontFamily: kHoFontDonCach)),
                     if (ma.hetHan != null)
                       Text('Hết hạn ${DateFormatter.formatDateTime(ma.hetHan!.toLocal())}',
                           textAlign: TextAlign.center, style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),

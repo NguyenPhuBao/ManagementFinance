@@ -4,6 +4,7 @@ import 'package:flowmoney/features/household/data/datasources/chia_se_chu.dart';
 import 'package:flowmoney/features/household/data/repositories/nha_repository.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
 import 'package:flowmoney/features/household/presentation/pages/moi_thanh_vien_page.dart';
+import 'package:flowmoney/shared/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,6 +52,28 @@ void main() {
     expect(find.text('Vai'), findsNWidgets(2));
     expect(find.text('Vai trò trong nhà'), findsNothing);
     expect(find.text('Cấp quyền khi nhập mã'), findsNothing);
+  });
+
+  testWidgets('nhãn Email đặt TRÊN ô, gợi ý trong ô, không nhãn nổi', (t) async {
+    await mo(t);
+    final o = t.widget<TextField>(find.byType(TextField).first);
+    expect(o.decoration?.labelText, isNull, reason: 'nhãn nổi của ô là kiểu Material, không phải Stitch');
+    expect(o.decoration?.hintText, isNotNull);
+    expect(t.getRect(find.text('Email')).bottom, lessThanOrEqualTo(t.getRect(find.byType(TextField).first).top),
+        reason: 'chữ Email nằm phía trên ô');
+  });
+
+  testWidgets('chip vai ở màn Mời: chọn = nền đen chữ trắng, chưa chọn = xám nhạt, không dấu tick', (t) async {
+    await mo(t);
+    final chon = t.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Thành viên').first);
+    final chua = t.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Chỉ xem').first);
+    expect(chon.selected, isTrue);
+    expect(chon.showCheckmark, isFalse);
+    expect(chon.selectedColor, AppColors.primary);
+    expect((chon.labelStyle)?.color, AppColors.onPrimary);
+    expect(chua.selected, isFalse);
+    expect(chua.backgroundColor, AppColors.surfaceContainerLow);
+    expect((chua.labelStyle)?.color, AppColors.textPrimary);
   });
 
   testWidgets('email sai dạng: nút khoá; gửi xong dòng đã gửi, chung một câu', (t) async {

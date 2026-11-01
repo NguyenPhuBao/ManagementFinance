@@ -108,4 +108,46 @@ void main() {
     expect(find.byType(TextField), findsOneWidget);
     expect(t.takeException(), isNull);
   });
+
+  testWidgets('bố cục theo Stitch: biểu tượng trong ô tròn bên TRÁI tiêu đề, tiêu đề đậm canh trái', (t) async {
+    await mo(t, hoiRoiNha);
+    final tieuDe = find.text('Rời nhà?');
+    final o = find.ancestor(
+        of: find.byIcon(Icons.logout),
+        matching: find.byWidgetPredicate(
+            (w) => w is Container && w.decoration is BoxDecoration && (w.decoration! as BoxDecoration).shape == BoxShape.circle));
+    expect(o, findsOneWidget, reason: 'biểu tượng nằm trong ô tròn nhạt');
+    expect(t.getRect(o).right, lessThan(t.getRect(tieuDe).left), reason: 'ô tròn bên trái tiêu đề');
+    expect(t.widget<Text>(tieuDe).style?.fontWeight, FontWeight.w700);
+    expect(t.widget<Text>(tieuDe).textAlign, isNull);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(t.widget<AlertDialog>(find.byType(AlertDialog)).icon, isNull, reason: 'biểu tượng không còn ở giữa đỉnh hộp');
+    expect(find.byKey(const Key('vach-do-hop')), findsNothing, reason: 'hộp Rời nhà không có vạch đỏ');
+  });
+
+  testWidgets('hộp giải tán: vạch đỏ trên đỉnh ở cả hai bước, tên nhà trong ô, nhãn TÊN XÁC NHẬN', (t) async {
+    await mo(t, (c) => hoiGiaiTan(c, 'Nhà Đạt – Linh'));
+    expect(find.byKey(const Key('vach-do-hop')), findsOneWidget, reason: 'bước 1');
+    await t.tap(find.widgetWithText(FilledButton, 'Tiếp tục'));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('vach-do-hop')), findsOneWidget, reason: 'bước 2');
+    expect(find.text('TÊN XÁC NHẬN'), findsOneWidget);
+    final oTen = find.byKey(const Key('o-ten-nha-giai-tan'));
+    expect(find.descendant(of: oTen, matching: find.text('Nhà Đạt – Linh')), findsOneWidget);
+    expect(t.getRect(find.byKey(const Key('vach-do-hop'))).top, lessThan(t.getRect(find.text('Gõ tên nhà để xác nhận')).top));
+  });
+
+  testWidgets('hộp cuộn được ở 360 dp + bàn phím + cỡ chữ lớn: không tràn', (t) async {
+    dat360(t, banPhim: true);
+    late BuildContext ctx;
+    await t.pumpWidget(bocTrangNha(Builder(builder: (c) {
+      ctx = c;
+      return MediaQuery(
+          data: MediaQuery.of(c).copyWith(textScaler: const TextScaler.linear(2)), child: const Scaffold());
+    })));
+    hoiChuyenChu(ctx, 'Nguyễn Linh');
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+    expect(find.byType(SingleChildScrollView), findsWidgets);
+  });
 }

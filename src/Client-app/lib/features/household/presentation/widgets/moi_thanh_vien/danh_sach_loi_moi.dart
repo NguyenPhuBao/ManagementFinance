@@ -24,7 +24,7 @@ class DanhSachLoiMoi extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < ds.length; i++) ...[
-            if (i > 0) const Divider(height: 20),
+            if (i > 0) const Divider(height: 20, color: AppColors.outlineVariant),
             Row(
               children: [
                 Icon(ds[i].email == null ? Icons.key_outlined : Icons.mail_outline, size: 20, color: AppColors.textSecondary),

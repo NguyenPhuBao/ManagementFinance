@@ -16,6 +16,7 @@ import '../../data/repositories/nha_repository.dart';
 import '../../domain/cau_loi_nha.dart';
 import '../../domain/ma_moi.dart';
 import '../bloc/tham_gia_nha_cubit.dart';
+import '../widgets/chu_don_cach.dart';
 import '../widgets/nhan_vai.dart';
 import '../widgets/khung_the_nha.dart';
 
@@ -100,7 +101,7 @@ class _ThamGiaNhaPageState extends State<ThamGiaNhaPage> {
                         autocorrect: false,
                         textCapitalization: TextCapitalization.characters,
                         style: chu.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700, letterSpacing: 4),
+                            fontWeight: FontWeight.w700, letterSpacing: 4, fontFamily: kHoFontDonCach),
                         inputFormatters: [MaMoiFormatter()],
                         onChanged: _cubit.doiMa,
                       ),
@@ -179,12 +180,13 @@ class _TheXemTruoc extends StatelessWidget {
             ],
           ),
         );
-    Widget dong(String nhan, String gt) => dongWidget(
+    Widget dong(String nhan, String gt, {bool donCach = false}) => dongWidget(
         nhan,
         Text(gt,
             textAlign: TextAlign.end,
             maxLines: 2,
-            overflow: TextOverflow.ellipsis));
+            overflow: TextOverflow.ellipsis,
+            style: donCach ? const TextStyle(fontFamily: kHoFontDonCach) : null));
     return KhungTheNha(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +217,7 @@ class _TheXemTruoc extends StatelessWidget {
                   ]),
             ),
           ]),
-          const Divider(height: 20),
+          const Divider(height: 20, color: AppColors.outlineVariant),
           dong('Chủ nhà', x.tenChuNha),
           dong('Thành viên', '${x.soThanhVien}/${x.toiDa}'),
           dongWidget(
@@ -224,7 +226,7 @@ class _TheXemTruoc extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: NhanVai(vai: x.vai))),
           if (x.hetHan != null)
-            dong('Hạn mã', DateFormatter.formatDateTime(x.hetHan!.toLocal())),
+            dong('Hạn mã', DateFormatter.formatDateTime(x.hetHan!.toLocal()), donCach: true),
         ],
       ),
     );

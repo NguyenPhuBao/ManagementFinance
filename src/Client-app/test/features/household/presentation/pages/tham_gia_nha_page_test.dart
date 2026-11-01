@@ -59,6 +59,27 @@ void main() {
     expect(find.text('GOC'), findsOneWidget);
   });
 
+  testWidgets('mã mời và Hạn mã dùng chữ đơn cách', (t) async {
+    dat360(t);
+    batThongBao();
+    final api = HouseholdApiGia();
+    final repo = await repoNhaThu(api);
+    final r = routerThu(ThamGiaNhaPage(repo: repo));
+    await t.pumpWidget(bocRouterNha(r, goi: goiBasic(const {})));
+    r.push('/dich');
+    await t.pumpAndSettle();
+    final o = t.widget<TextField>(find.byType(TextField));
+    expect(o.style?.fontFamily, 'monospace', reason: 'ô mã mời theo Stitch `tham_gia`');
+    await t.enterText(find.byType(TextField), 'abcd2345');
+    await t.pump();
+    await t.tap(find.text('Xem trước'));
+    await t.pumpAndSettle();
+    final han = t.widget<Text>(find.byWidgetPredicate(
+        (w) => w is Text && w.data != null && RegExp(r'^\d{2}/\d{2}/\d{4}').hasMatch(w.data!) && w.style?.fontFamily != null));
+    expect(han.style?.fontFamily, 'monospace', reason: 'giá trị Hạn mã đơn cách, nhãn bên cạnh thì không');
+    expect(find.text('Chủ nhà'), findsOneWidget);
+  });
+
   testWidgets('lỗi xem trước và lỗi tham gia ra đúng câu qua kênh báo của trang', (t) async {
     dat360(t);
     final bat = batThongBao();

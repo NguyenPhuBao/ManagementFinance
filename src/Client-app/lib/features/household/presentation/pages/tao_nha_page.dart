@@ -78,10 +78,10 @@ class _TaoNhaPageState extends State<TaoNhaPage> {
                     child: Column(
                       children: [
                         _DongGhiChu(icon: Icons.stars_outlined, chu: 'Bạn sẽ là Chủ nhà'),
-                        Divider(height: 24),
+                        Divider(height: 24, color: AppColors.outlineVariant),
                         _DongGhiChu(
                             icon: Icons.groups_outlined, chu: 'Nhà có tối đa $kToiDaThanhVienMacDinh thành viên'),
-                        Divider(height: 24),
+                        Divider(height: 24, color: AppColors.outlineVariant),
                         _DongGhiChu(icon: Icons.wifi, chu: 'Cần có mạng để tạo nhà'),
                       ],
                     ),
@@ -118,7 +118,13 @@ class _DongGhiChu extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
         children: [
-          Icon(icon, color: AppColors.textPrimary),
+          // Ô tròn xám theo Stitch `411a20c1…`.
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(color: AppColors.surfaceContainerLow, shape: BoxShape.circle),
+            child: Icon(icon, size: 20, color: AppColors.textPrimary),
+          ),
           const SizedBox(width: 12),
           Expanded(child: Text(chu)),
         ],

@@ -36,6 +36,17 @@ class TheNha extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: 8),
+          // Chấm trạng thái bên phải thẻ (Stitch `56739d19…`): xanh khi nhà dùng được, vàng khi chỉ xem.
+          Container(
+            key: const Key('cham-trang-thai-nha'),
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: n.trangThai == TrangThaiNha.chiXem ? AppColors.warning : AppColors.income,
+              shape: BoxShape.circle,
+            ),
+          ),
         ],
       ),
     );

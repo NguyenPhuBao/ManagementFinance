@@ -406,6 +406,10 @@ Stitch tự thêm các chi tiết dưới đây; app bám bố cục của màn,
 | Nhà mình, thẻ nhà | `nha_chu`: dòng phụ gộp *"Bạn là Chủ nhà · 3/6 thành viên"*; `nha_thanh_vien`: tách đôi kèm vạch (*"Bạn là Thành viên"* trái, *"3/6 thành viên"* phải) | **Một kiểu gộp cho mọi vai** (`the_nha.dart`) | Hai màn Stitch tự mâu thuẫn; một kiểu thì mọi vai đọc giống nhau (M4, 2026-11-01) |
 | Avatar thành viên | Pastel khác nhau theo người ở cả ba màn | Làm theo: bảng 5 màu pastel, chọn theo `idaccount % 5` (`mauAvatarTheoId`), không theo tên; thiếu id → xám trung tính | Màu của một người đứng yên ở mọi màn; tên đổi được (M4) |
 | Năm hộp xác nhận | Bộ đếm *"0/13"*; tiêu đề bảng tham chiếu | Không bộ đếm | Luật ô tên của dự án; tiêu đề chỉ là khung của bảng |
+| Nhà mình, chưa có nhà | Minh hoạ ngôi nhà | Biểu tượng nhóm người | App chưa có tệp ảnh minh hoạ; không thêm tài nguyên cho một màn |
+| Nút, nền, Drawer | Nút bo tròn hẳn, nền và khuôn Drawer của bản Stitch | Theo theme toàn app | Thuộc theme chung, không riêng lát 2 |
+| Chuyển chủ nhà | Một hộp xác nhận (hộp 3) | Một hộp, đúng mục 5.4 | Ghi cho rõ: app đã làm một hộp, không hai bước như giải tán |
+| Màn Mời, màn Tham gia | Mã và *Hạn mã* chữ đơn cách | Làm theo bằng họ font `monospace` của nền tảng | Không thêm gói / tài nguyên font (đợt giao diện cuối, 2026-11-01) |
 
 ### 12.3 Người dùng thấy gì
 
