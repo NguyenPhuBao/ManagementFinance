@@ -72,6 +72,10 @@ enum NotificationKind {
   /// Tin admin gõ ở màn Phát thông báo (Admin-web) — `system.broadcast`, ghi bởi `NhanTinHeThong` từ socket, không do
   /// bộ quét sinh (spec 2026-10-26). Khoá `tinHeThong:<id>`.
   tinHeThong,
+
+  /// Lời mời vào nhà (`docs/Family/01` mục 2.7). Bộ quét đọc danh sách `/households/invitations` đã nhớ ở `NhaRepository`
+  /// qua hook. Danh sách chỉ ở RAM (không lưu kho): mở lạnh khi mất mạng thì rỗng, thông báo tới khi có mạng và danh sách về. Khoá `loiMoiNha:<mã>`: mỗi mã một thông báo.
+  loiMoiNha,
 }
 
 enum NotificationSeverity { info, warning, critical }
@@ -126,6 +130,9 @@ typedef KhoanChiLon = ({
   String walletId,
   String? tenDanhMuc,
 });
+
+/// Một lời mời đủ để viết thông báo. Record thuần: `notification` không import mảng nhà, DI ánh xạ từ `LoiMoiToiEntity`.
+typedef LoiMoiNhaThongBao = ({String ma, String tenNha, String tenNguoiMoi, DateTime? hetHan});
 
 /// Dữ liệu vào cho một lượt quét.
 ///
@@ -229,6 +236,9 @@ class NotificationRuleInput {
   /// bộ luật.
   final KeHoachTaiPhanBo? keHoachTaiPhanBo;
 
+  /// Lời mời vào nhà gửi tới tôi (`NhaRepository.loiMoiToi` lúc quét).
+  final List<LoiMoiNhaThongBao> loiMoiNha;
+
   const NotificationRuleInput({
     required this.now,
     this.budgets = const [],
@@ -246,6 +256,7 @@ class NotificationRuleInput {
     this.chiLon = const [],
     this.nguongChiLon = 0,
     this.keHoachTaiPhanBo,
+    this.loiMoiNha = const [],
   });
 }
 
@@ -267,6 +278,7 @@ List<NotificationCandidate> buildNotificationCandidates(
     ..._walletCandidates(input),
     ..._syncCandidates(input),
     ..._weeklySummaryCandidates(input),
+    ..._loiMoiNhaCandidates(input),
   ];
 
   final chan = input.silenceBefore;
@@ -324,6 +336,25 @@ List<NotificationCandidate> _rebalanceCandidates(NotificationRuleInput input) {
     ),
   ];
 }
+
+// ── Lời mời vào nhà ──────────────────────────────────────────────────────────
+
+/// Mỗi lời mời còn hạn một thông báo, khoá `loiMoiNha:<mã>`.
+List<NotificationCandidate> _loiMoiNhaCandidates(NotificationRuleInput input) => [
+      for (final m in input.loiMoiNha)
+        if (m.hetHan == null || m.hetHan!.isAfter(input.now))
+          NotificationCandidate(
+            kind: NotificationKind.loiMoiNha,
+            dedupeKey: 'loiMoiNha:${m.ma}',
+            title: 'Lời mời vào nhà',
+            body: '${m.tenNguoiMoi} mời bạn vào nhà ${m.tenNha}',
+            severity: NotificationSeverity.info,
+            createdAt: input.now,
+            subjectType: 'nha',
+            subjectId: m.ma,
+            deeplink: '/nha',
+          ),
+    ];
 
 // ── Tổng kết tuần ────────────────────────────────────────────────────────────
 

@@ -152,6 +152,7 @@ void main() {
       interceptor: interceptor,
       donTaiKhoanKhac: (id) async { hook.add('don $id'); return daDon; },
       xoaCacheSlm: () async => hook.add('xoaCache'),
+      xinKeoToanBo: (id) async => hook.add('keo $id'),
       chuyenHangSeedCu: (id) async => hook.add('seedCu $id'),
       seedTaiKhoanMoi: (id) async => hook.add('seedMoi $id'),
       xoaAnhQuet: () async => hook.add('xoaAnh'),
@@ -186,17 +187,27 @@ void main() {
 
   test('moPhienCucBo: dọn → (xoá cache chỉ khi có hàng bị dọn) → hàng seed cũ → gói → bộ quét', () async {
     await dung(daDon: 3).moPhienCucBo(10);
-    expect(hook, ['don 10', 'xoaCache', 'seedCu 10', 'goi 10', 'quet 10']);
+    expect(hook, ['don 10', 'xoaCache', 'keo 10', 'seedCu 10', 'goi 10', 'quet 10']);
     expect(scanner.goi, ['start 10']);
     hook.clear(); scanner.goi.clear();
     await dung(daDon: 0).moPhienCucBo(10);
     expect(hook, ['don 10', 'seedCu 10', 'goi 10', 'quet 10'], reason: 'không hàng nào bị dọn thì GIỮ cache SLM (đăng nhập lại cùng tài khoản)');
   });
 
-  test('moPhienCucBo: thứ tự trên MỘT nhật ký chung — dọn → xoá cache → hàng seed cũ → gói → bộ quét', () async {
+  test('moPhienCucBo: thứ tự trên MỘT nhật ký chung — dọn → xoá cache → xin kéo toàn bộ → hàng seed cũ → gói → bộ quét', () async {
     await dung(daDon: 2).moPhienCucBo(10);
-    expect(hook, ['don 10', 'xoaCache', 'seedCu 10', 'goi 10', 'quet 10'],
+    expect(hook, ['don 10', 'xoaCache', 'keo 10', 'seedCu 10', 'goi 10', 'quet 10'],
         reason: 'bộ quét phải chạy SAU khi dọn dữ liệu tài khoản khác, chuyển hàng seed cũ, và đặt gói (G93)');
+  });
+
+  test('G114: phép dọn xoá được hàng → xin kéo toàn bộ đúng tài khoản; không xoá hàng nào → KHÔNG xin', () async {
+    await dung(daDon: 5).moPhienCucBo(10);
+    expect(hook.where((h) => h.startsWith('keo')), ['keo 10'],
+        reason: 'mốc kéo tăng dần của tài khoản còn nằm trên máy, mà hàng của nó vừa bị dọn: lượt kéo đầu hỏng là mất dữ liệu');
+    hook.clear();
+    await dung(daDon: 0).moPhienCucBo(10);
+    expect(hook.where((h) => h.startsWith('keo')), isEmpty,
+        reason: 'đăng nhập lại cùng tài khoản không dọn gì — kéo lại toàn bộ mỗi lần mở app là phí');
   });
 
   test('⭐ G93: Basic có bill_auto_pay TẮT trong kho → lượt quét đầu của phiên thấy coQuyenNen = false', () async {

@@ -25,12 +25,26 @@ class MaMoiEntity {
   final String? email;
   final DateTime? taoLuc;
 
-  /// #4 trả cả lời mời email đã từ chối / huỷ / dùng / hết hạn (đơn 57.8.5) — chỉ [conHieuLuc] mới lên danh sách mã còn
-  /// hiệu lực của màn Mời (lát 2).
+  /// #4 trả cả lời mời email đã từ chối / huỷ / dùng / hết hạn (đơn 57.8.5). Trạng thái đọc qua [trangThaiLuc]: server chưa
+  /// kịp đổi mà đồng hồ đã qua hạn thì vẫn là hết hạn (G113 nợ 8).
   final TrangThaiLoiMoi trangThai;
 
-  bool get conHieuLuc => trangThai == TrangThaiLoiMoi.dangCho;
+  TrangThaiLoiMoi trangThaiLuc(DateTime now) =>
+      trangThai == TrangThaiLoiMoi.dangCho && !maMoiConHan(hetHan, now) ? TrangThaiLoiMoi.hetHan : trangThai;
+
+  bool conHieuLucLuc(DateTime now) => trangThaiLuc(now) == TrangThaiLoiMoi.dangCho;
 }
+
+/// Dòng hiện ở danh sách màn Mời (`01` mục 2.1): mã thường chỉ khi còn hiệu lực; lời mời email kèm *Đang chờ / Đã từ chối /
+/// Hết hạn*.
+List<MaMoiEntity> dongLoiMoiHien(List<MaMoiEntity> ds, DateTime now) => [
+      for (final m in ds)
+        if (m.email == null
+            ? m.conHieuLucLuc(now)
+            : const {TrangThaiLoiMoi.dangCho, TrangThaiLoiMoi.daTuChoi, TrangThaiLoiMoi.hetHan}
+                .contains(m.trangThaiLuc(now)))
+          m,
+    ];
 
 /// Thiếu / rỗng `code` → `null`: không mã thì không có gì để chia sẻ.
 MaMoiEntity? maMoiTuJson(Map<String, Object?> j) {
@@ -46,8 +60,8 @@ MaMoiEntity? maMoiTuJson(Map<String, Object?> j) {
   );
 }
 
-/// Lời mời gửi tới tôi — #14 `GET /households/invitations` (`01` mục 2.4). Server `177dd0e1` không trả `memberCount` /
-/// `maxMembers` (đơn 57.8.6) → `null`, không bịa.
+/// Lời mời gửi tới tôi — #14 `GET /households/invitations` (`01` mục 2.4). Từ PR #174 server trả `memberCount` /
+/// `maxMembers` (mục 2b); thiếu khoá (bản backend cũ) → `null`, không bịa.
 class LoiMoiToiEntity {
   const LoiMoiToiEntity({
     required this.ma,

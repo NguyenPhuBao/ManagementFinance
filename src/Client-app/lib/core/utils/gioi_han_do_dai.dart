@@ -44,6 +44,12 @@ abstract final class DoRongCot {
   /// `bill."Name"` — `varchar(100)`.
   static const int tenHoaDon = 100;
 
+  /// `household.Name` — `varchar(100)`, migration 40.
+  static const int tenNha = 100;
+
+  /// `account.Email` — `01` mục 2.1.
+  static const int email = 100;
+
   /// `category."NameCategory"` — `varchar(200)`. Nhóm danh mục cũng là một
   /// hàng `category`, nên dùng chung con số này.
   static const int tenDanhMuc = 200;

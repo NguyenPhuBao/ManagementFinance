@@ -16,6 +16,8 @@ import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
+import 'package:flowmoney/features/wallet/data/so_du_vi_service.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 import '../../helpers/sync_engine_thu.dart';
 
 class _Online implements Connectivity {
@@ -276,5 +278,40 @@ void main() {
             'phần 1 không màn nào dùng từ khoá của danh mục nhà; gieo vào bảng của TÔI là rác mà xoaHangCuaNha phải '
             'dọn, và bộ gợi ý cá nhân đọc cả bảng ấy');
     expect(await db.categoryDao.getKeywords(accountId, dmRieng), ['cafe']);
+  });
+
+  test('G113 nợ 1: ví nhà tôi tạo (số dư 2.000.000) + khoản thành viên kéo về → neo TRƯỚC khi ghi, số dư không bị nuốt', () async {
+    await db.walletDao.insert(WalletsCompanion(
+        id: const Value(viId),
+        idaccount: const Value(accountId),
+        name: const Value('Quỹ nhà'),
+        balance: const Value(2000000),
+        idhousehold: const Value(5),
+        syncStatus: const Value('synced'),
+        updatedAt: Value(DateTime.utc(2026, 10, 20))));
+    engine.dispose();
+    engine = taoSyncEngineThu(
+        dioClient: client, db: db, connectivity: _Online(), soDuVi: SoDuViService(db: db, taiKhoanPhien: () => accountId));
+    client.adapter.pullData = {
+      'transactions': [
+        {
+          'idtran': gdId,
+          'idaccount': 99,
+          'idwallet': viId,
+          'amount': -50000,
+          'type': 'Transaction',
+          'idhousehold': 5,
+          'date_transaction': iso,
+          'update_at': iso,
+        },
+      ],
+    };
+    await runSync();
+    final w = await db.walletDao.getById(viId);
+    expect(w!.balance, 1950000, reason: 'không vá neo trước là số dư thành -50.000 (đo máy ảo 2026-10-30)');
+    expect(w.syncStatus, 'synced', reason: 'nợ 9: số dư ví nhà không đẩy');
+    final neo = await db.transactionDao.getById(idKhoanMoSo(viId));
+    expect(neo!.idhousehold, 5);
+    expect(neo.amount, 2000000);
   });
 }

@@ -1,10 +1,19 @@
 import 'dart:io';
 
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
+import 'package:flowmoney/features/premium/domain/quyen_tinh_nang.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Câu lỗi của mảng gia đình — MỘT chỗ (spec 7.1), không in mã / URL / số.
 void main() {
+  test('G113 nợ 7: tạo nhà bị tắt — Basic mời nâng cấp, tạm ngừng không mời mua', () {
+    expect(cauTaoNhaBiTat(TrangThaiQuyen.canPremium), cauLoiNha(LoaiLoiNha.canPremium));
+    expect(cauTaoNhaBiTat(TrangThaiQuyen.tamNgung), 'Tính năng gia đình đang tạm ngừng.');
+    expect(cauTaoNhaBiTat(TrangThaiQuyen.tamNgung), isNot(contains('Premium')));
+    expect(cauTaoNhaBiTat(TrangThaiQuyen.mo), cauLoiNha(LoaiLoiNha.tinhNangKhongMo),
+        reason: 'bảng trên máy còn mở mà server từ chối → bảng cũ, nói trung tính');
+  });
+
   test('mỗi loại một câu, không câu nào trùng, không chữ số, không mã server', () {
     final cau = LoaiLoiNha.values.map(cauLoiNha).toList();
     expect(cau.toSet(), hasLength(cau.length),
@@ -37,8 +46,9 @@ void main() {
       'HOUSEHOLD_INVITE_WRONG_ACCOUNT': LoaiLoiNha.loiMoiKhongPhaiCuaBan,
       'HOUSEHOLD_INVITE_DECLINED': LoaiLoiNha.loiMoiDaTuChoi,
       'HOUSEHOLD_INVITE_RATE_LIMIT': LoaiLoiNha.guiMoiQuaNhieu,
+      'HOUSEHOLD_INVITE_ATTEMPT_LIMIT': LoaiLoiNha.thuMaQuaNhieu,
       'FEATURE_DISABLED': LoaiLoiNha.tinhNangKhongMo,
-      // Mã thật của backend 177dd0e1 (household.service.js / .controller.js) — tới khi đơn 57.7 chốt bảng mã
+      // Mã thật của backend (household.service.js / .controller.js), bảng mã đã chốt ở 57.7
       'HOUSEHOLD_INVITE_NOT_FOUND': LoaiLoiNha.maKhongCo,
       'INVALID_INVITE_CODE': LoaiLoiNha.maKhongCo,
       'NOT_IN_HOUSEHOLD': LoaiLoiNha.khongONha,
@@ -55,6 +65,11 @@ void main() {
     expect(loaiLoiTuMa('CANNOT_REMOVE_SELF'), isNull,
         reason: 'form không cho chọn chính mình — tới đây là lỗi lập trình, rơi khac');
     expect(loaiLoiTuMa(null), isNull);
+  });
+
+  test('thử mã quá nhiều khác gửi thư quá nhiều: hai câu, hai việc phải làm', () {
+    expect(cauLoiNha(LoaiLoiNha.thuMaQuaNhieu), isNot(cauLoiNha(LoaiLoiNha.guiMoiQuaNhieu)),
+        reason: 'người tham gia không gửi thư nào — câu "nhà đã gửi quá nhiều lời mời" là nói sai người');
   });
 
   test('LoiNha mang loại; lỗi khác → khac', () {

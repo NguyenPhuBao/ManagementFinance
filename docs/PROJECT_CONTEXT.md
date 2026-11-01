@@ -615,7 +615,64 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-10-31)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-01)
+
+### 💳 PayOS (G94 + Premium Task 16) — đo đạt bằng webhook tự ký, chưa có giao dịch ngân hàng thật (2026-11-01 phiên 30)
+
+**Đo trên:** máy ảo (tài khoản thử 30, debug + release) + Realme (`dat`, 360 dp), backend `13fddd09` trên `PersonFinance`; 14 liên kết thật trên kênh PayOS, không ai chuyển tiền. Bảng đủ ở `PREMIUM_FEATURE.md` mục 6. 0 tệp `src/` đổi.
+
+- **Đạt:** QR + lưu ảnh (cả release) · MB Bank *Quét từ ảnh* (người dùng đọc) · đủ tiền, gia hạn cộng từ hạn cũ · chuyển thừa *Đồng ý* / *Từ chối* · chuyển thiếu · admin hoàn tiền, màn tự đổi · hết hạn · đồng hồ không tự chuyển màn khi mất mạng · huỷ trên PayOS thật · mất mạng giữa chừng · sai chữ ký · phát lại · trả muộn · hạ cấp theo giờ máy.
+- **Chưa đo:** đoạn ngân hàng → PayOS → webhook · nhánh `PAID` của JIT · hoàn tiền ngân hàng · OnePlus · máy thứ hai · Trợ lý AI có mô hình khi vừa nâng cấp.
+- ⚠️ **Kênh trong `.env` trả tài khoản MB tên NGUYEN PHU BAO** (trùng tên người làm backend, chưa ai xác nhận), không có dấu hiệu là kênh thử: đừng chuyển thử vào QR này nếu không chủ ý.
+- **Đơn 62** (`CAN-LAM/VIEC_BACKEND_CON_LAI.md`, kèm `KIEM-THU/ban_sua_62.patch`, `chay_kiem_62.js`, `webhook_tu_ky.js`; thử trên bản sao: 4 / 14 → 14 / 14, 78 ca unit thanh toán pass): 62.1 **CAO** dự phòng tài khoản cá nhân khi PayOS không trả thông tin nhận tiền · 62.2 JIT bỏ qua số tiền (chạy bằng PayOS giả, chưa có phản hồi thật) · 62.3 webhook tới đơn đã huỷ · 62.4 hai dòng giao dịch · 62.5 múi giờ `paid_at` · 62.6 xác nhận kênh + URL webhook, cần để đóng G94. Sau khi backend áp: chạy lại `chay_kiem_62.js`, `src/Backend` client không sửa. **G118** mới (client, mức thấp).
+
+### 🏠 Gia đình LÁT 2 — đo Realme + máy ảo: đạt, hai lỗi đã sửa (2026-11-01 phiên 29)
+
+**Đo trên:** Realme (`dat`, Premium, bản debug, màn 360 dp) + máy ảo `FlowMoney_16G` (tài khoản thử 30 Basic, 31), backend `13fddd09` trên `PersonFinance`. ⚠️ **Một máy thật + một máy ảo**: spec đòi hai máy thật, OnePlus không có mặt. Socket giữa hai thiết bị là thật. Kiểm mã hoá 52.3 trước khi bật: `localhost`, 197 trường, 0 lỗi. Di trú v31 → v32 trên dữ liệu thật của Realme: giữ đủ hàng, tổng −3.518.000 đ trước và sau buổi đo, cuối buổi 0 hàng ví `pending`.
+
+| Đường | Kết quả |
+|---|---|
+| Tạo nhà · Basic bị chặn tạo (nhãn PREMIUM, sang Nâng cấp) | ✅ |
+| Mã mời · xem trước · tham gia (chữ thường tự thành hoa, kéo lại từ 1970) | ✅ |
+| Đổi vai · máy kia nhận vai mới | ✅ |
+| Chuyển chủ cho Basic → *chỉ xem*, nút Mời khoá · chuyển về → hoạt động lại | ✅ Realme tự đúng khi hết cửa sổ giãn cách 30 s |
+| Mời ra · rời nhà (dữ liệu nhà gỡ sạch, ví riêng giữ) | ✅ cả hai máy |
+| Thẻ lời mời + thông báo khay (cả ColorOS) · chạm thông báo về `/nha` · từ chối · chấp nhận | ✅ tới trong 5 s; G117: khay giữ dòng cũ |
+| Thẻ khi đang là Chủ: khoá kèm *"Chuyển quyền chủ nhà hoặc giải tán trước."* | ✅ chữ nút cụt → G116 |
+| Giải tán hai bước, gõ tên (máy kia tự về sau 3 s) | ✅ 58.3 hết khi chạy thật |
+| Ví chung qua API về máy kia, không lẫn Trang chủ · Sổ · Quản lý ví | ✅ ≤ 8 s |
+| Đổi tài khoản A → B → A (chạy trên máy ảo để không xoá dữ liệu cục bộ của Realme) | ✅ |
+| G114: lượt kéo đầu của A bị chặn → lượt sau vẫn từ 1970, về đủ | ✅ |
+| Ví seed trùng tên: dòng nhắc → *Gộp* hai ví | ✅ |
+| Telex ở ô mã mời (`ddaasseess` ra `DDAASSEE`) | ✅ Realme |
+| Màn Nhà · Quản lý · Mời ở 320 dp (máy ảo), 360 dp (Realme) | ✅ 0 điểm tràn |
+| Ô Email khi gõ Telex | ❌ → G116 đã sửa, đo lại đạt |
+| Thư thật | ✅ Brevo gửi tới `tadd1632004(+flowmoney)@gmail.com`, người dùng xác nhận đã nhận cả ba |
+
+Người dùng xác nhận không chạm Realme trong 12:13–12:50, nên các bước đạt trên là do adb. **Sau đo:** `flutter test` **8737 pass / 10 skip / 0 fail**, `flutter analyze` **20**. **Chưa đo:** máy thật thứ hai · TalkBack · bản release · cỡ chữ lớn trên Realme. Chi tiết: G116, G117 `CLIENT_APP_KNOWN_GAPS.md`.
+
+**Soát backend sau buổi đo (đo thật chat stream, đơn 61):** Dừng nay tới server và `: ping` có thật (G96 hai vế xong). Lộ thêm: Gemini quá 60 s thì luồng treo không có `done` (**61.2 CAO**, app chờ hết trần 120 s), Dừng bị đếm là lỗi LLM (61.3), cửa sổ cầu dao không reset (61.4), email có dấu (61.1), hàng sót của nhà giải tán trước 57.6 (61.5; 2 ví, 2 giao dịch, 26 danh mục trên `PersonFinance`, Supabase chưa đọc được). Bản vá đã thử + kịch bản 6 ca ở `CAN-LAM/KIEM-THU/`. Vế *câu dài cụt* của G96 (`maxOutputTokens` nay 4096) chưa đo lại vì Gemini 503 suốt buổi.
+
+### 🏠 Gia đình LÁT 2 (tám màn) + G113 nợ 1, 5, 7, 8, 9, 11 + G114 — mã xong, máy ảo đạt (2026-11-01 phiên 28; đo máy thật: khối trên)
+
+✅ **40 commit** `a2c58234..cbe89339` (đếm `git rev-list --count a2c58234..HEAD`, 2026-11-01; 101 tệp `src/` đổi, `git diff --stat`), nhánh `TranQuangDat`, đã push 2026-11-01 (phiên 29). Thi công kiểu agent con (Fable soát kế hoạch, Opus soát từng task + review toàn nhánh, Sonnet thi công); hai kế hoạch `plans/2026-10-31-gia-dinh-lat-2-man-hinh.md` + `…-g113-no-1-9.md` (gitignore), sổ ở `.superpowers/sdd/2026-10-31-*`. **Số đo 2026-11-01:** `flutter test` **8732 pass / 10 skip / 0 fail** (+223 so với 8509 đầu đợt), `flutter analyze` **20** (mức nền); mốc giữa đợt 8713 ở `a102173a`.
+
+- **Màn hình** (mảng `household/presentation/`, **23 tệp** đếm 2026-11-01: `bloc/` 3 cubit · `pages/` 5 trang · `widgets/`): Nhà mình (ba trạng thái: chưa có nhà · Chủ · Thành viên / Chỉ xem, thẻ *Lời mời đang chờ*) · Tạo nhà · Mời thành viên (mã, chia sẻ, email, huỷ, chip vai) · Tham gia bằng mã (nhận nguyên tin chia sẻ) · Quản lý thành viên (đổi vai, chuyển chủ, mời ra, giải tán hai bước). Năm hộp xác nhận `hop_xac_nhan_nha.dart`. **Drawer tám mục** (*Nhà mình* thứ năm), route gốc `/nha*` ngoài shell. Mảng nay có 7 tệp `domain/` · 7 `data/` · 1 `application/` · 23 `presentation/` · 29 tệp test (đếm 2026-11-01).
+- **Quyền:** `MaQuyen` 22 → **24** (`giaDinh` đóng khi thiếu khoá, `thamGiaNha` mở khi thiếu khoá, không vào đặc quyền Premium); `PREMIUM_FEATURE.md` 8.11. **Thông báo:** loại thứ **22** `loiMoiNha`, nhóm thứ **tám** `giaDinh` (`NOTIFICATION_FEATURE.md` 5n); bộ quét chốt phiên (`quetKhiRanh`, `stop()` xoá lượt bù). Quét **42** `household/divider_co_mau_test.dart`; số kế tiếp **43**.
+- **G113 / G114 / G115:** nợ 1 (neo ví nhà mang `idhousehold`, chỉ máy tạo ví đặt neo), 5, 7, 8, 9 (số dư ví nhà là cache cục bộ), 11 + lỗ hổng 1 vế (c) (dấu bền *đã xử lý tới nhà X*) + lỗ hổng 3 (phép dọn xoá cả hàng trỏ ví sắp xoá) đóng; **G114** (đổi tài khoản mà lượt kéo đầu hỏng) mở và đóng cùng ngày `a5ef5111`; **G115 mới, mở** (`scan` đang chạy lúc `stop()`). Còn mở: lỗ hổng 1 vế (a), (b); nợ 2, 3, 4, 6, 10, 12, 13, 14, 15; các dòng triage `N` ở thân G113.
+- **Máy ảo 411 dp** (`FlowMoney_16G`, backend `8e3b4e48` trên CSDL tạm, báo cáo `.superpowers/may-ao-lat-2/bao_cao.md` + `bao_cao_lan2.md`): bảng 18 dòng — **16 đạt trọn · 2 đạt một phần** (8: `am start` không có deeplink URL, `force-stop` xoá khay, đo bằng `kill -9`; 17: neo ví nhà chưa có đường tạo) · 0 lỗi chức năng. Lần đo giao diện thứ hai bắt thêm chip *Thành viên* cắt chữ ở cỡ chữ lớn, nút giải tán tràn 320 dp, gợi ý ô Email đen — sửa ở `cbe89339`, **chưa đo lại trên máy** (có ca đo trực tiếp + ảnh thăm dò). Cỡ chữ 2,0 + bàn phím thật ở Tạo / Mời / Tham gia / Quản lý / hộp gõ tên: 0 điểm vàng.
+- **Chưa đo:** **hai máy thật** (Realme + máy thứ hai, `PersonFinance`; cần người dùng cắm máy, mật khẩu postgres cục bộ và mật khẩu tài khoản `dat`; chạy `scripts/verify_encryption_health.js` trước, 52.3), thư lời mời thật, neo ví nhà trên máy thật, đường A → B → A với lượt kéo đầu bị chặn trên Realme (G114), TalkBack, bản release, 320 dp cho Mời / Tạo / Tham gia. Lỗi hẹp đã biết và hoãn: G115, G113 nợ 13.
+- **Chỗ mã khác bản duyệt:** spec `2026-10-23-gia-dinh-nen-mong-design.md` mục 12.2–12.4 (quyền tắt thắng đang-ở-nhà, `nhaDu` bỏ thẻ, trích mã từ tin chia sẻ, đánh thức theo tập mã, Chủ đứng đầu, Chủ nhà thấy *"Chuyển quyền chủ nhà hoặc giải tán trước."*); hợp đồng `docs/Family/04` mục 2b (một hình dạng lồng, `household.changed` không phát từ đường đồng bộ, #11 thân `{household: null}`). Client chỉ đọc **một** hình dạng `/me` từ `9396cd25`.
+
+### 🔀 Gộp `main` @ `13fddd09` (2026-11-01 phiên 28, fast-forward, chưa push) — PR #176; client soát: **còn 52.4 + 60.3 tuỳ chọn**
+
+- PR #176 (NPBao, `60dede0a` + `7e7fd8ef`): 24 tệp, **0 tệp `src/Client-app`** (cây giữ hash `b7fcb406`, không chạy lại `flutter test`); `git check-ignore --no-index -v src/Client-app/test/x_test.dart` không khớp. Diff không có `schema.prisma`, `database/`, `package.json`, `.gitignore`, `SYNC_DOCUMENTATION.md`, nên không cần `npm install`, `prisma generate` hay migration. Phần Admin-web và đo phần cứng container (`runtime-environment.js`) không đụng client.
+- **Chạy thật trên bản sao + CSDL tạm** (cổng 55432, đã tắt và xoá): `chay_kiem_pr174.js` **24 / 24** (trước PR 10 / 24), `chay_kiem.js` **50 / 50**, `tests/unit` **494 / 496** (hai dòng là ca 5 của `data_encryption_group4_audit`, cần khoá `.env`, và bộ test cha; backend báo 496 / 496 trên máy có `.env`). Bản vá `ban_sua_pr174.patch` áp nguyên văn: `git apply -R --check` đạt, nên client xoá nó và tệp kết quả đối chiếu khỏi `KIEM-THU/`.
+- **Đóng:** 60.4, T1, T3, T6, 55.A3 (phần backend), 60.1, 60.2, 48.1 (*"không truy được"*, đúng điều kiện đóng). **52.5** đóng dù thiếu thời điểm di trú: đã có CSDL và vân tay, và phép đo dưới đây cho thấy dữ liệu đọc được, nên thời điểm không đổi kết luận nào.
+- ⚠️ **52.4 (CAO) vẫn mở, dù bảng trả lời có điền:** backend so khoá dev với Supabase, không phải khoá trên Render; không có log Render, không có `/sync/pull` trên `onrender.com`. Client đo lại phần đã làm (chỉ đọc, 2026-11-01): `db:verify-encryption` trên Supabase 28 trường (25 giao dịch + 3 người dùng), 0 lỗi; vân tay khoá `.env` là `98e9e026`.
+- **52.3 đổi chủ:** đơn cũ của client xin backend chạy trên `PersonFinance`, mà CSDL ấy chỉ có ở máy client. Phép kiểm chuyển sang client, chạy lúc chuẩn bị đo hai máy (cùng lúc người dùng đưa mật khẩu postgres cục bộ).
+- **60.3:** ca 2 đã sửa; ca 3, 4, 5 còn lại, tuỳ chọn.
+- `VIEC_BACKEND_CON_LAI.md` và `README.md` viết lại chỉ còn hai việc ấy. Vẫn còn việc phía client chưa xếp lịch: **55.A3** (app coi Premium không hạn là Premium; khối dưới).
 
 ### 🔀 Gộp `main` @ `8e3b4e48` (2026-10-31 phiên 27, commit gộp `9a607156`, chưa push) — PR #174; client soát: **mã gia đình phần 1 đạt, hết chặn lát 2**
 
@@ -690,7 +747,7 @@ src/Backend/
 
 ✅ 26 commit (đếm `git rev-list --count`, 2026-10-30) `95d33ecc..91663b71` — 18 commit thi công 13 task (`..24f8a258`) + tài liệu Task 13 +
 lượt sửa sau **review toàn nhánh (Opus, 2026-10-30 phiên 24: With fixes → 18 / 18 mục đã sửa, soát lại sạch)** (kế hoạch `plans/2026-10-24-gia-dinh-nen-mong-lat-1.md`, gitignore; spec `specs/2026-10-23-gia-dinh-nen-mong-design.md`
-mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ Stitch 6 màn.** `flutter test` **8503 pass / 10 skip** (trước đợt 8382; đo
+mục 11 = **#1–#16** chỗ khác thân). ~~Chưa màn nào — lát 2 chờ Stitch 6 màn~~ → lát 2 mã xong 2026-11-01 (khối 🏠 đầu mục 14). `flutter test` **8503 pass / 10 skip** (trước đợt 8382; đo
 2026-10-30 sau lượt sửa review toàn nhánh), `flutter analyze` 20 (mức nền). Phần client của đơn 50 / `docs/Family/` mà **không** chờ đơn 56 / 57 (người dùng chốt).
 
 - **Dữ liệu:** Drift **v32** — cột `idhousehold` cho năm bảng đồng bộ (ví · giao dịch · ngân sách · mục tiêu · danh mục; hoá đơn không có); mọi
@@ -704,7 +761,7 @@ mục 11 = **#1–#16** chỗ khác thân). **Chưa màn nào — lát 2 chờ S
 - **Mảng `household`** (đếm 2026-10-28, 11 tệp): `domain/` 4 (`vai_nha` · `quyen_nha` · `ma_moi` · `cau_loi_nha`, `LoaiLoiNha` 21 giá trị) ·
   `data/` 6 (`household_api` 16 endpoint kể cả mời email · `nha_cua_toi` + `loi_moi` · `nha_store` · `nha_repository` + `_impl`) · `application/` 1
   (`dieu_phoi_doi_nha`: rời nhà ⇒ `xoaHangCuaNha`, vào nhà ⇒ `keoLaiToanBo`; dọn hỏng vẫn kéo lại toàn bộ của cùng sự kiện rồi ném lại lỗi). Bộ đọc
-  `nhaCuaToiTuJson` nhận **ba hình dạng** (lồng · `/me` phẳng · `POST /` thô — gỡ hai nhánh sau khi 57.1 đóng); thân #8 / #10 / #12 không phải trạng
+  `nhaCuaToiTuJson` nhận **một hình dạng lồng** (lúc lát 1 là ba: lồng · `/me` phẳng · `POST /` thô — hai nhánh sau đã gỡ ở `9396cd25`, 2026-11-01, khi 57.1 đóng); thân #8 / #10 / #12 không phải trạng
   thái nhà ⇒ `lamMoi()`. `FEATURE_DISABLED` → `tinhNangKhongMo` (không phân biệt Basic bị tắt với Premium tạm ngừng — lát 2 chọn câu theo
   `trangThaiQuyen`). `NhaRepository`: bộ đếm thế hệ + cờ chạy bù, đổi tài khoản gỡ lượt cũ, làm mới lời mời sau mỗi thao tác 13–16.
   Nối dây: DI + `main.dart` (`batDauNghe`) + hook dọn đọc KHO nhà thẳng (không thêm hook `datNha` — spec #3).

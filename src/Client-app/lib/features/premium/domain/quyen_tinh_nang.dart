@@ -19,7 +19,9 @@ import '../data/models/tran_goi.dart';
 import 'hang_goi.dart';
 import '../data/models/trang_thai_goi.dart';
 
-/// 22 quyền bật/tắt. [macDinhKhiThieu] là giá trị khi server không trả khoá — người dùng chốt 2026-10-08: **mở**, trừ ba quyền AI giữ chốt 06/10 là khoá với Basic. 11 mã thêm ở B1 (2026-10-27) đều mở khi thiếu.
+/// 24 quyền bật/tắt. [macDinhKhiThieu] là giá trị khi server không trả khoá: **mở** (người dùng chốt 2026-10-08), TRỪ bốn quyền
+/// thiếu khoá thì khoá — ba quyền AI (chốt 06/10, khoá với Basic) và `giaDinh`. 11 mã thêm ở B1 (2026-10-27) và `thamGiaNha` đều
+/// mở khi thiếu.
 enum MaQuyen {
   aiAssistant('ai_assistant', 'Trợ lý AI', false),
   aiQuickInput('ai_quick_input', 'Nhập nhanh bằng câu', false),
@@ -43,7 +45,11 @@ enum MaQuyen {
   goalDepositWithdraw('goal_deposit_withdraw', 'Nạp / rút mục tiêu', true),
   quickCategoryAssignment('quick_category_assignment', 'Gắn danh mục hàng loạt', true),
   categoryKeywordsMatching('category_keywords_matching', 'Từ khoá nhận diện danh mục', true),
-  inAppCalculator('in_app_calculator', 'Phép tính trên bàn phím số', true);
+  inAppCalculator('in_app_calculator', 'Phép tính trên bàn phím số', true),
+  // Gia đình lát 2 (spec 2026-10-23 mục 12.4). `giaDinh` thiếu khoá thì ĐÓNG, gác tạo nhà qua `redirectTheoQuyen`.
+  // `thamGiaNha` thiếu khoá thì mở, KHÔNG qua redirect: bị tắt là admin chủ động, nên câu trung tính, không mời mua.
+  giaDinh('household', 'Gia đình', false),
+  thamGiaNha('household_join', 'Tham gia nhà', true);
 
   const MaQuyen(this.maServer, this.ten, this.macDinhKhiThieu);
 
@@ -108,7 +114,8 @@ List<String> dacQuyenPremium(TrangThaiGoi goi, DateTime now) {
     for (final l in LoaiTran.values)
       if (_dongTranPremium(l, tranBasic.cua(l), tranPremium) case final d?) d,
     for (final m in MaQuyen.values)
-      if (!basicCo(m) && premiumCo(m)) m.ten,
+      // `thamGiaNha` bị tắt là admin chủ động, màn Tham gia nói trung tính, không mời mua (spec 12.4) — nên không kể ở đây (M3).
+      if (m != MaQuyen.thamGiaNha && !basicCo(m) && premiumCo(m)) m.ten,
   ];
 }
 

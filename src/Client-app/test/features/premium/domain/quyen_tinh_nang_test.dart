@@ -117,12 +117,27 @@ void main() {
     expect(duocDung(MaQuyen.aiAssistant, g, now), isTrue);
   });
 
-  test('Basic thiếu khoá → ba quyền AI khoá, còn lại mở', () {
+  test('Basic thiếu khoá → ba quyền AI + Gia đình khoá, còn lại mở', () {
     final g = goi(LoaiGoi.basic);
-    const khoa = {MaQuyen.aiAssistant, MaQuyen.aiQuickInput, MaQuyen.aiEdgeModel};
+    const khoa = {MaQuyen.aiAssistant, MaQuyen.aiQuickInput, MaQuyen.aiEdgeModel, MaQuyen.giaDinh};
     for (final m in MaQuyen.values) {
       expect(duocDung(m, g, now), !khoa.contains(m), reason: m.maServer);
     }
+  });
+
+  test('Gia đình: Basic tắt → canPremium; Premium tạm ngừng → tamNgung; tham gia mở với Basic thiếu khoá', () {
+    expect(trangThaiQuyen(MaQuyen.giaDinh, goi(LoaiGoi.basic), now), TrangThaiQuyen.canPremium);
+    expect(
+        trangThaiQuyen(
+            MaQuyen.giaDinh, goi(LoaiGoi.premium, hetHan: now.add(const Duration(days: 3)), q: const {'household': false}), now),
+        TrangThaiQuyen.tamNgung);
+    expect(duocDung(MaQuyen.thamGiaNha, goi(LoaiGoi.basic), now), isTrue);
+    expect(trangThaiQuyen(MaQuyen.thamGiaNha, goi(LoaiGoi.basic, q: const {'household_join': false}), now),
+        TrangThaiQuyen.canPremium,
+        reason: 'trạng thái thuần; màn Tham gia KHÔNG mời mua dù trạng thái này (spec 12.4)');
+    expect(dacQuyenPremium(goi(LoaiGoi.basic), now), contains(MaQuyen.giaDinh.ten));
+    expect(dacQuyenPremium(goi(LoaiGoi.basic, q: const {'household_join': false}), now), isNot(contains(MaQuyen.thamGiaNha.ten)),
+        reason: 'M3: admin tắt Tham gia nhà là chủ động, màn Tham gia nói trung tính — màn Nâng cấp không được mời mua đúng thứ ấy');
   });
 
   test('đọc lại từ kho giữ nguyên bảng quyền', () {
@@ -131,7 +146,7 @@ void main() {
     expect(duocDung(MaQuyen.exportReports, lai, now), isFalse);
   });
 
-  test('22 mã server, đôi một khác nhau, đúng migration 23 (bỏ financial_health_fhs) + 11 mã B1', () {
+  test('24 mã server, đôi một khác nhau, đúng migration 23 (bỏ financial_health_fhs) + 11 mã B1 + 2 mã gia đình', () {
     expect(MaQuyen.values.map((m) => m.maServer).toSet(), {
       'ai_assistant',
       'ai_quick_input',
@@ -155,8 +170,10 @@ void main() {
       'quick_category_assignment',
       'category_keywords_matching',
       'in_app_calculator',
+      'household',
+      'household_join',
     });
-    expect(MaQuyen.values.length, 22);
+    expect(MaQuyen.values.length, 24);
     expect(maQuyenTuServer('export_reports'), MaQuyen.exportReports);
     expect(maQuyenTuServer('financial_health_fhs'), isNull);
     expect(maQuyenTuServer(null), isNull);
@@ -248,7 +265,7 @@ void main() {
       expect(d, contains(MaQuyen.aiAssistant.ten));
     });
 
-    test('Premium còn hạn, bảng Premium mở hết và trần vô hạn → 3 trần + 3 quyền AI (so với mặc định Basic)', () {
+    test('Premium còn hạn, bảng Premium mở hết và trần vô hạn → 3 trần + 3 quyền AI + Gia đình (so với mặc định Basic)', () {
       final g = TrangThaiGoi(
           loai: LoaiGoi.premium,
           hetHan: now.add(const Duration(days: 10)),
@@ -262,6 +279,7 @@ void main() {
         MaQuyen.aiAssistant.ten,
         MaQuyen.aiQuickInput.ten,
         MaQuyen.aiEdgeModel.ten,
+        MaQuyen.giaDinh.ten,
       ]);
     });
   });

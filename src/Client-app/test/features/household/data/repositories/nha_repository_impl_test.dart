@@ -182,24 +182,40 @@ void main() {
               'đường qua loaiLoiTuMa (Task 8)');
     });
 
-    test(
-        'tạo nhà nhận hàng THÔ của POST / hiện tại (đơn 57.1): nhà hiện ngay, hỏi lại /me lấy thành viên, DoiNha MỘT lần',
-        () async {
-      api.traVe = nhaJsonThoTaoNha();
-      api.cuaToiJson = nhaJson();
+    test('tạo nhà nhận thân lồng: áp một lần, không hỏi lại /me, DoiNha một lần', () async {
+      api.traVe = nhaJson();
       await repo.taoNha('Nhà An');
-      expect(api.goi, ['taoNha:Nhà An', 'cuaToi', 'dsLoiMoiToi'],
-          reason: 'hàng thô không có members — áp ngay cho nhà hiện tức thì, rồi lamMoi (người dùng chốt 2026-10-28)');
-      expect(repo.hienTai.nha!.id, 12);
-      expect(repo.hienTai.thanhVien, hasLength(2), reason: 'thành viên lấy từ /me');
+      expect(api.goi, ['taoNha:Nhà An'], reason: 'thân đã đủ members từ PR #172; hỏi lại là một vòng mạng thừa');
+      expect(repo.hienTai.thanhVien, hasLength(2));
       await _nghi();
-      expect(doi.map((d) => (d.tu, d.den)), [(null, 12)],
-          reason: 'hàng đợi áp trạng thái — lượt /me cùng nhà, không phát lại');
+      expect(doi.map((d) => (d.tu, d.den)), [(null, 12)]);
+    });
+
+    test('tạo nhà trả thân lồng mà members rỗng: vẫn là trạng thái nhà, áp thẳng, KHÔNG hỏi lại /me', () async {
+      api.traVe = nhaJson(members: []);
+      await repo.taoNha('Nhà An');
+      expect(api.goi, ['taoNha:Nhà An']);
+      expect(repo.hienTai.coNha, isTrue);
+      expect(repo.hienTai.thanhVien, isEmpty);
+    });
+
+    test('chuyển chủ (#9): trả trạng thái nhà với vai MỚI; áp thẳng, vai Chủ → Thành viên, không phát DoiNha (cùng nhà)',
+        () async {
+      kho.values[18] = trangThai();
+      await repo.datTaiKhoan(18);
+      expect(repo.hienTai.vai, VaiNha.chu);
+      api.traVe = nhaJson(myRole: 'Member');
+      await repo.chuyenChu(25);
+      expect(api.goi, ['chuyenChu:25'], reason: 'thân #9 là trạng thái nhà — không hỏi lại /me');
+      expect(repo.hienTai.vai, VaiNha.thanhVien);
+      expect(repo.hienTai.nha!.id, 12);
+      await _nghi();
+      expect(doi, isEmpty, reason: 'mất vai Chủ không phải rời nhà: phát DoiNha là xoá dữ liệu nhà của người vẫn ở trong nhà');
     });
 
     test('⚠️ đổi vai / mời ra / giải tán trả thân KHÔNG phải trạng thái nhà → hỏi lại /me, không phát DoiNha oan',
         () async {
-      // Backend 177dd0e1: #8 `{targetIdaccount, newRole}`, #10 `{removed: true}`, #12 `{dissolved: true}` (04 mục 2). Bản kế
+      // Backend (PR #174, `8e3b4e48`; thân này không đổi từ `177dd0e1`): #8 `{targetIdaccount, newRole}`, #10 `{removed: true}`, #12 `{dissolved: true}` (04 mục 2). Bản kế
       // hoạch 2026-10-24 áp thẳng → đọc thành "chưa có nhà" → DoiNha(12 → null) → DieuPhoiDoiNha xoá sạch dữ liệu nhà trên
       // máy CHỦ NHÀ ngay sau khi đổi vai một người (preflight 2026-10-28 #2).
       kho.values[18] = trangThai();
@@ -242,7 +258,7 @@ void main() {
       expect(doi.map((d) => (d.tu, d.den)), [(12, null)]);
     });
 
-    test('tạo mã / danh sách mã (mọi trạng thái, conHieuLuc để lọc) / xem trước đọc model', () async {
+    test('tạo mã / danh sách mã (mọi trạng thái, conHieuLucLuc để lọc) / xem trước đọc model', () async {
       final m = await repo.taoMaMoi(VaiNha.thanhVien);
       expect((m.ma, m.vai), ('ABCD2345', VaiNha.thanhVien));
       api.dsMaMoiJson = const [
@@ -251,8 +267,8 @@ void main() {
         {'role': 'Member'},
       ];
       final ds = await repo.dsMaMoi();
-      expect(ds.map((m) => (m.ma, m.conHieuLuc)), [('ABCD2345', true), ('EMAIL123', false)],
-          reason: 'phần tử không mã bị bỏ; #4 trả cả mã chết — repository giữ, màn lọc conHieuLuc');
+      expect(ds.map((m) => (m.ma, m.conHieuLucLuc(now))), [('ABCD2345', true), ('EMAIL123', false)],
+          reason: 'phần tử không mã bị bỏ; #4 trả cả mã chết — repository giữ, màn lọc conHieuLucLuc');
       final x = await repo.xemTruoc('ABCD2345');
       expect(x.tenNha, 'Nhà An – Bình');
       expect(api.goi, ['taoMaMoi:Member', 'dsMaMoi', 'xemTruoc:ABCD2345']);
@@ -303,6 +319,21 @@ void main() {
           reason: '{declined: true} không phải trạng thái — chỉ làm mới lời mời');
     });
 
+    test('thamGia bằng mã (thư của chính nhà vừa vào) → danh sách lời mời được làm mới, thẻ cũ biến mất (I2)', () async {
+      api.dsLoiMoiToiJson = const [
+        {'code': 'ABCD2345', 'householdName': 'Nhà An – Bình', 'inviterName': 'Trần An', 'role': 'Member'},
+      ];
+      await repo.lamMoiLoiMoi();
+      expect(repo.loiMoiToi, hasLength(1));
+      api.traVe = nhaJson(myRole: 'Member');
+      api.dsLoiMoiToiJson = const [];
+      api.goi.clear();
+      await repo.thamGia('abcd-2345');
+      expect(api.goi, ['thamGia:ABCD2345', 'dsLoiMoiToi'], reason: 'như chapNhanLoiMoi (01 mục 2.8)');
+      expect(repo.loiMoiToi, isEmpty, reason: 'vào nhà bằng mã thì lời mời email của nhà ấy không còn chờ');
+      expect(repo.hienTai.coNha, isTrue);
+    });
+
     test('lỗi lời mời email → LoiNha đúng loại, không làm mới nhà', () async {
       api.loi = loiServer(403, 'HOUSEHOLD_INVITE_WRONG_ACCOUNT');
       await expectLater(repo.chapNhanLoiMoi('ABCD2345'),
@@ -310,6 +341,59 @@ void main() {
       api.loi = null;
       await _nghi();
       expect(api.goi, ['chapNhanLoiMoi:ABCD2345'], reason: 'thư bị chuyển tiếp không nói gì về nhà của tôi');
+    });
+  });
+
+  group('G113 lỗ hổng 1: mở phiên so dấu với kho', () {
+    test('kho nhà 12, dấu vắng → phát DoiNha(null → 12) để chạy lại xử lý', () async {
+      kho.values[18] = trangThai();
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.cuaToiJson = nhaJson();
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(null, 12)]);
+    });
+
+    test('dấu = kho → không phát gì, kể cả /me cùng nhà', () async {
+      kho.values[18] = trangThai();
+      await kho.ghiDauXuLy(18, 12);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.cuaToiJson = nhaJson();
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi, isEmpty, reason: 'phát oan là kéo toàn bộ mỗi lần mở app');
+    });
+
+    test('dấu 7, kho 12 → DoiNha(7 → 12): dọn nhà cũ rồi kéo nhà mới', () async {
+      kho.values[18] = trangThai();
+      await kho.ghiDauXuLy(18, 7);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.cuaToiJson = nhaJson();
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(7, 12)]);
+    });
+
+    test('dấu 12, kho trống → DoiNha(12 → null) dọn; /me thấy nhà thì DoiNha(null → 12) kéo lại', () async {
+      await kho.ghiDauXuLy(18, 12);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.cuaToiJson = nhaJson();
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(12, null), (null, 12)],
+          reason: 'mất kho thì bản sao cục bộ không còn được tin; hai bước, dữ liệu không mất');
     });
   });
 

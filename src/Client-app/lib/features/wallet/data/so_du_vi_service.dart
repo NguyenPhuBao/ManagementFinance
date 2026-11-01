@@ -24,9 +24,18 @@ import '../domain/wallet_type.dart';
 ///
 /// Thiết kế: `docs/superpowers/specs/2026-09-13-so-du-vi-suy-tu-so-giao-dich-design.md`.
 class SoDuViService implements CongSoDuVi {
-  SoDuViService({required AppDatabase db}) : _db = db;
+  SoDuViService({required AppDatabase db, int? Function()? taiKhoanPhien})
+      : _db = db,
+        _taiKhoanPhien = taiKhoanPhien;
 
   final AppDatabase _db;
+
+  /// Tài khoản đang đăng nhập, chỉ dùng để xét "ví nhà này có phải do tôi tạo không" (`docs/Family/02A` mục 1: chỉ máy tạo
+  /// ví đặt neo). Vắng hoặc trả `null` là KHÔNG đặt neo cho ví nhà. ⚠️ Chiều ấy KHÔNG an toàn cho người tạo ví: ghi sổ vào ví
+  /// chưa có neo mà không đặt neo thì `tinhLaiSoDu` đặt balance = Σ sổ và số dư ban đầu mất im lặng. Mọi đường ghi sổ (giao dịch,
+  /// hoá đơn, mục tiêu, ví, gộp ví, đồng bộ) phải nhận bản có nguồn phiên từ DI; test `so_du_vi_noi_day_test.dart` chỉ canh
+  /// phần đăng ký DI + hoá đơn + mục tiêu, các đường còn lại tin vào việc cùng lấy từ `sl()`.
+  final int? Function()? _taiKhoanPhien;
 
   /// Tính lại số dư của [walletId] từ sổ và ghi vào `wallets.balance`.
   ///
@@ -53,7 +62,7 @@ class SoDuViService implements CongSoDuVi {
 
     final tong = await _db.transactionDao.tongTheoVi(walletId);
     if ((tong - vi.balance).abs() < _nguongBangNhau) return;
-    await _db.walletDao.updateBalance(walletId, tong);
+    await _db.walletDao.updateBalance(walletId, tong, cucBo: vi.idhousehold != null);
   }
 
   /// Tính lại cho nhiều ví; id trùng nhau chỉ chạy một lần.
@@ -78,6 +87,8 @@ class SoDuViService implements CongSoDuVi {
       final vi = await _db.walletDao.getById(id);
       if (vi == null) continue;
       if (WalletType.tuKhoa(vi.type) == WalletType.banking) continue;
+      // G113 nợ 1: ví của nhà chỉ máy người tạo đặt neo; máy khác nhận qua kéo về.
+      if (vi.idhousehold != null && vi.idaccount != _taiKhoanPhien?.call()) continue;
 
       // ⚠️ **Số dư 0 nghĩa là CHƯA BIẾT, không phải "ví rỗng".**
       //
@@ -114,6 +125,8 @@ class SoDuViService implements CongSoDuVi {
       id: idNeo,
       walletId: vi.id,
       idaccount: vi.idaccount,
+      // Neo kế thừa phạm vi của ví. Neo NULL trỏ ví nhà từng khoá phép dọn (G113 lỗ hổng 3) và hiện ở sổ cá nhân.
+      idhousehold: Value(vi.idhousehold),
       // Số tiền luôn DƯƠNG, chiều nằm ở `type` — đúng quy ước của bảng
       // `transactions` và của `_applyBalances`.
       amount: neo.abs(),

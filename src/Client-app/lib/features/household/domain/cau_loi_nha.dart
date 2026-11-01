@@ -3,6 +3,8 @@
 /// mã, URL, số (bài học `cauLoiTai`).
 library;
 
+import '../../premium/domain/quyen_tinh_nang.dart';
+
 enum LoaiLoiNha {
   maKhongCo,
   maHetHan,
@@ -24,6 +26,9 @@ enum LoaiLoiNha {
 
   /// Quá 20 thư / nhà / 24 giờ hoặc 5 thư / giờ (`04` mục 2 #13).
   guiMoiQuaNhieu,
+
+  /// Thử mã quá nhiều lần — 30 lượt / 15 phút / IP ở #6, #7 (`HOUSEHOLD_INVITE_ATTEMPT_LIMIT`, bảng mã chốt 57.7).
+  thuMaQuaNhieu,
   emailKhongHopLe,
   canPremium,
 
@@ -50,8 +55,9 @@ LoaiLoiNha loaiLoiNhaCua(Object e) => e is LoiNha ? e.loai : LoaiLoiNha.khac;
 
 /// `code` ở cấp gốc thân 4xx → loại; mã lạ / thiếu → `null` (nơi gọi rơi về [LoaiLoiNha.khac]).
 ///
-/// ĐỌC CẢ HAI bộ tên tới khi backend chốt bảng mã (đơn 57.7): tên tài liệu (đơn 50 C.3, `docs/Family/01` mục 2.5) và tên
-/// mã đang chạy ở `177dd0e1` (`docs/Family/04` mục 2). `HOUSEHOLD_NOT_ACTIVE` gộp ReadOnly + Dissolved → đọc là chỉ xem rồi
+/// Mã theo bảng mã chốt 57.7 (`docs/Family/04_HOP_DONG_PHAN_1_NHU_MA.md` mục 2b, PR #174); `HOUSEHOLD_NOT_FOUND`,
+/// `HOUSEHOLD_NOT_OWNER`, `HOUSEHOLD_OWNER_MUST_TRANSFER`, `HOUSEHOLD_NOT_ACTIVE`, `PREMIUM_REQUIRED` là tên cũ, giữ để đọc
+/// được kho / bản backend cũ, gỡ ở lượt sau nếu không phát sinh. `HOUSEHOLD_NOT_ACTIVE` gộp ReadOnly + Dissolved → đọc là chỉ xem rồi
 /// làm mới `/me` (người dùng chốt 2026-10-28) — trạng thái thật về sau một vòng mạng. `CANNOT_*` (tự đổi vai / tự mời ra /
 /// tự chuyển chủ) không có loại: form không cho chọn chính mình, tới đây là lỗi lập trình → `khac`.
 LoaiLoiNha? loaiLoiTuMa(String? ma) => switch (ma) {
@@ -69,6 +75,7 @@ LoaiLoiNha? loaiLoiTuMa(String? ma) => switch (ma) {
       'HOUSEHOLD_INVITE_WRONG_ACCOUNT' => LoaiLoiNha.loiMoiKhongPhaiCuaBan,
       'HOUSEHOLD_INVITE_DECLINED' => LoaiLoiNha.loiMoiDaTuChoi,
       'HOUSEHOLD_INVITE_RATE_LIMIT' => LoaiLoiNha.guiMoiQuaNhieu,
+      'HOUSEHOLD_INVITE_ATTEMPT_LIMIT' => LoaiLoiNha.thuMaQuaNhieu,
       'INVALID_EMAIL' => LoaiLoiNha.emailKhongHopLe,
       'PREMIUM_REQUIRED' => LoaiLoiNha.canPremium,
       'FEATURE_DISABLED' => LoaiLoiNha.tinhNangKhongMo,
@@ -99,6 +106,14 @@ const kMaDayLoiNha = {
   'HOUSEHOLD_ROLE_FORBIDDEN',
 };
 
+/// Lỗi `FEATURE_DISABLED` lọt tới `/nha/tao` (bảng quyền trên máy cũ — G113 nợ 7): chọn câu theo trạng thái quyền. Tham gia
+/// bằng mã và thẻ lời mời KHÔNG dùng hàm này, luôn câu trung tính `tinhNangKhongMo` (spec 12.4).
+String cauTaoNhaBiTat(TrangThaiQuyen t) => switch (t) {
+      TrangThaiQuyen.canPremium => cauLoiNha(LoaiLoiNha.canPremium),
+      TrangThaiQuyen.tamNgung => 'Tính năng gia đình đang tạm ngừng.',
+      TrangThaiQuyen.mo => cauLoiNha(LoaiLoiNha.tinhNangKhongMo),
+    };
+
 String cauLoiNha(LoaiLoiNha l) => switch (l) {
       LoaiLoiNha.maKhongCo => 'Mã mời không đúng hoặc đã bị huỷ.',
       LoaiLoiNha.maHetHan => 'Mã mời đã hết hạn. Nhờ chủ nhà tạo mã mới.',
@@ -114,6 +129,7 @@ String cauLoiNha(LoaiLoiNha l) => switch (l) {
       LoaiLoiNha.loiMoiKhongPhaiCuaBan => 'Lời mời này gửi cho một tài khoản khác.',
       LoaiLoiNha.loiMoiDaTuChoi => 'Bạn đã từ chối lời mời này.',
       LoaiLoiNha.guiMoiQuaNhieu => 'Nhà này đã gửi quá nhiều lời mời. Thử lại sau.',
+      LoaiLoiNha.thuMaQuaNhieu => 'Bạn đã thử mã quá nhiều lần. Đợi một lúc rồi thử lại.',
       LoaiLoiNha.emailKhongHopLe => 'Địa chỉ email không hợp lệ.',
       LoaiLoiNha.canPremium => 'Tạo nhà cần gói Premium.',
       LoaiLoiNha.tinhNangKhongMo => 'Tính năng gia đình hiện không dùng được với tài khoản này.',
@@ -122,3 +138,7 @@ String cauLoiNha(LoaiLoiNha l) => switch (l) {
       LoaiLoiNha.matMang => 'Cần có mạng để làm việc này.',
       LoaiLoiNha.khac => 'Có lỗi xảy ra. Thử lại sau.',
     };
+
+/// Lỗi thử lại được trên cùng mã (mất mạng, máy chủ trục trặc, chưa phân loại): màn Tham gia giữ thẻ xem trước. Mọi loại
+/// còn lại nói mã / nhà / quyền đã không dùng được — giữ thẻ là mời bấm lại và tốn thêm một lượt của giới hạn 30 / 15 phút.
+bool loiThuLaiDuoc(LoaiLoiNha l) => l == LoaiLoiNha.matMang || l == LoaiLoiNha.mayChu || l == LoaiLoiNha.khac;

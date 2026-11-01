@@ -47,13 +47,21 @@ void main() {
   });
 
   test('mã quyền server chỉ nằm ở MaQuyen', () {
+    // `'household'` ở đây là KHOÁ JSON của thân `/households/me` (`01` mục 4), trùng chữ với mã quyền `MaQuyen.giaDinh`,
+    // không phải chỗ đọc quyền.
+    const trungChuJson = {
+      'lib/features/household/data/models/nha_cua_toi.dart': {'household'}
+    };
     final viPham = <String>[];
     for (final e in quetLib().entries) {
       if (e.key == noiMaQuyen) continue;
       for (final m in MaQuyen.values) {
+        if (trungChuJson[e.key]?.contains(m.maServer) ?? false) continue;
         if (e.value.contains("'${m.maServer}'")) viPham.add('${e.key}: ${m.maServer}');
       }
     }
     expect(viPham, isEmpty, reason: 'Dùng `MaQuyen.…` / `maQuyenTuServer` thay vì chuỗi.');
+    expect(quetLib()['lib/features/household/data/models/nha_cua_toi.dart'], contains("'household'"),
+        reason: 'miễn trừ hết hiệu lực (không còn khoá ấy ở tệp) thì gỡ khỏi `trungChuJson`');
   });
 }

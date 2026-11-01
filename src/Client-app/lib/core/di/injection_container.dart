@@ -74,6 +74,7 @@ import '../../features/wallet/data/vi_bi_giu_dong_bo.dart';
 import '../../features/wallet/data/vi_trung_ten_nguon.dart';
 import '../../features/wallet/presentation/state/an_nhac_vi_trung_ten.dart';
 import '../../features/household/application/dieu_phoi_doi_nha.dart';
+import '../../features/household/data/datasources/chia_se_chu.dart';
 import '../../features/household/data/datasources/household_api.dart';
 import '../../features/household/data/nha_store.dart';
 import '../../features/household/data/repositories/nha_repository.dart';
@@ -263,6 +264,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       donTaiKhoanKhac: (id) async =>
           sl<AppDatabase>().purgeDataForOtherAccounts(id, nhaGiu: await sl<NhaRepository>().nhaDaLuu(id)),
       xoaCacheSlm: () => sl<SlmCache>().xoaHet(),
+      // G114: `SyncEngine` chưa `start` ở pha này (`batDongBo` sau) → `keoLaiToanBo` chỉ xoá mốc đã lưu + ghi nợ một lượt kéo
+      // toàn bộ; không chạy `syncNow`.
+      xinKeoToanBo: (id) => sl<SyncEngine>().keoLaiToanBo(id),
       chuyenHangSeedCu: (id) => sl<PersonalDefaultCategories>().convertLegacyRows(id),
       seedTaiKhoanMoi: (id) => sl<DefaultAccountDataInitializer>().ensureForAccount(id),
       xoaAnhQuet: () => sl<KhoAnhQuet>().xoaHet(),
@@ -296,7 +300,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // được, còn danh mục mặc định thì không.
   // Nơi DUY NHẤT ghi `wallets.balance`: số dư nay là cache của tổng sổ giao
   // dịch, không còn là giá trị tuyệt đối đồng bộ theo LWW (G37).
-  sl.registerLazySingleton<SoDuViService>(() => SoDuViService(db: sl()));
+  // Nguồn tài khoản là GÓI, không phải nhà: `GoiRepository` có phiên từ `moPhienCucBo` và ở cả đường nền (`chay_nen.dart`), còn
+  // `NhaRepository` chỉ có phiên sau `AuthSuccess` (G113 nợ 1).
+  sl.registerLazySingleton<SoDuViService>(() => SoDuViService(db: sl(), taiKhoanPhien: () => sl<GoiRepository>().idaccount));
   // G63: đặt cờ cho ví bị server từ chối vì trùng tên. Chỉ ĐĂNG KÝ ở đây;
   // `batDauNghe` gọi MỘT lần qua `noiBoNgheKetQuaDay` (cuối tệp này), cùng lý do với bộ nghe hoá đơn.
   sl.registerLazySingleton<ViTrungTenResolver>(
@@ -345,6 +351,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       localDataSource: sl(),
       db: sl<AppDatabase>(),
       syncEngine: sl(),
+      // Như hoá đơn: nạp / rút từ ví nhà phải đi qua dịch vụ biết tài khoản đăng nhập (G113 nợ 1).
+      soDuVi: sl<SoDuViService>(),
     ),
   );
   sl.registerFactory<GoalCubit>(
@@ -383,6 +391,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       dataSource: sl<BillLocalDataSource>(),
       db: sl<AppDatabase>(),
       syncEngine: sl<SyncEngine>(),
+      // Cùng một dịch vụ có nguồn phiên: ví nhà chỉ đặt neo được khi biết ai là người tạo (G113 nợ 1).
+      soDuVi: sl<SoDuViService>(),
     ),
   );
   // Gỡ khoản trả mà server từ chối bằng `BILL_ALREADY_PAID` — máy khác đã trả
@@ -560,7 +570,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   sl.registerLazySingleton<DieuPhoiDoiNha>(() => DieuPhoiDoiNha(
         db: sl(),
         keoLaiToanBo: (id) => sl<SyncEngine>().keoLaiToanBo(id),
+        ghiDau: (id, nha) => sl<NhaStore>().ghiDauXuLy(id, nha),
       ));
+
+  sl.registerLazySingleton<ChiaSeChu>(() => const ChiaSeChuThat());
 
   sl.registerLazySingleton<OsNotifier>(createOsNotifier);
 
@@ -825,6 +838,13 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         return keHoachTaiPhanBoTu(
             sl<TaiPhanBoNguon>(), idaccount, dangChay, now);
       },
+      // Lời mời vào nhà (spec 12.3): chỉ khi trạng thái nhà đang là của đúng tài khoản quét. Đường nền không có phiên nhà nên rỗng.
+      loadLoiMoiNha: (id) => sl<NhaRepository>().idaccount != id
+          ? const []
+          : [
+              for (final m in sl<NhaRepository>().loiMoiToi)
+                (ma: m.ma, tenNha: m.tenNha, tenNguoiMoi: m.tenNguoiMoi, hetHan: m.hetHan),
+            ],
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,

@@ -33,6 +33,7 @@ const List<MucDrawer> kMucDrawer = [
   MucDrawer('Mục tiêu tiết kiệm', Icons.track_changes, '/goals'),
   MucDrawer('Ngân sách', Icons.savings, '/budget'),
   MucDrawer('Hóa đơn & Dịch vụ', Icons.receipt_long, '/bills'),
+  MucDrawer('Nhà mình', Icons.home_work_outlined, '/nha'),
   // ⚠️ Mục này **chưa bao giờ** có trong drawer cũ — nó sống ở nhóm "QUẢN LÝ
   // TÀI KHOẢN" của tab Cá nhân, nên drawer không cần. Nhóm D bỏ nhóm ấy đi và
   // bản spec sáu mục thừa hưởng đúng chỗ thiếu, nên trang Quản lý danh mục
@@ -102,7 +103,7 @@ class DrawerTrangChu extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 // Vạch ngăn giữa danh sách đã bỏ cùng nhóm tài khoản
-                // (2026-09-19): sáu mục còn lại là một nhóm duy nhất — "mọi
+                // (2026-09-19): tám mục còn lại là một nhóm duy nhất — "mọi
                 // thứ không có ở thanh dưới".
                 children: [for (final m in kMucDrawer) _muc(m)],
               ),

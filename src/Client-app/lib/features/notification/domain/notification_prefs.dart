@@ -20,6 +20,9 @@ enum NotificationGroup {
   /// Tin từ FlowMoney (2026-10-26) — nhóm RIÊNG: tắt tin admin không kéo theo cảnh báo ví âm / đồng bộ hỏng. Mặc định
   /// BẬT (kho lưu nhóm bị tắt).
   tinFlowMoney,
+
+  /// Gia đình (`docs/Family/01` mục 2.7). Mặc định BẬT (kho lưu nhóm bị tắt).
+  giaDinh,
 }
 
 /// Loại thông báo thuộc nhóm nào.
@@ -73,6 +76,8 @@ NotificationGroup nhomCua(NotificationKind kind) {
       return NotificationGroup.bienDong;
     case NotificationKind.tinHeThong:
       return NotificationGroup.tinFlowMoney;
+    case NotificationKind.loiMoiNha:
+      return NotificationGroup.giaDinh;
   }
 }
 
@@ -140,6 +145,8 @@ bool luonBao(NotificationKind kind) {
     case NotificationKind.bienDongSoDu:
     // Tin admin: không báo tiền rời ví, và admin gửi dày thì người dùng phải tắt được riêng nhóm này (2026-10-26).
     case NotificationKind.tinHeThong:
+    // Lời mời không phải tiền rời ví lúc vắng mặt; người dùng phải tắt được.
+    case NotificationKind.loiMoiNha:
       return false;
   }
 }

@@ -149,4 +149,52 @@ void main() {
       expect(await db.categoryDao.getKeywords(_toi, 'dm-toi'), ['cafe']);
     });
   });
+
+  group('G113 lỗ hổng 3: giao dịch idhousehold NULL trỏ ví nhà không khoá phép dọn', () {
+    test('xoaHangCuaNha xoá luôn neo cũ trỏ ví của nhà, không ném', () async {
+      await vi('neo-vi-nha', _toi, nha: _nha);
+      await gd('neo-gd', 'neo-vi-nha', _toi); // neo cũ: idhousehold NULL
+      await db.xoaHangCuaNha(_nha);
+      expect(await idVi(), isNot(contains('neo-vi-nha')));
+      expect(await idGd(), isNot(contains('neo-gd')),
+          reason: 'còn hàng này là `delete(wallets)` vỡ khoá ngoại, mỗi lần dọn lại ném');
+    });
+
+    test('purge nhaGiu null xoá ví nhà tôi tạo cùng neo cũ, không ném (không còn khoá cửa đăng nhập)', () async {
+      await vi('neo-vi-nha', _toi, nha: _nha);
+      await gd('neo-gd', 'neo-vi-nha', _toi);
+      await db.purgeDataForOtherAccounts(_toi);
+      expect(await idVi(), isNot(contains('neo-vi-nha')));
+      expect(await idGd(), isNot(contains('neo-gd')));
+    });
+
+    test('purge nhaGiu = nhà ấy giữ ví lẫn neo cũ của nó', () async {
+      await vi('neo-vi-nha', _toi, nha: _nha);
+      await gd('neo-gd', 'neo-vi-nha', _toi);
+      await db.purgeDataForOtherAccounts(_toi, nhaGiu: _nha);
+      expect(await idVi(), contains('neo-vi-nha'));
+      expect(await idGd(), contains('neo-gd'), reason: 'hàng riêng của tôi trỏ ví còn sống thì không có lý do xoá');
+    });
+
+    test('purge nhaGiu = nhà A, neo NULL trỏ ví của nhà B đã rời: neo + ví B bị xoá, không ném; neo trỏ ví nhà A giữ', () async {
+      await vi('neo-vi-b', _toi, nha: _nhaKhac);
+      await gd('neo-gd-b', 'neo-vi-b', _toi); // neo cũ trỏ ví nhà đã rời — thuộc diện "giữ" theo idaccount nhưng ví sắp xoá
+      await vi('neo-vi-a', _toi, nha: _nha);
+      await gd('neo-gd-a', 'neo-vi-a', _toi);
+      await db.purgeDataForOtherAccounts(_toi, nhaGiu: _nha);
+      expect(await idVi(), isNot(contains('neo-vi-b')));
+      expect(await idGd(), isNot(contains('neo-gd-b')),
+          reason: 'còn neo này là `delete(wallets)` vỡ khoá ngoại và khoá cửa đăng nhập (lỗ hổng 3)');
+      expect(await idVi(), contains('neo-vi-a'));
+      expect(await idGd(), contains('neo-gd-a'));
+    });
+
+    test('hàng riêng trỏ ví riêng không bị đụng', () async {
+      await vi('neo-vi-rieng', _toi);
+      await gd('neo-gd-rieng', 'neo-vi-rieng', _toi);
+      await db.xoaHangCuaNha(_nha);
+      await db.purgeDataForOtherAccounts(_toi);
+      expect(await idGd(), contains('neo-gd-rieng'));
+    });
+  });
 }

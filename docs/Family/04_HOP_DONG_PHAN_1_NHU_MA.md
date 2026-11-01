@@ -21,7 +21,7 @@
 - **Dựng được ngay trên mã hiện tại:** 16 đường dẫn + method (bảng mục 2), migration 40 (ba bảng + cột `Idhousehold` ở 5 bảng, không có
   ở `bill`), khoá đồng bộ `idhousehold` hai chiều (mục 3), bảy mã đẩy vĩnh viễn (đã xếp ở `gui_lo_dong_bo.dart`), `household.invited` tới
   phòng tài khoản ⇒ đủ để dựng `HouseholdApi`, Drift v32 + DAO `IS NULL`, `purgeDataForOtherAccounts(…, nhaGiu)`, `NhaRepository`.
-- **Lát 1 mã xong 2026-10-28 — client đọc cả hai hình dạng `/me` tới khi 57.1 đóng** (`nha_cua_toi.dart`: lồng · phẳng · `POST /` thô; gỡ hai nhánh sau khi 57.1 đóng).
+- **Lát 1 mã xong 2026-10-28; từ 2026-11-01 (`9396cd25`) client chỉ đọc MỘT hình dạng lồng** (`nha_cua_toi.dart`: nhánh phẳng và `POST /` thô đã gỡ sau PR #174; chốt `laThanTrangThaiNha` siết ở `821f75a7`: thân `{household: {}}` không còn là "không nhà"). Hình dạng hiện hành ở mục 2b.
 - **Model trạng thái nhà dựng theo `01` mục 4** (một hình dạng lồng `household` + `myRole` + `members` + `formerMembers`) — người dùng chốt
   2026-10-28 xin backend theo `docs/Family` (đơn **57.1**), **không** theo hình dạng phẳng của `/me` hiện nay.
 - **Chủ nhà sửa khoản của thành viên:** client **giữ** gửi `idaccount` người ghi của hàng (như hiện nay); backend bỏ chốt *"Ownership
@@ -59,9 +59,9 @@ backend trả lời).
 | 15 | `POST /invitations/:code/accept` | như #7 | — | như #2 | như #7 |
 | 16 | `POST /invitations/:code/decline` | người được mời | — | `{declined: true}` | `HOUSEHOLD_INVITE_INVALID` 404 · `_WRONG_ACCOUNT` 403 |
 
-## 2a. Khác biệt ở `5ff06db4` so với bảng trên (đo 2026-10-31)
+## 2a. Khác biệt so với bảng mục 2 (đo 2026-10-31 ở `5ff06db4`, gộp với 2b — cập nhật 2026-11-01)
 
-Không có route mới, không đổi đường dẫn. Dòng không nêu là không đổi (#3, #4, #5, #8, #10, #11). ⚠️ Bốn dòng đánh dấu 🛑 đang **hỏng ở backend** (đơn 57.2, 57.6) — đừng dựng lát 2 theo chúng trước khi backend sửa và đo lại.
+Không có route mới, không đổi đường dẫn. Dòng không nêu là không đổi (#3, #4, #5, #8, #10, #11). Bốn dòng từng 🛑 hỏng ở `5ff06db4` (#12, #14, #15, #16) **đã chạy từ `8e3b4e48`** (mục 2b); cột dưới giữ phần khác biệt còn đúng. Thân #11 thật là `{household: null}` (mục 2b). Hình dạng lồng, mã lỗi chốt, `household.changed` không phát từ đường đồng bộ: đều ở mục 2b — đó là một hợp đồng với bảng này.
 
 | # | Khác ở HEAD |
 |---|---|
@@ -70,11 +70,11 @@ Không có route mới, không đổi đường dẫn. Dòng không nêu là kh�
 | 6 | Thêm limiter 30 lượt / 15 phút / IP (429). Lời mời email hết *luôn 403*, đúng người xem được. `_EXPIRED` 410. Thêm `_DECLINED` 409. Nhà `ReadOnly` xem được (lỗi, 57.7). Nhà đã giải tán: `_INVALID` 404 |
 | 7 | Thêm `requireFeature('household_join')` (403 `FEATURE_DISABLED`; mặc định `true` nên CSDL chưa áp 44 vẫn qua) và limiter. `data` lồng. `_EXPIRED` 410, thêm `_DECLINED` 409. `_WRONG_ACCOUNT` chạy thật. Nhà `ReadOnly` vào được (lỗi, 57.7) |
 | 9 | `data` lồng, của chủ cũ |
-| 12 | 🛑 **500 `HOUSEHOLD_ERROR` với mọi lần gọi hợp lệ** (57.6, đã chạy xác nhận) |
+| 12 | Chạy từ `8e3b4e48`: `{dissolved: true}` (từng 500 ở `5ff06db4`, 57.6) |
 | 13 | Email > 100: 400 `INVALID_EMAIL`. Người đang ở nhà: 202 trước cả rate limit và `HOUSEHOLD_FULL`. Thư gửi thật |
-| 14 | 🛑 **500 với mọi tài khoản** (57.2, đã chạy xác nhận). Sau khi sửa: khớp cả email, thêm `maxMembers`, `memberCount` (hiện luôn 1 — đừng hiện tới khi 57.8 #6 đóng) |
-| 15 | Thêm `requireFeature('household_join')`. 🛑 **500 với token thật** (57.2). Sau khi sửa: như #7, không có limiter |
-| 16 | Trước bước hỏng: `_INVALID` 404, `_DECLINED` 409, `_USED` 409, `_EXPIRED` 410. 🛑 **Lời mời hợp lệ: 500** (57.2) |
+| 14 | Chạy từ `8e3b4e48` (từng 500, 57.2): khớp cả email, thêm `maxMembers`, `memberCount` (đếm đúng từ 57.8 #6; màn không hiện) |
+| 15 | Thêm `requireFeature('household_join')`. Chạy từ `8e3b4e48` (từng 500, 57.2): như #7, không có limiter |
+| 16 | `_INVALID` 404, `_DECLINED` 409, `_USED` 409, `_EXPIRED` 410; lời mời hợp lệ: `{declined: true}` (từng 500, 57.2) |
 
 Đồng bộ (mục 3) ở `5ff06db4`: 57.4, 58.1, 58.2 **đạt, đã chạy thật với payload app** (Member đẩy khoản của Chủ ⇒ `_ROLE_FORBIDDEN`; Member đẩy danh mục nhà ⇒ `synced`; Chủ đẩy khoản của Member ⇒ `synced`, `Idaccount` giữ người ghi; `Transfer` chỉ Chủ, xét vai hiện tại; trần ví chung chạy với `operation: 'update'`). `household.changed` sau `/sync/push` **đã bỏ**, chỉ còn `sync.completed` tới thành viên khác; nhà của sự kiện còn đọc từ payload (58.4). Không mã đẩy mới; `_permanentCodes` không phải đổi. Hàng mới mang `idaccount` khác phiên hiện **vẫn ghi được** (59.1; app không gửi vậy).
 
@@ -83,9 +83,9 @@ Không có route mới, không đổi đường dẫn. Dòng không nêu là kh�
 Đo bằng `CAN-LAM/KIEM-THU/chay_kiem.js` trên bản sao + CSDL tạm: **50 / 50**. Chưa đo trên máy thật. Không có route mới, không đổi đường dẫn.
 
 - **Hết bốn dòng 🛑 của mục 2a:** #12 `POST /dissolve` chạy, trả `{dissolved: true}`, phát `HOUSEHOLD_DISSOLVED` cho từng thành viên. #14, #15, #16 chạy.
-- **Hình dạng trạng thái nhà một kiểu lồng** ở #1, #2, #7, #9, #11, #15: `{household: {id, name, status, maxMembers, ownerId, createAt, maxSharedWallets, contributionDueDay} | null, myRole, members: [{idaccount, displayName, role, joinedAt}], formerMembers: [{idaccount, displayName, role, leftAt}]}`. Không nhà: `household: null, myRole: null`, hai mảng rỗng. Thân khác: #8 `{targetIdaccount, newRole}` · #10 `{removed}` · #12 `{dissolved}` · #16 `{declined}`.
+- **Hình dạng trạng thái nhà một kiểu lồng** ở #1, #2, #7, #9, #15 (⚠️ #11 `POST /leave` trả thân thật **`{household: null}`** — không có `myRole` / hai mảng; client coi đó là "không nhà", `laThanTrangThaiNha` nhận): `{household: {id, name, status, maxMembers, ownerId, createAt, maxSharedWallets, contributionDueDay} | null, myRole, members: [{idaccount, displayName, role, joinedAt}], formerMembers: [{idaccount, displayName, role, leftAt}]}`. Không nhà: `household: null, myRole: null`, hai mảng rỗng. Thân khác: #8 `{targetIdaccount, newRole}` · #10 `{removed}` · #12 `{dissolved}` · #16 `{declined}`.
 - **#14** khớp cả theo email; thêm `memberCount` (đếm đúng) và `maxMembers`.
-- **Đồng bộ:** `household.changed` chỉ phát khi thao tác đã `synced` và đã qua kiểm quyền (58.4). Hàng mới mang `idhousehold` phải có `idaccount` = chủ token, không thì `NOT_OWNER` (59.1). `bill` luôn đi nhánh hàng riêng. Client không gửi lệch, không phải đổi mã.
+- **Đồng bộ:** `household.changed` **không còn phát sau `/sync/push`** (đã bỏ từ `5ff06db4`, mục 2a; đo lại 2026-11-01 ở client): đường đồng bộ chỉ còn `sync.completed` tới thành viên khác. `household.changed` chỉ phát từ thao tác nhà (vào / rời / mời ra / đổi vai / chuyển chủ / đổi trạng thái / giải tán). Hàng mới mang `idhousehold` phải có `idaccount` = chủ token, không thì `NOT_OWNER` (59.1). `bill` luôn đi nhánh hàng riêng. Client không gửi lệch, không phải đổi mã.
 
 **Bảng mã lỗi chốt (57.7, đối chiếu từng mã với `household.service.js`, `middleware/rate-limiter.js`: khớp):**
 
@@ -133,7 +133,7 @@ Ngoài bảng chỉ còn `HOUSEHOLD_ERROR` 500 (dự phòng trong mọi `catch` 
   lại `/me`. 🔎 **2026-10-30 — sự kiện nay tới đúng phòng:** `emitHouseholdChanged` (`household.service.js:662-…`) phát tới phòng **`account_<id>` của từng thành viên** + người nhận thêm
   (`MEMBER_REMOVED` `:430-432`, `MEMBER_LEFT` `:450`); sau `/sync/push` (`sync.service.js:475-506`) phát `household.changed` **và** `sync.completed` (payload `{source: 'household_sync', idhousehold, timestamp}`) tới mọi thành viên **khác**
   ⇒ dữ liệu nhà về gần thời gian thực (client đọc `dongBoXong` → `syncNow()`). Còn thiếu: `HOUSEHOLD_DISSOLVED` không tới ai (`Left_at` đặt trước khi phát — 58.3); nhà lấy từ `payload.idhousehold` chưa kiểm, kể cả op bị từ chối (58.4);
-  `household.changed` sau đẩy là thừa (58.4). **Client giãn cách `nhaDoi`:** 30 s giữa hai lượt `lamMoi()` (`kGianCachNhaDoi`, `nha_repository_impl.dart`, commit `1227d8a2`), có một lượt chạy bù cuối cửa sổ; `loiMoiNha` và thao tác của chính máy không qua bộ giãn.
+  `household.changed` sau đẩy là thừa (58.4) — ⚠️ **đã bỏ từ `5ff06db4`** (đoạn này là ảnh chụp 2026-10-30, trước PR #172). **Client giãn cách `nhaDoi`:** 30 s giữa hai lượt `lamMoi()` (`kGianCachNhaDoi`, `nha_repository_impl.dart`, commit `1227d8a2`), có một lượt chạy bù cuối cửa sổ; `loiMoiNha` và thao tác của chính máy không qua bộ giãn.
   `household.invited` tới phòng tài khoản — chạy.
 
 ## 4. Đơn backend viết cho client (`docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md`) — chỗ không làm theo
@@ -170,35 +170,6 @@ rời / giải tán, `household.changed` → `/me`, `household.invited` → danh
 - Mã lỗi API của nhà (`household.service.js` + `household.controller.js`): tập mã trước / sau PR giống hệt (57.7 chưa làm); `loaiLoiTuMa` (`cau_loi_nha.dart:57-76`) đọc cả hai bộ tên, không cần đổi. `'PREMIUM_REQUIRED'` ở `cau_loi_nha.dart:73` nay là mã chết (vô hại).
 - Chưa kiểm: toàn bộ đường ghi vào nhà trên máy thật (không có nhà nào; CSDL 0 nhà).
 
-⚠️ **Mẫu dưới là của `ba5cd3c5`, đã lỗi thời từ `5ff06db4`** (hình dạng lồng ở mục 2a); giữ tới khi client gỡ nhánh phẳng / thô của `nha_cua_toi.dart`.
+**Đã kiểm 2026-11-01 phiên 29 (Realme + máy ảo, backend `13fddd09` trên `PersonFinance`):** đủ đường thành viên, thẻ lời mời, thông báo, giải tán, thư qua Brevo. Giải tán nay phát `household.changed` (máy kia tự về sau 3 s); giãn cách `nhaDoi` đo được Realme trễ tới hết cửa sổ 30 s rồi tự đúng. `/invites/email` nhận địa chỉ có dấu (đơn 61.1, client chặn trước từ G116). Bảng: khối 🏠 `PROJECT_CONTEXT.md` mục 14.
 
-**Mẫu JSON dựng từ đúng danh sách khoá ở HEAD `ba5cd3c5`** (cho ca test hợp đồng; giá trị là minh hoạ; `household.service.js:151-163` — `/me`, `:135-149` — thành viên, `:68-71` — tạo nhà, `household.controller.js:27-32, :51`):
-
-```json
-// GET /api/households/me — CÓ nhà
-{ "success": true, "statusCode": 200,
-  "data": {
-    "idhousehold": 12, "name": "Nhà Đạt", "ownerIdaccount": 18, "status": "Active",
-    "maxMembers": 6, "maxSharedWallets": 10, "contributionDueDay": 5,
-    "createdAt": "2026-10-30T03:00:00.000Z", "myRole": "Owner",
-    "members": [
-      { "idaccount": 18, "username": "dat", "fullname": "Trần Quang Đạt", "role": "Owner",  "joinedAt": "2026-10-30T03:00:00.000Z" },
-      { "idaccount": 20, "username": "b",   "fullname": "b",              "role": "Member", "joinedAt": "2026-10-30T04:00:00.000Z" }
-    ],
-    "formerMembers": [
-      { "idaccount": 31, "username": "c", "fullname": "Nguyễn C", "role": "Viewer", "leftAt": "2026-10-30T05:00:00.000Z" }
-    ] } }
-
-// GET /api/households/me — KHÔNG nhà (household.controller.js:51; data không bao giờ null)
-{ "success": true, "statusCode": 200, "data": { "household": null } }
-
-// POST /api/households — 201 (hàng Prisma thô + myRole)
-{ "success": true, "statusCode": 201, "message": "Tạo gia đình thành công",
-  "data": { "idhousehold": 12, "name": "Nhà Đạt", "owner_idaccount": 18, "status": "Active",
-            "max_members": 6, "max_shared_wallets": 10, "contribution_due_day": 5,
-            "create_at": "2026-10-30T03:00:00.000Z", "update_at": "2026-10-30T03:00:00.000Z",
-            "delete_at": null, "myRole": "Owner" } }
-```
-
-`fullname` rơi về `username` khi `User.fullname` rỗng. Khác `01` mục 4: `username` lộ thành khoá riêng (01 chỉ muốn `displayName`) và `formerMembers[]` mang thêm `role` — client bỏ qua cả hai.
-Tuỳ chọn: thêm `contributionDueDay` và `formerMembers[].role` vào ca phẳng ở `test/features/household/data/models/nha_cua_toi_test.dart:79-127` để ca ấy là ảnh chụp đúng từng khoá của HEAD.
+**Đã kiểm 2026-11-01 (máy ảo 411 dp, backend `8e3b4e48` trên CSDL tạm; không phải máy thật):** 18 dòng nghiệm thu đạt (16 trọn, 2 một phần). `POST /` trả hình dạng lồng đủ `members` (Tạo nhà ra *1/6*); `/me` không nhà đủ bốn khoá; `POST /leave` trả `{household: null}`; `household.changed` về qua socket (giãn cách `nhaDoi` đo 4,7 s ở cửa sổ đầu, 36 s ở lượt thứ hai); thư lời mời thật chưa đo (backend dev giả lập, ghi `[MOCK EMAIL]`). Mẫu JSON của `ba5cd3c5` (hình phẳng, `POST /` thô) **đã gỡ**: hình dạng hiện hành ở mục 2b, ca hợp đồng ở `test/features/household/data/models/nha_cua_toi_test.dart`.

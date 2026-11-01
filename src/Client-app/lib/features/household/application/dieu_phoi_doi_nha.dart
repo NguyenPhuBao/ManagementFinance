@@ -17,10 +17,15 @@ import '../data/models/nha_cua_toi.dart';
 /// Tuần tự (hàng đợi): dọn trước, kéo sau; sự kiện sau chờ sự kiện trước; lỗi một lượt không chặn lượt sau.
 /// Lỗi dọn cũng không chặn lượt kéo của CÙNG sự kiện (dọn hỏng vẫn kéo, rồi ném lại lỗi dọn cho hàng đợi ghi log).
 class DieuPhoiDoiNha {
-  DieuPhoiDoiNha({required AppDatabase db, required Future<void> Function(int idaccount) keoLaiToanBo})
-      : _db = db,
-        _keoLaiToanBo = keoLaiToanBo;
+  DieuPhoiDoiNha({
+    required AppDatabase db,
+    required Future<void> Function(int idaccount) keoLaiToanBo,
+    Future<void> Function(int idaccount, int? idNha)? ghiDau,
+  })  : _db = db,
+        _keoLaiToanBo = keoLaiToanBo,
+        _ghiDau = ghiDau;
 
+  final Future<void> Function(int idaccount, int? idNha)? _ghiDau;
   final AppDatabase _db;
   final Future<void> Function(int idaccount) _keoLaiToanBo;
   StreamSubscription<DoiNha>? _sub;
@@ -52,6 +57,10 @@ class DieuPhoiDoiNha {
     }
     if (d.den != null) await _keoLaiToanBo(d.idaccount);
     if (loiDon != null) Error.throwWithStackTrace(loiDon, dauVetDon!);
+    // Sau khi dọn xong và đã xin kéo toàn bộ (G113 lỗ hổng 1; mốc đã lưu đã xoá nên lượt kéo hỏng vẫn đi lại từ 1970).
+    // Tiến trình chết TRƯỚC dòng này thì lần mở phiên sau chạy lại đúng cặp. Dấu KHÔNG nói dữ liệu đã về. Còn hở: lượt nền
+    // ghi mốc đè, hoặc xoá mốc hỏng rồi tiến trình chết (G113 lỗ hổng 1a, 1b).
+    await _ghiDau?.call(d.idaccount, d.den);
   }
 
   /// Chờ hàng việc hiện tại xong (test).

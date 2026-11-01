@@ -14,10 +14,12 @@ import '../models/nha_cua_toi.dart';
 import '../nha_store.dart';
 import 'nha_repository.dart';
 
-/// Cửa sổ giãn cách cho `household.changed`. Từ PR #170 backend phát sự kiện này tới MỌI thành viên sau MỖI `/sync/push` có hàng
-/// mang `idhousehold` (kể cả thao tác bị từ chối) — làm mới mỗi sự kiện là hai GET (`/me`, `/invitations`) theo nhịp đẩy của cả
-/// nhà. Luật: sự kiện đầu cửa sổ chạy ngay, các sự kiện trong cửa sổ gộp thành MỘT lượt bù lúc hết cửa sổ (đơn 58 xin backend
-/// bỏ / lọc phía phát). Chỉ áp cho `nhaDoi`; `loiMoiNha` hiếm và nhắm đúng người nên không giãn.
+/// Cửa sổ giãn cách cho `household.changed`. Từ PR #170 backend từng phát sự kiện này sau MỖI `/sync/push` có hàng mang
+/// `idhousehold` (hai GET `/me` + `/invitations` theo nhịp đẩy của cả nhà); từ `5ff06db4` đường đồng bộ KHÔNG còn phát nó
+/// (`docs/Family/04` mục 2a — chỉ còn `sync.completed`). Nay nó chỉ tới từ thao tác nhà (vào / rời / mời ra / đổi vai / chuyển chủ
+/// / trạng thái), nhưng thao tác dồn dập (mời ra nhiều người, đổi vai liền tay) vẫn nổ cả loạt: giãn cách là lớp phòng cho
+/// chuyện đó. Luật: sự kiện đầu cửa sổ chạy ngay, các sự kiện trong cửa sổ gộp thành MỘT lượt bù lúc hết cửa sổ. Chỉ áp cho
+/// `nhaDoi`; `loiMoiNha` hiếm và nhắm đúng người nên không giãn.
 const Duration kGianCachNhaDoi = Duration(seconds: 30);
 
 class NhaRepositoryImpl implements NhaRepository {
@@ -157,8 +159,8 @@ class NhaRepositoryImpl implements NhaRepository {
       luot.daGui = true;
       final json = await _api.cuaToi();
       if (_idaccount != id) return;
-      // Cùng chốt với `_thaoTac`: thân 200 không có khoá `household` / `idhousehold` (rỗng, hình dạng lạ) đọc thành
-      // "không nhà" → `DoiNha(nhà → null)` → xoá hàng nhà. `{household: null}` có khoá nên vẫn qua.
+      // Cùng chốt với `_thaoTac`: thân 200 không có khoá `household` (rỗng, hình dạng lạ) đọc thành "không nhà" →
+      // `DoiNha(nhà → null)` → xoá hàng nhà. `{household: null, …}` có khoá nên vẫn qua.
       if (!laThanTrangThaiNha(json)) {
         debugPrint('[GiaDinh] lamMoi: thân /me không phải trạng thái nhà, giữ trạng thái cũ');
         return;
@@ -247,8 +249,7 @@ class NhaRepositoryImpl implements NhaRepository {
   /// Thao tác đổi nhà. Thân LÀ trạng thái nhà (#1, #7, #9, #11, #15 — `laThanTrangThaiNha`) → áp như một lượt làm mới; thân
   /// KHÔNG phải (#8 `{targetIdaccount, newRole}`, #10 `{removed}`, #12 `{dissolved}` — `docs/Family/04` mục 2) → hỏi lại `/me`:
   /// đọc thân ấy là "chưa có nhà" → `DoiNha(nhà → null)` → máy chủ nhà tự xoá dữ liệu nhà sau một lần đổi vai (preflight
-  /// 2026-10-28 #2). Hàng thô của #1 không có `members` (đơn 57.1): áp ngay cho nhà hiện tức thì rồi hỏi lại — hàng đợi áp
-  /// trạng thái bảo đảm `DoiNha` phát MỘT lần (người dùng chốt 2026-10-28).
+  /// 2026-10-28 #2). Thân #1 từ PR #172 đã lồng, đủ `members` (`docs/Family/04` mục 2a): áp một lần, không hỏi lại.
   Future<void> _thaoTac(Future<Map<String, Object?>> Function() goi) async {
     final id = _idaccount;
     await choNapKho();
@@ -260,7 +261,6 @@ class NhaRepositoryImpl implements NhaRepository {
       return;
     }
     await _apDung(id, nhaCuaToiTuJson(json, nhanLuc: _now()));
-    if (_hienTai.coNha && _hienTai.thanhVien.isEmpty) await lamMoi();
   }
 
   @override
@@ -287,7 +287,11 @@ class NhaRepositoryImpl implements NhaRepository {
       xemTruocTuJson(await _goi(() => _api.xemTruoc(chuanHoaMaMoi(ma))));
 
   @override
-  Future<void> thamGia(String ma) => _thaoTac(() => _api.thamGia(chuanHoaMaMoi(ma)));
+  Future<void> thamGia(String ma) async {
+    await _thaoTac(() => _api.thamGia(chuanHoaMaMoi(ma)));
+    // Mã trong thư của chính nhà vừa vào: thẻ lời mời email của nhà ấy hết chờ (01 mục 2.1; I2).
+    await lamMoiLoiMoi();
+  }
 
   @override
   Future<void> doiVai(int idaccount, VaiNha vai) => _thaoTac(() => _api.doiVai(idaccount, khoaServerCuaVai(vai)));
@@ -348,8 +352,17 @@ class NhaRepositoryImpl implements NhaRepository {
       if (id == daNoi) return;
       daNoi = id;
       await datTaiKhoan(id);
+      await _doiChieuDauXuLy(id);
       await lamMoi();
     }));
+  }
+
+  /// Dấu "đã xử lý tới nhà X" lệch kho ⇒ lần trước tiến trình chết giữa chừng, phát lại đúng cặp (G113 lỗ hổng 1). Chỉ ở đây, từ
+  /// kho: `DoiNha` của `lamMoi` chỉ phát khi server khác kho, nên không chạy hai lần cho một cặp.
+  Future<void> _doiChieuDauXuLy(int id) async {
+    final dau = await _kho.docDauXuLy(id);
+    final nha = _hienTai.nha?.id;
+    if (_idaccount == id && dau != nha && !_doiNha.isClosed) _doiNha.add(DoiNha(idaccount: id, tu: dau, den: nha));
   }
 
   @override

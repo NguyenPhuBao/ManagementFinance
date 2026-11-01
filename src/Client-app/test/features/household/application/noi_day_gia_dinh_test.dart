@@ -21,6 +21,20 @@ void main() {
             'mỗi lần mở app xoá sạch dữ liệu nhà trong khi kho vẫn mang nhà (không DoiNha, lịch sử không về lại)');
   });
 
+  test('G114: PhienDieuPhoiThat được nối hook xinKeoToanBo → SyncEngine.keoLaiToanBo', () {
+    final i = di.indexOf('xinKeoToanBo:');
+    expect(i, isNonNegative, reason: 'thiếu là hook không bao giờ chạy: sau phép dọn lượt kéo đầu hỏng làm mất dữ liệu');
+    expect(di.substring(i, di.indexOf('\n', i)), contains('sl<SyncEngine>().keoLaiToanBo(id)'));
+    expect(i, greaterThan(di.indexOf('donTaiKhoanKhac:')), reason: 'cùng lời dựng PhienDieuPhoiThat');
+  });
+
+  test('DI: bộ điều phối ghi dấu vào kho nhà', () {
+    final i = di.indexOf('registerLazySingleton<DieuPhoiDoiNha>');
+    expect(i, isNonNegative);
+    expect(di.substring(i, di.indexOf('));', i)), contains('ghiDau: (id, nha) => sl<NhaStore>().ghiDauXuLy(id, nha)'),
+        reason: 'thiếu là dấu không bao giờ dời, mỗi lần mở app đều kéo toàn bộ');
+  });
+
   test('main.dart: bộ điều phối nghe TRƯỚC khi trạng thái nhà nối phiên; nối đúng một lần', () {
     final nghe = RegExp(r'DieuPhoiDoiNha>\(\)\s*\.batDauNghe\(').allMatches(mainDart).toList();
     expect(nghe, hasLength(1));
@@ -43,5 +57,20 @@ void main() {
         reason: 'thiếu là trạng thái nhà không làm mới khi app quay lại (resumed giãn 5 phút)');
     expect(khoi, contains('..noiSuKien(sl<RealtimeChannel>().events)'),
         reason: 'thiếu là household.changed / household.invited không bao giờ tới NhaRepository');
+  });
+
+  test('main.dart: lời mời vừa về đánh thức bộ quét; DI ánh xạ lời mời cho bộ luật', () {
+    expect(mainDart, contains('ma.difference(maLoiMoiDaBao).isNotEmpty'),
+        reason: 'thiếu là thông báo lời mời chỉ hiện ở lượt quét sau đồng bộ kế tiếp');
+    expect(mainDart, contains('quetKhiRanh(id)'), reason: '`scan` bỏ qua khi đang quét, mất lượt im lặng');
+    expect(di, contains('loadLoiMoiNha: (id) => sl<NhaRepository>().idaccount != id'));
+  });
+
+  test('router: /nha/tao qua cửa quyền giaDinh', () {
+    final router = File('lib/core/router/app_router.dart').readAsStringSync().replaceAll('\r\n', '\n');
+    final i = router.indexOf("path: '/nha/tao'");
+    expect(i, isNonNegative);
+    expect(router.substring(i, router.indexOf('builder:', i)), contains('redirectTheoQuyen(MaQuyen.giaDinh)'),
+        reason: 'thiếu là Basic vào được form, bị server trả 403 sau khi đã gõ xong');
   });
 }
