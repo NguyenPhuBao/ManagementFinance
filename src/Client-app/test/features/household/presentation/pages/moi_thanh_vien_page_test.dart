@@ -6,6 +6,7 @@ import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
 import 'package:flowmoney/features/household/presentation/pages/moi_thanh_vien_page.dart';
 import 'package:flowmoney/shared/theme/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -59,16 +60,21 @@ void main() {
     final o = t.widget<TextField>(find.byType(TextField).first);
     expect(o.decoration?.labelText, isNull, reason: 'nhãn nổi của ô là kiểu Material, không phải Stitch');
     expect(o.decoration?.hintText, isNotNull);
+    expect(o.decoration?.hintStyle?.color, AppColors.textSecondary, reason: 'gợi ý xám, không đen hơn chữ đã gõ');
     expect(t.getRect(find.text('Email')).bottom, lessThanOrEqualTo(t.getRect(find.byType(TextField).first).top),
         reason: 'chữ Email nằm phía trên ô');
   });
 
-  testWidgets('chip vai ở màn Mời: chọn = nền đen chữ trắng, chưa chọn = xám nhạt, không dấu tick', (t) async {
+  testWidgets('chip vai ở màn Mời: chọn = nền đen chữ trắng, chưa chọn = xám nhạt, chip chọn có dấu ✓ sát chữ', (t) async {
     await mo(t);
     final chon = t.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Thành viên').first);
     final chua = t.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Chỉ xem').first);
     expect(chon.selected, isTrue);
-    expect(chon.showCheckmark, isTrue, reason: 'Stitch `moi`: chip đang chọn có ✓ (màn Quản lý thì không)');
+    final tick = find.descendant(of: find.widgetWithText(ChoiceChip, 'Thành viên').first, matching: find.byIcon(Icons.check));
+    expect(tick, findsOneWidget, reason: 'Stitch `moi`: chip đang chọn có ✓ (màn Quản lý thì không)');
+    expect(t.getRect(find.text('Thành viên').first).left - t.getRect(tick).right, lessThan(10), reason: '✓ sát chữ, không rời ra mép chip');
+    expect(find.descendant(of: find.widgetWithText(ChoiceChip, 'Chỉ xem').first, matching: find.byIcon(Icons.check)), findsNothing);
+    expect(t.getRect(find.text('Thành viên').first).center.dx - t.getRect(find.widgetWithText(ChoiceChip, 'Thành viên').first).center.dx, closeTo(0, 12), reason: 'chữ + ✓ nằm giữa chip');
     final r1 = t.getRect(find.widgetWithText(ChoiceChip, 'Thành viên').first);
     final r2 = t.getRect(find.widgetWithText(ChoiceChip, 'Chỉ xem').first);
     expect((r1.width - r2.width).abs(), lessThan(1), reason: 'hai chip rộng đều');
@@ -86,6 +92,19 @@ void main() {
     await mo(t);
     expect(t.takeException(), isNull);
     expect(find.widgetWithText(ChoiceChip, 'Chỉ xem'), findsNWidgets(2));
+    // `takeException` mù với chữ bị cắt (chữ mờ dần, không sọc vàng): đo bề rộng chữ so với chip.
+    for (final nhan in ['Thành viên', 'Chỉ xem']) {
+      for (final chip in find.widgetWithText(ChoiceChip, nhan).evaluate().map((e) => find.byWidget(e.widget))) {
+        final khung = t.getRect(chip);
+        final chu = t.getRect(find.descendant(of: chip, matching: find.text(nhan)));
+        expect(chu.left, greaterThanOrEqualTo(khung.left - 0.5), reason: '$nhan: chữ lọt ra trái chip');
+        expect(chu.right, lessThanOrEqualTo(khung.right + 0.5), reason: '$nhan: chữ lọt ra phải chip (bị cắt)');
+        // Nhãn chip mặc định một dòng + mờ dần: hộp chữ hẹp hơn chữ thật là chữ đang bị cắt.
+        final rp = t.renderObject<RenderParagraph>(find.descendant(of: chip, matching: find.text(nhan)));
+        expect(rp.size.width, greaterThanOrEqualTo(rp.getMaxIntrinsicWidth(double.infinity) - 0.5),
+            reason: '$nhan: hộp chữ hẹp hơn chữ thật, chữ bị cắt / mờ dần');
+      }
+    }
   });
 
   testWidgets('email sai dạng: nút khoá; gửi xong dòng đã gửi, chung một câu', (t) async {
@@ -133,6 +152,7 @@ void main() {
     await t.ensureVisible(find.text('Chia sẻ'));
     await t.tap(find.text('Chia sẻ'));
     await t.pump();
+    expect(t.widget<Text>(find.descendant(of: find.byKey(const Key('khoi-ma-vua-tao')), matching: find.text('ABCD2345'))).style?.fontFamily, 'monospace', reason: 'mã vừa tạo chữ đơn cách (Stitch `moi`)');
     expect(chiaSe.da.single, contains('ABCD2345'));
     expect(chiaSe.da.single, contains('Nhà An – Bình'));
     expect(find.descendant(of: find.byKey(const Key('khoi-ma-vua-tao')), matching: find.text('ABCD2345')), findsOneWidget,

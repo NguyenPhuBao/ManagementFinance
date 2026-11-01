@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// `Divider` không truyền màu lấy `dividerColor` của theme: đen đậm giữa thẻ trắng (máy ảo 2026-11-01). Mọi vạch ngăn trong
+/// QUÉT 42 (2026-11-01). `Divider` không truyền màu lấy `dividerColor` của theme: đen đậm giữa thẻ trắng
+/// (máy ảo 2026-11-01). Mọi vạch ngăn trong
 /// `household/presentation` phải nêu màu, như `AppColors.outlineVariant`.
 void main() {
   test('mọi Divider trong household/presentation đều có color:', () {

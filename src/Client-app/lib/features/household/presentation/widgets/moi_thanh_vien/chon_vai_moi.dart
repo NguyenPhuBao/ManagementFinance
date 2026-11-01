@@ -21,7 +21,7 @@ class ChonVaiMoi extends StatelessWidget {
             children: [
               for (final v in const [VaiNha.thanhVien, VaiNha.chiXem]) ...[
                 if (v == VaiNha.chiXem) const SizedBox(width: 8),
-                Expanded(child: ChipVaiNha(vai: v, chon: vai == v, onChon: () => onDoi(v), dauTick: true, canGiua: true)),
+                Expanded(child: ChipVaiNha(vai: v, chon: vai == v, onChon: () => onDoi(v), dauTick: true)),
               ],
             ],
           ),

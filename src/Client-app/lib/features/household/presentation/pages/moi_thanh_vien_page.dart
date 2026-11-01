@@ -157,7 +157,11 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
               keyboardType: TextInputType.emailAddress,
               autocorrect: false,
               inputFormatters: const [GioiHanDoRong(DoRongCot.email)],
-              decoration: const InputDecoration(hintText: 'ten@gmail.com'),
+              // Gợi ý xám (Stitch `moi`): hint mặc định của theme là màu chữ nên đen đậm hơn chữ đã gõ. Chỉ ô này, không đổi theme.
+              decoration: const InputDecoration(
+                hintText: 'ten@gmail.com',
+                hintStyle: TextStyle(color: AppColors.textSecondary),
+              ),
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),

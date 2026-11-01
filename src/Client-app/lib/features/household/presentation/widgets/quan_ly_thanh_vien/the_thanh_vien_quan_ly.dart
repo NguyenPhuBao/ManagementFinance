@@ -80,7 +80,8 @@ class TheThanhVienQuanLy extends StatelessWidget {
               for (final v in const [VaiNha.thanhVien, VaiNha.chiXem]) _chipVai(v),
             ],
           ),
-          const Divider(height: 20, color: AppColors.outlineVariant),
+          // Số đo Stitch `quan_ly_tv`: hàng thao tác sát vạch và đáy thẻ, *Mời ra* sát mép phải vạch.
+          const Divider(height: 4, color: AppColors.outlineVariant),
           Align(
             alignment: Alignment.centerRight,
             child: Wrap(
@@ -88,13 +89,21 @@ class TheThanhVienQuanLy extends StatelessWidget {
               children: [
                 // `shrinkWrap`: vùng chạm tối thiểu 48 dp làm hàng cao hơn nút và dư một khoảng dưới thẻ.
                 TextButton(
-                  style: TextButton.styleFrom(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  style: TextButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    minimumSize: Size.zero,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
                   onPressed: khoa ? null : onChuyenChu,
                   child: const Text('Chuyển chủ nhà'),
                 ),
                 TextButton.icon(
                   style: TextButton.styleFrom(
-                      foregroundColor: AppColors.error, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                    foregroundColor: AppColors.error,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    minimumSize: Size.zero,
+                    padding: const EdgeInsets.fromLTRB(8, 4, 0, 4),
+                  ),
                   onPressed: khoa ? null : onMoiRa,
                   icon: const Icon(Icons.person_remove_outlined),
                   label: const Text('Mời ra'),

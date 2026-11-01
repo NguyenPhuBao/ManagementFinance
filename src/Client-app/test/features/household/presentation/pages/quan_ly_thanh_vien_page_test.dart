@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flowmoney/features/household/data/repositories/nha_repository.dart';
 import 'package:flowmoney/features/household/presentation/pages/quan_ly_thanh_vien_page.dart';
 import 'package:flowmoney/features/household/presentation/widgets/avatar_chu_cai.dart';
+import 'package:flowmoney/features/household/presentation/widgets/khung_the_nha.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -295,5 +296,47 @@ void main() {
             {'idaccount': 30 + i, 'displayName': 'Người $i ${'rất dài ' * 8}', 'role': i.isEven ? 'Member' : 'Viewer', 'joinedAt': '2026-10-23T08:00:00.000Z'},
         ]));
     expect(t.takeException(), isNull);
+  });
+
+  /// Số đo hàng thao tác (Stitch `quan_ly_tv`: vạch → chữ ~15 dp, chữ → đáy thẻ ~26 dp, *Mời ra* sát mép phải vạch).
+  Map<String, double> soDoHang(WidgetTester t) {
+    final the = find.ancestor(of: find.text('Chuyển chủ nhà'), matching: find.byType(KhungTheNha)).first;
+    final vach = t.getRect(find.descendant(of: the, matching: find.byType(Divider)));
+    final chuyen = t.getRect(find.text('Chuyển chủ nhà'));
+    final moiRa = t.getRect(find.text('Mời ra'));
+    return {
+      'vach_den_chu': chuyen.top - vach.center.dy,
+      'chu_den_day': t.getRect(the).bottom - chuyen.bottom,
+      'moi_ra_den_mep': vach.right - moiRa.right,
+    };
+  }
+
+  testWidgets('hàng thao tác: sát vạch, đáy thẻ không dư, Mời ra sát mép phải vạch (số đo)', (t) async {
+    await mo(t);
+    final s = soDoHang(t);
+    // ignore: avoid_print
+    print('SO_DO $s');
+    expect(s['vach_den_chu']!, lessThanOrEqualTo(8), reason: 'vạch → chữ (hộp chữ; Stitch ~15 dp tính từ nét chữ, hộp chữ cao hơn nét ~9 dp)');
+    expect(s['chu_den_day']!, lessThanOrEqualTo(22), reason: 'chữ → đáy thẻ (Stitch ~26 dp từ nét chữ)');
+    expect(s['moi_ra_den_mep']!, lessThanOrEqualTo(2), reason: '*Mời ra* sát mép phải vạch');
+  });
+
+  testWidgets('hai nút hàng thao tác dùng tapTargetSize shrinkWrap (vùng chạm 48 dp làm dư khoảng dưới thẻ)', (t) async {
+    await mo(t);
+    for (final nhan in ['Chuyển chủ nhà', 'Mời ra']) {
+      final nut = t.widget<ButtonStyleButton>(find.ancestor(of: find.text(nhan), matching: find.byWidgetPredicate((w) => w is ButtonStyleButton)).first);
+      expect(nut.style?.tapTargetSize, MaterialTapTargetSize.shrinkWrap, reason: nhan);
+    }
+  });
+
+  testWidgets('Chủ nhà đứng đầu (kể cả khi server trả ở cuối); còn lại giữ thứ tự server', (t) async {
+    await mo(t, nha: nhaJson(members: [
+      {'idaccount': 25, 'displayName': 'Nguyễn Bình', 'role': 'Member', 'joinedAt': '2026-10-23T09:12:00.000Z'},
+      {'idaccount': 31, 'displayName': 'Lê Chi', 'role': 'Viewer', 'joinedAt': '2026-10-23T09:30:00.000Z'},
+      {'idaccount': 18, 'displayName': 'Trần An', 'role': 'Owner', 'joinedAt': '2026-10-23T08:00:00.000Z'},
+    ]));
+    double y(String s) => t.getTopLeft(find.text(s)).dy;
+    expect(y('Trần An'), lessThan(y('Nguyễn Bình')), reason: 'Chủ nhà đứng đầu dù server trả ở cuối');
+    expect(y('Nguyễn Bình'), lessThan(y('Lê Chi')));
   });
 }

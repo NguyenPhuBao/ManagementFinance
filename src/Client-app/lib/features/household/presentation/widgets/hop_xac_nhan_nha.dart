@@ -21,12 +21,12 @@ AlertDialog _hop({
   bool vachDo = false,
 }) =>
     AlertDialog(
-      scrollable: true,
+      // Không `scrollable: true`: nó cuộn cả tiêu đề, mà tiêu đề của hộp giải tán là vạch đỏ phải đứng yên trên đỉnh.
       clipBehavior: Clip.antiAlias,
       title: vachDo ? const _VachDo() : null,
       titlePadding: EdgeInsets.zero,
       contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
-      content: than,
+      content: SingleChildScrollView(child: than),
       actions: actions,
     );
 
@@ -220,7 +220,10 @@ class _HopGoTenNhaState extends State<_HopGoTenNha> {
             controller: _o,
             autofocus: true,
             inputFormatters: const [GioiHanDoRong(DoRongCot.tenNha)],
-            decoration: const InputDecoration(hintText: 'Nhập tên nhà để xác nhận'),
+            decoration: const InputDecoration(
+              hintText: 'Nhập tên nhà để xác nhận',
+              hintStyle: TextStyle(color: AppColors.textSecondary),
+            ),
             onChanged: (_) => setState(() {}),
           ),
         ],
@@ -232,7 +235,7 @@ class _HopGoTenNhaState extends State<_HopGoTenNha> {
           onPressed: khop ? () => Navigator.of(context).pop(true) : null,
           child: const Row(
             mainAxisSize: MainAxisSize.min,
-            children: [Icon(Icons.lock_outline, size: 18), SizedBox(width: 6), Text('Giải tán nhà')],
+            children: [Icon(Icons.lock_outline, size: 18), SizedBox(width: 6), Flexible(child: Text('Giải tán nhà'))],
           ),
         ),
       ],

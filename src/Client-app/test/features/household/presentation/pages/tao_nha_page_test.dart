@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flowmoney/features/household/presentation/pages/tao_nha_page.dart';
+import 'package:flowmoney/shared/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -31,6 +32,22 @@ void main() {
     expect(find.text('Nhà có tối đa 6 thành viên'), findsOneWidget);
     expect(find.text('Cần có mạng để tạo nhà'), findsOneWidget);
     expect(find.textContaining('tức thời'), findsNothing, reason: 'app không hứa đồng bộ tức thì');
+  });
+
+  testWidgets('ba dòng ghi chú: biểu tượng trong ô tròn xám, vạch ngăn có màu', (t) async {
+    dat360(t);
+    batThongBao();
+    final repo = await repoNhaThu(HouseholdApiGia());
+    await t.pumpWidget(bocTrangNha(TaoNhaPage(repo: repo), goi: goiPremium(const {})));
+    await t.pumpAndSettle();
+    for (final icon in [Icons.stars_outlined, Icons.groups_outlined, Icons.wifi]) {
+      final o = find.ancestor(of: find.byIcon(icon), matching: find.byWidgetPredicate((w) => w is Container && w.decoration is BoxDecoration && (w.decoration! as BoxDecoration).shape == BoxShape.circle));
+      expect(o, findsOneWidget, reason: 'biểu tượng $icon trong ô tròn');
+      expect(((t.widget<Container>(o).decoration)! as BoxDecoration).color, AppColors.surfaceContainerLow);
+    }
+    for (final d in t.widgetList<Divider>(find.byType(Divider))) {
+      expect(d.color, AppColors.outlineVariant);
+    }
   });
 
   testWidgets('ô tên chặn ở 100 ký tự', (t) async {

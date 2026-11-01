@@ -8,6 +8,7 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/nha_cua_toi.dart';
 import '../../data/repositories/nha_repository.dart';
+import '../../domain/chu_nha_dung_dau.dart';
 import '../bloc/nha_cubit.dart';
 import '../widgets/gac_vai_chu.dart';
 import '../widgets/hop_xac_nhan_nha.dart';
@@ -104,7 +105,7 @@ class _QuanLyThanhVienPageState extends State<QuanLyThanhVienPage> {
                       Text('${s.nha.thanhVien.length}/${nha.toiDaThanhVien} thành viên',
                           style: chu.bodyMedium?.copyWith(color: AppColors.textSecondary)),
                       const SizedBox(height: 12),
-                      for (final tv in s.nha.thanhVien) ...[
+                      for (final tv in chuNhaDungDau(s.nha.thanhVien, (t) => t.vai)) ...[
                         if (tv.idaccount == toi)
                           KhungTheNha(
                             child: Row(

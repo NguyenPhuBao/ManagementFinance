@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flowmoney/features/household/presentation/widgets/hop_xac_nhan_nha.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flowmoney/shared/theme/app_colors.dart';
 
 import '../../../../helpers/font_that.dart';
 import '../../../../helpers/nha_gia.dart';
@@ -137,17 +138,52 @@ void main() {
     expect(t.getRect(find.byKey(const Key('vach-do-hop'))).top, lessThan(t.getRect(find.text('Gõ tên nhà để xác nhận')).top));
   });
 
-  testWidgets('hộp cuộn được ở 360 dp + bàn phím + cỡ chữ lớn: không tràn', (t) async {
-    dat360(t, banPhim: true);
+  /// Cỡ chữ thật tới được trong hộp: đặt ở `platformDispatcher` (MediaQuery gốc của `MaterialApp`), không bọc `Scaffold`
+  /// bên trong thân `home` (hộp mở bằng route khác nên không thừa hưởng). Khẳng định bằng `textScalerOf` trong hộp.
+  Future<BuildContext> moCoCo(WidgetTester t, double rong, double heSo, Future<bool> Function(BuildContext) hoi,
+      {bool banPhim = true}) async {
+    t.view.physicalSize = Size(rong, 800);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.resetPhysicalSize);
+    addTearDown(t.view.resetDevicePixelRatio);
+    if (banPhim) {
+      t.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(t.view.resetViewInsets);
+    }
+    t.platformDispatcher.textScaleFactorTestValue = heSo;
+    addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
     late BuildContext ctx;
     await t.pumpWidget(bocTrangNha(Builder(builder: (c) {
       ctx = c;
-      return MediaQuery(
-          data: MediaQuery.of(c).copyWith(textScaler: const TextScaler.linear(2)), child: const Scaffold());
+      return const Scaffold();
     })));
-    hoiChuyenChu(ctx, 'Nguyễn Linh');
+    unawaited(hoi(ctx));
     await t.pumpAndSettle();
+    return t.element(find.byType(AlertDialog));
+  }
+
+  testWidgets('hộp chuyển chủ ở 360 dp + bàn phím + cỡ chữ 2,0: cỡ chữ thật tới hộp, cuộn được, không tràn', (t) async {
+    final trongHop = await moCoCo(t, 360, 2, (c) => hoiChuyenChu(c, 'Nguyễn Linh'));
+    expect(MediaQuery.textScalerOf(trongHop).scale(10), 20, reason: 'hệ số 2,0 phải tới được trong hộp');
     expect(t.takeException(), isNull);
-    expect(find.byType(SingleChildScrollView), findsWidgets);
+    expect(find.descendant(of: find.byType(AlertDialog), matching: find.byType(SingleChildScrollView)), findsOneWidget);
+  });
+
+  testWidgets('hộp gõ tên ở 320 dp + cỡ chữ 2,0: nút Giải tán nhà không tràn', (t) async {
+    final trongHop = await moCoCo(t, 320, 2, (c) => hoiGiaiTan(c, 'Nhà Đạt – Linh'));
+    expect(MediaQuery.textScalerOf(trongHop).scale(10), 20);
+    await t.tap(find.widgetWithText(FilledButton, 'Tiếp tục'));
+    await t.pumpAndSettle();
+    expect(find.text('Gõ tên nhà để xác nhận'), findsOneWidget);
+    expect(t.takeException(), isNull, reason: 'Row của nút thiếu Flexible thì tràn vài px');
+  });
+
+  testWidgets('vạch đỏ hộp giải tán đứng NGOÀI vùng cuộn, tiêu đề bước 1 màu đỏ', (t) async {
+    await moCoCo(t, 360, 1, (c) => hoiGiaiTan(c, 'Nhà An'));
+    expect(find.descendant(of: find.byType(SingleChildScrollView), matching: find.byKey(const Key('vach-do-hop'))),
+        findsNothing, reason: 'vạch trong vùng cuộn thì cuộn mất');
+    expect(find.byKey(const Key('vach-do-hop')), findsOneWidget);
+    expect(t.widget<Text>(find.text('Giải tán nhà?')).style?.color, AppColors.error);
+    expect(t.widget<Text>(find.text('Giải tán nhà?')).style?.fontWeight, FontWeight.w700);
   });
 }
