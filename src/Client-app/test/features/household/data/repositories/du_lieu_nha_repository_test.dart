@@ -223,6 +223,21 @@ void main() {
     expect(await db.transactionDao.tongTheoVi(v.id), 500000);
   });
 
+  test('sửa ví chung: số dư ghi chen giữa lúc đọc và lúc lưu không bị đè (giao tác)', () async {
+    final v = await taoVi('A', soDu: 500000);
+    final entityCu = (await repo.viChungDangDung(7)).single;
+
+    // Không await: `getById` của suaViChung đã xếp hàng trước, `updateBalance` xếp sau nó — chen vào giữa đọc và ghi
+    // nếu không có giao tác. Có giao tác thì Drift giữ lệnh ngoài giao tác lại tới khi xong.
+    final sua = repo.suaViChung(entityCu.copyWith(name: 'A2'));
+    final doiSo = db.walletDao.updateBalance(v.id, 900000, cucBo: true);
+    await Future.wait([sua, doiSo]);
+
+    expect((await db.walletDao.getById(v.id))!.balance, 900000,
+        reason: 'số dư mới (ghi chen) phải thắng; số cũ quay lại là lần ghi kế sinh neo pending cho cả nhà');
+    expect((await db.walletDao.getById(v.id))!.name, 'A2', reason: 'đổi tên đi qua ThaViBiGiu = giao tác lồng, vẫn ghi được');
+  });
+
   test('suaViChung từ chối ví riêng, ví không có, và ví thuộc nhà khác — không ghi gì', () async {
     await themVi('rieng', ten: 'Riêng');
     final rieng = WalletEntity.fromDrift((await db.walletDao.getById('rieng'))!);
@@ -231,8 +246,22 @@ void main() {
         reason: 'ví riêng không được sửa qua đường ví chung');
     expect((await db.walletDao.getById('rieng'))!.name, 'Riêng');
 
+    // Ví riêng giữ `idhousehold` null: canh vế `hang.idhousehold == null`.
+    await expectLater(repo.suaViChung(rieng.copyWith(name: 'Đổi')), throwsA(isA<CacheException>()),
+        reason: 'ví riêng, entity cũng không mang nhà');
+    expect((await db.walletDao.getById('rieng'))!.name, 'Riêng');
+
     final v = await taoVi('Chung');
-    await expectLater(repo.suaViChung(v.copyWith(id: 'khong-co')), throwsA(isA<CacheException>()));
+    // Tên khác 'Chung' để lỗi không đến từ chốt trùng tên; so nội dung lỗi.
+    await expectLater(
+        repo.suaViChung(v.copyWith(id: 'khong-co', name: 'Khác hẳn')),
+        throwsA(isA<CacheException>().having((e) => e.message, 'message', contains('Không tìm thấy'))));
+    await themVi('xoa', nha: 7, ten: 'Đã xoá', daXoa: true);
+    final xoa = WalletEntity.fromDrift((await db.walletDao.getById('xoa'))!);
+    await expectLater(repo.suaViChung(xoa.copyWith(name: 'Hồi sinh')),
+        throwsA(isA<CacheException>().having((e) => e.message, 'message', contains('Không tìm thấy'))),
+        reason: 'getById trả cả hàng xoá mềm; sửa ví đã xoá không được ghi');
+    expect((await db.walletDao.getById('xoa'))!.name, 'Đã xoá');
     await expectLater(repo.suaViChung(v.copyWith(name: 'Đổi', idhousehold: 8)),
         throwsA(isA<CacheException>()),
         reason: 'ví của nhà 7 không được đổi sang nhà 8');

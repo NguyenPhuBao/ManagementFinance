@@ -76,21 +76,27 @@ class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
   Future<void> suaViChung(WalletEntity vi) async {
     // Đọc lại hàng: `balance` trên entity có thể cũ (form mở lâu, lượt kéo về đã đổi số dư). Bất biến ⑥: số dư chỉ
     // `SoDuViService` ghi — ghi đè số cũ là lần ghi kế sinh neo `thu` `pending` cho cả nhà.
-    final hang = await _db.walletDao.getById(vi.id);
-    if (hang == null) {
-      throw const CacheException('Không tìm thấy ví chung cần sửa.');
-    }
-    if (hang.idhousehold == null || hang.idhousehold != vi.idhousehold) {
-      throw const CacheException('Ví này không thuộc nhà đang sửa.');
-    }
-    // Ép lại hai cờ: ví nhà mang cờ mặc định đẩy lên vỡ `chk_wallet_household_not_default` (CONSTRAINT_VIOLATION, kẹt hàng đợi).
-    await _local.update(vi.copyWith(
-      balance: hang.balance,
-      isDefault: false,
-      includeInTotal: false,
-      syncStatus: 'pending',
-      updatedAt: DateTime.now(),
-    ));
+    //
+    // Đọc + ghi nằm trong MỘT giao tác: `tinhLaiSoDu` cuối lượt kéo về chen được giữa hai bước và số dư cũ quay lại.
+    // `ThaViBiGiu.tha` (khi đổi tên) thành giao tác lồng — Drift dùng savepoint.
+    await _db.transaction(() async {
+      final hang = await _db.walletDao.getById(vi.id);
+      // `getById` trả cả hàng xoá mềm.
+      if (hang == null || hang.deletedAt != null) {
+        throw const CacheException('Không tìm thấy ví chung cần sửa.');
+      }
+      if (hang.idhousehold == null || hang.idhousehold != vi.idhousehold) {
+        throw const CacheException('Ví này không thuộc nhà đang sửa.');
+      }
+      // Ép lại hai cờ: ví nhà mang cờ mặc định đẩy lên vỡ `chk_wallet_household_not_default` (CONSTRAINT_VIOLATION, kẹt hàng đợi).
+      await _local.update(vi.copyWith(
+        balance: hang.balance,
+        isDefault: false,
+        includeInTotal: false,
+        syncStatus: 'pending',
+        updatedAt: DateTime.now(),
+      ));
+    });
     _syncEngine.scheduleSync();
   }
 }
