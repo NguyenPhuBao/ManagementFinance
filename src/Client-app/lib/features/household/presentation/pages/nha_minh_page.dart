@@ -6,13 +6,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../data/repositories/du_lieu_nha_repository.dart';
 import '../../data/repositories/nha_repository.dart';
 import '../../domain/quyen_nha.dart';
 import '../../domain/vai_nha.dart';
 import '../bloc/nha_cubit.dart';
+import '../widgets/hoi_hang_chua_day.dart';
 import '../widgets/hop_xac_nhan_nha.dart';
 import '../widgets/nha_minh/danh_sach_thanh_vien.dart';
 import '../widgets/nha_minh/khoi_chua_co_nha.dart';
@@ -22,10 +25,13 @@ import '../widgets/the_loi_moi_dang_cho.dart';
 /// Trang Nhà mình `/nha` (spec 12.3; Stitch `56739d19…`, `e462a7e8…`, `e3306197…`). Không có ô chờ cho phần 2a–3: nút không làm
 /// gì trái quét 10. Dữ liệu nhà tải ngầm sau khi vào nhà, không có màn chờ.
 class NhaMinhPage extends StatefulWidget {
-  const NhaMinhPage({super.key, this.repo});
+  const NhaMinhPage({super.key, this.repo, this.duLieu});
 
   /// `null` → `sl<NhaRepository>()`.
   final NhaRepository? repo;
+
+  /// Nguồn đếm hàng chưa đẩy cho hộp Rời nhà; `null` → `sl<DuLieuNhaRepository>()`, chỉ chạm khi cần hỏi.
+  final DuLieuNhaRepository? duLieu;
 
   @override
   State<NhaMinhPage> createState() => _NhaMinhPageState();
@@ -51,7 +57,18 @@ class _NhaMinhPageState extends State<NhaMinhPage> {
   }
 
   Future<void> _roiNha() async {
-    if (await hoiRoiNha(context) && mounted) await _cubit.roiNha();
+    // Quy tắc 2: idaccount chỉ từ phiên, đọc TRƯỚC mọi `await` (dùng `context` qua await là sai). `null` = chưa có phiên.
+    final idaccount = currentAccountIdOrNull(context);
+    final nhaId = _cubit.state.nha.nha?.id;
+    if (!await hoiRoiNha(context) || !mounted || nhaId == null) return;
+    await lamCoHoiHangChuaDay(
+      context,
+      cubit: _cubit,
+      viec: _cubit.roiNha,
+      // `sl` chỉ chạm ở đây (lúc cần hỏi): trang dựng không cần DI.
+      moTa: () => (widget.duLieu ?? sl<DuLieuNhaRepository>()).hangChuaDay(nhaId, idaccount: idaccount),
+      nhanLam: 'Vẫn rời nhà',
+    );
   }
 
   @override

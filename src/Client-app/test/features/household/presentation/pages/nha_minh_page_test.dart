@@ -1,4 +1,8 @@
+import 'package:flowmoney/features/household/data/nha_store.dart';
+import 'package:flowmoney/features/household/data/repositories/du_lieu_nha_repository.dart';
+import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
+import 'package:flowmoney/features/household/domain/hang_chua_day.dart';
 import 'package:flowmoney/shared/theme/app_colors.dart';
 import 'package:flowmoney/features/household/presentation/pages/nha_minh_page.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +22,23 @@ Map<String, Object?> _loiMoiJson() => {
       'role': 'Member',
       'expiresAt': DateTime.now().add(const Duration(days: 3)).toUtc().toIso8601String(),
     };
+
+/// Chỉ `hangChuaDay` được dùng; ghi lại (idNha, idaccount).
+class _DuLieuGia implements DuLieuNhaRepository {
+  _DuLieuGia(this.tra);
+
+  final HangChuaDayNha tra;
+  final goi = <(int, int?)>[];
+
+  @override
+  Future<HangChuaDayNha> hangChuaDay(int idNha, {required int? idaccount}) async {
+    goi.add((idNha, idaccount));
+    return tra;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 void main() {
   setUpAll(napFontThat);
@@ -82,6 +103,62 @@ void main() {
     await t.pumpAndSettle();
     expect(api.goi, contains('roiNha'));
     expect(find.text('Bạn chưa ở nhà nào'), findsOneWidget);
+  });
+
+  Future<(HouseholdApiGia, _DuLieuGia)> moCoHang(WidgetTester t, {int? phien = 18, int con = 3}) async {
+    dat360(t);
+    bat = batThongBao();
+    final api = HouseholdApiGia()..cuaToiJson = nhaJson(myRole: 'Member');
+    final repo = NhaRepositoryImpl(api: api, kho: InMemoryNhaStore(), demHangChuaDay: (_) async => con);
+    addTearDown(repo.dispose);
+    await repo.datTaiKhoan(18);
+    await repo.lamMoi();
+    final duLieu = _DuLieuGia(const HangChuaDayNha(khoan: 1, gop: 1, rut: 0));
+    await t.pumpWidget(bocTrangNha(NhaMinhPage(repo: repo, duLieu: duLieu), goi: goiBasic(const {}), idaccount: phien));
+    await t.pumpAndSettle();
+    return (api, duLieu);
+  }
+
+  testWidgets('Rời nhà còn hàng chưa đẩy: hộp nêu hàng, Ở lại thì ở nhà; idaccount từ phiên', (t) async {
+    final (api, duLieu) = await moCoHang(t);
+    await t.ensureVisible(find.text('Rời nhà'));
+    await t.tap(find.text('Rời nhà'));
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(FilledButton, 'Rời nhà'));
+    await t.pumpAndSettle();
+    expect(find.text('Còn thay đổi chưa đồng bộ'), findsOneWidget);
+    expect(find.text('1 khoản của nhà'), findsOneWidget);
+    expect(find.text('1 khoản góp'), findsOneWidget);
+    expect(duLieu.goi, [(12, 18)]);
+    expect(bat.ds, isEmpty, reason: 'không được toast câu chung trước khi hỏi');
+    await t.tap(find.text('Ở lại'));
+    await t.pumpAndSettle();
+    expect(api.goi, isNot(contains('roiNha')));
+    expect(find.text('Nhà An – Bình'), findsOneWidget, reason: 'vẫn ở nhà');
+  });
+
+  testWidgets('Vẫn rời nhà: gọi API một lần rồi về trạng thái chưa có nhà', (t) async {
+    final (api, _) = await moCoHang(t);
+    await t.ensureVisible(find.text('Rời nhà'));
+    await t.tap(find.text('Rời nhà'));
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(FilledButton, 'Rời nhà'));
+    await t.pumpAndSettle();
+    api.cuaToiJson = const {'household': null, 'myRole': null, 'members': [], 'formerMembers': []};
+    await t.tap(find.widgetWithText(FilledButton, 'Vẫn rời nhà'));
+    await t.pumpAndSettle();
+    expect(api.goi.where((g) => g == 'roiNha'), hasLength(1));
+    expect(find.text('Bạn chưa ở nhà nào'), findsOneWidget);
+  });
+
+  testWidgets('không có phiên: idaccount gửi xuống là null, không phải giá trị mặc định', (t) async {
+    final (_, duLieu) = await moCoHang(t, phien: null);
+    await t.ensureVisible(find.text('Rời nhà'));
+    await t.tap(find.text('Rời nhà'));
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(FilledButton, 'Rời nhà'));
+    await t.pumpAndSettle();
+    expect(duLieu.goi, [(12, null)], reason: 'quy tắc 2: idaccount chỉ từ phiên, không `?? 1`');
   });
 
   testWidgets('nhà chỉ xem: dải vàng; Chủ thấy Mời khoá, Quản lý vẫn mở', (t) async {

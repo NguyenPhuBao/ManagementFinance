@@ -2,6 +2,9 @@
 /// thân ca. Repository đọc thân `/me` đúng hình dạng lồng (`household_api_gia.dart`).
 library;
 
+import 'package:flowmoney/features/auth/data/models/user_model.dart';
+import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
+import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/household/data/nha_store.dart';
 import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
 import 'package:flowmoney/features/premium/presentation/bloc/goi_cubit.dart';
@@ -21,9 +24,29 @@ Future<NhaRepositoryImpl> repoNhaThu(HouseholdApiGia api, {int id = 18}) async {
   return r;
 }
 
-Widget bocTrangNha(Widget trang, {GoiCubit? goi}) {
+class _KhoAuthGia implements AuthRepository {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _AuthBlocNhaGia extends AuthBloc {
+  _AuthBlocNhaGia(int? idaccount) : super(authRepository: _KhoAuthGia()) {
+    if (idaccount != null) {
+      emit(AuthSuccess(user: UserModel(id: '$idaccount', username: 'u$idaccount', name: 'U', email: 'u$idaccount@example.com')));
+    }
+  }
+}
+
+/// Phiên giả cho trang đọc `currentAccountIdOrNull`: `idaccount` null = chưa đăng nhập (đọc ra `null`, không phải 1).
+Widget _cungPhien(Widget app, int? idaccount) {
+  final auth = _AuthBlocNhaGia(idaccount);
+  addTearDown(auth.close);
+  return BlocProvider<AuthBloc>.value(value: auth, child: app);
+}
+
+Widget bocTrangNha(Widget trang, {GoiCubit? goi, int? idaccount}) {
   final app = MaterialApp(theme: AppTheme.lightTheme, home: trang);
-  return goi == null ? app : BlocProvider<GoiCubit>.value(value: goi, child: app);
+  return _cungPhien(goi == null ? app : BlocProvider<GoiCubit>.value(value: goi, child: app), idaccount);
 }
 
 /// Stack thật `/` → `/dich` để ca canh `pop` về đúng trang trước. `go` thay cả stack: ca sẽ không còn thấy chữ GOC khi Back.
@@ -36,9 +59,9 @@ GoRouter routerThu(Widget trang) {
   return r;
 }
 
-Widget bocRouterNha(GoRouter r, {GoiCubit? goi}) {
+Widget bocRouterNha(GoRouter r, {GoiCubit? goi, int? idaccount}) {
   final app = MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: r);
-  return goi == null ? app : BlocProvider<GoiCubit>.value(value: goi, child: app);
+  return _cungPhien(goi == null ? app : BlocProvider<GoiCubit>.value(value: goi, child: app), idaccount);
 }
 
 /// 360 dp, mật độ 1. `banPhim` giả bàn phím hệ thống mở (bẫy G58).
