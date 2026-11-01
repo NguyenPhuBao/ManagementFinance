@@ -15,15 +15,15 @@ void main() {
       ViecNha.moiRa,
       ViecNha.chuyenChu,
       ViecNha.giaiTan,
-      ViecNha.ghiDuLieu
+      ViecNha.ghiKhoan
     ]) {
       expect(lam(v, VaiNha.chu, hd), isTrue, reason: v.name);
     }
     expect(lam(ViecNha.roiNha, VaiNha.chu, hd), isFalse, reason: 'chủ phải chuyển chủ hoặc giải tán trước');
-    expect(lam(ViecNha.ghiDuLieu, VaiNha.thanhVien, hd), isTrue);
+    expect(lam(ViecNha.ghiKhoan, VaiNha.thanhVien, hd), isTrue);
     expect(lam(ViecNha.roiNha, VaiNha.thanhVien, hd), isTrue);
     expect(lam(ViecNha.taoMa, VaiNha.thanhVien, hd), isFalse);
-    expect(lam(ViecNha.ghiDuLieu, VaiNha.chiXem, hd), isFalse);
+    expect(lam(ViecNha.ghiKhoan, VaiNha.chiXem, hd), isFalse);
     expect(lam(ViecNha.roiNha, VaiNha.chiXem, hd), isTrue);
   });
 
@@ -39,13 +39,71 @@ void main() {
 
   test('nhà chỉ xem (chủ hết Premium): không ai ghi, không tạo mã; quản lý / rời vẫn chạy', () {
     const cx = TrangThaiNha.chiXem;
-    expect(lam(ViecNha.ghiDuLieu, VaiNha.chu, cx), isFalse);
-    expect(lam(ViecNha.ghiDuLieu, VaiNha.thanhVien, cx), isFalse);
+    expect(lam(ViecNha.ghiKhoan, VaiNha.chu, cx), isFalse);
+    expect(lam(ViecNha.ghiKhoan, VaiNha.thanhVien, cx), isFalse);
     expect(lam(ViecNha.taoMa, VaiNha.chu, cx), isFalse);
     expect(lam(ViecNha.doiVai, VaiNha.chu, cx), isTrue);
     expect(lam(ViecNha.moiRa, VaiNha.chu, cx), isTrue);
     expect(lam(ViecNha.chuyenChu, VaiNha.chu, cx), isTrue, reason: 'chuyển cho thành viên có Premium là lối thoát');
     expect(lam(ViecNha.roiNha, VaiNha.thanhVien, cx), isTrue);
+  });
+
+  test('ví chung và chuyển: chỉ Chủ nhà', () {
+    for (final v in [ViecNha.quanLyViChung, ViecNha.chuyenGiuaViChung]) {
+      expect(lam(v, VaiNha.chu, TrangThaiNha.hoatDong), isTrue);
+      expect(lam(v, VaiNha.thanhVien, TrangThaiNha.hoatDong), isFalse,
+          reason: 'Thành viên làm là HOUSEHOLD_ROLE_FORBIDDEN vĩnh viễn');
+      expect(lam(v, VaiNha.chiXem, TrangThaiNha.hoatDong), isFalse);
+    }
+  });
+
+  test('ghi khoản và danh mục: Chủ nhà, Thành viên', () {
+    for (final v in [ViecNha.ghiKhoan, ViecNha.suaDanhMuc]) {
+      expect(lam(v, VaiNha.chu, TrangThaiNha.hoatDong), isTrue);
+      expect(lam(v, VaiNha.thanhVien, TrangThaiNha.hoatDong), isTrue);
+      expect(lam(v, VaiNha.chiXem, TrangThaiNha.hoatDong), isFalse);
+    }
+  });
+
+  test('nhà chỉ xem: không việc ghi nào', () {
+    for (final v in [ViecNha.quanLyViChung, ViecNha.ghiKhoan, ViecNha.chuyenGiuaViChung, ViecNha.suaDanhMuc]) {
+      for (final vai in VaiNha.values) {
+        expect(lam(v, vai, TrangThaiNha.chiXem), isFalse, reason: '${vai.name} × ${v.name} khi nhà chỉ xem');
+      }
+    }
+  });
+
+  group('sửa / xoá khoản', () {
+    bool sua(VaiNha? vai, {required bool cuaToi, required bool coMaCap, TrangThaiNha? t = TrangThaiNha.hoatDong}) =>
+        duocSuaKhoanNha(vai: vai, trangThai: t, cuaToi: cuaToi, coMaCap: coMaCap);
+    bool xoa(VaiNha? vai, {required bool cuaToi, TrangThaiNha? t = TrangThaiNha.hoatDong}) =>
+        duocXoaKhoanNha(vai: vai, trangThai: t, cuaToi: cuaToi);
+
+    test('khoản thường', () {
+      expect(sua(VaiNha.chu, cuaToi: false, coMaCap: false), isTrue);
+      expect(sua(VaiNha.thanhVien, cuaToi: true, coMaCap: false), isTrue);
+      expect(sua(VaiNha.thanhVien, cuaToi: false, coMaCap: false), isFalse);
+      expect(xoa(VaiNha.thanhVien, cuaToi: true), isTrue);
+      expect(xoa(VaiNha.thanhVien, cuaToi: false), isFalse);
+    });
+    test('khoản có mã cặp: Chủ nhà không sửa được của người khác, xoá thì được', () {
+      expect(sua(VaiNha.chu, cuaToi: false, coMaCap: true), isFalse,
+          reason: 'nửa riêng chỉ ở máy người ghi; sửa hộ là lệch hai nửa');
+      expect(sua(VaiNha.chu, cuaToi: true, coMaCap: true), isTrue);
+      expect(xoa(VaiNha.chu, cuaToi: false), isTrue);
+    });
+    test('Chỉ xem và nhà chỉ xem không sửa không xoá', () {
+      expect(xoa(VaiNha.chiXem, cuaToi: true), isFalse);
+      expect(sua(VaiNha.chiXem, cuaToi: true, coMaCap: false), isFalse);
+      expect(sua(VaiNha.thanhVien, cuaToi: true, coMaCap: false, t: TrangThaiNha.chiXem), isFalse);
+      expect(xoa(VaiNha.chu, cuaToi: true, t: TrangThaiNha.chiXem), isFalse);
+    });
+    test('chưa có nhà hoặc nhà giải tán: không sửa không xoá', () {
+      expect(sua(null, cuaToi: true, coMaCap: false, t: null), isFalse);
+      expect(xoa(null, cuaToi: true, t: null), isFalse);
+      expect(sua(VaiNha.chu, cuaToi: true, coMaCap: false, t: TrangThaiNha.daGiaiTan), isFalse);
+      expect(xoa(VaiNha.chu, cuaToi: true, t: TrangThaiNha.daGiaiTan), isFalse);
+    });
   });
 
   test('nhà giải tán / chưa có nhà: không làm được gì', () {
