@@ -985,4 +985,48 @@ void main() {
       expect(nguon.aiDoanDaDanhDau, isEmpty);
     });
   });
+
+  group('FINAL I-1 — nửa riêng của góp / rút (hàng có fundPairId)', () {
+    // Nửa riêng đã rời nhà: không idhousehold, còn fundPairId. Server từ chối Transfer kèm idfund_pair, và đổi chi sang thu
+    // đảo góp thành rút — hàng kẹt pending, số dư máy đã đổi, im lặng.
+    TransactionEntity nuaRieng({String type = 'chi'}) =>
+        giaoDichCu(type: type, categoryId: null).copyWith(fundPairId: 'cap-1');
+
+    test('đổi chiều chi → thu bị chặn bằng LoiLuu', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb]), dangSua: nuaRieng());
+      await c.moTrang();
+      c.chonHuong('thu');
+      final r = await c.chuanBiLuu();
+      expect(r, isA<LoiLuu>(), reason: 'đổi chiều nửa của cặp góp / rút = đảo góp thành rút, hàng kẹt pending');
+      expect((r as LoiLuu).cau, isNot('Vui lòng chọn danh mục'),
+          reason: 'phải bị chặn vì ĐỔI CHIỀU, không phải vì thiếu danh mục (ca đỏ nhầm lý do)');
+    });
+
+    test('đổi sang Chuyển khoản bị chặn bằng LoiLuu', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb]), dangSua: nuaRieng());
+      await c.moTrang();
+      c.chonHuong('transfer');
+      c.chonViDich(tcb);
+      final r = await c.chuanBiLuu();
+      expect(r, isA<LoiLuu>(), reason: 'server trả HOUSEHOLD_SCOPE_MISMATCH cho Transfer kèm idfund_pair');
+    });
+
+    test('lưu được khi chưa có danh mục: categoryId null, không đòi "Vui lòng chọn danh mục"', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb]), dangSua: nuaRieng());
+      await c.moTrang();
+      final r = await c.chuanBiLuu();
+      expect(r, isA<SanSangLuu>(), reason: 'nửa riêng của góp / rút không có danh mục: không được đòi chọn');
+      expect((r as SanSangLuu).giaoDich.single.categoryId, isNull);
+      expect(r.giaoDich.single.fundPairId, 'cap-1');
+    });
+
+    test('hàng thường (không fundPairId): chiều đổi được, danh mục vẫn bắt buộc', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb]),
+          dangSua: giaoDichCu(categoryId: null), danhMucDangSua: null);
+      await c.moTrang();
+      final r = await c.chuanBiLuu();
+      expect(r, isA<LoiLuu>());
+      expect((r as LoiLuu).cau, 'Vui lòng chọn danh mục');
+    });
+  });
 }

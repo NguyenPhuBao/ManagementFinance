@@ -698,7 +698,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: Column(
                     children: [
-                      ThanhChonChieu(huong: _s.huong, onChon: _chonHuong, coChuyen: widget.nha?.choChuyen ?? true),
+                      ThanhChonChieu(
+                        huong: _s.huong,
+                        onChon: _chonHuong,
+                        coChuyen: widget.nha?.choChuyen ?? true,
+                        khoaChieu: widget.initial?.transaction.fundPairId != null,
+                      ),
                       if (widget.nha case final nha?) ...[
                         const SizedBox(height: 8),
                         NhanNha(tenNha: nha.tenNha),
