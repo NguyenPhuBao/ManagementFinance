@@ -168,6 +168,12 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets('tiêu đề AppBar căn giữa (Stitch 7.1)', (t) async {
+    await mo(t);
+    final tieuDe = t.getRect(find.descendant(of: find.byType(AppBar), matching: find.text('Hoạt động')));
+    expect(tieuDe.center.dx, closeTo(180, 1), reason: 'centerTitle: true; mặc định Android căn trái');
+  });
+
   testWidgets('số tiền cột phải: dấu và màu theo loại; người đã rời có hậu tố, xám', (t) async {
     await mo(t);
     Text tien(String chu) => t.widget<Text>(find.text(chu));
@@ -343,11 +349,21 @@ void main() {
       await t.pumpAndSettle();
       expect(gopQuy.goi, ['p1']);
       expect(find.text('Xoá khoản góp?'), findsOneWidget);
-      expect(find.text('Khoản góp của Nguyễn Bình bị xoá, quỹ Tiền chợ giảm 2.000.000 đ. Tiền được trả về ví riêng của Nguyễn Bình.'),
+      expect(find.text('Khoản góp của Nguyễn Bình bị xoá, quỹ Tiền chợ giảm 2.000.000 đ. Nếu góp từ ví riêng, tiền được trả về đó.'),
           findsOneWidget);
       await t.tap(find.byKey(const Key('hop-xoa-xac-nhan')));
       await t.pumpAndSettle();
       expect(thaoTac.daXoa.map((e) => e.id), ['gop']);
+    });
+
+    testWidgets('khoản góp của người ĐÃ RỜI (id 31): câu không hứa trả tiền về ví riêng', (t) async {
+      await mo(t, ds: [_k('gop', ai: 31, type: 'thu', tien: 2000000, cap: 'p1', cat: null)]);
+      await t.tap(find.byKey(const ValueKey('khoan-gop')));
+      await t.pumpAndSettle();
+      await t.tap(find.byKey(const Key('sheet-xoa')));
+      await t.pumpAndSettle();
+      expect(find.text('Khoản góp của Lê Bình (đã rời) bị xoá, quỹ Tiền chợ giảm 2.000.000 đ.'), findsOneWidget,
+          reason: 'người đã rời giữ nửa riêng: quỹ giảm, ví riêng không đổi');
     });
 
     testWidgets('khoản góp của chính mình có ví riêng: câu nêu tên ví riêng', (t) async {

@@ -12,11 +12,20 @@ String cauXoaKhoanGop({
   required double soTien,
   String? tenViRieng,
   String? tenNguoiKhac,
+  bool nguoiDaRoi = false,
 }) {
   final tien = CurrencyFormatter.format(soTien);
   if (tenNguoiKhac != null) {
+    // Người đã rời GIỮ nửa riêng (`02A:107`): quỹ đổi, ví riêng của họ không đổi — không hứa trả tiền.
+    if (nguoiDaRoi) {
+      return gop
+          ? 'Khoản góp của $tenNguoiKhac (đã rời) bị xoá, quỹ $tenQuy giảm $tien.'
+          : 'Khoản rút của $tenNguoiKhac (đã rời) bị xoá, quỹ $tenQuy được cộng lại $tien.';
+    }
+    // Máy Chủ không biết khoản góp từ ví riêng hay tiền mặt trao tay (không có nửa riêng nào, `02A:91`): nói có điều kiện.
+    // Rút luôn có ví riêng nên câu rút khẳng định được.
     return gop
-        ? 'Khoản góp của $tenNguoiKhac bị xoá, quỹ $tenQuy giảm $tien. Tiền được trả về ví riêng của $tenNguoiKhac.'
+        ? 'Khoản góp của $tenNguoiKhac bị xoá, quỹ $tenQuy giảm $tien. Nếu góp từ ví riêng, tiền được trả về đó.'
         : 'Khoản rút của $tenNguoiKhac bị xoá, quỹ $tenQuy được cộng lại $tien. Khoản nhận ở ví riêng của $tenNguoiKhac bị huỷ.';
   }
   if (gop) {

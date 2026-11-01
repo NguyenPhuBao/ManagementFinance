@@ -18,11 +18,19 @@ void main() {
         'Quỹ Tiền chợ cũng giảm 2.000.000 đ.');
   });
 
-  test('Chủ xoá hộ: nêu tên người, tiền về ví riêng của họ', () {
+  test('Chủ xoá hộ thành viên đang ở: góp nói có điều kiện (máy Chủ không biết có ví riêng hay tiền mặt)', () {
     expect(cauXoaKhoanGop(gop: true, tenQuy: 'Tiền chợ', soTien: 2000000, tenNguoiKhac: 'Minh'),
-        'Khoản góp của Minh bị xoá, quỹ Tiền chợ giảm 2.000.000 đ. Tiền được trả về ví riêng của Minh.',
-        reason: 'tenNguoiKhac thắng tenViRieng (máy Chủ không có nửa riêng)');
+        'Khoản góp của Minh bị xoá, quỹ Tiền chợ giảm 2.000.000 đ. Nếu góp từ ví riêng, tiền được trả về đó.',
+        reason: 'tenNguoiKhac thắng tenViRieng (máy Chủ không có nửa riêng); tiền mặt trao tay không có nửa riêng nào');
     expect(cauXoaKhoanGop(gop: false, tenQuy: 'Tiền chợ', soTien: 500000, tenNguoiKhac: 'Bình'),
         'Khoản rút của Bình bị xoá, quỹ Tiền chợ được cộng lại 500.000 đ. Khoản nhận ở ví riêng của Bình bị huỷ.');
+  });
+
+  test('người đã rời: ví riêng của họ KHÔNG đổi nên câu không hứa trả tiền', () {
+    expect(cauXoaKhoanGop(gop: true, tenQuy: 'Tiền chợ', soTien: 2000000, tenNguoiKhac: 'Hoa', nguoiDaRoi: true),
+        'Khoản góp của Hoa (đã rời) bị xoá, quỹ Tiền chợ giảm 2.000.000 đ.',
+        reason: 'rời nhà thì giữ nửa riêng (02A:107)');
+    expect(cauXoaKhoanGop(gop: false, tenQuy: 'Tiền chợ', soTien: 500000, tenNguoiKhac: 'Hoa', nguoiDaRoi: true),
+        'Khoản rút của Hoa (đã rời) bị xoá, quỹ Tiền chợ được cộng lại 500.000 đ.');
   });
 }

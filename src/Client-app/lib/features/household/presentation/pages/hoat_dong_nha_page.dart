@@ -217,12 +217,15 @@ class _HoatDongNhaPageState extends State<HoatDongNhaPage> {
       final rieng = cap.rieng;
       String? tenViRieng;
       String? tenNguoiKhac;
+      var nguoiDaRoi = false;
       if (rieng != null) {
         final v = await (widget.viRieng ?? sl<WalletRepository>()).getById(rieng.walletId);
         tenViRieng = v?.name ?? 'ví riêng';
       } else if (t.idaccount != _cubit.idToi) {
         // Chủ xoá hộ: nửa riêng nằm trên máy người ghi, máy này không có.
-        tenNguoiKhac = _tenNguoi(nha, t.idaccount).ten;
+        final nguoi = _tenNguoi(nha, t.idaccount);
+        tenNguoiKhac = nguoi.ten;
+        nguoiDaRoi = nguoi.daRoi;
       }
       return cauXoaKhoanGop(
         gop: nuaNha.type == 'thu',
@@ -230,6 +233,7 @@ class _HoatDongNhaPageState extends State<HoatDongNhaPage> {
         soTien: t.amount,
         tenViRieng: tenViRieng,
         tenNguoiKhac: tenNguoiKhac,
+        nguoiDaRoi: nguoiDaRoi,
       );
     } catch (_) {
       baoNhanh('Không đọc được khoản này. Thử lại sau.', loai: LoaiThongBao.loi);
@@ -241,7 +245,7 @@ class _HoatDongNhaPageState extends State<HoatDongNhaPage> {
   Widget build(BuildContext context) => BlocProvider.value(
         value: _cubit,
         child: Scaffold(
-          appBar: AppBar(title: const Text('Hoạt động')),
+          appBar: AppBar(title: const Text('Hoạt động'), centerTitle: true),
           body: SafeArea(
             child: BlocListener<NhaCubit, NhaState>(
               // Nhà đổi id (nạp xong kho, vào nhà khác) thì dựng lại nguồn; mất nhà thì báo rồi về Nhà mình.
