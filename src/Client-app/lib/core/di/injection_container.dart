@@ -79,6 +79,7 @@ import '../../features/household/data/datasources/chia_se_chu.dart';
 import '../../features/household/data/datasources/household_api.dart';
 import '../../features/household/data/nha_store.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
+import '../../features/household/application/gop_quy_service.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository_impl.dart';
 import '../../features/household/data/repositories/nha_repository.dart';
 import '../../features/household/data/repositories/nha_repository_impl.dart';
@@ -602,6 +603,13 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         localDataSource: sl(),
         soDuVi: sl(),
         syncEngine: sl(),
+      ));
+  // Cặp góp / rút: hai nửa một giao tác qua repository giao dịch (neo số dư trước khi ghi).
+  sl.registerLazySingleton<GopQuyService>(() => GopQuyService(
+        giaoDich: sl<TransactionRepository>(),
+        db: sl(),
+        soDuVi: sl(),
+        henDongBo: () => sl<SyncEngine>().scheduleSync(),
       ));
 
   sl.registerLazySingleton<ChiaSeChu>(() => const ChiaSeChuThat());

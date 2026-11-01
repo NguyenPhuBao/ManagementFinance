@@ -46,4 +46,11 @@ void main() {
     expect(khoi, contains('dayVaCho('), reason: 'phải là lối đẩy-và-CHỜ, không phải lối xin đẩy rồi trả về ngay');
     expect(khoi, contains('demHangChuaDayCuaNha('));
   });
+
+  test('đăng ký GopQuyService truyền đủ giaoDich, soDuVi và henDongBo', () {
+    final khoi = _khoi(nguon, 'sl.registerLazySingleton<GopQuyService>(');
+    expect(khoi, contains('giaoDich: sl<TransactionRepository>()'), reason: 'phải qua repository giao dịch: neo số dư trước khi ghi cặp');
+    expect(khoi, contains('soDuVi:'), reason: 'thiếu thì sửa / xoá cặp không tính lại số dư hai ví');
+    expect(khoi, contains('henDongBo:'), reason: 'thiếu thì sửa / xoá cặp nằm pending không ai xin đồng bộ');
+  });
 }

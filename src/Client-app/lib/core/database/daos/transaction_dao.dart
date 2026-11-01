@@ -305,6 +305,10 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return {'income': income, 'expense': expense};
   }
 
+  /// Các nửa còn sống của một cặp góp / rút (`docs/Family/02A` mục 5): tối đa hai hàng, một riêng một của nhà.
+  Future<List<Transaction>> theoMaCap(String maCap) =>
+      (select(transactions)..where((t) => t.fundPairId.equals(maCap) & t.deletedAt.isNull())).get();
+
   /// Pending sync records. [idhousehold]: nhà đang ở — hàng của nhà mang `idaccount` người GHI, nên chỉ lọc theo tôi thì
   /// bản Chủ nhà sửa hộ không bao giờ lên server (spec gia đình 2026-11-01 mục 7.1).
   Future<List<Transaction>> getPending([int? idaccount, int? idhousehold]) {
