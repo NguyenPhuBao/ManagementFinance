@@ -208,6 +208,27 @@ void main() {
     expect(bat.cau.where((c) => c == 'Bạn không còn là chủ nhà.'), hasLength(1));
   });
 
+  testWidgets('mất vai và bị từ chối tới CÙNG một đợt microtask: về trang trước đúng MỘT lần (I1)', (t) async {
+    final api = _ApiChuyenChuTreo();
+    final (_, bat) = await mo(t, apiDung: api);
+    api.treoChuyen = Completer<void>();
+    await t.tap(find.text('Chuyển chủ nhà'));
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(FilledButton, 'Chuyển chủ nhà'));
+    await t.pump();
+    bat.ds.clear();
+    api.cuaToiJson = nhaJson(myRole: 'Member');
+    api.loiChuyen = loiServer(403, 'FORBIDDEN_NOT_OWNER');
+    // Không `pump` giữa hai việc: cạnh mất vai và phản hồi lỗi cùng rơi vào một đợt microtask, trước callback của BlocListener.
+    api.treoChuyen!.complete();
+    final lamMoi = repoDaMo.lamMoi();
+    await lamMoi;
+    await t.pumpAndSettle();
+    expect(find.text('GOC'), findsOneWidget, reason: 'pop hai lần là văng khỏi trang gốc (hoặc go thay cả stack)');
+    expect(find.text('Quản lý thành viên'), findsNothing);
+    expect(bat.cau.where((c) => c == 'Bạn không còn là chủ nhà.'), hasLength(1));
+  });
+
   testWidgets('bàn phím hệ thống mở, 360 dp: không tràn', (t) async {
     await mo(t, banPhim: true);
     expect(t.takeException(), isNull);

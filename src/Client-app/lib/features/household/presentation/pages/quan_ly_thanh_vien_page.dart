@@ -58,9 +58,13 @@ class _QuanLyThanhVienPageState extends State<QuanLyThanhVienPage> {
       roiVeNhaMinh(context);
       return;
     }
-    _tuThaoTac = false;
     // Mất vai trong lúc thao tác đang bay: `GacVaiChu` chỉ nổ ở cạnh chủ → không-chủ và cạnh ấy đã bị nuốt bởi cờ — xét lại.
-    if (mounted && !laChuNha(_cubit.state)) baoMatVaiRoiVe(context, _cubit);
+    // GIỮ cờ khi tự về: callback của BlocListener có thể còn nằm trong hàng microtask, hạ cờ trước là pop lần hai (I1).
+    if (mounted && !laChuNha(_cubit.state)) {
+      baoMatVaiRoiVe(context, _cubit);
+      return;
+    }
+    _tuThaoTac = false;
   }
 
   Future<void> _chuyenChu(ThanhVienNhaEntity tv) async {

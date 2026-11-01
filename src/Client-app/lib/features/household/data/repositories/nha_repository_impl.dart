@@ -285,7 +285,11 @@ class NhaRepositoryImpl implements NhaRepository {
       xemTruocTuJson(await _goi(() => _api.xemTruoc(chuanHoaMaMoi(ma))));
 
   @override
-  Future<void> thamGia(String ma) => _thaoTac(() => _api.thamGia(chuanHoaMaMoi(ma)));
+  Future<void> thamGia(String ma) async {
+    await _thaoTac(() => _api.thamGia(chuanHoaMaMoi(ma)));
+    // Mã trong thư của chính nhà vừa vào: thẻ lời mời email của nhà ấy hết chờ (01 mục 2.1; I2).
+    await lamMoiLoiMoi();
+  }
 
   @override
   Future<void> doiVai(int idaccount, VaiNha vai) => _thaoTac(() => _api.doiVai(idaccount, khoaServerCuaVai(vai)));

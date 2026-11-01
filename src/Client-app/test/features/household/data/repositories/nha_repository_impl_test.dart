@@ -297,6 +297,21 @@ void main() {
           reason: '{declined: true} không phải trạng thái — chỉ làm mới lời mời');
     });
 
+    test('thamGia bằng mã (thư của chính nhà vừa vào) → danh sách lời mời được làm mới, thẻ cũ biến mất (I2)', () async {
+      api.dsLoiMoiToiJson = const [
+        {'code': 'ABCD2345', 'householdName': 'Nhà An – Bình', 'inviterName': 'Trần An', 'role': 'Member'},
+      ];
+      await repo.lamMoiLoiMoi();
+      expect(repo.loiMoiToi, hasLength(1));
+      api.traVe = nhaJson(myRole: 'Member');
+      api.dsLoiMoiToiJson = const [];
+      api.goi.clear();
+      await repo.thamGia('abcd-2345');
+      expect(api.goi, ['thamGia:ABCD2345', 'dsLoiMoiToi'], reason: 'như chapNhanLoiMoi (01 mục 2.8)');
+      expect(repo.loiMoiToi, isEmpty, reason: 'vào nhà bằng mã thì lời mời email của nhà ấy không còn chờ');
+      expect(repo.hienTai.coNha, isTrue);
+    });
+
     test('lỗi lời mời email → LoiNha đúng loại, không làm mới nhà', () async {
       api.loi = loiServer(403, 'HOUSEHOLD_INVITE_WRONG_ACCOUNT');
       await expectLater(repo.chapNhanLoiMoi('ABCD2345'),
