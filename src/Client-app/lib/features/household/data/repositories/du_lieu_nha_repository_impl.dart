@@ -1,6 +1,7 @@
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/errors/app_exceptions.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../wallet/data/datasources/wallet_local_data_source.dart';
@@ -73,8 +74,18 @@ class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
 
   @override
   Future<void> suaViChung(WalletEntity vi) async {
+    // Đọc lại hàng: `balance` trên entity có thể cũ (form mở lâu, lượt kéo về đã đổi số dư). Bất biến ⑥: số dư chỉ
+    // `SoDuViService` ghi — ghi đè số cũ là lần ghi kế sinh neo `thu` `pending` cho cả nhà.
+    final hang = await _db.walletDao.getById(vi.id);
+    if (hang == null) {
+      throw const CacheException('Không tìm thấy ví chung cần sửa.');
+    }
+    if (hang.idhousehold == null || hang.idhousehold != vi.idhousehold) {
+      throw const CacheException('Ví này không thuộc nhà đang sửa.');
+    }
     // Ép lại hai cờ: ví nhà mang cờ mặc định đẩy lên vỡ `chk_wallet_household_not_default` (CONSTRAINT_VIOLATION, kẹt hàng đợi).
     await _local.update(vi.copyWith(
+      balance: hang.balance,
       isDefault: false,
       includeInTotal: false,
       syncStatus: 'pending',

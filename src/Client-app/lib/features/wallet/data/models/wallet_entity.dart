@@ -41,8 +41,8 @@ class WalletEntity extends Equatable {
   /// `WalletDao`. Cột cục bộ — xem `Wallets.biTuChoiTrungTen`.
   final bool biTuChoiTrungTen;
 
-  /// Nhà sở hữu ví (ví chung); `null` = ví riêng. Khi có, [idaccount] chỉ là người TẠO. Ghi qua `toCompanion` để sửa ví chung
-  /// không biến nó thành ví riêng.
+  /// Nhà sở hữu ví (ví chung); `null` = ví riêng. Khi có, [idaccount] chỉ là người TẠO. Datasource ghi cột này; entity tự dựng
+  /// mang `null` sẽ ghi đè nhà của ví chung, nên sửa ví chung phải đi từ entity đọc lại.
   final int? idhousehold;
 
   final String syncStatus;

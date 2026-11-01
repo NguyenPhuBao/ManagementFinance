@@ -48,7 +48,8 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     // Cùng lý do với `status` ngay trên: thiếu cột này thì mỗi lần người
     // dùng sửa tên ví là cờ 'cho phép âm' tự tắt — im lặng.
     allowNegative:  Value(e.allowNegative),
-    // Thiếu cột này thì sửa ví chung biến nó thành ví riêng của người sửa — im lặng, và ví rời khỏi nhà khi đẩy.
+    // `update_` chỉ ghi cột có trong companion nên thiếu dòng này không làm sửa ví mất nhà; hậu quả thật nằm ở `insert`
+    // (insertOrReplace): ví tạo ra thành ví riêng. Rủi ro của dòng này: entity tự dựng mang `null` thì ghi đè `idhousehold` của ví chung.
     idhousehold:    Value(e.idhousehold),
     // Cố ý KHÔNG mang `biTuChoiTrungTen` (G63): form Sửa ví không sửa cờ ấy, và
     // mang nó ở đây là mỗi lần lưu ví ghi đè cờ bằng giá trị entity đọc lúc mở
