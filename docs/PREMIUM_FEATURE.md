@@ -1,8 +1,7 @@
 # Premium qua PayOS — phía client
 
-**Trạng thái (2026-10-06):** mã **xong** 15/17 task của kế hoạch `docs/superpowers/plans/2026-10-06-premium-payos-client.md`
-(gitignore) — còn **Task 16 nghiệm thu máy thật** (sandbox PayOS, chờ người dùng dán khoá; `database/19` ✅ đã áp tối 2026-10-06)
-và phần tài liệu này. Spec: `docs/superpowers/specs/2026-10-06-premium-payos-client-design.md` (người dùng duyệt).
+**Trạng thái (2026-11-01):** mã xong; ◐ **Task 16 + G94 đo đạt bằng webhook tự ký, chưa có giao dịch ngân hàng thật** (mục 6;
+kênh PayOS trong `.env` không có dấu hiệu là kênh thử). Kế hoạch `docs/superpowers/plans/2026-10-06-premium-payos-client.md` (gitignore). Spec: `docs/superpowers/specs/2026-10-06-premium-payos-client-design.md` (người dùng duyệt).
 Đơn backend: `docs/superpowers/backend/CAN-LAM/CLIENT_PREMIUM_PAYOS.md` (38, không chặn client).
 
 **Phân quyền tính năng theo gói (2026-10-08):** ✅ mã xong + nghiệm thu OnePlus đạt (mục 8.7) — trọn 10 task của kế hoạch `…/plans/2026-10-08-phan-quyen-tinh-nang-client.md`
@@ -27,8 +26,8 @@ MÃ XONG 2026-10-18 tối, chờ nghiệm thu máy thật:** backend thêm ba tr
   có nút chép, ba bước, nút phụ *Mở trang thanh toán PayOS*. Server trả trạng thái đối soát → màn được **thay** bằng **Chi
   tiết đơn** `/premium/don/:orderCode` — một màn cho mọi trạng thái, nơi duy nhất gọi `confirm-upgrade` (*Yêu cầu hoàn
   tiền* hỏi lại một lần). Mọi dòng Lịch sử mua bấm được; màn Nâng cấp có thẻ đơn chờ xác nhận (**khoá** *Thanh toán*) và
-  thẻ đơn chờ hoàn tiền (không khoá). Sáu sự kiện `payment.*` là một tín hiệu im lặng `donThanhToanDoi`. 🚧 **Chưa nghiệm
-  thu máy thật** (cần khoá PayOS sandbox + phép `npm install` backend — mục 6).
+  thẻ đơn chờ hoàn tiền (không khoá). Sáu sự kiện `payment.*` là một tín hiệu im lặng `donThanhToanDoi`. ◐ **Nghiệm thu
+  2026-11-01 đạt bằng webhook tự ký, chưa có giao dịch ngân hàng thật** (mục 6).
 
 > Tài liệu là ảnh chụp — đối chiếu với mã trước khi kết luận. Mọi con số đếm bằng máy, kèm ngày.
 
@@ -205,7 +204,45 @@ hàng riêng — bố cục `408de0af…` để dòng ấy cạnh viên trạng 
 ở thẻ đầu (spec mục 5.5 nói *đầu màn luôn có giá gói* — Stitch người dùng duyệt không vẽ), ba thân một dòng (`pending` ·
 `expired` · `cancelled`) có dòng *Giá gói X*.
 
-## 6. Nghiệm thu máy thật — 🚧 CHƯA LÀM (Task 16)
+## 6. Nghiệm thu máy thật — ◐ đạt bằng webhook tự ký, CHƯA có giao dịch ngân hàng thật (2026-11-01 phiên 30)
+
+**Đo trên:** máy ảo `FlowMoney_16G` (tài khoản thử 30, bản debug 411 dp + 320 dp, bản release) · Realme (`dat`, bản debug, 360 dp) · backend `13fddd09` trên `PersonFinance`, khoá PayOS ở `.env` · OnePlus không cắm. 14 liên kết thanh toán thật trên kênh PayOS, webhook tự ký bằng `createSignatureFromObj` của SDK. **Người dùng chọn không chuyển tiền.**
+
+⚠️ **Kênh trong `.env` không có dấu hiệu là kênh thử.** PayOS trả về tài khoản nhận MB `2512070399999` — NGUYEN PHU BAO, trùng tên người làm backend (suy từ tên, chưa ai xác nhận), không giống tài khoản ảo. Các chỗ ghi *"sandbox"* trong spec là giả định chưa kiểm. Quét QR này rồi xác nhận là tiền thật. URL webhook của kênh chưa biết.
+
+| Bước | Kết quả | Đo gì |
+|---|---|---|
+| G94-1 Ảnh QR, *Lưu mã QR* | ✅ | Có tệp `Pictures/FlowMoney/FlowMoney-QR-<mã>.png` trên máy ảo và Realme |
+| G94-2 MB Bank *Quét từ ảnh* | ✅ theo người dùng | Đúng người nhận, số tài khoản, 49.000, nội dung; đã thoát, PayOS đọc `amountPaid` = 0 |
+| G94-3 Thông tin nhận tiền từ đâu | ✅ từ PayOS | `create-order` trả `bin` / `accountNumber` khác `null`; nhánh ghi cứng chưa chạy (đơn 62.1) |
+| G94-4 Đủ tiền → *Thành công* | ✅ webhook tự ký | Màn đổi ≤ 1 s, `account.Type` = Premium, `premium_expires_at` = +30 ngày |
+| G94-5 Chuyển thừa | ✅ webhook tự ký | 70.000 → Chi tiết đơn, Back về Nâng cấp; *Đồng ý* cộng 30 ngày; *Yêu cầu hoàn tiền* hỏi lại, *Huỷ* giữ nguyên |
+| G94-5 Chuyển thiếu | ✅ webhook tự ký | 20.000 → thân *Bạn đã chuyển thiếu*, thiếu 29.000 |
+| Đã hoàn tiền | ✅ API admin | Màn tự đổi qua socket sang *Đã hoàn 20.000 đ* |
+| G94-6 Thẻ, khoá nút, Lịch sử mua | ✅ | Chờ xác nhận khoá nút kèm câu lý do, chờ hoàn tiền không khoá, thẻ gộp *"2 đơn"*; đủ nhãn sáu trạng thái |
+| G94-7 Bản release lưu ảnh | ✅ | Cài đè bản debug, giữ phiên, lưu được QR |
+| G94-8 Màn 360 dp | ✅ Realme: Chờ, hết hạn · máy ảo 320 dp: Chờ, chuyển thừa số 99.999.999 đ | Không tràn. Chi tiết đơn không đo trên Realme để khỏi tạo đơn thừa cho `dat` |
+| Hết hạn | ✅ | Máy ảo và Realme đổi màn đúng lúc hết hạn; server đã `EXPIRED` |
+| Đồng hồ không tự chuyển màn | ✅ bản release | Mất mạng thật: đứng *Còn 00:00* 53 s, có mạng lại sang hết hạn ngay |
+| Huỷ trên PayOS | ✅ PayOS thật | Huỷ bằng API → JIT đọc `CANCELLED` → *Đơn đã huỷ* sau 6 s |
+| Mất mạng, webhook tới giữa chừng | ✅ | 0 kết nối, màn giữ Chờ; có mạng lại 3 s sang *Thành công* |
+| Lưu QR khi mất mạng | ✅ | Toast *"Không lưu được mã QR. Hãy chụp màn hình."* |
+| Webhook sai chữ ký / không chữ ký | ✅ | Sai chữ ký 400. Không chữ ký trả 200 kiểu ping, không đổi trạng thái kể cả khi mang `data` |
+| Phát lại, trả muộn | ✅ | Phát lại không cộng hạn; đơn `EXPIRED` được trả vẫn kích hoạt |
+| Task 16-4 Tạo ví thứ 3, 4 | ✅ | Form mở, 4 ví lên PostgreSQL |
+| Task 16-5, 16-9 Trợ lý AI, Nhập nhanh | ◐ | Không khoá kể cả mất mạng; máy ảo không có mô hình nên *chưa hỏi được* |
+| Task 16-6 Thẻ gói | ✅ một máy | Đứng ở tab Cá nhân, webhook vào: thẻ đổi < 1 s qua socket. Máy thứ hai chưa đo |
+| Task 16-7 Gia hạn | ✅ | 01/12 → 31/12, cộng từ hạn cũ |
+| Task 16-8 Hạ cấp theo giờ máy | ✅ sau khi mở lại app | `cmd alarm set-time` qua hạn: Basic, AI khoá, 4 ví còn, + bị chặn; câu sai số → G118 |
+| Task 16-10 Lịch sử mua | ✅ | |
+
+**Chưa đo, cần tiền thật:** đoạn ngân hàng → PayOS → webhook; nhánh `PAID` của JIT (lỗi cũ đơn 49 vế G chỉ mới hết theo mã); hoàn tiền ngân hàng. **Chưa đo khác:** OnePlus · Realme 360 dp ở Chi tiết đơn · trang PayOS trong trình duyệt (*Mở trang thanh toán PayOS*).
+
+**Ghi nhận, không phải lỗi:** nút *Huỷ* ở màn Chờ chỉ quay lại, đơn vẫn `PENDING` trên PayOS tới hết hạn; chuyển vào QR ấy vẫn kích hoạt được.
+
+**Bẫy đo:** `adb reverse --remove` không cắt kết nối đang mở (lượt đầu đo sai vì socket vẫn sống) → dùng proxy TCP cắt được, mở lại app sau khi trỏ `reverse` · máy ảo không root: `date` bị từ chối, `cmd alarm set-time <ms>` chạy được, nhớ trả lại · nhảy giờ không đổi thẻ khi app đang mở, kể cả đổi tab (bẫy 13), phải mở lại app · mỗi đơn thử là một liên kết thật trên kênh PayOS. Lỗi backend tìm được: đơn 62.
+
+### Điều kiện ban đầu của Task 16 (lịch sử)
 
 Điều kiện: người dùng tạo kênh PayOS *Thử nghiệm* và dán `PAYOS_CLIENT_ID / API_KEY / CHECKSUM_KEY` vào
 `src/Backend/.env`; áp `database/19` + `prisma generate` (⚠️ không `npm install` — `postinstall` tự `generate`); webhook
@@ -216,8 +253,7 @@ qua ngrok hoặc tự ký HMAC POST `localhost:3000/api/payment/webhook`. Mườ
   `payment_transaction`, sáu chỉ mục. Rồi `npx prisma generate` theo `schema.prisma` hiện tại (backend tắt sẵn);
   `account.findFirst` chạy (hết `P2022`), `payment_order.count()` = 0. Bản client Prisma sinh từ `3ef5db7` thôi cần.
 - ⏳ Khoá PayOS: `grep -c '^PAYOS_' src/Backend/.env` = **0** lúc áp — chờ người dùng dán.
-- 🚧 **G94 (mã xong 2026-10-18 tối) — chưa đo.** Điều kiện thêm: phép **đích danh** chạy `npm install` ở `src/Backend` (gói
-  `resend` của gộp `e7570e16`; tự `prisma generate` — CSDL dev đã khớp schema, đo 2026-10-18). Tám bước ở spec G94 mục 10:
+- ◐ **G94 — đo 2026-11-01 phiên 30, bảng trên.** Không cần `npm install` (đo 2026-11-01: đủ gói). Tám bước ở spec G94 mục 10:
   ảnh QR hiện + *Lưu mã QR* → ảnh ở `Pictures/FlowMoney`; MB Bank *Quét từ ảnh* điền đúng số tiền + nội dung; đơn sandbox
   có `bin` / `accountNumber` của PayOS hay rơi về giá trị ghi cứng phía server (`payment.service.js:29–31`); chuyển xong
   quay lại → *Thành công*; chuyển thừa / thiếu → Chi tiết đơn đúng thân, *Đồng ý* / *Từ chối*; thẻ Nâng cấp + dòng Lịch

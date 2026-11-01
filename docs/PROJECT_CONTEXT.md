@@ -617,6 +617,15 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-01)
 
+### 💳 PayOS (G94 + Premium Task 16) — đo đạt bằng webhook tự ký, chưa có giao dịch ngân hàng thật (2026-11-01 phiên 30)
+
+**Đo trên:** máy ảo (tài khoản thử 30, debug + release) + Realme (`dat`, 360 dp), backend `13fddd09` trên `PersonFinance`; 14 liên kết thật trên kênh PayOS, không ai chuyển tiền. Bảng đủ ở `PREMIUM_FEATURE.md` mục 6. 0 tệp `src/` đổi.
+
+- **Đạt:** QR + lưu ảnh (cả release) · MB Bank *Quét từ ảnh* (người dùng đọc) · đủ tiền, gia hạn cộng từ hạn cũ · chuyển thừa *Đồng ý* / *Từ chối* · chuyển thiếu · admin hoàn tiền, màn tự đổi · hết hạn · đồng hồ không tự chuyển màn khi mất mạng · huỷ trên PayOS thật · mất mạng giữa chừng · sai chữ ký · phát lại · trả muộn · hạ cấp theo giờ máy.
+- **Chưa đo:** đoạn ngân hàng → PayOS → webhook · nhánh `PAID` của JIT · hoàn tiền ngân hàng · OnePlus · máy thứ hai · Trợ lý AI có mô hình khi vừa nâng cấp.
+- ⚠️ **Kênh trong `.env` trả tài khoản MB tên NGUYEN PHU BAO** (trùng tên người làm backend, chưa ai xác nhận), không có dấu hiệu là kênh thử: đừng chuyển thử vào QR này nếu không chủ ý.
+- **Đơn 62** (`CAN-LAM/VIEC_BACKEND_CON_LAI.md`): 62.1 **CAO** dự phòng tài khoản cá nhân khi PayOS không trả thông tin nhận tiền · 62.2 JIT bỏ qua số tiền (đọc mã) · 62.3 webhook tới đơn đã huỷ · 62.4 hai dòng giao dịch · 62.5 múi giờ `paid_at`. **G118** mới (client, mức thấp).
+
 ### 🏠 Gia đình LÁT 2 — đo Realme + máy ảo: đạt, hai lỗi đã sửa (2026-11-01 phiên 29)
 
 **Đo trên:** Realme (`dat`, Premium, bản debug, màn 360 dp) + máy ảo `FlowMoney_16G` (tài khoản thử 30 Basic, 31), backend `13fddd09` trên `PersonFinance`. ⚠️ **Một máy thật + một máy ảo**: spec đòi hai máy thật, OnePlus không có mặt. Socket giữa hai thiết bị là thật. Kiểm mã hoá 52.3 trước khi bật: `localhost`, 197 trường, 0 lỗi. Di trú v31 → v32 trên dữ liệu thật của Realme: giữ đủ hàng, tổng −3.518.000 đ trước và sau buổi đo, cuối buổi 0 hàng ví `pending`.

@@ -1,7 +1,7 @@
 # Việc backend còn phải làm
 
 > **Người nhận:** backend (NPBao). Tệp này **chỉ có việc còn phải làm**, đo trên backend `13fddd09` (PR #176) ngày 2026-11-01. Việc xong thì client xoá khỏi tệp; lịch sử xem bằng git.
-> Đơn mới thêm vào tệp này, số kế tiếp **62**.
+> Đơn mới thêm vào tệp này, số kế tiếp **63**.
 
 ## Tổng quan
 
@@ -9,13 +9,18 @@
 |---|---|---|---|
 | 52.4 | Chưa so khoá mã hoá trên Render. Khác khoá thì kéo toàn bộ trả 500 | **CAO** | Tay, cần quyền Render |
 | 61.2 | Gemini quá 60 giây: luồng chat treo, không có `done` | **CAO** | Bản vá |
+| 62.1 | Tạo đơn rơi về tài khoản MB cá nhân ghi cứng khi PayOS không trả thông tin nhận tiền | **CAO** | Tay |
+| 62.2 | Đường JIT bỏ qua số tiền và trạng thái `UNDERPAID`: webhook không tới thì chuyển thiếu thành hết hạn, chuyển thừa thành `PAID` | VỪA | Tay |
 | 61.3 | Người dùng bấm Dừng bị đếm là lỗi LLM, có thể đóng chatbot của mọi tài khoản | VỪA | Bản vá |
+| 62.3 | Webhook hợp lệ tới đơn `CANCELLED`: tiền vào nhưng đơn đứng yên, không ai được báo | VỪA | Tay |
 | 61.4 | Cửa sổ thời gian của cầu dao không bao giờ reset | THẤP | Bản vá |
 | 61.1 | Lời mời email nhận địa chỉ có dấu | THẤP | Bản vá |
 | 61.5 | Hàng còn sống trong nhà giải tán trước bản sửa 57.6 | THẤP | Chạy SQL, có thể không cần |
+| 62.4 | Đồng ý đơn chuyển thừa ghi hai dòng `payment_transaction` cho một lần chuyển | THẤP | Tay |
+| 62.5 | `paid_at` đọc giờ PayOS theo múi giờ của máy chủ | THẤP | Tay |
 | 60.3 | Ba ca test nói nhiều hơn điều chúng chứng minh | THẤP | Tay, tuỳ chọn |
 
-**Thứ tự đề xuất:** áp bản vá một lần cho 61.1–61.4, chạy kịch bản, rồi làm 52.4 và 61.5.
+**Thứ tự đề xuất:** áp bản vá một lần cho 61.1–61.4, chạy kịch bản, rồi làm 52.4, 62.1 và 61.5. Đơn 62 sửa cùng một lượt vì cùng ở `modules/payment/payment.service.js`.
 
 ---
 
@@ -202,6 +207,67 @@ Ca 2 đã sửa ở PR #176. Bằng chứng đường thật của gia đình l�
 
 ---
 
+## 62 — Thanh toán PayOS (đo 2026-11-01 phiên 30)
+
+**Cách đo.** Client chạy backend `13fddd09` trên `PersonFinance` với khoá PayOS trong `.env`, tạo đơn thật qua PayOS rồi gửi webhook tự ký bằng `createSignatureFromObj` của SDK tới `localhost:3000/api/payment/webhook`. **Không có giao dịch ngân hàng nào.** Đủ tiền, thừa, thiếu, trả muộn, phát lại, sai chữ ký và *Đồng ý* / *Từ chối* / hoàn tiền của admin đều chạy đúng; năm mục dưới là phần còn lại.
+
+### 62.1 (CAO) — Tài khoản cá nhân ghi cứng làm dự phòng
+
+`modules/payment/payment.service.js:29-32`:
+
+```js
+const bin = payosResponse.bin || '970422';
+const accountNumber = payosResponse.accountNumber || '2512070399999';
+const accountName = payosResponse.accountName || 'NGUYEN PHU BAO';
+```
+
+Đơn đo được hôm nay có `bin` do PayOS trả, nên nhánh này chưa chạy. Khi PayOS không trả các trường ấy, người dùng vẫn nhận QR chuyển vào tài khoản MB cá nhân, đơn không khớp được với kênh, và webhook không bao giờ tới: tiền đã đi mà gói không mở.
+
+**Sửa:** bỏ ba giá trị dự phòng và dòng `CS... ${recognitionCode}` ở dòng 29. Thiếu `bin` hoặc `accountNumber` thì ném lỗi 502, không lưu đơn. Cập nhật ca test đang ghim giá trị cũ.
+
+**Xong khi:** `grep -rn "2512070399999" src/Backend --include=*.js --exclude-dir=node_modules --exclude-dir=tests` ra 0 dòng ở mã chạy (hôm nay còn `payment.service.js:31`, `:572` và `payment.repository.js:805`, `:834` cho `sanitizeOrderData` và QR của admin), và mock PayOS trả thiếu `bin` thì `POST /payment/create-order` trả lỗi, `payment_order` không thêm hàng.
+
+### 62.2 (VỪA) — Đường JIT bỏ qua số tiền
+
+`syncOrderWithPayOS` (dòng 595–782) chỉ xử lý `CANCELLED`, `EXPIRED`, `PAID`, trong khi SDK còn khai `UNDERPAID`, `PROCESSING`, `FAILED` (`@payos/node/lib/resources/v2/payment-requests/payment-requests.d.ts:51`). Nhánh `PAID` gọi thẳng `activatePremiumSubscription`, không so `amountPaid` với `order.amount`.
+
+Hệ quả khi webhook không tới:
+
+- Chuyển thiếu: `UNDERPAID` bị bỏ qua, đơn hết hạn ở dòng 769. Người dùng đã mất tiền nhưng app báo *"Đơn đã hết hạn"*, không vào hàng hoàn tiền.
+- Chuyển thừa: thành `PAID` luôn, bỏ qua bước người dùng xác nhận mà nhánh webhook bắt buộc.
+
+⚠️ Mức này **đọc từ mã, chưa chạy**: buổi đo không có giao dịch thật nên PayOS chưa từng trả `PAID` hay `UNDERPAID`. Client chỉ đo được nhánh `CANCELLED` và `EXPIRED` của hàm này (đạt).
+
+**Sửa:** dùng chung một hàm phân luồng theo số tiền cho webhook và JIT, gồm cả `UNDERPAID`. Đơn đã có tiền thì không được rơi vào nhánh hết hạn ở dòng 769.
+
+**Xong khi:** ca unit với `getPaymentLinkInfo` giả: `UNDERPAID` + `amountPaid` 20.000 ra `REFUND_PENDING`; `PAID` + `amountPaid` 70.000 ra `WAITING_CONFIRMATION`; `PAID` + 49.000 ra `PAID` kèm `account.Type` = Premium và `premium_expires_at` mới.
+
+### 62.3 (VỪA) — Webhook hợp lệ tới đơn đã huỷ
+
+Đo trên đơn `5166888392633` (`CANCELLED` trên cả PayOS thật lẫn CSDL), webhook đúng chữ ký 49.000 đ: trả 200 *"Đơn hàng đã được xử lý…"*, có thêm một dòng `payment_transaction`, đơn vẫn `CANCELLED`, không socket, không báo admin. Dòng 161 gộp `CANCELLED` với các trạng thái đã xử lý.
+
+Chưa biết PayOS có còn gửi webhook sau khi huỷ liên kết không: nhờ backend hỏi hoặc đo trên kênh thử. Nếu có, tiền đã vào mà không ai biết.
+
+**Sửa:** đơn `CANCELLED` nhận tiền thì chuyển `REFUND_PENDING` kèm lý do, phát `payment.amount_mismatch` cho admin.
+
+**Xong khi:** gửi lại webhook trên, đơn thành `REFUND_PENDING` và màn admin thấy đơn trong hàng hoàn tiền.
+
+### 62.4 (THẤP) — Hai dòng giao dịch cho một lần chuyển thừa
+
+Đo trên đơn `5163211699944` (chuyển 70.000 đ rồi *Đồng ý*): `payment_transaction` có `WHTEST-…` 70.000 từ webhook và `OVERPAID-CONFIRMED-5163211699944` 70.000 từ `confirmUpgrade` (dòng 429–437). Cộng cột `amount` để đối soát sẽ ra 140.000 đ. `/admin/payments/stats` không dính vì cộng theo giá đơn.
+
+**Sửa:** `confirmUpgrade` không truyền `transactionData`; `activatePremiumSubscription` đã bỏ qua được trường này, chỉ cần giữ `amount_received` của đơn.
+
+**Xong khi:** chạy lại kịch bản trên, đơn có đúng một dòng `payment_transaction` và `amount_received` = 70.000.
+
+### 62.5 (THẤP) — `paid_at` phụ thuộc múi giờ máy chủ
+
+`new Date(transactionDateTime)` ở dòng 137 đọc chuỗi không múi giờ theo giờ của tiến trình Node. Đo: gửi chuỗi lệch múi thì `paid_at` lệch đúng 7 giờ. PayOS gửi giờ Việt Nam, nên máy dev ở `+07` đúng, còn máy chủ chạy UTC sẽ ghi `paid_at` muộn 7 giờ. Chưa đo trên Render.
+
+**Sửa:** đọc chuỗi này như `+07:00`.
+
+**Xong khi:** chạy với `TZ=UTC`, webhook `2026-11-01 13:57:17` cho `paid_at` = `2026-11-01T06:57:17Z`.
+
 ## Giữ nguyên khi sửa backend
 
 Các kịch bản ở `KIEM-THU/` đang đạt trọn và client chạy lại sau mỗi lần gộp. Chạy trước khi báo xong, hai kịch bản đầu trên CSDL riêng tên `flowmoney_kiem_thu`:
@@ -226,4 +292,5 @@ node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_61.js . kq_61.txt
 | 52.4 | | *(vân tay trong log Render, mã trả về của `/sync/pull` trên Render)* |
 | 61.1, 61.2, 61.3, 61.4 | | *(dòng cuối `kq_61.txt`; sửa khác bản vá thì nói khác ở đâu)* |
 | 61.5 | | *(kết quả bước 1 trên từng CSDL, trước và sau khi dọn)* |
+| 62.1, 62.2, 62.3, 62.4, 62.5 | | *(lệnh / ca test đã chạy theo mục "Xong khi"; 62.3 ghi thêm PayOS có gửi webhook sau khi huỷ không)* |
 | 60.3 | | *(hoặc "chưa")* |
