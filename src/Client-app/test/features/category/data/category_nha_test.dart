@@ -251,6 +251,49 @@ void main() {
       }
     });
 
+    test('draft KHÔNG nêu idhousehold mà nhóm đang thuộc nhà: vẫn giữ nhà (nha = draft ?? cũ)', () async {
+      await them('g', 'Sinh hoạt', idaccount: 20, idhousehold: 7, isGroup: true);
+      await repo.saveGroup(gd(id: 'g', ten: 'Sinh hoạt mới'));
+      final h = (await db.categoryDao.getById('g'))!;
+      expect(h.idhousehold, 7, reason: 'rơi vế `?? cũ` là nhóm rơi khỏi nhà thành nhóm riêng, im lặng (insertOrReplace)');
+      expect(h.idaccount, 20, reason: 'người tạo không đổi');
+    });
+
+    test('draft nhà sửa nhóm RIÊNG của tôi: ném, nhóm vẫn riêng', () async {
+      await them('gr', 'Nhóm riêng', idaccount: 10, isGroup: true);
+      await expectLater(repo.saveGroup(gd(id: 'gr', ten: 'Nhóm riêng', idhousehold: 7)),
+          throwsA(isA<CategoryValidationException>()));
+      expect((await db.categoryDao.getById('gr'))!.idhousehold, isNull,
+          reason: 'nhóm riêng lặng lẽ thành nhóm nhà là biến khỏi danh sách cá nhân và HOUSEHOLD_SCOPE_MISMATCH');
+    });
+
+    test('sửa nhóm của nhà đã xoá mềm: ném, không sống lại', () async {
+      await them('gx', 'Đã xoá', idaccount: 20, idhousehold: 7, isGroup: true, xoa: true);
+      await expectLater(repo.saveGroup(gd(id: 'gx', ten: 'Đã xoá', idhousehold: 7)),
+          throwsA(isA<CategoryValidationException>()));
+      expect((await db.categoryDao.getById('gx'))!.deletedAt, isNotNull);
+    });
+
+    test('tên nhóm trùng trong nhà bị từ chối; trùng danh mục riêng của tôi thì được', () async {
+      await them('dn', 'Sinh hoạt', idaccount: 20, idhousehold: 7);
+      await them('rieng', 'Du lịch', idaccount: 10);
+      await expectLater(repo.saveGroup(gd(ten: ' sinh HOẠT ', idhousehold: 7)),
+          throwsA(isA<CategoryValidationException>()),
+          reason: 'uq_category_household_name: tên chuẩn hoá duy nhất trong nhà, kể cả khác loại hàng (nhóm ↔ danh mục)');
+      await repo.saveGroup(gd(ten: 'Du lịch', idhousehold: 7));
+      expect((await db.categoryDao.getCuaNha(7)).map((c) => c.name), contains('Du lịch'));
+    });
+
+    test('tạo mới nhóm của nhà: người tạo = accountId, idhousehold từ draft, là nhóm, pending', () async {
+      await repo.saveGroup(gd(ten: 'Nhóm mới', accountId: 10, idhousehold: 7));
+      final h = (await db.categoryDao.getCuaNha(7)).single;
+      expect(h.name, 'Nhóm mới');
+      expect(h.idhousehold, 7);
+      expect(h.idaccount, 10, reason: 'hàng mới: người tạo là người lưu');
+      expect(h.isGroup, isTrue);
+      expect(h.syncStatus, 'pending');
+    });
+
     test('nhóm riêng từ chối con của nhà dù tôi là người tạo', () async {
       await them('g', 'Nhóm riêng', idaccount: 10, isGroup: true);
       await them('cn', 'Con nhà', idaccount: 10, idhousehold: 7);
