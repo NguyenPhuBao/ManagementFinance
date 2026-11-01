@@ -87,7 +87,7 @@ class HouseholdApiGia implements HouseholdApi {
   Future<Map<String, Object?>> moiRa(int idaccount) =>
       _chay('moiRa:$idaccount', () => traVe ?? const {'removed': true});
   @override
-  Future<Map<String, Object?>> roiNha() => _chay('roiNha', () => traVe ?? const {'household': null, 'myRole': null, 'members': [], 'formerMembers': []});
+  Future<Map<String, Object?>> roiNha() => _chay('roiNha', () => traVe ?? const {'household': null});
   @override
   Future<Map<String, Object?>> giaiTan() => _chay('giaiTan', () => traVe ?? const {'dissolved': true});
   @override

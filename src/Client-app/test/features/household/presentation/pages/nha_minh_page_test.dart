@@ -105,7 +105,7 @@ void main() {
     expect(find.text('LỜI MỜI ĐANG CHỜ'), findsOneWidget);
     expect(find.text('Nhà Minh Anh'), findsOneWidget);
     expect(find.text('Minh Anh mời bạn với vai Thành viên'), findsOneWidget);
-    // Stitch `hop`: chấm cam, đồng hồ cạnh hạn; chưa khoá thì KHÔNG ổ khoá và KHÔNG câu lý do.
+    // Stitch `nha_thanh_vien`: chấm cam, đồng hồ cạnh hạn; chưa khoá thì KHÔNG ổ khoá và KHÔNG câu lý do.
     expect(find.byKey(const Key('cham-loi-moi')), findsOneWidget);
     expect(find.byIcon(Icons.schedule), findsOneWidget);
     expect(find.byIcon(Icons.lock_outline), findsNothing);
@@ -125,7 +125,7 @@ void main() {
     expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Chấp nhận')).onPressed, isNull);
     expect(find.descendant(of: find.widgetWithText(FilledButton, 'Chấp nhận'), matching: find.byIcon(Icons.lock_outline)),
         findsOneWidget,
-        reason: 'Stitch `hop`: Chấp nhận khoá mang ổ khoá');
+        reason: 'Stitch `nha_thanh_vien`: Chấp nhận khoá mang ổ khoá');
     final nut = t.getRect(find.widgetWithText(FilledButton, 'Chấp nhận'));
     final lyDo = t.getRect(find.byKey(const Key('ly-do-khoa-chap-nhan')));
     expect(lyDo.top, greaterThanOrEqualTo(nut.bottom), reason: 'câu lý do nằm DƯỚI nút');
@@ -183,7 +183,7 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('Chủ nhà (kèm lời mời, nhà đủ sáu người) ở 360 dp có bàn phím mở: không tràn', (t) async {
+  testWidgets('Chủ nhà (kèm lời mời) ở 360 dp có bàn phím mở: không tràn', (t) async {
     await mo(t, nha: nhaJson(myRole: 'Owner'), loiMoi: [_loiMoiJson()], banPhim: true);
     expect(find.text('Mời thành viên'), findsOneWidget, reason: 'ca phải dựng đúng vai Chủ');
     expect(t.takeException(), isNull);

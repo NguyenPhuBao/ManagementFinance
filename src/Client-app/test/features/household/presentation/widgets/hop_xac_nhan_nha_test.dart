@@ -61,7 +61,7 @@ void main() {
     expect(find.text('Gõ tên nhà để xác nhận'), findsOneWidget);
     FilledButton nut() => t.widget(find.widgetWithText(FilledButton, 'Giải tán nhà'));
     expect(nut().onPressed, isNull);
-    expect(find.textContaining('/13'), findsNothing, reason: 'spec 12.2: không bộ đếm');
+    expect(find.textContaining(RegExp(r'\d+\s*/\s*\d+')), findsNothing, reason: 'spec 12.2: không bộ đếm "n/m" nào');
     await t.enterText(find.byType(TextField), 'nha dat');
     await t.pump();
     expect(nut().onPressed, isNull, reason: 'thiếu dấu là chưa khớp');

@@ -120,7 +120,11 @@ void main() {
 
   test('daNap chờ kho: trước khi kho trả lời thì chưa nạp, sau đó đúng nhà từ kho', () async {
     final kho = _KhoTreo();
-    final repo = NhaRepositoryImpl(api: HouseholdApiGia(), kho: kho);
+    // `/me` giữ lại cả ca: trạng thái sau khi kho trả lời chắc chắn là của KHO, không phải của một lượt làm mới nào về sớm.
+    final api = HouseholdApiGia()
+      ..cuaToiJson = nhaJson()
+      ..treo = Completer<void>();
+    final repo = NhaRepositoryImpl(api: api, kho: kho);
     addTearDown(repo.dispose);
     unawaited(repo.datTaiKhoan(18));
     final c = NhaCubit(repo);
@@ -133,6 +137,8 @@ void main() {
     await xong;
     expect(c.state.daNap, isTrue);
     expect(c.state.nha.coNha, isTrue);
+    expect(c.state.nha.nha!.id, 12, reason: 'đúng nhà từ kho (`/me` còn treo)');
+    api.treo!.complete();
   });
 }
 

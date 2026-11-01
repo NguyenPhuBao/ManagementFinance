@@ -52,7 +52,7 @@ class TheLoiMoiDangCho extends StatelessWidget {
                 child: Text('LỜI MỜI ĐANG CHỜ',
                     style: chu.labelMedium?.copyWith(color: AppColors.warning, fontWeight: FontWeight.w700)),
               ),
-              // Chấm cam báo có lời mời chưa xử lý (Stitch `hop`).
+              // Chấm cam báo có lời mời chưa xử lý (Stitch `nha_thanh_vien`).
               Container(
                 key: const Key('cham-loi-moi'),
                 width: 8,
@@ -95,7 +95,7 @@ class TheLoiMoiDangCho extends StatelessWidget {
           ),
           if (lyDo != null) ...[
             const SizedBox(height: 6),
-            // Câu lý do nằm dưới nút Chấp nhận (nửa phải), canh giữa dưới nút — Stitch `hop`.
+            // Câu lý do nằm dưới nút Chấp nhận (nửa phải), canh giữa dưới nút — Stitch `nha_thanh_vien`.
             Row(children: [
               const Expanded(child: SizedBox.shrink()),
               const SizedBox(width: 12),

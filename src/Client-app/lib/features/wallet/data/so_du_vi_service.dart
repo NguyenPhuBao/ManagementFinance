@@ -33,7 +33,8 @@ class SoDuViService implements CongSoDuVi {
   /// Tài khoản đang đăng nhập, chỉ dùng để xét "ví nhà này có phải do tôi tạo không" (`docs/Family/02A` mục 1: chỉ máy tạo
   /// ví đặt neo). Vắng hoặc trả `null` là KHÔNG đặt neo cho ví nhà. ⚠️ Chiều ấy KHÔNG an toàn cho người tạo ví: ghi sổ vào ví
   /// chưa có neo mà không đặt neo thì `tinhLaiSoDu` đặt balance = Σ sổ và số dư ban đầu mất im lặng. Mọi đường ghi sổ (giao dịch,
-  /// hoá đơn, mục tiêu, ví, gộp ví, đồng bộ) phải nhận bản có nguồn phiên từ DI — test `so_du_vi_noi_day_test.dart` canh.
+  /// hoá đơn, mục tiêu, ví, gộp ví, đồng bộ) phải nhận bản có nguồn phiên từ DI; test `so_du_vi_noi_day_test.dart` chỉ canh
+  /// phần đăng ký DI + hoá đơn + mục tiêu, các đường còn lại tin vào việc cùng lấy từ `sl()`.
   final int? Function()? _taiKhoanPhien;
 
   /// Tính lại số dư của [walletId] từ sổ và ghi vào `wallets.balance`.

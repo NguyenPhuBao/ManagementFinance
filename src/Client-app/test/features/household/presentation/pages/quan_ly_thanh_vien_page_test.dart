@@ -14,15 +14,29 @@ import '../../../../helpers/nha_gia.dart';
 /// Treo / ném RIÊNG `chuyenChu` (api giả chung treo cả `cuaToi`, nên không dựng được "máy khác báo mất vai trong lúc POST bay").
 class _ApiChuyenChuTreo extends HouseholdApiGia {
   Completer<void>? treoChuyen;
+  Completer<void>? treoMe;
   Object? loiChuyen;
+
+  /// Số lượt `await` thêm trước khi ném lỗi của `chuyenChu` (dịch độ lệch microtask so với `/me`).
+  int hopLoi = 0;
 
   @override
   Future<Map<String, Object?>> chuyenChu(int idaccount) async {
     goi.add('chuyenChu:$idaccount');
     await treoChuyen?.future;
+    for (var i = 0; i < hopLoi; i++) {
+      await Future<void>.value();
+    }
     final l = loiChuyen;
     if (l != null) throw l;
     return traVe ?? cuaToiJson;
+  }
+
+  @override
+  Future<Map<String, Object?>> cuaToi() async {
+    goi.add('cuaToi');
+    await treoMe?.future;
+    return cuaToiJson;
   }
 }
 
@@ -227,26 +241,37 @@ void main() {
     expect(bat.cau.where((c) => c == 'Bạn không còn là chủ nhà.'), hasLength(1));
   });
 
-  testWidgets('mất vai và bị từ chối tới CÙNG một đợt microtask: về trang trước đúng MỘT lần (I1)', (t) async {
-    final api = _ApiChuyenChuTreo();
-    final (_, bat) = await mo(t, apiDung: api);
-    api.treoChuyen = Completer<void>();
-    await t.tap(find.text('Chuyển chủ nhà'));
-    await t.pumpAndSettle();
-    await t.tap(find.widgetWithText(FilledButton, 'Chuyển chủ nhà'));
-    await t.pump();
-    bat.ds.clear();
-    api.cuaToiJson = nhaJson(myRole: 'Member');
-    api.loiChuyen = loiServer(403, 'FORBIDDEN_NOT_OWNER');
-    // Không `pump` giữa hai việc: cạnh mất vai và phản hồi lỗi cùng rơi vào một đợt microtask, trước callback của BlocListener.
-    api.treoChuyen!.complete();
-    final lamMoi = repoDaMo.lamMoi();
-    await lamMoi;
-    await t.pumpAndSettle();
-    expect(find.text('GOC'), findsOneWidget, reason: 'pop hai lần là văng khỏi trang gốc (hoặc go thay cả stack)');
-    expect(find.text('Quản lý thành viên'), findsNothing);
-    expect(bat.cau.where((c) => c == 'Bạn không còn là chủ nhà.'), hasLength(1));
-  });
+  // I1: quét độ lệch microtask giữa phản hồi lỗi của `chuyenChu` và `/me` báo mất vai. Ở một vài độ lệch (bản cũ: hopLoi = 4)
+  // cạnh mất vai tới BlocListener TRƯỚC khi nhánh thất bại của `_lamRoiVe` chạy: hạ cờ `_tuThaoTac` trước phép xét là pop đôi.
+  // Một con số đơn lẻ không canh được khe này, nên quét cả dải.
+  for (var hop = 0; hop <= 8; hop++) {
+    testWidgets('mất vai và bị từ chối lệch $hop lượt microtask: về trang trước đúng MỘT lần, một câu (I1)', (t) async {
+      final api = _ApiChuyenChuTreo();
+      final (_, bat) = await mo(t, apiDung: api);
+      api.treoChuyen = Completer<void>();
+      await t.tap(find.text('Chuyển chủ nhà'));
+      await t.pumpAndSettle();
+      await t.tap(find.widgetWithText(FilledButton, 'Chuyển chủ nhà'));
+      await t.pump();
+      bat.ds.clear();
+      api
+        ..hopLoi = hop
+        ..treoMe = Completer<void>()
+        ..cuaToiJson = nhaJson(myRole: 'Member')
+        ..loiChuyen = loiServer(403, 'FORBIDDEN_NOT_OWNER');
+      final lamMoi = repoDaMo.lamMoi();
+      await t.pump();
+      api.treoChuyen!.complete();
+      api.treoMe!.complete();
+      await t.pumpAndSettle();
+      await lamMoi;
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull);
+      expect(find.text('GOC'), findsOneWidget, reason: 'pop hai lần là văng khỏi trang gốc (hoặc go thay cả stack)');
+      expect(find.text('Quản lý thành viên'), findsNothing);
+      expect(bat.cau.where((c) => c == 'Bạn không còn là chủ nhà.'), hasLength(1), reason: 'hop=$hop');
+    });
+  }
 
   testWidgets('bàn phím hệ thống mở, 360 dp: không tràn', (t) async {
     await mo(t, banPhim: true);

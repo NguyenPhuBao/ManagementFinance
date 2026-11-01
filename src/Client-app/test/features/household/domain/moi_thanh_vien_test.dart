@@ -31,6 +31,9 @@ void main() {
     expect(c, contains('Nhà An'));
     expect(c, contains('ABCD2345'));
     expect(c, contains('02/11/2026 20:30'));
-    expect(cauChiaSeMaMoi(tenNha: 'Nhà An', ma: 'ABCD2345'), isNot(contains('hạn')));
+    final c2 = cauChiaSeMaMoi(tenNha: 'Nhà An', ma: 'ABCD2345');
+    expect(c2, isNot(contains('hạn')));
+    expect(c2, contains('ABCD2345'), reason: 'thiếu hạn vẫn phải chia sẻ được mã');
+    expect(c2, contains('Nhà An'), reason: 'thiếu hạn vẫn phải nêu tên nhà');
   });
 }
