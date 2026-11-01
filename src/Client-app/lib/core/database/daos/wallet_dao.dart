@@ -39,6 +39,14 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
         .get();
   }
 
+  /// Ví CỦA NHÀ do chính [idaccount] tạo (G113 nợ 1): đường kéo về vá neo cho chúng như ví riêng, vì khoản thành viên kéo về
+  /// sẽ làm tính lại nuốt số dư ban đầu nếu chưa có neo (G85). `getAll` ràng `idhousehold IS NULL` nên không thấy.
+  Future<List<Wallet>> getViNhaDoToiTao(int idaccount) {
+    return (select(wallets)
+          ..where((t) => t.idaccount.equals(idaccount) & t.idhousehold.isNotNull() & t.deletedAt.isNull()))
+        .get();
+  }
+
   /// Ví **đang hoạt động** — thứ mà mọi bộ chọn ví phải gọi.
   ///
   /// Tách khỏi [getAll] chứ không lọc luôn ở đó: ví lưu trữ vẫn phải đọc được

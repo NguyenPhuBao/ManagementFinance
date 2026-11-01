@@ -163,6 +163,8 @@ class ApDuLieuKeoVe {
           // `viDungToi` ngay trước khi ghi giao dịch.
           final viDaCoTruocPull = {
             for (final w in await _db.walletDao.getAll(accountId)) w.id,
+            // G113 nợ 1: ví nhà do tôi tạo cũng là "đã có trên máy". Thiếu là khoản thành viên kéo về nuốt số dư ban đầu (G85).
+            for (final w in await _db.walletDao.getViNhaDoToiTao(accountId)) w.id,
           };
           if (wallets.isNotEmpty) {
             final companions = wallets.map((w) => companionViKeoVe(w, accountId)).toList();

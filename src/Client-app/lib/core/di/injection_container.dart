@@ -297,7 +297,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // được, còn danh mục mặc định thì không.
   // Nơi DUY NHẤT ghi `wallets.balance`: số dư nay là cache của tổng sổ giao
   // dịch, không còn là giá trị tuyệt đối đồng bộ theo LWW (G37).
-  sl.registerLazySingleton<SoDuViService>(() => SoDuViService(db: sl()));
+  // Nguồn tài khoản là GÓI, không phải nhà: `GoiRepository` có phiên từ `moPhienCucBo` và ở cả đường nền (`chay_nen.dart`), còn
+  // `NhaRepository` chỉ có phiên sau `AuthSuccess` (G113 nợ 1).
+  sl.registerLazySingleton<SoDuViService>(() => SoDuViService(db: sl(), taiKhoanPhien: () => sl<GoiRepository>().idaccount));
   // G63: đặt cờ cho ví bị server từ chối vì trùng tên. Chỉ ĐĂNG KÝ ở đây;
   // `batDauNghe` gọi MỘT lần qua `noiBoNgheKetQuaDay` (cuối tệp này), cùng lý do với bộ nghe hoá đơn.
   sl.registerLazySingleton<ViTrungTenResolver>(
