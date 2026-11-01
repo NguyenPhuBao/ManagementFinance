@@ -320,11 +320,17 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
               t.fundPairId.isNotNull() &
               t.deletedAt.isNull()))
         .get();
+    if (rieng.isEmpty) return const [];
+    // Chạy sau MỖI lượt kéo về và số nửa riêng chỉ tăng: hai truy vấn rồi nhóm trong Dart, không một truy vấn mỗi nửa riêng.
+    // Đọc mọi nửa của nhà có mã cặp (không `isIn` theo mã — trần tham số của SQLite).
+    final nuaNha = await (select(transactions)..where((t) => t.fundPairId.isNotNull() & t.idhousehold.isNotNull())).get();
+    final theoMa = <String, List<Transaction>>{};
+    for (final n in nuaNha) {
+      (theoMa[n.fundPairId!] ??= []).add(n);
+    }
     final ra = <({Transaction rieng, int idNha, String viNhaId})>[];
     for (final r in rieng) {
-      final nha = await (select(transactions)
-            ..where((t) => t.fundPairId.equals(r.fundPairId!) & t.idhousehold.isNotNull()))
-          .get();
+      final nha = theoMa[r.fundPairId!] ?? const <Transaction>[];
       if (nha.isNotEmpty && nha.every((n) => n.deletedAt != null)) {
         ra.add((rieng: r, idNha: nha.first.idhousehold!, viNhaId: nha.first.walletId));
       }
