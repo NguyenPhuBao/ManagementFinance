@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
@@ -141,11 +141,170 @@ void main() {
     await repo.saveChild(draft(ten: 'Tiền chợ', accountId: 10));
   });
 
-  test('tên trùng hàng xoá mềm của nhà không giữ chỗ; sửa mà không đổi tên thì không xét trùng', () async {
+  test('tên trùng hàng xoá mềm của nhà không giữ chỗ', () async {
     await them('cu', 'Điện', idaccount: 20, idhousehold: 7, xoa: true);
     await repo.saveChild(draft(ten: 'Điện', accountId: 10, idhousehold: 7));
-    final moi = (await db.categoryDao.getCuaNha(7)).single;
-    await repo.saveChild(draft(id: moi.id, ten: 'Điện', accountId: 10, idhousehold: 7));
+    expect((await db.categoryDao.getCuaNha(7)).single.name, 'Điện');
+  });
+
+  test('sửa mà không đổi tên thì không xét trùng (hàng cũ trùng tên vẫn sửa được icon)', () async {
+    await them('a1', 'Điện', idaccount: 20, idhousehold: 7);
+    await them('a2', 'Điện', idaccount: 21, idhousehold: 7);
+    await repo.saveChild(draft(id: 'a1', ten: 'Điện', accountId: 10, idhousehold: 7));
+    expect((await db.categoryDao.getById('a1'))!.syncStatus, 'pending',
+        reason: 'bỏ lối tắt currentName là hai hàng cũ trùng tên không sửa nổi nữa');
+  });
+
+  test('draft nhà sửa hàng RIÊNG của tôi: ném, hàng vẫn riêng', () async {
+    await them('r', 'Riêng', idaccount: 10);
+    await expectLater(repo.saveChild(draft(id: 'r', ten: 'Riêng', accountId: 10, idhousehold: 7)),
+        throwsA(isA<CategoryValidationException>()));
+    expect((await db.categoryDao.getById('r'))!.idhousehold, isNull,
+        reason: 'hàng riêng lặng lẽ thành hàng nhà là biến khỏi danh sách cá nhân và HOUSEHOLD_SCOPE_MISMATCH');
+  });
+
+  test('draft nhà A sửa hàng nhà B: ném', () async {
+    await them('b', 'Của B', idaccount: 20, idhousehold: 8);
+    await expectLater(repo.saveChild(draft(id: 'b', ten: 'Của B', accountId: 10, idhousehold: 7)),
+        throwsA(isA<CategoryValidationException>()));
+    expect((await db.categoryDao.getById('b'))!.idhousehold, 8);
+  });
+
+  test('sửa hàng của nhà đã xoá mềm: ném, không sống lại (cả isDeleted lẫn deletedAt)', () async {
+    await them('x', 'Đã xoá', idaccount: 20, idhousehold: 7, xoa: true);
+    await expectLater(repo.saveChild(draft(id: 'x', ten: 'Đã xoá', accountId: 10, idhousehold: 7)),
+        throwsA(isA<CategoryValidationException>()));
+    await db.categoryDao.insert(CategoriesCompanion.insert(
+      id: 'y',
+      idaccount: 20,
+      name: 'Cờ xoá',
+      classify: 'chi',
+      idhousehold: const Value(7),
+      isDeleted: const Value(true),
+      isLocalOnly: const Value(false),
+      updatedAt: DateTime(2026, 8, 21),
+    ));
+    await expectLater(repo.saveChild(draft(id: 'y', ten: 'Cờ xoá', accountId: 10, idhousehold: 7)),
+        throwsA(isA<CategoryValidationException>()));
+    expect((await db.categoryDao.getById('x'))!.deletedAt, isNotNull);
+    expect((await db.categoryDao.getById('y'))!.isDeleted, isTrue);
+  });
+
+  test('nhóm cha là null-nhà: danh mục NHÀ không nhận nhóm RIÊNG của chính tôi làm cha', () async {
+    await them('nr', 'Nhóm riêng của tôi', idaccount: 10, isGroup: true);
+    await expectLater(repo.saveChild(draft(ten: 'Gas', accountId: 10, idhousehold: 7, parentId: 'nr')),
+        throwsA(isA<CategoryValidationException>()),
+        reason: 'bỏ vế parent.idhousehold == null ở nhánh riêng (hoặc so idhousehold sai) là con nhà treo vào nhóm riêng');
+  });
+
+  test('nhóm cha là nhóm NHÀ: danh mục RIÊNG của tôi không được nhận làm cha dù tôi là người tạo', () async {
+    await them('nn', 'Nhóm nhà tôi tạo', idaccount: 10, idhousehold: 7, isGroup: true);
+    await expectLater(repo.saveChild(draft(ten: 'Gas', accountId: 10, parentId: 'nn')),
+        throwsA(isA<CategoryValidationException>()),
+        reason: 'bỏ vế parent.idhousehold == null: idaccount khớp nên hàng riêng treo vào nhóm nhà');
+  });
+
+  group('saveGroup của nhà', () {
+    CategoryGroupDraft gd({
+      String? id,
+      String ten = 'Nhóm',
+      int accountId = 10,
+      int? idhousehold,
+      List<String> childIds = const [],
+    }) =>
+        CategoryGroupDraft(
+          id: id,
+          accountId: accountId,
+          name: ten,
+          classify: 'chi',
+          icon: 'icon',
+          colour: '#FFFFFF',
+          childIds: childIds,
+          idhousehold: idhousehold,
+        );
+
+    test('sửa nhóm nhà do người khác tạo giữ nhà và người tạo, pending', () async {
+      await them('g', 'Sinh hoạt', idaccount: 20, idhousehold: 7, isGroup: true);
+      await repo.saveGroup(gd(id: 'g', ten: 'Sinh hoạt mới', idhousehold: 7));
+      final h = (await db.categoryDao.getById('g'))!;
+      expect(h.idhousehold, 7, reason: 'insertOrReplace: thiếu trường là nhóm nhà thành nhóm riêng im lặng');
+      expect(h.idaccount, 20);
+      expect(h.isGroup, isTrue);
+      expect(h.syncStatus, 'pending');
+    });
+
+    test('nhóm nhà nhận con cùng nhà của người khác', () async {
+      await them('g', 'Sinh hoạt', idaccount: 20, idhousehold: 7, isGroup: true);
+      await them('c', 'Gas', idaccount: 21, idhousehold: 7);
+      await repo.saveGroup(gd(id: 'g', ten: 'Sinh hoạt', idhousehold: 7, childIds: ['c']));
+      expect((await db.categoryDao.getById('c'))!.parentId, 'g');
+    });
+
+    test('nhóm nhà từ chối con nhà khác và con riêng', () async {
+      await them('g', 'Sinh hoạt', idaccount: 20, idhousehold: 7, isGroup: true);
+      await them('cb', 'Của B', idaccount: 20, idhousehold: 8);
+      await them('cr', 'Riêng', idaccount: 10);
+      for (final c in ['cb', 'cr']) {
+        await expectLater(repo.saveGroup(gd(id: 'g', ten: 'Sinh hoạt', idhousehold: 7, childIds: [c])),
+            throwsA(isA<CategoryValidationException>()),
+            reason: 'con $c không cùng nhà');
+      }
+    });
+
+    test('nhóm riêng từ chối con của nhà dù tôi là người tạo', () async {
+      await them('g', 'Nhóm riêng', idaccount: 10, isGroup: true);
+      await them('cn', 'Con nhà', idaccount: 10, idhousehold: 7);
+      await expectLater(repo.saveGroup(gd(id: 'g', ten: 'Nhóm riêng', childIds: ['cn'])),
+          throwsA(isA<CategoryValidationException>()));
+    });
+
+    test('bỏ chọn con ở nhóm nhà gỡ đúng hàng, không đụng hàng nhà khác', () async {
+      await them('g', 'Sinh hoạt', idaccount: 20, idhousehold: 7, isGroup: true);
+      await them('c1', 'Gas', idaccount: 21, idhousehold: 7);
+      await them('c2', 'Nước', idaccount: 20, idhousehold: 7);
+      await repo.saveGroup(gd(id: 'g', ten: 'Sinh hoạt', idhousehold: 7, childIds: ['c1', 'c2']));
+      await them('b', 'Nhóm B', idaccount: 20, idhousehold: 8, isGroup: true);
+      await them('cb', 'Con B', idaccount: 20, idhousehold: 8);
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'cb',
+        idaccount: 20,
+        name: 'Con B',
+        classify: 'chi',
+        idhousehold: const Value(8),
+        parentId: const Value('g'), // cố tình trỏ vào id nhóm của nhà 7
+        isLocalOnly: const Value(false),
+        syncStatus: const Value('synced'),
+        updatedAt: DateTime(2026, 8, 21),
+      ));
+      await repo.saveGroup(gd(id: 'g', ten: 'Sinh hoạt', idhousehold: 7, childIds: ['c1']));
+      expect((await db.categoryDao.getById('c1'))!.parentId, 'g');
+      final c2 = (await db.categoryDao.getById('c2'))!;
+      expect(c2.parentId, isNull);
+      expect(c2.syncStatus, 'pending');
+      final cb = (await db.categoryDao.getById('cb'))!;
+      expect(cb.parentId, 'g', reason: 'hàng nhà khác không bị gỡ');
+      expect(cb.syncStatus, 'synced');
+    });
+
+    test('bỏ chọn con ở nhóm nhà: con trùng tên khuôn đã xoá vẫn gỡ được (không áp ẩn theo khuôn)', () async {
+      await db.categoryDao.insert(CategoriesCompanion.insert(
+        id: 'k',
+        idaccount: 0,
+        name: 'Điện',
+        classify: 'chi',
+        isDefault: const Value(true),
+        isLocalOnly: const Value(false),
+        isDeleted: const Value(true),
+        deletedAt: Value(DateTime(2026, 10, 28)),
+        updatedAt: DateTime(2026, 10, 28),
+      ));
+      await them('g', 'Sinh hoạt', idaccount: 20, idhousehold: 7, isGroup: true);
+      await them('c', 'Điện', idaccount: 20, idhousehold: 7);
+      await repo.saveGroup(gd(id: 'g', ten: 'Sinh hoạt', idhousehold: 7, childIds: ['c']));
+      await repo.saveGroup(gd(id: 'g', ten: 'Sinh hoạt', idhousehold: 7));
+      expect((await db.categoryDao.getById('c'))!.parentId, isNull,
+          reason: 'bộ nhà do server sao từ khuôn cùng tên; khuôn bị xoá không được làm con kẹt trong nhóm');
+    });
   });
 
   test('getCuaNha trả hàng của nhà theo classify, bỏ hàng xoá mềm và hàng nhà khác / riêng', () async {

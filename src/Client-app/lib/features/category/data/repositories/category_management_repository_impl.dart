@@ -67,6 +67,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     // Nhà của danh mục: draft nêu thì theo draft, không nêu thì theo hàng đang có — đường sửa cá nhân không được lặng lẽ
     // kéo danh mục của nhà về riêng (`insertOrReplace` thay cả hàng).
     final nha = _nhaCuaDraft(existing, draft.idhousehold);
+    _rejectNhaDaXoa(existing);
     if (existing?.isGroup == true) {
       throw const CategoryValidationException(
           'Nhóm danh mục không thể là danh mục con.');
@@ -132,6 +133,7 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       _rejectDefault(existing);
       _requireOwnership(existing, draft.accountId);
       final nha = _nhaCuaDraft(existing, draft.idhousehold);
+      _rejectNhaDaXoa(existing);
       if (existing != null && !existing.isGroup) {
         throw const CategoryValidationException(
             'Danh mục con không thể là nhóm.');
@@ -200,7 +202,9 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
                   ? row.idaccount.equals(draft.accountId) & row.idhousehold.isNull() & row.parentId.equals(id)
                   : row.idhousehold.equals(nha) & row.parentId.equals(id)))
             .get())
-          if (dangAnTheoKhuon(CategoryEntity.fromDrift(c), khuon)) c.id,
+          // Nhóm nhà không áp luật ẩn theo khuôn: bộ danh mục nhà do server sao từ khuôn (cùng tên), admin xoá khuôn thì
+          // con ấy vẫn phải gỡ được khỏi nhóm.
+          if (nha == null && dangAnTheoKhuon(CategoryEntity.fromDrift(c), khuon)) c.id,
       ];
       await (db.update(db.categories)
             ..where((row) =>
@@ -418,14 +422,22 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     );
   }
 
-  /// Nhà của một lần lưu: draft nêu thì theo draft, không thì theo hàng đang có. Draft nêu nhà khác với hàng đang có là
-  /// chuyển danh mục giữa nhà / riêng — không hỗ trợ.
+  /// Nhà của một lần lưu: draft nêu thì theo draft, không thì theo hàng đang có. Sửa hàng đang có mà draft nêu nhà KHÁC
+  /// hàng (riêng ↔ nhà, nhà A ↔ nhà B) là chuyển phạm vi — không hỗ trợ, ném (hàng đã lên server thì server cũng từ chối
+  /// HOUSEHOLD_SCOPE_MISMATCH vĩnh viễn).
   int? _nhaCuaDraft(Category? existing, int? idhouseholdDraft) {
     final cu = existing?.idhousehold;
-    if (cu != null && idhouseholdDraft != null && cu != idhouseholdDraft) {
+    if (existing != null && idhouseholdDraft != null && cu != idhouseholdDraft) {
       throw const CategoryValidationException('Danh mục không thuộc nhà này.');
     }
     return idhouseholdDraft ?? cu;
+  }
+
+  /// Hàng của nhà đã xoá mềm (người khác xoá lúc form còn mở) không được sống lại khi Lưu. Hàng riêng giữ hành vi cũ.
+  void _rejectNhaDaXoa(Category? existing) {
+    if (existing != null && existing.idhousehold != null && (existing.isDeleted || existing.deletedAt != null)) {
+      throw const CategoryValidationException('Danh mục này đã bị xoá khỏi nhà.');
+    }
   }
 
   Future<Category?> _validParent({
