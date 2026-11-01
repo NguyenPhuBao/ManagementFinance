@@ -1,6 +1,7 @@
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/errors/app_exceptions.dart';
 import '../../transaction/data/models/transaction_entity.dart';
 import '../../transaction/data/repositories/transaction_repository.dart';
 import '../../wallet/data/so_du_vi_service.dart';
@@ -65,6 +66,7 @@ class GopQuyService {
     String ghiChu, {
     required bool gop,
   }) async {
+    await _kiemDauVao(idNha, viChungId, viRiengId, soTien);
     final maCap = _uuid.v4();
     final bay = DateTime.now();
     TransactionEntity hang({required String wallet, required int? nha, required String type, required String note}) =>
@@ -94,6 +96,22 @@ class GopQuyService {
     return maCap;
   }
 
+  /// Chốt phạm vi TRƯỚC khi ghi gì: nửa riêng trỏ ví nhà bị server từ chối vĩnh viễn (HOUSEHOLD_SCOPE_MISMATCH) trong khi quỹ vẫn
+  /// nhận tiền; số tiền 0 là CONSTRAINT_VIOLATION vĩnh viễn; số âm làm máy và server khác dấu. Ví lưu trữ / banking KHÔNG
+  /// chặn ở đây (bộ chọn ví lo).
+  Future<void> _kiemDauVao(int idNha, String viChungId, String? viRiengId, double soTien) async {
+    if (!(soTien > 0)) throw const CacheException('Số tiền phải lớn hơn 0.');
+    final viChung = await _db.walletDao.getById(viChungId);
+    if (viChung == null || viChung.deletedAt != null || viChung.isDeleted || viChung.idhousehold != idNha) {
+      throw const CacheException('Ví chung không thuộc nhà đang chọn.');
+    }
+    if (viRiengId == null) return;
+    final viRieng = await _db.walletDao.getById(viRiengId);
+    if (viRieng == null || viRieng.deletedAt != null || viRieng.isDeleted || viRieng.idhousehold != null) {
+      throw const CacheException('Ví riêng không hợp lệ.');
+    }
+  }
+
   /// Hai nửa CÒN SỐNG của cặp trên máy này; nửa nào vắng thì `null` (tiền mặt trao tay, hoặc một nửa đã bị gỡ).
   Future<({TransactionEntity? rieng, TransactionEntity? nha})> docCap(String maCap) async {
     final hang = await _db.transactionDao.theoMaCap(maCap);
@@ -109,6 +127,7 @@ class GopQuyService {
 
   /// Đổi số tiền, ngày, ghi chú của CẢ HAI nửa trong một giao tác. Ví và chiều tiền không đổi.
   Future<void> sua({required String maCap, required double soTien, required DateTime ngay, required String ghiChu}) async {
+    if (!(soTien > 0)) throw const CacheException('Số tiền phải lớn hơn 0.');
     final cap = await docCap(maCap);
     final vi = _viCuaCap(cap);
     final noteRieng = await _ghiChuRieng(cap, ghiChu);

@@ -6,15 +6,16 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flowmoney/core/database/app_database.dart';
+import 'package:flowmoney/core/errors/app_exceptions.dart';
 import 'package:flowmoney/features/home/domain/thu_chi_thang.dart';
 import 'package:flowmoney/features/household/application/gop_quy_service.dart';
-import 'package:flowmoney/features/household/domain/ghi_chu_gop_quy.dart';
 import 'package:flowmoney/features/transaction/data/datasources/transaction_local_data_source.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/transaction/data/repositories/transaction_repository_impl.dart';
 import 'package:flowmoney/features/transaction/domain/khoan_vao_thong_ke.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_filter.dart';
 import 'package:flowmoney/features/wallet/data/so_du_vi_service.dart';
+import 'package:flowmoney/features/wallet/domain/so_du_mo_so.dart';
 
 import '../../transaction/data/repositories/transaction_repository_test.dart' show DummySyncEngine;
 
@@ -94,7 +95,7 @@ void main() {
     await s.gop(idNha: 7, idaccount: 10, viChungId: 'vn', tenViChung: 'Tiền chợ', soTien: 2000000, viRiengId: 'vr', ngay: ngay);
     expect(await soDu('vr'), 3000000, reason: 'ví riêng bị trừ');
     expect(await soDu('vn'), 3000000, reason: 'ví chung được cộng');
-    expect(soLanHen + (sync.syncScheduled ? 1 : 0), greaterThan(0), reason: 'phải xin đồng bộ');
+    expect(sync.syncScheduled, isTrue, reason: 'phải xin đồng bộ');
   });
 
   test('tiền mặt trao tay: chỉ nửa của nhà, vẫn mang mã cặp', () async {
@@ -122,13 +123,133 @@ void main() {
   });
 
   test('lỗi giữa chừng không để lại nửa nào và số dư không đổi', () async {
-    // Ví riêng không tồn tại: khoá ngoại ném ở nửa thứ hai, SAU khi nửa của nhà đã chèn.
+    // Nửa của nhà chèn trước; nửa riêng (ví vr) bị trigger chặn ở lần chèn thứ hai — nếu không chung giao tác thì nửa nhà sót lại.
+    await db.customStatement(
+        "CREATE TRIGGER chan_nua_rieng BEFORE INSERT ON transactions WHEN NEW.wallet_id = 'vr' BEGIN SELECT RAISE(ABORT,'x'); END");
     await expectLater(
-        s.gop(idNha: 7, idaccount: 10, viChungId: 'vn', tenViChung: 'T', soTien: 1, viRiengId: 'khong-co', ngay: ngay),
+        s.gop(idNha: 7, idaccount: 10, viChungId: 'vn', tenViChung: 'T', soTien: 1, viRiengId: 'vr', ngay: ngay),
         throwsA(anything));
     expect(await cacNuaCap(), isEmpty, reason: 'hai nửa phải cùng một giao tác — không được sót nửa của nhà');
     expect(await soDu('vn'), 1000000);
     expect(await soDu('vr'), 5000000);
+  });
+
+  group('chốt đầu vào của _ghi / sua: từ chối, không ghi gì', () {
+    Future<void> khongGhi(Future<Object?> Function() lam) async {
+      await expectLater(lam(), throwsA(isA<CacheException>()));
+      expect(await cacNuaCap(), isEmpty);
+      expect(await soDu('vr'), 5000000);
+      expect(await soDu('vn'), 1000000);
+    }
+
+    Future<Object?> gopVoi({String chung = 'vn', String? rieng = 'vr', double tien = 1000, int nha = 7}) =>
+        s.gop(idNha: nha, idaccount: 10, viChungId: chung, tenViChung: 'T', soTien: tien, viRiengId: rieng, ngay: ngay);
+
+    Future<void> xoaMem(String id) =>
+        (db.update(db.wallets)..where((w) => w.id.equals(id))).write(WalletsCompanion(deletedAt: Value(moc)));
+
+    test('ví chung không có', () => khongGhi(() => gopVoi(chung: 'khong-co')));
+    test('ví chung đã xoá mềm', () async {
+      await xoaMem('vn');
+      await khongGhi(() => gopVoi());
+    });
+    test('ví chung thuộc nhà khác', () => khongGhi(() => gopVoi(nha: 8)));
+    test('ví "chung" thực ra là ví riêng', () => khongGhi(() => gopVoi(chung: 'vr', rieng: null)));
+    test('ví riêng không có', () => khongGhi(() => gopVoi(rieng: 'khong-co')));
+    test('ví riêng đã xoá mềm', () async {
+      await xoaMem('vr');
+      await khongGhi(() => gopVoi());
+    });
+    test('ví riêng là ví của nhà', () => khongGhi(() => gopVoi(rieng: 'vn')));
+    test('số tiền 0', () => khongGhi(() => gopVoi(tien: 0)));
+    test('số tiền âm', () => khongGhi(() => gopVoi(tien: -5)));
+    test(
+        'rút: số tiền 0 cũng bị từ chối',
+        () => khongGhi(() =>
+            s.rut(idNha: 7, idaccount: 10, viChungId: 'vn', tenViChung: 'T', soTien: 0, viRiengId: 'vr', ngay: ngay)));
+    test('sửa với số tiền <= 0 ném và không đổi gì', () async {
+      final p = await s.gop(idNha: 7, idaccount: 10, viChungId: 'vn', tenViChung: 'T', soTien: 1000, viRiengId: 'vr', ngay: ngay);
+      await expectLater(s.sua(maCap: p, soTien: 0, ngay: ngay, ghiChu: ''), throwsA(isA<CacheException>()));
+      await expectLater(s.sua(maCap: p, soTien: -1, ngay: ngay, ghiChu: ''), throwsA(isA<CacheException>()));
+      expect((await s.docCap(p)).nha!.amount, 1000);
+    });
+  });
+
+  group('giao tác của sua / xoa', () {
+    Future<String> capMoi() =>
+        s.gop(idNha: 7, idaccount: 10, viChungId: 'vn', tenViChung: 'Tiền chợ', soTien: 2000000, viRiengId: 'vr', ngay: ngay);
+
+    Future<void> chanNuaNha(String id) => db.customStatement(
+        "CREATE TRIGGER chan_nua_nha BEFORE UPDATE ON transactions WHEN NEW.id = '$id' BEGIN SELECT RAISE(ABORT,'x'); END");
+
+    test('sua: nửa nhà lỗi thì nửa riêng nguyên, số dư nguyên', () async {
+      final p = await capMoi();
+      final truoc = await s.docCap(p);
+      await chanNuaNha(truoc.nha!.id);
+      await expectLater(s.sua(maCap: p, soTien: 1, ngay: ngay, ghiChu: 'z'), throwsA(anything));
+      final sau = await s.docCap(p);
+      expect(sau.rieng!.amount, 2000000, reason: 'nửa riêng được sửa trước trong vòng lặp — phải lùi lại cùng giao tác');
+      expect(sau.rieng!.note, truoc.rieng!.note);
+      expect(await soDu('vr'), 3000000);
+      expect(await soDu('vn'), 3000000);
+    });
+
+    test('xoa: nửa nhà lỗi thì nửa riêng nguyên, số dư nguyên', () async {
+      final p = await capMoi();
+      final truoc = await s.docCap(p);
+      await chanNuaNha(truoc.nha!.id);
+      await expectLater(s.xoa(p), throwsA(anything));
+      final sau = await s.docCap(p);
+      expect(sau.rieng, isNotNull, reason: 'nửa riêng đã xoá mềm trước phải lùi lại cùng giao tác');
+      expect(sau.nha, isNotNull);
+      expect(await soDu('vr'), 3000000);
+      expect(await soDu('vn'), 3000000);
+    });
+
+    test('xin đồng bộ đúng một lần ở sua và ở xoa', () async {
+      final p = await capMoi();
+      soLanHen = 0;
+      await s.sua(maCap: p, soTien: 1000, ngay: ngay, ghiChu: '');
+      expect(soLanHen, 1, reason: 'thiếu thì nửa sửa nằm pending mãi');
+      await s.xoa(p);
+      expect(soLanHen, 2);
+    });
+  });
+
+  group('ví chung do người khác tạo (idaccount 99) — Thành viên góp', () {
+    Future<int> demNeo() async => (await db.select(db.transactions).get()).where((h) => h.id == idKhoanMoSo('v99')).length;
+
+    setUp(() async {
+      await db.walletDao.insert(WalletsCompanion.insert(
+          id: 'v99', idaccount: 99, name: 'Quỹ chung', balance: const Value(1000000), idhousehold: const Value(7), updatedAt: moc));
+      // Neo do máy người tạo đặt, về qua kéo về — máy này (phiên 10) không được tự đặt thêm.
+      await db.transactionDao.insert(TransactionsCompanion.insert(
+          id: idKhoanMoSo('v99'),
+          walletId: 'v99',
+          idaccount: 99,
+          idhousehold: const Value(7),
+          amount: 1000000,
+          type: 'thu',
+          note: Value(ghiChuMoSo()),
+          date: moc,
+          updatedAt: moc));
+    });
+
+    test('góp, sửa, xoá: không sinh neo mới, số dư hai ví đúng', () async {
+      final p = await s.gop(
+          idNha: 7, idaccount: 10, viChungId: 'v99', tenViChung: 'Quỹ chung', soTien: 2000000, viRiengId: 'vr', ngay: ngay);
+      expect(await demNeo(), 1);
+      expect(await soDu('v99'), 3000000);
+      expect(await soDu('vr'), 3000000);
+      await s.sua(maCap: p, soTien: 500000, ngay: ngay, ghiChu: '');
+      expect(await demNeo(), 1);
+      expect(await soDu('v99'), 1500000);
+      expect(await soDu('vr'), 4500000);
+      await s.xoa(p);
+      expect(await demNeo(), 1);
+      expect(await soDu('v99'), 1000000);
+      expect(await soDu('vr'), 5000000);
+    });
   });
 
   test('sửa đổi cả hai nửa, pending, updatedAt mới, số dư tính lại', () async {
@@ -249,10 +370,5 @@ void main() {
       expect(soGiaoDich.expense, 0, reason: 'nửa chi của nhà không được thành chi cá nhân');
       expect(ds.singleWhere((t) => t.fundPairId != null).note, 'Rút quỹ · Tiền chợ');
     });
-  });
-
-  test('tiền tố dùng chung với hằng của domain', () {
-    expect(ghiChuNuaRieng(gop: true, tenViChung: 'A'), '${kTienToGopQuy}A');
-    expect(ghiChuNuaRieng(gop: false, tenViChung: 'A', ghiChu: 'x'), '${kTienToRutQuy}A · x');
   });
 }
