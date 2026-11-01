@@ -25,14 +25,24 @@ bool duocLamViecNha(ViecNha viec, {required VaiNha? vai, required TrangThaiNha? 
 }
 
 /// Sửa một khoản của nhà (`Family/01` mục 3). Khoản có mã cặp chỉ người ghi sửa được: nửa riêng chỉ nằm trên máy họ.
-bool duocSuaKhoanNha({required VaiNha? vai, required TrangThaiNha? trangThai, required bool cuaToi, required bool coMaCap}) {
+/// Khoản chuyển ([laChuyen]) chỉ Chủ nhà sửa, xoá — server chỉ cho Owner (`sync.service.js`); Chủ cũ đã bị hạ vai thì
+/// khoản chuyển người ấy từng ghi không còn sửa, xoá được.
+bool duocSuaKhoanNha(
+    {required VaiNha? vai,
+    required TrangThaiNha? trangThai,
+    required bool cuaToi,
+    required bool coMaCap,
+    required bool laChuyen}) {
   if (!duocLamViecNha(ViecNha.ghiKhoan, vai: vai, trangThai: trangThai)) return false;
+  if (laChuyen) return vai == VaiNha.chu;
   if (cuaToi) return true;
   return vai == VaiNha.chu && !coMaCap;
 }
 
-/// Xoá một khoản của nhà: người ghi hoặc Chủ nhà.
-bool duocXoaKhoanNha({required VaiNha? vai, required TrangThaiNha? trangThai, required bool cuaToi}) {
+/// Xoá một khoản của nhà: người ghi hoặc Chủ nhà; khoản chuyển chỉ Chủ nhà.
+bool duocXoaKhoanNha(
+    {required VaiNha? vai, required TrangThaiNha? trangThai, required bool cuaToi, required bool laChuyen}) {
   if (!duocLamViecNha(ViecNha.ghiKhoan, vai: vai, trangThai: trangThai)) return false;
+  if (laChuyen) return vai == VaiNha.chu;
   return cuaToi || vai == VaiNha.chu;
 }

@@ -74,10 +74,25 @@ void main() {
   });
 
   group('sửa / xoá khoản', () {
-    bool sua(VaiNha? vai, {required bool cuaToi, required bool coMaCap, TrangThaiNha? t = TrangThaiNha.hoatDong}) =>
-        duocSuaKhoanNha(vai: vai, trangThai: t, cuaToi: cuaToi, coMaCap: coMaCap);
-    bool xoa(VaiNha? vai, {required bool cuaToi, TrangThaiNha? t = TrangThaiNha.hoatDong}) =>
-        duocXoaKhoanNha(vai: vai, trangThai: t, cuaToi: cuaToi);
+    bool sua(VaiNha? vai,
+            {required bool cuaToi, required bool coMaCap, bool chuyen = false, TrangThaiNha? t = TrangThaiNha.hoatDong}) =>
+        duocSuaKhoanNha(vai: vai, trangThai: t, cuaToi: cuaToi, coMaCap: coMaCap, laChuyen: chuyen);
+    bool xoa(VaiNha? vai, {required bool cuaToi, bool chuyen = false, TrangThaiNha? t = TrangThaiNha.hoatDong}) =>
+        duocXoaKhoanNha(vai: vai, trangThai: t, cuaToi: cuaToi, laChuyen: chuyen);
+
+    test('khoản chuyển: chỉ Chủ nhà sửa, xoá (server chỉ cho Owner)', () {
+      expect(sua(VaiNha.thanhVien, cuaToi: true, coMaCap: false, chuyen: true), isFalse,
+          reason: 'chủ cũ bị hạ xuống Thành viên: khoản chuyển từng ghi vẫn bị server từ chối vĩnh viễn');
+      expect(xoa(VaiNha.thanhVien, cuaToi: true, chuyen: true), isFalse, reason: 'Thành viên không xoá khoản chuyển của mình');
+      expect(sua(VaiNha.chu, cuaToi: false, coMaCap: false, chuyen: true), isTrue, reason: 'Chủ sửa chuyển của người khác');
+      expect(xoa(VaiNha.chu, cuaToi: false, chuyen: true), isTrue, reason: 'Chủ xoá chuyển của người khác');
+      expect(xoa(VaiNha.chu, cuaToi: true, chuyen: true, t: TrangThaiNha.chiXem), isFalse,
+          reason: 'khoản chuyển vẫn qua chốt trạng thái nhà');
+    });
+    test('mã cặp: Thành viên sửa nửa của mình, không sửa của người khác', () {
+      expect(sua(VaiNha.thanhVien, cuaToi: true, coMaCap: true), isTrue, reason: 'bản sai bảng làm ca này lọt');
+      expect(sua(VaiNha.thanhVien, cuaToi: false, coMaCap: true), isFalse, reason: 'nửa riêng của người khác');
+    });
 
     test('khoản thường', () {
       expect(sua(VaiNha.chu, cuaToi: false, coMaCap: false), isTrue);
