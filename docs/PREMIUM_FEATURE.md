@@ -227,7 +227,7 @@ hàng riêng — bố cục `408de0af…` để dòng ấy cạnh viên trạng 
 | Huỷ trên PayOS | ✅ PayOS thật | Huỷ bằng API → JIT đọc `CANCELLED` → *Đơn đã huỷ* sau 6 s |
 | Mất mạng, webhook tới giữa chừng | ✅ | 0 kết nối, màn giữ Chờ; có mạng lại 3 s sang *Thành công* |
 | Lưu QR khi mất mạng | ✅ | Toast *"Không lưu được mã QR. Hãy chụp màn hình."* |
-| Webhook sai chữ ký / không chữ ký | ✅ | Sai chữ ký 400. Không chữ ký trả 200 kiểu ping, không đổi trạng thái kể cả khi mang `data` |
+| Webhook sai chữ ký / không chữ ký | ✅ | Sai chữ ký, hoặc không chữ ký mà có `data`: 400. Không chữ ký trả 200 kiểu ping khi thiếu `data`, có `webhookUrl`, hoặc `desc` chứa *test*; hai ca sau có mang `data` của đơn thật nhưng đơn không đổi |
 | Phát lại, trả muộn | ✅ | Phát lại không cộng hạn; đơn `EXPIRED` được trả vẫn kích hoạt |
 | Task 16-4 Tạo ví thứ 3, 4 | ✅ | Form mở, 4 ví lên PostgreSQL |
 | Task 16-5, 16-9 Trợ lý AI, Nhập nhanh | ◐ | Không khoá kể cả mất mạng; máy ảo không có mô hình nên *chưa hỏi được* |

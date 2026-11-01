@@ -1719,7 +1719,7 @@ Realme / OnePlus. Chi tiết: khối 🕗 đầu mục 14 `PROJECT_CONTEXT.md`.
 
 **Bán kính.** Mức thấp: nút + vẫn bị chặn đúng, ví thứ 4 vẫn còn. Chỉ sai chữ, và chỉ với người từng vượt trần. Áp dụng cho cả năm trần.
 
-**Vì sao chưa sửa.** Phiên 30 là buổi đo. Sửa gọn nhất là đổi câu để không nêu số đang có (*"Gói Basic có tối đa 3 ví."*), không phải mang `dangCo` qua route; ca canh ở `cau_quyen_test.dart` và `nang_cap_page_test.dart`.
+**Vì sao chưa sửa.** Phiên 30 là buổi đo, và có hai lối cần người dùng chọn: (a) mang `Vuot.dangCo` qua route để in *"4/3"*, giữ khuôn câu của spec Premium mục 13 bước 1 và Stitch; (b) đổi câu thành *"Gói Basic có tối đa 3 ví."*, ít mã hơn nhưng lệch hai nguồn ấy. Ca canh ở `cau_quyen_test.dart` và `nang_cap_page_test.dart`.
 
 ---
 
