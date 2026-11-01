@@ -1,4 +1,5 @@
 import 'package:flowmoney/core/errors/app_exceptions.dart';
+import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
 import 'package:flowmoney/features/household/presentation/pages/vi_chung_form_page.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
@@ -10,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../../../helpers/bat_thong_bao.dart';
 import '../../../../helpers/du_lieu_nha_gia.dart';
 import '../../../../helpers/font_that.dart';
+import '../../../../helpers/goi_gia.dart';
 import '../../../../helpers/household_api_gia.dart';
 import '../../../../helpers/nha_gia.dart';
 
@@ -18,6 +20,8 @@ void main() {
   late BatThongBao bat;
   late DuLieuNhaGia nguon;
   late DieuChinhGia dieuChinh;
+  late HouseholdApiGia api;
+  late NhaRepositoryImpl repoNha;
 
   /// Mở form trong stack thật `/` → `/dich` để ca canh `pop` về trang trước. `vai`/`status` là của NHÀ lúc mở.
   Future<void> mo(
@@ -28,14 +32,16 @@ void main() {
     String status = 'Active',
     int? phien = 18,
     bool banPhim = false,
+    Map<String, bool>? quyen,
   }) async {
     dat360(t, banPhim: banPhim);
     bat = batThongBao();
     nguon = DuLieuNhaGia(vi: vi ?? const []);
     dieuChinh = DieuChinhGia();
-    final repo = await repoNhaThu(HouseholdApiGia()..cuaToiJson = nhaJson(myRole: vai, status: status));
-    final r = routerThu(ViChungFormPage(idVi: idVi, duLieu: nguon, dieuChinh: dieuChinh, nha: repo));
-    await t.pumpWidget(bocRouterNha(r, idaccount: phien));
+    api = HouseholdApiGia()..cuaToiJson = nhaJson(myRole: vai, status: status);
+    repoNha = await repoNhaThu(api);
+    final r = routerThu(ViChungFormPage(idVi: idVi, duLieu: nguon, dieuChinh: dieuChinh, nha: repoNha));
+    await t.pumpWidget(bocRouterNha(r, idaccount: phien, goi: quyen == null ? null : goiBasic(quyen)));
     r.push('/dich');
     await t.pumpAndSettle();
   }
@@ -121,13 +127,34 @@ void main() {
     (vai: 'Viewer', status: 'Active', ten: 'Chỉ xem'),
     (vai: 'Owner', status: 'ReadOnly', ten: 'nhà chỉ xem'),
   ]) {
-    testWidgets('deeplink / vai đổi giữa chừng (${c.ten}): form tự pop kèm câu cauLoiNha(khongPhaiChu)', (t) async {
+    testWidgets('deeplink vai sai lúc mở (${c.ten}): form tự pop kèm câu cauLoiNha(khongPhaiChu)', (t) async {
       await mo(t, vai: c.vai, status: c.status);
       expect(find.text('GOC'), findsOneWidget, reason: 'không được ở lại một form không lưu được');
       expect(bat.cau, [cauLoiNha(LoaiLoiNha.khongPhaiChu)]);
       expect(nguon.tao, isEmpty);
     });
   }
+
+  testWidgets('vai đổi SAU khi form đã mở (Tạo): bấm Lưu không ghi gì, tự thoát kèm câu', (t) async {
+    await mo(t);
+    await t.enterText(oTen(), 'Quỹ');
+    api.cuaToiJson = nhaJson(myRole: 'Member');
+    await repoNha.lamMoi();
+    await bam(t, find.byKey(const Key('nut-tao-vi-chung')));
+    expect(nguon.tao, isEmpty, reason: 'người đã mất vai không được tạo ví (server từ chối, ví biến mất sau khi báo thành công)');
+    expect(bat.cau, [cauLoiNha(LoaiLoiNha.khongPhaiChu)]);
+    expect(find.text('GOC'), findsOneWidget);
+  });
+
+  testWidgets('nhà đổi id SAU khi form đã mở: bấm Lưu không ghi vào nhà mới', (t) async {
+    await mo(t);
+    await t.enterText(oTen(), 'Quỹ');
+    api.cuaToiJson = nhaJson(id: 13);
+    await repoNha.lamMoi();
+    await bam(t, find.byKey(const Key('nut-tao-vi-chung')));
+    expect(nguon.tao, isEmpty);
+    expect(find.text('GOC'), findsOneWidget);
+  });
 
   final tienCho = viChungGia('a', 'Tiền chợ', 3200000);
   final dienNuoc = viChungGia('b', 'Điện nước', 1250000, loai: 'bank');
@@ -209,6 +236,59 @@ void main() {
     await mo(t, idVi: 'khong-co', vi: [tienCho]);
     expect(find.text('GOC'), findsOneWidget);
     expect(bat.cau, ['Không tìm thấy ví chung này.']);
+  });
+
+  testWidgets('vai đổi SAU khi form Sửa đã mở: Lưu không ghi (kể cả khoản bù số dư), xoá không gọi', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho]);
+    await t.enterText(oSoDu(), '1');
+    api.cuaToiJson = nhaJson(myRole: 'Member');
+    await repoNha.lamMoi();
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    expect(nguon.sua, isEmpty);
+    expect(dieuChinh.goi, isEmpty, reason: 'khoản bù của người đã mất vai lọt vào quỹ của cả nhà');
+    expect(find.text('GOC'), findsOneWidget);
+  });
+
+  testWidgets('vai đổi SAU khi mở: bấm Xoá và đồng ý không gọi xoaViChung', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho]);
+    await bam(t, find.byKey(const Key('nut-xoa-vi-chung')));
+    api.cuaToiJson = nhaJson(myRole: 'Member');
+    await repoNha.lamMoi();
+    await bam(t, find.byKey(const Key('xac-nhan-xoa-vi-chung')));
+    expect(nguon.xoa, isEmpty);
+    expect(find.text('GOC'), findsOneWidget);
+  });
+
+  testWidgets('Sửa: xoá trắng ô số dư là KHÔNG đổi, không đưa quỹ về 0', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho]);
+    await t.enterText(oSoDu(), '');
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    expect(dieuChinh.goi, isEmpty, reason: 'chuỗi rỗng parse về 0.0 sẽ sinh khoản bù đưa quỹ về 0, tác động cả nhà');
+    expect(nguon.sua, hasLength(1), reason: 'phần còn lại của form vẫn lưu');
+  });
+
+  testWidgets('Sửa ví đã lưu trữ: ô số dư chỉ đọc, Lưu không ném giữa chừng', (t) async {
+    await mo(t, idVi: 'c', vi: [viChungGia('c', 'Cũ', 500, status: 'inactive')]);
+    expect(t.widget<TextField>(oSoDu()).readOnly, isTrue, reason: 'đối soát từ chối ví lưu trữ: lưu dở nếu cho gõ');
+    await t.enterText(oTen(), 'Cũ đổi tên');
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    expect(dieuChinh.goi, isEmpty);
+    expect(nguon.sua.single.name, 'Cũ đổi tên');
+    expect(bat.ds, isEmpty);
+  });
+
+  testWidgets('Sửa: bảng quyền tắt đối soát số dư — ô chỉ đọc kèm dòng khoá, Lưu không sinh khoản bù', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho], quyen: const {'wallet_balance_adjustment': false});
+    expect(find.byKey(const Key('dong-khoa-wallet_balance_adjustment')), findsOneWidget);
+    expect(t.widget<TextField>(oSoDu()).readOnly, isTrue);
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    expect(dieuChinh.goi, isEmpty);
+  });
+
+  testWidgets('Sửa: có quyền thì ô số dư gõ được, không dòng khoá', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho], quyen: const {});
+    expect(find.byKey(const Key('dong-khoa-wallet_balance_adjustment')), findsNothing);
+    expect(t.widget<TextField>(oSoDu()).readOnly, isFalse);
   });
 
   testWidgets('Xoá: hỏi lại, đồng ý thì xoaViChung rồi pop; Huỷ thì không xoá', (t) async {

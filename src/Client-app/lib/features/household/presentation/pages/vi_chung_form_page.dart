@@ -10,6 +10,9 @@ import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../category/presentation/widgets/category_visuals.dart';
+import '../../../premium/domain/quyen_tinh_nang.dart';
+import '../../../premium/presentation/bloc/co_quyen.dart';
+import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../../../wallet/application/dieu_chinh_so_du_service.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../wallet/domain/rang_buoc_vi.dart';
@@ -146,8 +149,26 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
     setState(() => _daNap = true);
   }
 
+  /// Đọc lại vai và nhà NGAY trước khi ghi / xoá: vai hay nhà có thể đổi sau lúc mở form (Chủ hạ vai, bị mời ra, giải tán). Sai
+  /// thì tự thoát kèm câu và KHÔNG ghi gì — server từ chối sau đó, ví biến mất sau khi đã báo thành công, còn khoản bù số dư
+  /// của người đã mất vai lọt vào quỹ cả nhà.
+  bool _conDuocGhi() {
+    final t = (widget.nha ?? sl<NhaRepository>()).hienTai;
+    final nha = t.nha;
+    final duoc = nha != null &&
+        nha.id == _idNha &&
+        duocLamViecNha(ViecNha.quanLyViChung, vai: t.vai, trangThai: nha.trangThai);
+    if (!duoc) _thoat(cauLoiNha(LoaiLoiNha.khongPhaiChu));
+    return duoc;
+  }
+
+  /// Ví đang lưu trữ lúc mở: đối soát từ chối ví lưu trữ, nên ô số dư khoá (lưu thì tên đã ghi rồi mới ném = lưu dở).
+  bool get _daLuuTruLucMo => _viGoc != null && !WalletStatus.laHoatDong(_viGoc!.status);
+
   Future<void> _luu() async {
-    if (_dangLuu) return;
+    if (_dangLuu || !_conDuocGhi()) return;
+    // Cùng khuôn ví riêng (`wallet_edit_page`): đọc quyền trước `await`.
+    final coDieuChinh = context.coQuyenDoc(MaQuyen.walletBalanceAdjustment);
     final ten = _ten.text.trim();
     if (ten.isEmpty) {
       _loi('Vui lòng nhập tên ví chung');
@@ -180,7 +201,7 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
           mau: _mau,
         );
       } else {
-        await _luuSua(goc, ten: ten, soDu: soDu, idNha: idNha, idaccount: idaccount);
+        await _luuSua(goc, ten: ten, soDu: soDu, idNha: idNha, idaccount: idaccount, coDieuChinh: coDieuChinh);
       }
       if (mounted) context.pop(true);
     } catch (e) {
@@ -190,12 +211,18 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
     }
   }
 
-  Future<void> _luuSua(WalletEntity goc, {required String ten, required double soDu, required int idNha, required int idaccount}) async {
+  Future<void> _luuSua(WalletEntity goc,
+      {required String ten,
+      required double soDu,
+      required int idNha,
+      required int idaccount,
+      required bool coDieuChinh}) async {
     await _nguon.suaViChung(goc.copyWith(name: ten, type: _loai, icon: _icon, colour: _mau));
     final dangLuuTru = !WalletStatus.laHoatDong(goc.status);
     final doiTrangThai = _luuTru != dangLuuTru;
     // Số dư đi đường riêng (không ghi đè): một khoản điều chỉnh trong sổ, người ghi là người dùng này.
-    final doiSoDu = _soDu.text != _soDuLucMo;
+    // Ô trống là KHÔNG đổi (không phải 0: xoá trắng sẽ đưa quỹ cả nhà về 0); không quyền hoặc ví lưu trữ thì ô đã chỉ đọc.
+    final doiSoDu = coDieuChinh && !_daLuuTruLucMo && _soDu.text.trim().isNotEmpty && _soDu.text != _soDuLucMo;
     Future<void> trangThai() async {
       if (doiTrangThai) await _nguon.luuTruViChung(idNha: idNha, id: goc.id, luuTru: _luuTru);
     }
@@ -220,7 +247,7 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
   Future<void> _xoa() async {
     final goc = _viGoc;
     final idNha = _idNha;
-    if (goc == null || idNha == null) return;
+    if (goc == null || idNha == null || !_conDuocGhi()) return;
     final dongY = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -237,7 +264,8 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
         ],
       ),
     );
-    if (dongY != true || !mounted) return;
+    // Vai có thể đổi trong lúc hộp hỏi đang mở.
+    if (dongY != true || !mounted || !_conDuocGhi()) return;
     setState(() => _dangLuu = true);
     try {
       await _nguon.xoaViChung(idNha: idNha, id: goc.id);
@@ -304,13 +332,26 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
       );
 
   Widget _theChinh(BuildContext context) {
+    final coDieuChinh = context.coQuyen(MaQuyen.walletBalanceAdjustment);
     return KhungTheNha(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _nhan(_laSua ? 'SỐ DƯ HIỆN TẠI' : 'SỐ DƯ BAN ĐẦU', canh: TextAlign.center),
-          OSoDuVi(controller: _soDu),
-          if (_laSua)
+          OSoDuVi(controller: _soDu, readOnly: _laSua && (!coDieuChinh || _daLuuTruLucMo)),
+          if (_laSua && !coDieuChinh)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: DongKhoaQuyen(ma: MaQuyen.walletBalanceAdjustment),
+            )
+          else if (_laSua && _daLuuTruLucMo)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('Ví đang lưu trữ. Bỏ lưu trữ trước khi đổi số dư.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+            )
+          else if (_laSua)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text('Sửa số dư sẽ tạo một khoản điều chỉnh trong ví',

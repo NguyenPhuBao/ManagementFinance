@@ -418,6 +418,20 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  testWidgets('360 dp: số tiền căn phải thẳng mép giữa các dòng; tên dài dùng hết phần còn lại', (t) async {
+    final dai = viChungGia('x', 'Tên ví chung khá dài để thử cắt ${'x' * 30}', 3200000);
+    final ngan = viChungGia('y', 'Ví', 9999999999999);
+    await moVi(t, vi: [dai, ngan]);
+    final soDai = t.getRect(find.text('3.200.000 đ'));
+    final soNgan = t.getRect(find.text('9.999.999.999.999 đ'));
+    expect(soDai.right, closeTo(soNgan.right, 0.5), reason: 'cột số tiền thẳng mép phải, không đứng sau cột tên');
+    final the = t.getRect(find.byKey(const Key('dong-vi-x')));
+    expect(soDai.right, greaterThan(the.right - 20), reason: 'sát mép trong của thẻ (chỉ chừa lề dòng)');
+    final ten = t.getRect(find.textContaining('Tên ví chung khá dài'));
+    expect(ten.width, greaterThan(150), reason: 'tên không bị khoá ở nửa dòng khi số tiền ngắn');
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('360 dp, số dư 13 chữ số và tên dài: không tràn, mỗi số một dòng', (t) async {
     final to = viChungGia('x', 'Tên ví chung rất dài ${'x' * 40}', 9999999999999);
     await moVi(t, vi: [to, viChungGia('y', 'Ví thứ hai', 9999999999999)], banPhim: true);

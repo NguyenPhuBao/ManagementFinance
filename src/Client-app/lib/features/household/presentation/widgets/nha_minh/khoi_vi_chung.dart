@@ -142,7 +142,10 @@ class _DongVi extends StatelessWidget {
         onTap: cham == null ? null : () => cham(vi.id),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final tran = c.maxWidth * 0.6;
+              return Row(
             children: [
               Container(
                 width: 36,
@@ -165,10 +168,12 @@ class _DongVi extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Flexible(
+              // Số tiền KHÔNG flex: đứng sát mép phải theo bề rộng tự nhiên, tên (`Expanded`) nhận phần còn lại. Chỉ chặn trần
+              // 60 % dòng để số 13 chữ số co lại (FittedBox) thay vì đè hết tên.
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: tran),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
                   child: Text(CurrencyFormatter.format(vi.balance),
                       maxLines: 1, style: chu.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                 ),
@@ -178,6 +183,8 @@ class _DongVi extends StatelessWidget {
                 const Icon(Icons.chevron_right, size: 18, color: AppColors.textSecondary),
               ],
             ],
+              );
+            },
           ),
         ),
       ),
