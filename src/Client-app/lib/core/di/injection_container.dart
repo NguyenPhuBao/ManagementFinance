@@ -287,6 +287,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         final nhaGiu = await sl<NhaRepository>().nhaDaLuu(id);
         return donVaTinhLaiViNha(
           nhaGiu: nhaGiu,
+          // Nửa nhà CŨ chưa đẩy còn trên máy được trả tiền về ví riêng TRƯỚC khi phép dọn xoá nó (M-1).
+          idaccount: id,
+          cacNhaConTrenMay: () => sl<AppDatabase>().cacNhaConTrenMay(),
+          traVeKhiBoNha: (idNha, idaccount) => sl<GopQuyConflictResolver>().traVeKhiBoNha(idNha, idaccount),
           don: () => sl<AppDatabase>().purgeDataForOtherAccounts(id, nhaGiu: nhaGiu),
           tinhLaiViNha: () => sl<SoDuViService>().tinhLaiViNha(),
         );

@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:flowmoney/core/api/dio_client.dart';
+import 'package:flowmoney/core/auth/don_tai_khoan_khac.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/features/household/application/dieu_phoi_doi_nha.dart';
@@ -450,6 +451,39 @@ void main() {
     o.engine.dispose();
     m.engine.dispose();
     await o.db.close();
+    await m.db.close();
+  });
+
+  test('M-1: phép dọn lúc mở phiên, kho đã nói nhà MỚI: nửa nhà CŨ chưa đẩy được trả tiền trước khi bị xoá', () async {
+    final s = ServerGia();
+    final m = May(10, s, 8);
+    await m.db.walletDao.insert(WalletsCompanion.insert(
+        id: 'vr', idaccount: 10, name: 'Ví MB', balance: const Value(1000000), updatedAt: DateTime(2026, 10, 1)));
+    await m.db.walletDao.insert(WalletsCompanion.insert(
+        id: 'vg', idaccount: 30, name: 'Quỹ G', idhousehold: const Value(7), updatedAt: DateTime(2026, 10, 1)));
+    final p = await m.gop.gop(
+        idNha: 7,
+        idaccount: 10,
+        viChungId: 'vg',
+        tenViChung: 'Quỹ G',
+        soTien: 200000,
+        viRiengId: 'vr',
+        ngay: DateTime(2026, 11, 1));
+    expect(await m.du('vr'), 800000, reason: 'tiền đề: 200k đã ra khỏi ví riêng, nửa nhà cũ chưa đẩy');
+    final daDon = await donVaTinhLaiViNha(
+      nhaGiu: 8,
+      idaccount: 10,
+      cacNhaConTrenMay: () => m.db.cacNhaConTrenMay(),
+      traVeKhiBoNha: (idNha, id) => m.resolver.traVeKhiBoNha(idNha, id),
+      don: () => m.db.purgeDataForOtherAccounts(10, nhaGiu: 8),
+      tinhLaiViNha: () async {},
+    );
+    expect(daDon, greaterThan(0), reason: 'tiền đề: phép dọn có xoá hàng nhà cũ');
+    expect(await m.du('vr'), 1000000,
+        reason: 'tiền về ví riêng: trước sửa, purge xoá nửa nhà cũ còn nửa riêng ở lại → 800.000 mãi, quỹ không nhận (M-1)');
+    expect((await m.gop.docCap(p)).rieng, isNull, reason: 'nửa riêng bị gỡ cùng nửa nhà');
+    expect(await m.soThongBao(), 1);
+    m.engine.dispose();
     await m.db.close();
   });
 

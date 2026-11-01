@@ -37,6 +37,10 @@ void main() {
     expect(thanHam, contains('donVaTinhLaiViNha('),
         reason: 'phải qua hàm bọc catch (core/auth/don_tai_khoan_khac.dart): lỗi tính lại ném thẳng là khoá cửa đăng nhập');
     expect(thanHam, contains('nhaGiu: nhaGiu'), reason: 'chỉ tính lại khi chưa biết nhà; đã biết nhà thì sổ của nhà giữ nguyên');
+    expect(thanHam, contains('traVeKhiBoNha: (idNha, idaccount) => sl<GopQuyConflictResolver>().traVeKhiBoNha('),
+        reason: 'thiếu thì phép dọn xoá nửa nhà cũ chưa đẩy mà không hoàn tiền về ví riêng (M-1)');
+    expect(thanHam, contains('cacNhaConTrenMay: () => sl<AppDatabase>().cacNhaConTrenMay()'));
+    expect(thanHam, contains('idaccount: id'));
   });
 
   test('đăng ký repository nhà truyền dayTruocKhiRoi và demHangChuaDay', () {
