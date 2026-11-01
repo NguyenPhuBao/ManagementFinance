@@ -92,7 +92,11 @@ void main() {
   test('ví: chỉ ví chung đang hoạt động của nhà, kể cả khi có phiên cá nhân', () async {
     final ds = await nguon.napViDangDung(10);
     expect(ds.map((v) => v.id), ['vc'], reason: 'không ví riêng, không ví lưu trữ / đã xoá / của nhà khác');
-    expect((await nguon.napViDangDung(null)).map((v) => v.id), ['vc'], reason: 'idNha quyết định, không phải phiên');
+    for (final id in [null, 11, 999]) {
+      expect((await nguon.napViDangDung(id)).map((v) => v.id), ['vc'],
+          reason: 'idaccount ($id) bị BỎ QUA: danh sách chỉ do idNha quyết định — ca ghim "không phụ thuộc id", không phải '
+              'yêu cầu "chạy được khi không có phiên"');
+    }
   });
 
   test('danh mục: chỉ của nhà (không nhóm, không đã xoá), không danh mục riêng; từ khoá rỗng', () async {
@@ -101,8 +105,11 @@ void main() {
     expect(tuKhoa, isEmpty, reason: 'gợi ý từ khoá là của cá nhân');
     expect((await nguon.danhMucChonDuoc(10)).map((c) => c.id), ['dn']);
     expect(await nguon.tuKhoa(10), isEmpty, reason: 'tài khoản có từ khoá riêng nhưng chế độ nhà không dùng');
-    final (dsKhongPhien, _) = await nguon.napDanhMucVaTuKhoa(null);
-    expect(dsKhongPhien.map((c) => c.id), ['dn']);
+    for (final id in [null, 11, 999]) {
+      final (dsKhac, tuKhoaKhac) = await nguon.napDanhMucVaTuKhoa(id);
+      expect(dsKhac.map((c) => c.id), ['dn'], reason: 'idaccount ($id) bị BỎ QUA: danh mục chỉ do idNha quyết định');
+      expect(tuKhoaKhac, isEmpty);
+    }
   });
 
   test('lịch sử học rỗng: B1 không học từ khoản của nhà', () async {

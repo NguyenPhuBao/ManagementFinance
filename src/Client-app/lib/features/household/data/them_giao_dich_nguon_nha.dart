@@ -1,14 +1,12 @@
 /// Nguồn dữ liệu của form Thêm / Sửa giao dịch ở CHẾ ĐỘ NHÀ (gia đình 1A, spec 2026-11-01 mục 9).
 ///
 /// Chỉ ví chung đang hoạt động và danh mục của nhà. Mọi thứ còn lại của form cá nhân đều là của MỘT tài khoản và không có
-/// nghĩa ở nhà: gợi ý học từ lịch sử cá nhân, từ khoá, phản hồi gợi ý, dấu danh mục AI, ví theo nguồn tin, biên động /
+/// nghĩa ở nhà: gợi ý học từ lịch sử cá nhân, từ khoá, phản hồi gợi ý, dấu danh mục AI, ví theo nguồn tin, biến động /
 /// biên lai / ảnh quét, ngân sách riêng, trợ lý AI. Chúng trả rỗng / `null` và các phép ghi KHÔNG làm gì — để khoản của
 /// nhà không dạy mô hình cá nhân và không đẻ hàng vào bảng cục bộ của ai.
 ///
 /// Không đăng ký DI: kế hoạch 1B dựng theo `idNha` của trang.
 library;
-
-import 'dart:async';
 
 import '../../../core/database/daos/category_dao.dart';
 import '../../budget/data/models/budget_entity.dart';
@@ -54,7 +52,11 @@ class ThemGiaoDichNguonNha implements ThemGiaoDichNguon {
   /// Danh mục SỐNG của nhà, bỏ nhóm (bộ chọn chỉ nhận danh mục con). Không qua cửa quét 40: luật ẩn theo khuôn là của
   /// danh mục cá nhân, danh mục nhà không có khuôn.
   @override
-  Future<List<CategoryEntity>> danhMucChonDuoc(int idaccount) async => [
+  Future<List<CategoryEntity>> danhMucChonDuoc(int idaccount) => _danhMucCuaNha();
+
+  /// Không nhận id tài khoản: danh mục của nhà chỉ do [idNha] quyết định. (Bản cũ dựng tài khoản giả `idaccount ?? 0` chỉ để
+  /// gọi lại hàm có tham số — trái tinh thần quy tắc 2.)
+  Future<List<CategoryEntity>> _danhMucCuaNha() async => [
         for (final c in await _categoryDao.getCuaNha(idNha))
           if (!c.isGroup) CategoryEntity.fromDrift(c),
       ];
@@ -64,7 +66,7 @@ class ThemGiaoDichNguonNha implements ThemGiaoDichNguon {
 
   @override
   Future<(List<CategoryEntity>, Map<String, List<String>>)> napDanhMucVaTuKhoa(int? idaccount) async =>
-      (await danhMucChonDuoc(idaccount ?? 0), const <String, List<String>>{});
+      (await _danhMucCuaNha(), const <String, List<String>>{});
 
   @override
   Future<void> luuTuKhoa({required int idaccount, required String categoryId, required List<String> tuKhoa}) async {}
