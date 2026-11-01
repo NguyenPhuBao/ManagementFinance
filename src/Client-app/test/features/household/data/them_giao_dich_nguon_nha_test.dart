@@ -106,7 +106,7 @@ void main() {
   });
 
   test('lịch sử học rỗng: B1 không học từ khoản của nhà', () async {
-    final h = await nguon.napLichSu(10, dangSua: 'x');
+    final h = nguon.napLichSu(10, dangSua: 'x');
     expect(h.viHayDung, isEmpty);
     expect(h.boPhanLoai, isNull);
     expect(h.boSoTien, isNull);

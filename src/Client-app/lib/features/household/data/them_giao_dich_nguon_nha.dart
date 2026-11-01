@@ -19,7 +19,6 @@ import '../../transaction/data/doc_cau_bang_ai.dart';
 import '../../transaction/data/them_giao_dich_nguon.dart';
 import '../../transaction/domain/dien_san_bien_dong.dart';
 import '../../transaction/domain/doc_mon_hang.dart';
-import '../../transaction/domain/vi_hay_dung.dart';
 import '../../wallet/data/models/wallet_entity.dart';
 import 'repositories/du_lieu_nha_repository.dart';
 
