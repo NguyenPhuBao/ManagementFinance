@@ -28,6 +28,7 @@ import '../../features/household/data/repositories/nha_repository.dart';
 import '../../features/household/data/them_giao_dich_nguon_nha.dart';
 import '../../features/household/domain/quyen_nha.dart';
 import '../../features/transaction/presentation/state/che_do_nha_form.dart';
+import '../../features/household/presentation/pages/chi_tiet_vi_chung_page.dart';
 import '../../features/household/presentation/pages/hoat_dong_nha_page.dart';
 import '../../features/household/presentation/pages/moi_thanh_vien_page.dart';
 import '../../features/household/presentation/pages/nha_minh_page.dart';
@@ -352,6 +353,16 @@ class AppRouter {
             builder: (_, state) => sl<NhaRepository>().hienTai.nha == null
                 ? const NhaMinhPage()
                 : ViChungFormPage(idVi: state.pathParameters['id']),
+          ),
+          // Chi tiết ví chung (1B Task 7): đứng SAU `tao`. Mọi vai xem được (kể cả Chỉ xem), nút trong trang tự theo vai — không
+          // cửa quyền. Nhà đã mất → Nhà mình, không `!`.
+          GoRoute(
+            path: '/nha/vi/:id',
+            builder: (_, state) {
+              final nha = sl<NhaRepository>().hienTai.nha;
+              if (nha == null) return const NhaMinhPage();
+              return ChiTietViChungPage(idVi: state.pathParameters['id']!);
+            },
           ),
           // Hoạt động của nhà (1B Task 6): mọi thành viên xem được, kể cả Chỉ xem — không cửa quyền. Nhà đã mất → Nhà mình, không `!`.
           GoRoute(

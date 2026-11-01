@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/errors/app_exceptions.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
-import '../../../../core/utils/date_formatter.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
 import '../../../category/data/models/category_entity.dart';
@@ -29,10 +28,8 @@ import '../bloc/vi_chung_cubit.dart';
 import '../widgets/dong_khoan_nha.dart';
 import '../widgets/gac_vai_chu.dart';
 import '../widgets/sheet_khoan_nha.dart';
+import '../widgets/tra_ten_nha.dart';
 
-/// Màu chữ của tiêu đề nhóm ngày (Stitch `50af4171…` 7.3): không trùng token nào của `AppColors`.
-const _mauNhomTrai = Color(0xFF686A65);
-const _mauNhomPhai = Color(0xFF8C8E88);
 const _mauChanTrang = Color(0xFF9DA099);
 
 /// Hộp chọn của một chip lọc: `null` là *không chọn gì* (đóng ra ngoài) khác với [LuaChon] có giá trị `null` (*mọi người*).
@@ -108,31 +105,10 @@ class _HoatDongNhaPageState extends State<HoatDongNhaPage> {
     }
   }
 
-  TenNguoi _tenNguoi(NhaCuaToi nha, int id) {
-    for (final m in nha.thanhVien) {
-      if (m.idaccount == id) return TenNguoi(m.tenHienThi);
-    }
-    for (final m in nha.thanhVienCu) {
-      if (m.idaccount == id) return TenNguoi(m.tenHienThi, daRoi: true);
-    }
-    return TenNguoi('Thành viên #$id');
-  }
-
-  String _tenVi(List<WalletEntity> vi, String id) {
-    for (final v in vi) {
-      if (v.id == id) return v.name;
-    }
-    return 'Ví đã xoá';
-  }
-
-  String? _tenDanhMuc(List<CategoryEntity> dm, TransactionEntity t) {
-    final id = t.categoryId;
-    if (id == null) return null;
-    for (final c in dm) {
-      if (c.id == id) return c.name;
-    }
-    return 'Danh mục đã xoá';
-  }
+  // Tra tên dùng chung với Chi tiết ví chung: `widgets/tra_ten_nha.dart`.
+  TenNguoi _tenNguoi(NhaCuaToi nha, int id) => tenNguoiNha(nha, id);
+  String _tenVi(List<WalletEntity> vi, String id) => tenViChungTheoId(vi, id);
+  String? _tenDanhMuc(List<CategoryEntity> dm, TransactionEntity t) => tenDanhMucKhoan(dm, t);
 
   /// `Danh mục · Ví` (chi, thu), `Ví` (góp, rút), `Ví nguồn → Ví đích` (chuyển).
   String _dongPhu(TransactionEntity t, List<WalletEntity> vi, List<CategoryEntity> dm) {
@@ -302,10 +278,6 @@ class _HoatDongNhaPageState extends State<HoatDongNhaPage> {
     final ds = locHoatDong(k.ds, nguoi: _nguoi, vi: _vi);
     final tenNguoiLoc = _nguoi == null ? 'Mọi người' : _tenNguoi(s.nha, _nguoi!).ten;
     final tenViLoc = _vi == null ? 'Mọi ví chung' : _tenVi(vi, _vi!);
-    final nhom = <String, List<TransactionEntity>>{};
-    for (final t in ds) {
-      nhom.putIfAbsent(DateFormatter.dayKey(t.date), () => []).add(t);
-    }
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       children: [
@@ -324,40 +296,18 @@ class _HoatDongNhaPageState extends State<HoatDongNhaPage> {
               child: Text('Chưa có khoản nào.', style: chu.bodyMedium?.copyWith(color: AppColors.textSecondary)),
             ),
           ),
-        for (final entry in nhom.entries) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(nhanNhomNgay(entry.value.first.date, _bayGio),
-                    style: chu.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: _mauNhomTrai)),
-                Text('${entry.value.length} giao dịch', style: chu.labelSmall?.copyWith(color: _mauNhomPhai)),
-              ],
-            ),
+        ...nhomKhoanTheoNgay(
+          context,
+          ds: ds,
+          bayGio: _bayGio,
+          dong: (t) => DongKhoanNha(
+            key: ValueKey('khoan-${t.id}'),
+            khoan: t,
+            nguoi: _tenNguoi(s.nha, t.idaccount),
+            dongPhu: _dongPhu(t, vi, k.danhMuc),
+            onCham: () => unawaited(_moKhoan(t, s, k, vi)),
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.outlineVariant),
-            ),
-            child: Column(
-              children: [
-                for (var i = 0; i < entry.value.length; i++) ...[
-                  if (i > 0) const Divider(height: 1, color: AppColors.surfaceContainerLow),
-                  DongKhoanNha(
-                    key: ValueKey('khoan-${entry.value[i].id}'),
-                    khoan: entry.value[i],
-                    nguoi: _tenNguoi(s.nha, entry.value[i].idaccount),
-                    dongPhu: _dongPhu(entry.value[i], vi, k.danhMuc),
-                    onCham: () => unawaited(_moKhoan(entry.value[i], s, k, vi)),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
+        ),
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,

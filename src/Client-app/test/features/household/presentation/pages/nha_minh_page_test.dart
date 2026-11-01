@@ -319,6 +319,7 @@ void main() {
     final r = GoRouter(initialLocation: '/', routes: [
       GoRoute(path: '/', builder: (_, __) => NhaMinhPage(repo: repo, duLieu: nguon)),
       GoRoute(path: '/nha/vi/tao', builder: (_, __) => const Scaffold(body: Text('FORM-TAO'))),
+      GoRoute(path: '/nha/vi/:id', builder: (_, s) => Scaffold(body: Text('CHI-TIET-${s.pathParameters['id']}'))),
     ]);
     addTearDown(r.dispose);
     await t.pumpWidget(bocRouterNha(r, goi: goiPremium(const {}), idaccount: 18));
@@ -388,13 +389,13 @@ void main() {
     expect(find.text('Tạo ví chung'), findsOneWidget);
   });
 
-  testWidgets('dòng ví chưa có route chi tiết (Task 7): không chevron, chạm không phản ứng', (t) async {
+  testWidgets('chạm dòng ví → /nha/vi/<id> (Task 7); dòng có chevron', (t) async {
     await moVi(t, vi: [tienCho]);
-    expect(find.descendant(of: find.byKey(const Key('dong-vi-a')), matching: find.byIcon(Icons.chevron_right)), findsNothing,
-        reason: 'dòng ví không dẫn tới route chưa có (chevron của thẻ lối vào Hoạt động ở ngoài dòng ví)');
+    expect(find.descendant(of: find.byKey(const Key('dong-vi-a')), matching: find.byIcon(Icons.chevron_right)), findsOneWidget,
+        reason: 'route chi tiết có thật: dòng chạm được');
     await t.tap(find.text('Tiền chợ'));
     await t.pumpAndSettle();
-    expect(find.text('Tiền chợ'), findsOneWidget);
+    expect(find.text('CHI-TIET-a'), findsOneWidget);
     expect(t.takeException(), isNull);
   });
 
@@ -448,9 +449,11 @@ void main() {
     final soNgan = t.getRect(find.text('9.999.999.999.999 đ'));
     expect(soDai.right, closeTo(soNgan.right, 0.5), reason: 'cột số tiền thẳng mép phải, không đứng sau cột tên');
     final the = t.getRect(find.byKey(const Key('dong-vi-x')));
-    expect(soDai.right, greaterThan(the.right - 20), reason: 'sát mép trong của thẻ (chỉ chừa lề dòng)');
+    expect(soDai.right, greaterThan(the.right - 44),
+        reason: 'sát mép trong của thẻ (chỉ chừa lề dòng và chevron 18 + 4 từ Task 7: dòng ví nay chạm được)');
     final ten = t.getRect(find.textContaining('Tên ví chung khá dài'));
-    expect(ten.width, greaterThan(150), reason: 'tên không bị khoá ở nửa dòng khi số tiền ngắn');
+    expect(ten.width, greaterThan(130),
+        reason: 'tên không bị khoá ở nửa dòng khi số tiền ngắn (từ Task 7 chevron lấy thêm 22 dp: 161 → 139)');
     expect(t.takeException(), isNull);
   });
 

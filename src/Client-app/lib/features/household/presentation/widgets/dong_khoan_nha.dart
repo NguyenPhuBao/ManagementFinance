@@ -29,7 +29,8 @@ class DongKhoanNha extends StatelessWidget {
     required this.khoan,
     required this.nguoi,
     required this.dongPhu,
-    required this.onCham,
+    this.onCham,
+    this.tieuDe,
   });
 
   final TransactionEntity khoan;
@@ -37,7 +38,12 @@ class DongKhoanNha extends StatelessWidget {
 
   /// `Danh mục · Ví` / `Ví` / `Ví nguồn → Ví đích` — trang ghép, vì tên danh mục và ví cần tra.
   final String dongPhu;
-  final VoidCallback onCham;
+
+  /// `null` = dòng không chạm được (Chi tiết ví chưa có sheet khoản).
+  final VoidCallback? onCham;
+
+  /// Câu tiêu đề thay cho mặc định *"An chi 120.000 đ"*: Chi tiết ví (Stitch `ac57e216…`) để số tiền ở cột phải, không lặp.
+  final String? tieuDe;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +64,7 @@ class DongKhoanNha extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${tieuDeKhoanNha(khoan, nguoi)} ${CurrencyFormatter.format(khoan.amount)}',
+                    Text(tieuDe ?? '${tieuDeKhoanNha(khoan, nguoi)} ${CurrencyFormatter.format(khoan.amount)}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: chu.bodyMedium?.copyWith(
