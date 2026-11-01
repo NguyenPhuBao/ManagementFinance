@@ -129,6 +129,16 @@ void main() {
       expect(c.state.dangNapVi, isFalse);
     });
 
+    test('đường SỬA: bản lưu giữ idhousehold và fundPairId của khoản cũ', () async {
+      final cu = giaoDichCu().copyWith(idhousehold: 7, fundPairId: 'cap-1');
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb]), dangSua: cu, danhMucDangSua: anUong);
+      await c.moTrang();
+      final r = await c.chuanBiLuu() as SanSangLuu;
+      expect(r.giaoDich.single.idhousehold, 7,
+          reason: 'thiếu là khoản của nhà thành khoản riêng ngay lần sửa đầu (toCompanion ghi NULL đè)');
+      expect(r.giaoDich.single.fundPairId, 'cap-1', reason: 'thiếu là nửa kia của góp / rút mất mã cặp');
+    });
+
     test('đường SỬA: điền sẵn từ giao dịch, ví của giao dịch thắng ví mặc định', () async {
       final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb.copyWith(isDefault: true)]),
           dangSua: giaoDichCu(), danhMucDangSua: anUong);
