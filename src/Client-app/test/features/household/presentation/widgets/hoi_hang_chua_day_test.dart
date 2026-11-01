@@ -2,6 +2,8 @@
 /// server từ chối vĩnh viễn không rời được nhà.
 library;
 
+import 'dart:async';
+
 import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
 import 'package:flowmoney/features/household/data/nha_store.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
@@ -105,7 +107,9 @@ void main() {
       moTa: () async => throw StateError('đọc hàng chờ hỏng'),
       nhanLam: 'Vẫn rời nhà',
     );
-    f.then((v) => ketQua = v, onError: (Object e) => loiBay = e);
+    unawaited(f.then<void>((v) => ketQua = v, onError: (Object e) {
+      loiBay = e;
+    }));
     await t.pumpAndSettle();
     expect(loiBay, isNull,
         reason: 'lỗi bay ra `unawaited(_roiNha())`: không hộp, không toast; ở Giải tán còn nhảy qua `_tuThaoTac = false`');
