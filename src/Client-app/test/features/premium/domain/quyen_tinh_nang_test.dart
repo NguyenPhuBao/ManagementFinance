@@ -136,6 +136,8 @@ void main() {
         TrangThaiQuyen.canPremium,
         reason: 'trạng thái thuần; màn Tham gia KHÔNG mời mua dù trạng thái này (spec 12.4)');
     expect(dacQuyenPremium(goi(LoaiGoi.basic), now), contains(MaQuyen.giaDinh.ten));
+    expect(dacQuyenPremium(goi(LoaiGoi.basic, q: const {'household_join': false}), now), isNot(contains(MaQuyen.thamGiaNha.ten)),
+        reason: 'M3: admin tắt Tham gia nhà là chủ động, màn Tham gia nói trung tính — màn Nâng cấp không được mời mua đúng thứ ấy');
   });
 
   test('đọc lại từ kho giữ nguyên bảng quyền', () {

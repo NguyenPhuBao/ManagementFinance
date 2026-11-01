@@ -101,6 +101,10 @@ void main() {
     expect(laThanTrangThaiNha(const {'removed': true}), isFalse, reason: '#10 mời ra');
     expect(laThanTrangThaiNha(const {'dissolved': true}), isFalse, reason: '#12 giải tán');
     expect(laThanTrangThaiNha(const {'declined': true}), isFalse, reason: '#16 từ chối lời mời');
+    expect(laThanTrangThaiNha(const {'household': <String, Object?>{}}), isFalse,
+        reason: 'M1: khoá có mà thân rỗng (không id) → đọc thành "không nhà" là DoiNha(nhà → null) xoá hàng nhà');
+    expect(laThanTrangThaiNha(const {'household': 12}), isFalse, reason: 'M1: kiểu lạ');
+    expect(laThanTrangThaiNha(const {'household': {'id': 12}}), isTrue, reason: 'có id → trạng thái nhà thật');
     expect(laThanTrangThaiNha(const {}), isFalse,
         reason: 'đọc thân rỗng là "chưa có nhà" → DoiNha(nhà → null) → máy tự xoá dữ liệu nhà sau một lần đổi vai');
   });

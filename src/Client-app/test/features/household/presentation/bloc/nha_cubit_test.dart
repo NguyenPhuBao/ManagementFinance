@@ -50,6 +50,16 @@ void main() {
     expect(c.state.dangXuLy, isFalse);
   });
 
+  test('M2: thao tác gọi SAU close() (trang vừa rời khi hộp xác nhận còn mở) → false, không ném, không gọi API', () async {
+    final api = HouseholdApiGia()..cuaToiJson = nhaJson();
+    final repo = await repoNhaThu(api);
+    final c = NhaCubit(repo);
+    await c.close();
+    api.goi.clear();
+    expect(await c.roiNha(), isFalse, reason: 'emit trên cubit đã đóng ném StateError');
+    expect(api.goi, isEmpty);
+  });
+
   test('thao tác hỏng: false, báo đúng câu của cauLoiNha, mở khoá nút', () async {
     final api = HouseholdApiGia()..cuaToiJson = nhaJson();
     final repo = await repoNhaThu(api);

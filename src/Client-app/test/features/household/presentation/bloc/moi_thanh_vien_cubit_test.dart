@@ -64,6 +64,15 @@ void main() {
     expect(c.state.maVuaTao, isNull);
   });
 
+  test('M6: huỷ đúng mã vừa tạo mà server nói 404 (đã chết) → khối mã cũng gỡ', () async {
+    final (c, api, _) = await dung();
+    await c.taoMa(VaiNha.thanhVien);
+    expect(c.state.maVuaTao, isNotNull);
+    api.loiHuy = loiServer(404, 'HOUSEHOLD_INVITE_NOT_FOUND');
+    await c.huy('ABCD2345');
+    expect(c.state.maVuaTao, isNull, reason: 'mã đã chết ở server mà khối mã + Chia sẻ còn nằm trên màn');
+  });
+
   test('lỗi: báo đúng câu, mở khoá nút; 429 thư quá nhiều dùng câu riêng', () async {
     final (c, api, bao) = await dung();
     api.loi = loiServer(429, 'HOUSEHOLD_INVITE_RATE_LIMIT');

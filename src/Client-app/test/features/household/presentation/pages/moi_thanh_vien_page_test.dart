@@ -97,6 +97,17 @@ void main() {
     expect(chiaSe.da.single, contains('Nhà An – Bình'));
   });
 
+  testWidgets('M6: mã vừa tạo đã quá hạn thì khối mã và nút Chia sẻ không còn hiện', (t) async {
+    final (api, _, _) = await mo(t);
+    api.maMoiJson = const {'code': 'ABCD2345', 'role': 'Member', 'expiresAt': '2020-01-01T00:00:00.000Z'};
+    await t.ensureVisible(find.text('Tạo mã'));
+    await t.tap(find.text('Tạo mã'));
+    await t.pumpAndSettle();
+    expect(api.goi, contains('taoMaMoi:Member'));
+    expect(find.text('ABCD2345'), findsNothing, reason: 'mã chết mà còn nút Chia sẻ là gửi người ta một mã không dùng được');
+    expect(find.text('Chia sẻ'), findsNothing);
+  });
+
   testWidgets('lỗi tạo mã: kênh báo đúng câu', (t) async {
     final (api, _, bat) = await mo(t);
     api.loi = loiServer(500, 'HOUSEHOLD_ERROR');

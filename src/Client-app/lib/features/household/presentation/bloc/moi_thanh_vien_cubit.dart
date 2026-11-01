@@ -137,7 +137,10 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
     } catch (e) {
       _baoLoi(e);
       // Mã đã chết ở server: dòng ấy vẫn bị `soConHieuLuc` đếm (khoá nhầm hai nút) tới khi nạp lại.
-      if (loaiLoiNhaCua(e) == LoaiLoiNha.maKhongCo) await nap();
+      if (loaiLoiNhaCua(e) == LoaiLoiNha.maKhongCo) {
+        _phat(boMa: state.maVuaTao?.ma == ma); // mã vừa tạo đã chết ở server: khối mã + Chia sẻ phải gỡ theo
+        await nap();
+      }
     } finally {
       // Sau lượt nạp, và chỉ gỡ mã của CHÍNH lượt này.
       _phat(dangHuy: {...state.dangHuy}..remove(ma));

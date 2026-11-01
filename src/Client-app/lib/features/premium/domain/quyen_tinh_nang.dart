@@ -112,7 +112,8 @@ List<String> dacQuyenPremium(TrangThaiGoi goi, DateTime now) {
     for (final l in LoaiTran.values)
       if (_dongTranPremium(l, tranBasic.cua(l), tranPremium) case final d?) d,
     for (final m in MaQuyen.values)
-      if (!basicCo(m) && premiumCo(m)) m.ten,
+      // `thamGiaNha` bị tắt là admin chủ động, màn Tham gia nói trung tính, không mời mua (spec 12.4) — nên không kể ở đây (M3).
+      if (m != MaQuyen.thamGiaNha && !basicCo(m) && premiumCo(m)) m.ten,
   ];
 }
 

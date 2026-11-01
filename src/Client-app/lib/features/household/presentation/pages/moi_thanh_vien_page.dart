@@ -131,7 +131,8 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
                 : (conCho ? null : 'Nhà đã đủ người, kể cả lời mời còn hiệu lực.');
     final khoa = !n.daNap || lyDo != null;
     final hien = dongLoiMoiHien(m.ds, now);
-    final ma = m.maVuaTao;
+    // Mã vừa tạo mà đã quá hạn thì không còn gì để chia sẻ (cùng định nghĩa `conHieuLucLuc` với danh sách).
+    final ma = m.maVuaTao != null && m.maVuaTao!.conHieuLucLuc(now) ? m.maVuaTao : null;
     return [
       if (lyDo != null) ...[
         Text(lyDo, style: chu.bodyMedium?.copyWith(color: AppColors.textSecondary)),

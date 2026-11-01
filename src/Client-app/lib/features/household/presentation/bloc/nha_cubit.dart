@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/models/loi_moi.dart';
@@ -58,12 +59,14 @@ class NhaCubit extends Cubit<NhaState> {
   }
 
   Future<bool> _lam(Future<void> Function() viec, {String? cauKhiTatQuyen}) async {
-    if (state.dangXuLy) return false;
+    if (isClosed || state.dangXuLy) return false;
     emit(state.copyWith(dangXuLy: true));
     try {
       await viec();
       return true;
     } catch (e) {
+      // Lỗi không phải `LoiNha` là lỗi lập trình (cast, null…): vẫn báo câu chung nhưng để lại dấu vết, đừng nuốt im.
+      if (e is! LoiNha) debugPrint('[GiaDinh] thao tác ném ${e.runtimeType}');
       final loai = loaiLoiNhaCua(e);
       final cau = loai == LoaiLoiNha.tinhNangKhongMo && cauKhiTatQuyen != null ? cauKhiTatQuyen : cauLoiNha(loai);
       if (!_bao.isClosed) _bao.add(cau);

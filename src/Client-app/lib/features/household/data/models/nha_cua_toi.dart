@@ -140,7 +140,13 @@ class DoiNha {
 /// `{dissolved: true}`, #16 `{declined: true}` — KHÔNG. Đọc thân không phải trạng thái bằng [nhaCuaToiTuJson] ra "chưa có nhà"
 /// → `DoiNha(nhà → null)` → máy chủ nhà tự xoá sạch dữ liệu nhà ngay sau khi đổi vai một người (preflight 2026-10-28 #2).
 /// Repository gặp `false` thì hỏi lại `/me` thay vì áp.
-bool laThanTrangThaiNha(Map<String, Object?> json) => json.containsKey('household');
+bool laThanTrangThaiNha(Map<String, Object?> json) {
+  if (!json.containsKey('household')) return false;
+  final h = json['household'];
+  // `{household: null}` = "không nhà" (một trạng thái thật); khác null thì phải là nhà có id — `{household: {}}` đọc thành
+  // "không nhà" sẽ phát DoiNha(nhà → null) và xoá hàng nhà (M1).
+  return h == null || (h is Map && _soNguyen(h['id']) != null);
+}
 
 /// Không bao giờ ném: trường rác rơi về mặc định của đúng trường ấy; nhà thiếu id hoặc `Dissolved` → chưa có nhà.
 NhaCuaToi nhaCuaToiTuJson(Map<String, Object?> json, {required DateTime nhanLuc}) {

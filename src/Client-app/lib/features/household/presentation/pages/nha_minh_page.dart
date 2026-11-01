@@ -51,7 +51,7 @@ class _NhaMinhPageState extends State<NhaMinhPage> {
   }
 
   Future<void> _roiNha() async {
-    if (await hoiRoiNha(context)) await _cubit.roiNha();
+    if (await hoiRoiNha(context) && mounted) await _cubit.roiNha();
   }
 
   @override

@@ -26,7 +26,7 @@ class HouseholdApiGia implements HouseholdApi {
   Map<String, Object?> maMoiJson = const {
     'code': 'ABCD2345',
     'role': 'Member',
-    'expiresAt': '2026-10-26T08:00:00.000Z'
+    'expiresAt': '2099-01-01T00:00:00.000Z' // xa: trang so với đồng hồ thật (M6)
   };
   List<Map<String, Object?>> dsMaMoiJson = const [];
   Map<String, Object?> xemTruocJson = const {
