@@ -410,6 +410,7 @@ Stitch tự thêm các chi tiết dưới đây; app bám bố cục của màn,
 | Nút, nền, Drawer | Nút bo khoảng 12 dp, nền và khuôn Drawer của bản Stitch | Nút bo tròn hẳn, nền và Drawer theo theme toàn app | Thuộc theme chung, không riêng lát 2 |
 | Chuyển chủ nhà | Một hộp xác nhận (hộp 3) | Một hộp, đúng mục 5.4 | Ghi cho rõ: app đã làm một hộp, không hai bước như giải tán |
 | Màn Mời, màn Tham gia | Mã và *Hạn mã* chữ đơn cách | Làm theo bằng họ font `monospace` của nền tảng | Không thêm gói / tài nguyên font (đợt giao diện cuối, 2026-11-01) |
+| Màn Mời, ô Email | Không vẽ trạng thái lỗi | Thêm câu đỏ *"Email không được có dấu"* dưới ô | Telex đổi chữ trong ô email, không có câu thì nút tắt mà không rõ lý do (G116, 2026-11-01) |
 
 ### 12.3 Người dùng thấy gì
 
