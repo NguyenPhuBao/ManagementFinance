@@ -42,6 +42,7 @@ class CategoryChildDraft {
     required this.colour,
     required List<String> keywords,
     this.aiCoDinh = false,
+    this.idhousehold,
   }) : keywords = List.unmodifiable(keywords);
 
   final String? id;
@@ -52,6 +53,10 @@ class CategoryChildDraft {
   final String icon;
   final String colour;
   final List<String> keywords;
+
+  /// Nhà mà danh mục thuộc về; `null` = danh mục riêng. Danh mục của nhà: `accountId` là người tạo / người sửa, từ khoá
+  /// không đổi ở 1A (xem `saveChild`).
+  final int? idhousehold;
 
   /// Cờ "Cố định — AI không đề xuất cắt" (cục bộ, schema v24). Mặc định
   /// `false` để mọi chỗ dựng draft cũ giữ nguyên hành vi.
@@ -67,7 +72,11 @@ class CategoryGroupDraft {
     required this.icon,
     required this.colour,
     required List<String> childIds,
+    this.idhousehold,
   }) : childIds = List.unmodifiable(childIds);
+
+  /// Nhà mà nhóm thuộc về; `null` = nhóm riêng.
+  final int? idhousehold;
 
   final String? id;
   final int accountId;

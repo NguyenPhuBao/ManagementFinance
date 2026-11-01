@@ -167,6 +167,19 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// Danh mục sống của NHÀ: bộ chọn và màn quản lý của khu Nhà mình (spec 2026-11-01 mục 7.2). Không lọc tài khoản — hàng
+  /// của nhà mang `idaccount` người tạo. Cũng là nguồn kiểm trùng tên trong nhà (`uq_category_household_name`, hàng sống).
+  SimpleSelectStatement<$CategoriesTable, Category> _cuaNha(int idhousehold, String? classify) => select(categories)
+    ..where((t) =>
+        t.idhousehold.equals(idhousehold) &
+        t.isDeleted.equals(false) &
+        t.deletedAt.isNull() &
+        (classify == null ? const Constant(true) : t.classify.equals(classify)));
+
+  Future<List<Category>> getCuaNha(int idhousehold, {String? classify}) => _cuaNha(idhousehold, classify).get();
+
+  Stream<List<Category>> watchCuaNha(int idhousehold, {String? classify}) => _cuaNha(idhousehold, classify).watch();
+
   /// Bộ danh mục **mặc định** do backend sở hữu, đã pull về máy này.
   ///
   /// `sync_engine` quy `is_default = true` thành `idaccount = 0`, nên lọc theo
