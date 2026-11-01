@@ -747,7 +747,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Như [demHangChuaDayCuaNha] nhưng tách theo loại, cho hộp hỏi lại trước Rời nhà / Giải tán (gia đình 1B).
   ///
-  /// Giao dịch có mã cặp VÀ do [idaccount] ghi mới tách `gop` (nửa nhà `thu`) / `rut` (nửa nhà `chi`): rời nhà chỉ trả tiền nửa
+  /// Giao dịch có mã cặp, do [idaccount] ghi VÀ còn sống (`traVeKhiBoNha` bỏ qua nửa đã xoá mềm) mới tách `gop` (nửa nhà `thu`) / `rut` (nửa nhà `chi`): rời nhà chỉ trả tiền nửa
   /// của tôi (`traVeKhiBoNha`), nửa người khác (Chủ xoá hộ khi offline) vào `khoan`. [idaccount] `null` (không phiên) thì mọi
   /// giao dịch vào `khoan`. `khac` = ngân sách + mục tiêu.
   Future<({int khoan, int gop, int rut, int vi, int danhMuc, int khac})> hangChuaDayCuaNha(int idhousehold,
@@ -766,7 +766,7 @@ class AppDatabase extends _$AppDatabase {
           ..where((t) => t.idhousehold.equals(idhousehold) & t.syncStatus.equals('pending')))
         .get();
     for (final t in giaoDich) {
-      final nuaCuaToi = idaccount != null && t.fundPairId != null && t.idaccount == idaccount;
+      final nuaCuaToi = idaccount != null && t.fundPairId != null && t.idaccount == idaccount && t.deletedAt == null;
       if (!nuaCuaToi) {
         khoan++;
       } else if (t.type == 'thu') {

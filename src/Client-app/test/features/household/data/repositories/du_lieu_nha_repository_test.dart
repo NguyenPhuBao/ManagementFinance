@@ -465,6 +465,24 @@ void main() {
             reason: 'traVeKhiBoNha chỉ trả nửa của tôi; hộp nói được trả tiền là sai');
       });
 
+      test('nửa góp CỦA TÔI đã xoá mềm đếm vào khoan, không vào gop', () async {
+        await themVi('v7', nha: 7);
+        await db.walletDao.markSynced('v7');
+        await khoanCho('gop-xoa', 'v7', loai: 'thu', cap: 'cap-1', xoa: true);
+        final h = await repo.hangChuaDay(7, idaccount: 20);
+        expect((h.khoan, h.gop, h.coTienTraVe), (1, 0, false),
+            reason: 'traVeKhiBoNha bỏ qua nửa đã xoá mềm; hộp nói được trả tiền là sai');
+      });
+
+      test('nửa của người khác CÒN SỐNG (Chủ sửa hộ offline) đếm vào khoan', () async {
+        await themVi('v7', nha: 7);
+        await db.walletDao.markSynced('v7');
+        await khoanCho('gop-cua-10', 'v7', idaccount: 10, loai: 'thu', cap: 'cap-1');
+        final h = await repo.hangChuaDay(7, idaccount: 20);
+        expect((h.khoan, h.gop, h.coTienTraVe), (1, 0, false),
+            reason: 'chỉ nửa do tôi ghi mới được trả về; bỏ vế idaccount là ca này đỏ');
+      });
+
       test('không phiên: mọi hàng vào khoan', () async {
         await themVi('v7', nha: 7);
         await db.walletDao.markSynced('v7');

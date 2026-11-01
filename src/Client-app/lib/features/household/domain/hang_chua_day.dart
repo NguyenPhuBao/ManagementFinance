@@ -6,7 +6,8 @@ class HangChuaDayNha {
 
   bool get rong => khoan + gop + rut + vi + danhMuc + khac == 0;
 
-  /// Còn nửa góp / rút của TÔI: rời nhà thì `traVeKhiBoNha` trả tiền nửa ấy về ví riêng.
+  /// Còn nửa góp / rút CÒN SỐNG của TÔI: rời nhà thì `traVeKhiBoNha` trả tiền nửa ấy về ví riêng (nửa đã xoá mềm và nửa của
+  /// người khác vào [khoan], không được trả).
   bool get coTienTraVe => gop + rut > 0;
 }
 
