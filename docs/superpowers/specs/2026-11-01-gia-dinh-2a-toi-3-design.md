@@ -165,6 +165,21 @@ Vẽ Stitch trước khi viết mã giao diện, dự án `5106367939423432838`.
 | 4 | Định mức góp · Tự góp · Cột đủ / thiếu |
 | 5 | Ngân sách của nhà · Báo cáo tháng · Hàng công tắc |
 
+**Mã màn đợt 1** (design system `assets/e8b7d56ef9284443bfacb7474e52c74a`, tạo 2026-11-01; năm lượt báo `timeout` nhưng màn vẫn hiện sau khoảng 7 phút):
+
+| Màn | Mã |
+|---|---|
+| Nhà mình - Có ví chung, vai Chủ nhà | `d2a8c9bb3ab0435d9227378ed06f0e78` |
+| Tạo ví chung | `3bfb38b3a2a940029ab6599e63a5e1be` |
+| Chi tiết ví chung - tab Giao dịch | `ac57e216b5f7489aa34e1e957df347ca` |
+| Chi tiết ví chung - tab Bảng góp | `6d63311f552142daaa089a2caff6c08a` |
+| Góp vào quỹ | `f77f5bc010c445b98c7dfe5c61d28817` |
+| Thêm giao dịch - Chế độ nhà | `5a53df6e68fa4b75ac094034fa0553c9` |
+| Hoạt động của nhà | `50af4171315f47e6a31ae8d9b7fa7b00` |
+| Danh mục của nhà + Hộp xoá khoản góp | `6dc96c4aaa4846fb91a30a67a45a22fa` |
+
+Stitch vẽ thêm vài chi tiết không nằm trong yêu cầu, ví dụ chấm xanh cạnh tên nhà, nút ba chấm ở Nhà mình, phím *+ − .* ở bàn phím. Form chế độ nhà giữ bàn phím thật của `AddTransactionPage`, các chi tiết thừa ghi vào kế hoạch 1B khi thi công.
+
 Điều hướng: route gốc ngoài shell, vào từ drawer, như lát 2. `go` khi sang tab trong shell, `push` trong khu nhà (bẫy *Đụng vào điều hướng*). Dữ liệu nhà không hiện ở Trang chủ, Sổ, Phân tích, Ngân sách cá nhân (quyết định #5). Bố cục kiểm 360 dp, có ca bàn phím hệ thống mở, số 13 chữ số.
 
 ## 11. Các đợt sau: chỗ mã cần chú ý
