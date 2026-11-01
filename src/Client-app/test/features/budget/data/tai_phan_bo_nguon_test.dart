@@ -62,12 +62,13 @@ Future<void> _vi(AppDatabase db) => db.into(db.wallets).insert(
     );
 
 Future<void> _tx(AppDatabase db, String id, DateTime ngay, double soTien,
-        {required String loai, String? cat}) =>
+        {required String loai, String? cat, String? fundPairId}) =>
     db.into(db.transactions).insert(TransactionsCompanion.insert(
           id: id,
           walletId: 'w',
           idaccount: 7,
           categoryId: Value(cat),
+          fundPairId: Value(fundPairId),
           amount: soTien,
           type: loai,
           date: ngay,
@@ -124,6 +125,20 @@ void main() {
     expect(d.thuNhapMoiThang, closeTo(15000000, 1),
         reason: '10.000.000 trong 20 ngày → 10tr / 20 × 30 = 15tr. Khoản đi '
             'vay 5.000.000 phải bị loại — bẫy A8 #8; tính cả nó sẽ ra 22,5tr');
+  });
+
+  test('FINAL: nửa riêng của khoản RÚT quỹ gia đình (thu có fundPairId, không idhousehold) không vào thu nhập mỗi tháng',
+      () async {
+    await _vi(db);
+    await _cat(db, 'luong', 'Lương', classify: 'thu');
+    await _tx(db, 'moc', DateTime(2026, 9, 1), 10000000, loai: 'thu', cat: 'luong');
+    await _tx(db, 'rut', DateTime(2026, 9, 10), 5000000, loai: 'thu', fundPairId: 'cap-1');
+
+    final d = await TaiPhanBoNguonImpl(db: db, budgets: _Repo({})).nap(7, const [], now);
+
+    expect(d.thuNhapMoiThang, closeTo(15000000, 1),
+        reason: 'rút quỹ là tiền của mình quay về ví, không phải thu nhập: cờ `laRutQuy` phải được truyền ở đây như ở '
+            '`AnalyticsRepositoryImpl` — bỏ nó thì ra 22,5tr và ngưỡng neo theo thu nhập bị thổi phồng');
   });
 
   test('không giao dịch → thu nhập 0, không lỗi', () async {

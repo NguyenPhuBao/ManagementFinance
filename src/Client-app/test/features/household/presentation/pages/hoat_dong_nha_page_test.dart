@@ -474,12 +474,30 @@ void main() {
     });
   });
 
+  testWidgets('13 chữ số, cỡ chữ ×1,6 ở 360 dp: số tiền ở sheet co một dòng trong bề rộng sheet (canh FittedBox)', (t) async {
+    // Ở cỡ chữ thường 13 chữ số ×28 px vừa 360 dp nên bỏ FittedBox vẫn xanh; phóng chữ mới làm nó cần thiết.
+    t.platformDispatcher.textScaleFactorTestValue = 1.6;
+    addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
+    await mo(t, ds: [_k('lon', tien: 9999999999999)]);
+    await t.tap(find.byKey(const ValueKey('khoan-lon')));
+    await t.pumpAndSettle();
+    final sheet = t.getRect(find.byKey(const Key('sheet-so-tien')));
+    expect(sheet.right, lessThanOrEqualTo(360), reason: 'số tiền không tràn khỏi màn');
+    expect(sheet.width, lessThanOrEqualTo(360 - 32 + 0.5), reason: 'co trong bề rộng nội dung sheet (trừ lề 16 × 2)');
+    expect(t.getSize(find.byKey(const Key('sheet-so-tien'))).height, lessThan(80), reason: 'một dòng, không xuống dòng');
+  });
+
   testWidgets('13 chữ số ở 360 dp: dòng, sheet không tràn', (t) async {
     await mo(t, ds: [_k('lon', tien: 9999999999999)]);
     expect(t.takeException(), isNull);
     final dong = t.getRect(find.byKey(const ValueKey('khoan-lon')));
     final tien = t.getRect(find.byKey(const Key('tien-khoan-nha')));
     expect(tien.right, lessThanOrEqualTo(dong.right), reason: 'số tiền nằm trong dòng');
+    // Chỉ đòi "nằm trong dòng" thì bỏ ConstrainedBox(40 %) vẫn xanh (số tiền chiếm hết chỗ, câu tiêu đề bị ép): đo bề rộng.
+    expect(tien.width, lessThanOrEqualTo(dong.width * 0.4 + 0.5),
+        reason: '13 chữ số phải co trong trần 40 % dòng, không đè câu tiêu đề');
+    final tieuDe = t.getRect(find.descendant(of: find.byKey(const ValueKey('khoan-lon')), matching: find.textContaining('chi ')));
+    expect(tieuDe.width, greaterThan(dong.width * 0.3), reason: 'câu tiêu đề còn chỗ, không bị số tiền ép');
     await t.tap(find.byKey(const ValueKey('khoan-lon')));
     await t.pumpAndSettle();
     expect(t.takeException(), isNull);
