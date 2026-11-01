@@ -76,6 +76,15 @@ enum NotificationKind {
   /// Lời mời vào nhà (`docs/Family/01` mục 2.7). Bộ quét đọc danh sách `/households/invitations` đã nhớ ở `NhaRepository`
   /// qua hook. Danh sách chỉ ở RAM (không lưu kho): mở lạnh khi mất mạng thì rỗng, thông báo tới khi có mạng và danh sách về. Khoá `loiMoiNha:<mã>`: mỗi mã một thông báo.
   loiMoiNha,
+
+  /// Khoản góp / rút quỹ của nhà bị server từ chối (nhà đóng, chỉ đọc, mình không còn là thành viên…) hoặc mình rời nhà khi
+  /// nó chưa lên server: nửa của nhà bị gỡ và tiền đã trả về ví riêng (`docs/Family/02A` mục 6). Không do bộ quét sinh:
+  /// `GopQuyConflictResolver` ghi thẳng lúc đồng bộ, như [billPaidOnOtherDevice]. Khoá `gopTraVe:<mã cặp>`.
+  gopQuyBiTraVe,
+
+  /// Chủ nhà xoá nửa của nhà trong khoản góp / rút của mình: nửa riêng trên máy này bị gỡ theo, tiền về ví riêng. Không do
+  /// bộ quét sinh (`GopQuyConflictResolver.xuLyNuaNhaBiXoa`, sau mỗi lượt kéo về). Khoá `gopBiXoa:<mã cặp>`.
+  gopQuyBiXoa,
 }
 
 enum NotificationSeverity { info, warning, critical }

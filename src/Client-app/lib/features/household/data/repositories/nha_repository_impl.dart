@@ -46,13 +46,14 @@ class NhaRepositoryImpl implements NhaRepository {
   final DateTime Function() _now;
   final _theoDoi = StreamController<NhaCuaToi>.broadcast();
   final _doiNha = StreamController<DoiNha>.broadcast();
+  final _daDocNha = StreamController<NhaDaDoc>.broadcast();
   final _theoDoiLoiMoi = StreamController<List<LoiMoiToiEntity>>.broadcast();
   final _subs = <StreamSubscription<Object?>>[];
 
   late NhaCuaToi _hienTai;
   List<LoiMoiToiEntity> _loiMoiToi = const [];
   int? _idaccount;
-  Future<void>? _dangLamMoi;
+  Future<bool>? _dangLamMoi;
   Future<void>? _dangLamMoiLoiMoi;
   _Luot _luotNha = _Luot();
   _Luot _luotLoiMoi = _Luot();
@@ -82,6 +83,8 @@ class NhaRepositoryImpl implements NhaRepository {
   Stream<NhaCuaToi> get theoDoi => _theoDoi.stream;
   @override
   Stream<DoiNha> get doiNha => _doiNha.stream;
+  @override
+  Stream<NhaDaDoc> get daDocNha => _daDocNha.stream;
   @override
   int? get idaccount => _idaccount;
   @override
@@ -147,14 +150,14 @@ class NhaRepositoryImpl implements NhaRepository {
   /// ấy có thể là của trước thao tác / sự kiện người gọi vừa biết → đặt cờ chạy bù: lượt đang bay chạy thêm một vòng, gửi
   /// SAU yêu cầu, rồi mới hoàn tất — `await lamMoi()` luôn nhận kết quả của một lượt gửi sau lời gọi.
   @override
-  Future<void> lamMoi() {
+  Future<bool> lamMoi() {
     final dang = _dangLamMoi;
     if (dang != null) {
       if (_luotNha.daGui) _luotNha.bu = true;
       return dang;
     }
     final luot = _luotNha = _Luot();
-    late final Future<void> f;
+    late final Future<bool> f;
     f = _chayLamMoi(luot).whenComplete(() {
       if (identical(_dangLamMoi, f)) _dangLamMoi = null;
     });
@@ -162,34 +165,38 @@ class NhaRepositoryImpl implements NhaRepository {
     return f;
   }
 
-  Future<void> _chayLamMoi(_Luot luot) async {
+  /// `true` khi vòng CUỐI đã đọc và áp được `/me` (lượt chạy bù thì tính vòng bù).
+  Future<bool> _chayLamMoi(_Luot luot) async {
     final id = _idaccount;
-    if (id == null) return;
+    if (id == null) return false;
+    var ap = false;
     do {
       luot.bu = false;
       luot.daGui = false;
-      await _vongNha(luot, id);
+      ap = await _vongNha(luot, id);
       await lamMoiLoiMoi();
     } while (luot.bu && _idaccount == id);
+    return ap && _idaccount == id;
   }
 
-  Future<void> _vongNha(_Luot luot, int id) async {
+  Future<bool> _vongNha(_Luot luot, int id) async {
     try {
       await choNapKho(); // nhà "cũ" để so phải là bản trong kho
-      if (_idaccount != id) return;
+      if (_idaccount != id) return false;
       final he = _theHe;
       luot.daGui = true;
       final json = await _api.cuaToi();
-      if (_idaccount != id) return;
+      if (_idaccount != id) return false;
       // Cùng chốt với `_thaoTac`: thân 200 không có khoá `household` (rỗng, hình dạng lạ) đọc thành "không nhà" →
       // `DoiNha(nhà → null)` → xoá hàng nhà. `{household: null, …}` có khoá nên vẫn qua.
       if (!laThanTrangThaiNha(json)) {
         debugPrint('[GiaDinh] lamMoi: thân /me không phải trạng thái nhà, giữ trạng thái cũ');
-        return;
+        return false;
       }
-      await _apDung(id, nhaCuaToiTuJson(json, nhanLuc: _now()), he: he);
+      return await _apDung(id, nhaCuaToiTuJson(json, nhanLuc: _now()), he: he);
     } catch (e) {
       debugPrint('[GiaDinh] lamMoi hỏng, giữ trạng thái cũ: ${e.runtimeType}');
+      return false;
     }
   }
 
@@ -235,15 +242,16 @@ class NhaRepositoryImpl implements NhaRepository {
     return lamMoi();
   }
 
-  Future<void> _apDung(int id, NhaCuaToi moi, {int? he}) {
+  /// `true` khi trạng thái ĐÃ được áp; `false` khi bị bỏ (phiên đổi, ảnh chụp trước một thao tác).
+  Future<bool> _apDung(int id, NhaCuaToi moi, {int? he}) {
     final f = _hangApDung.then((_) => _apDungNgay(id, moi, he));
-    _hangApDung = f.catchError((Object _) {});
+    _hangApDung = f.then<void>((_) {}, onError: (Object _) {});
     return f;
   }
 
-  Future<void> _apDungNgay(int id, NhaCuaToi moi, int? he) async {
-    if (_idaccount != id) return;
-    if (he != null && he != _theHe) return; // ảnh chụp trước một thao tác đã thành công — bỏ
+  Future<bool> _apDungNgay(int id, NhaCuaToi moi, int? he) async {
+    if (_idaccount != id) return false;
+    if (he != null && he != _theHe) return false; // ảnh chụp trước một thao tác đã thành công — bỏ
     var tu = _hienTai.nha?.id;
     final den = moi.nha?.id;
     // Kho vắng + dấu nói nhà X (xem [_dauChoXacNhan]): server là người quyết. Vẫn ở X → `DoiNha(null → X)` kéo lại toàn bộ
@@ -251,11 +259,14 @@ class NhaRepositoryImpl implements NhaRepository {
     final dau = _dauChoXacNhan;
     if (dau != null && tu == null) tu = den == dau ? null : dau;
     await _kho.ghi(id, moi);
-    if (_idaccount != id) return;
+    if (_idaccount != id) return false;
     _dauChoXacNhan = null;
     _khoVang = false; // kho đã GHI: lamMoi đua về trước lúc đọc dấu thì [_doiChieuDauXuLy] phải phát cặp bình thường
     _phat(moi);
     if (tu != den && !_doiNha.isClosed) _doiNha.add(DoiNha(idaccount: id, tu: tu, den: den));
+    // SAU `DoiNha` để hàng đợi bộ điều phối xử lý cặp đổi trước, rồi mới dọn hàng kẹt của nhà khác.
+    if (!_daDocNha.isClosed) _daDocNha.add(NhaDaDoc(idaccount: id, idNha: den));
+    return true;
   }
 
   /// Lỗi bắt được → [LoiNha]; lỗi cho thấy nhà đã đổi nơi khác thì làm mới (không chờ).
@@ -486,6 +497,7 @@ class NhaRepositoryImpl implements NhaRepository {
     _subs.clear();
     await _theoDoi.close();
     await _doiNha.close();
+    await _daDocNha.close();
     await _theoDoiLoiMoi.close();
   }
 }

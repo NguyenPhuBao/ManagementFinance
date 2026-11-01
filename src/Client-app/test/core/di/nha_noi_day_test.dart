@@ -53,4 +53,42 @@ void main() {
     expect(khoi, contains('soDuVi:'), reason: 'thiếu thì sửa / xoá cặp không tính lại số dư hai ví');
     expect(khoi, contains('henDongBo:'), reason: 'thiếu thì sửa / xoá cặp nằm pending không ai xin đồng bộ');
   });
+
+  test('đăng ký GopQuyConflictResolver truyền taiKhoanPhien lấy từ phiên, không giá trị mặc định', () {
+    final khoi = _khoi(nguon, 'sl.registerLazySingleton<GopQuyConflictResolver>(');
+    expect(khoi, contains('taiKhoanPhien: () => sl<GoiRepository>().idaccount'),
+        reason: 'thiếu thì không biết nửa nào là của mình (gỡ nhầm nửa của người khác); null (lượt nền chưa đặt tài khoản) = không gỡ');
+    for (final tham in ['db:', 'gopQuy:', 'nha:', 'soDuVi:', 'henDongBo:']) {
+      expect(khoi, contains(tham), reason: 'thiếu $tham thì resolver dựng sai / gỡ xong không xin đồng bộ');
+    }
+  });
+
+  test('noiBoNgheKetQuaDay nghe GopQuyConflictResolver đúng một lần, SAU Bill resolver', () {
+    final i = nguon.indexOf('void noiBoNgheKetQuaDay()');
+    expect(i, isNonNegative);
+    final than = nguon.substring(i);
+    const dau = 'sl<GopQuyConflictResolver>().batDauNghe(';
+    expect(RegExp(RegExp.escape(dau)).allMatches(nguon).length, 1,
+        reason: 'nghe hai lần là gỡ chạy hai lượt cho cùng một thất bại; toàn tệp chỉ một lời gọi (như quét 5 với Bill)');
+    expect(than.indexOf(dau), greaterThan(than.indexOf('sl<BillPaymentConflictResolver>().batDauNghe(')),
+        reason: 'đặt SAU Bill resolver; hàm này chạy ở cả main.dart lẫn chay_nen.dart nên một chỗ là đủ');
+  });
+
+  test('cổng sauKeoVe gọi xuLyNuaNhaBiXoa trong try và trả lại số của viecSauKeoVeDanhMuc', () {
+    final khoi = _khoi(nguon, 'sl.registerLazySingleton<SyncEngine>(');
+    final i = khoi.indexOf('sauKeoVe:');
+    final thanHam = khoi.substring(i, khoi.indexOf('trangThaiMayChu:'));
+    expect(thanHam, contains('xuLyNuaNhaBiXoa(id)'), reason: 'thiếu thì Chủ nhà xoá nửa nhà, nửa riêng ở lại mồ côi mãi');
+    expect(thanHam, contains('try {'), reason: 'lỗi gỡ không được làm hỏng lượt kéo về');
+    expect(thanHam, contains('return soBanSao'), reason: 'ViecSauKeoVe trả số bản sao của việc danh mục — nuốt số là đổi nghĩa lượt kéo');
+  });
+
+  test('DieuPhoiDoiNha nhận truocKhiDon (trả tiền trước khi dọn) và main.dart truyền daDocNha', () {
+    final khoi = _khoi(nguon, 'sl.registerLazySingleton<DieuPhoiDoiNha>(');
+    expect(khoi, contains('truocKhiDon:'), reason: 'thiếu thì rời nhà xoá hàng chưa đẩy mà tiền không về ví riêng');
+    expect(khoi, contains('traVeKhiBoNha('));
+    final main = File('lib/main.dart').readAsStringSync().replaceAll('\r\n', '\n');
+    expect(main, contains('daDocNha: sl<NhaRepository>().daDocNha'),
+        reason: 'thiếu thì hàng nhà kẹt (không có cặp DoiNha) không bao giờ được dọn');
+  });
 }

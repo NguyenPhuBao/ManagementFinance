@@ -77,6 +77,8 @@ NotificationGroup nhomCua(NotificationKind kind) {
     case NotificationKind.tinHeThong:
       return NotificationGroup.tinFlowMoney;
     case NotificationKind.loiMoiNha:
+    case NotificationKind.gopQuyBiTraVe:
+    case NotificationKind.gopQuyBiXoa:
       return NotificationGroup.giaDinh;
   }
 }
@@ -112,6 +114,11 @@ bool luonBao(NotificationKind kind) {
     // Nó cũng hiếm: chỉ xảy ra khi hai máy cùng trả một kỳ hoá đơn, nên không
     // có nguy cơ làm phiền đều đặn như nhắc hạn.
     case NotificationKind.billPaidOnOtherDevice:
+    // Cùng họ với loại trên: máy tự **gỡ** một khoản góp / rút và **trả tiền về** ví riêng khi người dùng vắng mặt (đồng bộ
+    // nền, hoặc Chủ nhà xoá hộ nửa của nhà). Im lặng là mở app ra thấy ví đổi số và một khoản chi biến mất không rõ vì sao.
+    // Hiếm: chỉ khi server từ chối hoặc Chủ nhà can thiệp, nên không có nguy cơ làm phiền đều đặn.
+    case NotificationKind.gopQuyBiTraVe:
+    case NotificationKind.gopQuyBiXoa:
       return true;
     case NotificationKind.billDueSoon:
     case NotificationKind.billOverdue:

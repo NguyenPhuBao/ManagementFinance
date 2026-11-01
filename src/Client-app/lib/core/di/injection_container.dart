@@ -79,6 +79,7 @@ import '../../features/household/data/datasources/chia_se_chu.dart';
 import '../../features/household/data/datasources/household_api.dart';
 import '../../features/household/data/nha_store.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
+import '../../features/household/application/gop_quy_conflict_resolver.dart';
 import '../../features/household/application/gop_quy_service.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository_impl.dart';
 import '../../features/household/data/repositories/nha_repository.dart';
@@ -222,7 +223,16 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       ),
       // Quy tắc 8 + spec 2026-10-27 mục 5: sau MỌI lượt kéo về thành công — cả lượt nền (`syncMotLuot`) — lan truyền sửa
       // khuôn TRƯỚC, gieo bản sao SAU.
-      sauKeoVe: (id, thayDoi) => viecSauKeoVeDanhMuc(sl<LanTruyenKhuon>(), sl<DefaultCategorySeeder>(), id, thayDoi),
+      sauKeoVe: (id, thayDoi) async {
+        final soBanSao = await viecSauKeoVeDanhMuc(sl<LanTruyenKhuon>(), sl<DefaultCategorySeeder>(), id, thayDoi);
+        // Chủ nhà xoá nửa của nhà → gỡ nửa riêng (gia đình 1A). Lỗi KHÔNG được làm hỏng lượt kéo; log chỉ kiểu lỗi (không dữ liệu).
+        try {
+          await sl<GopQuyConflictResolver>().xuLyNuaNhaBiXoa(id);
+        } catch (e) {
+          debugPrint('[GopQuy] gỡ nửa riêng mồ côi hỏng: ${e.runtimeType}');
+        }
+        return soBanSao;
+      },
       // G89: lượt bị máy chủ chặn (bảo trì / phong toả) không tính là lượt hỏng, hẹn thử lại đúng mốc.
       trangThaiMayChu: sl<TrangThaiMayChu>(),
       // Nhà đang ở, để thu gom hàng Chủ nhà sửa hộ (spec gia đình 2026-11-01 mục 7.1). Engine ở `core` không import mảng.
@@ -595,6 +605,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         db: sl(),
         keoLaiToanBo: (id) => sl<SyncEngine>().keoLaiToanBo(id),
         ghiDau: (id, nha) => sl<NhaStore>().ghiDauXuLy(id, nha),
+        // Rời nhà khi khoản góp / rút chưa đẩy: trả tiền về ví riêng TRƯỚC khi xoá hàng của nhà.
+        truocKhiDon: (idNha, id) => sl<GopQuyConflictResolver>().traVeKhiBoNha(idNha, id),
       ));
 
   // Ví chung và khoản của nhà (gia đình 1A): ghi qua datasource ví + `SoDuViService` (neo mang `idhousehold`).
@@ -609,6 +621,16 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         giaoDich: sl<TransactionRepository>(),
         db: sl(),
         soDuVi: sl(),
+        henDongBo: () => sl<SyncEngine>().scheduleSync(),
+      ));
+  // Giữ hai nửa góp / rút khớp nhau. `batDauNghe` gọi MỘT lần qua `noiBoNgheKetQuaDay`. Tài khoản phiên lấy cùng nguồn với
+  // `SoDuViService` (`GoiRepository.idaccount`): lượt nền chưa đặt tài khoản thì `null` và resolver không gỡ gì.
+  sl.registerLazySingleton<GopQuyConflictResolver>(() => GopQuyConflictResolver(
+        db: sl(),
+        gopQuy: sl(),
+        nha: sl(),
+        soDuVi: sl(),
+        taiKhoanPhien: () => sl<GoiRepository>().idaccount,
         henDongBo: () => sl<SyncEngine>().scheduleSync(),
       ));
 
@@ -1193,6 +1215,7 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
 /// import hai mảng (G88 gạch 4). KHÔNG gọi trong `registerLazySingleton` (chạy lại mỗi lần dựng).
 void noiBoNgheKetQuaDay() {
   sl<BillPaymentConflictResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
+  sl<GopQuyConflictResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
   sl<ViTrungTenResolver>().batDauNghe(sl<SyncEngine>().pushResultStream);
   sl<NhaRepository>().noiKetQuaDay(sl<SyncEngine>().pushResultStream);
 }

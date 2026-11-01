@@ -41,7 +41,13 @@ abstract class NhaRepository {
   /// Id nhà trong KHO của [idaccount] (bất kỳ tài khoản) — phép dọn lúc đổi tài khoản (`purgeDataForOtherAccounts`).
   Future<int?> nhaDaLuu(int idaccount);
 
-  Future<void> lamMoi();
+  /// Trả `true` khi `/me` ĐÃ được đọc và áp (thân hợp lệ, không đổi phiên giữa chừng, không bị bỏ vì thế hệ); `false` cho
+  /// mọi trường hợp còn lại (mạng, 5xx, thân lạ, phiên đổi, ảnh chụp trước một thao tác). Người gọi cần chắc "nhà hiện tại"
+  /// là của server thì phải kiểm giá trị này — [hienTai] sau một lượt `false` có thể là bản cũ trong kho.
+  Future<bool> lamMoi();
+
+  /// Phát sau MỖI lần `/me` được áp (kể cả nhà không đổi) — [NhaDaDoc].
+  Stream<NhaDaDoc> get daDocNha;
 
   /// Chỉ danh sách lời mời (#14). Không ném.
   Future<void> lamMoiLoiMoi();

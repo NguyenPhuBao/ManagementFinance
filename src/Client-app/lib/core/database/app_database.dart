@@ -745,6 +745,28 @@ class AppDatabase extends _$AppDatabase {
         await dem(categories, categories.idhousehold, categories.syncStatus);
   }
 
+  /// Mọi `idhousehold` còn trên máy ở năm bảng đồng bộ (kể cả hàng đã xoá mềm / `pending`). Phép dọn hàng nhà kẹt của
+  /// `DieuPhoiDoiNha` so với nhà `/me` vừa xác nhận: nhà nào khác thì không còn thuộc người dùng.
+  Future<List<int>> cacNhaConTrenMay() async {
+    final ra = <int>{};
+    Future<void> doc<T extends HasResultSet, D>(ResultSetImplementation<T, D> bang, GeneratedColumn<int> cot) async {
+      final q = selectOnly(bang, distinct: true)
+        ..addColumns([cot])
+        ..where(cot.isNotNull());
+      for (final r in await q.get()) {
+        final v = r.read(cot);
+        if (v != null) ra.add(v);
+      }
+    }
+
+    await doc(transactions, transactions.idhousehold);
+    await doc(wallets, wallets.idhousehold);
+    await doc(budgets, budgets.idhousehold);
+    await doc(goals, goals.idhousehold);
+    await doc(categories, categories.idhousehold);
+    return ra.toList()..sort();
+  }
+
   /// Xoá **trên máy** mọi hàng của nhà [idhousehold] — đường dọn 2 của gia đình (spec 2026-10-23 mục 4.6): rời nhà, bị
   /// mời ra, nhà giải tán. Xoá vật lý chỉ bản SAO cục bộ của dữ liệu không còn thuộc người dùng — server giữ nguyên hoặc
   /// đã xoá mềm — nên không trái quy tắc 5. Từ khoá / quan hệ nhóm trỏ vào danh mục của nhà đi theo. Bảng con trước bảng

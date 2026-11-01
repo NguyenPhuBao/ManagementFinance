@@ -313,7 +313,26 @@ void main() {
       // Tin admin (2026-10-26): `NhanTinHeThong` ghi từ socket `system.broadcast`, không từ bộ luật. Khoá
       // `tinHeThong:<id>` rơi nhánh mặc định → Trung tâm thông báo — canh ở ca "tin admin" ngay dưới.
       NotificationKind.tinHeThong,
+      // Gia đình 1A Task 9: `GopQuyConflictResolver` ghi thẳng lúc đồng bộ / sau lượt kéo (thời điểm duy nhất biết server
+      // vừa từ chối nửa của nhà nào, hay Chủ nhà vừa xoá nửa nào). Khoá và deeplink canh ở ca "góp quỹ" ngay dưới.
+      NotificationKind.gopQuyBiTraVe,
+      NotificationKind.gopQuyBiXoa,
     };
+
+    test('góp quỹ bị trả về / bị xoá: khoá → /transactions (tab trong shell), nhóm giaDinh, luôn báo', () {
+      for (final (khoa, loai) in [
+        ('gopTraVe:8f1c', NotificationKind.gopQuyBiTraVe),
+        ('gopBiXoa:8f1c', NotificationKind.gopQuyBiXoa),
+      ]) {
+        expect(deeplinkTuDedupeKey(khoa), '/transactions', reason: '$khoa: màn xem lại khoản đã bị gỡ là Sổ giao dịch');
+        expect(thuocThanhTab('/transactions'), isTrue,
+            reason: 'tab trong shell: nơi gọi phải dùng `go`, và `nhanhThanhTab` phải khớp');
+        expect(loaiTuKhoa(khoa), loai);
+        expect(nhomTuKhoa(khoa), NotificationGroup.giaDinh);
+        expect(luonBao(loai), isTrue,
+            reason: 'máy tự gỡ khoản và trả tiền về ví khi người dùng vắng mặt: im lặng là ví đổi số không rõ vì sao');
+      }
+    });
 
     test('lời mời vào nhà: khoá → /nha (route gốc, push được từ /notifications), loaiTuKhoa nhận ra', () {
       expect(deeplinkTuDedupeKey('loiMoiNha:ABCD2345'), '/nha');

@@ -135,6 +135,16 @@ class DoiNha {
   final int? den;
 }
 
+/// `/me` của tài khoản [idaccount] vừa được ĐỌC và ÁP: nhà hiện tại là [idNha] (`null` = không nhà). Khác [DoiNha] ở chỗ
+/// phát sau MỖI lần áp, kể cả khi nhà không đổi — bộ điều phối dùng nó để dọn hàng của nhà không còn thuộc người dùng mà
+/// không có cặp `DoiNha` nào đi kèm (kho nhà vắng, dấu vắng, `/me` không nhà). Hỏng / bị bỏ vì thế hệ thì KHÔNG phát.
+class NhaDaDoc {
+  const NhaDaDoc({required this.idaccount, required this.idNha});
+
+  final int idaccount;
+  final int? idNha;
+}
+
 /// Thân trả về của một thao tác CÓ PHẢI trạng thái nhà không (`docs/Family/04` mục 2b): #1, #2, #7, #9, #11, #15 — có (#11 rời
 /// nhà trả thân thật `{household: null}`: "không nhà" là một trạng thái); #8 `{targetIdaccount, newRole}`, #10 `{removed: true}`, #12
 /// `{dissolved: true}`, #16 `{declined: true}` — KHÔNG. Đọc thân không phải trạng thái bằng [nhaCuaToiTuJson] ra "chưa có nhà"

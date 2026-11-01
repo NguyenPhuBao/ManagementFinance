@@ -309,6 +309,39 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   Future<List<Transaction>> theoMaCap(String maCap) =>
       (select(transactions)..where((t) => t.fundPairId.equals(maCap) & t.deletedAt.isNull())).get();
 
+  /// Nửa riêng còn sống của tôi mà MỌI nửa của nhà cùng mã cặp đã bị xoá (Chủ nhà xoá, kéo về), kèm nhà và ví chung của nửa
+  /// ấy. Không có nửa nhà nào trên máy (đã dọn khi rời nhà) KHÔNG phải mồ côi: nửa riêng ở lại thành khoản riêng. Người góp
+  /// tự xoá cặp thì xoá cả hai nửa nên không còn nửa riêng sống để lọt vào đây.
+  Future<List<({Transaction rieng, int idNha, String viNhaId})>> nuaRiengMoCoi(int idaccount) async {
+    final rieng = await (select(transactions)
+          ..where((t) =>
+              t.idaccount.equals(idaccount) &
+              t.idhousehold.isNull() &
+              t.fundPairId.isNotNull() &
+              t.deletedAt.isNull()))
+        .get();
+    final ra = <({Transaction rieng, int idNha, String viNhaId})>[];
+    for (final r in rieng) {
+      final nha = await (select(transactions)
+            ..where((t) => t.fundPairId.equals(r.fundPairId!) & t.idhousehold.isNotNull()))
+          .get();
+      if (nha.isNotEmpty && nha.every((n) => n.deletedAt != null)) {
+        ra.add((rieng: r, idNha: nha.first.idhousehold!, viNhaId: nha.first.walletId));
+      }
+    }
+    return ra;
+  }
+
+  /// Nửa của nhà do tôi ghi, còn sống và còn chờ đẩy (rời nhà khi chúng chưa lên server).
+  Future<List<Transaction>> nuaNhaChuaDay(int idhousehold, int idaccount) => (select(transactions)
+        ..where((t) =>
+            t.idhousehold.equals(idhousehold) &
+            t.idaccount.equals(idaccount) &
+            t.fundPairId.isNotNull() &
+            t.deletedAt.isNull() &
+            t.syncStatus.equals('pending')))
+      .get();
+
   /// Pending sync records. [idhousehold]: nhà đang ở — hàng của nhà mang `idaccount` người GHI, nên chỉ lọc theo tôi thì
   /// bản Chủ nhà sửa hộ không bao giờ lên server (spec gia đình 2026-11-01 mục 7.1).
   Future<List<Transaction>> getPending([int? idaccount, int? idhousehold]) {
