@@ -33,9 +33,10 @@ class CircuitBreaker {
   /**
    * Bao bọc và thực thi tác vụ với cơ chế ngắt mạch
    * @param {Function} fn 
+   * @param {{boQuaLoi?: (error: Error) => boolean}} [options] - lỗi không nói gì về sức khoẻ dịch vụ (người dùng tự dừng)
    * @returns {Promise<any>}
    */
-  async execute(fn) {
+  async execute(fn, { boQuaLoi } = {}) {
     const now = Date.now();
 
     // 1. Kiểm tra nếu đang OPEN
@@ -70,7 +71,9 @@ class CircuitBreaker {
 
       return result;
     } catch (error) {
-      this.handleFailure(error, now);
+      if (!boQuaLoi?.(error)) {
+        this.handleFailure(error, now);
+      }
       throw error;
     }
   }
@@ -81,6 +84,8 @@ class CircuitBreaker {
    * @param {number} now 
    */
   handleFailure(error, now) {
+    // Phải so TRƯỚC khi gán: gán trước thì hiệu số luôn 0, cửa sổ không bao giờ reset.
+    const quaCuaSo = now - this.lastFailureTime > this.windowMs;
     this.lastFailureTime = now;
 
     if (this.state === 'HALF-OPEN') {
@@ -92,7 +97,7 @@ class CircuitBreaker {
 
     if (this.state === 'CLOSED') {
       // Nếu lỗi trước đó đã quá cửa sổ thời gian windowMs thì reset về 1
-      if (now - this.lastFailureTime > this.windowMs) {
+      if (quaCuaSo) {
         this.failureCount = 1;
       } else {
         this.failureCount++;
