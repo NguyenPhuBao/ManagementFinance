@@ -1716,7 +1716,7 @@ Realme / OnePlus. Chi tiết: khối 🕗 đầu mục 14 `PROJECT_CONTEXT.md`.
 
 ### G121 — Gia đình đợt 1B: các nợ còn lại · 🚧 MỞ 2026-11-02
 
-**Nguồn.** Sổ đợt 1B (`.superpowers/sdd/2026-11-01-gia-dinh-dot-1b-man-hinh/progress.md`, gitignore): các dòng `minor (deferred)` của người soát từng task, báo cáo soát toàn nhánh `4ad49409..da8084be` (Opus: 0 Critical, 3 Important đã sửa ở đợt sửa cuối `da8084be..9f4e5e97`) và soát lại đợt sửa cuối. **Dòng 1–15 là đọc mã hoặc test; dòng 16–17 đo trên Realme 2026-11-02** (Task 13: mọi kịch bản đạt, bảng ở khối 🏠 1B `PROJECT_CONTEXT.md`). Đã sửa trong đợt, **không** nằm ở đây: `choNapKho` ở DI đọc cặp, tên ví lỗi rơi về câu chung, chữ tiền rút không nửa riêng, `moTa` ném thì báo, kiểm lại quyền lúc Lưu (`conDuocLamViecNha`), bộ chọn danh mục nạp lại sau khi quay về từ Quản lý, nửa riêng đã rời ở form thường. Cột cuối: lý do hoãn, dấu `·`, bán kính.
+**Nguồn.** Sổ đợt 1B (đã xoá khỏi worktree; bản chép `C:/Users/tadd1/AppData/Local/Temp/flowmoney-phien33-so-dot-1b/progress.md`, ngoài repo): các dòng `minor (deferred)` của người soát từng task, báo cáo soát toàn nhánh `4ad49409..da8084be` (Opus: 0 Critical, 3 Important đã sửa ở đợt sửa cuối `da8084be..9f4e5e97`) và soát lại đợt sửa cuối. **Dòng 1–15 là đọc mã hoặc test; dòng 16–17 đo trên Realme 2026-11-02** (Task 13: mọi kịch bản đạt, bảng ở khối 🏠 1B `PROJECT_CONTEXT.md`). Đã sửa trong đợt, **không** nằm ở đây: `choNapKho` ở DI đọc cặp, tên ví lỗi rơi về câu chung, chữ tiền rút không nửa riêng, `moTa` ném thì báo, kiểm lại quyền lúc Lưu (`conDuocLamViecNha`), bộ chọn danh mục nạp lại sau khi quay về từ Quản lý, nửa riêng đã rời ở form thường. Cột cuối: lý do hoãn, dấu `·`, bán kính.
 
 | # | Nợ | Lý do hoãn · bán kính |
 |---|---|---|
