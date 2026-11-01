@@ -20,6 +20,7 @@ import '../../../premium/domain/quyen_tinh_nang.dart';
 import '../../../premium/presentation/bloc/co_quyen.dart';
 import '../../../premium/presentation/widgets/the_khoa_quyen.dart';
 import '../../../wallet/data/repositories/wallet_repository.dart';
+import '../../data/cap_gop_quy_nguon.dart';
 import '../../data/hoa_don_da_xoa_nguon.dart';
 import '../../data/repositories/transaction_repository.dart';
 import '../../data/models/transaction_entity.dart';
@@ -153,6 +154,10 @@ class _TransactionPageState extends State<TransactionPage> {
   /// không cần) → `null` → khoản có `billId` vẫn khoá.
   HoaDonDaXoaNguon? get _nguonHoaDonDaXoa =>
       sl.isRegistered<HoaDonDaXoaNguon>() ? sl<HoaDonDaXoaNguon>() : null;
+
+  /// Đợt 1B Task 9 — cổng "nửa riêng này còn cặp góp / rút không". Chưa đăng ký (test dựng trang không cần) → `null` →
+  /// khoản đi đường thường như trước.
+  CapGopQuyNguon? get _nguonCap => sl.isRegistered<CapGopQuyNguon>() ? sl<CapGopQuyNguon>() : null;
 
   /// Đổi kỳ đang xem. [soKy] **dương là lùi**, âm là tiến — cùng chiều với
   /// `lui()`, để không đẻ ra quy ước dấu thứ hai.
@@ -359,6 +364,8 @@ class _TransactionPageState extends State<TransactionPage> {
     TransactionLookup lookup,
   ) async {
     final daXoa = await hoaDonDaXoaCua(tx, _nguonHoaDonDaXoa);
+    // Nửa riêng của khoản góp, rút còn cặp: Sửa, Xoá đi theo cả cặp (đợt 1B Task 9), không bao giờ một nửa.
+    final cap = await _nguonCap?.cua(tx);
     if (!blocContext.mounted) return;
     await showModalBottomSheet<void>(
       context: blocContext,
@@ -368,8 +375,13 @@ class _TransactionPageState extends State<TransactionPage> {
         transaction: tx,
         lookup: lookup,
         hoaDonDaXoa: daXoa,
+        anThaoTac: cap != null && !cap.choThaoTac,
         onEdit: () async {
           Navigator.of(sheetContext).pop();
+          if (cap != null) {
+            await context.push(cap.duongSua);
+            return;
+          }
           final result = await context.push(
             '/add',
             extra: EditTransactionArgs(
@@ -384,11 +396,20 @@ class _TransactionPageState extends State<TransactionPage> {
         onDelete: () async {
           final ok = await ConfirmDialog.show(
             sheetContext,
-            title: 'Xoá giao dịch?',
-            message: cauXacNhanXoaGiaoDich(tx, hoaDonDaXoa: daXoa),
+            title: cap == null ? 'Xoá giao dịch?' : (cap.laGop ? 'Xoá khoản góp?' : 'Xoá khoản rút?'),
+            message: cap?.cauXoa ?? cauXacNhanXoaGiaoDich(tx, hoaDonDaXoa: daXoa),
           );
           if (!ok || !sheetContext.mounted) return;
           Navigator.of(sheetContext).pop();
+          if (cap != null) {
+            try {
+              await _nguonCap!.xoaCap(cap.maCap);
+              baoNhanh('Đã xóa giao dịch', loai: LoaiThongBao.xong);
+            } catch (_) {
+              baoNhanh('Không xoá được khoản này. Thử lại sau.', loai: LoaiThongBao.loi);
+            }
+            return;
+          }
           blocContext.read<TransactionBloc>().add(DeleteTransactionEvent(tx));
           baoNhanh('Đã xóa giao dịch', loai: LoaiThongBao.xong);
         },
@@ -639,6 +660,8 @@ class _TransactionPageState extends State<TransactionPage> {
                       transaction: tx,
                       lookup: lookup,
                       nguonHoaDonDaXoa: _nguonHoaDonDaXoa,
+                      hoiCap: _nguonCap?.cua,
+                      onXoaCap: _nguonCap?.xoaCap,
                       onTap: () => _showDetail(blocContext, tx, lookup),
                       onDelete: () => blocContext.read<TransactionBloc>().add(
                             DeleteTransactionEvent(tx),

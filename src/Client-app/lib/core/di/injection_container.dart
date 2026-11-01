@@ -12,6 +12,7 @@ import '../../core/auth/don_tai_khoan_khac.dart';
 import '../../core/auth/phien_dieu_phoi.dart';
 import '../../core/auth/phien_dieu_phoi_that.dart';
 import '../../core/database/app_database.dart';
+import '../../core/errors/app_exceptions.dart';
 import '../../core/network/trang_thai_may_chu.dart';
 import '../../features/notification/data/repositories/thong_bao_repository.dart';
 import '../../features/notification/data/repositories/thong_bao_repository_impl.dart';
@@ -52,6 +53,7 @@ import '../../features/ai_edge/data/cong_tac_ai.dart';
 import '../../features/ai_edge/data/datasources/kenh_giu_mo_hinh.dart';
 import '../../features/ai_edge/data/datasources/nguon_ly_do_thoat.dart';
 import '../../features/transaction/data/vi_theo_nguon_store.dart';
+import '../../features/transaction/data/cap_gop_quy_nguon.dart';
 import '../../features/transaction/data/hoa_don_da_xoa_nguon.dart';
 import '../../features/transaction/domain/doc_tin_bien_dong.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
@@ -79,6 +81,7 @@ import '../../features/household/data/datasources/chia_se_chu.dart';
 import '../../features/household/data/datasources/household_api.dart';
 import '../../features/household/data/nha_store.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
+import '../../features/household/application/doc_cap_gop_quy.dart';
 import '../../features/household/application/gop_quy_conflict_resolver.dart';
 import '../../features/household/application/gop_quy_service.dart';
 import '../../features/household/application/thao_tac_khoan_nha.dart';
@@ -642,6 +645,19 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // Xoá một khoản của nhà từ màn Hoạt động: khoản cặp đi `GopQuyService`, khoản thường đi repository giao dịch.
   sl.registerLazySingleton<ThaoTacKhoanNha>(
       () => ThaoTacKhoanNha(giaoDich: sl<TransactionRepository>(), gopQuy: sl<GopQuyService>()));
+  // Sổ giao dịch và Chi tiết ngân sách hỏi "nửa riêng này còn cặp góp / rút không" để Sửa, Xoá đi theo cả cặp (đợt 1B Task 9).
+  // Hàm đọc đặt ở đây (điểm ghép) — mảng transaction không import household.
+  sl.registerLazySingleton<CapGopQuyNguon>(() => CapGopQuyNguon(
+        doc: (t) => docCapGopQuy(
+          t,
+          docCap: sl<GopQuyService>().docCap,
+          nhaHienTai: () => sl<NhaRepository>().hienTai,
+          tenVi: (id) async => (await sl<WalletRepository>().getById(id))?.name,
+        ),
+        xoa: (maCap) async {
+          if (!await sl<GopQuyService>().xoa(maCap)) throw const CacheException('Khoản này không còn trên máy.');
+        },
+      ));
   // Giữ hai nửa góp / rút khớp nhau. `batDauNghe` gọi MỘT lần qua `noiBoNgheKetQuaDay`. Tài khoản phiên lấy cùng nguồn với
   // `SoDuViService` (`GoiRepository.idaccount`): lượt nền chưa đặt tài khoản thì `null` và resolver không gỡ gì.
   sl.registerLazySingleton<GopQuyConflictResolver>(() => GopQuyConflictResolver(

@@ -1,5 +1,6 @@
-/// Tiền tố ghi chú của nửa RIÊNG trong cặp góp / rút (`docs/Family/02A` mục 5.2). Chỉ để HIỂN THỊ: nhận dạng khoản góp / rút
-/// luôn qua `fundPairId`, không qua tiền tố (tên ví chung đổi thì ghi chú cũ vẫn mang tên cũ).
+/// Tiền tố ghi chú của nửa RIÊNG trong cặp góp / rút (`docs/Family/02A` mục 5.2). Để HIỂN THỊ, và là dấu "ghi chú do máy
+/// viết" của `laGhiChuMay` (đợt 1B Task 9; ở `transaction/domain` vì cả hai phía dùng, quét 28, 29). Nhận dạng khoản góp /
+/// rút luôn qua `fundPairId`, không qua tiền tố (tên ví chung đổi thì ghi chú cũ vẫn mang tên cũ).
 library;
 
 const String kTienToGopQuy = 'Góp quỹ · ';

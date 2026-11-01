@@ -3,6 +3,7 @@ import '../../../../core/utils/date_formatter.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/transaction_entity.dart';
+import '../../domain/danh_muc_ao_quy.dart';
 import '../../domain/transaction_type_label.dart';
 import '../../domain/transaction_lookup.dart';
 import '../../domain/transaction_owner.dart';
@@ -24,6 +25,7 @@ class TransactionDetailSheet extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     this.hoaDonDaXoa = false,
+    this.anThaoTac = false,
   });
 
   final TransactionEntity transaction;
@@ -35,12 +37,15 @@ class TransactionDetailSheet extends StatelessWidget {
   /// widget thuần, test được không cần `sl`). Mặc định `false` = khoá — trang Hoá đơn và mọi chỗ chưa hỏi.
   final bool hoaDonDaXoa;
 
+  /// Đợt 1B Task 9 — nửa riêng của khoản góp, rút trong nhà chỉ xem: không Sửa, không Xoá (server từ chối nửa nhà).
+  final bool anThaoTac;
+
   @override
   Widget build(BuildContext context) {
     final tx = transaction;
     final content = buildTransactionRowContent(tx, lookup);
-    final lyDo =
-        lyDoKhongXoaTaiSo(transactionOwnerOf(tx, hoaDonDaXoa: hoaDonDaXoa));
+    final lyDo = lyDoKhongXoaTaiSo(transactionOwnerOf(tx, hoaDonDaXoa: hoaDonDaXoa)) ??
+        (anThaoTac ? 'Nhà đang ở chế độ chỉ xem.' : null);
     final isTransfer = tx.type == 'transfer';
     final category = lookup.category(tx.categoryId);
 
@@ -102,7 +107,18 @@ class TransactionDetailSheet extends StatelessWidget {
           const SizedBox(height: 16),
           if (!isTransfer) ...[
             _row('Loại', transactionTypeLabel(tx.type)),
-            _row('Danh mục', category?.name ?? '—'),
+            // Nửa riêng của góp / rút quỹ gia đình không có danh mục: cùng nhãn ảo với dòng Sổ (`nhanAoQuy`).
+            _row(
+                'Danh mục',
+                category?.name ??
+                    nhanAoQuy(categoryIdThongKe(
+                      categoryId: tx.categoryId,
+                      fundPairId: tx.fundPairId,
+                      idhousehold: tx.idhousehold,
+                      loai: tx.type,
+                    ))
+                        ?.ten ??
+                    '—'),
             _row('Ví', lookup.walletName(tx.walletId)),
           ] else ...[
             _row('Từ ví', lookup.walletName(tx.walletId)),

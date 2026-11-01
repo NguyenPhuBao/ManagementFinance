@@ -5,6 +5,7 @@ library;
 
 import 'package:flowmoney/features/category/domain/phan_loai_so_tien.dart';
 import 'package:flowmoney/features/goal/domain/goal_history_direction.dart';
+import 'package:flowmoney/features/transaction/domain/ghi_chu_gop_quy.dart';
 import 'package:flowmoney/features/transaction/domain/khoan_vao_thong_ke.dart';
 import 'package:flowmoney/features/transaction/domain/mau_hoc_danh_muc.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
@@ -54,6 +55,14 @@ void main() {
       expect(laGhiChuMay(loai: 'thu', categoryId: null, ghiChu: 'Điều chỉnh số dư'), isTrue);
       expect(laGhiChuMay(loai: 'thu', categoryId: null, ghiChu: 'Số dư ban đầu'), isTrue);
       expect(laGhiChuMay(loai: 'chi', categoryId: 'c', ghiChu: 'cafe'), isFalse);
+    });
+    test('laGhiChuMay nhận tiền tố góp, rút kể cả khi đã gắn danh mục', () {
+      expect(laGhiChuMay(loai: 'chi', categoryId: 'x', ghiChu: 'Góp quỹ · Tiền chợ'), isTrue,
+          reason: 'sau khi rời nhà sửa thêm danh mục thì không được dạy B1 câu do máy sinh');
+      expect(laGhiChuMay(loai: 'thu', categoryId: 'x', ghiChu: 'Rút quỹ · Tiền chợ'), isTrue);
+      expect(laGhiChuMay(loai: 'chi', categoryId: 'x', ghiChu: kTienToGopQuy), isTrue);
+      expect(laGhiChuMay(loai: 'chi', categoryId: 'x', ghiChu: 'Góp bạn bè đi ăn'), isFalse,
+          reason: 'chỉ đúng tiền tố có dấu chấm giữa, không phải mọi câu bắt đầu bằng "Góp"');
     });
     test('bỏ: không danh mục, ghi chú rỗng, khoản chuyển, ghi chú chỉ toàn số; giữ phần còn lại', () {
       final ra = mauHocTu([

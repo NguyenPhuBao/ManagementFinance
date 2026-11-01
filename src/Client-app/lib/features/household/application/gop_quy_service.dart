@@ -5,7 +5,7 @@ import '../../../core/errors/app_exceptions.dart';
 import '../../transaction/data/models/transaction_entity.dart';
 import '../../transaction/data/repositories/transaction_repository.dart';
 import '../../wallet/data/so_du_vi_service.dart';
-import '../domain/ghi_chu_gop_quy.dart';
+import '../../transaction/domain/ghi_chu_gop_quy.dart';
 
 /// Ghi / sửa / xoá một cặp góp, rút của gia đình (`docs/Family/02A` mục 5–6): hai nửa, chung mã cặp, một giao tác.
 ///

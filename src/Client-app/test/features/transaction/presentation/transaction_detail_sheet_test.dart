@@ -137,5 +137,48 @@ void main() {
       expect(find.text('Xoá giao dịch'), findsOneWidget);
       expect(find.text('Sửa giao dịch'), findsOneWidget);
     });
+
+    testWidgets('nửa riêng của khoản góp: hàng Danh mục nói "Góp quỹ gia đình", không in "—"', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: TransactionDetailSheet(
+            transaction: TransactionEntity(
+              id: 'r',
+              walletId: 'w-cash',
+              idaccount: 1,
+              fundPairId: 'cap',
+              amount: 25000,
+              type: 'chi',
+              note: 'Góp quỹ · Quỹ chợ',
+              date: DateTime(2026, 11, 1),
+              updatedAt: DateTime(2026, 11, 1),
+            ),
+            lookup: lookup,
+            onEdit: () {},
+            onDelete: () {},
+          ),
+        ),
+      ));
+      expect(find.text('Góp quỹ gia đình'), findsWidgets,
+          reason: 'Dòng Sổ đã nói Góp quỹ gia đình; bảng chi tiết cũng phải nói cùng nhãn ảo (nhanAoQuy), không "—".');
+      expect(find.text('—'), findsNothing);
+    });
+
+    testWidgets('anThaoTac (nhà chỉ xem): không có Sửa và Xoá, có câu nói vì sao', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: TransactionDetailSheet(
+            transaction: tx(note: 'Cà phê'),
+            lookup: lookup,
+            onEdit: () {},
+            onDelete: () {},
+            anThaoTac: true,
+          ),
+        ),
+      ));
+      expect(find.text('Xoá giao dịch'), findsNothing, reason: 'Server từ chối nửa nhà của nhà chỉ xem, nên khoá cả hai nửa.');
+      expect(find.text('Sửa giao dịch'), findsNothing);
+      expect(find.textContaining('chỉ xem'), findsOneWidget, reason: 'Đòi câu lý do, không chỉ vắng nút.');
+    });
   });
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
+import '../../data/cap_gop_quy_nguon.dart';
 import '../../data/hoa_don_da_xoa_nguon.dart';
 import '../../data/models/transaction_entity.dart';
 import '../../domain/transaction_lookup.dart';
@@ -25,10 +26,19 @@ class TransactionListRow extends StatelessWidget {
     this.lookup,
     this.onTap,
     this.nguonHoaDonDaXoa,
+    this.hoiCap,
+    this.onXoaCap,
   });
 
   final TransactionEntity transaction;
   final VoidCallback onDelete;
+
+  /// Đợt 1B Task 9 — hỏi "nửa riêng này còn cặp góp / rút không". Còn cặp thì vuốt xoá đi cùng đường [onXoaCap] (xoá CẢ HAI
+  /// nửa), không bao giờ [onDelete]. `null` (dòng đơn lẻ trong test, trang chưa đăng ký cổng) → đường cũ.
+  final Future<CapGopQuy?> Function(TransactionEntity)? hoiCap;
+
+  /// Xoá cả cặp theo mã cặp; ném thì dòng báo lỗi và hàng bật lại.
+  final Future<void> Function(String maCap)? onXoaCap;
 
   /// Việc 4c — hỏi "hoá đơn của khoản này đã xoá chưa" lúc vuốt (mở khoá có cảnh báo cho khoản mồ côi). `null` (dòng
   /// đơn lẻ trong test, trang chưa đăng ký cổng) → khoản có `billId` vẫn khoá.
@@ -57,6 +67,31 @@ class TransactionListRow extends StatelessWidget {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       confirmDismiss: (_) async {
+        // Nửa riêng của khoản góp, rút còn cặp: xoá CẢ HAI nửa qua cổng. Luôn trả `false` — stream drift tự rút hàng; trả
+        // `true` là `onDismissed` → `onDelete` gỡ thêm MỘT nửa, đúng lỗi lệch cặp đang chặn. Toast nằm ở `onDismissed`
+        // (không chạy khi trả `false`) nên báo ở đây.
+        final cap = await hoiCap?.call(tx);
+        if (cap != null) {
+          if (!cap.choThaoTac) {
+            baoNhanh('Nhà đang ở chế độ chỉ xem.', loai: LoaiThongBao.loi);
+            return false;
+          }
+          if (!context.mounted) return false;
+          final dongY = await ConfirmDialog.show(
+            context,
+            title: cap.laGop ? 'Xoá khoản góp?' : 'Xoá khoản rút?',
+            message: cap.cauXoa,
+          );
+          if (dongY) {
+            try {
+              await onXoaCap!(cap.maCap);
+              baoNhanh('Đã xóa giao dịch', loai: LoaiThongBao.xong);
+            } catch (_) {
+              baoNhanh('Không xoá được khoản này. Thử lại sau.', loai: LoaiThongBao.loi);
+            }
+          }
+          return false;
+        }
         final daXoa = await hoaDonDaXoaCua(tx, nguonHoaDonDaXoa);
         final lyDo =
             lyDoKhongXoaTaiSo(transactionOwnerOf(tx, hoaDonDaXoa: daXoa));
