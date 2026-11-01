@@ -182,19 +182,13 @@ void main() {
               'đường qua loaiLoiTuMa (Task 8)');
     });
 
-    test(
-        'tạo nhà nhận hàng THÔ của POST / hiện tại (đơn 57.1): nhà hiện ngay, hỏi lại /me lấy thành viên, DoiNha MỘT lần',
-        () async {
-      api.traVe = nhaJsonThoTaoNha();
-      api.cuaToiJson = nhaJson();
+    test('tạo nhà nhận thân lồng: áp một lần, không hỏi lại /me, DoiNha một lần', () async {
+      api.traVe = nhaJson();
       await repo.taoNha('Nhà An');
-      expect(api.goi, ['taoNha:Nhà An', 'cuaToi', 'dsLoiMoiToi'],
-          reason: 'hàng thô không có members — áp ngay cho nhà hiện tức thì, rồi lamMoi (người dùng chốt 2026-10-28)');
-      expect(repo.hienTai.nha!.id, 12);
-      expect(repo.hienTai.thanhVien, hasLength(2), reason: 'thành viên lấy từ /me');
+      expect(api.goi, ['taoNha:Nhà An'], reason: 'thân đã đủ members từ PR #172; hỏi lại là một vòng mạng thừa');
+      expect(repo.hienTai.thanhVien, hasLength(2));
       await _nghi();
-      expect(doi.map((d) => (d.tu, d.den)), [(null, 12)],
-          reason: 'hàng đợi áp trạng thái — lượt /me cùng nhà, không phát lại');
+      expect(doi.map((d) => (d.tu, d.den)), [(null, 12)]);
     });
 
     test('⚠️ đổi vai / mời ra / giải tán trả thân KHÔNG phải trạng thái nhà → hỏi lại /me, không phát DoiNha oan',

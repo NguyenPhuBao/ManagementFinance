@@ -55,7 +55,7 @@ LoaiLoiNha loaiLoiNhaCua(Object e) => e is LoiNha ? e.loai : LoaiLoiNha.khac;
 
 /// `code` ở cấp gốc thân 4xx → loại; mã lạ / thiếu → `null` (nơi gọi rơi về [LoaiLoiNha.khac]).
 ///
-/// Mã theo bảng mã chốt 57.7 (`CAN-LAM/VIEC_BACKEND_CON_LAI.md` mục 10, PR #174); `HOUSEHOLD_NOT_FOUND`,
+/// Mã theo bảng mã chốt 57.7 (`docs/Family/04_HOP_DONG_PHAN_1_NHU_MA.md` mục 2b, PR #174); `HOUSEHOLD_NOT_FOUND`,
 /// `HOUSEHOLD_NOT_OWNER`, `HOUSEHOLD_OWNER_MUST_TRANSFER`, `HOUSEHOLD_NOT_ACTIVE`, `PREMIUM_REQUIRED` là tên cũ, giữ để đọc
 /// được kho / bản backend cũ, gỡ ở lượt sau nếu không phát sinh. `HOUSEHOLD_NOT_ACTIVE` gộp ReadOnly + Dissolved → đọc là chỉ xem rồi
 /// làm mới `/me` (người dùng chốt 2026-10-28) — trạng thái thật về sau một vòng mạng. `CANNOT_*` (tự đổi vai / tự mời ra /

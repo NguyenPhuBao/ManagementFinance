@@ -38,7 +38,7 @@ abstract class HouseholdApi {
   /// #10 `DELETE /households/members/:idaccount` → `{removed: true}` — KHÔNG phải trạng thái nhà.
   Future<Map<String, Object?>> moiRa(int idaccount);
 
-  /// #11 `POST /households/leave` → `{household: null}`.
+  /// #11 `POST /households/leave` → trạng thái nhà dạng lồng, `household: null`.
   Future<Map<String, Object?>> roiNha();
 
   /// #12 `POST /households/dissolve` → `{dissolved: true}` — KHÔNG phải trạng thái nhà. (Đơn 50 viết `DELETE /` — route ấy

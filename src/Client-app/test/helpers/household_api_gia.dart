@@ -1,8 +1,6 @@
-/// API gia đình GIẢ cho test (spec gia đình 2026-10-23 mục 9 — client làm xong được tới mức API giả; nghiệm thu trên máy
-/// chỉ chứng minh đường dữ liệu tới khi backend đóng đơn 56 / 57). Mỗi lời gọi ghi vào [goi]; [loi] khác `null` thì MỌI lời gọi
-/// ném nó; [treo] giữ lời gọi lại tới khi hoàn thành. [cuaToiJson] là thân `GET /households/me`; thao tác trả trạng thái trả
-/// [traVe] (mặc định [cuaToiJson]). Ba hình dạng mẫu: [nhaJson] (lồng, đích), [nhaJsonPhang] (`/me` hiện tại), [nhaJsonThoTaoNha]
-/// (`POST /` hiện tại).
+/// API gia đình GIẢ cho test. Mỗi lời gọi ghi vào [goi]; [loi] khác `null` thì MỌI lời gọi ném nó; [treo] giữ lời gọi lại tới
+/// khi hoàn thành. [cuaToiJson] là thân `GET /households/me`; thao tác trả trạng thái trả [traVe] (mặc định [cuaToiJson]).
+/// Hình dạng mẫu: [nhaJson] (lồng, `docs/Family/01` mục 4 — hình dạng duy nhất của backend từ PR #172).
 library;
 
 import 'dart:async';
@@ -132,72 +130,6 @@ Map<String, Object?> nhaJson({
       'formerMembers': [
         {'idaccount': 31, 'displayName': 'Lê Bình', 'leftAt': '2026-10-24T03:00:00.000Z'},
       ],
-    };
-
-/// Hình dạng PHẲNG mà `/me`, `/join`, `/transfer-owner`, `/invitations/:code/accept` ĐANG trả ở backend `177dd0e1`
-/// (`household.service.js` `getMyHousehold` — đơn 57.1). Khoá thật: `idhousehold`, `ownerIdaccount`, `createdAt`,
-/// `members[{idaccount, username, fullname, role, joinedAt}]`. Xoá helper này cùng nhánh đọc phẳng khi 57.1 đóng.
-Map<String, Object?> nhaJsonPhang({
-  int id = 12,
-  String ten = 'Nhà An – Bình',
-  String status = 'Active',
-  String myRole = 'Owner',
-  int maxMembers = 6,
-  List<Map<String, Object?>>? members,
-}) =>
-    {
-      'idhousehold': id,
-      'name': ten,
-      'ownerIdaccount': 18,
-      'status': status,
-      'maxMembers': maxMembers,
-      'maxSharedWallets': 10,
-      'contributionDueDay': 5,
-      'createdAt': '2026-10-23T08:00:00.000Z',
-      'myRole': myRole,
-      'members': members ??
-          [
-            {
-              'idaccount': 18,
-              'username': 'an',
-              'fullname': 'Trần An',
-              'role': 'Owner',
-              'joinedAt': '2026-10-23T08:00:00.000Z'
-            },
-            {
-              'idaccount': 25,
-              'username': 'binh',
-              'fullname': 'Nguyễn Bình',
-              'role': 'Member',
-              'joinedAt': '2026-10-23T09:12:00.000Z'
-            },
-          ],
-      'formerMembers': [
-        {
-          'idaccount': 31,
-          'username': 'le',
-          'fullname': 'Lê Bình',
-          'role': 'Member',
-          'leftAt': '2026-10-24T03:00:00.000Z'
-        },
-      ],
-    };
-
-/// Hàng Prisma THÔ + `myRole` mà `POST /households` ĐANG trả ở backend `177dd0e1` (`household.service.js` `createHousehold`
-/// `return {...created, myRole: 'Owner'}`; cột ở `household.repository.js` `createHousehold`). Không có `members`. Xoá cùng
-/// nhánh đọc thô khi 57.1 đóng.
-Map<String, Object?> nhaJsonThoTaoNha({int id = 12, String ten = 'Nhà An'}) => {
-      'idhousehold': id,
-      'name': ten,
-      'owner_idaccount': 18,
-      'status': 'Active',
-      'max_members': 6,
-      'max_shared_wallets': 10,
-      'contribution_due_day': 5,
-      'create_at': '2026-10-23T08:00:00.000Z',
-      'update_at': '2026-10-23T08:00:00.000Z',
-      'delete_at': null,
-      'myRole': 'Owner',
     };
 
 /// Lỗi 4xx của server, `code` ở cấp gốc (đơn 50 C.3; `middleware/error-handler.js`).

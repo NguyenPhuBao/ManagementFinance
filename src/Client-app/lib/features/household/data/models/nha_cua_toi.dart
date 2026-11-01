@@ -1,13 +1,8 @@
 /// Trạng thái nhà của tài khoản đang đăng nhập (spec gia đình 2026-10-23 mục 3.1, 5.8; `docs/Family/01` mục 4) — model của
 /// `GET /households/me` và thân mọi thao tác trả trạng thái, kiêm hình dạng kho (`NhaStore`): một bộ đọc cho cả hai.
 ///
-/// ⚠️ ĐỌC CẢ BA hình dạng (người dùng chốt 2026-10-28 — đơn 57.1; khuôn `premium/data/models/trang_thai_goi.dart` đọc
-/// `accountType` / `type`): (1) LỒNG `{household: {…}, myRole, members, formerMembers}` — đích theo `01` mục 4, cũng là hình
-/// dạng KHO; (2) PHẲNG của `/me`, `/join`, `/transfer-owner`, `/invitations/:code/accept` ở backend `177dd0e1`
-/// (`household.service.js` `getMyHousehold`: `idhousehold, name, ownerIdaccount, status, maxMembers, maxSharedWallets,
-/// createdAt, myRole, members[{idaccount, username, fullname, role, joinedAt}], formerMembers`); (3) hàng Prisma THÔ + `myRole`
-/// của `POST /` (`owner_idaccount, max_members, max_shared_wallets, create_at, delete_at`; KHÔNG có `members`). Gỡ (2) và (3)
-/// khi backend đóng 57.1 — nhóm test *phẳng* / *thô* đổi kỳ vọng thành "chưa có nhà".
+/// MỘT hình dạng: LỒNG `{household: {…}, myRole, members, formerMembers}` (`docs/Family/01` mục 4; backend từ PR #172, đo lại
+/// trên `8e3b4e48`, 2026-10-31), cũng là hình dạng KHO.
 library;
 
 import '../../domain/vai_nha.dart';
@@ -84,7 +79,7 @@ class NhaCuaToi {
 
   bool get coNha => nha != null;
 
-  /// Kho ghi MỘT hình dạng — lồng (`01` mục 4). Nhánh phẳng / thô chỉ có ở chiều đọc.
+  /// Kho ghi cùng MỘT hình dạng lồng (`01` mục 4) mà `/me` trả.
   Map<String, Object?> toJson() {
     final n = nha;
     return {
@@ -140,29 +135,21 @@ class DoiNha {
   final int? den;
 }
 
-/// Thân trả về của một thao tác CÓ PHẢI trạng thái nhà không (`docs/Family/04` mục 2): #1, #2, #7, #9, #15 — có; #11
-/// `{household: null}` — có ("không nhà" là một trạng thái); #8 `{targetIdaccount, newRole}`, #10 `{removed: true}`, #12
+/// Thân trả về của một thao tác CÓ PHẢI trạng thái nhà không (`docs/Family/04` mục 2b): #1, #2, #7, #9, #11, #15 — có (#11 rời
+/// nhà trả trạng thái lồng với `household: null`: "không nhà" là một trạng thái); #8 `{targetIdaccount, newRole}`, #10 `{removed: true}`, #12
 /// `{dissolved: true}`, #16 `{declined: true}` — KHÔNG. Đọc thân không phải trạng thái bằng [nhaCuaToiTuJson] ra "chưa có nhà"
 /// → `DoiNha(nhà → null)` → máy chủ nhà tự xoá sạch dữ liệu nhà ngay sau khi đổi vai một người (preflight 2026-10-28 #2).
 /// Repository gặp `false` thì hỏi lại `/me` thay vì áp.
-bool laThanTrangThaiNha(Map<String, Object?> json) => json.containsKey('household') || json.containsKey('idhousehold');
+bool laThanTrangThaiNha(Map<String, Object?> json) => json.containsKey('household');
 
-/// Không bao giờ ném: trường rác rơi về mặc định của đúng trường ấy; nhà thiếu id, `Dissolved` hoặc đã `delete_at` → chưa có
-/// nhà. Hình dạng (1) thắng khi có cả `household` lồng lẫn khoá phẳng.
+/// Không bao giờ ném: trường rác rơi về mặc định của đúng trường ấy; nhà thiếu id hoặc `Dissolved` → chưa có nhà.
 NhaCuaToi nhaCuaToiTuJson(Map<String, Object?> json, {required DateTime nhanLuc}) {
   final long = json['household'];
-  final Map<String, Object?>? h;
-  if (long is Map) {
-    h = long.cast<String, Object?>(); // (1) lồng — đích
-  } else if (long == null && json['idhousehold'] != null) {
-    h = json; // (2) phẳng `/me`, (3) thô `POST /` — gỡ nhánh này khi đơn 57.1 đóng
-  } else {
-    h = null;
-  }
-  if (h == null) return NhaCuaToi.khongCo(nhanLuc);
-  final id = _soNguyen(h['idhousehold'] ?? h['id']);
+  if (long is! Map) return NhaCuaToi.khongCo(nhanLuc);
+  final h = long.cast<String, Object?>();
+  final id = _soNguyen(h['id']);
   final trangThai = trangThaiNhaTuServer(h['status']?.toString());
-  if (id == null || trangThai == TrangThaiNha.daGiaiTan || h['delete_at'] != null) return NhaCuaToi.khongCo(nhanLuc);
+  if (id == null || trangThai == TrangThaiNha.daGiaiTan) return NhaCuaToi.khongCo(nhanLuc);
   final ds = json['members'];
   final cu = json['formerMembers'];
   return NhaCuaToi(
@@ -170,10 +157,10 @@ NhaCuaToi nhaCuaToiTuJson(Map<String, Object?> json, {required DateTime nhanLuc}
       id: id,
       ten: h['name']?.toString() ?? '',
       trangThai: trangThai,
-      toiDaThanhVien: _soNguyen(h['maxMembers'] ?? h['max_members']) ?? kToiDaThanhVienMacDinh,
-      idChuNha: _soNguyen(h['ownerId'] ?? h['ownerIdaccount'] ?? h['owner_idaccount']),
-      taoLuc: _ngay(h['createAt'] ?? h['createdAt'] ?? h['create_at']),
-      toiDaViChung: _soNguyen(h['maxSharedWallets'] ?? h['max_shared_wallets']),
+      toiDaThanhVien: _soNguyen(h['maxMembers']) ?? kToiDaThanhVienMacDinh,
+      idChuNha: _soNguyen(h['ownerId']),
+      taoLuc: _ngay(h['createAt']),
+      toiDaViChung: _soNguyen(h['maxSharedWallets']),
     ),
     vai: vaiNhaTuServer(json['myRole']?.toString()),
     thanhVien: [
@@ -199,14 +186,7 @@ NhaCuaToi nhaCuaToiTuJson(Map<String, Object?> json, {required DateTime nhanLuc}
   );
 }
 
-/// `displayName` (`01`) → `fullname` → `username` (hình dạng phẳng của `177dd0e1`); chuỗi rỗng coi như thiếu.
-String _tenHienThi(Map<Object?, Object?> m) {
-  for (final k in const ['displayName', 'fullname', 'username']) {
-    final v = m[k]?.toString();
-    if (v != null && v.trim().isNotEmpty) return v;
-  }
-  return '';
-}
+String _tenHienThi(Map<Object?, Object?> m) => m['displayName']?.toString() ?? '';
 
 int? _soNguyen(Object? v) {
   if (v == null) return null;
