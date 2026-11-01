@@ -79,7 +79,7 @@ void main() {
           nhaCuaToiTuJson(const {'idhousehold': 12, 'name': 'Cũ', 'myRole': 'Owner'}, nhanLuc: luc).coNha, isFalse);
     });
 
-    test('thân thật ở 8e3b4e48: không nhà có đủ bốn khoá; thành viên displayName; thừa contributionDueDay, role cũ không sao',
+    test('thân thật ở 8e3b4e48: không nhà có đủ bốn khoá; thành viên displayName; thừa contributionDueDay không sao',
         () {
       final khong = {'household': null, 'myRole': null, 'members': <Object?>[], 'formerMembers': <Object?>[]};
       expect(laThanTrangThaiNha(khong), isTrue);

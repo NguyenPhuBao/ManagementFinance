@@ -111,9 +111,12 @@ void main() {
     expect(find.byIcon(Icons.lock_outline), findsNothing);
     expect(find.byKey(const Key('ly-do-khoa-chap-nhan')), findsNothing);
     api.traVe = nhaJson();
+    api.dsLoiMoiToiJson = const []; // server: lời mời vừa nhận không còn trong danh sách (01 mục 2.8)
     await t.tap(find.widgetWithText(FilledButton, 'Chấp nhận'));
     await t.pumpAndSettle();
     expect(api.goi, contains('chapNhanLoiMoi:WXYZ6789'));
+    expect(find.text('Nhà An – Bình'), findsOneWidget, reason: 'chấp nhận xong màn phải SANG trạng thái có nhà');
+    expect(find.text('LỜI MỜI ĐANG CHỜ'), findsNothing, reason: 'và thẻ lời mời vừa nhận biến mất');
   });
 
   testWidgets('đang ở nhà: Chấp nhận khoá kèm câu, Từ chối vẫn bấm được', (t) async {
@@ -173,8 +176,22 @@ void main() {
     expect(bat.cuoi?.cau, cauLoiNha(LoaiLoiNha.maHetHan));
   });
 
-  testWidgets('ba trạng thái ở 360 dp có bàn phím mở: không tràn', (t) async {
+  // Spec 12.8: mỗi trạng thái ở 360 dp CÓ bàn phím hệ thống — ba ca riêng (trước đây tên nói ba, thân chỉ dựng một).
+  testWidgets('chưa có nhà (kèm lời mời) ở 360 dp có bàn phím mở: không tràn', (t) async {
+    await mo(t, loiMoi: [_loiMoiJson()], banPhim: true);
+    expect(find.text('LỜI MỜI ĐANG CHỜ'), findsOneWidget, reason: 'ca phải dựng đúng trạng thái đang nói');
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('Chủ nhà (kèm lời mời, nhà đủ sáu người) ở 360 dp có bàn phím mở: không tràn', (t) async {
+    await mo(t, nha: nhaJson(myRole: 'Owner'), loiMoi: [_loiMoiJson()], banPhim: true);
+    expect(find.text('Mời thành viên'), findsOneWidget, reason: 'ca phải dựng đúng vai Chủ');
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('nhà chỉ xem + Thành viên (kèm lời mời) ở 360 dp có bàn phím mở: không tràn', (t) async {
     await mo(t, nha: nhaJson(status: 'ReadOnly', myRole: 'Member'), loiMoi: [_loiMoiJson()], banPhim: true);
+    expect(find.textContaining('chế độ chỉ xem'), findsOneWidget, reason: 'ca phải dựng đúng trạng thái chỉ xem');
     expect(t.takeException(), isNull);
   });
 }

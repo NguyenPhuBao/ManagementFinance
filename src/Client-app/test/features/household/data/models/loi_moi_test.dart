@@ -43,6 +43,23 @@ void main() {
       expect(m(han: now.add(const Duration(minutes: 1))).conHieuLucLuc(now), isTrue);
     });
 
+    test('hàng KHÔNG phải đang chờ mà quá hạn: trạng thái giữ nguyên (không bị đọc thành Hết hạn)', () {
+      final qua = now.subtract(const Duration(days: 2));
+      for (final t in [TrangThaiLoiMoi.daTuChoi, TrangThaiLoiMoi.daDung, TrangThaiLoiMoi.daHuy]) {
+        final x = m(t: t, han: qua, email: 'a@x.vn');
+        expect(x.trangThaiLuc(now), t, reason: 'chỉ Pending quá hạn mới thành hết hạn; $t phải giữ nhãn thật');
+        expect(x.conHieuLucLuc(now), isFalse);
+      }
+      expect(m(t: TrangThaiLoiMoi.hetHan, han: qua).trangThaiLuc(now), TrangThaiLoiMoi.hetHan);
+    });
+
+    test('đang chờ KHÔNG có hạn (hình dạng cũ): còn hiệu lực mãi, không bị đọc thành hết hạn', () {
+      final x = m();
+      expect(x.hetHan, isNull);
+      expect(x.trangThaiLuc(now.add(const Duration(days: 3650))), TrangThaiLoiMoi.dangCho);
+      expect(x.conHieuLucLuc(now), isTrue);
+    });
+
     test('dongLoiMoiHien: mã thường chỉ khi còn hiệu lực; email ẩn đã dùng / đã huỷ (01 mục 2.1)', () {
       final ds = [
         m(), // mã thường đang chờ — hiện

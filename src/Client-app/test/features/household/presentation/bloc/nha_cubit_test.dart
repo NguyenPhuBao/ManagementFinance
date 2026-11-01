@@ -18,11 +18,15 @@ void main() {
     api.goi.clear();
     final c = NhaCubit(repo);
     addTearDown(c.close);
+    // Giữ `/me` lại: trạng thái đọc ngay sau moTrang là của KHO, không phụ thuộc số lượt microtask của lượt làm mới.
+    api.treo = Completer<void>();
     await c.moTrang();
-    await Future<void>.delayed(Duration.zero);
     expect(c.state.daNap, isTrue);
-    expect(c.state.nha.nha!.id, 12);
+    expect(c.state.nha.nha!.id, 12, reason: 'từ kho, trước khi /me về');
+    api.treo!.complete();
+    await repo.lamMoi(); // nhập vào lượt đang bay
     expect(api.goi, contains('cuaToi'));
+    expect(c.state.nha.nha!.id, 12);
   });
 
   test('nhà đổi ở nơi khác → state đổi theo luồng của repository', () async {

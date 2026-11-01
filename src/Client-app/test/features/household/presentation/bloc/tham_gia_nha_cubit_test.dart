@@ -197,7 +197,11 @@ void khoiVong1() {
     expect(c.state.ma, 'ABCD2345');
     expect(c.state.dangThamGia, isTrue);
     expect(c.state.xemTruoc, isNotNull);
-    expect(await c.thamGia(), isFalse);
+    // Không `await` mù: hồi quy (cho POST thứ hai) giữ lượt này tới khi `treo` mở — treo cả tệp thay vì đỏ.
+    bool? lanHai;
+    unawaited(c.thamGia().then((v) => lanHai = v));
+    await Future<void>.delayed(Duration.zero);
+    expect(lanHai, isFalse, reason: 'đang tham gia thì lượt thứ hai trả false ngay');
     treo.complete();
     expect(await f, isTrue);
     expect(api.goi.where((g) => g.startsWith('thamGia')), hasLength(1));

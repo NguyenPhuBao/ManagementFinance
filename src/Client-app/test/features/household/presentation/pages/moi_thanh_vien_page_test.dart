@@ -170,6 +170,36 @@ void main() {
     expect(api.goi, contains('huyMaMoi:AAAA2222'));
   });
 
+  testWidgets('mất vai Chủ giữa chừng (máy khác chuyển chủ): GacVaiChu THẬT của trang tự về đúng một lần, kèm câu', (t) async {
+    dat360(t);
+    final bat = batThongBao();
+    final api = HouseholdApiGia()..cuaToiJson = nhaJson();
+    final repo = await repoNhaThu(api);
+    final r = routerThu(MoiThanhVienPage(repo: repo, chiaSe: _ChiaSeGia()));
+    await t.pumpWidget(bocRouterNha(r));
+    r.push('/dich');
+    await t.pumpAndSettle();
+    expect(find.text('Mời qua email'), findsOneWidget);
+    api.cuaToiJson = nhaJson(myRole: 'Member');
+    await repo.lamMoi();
+    await t.pumpAndSettle();
+    expect(find.text('GOC'), findsOneWidget, reason: 'về trang trước, không thoát khỏi stack');
+    expect(find.text('Mời qua email'), findsNothing);
+    expect(bat.cau, ['Bạn không còn là chủ nhà.']);
+  });
+
+  testWidgets('dòng lời mời có email rất dài ở 360 dp: không tràn, vẫn thấy nút Huỷ', (t) async {
+    final han = DateTime.now().add(const Duration(days: 1)).toUtc().toIso8601String();
+    final dai = '${'nguoi.duoc.moi.rat.rat.dai' * 4}@vi-du-rat-dai.example.com';
+    await mo(t, ds: [
+      {'code': 'AAAA2222', 'role': 'Member', 'email': dai, 'expiresAt': han, 'status': 'Pending'},
+    ]);
+    await t.ensureVisible(find.text('Huỷ'));
+    expect(t.takeException(), isNull);
+    final huy = t.getRect(find.text('Huỷ'));
+    expect(huy.right, lessThanOrEqualTo(360), reason: 'chữ quan trọng nhất của dòng (Huỷ) không được rơi khỏi màn');
+  });
+
   testWidgets('360 dp, bàn phím mở: không tràn', (t) async {
     await mo(t, banPhim: true);
     expect(t.takeException(), isNull);

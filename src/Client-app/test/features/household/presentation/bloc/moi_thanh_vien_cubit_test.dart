@@ -37,7 +37,7 @@ void main() {
       dong('CCCC4444', han: now.subtract(const Duration(minutes: 1))),
     ];
     await c.nap();
-    expect(c.state.daNap, isTrue);
+    expect(c.state.ds, hasLength(3), reason: 'nap giữ cả mã đã chết; soConHieuLuc mới là phép lọc');
     expect(c.soConHieuLuc, 1, reason: 'đếm sai là khoá nhầm hai nút khi nhà còn chỗ');
   });
 
@@ -83,13 +83,16 @@ void main() {
     expect(c.state.emailVuaGui, isNull);
   });
 
-  test('nap hỏng lượt đầu: báo, daNap vẫn true để màn không quay mãi', () async {
+  test('nap hỏng lượt đầu: báo đúng một câu, danh sách giữ rỗng, lượt tự động bị bỏ (không vòng nạp → lỗi)', () async {
     final (c, api, bao) = await dung();
     api.loi = loiServer(500, 'HOUSEHOLD_ERROR');
     await c.nap();
     await Future<void>.delayed(Duration.zero);
-    expect(c.state.daNap, isTrue);
+    expect(c.state.ds, isEmpty);
     expect(bao, [cauLoiNha(LoaiLoiNha.mayChu)]);
+    final soGoi = api.goi.length;
+    await c.napTuDong();
+    expect(api.goi.length, soGoi, reason: 'lượt nạp hỏng rồi thì lượt TỰ ĐỘNG không gọi lại cho tới khi người dùng thao tác');
   });
 
   test('huy chạm đôi: chỉ một DELETE trong lúc lượt đầu chưa xong, dangHuy giữ mã', () async {
@@ -168,10 +171,12 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     final b = c.huy('BBBB3333');
     await Future<void>.delayed(Duration.zero);
-    await c.huy('AAAA2222');
+    // Không `await` mù: hồi quy (gửi DELETE hai) giữ lượt này tới khi `treoDsMaMoi` mở — treo thay vì đỏ.
+    final lai = c.huy('AAAA2222');
+    await Future<void>.delayed(Duration.zero);
     expect(xoa(api, 'AAAA2222'), 1, reason: 'dangHuy một ô: chạm B làm nút A mở lại');
     api.treoDsMaMoi!.complete();
-    await Future.wait([a, b]);
+    await Future.wait([a, b, lai]);
     expect(xoa(api, 'BBBB3333'), 1);
     expect(c.state.dangHuy, isEmpty);
   });
@@ -182,10 +187,11 @@ void main() {
     final b = c.huy('BBBB3333');
     await Future<void>.delayed(Duration.zero);
     await c.huy('AAAA2222');
-    await c.huy('BBBB3333');
+    final lai = c.huy('BBBB3333'); // không `await` mù: DELETE thứ hai của B sẽ chờ `treoHuyTheoMa`
+    await Future<void>.delayed(Duration.zero);
     expect(xoa(api, 'BBBB3333'), 1, reason: 'lượt A xong xoá dangHuy của B');
     api.treoHuyTheoMa['BBBB3333']!.complete();
-    await b;
+    await Future.wait([b, lai]);
     expect(c.state.dangHuy, isEmpty);
   });
 }

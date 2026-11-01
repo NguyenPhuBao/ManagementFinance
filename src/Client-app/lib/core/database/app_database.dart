@@ -611,6 +611,10 @@ class AppDatabase extends _$AppDatabase {
     // là NULL — hàng riêng của tài khoản cũ sẽ thoát phép xoá.
     Expression<bool> cuaNhaGiu(Expression<int> idhousehold) =>
         nhaGiu == null ? const Constant(false) : idhousehold.isNotNull() & idhousehold.equals(nhaGiu);
+    // MỘT định nghĩa "ví được giữ" cho cả hai chỗ dùng (xoá giao dịch trỏ ví sắp xoá, xoá chính ví): hai bản lệch nhau là
+    // `delete(wallets)` vỡ khoá ngoại và khoá cửa đăng nhập.
+    Expression<bool> viDuocGiu($WalletsTable w) =>
+        (w.idhousehold.isNull() & w.idaccount.equals(keepIdaccount)) | cuaNhaGiu(w.idhousehold);
     var removed = 0;
     await transaction(() async {
       removed += await (delete(categoryKeywords)
@@ -628,9 +632,7 @@ class AppDatabase extends _$AppDatabase {
                 ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not() |
                 t.walletId.isInQuery(selectOnly(wallets)
                   ..addColumns([wallets.id])
-                  ..where(((wallets.idhousehold.isNull() & wallets.idaccount.equals(keepIdaccount)) |
-                          cuaNhaGiu(wallets.idhousehold))
-                      .not()))))
+                  ..where(viDuocGiu(wallets).not()))))
           .go();
       removed += await (delete(budgets)
             ..where((t) =>
@@ -650,10 +652,7 @@ class AppDatabase extends _$AppDatabase {
                     cuaNhaGiu(t.idhousehold))
                 .not()))
           .go();
-      removed += await (delete(wallets)
-            ..where((t) =>
-                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
-          .go();
+      removed += await (delete(wallets)..where((t) => viDuocGiu(t).not())).go();
       // Thông báo cũng phải đi theo: bỏ sót là thông báo tài chính của người
       // đăng nhập trước hiện trên máy người sau. Bảng này không có khoá ngoại
       // nên vị trí trong chuỗi xoá không quan trọng.

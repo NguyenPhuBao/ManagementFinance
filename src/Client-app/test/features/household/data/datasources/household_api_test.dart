@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../../../helpers/household_api_gia.dart';
 
-/// Hợp đồng đường dẫn / thân của 16 endpoint — như mã backend `177dd0e1` (`api/households.routes.js:10-31`, `docs/Family/04`
+/// Hợp đồng đường dẫn / thân của 16 endpoint — như mã backend `8e3b4e48` (PR #174, `api/households.routes.js`, `docs/Family/04`
 /// mục 2); backend đổi đường thì sửa ở đây + `DioHouseholdApi`. Giải tán là `POST /dissolve` (đơn 50 viết `DELETE /`).
 class _Ghi implements HttpClientAdapter {
   final goi = <String>[];
@@ -107,6 +107,12 @@ void main() {
       expect(loaiLoiNhaTu(loiServer(409, 'HOUSEHOLD_ALREADY_IN_ONE')), LoaiLoiNha.daONhaKhac);
       expect(loaiLoiNhaTu(loiServer(403, 'FEATURE_DISABLED')), LoaiLoiNha.tinhNangKhongMo);
       expect(loaiLoiNhaTu(loiServer(400, 'VALIDATION_LA')), LoaiLoiNha.khac);
+    });
+
+    test('hai mã 429 mới đi đường HTTP: gửi thư quá nhiều ≠ thử mã quá nhiều (hai câu khác nhau)', () {
+      expect(loaiLoiNhaTu(loiServer(429, 'HOUSEHOLD_INVITE_RATE_LIMIT')), LoaiLoiNha.guiMoiQuaNhieu);
+      expect(loaiLoiNhaTu(loiServer(429, 'HOUSEHOLD_INVITE_ATTEMPT_LIMIT')), LoaiLoiNha.thuMaQuaNhieu);
+      expect(loaiLoiNhaTu(loiServer(429, 'MA_LA')), LoaiLoiNha.khac, reason: '429 lạ không bị đọc thành hai loại trên');
     });
 
     test('401 / 5xx / mất mạng / lỗi lạ', () {

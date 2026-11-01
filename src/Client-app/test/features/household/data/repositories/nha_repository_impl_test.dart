@@ -191,9 +191,31 @@ void main() {
       expect(doi.map((d) => (d.tu, d.den)), [(null, 12)]);
     });
 
+    test('tạo nhà trả thân lồng mà members rỗng: vẫn là trạng thái nhà, áp thẳng, KHÔNG hỏi lại /me', () async {
+      api.traVe = nhaJson(members: []);
+      await repo.taoNha('Nhà An');
+      expect(api.goi, ['taoNha:Nhà An']);
+      expect(repo.hienTai.coNha, isTrue);
+      expect(repo.hienTai.thanhVien, isEmpty);
+    });
+
+    test('chuyển chủ (#9): trả trạng thái nhà với vai MỚI; áp thẳng, vai Chủ → Thành viên, không phát DoiNha (cùng nhà)',
+        () async {
+      kho.values[18] = trangThai();
+      await repo.datTaiKhoan(18);
+      expect(repo.hienTai.vai, VaiNha.chu);
+      api.traVe = nhaJson(myRole: 'Member');
+      await repo.chuyenChu(25);
+      expect(api.goi, ['chuyenChu:25'], reason: 'thân #9 là trạng thái nhà — không hỏi lại /me');
+      expect(repo.hienTai.vai, VaiNha.thanhVien);
+      expect(repo.hienTai.nha!.id, 12);
+      await _nghi();
+      expect(doi, isEmpty, reason: 'mất vai Chủ không phải rời nhà: phát DoiNha là xoá dữ liệu nhà của người vẫn ở trong nhà');
+    });
+
     test('⚠️ đổi vai / mời ra / giải tán trả thân KHÔNG phải trạng thái nhà → hỏi lại /me, không phát DoiNha oan',
         () async {
-      // Backend 177dd0e1: #8 `{targetIdaccount, newRole}`, #10 `{removed: true}`, #12 `{dissolved: true}` (04 mục 2). Bản kế
+      // Backend (PR #174, `8e3b4e48`; thân này không đổi từ `177dd0e1`): #8 `{targetIdaccount, newRole}`, #10 `{removed: true}`, #12 `{dissolved: true}` (04 mục 2). Bản kế
       // hoạch 2026-10-24 áp thẳng → đọc thành "chưa có nhà" → DoiNha(12 → null) → DieuPhoiDoiNha xoá sạch dữ liệu nhà trên
       // máy CHỦ NHÀ ngay sau khi đổi vai một người (preflight 2026-10-28 #2).
       kho.values[18] = trangThai();

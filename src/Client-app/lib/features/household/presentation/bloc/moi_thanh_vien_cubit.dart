@@ -10,7 +10,6 @@ import '../../domain/vai_nha.dart';
 class MoiThanhVienState {
   const MoiThanhVienState({
     this.ds = const [],
-    this.daNap = false,
     this.maVuaTao,
     this.emailVuaGui,
     this.dangTaoMa = false,
@@ -19,7 +18,6 @@ class MoiThanhVienState {
   });
 
   final List<MaMoiEntity> ds;
-  final bool daNap;
   final MaMoiEntity? maVuaTao;
   final String? emailVuaGui;
   final bool dangTaoMa;
@@ -46,7 +44,6 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
 
   void _phat({
     List<MaMoiEntity>? ds,
-    bool? daNap,
     MaMoiEntity? maVuaTao,
     bool boMa = false,
     String? emailVuaGui,
@@ -58,7 +55,6 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
     final s = state;
     emit(MoiThanhVienState(
       ds: ds ?? s.ds,
-      daNap: daNap ?? s.daNap,
       maVuaTao: boMa ? null : (maVuaTao ?? s.maVuaTao),
       emailVuaGui: emailVuaGui ?? s.emailVuaGui,
       dangTaoMa: dangTaoMa ?? s.dangTaoMa,
@@ -81,11 +77,10 @@ class MoiThanhVienCubit extends Cubit<MoiThanhVienState> {
     try {
       final ds = await _repo.dsMaMoi();
       _napHong = false;
-      _phat(ds: ds, daNap: true);
+      _phat(ds: ds);
     } catch (e) {
       _napHong = true;
       _baoLoi(e);
-      _phat(daNap: true);
     } finally {
       _dangNap = false;
     }

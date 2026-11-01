@@ -163,7 +163,8 @@ void main() {
     await t.pump();
     expect(t.widget<TextButton>(find.widgetWithText(TextButton, 'Chuyển chủ nhà')).onPressed, isNull);
     expect(t.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Giải tán nhà')).onPressed, isNull);
-    // Chip duy nhất đang MỞ (người này đang là Thành viên): phải đóng lúc khoá. Chip vai hiện tại thì luôn chạm-được-mà-không-làm-gì.
+    // Nguyễn Bình đang là Thành viên: chip *Chỉ xem* là chip DUY NHẤT đổi vai được, nên lúc khoá nó phải đóng. Chip vai hiện
+    // tại (*Thành viên*) chạm vào không làm gì và không bao giờ vào kiểu "vô hiệu" (xem ca *chạm chip vai hiện tại* dưới).
     expect(t.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Chỉ xem')).onSelected, isNull);
     api.treo!.complete();
     await t.pumpAndSettle();

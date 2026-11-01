@@ -81,6 +81,32 @@ void main() {
       expect(w.updatedAt, ngay);
     });
 
+    test('ví nhà đang pending (sửa tên chưa đẩy): tính lại số dư GIỮ pending và updatedAt, không nuốt bản sửa', () async {
+      await db.walletDao.insert(WalletsCompanion(
+          id: const Value('v'),
+          idaccount: const Value(_toi),
+          name: const Value('Tên mới chưa đẩy'),
+          balance: const Value(0),
+          idhousehold: const Value(_nha),
+          syncStatus: const Value('pending'),
+          updatedAt: Value(ngay)));
+      await db.transactionDao.insert(TransactionsCompanion(
+          id: const Value('g'),
+          idaccount: const Value(_nguoiKhac),
+          walletId: const Value('v'),
+          amount: const Value(70000),
+          type: const Value('thu'),
+          date: Value(ngay),
+          idhousehold: const Value(_nha),
+          updatedAt: Value(ngay)));
+      await SoDuViService(db: db, taiKhoanPhien: () => _toi).tinhLaiSoDu('v');
+      final w = await db.walletDao.getById('v');
+      expect(w!.balance, 70000);
+      expect(w.syncStatus, 'pending', reason: 'đổi sang synced là bản sửa tên chưa đẩy không bao giờ lên server');
+      expect(w.updatedAt, ngay);
+      expect(w.name, 'Tên mới chưa đẩy');
+    });
+
     test('tính lại ví RIÊNG giữ nguyên hành vi cũ: pending + updatedAt mới', () async {
       await vi('v', _toi, soDu: 0);
       await db.transactionDao.insert(TransactionsCompanion(
