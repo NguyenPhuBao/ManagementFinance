@@ -339,6 +339,12 @@ Tên duy nhất trong tài khoản, tính cả danh mục mặc định, so bằ
   (nơi gọi bọc `catch`).
 - **Resolver (mục 2.6)** và bộ lọc Pull (mục 3.3) là hai nửa của cùng một việc: gỡ hàng nhà bị từ chối mà không để Pull làm sống lại.
 
+**Đợt 1B (2026-11-02) — thêm cho hàng của nhà** (mã `503fc9d5..9f4e5e97`; mã xong + soát toàn nhánh, chưa đo máy thật; chỉ ghi chỗ đụng tới hợp đồng, phần giao diện ở spec mục 16):
+- **Danh mục sai phạm vi bị từ chối.** `validateEntityScope` (`sync.service.js`, `6684cc6c`) kiểm thêm `idcategory` / `categoryId` / `idCategory` của payload: danh mục tìm thấy mà `Idhousehold` khác phạm vi đích (riêng ↔ nhà, nhà A ↔ nhà B, **kể cả khuôn mặc định**, vốn trống `Idhousehold`) ⇒ `HOUSEHOLD_SCOPE_MISMATCH` (mã vĩnh viễn, đã có trong `_permanentCodes`). Cùng khuôn kiểm ví, ví chuyển, mục tiêu. Client 1B không tạo được ca này (danh mục chọn từ cây của nhà, bản sao do server tạo); đây là lưới. Hệ quả cần biết: hàng nhà **cũ** trỏ danh mục riêng cũng không **xoá** được, vì phép kiểm chạy trước nhánh xoá (G121 dòng 13; đơn 63.2).
+- **Payload không đổi** so với 1A (giao dịch **15** khoá; năm payload gửi `idhousehold`). Danh mục của nhà gửi `idhousehold` như hàng khác; **không có từ khoá** (`keywords: []`, `saveKeywords` gác hàng nhà) — từ khoá danh mục là cột `Keyword` chung, các thành viên sẽ đè nhau.
+- **`/me` → `formerMembers` khử trùng ở client** (`nhaCuaToiTuJson`): backend trả mọi hàng đã rời, kể cả người đang ở và một người nhiều lần (đơn 64); client bỏ id đang ở và khử theo id.
+- **Rời nhà / Giải tán** có hộp hỏi lại khi `LoiNha(hangChuaDay)`: đếm qua `hangChuaDay(idNha, idaccount:)` (nửa **của tôi** chưa đẩy vào *gop* / *rut*, nửa người khác vào *khoan*; nửa của tôi đã xoá mềm vào *khoan*), rồi gọi lại với `boQuaHangChuaDay: true` (G119 ca 7: `pending` của bản sửa trên hàng đã lên server cũng đếm là "chưa lên").
+
 ## 5. Phép đổi giá trị (tóm tắt — `sync_payload_normalizer.dart`)
 
 | Trường | SQLite / client | Gửi lên | Kéo về |

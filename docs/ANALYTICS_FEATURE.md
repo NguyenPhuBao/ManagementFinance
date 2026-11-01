@@ -980,6 +980,10 @@ chúng nằm ở `tong.chi` và không liên quan gì tới vế thu.
 thì con số của khối **vẫn là 14.625.000đ**, không nhảy lên 19.625.000đ. Đó là
 bằng chứng duy nhất cho luật này — hai ca widget test canh đúng cặp số ấy.
 
+#### Tiền rút quỹ gia đình cũng không phải thu nhập (2026-11-02, gia đình 1B)
+
+Nửa riêng của khoản **rút quỹ** (`type = 'thu'`, có `fundPairId`, không `idhousehold`) nằm trong `tong.thu` nhưng là tiền **quay về**, không phải tiền kiếm được — cùng lý do loại tiền đi vay và thu nợ (`docs/Family/02A_VI_CHUNG_GOP_QUY.md` mục 7.2). Luật mở rộng thành: thu nhập = tổng thu − mọi khoản vào thuộc nhóm Vay/nợ − **rút quỹ**. Mã: `KhoanThuChi.laRutQuy` (`thong_ke_thang.dart`, tính bằng `laNuaRutQuy` ở `transaction/domain/danh_muc_ao_quy.dart`) → `DiemVayNo.rutQuy` (`vai_vay_no.dart`), `thuNhapCua` trừ nó; `tai_phan_bo_nguon` (thu nhập tháng nuôi phép neo ngưỡng ngân sách) đi cùng cờ. ⚠️ Hai chốt hỏng im lặng: (1) `chuoiVayNo` cộng rút theo **cờ** rồi `continue` — thiếu `continue` thì nửa rút gắn danh mục vay nợ bị trừ thu nhập **hai lần** (vào `rutQuy` rồi vào `diVay`); (2) thu nhập quyết bằng cờ, **không** bằng mã danh mục ảo (`nhanAoQuy`) — mã ảo chỉ để gom nhãn *"Rút quỹ gia đình"* ở donut / thác nước / danh sách; một chỗ dựng `KhoanThuChi` thiếu cờ sẽ tính rút là thu nhập. `rutQuy` **không** vào `DiemVayNo.rong` (rút không làm hai biểu đồ vay/nợ hiện lên). Ca canh: `tai_phan_bo_nguon` (hàng thu có `fundPairId` không vào thu nhập tháng; bản sai bỏ `laRutQuy` đỏ `22.500.000` thay `15.000.000`).
+
 #### Ghép hai chuỗi, không dựng chuỗi thứ ba
 
 `dongTienTuDo()` ở `analytics/domain/dong_tien_tu_do.dart` nhận `ThongKeKy.chuoi`
