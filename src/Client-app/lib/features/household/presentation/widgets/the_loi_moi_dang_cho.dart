@@ -80,13 +80,15 @@ class TheLoiMoiDangCho extends StatelessWidget {
               Expanded(child: OutlinedButton(onPressed: dangXuLy ? null : onTuChoi, child: const Text('Từ chối'))),
               const SizedBox(width: 12),
               Expanded(
+                // Nửa thẻ ở 360 dp hẹp hơn đệm mặc định + ổ khoá + chữ (Realme: "Chấp nh…"): bớt đệm, co chữ thay vì cắt.
                 child: FilledButton(
+                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
                   onPressed: (lyDo != null || dangXuLy) ? null : onChapNhan,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (lyDo != null) ...[const Icon(Icons.lock_outline, size: 18), const SizedBox(width: 6)],
-                      const Flexible(child: Text('Chấp nhận', overflow: TextOverflow.ellipsis)),
+                      const Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Chấp nhận', maxLines: 1))),
                     ],
                   ),
                 ),

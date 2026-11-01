@@ -107,6 +107,21 @@ void main() {
     }
   });
 
+  testWidgets('email có dấu: nút khoá và nói lý do; sửa hết dấu thì câu mất, nút mở', (t) async {
+    final (api, _, _) = await mo(t);
+    FilledButton nut() => t.widget(find.ancestor(of: find.text('Gửi lời mời'), matching: find.byWidgetPredicate((w) => w is FilledButton)));
+    await t.enterText(find.byType(TextField).first, 'an@flowmoney.tét');
+    await t.pump();
+    expect(nut().onPressed, isNull, reason: 'địa chỉ có dấu không được gửi đi');
+    expect(find.text('Email không được có dấu'), findsOneWidget,
+        reason: 'không có câu này thì người gõ Telex thấy nút tắt mà không biết vì sao');
+    await t.enterText(find.byType(TextField).first, 'an@flowmoney.test');
+    await t.pump();
+    expect(find.text('Email không được có dấu'), findsNothing);
+    expect(nut().onPressed, isNotNull);
+    expect(api.goi.where((g) => g.startsWith('moiQuaEmail')), isEmpty);
+  });
+
   testWidgets('email sai dạng: nút khoá; gửi xong dòng đã gửi, chung một câu', (t) async {
     final (api, _, _) = await mo(t);
     FilledButton nut() => t.widget(find.ancestor(of: find.text('Gửi lời mời'), matching: find.byWidgetPredicate((w) => w is FilledButton)));

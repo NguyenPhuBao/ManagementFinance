@@ -158,9 +158,10 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
               autocorrect: false,
               inputFormatters: const [GioiHanDoRong(DoRongCot.email)],
               // Gợi ý xám (Stitch `moi`): hint mặc định của theme là màu chữ nên đen đậm hơn chữ đã gõ. Chỉ ô này, không đổi theme.
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'ten@gmail.com',
-                hintStyle: TextStyle(color: AppColors.textSecondary),
+                hintStyle: const TextStyle(color: AppColors.textSecondary),
+                errorText: emailCoDau(_email.text) ? 'Email không được có dấu' : null,
               ),
               onChanged: (_) => setState(() {}),
             ),

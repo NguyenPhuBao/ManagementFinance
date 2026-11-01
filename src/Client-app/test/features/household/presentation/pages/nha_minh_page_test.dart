@@ -2,6 +2,7 @@ import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
 import 'package:flowmoney/shared/theme/app_colors.dart';
 import 'package:flowmoney/features/household/presentation/pages/nha_minh_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../../helpers/bat_thong_bao.dart';
@@ -146,6 +147,24 @@ void main() {
     expect(find.text('Nhà An – Bình'), findsOneWidget, reason: 'chấp nhận xong màn phải SANG trạng thái có nhà');
     expect(find.text('LỜI MỜI ĐANG CHỜ'), findsNothing, reason: 'và thẻ lời mời vừa nhận biến mất');
   });
+
+  // Realme 360 dp bắt 2026-11-01: ổ khoá + đệm nút làm chữ thành "Chấp nh…"; `takeException` mù vì ellipsis không sọc vàng.
+  for (final co in [1.0, 1.3, 1.5]) {
+    testWidgets('360 dp, cỡ chữ $co: chữ Chấp nhận trên nút khoá không bị cụt', (t) async {
+      t.platformDispatcher.textScaleFactorTestValue = co;
+      addTearDown(t.platformDispatcher.clearTextScaleFactorTestValue);
+      await mo(t, nha: nhaJson(myRole: 'Member'), loiMoi: [_loiMoiJson()]);
+      final chu = find.descendant(of: find.byType(FilledButton), matching: find.text('Chấp nhận'));
+      expect(chu, findsOneWidget);
+      final rp = t.renderObject<RenderParagraph>(chu);
+      expect(rp.didExceedMaxLines, isFalse, reason: 'chữ bị cắt thành dấu ba chấm');
+      expect(rp.size.width, greaterThanOrEqualTo(rp.getMaxIntrinsicWidth(double.infinity) - 0.5),
+          reason: 'hộp chữ hẹp hơn chữ thật');
+      final nut = t.getRect(find.widgetWithText(FilledButton, 'Chấp nhận'));
+      final hop = t.getRect(chu);
+      expect(hop.right, lessThanOrEqualTo(nut.right), reason: 'chữ lọt khỏi nút');
+    });
+  }
 
   testWidgets('đang ở nhà: Chấp nhận khoá kèm câu, Từ chối vẫn bấm được', (t) async {
     final api = await mo(t, nha: nhaJson(myRole: 'Member'), loiMoi: [_loiMoiJson()]);

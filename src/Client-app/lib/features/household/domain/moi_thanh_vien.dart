@@ -10,7 +10,11 @@ bool conChoMoi({required int soThanhVien, required int soLoiMoiConHieuLuc, requi
 
 final _email = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
 
-bool emailHopLeSoBo(String email) => _email.hasMatch(email.trim());
+bool emailHopLeSoBo(String email) => !emailCoDau(email) && _email.hasMatch(email.trim());
+
+/// Bộ gõ Telex vẫn đổi chữ trong ô email (`.test` thành `.tét`, đo trên Realme 2026-11-01), và nhà cung cấp thư từ chối
+/// địa chỉ ngoài ASCII. Tách riêng để màn Mời nói được lý do thay vì chỉ khoá nút.
+bool emailCoDau(String email) => email.codeUnits.any((c) => c > 0x7E);
 
 bool tenNhaHopLe(String ten) {
   final t = ten.trim();

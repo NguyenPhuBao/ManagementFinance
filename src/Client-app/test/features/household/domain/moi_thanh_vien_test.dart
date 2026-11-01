@@ -18,6 +18,16 @@ void main() {
     }
   });
 
+  test('email có dấu: không hợp lệ và nói được lý do (Telex đổi .test thành .tét, Resend từ chối)', () {
+    for (final e in ['an@flowmoney.tét', 'hòa@gmail.com', 'an@gmaìl.com']) {
+      expect(emailCoDau(e), isTrue, reason: e);
+      expect(emailHopLeSoBo(e), isFalse, reason: e);
+    }
+    for (final e in ['', 'an', 'an@gmail.com', ' a.b+c@d.co ']) {
+      expect(emailCoDau(e), isFalse, reason: e);
+    }
+  });
+
   test('tenNhaHopLe: 1–100 ký tự sau khi cắt trắng, đếm theo code point', () {
     expect(tenNhaHopLe('Nhà An'), isTrue);
     expect(tenNhaHopLe('   '), isFalse);
