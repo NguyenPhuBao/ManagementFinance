@@ -1,0 +1,82 @@
+diff --git a/src/Backend/modules/ai/features/chatbot/chatbot.service.js b/src/Backend/modules/ai/features/chatbot/chatbot.service.js
+index 0073810..a6ba4a2 100644
+--- a/src/Backend/modules/ai/features/chatbot/chatbot.service.js
++++ b/src/Backend/modules/ai/features/chatbot/chatbot.service.js
+@@ -221,7 +221,7 @@ class ChatbotService {
+             }
+           }
+         }
+-      });
++      }, { boQuaLoi: () => signal?.aborted === true });
+ 
+       const duration = Date.now() - startTime;
+       logger.info(`[ChatbotService] Hoàn tất phiên chat streaming trong ${duration}ms`);
+@@ -230,7 +230,9 @@ class ChatbotService {
+         onDone({ responseTimeMs: duration });
+       }
+     } catch (error) {
+-      if (signal?.aborted || error.name === 'AbortError' || error.message?.includes('aborted')) {
++      // Chỉ signal của client mới nghĩa là người dùng dừng. Hết giờ `timeout: 60000` của SDK cũng báo chữ "aborted"
++      // nhưng client vẫn đang chờ: phải đi nhánh fallback để có `done`, không thì luồng treo tới khi client tự bỏ.
++      if (signal?.aborted) {
+         logger.info('[ChatbotService] Client đã ngắt kết nối hoặc hủy request — bỏ qua xử lý fallback.');
+         return;
+       }
+diff --git a/src/Backend/modules/ai/features/chatbot/resilience/circuit-breaker.js b/src/Backend/modules/ai/features/chatbot/resilience/circuit-breaker.js
+index 90ce77a..52de507 100644
+--- a/src/Backend/modules/ai/features/chatbot/resilience/circuit-breaker.js
++++ b/src/Backend/modules/ai/features/chatbot/resilience/circuit-breaker.js
+@@ -33,9 +33,10 @@ class CircuitBreaker {
+   /**
+    * Bao bọc và thực thi tác vụ với cơ chế ngắt mạch
+    * @param {Function} fn 
++   * @param {{boQuaLoi?: (error: Error) => boolean}} [options] - lỗi không nói gì về sức khoẻ dịch vụ (người dùng tự dừng)
+    * @returns {Promise<any>}
+    */
+-  async execute(fn) {
++  async execute(fn, { boQuaLoi } = {}) {
+     const now = Date.now();
+ 
+     // 1. Kiểm tra nếu đang OPEN
+@@ -70,7 +71,9 @@ class CircuitBreaker {
+ 
+       return result;
+     } catch (error) {
+-      this.handleFailure(error, now);
++      if (!boQuaLoi?.(error)) {
++        this.handleFailure(error, now);
++      }
+       throw error;
+     }
+   }
+@@ -81,6 +84,8 @@ class CircuitBreaker {
+    * @param {number} now 
+    */
+   handleFailure(error, now) {
++    // Phải so TRƯỚC khi gán: gán trước thì hiệu số luôn 0, cửa sổ không bao giờ reset.
++    const quaCuaSo = now - this.lastFailureTime > this.windowMs;
+     this.lastFailureTime = now;
+ 
+     if (this.state === 'HALF-OPEN') {
+@@ -92,7 +97,7 @@ class CircuitBreaker {
+ 
+     if (this.state === 'CLOSED') {
+       // Nếu lỗi trước đó đã quá cửa sổ thời gian windowMs thì reset về 1
+-      if (now - this.lastFailureTime > this.windowMs) {
++      if (quaCuaSo) {
+         this.failureCount = 1;
+       } else {
+         this.failureCount++;
+diff --git a/src/Backend/modules/household/household.controller.js b/src/Backend/modules/household/household.controller.js
+index 4ce02a2..b7788d0 100644
+--- a/src/Backend/modules/household/household.controller.js
++++ b/src/Backend/modules/household/household.controller.js
+@@ -296,7 +296,7 @@ const householdController = {
+   async createEmailInvite(req, res) {
+     try {
+       const { email, role } = req.body || {};
+-      if (!email || typeof email !== 'string' || !email.includes('@') || email.trim().length > 100) {
++      if (!email || typeof email !== 'string' || !email.includes('@') || email.trim().length > 100 || /[^ -~]/.test(email)) {
+         return res.status(400).json({
+           success: false,
+           statusCode: 400,

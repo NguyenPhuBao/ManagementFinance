@@ -638,9 +638,11 @@ src/Backend/
 | Telex ở ô mã mời (`ddaasseess` ra `DDAASSEE`) | ✅ Realme |
 | Màn Nhà · Quản lý · Mời ở 320 dp (máy ảo), 360 dp (Realme) | ✅ 0 điểm tràn |
 | Ô Email khi gõ Telex | ❌ → G116 đã sửa, đo lại đạt |
-| Thư thật | ◐ Brevo nhận gửi tới `tadd1632004(+flowmoney)@gmail.com`; chưa xác nhận đã tới hộp thư |
+| Thư thật | ✅ Brevo gửi tới `tadd1632004(+flowmoney)@gmail.com`, người dùng xác nhận đã nhận cả ba |
 
-**Sau đo:** `flutter test` **8737 pass / 10 skip / 0 fail**, `flutter analyze` **20**. **Chưa đo:** máy thật thứ hai · TalkBack · bản release · cỡ chữ lớn trên Realme. Đơn backend mới: **61.1**. Chi tiết: G116, G117 `CLIENT_APP_KNOWN_GAPS.md`.
+Người dùng xác nhận không chạm Realme trong 12:13–12:50, nên các bước đạt trên là do adb. **Sau đo:** `flutter test` **8737 pass / 10 skip / 0 fail**, `flutter analyze` **20**. **Chưa đo:** máy thật thứ hai · TalkBack · bản release · cỡ chữ lớn trên Realme. Chi tiết: G116, G117 `CLIENT_APP_KNOWN_GAPS.md`.
+
+**Soát backend sau buổi đo (đo thật chat stream, đơn 61):** Dừng nay tới server và `: ping` có thật (G96 hai vế xong). Lộ thêm: Gemini quá 60 s thì luồng treo không có `done` (**61.2 CAO**, app chờ hết trần 120 s), Dừng bị đếm là lỗi LLM (61.3), cửa sổ cầu dao không reset (61.4), email có dấu (61.1), hàng sót của nhà giải tán trước 57.6 (61.5; 2 ví, 2 giao dịch, 26 danh mục trên `PersonFinance`, Supabase chưa đọc được). Bản vá đã thử + kịch bản 6 ca ở `CAN-LAM/KIEM-THU/`. Vế *câu dài cụt* của G96 (`maxOutputTokens` nay 4096) chưa đo lại vì Gemini 503 suốt buổi.
 
 ### 🏠 Gia đình LÁT 2 (tám màn) + G113 nợ 1, 5, 7, 8, 9, 11 + G114 — mã xong, máy ảo đạt (2026-11-01 phiên 28; đo máy thật: khối trên)
 

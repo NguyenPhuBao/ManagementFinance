@@ -4,7 +4,9 @@
 
 | Tệp | Là gì |
 |---|---|
-| `VIEC_BACKEND_CON_LAI.md` | 2 việc còn mở, bảng trả lời |
+| `VIEC_BACKEND_CON_LAI.md` | 7 việc còn mở (2 mức CAO), hướng dẫn từng việc, bảng trả lời |
+| `KIEM-THU/ban_sua_61.patch` | Bản vá đã thử cho 61.1–61.4 (3 tệp) |
+| `KIEM-THU/chay_kiem_61.js` | Kịch bản 6 ca của đơn 61, không cần CSDL: 1 / 6 trước khi vá, 6 / 6 sau khi vá |
 | `KIEM-THU/chay_kiem_pr174.js` | Kịch bản 24 ca, đang đạt 24 / 24 |
 | `KIEM-THU/chay_kiem.js` | Kịch bản 50 ca của gia đình phần 1, đang đạt 50 / 50 (`npm run verify:household`) |
 | `CLIENT_INTEGRATION_GUIDE.md` | Hướng dẫn PayOS của backend, không phải đơn việc |
