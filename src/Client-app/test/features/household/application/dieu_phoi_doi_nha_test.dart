@@ -12,6 +12,27 @@ import 'package:flowmoney/features/household/application/dieu_phoi_doi_nha.dart'
 import 'package:flowmoney/features/household/data/models/nha_cua_toi.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class _DbDonHongLanDau extends AppDatabase {
+  _DbDonHongLanDau() : super.forTesting(NativeDatabase.memory());
+  var _lan = 0;
+  @override
+  Future<int> xoaHangCuaNha(int idhousehold) async {
+    if (_lan++ == 0) throw StateError('dọn hỏng');
+    return super.xoaHangCuaNha(idhousehold);
+  }
+}
+
+Future<void> _dungViThu(AppDatabase d) async {
+  for (final (id, nha) in [('vi-rieng', null), ('vi-nha-5', 5), ('vi-nha-7', 7)]) {
+    await d.walletDao.insert(WalletsCompanion(
+        id: Value(id),
+        idaccount: const Value(10),
+        name: Value(id),
+        idhousehold: Value(nha),
+        updatedAt: Value(DateTime(2026, 10, 24))));
+  }
+}
+
 void main() {
   late AppDatabase db;
   late List<String> nhatKy;
@@ -30,14 +51,7 @@ void main() {
         if (g != null) await g.future;
       },
     );
-    for (final (id, nha) in [('vi-rieng', null), ('vi-nha-5', 5), ('vi-nha-7', 7)]) {
-      await db.walletDao.insert(WalletsCompanion(
-          id: Value(id),
-          idaccount: const Value(10),
-          name: Value(id),
-          idhousehold: Value(nha),
-          updatedAt: Value(DateTime(2026, 10, 24))));
-    }
+    await _dungViThu(db);
   });
   tearDown(() async {
     await dieuPhoi.dung();
@@ -91,8 +105,8 @@ void main() {
     await luong2.close();
   });
 
-  test('dọn nhà 5 hỏng (khoá ngoại) khi đổi 5 → 12: VẪN kéo lại, lượt sau vẫn chạy', () async {
-    // Giao dịch RIÊNG (idhousehold NULL) trỏ vào ví của nhà 5: xoá ví nhà 5 vỡ khoá ngoại, CSDL bộ nhớ thật.
+  test('giao dịch NULL trỏ ví nhà 5 đi theo ví khi đổi 5 → 12: dọn không ném, vẫn kéo', () async {
+    // Giao dịch RIÊNG (idhousehold NULL) trỏ vào ví của nhà 5: nay bị xoá cùng ví (G113 lỗ hổng 3).
     await db.into(db.transactions).insert(TransactionsCompanion.insert(
         id: 'gd-mac-ket',
         walletId: 'vi-nha-5',
@@ -107,9 +121,31 @@ void main() {
     luong.add(const DoiNha(idaccount: 10, tu: 7, den: null));
     await Future<void>.delayed(Duration.zero);
     await dieuPhoi.choXong();
+    expect(nhatKy, ['keo:10']);
+    final ids = await idVi();
+    expect(ids, isNot(contains('vi-nha-5')), reason: 'ví nhà 5 đã bị dọn');
+    expect(ids, isNot(contains('vi-nha-7')), reason: 'lượt sau trong hàng đợi vẫn chạy');
+    final gds = (await db.select(db.transactions).get()).map((t) => t.id);
+    expect(gds, isNot(contains('gd-mac-ket')), reason: 'neo NULL đi theo ví, không khoá phép xoá ví');
+    await luong.close();
+  });
+
+  test('dọn nhà 5 hỏng khi đổi 5 → 12: VẪN kéo lại, lượt sau vẫn chạy', () async {
+    final dbHong = _DbDonHongLanDau();
+    addTearDown(dbHong.close);
+    await _dungViThu(dbHong);
+    final dp = DieuPhoiDoiNha(db: dbHong, keoLaiToanBo: (id) async => nhatKy.add('keo:$id'));
+    addTearDown(dp.dung);
+    final luong = StreamController<DoiNha>();
+    dp.batDauNghe(luong.stream);
+    luong.add(const DoiNha(idaccount: 10, tu: 5, den: 12));
+    luong.add(const DoiNha(idaccount: 10, tu: 7, den: null));
+    await Future<void>.delayed(Duration.zero);
+    await dp.choXong();
     expect(nhatKy, ['keo:10'],
         reason: 'lỗi dọn không được nuốt lượt kéo của CÙNG sự kiện — kho đã mang nhà 12, không ai phát lại');
-    expect(await idVi(), isNot(contains('vi-nha-7')), reason: 'lượt sau trong hàng đợi vẫn chạy');
+    final con = (await dbHong.select(dbHong.wallets).get()).map((w) => w.id);
+    expect(con, isNot(contains('vi-nha-7')), reason: 'lượt sau trong hàng đợi vẫn chạy');
     await luong.close();
   });
 

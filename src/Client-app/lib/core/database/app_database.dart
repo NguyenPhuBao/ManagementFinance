@@ -619,9 +619,17 @@ class AppDatabase extends _$AppDatabase {
       removed += await (delete(categoryGroupMemberships)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
+      // Vế cuối (G113 lỗ hổng 3): xoá cả giao dịch trỏ ví SẮP bị xoá dù bản thân giao dịch thuộc diện giữ — neo kiểu cũ
+      // mang `idhousehold` NULL + `idaccount` của tôi trỏ ví nhà. Bỏ sót là `delete(wallets)` dưới kia ném, và
+      // `moPhienCucBo` không `catch` nên người dùng kẹt ở màn Đăng nhập, lặp lại.
       removed += await (delete(transactions)
             ..where((t) =>
-                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not() |
+                t.walletId.isInQuery(selectOnly(wallets)
+                  ..addColumns([wallets.id])
+                  ..where(((wallets.idhousehold.isNull() & wallets.idaccount.equals(keepIdaccount)) |
+                          cuaNhaGiu(wallets.idhousehold))
+                      .not()))))
           .go();
       removed += await (delete(budgets)
             ..where((t) =>
@@ -703,7 +711,15 @@ class AppDatabase extends _$AppDatabase {
                   ..addColumns([categories.id])
                   ..where(categories.idhousehold.equals(idhousehold)))))
           .go();
-      removed += await (delete(transactions)..where((t) => t.idhousehold.equals(idhousehold))).go();
+      // Vế `walletId` (G113 lỗ hổng 3): neo "Số dư ban đầu" kiểu cũ mang `idhousehold` NULL mà trỏ ví của nhà. Bỏ sót là
+      // `delete(wallets)` ngay dưới vỡ khoá ngoại, mỗi lần dọn đều ném.
+      removed += await (delete(transactions)
+            ..where((t) =>
+                t.idhousehold.equals(idhousehold) |
+                t.walletId.isInQuery(selectOnly(wallets)
+                  ..addColumns([wallets.id])
+                  ..where(wallets.idhousehold.equals(idhousehold)))))
+          .go();
       removed += await (delete(budgets)..where((t) => t.idhousehold.equals(idhousehold))).go();
       removed += await (delete(goals)..where((t) => t.idhousehold.equals(idhousehold))).go();
       removed += await (delete(categories)..where((t) => t.idhousehold.equals(idhousehold))).go();
