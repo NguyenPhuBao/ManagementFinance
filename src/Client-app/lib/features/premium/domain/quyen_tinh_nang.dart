@@ -19,7 +19,9 @@ import '../data/models/tran_goi.dart';
 import 'hang_goi.dart';
 import '../data/models/trang_thai_goi.dart';
 
-/// 24 quyền bật/tắt. [macDinhKhiThieu] là giá trị khi server không trả khoá — người dùng chốt 2026-10-08: **mở**, trừ ba quyền AI (chốt 06/10) và `giaDinh`; giữ chốt 06/10 là khoá với Basic. 11 mã thêm ở B1 (2026-10-27) đều mở khi thiếu.
+/// 24 quyền bật/tắt. [macDinhKhiThieu] là giá trị khi server không trả khoá: **mở** (người dùng chốt 2026-10-08), TRỪ bốn quyền
+/// thiếu khoá thì khoá — ba quyền AI (chốt 06/10, khoá với Basic) và `giaDinh`. 11 mã thêm ở B1 (2026-10-27) và `thamGiaNha` đều
+/// mở khi thiếu.
 enum MaQuyen {
   aiAssistant('ai_assistant', 'Trợ lý AI', false),
   aiQuickInput('ai_quick_input', 'Nhập nhanh bằng câu', false),

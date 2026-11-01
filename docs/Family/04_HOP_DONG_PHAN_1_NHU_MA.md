@@ -83,9 +83,9 @@ Không có route mới, không đổi đường dẫn. Dòng không nêu là kh�
 Đo bằng `CAN-LAM/KIEM-THU/chay_kiem.js` trên bản sao + CSDL tạm: **50 / 50**. Chưa đo trên máy thật. Không có route mới, không đổi đường dẫn.
 
 - **Hết bốn dòng 🛑 của mục 2a:** #12 `POST /dissolve` chạy, trả `{dissolved: true}`, phát `HOUSEHOLD_DISSOLVED` cho từng thành viên. #14, #15, #16 chạy.
-- **Hình dạng trạng thái nhà một kiểu lồng** ở #1, #2, #7, #9, #11, #15: `{household: {id, name, status, maxMembers, ownerId, createAt, maxSharedWallets, contributionDueDay} | null, myRole, members: [{idaccount, displayName, role, joinedAt}], formerMembers: [{idaccount, displayName, role, leftAt}]}`. Không nhà: `household: null, myRole: null`, hai mảng rỗng. Thân khác: #8 `{targetIdaccount, newRole}` · #10 `{removed}` · #12 `{dissolved}` · #16 `{declined}`.
+- **Hình dạng trạng thái nhà một kiểu lồng** ở #1, #2, #7, #9, #15 (⚠️ #11 `POST /leave` trả thân thật **`{household: null}`** — không có `myRole` / hai mảng; client coi đó là "không nhà", `laThanTrangThaiNha` nhận): `{household: {id, name, status, maxMembers, ownerId, createAt, maxSharedWallets, contributionDueDay} | null, myRole, members: [{idaccount, displayName, role, joinedAt}], formerMembers: [{idaccount, displayName, role, leftAt}]}`. Không nhà: `household: null, myRole: null`, hai mảng rỗng. Thân khác: #8 `{targetIdaccount, newRole}` · #10 `{removed}` · #12 `{dissolved}` · #16 `{declined}`.
 - **#14** khớp cả theo email; thêm `memberCount` (đếm đúng) và `maxMembers`.
-- **Đồng bộ:** `household.changed` chỉ phát khi thao tác đã `synced` và đã qua kiểm quyền (58.4). Hàng mới mang `idhousehold` phải có `idaccount` = chủ token, không thì `NOT_OWNER` (59.1). `bill` luôn đi nhánh hàng riêng. Client không gửi lệch, không phải đổi mã.
+- **Đồng bộ:** `household.changed` **không còn phát sau `/sync/push`** (đã bỏ từ `5ff06db4`, mục 2a; đo lại 2026-11-01 ở client): đường đồng bộ chỉ còn `sync.completed` tới thành viên khác. `household.changed` chỉ phát từ thao tác nhà (vào / rời / mời ra / đổi vai / chuyển chủ / đổi trạng thái / giải tán). Hàng mới mang `idhousehold` phải có `idaccount` = chủ token, không thì `NOT_OWNER` (59.1). `bill` luôn đi nhánh hàng riêng. Client không gửi lệch, không phải đổi mã.
 
 **Bảng mã lỗi chốt (57.7, đối chiếu từng mã với `household.service.js`, `middleware/rate-limiter.js`: khớp):**
 
@@ -133,7 +133,7 @@ Ngoài bảng chỉ còn `HOUSEHOLD_ERROR` 500 (dự phòng trong mọi `catch` 
   lại `/me`. 🔎 **2026-10-30 — sự kiện nay tới đúng phòng:** `emitHouseholdChanged` (`household.service.js:662-…`) phát tới phòng **`account_<id>` của từng thành viên** + người nhận thêm
   (`MEMBER_REMOVED` `:430-432`, `MEMBER_LEFT` `:450`); sau `/sync/push` (`sync.service.js:475-506`) phát `household.changed` **và** `sync.completed` (payload `{source: 'household_sync', idhousehold, timestamp}`) tới mọi thành viên **khác**
   ⇒ dữ liệu nhà về gần thời gian thực (client đọc `dongBoXong` → `syncNow()`). Còn thiếu: `HOUSEHOLD_DISSOLVED` không tới ai (`Left_at` đặt trước khi phát — 58.3); nhà lấy từ `payload.idhousehold` chưa kiểm, kể cả op bị từ chối (58.4);
-  `household.changed` sau đẩy là thừa (58.4). **Client giãn cách `nhaDoi`:** 30 s giữa hai lượt `lamMoi()` (`kGianCachNhaDoi`, `nha_repository_impl.dart`, commit `1227d8a2`), có một lượt chạy bù cuối cửa sổ; `loiMoiNha` và thao tác của chính máy không qua bộ giãn.
+  `household.changed` sau đẩy là thừa (58.4) — ⚠️ **đã bỏ từ `5ff06db4`** (đoạn này là ảnh chụp 2026-10-30, trước PR #172). **Client giãn cách `nhaDoi`:** 30 s giữa hai lượt `lamMoi()` (`kGianCachNhaDoi`, `nha_repository_impl.dart`, commit `1227d8a2`), có một lượt chạy bù cuối cửa sổ; `loiMoiNha` và thao tác của chính máy không qua bộ giãn.
   `household.invited` tới phòng tài khoản — chạy.
 
 ## 4. Đơn backend viết cho client (`docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md`) — chỗ không làm theo

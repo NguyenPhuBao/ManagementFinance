@@ -136,7 +136,7 @@ class DoiNha {
 }
 
 /// Thân trả về của một thao tác CÓ PHẢI trạng thái nhà không (`docs/Family/04` mục 2b): #1, #2, #7, #9, #11, #15 — có (#11 rời
-/// nhà trả trạng thái lồng với `household: null`: "không nhà" là một trạng thái); #8 `{targetIdaccount, newRole}`, #10 `{removed: true}`, #12
+/// nhà trả thân thật `{household: null}`: "không nhà" là một trạng thái); #8 `{targetIdaccount, newRole}`, #10 `{removed: true}`, #12
 /// `{dissolved: true}`, #16 `{declined: true}` — KHÔNG. Đọc thân không phải trạng thái bằng [nhaCuaToiTuJson] ra "chưa có nhà"
 /// → `DoiNha(nhà → null)` → máy chủ nhà tự xoá sạch dữ liệu nhà ngay sau khi đổi vai một người (preflight 2026-10-28 #2).
 /// Repository gặp `false` thì hỏi lại `/me` thay vì áp.

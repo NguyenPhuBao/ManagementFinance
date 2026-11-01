@@ -621,7 +621,8 @@ class AppDatabase extends _$AppDatabase {
           .go();
       // Vế cuối (G113 lỗ hổng 3): xoá cả giao dịch trỏ ví SẮP bị xoá dù bản thân giao dịch thuộc diện giữ — neo kiểu cũ
       // mang `idhousehold` NULL + `idaccount` của tôi trỏ ví nhà. Bỏ sót là `delete(wallets)` dưới kia ném, và
-      // `moPhienCucBo` không `catch` nên người dùng kẹt ở màn Đăng nhập, lặp lại.
+      // `moPhienCucBo` không `catch` nên người dùng kẹt ở màn Đăng nhập, lặp lại. Xoá cả neo còn `pending` (chưa đẩy): ví
+      // nhà của nhà khác đã mất khỏi máy thì neo trỏ nó không còn nghĩa; nhà đang ở thì hàng nhà về lại khi kéo toàn bộ.
       removed += await (delete(transactions)
             ..where((t) =>
                 ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not() |
@@ -712,7 +713,8 @@ class AppDatabase extends _$AppDatabase {
                   ..where(categories.idhousehold.equals(idhousehold)))))
           .go();
       // Vế `walletId` (G113 lỗ hổng 3): neo "Số dư ban đầu" kiểu cũ mang `idhousehold` NULL mà trỏ ví của nhà. Bỏ sót là
-      // `delete(wallets)` ngay dưới vỡ khoá ngoại, mỗi lần dọn đều ném.
+      // `delete(wallets)` ngay dưới vỡ khoá ngoại, mỗi lần dọn đều ném. Neo ấy bị xoá kể cả khi còn `pending` (chưa đẩy): ví nhà
+      // đã rời / giải tán thì neo của nó không còn chỗ để đẩy tới.
       removed += await (delete(transactions)
             ..where((t) =>
                 t.idhousehold.equals(idhousehold) |

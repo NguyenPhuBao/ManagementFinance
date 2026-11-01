@@ -14,10 +14,12 @@ import '../models/nha_cua_toi.dart';
 import '../nha_store.dart';
 import 'nha_repository.dart';
 
-/// Cửa sổ giãn cách cho `household.changed`. Từ PR #170 backend phát sự kiện này tới MỌI thành viên sau MỖI `/sync/push` có hàng
-/// mang `idhousehold` — làm mới mỗi sự kiện là hai GET (`/me`, `/invitations`) theo nhịp đẩy của cả nhà. Từ PR #174 nó không còn
-/// phát theo op bị từ chối (58.4); giữ giãn cách làm lớp phòng. Luật: sự kiện đầu cửa sổ chạy ngay, các sự kiện trong cửa sổ
-/// gộp thành MỘT lượt bù lúc hết cửa sổ. Chỉ áp cho `nhaDoi`; `loiMoiNha` hiếm và nhắm đúng người nên không giãn.
+/// Cửa sổ giãn cách cho `household.changed`. Từ PR #170 backend từng phát sự kiện này sau MỖI `/sync/push` có hàng mang
+/// `idhousehold` (hai GET `/me` + `/invitations` theo nhịp đẩy của cả nhà); từ `5ff06db4` đường đồng bộ KHÔNG còn phát nó
+/// (`docs/Family/04` mục 2a — chỉ còn `sync.completed`). Nay nó chỉ tới từ thao tác nhà (vào / rời / mời ra / đổi vai / chuyển chủ
+/// / trạng thái), nhưng thao tác dồn dập (mời ra nhiều người, đổi vai liền tay) vẫn nổ cả loạt: giãn cách là lớp phòng cho
+/// chuyện đó. Luật: sự kiện đầu cửa sổ chạy ngay, các sự kiện trong cửa sổ gộp thành MỘT lượt bù lúc hết cửa sổ. Chỉ áp cho
+/// `nhaDoi`; `loiMoiNha` hiếm và nhắm đúng người nên không giãn.
 const Duration kGianCachNhaDoi = Duration(seconds: 30);
 
 class NhaRepositoryImpl implements NhaRepository {

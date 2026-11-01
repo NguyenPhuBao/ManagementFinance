@@ -403,6 +403,8 @@ Stitch tự thêm các chi tiết dưới đây; app bám bố cục của màn,
 | Tạo nhà | Dòng phụ *"…đồng bộ hóa tức thời…"*, *"…theo dõi tài chính gia đình minh bạch"*, *"…gói thành viên"* | Chỉ ba dòng chính | Phần 1 chưa có tiền chung; app không hứa đồng bộ tức thì |
 | Tham gia bằng mã | Nhãn *"Khả dụng"* | Bỏ | Thẻ xem trước hiện được đã nghĩa là mã dùng được |
 | Mời thành viên | *"Vai trò trong nhà"*, *"Cấp quyền khi nhập mã"* | Một nhãn *"Vai"* cho cả hai khối | Thuật ngữ thống nhất với mọi màn |
+| Nhà mình, thẻ nhà | `nha_chu`: dòng phụ gộp *"Bạn là Chủ nhà · 3/6 thành viên"*; `nha_thanh_vien`: tách đôi kèm vạch (*"Bạn là Thành viên"* trái, *"3/6 thành viên"* phải) | **Một kiểu gộp cho mọi vai** (`the_nha.dart`) | Hai màn Stitch tự mâu thuẫn; một kiểu thì mọi vai đọc giống nhau (M4, 2026-11-01) |
+| Avatar thành viên | Pastel khác nhau theo người ở cả ba màn | Làm theo: bảng 5 màu pastel, chọn theo `idaccount % 5` (`mauAvatarTheoId`), không theo tên; thiếu id → xám trung tính | Màu của một người đứng yên ở mọi màn; tên đổi được (M4) |
 | Năm hộp xác nhận | Bộ đếm *"0/13"*; tiêu đề bảng tham chiếu | Không bộ đếm | Luật ô tên của dự án; tiêu đề chỉ là khung của bảng |
 
 ### 12.3 Người dùng thấy gì
@@ -425,6 +427,9 @@ Stitch tự thêm các chi tiết dưới đây; app bám bố cục của màn,
   cấp; Premium tạm ngừng ⇒ màn Nâng cấp ẩn giá + nút mua, chốt B1).
 - `MaQuyen.thamGiaNha('household_join', 'Tham gia nhà', true)`: thiếu khoá thì mở. **Không** qua `redirectTheoQuyen` vì quyền này mặc định mở với
   Basic, bị tắt nghĩa là admin chủ động: màn Tham gia và nút *Chấp nhận* khoá kèm câu trung tính `cauLoiNha(tinhNangKhongMo)`, **không** mời mua.
+- **Quyền tắt thắng đang-ở-nhà** (Ruling Task 6): khi `household_join` bị admin tắt, thẻ lời mời khoá *Chấp nhận* kèm câu trung tính
+  `cauLoiNha(tinhNangKhongMo)` **kể cả khi đang ở nhà** — không chỉ đường *"Rời nhà hiện tại trước"* / chuyển chủ, vì rời nhà không mở
+  khoá được, chỉ làm mất dữ liệu nhà trên máy. Màn Nâng cấp cũng **không kể** *Tham gia nhà* trong danh sách đặc quyền (`dacQuyenPremium`, M3).
 - Lỗi 403 `FEATURE_DISABLED` lọt tới (bảng quyền trên máy cũ): `/nha/tao` đọc `trangThaiQuyen(giaDinh)` chọn câu (G113 nợ 7); `/nha/tham-gia`, thẻ lời
   mời luôn câu trung tính. `/me` không qua quyền (Basic ở nhà vẫn thấy nhà).
 - `limits.household_wallets`, `household_members` tiếp tục bỏ qua (mục 11 #4).

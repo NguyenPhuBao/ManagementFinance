@@ -74,7 +74,7 @@ enum NotificationKind {
   tinHeThong,
 
   /// Lời mời vào nhà (`docs/Family/01` mục 2.7). Bộ quét đọc danh sách `/households/invitations` đã nhớ ở `NhaRepository`
-  /// qua hook, nên chạy cả khi mất mạng lúc được mời. Khoá `loiMoiNha:<mã>`: mỗi mã một thông báo.
+  /// qua hook. Danh sách chỉ ở RAM (không lưu kho): mở lạnh khi mất mạng thì rỗng, thông báo tới khi có mạng và danh sách về. Khoá `loiMoiNha:<mã>`: mỗi mã một thông báo.
   loiMoiNha,
 }
 
@@ -337,13 +337,9 @@ List<NotificationCandidate> _rebalanceCandidates(NotificationRuleInput input) {
   ];
 }
 
-// ── Tổng kết tuần ────────────────────────────────────────────────────────────
+// ── Lời mời vào nhà ──────────────────────────────────────────────────────────
 
-/// Một thông báo cho **tuần vừa khép lại**, nếu tuần ấy có giao dịch.
-///
-/// Chỉ nhìn **một** tuần liền trước, không quét ngược nhiều tuần (chốt (b) của
-/// spec): quét ngược thì cửa sổ `silenceBefore` 30 ngày phải gánh việc chặn lũ,
-/// một việc nó không sinh ra để làm.
+/// Mỗi lời mời còn hạn một thông báo, khoá `loiMoiNha:<mã>`.
 List<NotificationCandidate> _loiMoiNhaCandidates(NotificationRuleInput input) => [
       for (final m in input.loiMoiNha)
         if (m.hetHan == null || m.hetHan!.isAfter(input.now))
@@ -360,6 +356,13 @@ List<NotificationCandidate> _loiMoiNhaCandidates(NotificationRuleInput input) =>
           ),
     ];
 
+// ── Tổng kết tuần ────────────────────────────────────────────────────────────
+
+/// Một thông báo cho **tuần vừa khép lại**, nếu tuần ấy có giao dịch.
+///
+/// Chỉ nhìn **một** tuần liền trước, không quét ngược nhiều tuần (chốt (b) của
+/// spec): quét ngược thì cửa sổ `silenceBefore` 30 ngày phải gánh việc chặn lũ,
+/// một việc nó không sinh ra để làm.
 List<NotificationCandidate> _weeklySummaryCandidates(
   NotificationRuleInput input,
 ) {
