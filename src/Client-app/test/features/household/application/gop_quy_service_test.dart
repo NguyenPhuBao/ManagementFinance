@@ -124,8 +124,10 @@ void main() {
 
   test('lỗi giữa chừng không để lại nửa nào và số dư không đổi', () async {
     // Nửa của nhà chèn trước; nửa riêng (ví vr) bị trigger chặn ở lần chèn thứ hai — nếu không chung giao tác thì nửa nhà sót lại.
+    // ⚠️ Chỉ chặn hàng CÓ MÃ CẶP: chặn mọi hàng của `vr` thì cả khoản mở sổ của ví (neo) cũng bị chặn và ca đỏ vì lý do khác
+    // lý do nó nói.
     await db.customStatement(
-        "CREATE TRIGGER chan_nua_rieng BEFORE INSERT ON transactions WHEN NEW.wallet_id = 'vr' BEGIN SELECT RAISE(ABORT,'x'); END");
+        "CREATE TRIGGER chan_nua_rieng BEFORE INSERT ON transactions WHEN NEW.wallet_id = 'vr' AND NEW.fund_pair_id IS NOT NULL BEGIN SELECT RAISE(ABORT,'x'); END");
     await expectLater(
         s.gop(idNha: 7, idaccount: 10, viChungId: 'vn', tenViChung: 'T', soTien: 1, viRiengId: 'vr', ngay: ngay),
         throwsA(anything));
@@ -179,32 +181,39 @@ void main() {
     Future<String> capMoi() =>
         s.gop(idNha: 7, idaccount: 10, viChungId: 'vn', tenViChung: 'Tiền chợ', soTien: 2000000, viRiengId: 'vr', ngay: ngay);
 
-    Future<void> chanNuaNha(String id) => db.customStatement(
-        "CREATE TRIGGER chan_nua_nha BEFORE UPDATE ON transactions WHEN NEW.id = '$id' BEGIN SELECT RAISE(ABORT,'x'); END");
+    // Chặn theo PHẠM VI (`idhousehold`), không theo id nửa nào: ca không dựa vào thứ tự hai nửa trong vòng lặp. Chặn lần lượt
+    // từng nửa — nửa nào được ghi SAU nửa kia thì nửa kia phải lùi lại cùng giao tác.
+    Future<void> chanNua({required bool nuaNha}) => db.customStatement(
+        'CREATE TRIGGER chan_nua BEFORE UPDATE ON transactions WHEN NEW.fund_pair_id IS NOT NULL AND NEW.idhousehold IS '
+        "${nuaNha ? 'NOT NULL' : 'NULL'} BEGIN SELECT RAISE(ABORT,'x'); END");
 
-    test('sua: nửa nhà lỗi thì nửa riêng nguyên, số dư nguyên', () async {
-      final p = await capMoi();
-      final truoc = await s.docCap(p);
-      await chanNuaNha(truoc.nha!.id);
-      await expectLater(s.sua(maCap: p, soTien: 1, ngay: ngay, ghiChu: 'z'), throwsA(anything));
-      final sau = await s.docCap(p);
-      expect(sau.rieng!.amount, 2000000, reason: 'nửa riêng được sửa trước trong vòng lặp — phải lùi lại cùng giao tác');
-      expect(sau.rieng!.note, truoc.rieng!.note);
-      expect(await soDu('vr'), 3000000);
-      expect(await soDu('vn'), 3000000);
-    });
+    for (final nuaNha in [true, false]) {
+      final ten = nuaNha ? 'nửa nhà' : 'nửa riêng';
+      final kia = nuaNha ? 'nửa riêng' : 'nửa nhà';
+      test('sua: $ten lỗi thì $kia nguyên, số dư nguyên', () async {
+        final p = await capMoi();
+        final truoc = await s.docCap(p);
+        await chanNua(nuaNha: nuaNha);
+        await expectLater(s.sua(maCap: p, soTien: 1, ngay: ngay, ghiChu: 'z'), throwsA(anything));
+        final sau = await s.docCap(p);
+        expect(sau.rieng!.amount, 2000000, reason: 'hàng đã sửa trước trong vòng lặp phải lùi lại cùng giao tác');
+        expect(sau.nha!.amount, 2000000);
+        expect(sau.rieng!.note, truoc.rieng!.note);
+        expect(await soDu('vr'), 3000000);
+        expect(await soDu('vn'), 3000000);
+      });
 
-    test('xoa: nửa nhà lỗi thì nửa riêng nguyên, số dư nguyên', () async {
-      final p = await capMoi();
-      final truoc = await s.docCap(p);
-      await chanNuaNha(truoc.nha!.id);
-      await expectLater(s.xoa(p), throwsA(anything));
-      final sau = await s.docCap(p);
-      expect(sau.rieng, isNotNull, reason: 'nửa riêng đã xoá mềm trước phải lùi lại cùng giao tác');
-      expect(sau.nha, isNotNull);
-      expect(await soDu('vr'), 3000000);
-      expect(await soDu('vn'), 3000000);
-    });
+      test('xoa: $ten lỗi thì $kia nguyên, số dư nguyên', () async {
+        final p = await capMoi();
+        await chanNua(nuaNha: nuaNha);
+        await expectLater(s.xoa(p), throwsA(anything));
+        final sau = await s.docCap(p);
+        expect(sau.rieng, isNotNull, reason: 'hàng đã xoá mềm trước phải lùi lại cùng giao tác');
+        expect(sau.nha, isNotNull);
+        expect(await soDu('vr'), 3000000);
+        expect(await soDu('vn'), 3000000);
+      });
+    }
 
     test('xin đồng bộ đúng một lần ở sua và ở xoa', () async {
       final p = await capMoi();
@@ -217,7 +226,26 @@ void main() {
   });
 
   group('ví chung do người khác tạo (idaccount 99) — Thành viên góp', () {
-    Future<int> demNeo() async => (await db.select(db.transactions).get()).where((h) => h.id == idKhoanMoSo('v99')).length;
+    // Số hàng khoản mở sổ CỦA ví v99 (theo ví + ghi chú, không theo id: id tất định từ id ví nên đếm theo id luôn ra ≤ 1).
+    Future<int> demNeo() async => (await db.select(db.transactions).get())
+        .where((h) => h.walletId == 'v99' && h.note == ghiChuMoSo())
+        .length;
+
+    test('ví chung CHƯA có neo trên máy (mới kéo về, số dư lưu khác 0): góp, sửa, xoá KHÔNG tự đặt neo', () async {
+      // Ví vừa về mang số dư lưu 1.000.000 mà sổ trên máy chưa có neo: nếu máy này (phiên 10, KHÔNG phải người tạo) tự đặt
+      // neo thì sinh khoản mở sổ 1.000.000 của người khác — đếm hàng trước / sau mới thấy (ví khớp sổ thì phép vá no-op).
+      await (db.delete(db.transactions)..where((h) => h.id.equals(idKhoanMoSo('v99')))).go();
+      expect(await demNeo(), 0, reason: 'tiền đề');
+      final p = await s.gop(
+          idNha: 7, idaccount: 10, viChungId: 'v99', tenViChung: 'Quỹ chung', soTien: 2000000, viRiengId: 'vr', ngay: ngay);
+      expect(await demNeo(), 0, reason: 'sau góp: neo chỉ máy người tạo đặt, máy khác nhận qua kéo về (G113 nợ 1)');
+      expect(await soDu('v99'), 2000000, reason: 'số dư suy từ sổ: chỉ có khoản góp');
+      await s.sua(maCap: p, soTien: 500000, ngay: ngay, ghiChu: '');
+      expect(await demNeo(), 0, reason: 'sau sửa');
+      await s.xoa(p);
+      expect(await demNeo(), 0, reason: 'sau xoá');
+      expect(await soDu('vr'), 5000000);
+    });
 
     setUp(() async {
       await db.walletDao.insert(WalletsCompanion.insert(
@@ -238,15 +266,15 @@ void main() {
     test('góp, sửa, xoá: không sinh neo mới, số dư hai ví đúng', () async {
       final p = await s.gop(
           idNha: 7, idaccount: 10, viChungId: 'v99', tenViChung: 'Quỹ chung', soTien: 2000000, viRiengId: 'vr', ngay: ngay);
-      expect(await demNeo(), 1);
+      expect(await demNeo(), 1, reason: 'sau góp: vẫn đúng một khoản mở sổ (của người tạo)');
       expect(await soDu('v99'), 3000000);
       expect(await soDu('vr'), 3000000);
       await s.sua(maCap: p, soTien: 500000, ngay: ngay, ghiChu: '');
-      expect(await demNeo(), 1);
+      expect(await demNeo(), 1, reason: 'sau sửa');
       expect(await soDu('v99'), 1500000);
       expect(await soDu('vr'), 4500000);
       await s.xoa(p);
-      expect(await demNeo(), 1);
+      expect(await demNeo(), 1, reason: 'sau xoá');
       expect(await soDu('v99'), 1000000);
       expect(await soDu('vr'), 5000000);
     });
