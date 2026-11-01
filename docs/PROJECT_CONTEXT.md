@@ -617,7 +617,32 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-01)
 
-### 🏠 Gia đình LÁT 2 (tám màn) + G113 nợ 1, 5, 7, 8, 9, 11 + G114 — mã xong, máy ảo đạt, **hai máy thật chưa đo** (2026-11-01 phiên 28)
+### 🏠 Gia đình LÁT 2 — đo Realme + máy ảo: đạt, hai lỗi đã sửa (2026-11-01 phiên 29)
+
+**Đo trên:** Realme (`dat`, Premium, bản debug, màn 360 dp) + máy ảo `FlowMoney_16G` (tài khoản thử 30 Basic, 31), backend `13fddd09` trên `PersonFinance`. ⚠️ **Một máy thật + một máy ảo**: spec đòi hai máy thật, OnePlus không có mặt. Socket giữa hai thiết bị là thật. Kiểm mã hoá 52.3 trước khi bật: `localhost`, 197 trường, 0 lỗi. Di trú v31 → v32 trên dữ liệu thật của Realme: giữ đủ hàng, tổng −3.518.000 đ trước và sau buổi đo, cuối buổi 0 hàng ví `pending`.
+
+| Đường | Kết quả |
+|---|---|
+| Tạo nhà · Basic bị chặn tạo (nhãn PREMIUM, sang Nâng cấp) | ✅ |
+| Mã mời · xem trước · tham gia (chữ thường tự thành hoa, kéo lại từ 1970) | ✅ |
+| Đổi vai · máy kia nhận vai mới | ✅ |
+| Chuyển chủ cho Basic → *chỉ xem*, nút Mời khoá · chuyển về → hoạt động lại | ✅ Realme tự đúng khi hết cửa sổ giãn cách 30 s |
+| Mời ra · rời nhà (dữ liệu nhà gỡ sạch, ví riêng giữ) | ✅ cả hai máy |
+| Thẻ lời mời + thông báo khay (cả ColorOS) · chạm thông báo về `/nha` · từ chối · chấp nhận | ✅ tới trong 5 s; G117: khay giữ dòng cũ |
+| Thẻ khi đang là Chủ: khoá kèm *"Chuyển quyền chủ nhà hoặc giải tán trước."* | ✅ chữ nút cụt → G116 |
+| Giải tán hai bước, gõ tên (máy kia tự về sau 3 s) | ✅ 58.3 hết khi chạy thật |
+| Ví chung qua API về máy kia, không lẫn Trang chủ · Sổ · Quản lý ví | ✅ ≤ 8 s |
+| Đổi tài khoản A → B → A (chạy trên máy ảo để không xoá dữ liệu cục bộ của Realme) | ✅ |
+| G114: lượt kéo đầu của A bị chặn → lượt sau vẫn từ 1970, về đủ | ✅ |
+| Ví seed trùng tên: dòng nhắc → *Gộp* hai ví | ✅ |
+| Telex ở ô mã mời (`ddaasseess` ra `DDAASSEE`) | ✅ Realme |
+| Màn Nhà · Quản lý · Mời ở 320 dp (máy ảo), 360 dp (Realme) | ✅ 0 điểm tràn |
+| Ô Email khi gõ Telex | ❌ → G116 đã sửa, đo lại đạt |
+| Thư thật | ◐ Brevo nhận gửi tới `tadd1632004(+flowmoney)@gmail.com`; chưa xác nhận đã tới hộp thư |
+
+**Sau đo:** `flutter test` **8737 pass / 10 skip / 0 fail**, `flutter analyze` **20**. **Chưa đo:** máy thật thứ hai · TalkBack · bản release · cỡ chữ lớn trên Realme. Đơn backend mới: **61.1**. Chi tiết: G116, G117 `CLIENT_APP_KNOWN_GAPS.md`.
+
+### 🏠 Gia đình LÁT 2 (tám màn) + G113 nợ 1, 5, 7, 8, 9, 11 + G114 — mã xong, máy ảo đạt (2026-11-01 phiên 28; đo máy thật: khối trên)
 
 ✅ **40 commit** `a2c58234..cbe89339` (đếm `git rev-list --count a2c58234..HEAD`, 2026-11-01; 101 tệp `src/` đổi, `git diff --stat`), nhánh `TranQuangDat`, **chưa push**. Thi công kiểu agent con (Fable soát kế hoạch, Opus soát từng task + review toàn nhánh, Sonnet thi công); hai kế hoạch `plans/2026-10-31-gia-dinh-lat-2-man-hinh.md` + `…-g113-no-1-9.md` (gitignore), sổ ở `.superpowers/sdd/2026-10-31-*`. **Số đo 2026-11-01:** `flutter test` **8732 pass / 10 skip / 0 fail** (+223 so với 8509 đầu đợt), `flutter analyze` **20** (mức nền); mốc giữa đợt 8713 ở `a102173a`.
 

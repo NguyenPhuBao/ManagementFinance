@@ -1,7 +1,7 @@
 # Việc backend còn phải làm
 
 > **Người nhận:** backend (NPBao). Tệp này **chỉ có việc còn phải làm**, đo trên backend `13fddd09` (PR #176). Việc xong thì client xoá khỏi tệp; lịch sử xem bằng git.
-> Đơn mới thêm vào tệp này, số kế tiếp **61**.
+> Đơn mới thêm vào tệp này, số kế tiếp **62**.
 
 ## Tổng quan
 
@@ -9,6 +9,7 @@
 |---|---|---|---|
 | 52.4 | Chưa so khoá mã hoá **trên Render**. Khác khoá thì kéo toàn bộ trả 500 | **CAO** | Tay, cần quyền Render |
 | 60.3 | Ba ca test mock trúng hàm cần chứng minh | THẤP | Tay, tuỳ chọn |
+| 61.1 | `POST /households/invites/email` nhận địa chỉ có dấu, báo 202 | THẤP | Sửa một điều kiện + một ca test |
 
 ---
 
@@ -41,6 +42,14 @@ Ca 2 đã sửa ở PR #176. Bằng chứng đường thật của gia đình l�
 | Ca 4 (57.4 + 59.1) | Giả `enforceHouseholdPermission`, không kiểm *không ghi* | Giả ở tầng Prisma, kiểm số lần ghi |
 | Ca 5 (58.5) | Đi qua `isAccountQuarantined`, 0 chỗ gọi ngoài test | Gọi `sweepExpiredQuarantines`, `_reconcileAutoLocks` |
 
+## 61.1 (THẤP) — Lời mời email nhận địa chỉ có dấu
+
+Đo 2026-11-01 trên Realme, backend `13fddd09`: Telex đổi `.test` thành `.tét`, `POST /api/households/invites/email` trả 202 với `giadinhthu1@flowmoney.tét`. Log: Resend từ chối (*The email address contains non-ASCII characters*), SMTP dự phòng vẫn gửi, lời mời nằm *Đang chờ* và chiếm một chỗ trong nhà tới khi huỷ. Client nay chặn trước (G116), nhưng bản app cũ và lối gọi API trực tiếp vẫn lọt.
+
+Điều kiện đang có ở `modules/household/household.controller.js:299` chỉ kiểm chuỗi có `@` và dài ≤ 100. Thêm vế từ chối ký tự ngoài ASCII, trả cùng 400 *"Địa chỉ email không đúng định dạng…"* đang có.
+
+**Xong khi:** gửi `an@flowmoney.tét` trả 400 và không tạo hàng trong `household_invite`; `an@flowmoney.test` vẫn 202; hai kịch bản ở mục dưới vẫn đạt trọn.
+
 ---
 
 ## Giữ nguyên khi sửa backend
@@ -65,3 +74,4 @@ npm run verify:household -- . kq_nha.txt                                        
 |---|---|---|
 | 52.4 | | *(vân tay trong log Render, mã trả về của `/sync/pull` trên Render)* |
 | 60.3 | | *(hoặc "chưa")* |
+| 61.1 | | *(mã trả về của hai địa chỉ thử)* |
