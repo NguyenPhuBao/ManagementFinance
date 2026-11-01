@@ -50,6 +50,7 @@ class TheThanhVienQuanLy extends StatelessWidget {
       disabledColor: mau,
       labelStyle: chu,
       side: BorderSide.none,
+      shape: const StadiumBorder(), // viên thuốc theo Stitch `quan_ly_tv`
       onSelected: khoa
           ? null
           : (_) {
@@ -67,7 +68,7 @@ class TheThanhVienQuanLy extends StatelessWidget {
         children: [
           Row(
             children: [
-              AvatarChuCai(ten: tv.tenHienThi, co: 44),
+              AvatarChuCai(ten: tv.tenHienThi, idaccount: tv.idaccount, co: 44),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

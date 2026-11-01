@@ -45,7 +45,18 @@ class DanhSachLoiMoi extends StatelessWidget {
                     child: const Text('Huỷ'),
                   )
                 else
-                  Text(nhanTrangThaiLoiMoi(ds[i].trangThaiLuc(now)), style: chu.labelMedium?.copyWith(color: AppColors.textSecondary)),
+                  // Chip xám cho trạng thái đã kết thúc (Stitch `moi`, *Đã từ chối*).
+                  Container(
+                    key: Key('chip-trang-thai-${ds[i].ma}'),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.outlineVariant),
+                    ),
+                    child: Text(nhanTrangThaiLoiMoi(ds[i].trangThaiLuc(now)),
+                        style: chu.labelMedium?.copyWith(color: AppColors.textSecondary)),
+                  ),
               ],
             ),
           ],

@@ -105,6 +105,11 @@ void main() {
     expect(find.text('LỜI MỜI ĐANG CHỜ'), findsOneWidget);
     expect(find.text('Nhà Minh Anh'), findsOneWidget);
     expect(find.text('Minh Anh mời bạn với vai Thành viên'), findsOneWidget);
+    // Stitch `hop`: chấm cam, đồng hồ cạnh hạn; chưa khoá thì KHÔNG ổ khoá và KHÔNG câu lý do.
+    expect(find.byKey(const Key('cham-loi-moi')), findsOneWidget);
+    expect(find.byIcon(Icons.schedule), findsOneWidget);
+    expect(find.byIcon(Icons.lock_outline), findsNothing);
+    expect(find.byKey(const Key('ly-do-khoa-chap-nhan')), findsNothing);
     api.traVe = nhaJson();
     await t.tap(find.widgetWithText(FilledButton, 'Chấp nhận'));
     await t.pumpAndSettle();
@@ -115,6 +120,13 @@ void main() {
     final api = await mo(t, nha: nhaJson(myRole: 'Member'), loiMoi: [_loiMoiJson()]);
     await t.ensureVisible(find.text('Rời nhà hiện tại trước'));
     expect(t.widget<FilledButton>(find.widgetWithText(FilledButton, 'Chấp nhận')).onPressed, isNull);
+    expect(find.descendant(of: find.widgetWithText(FilledButton, 'Chấp nhận'), matching: find.byIcon(Icons.lock_outline)),
+        findsOneWidget,
+        reason: 'Stitch `hop`: Chấp nhận khoá mang ổ khoá');
+    final nut = t.getRect(find.widgetWithText(FilledButton, 'Chấp nhận'));
+    final lyDo = t.getRect(find.byKey(const Key('ly-do-khoa-chap-nhan')));
+    expect(lyDo.top, greaterThanOrEqualTo(nut.bottom), reason: 'câu lý do nằm DƯỚI nút');
+    expect(lyDo.left, greaterThanOrEqualTo(nut.left - 1), reason: 'và căn theo nút Chấp nhận (nửa phải), không lệch trái');
     await t.tap(find.widgetWithText(OutlinedButton, 'Từ chối'));
     await t.pumpAndSettle();
     expect(api.goi, contains('tuChoiLoiMoi:WXYZ6789'));

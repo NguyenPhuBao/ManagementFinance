@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flowmoney/features/household/data/repositories/nha_repository.dart';
 import 'package:flowmoney/features/household/presentation/pages/quan_ly_thanh_vien_page.dart';
+import 'package:flowmoney/features/household/presentation/widgets/avatar_chu_cai.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -54,6 +55,23 @@ void main() {
     expect(find.textContaining('@'), findsNothing, reason: 'server không trả email thành viên');
     expect(find.textContaining('HẠN MỨC'), findsNothing);
     expect(find.byIcon(Icons.more_vert), findsNothing);
+  });
+
+  testWidgets('M4 theo Stitch quan_ly_tv: chip vai viên thuốc, nút Giải tán chữ nhật bo góc, avatar pastel theo idaccount', (t) async {
+    await mo(t);
+    final chip = t.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Chỉ xem'));
+    expect(chip.shape, isA<StadiumBorder>());
+    await t.ensureVisible(find.text('Giải tán nhà'));
+    final nut = t.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Giải tán nhà'));
+    final shape = nut.style!.shape!.resolve(<WidgetState>{});
+    expect(shape, isA<RoundedRectangleBorder>());
+    expect(shape, isNot(isA<StadiumBorder>()));
+    final nen = [
+      for (final a in t.widgetList<AvatarChuCai>(find.byType(AvatarChuCai)))
+        ((t.widget<Container>(find.descendant(of: find.byWidget(a), matching: find.byType(Container)))).decoration! as BoxDecoration)
+            .color
+    ];
+    expect(nen, [mauAvatarTheoId(18).nen, mauAvatarTheoId(25).nen]);
   });
 
   testWidgets('đổi vai: gọi API đúng vai, không hỏi xác nhận', (t) async {

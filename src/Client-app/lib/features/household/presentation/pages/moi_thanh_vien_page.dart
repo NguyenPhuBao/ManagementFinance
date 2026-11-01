@@ -142,7 +142,11 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Mời qua email', style: chu.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Row(children: [
+              const Icon(Icons.mail_outline, size: 22),
+              const SizedBox(width: 8),
+              Text('Mời qua email', style: chu.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            ]),
             const SizedBox(height: 12),
             TextField(
               controller: _email,
@@ -165,7 +169,23 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
             // Một câu cho mọi email hợp lệ: không cho biết email có tài khoản hay không (`01` mục 2.2).
             if (m.emailVuaGui != null) ...[
               const SizedBox(height: 8),
-              Text('Đã gửi lời mời tới ${m.emailVuaGui}', style: chu.bodySmall?.copyWith(color: AppColors.onSecondaryContainer)),
+              Container(
+                key: const Key('da-gui-loi-moi'),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFFAF1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.secondaryContainer),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.check_circle_outline, size: 20, color: AppColors.onSecondaryContainer),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Đã gửi lời mời tới ${m.emailVuaGui}',
+                        style: chu.bodyMedium?.copyWith(color: AppColors.onSecondaryContainer)),
+                  ),
+                ]),
+              ),
             ],
           ],
         ),
@@ -175,7 +195,11 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Mã mời', style: chu.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Row(children: [
+              const Icon(Icons.vpn_key_outlined, size: 22),
+              const SizedBox(width: 8),
+              Text('Mã mời', style: chu.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            ]),
             const SizedBox(height: 12),
             KeyedSubtree(
               key: const Key('vai-ma'),
@@ -189,30 +213,45 @@ class _MoiThanhVienPageState extends State<MoiThanhVienPage> {
             ),
             if (ma != null) ...[
               const SizedBox(height: 12),
-              Text(ma.ma, textAlign: TextAlign.center, style: chu.headlineSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 4)),
-              if (ma.hetHan != null)
-                Text('Hết hạn ${DateFormatter.formatDateTime(ma.hetHan!.toLocal())}',
-                    textAlign: TextAlign.center, style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => unawaited(_chiaSeMa(
-                          cauChiaSeMaMoi(tenNha: nha?.ten ?? '', ma: ma.ma, hetHan: ma.hetHan))),
-                      icon: const Icon(Icons.share_outlined),
-                      label: const Text('Chia sẻ'),
+              // Ô xám bo góc ôm mã + hạn + hai nút (Stitch `moi`).
+              Container(
+                key: const Key('khoi-ma-vua-tao'),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.outlineVariant),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(ma.ma, textAlign: TextAlign.center, style: chu.headlineSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 4)),
+                    if (ma.hetHan != null)
+                      Text('Hết hạn ${DateFormatter.formatDateTime(ma.hetHan!.toLocal())}',
+                          textAlign: TextAlign.center, style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => unawaited(_chiaSeMa(
+                                cauChiaSeMaMoi(tenNha: nha?.ten ?? '', ma: ma.ma, hetHan: ma.hetHan))),
+                            icon: const Icon(Icons.share_outlined),
+                            label: const Text('Chia sẻ'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => unawaited(_chepMa(ma.ma)),
+                            icon: const Icon(Icons.copy_outlined),
+                            label: const Text('Chép mã'),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => unawaited(_chepMa(ma.ma)),
-                      icon: const Icon(Icons.copy_outlined),
-                      label: const Text('Chép mã'),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ],

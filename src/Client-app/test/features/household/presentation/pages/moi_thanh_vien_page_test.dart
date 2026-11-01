@@ -66,6 +66,11 @@ void main() {
     await t.pumpAndSettle();
     expect(api.goi, contains('moiQuaEmail:an@gmail.com:Member'));
     expect(find.text('Đã gửi lời mời tới an@gmail.com'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('da-gui-loi-moi')), matching: find.byIcon(Icons.check_circle_outline)),
+        findsOneWidget,
+        reason: 'Stitch `moi`: ô xanh có dấu ✓');
+    expect(find.byIcon(Icons.mail_outline), findsWidgets, reason: 'tiêu đề khối Mời qua email có icon thư');
+    expect(find.byIcon(Icons.vpn_key_outlined), findsOneWidget, reason: 'tiêu đề khối Mã mời có icon chìa');
   });
 
   testWidgets('nút Gửi khoá suốt lúc chờ mạng (không gửi hai lần)', (t) async {
@@ -95,6 +100,9 @@ void main() {
     await t.pump();
     expect(chiaSe.da.single, contains('ABCD2345'));
     expect(chiaSe.da.single, contains('Nhà An – Bình'));
+    expect(find.descendant(of: find.byKey(const Key('khoi-ma-vua-tao')), matching: find.text('ABCD2345')), findsOneWidget,
+        reason: 'Stitch `moi`: mã + hạn + hai nút nằm trong ô xám');
+    expect(find.descendant(of: find.byKey(const Key('khoi-ma-vua-tao')), matching: find.text('Chép mã')), findsOneWidget);
   });
 
   testWidgets('M6: mã vừa tạo đã quá hạn thì khối mã và nút Chia sẻ không còn hiện', (t) async {
@@ -153,6 +161,9 @@ void main() {
     await t.ensureVisible(find.text('binh@x.vn'));
     expect(find.text('Huỷ'), findsOneWidget);
     expect(find.text('Đã từ chối'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const Key('chip-trang-thai-BBBB3333')), matching: find.text('Đã từ chối')), findsOneWidget,
+        reason: 'trạng thái đã kết thúc là chip xám (Stitch `moi`), không phải chữ trơn');
+    expect(find.byKey(const Key('chip-trang-thai-AAAA2222')), findsNothing, reason: 'dòng còn hiệu lực có nút Huỷ, không chip');
     expect(find.text('Email · Chỉ xem · Đã từ chối'), findsOneWidget, reason: 'Stitch: dòng phụ luôn kèm trạng thái, chip giữ như mockup');
     await t.tap(find.text('Huỷ'));
     await t.pumpAndSettle();

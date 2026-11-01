@@ -48,7 +48,17 @@ class TheLoiMoiDangCho extends StatelessWidget {
             children: [
               const Icon(Icons.mail_outline, size: 18, color: AppColors.warning),
               const SizedBox(width: 6),
-              Text('LỜI MỜI ĐANG CHỜ', style: chu.labelMedium?.copyWith(color: AppColors.warning, fontWeight: FontWeight.w700)),
+              Expanded(
+                child: Text('LỜI MỜI ĐANG CHỜ',
+                    style: chu.labelMedium?.copyWith(color: AppColors.warning, fontWeight: FontWeight.w700)),
+              ),
+              // Chấm cam báo có lời mời chưa xử lý (Stitch `hop`).
+              Container(
+                key: const Key('cham-loi-moi'),
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(color: AppColors.warning, shape: BoxShape.circle),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -57,8 +67,12 @@ class TheLoiMoiDangCho extends StatelessWidget {
           Text('${loiMoi.tenNguoiMoi} mời bạn với vai ${tenVai(loiMoi.vai)}', style: chu.bodyMedium),
           if (han != null) ...[
             const SizedBox(height: 2),
-            Text('Hết hạn ${DateFormatter.formatDateTime(han.toLocal())}',
-                style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),
+            Row(children: [
+              const Icon(Icons.schedule, size: 14, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text('Hết hạn ${DateFormatter.formatDateTime(han.toLocal())}',
+                  style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),
+            ]),
           ],
           const SizedBox(height: 12),
           Row(
@@ -68,14 +82,30 @@ class TheLoiMoiDangCho extends StatelessWidget {
               Expanded(
                 child: FilledButton(
                   onPressed: (lyDo != null || dangXuLy) ? null : onChapNhan,
-                  child: const Text('Chấp nhận'),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (lyDo != null) ...[const Icon(Icons.lock_outline, size: 18), const SizedBox(width: 6)],
+                      const Flexible(child: Text('Chấp nhận', overflow: TextOverflow.ellipsis)),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
           if (lyDo != null) ...[
             const SizedBox(height: 6),
-            Text(lyDo, style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),
+            // Câu lý do nằm dưới nút Chấp nhận (nửa phải), canh giữa dưới nút — Stitch `hop`.
+            Row(children: [
+              const Expanded(child: SizedBox.shrink()),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(lyDo,
+                    key: const Key('ly-do-khoa-chap-nhan'),
+                    textAlign: TextAlign.center,
+                    style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),
+              ),
+            ]),
           ],
         ],
       ),

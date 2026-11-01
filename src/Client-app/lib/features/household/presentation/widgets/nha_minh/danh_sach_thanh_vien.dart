@@ -20,7 +20,7 @@ class DanhSachThanhVien extends StatelessWidget {
               if (i > 0) const Divider(height: 24),
               Row(
                 children: [
-                  AvatarChuCai(ten: thanhVien[i].tenHienThi),
+                  AvatarChuCai(ten: thanhVien[i].tenHienThi, idaccount: thanhVien[i].idaccount),
                   const SizedBox(width: 12),
                   Expanded(child: TenThanhVien(ten: thanhVien[i].tenHienThi, laToi: thanhVien[i].idaccount == idToi)),
                   const SizedBox(width: 8),

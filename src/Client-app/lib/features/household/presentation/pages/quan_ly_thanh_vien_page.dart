@@ -109,7 +109,7 @@ class _QuanLyThanhVienPageState extends State<QuanLyThanhVienPage> {
                           KhungTheNha(
                             child: Row(
                               children: [
-                                AvatarChuCai(ten: tv.tenHienThi, co: 44),
+                                AvatarChuCai(ten: tv.tenHienThi, idaccount: tv.idaccount, co: 44),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -154,7 +154,10 @@ class _QuanLyThanhVienPageState extends State<QuanLyThanhVienPage> {
                             const SizedBox(height: 12),
                             OutlinedButton.icon(
                               // Khoá thì viền xám như chữ (Material tự đổi `foregroundColor`, còn `side` đặt cứng thì không).
-                              style: OutlinedButton.styleFrom(foregroundColor: AppColors.error).copyWith(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.error,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // chữ nhật bo góc theo Stitch
+                              ).copyWith(
                                 side: WidgetStateProperty.resolveWith((st) => BorderSide(
                                     color: st.contains(WidgetState.disabled) ? AppColors.outlineVariant : AppColors.error)),
                               ),
