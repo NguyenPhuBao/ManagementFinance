@@ -1,7 +1,7 @@
 # Việc backend còn phải làm
 
 > **Người nhận:** backend (NPBao). Tệp này **chỉ có việc còn phải làm**, đo trên backend `13fddd09` (PR #176) ngày 2026-11-01. Việc xong thì client xoá khỏi tệp; lịch sử xem bằng git.
-> Đơn mới thêm vào tệp này, số kế tiếp **63**.
+> Đơn mới thêm vào tệp này, số kế tiếp **64**.
 
 ## Tổng quan
 
@@ -9,11 +9,13 @@
 |---|---|---|---|
 | 52.4 | Chưa so khoá mã hoá trên Render. Khác khoá thì kéo toàn bộ trả 500 | **CAO** | Tay, cần quyền Render |
 | 61.2 | Gemini quá 60 giây: luồng chat treo, không có `done` | **CAO** | Bản vá |
+| 63.1 | Áp `database/45_add_transaction_fund_pair.sql` lên Supabase trước khi gộp / triển khai nhánh gia đình 1A (thiếu cột thì mọi truy vấn `transaction` ném `P2022`) | **CAO** | Chạy SQL luỹ đẳng, có câu kiểm |
 | 62.1 | Tạo đơn rơi về tài khoản MB cá nhân ghi cứng khi PayOS không trả thông tin nhận tiền | **CAO** | Bản vá + sửa tay Admin-web, tài liệu |
 | 62.2 | Đường JIT bỏ qua số tiền và trạng thái `UNDERPAID`: webhook không tới thì chuyển thiếu thành hết hạn, chuyển thừa thành `PAID` | VỪA | Bản vá |
 | 61.3 | Người dùng bấm Dừng bị đếm là lỗi LLM, có thể đóng chatbot của mọi tài khoản | VỪA | Bản vá |
 | 62.3 | Webhook hợp lệ tới đơn `CANCELLED`: tiền vào nhưng đơn đứng yên, không ai được báo | VỪA | Bản vá |
 | 62.6 | Xác nhận kênh PayOS của `.env` và URL webhook; client cần để đóng G94 | VỪA | Trả lời 4 câu |
+| 63.2 | Khoản thuộc nhà trỏ danh mục riêng: server không kiểm phạm vi danh mục (suy từ mã, chưa đo) | VỪA | Quyết định + bản vá nhỏ |
 | 61.4 | Cửa sổ thời gian của cầu dao không bao giờ reset | THẤP | Bản vá |
 | 61.1 | Lời mời email nhận địa chỉ có dấu | THẤP | Bản vá |
 | 61.5 | Hàng còn sống trong nhà giải tán trước bản sửa 57.6 | THẤP | Chạy SQL, có thể không cần |
@@ -21,7 +23,7 @@
 | 62.5 | `paid_at` đọc giờ PayOS theo múi giờ của máy chủ | THẤP | Bản vá |
 | 60.3 | Ba ca test nói nhiều hơn điều chúng chứng minh | THẤP | Tay, tuỳ chọn |
 
-**Thứ tự đề xuất:** áp bản vá một lần cho 61.1–61.4, chạy kịch bản, rồi làm 52.4 và 61.5. Áp bản vá đơn 62 thành một lượt riêng (hai bản vá không đụng chung tệp), rồi làm phần tay của 62.1 và trả lời 62.6.
+**Thứ tự đề xuất:** áp 63.1 (cột `Idfund_pair`) **trước mọi lần gộp / triển khai nhánh gia đình**; rồi áp bản vá một lần cho 61.1–61.4, chạy kịch bản, rồi làm 52.4 và 61.5. Áp bản vá đơn 62 thành một lượt riêng (hai bản vá không đụng chung tệp), rồi làm phần tay của 62.1 và trả lời 62.6.
 
 ---
 
@@ -475,6 +477,38 @@ Không phải sửa mã. `.env` dev hiện gọi được PayOS và PayOS trả 
 
 **Xong khi:** bốn câu có trả lời.
 
+## 63 — Cột `Idfund_pair` và phạm vi danh mục của khoản nhà (gia đình đợt 1A, 2026-11-01)
+
+Nhánh `TranQuangDat-backend` có đợt mã gia đình 1A (dải `2c18bf77..9cfca7bd`). Phần backend của đợt ấy nhỏ: cột `transaction."Idfund_pair"`, ánh xạ trong `sync.repository.js`, ba chốt trong `sync.service.js` (mã cặp trên `Transfer`, người sửa khoản có mã cặp, `laXoa = operation === 'delete'`), kịch bản `KIEM-THU/chay_kiem_gia_dinh_2.js` (21 / 21; hồi quy `chay_kiem.js` 50 / 50, trên CSDL `flowmoney_kiem_thu`). Hợp đồng đồng bộ: `docs/superpowers/sync/SYNC_DOCUMENTATION.md` bảng 4.2, `docs/Family/04_HOP_DONG_PHAN_1_NHU_MA.md` mục 3.
+
+### 63.1 (CAO) — Áp `database/45_add_transaction_fund_pair.sql` lên Supabase TRƯỚC khi gộp / triển khai nhánh
+
+**Vì sao.** `src/Backend/prisma/schema.prisma` đã khai `idfund_pair ... @map("Idfund_pair")` ở model `transaction`. `npm install` tự chạy `prisma generate` (`postinstall`), nên client sinh ra chọn cột `Idfund_pair` trong **mọi** truy vấn bảng `transaction`. CSDL chưa có cột thì mọi truy vấn ấy ném `P2022` (kiểu lỗi đã gặp với `account.premium_expires_at`, migration 19, 2026-10-06 — đăng nhập hỏng); client chưa chạy lại ca này với `Idfund_pair`. Client đã áp tệp lên `PersonFinance` cục bộ ngày 2026-11-01 theo phép đích danh của người dùng, sau khi sao lưu (`PersonFinance-truoc-45-2026-11-01.dump`); **chưa áp Supabase**, và client chưa biết Render dùng CSDL nào.
+
+**Làm.** Áp tệp theo quy ước `database/N_*.sql` của repo (tệp luỹ đẳng: `ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, không xoá gì). Thứ tự: **áp 45 → rồi mới gộp `main` / triển khai**.
+
+**Kiểm lại (chỉ đọc), phải ra đúng một dòng mỗi câu:**
+
+```sql
+SELECT column_name, data_type, character_maximum_length, is_nullable
+  FROM information_schema.columns WHERE table_name = 'transaction' AND column_name = 'Idfund_pair';
+-- mong đợi: Idfund_pair | character varying | 36 | YES
+SELECT indexname FROM pg_indexes WHERE tablename = 'transaction' AND indexname = 'idx_transaction_fund_pair';
+-- mong đợi: idx_transaction_fund_pair
+```
+
+**Xong khi:** hai câu trên ra đúng trên mọi CSDL dùng thật, rồi một lượt `/sync/pull` của tài khoản thử trả 200.
+
+### 63.2 (VỪA, cần quyết định) — Phạm vi danh mục của khoản thuộc nhà
+
+**Điều client đọc được từ mã (suy từ mã, **chưa đo** trên server chạy).** `validateEntityScope` (`sync.service.js`, hàm gần dòng 210) kiểm ví, ví đích của khoản chuyển và mục tiêu cùng phạm vi với khoản (`HOUSEHOLD_SCOPE_MISMATCH`), nhưng **không kiểm danh mục**. Khoản mang `idhousehold` của nhà mà trỏ danh mục **riêng** của một người (hoặc danh mục của nhà khác) hiện được server nhận. Bảng `docs/Family/01_NEN_MONG.md` mục 3 cho thành viên thêm / sửa danh mục của nhà, nhưng chưa nói khoản của nhà bắt buộc dùng danh mục của nhà hay được dùng danh mục riêng.
+
+**Vì sao cần chốt.** Client 1A: danh mục của nhà tách khỏi danh mục cá nhân (`getCuaNha`), khoản của nhà sẽ chọn danh mục qua một màn riêng ở 1B (chưa làm). Nếu server cho khoản nhà trỏ danh mục riêng, máy thành viên khác kéo khoản đó về mà **không có danh mục** (danh mục riêng không về máy họ) — khoản hiện không tên danh mục, thống kê nhà gom vào "chưa phân loại".
+
+**Đề nghị (backend chọn một, báo lại):** (a) thêm vào `validateEntityScope` một nhánh cho `payload.idcategory` / `categoryId`: danh mục phải là hàng của đúng nhà đó hoặc danh mục mặc định, lệch thì `HOUSEHOLD_SCOPE_MISMATCH` (mã đã có trong `_permanentCodes` của client, không cần thêm mã); hoặc (b) giữ như hiện tại và ghi rõ vào `01` mục 3 rằng khoản nhà được dùng danh mục riêng (client sẽ thôi cấm ở 1B). Client nghiêng về (a). **Trước khi sửa** hãy chạy một ca thật (Thành viên đẩy khoản có `idhousehold` mà `idcategory` là danh mục riêng) để biết server trả gì — client chưa chạy ca ấy.
+
+---
+
 ## Giữ nguyên khi sửa backend
 
 Các kịch bản ở `KIEM-THU/` đang đạt trọn và client chạy lại sau mỗi lần gộp. Chạy trước khi báo xong, hai kịch bản đầu trên CSDL riêng tên `flowmoney_kiem_thu`:
@@ -489,6 +523,7 @@ node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_pr174.js . kq_pr1
 npm run verify:household -- . kq_nha.txt                                                 # 50 đạt / 50 ca
 node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_61.js . kq_61.txt         # 6 đạt / 6 ca, sau khi áp bản vá
 node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_62.js . kq_62.txt         # 14 đạt / 14 ca, sau khi áp bản vá
+node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_gia_dinh_2.js . kq_gd2.txt  # 21 đạt / 21 ca (mã cặp góp / rút, nhánh gia đình 1A; cần cột `Idfund_pair`)
 ```
 
 ---
@@ -503,4 +538,6 @@ node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_62.js . kq_62.txt
 | 62.1, 62.2, 62.3, 62.4, 62.5 | | *(dòng cuối `kq_62.txt`, kết quả `grep` của 62.1; sửa khác bản vá thì nói khác ở đâu)* |
 | 62.1 phần tay | | *(Admin-web, ba tài liệu)* |
 | 62.6 | | *(bốn câu trả lời)* |
+| 63.1 | | *(hai câu kiểm: cột và chỉ mục, trên từng CSDL dùng thật)* |
+| 63.2 | | *(chọn (a) hay (b); kết quả ca thật; kịch bản nếu thêm)* |
 | 60.3 | | *(hoặc "chưa")* |
