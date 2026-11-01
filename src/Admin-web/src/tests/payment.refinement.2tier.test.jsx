@@ -84,7 +84,7 @@ describe('Payment History Refinement Suite (2-Tier Testing — Rule 11)', () => 
       amount: 49000,
       amount_received: 49000,
       status: 'PAID',
-      transfer_content: 'CS123456 NGUYEN PHU BAO',
+      transfer_content: 'CS123456 CONG TY FLOWMONEY',
       created_at: '2026-10-16T15:14:00.000Z',
       paid_at: '2026-10-16T15:14:30.000Z',
       account: {
@@ -313,8 +313,8 @@ describe('Payment History Refinement Suite (2-Tier Testing — Rule 11)', () => 
             },
             bank: {
               bankName: 'MB Bank',
-              accountNumber: '2512070399999',
-              accountName: 'NGUYEN PHU BAO',
+              accountNumber: '0987654321',
+              accountName: 'CONG TY FLOWMONEY',
             },
             qr_url: 'https://img.vietqr.io/sample-premium.png',
           },

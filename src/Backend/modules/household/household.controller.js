@@ -296,7 +296,7 @@ const householdController = {
   async createEmailInvite(req, res) {
     try {
       const { email, role } = req.body || {};
-      if (!email || typeof email !== 'string' || !email.includes('@') || email.trim().length > 100) {
+      if (!email || typeof email !== 'string' || !email.includes('@') || email.trim().length > 100 || /[^ -~]/.test(email)) {
         return res.status(400).json({
           success: false,
           statusCode: 400,

@@ -26,6 +26,9 @@ test('Payment Reconciliation & Refund Suite (2-Tier Testing)', async (t) => {
     payosClient.setPayOSClientMock({
       paymentRequests: {
         create: async (body) => ({
+          bin: '970422',
+          accountNumber: '1234567890',
+          accountName: 'KENH THU',
           checkoutUrl: 'https://pay.payos.vn/web/mock_recon',
           paymentLinkId: 'link_mock_recon',
           orderCode: body.orderCode,

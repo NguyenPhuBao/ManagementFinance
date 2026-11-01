@@ -18,6 +18,9 @@ test('Payment Service Suite', async (t) => {
     payosClient.setPayOSClientMock({
       paymentRequests: {
         create: async (body) => ({
+          bin: '970422',
+          accountNumber: '1234567890',
+          accountName: 'KENH THU',
           checkoutUrl: 'https://pay.payos.vn/web/mock',
           paymentLinkId: 'link_mock',
           orderCode: body.orderCode,

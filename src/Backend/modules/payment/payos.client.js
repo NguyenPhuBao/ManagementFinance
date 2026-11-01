@@ -62,6 +62,37 @@ function generateRecognitionCode() {
 }
 
 /**
+ * Lấy thông tin nhận tiền từ phản hồi tạo liên kết của PayOS (đơn 62.1).
+ * Thiếu thì ném 502: tuyệt đối không đoán tài khoản, QR đoán sai là tiền vào chỗ không đối soát được.
+ * @param {object} payosResponse
+ * @returns {{ bin: string, accountNumber: string, accountName: string, description: (string|undefined) }}
+ */
+function thongTinNhanTien(payosResponse) {
+  const { bin, accountNumber, accountName, description } = payosResponse || {};
+  if (!bin || !accountNumber) {
+    const error = new Error('Cổng thanh toán không trả về tài khoản nhận tiền, vui lòng thử lại sau');
+    error.statusCode = 502;
+    throw error;
+  }
+  return { bin, accountNumber, accountName: accountName || '', description };
+}
+
+/**
+ * Đọc lại tài khoản nhận tiền từ URL ảnh VietQR đã lưu của đơn (đơn 62.1).
+ * @param {string} qrUrl
+ * @returns {{ bin: string, accountNumber: string, accountName: string }|null}
+ */
+function thongTinTuQrUrl(qrUrl) {
+  const khop = /\/image\/(\d+)-(\d+)-[^/?]+(?:\?(.*))?$/.exec(qrUrl || '');
+  if (!khop) return null;
+  return {
+    bin: khop[1],
+    accountNumber: khop[2],
+    accountName: new URLSearchParams(khop[3] || '').get('accountName') || '',
+  };
+}
+
+/**
  * Tạo liên kết thanh toán PayOS (VietQR / Ngân hàng)
  * @param {object} param0
  * @param {number} param0.orderCode
@@ -152,6 +183,8 @@ module.exports = {
   setPayOSClientMock,
   generateOrderCode,
   generateRecognitionCode,
+  thongTinNhanTien,
+  thongTinTuQrUrl,
   createPaymentLink,
   verifyWebhookData,
   confirmWebhook,
