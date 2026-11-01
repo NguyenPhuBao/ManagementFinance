@@ -19,18 +19,28 @@ void main() {
   late AppDatabase db;
   final ngay = DateTime(2026, 10, 20);
 
-  Future<void> vi(String id, int acc, {int? nha}) => db.walletDao.insert(WalletsCompanion(
-      id: Value(id), idaccount: Value(acc), name: Value(id), idhousehold: Value(nha), updatedAt: Value(ngay)));
-  Future<void> gd(String id, String viId, int acc, {int? nha}) => db.transactionDao.insert(TransactionsCompanion(
+  // Mọi hàng dựng sẵn mặc định ĐÃ ĐỒNG BỘ ('synced'): cột mặc định là 'pending', và hàng pending của tôi trong nhà được giữ
+  // khi chưa biết nhà (spec 2026-11-01 mục 7.3) — ca nào cần hàng chưa đẩy thì truyền `st: 'pending'`.
+  Future<void> vi(String id, int acc, {int? nha, String st = 'synced'}) => db.walletDao.insert(WalletsCompanion(
       id: Value(id),
       idaccount: Value(acc),
-      walletId: Value(viId),
-      amount: const Value(1),
-      type: const Value('chi'),
-      date: Value(ngay),
+      name: Value(id),
       idhousehold: Value(nha),
+      syncStatus: Value(st),
       updatedAt: Value(ngay)));
-  Future<void> dm(String id, int acc, {int? nha, bool macDinh = false}) =>
+  Future<void> gd(String id, String viId, int acc, {int? nha, String st = 'synced', String? viDich}) =>
+      db.transactionDao.insert(TransactionsCompanion(
+          id: Value(id),
+          idaccount: Value(acc),
+          walletId: Value(viId),
+          walletTransfer: Value(viDich),
+          amount: const Value(1),
+          type: const Value('chi'),
+          date: Value(ngay),
+          idhousehold: Value(nha),
+          syncStatus: Value(st),
+          updatedAt: Value(ngay)));
+  Future<void> dm(String id, int acc, {int? nha, bool macDinh = false, String st = 'synced'}) =>
       db.categoryDao.insert(CategoriesCompanion.insert(
           id: id,
           idaccount: acc,
@@ -38,22 +48,25 @@ void main() {
           classify: 'chi',
           isDefault: Value(macDinh),
           idhousehold: Value(nha),
+          syncStatus: Value(st),
           updatedAt: ngay));
 
-  Future<void> ns(String id, int acc, {int? nha}) => db.budgetDao.insert(BudgetsCompanion(
+  Future<void> ns(String id, int acc, {int? nha, String st = 'synced'}) => db.budgetDao.insert(BudgetsCompanion(
       id: Value(id),
       idaccount: Value(acc),
       amount: const Value(1),
       startDate: Value(ngay),
       idhousehold: Value(nha),
+      syncStatus: Value(st),
       updatedAt: Value(ngay)));
-  Future<void> mt(String id, int acc, {int? nha}) => db.goalDao.insert(GoalsCompanion(
+  Future<void> mt(String id, int acc, {int? nha, String st = 'synced'}) => db.goalDao.insert(GoalsCompanion(
       id: Value(id),
       idaccount: Value(acc),
       name: Value(id),
       targetAmount: const Value(1),
       targetDate: Value(ngay),
       idhousehold: Value(nha),
+      syncStatus: Value(st),
       updatedAt: Value(ngay)));
   Future<void> nhom(String id, int acc, String con, String cha) =>
       db.into(db.categoryGroupMemberships).insert(CategoryGroupMembershipsCompanion.insert(
@@ -195,6 +208,82 @@ void main() {
       await db.xoaHangCuaNha(_nha);
       await db.purgeDataForOtherAccounts(_toi);
       expect(await idGd(), contains('neo-gd-rieng'));
+    });
+  });
+
+  group('demHangChuaDayCuaNha (cổng "còn hàng chưa đẩy" trước khi Rời / Giải tán)', () {
+    test('đếm hàng pending có idhousehold = nhà, ở cả năm bảng, kể cả hàng của người khác sửa hộ', () async {
+      await vi('v1', 20, nha: _nhaKhac, st: 'pending'); // ví do Chủ nhà tạo, tôi sửa hộ → pending vẫn tính
+      await gd('g1', 'v1', _toi, nha: _nhaKhac, st: 'pending');
+      await ns('n1', _toi, nha: _nhaKhac, st: 'pending');
+      await mt('m1', _toi, nha: _nhaKhac, st: 'pending');
+      await dm('d1', _toi, nha: _nhaKhac, st: 'pending');
+      expect(await db.demHangChuaDayCuaNha(_nhaKhac), 5);
+    });
+
+    test('không tính hàng đã đồng bộ, hàng riêng pending, hay hàng pending của nhà khác', () async {
+      await vi('v2', _toi, nha: _nhaKhac); // synced
+      await gd('g2', 'vi-toi', _toi, st: 'pending'); // riêng
+      await gd('g3', 'vi-nha-cu-tao', _cu, nha: _nha, st: 'pending'); // nhà khác (5)
+      expect(await db.demHangChuaDayCuaNha(_nhaKhac), 0);
+    });
+  });
+
+  group('spec 2026-11-01 mục 7.3: dọn nhà không xoá hàng chưa đẩy', () {
+    test('nhaGiu null: hàng của nhà chưa đẩy do TÔI ghi được giữ, cùng ví nó trỏ tới', () async {
+      await vi('vn', 20, nha: _nhaKhac); // ví chung do người khác tạo, đã đồng bộ
+      await gd('g', 'vn', _toi, nha: _nhaKhac, st: 'pending');
+      await db.purgeDataForOtherAccounts(_toi);
+      expect(await idGd(), contains('g'),
+          reason: 'kho trạng thái nhà vắng hoặc hỏng không có nghĩa là đã rời nhà; xoá là mất dữ liệu chưa lên server');
+      expect(await idVi(), contains('vn'), reason: 'thiếu ví là vỡ khoá ngoại, khoá người dùng ở màn Đăng nhập');
+    });
+
+    test('nhaGiu null: ví nhà chưa đẩy do tôi tạo, và ngân sách / mục tiêu / danh mục chưa đẩy của nhà, được giữ', () async {
+      await vi('vp', _toi, nha: _nhaKhac, st: 'pending');
+      await ns('np', _toi, nha: _nhaKhac, st: 'pending');
+      await mt('mp', _toi, nha: _nhaKhac, st: 'pending');
+      await dm('dm-p', _toi, nha: _nhaKhac, st: 'pending');
+      await db.purgeDataForOtherAccounts(_toi);
+      expect(await idVi(), contains('vp'));
+      expect(await idNs(), contains('np'));
+      expect(await idMt(), contains('mp'));
+      expect(await idDm(), contains('dm-p'), reason: 'cùng một luật cho cả năm bảng đồng bộ — hàng chưa đẩy là dữ liệu duy nhất');
+    });
+
+    test('nhaGiu null: hàng của nhà đã đồng bộ vẫn bị xoá như cũ', () async {
+      await vi('vs', 20, nha: _nhaKhac);
+      await gd('s', 'vs', _toi, nha: _nhaKhac);
+      await db.purgeDataForOtherAccounts(_toi);
+      expect(await idGd(), isNot(contains('s')));
+      expect(await idVi(), isNot(contains('vs')));
+    });
+
+    test('hàng chưa đẩy của người KHÁC vẫn bị xoá', () async {
+      await vi('vk', 20, nha: _nhaKhac);
+      await gd('k', 'vk', 20, nha: _nhaKhac, st: 'pending');
+      await db.purgeDataForOtherAccounts(_toi);
+      expect(await idGd(), isNot(contains('k')), reason: 'không phải dữ liệu của tôi — chỉ hàng do tài khoản đang đăng nhập ghi mới được giữ');
+    });
+
+    test('giao dịch giữ lại trỏ ví đích của khoản chuyển: ví đích cũng được giữ', () async {
+      await vi('va', 20, nha: _nhaKhac);
+      await vi('vb', 20, nha: _nhaKhac);
+      await gd('t', 'va', _toi, nha: _nhaKhac, st: 'pending', viDich: 'vb');
+      await db.purgeDataForOtherAccounts(_toi);
+      expect(await idGd(), contains('t'));
+      expect(await idVi(), containsAll(['va', 'vb']));
+    });
+
+    test('ĐÃ BIẾT nhà H: hàng chưa đẩy của tôi ở nhà G ≠ H vẫn bị xoá (nhà bị bỏ, quyết định #6)', () async {
+      await vi('vg', 20, nha: _nhaKhac);
+      await gd('g-pending', 'vg', _toi, nha: _nhaKhac, st: 'pending');
+      await vi('vg-toi', _toi, nha: _nhaKhac, st: 'pending');
+      await db.purgeDataForOtherAccounts(_toi, nhaGiu: _nha);
+      expect(await idGd(), isNot(contains('g-pending')),
+          reason: 'chỉ khi CHƯA BIẾT nhà mới giữ hàng chưa đẩy; đã biết nhà khác thì nhà cũ đã bị bỏ');
+      expect(await idVi(), isNot(contains('vg-toi')));
+      expect(await idVi(), isNot(contains('vg')));
     });
   });
 }

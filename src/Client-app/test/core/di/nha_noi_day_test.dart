@@ -1,0 +1,37 @@
+/// Dây nối DI của gia đình trong `injection_container.dart` — vùng mù của mọi test dựng đối tượng bằng tay: tham số tuỳ chọn
+/// không được truyền thì không lỗi biên dịch, không đỏ ca nào, chỉ là tính năng im lặng không chạy.
+///
+/// - `nhaPhien:` của engine đồng bộ: thiếu là hàng Chủ nhà sửa hộ không bao giờ vào lô đẩy (spec 2026-11-01 mục 7.1).
+/// - `dayTruocKhiRoi:` + `demHangChuaDay:` của repository nhà: thiếu là Rời nhà / Giải tán không đẩy, không đếm, và hàng chưa
+///   đẩy mất sau khi server từ chối (mục 7.3).
+library;
+
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+
+/// Khối đăng ký bắt đầu từ [dau], tới dòng kế tiếp thụt lề đúng hai dấu cách mở bằng `sl.` hoặc chú thích.
+String _khoi(String nguon, String dau) {
+  final i = nguon.indexOf(dau);
+  expect(i, isNonNegative, reason: 'không thấy chỗ đăng ký "$dau" trong injection_container.dart');
+  final cuoi = nguon.indexOf(RegExp(r'\n  (sl\.|//)'), i + dau.length);
+  expect(cuoi, greaterThan(i), reason: 'không tìm được cuối khối "$dau"');
+  return nguon.substring(i, cuoi);
+}
+
+void main() {
+  final nguon = File('lib/core/di/injection_container.dart').readAsStringSync().replaceAll('\r\n', '\n');
+
+  test('đăng ký engine đồng bộ truyền nhaPhien (nhà đang ở)', () {
+    final khoi = _khoi(nguon, 'sl.registerLazySingleton<SyncEngine>(');
+    expect(khoi, contains('nhaPhien:'), reason: 'thiếu thì lô đẩy chỉ có hàng của tôi — hàng sửa hộ nằm pending mãi');
+  });
+
+  test('đăng ký repository nhà truyền dayTruocKhiRoi và demHangChuaDay', () {
+    final khoi = _khoi(nguon, 'sl.registerLazySingleton<NhaRepository>(');
+    expect(khoi, contains('dayTruocKhiRoi:'), reason: 'thiếu thì Rời nhà / Giải tán không đẩy trước khi gọi API');
+    expect(khoi, contains('demHangChuaDay:'), reason: 'thiếu thì không biết còn hàng chưa đẩy để hỏi lại');
+    expect(khoi, contains('dayVaCho('), reason: 'phải là lối đẩy-và-CHỜ, không phải lối xin đẩy rồi trả về ngay');
+    expect(khoi, contains('demHangChuaDayCuaNha('));
+  });
+}

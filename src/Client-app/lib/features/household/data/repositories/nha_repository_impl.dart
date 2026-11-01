@@ -23,15 +23,26 @@ import 'nha_repository.dart';
 const Duration kGianCachNhaDoi = Duration(seconds: 30);
 
 class NhaRepositoryImpl implements NhaRepository {
-  NhaRepositoryImpl({required HouseholdApi api, required NhaStore kho, DateTime Function()? clock})
-      : _api = api,
+  /// [dayTruocKhiRoi] đẩy hàng chưa lên server và CHỜ xong (DI: `SyncEngine.dayVaCho`); [demHangChuaDay] đếm hàng `pending` của
+  /// một nhà ở năm bảng đồng bộ (DI: `AppDatabase.demHangChuaDayCuaNha`). Không truyền = không đẩy / không chặn (test cũ).
+  NhaRepositoryImpl({
+    required HouseholdApi api,
+    required NhaStore kho,
+    DateTime Function()? clock,
+    Future<void> Function()? dayTruocKhiRoi,
+    Future<int> Function(int idNha)? demHangChuaDay,
+  })  : _api = api,
         _kho = kho,
+        _dayTruocKhiRoi = dayTruocKhiRoi,
+        _demHangChuaDay = demHangChuaDay,
         _now = clock ?? DateTime.now {
     _hienTai = NhaCuaToi.khongCo(_now());
   }
 
   final HouseholdApi _api;
   final NhaStore _kho;
+  final Future<void> Function()? _dayTruocKhiRoi;
+  final Future<int> Function(int idNha)? _demHangChuaDay;
   final DateTime Function() _now;
   final _theoDoi = StreamController<NhaCuaToi>.broadcast();
   final _doiNha = StreamController<DoiNha>.broadcast();
@@ -53,6 +64,14 @@ class NhaRepositoryImpl implements NhaRepository {
   /// Kỳ phiên: tăng khi tài khoản đổi — lượt lời mời của phiên cũ về muộn bị bỏ.
   int _kyPhien = 0;
   Future<void>? _dangNapKho;
+
+  /// Kho trạng thái nhà của phiên này VẮNG (`doc` trả `null`: chưa ghi, mất, hoặc đọc hỏng) — khác kho GHI "không nhà".
+  bool _khoVang = false;
+
+  /// Dấu "đã xử lý tới nhà X" mà kho VẮNG không xác nhận được (spec gia đình 2026-11-01 mục 7.3): chưa biết đã rời nhà X hay chỉ
+  /// mất kho, nên CHƯA phát [DoiNha] — phát `DoiNha(X → null)` lúc mở phiên làm `xoaHangCuaNha(X)` xoá luôn hàng chưa đẩy mà
+  /// `purgeDataForOtherAccounts` vừa giữ. Hỏi `/me` rồi mới quyết, trong [_apDungNgay]. Hỏng thì giữ, lượt sau làm lại.
+  int? _dauChoXacNhan;
 
   /// Hàng đợi áp trạng thái: hai lượt (làm mới + thao tác) cùng đọc nhà cũ trước khi lượt kia ghi là phát [DoiNha] hai lần.
   Future<void> _hangApDung = Future.value();
@@ -93,6 +112,7 @@ class NhaRepositoryImpl implements NhaRepository {
   Future<void> _napKho(int id) async {
     final daLuu = await _kho.doc(id);
     if (_idaccount != id) return; // phiên đã đổi trong lúc chờ
+    _khoVang = daLuu == null;
     _phat(daLuu ?? NhaCuaToi.khongCo(_now()));
   }
 
@@ -110,6 +130,8 @@ class NhaRepositoryImpl implements NhaRepository {
   void _doiPhien() {
     _theHe++;
     _kyPhien++;
+    _khoVang = false;
+    _dauChoXacNhan = null;
     _dangLamMoi = null;
     _dangLamMoiLoiMoi = null;
     _huyGianCachNhaDoi();
@@ -222,11 +244,16 @@ class NhaRepositoryImpl implements NhaRepository {
   Future<void> _apDungNgay(int id, NhaCuaToi moi, int? he) async {
     if (_idaccount != id) return;
     if (he != null && he != _theHe) return; // ảnh chụp trước một thao tác đã thành công — bỏ
-    final tu = _hienTai.nha?.id;
+    var tu = _hienTai.nha?.id;
+    final den = moi.nha?.id;
+    // Kho vắng + dấu nói nhà X (xem [_dauChoXacNhan]): server là người quyết. Vẫn ở X → `DoiNha(null → X)` kéo lại toàn bộ
+    // (purge đã xoá hàng đã đồng bộ; hàng chưa đẩy ở lại); không còn ở X → dọn X như đã rời.
+    final dau = _dauChoXacNhan;
+    if (dau != null && tu == null) tu = den == dau ? null : dau;
     await _kho.ghi(id, moi);
     if (_idaccount != id) return;
+    _dauChoXacNhan = null;
     _phat(moi);
-    final den = moi.nha?.id;
     if (tu != den && !_doiNha.isClosed) _doiNha.add(DoiNha(idaccount: id, tu: tu, den: den));
   }
 
@@ -302,11 +329,37 @@ class NhaRepositoryImpl implements NhaRepository {
   @override
   Future<void> moiRa(int idaccount) => _thaoTac(() => _api.moiRa(idaccount));
 
-  @override
-  Future<void> roiNha() => _thaoTac(_api.roiNha);
+  /// Trước khi Rời / Giải tán (spec 2026-11-01 mục 7.3): đẩy (lỗi của hook chỉ ghi log — mất mạng thì API cũng tự báo đúng
+  /// câu), đếm hàng của nhà còn chưa đẩy, còn mà không [boQua] thì ném — API CHƯA được gọi. Phép đếm hỏng coi như còn hàng.
+  Future<void> _chuanBiRoi({required bool boQua}) async {
+    try {
+      await _dayTruocKhiRoi?.call();
+    } catch (e) {
+      debugPrint('[GiaDinh] đẩy trước khi rời hỏng: ${e.runtimeType}');
+    }
+    final dem = _demHangChuaDay;
+    final nha = _hienTai.nha?.id; // đọc SAU lượt đẩy: lượt đẩy có thể đã làm mới trạng thái nhà
+    if (boQua || dem == null || nha == null) return;
+    var con = 1;
+    try {
+      con = await dem(nha);
+    } catch (e) {
+      debugPrint('[GiaDinh] đếm hàng chưa đẩy hỏng, coi như còn: ${e.runtimeType}');
+    }
+    if (con > 0) throw const LoiNha(LoaiLoiNha.hangChuaDay);
+  }
 
   @override
-  Future<void> giaiTan() => _thaoTac(_api.giaiTan);
+  Future<void> roiNha({bool boQuaHangChuaDay = false}) async {
+    await _chuanBiRoi(boQua: boQuaHangChuaDay);
+    await _thaoTac(_api.roiNha);
+  }
+
+  @override
+  Future<void> giaiTan({bool boQuaHangChuaDay = false}) async {
+    await _chuanBiRoi(boQua: boQuaHangChuaDay);
+    await _thaoTac(_api.giaiTan);
+  }
 
   @override
   Future<KetQuaMoiEmail> moiQuaEmail(String email, VaiNha vai) async =>
@@ -362,7 +415,13 @@ class NhaRepositoryImpl implements NhaRepository {
   Future<void> _doiChieuDauXuLy(int id) async {
     final dau = await _kho.docDauXuLy(id);
     final nha = _hienTai.nha?.id;
-    if (_idaccount == id && dau != nha && !_doiNha.isClosed) _doiNha.add(DoiNha(idaccount: id, tu: dau, den: nha));
+    if (_idaccount != id || dau == nha) return;
+    // Kho VẮNG (khác kho ghi "không nhà"): không biết đã rời nhà hay chỉ mất kho → chưa dọn, hỏi `/me` (spec 7.3).
+    if (_khoVang) {
+      _dauChoXacNhan = dau;
+      return;
+    }
+    if (!_doiNha.isClosed) _doiNha.add(DoiNha(idaccount: id, tu: dau, den: nha));
   }
 
   @override

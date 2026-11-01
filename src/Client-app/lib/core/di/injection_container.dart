@@ -571,7 +571,13 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // `lamMoi` không gọi mạng.
   sl.registerLazySingleton<HouseholdApi>(() => DioHouseholdApi(sl<DioClient>().dio));
   sl.registerLazySingleton<NhaStore>(() => SecureStorageNhaStore(sl<FlutterSecureStorage>()));
-  sl.registerLazySingleton<NhaRepository>(() => NhaRepositoryImpl(api: sl(), kho: sl()));
+  sl.registerLazySingleton<NhaRepository>(() => NhaRepositoryImpl(
+        api: sl(),
+        kho: sl(),
+        // Rời nhà / Giải tán (spec gia đình 2026-11-01 mục 7.3): đẩy và CHỜ thật rồi mới đếm hàng chưa đẩy. Đọc `sl` lúc GỌI.
+        dayTruocKhiRoi: () => sl<SyncEngine>().dayVaCho(),
+        demHangChuaDay: (idNha) => sl<AppDatabase>().demHangChuaDayCuaNha(idNha),
+      ));
   sl.registerLazySingleton<DieuPhoiDoiNha>(() => DieuPhoiDoiNha(
         db: sl(),
         keoLaiToanBo: (id) => sl<SyncEngine>().keoLaiToanBo(id),

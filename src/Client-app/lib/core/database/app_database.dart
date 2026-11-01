@@ -606,8 +606,9 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// **Gia đình** (schema v32, spec 2026-10-23 mục 4.6 đường 1): năm bảng có cột `idhousehold` GIỮ hàng của nhà [nhaGiu] —
   /// nhà tài khoản mới đang ở theo bản lưu trạng thái nhà — dù người tạo là ai, và XOÁ hàng của mọi nhà khác, kể cả hàng
-  /// chính [keepIdaccount] đã ghi vào nhà cũ. [nhaGiu] `null` (chưa biết) → xoá mọi hàng của nhà; bộ điều phối gia đình
-  /// kéo lại toàn bộ khi lượt làm mới đầu thấy nhà (`SyncEngine.keoLaiToanBo`) — pull tăng dần KHÔNG tự mang chúng về.
+  /// chính [keepIdaccount] đã ghi vào nhà cũ. [nhaGiu] `null` (chưa biết) → xoá mọi hàng ĐÃ ĐỒNG BỘ của nhà, GIỮ hàng chưa đẩy
+  /// (`pending`) do [keepIdaccount] ghi và ví chúng trỏ tới (spec 2026-11-01 mục 7.3); bộ điều phối gia đình kéo lại toàn
+  /// bộ khi lượt làm mới đầu thấy nhà (`SyncEngine.keoLaiToanBo`) — pull tăng dần KHÔNG tự mang chúng về.
   ///
   /// Xoá bảng con trước bảng cha vì `beforeOpen` bật `PRAGMA foreign_keys = ON`.
   Future<int> purgeDataForOtherAccounts(int keepIdaccount, {int? nhaGiu}) async {
@@ -616,10 +617,29 @@ class AppDatabase extends _$AppDatabase {
     // là NULL — hàng riêng của tài khoản cũ sẽ thoát phép xoá.
     Expression<bool> cuaNhaGiu(Expression<int> idhousehold) =>
         nhaGiu == null ? const Constant(false) : idhousehold.isNotNull() & idhousehold.equals(nhaGiu);
+    // Hàng của nhà CHƯA ĐẨY do chính tôi ghi (spec gia đình 2026-11-01 mục 7.3): CHƯA BIẾT nhà ([nhaGiu] null) không chứng
+    // minh đã rời nhà — kho trạng thái nhà vắng hoặc hỏng — nên xoá chúng là mất dữ liệu chưa lên server. Giữ tới khi đẩy
+    // được. Đã biết nhà ([nhaGiu] khác null) thì nhà khác nhà ấy đã bị bỏ (quyết định #6) và hàng của nó xoá như cũ. ⚠️ Server
+    // từ chối KHÔNG làm hàng thôi `pending` (engine chỉ giãn cách theo thời gian): hàng bị từ chối vĩnh viễn ở lại tới lần
+    // dọn có biết nhà — đừng viết lại chú thích này thành "từ chối thì thôi pending".
+    Expression<bool> chuaDayCuaToi(Expression<int> idhousehold, Expression<int> idaccount, Expression<String> syncStatus) =>
+        nhaGiu != null
+            ? const Constant(false)
+            : idhousehold.isNotNull() & idaccount.equals(keepIdaccount) & syncStatus.equals('pending');
     // MỘT định nghĩa "ví được giữ" cho cả hai chỗ dùng (xoá giao dịch trỏ ví sắp xoá, xoá chính ví): hai bản lệch nhau là
-    // `delete(wallets)` vỡ khoá ngoại và khoá cửa đăng nhập.
+    // `delete(wallets)` vỡ khoá ngoại và khoá cửa đăng nhập. Ví giữ thêm: chính nó chưa đẩy, hoặc một giao dịch chưa đẩy của
+    // tôi trỏ tới (ví nguồn lẫn ví đích của khoản chuyển — cột đích không có khoá ngoại nhưng ví mất là khoản chuyển mồ côi).
     Expression<bool> viDuocGiu($WalletsTable w) =>
-        (w.idhousehold.isNull() & w.idaccount.equals(keepIdaccount)) | cuaNhaGiu(w.idhousehold);
+        (w.idhousehold.isNull() & w.idaccount.equals(keepIdaccount)) |
+        cuaNhaGiu(w.idhousehold) |
+        chuaDayCuaToi(w.idhousehold, w.idaccount, w.syncStatus) |
+        w.id.isInQuery(selectOnly(transactions)
+          ..addColumns([transactions.walletId])
+          ..where(chuaDayCuaToi(transactions.idhousehold, transactions.idaccount, transactions.syncStatus))) |
+        w.id.isInQuery(selectOnly(transactions)
+          ..addColumns([transactions.walletTransfer])
+          ..where(chuaDayCuaToi(transactions.idhousehold, transactions.idaccount, transactions.syncStatus) &
+              transactions.walletTransfer.isNotNull()));
     var removed = 0;
     await transaction(() async {
       removed += await (delete(categoryKeywords)
@@ -634,27 +654,37 @@ class AppDatabase extends _$AppDatabase {
       // nhà của nhà khác đã mất khỏi máy thì neo trỏ nó không còn nghĩa; nhà đang ở thì hàng nhà về lại khi kéo toàn bộ.
       removed += await (delete(transactions)
             ..where((t) =>
-                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not() |
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) |
+                        cuaNhaGiu(t.idhousehold) |
+                        chuaDayCuaToi(t.idhousehold, t.idaccount, t.syncStatus))
+                    .not() |
                 t.walletId.isInQuery(selectOnly(wallets)
                   ..addColumns([wallets.id])
                   ..where(viDuocGiu(wallets).not()))))
           .go();
       removed += await (delete(budgets)
             ..where((t) =>
-                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) |
+                        cuaNhaGiu(t.idhousehold) |
+                        chuaDayCuaToi(t.idhousehold, t.idaccount, t.syncStatus))
+                    .not()))
           .go();
       removed += await (delete(bills)
             ..where((t) => t.idaccount.equals(keepIdaccount).not()))
           .go();
       removed += await (delete(goals)
             ..where((t) =>
-                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) | cuaNhaGiu(t.idhousehold)).not()))
+                ((t.idhousehold.isNull() & t.idaccount.equals(keepIdaccount)) |
+                        cuaNhaGiu(t.idhousehold) |
+                        chuaDayCuaToi(t.idhousehold, t.idaccount, t.syncStatus))
+                    .not()))
           .go();
       // idaccount = 0 là danh mục mặc định dùng chung → giữ lại.
       removed += await (delete(categories)
             ..where((t) => ((t.idhousehold.isNull() &
                         (t.idaccount.equals(keepIdaccount) | t.idaccount.equals(0))) |
-                    cuaNhaGiu(t.idhousehold))
+                    cuaNhaGiu(t.idhousehold) |
+                    chuaDayCuaToi(t.idhousehold, t.idaccount, t.syncStatus))
                 .not()))
           .go();
       removed += await (delete(wallets)..where((t) => viDuocGiu(t).not())).go();
@@ -693,6 +723,26 @@ class AppDatabase extends _$AppDatabase {
           .go();
     });
     return removed;
+  }
+
+  /// Số hàng của nhà [idhousehold] còn `pending` (chưa lên server) ở năm bảng đồng bộ — kể cả hàng của người khác mà tôi sửa
+  /// hộ (hàng ấy cũng nằm trong lô đẩy, spec 2026-11-01 mục 7.1). Cổng của Rời nhà / Giải tán: sau khi rời, server từ chối
+  /// chúng, nên còn hàng thì phải hỏi lại người dùng (spec mục 7.3).
+  Future<int> demHangChuaDayCuaNha(int idhousehold) async {
+    Future<int> dem<T extends HasResultSet, D>(
+        ResultSetImplementation<T, D> bang, Expression<int> nha, Expression<String> trangThai) async {
+      final tong = countAll();
+      final q = selectOnly(bang)
+        ..addColumns([tong])
+        ..where(nha.equals(idhousehold) & trangThai.equals('pending'));
+      return (await q.getSingle()).read(tong) ?? 0;
+    }
+
+    return await dem(transactions, transactions.idhousehold, transactions.syncStatus) +
+        await dem(wallets, wallets.idhousehold, wallets.syncStatus) +
+        await dem(budgets, budgets.idhousehold, budgets.syncStatus) +
+        await dem(goals, goals.idhousehold, goals.syncStatus) +
+        await dem(categories, categories.idhousehold, categories.syncStatus);
   }
 
   /// Xoá **trên máy** mọi hàng của nhà [idhousehold] — đường dọn 2 của gia đình (spec 2026-10-23 mục 4.6): rời nhà, bị

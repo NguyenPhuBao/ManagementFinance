@@ -13,6 +13,10 @@ import 'sync_checkpoint_store.dart';
 import 'gui_lo_dong_bo.dart';
 import 'thu_gom_day.dart';
 
+/// Trần mặc định của [SyncEngine.dayVaCho] — đẩy trước khi Rời nhà / Giải tán (spec gia đình 2026-11-01 mục 7.3). Đủ cho một
+/// lô đẩy thường; mạng treo hơn thế thì hỏi người dùng thay vì bắt chờ.
+const Duration kTranDayTruocKhiRoi = Duration(seconds: 30);
+
 /// SyncEngine — bộ máy đồng bộ offline-first.
 ///
 /// ## Chiến lược:
@@ -376,7 +380,50 @@ class SyncEngine {
   /// `pending` chứ không xử theo từng yêu cầu.
   bool _noMotLanChay = false;
 
+  /// Số lời gọi [_chayMotChuKy] đang bay (kể cả lượt chạy bù do chính chu kỳ trước đẻ ra: lượt bù được khởi động TRONG
+  /// `finally` của chu kỳ trước nên đã tính trước khi chu kỳ trước trả về — bộ đếm không chạm 0 giữa hai lượt).
+  int _soChuKyDangBay = 0;
+  final _nguoiChoRanh = <Completer<void>>[];
+
   Future<void> _runSync() async {
+    _soChuKyDangBay++;
+    try {
+      await _chayMotChuKy();
+    } finally {
+      if (--_soChuKyDangBay == 0) _baoRanh();
+    }
+  }
+
+  void _baoRanh() {
+    final ds = List<Completer<void>>.of(_nguoiChoRanh);
+    _nguoiChoRanh.clear();
+    for (final c in ds) {
+      if (!c.isCompleted) c.complete();
+    }
+  }
+
+  /// Đẩy MỘT lượt rồi CHỜ cho tới khi mọi chu kỳ (đang chạy lúc gọi, và lượt bù của chúng) xong, hoặc hết [tran].
+  ///
+  /// Dùng cho nơi cần "đã đẩy xong" thật, không chỉ "đã xin đẩy": [syncNow] khi chu kỳ khác đang chạy chỉ ghi nợ một lượt
+  /// bù rồi trả về ngay (xem `_noMotLanChay`). Hết hạn thì trả về BÌNH THƯỜNG — chu kỳ vẫn chạy tiếp ở nền; nơi gọi tự đo lại
+  /// xem còn hàng chưa đẩy không. Không ném (lỗi của chu kỳ đã được `_chayMotChuKy` nuốt thành trạng thái `error`).
+  Future<void> dayVaCho({Duration tran = kTranDayTruocKhiRoi}) async {
+    Future<void> chay() async {
+      await syncNow();
+      if (_soChuKyDangBay == 0) return;
+      final c = Completer<void>();
+      _nguoiChoRanh.add(c);
+      await c.future;
+    }
+
+    try {
+      await chay().timeout(tran);
+    } on TimeoutException {
+      debugPrint('[SyncEngine] dayVaCho: hết ${tran.inMilliseconds} ms chờ đẩy — trả về, chu kỳ vẫn chạy nền');
+    }
+  }
+
+  Future<void> _chayMotChuKy() async {
     // Danh tính CHỈ đến từ phiên đăng nhập, không bao giờ suy ra từ dữ liệu
     // trong SQLite. Trước đây khi `_currentIdaccount` là null hoặc 1, engine
     // đọc `walletDao.getAllNonDeleted()` (không lọc tài khoản) và lấy
@@ -590,6 +637,7 @@ class SyncEngine {
   void dispose() {
     _disposed = true;
     stop();
+    _baoRanh(); // nơi đang chờ [dayVaCho] không bị treo tới hết trần
     _statusController.close();
     _sessionInvalidController.close();
     _pushResultController.close();

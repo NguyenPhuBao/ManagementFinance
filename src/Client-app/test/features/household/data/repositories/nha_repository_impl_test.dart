@@ -383,7 +383,70 @@ void main() {
       expect(doi.map((d) => (d.tu, d.den)), [(7, 12)]);
     });
 
-    test('dấu 12, kho trống → DoiNha(12 → null) dọn; /me thấy nhà thì DoiNha(null → 12) kéo lại', () async {
+    test('dấu 12, kho VẮNG, /me thấy nhà 12 → CHỈ DoiNha(null → 12) kéo lại; KHÔNG dọn nhà 12 trước (spec 7.3)', () async {
+      await kho.ghiDauXuLy(18, 12);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.cuaToiJson = nhaJson();
+      api.treo = Completer<void>(); // giữ /me: chưa được phát gì trước khi server trả lời
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi, isEmpty,
+          reason: 'DoiNha(12 → null) lúc mở phiên làm xoaHangCuaNha(12) xoá luôn hàng chưa đẩy mà purge vừa giữ');
+      api.treo!.complete();
+      await _nghi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(null, 12)],
+          reason: 'purge đã xoá hàng đã đồng bộ của nhà 12 — kéo lại toàn bộ, hàng chưa đẩy giữ nguyên');
+    });
+
+    test('dấu 12, kho vắng, /me KHÔNG nhà → DoiNha(12 → null): khoản nhà bị bỏ (quyết định #6)', () async {
+      await kho.ghiDauXuLy(18, 12);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      repo.noiPhien(ctrl.stream); // cuaToiJson mặc định: không nhà
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(12, null)]);
+    });
+
+    test('dấu 12, kho vắng, /me nhà 7 → DoiNha(12 → 7)', () async {
+      await kho.ghiDauXuLy(18, 12);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.cuaToiJson = nhaJson(id: 7);
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(12, 7)]);
+    });
+
+    test('dấu 12, kho vắng, /me hỏng hoặc thân lạ → không phát gì, GIỮ dấu; lượt sau /me ổn thì xử lý', () async {
+      await kho.ghiDauXuLy(18, 12);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.loi = loiServer(503, 'MAINTENANCE_MODE');
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi, isEmpty, reason: 'offline / máy chủ hỏng không chứng minh đã rời nhà');
+      api.loi = null;
+      api.cuaToiJson = const <String, Object?>{}; // thân lạ
+      await repo.lamMoi();
+      await _nghi();
+      expect(doi, isEmpty, reason: 'thân lạ đọc thành "không nhà" là dọn nhà — bỏ qua');
+      api.cuaToiJson = nhaJson();
+      await repo.lamMoi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(null, 12)], reason: 'dấu còn nguyên qua hai lượt hỏng');
+    });
+
+    test('dấu nhớ được xoá sau khi áp: lần nhà đổi sau đó phát đúng cặp bình thường', () async {
       await kho.ghiDauXuLy(18, 12);
       final ctrl = StreamController<int?>();
       addTearDown(ctrl.close);
@@ -392,8 +455,54 @@ void main() {
       ctrl.add(18);
       await _nghi();
       await _nghi();
-      expect(doi.map((d) => (d.tu, d.den)), [(12, null), (null, 12)],
-          reason: 'mất kho thì bản sao cục bộ không còn được tin; hai bước, dữ liệu không mất');
+      api.cuaToiJson = const {'household': null}; // sau đó người dùng rời nhà ở máy khác
+      await repo.lamMoi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(null, 12), (12, null)]);
+      api.cuaToiJson = nhaJson(id: 7);
+      await repo.lamMoi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)).last, (null, 7), reason: 'dấu cũ 12 không được chen vào cặp sau');
+    });
+
+    test('dấu 12, kho vắng, phiên đổi giữa chừng → kết quả /me cũ bị bỏ; phiên mới không thừa hưởng dấu nhớ', () async {
+      await kho.ghiDauXuLy(18, 12);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.cuaToiJson = nhaJson();
+      api.treo = Completer<void>();
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      ctrl.add(null); // đăng xuất giữa lúc /me còn treo
+      await _nghi();
+      api.treo!.complete();
+      await _nghi();
+      await _nghi();
+      expect(doi, isEmpty);
+      // Tài khoản KHÁC (19) không có dấu: nhà 7 mới vào là (null → 7), dấu 12 của tài khoản 18 không chen vào.
+      api.treo = null;
+      api.cuaToiJson = nhaJson(id: 7);
+      ctrl.add(19);
+      await _nghi();
+      await _nghi();
+      expect(doi.map((d) => (d.idaccount, d.tu, d.den)), [(19, null, 7)]);
+    });
+
+    test('kho GHI "không nhà" + dấu 12 (tiến trình chết giữa chừng) → vẫn phát DoiNha(12 → null) ngay như cũ', () async {
+      kho.values[18] = NhaCuaToi.khongCo(now);
+      await kho.ghiDauXuLy(18, 12);
+      final ctrl = StreamController<int?>();
+      addTearDown(ctrl.close);
+      api.treo = Completer<void>();
+      repo.noiPhien(ctrl.stream);
+      ctrl.add(18);
+      await _nghi();
+      await _nghi();
+      expect(doi.map((d) => (d.tu, d.den)), [(12, null)],
+          reason: 'kho đã GHI "không nhà" là bằng chứng đã rời nhà (G113 lỗ hổng 1) — khác kho vắng');
+      api.treo!.complete();
     });
   });
 

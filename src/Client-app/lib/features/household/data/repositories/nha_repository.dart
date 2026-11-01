@@ -60,8 +60,12 @@ abstract class NhaRepository {
   Future<void> doiVai(int idaccount, VaiNha vai);
   Future<void> chuyenChu(int idaccount);
   Future<void> moiRa(int idaccount);
-  Future<void> roiNha();
-  Future<void> giaiTan();
+
+  /// Rời nhà / Giải tán: ĐẨY hàng chưa lên server trước (chờ thật, có trần), rồi đếm hàng của nhà còn chưa đẩy. Còn hàng mà
+  /// [boQuaHangChuaDay] false thì ném `LoiNha(hangChuaDay)` và KHÔNG gọi API (spec gia đình 2026-11-01 mục 7.3) — sau khi rời,
+  /// server từ chối hàng của nhà nên chúng mất. Hộp hỏi lại gọi lại với [boQuaHangChuaDay] true (đợt 1B).
+  Future<void> roiNha({bool boQuaHangChuaDay = false});
+  Future<void> giaiTan({bool boQuaHangChuaDay = false});
 
   /// #13 — email cắt trắng + chữ thường trước khi gửi (server so với `lower(account.Email)`).
   Future<KetQuaMoiEmail> moiQuaEmail(String email, VaiNha vai);
