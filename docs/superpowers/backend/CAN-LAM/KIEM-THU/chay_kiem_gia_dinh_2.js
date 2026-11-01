@@ -52,7 +52,7 @@ const ma = (r) => (r.status === 'synced' ? 'synced' : (r.code || `error:${String
 // Server chỉ ánh xạ updatedAt / update_at (sync.repository.js): dùng update_at, không updated_at.
 const vi = (id, hh, nguoi) => ({ id, name: `V${id.slice(0, 6)}`, type: 'Cash', balance: 0, currency: 'VND', icon: 'w', color: '#000000', is_default: false, include_in_total: false, status: 'Active', idhousehold: hh, idaccount: nguoi, is_deleted: false, update_at: moi() });
 const gd = (id, w, hh, nguoi, thap = {}) => ({ id, walletId: w, categoryId: null, idwallet_transfer: null, idgoal: null, idbill: null, amount: 2000, type: 'Transaction', note: 'thu', date: moi(), is_deleted: false, update_at: moi(), idhousehold: hh, idaccount: nguoi, ...thap });
-const muctieu = (id, hh, nguoi) => ({ id, name: `M${id.slice(0, 6)}`, targetAmount: 1000000, currentAmount: 0, targetDate: new Date(Date.now() + 90 * 864e5).toISOString(), idhousehold: hh, idaccount: nguoi, is_deleted: false, update_at: moi() });
+const muctieu = (id, hh, nguoi, thap = {}) => ({ id, name: `M${id.slice(0, 6)}`, targetAmount: 1000000, currentAmount: 0, targetDate: new Date(Date.now() + 90 * 864e5).toISOString(), idhousehold: hh, idaccount: nguoi, is_deleted: false, update_at: moi(), ...thap });
 
 (async () => {
   await pool.query(`INSERT INTO role ("Idrole","Rolename") VALUES (1,'Admin'),(2,'User') ON CONFLICT DO NOTHING`);
@@ -138,7 +138,43 @@ const muctieu = (id, hh, nguoi) => ({ id, name: `M${id.slice(0, 6)}`, targetAmou
   const GX = randomUUID();
   await ca('2a', 'giao dịch riêng trỏ mục tiêu của nhà bị từ chối', 'HOUSEHOLD_SCOPE_MISMATCH', async () => ma(await push(B, 'transaction', gd(GX, VR, null, B, { idgoal: G }), 'create')));
 
-  const dat = kq.filter((k) => k.startsWith('ĐẠT')).length;
+  // Đợt 2: mục tiêu chung (docs/Family/03). Cần database/46 trên CSDL thử.
+  const W2 = randomUUID();
+  await push(A, 'wallet', vi(W2, H, A));
+  const G1 = randomUUID();
+  await ca('3', 'Thành viên đặt mục tiêu của nhà bị từ chối', 'HOUSEHOLD_ROLE_FORBIDDEN',
+    async () => ma(await push(B, 'goal', muctieu(randomUUID(), H, B, { idwallet: W2 }), 'create')));
+  await ca('3', 'mục tiêu của nhà trỏ ví riêng bị từ chối', 'HOUSEHOLD_SCOPE_MISMATCH',
+    async () => ma(await push(A, 'goal', muctieu(randomUUID(), H, A, { idwallet: VR }), 'create')));
+  await ca('3', 'Chủ nhà đặt mục tiêu cho ví chung', 'synced',
+    async () => ma(await push(A, 'goal', muctieu(G1, H, A, { idwallet: W2 }), 'create')));
+  await ca('3', 'mục tiêu sống thứ hai cùng ví bị từ chối', 'UNIQUE_VIOLATION',
+    async () => ma(await push(A, 'goal', muctieu(randomUUID(), H, A, { idwallet: W2 }), 'create')));
+  await ca('3', 'Thành viên kéo về thấy mục tiêu của nhà', 1,
+    async () => (await syncRepo.getGoalsByAccount(B, null, H)).filter((g) => g.idgoal === G1).length);
+  // Ghi nhận hành vi: vì sao client hồi sinh hàng khi bật lại (quyết định Q1 của kế hoạch).
+  await ca('3', 'cùng một lô: lệnh tạo chạy trước lệnh xoá nên vướng chỉ mục', 'UNIQUE_VIOLATION', async () => {
+    const r = await syncService.processPush(A, [
+      { localId: 'xoa', entity: 'goal', operation: 'delete', payload: muctieu(G1, H, A, { idwallet: W2 }) },
+      { localId: 'tao', entity: 'goal', operation: 'create', payload: muctieu(randomUUID(), H, A, { idwallet: W2 }) },
+    ]);
+    return ma(r.results.find((x) => x.localId === 'tao'));
+  });
+  const G2 = randomUUID();
+  await ca('3', 'lô sau, lệnh xoá đã xong: bật lại bằng hàng mới được nhận', 'synced',
+    async () => ma(await push(A, 'goal', muctieu(G2, H, A, { idwallet: W2 }), 'create')));
+  // Chủ mới tắt mục tiêu do Chủ cũ đặt. Đi đường chuyển chủ của service: `uq_household_one_owner` chỉ cho một Owner sống,
+  // `transferOwner` hạ A trước, nâng C sau trong một giao tác.
+  const C = await tk('chu2', true);
+  await prisma.household_member.create({ data: { idhousehold: H, idaccount: C, role: 'Member' } });
+  await hs.transferOwner(A, C);
+  await ca('3', 'Chủ mới tắt được mục tiêu do Chủ cũ đặt', 'synced|true', async () => {
+    const r = await push(C, 'goal', muctieu(G2, H, A, { idwallet: W2 }), 'delete');
+    const g = await prisma.goal.findUnique({ where: { idgoal: G2 } });
+    return `${ma(r)}|${g.delete_at !== null}`;
+  });
+
+  const dat =kq.filter((k) => k.startsWith('ĐẠT')).length;
   kq.push(`${dat} đạt / ${kq.length} ca`);
   const ra = kq.join('\n');
   console.log(ra);
