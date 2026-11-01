@@ -67,11 +67,14 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
     await batch((b) => b.insertAllOnConflictUpdate(goals, entries));
   }
 
-  Future<List<Goal>> getPending([int? idaccount]) {
+  /// [idhousehold]: nhà đang ở — thêm hàng của nhà do người khác ghi (spec gia đình 2026-11-01 mục 7.1).
+  Future<List<Goal>> getPending([int? idaccount, int? idhousehold]) {
     return (select(goals)
-          ..where((t) =>
-              t.syncStatus.equals('pending') &
-              (idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount))))
+          ..where((t) {
+            final cuaToi = idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount);
+            final phamVi = idhousehold == null ? cuaToi : (cuaToi | t.idhousehold.equals(idhousehold));
+            return t.syncStatus.equals('pending') & phamVi;
+          }))
         .get();
   }
 

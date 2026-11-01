@@ -291,14 +291,15 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return {'income': income, 'expense': expense};
   }
 
-  /// Pending sync records
-  Future<List<Transaction>> getPending([int? idaccount]) {
+  /// Pending sync records. [idhousehold]: nhà đang ở — hàng của nhà mang `idaccount` người GHI, nên chỉ lọc theo tôi thì
+  /// bản Chủ nhà sửa hộ không bao giờ lên server (spec gia đình 2026-11-01 mục 7.1).
+  Future<List<Transaction>> getPending([int? idaccount, int? idhousehold]) {
     return (select(transactions)
-          ..where((t) =>
-              t.syncStatus.equals('pending') &
-              (idaccount == null
-                  ? const Constant(true)
-                  : t.idaccount.equals(idaccount))))
+          ..where((t) {
+            final cuaToi = idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount);
+            final phamVi = idhousehold == null ? cuaToi : (cuaToi | t.idhousehold.equals(idhousehold));
+            return t.syncStatus.equals('pending') & phamVi;
+          }))
         .get();
   }
 

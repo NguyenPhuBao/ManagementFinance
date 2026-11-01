@@ -334,12 +334,15 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// Không bao gồm category `isLocalOnly` — đó là nhóm danh mục và các danh mục
   /// nằm trong nhóm; chúng mang dữ liệu chỉ có ở client (parentId/isGroup) mà
   /// backend không mô hình hoá, nên không được đẩy lên.
-  Future<List<Category>> getSyncableCategories(int accountId) {
+  ///
+  /// [idhousehold]: nhà đang ở — thêm danh mục của nhà do người khác tạo mà tôi sửa (spec gia đình 2026-11-01 mục 7.1).
+  Future<List<Category>> getSyncableCategories(int accountId, {int? idhousehold}) {
     return (select(categories)
-          ..where((t) =>
-              t.idaccount.equals(accountId) &
-              t.syncStatus.equals('pending') &
-              t.isLocalOnly.equals(false)))
+          ..where((t) {
+            final cuaToi = t.idaccount.equals(accountId);
+            final phamVi = idhousehold == null ? cuaToi : (cuaToi | t.idhousehold.equals(idhousehold));
+            return phamVi & t.syncStatus.equals('pending') & t.isLocalOnly.equals(false);
+          }))
         .get();
   }
 

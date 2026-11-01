@@ -221,6 +221,11 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       sauKeoVe: (id, thayDoi) => viecSauKeoVeDanhMuc(sl<LanTruyenKhuon>(), sl<DefaultCategorySeeder>(), id, thayDoi),
       // G89: lượt bị máy chủ chặn (bảo trì / phong toả) không tính là lượt hỏng, hẹn thử lại đúng mốc.
       trangThaiMayChu: sl<TrangThaiMayChu>(),
+      // Nhà đang ở, để thu gom hàng Chủ nhà sửa hộ (spec gia đình 2026-11-01 mục 7.1). Engine ở `core` không import mảng.
+      // ⚠️ Đọc LÚC GỌI: lượt đồng bộ đầu ngay sau mở phiên có thể chạy trước khi kho nhà nạp xong — chu kỳ đó chỉ thu
+      // gom hàng của tôi, hàng sửa hộ lên ở chu kỳ sau. Isolate nền (`chay_nen`) không nạp kho nhà: `hienTai.nha == null`
+      // nên cũng chỉ thu gom hàng của tôi — hành vi như trước đợt này.
+      nhaPhien: () => sl.isRegistered<NhaRepository>() ? sl<NhaRepository>().hienTai.nha?.id : null,
     ),
   );
 

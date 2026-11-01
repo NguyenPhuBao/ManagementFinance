@@ -237,6 +237,7 @@ class SyncEngine {
     DateTime Function()? now,
     ViecSauKeoVe? sauKeoVe,
     TrangThaiMayChu? trangThaiMayChu,
+    int? Function()? nhaPhien,
   })  : _now = now ?? DateTime.now,
         _connectivity = connectivity ?? Connectivity(),
         _sauKeoVe = sauKeoVe,
@@ -252,6 +253,8 @@ class SyncEngine {
       viBiGiu: viBiGiu,
       now: _now,
       taiKhoanPhien: () => _currentIdaccount,
+      // Engine ở `core` không biết mảng gia đình — DI nối nhà đang ở; không truyền = không mở rộng phạm vi (như trước).
+      nhaPhien: nhaPhien ?? () => null,
     );
     _guiLo = GuiLoDongBo(
       dioClient: dioClient,
