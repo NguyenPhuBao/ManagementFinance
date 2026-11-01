@@ -95,11 +95,27 @@ void main() {
     await t.pumpAndSettle();
     expect(find.byType(ONhapNhanh), findsNothing, reason: '02A mục 4: không Nhập nhanh ở chế độ nhà');
     expect(find.byTooltip('Thêm tuỳ chọn'), findsNothing, reason: 'nút ba chấm là handler rỗng, chế độ nhà không dựng');
-    expect(find.text('Thêm phần'), findsNothing);
+    expect(find.byKey(const Key('dong-tach')), findsNothing,
+        reason: 'hàng "Tách theo danh mục" (the_form.dart) hiện khi choTach — chế độ nhà không tách');
     expect(find.text('Nhà An Bình · ghi vào quỹ chung'), findsOneWidget, reason: 'phải đòi có, không chỉ đòi vắng');
     expect(find.text('Ví chung'), findsOneWidget, reason: 'nhãn dòng ví đổi từ "Ví thanh toán"');
     expect(find.text('Ví thanh toán'), findsNothing);
     expect(find.widgetWithText(AppBar, 'Khoản chi của nhà'), findsOneWidget);
+  });
+
+  testWidgets('đối chứng: form CÁ NHÂN (nha: null) có hàng tách — finder "dong-tach" sống', (t) async {
+    final bloc = TransactionBloc(transactionRepository: FakeTransactionRepository());
+    addTearDown(bloc.close);
+    await t.pumpWidget(bocTrangNha(AddTransactionPage(
+      idaccount: 20,
+      laPremium: true,
+      wallets: [viChung, makeWallet(id: 'v2', name: 'Quỹ')],
+      categoryRepository: FakeCategoryRepository(),
+      transactionBloc: bloc,
+    )));
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('dong-tach')), findsOneWidget,
+        reason: 'không có đối chứng này thì ca "chế độ nhà ẩn tách" xanh dù finder soi nhầm (đã từng soi "Thêm phần")');
   });
 
   testWidgets('Chủ nhà có chip Chuyển khoản; Thành viên thì không', (t) async {

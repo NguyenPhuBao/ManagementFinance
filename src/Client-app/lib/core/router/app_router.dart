@@ -336,14 +336,17 @@ class AppRouter {
             redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
             builder: (_, state) {
               final t = sl<NhaRepository>().hienTai;
+              // `redirect` chỉ bảo đảm có nhà lúc VÀO; builder chạy lại khi nhà đã mất (giải tán / bị mời ra) → Nhà mình.
+              final nha = t.nha;
+              if (nha == null) return const NhaMinhPage();
               final sua = state.extra is EditTransactionArgs ? state.extra as EditTransactionArgs : null;
-              final choChuyen = duocLamViecNha(ViecNha.chuyenGiuaViChung, vai: t.vai, trangThai: t.nha!.trangThai);
+              final choChuyen = duocLamViecNha(ViecNha.chuyenGiuaViChung, vai: t.vai, trangThai: nha.trangThai);
               return AddTransactionPage(
                 initial: sua,
                 huongBanDau: huongFormNha(state.uri.queryParameters['huong'], choChuyen: choChuyen),
                 nguon: sl<ThemGiaoDichNguonNha>(
                   param1: ThamSoNguonNha(
-                    idNha: t.nha!.id,
+                    idNha: nha.id,
                     uuTien: state.uri.queryParameters['vi'],
                     giuLai: {
                       if (sua != null) sua.transaction.walletId,
@@ -352,8 +355,8 @@ class AppRouter {
                   ),
                 ),
                 nha: CheDoNhaForm(
-                  idNha: t.nha!.id,
-                  tenNha: t.nha!.ten,
+                  idNha: nha.id,
+                  tenNha: nha.ten,
                   choChuyen: choChuyen,
                   duongChonDanhMuc: '/nha/khoan/category',
                 ),
@@ -363,12 +366,17 @@ class AppRouter {
               GoRoute(
                 path: 'category',
                 redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
-                builder: (_, state) => ChooseCategoryPage(
-                  classify: state.extra as String? ?? 'chi',
-                  napCay: (c) => sl<DuLieuNhaRepository>().napCayDanhMuc(sl<NhaRepository>().hienTai.nha!.id, c),
-                  // T11 đổi thành '/nha/danh-muc' cùng lúc tạo route: không có lúc nào nút trỏ route chưa có.
-                  duongQuanLy: null,
-                ),
+                builder: (_, state) {
+                  // Lấy id nhà MỘT lần ở đây: closure `napCay` chạy lại mỗi lần đổi tab, lúc ấy nhà có thể đã mất.
+                  final idNha = sl<NhaRepository>().hienTai.nha?.id;
+                  if (idNha == null) return const NhaMinhPage();
+                  return ChooseCategoryPage(
+                    classify: state.extra as String? ?? 'chi',
+                    napCay: (c) => sl<DuLieuNhaRepository>().napCayDanhMuc(idNha, c),
+                    // T11 đổi thành '/nha/danh-muc' cùng lúc tạo route: không có lúc nào nút trỏ route chưa có.
+                    duongQuanLy: null,
+                  );
+                },
               ),
             ],
           ),
