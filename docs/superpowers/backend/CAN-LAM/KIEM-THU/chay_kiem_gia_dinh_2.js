@@ -120,6 +120,19 @@ const muctieu = (id, hh, nguoi) => ({ id, name: `M${id.slice(0, 6)}`, targetAmou
   await push(B, 'transaction', gd(K, W, H, B), 'create');
   await ca('2a', 'Chủ nhà vẫn sửa được khoản thường của Thành viên', 'synced', async () => ma(await push(A, 'transaction', gd(K, W, H, B, { amount: 1000 }))));
 
+  // Danh mục sai phạm vi (đợt 1B, Task 1): ca 2 là ca canh hồi quy, xanh ngay trước khi sửa.
+  const dm = (id, hh, nguoi, thap = {}) => ({ id, name: `K${id.slice(0, 6)}`, namecategory: `K${id.slice(0, 6)}`, classify: 'Chi', icon: 'c', color: '#000', is_default: false, is_deleted: false, isGroup: false, parentId: null, update_at: moi(), idhousehold: hh, idaccount: nguoi, ...thap });
+  const DMN = randomUUID();
+  const DMR = randomUUID();
+  await push(A, 'category', dm(DMN, H, A));
+  await push(B, 'category', dm(DMR, null, B));
+  await ca('2a', 'khoản nhà trỏ danh mục riêng bị từ chối', 'HOUSEHOLD_SCOPE_MISMATCH',
+    async () => ma(await push(B, 'transaction', gd(randomUUID(), W, H, B, { categoryId: DMR }), 'create')));
+  await ca('2a', 'khoản nhà trỏ danh mục của nhà được nhận', 'synced',
+    async () => ma(await push(B, 'transaction', gd(randomUUID(), W, H, B, { categoryId: DMN }), 'create')));
+  await ca('2a', 'khoản riêng trỏ danh mục của nhà bị từ chối', 'HOUSEHOLD_SCOPE_MISMATCH',
+    async () => ma(await push(B, 'transaction', gd(randomUUID(), VR, null, B, { categoryId: DMN }), 'create')));
+
   const G = randomUUID();
   await ca('2a', 'Chủ nhà đẩy mục tiêu của nhà', 'synced', async () => ma(await push(A, 'goal', muctieu(G, H, A), 'create')));
   const GX = randomUUID();

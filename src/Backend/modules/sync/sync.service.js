@@ -247,6 +247,19 @@ const syncService = {
         }
       }
     }
+
+    const categoryKey = payload.idcategory || payload.categoryId || payload.idCategory;
+    if (categoryKey) {
+      const category = await prisma.category.findUnique({ where: { idcategory: categoryKey } });
+      if (category) {
+        const catHh = category.idhousehold ?? category.Idhousehold ?? null;
+        if (Number(catHh || 0) !== Number(targetHhId || 0)) {
+          throw Object.assign(new Error('Phạm vi không khớp: giao dịch và danh mục phải cùng thuộc cá nhân hoặc cùng thuộc một nhà'), {
+            code: 'HOUSEHOLD_SCOPE_MISMATCH',
+          });
+        }
+      }
+    }
     return true;
   },
 
