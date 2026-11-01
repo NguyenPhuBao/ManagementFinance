@@ -216,6 +216,22 @@ void main() {
           updatedAt: DateTime(2026, 9, 6),
         );
 
+    test('sửa khoản của nhà giữ idhousehold và fundPairId', () async {
+      await repository.addTransaction(TransactionEntity(
+        id: 'n1', walletId: 'w1', idaccount: 1, categoryId: 'c1', amount: 100000, type: 'chi',
+        date: DateTime(2026, 9, 6), updatedAt: DateTime(2026, 9, 6),
+        idhousehold: 7, fundPairId: 'cap-1',
+      ));
+      final before = TransactionEntity.fromDrift(await hangDaLuu('n1'));
+      expect(before.idhousehold, 7);
+
+      await repository.updateTransaction(before, before.copyWith(amount: 150000));
+
+      final row = await hangDaLuu('n1');
+      expect(row.idhousehold, 7, reason: 'sửa số tiền mà ghi NULL đè là khoản của nhà thành khoản riêng, im lặng');
+      expect(row.fundPairId, 'cap-1', reason: 'mất mã cặp là nửa kia của góp / rút không còn nhận ra nhau');
+    });
+
     test('đổi số tiền khoản chi: ví chỉ chịu phần chênh lệch', () async {
       await repository.addTransaction(chi('u1', 100000));
       expect((await db.walletDao.getById('w1'))?.balance, 900000.0);

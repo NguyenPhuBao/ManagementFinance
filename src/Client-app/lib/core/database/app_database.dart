@@ -87,7 +87,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 32;
+  int get schemaVersion => 33;
 
   @override
   MigrationStrategy get migration {
@@ -558,6 +558,11 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(budgets, budgets.idhousehold);
           }
           await m.addColumn(categories, categories.idhousehold);
+        }
+        if (from < 33) {
+          // Gia đình 2a: mã cặp góp / rút. Hàng cũ NULL = không phải góp / rút. ⚠️ Cũng như bước v32, fixture di trú cũ
+          // phải có bảng `transactions` (`test/helpers/bang_toi_thieu_v32.dart`).
+          await m.addColumn(transactions, transactions.fundPairId);
         }
       },
       beforeOpen: (details) async {

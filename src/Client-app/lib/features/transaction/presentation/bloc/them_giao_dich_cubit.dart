@@ -655,6 +655,9 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       categoryId: s.laChuyen ? null : danhMuc!.id,
       walletTransfer: s.laChuyen ? viDich!.id : null,
       goalId: editing?.goalId,
+      // Hai trường nhà đi theo hàng cũ: `toCompanion` ghi cả hai, dựng entity sửa mà bỏ chúng là ghi NULL đè.
+      idhousehold: editing?.idhousehold,
+      fundPairId: editing?.fundPairId,
       amount: amount,
       type: type,
       note: s.ghiChu.trim(),

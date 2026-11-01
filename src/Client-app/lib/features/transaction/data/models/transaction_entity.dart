@@ -32,6 +32,12 @@ class TransactionEntity {
 
   /// Mốc xoá mềm thứ hai của bảng (DAO lọc theo cột này; `isDeleted` là cờ). **Chỉ đọc** — như [billId].
   final DateTime? deletedAt;
+
+  /// Nhà sở hữu khoản này; `null` = khoản riêng. Khi có nhà thì [idaccount] là người ghi.
+  final int? idhousehold;
+
+  /// Mã cặp góp / rút; `null` = khoản thường.
+  final String? fundPairId;
   final double amount;
 
   /// `'chi'` (tiền ra) | `'thu'` (tiền vào) | `'transfer'` (chuyển giữa hai ví).
@@ -56,6 +62,8 @@ class TransactionEntity {
     this.goalId,
     this.billId,
     this.deletedAt,
+    this.idhousehold,
+    this.fundPairId,
     required this.amount,
     required this.type,
     this.note = '',
@@ -85,6 +93,8 @@ class TransactionEntity {
       goalId: d.goalId,
       billId: d.billId,
       deletedAt: d.deletedAt,
+      idhousehold: d.idhousehold,
+      fundPairId: d.fundPairId,
       amount: d.amount,
       type: d.type,
       note: d.note,
@@ -96,6 +106,10 @@ class TransactionEntity {
     );
   }
 
+  /// ⚠️ Khác [billId], hai trường nhà ([idhousehold], [fundPairId]) ĐƯỢC mang theo, nên đây là đường GHI NULL: đường sửa
+  /// hàng có sẵn (`updateTransaction` → `updateRow(...).write()`) ghi đè cả hai bằng giá trị của entity. Entity dựng
+  /// MỚI (không qua [fromDrift] / [copyWith]) mà đi vào đường sửa thì biến khoản của nhà thành khoản riêng và mất mã cặp
+  /// — chỗ dựng entity cho hàng đã có phải chép hai trường từ hàng cũ (`ThemGiaoDichCubit.chuanBiLuu` làm vậy).
   TransactionsCompanion toCompanion() {
     final imgJson = '[${images.map((e) => '"$e"').join(',')}]';
     return TransactionsCompanion.insert(
@@ -105,6 +119,8 @@ class TransactionEntity {
       categoryId: Value(categoryId),
       walletTransfer: Value(walletTransfer),
       goalId: Value(goalId),
+      idhousehold: Value(idhousehold),
+      fundPairId: Value(fundPairId),
       amount: amount,
       type: type,
       note: Value(note),
@@ -123,6 +139,8 @@ class TransactionEntity {
     String? categoryId,
     String? walletTransfer,
     String? goalId,
+    int? idhousehold,
+    String? fundPairId,
     double? amount,
     String? type,
     String? note,
@@ -141,6 +159,8 @@ class TransactionEntity {
       goalId: goalId ?? this.goalId,
       billId: billId,
       deletedAt: deletedAt,
+      idhousehold: idhousehold ?? this.idhousehold,
+      fundPairId: fundPairId ?? this.fundPairId,
       amount: amount ?? this.amount,
       type: type ?? this.type,
       note: note ?? this.note,

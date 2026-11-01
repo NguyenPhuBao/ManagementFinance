@@ -403,6 +403,8 @@ class ThuGomThaoTacDay {
           // từ chối. Hoá đơn được đẩy ở mục 4, TRƯỚC đây, vì cột này có khoá
           // ngoại `fk_transaction_bill`.
           'idbill': t.billId != null ? toValidUuid(t.billId!) : null,
+          // Mã cặp góp / rút (Family 02A mục 5): server chỉ lưu và trả.
+          'idfund_pair': t.fundPairId,
           'amount': t.amount,
           'type': t.type,
           'note': t.note,
