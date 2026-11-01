@@ -648,12 +648,17 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
   // Sổ giao dịch và Chi tiết ngân sách hỏi "nửa riêng này còn cặp góp / rút không" để Sửa, Xoá đi theo cả cặp (đợt 1B Task 9).
   // Hàm đọc đặt ở đây (điểm ghép) — mảng transaction không import household.
   sl.registerLazySingleton<CapGopQuyNguon>(() => CapGopQuyNguon(
-        doc: (t) => docCapGopQuy(
-          t,
-          docCap: sl<GopQuyService>().docCap,
-          nhaHienTai: () => sl<NhaRepository>().hienTai,
-          tenVi: (id) async => (await sl<WalletRepository>().getById(id))?.name,
-        ),
+        // Chờ kho nhà nạp TRƯỚC khi đọc `hienTai` (khuôn G92): trong khe mở app `nha == null`, cổng trả null và nửa riêng đi
+        // đường xoá một nửa — lệch cặp.
+        doc: (t) async {
+          await sl<NhaRepository>().choNapKho();
+          return docCapGopQuy(
+            t,
+            docCap: sl<GopQuyService>().docCap,
+            nhaHienTai: () => sl<NhaRepository>().hienTai,
+            tenVi: (id) async => (await sl<WalletRepository>().getById(id))?.name,
+          );
+        },
         xoa: (maCap) async {
           if (!await sl<GopQuyService>().xoa(maCap)) throw const CacheException('Khoản này không còn trên máy.');
         },

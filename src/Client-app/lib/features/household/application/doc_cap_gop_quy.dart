@@ -25,8 +25,23 @@ Future<CapGopQuy?> docCapGopQuy(
   final hienTai = nhaHienTai();
   if (nuaNha == null || hienTai.nha == null || hienTai.nha!.id != nuaNha.idhousehold) return null;
   final gop = t.type == 'chi';
-  final tenQuy = await tenVi(nuaNha.walletId) ?? 'ví chung';
-  final tenRieng = await tenVi(t.walletId) ?? 'ví riêng';
+  // Cặp ĐÃ xác nhận có. Lỗi đọc TÊN ví (chỉ để dựng câu) không được rơi về đường xoá một nửa — đó là lệch cặp thật: tên quỹ
+  // về `ví chung`, tên ví riêng về câu chung không nêu ví (`tenViRieng: null`). Lỗi đọc CẶP ở trên vẫn ném (brief Task 9).
+  Future<String?> tenHoacNull(String id) async {
+    try {
+      return await tenVi(id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  final tenQuy = await tenHoacNull(nuaNha.walletId) ?? 'ví chung';
+  String? tenRieng;
+  try {
+    tenRieng = await tenVi(t.walletId) ?? 'ví riêng';
+  } catch (_) {
+    tenRieng = null;
+  }
   return CapGopQuy(
     maCap: maCap,
     laGop: gop,

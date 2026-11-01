@@ -138,6 +138,20 @@ void main() {
     expect(nhaChiXem?.choThaoTac, isFalse);
   });
 
+  test('FINAL I-1b: đọc TÊN ví ném — vẫn trả cặp với câu chung (nuốt thành null là xoá một nửa, lệch cặp)', () async {
+    final cap = await docCapGopQuy(
+      nuaRieng,
+      docCap: capCo(rieng: nuaRieng, nha: nuaNha),
+      nhaHienTai: () => _nha(id: 5),
+      tenVi: (_) async => throw StateError('đọc ví hỏng'),
+    );
+    expect(cap, isNotNull,
+        reason: 'cặp ĐÃ xác nhận có; lỗi chỉ ở tên ví thì không được rơi về đường xoá một nửa');
+    expect(cap!.maCap, 'cap-1');
+    expect(cap.cauXoa, contains('Quỹ ví chung'), reason: 'tên quỹ rơi về câu chung');
+    expect(cap.cauXoa, isNot(contains('Ví MB')));
+  });
+
   test('đọc cặp ném: ném tiếp để cổng nuốt thành null (CapGopQuyNguon.cua), không bịa ra một cặp', () async {
     await expectLater(
       docCapGopQuy(

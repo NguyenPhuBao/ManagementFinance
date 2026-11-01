@@ -66,6 +66,16 @@ void main() {
     expect(di, contains('loadLoiMoiNha: (id) => sl<NhaRepository>().idaccount != id'));
   });
 
+  test('FINAL: CapGopQuyNguon chờ kho nhà nạp (choNapKho, khuôn G92) TRƯỚC khi đọc cặp', () {
+    final i = di.indexOf('registerLazySingleton<CapGopQuyNguon>');
+    expect(i, isNonNegative);
+    final khoi = di.substring(i, di.indexOf('xoa: (maCap)', i));
+    final cho = khoi.indexOf('choNapKho()');
+    expect(cho, isNonNegative,
+        reason: 'trong khe mở app `hienTai.nha == null`, cổng trả null và nửa riêng đi đường xoá MỘT nửa: lệch cặp');
+    expect(cho, lessThan(khoi.indexOf('docCapGopQuy(')), reason: 'phải chờ TRƯỚC khi đọc, không sau');
+  });
+
   test('router: /nha/tao qua cửa quyền giaDinh', () {
     final router = File('lib/core/router/app_router.dart').readAsStringSync().replaceAll('\r\n', '\n');
     final i = router.indexOf("path: '/nha/tao'");

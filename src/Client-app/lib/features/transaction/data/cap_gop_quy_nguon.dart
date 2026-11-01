@@ -40,8 +40,9 @@ class CapGopQuyNguon {
   final Future<CapGopQuy?> Function(TransactionEntity) _doc;
   final Future<void> Function(String maCap) _xoa;
 
-  /// `null` = khoản thường. Lỗi đọc cũng `null`: khoản đi đường thường, server không biết cặp nên lệch sẽ không tệ hơn
-  /// trước khi có cổng.
+  /// `null` = khoản thường. Lỗi đọc CẶP cũng `null` (brief Task 9): khoản đi đường thường — nếu cặp thật sự còn thì đó là
+  /// lệch cặp, nhưng không tệ hơn trước khi có cổng. Lỗi đọc TÊN ví thì không tới đây: `docCapGopQuy` tự rơi về câu chung
+  /// và vẫn trả cặp (FINAL I-1b), nên đường thường chỉ còn cho lỗi đọc cặp.
   Future<CapGopQuy?> cua(TransactionEntity t) async {
     try {
       return await _doc(t);
