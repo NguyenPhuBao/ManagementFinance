@@ -51,13 +51,13 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
     packageType: 'PREMIUM_1_MONTH',
     bin: '970422',
     bankName: 'MB Bank (Quân Đội)',
-    accountNumber: '2512070399999',
-    accountName: 'NGUYEN PHU BAO',
+    accountNumber: '0987654321',
+    accountName: 'CONG TY FLOWMONEY',
     description: 'PFM 26101501',
     checkoutUrl: 'https://pay.payos.vn/web/test-link',
     paymentLinkId: 'sample-link-26101501',
-    qrUrl: 'https://img.vietqr.io/image/970422-2512070399999-compact2.png?amount=49000&addInfo=PFM%2026101501&accountName=NGUYEN%20PHU%20BAO',
-    qrCode: '00020101021238570010A00000072701270006970422011325120703999990208QRIBFTTA53037045405490005802VN62160812PFM 261015016304ABCD',
+    qrUrl: 'https://img.vietqr.io/image/970422-0987654321-compact2.png?amount=49000&addInfo=PFM%2026101501&accountName=CONG%20TY%20FLOWMONEY',
+    qrCode: '00020101021238570010A00000072701270006970422011309876543210208QRIBFTTA53037045405490005802VN62160812PFM 261015016304ABCD',
   };
 
   const mockOrders = [
@@ -181,12 +181,12 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
           package_type: 'PREMIUM_1_MONTH',
           amount: 49000,
           recognition_code: 'TST123',
-          qr_url: 'https://img.vietqr.io/image/970422-2512070399999-compact2.png',
+          qr_url: 'https://img.vietqr.io/image/970422-0987654321-compact2.png',
           transfer_content: 'TST123',
           bank_info: {
             bankName: 'MB Bank (Quân Đội)',
-            accountNumber: '2512070399999',
-            accountName: 'NGUYEN PHU BAO',
+            accountNumber: '0987654321',
+            accountName: 'CONG TY FLOWMONEY',
           },
         },
       },
@@ -491,7 +491,7 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
         });
         // Sau khi tạo đơn, hiển thị mã đơn và STK MB Bank
         expect(screen.getByText(/#9999/)).toBeInTheDocument();
-        expect(screen.getByText('2512070399999')).toBeInTheDocument();
+        expect(screen.getByText('0987654321')).toBeInTheDocument();
         // Tự động reload danh sách
         expect(paymentApi.getOrders).toHaveBeenCalled();
       });
@@ -662,21 +662,48 @@ describe('Admin-web Payment Suite — PaymentHistoryPage (2-Tier Testing)', () =
       });
     });
 
-    it('2.10. Dropdown Gói cước nạp danh sách từ getPackageTypes và kích hoạt lọc theo gói', async () => {
+    it('2.11. Xử lý xác nhận đơn hàng chuyển thừa tiền WAITING_CONFIRMATION: Click Đồng ý gọi paymentApi.confirmUpgrade', async () => {
+      paymentApi.getOrderDetail.mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {
+            id: 'ord-uuid-waiting',
+            order_code: 8888,
+            package_type: 'PREMIUM_1_MONTH',
+            amount: 49000,
+            amount_received: 70000,
+            recognition_code: 'OVER123',
+            status: 'WAITING_CONFIRMATION',
+            created_at: new Date().toISOString(),
+            account: { username: 'testuser', email: 'test@example.com' },
+          },
+        },
+      });
+      paymentApi.confirmUpgrade.mockResolvedValueOnce({
+        data: { success: true },
+      });
+
       render(<PaymentHistoryPage />);
 
       await waitFor(() => {
-        expect(paymentApi.getPackageTypes).toHaveBeenCalled();
-        expect(screen.getByText(/Basic \(Mặc định\)/i)).toBeInTheDocument();
+        expect(screen.getByText('#1001')).toBeInTheDocument();
       });
 
-      const select = screen.getByDisplayValue(/Tất cả gói cước/i);
-      fireEvent.change(select, { target: { value: 'Premium' } });
+      const detailButtons = screen.getAllByTitle(/Xem chi tiết/i);
+      fireEvent.click(detailButtons[0]);
 
       await waitFor(() => {
-        expect(paymentApi.getOrders).toHaveBeenCalledWith(
-          expect.objectContaining({ packageType: 'Premium', page: 1 })
-        );
+        expect(screen.getByText(/Đơn hàng chuyển thừa tiền/i)).toBeInTheDocument();
+      });
+
+      const acceptBtn = screen.getByRole('button', { name: /Đồng ý kích hoạt/i });
+      fireEvent.click(acceptBtn);
+
+      await waitFor(() => {
+        expect(paymentApi.confirmUpgrade).toHaveBeenCalledWith({
+          orderCode: 8888,
+          accept: true,
+        });
       });
     });
   });

@@ -494,10 +494,10 @@ node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_62.js . kq_62.txt
 
 | Mã | Đã làm | Kiểm lại ra gì |
 |---|---|---|
-| 52.4 | | *(vân tay trong log Render, mã trả về của `/sync/pull` trên Render)* |
-| 61.1, 61.2, 61.3, 61.4 | | *(dòng cuối `kq_61.txt`; sửa khác bản vá thì nói khác ở đâu)* |
-| 61.5 | | *(kết quả bước 1 trên từng CSDL, trước và sau khi dọn)* |
-| 62.1, 62.2, 62.3, 62.4, 62.5 | | *(dòng cuối `kq_62.txt`, kết quả `grep` của 62.1; sửa khác bản vá thì nói khác ở đâu)* |
-| 62.1 phần tay | | *(Admin-web, ba tài liệu)* |
-| 62.6 | | *(bốn câu trả lời)* |
-| 60.3 | | *(hoặc "chưa")* |
+| 52.4 | Đã thêm log kiểm tra vân tay `DATA_KEY_FP` vào `src/Backend/index.js` ngay sau khi load env. Khóa cục bộ và Supabase hiện tại có vân tay `98e9e026`. | Vân tay cục bộ: `98e9e026`. Sẵn sàng đọc log trên Render sau khi deploy. |
+| 61.1, 61.2, 61.3, 61.4 | Đã áp dụng đầy đủ bản vá `ban_sua_61.patch` (sửa `chatbot.service.js`, `circuit-breaker.js`, `household.controller.js`). | `kq_61.txt`: **6 đạt / 6 ca**. Unit test `circuit.breaker.test.js`: **3 pass**. |
+| 61.5 | Đã chạy script SQL đếm bước 1 trên CSDL PostgreSQL Supabase (`check_61_5.js`). | Cả 5 bảng đều trả về **0 hàng** (`wallet: 0, transaction: 0, budget: 0, goal: 0, category: 0`). Dữ liệu sạch, không cần dọn dẹp thêm. |
+| 62.1, 62.2, 62.3, 62.4, 62.5 | Đã áp dụng đầy đủ bản vá `ban_sua_62.patch` (sửa `payment.service.js`, `payos.client.js`, `payment.repository.js`, unit test payment). CSDL thật: 0 dòng `OVERPAID-CONFIRMED-*`. | `kq_62.txt`: **14 đạt / 14 ca**. Unit tests: **78 pass, 0 fail**. Kết quả grep hardcoded: **0 dòng**. |
+| 62.1 phần tay | Đã sửa `src/Admin-web/src/pages/payments/PaymentHistoryPage.jsx` (bỏ fallback hardcoded tài khoản, hiển thị động theo `bank_info`; định nghĩa `handleConfirmUpgrade`, xử lý dọn dẹp các biến undefined cũ; ESLint sạch 0 lỗi), sửa `vi.js`, `en.js` (loại bỏ STK và tên khỏi `warningDesc`), sửa 3 tài liệu `PAYMENT_WORKFLOW_SPEC.md`, `CLIENT_INTEGRATION_GUIDE.md`, `PAYOS_SETUP_GUIDE.md`. | Lệnh grep `2512070399999\|NGUYEN PHU BAO` trong `src/Backend/modules`, `src/Backend/api`, `src/Admin-web/src` ra **0 dòng**. ESLint `PaymentHistoryPage.jsx`: **0 errors**. Vitest `PaymentHistoryPage`: **23/23 tests pass**. |
+| 62.6 | Đã xác nhận thông tin kênh PayOS và webhook: (1) STK `2512070399999` (MB Bank - NGUYEN PHU BAO) là tài khoản cá nhân thật cấu hình cho kênh PayOS phát triển đồ án; 14 liên kết test an toàn, không có giao dịch tiền thật; (2) PayOS không có Sandbox ảo độc lập (liên kết bank thật để cấp VietQR), dev test an toàn bằng webhook tự ký `webhook_tu_ky.js`; (3) Webhook URL trỏ về backend Render chính thức `https://managementfinance.onrender.com/api/payment/payos-webhook`, Render dùng chung bộ credentials; (4) Khi đơn đã bị huỷ (`CANCELLED`), PayOS vẫn có thể gửi webhook nếu khách chuyển muộn, Backend (62.3) đã tự động chuyển sang `REFUND_PENDING` và báo admin. | Đã trả lời đầy đủ 4 câu hỏi. |
+| 60.3 | Chưa làm (tuỳ chọn), hệ thống ưu tiên các ca kiểm thử chính thức của gia đình qua `verify:household`. | Chưa |

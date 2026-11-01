@@ -123,9 +123,9 @@ Authorization: Bearer <ACCESS_TOKEN_CUA_USER>
       "amount": 49000,
       "currency": "VND",
       "checkoutUrl": "https://pay.payos.vn/web/917cb5046bc748f59fb2eba01f6a56cc",
-      "qrCode": "00020101021238570010A0000007270127000697042201132512070399999...",
-      "accountNumber": "2512070399999",
-      "accountName": "NGUYEN PHU BAO",
+      "qrCode": "00020101021238570010A000000727012700069704220113190366668888...",
+      "accountNumber": "190366668888",
+      "accountName": "CONG TY FLOWMONEY",
       "bin": "970422",
       "description": "PFM Premium 1 Thang",
       "expiredAt": "2026-10-05T19:09:30.000Z"
@@ -237,12 +237,12 @@ Nếu Client muốn giữ trải nghiệm 100% Native mà không bật trình du
 1. **Hiển thị ảnh VietQR:**
    Client sử dụng URL ảnh VietQR chuẩn Napas với các thông tin Backend đã trả về:
    ```text
-   https://img.vietqr.io/image/970422-2512070399999-compact2.png?amount=49000&addInfo=PFM%20Premium%201%20Thang&accountName=NGUYEN%20PHU%20BAO
+   https://img.vietqr.io/image/970422-190366668888-compact2.png?amount=49000&addInfo=PFM%20Premium%201%20Thang&accountName=CONG%20TY%20FLOWMONEY
    ```
 2. **Hiển thị thông tin chuyển khoản bằng chữ:**
    - Ngân hàng: **MB Bank (Ngân hàng TMCP Quân đội)**
-   - Số tài khoản: **`2512 0703 9999 9`**
-   - Chủ tài khoản: **`NGUYEN PHU BAO`**
+   - Số tài khoản: **`1903 6666 8888`**
+   - Chủ tài khoản: **`CONG TY FLOWMONEY`**
    - Số tiền: **`49.000 đ`**
    - Nội dung chuyển khoản: **`PFM Premium 1 Thang`** (kèm nút copy tiện lợi)
 3. **Nút "Mở trang thanh toán / Mở App ngân hàng":**

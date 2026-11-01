@@ -7,6 +7,21 @@ const permissionRepository = require('./permission.repository');
 const payosClient = require('./payos.client');
 
 /**
+ * Đọc giờ giao dịch của PayOS (đơn 62.5). PayOS gửi giờ Việt Nam không kèm múi giờ; `new Date()` đọc chuỗi
+ * ấy theo giờ của tiến trình nên máy chủ UTC ghi muộn 7 giờ. Chuỗi đã có múi giờ thì giữ nguyên.
+ * @param {string} [giaTri]
+ * @param {Date} macDinh Dùng khi thiếu hoặc không đọc được
+ * @returns {Date}
+ */
+function docGioPayOS(giaTri, macDinh) {
+  if (!giaTri) return macDinh;
+  const chuoi = String(giaTri).trim();
+  const khongMuiGio = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(chuoi);
+  const gio = new Date(khongMuiGio ? `${chuoi.replace(' ', 'T')}+07:00` : chuoi);
+  return Number.isNaN(gio.getTime()) ? macDinh : gio;
+}
+
+/**
  * Tạo đơn hàng nâng cấp Premium và lấy link thanh toán VietQR từ PayOS
  * @param {number} idaccount 
  * @param {object} param1 
@@ -26,10 +41,8 @@ async function createPremiumOrder(idaccount, { packageType = 'Premium' } = {}) {
     expiredAt: Math.floor(expiredAt.getTime() / 1000),
   });
 
-  const transferContent = payosResponse.description || `CS... ${recognitionCode}`;
-  const bin = payosResponse.bin || '970422';
-  const accountNumber = payosResponse.accountNumber || '2512070399999';
-  const accountName = payosResponse.accountName || 'NGUYEN PHU BAO';
+  const { bin, accountNumber, accountName, description } = payosClient.thongTinNhanTien(payosResponse);
+  const transferContent = description || recognitionCode;
   const qrUrl = `https://img.vietqr.io/image/${bin}-${accountNumber}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(accountName)}`;
 
   // Lưu bản ghi đơn hàng trạng thái PENDING với mã nhận diện 6 ký tự và qr_url bền vững
@@ -81,9 +94,9 @@ async function createPremiumOrder(idaccount, { packageType = 'Premium' } = {}) {
     checkoutUrl: order.checkout_url || payosResponse.checkoutUrl,
     qrUrl,
     qrCode: payosResponse.qrCode || null,
-    bin: payosResponse.bin || null,
-    accountNumber: payosResponse.accountNumber || null,
-    accountName: payosResponse.accountName || null,
+    bin,
+    accountNumber,
+    accountName: accountName || null,
     description: transferContent,
     expiredAt: order.expired_at || expiredAt,
   };
@@ -133,10 +146,8 @@ async function handlePayOSWebhook(webhookPayload) {
     return { success: true, message: 'Đơn hàng không tồn tại trong hệ thống' };
   }
 
-  const now = new Date();
-  const txTime = transactionDateTime ? new Date(transactionDateTime) : now;
+  const txTime = docGioPayOS(transactionDateTime, new Date());
   const receivedAmount = Number(amount);
-  const expectedAmount = Number(order.amount);
 
   // Băm SHA-256 payload webhook để lưu vết đối soát (Data_Security.md)
   const rawWebhookHash = crypto
@@ -155,6 +166,45 @@ async function handlePayOSWebhook(webhookPayload) {
     signatureVerified: true,
     rawWebhookHash,
   };
+
+  // Tiền vào một đơn đã huỷ (đơn 62.3): không kích hoạt, đưa vào hàng hoàn tiền để admin thấy.
+  // Lần phát lại đã thấy REFUND_PENDING nên rơi xuống nhánh idempotent bên dưới.
+  if (order.status === 'CANCELLED' && !order.is_template) {
+    await paymentRepository.recordTransaction(txData);
+    await paymentRepository.updateOrderPaymentStatus({
+      orderId: order.id,
+      status: 'REFUND_PENDING',
+      amountReceived: receivedAmount,
+      refundReason: 'Nhận tiền sau khi đơn đã huỷ',
+      transferContent: description || order.transfer_content,
+    });
+
+    try {
+      const { emitToAccount, getIO } = require('../../core/socket');
+      emitToAccount(order.idaccount, 'payment.order_cancelled', {
+        orderId: order.id,
+        orderCode: Number(order.order_code || orderCode),
+        status: 'REFUND_PENDING',
+        amountReceived: receivedAmount,
+      });
+      const io = getIO();
+      if (io) {
+        io.to('admin_room').emit('payment.refund_pending', {
+          orderId: order.id,
+          orderCode: Number(order.order_code || orderCode),
+          amount: receivedAmount,
+          reason: 'Nhận tiền sau khi đơn đã huỷ',
+        });
+      }
+    } catch (_) {}
+
+    logger.warn('[PAYMENT_WEBHOOK] Nhận tiền cho đơn đã huỷ, chuyển hàng hoàn tiền', { orderCode, amount: receivedAmount });
+    return {
+      success: true,
+      action: 'REFUND_PENDING',
+      message: 'Đơn đã huỷ nhận được tiền, đã chuyển trạng thái chờ hoàn trả',
+    };
+  }
 
   // 3. Xử lý Idempotency - Tránh Replay Attack và chống kéo ngược trạng thái
   // Chỉ tiếp tục xử lý thanh toán nếu đơn hàng còn ở trạng thái PENDING hoặc EXPIRED
@@ -208,6 +258,19 @@ async function handlePayOSWebhook(webhookPayload) {
       message: 'Giao dịch mẫu đã đối soát thành công qua PayOS',
     };
   }
+
+  return xuLyTienVaoDon(order, { orderCode, receivedAmount, txData, txTime, description });
+}
+
+/**
+ * Phân luồng một khoản tiền đã vào đơn theo số tiền (đơn 62.2). Webhook và JIT đi chung một đường.
+ * @param {object} order
+ * @param {object} param1 { orderCode, receivedAmount, txData, txTime, description }
+ * @returns {Promise<object>} `action` là trạng thái mới của đơn
+ */
+async function xuLyTienVaoDon(order, { orderCode, receivedAmount, txData, txTime, description }) {
+  const now = new Date();
+  const expectedAmount = Number(order.amount);
 
   // -------------------------------------------------------------
   // PHÂN LUỒNG 6.1 VS 6.2 THEO ĐẶC TẢ TÀI CHÍNH
@@ -303,8 +366,9 @@ async function handlePayOSWebhook(webhookPayload) {
   const DURATION_MS = (config.payment.packageDurationDays || 30) * 24 * 60 * 60 * 1000;
 
   let currentExpiry = null;
-  if (order.account && order.account.type === 'Premium' && order.account.premium_expires_at) {
-    const expDate = new Date(order.account.premium_expires_at);
+  const taiKhoan = order.account || await paymentRepository.findAccountSubscription(order.idaccount);
+  if (taiKhoan && taiKhoan.type === 'Premium' && taiKhoan.premium_expires_at) {
+    const expDate = new Date(taiKhoan.premium_expires_at);
     if (expDate > now) {
       currentExpiry = expDate;
     }
@@ -426,15 +490,7 @@ async function confirmUpgrade(idaccount, { orderCode, accept } = {}) {
       orderId: order.id,
       paidAt: now,
       newExpiresAt,
-      transactionData: {
-        id: crypto.randomUUID(),
-        payosTransactionId: `OVERPAID-CONFIRMED-${orderCode}`,
-        amount: Number(order.amount_received || order.amount),
-        bankCode: 'VIETQR',
-        transactionTime: now,
-        signatureVerified: true,
-        rawWebhookHash: 'CONFIRMED_BY_USER',
-      },
+      // Không truyền transactionData (đơn 62.4): khoản tiền đã có dòng từ webhook, `amount_received` giữ nguyên.
     });
 
     // Cập nhật trạng thái Active cho household nếu là chủ hộ (Task 56.7)
@@ -569,7 +625,7 @@ async function simulateWebhook({ orderCode, simulateType = 'EXACT' }) {
       orderCode: Number(order.order_code),
       amount: simulatedAmount,
       description: order.transfer_content || `CSCYDEZ2N10 ${order.recognition_code || 'MOCK6C'}`,
-      accountNumber: '2512070399999',
+      accountNumber: '0000000000',
       reference: `SIM-REF-${Date.now()}`,
       transactionDateTime: new Date().toISOString(),
       counterAccountBankId: 'MBBANK',
@@ -606,6 +662,48 @@ async function syncOrderWithPayOS(order) {
     const payosInfo = await payosClient.getPaymentLinkInfo(orderCode);
 
     if (payosInfo) {
+      // Có tiền thì xét trước mọi trạng thái (đơn 62.2): không được rơi vào nhánh huỷ / hết hạn.
+      const daTra = Number(payosInfo.amountPaid || 0);
+      if (payosInfo.status === 'PAID' || daTra > 0) {
+        logger.info('[PAYOS_JIT_SYNC] Phát hiện đơn hàng đã có tiền trên PayOS (Bù trừ Webhook)', { orderCode, orderId: order.id, status: payosInfo.status, daTra });
+        const receivedAmount = daTra > 0 ? daTra : Number(order.amount);
+        const latestTx = Array.isArray(payosInfo.transactions) && payosInfo.transactions.length > 0
+          ? payosInfo.transactions[payosInfo.transactions.length - 1]
+          : null;
+        const txTime = docGioPayOS(latestTx?.transactionDateTime, new Date());
+
+        const ketQua = await xuLyTienVaoDon(order, {
+          orderCode,
+          receivedAmount,
+          txTime,
+          description: latestTx?.description,
+          txData: {
+            id: crypto.randomUUID(),
+            orderId: order.id,
+            idaccount: order.idaccount,
+            amount: receivedAmount,
+            payosTransactionId: latestTx?.reference || latestTx?.transactionId || `JIT_${order.id}_${Date.now()}`,
+            bankCode: latestTx?.counterAccountBankName || 'PAYOS_JIT',
+            transactionTime: txTime,
+            signatureVerified: true,
+            rawWebhookHash: 'JIT_SYNC_DIRECT_API',
+          },
+        });
+
+        order.status = ketQua.action;
+        order.amount_received = receivedAmount;
+        order.qr_url = null;
+        order.checkout_url = null;
+        order.bank_info = null;
+        if (ketQua.action === 'PAID') order.paid_at = txTime;
+        return order;
+      }
+
+      // Ngân hàng đang xử lý: giữ PENDING, kể cả đã quá hạn cục bộ.
+      if (payosInfo.status === 'PROCESSING') {
+        return order;
+      }
+
       if (payosInfo.status === 'CANCELLED') {
         logger.info('[PAYOS_JIT_SYNC] Phát hiện đơn hàng đã bị hủy trên PayOS', { orderCode, orderId: order.id });
         await paymentRepository.updateOrderSyncStatus(order.id, {
@@ -670,87 +768,6 @@ async function syncOrderWithPayOS(order) {
               orderId: order.id,
               orderCode: Number(orderCode),
               status: 'EXPIRED',
-            });
-          }
-        } catch (_) {}
-
-        return order;
-      }
-
-      if (payosInfo.status === 'PAID') {
-        logger.info('[PAYOS_JIT_SYNC] Phát hiện đơn hàng đã được thanh toán trên PayOS (Bù trừ Webhook)', { orderCode, orderId: order.id });
-        const receivedAmount = Number(payosInfo.amountPaid || order.amount);
-        const paidAt = new Date();
-
-        const DURATION_MS = (config.payment?.packageDurationDays || 30) * 24 * 60 * 60 * 1000;
-        let currentExpiry = null;
-        let accountObj = order.account;
-        if (!accountObj && order.idaccount) {
-          accountObj = await paymentRepository.findAccountSubscription(order.idaccount);
-        }
-        if (accountObj && accountObj.type === 'Premium' && accountObj.premium_expires_at) {
-          const expDate = new Date(accountObj.premium_expires_at);
-          if (expDate > paidAt) {
-            currentExpiry = expDate;
-          }
-        }
-        const newExpiresAt = currentExpiry 
-          ? new Date(currentExpiry.getTime() + DURATION_MS) 
-          : new Date(paidAt.getTime() + DURATION_MS);
-
-        const latestTx = Array.isArray(payosInfo.transactions) && payosInfo.transactions.length > 0 
-          ? payosInfo.transactions[payosInfo.transactions.length - 1] 
-          : null;
-        
-        const txData = {
-          id: crypto.randomUUID(),
-          amount: receivedAmount,
-          payosTransactionId: latestTx?.reference || latestTx?.transactionId || `JIT_${order.id}_${Date.now()}`,
-          bankCode: latestTx?.counterAccountBankName || 'PAYOS_JIT',
-          transactionTime: latestTx?.transactionDateTime ? new Date(latestTx.transactionDateTime) : paidAt,
-          signatureVerified: true,
-          rawWebhookHash: 'JIT_SYNC_DIRECT_API',
-        };
-
-        await paymentRepository.activatePremiumSubscription({
-          idaccount: order.idaccount,
-          orderId: order.id,
-          paidAt,
-          newExpiresAt,
-          transactionData: txData,
-        });
-
-        // Cập nhật trạng thái Active cho household nếu là chủ hộ (Task 56.7)
-        try {
-          const householdService = require('../household/household.service');
-          await householdService.updateHouseholdStatusByOwner(order.idaccount);
-        } catch (_) {}
-
-        order.status = 'PAID';
-        order.qr_url = null;
-        order.checkout_url = null;
-        order.bank_info = null;
-        order.paid_at = paidAt;
-
-        try {
-          const { emitToAccount, getIO } = require('../../core/socket');
-          if (order.idaccount) {
-            emitToAccount(order.idaccount, 'payment.success', {
-              orderId: order.id,
-              orderCode: Number(orderCode),
-              status: 'PAID',
-            });
-            emitToAccount(order.idaccount, 'account.upgraded', {
-              type: 'Premium',
-              premiumExpiresAt: newExpiresAt,
-            });
-          }
-          const io = getIO();
-          if (io) {
-            io.to('admin_room').emit('payment.order_paid', {
-              orderId: order.id,
-              orderCode: Number(orderCode),
-              status: 'PAID',
             });
           }
         } catch (_) {}

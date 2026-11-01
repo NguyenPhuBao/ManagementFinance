@@ -221,7 +221,7 @@ class ChatbotService {
             }
           }
         }
-      });
+      }, { boQuaLoi: () => signal?.aborted === true });
 
       const duration = Date.now() - startTime;
       logger.info(`[ChatbotService] Hoàn tất phiên chat streaming trong ${duration}ms`);
@@ -230,7 +230,9 @@ class ChatbotService {
         onDone({ responseTimeMs: duration });
       }
     } catch (error) {
-      if (signal?.aborted || error.name === 'AbortError' || error.message?.includes('aborted')) {
+      // Chỉ signal của client mới nghĩa là người dùng dừng. Hết giờ `timeout: 60000` của SDK cũng báo chữ "aborted"
+      // nhưng client vẫn đang chờ: phải đi nhánh fallback để có `done`, không thì luồng treo tới khi client tự bỏ.
+      if (signal?.aborted) {
         logger.info('[ChatbotService] Client đã ngắt kết nối hoặc hủy request — bỏ qua xử lý fallback.');
         return;
       }
