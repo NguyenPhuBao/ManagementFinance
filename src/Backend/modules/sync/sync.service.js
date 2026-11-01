@@ -163,7 +163,7 @@ const syncService = {
     }
 
     if (entity === 'transaction') {
-      const isNewTx = operation !== 'delete' && (operation === 'create' || !existingRecord);
+      const isNewTx = operation !== 'delete' && !existingRecord;
       if (isNewTx) {
         const isTransfer = String(payload.type || '').toLowerCase() === 'transfer';
         if (isTransfer) {
@@ -173,7 +173,7 @@ const syncService = {
             });
           }
         }
-      } else if (operation === 'update' || operation === 'delete') {
+      } else {
         const isExistingTransfer = existingRecord && String(existingRecord.type || '').toLowerCase() === 'transfer';
         const isPayloadTransfer = operation !== 'delete' && String(payload.type || '').toLowerCase() === 'transfer';
         if ((isExistingTransfer || isPayloadTransfer) && membership.role !== 'Owner') {
@@ -191,7 +191,7 @@ const syncService = {
           }
         }
         // Khoản có mã cặp: chỉ người ghi được SỬA, Chủ nhà chỉ xoá (01 mục 3).
-        const laXoa = operation === 'delete' || payload.is_deleted === true || payload.isDeleted === true;
+        const laXoa = operation === 'delete';
         const coMaCap = existingRecord && (existingRecord.idfund_pair ?? existingRecord.Idfund_pair);
         if (coMaCap && !laXoa && creatorId !== null && Number(creatorId) !== Number(idaccount)) {
           throw Object.assign(new Error('Khoản góp / rút chỉ người ghi được sửa'), {

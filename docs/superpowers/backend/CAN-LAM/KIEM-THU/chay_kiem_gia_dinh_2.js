@@ -1,6 +1,7 @@
 // Kịch bản nghiệm thu gia đình 2a, chạy THẬT trên CSDL riêng flowmoney_kiem_thu. Socket và thư là bản giả.
 // Từ src/Backend: DATABASE_URL=<...flowmoney_kiem_thu> DIRECT_URL=<như trên> NODE_ENV=development \
-//   node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_gia_dinh_2.js . kq_2.txt
+//   LOG_LEVEL=error REDIS_PROVIDER=none REDIS_URL= \
+//   node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_gia_dinh_2.js . <tệp kết quả NGOÀI cây mã>
 // Dòng cuối phải là "N đạt / N ca". Có ca hỏng thì mã thoát 1.
 const path = require('path');
 const fs = require('fs');
@@ -87,7 +88,32 @@ const muctieu = (id, hh, nguoi) => ({ id, name: `M${id.slice(0, 6)}`, targetAmou
     return `${t.idfund_pair}|${Number(t.amount)}`;
   });
   await ca('2a', 'Chủ nhà sửa khoản góp của người khác bị từ chối', 'HOUSEHOLD_ROLE_FORBIDDEN', async () => ma(await push(A, 'transaction', gd(NN, W, H, B, { idfund_pair: P, amount: 9000 }))));
-  await ca('2a', 'Chủ nhà xoá khoản góp của người khác được', 'synced', async () => ma(await push(A, 'transaction', gd(NN, W, H, B, { idfund_pair: P, is_deleted: true }), 'delete')));
+  await ca('2a', 'sau lượt sửa, pull trả đúng mã và amount mới', `${P}|3500`, async () => {
+    const t = (await syncRepo.getTransactionsByAccount(B, null, H)).find((x) => x.idtran === NN);
+    return `${t.idfund_pair}|${Number(t.amount)}`;
+  });
+  await ca('2a', 'người ghi gửi idfund_pair null tường minh: mã giữ nguyên', P, async () => {
+    await push(B, 'transaction', gd(NN, W, H, B, { idfund_pair: null, amount: 3600 }));
+    return (await prisma.transaction.findUnique({ where: { idtran: NN } })).idfund_pair;
+  });
+  await ca('2a', 'người ghi gửi idfund_pair rỗng: mã giữ nguyên', P, async () => {
+    await push(B, 'transaction', gd(NN, W, H, B, { idfund_pair: '', amount: 3700 }));
+    return (await prisma.transaction.findUnique({ where: { idtran: NN } })).idfund_pair;
+  });
+  await ca('2a', 'Chủ nhà update + is_deleted trên khoản có mã của người khác bị từ chối', 'HOUSEHOLD_ROLE_FORBIDDEN', async () => ma(await push(A, 'transaction', gd(NN, W, H, B, { idfund_pair: P, is_deleted: true, amount: 9000 }))));
+  await ca('2a', 'khoản ấy không đổi amount / deleted_at', '3700|null', async () => {
+    const t = await prisma.transaction.findUnique({ where: { idtran: NN } });
+    return `${Number(t.amount)}|${t.deleted_at}`;
+  });
+  await ca('2a', 'Chủ nhà create đè lên hàng có mã của người khác bị từ chối', 'HOUSEHOLD_ROLE_FORBIDDEN', async () => ma(await push(A, 'transaction', gd(NN, W, H, B, { idfund_pair: P, amount: 9100 }), 'create')));
+  const KA = randomUUID();
+  await push(A, 'transaction', gd(KA, W, H, A), 'create');
+  await ca('2a', 'Thành viên create đè lên khoản thường của người khác bị từ chối', 'HOUSEHOLD_ROLE_FORBIDDEN', async () => ma(await push(B, 'transaction', gd(KA, W, H, B, { amount: 9200 }), 'create')));
+  await ca('2a', 'Chủ nhà xoá khoản góp của người khác được', 'synced|có deleted_at', async () => {
+    const r = ma(await push(A, 'transaction', gd(NN, W, H, B, { idfund_pair: P, is_deleted: true }), 'delete'));
+    const t = await prisma.transaction.findUnique({ where: { idtran: NN } });
+    return `${r}|${t.deleted_at ? 'có deleted_at' : 'deleted_at null'}`;
+  });
   const T = randomUUID();
   await ca('2a', 'Transfer không được mang mã cặp', 'HOUSEHOLD_SCOPE_MISMATCH', async () => ma(await push(A, 'transaction', gd(T, W, H, A, { type: 'Transfer', idwallet_transfer: W, idfund_pair: randomUUID() }), 'create')));
   const K = randomUUID();

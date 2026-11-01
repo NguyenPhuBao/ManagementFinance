@@ -516,7 +516,7 @@ const syncRepository = {
           idwallet_transfer: mapped.idwallet_transfer !== undefined ? mapped.idwallet_transfer : existing.idwallet_transfer,
           idgoal: mapped.idgoal !== undefined ? mapped.idgoal : existing.idgoal,
           idbill: mapped.idbill !== undefined ? mapped.idbill : existing.idbill,
-          idfund_pair: mapped.idfund_pair !== undefined ? mapped.idfund_pair : existing.idfund_pair,
+          idfund_pair: mapped.idfund_pair || existing.idfund_pair,
           bank_tran_id: mapped.bank_tran_id !== undefined ? mapped.bank_tran_id : existing.bank_tran_id,
           amount: mapped.amount ?? existing.amount,
           type: mapped.type ?? existing.type,
