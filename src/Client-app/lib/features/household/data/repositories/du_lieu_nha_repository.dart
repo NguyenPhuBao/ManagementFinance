@@ -1,3 +1,4 @@
+import '../../../category/data/models/category_entity.dart';
 import '../../../category/data/models/category_tree.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
@@ -14,6 +15,11 @@ abstract class DuLieuNhaRepository {
 
   /// Mọi khoản sống của nhà, kể cả do người khác ghi. Có [walletId] thì gồm cả khoản chuyển ĐẾN ví ấy.
   Stream<List<TransactionEntity>> theoDoiKhoan(int idNha, {String? walletId});
+
+  /// Bảng tra TÊN danh mục cho dòng khoản của nhà: danh mục của tài khoản, khuôn mặc định VÀ danh mục của nhà, kể cả hàng xoá
+  /// mềm (khoản cũ vẫn trỏ vào nó). Bọc `categoryDao.watchBangTraTen` — định nghĩa duy nhất của bảng tra (quy tắc 8), không phải
+  /// danh sách để CHỌN. [idaccount] từ phiên.
+  Stream<List<CategoryEntity>> theoDoiBangTraDanhMuc(int idaccount);
 
   /// [idaccount] là người tạo — tầng trên lấy từ phiên, không có mặc định.
   Future<WalletEntity> taoViChung({

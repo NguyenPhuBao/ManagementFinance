@@ -28,6 +28,7 @@ import '../../features/household/data/repositories/nha_repository.dart';
 import '../../features/household/data/them_giao_dich_nguon_nha.dart';
 import '../../features/household/domain/quyen_nha.dart';
 import '../../features/transaction/presentation/state/che_do_nha_form.dart';
+import '../../features/household/presentation/pages/hoat_dong_nha_page.dart';
 import '../../features/household/presentation/pages/moi_thanh_vien_page.dart';
 import '../../features/household/presentation/pages/nha_minh_page.dart';
 import '../../features/household/presentation/pages/quan_ly_thanh_vien_page.dart';
@@ -351,6 +352,11 @@ class AppRouter {
             builder: (_, state) => sl<NhaRepository>().hienTai.nha == null
                 ? const NhaMinhPage()
                 : ViChungFormPage(idVi: state.pathParameters['id']),
+          ),
+          // Hoạt động của nhà (1B Task 6): mọi thành viên xem được, kể cả Chỉ xem — không cửa quyền. Nhà đã mất → Nhà mình, không `!`.
+          GoRoute(
+            path: '/nha/hoat-dong',
+            builder: (_, __) => sl<NhaRepository>().hienTai.nha == null ? const NhaMinhPage() : const HoatDongNhaPage(),
           ),
           // Ghi / sửa khoản của nhà (1B): MỘT cửa — không có quyền ghi thì về Nhà mình. KHÔNG dùng `/add`: nút + thanh dưới
           // và deeplink cũ không được vào phạm vi nhà (test `duong_nha_noi_day_test`). `?vi=` ví đứng đầu bộ chọn,

@@ -4,7 +4,9 @@ library;
 
 import 'dart:async';
 
+import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/household/data/repositories/du_lieu_nha_repository.dart';
+import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/household/domain/hang_chua_day.dart';
 import 'package:flowmoney/features/wallet/application/dieu_chinh_so_du_service.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
@@ -63,6 +65,40 @@ class DuLieuNhaGia implements DuLieuNhaRepository {
     daTheoDoi.add(idNha);
     yield _vi;
     yield* _ctl.stream;
+  }
+
+  List<TransactionEntity> _khoan = const [];
+  List<CategoryEntity> _danhMuc = const [];
+  final _ctlKhoan = StreamController<List<TransactionEntity>>.broadcast();
+  final _ctlDanhMuc = StreamController<List<CategoryEntity>>.broadcast();
+
+  /// Lời gọi `theoDoiKhoan` (idNha, walletId) và `theoDoiBangTraDanhMuc` (idaccount).
+  final goiKhoan = <(int, String?)>[];
+  final goiBangTra = <int>[];
+
+  /// Đổi danh sách khoản của nhà (phát ngay cho người đang nghe).
+  void datKhoan(List<TransactionEntity> ds) {
+    _khoan = ds;
+    _ctlKhoan.add(ds);
+  }
+
+  void datDanhMuc(List<CategoryEntity> ds) {
+    _danhMuc = ds;
+    _ctlDanhMuc.add(ds);
+  }
+
+  @override
+  Stream<List<TransactionEntity>> theoDoiKhoan(int idNha, {String? walletId}) async* {
+    goiKhoan.add((idNha, walletId));
+    yield _khoan;
+    yield* _ctlKhoan.stream;
+  }
+
+  @override
+  Stream<List<CategoryEntity>> theoDoiBangTraDanhMuc(int idaccount) async* {
+    goiBangTra.add(idaccount);
+    yield _danhMuc;
+    yield* _ctlDanhMuc.stream;
   }
 
   @override

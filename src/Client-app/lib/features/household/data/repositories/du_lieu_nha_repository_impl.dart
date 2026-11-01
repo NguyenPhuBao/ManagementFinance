@@ -45,6 +45,10 @@ class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
       .map((rows) => rows.map(TransactionEntity.fromDrift).toList());
 
   @override
+  Stream<List<CategoryEntity>> theoDoiBangTraDanhMuc(int idaccount) =>
+      _db.categoryDao.watchBangTraTen(idaccount).map((rows) => rows.map(CategoryEntity.fromDrift).toList());
+
+  @override
   Future<WalletEntity> taoViChung({
     required int idNha,
     required int idaccount,

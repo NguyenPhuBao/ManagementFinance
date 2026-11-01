@@ -21,6 +21,7 @@ import '../widgets/hop_xac_nhan_nha.dart';
 import '../widgets/nha_minh/danh_sach_thanh_vien.dart';
 import '../widgets/nha_minh/khoi_chua_co_nha.dart';
 import '../widgets/nha_minh/khoi_vi_chung.dart';
+import '../widgets/nha_minh/the_loi_vao_nha.dart';
 import '../widgets/nha_minh/the_nha.dart';
 import '../widgets/the_loi_moi_dang_cho.dart';
 
@@ -179,6 +180,9 @@ class _NhaMinhPageState extends State<NhaMinhPage> {
           );
         },
       ),
+      const SizedBox(height: 16),
+      // Lối vào Hoạt động đi cùng khối ví chung: cùng cần nguồn dữ liệu nhà.
+      TheLoiVaoNha(onHoatDong: () => unawaited(context.push('/nha/hoat-dong'))),
       const SizedBox(height: 16),
     ];
   }

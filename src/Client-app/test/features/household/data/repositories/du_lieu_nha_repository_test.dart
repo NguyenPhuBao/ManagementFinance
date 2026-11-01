@@ -370,6 +370,31 @@ void main() {
           reason: 'ví riêng không xoá qua đường ví chung');
     });
 
+    test('theoDoiBangTraDanhMuc: danh mục của nhà (cả hàng xoá mềm) tra được tên; danh mục người khác thì không', () async {
+      Future<void> dm(String id, String ten, {int idaccount = 10, int? nha, bool xoa = false}) =>
+          db.categoryDao.insert(CategoriesCompanion.insert(
+            id: id,
+            idaccount: idaccount,
+            name: ten,
+            classify: 'chi',
+            idhousehold: Value(nha),
+            isDeleted: Value(xoa),
+            deletedAt: Value(xoa ? moc : null),
+            updatedAt: moc,
+          ));
+      await dm('c-nha', 'Tiền chợ', idaccount: 20, nha: 7);
+      await dm('c-nha-xoa', 'Học phí cũ', idaccount: 20, nha: 7, xoa: true);
+      await dm('c-rieng', 'Cá nhân của tôi');
+      await dm('c-nguoi-khac', 'Của người khác', idaccount: 99);
+
+      final ds = await repo.theoDoiBangTraDanhMuc(10).first;
+      final ten = {for (final c in ds) c.id: c.name};
+      expect(ten['c-nha'], 'Tiền chợ', reason: 'danh mục nhà do người khác tạo vẫn tra được');
+      expect(ten['c-nha-xoa'], 'Học phí cũ', reason: 'khoản cũ trỏ danh mục đã xoá mềm vẫn phải hiện tên');
+      expect(ten['c-rieng'], 'Cá nhân của tôi');
+      expect(ten.containsKey('c-nguoi-khac'), isFalse, reason: 'bảng tra là định nghĩa của watchBangTraTen');
+    });
+
     test('napCayDanhMuc: nhóm, con, chưa nhóm của đúng nhà, đúng classify', () async {
       Future<void> dm(String id, {int? nha, String classify = 'chi', bool nhom = false, String? cha, bool xoa = false}) =>
           db.categoryDao.insert(CategoriesCompanion.insert(

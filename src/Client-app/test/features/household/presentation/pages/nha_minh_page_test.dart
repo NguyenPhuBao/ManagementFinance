@@ -390,7 +390,8 @@ void main() {
 
   testWidgets('dòng ví chưa có route chi tiết (Task 7): không chevron, chạm không phản ứng', (t) async {
     await moVi(t, vi: [tienCho]);
-    expect(find.byIcon(Icons.chevron_right), findsNothing, reason: 'không nút nào dẫn tới route chưa có');
+    expect(find.descendant(of: find.byKey(const Key('dong-vi-a')), matching: find.byIcon(Icons.chevron_right)), findsNothing,
+        reason: 'dòng ví không dẫn tới route chưa có (chevron của thẻ lối vào Hoạt động ở ngoài dòng ví)');
     await t.tap(find.text('Tiền chợ'));
     await t.pumpAndSettle();
     expect(find.text('Tiền chợ'), findsOneWidget);
@@ -410,6 +411,27 @@ void main() {
     await repo.lamMoi();
     await t.pumpAndSettle();
     expect(nguon.daTheoDoi, [12, 13], reason: 'ví của nhà cũ không được hiện dưới nhà mới');
+  });
+
+  testWidgets('lối vào Hoạt động (Stitch d2a8c9bb 1.4): có thẻ hai dòng chữ, chạm mở /nha/hoat-dong', (t) async {
+    dat360(t);
+    bat = batThongBao();
+    final repo = await repoNhaThu(HouseholdApiGia()..cuaToiJson = nhaJson());
+    final nguon = DuLieuNhaGia(vi: [tienCho]);
+    final r = GoRouter(initialLocation: '/nha', routes: [
+      GoRoute(path: '/nha', builder: (_, __) => NhaMinhPage(repo: repo, duLieu: nguon)),
+      GoRoute(path: '/nha/hoat-dong', builder: (_, __) => const Scaffold(body: Text('HOAT-DONG'))),
+    ]);
+    addTearDown(r.dispose);
+    await t.pumpWidget(bocRouterNha(r, goi: goiPremium(const {}), idaccount: 18));
+    await t.pumpAndSettle();
+    expect(find.text('Hoạt động'), findsOneWidget);
+    expect(find.text('Mọi khoản của nhà'), findsOneWidget);
+    expect(find.byKey(const Key('loi-vao-danh-muc')), findsNothing, reason: 'Danh mục của nhà do Task 11 bật: không dòng trỏ route chưa có');
+    await t.ensureVisible(find.byKey(const Key('loi-vao-hoat-dong')));
+    await t.tap(find.byKey(const Key('loi-vao-hoat-dong')));
+    await t.pumpAndSettle();
+    expect(find.text('HOAT-DONG'), findsOneWidget);
   });
 
   testWidgets('không có nguồn dữ liệu nhà (test cũ, chưa đăng ký DI): không dựng khối, không ném', (t) async {

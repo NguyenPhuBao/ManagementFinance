@@ -81,6 +81,7 @@ import '../../features/household/data/nha_store.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
 import '../../features/household/application/gop_quy_conflict_resolver.dart';
 import '../../features/household/application/gop_quy_service.dart';
+import '../../features/household/application/thao_tac_khoan_nha.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository_impl.dart';
 import '../../features/household/data/them_giao_dich_nguon_nha.dart';
 import '../../features/household/data/repositories/nha_repository.dart';
@@ -638,6 +639,9 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         soDuVi: sl(),
         henDongBo: () => sl<SyncEngine>().scheduleSync(),
       ));
+  // Xoá một khoản của nhà từ màn Hoạt động: khoản cặp đi `GopQuyService`, khoản thường đi repository giao dịch.
+  sl.registerLazySingleton<ThaoTacKhoanNha>(
+      () => ThaoTacKhoanNha(giaoDich: sl<TransactionRepository>(), gopQuy: sl<GopQuyService>()));
   // Giữ hai nửa góp / rút khớp nhau. `batDauNghe` gọi MỘT lần qua `noiBoNgheKetQuaDay`. Tài khoản phiên lấy cùng nguồn với
   // `SoDuViService` (`GoiRepository.idaccount`): lượt nền chưa đặt tài khoản thì `null` và resolver không gỡ gì.
   sl.registerLazySingleton<GopQuyConflictResolver>(() => GopQuyConflictResolver(
