@@ -21,7 +21,15 @@ Future<bool> lamCoHoiHangChuaDay(
 }) async {
   if (await viec()) return true;
   if (!cubit.vuaGapHangChuaDay || !context.mounted) return false;
-  final hang = await moTa();
+  // `moTa` ném (đọc hàng chờ hỏng) mà bay ra `unawaited(...)` của trang là không hộp, không toast; ở Giải tán còn nhảy qua
+  // `_tuThaoTac = false` làm `GacVaiChu` câm suốt màn. Báo câu của hàng chưa đẩy rồi dừng.
+  final HangChuaDayNha hang;
+  try {
+    hang = await moTa();
+  } catch (_) {
+    baoNhanh(cauLoiNha(LoaiLoiNha.hangChuaDay), loai: LoaiThongBao.loi);
+    return false;
+  }
   // Đếm lại ra rỗng: lượt bù vừa đẩy xong, chỉ cần làm lại. Vẫn vướng thì `_lam` không toast cho `hangChuaDay`: phải tự báo.
   if (hang.rong) {
     if (await viec()) return true;

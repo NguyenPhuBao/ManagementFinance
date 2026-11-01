@@ -95,6 +95,25 @@ void main() {
     expect(soLanMoTa, 1);
   });
 
+  testWidgets('FINAL: đếm hàng chưa đẩy (moTa) ném — trả false và báo câu, không để lỗi bay ra ngoài', (t) async {
+    await mo(t);
+    Object? loiBay;
+    final f = lamCoHoiHangChuaDay(
+      ctx,
+      cubit: cubit,
+      viec: cubit.roiNha,
+      moTa: () async => throw StateError('đọc hàng chờ hỏng'),
+      nhanLam: 'Vẫn rời nhà',
+    );
+    f.then((v) => ketQua = v, onError: (Object e) => loiBay = e);
+    await t.pumpAndSettle();
+    expect(loiBay, isNull,
+        reason: 'lỗi bay ra `unawaited(_roiNha())`: không hộp, không toast; ở Giải tán còn nhảy qua `_tuThaoTac = false`');
+    expect(ketQua, isFalse);
+    expect(bat.cau, [cauLoiNha(LoaiLoiNha.hangChuaDay)], reason: 'phải có câu, không im lặng');
+    expect(api.goi, isNot(contains('roiNha')));
+  });
+
   testWidgets('Giải tán: câu và nút ghi giải tán', (t) async {
     await mo(t);
     hang = const HangChuaDayNha(khoan: 1);
