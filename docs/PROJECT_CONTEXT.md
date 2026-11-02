@@ -617,6 +617,32 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-02)
 
+### 🚀 Gia đình sẵn sàng đưa ra thật: phần không cần backend đã xong (2026-11-02, nhánh `TranQuangDat-backend`, CHƯA push)
+
+Backend còn 6 bước cần quyền Render, Supabase: `CAN-LAM/VIEC_BACKEND_CON_LAI.md` (so khoá, áp `database/45`, `46`, gộp PR, deploy, kiểm, gỡ log). APK phát hành chờ các bước ấy.
+
+- **Backend làm trên nhánh này:** route admin xác nhận đơn chuyển thừa (66.1), `formerMembers` chỉ gồm người đã rời (64.1), chỉ mục mục tiêu trong `verify-db-indexes.js` (65.1 phần mã), hai ca phạm vi danh mục (63.2; câu đếm trên Supabase ra 0 hàng), ca 7 không gọi PayOS (66.3), hai chỗ tài liệu (66.2).
+- **Kịch bản trên `flowmoney_kiem_thu`:** gia đình 2 **36 / 36**, gia đình phần 1 **50 / 50**, PR174 **24 / 24**, 66 **9 / 9**, 61 **6 / 6**, 62 **14 / 14**; unit thanh toán **81 / 81** khi khoá PayOS rỗng, unit gia đình **55 / 55**. Vitest thanh toán Admin-web 23 / 23, ESLint sạch (đo trên bản sao `1c8a77c8` đã vá). `verify-db-indexes.js` đòi SSL nên chưa chạy được trên CSDL cục bộ.
+- **Soát độc lập `925c950c`:** 0 Critical, 0 Important, 6 Minor, không chặn phát hành (G122 mục *Soát 925c950c*).
+- **Trên Supabase (đo chỉ đọc):** 0 nhà, 7 tài khoản (2 Premium, 5 Basic); thiếu `Idfund_pair`, `idx_transaction_fund_pair`, `uq_goal_household_wallet_active`; 0 mục tiêu trùng; quyền `household` Premium bật, Basic tắt; `household_join` Basic bật.
+
+**Đo bản RELEASE** (229,0 MB, build `--release` qua R8, ký khoá debug vì máy chưa có `key.properties`; backend cổng 3001 trỏ `PersonFinance`, chưa nạp 64.1 và 66.1; máy ảo tài khoản 30 Chủ + Realme `dat` Thành viên, nhà thử 11, đã giải tán; 0 `ClassNotFoundException` / `NoClassDefFound` / `FATAL EXCEPTION` trên cả hai máy):
+
+| # | Kịch bản | Kết quả |
+|---|---|---|
+| 1 | Cài release đè bản debug trên Realme | ✅ Giữ phiên và dữ liệu `dat`, không phải đăng nhập lại |
+| 2 | Tạo nhà, tạo ví chung có mục tiêu 4.000 đ và hạn, tạo mã mời (máy ảo) | ✅ Đẩy 2 / 2 |
+| 3 | Vào nhà bằng mã, có xem trước (Realme) | ✅ Trong 5 s kéo từ 1970, thấy ví chung, mục tiêu, 2 / 6 thành viên |
+| 4 | Góp 1.000 đ *Tiền mặt trao tay* (Realme) | ✅ Máy ảo thấy 1.000 đ, 25 %, dòng ở Hoạt động |
+| 5 | Thông báo mốc | ✅ Máy Chủ: *"Quy1 đã được 25% mục tiêu"* |
+| 6 | Chi 500 đ từ ví chung, chọn danh mục nhà (máy ảo) | ✅ Realme thấy *"Thu Gia Dinh chi · Ăn uống"*, quỹ 500 đ |
+| 7 | Góp 300 đ từ ví riêng, rút 200 đ về ví riêng (máy ảo) | ✅ Ví riêng −300 đ rồi −100 đ, quỹ 800 đ rồi 600 đ, đẩy 3 / 3 |
+| 8 | Bảng góp, Chi tiết ví | ✅ *Còn thiếu · Còn lại · Cần góp* đúng; người đã rời hiện *"Đạt (đã rời)"*, giữ 1.000 đ |
+| 9 | Rời nhà (Realme) | ✅ Dữ liệu nhà gỡ khỏi máy, Tổng số dư về **−3.518.000 đ**, 0 hàng nhà, 0 hàng chờ đẩy |
+| 10 | Giải tán, gõ tên nhà xác nhận (máy ảo) | ✅ `/households/me` trả `null` |
+
+Chưa đo: hai máy thật (máy ảo x64 thay máy thứ hai), rút tiền trên Realme (cộng vào ví riêng của `dat`, chưa có phép), thư mời trên Render, trạng thái thật trên Render + Supabase. Realme đã trả về bản debug, sao lưu trước đo ở `D:\FlowMoney-saoluu\realme-truoc-release-2026-11-02\`.
+
 ### 🔧 Vào nhà không còn chờ giãn cách — G121 dòng 16 đóng (2026-11-02, nhánh `TranQuangDat-backend`, CHƯA push)
 
 `76e20c8d`: `keoLaiToanBo` nhận `boGianCach`, chỉ `DieuPhoiDoiNha` bật; `dayVaCho` dùng chung `_boGianCachMotLuot`. `flutter test` **9491 pass / 10 skip** (mốc trước 9487 / 10), analyze **20**, schema v33. Thử bản sai: DI bỏ tham số, và luôn bỏ giãn cách cho mọi chỗ gọi, cả hai đều đỏ.
