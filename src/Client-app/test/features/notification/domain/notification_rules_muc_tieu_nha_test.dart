@@ -38,6 +38,13 @@ void main() {
     expect(k['nhaMucTieu:g:0']!.imLang, isTrue);
   });
 
+  test('biên mốc: .25 báo 25, .249 chỉ dấu :0; .5 báo 50, .75 báo 75', () {
+    expect(hien(buildNotificationCandidates(dau([muc(.25)]))), ['nhaMucTieu:g:25'], reason: 'đúng 25 % là đã vượt mốc 25');
+    expect(hien(buildNotificationCandidates(dau([muc(.249)]))), isEmpty, reason: '24,9 % chưa tới mốc 25');
+    expect(hien(buildNotificationCandidates(dau([muc(.5)]))), ['nhaMucTieu:g:50']);
+    expect(hien(buildNotificationCandidates(dau([muc(.75)]))), ['nhaMucTieu:g:75']);
+  });
+
   test('tiến độ 100 %: nhaMucTieuDat hiện, ba mốc im lặng', () {
     final ra = buildNotificationCandidates(dau([muc(1)]));
     expect(hien(ra), ['nhaMucTieuDat:g']);

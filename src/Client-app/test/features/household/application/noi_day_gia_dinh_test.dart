@@ -21,6 +21,17 @@ void main() {
             'mỗi lần mở app xoá sạch dữ liệu nhà trong khi kho vẫn mang nhà (không DoiNha, lịch sử không về lại)');
   });
 
+  test('thông báo mục tiêu chung: nguồn trả rỗng khi SyncEngine đang kéo về (ví mới về mang balance 0 = chưa biết)', () {
+    final i = di.indexOf('loadMucTieuNha:');
+    expect(i, isNonNegative);
+    final khoi = di.substring(i, di.indexOf('markOverdue:', i));
+    expect(khoi, contains('sl<SyncEngine>().status == SyncStatus.syncing'),
+        reason: 'quét chen giữa lượt kéo về đọc tiLe 0 rồi ghi dấu :0; lượt sau thấy 80 % với daThay true và báo mốc cũ '
+            'cho người vừa vào nhà (03 mục 4)');
+    expect(khoi.indexOf('SyncStatus.syncing'), lessThan(khoi.indexOf('mucTieuKemVi')),
+        reason: 'gác phải đứng TRƯỚC khi đọc mục tiêu');
+  });
+
   test('G114: PhienDieuPhoiThat được nối hook xinKeoToanBo → SyncEngine.keoLaiToanBo', () {
     final i = di.indexOf('xinKeoToanBo:');
     expect(i, isNonNegative, reason: 'thiếu là hook không bao giờ chạy: sau phép dọn lượt kéo đầu hỏng làm mất dữ liệu');

@@ -232,6 +232,7 @@ void main() {
     Future<List<({String idGoal, String tenVi, double tiLe})>> Function(int idaccount)? mucTieuNha,
     // Mỗi bộ quét đếm id lại từ 0 — hai bộ cùng ghi vào một CSDL thì trùng khoá chính và hàng sau bị bỏ qua.
     String tienToId = 'id',
+    DateTime Function()? dongHo,
   }) {
     var soId = 0;
     return NotificationScanner(
@@ -277,7 +278,7 @@ void main() {
       nhapPhien: nhapPhien,
       nhatKy: nhatKy,
       eventDao: eventDao,
-      clock: () => now,
+      clock: dongHo ?? () => now,
       idGenerator: () => '$tienToId-${soId++}',
     );
   }
@@ -796,6 +797,64 @@ void main() {
       await prefs.write(accountId, NotificationPrefs.macDinh);
       expect(await m.scanner.scan(accountId), 0, reason: 'lần đầu thấy mục tiêu: mốc đã vượt là mốc cũ');
       expect(os.daBan, isEmpty);
+    });
+
+    test('nhóm giaDinh tắt: loadMucTieuNha không được gọi (khỏi đọc thứ chắc chắn bị lọc)', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(accountId, const NotificationPrefs(nhomTat: {NotificationGroup.giaDinh}));
+      var soLanGoi = 0;
+      final scanner = dungScanner(
+        budgets: const [],
+        prefs: prefs,
+        mucTieuNha: (id) async {
+          soLanGoi++;
+          return [(idGoal: 'g', tenVi: 'Quỹ du lịch', tiLe: .3)];
+        },
+      );
+
+      await scanner.scan(accountId);
+      expect(soLanGoi, 0, reason: 'cùng kỷ luật loadKeHoach: tắt nhóm thì không trả giá một lượt đọc ví / mục tiêu');
+
+      await prefs.write(accountId, NotificationPrefs.macDinh);
+      await scanner.scan(accountId);
+      expect(soLanGoi, 1, reason: 'bật nhóm thì có đọc');
+    });
+
+    test('quét lại cùng 80 % sau lần đầu thấy: vẫn 0, không báo gì', () async {
+      final os = OsNotifierGia();
+      final m = dungMucTieu(os: os);
+      await m.scanner.scan(accountId);
+
+      expect(await m.scanner.scan(accountId), 0, reason: 'lần đầu đã giữ khoá im lặng; lượt sau cùng tiến độ không có gì mới');
+      expect(os.daBan, isEmpty);
+    });
+
+    test('dọn 90 ngày không làm báo lại: d0 thấy 10 %, d10 đạt, d91 và d101 start() dọn', () async {
+      final os = OsNotifierGia();
+      var gio = DateTime(2026, 6, 1, 9);
+      var tiLe = .1;
+      final scanner = dungScanner(
+        budgets: const [],
+        osNotifier: os,
+        dongHo: () => gio,
+        mucTieuNha: (id) async => [(idGoal: 'g', tenVi: 'Quỹ du lịch', tiLe: tiLe)],
+      );
+      await scanner.scan(accountId, now: gio);
+      gio = DateTime(2026, 6, 11, 9);
+      tiLe = 1;
+      expect(await scanner.scan(accountId, now: gio), 1);
+      expect(os.daBan.length, 1, reason: 'đạt mục tiêu báo đúng một lần');
+
+      gio = DateTime(2026, 8, 31, 9); // d91: cutoff 2026-06-02 dọn hàng :0 của d0
+      await scanner.start(accountId);
+      gio = DateTime(2026, 9, 10, 9); // d101: cutoff 2026-06-12 dọn hàng đạt của d10
+      await scanner.start(accountId);
+
+      expect(os.daBan.length, 1,
+          reason: 'khoá mục tiêu chung không bị dọn nên "đã đạt" không báo lại mỗi 90 ngày (cùng lỗi ở mốc 25 / 50 / 75)');
+      expect(await db.notificationDao.watchFeed(accountId).first, isEmpty,
+          reason: 'hàng đã quá hạn rời trung tâm chứ không hiện lại');
+      await scanner.stop();
     });
 
     test('loadMucTieuNha null: không ném, quét như cũ', () async {

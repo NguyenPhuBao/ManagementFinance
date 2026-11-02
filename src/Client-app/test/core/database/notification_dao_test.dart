@@ -229,6 +229,24 @@ void main() {
               'không dọn thì sau một năm màn danh sách tải hàng nghìn hàng.');
     });
 
+    test('purgeOlderThan(giuLoai): hàng thường bị xoá, hàng giuLoai còn và rời danh sách', () async {
+      final moc = DateTime(2026, 6, 1);
+      await db.notificationDao.insertIfAbsent(mau(id: 'thuong', dedupeKey: 'k1', createdAt: DateTime(2026, 1, 1)));
+      await db.notificationDao
+          .insertIfAbsent(mau(id: 'giu', kind: 'nhaMucTieuMoc', dedupeKey: 'nhaMucTieu:g:0', createdAt: DateTime(2026, 1, 1)));
+      await db.notificationDao
+          .insertIfAbsent(mau(id: 'giuMoi', kind: 'nhaMucTieuMoc', dedupeKey: 'nhaMucTieu:g:25', createdAt: DateTime(2026, 8, 1)));
+
+      final xoa = await db.notificationDao.purgeOlderThan(moc, giuLoai: const ['nhaMucTieuMoc', 'nhaMucTieuDat']);
+
+      expect(xoa, 1, reason: 'chỉ hàng thường quá hạn bị xoá');
+      final con = {for (final n in await db.notificationDao.getAll(accountId)) n.id: n};
+      expect(con.keys, unorderedEquals(['giu', 'giuMoi']),
+          reason: 'khoá mục tiêu chung phải sống cả đời mục tiêu, nếu không mốc báo lại mỗi 90 ngày');
+      expect(con['giu']!.dismissedAt, moc, reason: 'hàng quá hạn mà còn hiện thì rời trung tâm, dismissedAt = mốc cắt');
+      expect(con['giuMoi']!.dismissedAt, isNull, reason: 'hàng chưa quá hạn không bị đụng');
+    });
+
     test('khoiPhuc đưa một hàng đã xoá mềm trở lại danh sách', () async {
       await db.notificationDao.insertIfAbsent(mau());
       await db.notificationDao.dismiss('n1');
