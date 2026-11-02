@@ -22,6 +22,32 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
         .watch();
   }
 
+  /// Mục tiêu chung sống của nhà, do ai đặt cũng vậy (`docs/Family/03`).
+  Future<List<Goal>> getCuaNha(int idNha) =>
+      (select(goals)..where((t) => t.idhousehold.equals(idNha) & t.deletedAt.isNull())).get();
+
+  Stream<List<Goal>> watchCuaNha(int idNha) =>
+      (select(goals)..where((t) => t.idhousehold.equals(idNha) & t.deletedAt.isNull())).watch();
+
+  /// Mục tiêu chung đang sống của ví. Có thể hai hàng khi hai máy Chủ cùng bật offline: lấy hàng mới nhất.
+  Future<Goal?> getSongTheoVi(String walletId) => (select(goals)
+        ..where((t) => t.walletId.equals(walletId) & t.idhousehold.isNotNull() & t.deletedAt.isNull())
+        ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
+        ..limit(1))
+      .getSingleOrNull();
+
+  /// Hàng đã tắt mà lệnh xoá chưa lên server. Server chạy lệnh tạo trước lệnh xoá trong một lô, nên bật lại phải hồi sinh hàng
+  /// này thay vì tạo hàng mới: hàng mới vướng `uq_goal_household_wallet_active`.
+  Future<Goal?> getXoaChuaDayTheoVi(String walletId) => (select(goals)
+        ..where((t) =>
+            t.walletId.equals(walletId) &
+            t.idhousehold.isNotNull() &
+            t.deletedAt.isNotNull() &
+            t.syncStatus.equals('pending'))
+        ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
+        ..limit(1))
+      .getSingleOrNull();
+
   Future<Goal?> getById(String id) {
     return (select(goals)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
