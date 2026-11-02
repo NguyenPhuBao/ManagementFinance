@@ -617,7 +617,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-02)
 
-### 🚀 Gia đình sẵn sàng đưa ra thật: phần không cần backend đã xong (2026-11-02, nhánh `TranQuangDat-backend`, CHƯA push)
+### 🚀 Gia đình sẵn sàng đưa ra thật: phần không cần backend đã xong (2026-11-02, nhánh `TranQuangDat-backend`, đã push)
 
 Backend còn 6 bước cần quyền Render, Supabase: `CAN-LAM/VIEC_BACKEND_CON_LAI.md` (so khoá, áp `database/45`, `46`, gộp PR, deploy, kiểm, gỡ log). APK phát hành chờ các bước ấy.
 
@@ -643,7 +643,7 @@ Backend còn 6 bước cần quyền Render, Supabase: `CAN-LAM/VIEC_BACKEND_CON
 
 Chưa đo: hai máy thật (máy ảo x64 thay máy thứ hai), rút tiền trên Realme (cộng vào ví riêng của `dat`, chưa có phép), thư mời trên Render, trạng thái thật trên Render + Supabase. Realme đã trả về bản debug, sao lưu trước đo ở `D:\FlowMoney-saoluu\realme-truoc-release-2026-11-02\`.
 
-### 🔧 Vào nhà không còn chờ giãn cách — G121 dòng 16 đóng (2026-11-02, nhánh `TranQuangDat-backend`, CHƯA push)
+### 🔧 Vào nhà không còn chờ giãn cách — G121 dòng 16 đóng (2026-11-02, nhánh `TranQuangDat-backend`, đã push)
 
 `76e20c8d`: `keoLaiToanBo` nhận `boGianCach`, chỉ `DieuPhoiDoiNha` bật; `dayVaCho` dùng chung `_boGianCachMotLuot`. `flutter test` **9491 pass / 10 skip** (mốc trước 9487 / 10), analyze **20**, schema v33. Thử bản sai: DI bỏ tham số, và luôn bỏ giãn cách cho mọi chỗ gọi, cả hai đều đỏ.
 
@@ -744,7 +744,7 @@ Kế hoạch `docs/superpowers/plans/2026-11-01-gia-dinh-dot-1a-nen-du-lieu.md` 
 - **Nợ mới:** **G119** (lệch hai nửa khoản góp khi sửa / xoá bị từ chối, đẩy mất phản hồi, `markSynced` đè lệnh xoá) và **G120** (các nợ còn lại của đợt, mỗi nợ một dòng) — `CLIENT_APP_KNOWN_GAPS.md`. G113 nợ 2, 3, 4, 6 đóng.
 - **Giữ số:** lỗ hổng kế tiếp **G121**, test quét kế tiếp **43**, đơn kế tiếp **64**. Tài liệu đã cập nhật: `SYNC_DOCUMENTATION.md` (4.2, 4.7, 2.4, 2.6, 3.3), `NOTIFICATION_FEATURE.md` (5o), `Family/02A`, `Family/04`, spec mục 15.
 
-### 🔀 Gộp `main` @ `1c8a77c8` (2026-11-02, PR #178, commit gộp `bb895d12`, CHƯA push): backend báo xong đơn 61, 62; client soát
+### 🔀 Gộp `main` @ `1c8a77c8` (2026-11-02, PR #178, commit gộp `bb895d12`, đã push): backend báo xong đơn 61, 62; client soát
 
 Vào cả `TranQuangDat` lẫn `TranQuangDat-backend` (nhánh phụ gộp `TranQuangDat`, mã 61, 62 đã trùng từ trước; chỉ thêm Admin-web, dòng log `index.js`, tài liệu; backend đang chạy không cần khởi động lại). Cây `src/Client-app` không đổi hash nên không chạy lại `flutter test`; check-ignore không khớp; không migration.
 
