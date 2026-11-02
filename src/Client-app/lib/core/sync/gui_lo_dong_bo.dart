@@ -99,9 +99,13 @@ class GuiLoDongBo {
                 // bỏ đó: nó vẫn mang `pending`, nên mọi chu kỳ sau lại đẩy lên
                 // và lại thua đúng như vậy, mãi mãi.
                 //
-                // Đánh dấu đã đồng bộ để thoát vòng lặp. Bản thắng cuộc về máy
-                // ở bước Pull ngay sau đó trong cùng chu kỳ: `update_at` của nó
-                // lớn hơn payload nên cũng lớn hơn mốc đồng bộ đang lưu.
+                // Đánh dấu đã đồng bộ để thoát vòng lặp. Bản thắng cuộc thường
+                // về máy ở bước Pull ngay sau đó trong cùng chu kỳ: `update_at`
+                // của nó lớn hơn payload nên cũng lớn hơn mốc đồng bộ đang lưu.
+                // ⚠️ Không bảo đảm: nếu mốc kéo đã tiến qua bản thắng (Pull trước
+                // đó bỏ qua hàng `pending`, vd. mục tiêu của nhà), Pull cùng chu
+                // kỳ không mang nó về. Mục tiêu của nhà được
+                // `GopQuyConflictResolver` xin kéo toàn bộ.
                 await _markSyncedById(op.entity, op.localId);
                 conflictIds.add(op.localId);
                 debugPrint(

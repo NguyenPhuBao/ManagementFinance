@@ -83,6 +83,15 @@ class GopQuyConflictResolver {
   Future<void> xuLy(SyncResult ketQua) async {
     final canKeoLai = await _tuanTu(() async {
       var keoLai = false;
+      // Mục tiêu của nhà thua LWW (`conflict`): engine đã `markSynced`, mà Pull bỏ qua hàng nhà `pending` (`GoalDao.upsertKeoVe`)
+      // nên mốc kéo có thể đã tiến qua bản thắng của server — không còn gì mang nó về. Xin kéo toàn bộ. `conflictIds` chỉ có id
+      // (không có loại thực thể): chỉ hàng có trong bảng `goals` và thuộc nhà mới tính; ví / giao dịch không trùng id này.
+      if (_taiKhoanPhien() != null) {
+        for (final id in ketQua.conflictIds) {
+          final g = await _db.goalDao.getById(id);
+          if (g != null && g.idhousehold != null) keoLai = true;
+        }
+      }
       for (final f in ketQua.failures) {
         // Hai máy Chủ cùng bật mục tiêu offline: máy đẩy sau thua chỉ mục duy nhất của `goal`. Không thuộc `kMaDayLoiNha`, vì mã
         // này cũng về từ hàng riêng; chỉ `_traBanServerMucTieu` xét `idhousehold`. Chu kỳ ấy vẫn tính là hỏng nên lượt kéo toàn

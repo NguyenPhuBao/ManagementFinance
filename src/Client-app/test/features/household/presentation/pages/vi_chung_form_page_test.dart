@@ -470,7 +470,9 @@ void main() {
   });
 
   testWidgets('Sửa có mục tiêu, CHỈ đổi hạn qua bộ chọn ngày → DatMucTieu hạn mới, số tiền cũ', (t) async {
-    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a', han: DateTime(2035, 12, 31))]);
+    // Năm tính từ hôm nay (lastDate của bộ chọn là hôm nay + 3650 ngày): năm cứng sẽ đỏ khi qua mốc ấy.
+    final nam = DateTime.now().year + 5;
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a', han: DateTime(nam, 12, 31))]);
     await bam(t, oHan());
     await t.tap(find.text('15').last);
     await t.pumpAndSettle();
@@ -478,7 +480,7 @@ void main() {
     await t.pumpAndSettle();
     await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
     final m = nguon.suaMuc.single as DatMucTieu;
-    expect((m.han.year, m.han.month, m.han.day), (2035, 12, 15),
+    expect((m.han.year, m.han.month, m.han.day), (nam, 12, 15),
         reason: '`_chonHan` phải đánh dấu đã đụng khối: quên thì lưu `GiuMucTieu` và hạn mới mất im lặng');
     expect(m.soTien, 1000000.0);
   });

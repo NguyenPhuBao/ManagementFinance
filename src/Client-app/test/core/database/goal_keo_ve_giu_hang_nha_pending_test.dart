@@ -79,6 +79,18 @@ void main() {
     expect(giu, 0);
   });
 
+  test('lệnh Bỏ mục tiêu ghi XEN KẼ lúc đang ghi kéo về không bị bản sống đè (đọc + ghi cùng giao tác)', () async {
+    await them('n', nha: 5, sync: 'synced');
+    final ghi = db.goalDao.upsertKeoVe([tuServer('n', nha: 5)]);
+    // Không `await` giữa hai lệnh: lệnh xoá xếp hàng NGAY sau lượt đọc. Không có giao tác thì nó lọt vào khe giữa đọc và ghi.
+    final xoa = db.goalDao.softDelete('n');
+    await Future.wait([ghi, xoa]);
+    final g = (await db.goalDao.getById('n'))!;
+    expect(g.isDeleted, isTrue,
+        reason: 'lệnh xoá của Chủ đến sau phải thắng: không giao tác thì bản sống server ghi đè, mục tiêu sống lại + synced');
+    expect(g.syncStatus, 'pending');
+  });
+
   test('entries rỗng: không ném, trả 0', () async {
     expect(await db.goalDao.upsertKeoVe(const []), 0);
   });

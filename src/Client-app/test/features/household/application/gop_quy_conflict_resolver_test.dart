@@ -672,4 +672,40 @@ void main() {
       await repo.dispose();
     });
   });
+
+  group('conflict (LWW thua) trên mục tiêu của nhà', () {
+    // Pull bỏ qua hàng mục tiêu nhà đang pending (`GoalDao.upsertKeoVe`); lần đẩy sau thua LWW thì engine `markSynced` và Pull
+    // cùng chu kỳ có thể không mang bản thắng về (mốc kéo đã tiến qua). Resolver xin kéo toàn bộ để máy này không giữ giá trị
+    // thua kèm `synced`.
+    Future<void> themMuc(String id, {int? nhaId}) => db.goalDao.insert(GoalsCompanion.insert(
+          id: id,
+          idaccount: 10,
+          name: id,
+          targetAmount: 1000,
+          targetDate: DateTime(2027, 1, 1),
+          idhousehold: Value(nhaId),
+          walletId: const Value('vn'),
+          updatedAt: moc,
+        ));
+
+    SyncResult conflict(String id) => SyncResult(totalOps: 1, succeeded: 0, failed: 0, conflictIds: [id]);
+
+    test('conflict trên goal của nhà → xin kéo toàn bộ đúng một lần', () async {
+      await themMuc('gn', nhaId: 7);
+      await resolver.xuLy(conflict('gn'));
+      expect(xinKeoLaiGoi, [10],
+          reason: 'bản thắng của server có thể không về ở Pull cùng chu kỳ: phải xin kéo toàn bộ, nếu không máy giữ giá trị thua + synced');
+    });
+
+    test('conflict trên goal RIÊNG → không xin', () async {
+      await themMuc('gr');
+      await resolver.xuLy(conflict('gr'));
+      expect(xinKeoLaiGoi, isEmpty, reason: 'mục tiêu riêng: Pull tăng dần vẫn mang bản thắng về như trước');
+    });
+
+    test('conflict trên ví của nhà (id không phải goal) → không xin', () async {
+      await resolver.xuLy(conflict('vn'));
+      expect(xinKeoLaiGoi, isEmpty);
+    });
+  });
 }
