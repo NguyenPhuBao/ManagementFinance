@@ -631,9 +631,9 @@ Chỉ vào `TranQuangDat`. `TranQuangDat-backend` chưa gộp: thử `git merge-
 | 52.4 | Mới có dòng log, chưa deploy, chưa đọc Render | **Chưa** |
 | 60.3 | Backend ghi chưa làm | Chưa (tuỳ chọn) |
 
-**Lỗi mới:** 66.1 nút Đồng ý / Từ chối ở Admin-web luôn 404 với đơn của khách (token admin mang `idaccount` của admin, chạy thật qua `confirmUpgrade` với repository giả); 66.2 `Project.md` mất mục (12); 66.3 ca 7 `admin.payment` gọi PayOS thật, thiếu sót của bản vá client.
+**Lỗi mới:** 66.1 nút Đồng ý / Từ chối ở Admin-web luôn 404 với đơn của khách (token admin mang `idaccount` của admin, chạy thật qua `confirmUpgrade` với repository giả); 66.2 `Project.md` mất mục (12); 66.3 ca 7 `admin.payment` gọi PayOS thật, thiếu sót của bản vá client. Đã giao kèm `KIEM-THU/ban_sua_66.patch` + `chay_kiem_66.js` (thử trên bản sao `1c8a77c8`: 3 / 9 → 9 / 9; 61 đạt 6 / 6, 62 đạt 14 / 14; vitest payment 23 / 23, ESLint sạch; unit không `.env` chỉ còn ca 4, 11, 12 cần CSDL). Tệp việc chọn hướng admin xử lý hộ đơn chuyển thừa (client đề xuất, PO chưa trả lời); 60.3 tuỳ chọn đã bỏ khỏi tệp việc (người dùng: chỉ việc cần làm mới vào tài liệu). `ban_sua_61`, `ban_sua_62` đã xoá vì đã áp.
 
-**Chưa chạy:** `chay_kiem_pr174.js`, `verify:household` (cần mật khẩu postgres cho `flowmoney_kiem_thu`; PR chỉ đổi một dòng `household.controller.js`); unit `payment` chỉ chạy không `.env` (76 / 81: ca 4, 11, 12 cần CSDL, ca 7 cần PayOS, cộng ca cha), cố ý không chạy với `.env` vì chạm Supabase và PayOS thật; vitest, ESLint Admin-web (máy không có `node_modules`).
+**Chưa chạy:** `chay_kiem_pr174.js`, `verify:household` (cần mật khẩu postgres cho `flowmoney_kiem_thu`; PR chỉ đổi một dòng `household.controller.js`); unit `payment` chỉ chạy không `.env` (76 / 81: ca 4, 11, 12 cần CSDL, ca 7 cần PayOS, cộng ca cha), cố ý không chạy với `.env` vì chạm Supabase và PayOS thật; vitest, ESLint Admin-web chạy được trên bản sao đã vá (dòng trên), chưa chạy riêng trên mã PR.
 
 ⚠️ **Ảnh hưởng G94 (62.6):** webhook của kênh trỏ về Render, tài khoản nhận là tài khoản cá nhân thật, không có Sandbox. Đơn tạo từ backend dev nằm ở CSDL dev, nên webhook tới Render chỉ nhận *"Đơn hàng không tồn tại"* (200, không làm gì). Đo tiền thật trên dev chỉ đi được đường JIT (đọc mã, chưa đo). Đo trọn webhook phải đi app → Render → Supabase.
 
