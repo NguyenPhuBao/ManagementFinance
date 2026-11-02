@@ -233,22 +233,19 @@ const PaymentHistoryPage = () => {
     const onOverpaidConfirmation = (data) => {
       loadStats();
       loadOrders();
-      setSandboxConfirmation({
-        orderCode: data.orderCode,
-        amountReceived: data.amountReceived,
-        expectedAmount: data.expectedAmount,
-        difference: data.difference,
-      });
+      if (data?.orderCode) {
+        setFeedbackMsg(`Đơn hàng #${data.orderCode} chuyển thừa tiền, đang chờ xác nhận.`);
+        setTimeout(() => setFeedbackMsg(null), 4000);
+      }
     };
 
     const onUnderpaidWarning = (data) => {
       loadStats();
       loadOrders();
-      setSandboxUnderpaid({
-        orderCode: data.orderCode,
-        amountReceived: data.amountReceived,
-        expectedAmount: data.expectedAmount,
-      });
+      if (data?.orderCode) {
+        setFeedbackMsg(`Đơn hàng #${data.orderCode} chuyển thiếu tiền, chuyển sang hoàn tiền.`);
+        setTimeout(() => setFeedbackMsg(null), 4000);
+      }
     };
 
     const onRefunded = () => {
@@ -378,9 +375,9 @@ const PaymentHistoryPage = () => {
           recognitionCode: data.recognition_code,
           description: data.transfer_content || data.recognition_code,
           amount: data.amount,
-          bankName: data.bank_info?.bankName || 'MB Bank (Quân Đội)',
-          accountNumber: data.bank_info?.accountNumber || '2512070399999',
-          accountName: data.bank_info?.accountName || 'NGUYEN PHU BAO',
+          bankName: data.bank_info?.bankName || '',
+          accountNumber: data.bank_info?.accountNumber || '',
+          accountName: data.bank_info?.accountName || '',
           checkoutUrl: data.checkout_url || data.bank_info?.checkoutUrl,
         });
         setCountdownSeconds(600);
@@ -406,6 +403,34 @@ const PaymentHistoryPage = () => {
       }
     } catch (err) {
       console.error('[PAYMENT_PAGE] Lỗi khi dọn dẹp đơn mẫu:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirmUpgrade = async (orderCode, accept) => {
+    setActionLoading(true);
+    try {
+      const res = await paymentApi.confirmUpgrade({ orderCode, accept });
+      if (res?.success || res?.data?.success) {
+        setFeedbackMsg(
+          accept
+            ? (t('payments.sandbox.confirmAcceptSuccess') || 'Đã xác nhận nâng cấp gói cước thành công!')
+            : (t('payments.sandbox.confirmRejectSuccess') || 'Đã từ chối nâng cấp, chuyển sang hoàn tiền.')
+        );
+        if (selectedOrder && (selectedOrder.order_code === orderCode || selectedOrder.orderCode === orderCode)) {
+          setSelectedOrder((prev) => ({
+            ...prev,
+            status: accept ? 'PAID' : 'REFUND_PENDING',
+          }));
+        }
+        await Promise.all([loadStats(), loadOrders()]);
+        setTimeout(() => setFeedbackMsg(null), 3500);
+      }
+    } catch (err) {
+      console.error('[PAYMENT_PAGE] Lỗi khi xác nhận nâng cấp đơn chuyển thừa:', err);
+      setFeedbackMsg(err?.response?.data?.message || 'Có lỗi xảy ra khi xác nhận đơn');
+      setTimeout(() => setFeedbackMsg(null), 3500);
     } finally {
       setActionLoading(false);
     }
@@ -1038,25 +1063,27 @@ const PaymentHistoryPage = () => {
                             <div className="md:col-span-2 space-y-2 text-xs">
                               <div className="flex justify-between py-1 border-b border-outline-variant/30">
                                 <span className="text-on-surface-variant">Ngân hàng:</span>
-                                <span className="font-semibold text-on-surface">MB Bank (Quân Đội)</span>
+                                <span className="font-semibold text-on-surface">{selectedOrder.bank_info?.bankName || 'Ngân hàng'}</span>
                               </div>
                               <div className="flex justify-between items-center py-1 border-b border-outline-variant/30">
                                 <span className="text-on-surface-variant">Số tài khoản:</span>
                                 <div className="flex items-center gap-1">
-                                  <span className="font-mono font-bold text-on-surface">2512070399999</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleCopyRecognitionCode('2512070399999')}
-                                    className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
-                                    title="Sao chép STK"
-                                  >
-                                    <span className="material-symbols-outlined text-sm">content_copy</span>
-                                  </button>
+                                  <span className="font-mono font-bold text-on-surface">{selectedOrder.bank_info?.accountNumber || '—'}</span>
+                                  {selectedOrder.bank_info?.accountNumber && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyRecognitionCode(selectedOrder.bank_info.accountNumber)}
+                                      className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
+                                      title="Sao chép STK"
+                                    >
+                                      <span className="material-symbols-outlined text-sm">content_copy</span>
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex justify-between py-1 border-b border-outline-variant/30">
                                 <span className="text-on-surface-variant">Chủ tài khoản:</span>
-                                <span className="font-bold text-on-surface">NGUYEN PHU BAO</span>
+                                <span className="font-bold text-on-surface">{selectedOrder.bank_info?.accountName || '—'}</span>
                               </div>
                               <div className="flex justify-between items-center py-1 border-b border-outline-variant/30">
                                 <span className="text-on-surface-variant">Nội dung CK:</span>
@@ -1716,7 +1743,7 @@ const PaymentHistoryPage = () => {
                       <>
                         <div className="p-2 bg-white rounded-xl shadow-md border border-slate-200 my-2">
                           <img
-                            src={payosData?.qrUrl || `https://img.vietqr.io/image/970422-2512070399999-compact2.png?amount=${selectedSampleAmount}&addInfo=PFM%20TEST&accountName=NGUYEN%20PHU%20BAO`}
+                            src={payosData?.qrUrl || ''}
                             alt="Mã QR Kênh Thanh Toán PayOS MB Bank"
                             className="w-56 h-auto object-contain mx-auto rounded"
                             loading="lazy"
@@ -1749,9 +1776,11 @@ const PaymentHistoryPage = () => {
                           <span className="material-symbols-outlined text-sm text-primary">smartphone</span>
                           <span>{t('payments.sampleModal.scanNotice')}</span>
                         </div>
-                        <div className="mt-1 text-[11px] text-on-surface-variant/70 font-mono">
-                          {payosData?.bankName || 'MB Bank (Quân Đội)'} • STK: {payosData?.accountNumber || '2512070399999'}
-                        </div>
+                        {payosData?.bankName && payosData?.accountNumber && (
+                          <div className="mt-1 text-[11px] text-on-surface-variant/70 font-mono">
+                            {payosData.bankName} • STK: {payosData.accountNumber}
+                          </div>
+                        )}
 
                         {payosData?.checkoutUrl && (
                           <a
@@ -1785,29 +1814,31 @@ const PaymentHistoryPage = () => {
                       <div className="flex justify-between py-1 border-b border-outline-variant/30">
                         <span className="text-on-surface-variant">{t('payments.sampleModal.bankName')}:</span>
                         <span className="font-semibold text-on-surface">
-                          {payosData?.bankName || t('payments.sampleModal.bankValue')}
+                          {payosData?.bankName || '—'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center py-1 border-b border-outline-variant/30">
                         <span className="text-on-surface-variant">{t('payments.sampleModal.accountNo')}:</span>
                         <div className="flex items-center gap-1">
                           <span className="font-mono font-bold text-on-surface">
-                            {payosData?.accountNumber || '2512070399999'}
+                            {payosData?.accountNumber || '—'}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyRecognitionCode(payosData?.accountNumber || '2512070399999')}
-                            className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
-                            title="Sao chép STK"
-                          >
-                            <span className="material-symbols-outlined text-sm">content_copy</span>
-                          </button>
+                          {payosData?.accountNumber && (
+                            <button
+                              type="button"
+                              onClick={() => handleCopyRecognitionCode(payosData.accountNumber)}
+                              className="text-on-surface-variant hover:text-primary p-0.5 cursor-pointer"
+                              title="Sao chép STK"
+                            >
+                              <span className="material-symbols-outlined text-sm">content_copy</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="flex justify-between py-1 border-b border-outline-variant/30">
                         <span className="text-on-surface-variant">{t('payments.sampleModal.accountName')}:</span>
                         <span className="font-bold text-on-surface">
-                          {payosData?.accountName || 'NGUYEN PHU BAO'}
+                          {payosData?.accountName || '—'}
                         </span>
                       </div>
                       <div className="flex justify-between py-1 border-b border-outline-variant/30">

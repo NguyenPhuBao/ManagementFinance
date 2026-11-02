@@ -1572,7 +1572,7 @@ export default {
       title: 'Mã QR Kênh Thanh Toán PayOS (VietQR / Napas 247)',
       subtitle: 'Mã QR thanh toán tự động kết nối trực tiếp kênh PayOS thật của hệ thống',
       warningBadge: 'KÊNH THANH TOÁN PAYOS THẬT (MB BANK)',
-      warningDesc: 'Mã QR được sinh tự động trực tiếp từ kênh thanh toán PayOS (STK: 2512070399999 - NGUYEN PHU BAO). Quét bằng App Ngân hàng bất kỳ hoặc mở liên kết Checkout để trải nghiệm luồng thanh toán và đối soát Webhook thời gian thực.',
+      warningDesc: 'Mã QR được sinh tự động trực tiếp từ kênh thanh toán PayOS. Quét bằng App Ngân hàng bất kỳ hoặc mở liên kết Checkout để trải nghiệm luồng thanh toán và đối soát Webhook thời gian thực.',
       scanNotice: 'Quét bằng ứng dụng ngân hàng hoặc MoMo',
       payosTag: 'KÊNH PAYOS',
       openPayosCheckout: 'Mở Cổng Thanh Toán PayOS',
