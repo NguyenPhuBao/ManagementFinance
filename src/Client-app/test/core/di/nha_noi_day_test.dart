@@ -51,6 +51,13 @@ void main() {
     expect(khoi, contains('demHangChuaDayCuaNha('));
   });
 
+  test('đổi nhà xin kéo toàn bộ BỎ giãn cách; resolver thì không', () {
+    expect(_khoi(nguon, 'sl.registerLazySingleton<DieuPhoiDoiNha>('), contains('.keoLaiToanBo(id, boGianCach: true)'),
+        reason: 'G121 dòng 16: thiếu thì vào nhà lúc đẩy đang hỏng là Nhà mình trống tới hết giãn cách (đo: 11 phút)');
+    expect(_khoi(nguon, 'sl.registerLazySingleton<GopQuyConflictResolver>('), isNot(contains('boGianCach')),
+        reason: 'lượt máy tự xin sau một lần đẩy hỏng: bỏ giãn cách là vòng đồng bộ nóng khi hàng cứ bị từ chối');
+  });
+
   test('đăng ký GopQuyService truyền đủ giaoDich, soDuVi và henDongBo', () {
     final khoi = _khoi(nguon, 'sl.registerLazySingleton<GopQuyService>(');
     expect(khoi, contains('giaoDich: sl<TransactionRepository>()'), reason: 'phải qua repository giao dịch: neo số dư trước khi ghi cặp');

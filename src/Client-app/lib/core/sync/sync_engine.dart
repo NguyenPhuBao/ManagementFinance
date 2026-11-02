@@ -327,9 +327,23 @@ class SyncEngine {
   /// Yêu cầu giữ tới khi MỘT lượt kéo bắt đầu SAU nó thành công: lượt đang chạy lúc gọi không ghi mốc, lượt hỏng không xoá
   /// yêu cầu, mốc đã lưu bị xoá ngay. `stop()` BỎ yêu cầu còn trong RAM (phiên sau có thể là tài khoản khác) — chỉ kho mốc
   /// đã xoá mang yêu cầu qua `stop()` / tiến trình chết (lần `start` sau đọc mốc `null` → kéo toàn bộ). Chu kỳ đang chạy thì `syncNow` ghi nợ một lượt bù — lượt bù ấy là lượt kéo toàn bộ.
-  Future<void> keoLaiToanBo(int idaccount) async {
+  ///
+  /// [boGianCach]: người dùng vừa đổi nhà và đang nhìn màn trống (G121 dòng 16, đo Realme: hoãn tới 11 phút) — bỏ giãn cách
+  /// cho MỘT lượt này, như [dayVaCho]. Mặc định `false`: lượt do máy tự xin sau một lần đẩy hỏng (`GopQuyConflictResolver`)
+  /// mà bỏ giãn cách thì hàng cứ bị từ chối là vòng đồng bộ nóng. ⚠️ Còn một khe, chung với [dayVaCho]: yêu cầu tới giữa một
+  /// chu kỳ mà chu kỳ ấy hỏng thì giãn cách dựng lại và lượt bù chờ hết bậc đó — yêu cầu không mất.
+  Future<void> keoLaiToanBo(int idaccount, {bool boGianCach = false}) async {
     await _keoVe.yeuCauKeoToanBo(idaccount);
-    if (_currentIdaccount == idaccount) await syncNow();
+    if (_currentIdaccount != idaccount) return;
+    if (boGianCach) _boGianCachMotLuot();
+    await syncNow();
+  }
+
+  /// Bỏ giãn cách của ENGINE cho lượt kế, vì đây là thao tác CHỦ ĐỘNG của người dùng. Số lần hỏng giữ nguyên: lượt này mà hỏng
+  /// nữa thì giãn cách dựng lại ở bậc kế. Bậc chặn từng hàng (`syncBlockedUntil`) nằm ở CSDL, `ThuGomThaoTacDay` vẫn tôn trọng.
+  void _boGianCachMotLuot() {
+    _nextAllowedSyncAt = null;
+    _cancelBackoffRetry();
   }
 
   /// MỘT lượt đồng bộ cho lượt nền của WorkManager (spec tự chuyển tiền chạy
@@ -413,10 +427,8 @@ class SyncEngine {
   Future<void> dayVaCho({Duration tran = kTranDayTruocKhiRoi}) async {
     // Thao tác CHỦ ĐỘNG của người dùng — như [start]: bỏ giãn cách của các chu kỳ hỏng trước, nếu không (tới 60 phút) lượt
     // này chỉ hẹn lại rồi về, không đẩy gì, nên phép đếm hàng chưa đẩy ngay sau thấy hàng còn đó và Rời nhà / Giải tán bị
-    // từ chối oan bằng `hangChuaDay` dù mạng vẫn tốt. Chỉ bỏ giãn cách của ENGINE (số lần hỏng giữ nguyên: lượt
-    // này mà hỏng nữa thì giãn cách dựng lại); bậc chặn từng hàng (`syncBlockedUntil`) nằm ở CSDL, `ThuGomThaoTacDay` vẫn tôn trọng.
-    _nextAllowedSyncAt = null;
-    _cancelBackoffRetry();
+    // từ chối oan bằng `hangChuaDay` dù mạng vẫn tốt.
+    _boGianCachMotLuot();
     Future<void> chay() async {
       await syncNow();
       if (_soChuKyDangBay == 0) return;

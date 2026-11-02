@@ -614,7 +614,8 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       ));
   sl.registerLazySingleton<DieuPhoiDoiNha>(() => DieuPhoiDoiNha(
         db: sl(),
-        keoLaiToanBo: (id) => sl<SyncEngine>().keoLaiToanBo(id),
+        // Đổi nhà: người dùng đang nhìn màn Nhà mình trống — bỏ giãn cách (G121 dòng 16).
+        keoLaiToanBo: (id) => sl<SyncEngine>().keoLaiToanBo(id, boGianCach: true),
         ghiDau: (id, nha) => sl<NhaStore>().ghiDauXuLy(id, nha),
         // Rời nhà khi khoản góp / rút chưa đẩy: trả tiền về ví riêng TRƯỚC khi xoá hàng của nhà.
         truocKhiDon: (idNha, id) => sl<GopQuyConflictResolver>().traVeKhiBoNha(idNha, id),
