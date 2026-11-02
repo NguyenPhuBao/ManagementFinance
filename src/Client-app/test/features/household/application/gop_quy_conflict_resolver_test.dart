@@ -358,8 +358,32 @@ void main() {
       expect(xinKeoLaiGoi, [10]);
     });
 
-    test('ngân sách bị ROLE_FORBIDDEN: không đụng (ghi G)', () async {
+    test('ngân sách của nhà bị ROLE_FORBIDDEN: không đụng (ghi G)', () async {
+      await db.budgetDao.insert(BudgetsCompanion.insert(
+          id: 'b1',
+          idaccount: 10,
+          idhousehold: const Value(7),
+          amount: 1000000,
+          startDate: DateTime(2026, 11, 1),
+          syncStatus: const Value('pending'),
+          updatedAt: moc));
       await resolver.xuLy(_thatBai('b1', 'HOUSEHOLD_ROLE_FORBIDDEN', entity: SyncEntityType.budget));
+      final b = (await db.budgetDao.getById('b1'))!;
+      expect(b.deletedAt, isNull, reason: 'ngân sách chưa có bậc gỡ: hàng ở lại pending với bậc chặn riêng');
+      expect(b.syncStatus, 'pending');
+      expect(xinKeoLaiGoi, isEmpty);
+    });
+
+    test('nửa của nhà do tôi ghi bị UNIQUE_VIOLATION (entity giao dịch): không đụng cặp', () async {
+      final p = await gopMau();
+      final nuaNha = (await gop.docCap(p)).nha!;
+      await resolver.xuLy(_thatBai(nuaNha.id, 'UNIQUE_VIOLATION'));
+      expect((await gop.docCap(p)).nha, isNotNull,
+          reason: 'nửa của nhà do tôi ghi mà lọt nhánh UNIQUE_VIOLATION là gỡ cả cặp và trả tiền về ví riêng');
+      expect((await gop.docCap(p)).rieng, isNotNull);
+      expect(await soDu('vr'), 3000000);
+      expect(await soDu('vn'), 3000000);
+      expect(await thongBao(), isEmpty);
       expect(xinKeoLaiGoi, isEmpty);
     });
 
@@ -382,6 +406,19 @@ void main() {
       final g = await mucTieu('g1');
       expect(g.deletedAt, isNotNull, reason: 'bản sửa / xoá bị từ chối vĩnh viễn: gỡ khỏi máy để kéo toàn bộ trả bản server');
       expect(g.syncStatus, 'synced');
+      expect(xinKeoLaiGoi, [10]);
+    });
+
+    test('mục tiêu của nhà ĐÃ xoá mềm + pending bị ROLE_FORBIDDEN: chỉ markSynced, deletedAt giữ nguyên, xin kéo một lần', () async {
+      await themMucTieu('g1', nhaId: 7);
+      await db.goalDao.softDelete('g1');
+      final truoc = (await mucTieu('g1')).deletedAt;
+      expect(truoc, isNotNull);
+      expect((await mucTieu('g1')).syncStatus, 'pending', reason: 'tiền đề: xoá mềm đặt lại pending (Chủ tắt mục tiêu offline)');
+      await resolver.xuLy(_thatBai('g1', 'HOUSEHOLD_ROLE_FORBIDDEN', entity: SyncEntityType.goal));
+      final g = await mucTieu('g1');
+      expect(g.syncStatus, 'synced', reason: 'lệnh xoá bị từ chối ở kiểm quyền: phải thoát hàng đợi, không đẩy lại mãi');
+      expect(g.deletedAt, truoc);
       expect(xinKeoLaiGoi, [10]);
     });
 

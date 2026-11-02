@@ -15,6 +15,9 @@ import 'gop_quy_service.dart';
 /// Giữ hai nửa của khoản góp / rút khớp nhau (`docs/Family/02A` mục 6). Đứng riêng khỏi `SyncEngine` như
 /// `BillPaymentConflictResolver`: engine chỉ phát `SyncOpFailure.code` ra `pushResultStream`, ai muốn phản ứng thì tự nghe.
 ///
+/// Ngoài khoản góp / rút, [xuLy] còn gỡ ví, danh mục và mục tiêu của nhà mà server từ chối (mục tiêu: cả `UNIQUE_VIOLATION` khi
+/// hai máy Chủ cùng bật) rồi xin kéo toàn bộ.
+///
 /// Ba lối vào, một việc chung là GỠ NỬA RIÊNG (xoá mềm + tính lại ví riêng) và báo một thông báo:
 /// - [xuLy]: server từ chối nửa của nhà (nhà đóng, chỉ đọc, không còn là thành viên…) — gỡ CẢ HAI nửa.
 /// - [xuLyNuaNhaBiXoa]: Chủ nhà xoá nửa của nhà, kéo về — nửa của nhà đã xoá từ server, chỉ gỡ nửa riêng.
@@ -52,7 +55,7 @@ class GopQuyConflictResolver {
   final int? Function() _taiKhoanPhien;
   final void Function() _henDongBo;
 
-  /// Xin một lượt kéo TOÀN BỘ cho tài khoản (DI: `SyncEngine.keoLaiToanBo`) sau khi gỡ hàng sửa / xoá hộ bị `ROLE_FORBIDDEN`.
+  /// Xin một lượt kéo TOÀN BỘ cho tài khoản (DI: `SyncEngine.keoLaiToanBo`) sau khi gỡ hàng sửa / xoá hộ bị `ROLE_FORBIDDEN`, hoặc mục tiêu của nhà bị `UNIQUE_VIOLATION`.
   /// `null` = không xin (test). ⚠️ Gọi NGOÀI [_tuanTu]: lượt kéo gọi `xuLyNuaNhaBiXoa` (cũng trong [_tuanTu]) — chờ lượt kéo
   /// ngay trong hàng việc là tự khoá chết.
   final Future<void> Function(int idaccount)? _xinKeoLai;
