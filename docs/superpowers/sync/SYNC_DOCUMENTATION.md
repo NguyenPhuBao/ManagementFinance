@@ -324,6 +324,8 @@ Tên duy nhất trong tài khoản, tính cả danh mục mặc định, so bằ
 
 **`SyncEngine.keoLaiToanBo(idaccount)`**: vào phạm vi dữ liệu mới (vào nhà) ⇒ xoá mốc kéo về rồi kéo lại toàn bộ. Dùng **thế hệ yêu cầu** trong `ApDuLieuKeoVe`: lượt kéo bắt đầu trước yêu cầu không ghi mốc; lượt hỏng giữ yêu cầu cho lượt sau; chỉ xoá kho (`SyncCheckpointStore.clear`) là KHÔNG đủ vì mốc nằm trong RAM. Lượt kéo toàn bộ theo yêu cầu vẫn so từ khoá khuôn danh mục.
 
+**Với giãn cách** (2026-11-02, G121 dòng 16): `boGianCach: true` bỏ giãn cách của engine cho một lượt, cùng hàm `_boGianCachMotLuot` với `dayVaCho`; số lần hỏng giữ nguyên nên lượt này hỏng nữa thì giãn cách dựng lại ở bậc kế. Chỉ `DieuPhoiDoiNha` bật (đổi nhà). `GopQuyConflictResolver` không bật: nó xin kéo sau một lần đẩy hỏng, bỏ giãn cách ở đó là vòng đồng bộ nóng khi hàng cứ bị từ chối. Khe còn lại, chung với `dayVaCho`: yêu cầu tới giữa một chu kỳ mà chu kỳ ấy hỏng thì lượt bù chờ hết bậc giãn cách; yêu cầu không mất.
+
 **Đợt 1A (2026-11-01) — những gì đẩy / kéo thêm cho hàng của nhà** (mã `2c18bf77..9cfca7bd`; chưa có màn ghi khoản, chưa đo máy thật):
 - **Thu gom hàng của nhà do người khác ghi.** `ThuGomThaoTacDay.collectPendingOps` đọc nhà đang ở MỘT lần (`nhaPhien`, DI ở `injection_container.dart`: `NhaRepository.hienTai.nha?.id`)
   và truyền cho `getPending(idaccount, nha)` của năm DAO: hàng vào lô khi `idaccount = tôi ∨ idhousehold = nhà tôi`. Hàng của nhà mang

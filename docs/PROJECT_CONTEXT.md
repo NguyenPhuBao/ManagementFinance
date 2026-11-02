@@ -617,6 +617,20 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-02)
 
+### 🔧 Vào nhà không còn chờ giãn cách — G121 dòng 16 đóng (2026-11-02, nhánh `TranQuangDat-backend`, CHƯA push)
+
+`76e20c8d`: `keoLaiToanBo` nhận `boGianCach`, chỉ `DieuPhoiDoiNha` bật; `dayVaCho` dùng chung `_boGianCachMotLuot`. `flutter test` **9491 pass / 10 skip** (mốc trước 9487 / 10), analyze **20**, schema v33. Thử bản sai: DI bỏ tham số, và luôn bỏ giãn cách cho mọi chỗ gọi, cả hai đều đỏ.
+
+**Đo máy ảo** (bản debug `76e20c8d`, tài khoản thử 31 vào nhà thử 10 của tài khoản 30 qua mã mời, backend cổng 3001 trỏ `PersonFinance`, proxy làm `/sync/push` trả 500; không đo Realme vì đăng nhập tài khoản thử ở đó sẽ dọn dữ liệu của `dat`):
+
+| Kịch bản | Kết quả đo |
+|---|---|
+| Đang giãn cách tới 11:09:41 sau 3 chu kỳ đẩy hỏng, bấm Tham gia lúc 11:05:40 | ✅ Trong 1 s: lượt `pull since=1970`; Nhà mình hiện ví chung và 2/6 thành viên |
+| Lượt thường ngay sau đó (bật tắt mạng), đẩy vẫn hỏng | ✅ Bị chặn, không gửi `/sync/push`; 4 chu kỳ hỏng, hoãn tới 11:20:37 (bậc kế) |
+| Hết hỏng, mở lại app | ✅ Khoản chờ lên server, không còn hàng `pending` |
+
+Một chu kỳ hỏng không tự hẹn lượt sau, chỉ lượt bị chặn mới hẹn: đo chuỗi hỏng phải tự kích từng chu kỳ (bật tắt mạng). Khe còn lại: G121 dòng 16. Sao lưu CSDL máy ảo trước đo: `D:\FlowMoney-saoluu\mayao-truoc-g121-2026-11-02\`.
+
 ### 🏠 Gia đình ĐỢT 2 — mục tiêu chung trên ví chung: mã xong + soát toàn nhánh, ĐO máy ảo + Realme đạt (2026-11-02, bảng ở cuối khối)
 
 Kế hoạch `docs/superpowers/plans/2026-11-02-gia-dinh-dot-2-muc-tieu-chung.md` (gitignore), `docs/Family/03_MUC_TIEU_CHUNG.md`, spec `specs/2026-11-01-gia-dinh-2a-toi-3-design.md` (**mục 17 = chỗ mã khác spec và `03`**). Trên nhánh dự phòng `TranQuangDat-backend`, **chưa lên `origin`, chưa áp Supabase (đơn 63.1, 65.1), người dùng thật chưa dùng được**.
