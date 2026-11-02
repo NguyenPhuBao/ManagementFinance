@@ -99,7 +99,8 @@ String? loiNhapMucTieu({
   if (han == null) return 'Vui lòng chọn hạn';
   final homNay = DateTime(now.year, now.month, now.day);
   final ngayHan = DateTime(han.year, han.month, han.day);
-  if (ngayHan.isBefore(homNay) && han != hanLucMo) return 'Hạn phải từ hôm nay trở đi';
+  final ngayLucMo = hanLucMo == null ? null : DateTime(hanLucMo.year, hanLucMo.month, hanLucMo.day);
+  if (ngayHan.isBefore(homNay) && ngayHan != ngayLucMo) return 'Hạn phải từ hôm nay trở đi';
   return null;
 }
 

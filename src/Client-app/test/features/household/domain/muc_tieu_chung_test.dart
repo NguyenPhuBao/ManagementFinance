@@ -21,10 +21,21 @@ void main() {
   test('60 %, còn thiếu, ví dụ 8 triệu / 2 tháng = 4 triệu', () {
     final t = tienDoMucTieuChung(mucTieu: goal(han: DateTime(2026, 12, 31)), soDuVi: 12000000, now: now);
     expect(t.tiLe, closeTo(.6, 1e-9));
+    expect(t.soDu, 12000000);
+    expect(t.mucTieu, 20000000);
+    expect(t.han, DateTime(2026, 12, 31));
     expect(t.conThieu, 8000000);
     expect(t.conNgay, 59);
     expect(t.canGopMoiThang, 4000000);
     expect(t.trangThai, TrangThaiMucTieuChung.dangChay);
+  });
+
+  test('tienDoMucTieuChung lấy số dư từ ví, không từ currentAmount của hàng', () {
+    final t = tienDoMucTieuChung(
+        mucTieu: goal().copyWith(currentAmount: 19000000), soDuVi: 2000000, now: now);
+    expect(t.soDu, 2000000, reason: 'Số dư lấy từ ví; currentAmount cộng dồn offline sẽ đè nhau');
+    expect(t.tiLe, closeTo(.1, 1e-9));
+    expect(t.conThieu, 18000000);
   });
 
   test('số dư âm tính 0 %, còn thiếu đủ mục tiêu', () {
@@ -47,8 +58,16 @@ void main() {
         TrangThaiMucTieuChung.quaHan);
     expect(tienDoMucTieuChung(mucTieu: goal(han: DateTime(2026, 11, 1)), soDuVi: 1, now: now).canGopMoiThang,
         isNull);
-    expect(tienDoMucTieuChung(mucTieu: goal(han: now), soDuVi: 1, now: now).trangThai,
-        TrangThaiMucTieuChung.dangChay);
+    final dungHan = tienDoMucTieuChung(mucTieu: goal(han: now), soDuVi: 1, now: now);
+    expect(dungHan.trangThai, TrangThaiMucTieuChung.dangChay);
+    expect(dungHan.canGopMoiThang, 19999999,
+        reason: 'Đúng ngày hạn tính 1 tháng, không được chia cho 0');
+    expect(soThangConLai(now, now), 1);
+    expect(soThangConLai(DateTime(2026, 11, 2, 15), DateTime(2026, 11, 2)), 1);
+    expect(soThangConLai(now, DateTime(2026, 12, 2, 15)), 1,
+        reason: 'Giờ của hạn không được đẩy thêm một tháng: so theo ngày');
+    expect(soThangConLai(DateTime(2026, 11, 2, 15), DateTime(2026, 12, 2)), 1,
+        reason: 'Giờ của hôm nay không được làm lệch số tháng');
   });
 
   test('cờ isCompleted cũ không làm giả trạng thái đã đạt (03 mục 3: suy ra, không ghi cờ)', () {
@@ -75,9 +94,11 @@ void main() {
     expect(soThangConLai(DateTime(2026, 1, 31), DateTime(2026, 3, 1)), 2);
     expect(soThangConLai(DateTime(2028, 1, 31), DateTime(2028, 2, 29)), 1);
     expect(soThangConLai(DateTime(2027, 1, 31), DateTime(2027, 2, 28)), 1);
+    expect(soThangConLai(DateTime(2026, 1, 31), DateTime(2026, 3, 30)), 2,
+        reason: 'Cộng từ mốc gốc, không cộng dồn; cộng dồn (31/1 → 28/2 → 28/3 → 28/4) ra 3');
   });
 
-  test('hai hàng sống cùng ví: lấy updatedAt mới nhất; bỏ hàng không có ví, hàng đã xoá', () {
+  test('hai hàng sống cùng ví: lấy updatedAt mới nhất; bỏ hàng đã xoá', () {
     final cu = goal().copyWith(id: 'cu', updatedAt: DateTime(2026, 1, 1));
     final moi = goal().copyWith(id: 'moi', updatedAt: DateTime(2026, 2, 1));
     expect(mucTieuTheoVi([moi, cu])['v']!.id, 'moi');
@@ -95,5 +116,14 @@ void main() {
     expect(loiNhapMucTieu(soTienChu: '1.000', han: DateTime(2026, 1, 1), hanLucMo: DateTime(2026, 1, 1), now: now),
         isNull);
     expect(loiNhapMucTieu(soTienChu: '1.000', han: now, hanLucMo: null, now: now), isNull);
+    expect(loiNhapMucTieu(soTienChu: '1.000', han: DateTime(2026, 11, 2), hanLucMo: null, now: DateTime(2026, 11, 2, 15)),
+        isNull,
+        reason: 'Chọn hôm nay lúc chiều vẫn hợp lệ: so theo ngày, không theo giờ');
+    expect(loiNhapMucTieu(soTienChu: '1.000', han: DateTime(2026, 2, 1), hanLucMo: DateTime(2026, 1, 1), now: now),
+        'Hạn phải từ hôm nay trở đi',
+        reason: 'Đổi sang hạn quá khứ KHÁC hạn đang lưu vẫn bị từ chối');
+    expect(loiNhapMucTieu(soTienChu: '1.000', han: DateTime(2026, 1, 1), hanLucMo: DateTime(2026, 1, 1, 8), now: now),
+        isNull,
+        reason: 'Hạn cũ mang giờ khác 00:00, chọn lại đúng ngày ấy không bị từ chối oan');
   });
 }

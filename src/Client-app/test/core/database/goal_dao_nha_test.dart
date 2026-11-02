@@ -69,6 +69,9 @@ void main() {
     expect(await db.goalDao.getXoaChuaDayTheoVi('v'), isNull);
     await them('can', nha: 5, vi: 'v', xoa: true, sync: 'pending');
     expect((await db.goalDao.getXoaChuaDayTheoVi('v'))!.id, 'can');
+    await them('canMoi', nha: 5, vi: 'v', xoa: true, sync: 'pending', luc: DateTime(2026, 12, 1));
+    expect((await db.goalDao.getXoaChuaDayTheoVi('v'))!.id, 'canMoi',
+        reason: 'Hai hàng xoá chưa đẩy: hồi sinh hàng mới hơn');
   });
 
   test('GoalEntity giữ idhousehold qua fromDrift, toCompanion và copyWith', () async {
