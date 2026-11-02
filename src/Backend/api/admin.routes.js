@@ -88,6 +88,7 @@ router.put(
   },
   paymentController.processRefund
 );
+router.post('/payments/orders/:orderCode/confirm-upgrade', paymentController.confirmUpgradeByAdmin);
 router.get('/payments/payos-qr', paymentController.getPayosQr);
 router.post('/payments/sample', paymentController.createSampleOrder);
 router.delete('/payments/sample', paymentController.deleteSampleOrders);
