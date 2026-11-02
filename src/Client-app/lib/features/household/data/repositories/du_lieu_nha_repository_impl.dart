@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/database/app_database.dart';
@@ -5,12 +6,14 @@ import '../../../../core/errors/app_exceptions.dart';
 import '../../../../core/sync/sync_engine.dart';
 import '../../../category/data/models/category_entity.dart';
 import '../../../category/data/models/category_tree.dart';
+import '../../../goal/data/models/goal_entity.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../wallet/data/datasources/wallet_local_data_source.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../../wallet/data/so_du_vi_service.dart';
 import '../../../wallet/domain/wallet_status.dart';
 import '../../domain/hang_chua_day.dart';
+import '../../domain/muc_tieu_chung.dart';
 import 'du_lieu_nha_repository.dart';
 
 class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
@@ -57,6 +60,7 @@ class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
     required double soDuBanDau,
     required String icon,
     required String mau,
+    DatMucTieu? mucTieu,
   }) async {
     // Ví nhà không mặc định (index `chk_wallet_household_not_default`) và không cộng vào tổng tài sản cá nhân.
     final vi = WalletEntity(
@@ -79,13 +83,94 @@ class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
       await _local.insert(vi);
       // Neo trước khi có khoản nào của ví; số dư 0 thì không sinh neo (xem `SoDuViService`). Neo kế thừa `idhousehold` của ví.
       await _soDuVi.datNeoNhieuVi({vi.id});
+      if (mucTieu != null) await _datMucTieu(viId: vi.id, idNha: idNha, tenVi: ten, dat: mucTieu);
     });
     _syncEngine.scheduleSync();
     return vi;
   }
 
   @override
-  Future<void> suaViChung(WalletEntity vi) async {
+  Stream<List<GoalEntity>> theoDoiMucTieuChung(int idNha) =>
+      _db.goalDao.watchCuaNha(idNha).map((rows) => rows.map(GoalEntity.fromDrift).toList());
+
+  @override
+  Future<List<({GoalEntity mucTieu, WalletEntity vi})>> mucTieuKemVi(int idNha) async {
+    final theoVi = mucTieuTheoVi((await _db.goalDao.getCuaNha(idNha)).map(GoalEntity.fromDrift));
+    final ra = <({GoalEntity mucTieu, WalletEntity vi})>[];
+    // `getViNha` đã bỏ ví xoá mềm: mục tiêu trỏ ví đã xoá không vào đây.
+    for (final v in await _db.walletDao.getViNha(idNha)) {
+      final g = theoVi[v.id];
+      if (g != null) ra.add((mucTieu: g, vi: WalletEntity.fromDrift(v)));
+    }
+    return ra;
+  }
+
+  /// Ví đổi tên thì hàng `goal` đổi theo; giao diện luôn đọc tên ví, cột này chỉ cho `NOT NULL` của server.
+  Future<void> _doiTenMucTieu(String viId, String ten) async {
+    final song = await _db.goalDao.getSongTheoVi(viId);
+    if (song == null || song.name == ten) return;
+    await _db.goalDao.updateFields(GoalsCompanion(
+      id: Value(song.id),
+      name: Value(ten),
+      syncStatus: const Value('pending'),
+      updatedAt: Value(DateTime.now()),
+    ));
+  }
+
+  Future<void> _datMucTieu({
+    required String viId,
+    required int idNha,
+    required String tenVi,
+    required DatMucTieu dat,
+  }) async {
+    final bayGio = DateTime.now();
+    final song = await _db.goalDao.getSongTheoVi(viId);
+    if (song != null) {
+      await _db.goalDao.updateFields(GoalsCompanion(
+        id: Value(song.id),
+        name: Value(tenVi),
+        targetAmount: Value(dat.soTien),
+        targetDate: Value(dat.han),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(bayGio),
+      ));
+      return;
+    }
+    final cho = await _db.goalDao.getXoaChuaDayTheoVi(viId);
+    if (cho != null) {
+      // Server chạy lệnh tạo trước lệnh xoá trong một lô: tạo hàng mới ở đây là vướng chỉ mục duy nhất.
+      await _db.goalDao.updateFields(GoalsCompanion(
+        id: Value(cho.id),
+        name: Value(tenVi),
+        targetAmount: Value(dat.soTien),
+        targetDate: Value(dat.han),
+        startDate: Value(bayGio),
+        isDeleted: const Value(false),
+        deletedAt: const Value(null),
+        syncStatus: const Value('pending'),
+        syncRetryCount: const Value(0),
+        syncError: const Value(null),
+        syncBlockedUntil: const Value(null),
+        updatedAt: Value(bayGio),
+      ));
+      return;
+    }
+    await _db.goalDao.insert(GoalsCompanion.insert(
+      id: _uuid.v4(),
+      idaccount: dat.idaccount,
+      idhousehold: Value(idNha),
+      walletId: Value(viId),
+      name: tenVi,
+      targetAmount: dat.soTien,
+      targetDate: dat.han,
+      startDate: Value(bayGio),
+      syncStatus: const Value('pending'),
+      updatedAt: bayGio,
+    ));
+  }
+
+  @override
+  Future<void> suaViChung(WalletEntity vi, {ThayDoiMucTieu mucTieu = const GiuMucTieu()}) async {
     // Đọc lại hàng: `balance` trên entity có thể cũ (form mở lâu, lượt kéo về đã đổi số dư). Bất biến ⑥: số dư chỉ
     // `SoDuViService` ghi — ghi đè số cũ là lần ghi kế sinh neo `thu` `pending` cho cả nhà.
     //
@@ -110,6 +195,16 @@ class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
         syncStatus: 'pending',
         updatedAt: DateTime.now(),
       ));
+      final idNha = hang.idhousehold!;
+      switch (mucTieu) {
+        case GiuMucTieu():
+          await _doiTenMucTieu(vi.id, vi.name);
+        case BoMucTieu():
+          final song = await _db.goalDao.getSongTheoVi(vi.id);
+          if (song != null) await _db.goalDao.softDelete(song.id);
+        case final DatMucTieu dat:
+          await _datMucTieu(viId: vi.id, idNha: idNha, tenVi: vi.name, dat: dat);
+      }
     });
     _syncEngine.scheduleSync();
   }
@@ -175,12 +270,16 @@ class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
 
   @override
   Future<void> xoaViChung({required int idNha, required String id}) async {
-    // Không qua `WalletLocalDataSource.softDelete`: ràng buộc mục tiêu của nó đọc `goalDao.getAll(idaccount)` (mục tiêu riêng).
+    // Không qua `WalletLocalDataSource.softDelete`: ràng buộc mục tiêu của nó đọc `goalDao.getAll(idaccount)` (mục tiêu riêng);
+    // ràng buộc mục tiêu của nhà nằm ngay đây.
     await _db.transaction(() async {
       final hang = await _viCuaNha(idNha, id);
       if (hang.balance != 0 || await _db.transactionDao.demGiaoDichLienQuan(id) > 0) {
         throw CacheException(
             'Ví "${hang.name}" đã có giao dịch. Hãy lưu trữ để cất khỏi bộ chọn mà vẫn giữ lịch sử.');
+      }
+      if (await _db.goalDao.getSongTheoVi(id) != null) {
+        throw CacheException('Ví "${hang.name}" đang đặt mục tiêu. Tắt mục tiêu trước khi xoá ví.');
       }
       await _db.walletDao.softDelete(id);
     });

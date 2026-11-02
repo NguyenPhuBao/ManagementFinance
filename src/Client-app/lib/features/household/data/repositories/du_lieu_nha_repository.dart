@@ -1,8 +1,10 @@
 import '../../../category/data/models/category_entity.dart';
 import '../../../category/data/models/category_tree.dart';
+import '../../../goal/data/models/goal_entity.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../wallet/data/models/wallet_entity.dart';
 import '../../domain/hang_chua_day.dart';
+import '../../domain/muc_tieu_chung.dart';
 
 /// Đọc / ghi ví chung và khoản của nhà (gia đình 1A). Mọi phép lọc theo NHÀ, không theo tài khoản: `idaccount` của hàng thuộc nhà
 /// chỉ nghĩa người tạo / người ghi.
@@ -30,9 +32,17 @@ abstract class DuLieuNhaRepository {
     required double soDuBanDau,
     required String icon,
     required String mau,
+    DatMucTieu? mucTieu,
   });
 
-  Future<void> suaViChung(WalletEntity vi);
+  /// Ví và mục tiêu ghi trong MỘT giao tác (`docs/Family/03` mục 6).
+  Future<void> suaViChung(WalletEntity vi, {ThayDoiMucTieu mucTieu = const GiuMucTieu()});
+
+  /// Mục tiêu sống của nhà. Hàng riêng không có ở đây.
+  Stream<List<GoalEntity>> theoDoiMucTieuChung(int idNha);
+
+  /// Cho bộ quét thông báo.
+  Future<List<({GoalEntity mucTieu, WalletEntity vi})>> mucTieuKemVi(int idNha);
 
   /// Bộ chọn ví của form nhà: ví đang hoạt động, cộng các ví trong [giuLai] dù đã lưu trữ (đang sửa khoản trên ví ấy), ví
   /// [uuTien] đứng đầu.

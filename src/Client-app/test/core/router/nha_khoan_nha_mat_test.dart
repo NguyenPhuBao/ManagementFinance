@@ -10,6 +10,7 @@ import 'package:flowmoney/features/auth/data/models/user_model.dart';
 import 'package:flowmoney/features/auth/data/repositories/auth_repository.dart';
 import 'package:flowmoney/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
+import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/household/data/nha_store.dart';
 import 'package:flowmoney/features/household/data/repositories/du_lieu_nha_repository.dart';
 import 'package:flowmoney/features/household/data/repositories/nha_repository.dart';
@@ -44,6 +45,8 @@ class _DuLieuNhaGia implements DuLieuNhaRepository {
   // Nhà mình dựng khối Ví chung từ nguồn đã đăng ký (1B Task 5): ca này không xem ví, chỉ cần luồng không ném.
   @override
   Stream<List<WalletEntity>> theoDoiViChung(int idNha) => const Stream.empty();
+  @override
+  Stream<List<GoalEntity>> theoDoiMucTieuChung(int idNha) => const Stream.empty();
   @override
   Future<List<WalletEntity>> viChungChoForm(int idNha, {Set<String> giuLai = const {}, String? uuTien}) async => const [];
   @override

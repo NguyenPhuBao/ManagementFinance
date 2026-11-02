@@ -6,7 +6,9 @@ import 'dart:async';
 
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
 import 'package:flowmoney/features/category/data/models/category_tree.dart';
+import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/household/data/repositories/du_lieu_nha_repository.dart';
+import 'package:flowmoney/features/household/domain/muc_tieu_chung.dart';
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
 import 'package:flowmoney/features/household/domain/hang_chua_day.dart';
 import 'package:flowmoney/features/wallet/application/dieu_chinh_so_du_service.dart';
@@ -154,19 +156,43 @@ class DuLieuNhaGia implements DuLieuNhaRepository {
     required double soDuBanDau,
     required String icon,
     required String mau,
+    DatMucTieu? mucTieu,
   }) async {
     final loi = loiTao;
     if (loi != null) throw loi;
+    taoMuc.add(mucTieu);
     tao.add((idNha: idNha, idaccount: idaccount, ten: ten, loai: loai, soDu: soDuBanDau, icon: icon, mau: mau));
     return viChungGia('moi', ten, soDuBanDau, loai: loai, icon: icon, mau: mau, idNha: idNha);
   }
 
   @override
-  Future<void> suaViChung(WalletEntity vi) async {
+  Future<void> suaViChung(WalletEntity vi, {ThayDoiMucTieu mucTieu = const GiuMucTieu()}) async {
     final loi = loiSua;
     if (loi != null) throw loi;
     sua.add(vi);
+    suaMuc.add(mucTieu);
   }
+
+  /// Mục tiêu đi kèm mỗi lệnh tạo / sửa ví (cùng thứ tự với `tao` / `sua`).
+  final suaMuc = <ThayDoiMucTieu>[];
+  final taoMuc = <DatMucTieu?>[];
+
+  List<GoalEntity> _muc = const [];
+  final _ctlMuc = StreamController<List<GoalEntity>>.broadcast();
+
+  void datMucTieu(List<GoalEntity> ds) {
+    _muc = ds;
+    _ctlMuc.add(ds);
+  }
+
+  @override
+  Stream<List<GoalEntity>> theoDoiMucTieuChung(int idNha) async* {
+    yield _muc;
+    yield* _ctlMuc.stream;
+  }
+
+  @override
+  Future<List<({GoalEntity mucTieu, WalletEntity vi})>> mucTieuKemVi(int idNha) async => const [];
 
   @override
   Future<void> luuTruViChung({required int idNha, required String id, required bool luuTru}) async {

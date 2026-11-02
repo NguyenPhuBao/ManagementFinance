@@ -9,6 +9,7 @@ import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/errors/app_exceptions.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
 import 'package:flowmoney/features/household/data/repositories/du_lieu_nha_repository_impl.dart';
+import 'package:flowmoney/features/household/domain/muc_tieu_chung.dart';
 import 'package:flowmoney/features/wallet/data/datasources/wallet_local_data_source.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/data/so_du_vi_service.dart';
@@ -292,6 +293,167 @@ void main() {
         reason: 'ví của nhà 7 không được đổi sang nhà 8');
     expect((await db.walletDao.getById(v.id))!.name, 'Chung');
     expect((await db.walletDao.getById(v.id))!.idhousehold, 7);
+  });
+
+  group('mục tiêu chung (đợt 2)', () {
+    final han = DateTime(2027, 6, 30);
+    DatMucTieu dat([double soTien = 1000000, DateTime? h]) =>
+        DatMucTieu(soTien: soTien, han: h ?? han, idaccount: 10);
+
+    Future<WalletEntity> taoViMuc(String ten, {DatMucTieu? mucTieu}) => repo.taoViChung(
+        idNha: 7,
+        idaccount: 10,
+        ten: ten,
+        loai: 'cash',
+        soDuBanDau: 0,
+        icon: 'w',
+        mau: '#000000',
+        mucTieu: mucTieu);
+
+    Future<List<Goal>> tatCa() => db.select(db.goals).get();
+
+    test('tạo ví kèm DatMucTieu: một hàng goal đủ cột', () async {
+      final v = await taoViMuc('Quỹ', mucTieu: dat());
+      final ds = await tatCa();
+      expect(ds, hasLength(1));
+      final g = ds.single;
+      expect(g.idhousehold, 7);
+      expect(g.walletId, v.id);
+      expect(g.name, 'Quỹ');
+      expect(g.targetAmount, 1000000);
+      expect(g.currentAmount, 0);
+      expect(g.idaccount, 10);
+      expect(g.startDate, isNotNull);
+      expect(g.syncStatus, 'pending');
+      expect(g.autoDepositAmount, isNull);
+      expect(g.recurrence, isFalse);
+      expect(g.priority, isNull);
+    });
+
+    test('neo đặt hỏng: không còn ví, không còn goal (cùng giao tác)', () async {
+      final hong = DuLieuNhaRepositoryImpl(
+        db: db,
+        localDataSource: WalletLocalDataSourceImpl(db: db),
+        soDuVi: _SoDuNemLoi(db),
+        syncEngine: sync,
+      );
+      await expectLater(
+        hong.taoViChung(
+            idNha: 7, idaccount: 10, ten: 'X', loai: 'cash', soDuBanDau: 5, icon: 'w', mau: '#000000', mucTieu: dat()),
+        throwsA(isA<StateError>()),
+      );
+      expect(await db.walletDao.getViNha(7), isEmpty);
+      expect(await tatCa(), isEmpty, reason: 'hàng goal phải cùng giao tác với ví, không mồ côi');
+    });
+
+    test('sửa DatMucTieu khi chưa có: hàng mới, idaccount là người tạo', () async {
+      final v = await taoViMuc('Quỹ');
+      await repo.suaViChung(v, mucTieu: dat());
+      final g = (await tatCa()).single;
+      expect(g.walletId, v.id);
+      expect(g.idaccount, 10);
+      expect(g.idhousehold, 7);
+    });
+
+    test('sửa DatMucTieu khi đã có hàng sống: không thêm hàng, giữ startDate và idaccount', () async {
+      final v = await taoViMuc('Quỹ', mucTieu: dat());
+      final truoc = (await tatCa()).single;
+      await db.goalDao.updateFields(GoalsCompanion(id: Value(truoc.id), syncStatus: const Value('synced')));
+      final h2 = DateTime(2028, 1, 31);
+      await repo.suaViChung(v, mucTieu: DatMucTieu(soTien: 2000000, han: h2, idaccount: 99));
+      final ds = await tatCa();
+      expect(ds, hasLength(1), reason: 'sửa mục tiêu đang sống không đẻ hàng thứ hai');
+      expect(ds.single.targetAmount, 2000000);
+      expect(ds.single.targetDate, h2);
+      expect(ds.single.startDate, truoc.startDate);
+      expect(ds.single.idaccount, 10, reason: 'giữ người tạo ban đầu');
+      expect(ds.single.syncStatus, 'pending');
+    });
+
+    test('sửa BoMucTieu: hàng xoá mềm pending, getCuaNha rỗng, số dư ví không đổi', () async {
+      final v = await taoViMuc('Quỹ', mucTieu: dat());
+      await repo.suaViChung(v, mucTieu: const BoMucTieu());
+      final g = (await tatCa()).single;
+      expect(g.deletedAt, isNotNull);
+      expect(g.syncStatus, 'pending');
+      expect(await db.goalDao.getCuaNha(7), isEmpty);
+      expect((await db.walletDao.getById(v.id))!.balance, 0);
+    });
+
+    test('tắt rồi bật lại khi lệnh xoá còn pending (Q1): hồi sinh CÙNG hàng', () async {
+      final v = await taoViMuc('Quỹ', mucTieu: dat());
+      final id0 = (await tatCa()).single.id;
+      await repo.suaViChung(v, mucTieu: const BoMucTieu());
+      await db.goalDao.updateFields(GoalsCompanion(id: Value(id0), syncBlockedUntil: Value(moc)));
+      await repo.suaViChung(v, mucTieu: dat(3000000));
+      final ds = await tatCa();
+      expect(ds, hasLength(1),
+          reason: 'server chạy lệnh tạo trước lệnh xoá trong một lô: tạo hàng mới vướng uq_goal_household_wallet_active, '
+              'nên bật lại phải hồi sinh hàng cũ');
+      final g = ds.single;
+      expect(g.id, id0);
+      expect(g.deletedAt, isNull);
+      expect(g.isDeleted, isFalse);
+      expect(g.targetAmount, 3000000);
+      expect(g.syncBlockedUntil, isNull);
+      expect(g.syncStatus, 'pending');
+    });
+
+    test('tắt, markSynced, bật lại: hai hàng, id khác', () async {
+      final v = await taoViMuc('Quỹ', mucTieu: dat());
+      final id0 = (await tatCa()).single.id;
+      await repo.suaViChung(v, mucTieu: const BoMucTieu());
+      await db.goalDao.updateFields(GoalsCompanion(id: Value(id0), syncStatus: const Value('synced')));
+      await repo.suaViChung(v, mucTieu: dat());
+      final ds = await tatCa();
+      expect(ds, hasLength(2));
+      expect(ds.where((g) => g.deletedAt == null).single.id, isNot(id0));
+    });
+
+    test('sửa tên ví với GiuMucTieu: goal.name theo tên mới; không mục tiêu thì không sinh hàng', () async {
+      final co = await taoViMuc('Cũ', mucTieu: dat());
+      final khong = await taoViMuc('Không');
+      await db.goalDao.updateFields(GoalsCompanion(
+          id: Value((await tatCa()).single.id), syncStatus: const Value('synced')));
+      await repo.suaViChung(co.copyWith(name: 'Mới'));
+      await repo.suaViChung(khong.copyWith(name: 'Không 2'));
+      final ds = await tatCa();
+      expect(ds, hasLength(1));
+      expect(ds.single.name, 'Mới');
+      expect(ds.single.syncStatus, 'pending');
+    });
+
+    test('xoaViChung còn mục tiêu sống bị chặn; sau khi tắt thì xoá được', () async {
+      final v = await taoViMuc('Quỹ', mucTieu: dat());
+      await expectLater(
+          repo.xoaViChung(idNha: 7, id: v.id),
+          throwsA(isA<CacheException>().having((e) => e.message, 'message', contains('đang đặt mục tiêu'))));
+      expect((await db.walletDao.getById(v.id))!.deletedAt, isNull);
+      await repo.suaViChung(v, mucTieu: const BoMucTieu());
+      await repo.xoaViChung(idNha: 7, id: v.id);
+      expect((await db.walletDao.getById(v.id))!.deletedAt, isNotNull);
+    });
+
+    test('mucTieuKemVi ghép đúng và bỏ mục tiêu trỏ ví đã xoá mềm', () async {
+      final a = await taoViMuc('A', mucTieu: dat());
+      final b = await taoViMuc('B', mucTieu: dat(5));
+      await db.walletDao.softDelete(b.id);
+      final ds = await repo.mucTieuKemVi(7);
+      expect(ds, hasLength(1));
+      expect(ds.single.vi.id, a.id);
+      expect(ds.single.mucTieu.walletId, a.id);
+      expect((await repo.theoDoiMucTieuChung(7).first), hasLength(2),
+          reason: 'theoDoiMucTieuChung chỉ lọc theo nhà, không theo ví');
+    });
+
+    test('mọi lệnh ghi mục tiêu hẹn đồng bộ', () async {
+      sync.soLanHen = 0;
+      final v = await taoViMuc('Quỹ', mucTieu: dat());
+      expect(sync.soLanHen, 1);
+      await repo.suaViChung(v, mucTieu: dat(2));
+      await repo.suaViChung(v, mucTieu: const BoMucTieu());
+      expect(sync.soLanHen, 3);
+    });
   });
 
   group('lối đọc / ghi của 1B', () {
