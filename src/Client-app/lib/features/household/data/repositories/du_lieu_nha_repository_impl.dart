@@ -200,8 +200,12 @@ class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
         case GiuMucTieu():
           await _doiTenMucTieu(vi.id, vi.name);
         case BoMucTieu():
-          final song = await _db.goalDao.getSongTheoVi(vi.id);
-          if (song != null) await _db.goalDao.softDelete(song.id);
+          // Hai máy Chủ cùng bật offline để lại hai hàng sống: xoá mềm hết, không chỉ hàng mới nhất.
+          for (var song = await _db.goalDao.getSongTheoVi(vi.id);
+              song != null;
+              song = await _db.goalDao.getSongTheoVi(vi.id)) {
+            await _db.goalDao.softDelete(song.id);
+          }
         case final DatMucTieu dat:
           await _datMucTieu(viId: vi.id, idNha: idNha, tenVi: vi.name, dat: dat);
       }

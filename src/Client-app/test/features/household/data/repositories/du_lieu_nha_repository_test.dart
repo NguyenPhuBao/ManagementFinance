@@ -330,7 +330,39 @@ void main() {
       expect(g.priority, isNull);
     });
 
-    test('neo đặt hỏng: không còn ví, không còn goal (cùng giao tác)', () async {
+    test('ghi goal hỏng khi TẠO ví: không còn ví (cùng giao tác)', () async {
+      await db.customStatement("CREATE TRIGGER chan_goal BEFORE INSERT ON goals BEGIN SELECT RAISE(ABORT,'x'); END");
+      await expectLater(taoViMuc('Quỹ', mucTieu: dat()), throwsA(anything));
+      expect(await db.walletDao.getViNha(7), isEmpty,
+          reason: 'lần ghi goal hỏng phải kéo ví về cùng giao tác, không để ví mồ côi');
+    });
+
+    test('ghi goal hỏng khi SỬA ví: tên ví giữ nguyên (cùng giao tác)', () async {
+      final v = await taoViMuc('Cũ');
+      await db.customStatement("CREATE TRIGGER chan_goal BEFORE INSERT ON goals BEGIN SELECT RAISE(ABORT,'x'); END");
+      await expectLater(repo.suaViChung(v.copyWith(name: 'Mới'), mucTieu: dat()), throwsA(anything));
+      expect((await db.walletDao.getById(v.id))!.name, 'Cũ',
+          reason: 'đổi tên ví và ghi goal cùng một giao tác: goal hỏng thì tên không đổi');
+    });
+
+    test('BoMucTieu xoá mềm MỌI hàng sống của ví (hai máy Chủ cùng bật offline)', () async {
+      final v = await taoViMuc('Quỹ', mucTieu: dat());
+      await db.goalDao.insert(GoalsCompanion.insert(
+        id: 'hang-thu-hai',
+        idaccount: 20,
+        idhousehold: const Value(7),
+        walletId: Value(v.id),
+        name: 'Quỹ',
+        targetAmount: 5,
+        targetDate: han,
+        updatedAt: DateTime.now().add(const Duration(minutes: 1)),
+      ));
+      await repo.suaViChung(v, mucTieu: const BoMucTieu());
+      expect(await db.goalDao.getCuaNha(7), isEmpty,
+          reason: 'còn hàng sống thứ hai thì mục tiêu hiện lại sau khi tắt');
+    });
+
+    test('neo đặt hỏng: không còn ví, không còn goal', () async {
       final hong = DuLieuNhaRepositoryImpl(
         db: db,
         localDataSource: WalletLocalDataSourceImpl(db: db),
@@ -346,45 +378,55 @@ void main() {
       expect(await tatCa(), isEmpty, reason: 'hàng goal phải cùng giao tác với ví, không mồ côi');
     });
 
-    test('sửa DatMucTieu khi chưa có: hàng mới, idaccount là người tạo', () async {
-      final v = await taoViMuc('Quỹ');
-      await repo.suaViChung(v, mucTieu: dat());
+    test('sửa DatMucTieu khi chưa có: hàng mới mang idaccount của NGƯỜI BẬT, không phải của ví', () async {
+      final v = await taoViMuc('Quỹ'); // ví của 10
+      await repo.suaViChung(v, mucTieu: DatMucTieu(soTien: 1000000, han: han, idaccount: 20));
       final g = (await tatCa()).single;
       expect(g.walletId, v.id);
-      expect(g.idaccount, 10);
+      expect(g.idaccount, 20,
+          reason: 'Chủ mới bật trên ví của Chủ cũ: lấy idaccount của ví là server trả NOT_OWNER');
       expect(g.idhousehold, 7);
     });
 
     test('sửa DatMucTieu khi đã có hàng sống: không thêm hàng, giữ startDate và idaccount', () async {
       final v = await taoViMuc('Quỹ', mucTieu: dat());
+      final truoc0 = (await tatCa()).single;
+      await db.goalDao.updateFields(
+          GoalsCompanion(id: Value(truoc0.id), syncStatus: const Value('synced'), startDate: Value(moc)));
       final truoc = (await tatCa()).single;
-      await db.goalDao.updateFields(GoalsCompanion(id: Value(truoc.id), syncStatus: const Value('synced')));
+      expect(truoc.startDate, moc, reason: 'tiền đề: cột lưu theo giây, đặt mốc cũ để lần sửa không trùng giây');
       final h2 = DateTime(2028, 1, 31);
       await repo.suaViChung(v, mucTieu: DatMucTieu(soTien: 2000000, han: h2, idaccount: 99));
       final ds = await tatCa();
       expect(ds, hasLength(1), reason: 'sửa mục tiêu đang sống không đẻ hàng thứ hai');
       expect(ds.single.targetAmount, 2000000);
       expect(ds.single.targetDate, h2);
-      expect(ds.single.startDate, truoc.startDate);
+      expect(ds.single.startDate, moc, reason: 'sửa mục tiêu đang chạy không được reset ngày bắt đầu');
       expect(ds.single.idaccount, 10, reason: 'giữ người tạo ban đầu');
       expect(ds.single.syncStatus, 'pending');
     });
 
     test('sửa BoMucTieu: hàng xoá mềm pending, getCuaNha rỗng, số dư ví không đổi', () async {
-      final v = await taoViMuc('Quỹ', mucTieu: dat());
+      final v = await repo.taoViChung(
+          idNha: 7, idaccount: 10, ten: 'Quỹ', loai: 'cash', soDuBanDau: 750000, icon: 'w', mau: '#000000', mucTieu: dat());
       await repo.suaViChung(v, mucTieu: const BoMucTieu());
       final g = (await tatCa()).single;
-      expect(g.deletedAt, isNotNull);
-      expect(g.syncStatus, 'pending');
+      expect(g.deletedAt, isNotNull, reason: 'tắt mục tiêu là xoá mềm hàng goal');
+      expect(g.syncStatus, 'pending', reason: 'lệnh xoá phải vào hàng đợi đẩy');
       expect(await db.goalDao.getCuaNha(7), isEmpty);
-      expect((await db.walletDao.getById(v.id))!.balance, 0);
+      expect((await db.walletDao.getById(v.id))!.balance, 750000,
+          reason: 'tắt mục tiêu không đụng tiền trong ví');
     });
 
     test('tắt rồi bật lại khi lệnh xoá còn pending (Q1): hồi sinh CÙNG hàng', () async {
       final v = await taoViMuc('Quỹ', mucTieu: dat());
       final id0 = (await tatCa()).single.id;
+      await db.goalDao.updateFields(GoalsCompanion(id: Value(id0), startDate: Value(moc)));
       await repo.suaViChung(v, mucTieu: const BoMucTieu());
-      await db.goalDao.updateFields(GoalsCompanion(id: Value(id0), syncBlockedUntil: Value(moc)));
+      await db.goalDao.markSyncBlocked(id0, moc, 'loi cu');
+      final chan = (await tatCa()).single;
+      expect((chan.syncRetryCount, chan.syncError, chan.syncBlockedUntil), (1, 'loi cu', moc),
+          reason: 'tiền đề: ba cột đồng bộ khác mặc định');
       await repo.suaViChung(v, mucTieu: dat(3000000));
       final ds = await tatCa();
       expect(ds, hasLength(1),
@@ -395,6 +437,9 @@ void main() {
       expect(g.deletedAt, isNull);
       expect(g.isDeleted, isFalse);
       expect(g.targetAmount, 3000000);
+      expect(g.startDate, isNot(moc), reason: 'bật lại là mục tiêu mới: ngày bắt đầu đặt lại');
+      expect(g.syncRetryCount, 0, reason: 'dấu vết thất bại cũ phải xoá, kẻo hàng bị chặn oan');
+      expect(g.syncError, isNull);
       expect(g.syncBlockedUntil, isNull);
       expect(g.syncStatus, 'pending');
     });
