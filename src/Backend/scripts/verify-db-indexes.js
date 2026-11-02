@@ -94,6 +94,11 @@ async function verifyDatabase() {
         expectedClause: '("Idhousehold" IS NOT NULL)'
       },
       {
+        table: 'goal',
+        name: 'uq_goal_household_wallet_active',
+        expectedClause: '("Idhousehold" IS NOT NULL)'
+      },
+      {
         table: 'category',
         name: 'uq_category_household_name',
         expectedClause: '("Idhousehold" IS NOT NULL)'
