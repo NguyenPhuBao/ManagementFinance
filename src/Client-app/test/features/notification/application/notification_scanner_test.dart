@@ -229,6 +229,7 @@ void main() {
     Map<String, String>? dotAm,
     void Function(List<String> viAm)? onNapDotAm,
     Set<String>? viDaXoa,
+    Future<List<({String idGoal, String tenVi, double tiLe})>> Function(int idaccount)? mucTieuNha,
     // Mỗi bộ quét đếm id lại từ 0 — hai bộ cùng ghi vào một CSDL thì trùng khoá chính và hàng sau bị bỏ qua.
     String tienToId = 'id',
   }) {
@@ -255,6 +256,7 @@ void main() {
               return dotAm;
             },
       loadViDaXoa: viDaXoa == null ? null : (id) async => viDaXoa,
+      loadMucTieuNha: mucTieuNha,
       syncStatus: syncStatus.stream,
       appLifecycle: vongDoi.stream,
       osNotifier: osNotifier,
@@ -690,6 +692,115 @@ void main() {
               'mỗi lời gọi start() thêm một listener, và một lần mở lại app '
               'thành n lượt quét.');
       await scanner.stop();
+    });
+  });
+
+  group('mục tiêu chung của nhà', () {
+    // Tiến độ đổi giữa các lượt quét: một bộ quét, nguồn đọc biến thiên.
+    ({NotificationScanner scanner, void Function(double) datTiLe}) dungMucTieu({
+      OsNotifier? os,
+      NotificationPrefsStore? prefs,
+      double tiLe = .8,
+    }) {
+      var hienTai = tiLe;
+      final s = dungScanner(
+        budgets: const [],
+        osNotifier: os,
+        prefs: prefs,
+        mucTieuNha: (id) async => [(idGoal: 'g', tenVi: 'Quỹ du lịch', tiLe: hienTai)],
+      );
+      return (scanner: s, datTiLe: (v) => hienTai = v);
+    }
+
+    Future<List<AppNotification>> hangHien() => db.notificationDao.watchFeed(accountId).first;
+
+    test('lần đầu thấy mục tiêu ở 80 %: không báo gì, chỉ giữ khoá nhaMucTieu:g:0', () async {
+      final os = OsNotifierGia();
+      final m = dungMucTieu(os: os);
+
+      final moi = await m.scanner.scan(accountId);
+
+      expect(moi, 0, reason: 'người mới vào nhà không nhận mốc cũ (03 mục 4): hàng chỉ giữ khoá không tính là hàng mới');
+      expect(os.daBan, isEmpty, reason: 'hàng im lặng không bắn hệ điều hành');
+      expect(await hangHien(), isEmpty, reason: 'hàng im lặng không hiện ở trung tâm');
+      expect(await db.notificationDao.watchUnreadCount(accountId).first, 0);
+      expect(await db.notificationDao.coDedupeKey(accountId, 'nhaMucTieu:g:0'), isTrue,
+          reason: 'khoá phải nằm trong bảng để lượt sau biết máy này đã thấy mục tiêu');
+    });
+
+    test('thấy rồi, lên 100 %: đúng một hàng nhaMucTieuDat, một lần bắn', () async {
+      final os = OsNotifierGia();
+      final m = dungMucTieu(os: os);
+      await m.scanner.scan(accountId);
+
+      m.datTiLe(1);
+      final moi = await m.scanner.scan(accountId);
+
+      expect(moi, 1);
+      expect(os.daBan.length, 1);
+      final hang = await hangHien();
+      expect(hang.single.kind, 'nhaMucTieuDat');
+    });
+
+    test('thấy ở 10 % rồi lên 30 %: lượt hai báo mốc 25, một lần bắn', () async {
+      final os = OsNotifierGia();
+      final m = dungMucTieu(os: os, tiLe: .1);
+      expect(await m.scanner.scan(accountId), 0);
+
+      m.datTiLe(.3);
+      expect(await m.scanner.scan(accountId), 1);
+
+      expect(os.daBan.length, 1);
+      expect(os.daBan.single.body, 'Quỹ du lịch đã được 25% mục tiêu');
+    });
+
+    test('30 → 20 → 30 %: không báo lại mốc 25', () async {
+      final os = OsNotifierGia();
+      final m = dungMucTieu(os: os, tiLe: .1);
+      await m.scanner.scan(accountId);
+      m.datTiLe(.3);
+      await m.scanner.scan(accountId);
+
+      m.datTiLe(.2);
+      await m.scanner.scan(accountId);
+      m.datTiLe(.3);
+      final moi = await m.scanner.scan(accountId);
+
+      expect(moi, 0, reason: 'khoá nhaMucTieu:g:25 đã có, mốc chỉ báo một lần trong đời mục tiêu');
+      expect(os.daBan.length, 1);
+    });
+
+    test('60 → 30 % (đã thấy ở 10 %): lượt 60 báo mốc 50, lượt 30 không báo (Q7)', () async {
+      final os = OsNotifierGia();
+      final m = dungMucTieu(os: os, tiLe: .1);
+      await m.scanner.scan(accountId);
+
+      m.datTiLe(.6);
+      expect(await m.scanner.scan(accountId), 1);
+      expect(os.daBan.single.body, 'Quỹ du lịch đã được 50% mục tiêu');
+
+      m.datTiLe(.3);
+      expect(await m.scanner.scan(accountId), 0, reason: 'mốc 25 đã được giữ khoá im lặng ở lượt 60 %');
+      expect(os.daBan.length, 1);
+    });
+
+    test('tắt nhóm giaDinh khi thấy ở 30 %, bật lại vẫn 30 %: lần đầu thấy, im lặng', () async {
+      final prefs = InMemoryNotificationPrefsStore();
+      await prefs.write(accountId, const NotificationPrefs(nhomTat: {NotificationGroup.giaDinh}));
+      final os = OsNotifierGia();
+      final m = dungMucTieu(os: os, prefs: prefs, tiLe: .3);
+
+      expect(await m.scanner.scan(accountId), 0);
+      expect(await db.notificationDao.getAll(accountId), isEmpty, reason: 'nhóm tắt thì không ghi hàng nào, kể cả hàng giữ khoá');
+
+      await prefs.write(accountId, NotificationPrefs.macDinh);
+      expect(await m.scanner.scan(accountId), 0, reason: 'lần đầu thấy mục tiêu: mốc đã vượt là mốc cũ');
+      expect(os.daBan, isEmpty);
+    });
+
+    test('loadMucTieuNha null: không ném, quét như cũ', () async {
+      final moi = await dungScanner().scan(accountId);
+      expect(moi, 1);
     });
   });
 

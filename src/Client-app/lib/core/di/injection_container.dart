@@ -80,6 +80,7 @@ import '../../features/household/application/dieu_phoi_doi_nha.dart';
 import '../../features/household/data/datasources/chia_se_chu.dart';
 import '../../features/household/data/datasources/household_api.dart';
 import '../../features/household/data/nha_store.dart';
+import '../../features/household/domain/muc_tieu_chung.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
 import '../../features/household/application/doc_cap_gop_quy.dart';
 import '../../features/household/application/gop_quy_conflict_resolver.dart';
@@ -948,6 +949,15 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
               for (final m in sl<NhaRepository>().loiMoiToi)
                 (ma: m.ma, tenNha: m.tenNha, tenNguoiMoi: m.tenNguoiMoi, hetHan: m.hetHan),
             ],
+      // Mục tiêu chung: cùng gác với lời mời. Đường nền không có phiên nhà nên rỗng; thông báo tới ở lượt quét kế khi mở app.
+      loadMucTieuNha: (id) async {
+        final nha = sl<NhaRepository>();
+        if (nha.idaccount != id || !nha.hienTai.coNha) return const [];
+        return [
+          for (final m in await sl<DuLieuNhaRepository>().mucTieuKemVi(nha.hienTai.nha!.id))
+            (idGoal: m.mucTieu.id, tenVi: m.vi.name, tiLe: tiLeMucTieuChung(m.mucTieu, m.vi.balance)),
+        ];
+      },
       markOverdue: (idaccount, now) =>
           sl<AppDatabase>().billDao.markOverdue(idaccount, now),
       syncStatus: sl<SyncEngine>().statusStream,

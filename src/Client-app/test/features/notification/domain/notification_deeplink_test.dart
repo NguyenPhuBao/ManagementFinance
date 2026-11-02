@@ -221,6 +221,11 @@ void main() {
           ],
           lowBalanceThreshold: 100000,
           loiMoiNha: const [(ma: 'ABCD2345', tenNha: 'Nhà An', tenNguoiMoi: 'Trần An', hetHan: null)],
+          // Hai mục: 60 % sinh `nhaMucTieuMoc` (mốc 50), 100 % sinh `nhaMucTieuDat`.
+          mucTieuNha: const [
+            (idGoal: 'mtn-moc', tenVi: 'Quỹ du lịch', tiLe: .6, daThay: true),
+            (idGoal: 'mtn-dat', tenVi: 'Quỹ xe', tiLe: 1, daThay: true),
+          ],
           autoDeposits: [
             GoalAutoDepositEvent(
               goalId: 'mt-trich',
@@ -339,6 +344,13 @@ void main() {
       expect(thuocThanhTab('/nha'), isFalse,
           reason: 'đặt nhầm vào thanh tab là `go` thay cả stack, thanh tab biến mất');
       expect(loaiTuKhoa('loiMoiNha:ABCD2345'), NotificationKind.loiMoiNha);
+    });
+
+    test('mục tiêu chung: khoá nhaMucTieu / nhaMucTieuDat → /nha, loaiTuKhoa nhận ra đúng hai loại', () {
+      expect(deeplinkTuDedupeKey('nhaMucTieu:g:50'), '/nha');
+      expect(deeplinkTuDedupeKey('nhaMucTieuDat:g'), '/nha');
+      expect(loaiTuKhoa('nhaMucTieu:g:50'), NotificationKind.nhaMucTieuMoc);
+      expect(loaiTuKhoa('nhaMucTieuDat:g'), NotificationKind.nhaMucTieuDat);
     });
 
     test('tin admin: khoá tinHeThong:<id> → Trung tâm thông báo, loaiTuKhoa nhận ra', () {

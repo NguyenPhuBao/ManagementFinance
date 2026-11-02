@@ -44,6 +44,8 @@ NotificationKind? loaiTuKhoa(String dedupeKey) =>
       'loiMoiNha' => NotificationKind.loiMoiNha,
       'gopTraVe' => NotificationKind.gopQuyBiTraVe,
       'gopBiXoa' => NotificationKind.gopQuyBiXoa,
+      'nhaMucTieu' => NotificationKind.nhaMucTieuMoc,
+      'nhaMucTieuDat' => NotificationKind.nhaMucTieuDat,
       _ => null,
     };
 

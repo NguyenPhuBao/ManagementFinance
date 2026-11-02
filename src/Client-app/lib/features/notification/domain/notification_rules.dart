@@ -85,6 +85,12 @@ enum NotificationKind {
   /// Chủ nhà xoá nửa của nhà trong khoản góp / rút của mình: nửa riêng trên máy này bị gỡ theo, tiền về ví riêng. Không do
   /// bộ quét sinh (`GopQuyConflictResolver.xuLyNuaNhaBiXoa`, sau mỗi lượt kéo về). Khoá `gopBiXoa:<mã cặp>`.
   gopQuyBiXoa,
+
+  /// Mục tiêu chung vượt 25 / 50 / 75 % (`docs/Family/03` mục 4). Khoá `nhaMucTieu:<idgoal>:<mốc>`: mỗi mốc một lần trong đời mục tiêu.
+  nhaMucTieuMoc,
+
+  /// Mục tiêu chung chạm 100 %. Khoá `nhaMucTieuDat:<idgoal>`.
+  nhaMucTieuDat,
 }
 
 enum NotificationSeverity { info, warning, critical }
@@ -106,6 +112,10 @@ class NotificationCandidate {
   /// Mốc của **sự kiện**, không phải mốc quét.
   final DateTime createdAt;
 
+  /// Chỉ ghi để giữ khoá, người dùng không thấy: hàng được ghi sẵn trạng thái đã gỡ, không bắn hệ điều hành. Dùng cho mốc đã vượt
+  /// lúc máy mới thấy mục tiêu chung và các mốc thấp hơn mốc vừa báo.
+  final bool imLang;
+
   const NotificationCandidate({
     required this.kind,
     required this.dedupeKey,
@@ -116,6 +126,7 @@ class NotificationCandidate {
     this.subjectType,
     this.subjectId,
     this.deeplink,
+    this.imLang = false,
   });
 }
 
@@ -142,6 +153,10 @@ typedef KhoanChiLon = ({
 
 /// Một lời mời đủ để viết thông báo. Record thuần: `notification` không import mảng nhà, DI ánh xạ từ `LoiMoiToiEntity`.
 typedef LoiMoiNhaThongBao = ({String ma, String tenNha, String tenNguoiMoi, DateTime? hetHan});
+
+/// Một mục tiêu chung đủ để viết thông báo mốc. [daThay]: máy này đã từng thấy mục tiêu (có hàng khoá `nhaMucTieu:<id>:0`);
+/// chưa thì mọi mốc đã vượt là mốc cũ của người vào sau, chỉ giữ khoá.
+typedef MucTieuNhaThongBao = ({String idGoal, String tenVi, double tiLe, bool daThay});
 
 /// Dữ liệu vào cho một lượt quét.
 ///
@@ -248,6 +263,9 @@ class NotificationRuleInput {
   /// Lời mời vào nhà gửi tới tôi (`NhaRepository.loiMoiToi` lúc quét).
   final List<LoiMoiNhaThongBao> loiMoiNha;
 
+  /// Mục tiêu chung của nhà đang vào (rỗng nếu không ở nhà nào hoặc nhà không có mục tiêu).
+  final List<MucTieuNhaThongBao> mucTieuNha;
+
   const NotificationRuleInput({
     required this.now,
     this.budgets = const [],
@@ -266,6 +284,7 @@ class NotificationRuleInput {
     this.nguongChiLon = 0,
     this.keHoachTaiPhanBo,
     this.loiMoiNha = const [],
+    this.mucTieuNha = const [],
   });
 }
 
@@ -288,6 +307,7 @@ List<NotificationCandidate> buildNotificationCandidates(
     ..._syncCandidates(input),
     ..._weeklySummaryCandidates(input),
     ..._loiMoiNhaCandidates(input),
+    ..._mucTieuNhaCandidates(input),
   ];
 
   final chan = input.silenceBefore;
@@ -364,6 +384,44 @@ List<NotificationCandidate> _loiMoiNhaCandidates(NotificationRuleInput input) =>
             deeplink: '/nha',
           ),
     ];
+
+// ── Mục tiêu chung của nhà ───────────────────────────────────────────────────
+
+/// Khoá "máy này đã thấy mục tiêu chung": có hàng này thì mốc vượt về sau mới được báo (`docs/Family/03` mục 4).
+String khoaDaThayMucTieuNha(String idGoal) => 'nhaMucTieu:$idGoal:0';
+
+List<NotificationCandidate> _mucTieuNhaCandidates(NotificationRuleInput input) {
+  final ra = <NotificationCandidate>[];
+  for (final m in input.mucTieuNha) {
+    NotificationCandidate ungVien(NotificationKind kind, String khoa, String cau, {required bool imLang}) => NotificationCandidate(
+          kind: kind,
+          dedupeKey: khoa,
+          title: 'Mục tiêu của nhà',
+          body: cau,
+          severity: NotificationSeverity.info,
+          subjectType: 'nhaMucTieu',
+          subjectId: m.idGoal,
+          deeplink: '/nha',
+          createdAt: input.now,
+          imLang: imLang,
+        );
+
+    ra.add(ungVien(NotificationKind.nhaMucTieuMoc, khoaDaThayMucTieuNha(m.idGoal), m.tenVi, imLang: true));
+    final daDat = m.tiLe >= 1;
+    if (daDat) {
+      ra.add(ungVien(NotificationKind.nhaMucTieuDat, 'nhaMucTieuDat:${m.idGoal}', '${m.tenVi} đã đạt mục tiêu', imLang: !m.daThay));
+    }
+    // Giảm dần: chỉ mốc cao nhất mang tin mới. Mốc thấp hơn vẫn ghi im lặng, nếu không 60 % tụt về 30 % sẽ báo 25 %.
+    var daBao = daDat;
+    for (final moc in _mocTienDo) {
+      if (m.tiLe * 100 < moc) continue;
+      ra.add(ungVien(NotificationKind.nhaMucTieuMoc, 'nhaMucTieu:${m.idGoal}:$moc', '${m.tenVi} đã được $moc% mục tiêu',
+          imLang: daBao || !m.daThay));
+      daBao = true;
+    }
+  }
+  return ra;
+}
 
 // ── Tổng kết tuần ────────────────────────────────────────────────────────────
 

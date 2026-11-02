@@ -79,6 +79,8 @@ NotificationGroup nhomCua(NotificationKind kind) {
     case NotificationKind.loiMoiNha:
     case NotificationKind.gopQuyBiTraVe:
     case NotificationKind.gopQuyBiXoa:
+    case NotificationKind.nhaMucTieuMoc:
+    case NotificationKind.nhaMucTieuDat:
       return NotificationGroup.giaDinh;
   }
 }
@@ -157,6 +159,9 @@ bool luonBao(NotificationKind kind) {
     case NotificationKind.tinHeThong:
     // Lời mời không phải tiền rời ví lúc vắng mặt; người dùng phải tắt được.
     case NotificationKind.loiMoiNha:
+    // Ghi nhận tiến độ, không báo tiền rời ví; người dùng phải tắt được.
+    case NotificationKind.nhaMucTieuMoc:
+    case NotificationKind.nhaMucTieuDat:
       return false;
   }
 }
