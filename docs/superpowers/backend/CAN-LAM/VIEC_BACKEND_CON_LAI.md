@@ -60,7 +60,7 @@ npm run verify:household -- . kq_nha.txt                                        
 | # | Làm | Phải thấy |
 |---|---|---|
 | 1 | Tạo đơn bằng app hoặc `POST /api/payment/create-order`, rồi `node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/webhook_tu_ky.js <orderCode> 70000` | Đơn `WAITING_CONFIRMATION` |
-| 2 | Admin-web → Thanh toán → mở đơn → **Đồng ý** | Đơn `PAID`, tài khoản thử thành Premium, số dư thừa không tạo thêm dòng `payment_transaction` |
+| 2 | Admin-web → Thanh toán → mở đơn → **Đồng ý** | Đơn `PAID`, tài khoản thử thành Premium, đơn có đúng một dòng `payment_transaction` |
 | 3 | Tạo đơn mới, gửi webhook 70.000 như dòng 1, rồi bấm **Từ chối** | Đơn `REFUND_PENDING`, lý do *"Admin từ chối nâng cấp gói"*, đơn nằm trong hàng hoàn tiền |
 
 **Bước 6.** Ghi kết quả vào bảng cuối tệp, commit, mở PR.
