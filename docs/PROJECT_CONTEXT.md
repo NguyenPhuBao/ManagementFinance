@@ -619,7 +619,7 @@ src/Backend/
 
 ### 🔀 Gộp `main` @ `1c8a77c8` (2026-11-02, PR #178, commit gộp `bb895d12`, CHƯA push): backend báo xong đơn 61, 62; client soát
 
-Chỉ vào `TranQuangDat`. `TranQuangDat-backend` chưa gộp: thử `git merge-tree`, xung đột đúng một tệp là `VIEC_BACKEND_CON_LAI.md`. Cây `src/Client-app` không đổi hash nên không chạy lại `flutter test`; check-ignore không khớp; không migration.
+Vào cả `TranQuangDat` lẫn `TranQuangDat-backend` (nhánh phụ gộp `TranQuangDat`, mã 61, 62 đã trùng từ trước; chỉ thêm Admin-web, dòng log `index.js`, tài liệu; backend đang chạy không cần khởi động lại). Cây `src/Client-app` không đổi hash nên không chạy lại `flutter test`; check-ignore không khớp; không migration.
 
 | Việc | Kết quả client đo | Kết luận |
 |---|---|---|
