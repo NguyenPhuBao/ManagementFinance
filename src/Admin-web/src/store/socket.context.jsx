@@ -4,10 +4,7 @@ import { STORAGE_KEYS } from '../utils/constants';
 import { useAuthContext } from './auth.context';
 
 const defaultSocketUrl =
-  import.meta.env.VITE_SOCKET_URL ||
-  (typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:3000'
-    : 'https://managementfinance.onrender.com');
+  import.meta.env.VITE_SOCKET_URL || 'https://managementfinance.onrender.com';
 
 export const SocketContext = createContext({
   socket: null,
