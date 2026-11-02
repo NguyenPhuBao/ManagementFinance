@@ -472,7 +472,9 @@ void main() {
       final v = await taoViMuc('Quỹ', mucTieu: dat());
       await expectLater(
           repo.xoaViChung(idNha: 7, id: v.id),
-          throwsA(isA<CacheException>().having((e) => e.message, 'message', contains('đang đặt mục tiêu'))));
+          throwsA(isA<CacheException>().having((e) => e.message, 'message',
+              'Ví "Quỹ" đang đặt mục tiêu. Tắt mục tiêu rồi bấm Lưu trước khi xoá ví.')),
+          reason: 'công tắc đã tắt mà chưa Lưu thì câu cũ "Tắt mục tiêu trước khi xoá ví." đọc như lỗi: phải nhắc bấm Lưu');
       expect((await db.walletDao.getById(v.id))!.deletedAt, isNull);
       await repo.suaViChung(v, mucTieu: const BoMucTieu());
       await repo.xoaViChung(idNha: 7, id: v.id);

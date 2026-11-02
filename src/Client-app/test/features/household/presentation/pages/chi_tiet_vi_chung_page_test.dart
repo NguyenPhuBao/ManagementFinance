@@ -537,6 +537,18 @@ void main() {
       expect(find.text('3.200.000 / 8.000.000 đ — 40%'), findsNothing);
     });
 
+    testWidgets('ví lưu trữ vẫn thấy khối nhưng không có dòng Cần góp (ví đóng băng, không có nút Góp)', (t) async {
+      await mo(t, vi: [viChungGia('v1', 'Tiền chợ', 3200000, status: 'inactive')], muc: [muc()]);
+      expect(find.byKey(const Key('khoi-muc-tieu')), findsOneWidget);
+      expect(find.text('Còn thiếu'), findsOneWidget);
+      expect(find.text('Cần góp'), findsNothing, reason: 'khuyên góp vào ví không thể góp là sai');
+    });
+
+    testWidgets('ví đang hoạt động có dòng Cần góp', (t) async {
+      await mo(t, muc: [muc()]);
+      expect(find.text('Cần góp'), findsOneWidget);
+    });
+
     testWidgets('360 dp, số 13 chữ số: thẻ không tràn', (t) async {
       await mo(t, vi: [viChungGia('v1', 'Tiền chợ', 1234567890123)], muc: [muc(dich: 9999999999999)]);
       expect(t.takeException(), isNull);

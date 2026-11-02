@@ -283,7 +283,7 @@ class DuLieuNhaRepositoryImpl implements DuLieuNhaRepository {
             'Ví "${hang.name}" đã có giao dịch. Hãy lưu trữ để cất khỏi bộ chọn mà vẫn giữ lịch sử.');
       }
       if (await _db.goalDao.getSongTheoVi(id) != null) {
-        throw CacheException('Ví "${hang.name}" đang đặt mục tiêu. Tắt mục tiêu trước khi xoá ví.');
+        throw CacheException('Ví "${hang.name}" đang đặt mục tiêu. Tắt mục tiêu rồi bấm Lưu trước khi xoá ví.');
       }
       await _db.walletDao.softDelete(id);
     });

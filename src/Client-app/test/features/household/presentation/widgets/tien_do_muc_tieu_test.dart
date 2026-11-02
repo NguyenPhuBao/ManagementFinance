@@ -117,6 +117,18 @@ void main() {
       expect(find.text('khoảng 4.000.000 đ mỗi tháng'), findsOneWidget);
     });
 
+    testWidgets('đậm nhạt theo Stitch: dòng a / b — % w600, số ở ba hàng dưới w700', (t) async {
+      await _dung(t, KhoiMucTieuChiTiet(tienDo: _tienDo()));
+      expect(t.widget<Text>(find.text('12.000.000 / 20.000.000 đ — 60%')).style!.fontWeight, FontWeight.w600);
+      expect(t.widget<Text>(find.text('8.000.000 đ')).style!.fontWeight, FontWeight.w700);
+    });
+
+    testWidgets('hienCanGop=false: bỏ dòng Cần góp, giữ Còn thiếu', (t) async {
+      await _dung(t, KhoiMucTieuChiTiet(tienDo: _tienDo(), hienCanGop: false));
+      expect(find.text('Cần góp'), findsNothing);
+      expect(find.text('Còn thiếu'), findsOneWidget);
+    });
+
     testWidgets('quá hạn: MỤC TIÊU (QUÁ HẠN), Đã hết hạn ngày, không Cần góp', (t) async {
       await _dung(t, KhoiMucTieuChiTiet(tienDo: _tienDo(han: DateTime(2026, 10, 31))));
       expect(find.text('MỤC TIÊU (QUÁ HẠN)'), findsOneWidget);
@@ -150,7 +162,9 @@ void main() {
       expect(t.takeException(), isNull);
       final chu = find.textContaining(' / ');
       expect(t.getSize(chu).height, lessThan(20), reason: 'dòng a / b — % cỡ 12 phải một dòng, co bằng FittedBox');
-      _kiemSoKhongCut(t, 270);
+      // Chỗ cho dòng a / b = bề rộng khối − nhãn MỤC TIÊU − khe 12: lấy từ bố cục, không hằng cứng.
+      final rong = t.getSize(find.byKey(const Key('khoi-muc-tieu'))).width - t.getSize(find.text('MỤC TIÊU')).width - 12;
+      _kiemSoKhongCut(t, rong);
       expect(find.textContaining('Cần góp'), findsOneWidget);
       expect(find.textContaining('khoảng', findRichText: true), findsOneWidget);
     });

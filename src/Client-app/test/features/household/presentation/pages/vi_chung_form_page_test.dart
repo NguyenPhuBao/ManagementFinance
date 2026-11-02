@@ -469,6 +469,68 @@ void main() {
     expect((m.soTien, m.han.year), (3000000.0, 2020));
   });
 
+  testWidgets('Sửa có mục tiêu, CHỈ đổi hạn qua bộ chọn ngày → DatMucTieu hạn mới, số tiền cũ', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a', han: DateTime(2035, 12, 31))]);
+    await bam(t, oHan());
+    await t.tap(find.text('15').last);
+    await t.pumpAndSettle();
+    await t.tap(find.text('OK'));
+    await t.pumpAndSettle();
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    final m = nguon.suaMuc.single as DatMucTieu;
+    expect((m.han.year, m.han.month, m.han.day), (2035, 12, 15),
+        reason: '`_chonHan` phải đánh dấu đã đụng khối: quên thì lưu `GiuMucTieu` và hạn mới mất im lặng');
+    expect(m.soTien, 1000000.0);
+  });
+
+  testWidgets('Sửa: chưa có mục tiêu, bật + đủ hai ô → DatMucTieu', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho]);
+    await bam(t, congTacMuc());
+    await t.enterText(oTienMuc(), '4000000');
+    await chonHomNay(t);
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    final m = nguon.suaMuc.single as DatMucTieu;
+    expect((m.soTien, m.idaccount), (4000000.0, 18));
+  });
+
+  testWidgets('Sửa có mục tiêu: tắt (đồng ý) rồi bật lại trong cùng lần mở → ô tiền giữ, Lưu được DatMucTieu', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a')]);
+    await bam(t, congTacMuc());
+    await bam(t, find.byKey(const Key('xac-nhan-bo-muc-tieu')));
+    expect(oTienMuc(), findsNothing);
+    await bam(t, congTacMuc());
+    expect(t.widget<TextField>(oTienMuc()).controller!.text, '1.000.000', reason: 'ô tiền giữ chữ cũ sau khi bật lại');
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    final m = nguon.suaMuc.single as DatMucTieu;
+    expect(m.soTien, 1000000.0);
+  });
+
+  testWidgets('Sửa có mục tiêu: xoá ô tiền rồi Lưu → báo nhập số tiền, không ghi', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a')]);
+    await t.enterText(oTienMuc(), '');
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    expect(bat.cau, ['Vui lòng nhập số tiền mục tiêu']);
+    expect(nguon.suaMuc, isEmpty);
+  });
+
+  testWidgets('Tắt mục tiêu khi ô tên đang trống: hộp gọi ví bằng tên đã lưu', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a')]);
+    await t.enterText(oTen(), '');
+    await bam(t, congTacMuc());
+    expect(find.text('Bỏ mục tiêu của Tiền chợ? Tiền trong ví giữ nguyên.'), findsOneWidget,
+        reason: 'tên trống thì không được hỏi "Bỏ mục tiêu của ?"');
+  });
+
+  testWidgets('Ô SỐ TIỀN MỤC TIÊU không viền ở mọi trạng thái, cùng ô HẠN và Stitch 74ebe178', (t) async {
+    await mo(t);
+    await bam(t, congTacMuc());
+    final d = t.widget<TextField>(oTienMuc()).decoration!;
+    for (final b in {'enabled': d.enabledBorder, 'focused': d.focusedBorder, 'border': d.border}.entries) {
+      expect((b.value as OutlineInputBorder).borderSide, BorderSide.none,
+          reason: '${b.key}: theme vẽ viền ở trạng thái có tiêu điểm; đo trên máy thật thấy ô số tiền có viền, ô hạn thì không');
+    }
+  });
+
   testWidgets('Chạm đôi công tắc khi hộp hỏi đang mở: chỉ một hộp', (t) async {
     await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a')]);
     await t.ensureVisible(congTacMuc());

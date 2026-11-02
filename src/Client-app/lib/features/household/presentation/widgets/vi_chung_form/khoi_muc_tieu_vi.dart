@@ -117,7 +117,7 @@ class KhoiMucTieuVi extends StatelessWidget {
         controller: soTienMuc,
         enabled: onDoi != null,
         keyboardType: TextInputType.number,
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w600),
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
           // numeric(15,2): 14 chữ số làm `goal` kẹt hàng đợi đẩy vĩnh viễn, im lặng.
@@ -142,9 +142,15 @@ class KhoiMucTieuVi extends StatelessWidget {
             child: Align(widthFactor: 1, child: Text('đ', style: TextStyle(fontSize: 14, color: _chuPhu))),
           ),
           suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          // Theme của app vẽ viền ở các trạng thái có tiêu điểm / bật; Stitch `74ebe178…` và ô HẠN bên dưới không viền.
+          border: _vienKhong,
+          enabledBorder: _vienKhong,
+          focusedBorder: _vienKhong,
+          disabledBorder: _vienKhong,
         ),
       );
+
+  static final _vienKhong = OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none);
 
   Widget _oHan(BuildContext context) => Semantics(
         button: true,

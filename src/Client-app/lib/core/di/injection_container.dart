@@ -952,9 +952,10 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
             ],
       // Mục tiêu chung: cùng gác với lời mời. Đường nền không có phiên nhà nên rỗng; thông báo tới ở lượt quét kế khi mở app.
       loadMucTieuNha: (id) async {
-        // Đang kéo về thì rỗng: `pullFromBackend` không nằm trong một giao tác, mục tiêu về trước, ví mới mang balance 0
-        // (= chưa biết). Quét chen vào đọc tiLe 0 rồi ghi dấu `:0`, lượt sau thấy 80 % với "đã thấy" và báo mốc cũ cho người
-        // vừa vào nhà. Lượt `isTerminal` ngay sau quét lại.
+        // Đang kéo về thì rỗng: `pullFromBackend` không nằm trong một giao tác; mục tiêu về trước khi số dư được tính lại (cuối
+        // lượt), nên giữa chừng ví mới mang balance 0 (= chưa biết). Quét chen vào đọc tiLe 0 rồi ghi dấu `:0`, lượt
+        // sau thấy 80 % với "đã thấy" và báo mốc cũ cho người vừa vào nhà. Lượt quét bù chạy ở sự kiện `isTerminal` kế; nếu
+        // lượt ấy gặp `_dangQuet` thì bị bỏ và trễ tới lượt quét kế (mở app / đồng bộ sau) — chỉ trễ, không mất.
         if (sl<SyncEngine>().status == SyncStatus.syncing) return const [];
         final nha = sl<NhaRepository>();
         if (nha.idaccount != id || !nha.hienTai.coNha) return const [];

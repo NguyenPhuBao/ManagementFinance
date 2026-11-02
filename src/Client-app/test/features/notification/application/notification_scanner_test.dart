@@ -857,6 +857,32 @@ void main() {
       await scanner.stop();
     });
 
+    test('dọn 90 ngày không làm báo lại mốc 25: d0 thấy 10 %, d10 lên 30 % báo :25, d91 và d101 start() dọn, quét lại 30 %', () async {
+      final os = OsNotifierGia();
+      var gio = DateTime(2026, 6, 1, 9);
+      var tiLe = .1;
+      final scanner = dungScanner(
+        budgets: const [],
+        osNotifier: os,
+        dongHo: () => gio,
+        mucTieuNha: (id) async => [(idGoal: 'g', tenVi: 'Quỹ du lịch', tiLe: tiLe)],
+      );
+      await scanner.scan(accountId, now: gio);
+      gio = DateTime(2026, 6, 11, 9);
+      tiLe = .3;
+      expect(await scanner.scan(accountId, now: gio), 1);
+      expect(os.daBan.length, 1, reason: 'mốc 25 báo đúng một lần');
+
+      gio = DateTime(2026, 8, 31, 9);
+      await scanner.start(accountId);
+      gio = DateTime(2026, 9, 10, 9);
+      await scanner.start(accountId);
+      expect(await scanner.scan(accountId, now: gio), 0,
+          reason: 'khoá nhaMucTieu:g:25 (loại nhaMucTieuMoc) phải sống qua lượt dọn 90 ngày: nếu bị dọn thì mốc báo lại');
+      expect(os.daBan.length, 1);
+      await scanner.stop();
+    });
+
     test('loadMucTieuNha null: không ném, quét như cũ', () async {
       final moi = await dungScanner().scan(accountId);
       expect(moi, 1);

@@ -148,7 +148,7 @@ class NotificationScanner {
   final List<LoiMoiNhaThongBao> Function(int idaccount)? loadLoiMoiNha;
 
   /// Mục tiêu chung của nhà đang vào, kèm tiến độ. DI ánh xạ từ `DuLieuNhaRepository.mucTieuKemVi`; DI luôn truyền hàm này; hàm
-  /// trả rỗng ở đường nền, khi không ở nhà nào và khi đang đồng bộ. `null` chỉ ở test. Việc "máy này đã thấy chưa" do bộ quét tự hỏi bảng (bộ luật là hàm thuần).
+  /// trả rỗng ở đường nền, khi không ở nhà nào và khi đang đồng bộ (mốc vượt trong lúc ấy báo ở lượt quét kế: lượt `isTerminal` bù có thể bị bỏ khi `_dangQuet`, chỉ trễ, không mất). `null` chỉ ở test. Việc "máy này đã thấy chưa" do bộ quét tự hỏi bảng (bộ luật là hàm thuần).
   final Future<List<({String idGoal, String tenVi, double tiLe})>> Function(int idaccount)? loadMucTieuNha;
 
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.

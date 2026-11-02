@@ -65,6 +65,8 @@ void main() {
     expect(thanhTrong('b'), findsNothing, reason: 'ví không đặt mục tiêu: không có gì thêm');
     expect(thanhTrong('c'), findsOneWidget, reason: 'ví lưu trữ đóng băng nhưng mục tiêu vẫn còn nên vẫn hiện tiến độ');
     expect(find.text('12.000.000 / 20.000.000 đ'), findsNWidgets(1), reason: 'ví a: 12tr/20tr; ví c: 5tr nên chữ khác');
+    expect(find.text('Quá hạn'), findsNothing,
+        reason: 'đồng hồ tiêm trước hạn 31/12/2026: không nhãn Quá hạn (mất răng nếu ca dùng giờ máy, sau 31/12/2026)');
     expect(t.takeException(), isNull);
   });
 }

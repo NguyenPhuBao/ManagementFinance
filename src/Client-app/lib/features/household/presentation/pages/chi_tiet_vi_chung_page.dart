@@ -333,7 +333,6 @@ class _ChiTietViChungPageState extends State<ChiTietViChungPage> {
 /// Thẻ số dư (Stitch `ac57e216…` 3.2): nhãn + huy hiệu vai, số dư lớn, chấm xanh + *Tiền mặt · Ví chung*.
 class _TheSoDu extends StatelessWidget {
   const _TheSoDu({required this.vi, required this.vai, this.tienDo});
-
   final WalletEntity vi;
   final VaiNha? vai;
 
@@ -390,7 +389,7 @@ class _TheSoDu extends StatelessWidget {
             const SizedBox(height: 14),
             const Divider(height: 1, color: AppColors.outlineVariant),
             const SizedBox(height: 14),
-            KhoiMucTieuChiTiet(tienDo: td),
+            KhoiMucTieuChiTiet(tienDo: td, hienCanGop: WalletStatus.laHoatDong(vi.status)),
           ],
         ],
       ),

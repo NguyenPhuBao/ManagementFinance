@@ -121,12 +121,14 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
     if (_dangHoiBo) return;
     if (!bat && _mucGoc != null) {
       _dangHoiBo = true;
+      // Ô tên đang trống (người dùng vừa xoá để gõ tên khác) thì hộp gọi ví bằng tên đã lưu, không để "Bỏ mục tiêu của ?".
+      final tenHop = _ten.text.trim().isEmpty ? (_viGoc?.name ?? '') : _ten.text.trim();
       final bool? dongY;
       try {
         dongY = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            content: Text('Bỏ mục tiêu của ${_ten.text.trim()}? Tiền trong ví giữ nguyên.'),
+            content: Text('Bỏ mục tiêu của $tenHop? Tiền trong ví giữ nguyên.'),
             actions: [
               OutlinedButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
               FilledButton(

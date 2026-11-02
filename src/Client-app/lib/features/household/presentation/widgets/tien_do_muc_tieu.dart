@@ -144,9 +144,12 @@ class TienDoGon extends StatelessWidget {
 
 /// Khối MỤC TIÊU trong thẻ số dư của Chi tiết ví (Stitch `7b5f0f89…`).
 class KhoiMucTieuChiTiet extends StatelessWidget {
-  const KhoiMucTieuChiTiet({super.key, required this.tienDo});
+  const KhoiMucTieuChiTiet({super.key, required this.tienDo, this.hienCanGop = true});
 
   final TienDoMucTieuChung tienDo;
+
+  /// `false` cho ví lưu trữ: ví đóng băng không có nút Góp nên không khuyên *Cần góp*.
+  final bool hienCanGop;
 
   Widget _hang(String trai, Widget phai) => Padding(
         padding: const EdgeInsets.only(top: 8),
@@ -164,8 +167,8 @@ class KhoiMucTieuChiTiet extends StatelessWidget {
   Widget build(BuildContext context) {
     final quaHan = tienDo.trangThai == TrangThaiMucTieuChung.quaHan;
     final daDat = tienDo.trangThai == TrangThaiMucTieuChung.daDat;
-    const dam13 = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary);
-    final canGop = tienDo.canGopMoiThang;
+    const dam13 = TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary);
+    final canGop = hienCanGop ? tienDo.canGopMoiThang : null;
     return Column(
       key: const Key('khoi-muc-tieu'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -180,7 +183,7 @@ class KhoiMucTieuChiTiet extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _SoMotDong('${_chuTien(tienDo)} — ${chuPhanTramMucTieu(tienDo)}',
-                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
                   canPhai: true),
             ),
           ],
