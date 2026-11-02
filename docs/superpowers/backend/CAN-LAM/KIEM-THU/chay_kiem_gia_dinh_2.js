@@ -132,6 +132,13 @@ const muctieu = (id, hh, nguoi, thap = {}) => ({ id, name: `M${id.slice(0, 6)}`,
     async () => ma(await push(B, 'transaction', gd(randomUUID(), W, H, B, { categoryId: DMN }), 'create')));
   await ca('2a', 'khoản riêng trỏ danh mục của nhà bị từ chối', 'HOUSEHOLD_SCOPE_MISMATCH',
     async () => ma(await push(B, 'transaction', gd(randomUUID(), VR, null, B, { categoryId: DMN }), 'create')));
+  // 63.2: ngân sách của nhà trỏ danh mục riêng; khoản của nhà trỏ khuôn mặc định (khuôn không thuộc nhà nào).
+  await ca('63.2', 'ngân sách nhà trỏ danh mục riêng bị từ chối', 'HOUSEHOLD_SCOPE_MISMATCH',
+    async () => ma(await push(A, 'budget', { id: randomUUID(), categoryId: DMR, idhousehold: H, idaccount: A, amount: 1000, update_at: moi() }, 'create')));
+  const KHUON = randomUUID();
+  await prisma.category.create({ data: { idcategory: KHUON, create_by: 1, name_category: `Khuon${RUN}`, classify: 'Chi', is_default: true } });
+  await ca('63.2', 'khoản nhà trỏ khuôn mặc định bị từ chối', 'HOUSEHOLD_SCOPE_MISMATCH',
+    async () => ma(await push(B, 'transaction', gd(randomUUID(), W, H, B, { categoryId: KHUON }), 'create')));
 
   const G = randomUUID();
   await ca('2a', 'Chủ nhà đẩy mục tiêu của nhà', 'synced', async () => ma(await push(A, 'goal', muctieu(G, H, A), 'create')));
@@ -173,6 +180,19 @@ const muctieu = (id, hh, nguoi, thap = {}) => ({ id, name: `M${id.slice(0, 6)}`,
     const g = await prisma.goal.findUnique({ where: { idgoal: G2 } });
     return `${ma(r)}|${g.delete_at !== null}`;
   });
+
+  // 64.1: vào, rời, vào lại, rời, vào lại. `formerMembers` chỉ gồm người đã rời, mỗi người một lần.
+  const R = await tk('roi');
+  const vao = () => prisma.household_member.create({ data: { idhousehold: H, idaccount: R, role: 'Member' } });
+  const soLanTrongDs = async () => (await hs.getMyHousehold(C)).formerMembers.filter((m) => m.idaccount === R).length;
+  await vao();
+  await hs.leaveHousehold(R);
+  await vao();
+  await ca('64.1', 'đã vào lại thì không còn trong formerMembers', 0, soLanTrongDs);
+  await hs.leaveHousehold(R);
+  await vao();
+  await hs.leaveHousehold(R);
+  await ca('64.1', 'rời nhiều lần chỉ xuất hiện một lần', 1, soLanTrongDs);
 
   const dat =kq.filter((k) => k.startsWith('ĐẠT')).length;
   kq.push(`${dat} đạt / ${kq.length} ca`);
