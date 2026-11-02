@@ -328,8 +328,8 @@ class SyncEngine {
   /// yêu cầu, mốc đã lưu bị xoá ngay. `stop()` BỎ yêu cầu còn trong RAM (phiên sau có thể là tài khoản khác) — chỉ kho mốc
   /// đã xoá mang yêu cầu qua `stop()` / tiến trình chết (lần `start` sau đọc mốc `null` → kéo toàn bộ). Chu kỳ đang chạy thì `syncNow` ghi nợ một lượt bù — lượt bù ấy là lượt kéo toàn bộ.
   ///
-  /// [boGianCach]: người dùng vừa đổi nhà và đang nhìn màn trống (G121 dòng 16, đo Realme: hoãn tới 11 phút) — bỏ giãn cách
-  /// cho MỘT lượt này, như [dayVaCho]. Mặc định `false`: lượt do máy tự xin sau một lần đẩy hỏng (`GopQuyConflictResolver`)
+  /// [boGianCach]: nhà vừa đổi, màn Nhà mình đang trống (G121 dòng 16, đo Realme: hoãn tới 11 phút) — bỏ giãn cách cho MỘT
+  /// lượt này, như [dayVaCho]. Gồm cả máy thứ hai của cùng tài khoản thấy nhà mới qua `lamMoi`: mỗi lần id nhà đổi chỉ một lượt. Mặc định `false`: lượt do máy tự xin sau một lần đẩy hỏng (`GopQuyConflictResolver`)
   /// mà bỏ giãn cách thì hàng cứ bị từ chối là vòng đồng bộ nóng. ⚠️ Còn một khe, chung với [dayVaCho]: yêu cầu tới giữa một
   /// chu kỳ mà chu kỳ ấy hỏng thì giãn cách dựng lại và lượt bù chờ hết bậc đó — yêu cầu không mất.
   Future<void> keoLaiToanBo(int idaccount, {bool boGianCach = false}) async {
