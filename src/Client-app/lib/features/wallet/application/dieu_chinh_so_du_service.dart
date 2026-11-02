@@ -40,11 +40,14 @@ class DieuChinhSoDuService {
   ///
   /// Không làm gì khi hai số đã bằng nhau. Ném [CacheException] khi ví không
   /// còn hoặc ví **đã lưu trữ**.
+  ///
+  /// [nguoiGhi] (tài khoản từ phiên) BẮT BUỘC với ví của nhà, bị bỏ qua với ví riêng.
   Future<void> dieuChinh({
     required String walletId,
     required double soDuThucTe,
     required String lyDo,
     DateTime? vaoLuc,
+    int? nguoiGhi,
   }) async {
     final vi = await _db.walletDao.getById(walletId);
     if (vi == null) {
@@ -67,11 +70,20 @@ class DieuChinhSoDuService {
     // `chk_transaction_nonzero_amount` của PostgreSQL rồi kẹt hàng đợi đẩy.
     if (khoan == null) return;
 
+    // Ví của nhà: `idaccount` của ví chỉ nghĩa người TẠO, mà khoản bù phải do người đang đối soát ghi — ghi theo người tạo là
+    // NOT_OWNER khi đẩy lên. Và phải mang `idhousehold` của ví, không thì khoản bù thành hàng riêng trỏ ví nhà
+    // (HOUSEHOLD_SCOPE_MISMATCH vĩnh viễn). Người ghi do tầng trên lấy từ PHIÊN (quy tắc 2), không đoán từ ví.
+    final laNha = vi.idhousehold != null;
+    if (laNha && nguoiGhi == null) {
+      throw const CacheException('Thiếu người ghi cho ví của nhà.');
+    }
+
     final luc = vaoLuc ?? DateTime.now();
     await _txRepo.addTransaction(TransactionEntity(
       id: _uuid.v4(),
       walletId: walletId,
-      idaccount: vi.idaccount,
+      idaccount: laNha ? nguoiGhi! : vi.idaccount,
+      idhousehold: vi.idhousehold,
       // KHÔNG danh mục — đây là chân cấu trúc của phép nhận dạng, thứ giao diện
       // thêm giao dịch không tạo ra được (nó bắt buộc chọn danh mục).
       categoryId: null,

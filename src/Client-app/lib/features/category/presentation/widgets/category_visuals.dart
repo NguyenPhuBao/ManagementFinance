@@ -32,6 +32,11 @@ IconData categoryIconFor(String? icon) => switch (icon) {
       'payment' => Icons.payment,
       'attach_money' => Icons.attach_money,
       'savings' => Icons.savings,
+      // Ví chung (gia đình 1B, Stitch `3bfb38b3…`): sáu biểu tượng của form + khoá mặc định của ví. `bank` là khoá cũ của
+      // ví cá nhân (`wallet_add_page`), cùng hình với `account_balance`.
+      'account_balance' || 'bank' => Icons.account_balance,
+      'shopping_basket' => Icons.shopping_basket,
+      'wallet' => Icons.account_balance_wallet,
       'laptop' => Icons.laptop,
       'calendar_month' => Icons.calendar_month,
       'more_horiz' => Icons.more_horiz,

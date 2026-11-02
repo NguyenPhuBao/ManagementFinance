@@ -35,6 +35,9 @@ void main() {
     '_depositAmountController',
     '_thresholdController',
     '_balanceController',
+    // Ô số tiền mục tiêu của ví chung (đợt 2, 2026-11-02): ghi vào `goal.Target_amount` numeric(15,2). Tên controller trong
+    // trang là `_soTienMuc`, trong widget `KhoiMucTieuVi` là `soTienMuc` — cả hai được nhận diện.
+    '_soTienMuc',
     // Hai ô của sheet "Lọc theo số tiền" ở sổ giao dịch (2026-09-21). Chúng
     // **không ghi gì xuống CSDL** — chỉ lọc danh sách đang hiện — nhưng vẫn
     // phải có trần: một chuỗi 20 chữ số làm `double.tryParse` ra số vô nghĩa và

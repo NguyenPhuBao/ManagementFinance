@@ -11,6 +11,11 @@
 > nguồn: tập khoá trong `src/Client-app/test/core/sync/sync_payload_contract_test.dart`, `src/Backend/prisma/schema.prisma`, và các khoá mà
 > `src/Client-app/lib/core/sync/anh_xa_keo_ve.dart` đọc.
 >
+> **Cập nhật 2026-11-01 (gia đình đợt 1A, dải mã `2c18bf77..9cfca7bd`):** payload giao dịch thêm khoá `idfund_pair` (mục 4.2); đẩy thu gom
+> hàng của nhà do người khác ghi (4.7); năm mã `HOUSEHOLD_*` thuần không tính chu kỳ hỏng (2.4); kéo về không đè lệnh xoá chưa đẩy của giao
+> dịch (3.3); bộ nghe kết quả đẩy thứ ba (2.6). Chưa đo trên máy thật — mọi điều dưới đây về đợt này canh bằng test và hai máy giả
+> (`gia_dinh_vong_doi_test.dart`).
+>
 > ⚠️ **Nguồn sự thật về TÊN TRƯỜNG là tệp test hợp đồng**, không phải tệp này (quy tắc 4 `CLAUDE.md`). Payload đi qua ba nơi định nghĩa độc lập
 > — client dựng tay → `SyncPayloadNormalizer` → `mapEntityFields` của backend — và **tên sai thì bị bỏ qua im lặng**, không lỗi nào báo ra. Thêm
 > trường mới cho đồng bộ là phải sửa tệp test cùng lúc. Tệp này lệch tệp test thì tệp test thắng.
@@ -84,6 +89,12 @@ HTTP **200** cho cả lô; `data.results[i] = { localId, status, code?, message?
 đề xuất thêm 2026-10-27 khi backend **chưa** chấp nhận tên — backend đổi tên thì client sửa theo).
 
 - Mã vĩnh viễn ⇒ hàng không bị gửi lại; có bộ nghe gỡ hậu quả (mục 2.6).
+- **Năm mã `HOUSEHOLD_*` nói về vai / trạng thái nhà không tính là chu kỳ hỏng** (2026-11-01, `9b0e0a96`): `HOUSEHOLD_NOT_MEMBER` · `_READ_ONLY` ·
+  `_CLOSED` · `_SCOPE_MISMATCH` · `_ROLE_FORBIDDEN` (`SyncResult.maPhamViNha`, khớp TAY với `kMaDayLoiNha`; `cau_loi_nha_test` đọc tệp để so).
+  Lượt đẩy mà **mọi** thất bại đều thuộc tập này (`SyncResult.chiTuChoiPhamViNha`; thêm một lỗi khác, kể cả mất mạng, là thôi) thì
+  `_chayMotChuKy` không tăng `_consecutiveFailures` và chu kỳ kết thúc `idle`: một khoản của nhà bị từ chối không kéo cả đồng bộ cá nhân xuống
+  giãn cách tới 60 phút (trước sửa đo được 1 lần/giờ). Hàng ấy ở lại `pending` với bậc chặn theo **`syncRetryCount` của chính nó**
+  (`bacChanTheoHang`), Chủ nhà gia hạn thì tự lên. `HOUSEHOLD_WALLET_LIMIT` KHÔNG thuộc tập: nó không nói gì về vai.
 - **Mọi mã khác — kể cả `DB_ERROR` và mã chưa có tên — là lỗi TẠM**: hàng ở lại `pending`, giãn cách luỹ tiến (`syncRetryCount`,
   `syncBlockedUntil`), **gửi lại ở các chu kỳ sau**. Backend thêm một từ chối dữ liệu mới thì phải ném lỗi có `code` riêng và báo client thêm
   vào danh sách **trước** khi bật — nếu không là vòng gửi lại vô hạn, im lặng (lớp lỗi G14 / G31).
@@ -101,8 +112,11 @@ HTTP **200** cho cả lô; `data.results[i] = { localId, status, code?, message?
 ### 2.6 `pushResultStream`
 
 `SyncEngine` phát kết quả đẩy **trước** bước kéo (`sync_push_result_truoc_pull_test.dart` canh): người nghe thường phải bù một thay đổi máy này
-vừa ghi, và kéo về ở giữa sẽ thay đúng hàng ấy. Hai bộ nghe hiện có: `BillPaymentConflictResolver` (gỡ khoản trả bị `BILL_ALREADY_PAID` /
-`BILL_PERIOD_ALREADY_PAID`) và `ViTrungTenResolver` (ví bị `WALLET_NAME_DUPLICATE`). Kết quả của lần **thử lại** phát ở cuối chu kỳ ⇒ người
+vừa ghi, và kéo về ở giữa sẽ thay đúng hàng ấy. Ba bộ nghe hiện có: `BillPaymentConflictResolver` (gỡ khoản trả bị `BILL_ALREADY_PAID` /
+`BILL_PERIOD_ALREADY_PAID`), `ViTrungTenResolver` (ví bị `WALLET_NAME_DUPLICATE`) và, từ 2026-11-01, `GopQuyConflictResolver`
+(`features/household/application/`; nửa nhà của khoản góp / rút bị `HOUSEHOLD_*`: xoá mềm cả hai nửa + `markSynced` nửa nhà để thoát hàng đợi + trả tiền về ví
+riêng + thông báo `gopQuyBiTraVe`; mã `HOUSEHOLD_ROLE_FORBIDDEN` trên hàng khác của nhà thì xoá mềm + `markSynced` rồi xin
+`keoLaiToanBo` để lấy bản server). Kết quả của lần **thử lại** phát ở cuối chu kỳ ⇒ người
 nghe phải chịu được **hai** lượt phát cho cùng một thất bại.
 
 ## 3. Kéo về — `GET /api/sync/pull?since=<ISO 8601 UTC>`
@@ -139,6 +153,10 @@ nghe phải chịu được **hai** lượt phát cho cùng một thất bại.
   `DefaultCategorySeeder` sao bộ mặc định thành bản riêng của tài khoản (quy tắc 8); từ khoá server gieo vào bảng từ khoá cục bộ chỉ khi bảng ấy
   trống (`gieoTuKhoaKhiTrong`).
 - Có ví mặc định kéo về ⇒ máy chỉ còn một ví mặc định (G63).
+- **Giao dịch: kéo về không đè lệnh xoá chưa đẩy** (2026-11-01, `d8f67972`, `3bf05b55`): `ApDuLieuKeoVe` ghi giao dịch qua
+  `TransactionDao.upsertKeoVe`, trong MỘT giao tác đọc mọi hàng cục bộ `isDeleted ∧ pending` rồi bỏ khỏi lô các hàng đó **khi bản server còn sống**
+  (`is_deleted == false`); bản server đã xoá thì cho qua (hàng thoát hàng đợi). Không làm vậy thì nửa riêng vừa gỡ bị Pull làm sống lại. Giới
+  hạn: chỉ giao dịch có bộ lọc; ví, danh mục, mục tiêu, ngân sách, hoá đơn vẫn bị Pull đè lệnh xoá chưa đẩy (G120).
 - **Cổng `sauKeoVe`** (`SyncEngine.sauKeoVe`, 2026-10-27): việc chạy sau MỖI lượt kéo về thành công, chữ ký
   `ViecSauKeoVe = Future<int> Function(int idaccount, List<ThayDoiKhuon> thayDoiKhuon)` (`sync_models.dart`), trả số hàng vừa ghi
   (> 0 → hẹn đẩy). `ThayDoiKhuon` (id, loại cũ, tên / biểu tượng / từ khoá cũ và mới) được `ap_du_lieu_keo_ve.dart` ghi **chỉ khi
@@ -178,7 +196,7 @@ thế cũng nhận). Cột PostgreSQL = `@map` + kiểu trong `schema.prisma`.
 
 Không đi chiều nào: `Id_bank_casso` (nhóm bỏ liên kết ngân hàng 2026-09-18).
 
-### 4.2 Giao dịch — `transaction` (đẩy **14** khoá (đếm 2026-10-28))
+### 4.2 Giao dịch — `transaction` (đẩy **15** khoá (đếm lại 2026-11-01 từ tập khoá ở `sync_payload_contract_test.dart`, ca `'transaction'`; trước đó 14))
 
 | Đẩy | PostgreSQL | Kéo | Ghi chú |
 |---|---|---|---|
@@ -196,6 +214,7 @@ Không đi chiều nào: `Id_bank_casso` (nhóm bỏ liên kết ngân hàng 202
 | `is_deleted` | `Deleted_at` (có **d**) | `deleted_at` | |
 | `update_at` | `Update_at` timestamp | `update_at` | |
 | `idhousehold` | `Idhousehold` int, `NULL` = riêng | `idhousehold` | gia đình (v32): hàng riêng gửi `null`, hàng của nhà gửi id nhà; kéo về `null` tường minh = *chưa biết* (`Value.absent()`) |
+| `idfund_pair` | `Idfund_pair` varchar(36)? (migration `database/45`, chỉ mục `idx_transaction_fund_pair`) | `idfund_pair` (`fund_pair_id`, schema v33) | mã cặp góp / rút của gia đình (`docs/Family/02A` mục 5): hai nửa (ví chung, ví riêng) chung một mã. **Luôn có mặt** trong payload đẩy (`t.fundPairId`, khoản thường gửi `null`); tên payload KHÔNG phải `fund_pair_id` (tên cột Drift, nằm trong danh sách cấm rò). Kéo về: khoá vắng **hoặc `null`** ⇒ `Value.absent()`, giữ mã cục bộ (`anh_xa_keo_ve.dart`); có giá trị ⇒ ghi. **Server không bao giờ gỡ mã đã gắn** (`mapped.idfund_pair \|\| existing.idfund_pair`, không dùng `!== undefined` như spec mục 4 viết): máy có cột cục bộ `null` gửi `null` không xoá được mã |
 
 Không đi chiều nào, **cố ý** (quy tắc 4): `Provider`, `Bank_tran_id`, `Status`, `Images` — đừng thêm vào payload.
 
@@ -299,11 +318,42 @@ Tên duy nhất trong tài khoản, tính cả danh mục mặc định, so bằ
 
 ### 4.7 Gia đình (lát 1 mã xong 2026-10-28) — `idhousehold` và `keoLaiToanBo`
 
-`docs/Family/`, khối 🏠 mục 14 `PROJECT_CONTEXT.md`. Năm payload (ví, giao dịch, ngân sách, mục tiêu, danh mục — không có hoá đơn) gửi khoá **`idhousehold`** (hàng riêng `null`, hàng của nhà gửi id nhà; hàng `idhousehold` ở bảng 4.1–4.4, 4.6); nhánh kéo về đọc khoá ấy (vắng hoặc `null` tường minh ⇒ `Value.absent()`, giữ giá trị cục bộ). Lối ĐẨY cố ý **KHÔNG** ràng `idhousehold` (năm lối miễn trừ của quét 37: `getPending` ×4, `getSyncableCategories`) — hàng tôi ghi vào nhà phải lên được server; nợ lát 2 về lọc `idaccount` ở `getSyncableCategories` / khối 1b: G113. Bảy mã đẩy vĩnh viễn của gia đình đã nằm ở mục 2.4. `idfund_pair` (cặp góp / rút) để phần 2.
+`docs/Family/`, khối 🏠 mục 14 `PROJECT_CONTEXT.md`. Năm payload (ví, giao dịch, ngân sách, mục tiêu, danh mục — không có hoá đơn) gửi khoá **`idhousehold`** (hàng riêng `null`, hàng của nhà gửi id nhà; hàng `idhousehold` ở bảng 4.1–4.4, 4.6); nhánh kéo về đọc khoá ấy (vắng hoặc `null` tường minh ⇒ `Value.absent()`, giữ giá trị cục bộ). Lối ĐẨY cố ý **KHÔNG** ràng `idhousehold` (năm lối miễn trừ của quét 37: `getPending` ×4, `getSyncableCategories`) — hàng tôi ghi vào nhà phải lên được server; nợ lát 2 về lọc `idaccount` ở `getSyncableCategories` / khối 1b: G113. Bảy mã đẩy vĩnh viễn của gia đình đã nằm ở mục 2.4. `idfund_pair` (cặp góp / rút) vào payload giao dịch từ 2026-11-01 (bảng 4.2).
 
 ✅ **Đơn 56.3 đạt (2026-10-30, gộp `e3248955`)**: hàng đã có mà payload mang `idhousehold` khác (kể cả `null`) ⇒ `HOUSEHOLD_SCOPE_MISMATCH`, vắng khoá ⇒ giữ (`sync.service.js:295-311`; năm nhánh cập nhật `sync.repository.js` ghi `existing.idhousehold`) — giả định của nhánh kéo về (`null` tường minh = *"chưa biết"*) nay có server giữ. **Chốt chặn còn lại cho đường ghi vào nhà:** 57.4 (chốt *"Ownership mismatch"* `sync.service.js:260-268` chạy trước ma trận vai) và 58.1 (`Transfer` chỉ chặn ở `create`, app luôn gửi `update`) — xem `docs/superpowers/backend/CAN-LAM/VIEC_BACKEND_CON_LAI.md`.
 
 **`SyncEngine.keoLaiToanBo(idaccount)`**: vào phạm vi dữ liệu mới (vào nhà) ⇒ xoá mốc kéo về rồi kéo lại toàn bộ. Dùng **thế hệ yêu cầu** trong `ApDuLieuKeoVe`: lượt kéo bắt đầu trước yêu cầu không ghi mốc; lượt hỏng giữ yêu cầu cho lượt sau; chỉ xoá kho (`SyncCheckpointStore.clear`) là KHÔNG đủ vì mốc nằm trong RAM. Lượt kéo toàn bộ theo yêu cầu vẫn so từ khoá khuôn danh mục.
+
+**Với giãn cách** (2026-11-02, G121 dòng 16): `boGianCach: true` bỏ giãn cách của engine cho một lượt, cùng hàm `_boGianCachMotLuot` với `dayVaCho`; số lần hỏng giữ nguyên nên lượt này hỏng nữa thì giãn cách dựng lại ở bậc kế. Chỉ `DieuPhoiDoiNha` bật (đổi nhà, gồm cả máy thứ hai của cùng tài khoản thấy nhà mới qua `lamMoi`: mỗi lần id nhà đổi chỉ một lượt, nên đừng siết về "chỉ khi người dùng bấm"). `GopQuyConflictResolver` không bật: nó xin kéo sau một lần đẩy hỏng, bỏ giãn cách ở đó là vòng đồng bộ nóng khi hàng cứ bị từ chối. Khe còn lại, chung với `dayVaCho`: yêu cầu tới giữa một chu kỳ mà chu kỳ ấy hỏng thì lượt bù chờ hết bậc giãn cách; yêu cầu không mất.
+
+**Đợt 1A (2026-11-01) — những gì đẩy / kéo thêm cho hàng của nhà** (mã `2c18bf77..9cfca7bd`; chưa có màn ghi khoản, chưa đo máy thật):
+- **Thu gom hàng của nhà do người khác ghi.** `ThuGomThaoTacDay.collectPendingOps` đọc nhà đang ở MỘT lần (`nhaPhien`, DI ở `injection_container.dart`: `NhaRepository.hienTai.nha?.id`)
+  và truyền cho `getPending(idaccount, nha)` của năm DAO: hàng vào lô khi `idaccount = tôi ∨ idhousehold = nhà tôi`. Hàng của nhà mang
+  `idaccount` người GHI, nên bản Chủ nhà sửa hộ khoản của Thành viên cần cửa này mới lên server. Khối 1b (danh mục kèm theo) đẩy danh mục
+  qua `getSyncableCategories(idaccount, idhousehold: nha)`; danh mục của nhà do người khác tạo mà chỉ được tham chiếu thì KHÔNG gửi kèm (người tạo đã đẩy). Khối 1b
+  bỏ qua giao dịch đang bị chặn theo thời gian (`_isSyncBlocked`) — nếu không, danh mục của hàng nhà bị từ chối bị gửi lại mỗi chu kỳ và `sync.completed`
+  đánh thức lại chính máy này (vòng nóng G63). `nhaPhien == null` (lượt nền, kho nhà chưa nạp) ⇒ chỉ hàng của tôi: hàng sửa hộ không gom (G120).
+- **Mã cặp.** Server chốt: khoản có `idfund_pair` đã lưu thì chỉ người ghi được SỬA, Chủ nhà chỉ XOÁ; `laXoa = (operation === 'delete')` (bỏ vế `payload.is_deleted`
+  của brief — client thật luôn xoá bằng op `delete`); khoản chuyển (`Transfer`) trong nhà chỉ Chủ sửa / xoá. Chi tiết bảng quyền: `docs/Family/01` mục 3.
+- **`SyncEngine.dayVaCho({tran})`** (trần mặc định `kTranDayTruocKhiRoi` = 30 s): đẩy một lượt rồi CHỜ mọi chu kỳ đang chạy và lượt bù của chúng xong, hết trần
+  thì trả về bình thường. Là thao tác chủ động nên bỏ giãn cách của engine như `start()` (không vượt `syncBlockedUntil` từng hàng). Nơi gọi: Rời nhà / Giải tán
+  (`NhaRepositoryImpl._chuanBiRoi`) — còn hàng nhà chưa đẩy thì ném `LoiNha(hangChuaDay)` trừ khi gọi với `boQuaHangChuaDay: true`. `checkConnectivity` ném thì lỗi lan ra
+  (nơi gọi bọc `catch`).
+- **Resolver (mục 2.6)** và bộ lọc Pull (mục 3.3) là hai nửa của cùng một việc: gỡ hàng nhà bị từ chối mà không để Pull làm sống lại.
+
+**Đợt 1B (2026-11-02) — thêm cho hàng của nhà** (mã `503fc9d5..9f4e5e97`; mã xong + soát toàn nhánh, chưa đo máy thật; chỉ ghi chỗ đụng tới hợp đồng, phần giao diện ở spec mục 16):
+- **Danh mục sai phạm vi bị từ chối.** `validateEntityScope` (`sync.service.js`, `6684cc6c`) kiểm thêm `idcategory` / `categoryId` / `idCategory` của payload: danh mục tìm thấy mà `Idhousehold` khác phạm vi đích (riêng ↔ nhà, nhà A ↔ nhà B, **kể cả khuôn mặc định**, vốn trống `Idhousehold`) ⇒ `HOUSEHOLD_SCOPE_MISMATCH` (mã vĩnh viễn, đã có trong `_permanentCodes`). Cùng khuôn kiểm ví, ví chuyển, mục tiêu. Client 1B không tạo được ca này (danh mục chọn từ cây của nhà, bản sao do server tạo); đây là lưới. Hệ quả cần biết: hàng nhà **cũ** trỏ danh mục riêng cũng không **xoá** được, vì phép kiểm chạy trước nhánh xoá (G121 dòng 13; đơn 63.2).
+- **Payload không đổi** so với 1A (giao dịch **15** khoá; năm payload gửi `idhousehold`). Danh mục của nhà gửi `idhousehold` như hàng khác; **không có từ khoá** (`keywords: []`, `saveKeywords` gác hàng nhà) — từ khoá danh mục là cột `Keyword` chung, các thành viên sẽ đè nhau.
+- **`/me` → `formerMembers` khử trùng ở client** (`nhaCuaToiTuJson`): backend trả mọi hàng đã rời, kể cả người đang ở và một người nhiều lần (đơn 64); client bỏ id đang ở và khử theo id.
+- **Rời nhà / Giải tán** có hộp hỏi lại khi `LoiNha(hangChuaDay)`: đếm qua `hangChuaDay(idNha, idaccount:)` (nửa **của tôi** chưa đẩy vào *gop* / *rut*, nửa người khác vào *khoan*; nửa của tôi đã xoá mềm vào *khoan*), rồi gọi lại với `boQuaHangChuaDay: true` (G119 ca 7: `pending` của bản sửa trên hàng đã lên server cũng đếm là "chưa lên").
+
+**Đợt 2 (2026-11-02) — mục tiêu chung** (mã `4caa9cb5..7a7bf1b1`; đo máy ảo + Realme, spec mục 17, `docs/Family/03`):
+- **Payload `goal` không đổi** (23 khoá). `current_amount` của mục tiêu chung gửi 0, server lưu như gửi, không ai đọc: tiến độ suy từ số dư ví.
+- **Chỉ mục** `uq_goal_household_wallet_active` (`database/46`): một mục tiêu sống mỗi ví chung. Vi phạm ⇒ `UNIQUE_VIOLATION`, đã vĩnh viễn; `GopQuyConflictResolver` gỡ hàng thua của nhà rồi kéo toàn bộ. Hàng riêng cùng mã không bị đụng.
+- ⚠️ **Thứ tự lệnh trong lô quyết định cách bật lại.** Server chạy `goal` tạo / sửa (30) trước `goal` xoá (70), mỗi thao tác một `try`. Tắt rồi bật lại khi lệnh xoá chưa lên mà tạo hàng mới thì hàng mới vướng chỉ mục. `DuLieuNhaRepository` vì thế **hồi sinh** hàng đang xoá mềm + `pending` (`GoalDao.getXoaChuaDayTheoVi`), đẩy lên là `update` cùng id; kịch bản `chay_kiem_gia_dinh_2.js` ghi nhận hành vi này.
+- **Kéo về không đè hàng mục tiêu của nhà đang `pending`** (`GoalDao.upsertKeoVe`, khuôn `TransactionDao.upsertKeoVe` mục 3.3, nhưng giữ cả bản sửa chứ không riêng lệnh xoá; mục tiêu riêng không đổi). Lượt đẩy kế gửi hàng lên, LWW phân xử; thua thì `conflict` → `markSynced`, Pull cùng chu kỳ đè.
+- **Còn hở:** G122: `_markSyncedById` không so `updatedAt` nên lệnh đang bay đè bản vừa sửa; server không hồi sinh hàng đã có `Delete_at` khi nhận `is_deleted: false`.
+- **Mục tiêu của nhà** đọc qua `getCuaNha` / `watchCuaNha` / `getSongTheoVi`; `getAll` / `watchAll` vẫn lọc `idhousehold IS NULL` nên `/goals`, khối Nhận xét, tool AI, bộ trích tự động không thấy.
 
 ## 5. Phép đổi giá trị (tóm tắt — `sync_payload_normalizer.dart`)
 

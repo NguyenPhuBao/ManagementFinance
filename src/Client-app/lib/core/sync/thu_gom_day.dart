@@ -26,10 +26,12 @@ class ThuGomThaoTacDay {
     required CongViBiGiu viBiGiu,
     required DateTime Function() now,
     required int? Function() taiKhoanPhien,
+    required int? Function() nhaPhien,
   })  : _db = db,
         _viBiGiu = viBiGiu,
         _now = now,
-        _taiKhoanPhien = taiKhoanPhien;
+        _taiKhoanPhien = taiKhoanPhien,
+        _nhaPhien = nhaPhien;
 
   final AppDatabase _db;
 
@@ -39,6 +41,11 @@ class ThuGomThaoTacDay {
 
   final DateTime Function() _now;
   final int? Function() _taiKhoanPhien;
+
+  /// Nhà đang ở (`null` = không ở nhà nào, hoặc kho nhà chưa nạp — vd. isolate nền). Hàng của nhà mang `idaccount` người
+  /// GHI, nên bản sửa hộ (Chủ nhà sửa khoản của Thành viên…) chỉ vào lô khi lọc thêm theo nhà này (spec gia đình
+  /// 2026-11-01 mục 7.1). Đọc qua hàm vì nhà đổi trong phiên.
+  final int? Function() _nhaPhien;
 
   /// Bản ghi có đang bị chặn khỏi hàng đợi đẩy không (G3).
   ///
@@ -52,6 +59,8 @@ class ThuGomThaoTacDay {
   Future<List<SyncOperation>> collectPendingOps(int idaccount) async {
     final ops = <SyncOperation>[];
     final now = DateTime.now();
+    // Nhà đang ở, đọc MỘT lần cho cả lô: mọi nguồn dưới đây dùng chung một ảnh chụp (nhà đổi giữa chừng là lô lệch nhau).
+    final nha = _nhaPhien();
 
     // ── 0. Bản ghi bị GIỮ vì ví trùng tên (G63) ───────────────────────────────
     // Ví mà server từ chối vì trùng tên với một ví đã kéo về thì CHƯA lên được
@@ -67,9 +76,9 @@ class ThuGomThaoTacDay {
     // được kéo. Từ G67 (2026-10-08) mốc theo giờ-server nên ca ấy đã hết; việc
     // làm mới giờ sửa vẫn giữ — với server chưa có `maxSince` nó vẫn cần.
     await _viBiGiu.thaViKhongConCap(idaccount);
-    final pendingGoals = await _db.goalDao.getPending(idaccount);
+    final pendingGoals = await _db.goalDao.getPending(idaccount, nha);
     final pendingBills = await _db.billDao.getPending(idaccount);
-    final pendingTx = await _db.transactionDao.getPending(idaccount);
+    final pendingTx = await _db.transactionDao.getPending(idaccount, nha);
     final giu = await _viBiGiu.banGhiGiuKhoiDay(
       idaccount,
       hoaDon: pendingBills,
@@ -81,7 +90,7 @@ class ThuGomThaoTacDay {
     // Transaction.idcategory, Budget.idcategory, Bill.idcategory đều FK → category
     // Nếu categories push sau thì backend báo FK constraint violation.
     final syncableCategories =
-        await _db.categoryDao.getSyncableCategories(idaccount);
+        await _db.categoryDao.getSyncableCategories(idaccount, idhousehold: nha);
     // Nạp từ khoá MỘT lần cho cả lô. `getKeywords` trong vòng lặp sinh một
     // truy vấn cho mỗi danh mục, mà vòng này chạy ở MỌI chu kỳ đẩy.
     final tuKhoaTheoDanhMuc = await _db.categoryDao.getAllKeywords(idaccount);
@@ -137,7 +146,7 @@ class ThuGomThaoTacDay {
 
     // ── 2. Wallets (phải đứng TRƯỚC transactions/bills/goals) ─────────────────
     // Transaction.idwallet, Bill.idwallet, Goal.idwallet đều FK → wallet
-    final pendingWallets = await _db.walletDao.getPending(idaccount);
+    final pendingWallets = await _db.walletDao.getPending(idaccount, nha);
     for (final w in pendingWallets) {
       if (_isSyncBlocked(w.syncBlockedUntil)) continue;
       if (giu.vi.contains(w.id)) continue;
@@ -175,7 +184,7 @@ class ThuGomThaoTacDay {
     // KHÔNG bổ sung default/global categories (idaccount == 0) — backend đã có sẵn.
     final currentAccount = _taiKhoanPhien() ?? idaccount;
     final alreadyInBatch = ops.map((o) => o.localId).toSet();
-    final pendingTxForCatCheck = await _db.transactionDao.getPending(idaccount);
+    final pendingTxForCatCheck = await _db.transactionDao.getPending(idaccount, nha);
     for (final t in pendingTxForCatCheck) {
       if (t.categoryId == null) continue;
       // G63: giao dịch bị giữ không lên lô, nên danh mục của nó cũng không cần
@@ -184,13 +193,18 @@ class ThuGomThaoTacDay {
       // chu kỳ → xung đột (không lỗi, nên không giãn cách) → server phát
       // `sync.completed` về chính máy này → `syncNow` → chạy bù → đẩy lại.
       if (giu.giaoDich.contains(t.id)) continue;
+      // Cùng lý do với dòng trên cho giao dịch đang bị CHẶN theo thời gian (vd. hàng nhà bị từ chối vì vai): nó không lên
+      // lô thì danh mục của nó cũng không đi kèm. Từ I-1 chu kỳ chỉ có từ chối phạm vi nhà không giãn cách engine nữa, nên
+      // khe này không còn được cửa giãn cách che.
+      if (_isSyncBlocked(t.syncBlockedUntil)) continue;
       final resolvedId = await resolveCategoryId(_db, t.categoryId);
       if (resolvedId == null) continue;
       if (alreadyInBatch.contains(resolvedId)) continue;
       final cat = await _db.categoryDao.getById(resolvedId);
       if (cat == null) continue;
       if (_isSyncBlocked(cat.syncBlockedUntil)) continue;
-      // Chỉ push category thuộc user hiện tại — bỏ qua global/default (idaccount=0)
+      // Chỉ push category thuộc user hiện tại — bỏ qua global/default (idaccount=0). Danh mục của nhà do NGƯỜI KHÁC tạo
+      // cũng không vào đây: người tạo đã đẩy nó (đã có trên server); bản tôi SỬA lên bằng khối 1 (`getSyncableCategories`).
       if (cat.idaccount != currentAccount) continue;
       // Thêm category này vào batch để đảm bảo nó tồn tại trên backend
       String validClassify = cat.classify;
@@ -403,6 +417,8 @@ class ThuGomThaoTacDay {
           // từ chối. Hoá đơn được đẩy ở mục 4, TRƯỚC đây, vì cột này có khoá
           // ngoại `fk_transaction_bill`.
           'idbill': t.billId != null ? toValidUuid(t.billId!) : null,
+          // Mã cặp góp / rút (Family 02A mục 5): server chỉ lưu và trả.
+          'idfund_pair': t.fundPairId,
           'amount': t.amount,
           'type': t.type,
           'note': t.note,
@@ -421,7 +437,7 @@ class ThuGomThaoTacDay {
     // start, over_spending, ...) vì backend mapEntityFields() chỉ nhận diện
     // các key camelCase cụ thể (totalAmount, categoryId, ...) — gửi sẵn tên
     // snake_case cuối cùng để tránh lệ thuộc vào việc mapper có khớp hay không.
-    for (final b in await _db.budgetDao.getPending(idaccount)) {
+    for (final b in await _db.budgetDao.getPending(idaccount, nha)) {
       if (_isSyncBlocked(b.syncBlockedUntil)) continue;
       final validId = toValidUuid(b.id);
       final validCatId =

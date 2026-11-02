@@ -81,6 +81,32 @@ void main() {
         toiDa: toiDa,
       );
 
+  test('tool AI: nửa riêng của khoản góp quỹ không danh mục mang nhãn Góp quỹ gia đình, không phải null', () {
+    final kq = timGiaoDich(
+      trongKy: [
+        TransactionEntity(
+          id: 'g',
+          walletId: 'w-cash',
+          idaccount: 10,
+          amount: 70000,
+          type: 'chi',
+          note: '',
+          date: DateTime(2026, 9, 4),
+          updatedAt: DateTime(2026, 9, 4),
+          fundPairId: 'p1',
+        ),
+      ],
+      lookup: lookup,
+      viSong: viSong,
+      danhMucSong: dmSong,
+      tieuChi: const TieuChiTim(chieu: ChieuTim.chi),
+      now: now,
+      toiDa: 4,
+    );
+    expect(kq.dong.single.tenDanhMuc, 'Góp quỹ gia đình',
+        reason: 'tool AI nói cùng nhãn với thống kê (nhanAoQuy), không "Chưa phân loại"');
+  });
+
   test('⭐ tổng trên MỌI khoản khớp, không chỉ các dòng hiện (bẫy 10)', () {
     final kq = tim(const TieuChiTim(chieu: ChieuTim.chi), toiDa: 2);
     expect(kq.dong.length, 2);

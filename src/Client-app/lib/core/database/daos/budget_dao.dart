@@ -68,11 +68,14 @@ class BudgetDao extends DatabaseAccessor<AppDatabase> with _$BudgetDaoMixin {
     await batch((b) => b.insertAllOnConflictUpdate(budgets, entries));
   }
 
-  Future<List<Budget>> getPending([int? idaccount]) {
+  /// [idhousehold]: nhà đang ở — thêm hàng của nhà do người khác ghi (spec gia đình 2026-11-01 mục 7.1).
+  Future<List<Budget>> getPending([int? idaccount, int? idhousehold]) {
     return (select(budgets)
-          ..where((t) =>
-              t.syncStatus.equals('pending') &
-              (idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount))))
+          ..where((t) {
+            final cuaToi = idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount);
+            final phamVi = idhousehold == null ? cuaToi : (cuaToi | t.idhousehold.equals(idhousehold));
+            return t.syncStatus.equals('pending') & phamVi;
+          }))
         .get();
   }
 

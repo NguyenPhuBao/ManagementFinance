@@ -11,7 +11,7 @@ void main() {
   setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
   tearDown(() => db.close());
 
-  test('schema hiện tại là v32 (v31 còn nguyên)', () => expect(db.schemaVersion, 32));
+  test('schema hiện tại là v33 (v31 còn nguyên)', () => expect(db.schemaVersion, 33));
 
   test('bảng KHÔNG có cột đồng bộ', () async {
     final cols = await db.customSelect("PRAGMA table_info('danh_muc_ai_doans')").get();

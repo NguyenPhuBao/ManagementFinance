@@ -35,10 +35,10 @@ final _rangNha = RegExp(r'idhousehold\.(?:isNull|isNotNull|equals)\(');
 final _dauThanhVien = RegExp(r'^  [^\s/@})\]]');
 final _tenThanhVien = RegExp(r'(_?[A-Za-z]\w*)\s*(?:\(|=>)');
 
-const _lyDoDay = 'đường ĐẨY (2026-10-24): hàng chờ gồm cả hàng tôi ghi vào nhà (`idaccount` = người tạo) — ràng '
-    '`idhousehold IS NULL` là hàng của nhà không bao giờ lên server. ⚠️ Ghi nợ lát 2 (sửa danh mục / khoản của nhà): '
-    'lọc theo `idaccount` ở lối đẩy là hàng của nhà do NGƯỜI KHÁC tạo mà tôi sửa cục bộ không bao giờ vào lô '
-    '(`getSyncableCategories` và khối 1b `thu_gom_day.dart`) — phải đổi thành `idaccount = tôi ∨ idhousehold = nhà tôi`';
+const _lyDoDay = 'đường ĐẨY (2026-10-24, sửa 2026-11-01 đợt 1A): hàng chờ gồm cả hàng tôi ghi vào nhà (`idaccount` = '
+    'người tạo) — ràng `idhousehold IS NULL` là hàng của nhà không bao giờ lên server. Lối đẩy lọc '
+    '`idaccount = tôi ∨ idhousehold = nhà đang ở` (tham số `idhousehold`; không truyền = chỉ hàng của tôi), nên hàng của '
+    'nhà do NGƯỜI KHÁC tạo mà tôi sửa cục bộ vào được lô (`thu_gom_day_hang_nha_test`)';
 
 /// `tệp#thành viên` → lý do. Mục hết hiệu lực (không còn câu nào thiếu ràng nhà ở đó) làm ca thứ ba đỏ.
 const _mienTru = <String, String>{

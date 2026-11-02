@@ -1,6 +1,6 @@
 # Hệ thống thông báo — tài liệu bàn giao
 
-> **Cập nhật:** **2026-11-01** (**Gia đình lát 2** — loại thứ **22** `loiMoiNha`, nhóm thứ **tám** `giaDinh`, mục **5n**; `NotificationScanner.quetKhiRanh` + chốt phiên, lượt bù `_quetBuCho` xoá ở `stop()`). Trước đó **2026-10-28** (**quyền theo gói gác thông báo — B1**, mục **5m**: ba vị từ `nhacTruocHanDuocPhep` · `nhacGhiChepDuocPhep` · `canhBaoNganSachDuocPhep` qua closure DI; quyền nhắc đổi → `resync` thường qua `noiKhiQuyenDoi`; bẫy `khongHuy`). Trước đó **2026-10-26** (**Tin từ FlowMoney** — tin admin qua socket `system.broadcast`, loại thứ **21** `tinHeThong`, nhóm thứ **bảy** `tinFlowMoney`, mục **5l**). Trước đó **2026-10-15** (đợt Entity Thông báo + gạch 5 + gạch 6, G88 — mọi đường dẫn `lib/core/notification/…` và `test/core/notification/…` đổi sang `features/notification/{domain,data,application}` (hoặc `core/nen` · `core/ocr` · `core/utils`); cổng `ThongBaoNguon` thành `ThongBaoRepository`, bảng vẫn cục bộ; không đổi hành vi). Trước đó **2026-10-03** (**nhắc ghi sau khi dùng app ngân hàng** — nguồn thứ ba của loại 20, mục **5j**; dải hoàn tác vuốt xoá phải `persist: false`, mục **5c**) · trước đó **2026-09-30** (**đọc biến động số dư — D1**, mục **5j**: loại thứ **20** `bienDongSoDu`, nhóm thứ **sáu** `bienDong`, **ngoại lệ xoá cứng** ở mục 4.3; tài liệu chính `docs/BIEN_DONG_SO_DU_FEATURE.md`) · trước đó **2026-09-29** tối (**học giờ và đề xuất — B5b**, mục **5i**: đề xuất giờ nhắc hoá đơn / tổng kết / ghi chép và tắt nhóm bị lờ, chỉ đề xuất; kèm **G59** — đổi giờ nhắc nay dời lịch đang chờ, `resync(datLai: true)`) · trước đó **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
+> **Cập nhật:** **2026-11-01** (**Gia đình đợt 1A** — hai loại thứ **23** `gopQuyBiTraVe` và **24** `gopQuyBiXoa`, cùng nhóm `giaDinh`, cả hai `luonBao`, mục **5o**). Trước đó **2026-11-01** (**Gia đình lát 2** — loại thứ **22** `loiMoiNha`, nhóm thứ **tám** `giaDinh`, mục **5n**; `NotificationScanner.quetKhiRanh` + chốt phiên, lượt bù `_quetBuCho` xoá ở `stop()`). Trước đó **2026-10-28** (**quyền theo gói gác thông báo — B1**, mục **5m**: ba vị từ `nhacTruocHanDuocPhep` · `nhacGhiChepDuocPhep` · `canhBaoNganSachDuocPhep` qua closure DI; quyền nhắc đổi → `resync` thường qua `noiKhiQuyenDoi`; bẫy `khongHuy`). Trước đó **2026-10-26** (**Tin từ FlowMoney** — tin admin qua socket `system.broadcast`, loại thứ **21** `tinHeThong`, nhóm thứ **bảy** `tinFlowMoney`, mục **5l**). Trước đó **2026-10-15** (đợt Entity Thông báo + gạch 5 + gạch 6, G88 — mọi đường dẫn `lib/core/notification/…` và `test/core/notification/…` đổi sang `features/notification/{domain,data,application}` (hoặc `core/nen` · `core/ocr` · `core/utils`); cổng `ThongBaoNguon` thành `ThongBaoRepository`, bảng vẫn cục bộ; không đổi hành vi). Trước đó **2026-10-03** (**nhắc ghi sau khi dùng app ngân hàng** — nguồn thứ ba của loại 20, mục **5j**; dải hoàn tác vuốt xoá phải `persist: false`, mục **5c**) · trước đó **2026-09-30** (**đọc biến động số dư — D1**, mục **5j**: loại thứ **20** `bienDongSoDu`, nhóm thứ **sáu** `bienDong`, **ngoại lệ xoá cứng** ở mục 4.3; tài liệu chính `docs/BIEN_DONG_SO_DU_FEATURE.md`) · trước đó **2026-09-29** tối (**học giờ và đề xuất — B5b**, mục **5i**: đề xuất giờ nhắc hoá đơn / tổng kết / ghi chép và tắt nhóm bị lờ, chỉ đề xuất; kèm **G59** — đổi giờ nhắc nay dời lịch đang chờ, `resync(datLai: true)`) · trước đó **2026-09-29** (**nhật ký thông báo** — bảng cục bộ `AppNotificationEvents`, schema **v26**, mục **5h**, B5a; API chạm đổi tên `payloadDaCham`/`payloadKhoiDong` → `chamTho`/`chamKhoiDong`) · trước đó **2026-09-20** (loại thứ **19** của enum: `budgetRebalance` — mục **5g**, Đề xuất cân đối ngân sách, Edge-SLM P2 Task 16) · trước đó 2026-09-17 (loại thứ **18** `largeExpense` — mục 5f) · trước đó 2026-09-13 (loại thứ **17** `billPaidOnOtherDevice` — mục 5e; loại đầu tiên KHÔNG do bộ quét sinh ra) · **Nhánh:** `TranQuangDat`
 > **Trạng thái:** cả bảy lát đã xong, **đã kiểm trên máy ảo Android**, có thêm
 > **dải báo kết nối** (mục 9), **mốc kích hoạt quét đã được sửa lại cho
 > offline-first** (mục 4.5), **cú chạm vào thông báo hệ điều hành nay điều
@@ -76,7 +76,7 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 
 **Mười chín loại** trong bảng dưới, xếp vào **sáu nhóm** công tắc (đếm lại 2026-09-30, sau D1).
 
-⚠️ **`enum NotificationKind` có HAI MƯƠI giá trị, không phải mười chín** — đếm bằng máy 2026-09-30 (mốc *mười chín* enum / *mười tám* bảng là của 2026-09-20, trước D1). Chênh lệch là `billPaidOnOtherDevice`: nó không do `NotificationScanner` sinh ra nên chưa bao giờ nằm trong bảng này (xem mục 5e). Hai con số ấy **cố ý** khác nhau, và đó là lý do phải nói rõ mỗi chỗ đang đếm cái nào — mốc *mười sáu* của 2026-09-09 và *mười bảy* của 2026-09-17 là con số của bảng, còn *mười bảy* mà mục 5e dùng năm 2026-09-13 là con số của enum. Đừng cộng dồn — hãy đếm lại. Cột cuối đánh dấu những loại
+⚠️ **Mốc mới nhất: `enum NotificationKind` có 24 giá trị** (đếm 2026-11-01 bằng cách đếm dòng `tên,` trong enum ở `notification_rules.dart`, sau đợt gia đình 1A; hai loại cuối `gopQuyBiTraVe` · `gopQuyBiXoa`, mục 5o). Đoạn dưới là mốc cũ của 2026-09-30, giữ để hiểu vì sao enum và bảng lệch nhau. — **`enum NotificationKind` có HAI MƯƠI giá trị, không phải mười chín** — đếm bằng máy 2026-09-30 (mốc *mười chín* enum / *mười tám* bảng là của 2026-09-20, trước D1). Chênh lệch là `billPaidOnOtherDevice`: nó không do `NotificationScanner` sinh ra nên chưa bao giờ nằm trong bảng này (xem mục 5e). Hai con số ấy **cố ý** khác nhau, và đó là lý do phải nói rõ mỗi chỗ đang đếm cái nào — mốc *mười sáu* của 2026-09-09 và *mười bảy* của 2026-09-17 là con số của bảng, còn *mười bảy* mà mục 5e dùng năm 2026-09-13 là con số của enum. Đừng cộng dồn — hãy đếm lại. Cột cuối đánh dấu những loại
 **không chịu công tắc nhóm** — xem `luonBao()` trong `notification_prefs.dart`.
 
 | Nhóm | Loại | `kind` | Luôn báo |
@@ -102,6 +102,8 @@ uống"*, *"Nhắc nhở: Hóa đơn tiền điện sắp đến hạn"*, *"Ti�
 | **Biến động** | **Biến động số dư** (D1, 2026-09-30) — ⚠️ không do scanner sinh, `NhapBienDong` chèn từ hàng chờ của Kotlin; công tắc là cờ riêng `docBienDong` (mặc định TẮT), mục 5j | `bienDongSoDu` | |
 | **Tin từ FlowMoney** | **Tin admin** (2026-10-26) — ⚠️ không do scanner sinh, `NhanTinHeThong` ghi từ socket `system.broadcast`; nhóm riêng `tinFlowMoney`, mặc định BẬT, mục 5l | `tinHeThong` | |
 | **Gia đình** | **Lời mời vào nhà** (2026-11-01, loại thứ **22**) — nguồn là danh sách lời mời của `NhaRepository` qua cổng (không phải bảng của scanner), mỗi mã còn hạn một thông báo; nhóm riêng `giaDinh`, mặc định BẬT, mục 5n | `loiMoiNha` | |
+| **Gia đình** | **Khoản góp / rút quỹ bị trả về** (2026-11-01, loại thứ **23**) — ⚠️ không do scanner sinh, `GopQuyConflictResolver` ghi thẳng lúc đồng bộ; nửa của nhà bị server từ chối hoặc mình rời nhà khi nó chưa đẩy; mục 5o | `gopQuyBiTraVe` | ⚠️ có |
+| | **Khoản góp / rút quỹ bị Chủ nhà xoá** (loại thứ **24**) — cũng do resolver ghi, sau mỗi lượt kéo về; mục 5o | `gopQuyBiXoa` | ⚠️ có |
 
 **`walletLowBalance`** (2026-09-07) và **`largeExpense`** (2026-09-17) là hai loại **tắt sẵn**, và cả hai tắt theo cùng một cách — bằng chính con số ngưỡng. Với `walletLowBalance`: nó chỉ sinh
 khi `NotificationPrefs.nguongSoDuThap > 0`, mà mặc định là `0`. Con số ấy vừa
@@ -271,6 +273,8 @@ bắn lại thông báo cũ.
 | `billDueSoon` | `billDue:<id>:<hạn>:<số ngày nhắc>` | 1 lần/hạn |
 | `billOverdue` | `billOverdue:<id>:<hạn>` | 1 lần/hạn |
 | `billPaidOnOtherDevice` | `billConflict:<id>` | 1 lần/kỳ hoá đơn |
+| `gopQuyBiTraVe` | `gopTraVe:<mã cặp>` | 1 lần/cặp góp–rút |
+| `gopQuyBiXoa` | `gopBiXoa:<mã cặp>` | 1 lần/cặp góp–rút |
 | `largeExpense` | `bigSpend:<idGiaoDich>` | 1 lần/giao dịch, **trọn đời** |
 
 - `<đầu kỳ>` lấy từ **`BudgetEntity.currentPeriod(now).from`** — hàm đã xử lý
@@ -1456,6 +1460,38 @@ Spec `docs/superpowers/specs/2026-10-23-gia-dinh-nen-mong-design.md` mục 12.3.
 - **Đánh thức bộ quét.** Sự kiện nhà vào danh sách lời mời chỉ đánh thức `NotificationScanner.quetKhiRanh(idaccount)` khi có **mã mới** (so tập `maLoiMoiDaBao` ở `main.dart`), không mỗi lần phát — mỗi lần là một `scan` đầy đủ kể cả tự trả / tự trích. `scan` bỏ qua khi đang có lượt chạy; lúc ấy `quetKhiRanh` ghi nợ một lượt bù `_quetBuCho` (một số nguyên: tài khoản đang nợ).
 - **Chốt phiên (I3, `4ee5a81d`).** `quetKhiRanh`, lối `resumed`, `start` và `quetNgay` không quét khi `_idaccount` đã khác (sau `stop()` hoặc tài khoản khác). **`stop()` hạ `_idaccount` và xoá `_quetBuCho` đầu tiên**, trước mọi `await`: một lượt bù sau `stop()` sẽ tự chuyển tiền và đặt lịch cho tài khoản đã đăng xuất. ⚠️ Còn mở **G115**: lượt `scan` ĐANG chạy lúc `stop()` vẫn chạy nốt `_dongBoLich` / `_henLichNen` sau `cancelAll`; hướng: `stop()` chờ lượt quét trước `cancelAll`.
 - **Ca canh.** `notification_rules_loi_moi_nha_test` (một thông báo mỗi mã), `notification_deeplink_test` (phép canh đủ mọi loại — `tatCaUngVien()`), `notification_prefs_test` (hai `switch` không `default`), `notification_scanner_loi_moi_nha_test` + `notification_scanner_sau_dang_xuat_test` (chốt phiên; `stop` + `quetKhiRanh` canh thứ tự hạ `_idaccount`); máy ảo 2026-11-01: thông báo khay *"Lời mời vào nhà · …"* chạm từ Trang chủ mở `/nha`, Back về Trang chủ, thông báo tự mất; giết bằng `kill -9` rồi chạm: mở lạnh chờ phiên, tới `/nha` có thẻ. ⚠️ `am force-stop` **xoá** thông báo khỏi khay (Android), nên đừng dùng nó để đo mở lạnh qua thông báo.
+
+## 5o. Khoản góp / rút quỹ bị trả về hoặc bị xoá — loại 23 và 24 (2026-11-01, gia đình đợt 1A)
+
+Spec `docs/superpowers/specs/2026-11-01-gia-dinh-2a-toi-3-design.md` mục 8; luật nghiệp vụ ở `docs/Family/02A_VI_CHUNG_GOP_QUY.md` mục 6. Hai loại mới `gopQuyBiTraVe` (23) và
+`gopQuyBiXoa` (24), đếm 2026-11-01 (enum 24 giá trị). Cả hai thuộc nhóm `giaDinh` và **không do bộ quét sinh**: `GopQuyConflictResolver`
+(`features/household/application/`) chèn thẳng bằng `notificationDao.insertIfAbsent`, như `billPaidOnOtherDevice` (mục 5e). `severity` = `info`, `subjectType` = `'nha'`.
+
+| Loại | Khi nào | Khoá chống trùng | Câu (đọc từ mã) |
+|---|---|---|---|
+| `gopQuyBiTraVe` | server từ chối nửa của nhà (`kMaDayLoiNha`), hoặc mình rời nhà khi nửa của nhà chưa đẩy: gỡ cả hai nửa, tiền về ví riêng | `gopTraVe:<mã cặp>` | tiêu đề *"Chưa góp được vào quỹ"* / *"Chưa rút được từ quỹ"*; thân *"Chưa góp được vào quỹ X, đã trả tiền về Y."* / *"Chưa rút được từ quỹ X, đã huỷ khoản nhận ở Y."*; khi nửa riêng không còn (tiền mặt trao tay): *"Chưa ghi được khoản góp vào quỹ X."* / *"…khoản rút từ quỹ X."* |
+| `gopQuyBiXoa` | Chủ nhà xoá nửa của nhà (kéo về), nửa riêng trên máy người góp bị gỡ theo — `xuLyNuaNhaBiXoa`, chạy sau mỗi lượt kéo | `gopBiXoa:<mã cặp>` | tiêu đề *"Khoản góp đã bị xoá"* / *"Khoản rút đã bị xoá"*; thân *"Chủ nhà đã xoá khoản góp vào quỹ X, đã trả tiền về Y."* / *"…khoản rút từ quỹ X, đã huỷ khoản nhận ở Y."* |
+
+- **`luonBao = true` cho cả hai** (ruling Task 9, `notification_prefs.dart`): tiền bị hoàn về ví lúc người dùng vắng mặt, cùng lý lẽ với `billPaidOnOtherDevice`. `luonBao` nay có **bảy** loại (bốn loại tiền rời ví + `billPaidOnOtherDevice` + hai loại này). Người tắt nhóm Gia đình vẫn thấy hai loại này; muốn im hẳn thì công tắc tổng.
+- **Nhóm / deeplink.** `nhomCua` → `NotificationGroup.giaDinh`; `loaiTuKhoa` ánh xạ tiền tố `gopTraVe` · `gopBiXoa` (`nhom_tu_khoa.dart`); deeplink của cả hai là `/transactions` (tab trong shell, có trong `nhanhThanhTab`), người dùng xem lại khoản ở Sổ giao dịch. Hai `switch` không `default` ở `notification_prefs.dart` và phép canh đủ mọi loại ở `notification_deeplink_test` đã được cập nhật.
+- **Không nêu số tiền** trong thân (nếp thông báo tối giản). Thông báo ghi **một lần mỗi mã cặp**: lượt phát lặp của cùng một thất bại không đẻ thông báo thứ hai.
+- ⚠️ **Chưa đo trên máy thật.** 1A chưa có màn ghi khoản góp, nên thông báo chỉ được canh bằng test (resolver + hai máy giả `gia_dinh_vong_doi_test`); lúc hiện thật ở khay chưa nhìn.
+
+## 5p. Mốc mục tiêu chung của nhà — loại 25 và 26 (2026-11-02, gia đình đợt 2)
+
+`docs/Family/03_MUC_TIEU_CHUNG.md` mục 4; chỗ mã khác tài liệu ấy ở spec `2026-11-01-gia-dinh-2a-toi-3-design.md` mục 17. `enum NotificationKind` nay **26** giá trị (đếm 2026-11-02). Do bộ quét sinh, nhóm `giaDinh`, **không** `luonBao` (ghi nhận tiến độ, không báo tiền rời ví; tắt được). Deeplink `/nha`, `subjectType` `nhaMucTieu`, tiêu đề *"Mục tiêu của nhà"*.
+
+| Loại | Khi | Khoá | Thân |
+|---|---|---|---|
+| `nhaMucTieuMoc` | tiến độ vượt 25 / 50 / 75 % | `nhaMucTieu:<idgoal>:<mốc>` | *"Quỹ du lịch đã được 50% mục tiêu"* |
+| `nhaMucTieuDat` | chạm 100 % | `nhaMucTieuDat:<idgoal>` | *"Quỹ du lịch đã đạt mục tiêu"* |
+
+- **Nguồn:** `NotificationScanner.loadMucTieuNha` (DI: `DuLieuNhaRepository.mucTieuKemVi` + `tiLeMucTieuChung`), gác đúng tài khoản phiên như `loadLoiMoiNha`; lượt nền không có phiên nhà nên rỗng; chỉ gọi khi `prefs.chapNhan`; dùng lại `_mocTienDo`, không chép `[75, 50, 25]`.
+- **Hàng im lặng (`NotificationCandidate.imLang`):** ghi `readAt` + `dismissedAt` ngay, không bắn hệ điều hành, không tính vào giá trị trả về của `scan`. Dùng cho dấu đã thấy `nhaMucTieu:<idgoal>:0`, mọi mốc đã vượt lúc máy mới thấy mục tiêu, và các mốc thấp hơn mốc vừa báo (thiếu vế này thì 60 % tụt về 30 % lại báo 25 %).
+- ⚠️ **Khoá sống cả đời mục tiêu:** `purgeOlderThan(cutoff, giuLoai:)` không xoá hai loại này, tới 90 ngày chỉ đặt `dismissedAt` để hàng rời trung tâm. Xoá như loại khác là *"đã đạt"* báo lại mỗi 90 ngày.
+- ⚠️ **`loadMucTieuNha` trả rỗng khi `SyncEngine.status == syncing`:** lượt kéo không chạy trong một giao tác, ví vừa về có số dư 0 nghĩa là chưa biết (`tiLe 0`, ghi dấu `:0`, lượt sau thấy 80 % ⇒ người mới vào nhận mốc cũ). Lượt `isTerminal` có thể bị bỏ khi `_dangQuet`: trễ tới lượt quét kế, không mất. Gác chỉ nhìn engine của isolate này: G122.
+- **Bật lại nhóm** sau khi tắt: máy đã từng thấy mục tiêu nhận một thông báo mốc cao nhất đã vượt; chưa từng thấy thì im. Rời rồi vào lại cùng nhà: dấu `:0` còn, mốc vượt lúc vắng báo một lần.
+- ✅ **Đo máy ảo + Realme 2026-11-02:** bảng ở khối 🏠 đợt 2 mục 14 `PROJECT_CONTEXT.md`.
 
 ## 6. Từng lát đã làm gì
 

@@ -85,6 +85,10 @@ class DiemVayNo {
   final double khacRa;
   final double khacVao;
 
+  /// Tiền **rút quỹ gia đình** về ví riêng trong kỳ (`KhoanThuChi.laRutQuy`). Nằm trong tổng thu nhưng không phải thu
+  /// nhập — `thuNhapCua` trừ nó. KHÔNG tính vào [rong]: rút không làm hai biểu đồ vay/nợ hiện lên.
+  final double rutQuy;
+
   const DiemVayNo({
     required this.ky,
     this.choVay = 0,
@@ -93,6 +97,7 @@ class DiemVayNo {
     this.traNo = 0,
     this.khacRa = 0,
     this.khacVao = 0,
+    this.rutQuy = 0,
   });
 
   bool get rong =>
@@ -124,7 +129,7 @@ List<DiemVayNo> chuoiVayNo(
         () {
           final k = lui(ky, i);
           var choVay = 0.0, thuNo = 0.0, diVay = 0.0, traNo = 0.0;
-          var khacRa = 0.0, khacVao = 0.0;
+          var khacRa = 0.0, khacVao = 0.0, rutQuy = 0.0;
 
           for (final x in ds) {
             if (x.ngay.isBefore(k.from) || !x.ngay.isBefore(k.to)) continue;
@@ -133,6 +138,12 @@ List<DiemVayNo> chuoiVayNo(
               categoryId: x.categoryId,
               ghiChu: x.ghiChu,
             )) {
+              continue;
+            }
+            // Tiền rút quỹ gia đình về ví riêng: nằm trong tổng thu nhưng không phải thu nhập (`02A` 7.2). `continue`
+            // là bắt buộc — nửa rút gắn danh mục vay nợ mà rơi tiếp xuống sẽ vào cả `rutQuy` lẫn `diVay`, trừ hai lần.
+            if (x.laRutQuy) {
+              rutQuy += x.soTien;
               continue;
             }
             if (phanLoaiCua(loai: x.loai, classifyDanhMuc: x.classify) !=
@@ -166,6 +177,7 @@ List<DiemVayNo> chuoiVayNo(
             traNo: traNo,
             khacRa: khacRa,
             khacVao: khacVao,
+            rutQuy: rutQuy,
           );
         }(),
     ];

@@ -58,13 +58,24 @@ class NhaCubit extends Cubit<NhaState> {
     unawaited(_repo.lamMoi());
   }
 
+  bool _vuaGapHangChuaDay = false;
+
+  /// Lượt `_lam` gần nhất bị từ chối vì còn hàng chưa đẩy: KHÔNG thành toast (câu chung không nói được hàng nào mất) mà để
+  /// trang hỏi lại bằng hộp. Mỗi lượt `_lam` được nhận vào đặt lại về false.
+  bool get vuaGapHangChuaDay => _vuaGapHangChuaDay;
+
   Future<bool> _lam(Future<void> Function() viec, {String? cauKhiTatQuyen}) async {
     if (isClosed || state.dangXuLy) return false;
+    _vuaGapHangChuaDay = false;
     emit(state.copyWith(dangXuLy: true));
     try {
       await viec();
       return true;
     } catch (e) {
+      if (e is LoiNha && e.loai == LoaiLoiNha.hangChuaDay) {
+        _vuaGapHangChuaDay = true;
+        return false;
+      }
       // Lỗi không phải `LoiNha` là lỗi lập trình (cast, null…): vẫn báo câu chung nhưng để lại dấu vết, đừng nuốt im.
       if (e is! LoiNha) debugPrint('[GiaDinh] thao tác ném ${e.runtimeType}');
       final loai = loaiLoiNhaCua(e);
@@ -78,8 +89,9 @@ class NhaCubit extends Cubit<NhaState> {
 
   Future<bool> taoNha(String ten, {String? cauKhiTatQuyen}) =>
       _lam(() => _repo.taoNha(ten), cauKhiTatQuyen: cauKhiTatQuyen);
-  Future<bool> roiNha() => _lam(_repo.roiNha);
-  Future<bool> giaiTan() => _lam(_repo.giaiTan);
+  /// [boQua] true = đã hỏi lại người dùng về hàng chưa đẩy và họ chọn vẫn làm (hộp `lamCoHoiHangChuaDay`).
+  Future<bool> roiNha({bool boQua = false}) => _lam(() => _repo.roiNha(boQuaHangChuaDay: boQua));
+  Future<bool> giaiTan({bool boQua = false}) => _lam(() => _repo.giaiTan(boQuaHangChuaDay: boQua));
   Future<bool> doiVai(int id, VaiNha vai) => _lam(() => _repo.doiVai(id, vai));
   Future<bool> chuyenChu(int id) => _lam(() => _repo.chuyenChu(id));
   Future<bool> moiRa(int id) => _lam(() => _repo.moiRa(id));

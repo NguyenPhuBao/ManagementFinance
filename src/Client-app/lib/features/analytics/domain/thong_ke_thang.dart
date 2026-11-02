@@ -52,6 +52,11 @@ class KhoanThuChi {
   /// đọc cờ này. Mặc định `false`: mọi chỗ dựng cũ không đổi.
   final bool laKhoanCamKet;
 
+  /// Nửa RIÊNG của khoản **rút** quỹ gia đình (`laNuaRutQuy`): tiền của mình quay về ví, không phải tiền kiếm được. Cờ,
+  /// không phải mã ảo: nửa rút đã gắn danh mục thật (kể cả danh mục vay nợ) vẫn là tiền quay về, nên `chuoiVayNo` cộng
+  /// theo cờ này (ruling I-7). Mặc định `false`: mọi chỗ dựng cũ không đổi. Tổng thu `tongThuChi` vẫn gồm khoản này.
+  final bool laRutQuy;
+
   const KhoanThuChi({
     required this.ngay,
     required this.soTien,
@@ -61,6 +66,7 @@ class KhoanThuChi {
     this.classify,
     this.tenDanhMuc,
     this.laKhoanCamKet = false,
+    this.laRutQuy = false,
   });
 }
 

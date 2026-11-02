@@ -1,0 +1,322 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../core/di/injection_container.dart';
+import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../../shared/theme/app_colors.dart';
+import '../../../category/data/models/category_entity.dart';
+import '../../../transaction/data/models/transaction_entity.dart';
+import '../../../wallet/data/models/wallet_entity.dart';
+import '../../../wallet/data/repositories/wallet_repository.dart';
+import '../../application/gop_quy_service.dart';
+import '../../application/thao_tac_khoan_nha.dart';
+import '../../data/models/nha_cua_toi.dart';
+import '../../data/repositories/du_lieu_nha_repository.dart';
+import '../../data/repositories/nha_repository.dart';
+import '../../domain/hoat_dong_nha.dart';
+import '../../domain/loai_khoan_nha.dart';
+import '../bloc/khoan_nha_cubit.dart';
+import '../bloc/nha_cubit.dart';
+import '../bloc/vi_chung_cubit.dart';
+import '../widgets/dong_khoan_nha.dart';
+import '../widgets/gac_vai_chu.dart';
+import '../widgets/mo_khoan_nha.dart';
+import '../widgets/tra_ten_nha.dart';
+
+const _mauChanTrang = Color(0xFF9DA099);
+
+/// Hộp chọn của một chip lọc: `null` là *không chọn gì* (đóng ra ngoài) khác với [LuaChon] có giá trị `null` (*mọi người*).
+class _LuaChon<T> {
+  const _LuaChon(this.giaTri);
+  final T? giaTri;
+}
+
+/// Màn Hoạt động của nhà `/nha/hoat-dong` (đợt 1B Task 6; Stitch `50af4171…`, chi tiết `a8d53198…`, hộp xoá `6dc96c4a…` 8B).
+/// Mọi thành viên xem được, kể cả Chỉ xem và nhà chỉ xem: nút Sửa / Xoá của sheet theo `quyenKhoanNha`.
+///
+/// ⚠️ Route `/nha/khoan` KHÔNG tự xét quyền sửa, nên nút Sửa ở đây là chốt duy nhất cho Thành viên (khoản chuyển mở form sẽ không
+/// chip nào sáng). Nút Sửa của khoản cặp bật ở Task 8 cùng route `/nha/gop`.
+class HoatDongNhaPage extends StatefulWidget {
+  const HoatDongNhaPage({super.key, this.repo, this.duLieu, this.thaoTac, this.gopQuy, this.viRieng, this.dongHo});
+
+  /// Các tham số `null` → `sl<…>()`, chỉ chạm khi cần (test cũ không dựng DI).
+  final NhaRepository? repo;
+  final DuLieuNhaRepository? duLieu;
+  final ThaoTacKhoanNha? thaoTac;
+  final GopQuyService? gopQuy;
+  final WalletRepository? viRieng;
+
+  /// Đồng hồ tiêm được cho nhóm *Hôm nay / Hôm qua*; `null` → giờ máy.
+  final DateTime Function()? dongHo;
+
+  @override
+  State<HoatDongNhaPage> createState() => _HoatDongNhaPageState();
+}
+
+class _HoatDongNhaPageState extends State<HoatDongNhaPage> {
+  late final NhaCubit _cubit;
+  StreamSubscription<String>? _subBao;
+  KhoanNhaCubit? _khoan;
+  ViChungCubit? _viChung;
+  int? _nguoi;
+  String? _vi;
+
+  DuLieuNhaRepository get _duLieu => widget.duLieu ?? sl<DuLieuNhaRepository>();
+  DateTime get _bayGio => (widget.dongHo ?? DateTime.now)();
+
+  @override
+  void initState() {
+    super.initState();
+    _cubit = NhaCubit(widget.repo ?? sl<NhaRepository>());
+    _subBao = _cubit.canBao.listen((c) => baoNhanh(c, loai: LoaiThongBao.loi));
+    _dongBo(_cubit.state);
+    unawaited(_cubit.moTrang());
+  }
+
+  @override
+  void dispose() {
+    unawaited(_subBao?.cancel());
+    unawaited(_cubit.close());
+    unawaited(_khoan?.close());
+    unawaited(_viChung?.close());
+    super.dispose();
+  }
+
+  /// Dựng cubit khoản / ví cho nhà HIỆN TẠI; nhà đổi id (hoặc mất) thì bỏ cái cũ. Giữ ở trang chứ không ở dòng danh sách.
+  void _dongBo(NhaState s) {
+    final id = s.nha.coNha ? s.nha.nha!.id : null;
+    if (id == _khoan?.idNha) return;
+    unawaited(_khoan?.close());
+    unawaited(_viChung?.close());
+    _khoan = null;
+    _viChung = null;
+    _nguoi = null;
+    _vi = null;
+    if (id != null) {
+      _khoan = KhoanNhaCubit(_duLieu, id, idaccount: _cubit.idToi);
+      _viChung = ViChungCubit(_duLieu, id);
+    }
+  }
+
+  // Tra tên dùng chung với Chi tiết ví chung: `widgets/tra_ten_nha.dart`.
+  TenNguoi _tenNguoi(NhaCuaToi nha, int id) => tenNguoiNha(nha, id);
+  String _tenVi(List<WalletEntity> vi, String id) => tenViChungTheoId(vi, id);
+  String? _tenDanhMuc(List<CategoryEntity> dm, TransactionEntity t) => tenDanhMucKhoan(dm, t);
+
+  /// `Danh mục · Ví` (chi, thu), `Ví` (góp, rút), `Ví nguồn → Ví đích` (chuyển).
+  String _dongPhu(TransactionEntity t, List<WalletEntity> vi, List<CategoryEntity> dm) {
+    final nguon = _tenVi(vi, t.walletId);
+    if (phanLoaiKhoanNha(t) == LoaiKhoanNha.chuyen) {
+      final dich = t.walletTransfer;
+      return dich == null ? nguon : '$nguon → ${_tenVi(vi, dich)}';
+    }
+    final dmTen = _tenDanhMuc(dm, t);
+    return dmTen == null ? nguon : '$dmTen · $nguon';
+  }
+
+  Future<void> _chonNguoi(NhaCuaToi nha) async {
+    final kq = await showModalBottomSheet<_LuaChon<int>>(
+      context: context,
+      builder: (_) => _BangChon<int>(
+        tieuDe: 'Lọc theo người',
+        macDinh: 'Mọi người',
+        dang: _nguoi,
+        muc: [
+          for (final m in nha.thanhVien) (m.idaccount, m.tenHienThi),
+          for (final m in nha.thanhVienCu) (m.idaccount, '${m.tenHienThi} (đã rời)'),
+        ],
+      ),
+    );
+    if (kq != null && mounted) setState(() => _nguoi = kq.giaTri);
+  }
+
+  Future<void> _chonVi(List<WalletEntity> vi) async {
+    final kq = await showModalBottomSheet<_LuaChon<String>>(
+      context: context,
+      builder: (_) => _BangChon<String>(
+        tieuDe: 'Lọc theo ví chung',
+        macDinh: 'Mọi ví chung',
+        dang: _vi,
+        muc: [for (final v in vi) (v.id, v.name)],
+      ),
+    );
+    if (kq != null && mounted) setState(() => _vi = kq.giaTri);
+  }
+
+  Future<void> _moKhoan(TransactionEntity t, NhaState s, KhoanNhaState k, List<WalletEntity> vi) async {
+    // Sheet + Sửa / Xoá dùng chung với Chi tiết ví chung: `widgets/mo_khoan_nha.dart`.
+    await moKhoanNha(
+      context,
+      conSong: () => mounted,
+      khoan: t,
+      nha: s.nha,
+      idToi: _cubit.idToi,
+      bayGio: _bayGio,
+      vi: vi,
+      danhMuc: k.danhMuc,
+      thaoTac: widget.thaoTac,
+      gopQuy: widget.gopQuy,
+      viRieng: widget.viRieng,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => BlocProvider.value(
+        value: _cubit,
+        child: Scaffold(
+          appBar: AppBar(title: const Text('Hoạt động'), centerTitle: true),
+          body: SafeArea(
+            child: BlocListener<NhaCubit, NhaState>(
+              // Nhà đổi id (nạp xong kho, vào nhà khác) thì dựng lại nguồn; mất nhà thì báo rồi về Nhà mình.
+              listenWhen: (a, b) => a.nha.nha?.id != b.nha.nha?.id,
+              listener: (ctx, s) {
+                setState(() => _dongBo(s));
+                if (!s.nha.coNha) baoMatVaiRoiVe(ctx, _cubit);
+              },
+              child: BlocBuilder<NhaCubit, NhaState>(
+                builder: (context, s) {
+                  final khoan = _khoan;
+                  final viChung = _viChung;
+                  if (!s.daNap || (s.nha.coNha && (khoan == null || viChung == null))) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (khoan == null || viChung == null) return const SizedBox.shrink();
+                  return BlocBuilder<ViChungCubit, ViChungState>(
+                    bloc: viChung,
+                    builder: (context, v) => BlocBuilder<KhoanNhaCubit, KhoanNhaState>(
+                      bloc: khoan,
+                      builder: (context, k) => _noiDung(context, s, k, v.vi),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+  Widget _noiDung(BuildContext context, NhaState s, KhoanNhaState k, List<WalletEntity> vi) {
+    if (!k.daNap) return const Center(child: CircularProgressIndicator());
+    final chu = Theme.of(context).textTheme;
+    final ds = locHoatDong(k.ds, nguoi: _nguoi, vi: _vi);
+    final tenNguoiLoc = _nguoi == null ? 'Mọi người' : _tenNguoi(s.nha, _nguoi!).ten;
+    final tenViLoc = _vi == null ? 'Mọi ví chung' : _tenVi(vi, _vi!);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      children: [
+        Row(
+          children: [
+            Flexible(child: _ChipLoc(khoa: 'chip-nguoi', nhan: tenNguoiLoc, onCham: () => unawaited(_chonNguoi(s.nha)))),
+            const SizedBox(width: 8),
+            Flexible(child: _ChipLoc(khoa: 'chip-vi', nhan: tenViLoc, onCham: () => unawaited(_chonVi(vi)))),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (ds.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Center(
+              child: Text('Chưa có khoản nào.', style: chu.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+            ),
+          ),
+        ...nhomKhoanTheoNgay(
+          context,
+          ds: ds,
+          bayGio: _bayGio,
+          dong: (t) => DongKhoanNha(
+            key: ValueKey('khoan-${t.id}'),
+            khoan: t,
+            nguoi: _tenNguoi(s.nha, t.idaccount),
+            dongPhu: _dongPhu(t, vi, k.danhMuc),
+            onCham: () => unawaited(_moKhoan(t, s, k, vi)),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.lock_outline, size: 14, color: _mauChanTrang),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text('Chỉ các thành viên trong nhà mới có thể xem hoạt động',
+                  textAlign: TextAlign.center, style: chu.labelSmall?.copyWith(color: _mauChanTrang)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ChipLoc extends StatelessWidget {
+  const _ChipLoc({required this.khoa, required this.nhan, required this.onCham});
+
+  final String khoa;
+  final String nhan;
+  final VoidCallback onCham;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: AppColors.surface,
+        shape: const StadiumBorder(side: BorderSide(color: Color(0xFFE2E1DB))),
+        child: InkWell(
+          key: Key(khoa),
+          customBorder: const StadiumBorder(),
+          onTap: onCham,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(nhan,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500)),
+                ),
+                const SizedBox(width: 2),
+                const Icon(Icons.keyboard_arrow_down, size: 18, color: Color(0xFF71736E)),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+/// Bảng chọn của chip lọc: dòng đầu là *mọi …* (giá trị `null`), rồi từng mục. Đóng ra ngoài trả `null` (giữ bộ lọc).
+class _BangChon<T> extends StatelessWidget {
+  const _BangChon({required this.tieuDe, required this.macDinh, required this.dang, required this.muc});
+
+  final String tieuDe;
+  final String macDinh;
+  final T? dang;
+  final List<(T, String)> muc;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget dong(String nhan, T? giaTri) => ListTile(
+          key: Key('chon-${giaTri ?? 'tat-ca'}'),
+          title: Text(nhan, maxLines: 1, overflow: TextOverflow.ellipsis),
+          trailing: giaTri == dang ? const Icon(Icons.check, color: AppColors.primary) : null,
+          onTap: () => Navigator.of(context).pop(_LuaChon<T>(giaTri)),
+        );
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text(tieuDe, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            ),
+            dong(macDinh, null),
+            for (final (giaTri, nhan) in muc) dong(nhan, giaTri),
+          ],
+        ),
+      ),
+    );
+  }
+}

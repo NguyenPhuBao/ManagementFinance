@@ -20,6 +20,10 @@ class Transactions extends Table {
   /// đó [idaccount] chỉ nghĩa người tạo. ĐI QUA đồng bộ (khoá `idhousehold`) — khác các cột cục bộ v23–v31. Mọi truy vấn
   /// "của tôi" ràng `idhousehold IS NULL` (test quét 37).
   IntColumn get idhousehold => integer().nullable()();
+
+  /// Mã cặp của khoản góp / rút (schema v33, `docs/Family/02A` mục 5): chung cho nửa riêng và nửa của nhà. ĐI QUA đồng bộ
+  /// (khoá `idfund_pair`). Mọi phép nhận dạng góp / rút đọc cột này, không đọc tiền tố ghi chú.
+  TextColumn get fundPairId => text().nullable()();
   TextColumn get categoryId => text().nullable()();
   // nullable: giao dịch có thể chưa chọn category (transfer, webhook Casso)
 

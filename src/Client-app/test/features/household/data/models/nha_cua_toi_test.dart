@@ -29,6 +29,18 @@ void main() {
       expect(t.nhanLuc, luc);
     });
 
+    test('FINAL I-2: formerMembers bỏ người đang ở và khử trùng theo id (người vào lại nhà tạo hàng mới)', () {
+      final j = nhaJson();
+      j['formerMembers'] = [
+        {'idaccount': 25, 'displayName': 'Nguyễn Bình', 'leftAt': '2026-10-20T03:00:00.000Z'}, // đang ở lại
+        {'idaccount': 31, 'displayName': 'Lê Bình', 'leftAt': '2026-10-24T03:00:00.000Z'},
+        {'idaccount': 31, 'displayName': 'Lê Bình', 'leftAt': '2026-10-25T03:00:00.000Z'}, // rời lần hai
+      ];
+      final t = nhaCuaToiTuJson(j, nhanLuc: luc);
+      expect(t.thanhVienCu.map((m) => m.idaccount), [31],
+          reason: 'id đang ở lại hiện "(đã rời)" cạnh tên thật và trùng Key("chon-<id>") ở bảng lọc Hoạt động');
+    });
+
     test('{household: null} / rác → chưa có nhà', () {
       expect(nhaCuaToiTuJson(const {'household': null}, nhanLuc: luc).coNha, isFalse);
       expect(nhaCuaToiTuJson(const {}, nhanLuc: luc).coNha, isFalse);

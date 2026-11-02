@@ -223,6 +223,20 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Mọi khoản sống của nhà, kể cả do người khác ghi. Lọc theo NHÀ, không theo tài khoản (Family 01: `idaccount` là người ghi).
+  /// Có [walletId] thì gồm cả khoản chuyển ĐẾN ví ấy.
+  Stream<List<Transaction>> watchTheoNha(int idhousehold, {String? walletId}) {
+    return (select(transactions)
+          ..where((t) =>
+              t.idhousehold.equals(idhousehold) &
+              t.deletedAt.isNull() &
+              (walletId == null
+                  ? const Constant(true)
+                  : (t.walletId.equals(walletId) | t.walletTransfer.equals(walletId))))
+          ..orderBy([(t) => OrderingTerm.desc(t.date), (t) => OrderingTerm.desc(t.updatedAt)]))
+        .watch();
+  }
+
   /// Khoảng `[from, to)` có giao dịch nào không.
   ///
   /// Trả **bool** chứ không phải tổng: thông báo Tổng kết tuần cố ý không nêu
@@ -291,14 +305,58 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     return {'income': income, 'expense': expense};
   }
 
-  /// Pending sync records
-  Future<List<Transaction>> getPending([int? idaccount]) {
-    return (select(transactions)
+  /// Các nửa còn sống của một cặp góp / rút (`docs/Family/02A` mục 5): tối đa hai hàng, một riêng một của nhà.
+  Future<List<Transaction>> theoMaCap(String maCap) =>
+      (select(transactions)..where((t) => t.fundPairId.equals(maCap) & t.deletedAt.isNull())).get();
+
+  /// Nửa riêng còn sống của tôi mà MỌI nửa của nhà cùng mã cặp đã bị xoá (Chủ nhà xoá, kéo về), kèm nhà và ví chung của nửa
+  /// ấy. Không có nửa nhà nào trên máy (đã dọn khi rời nhà) KHÔNG phải mồ côi: nửa riêng ở lại thành khoản riêng. Người góp
+  /// tự xoá cặp thì xoá cả hai nửa nên không còn nửa riêng sống để lọt vào đây.
+  Future<List<({Transaction rieng, int idNha, String viNhaId})>> nuaRiengMoCoi(int idaccount) async {
+    final rieng = await (select(transactions)
           ..where((t) =>
-              t.syncStatus.equals('pending') &
-              (idaccount == null
-                  ? const Constant(true)
-                  : t.idaccount.equals(idaccount))))
+              t.idaccount.equals(idaccount) &
+              t.idhousehold.isNull() &
+              t.fundPairId.isNotNull() &
+              t.deletedAt.isNull()))
+        .get();
+    if (rieng.isEmpty) return const [];
+    // Chạy sau MỖI lượt kéo về và số nửa riêng chỉ tăng: hai truy vấn rồi nhóm trong Dart, không một truy vấn mỗi nửa riêng.
+    // Đọc mọi nửa của nhà có mã cặp (không `isIn` theo mã — trần tham số của SQLite).
+    final nuaNha = await (select(transactions)..where((t) => t.fundPairId.isNotNull() & t.idhousehold.isNotNull())).get();
+    final theoMa = <String, List<Transaction>>{};
+    for (final n in nuaNha) {
+      (theoMa[n.fundPairId!] ??= []).add(n);
+    }
+    final ra = <({Transaction rieng, int idNha, String viNhaId})>[];
+    for (final r in rieng) {
+      final nha = theoMa[r.fundPairId!] ?? const <Transaction>[];
+      if (nha.isNotEmpty && nha.every((n) => n.deletedAt != null)) {
+        ra.add((rieng: r, idNha: nha.first.idhousehold!, viNhaId: nha.first.walletId));
+      }
+    }
+    return ra;
+  }
+
+  /// Nửa của nhà do tôi ghi, còn sống và còn chờ đẩy (rời nhà khi chúng chưa lên server).
+  Future<List<Transaction>> nuaNhaChuaDay(int idhousehold, int idaccount) => (select(transactions)
+        ..where((t) =>
+            t.idhousehold.equals(idhousehold) &
+            t.idaccount.equals(idaccount) &
+            t.fundPairId.isNotNull() &
+            t.deletedAt.isNull() &
+            t.syncStatus.equals('pending')))
+      .get();
+
+  /// Pending sync records. [idhousehold]: nhà đang ở — hàng của nhà mang `idaccount` người GHI, nên chỉ lọc theo tôi thì
+  /// bản Chủ nhà sửa hộ không bao giờ lên server (spec gia đình 2026-11-01 mục 7.1).
+  Future<List<Transaction>> getPending([int? idaccount, int? idhousehold]) {
+    return (select(transactions)
+          ..where((t) {
+            final cuaToi = idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount);
+            final phamVi = idhousehold == null ? cuaToi : (cuaToi | t.idhousehold.equals(idhousehold));
+            return t.syncStatus.equals('pending') & phamVi;
+          }))
         .get();
   }
 
@@ -465,6 +523,27 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
       b.insertAllOnConflictUpdate(transactions, entries);
     });
   }
+
+  /// Ghi giao dịch kéo về, GIỮ lệnh xoá còn chờ đẩy. Giao dịch cục bộ ĐÃ xoá mềm mà lệnh xoá còn `pending` không bị ghi đè khi
+  /// bản server còn SỐNG (`isDeleted == false`): server còn bản sống (lệnh xoá chưa lên) nên ghi đè là làm sống lại hàng vừa
+  /// xoá, kèm `synced` — lệnh xoá mất, số dư trừ lần nữa. Bản server đã xoá thì cho qua: hàng thoát hàng đợi.
+  ///
+  /// Đọc và ghi cùng một giao tác: lệnh xoá của người dùng xen vào giữa hai bước là bị bản sống đè. Đọc MỌI hàng xoá-chưa-đẩy
+  /// rồi giao trong Dart (không `isIn` theo lô — lô kéo về dài hơn trần tham số SQLite thì ném). Trả số hàng được giữ lại.
+  Future<int> upsertKeoVe(List<TransactionsCompanion> entries) => transaction(() async {
+        final xoaChoDay = {
+          for (final h in await (select(transactions)
+                ..where((t) => t.isDeleted.equals(true) & t.syncStatus.equals('pending')))
+              .get())
+            h.id,
+        };
+        final ghi = [
+          for (final c in entries)
+            if (!(xoaChoDay.contains(c.id.value) && c.isDeleted.value == false)) c,
+        ];
+        await upsertAll(ghi);
+        return entries.length - ghi.length;
+      });
 
   /// Cập nhật categoryId của transaction (dùng khi repair cat_food → UUID)
   Future<void> updateCategoryId(String transactionId, String? newCategoryId) async {

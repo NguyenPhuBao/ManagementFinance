@@ -167,6 +167,19 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// Danh mục sống của NHÀ: bộ chọn và màn quản lý của khu Nhà mình (spec 2026-11-01 mục 7.2). Không lọc tài khoản — hàng
+  /// của nhà mang `idaccount` người tạo. Cũng là nguồn kiểm trùng tên trong nhà (`uq_category_household_name`, hàng sống).
+  SimpleSelectStatement<$CategoriesTable, Category> _cuaNha(int idhousehold, String? classify) => select(categories)
+    ..where((t) =>
+        t.idhousehold.equals(idhousehold) &
+        t.isDeleted.equals(false) &
+        t.deletedAt.isNull() &
+        (classify == null ? const Constant(true) : t.classify.equals(classify)));
+
+  Future<List<Category>> getCuaNha(int idhousehold, {String? classify}) => _cuaNha(idhousehold, classify).get();
+
+  Stream<List<Category>> watchCuaNha(int idhousehold, {String? classify}) => _cuaNha(idhousehold, classify).watch();
+
   /// Bộ danh mục **mặc định** do backend sở hữu, đã pull về máy này.
   ///
   /// `sync_engine` quy `is_default = true` thành `idaccount = 0`, nên lọc theo
@@ -334,12 +347,15 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
   /// Không bao gồm category `isLocalOnly` — đó là nhóm danh mục và các danh mục
   /// nằm trong nhóm; chúng mang dữ liệu chỉ có ở client (parentId/isGroup) mà
   /// backend không mô hình hoá, nên không được đẩy lên.
-  Future<List<Category>> getSyncableCategories(int accountId) {
+  ///
+  /// [idhousehold]: nhà đang ở — thêm danh mục của nhà do người khác tạo mà tôi sửa (spec gia đình 2026-11-01 mục 7.1).
+  Future<List<Category>> getSyncableCategories(int accountId, {int? idhousehold}) {
     return (select(categories)
-          ..where((t) =>
-              t.idaccount.equals(accountId) &
-              t.syncStatus.equals('pending') &
-              t.isLocalOnly.equals(false)))
+          ..where((t) {
+            final cuaToi = t.idaccount.equals(accountId);
+            final phamVi = idhousehold == null ? cuaToi : (cuaToi | t.idhousehold.equals(idhousehold));
+            return phamVi & t.syncStatus.equals('pending') & t.isLocalOnly.equals(false);
+          }))
         .get();
   }
 

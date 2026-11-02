@@ -615,7 +615,158 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-01)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-02)
+
+### 🚀 Gia đình sẵn sàng đưa ra thật: phần không cần backend đã xong (2026-11-02, nhánh `TranQuangDat-backend`, đã push)
+
+Backend còn 6 bước cần quyền Render, Supabase: `CAN-LAM/VIEC_BACKEND_CON_LAI.md` (so khoá, áp `database/45`, `46`, gộp PR, deploy, kiểm, gỡ log). APK phát hành chờ các bước ấy.
+
+- **Backend làm trên nhánh này:** route admin xác nhận đơn chuyển thừa (66.1), `formerMembers` chỉ gồm người đã rời (64.1), chỉ mục mục tiêu trong `verify-db-indexes.js` (65.1 phần mã), hai ca phạm vi danh mục (63.2; câu đếm trên Supabase ra 0 hàng), ca 7 không gọi PayOS (66.3), hai chỗ tài liệu (66.2).
+- **Kịch bản trên `flowmoney_kiem_thu`:** gia đình 2 **36 / 36**, gia đình phần 1 **50 / 50**, PR174 **24 / 24**, 66 **9 / 9**, 61 **6 / 6**, 62 **14 / 14**; unit thanh toán **81 / 81** khi khoá PayOS rỗng, unit gia đình **55 / 55**. Vitest thanh toán Admin-web 23 / 23, ESLint sạch (đo trên bản sao `1c8a77c8` đã vá). `verify-db-indexes.js` đòi SSL nên chưa chạy được trên CSDL cục bộ.
+- **Soát độc lập `925c950c`:** 0 Critical, 0 Important, 6 Minor, không chặn phát hành (G122 mục *Soát 925c950c*).
+- **Trên Supabase (đo chỉ đọc):** 0 nhà, 7 tài khoản (2 Premium, 5 Basic); thiếu `Idfund_pair`, `idx_transaction_fund_pair`, `uq_goal_household_wallet_active`; 0 mục tiêu trùng; quyền `household` Premium bật, Basic tắt; `household_join` Basic bật.
+
+**Đo bản RELEASE** (229,0 MB, build `--release` qua R8, ký khoá debug vì máy chưa có `key.properties`; backend cổng 3001 trỏ `PersonFinance`, chưa nạp 64.1 và 66.1; máy ảo tài khoản 30 Chủ + Realme `dat` Thành viên, nhà thử 11, đã giải tán; 0 `ClassNotFoundException` / `NoClassDefFound` / `FATAL EXCEPTION` trên cả hai máy):
+
+| # | Kịch bản | Kết quả |
+|---|---|---|
+| 1 | Cài release đè bản debug trên Realme | ✅ Giữ phiên và dữ liệu `dat`, không phải đăng nhập lại |
+| 2 | Tạo nhà, tạo ví chung có mục tiêu 4.000 đ và hạn, tạo mã mời (máy ảo) | ✅ Đẩy 2 / 2 |
+| 3 | Vào nhà bằng mã, có xem trước (Realme) | ✅ Trong 5 s kéo từ 1970, thấy ví chung, mục tiêu, 2 / 6 thành viên |
+| 4 | Góp 1.000 đ *Tiền mặt trao tay* (Realme) | ✅ Máy ảo thấy 1.000 đ, 25 %, dòng ở Hoạt động |
+| 5 | Thông báo mốc | ✅ Máy Chủ: *"Quy1 đã được 25% mục tiêu"* |
+| 6 | Chi 500 đ từ ví chung, chọn danh mục nhà (máy ảo) | ✅ Realme thấy *"Thu Gia Dinh chi · Ăn uống"*, quỹ 500 đ |
+| 7 | Góp 300 đ từ ví riêng, rút 200 đ về ví riêng (máy ảo) | ✅ Ví riêng −300 đ rồi −100 đ, quỹ 800 đ rồi 600 đ, đẩy 3 / 3 |
+| 8 | Bảng góp, Chi tiết ví | ✅ *Còn thiếu · Còn lại · Cần góp* đúng; người đã rời hiện *"Đạt (đã rời)"*, giữ 1.000 đ |
+| 9 | Rời nhà (Realme) | ✅ Dữ liệu nhà gỡ khỏi máy, Tổng số dư về **−3.518.000 đ**, 0 hàng nhà, 0 hàng chờ đẩy |
+| 10 | Giải tán, gõ tên nhà xác nhận (máy ảo) | ✅ `/households/me` trả `null` |
+
+Chưa đo: hai máy thật (máy ảo x64 thay máy thứ hai), rút tiền trên Realme (cộng vào ví riêng của `dat`, chưa có phép), thư mời trên Render, trạng thái thật trên Render + Supabase. Realme đã trả về bản debug, sao lưu trước đo ở `D:\FlowMoney-saoluu\realme-truoc-release-2026-11-02\`.
+
+### 🔧 Vào nhà không còn chờ giãn cách — G121 dòng 16 đóng (2026-11-02, nhánh `TranQuangDat-backend`, đã push)
+
+`76e20c8d`: `keoLaiToanBo` nhận `boGianCach`, chỉ `DieuPhoiDoiNha` bật; `dayVaCho` dùng chung `_boGianCachMotLuot`. `flutter test` **9491 pass / 10 skip** (mốc trước 9487 / 10), analyze **20**, schema v33. Thử bản sai: DI bỏ tham số, và luôn bỏ giãn cách cho mọi chỗ gọi, cả hai đều đỏ.
+
+**Đo máy ảo** (bản debug `76e20c8d`, tài khoản thử 31 vào nhà thử 10 của tài khoản 30 qua mã mời, backend cổng 3001 trỏ `PersonFinance`, proxy làm `/sync/push` trả 500; không đo Realme vì đăng nhập tài khoản thử ở đó sẽ dọn dữ liệu của `dat`):
+
+| Kịch bản | Kết quả đo |
+|---|---|
+| Đang giãn cách tới 11:09:41 sau 3 chu kỳ đẩy hỏng, bấm Tham gia lúc 11:05:40 | ✅ Trong 1 s: lượt `pull since=1970`; Nhà mình hiện ví chung và 2/6 thành viên |
+| Lượt thường ngay sau đó (bật tắt mạng), đẩy vẫn hỏng | ✅ Bị chặn, không gửi `/sync/push`; 4 chu kỳ hỏng, hoãn tới 11:20:37 (bậc kế) |
+| Hết hỏng, mở lại app | ✅ Khoản chờ lên server, không còn hàng `pending` |
+
+Một chu kỳ hỏng không tự hẹn lượt sau, chỉ lượt bị chặn mới hẹn: đo chuỗi hỏng phải tự kích từng chu kỳ (bật tắt mạng). Khe còn lại: G121 dòng 16. Sao lưu CSDL máy ảo trước đo: `D:\FlowMoney-saoluu\mayao-truoc-g121-2026-11-02\`.
+
+### 🏠 Gia đình ĐỢT 2 — mục tiêu chung trên ví chung: mã xong + soát toàn nhánh, ĐO máy ảo + Realme đạt (2026-11-02, bảng ở cuối khối)
+
+Kế hoạch `docs/superpowers/plans/2026-11-02-gia-dinh-dot-2-muc-tieu-chung.md` (gitignore), `docs/Family/03_MUC_TIEU_CHUNG.md`, spec `specs/2026-11-01-gia-dinh-2a-toi-3-design.md` (**mục 17 = chỗ mã khác spec và `03`**). Trên nhánh dự phòng `TranQuangDat-backend`, **chưa lên `origin`, chưa áp Supabase (đơn 63.1, 65.1), người dùng thật chưa dùng được**.
+
+- **Phạm vi:** 7 task thi công + đo; 15 commit `4caa9cb5..925c950c`; `src/Client-app/lib` 25 tệp +1.092 / −33, `test` 22 tệp +1.824 / −7, `src/Backend` 1 tệp (`database/46`) (đếm `git diff --stat`, 2026-11-02). Cách làm: Fable preflight (0 Critical · 3 Important · 14 Minor) → Sonnet viết + Opus soát từng task → Opus soát toàn nhánh qua Pull thật trên hai SQLite (*With fixes*: 0 Critical, 1 Important) → đợt sửa cuối → soát lại. Soát lại vòng sửa của Task 2, 3, 4 chạy Sonnet, lệch nếp Opus; đã ghi `Ruling:` ở sổ đợt.
+- **Chức năng:** công tắc *Đặt mục tiêu* + *Số tiền mục tiêu*, *Hạn* trong form Tạo / Sửa ví chung (`KhoiMucTieuVi`); thanh tiến độ ở dòng ví Nhà mình (`TienDoGon`); khối MỤC TIÊU ở thẻ số dư Chi tiết ví (`KhoiMucTieuChiTiet`): *Còn thiếu · Còn lại · Cần góp*, nhãn *Đã đạt mục tiêu*, *Quá hạn*. Hai loại thông báo `nhaMucTieuMoc`, `nhaMucTieuDat` (enum **26**, mục 5p `NOTIFICATION_FEATURE.md`). Stitch `74ebe178…`, `7b5f0f89…`.
+- **Dữ liệu:** hàng `goal` có `idhousehold` + `walletId`; tiến độ chiếu số dư ví qua `GoalEntity.progress`, không đọc `currentAmount` (`household/domain/muc_tieu_chung.dart`). Schema giữ **v33**, payload giữ 23 khoá. `GoalDao.getAll` / `watchAll` vẫn lọc `idhousehold IS NULL`.
+- **Backend:** `database/46_add_goal_household_wallet_unique.sql` đã áp `flowmoney_kiem_thu`, `PersonFinance` (phép đích danh, sao lưu `D:\FlowMoney-saoluu\PersonFinance-truoc-46-2026-11-02.dump`, 0 hàng trùng trước khi áp); **chưa Supabase**. Kịch bản `chay_kiem_gia_dinh_2.js` **32 / 32**, `chay_kiem.js` **50 / 50**.
+- ⚠️ **Bốn chốt hỏng im lặng (spec 17):** (1) tắt rồi bật lại khi lệnh xoá còn `pending` phải **hồi sinh** hàng: server chạy lệnh tạo trước lệnh xoá nên hàng mới vướng chỉ mục; (2) `purgeOlderThan` phải truyền `giuLoai` hai loại mục tiêu, thiếu là *"đã đạt"* báo lại mỗi 90 ngày; (3) `loadMucTieuNha` trả rỗng lúc `syncing`, thiếu là người mới vào nhận mốc cũ; (4) lượt kéo không đè hàng mục tiêu của nhà đang `pending` (`GoalDao.upsertKeoVe`) và `conflict` trên hàng ấy phải xin kéo toàn bộ.
+- **Số đo (phiên chính, Head `925c950c`):** `flutter test` **9487 pass / 10 skip, 0 fail** (mốc trước đợt 9358 / 10); `flutter analyze` **20**; schema **v33**. Mô phỏng hai máy qua Pull thật: 19 xanh, 1 đỏ đúng khe G122 dòng 2. ⚠️ Commit cuối `925c950c` (resolver xin kéo toàn bộ khi `conflict` trên mục tiêu của nhà) **chưa qua soát độc lập**, chỉ có test + mô phỏng; soát hẹp trước khi push.
+- **Nợ:** **G122** mới (khe đồng bộ, chưa tái hiện trên máy); G121 dòng 12 đóng; G120 dòng 5 hẹp lại còn ngân sách. Đơn mới **65** (`CAN-LAM/VIEC_BACKEND_CON_LAI.md`).
+- **Đo (2026-11-02, bản debug, backend worktree cổng 3001 trỏ `PersonFinance`, máy ảo tài khoản 30 Chủ nhà + Realme `dat` Thành viên, nhà thử 9, đã giải tán; APK `b3f69109`, các mục đánh dấu ² đo lại trên `7a7bf1b1`; APK cuối cài lên hai máy là `925c950c`, SHA-1 `5fd9865b…`, chỉ khác ở resolver và test):**
+
+| # | Kịch bản | Kết quả đo |
+|---|---|---|
+| 1 | Chủ bật mục tiêu 1.000.000 đ | Đạt: 0 % hai máy, hàng lên server đúng `Idhousehold`, `Idwallet` |
+| 2 | Thành viên góp 300.000 đ (tiền mặt trao tay) | Đạt: 30 % hai máy, cả hai nhận *"QuyDo đã được 25% mục tiêu"* |
+| 3 | Thành viên chi 100.000 đ | Đạt: lùi 20 %, không báo lại |
+| 4 | Góp +600.000 rồi +200.000 đ | Đạt: 80 % chỉ báo *75%*; đủ thì *"đã đạt mục tiêu"* hai máy, thanh đầy, nhãn |
+| 5 | Quá hạn (đẩy đồng hồ máy ảo +25 giờ) | Đạt: nhãn ở dòng ví, *MỤC TIÊU (QUÁ HẠN)*, thanh cam, không *Cần góp* |
+| 6 | Chủ tắt | Đạt: hộp đúng câu, tiền giữ, `Delete_at` trên server, thẻ mất hai máy |
+| 7 | Bật lại sau khi đã đồng bộ | Đạt: id mới, 33 %, mốc 25 đã vượt không báo |
+| 8 | Mất backend (gỡ `adb reverse`), tắt + bật lại, nối lại | Đạt: 2/2 đẩy, cùng id, 0 `UNIQUE_VIOLATION`, Realme thấy số mới. **Chỉ phủ lô chưa gửi** |
+| 9 | Người mới vào khi 83 % (tài khoản thử 31) | Đạt: thẻ đúng, trung tâm *"Chưa có thông báo nào"*, 0 lần bắn |
+| 10 | Xoá ví còn mục tiêu | Đạt: từ chối đúng câu; tắt rồi xoá được |
+| 11² | 360 dp, a và b đều 13 chữ số | Đạt: Realme dòng ví, Chi tiết một dòng, không sọc |
+| 12 | Tắt nhóm *Gia đình* | Đạt: 0 hàng khi tắt; bật lại báo một lần *"đã đạt"* (spec 17.2) |
+| 13 | Chủ đổi số tiền | Đạt: hai máy đổi, 50 % không báo lại |
+| 14 | Thành viên mở Chi tiết ví | Đạt: có khối, không nút sửa |
+| 15 | Sửa mục tiêu đã quá hạn, chỉ đổi số tiền | Đạt |
+| Thêm² | Ô tiền không viền, ví lưu trữ không *Cần góp*, biểu tượng heo, mô tả nhóm hai dòng ở 360 dp | Đạt |
+| Thêm | `/goals` của tài khoản thành viên | Đạt: 0 mục tiêu |
+
+Dữ liệu `dat`: khoản góp đo bằng tiền mặt trao tay, không đụng ví riêng; Tổng số dư giữ **−3.518.000 đ**; sao lưu `D:\FlowMoney-saoluu\realme-truoc-dot-2-2026-11-02\`. **Chưa đo:** máy thật thứ hai, bản release, Q2 (hai máy Chủ), khe G122, câu xoá ví khi công tắc đã tắt chưa Lưu (chỉ test).
+- **Giữ số (đếm lại 2026-11-02):** lỗ hổng kế tiếp **G123**, test quét kế tiếp **43**, đơn kế tiếp **66**.
+
+### 🏠 Gia đình ĐỢT 1B — màn hình cho ví chung, góp / rút, hoạt động, danh mục của nhà: mã xong + soát toàn nhánh, ĐO máy ảo + Realme đạt (2026-11-02, bảng ở cuối khối)
+
+Kế hoạch `docs/superpowers/plans/2026-11-01-gia-dinh-dot-1b-man-hinh.md` (gitignore), spec `specs/2026-11-01-gia-dinh-2a-toi-3-design.md` (**mục 16 = chỗ mã 1B khác spec**, kèm bảng *Quyết định về Stitch* và mọi `Ruling:`). Trên nhánh dự phòng `TranQuangDat-backend` (client + backend). **Trạng thái đúng chữ: mã xong, Opus soát toàn nhánh (0 Critical, 3 Important đã sửa, soát lại đạt); Task 13 đo máy ảo + một máy thật (Realme, 360 dp) bản debug đạt 2026-11-02, bảng ở cuối khối. Chưa lên `origin`, chưa áp Supabase, nên người dùng thật chưa dùng được.**
+
+- **Phạm vi:** 12 task thi công + Task 13 đo; 28 commit `503fc9d5..9f4e5e97` (đếm `git rev-list --count`, 2026-11-02) gồm 1 commit backend `6684cc6c` và 1 commit chỉ sửa `CLAUDE.md`; `src/Client-app/lib` 67 tệp +5.125 / −158, `test` 56 tệp +6.182 / −14 (`git diff --stat`, 2026-11-02). Cách làm: Fable preflight (0 Critical · 7 Important · 21 Minor, đã vào kế hoạch) → Sonnet viết + Opus soát từng task → Opus review toàn nhánh (*With fixes*) → đợt sửa cuối 9 commit `da8084be..9f4e5e97` → soát lại (mục 1–8 đạt, mục 9 chỉ còn phần sheet 13 chữ số, park).
+- **Màn mới (mười trang `household/presentation/pages/`, route gốc ngoài shell):** khối **Ví chung** ở Nhà mình (tổng quỹ + danh sách + lối vào Hoạt động / Danh mục; giữ bố cục lát 2 đã đo) · Tạo / Sửa ví chung · **Chi tiết ví chung** (tab Giao dịch · Bảng góp; nút Chi / Thu / Góp / Rút theo vai) · **Góp vào quỹ / Rút về ví riêng** (một trang hai chế độ) · **Hoạt động** (lọc người, ví; chạm mở sheet sửa / xoá) · **Danh mục của nhà** (ba tab, thêm / sửa, không xoá) · hộp **hỏi lại khi Rời nhà / Giải tán còn hàng chưa đẩy** (điều kiện chặn phát hành của 1A đã đóng). Form **Thêm giao dịch chế độ nhà** (`CheDoNhaForm`) dùng lại `AddTransactionPage`. 12 màn Stitch (8 của 2026-11-01 + 4 thêm phiên 32), bảng xử lý ở spec 16.1.
+- **Số liệu cá nhân:** nhãn ảo *"Góp quỹ gia đình"* / *"Rút quỹ gia đình"* ở các khối gom theo danh mục (`nhanAoQuy`, chỉ tầng gom); `thuNhapCua` không gồm nửa rút (`laRutQuy`, `ANALYTICS_FEATURE.md` 3.24); mở nửa riêng từ Sổ giao dịch / Chi tiết ngân sách thì sửa / xoá đi theo **cả cặp**; `laGhiChuMay` nhận thêm hai tiền tố góp / rút.
+- **Quyền:** `MaQuyen.walletBalanceAdjustment` áp cho ví chung (`PREMIUM_FEATURE.md` 8.2); kiểm lại vai lúc Lưu bằng **một** helper `household/application/quyen_hien_tai.dart` cho bốn form.
+- **Backend (nhánh dự phòng):** `validateEntityScope` từ chối khoản trỏ danh mục sai phạm vi (`HOUSEHOLD_SCOPE_MISMATCH`, `6684cc6c`); kịch bản `chay_kiem_gia_dinh_2.js` **24 / 24** và `chay_kiem.js` **50 / 50** trên `flowmoney_kiem_thu` (đo trong đợt). Đơn **63.2** cập nhật theo bản vá này; đơn mới **64** (`formerMembers` chứa người đang ở / một người nhiều lần — `addMember` luôn tạo hàng mới; client đã khử trùng khi đọc `/me`, `658edf45`).
+- **Số đo (phiên chính, 2026-11-02, Head `9f4e5e97`):** `flutter test` **9358 pass / 10 skip, 0 fail** (mốc trước đợt 9007 / 10); `flutter analyze` **20** (mức nền); schema **v33** (đợt không đổi bảng Drift). Toàn bộ chạy ở `da8084be` cho ra +9331 ~10 (5:45); sau đợt sửa cuối thêm ca nên số cuối là 9358.
+- **Nợ mới:** **G121** (nợ còn lại của đợt, mười bảy dòng, hai dòng cuối do đo lộ ra) và **G119** ca 7; **G120** dòng 3, 6, 12, 16, 17 cập nhật — `CLIENT_APP_KNOWN_GAPS.md`. Nợ bắt buộc xét ở Đợt 2 (`03`): `xoaViChung` chưa chặn mục tiêu của nhà trỏ ví.
+- **Đo Task 13 (2026-11-02, APK `9f4e5e97` SHA-1 `ef8b718a…`, backend worktree cổng 3001 trỏ `PersonFinance`, máy ảo tài khoản 30 Chủ nhà + Realme `dat` Thành viên, nhà thử 8, đã giải tán):**
+
+| Kịch bản | Kết quả đo |
+|---|---|
+| 1. Chủ tạo hai ví chung, neo | Đạt: số dư và tổng quỹ 1.500.000 đ khớp hai máy |
+| 2. Thành viên góp từ ví riêng | Đạt: khoản nhỏ 10.000 đ, Chủ thấy sau vài giây, hai nửa cùng `Idfund_pair` trên server |
+| 3. Thành viên chi | Đạt: số dư, Bảng góp, Hoạt động đúng hai máy |
+| 4. Chủ sửa khoản của Thành viên | Đạt: server giữ `Idaccount` = 10, Realme nhận |
+| 5. Chủ xoá khoản góp | Đạt: Chủ chỉ có nút Xoá; hai nửa xoá trên server; ví riêng trả đúng; thông báo *"Khoản góp đã bị xoá"* |
+| 6. Thành viên sửa danh mục nhà | Đạt: `Create_by` giữ 30, `Idhousehold` giữ |
+| 7. Offline góp rồi bị mời ra | Đạt: thông báo *"Chưa góp được vào quỹ"*, ví riêng đúng số (mất mạng giả bằng proxy) |
+| 8. Rời nhà còn hàng chưa đẩy | Đạt: hộp nêu *1 khoản của nhà, 1 khoản góp* + câu trả tiền; Vẫn rời: tiền về ví, hai hàng không lên server (proxy chặn `/sync/push`) |
+| 9. Thống kê cá nhân | Đạt: nhãn Góp / Rút quỹ ở thác nước và chip, không có khoản chi của nhà ở Trang chủ, Phân tích. Con số *Thu nhập* của `thuNhapCua` trên máy chưa đọc riêng: phủ bằng ca test |
+| 10. Quyền | Đạt: Chỉ xem không nút, Sổ chặn Sửa / Xoá + vuốt; nhà chỉ xem đo bằng proxy đổi trạng thái `/me` (đường server thật từ Premium hết hạn chưa đo). Trần 10 ví không chạm trên máy, có ca test |
+| 11. 360 dp | Đạt: 14 chữ số, 13 chữ số, tên dài ở Nhà mình, Chi tiết ví. Sheet Hoạt động 13 chữ số và bản release chưa nhìn |
+| Thêm | Đạt: chuyển giữa ví, đối soát, từ chối xoá ví còn giao dịch, lưu trữ ví, sửa / xoá cặp từ Sổ, form thường khoá chiều với nửa đã rời, vào lại nhà không trùng ở bảng lọc, giải tán hai bước. Log `HOUSEHOLD_SCOPE_MISMATCH`: 0 dòng |
+
+Dữ liệu `dat` trên Realme: khoản thử đã xoá qua hộp cặp, Tổng số dư về đúng −3.518.000 đ như trước đo; sao lưu `D:\FlowMoney-saoluu\realme-truoc-1b-2026-11-02\`. Chưa đo: máy thật thứ hai, G120 #17 (`/me` trễ so Premium). Lỗi đo lộ ra: G121 dòng 16, 17.
+- **Giữ số (đếm lại 2026-11-02):** lỗ hổng kế tiếp **G122**, test quét kế tiếp **43**, đơn kế tiếp **65**. Tài liệu đã cập nhật: spec mục 4, 6, 7, 8, 15–16, `Family/02A`, `Family/04`, `SYNC_DOCUMENTATION.md` (đợt 1B), `KIEN_TRUC_CLIENT_APP.md` (mục 3), `ANALYTICS_FEATURE.md` 3.24, `PREMIUM_FEATURE.md` 8.2, `CAN-LAM/VIEC_BACKEND_CON_LAI.md` (63.2, 64.1).
+
+### 🏠 Gia đình ĐỢT 1A — nền dữ liệu cho ví chung và góp quỹ: mã xong, chưa có màn, chưa đo máy thật (2026-11-01)
+
+Kế hoạch `docs/superpowers/plans/2026-11-01-gia-dinh-dot-1a-nen-du-lieu.md` (gitignore), spec `specs/2026-11-01-gia-dinh-2a-toi-3-design.md` (mục 15 = chỗ mã khác spec). Đợt này chỉ làm tầng dưới: **không màn hình mới, không chỗ nào trong giao diện gọi `GopQuyService`**; đường ghi vào nhà từ UI là việc đợt 1B.
+
+- **Phạm vi:** 11 task, dải `2c18bf77..1b7306ce` = **40 commit** (đếm `git rev-list --count`, 2026-11-01), 39 commit tới `9cfca7bd` + 1 commit sửa hồi quy (`1b7306ce`, khối 1b bỏ giao dịch đang bị chặn). Cách làm: Fable preflight → Sonnet thi công + Opus soát từng task → Opus review toàn nhánh (*With fixes*: 2 Important, 5 Minor mới, 21 Minor cũ) → đợt sửa 16 commit (`d8f67972..9cfca7bd`) → soát lại: mọi finding đã xử lý, thêm 1 Important mới do chính đợt sửa (vòng nóng khối 1b) → sửa một dòng + một ca.
+- **Dữ liệu:** Drift **v33** — cột `transactions.fund_pair_id`, **đi qua đồng bộ** (khoá payload `idfund_pair`; không phải cột cục bộ, quét 15 không áp). Payload giao dịch nay **15** khoá (đếm 2026-11-01 từ `sync_payload_contract_test.dart`).
+- **Backend (nhánh dự phòng, `TranQuangDat-backend`):** `database/45_add_transaction_fund_pair.sql`, `schema.prisma`, `sync.repository.js` (**server không bao giờ gỡ mã cặp**), `sync.service.js` (mã cặp trên `Transfer` ⇒ `HOUSEHOLD_SCOPE_MISMATCH`; khoản có mã cặp chỉ người ghi sửa, Chủ nhà chỉ xoá; `laXoa = operation === 'delete'`; sửa `isNewTx`). Kịch bản `KIEM-THU/chay_kiem_gia_dinh_2.js` 21 / 21, hồi quy `chay_kiem.js` 50 / 50 (đo trong đợt, CSDL `flowmoney_kiem_thu`).
+- **Migration 45:** **đã áp `PersonFinance`** (phép đích danh của người dùng), sao lưu trước ở `D:\FlowMoney-saoluu\PersonFinance-truoc-45-2026-11-01.dump` (267 KB, 30 bảng; bảng `transaction` 253 hàng trước = sau). **CHƯA áp Supabase** — đơn **63.1** (`CAN-LAM/VIEC_BACKEND_CON_LAI.md`): phải áp TRƯỚC khi gộp / triển khai nhánh này, vì `schema.prisma` có `idfund_pair` và `npm install` tự `prisma generate`, thiếu cột là `P2022`. Đơn **63.2**: server chưa kiểm phạm vi danh mục của khoản nhà (suy từ mã, chưa đo).
+- **Client (mảng `household` + chạm các mảng khác):**
+  - `domain/`: `loai_khoan_nha` (phân loại khoản qua `fundPairId`, một định nghĩa), `so_lieu_nha` (tiền vào quỹ / chi của nhà), `bang_gop`; `quyen_nha` tách `quanLyViChung` / `ghiKhoan` / `chuyenGiuaViChung` / `suaDanhMuc` + `duocSuaKhoanNha` / `duocXoaKhoanNha` (có `laChuyen`) — đóng G113 nợ 6. (`ghi_chu_gop_quy` — tiền tố ghi chú nửa riêng — nằm ở `transaction/domain/`, **không** ở `household/domain/`; sửa 2026-11-02.)
+  - `application/`: `GopQuyService` (hai nửa trong **một** giao tác Drift), `GopQuyConflictResolver` (nghe `pushResultStream`; gỡ cả hai nửa khi nửa nhà bị từ chối; `ROLE_FORBIDDEN` ⇒ trả bản server + `keoLaiToanBo`; bộ gỡ khi Chủ nhà xoá; `traVeKhiBoNha`), `DieuPhoiDoiNha` thêm `NhaDaDoc` + `truocKhiDon`.
+  - `data/`: `DuLieuNhaRepository(Impl)` (ví chung, khoản của nhà, `suaViChung` giữ số dư hiện tại trong một giao tác), `them_giao_dich_nguon_nha` (nguồn form đọc danh mục của nhà). Danh mục của nhà: sửa giữ `idhousehold`, không chuyển phạm vi, không sống lại hàng đã xoá (đóng G113 nợ 3).
+  - `core/sync`: `nhaPhien` thu gom hàng của nhà do người khác ghi (đóng G113 nợ 4); năm mã `HOUSEHOLD_*` không tính chu kỳ hỏng; `SyncEngine.dayVaCho`; Pull giữ lệnh xoá chưa đẩy của giao dịch (`upsertKeoVe`). `core/auth/don_tai_khoan_khac.dart`: dọn nhà cũ, trả tiền, tính lại ví nhà (đóng G113 nợ 2: `pending` của nhà không bị xoá khi kho nhà vắng).
+  - `notification`: 2 loại mới `gopQuyBiTraVe` · `gopQuyBiXoa` (enum nay **24** giá trị, đếm 2026-11-01), cả hai `luonBao`; mục 5o `NOTIFICATION_FEATURE.md`.
+  - Chạm mảng khác: `khoaNhomCua` (hoá đơn lặp) và `xetGan` bỏ khoản có mã cặp; `SoDuViService` đặt neo cùng giao tác với `taoViChung`.
+- **Số đo:** `flutter test` **9007 pass / 10 skip**, `flutter analyze` **20** (mức nền) — đo 2026-11-01 trên `1a28d9fe` (nhánh này; `TranQuangDat` vẫn 8737 / 10 skip, schema v32). Test mới đáng đọc như tài liệu: `test/features/household/application/gia_dinh_vong_doi_test.dart` (hai máy giả + server giả bám `sync.service.js`: góp → sửa → xoá → bị mời ra → từ chối), `test/core/sync/thu_gom_day_hang_nha_test.dart`.
+- **Chưa làm / điều kiện cho 1B** (ảnh chụp cuối 1A; các mục (1), (3), (4), (5), (6) đã làm ở 1B — khối 1B ở trên, spec mục 16): (1) **không có màn nào**; (2) **chưa đo trên máy thật** — chỉ test và hai máy giả, đừng ghi "đạt trên máy"; (3) điều kiện chặn phát hành: hộp hỏi lại khi `LoiNha(hangChuaDay)` phải nêu rõ hàng nào mất rồi gọi `boQuaHangChuaDay: true` (nếu không, người có hàng bị từ chối không rời được nhà); (4) bộ chọn danh mục `/add/category` đọc danh mục **cá nhân** — 1B cần màn chọn riêng hoặc tham số phạm vi; (5) `DieuChinhSoDuService` ghi `idaccount` của ví, không `idhousehold` — mở đối soát ví chung phải đi theo phiên + nhà; (6) chặn trần ví ở nút Tạo ví chung; không dùng `WalletRepository.setArchived` / `deleteWallet` cho ví chung. Các dòng `ghi cho 1B` còn lại nằm trong bàn giao phiên 31 và sổ đợt đã chép ra `C:/Users/tadd1/AppData/Local/Temp/flowmoney-phien31-so-dot-1a/` (`progress.md`, `review-toan-nhanh.md`).
+- **Nợ mới:** **G119** (lệch hai nửa khoản góp khi sửa / xoá bị từ chối, đẩy mất phản hồi, `markSynced` đè lệnh xoá) và **G120** (các nợ còn lại của đợt, mỗi nợ một dòng) — `CLIENT_APP_KNOWN_GAPS.md`. G113 nợ 2, 3, 4, 6 đóng.
+- **Giữ số:** lỗ hổng kế tiếp **G121**, test quét kế tiếp **43**, đơn kế tiếp **64**. Tài liệu đã cập nhật: `SYNC_DOCUMENTATION.md` (4.2, 4.7, 2.4, 2.6, 3.3), `NOTIFICATION_FEATURE.md` (5o), `Family/02A`, `Family/04`, spec mục 15.
+
+### 🔀 Gộp `main` @ `1c8a77c8` (2026-11-02, PR #178, commit gộp `bb895d12`, đã push): backend báo xong đơn 61, 62; client soát
+
+Vào cả `TranQuangDat` lẫn `TranQuangDat-backend` (nhánh phụ gộp `TranQuangDat`, mã 61, 62 đã trùng từ trước; chỉ thêm Admin-web, dòng log `index.js`, tài liệu; backend đang chạy không cần khởi động lại). Cây `src/Client-app` không đổi hash nên không chạy lại `flutter test`; check-ignore không khớp; không migration.
+
+| Việc | Kết quả client đo | Kết luận |
+|---|---|---|
+| 61.1–61.4 | Mã trùng từng dòng với `ban_sua_61.patch`; `chay_kiem_61.js` 6 / 6 | Đạt |
+| 61.5 | Đọc Supabase: 0 / 0 / 0 / 0 / 0; bảng `household` trên đó chưa có hàng nào. `PersonFinance` chưa dọn (dev) | Đạt |
+| 62.1–62.5 | Mã trùng từng dòng với `ban_sua_62.patch`; `chay_kiem_62.js` 14 / 14; `grep` đúng phạm vi 0 dòng; `OVERPAID-CONFIRMED-*` 0 dòng | Đạt |
+| 62.1 phần tay | Admin-web, locale, ba tài liệu đã sửa; còn `PAYMENT_WORKFLOW_SPEC.md:173` | Gần đạt → 66.2 |
+| 62.6 | Bốn câu có trả lời; câu 4 *"vẫn có thể gửi"* là suy đoán, không đo, nhưng 62.3 chịu được cả hai trường hợp | Đạt |
+| 52.4 | Mới có dòng log, chưa deploy, chưa đọc Render | **Chưa** |
+| 60.3 | Backend ghi chưa làm | Chưa (tuỳ chọn) |
+
+**Lỗi mới:** 66.1 nút Đồng ý / Từ chối ở Admin-web luôn 404 với đơn của khách (token admin mang `idaccount` của admin, chạy thật qua `confirmUpgrade` với repository giả); 66.2 `Project.md` mất mục (12); 66.3 ca 7 `admin.payment` gọi PayOS thật, thiếu sót của bản vá client. Đã giao kèm `KIEM-THU/ban_sua_66.patch` + `chay_kiem_66.js` (thử trên bản sao `1c8a77c8`: 3 / 9 → 9 / 9; 61 đạt 6 / 6, 62 đạt 14 / 14; vitest payment 23 / 23, ESLint sạch; unit không `.env` chỉ còn ca 4, 11, 12 cần CSDL). Tệp việc chọn hướng admin xử lý hộ đơn chuyển thừa (client đề xuất, PO chưa trả lời); 60.3 tuỳ chọn đã bỏ khỏi tệp việc (người dùng: chỉ việc cần làm mới vào tài liệu). `ban_sua_61`, `ban_sua_62` đã xoá vì đã áp.
+
+**Chưa chạy:** `chay_kiem_pr174.js`, `verify:household` (cần mật khẩu postgres cho `flowmoney_kiem_thu`; PR chỉ đổi một dòng `household.controller.js`); unit `payment` chỉ chạy không `.env` (76 / 81: ca 4, 11, 12 cần CSDL, ca 7 cần PayOS, cộng ca cha), cố ý không chạy với `.env` vì chạm Supabase và PayOS thật; vitest, ESLint Admin-web chạy được trên bản sao đã vá (dòng trên), chưa chạy riêng trên mã PR.
+
+⚠️ **Ảnh hưởng G94 (62.6):** webhook của kênh trỏ về Render, tài khoản nhận là tài khoản cá nhân thật, không có Sandbox. Đơn tạo từ backend dev nằm ở CSDL dev, nên webhook tới Render chỉ nhận *"Đơn hàng không tồn tại"* (200, không làm gì). Đo tiền thật trên dev chỉ đi được đường JIT (đọc mã, chưa đo). Đo trọn webhook phải đi app → Render → Supabase.
+
+### 🌿 Nhánh dự phòng `TranQuangDat-backend` (2026-11-01 phiên 30)
+
+Người dùng yêu cầu: worktree `.superpowers/backend-worktree`, nhánh `TranQuangDat-backend`, để client tự sửa backend cho xong phần gia đình; backend chưa xong thì **lấy nhánh này làm nhánh chính**. Sửa backend CHỈ trong đó; `src/Backend` của `TranQuangDat` vẫn theo quy tắc 1. Worktree cố ý không có `.env`: chạy bằng biến môi trường trỏ CSDL cục bộ. Đã áp bản vá đơn 61 + 62, chưa push. Migration vẫn xin phép đích danh theo từng CSDL (`PersonFinance` đã được phép cho `Idfund_pair`; Supabase thì không).
 
 ### 💳 PayOS (G94 + Premium Task 16) — đo đạt bằng webhook tự ký, chưa có giao dịch ngân hàng thật (2026-11-01 phiên 30)
 

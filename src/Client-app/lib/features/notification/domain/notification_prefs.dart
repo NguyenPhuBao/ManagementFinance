@@ -77,14 +77,21 @@ NotificationGroup nhomCua(NotificationKind kind) {
     case NotificationKind.tinHeThong:
       return NotificationGroup.tinFlowMoney;
     case NotificationKind.loiMoiNha:
+    case NotificationKind.gopQuyBiTraVe:
+    case NotificationKind.gopQuyBiXoa:
+    case NotificationKind.nhaMucTieuMoc:
+    case NotificationKind.nhaMucTieuDat:
       return NotificationGroup.giaDinh;
   }
 }
 
 /// Loại thông báo **không chịu công tắc nhóm**.
 ///
-/// Bốn loại này là những loại DUY NHẤT báo việc **tiền thật rời ví** trong lúc
-/// người dùng vắng mặt — hai chỗ trong app tự chuyển tiền hộ họ.
+/// Các loại này là những loại DUY NHẤT báo việc máy **đụng tiền thật** trong lúc
+/// người dùng vắng mặt: bốn loại tiền rời ví (hai chỗ trong app tự chuyển tiền
+/// hộ họ), một loại gỡ khoản trả hoá đơn thua cuộc đua hai máy rồi hoàn tiền
+/// (`billPaidOnOtherDevice`) và hai loại gỡ khoản góp / rút quỹ rồi trả tiền về
+/// ví riêng — bảy loại.
 ///
 /// "Đừng nhắc tôi hoá đơn sắp tới hạn" và "đừng cho tôi biết app vừa rút tiền
 /// của tôi" là hai câu hoàn toàn khác nhau, nhưng trước đây người dùng chỉ gạt
@@ -112,6 +119,11 @@ bool luonBao(NotificationKind kind) {
     // Nó cũng hiếm: chỉ xảy ra khi hai máy cùng trả một kỳ hoá đơn, nên không
     // có nguy cơ làm phiền đều đặn như nhắc hạn.
     case NotificationKind.billPaidOnOtherDevice:
+    // Cùng họ với loại trên: máy tự **gỡ** một khoản góp / rút và **trả tiền về** ví riêng khi người dùng vắng mặt (đồng bộ
+    // nền, hoặc Chủ nhà xoá hộ nửa của nhà). Im lặng là mở app ra thấy ví đổi số và một khoản chi biến mất không rõ vì sao.
+    // Hiếm: chỉ khi server từ chối hoặc Chủ nhà can thiệp, nên không có nguy cơ làm phiền đều đặn.
+    case NotificationKind.gopQuyBiTraVe:
+    case NotificationKind.gopQuyBiXoa:
       return true;
     case NotificationKind.billDueSoon:
     case NotificationKind.billOverdue:
@@ -147,6 +159,9 @@ bool luonBao(NotificationKind kind) {
     case NotificationKind.tinHeThong:
     // Lời mời không phải tiền rời ví lúc vắng mặt; người dùng phải tắt được.
     case NotificationKind.loiMoiNha:
+    // Ghi nhận tiến độ, không báo tiền rời ví; người dùng phải tắt được.
+    case NotificationKind.nhaMucTieuMoc:
+    case NotificationKind.nhaMucTieuDat:
       return false;
   }
 }

@@ -221,9 +221,12 @@ class ApDuLieuKeoVe {
           await _soDuVi.datNeoNhieuVi(viDungToi.intersection(viDaCoTruocPull));
           if (transactions.isNotEmpty) {
             final companions = transactions.map((t) => companionGiaoDichKeoVe(t, accountId)).toList();
-            await _db.transactionDao.upsertAll(companions);
-            debugPrint(
-                '[SyncEngine] Pulled & Saved ${transactions.length} transactions into SQLite local.');
+            // Lệnh xoá chưa đẩy THẮNG bản sống server trả về: xoá giữa lượt đẩy và lượt kéo (vd. gỡ khoản bị từ chối) mà
+            // bị ghi đè là hàng sống lại với `synced`, lệnh xoá không bao giờ lên, số dư trừ lần nữa. Lượt đẩy sau mang lệnh xoá
+            // đi. Đọc + ghi cùng một giao tác trong DAO; bản server đã xoá thì cho qua (`upsertKeoVe`).
+            final giu = await _db.transactionDao.upsertKeoVe(companions);
+            debugPrint('[SyncEngine] Pulled & Saved ${transactions.length - giu} transactions into SQLite local'
+                '${giu == 0 ? '' : ' (giữ lại $giu lệnh xoá chưa đẩy)'}.');
           }
 
           // 3. Categories
@@ -354,9 +357,12 @@ class ApDuLieuKeoVe {
                   [];
           if (goals.isNotEmpty) {
             final companions = goals.map((g) => companionMucTieuKeoVe(g, accountId)).toList();
-            await _db.goalDao.upsertAll(companions);
+            // Hàng mục tiêu của NHÀ còn `pending` (Chủ vừa tắt / sửa, lệnh chưa lên) THẮNG bản server — cùng lý lẽ giao dịch
+            // ở trên; mục tiêu riêng không đổi (`upsertKeoVe`).
+            final giu = await _db.goalDao.upsertKeoVe(companions);
             debugPrint(
-                '[SyncEngine] Pulled & Saved ${goals.length} goals into SQLite local.');
+                '[SyncEngine] Pulled & Saved ${goals.length - giu} goals into SQLite local'
+                '${giu == 0 ? '' : ' (giữ lại $giu thay đổi mục tiêu nhà chưa đẩy)'}.');
           }
 
           // Mốc mới — **G67**. Server từ migration 20 trả `maxSince` (giờ-server

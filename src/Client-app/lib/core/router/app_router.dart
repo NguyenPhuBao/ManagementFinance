@@ -23,11 +23,23 @@ import '../../features/category/presentation/pages/gan_danh_muc_page.dart';
 import '../../features/transaction/presentation/pages/transaction_page.dart';
 import '../../features/budget/presentation/pages/budget_detail_page.dart';
 import '../../features/budget/presentation/pages/budget_page.dart';
+import '../../features/household/application/quyen_hien_tai.dart';
+import '../../features/household/data/repositories/du_lieu_nha_repository.dart';
+import '../../features/household/data/repositories/nha_repository.dart';
+import '../../features/household/data/them_giao_dich_nguon_nha.dart';
+import '../../features/household/domain/quyen_nha.dart';
+import '../../features/transaction/presentation/state/che_do_nha_form.dart';
+import '../../features/household/presentation/pages/chi_tiet_vi_chung_page.dart';
+import '../../features/household/presentation/bloc/gop_rut_cubit.dart';
+import '../../features/household/presentation/pages/gop_rut_page.dart';
+import '../../features/household/presentation/pages/danh_muc_nha_page.dart';
+import '../../features/household/presentation/pages/hoat_dong_nha_page.dart';
 import '../../features/household/presentation/pages/moi_thanh_vien_page.dart';
 import '../../features/household/presentation/pages/nha_minh_page.dart';
 import '../../features/household/presentation/pages/quan_ly_thanh_vien_page.dart';
 import '../../features/household/presentation/pages/tham_gia_nha_page.dart';
 import '../../features/household/presentation/pages/tao_nha_page.dart';
+import '../../features/household/presentation/pages/vi_chung_form_page.dart';
 import '../../features/budget/presentation/pages/budget_rules_page.dart';
 import '../../features/goal/domain/dien_san_muc_tieu.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -99,6 +111,36 @@ const _publicRoutes = {
   '/otp',
   '/reset-password'
 };
+
+/// Cửa quyền GHI khoản của nhà (`/nha/khoan` và route con). Khuôn G92: chờ kho trước khi đọc vai, vì router chạy `redirect`
+/// lúc phiên vừa nối mà kho chưa trả lời. Không được ghi (Chỉ xem, nhà chỉ xem, đã rời) → về Nhà mình; mọi lối vào qua đây.
+/// Vai đổi khi form đang mở: `redirect` chỉ chạy lúc vào, nên mỗi form tự hỏi lại lúc Lưu qua `conDuocGhi` (closure gọi
+/// `conDuocLamViecNha`); đổi sau lúc ấy thì server từ chối và resolver xử lý.
+Future<String?> _veNhaNeuKhongGhiDuoc() async {
+  final n = sl<NhaRepository>();
+  await n.choNapKho();
+  final t = n.hienTai;
+  return duocLamViecNha(ViecNha.ghiKhoan, vai: t.vai, trangThai: t.nha?.trangThai) ? null : '/nha';
+}
+
+/// Cửa quyền QUẢN LÝ ví chung (`/nha/vi/tao`, `/nha/vi/:id/sua`): chỉ Chủ nhà, nhà đang hoạt động. Cùng khuôn G92 như
+/// [_veNhaNeuKhongGhiDuoc]. Form còn tự kiểm lúc mở (vai đổi giữa chừng không qua `redirect`).
+Future<String?> _veNhaNeuKhongQuanLyViChungDuoc() async {
+  final n = sl<NhaRepository>();
+  await n.choNapKho();
+  final t = n.hienTai;
+  return duocLamViecNha(ViecNha.quanLyViChung, vai: t.vai, trangThai: t.nha?.trangThai) ? null : '/nha';
+}
+
+/// Cửa quyền SỬA danh mục của nhà (`/nha/danh-muc/them`, `/nha/danh-muc/:id/sua`): Chủ hoặc Thành viên, nhà đang hoạt động
+/// (`ViecNha.suaDanhMuc`). Xem (`/nha/danh-muc`) không qua cửa này — mọi vai xem được. Cùng khuôn G92 như
+/// [_veNhaNeuKhongGhiDuoc].
+Future<String?> _veNhaNeuKhongSuaDanhMucDuoc() async {
+  final n = sl<NhaRepository>();
+  await n.choNapKho();
+  final t = n.hienTai;
+  return duocLamViecNha(ViecNha.suaDanhMuc, vai: t.vai, trangThai: t.nha?.trangThai) ? null : '/nha';
+}
 
 class AppRouter {
   /// Tạo GoRouter với:
@@ -312,6 +354,138 @@ class AppRouter {
             path: '/nha/tao',
             redirect: redirectTheoQuyen(MaQuyen.giaDinh),
             builder: (_, __) => const TaoNhaPage(),
+          ),
+          // Ví chung (1B Task 5): `tao` đứng TRƯỚC mọi route `:id` (Task 7 thêm `/nha/vi/:id`) — thứ tự ngược là `tao` bị đọc
+          // thành id. Builder đọc nhà MỘT lần: nhà đã mất (giải tán / bị mời ra) → Nhà mình, không `!`.
+          GoRoute(
+            path: '/nha/vi/tao',
+            redirect: (_, __) => _veNhaNeuKhongQuanLyViChungDuoc(),
+            builder: (_, __) => sl<NhaRepository>().hienTai.nha == null ? const NhaMinhPage() : const ViChungFormPage(),
+          ),
+          GoRoute(
+            path: '/nha/vi/:id/sua',
+            redirect: (_, __) => _veNhaNeuKhongQuanLyViChungDuoc(),
+            builder: (_, state) => sl<NhaRepository>().hienTai.nha == null
+                ? const NhaMinhPage()
+                : ViChungFormPage(idVi: state.pathParameters['id']),
+          ),
+          // Chi tiết ví chung (1B Task 7): đứng SAU `tao`. Mọi vai xem được (kể cả Chỉ xem), nút trong trang tự theo vai — không
+          // cửa quyền. Nhà đã mất → Nhà mình, không `!`.
+          GoRoute(
+            path: '/nha/vi/:id',
+            builder: (_, state) {
+              final nha = sl<NhaRepository>().hienTai.nha;
+              if (nha == null) return const NhaMinhPage();
+              return ChiTietViChungPage(idVi: state.pathParameters['id']!);
+            },
+          ),
+          // Hoạt động của nhà (1B Task 6): mọi thành viên xem được, kể cả Chỉ xem — không cửa quyền. Nhà đã mất → Nhà mình, không `!`.
+          GoRoute(
+            path: '/nha/hoat-dong',
+            builder: (_, __) => sl<NhaRepository>().hienTai.nha == null ? const NhaMinhPage() : const HoatDongNhaPage(),
+          ),
+          // Ghi / sửa khoản của nhà (1B): MỘT cửa — không có quyền ghi thì về Nhà mình. KHÔNG dùng `/add`: nút + thanh dưới
+          // và deeplink cũ không được vào phạm vi nhà (test `duong_nha_noi_day_test`). `?vi=` ví đứng đầu bộ chọn,
+          // `?huong=` đoạn mở sẵn (Thành viên mà `transfer` thì về Chi tiêu — `huongFormNha`), `extra: EditTransactionArgs` = sửa.
+          GoRoute(
+            path: '/nha/khoan',
+            redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
+            builder: (_, state) {
+              final t = sl<NhaRepository>().hienTai;
+              // `redirect` chỉ bảo đảm có nhà lúc VÀO; builder chạy lại khi nhà đã mất (giải tán / bị mời ra) → Nhà mình.
+              final nha = t.nha;
+              if (nha == null) return const NhaMinhPage();
+              final sua = state.extra is EditTransactionArgs ? state.extra as EditTransactionArgs : null;
+              final choChuyen = duocLamViecNha(ViecNha.chuyenGiuaViChung, vai: t.vai, trangThai: nha.trangThai);
+              return AddTransactionPage(
+                initial: sua,
+                huongBanDau: huongFormNha(state.uri.queryParameters['huong'], choChuyen: choChuyen),
+                nguon: sl<ThemGiaoDichNguonNha>(
+                  param1: ThamSoNguonNha(
+                    idNha: nha.id,
+                    uuTien: state.uri.queryParameters['vi'],
+                    giuLai: {
+                      if (sua != null) sua.transaction.walletId,
+                      if (sua?.transaction.walletTransfer != null) sua!.transaction.walletTransfer!,
+                    },
+                  ),
+                ),
+                nha: CheDoNhaForm(
+                  idNha: nha.id,
+                  tenNha: nha.ten,
+                  choChuyen: choChuyen,
+                  duongChonDanhMuc: '/nha/khoan/category',
+                  // Hỏi lại vai lúc Lưu (FINAL I-3): `redirect` chỉ chạy lúc vào, vai có thể đổi khi form đang mở.
+                  conDuocGhi: (laChuyen) => conDuocLamViecNha(
+                      sl<NhaRepository>(), nha.id, laChuyen ? ViecNha.chuyenGiuaViChung : ViecNha.ghiKhoan),
+                ),
+              );
+            },
+            routes: [
+              GoRoute(
+                path: 'category',
+                redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
+                builder: (_, state) {
+                  // Lấy id nhà MỘT lần ở đây: closure `napCay` chạy lại mỗi lần đổi tab, lúc ấy nhà có thể đã mất.
+                  final idNha = sl<NhaRepository>().hienTai.nha?.id;
+                  if (idNha == null) return const NhaMinhPage();
+                  return ChooseCategoryPage(
+                    classify: state.extra as String? ?? 'chi',
+                    napCay: (c) => sl<DuLieuNhaRepository>().napCayDanhMuc(idNha, c),
+                    duongQuanLy: '/nha/danh-muc',
+                  );
+                },
+              ),
+            ],
+          ),
+
+          // Danh mục của nhà (1B Task 11): XEM mọi vai; thêm / sửa khoá theo `ViecNha.suaDanhMuc`. KHÔNG `redirectTaoTheoGoi`: trần
+          // danh mục riêng của Basic không đếm hàng của nhà. `them` đứng TRƯỚC `:id/sua`. Nhà đã mất → Nhà mình; form không nhận
+          // `idNha` null (chế độ cá nhân sẽ tạo danh mục RIÊNG).
+          GoRoute(
+            path: '/nha/danh-muc',
+            builder: (_, __) => sl<NhaRepository>().hienTai.nha == null ? const NhaMinhPage() : const DanhMucNhaPage(),
+          ),
+          GoRoute(
+            path: '/nha/danh-muc/them',
+            redirect: (_, __) => _veNhaNeuKhongSuaDanhMucDuoc(),
+            builder: (_, __) {
+              final idNha = sl<NhaRepository>().hienTai.nha?.id;
+              return idNha == null
+                  ? const NhaMinhPage()
+                  : CategoryAddPage(
+                      idNha: idNha,
+                      conDuocGhi: () => conDuocLamViecNha(sl<NhaRepository>(), idNha, ViecNha.suaDanhMuc),
+                    );
+            },
+          ),
+          GoRoute(
+            path: '/nha/danh-muc/:id/sua',
+            redirect: (_, __) => _veNhaNeuKhongSuaDanhMucDuoc(),
+            builder: (_, state) {
+              final idNha = sl<NhaRepository>().hienTai.nha?.id;
+              return idNha == null
+                  ? const NhaMinhPage()
+                  : CategoryAddPage(
+                      categoryId: state.pathParameters['id'],
+                      idNha: idNha,
+                      conDuocGhi: () => conDuocLamViecNha(sl<NhaRepository>(), idNha, ViecNha.suaDanhMuc),
+                    );
+            },
+          ),
+
+          // Góp vào quỹ / Rút về ví riêng (1B Task 8): cùng cửa quyền ghi như `/nha/khoan`. `?vi=` ví chung chọn sẵn, `?che=gop|rut`,
+          // `?ma=` mã cặp = sửa khoản (chiều lấy theo nửa của nhà, `che` bị bỏ qua). Nhà đã mất → Nhà mình, không `!`.
+          GoRoute(
+            path: '/nha/gop',
+            redirect: (_, __) => _veNhaNeuKhongGhiDuoc(),
+            builder: (_, state) => sl<NhaRepository>().hienTai.nha == null
+                ? const NhaMinhPage()
+                : GopRutPage(
+                    cheDo: state.uri.queryParameters['che'] == 'rut' ? CheDoQuy.rut : CheDoQuy.gop,
+                    viChungId: state.uri.queryParameters['vi'],
+                    maCap: state.uri.queryParameters['ma'],
+                  ),
           ),
 
           // Budget rules

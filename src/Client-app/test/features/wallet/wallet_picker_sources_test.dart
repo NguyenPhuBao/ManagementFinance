@@ -97,6 +97,7 @@ void main() {
     'features/bill/presentation/pages/bill_edit_page.dart',
     'features/bill/presentation/widgets/bill_actions.dart',
     'features/goal/presentation/pages/goal_detail_page.dart',
+    'features/household/presentation/pages/gop_rut_page.dart',
   };
 
   late Map<String, String> noiDung;
@@ -182,6 +183,16 @@ void main() {
           reason: 'Bộ chọn ví "$tep" còn một đường đọc MỌI ví. Hai đường song '
               'song là một trong hai chỗ sẽ lệch, im lặng.');
     }
+  });
+
+  test('ví chung chỉ đọc từ features/household: bộ chọn ví cá nhân không được thấy ví chung', () {
+    final goi = tepChua('viChungDangDung(');
+    final ngoai = goi.where((t) => !t.startsWith('features/household/')).toList()..sort();
+    expect(ngoai, isEmpty,
+        reason: '`viChungDangDung` là bộ chọn ví của chế độ nhà. Bộ chọn ví cá nhân (`getActive`) không được thấy ví '
+            'chung, và chế độ nhà không được thấy ví riêng — gọi nó ở ngoài `features/household/` là trộn hai phạm vi, '
+            'im lặng. Quét 2 nhận diện theo chuỗi `WalletRepository>().getActive(` nên không phân loại được hàm này.');
+    expect(goi, isNotEmpty, reason: 'tiền đề: phải thấy ít nhất chỗ định nghĩa, nếu không phép tìm chuỗi đã hỏng');
   });
 
   test('mọi phép cộng tổng tài sản đều đi qua viTinhVaoTong', () {

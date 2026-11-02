@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -16,7 +18,16 @@ class ChooseCategoryPage extends StatefulWidget {
     this.idaccount,
     this.classify = 'chi',
     this.repository,
+    this.napCay,
+    this.duongQuanLy = '/categories',
   });
+
+  /// Chế độ NHÀ (gia đình 1B): cây danh mục do nơi gọi cấp (danh mục của nhà), trang không đọc [repository] cá nhân và
+  /// không cần phiên. `null` = danh mục của tài khoản như cũ.
+  final Future<CategoryTree> Function(String classify)? napCay;
+
+  /// Route nút *Quản lý danh mục* ở đáy; `null` ẩn nút (nhà: chưa có route quản lý thì không dựng nút trỏ vào chỗ trống).
+  final String? duongQuanLy;
 
   /// Mã tài khoản **tiêm vào** — chỉ widget test dùng. Đường chạy thật để
   /// `null` và suy từ phiên đăng nhập; xem [_accountId].
@@ -69,6 +80,18 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
   }
 
   Future<void> _loadTree() async {
+    final napCay = widget.napCay;
+    if (napCay != null) {
+      // Chế độ nhà: nguồn đã biết nhà nào, không đọc phiên cá nhân.
+      setState(() => _isLoading = true);
+      final tree = await napCay(_classify);
+      if (!mounted) return;
+      setState(() {
+        _tree = tree;
+        _isLoading = false;
+      });
+      return;
+    }
     final accountId = _accountId();
     if (accountId == null) {
       // Không có phiên thì không đọc gì cả — đọc bằng mã admin là hiện danh
@@ -141,10 +164,15 @@ class _ChooseCategoryPageState extends State<ChooseCategoryPage> {
                 ),
               ),
             ),
+            if (widget.duongQuanLy case final duong?)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               child: OutlinedButton.icon(
-                onPressed: () => context.push('/categories'),
+                // Quay về từ Quản lý thì nạp lại: danh mục vừa tạo / sửa phải hiện trong bộ chọn (áp cả đường cá nhân).
+                onPressed: () async {
+                  await context.push(duong);
+                  if (mounted) unawaited(_loadTree());
+                },
                 icon: const Icon(Icons.settings_outlined),
                 label: const Text('Quản lý danh mục'),
                 style: OutlinedButton.styleFrom(

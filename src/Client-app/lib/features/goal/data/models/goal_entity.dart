@@ -5,6 +5,9 @@ import '../../domain/uu_tien_hop_le.dart';
 class GoalEntity {
   final String id;
   final int idaccount;
+
+  /// Nhà sở hữu; `null` = mục tiêu riêng. `idaccount` khi ấy là người tạo.
+  final int? idhousehold;
   final String name;
   final double targetAmount;
   final double currentAmount;
@@ -80,6 +83,7 @@ class GoalEntity {
   GoalEntity({
     required this.id,
     required this.idaccount,
+    this.idhousehold,
     required this.name,
     required this.targetAmount,
     this.currentAmount = 0.0,
@@ -107,6 +111,7 @@ class GoalEntity {
     return GoalEntity(
       id: d.id,
       idaccount: d.idaccount,
+      idhousehold: d.idhousehold,
       name: d.name,
       targetAmount: d.targetAmount,
       currentAmount: d.currentAmount,
@@ -135,6 +140,7 @@ class GoalEntity {
     return GoalsCompanion.insert(
       id: id,
       idaccount: idaccount,
+      idhousehold: Value(idhousehold),
       name: name,
       targetAmount: targetAmount,
       currentAmount: Value(currentAmount),
@@ -162,6 +168,7 @@ class GoalEntity {
   GoalEntity copyWith({
     String? id,
     int? idaccount,
+    int? idhousehold,
     String? name,
     double? targetAmount,
     double? currentAmount,
@@ -187,6 +194,7 @@ class GoalEntity {
     return GoalEntity(
       id: id ?? this.id,
       idaccount: idaccount ?? this.idaccount,
+      idhousehold: idhousehold ?? this.idhousehold,
       name: name ?? this.name,
       targetAmount: targetAmount ?? this.targetAmount,
       currentAmount: currentAmount ?? this.currentAmount,

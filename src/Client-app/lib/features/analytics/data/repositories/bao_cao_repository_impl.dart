@@ -7,6 +7,7 @@ import '../../domain/bao_cao_xuat.dart';
 import '../../../wallet/domain/vi_tinh_vao_tong.dart';
 import 'bao_cao_repository.dart';
 import '../../../transaction/data/models/lua_chon_loc.dart';
+import '../../../transaction/domain/danh_muc_ao_quy.dart';
 
 /// Đọc giao dịch, ví và danh mục của một tài khoản rồi giao cho [dungBaoCao].
 ///
@@ -47,11 +48,18 @@ class BaoCaoRepositoryImpl implements BaoCaoRepository {
     final ds = [
       for (final t in txs)
         () {
-          final cat = t.categoryId == null ? null : catTheoId[t.categoryId];
+          // Nửa riêng góp / rút quỹ gia đình chưa có danh mục mang mã ảo (Task 10), cùng định nghĩa với trang Phân tích.
+          final id = categoryIdThongKe(
+            categoryId: t.categoryId,
+            fundPairId: t.fundPairId,
+            idhousehold: t.idhousehold,
+            loai: t.type,
+          );
+          final cat = id == null ? null : catTheoId[id];
           // Ba ca, ba chữ — cùng bộ nhãn với trang Phân tích.
-          final tenDanhMuc = t.categoryId == null
+          final tenDanhMuc = id == null
               ? 'Chưa phân loại'
-              : (cat?.name ?? 'Danh mục đã xoá');
+              : (cat?.name ?? nhanAoQuy(id)?.ten ?? 'Danh mục đã xoá');
           return DongGiaoDich(
             id: t.id,
             ngay: t.date,
@@ -59,10 +67,10 @@ class BaoCaoRepositoryImpl implements BaoCaoRepository {
             // nằm ở `type`, không ở dấu.
             soTien: t.amount,
             loai: t.type,
-            categoryId: t.categoryId,
+            categoryId: id,
             tenDanhMuc: tenDanhMuc,
-            mauHex: cat?.colour,
-            icon: cat?.icon,
+            mauHex: cat?.colour ?? nhanAoQuy(id)?.mauHex,
+            icon: cat?.icon ?? nhanAoQuy(id)?.icon,
             walletId: t.walletId,
             tenVi: viTheoId[t.walletId]?.name ?? 'Ví đã xoá',
             // Ghi chú rỗng là **mặc định của cột**, không phải "người dùng để

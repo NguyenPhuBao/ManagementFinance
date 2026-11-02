@@ -109,7 +109,7 @@ void main() async {
   // nhà đọc phiên từ ĐÚNG bloc của app và CHỈ trạng thái phiên rõ (`laTrangThaiPhienRo` — cùng cách khoá ứng dụng ở dưới:
   // `idaccountTuTrangThai` trả null với AuthLoading, không lọc là xoaPhien oan mỗi lượt chuyển tiếp), làm mới khi app quay lại
   // (giãn 5 phút) và khi socket báo `household.changed` / `household.invited`. Nối MỘT lần.
-  sl<DieuPhoiDoiNha>().batDauNghe(sl<NhaRepository>().doiNha);
+  sl<DieuPhoiDoiNha>().batDauNghe(sl<NhaRepository>().doiNha, daDocNha: sl<NhaRepository>().daDocNha);
   sl<NhaRepository>()
     ..noiPhien(authBloc.stream.where(laTrangThaiPhienRo).map(idaccountTuTrangThai))
     ..noiVongDoi(sl<AppLifecycleWatcher>().stream)

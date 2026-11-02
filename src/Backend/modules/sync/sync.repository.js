@@ -68,6 +68,7 @@ function mapEntityFields(entity, data) {
       if (m.billId !== undefined) { m.idbill = m.billId; delete m.billId; }
       if (m.bill_id !== undefined) { m.idbill = m.bill_id; delete m.bill_id; }
       if (m.idBill !== undefined) { m.idbill = m.idBill; delete m.idBill; }
+      if (m.fundPairId !== undefined) { m.idfund_pair = m.fundPairId; delete m.fundPairId; }
       if (m.idhousehold !== undefined) { m.idhousehold = m.idhousehold !== null ? Number(m.idhousehold) : null; }
       else if (m.idHousehold !== undefined) { m.idhousehold = m.idHousehold !== null ? Number(m.idHousehold) : null; delete m.idHousehold; }
       else if (m.householdId !== undefined) { m.idhousehold = m.householdId !== null ? Number(m.householdId) : null; delete m.householdId; }
@@ -412,6 +413,9 @@ const syncRepository = {
   // ── Transaction ─────────────────────────────────────────
   async upsertTransaction(data, dangXoaTrongLo = new Set(), reqUserId) {
     const mapped = mapEntityFields('transaction', data);
+    if (mapped.idfund_pair && String(mapped.type || '').toLowerCase() === 'transfer') {
+      throw Object.assign(new Error('Giao dịch chuyển khoản không được mang mã cặp góp quỹ'), { code: 'HOUSEHOLD_SCOPE_MISMATCH' });
+    }
     const existing = await prisma.transaction.findUnique({ where: { idtran: mapped.idtran } });
 
     // Chốt chống thanh toán hai lần (BILL_ALREADY_PAID) và chống thanh toán kỳ anh em trùng lặp (BILL_PERIOD_ALREADY_PAID - Mục 41 CAN-LAM)
@@ -472,6 +476,7 @@ const syncRepository = {
           idwallet_transfer: mapped.idwallet_transfer || null,
           idgoal: mapped.idgoal || null,
           idbill: mapped.idbill || null,
+          idfund_pair: mapped.idfund_pair || null,
           bank_tran_id: mapped.bank_tran_id || null,
           amount: mapped.amount ?? 0,
           type: mapped.type || 'Transaction',
@@ -511,6 +516,7 @@ const syncRepository = {
           idwallet_transfer: mapped.idwallet_transfer !== undefined ? mapped.idwallet_transfer : existing.idwallet_transfer,
           idgoal: mapped.idgoal !== undefined ? mapped.idgoal : existing.idgoal,
           idbill: mapped.idbill !== undefined ? mapped.idbill : existing.idbill,
+          idfund_pair: mapped.idfund_pair || existing.idfund_pair,
           bank_tran_id: mapped.bank_tran_id !== undefined ? mapped.bank_tran_id : existing.bank_tran_id,
           amount: mapped.amount ?? existing.amount,
           type: mapped.type ?? existing.type,

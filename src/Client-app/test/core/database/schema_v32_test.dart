@@ -11,12 +11,6 @@ import 'package:flutter_test/flutter_test.dart';
 const _namBang = ['wallets', 'transactions', 'goals', 'budgets', 'categories'];
 
 void main() {
-  test('schema là v32', () async {
-    final db = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(db.close);
-    expect(db.schemaVersion, 32);
-  });
-
   test('năm bảng đồng bộ có cột idhousehold INTEGER cho phép NULL; hoá đơn KHÔNG có', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
