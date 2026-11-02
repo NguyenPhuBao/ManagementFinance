@@ -718,6 +718,26 @@ Kế hoạch `docs/superpowers/plans/2026-11-01-gia-dinh-dot-1a-nen-du-lieu.md` 
 - **Nợ mới:** **G119** (lệch hai nửa khoản góp khi sửa / xoá bị từ chối, đẩy mất phản hồi, `markSynced` đè lệnh xoá) và **G120** (các nợ còn lại của đợt, mỗi nợ một dòng) — `CLIENT_APP_KNOWN_GAPS.md`. G113 nợ 2, 3, 4, 6 đóng.
 - **Giữ số:** lỗ hổng kế tiếp **G121**, test quét kế tiếp **43**, đơn kế tiếp **64**. Tài liệu đã cập nhật: `SYNC_DOCUMENTATION.md` (4.2, 4.7, 2.4, 2.6, 3.3), `NOTIFICATION_FEATURE.md` (5o), `Family/02A`, `Family/04`, spec mục 15.
 
+### 🔀 Gộp `main` @ `1c8a77c8` (2026-11-02, PR #178, commit gộp `bb895d12`, CHƯA push): backend báo xong đơn 61, 62; client soát
+
+Vào cả `TranQuangDat` lẫn `TranQuangDat-backend` (nhánh phụ gộp `TranQuangDat`, mã 61, 62 đã trùng từ trước; chỉ thêm Admin-web, dòng log `index.js`, tài liệu; backend đang chạy không cần khởi động lại). Cây `src/Client-app` không đổi hash nên không chạy lại `flutter test`; check-ignore không khớp; không migration.
+
+| Việc | Kết quả client đo | Kết luận |
+|---|---|---|
+| 61.1–61.4 | Mã trùng từng dòng với `ban_sua_61.patch`; `chay_kiem_61.js` 6 / 6 | Đạt |
+| 61.5 | Đọc Supabase: 0 / 0 / 0 / 0 / 0; bảng `household` trên đó chưa có hàng nào. `PersonFinance` chưa dọn (dev) | Đạt |
+| 62.1–62.5 | Mã trùng từng dòng với `ban_sua_62.patch`; `chay_kiem_62.js` 14 / 14; `grep` đúng phạm vi 0 dòng; `OVERPAID-CONFIRMED-*` 0 dòng | Đạt |
+| 62.1 phần tay | Admin-web, locale, ba tài liệu đã sửa; còn `PAYMENT_WORKFLOW_SPEC.md:173` | Gần đạt → 66.2 |
+| 62.6 | Bốn câu có trả lời; câu 4 *"vẫn có thể gửi"* là suy đoán, không đo, nhưng 62.3 chịu được cả hai trường hợp | Đạt |
+| 52.4 | Mới có dòng log, chưa deploy, chưa đọc Render | **Chưa** |
+| 60.3 | Backend ghi chưa làm | Chưa (tuỳ chọn) |
+
+**Lỗi mới:** 66.1 nút Đồng ý / Từ chối ở Admin-web luôn 404 với đơn của khách (token admin mang `idaccount` của admin, chạy thật qua `confirmUpgrade` với repository giả); 66.2 `Project.md` mất mục (12); 66.3 ca 7 `admin.payment` gọi PayOS thật, thiếu sót của bản vá client. Đã giao kèm `KIEM-THU/ban_sua_66.patch` + `chay_kiem_66.js` (thử trên bản sao `1c8a77c8`: 3 / 9 → 9 / 9; 61 đạt 6 / 6, 62 đạt 14 / 14; vitest payment 23 / 23, ESLint sạch; unit không `.env` chỉ còn ca 4, 11, 12 cần CSDL). Tệp việc chọn hướng admin xử lý hộ đơn chuyển thừa (client đề xuất, PO chưa trả lời); 60.3 tuỳ chọn đã bỏ khỏi tệp việc (người dùng: chỉ việc cần làm mới vào tài liệu). `ban_sua_61`, `ban_sua_62` đã xoá vì đã áp.
+
+**Chưa chạy:** `chay_kiem_pr174.js`, `verify:household` (cần mật khẩu postgres cho `flowmoney_kiem_thu`; PR chỉ đổi một dòng `household.controller.js`); unit `payment` chỉ chạy không `.env` (76 / 81: ca 4, 11, 12 cần CSDL, ca 7 cần PayOS, cộng ca cha), cố ý không chạy với `.env` vì chạm Supabase và PayOS thật; vitest, ESLint Admin-web chạy được trên bản sao đã vá (dòng trên), chưa chạy riêng trên mã PR.
+
+⚠️ **Ảnh hưởng G94 (62.6):** webhook của kênh trỏ về Render, tài khoản nhận là tài khoản cá nhân thật, không có Sandbox. Đơn tạo từ backend dev nằm ở CSDL dev, nên webhook tới Render chỉ nhận *"Đơn hàng không tồn tại"* (200, không làm gì). Đo tiền thật trên dev chỉ đi được đường JIT (đọc mã, chưa đo). Đo trọn webhook phải đi app → Render → Supabase.
+
 ### 🌿 Nhánh dự phòng `TranQuangDat-backend` (2026-11-01 phiên 30)
 
 Người dùng yêu cầu: worktree `.superpowers/backend-worktree`, nhánh `TranQuangDat-backend`, để client tự sửa backend cho xong phần gia đình; backend chưa xong thì **lấy nhánh này làm nhánh chính**. Sửa backend CHỈ trong đó; `src/Backend` của `TranQuangDat` vẫn theo quy tắc 1. Worktree cố ý không có `.env`: chạy bằng biến môi trường trỏ CSDL cục bộ. Đã áp bản vá đơn 61 + 62, chưa push. Migration vẫn xin phép đích danh theo từng CSDL (`PersonFinance` đã được phép cho `Idfund_pair`; Supabase thì không).

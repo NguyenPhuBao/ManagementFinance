@@ -10,6 +10,7 @@ const http = require('http');
 const app = require('./app');
 const config = require('./config');
 const logger = require('./core/logger');
+logger.info('DATA_KEY_FP', { fp: require('crypto').createHash('sha256').update(process.env.DATA_ENCRYPTION_KEY || '').digest('hex').slice(0, 8) });
 const { verifyConnection } = require('./config/db');
 const { verifyRedisConnection } = require('./config/redis');
 const { initSocket } = require('./core/socket');

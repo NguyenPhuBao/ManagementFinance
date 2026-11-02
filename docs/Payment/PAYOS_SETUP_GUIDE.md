@@ -58,9 +58,9 @@ sequenceDiagram
 2. **Tạo Kênh Thanh Toán (Payment Channel):**
    - Tại menu bên trái, chọn **Kênh thanh toán** $\rightarrow$ Bấm nút **+ Tạo kênh thanh toán mới**.
    - **Tên kênh thanh toán:** Nhập tên dự án (Ví dụ: `WealthCommand Payment` hoặc `FlowMoney`).
-   - **Chọn chế độ tài khoản:**
-     - **Chế độ Thử nghiệm (Test / Sandbox):** PayOS sẽ cấp tài khoản ảo để bạn kiểm thử luồng thanh toán mà không tốn tiền thật.
-     - **Chế độ Thật (Production / Real):** Liên kết tài khoản ngân hàng của bạn (MB Bank, VietinBank, TPBank, v.v.). Tiền khách hàng chuyển sẽ về thẳng tài khoản ngân hàng của bạn.
+   - **Cấu hình Kênh Thanh Toán:**
+     - Liên kết tài khoản ngân hàng của bạn (MB Bank, VietinBank, TPBank, v.v.). Tiền khách hàng chuyển sẽ về tài khoản ngân hàng của kênh.
+     - *Lưu ý kiểm thử:* Cổng PayOS hoạt động trực tiếp với tài khoản ngân hàng liên kết. Để kiểm thử luồng xử lý đơn hàng/webhook an toàn trong môi trường phát triển (Dev) mà không cần giao dịch ngân hàng thật, sử dụng công cụ ký webhook nội bộ tại `docs/superpowers/backend/CAN-LAM/KIEM-THU/webhook_tu_ky.js`.
    - Nhấn **Xác nhận & Hoàn tất**.
 
 ---
@@ -210,8 +210,8 @@ rtk npm run payos:test
 
 3. **Thực hiện quét mã chuyển khoản:**
    - Mở `checkoutUrl` trên trình duyệt $\rightarrow$ Màn hình hiển thị mã VietQR kèm số tài khoản và đúng nội dung chuyển khoản.
-   - Nếu ở chế độ **Thử nghiệm (Sandbox)**: Bấm nút "Giả lập thanh toán thành công" trên trang PayOS Sandbox.
-   - Nếu ở chế độ **Thật (Production)**: Dùng app ngân hàng quét mã và thanh toán thật.
+   - Để kiểm thử dev không phát sinh giao dịch thật: Dùng kịch bản `docs/superpowers/backend/CAN-LAM/KIEM-THU/webhook_tu_ky.js <orderCode> <amount>` gửi webhook tự ký trực tiếp vào backend dev.
+   - Khi chạy trên Production / kiểm thử chuyển tiền thật: Dùng app ngân hàng quét mã và thanh toán.
 
 4. **Kiểm tra kết quả tự động:**
    - Quan sát Terminal Backend:

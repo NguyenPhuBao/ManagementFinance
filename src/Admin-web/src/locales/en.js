@@ -1572,7 +1572,7 @@ export default {
       title: 'PayOS Payment Channel QR Code (VietQR / Napas 247)',
       subtitle: 'Live payment QR code connected directly to the real PayOS gateway',
       warningBadge: 'REAL PAYOS PAYMENT CHANNEL (MB BANK)',
-      warningDesc: 'QR code generated dynamically from the real PayOS channel (Account: 2512070399999 - NGUYEN PHU BAO). Scan with any banking app or open the PayOS hosted checkout link to test real-time webhook settlement.',
+      warningDesc: 'QR code generated dynamically from the real PayOS channel. Scan with any banking app or open the PayOS hosted checkout link to test real-time webhook settlement.',
       scanNotice: 'Scan with mobile banking app or MoMo',
       payosTag: 'PAYOS CHANNEL',
       openPayosCheckout: 'Open PayOS Hosted Checkout',

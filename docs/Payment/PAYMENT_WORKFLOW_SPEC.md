@@ -26,7 +26,7 @@ sequenceDiagram
     actor User as Khách hàng (Client-app)
     participant Backend as Backend Service
     participant PayOS as Cổng PayOS
-    participant MB as MB Bank (STK 2512070399999)
+    participant Bank as Ngân hàng nhận (Kênh PayOS)
     actor Admin as Quản trị viên (Admin-web)
 
     User->>Backend: 1. Chọn gói Premium (POST /api/payment/create-order)
@@ -36,8 +36,8 @@ sequenceDiagram
     Backend->>Backend: Ghi payment_order trạng thái PENDING
     Backend-->>User: Trả về mã VietQR & đếm ngược 10 phút
 
-    User->>MB: 4. Quét mã QR chuyển khoản ngân hàng (Nội dung: 'CSCYDEZ2N10 A8B9K2')
-    MB-->>PayOS: Tiền vào tài khoản MB Bank
+    User->>Bank: 4. Quét mã QR chuyển khoản ngân hàng (Nội dung: 'CSCYDEZ2N10 A8B9K2')
+    Bank-->>PayOS: Tiền vào tài khoản ngân hàng của kênh PayOS
     PayOS->>PayOS: 5. Khớp mã nội dung chuyển khoản với đơn hàng
     PayOS->>Backend: Đẩy Webhook IPN (HMAC-SHA256 signature, orderCode, amount)
 
