@@ -175,6 +175,7 @@ class _NhaMinhPageState extends State<NhaMinhPage> {
             coTheTao: conTaoDuocViChung(vc.soDangHoatDong, nha.toiDaViChung),
             lyDoKhoa: 'Nhà đã có đủ ${nha.toiDaViChung} ví chung.',
             onTao: quanLy ? () => unawaited(context.push('/nha/vi/tao')) : null,
+            mucTieu: v.mucTieu,
             onChamVi: (id) => unawaited(context.push('/nha/vi/${Uri.encodeComponent(id)}')),
           );
         },

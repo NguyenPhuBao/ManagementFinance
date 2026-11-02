@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../../../core/utils/currency_formatter.dart';
 import '../../../../../shared/theme/app_colors.dart';
 import '../../../../category/presentation/widgets/category_visuals.dart';
+import '../../../../goal/data/models/goal_entity.dart';
 import '../../../../wallet/data/models/wallet_entity.dart';
 import '../../../../wallet/domain/wallet_status.dart';
 import '../../../../wallet/domain/wallet_type.dart';
+import '../../../domain/muc_tieu_chung.dart';
 import '../khung_the_nha.dart';
+import '../tien_do_muc_tieu.dart';
 
 /// Màu chữ phụ của Stitch `d2a8c9bb…` (`on-surface-variant`): không trùng token nào của `AppColors`.
 const _chuPhu = Color(0xFF454743);
@@ -26,9 +29,17 @@ class KhoiViChung extends StatelessWidget {
     this.lyDoKhoa,
     this.onTao,
     this.onChamVi,
+    this.mucTieu = const {},
+    this.dongHo,
   });
 
   final List<WalletEntity> vi;
+
+  /// Mục tiêu chung theo id ví (đợt 2): ví có mục tiêu thì dòng ví có thêm thanh tiến độ, kể cả ví lưu trữ.
+  final Map<String, GoalEntity> mucTieu;
+
+  /// Đồng hồ tiêm được cho trạng thái quá hạn; `null` → giờ máy.
+  final DateTime Function()? dongHo;
   final double tongQuy;
   final bool coTheTao;
   final String? lyDoKhoa;
@@ -85,7 +96,7 @@ class KhoiViChung extends StatelessWidget {
               else
                 for (var i = 0; i < vi.length; i++) ...[
                   if (i > 0) const Divider(height: 1, color: AppColors.outlineVariant),
-                  _DongVi(vi: vi[i], onCham: onChamVi),
+                  _DongVi(vi: vi[i], onCham: onChamVi, mucTieu: mucTieu[vi[i].id], bayGio: (dongHo ?? DateTime.now)()),
                 ],
               if (onTao != null) ...[
                 const SizedBox(height: 12),
@@ -123,10 +134,12 @@ class KhoiViChung extends StatelessWidget {
 }
 
 class _DongVi extends StatelessWidget {
-  const _DongVi({required this.vi, required this.onCham});
+  const _DongVi({required this.vi, required this.onCham, required this.mucTieu, required this.bayGio});
 
   final WalletEntity vi;
   final void Function(String id)? onCham;
+  final GoalEntity? mucTieu;
+  final DateTime bayGio;
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +155,10 @@ class _DongVi extends StatelessWidget {
         onTap: cham == null ? null : () => cham(vi.id),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          child: LayoutBuilder(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              LayoutBuilder(
             builder: (context, c) {
               final tran = c.maxWidth * 0.6;
               return Row(
@@ -185,6 +201,14 @@ class _DongVi extends StatelessWidget {
             ],
               );
             },
+              ),
+              if (mucTieu case final muc?)
+                // Thụt 48: ô tròn 36 + khe 12, thẳng với cột tên.
+                Padding(
+                  padding: const EdgeInsets.only(left: 48, top: 10),
+                  child: TienDoGon(tienDo: tienDoMucTieuChung(mucTieu: muc, soDuVi: vi.balance, now: bayGio)),
+                ),
+            ],
           ),
         ),
       ),

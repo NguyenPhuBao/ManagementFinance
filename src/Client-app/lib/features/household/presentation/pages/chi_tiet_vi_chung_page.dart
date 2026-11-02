@@ -21,6 +21,7 @@ import '../../data/repositories/nha_repository.dart';
 import '../../domain/bang_gop.dart';
 import '../../domain/hoat_dong_nha.dart';
 import '../../domain/loai_khoan_nha.dart';
+import '../../domain/muc_tieu_chung.dart';
 import '../../domain/quyen_nha.dart';
 import '../../domain/vai_nha.dart';
 import '../bloc/khoan_nha_cubit.dart';
@@ -32,6 +33,7 @@ import '../widgets/dong_khoan_nha.dart';
 import '../widgets/gac_vai_chu.dart';
 import '../widgets/khung_the_nha.dart';
 import '../widgets/mo_khoan_nha.dart';
+import '../widgets/tien_do_muc_tieu.dart';
 import '../widgets/tra_ten_nha.dart';
 
 /// Màu của Stitch `ac57e216…` không trùng token nào của `AppColors` (chấm xanh, chữ huy hiệu).
@@ -191,7 +193,7 @@ class _ChiTietViChungPageState extends State<ChiTietViChungPage> {
             : ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 children: [
-                  _TheSoDu(vi: vi, vai: s.nha.vai),
+                  _TheSoDu(vi: vi, vai: s.nha.vai, tienDo: _tienDo(v, vi)),
                   const SizedBox(height: 16),
                   ..._hangNut(context, s, vi),
                   _DieuKhienTab(bangGop: _tabBangGop, onDoi: (b) => setState(() => _tabBangGop = b)),
@@ -201,6 +203,12 @@ class _ChiTietViChungPageState extends State<ChiTietViChungPage> {
               ),
       ),
     );
+  }
+
+  /// Tiến độ mục tiêu chung của ví (đợt 2); `null` = ví không đặt mục tiêu. Số dư lấy từ cột `balance` của chính ví.
+  TienDoMucTieuChung? _tienDo(ViChungState v, WalletEntity vi) {
+    final muc = v.mucTieu[vi.id];
+    return muc == null ? null : tienDoMucTieuChung(mucTieu: muc, soDuVi: vi.balance, now: _bayGio);
   }
 
   /// Hàng nút theo vai (Stitch `ac57e216…` 3.3). Ví lưu trữ: dải *Ví đã lưu trữ* thay cho hàng nút.
@@ -324,10 +332,13 @@ class _ChiTietViChungPageState extends State<ChiTietViChungPage> {
 
 /// Thẻ số dư (Stitch `ac57e216…` 3.2): nhãn + huy hiệu vai, số dư lớn, chấm xanh + *Tiền mặt · Ví chung*.
 class _TheSoDu extends StatelessWidget {
-  const _TheSoDu({required this.vi, required this.vai});
+  const _TheSoDu({required this.vi, required this.vai, this.tienDo});
 
   final WalletEntity vi;
   final VaiNha? vai;
+
+  /// Có thì thẻ thêm khối MỤC TIÊU ở cuối (đợt 2).
+  final TienDoMucTieuChung? tienDo;
 
   @override
   Widget build(BuildContext context) {
@@ -375,6 +386,12 @@ class _TheSoDu extends StatelessWidget {
               ),
             ],
           ),
+          if (tienDo case final td?) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1, color: AppColors.outlineVariant),
+            const SizedBox(height: 14),
+            KhoiMucTieuChiTiet(tienDo: td),
+          ],
         ],
       ),
     );

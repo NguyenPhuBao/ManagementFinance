@@ -2,6 +2,7 @@
 import 'dart:async';
 
 import 'package:flowmoney/features/category/data/models/category_entity.dart';
+import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/household/application/gop_quy_service.dart';
 import 'package:flowmoney/features/household/application/thao_tac_khoan_nha.dart';
 import 'package:flowmoney/features/household/domain/bang_gop.dart';
@@ -99,6 +100,7 @@ void main() {
     List<WalletEntity>? vi,
     List<TransactionEntity>? ds,
     List<Map<String, Object?>>? members,
+    List<GoalEntity>? muc,
     String id = 'v1',
   }) async {
     dat360(t);
@@ -107,7 +109,8 @@ void main() {
     extraKhoan = null;
     nguon = DuLieuNhaGia(vi: vi ?? [viChungGia('v1', 'Tiền chợ', 3200000), viChungGia('v2', 'Điện nước', 1250000)])
       ..datKhoan(ds ?? [])
-      ..datDanhMuc([_dm('c1', 'Ăn uống'), _dm('c2', 'Đi lại')]);
+      ..datDanhMuc([_dm('c1', 'Ăn uống'), _dm('c2', 'Đi lại')])
+      ..datMucTieu(muc ?? const []);
     final repo = await repoNhaThu(HouseholdApiGia()..cuaToiJson = nhaJson(myRole: vai, status: status, members: members));
     router = GoRouter(initialLocation: '/', routes: [
       GoRoute(path: '/', builder: (_, __) => const Scaffold(body: Text('GOC'))),
@@ -489,6 +492,54 @@ void main() {
       expect(t.getSize(so).height, lessThan(24), reason: '15 px một dòng ≈ 18; xuống dòng ≥ 36');
       expect(t.getRect(so).right, lessThanOrEqualTo(360));
       expect(find.text('Trần An chi · Ăn uống'), findsOneWidget, reason: 'câu tiêu đề còn đủ, không bị số tiền nuốt');
+    });
+  });
+
+  group('mục tiêu chung trong thẻ số dư (đợt 2, Task 7)', () {
+    GoalEntity muc({String vi = 'v1', double dich = 8000000}) => GoalEntity(
+          id: 'g-$vi',
+          idaccount: 18,
+          idhousehold: 12,
+          name: 'Mục tiêu',
+          targetAmount: dich,
+          targetDate: DateTime(2026, 12, 31),
+          walletId: vi,
+          updatedAt: DateTime(2026, 11, 1),
+        );
+
+    testWidgets('có mục tiêu thì thấy khối', (t) async {
+      await mo(t, muc: [muc()]);
+      expect(find.byKey(const Key('khoi-muc-tieu')), findsOneWidget);
+      expect(find.text('3.200.000 / 8.000.000 đ — 40%'), findsOneWidget);
+    });
+
+    testWidgets('không có mục tiêu của ví này thì không có khối', (t) async {
+      await mo(t, muc: [muc(vi: 'v2')]);
+      expect(find.byKey(const Key('khoi-muc-tieu')), findsNothing, reason: 'mục tiêu của ví khác không rơi vào ví này');
+    });
+
+    testWidgets('Thành viên thấy khối', (t) async {
+      await mo(t, vai: 'Member', muc: [muc()]);
+      expect(find.byKey(const Key('khoi-muc-tieu')), findsOneWidget);
+    });
+
+    testWidgets('Chỉ xem thấy khối', (t) async {
+      await mo(t, vai: 'Viewer', muc: [muc()]);
+      expect(find.byKey(const Key('khoi-muc-tieu')), findsOneWidget, reason: 'Mọi thành viên thấy tiến độ');
+    });
+
+    testWidgets('số dư đổi qua luồng ví thì phần trăm đổi theo', (t) async {
+      await mo(t, muc: [muc()]);
+      expect(find.text('3.200.000 / 8.000.000 đ — 40%'), findsOneWidget);
+      nguon.datVi([viChungGia('v1', 'Tiền chợ', 6000000), viChungGia('v2', 'Điện nước', 1250000)]);
+      await t.pumpAndSettle();
+      expect(find.text('6.000.000 / 8.000.000 đ — 75%'), findsOneWidget);
+      expect(find.text('3.200.000 / 8.000.000 đ — 40%'), findsNothing);
+    });
+
+    testWidgets('360 dp, số 13 chữ số: thẻ không tràn', (t) async {
+      await mo(t, vi: [viChungGia('v1', 'Tiền chợ', 1234567890123)], muc: [muc(dich: 9999999999999)]);
+      expect(t.takeException(), isNull);
     });
   });
 }
