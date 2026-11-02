@@ -1,6 +1,9 @@
 import 'package:flowmoney/core/errors/app_exceptions.dart';
+import 'package:flowmoney/core/utils/date_formatter.dart';
+import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
+import 'package:flowmoney/features/household/domain/muc_tieu_chung.dart';
 import 'package:flowmoney/features/household/presentation/pages/vi_chung_form_page.dart';
 import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flowmoney/features/wallet/domain/rang_buoc_vi.dart';
@@ -33,10 +36,11 @@ void main() {
     int? phien = 18,
     bool banPhim = false,
     Map<String, bool>? quyen,
+    List<GoalEntity> muc = const [],
   }) async {
     dat360(t, banPhim: banPhim);
     bat = batThongBao();
-    nguon = DuLieuNhaGia(vi: vi ?? const []);
+    nguon = DuLieuNhaGia(vi: vi ?? const [])..datMucTieu(muc);
     dieuChinh = DieuChinhGia();
     api = HouseholdApiGia()..cuaToiJson = nhaJson(myRole: vai, status: status);
     repoNha = await repoNhaThu(api);
@@ -62,7 +66,9 @@ void main() {
       expect(find.text(s), findsOneWidget, reason: s);
     }
     expect(find.text('Ví chung thuộc về cả nhà. Mọi thành viên thấy số dư và các khoản trong ví.'), findsOneWidget);
-    expect(find.byType(Switch), findsNothing, reason: 'ví nhà không mặc định, không tính vào tổng cá nhân, không cho âm');
+    expect(find.byType(Switch), findsOneWidget,
+        reason: 'chỉ công tắc Đặt mục tiêu: ví nhà không mặc định, không tính vào tổng cá nhân, không cho âm');
+    expect(find.byKey(const Key('cong-tac-muc-tieu')), findsOneWidget);
     expect(find.textContaining('mặc định'), findsNothing);
     expect(find.byType(OSoDuVi), findsOneWidget, reason: 'ô số dư thật, không phải chữ như Stitch');
     expect(t.takeException(), isNull);
@@ -318,5 +324,176 @@ void main() {
     expect(t.takeException(), isNull);
     await mo(t, idVi: 'a', vi: [viChungGia('a', 'Tên ví chung rất dài ${'x' * 60}', 9999999999999)], banPhim: true);
     expect(t.takeException(), isNull);
+  });
+
+  // ---- Khối Đặt mục tiêu (đợt 2) ----
+  GoalEntity mucCua(String viId, {double tien = 1000000, DateTime? han}) => GoalEntity(
+        id: 'g-$viId',
+        idaccount: 10,
+        idhousehold: 12,
+        name: 'Quỹ',
+        targetAmount: tien,
+        targetDate: han ?? DateTime(2035, 12, 31),
+        walletId: viId,
+        updatedAt: DateTime(2026, 11, 1),
+      );
+  Finder congTacMuc() => find.byKey(const Key('cong-tac-muc-tieu'));
+  Finder oTienMuc() => find.byKey(const Key('o-so-tien-muc-tieu'));
+  Finder oHan() => find.byKey(const Key('o-han-muc-tieu'));
+  bool batMuc(WidgetTester t) => t.widget<Switch>(congTacMuc()).value;
+
+  /// Mở bộ chọn ngày, chọn đúng hôm nay (luôn hợp lệ: `firstDate` là hôm nay) rồi OK.
+  Future<void> chonHomNay(WidgetTester t) async {
+    await bam(t, oHan());
+    await t.tap(find.text('${DateTime.now().day}').last);
+    await t.pumpAndSettle();
+    await t.tap(find.text('OK'));
+    await t.pumpAndSettle();
+  }
+
+  testWidgets('Tạo: công tắc tắt thì không thấy hai ô; bật thì thấy nhãn, ô và chú thích', (t) async {
+    await mo(t);
+    expect(find.text('Đặt mục tiêu'), findsOneWidget);
+    expect(find.text('Tiến độ tính theo số dư của ví, góp vào ví là góp vào mục tiêu.'), findsOneWidget);
+    expect(batMuc(t), isFalse);
+    expect(oTienMuc(), findsNothing);
+    expect(oHan(), findsNothing);
+    await bam(t, congTacMuc());
+    expect(find.text('SỐ TIỀN MỤC TIÊU'), findsOneWidget);
+    expect(find.text('HẠN'), findsOneWidget);
+    expect(oTienMuc(), findsOneWidget);
+    expect(oHan(), findsOneWidget);
+    expect(find.text('Chọn hạn'), findsOneWidget);
+    expect(find.text('Mọi thành viên thấy tiến độ. Chỉ Chủ nhà đổi được.'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('Tạo: bật, tiền trống, bấm Lưu → báo, không tạo ví', (t) async {
+    await mo(t);
+    await t.enterText(oTen(), 'Quỹ');
+    await bam(t, congTacMuc());
+    await bam(t, find.byKey(const Key('nut-tao-vi-chung')));
+    expect(bat.cau, ['Vui lòng nhập số tiền mục tiêu']);
+    expect(nguon.tao, isEmpty);
+  });
+
+  testWidgets('Tạo: bật, có tiền, không hạn → báo chọn hạn', (t) async {
+    await mo(t);
+    await t.enterText(oTen(), 'Quỹ');
+    await bam(t, congTacMuc());
+    await t.enterText(oTienMuc(), '5000000');
+    await bam(t, find.byKey(const Key('nut-tao-vi-chung')));
+    expect(bat.cau, ['Vui lòng chọn hạn']);
+    expect(nguon.tao, isEmpty);
+  });
+
+  testWidgets('Tạo: đủ số tiền và hạn → taoViChung mang DatMucTieu, idaccount từ phiên', (t) async {
+    await mo(t);
+    await t.enterText(oTen(), 'Quỹ');
+    await bam(t, congTacMuc());
+    await t.enterText(oTienMuc(), '5000000');
+    expect(t.widget<TextField>(oTienMuc()).controller!.text, '5.000.000', reason: 'chèn chấm ngăn nghìn như ô số dư');
+    await chonHomNay(t);
+    final h = DateTime.now();
+    expect(find.text(DateFormatter.formatDate(DateTime(h.year, h.month, h.day))), findsOneWidget);
+    await bam(t, find.byKey(const Key('nut-tao-vi-chung')));
+    final m = nguon.taoMuc.single!;
+    expect((m.soTien, m.idaccount), (5000000.0, 18));
+    expect((m.han.year, m.han.month, m.han.day), (h.year, h.month, h.day));
+  });
+
+  testWidgets('Tạo: công tắc tắt → taoViChung không mang mục tiêu', (t) async {
+    await mo(t);
+    await t.enterText(oTen(), 'Quỹ');
+    await bam(t, find.byKey(const Key('nut-tao-vi-chung')));
+    expect(nguon.taoMuc.single, isNull);
+  });
+
+  testWidgets('Sửa có mục tiêu: công tắc bật sẵn, số 1.000.000, hạn đúng định dạng', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a', han: DateTime(2035, 12, 31))]);
+    expect(batMuc(t), isTrue);
+    expect(t.widget<TextField>(oTienMuc()).controller!.text, '1.000.000');
+    expect(find.text('31/12/2035'), findsOneWidget);
+  });
+
+  testWidgets('Sửa: đổi số tiền → DatMucTieu số mới, idaccount phiên, giữ hạn', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a', han: DateTime(2035, 12, 31))]);
+    await t.enterText(oTienMuc(), '2500000');
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    final m = nguon.suaMuc.single as DatMucTieu;
+    expect((m.soTien, m.idaccount), (2500000.0, 18));
+    expect((m.han.year, m.han.month, m.han.day), (2035, 12, 31));
+  });
+
+  testWidgets('Sửa: không đụng khối mục tiêu → GiuMucTieu', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a')]);
+    await t.enterText(oTen(), 'Chợ tuần');
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    expect(nguon.suaMuc.single, isA<GiuMucTieu>(),
+        reason: 'nạp ô lúc mở không phải là người dùng đụng: không được đẩy goal vô cớ mỗi lần lưu');
+  });
+
+  testWidgets('Sửa: tắt → hộp hỏi nguyên văn; Huỷ giữ công tắc bật; đồng ý + Lưu → BoMucTieu', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a')]);
+    await bam(t, congTacMuc());
+    expect(find.text('Bỏ mục tiêu của Tiền chợ? Tiền trong ví giữ nguyên.'), findsOneWidget);
+    await bam(t, find.widgetWithText(OutlinedButton, 'Huỷ'));
+    expect(batMuc(t), isTrue);
+    await bam(t, congTacMuc());
+    await bam(t, find.byKey(const Key('xac-nhan-bo-muc-tieu')));
+    expect(batMuc(t), isFalse);
+    expect(oTienMuc(), findsNothing);
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    expect(nguon.suaMuc.single, isA<BoMucTieu>());
+  });
+
+  testWidgets('Sửa: chưa có mục tiêu, bật rồi tắt → không hộp hỏi, GiuMucTieu', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho]);
+    await bam(t, congTacMuc());
+    await bam(t, congTacMuc());
+    expect(find.textContaining('Bỏ mục tiêu'), findsNothing);
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    expect(nguon.suaMuc.single, isA<GiuMucTieu>());
+  });
+
+  testWidgets('Sửa: mục tiêu quá hạn, đổi số tiền vẫn lưu được; bấm ô hạn không màn đỏ', (t) async {
+    final quaHan = DateTime(2020, 1, 1);
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a', han: quaHan)]);
+    await bam(t, oHan());
+    expect(t.takeException(), isNull, reason: 'initialDate trước firstDate là assertion; ngayNhoNhatChoLich nhận hạn cũ');
+    await bam(t, find.text('Cancel'));
+    await t.enterText(oTienMuc(), '3000000');
+    await bam(t, find.byKey(const Key('nut-luu-vi-chung')));
+    expect(bat.ds, isEmpty);
+    final m = nguon.suaMuc.single as DatMucTieu;
+    expect((m.soTien, m.han.year), (3000000.0, 2020));
+  });
+
+  testWidgets('Chạm đôi công tắc khi hộp hỏi đang mở: chỉ một hộp', (t) async {
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a')]);
+    await t.ensureVisible(congTacMuc());
+    await t.tap(congTacMuc());
+    await t.tap(congTacMuc(), warnIfMissed: false);
+    await t.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+  });
+
+  testWidgets('360 dp, bàn phím mở, tiền mục tiêu 13 chữ số: không tràn (Tạo và Sửa)', (t) async {
+    await mo(t, banPhim: true);
+    await bam(t, congTacMuc());
+    await t.enterText(oTienMuc(), '9999999999999');
+    await t.pump();
+    expect(t.takeException(), isNull);
+    await mo(t, idVi: 'a', vi: [tienCho], muc: [mucCua('a', tien: 9999999999999)], banPhim: true);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('Ô tiền mục tiêu gõ 14 chữ số → còn 13', (t) async {
+    await mo(t);
+    await bam(t, congTacMuc());
+    await t.enterText(oTienMuc(), '1234567890123');
+    await t.enterText(oTienMuc(), '12345678901234');
+    final chu = t.widget<TextField>(oTienMuc()).controller!.text.replaceAll('.', '');
+    expect(chu.length, 13, reason: 'numeric(15,2): 14 chữ số kẹt hàng đợi đẩy goal vĩnh viễn');
   });
 }

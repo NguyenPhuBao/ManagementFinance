@@ -8,6 +8,10 @@ import '../../../../core/ui/thong_bao_nhanh.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../shared/theme/app_colors.dart';
+import '../../../goal/data/models/goal_entity.dart';
+import '../../../goal/domain/goal_edit_form.dart' show ngayNhoNhatChoLich;
+import '../../domain/muc_tieu_chung.dart';
+import '../widgets/vi_chung_form/khoi_muc_tieu_vi.dart';
 import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../category/presentation/widgets/category_visuals.dart';
 import '../../../premium/domain/quyen_tinh_nang.dart';
@@ -73,6 +77,20 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
   int? _idNha;
   WalletEntity? _viGoc;
 
+  // Khối Đặt mục tiêu.
+  final _soTienMuc = TextEditingController();
+  bool _batMuc = false;
+  DateTime? _hanMuc;
+
+  /// Hàng đang lưu lúc mở; `null` = ví chưa có mục tiêu.
+  GoalEntity? _mucGoc;
+
+  /// Người dùng đụng khối chưa: không đụng thì lưu `GiuMucTieu`, không đẩy `goal` vô cớ.
+  bool _doiMuc = false;
+
+  /// Hộp hỏi tắt mục tiêu đang mở: chạm đôi công tắc không được mở hai hộp.
+  bool _dangHoiBo = false;
+
   /// Chữ ô số dư lúc mở: so với nó để biết người dùng có đổi số dư không (ví số dư lẻ hiện làm tròn, so với `balance` thì ví
   /// nào cũng "đổi").
   String _soDuLucMo = '';
@@ -94,7 +112,67 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
   void dispose() {
     _ten.dispose();
     _soDu.dispose();
+    _soTienMuc.dispose();
     super.dispose();
+  }
+
+  /// Tắt khi đang có mục tiêu đã lưu thì hỏi một lần; chưa lưu thì không có gì để mất.
+  Future<void> _doiCongTac(bool bat) async {
+    if (_dangHoiBo) return;
+    if (!bat && _mucGoc != null) {
+      _dangHoiBo = true;
+      final bool? dongY;
+      try {
+        dongY = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            content: Text('Bỏ mục tiêu của ${_ten.text.trim()}? Tiền trong ví giữ nguyên.'),
+            actions: [
+              OutlinedButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
+              FilledButton(
+                key: const Key('xac-nhan-bo-muc-tieu'),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Bỏ mục tiêu'),
+              ),
+            ],
+          ),
+        );
+      } finally {
+        _dangHoiBo = false;
+      }
+      if (dongY != true || !mounted) return;
+    }
+    setState(() {
+      _batMuc = bat;
+      _doiMuc = true;
+    });
+  }
+
+  Future<void> _chonHan() async {
+    final bayGio = DateTime.now();
+    final dangChon = _hanMuc ?? bayGio;
+    final chon = await showDatePicker(
+      context: context,
+      initialDate: dangChon,
+      firstDate: ngayNhoNhatChoLich(dangChon, bayGio),
+      lastDate: bayGio.add(const Duration(days: 3650)),
+    );
+    if (chon != null && mounted) {
+      setState(() {
+        _hanMuc = chon;
+        _doiMuc = true;
+      });
+    }
+  }
+
+  ThayDoiMucTieu _thayDoi(int idaccount) {
+    if (!_doiMuc) return const GiuMucTieu();
+    if (!_batMuc) return _mucGoc == null ? const GiuMucTieu() : const BoMucTieu();
+    return DatMucTieu(
+      soTien: double.parse(_soTienMuc.text.replaceAll('.', '')),
+      han: _hanMuc!,
+      idaccount: idaccount,
+    );
   }
 
   void _thoat(String cau) {
@@ -138,6 +216,14 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
         _icon = vi.icon;
         _mau = vi.colour;
         _luuTru = !WalletStatus.laHoatDong(vi.status);
+        final muc = mucTieuTheoVi(await _nguon.theoDoiMucTieuChung(nha.id).first)[vi.id];
+        if (!mounted) return;
+        if (muc != null) {
+          _mucGoc = muc;
+          _batMuc = true;
+          _hanMuc = muc.targetDate;
+          _soTienMuc.text = CurrencyFormatter.formatSoThoi(muc.targetAmount.toInt());
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -184,6 +270,14 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
       _loi(thongBaoTrungTen(ten));
       return;
     }
+    if (_batMuc && _doiMuc) {
+      final loi = loiNhapMucTieu(
+          soTienChu: _soTienMuc.text, han: _hanMuc, hanLucMo: _mucGoc?.targetDate, now: DateTime.now());
+      if (loi != null) {
+        _loi(loi);
+        return;
+      }
+    }
     final soDu = double.tryParse(_soDu.text.replaceAll('.', '')) ?? 0.0;
     setState(() => _dangLuu = true);
     try {
@@ -197,6 +291,10 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
           soDuBanDau: soDu,
           icon: _icon,
           mau: _mau,
+          mucTieu: switch (_thayDoi(idaccount)) {
+            final DatMucTieu d => d,
+            _ => null,
+          },
         );
       } else {
         await _luuSua(goc, ten: ten, soDu: soDu, idNha: idNha, idaccount: idaccount, coDieuChinh: coDieuChinh);
@@ -215,7 +313,8 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
       required int idNha,
       required int idaccount,
       required bool coDieuChinh}) async {
-    await _nguon.suaViChung(goc.copyWith(name: ten, type: _loai, icon: _icon, colour: _mau));
+    await _nguon.suaViChung(goc.copyWith(name: ten, type: _loai, icon: _icon, colour: _mau),
+        mucTieu: _thayDoi(idaccount));
     final dangLuuTru = !WalletStatus.laHoatDong(goc.status);
     final doiTrangThai = _luuTru != dangLuuTru;
     // Số dư đi đường riêng (không ghi đè): một khoản điều chỉnh trong sổ, người ghi là người dùng này.
@@ -300,6 +399,15 @@ class _ViChungFormPageState extends State<ViChungFormPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _theChinh(context),
+                    const SizedBox(height: 16),
+                    KhoiMucTieuVi(
+                      bat: _batMuc,
+                      onDoi: _dangLuu ? null : _doiCongTac,
+                      soTienMuc: _soTienMuc,
+                      onDoiSoTien: () => _doiMuc = true,
+                      han: _hanMuc,
+                      onChonHan: _dangLuu ? null : _chonHan,
+                    ),
                     if (_laSua) ...[
                       const SizedBox(height: 16),
                       _theLuuTru(context),
