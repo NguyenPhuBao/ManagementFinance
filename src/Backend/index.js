@@ -29,6 +29,8 @@ async function bootstrap() {
         logger.info(`Environment: ${config.env}`);
         logger.info(`Database: PersonFinance @ PostgreSQL`);
         logger.info(`Health check: http://${host}:${port}/health`);
+        logger.info(`Backend running at https://managementfinance.onrender.com (Internal port: ${port})`);
+        logger.info(`Health check: https://managementfinance.onrender.com/health`);
         resolve();
       });
       httpServer.on('error', reject);
