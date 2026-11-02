@@ -358,9 +358,72 @@ void main() {
       expect(xinKeoLaiGoi, [10]);
     });
 
-    test('mục tiêu / ngân sách bị ROLE_FORBIDDEN: không đụng (ghi G)', () async {
-      await resolver.xuLy(_thatBai('g1', 'HOUSEHOLD_ROLE_FORBIDDEN', entity: SyncEntityType.goal));
+    test('ngân sách bị ROLE_FORBIDDEN: không đụng (ghi G)', () async {
       await resolver.xuLy(_thatBai('b1', 'HOUSEHOLD_ROLE_FORBIDDEN', entity: SyncEntityType.budget));
+      expect(xinKeoLaiGoi, isEmpty);
+    });
+
+    Future<void> themMucTieu(String id, {int? nhaId, String trangThai = 'pending'}) =>
+        db.goalDao.insert(GoalsCompanion.insert(
+          id: id,
+          idaccount: 10,
+          idhousehold: Value(nhaId),
+          name: 'Du lịch',
+          targetAmount: 5000000,
+          targetDate: DateTime(2027, 1, 1),
+          syncStatus: Value(trangThai),
+          updatedAt: moc,
+        ));
+    Future<Goal> mucTieu(String id) async => (await db.goalDao.getById(id))!;
+
+    test('mục tiêu của nhà bị ROLE_FORBIDDEN: gỡ khỏi máy, thoát hàng đợi, xin kéo toàn bộ một lần', () async {
+      await themMucTieu('g1', nhaId: 7);
+      await resolver.xuLy(_thatBai('g1', 'HOUSEHOLD_ROLE_FORBIDDEN', entity: SyncEntityType.goal));
+      final g = await mucTieu('g1');
+      expect(g.deletedAt, isNotNull, reason: 'bản sửa / xoá bị từ chối vĩnh viễn: gỡ khỏi máy để kéo toàn bộ trả bản server');
+      expect(g.syncStatus, 'synced');
+      expect(xinKeoLaiGoi, [10]);
+    });
+
+    test('mục tiêu của nhà bị UNIQUE_VIOLATION (hai máy Chủ cùng bật offline): gỡ, thoát hàng đợi, xin kéo', () async {
+      await themMucTieu('g1', nhaId: 7);
+      await resolver.xuLy(_thatBai('g1', 'UNIQUE_VIOLATION', entity: SyncEntityType.goal));
+      final g = await mucTieu('g1');
+      expect(g.deletedAt, isNotNull, reason: 'thiếu nhánh này thì máy đẩy sau thua chỉ mục duy nhất và hàng kẹt pending mãi');
+      expect(g.syncStatus, 'synced');
+      expect(xinKeoLaiGoi, [10]);
+    });
+
+    test('mục tiêu của nhà: phát lại cùng thất bại lần hai thì chỉ xin kéo một lần', () async {
+      await themMucTieu('g1', nhaId: 7);
+      final kq = _thatBai('g1', 'UNIQUE_VIOLATION', entity: SyncEntityType.goal);
+      await resolver.xuLy(kq);
+      await resolver.xuLy(kq);
+      expect(xinKeoLaiGoi, [10], reason: 'lượt hai thấy hàng đã gỡ + synced thì không làm gì');
+    });
+
+    test('mục tiêu RIÊNG bị UNIQUE_VIOLATION: không đụng, không xin kéo', () async {
+      await themMucTieu('g1');
+      await resolver.xuLy(_thatBai('g1', 'UNIQUE_VIOLATION', entity: SyncEntityType.goal));
+      final g = await mucTieu('g1');
+      expect(g.deletedAt, isNull, reason: 'chỉ hàng của nhà được đi cửa này');
+      expect(g.syncStatus, 'pending');
+      expect(xinKeoLaiGoi, isEmpty);
+    });
+
+    test('ví bị UNIQUE_VIOLATION: hành vi cũ, không đụng', () async {
+      await resolver.xuLy(_thatBai('vn', 'UNIQUE_VIOLATION', entity: SyncEntityType.wallet));
+      final v = (await db.walletDao.getById('vn'))!;
+      expect(v.isDeleted, isFalse, reason: 'chỉ mục tiêu mới được đi cửa UNIQUE_VIOLATION');
+      expect(xinKeoLaiGoi, isEmpty);
+    });
+
+    test('mục tiêu của nhà bị READ_ONLY: giữ pending (Chủ gia hạn là lên)', () async {
+      await themMucTieu('g1', nhaId: 7);
+      await resolver.xuLy(_thatBai('g1', 'HOUSEHOLD_READ_ONLY', entity: SyncEntityType.goal));
+      final g = await mucTieu('g1');
+      expect(g.deletedAt, isNull);
+      expect(g.syncStatus, 'pending');
       expect(xinKeoLaiGoi, isEmpty);
     });
 

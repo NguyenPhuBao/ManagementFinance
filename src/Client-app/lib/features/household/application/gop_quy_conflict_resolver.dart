@@ -81,7 +81,11 @@ class GopQuyConflictResolver {
     final canKeoLai = await _tuanTu(() async {
       var keoLai = false;
       for (final f in ketQua.failures) {
-        if (!kMaDayLoiNha.contains(f.code)) continue;
+        // Hai máy Chủ cùng bật mục tiêu offline: máy đẩy sau thua chỉ mục duy nhất của `goal`. Không thuộc `kMaDayLoiNha`, vì mã
+        // này cũng về từ hàng riêng; chỉ `_traBanServerMucTieu` xét `idhousehold`. Chu kỳ ấy vẫn tính là hỏng nên lượt kéo toàn
+        // bộ trễ 30 s; hàng thắng đã về ở lượt kéo tăng dần cùng chu kỳ.
+        final trungMucTieu = f.entity == SyncEntityType.goal && f.code == 'UNIQUE_VIOLATION';
+        if (!kMaDayLoiNha.contains(f.code) && !trungMucTieu) continue;
         final phien = _taiKhoanPhien();
         if (phien == null) continue;
         final vaiKhongDu = f.code == _maVaiKhongDu;
@@ -106,8 +110,10 @@ class GopQuyConflictResolver {
             if (vaiKhongDu && await _traBanServerVi(f.localId)) keoLai = true;
           case SyncEntityType.category:
             if (vaiKhongDu && await _traBanServerDanhMuc(f.localId)) keoLai = true;
-          // Mục tiêu, ngân sách: chưa xử lý — hàng ở lại `pending` với bậc chặn riêng (G).
-          case SyncEntityType.budget || SyncEntityType.bill || SyncEntityType.goal:
+          case SyncEntityType.goal:
+            if ((vaiKhongDu || trungMucTieu) && await _traBanServerMucTieu(f.localId)) keoLai = true;
+          // Ngân sách: chưa xử lý — hàng ở lại `pending` với bậc chặn riêng (G120 dòng 5).
+          case SyncEntityType.budget || SyncEntityType.bill:
             break;
         }
       }
@@ -154,6 +160,15 @@ class GopQuyConflictResolver {
     if (dm.deletedAt != null && dm.syncStatus == 'synced') return false;
     if (dm.deletedAt == null) await _db.categoryDao.softDelete(id);
     await _db.categoryDao.markSynced(id);
+    return true;
+  }
+
+  Future<bool> _traBanServerMucTieu(String id) async {
+    final g = await _db.goalDao.getById(id);
+    if (g == null || g.idhousehold == null) return false;
+    if (g.deletedAt != null && g.syncStatus == 'synced') return false;
+    if (g.deletedAt == null) await _db.goalDao.softDelete(id);
+    await _db.goalDao.markSynced(id);
     return true;
   }
 
