@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
-import '../../../../core/utils/phan_tram.dart';
+import '../../../../shared/theme/app_colors.dart';
 import '../../domain/muc_tieu_chung.dart';
 
-// Màu của Stitch `7b5f0f89…` (đợt 2): không trùng token nào của `AppColors`, nên giữ cục bộ trong tệp này.
+// Màu của Stitch `7b5f0f89…` (đợt 2): chữ đậm `#1A1A19` trùng `AppColors.primary` nên dùng token; các màu dưới không trùng
+// token nào, nên giữ cục bộ trong tệp này.
 const _xanh = Color(0xFF006E1C);
 const _xanhNhat = Color(0xFFE8F5E9);
 const _cam = Color(0xFFE65100);
 const _camNhat = Color(0xFFFFF3E0);
 const _nen = Color(0xFFEAE8E3);
 const _chuPhu = Color(0xFF454743);
-const _chuDam = Color(0xFF1A1A19);
 
 /// `12.000.000 / 20.000.000 đ`: ký hiệu `đ` chỉ ở vế sau, qua [CurrencyFormatter].
 String _chuTien(TienDoMucTieuChung t) =>
@@ -28,7 +28,7 @@ class _Thanh extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-        label: 'Tiến độ ${chuPhanTram(tienDo.tiLe)}',
+        label: 'Tiến độ ${chuPhanTramMucTieu(tienDo)}',
         child: ClipRRect(
           borderRadius: BorderRadius.circular(cao),
           child: SizedBox(
@@ -101,7 +101,7 @@ class TienDoGon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final phanTram = chuPhanTram(tienDo.tiLe);
+    final phanTram = chuPhanTramMucTieu(tienDo);
     const nho = TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: _chuPhu);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -124,7 +124,7 @@ class TienDoGon extends StatelessWidget {
                   children: [
                     Flexible(child: _SoMotDong(_chuTien(tienDo), nho)),
                     const SizedBox(width: 8),
-                    Text(phanTram, style: nho.copyWith(fontWeight: FontWeight.w700, color: _chuDam)),
+                    Text(phanTram, style: nho.copyWith(fontWeight: FontWeight.w600, color: AppColors.primary)),
                   ],
                 ),
                 if (tienDo.trangThai == TrangThaiMucTieuChung.quaHan) ...[
@@ -164,7 +164,7 @@ class KhoiMucTieuChiTiet extends StatelessWidget {
   Widget build(BuildContext context) {
     final quaHan = tienDo.trangThai == TrangThaiMucTieuChung.quaHan;
     final daDat = tienDo.trangThai == TrangThaiMucTieuChung.daDat;
-    const dam13 = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _chuDam);
+    const dam13 = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary);
     final canGop = tienDo.canGopMoiThang;
     return Column(
       key: const Key('khoi-muc-tieu'),
@@ -172,15 +172,15 @@ class KhoiMucTieuChiTiet extends StatelessWidget {
       children: [
         Row(
           children: [
-            if (quaHan) ...[const Icon(Icons.warning_amber_rounded, size: 14, color: _cam), const SizedBox(width: 4)],
+            if (quaHan) ...[const Icon(Icons.warning, size: 14, color: _cam), const SizedBox(width: 4)],
             Text(quaHan ? 'MỤC TIÊU (QUÁ HẠN)' : 'MỤC TIÊU',
                 maxLines: 1,
                 style: TextStyle(
                     fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: quaHan ? _cam : _chuPhu)),
             const SizedBox(width: 12),
             Expanded(
-              child: _SoMotDong('${_chuTien(tienDo)} — ${chuPhanTram(tienDo.tiLe)}',
-                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _chuDam),
+              child: _SoMotDong('${_chuTien(tienDo)} — ${chuPhanTramMucTieu(tienDo)}',
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
                   canPhai: true),
             ),
           ],

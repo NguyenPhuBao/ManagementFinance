@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/household/presentation/bloc/vi_chung_cubit.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../../helpers/du_lieu_nha_gia.dart';
@@ -75,7 +76,53 @@ class _NguonMucTre extends DuLieuNhaGia {
   Stream<List<GoalEntity>> theoDoiMucTieuChung(int idNha) => ctl.stream;
 }
 
+/// Luồng ví do ca điều khiển (luồng mục tiêu là bản giả mặc định: phát ngay một danh sách rỗng).
+class _NguonViTre extends DuLieuNhaGia {
+  final ctl = StreamController<List<WalletEntity>>();
+
+  @override
+  Stream<List<WalletEntity>> theoDoiViChung(int idNha) => ctl.stream;
+}
+
 void mucTieuMain() {
+  test('mục tiêu về TRƯỚC ví: daNap vẫn chờ ví', () async {
+    final nguon = _NguonViTre();
+    final c = ViChungCubit(nguon, 12);
+    addTearDown(() async {
+      await c.close();
+      await nguon.ctl.close();
+    });
+    await Future<void>.delayed(Duration.zero);
+    expect(c.state.daNap, isFalse, reason: 'mục tiêu đã về mà ví chưa: khối còn quay, không nói "chưa có ví chung nào"');
+    nguon.ctl.add([viChungGia('a', 'Tiền chợ', 100)]);
+    await Future<void>.delayed(Duration.zero);
+    expect(c.state.daNap, isTrue);
+    expect(c.state.vi, hasLength(1));
+  });
+
+  test('luồng ví hỏng: daNap vẫn đúng (mục tiêu đã về), ví rỗng', () async {
+    final nguon = _NguonViTre();
+    final c = ViChungCubit(nguon, 12);
+    addTearDown(() async {
+      await c.close();
+      await nguon.ctl.close();
+    });
+    nguon.ctl.addError(StateError('hỏng'));
+    await Future<void>.delayed(Duration.zero);
+    expect(c.state.daNap, isTrue, reason: 'luồng ví hỏng thì khối vẫn phải thôi quay');
+    expect(c.state.vi, isEmpty);
+  });
+
+  test('close huỷ luồng ví', () async {
+    final nguon = _NguonViTre();
+    final c = ViChungCubit(nguon, 12);
+    await Future<void>.delayed(Duration.zero);
+    expect(nguon.ctl.hasListener, isTrue);
+    await c.close();
+    expect(nguon.ctl.hasListener, isFalse, reason: 'luồng ví phải bị huỷ khi đóng cubit');
+    await nguon.ctl.close();
+  });
+
   test('daNap chỉ đúng khi CẢ HAI luồng đã phát lần đầu', () async {
     final nguon = _NguonMucTre(vi: [viChungGia('a', 'Tiền chợ', 100)]);
     final c = ViChungCubit(nguon, 12);

@@ -18,6 +18,16 @@ void main() {
         updatedAt: moc,
       );
 
+  test('chuPhanTramMucTieu: chưa đạt không lên 100%, đạt thì 100%, 60% giữ nguyên', () {
+    TienDoMucTieuChung tien(double soDu) =>
+        tienDoMucTieuChung(mucTieu: goal(han: DateTime(2026, 12, 31)), soDuVi: soDu, now: now);
+    expect(chuPhanTramMucTieu(tien(19920000)), '99%',
+        reason: 'tiLe .996 chưa đạt: round() cho 100 trong khi còn Còn thiếu, người dùng tưởng đã xong');
+    expect(chuPhanTramMucTieu(tien(20000000)), '100%');
+    expect(chuPhanTramMucTieu(tien(25000000)), '100%');
+    expect(chuPhanTramMucTieu(tien(12000000)), '60%');
+  });
+
   test('60 %, còn thiếu, ví dụ 8 triệu / 2 tháng = 4 triệu', () {
     final t = tienDoMucTieuChung(mucTieu: goal(han: DateTime(2026, 12, 31)), soDuVi: 12000000, now: now);
     expect(t.tiLe, closeTo(.6, 1e-9));

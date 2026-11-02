@@ -1,3 +1,5 @@
+import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
+import 'package:flowmoney/features/household/presentation/widgets/tien_do_muc_tieu.dart';
 import 'package:flowmoney/features/household/data/nha_store.dart';
 import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
@@ -355,6 +357,27 @@ void main() {
     await t.tap(find.widgetWithText(OutlinedButton, 'Tạo ví chung'));
     await t.pumpAndSettle();
     expect(find.text('FORM-TAO'), findsOneWidget);
+  });
+
+  testWidgets('Chỉ xem: dòng ví có mục tiêu thì có thanh tiến độ, ví không có thì không (dây nối mucTieu của trang)', (t) async {
+    final nguon = await moVi(t, vi: [tienCho, dienNuoc], vai: 'Viewer');
+    nguon.datMucTieu([
+      GoalEntity(
+        id: 'g-a',
+        idaccount: 18,
+        idhousehold: 12,
+        name: 'Mục tiêu',
+        targetAmount: 8000000,
+        targetDate: DateTime(2099, 12, 31),
+        walletId: 'a',
+        updatedAt: DateTime(2026, 11, 1),
+      ),
+    ]);
+    await t.pumpAndSettle();
+    expect(find.descendant(of: find.byKey(const Key('dong-vi-a')), matching: find.byType(TienDoGon)), findsOneWidget,
+        reason: 'trang phải truyền v.mucTieu vào KhoiViChung; mọi vai đều thấy tiến độ');
+    expect(find.descendant(of: find.byKey(const Key('dong-vi-b')), matching: find.byType(TienDoGon)), findsNothing);
+    expect(find.text('3.200.000 / 8.000.000 đ'), findsOneWidget);
   });
 
   testWidgets('Thành viên: thấy ví và tổng quỹ, KHÔNG có nút Tạo ví chung', (t) async {

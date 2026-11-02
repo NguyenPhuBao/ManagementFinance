@@ -25,8 +25,24 @@ void main() {
 
   Future<void> dung(WidgetTester t, KhoiViChung k) async {
     dat360(t);
-    await t.pumpWidget(MaterialApp(home: Scaffold(body: SingleChildScrollView(child: k))));
+    await t.pumpWidget(bocTrangNha(Scaffold(body: SingleChildScrollView(child: k)), idaccount: 18));
   }
+
+  testWidgets('dongHo sau hạn thì dòng ví có nhãn Quá hạn', (t) async {
+    await dung(
+      t,
+      KhoiViChung(
+        vi: [viChungGia('a', 'Tiền chợ', 12000000)],
+        tongQuy: 12000000,
+        coTheTao: true,
+        mucTieu: {'a': _muc('a')},
+        dongHo: () => DateTime(2027, 1, 5),
+      ),
+    );
+    final dong = find.byKey(const Key('dong-vi-a'));
+    expect(find.descendant(of: dong, matching: find.text('Quá hạn')), findsOneWidget,
+        reason: 'đồng hồ tiêm sau hạn 31/12/2026: phải dùng dongHo, không đọc giờ máy');
+  });
 
   testWidgets('ví có mục tiêu có thanh, ví không có thì không; ví lưu trữ vẫn hiện thanh', (t) async {
     await dung(

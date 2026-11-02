@@ -3,6 +3,7 @@ import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
 import 'package:flowmoney/features/household/domain/muc_tieu_chung.dart';
 import 'package:flowmoney/features/household/presentation/widgets/tien_do_muc_tieu.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../../helpers/font_that.dart';
@@ -29,7 +30,26 @@ Color _mauDay(WidgetTester t) => t.widget<ColoredBox>(find.byKey(const Key('tien
 
 Future<void> _dung(WidgetTester t, Widget w) async {
   dat360(t);
-  await t.pumpWidget(MaterialApp(home: Scaffold(body: Padding(padding: const EdgeInsets.all(16), child: w))));
+  await t.pumpWidget(bocTrangNha(Scaffold(body: Padding(padding: const EdgeInsets.all(16), child: w)), idaccount: 18));
+}
+
+/// Phần đầy / bề rộng thanh (cùng ClipRRect bọc cả hai).
+double _doDay(WidgetTester t) {
+  final day = find.byKey(const Key('tien-do-day'));
+  final thanh = find.ancestor(of: day, matching: find.byType(ClipRRect));
+  return t.getSize(day).width / t.getSize(thanh).width;
+}
+
+/// Chữ số `a / b` không bị cụt: bọc `FittedBox`, không quá số dòng, và bề rộng HIỂN THỊ (sau co) nằm trong [rong].
+void _kiemSoKhongCut(WidgetTester t, double rong) {
+  final chu = find.textContaining(' / ');
+  expect(chu, findsOneWidget);
+  expect(find.ancestor(of: chu, matching: find.byType(FittedBox)), findsOneWidget,
+      reason: 'số 13 chữ số rộng hơn chỗ: phải co bằng FittedBox, không cụt');
+  expect((t.renderObject(chu) as RenderParagraph).didExceedMaxLines, isFalse, reason: 'không bị cắt chữ');
+  final hienThi = t.getBottomRight(chu).dx - t.getTopLeft(chu).dx;
+  expect(hienThi, lessThanOrEqualTo(rong), reason: 'bề rộng hiển thị phải nằm trong chỗ cho phép');
+  expect(t.getSize(chu).width, greaterThan(rong), reason: 'tiền đề: bề rộng tự nhiên vượt chỗ, nên phải co');
 }
 
 void main() {
@@ -41,6 +61,23 @@ void main() {
       expect(find.text('12.000.000 / 20.000.000 đ'), findsOneWidget);
       expect(find.text('60%'), findsOneWidget);
       expect(_mauDay(t), const Color(0xFF006E1C));
+      expect(_doDay(t), closeTo(.6, .001), reason: 'phần đầy phải đúng 60 % bề rộng thanh');
+    });
+
+    testWidgets('độ đầy: 0 % thì phần đầy rộng 0, đạt thì kín thanh', (t) async {
+      await _dung(t, TienDoGon(tienDo: _tienDo(soDu: 0)));
+      expect(_doDay(t), 0, reason: '0 % không được vẽ thanh đầy');
+      await _dung(t, TienDoGon(tienDo: _tienDo(soDu: 25000000)));
+      expect(_doDay(t), closeTo(1, .001), reason: 'đạt (kể cả vượt) thì thanh kín, không tràn');
+    });
+
+    testWidgets('99,6 % chưa đạt: chữ 99%, không 100%, Semantics cũng 99%', (t) async {
+      final sem = t.ensureSemantics();
+      await _dung(t, TienDoGon(tienDo: _tienDo(soDu: 19920000)));
+      expect(find.text('99%'), findsOneWidget);
+      expect(find.text('100%'), findsNothing, reason: 'chưa đạt mà hiện 100% là nói dối khi còn thiếu tiền');
+      expect(find.bySemanticsLabel('Tiến độ 99%'), findsOneWidget);
+      sem.dispose();
     });
 
     testWidgets('đạt: nhãn Đã đạt mục tiêu, 100%, không còn dòng a / b', (t) async {
@@ -61,8 +98,8 @@ void main() {
       await _dung(t, SizedBox(width: 200, child: TienDoGon(tienDo: _tienDo(soDu: 1234567890123, dich: 9999999999999))));
       expect(t.takeException(), isNull);
       final chu = find.textContaining(' / ');
-      expect(chu, findsOneWidget);
       expect(t.getSize(chu).height, lessThan(20), reason: 'Text xuống dòng không báo tràn: đo chiều cao một dòng cỡ 11');
+      _kiemSoKhongCut(t, 200);
     });
   });
 
@@ -85,12 +122,20 @@ void main() {
       expect(find.text('MỤC TIÊU (QUÁ HẠN)'), findsOneWidget);
       expect(find.text('Đã hết hạn ngày 31/10/2026'), findsOneWidget);
       expect(find.text('Thời hạn'), findsOneWidget);
+      expect(find.text('Còn thiếu'), findsOneWidget, reason: 'quá hạn vẫn còn thiếu tiền');
+      expect(find.text('Còn lại'), findsNothing, reason: 'hạn đã qua: không còn "n ngày"');
       expect(_mauDay(t), const Color(0xFFE65100));
     });
 
     testWidgets('quá hạn: không có dòng Cần góp', (t) async {
       await _dung(t, KhoiMucTieuChiTiet(tienDo: _tienDo(han: DateTime(2026, 10, 31))));
       expect(find.text('Cần góp'), findsNothing, reason: 'quá hạn thì không còn câu cần góp mỗi tháng');
+    });
+
+    testWidgets('99,6 % chưa đạt: dòng a / b — 99%, không 100%', (t) async {
+      await _dung(t, KhoiMucTieuChiTiet(tienDo: _tienDo(soDu: 19920000)));
+      expect(find.text('19.920.000 / 20.000.000 đ — 99%'), findsOneWidget);
+      expect(find.text('Còn thiếu'), findsOneWidget);
     });
 
     testWidgets('đạt: Đã đạt mục tiêu, không Còn thiếu, không Cần góp', (t) async {
@@ -104,8 +149,10 @@ void main() {
       await _dung(t, KhoiMucTieuChiTiet(tienDo: _tienDo(soDu: 1234567890123, dich: 9999999999999)));
       expect(t.takeException(), isNull);
       final chu = find.textContaining(' / ');
-      expect(chu, findsOneWidget);
       expect(t.getSize(chu).height, lessThan(20), reason: 'dòng a / b — % cỡ 12 phải một dòng, co bằng FittedBox');
+      _kiemSoKhongCut(t, 270);
+      expect(find.textContaining('Cần góp'), findsOneWidget);
+      expect(find.textContaining('khoảng', findRichText: true), findsOneWidget);
     });
   });
 }

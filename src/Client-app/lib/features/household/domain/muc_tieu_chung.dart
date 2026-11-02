@@ -4,6 +4,7 @@ library;
 
 import 'dart:math' as math;
 
+import '../../../core/utils/phan_tram.dart';
 import '../../goal/data/models/goal_entity.dart';
 import '../../goal/domain/goal_auto_deposit.dart' show mocThuN;
 
@@ -74,6 +75,10 @@ TienDoMucTieuChung tienDoMucTieuChung({
     han: g.targetDate,
   );
 }
+
+/// Chữ phần trăm của thẻ tiến độ. Chưa đạt thì không bao giờ lên `100%` (99,6 % làm tròn thành 100 trong khi còn *Còn thiếu*).
+String chuPhanTramMucTieu(TienDoMucTieuChung t) =>
+    t.trangThai == TrangThaiMucTieuChung.daDat ? chuPhanTram(1) : chuPhanTram(math.min(t.tiLe, .99));
 
 /// Mục tiêu sống theo ví. Hai hàng cùng ví (hai máy Chủ cùng bật offline, trước khi resolver gỡ hàng thua): hàng mới nhất.
 Map<String, GoalEntity> mucTieuTheoVi(Iterable<GoalEntity> ds) {
