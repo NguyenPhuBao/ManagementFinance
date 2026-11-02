@@ -15,32 +15,8 @@ class AppConstants {
         phatHanh: kReleaseMode,
       );
 
-  // Web/Desktop: 127.0.0.1 (xem lý do bên dưới). Android emulator: 10.0.2.2.
-  static String get _macDinh {
-    // ── LOCAL DEV ──────────────────────────────────────────────────────────
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      // ⚠️ `10.0.2.2` là địa chỉ host riêng của **Android emulator**; MÁY THẬT
-      // route nó ra ngoài mạng và không tới đâu cả. Để chạy backend dev với
-      // máy thật, cách rẻ nhất là `adb reverse tcp:3000 tcp:3000` rồi build với
-      // `--dart-define=API_BASE_URL=http://127.0.0.1:3000/api` — cổng 3000 trên loopback của máy được
-      // adb chuyển tiếp qua cáp USB. Đã dùng lối ấy cho lượt đo P3 Task 9
-      // (2026-09-22): nó không cần hai máy cùng Wi-Fi, thứ hoá ra không đúng
-      // ngay cả khi hai máy nối Wi-Fi **trùng tên** — chúng nằm ở hai dải
-      // khác nhau (192.168.1.x và 192.168.98.x) vì là hai thiết bị phát.
-      return 'http://10.0.2.2:3000/api'; // Android emulator → host machine
-    }
-    // Dùng 127.0.0.1 chứ KHÔNG dùng `localhost`: trên Windows, `localhost`
-    // thường phân giải thành ::1 (IPv6) trước, trong khi backend Express nghe
-    // ở 0.0.0.0:3000 — tức CHỈ IPv4. Trình duyệt nối tới ::1, bị từ chối ngay
-    // ở tầng TCP, và Dio báo lại bằng thông báo "XMLHttpRequest onError" kèm
-    // một đoạn giải thích về CORS gây hiểu nhầm — trong khi CORS hoàn toàn
-    // bình thường. 127.0.0.1 luôn tới đúng socket IPv4 nên chạy được ở mọi máy.
-    //
-    // Vẫn MỞ TRANG bằng http://localhost:9090 — CORS_ORIGIN phía backend đang
-    // là `http://localhost:9090`, mở bằng 127.0.0.1:9090 sẽ bị CORS chặn thật.
-    return 'http://127.0.0.1:3000/api'; // Web / Desktop
-    // ── CLOUD (Render): không sửa ở đây — build với --dart-define=API_BASE_URL=https://managementfinance.onrender.com/api
-  }
+  // Mặc định kết nối Backend Cloud Render (hoạt động thật):
+  static String get _macDinh => 'https://managementfinance.onrender.com/api';
 
   static const Duration connectionTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);

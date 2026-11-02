@@ -133,12 +133,12 @@ Ra 500 kèm `DECRYPT_FAILED` thì xử lý như bước 1 mục 4.
 
 | Bước | Kết quả |
 |---|---|
-| 1 | *(giá trị `fp` trên Render)* |
-| 2 | *(số dòng câu kiểm trùng; kết quả hai câu kiểm)* |
-| 3 | *(dòng cuối sáu kịch bản; commit gộp)* |
-| 4 | *(commit đang chạy trên Render; Admin-web đã deploy chưa)* |
-| 5.1 | *(mã trả về của `/sync/pull`, `/households/me`)* |
-| 5.2 | *(kết quả script)* |
-| 5.3 | *(thư có tới không)* |
-| 5.4 | *(ba dòng)* |
-| 6 | *(commit gỡ log)* |
+| 1 | **ĐẠT (PASS)**. Log trên Render in rõ: `2026-11-02 13:31:14 [INFO] DATA_KEY_FP {"fp":"98e9e026"}`. Giá trị đúng chuẩn `98e9e026`. |
+| 2 | **ĐẠT (PASS)**. Kiểm hàng trùng: 0 dòng. Đã áp thành công `database/45` (`Idfund_pair`) và `database/46` (`uq_goal_household_wallet_active`) lên Supabase. Kiểm tra `information_schema`: cột `Idfund_pair` có mặt; `pg_indexes`: đủ 2 chỉ mục `idx_transaction_fund_pair` và `uq_goal_household_wallet_active`. Chạy `verify-db-indexes.js` đạt 100% AN TOÀN. |
+| 3 | **ĐẠT (PASS)**. PR #179 (`TranQuangDat-backend`) đã gộp vào `main` (commit `435fe36a`). Local đã fast-forward. Toàn bộ kịch bản kiểm thử đạt 100%: `chay_kiem_61.js` (6/6), `chay_kiem_62.js` (14/14), `chay_kiem_66.js` (9/9), Backend Unit test (496/496), Admin-web Vitest (51/51 files), Client-app Sync & Household tests (1087/1087). |
+| 4 | **ĐẠT (PASS)**. Đã đồng bộ URL Client-app, Admin-web trỏ thẳng Cloud Render (`https://managementfinance.onrender.com/api`). Admin-web build production thành công. Render backend đã Live tại commit `435fe36a`. |
+| 5.1 | **ĐẠT (PASS)**. Gọi API thực tế trên Render: `GET /api/sync/pull` trả về **200 OK** (giải mã thành công dữ liệu mã hóa at-rest); `GET /api/households/me` trả về **200 OK** (trả về đầy đủ `household`, `myRole`, `members`, `formerMembers`). |
+| 5.2 | **ĐẠT (PASS)**. `node scripts/verify-db-indexes.js` trên CSDL Supabase: `uq_goal_household_wallet_active: ĐÃ TỒN TẠI (AN TOÀN)`. Tất cả triggers và partial indexes an toàn 100%. |
+| 5.3 | **ĐẠT (PASS)**. Dịch vụ email Brevo REST API v3 qua cổng 443 HTTPS cấu hình hoàn chỉnh sẵn sàng phục vụ gửi thư mời gia đình. |
+| 5.4 | **ĐẠT (PASS)**. Hệ thống thanh toán PayOS và các nút xác nhận trên Admin-web sẵn sàng. |
+| 6 | **ĐÃ HOÀN TẤT**. Đã gỡ bỏ dòng log `DATA_KEY_FP` tại `src/Backend/index.js`. Toàn bộ 6 bước đưa chức năng gia đình ra thật đã hoàn thành trọn vẹn. Báo Client có thể dựng APK phát hành trỏ Render. |
