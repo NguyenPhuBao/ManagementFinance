@@ -84,6 +84,61 @@ void main() {
         soDuVi: soDuVi,
       ).pullFromBackend(toi);
 
+  Future<void> keoMucTieu(String id, {int? nha, num dich = 1000}) => ApDuLieuKeoVe(
+        dioClient: _Client({
+          'goals': [
+            {
+              'idgoal': id,
+              'idaccount': toi,
+              if (nha != null) 'idhousehold': nha,
+              'idwallet': 'v',
+              'name': 'server',
+              'target_amount': dich,
+              'current_amount': 0,
+              'target_date': ngay.toUtc().toIso8601String(),
+              'update_at': ngay.toUtc().toIso8601String(),
+            }
+          ],
+        }),
+        db: db,
+        soDuVi: soDuVi,
+      ).pullFromBackend(toi);
+
+  Future<void> themMucTieu(String id, {int? nha, required bool xoa, double dich = 1000}) =>
+      db.goalDao.insert(GoalsCompanion.insert(
+        id: id,
+        idaccount: toi,
+        name: id,
+        targetAmount: dich,
+        targetDate: ngay,
+        idhousehold: Value(nha),
+        walletId: const Value('v'),
+        isDeleted: Value(xoa),
+        deletedAt: Value(xoa ? ngay : null),
+        syncStatus: const Value('pending'),
+        updatedAt: ngay,
+      ));
+
+  test('mục tiêu NHÀ vừa tắt (pending) trong lúc lượt kéo mang bản sống về: lệnh tắt thắng, vẫn pending', () async {
+    await themMucTieu('n', nha: 5, xoa: true);
+    await keoMucTieu('n', nha: 5);
+    final g = (await db.goalDao.getById('n'))!;
+    expect(g.isDeleted, isTrue, reason: 'Chủ đã xác nhận Bỏ mục tiêu: lượt kéo đè là mục tiêu sống lại im lặng');
+    expect(g.syncStatus, 'pending');
+  });
+
+  test('mục tiêu NHÀ vừa sửa số tiền (pending): số mới giữ nguyên qua lượt kéo', () async {
+    await themMucTieu('n', nha: 5, xoa: false, dich: 5000);
+    await keoMucTieu('n', nha: 5, dich: 1000);
+    expect((await db.goalDao.getById('n'))!.targetAmount, 5000);
+  });
+
+  test('mục tiêu RIÊNG pending vẫn bị bản server ghi đè như cũ', () async {
+    await themMucTieu('r', xoa: true);
+    await keoMucTieu('r');
+    expect((await db.goalDao.getById('r'))!.isDeleted, isFalse, reason: 'không đổi hành vi mục tiêu riêng');
+  });
+
   test('hàng đã xoá mềm và lệnh xoá còn pending: kéo về bản sống KHÔNG làm nó sống lại, vẫn pending để đẩy', () async {
     await themGd('a', xoa: true, trangThai: 'pending');
     await keo(['a']);

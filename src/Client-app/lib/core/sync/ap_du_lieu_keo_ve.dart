@@ -357,9 +357,12 @@ class ApDuLieuKeoVe {
                   [];
           if (goals.isNotEmpty) {
             final companions = goals.map((g) => companionMucTieuKeoVe(g, accountId)).toList();
-            await _db.goalDao.upsertAll(companions);
+            // Hàng mục tiêu của NHÀ còn `pending` (Chủ vừa tắt / sửa, lệnh chưa lên) THẮNG bản server — cùng lý lẽ giao dịch
+            // ở trên; mục tiêu riêng không đổi (`upsertKeoVe`).
+            final giu = await _db.goalDao.upsertKeoVe(companions);
             debugPrint(
-                '[SyncEngine] Pulled & Saved ${goals.length} goals into SQLite local.');
+                '[SyncEngine] Pulled & Saved ${goals.length - giu} goals into SQLite local'
+                '${giu == 0 ? '' : ' (giữ lại $giu thay đổi mục tiêu nhà chưa đẩy)'}.');
           }
 
           // Mốc mới — **G67**. Server từ migration 20 trả `maxSince` (giờ-server

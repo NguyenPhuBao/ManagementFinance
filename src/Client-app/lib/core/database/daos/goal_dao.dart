@@ -93,6 +93,28 @@ class GoalDao extends DatabaseAccessor<AppDatabase> with _$GoalDaoMixin {
     await batch((b) => b.insertAllOnConflictUpdate(goals, entries));
   }
 
+  /// Ghi mục tiêu kéo về, GIỮ thay đổi còn chờ đẩy của hàng thuộc NHÀ (khuôn `TransactionDao.upsertKeoVe`). Chủ bấm *Bỏ mục
+  /// tiêu* hay đổi số tiền đúng lúc một lượt kéo đang bay (hoặc lượt đẩy hỏng mà lượt kéo tốt): bản server ghi đè là mục tiêu
+  /// sống lại / số cũ quay về, kèm `synced` — lệnh của Chủ mất im lặng. Hàng nhà `pending` ở lại, lượt đẩy sau mang nó đi.
+  /// Mục tiêu RIÊNG không đổi hành vi (ghi đè không điều kiện như trước).
+  ///
+  /// Đọc và ghi cùng một giao tác; giao trong Dart, không `isIn` theo lô (lô dài hơn trần tham số SQLite thì ném). Trả số hàng
+  /// được giữ lại.
+  Future<int> upsertKeoVe(List<GoalsCompanion> entries) => transaction(() async {
+        final nhaChoDay = {
+          for (final h in await (select(goals)
+                ..where((t) => t.idhousehold.isNotNull() & t.syncStatus.equals('pending')))
+              .get())
+            h.id,
+        };
+        final ghi = [
+          for (final c in entries)
+            if (!nhaChoDay.contains(c.id.value)) c,
+        ];
+        await upsertAll(ghi);
+        return entries.length - ghi.length;
+      });
+
   /// [idhousehold]: nhà đang ở — thêm hàng của nhà do người khác ghi (spec gia đình 2026-11-01 mục 7.1).
   Future<List<Goal>> getPending([int? idaccount, int? idhousehold]) {
     return (select(goals)
