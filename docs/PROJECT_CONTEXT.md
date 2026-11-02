@@ -617,7 +617,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-01)
 
-### 🔀 Gộp `main` @ `1c8a77c8` (2026-11-02, PR #178, commit gộp `bb895d12`, CHƯA push): backend báo xong đơn 61, 62; client soát
+### 🔀 Gộp `main` @ `1c8a77c8` (2026-11-02, PR #178, commit gộp `bb895d12`, đã push): backend báo xong đơn 61, 62; client soát
 
 Vào cả `TranQuangDat` lẫn `TranQuangDat-backend` (nhánh phụ gộp `TranQuangDat`, mã 61, 62 đã trùng từ trước; chỉ thêm Admin-web, dòng log `index.js`, tài liệu; backend đang chạy không cần khởi động lại). Cây `src/Client-app` không đổi hash nên không chạy lại `flutter test`; check-ignore không khớp; không migration.
 
