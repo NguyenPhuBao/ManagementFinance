@@ -626,13 +626,13 @@ Kế hoạch `docs/superpowers/plans/2026-11-02-gia-dinh-dot-2-muc-tieu-chung.md
 - **Dữ liệu:** hàng `goal` có `idhousehold` + `walletId`; tiến độ chiếu số dư ví qua `GoalEntity.progress`, không đọc `currentAmount` (`household/domain/muc_tieu_chung.dart`). Schema giữ **v33**, payload giữ 23 khoá. `GoalDao.getAll` / `watchAll` vẫn lọc `idhousehold IS NULL`.
 - **Backend:** `database/46_add_goal_household_wallet_unique.sql` đã áp `flowmoney_kiem_thu`, `PersonFinance` (phép đích danh, sao lưu `D:\FlowMoney-saoluu\PersonFinance-truoc-46-2026-11-02.dump`, 0 hàng trùng trước khi áp); **chưa Supabase**. Kịch bản `chay_kiem_gia_dinh_2.js` **32 / 32**, `chay_kiem.js` **50 / 50**.
 - ⚠️ **Bốn chốt hỏng im lặng (spec 17):** (1) tắt rồi bật lại khi lệnh xoá còn `pending` phải **hồi sinh** hàng: server chạy lệnh tạo trước lệnh xoá nên hàng mới vướng chỉ mục; (2) `purgeOlderThan` phải truyền `giuLoai` hai loại mục tiêu, thiếu là *"đã đạt"* báo lại mỗi 90 ngày; (3) `loadMucTieuNha` trả rỗng lúc `syncing`, thiếu là người mới vào nhận mốc cũ; (4) lượt kéo không đè hàng mục tiêu của nhà đang `pending` (`GoalDao.upsertKeoVe`) và `conflict` trên hàng ấy phải xin kéo toàn bộ.
-- **Số đo (phiên chính, Head `925c950c`):** `flutter test` **9487 pass / 10 skip, 0 fail** (mốc trước đợt 9358 / 10); `flutter analyze` **20**; schema **v33**. Mô phỏng hai máy qua Pull thật: 19 xanh, 1 đỏ đúng khe G122 dòng 2.
+- **Số đo (phiên chính, Head `925c950c`):** `flutter test` **9487 pass / 10 skip, 0 fail** (mốc trước đợt 9358 / 10); `flutter analyze` **20**; schema **v33**. Mô phỏng hai máy qua Pull thật: 19 xanh, 1 đỏ đúng khe G122 dòng 2. ⚠️ Commit cuối `925c950c` (resolver xin kéo toàn bộ khi `conflict` trên mục tiêu của nhà) **chưa qua soát độc lập**, chỉ có test + mô phỏng; soát hẹp trước khi push.
 - **Nợ:** **G122** mới (khe đồng bộ, chưa tái hiện trên máy); G121 dòng 12 đóng; G120 dòng 5 hẹp lại còn ngân sách. Đơn mới **65** (`CAN-LAM/VIEC_BACKEND_CON_LAI.md`).
 - **Đo (2026-11-02, bản debug, backend worktree cổng 3001 trỏ `PersonFinance`, máy ảo tài khoản 30 Chủ nhà + Realme `dat` Thành viên, nhà thử 9, đã giải tán; APK `b3f69109`, các mục đánh dấu ² đo lại trên `7a7bf1b1`; APK cuối cài lên hai máy là `925c950c`, SHA-1 `5fd9865b…`, chỉ khác ở resolver và test):**
 
 | # | Kịch bản | Kết quả đo |
 |---|---|---|
-| 1 | Chủ bật mục tiêu 1.000.000 đ | Đạt: 0 % hai máy, hàng lên server đúng `Idhousehold`, `Idwallet`, `Thành viên` có khối không nút sửa |
+| 1 | Chủ bật mục tiêu 1.000.000 đ | Đạt: 0 % hai máy, hàng lên server đúng `Idhousehold`, `Idwallet` |
 | 2 | Thành viên góp 300.000 đ (tiền mặt trao tay) | Đạt: 30 % hai máy, cả hai nhận *"QuyDo đã được 25% mục tiêu"* |
 | 3 | Thành viên chi 100.000 đ | Đạt: lùi 20 %, không báo lại |
 | 4 | Góp +600.000 rồi +200.000 đ | Đạt: 80 % chỉ báo *75%*; đủ thì *"đã đạt mục tiêu"* hai máy, thanh đầy, nhãn |
