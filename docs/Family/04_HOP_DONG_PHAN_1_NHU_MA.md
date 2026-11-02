@@ -143,6 +143,7 @@ Ngoài bảng chỉ còn `HOUSEHOLD_ERROR` 500 (dự phòng trong mọi `catch` 
   - `isNewTx = operation !== 'delete' && !existingRecord` (sửa lỗi có từ trước: trước đó nhánh "mới" bắt cả op `delete`; chốt mới dựa vào nhánh ấy).
   - Kịch bản `CAN-LAM/KIEM-THU/chay_kiem_gia_dinh_2.js` 21 / 21 và hồi quy `chay_kiem.js` 50 / 50 (CSDL `flowmoney_kiem_thu`, đo trong đợt). Ngoài phạm vi, ghi lại: chuỗi khác rỗng khác mã cũ vẫn ghi đè ở `sync.repository.js:519` (chỉ người ghi của hàng; client không có đường này); `sync.service.js:147` `isNewWallet` còn `operation === 'create' || !existingRecord` (client luôn gửi `update`, chưa gặp).
   - Server **chưa** chốt phạm vi danh mục cho khoản của nhà — đơn 63.2.
+- **Mục tiêu chung (đợt 2, 2026-11-02, nhánh dự phòng):** hàng `goal` có `Idhousehold` và `Idwallet` = ví chung; `current_amount` gửi 0, không ai đọc. `database/46`: chỉ mục duy nhất `uq_goal_household_wallet_active` trên `("Idwallet") WHERE "Idhousehold" IS NOT NULL AND "Delete_at" IS NULL`, vi phạm ⇒ `UNIQUE_VIOLATION`. Thành viên ghi ⇒ `HOUSEHOLD_ROLE_FORBIDDEN`; trỏ ví ngoài phạm vi ⇒ `HOUSEHOLD_SCOPE_MISMATCH`; Chủ mới xoá được hàng Chủ cũ tạo. ⚠️ Trong một lô, lệnh tạo / sửa chạy trước lệnh xoá nên tắt rồi bật lại cùng lô vướng chỉ mục: client hồi sinh hàng, không tạo hàng mới. Server không hồi sinh hàng đã có `Delete_at` khi nhận `is_deleted: false`. Kịch bản `chay_kiem_gia_dinh_2.js` có tám ca `3`.
 
 ## 4. Đơn backend viết cho client (`docs/superpowers/client-app/CAN-LAM/GIA_DINH_NEN_MONG.md`) — chỗ không làm theo
 

@@ -10,6 +10,7 @@
 | 52.4 | Chưa so khoá mã hoá trên Render. Khác khoá thì kéo toàn bộ trả 500 | **CAO** | Tay, cần quyền Render |
 | 61.2 | Gemini quá 60 giây: luồng chat treo, không có `done` | **CAO** | Bản vá |
 | 63.1 | Áp `database/45_add_transaction_fund_pair.sql` lên Supabase trước khi gộp / triển khai nhánh gia đình 1A (thiếu cột thì mọi truy vấn `transaction` ném `P2022`) | **CAO** | Chạy SQL luỹ đẳng, có câu kiểm |
+| 65.1 | Áp `database/46_add_goal_household_wallet_unique.sql` lên Supabase cùng lúc 63.1, khi gộp / triển khai nhánh gia đình; thêm chỉ mục vào `scripts/verify-db-indexes.js` | **CAO** | Chạy SQL luỹ đẳng, có câu kiểm |
 | 62.1 | Tạo đơn rơi về tài khoản MB cá nhân ghi cứng khi PayOS không trả thông tin nhận tiền | **CAO** | Bản vá + sửa tay Admin-web, tài liệu |
 | 62.2 | Đường JIT bỏ qua số tiền và trạng thái `UNDERPAID`: webhook không tới thì chuyển thiếu thành hết hạn, chuyển thừa thành `PAID` | VỪA | Bản vá |
 | 61.3 | Người dùng bấm Dừng bị đếm là lỗi LLM, có thể đóng chatbot của mọi tài khoản | VỪA | Bản vá |
@@ -24,7 +25,7 @@
 | 62.5 | `paid_at` đọc giờ PayOS theo múi giờ của máy chủ | THẤP | Bản vá |
 | 60.3 | Ba ca test nói nhiều hơn điều chúng chứng minh | THẤP | Tay, tuỳ chọn |
 
-**Thứ tự đề xuất:** áp 63.1 (cột `Idfund_pair`) **trước mọi lần gộp / triển khai nhánh gia đình**; rồi áp bản vá một lần cho 61.1–61.4, chạy kịch bản, rồi làm 52.4 và 61.5. Áp bản vá đơn 62 thành một lượt riêng (hai bản vá không đụng chung tệp), rồi làm phần tay của 62.1 và trả lời 62.6.
+**Thứ tự đề xuất:** áp 63.1 (cột `Idfund_pair`) và 65.1 (chỉ mục mục tiêu chung) **trước mọi lần gộp / triển khai nhánh gia đình**; rồi áp bản vá một lần cho 61.1–61.4, chạy kịch bản, rồi làm 52.4 và 61.5. Áp bản vá đơn 62 thành một lượt riêng (hai bản vá không đụng chung tệp), rồi làm phần tay của 62.1 và trả lời 62.6.
 
 ---
 
@@ -509,6 +510,27 @@ SELECT indexname FROM pg_indexes WHERE tablename = 'transaction' AND indexname =
 **Đề nghị (backend chọn một, báo lại):** (a) thêm vào `validateEntityScope` một nhánh cho `payload.idcategory` / `categoryId`: danh mục phải là hàng của đúng nhà đó hoặc danh mục mặc định, lệch thì `HOUSEHOLD_SCOPE_MISMATCH` (mã đã có trong `_permanentCodes` của client, không cần thêm mã); hoặc (b) giữ như hiện tại và ghi rõ vào `01` mục 3 rằng khoản nhà được dùng danh mục riêng (client sẽ thôi cấm ở 1B). Client nghiêng về (a). **Trước khi sửa** hãy chạy một ca thật (Thành viên đẩy khoản có `idhousehold` mà `idcategory` là danh mục riêng) để biết server trả gì — client chưa chạy ca ấy.
 
 **Cập nhật 2026-11-02 (client làm (a) trên nhánh dự phòng `TranQuangDat-backend`, commit `6684cc6c`; phần gộp sang backend chính vẫn là việc của bạn).** Nhánh này thêm vào `validateEntityScope` đúng nhánh `payload.idcategory` / `categoryId` / `idCategory`: danh mục tìm thấy mà `Idhousehold` khác phạm vi đích (`Number(catHh || 0) !== Number(targetHhId || 0)`) ⇒ `HOUSEHOLD_SCOPE_MISMATCH`. ⚠️ Khác (a) ở một chỗ: **không có ngoại lệ "danh mục mặc định"** — khuôn mặc định có `Idhousehold` trống nên khoản của nhà trỏ thẳng khuôn bị từ chối, và đúng như vậy với client 1B (bản sao của nhà do server tạo, client chọn từ cây của nhà). Khối này chạy cho mọi thao tác đi qua `validateEntityScope` (giao dịch, và theo mã cả ngân sách, hoá đơn); câu lỗi nói *"giao dịch và danh mục"*. Kịch bản `KIEM-THU/chay_kiem_gia_dinh_2.js` có thêm ca (24 / 24 trên `flowmoney_kiem_thu`, hồi quy `chay_kiem.js` 50 / 50, đo trong đợt 1B). **Còn thiếu / hỏng, ghi ra để bạn quyết:** (1) hàng nhà **cũ** trỏ danh mục riêng cũng không **xoá** được vì `validateEntityScope` chạy trước nhánh xoá — chưa có hàng thật nào, client đọc log `HOUSEHOLD_SCOPE_MISMATCH` ở buổi đo; có thì xét cho xoá bỏ qua kiểm; (2) kịch bản chưa có ca ngân sách nhà trỏ danh mục riêng và khoản nhà trỏ khuôn mặc định. **Xong khi:** nhánh này (hoặc bản tương đương) đã vào backend chính, hai ca (1) (2) có kết luận.
+
+---
+
+## 65 — Một mục tiêu sống mỗi ví chung (gia đình đợt 2, 2026-11-02)
+
+### 65.1 (CAO) — Áp `database/46_add_goal_household_wallet_unique.sql` lên Supabase
+
+**Vì sao.** Nhánh `TranQuangDat-backend` có mục tiêu chung: hàng `goal` trỏ ví chung (`docs/Family/03_MUC_TIEU_CHUNG.md`). Thiếu chỉ mục thì hai máy Chủ cùng bật offline sinh hai mục tiêu sống trên một ví mà server không từ chối, resolver của client không chạy và cả nhà thấy mục tiêu tuỳ máy. Client đã áp `flowmoney_kiem_thu` (kịch bản 32 / 32) và `PersonFinance` (phép đích danh, sao lưu `PersonFinance-truoc-46-2026-11-02.dump`, 0 hàng trùng); **chưa Supabase**, chưa biết Render dùng CSDL nào. Không đổi `schema.prisma` (chỉ mục một phần không khai được ở Prisma), nên không có rủi ro `P2022`.
+
+**Làm.** Chạy câu kiểm trong tệp, ra hàng thì dừng và báo client, không tự xoá. Áp tệp (luỹ đẳng). Thêm `uq_goal_household_wallet_active` vào danh sách `src/Backend/scripts/verify-db-indexes.js`, cạnh `uq_wallet_household_name_active`.
+
+**Kiểm lại:**
+
+```sql
+SELECT indexdef FROM pg_indexes WHERE indexname = 'uq_goal_household_wallet_active';
+-- mong đợi: CREATE UNIQUE INDEX ... ON public.goal USING btree ("Idwallet") WHERE (("Idhousehold" IS NOT NULL) AND ("Delete_at" IS NULL))
+```
+
+**Không đổi mã lỗi:** phải về `UNIQUE_VIOLATION` (nhánh `sync.service.js:471-493`); đổi mã riêng thì báo client trước khi lên, kẻo hàng bị gửi lại mãi.
+
+**Xong khi:** câu trên ra đúng trên mọi CSDL dùng thật.
 
 ---
 

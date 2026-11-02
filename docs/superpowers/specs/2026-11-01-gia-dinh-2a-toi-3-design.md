@@ -310,3 +310,39 @@ Mã màn: Nhà mình `d2a8c9bb`, Tạo ví `3bfb38b3`, Chi tiết ví `ac57e216`
 - Route mới (`app_router.dart`): `/nha/vi/tao`, `/nha/vi/:id/sua`, `/nha/vi/:id`, `/nha/hoat-dong`, `/nha/khoan` (+ `/nha/khoan/category`), `/nha/danh-muc`, `/nha/danh-muc/them`, `/nha/danh-muc/:id/sua`, `/nha/gop`. Cửa quyền route chỉ kiểm bằng đọc chuỗi, chưa có ca `GoRouter` thật cho Viewer và nhà `null` (G121). `/nha/khoan` không xét `duocSuaKhoanNha`: cửa gọi phải chặn.
 - Chế độ nhà của form: `CheDoNhaForm` ở `transaction/presentation/state/che_do_nha_form.dart` (không import `household`); nguồn dữ liệu `household/data/them_giao_dich_nguon_nha.dart`.
 - Nhãn ảo chỉ ở **tầng gom thống kê**; đừng đưa vào bảng chọn danh mục hay đồng bộ.
+
+## 17. Chỗ mã đợt 2 (mục tiêu chung) khác spec và `03`
+
+Ghi 2026-11-02 sau đợt 2. Kế hoạch `docs/superpowers/plans/2026-11-02-gia-dinh-dot-2-muc-tieu-chung.md` (gitignore), bản chép + sổ đợt `Temp/flowmoney-phien34-so-dot-2/`. Khi lệch thì mục này và mã thắng `03`. Bảng đo ở khối 🏠 đợt 2 mục 14 `PROJECT_CONTEXT.md`.
+
+### 17.1 Quyết định
+
+| # | `03` / spec viết | Mã làm | Lý do | Sai thì sao |
+|---|---|---|---|---|
+| Q1 | Tắt = xoá mềm, bật lại = hàng mới | Bật lại mà hàng cùng ví **đã xoá mềm + còn `pending`** thì **hồi sinh chính hàng ấy** (giữ id, đặt lại số tiền, hạn, `startDate`, cột chặn đồng bộ). Lệnh xoá đã lên server thì mới là hàng mới | Server chạy lệnh tạo (trọng số 30) trước lệnh xoá (70) trong một lô: hàng mới vướng `uq_goal_household_wallet_active`. Có ca kịch bản ghi nhận hành vi này | Đổi ý trước khi đồng bộ thì mốc đã báo không báo lại |
+| Q2 | Hai máy Chủ cùng bật offline ⇒ `UNIQUE_VIOLATION`, client xếp vĩnh viễn | Resolver gỡ hàng thua (xoá mềm + `markSynced`) rồi kéo toàn bộ. Hai hàng cùng sống trên máy thì hiện hàng `updatedAt` mới nhất; `BoMucTieu` xoá mềm mọi hàng sống | Mã vĩnh viễn để hàng kẹt `pending` mãi. Chưa đo trên máy (cần hai máy Chủ), chỉ có test + hai SQLite qua Pull thật | Giá trị gõ trên máy thua bị thay bằng máy thắng không câu báo, và chu kỳ ấy phát *"Đồng bộ chưa thành công"* |
+| Q3 | G120 dòng 5: mục tiêu của nhà bị `ROLE_FORBIDDEN` ở lại `pending` | Gỡ cùng khuôn `_traBanServerVi` | Đường ghi mục tiêu mở ở đợt này nên nợ tới được | Bản sửa offline của người vừa bị hạ vai mất, đúng thiết kế |
+| Q4 | G121 dòng 12 chưa quyết | `xoaViChung` **từ chối** khi còn mục tiêu sống, câu chỉ lối tắt rồi Lưu | Cùng khuôn ví riêng; không tự xoá thứ người dùng vừa đặt | Thừa một thao tác |
+| Q5 | Một tiền tố `nhaMucTieu:<id>:<25\|50\|75\|100>` | `nhaMucTieu:<id>:<25\|50\|75>`, **`nhaMucTieuDat:<id>`**, dấu đã thấy `nhaMucTieu:<id>:0` | `loaiTuKhoa` ánh xạ tiền tố → loại | Chỉ là tên khoá |
+| Q6 | Lần đầu thấy: ghi nhận im lặng | Ứng viên `imLang`: hàng ghi sẵn `dismissedAt` + `readAt`, không bắn hệ điều hành. Đã thấy = có hàng `…:0`. **Khoá sống cả đời mục tiêu:** `purgeOlderThan(giuLoai:)` không xoá hai loại này, tới 90 ngày chỉ đặt `dismissedAt`. **Nguồn trả rỗng khi `SyncEngine` đang `syncing`**, vì ví vừa về có số dư 0 là chưa biết | Không thêm bảng; soát Task 5 chỉ ra dọn 90 ngày làm *"đã đạt"* báo lại, và quét chen giữa lượt kéo làm người mới vào nhận mốc cũ | Thừa tối đa 5 hàng ẩn mỗi mục tiêu; trễ một lượt quét |
+| Q7 | Mỗi mốc một lần | Một khoản vượt nhiều mốc: chỉ báo mốc cao nhất, các mốc thấp hơn ghi im cùng lượt | Thiếu vế này thì 60 % tụt về 30 % lại báo 25 % | Không thấy tin của mốc thấp |
+| Q8 | Không nói | Cả hai loại deeplink `/nha` | Khoá không chứa id ví | Vào Nhà mình, không vào thẳng ví |
+| Q9 | Thiếu / số tháng, làm tròn lên | `n` = số nguyên ≥ 1 nhỏ nhất sao cho `mocThuN(hôm nay, 'Month', n)` không trước hạn; `ceil(thiếu / n)`. Không dùng `tocDoKeHoach` (quy 30 ngày, hạn 15 ngày thành gấp đôi số thiếu) | Lịch thật cho tháng ngắn, năm nhuận | Số gợi ý lệch một kỳ |
+| Q10 | Thẻ ví đủ các dòng ở cả hai chỗ | Dòng ví: thanh + `a / b đ` + `%` hoặc nhãn; đủ *Còn thiếu · Còn lại · Cần góp* ở Chi tiết ví | Stitch `7b5f0f89…`; dòng ví 360 dp không đủ chỗ | Phải mở Chi tiết mới thấy số cần góp |
+| Thêm | Tiến độ 100 % khi làm tròn | Chưa đạt thì chữ % không lên 100: `chuPhanTramMucTieu` kẹp .99 | 99,6 % mà hiện 100 % trong khi còn thiếu là nói sai | Lệch 1 % chữ |
+| Thêm | `03` mục 4: *"bật lại là id mới ⇒ báo lại từ đầu"* | Bật lại là lần đầu thấy: mốc đã vượt im, chỉ mốc vượt sau đó mới báo | Ví đã 60 % mà ba tin cùng lúc là ồn, cùng lý lẽ Q6 | Đổi một vế ở bộ luật |
+| Thêm | Không nói | Ví lưu trữ vẫn có thanh nhưng không có *Cần góp* (không có nút Góp); mục tiêu của ví lưu trữ vẫn vào bộ quét vì số dư đóng băng | Câu mời góp vào ví đóng băng là vô nghĩa | Thừa vài hàng im |
+| Thêm | Không nói | Lượt kéo không ghi đè hàng mục tiêu **của nhà** đang `pending` (`GoalDao.upsertKeoVe`, khuôn `TransactionDao.upsertKeoVe`); mục tiêu riêng không đổi | Soát toàn nhánh: Chủ bấm *Bỏ mục tiêu* đúng lúc lượt kéo đang bay thì mục tiêu sống lại | Khe còn lại ghi ở G122 |
+
+### 17.2 Chấp nhận, người dùng nên biết
+
+- Người bật mục tiêu trên ví đã có tiền không nhận mốc cho phần đã có.
+- Bật lại nhóm *Gia đình* sau khi tắt: máy đã từng thấy mục tiêu nhận **một** thông báo mốc cao nhất vượt lúc tắt (đo: *"đã đạt"*). Máy chưa từng thấy thì im.
+- Rời rồi vào lại cùng nhà: dấu `:0` còn, mốc vượt lúc vắng báo một lần.
+- Thông báo của mục tiêu đã tắt ở lại trung tâm (giữ lịch sử).
+- Hàng `goal` `pending` đếm vào *"N mục khác"* ở hộp Rời nhà / Giải tán.
+- Tần suất các khe đồng bộ còn lại: xem G122.
+
+### 17.3 Stitch (dự án `5106367939423432838`)
+
+Form `74ebe178c5d046fea3679e5b11ccfe8d`, thẻ tiến độ `7b5f0f895f9a4a9092d81d5095a11552`, người dùng chốt *"Dùng luôn, xem sau"*. Bỏ khung so sánh (tiêu đề hai khối, huy hiệu *360dp*, chân trang), viền cam và nhãn *Quá hạn* cạnh *SỐ DƯ*: số dư không quá hạn, mục tiêu mới quá hạn. Dòng ví quá hạn (Stitch không vẽ) dùng viên thuốc cùng khuôn *Đã đạt mục tiêu*. Thanh thụt 48 theo ô tròn thật 36 + khe 12. Khối mục tiêu ở màn Tạo dùng cùng thẻ, chèn giữa thẻ chính và chú thích.

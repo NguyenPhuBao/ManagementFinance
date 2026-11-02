@@ -617,6 +617,42 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-02)
 
+### 🏠 Gia đình ĐỢT 2 — mục tiêu chung trên ví chung: mã xong + soát toàn nhánh, ĐO máy ảo + Realme đạt (2026-11-02, bảng ở cuối khối)
+
+Kế hoạch `docs/superpowers/plans/2026-11-02-gia-dinh-dot-2-muc-tieu-chung.md` (gitignore), `docs/Family/03_MUC_TIEU_CHUNG.md`, spec `specs/2026-11-01-gia-dinh-2a-toi-3-design.md` (**mục 17 = chỗ mã khác spec và `03`**). Trên nhánh dự phòng `TranQuangDat-backend`, **chưa lên `origin`, chưa áp Supabase (đơn 63.1, 65.1), người dùng thật chưa dùng được**.
+
+- **Phạm vi:** 7 task thi công + đo; 15 commit `4caa9cb5..925c950c`; `src/Client-app/lib` 25 tệp +1.092 / −33, `test` 22 tệp +1.824 / −7, `src/Backend` 1 tệp (`database/46`) (đếm `git diff --stat`, 2026-11-02). Cách làm: Fable preflight (0 Critical · 3 Important · 14 Minor) → Sonnet viết + Opus soát từng task → Opus soát toàn nhánh qua Pull thật trên hai SQLite (*With fixes*: 0 Critical, 1 Important) → đợt sửa cuối → soát lại. Soát lại vòng sửa của Task 2, 3, 4 chạy Sonnet, lệch nếp Opus; đã ghi `Ruling:` ở sổ đợt.
+- **Chức năng:** công tắc *Đặt mục tiêu* + *Số tiền mục tiêu*, *Hạn* trong form Tạo / Sửa ví chung (`KhoiMucTieuVi`); thanh tiến độ ở dòng ví Nhà mình (`TienDoGon`); khối MỤC TIÊU ở thẻ số dư Chi tiết ví (`KhoiMucTieuChiTiet`): *Còn thiếu · Còn lại · Cần góp*, nhãn *Đã đạt mục tiêu*, *Quá hạn*. Hai loại thông báo `nhaMucTieuMoc`, `nhaMucTieuDat` (enum **26**, mục 5p `NOTIFICATION_FEATURE.md`). Stitch `74ebe178…`, `7b5f0f89…`.
+- **Dữ liệu:** hàng `goal` có `idhousehold` + `walletId`; tiến độ chiếu số dư ví qua `GoalEntity.progress`, không đọc `currentAmount` (`household/domain/muc_tieu_chung.dart`). Schema giữ **v33**, payload giữ 23 khoá. `GoalDao.getAll` / `watchAll` vẫn lọc `idhousehold IS NULL`.
+- **Backend:** `database/46_add_goal_household_wallet_unique.sql` đã áp `flowmoney_kiem_thu`, `PersonFinance` (phép đích danh, sao lưu `D:\FlowMoney-saoluu\PersonFinance-truoc-46-2026-11-02.dump`, 0 hàng trùng trước khi áp); **chưa Supabase**. Kịch bản `chay_kiem_gia_dinh_2.js` **32 / 32**, `chay_kiem.js` **50 / 50**.
+- ⚠️ **Bốn chốt hỏng im lặng (spec 17):** (1) tắt rồi bật lại khi lệnh xoá còn `pending` phải **hồi sinh** hàng: server chạy lệnh tạo trước lệnh xoá nên hàng mới vướng chỉ mục; (2) `purgeOlderThan` phải truyền `giuLoai` hai loại mục tiêu, thiếu là *"đã đạt"* báo lại mỗi 90 ngày; (3) `loadMucTieuNha` trả rỗng lúc `syncing`, thiếu là người mới vào nhận mốc cũ; (4) lượt kéo không đè hàng mục tiêu của nhà đang `pending` (`GoalDao.upsertKeoVe`) và `conflict` trên hàng ấy phải xin kéo toàn bộ.
+- **Số đo (phiên chính, Head `925c950c`):** `flutter test` **9487 pass / 10 skip, 0 fail** (mốc trước đợt 9358 / 10); `flutter analyze` **20**; schema **v33**. Mô phỏng hai máy qua Pull thật: 19 xanh, 1 đỏ đúng khe G122 dòng 2.
+- **Nợ:** **G122** mới (khe đồng bộ, chưa tái hiện trên máy); G121 dòng 12 đóng; G120 dòng 5 hẹp lại còn ngân sách. Đơn mới **65** (`CAN-LAM/VIEC_BACKEND_CON_LAI.md`).
+- **Đo (2026-11-02, bản debug, backend worktree cổng 3001 trỏ `PersonFinance`, máy ảo tài khoản 30 Chủ nhà + Realme `dat` Thành viên, nhà thử 9, đã giải tán; APK `b3f69109`, các mục đánh dấu ² đo lại trên `7a7bf1b1`; APK cuối cài lên hai máy là `925c950c`, SHA-1 `5fd9865b…`, chỉ khác ở resolver và test):**
+
+| # | Kịch bản | Kết quả đo |
+|---|---|---|
+| 1 | Chủ bật mục tiêu 1.000.000 đ | Đạt: 0 % hai máy, hàng lên server đúng `Idhousehold`, `Idwallet`, `Thành viên` có khối không nút sửa |
+| 2 | Thành viên góp 300.000 đ (tiền mặt trao tay) | Đạt: 30 % hai máy, cả hai nhận *"QuyDo đã được 25% mục tiêu"* |
+| 3 | Thành viên chi 100.000 đ | Đạt: lùi 20 %, không báo lại |
+| 4 | Góp +600.000 rồi +200.000 đ | Đạt: 80 % chỉ báo *75%*; đủ thì *"đã đạt mục tiêu"* hai máy, thanh đầy, nhãn |
+| 5 | Quá hạn (đẩy đồng hồ máy ảo +25 giờ) | Đạt: nhãn ở dòng ví, *MỤC TIÊU (QUÁ HẠN)*, thanh cam, không *Cần góp* |
+| 6 | Chủ tắt | Đạt: hộp đúng câu, tiền giữ, `Delete_at` trên server, thẻ mất hai máy |
+| 7 | Bật lại sau khi đã đồng bộ | Đạt: id mới, 33 %, mốc 25 đã vượt không báo |
+| 8 | Mất backend (gỡ `adb reverse`), tắt + bật lại, nối lại | Đạt: 2/2 đẩy, cùng id, 0 `UNIQUE_VIOLATION`, Realme thấy số mới. **Chỉ phủ lô chưa gửi** |
+| 9 | Người mới vào khi 83 % (tài khoản thử 31) | Đạt: thẻ đúng, trung tâm *"Chưa có thông báo nào"*, 0 lần bắn |
+| 10 | Xoá ví còn mục tiêu | Đạt: từ chối đúng câu; tắt rồi xoá được |
+| 11² | 360 dp, a và b đều 13 chữ số | Đạt: Realme dòng ví, Chi tiết một dòng, không sọc |
+| 12 | Tắt nhóm *Gia đình* | Đạt: 0 hàng khi tắt; bật lại báo một lần *"đã đạt"* (spec 17.2) |
+| 13 | Chủ đổi số tiền | Đạt: hai máy đổi, 50 % không báo lại |
+| 14 | Thành viên mở Chi tiết ví | Đạt: có khối, không nút sửa |
+| 15 | Sửa mục tiêu đã quá hạn, chỉ đổi số tiền | Đạt |
+| Thêm² | Ô tiền không viền, ví lưu trữ không *Cần góp*, biểu tượng heo, mô tả nhóm hai dòng ở 360 dp | Đạt |
+| Thêm | `/goals` của tài khoản thành viên | Đạt: 0 mục tiêu |
+
+Dữ liệu `dat`: khoản góp đo bằng tiền mặt trao tay, không đụng ví riêng; Tổng số dư giữ **−3.518.000 đ**; sao lưu `D:\FlowMoney-saoluu\realme-truoc-dot-2-2026-11-02\`. **Chưa đo:** máy thật thứ hai, bản release, Q2 (hai máy Chủ), khe G122, câu xoá ví khi công tắc đã tắt chưa Lưu (chỉ test).
+- **Giữ số (đếm lại 2026-11-02):** lỗ hổng kế tiếp **G123**, test quét kế tiếp **43**, đơn kế tiếp **66**.
+
 ### 🏠 Gia đình ĐỢT 1B — màn hình cho ví chung, góp / rút, hoạt động, danh mục của nhà: mã xong + soát toàn nhánh, ĐO máy ảo + Realme đạt (2026-11-02, bảng ở cuối khối)
 
 Kế hoạch `docs/superpowers/plans/2026-11-01-gia-dinh-dot-1b-man-hinh.md` (gitignore), spec `specs/2026-11-01-gia-dinh-2a-toi-3-design.md` (**mục 16 = chỗ mã 1B khác spec**, kèm bảng *Quyết định về Stitch* và mọi `Ruling:`). Trên nhánh dự phòng `TranQuangDat-backend` (client + backend). **Trạng thái đúng chữ: mã xong, Opus soát toàn nhánh (0 Critical, 3 Important đã sửa, soát lại đạt); Task 13 đo máy ảo + một máy thật (Realme, 360 dp) bản debug đạt 2026-11-02, bảng ở cuối khối. Chưa lên `origin`, chưa áp Supabase, nên người dùng thật chưa dùng được.**

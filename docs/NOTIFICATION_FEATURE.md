@@ -1477,6 +1477,22 @@ Spec `docs/superpowers/specs/2026-11-01-gia-dinh-2a-toi-3-design.md` mục 8; lu
 - **Không nêu số tiền** trong thân (nếp thông báo tối giản). Thông báo ghi **một lần mỗi mã cặp**: lượt phát lặp của cùng một thất bại không đẻ thông báo thứ hai.
 - ⚠️ **Chưa đo trên máy thật.** 1A chưa có màn ghi khoản góp, nên thông báo chỉ được canh bằng test (resolver + hai máy giả `gia_dinh_vong_doi_test`); lúc hiện thật ở khay chưa nhìn.
 
+## 5p. Mốc mục tiêu chung của nhà — loại 25 và 26 (2026-11-02, gia đình đợt 2)
+
+`docs/Family/03_MUC_TIEU_CHUNG.md` mục 4; chỗ mã khác tài liệu ấy ở spec `2026-11-01-gia-dinh-2a-toi-3-design.md` mục 17. `enum NotificationKind` nay **26** giá trị (đếm 2026-11-02). Do bộ quét sinh, nhóm `giaDinh`, **không** `luonBao` (ghi nhận tiến độ, không báo tiền rời ví; tắt được). Deeplink `/nha`, `subjectType` `nhaMucTieu`, tiêu đề *"Mục tiêu của nhà"*.
+
+| Loại | Khi | Khoá | Thân |
+|---|---|---|---|
+| `nhaMucTieuMoc` | tiến độ vượt 25 / 50 / 75 % | `nhaMucTieu:<idgoal>:<mốc>` | *"Quỹ du lịch đã được 50% mục tiêu"* |
+| `nhaMucTieuDat` | chạm 100 % | `nhaMucTieuDat:<idgoal>` | *"Quỹ du lịch đã đạt mục tiêu"* |
+
+- **Nguồn:** `NotificationScanner.loadMucTieuNha` (DI: `DuLieuNhaRepository.mucTieuKemVi` + `tiLeMucTieuChung`), gác đúng tài khoản phiên như `loadLoiMoiNha`; lượt nền không có phiên nhà nên rỗng; chỉ gọi khi `prefs.chapNhan`; dùng lại `_mocTienDo`, không chép `[75, 50, 25]`.
+- **Hàng im lặng (`NotificationCandidate.imLang`):** ghi `readAt` + `dismissedAt` ngay, không bắn hệ điều hành, không tính vào giá trị trả về của `scan`. Dùng cho dấu đã thấy `nhaMucTieu:<idgoal>:0`, mọi mốc đã vượt lúc máy mới thấy mục tiêu, và các mốc thấp hơn mốc vừa báo (thiếu vế này thì 60 % tụt về 30 % lại báo 25 %).
+- ⚠️ **Khoá sống cả đời mục tiêu:** `purgeOlderThan(cutoff, giuLoai:)` không xoá hai loại này, tới 90 ngày chỉ đặt `dismissedAt` để hàng rời trung tâm. Xoá như loại khác là *"đã đạt"* báo lại mỗi 90 ngày.
+- ⚠️ **`loadMucTieuNha` trả rỗng khi `SyncEngine.status == syncing`:** lượt kéo không chạy trong một giao tác, ví vừa về có số dư 0 nghĩa là chưa biết (`tiLe 0`, ghi dấu `:0`, lượt sau thấy 80 % ⇒ người mới vào nhận mốc cũ). Lượt `isTerminal` có thể bị bỏ khi `_dangQuet`: trễ tới lượt quét kế, không mất. Gác chỉ nhìn engine của isolate này: G122.
+- **Bật lại nhóm** sau khi tắt: máy đã từng thấy mục tiêu nhận một thông báo mốc cao nhất đã vượt; chưa từng thấy thì im. Rời rồi vào lại cùng nhà: dấu `:0` còn, mốc vượt lúc vắng báo một lần.
+- ✅ **Đo máy ảo + Realme 2026-11-02:** bảng ở khối 🏠 đợt 2 mục 14 `PROJECT_CONTEXT.md`.
+
 ## 6. Từng lát đã làm gì
 
 ### Lát 4 — `OsNotifier` + thông báo hệ điều hành thật ✅ XONG

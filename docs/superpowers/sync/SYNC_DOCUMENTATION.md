@@ -345,6 +345,14 @@ Tên duy nhất trong tài khoản, tính cả danh mục mặc định, so bằ
 - **`/me` → `formerMembers` khử trùng ở client** (`nhaCuaToiTuJson`): backend trả mọi hàng đã rời, kể cả người đang ở và một người nhiều lần (đơn 64); client bỏ id đang ở và khử theo id.
 - **Rời nhà / Giải tán** có hộp hỏi lại khi `LoiNha(hangChuaDay)`: đếm qua `hangChuaDay(idNha, idaccount:)` (nửa **của tôi** chưa đẩy vào *gop* / *rut*, nửa người khác vào *khoan*; nửa của tôi đã xoá mềm vào *khoan*), rồi gọi lại với `boQuaHangChuaDay: true` (G119 ca 7: `pending` của bản sửa trên hàng đã lên server cũng đếm là "chưa lên").
 
+**Đợt 2 (2026-11-02) — mục tiêu chung** (mã `4caa9cb5..7a7bf1b1`; đo máy ảo + Realme, spec mục 17, `docs/Family/03`):
+- **Payload `goal` không đổi** (23 khoá). `current_amount` của mục tiêu chung gửi 0, server lưu như gửi, không ai đọc: tiến độ suy từ số dư ví.
+- **Chỉ mục** `uq_goal_household_wallet_active` (`database/46`): một mục tiêu sống mỗi ví chung. Vi phạm ⇒ `UNIQUE_VIOLATION`, đã vĩnh viễn; `GopQuyConflictResolver` gỡ hàng thua của nhà rồi kéo toàn bộ. Hàng riêng cùng mã không bị đụng.
+- ⚠️ **Thứ tự lệnh trong lô quyết định cách bật lại.** Server chạy `goal` tạo / sửa (30) trước `goal` xoá (70), mỗi thao tác một `try`. Tắt rồi bật lại khi lệnh xoá chưa lên mà tạo hàng mới thì hàng mới vướng chỉ mục. `DuLieuNhaRepository` vì thế **hồi sinh** hàng đang xoá mềm + `pending` (`GoalDao.getXoaChuaDayTheoVi`), đẩy lên là `update` cùng id; kịch bản `chay_kiem_gia_dinh_2.js` ghi nhận hành vi này.
+- **Kéo về không đè hàng mục tiêu của nhà đang `pending`** (`GoalDao.upsertKeoVe`, khuôn `TransactionDao.upsertKeoVe` mục 3.3, nhưng giữ cả bản sửa chứ không riêng lệnh xoá; mục tiêu riêng không đổi). Lượt đẩy kế gửi hàng lên, LWW phân xử; thua thì `conflict` → `markSynced`, Pull cùng chu kỳ đè.
+- **Còn hở:** G122: `_markSyncedById` không so `updatedAt` nên lệnh đang bay đè bản vừa sửa; server không hồi sinh hàng đã có `Delete_at` khi nhận `is_deleted: false`.
+- **Mục tiêu của nhà** đọc qua `getCuaNha` / `watchCuaNha` / `getSongTheoVi`; `getAll` / `watchAll` vẫn lọc `idhousehold IS NULL` nên `/goals`, khối Nhận xét, tool AI, bộ trích tự động không thấy.
+
 ## 5. Phép đổi giá trị (tóm tắt — `sync_payload_normalizer.dart`)
 
 | Trường | SQLite / client | Gửi lên | Kéo về |
