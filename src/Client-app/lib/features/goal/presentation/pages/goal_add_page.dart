@@ -87,7 +87,11 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
   /// Phần lớn mục tiêu tiết kiệm là việc làm một lần ("mua laptop"), nên bật
   /// sẵn là đoán sai ý người dùng ở đa số ca.
   bool _lapLai = false;
-  String _chuKyLap = 'Month';
+
+  /// Chu kỳ lặp CŨ của mục tiêu đang sửa (`time_recurrence`), giữ nguyên khi
+  /// lưu — form thôi cho chọn (2026-11-04: vòng mới dài bằng vòng trước), nhưng
+  /// mục tiêu thiếu mốc bắt đầu vẫn dùng nó làm dự phòng (`hanVongMoi`).
+  String? _chuKyLap;
   DepositFrequency _frequency = DepositFrequency.monthly;
 
   bool _isRecalculatingFromDeposit = false;
@@ -203,12 +207,7 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
         _ngayTrich = goal.cycleTakeMoney == 'Week' ? mocCu.weekday : mocCu.day;
       }
       _lapLai = goal.recurrence;
-      _chuKyLap = kChuKyLapLai.containsKey(goal.timeRecurrence)
-          ? goal.timeRecurrence!
-          // Giá trị lạ (`'Day'`, `'Quarter'` từ Admin-web) không có ô nào để
-          // hiện. Rơi về hàng tháng để bảng chọn luôn có đúng một ô sáng —
-          // ba ô cùng tối trông như biểu mẫu hỏng.
-          : 'Month';
+      _chuKyLap = goal.timeRecurrence;
       _nameController.text = goal.name;
       _noteController.text = goal.note;
 
@@ -655,8 +654,6 @@ class _GoalAddPageContentState extends State<_GoalAddPageContent> {
                     TheLapLai(
                       lapLai: _lapLai,
                       onDoiLapLai: (val) => setState(() => _lapLai = val),
-                      chuKyLap: _chuKyLap,
-                      onDoiChuKy: (v) => setState(() => _chuKyLap = v),
                     ),
                     const SizedBox(height: 16),
 

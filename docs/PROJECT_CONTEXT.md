@@ -617,6 +617,29 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-02)
 
+### 🧪 Đo trên Render: thanh toán thật + gia đình hai máy (2026-11-02 phiên 37, `a80d779c`, 0 tệp mã đổi)
+
+Bản thử `.thu` trỏ Render trên Realme (tài khoản 95, Chủ nhà) và máy ảo (tài khoản 96, Basic, Thành viên); đối chiếu Supabase chỉ đọc. Hai bản thử ký debug, không phát được.
+
+| Việc | Kết quả |
+|---|---|
+| Chuyển thật 49.000 đ (người dùng tự làm) | ✅ Đơn `PAID`, `amount_received` đủ, mã ngân hàng `FT263063…`, `signature_verified`; hash webhook 64 ký tự, không phải `JIT_SYNC_DIRECT_API`, nên đúng đường webhook thật PayOS → Render; tiền vào 18:15:00, ghi 18:15:09; Premium hạn 02/12/2026 |
+| Tạo nhà, tạo ví chung | ✅ Supabase có 1 nhà, 1 thành viên, ví mang `Idhousehold = 1`; kéo lại toàn bộ sau khi vào nhà |
+| Basic mở Nhà mình | ✅ Nút Tạo nhà có nhãn Premium, vẫn thấy Tham gia bằng mã |
+| Mời qua email | ✅ Hàng lời mời đúng `Invitee_idaccount`, hạn 7 ngày; máy nhận có thông báo loại 22 cùng giây, thẻ trên màn đang mở tự hiện sau 4–10 s |
+| Thư mời tới hộp thư | ✅ Người dùng xác nhận nhận đủ 2 thư (bước 5.3) |
+| Từ chối, mời lại | ✅ `Declined_at` có, thẻ biến mất; mời lại tạo hàng mới |
+| Chấp nhận | ✅ `Used_by = 96`, hai máy đều thấy 2 thành viên; máy nhận kéo về 48 danh mục = 16 khuôn + 16 của mình + 16 của nhà, không lẫn danh mục riêng của chủ nhà |
+| Góp 50.000, rút 20.000 từ máy thành viên | ✅ Mỗi lần một cặp cùng `Idfund_pair`; máy chủ nhà chỉ nhận nửa thuộc nhà, số dư 30.000 đ, Bảng góp đúng |
+
+Hạn chế đã biết, **người dùng chốt không sửa** (hết hạn viết chương trình, 2026-11-02):
+- **Góp từ ví riêng 0 đ không chặn, không hỏi lúc bấm.** Ví về −50.000 đ, cảnh báo *"Số dư ví đang âm"* chỉ tới sau. Form chọn sẵn ví Tiết kiệm 0 đ.
+- **Trung tâm thông báo giữ *"Lời mời vào nhà"* sau khi đã từ chối hoặc chấp nhận** (hai dòng cũ còn đó). Chạm vào chỉ mở `/nha`.
+- **Chậm trên Render:** lô 3 thao tác từ lúc bắt đầu đẩy tới hàng cuối trên máy chủ ~12 s; dữ liệu sang máy kia ~15–20 s.
+- `raw_webhook_hash` không đủ để nhận đơn mẫu: `payment.repository.js:995` ghi hash của mã đơn với `signature_verified: true`.
+
+⚠️ Bật máy ảo về ảnh cũ thì app `dat` **tự mở lại**, không cần ai bấm. Lần này nó chỉ gặp `Connection refused` vì không có `adb reverse`, nên không xoay token; đã `force-stop` ngay. Đừng đặt `adb reverse` trên máy ảo trước khi dừng app ấy.
+
 ### 🚀 Gia đình sẵn sàng đưa ra thật: phần không cần backend đã xong (2026-11-02, nhánh `TranQuangDat-backend`, đã push)
 
 Backend còn 6 bước cần quyền Render, Supabase: `CAN-LAM/VIEC_BACKEND_CON_LAI.md` (so khoá, áp `database/45`, `46`, gộp PR, deploy, kiểm, gỡ log). APK phát hành chờ các bước ấy.

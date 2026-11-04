@@ -606,17 +606,33 @@ nói thẳng điều đó và trỏ sang "Rút khỏi mục tiêu".
 Mốc bắt đầu **phải** đặt lại bằng "bây giờ": `tocDoThucTe` đo từ nó, nên giữ mốc
 cũ thì vòng mới hiện tốc độ tiết kiệm của vòng trước.
 
-`hanVongMoi()` luôn bước **ít nhất một kỳ**, vì cả hai đầu đều sai nếu giữ hạn
+🔁 **Từ 2026-11-04 vòng mới dài BẰNG vòng trước** (người dùng chốt, bỏ thanh chọn
+*"Lặp lại mỗi: Hàng tuần / Hàng tháng / Hàng năm"* ở form Thêm / Sửa — thẻ chỉ
+còn công tắc): `hanVongMoi()` lấy **ngày bấm + số ngày lịch từ `startDate` tới
+`targetDate` của vòng vừa xong** (`soNgayMotVong`), giữ giờ phút của hạn cũ.
+Ví dụ tạo 01/11, hạn 12/12 (41 ngày), bấm vòng mới 01/12 → hạn 11/01. Lý do: hạn
+đặt bằng một số ngày bất kỳ thì *"hạn cũ + một tuần"* cho vòng 18 hay 8 ngày tuỳ
+hôm bấm, không liên quan tới kế hoạch người dùng đã đặt. Vì `batDauVongMoi` đặt
+lại `startDate` = lúc bấm, độ dài giữ nguyên qua mọi vòng. Tên, số tiền, ví,
+trích tự động giữ nguyên. Bật lặp lại **không còn đòi** `time_recurrence`
+(`addGoal` / `updateGoal` thôi vế `&& timeRecurrence != null`); form mới gửi
+`null`, form Sửa giữ nguyên giá trị cũ của mục tiêu. Hộp xác nhận nêu ngày hạn mới
+(cùng phép tính). Chỉ sửa client: `start_date` / `target_date` đã đồng bộ,
+backend nhận `time_recurrence` trống, Admin-web không đọc cột ấy. ⚠️ Máy còn bản
+app cũ gặp mục tiêu `time_recurrence` trống thì quy về hàng tháng (luật cũ).
+
+**Dự phòng** — thiếu `startDate` (bản cũ / Admin-web) hoặc hạn không sau ngày
+bắt đầu: giữ luật trước 2026-11-04 dưới đây, bước theo `time_recurrence` (trống
+→ hàng tháng). Luật ấy luôn bước **ít nhất một kỳ**, vì cả hai đầu đều sai nếu giữ hạn
 cũ: đạt sớm thì vòng mới thừa hưởng phần thời gian còn lại của vòng trước; đạt
 muộn thì mục tiêu quá hạn ngay giây đầu tiên. Nó gọi lại `mocKeTiep` thay vì tự
 cộng tháng — hàng rào cho `DateTime(2028, 2, 31)` (Dart tự chuẩn hoá thành
 02/03, **không ném**) đã dựng sẵn ở đó kèm test năm nhuận.
 
-Bảng chọn chu kỳ lặp cố ý **hẹp hơn** `mocKeTiep`: chỉ Tuần/Tháng/Năm, bỏ `Day`
-và `Quarter`. Lặp lại một mục tiêu tiết kiệm mỗi ngày không có nghĩa gì. Giá trị
-lạ từ Admin-web vẫn hiển thị được, rơi về hàng tháng.
+*(Lịch sử, tới 2026-11-04: bảng chọn chu kỳ lặp chỉ Tuần/Tháng/Năm, hẹp hơn
+`mocKeTiep`.)*
 
-✅ **Đã kiểm trọn luồng trên máy ảo 2026-09-05**: bật lặp lại → nạp cho đủ →
+✅ **Đã kiểm trọn luồng trên máy ảo 2026-09-05** (luật cũ): bật lặp lại → nạp cho đủ →
 thông báo `goalCycleReady` sinh ra → nút hiện → hộp thoại → tiến độ về 0, hạn dời
 27/04/2028 → 27/05/2028, `startDate` về "bây giờ", **số dư hai ví không đổi và
 không sinh giao dịch nào**.
@@ -1264,10 +1280,9 @@ trường giữa hai phía; con số trên đếm bằng máy từ chính tệp 
 
 ## 6. Cột có mà không ai dùng
 
-`recurrence` và `timeRecurrence` trên bảng `Goals` (lặp lại mục tiêu sau khi
-hoàn thành) tồn tại ở cả hai đầu và đồng bộ đủ hai chiều, nhưng **client chưa
-bao giờ ghi**. Chúng không phải rác — đọc/ghi qua đường đồng bộ vẫn giữ nguyên
-giá trị từ Admin-web nếu có — nhưng đừng tưởng có tính năng đằng sau.
+*(Đính chính 2026-11-04: `recurrence` **đã** dùng từ mục 3.17. `timeRecurrence`
+từ 2026-11-04 chỉ còn là dự phòng cho mục tiêu thiếu `startDate` — form không
+ghi nó nữa, mục 3.17.)*
 
 `cycleTakeMoney` thì **đã** được dùng (mục 3.7). `timeCycleTakeMoney` vẫn chưa.
 

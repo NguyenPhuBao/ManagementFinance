@@ -1,6 +1,6 @@
 # Premium qua PayOS — phía client
 
-**Trạng thái (2026-11-01):** mã xong; ◐ **Task 16 + G94 đo đạt bằng webhook tự ký, chưa có giao dịch ngân hàng thật** (mục 6;
+**Trạng thái (2026-11-02):** mã xong; ◐ **Task 16 + G94: chuyển đủ tiền thật qua webhook PayOS → Render đạt 2026-11-02 (khối 🧪 mục 14 `PROJECT_CONTEXT.md`), còn thừa / thiếu / hoàn tiền chỉ đo bằng webhook tự ký** (mục 6;
 kênh PayOS trong `.env` không có dấu hiệu là kênh thử). Kế hoạch `docs/superpowers/plans/2026-10-06-premium-payos-client.md` (gitignore). Spec: `docs/superpowers/specs/2026-10-06-premium-payos-client-design.md` (người dùng duyệt).
 Đơn backend: `docs/superpowers/backend/CAN-LAM/CLIENT_PREMIUM_PAYOS.md` (38, không chặn client).
 
