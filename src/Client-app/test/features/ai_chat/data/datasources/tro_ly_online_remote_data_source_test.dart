@@ -83,6 +83,48 @@ void main() {
     expect((sk[2] as XongOnline).responseTimeMs, 720);
   });
 
+  group('event: tool (backend báo công cụ đang chạy)', () {
+    const thanCoCongCu = 'event: tool\ndata: {"name":"tra_cuu_kien_thuc","status":"start"}\n\n'
+        'event: tool\ndata: {"name":"tra_cuu_kien_thuc","status":"done"}\n\n'
+        'event: delta\ndata: {"text":"Giảm trừ…"}\n\n'
+        'event: done\ndata: {"responseTimeMs":900}\n\n';
+
+    test('start/done → CongCuOnline đúng tên và trạng thái, KHÔNG kết thúc luồng', () async {
+      final sk = await _gom(_dung(_MayChuSse(than: thanCoCongCu)));
+      expect(sk.map((e) => e.runtimeType).toList(), [CongCuOnline, CongCuOnline, ChuOnline, XongOnline]);
+      expect((sk[0] as CongCuOnline).ten, 'tra_cuu_kien_thuc');
+      expect((sk[0] as CongCuOnline).dangChay, isTrue);
+      expect((sk[1] as CongCuOnline).dangChay, isFalse);
+    });
+
+    test('nhiều khung tool trong cùng một gói byte vẫn đọc đủ tới done', () async {
+      final sk = await _gom(_dung(_MayChuSse(than: thanCoCongCu, goi: 1)));
+      expect(sk.last, isA<XongOnline>());
+      expect(sk.whereType<ChuOnline>().single.text, 'Giảm trừ…');
+    });
+
+    test('thiếu tên → bỏ qua, luồng đi tiếp', () async {
+      const than = 'event: tool\ndata: {"status":"start"}\n\n'
+          'event: delta\ndata: {"text":"a"}\n\n'
+          'event: done\ndata: {}\n\n';
+      final sk = await _gom(_dung(_MayChuSse(than: than)));
+      expect(sk.map((e) => e.runtimeType).toList(), [ChuOnline, XongOnline]);
+    });
+
+    test('luồng đóng ngay sau tool, không có done → LoiOnline, không treo', () async {
+      const than = 'event: tool\ndata: {"name":"get_bill_details","status":"start"}\n\n';
+      final sk = await _gom(_dung(_MayChuSse(than: than)));
+      expect(sk.first, isA<CongCuOnline>());
+      expect(sk.last, isA<LoiOnline>());
+    });
+
+    test('sự kiện lạ khác vẫn bị bỏ qua (tương thích khi backend thêm sự kiện mới)', () async {
+      const than = 'event: la\ndata: {"x":1}\n\nevent: delta\ndata: {"text":"a"}\n\nevent: done\ndata: {}\n\n';
+      final sk = await _gom(_dung(_MayChuSse(than: than)));
+      expect(sk.map((e) => e.runtimeType).toList(), [ChuOnline, XongOnline]);
+    });
+  });
+
   test('thân cắt thành 17 chunk byte (cắt giữa ký tự UTF-8) → cùng kết quả', () async {
     final sk = await _gom(_dung(_MayChuSse(than: thanThuong, goi: 17)));
     expect(sk.whereType<ChuOnline>().map((e) => e.text).join(), 'Quỹ khẩn cấp là…');

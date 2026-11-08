@@ -27,7 +27,11 @@ void main() {
     await mo(t);
     expect(find.text(kTieuDeToOnline), findsOneWidget);
     expect(find.text(kThanToOnline), findsOneWidget);
-    expect(find.textContaining('Google Gemini'), findsOneWidget);
+    expect(find.textContaining('dịch vụ AI đám mây'), findsOneWidget);
+    // Người dùng không thấy tên mô hình / nhà cung cấp; việc công bố đó thuộc về quản trị viên.
+    for (final ten in ['Gemini', 'Google', 'DeepSeek', 'ngoài Việt Nam']) {
+      expect(find.textContaining(ten), findsNothing, reason: 'không hiển thị "$ten" cho người dùng');
+    }
     expect(find.textContaining('vài tin gần nhất của cuộc trò chuyện'), findsOneWidget);
     expect(find.textContaining('không gửi gì'), findsOneWidget);
     expect(find.byKey(const Key('to-da-hieu')), findsOneWidget);

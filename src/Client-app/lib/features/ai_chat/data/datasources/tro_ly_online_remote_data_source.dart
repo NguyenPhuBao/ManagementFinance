@@ -116,13 +116,13 @@ class TroLyOnlineRemoteDataSourceImpl implements TroLyOnlineRemoteDataSource {
       final sk = _dich(k);
       if (sk == null) continue;
       yield sk;
-      if (sk is! ChuOnline) return;
+      if (sk.laKet) return;
     }
   }
 
   /// `true` (và log) khi [sk] là sự kiện kết — ở cả hai đường `nhan` và `dong`.
   bool _laKet(SuKienOnline sk, DateTime batDau) {
-    if (sk is ChuOnline) return false;
+    if (!sk.laKet) return false;
     debugPrint('[Online] kết ${sk.runtimeType} sau ${DateTime.now().difference(batDau).inMilliseconds} ms');
     return true;
   }
@@ -140,6 +140,10 @@ class TroLyOnlineRemoteDataSourceImpl implements TroLyOnlineRemoteDataSource {
     switch (k.event) {
       case 'delta':
         return ChuOnline((json['text'] ?? json['content'] ?? '').toString());
+      case 'tool':
+        final ten = json['name'];
+        if (ten is! String || ten.isEmpty) return null;
+        return CongCuOnline(ten, dangChay: json['status'] == 'start');
       case 'done':
         if (json['fallback'] == true) return DuPhongOnline((json['reason'] ?? '').toString());
         // `done` chỉ có `error` (không `fallback`): luồng dự phòng của server tự ném, sau chunk
