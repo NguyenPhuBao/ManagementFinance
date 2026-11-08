@@ -8,6 +8,10 @@ import 'su_kien_online.dart';
 const String kNguonOnline = 'Trợ lý online';
 const String kNguonTrenMay = 'AI trên máy';
 const String kGhiChuRoiVeMay = 'máy chủ không phản hồi';
+const String kGhiChuGioiHanOnline = 'đã chạm giới hạn lượt hỏi online';
+
+/// Trần độ dài câu hỏi của backend (`AI_MAX_MESSAGE_CHARS`). Vượt thì backend từ chối và câu rơi về máy một cách vô lý.
+const int kToiDaKyTuCauHoi = 1000;
 const String kGhiChuGianDoan = 'kết nối gián đoạn';
 const String kGhiChuDaDung = 'đã dừng';
 
@@ -26,8 +30,11 @@ class HoanTat extends KetQuaOnline {
 /// Lượt online hỏng, hoặc server báo dự phòng (`DuPhongOnline` — bất kể đã có chữ) → cùng câu đi
 /// đường trên máy.
 class RoiVeMay extends KetQuaOnline {
-  const RoiVeMay(this.lyDo);
+  const RoiVeMay(this.lyDo, {this.ghiChu = kGhiChuRoiVeMay});
   final String lyDo;
+
+  /// Nhãn gắn vào câu trả lời trên máy, nói cho người dùng biết vì sao không đi online.
+  final String ghiChu;
 }
 
 /// Đã có chữ mà luồng đứt / đóng không `done`, hoặc người dùng bấm Dừng → giữ phần đã hiện,
@@ -51,9 +58,12 @@ KetQuaOnline quyetDinhSauOnline({
       // câu trả lời thật, nên bỏ nó và rơi về máy bất kể daCoChu.
       return RoiVeMay(reason);
     case LoiOnline(:final http, :final lyDo):
-      return daCoChu ? const GiuPhanDaCo(kGhiChuGianDoan) : RoiVeMay('http=$http $lyDo');
+      if (daCoChu) return const GiuPhanDaCo(kGhiChuGianDoan);
+      // 429: hết lượt ngày, hết ngân sách tháng hoặc đang bận. Máy chủ vẫn sống, không nói "không phản hồi".
+      return RoiVeMay('http=$http $lyDo', ghiChu: http == 429 ? kGhiChuGioiHanOnline : kGhiChuRoiVeMay);
     case ChuOnline():
-      // Luồng đóng sau một chữ mà không có done: coi như gián đoạn.
+    case CongCuOnline():
+      // Luồng đóng sau một chữ / giữa lúc chạy công cụ mà không có done: coi như gián đoạn.
       return daCoChu ? const GiuPhanDaCo(kGhiChuGianDoan) : const RoiVeMay('đóng không done');
   }
 }

@@ -53,6 +53,35 @@ void main() {
       expect(quyetDinhSauOnline(daCoChu: true, cuoi: const ChuOnline('x'), daDung: false), isA<GiuPhanDaCo>());
       expect(quyetDinhSauOnline(daCoChu: false, cuoi: const ChuOnline('x'), daDung: false), isA<RoiVeMay>());
     });
+    test('429 (hết lượt ngày, hết ngân sách tháng, đang bận) → rơi về máy, ghi chú nói đúng lý do', () {
+      final k = quyetDinhSauOnline(daCoChu: false, cuoi: const LoiOnline(http: 429, lyDo: 'HTTP 429'), daDung: false);
+      expect(k, isA<RoiVeMay>());
+      expect((k as RoiVeMay).ghiChu, kGhiChuGioiHanOnline);
+    });
+    test('Lỗi khác → ghi chú máy chủ không phản hồi như cũ', () {
+      final k = quyetDinhSauOnline(daCoChu: false, cuoi: const LoiOnline(http: 503, lyDo: 'x'), daDung: false);
+      expect((k as RoiVeMay).ghiChu, kGhiChuRoiVeMay);
+      final d = quyetDinhSauOnline(daCoChu: false, cuoi: const DuPhongOnline('x'), daDung: false);
+      expect((d as RoiVeMay).ghiChu, kGhiChuRoiVeMay);
+    });
+    test('CongCuOnline là sự kiện cuối (đóng giữa lúc chạy công cụ) → như đứt luồng', () {
+      const sk = CongCuOnline('tra_cuu_kien_thuc', dangChay: true);
+      expect(quyetDinhSauOnline(daCoChu: true, cuoi: sk, daDung: false), isA<GiuPhanDaCo>());
+      expect(quyetDinhSauOnline(daCoChu: false, cuoi: sk, daDung: false), isA<RoiVeMay>());
+    });
+    test('laKet: chỉ Xong / DuPhong / Loi kết thúc luồng', () {
+      expect(const ChuOnline('x').laKet, isFalse);
+      expect(const CongCuOnline('a', dangChay: true).laKet, isFalse);
+      expect(const XongOnline().laKet, isTrue);
+      expect(const DuPhongOnline('x').laKet, isTrue);
+      expect(const LoiOnline(lyDo: 'x').laKet, isTrue);
+    });
+    test('nhanCongCuOnline: tra cứu và số liệu có nhãn riêng, không lộ tên công cụ', () {
+      expect(nhanCongCuOnline('tra_cuu_kien_thuc'), 'Đang tra cứu kiến thức…');
+      for (final ten in ['get_bill_details', 'compare_spending_periods', 'cong_cu_moi_sau_nay']) {
+        expect(nhanCongCuOnline(ten), 'Đang xem số liệu của bạn…');
+      }
+    });
     test('Loi khi ĐÃ có chữ → giữ, ghi chú gián đoạn', () {
       final k = quyetDinhSauOnline(daCoChu: true, cuoi: const LoiOnline(http: null, lyDo: 'đứt'), daDung: false);
       expect(k, isA<GiuPhanDaCo>());
