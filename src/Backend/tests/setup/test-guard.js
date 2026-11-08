@@ -100,6 +100,8 @@ Object.assign(process.env, {
   DEEPSEEK_API_KEY: 'sk-guard',
   DEEPSEEK_BASE_URL: 'http://127.0.0.1:1',
   GEMINI_API_KEY: 'guard',
+  // NCKH: .env bản thực nghiệm bật truy hồi lai; test không được nạp mô hình nhúng thật (test hybrid tự tiêm bộ nhúng giả)
+  NCKH_RETRIEVAL: 'lexical',
   NODE_OPTIONS: nodeOptions.includes(self) ? nodeOptions : `${nodeOptions} --require="${self}"`.trim(),
 });
 

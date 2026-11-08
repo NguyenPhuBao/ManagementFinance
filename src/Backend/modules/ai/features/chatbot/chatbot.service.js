@@ -12,7 +12,7 @@ const { prisma } = require('../../../../config/db');
 const FinancialSnapshotService = require('./snapshot/financial.snapshot.service');
 const ToolsExecutor = require('./tools/tools.executor');
 const { financialToolsDeclarations, KNOWLEDGE_TOOL_NAME } = require('./tools/financial.tools');
-const LexicalKnowledgeSearch = require('./rag/lexical.search');
+const { createKnowledgeSearch } = require('./rag/knowledge.factory');
 const PIIMasker = require('./privacy/pii.masker');
 const { buildSystemPrompt } = require('./prompts/advisor.system.prompt');
 const { chatbotCircuitBreaker } = require('./resilience/circuit-breaker');
@@ -38,9 +38,14 @@ function parseToolArgs(raw) {
 }
 
 class ChatbotService {
-  constructor() {
+  /** @param {{knowledgeSearch?: object}} [deps] - tiêm được khi test; mặc định theo NCKH_RETRIEVAL (rag/knowledge.factory) */
+  constructor({ knowledgeSearch } = {}) {
     this.snapshotService = new FinancialSnapshotService();
-    this.knowledgeSearch = new LexicalKnowledgeSearch();
+    this.knowledgeSearch = knowledgeSearch || createKnowledgeSearch();
+    // Truy hồi lai: nhúng sẵn các đoạn của kho lúc khởi động để lượt hỏi đầu không gánh thời gian lập chỉ mục.
+    if (!knowledgeSearch && typeof this.knowledgeSearch.ready === 'function') {
+      this.knowledgeSearch.ready().catch((err) => logger.warn('[ChatbotService] Chưa dựng được chỉ mục vector', { error: err.message }));
+    }
     this.toolsExecutor = new ToolsExecutor({ knowledgeSearch: this.knowledgeSearch });
     this.piiMasker = new PIIMasker();
     this.breaker = chatbotCircuitBreaker;
@@ -309,7 +314,11 @@ class ChatbotService {
         }
         if (typeof onTool === 'function') onTool({ name: call.name, status: 'start' });
         const result = await this.toolsExecutor.executeTool(call.name, args, idaccount, { userName, maxResultChars: limits.maxToolResultChars });
-        if (typeof onTool === 'function') onTool({ name: call.name, status: 'done' });
+        if (typeof onTool === 'function') {
+          // NCKH: sự kiện done của tra cứu mang chẩn đoán truy hồi (client chỉ đọc name / status, bỏ qua trường lạ).
+          const retrieval = isLookup ? this.toolsExecutor.lastRetrieval : null;
+          onTool(retrieval ? { name: call.name, status: 'done', retrieval } : { name: call.name, status: 'done' });
+        }
         // Chỉ lấy nguồn của đoạn đứng đầu: các đoạn xếp sau có thể lệch chủ đề, gắn vào sẽ thành trích dẫn sai.
         if (isLookup && result?.found) citations.push(result.results[0].citation);
         let content = JSON.stringify(result);

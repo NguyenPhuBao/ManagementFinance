@@ -4,6 +4,7 @@
  * Lọc PII trước khi trả về cho LLM
  */
 
+const { performance } = require('perf_hooks');
 const { prisma } = require('../../../../../config/db');
 const PIIMasker = require('../privacy/pii.masker');
 const logger = require('../../../../../core/logger');
@@ -37,14 +38,28 @@ class ToolsExecutor {
   constructor({ knowledgeSearch } = {}) {
     this.piiMasker = new PIIMasker();
     this.knowledgeSearch = knowledgeSearch || new LexicalKnowledgeSearch();
+    /** Chẩn đoán lần tra gần nhất {method, chunkIds, timings} cho đo đạc NCKH; không gửi cho LLM. */
+    this.lastRetrieval = null;
   }
 
   /**
    * Tra kho tri thức tĩnh. Vừa `maxResultChars` bằng cách bỏ nguyên đoạn xếp sau: cắt giữa đoạn có thể làm mất số liệu
    * và làm hỏng JSON mà mô hình đọc. Đoạn đứng đầu luôn được giữ.
+   * Truy hồi lai (có `searchHybrid`) trả Promise; truy hồi từ vựng trả kết quả đồng bộ như bản đối chứng.
    */
-  searchKnowledge({ query } = {}, { maxResultChars } = {}) {
-    const hits = this.knowledgeSearch.search(query, KNOWLEDGE_TOP_K);
+  searchKnowledge({ query } = {}, opts = {}) {
+    const ks = this.knowledgeSearch;
+    if (typeof ks.searchHybrid === 'function') {
+      return ks.searchHybrid(query, KNOWLEDGE_TOP_K).then((hits) => this._knowledgeResult(hits, opts, ks.lastTimings));
+    }
+    const t0 = performance.now();
+    const hits = ks.search(query, KNOWLEDGE_TOP_K);
+    const took = Math.round((performance.now() - t0) * 1000) / 1000;
+    return this._knowledgeResult(hits, opts, { method: 'lexical', bm25Ms: took, totalMs: took });
+  }
+
+  _knowledgeResult(hits, { maxResultChars } = {}, timings = {}) {
+    this.lastRetrieval = { method: timings?.method || 'lexical', chunkIds: hits.map((h) => h.chunkId), timings: timings || {} };
     if (hits.length === 0) return { found: false, results: [], note: KNOWLEDGE_NOT_FOUND_NOTE };
 
     const lengthOf = (items) => JSON.stringify({ found: true, results: items }).length;
@@ -160,7 +175,7 @@ class ToolsExecutor {
     try {
       switch (name) {
         case KNOWLEDGE_TOOL_NAME:
-          return this.searchKnowledge(args, options);
+          return await this.searchKnowledge(args, options);
         case 'get_category_transactions':
           return await this.getCategoryTransactions(args, idaccount, options.userName);
         case 'compare_spending_periods':
