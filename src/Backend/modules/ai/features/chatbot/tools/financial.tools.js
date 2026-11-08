@@ -1,9 +1,25 @@
 /**
- * Financial Tools Declarations for Gemini Function Calling
+ * Financial Tools Declarations for Function Calling (khai báo kiểu Gemini; llm/deepseek.provider.js chuyển sang JSON Schema chuẩn)
  * Tương thích Google Generative AI SDK
  */
 
+const KNOWLEDGE_TOOL_NAME = 'tra_cuu_kien_thuc';
+
 const financialToolsDeclarations = [
+  {
+    name: KNOWLEDGE_TOOL_NAME,
+    description: 'Tra cứu kho kiến thức tài chính đã kiểm chứng (thuế thu nhập cá nhân, bảo hiểm bắt buộc, bảo hiểm tiền gửi, quỹ khẩn cấp, phương pháp trả nợ, quy tắc phân bổ thu nhập). BẮT BUỘC gọi trước khi trả lời câu hỏi về luật, mức chuẩn, quy tắc hay phương pháp tài chính. Không dùng cho số liệu của riêng người dùng.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        query: {
+          type: 'STRING',
+          description: 'Từ khóa tiếng Việt nêu đúng nội dung cần tra (ví dụ: "mức giảm trừ gia cảnh thuế thu nhập cá nhân"). Không đưa số liệu hay thông tin cá nhân của người dùng vào đây.',
+        },
+      },
+      required: ['query'],
+    },
+  },
   {
     name: 'get_category_transactions',
     description: 'Truy vấn danh sách các giao dịch cụ thể của một danh mục chi tiêu (ví dụ: các khoản ăn uống, mua sắm lớn nhất hoặc gần nhất). Dùng khi người dùng muốn biết chi tiết tiền đã đi đâu.',
@@ -86,4 +102,5 @@ const financialToolsDeclarations = [
 
 module.exports = {
   financialToolsDeclarations,
+  KNOWLEDGE_TOOL_NAME,
 };

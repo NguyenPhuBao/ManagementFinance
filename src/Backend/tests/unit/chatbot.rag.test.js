@@ -1,42 +1,43 @@
 /**
- * Unit Test — Hybrid Knowledge Search RAG (TDD Phase 3)
+ * Unit Test — Truy vấn tri thức tĩnh trên kho thật (thay cho bản khớp cụm từ khóa cũ). Chi tiết BM25: chatbot.bm25.test.js
  */
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const HybridKnowledgeSearch = require('../../modules/ai/features/chatbot/rag/hybrid.search');
+const LexicalKnowledgeSearch = require('../../modules/ai/features/chatbot/rag/lexical.search');
 
-describe('HybridKnowledgeSearch — Truy Vấn Tri Thức Tĩnh Chuẩn RAG', () => {
-  const searchEngine = new HybridKnowledgeSearch();
+describe('LexicalKnowledgeSearch — Truy Vấn Tri Thức Tĩnh Chuẩn RAG', () => {
+  const searchEngine = new LexicalKnowledgeSearch();
 
-  it('1. Đọc và nạp đủ 3 gói tài liệu cẩm nang tĩnh', () => {
-    assert.ok(searchEngine.documents.length >= 3, 'Phải nạp ít nhất 3 tài liệu');
+  it('1. Đọc và nạp đủ các tài liệu tri thức', () => {
     const docIds = searchEngine.documents.map(d => d.id);
-    assert.ok(docIds.includes('thue_tncn_2026'));
+    assert.ok(docIds.includes('thue_giam_tru_2026'));
     assert.ok(docIds.includes('quy_tac_50_30_20'));
-    assert.ok(docIds.includes('quan_ly_no_an_toan'));
+    assert.ok(docIds.includes('tra_no_phuong_phap'));
   });
 
-  it('2. Truy vấn câu hỏi về Thuế TNCN -> Trả về tài liệu biểu thuế và trích dẫn nguồn', () => {
-    const results = searchEngine.search('Mức giảm trừ gia cảnh thuế thu nhập cá nhân hiện nay là bao nhiêu?', 1);
-    assert.strictEqual(results.length, 1);
-    assert.strictEqual(results[0].id, 'thue_tncn_2026');
-    assert.ok(results[0].content.includes('11.000.000 VNĐ/tháng'));
-    assert.ok(results[0].attribution.includes('Luật Thuế TNCN'));
+  it('2. Truy vấn câu hỏi về giảm trừ gia cảnh -> Trả về mức 2026 và trích dẫn đúng văn bản', () => {
+    const results = searchEngine.search('Mức giảm trừ gia cảnh thuế thu nhập cá nhân hiện nay là bao nhiêu?', 3);
+    assert.strictEqual(results[0].id, 'thue_giam_tru_2026');
+    assert.ok(results.map((r) => r.content).join('\n').includes('15.500.000'));
+    assert.ok(results[0].attribution.includes('110/2025/UBTVQH15'));
   });
 
-  it('3. Truy vấn câu hỏi về cách phân bổ tiền 50/30/20 -> Trả về tài liệu ngân sách', () => {
-    const results = searchEngine.search('Làm sao để chia tiền theo quy tắc 50/30/20 và 6 chiếc lọ?', 1);
-    assert.strictEqual(results.length, 1);
+  // Kết quả là từng ĐOẠN, nên câu hỏi về hai nội dung phải lấy được cả hai đoạn trong topK.
+  it('3. Câu hỏi về 50/30/20 và 6 chiếc lọ -> Lấy được cả hai đoạn của tài liệu ngân sách', () => {
+    const results = searchEngine.search('Làm sao để chia tiền theo quy tắc 50/30/20 và 6 chiếc lọ?', 3);
     assert.strictEqual(results[0].id, 'quy_tac_50_30_20');
-    assert.ok(results[0].content.includes('NHU CẦU THIẾT YẾU'));
+    const text = results.map((r) => r.content).join('\n');
+    assert.ok(text.includes('NHU CẦU THIẾT YẾU'));
+    assert.ok(text.includes('6 CHIẾC LỌ'));
   });
 
-  it('4. Truy vấn câu hỏi về phương pháp trả nợ Tuyết Lở -> Trả về tài liệu nợ', () => {
-    const results = searchEngine.search('Nên trả nợ theo phương pháp Tuyết Lở hay Hòn Tuyết Lăn?', 1);
-    assert.strictEqual(results.length, 1);
-    assert.strictEqual(results[0].id, 'quan_ly_no_an_toan');
-    assert.ok(results[0].content.includes('DEBT AVALANCHE'));
+  it('4. Câu hỏi so sánh Tuyết Lở và Hòn Tuyết Lăn -> Lấy được cả hai đoạn của tài liệu nợ', () => {
+    const results = searchEngine.search('Nên trả nợ theo phương pháp Tuyết Lở hay Hòn Tuyết Lăn?', 3);
+    assert.strictEqual(results[0].id, 'tra_no_phuong_phap');
+    const text = results.map((r) => r.content).join('\n');
+    assert.ok(text.includes('DEBT AVALANCHE'));
+    assert.ok(text.includes('DEBT SNOWBALL'));
   });
 
   it('5. Câu hỏi hoàn toàn không liên quan -> Trả về danh sách rỗng (tránh nạp rác vào Prompt)', () => {

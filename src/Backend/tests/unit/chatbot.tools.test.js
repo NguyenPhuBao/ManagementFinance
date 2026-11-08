@@ -8,15 +8,16 @@ const ToolsExecutor = require('../../modules/ai/features/chatbot/tools/tools.exe
 const { financialToolsDeclarations } = require('../../modules/ai/features/chatbot/tools/financial.tools');
 
 describe('FinancialToolsDeclarations — Khai Báo JSON Schema Chuẩn Gemini SDK', () => {
-  it('1. Đủ 4 công cụ đào sâu theo chuẩn Function Calling', () => {
+  it('1. Đủ 4 công cụ đào sâu và công cụ tra cứu kiến thức theo chuẩn Function Calling', () => {
     assert.ok(Array.isArray(financialToolsDeclarations), 'Phải là mảng declarations');
-    assert.strictEqual(financialToolsDeclarations.length, 4, 'Phải có 4 tools');
+    assert.strictEqual(financialToolsDeclarations.length, 5, 'Phải có 5 tools');
 
     const toolNames = financialToolsDeclarations.map(t => t.name);
     assert.ok(toolNames.includes('get_category_transactions'));
     assert.ok(toolNames.includes('compare_spending_periods'));
     assert.ok(toolNames.includes('get_bill_details'));
     assert.ok(toolNames.includes('get_goal_simulation'));
+    assert.ok(toolNames.includes('tra_cuu_kien_thuc'));
   });
 
   it('2. Các tool có parameters đúng định dạng schema', () => {

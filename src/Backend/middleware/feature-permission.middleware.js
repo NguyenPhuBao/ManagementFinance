@@ -39,6 +39,9 @@ function requireFeature(featureId) {
         logger.warn('[Permission Guard] Lỗi truy vấn tài khoản, dùng type từ token:', dbErr.message);
       }
 
+      // Cho các middleware sau (vd. hạn mức AI theo gói) dùng lại gói hiệu lực, khỏi truy vấn lần nữa
+      req.effectiveAccountType = effectiveType;
+
       // 3. Đọc cấu hình quyền từ permissionRepository
       const { features } = await permissionRepository.getPermissionsByAccountType(effectiveType);
 

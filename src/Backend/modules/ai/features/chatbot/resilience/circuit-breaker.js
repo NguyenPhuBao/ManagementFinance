@@ -1,5 +1,5 @@
 /**
- * Circuit Breaker Pattern for LLM Gemini Service
+ * Circuit Breaker Pattern for the Chatbot LLM service (nhà cung cấp nào cũng dùng được)
  * Bảo vệ hệ thống khỏi cascade failure khi dịch vụ AI bên ngoài gặp sự cố
  * Trạng thái: CLOSED (Bình thường) -> OPEN (Ngắt mạch) -> HALF-OPEN (Thử nghiệm)
  */
@@ -114,8 +114,9 @@ class CircuitBreaker {
   }
 }
 
-// Khởi tạo instance Circuit Breaker mặc định cho Gemini Chatbot
-const geminiCircuitBreaker = new CircuitBreaker({
+// Circuit Breaker RIÊNG của Chatbot AI (dịch vụ nặng, tách khỏi mọi thành phần khác của hệ thống).
+// Chỉ nên đếm lỗi sức khoẻ của nhà cung cấp LLM (mạng, hết giờ, 429, 5xx) — xem `boQuaLoi` ở nơi gọi.
+const chatbotCircuitBreaker = new CircuitBreaker({
   failureThreshold: 5,
   cooldownPeriodMs: 30 * 1000,
   windowMs: 60 * 1000,
@@ -124,5 +125,5 @@ const geminiCircuitBreaker = new CircuitBreaker({
 module.exports = {
   CircuitBreaker,
   CircuitBreakerOpenError,
-  geminiCircuitBreaker,
+  chatbotCircuitBreaker,
 };

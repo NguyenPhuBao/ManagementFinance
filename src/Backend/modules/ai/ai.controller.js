@@ -5,7 +5,6 @@
  * POST /api/ai/classify  → features/classify/classify.controller.js
  * POST /api/ai/ocr/*     → features/ocr/ocr.controller.js
  * POST /api/ai/chatbot/* → features/chatbot/chatbot.controller.js
- * GET  /api/ai/chatbot/snapshot → features/chatbot/snapshot/financial.snapshot.service.js
  */
 
 const classifyController = require('./features/classify/classify.controller');

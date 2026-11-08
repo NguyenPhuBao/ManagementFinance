@@ -1,0 +1,10 @@
+{
+  "id": "thue_cach_tinh_luong",
+  "title": "Cách tính thuế thu nhập cá nhân (TNCN) từ tiền lương, tiền công",
+  "category": "Thuế",
+  "source": "Luật Thuế thu nhập cá nhân số 109/2025/QH15; Nghị quyết 110/2025/UBTVQH15",
+  "sourceUrl": "https://xaydungchinhsach.chinhphu.vn/chi-tiet-bieu-thue-thu-nhap-ca-nhan-luy-tien-tung-phan-119260327091407544.htm",
+  "checkedAt": "2026-11-08",
+  "content": "Công thức tính thuế từ tiền lương: thu nhập tính thuế = thu nhập chịu thuế trừ các khoản đóng bảo hiểm bắt buộc, trừ giảm trừ bản thân 15.500.000 đồng/tháng, trừ 6.200.000 đồng/tháng cho mỗi người phụ thuộc. Sau đó chia thu nhập tính thuế theo từng bậc của biểu thuế, nhân từng phần với thuế suất của bậc đó rồi cộng lại. Kết quả bằng 0 hoặc âm thì không phải nộp thuế.\n\nVí dụ lương 25 triệu đồng/tháng, không có người phụ thuộc: bảo hiểm 10,5% là 2.625.000 đồng. Thu nhập tính thuế = 25.000.000 - 2.625.000 - 15.500.000 = 6.875.000 đồng, nằm trong bậc 5%. Thuế phải nộp là 343.750 đồng/tháng.\n\nVí dụ lương 25 triệu đồng/tháng, có 1 người phụ thuộc: thu nhập tính thuế = 25.000.000 - 2.625.000 - 15.500.000 - 6.200.000 = 675.000 đồng. Thuế phải nộp là 33.750 đồng/tháng.\n\nVí dụ lương 40 triệu đồng/tháng, không có người phụ thuộc: bảo hiểm 10,5% là 4.200.000 đồng. Thu nhập tính thuế = 40.000.000 - 4.200.000 - 15.500.000 = 20.300.000 đồng. Thuế = 10 triệu × 5% + 10,3 triệu × 10% = 500.000 + 1.030.000 = 1.530.000 đồng/tháng.\n\nVí dụ lương 17 triệu đồng/tháng, không có người phụ thuộc: sau khi trừ bảo hiểm 10,5% và giảm trừ bản thân thì kết quả âm nên không phải nộp thuế.\n\nCác ví dụ giả định toàn bộ lương là thu nhập chịu thuế và đóng bảo hiểm trên toàn bộ lương, chưa xét phụ cấp được miễn thuế hay mức trần đóng bảo hiểm. Số thuế thực tế cần đối chiếu bảng lương và cơ quan thuế.",
+  "keywords": ["cách tính thuế", "thuế lương", "thuế tiền lương", "tiền công", "thu nhập tính thuế", "thuế thu nhập cá nhân", "thuế TNCN", "lương gross"]
+}

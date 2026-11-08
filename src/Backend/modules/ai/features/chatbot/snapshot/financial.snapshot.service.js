@@ -1,7 +1,7 @@
 /**
  * Financial Snapshot Service
  * Tính toán Bản chụp Sức khỏe Tài chính Vĩ mô (Chức năng 7 Lối A: Backend tự tính)
- * Phục vụ làm Context nạp vào Gemini Chatbot AI và hiển thị Dashboard Sức khỏe Tài chính
+ * Phục vụ làm Context nạp vào prompt của Chatbot AI (không còn endpoint riêng)
  */
 
 const { prisma } = require('../../../../../config/db');
@@ -10,6 +10,7 @@ const PIIMasker = require('../privacy/pii.masker');
 const logger = require('../../../../../core/logger');
 
 const SNAPSHOT_CACHE_TTL_SECONDS = 120; // TTL 120s (2 phút)
+const DEFAULT_WINDOW_DAYS = 90;
 
 class FinancialSnapshotService {
   constructor() {
@@ -30,6 +31,11 @@ class FinancialSnapshotService {
     } catch (err) {
       logger.warn(`[SnapshotCache] Failed to invalidate cache: ${err.message}`);
     }
+  }
+
+  /** Giao dịch đổi khi đồng bộ xong: xoá bộ đệm để câu hỏi kế tiếp thấy số mới, không phải đợi hết TTL. */
+  listenForChanges(eventBus) {
+    return eventBus.subscribe('sync.completed', (data) => this.invalidateSnapshotCache(data?.idaccount));
   }
 
   /**
@@ -255,7 +261,7 @@ class FinancialSnapshotService {
    * @param {boolean} options.bypassCache
    * @returns {Promise<object>}
    */
-  async generateSnapshot(idaccount, { bypassCache = false } = {}) {
+  async generateSnapshot(idaccount, { bypassCache = false, userName, windowDays } = {}) {
     const cacheKey = `cache:snapshot:${idaccount}`;
 
     // 1. Kiểm tra Cache Redis nếu không bypass
@@ -273,84 +279,85 @@ class FinancialSnapshotService {
 
     try {
       const now = new Date();
-      const ninetyDaysAgo = new Date();
-      ninetyDaysAgo.setDate(now.getDate() - 90);
-
-      // 1. Lấy giao dịch trong cửa sổ cuộn 90 ngày
-      const transactions = await prisma.transaction.findMany({
-        where: {
-          idaccount,
-          deleted_at: null,
-          date_transaction: { gte: ninetyDaysAgo },
-        },
-        include: {
-          category: { select: { name_category: true, classify: true } },
-        },
-        orderBy: { date_transaction: 'desc' },
-      });
-
-      // 2. Lấy danh sách ví
-      const wallets = await prisma.wallet.findMany({
-        where: { idaccount, delete_at: null },
-      });
-
-      // 3. Lấy ngân sách còn hiệu lực tại thời điểm hiện tại
-      const budgets = await prisma.budget.findMany({
-        where: {
-          idaccount,
-          delete_at: null,
-          start: { lte: now },
-          OR: [
-            { end: null },
-            { end: { gte: now } },
-          ],
-        },
-        include: { category: { select: { name_category: true } } },
-      });
-
-      // 4. Lấy hóa đơn sắp tới trong 7 ngày
+      const days = Number(windowDays) > 0 ? Number(windowDays) : DEFAULT_WINDOW_DAYS;
+      const windowStart = new Date();
+      windowStart.setDate(now.getDate() - days);
       const sevenDaysLater = new Date();
       sevenDaysLater.setDate(now.getDate() + 7);
 
-      const upcomingBills = await prisma.bill.findMany({
-        where: {
-          idaccount,
-          delete_at: null,
-          pay_status: { in: ['Pending', 'Unpaid'] },
-          due_date: { lte: sevenDaysLater, gte: now },
-        },
-      });
-
-      // 5. Lấy mục tiêu tích lũy đang chạy
-      const activeGoalsCount = await prisma.goal.count({
-        where: {
-          idaccount,
-          delete_at: null,
-          status_complete: 'False',
-        },
-      });
+      // Bản chụp nằm trước lần gọi LLM đầu tiên nên thời gian ở đây cộng thẳng vào lúc chờ chữ đầu: truy vấn đồng thời.
+      const [transactions, wallets, budgets, upcomingBills, activeGoalsCount, oldestTx] = await Promise.all([
+        // 1. Giao dịch trong cửa sổ cuộn (context_window_days của gói, mặc định 90 ngày)
+        prisma.transaction.findMany({
+          where: {
+            idaccount,
+            deleted_at: null,
+            date_transaction: { gte: windowStart },
+          },
+          include: {
+            category: { select: { name_category: true, classify: true } },
+          },
+          orderBy: { date_transaction: 'desc' },
+        }),
+        // 2. Danh sách ví
+        prisma.wallet.findMany({
+          where: { idaccount, delete_at: null },
+        }),
+        // 3. Ngân sách còn hiệu lực tại thời điểm hiện tại
+        prisma.budget.findMany({
+          where: {
+            idaccount,
+            delete_at: null,
+            start: { lte: now },
+            OR: [
+              { end: null },
+              { end: { gte: now } },
+            ],
+          },
+          include: { category: { select: { name_category: true } } },
+        }),
+        // 4. Hóa đơn sắp tới trong 7 ngày
+        prisma.bill.findMany({
+          where: {
+            idaccount,
+            delete_at: null,
+            pay_status: { in: ['Pending', 'Unpaid'] },
+            due_date: { lte: sevenDaysLater, gte: now },
+          },
+        }),
+        // 5. Mục tiêu tích lũy đang chạy
+        prisma.goal.count({
+          where: {
+            idaccount,
+            delete_at: null,
+            status_complete: 'False',
+          },
+        }),
+        // 6. Giao dịch đầu tiên, để tính mẫu số động của chi tiêu trung bình tháng
+        prisma.transaction.findFirst({
+          where: { idaccount, deleted_at: null },
+          orderBy: { date_transaction: 'asc' },
+          select: { date_transaction: true },
+        }),
+      ]);
 
       // Phân tách chi tiêu
       // allExpenses: Chi + Vay/no (chỉ xét tiền ra âm) — dùng cho DTI và 50/30/20 (đúng với nghiệp vụ CSDL)
-      // regularExpenses: chỉ Chi — dùng cho topExpenseCategories và avgMonthlyExpense
+      // regularExpenses: Chi và khoản tiền ra không có danh mục — dùng cho topExpenseCategories và avgMonthlyExpense
+      const isUncategorizedSpend = (t) => !t.category && Number(t.amount || 0) < 0;
       const allExpenses = transactions.filter(
         t => t.type !== 'Transfer' &&
-             (t.category?.classify === 'Chi' ||
+             (t.category?.classify === 'Chi' || isUncategorizedSpend(t) ||
               (t.category?.classify === 'Vay/no' && Number(t.amount || 0) < 0))
       );
-      const regularExpenses = allExpenses.filter(t => t.category?.classify === 'Chi');
+      const regularExpenses = allExpenses.filter(t => t.category?.classify === 'Chi' || isUncategorizedSpend(t));
 
       const totalIncome = this.calculateValidIncome(transactions);
       const totalExpense = regularExpenses.reduce((sum, t) => sum + Math.abs(Number(t.amount || 0)), 0);
 
       // Chi tiêu trung bình tháng theo mẫu số động (Dynamic Days Span)
-      const oldestTx = await prisma.transaction.findFirst({
-        where: { idaccount, deleted_at: null },
-        orderBy: { date_transaction: 'asc' },
-        select: { date_transaction: true },
-      });
-      const firstTxDate = oldestTx?.date_transaction ? new Date(oldestTx.date_transaction) : ninetyDaysAgo;
-      const daysSpan = this.calculateDynamicDaysSpan(now, ninetyDaysAgo, firstTxDate);
+      const firstTxDate = oldestTx?.date_transaction ? new Date(oldestTx.date_transaction) : windowStart;
+      const daysSpan = this.calculateDynamicDaysSpan(now, windowStart, firstTxDate);
       const avgMonthlyExpense = totalExpense > 0 ? (totalExpense / daysSpan) * 30 : 0;
 
       // Phân bổ 50/30/20 — dùng allExpenses để khoản Vay/no được xét vào savings
@@ -440,7 +447,7 @@ class FinancialSnapshotService {
       };
 
       // Ẩn danh hóa 100% trước khi trả về
-      const sanitizedSnapshot = this.piiMasker.anonymizeSnapshot(rawSnapshot);
+      const sanitizedSnapshot = this.piiMasker.anonymizeSnapshot(rawSnapshot, { userName });
 
       // Lưu Cache Redis với TTL 120s
       if (redis && redis.status === 'ready') {

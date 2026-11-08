@@ -1,0 +1,10 @@
+{
+  "id": "lai_kep_tiet_kiem",
+  "title": "Lãi kép và lãi đơn khi tiết kiệm, đầu tư",
+  "category": "Tiết kiệm",
+  "source": "Investor.gov (Ủy ban Chứng khoán Hoa Kỳ), Compound Interest",
+  "sourceUrl": "https://www.investor.gov/introduction-investing/investing-basics/glossary/compound-interest",
+  "checkedAt": "2026-11-08",
+  "content": "Lãi kép là tiền lãi tính trên cả tiền gốc lẫn phần lãi đã tích lũy, còn gọi là lãi nhập gốc. Lãi đơn chỉ tính trên tiền gốc ban đầu. Công thức lãi kép: số tiền cuối = gốc × (1 + lãi suất mỗi kỳ) mũ số kỳ.\n\nVí dụ so sánh lãi kép và lãi đơn: 100 triệu đồng với lãi suất giả định 6%/năm trong 10 năm. Lãi kép theo năm cho 179.084.770 đồng; lãi đơn cho 160.000.000 đồng. Lãi suất trong ví dụ chỉ để minh họa, không phải lãi suất thực tế của ngân hàng nào.\n\nLãi kép có lợi hơn khi thời gian càng dài và tiền lãi được để lại thay vì rút ra. Cùng cơ chế đó cũng làm nợ tăng nhanh nếu tiền lãi chưa trả được cộng vào dư nợ, nên khoản nợ lãi cao thường cần ưu tiên trả sớm.",
+  "keywords": ["lãi kép", "lãi đơn", "lãi nhập gốc", "compound interest", "tiết kiệm dài hạn", "đầu tư dài hạn"]
+}
