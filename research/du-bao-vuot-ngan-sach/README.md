@@ -23,9 +23,12 @@ Hạn: bản thảo khung bài nộp thầy 2026-11-09 23h; bài hoàn chỉnh (
 
 ## Tệp
 
-- `paper/draft_paper.docx` / `.pdf` — bản thảo khung bài (5 trang, số liệu để trống).
-- `paper/build_paper.js` — dựng .docx: `NODE_PATH=<thư mục chứa node_modules/docx 9.x> node build_paper.js`
+- `paper/draft_paper.docx` / `.pdf`: bản thảo tiếng Anh (5 trang, số liệu để trống).
+- `paper/draft_paper_vi.docx` / `.pdf`: bản tiếng Việt cùng khuôn, cùng nội dung.
+- Chữ của hai bài ở `paper/content_en.js` và `paper/content_vi.js` (đã soát văn phong bằng skill `humanizer`, 2026-11-09);
+  `paper/build_paper.js` chỉ giữ khuôn IEEE. Dựng: `NODE_PATH=<thư mục chứa node_modules/docx 9.x> node build_paper.js en|vi`
   (trên máy này: `C:/Users/tadd1/AppData/Local/Temp/flowmoney-dacta/node_modules`).
-- `paper/make_figures.py` — vẽ Fig. 1–2 (SVG → PNG bằng `pymupdf`); Fig. 2 là chuỗi minh hoạ tự dựng, không phải dữ liệu thật.
+- `paper/make_figures.py`: vẽ Hình 1–2 cho cả hai ngôn ngữ (SVG → PNG bằng `pymupdf`); Hình 2 là chuỗi minh hoạ tự dựng,
+  không phải dữ liệu thật.
 
 Xuất PDF: mở .docx bằng Word → Save As PDF (hoặc Word COM `ExportAsFixedFormat`).
