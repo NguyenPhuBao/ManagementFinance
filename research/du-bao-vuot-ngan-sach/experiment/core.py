@@ -18,7 +18,7 @@ from sklearn.metrics import roc_auc_score
 CHECKPOINTS = [5, 10, 15, 20, 25]
 KAPPAS = [float(k) for k in os.environ.get("KAPPAS", "1.0,0.9,1.1").split(",")]  # 1.0 first: the figures need only it, and results are saved after each kappa
 TAUS = np.round(np.arange(0.05, 0.951, 0.05), 2)
-LAMBDAS = [0.02, 0.05, 0.1, 0.2]
+LAMBDAS = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2]  # widened 2026-11-09: 0.02 sat at the edge (lambda_scan.py)
 HISTORY = 6                # past periods used by M0/M1 (FlowMoney: kSoKyHocToiDa = 6)
 MIN_K = 3                  # FlowMoney: kSoKyHocToiThieu = 3
 REFIT_EVERY, M3_ROWS = 6, int(os.environ.get("M3_ROWS", 4000))  # highs time grows faster than linearly: 4,000 rows ~0.6 s/fit, 15,000 ~8 s/fit

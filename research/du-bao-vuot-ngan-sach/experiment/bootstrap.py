@@ -1,6 +1,6 @@
 """Paired bootstrap over users for Brier-score differences at kappa = 1.0 (Section V-F).
 
-Rebuilds the kappa = 1.0 forecasts exactly as run_berka.py / run_synthetic.py do (same seed, same lambda,
+Rebuilds the kappa = 1.0 forecasts exactly as run_berka.py / run_synthetic.py do (same seed, the lambda saved in results/<source>.json,
 same M3 subsample), averages the Brier score per user, and resamples users 2,000 times.
 Run:  python -u bootstrap.py   ->  results/bootstrap.json
       python -u bootstrap.py tabformer   ->  results/bootstrap_tabformer.json (run_tabformer.py users and split)
@@ -58,12 +58,14 @@ def main():
     Y, days, start, ids = berka.load()
     months = np.concatenate([np.arange(s + HISTORY, Y.shape[1]) for s in start])
     ft = int(np.quantile(months, 0.2))
-    R = build_rows(Y, days, start, np.zeros(len(ids), dtype=int), 1.0, 0.02)
+    lam = json.loads((HERE / "results" / "berka.json").read_text(encoding="utf-8"))["lambda"]
+    R = build_rows(Y, days, start, np.zeros(len(ids), dtype=int), 1.0, lam)
     R["p3"] = fit_m3(R, np.random.default_rng(SEED), ft)
     res["berka"], n = paired(R, ft, np.random.default_rng(SEED + 1))
     res["berka"]["users"] = n
     Y, days, pattern = simulate(seed=SEED)
-    R = build_rows(Y, days, np.zeros(len(pattern), dtype=int), pattern, 1.0, 0.02)
+    lam = json.loads((HERE / "results" / "synthetic.json").read_text(encoding="utf-8"))["lambda"]
+    R = build_rows(Y, days, np.zeros(len(pattern), dtype=int), pattern, 1.0, lam)
     R["p3"] = fit_m3(R, np.random.default_rng(SEED), 12)
     res["synthetic"], n = paired(R, 12, np.random.default_rng(SEED + 1))
     res["synthetic"]["users"] = n

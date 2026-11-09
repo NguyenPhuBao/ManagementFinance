@@ -38,9 +38,10 @@ Hạn: bản thảo khung bài nộp thầy 2026-11-09 23h; bài hoàn chỉnh (
 - `core.py` (M0–M3, đánh giá cuốn chiếu, chỉ số) · `sim.py` (tập mô phỏng) · `berka.py` (nạp Berka) ·
   `run_synthetic.py` · `run_berka.py [--nofixed]` (biến môi trường `M3_ROWS`, `KAPPAS` cho phép kiểm độ nhạy) ·
   `bootstrap.py` · `plots.py <nguồn> <số hình>` (`python plots.py berka 3,4`, `python plots.py synthetic 5,6`).
-- Kết quả: `experiment/results/*.json`. Tóm tắt (κ = 1,0): Berka M1 Brier 0,169 · M3 0,171 · M0 0,180 · M2 0,225;
-  M3 hiệu chuẩn tốt nhất (ECE 0,035); bootstrap M3 − M1 = +0,0012 [0,0005; 0,0019]; bỏ khoản cố định thì M3 thắng.
-  Mô phỏng: M3 0,126 thắng rõ. Phần lõi mới tái lập đúng 1.060/1.060 giá trị của lượt mô phỏng đầu.
+- Kết quả: `experiment/results/*.json`. Tóm tắt (κ = 1,0, lưới λ mở rộng 2026-11-09): Berka M1 Brier 0,169 · M3 0,172 · M0 0,180 ·
+  M2 0,211; M3 hiệu chuẩn tốt nhất (ECE 0,040); bootstrap M3 − M1 = +0,0018 [0,0010; 0,0025]; bỏ khoản cố định thì M3
+  thắng. Mô phỏng: M3 0,125 thắng rõ. λ chọn: Berka 0,002 · bỏ cố định 0,005 · TabFormer 0,01 · mô phỏng 0,01
+  (`lambda_scan.py`; lưới cũ dừng ở 0,02 là biên). Chạy lại toàn bộ: `sh rerun_all.sh` (~25 phút). Phần lõi mới tái lập đúng 1.060/1.060 giá trị của lượt mô phỏng đầu.
 - **Đối chiếu M1 với mã app** (2026-11-09): `python -u export_cases.py 20000 7` (20.000 ca Berka, K ≥ 3) →
   `dart run dart_check/doi_chieu.dart` (chạy thẳng `src/Client-app/lib/features/budget/domain/nhip_chi.dart`, import
   theo đường dẫn, không sửa `src/`) → `python -u compare_m1_dart.py` → `results/m1_compare.json`. Khoản chi đặt lúc
@@ -52,9 +53,9 @@ Hạn: bản thảo khung bài nộp thầy 2026-11-09 23h; bài hoàn chỉnh (
   `data/credit_card` vào `data/raw/tabformer/`; SHA-256 trong `experiment/tabformer.py`). Lấy 01/2015 – 01/2020 (bỏ 02/2020 thiếu
   ngày), chi = số tiền > 0 và không gian lận, gộp mọi thẻ của một người, ≥ 18 tháng; bỏ 27 người ngừng chi sớm → 1.518 người.
   `python -u run_tabformer.py` (~8 phút) · `python -u bootstrap.py tabformer` · `profile_tabformer.py` (thống kê mô tả).
-  κ = 1,0 (310.973 dự báo, tỉ lệ vượt 44,3 %): Brier M3 **0,151** · M2 0,156 · M1 0,166 · M0 0,177; ECE M3 0,005 · M1 0,030;
-  M3 − M1 = −0,0146 [−0,0152; −0,0140], M3 hơn ở 89,7 % người; M3 thắng cả ba κ. Ở báo nhầm ≤ 10 %: M3 bắt 77 %, sớm 11 ngày;
-  M1 68 %, 9 ngày. λ chọn 0,02 (biên lưới, như Berka). Đối chiếu Dart (`export_cases.py tabformer` → `doi_chieu.dart tabformer`
+  κ = 1,0 (310.973 dự báo, tỉ lệ vượt 44,3 %): Brier M3 **0,148** · M2 0,149 · M1 0,166 · M0 0,177; ECE M3 0,005 · M2 0,024 ·
+  M1 0,030; M3 − M1 = −0,0177 [−0,0184; −0,0171], M3 hơn ở 94 % người; M3 thắng cả ba κ, M2 sát nút. Ở báo nhầm ≤ 10 %:
+  M3 77 %, M2 78 %, cùng sớm 12 ngày; M1 68 %, 9 ngày. λ = 0,01. Đối chiếu Dart (`export_cases.py tabformer` → `doi_chieu.dart tabformer`
   → `compare_m1_dart.py tabformer`): 23:59:59 khớp 20.000/20.000; **giờ thật** của giao dịch → r_med lệch 57,5 % ca (trung vị
   ~1 % ngân sách), quyết định lệch 2,1 %.
 
