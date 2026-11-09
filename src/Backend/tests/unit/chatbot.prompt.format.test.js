@@ -20,6 +20,23 @@ describe('Prompt — phạm vi câu hỏi', () => {
     assert.match(p, /bài tập không liên quan tài chính/);
     assert.match(p, /viết mã lập trình/);
   });
+
+  it('3. Đầu tư và giá thị trường thuộc phạm vi: vẫn trả lời, không khuyên mua bán một mã cụ thể (PO duyệt câu chữ 2026-11-09)', () => {
+    assert.match(p, /Phạm vi: mọi câu hỏi về tiền của người dùng \(.*đầu tư\)/);
+    assert.match(p, /cổ phiếu, vàng, ngoại tệ, tiền số, phái sinh/);
+    assert.match(p, /không có giá theo thời gian thực/);
+    assert.match(p, /không khuyên mua bán một mã cụ thể/);
+    assert.match(p, /Chỉ từ chối yêu cầu không liên quan tới tiền/);
+    assert.ok(!p.includes('Chỉ hỗ trợ tài chính cá nhân của người dùng (thu chi, ngân sách, mục tiêu, hóa đơn, vay nợ, tiết kiệm)'), 'còn câu phạm vi cũ thiếu đầu tư');
+  });
+
+  it('4. Câu được AI xác nhận thuộc phạm vi thì bản dặn ghi kèm lý do và dặn không từ chối; câu thường thì không có dòng này', () => {
+    const coXacNhan = buildSystemPrompt(null, { scopeNote: 'bài toán lãi suất là chuyện tiền' });
+    assert.match(coXacNhan, /XÁC NHẬN PHẠM VI/);
+    assert.match(coXacNhan, /bài toán lãi suất là chuyện tiền/);
+    assert.match(coXacNhan, /không từ chối/i);
+    assert.ok(!p.includes('XÁC NHẬN PHẠM VI'));
+  });
 });
 
 describe('Prompt — cách trình bày công thức', () => {
