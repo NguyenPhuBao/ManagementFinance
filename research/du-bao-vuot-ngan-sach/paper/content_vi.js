@@ -7,7 +7,7 @@ exports.header = 'NGHIÊN CỨU KHOA HỌC SINH VIÊN, TRƯỜNG ĐẠI HỌC C�
 exports.footnote = 'Bản thảo gửi duyệt ngày 09/11/2026. Đề tài nghiên cứu khoa học sinh viên do ThS. Huỳnh Nam hướng dẫn. Nguyễn Phú Bảo và Trần Quang Đạt thuộc Khoa Công nghệ Thông tin, Trường Đại học Công nghiệp Thành phố Hồ Chí Minh, TP. Hồ Chí Minh, Việt Nam (e-mail: [bổ sung sau]).';
 
 exports.build = ({ add, body, H1, H2, EQ, bullet, FIG, FIGBOX, TABLE, LABELED, REFLIST, r }) => {
-  add(LABELED('Tóm tắt', 'Cảnh báo ngân sách trong ứng dụng quản lý tài chính cá nhân có thể dựng theo hai cách đơn giản: báo khi số đã chi chạm một tỉ lệ cố định của ngân sách, hoặc kéo thẳng mức chi hiện tại tới cuối tháng. Cách thứ nhất chỉ phản ứng khi tiền đã tiêu. Cách thứ hai đánh giá sai những người trả tiền nhà hay hoá đơn định kỳ vào đầu tháng. Nghiên cứu này ước lượng, tại bất kỳ ngày nào trong kỳ, xác suất tổng chi cuối kỳ vượt ngân sách, và đo xem xác suất ấy cho phép cảnh báo sớm được bao nhiêu ngày. Bài toán được đặt thành dự báo xác suất cho phần tiền còn chi tới cuối kỳ. Bốn phương pháp được so sánh: mô hình chia đều làm mốc, mô hình trung vị nhịp chi đang chạy trong ứng dụng FlowMoney, mô hình trung bình trượt có trọng số mũ cho mức chi và phương sai theo ngày, và hồi quy phân vị tuyến tính huấn luyện trên dữ liệu gộp của mọi người dùng, có sắp lại phân vị cho đơn điệu. Các phương pháp được đánh giá trên bộ giao dịch ngân hàng công khai PKDD-99 Berka và trên một tập người dùng mô phỏng có kiểu chi tiêu biết trước, theo cách đánh giá cuốn chiếu tại năm mốc mỗi tháng và ba mức chặt của ngân sách. Chất lượng xác suất được đo bằng điểm Brier, log loss, diện tích dưới đường cong ROC và sai số hiệu chuẩn kỳ vọng; độ chính xác về số tiền đo bằng sai số tuyệt đối trung bình và pinball loss; chất lượng cảnh báo đo bằng tỉ lệ phát hiện và số ngày báo trước ở một mức báo nhầm cố định. Bài cũng trình bày cách chạy phương pháp được chọn ngay trên điện thoại trong một ứng dụng offline-first. Bản thảo này trình bày thiết kế nghiên cứu; kết quả thực nghiệm sẽ bổ sung ở bản hoàn chỉnh.'));
+  add(LABELED('Tóm tắt', 'Cảnh báo ngân sách trong ứng dụng quản lý tài chính cá nhân có thể dựng theo hai cách đơn giản: báo khi số đã chi chạm một tỉ lệ cố định của ngân sách, hoặc kéo thẳng mức chi hiện tại tới cuối tháng. Cách thứ nhất chỉ phản ứng khi tiền đã tiêu. Cách thứ hai đánh giá sai những người trả tiền nhà hay hoá đơn định kỳ vào đầu tháng. Nghiên cứu này ước lượng, tại bất kỳ ngày nào trong kỳ, xác suất tổng chi cuối kỳ vượt ngân sách, và đo xem xác suất ấy cho phép cảnh báo sớm được bao nhiêu ngày. Bài toán được đặt thành dự báo xác suất cho phần tiền còn chi tới cuối kỳ. Bốn phương pháp được so sánh: mô hình chia đều làm mốc, mô hình trung vị nhịp chi đang chạy trong ứng dụng FlowMoney, mô hình trung bình trượt có trọng số mũ cho mức chi và phương sai theo ngày, và hồi quy phân vị tuyến tính huấn luyện trên dữ liệu gộp của mọi người dùng, có sắp lại phân vị cho đơn điệu. Các phương pháp được đánh giá trên bộ giao dịch ngân hàng công khai PKDD-99 Berka và trên một tập người dùng mô phỏng có kiểu chi tiêu biết trước, theo cách đánh giá cuốn chiếu tại năm mốc mỗi tháng và ba mức chặt của ngân sách. Chất lượng xác suất được đo bằng điểm Brier, log loss, diện tích dưới đường cong ROC và sai số hiệu chuẩn kỳ vọng; độ chính xác về số tiền đo bằng sai số tuyệt đối trung bình và pinball loss; chất lượng cảnh báo đo bằng tỉ lệ phát hiện và số ngày báo trước ở một mức báo nhầm cố định. Bài cũng trình bày cách chạy phương pháp được chọn ngay trên điện thoại trong một ứng dụng offline-first. Bản thảo này trình bày thiết kế nghiên cứu và một lượt chạy sơ bộ trên tập mô phỏng, trong đó hồi quy phân vị có điểm Brier và sai số hiệu chuẩn thấp nhất ở cả ba mức ngân sách; kết quả trên bộ Berka sẽ bổ sung ở bản hoàn chỉnh.'));
   add(LABELED('Ý nghĩa thực tiễn', 'Một cảnh báo ngân sách chỉ có ích khi đến đủ sớm để người dùng kịp điều chỉnh và đủ hiếm để họ còn tin. Báo lúc đã tiêu hết ngân sách thì không còn gì để làm. Kéo thẳng mức chi thì tháng nào cũng báo với người trả tiền nhà ngày mùng 1, và người đó sẽ thôi đọc. Nghiên cứu này nêu nguy cơ vượt ngân sách dưới dạng một xác suất đã hiệu chuẩn, đưa ra từ sớm trong tháng, với tỉ lệ báo nhầm đo được. Các phương pháp đủ nhẹ để chạy trên điện thoại, nên dữ liệu giao dịch không phải gửi lên máy chủ. Kết quả so sánh sẽ cho nhóm phát triển biết khi nào quy tắc trung vị là đủ, và khi nào mô hình phân vị học từ dữ liệu đáng với công sức bỏ thêm.'));
   add(LABELED('Từ khoá', 'Cảnh báo sớm, dự báo xác suất, hồi quy phân vị, quản lý tài chính cá nhân, trung bình trượt có trọng số mũ, vượt ngân sách.', 160));
 
@@ -21,7 +21,7 @@ exports.build = ({ add, body, H1, H2, EQ, bullet, FIG, FIGBOX, TABLE, LABELED, R
   add(bullet(r`RQ2: Ở cùng một tỉ lệ báo nhầm, mỗi phương pháp báo trước được sớm hơn các mốc so sánh bao nhiêu ngày?`));
   add(bullet(r`RQ3: Độ chặt của ngân sách và mức đều đặn trong chi tiêu của người dùng làm thứ hạng thay đổi ra sao?`));
   add(body(r`Bài có bốn đóng góp. Chúng tôi đặt bài toán cảnh báo vượt ngân sách thành dự báo xác suất cho phần tiền còn chi, và đánh giá cả xác suất lẫn cảnh báo sinh ra từ nó. Chúng tôi so sánh bốn phương pháp, trong đó có quy tắc trung vị đang chạy trong một ứng dụng thật. Một tập người dùng mô phỏng có kiểu chi biết trước được dùng để giải thích phương pháp nào thắng trong trường hợp nào. Cuối cùng, bài đưa ra hướng dẫn tính dự báo ngay trên điện thoại mà không gửi giao dịch lên máy chủ.`));
-  add(body(r`Mục II điểm qua các nghiên cứu liên quan, mục III phát biểu bài toán và mục IV mô tả các phương pháp. Mục V trình bày dữ liệu và cách đánh giá, mục VI các giả thuyết và kế hoạch phân tích, mục VII cách tích hợp vào FlowMoney và mục VIII kế hoạch thực hiện. Mục IX kết luận.`));
+  add(body(r`Mục II điểm qua các nghiên cứu liên quan, mục III phát biểu bài toán và mục IV mô tả các phương pháp. Mục V trình bày dữ liệu và cách đánh giá, mục VI các giả thuyết và kết quả sơ bộ, mục VII cách tích hợp vào FlowMoney và mục VIII kế hoạch thực hiện. Mục IX kết luận.`));
 
   // II
   add(H1('Các nghiên cứu liên quan'));
@@ -105,20 +105,31 @@ exports.build = ({ add, body, H1, H2, EQ, bullet, FIG, FIGBOX, TABLE, LABELED, R
       ['Trung vị số ngày báo trước', 'Cảnh báo đến trước bao nhiêu ngày?', 'cao hơn'],
     ], null, 'LLC'));
   add(H2('So sánh thống kê và cài đặt'));
-  add(body(r`Điểm số được lấy trung bình theo từng người dùng trước, để người có lịch sử dài không lấn át kết quả. Mỗi chênh lệch giữa hai phương pháp được báo cáo kèm khoảng tin cậy 95% từ 2.000 lần lấy mẫu lại bootstrap theo người dùng [@efron], kiểm định Diebold–Mariano [@dm] dùng để đối chiếu thêm. Thực nghiệm viết bằng Python với pandas và hồi quy phân vị của statsmodels. Bản Python của M1 sẽ được đối chiếu với mã Dart của FlowMoney trên cùng bộ dữ liệu thử, để mốc so sánh đúng là quy tắc ứng dụng đang chạy. Mã nguồn, hạt giống ngẫu nhiên và bộ sinh dữ liệu mô phỏng lưu trong kho mã của dự án.`));
+  add(body(r`Điểm số được lấy trung bình theo từng người dùng trước, để người có lịch sử dài không lấn át kết quả. Mỗi chênh lệch giữa hai phương pháp được báo cáo kèm khoảng tin cậy 95% từ 2.000 lần lấy mẫu lại bootstrap theo người dùng [@efron], kiểm định Diebold–Mariano [@dm] dùng để đối chiếu thêm. Thực nghiệm viết bằng Python với pandas và hồi quy phân vị của statsmodels. Bản Python của M1 sẽ được đối chiếu với mã Dart của FlowMoney trên cùng bộ dữ liệu thử, để mốc so sánh đúng là quy tắc ứng dụng đang chạy. Mã nguồn, hạt giống ngẫu nhiên và bộ sinh dữ liệu mô phỏng lưu trong kho mã của dự án. Lượt chạy sơ bộ ở mục VI-B dùng hai giản lược sẽ bỏ ở lượt chạy chính thức: M3 được khớp lại sáu tháng một lần trên mẫu con ngẫu nhiên 4.000 dòng dữ liệu trước đó, và M2 chỉ dùng dạng phân phối chuẩn. Cách chia giữ riêng người dùng chưa chạy.`));
 
   // VI
-  add(H1('Kết quả dự kiến và kế hoạch phân tích'));
-  add(body(r`Các giả thuyết dưới đây định hướng việc phân tích. Đây là dự đoán, chưa phải kết quả.`));
+  add(H1('Giả thuyết và kết quả sơ bộ'));
+  add(H2('Giả thuyết'));
+  add(body(r`Các giả thuyết dưới đây được viết trước lượt chạy sơ bộ và định hướng việc phân tích.`));
   add(bullet(r`H1 (RQ1). M3 có điểm Brier và sai số hiệu chuẩn thấp nhất. M1 gần ngang về độ chính xác điểm, nhưng xác suất của nó thô vì chỉ nhận tối đa $K+1$ giá trị.`));
   add(bullet(r`H2 (RQ2). Ở tỉ lệ báo nhầm 10%, M1 và M3 báo sớm hơn M0 vài ngày với người chi dồn đầu kỳ (A2). M2 kém ở kiểu A2 vì tiền nhà ngày mùng 1 phá giả định các ngày như nhau, nhưng thích nghi nhanh nhất sau khi thói quen chi thay đổi.`));
   add(bullet(r`H3 (RQ3). Chênh lệch lớn nhất ở giữa tháng (ngày 10 đến 20) và với ngân sách chặt; tới ngày 25 các phương pháp gần như như nhau.`));
-  add(TABLE('Bảng kết quả dự kiến (chưa điền)', [1130, 560, 560, 560, 560, 830, 840],
-    ['Phương pháp', 'Brier', 'Log loss', 'AUC', 'ECE', 'Phát hiện @10% báo nhầm', 'Báo trước (ngày)'],
-    [['M0', '-', '-', '-', '-', '-', '-'], ['M1', '-', '-', '-', '-', '-', '-'], ['M2', '-', '-', '-', '-', '-', '-'], ['M3', '-', '-', '-', '-', '-', '-']],
-    r`Dữ liệu Berka, $\kappa=1,0$, gộp mọi mốc. Bảng theo từng mốc và từng kiểu chi tiêu dùng cùng bố cục.`));
-  add(FIGBOX('[Biểu đồ độ tin cậy của M0 đến M3 tại ngày 15: sẽ bổ sung]', r`Dự kiến: tần suất vượt ngân sách quan sát được theo xác suất dự báo, mỗi phương pháp một ô.`));
-  add(FIGBOX('[Trung vị số ngày báo trước theo tỉ lệ báo nhầm: sẽ bổ sung]', r`Dự kiến: số ngày báo trước theo tỉ lệ báo nhầm khi thay đổi $p^{*}$.`));
+  add(H2('Kết quả sơ bộ trên tập mô phỏng'));
+  add(body(r`Lượt chạy mô phỏng gồm 2.000 người dùng trong 36 tháng. Hằng số $\lambda=0,02$ cho điểm Brier kiểm định thấp nhất (0,173, so với 0,180 đến 0,186 của các giá trị lớn hơn). Các tháng 12 đến 35 được chấm điểm, cho 225.889 dự báo ở $\kappa=1,0$ sau khi bỏ các mốc đã vượt ngân sách; 44% trong số đó thuộc các tháng kết thúc bằng vượt ngân sách. Bảng III ghi kết quả.`));
+  add(TABLE('Kết quả sơ bộ trên tập mô phỏng (κ = 1,0)', [900, 520, 560, 500, 520, 620, 600, 820],
+    ['Phương pháp', 'Brier', 'Log loss', 'AUC', 'ECE', 'Báo nhầm', 'Phát hiện', 'Báo trước (ngày)'],
+    [
+      ['M0', '0,138', '0,434', '0,879', '0,042', 'không có', 'không có', 'không có'],
+      ['M1', '0,138', '0,429', '0,881', '0,045', '0,044', '0,78', '9'],
+      ['M2', '0,175', '0,513', '0,843', '0,098', '0,089', '0,79', '12'],
+      ['M3', '0,126', '0,389', '0,902', '0,018', '0,087', '0,86', '13'],
+    ],
+    r`Gộp mọi mốc. Tỉ lệ báo nhầm, tỉ lệ phát hiện và trung vị số ngày báo trước lấy tại ngưỡng có tỉ lệ phát hiện cao nhất trong các ngưỡng có tỉ lệ báo nhầm không quá 10%. M0 không có ngưỡng nào phát được cảnh báo ở mức đó, còn M1 nhảy từ 4,4% lên quá 10%.`));
+  add(body(r`M3 có điểm Brier và sai số hiệu chuẩn thấp nhất ở cả ba mức ngân sách: 0,121, 0,126 và 0,104 lần lượt với $\kappa$ = 0,9, 1,0 và 1,1, ECE dưới 0,02 ở cả ba. M3 cũng tốt nhất ở mọi mốc, và cách biệt với M1 lớn nhất vào ngày 10 (0,149 so với 0,167). Hình 3 cho thấy vì sao M2 kém nhất: khi nó báo xác suất từ 0,3 đến 0,7 thì chỉ 20 đến 25% số trường hợp thực sự vượt ngân sách.`));
+  add(body(r`Kết quả theo kiểu chi tiêu trái một phần với H2. M2 kém nhất với người chi dồn đầu kỳ (Brier 0,238 ở A2, so với 0,097 đến 0,110 của các phương pháp khác), đúng như dự đoán, và ngang M3 với người chi đều (0,135 so với 0,136 ở A1). Tuy nhiên M0 lại hơn M1 ở A2 (0,099 so với 0,110). Theo định nghĩa (3), M0 học tỉ số sai số từ các kỳ trước, nên nó cũng nắm được khoản tiền nhà ngày mùng 1. Hình 4 cho thấy phép đánh đổi khi cảnh báo. Ở tỉ lệ báo nhầm khoảng 9%, M3 báo trước được khoảng 86% số lần vượt ngân sách, trung vị sớm 13 ngày.`));
+  add(body(r`Các con số này đến từ bộ sinh dữ liệu do chúng tôi viết, và M3 được huấn luyện trên dữ liệu của chính bộ sinh đó. Chúng cho thấy quy trình chạy được và các phương pháp khác nhau ra sao, nhưng chưa phải bằng chứng về người dùng thật. Lượt chạy trên bộ Berka sẽ kiểm tra điều đó.`));
+  add(FIG('fig3_reliability.png', 300, 291, r`Biểu đồ độ tin cậy tại ngày 15 trên tập mô phỏng ($\kappa=1,0$), mười nhóm cùng số dự báo. Đường nét đứt là hiệu chuẩn hoàn hảo.`));
+  add(FIG('fig4_warning.png', 300, 291, r`Phép đánh đổi khi cảnh báo trên tập mô phỏng ($\kappa=1,0$): (a) tỉ lệ phát hiện và (b) trung vị số ngày báo trước theo tỉ lệ báo nhầm khi thay đổi $p^{*}$. M0 và M1 chỉ có bảy mức xác suất nên đường cong của chúng ít điểm.`));
   add(body(r`Hạn chế của nghiên cứu. Khách hàng trong bộ Berka là khách của một ngân hàng Séc những năm 1990, cách chi tiêu khác người Việt dùng ví điện tử năm 2026. Ngân sách là do chúng tôi dựng, không do người dùng tự đặt. Giao dịch ghi nợ có cả các khoản chuyển tiền không phải tiêu dùng. Ngoài ra, đánh giá ngoại tuyến không đo được người dùng phản ứng thế nào với cảnh báo. Một cảnh báo có thể khiến người dùng tránh được chính lần vượt mà nó dự báo, nên số ngày báo trước đo được chỉ mô tả phương pháp dự báo, không nói lên tác động tới hành vi.`));
 
   // VII
@@ -130,7 +141,7 @@ exports.build = ({ add, body, H1, H2, EQ, bullet, FIG, FIGBOX, TABLE, LABELED, R
   add(TABLE('Tiến độ', [1000, 4040],
     ['Ngày (2026)', 'Công việc'],
     [
-      ['09/11', 'Thiết kế nghiên cứu và bản thảo (tài liệu này).'],
+      ['09/11', 'Thiết kế nghiên cứu, bản thảo, lượt chạy sơ bộ trên tập mô phỏng.'],
       ['10/11', 'Nạp và làm sạch dữ liệu Berka; bộ sinh dữ liệu mô phỏng; dựng ngân sách.'],
       ['11/11', 'M0, M1 (đối chiếu với mã Dart), M2; khung đánh giá.'],
       ['12/11', 'M3 với khớp lại cuốn chiếu; cách chia giữ riêng người dùng.'],
@@ -140,7 +151,7 @@ exports.build = ({ add, body, H1, H2, EQ, bullet, FIG, FIGBOX, TABLE, LABELED, R
 
   // IX
   add(H1('Kết luận'));
-  add(body(r`Bài đặt bài toán cảnh báo sớm vượt ngân sách thành dự báo xác suất cho phần tiền còn chi, và thiết kế phép so sánh bốn phương pháp, từ quy tắc chia đều tới hồi quy phân vị huấn luyện trên dữ liệu của mọi người dùng. Phép so sánh đo cả chất lượng xác suất lẫn số ngày báo trước của cảnh báo. Quy tắc trung vị nhịp chi của FlowMoney là mốc so sánh chính, nên kết quả sẽ cho biết một mô hình xác suất học từ dữ liệu có báo sớm hơn và ít báo nhầm hơn quy tắc ứng dụng đang dùng hay không.`));
+  add(body(r`Bài đặt bài toán cảnh báo sớm vượt ngân sách thành dự báo xác suất cho phần tiền còn chi, và thiết kế phép so sánh bốn phương pháp, từ quy tắc chia đều tới hồi quy phân vị huấn luyện trên dữ liệu của mọi người dùng. Phép so sánh đo cả chất lượng xác suất lẫn số ngày báo trước của cảnh báo. Trên tập mô phỏng, hồi quy phân vị cho xác suất hiệu chuẩn tốt nhất và báo sớm nhất ở tỉ lệ báo nhầm gần 9%, còn mô hình EWMA thất bại với kiểu chi dồn đầu kỳ. Quy tắc trung vị nhịp chi của FlowMoney là mốc so sánh chính, nên kết quả sẽ cho biết một mô hình xác suất học từ dữ liệu có báo sớm hơn và ít báo nhầm hơn quy tắc ứng dụng đang dùng hay không.`));
 
   add(H1('Lời cảm ơn', false));
   add(body(r`Nhóm tác giả cảm ơn ThS. Huỳnh Nam đã hướng dẫn trong quá trình thực hiện đề tài.`));
