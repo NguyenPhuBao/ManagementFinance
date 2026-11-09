@@ -48,10 +48,14 @@ const OFF_TOPIC_PATTERNS = [
   /\bke chuyen cuoi\b/,
 ];
 
+// PO 2026-11-09: câu liên quan gián tiếp tới tài chính (công thức, bài toán, công thức bảng tính tính tiền) là hợp lệ, nên
+// thêm các thuật ngữ tài chính hay gặp trong công thức. Chỉ dùng cụm rõ nghĩa; từ đơn dễ trùng nghĩa (vd. "roi" = "rồi") thì bỏ.
 const FINANCE_ANCHORS = [
   'tien', 'chi tieu', 'thu nhap', 'ngan sach', 'tiet kiem', 'vay', 'tra no', 'khoan no', 'con no', 'lai suat',
   'dau tu', 'thue', 'luong', 'hoa don', 'giao dich', 'muc tieu', 'bao hiem', 'tai chinh', 'ngan hang',
   'tai khoan', 'so du', 'chung khoan', 'co phieu', 'bat dong san', 'quy khan cap', 'dong tien',
+  'lai kep', 'lai don', 'tra gop', 'loi nhuan', 'khau hao', 'ty suat', 'co tuc', 'lam phat', 'ty gia', 'chi phi',
+  'doanh thu', 'gia tri hien tai', 'gia tri tuong lai', 'huu tri', 'tin dung', 'no xau', 'dti', 'npv', 'irr', 'pmt',
 ];
 
 function hasFinanceAnchor(normalized) {
