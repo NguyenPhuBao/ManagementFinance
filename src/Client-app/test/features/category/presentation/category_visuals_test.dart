@@ -35,6 +35,16 @@ void main() {
     expect(categoryIconFor('borrow'), categoryIconFor('person_remove'));
   });
 
+  test('khoá icon của ví chung (Stitch 3bfb38b3) có hình riêng; ngân hàng có hai tên cùng một hình', () {
+    expect(categoryIconFor('account_balance'), Icons.account_balance);
+    expect(categoryIconFor('bank'), Icons.account_balance, reason: 'khoá cũ của ví cá nhân');
+    expect(categoryIconFor('shopping_basket'), Icons.shopping_basket);
+    expect(categoryIconFor('wallet'), Icons.account_balance_wallet, reason: 'khoá mặc định của ví');
+    for (final k in ['payments', 'account_balance', 'savings', 'shopping_basket', 'home', 'restaurant']) {
+      expect(categoryIconFor(k), isNot(kCategoryIconFallback), reason: '$k nằm trong sáu biểu tượng của form ví chung');
+    }
+  });
+
   test('tên lạ hoặc null rơi về icon mặc định, không ném lỗi', () {
     expect(categoryIconFor('khong_co'), kCategoryIconFallback);
     expect(categoryIconFor(null), kCategoryIconFallback);

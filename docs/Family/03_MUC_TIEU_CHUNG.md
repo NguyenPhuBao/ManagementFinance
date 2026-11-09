@@ -1,6 +1,7 @@
 # Gia đình — 03. Mục tiêu chung (công tắc trên ví chung)
 
-> **Ngày:** 2026-10-26 · **Trạng thái:** thiết kế người dùng đã duyệt, chưa có mã · **Người đọc:** backend, PO, client.
+> **Ngày:** 2026-10-26 · **Trạng thái:** ✅ mã xong và đo máy ảo + Realme 2026-11-02, trên nhánh dự phòng `TranQuangDat-backend`, chưa lên `main` / Supabase · **Người đọc:** backend, PO, client.
+> **Chỗ mã khác tài liệu này (thắng khi lệch):** spec `2026-11-01-gia-dinh-2a-toi-3-design.md` mục 17. Quan trọng nhất: khoá thông báo (mục 4), bật lại mục tiêu (mục 3, 4), dòng ví ở Nhà mình (mục 2).
 > **Cần trước:** `02A` (ví chung, góp). Quyết định gốc: `00_TONG_QUAN.md` mục 2 — #17 **mục tiêu chung là công tắc "Đặt mục tiêu" trên ví chung**,
 > bật / tắt tuỳ nhu cầu, tiến độ = số dư ví.
 
@@ -101,4 +102,5 @@ Mục tiêu **cá nhân** không đổi gì.
 
 ## 9. Trả lời / thảo luận
 
-*(Chờ backend / PO.)*
+- **Q-3.1 (2026-11-01):** dùng bảng `goal`.
+- **Chỉ mục (2026-11-02):** `database/46_add_goal_household_wallet_unique.sql`, đã áp `flowmoney_kiem_thu` và `PersonFinance`, **chưa** Supabase: đơn 65.1. Không thêm mã lỗi riêng: `UNIQUE_VIOLATION`, resolver gỡ hàng thua.

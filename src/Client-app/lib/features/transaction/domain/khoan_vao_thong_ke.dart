@@ -1,4 +1,5 @@
 import '../../goal/domain/goal_history_direction.dart';
+import 'ghi_chu_gop_quy.dart';
 import 'transaction_owner.dart';
 import '../../wallet/domain/dieu_chinh_so_du.dart';
 import '../../wallet/domain/so_du_mo_so.dart';
@@ -82,5 +83,9 @@ bool laGhiChuMay({required String loai, required String? categoryId, required St
   return g.startsWith(kGhiChuTraHoaDon) ||
       g.startsWith(kGhiChuNapMucTieu) ||
       g.startsWith(kGhiChuRutMucTieu) ||
-      g.startsWith(kGhiChuNapMucTieuCu);
+      g.startsWith(kGhiChuNapMucTieuCu) ||
+      // Nửa riêng của khoản góp, rút (đợt 1B): sau khi rời nhà mà gắn thêm danh mục thì không còn bị `categoryId == null`
+      // loại khỏi mẫu học — ghi chú vẫn do máy sinh.
+      g.startsWith(kTienToGopQuy) ||
+      g.startsWith(kTienToRutQuy);
 }

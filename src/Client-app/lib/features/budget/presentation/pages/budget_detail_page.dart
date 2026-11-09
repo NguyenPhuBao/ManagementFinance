@@ -6,6 +6,7 @@ import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../../shared/widgets/confirm_dialog.dart';
+import '../../../transaction/data/cap_gop_quy_nguon.dart';
 import '../../../transaction/data/hoa_don_da_xoa_nguon.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/domain/transaction_lookup.dart';
@@ -106,6 +107,9 @@ class _BudgetDetailContent extends StatelessWidget {
       tx,
       sl.isRegistered<HoaDonDaXoaNguon>() ? sl<HoaDonDaXoaNguon>() : null,
     );
+    // Nửa riêng của khoản góp, rút còn cặp: Sửa, Xoá đi theo cả cặp (đợt 1B Task 9), cùng cổng với Sổ giao dịch.
+    final nguonCap = sl.isRegistered<CapGopQuyNguon>() ? sl<CapGopQuyNguon>() : null;
+    final cap = await nguonCap?.cua(tx);
     if (!blocContext.mounted) return;
     await showModalBottomSheet<void>(
       context: blocContext,
@@ -115,8 +119,13 @@ class _BudgetDetailContent extends StatelessWidget {
         transaction: tx,
         lookup: lookup,
         hoaDonDaXoa: daXoa,
+        anThaoTac: cap != null && !cap.choThaoTac,
         onEdit: () {
           Navigator.of(sheetContext).pop();
+          if (cap != null) {
+            blocContext.push(cap.duongSua);
+            return;
+          }
           // Trang này theo dõi stream nên tự làm mới sau khi sửa xong; không
           // cần đọc kết quả trả về như sổ.
           blocContext.push(
@@ -130,11 +139,20 @@ class _BudgetDetailContent extends StatelessWidget {
         onDelete: () async {
           final ok = await ConfirmDialog.show(
             sheetContext,
-            title: 'Xoá giao dịch?',
-            message: cauXacNhanXoaGiaoDich(tx, hoaDonDaXoa: daXoa),
+            title: cap == null ? 'Xoá giao dịch?' : (cap.laGop ? 'Xoá khoản góp?' : 'Xoá khoản rút?'),
+            message: cap?.cauXoa ?? cauXacNhanXoaGiaoDich(tx, hoaDonDaXoa: daXoa),
           );
           if (!ok || !sheetContext.mounted) return;
           Navigator.of(sheetContext).pop();
+          if (cap != null) {
+            try {
+              await nguonCap!.xoaCap(cap.maCap);
+              baoNhanh('Đã xóa giao dịch', loai: LoaiThongBao.xong);
+            } catch (_) {
+              baoNhanh('Không xoá được khoản này. Thử lại sau.', loai: LoaiThongBao.loi);
+            }
+            return;
+          }
           blocContext.read<TransactionBloc>().add(DeleteTransactionEvent(tx));
           baoNhanh('Đã xóa giao dịch', loai: LoaiThongBao.xong);
         },

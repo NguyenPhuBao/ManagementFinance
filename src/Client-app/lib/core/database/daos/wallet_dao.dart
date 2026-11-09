@@ -47,6 +47,30 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
         .get();
   }
 
+  /// MỌI ví của nhà còn trên máy (bất kể ai tạo, kể cả đã xoá mềm) — phép tính lại số dư sau khi dọn nhà
+  /// (`SoDuViService.tinhLaiViNha`). Không lọc tài khoản: ví nhà của người khác cũng bị cắt sổ.
+  Future<List<Wallet>> getTatCaViNha() {
+    return (select(wallets)..where((t) => t.idhousehold.isNotNull())).get();
+  }
+
+  /// Ví chung của nhà, kể cả ví lưu trữ. Lọc theo NHÀ, không theo tài khoản (`idaccount` chỉ là người tạo).
+  Stream<List<Wallet>> watchViNha(int idhousehold) => (select(wallets)
+        ..where((t) => t.idhousehold.equals(idhousehold) & t.deletedAt.isNull())
+        ..orderBy(_thuTuHienThi))
+      .watch();
+
+  /// Như [watchViNha] nhưng đọc một lần — chốt trùng tên ở datasource không được chờ phần tử đầu của một stream.
+  Future<List<Wallet>> getViNha(int idhousehold) => (select(wallets)
+        ..where((t) => t.idhousehold.equals(idhousehold) & t.deletedAt.isNull())
+        ..orderBy(_thuTuHienThi))
+      .get();
+
+  /// Ví chung **đang hoạt động**: bộ chọn ví của chế độ nhà. Lọc status qua [WalletStatus.laHoatDong] như [getActive].
+  Future<List<Wallet>> getViNhaDangDung(int idhousehold) async {
+    final rows = await getViNha(idhousehold);
+    return rows.where((w) => WalletStatus.laHoatDong(w.status)).toList();
+  }
+
   /// Ví **đang hoạt động** — thứ mà mọi bộ chọn ví phải gọi.
   ///
   /// Tách khỏi [getAll] chứ không lọc luôn ở đó: ví lưu trữ vẫn phải đọc được
@@ -122,12 +146,15 @@ class WalletDao extends DatabaseAccessor<AppDatabase> with _$WalletDaoMixin {
     ));
   }
 
-  /// Lấy các record chưa sync (pending)
-  Future<List<Wallet>> getPending([int? idaccount]) {
+  /// Lấy các record chưa sync (pending). [idhousehold]: nhà đang ở — thêm hàng của nhà do người khác ghi (spec gia đình
+  /// 2026-11-01 mục 7.1).
+  Future<List<Wallet>> getPending([int? idaccount, int? idhousehold]) {
     return (select(wallets)
-          ..where((t) =>
-              t.syncStatus.equals('pending') &
-              (idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount))))
+          ..where((t) {
+            final cuaToi = idaccount == null ? const Constant(true) : t.idaccount.equals(idaccount);
+            final phamVi = idhousehold == null ? cuaToi : (cuaToi | t.idhousehold.equals(idhousehold));
+            return t.syncStatus.equals('pending') & phamVi;
+          }))
         .get();
   }
 

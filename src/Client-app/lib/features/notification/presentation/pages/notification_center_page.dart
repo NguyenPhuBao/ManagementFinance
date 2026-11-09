@@ -581,6 +581,8 @@ class _ThongBaoTile extends StatelessWidget {
         // Tin admin (`system.broadcast`, 2026-10-26) — Stitch `65dab656…`.
         'tinHeThong' => Icons.campaign_outlined,
         'nha' => Icons.home_outlined,
+        // Mốc / đạt mục tiêu chung: cùng biểu tượng với mục tiêu riêng (`goal`).
+        'nhaMucTieu' => Icons.savings_outlined,
         _ => Icons.notifications_none,
       };
 

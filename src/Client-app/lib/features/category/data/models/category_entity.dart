@@ -4,8 +4,9 @@ import '../../../../core/database/app_database.dart';
 
 /// Entity danh mục — kiểu **duy nhất** từ repository trở lên (G88 gạch 3, đợt 3/4; spec `2026-10-15-entity-danh-muc-design.md` 4.1).
 ///
-/// Ảnh **chỉ đọc** của hàng Drift `Category`: 14 trường = 19 cột − 5 cột cố ý không chép — `isLocalOnly`, `idhousehold` (lát 1 gia đình, 2026-10-28: truy vấn cá nhân bỏ hàng của nhà ở DAO nên Entity thường là hàng của danh sách cá nhân — `getById` cố ý không lọc (giới hạn quét 37); lát 2 mới đưa vào) và ba cột lỗi đồng bộ
-/// `syncRetryCount` · `syncError` · `syncBlockedUntil` (của hàng đợi đẩy). `deletedAt` vào Entity từ 2026-10-27 (luật ẩn theo khuôn). `category_entity_test`
+/// Ảnh **chỉ đọc** của hàng Drift `Category`: 15 trường = 19 cột − 4 cột cố ý không chép — `isLocalOnly` và ba cột lỗi đồng bộ
+/// `syncRetryCount` · `syncError` · `syncBlockedUntil` (của hàng đợi đẩy). `idhousehold` vào Entity từ gia đình 1B (ruling I-2):
+/// màn Sửa danh mục của nhà chốt phạm vi theo nhà của hàng, vì `getById` cố ý không lọc (giới hạn quét 37). `deletedAt` vào Entity từ 2026-10-27 (luật ẩn theo khuôn). `category_entity_test`
 /// đếm cột bảng để canh. Không có `toCompanion`: mọi đường ghi danh mục đi qua `CategoryChildDraft` / `CategoryGroupDraft`
 /// (`category_tree.dart`) → Companion trong `CategoryManagementRepositoryImpl`. Phép ánh xạ `fromDrift` ở đây là MỘT định nghĩa.
 ///
@@ -36,6 +37,9 @@ class CategoryEntity extends Equatable {
   final String syncStatus;
   final DateTime updatedAt;
 
+  /// Nhà sở hữu hàng; `null` = danh mục cá nhân. Màn Sửa danh mục của nhà chốt phạm vi theo nó (`getById` cố ý không lọc nhà).
+  final int? idhousehold;
+
   const CategoryEntity({
     required this.id,
     required this.idaccount,
@@ -51,6 +55,7 @@ class CategoryEntity extends Equatable {
     this.aiCoDinh = false,
     this.syncStatus = 'pending',
     required this.updatedAt,
+    this.idhousehold,
   });
 
   factory CategoryEntity.fromDrift(Category c) => CategoryEntity(
@@ -68,6 +73,7 @@ class CategoryEntity extends Equatable {
         aiCoDinh: c.aiCoDinh,
         syncStatus: c.syncStatus,
         updatedAt: c.updatedAt,
+        idhousehold: c.idhousehold,
       );
 
   @override
@@ -86,5 +92,6 @@ class CategoryEntity extends Equatable {
         aiCoDinh,
         syncStatus,
         updatedAt,
+        idhousehold,
       ];
 }

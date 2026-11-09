@@ -1104,6 +1104,12 @@ class $TransactionsTable extends Transactions
   late final GeneratedColumn<int> idhousehold = GeneratedColumn<int>(
       'idhousehold', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _fundPairIdMeta =
+      const VerificationMeta('fundPairId');
+  @override
+  late final GeneratedColumn<String> fundPairId = GeneratedColumn<String>(
+      'fund_pair_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _categoryIdMeta =
       const VerificationMeta('categoryId');
   @override
@@ -1232,6 +1238,7 @@ class $TransactionsTable extends Transactions
         walletId,
         idaccount,
         idhousehold,
+        fundPairId,
         categoryId,
         amount,
         type,
@@ -1284,6 +1291,12 @@ class $TransactionsTable extends Transactions
           _idhouseholdMeta,
           idhousehold.isAcceptableOrUnknown(
               data['idhousehold']!, _idhouseholdMeta));
+    }
+    if (data.containsKey('fund_pair_id')) {
+      context.handle(
+          _fundPairIdMeta,
+          fundPairId.isAcceptableOrUnknown(
+              data['fund_pair_id']!, _fundPairIdMeta));
     }
     if (data.containsKey('category_id')) {
       context.handle(
@@ -1398,6 +1411,8 @@ class $TransactionsTable extends Transactions
           .read(DriftSqlType.int, data['${effectivePrefix}idaccount'])!,
       idhousehold: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}idhousehold']),
+      fundPairId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}fund_pair_id']),
       categoryId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}category_id']),
       amount: attachedDatabase.typeMapping
@@ -1454,6 +1469,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   /// đó [idaccount] chỉ nghĩa người tạo. ĐI QUA đồng bộ (khoá `idhousehold`) — khác các cột cục bộ v23–v31. Mọi truy vấn
   /// "của tôi" ràng `idhousehold IS NULL` (test quét 37).
   final int? idhousehold;
+
+  /// Mã cặp của khoản góp / rút (schema v33, `docs/Family/02A` mục 5): chung cho nửa riêng và nửa của nhà. ĐI QUA đồng bộ
+  /// (khoá `idfund_pair`). Mọi phép nhận dạng góp / rút đọc cột này, không đọc tiền tố ghi chú.
+  final String? fundPairId;
   final String? categoryId;
 
   /// amount: **độ lớn, LUÔN DƯƠNG**. Chiều tiền suy từ [type], không từ dấu.
@@ -1585,6 +1604,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       required this.walletId,
       required this.idaccount,
       this.idhousehold,
+      this.fundPairId,
       this.categoryId,
       required this.amount,
       required this.type,
@@ -1612,6 +1632,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     map['idaccount'] = Variable<int>(idaccount);
     if (!nullToAbsent || idhousehold != null) {
       map['idhousehold'] = Variable<int>(idhousehold);
+    }
+    if (!nullToAbsent || fundPairId != null) {
+      map['fund_pair_id'] = Variable<String>(fundPairId);
     }
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<String>(categoryId);
@@ -1659,6 +1682,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       idhousehold: idhousehold == null && nullToAbsent
           ? const Value.absent()
           : Value(idhousehold),
+      fundPairId: fundPairId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fundPairId),
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
           : Value(categoryId),
@@ -1703,6 +1729,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       walletId: serializer.fromJson<String>(json['walletId']),
       idaccount: serializer.fromJson<int>(json['idaccount']),
       idhousehold: serializer.fromJson<int?>(json['idhousehold']),
+      fundPairId: serializer.fromJson<String?>(json['fundPairId']),
       categoryId: serializer.fromJson<String?>(json['categoryId']),
       amount: serializer.fromJson<double>(json['amount']),
       type: serializer.fromJson<String>(json['type']),
@@ -1733,6 +1760,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'walletId': serializer.toJson<String>(walletId),
       'idaccount': serializer.toJson<int>(idaccount),
       'idhousehold': serializer.toJson<int?>(idhousehold),
+      'fundPairId': serializer.toJson<String?>(fundPairId),
       'categoryId': serializer.toJson<String?>(categoryId),
       'amount': serializer.toJson<double>(amount),
       'type': serializer.toJson<String>(type),
@@ -1760,6 +1788,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           String? walletId,
           int? idaccount,
           Value<int?> idhousehold = const Value.absent(),
+          Value<String?> fundPairId = const Value.absent(),
           Value<String?> categoryId = const Value.absent(),
           double? amount,
           String? type,
@@ -1784,6 +1813,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         walletId: walletId ?? this.walletId,
         idaccount: idaccount ?? this.idaccount,
         idhousehold: idhousehold.present ? idhousehold.value : this.idhousehold,
+        fundPairId: fundPairId.present ? fundPairId.value : this.fundPairId,
         categoryId: categoryId.present ? categoryId.value : this.categoryId,
         amount: amount ?? this.amount,
         type: type ?? this.type,
@@ -1814,6 +1844,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       idaccount: data.idaccount.present ? data.idaccount.value : this.idaccount,
       idhousehold:
           data.idhousehold.present ? data.idhousehold.value : this.idhousehold,
+      fundPairId:
+          data.fundPairId.present ? data.fundPairId.value : this.fundPairId,
       categoryId:
           data.categoryId.present ? data.categoryId.value : this.categoryId,
       amount: data.amount.present ? data.amount.value : this.amount,
@@ -1852,6 +1884,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('walletId: $walletId, ')
           ..write('idaccount: $idaccount, ')
           ..write('idhousehold: $idhousehold, ')
+          ..write('fundPairId: $fundPairId, ')
           ..write('categoryId: $categoryId, ')
           ..write('amount: $amount, ')
           ..write('type: $type, ')
@@ -1881,6 +1914,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         walletId,
         idaccount,
         idhousehold,
+        fundPairId,
         categoryId,
         amount,
         type,
@@ -1909,6 +1943,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.walletId == this.walletId &&
           other.idaccount == this.idaccount &&
           other.idhousehold == this.idhousehold &&
+          other.fundPairId == this.fundPairId &&
           other.categoryId == this.categoryId &&
           other.amount == this.amount &&
           other.type == this.type &&
@@ -1935,6 +1970,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String> walletId;
   final Value<int> idaccount;
   final Value<int?> idhousehold;
+  final Value<String?> fundPairId;
   final Value<String?> categoryId;
   final Value<double> amount;
   final Value<String> type;
@@ -1960,6 +1996,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.walletId = const Value.absent(),
     this.idaccount = const Value.absent(),
     this.idhousehold = const Value.absent(),
+    this.fundPairId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.amount = const Value.absent(),
     this.type = const Value.absent(),
@@ -1986,6 +2023,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     required String walletId,
     required int idaccount,
     this.idhousehold = const Value.absent(),
+    this.fundPairId = const Value.absent(),
     this.categoryId = const Value.absent(),
     required double amount,
     required String type,
@@ -2018,6 +2056,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? walletId,
     Expression<int>? idaccount,
     Expression<int>? idhousehold,
+    Expression<String>? fundPairId,
     Expression<String>? categoryId,
     Expression<double>? amount,
     Expression<String>? type,
@@ -2044,6 +2083,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (walletId != null) 'wallet_id': walletId,
       if (idaccount != null) 'idaccount': idaccount,
       if (idhousehold != null) 'idhousehold': idhousehold,
+      if (fundPairId != null) 'fund_pair_id': fundPairId,
       if (categoryId != null) 'category_id': categoryId,
       if (amount != null) 'amount': amount,
       if (type != null) 'type': type,
@@ -2072,6 +2112,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       Value<String>? walletId,
       Value<int>? idaccount,
       Value<int?>? idhousehold,
+      Value<String?>? fundPairId,
       Value<String?>? categoryId,
       Value<double>? amount,
       Value<String>? type,
@@ -2097,6 +2138,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       walletId: walletId ?? this.walletId,
       idaccount: idaccount ?? this.idaccount,
       idhousehold: idhousehold ?? this.idhousehold,
+      fundPairId: fundPairId ?? this.fundPairId,
       categoryId: categoryId ?? this.categoryId,
       amount: amount ?? this.amount,
       type: type ?? this.type,
@@ -2134,6 +2176,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     }
     if (idhousehold.present) {
       map['idhousehold'] = Variable<int>(idhousehold.value);
+    }
+    if (fundPairId.present) {
+      map['fund_pair_id'] = Variable<String>(fundPairId.value);
     }
     if (categoryId.present) {
       map['category_id'] = Variable<String>(categoryId.value);
@@ -2205,6 +2250,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('walletId: $walletId, ')
           ..write('idaccount: $idaccount, ')
           ..write('idhousehold: $idhousehold, ')
+          ..write('fundPairId: $fundPairId, ')
           ..write('categoryId: $categoryId, ')
           ..write('amount: $amount, ')
           ..write('type: $type, ')
@@ -11947,6 +11993,7 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   required String walletId,
   required int idaccount,
   Value<int?> idhousehold,
+  Value<String?> fundPairId,
   Value<String?> categoryId,
   required double amount,
   required String type,
@@ -11974,6 +12021,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<String> walletId,
   Value<int> idaccount,
   Value<int?> idhousehold,
+  Value<String?> fundPairId,
   Value<String?> categoryId,
   Value<double> amount,
   Value<String> type,
@@ -12032,6 +12080,9 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<int> get idhousehold => $composableBuilder(
       column: $table.idhousehold, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get fundPairId => $composableBuilder(
+      column: $table.fundPairId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get categoryId => $composableBuilder(
       column: $table.categoryId, builder: (column) => ColumnFilters(column));
@@ -12132,6 +12183,9 @@ class $$TransactionsTableOrderingComposer
   ColumnOrderings<int> get idhousehold => $composableBuilder(
       column: $table.idhousehold, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get fundPairId => $composableBuilder(
+      column: $table.fundPairId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get categoryId => $composableBuilder(
       column: $table.categoryId, builder: (column) => ColumnOrderings(column));
 
@@ -12230,6 +12284,9 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<int> get idhousehold => $composableBuilder(
       column: $table.idhousehold, builder: (column) => column);
+
+  GeneratedColumn<String> get fundPairId => $composableBuilder(
+      column: $table.fundPairId, builder: (column) => column);
 
   GeneratedColumn<String> get categoryId => $composableBuilder(
       column: $table.categoryId, builder: (column) => column);
@@ -12336,6 +12393,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String> walletId = const Value.absent(),
             Value<int> idaccount = const Value.absent(),
             Value<int?> idhousehold = const Value.absent(),
+            Value<String?> fundPairId = const Value.absent(),
             Value<String?> categoryId = const Value.absent(),
             Value<double> amount = const Value.absent(),
             Value<String> type = const Value.absent(),
@@ -12362,6 +12420,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             walletId: walletId,
             idaccount: idaccount,
             idhousehold: idhousehold,
+            fundPairId: fundPairId,
             categoryId: categoryId,
             amount: amount,
             type: type,
@@ -12388,6 +12447,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             required String walletId,
             required int idaccount,
             Value<int?> idhousehold = const Value.absent(),
+            Value<String?> fundPairId = const Value.absent(),
             Value<String?> categoryId = const Value.absent(),
             required double amount,
             required String type,
@@ -12414,6 +12474,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             walletId: walletId,
             idaccount: idaccount,
             idhousehold: idhousehold,
+            fundPairId: fundPairId,
             categoryId: categoryId,
             amount: amount,
             type: type,

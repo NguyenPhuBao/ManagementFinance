@@ -10,10 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../helpers/bang_toi_thieu_v32.dart';
 
 void main() {
-  test('schema hiện tại là v32 (v30 còn nguyên)', () async {
+  test('schema hiện tại là v33 (v30 còn nguyên)', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
-    expect(db.schemaVersion, 32);
+    expect(db.schemaVersion, 33);
   });
 
   test('bảng KHÔNG có cột đồng bộ', () async {

@@ -9,7 +9,84 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/features/goal/domain/goal_recurrence.dart';
 
 void main() {
-  group('hanVongMoi', () {
+  group('hanVongMoi — vòng mới dài bằng vòng trước (có mốc bắt đầu)', () {
+    test('hạn = ngày bấm + số ngày của vòng trước, KHÔNG phải hạn cũ + chu kỳ',
+        () {
+      // Tạo 01/11, hạn 12/12 → 41 ngày; đạt đích và bấm vòng mới 01/12.
+      final han = hanVongMoi(
+        hanCu: DateTime(2026, 12, 12),
+        batDauCu: DateTime(2026, 11, 1, 9, 30),
+        chuKy: 'Week',
+        now: DateTime(2026, 12, 1, 20, 15),
+      );
+
+      expect(han, DateTime(2027, 1, 11),
+          reason: 'Người dùng chốt 2026-11-04: vòng mới dài ĐÚNG số ngày họ '
+              'đặt cho vòng đầu (41), tính từ lúc bấm. Bản cũ cộng chu kỳ vào '
+              'hạn cũ (12/12 + 7 = 19/12 → vòng 18 ngày), không liên quan gì '
+              'tới kế hoạch đã đặt — và chu kỳ cũ phải bị bỏ qua ở đây.');
+    });
+
+    test('bấm muộn vẫn được trọn số ngày, tính từ hôm bấm', () {
+      final han = hanVongMoi(
+        hanCu: DateTime(2026, 12, 12),
+        batDauCu: DateTime(2026, 11, 1),
+        chuKy: null,
+        now: DateTime(2026, 12, 25),
+      );
+
+      expect(han, DateTime(2027, 2, 4));
+    });
+
+    test('giữ giờ phút của hạn cũ, đếm theo NGÀY LỊCH', () {
+      // Hạn 08:00 sớm hơn giờ bắt đầu 21:00: hiệu `Duration` là 29 ngày 11
+      // giờ, `inDays` hụt thành 29. Đếm ngày lịch thì đúng 30.
+      final han = hanVongMoi(
+        hanCu: DateTime(2026, 12, 1, 8),
+        batDauCu: DateTime(2026, 11, 1, 21),
+        chuKy: 'Month',
+        now: DateTime(2026, 11, 20, 22),
+      );
+
+      expect(han, DateTime(2026, 12, 20, 8));
+    });
+
+    test('vòng một ngày vẫn ra hạn ở tương lai', () {
+      final han = hanVongMoi(
+        hanCu: DateTime(2026, 11, 2, 0, 0),
+        batDauCu: DateTime(2026, 11, 1, 23, 0),
+        chuKy: null,
+        now: DateTime(2026, 11, 1, 23, 30),
+      );
+
+      expect(han!.isAfter(DateTime(2026, 11, 1, 23, 30)), isTrue);
+      expect(han, DateTime(2026, 11, 2));
+    });
+
+    test('mốc bắt đầu không trước hạn thì rơi về chu kỳ cũ', () {
+      final han = hanVongMoi(
+        hanCu: DateTime(2026, 3, 10),
+        batDauCu: DateTime(2026, 3, 10, 12),
+        chuKy: 'Month',
+        now: DateTime(2026, 3, 15),
+      );
+
+      expect(han, DateTime(2026, 4, 10),
+          reason: 'Dữ liệu hỏng (hạn trùng / trước ngày bắt đầu) không cho ra '
+              'độ dài vòng dùng được — giữ luật dự phòng thay vì vòng 0 ngày.');
+    });
+  });
+
+  group('soNgayMotVong', () {
+    test('đếm ngày lịch, null khi dưới một ngày', () {
+      expect(soNgayMotVong(DateTime(2026, 11, 1), DateTime(2026, 12, 12)), 41);
+      expect(soNgayMotVong(DateTime(2026, 12, 12, 23), DateTime(2026, 12, 12)),
+          isNull);
+      expect(soNgayMotVong(DateTime(2027, 2, 1), DateTime(2027, 1, 1)), isNull);
+    });
+  });
+
+  group('hanVongMoi — dự phòng khi thiếu mốc bắt đầu', () {
     test('hạn cũ đã qua thì nhảy tới mốc đầu tiên SAU hôm nay', () {
       final han = hanVongMoi(
         hanCu: DateTime(2026, 3, 10),

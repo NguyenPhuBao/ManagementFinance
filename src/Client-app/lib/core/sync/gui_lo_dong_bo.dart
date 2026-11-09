@@ -21,15 +21,22 @@ class GuiLoDongBo {
     required AppDatabase db,
     required DateTime Function() now,
     required Duration Function() bacChan,
+    required Duration Function(int soLanThuLai) bacChanTheoHang,
   })  : _dioClient = dioClient,
         _db = db,
         _now = now,
-        _bacChan = bacChan;
+        _bacChan = bacChan,
+        _bacChanTheoHang = bacChanTheoHang;
 
   final DioClient _dioClient;
   final AppDatabase _db;
   final DateTime Function() _now;
   final Duration Function() _bacChan;
+
+  /// Bậc chặn theo SỐ LẦN HÀNG ĐÃ BỊ CHẶN (`syncRetryCount`), cùng thang với [_bacChan]. Dùng cho từ chối phạm vi nhà
+  /// ([SyncResult.maPhamViNha]): chu kỳ ấy không tính hỏng nên `_consecutiveFailures` đứng yên ở 0, đọc [_bacChan] thì hàng bị
+  /// gửi lại mỗi 30 s mãi.
+  final Duration Function(int soLanThuLai) _bacChanTheoHang;
 
   // ── Send batch to backend ─────────────────────────────────────────────────
 
@@ -92,9 +99,13 @@ class GuiLoDongBo {
                 // bỏ đó: nó vẫn mang `pending`, nên mọi chu kỳ sau lại đẩy lên
                 // và lại thua đúng như vậy, mãi mãi.
                 //
-                // Đánh dấu đã đồng bộ để thoát vòng lặp. Bản thắng cuộc về máy
-                // ở bước Pull ngay sau đó trong cùng chu kỳ: `update_at` của nó
-                // lớn hơn payload nên cũng lớn hơn mốc đồng bộ đang lưu.
+                // Đánh dấu đã đồng bộ để thoát vòng lặp. Bản thắng cuộc thường
+                // về máy ở bước Pull ngay sau đó trong cùng chu kỳ: `update_at`
+                // của nó lớn hơn payload nên cũng lớn hơn mốc đồng bộ đang lưu.
+                // ⚠️ Không bảo đảm: nếu mốc kéo đã tiến qua bản thắng (Pull trước
+                // đó bỏ qua hàng `pending`, vd. mục tiêu của nhà), Pull cùng chu
+                // kỳ không mang nó về. Mục tiêu của nhà được
+                // `GopQuyConflictResolver` xin kéo toàn bộ.
                 await _markSyncedById(op.entity, op.localId);
                 conflictIds.add(op.localId);
                 debugPrint(
@@ -143,7 +154,9 @@ class GuiLoDongBo {
                   // hỏng như vậy. Trước đây bản ghi vẫn nằm ở 'pending' MÃI
                   // MÃI và được gửi lại ở mọi chu kỳ. Chặn theo thời gian —
                   // vẫn còn đường quay lại nếu người dùng sửa dữ liệu.
-                  final step = _bacChan();
+                  final step = SyncResult.maPhamViNha.contains(code)
+                      ? _bacChanTheoHang(await _soLanThuLaiCuaHang(op.entity, op.localId))
+                      : _bacChan();
                   await _markBlockedById(
                     op.entity,
                     op.localId,
@@ -255,6 +268,18 @@ class GuiLoDongBo {
       case SyncEntityType.goal:
         await _db.goalDao.markSynced(id);
     }
+  }
+
+  /// `syncRetryCount` của hàng (0 khi không còn hàng). Cùng số `markSyncBlocked` sẽ cộng thêm một.
+  Future<int> _soLanThuLaiCuaHang(SyncEntityType entity, String id) async {
+    return switch (entity) {
+      SyncEntityType.wallet => (await _db.walletDao.getById(id))?.syncRetryCount,
+      SyncEntityType.transaction => (await _db.transactionDao.getById(id))?.syncRetryCount,
+      SyncEntityType.category => (await _db.categoryDao.getById(id))?.syncRetryCount,
+      SyncEntityType.budget => (await _db.budgetDao.getById(id))?.syncRetryCount,
+      SyncEntityType.bill => (await _db.billDao.getById(id))?.syncRetryCount,
+      SyncEntityType.goal => (await _db.goalDao.getById(id))?.syncRetryCount,
+    } ?? 0;
   }
 
   Future<void> _markBlockedById(

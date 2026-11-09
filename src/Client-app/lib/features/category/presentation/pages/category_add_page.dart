@@ -23,8 +23,16 @@ class CategoryAddPage extends StatefulWidget {
     this.repository,
     this.accountId,
     this.tamNgung = false,
+    this.idNha,
+    this.conDuocGhi,
   });
 
+  /// Chế độ nhà: hỏi lại quyền sửa danh mục NGAY lúc Lưu (FINAL I-3). Router truyền closure (mảng danh mục không import gia
+  /// đình). `null` = đường cá nhân, không kiểm.
+  final bool Function()? conDuocGhi;
+
+  /// Chế độ NHÀ (gia đình 1B Task 11): form tạo / sửa danh mục của nhà `idNha`. `null` = danh mục riêng như cũ.
+  final int? idNha;
   final String? categoryId;
   final bool keywordOnly;
 
@@ -106,6 +114,11 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
       if (mounted) setState(() => _loading = false);
       return;
     }
+    final idNha = widget.idNha;
+    if (idNha != null) {
+      await _napNha(idNha);
+      return;
+    }
     if (widget.keywordOnly) {
       if (widget.categoryId != null) {
         _keywords.addAll(await _repository.loadKeywords(
@@ -172,6 +185,31 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
     }
   }
 
+  /// Chế độ NHÀ: đọc ĐÚNG MỘT hàng bằng `getById` (cây cá nhân không chứa hàng của nhà). Hàng phải còn sống và thuộc nhà này —
+  /// nạp hàng riêng / hàng nhà khác / hàng đã xoá vào form rồi Lưu là `HOUSEHOLD_SCOPE_MISMATCH` hoặc kéo hàng riêng sang nhà.
+  /// `_groups` để rỗng (không có ô nhóm cha) nhưng `_parentId` giữ nguyên để Lưu không gỡ danh mục khỏi nhóm của nó; `_aiCoDinh`
+  /// giữ vì `categoryDao.insert` là `insertOrReplace` (cột nào không gán thì về mặc định).
+  Future<void> _napNha(int idNha) async {
+    final id = widget.categoryId;
+    if (id != null) {
+      final hang = await _repository.getById(id);
+      if (!mounted) return;
+      if (hang == null || hang.idhousehold != idNha || hang.isDeleted) {
+        baoNhanh('Danh mục này không còn trong nhà.', loai: LoaiThongBao.loi);
+        if (context.canPop()) context.pop();
+        return;
+      }
+      _nameController.text = hang.name;
+      _tenGoc = hang.name;
+      _classify = hang.classify;
+      _parentId = hang.parentId;
+      _icon = hang.icon;
+      _colour = hang.colour;
+      _aiCoDinh = hang.aiCoDinh;
+    }
+    setState(() => _loading = false);
+  }
+
   void _addKeywordText(String value) {
     _addKeywords(value.split(','));
     _keywordController.clear();
@@ -233,6 +271,13 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
 
   Future<void> _save() async {
     if (_saving) return;
+    // Chế độ nhà: hỏi lại vai trước mọi thứ (FINAL I-3) — không thì báo thành công mà server từ chối, hàng kẹt `pending`.
+    final hoiQuyen = widget.conDuocGhi;
+    if (hoiQuyen != null && !hoiQuyen()) {
+      _showError('Bạn không còn quyền sửa danh mục của nhà này.');
+      if (context.canPop()) context.pop();
+      return;
+    }
     final accountId = _accountId;
     if (accountId == null) {
       _showError('Chưa xác định được tài khoản đăng nhập. '
@@ -241,7 +286,8 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
     }
     // Chữ đang gõ dở trong ô từ khoá cũng là từ khoá: gõ xong bấm Lưu (chưa Enter, chưa dấu phẩy) là thao tác
     // thường gặp nhất trên điện thoại, và bỏ nó đi là mất im lặng.
-    if (_keywordController.text.trim().isNotEmpty) {
+    // Danh mục của nhà không có từ khoá (form không có ô nhập).
+    if (widget.idNha == null && _keywordController.text.trim().isNotEmpty) {
       _addKeywordText(_keywordController.text);
     }
     setState(() => _saving = true);
@@ -261,8 +307,10 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
           parentId: _parentId,
           icon: _icon,
           colour: _colour,
-          keywords: _keywords,
+          // Danh mục của nhà: không từ khoá (repository bỏ qua, nhưng đừng gửi gì).
+          keywords: widget.idNha == null ? _keywords : const [],
           aiCoDinh: _aiCoDinh,
+          idhousehold: widget.idNha,
         ));
       }
       if (mounted && context.canPop()) context.pop();
@@ -289,9 +337,11 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
         ),
         title: Text(_isKeywordOnly
             ? 'Từ khóa của tôi'
-            : editing
-                ? 'Chỉnh sửa danh mục'
-                : 'Thêm danh mục mới'),
+            : widget.idNha != null
+                ? (editing ? 'Sửa danh mục của nhà' : 'Thêm danh mục của nhà')
+                : editing
+                    ? 'Chỉnh sửa danh mục'
+                    : 'Thêm danh mục mới'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -349,35 +399,39 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
                     selected: _classify,
                     onChanged: (value) => setState(() => _classify = value),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text('* Kế thừa từ nhóm cha nếu được chọn',
-                        style: TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary)),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text('Nhóm cha',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  InputDecorator(
-                    decoration: const InputDecoration(hintText: 'Chưa nhóm'),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String?>(
-                        key: const Key('parent-selector'),
-                        value: _parentId,
-                        isExpanded: true,
-                        items: [
-                          const DropdownMenuItem<String?>(
-                              value: null, child: Text('Chưa nhóm')),
-                          ..._groups.map((group) => DropdownMenuItem<String?>(
-                                value: group.id,
-                                child: Text(group.name),
-                              )),
-                        ],
-                        onChanged: _chooseParent,
+                  // Danh mục của nhà (1B Task 11): không có ô nhóm cha — cây cá nhân không chứa nhóm của nhà, và chưa có
+                  // form nhóm nhà. Cha của danh mục đang sửa vẫn giữ nguyên (`_parentId`).
+                  if (widget.idNha == null) ...[
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text('* Kế thừa từ nhóm cha nếu được chọn',
+                          style: TextStyle(
+                              fontSize: 11, color: AppColors.textSecondary)),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('Nhóm cha',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    InputDecorator(
+                      decoration: const InputDecoration(hintText: 'Chưa nhóm'),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String?>(
+                          key: const Key('parent-selector'),
+                          value: _parentId,
+                          isExpanded: true,
+                          items: [
+                            const DropdownMenuItem<String?>(
+                                value: null, child: Text('Chưa nhóm')),
+                            ..._groups.map((group) => DropdownMenuItem<String?>(
+                                  value: group.id,
+                                  child: Text(group.name),
+                                )),
+                          ],
+                          onChanged: _chooseParent,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 24),
                   const Text('Tên danh mục',
                       style: TextStyle(fontWeight: FontWeight.w600)),
@@ -405,6 +459,9 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
                   _ColourPicker(
                       selected: _colour,
                       onChanged: (value) => setState(() => _colour = value)),
+                  // Chế độ nhà dừng ở đây: thẻ Cố định là cột cục bộ (không đồng bộ), từ khoá là cột `Keyword` chung của
+                  // danh mục nên các thành viên sẽ đè nhau (ruling M-17).
+                  if (widget.idNha == null) ...[
                   const SizedBox(height: 24),
                   // Cờ Cố định (Edge-SLM luật C2) — theo màn Stitch
                   // `a5a6ecb3…`: thẻ trắng giữa khối màu và khối từ khoá, chip
@@ -449,6 +506,7 @@ class _CategoryAddPageState extends State<CategoryAddPage> {
                   if (!context.coQuyen(MaQuyen.categoryKeywordsMatching)) ...[
                     const SizedBox(height: 8),
                     const DongKhoaQuyen(ma: MaQuyen.categoryKeywordsMatching),
+                  ],
                   ],
                 ],
               ),

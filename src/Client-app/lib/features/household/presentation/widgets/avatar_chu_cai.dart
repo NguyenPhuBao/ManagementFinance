@@ -18,9 +18,12 @@ const _bangMauAvatar = <({Color nen, Color chu})>[
     : _bangMauAvatar[idaccount.abs() % _bangMauAvatar.length];
 
 class AvatarChuCai extends StatelessWidget {
-  const AvatarChuCai({super.key, required this.ten, this.idaccount, this.co = 40});
+  const AvatarChuCai({super.key, required this.ten, this.idaccount, this.co = 40, this.daRoi = false});
 
   final String ten;
+
+  /// Người đã rời nhà: avatar xám (Stitch `50af4171…`: nền `#f1f2ed`, chữ `#868882`), bỏ màu theo id.
+  final bool daRoi;
 
   /// Quyết định màu; `null` → trung tính.
   final int? idaccount;
@@ -30,7 +33,7 @@ class AvatarChuCai extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = ten.trim();
     final chu = t.isEmpty ? '?' : String.fromCharCode(t.runes.first).toUpperCase();
-    final mau = mauAvatarTheoId(idaccount);
+    final mau = daRoi ? (nen: const Color(0xFFF1F2ED), chu: const Color(0xFF868882)) : mauAvatarTheoId(idaccount);
     return Container(
       width: co,
       height: co,

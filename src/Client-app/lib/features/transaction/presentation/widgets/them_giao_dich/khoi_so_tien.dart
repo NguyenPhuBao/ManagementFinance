@@ -10,10 +10,17 @@ import '../../../domain/ban_phim_so_tien.dart';
 import '../so_tien_lon.dart';
 
 class ThanhChonChieu extends StatelessWidget {
-  const ThanhChonChieu({super.key, required this.huong, required this.onChon});
+  const ThanhChonChieu({super.key, required this.huong, required this.onChon, this.coChuyen = true, this.khoaChieu = false});
 
   final String huong;
   final ValueChanged<String> onChon;
+
+  /// `false` (Thành viên ở chế độ nhà) → bỏ đoạn *Chuyển khoản*; hai đoạn còn lại chia đều hàng.
+  final bool coChuyen;
+
+  /// `true` (sửa nửa riêng của góp / rút, FINAL I-1): bỏ *Chuyển khoản* và chạm đoạn nào cũng không đổi chiều — đổi chiều
+  /// đảo góp thành rút, còn Transfer kèm `idfund_pair` bị server từ chối.
+  final bool khoaChieu;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +34,7 @@ class ThanhChonChieu extends StatelessWidget {
         children: [
           Expanded(child: _nut('chi', 'Chi tiêu', AppColors.expense)),
           Expanded(child: _nut('thu', 'Thu nhập', AppColors.income)),
-          Expanded(child: _nut('transfer', 'Chuyển khoản', AppColors.primary)),
+          if (coChuyen && !khoaChieu) Expanded(child: _nut('transfer', 'Chuyển khoản', AppColors.primary)),
         ],
       ),
     );
@@ -42,7 +49,7 @@ class ThanhChonChieu extends StatelessWidget {
 
     return GestureDetector(
       key: Key('transaction-type-$huong'),
-      onTap: () => onChon(huong),
+      onTap: khoaChieu ? null : () => onChon(huong),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(

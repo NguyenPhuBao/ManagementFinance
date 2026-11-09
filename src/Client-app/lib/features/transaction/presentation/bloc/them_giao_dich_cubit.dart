@@ -632,11 +632,18 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
     final viNguon = s.viNguon;
     if (viNguon == null) return const LoiLuu('Vui lòng chọn ví thanh toán');
     final danhMuc = s.danhMuc;
-    if (!s.laChuyen && danhMuc == null) return const LoiLuu('Vui lòng chọn danh mục');
+    // Nửa riêng của góp / rút (hàng sửa mang `fundPairId`): không có danh mục, và chiều là của cặp (FINAL I-1).
+    final nuaCuaCap = _dangSua?.fundPairId != null;
+    if (!s.laChuyen && danhMuc == null && !nuaCuaCap) return const LoiLuu('Vui lòng chọn danh mục');
     final viDich = s.viDich;
     if (s.laChuyen && viDich == null) return const LoiLuu('Vui lòng chọn ví đích');
-    final type = s.loaiGhi;
+    if (s.laChuyen && viDich!.id == viNguon.id) return const LoiLuu('Ví đích phải khác ví nguồn');
+    // Không có danh mục thì `loaiGhi` là `null`: nửa của cặp lấy chiều từ đoạn, và KHÔNG được khác chiều đã ghi.
+    final type = s.loaiGhi ?? (nuaCuaCap ? s.huong : null);
     if (type == null) return const LoiLuu('Vui lòng chọn chiều tiền');
+    if (nuaCuaCap && type != _dangSua!.type) {
+      return const LoiLuu('Khoản góp / rút quỹ không đổi chiều hay thành chuyển khoản được');
+    }
     // ⚠️ Chốt cuối, và là chốt quan trọng nhất trong chuỗi này: KHÔNG ghi giao dịch khi chưa biết nó thuộc về ai. Trước
     // 2026-09-14 nhánh này rơi về mã `1` — tài khoản admin thật — nên giao dịch ghi trong lúc phiên chưa sẵn sàng sẽ
     // mang chủ sở hữu sai, rồi đẩy lên và vỡ "Ownership mismatch" mà không ai lần được từ đâu. Sửa giao dịch cũ thì
@@ -652,9 +659,12 @@ class ThemGiaoDichCubit extends Cubit<ThemGiaoDichState> {
       idaccount: accountId,
       // Khoản chuyển KHÔNG có danh mục. Trước đây chỗ này gán 'cat_transfer' — một id chưa từng được seed — và
       // SyncEngine hoãn đẩy hàng ấy vĩnh viễn vì không phân giải được danh mục.
-      categoryId: s.laChuyen ? null : danhMuc!.id,
+      categoryId: s.laChuyen ? null : danhMuc?.id,
       walletTransfer: s.laChuyen ? viDich!.id : null,
       goalId: editing?.goalId,
+      // Hai trường nhà đi theo hàng cũ: `toCompanion` ghi cả hai, dựng entity sửa mà bỏ chúng là ghi NULL đè.
+      idhousehold: editing?.idhousehold,
+      fundPairId: editing?.fundPairId,
       amount: amount,
       type: type,
       note: s.ghiChu.trim(),

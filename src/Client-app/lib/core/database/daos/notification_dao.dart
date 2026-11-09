@@ -214,9 +214,18 @@ class NotificationDao extends DatabaseAccessor<AppDatabase>
   /// Dọn hàng cũ. Bảng này chỉ lớn lên — hàng đã xoá mềm phải giữ để chặn
   /// trùng — nên không dọn thì sau một năm màn danh sách tải hàng nghìn hàng.
   /// An toàn vì mọi `dedupeKey` đều đã hết hạn từ lâu trước mốc cắt.
-  Future<int> purgeOlderThan(DateTime cutoff) {
+  ///
+  /// [giuLoai]: các `kind` (chuỗi, DAO không import tầng thông báo) mà khoá chống trùng phải sống lâu hơn mốc cắt — hàng
+  /// của chúng KHÔNG bị xoá. Hàng ấy quá hạn mà chưa gỡ thì đặt `dismissedAt` = [cutoff] để rời trung tâm mà vẫn giữ khoá.
+  Future<int> purgeOlderThan(DateTime cutoff, {List<String> giuLoai = const []}) async {
+    if (giuLoai.isEmpty) {
+      return (delete(appNotifications)..where((t) => t.createdAt.isSmallerThanValue(cutoff))).go();
+    }
+    await (update(appNotifications)
+          ..where((t) => t.kind.isIn(giuLoai) & t.createdAt.isSmallerThanValue(cutoff) & t.dismissedAt.isNull()))
+        .write(AppNotificationsCompanion(dismissedAt: Value(cutoff)));
     return (delete(appNotifications)
-          ..where((t) => t.createdAt.isSmallerThanValue(cutoff)))
+          ..where((t) => t.createdAt.isSmallerThanValue(cutoff) & t.kind.isIn(giuLoai).not()))
         .go();
   }
 

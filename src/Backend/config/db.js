@@ -1,3 +1,5 @@
+require('./test-guard.check').assertGuardedTestRun();
+
 const { PrismaClient } = require('@prisma/client');
 const { Pool } = require('pg');
 const logger = require('../core/logger');

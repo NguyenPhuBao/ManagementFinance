@@ -1,27 +1,21 @@
-/// Thẻ "Lặp lại sau khi hoàn thành" của biểu mẫu Thêm / Sửa mục tiêu (`goal_add_page.dart`): công tắc và thanh chọn chu kỳ
-/// lặp — dời nguyên văn từ khối `// Thẻ LẶP LẠI` của `build` (G88 gạch 2).
+/// Thẻ "Lặp lại sau khi hoàn thành" của biểu mẫu Thêm / Sửa mục tiêu (`goal_add_page.dart`) — dời từ khối `// Thẻ LẶP LẠI`
+/// của `build` (G88 gạch 2). Chỉ còn công tắc: thanh chọn chu kỳ tuần / tháng / năm bỏ 2026-11-04 (người dùng chốt) —
+/// vòng mới dài đúng số ngày của vòng trước (`hanVongMoi`).
 library;
 
 import 'package:flutter/material.dart';
 
 import '../../../../../shared/theme/app_colors.dart';
-import '../../../../../shared/widgets/segmented_choice.dart';
-import '../../../domain/chu_ky_muc_tieu.dart';
-import 'o_nhap_muc_tieu.dart';
 
 class TheLapLai extends StatelessWidget {
   const TheLapLai({
     super.key,
     required this.lapLai,
     required this.onDoiLapLai,
-    required this.chuKyLap,
-    required this.onDoiChuKy,
   });
 
   final bool lapLai;
   final ValueChanged<bool> onDoiLapLai;
-  final String chuKyLap;
-  final ValueChanged<String> onDoiChuKy;
 
   @override
   Widget build(BuildContext context) {
@@ -63,8 +57,9 @@ class TheLapLai extends StatelessWidget {
                     // một cú bấm có ý thức.
                     Text(
                       'Khi đạt mục tiêu, app sẽ nhắc bạn bắt '
-                      'đầu vòng mới. Tiền đã tích vẫn ở nguyên '
-                      'trong ví.',
+                      'đầu vòng mới — cùng số tiền, dài đúng số '
+                      'ngày như vòng này. Tiền đã tích vẫn ở '
+                      'nguyên trong ví.',
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textSecondary,
@@ -80,21 +75,6 @@ class TheLapLai extends StatelessWidget {
               ),
             ],
           ),
-          if (lapLai) ...[
-            const SizedBox(height: 16),
-            const NhanMucTieu('LẶP LẠI MỖI'),
-            const SizedBox(height: 4),
-            SegmentedChoice<String>(
-              keyPrefix: 'goal-repeat-cycle',
-              options: [
-                for (final e in kChuKyLapLai.entries)
-                  SegmentedOption(e.key, e.value),
-              ],
-              selected: chuKyLap,
-              accent: AppColors.income,
-              onChanged: (v) => onDoiChuKy(v),
-            ),
-          ],
         ],
       ),
     );

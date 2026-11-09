@@ -55,6 +55,9 @@ class _Adapter implements HttpClientAdapter {
   final sinces = <String?>[];
   bool loiPull = false;
 
+  /// `true` thì `/sync/push` trả 500 — chu kỳ hỏng, engine giãn cách (lượt kéo hỏng thì không).
+  bool pushLoi = false;
+
   /// Số lần hỏi `/sync/pull` — đếm ở ĐẦU `fetch`, trước nhánh hỏng, nên lượt hỏng cũng được đếm.
   int soLanHoiKeo = 0;
 
@@ -74,6 +77,7 @@ class _Adapter implements HttpClientAdapter {
       });
     }
     if (o.path.contains('/sync/push')) {
+      if (pushLoi) return ResponseBody.fromString('{}', 500);
       final ops = (o.data as Map<String, dynamic>)['operations'] as List<dynamic>;
       return ResponseBody.fromString(
           jsonEncode({
@@ -267,5 +271,68 @@ void main() {
     expect(doi.single.tuKhoaMoi, ['cu', 'moi'],
         reason:
             'kéo toàn bộ theo thế hệ vẫn có trạng thái cũ của tài khoản — so từ khoá bị bỏ là từ khoá mới không bao giờ về bản sao');
+  });
+
+  group('đang giãn cách sau chu kỳ đẩy hỏng (G121 dòng 16)', () {
+    late DateTime dongHo;
+    late SyncEngine e;
+
+    /// Một hàng chờ đẩy + `/sync/push` hỏng → chu kỳ đầu dựng giãn cách. Đồng hồ tiêm được và chỉ tiến 5 s: vẫn trong bậc 30 s.
+    Future<void> vaoGianCach() async {
+      dongHo = DateTime(2026, 11, 2, 9);
+      e = taoSyncEngineThu(
+          dioClient: client, db: db, connectivity: _Online(), checkpointStore: store, now: () => dongHo);
+      addTearDown(e.dispose);
+      await db.walletDao.insert(WalletsCompanion(
+          id: const Value('22222222-2222-4222-8222-222222222222'),
+          idaccount: const Value(accountId),
+          name: const Value('Ví chờ đẩy'),
+          updatedAt: Value(dongHo)));
+      client.adapter.pushLoi = true;
+      await e.start(idaccount: accountId);
+      expect(e.nextAllowedSyncAt, isNotNull, reason: 'tiền đề: engine đang giãn cách');
+      dongHo = dongHo.add(const Duration(seconds: 5));
+    }
+
+    test('đổi nhà (boGianCach): kéo toàn bộ chạy NGAY, kể cả khi đẩy còn hỏng', () async {
+      await vaoGianCach();
+      final soLanHoiTruoc = client.adapter.soLanHoiKeo;
+
+      await e.keoLaiToanBo(accountId, boGianCach: true);
+
+      expect(client.adapter.soLanHoiKeo, greaterThan(soLanHoiTruoc),
+          reason: 'đo Realme 2026-11-02: hoãn tới 11 phút, Nhà mình nói "Chưa có ví chung nào." trong khi dữ liệu có trên server');
+      expect(client.adapter.sinces.last, tuDau, reason: 'lượt chạy ngay phải là lượt kéo toàn bộ');
+    });
+
+    test('đổi nhà mà đẩy VẪN hỏng: giãn cách dựng lại ở bậc kế — chỉ bỏ MỘT lượt, không tắt giãn cách', () async {
+      await vaoGianCach();
+      final bacDau = e.nextAllowedSyncAt!.difference(DateTime(2026, 11, 2, 9));
+
+      await e.keoLaiToanBo(accountId, boGianCach: true);
+
+      expect(e.consecutiveFailures, 2, reason: 'số lần hỏng giữ nguyên rồi cộng thêm; đặt lại về 0 là server hỏng bị dội lại từ bậc 30 s');
+      expect(e.nextAllowedSyncAt, isNotNull);
+      expect(e.nextAllowedSyncAt!.difference(dongHo), greaterThan(bacDau), reason: 'bậc kế dài hơn bậc đầu');
+
+      final soLanHoi = client.adapter.soLanHoiKeo;
+      await e.syncNow();
+      expect(client.adapter.soLanHoiKeo, soLanHoi, reason: 'lượt thường sau đó vẫn bị giãn cách chặn');
+    });
+
+    test('lượt do máy tự xin (không boGianCach — resolver đẩy hỏng): vẫn chờ, và yêu cầu không mất', () async {
+      await vaoGianCach();
+      final soLanHoiTruoc = client.adapter.soLanHoiKeo;
+
+      await e.keoLaiToanBo(accountId);
+
+      expect(client.adapter.soLanHoiKeo, soLanHoiTruoc,
+          reason: 'resolver xin kéo vì một lần đẩy hỏng: bỏ giãn cách ở đây thì hàng cứ bị từ chối là vòng đồng bộ nóng');
+      expect(e.backoffRetryAt, isNotNull, reason: 'bị từ chối là nợ một lần chạy');
+
+      dongHo = e.nextAllowedSyncAt!.add(const Duration(seconds: 1));
+      await e.syncNow();
+      expect(client.adapter.sinces.last, tuDau, reason: 'hết giãn cách thì lượt kế là lượt kéo toàn bộ đã xin');
+    });
   });
 }

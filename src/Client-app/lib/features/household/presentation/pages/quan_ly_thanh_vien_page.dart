@@ -5,12 +5,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/ui/thong_bao_nhanh.dart';
+import '../../../auth/presentation/bloc/current_account.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../data/models/nha_cua_toi.dart';
+import '../../data/repositories/du_lieu_nha_repository.dart';
 import '../../data/repositories/nha_repository.dart';
 import '../../domain/chu_nha_dung_dau.dart';
 import '../bloc/nha_cubit.dart';
 import '../widgets/gac_vai_chu.dart';
+import '../widgets/hoi_hang_chua_day.dart';
 import '../widgets/hop_xac_nhan_nha.dart';
 import '../widgets/avatar_chu_cai.dart';
 import '../widgets/nhan_vai.dart';
@@ -21,10 +24,13 @@ import '../widgets/quan_ly_thanh_vien/the_thanh_vien_quan_ly.dart';
 /// Màn Quản lý thành viên `/nha/thanh-vien` (spec 5.4, 5.5, 12.2; Stitch `456078e5…`). Nhà `ReadOnly` vẫn đổi vai / chuyển chủ /
 /// giải tán được (spec 12.3), nên chỉ khoá khi một thao tác đang chạy.
 class QuanLyThanhVienPage extends StatefulWidget {
-  const QuanLyThanhVienPage({super.key, this.repo});
+  const QuanLyThanhVienPage({super.key, this.repo, this.duLieu});
 
   /// `null` → `sl<NhaRepository>()`.
   final NhaRepository? repo;
+
+  /// Nguồn đếm hàng chưa đẩy cho hộp Giải tán; `null` → `sl<DuLieuNhaRepository>()`, chỉ chạm khi cần hỏi.
+  final DuLieuNhaRepository? duLieu;
 
   @override
   State<QuanLyThanhVienPage> createState() => _QuanLyThanhVienPageState();
@@ -81,8 +87,21 @@ class _QuanLyThanhVienPageState extends State<QuanLyThanhVienPage> {
   }
 
   Future<void> _giaiTan(String ten) async {
-    if (!await hoiGiaiTan(context, ten) || !mounted) return;
-    await _lamRoiVe(_cubit.giaiTan);
+    // Quy tắc 2: idaccount chỉ từ phiên, đọc TRƯỚC mọi `await`. `null` = chưa có phiên.
+    final idaccount = currentAccountIdOrNull(context);
+    final nhaId = _cubit.state.nha.nha?.id;
+    if (!await hoiGiaiTan(context, ten) || !mounted || nhaId == null) return;
+    // `_lamRoiVe` giữ cờ `_tuThaoTac` suốt cả hộp hỏi lại (nó chỉ hạ khi cả chuỗi thất bại): đừng hạ sớm.
+    await _lamRoiVe(
+      () => lamCoHoiHangChuaDay(
+        context,
+        cubit: _cubit,
+        viec: _cubit.giaiTan,
+        moTa: () => (widget.duLieu ?? sl<DuLieuNhaRepository>()).hangChuaDay(nhaId, idaccount: idaccount),
+        nhanLam: 'Vẫn giải tán',
+        giaiTan: true,
+      ),
+    );
   }
 
   @override

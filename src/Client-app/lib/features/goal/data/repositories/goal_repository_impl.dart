@@ -135,9 +135,10 @@ class GoalRepositoryImpl implements GoalRepository {
       // trích ngay lúc bấm "Tạo": người dùng vừa mô tả một kế hoạch, chưa đồng
       // ý cho tiền rời ví ngay giây này.
       autoDepositLastRun: batTrich ? now : null,
-      // Lặp lại cần ĐỦ cả hai mảnh, cùng luật với trích tự động: bật mà
-      // không có chu kỳ thì `batDauVongMoi` không biết dời hạn đi đâu.
-      recurrence: recurrence == true && timeRecurrence != null,
+      // Bật lặp lại KHÔNG cần chu kỳ (2026-11-04): vòng mới dài bằng vòng
+      // trước, đo từ `startDate` → `targetDate` (`hanVongMoi`). Chu kỳ chỉ còn
+      // là dự phòng cho mục tiêu thiếu mốc bắt đầu; form không gửi nó nữa.
+      recurrence: recurrence == true,
       timeRecurrence: recurrence == true ? timeRecurrence : null,
       icon: icon ?? 'flag',
       colour: colour ?? '#4CAF50',
@@ -271,7 +272,7 @@ class GoalRepositoryImpl implements GoalRepository {
         // hai, nhưng đường gọi khác thì không nhất thiết.
         recurrence: recurrence == null
             ? const Value.absent()
-            : Value(recurrence && timeRecurrence != null),
+            : Value(recurrence),
         timeRecurrence: recurrence == null
             ? const Value.absent()
             : Value(recurrence ? timeRecurrence : null),
@@ -315,6 +316,7 @@ class GoalRepositoryImpl implements GoalRepository {
 
     final hanMoi = hanVongMoi(
       hanCu: goal.targetDate,
+      batDauCu: goal.startDate,
       chuKy: goal.timeRecurrence,
       now: now,
     );

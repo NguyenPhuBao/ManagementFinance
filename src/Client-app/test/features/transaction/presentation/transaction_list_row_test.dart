@@ -1,4 +1,5 @@
 import 'package:flowmoney/features/transaction/data/models/transaction_entity.dart';
+import 'package:flowmoney/features/transaction/data/cap_gop_quy_nguon.dart';
 import 'package:flowmoney/features/transaction/data/hoa_don_da_xoa_nguon.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_lookup.dart';
 import 'package:flowmoney/features/transaction/domain/transaction_owner.dart';
@@ -222,5 +223,99 @@ void main() {
     expect(find.textContaining('6f8e6b7a'), findsNothing,
         reason: 'Trước 2026-09-06 dòng phụ là "Ví: <UUID>".');
     expect(find.text('-25.000 đ'), findsOneWidget);
+  });
+
+  group('nửa riêng của khoản góp / rút (hoiCap, onXoaCap)', () {
+    final nuaRieng = TransactionEntity(
+      id: 'tx-nua-rieng',
+      walletId: 'w',
+      idaccount: 1,
+      fundPairId: 'cap-1',
+      amount: 200000,
+      type: 'chi',
+      note: 'Góp quỹ · Quỹ chợ',
+      date: DateTime(2026, 11, 1),
+      updatedAt: DateTime(2026, 11, 1),
+    );
+
+    Future<void> dung(
+      WidgetTester tester, {
+      required Future<CapGopQuy?> Function(TransactionEntity) hoiCap,
+      Future<void> Function(String)? onXoaCap,
+    }) async {
+      bat = batThongBao();
+      soLanXoa = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: TransactionListRow(
+            transaction: nuaRieng,
+            onDelete: () => soLanXoa++,
+            hoiCap: hoiCap,
+            onXoaCap: onXoaCap,
+          ),
+        ),
+      ));
+      await tester.drag(find.byKey(Key(nuaRieng.id)), const Offset(-600, 0));
+      await tester.pumpAndSettle();
+    }
+
+    const cap = CapGopQuy(maCap: 'cap-1', laGop: true, cauXoa: 'Quỹ chợ cũng giảm 200.000 đ.', choThaoTac: true);
+
+    testWidgets('còn cặp: hộp nêu câu của cặp, đồng ý thì xoaCap và KHÔNG onDelete', (tester) async {
+      final daXoaCap = <String>[];
+      await dung(tester, hoiCap: (_) async => cap, onXoaCap: (m) async => daXoaCap.add(m));
+
+      expect(find.text('Xoá khoản góp?'), findsOneWidget);
+      expect(find.text('Quỹ chợ cũng giảm 200.000 đ.'), findsOneWidget);
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Xóa'));
+      await tester.pumpAndSettle();
+
+      expect(daXoaCap, ['cap-1']);
+      expect(soLanXoa, 0,
+          reason: 'onDelete gỡ MỘT nửa: trả true cho Dismissible là chạy onDismissed → lệch cặp, đúng lỗi đang chặn.');
+      expect(bat.cau, ['Đã xóa giao dịch'], reason: 'onDismissed không chạy khi trả false nên confirmDismiss tự báo.');
+    });
+
+    testWidgets('còn cặp, bấm Huỷ: không xoá gì, không báo', (tester) async {
+      final daXoaCap = <String>[];
+      await dung(tester, hoiCap: (_) async => cap, onXoaCap: (m) async => daXoaCap.add(m));
+      await tester.tap(find.widgetWithText(TextButton, 'Hủy'));
+      await tester.pumpAndSettle();
+
+      expect(daXoaCap, isEmpty);
+      expect(soLanXoa, 0);
+      expect(bat.cau, isEmpty);
+      expect(find.byKey(Key(nuaRieng.id)), findsOneWidget);
+    });
+
+    testWidgets('nhà chỉ xem: báo lỗi, không hộp, không xoá', (tester) async {
+      var goi = 0;
+      await dung(
+        tester,
+        hoiCap: (_) async => const CapGopQuy(maCap: 'cap-1', laGop: true, cauXoa: 'x', choThaoTac: false),
+        onXoaCap: (_) async => goi++,
+      );
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(goi, 0);
+      expect(soLanXoa, 0);
+      expect(bat.cuoi?.cau, 'Nhà đang ở chế độ chỉ xem.');
+      expect(bat.cuoi?.loai, LoaiThongBao.loi);
+    });
+
+    testWidgets('xoaCap ném: báo lỗi, hàng không biến mất', (tester) async {
+      await dung(tester, hoiCap: (_) async => cap, onXoaCap: (_) async => throw StateError('hỏng'));
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Xóa'));
+      await tester.pumpAndSettle();
+
+      expect(bat.cuoi?.loai, LoaiThongBao.loi, reason: 'Không được báo "Đã xóa" khi chưa xoá.');
+      expect(soLanXoa, 0);
+      expect(find.byKey(Key(nuaRieng.id)), findsOneWidget);
+    });
+
+    testWidgets('hoiCap trả null (khoản thường / đã rời nhà): đường cũ, vuốt là xoá', (tester) async {
+      await dung(tester, hoiCap: (_) async => null);
+      expect(soLanXoa, 1);
+      expect(bat.cau, ['Đã xóa giao dịch']);
+    });
   });
 }

@@ -13,6 +13,7 @@ library;
 import '../../../core/utils/dung_sai_tien.dart';
 import '../../../core/utils/khop_ten.dart';
 import '../data/models/lua_chon_loc.dart';
+import 'danh_muc_ao_quy.dart';
 import 'khoan_vao_thong_ke.dart';
 import '../data/models/transaction_entity.dart';
 import 'khoang_tien.dart';
@@ -259,7 +260,15 @@ bool _bangMoc(double soTien, double? moc, bool loaiTru) =>
     loaiTru && moc != null && (soTien - moc).abs() <= kDungSaiTien;
 
 DongTimThay _dong(TransactionEntity t, TransactionLookup lookup) {
-  final tenDm = lookup.category(t.categoryId)?.name;
+  // Nửa riêng của góp / rút quỹ gia đình chưa có danh mục: nhãn ảo (Task 10) — tool AI nói cùng tên với thống kê.
+  final tenDm = lookup.category(t.categoryId)?.name ??
+      nhanAoQuy(categoryIdThongKe(
+        categoryId: t.categoryId,
+        fundPairId: t.fundPairId,
+        idhousehold: t.idhousehold,
+        loai: t.type,
+      ))
+          ?.ten;
   return DongTimThay(
     tieuDe: tieuDeGiaoDich(loai: t.type, ghiChu: t.note, tenDanhMuc: tenDm),
     tenDanhMuc: tenDm,

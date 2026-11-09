@@ -143,6 +143,10 @@ const String kMayChuHongTuChoi =
 
 const String kDangHoiOnline = 'Đang hỏi trợ lý online…';
 
+/// Câu rơi về máy vì máy chủ báo 429 mà máy không tự trả lời được: máy chủ vẫn sống, chỉ là chạm giới hạn lượt hỏi.
+const String kCauGioiHanOnline =
+    'Bạn đã chạm giới hạn lượt hỏi trợ lý online nên câu này chưa trả lời được. Hãy thử lại sau, hạn mức sẽ tự làm mới.';
+
 String cauKhoa(LyDoKhoaHoiDap ly) => switch (ly) {
       LyDoKhoaHoiDap.goiBasic => kGoiBasic,
       LyDoKhoaHoiDap.tamNgung => cauMoDauQuyen(MaQuyen.aiAssistant, tamNgung: true),
@@ -302,6 +306,9 @@ class _AiChatPageState extends State<AiChatPage> {
 
   /// Chữ dòng chỉ báo trong lúc tool chạy (`cauDangTraCuu`); `null` = "Đang nghĩ…".
   String? _dangTraCuu;
+
+  /// Trạng thái công cụ máy chủ đang chạy (lượt online); ưu tiên hơn [_dangTraCuu] và hiện được cả dưới bong bóng chữ.
+  String? _congCuDangChay;
 
   /// Phiên AI lệnh tạo (C3 §8) đang chạy — dòng chỉ báo có thêm nút Huỷ. [_daHuyLenh]: người dùng vừa bấm nó.
   bool _dangDocLenh = false;
@@ -477,7 +484,7 @@ class _AiChatPageState extends State<AiChatPage> {
           final kq = await _hoiOnline(c);
           if (!mounted || kq is! RoiVeMay) return;
           debugPrint('[Online] rơi về máy: ${kq.lyDo}');
-          _ghiChuRoi = kGhiChuRoiVeMay;
+          _ghiChuRoi = kq.ghiChu;
           // đi tiếp đường trên máy bên dưới với CÙNG câu
         }
       }
@@ -487,10 +494,12 @@ class _AiChatPageState extends State<AiChatPage> {
     // chủ đề máy từ chối · chưa tải / tắt mô hình) — băng nhắc tải vẫn ở đó. Dữ liệu sống đứng TRƯỚC mất mạng: nối mạng
     // cũng không trả lời được câu ấy.
     if (!_maySan) {
-      final vuaRoi = _ghiChuRoi != null;
+      final roiVi = _ghiChuRoi;
       _ghiChuRoi = null;
       final String cau;
-      if (vuaRoi) {
+      if (roiVi == kGhiChuGioiHanOnline) {
+        cau = kCauGioiHanOnline;
+      } else if (roiVi != null) {
         cau = kMayChuHongKhongMoHinh;
       } else if (chuDeBiChanOnline(c)) {
         cau = kCauTuChoi;
@@ -508,9 +517,13 @@ class _AiChatPageState extends State<AiChatPage> {
     // ⚠️ Chặn TRƯỚC khi gọi mô hình: 2,3 giây cho một câu chắc chắn bị vứt đi
     // là lãng phí, và mô hình không nên thấy câu hỏi ấy.
     if (chuDeBiChan(c)) {
-      final vuaRoi = _ghiChuRoi != null;
+      final roiVi = _ghiChuRoi;
       _ghiChuRoi = null;
-      _themCuaAi(_TinNhan.cuaAi(vuaRoi ? kMayChuHongTuChoi : kCauTuChoi));
+      _themCuaAi(_TinNhan.cuaAi(roiVi == kGhiChuGioiHanOnline
+          ? kCauGioiHanOnline
+          : roiVi != null
+              ? kMayChuHongTuChoi
+              : kCauTuChoi));
       return;
     }
 
@@ -675,6 +688,11 @@ class _AiChatPageState extends State<AiChatPage> {
         if (chot) continue;
         if (_daDungOnline) continue; // khung tới sau Dừng không được nối vào bong bóng
         cuoi = sk;
+        if (sk is CongCuOnline) {
+          setState(() => _congCuDangChay = sk.dangChay ? nhanCongCuOnline(sk.ten) : null);
+          _cuonXuong();
+          continue;
+        }
         if (sk is! ChuOnline) {
           chot = true; // KHÔNG `break`: huỷ đăng ký giữa chừng treo trong test và thừa với datasource (đúng một sự kiện cuối)
           continue;
@@ -707,6 +725,7 @@ class _AiChatPageState extends State<AiChatPage> {
   /// đang hiện (kể cả câu thông báo ⚠️ của server) để câu đi tiếp trên máy.
   void _chotOnline(KetQuaOnline kq, String chu) {
     if (!mounted) return;
+    _congCuDangChay = null;
     switch (kq) {
       case HoanTat():
         _themCuaAi(_TinNhan.cuaAi(boDanhDauMarkdown(chu), nguon: NguonTraLoi.online));
@@ -905,6 +924,15 @@ class _AiChatPageState extends State<AiChatPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _boCuaAi(_TinNhan.cuaAi(boDanhDauMarkdown(dangDen))),
+                            if (_congCuDangChay case final trangThai?)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  trangThai,
+                                  style: const TextStyle(
+                                      color: AppColors.onSurfaceVariant, fontSize: 13),
+                                ),
+                              ),
                             if (_hienNutDung)
                               Align(
                                 alignment: Alignment.centerRight,
@@ -1082,7 +1110,7 @@ class _AiChatPageState extends State<AiChatPage> {
           Flexible(
             fit: _hienNutDung ? FlexFit.tight : FlexFit.loose,
             child: Text(
-              _dangTraCuu ?? 'Đang nghĩ…',
+              _congCuDangChay ?? _dangTraCuu ?? 'Đang nghĩ…',
               style: const TextStyle(
                   color: AppColors.onSurfaceVariant, fontSize: 13),
             ),
@@ -1116,6 +1144,10 @@ class _AiChatPageState extends State<AiChatPage> {
                 enabled: !_dangHoi && !_khoaCaO,
                 maxLines: 4,
                 minLines: 1,
+                maxLength: kToiDaKyTuCauHoi,
+                // Chỉ hiện bộ đếm khi sắp chạm giới hạn để không chiếm chỗ của ô nhập.
+                buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
+                    currentLength < kToiDaKyTuCauHoi - 100 ? null : Text('$currentLength/$maxLength'),
                 textInputAction: TextInputAction.send,
                 onSubmitted: _hoi,
                 style: const TextStyle(

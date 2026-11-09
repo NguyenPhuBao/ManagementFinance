@@ -103,6 +103,45 @@ void main() {
     expect(c.subtitle, 'Tiền mặt → Tiết kiệm');
   });
 
+  test('nửa riêng của khoản góp trên Sổ: tiêu đề là ghi chú, phụ đề Góp quỹ gia đình • Ví', () {
+    final c = buildTransactionRowContent(
+      TransactionEntity(
+        id: 'g',
+        walletId: 'w-cash',
+        idaccount: 1,
+        amount: 25000,
+        type: 'chi',
+        note: 'Tiền chợ',
+        date: DateTime(2026, 9, 6),
+        updatedAt: DateTime(2026, 9, 6),
+        fundPairId: 'p1',
+      ),
+      lookup,
+    );
+
+    expect(c.title, 'Tiền chợ');
+    expect(c.subtitle, 'Góp quỹ gia đình • Tiền mặt');
+  });
+
+  test('nửa rút không ghi chú: tiêu đề là Rút quỹ gia đình', () {
+    final c = buildTransactionRowContent(
+      TransactionEntity(
+        id: 'r',
+        walletId: 'w-cash',
+        idaccount: 1,
+        amount: 25000,
+        type: 'thu',
+        note: '',
+        date: DateTime(2026, 9, 6),
+        updatedAt: DateTime(2026, 9, 6),
+        fundPairId: 'p2',
+      ),
+      lookup,
+    );
+
+    expect(c.title, 'Rút quỹ gia đình');
+  });
+
   test('ví không còn trong danh sách thì ghi "Ví đã xoá", không bao giờ in UUID',
       () {
     final c = buildTransactionRowContent(

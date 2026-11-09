@@ -64,6 +64,10 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         draft.id == null ? null : await db.categoryDao.getById(draft.id!);
     _rejectDefault(existing);
     _requireOwnership(existing, draft.accountId);
+    // Nhà của danh mục: draft nêu thì theo draft, không nêu thì theo hàng đang có — đường sửa cá nhân không được lặng lẽ
+    // kéo danh mục của nhà về riêng (`insertOrReplace` thay cả hàng).
+    final nha = _nhaCuaDraft(existing, draft.idhousehold);
+    _rejectNhaDaXoa(existing);
     if (existing?.isGroup == true) {
       throw const CategoryValidationException(
           'Nhóm danh mục không thể là danh mục con.');
@@ -72,10 +76,12 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     final parent = await _validParent(
       accountId: draft.accountId,
       parentId: draft.parentId,
+      idhousehold: nha,
     );
     final classify = parent?.classify ?? draft.classify;
     await _nemNeuTrungTen(
       accountId: draft.accountId,
+      idhousehold: nha,
       excludingId: draft.id,
       name: name,
       currentName: existing?.name,
@@ -85,7 +91,9 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     final now = DateTime.now();
     await db.categoryDao.insert(CategoriesCompanion.insert(
       id: id,
-      idaccount: draft.accountId,
+      // Danh mục của nhà: `idaccount` là NGƯỜI TẠO, người khác sửa không đổi nó (server giữ `Create_by`).
+      idaccount: nha != null && existing != null ? existing.idaccount : draft.accountId,
+      idhousehold: Value(nha),
       name: name,
       classify: classify,
       icon: Value(draft.icon),
@@ -102,12 +110,16 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       syncStatus: const Value('pending'),
       updatedAt: now,
     ));
-    await db.categoryDao.replaceKeywords(
-      accountId: draft.accountId,
-      categoryId: id,
-      keywords: draft.keywords,
-      now: now,
-    );
+    // Từ khoá của danh mục NHÀ không sửa ở 1A: `categoryKeywords.idaccount` theo người sửa rồi đẩy lên cột `Keyword` chung
+    // thì các thành viên đè nhau. Bỏ qua `draft.keywords`, giữ bộ đang có.
+    if (nha == null) {
+      await db.categoryDao.replaceKeywords(
+        accountId: draft.accountId,
+        categoryId: id,
+        keywords: draft.keywords,
+        now: now,
+      );
+    }
     syncEngine?.scheduleSync();
   }
 
@@ -120,12 +132,15 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
           draft.id == null ? null : await db.categoryDao.getById(draft.id!);
       _rejectDefault(existing);
       _requireOwnership(existing, draft.accountId);
+      final nha = _nhaCuaDraft(existing, draft.idhousehold);
+      _rejectNhaDaXoa(existing);
       if (existing != null && !existing.isGroup) {
         throw const CategoryValidationException(
             'Danh mục con không thể là nhóm.');
       }
       await _nemNeuTrungTen(
         accountId: draft.accountId,
+        idhousehold: nha,
         excludingId: draft.id,
         name: name,
         currentName: existing?.name,
@@ -143,7 +158,11 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
         // Từ 2026-09-07 danh mục mặc định không còn hiện với người dùng —
         // mỗi tài khoản có bản sao của riêng mình — nên chúng không thể là
         // ứng viên con của một nhóm nữa.
-        if (child.isDefault || child.idaccount != draft.accountId) {
+        // Con của nhóm nhà phải cùng nhà (bất kể người tạo); con của nhóm riêng phải là hàng riêng của tôi.
+        final conHopLe = nha != null
+            ? child.idhousehold == nha
+            : child.idaccount == draft.accountId && child.idhousehold == null;
+        if (child.isDefault || !conHopLe) {
           throw const CategoryValidationException(
             'Chỉ có thể thêm danh mục con cá nhân hợp lệ vào nhóm.',
           );
@@ -160,7 +179,8 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       final now = DateTime.now();
       await db.categoryDao.insert(CategoriesCompanion.insert(
         id: id,
-        idaccount: draft.accountId,
+        idaccount: nha != null && existing != null ? existing.idaccount : draft.accountId,
+        idhousehold: Value(nha),
         name: name,
         classify: draft.classify,
         icon: Value(draft.icon),
@@ -174,19 +194,23 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
 
       // Gỡ các danh mục con cũ ra khỏi nhóm — parentId đổi nên phải đẩy lại. TRỪ con đang ẩn theo khuôn: màn Nhóm chỉ
       // liệt kê con không ẩn nên người dùng không thể bỏ chọn nó — gỡ là mất nhóm im lặng và đẩy Idgroup = null lên server.
-      // Không chạm danh mục của NHÀ (gia đình, schema v32 — quét 37): nhóm cá nhân không chứa hàng của nhà.
+      // Nhóm cá nhân không chạm hàng của NHÀ (gia đình, schema v32 — quét 37); nhóm của nhà chỉ chạm hàng cùng nhà.
       final khuon = (await db.categoryDao.getTatCaKhuon()).map(CategoryEntity.fromDrift).toList();
       final conDangAn = [
         for (final c in await (db.select(db.categories)
-              ..where((row) =>
-                  row.idaccount.equals(draft.accountId) & row.idhousehold.isNull() & row.parentId.equals(id)))
+              ..where((row) => nha == null
+                  ? row.idaccount.equals(draft.accountId) & row.idhousehold.isNull() & row.parentId.equals(id)
+                  : row.idhousehold.equals(nha) & row.parentId.equals(id)))
             .get())
-          if (dangAnTheoKhuon(CategoryEntity.fromDrift(c), khuon)) c.id,
+          // Nhóm nhà không áp luật ẩn theo khuôn: bộ danh mục nhà do server sao từ khuôn (cùng tên), admin xoá khuôn thì
+          // con ấy vẫn phải gỡ được khỏi nhóm.
+          if (nha == null && dangAnTheoKhuon(CategoryEntity.fromDrift(c), khuon)) c.id,
       ];
       await (db.update(db.categories)
             ..where((row) =>
-                row.idaccount.equals(draft.accountId) &
-                row.idhousehold.isNull() &
+                (nha == null
+                    ? row.idaccount.equals(draft.accountId) & row.idhousehold.isNull()
+                    : row.idhousehold.equals(nha)) &
                 row.parentId.equals(id) &
                 row.id.isNotIn(conDangAn)))
           .write(CategoriesCompanion(
@@ -302,6 +326,11 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
       throw const CategoryValidationException(
           'Danh mục không tồn tại hoặc không thuộc tài khoản.');
     }
+    // Danh mục của NHÀ không có từ khoá (1B Task 11, ruling M-17): `categoryKeywords.idaccount` theo người sửa rồi đẩy lên
+    // cột `Keyword` chung, các thành viên đè nhau. Người tạo cũng không được (chặn theo nhà, không theo người).
+    if (category.idhousehold != null) {
+      throw const CategoryValidationException('Danh mục của nhà không có từ khoá.');
+    }
     final now = DateTime.now();
     await db.transaction(() async {
       await db.categoryDao.replaceKeywords(
@@ -398,14 +427,37 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     );
   }
 
+  /// Nhà của một lần lưu: draft nêu thì theo draft, không thì theo hàng đang có. Sửa hàng đang có mà draft nêu nhà KHÁC
+  /// hàng (riêng ↔ nhà, nhà A ↔ nhà B) là chuyển phạm vi — không hỗ trợ, ném (hàng đã lên server thì server cũng từ chối
+  /// HOUSEHOLD_SCOPE_MISMATCH vĩnh viễn).
+  int? _nhaCuaDraft(Category? existing, int? idhouseholdDraft) {
+    final cu = existing?.idhousehold;
+    if (existing != null && idhouseholdDraft != null && cu != idhouseholdDraft) {
+      throw const CategoryValidationException('Danh mục không thuộc nhà này.');
+    }
+    return idhouseholdDraft ?? cu;
+  }
+
+  /// Hàng của nhà đã xoá mềm (người khác xoá lúc form còn mở) không được sống lại khi Lưu. Hàng riêng giữ hành vi cũ.
+  void _rejectNhaDaXoa(Category? existing) {
+    if (existing != null && existing.idhousehold != null && (existing.isDeleted || existing.deletedAt != null)) {
+      throw const CategoryValidationException('Danh mục này đã bị xoá khỏi nhà.');
+    }
+  }
+
   Future<Category?> _validParent({
     required int accountId,
     required String? parentId,
+    int? idhousehold,
   }) async {
     if (parentId == null) return null;
     final parent = await db.categoryDao.getById(parentId);
+    // Nhóm cha của danh mục nhà phải là nhóm cùng nhà (bất kể người tạo); của danh mục riêng phải là nhóm riêng của tôi.
+    final thuocPhamVi = idhousehold != null
+        ? parent?.idhousehold == idhousehold
+        : parent?.idaccount == accountId && parent?.idhousehold == null;
     if (parent == null ||
-        parent.idaccount != accountId ||
+        !thuocPhamVi ||
         !parent.isGroup ||
         parent.isDefault ||
         parent.isDeleted) {
@@ -428,8 +480,13 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
   /// chúng cho bộ tạo bản sao. `/sync/push` chỉ đánh dấu thao tác hỏng là
   /// `failed` nên vi phạm lọt qua không hiện ra màn hình — chốt ở đây cộng chốt
   /// ở CSDL là hai lớp bảo đảm quy tắc.
+  ///
+  /// Danh mục của NHÀ (`idhousehold` khác null) có không gian tên riêng: chỉ so với hàng sống cùng nhà
+  /// (`uq_category_household_name`), không so với danh mục riêng và ngược lại. `getNamesInUse` giữ nguyên — bộ tạo bản
+  /// sao và `LanTruyenKhuon` đọc nó.
   Future<Category?> _hangTrungTen({
     required int accountId,
+    int? idhousehold,
     required String? excludingId,
     required String name,
     String? currentName,
@@ -443,7 +500,9 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
     // icon — và không có cách nào thoát ngoài việc đổi tên.
     if (currentName != null && _normalize(currentName) == target) return null;
 
-    final inUse = await db.categoryDao.getNamesInUse(accountId);
+    final inUse = idhousehold != null
+        ? await db.categoryDao.getCuaNha(idhousehold)
+        : await db.categoryDao.getNamesInUse(accountId);
     for (final category in inUse) {
       if (category.id != excludingId && _normalize(category.name) == target) return category;
     }
@@ -454,13 +513,22 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
   /// spec 2026-10-27): bản ẩn VẪN chiếm tên — server cũng tính nó (`uq_category_owner_name`, chỉ có tên).
   Future<void> _nemNeuTrungTen({
     required int accountId,
+    int? idhousehold,
     required String? excludingId,
     required String name,
     String? currentName,
   }) async {
     final trung = await _hangTrungTen(
-        accountId: accountId, excludingId: excludingId, name: name, currentName: currentName);
+        accountId: accountId,
+        idhousehold: idhousehold,
+        excludingId: excludingId,
+        name: name,
+        currentName: currentName);
     if (trung == null) return;
+    // Hàng của nhà không phải bản sao khuôn: không có chuyện ẩn theo khuôn.
+    if (idhousehold != null) {
+      throw const CategoryValidationException('Tên danh mục đã tồn tại trong nhà. Mỗi nhà không được có hai danh mục trùng tên.');
+    }
     final khuon = (await db.categoryDao.getTatCaKhuon()).map(CategoryEntity.fromDrift).toList();
     if (dangAnTheoKhuon(CategoryEntity.fromDrift(trung), khuon)) {
       throw CategoryValidationException(cauTrungBanSaoDangAn(trung.name));
@@ -494,7 +562,9 @@ class CategoryManagementRepositoryImpl implements CategoryManagementRepository {
   }
 
   void _requireOwnership(Category? category, int accountId) {
-    if (category != null && category.idaccount != accountId) {
+    // Danh mục của NHÀ: server cho Chủ nhà và Thành viên sửa (bảng 01 mục 3), `idaccount` chỉ là người tạo. Hàng riêng giữ
+    // nguyên chốt.
+    if (category != null && category.idhousehold == null && category.idaccount != accountId) {
       throw const CategoryValidationException(
         'Danh mục không thuộc tài khoản này.',
       );

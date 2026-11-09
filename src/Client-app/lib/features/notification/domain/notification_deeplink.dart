@@ -184,6 +184,16 @@ String deeplinkTuDedupeKey(String key) {
     case 'loiMoiNha':
       return '/nha';
 
+    // Mục tiêu chung: khoá không chứa id ví, `/nha` luôn mở được (route gốc ngoài shell, nơi gọi dùng `push`).
+    case 'nhaMucTieu':
+    case 'nhaMucTieuDat':
+      return '/nha';
+
+    // Khoản góp / rút bị gỡ và tiền về ví riêng: người dùng xem lại ở Sổ giao dịch (tab trong shell, có trong `nhanhThanhTab`).
+    case 'gopTraVe':
+    case 'gopBiXoa':
+      return '/transactions';
+
     // `syncFailed` và mọi khoá lạ: không có màn nào để mở.
     default:
       return routeThongBao;

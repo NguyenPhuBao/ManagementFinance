@@ -134,6 +134,8 @@ TransactionsCompanion companionGiaoDichKeoVe(dynamic t, int accountId) {
     billId: (t['idbill'] ?? t['bill_id']) != null
         ? Value((t['idbill'] ?? t['bill_id']).toString())
         : const Value.absent(),
+    // Cùng luật với `idbill`: server im lặng là chưa biết, không xoá mã cặp đang có.
+    fundPairId: t['idfund_pair'] != null ? Value(t['idfund_pair'].toString()) : const Value.absent(),
     date: Value(DateTime.tryParse(
             (t['date_transaction'] ?? t['date'])?.toString() ?? '') ??
         DateTime.now()),

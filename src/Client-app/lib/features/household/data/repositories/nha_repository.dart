@@ -41,7 +41,13 @@ abstract class NhaRepository {
   /// Id nhà trong KHO của [idaccount] (bất kỳ tài khoản) — phép dọn lúc đổi tài khoản (`purgeDataForOtherAccounts`).
   Future<int?> nhaDaLuu(int idaccount);
 
-  Future<void> lamMoi();
+  /// Trả `true` khi `/me` ĐÃ được đọc và áp (thân hợp lệ, không đổi phiên giữa chừng, không bị bỏ vì thế hệ); `false` cho
+  /// mọi trường hợp còn lại (mạng, 5xx, thân lạ, phiên đổi, ảnh chụp trước một thao tác). Người gọi cần chắc "nhà hiện tại"
+  /// là của server thì phải kiểm giá trị này — [hienTai] sau một lượt `false` có thể là bản cũ trong kho.
+  Future<bool> lamMoi();
+
+  /// Phát sau MỖI lần `/me` được áp (kể cả nhà không đổi) — [NhaDaDoc].
+  Stream<NhaDaDoc> get daDocNha;
 
   /// Chỉ danh sách lời mời (#14). Không ném.
   Future<void> lamMoiLoiMoi();
@@ -60,8 +66,12 @@ abstract class NhaRepository {
   Future<void> doiVai(int idaccount, VaiNha vai);
   Future<void> chuyenChu(int idaccount);
   Future<void> moiRa(int idaccount);
-  Future<void> roiNha();
-  Future<void> giaiTan();
+
+  /// Rời nhà / Giải tán: ĐẨY hàng chưa lên server trước (chờ thật, có trần), rồi đếm hàng của nhà còn chưa đẩy. Còn hàng mà
+  /// [boQuaHangChuaDay] false thì ném `LoiNha(hangChuaDay)` và KHÔNG gọi API (spec gia đình 2026-11-01 mục 7.3) — sau khi rời,
+  /// server từ chối hàng của nhà nên chúng mất. Hộp hỏi lại gọi lại với [boQuaHangChuaDay] true (đợt 1B).
+  Future<void> roiNha({bool boQuaHangChuaDay = false});
+  Future<void> giaiTan({bool boQuaHangChuaDay = false});
 
   /// #13 — email cắt trắng + chữ thường trước khi gửi (server so với `lower(account.Email)`).
   Future<KetQuaMoiEmail> moiQuaEmail(String email, VaiNha vai);

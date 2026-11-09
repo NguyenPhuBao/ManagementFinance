@@ -5,6 +5,24 @@
 > **Vai trò đảm nhiệm:** Kỹ sư Fullstack Cao Cấp + AI Engineer + Senior BA  
 > **Căn cứ nguồn sự thật:** [`docs/AI/Standard_RAG.md`](./Standard_RAG.md), [`docs/Rule_Project/Data_Security.md`](../Rule_Project/Data_Security.md), [`docs/AI/LogicBusinessAI.md`](./LogicBusinessAI.md), [`Project.md`](../../Project.md), [`docs/superpowers/plans/2026-09-27-backend-ai-fixes.md`](../superpowers/plans/2026-09-27-backend-ai-fixes.md).
 
+> ⚠️ **CẬP NHẬT 2026-11-07 (đề tài NCKH, chế độ R&D) — các điểm sau THẮNG nội dung cũ bên dưới.** Mọi chỗ ghi "Gemini 3.8 Flash" ở các mục 2 đến 6 là lịch sử thiết kế.
+> - **Nhà cung cấp LLM của chatbot:** DeepSeek `deepseek-flash`, tắt suy luận, chọn bằng `CHATBOT_LLM_PROVIDER` / `DEEPSEEK_*` (`llm/provider.config.js`). Gemini chỉ còn cho OCR, phân loại giao dịch và đường chatbot cũ (đặt `CHATBOT_LLM_PROVIDER=gemini`).
+> - **Admin-web không còn chatbot.** Mục 7.2 đã gỡ. Endpoint `GET /snapshot` (và `/financial-health`) đã gỡ; snapshot chỉ còn dùng nội bộ để dựng ngữ cảnh trong prompt.
+> - **Giới hạn chi phí và độ dài** (`limits/chatbot.limits.js`, ghi đè bằng biến `AI_*`): tin nhắn ≤ 1.000 ký tự; lịch sử tối đa 4 tin, mỗi tin ≤ 800 ký tự; kết quả công cụ ≤ 2.500 ký tự; đầu ra ≤ 1.024 token; tối đa 5 lời gọi công cụ mỗi vòng; 1 luồng SSE mỗi người, 30 toàn hệ thống; hạn mức 20 lượt/ngày (đọc từ `scope_config.daily_prompts`, `null` thì dùng mặc định; tự làm mới lúc 0 giờ giờ VN; lượt lỗi do hệ thống — rơi về máy, lỗi, bận `AI_STREAM_BUSY` — được hoàn vào đúng ngày đã trừ, người dùng tự huỷ thì không, từ 2026-11-08); **ngân sách chi phí 0,80 USD/người/tháng** (nâng từ 0,40 ngày 2026-11-08; tính 2026-11-08: 26.667 micro-USD/ngày, dùng đủ 20 lượt/ngày cả tháng khi trung bình ≤ 0,0013 USD/lượt; với trung bình đo được ≈ 0,0010 USD/lượt thì dùng được ≈ 26 lượt/ngày nên hạn mức ngày 20 là giới hạn chạm trước) tính bằng `usage` thật của nhà cung cấp (vượt thì 429 `AI_MONTHLY_BUDGET`).
+> - **Lọc phạm vi:** lớp quy tắc chặn việc ngoài phạm vi và tiêm lệnh trước khi tốn token (`scope/scope-guard.js`), cộng luật phạm vi trong prompt.
+> - **Gọi công cụ đa bước là mặc định (2026-11-08):** mô hình được gọi công cụ nối tiếp tối đa 5 vòng, mỗi vòng tối đa 5 lời gọi; vòng lặp bị chặn bằng chi phí và ngân sách tháng, không bằng "một bước". Đường Gemini cũ vẫn một bước.
+> - **Trần chi phí mỗi lượt theo ngân sách còn lại (2026-11-08, `limits/turn-cap.js`):** trần = min(0,012 USD, max(sàn 0,002 USD, 1,5 × ngân sách tháng còn lại ÷ (số ngày còn lại × số lượt mỗi ngày))). Đã tiêu tới trần thì không mở thêm vòng công cụ nhưng vẫn trả lời. Quản trị viên dùng trần cứng 0,012 USD. Với mặc định, phần chia đều ×1,5 chỉ khoảng 0,001 USD nên đa số thời gian trần nằm ở sàn; số lượt thu hẹp chủ yếu do ngân sách tháng hết sớm hơn.
+> - **Quy ước dấu gửi LLM:** `amount` luôn dương kèm `direction` ∈ {income, expense, transfer, debt_in, debt_out}; ghi chú mã hóa được giải mã rồi mới che PII (`tools/flow.normalizer.js`).
+> - **SSE khi lỗi:** chỉ gửi `done{fallback,reason}`, không gửi chữ dự phòng; Client-app bỏ chữ của lượt đó và rơi về AI trên máy. Endpoint `/chat` (không truyền dòng) vẫn trả thông báo bằng chữ.
+> - **Circuit breaker riêng của chatbot** (`chatbotCircuitBreaker`), chỉ đếm lỗi dịch vụ (mạng, hết giờ, 429, 5xx).
+> - **RAG từ vựng làm công cụ động (2026-11-08):** BM25 tiếng Việt thuần JS trên các đoạn của kho (`rag/vi-text.js`, `rag/bm25.js`, `rag/lexical.search.js`), mô hình tự gọi công cụ `tra_cuu_kien_thuc`; **không còn chèn sẵn tài liệu vào prompt**. Chưa có embedding và RRF: đó là nhánh thực nghiệm, xây sau khi đóng băng bản đối chứng.
+> - **Đảm bảo RAG:** (1) luật bắt buộc tra cứu trong prompt; (2) cổng ép `tool_choice` ở vòng đầu cho câu rõ ràng hỏi kiến thức (≥ 2 cặp âm tiết khớp, độ phủ ≥ 0,3, không có "của tôi/của mình"); phải quyết định trước vòng đầu vì chữ đã truyền dòng không thu hồi được; (3) mô hình không nêu nguồn nào đã tra được thì máy chủ gửi thêm nguồn của đoạn đứng đầu, ở cả hai cách phân phối. Ngưỡng đo trên kho 3 tài liệu, phải đo lại khi kho đổi.
+> - **Sự kiện SSE mới `event: tool`** `{name, status: 'start'|'done'}` báo công cụ đang chạy (chỉ đường truyền dòng); `done` có thêm `toolRounds`, `lookups`, `forcedLookup`, `citationAppended`. Client-app `ai_chat` hiện "Đang tra cứu kiến thức…" / "Đang xem số liệu của bạn…"; bản client cũ bỏ qua sự kiện lạ.
+> - **Kho tri thức (2026-11-08):** 14 tài liệu, 49 đoạn, mỗi tài liệu có `source`, `sourceUrl`, `checkedAt`: giảm trừ gia cảnh và biểu thuế 5 bậc 2026, cách tính thuế lương, bảo hiểm bắt buộc, bảo hiểm tiền gửi 350 triệu, quỹ khẩn cấp, trả nợ, 50/30/20, lương tối thiểu vùng 2026, trợ cấp thất nghiệp, trần lãi suất 20%/năm, nhóm nợ và nợ xấu, lãi kép, phòng lừa đảo. Số liệu và ví dụ khoá bằng `tests/unit/chatbot.kho.test.js`. Chưa có: điều kiện người phụ thuộc theo luật mới, số Điều/Khoản (chưa đọc được văn bản gốc).
+> - **Sửa lỗi và vận hành (2026-11-08):** che PII tên mục tiêu, hóa đơn, danh mục, bản chụp; ước tính chi phí khi huỷ/đứt/thiếu usage; luồng đóng sớm thành lỗi, câu cụt báo `truncated`; tham số công cụ hỏng không chạy công cụ; `/chat` trả 503 `AI_SERVICE_UNAVAILABLE` khi lỗi; khoản chi không danh mục được tính; bản chụp truy vấn song song (khoảng 3 s xuống 0,5–1 s trên Supabase), làm mới khi `sync.completed`, cửa sổ theo `context_window_days`; câu lạc đề bị từ chối không trừ lượt; không gắn nguồn khi mô hình nói kho chưa có. Kiểm đầu-cuối qua HTTP thật và bộ đếm trên Redis thật đều đạt.
+> - **Test:** chỉ chạy qua `npm test*` (rào `tests/setup/test-guard.js`); `npm run test:shared-db` chạy 7 tệp cần CSDL trên Supabase (ghi thật).
+> - Chính sách dữ liệu cho người dùng: [`CHINH_SACH_DU_LIEU_TRO_LY_AI.md`](./CHINH_SACH_DU_LIEU_TRO_LY_AI.md).
+
 ---
 
 ## 1. PHÂN TÍCH NGHIỆP VỤ & RANH GIỚI HỆ THỐNG (SENIOR BA)
@@ -235,7 +253,25 @@ Khi người dùng muốn đào sâu vào chi tiết cụ thể mà Snapshot ch�
 
 ## 4. THI CÔNG CHUẨN RAG 4 PHA CHO TRI THỨC TĨNH (STANDARD_RAG.MD)
 
-Tri thức tài chính chung/tĩnh (Luật thuế TNCN, mẹo chi tiêu, biểu thuế lũy tiến) tuân thủ 100% tài liệu [`docs/AI/Standard_RAG.md`](./Standard_RAG.md):
+> ⚠️ **Trạng thái thi công thực tế (đối chiếu mã 2026-11-08).** Mô tả bên dưới là THIẾT KẾ; câu "tuân thủ 100%" của bản gốc không đúng với mã. Bảng này thắng.
+>
+> | Hạng mục thiết kế | Thực tế | Vì sao chưa có | Có cần làm không |
+> |---|---|---|---|
+> | NFC, khử ký tự điều khiển | Chỉ bỏ dấu và chữ thường khi so khớp | Đủ cho truy hồi từ vựng | Không |
+> | Parent-Child Chunking | Chia một tầng theo dòng trống; mã đoạn `doc#n`. Không có tầng cha | Đoạn đủ ngắn nên chưa cần | Xem lại khi mở rộng kho |
+> | HNSW | Không | Với vài trăm đoạn, quét tuyến tính chính xác tuyệt đối và dưới 1 ms; HNSW chỉ đánh đổi độ chính xác | **Không** |
+> | Dense Search (embedding) | Không | Nhà cung cấp LLM hiện tại (DeepSeek) không có API embedding; chạy cục bộ cần khoảng 0,5 GB RAM, vượt gói Render miễn phí | **Có**, là biến thực nghiệm cốt lõi của đề tài |
+> | BM25 tiếng Việt | **Có (2026-11-08)**: âm tiết + cặp âm tiết liền kề, bỏ dấu, bỏ từ dừng, k1 = 1,2, b = 0,75, trả top 3 | | Điểm yếu đã thấy khi chạy thật: không nối được viết tắt với từ đầy đủ ("BHXH" và "bảo hiểm xã hội") |
+> | RRF (k=60) | Không (bản gốc ghi "có" là sai) | Cần hai danh sách xếp hạng để hợp nhất, mà mới có một | **Có**, đi cùng BM25 và Dense |
+> | Query Transformation (HyDE, tách câu hỏi) | Không | Thêm một lần gọi LLM, tăng chi phí và độ trễ | Không trong đề tài này; ghi là hướng phát triển |
+> | Cross-Encoder Re-ranking | Không | Cần thêm mô hình, nặng so với kho nhỏ | Không trong đề tài này |
+> | U-Shaped Context Ordering | Không áp cho RAG (chỉ phân loại giao dịch dùng) | Kết quả công cụ đã xếp theo điểm, tối đa 3 đoạn | Không trong đề tài này |
+> | Trích dẫn nguồn `[Nguồn: …]` | **Có**: công cụ trả chuỗi `citation`; mô hình quên thì máy chủ gắn nguồn của đoạn đứng đầu | | |
+> | Đánh giá Ragas (Faithfulness, Context Precision/Recall…) | Không có lần đánh giá nào | Chưa có bộ câu hỏi có nhãn | **Có**, là chỉ số của thực nghiệm (tự tính hoặc dùng Ragas ngoại tuyến) |
+> | `invalidateSnapshotCache` khi có giao dịch mới (mục 5) | Hàm có nhưng **không nơi nào gọi**; snapshot có thể cũ tối đa 120 giây | Chưa nối vào luồng ghi giao dịch | Thấp; sửa riêng nếu cần |
+> | TTFT < 800 ms (mục 6) | Đo 2026-11-07 với DeepSeek: trung bình khoảng 0,8 s (0,3 đến 1,7 s), chưa phải cam kết | Chưa đo trước đây | Đo lại trong thực nghiệm |
+
+Tri thức tài chính chung/tĩnh (Luật thuế TNCN, mẹo chi tiêu, biểu thuế lũy tiến) được thiết kế theo tài liệu [`docs/AI/Standard_RAG.md`](./Standard_RAG.md):
 
 - **Phase 1 (Advanced Indexing):**
   - Chuẩn hóa Unicode **NFC** (`unicodedata.normalize('NFC')`), khử ký tự điều khiển.
@@ -294,13 +330,26 @@ Khi số lượng lớn người dùng cùng chat với AI, hệ thống áp d�
 ```
 src/Backend/modules/ai/features/chatbot/
 ├── chatbot.controller.js          # Tiếp nhận HTTP request, thiết lập text/event-stream, bắt req.on('close')
-├── chatbot.routes.js              # Định tuyến router: POST /chat/stream, GET /snapshot (alias /financial-health), POST /chat
-├── chatbot.service.js             # Nhạc trưởng điều phối: Snapshot -> Context -> Gemini -> Tools -> Fallback
-├── chatbot.validation.js          # Middleware kiểm tra message (1-2000 ký tự) và history/conversationHistory
+├── chatbot.routes.js              # Định tuyến: POST /chat/stream, POST /chat, POST /reset (đã gỡ GET /snapshot)
+├── chatbot.service.js             # Nhạc trưởng điều phối: Snapshot -> RAG -> Prompt -> LLM (DeepSeek/Gemini) -> Tools -> Fallback
+├── chatbot.validation.js          # Kiểm tra message (≤ 1.000 ký tự) và LÀM SẠCH history (4 tin × 800 ký tự)
+├── limits/
+│   ├── chatbot.limits.js          # Cấu hình giới hạn tập trung (biến AI_*)
+│   ├── request-sanitizer.js       # Cắt lịch sử trước khi che PII / gửi LLM
+│   ├── usage-quota.js             # Hạn mức lượt hỏi theo ngày (giờ VN, Redis + bộ nhớ)
+│   ├── usage-cost.js              # Công thức chi phí từ usage (micro-USD)
+│   ├── usage-budget.js            # Ngân sách chi phí theo tháng mỗi người dùng
+│   ├── quota.middleware.js        # Chặn 429: AI_MONTHLY_BUDGET, AI_DAILY_LIMIT
+│   └── stream-guard.js            # Giới hạn luồng SSE đồng thời
+├── llm/
+│   ├── deepseek.provider.js       # Gọi DeepSeek (OpenAI-compatible), truyền dòng, ghép tool_calls, phân loại lỗi
+│   └── provider.config.js         # Chọn nhà cung cấp và mô hình
+├── scope/
+│   └── scope-guard.js             # Lọc quy tắc: chặn việc ngoài phạm vi và tiêm lệnh trước khi gọi LLM
 ├── rate-limiter/
 │   └── redis-token-bucket.js      # Redis Token-Bucket Limiter 15 req/phút (kèm Graceful In-memory Fallback)
 ├── resilience/
-│   └── circuit-breaker.js         # Bộ ngắt mạch Circuit Breaker cho Gemini LLM (5 lỗi -> OPEN 30s)
+│   └── circuit-breaker.js         # Circuit Breaker RIÊNG của chatbot (5 lỗi dịch vụ -> OPEN 30s)
 ├── snapshot/
 │   └── financial.snapshot.service.js # Tính toán thu nhập chuẩn, 50/30/20, quỹ khẩn cấp, điểm FHS (Redis cache TTL 120s)
 ├── privacy/
@@ -310,34 +359,26 @@ src/Backend/modules/ai/features/chatbot/
 │   │   ├── thue_tncn_2026.json    # Biểu thuế TNCN lũy tiến từng phần 7 bậc và mức giảm trừ gia cảnh hiện hành
 │   │   ├── quy_tac_50_30_20.json  # Quy tắc phân bổ 50% Thiết yếu, 30% Linh hoạt, 20% Tích lũy & 6 chiếc lọ
 │   │   └── quan_ly_no_an_toan.json# Phương pháp trả nợ Tuyết Lở (Avalanche) và Hòn Tuyết Lăn (Snowball)
-│   └── hybrid.search.js           # Phrase Matching + Reciprocal Rank Fusion (RRF k=60) tìm kiếm tri thức tĩnh
+│   ├── vi-text.js                 # Chuẩn hóa, tách âm tiết + cặp âm tiết, từ dừng tiếng Việt
+│   ├── bm25.js                    # BM25 thuần JS
+│   └── lexical.search.js          # Chia đoạn, truy hồi từ vựng, cổng ép tra cứu (chưa có RRF / embedding: nhánh thực nghiệm)
 ├── tools/
-│   ├── financial.tools.js         # Khai báo JSON Schema 4 Tools đào sâu theo chuẩn Gemini SDK
-│   └── tools.executor.js          # Thực thi query Prisma an toàn scoped idaccount (chuẩn hóa Math.abs số âm)
+│   ├── financial.tools.js         # Khai báo 5 Tools kiểu Gemini gồm tra_cuu_kien_thuc (llm/deepseek.provider.js chuyển sang JSON Schema chuẩn)
+│   ├── flow.normalizer.js         # Chuẩn hóa chiều dòng tiền: amount dương + direction
+│   └── tools.executor.js          # Query Prisma scoped idaccount; giải mã ghi chú rồi che PII; chỉ lấy khoản chi
 └── prompts/
     └── advisor.system.prompt.js   # System Prompt CFP, CoT, Strict Grounding và định dạng trích dẫn nguồn
 ```
 
-### 7.2. Cấu Trúc Mã Nguồn Admin-Web (`src/Admin-web/`)
+### 7.2. Admin-Web — ĐÃ GỠ (2026-11-07)
 
-```
-src/Admin-web/
-├── src/api/
-│   └── chatbot.api.js             # Client tiêu thụ luồng SSE stream bằng fetch ReadableStream và lấy Snapshot
-├── src/pages/ai/
-│   ├── FinancialHealthCard.jsx    # Thẻ hiển thị điểm FHS, phân hạng màu, thanh 3 màu 50/30/20, quỹ khẩn cấp
-│   ├── ChatMessageBubble.jsx      # Bong bóng tin nhắn hỗ trợ Markdown, badge trích dẫn RAG, typing cursor
-│   ├── PromptSuggestionChips.jsx  # 4 chip gợi ý câu hỏi tài chính nhanh
-│   └── AICopilotPage.jsx          # Màn hình Chatbot Copilot hoàn chỉnh + Metadata Inspector Debug Panel
-├── src/router/routes.jsx          # Route /ai-copilot
-└── src/components/layout/Sidebar.jsx # Menu "Trợ lý AI Copilot" với icon smart_toy
-```
+Chatbot phục vụ người dùng cuối, không dành cho quản trị viên. Các tệp `src/Admin-web/src/pages/ai/*` và `src/Admin-web/src/api/chatbot.api.js` đã bị xóa (không có route hay menu nào trỏ tới). Phía người dùng, chatbot hiển thị ở Client-app (`lib/features/ai_chat/`).
 
 ### 7.3. Đặc Tả API Endpoints
 
 #### 1. `POST /api/ai/chatbot/chat/stream` (SSE Streaming)
 - **Headers:** `Authorization: Bearer <ACCESS_TOKEN>`, `Content-Type: application/json`
-- **Rate Limit:** 15 requests / phút / idaccount (Redis Token-Bucket Limiter)
+- **Giới hạn (thứ tự kiểm):** quyền gói (`ai_assistant`) → 15 requests/phút/idaccount → làm sạch đầu vào → ngân sách tháng (429 `AI_MONTHLY_BUDGET`) → hạn mức ngày (429 `AI_DAILY_LIMIT`) → một luồng đồng thời mỗi người (429 `AI_STREAM_BUSY`). Mọi trạng thái khác 200 được Client-app coi là lỗi máy chủ và rơi về AI trên máy.
 - **Request Body:**
   ```json
   {
@@ -348,7 +389,7 @@ src/Admin-web/
     ]
   }
   ```
-  *(Hỗ trợ cả trường `conversationHistory`, server giữ 6 tin nhắn gần nhất)*.
+  *(Hỗ trợ cả trường `conversationHistory`; server giữ 4 tin nhắn gần nhất, mỗi tin cắt tối đa 800 ký tự)*.
 - **Response Format (Server-Sent Events — `text/event-stream`):**
   ```http
   HTTP/1.1 200 OK
@@ -360,6 +401,12 @@ src/Admin-web/
   event: meta
   data: {"snapshotLoaded":true,"healthScore":75,"snapshot":{"period":"Tháng 9/2026","financialHealthScore":75,"budgetAllocation":{"needs_essential":"50%","wants_lifestyle":"30%","savings_debt":"20%"},"spendingInsights":{"topExpenseCategories":[{"category":"Ăn uống","percentage":35,"trendVsLastMonth":"0%"}],"overBudgetAlerts":[]},"liquidityAndObligations":{"emergencyFundMonths":2.1,"upcomingBillsIn7DaysCount":0,"hasHighInterestDebt":false,"activeSavingsGoalsCount":1}}}
 
+  event: tool
+  data: {"name":"get_category_transactions","status":"start"}
+
+  event: tool
+  data: {"name":"get_category_transactions","status":"done"}
+
   event: delta
   data: {"text":"Chào bạn, ","content":"Chào bạn, "}
 
@@ -370,13 +417,12 @@ src/Admin-web/
   data: {"text":"khoản chi lớn nhất của bạn là **Ăn uống**...","content":"khoản chi lớn nhất của bạn là **Ăn uống**..."}
 
   event: done
-  data: {"responseTimeMs":720}
+  data: {"responseTimeMs":720,"toolRounds":1,"lookups":0,"forcedLookup":false,"citationAppended":false}
   ```
 
-#### 2. `GET /api/ai/chatbot/snapshot` (Alias: `GET /api/ai/chatbot/financial-health`)
-- **Headers:** `Authorization: Bearer <ACCESS_TOKEN>`
-- **Mục đích:** Trả về bản chụp sức khỏe tài chính FHS và phân bổ 50/30/20 đã được ẩn danh hóa cho Dashboard hoặc Card hiển thị nhanh mà không cần bắt đầu hội thoại (có lưu đệm Redis TTL 120s).
-- **Response JSON:**
+#### 2. `GET /api/ai/chatbot/snapshot` — ĐÃ GỠ (2026-11-07)
+Không còn nơi nào gọi (Client-app không dùng, Admin-web đã gỡ chatbot). Snapshot vẫn được tính nội bộ và đưa vào prompt (có lưu đệm Redis TTL 120s). Mẫu phản hồi bên dưới chỉ để tham khảo cấu trúc snapshot nằm trong sự kiện `meta` của luồng SSE.
+- **Cấu trúc snapshot (tham khảo):**
   ```json
   {
     "success": true,
@@ -438,12 +484,10 @@ src/Admin-web/
 | **Privacy Shield** | `src/Backend/modules/ai/features/chatbot/privacy/pii.masker.js` | Che giấu STK, SĐT, thẻ (Luhn), email; làm mờ Snapshot theo Nghị định 13/2023/NĐ-CP. |
 | **Snapshot Engine** | `src/Backend/modules/ai/features/chatbot/snapshot/financial.snapshot.service.js` | Giải quyết triệt để **Chức năng 7 (Lối A)**; tính thu nhập chuẩn `thuNhapCua`, phân bổ 50/30/20, quỹ khẩn cấp, điểm FHS thang 100. |
 | **On-Demand Tools** | `src/Backend/modules/ai/features/chatbot/tools/financial.tools.js`<br>`tools.executor.js` | 4 công cụ đào sâu Function Calling scoped `idaccount` từ JWT token. |
-| **Hybrid Static RAG** | `src/Backend/modules/ai/features/chatbot/rag/hybrid.search.js`<br>`src/Backend/modules/ai/features/chatbot/rag/data/*.json` | Nạp 3 cẩm nang (Thuế TNCN 2026, 50/30/20, Quản lý nợ an toàn); tìm kiếm Phrase Matching + RRF. |
-| **Gemini Orchestrator** | `src/Backend/modules/ai/features/chatbot/chatbot.service.js` | Tích hợp Google Gemini 3.8 Flash, SSE Stream, vòng lặp Tool Calling, Fallback Stream tự động khi API lỗi. |
+| **Static RAG (BM25)** | `src/Backend/modules/ai/features/chatbot/rag/lexical.search.js`, `bm25.js`, `vi-text.js`<br>`src/Backend/modules/ai/features/chatbot/rag/data/*.json` | Nạp 3 cẩm nang, chia đoạn, truy hồi BM25, mô hình gọi qua công cụ `tra_cuu_kien_thuc` (chưa có RRF/embedding; xem bảng trạng thái ở mục 4). |
+| **LLM Orchestrator** | `src/Backend/modules/ai/features/chatbot/chatbot.service.js` | Chọn nhà cung cấp (DeepSeek mặc định khi có khóa, Gemini đường cũ), SSE Stream, vòng lặp Tool Calling, dự phòng khi API lỗi. |
 | **Controller & Routes** | `src/Backend/modules/ai/features/chatbot/chatbot.controller.js`<br>`chatbot.routes.js` | Header SSE `text/event-stream`, Rate limiter 15 req/phút/user, bắt `req.on('close')`. |
-| **Admin API Client** | `src/Admin-web/src/api/chatbot.api.js` | Đọc SSE stream theo chunks, parse events `meta`, `delta`, `done`, `error`. |
-| **Admin UI Copilot** | `src/Admin-web/src/pages/ai/FinancialHealthCard.jsx`<br>`ChatMessageBubble.jsx`<br>`PromptSuggestionChips.jsx`<br>`AICopilotPage.jsx` | Thẻ FHS trực quan, bong bóng chat Markdown + typing animation, chip gợi ý nhanh, Debug Drawer kiểm tra Snapshot và tool logs. |
-| **Admin Navigation** | `src/Admin-web/src/router/routes.jsx`<br>`src/Admin-web/src/components/layout/Sidebar.jsx` | Route `/ai-copilot` và icon `smart_toy` trên Sidebar. |
+| ~~Admin API Client / Admin UI Copilot / Admin Navigation~~ | ~~`src/Admin-web/...`~~ | **Đã gỡ 2026-11-07** (chatbot phục vụ người dùng cuối, không dành cho quản trị viên). |
 
 ### 9.2. Bằng Chứng Kiểm Thử Tự Động (TDD Evidence)
 

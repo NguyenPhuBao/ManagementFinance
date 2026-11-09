@@ -108,7 +108,7 @@ class _Muc extends StatelessWidget {
   IconData get _bieuTuong => switch (item.subjectType) {
         'budget' => Icons.pie_chart_outline,
         'bill' => Icons.receipt_long,
-        'goal' => Icons.savings_outlined,
+        'goal' || 'nhaMucTieu' => Icons.savings_outlined,
         'sync' => Icons.sync_problem,
         _ => Icons.notifications_none,
       };

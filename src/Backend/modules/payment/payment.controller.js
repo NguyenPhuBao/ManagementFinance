@@ -217,6 +217,34 @@ async function confirmUpgrade(req, res, next) {
 }
 
 /**
+ * Admin xử lý hộ đơn chuyển thừa của khách. Quyền admin do `authorize('admin')` ở admin.routes.js kiểm,
+ * nên không truyền idaccount: service bỏ phép so chủ đơn. Đừng nới phép so ở route của người dùng.
+ */
+async function confirmUpgradeByAdmin(req, res, next) {
+  try {
+    const { orderCode } = req.params;
+    const { accept } = req.body || {};
+    if (!/^\d+$/.test(orderCode)) {
+      return ResponseHandler.badRequest(res, 'Mã đơn hàng không hợp lệ');
+    }
+    if (typeof accept !== 'boolean') {
+      return ResponseHandler.badRequest(res, 'Trường accept bắt buộc là kiểu boolean (true/false)');
+    }
+    req.auditActionName = accept ? 'Admin đồng ý nâng cấp đơn chuyển thừa' : 'Admin từ chối nâng cấp đơn chuyển thừa';
+    const result = await paymentService.confirmUpgrade(undefined, {
+      orderCode,
+      accept,
+      lyDoTuChoi: 'Admin từ chối nâng cấp gói',
+    });
+    return ResponseHandler.success(res, result, result.message);
+  } catch (error) {
+    if (error.statusCode === 400) return ResponseHandler.badRequest(res, error.message);
+    if (error.statusCode === 404) return ResponseHandler.notFound(res, error.message);
+    return next(error);
+  }
+}
+
+/**
  * Admin xử lý hoàn tiền cho khách hàng kèm upload minh chứng
  */
 async function processRefund(req, res, next) {
@@ -277,6 +305,7 @@ module.exports = {
   createOrder,
   handleWebhook,
   confirmUpgrade,
+  confirmUpgradeByAdmin,
   processRefund,
   simulateWebhook,
   getOrderStatus,

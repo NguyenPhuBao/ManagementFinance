@@ -121,6 +121,7 @@ String? khoaNhomCua(TransactionEntity t, {required DateTime now}) {
     return null;
   }
   if (t.billId != null || t.goalId != null) return null;
+  if (t.fundPairId != null) return null; // góp / rút quỹ nhà: không phải khoản chi lặp để thành hoá đơn cá nhân
   if (t.date.isAfter(now)) return null;
   final g = ghiChuChuanHoa(t.note);
   if (g.isEmpty) return null;

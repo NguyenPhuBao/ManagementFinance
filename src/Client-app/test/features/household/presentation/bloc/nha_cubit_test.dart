@@ -1,8 +1,7 @@
 import 'dart:async';
 
 import 'package:flowmoney/features/household/data/models/nha_cua_toi.dart';
-import 'package:flowmoney/features/household/data/nha_store.dart';
-import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
+import 'package:flowmoney/features/household/data/nha_store.dart';import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
 import 'package:flowmoney/features/household/domain/vai_nha.dart';
 import 'package:flowmoney/features/household/presentation/bloc/nha_cubit.dart';
@@ -116,6 +115,32 @@ void main() {
     api.loi = loiServer(500, 'HOUSEHOLD_ERROR');
     api.treo!.complete();
     expect(await f, isFalse);
+  });
+
+  test('hangChuaDay không thành toast, đặt cờ để trang hỏi lại; boQua đi tiếp; thao tác sau xoá cờ', () async {
+    final api = HouseholdApiGia()..cuaToiJson = nhaJson(myRole: 'Member');
+    var con = 2;
+    final repo = NhaRepositoryImpl(api: api, kho: InMemoryNhaStore(), demHangChuaDay: (_) async => con);
+    addTearDown(repo.dispose);
+    await repo.datTaiKhoan(18);
+    await repo.lamMoi();
+    final c = NhaCubit(repo);
+    addTearDown(c.close);
+    final bao = <String>[];
+    c.canBao.listen(bao.add);
+    expect(await c.roiNha(), isFalse);
+    await Future<void>.delayed(Duration.zero);
+    expect(c.vuaGapHangChuaDay, isTrue);
+    expect(bao, isEmpty, reason: 'câu chung không nói được hàng nào mất');
+    expect(api.goi, isNot(contains('roiNha')), reason: 'chưa hỏi người dùng thì chưa gọi API');
+    // Thao tác kế tiếp xoá cờ: cờ cũ còn lại là trang hỏi lại oan.
+    con = 0;
+    expect(await c.doiVai(25, VaiNha.chiXem), isTrue);
+    expect(c.vuaGapHangChuaDay, isFalse);
+    con = 2;
+    expect(await c.roiNha(boQua: true), isTrue);
+    expect(api.goi, contains('roiNha'));
+    expect(c.vuaGapHangChuaDay, isFalse);
   });
 
   test('daNap chờ kho: trước khi kho trả lời thì chưa nạp, sau đó đúng nhà từ kho', () async {

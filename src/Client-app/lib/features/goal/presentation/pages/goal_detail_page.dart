@@ -15,6 +15,8 @@ import '../../domain/goal_deposit_wallets.dart';
 import '../../domain/goal_history_direction.dart';
 import '../../domain/goal_wallet_shortfall.dart';
 import '../../domain/goal_history_filter.dart';
+import '../../domain/goal_recurrence.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../widgets/goal_config_card.dart';
 import '../widgets/goal_history_sheet.dart';
 import '../widgets/goal_progress.dart';
@@ -630,13 +632,23 @@ class _GoalDetailPageState extends State<GoalDetailPage> {
     final goal = _goal!;
     // Nút Rút khoá theo quyền `goal_deposit_withdraw` (B1) → không khuyên bấm nó. Handler: đọc không đăng ký phụ thuộc.
     final coRut = context.coQuyenDoc(MaQuyen.goalDepositWithdraw);
+    // Cùng phép tính với `batDauVongMoi` để câu hỏi nêu đúng hạn sẽ ghi.
+    final hanMoi = hanVongMoi(
+      hanCu: goal.targetDate,
+      batDauCu: goal.startDate,
+      chuKy: goal.timeRecurrence,
+      now: DateTime.now(),
+    );
+    final cauHan = hanMoi == null
+        ? 'hạn định dời sang kỳ tiếp theo'
+        : 'hạn định mới là ${DateFormatter.formatDate(hanMoi)}';
     final dongY = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Bắt đầu vòng mới?'),
         content: Text(
-          'Tiến độ của "${goal.name}" sẽ về 0 và hạn định dời sang kỳ tiếp '
-          'theo.\n\n'
+          'Tiến độ của "${goal.name}" sẽ về 0 và $cauHan, giữ nguyên số '
+          'tiền mục tiêu.\n\n'
           '${CurrencyFormatter.format(goal.currentAmount)} đã tích được vẫn nằm nguyên '
           'trong ví — không đồng nào bị chuyển đi.'
           '${coRut ? ' Muốn tiêu số ấy thì dùng "Rút khỏi mục tiêu".' : ''}',

@@ -337,6 +337,7 @@ model transaction {
   idwallet_transfer  String?   @db.VarChar(36) @map("Idwallet_transfer")
   idgoal             String?   @db.VarChar(36) @map("Idgoal")
   idbill             String?   @db.VarChar(36) @map("Idbill")
+  idfund_pair        String?   @db.VarChar(36) @map("Idfund_pair")
   bank_tran_id       String?   @db.VarChar(100) @map("Bank_tran_id")
   amount             Decimal   @db.Decimal(15, 2) @map("Amount")
   type               String    @default("Transaction") @db.VarChar(20) @map("Type")

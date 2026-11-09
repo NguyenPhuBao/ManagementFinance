@@ -65,6 +65,16 @@ class SoDuViService implements CongSoDuVi {
     await _db.walletDao.updateBalance(walletId, tong, cucBo: vi.idhousehold != null);
   }
 
+  /// Tính lại số dư MỌI ví nhà còn trên máy theo sổ còn lại — chạy ngay sau `purgeDataForOtherAccounts` khi chưa biết nhà
+  /// (spec gia đình 2026-11-01 mục 7.3, vòng sửa 1 Task 4).
+  ///
+  /// Vì sao: phép dọn giữ ví nhà (hàng chưa đẩy của tôi) nhưng xoá sổ đã đồng bộ của nó, nên `balance` còn số CŨ trong khi
+  /// Σ sổ đã bị cắt. Lượt kéo toàn bộ sau đó đặt neo `balance − Σ sổ` (một khoản `thu` `pending` của nhà) RỒI sổ thật về: tiền
+  /// cộng hai lần và neo ấy còn bị đẩy cho cả nhà. Tính lại về `balance = Σ sổ` thì neo bằng 0 và không được sinh. **Luỹ đẳng**,
+  /// gọi MỖI lần mở phiên khi chưa biết nhà — tiến trình chết giữa phép dọn và phép này thì lần mở sau làm lại. Ghi `cucBo`
+  /// như [tinhLaiSoDu] (không đánh `pending` ví).
+  Future<void> tinhLaiViNha() async => tinhLaiNhieuVi([for (final w in await _db.walletDao.getTatCaViNha()) w.id]);
+
   /// Tính lại cho nhiều ví; id trùng nhau chỉ chạy một lần.
   @override
   Future<void> tinhLaiNhieuVi(Iterable<String> walletIds) async {

@@ -112,11 +112,18 @@ const householdRepository = {
   },
 
   async findFormerMembersByHousehold(idhousehold) {
+    // Người đã vào lại không còn là người đã rời; rời nhiều lần chỉ lấy hàng mới nhất (`distinct` giữ hàng đầu theo `orderBy`).
+    const dangO = await prisma.household_member.findMany({
+      where: { idhousehold: Number(idhousehold), left_at: null },
+      select: { idaccount: true },
+    });
     return prisma.household_member.findMany({
       where: {
         idhousehold: Number(idhousehold),
         left_at: { not: null },
+        idaccount: { notIn: dangO.map((m) => m.idaccount) },
       },
+      distinct: ['idaccount'],
       include: {
         account: {
           select: {

@@ -5,20 +5,56 @@
 const ChatbotService = require('./chatbot.service');
 const ResponseHandler = require('../../../../core/response-handler');
 const logger = require('../../../../core/logger');
+const { checkScope } = require('./scope/scope-guard');
+const { StreamGuard } = require('./limits/stream-guard');
+const { getChatbotLimits } = require('./limits/chatbot.limits');
+const { getUsageBudget, isAdmin } = require('./limits/quota.middleware');
+
+const STREAM_BUSY_BODY = {
+  success: false,
+  code: 'AI_STREAM_BUSY',
+  message: 'Trợ lý AI đang bận xử lý yêu cầu trước đó của bạn hoặc hệ thống đang quá tải. Vui lòng thử lại sau giây lát.',
+};
 
 class ChatbotController {
   constructor() {
     this.chatbotService = new ChatbotService();
+    const limits = getChatbotLimits();
+    this.streamGuard = new StreamGuard({ perUser: limits.maxStreamsPerUser, global: limits.maxStreamsGlobal });
+    this.getBudget = getUsageBudget; // tiêm được khi test
+  }
+
+  /** Ghi chi phí thật của từng vòng gọi LLM vào ngân sách tháng của người dùng (quản trị viên không bị tính). */
+  _usageRecorder(req) {
+    if (isAdmin(req.user)) return undefined;
+    const idaccount = req.user?.idaccount;
+    return (usage) => this.getBudget().add(idaccount, usage.costMicroUsd);
+  }
+
+  /**
+   * Trả lại lượt hỏi trong ngày khi hệ thống không trả được câu trả lời (dịch vụ AI lỗi / rơi về máy, lỗi ngoại lệ,
+   * bận hoặc quá tải). Người dùng tự huỷ thì nơi gọi không hoàn. Ngân sách tháng giữ nguyên chi phí thật đã phát sinh.
+   */
+  _refundTurn(req) {
+    if (typeof req.aiQuotaRefund !== 'function') return;
+    req.aiQuotaRefund().catch((err) => logger.warn('[Chatbot Controller] Không hoàn được lượt hỏi:', err?.message));
   }
 
   /**
    * Endpoint SSE Streaming: POST /api/ai/chatbot/chat/stream
+   * Sự kiện: `meta` → (`tool` | `delta`)* → `done` (hoặc `error`). Dòng `: ping` mỗi 15 s giữ kết nối.
+   * `tool` = `{name, status: 'start'|'done'}` báo công cụ đang chạy lúc luồng chữ dừng; client bản cũ bỏ qua sự kiện lạ.
    */
   handleChatStream = async (req, res) => {
     const idaccount = req.user?.idaccount;
     const { message, conversationId, history } = req.body;
 
-    // Thiết lập headers cho Server-Sent Events (SSE)
+    const release = this.streamGuard.acquire(idaccount);
+    if (!release) {
+      this._refundTurn(req);
+      return res.status(429).json(STREAM_BUSY_BODY);
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
@@ -29,7 +65,7 @@ class ChatbotController {
 
     const abortController = new AbortController();
 
-    // Keep-alive SSE comment ping (mỗi 15s) chống timeout 45s của Client khi Gemini đang suy luận
+    // Keep-alive SSE comment ping (mỗi 15s) chống timeout 45s của Client khi mô hình đang suy luận
     const pingInterval = setInterval(() => {
       if (!abortController.signal.aborted && !res.writableEnded) {
         res.write(': ping\n\n');
@@ -38,6 +74,7 @@ class ChatbotController {
 
     const cleanup = () => {
       clearInterval(pingInterval);
+      release();
     };
 
     const handleDisconnect = () => {
@@ -53,15 +90,34 @@ class ChatbotController {
     res.on('close', handleDisconnect);
 
     try {
+      // Lớp quy tắc chặn việc ngoài phạm vi TRƯỚC khi tốn token: trả câu từ chối cố định như một lượt bình thường.
+      const scope = checkScope(message);
+      if (!scope.allowed) {
+        logger.info(`[SSE Controller] Chặn câu ngoài phạm vi (${scope.code}) của idaccount: ${idaccount}`);
+        res.write(`event: delta\ndata: ${JSON.stringify({ text: scope.refusalText, content: scope.refusalText })}\n\n`);
+        res.write(`event: done\ndata: ${JSON.stringify({ status: 'completed', scopeRefusal: true, code: scope.code })}\n\n`);
+        cleanup();
+        res.end();
+        return;
+      }
+
       await this.chatbotService.chatStream({
         message,
         conversationId,
         history,
         idaccount,
         signal: abortController.signal,
+        turnCostCapMicroUsd: req.aiTurnCostCapMicroUsd,
+        contextWindowDays: req.aiContextWindowDays,
+        onUsage: this._usageRecorder(req),
         onMeta: (metaData) => {
           if (!abortController.signal.aborted && !res.writableEnded) {
             res.write(`event: meta\ndata: ${JSON.stringify(metaData)}\n\n`);
+          }
+        },
+        onTool: (toolEvent) => {
+          if (!abortController.signal.aborted && !res.writableEnded) {
+            res.write(`event: tool\ndata: ${JSON.stringify(toolEvent)}\n\n`);
           }
         },
         onChunk: (textChunk) => {
@@ -71,6 +127,7 @@ class ChatbotController {
         },
         onDone: (doneData) => {
           cleanup();
+          if (!abortController.signal.aborted && (doneData?.fallback || doneData?.error)) this._refundTurn(req);
           if (!abortController.signal.aborted && !res.writableEnded) {
             res.write(`event: done\ndata: ${JSON.stringify(doneData || { status: 'completed' })}\n\n`);
             res.end();
@@ -79,41 +136,44 @@ class ChatbotController {
       });
     } catch (error) {
       cleanup();
+      if (!abortController.signal.aborted) this._refundTurn(req);
       logger.error('[SSE Controller] Lỗi trong quá trình stream:', error);
       if (!abortController.signal.aborted && !res.writableEnded) {
         res.write(`event: error\ndata: ${JSON.stringify({ message: error.message })}\n\n`);
         res.end();
       }
+    } finally {
+      cleanup();
     }
   };
 
   /**
-   * Endpoint lấy Bản chụp Sức khỏe Tài chính: GET /api/ai/chatbot/snapshot
-   */
-  handleGetSnapshot = async (req, res) => {
-    const idaccount = req.user?.idaccount;
-
-    try {
-      const snapshot = await this.chatbotService.getSnapshot(idaccount);
-      if (!snapshot) {
-        return ResponseHandler.error(res, 'Không thể lấy dữ liệu phân tích tài chính lúc này', 503);
-      }
-      return ResponseHandler.success(res, snapshot, 'Lấy bản chụp sức khỏe tài chính thành công');
-    } catch (error) {
-      logger.error('[Chatbot Controller] Lỗi lấy snapshot:', error);
-      return ResponseHandler.error(res, 'Không thể lấy dữ liệu phân tích tài chính lúc này', 503);
-    }
-  };
-
-  /**
-   * Endpoint Chat dạng JSON (Non-streaming fallback): POST /api/ai/chatbot/chat
+   * Endpoint Chat dạng JSON (Non-streaming, dự phòng và làm mốc so sánh): POST /api/ai/chatbot/chat
    */
   handleChatNonStream = async (req, res) => {
     const idaccount = req.user?.idaccount;
     const { message, conversationId, history } = req.body;
 
+    const scope = checkScope(message);
+    if (!scope.allowed) {
+      return ResponseHandler.success(res, {
+        reply: scope.refusalText, text: scope.refusalText, content: scope.refusalText, snapshot: null, conversationId,
+      }, 'Phản hồi thành công');
+    }
+
+    const release = this.streamGuard.acquire(idaccount);
+    if (!release) {
+      this._refundTurn(req);
+      return res.status(429).json(STREAM_BUSY_BODY);
+    }
+
     let fullReply = '';
     let snapshotInfo = null;
+    const abortController = new AbortController();
+    // Client bỏ đi giữa chừng thì dừng gọi LLM. Sự kiện này cũng phát khi đã trả lời xong nên phải loại trường hợp đó.
+    res.on('close', () => {
+      if (!res.writableEnded) abortController.abort();
+    });
 
     try {
       await this.chatbotService.chatStream({
@@ -121,9 +181,23 @@ class ChatbotController {
         conversationId,
         history,
         idaccount,
+        signal: abortController.signal,
+        turnCostCapMicroUsd: req.aiTurnCostCapMicroUsd,
+        contextWindowDays: req.aiContextWindowDays,
+        onUsage: this._usageRecorder(req),
         onMeta: (meta) => { snapshotInfo = meta; },
         onChunk: (chunk) => { fullReply += chunk; },
-        onDone: () => {
+        onDone: (done) => {
+          // Dịch vụ lỗi không được báo thành công, và chữ đã sinh dở không phải câu trả lời.
+          if (done?.fallback || done?.error) {
+            if (!abortController.signal.aborted) this._refundTurn(req);
+            return res.status(503).json({
+              success: false,
+              code: 'AI_SERVICE_UNAVAILABLE',
+              message: done.reason || 'Dịch vụ AI tạm thời không phản hồi',
+              fallback: true,
+            });
+          }
           return ResponseHandler.success(res, {
             reply: fullReply,
             text: fullReply,
@@ -135,7 +209,10 @@ class ChatbotController {
       });
     } catch (error) {
       logger.error('[Chatbot Controller] Lỗi chat non-stream:', error);
+      if (!abortController.signal.aborted) this._refundTurn(req);
       return ResponseHandler.error(res, 'Lỗi khi xử lý phản hồi từ AI', 500);
+    } finally {
+      release();
     }
   };
 

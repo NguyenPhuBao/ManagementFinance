@@ -21,10 +21,12 @@ class PIIMasker {
   /**
    * Ẩn danh hóa toàn bộ bản chụp sức khỏe tài chính vĩ mô
    * Loại bỏ dữ liệu định danh (họ tên, sđt, email, tên tài khoản cụ thể)
-   * @param {object} rawSnapshot 
+   * @param {object} rawSnapshot
+   * @param {object} [options]
+   * @param {string} [options.userName] - tên danh mục do người dùng đặt nên có thể chứa họ tên của họ
    * @returns {object} Anonymized Financial Health Snapshot
    */
-  anonymizeSnapshot(rawSnapshot) {
+  anonymizeSnapshot(rawSnapshot, { userName } = {}) {
     if (!rawSnapshot || typeof rawSnapshot !== 'object') return {};
 
     return {
@@ -38,13 +40,13 @@ class PIIMasker {
       spendingInsights: {
         topExpenseCategories: Array.isArray(rawSnapshot.topExpenseCategories)
           ? rawSnapshot.topExpenseCategories.map(cat => ({
-              category: this.maskPII(cat.category || cat.name || ''),
+              category: this.maskPII(cat.category || cat.name || '', { userName }),
               percentage: Math.round(cat.percentage || 0),
               trendVsLastMonth: cat.trendVsLastMonth !== undefined ? cat.trendVsLastMonth : null,
             }))
           : [],
         overBudgetAlerts: Array.isArray(rawSnapshot.overBudgetAlerts)
-          ? rawSnapshot.overBudgetAlerts.map(alert => this.maskPII(alert))
+          ? rawSnapshot.overBudgetAlerts.map(alert => this.maskPII(alert, { userName }))
           : [],
       },
       liquidityAndObligations: {

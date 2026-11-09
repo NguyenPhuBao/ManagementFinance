@@ -869,6 +869,127 @@ void main() {
           reason: 'trước câu đầu chỉ có lời chào của AI; xepHistory gọt tin đầu không phải user (SDK Gemini đòi tin đầu là user)');
     });
 
+    testWidgets('câu hỏi dài quá giới hạn máy chủ: ô nhập dừng ở giới hạn, không gửi lên để bị từ chối', (t) async {
+      String? cauNhan;
+      await t.pumpWidget(boc(AiChatPage(
+        coMoHinh: true,
+        laPremium: true,
+        congTacOnline: daDoc(),
+        coMang: () async => true,
+        onHoiOnline: (cau, _) {
+          cauNhan = cau;
+          return Stream.value(const XongOnline());
+        },
+      )));
+      await hoi(t, 'a' * (kToiDaKyTuCauHoi + 500));
+      expect(cauNhan?.length, kToiDaKyTuCauHoi);
+    });
+
+    AiChatPage trang429({bool coMoHinh = true}) => AiChatPage(
+          coMoHinh: coMoHinh,
+          laPremium: true,
+          congTacOnline: daDoc(),
+          coMang: () async => true,
+          onHoi: (_) => Stream.value(const CauQua('Tháng này bạn đã chi 2.141.000 đ.')),
+          onHoiOnline: (_, __) => Stream.value(const LoiOnline(http: 429, lyDo: 'HTTP 429')),
+        );
+
+    testWidgets('máy chủ báo 429: câu về số liệu đi trên máy, nhãn nói đúng là chạm giới hạn lượt hỏi', (t) async {
+      await t.pumpWidget(boc(trang429()));
+      await hoi(t, 'Tháng này chi bao nhiêu?');
+      expect(find.text('$kNguonTrenMay · $kGhiChuGioiHanOnline'), findsOneWidget);
+      expect(find.textContaining(kGhiChuRoiVeMay), findsNothing);
+    });
+
+    testWidgets('máy chủ báo 429: câu kiến thức máy không trả lời được thì báo giới hạn, không nói máy chủ hỏng', (t) async {
+      await t.pumpWidget(boc(trang429()));
+      await hoi(t, 'Quỹ khẩn cấp là gì?');
+      expect(find.text(kCauGioiHanOnline), findsOneWidget);
+      expect(find.text(kMayChuHongTuChoi), findsNothing);
+    });
+
+    testWidgets('máy chủ báo 429, máy chưa có mô hình: cũng báo giới hạn', (t) async {
+      await t.pumpWidget(boc(trang429(coMoHinh: false)));
+      await hoi(t, 'Tháng này chi bao nhiêu?');
+      expect(find.text(kCauGioiHanOnline), findsOneWidget);
+      expect(find.text(kMayChuHongKhongMoHinh), findsNothing);
+    });
+
+    group('báo công cụ đang chạy', () {
+      Future<StreamController<SuKienOnline>> moLuot(WidgetTester t) async {
+        final c = StreamController<SuKienOnline>();
+        await t.pumpWidget(boc(AiChatPage(
+          coMoHinh: true,
+          laPremium: true,
+          congTacOnline: daDoc(),
+          coMang: () async => true,
+          onHoiOnline: (_, __) => c.stream,
+        )));
+        await t.enterText(find.byType(TextField), 'giảm trừ gia cảnh là bao nhiêu');
+        await t.testTextInput.receiveAction(TextInputAction.send);
+        await t.pump();
+        await t.pump();
+        return c;
+      }
+
+      testWidgets('chưa có chữ: dòng chỉ báo đổi theo công cụ, xong công cụ thì về chữ chờ, có chữ thì hiện câu trả lời', (t) async {
+        final c = await moLuot(t);
+        expect(find.text(kDangHoiOnline), findsOneWidget);
+
+        c.add(const CongCuOnline('tra_cuu_kien_thuc', dangChay: true));
+        await t.pump();
+        expect(find.text('Đang tra cứu kiến thức…'), findsOneWidget);
+        expect(find.text(kDangHoiOnline), findsNothing);
+
+        c.add(const CongCuOnline('tra_cuu_kien_thuc', dangChay: false));
+        await t.pump();
+        expect(find.text('Đang tra cứu kiến thức…'), findsNothing);
+        expect(find.text(kDangHoiOnline), findsOneWidget);
+
+        c.add(const CongCuOnline('get_bill_details', dangChay: true));
+        await t.pump();
+        expect(find.text('Đang xem số liệu của bạn…'), findsOneWidget);
+        c.add(const CongCuOnline('get_bill_details', dangChay: false));
+        c.add(const ChuOnline('Mức giảm trừ là…'));
+        c.add(const XongOnline(responseTimeMs: 900));
+        unawaited(c.close()); // datasource thật đóng luồng ngay sau sự kiện cuối; `await` ở đây tự khoá vì thời gian bị giả lập
+        await t.pumpAndSettle();
+        expect(find.text('Mức giảm trừ là…'), findsOneWidget);
+        expect(find.text('Đang xem số liệu của bạn…'), findsNothing);
+        expect(find.text(kNguonOnline), findsOneWidget, reason: 'sự kiện công cụ không làm lượt bị coi là hỏng');
+      });
+
+      testWidgets('đã có chữ rồi mới gọi công cụ: trạng thái hiện dưới bong bóng, chữ cũ giữ nguyên', (t) async {
+        final c = await moLuot(t);
+        c.add(const ChuOnline('Để mình tra. '));
+        await t.pump();
+        c.add(const CongCuOnline('tra_cuu_kien_thuc', dangChay: true));
+        await t.pump();
+        expect(find.text('Để mình tra. '), findsOneWidget);
+        expect(find.text('Đang tra cứu kiến thức…'), findsOneWidget);
+        c.add(const CongCuOnline('tra_cuu_kien_thuc', dangChay: false));
+        await t.pump();
+        expect(find.text('Đang tra cứu kiến thức…'), findsNothing);
+        c.add(const ChuOnline('Xong.'));
+        c.add(const XongOnline());
+        unawaited(c.close());
+        await t.pumpAndSettle();
+        expect(find.text('Để mình tra. Xong.'), findsOneWidget);
+      });
+
+      testWidgets('lỗi giữa lúc chạy công cụ: không còn dòng trạng thái treo', (t) async {
+        final c = await moLuot(t);
+        c.add(const ChuOnline('Một nửa'));
+        c.add(const CongCuOnline('tra_cuu_kien_thuc', dangChay: true));
+        await t.pump();
+        c.add(const LoiOnline(http: null, lyDo: 'đứt'));
+        unawaited(c.close());
+        await t.pumpAndSettle();
+        expect(find.text('Đang tra cứu kiến thức…'), findsNothing);
+        expect(find.textContaining('Một nửa'), findsOneWidget);
+      });
+    });
+
     testWidgets('chủ đề dữ liệu sống → KHÔNG gọi online, câu từ chối cũ', (t) async {
       var soLanOnline = 0;
       await t.pumpWidget(boc(AiChatPage(

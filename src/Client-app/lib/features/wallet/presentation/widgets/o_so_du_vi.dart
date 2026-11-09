@@ -66,9 +66,14 @@ class OSoDuVi extends StatelessWidget {
     super.key,
     required this.controller,
     this.onChanged,
+    this.readOnly = false,
   });
 
   final TextEditingController controller;
+
+  /// Chỉ đọc: số dư hiện ra nhưng không gõ được (ví lưu trữ, không có quyền đối soát). Mặc định `false` — hai màn Thêm / Sửa
+  /// ví cá nhân không đổi.
+  final bool readOnly;
 
   /// Gọi sau khi chuỗi đã được chèn dấu chấm. Màn Sửa ví dùng nó để so với số
   /// dư cũ mà quyết định có sinh khoản điều chỉnh hay không.
@@ -101,6 +106,7 @@ class OSoDuVi extends StatelessWidget {
           child: IntrinsicWidth(
             child: TextField(
               controller: controller,
+              readOnly: readOnly,
               style: TextStyle(
                 fontSize: co,
                 fontWeight: FontWeight.bold,

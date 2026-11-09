@@ -35,6 +35,7 @@ bool xetGan(TransactionEntity t) =>
     !t.isDeleted &&
     t.deletedAt == null &&
     t.categoryId == null &&
+    t.fundPairId == null &&
     t.type != 'transfer' &&
     !laGhiChuMay(loai: t.type, categoryId: t.categoryId, ghiChu: t.note);
 

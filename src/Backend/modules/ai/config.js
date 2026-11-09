@@ -14,10 +14,13 @@ module.exports = {
     tesseractLang: 'vie+eng',
     tesseractPSM: 3, // Fully automatic page segmentation
   },
+  // Phần này chỉ mô tả phân loại giao dịch và OCR (vẫn dùng Gemini). Chatbot AI có cấu hình RIÊNG, không đọc ở đây:
+  //   nhà cung cấp & mô hình: features/chatbot/llm/provider.config.js (CHATBOT_LLM_PROVIDER, DEEPSEEK_*)
+  //   giới hạn token / độ dài / hạn mức: features/chatbot/limits/chatbot.limits.js (AI_*)
   llm: {
     defaultProvider: 'gemini',
     defaultModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-    maxTokens: { classify: 512, ocr: 2048, chatbot: 1024 },
-    temperature: { classify: 0.1, ocr: 0.1, chatbot: 0.1 },
+    maxTokens: { classify: 512, ocr: 2048 },
+    temperature: { classify: 0.1, ocr: 0.1 },
   },
 };

@@ -34,7 +34,8 @@ abstract class GoalRepository {
     String? colour,
     String? note,
 
-    /// Bật lặp lại mục tiêu sau khi hoàn thành, kèm chu kỳ [timeRecurrence].
+    /// Bật lặp lại mục tiêu sau khi hoàn thành. Vòng mới dài bằng vòng trước
+    /// (`hanVongMoi`); [timeRecurrence] chỉ là dự phòng khi thiếu mốc bắt đầu.
     bool? recurrence,
     String? timeRecurrence,
     /// Đi thành cặp với [autoDepositWalletId]; đủ cả hai là bật trích tự động
@@ -115,8 +116,9 @@ abstract class GoalRepository {
 
   /// Bắt đầu một **vòng mới** cho mục tiêu đã hoàn thành và có bật lặp lại.
   ///
-  /// Đặt tiến độ về 0, gỡ cờ hoàn thành, dời hạn tới kỳ kế tiếp và đặt lại mốc
-  /// bắt đầu bằng "bây giờ".
+  /// Đặt tiến độ về 0, gỡ cờ hoàn thành, đặt lại mốc bắt đầu bằng "bây giờ"
+  /// và hạn bằng "bây giờ" + số ngày của vòng vừa xong (`hanVongMoi`). Tên, số
+  /// tiền, ví, trích tự động giữ nguyên thiết lập của vòng trước.
   ///
   /// ⚠️ **KHÔNG đụng một đồng nào.** Tiền của vòng cũ vẫn nằm trong ví tích
   /// luỹ; người dùng tự rút khi muốn tiêu. Họ mới chỉ bấm "bắt đầu vòng mới" —

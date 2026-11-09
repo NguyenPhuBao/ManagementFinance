@@ -221,6 +221,11 @@ void main() {
           ],
           lowBalanceThreshold: 100000,
           loiMoiNha: const [(ma: 'ABCD2345', tenNha: 'Nhà An', tenNguoiMoi: 'Trần An', hetHan: null)],
+          // Hai mục: 60 % sinh `nhaMucTieuMoc` (mốc 50), 100 % sinh `nhaMucTieuDat`.
+          mucTieuNha: const [
+            (idGoal: 'mtn-moc', tenVi: 'Quỹ du lịch', tiLe: .6, daThay: true),
+            (idGoal: 'mtn-dat', tenVi: 'Quỹ xe', tiLe: 1, daThay: true),
+          ],
           autoDeposits: [
             GoalAutoDepositEvent(
               goalId: 'mt-trich',
@@ -313,13 +318,39 @@ void main() {
       // Tin admin (2026-10-26): `NhanTinHeThong` ghi từ socket `system.broadcast`, không từ bộ luật. Khoá
       // `tinHeThong:<id>` rơi nhánh mặc định → Trung tâm thông báo — canh ở ca "tin admin" ngay dưới.
       NotificationKind.tinHeThong,
+      // Gia đình 1A Task 9: `GopQuyConflictResolver` ghi thẳng lúc đồng bộ / sau lượt kéo (thời điểm duy nhất biết server
+      // vừa từ chối nửa của nhà nào, hay Chủ nhà vừa xoá nửa nào). Khoá và deeplink canh ở ca "góp quỹ" ngay dưới.
+      NotificationKind.gopQuyBiTraVe,
+      NotificationKind.gopQuyBiXoa,
     };
+
+    test('góp quỹ bị trả về / bị xoá: khoá → /transactions (tab trong shell), nhóm giaDinh, luôn báo', () {
+      for (final (khoa, loai) in [
+        ('gopTraVe:8f1c', NotificationKind.gopQuyBiTraVe),
+        ('gopBiXoa:8f1c', NotificationKind.gopQuyBiXoa),
+      ]) {
+        expect(deeplinkTuDedupeKey(khoa), '/transactions', reason: '$khoa: màn xem lại khoản đã bị gỡ là Sổ giao dịch');
+        expect(thuocThanhTab('/transactions'), isTrue,
+            reason: 'tab trong shell: nơi gọi phải dùng `go`, và `nhanhThanhTab` phải khớp');
+        expect(loaiTuKhoa(khoa), loai);
+        expect(nhomTuKhoa(khoa), NotificationGroup.giaDinh);
+        expect(luonBao(loai), isTrue,
+            reason: 'máy tự gỡ khoản và trả tiền về ví khi người dùng vắng mặt: im lặng là ví đổi số không rõ vì sao');
+      }
+    });
 
     test('lời mời vào nhà: khoá → /nha (route gốc, push được từ /notifications), loaiTuKhoa nhận ra', () {
       expect(deeplinkTuDedupeKey('loiMoiNha:ABCD2345'), '/nha');
       expect(thuocThanhTab('/nha'), isFalse,
           reason: 'đặt nhầm vào thanh tab là `go` thay cả stack, thanh tab biến mất');
       expect(loaiTuKhoa('loiMoiNha:ABCD2345'), NotificationKind.loiMoiNha);
+    });
+
+    test('mục tiêu chung: khoá nhaMucTieu / nhaMucTieuDat → /nha, loaiTuKhoa nhận ra đúng hai loại', () {
+      expect(deeplinkTuDedupeKey('nhaMucTieu:g:50'), '/nha');
+      expect(deeplinkTuDedupeKey('nhaMucTieuDat:g'), '/nha');
+      expect(loaiTuKhoa('nhaMucTieu:g:50'), NotificationKind.nhaMucTieuMoc);
+      expect(loaiTuKhoa('nhaMucTieuDat:g'), NotificationKind.nhaMucTieuDat);
     });
 
     test('tin admin: khoá tinHeThong:<id> → Trung tâm thông báo, loaiTuKhoa nhận ra', () {

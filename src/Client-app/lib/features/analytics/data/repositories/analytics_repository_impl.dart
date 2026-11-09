@@ -18,6 +18,7 @@ import '../../../goal/data/models/goal_entity.dart';
 import '../../domain/bao_cao_xuat.dart';
 import '../../domain/chi_bat_thuong.dart';
 import '../../domain/du_bao_dong_tien.dart';
+import '../../../transaction/domain/danh_muc_ao_quy.dart';
 import '../../../transaction/domain/khoan_vao_thong_ke.dart';
 import '../../domain/lich_chi_tieu.dart';
 import '../../domain/nguong_co_nghia.dart';
@@ -215,23 +216,38 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     final tenTheoId = {for (final c in cats) c.id: c.name};
     return [
       for (final t in txs)
-        KhoanThuChi(
+        () {
+          // Nửa RIÊNG của góp / rút quỹ gia đình chưa có danh mục → mã ảo, chỉ để gom nhãn (Task 10). Mã ảo KHÔNG
+          // vào `cats` nên tra bằng `nhanAoQuy`; thu nhập quyết bằng CỜ `laRutQuy`, không bằng mã ảo.
+          final id = categoryIdThongKe(
+            categoryId: t.categoryId,
+            fundPairId: t.fundPairId,
+            idhousehold: t.idhousehold,
+            loai: t.type,
+          );
+          return KhoanThuChi(
           ngay: t.date,
           soTien: t.amount,
           loai: t.type,
-          categoryId: t.categoryId,
-          classify:
-              t.categoryId == null ? null : classifyTheoId[t.categoryId],
+          categoryId: id,
+          laRutQuy: laNuaRutQuy(
+            fundPairId: t.fundPairId,
+            idhousehold: t.idhousehold,
+            loai: t.type,
+          ),
+          classify: id == null
+              ? null
+              : (classifyTheoId[id] ?? nhanAoQuy(id)?.classify),
           // Cần cho phép loại khoản điều chỉnh số dư khỏi thống kê; thiếu
           // nó thì luật ấy không có gì để đọc và khoản bù thành thu nhập.
           ghiChu: t.note,
           // TÊN danh mục — hai biểu đồ vay/nợ đọc vai từ đây, vì bốn vai
           // *cho vay · thu nợ · đi vay · trả nợ* không có chỗ nào lưu.
-          tenDanhMuc:
-              t.categoryId == null ? null : tenTheoId[t.categoryId],
+          tenDanhMuc: id == null ? null : (tenTheoId[id] ?? nhanAoQuy(id)?.ten),
           // B4: lịch sử trả hoá đơn / nạp mục tiêu đã ở tầng 1 khối Dự báo.
           laKhoanCamKet: _laKhoanCamKet(t, now: now, khoaLapDaTao: khoaLapDaTao),
-        ),
+        );
+        }(),
     ];
   }
 
@@ -323,15 +339,15 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           // chưa phân loại / id không còn hàng nào (chưa từng đồng bộ về).
           final ten = c.categoryId == null
               ? 'Chưa phân loại'
-              : (cat?.name ?? 'Danh mục đã xoá');
+              : (cat?.name ?? nhanAoQuy(c.categoryId)?.ten ?? 'Danh mục đã xoá');
           final ns = (gapNganSach && c.categoryId != null)
               ? nganSachTheoDanhMuc[c.categoryId]
               : null;
           return DongDanhMuc(
             categoryId: c.categoryId,
             ten: ten,
-            icon: cat?.icon,
-            mauHex: cat?.colour,
+            icon: cat?.icon ?? nhanAoQuy(c.categoryId)?.icon,
+            mauHex: cat?.colour ?? nhanAoQuy(c.categoryId)?.mauHex,
             soTien: c.soTien,
             tiLeTongChi: c.tiLe,
             nganSachHanMuc: ns?.amount,
@@ -360,7 +376,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
                 c.categoryId == null ? null : danhMucTheoId[c.categoryId];
             final ten = c.categoryId == null
                 ? 'Chưa phân loại'
-                : (cat?.name ?? 'Danh mục đã xoá');
+                : (cat?.name ?? nhanAoQuy(c.categoryId)?.ten ?? 'Danh mục đã xoá');
             // Ngân sách chỉ có nghĩa cho chi tiêu: `BudgetRepository` không có
             // khái niệm ngân sách thu. Gắn nó vào lát thu là hiện một hạn mức
             // không tồn tại.
@@ -371,8 +387,8 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
             return DongDanhMuc(
               categoryId: c.categoryId,
               ten: ten,
-              icon: cat?.icon,
-              mauHex: cat?.colour,
+              icon: cat?.icon ?? nhanAoQuy(c.categoryId)?.icon,
+              mauHex: cat?.colour ?? nhanAoQuy(c.categoryId)?.mauHex,
               soTien: c.soTien,
               tiLeTongChi: c.tiLe,
               nganSachHanMuc: ns?.amount,
@@ -391,19 +407,26 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
     final dongGd = [
       for (final t in txs)
         () {
-          final cat = t.categoryId == null ? null : danhMucTheoId[t.categoryId];
-          final tenDanhMuc = t.categoryId == null
+          // Mã đã qua `categoryIdThongKe`: nửa riêng góp / rút chưa có danh mục mang mã ảo (Task 10).
+          final id = categoryIdThongKe(
+            categoryId: t.categoryId,
+            fundPairId: t.fundPairId,
+            idhousehold: t.idhousehold,
+            loai: t.type,
+          );
+          final cat = id == null ? null : danhMucTheoId[id];
+          final tenDanhMuc = id == null
               ? 'Chưa phân loại'
-              : (cat?.name ?? 'Danh mục đã xoá');
+              : (cat?.name ?? nhanAoQuy(id)?.ten ?? 'Danh mục đã xoá');
           return DongGiaoDich(
             id: t.id,
             ngay: t.date,
             soTien: t.amount,
             loai: t.type,
-            categoryId: t.categoryId,
+            categoryId: id,
             tenDanhMuc: tenDanhMuc,
-            mauHex: cat?.colour,
-            icon: cat?.icon,
+            mauHex: cat?.colour ?? nhanAoQuy(id)?.mauHex,
+            icon: cat?.icon ?? nhanAoQuy(id)?.icon,
             walletId: t.walletId,
             tenVi: viTheoId[t.walletId]?.name ?? 'Ví đã xoá',
             tieuDe: t.note.trim().isEmpty ? tenDanhMuc : t.note,
@@ -512,7 +535,7 @@ class AnalyticsRepositoryImpl implements AnalyticsRepository {
           nguongCoNghia(cuaSo == null ? 0 : thuNhapMoiThangTu(khoan, cuaSo));
       batThuong = [
         for (final d in chiBatThuong(khoan, thang: ky.from, now: now, nguong: nguong))
-          (d: d, ten: tenTheoId[d.categoryId] ?? 'Danh mục đã xoá'),
+          (d: d, ten: tenTheoId[d.categoryId] ?? nhanAoQuy(d.categoryId)?.ten ?? 'Danh mục đã xoá'),
       ];
     }
 

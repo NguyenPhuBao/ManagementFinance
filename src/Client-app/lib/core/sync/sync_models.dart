@@ -115,6 +115,26 @@ class SyncResult {
 
   bool get isSuccess => failed == 0 && conflictIds.isEmpty;
 
+  /// Năm mã `HOUSEHOLD_*` nói "vai / trạng thái nhà không cho ghi" — vĩnh viễn cho tới khi nhà đổi, không phải lỗi của máy
+  /// chủ hay của đường truyền. Khớp TAY với `kMaDayLoiNha` (`features/household/domain/cau_loi_nha.dart`; core không import
+  /// mảng — `cau_loi_nha_test` đọc tệp này để so). KHÔNG có `HOUSEHOLD_WALLET_LIMIT` (trần ví chung, không nói gì về vai).
+  static const Set<String> maPhamViNha = {
+    'HOUSEHOLD_NOT_MEMBER',
+    'HOUSEHOLD_READ_ONLY',
+    'HOUSEHOLD_CLOSED',
+    'HOUSEHOLD_SCOPE_MISMATCH',
+    'HOUSEHOLD_ROLE_FORBIDDEN',
+  };
+
+  /// Mọi thao tác hỏng của lượt đẩy đều là từ chối phạm vi nhà vĩnh viễn ([maPhamViNha]). Lượt như vậy KHÔNG phải chu kỳ hỏng
+  /// (engine không giãn cách cả tài khoản vì một hàng nhà bị chặn): hàng ở lại `pending` với bậc chặn của riêng nó, Chủ gia
+  /// hạn / đổi vai thì tự lên. Lượt có thêm BẤT KỲ lỗi nào khác (kể cả mất mạng) thì không.
+  bool get chiTuChoiPhamViNha =>
+      !transportFailed &&
+      failed > 0 &&
+      failures.length == failed &&
+      failures.every((f) => f.kind == SyncFailureKind.permanent && maPhamViNha.contains(f.code));
+
   /// Có thao tác nào cho thấy phiên đăng nhập đã chết không.
   bool get hasSessionInvalid =>
       failures.any((f) => f.kind == SyncFailureKind.sessionInvalid);

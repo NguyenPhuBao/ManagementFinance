@@ -320,6 +320,20 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       return data;
     };
 
+    const payosClient = require('../../modules/payment/payos.client');
+    payosClient.setPayOSClientMock({
+      paymentRequests: {
+        create: async () => ({
+          bin: '970422',
+          accountNumber: '1234567890',
+          accountName: 'KENH THU',
+          description: 'CSTHU ABC123',
+          checkoutUrl: 'https://pay.payos.vn/web/thu',
+          paymentLinkId: 'link-thu',
+        }),
+      },
+    });
+
     try {
       const sample = await paymentRepository.createSampleOrder({
         simulateWebhook: true,
@@ -339,6 +353,7 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       prisma.account.findFirst = origFindFirst;
       prisma.payment_order.create = origCreateOrder;
       prisma.payment_transaction.create = origCreateTx;
+      payosClient.setPayOSClientMock(null);
     }
   });
 

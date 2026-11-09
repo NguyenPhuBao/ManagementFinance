@@ -163,7 +163,7 @@ const syncService = {
     }
 
     if (entity === 'transaction') {
-      const isNewTx = operation !== 'delete' && (operation === 'create' || !existingRecord);
+      const isNewTx = operation !== 'delete' && !existingRecord;
       if (isNewTx) {
         const isTransfer = String(payload.type || '').toLowerCase() === 'transfer';
         if (isTransfer) {
@@ -173,7 +173,7 @@ const syncService = {
             });
           }
         }
-      } else if (operation === 'update' || operation === 'delete') {
+      } else {
         const isExistingTransfer = existingRecord && String(existingRecord.type || '').toLowerCase() === 'transfer';
         const isPayloadTransfer = operation !== 'delete' && String(payload.type || '').toLowerCase() === 'transfer';
         if ((isExistingTransfer || isPayloadTransfer) && membership.role !== 'Owner') {
@@ -189,6 +189,14 @@ const syncService = {
               code: 'HOUSEHOLD_ROLE_FORBIDDEN',
             });
           }
+        }
+        // Khoản có mã cặp: chỉ người ghi được SỬA, Chủ nhà chỉ xoá (01 mục 3).
+        const laXoa = operation === 'delete';
+        const coMaCap = existingRecord && (existingRecord.idfund_pair ?? existingRecord.Idfund_pair);
+        if (coMaCap && !laXoa && creatorId !== null && Number(creatorId) !== Number(idaccount)) {
+          throw Object.assign(new Error('Khoản góp / rút chỉ người ghi được sửa'), {
+            code: 'HOUSEHOLD_ROLE_FORBIDDEN',
+          });
         }
       }
     }
@@ -234,6 +242,19 @@ const syncService = {
         const goalHh = goal.idhousehold ?? goal.Idhousehold ?? null;
         if (Number(goalHh || 0) !== Number(targetHhId || 0)) {
           throw Object.assign(new Error('Phạm vi không khớp: giao dịch và mục tiêu phải cùng thuộc cá nhân hoặc cùng thuộc một nhà'), {
+            code: 'HOUSEHOLD_SCOPE_MISMATCH',
+          });
+        }
+      }
+    }
+
+    const categoryKey = payload.idcategory || payload.categoryId || payload.idCategory;
+    if (categoryKey) {
+      const category = await prisma.category.findUnique({ where: { idcategory: categoryKey } });
+      if (category) {
+        const catHh = category.idhousehold ?? category.Idhousehold ?? null;
+        if (Number(catHh || 0) !== Number(targetHhId || 0)) {
+          throw Object.assign(new Error('Phạm vi không khớp: giao dịch và danh mục phải cùng thuộc cá nhân hoặc cùng thuộc một nhà'), {
             code: 'HOUSEHOLD_SCOPE_MISMATCH',
           });
         }

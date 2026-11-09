@@ -22,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flowmoney/core/api/dio_client.dart';
 import 'package:flowmoney/core/database/app_database.dart';
 import 'package:flowmoney/core/sync/sync_engine.dart';
+import 'package:flowmoney/core/sync/anh_xa_keo_ve.dart';
 import 'package:flowmoney/core/sync/sync_models.dart';
 import '../../helpers/sync_engine_thu.dart';
 
@@ -415,6 +416,9 @@ void main() {
           // CHỌN TRƯỜNG TƯỜNG MINH bằng `mapped.idbill` (dòng 304, 326). Nên
           // gửi thẳng `idbill` cũng tới nơi, vì nó đã đúng tên đích.
           'idbill',
+          // Mã cặp góp / rút của gia đình (schema v33): payload dùng `idfund_pair`, KHÔNG phải `fund_pair_id` (tên cột
+          // Drift cục bộ, nằm trong danh sách cấm rò rỉ bên dưới).
+          'idfund_pair',
         },
       );
     });
@@ -707,6 +711,7 @@ void main() {
           'is_local_only',
           'keywords',
           'goal_id', // cột cục bộ của transactions (schema v14)
+          'fund_pair_id', // tên cột Drift của transactions (schema v33); payload là `idfund_pair`
           'updatedAt', // phải đã được đổi thành update_at
         ]) {
           expect(payload.containsKey(forbidden), false,
@@ -768,6 +773,53 @@ void main() {
         updatedAt: Value(now),
       ));
       await runSync();
+    });
+
+    test('giao dịch có mã cặp đẩy idfund_pair đúng giá trị; không có thì gửi null', () async {
+      await db.transactionDao.insert(TransactionsCompanion(
+        id: const Value('55555555-5555-4555-8555-555555555555'),
+        idaccount: const Value(accountId),
+        walletId: const Value(walletId),
+        categoryId: const Value(categoryId),
+        amount: const Value(1000),
+        type: const Value('thu'),
+        date: Value(DateTime.now()),
+        idhousehold: const Value(12),
+        fundPairId: const Value('cap-gop-1'),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+      client.adapter.pushed.clear();
+      await runSync();
+      final cap = client.adapter.pushed
+          .map((o) => o['payload'] as Map<String, dynamic>)
+          .where((p) => p['id'] == '55555555-5555-4555-8555-555555555555')
+          .single;
+      expect(cap['idfund_pair'], 'cap-gop-1',
+          reason: 'sai tên khoá thì server không nhận mã cặp, im lặng (quy tắc 4)');
+      expect(payloadOf('transaction').containsKey('idfund_pair'), isTrue);
+      // Vế "không có thì gửi null": một giao dịch thường cùng lô (tên ca nói vậy mà trước đây chỉ kiểm khoá có mặt).
+      await db.transactionDao.insert(TransactionsCompanion(
+        id: const Value('55555555-5555-4555-8555-555555555556'),
+        idaccount: const Value(accountId),
+        walletId: const Value(walletId),
+        categoryId: const Value(categoryId),
+        amount: const Value(1000),
+        type: const Value('chi'),
+        date: Value(DateTime.now()),
+        idhousehold: const Value(12),
+        syncStatus: const Value('pending'),
+        updatedAt: Value(DateTime.now()),
+      ));
+      client.adapter.pushed.clear();
+      await runSync();
+      final thuong = client.adapter.pushed
+          .map((o) => o['payload'] as Map<String, dynamic>)
+          .where((p) => p['id'] == '55555555-5555-4555-8555-555555555556')
+          .single;
+      expect(thuong.containsKey('idfund_pair'), isTrue, reason: 'khoá luôn có mặt');
+      expect(thuong['idfund_pair'], isNull,
+          reason: 'giao dịch thường gửi khoá với giá trị null — có khoá mà khác null là gửi nhầm mã cặp');
     });
 
     test('năm thực thể đẩy idhousehold = 12', () {
@@ -1247,6 +1299,36 @@ void main() {
               'sai định dạng thì KHÔNG có lỗi nào báo ra — từ khoá chỉ đơn '
               'giản không bao giờ tới nơi, và mất hẳn khi người dùng cài lại '
               'app.');
+    });
+  });
+
+  group('PULL — idfund_pair (mã cặp góp / rút, schema v33)', () {
+    Map<String, dynamic> hang([Map<String, dynamic> them = const {}]) => {
+          'idtran': '66666666-6666-4666-8666-666666666666',
+          'idaccount': accountId,
+          'idwallet': walletId,
+          'amount': 1000,
+          'date_transaction': '2026-11-01T00:00:00.000Z',
+          ...them,
+        };
+
+    test('server im lặng (không có khoá) = chưa biết, KHÔNG xoá mã cặp đang có', () {
+      final c = companionGiaoDichKeoVe(hang(), accountId);
+      expect(c.fundPairId.present, isFalse,
+          reason: 'Value(null) ở pull là ghi NULL đè mã cặp đã có: nửa kia của góp / rút mất liên kết');
+    });
+
+    test('server trả khoá = null (hình dạng THẬT của hàng thường: Pull trả `...item`) cũng KHÔNG xoá mã cặp đang có', () {
+      final c = companionGiaoDichKeoVe(hang({'idfund_pair': null}), accountId);
+      expect(c.fundPairId.present, isFalse,
+          reason: 'server không bao giờ gỡ mã cặp (Ruling T1 #4); `Value(null)` ở đây là ghi NULL đè mã cặp, nửa kia mất liên kết '
+              '— và server THẬT luôn có khoá này, ca "im lặng" ở trên không bắt được');
+    });
+
+    test('có khoá thì đọc đúng giá trị', () {
+      final c = companionGiaoDichKeoVe(hang({'idfund_pair': 'cap-gop-1'}), accountId);
+      expect(c.fundPairId.present, isTrue);
+      expect(c.fundPairId.value, 'cap-gop-1');
     });
   });
 }

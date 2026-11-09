@@ -1,6 +1,10 @@
 import 'dart:async';
 
+import 'package:flowmoney/features/household/data/nha_store.dart';
+import 'package:flowmoney/features/household/data/repositories/du_lieu_nha_repository.dart';
 import 'package:flowmoney/features/household/data/repositories/nha_repository.dart';
+import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
+import 'package:flowmoney/features/household/domain/hang_chua_day.dart';
 import 'package:flowmoney/features/household/presentation/pages/quan_ly_thanh_vien_page.dart';
 import 'package:flowmoney/features/household/presentation/widgets/avatar_chu_cai.dart';
 import 'package:flowmoney/features/household/presentation/widgets/khung_the_nha.dart';
@@ -39,6 +43,23 @@ class _ApiChuyenChuTreo extends HouseholdApiGia {
     await treoMe?.future;
     return cuaToiJson;
   }
+}
+
+/// Chỉ `hangChuaDay` được dùng; ghi lại (idNha, idaccount) để ca canh nguồn của hai tham số.
+class _DuLieuGia implements DuLieuNhaRepository {
+  _DuLieuGia(this.tra);
+
+  final HangChuaDayNha tra;
+  final goi = <(int, int?)>[];
+
+  @override
+  Future<HangChuaDayNha> hangChuaDay(int idNha, {required int? idaccount}) async {
+    goi.add((idNha, idaccount));
+    return tra;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -146,6 +167,49 @@ void main() {
     await motLuot();
     expect(api.goi, contains('giaiTan'));
     expect(find.text('GOC'), findsOneWidget);
+  });
+
+  testWidgets('giải tán còn hàng chưa đẩy: đi hai bước rồi mới tới hộp, nút ghi Vẫn giải tán; Ở lại không giải tán', (t) async {
+    dat360(t);
+    final bat = batThongBao();
+    final api = HouseholdApiGia()..cuaToiJson = nhaJson();
+    final repo = NhaRepositoryImpl(api: api, kho: InMemoryNhaStore(), demHangChuaDay: (_) async => 2);
+    addTearDown(repo.dispose);
+    await repo.datTaiKhoan(18);
+    await repo.lamMoi();
+    final duLieu = _DuLieuGia(const HangChuaDayNha(khoan: 2));
+    final r = routerThu(QuanLyThanhVienPage(repo: repo, duLieu: duLieu));
+    await t.pumpWidget(bocRouterNha(r, idaccount: 18));
+    r.push('/dich');
+    await t.pumpAndSettle();
+    Future<void> haiBuoc() async {
+      await t.ensureVisible(find.text('Giải tán nhà'));
+      await t.tap(find.text('Giải tán nhà'));
+      await t.pumpAndSettle();
+      await t.tap(find.widgetWithText(FilledButton, 'Tiếp tục'));
+      await t.pumpAndSettle();
+      await t.enterText(find.byType(TextField), 'Nhà An – Bình');
+      await t.pump();
+      await t.tap(find.widgetWithText(FilledButton, 'Giải tán nhà'));
+      await t.pumpAndSettle();
+    }
+
+    await haiBuoc();
+    expect(find.text('Còn thay đổi chưa đồng bộ'), findsOneWidget);
+    expect(find.text('Những thay đổi này chưa lên máy chủ và sẽ mất nếu bạn giải tán nhà:'), findsOneWidget);
+    expect(duLieu.goi, [(12, 18)], reason: 'đếm theo nhà đang ở và theo tài khoản của PHIÊN');
+    await t.tap(find.text('Ở lại'));
+    await t.pumpAndSettle();
+    expect(api.goi, isNot(contains('giaiTan')), reason: 'Ở lại thì không giải tán');
+    expect(find.text('GOC'), findsNothing, reason: 'vẫn ở màn Quản lý');
+    expect(bat.ds, isEmpty);
+
+    api.cuaToiJson = const {'household': null};
+    await haiBuoc();
+    await t.tap(find.widgetWithText(FilledButton, 'Vẫn giải tán'));
+    await t.pumpAndSettle();
+    expect(api.goi, contains('giaiTan'));
+    expect(find.text('GOC'), findsOneWidget, reason: 'xong về trang trước đúng một lần');
   });
 
   testWidgets('đổi vai / mời ra / chuyển chủ lỗi 500: báo đúng câu, chuyển chủ ở lại màn', (t) async {

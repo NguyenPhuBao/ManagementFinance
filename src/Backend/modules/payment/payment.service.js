@@ -451,7 +451,7 @@ async function xuLyTienVaoDon(order, { orderCode, receivedAmount, txData, txTime
  * @param {number} idaccount
  * @param {object} param1 { orderCode, accept }
  */
-async function confirmUpgrade(idaccount, { orderCode, accept } = {}) {
+async function confirmUpgrade(idaccount, { orderCode, accept, lyDoTuChoi = 'Do người dùng từ chối nâng cấp gói' } = {}) {
   if (typeof accept !== 'boolean') {
     const error = new Error('Trường accept bắt buộc là kiểu boolean (true/false)');
     error.statusCode = 400;
@@ -532,18 +532,25 @@ async function confirmUpgrade(idaccount, { orderCode, accept } = {}) {
     await paymentRepository.updateOrderPaymentStatus({
       orderId: order.id,
       status: 'REFUND_PENDING',
-      refundReason: 'Do người dùng từ chối nâng cấp gói',
+      refundReason: lyDoTuChoi,
     });
 
     try {
-      const { getIO } = require('../../core/socket');
+      const { emitToAccount, getIO } = require('../../core/socket');
+      // Admin từ chối hộ: màn của khách đang mở phải tự nạp lại. `payment.order_cancelled` là tên client đã nghe.
+      emitToAccount(order.idaccount, 'payment.order_cancelled', {
+        orderId: order.id,
+        orderCode: Number(order.order_code || orderCode),
+        status: 'REFUND_PENDING',
+        amountReceived: order.amount_received,
+      });
       const io = getIO();
       if (io) {
         io.to('admin_room').emit('payment.refund_pending', {
           orderId: order.id,
           orderCode: Number(order.order_code || orderCode),
           amount: order.amount_received,
-          reason: 'Do người dùng từ chối nâng cấp gói',
+          reason: lyDoTuChoi,
         });
       }
     } catch (_) {}

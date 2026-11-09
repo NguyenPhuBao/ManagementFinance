@@ -225,4 +225,9 @@ void main() {
         reason: 'không danh mục vẫn là một nhóm (chỉ ghi chú rỗng mới bị loại)');
     expect(phanGhiChuCuaKhoa('tien nha|c-nha'), 'tien nha');
   });
+
+  test('khoaNhomCua bỏ khoản có mã cặp góp / rút', () {
+    final cap = _gd(DateTime(2026, 11, 5), 1).copyWith(fundPairId: 'p');
+    expect(khoaNhomCua(cap, now: now), isNull, reason: 'góp đều mỗi tháng không được gợi ý thành hoá đơn cá nhân');
+  });
 }

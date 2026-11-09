@@ -1,27 +1,30 @@
 /**
  * Chatbot AI Routes
  * /api/ai/chatbot/*
+ *
+ * Thứ tự middleware (rẻ trước, tốn kém sau): xác thực → quyền gói → giới hạn tần suất (15/phút) → làm sạch
+ * đầu vào → hạn mức theo ngày (chỉ tính yêu cầu hợp lệ). Endpoint `/snapshot` đã gỡ: không còn nơi nào gọi.
  */
 
 const express = require('express');
 const router = express.Router();
 const { redisTokenBucketLimiter } = require('./rate-limiter/redis-token-bucket');
+const { dailyQuotaMiddleware } = require('./limits/quota.middleware');
 const chatbotController = require('./chatbot.controller');
 const { validateChatRequest } = require('./chatbot.validation');
 const { authenticate } = require('../../../../middleware/auth');
 const { requireFeature } = require('../../../../middleware/feature-permission.middleware');
+const eventBus = require('../../../../core/event-bus');
 
-// 1. Endpoint SSE Streaming chính (bảo vệ bởi Redis Token-Bucket Limiter 15 req/phút & Phân quyền AI)
-router.post('/chat/stream', authenticate, requireFeature('ai_assistant'), redisTokenBucketLimiter, validateChatRequest, chatbotController.handleChatStream);
+chatbotController.chatbotService.snapshotService.listenForChanges(eventBus);
 
-// 2. Endpoint lấy Bản chụp Sức khỏe Tài chính (và alias /financial-health)
-router.get('/snapshot', authenticate, requireFeature('financial_health_fhs'), chatbotController.handleGetSnapshot);
-router.get('/financial-health', authenticate, requireFeature('financial_health_fhs'), chatbotController.handleGetSnapshot);
+// 1. Endpoint SSE Streaming chính
+router.post('/chat/stream', authenticate, requireFeature('ai_assistant'), redisTokenBucketLimiter, validateChatRequest, dailyQuotaMiddleware, chatbotController.handleChatStream);
 
-// 3. Endpoint Chat Non-Streaming (Dự phòng cho client đơn giản)
-router.post('/chat', authenticate, requireFeature('ai_assistant'), redisTokenBucketLimiter, validateChatRequest, chatbotController.handleChatNonStream);
+// 2. Endpoint Chat Non-Streaming (dự phòng cho client đơn giản, và làm mốc so sánh trong thực nghiệm)
+router.post('/chat', authenticate, requireFeature('ai_assistant'), redisTokenBucketLimiter, validateChatRequest, dailyQuotaMiddleware, chatbotController.handleChatNonStream);
 
-// 4. Endpoint Làm mới hội thoại AI
+// 3. Endpoint Làm mới hội thoại AI
 router.post('/reset', authenticate, requireFeature('ai_assistant'), chatbotController.handleResetConversation);
 
 module.exports = router;

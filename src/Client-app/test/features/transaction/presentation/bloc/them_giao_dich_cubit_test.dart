@@ -129,6 +129,16 @@ void main() {
       expect(c.state.dangNapVi, isFalse);
     });
 
+    test('đường SỬA: bản lưu giữ idhousehold và fundPairId của khoản cũ', () async {
+      final cu = giaoDichCu().copyWith(idhousehold: 7, fundPairId: 'cap-1');
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb]), dangSua: cu, danhMucDangSua: anUong);
+      await c.moTrang();
+      final r = await c.chuanBiLuu() as SanSangLuu;
+      expect(r.giaoDich.single.idhousehold, 7,
+          reason: 'thiếu là khoản của nhà thành khoản riêng ngay lần sửa đầu (toCompanion ghi NULL đè)');
+      expect(r.giaoDich.single.fundPairId, 'cap-1', reason: 'thiếu là nửa kia của góp / rút mất mã cặp');
+    });
+
     test('đường SỬA: điền sẵn từ giao dịch, ví của giao dịch thắng ví mặc định', () async {
       final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb.copyWith(isDefault: true)]),
           dangSua: giaoDichCu(), danhMucDangSua: anUong);
@@ -686,6 +696,18 @@ void main() {
       expect(await c.chuanBiLuu(), isA<SanSangLuu>(), reason: 'chọn ví đích thì qua chốt');
     });
 
+    test('chuyển khoản mà ví đích TRÙNG ví nguồn → "Ví đích phải khác ví nguồn"; một ví thì không chuyển được', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tcb]));
+      c.chonVi(tcb);
+      c.chonHuong('transfer');
+      c.goPhim('5');
+      c.chonViDich(tcb);
+      expect((await c.chuanBiLuu() as LoiLuu).cau, 'Ví đích phải khác ví nguồn',
+          reason: 'ví nhà thường chỉ có 1–2 ví: chuyển cùng ví thì hai nửa triệt tiêu, server từ chối hoặc ghi vô nghĩa');
+      c.chonViDich(tienMat);
+      expect(await c.chuanBiLuu(), isA<SanSangLuu>(), reason: 'đổi sang ví khác thì qua chốt');
+    });
+
     test('chốt chiều tiền: danh mục vay/nợ mà chưa có chiều → "Vui lòng chọn chiều tiền" (nhánh phòng thủ)', () async {
       // Nhánh này không dẫn tới được bằng API công khai (xem `_CubitEpState`) — ép state để ghim câu chữ của chốt.
       final c = _CubitEpState(NguonThemGiaoDichGia());
@@ -961,6 +983,50 @@ void main() {
       c.daGuiLuu(await c.chuanBiLuu() as SanSangLuu);
       expect(nguon.aiDoanDaGo, ['tx-cu'], reason: 'mở Sửa rồi Lưu = người dùng đã nhìn lại (người dùng chốt)');
       expect(nguon.aiDoanDaDanhDau, isEmpty);
+    });
+  });
+
+  group('FINAL I-1 — nửa riêng của góp / rút (hàng có fundPairId)', () {
+    // Nửa riêng đã rời nhà: không idhousehold, còn fundPairId. Server từ chối Transfer kèm idfund_pair, và đổi chi sang thu
+    // đảo góp thành rút — hàng kẹt pending, số dư máy đã đổi, im lặng.
+    TransactionEntity nuaRieng({String type = 'chi'}) =>
+        giaoDichCu(type: type, categoryId: null).copyWith(fundPairId: 'cap-1');
+
+    test('đổi chiều chi → thu bị chặn bằng LoiLuu', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb]), dangSua: nuaRieng());
+      await c.moTrang();
+      c.chonHuong('thu');
+      final r = await c.chuanBiLuu();
+      expect(r, isA<LoiLuu>(), reason: 'đổi chiều nửa của cặp góp / rút = đảo góp thành rút, hàng kẹt pending');
+      expect((r as LoiLuu).cau, isNot('Vui lòng chọn danh mục'),
+          reason: 'phải bị chặn vì ĐỔI CHIỀU, không phải vì thiếu danh mục (ca đỏ nhầm lý do)');
+    });
+
+    test('đổi sang Chuyển khoản bị chặn bằng LoiLuu', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb]), dangSua: nuaRieng());
+      await c.moTrang();
+      c.chonHuong('transfer');
+      c.chonViDich(tcb);
+      final r = await c.chuanBiLuu();
+      expect(r, isA<LoiLuu>(), reason: 'server trả HOUSEHOLD_SCOPE_MISMATCH cho Transfer kèm idfund_pair');
+    });
+
+    test('lưu được khi chưa có danh mục: categoryId null, không đòi "Vui lòng chọn danh mục"', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb]), dangSua: nuaRieng());
+      await c.moTrang();
+      final r = await c.chuanBiLuu();
+      expect(r, isA<SanSangLuu>(), reason: 'nửa riêng của góp / rút không có danh mục: không được đòi chọn');
+      expect((r as SanSangLuu).giaoDich.single.categoryId, isNull);
+      expect(r.giaoDich.single.fundPairId, 'cap-1');
+    });
+
+    test('hàng thường (không fundPairId): chiều đổi được, danh mục vẫn bắt buộc', () async {
+      final c = taoCubit(NguonThemGiaoDichGia(vi: [tienMat, tcb]),
+          dangSua: giaoDichCu(categoryId: null), danhMucDangSua: null);
+      await c.moTrang();
+      final r = await c.chuanBiLuu();
+      expect(r, isA<LoiLuu>());
+      expect((r as LoiLuu).cau, 'Vui lòng chọn danh mục');
     });
   });
 }

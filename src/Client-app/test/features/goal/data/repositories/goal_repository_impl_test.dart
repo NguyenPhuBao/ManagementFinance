@@ -567,6 +567,59 @@ void main() {
     });
   });
 
+  group('lặp lại theo độ dài vòng trước (2026-11-04)', () {
+    test('vòng mới dài đúng số ngày của vòng trước, giữ số tiền và ví',
+        () async {
+      final batDau = DateTime.now().subtract(const Duration(days: 20));
+      await (db.update(db.goals)..where((t) => t.id.equals('g1'))).write(
+        GoalsCompanion(
+          currentAmount: const Value(20000000.0),
+          isCompleted: const Value(true),
+          recurrence: const Value(true),
+          timeRecurrence: const Value(null),
+          startDate: Value(batDau),
+          targetDate: Value(DateTime(
+              batDau.year, batDau.month, batDau.day + 41, 12)),
+        ),
+      );
+
+      await repository.batDauVongMoi('g1');
+
+      final goal = (await repository.getGoalById('g1'))!;
+      final hom = DateTime.now();
+      expect(goal.targetDate,
+          DateTime(hom.year, hom.month, hom.day + 41, 12),
+          reason: 'Hạn mới = hôm bấm + 41 ngày (độ dài vòng trước), không '
+              'cộng chu kỳ vào hạn cũ — người dùng chốt 2026-11-04.');
+      expect(goal.targetAmount, 20000000.0);
+      expect(goal.walletId, 'w_nhan');
+      expect(goal.currentAmount, 0.0);
+    });
+
+    test('bật lặp lại KHÔNG cần chu kỳ (form không gửi nữa)', () async {
+      final moi = await repository.addGoal(
+        idaccount: 1,
+        name: 'Quỹ du lịch',
+        targetAmount: 2000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 41)),
+        walletId: 'w_nhan',
+        recurrence: true,
+      );
+      expect((await repository.getGoalById(moi.id))?.recurrence, isTrue,
+          reason: 'Bản cũ đòi đủ cờ + chu kỳ mới bật; nay form chỉ còn công '
+              'tắc, giữ luật cũ là công tắc bật mà lưu ra "không lặp lại".');
+
+      await repository.updateGoal(
+        id: 'g1',
+        name: 'Mua Laptop',
+        targetAmount: 20000000.0,
+        targetDate: DateTime.now().add(const Duration(days: 90)),
+        recurrence: true,
+      );
+      expect((await repository.getGoalById('g1'))?.recurrence, isTrue);
+    });
+  });
+
   group('cấu hình lặp lại đi qua được cả hai đường ghi', () {
     test('addGoal lưu cờ lặp và chu kỳ lặp', () async {
       final moi = await repository.addGoal(

@@ -10,7 +10,6 @@ const http = require('http');
 const app = require('./app');
 const config = require('./config');
 const logger = require('./core/logger');
-logger.info('DATA_KEY_FP', { fp: require('crypto').createHash('sha256').update(process.env.DATA_ENCRYPTION_KEY || '').digest('hex').slice(0, 8) });
 const { verifyConnection } = require('./config/db');
 const { verifyRedisConnection } = require('./config/redis');
 const { initSocket } = require('./core/socket');
@@ -30,6 +29,8 @@ async function bootstrap() {
         logger.info(`Environment: ${config.env}`);
         logger.info(`Database: PersonFinance @ PostgreSQL`);
         logger.info(`Health check: http://${host}:${port}/health`);
+        logger.info(`Backend running at https://managementfinance.onrender.com (Internal port: ${port})`);
+        logger.info(`Health check: https://managementfinance.onrender.com/health`);
         resolve();
       });
       httpServer.on('error', reject);

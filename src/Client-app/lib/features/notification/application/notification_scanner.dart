@@ -147,6 +147,10 @@ class NotificationScanner {
   /// Lời mời vào nhà đang nhớ trên máy. DI ánh xạ từ `NhaRepository.loiMoiToi`; `null` ở đường nền.
   final List<LoiMoiNhaThongBao> Function(int idaccount)? loadLoiMoiNha;
 
+  /// Mục tiêu chung của nhà đang vào, kèm tiến độ. DI ánh xạ từ `DuLieuNhaRepository.mucTieuKemVi`; DI luôn truyền hàm này; hàm
+  /// trả rỗng ở đường nền, khi không ở nhà nào và khi đang đồng bộ (mốc vượt trong lúc ấy báo ở lượt quét kế: lượt `isTerminal` bù có thể bị bỏ khi `_dangQuet`, chỉ trễ, không mất). `null` chỉ ở test. Việc "máy này đã thấy chưa" do bộ quét tự hỏi bảng (bộ luật là hàm thuần).
+  final Future<List<({String idGoal, String tenVi, double tiLe})>> Function(int idaccount)? loadMucTieuNha;
+
   /// Tuỳ chọn: bỏ trống thì scanner chỉ đọc, không ghi gì ngoài bảng thông báo.
   final OverdueMarker? markOverdue;
 
@@ -297,8 +301,13 @@ class NotificationScanner {
   ///
   /// Bảng thông báo **chỉ lớn lên**: hàng đã xoá mềm phải giữ lại vì chính nó
   /// là bản ghi chống trùng. Không dọn thì sau một năm màn danh sách tải hàng
-  /// nghìn hàng. An toàn vì mọi `dedupeKey` quá 90 ngày đều đã hết ý nghĩa.
+  /// nghìn hàng. An toàn vì mọi `dedupeKey` quá 90 ngày đều đã hết ý nghĩa — TRỪ khoá mục tiêu chung
+  /// (`nhaMucTieuMoc`, `nhaMucTieuDat`): mỗi mốc báo một lần trong đời mục tiêu nên hàng của chúng được giữ ([khoaSongLau]),
+  /// quá hạn thì chỉ gỡ khỏi trung tâm.
   static const Duration giuThongBao = Duration(days: 90);
+
+  /// Loại mà khoá chống trùng sống cả đời đối tượng, không bị dọn theo [giuThongBao].
+  static final List<String> khoaSongLau = [NotificationKind.nhaMucTieuMoc.name, NotificationKind.nhaMucTieuDat.name];
 
   /// Sự kiện cũ hơn mốc này không được sinh thông báo.
   ///
@@ -327,6 +336,7 @@ class NotificationScanner {
     this.loadChiLon,
     this.loadKeHoach,
     this.loadLoiMoiNha,
+    this.loadMucTieuNha,
     required this.syncStatus,
     this.appLifecycle,
     this.markOverdue,
@@ -364,7 +374,7 @@ class NotificationScanner {
     // Dọn trước khi nghe: một lần mỗi phiên là đủ, và làm ở đây thì không phải
     // trả giá ở mỗi lượt quét. Nuốt lỗi — dọn dẹp thất bại chỉ tốn dung lượng.
     try {
-      await dao.purgeOlderThan(clock().subtract(giuThongBao));
+      await dao.purgeOlderThan(clock().subtract(giuThongBao), giuLoai: khoaSongLau);
       await dao.purgeKindOlderThan(
           NotificationKind.bienDongSoDu.name, clock().subtract(giuBienDong));
       await eventDao?.purgeOlderThan(clock().subtract(giuSuKien));
@@ -540,8 +550,8 @@ class NotificationScanner {
     await scan(idaccount);
   }
 
-  /// Trả về **số hàng thật sự được ghi** — tín hiệu duy nhất để quyết định có
-  /// bắn thông báo ra hệ điều hành hay không.
+  /// Trả về **số hàng HIỆN thật sự được ghi** (không tính hàng `imLang` chỉ giữ khoá) — tín hiệu duy nhất để quyết định
+  /// có bắn thông báo ra hệ điều hành hay không.
   Future<int> scan(int idaccount, {DateTime? now, bool? syncFailed}) async {
     if (_dangQuet) return 0;
     _dangQuet = true;
@@ -679,6 +689,19 @@ class NotificationScanner {
         keHoach = await docKeHoach(idaccount, budgets, at);
       }
 
+      // Hỏi "đã thấy chưa" ở đây vì bộ luật là hàm thuần. Tối đa số ví chung của nhà.
+      // Nhóm Gia đình tắt thì khỏi đọc: ứng viên sẽ bị lọc ngay sau đây (cùng kỷ luật `loadKeHoach`).
+      final mucTieuNha = <MucTieuNhaThongBao>[
+        if (loadMucTieuNha != null && prefs.chapNhan(NotificationKind.nhaMucTieuMoc))
+          for (final m in await loadMucTieuNha!(idaccount))
+            (
+              idGoal: m.idGoal,
+              tenVi: m.tenVi,
+              tiLe: m.tiLe,
+              daThay: await dao.coDedupeKey(idaccount, khoaDaThayMucTieuNha(m.idGoal)),
+            ),
+      ];
+
       final ungVien = buildNotificationCandidates(
         NotificationRuleInput(
           now: at,
@@ -698,6 +721,7 @@ class NotificationScanner {
           nguongChiLon: prefs.nguongChiLon,
           keHoachTaiPhanBo: keHoach,
           loiMoiNha: loadLoiMoiNha?.call(idaccount) ?? const [],
+          mucTieuNha: mucTieuNha,
         ),
         // Lọc ở đây chứ không ở bước bắn: tắt một nhóm nghĩa là không sinh
         // thông báo nhóm ấy CẢ trong app. Chỉ chặn lúc bắn thì trung tâm thông
@@ -743,6 +767,9 @@ class NotificationScanner {
         for (final c in ungVien) _toCompanion(c, idaccount),
       ]);
 
+      // Hàng `imLang` được ghi sẵn trạng thái đã gỡ chỉ để giữ khoá: không đếm, không bắn, không vào nhật ký.
+      final hien = moi.where((e) => !e.dismissedAt.present).toList();
+
       // Bắn theo danh sách VỪA GHI, không phải danh sách ứng viên: `ungVien`
       // chứa lại đúng những sự kiện cũ ở mọi lượt quét, và quét chạy sau mỗi
       // lần đồng bộ. Bắn theo ứng viên là người dùng nhận lại cùng một thông
@@ -752,13 +779,13 @@ class NotificationScanner {
       // cũng chặn đúng ở đây, cùng một ngữ nghĩa — người dùng ngủ dậy mở app
       // vẫn phải thấy đủ những gì đã xảy ra đêm qua.
       if (prefs.osBat && !prefs.dangImLang(at)) {
-        await _banRaHeDieuHanh(moi, idaccount);
+        await _banRaHeDieuHanh(hien, idaccount);
       }
       await _dongBoLich(idaccount);
       await _henLichNen(idaccount);
 
-      _ghiNhat(idaccount, moi.length);
-      return moi.length;
+      _ghiNhat(idaccount, hien.length);
+      return hien.length;
     } finally {
       _dangQuet = false;
       final bu = _quetBuCho;
@@ -853,6 +880,8 @@ class NotificationScanner {
       subjectId: Value(c.subjectId),
       deeplink: Value(c.deeplink),
       createdAt: c.createdAt,
+      readAt: c.imLang ? Value(c.createdAt) : const Value.absent(),
+      dismissedAt: c.imLang ? Value(c.createdAt) : const Value.absent(),
     );
   }
 }

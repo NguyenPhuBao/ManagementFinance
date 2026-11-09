@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/gioi_han_do_dai.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../domain/giai_tan_nha.dart';
+import '../../domain/hang_chua_day.dart';
 
 /// Vạch đỏ trên đỉnh hộp giải tán (Stitch `ca283a41…`, hộp 4 và 5). Đặt vào chỗ `title` của `AlertDialog` có
 /// `titlePadding` bằng 0 để vạch phủ hết bề rộng và bo theo góc hộp.
@@ -121,6 +122,64 @@ Future<bool> hoiRoiNha(BuildContext context) => _hoi(
       nhanHuy: 'Ở lại',
       nhanLam: 'Rời nhà',
     );
+
+/// Hộp *Còn thay đổi chưa đồng bộ* (Stitch `1e99ebfa…`): Rời nhà / Giải tán mà còn hàng của nhà chưa lên máy chủ. [giaiTan]
+/// đổi chữ trong câu dẫn; [nhanLam] là nút nguy hiểm (`Vẫn rời nhà` / `Vẫn giải tán`). Bấm ra ngoài = Ở lại.
+Future<bool> hoiHangChuaDay(BuildContext context, HangChuaDayNha hang, {required String nhanLam, bool giaiTan = false}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final chu = Theme.of(ctx).textTheme;
+        return _hop(
+          than: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const _OBieuTuong(icon: Icons.cloud_off, mau: AppColors.warning),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Còn thay đổi chưa đồng bộ',
+                        style: chu.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text('Những thay đổi này chưa lên máy chủ và sẽ mất nếu bạn ${giaiTan ? 'giải tán' : 'rời'} nhà:',
+                  style: chu.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              for (final dong in dongHangChuaDay(hang))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('•', style: chu.bodyMedium?.copyWith(color: AppColors.textSecondary)),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(dong, style: chu.bodyMedium?.copyWith(fontWeight: FontWeight.w500, color: AppColors.textPrimary))),
+                    ],
+                  ),
+                ),
+              if (hang.coTienTraVe) ...[
+                const SizedBox(height: 8),
+                Text('Tiền của khoản góp và rút chưa đồng bộ được trả lại ví riêng của bạn.',
+                    style: chu.bodySmall?.copyWith(color: AppColors.textSecondary)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Ở lại')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: AppColors.onError),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(nhanLam),
+            ),
+          ],
+        );
+      },
+    ) ??
+    false;
 
 Future<bool> hoiMoiRa(BuildContext context, String ten) => _hoi(
       context,

@@ -1,11 +1,19 @@
+import 'package:flowmoney/features/goal/data/models/goal_entity.dart';
+import 'package:flowmoney/features/household/presentation/widgets/tien_do_muc_tieu.dart';
+import 'package:flowmoney/features/household/data/nha_store.dart';
+import 'package:flowmoney/features/household/data/repositories/nha_repository_impl.dart';
 import 'package:flowmoney/features/household/domain/cau_loi_nha.dart';
+import 'package:flowmoney/features/household/domain/hang_chua_day.dart';
 import 'package:flowmoney/shared/theme/app_colors.dart';
 import 'package:flowmoney/features/household/presentation/pages/nha_minh_page.dart';
+import 'package:flowmoney/features/wallet/data/models/wallet_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../helpers/bat_thong_bao.dart';
+import '../../../../helpers/du_lieu_nha_gia.dart';
 import '../../../../helpers/font_that.dart';
 import '../../../../helpers/goi_gia.dart';
 import '../../../../helpers/household_api_gia.dart';
@@ -82,6 +90,62 @@ void main() {
     await t.pumpAndSettle();
     expect(api.goi, contains('roiNha'));
     expect(find.text('Bạn chưa ở nhà nào'), findsOneWidget);
+  });
+
+  Future<(HouseholdApiGia, DuLieuNhaGia)> moCoHang(WidgetTester t, {int? phien = 18, int con = 3}) async {
+    dat360(t);
+    bat = batThongBao();
+    final api = HouseholdApiGia()..cuaToiJson = nhaJson(myRole: 'Member');
+    final repo = NhaRepositoryImpl(api: api, kho: InMemoryNhaStore(), demHangChuaDay: (_) async => con);
+    addTearDown(repo.dispose);
+    await repo.datTaiKhoan(18);
+    await repo.lamMoi();
+    final duLieu = DuLieuNhaGia(tra: const HangChuaDayNha(khoan: 1, gop: 1, rut: 0));
+    await t.pumpWidget(bocTrangNha(NhaMinhPage(repo: repo, duLieu: duLieu), goi: goiBasic(const {}), idaccount: phien));
+    await t.pumpAndSettle();
+    return (api, duLieu);
+  }
+
+  testWidgets('Rời nhà còn hàng chưa đẩy: hộp nêu hàng, Ở lại thì ở nhà; idaccount từ phiên', (t) async {
+    final (api, duLieu) = await moCoHang(t);
+    await t.ensureVisible(find.text('Rời nhà'));
+    await t.tap(find.text('Rời nhà'));
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(FilledButton, 'Rời nhà'));
+    await t.pumpAndSettle();
+    expect(find.text('Còn thay đổi chưa đồng bộ'), findsOneWidget);
+    expect(find.text('1 khoản của nhà'), findsOneWidget);
+    expect(find.text('1 khoản góp'), findsOneWidget);
+    expect(duLieu.goi, [(12, 18)]);
+    expect(bat.ds, isEmpty, reason: 'không được toast câu chung trước khi hỏi');
+    await t.tap(find.text('Ở lại'));
+    await t.pumpAndSettle();
+    expect(api.goi, isNot(contains('roiNha')));
+    expect(find.text('Nhà An – Bình'), findsOneWidget, reason: 'vẫn ở nhà');
+  });
+
+  testWidgets('Vẫn rời nhà: gọi API một lần rồi về trạng thái chưa có nhà', (t) async {
+    final (api, _) = await moCoHang(t);
+    await t.ensureVisible(find.text('Rời nhà'));
+    await t.tap(find.text('Rời nhà'));
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(FilledButton, 'Rời nhà'));
+    await t.pumpAndSettle();
+    api.cuaToiJson = const {'household': null, 'myRole': null, 'members': [], 'formerMembers': []};
+    await t.tap(find.widgetWithText(FilledButton, 'Vẫn rời nhà'));
+    await t.pumpAndSettle();
+    expect(api.goi.where((g) => g == 'roiNha'), hasLength(1));
+    expect(find.text('Bạn chưa ở nhà nào'), findsOneWidget);
+  });
+
+  testWidgets('không có phiên: idaccount gửi xuống là null, không phải giá trị mặc định', (t) async {
+    final (_, duLieu) = await moCoHang(t, phien: null);
+    await t.ensureVisible(find.text('Rời nhà'));
+    await t.tap(find.text('Rời nhà'));
+    await t.pumpAndSettle();
+    await t.tap(find.widgetWithText(FilledButton, 'Rời nhà'));
+    await t.pumpAndSettle();
+    expect(duLieu.goi, [(12, null)], reason: 'quy tắc 2: idaccount chỉ từ phiên, không `?? 1`');
   });
 
   testWidgets('nhà chỉ xem: dải vàng; Chủ thấy Mời khoá, Quản lý vẫn mở', (t) async {
@@ -240,5 +304,209 @@ void main() {
     await mo(t, nha: nhaJson(status: 'ReadOnly', myRole: 'Member'), loiMoi: [_loiMoiJson()], banPhim: true);
     expect(find.textContaining('chế độ chỉ xem'), findsOneWidget, reason: 'ca phải dựng đúng trạng thái chỉ xem');
     expect(t.takeException(), isNull);
+  });
+
+  // ── Khối VÍ CHUNG (đợt 1B, Task 5; Stitch `d2a8c9bb…` 1.3) ──
+  final tienCho = viChungGia('a', 'Tiền chợ', 3200000);
+  final dienNuoc = viChungGia('b', 'Điện nước', 1250000, loai: 'bank', icon: 'account_balance', mau: '#1967D2');
+  final cu = viChungGia('c', 'Quỹ cũ', 9000000, loai: 'saving', icon: 'savings', mau: '#7B1FA2', status: 'inactive');
+
+  Future<DuLieuNhaGia> moVi(WidgetTester t,
+      {List<WalletEntity> vi = const [], String vai = 'Owner', String status = 'Active', int toiDa = 10, bool banPhim = false}) async {
+    dat360(t, banPhim: banPhim);
+    bat = batThongBao();
+    final nguon = DuLieuNhaGia(vi: vi);
+    final api = HouseholdApiGia()..cuaToiJson = nhaJson(myRole: vai, status: status, maxSharedWallets: toiDa);
+    final repo = await repoNhaThu(api);
+    final r = GoRouter(initialLocation: '/', routes: [
+      GoRoute(path: '/', builder: (_, __) => NhaMinhPage(repo: repo, duLieu: nguon)),
+      GoRoute(path: '/nha/vi/tao', builder: (_, __) => const Scaffold(body: Text('FORM-TAO'))),
+      GoRoute(path: '/nha/vi/:id', builder: (_, s) => Scaffold(body: Text('CHI-TIET-${s.pathParameters['id']}'))),
+    ]);
+    addTearDown(r.dispose);
+    await t.pumpWidget(bocRouterNha(r, goi: goiPremium(const {}), idaccount: 18));
+    await t.pumpAndSettle();
+    return nguon;
+  }
+
+  testWidgets('Chủ nhà: nhãn VÍ CHUNG, tổng quỹ bỏ ví lưu trữ, mỗi ví một dòng, nút Tạo ví chung mở', (t) async {
+    await moVi(t, vi: [tienCho, dienNuoc, cu]);
+    expect(find.text('VÍ CHUNG'), findsOneWidget);
+    expect(find.text('TỔNG QUỸ CHUNG'), findsOneWidget);
+    expect(find.text('4.450.000'), findsOneWidget, reason: '3.200.000 + 1.250.000; ví lưu trữ 9.000.000 đóng băng, không cộng');
+    expect(find.text('Tiền chợ'), findsOneWidget);
+    expect(find.text('3.200.000 đ'), findsOneWidget);
+    expect(find.text('Điện nước'), findsOneWidget);
+    expect(find.text('Ngân hàng'), findsOneWidget, reason: 'dòng loại ví');
+    expect(find.text('Tiết kiệm · Đã lưu trữ'), findsOneWidget, reason: 'ví lưu trữ vẫn thấy được (còn bỏ lưu trữ), có nhãn');
+    expect(find.byIcon(Icons.payments), findsOneWidget);
+    expect(find.byIcon(Icons.account_balance), findsOneWidget, reason: 'khoá account_balance của Stitch vẽ đúng hình');
+    expect(t.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Tạo ví chung')).onPressed, isNotNull);
+  });
+
+  testWidgets('đứng đúng chỗ: sau thẻ nhà, trước THÀNH VIÊN', (t) async {
+    await moVi(t, vi: [tienCho]);
+    double y(String s) => t.getTopLeft(find.text(s)).dy;
+    expect(y('VÍ CHUNG'), greaterThan(y('Nhà An – Bình')));
+    expect(y('VÍ CHUNG'), lessThan(y('THÀNH VIÊN')));
+  });
+
+  testWidgets('bấm Tạo ví chung → /nha/vi/tao', (t) async {
+    await moVi(t, vi: [tienCho]);
+    await t.ensureVisible(find.widgetWithText(OutlinedButton, 'Tạo ví chung'));
+    await t.tap(find.widgetWithText(OutlinedButton, 'Tạo ví chung'));
+    await t.pumpAndSettle();
+    expect(find.text('FORM-TAO'), findsOneWidget);
+  });
+
+  testWidgets('Chỉ xem: dòng ví có mục tiêu thì có thanh tiến độ, ví không có thì không (dây nối mucTieu của trang)', (t) async {
+    final nguon = await moVi(t, vi: [tienCho, dienNuoc], vai: 'Viewer');
+    nguon.datMucTieu([
+      GoalEntity(
+        id: 'g-a',
+        idaccount: 18,
+        idhousehold: 12,
+        name: 'Mục tiêu',
+        targetAmount: 8000000,
+        targetDate: DateTime(2099, 12, 31),
+        walletId: 'a',
+        updatedAt: DateTime(2026, 11, 1),
+      ),
+    ]);
+    await t.pumpAndSettle();
+    expect(find.descendant(of: find.byKey(const Key('dong-vi-a')), matching: find.byType(TienDoGon)), findsOneWidget,
+        reason: 'trang phải truyền v.mucTieu vào KhoiViChung; mọi vai đều thấy tiến độ');
+    expect(find.descendant(of: find.byKey(const Key('dong-vi-b')), matching: find.byType(TienDoGon)), findsNothing);
+    expect(find.text('3.200.000 / 8.000.000 đ'), findsOneWidget);
+  });
+
+  testWidgets('Thành viên: thấy ví và tổng quỹ, KHÔNG có nút Tạo ví chung', (t) async {
+    await moVi(t, vi: [tienCho], vai: 'Member');
+    expect(find.text('Tiền chợ'), findsOneWidget);
+    expect(find.text('TỔNG QUỸ CHUNG'), findsOneWidget);
+    expect(find.text('Tạo ví chung'), findsNothing);
+  });
+
+  testWidgets('nhà chỉ xem: Chủ cũng không thấy nút Tạo ví chung', (t) async {
+    await moVi(t, vi: [tienCho], status: 'ReadOnly');
+    expect(find.text('Tiền chợ'), findsOneWidget);
+    expect(find.text('Tạo ví chung'), findsNothing, reason: 'duocLamViecNha(quanLyViChung) khoá khi nhà chỉ xem');
+  });
+
+  testWidgets('đủ trần: nút tắt kèm câu; ví lưu trữ không tính vào trần', (t) async {
+    await moVi(t, vi: [tienCho, dienNuoc, cu], toiDa: 2);
+    expect(t.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Tạo ví chung')).onPressed, isNull);
+    expect(find.text('Nhà đã có đủ 2 ví chung.'), findsOneWidget);
+  });
+
+  testWidgets('chưa đủ trần khi có ví lưu trữ: nút còn mở, không câu khoá', (t) async {
+    await moVi(t, vi: [tienCho, cu], toiDa: 2);
+    expect(t.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Tạo ví chung')).onPressed, isNotNull,
+        reason: '1 ví đang dùng < 2; ví lưu trữ không chiếm chỗ');
+    expect(find.textContaining('đã có đủ'), findsNothing);
+  });
+
+  testWidgets('chưa có ví nào: Chủ thấy câu rỗng và nút Tạo', (t) async {
+    await moVi(t);
+    expect(find.text('Chưa có ví chung nào.'), findsOneWidget);
+    expect(find.text('Tạo ví chung'), findsOneWidget);
+  });
+
+  testWidgets('chạm dòng ví → /nha/vi/<id> (Task 7); dòng có chevron', (t) async {
+    await moVi(t, vi: [tienCho]);
+    expect(find.descendant(of: find.byKey(const Key('dong-vi-a')), matching: find.byIcon(Icons.chevron_right)), findsOneWidget,
+        reason: 'route chi tiết có thật: dòng chạm được');
+    await t.tap(find.text('Tiền chợ'));
+    await t.pumpAndSettle();
+    expect(find.text('CHI-TIET-a'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('nhà đổi id: dựng lại cubit theo nhà mới', (t) async {
+    dat360(t);
+    bat = batThongBao();
+    final nguon = DuLieuNhaGia(vi: [tienCho]);
+    final api = HouseholdApiGia()..cuaToiJson = nhaJson();
+    final repo = await repoNhaThu(api);
+    await t.pumpWidget(bocTrangNha(NhaMinhPage(repo: repo, duLieu: nguon), goi: goiPremium(const {}), idaccount: 18));
+    await t.pumpAndSettle();
+    expect(nguon.daTheoDoi, [12]);
+    api.cuaToiJson = nhaJson(id: 13);
+    await repo.lamMoi();
+    await t.pumpAndSettle();
+    expect(nguon.daTheoDoi, [12, 13], reason: 'ví của nhà cũ không được hiện dưới nhà mới');
+  });
+
+  testWidgets('lối vào Hoạt động (Stitch d2a8c9bb 1.4): có thẻ hai dòng chữ, chạm mở /nha/hoat-dong', (t) async {
+    dat360(t);
+    bat = batThongBao();
+    final repo = await repoNhaThu(HouseholdApiGia()..cuaToiJson = nhaJson());
+    final nguon = DuLieuNhaGia(vi: [tienCho]);
+    final r = GoRouter(initialLocation: '/nha', routes: [
+      GoRoute(path: '/nha', builder: (_, __) => NhaMinhPage(repo: repo, duLieu: nguon)),
+      GoRoute(path: '/nha/hoat-dong', builder: (_, __) => const Scaffold(body: Text('HOAT-DONG'))),
+    ]);
+    addTearDown(r.dispose);
+    await t.pumpWidget(bocRouterNha(r, goi: goiPremium(const {}), idaccount: 18));
+    await t.pumpAndSettle();
+    expect(find.text('Hoạt động'), findsOneWidget);
+    expect(find.text('Mọi khoản của nhà'), findsOneWidget);
+    await t.ensureVisible(find.byKey(const Key('loi-vao-hoat-dong')));
+    await t.tap(find.byKey(const Key('loi-vao-hoat-dong')));
+    await t.pumpAndSettle();
+    expect(find.text('HOAT-DONG'), findsOneWidget);
+  });
+
+  testWidgets('lối vào Danh mục của nhà (Task 11): dòng thứ hai của thẻ, chạm mở /nha/danh-muc', (t) async {
+    dat360(t);
+    bat = batThongBao();
+    final repo = await repoNhaThu(HouseholdApiGia()..cuaToiJson = nhaJson(myRole: 'Viewer'));
+    final nguon = DuLieuNhaGia(vi: [tienCho]);
+    final r = GoRouter(initialLocation: '/nha', routes: [
+      GoRoute(path: '/nha', builder: (_, __) => NhaMinhPage(repo: repo, duLieu: nguon)),
+      GoRoute(path: '/nha/danh-muc', builder: (_, __) => const Scaffold(body: Text('DANH-MUC'))),
+    ]);
+    addTearDown(r.dispose);
+    await t.pumpWidget(bocRouterNha(r, goi: goiPremium(const {}), idaccount: 18));
+    await t.pumpAndSettle();
+    expect(find.text('Danh mục của nhà'), findsOneWidget, reason: 'mọi vai có thành viên thấy lối vào (Chỉ xem cũng xem được)');
+    await t.ensureVisible(find.byKey(const Key('loi-vao-danh-muc')));
+    await t.tap(find.byKey(const Key('loi-vao-danh-muc')));
+    await t.pumpAndSettle();
+    expect(find.text('DANH-MUC'), findsOneWidget);
+  });
+
+  testWidgets('không có nguồn dữ liệu nhà (test cũ, chưa đăng ký DI): không dựng khối, không ném', (t) async {
+    await mo(t, nha: nhaJson());
+    expect(find.text('VÍ CHUNG'), findsNothing);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('360 dp: số tiền căn phải thẳng mép giữa các dòng; tên dài dùng hết phần còn lại', (t) async {
+    final dai = viChungGia('x', 'Tên ví chung khá dài để thử cắt ${'x' * 30}', 3200000);
+    final ngan = viChungGia('y', 'Ví', 9999999999999);
+    await moVi(t, vi: [dai, ngan]);
+    final soDai = t.getRect(find.text('3.200.000 đ'));
+    final soNgan = t.getRect(find.text('9.999.999.999.999 đ'));
+    expect(soDai.right, closeTo(soNgan.right, 0.5), reason: 'cột số tiền thẳng mép phải, không đứng sau cột tên');
+    final the = t.getRect(find.byKey(const Key('dong-vi-x')));
+    expect(soDai.right, greaterThan(the.right - 44),
+        reason: 'sát mép trong của thẻ (chỉ chừa lề dòng và chevron 18 + 4 từ Task 7: dòng ví nay chạm được)');
+    final ten = t.getRect(find.textContaining('Tên ví chung khá dài'));
+    expect(ten.width, greaterThan(130),
+        reason: 'tên không bị khoá ở nửa dòng khi số tiền ngắn (từ Task 7 chevron lấy thêm 22 dp: 161 → 139)');
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('360 dp, số dư 13 chữ số và tên dài: không tràn, mỗi số một dòng', (t) async {
+    final to = viChungGia('x', 'Tên ví chung rất dài ${'x' * 40}', 9999999999999);
+    await moVi(t, vi: [to, viChungGia('y', 'Ví thứ hai', 9999999999999)], banPhim: true);
+    expect(t.takeException(), isNull);
+    final tong = find.text('19.999.999.999.998');
+    expect(tong, findsOneWidget);
+    expect(t.getSize(tong).height, lessThan(60), reason: '28 px một dòng đo được 40; xuống dòng sẽ ≥ 80 (Text xuống dòng không báo tràn)');
+    final so = find.text('9.999.999.999.999 đ').first;
+    expect(t.getSize(so).height, lessThan(32), reason: '14 px một dòng ≈ 20; xuống dòng sẽ ≥ 40');
+    expect(t.getRect(so).right, lessThanOrEqualTo(360), reason: 'số tiền không rơi khỏi màn');
   });
 }

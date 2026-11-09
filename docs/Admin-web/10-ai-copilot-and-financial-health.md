@@ -6,7 +6,7 @@
 > **Phạm vi bảo lưu:** Giữ nguyên 100% mã nguồn và dịch vụ Backend để phục vụ ứng dụng di động (`src/Client-app`).  
 > **Module liên quan:**  
 > - Frontend: Đã gỡ khỏi `src/Admin-web/src/components/layout/Sidebar.jsx` và `src/Admin-web/src/router/routes.jsx`  
-> - Backend: `src/Backend/modules/ai/features/chatbot/`, `financial.snapshot.service.js`, `rag/hybrid.search.js`, `chatbot.controller.js`  
+> - Backend: `src/Backend/modules/ai/features/chatbot/`, `financial.snapshot.service.js`, `rag/lexical.search.js`, `chatbot.controller.js`  
 
 ---
 

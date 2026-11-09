@@ -60,6 +60,7 @@ class _DichVuGia implements DieuChinhSoDuService {
     required double soDuThucTe,
     required String lyDo,
     DateTime? vaoLuc,
+    int? nguoiGhi,
   }) async {
     loiGoi.add((walletId: walletId, soDuThucTe: soDuThucTe, lyDo: lyDo));
   }

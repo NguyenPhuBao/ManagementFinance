@@ -135,6 +135,7 @@ class TheForm extends StatelessWidget {
     this.deXuatTuKhoa,
     this.hangChieuTien,
     this.theGoiY,
+    this.nhanVi = 'Ví thanh toán',
   });
 
   final bool isTransfer;
@@ -155,6 +156,9 @@ class TheForm extends StatelessWidget {
   final Widget? hangChieuTien;
   final Widget? theGoiY;
 
+  /// Nhãn dòng ví nguồn: *"Ví thanh toán"*, ở chế độ nhà *"Ví chung"*.
+  final String nhanVi;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -174,7 +178,7 @@ class TheForm extends StatelessWidget {
           if (!isTransfer) ...[
             HangForm(
               icon: Icons.account_balance_wallet_outlined,
-              label: 'Ví thanh toán',
+              label: nhanVi,
               valueWidget: Text(
                 walletDisplay,
                 style: const TextStyle(

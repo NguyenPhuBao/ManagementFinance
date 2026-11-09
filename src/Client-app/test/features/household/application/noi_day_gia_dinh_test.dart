@@ -16,9 +16,20 @@ void main() {
     final dong = di.substring(i, di.indexOf('\n      xoaCacheSlm:', i));
     expect(dong, contains('nhaGiu:'), reason: 'thiếu là mọi lần mở app xoá sạch dữ liệu của nhà');
     expect(dong, contains('NhaRepository>().nhaDaLuu('));
-    expect(dong, matches(RegExp(r'\(id\) async =>[\s\S]*nhaDaLuu\(id\)')),
+    expect(dong, matches(RegExp(r'\(id\) async (=>|\{)[\s\S]*nhaDaLuu\(id\)')),
         reason: 'nhaDaLuu phải đọc kho của CHÍNH tài khoản mới (id), không phải id khác: đọc nhầm thì nhaGiu luôn null và '
             'mỗi lần mở app xoá sạch dữ liệu nhà trong khi kho vẫn mang nhà (không DoiNha, lịch sử không về lại)');
+  });
+
+  test('thông báo mục tiêu chung: nguồn trả rỗng khi SyncEngine đang kéo về (ví mới về mang balance 0 = chưa biết)', () {
+    final i = di.indexOf('loadMucTieuNha:');
+    expect(i, isNonNegative);
+    final khoi = di.substring(i, di.indexOf('markOverdue:', i));
+    expect(khoi, contains('sl<SyncEngine>().status == SyncStatus.syncing'),
+        reason: 'quét chen giữa lượt kéo về đọc tiLe 0 rồi ghi dấu :0; lượt sau thấy 80 % với daThay true và báo mốc cũ '
+            'cho người vừa vào nhà (03 mục 4)');
+    expect(khoi.indexOf('SyncStatus.syncing'), lessThan(khoi.indexOf('mucTieuKemVi')),
+        reason: 'gác phải đứng TRƯỚC khi đọc mục tiêu');
   });
 
   test('G114: PhienDieuPhoiThat được nối hook xinKeoToanBo → SyncEngine.keoLaiToanBo', () {
@@ -64,6 +75,16 @@ void main() {
         reason: 'thiếu là thông báo lời mời chỉ hiện ở lượt quét sau đồng bộ kế tiếp');
     expect(mainDart, contains('quetKhiRanh(id)'), reason: '`scan` bỏ qua khi đang quét, mất lượt im lặng');
     expect(di, contains('loadLoiMoiNha: (id) => sl<NhaRepository>().idaccount != id'));
+  });
+
+  test('FINAL: CapGopQuyNguon chờ kho nhà nạp (choNapKho, khuôn G92) TRƯỚC khi đọc cặp', () {
+    final i = di.indexOf('registerLazySingleton<CapGopQuyNguon>');
+    expect(i, isNonNegative);
+    final khoi = di.substring(i, di.indexOf('xoa: (maCap)', i));
+    final cho = khoi.indexOf('choNapKho()');
+    expect(cho, isNonNegative,
+        reason: 'trong khe mở app `hienTai.nha == null`, cổng trả null và nửa riêng đi đường xoá MỘT nửa: lệch cặp');
+    expect(cho, lessThan(khoi.indexOf('docCapGopQuy(')), reason: 'phải chờ TRƯỚC khi đọc, không sau');
   });
 
   test('router: /nha/tao qua cửa quyền giaDinh', () {

@@ -44,7 +44,7 @@ String moTaNhomThongBao(NotificationGroup nhom) {
     case NotificationGroup.tinFlowMoney:
       return 'Thông báo chung do đội ngũ FlowMoney gửi.';
     case NotificationGroup.giaDinh:
-      return 'Lời mời vào nhà.';
+      return 'Lời mời, góp quỹ và mục tiêu của nhà.';
   }
 }
 

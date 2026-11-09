@@ -26,6 +26,7 @@ void main() {
     status: 'inactive',
     allowNegative: true,
     biTuChoiTrungTen: true,
+    idhousehold: 7,
     bankCassoId: 'casso-1',
     syncStatus: 'synced',
     syncRetryCount: 3,
@@ -35,13 +36,14 @@ void main() {
     deletedAt: moc,
   );
 
-  test('fromDrift chép đủ 16 trường, không chép 6 cột ngoài Entity', () async {
+  test('fromDrift chép đủ 17 trường, không chép 5 cột ngoài Entity', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
     final e = WalletEntity.fromDrift(hang);
-    expect(e.props.length, db.wallets.$columns.length - 6,
+    expect(e.props.length, db.wallets.$columns.length - 5,
         reason:
-            'Thêm cột vào bảng Wallets thì quyết định: vào Entity, hay ghi vào danh sách 6 cột không chép.');
+            'Thêm cột vào bảng Wallets thì quyết định: vào Entity, hay ghi vào danh sách 5 cột không chép.');
+    expect(e.idhousehold, 7, reason: 'ví chung phải biết nó thuộc nhà nào (gia đình 1A)');
     expect(e.id, 'w-1');
     expect(e.idaccount, 10);
     expect(e.name, 'Ví MB');

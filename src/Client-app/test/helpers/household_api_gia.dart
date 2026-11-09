@@ -109,6 +109,7 @@ Map<String, Object?> nhaJson({
   String status = 'Active',
   String myRole = 'Owner',
   int maxMembers = 6,
+  int maxSharedWallets = 10,
   List<Map<String, Object?>>? members,
 }) =>
     {
@@ -119,7 +120,7 @@ Map<String, Object?> nhaJson({
         'maxMembers': maxMembers,
         'ownerId': 18,
         'createAt': '2026-10-23T08:00:00.000Z',
-        'maxSharedWallets': 10,
+        'maxSharedWallets': maxSharedWallets,
       },
       'myRole': myRole,
       'members': members ??

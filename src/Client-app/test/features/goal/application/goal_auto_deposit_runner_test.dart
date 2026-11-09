@@ -241,6 +241,16 @@ void main() {
       expect(await runner.chay(1, now: DateTime(2025, 12, 6)), isEmpty);
     });
 
+    test('mục tiêu chung của nhà (idhousehold) KHÔNG bị trích dù trùng idaccount và tới kỳ', () async {
+      await themMucTieu();
+      await (db.update(db.goals)..where((t) => t.id.equals('g1')))
+          .write(const GoalsCompanion(idhousehold: Value(5)));
+      expect(await runner.chay(1, now: DateTime(2025, 12, 6)), isEmpty,
+          reason: 'Quỹ chung nuôi bằng góp tay; bộ trích đọc nó là rút ví riêng của người tạo nuôi quỹ nhà');
+      expect(await giaoDichThat(db, 1), isEmpty);
+      expect((await db.walletDao.getById('w_nguon'))!.balance, 5000000);
+    });
+
     test('KHÔNG đụng tới mục tiêu của tài khoản khác', () async {
       await themMucTieu();
       expect(await runner.chay(999, now: DateTime(2025, 12, 6)), isEmpty,

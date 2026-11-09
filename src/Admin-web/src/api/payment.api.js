@@ -40,7 +40,8 @@ const paymentApi = {
    * Người dùng xác nhận hoặc từ chối kích hoạt gói khi chuyển thừa tiền
    * @param {object} data { orderCode, accept }
    */
-  confirmUpgrade: (data) => axiosClient.post('/payment/confirm-upgrade', data),
+  confirmUpgrade: ({ orderCode, accept }) =>
+    axiosClient.post(`/admin/payments/orders/${orderCode}/confirm-upgrade`, { accept }),
 
   /**
    * Lấy danh sách các loại gói cước hiện có trong CSDL

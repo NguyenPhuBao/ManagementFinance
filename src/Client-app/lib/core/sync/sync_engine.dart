@@ -13,6 +13,10 @@ import 'sync_checkpoint_store.dart';
 import 'gui_lo_dong_bo.dart';
 import 'thu_gom_day.dart';
 
+/// Trần mặc định của [SyncEngine.dayVaCho] — đẩy trước khi Rời nhà / Giải tán (spec gia đình 2026-11-01 mục 7.3). Đủ cho một
+/// lô đẩy thường; mạng treo hơn thế thì hỏi người dùng thay vì bắt chờ.
+const Duration kTranDayTruocKhiRoi = Duration(seconds: 30);
+
 /// SyncEngine — bộ máy đồng bộ offline-first.
 ///
 /// ## Chiến lược:
@@ -237,6 +241,7 @@ class SyncEngine {
     DateTime Function()? now,
     ViecSauKeoVe? sauKeoVe,
     TrangThaiMayChu? trangThaiMayChu,
+    int? Function()? nhaPhien,
   })  : _now = now ?? DateTime.now,
         _connectivity = connectivity ?? Connectivity(),
         _sauKeoVe = sauKeoVe,
@@ -252,12 +257,15 @@ class SyncEngine {
       viBiGiu: viBiGiu,
       now: _now,
       taiKhoanPhien: () => _currentIdaccount,
+      // Engine ở `core` không biết mảng gia đình — DI nối nhà đang ở; không truyền = không mở rộng phạm vi (như trước).
+      nhaPhien: nhaPhien ?? () => null,
     );
     _guiLo = GuiLoDongBo(
       dioClient: dioClient,
       db: db,
       now: _now,
       bacChan: _bacChanHienTai,
+      bacChanTheoHang: (n) => _backoffSteps[n.clamp(0, _backoffSteps.length - 1)],
     );
   }
 
@@ -319,9 +327,23 @@ class SyncEngine {
   /// Yêu cầu giữ tới khi MỘT lượt kéo bắt đầu SAU nó thành công: lượt đang chạy lúc gọi không ghi mốc, lượt hỏng không xoá
   /// yêu cầu, mốc đã lưu bị xoá ngay. `stop()` BỎ yêu cầu còn trong RAM (phiên sau có thể là tài khoản khác) — chỉ kho mốc
   /// đã xoá mang yêu cầu qua `stop()` / tiến trình chết (lần `start` sau đọc mốc `null` → kéo toàn bộ). Chu kỳ đang chạy thì `syncNow` ghi nợ một lượt bù — lượt bù ấy là lượt kéo toàn bộ.
-  Future<void> keoLaiToanBo(int idaccount) async {
+  ///
+  /// [boGianCach]: nhà vừa đổi, màn Nhà mình đang trống (G121 dòng 16, đo Realme: hoãn tới 11 phút) — bỏ giãn cách cho MỘT
+  /// lượt này, như [dayVaCho]. Gồm cả máy thứ hai của cùng tài khoản thấy nhà mới qua `lamMoi`: mỗi lần id nhà đổi chỉ một lượt. Mặc định `false`: lượt do máy tự xin sau một lần đẩy hỏng (`GopQuyConflictResolver`)
+  /// mà bỏ giãn cách thì hàng cứ bị từ chối là vòng đồng bộ nóng. ⚠️ Còn một khe, chung với [dayVaCho]: yêu cầu tới giữa một
+  /// chu kỳ mà chu kỳ ấy hỏng thì giãn cách dựng lại và lượt bù chờ hết bậc đó — yêu cầu không mất.
+  Future<void> keoLaiToanBo(int idaccount, {bool boGianCach = false}) async {
     await _keoVe.yeuCauKeoToanBo(idaccount);
-    if (_currentIdaccount == idaccount) await syncNow();
+    if (_currentIdaccount != idaccount) return;
+    if (boGianCach) _boGianCachMotLuot();
+    await syncNow();
+  }
+
+  /// Bỏ giãn cách của ENGINE cho lượt kế, vì đây là thao tác CHỦ ĐỘNG của người dùng. Số lần hỏng giữ nguyên: lượt này mà hỏng
+  /// nữa thì giãn cách dựng lại ở bậc kế. Bậc chặn từng hàng (`syncBlockedUntil`) nằm ở CSDL, `ThuGomThaoTacDay` vẫn tôn trọng.
+  void _boGianCachMotLuot() {
+    _nextAllowedSyncAt = null;
+    _cancelBackoffRetry();
   }
 
   /// MỘT lượt đồng bộ cho lượt nền của WorkManager (spec tự chuyển tiền chạy
@@ -373,7 +395,56 @@ class SyncEngine {
   /// `pending` chứ không xử theo từng yêu cầu.
   bool _noMotLanChay = false;
 
+  /// Số lời gọi [_chayMotChuKy] đang bay (kể cả lượt chạy bù do chính chu kỳ trước đẻ ra: lượt bù được khởi động TRONG
+  /// `finally` của chu kỳ trước nên đã tính trước khi chu kỳ trước trả về — bộ đếm không chạm 0 giữa hai lượt).
+  int _soChuKyDangBay = 0;
+  final _nguoiChoRanh = <Completer<void>>[];
+
   Future<void> _runSync() async {
+    _soChuKyDangBay++;
+    try {
+      await _chayMotChuKy();
+    } finally {
+      if (--_soChuKyDangBay == 0) _baoRanh();
+    }
+  }
+
+  void _baoRanh() {
+    final ds = List<Completer<void>>.of(_nguoiChoRanh);
+    _nguoiChoRanh.clear();
+    for (final c in ds) {
+      if (!c.isCompleted) c.complete();
+    }
+  }
+
+  /// Đẩy MỘT lượt rồi CHỜ cho tới khi mọi chu kỳ (đang chạy lúc gọi, và lượt bù của chúng) xong, hoặc hết [tran].
+  ///
+  /// Dùng cho nơi cần "đã đẩy xong" thật, không chỉ "đã xin đẩy": [syncNow] khi chu kỳ khác đang chạy chỉ ghi nợ một lượt
+  /// bù rồi trả về ngay (xem `_noMotLanChay`). Hết hạn thì trả về BÌNH THƯỜNG — chu kỳ vẫn chạy tiếp ở nền; nơi gọi tự đo lại
+  /// xem còn hàng chưa đẩy không. Lỗi TRONG chu kỳ đã được `_chayMotChuKy` nuốt thành trạng thái `error`; nhưng lỗi ở bước
+  /// kiểm kết nối (`checkConnectivity`, nằm ngoài khối `try` của chu kỳ) thì lan ra — nơi gọi phải bọc `catch`
+  /// (`NhaRepositoryImpl._chuanBiRoi` đã làm).
+  Future<void> dayVaCho({Duration tran = kTranDayTruocKhiRoi}) async {
+    // Thao tác CHỦ ĐỘNG của người dùng — như [start]: bỏ giãn cách của các chu kỳ hỏng trước, nếu không (tới 60 phút) lượt
+    // này chỉ hẹn lại rồi về, không đẩy gì, nên phép đếm hàng chưa đẩy ngay sau thấy hàng còn đó và Rời nhà / Giải tán bị
+    // từ chối oan bằng `hangChuaDay` dù mạng vẫn tốt.
+    _boGianCachMotLuot();
+    Future<void> chay() async {
+      await syncNow();
+      if (_soChuKyDangBay == 0) return;
+      final c = Completer<void>();
+      _nguoiChoRanh.add(c);
+      await c.future;
+    }
+
+    try {
+      await chay().timeout(tran);
+    } on TimeoutException {
+      debugPrint('[SyncEngine] dayVaCho: hết ${tran.inMilliseconds} ms chờ đẩy — trả về, chu kỳ vẫn chạy nền');
+    }
+  }
+
+  Future<void> _chayMotChuKy() async {
     // Danh tính CHỈ đến từ phiên đăng nhập, không bao giờ suy ra từ dữ liệu
     // trong SQLite. Trước đây khi `_currentIdaccount` là null hoặc 1, engine
     // đọc `walletDao.getAllNonDeleted()` (không lọc tài khoản) và lấy
@@ -496,7 +567,9 @@ class SyncEngine {
       // bản ghi còn `pending` nên lần thử lại đã bao gồm cả những thao tác hỏng
       // vĩnh viễn của lần đầu.
       final lastPush = retryResult ?? pushResult;
-      final stillFailing = lastPush != null && lastPush.failed > 0;
+      // Hàng của nhà bị từ chối vì vai / trạng thái nhà (`SyncResult.chiTuChoiPhamViNha`) KHÔNG làm chu kỳ hỏng: giãn cách
+      // cả tài khoản vì một hàng không tự hết sẽ chặn luôn đẩy và kéo dữ liệu riêng tới 60 phút. Hàng ấy có bậc chặn riêng.
+      final stillFailing = lastPush != null && lastPush.failed > 0 && !lastPush.chiTuChoiPhamViNha;
       // G89 (spec mục 3.3): máy chủ bảo trì / phong toả có giờ → KHÔNG tính lượt hỏng (không đụng `_consecutiveFailures`
       // lẫn `_nextAllowedSyncAt` — đổi mạng vẫn thử ngay được), hẹn thử lại đúng mốc server cho (sàn `kSanThuLai`), và kết
       // thúc `pending` chứ không `error`: `error` là bộ quét thông báo nổ "Đồng bộ hỏng" (`NotificationKind.syncFailed`) cho
@@ -587,6 +660,7 @@ class SyncEngine {
   void dispose() {
     _disposed = true;
     stop();
+    _baoRanh(); // nơi đang chờ [dayVaCho] không bị treo tới hết trần
     _statusController.close();
     _sessionInvalidController.close();
     _pushResultController.close();
