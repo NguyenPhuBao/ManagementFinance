@@ -1,0 +1,34 @@
+{
+ "n": 20000,
+ "h00": {
+  "dart_null": 0,
+  "K_match": 1.0,
+  "rmed_match": 0.8117,
+  "share_match": 0.8119,
+  "rmed_absdiff_over_B_median_when_differs": 0.11710637457806486,
+  "decision_match_vs_python_point": 0.97145,
+  "decision_match_vs_p1_gt_half": 0.9457
+ },
+ "h12": {
+  "dart_null": 0,
+  "K_match": 1.0,
+  "rmed_match": 0.92015,
+  "share_match": 0.9206,
+  "rmed_absdiff_over_B_median_when_differs": 0.09852216748768473,
+  "decision_match_vs_python_point": 0.9885,
+  "decision_match_vs_p1_gt_half": 0.94855
+ },
+ "h2359": {
+  "dart_null": 0,
+  "K_match": 1.0,
+  "rmed_match": 1.0,
+  "share_match": 1.0,
+  "rmed_absdiff_over_B_median_when_differs": 0.0,
+  "decision_match_vs_python_point": 1.0,
+  "decision_match_vs_p1_gt_half": 0.94875
+ },
+ "python_point_vs_p1_gt_half": 0.94875,
+ "python_point_vs_p1_gt_half_oddK": 1.0,
+ "python_point_vs_p1_gt_half_evenK": 0.9442480282839271,
+ "share_evenK": 0.91925
+}

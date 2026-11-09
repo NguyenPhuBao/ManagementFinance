@@ -1,3 +1,6 @@
 # Raw PKDD-99 Berka files (65 MB, third-party data). Download: see README.md.
 data/raw/
 __pycache__/
+# M1 vs Dart check: regenerated in seconds by export_cases.py / dart_check/doi_chieu.dart (15 MB)
+experiment/results/m1_cases.json
+experiment/results/m1_dart.json

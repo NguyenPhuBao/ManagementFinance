@@ -41,5 +41,12 @@ Hạn: bản thảo khung bài nộp thầy 2026-11-09 23h; bài hoàn chỉnh (
 - Kết quả: `experiment/results/*.json`. Tóm tắt (κ = 1,0): Berka M1 Brier 0,169 · M3 0,171 · M0 0,180 · M2 0,225;
   M3 hiệu chuẩn tốt nhất (ECE 0,035); bootstrap M3 − M1 = +0,0012 [0,0005; 0,0019]; bỏ khoản cố định thì M3 thắng.
   Mô phỏng: M3 0,126 thắng rõ. Phần lõi mới tái lập đúng 1.060/1.060 giá trị của lượt mô phỏng đầu.
+- **Đối chiếu M1 với mã app** (2026-11-09): `python -u export_cases.py 20000 7` (20.000 ca Berka, K ≥ 3) →
+  `dart run dart_check/doi_chieu.dart` (chạy thẳng `src/Client-app/lib/features/budget/domain/nhip_chi.dart`, import
+  theo đường dẫn, không sửa `src/`) → `python -u compare_m1_dart.py` → `results/m1_compare.json`. Khoản chi đặt lúc
+  23:59:59: r_med, phần đã chi, K và quyết định vượt khớp **20.000/20.000**. Đặt lúc 00:00 thì r_med lệch ở 18,8 % ca
+  (quyết định lệch 2,9 %), lúc 12:00 lệch 8,0 % (1,2 %): app tính theo giờ ghi, Python theo cuối ngày. App chỉ cho dự
+  phóng điểm `S + r_med`; xác suất p1 là phần bài thêm vào — `p1 > 0,5` trùng quyết định của app 100 % khi K lẻ,
+  94,4 % khi K chẵn (trung vị chẵn = trung bình hai giá trị giữa; 91,9 % ca có K chẵn).
 
 Xuất PDF: mở .docx bằng Word → Save As PDF (hoặc Word COM `ExportAsFixedFormat`).
