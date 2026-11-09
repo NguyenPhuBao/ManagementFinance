@@ -23,8 +23,8 @@ Hạn: bản thảo khung bài nộp thầy 2026-11-09 23h; bài hoàn chỉnh (
 
 ## Tệp
 
-- `paper/draft_paper.docx` / `.pdf`: bản thảo tiếng Anh (5 trang, số liệu để trống).
-- `paper/draft_paper_vi.docx` / `.pdf`: bản tiếng Việt cùng khuôn, cùng nội dung.
+- `paper/NCKH_DuBaoXacSuatVuotNganSach_EN.docx` / `.pdf`: bài tiếng Anh (8 trang, bản nộp thầy).
+- `paper/NCKH_DuBaoXacSuatVuotNganSach_VI.docx` / `.pdf`: bản tiếng Việt cùng khuôn, cùng nội dung.
 - Chữ của hai bài ở `paper/content_en.js` và `paper/content_vi.js` (đã soát văn phong bằng skill `humanizer`, 2026-11-09);
   `paper/build_paper.js` chỉ giữ khuôn IEEE. Dựng: `NODE_PATH=<thư mục chứa node_modules/docx 9.x> node build_paper.js en|vi`
   (trên máy này: `C:/Users/tadd1/AppData/Local/Temp/flowmoney-dacta/node_modules`).

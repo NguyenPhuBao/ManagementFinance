@@ -1,7 +1,7 @@
 // Builds the IEEE-style (two-column, Times 10 pt) draft paper as .docx, in English or Vietnamese.
 // Run:  NODE_PATH=<folder containing node_modules/docx 9.x> node build_paper.js [en|vi]
 // Text lives in content_en.js / content_vi.js; this file holds only the layout helpers.
-// Output: draft_paper.docx (en) or draft_paper_vi.docx (vi). Figures come from make_figures.py.
+// Output: NCKH_DuBaoXacSuatVuotNganSach_EN.docx (en) or NCKH_DuBaoXacSuatVuotNganSach_VI.docx (vi). Figures come from make_figures.py.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -20,8 +20,8 @@ const FONT = 'Times New Roman';
 const LANG = process.argv[2] || 'en';
 if (!['en', 'vi'].includes(LANG)) throw new Error('language must be en or vi');
 const L = LANG === 'vi'
-  ? { fig: 'Hình', table: 'BẢNG', out: 'draft_paper_vi.docx', figSuffix: '_vi' }
-  : { fig: 'Fig.', table: 'TABLE', out: 'draft_paper.docx', figSuffix: '' };
+  ? { fig: 'Hình', table: 'BẢNG', out: 'NCKH_DuBaoXacSuatVuotNganSach_VI.docx', figSuffix: '_vi' }
+  : { fig: 'Fig.', table: 'TABLE', out: 'NCKH_DuBaoXacSuatVuotNganSach_EN.docx', figSuffix: '' };
 
 // ---------------------------------------------------------------- references
 const REFS = {
