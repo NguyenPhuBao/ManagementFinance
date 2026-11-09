@@ -88,7 +88,7 @@ def save(svg, name):
     doc.close()
 
 
-def fig3(res, lang):
+def fig3(res, lang, name="fig3_reliability"):
     lb = LAB[lang]
     rel = res["kappa"]["1.0"]["reliability_day15"]
     W, H = 340, 330
@@ -109,10 +109,10 @@ def fig3(res, lang):
         ece = res["kappa"]["1.0"]["overall"][m]["ece"]
         s.append(f"<text x='{x0 + pw - 4}' y='{y0 + ph - 5}' {FONT} font-size='8.5' text-anchor='end'>ECE {ece:.3f}</text>")
     s.append("</svg>")
-    save("".join(s), "fig3_reliability" + lb["sfx"])
+    save("".join(s), name + lb["sfx"])
 
 
-def fig4(res, lang):
+def fig4(res, lang, name="fig4_warning"):
     lb = LAB[lang]
     warn = res["kappa"]["1.0"]["warning"]
     W, H = 340, 330
@@ -143,12 +143,15 @@ def fig4(res, lang):
         s.append(marker(mk, lx + 11, ly, color, 1.8))
         s.append(f"<text x='{lx + 27}' y='{ly + 3}' {FONT} font-size='9'>{lb['names'][m]}</text>")
     s.append("</svg>")
-    save("".join(s), "fig4_warning" + lb["sfx"])
+    save("".join(s), name + lb["sfx"])
 
 
 if __name__ == "__main__":
-    res = json.loads((HERE / "results" / "synthetic.json").read_text(encoding="utf-8"))
+    import sys
+    source = sys.argv[1] if len(sys.argv) > 1 else "synthetic"   # results/<source>.json
+    res = json.loads((HERE / "results" / (source + ".json")).read_text(encoding="utf-8"))
+    a, b = (sys.argv[2].split(",") if len(sys.argv) > 2 else ("3", "4"))
     for lang in ("en", "vi"):
-        fig3(res, lang)
-        fig4(res, lang)
-    print("ok")
+        fig3(res, lang, f"fig{a}_reliability")
+        fig4(res, lang, f"fig{b}_warning")
+    print("ok from", source)

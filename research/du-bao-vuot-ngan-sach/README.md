@@ -31,4 +31,15 @@ Hạn: bản thảo khung bài nộp thầy 2026-11-09 23h; bài hoàn chỉnh (
 - `paper/make_figures.py`: vẽ Hình 1–2 cho cả hai ngôn ngữ (SVG → PNG bằng `pymupdf`); Hình 2 là chuỗi minh hoạ tự dựng,
   không phải dữ liệu thật.
 
+## Thực nghiệm (`experiment/`, chạy 2026-11-09)
+
+- Dữ liệu Berka: tải `trans.asc`, `account.asc` từ `https://github.com/ldaniel/R_Bank_Berka` (thư mục `data/`) vào
+  `data/raw/` (gitignore; SHA-256 ghi trong `experiment/berka.py`).
+- `core.py` (M0–M3, đánh giá cuốn chiếu, chỉ số) · `sim.py` (tập mô phỏng) · `berka.py` (nạp Berka) ·
+  `run_synthetic.py` · `run_berka.py [--nofixed]` (biến môi trường `M3_ROWS`, `KAPPAS` cho phép kiểm độ nhạy) ·
+  `bootstrap.py` · `plots.py <nguồn> <số hình>` (`python plots.py berka 3,4`, `python plots.py synthetic 5,6`).
+- Kết quả: `experiment/results/*.json`. Tóm tắt (κ = 1,0): Berka M1 Brier 0,169 · M3 0,171 · M0 0,180 · M2 0,225;
+  M3 hiệu chuẩn tốt nhất (ECE 0,035); bootstrap M3 − M1 = +0,0012 [0,0005; 0,0019]; bỏ khoản cố định thì M3 thắng.
+  Mô phỏng: M3 0,126 thắng rõ. Phần lõi mới tái lập đúng 1.060/1.060 giá trị của lượt mô phỏng đầu.
+
 Xuất PDF: mở .docx bằng Word → Save As PDF (hoặc Word COM `ExportAsFixedFormat`).

@@ -1,9 +1,10 @@
 {
  "lambda": 0.02,
+ "validation_brier": 0.17308770351828853,
  "seed": 2026,
  "users": 2000,
  "months": 36,
- "test_months": "12-35",
+ "first_test_month": 12,
  "kappa": {
   "1.0": {
    "overall": {
@@ -96,6 +97,9 @@
      "A4": 0.13977277350004857
     }
    },
+   "user_months": 48000,
+   "users_scored": 2000,
+   "m1_fallback_share": 0.0,
    "reliability_day15": {
     "p0": [
      [
@@ -1569,7 +1573,10 @@
      "A3": 0.1230514987326408,
      "A4": 0.1358468743516481
     }
-   }
+   },
+   "user_months": 48000,
+   "users_scored": 2000,
+   "m1_fallback_share": 0.0
   },
   "1.1": {
    "overall": {
@@ -1661,7 +1668,10 @@
      "A3": 0.10473865053836104,
      "A4": 0.12225082796802261
     }
-   }
+   },
+   "user_months": 48000,
+   "users_scored": 2000,
+   "m1_fallback_share": 0.0
   }
  }
 }
