@@ -10,8 +10,9 @@ const {
   Document, Packer, Paragraph, TextRun, AlignmentType, TabStopType, SectionType, Header,
   PageNumber, ImageRun, Table, TableRow, TableCell, WidthType, BorderStyle, FootnoteReferenceRun,
   Math: OMath, MathRun, MathSubScript, MathSuperScript, MathSubSuperScript, MathFraction, MathRadical,
-  MathSum, VerticalAlign,
+  MathSum, VerticalAlign, LineRuleType,
 } = d;
+const JSZip = require('jszip');
 
 const HERE = __dirname;
 const r = String.raw;
@@ -163,10 +164,24 @@ function runs(str, base = {}) {
   if (last < str.length) out.push(new TextRun({ text: str.slice(last), ...base }));
   return out;
 }
-const body = (str, opt = {}) => new Paragraph({
-  alignment: AlignmentType.JUSTIFIED, indent: { firstLine: opt.noIndent ? 0 : 202 },
-  spacing: { after: 0, line: 240 }, children: runs(str),
-});
+// IEEE body: 10 pt Times on a 12 pt baseline (line 240 twips, "at least" so inline math can still grow a line).
+const LINE12 = { after: 0, line: 240, lineRule: LineRuleType.AT_LEAST };
+const DROPCAP_STYLE = 'FMDropCap';
+function body(str, opt = {}) {
+  if (opt.dropCap) {
+    // IEEE opens the first section with a two-line drop cap and the rest of the first word in capitals.
+    // The frame properties are written in post-processing (Packer step at the end of this file).
+    const sp = str.indexOf(' ');
+    return [
+      new Paragraph({ style: DROPCAP_STYLE, children: [new TextRun({ text: str[0], size: 50 })] }),
+      new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: LINE12, children: runs(str.slice(1, sp).toUpperCase() + str.slice(sp)) }),
+    ];
+  }
+  return new Paragraph({
+    alignment: AlignmentType.JUSTIFIED, indent: { firstLine: opt.noIndent ? 0 : 202 },
+    spacing: LINE12, children: runs(str),
+  });
+}
 const romans = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
 let secNo = 0; let subNo = 0;
 function H1(title, numbered = true) {
@@ -194,7 +209,7 @@ function EQ(latex) {
   });
 }
 const bullet = (str) => new Paragraph({
-  alignment: AlignmentType.JUSTIFIED, indent: { left: 288, hanging: 202 }, spacing: { after: 0 },
+  alignment: AlignmentType.JUSTIFIED, indent: { left: 288, hanging: 202 }, spacing: LINE12,
   children: [new TextRun('•\t'), ...runs(str)], tabStops: [{ type: TabStopType.LEFT, position: 288 }],
 });
 let figNo = 0;
@@ -256,10 +271,17 @@ function TABLE(title, widths, header, rows, note, align) {
 const content = [];
 const add = (...xs) => xs.forEach((x) => (Array.isArray(x) ? content.push(...x) : content.push(x)));
 // "Abstract—text" style paragraph used for Abstract, Impact Statement, Index Terms.
-const LABELED = (label, text, after = 100) => new Paragraph({
-  alignment: AlignmentType.JUSTIFIED, spacing: { after },
-  children: [new TextRun({ text: label, bold: true, italics: true, size: 18 }), new TextRun({ text: '—' + text, bold: true, size: 18 })],
-});
+// The (unmarked) first-page footnote is anchored in the Abstract, the first paragraph of the two-column section,
+// so Word sets it at the foot of the left column as the IEEE template does.
+let footnoteAnchored = false;
+const LABELED = (label, text, after = 100) => {
+  const anchor = footnoteAnchored ? [] : [new FootnoteReferenceRun(1)];
+  footnoteAnchored = true;
+  return new Paragraph({
+    alignment: AlignmentType.JUSTIFIED, spacing: { after },
+    children: [...anchor, new TextRun({ text: label, bold: true, italics: true, size: 18 }), new TextRun({ text: '—' + text, bold: true, size: 18 })],
+  });
+};
 const REFLIST = () => citeOrder.map((k, idx) => new Paragraph({
   alignment: AlignmentType.JUSTIFIED, indent: { left: 360, hanging: 360 }, spacing: { after: 20 },
   tabStops: [{ type: TabStopType.LEFT, position: 360 }],
@@ -271,34 +293,63 @@ const unused = Object.keys(REFS).filter((k) => !citeOrder.includes(k));
 if (unused.length) throw new Error('uncited references: ' + unused.join(', '));
 
 const front = [
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 200 }, children: [new TextRun({ text: C.title, size: 40 })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 200 }, children: [new TextRun({ text: C.title, size: 48 })] }),
   new Paragraph({
     alignment: AlignmentType.CENTER, spacing: { after: 320 },
-    children: [new TextRun({ text: C.authors, size: 22 }), new FootnoteReferenceRun(1)],
+    children: [new TextRun({ text: C.authors, size: 22 })],
   }),
 ];
 
 // ---------------------------------------------------------------- document
-const header = new Header({
-  children: [new Paragraph({
-    tabStops: [{ type: TabStopType.RIGHT, position: 10440 }],
-    children: [new TextRun({ text: C.header, size: 14 }), new TextRun({ text: '\t', size: 14 }), new TextRun({ children: [PageNumber.CURRENT], size: 14 })],
-  })],
+// IEEE Transactions page: Letter, 7.16 in text width (two 3.5 in columns, 1 pc gap) -> side margins 960 twips.
+const TEXTW = 12240 - 2 * 960;
+const txt = (t) => new TextRun({ text: t, size: 14 });
+const pageNo = () => new TextRun({ children: [PageNumber.CURRENT], size: 14 });
+const hdr = (left, right) => new Header({
+  children: [new Paragraph({ tabStops: [{ type: TabStopType.RIGHT, position: TEXTW }], children: [...left, txt('\t'), ...right] })],
 });
-const page = { size: { width: 12240, height: 15840 }, margin: { top: 1080, bottom: 1080, left: 900, right: 900, header: 540, footer: 540 } };
+// First page: journal line, number right. Odd pages: running head, number right. Even pages: number left, journal line right.
+const headers = {
+  first: hdr([txt(C.header)], [pageNo()]),
+  default: hdr(runs(C.runhead, { size: 14 }), [pageNo()]),
+  even: hdr([pageNo()], [txt(C.header)]),
+};
+const page = { size: { width: 12240, height: 15840 }, margin: { top: 1080, bottom: 1080, left: 960, right: 960, header: 540, footer: 540 } };
 
 const doc = new Document({
   creator: C.authors,
   title: C.title,
+  evenAndOddHeaderAndFooters: true,
   styles: { default: { document: { run: { font: FONT, size: 20 } } } },
   footnotes: { 1: { children: [new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [new TextRun({ text: C.footnote, size: 16 })] })] } },
   sections: [
-    { properties: { page }, headers: { default: header }, children: front },
-    { properties: { page, type: SectionType.CONTINUOUS, column: { count: 2, space: 360 } }, headers: { default: header }, children: content },
+    { properties: { page, titlePage: true }, headers, children: front },
+    { properties: { page, type: SectionType.CONTINUOUS, column: { count: 2, space: 240 } }, headers, children: content },
   ],
 });
 
-Packer.toBuffer(doc).then((buf) => {
+Packer.toBuffer(doc).then(async (buf) => {
+  // Post-process two things docx 9.5.1 does not write directly:
+  // 1) the drop-cap frame of the first paragraph;
+  // 2) the unnumbered first-page footnote (IEEE puts the submission date and affiliations there without a mark):
+  //    customMarkFollows on the reference, and the footnoteRef run removed from the footnote itself.
+  const zip = await JSZip.loadAsync(buf);
+  let docXml = await zip.file('word/document.xml').async('string');
+  const dropFrom = '<w:pPr><w:pStyle w:val="' + DROPCAP_STYLE + '"/></w:pPr>';
+  const dropTo = '<w:pPr><w:keepNext/><w:framePr w:dropCap="drop" w:lines="2" w:wrap="around" w:vAnchor="text" w:hAnchor="text"/>'
+    + '<w:spacing w:after="0" w:line="480" w:lineRule="exact"/><w:textAlignment w:val="baseline"/></w:pPr>';
+  if (docXml.split(dropFrom).length !== 2) throw new Error('drop cap paragraph not found exactly once');
+  docXml = docXml.replace(dropFrom, dropTo);
+  const refFrom = '<w:footnoteReference w:id="1"/>';
+  if (docXml.split(refFrom).length !== 2) throw new Error('footnote reference not found exactly once');
+  docXml = docXml.replace(refFrom, '<w:footnoteReference w:customMarkFollows="1" w:id="1"/>');
+  zip.file('word/document.xml', docXml);
+  const fnXml = await zip.file('word/footnotes.xml').async('string');
+  // docx also writes a footnoteRef into the continuation separator (id 0), so match only inside footnote 1.
+  const fnOut = fnXml.replace(/(<w:footnote w:id="1">.*?)<w:r><w:rPr><w:rStyle w:val="FootnoteReference"\/><\/w:rPr><w:footnoteRef\/><\/w:r>/s, '$1');
+  if (fnOut === fnXml) throw new Error('footnoteRef run not removed');
+  zip.file('word/footnotes.xml', fnOut);
+  buf = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
   fs.writeFileSync(path.join(HERE, L.out), buf);
   console.log(L.out + ' equations=' + eqNo + ' figures=' + figNo + ' tables=' + tabNo + ' refs=' + citeOrder.length);
 });

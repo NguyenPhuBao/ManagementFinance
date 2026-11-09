@@ -1,7 +1,14 @@
 # NCKH — Dự báo xác suất vượt ngân sách cuối kỳ
 
-Đề tài NCKH sinh viên cấp trường (nhóm Nguyễn Phú Bảo, Trần Quang Đạt; GVHD ThS. Huỳnh Nam).
-Tên (dạng 3 vế theo góp ý của thầy, 2026-11-09):
+Đề tài NCKH sinh viên cấp trường (nhóm Trần Quang Đạt, Nguyễn Phú Bảo; GVHD ThS. Huỳnh Nam).
+
+Tên **bài báo** (rút gọn 2026-11-09, giữ ba phương pháp) và thứ tự tác giả trên bài **Trần Quang Đạt, Nguyễn Phú Bảo,
+Huỳnh Nam** (thầy đứng tên tác giả nên bài không còn mục Lời cảm ơn):
+
+- **VI:** Dự báo xác suất vượt ngân sách bằng trung vị, làm trơn hàm mũ và hồi quy phân vị.
+- **EN:** Median, Exponential Smoothing, and Quantile Regression Forecasts for Early Warning of Budget Overruns.
+
+Tên **đề tài** đầy đủ (dạng 3 vế theo góp ý của thầy, 2026-11-09):
 
 - **VI:** Nghiên cứu và phát triển mô hình dự báo xác suất dựa trên trung vị, EWMA và hồi quy phân vị nhằm cảnh báo sớm
   nguy cơ vượt ngân sách cuối kỳ từ nhịp chi tiêu cá nhân trong ứng dụng quản lý tài chính cá nhân.
