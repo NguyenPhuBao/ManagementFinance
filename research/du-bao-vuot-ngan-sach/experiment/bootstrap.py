@@ -3,9 +3,11 @@
 Rebuilds the kappa = 1.0 forecasts exactly as run_berka.py / run_synthetic.py do (same seed, same lambda,
 same M3 subsample), averages the Brier score per user, and resamples users 2,000 times.
 Run:  python -u bootstrap.py   ->  results/bootstrap.json
+      python -u bootstrap.py tabformer   ->  results/bootstrap_tabformer.json (run_tabformer.py users and split)
 """
 import json
 import pathlib
+import sys
 
 import numpy as np
 
@@ -33,7 +35,25 @@ def paired(R, first_test, rng):
     return out, int(len(users))
 
 
+def tabformer_only():
+    import tabformer
+    Y, days, start, end, ids, _ = tabformer.load()
+    full = end == Y.shape[1] - 1
+    Y, start = Y[full], start[full]
+    months = np.concatenate([np.arange(s + HISTORY, Y.shape[1]) for s in start])
+    ft = int(np.quantile(months, 0.2))
+    lam = json.loads((HERE / "results" / "tabformer.json").read_text(encoding="utf-8"))["lambda"]
+    R = build_rows(Y, days, start, np.zeros(len(start), dtype=int), 1.0, lam)
+    R["p3"] = fit_m3(R, np.random.default_rng(SEED), ft)
+    res, n = paired(R, ft, np.random.default_rng(SEED + 1))
+    res["users"], res["lambda"] = n, lam
+    (HERE / "results" / "bootstrap_tabformer.json").write_text(json.dumps(res, indent=1), encoding="utf-8")
+    print(json.dumps(res, indent=1))
+
+
 def main():
+    if "tabformer" in sys.argv:
+        return tabformer_only()
     res = {}
     Y, days, start, ids = berka.load()
     months = np.concatenate([np.arange(s + HISTORY, Y.shape[1]) for s in start])

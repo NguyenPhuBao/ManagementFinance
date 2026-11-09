@@ -48,5 +48,14 @@ Hạn: bản thảo khung bài nộp thầy 2026-11-09 23h; bài hoàn chỉnh (
   (quyết định lệch 2,9 %), lúc 12:00 lệch 8,0 % (1,2 %): app tính theo giờ ghi, Python theo cuối ngày. App chỉ cho dự
   phóng điểm `S + r_med`; xác suất p1 là phần bài thêm vào — `p1 > 0,5` trùng quyết định của app 100 % khi K lẻ,
   94,4 % khi K chẵn (trung vị chẵn = trung bình hai giá trị giữa; 91,9 % ca có K chẵn).
+- **Tập thứ ba: IBM TabFormer** (2026-11-09, mô phỏng, Apache-2.0, tải `transactions.tgz` từ `https://github.com/IBM/TabFormer`
+  `data/credit_card` vào `data/raw/tabformer/`; SHA-256 trong `experiment/tabformer.py`). Lấy 01/2015 – 01/2020 (bỏ 02/2020 thiếu
+  ngày), chi = số tiền > 0 và không gian lận, gộp mọi thẻ của một người, ≥ 18 tháng; bỏ 27 người ngừng chi sớm → 1.518 người.
+  `python -u run_tabformer.py` (~8 phút) · `python -u bootstrap.py tabformer` · `profile_tabformer.py` (thống kê mô tả).
+  κ = 1,0 (310.973 dự báo, tỉ lệ vượt 44,3 %): Brier M3 **0,151** · M2 0,156 · M1 0,166 · M0 0,177; ECE M3 0,005 · M1 0,030;
+  M3 − M1 = −0,0146 [−0,0152; −0,0140], M3 hơn ở 89,7 % người; M3 thắng cả ba κ. Ở báo nhầm ≤ 10 %: M3 bắt 77 %, sớm 11 ngày;
+  M1 68 %, 9 ngày. λ chọn 0,02 (biên lưới, như Berka). Đối chiếu Dart (`export_cases.py tabformer` → `doi_chieu.dart tabformer`
+  → `compare_m1_dart.py tabformer`): 23:59:59 khớp 20.000/20.000; **giờ thật** của giao dịch → r_med lệch 57,5 % ca (trung vị
+  ~1 % ngân sách), quyết định lệch 2,1 %.
 
 Xuất PDF: mở .docx bằng Word → Save As PDF (hoặc Word COM `ExportAsFixedFormat`).
