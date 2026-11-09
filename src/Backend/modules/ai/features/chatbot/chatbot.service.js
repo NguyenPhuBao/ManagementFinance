@@ -100,6 +100,7 @@ class ChatbotService {
     onTool,
     turnCostCapMicroUsd,
     contextWindowDays,
+    scopeNote,
   }) {
     const startTime = Date.now();
     const limits = getChatbotLimits();
@@ -118,7 +119,7 @@ class ChatbotService {
       }
 
       // BƯỚC 2: System Prompt. Tri thức tĩnh không chèn sẵn: mô hình tự gọi công cụ tra cứu khi cần.
-      const systemInstruction = buildSystemPrompt(snapshot);
+      const systemInstruction = buildSystemPrompt(snapshot, { scopeNote });
       const safeHistory = sanitizeHistory(history, limits);
 
       // BƯỚC 3: Gọi nhà cung cấp LLM qua Circuit Breaker riêng của chatbot
