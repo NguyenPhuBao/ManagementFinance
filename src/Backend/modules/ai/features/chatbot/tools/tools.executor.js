@@ -4,6 +4,7 @@
  * Lọc PII trước khi trả về cho LLM
  */
 
+const { performance } = require('perf_hooks');
 const { prisma } = require('../../../../../config/db');
 const PIIMasker = require('../privacy/pii.masker');
 const logger = require('../../../../../core/logger');
@@ -37,6 +38,8 @@ class ToolsExecutor {
   constructor({ knowledgeSearch } = {}) {
     this.piiMasker = new PIIMasker();
     this.knowledgeSearch = knowledgeSearch || new LexicalKnowledgeSearch();
+    /** Chẩn đoán lần tra gần nhất {method, chunkIds, timings} cho đo đạc NCKH (v4, như bản thực nghiệm); không gửi cho LLM. */
+    this.lastRetrieval = null;
   }
 
   /**
@@ -44,7 +47,10 @@ class ToolsExecutor {
    * và làm hỏng JSON mà mô hình đọc. Đoạn đứng đầu luôn được giữ.
    */
   searchKnowledge({ query } = {}, { maxResultChars } = {}) {
+    const t0 = performance.now();
     const hits = this.knowledgeSearch.search(query, KNOWLEDGE_TOP_K);
+    const took = Math.round((performance.now() - t0) * 1000) / 1000;
+    this.lastRetrieval = { method: 'lexical', chunkIds: hits.map((h) => h.chunkId), timings: { method: 'lexical', bm25Ms: took, totalMs: took } };
     if (hits.length === 0) return { found: false, results: [], note: KNOWLEDGE_NOT_FOUND_NOTE };
 
     const lengthOf = (items) => JSON.stringify({ found: true, results: items }).length;
