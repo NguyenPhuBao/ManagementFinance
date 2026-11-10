@@ -26,8 +26,20 @@ class DuBaoVuotNguonImpl implements DuBaoVuotNguon {
       final dauThangSau = DateTime(now.year, now.month + 1);
       if (ky.from != dauThang || ky.to != dauThangSau) return null;
 
-      final moc = await local.mocGiaoDichDauTien(nganSach.idaccount);
-      if (moc == null) return null;
+      // `categoryId: null` = mọi khoản chi VÀO THỐNG KÊ — đúng định nghĩa ngân sách tổng. Đọc từ đầu sổ: tháng
+      // đầu là tháng của KHOẢN CHI sớm nhất (bài: tháng đầu có dữ liệu chi), KHÔNG phải `mocGiaoDichDauTien` —
+      // hàm ấy tính cả khoản thu và "Số dư ban đầu", ví tạo trước vài tháng là M2 khởi động trên chuỗi số 0.
+      final chi = await local.getExpenses(
+        idaccount: nganSach.idaccount,
+        categoryId: null,
+        from: DateTime(1970),
+        to: DateTime(now.year, now.month, now.day + 1),
+      );
+      if (chi.isEmpty) return null;
+      var moc = chi.first.date;
+      for (final t in chi) {
+        if (t.date.isBefore(moc)) moc = t.date;
+      }
       final thangDau = DateTime(moc.year, moc.month);
       final soThang = (now.year - thangDau.year) * 12 + now.month - thangDau.month + 1;
       if (soThang < 1) return null;
@@ -39,13 +51,6 @@ class DuBaoVuotNguonImpl implements DuBaoVuotNguon {
             0,
           ),
       ];
-      // `categoryId: null` = mọi khoản chi VÀO THỐNG KÊ — đúng định nghĩa ngân sách tổng.
-      final chi = await local.getExpenses(
-        idaccount: nganSach.idaccount,
-        categoryId: null,
-        from: thangDau,
-        to: DateTime(now.year, now.month, now.day + 1),
-      );
       for (final t in chi) {
         final i = (t.date.year - thangDau.year) * 12 + t.date.month - thangDau.month;
         if (i < 0 || i >= soThang) continue;

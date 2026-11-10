@@ -10,3 +10,5 @@ experiment/results/m1_dart_*.json
 experiment/results/cases_vn.npz
 # App-code bulk check inputs/outputs, rebuilt in seconds by app_bulk.py export + dart_check/app_bulk.dart (43 MB)
 experiment/results/app_bulk/
+# Tier-2 Drift test cases, rebuilt in ~1 min by app_drift_cases.py (27 MB)
+experiment/results/app_drift_cases.json
