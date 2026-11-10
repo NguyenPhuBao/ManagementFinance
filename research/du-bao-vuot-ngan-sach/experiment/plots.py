@@ -13,7 +13,9 @@ import pymupdf
 HERE = pathlib.Path(__file__).resolve().parent
 PAPER = HERE.parent / "paper"
 FONT = "font-family='Times New Roman, Times, serif'"
-METHODS = ["p0", "p1", "p2", "p3"]
+import os
+# PLOT_METHODS=p1,p2,p3 leaves M0 out (the rewritten paper compares M1-M3 only).
+METHODS = os.environ.get("PLOT_METHODS", "p0,p1,p2,p3").split(",")
 STYLE = {  # stroke colour, width, dash (None = solid), marker
     "p0": ("#7f7f7f", 1.0, (4, 3), "tri"),
     "p1": ("#000000", 1.2, None, "circle"),

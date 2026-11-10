@@ -25,32 +25,26 @@ const L = LANG === 'vi'
   : { fig: 'Fig.', table: 'TABLE', out: 'NCKH_DuBaoXacSuatVuotNganSach_EN.docx', figSuffix: '' };
 
 // ---------------------------------------------------------------- references
+// Only cited keys may stay (the build throws on an uncited reference). Pruned 2026-11-10 for the rewritten paper.
 const REFS = {
-  lusardi: 'A. Lusardi and O. S. Mitchell, “The economic importance of financial literacy: Theory and evidence,” *J. Econ. Lit.*, vol. 52, no. 1, pp. 5–44, 2014.',
   thaler: 'R. H. Thaler, “Mental accounting matters,” *J. Behav. Decis. Making*, vol. 12, no. 3, pp. 183–206, 1999.',
   karlan: 'D. Karlan, M. McConnell, S. Mullainathan, and J. Zinman, “Getting to the top of mind: How reminders increase saving,” *Manage. Sci.*, vol. 62, no. 12, pp. 3393–3411, 2016.',
-  gneitingR: 'T. Gneiting and A. E. Raftery, “Strictly proper scoring rules, prediction, and estimation,” *J. Amer. Statist. Assoc.*, vol. 102, no. 477, pp. 359–378, 2007.',
   gneitingC: 'T. Gneiting, F. Balabdaoui, and A. E. Raftery, “Probabilistic forecasts, calibration and sharpness,” *J. Roy. Statist. Soc. B*, vol. 69, no. 2, pp. 243–268, 2007.',
   roberts: 'S. W. Roberts, “Control chart tests based on geometric moving averages,” *Technometrics*, vol. 1, no. 3, pp. 239–250, 1959.',
-  holt: 'C. C. Holt, “Forecasting seasonals and trends by exponentially weighted moving averages,” *Int. J. Forecast.*, vol. 20, no. 1, pp. 5–10, 2004 (reprint of 1957 report).',
-  hunter: 'J. S. Hunter, “The exponentially weighted moving average,” *J. Qual. Technol.*, vol. 18, no. 4, pp. 203–210, 1986.',
   riskmetrics: 'J. P. Morgan/Reuters, *RiskMetrics—Technical Document*, 4th ed., New York, NY, USA, 1996.',
-  hyndman: 'R. J. Hyndman and G. Athanasopoulos, *Forecasting: Principles and Practice*, 3rd ed. Melbourne, Australia: OTexts, 2021.',
   koenkerB: 'R. Koenker and G. Bassett, Jr., “Regression quantiles,” *Econometrica*, vol. 46, no. 1, pp. 33–50, 1978.',
-  koenker: 'R. Koenker, *Quantile Regression*. Cambridge, U.K.: Cambridge Univ. Press, 2005.',
   taylor: 'J. W. Taylor, “Forecasting daily supermarket sales using exponentially weighted quantile regression,” *Eur. J. Oper. Res.*, vol. 178, no. 1, pp. 154–167, 2007.',
-  meinshausen: 'N. Meinshausen, “Quantile regression forests,” *J. Mach. Learn. Res.*, vol. 7, pp. 983–999, 2006.',
   chernozhukov: 'V. Chernozhukov, I. Fernández-Val, and A. Galichon, “Quantile and probability curves without crossing,” *Econometrica*, vol. 78, no. 3, pp. 1093–1125, 2010.',
   brier: 'G. W. Brier, “Verification of forecasts expressed in terms of probability,” *Monthly Weather Rev.*, vol. 78, no. 1, pp. 1–3, 1950.',
   naeini: 'M. P. Naeini, G. F. Cooper, and M. Hauskrecht, “Obtaining well calibrated probabilities using Bayesian binning,” in *Proc. AAAI Conf. Artif. Intell.*, Austin, TX, USA, 2015, pp. 2901–2907.',
-  guo: 'C. Guo, G. Pleiss, Y. Sun, and K. Q. Weinberger, “On calibration of modern neural networks,” in *Proc. Int. Conf. Mach. Learn.*, Sydney, NSW, Australia, 2017, pp. 1321–1330.',
-  fawcett: 'T. Fawcett, “An introduction to ROC analysis,” *Pattern Recognit. Lett.*, vol. 27, no. 8, pp. 861–874, 2006.',
   tashman: 'L. J. Tashman, “Out-of-sample tests of forecasting accuracy: An analysis and review,” *Int. J. Forecast.*, vol. 16, no. 4, pp. 437–450, 2000.',
-  dm: 'F. X. Diebold and R. S. Mariano, “Comparing predictive accuracy,” *J. Bus. Econ. Statist.*, vol. 13, no. 3, pp. 253–263, 1995.',
   efron: 'B. Efron and R. J. Tibshirani, *An Introduction to the Bootstrap*. New York, NY, USA: Chapman & Hall, 1993.',
-  berka: 'P. Berka, “Guide to the financial data set,” in *PKDD-99 Discovery Challenge*, Prague, Czech Republic, 1999.',
   padhi: 'I. Padhi, Y. Schiff, I. Melnyk, M. Rigotti, Y. Mroueh, P. Dognin, J. Ross, R. Nair, and E. Altman, “Tabular transformers for modeling multivariate time series,” in *Proc. IEEE Int. Conf. Acoust., Speech Signal Process. (ICASSP)*, Toronto, ON, Canada, 2021, pp. 3565–3569.',
   altman: 'E. R. Altman, “Synthesizing credit card transactions,” in *Proc. 2nd ACM Int. Conf. AI in Finance (ICAIF)*, 2021, Art. no. 31.',
+  iso: 'ISO 18245:2003, *Retail Financial Services—Merchant Category Codes*. Geneva, Switzerland: International Organization for Standardization, 2003.',
+  claude: 'Anthropic, “Claude Opus 5.5,” 2026. [Online]. Available: https://www.anthropic.com. Accessed: Nov. 10, 2026.',
+  likert: 'R. Likert, “A technique for the measurement of attitudes,” *Arch. Psychol.*, vol. 22, no. 140, pp. 1–55, 1932.',
+  cohen: 'J. Cohen, “Weighted kappa: Nominal scale agreement provision for scaled disagreement or partial credit,” *Psychol. Bull.*, vol. 70, no. 4, pp. 213–220, 1968.',
 };
 const citeOrder = [];
 function cite(keys) {
@@ -270,18 +264,11 @@ function TABLE(title, widths, header, rows, note, align) {
 // ---------------------------------------------------------------- content (per language)
 const content = [];
 const add = (...xs) => xs.forEach((x) => (Array.isArray(x) ? content.push(...x) : content.push(x)));
-// "Abstract—text" style paragraph used for Abstract, Impact Statement, Index Terms.
-// The (unmarked) first-page footnote is anchored in the Abstract, the first paragraph of the two-column section,
-// so Word sets it at the foot of the left column as the IEEE template does.
-let footnoteAnchored = false;
-const LABELED = (label, text, after = 100) => {
-  const anchor = footnoteAnchored ? [] : [new FootnoteReferenceRun(1)];
-  footnoteAnchored = true;
-  return new Paragraph({
-    alignment: AlignmentType.JUSTIFIED, spacing: { after },
-    children: [...anchor, new TextRun({ text: label, bold: true, italics: true, size: 18 }), new TextRun({ text: '—' + text, bold: true, size: 18 })],
-  });
-};
+// "Abstract—text" style paragraph used for Abstract and Index Terms (inline math and citations allowed).
+const LABELED = (label, text, after = 100) => new Paragraph({
+  alignment: AlignmentType.JUSTIFIED, spacing: { after },
+  children: [new TextRun({ text: label, bold: true, italics: true, size: 18 }), ...runs('—' + text, { bold: true, size: 18 })],
+});
 const REFLIST = () => citeOrder.map((k, idx) => new Paragraph({
   alignment: AlignmentType.JUSTIFIED, indent: { left: 360, hanging: 360 }, spacing: { after: 20 },
   tabStops: [{ type: TabStopType.LEFT, position: 360 }],
@@ -295,9 +282,11 @@ if (unused.length) throw new Error('uncited references: ' + unused.join(', '));
 const front = [
   new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 200 }, children: [new TextRun({ text: C.title, size: 48 })] }),
   new Paragraph({
-    alignment: AlignmentType.CENTER, spacing: { after: 320 },
+    alignment: AlignmentType.CENTER, spacing: { after: 160 },
     children: [new TextRun({ text: C.authors, size: 22 })],
   }),
+  new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: C.affiliation, italics: true, size: 20 })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 320 }, children: [new TextRun({ text: C.emails, size: 20 })] }),
 ];
 
 // ---------------------------------------------------------------- document
@@ -308,31 +297,23 @@ const pageNo = () => new TextRun({ children: [PageNumber.CURRENT], size: 14 });
 const hdr = (left, right) => new Header({
   children: [new Paragraph({ tabStops: [{ type: TabStopType.RIGHT, position: TEXTW }], children: [...left, txt('\t'), ...right] })],
 });
-// First page: journal line, number right. Odd pages: running head, number right. Even pages: number left, journal line right.
-const headers = {
-  first: hdr([txt(C.header)], [pageNo()]),
-  default: hdr(runs(C.runhead, { size: 14 }), [pageNo()]),
-  even: hdr([pageNo()], [txt(C.header)]),
-};
+// Every page: proceedings line left, page number right (faculty's model paper, 2026-11-10).
+const headers = { default: hdr([new TextRun({ text: C.header, size: 18 })], [new TextRun({ children: [PageNumber.CURRENT], size: 18 })]) };
 const page = { size: { width: 12240, height: 15840 }, margin: { top: 1080, bottom: 1080, left: 960, right: 960, header: 540, footer: 540 } };
 
 const doc = new Document({
   creator: C.authors,
   title: C.title,
-  evenAndOddHeaderAndFooters: true,
   styles: { default: { document: { run: { font: FONT, size: 20 } } } },
-  footnotes: { 1: { children: [new Paragraph({ alignment: AlignmentType.JUSTIFIED, children: [new TextRun({ text: C.footnote, size: 16 })] })] } },
   sections: [
-    { properties: { page, titlePage: true }, headers, children: front },
+    { properties: { page }, headers, children: front },
     { properties: { page, type: SectionType.CONTINUOUS, column: { count: 2, space: 240 } }, headers, children: content },
   ],
 });
 
 Packer.toBuffer(doc).then(async (buf) => {
-  // Post-process two things docx 9.5.1 does not write directly:
-  // 1) the drop-cap frame of the first paragraph;
-  // 2) the unnumbered first-page footnote (IEEE puts the submission date and affiliations there without a mark):
-  //    customMarkFollows on the reference, and the footnoteRef run removed from the footnote itself.
+  // Post-process the drop-cap frame of the first paragraph, which docx 9.5.1 does not write directly.
+  // (The unnumbered first-page footnote of the IEEE TAI layout was removed 2026-11-10: the model paper has none.)
   const zip = await JSZip.loadAsync(buf);
   let docXml = await zip.file('word/document.xml').async('string');
   const dropFrom = '<w:pPr><w:pStyle w:val="' + DROPCAP_STYLE + '"/></w:pPr>';
@@ -340,15 +321,7 @@ Packer.toBuffer(doc).then(async (buf) => {
     + '<w:spacing w:after="0" w:line="480" w:lineRule="exact"/><w:textAlignment w:val="baseline"/></w:pPr>';
   if (docXml.split(dropFrom).length !== 2) throw new Error('drop cap paragraph not found exactly once');
   docXml = docXml.replace(dropFrom, dropTo);
-  const refFrom = '<w:footnoteReference w:id="1"/>';
-  if (docXml.split(refFrom).length !== 2) throw new Error('footnote reference not found exactly once');
-  docXml = docXml.replace(refFrom, '<w:footnoteReference w:customMarkFollows="1" w:id="1"/>');
   zip.file('word/document.xml', docXml);
-  const fnXml = await zip.file('word/footnotes.xml').async('string');
-  // docx also writes a footnoteRef into the continuation separator (id 0), so match only inside footnote 1.
-  const fnOut = fnXml.replace(/(<w:footnote w:id="1">.*?)<w:r><w:rPr><w:rStyle w:val="FootnoteReference"\/><\/w:rPr><w:footnoteRef\/><\/w:r>/s, '$1');
-  if (fnOut === fnXml) throw new Error('footnoteRef run not removed');
-  zip.file('word/footnotes.xml', fnOut);
   buf = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
   fs.writeFileSync(path.join(HERE, L.out), buf);
   console.log(L.out + ' equations=' + eqNo + ' figures=' + figNo + ' tables=' + tabNo + ' refs=' + citeOrder.length);

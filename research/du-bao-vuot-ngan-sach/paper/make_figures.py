@@ -14,19 +14,19 @@ HERE = pathlib.Path(__file__).resolve().parent
 FONT = "font-family='Times New Roman, Times, serif'"
 
 LAB = {
-    "en": dict(log="Transaction log (debits)", daily="Daily spending series per user",
+    "en": dict(log="FlowMoney: transactions in SQLite on the phone", daily="Daily spending series per user",
                cp=["Checkpoint t: elapsed share x, amount spent S,", "budget B, past closed periods"],
-               m=[["Naive", "pro-rata"], ["Median", "rhythm"], ["EWMA", "rate"], ["Quantile", "regression"]],
+               m=[["M1 Median", "rhythm (app)"], ["M2 EWMA", "rate"], ["M3 Quantile", "regression"]],
                dist="Predictive distribution of remaining spend R",
-               alert="p = P(S + R &gt; B);  alert when p &#8805; p*",
+               alert="p = P(S + R &gt; B);  warn on the Budget page when p &#8805; p*",
                budget="Budget B", check="checkpoint t",
                legend=["solid: observed spending", "dashed: median forecast", "shaded: 10-90% band"],
                xlab="Day of period", ylab="Cumulative spending (million VND)", suffix=""),
-    "vi": dict(log="Nhật ký giao dịch (khoản chi)", daily="Chuỗi chi tiêu theo ngày của mỗi người",
+    "vi": dict(log="FlowMoney: giao dịch trong SQLite trên điện thoại", daily="Chuỗi chi tiêu theo ngày của mỗi người",
                cp=["Mốc t: phần kỳ đã trôi x, số đã chi S,", "ngân sách B, các kỳ đã đóng"],
-               m=[["Chia đều", "(pro-rata)"], ["Trung vị", "nhịp chi"], ["EWMA", "tốc độ chi"], ["Hồi quy", "phân vị"]],
+               m=[["M1 Trung vị", "nhịp chi (app)"], ["M2 EWMA", "tốc độ chi"], ["M3 Hồi quy", "phân vị"]],
                dist="Phân phối dự báo của phần còn chi R",
-               alert="p = P(S + R &gt; B);  cảnh báo khi p &#8805; p*",
+               alert="p = P(S + R &gt; B);  cảnh báo ở trang Ngân sách khi p &#8805; p*",
                budget="Ngân sách B", check="mốc t",
                legend=["nét liền: đã chi thực tế", "nét đứt: dự báo trung vị", "vùng xám: dải 10-90%"],
                xlab="Ngày trong kỳ", ylab="Chi tiêu tích luỹ (triệu đồng)", suffix="_vi"),
@@ -91,20 +91,20 @@ def fig1(lang):
          "<defs><marker id='a' markerWidth='8' markerHeight='8' refX='7' refY='3' orient='auto'>"
          "<path d='M0,0 L7,3 L0,6 z' fill='#000'/></marker></defs>",
          f"<rect width='{W}' height='{H}' fill='#fff'/>"]
-    s.append(box(60, 6, 220, 30, [lb["log"]]))
+    s.append(box(15, 6, 310, 30, [lb["log"]]))
     s.append(arrow(170, 36, 170, 50))
     s.append(box(60, 50, 220, 30, [lb["daily"]]))
     s.append(arrow(170, 80, 170, 94))
     s.append(box(40, 94, 260, 40, lb["cp"]))
-    xs = [8, 90, 172, 254]
+    xs = [14, 125, 236]          # three forecasters (M0 dropped 2026-11-10)
     names = lb["m"]
     for x, nm in zip(xs, names):
-        s.append(arrow(170, 134, x + 39, 154))
-        s.append(box(x, 154, 78, 36, nm, fill="#f2f2f2"))
-        s.append(arrow(x + 39, 190, 170, 212))
+        s.append(arrow(170, 134, x + 45, 154))
+        s.append(box(x, 154, 90, 36, nm, fill="#f2f2f2"))
+        s.append(arrow(x + 45, 190, 170, 212))
     s.append(box(40, 212, 260, 30, [lb["dist"]]))
     s.append(arrow(170, 242, 170, 256))
-    s.append(box(30, 256, 280, 36, [lb["alert"]]))
+    s.append(box(10, 256, 320, 36, [lb["alert"]]))
     s.append("</svg>")
     to_png("".join(s), "fig1_pipeline" + lb["suffix"])
 
