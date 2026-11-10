@@ -45,7 +45,6 @@ const REFS = {
   iso: 'ISO 18245:2003, *Retail Financial Services—Merchant Category Codes*. Geneva, Switzerland: International Organization for Standardization, 2003.',
   claude: 'Anthropic, “Claude Opus 5.5,” 2026. [Online]. Available: https://www.anthropic.com. Accessed: Nov. 10, 2026.',
   likert: 'R. Likert, “A technique for the measurement of attitudes,” *Arch. Psychol.*, vol. 22, no. 140, pp. 1–55, 1932.',
-  cohen: 'J. Cohen, “Weighted kappa: Nominal scale agreement provision for scaled disagreement or partial credit,” *Psychol. Bull.*, vol. 70, no. 4, pp. 213–220, 1968, doi: 10.1037/h0026256.',
 };
 const citeOrder = [];
 function cite(keys) {
