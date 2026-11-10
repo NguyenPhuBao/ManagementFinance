@@ -47,6 +47,7 @@ import '../../features/bill/domain/moc_tu_tra_nen.dart';
 import '../../features/goal/data/repositories/goal_repository_impl.dart';
 import '../../features/goal/presentation/bloc/goal_cubit.dart';
 import '../../features/budget/data/datasources/budget_local_data_source.dart';
+import '../../features/budget/data/du_bao_vuot_nguon.dart';
 import '../../features/budget/data/repositories/budget_repository.dart';
 import '../../features/ai_edge/domain/canary_gpu.dart';
 import '../../features/ai_edge/domain/canary_cong_cu.dart';
@@ -523,8 +524,15 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
       danhMuc: sl<CategoryManagementRepository>(),
     ),
   );
+  // Bản thử NCKH: xác suất vượt ngân sách M1 · M2 · M3 ở trang chi tiết.
+  sl.registerLazySingleton<DuBaoVuotNguon>(
+    () => DuBaoVuotNguonImpl(local: sl<BudgetLocalDataSource>()),
+  );
   sl.registerFactory<BudgetDetailCubit>(
-    () => BudgetDetailCubit(repository: sl<BudgetRepository>()),
+    () => BudgetDetailCubit(
+      repository: sl<BudgetRepository>(),
+      duBaoNguon: sl<DuBaoVuotNguon>(),
+    ),
   );
 
   // ── 10b. Features — Phân tích ──────────────────────────────────────────────

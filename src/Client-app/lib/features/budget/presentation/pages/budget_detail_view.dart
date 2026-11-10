@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/phan_tram.dart';
 import '../../../../shared/theme/app_colors.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/presentation/widgets/transaction_row_content.dart';
@@ -293,6 +294,16 @@ class _PaceCard extends StatelessWidget {
             '${CurrencyFormatter.format(pace.expectedSpent)}',
             style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
+          // Bản thử NCKH: xác suất vượt ngân sách cuối kỳ của ba phương pháp.
+          if (state.duBao case final d?) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Xác suất vượt (thử nghiệm): M1 ${chuPhanTram(d.p1)} · '
+              'M2 ${chuPhanTram(d.p2)} · M3 ${chuPhanTram(d.p3)}',
+              key: const ValueKey('budget-du-bao-vuot'),
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ],
         ],
       ),
     );
