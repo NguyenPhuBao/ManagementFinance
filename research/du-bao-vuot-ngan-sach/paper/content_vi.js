@@ -13,7 +13,7 @@ exports.header = 'STUDENT SCIENTIFIC RESEARCH COMMUNICATION, VOLUME II, 2026';
 
 exports.build = ({ add, body, H1, H2, EQ, bullet, FIG, TABLE, LABELED, REFLIST, r }) => {
   add(LABELED('Tóm tắt', r`Cảnh báo ngân sách trong ứng dụng tài chính cá nhân chỉ có ích khi đến sớm và hiếm khi sai. FlowMoney, ứng dụng ưu tiên ngoại tuyến do nhóm xây dựng trong khoá luận tốt nghiệp, đã dự phóng chi tiêu cuối tháng bằng trung vị của các tháng trước. Bài này hỏi liệu một xác suất vượt ngân sách có cho cảnh báo tốt hơn không, và so sánh ba cách dự báo: quy tắc trung vị của ứng dụng, trung bình trượt hàm mũ (EWMA) của chi tiêu theo ngày, và hồi quy phân vị huấn luyện chung trên mọi người dùng. Dữ liệu là giao dịch thẻ mô phỏng của IBM, số tiền được quy theo từng người sang mức chi tiêu Việt Nam, việc này không làm đổi dự báo nào. Trên 310.978 dự báo của 1.513 người dùng, hồi quy phân vị và EWMA tốt hơn quy tắc trung vị (điểm Brier 0,148 và 0,149 so với 0,166). Chấp nhận một lần báo nhầm trong mười tháng, hồi quy phân vị bắt được 77% số lần vượt, trung vị 12 ngày trước khi vượt, so với 68% và 9 ngày của quy tắc trung vị. Nhóm còn nạp năm người dùng vào ứng dụng thật qua chính API đồng bộ của nó, và con số nhịp chi của ứng dụng khớp từng đồng với kết quả chạy lại mã nguồn ấy trên máy tính. Một bản thử của ứng dụng có thêm M2 và M3 cho lại đúng toàn bộ 328.670 dự báo kiểm tra, sai khác không quá $10^{-6}$.`));
-  add(LABELED('Từ khoá', 'Vượt ngân sách, cảnh báo sớm, làm trơn hàm mũ, ứng dụng tài chính cá nhân, hồi quy phân vị, dữ liệu mô phỏng.', 160));
+  add(LABELED('Từ khoá', 'Vượt ngân sách, cảnh báo sớm, làm trơn hàm mũ, ứng dụng tài chính cá nhân, hồi quy phân vị, dữ liệu mô phỏng.', 320));
 
   // I
   add(H1('Giới thiệu'));

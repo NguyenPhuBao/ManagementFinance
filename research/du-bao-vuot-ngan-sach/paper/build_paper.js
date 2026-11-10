@@ -40,7 +40,7 @@ const REFS = {
   naeini: 'M. Pakdaman Naeini, G. F. Cooper, and M. Hauskrecht, “Obtaining well calibrated probabilities using Bayesian binning,” in *Proc. AAAI Conf. Artif. Intell.*, Austin, TX, USA, 2015, pp. 2901–2907, doi: 10.1609/aaai.v29i1.9602.',
   tashman: 'L. J. Tashman, “Out-of-sample tests of forecasting accuracy: An analysis and review,” *Int. J. Forecast.*, vol. 16, no. 4, pp. 437–450, 2000, doi: 10.1016/S0169-2070(00)00065-0.',
   efron: 'B. Efron and R. J. Tibshirani, *An Introduction to the Bootstrap*. New York, NY, USA: Chapman & Hall, 1993.',
-  padhi: 'I. Padhi, Y. Schiff, I. Melnyk, M. Rigotti, Y. Mroueh, P. Dognin, J. Ross, R. Nair, and E. Altman, “Tabular transformers for modeling multivariate time series,” in *Proc. IEEE Int. Conf. Acoust., Speech Signal Process. (ICASSP)*, Toronto, ON, Canada, 2021, pp. 3565–3569, doi: 10.1109/ICASSP39728.2021.9414142.',
+  padhi: 'I. Padhi *et al.*, “Tabular transformers for modeling multivariate time series,” in *Proc. IEEE Int. Conf. Acoust., Speech Signal Process. (ICASSP)*, Toronto, ON, Canada, 2021, pp. 3565–3569, doi: 10.1109/ICASSP39728.2021.9414142.',
   altman: 'E. R. Altman, “Synthesizing credit card transactions,” in *Proc. 2nd ACM Int. Conf. AI in Finance (ICAIF)*, 2021, pp. 1–9, doi: 10.1145/3490354.3494378.',
   iso: 'ISO 18245:2023, *Retail Financial Services—Merchant Category Codes*, 2nd ed. Geneva, Switzerland: International Organization for Standardization, 2023.',
   claude: 'Anthropic, “Claude Opus 5.5,” 2026. [Online]. Available: https://www.anthropic.com. Accessed: Nov. 10, 2026.',
@@ -293,8 +293,10 @@ const front = [
 ];
 
 // ---------------------------------------------------------------- document
-// IEEE Transactions page: Letter, 7.16 in text width (two 3.5 in columns, 1 pc gap) -> side margins 960 twips.
-const TEXTW = 12240 - 2 * 960;
+// Page measured on the faculty's model paper (2026-11-10): Letter, two 3.5 in columns about 0.21 in apart,
+// so the text block is about 7.21 in wide -> side margins 925 twips, column gap 310 twips.
+const SIDE = 925, GAP = 310;
+const TEXTW = 12240 - 2 * SIDE;
 const txt = (t) => new TextRun({ text: t, size: 14 });
 const pageNo = () => new TextRun({ children: [PageNumber.CURRENT], size: 14 });
 const hdr = (left, right) => new Header({
@@ -302,7 +304,7 @@ const hdr = (left, right) => new Header({
 });
 // Every page: proceedings line left, page number right (faculty's model paper, 2026-11-10).
 const headers = { default: hdr([new TextRun({ text: C.header, size: 18 })], [new TextRun({ children: [PageNumber.CURRENT], size: 18 })]) };
-const page = { size: { width: 12240, height: 15840 }, margin: { top: 1080, bottom: 1080, left: 960, right: 960, header: 540, footer: 540 } };
+const page = { size: { width: 12240, height: 15840 }, margin: { top: 1080, bottom: 1080, left: SIDE, right: SIDE, header: 540, footer: 540 } };
 
 const doc = new Document({
   creator: C.authors,
@@ -310,7 +312,7 @@ const doc = new Document({
   styles: { default: { document: { run: { font: FONT, size: 20 } } } },
   sections: [
     { properties: { page }, headers, children: front },
-    { properties: { page, type: SectionType.CONTINUOUS, column: { count: 2, space: 240 } }, headers, children: content },
+    { properties: { page, type: SectionType.CONTINUOUS, column: { count: 2, space: GAP } }, headers, children: content },
   ],
 });
 

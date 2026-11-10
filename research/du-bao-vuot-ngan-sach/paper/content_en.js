@@ -14,7 +14,7 @@ exports.header = 'STUDENT SCIENTIFIC RESEARCH COMMUNICATION, VOLUME II, 2026';
 
 exports.build = ({ add, body, H1, H2, EQ, bullet, FIG, TABLE, LABELED, REFLIST, r }) => {
   add(LABELED('Abstract', r`A budget warning in a personal finance app helps only if it comes early and is rarely wrong. FlowMoney, the offline-first app built in our graduation project, already projects end-of-month spending with a median of the user's past months. We ask whether a probability of overrunning the budget gives better warnings, and we compare three forecasters: the app's median rule, an exponentially weighted moving average (EWMA) of daily spending, and a quantile regression trained on all users. The data are IBM's synthetic card transactions, with amounts rescaled per user to Vietnamese spending levels, which leaves every forecast unchanged. On 310,978 forecasts from 1,513 users, quantile regression and EWMA beat the median rule (Brier score 0.148 and 0.149 against 0.166). Allowing one false alarm in ten months, quantile regression catches 77% of overruns a median of 12 days ahead, against 68% and 9 days for the median rule. We then loaded five converted users into the real app through its own sync API, and the app's pace figure matched our offline run of its code to the last dong. A trial build that adds M2 and M3 to the app reproduced all 328,670 test forecasts to within $10^{-6}$.`));
-  add(LABELED('Index Terms', 'Budget overrun, early warning, exponential smoothing, personal finance application, quantile regression, synthetic data.', 160));
+  add(LABELED('Index Terms', 'Budget overrun, early warning, exponential smoothing, personal finance application, quantile regression, synthetic data.', 320));
 
   // I
   add(H1('Introduction'));
