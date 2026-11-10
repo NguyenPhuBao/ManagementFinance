@@ -34,12 +34,23 @@ if __name__ == "__main__":
         tiers.append({"tier": name, "assumed_share": share, "lo": lo, "hi": hi, "users": len(us),
                       "median_monthly_vnd": float(np.median(med)) if med else None})
     totals = np.concatenate([Y[p, start[p]:].sum(axis=1) for p in range(len(ids))])
+    # transactions and spending days per user-month with spending; same-payment repeats (same user, MCC, exact USD
+    # amount seen in >= 6 distinct months, the definition of profile_tabformer.py) - all on the kept users only
+    import pandas as pd
+    raw = pd.DataFrame({"u": t["u"][sel], "ym": mi[sel], "d": t["d"][sel], "mcc": t["mcc"][sel], "usd": t["a"][sel]})
+    um = raw.groupby(["u", "ym"]).agg(n=("d", "size"), nd=("d", "nunique"))
+    rec = raw.groupby(["u", "mcc", "usd"]).ym.nunique()
+    rmask = raw.set_index(["u", "mcc", "usd"]).index.isin(rec[rec >= 6].index)
     active_months = int(sum(months - s for s in start))
     share = np.bincount(cat, weights=a, minlength=len(CATEGORIES))
     cnt = np.bincount(cat, minlength=len(CATEGORIES))
     prof = {
         "mapping_status": STATUS, "users": int(len(ids)), "rows": int(len(a)), "user_months": active_months,
         "months_per_user_median": float(np.median(months - start)),
+        "user_months_with_spending": int(len(um)),
+        "tx_per_user_month_median": float(um.n.median()),
+        "spending_days_per_user_month_median": float(um.nd.median()),
+        "repeat_payment_share_of_amount": round(float(raw.usd[rmask].sum() / raw.usd.sum()), 3),
         "tiers": tiers,
         "category_amount_share_pct": {c: round(100 * float(s / share.sum()), 1) for c, s in zip(CATEGORIES, share)},
         "category_row_share_pct": {c: round(100 * float(n / cnt.sum()), 1) for c, n in zip(CATEGORIES, cnt)},

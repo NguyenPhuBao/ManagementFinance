@@ -4,6 +4,10 @@
  "rows": 8184059,
  "user_months": 91512,
  "months_per_user_median": 61.0,
+ "user_months_with_spending": 90871,
+ "tx_per_user_month_median": 81.0,
+ "spending_days_per_user_month_median": 29.0,
+ "repeat_payment_share_of_amount": 0.112,
  "tiers": [
   {
    "tier": "Sinh viên",
