@@ -27,8 +27,9 @@ const L = LANG === 'vi'
 // ---------------------------------------------------------------- references
 // Only cited keys may stay (the build throws on an uncited reference). Pruned 2026-11-10 for the rewritten paper.
 // DOIs checked against api.crossref.org on 2026-11-10 (title, venue, year, volume, pages all matched).
+// Thaler and Brier carry long legacy SICI DOIs; those two are left out to keep the list readable (IEEE does not require DOIs).
 const REFS = {
-  thaler: 'R. H. Thaler, “Mental accounting matters,” *J. Behav. Decis. Making*, vol. 12, no. 3, pp. 183–206, 1999, doi: 10.1002/(SICI)1099-0771(199909)12:3<183::AID-BDM318>3.0.CO;2-F.',
+  thaler: 'R. H. Thaler, “Mental accounting matters,” *J. Behav. Decis. Making*, vol. 12, no. 3, pp. 183–206, 1999.',
   karlan: 'D. Karlan, M. McConnell, S. Mullainathan, and J. Zinman, “Getting to the top of mind: How reminders increase saving,” *Manage. Sci.*, vol. 62, no. 12, pp. 3393–3411, 2016, doi: 10.1287/mnsc.2015.2296.',
   gneitingC: 'T. Gneiting, F. Balabdaoui, and A. E. Raftery, “Probabilistic forecasts, calibration and sharpness,” *J. Roy. Statist. Soc. B*, vol. 69, no. 2, pp. 243–268, 2007, doi: 10.1111/j.1467-9868.2007.00587.x.',
   roberts: 'S. W. Roberts, “Control chart tests based on geometric moving averages,” *Technometrics*, vol. 1, no. 3, pp. 239–250, 1959, doi: 10.1080/00401706.1959.10489860.',
@@ -36,7 +37,7 @@ const REFS = {
   koenkerB: 'R. Koenker and G. Bassett, Jr., “Regression quantiles,” *Econometrica*, vol. 46, no. 1, pp. 33–50, 1978, doi: 10.2307/1913643.',
   taylor: 'J. W. Taylor, “Forecasting daily supermarket sales using exponentially weighted quantile regression,” *Eur. J. Oper. Res.*, vol. 178, no. 1, pp. 154–167, 2007, doi: 10.1016/j.ejor.2006.02.006.',
   chernozhukov: 'V. Chernozhukov, I. Fernández-Val, and A. Galichon, “Quantile and probability curves without crossing,” *Econometrica*, vol. 78, no. 3, pp. 1093–1125, 2010, doi: 10.3982/ECTA7880.',
-  brier: 'G. W. Brier, “Verification of forecasts expressed in terms of probability,” *Monthly Weather Rev.*, vol. 78, no. 1, pp. 1–3, 1950, doi: 10.1175/1520-0493(1950)078<0001:VOFEIT>2.0.CO;2.',
+  brier: 'G. W. Brier, “Verification of forecasts expressed in terms of probability,” *Monthly Weather Rev.*, vol. 78, no. 1, pp. 1–3, 1950.',
   naeini: 'M. Pakdaman Naeini, G. F. Cooper, and M. Hauskrecht, “Obtaining well calibrated probabilities using Bayesian binning,” in *Proc. AAAI Conf. Artif. Intell.*, Austin, TX, USA, 2015, pp. 2901–2907, doi: 10.1609/aaai.v29i1.9602.',
   tashman: 'L. J. Tashman, “Out-of-sample tests of forecasting accuracy: An analysis and review,” *Int. J. Forecast.*, vol. 16, no. 4, pp. 437–450, 2000, doi: 10.1016/S0169-2070(00)00065-0.',
   efron: 'B. Efron and R. J. Tibshirani, *An Introduction to the Bootstrap*. New York, NY, USA: Chapman & Hall, 1993.',
@@ -327,6 +328,16 @@ Packer.toBuffer(doc).then(async (buf) => {
     + '<w:spacing w:after="0" w:line="480" w:lineRule="exact"/><w:textAlignment w:val="baseline"/></w:pPr>';
   if (docXml.split(dropFrom).length !== 2) throw new Error('drop cap paragraph not found exactly once');
   docXml = docXml.replace(dropFrom, dropTo);
+  // A hyphen inside a DOI must not end a line: PDF readers drop a line-final hyphen on copy, so
+  // "1099-" + "0771" came out as "10990771" (2026-11-10). Hyphens in DOIs become non-breaking hyphens.
+  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  for (const k of citeOrder) {
+    const m = /doi: (\S+)\.$/.exec(REFS[k]);
+    if (!m || !m[1].includes('-')) continue;
+    const doi = esc(m[1]);
+    if (docXml.split(doi).length !== 2) throw new Error('DOI not found exactly once: ' + m[1]);
+    docXml = docXml.replace(doi, doi.split('-').join('</w:t><w:noBreakHyphen/><w:t xml:space="preserve">'));
+  }
   zip.file('word/document.xml', docXml);
   buf = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
   fs.writeFileSync(path.join(HERE, L.out), buf);
