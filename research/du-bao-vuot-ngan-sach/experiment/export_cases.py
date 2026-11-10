@@ -8,7 +8,7 @@ median spent share at x (the pace chip). dart_check/doi_chieu.dart reads the fil
 Berka has dates only: entries are [day, daily total]. TabFormer has the time of day: entries are one per
 transaction, [day, amount, minute of day], and the Dart run adds a fourth convention, the real time.
 
-Usage: python -u export_cases.py [berka|tabformer] [n_cases] [seed]  ->  results/m1_cases[_tabformer].json
+Usage: python -u export_cases.py [berka|tabformer|tabformer_vn] [n_cases] [seed]  ->  results/m1_cases[_tabformer].json
 """
 import json
 import pathlib
@@ -33,10 +33,18 @@ def main():
         year0, tx = 1993, None
     else:
         import tabformer
-        Y, days, start, end, ids, _ = tabformer.load()
+        if source == "tabformer_vn":           # VND amounts (tabformer_vn.py); minute of day from the USD cache
+            import tabformer_vn
+            vn, _ = tabformer_vn.convert()
+            t = {k: vn[k] for k in ["u", "y", "m", "d", "a"]}
+            t["min"] = tabformer.transactions()["min"]
+            Y, days, start, end, ids, _ = tabformer.load(t)
+        else:
+            t = tabformer.transactions()
+            Y, days, start, end, ids, _ = tabformer.load()
         full = end == Y.shape[1] - 1
         Y, start, ids = Y[full], start[full], ids[full]
-        year0, t = tabformer.FIRST_YEAR, tabformer.transactions()
+        year0 = tabformer.FIRST_YEAR
         pos = {u: i for i, u in enumerate(ids)}
         mi = (t["y"] - year0) * 12 + t["m"] - 1
         tx = {}
