@@ -18,9 +18,9 @@ import os
 METHODS = os.environ.get("PLOT_METHODS", "p0,p1,p2,p3").split(",")
 STYLE = {  # stroke colour, width, dash (None = solid), marker
     "p0": ("#7f7f7f", 1.0, (4, 3), "tri"),
-    "p1": ("#000000", 1.2, None, "circle"),
-    "p2": ("#7f7f7f", 1.0, (1.5, 2), "diamond"),
-    "p3": ("#000000", 1.8, None, "square"),
+    "p1": ("#D55E00", 1.2, None, "circle"),       # colour-blind safe hues (Okabe-Ito); dashes and markers
+    "p2": ("#0072B2", 1.1, (3, 2), "diamond"),     # keep the curves apart in grayscale print
+    "p3": ("#009E73", 1.8, None, "square"),
 }
 LAB = {
     "en": dict(names={"p0": "M0 Pro-rata", "p1": "M1 Median rhythm", "p2": "M2 EWMA", "p3": "M3 Quantile regr."},
@@ -93,21 +93,25 @@ def save(svg, name):
 def fig3(res, lang, name="fig3_reliability"):
     lb = LAB[lang]
     rel = res["kappa"]["1.0"]["reliability_day15"]
-    W, H = 340, 330
+    one_row = len(METHODS) == 3            # the rewritten paper: M1-M3 in one row, no empty cell
+    W, H = (340, 140) if one_row else (340, 330)
     s = [f"<svg xmlns='http://www.w3.org/2000/svg' width='{W}' height='{H}' viewBox='0 0 {W} {H}'>", f"<rect width='{W}' height='{H}' fill='#fff'/>"]
-    pw, ph = 120, 112
+    pw, ph = (84, 88) if one_row else (120, 112)
     for idx, m in enumerate(METHODS):
-        col, row = idx % 2, idx // 2
-        x0, y0 = 44 + col * 158, 18 + row * 152
+        if one_row:
+            col, row, x0, y0 = idx, 1, 42 + idx * 104, 12
+        else:
+            col, row = idx % 2, idx // 2
+            x0, y0 = 44 + col * 158, 18 + row * 152
         a, X, Y = axes(x0, y0, pw, ph, (0, 1), (0, 1), [0, 0.5, 1], [0, 0.5, 1],
                        lb["fx"] if row == 1 else "", lb["fy"] if col == 0 else "")
         s.append(a)
         s.append(seg_line([(X(0), Y(0)), (X(1), Y(1))], "#999999", 0.8, (3, 2)))
         pts = [(X(p), Y(o)) for p, o in rel[m]]
         color, width, dash, mk = STYLE[m]
-        s.append(seg_line(pts, "#000000", 1.1, None))
-        s.extend(marker("circle", x, y, "#000000", 2.0) for x, y in pts)
-        s.append(f"<text x='{x0 + 4}' y='{y0 + 11}' {FONT} font-size='9'>{lb['names'][m]}</text>")
+        s.append(seg_line(pts, color, 1.2, None))
+        s.extend(marker(mk, x, y, color, 2.0) for x, y in pts)
+        s.append(f"<text x='{x0 + 4}' y='{y0 + 11}' {FONT} font-size='{8 if one_row else 9}'>{lb['names'][m]}</text>")
         ece = res["kappa"]["1.0"]["overall"][m]["ece"]
         s.append(f"<text x='{x0 + pw - 4}' y='{y0 + ph - 5}' {FONT} font-size='8.5' text-anchor='end'>ECE {ece:.3f}</text>")
     s.append("</svg>")
@@ -117,7 +121,7 @@ def fig3(res, lang, name="fig3_reliability"):
 def fig4(res, lang, name="fig4_warning"):
     lb = LAB[lang]
     warn = res["kappa"]["1.0"]["warning"]
-    W, H = 340, 330
+    W, H = 340, 316
     s = [f"<svg xmlns='http://www.w3.org/2000/svg' width='{W}' height='{H}' viewBox='0 0 {W} {H}'>", f"<rect width='{W}' height='{H}' fill='#fff'/>"]
     xlim = (0, 0.5)
     maxlead = max(c["lead_median"] for m in METHODS for c in warn[m] if c["far"] <= 0.5)

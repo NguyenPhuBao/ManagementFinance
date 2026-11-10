@@ -84,7 +84,105 @@ def sub(text):
     return re.sub(r"_(\w\*?)", lambda m: f"<tspan dy='3' font-size='8'>{m.group(1)}</tspan><tspan dy='-3'></tspan>", text)
 
 
+F1 = {  # Fig. 1 (2026-11-10): top band = FlowMoney's business flow, bottom band = the experiment
+    "en": dict(
+        app="(A) FlowMoney app (graduation project)",
+        cap=[["Manual", "entry"], ["Quick input", "(text, voice)"], ["Receipt", "scan"], ["Bank", "notification"]],
+        db=["Transactions in SQLite on the phone", "(offline-first, background sync with the server)"],
+        bud="Monthly budget B (set by the user)", daily="Daily spending up to day t",
+        m=[["M1 median", "(released app)"], ["M2 EWMA", "(trial build)"], ["M3 quantile", "(trial build)"]],
+        out=["Budget page: pace label", "(slow, on track, fast)"], prob=["Probability p = P(overrun);", "warn when p ≥ p*"],
+        exp="(B) Experiment of this paper",
+        src=["IBM TabFormer", "(synthetic cards)"], conv=["Conversion to VN levels", "(AI-proposed, Likert-rated)"],
+        runs=[["(a) Offline run", "1,513 users"], ["(b) 5 users loaded", "via the sync API"], ["(c) Trial build", "on the phone"]],
+        legend="solid: in the released app;  dashed: added for this study"),
+    "vi": dict(
+        app="(A) Ứng dụng FlowMoney (khoá luận tốt nghiệp)",
+        cap=[["Nhập", "thủ công"], ["Nhập nhanh", "(gõ, nói)"], ["Quét", "hoá đơn"], ["Đọc biến động", "số dư"]],
+        db=["Giao dịch trong SQLite trên điện thoại", "(offline-first, đồng bộ nền với máy chủ)"],
+        bud="Ngân sách tháng B (người dùng đặt)", daily="Chi tiêu theo ngày tới ngày t",
+        m=[["M1 trung vị", "(app đang chạy)"], ["M2 EWMA", "(bản thử)"], ["M3 hồi quy", "phân vị (bản thử)"]],
+        out=["Trang Ngân sách: nhãn nhịp chi", "(chậm, đúng nhịp, nhanh)"], prob=["Xác suất p = P(vượt);", "cảnh báo khi p ≥ p*"],
+        exp="(B) Thực nghiệm của bài",
+        src=["IBM TabFormer", "(thẻ mô phỏng)"], conv=["Chuyển sang mức chi VN", "(AI đề xuất, chấm Likert)"],
+        runs=[["(a) Chạy offline", "1.513 người"], ["(b) Nạp 5 người", "qua API đồng bộ"], ["(c) Bản thử", "trên điện thoại"]],
+        legend="nét liền: có trong app phát hành;  nét đứt: thêm cho nghiên cứu này"),
+}
+
+
+def dbox(x, y, w, h, lines, fs=9.5, fill="#ffffff"):
+    """Box with a dashed outline (MuPDF ignores stroke-dasharray, so the outline is drawn as segments)."""
+    pts = [(x, y), (x + w, y), (x + w, y + h), (x, y + h), (x, y)]
+    out = [f"<rect x='{x}' y='{y}' width='{w}' height='{h}' fill='{fill}' stroke='none'/>", dashed(pts, 3.0, 2.0, 1.0)]
+    n = len(lines)
+    for i, t in enumerate(lines):
+        ty = y + h / 2 + (i - (n - 1) / 2) * 11 + 3.5
+        out.append(f"<text x='{x + w / 2}' y='{ty}' {FONT} font-size='{fs}' text-anchor='middle'>{t}</text>")
+    return "".join(out)
+
+
+def sbox(x, y, w, h, lines, fs=9.5, fill="#ffffff", stroke="#000"):
+    out = [f"<rect x='{x}' y='{y}' width='{w}' height='{h}' rx='3' fill='{fill}' stroke='{stroke}' stroke-width='1'/>"]
+    n = len(lines)
+    for i, t in enumerate(lines):
+        ty = y + h / 2 + (i - (n - 1) / 2) * 11 + 3.5
+        out.append(f"<text x='{x + w / 2}' y='{ty}' {FONT} font-size='{fs}' text-anchor='middle'>{t}</text>")
+    return "".join(out)
+
+
 def fig1(lang):
+    lb = F1[lang]
+    W, H = 340, 406
+    BLUE, GREEN = "#eaf1fb", "#eef7ee"
+    s = [f"<svg xmlns='http://www.w3.org/2000/svg' width='{W}' height='{H}' viewBox='0 0 {W} {H}'>",
+         f"<rect width='{W}' height='{H}' fill='#fff'/>"]
+    # band A: the app
+    s.append(f"<rect x='3' y='3' width='{W - 6}' height='274' rx='5' fill='{BLUE}' stroke='#4a6fa5' stroke-width='1'/>")
+    s.append(f"<text x='10' y='16' {FONT} font-size='10' font-style='italic'>{lb['app']}</text>")
+    cw, gap, x0 = 76, 6, 12
+    for k, c in enumerate(lb["cap"]):
+        x = x0 + k * (cw + gap)
+        s.append(sbox(x, 24, cw, 28, c, fs=9))
+        s.append(arrow(x + cw / 2, 52, x + cw / 2, 64))
+    s.append(sbox(12, 64, 316, 32, lb["db"], fs=9.5))
+    s.append(arrow(90, 96, 90, 110))
+    s.append(arrow(250, 96, 250, 110))
+    s.append(sbox(12, 110, 156, 24, [lb["daily"]], fs=9))
+    s.append(sbox(174, 110, 154, 24, [lb["bud"]], fs=9))
+    s.append(arrow(90, 134, 170, 150))
+    s.append(arrow(250, 134, 170, 150))
+    xs = [16, 125, 234]
+    for k, (x, nm) in enumerate(zip(xs, lb["m"])):
+        s.append(arrow(170, 150, x + 45, 166))
+        if k == 0:
+            s.append(sbox(x, 166, 90, 32, nm, fs=9, fill="#ffffff"))
+        else:
+            s.append(dbox(x, 166, 90, 32, nm, fs=9))
+        s.append(arrow(x + 45, 198, 250, 222))
+    s.append(arrow(61, 198, 70, 222))
+    s.append(sbox(12, 222, 146, 32, lb["out"], fs=9))
+    s.append(dbox(166, 222, 162, 32, lb["prob"], fs=9))
+    s.append(f"<text x='170' y='270' {FONT} font-size='8.5' text-anchor='middle' font-style='italic'>{lb['legend']}</text>")
+    # band B: the experiment
+    B0 = 284
+    s.append(f"<rect x='3' y='{B0}' width='{W - 6}' height='118' rx='5' fill='{GREEN}' stroke='#4f8a4f' stroke-width='1'/>")
+    s.append(f"<text x='10' y='{B0 + 13}' {FONT} font-size='10' font-style='italic'>{lb['exp']}</text>")
+    s.append(sbox(12, B0 + 20, 120, 30, lb["src"], fs=9))
+    s.append(arrow(132, B0 + 35, 150, B0 + 35))
+    s.append(dbox(150, B0 + 20, 178, 30, lb["conv"], fs=9))
+    rw = 100
+    for k, rn in enumerate(lb["runs"]):
+        x = 12 + k * (rw + 8)
+        s.append(arrow(239, B0 + 50, x + rw / 2, B0 + 72))
+        s.append(dbox(x, B0 + 72, rw, 32, rn, fs=9))
+    # (b) feeds the app's database through the sync API
+    s.append(dashed([(205, B0 + 72), (205, B0 + 62), (334, B0 + 62), (334, 80), (328, 80)], 3, 2, 0.9))
+    s.append("<polygon points='328,80 334,77 334,83' fill='#000'/>")
+    s.append("</svg>")
+    to_png("".join(s), "fig1_pipeline" + ("_vi" if lang == "vi" else ""))
+
+
+def fig1_old(lang):
     lb = LAB[lang]
     W, H = 340, 300
     s = [f"<svg xmlns='http://www.w3.org/2000/svg' width='{W}' height='{H}' viewBox='0 0 {W} {H}'>",
