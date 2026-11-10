@@ -88,7 +88,7 @@ F1 = {  # Fig. 1 (2026-11-10): top band = FlowMoney's business flow, bottom band
     "en": dict(
         app="(A) FlowMoney app (graduation project)",
         cap=[["Manual", "entry"], ["Quick input", "(text, voice)"], ["Receipt", "scan"], ["Bank", "notification"]],
-        db=["Transactions in SQLite on the phone", "(offline-first, background sync with the server)"],
+        db=["Entry form confirmed by the user, saved in SQLite on the phone", "(offline-first, background sync with the server)"],
         bud="Monthly budget B (set by the user)", daily="Daily spending up to day t",
         m=[["M1 median", "(released app)"], ["M2 EWMA", "(trial build)"], ["M3 quantile", "(trial build)"]],
         out=["Budget page: pace label", "(slow, on track, fast)"], prob=["Probability p = P(overrun);", "warn when p ≥ p*"],
@@ -99,7 +99,7 @@ F1 = {  # Fig. 1 (2026-11-10): top band = FlowMoney's business flow, bottom band
     "vi": dict(
         app="(A) Ứng dụng FlowMoney (khoá luận tốt nghiệp)",
         cap=[["Nhập", "thủ công"], ["Nhập nhanh", "(gõ, nói)"], ["Quét", "hoá đơn"], ["Đọc biến động", "số dư"]],
-        db=["Giao dịch trong SQLite trên điện thoại", "(offline-first, đồng bộ nền với máy chủ)"],
+        db=["Form nhập do người dùng xác nhận, lưu vào SQLite trên điện thoại", "(offline-first, đồng bộ nền với máy chủ)"],
         bud="Ngân sách tháng B (người dùng đặt)", daily="Chi tiêu theo ngày tới ngày t",
         m=[["M1 trung vị", "(app đang chạy)"], ["M2 EWMA", "(bản thử)"], ["M3 hồi quy", "phân vị (bản thử)"]],
         out=["Trang Ngân sách: nhãn nhịp chi", "(chậm, đúng nhịp, nhanh)"], prob=["Xác suất p = P(vượt);", "cảnh báo khi p ≥ p*"],
@@ -158,7 +158,11 @@ def fig1(lang):
             s.append(sbox(x, 166, 90, 32, nm, fs=9, fill="#ffffff"))
         else:
             s.append(dbox(x, 166, 90, 32, nm, fs=9))
-        s.append(arrow(x + 45, 198, 250, 222))
+        if k == 0:   # the released M1 gives no probability: its arrow into the trial-build box is dashed
+            s.append(dashed([(x + 45, 198), (242, 221)], 3, 2, 1.0))
+            s.append(arrow(242, 221, 250, 222))
+        else:
+            s.append(arrow(x + 45, 198, 250, 222))
     s.append(arrow(61, 198, 70, 222))
     s.append(sbox(12, 222, 146, 32, lb["out"], fs=9))
     s.append(dbox(166, 222, 162, 32, lb["prob"], fs=9))

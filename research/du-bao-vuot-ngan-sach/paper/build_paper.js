@@ -216,7 +216,7 @@ function FIG(file, wPx, hPx, caption) {
       children: [new ImageRun({ type: 'png', data: fs.readFileSync(path.join(HERE, file.replace('.png', L.figSuffix + '.png'))), transformation: { width: wPx, height: hPx } })],
     }),
     new Paragraph({
-      alignment: AlignmentType.JUSTIFIED, spacing: { after: 120 },
+      alignment: AlignmentType.JUSTIFIED, spacing: { after: 120 }, keepLines: true,
       children: [new TextRun({ text: L.fig + ' ' + figNo + '.  ', size: 16 }), ...runs(caption, { size: 16 })],
     }),
   ];
@@ -241,14 +241,16 @@ const LINE = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
 function TABLE(title, widths, header, rows, note, align) {
   tabNo++;
   const total = widths.reduce((a, b) => a + b, 0);
-  // Rows never split and every row but the last keeps with the next, so a table is not broken across columns.
+  // Rows never split. A short table (up to five rows) also keeps every row with the next, so it is not broken across
+  // columns; a long one may break between rows (keeping it whole left large gaps), with its header row repeated.
+  const keep = rows.length <= 5;
   const mk = (cells, isHead, isLast) => new TableRow({
     tableHeader: isHead, cantSplit: true,
     children: cells.map((c, j) => new TableCell({
       width: { size: widths[j], type: WidthType.DXA },
       margins: { left: 50, right: 50, top: 20, bottom: 20 },
       borders: { top: isHead ? LINE : NONE, bottom: isHead || isLast ? LINE : NONE, left: NONE, right: NONE },
-      children: [new Paragraph({ keepNext: !isLast, alignment: (align ? align[j] === 'L' : j === 0) ? AlignmentType.LEFT : AlignmentType.CENTER, children: runs(c, { size: 16, bold: false }) })],
+      children: [new Paragraph({ keepNext: (keep || isHead) && !isLast, alignment: (align ? align[j] === 'L' : j === 0) ? AlignmentType.LEFT : AlignmentType.CENTER, children: runs(c, { size: 16, bold: false }) })],
     })),
   });
   const out = [
