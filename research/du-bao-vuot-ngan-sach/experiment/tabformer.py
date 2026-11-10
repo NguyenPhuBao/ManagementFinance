@@ -46,8 +46,9 @@ def transactions():
     return {k: z[k] for k in z.files}
 
 
-def load():
-    t = transactions()
+def load(t=None):
+    """t: spending rows (u, y, m, d, a); defaults to the cached USD rows. tabformer_vn passes VND rows."""
+    t = transactions() if t is None else t
     mi = (t["y"] - FIRST_YEAR) * 12 + t["m"] - 1
     last_day = t["y"].max() * 10000 + t["m"][t["y"] == t["y"].max()].max() * 100
     ly, lm = int(t["y"].max()), int(t["m"][t["y"] == t["y"].max()].max())

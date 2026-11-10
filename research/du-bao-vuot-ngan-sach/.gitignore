@@ -6,3 +6,5 @@ experiment/results/m1_cases.json
 experiment/results/m1_dart.json
 experiment/results/m1_cases_*.json
 experiment/results/m1_dart_*.json
+# Row-level VND forecasts, rebuilt in ~3 min by cases_vn.py (15 MB)
+experiment/results/cases_vn.npz
