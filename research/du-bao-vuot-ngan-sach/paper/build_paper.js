@@ -272,8 +272,9 @@ const LABELED = (label, text, after = 100) => new Paragraph({
   alignment: AlignmentType.JUSTIFIED, spacing: { after },
   children: [new TextRun({ text: label, bold: true, italics: true, size: 18 }), ...runs('—' + text, { bold: true, size: 18 })],
 });
+// Left-aligned: a justified line that ends before a long DOI or URL gets stretched into wide gaps.
 const REFLIST = () => citeOrder.map((k, idx) => new Paragraph({
-  alignment: AlignmentType.JUSTIFIED, indent: { left: 360, hanging: 360 }, spacing: { after: 20 },
+  alignment: AlignmentType.LEFT, indent: { left: 360, hanging: 360 }, spacing: { after: 20 },
   tabStops: [{ type: TabStopType.LEFT, position: 360 }],
   children: [new TextRun({ text: '[' + (idx + 1) + ']\t', size: 16 }), ...runs(REFS[k], { size: 16 })],
 }));
