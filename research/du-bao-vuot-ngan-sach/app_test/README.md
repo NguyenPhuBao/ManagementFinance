@@ -27,3 +27,30 @@ lẫn ba phương pháp đều báo thấp ở ngày 10; #4 là báo động nh�
 Tài khoản thử trên PersonFinance: `nckh_u1`…`nckh_u5` (idaccount 32–36), mật khẩu trong `app_load.py`; không xoá.
 Môi trường: phải `npx prisma generate` trong `src/Backend` (client sinh sẵn thiếu cột `idfund_pair` → mọi
 giao dịch bị từ chối `CONSTRAINT_VIOLATION`); người dùng cho phép đích danh 2026-11-10.
+
+## M2 và M3 chạy trong app — bản thử (2026-11-10, nhánh TranQuangDat, không phát hành)
+
+Mã: `src/Client-app/lib/features/budget/domain/du_bao_vuot_ngan_sach.dart` (chép `core.build_rows` theo ngày) +
+`he_so_m3_vn.g.dart` (M3 khớp MỘT lần trên TabFormer-VN, tháng < 17, 4.000 dòng, seed 2026 — `experiment/app_m23.py`;
+bài dùng khớp cuộn 6 tháng) + `data/du_bao_vuot_nguon.dart` (ngân sách tổng, tháng dương lịch; tháng đầu = tháng của
+khoản chi sớm nhất). Thẻ Nhịp chi hiện "Xác suất vượt (thử nghiệm): M1 · M2 · M3"; bản debug in sáu chữ số
+(`uN_m23_log.txt`). Đo lại 5 người trên máy ảo ngày 10/11/2026 (`sh experiment/app_m23_user.sh N`, ảnh `uN_detail_m23.png`),
+so với Python trên cùng dữ liệu app (`results/app_m23.json`, tháng 4–11/2026, t = 10):
+
+| # | p1 app | p2 app | p3 app | Lệch tối đa so với Python |
+|---|---|---|---|---|
+| 1 | 0,214286 | 0,173829 | 0,136914 | 3,6·10⁻⁷ |
+| 2 | 0,214286 | 0,308193 | 0,292581 | 3,7·10⁻⁷ |
+| 3 | 0,500000 | 0,123504 | 0,147117 | 1,9·10⁻⁷ |
+| 4 | 0,785714 | 0,816814 | 0,811217 | 3,8·10⁻⁷ |
+| 5 | 0,214286 | 0,196897 | 0,145438 | 3,5·10⁻⁷ |
+
+(lệch còn lại là do log làm tròn sáu chữ số). Số p2/p3 khác cột "thí nghiệm" ở bảng trên vì app chỉ có dữ liệu từ
+tháng 4/2026 và M3 dùng hệ số khớp một lần.
+
+Kiểm số lượng lớn, cùng mã app:
+- Tầng 1 (`experiment/app_bulk.py` + `dart_check/app_bulk.dart`): 328.670 dòng, 1.518 người — 0 dòng lệch `core.py`
+  > 1e-6; Brier mã app M1 0,1657 · M2 0,1492 · M3 0,1481 (`results/app_bulk.json`).
+- Tầng 2 (`src/Client-app/test/features/budget/data/du_bao_vuot_nguon_test.dart`, ca `experiment/app_drift_cases.py`):
+  300 người, 985.834 giao dịch qua CSDL Drift của app kèm 5 loại hàng phải bỏ qua — 0 dòng lệch > 1e-6
+  (`results/app_drift.json`).
