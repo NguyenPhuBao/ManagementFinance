@@ -29,24 +29,33 @@ const L = LANG === 'vi'
 // DOIs checked against api.crossref.org on 2026-11-10 (title, venue, year, volume, pages all matched).
 // On the user's request (2026-11-10) the printed list carries no DOIs, to keep it short; IEEE does not require
 // them. The checked DOIs are in git history (commit abfbf418) if they are wanted back.
+// 2026-11-12, supervisor's review ("at most 15 references, the newest, check that each is cited correctly"):
+// 17 -> 15. Replaced by newer work: Thaler 1999 -> Zhang & Sussman 2018; Karlan 2016 -> Medina 2021 + Levi 2026;
+// Roberts 1959 + Tashman 2000 -> Petropoulos 2022; Koenker & Bassett 1978 -> Handbook of Quantile Regression 2017;
+// Taylor 2007 -> M5 uncertainty 2022; Gneiting 2007 + Naeini 2015 -> Dimitriadis 2021; new: Assefa 2020.
+// Dropped without replacement: Likert 1932, Efron 1993. Kept as the exact source of a step: RiskMetrics (M2 update),
+// Brier (the score), Chernozhukov (sorting quantiles). Every entry checked on api.crossref.org on 2026-11-12 (title,
+// authors, venue, volume, issue, pages, year), except RiskMetrics (technical report, no DOI) and the Claude entry.
+// DOIs (not printed): zhang 10.1002/cfp2.1011 · medina 10.1093/rfs/hhaa108 · levi 10.1017/s0022109026102749 ·
+// petropoulos 10.1016/j.ijforecast.2021.11.001 · handbookQR 10.1201/9781315120256 · makridakis
+// 10.1016/j.ijforecast.2021.10.009 · chernozhukov 10.3982/ECTA7880 · dimitriadis 10.1073/pnas.2016191118 ·
+// padhi 10.1109/ICASSP39728.2021.9414142 · altman 10.1145/3490354.3494378 · assefa 10.1145/3383455.3422554.
 const REFS = {
-  thaler: 'R. H. Thaler, “Mental accounting matters,” *J. Behav. Decis. Making*, vol. 12, no. 3, pp. 183–206, 1999.',
-  karlan: 'D. Karlan, M. McConnell, S. Mullainathan, and J. Zinman, “Getting to the top of mind: How reminders increase saving,” *Manage. Sci.*, vol. 62, no. 12, pp. 3393–3411, 2016.',
-  gneitingC: 'T. Gneiting, F. Balabdaoui, and A. E. Raftery, “Probabilistic forecasts, calibration and sharpness,” *J. Roy. Statist. Soc. B*, vol. 69, no. 2, pp. 243–268, 2007.',
-  roberts: 'S. W. Roberts, “Control chart tests based on geometric moving averages,” *Technometrics*, vol. 1, no. 3, pp. 239–250, 1959.',
+  zhang: 'C. Y. Zhang and A. B. Sussman, “Perspectives on mental accounting: An exploration of budgeting and investing,” *Financial Planning Rev.*, vol. 1, no. 1–2, Art. no. e1011, 2018.',
+  medina: 'P. C. Medina, “Side effects of nudging: Evidence from a randomized intervention in the credit card market,” *Rev. Financial Stud.*, vol. 34, no. 5, pp. 2580–2607, 2021.',
+  levi: 'Y. Levi, “Personal financial information presentation and consumer spending,” *J. Financial Quant. Anal.*, vol. 61, no. 5, pp. 2455–2480, 2026.',
+  petropoulos: 'F. Petropoulos *et al.*, “Forecasting: Theory and practice,” *Int. J. Forecast.*, vol. 38, no. 3, pp. 705–871, 2022.',
   riskmetrics: 'J. P. Morgan/Reuters, *RiskMetrics—Technical Document*, 4th ed., New York, NY, USA, 1996.',
-  koenkerB: 'R. Koenker and G. Bassett, Jr., “Regression quantiles,” *Econometrica*, vol. 46, no. 1, pp. 33–50, 1978.',
-  taylor: 'J. W. Taylor, “Forecasting daily supermarket sales using exponentially weighted quantile regression,” *Eur. J. Oper. Res.*, vol. 178, no. 1, pp. 154–167, 2007.',
+  handbookQR: 'R. Koenker, V. Chernozhukov, X. He, and L. Peng, Eds., *Handbook of Quantile Regression*. Boca Raton, FL, USA: Chapman & Hall/CRC, 2017.',
+  makridakis: 'S. Makridakis *et al.*, “The M5 uncertainty competition: Results, findings and conclusions,” *Int. J. Forecast.*, vol. 38, no. 4, pp. 1365–1385, 2022.',
   chernozhukov: 'V. Chernozhukov, I. Fernández-Val, and A. Galichon, “Quantile and probability curves without crossing,” *Econometrica*, vol. 78, no. 3, pp. 1093–1125, 2010.',
   brier: 'G. W. Brier, “Verification of forecasts expressed in terms of probability,” *Monthly Weather Rev.*, vol. 78, no. 1, pp. 1–3, 1950.',
-  naeini: 'M. Pakdaman Naeini, G. F. Cooper, and M. Hauskrecht, “Obtaining well calibrated probabilities using Bayesian binning,” in *Proc. AAAI Conf. Artif. Intell.*, Austin, TX, USA, 2015, pp. 2901–2907.',
-  tashman: 'L. J. Tashman, “Out-of-sample tests of forecasting accuracy: An analysis and review,” *Int. J. Forecast.*, vol. 16, no. 4, pp. 437–450, 2000.',
-  efron: 'B. Efron and R. J. Tibshirani, *An Introduction to the Bootstrap*. New York, NY, USA: Chapman & Hall, 1993.',
+  dimitriadis: 'T. Dimitriadis, T. Gneiting, and A. I. Jordan, “Stable reliability diagrams for probabilistic classifiers,” *Proc. Nat. Acad. Sci. USA*, vol. 118, no. 8, Art. no. e2016191118, 2021.',
   padhi: 'I. Padhi *et al.*, “Tabular transformers for modeling multivariate time series,” in *Proc. IEEE Int. Conf. Acoust., Speech Signal Process. (ICASSP)*, Toronto, ON, Canada, 2021, pp. 3565–3569.',
-  altman: 'E. R. Altman, “Synthesizing credit card transactions,” in *Proc. 2nd ACM Int. Conf. AI in Finance (ICAIF)*, 2021, pp. 1–9.',
+  altman: 'E. Altman, “Synthesizing credit card transactions,” in *Proc. 2nd ACM Int. Conf. AI in Finance (ICAIF)*, 2021, pp. 1–9.',
+  assefa: 'S. A. Assefa, D. Dervovic, M. Mahfouz, R. E. Tillman, P. Reddy, and M. Veloso, “Generating synthetic data in finance: Opportunities, challenges and pitfalls,” in *Proc. 1st ACM Int. Conf. AI in Finance (ICAIF)*, 2020, pp. 1–8.',
   iso: 'ISO 18245:2023, *Retail Financial Services—Merchant Category Codes*, 2nd ed. Geneva, Switzerland: International Organization for Standardization, 2023.',
-  claude: 'Anthropic, “Claude Opus 5.5,” 2026. [Online]. Available: https://www.anthropic.com. Accessed: Nov. 10, 2026.',
-  likert: 'R. Likert, “A technique for the measurement of attitudes,” *Arch. Psychol.*, vol. 22, no. 140, pp. 1–55, 1932.',
+  claude: 'Anthropic, “Claude Opus 5.5,” 2026. [Online]. Available: https://www.anthropic.com. Accessed: Nov. 12, 2026.',
 };
 const citeOrder = [];
 function cite(keys) {
@@ -291,8 +300,9 @@ const front = [
     alignment: AlignmentType.CENTER, spacing: { after: 160 },
     children: [new TextRun({ text: C.authors, size: 22 })],
   }),
-  new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: C.affiliation, italics: true, size: 20 })] }),
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 320 }, children: [new TextRun({ text: C.emails, size: 20 })] }),
+  // Supervisor's review 2026-11-12 struck the e-mail placeholder: no e-mail line unless C.emails is set.
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: C.emails ? 0 : 320 }, children: [new TextRun({ text: C.affiliation, italics: true, size: 20 })] }),
+  ...(C.emails ? [new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 320 }, children: [new TextRun({ text: C.emails, size: 20 })] })] : []),
 ];
 
 // ---------------------------------------------------------------- document
