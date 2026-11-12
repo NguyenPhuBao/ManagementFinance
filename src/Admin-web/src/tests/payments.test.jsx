@@ -29,6 +29,7 @@ vi.mock('../api/payment.api', () => ({
     processRefund: vi.fn(),
     confirmUpgrade: vi.fn(),
     createSampleOrder: vi.fn(),
+    deleteSampleOrders: vi.fn(),
   },
 }));
 
@@ -36,7 +37,7 @@ const PAST = '2026-01-01T00:00:00Z';
 const ORDERS = [
   { id: 'a', order_code: 1001, recognition_code: 'ABC123', package_type: 'Premium', amount: 49000, status: 'PAID', created_at: PAST, paid_at: PAST, account: { username: 'an', email: 'a@x.test', User: { fullname: 'Nguyễn An' } } },
   { id: 'b', order_code: 1002, package_type: 'Premium', amount: 49000, amount_received: 20000, status: 'REFUND_PENDING', created_at: PAST, account: { username: 'binh' } },
-  { id: 'c', order_code: 1003, package_type: 'Premium', amount: 2000, status: 'PENDING', expired_at: PAST, created_at: PAST, is_template: true, account: { username: 'chau' } },
+  { id: 'c', order_code: 1003, package_type: 'Premium', amount: 2000, amount_received: 0, status: 'PENDING', expired_at: PAST, created_at: PAST, is_template: true, account: { username: 'chau' } },
   { id: 'd', order_code: 1004, package_type: 'Premium', amount: 49000, amount_received: 70000, status: 'WAITING_CONFIRMATION', created_at: PAST, account: { username: 'dung' } },
 ];
 
@@ -62,6 +63,7 @@ beforeEach(() => {
     success: true,
     data: { order_code: 2001, qr_url: 'https://qr.test/2001.png', recognition_code: 'QWE789', amount: 2000, bank_info: { bankName: 'MB', accountNumber: '0123', accountName: 'FLOWMONEY' } },
   });
+  paymentApi.deleteSampleOrders.mockReset().mockResolvedValue({ success: true, data: { deletedCount: 3 } });
   adminApi.verifySecurityAction.mockReset().mockResolvedValue({ success: true });
   exportToCsv.mockReset();
 });
@@ -83,6 +85,8 @@ describe('Hiển thị', () => {
     expect(within(row(1001)).getByText('Đã thanh toán')).toHaveAttribute('data-tone', 'success');
     expect(within(row(1003)).getByText('Hết hạn')).toBeInTheDocument();
     expect(within(row(1003)).getByText('Mẫu')).toBeInTheDocument();
+    expect(within(row(1003)).queryByText('0')).not.toBeInTheDocument();
+    expect(within(row(1002)).getByText(/Thực nhận/)).toHaveTextContent('20.000');
     expect(within(row(1001)).queryByRole('button', { name: 'Hoàn tiền' })).not.toBeInTheDocument();
     expect(within(row(1002)).getByRole('button', { name: 'Hoàn tiền' })).toBeInTheDocument();
   });
@@ -175,6 +179,29 @@ describe('Xuất CSV, đơn thử, realtime', () => {
     );
     expect(await within(dialog).findByRole('img', { name: /QR/ })).toHaveAttribute('src', 'https://qr.test/2001.png');
     expect(within(dialog).getAllByText('QWE789').length).toBeGreaterThan(0);
+  });
+
+  it('xóa đơn mẫu: mở hộp xác nhận, bấm Hủy thì không gọi API', async () => {
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Xóa đơn mẫu' }));
+    const dialog = screen.getByRole('dialog', { name: 'Xóa đơn mẫu' });
+    expect(within(dialog).getByText(/không khôi phục/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hủy bỏ' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(paymentApi.deleteSampleOrders).not.toHaveBeenCalled();
+  });
+
+  it('xóa đơn mẫu: xác nhận gọi deleteSampleOrders một lần, đóng hộp rồi tải lại danh sách và số liệu', async () => {
+    await renderPage();
+    const ordersBefore = paymentApi.getOrders.mock.calls.length;
+    const statsBefore = paymentApi.getStats.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Xóa đơn mẫu' }));
+    const dialog = screen.getByRole('dialog', { name: 'Xóa đơn mẫu' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Xóa' }));
+    await waitFor(() => expect(paymentApi.deleteSampleOrders).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(paymentApi.getOrders.mock.calls.length).toBeGreaterThan(ordersBefore);
+    expect(paymentApi.getStats.mock.calls.length).toBeGreaterThan(statsBefore);
   });
 
   it('sự kiện payment.success tải lại danh sách và số liệu', async () => {

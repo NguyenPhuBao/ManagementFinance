@@ -179,6 +179,7 @@ stateDiagram-v2
    - **Cột Đơn hàng & Badge `[Mẫu]`:** Các đơn hàng thử nghiệm mang cờ `is_template: true` được gắn badge nhận diện `[Mẫu]` màu hổ phách bên cạnh mã đơn.
    - **Checkbox "Loại bỏ mẫu":** Nằm trên thanh công cụ lọc; khi tích chọn, loại bỏ hoàn toàn các đơn mẫu (`is_template: false`) khỏi cả bảng dữ liệu và 4 thẻ thống kê doanh thu KPI.
    - **Bộ lọc ngày (Từ ngày - Đến ngày):** Lọc chính xác theo ngày tạo đơn (`created_at`).
+   - **Nút "Xóa đơn mẫu" (2026-11-12):** Nằm ở đầu trang, mở hộp xác nhận; xác nhận thì gọi `DELETE /admin/payments/sample`, Backend xóa vật lý mọi đơn `is_template = true` (giao dịch đi kèm xóa theo nhờ `ON DELETE CASCADE`), trả `{ deletedCount }`; trang báo số đơn đã xóa và tải lại bảng cùng thẻ KPI. Đơn thật (`is_template = false`) không bị ảnh hưởng; Client-app không thấy đơn mẫu vì `findOrdersByAccount` lọc `is_template = false`. Backend không hủy liên kết PayOS của đơn đã xóa (đơn mẫu tự hết hạn sau 10 phút).
 3. **Trang Quản lý & Thực hiện Hoàn tiền (Refund Processing):**
    - Nút "Hoàn tiền" trên từng dòng: Luôn hiển thị ở cột Thao tác, sáng rõ và tương tác được đối với các đơn `REFUND_PENDING`; tự động làm mờ và vô hiệu hóa (disabled) với các trạng thái khác.
    - **Modal Hoàn tiền & Lưu trữ Minh chứng:**

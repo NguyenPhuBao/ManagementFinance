@@ -1021,15 +1021,11 @@ async function createSampleOrder({
 }
 
 /**
- * Xóa các đơn hàng mẫu thử nghiệm (có prefix sample-link-)
+ * Xóa các đơn hàng mẫu thử nghiệm của admin (is_template = true)
  */
 async function deleteSampleOrders() {
   const deleted = await prisma.payment_order.deleteMany({
-    where: {
-      payment_link_id: {
-        startsWith: 'sample-link-',
-      },
-    },
+    where: { is_template: true },
   });
   return { deletedCount: deleted.count };
 }

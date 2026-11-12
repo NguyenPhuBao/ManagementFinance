@@ -96,7 +96,7 @@ Nguồn: lời gọi API, sự kiện socket và hàm xử lý trong mã ngày 2
 | AIOps | `getStatus`, `getHistory`, `getIncidents`, `clearIncidents`, `getForensics`, `getQuarantineList`, `quarantineActor`, `getVectorConfig`, `toggleVector`, `setScale`, `calibrate`, `temporaryBlockIp`, `permanentBanIp`, `unblockIp`, `temporaryBlockAccount`, `permanentBanAccount`, `unblockAccount`, `getMaintenanceStatus`, `setMaintenanceStatus` | `admin.anomaly_detected`, `admin.maintenance_changed`, `admin.metrics_stream`, `admin.quarantine_updated`, `admin.security_alert`, `admin.security_blocked`, `admin.vector_config_changed` | đặt quy mô + hiệu chuẩn, chỉ số an ninh, biểu đồ xu hướng (khoảng thời gian có sẵn + tùy chọn), danh sách sự cố + xóa, điều tra (forensics), cách ly thủ công, chặn tạm / cấm vĩnh viễn / gỡ chặn IP và tài khoản, bật / tắt vector, kích hoạt giảm thiểu, làm mới tay, bảng sức khỏe máy chủ + giảm tải |
 | Người dùng | `getUsers`, `updateUserStatus`, `deleteUser`, `getUserById` (hộp chi tiết) | `admin.user_registered`, `admin.user_status_changed` | 4 thẻ số liệu, 5 tab trạng thái (mặc định ẩn "Đã xóa"), tìm kiếm, bộ lọc (gói, trạng thái), phân trang, xem chi tiết (hộp thoại), vô hiệu hóa (bắt buộc lý do), kích hoạt lại (xác nhận), xóa mềm (xác thực PIN, chỉ với tài khoản đã vô hiệu hóa), che số điện thoại, cập nhật realtime |
 | Phân quyền | `getPermissions`, `updatePermissions`, `resetPermissionsDefault` | `account.permissions_updated` | bảng ma trận theo nhóm, lọc, bật / tắt, giới hạn + không giới hạn, chính sách hạ cấp, ngăn phạm vi (drawer), hoàn tác từng hàng, lưu có xác nhận, đặt lại mặc định |
-| Thanh toán | `getOrders`, `getStats`, `getOrderDetail`, `getPackageTypes`, `processRefund`, `confirmUpgrade`, `createSampleOrder`, `deleteSampleOrders` | `payment.order_created`, `payment.order_expired`, `payment.overpaid_confirmation`, `payment.refunded`, `payment.success`, `payment.underpaid_warning` | 4 KPI, lọc (tìm, trạng thái, gói, khoảng ngày) + đặt lại, xem chi tiết, sao chép mã nhận diện, hoàn tiền (khởi tạo + thực hiện), xác nhận nâng cấp, xuất CSV, tạo đơn thử chờ thanh toán (giao diện cũ không có nút xóa đơn mẫu, xem 8.5), cập nhật realtime |
+| Thanh toán | `getOrders`, `getStats`, `getOrderDetail`, `getPackageTypes`, `processRefund`, `confirmUpgrade`, `createSampleOrder`, `deleteSampleOrders` | `payment.order_created`, `payment.order_expired`, `payment.overpaid_confirmation`, `payment.refunded`, `payment.success`, `payment.underpaid_warning` | 4 KPI, lọc (tìm, trạng thái, gói, khoảng ngày) + đặt lại, xem chi tiết, sao chép mã nhận diện, hoàn tiền (khởi tạo + thực hiện), xác nhận nâng cấp, xuất CSV, tạo đơn thử chờ thanh toán, xóa đơn mẫu (có xác nhận, xem 8.5), cập nhật realtime |
 | Danh mục | `getCategories`, `createCategory`, `updateCategory`, `deleteCategory`, `restoreCategory`, `verifySecurityAction` | — | thẻ số liệu, tab, tìm + lọc, thêm / sửa (kế thừa từ khóa từ danh mục đã xóa mềm cùng tên), xóa mềm, khôi phục, đặt lại mặc định, chỉnh trong bản nháp rồi lưu một lần bằng PIN |
 | Nhật ký | `getAuditLogs` | `audit_activity`, `connect`, `disconnect` | tìm, lọc trạng thái, khoảng ngày, đặt lại, thông báo có bản ghi mới realtime, phân trang, xuất CSV |
 | Bảo trì & Thông báo | `getMaintenanceStatus`, `setMaintenanceStatus`, `cancelScheduledMaintenance`, `getMaintenanceHistory`, `broadcastToAll`, `getBroadcastHistory` | `admin.maintenance_changed` | 2 tab; bật / tắt bảo trì khẩn cấp có xác nhận, lập lịch (nhiều lịch), hủy lịch, cảnh báo lịch sắp tới (≤ 1 giờ), lịch sử bảo trì; gửi thông báo toàn hệ thống, lịch sử thông báo |
@@ -123,7 +123,7 @@ Bộ test cũ (`src/Admin-web/src/tests/*.test.jsx`, 52 tệp) bị gỡ theo qu
 
 ## 8. Tiến độ (cập nhật 2026-11-12)
 
-Mức hiện tại: `npm test` 78/78 ca (7 tệp), `npm run lint` 0 lỗi, `npm run build` qua.
+Mức hiện tại: `npm test` 80/80 ca (7 tệp), `npm run lint` 0 lỗi, `npm run build` qua.
 
 ### 8.1 Đã xong
 
@@ -134,7 +134,8 @@ Mức hiện tại: `npm test` 78/78 ca (7 tệp), `npm run lint` 0 lỗi, `npm 
 | G2.1 Người dùng | `1ce28def` | Trang dựng bằng `ui`; xóa mềm một bước qua PIN; `UserDetailModal` dùng khóa ngôn ngữ; `AlertToast` theo token; gỡ `/users/:id` | Vô hiệu hóa rồi kích hoạt `nckh_h3`: HTTP 200, CSDL đúng |
 | G2.2 Danh mục | `f832176a` | Bản nháp + thanh "N thay đổi chưa lưu"; lưu bằng `SecurityConfirmModal`; lỗi trùng tên hiện trong biểu mẫu | Thêm rồi xóa danh mục thử, lưu bằng PIN thật: CSDL đúng, xóa mềm |
 | G2.3 Thanh toán | `56befb6a` | Tách `components/OrderDetailModal`, `RefundModal` (hai bước: điền rồi PIN), `SampleOrderModal`, `paymentFormat.js`; `axios-client` xuất `baseURL` | Trạng thái rỗng (CSDL chưa có đơn); không bấm tạo đơn thử vì gọi PayOS thật |
-| G2.4 Nhật ký | commit kế sau `56befb6a` | Bộ lọc gửi máy chủ, banner "N hoạt động mới", gộp hai cột thời gian; `audit-tags.util.js` bỏ chú thích, thêm `tone` | 10 bản ghi thật, lọc "Thất bại" đúng |
+| G2.4 Nhật ký | `4ea70c7f` | Bộ lọc gửi máy chủ, banner "N hoạt động mới", gộp hai cột thời gian; `audit-tags.util.js` bỏ chú thích, thêm `tone` | 10 bản ghi thật, lọc "Thất bại" đúng |
+| G2.5 Xóa đơn mẫu | commit kế sau `4ea70c7f` | Backend `deleteSampleOrders` lọc `is_template: true`; nút "Xóa đơn mẫu" + `ConfirmModal`, báo số đơn đã xóa, tải lại bảng và KPI | Chèn tay 2 đơn mẫu (1 đã thanh toán, có giao dịch) + 1 đơn thật: bấm xóa → `DELETE` 200, CSDL còn đúng đơn thật, giao dịch đơn mẫu xóa theo |
 
 ### 8.2 Lỗi sẵn có đã sửa
 
@@ -146,6 +147,8 @@ Mức hiện tại: `npm test` 78/78 ca (7 tệp), `npm run lint` 0 lỗi, `npm 
 6. Nhãn gói trong hộp đơn thử luôn là "1 tháng".
 7. Danh mục trùng tên hiện cả thông báo nổi lẫn `window.alert`.
 8. Mũi tên ô chọn đè chữ (đã thêm `pr-9` / `pr-8`).
+9. Backend `deleteSampleOrders` lọc tiền tố `sample-link-` cũ nên không xóa được đơn mẫu tạo qua PayOS thật.
+10. Cột Số tiền ở trang Thanh toán in thừa số "0" khi `amount_received = 0`.
 
 ### 8.3 Quyết định trải nghiệm đã áp (Chủ dự án đã duyệt khuôn trang Người dùng)
 
@@ -158,7 +161,6 @@ Mức hiện tại: `npm test` 78/78 ca (7 tệp), `npm run lint` 0 lỗi, `npm 
 
 | Bước | Tệp chính | Ghi chú |
 |---|---|---|
-| G2.5 Nút "Xóa đơn mẫu" | Backend `modules/payment/payment.repository.js` (`deleteSampleOrders`) + `pages/payments/PaymentHistoryPage.jsx` | xem 8.5 |
 | G3.1 Tổng quan | `pages/dashboard/DashboardPage.jsx` (1.350 dòng) | tách biểu đồ `LineChart`; bỏ `RealtimeStatusBadge` riêng; dùng `tagInfo.tone` thay `bg/text/border` |
 | G3.2 Phân quyền | `pages/system/PermissionManagementPage.jsx` + 4 tệp `pages/system/components/Permission*.jsx` | có chữ lộ kỹ thuật ("PostgreSQL", "Socket.IO", "50ms") |
 | G3.3 Bảo trì & Thông báo | `pages/system/BroadcastPage.jsx` (1.500 dòng) | tách hai tab |

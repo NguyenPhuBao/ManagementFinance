@@ -1560,6 +1560,13 @@ export default {
       scanNotice: 'Quét bằng ứng dụng ngân hàng hoặc MoMo. Trạng thái đơn tự cập nhật khi thanh toán xong.',
       created: 'Đã tạo đơn thử.',
     },
+    sampleDelete: {
+      button: 'Xóa đơn mẫu',
+      title: 'Xóa đơn mẫu',
+      message: 'Mọi đơn mẫu sẽ bị xóa vĩnh viễn và không khôi phục được. Đơn thật không bị ảnh hưởng.',
+      confirmBtn: 'Xóa',
+      success: 'Đã xóa {count} đơn mẫu.',
+    },
     alerts: {
       newOrder: 'Đơn hàng mới #{code}',
       paid: 'Đơn #{code} đã thanh toán',

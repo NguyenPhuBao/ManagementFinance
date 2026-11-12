@@ -5,7 +5,7 @@ import TruncateCell from '../../components/common/TruncateCell';
 import { useLanguageSafe } from '../../store/language.context';
 import { useAlertSafe } from '../../store/alert.context';
 import { exportToCsv } from '../../utils/csv-exporter.util';
-import { Badge, Button, Card, DataTable, PageHeader, Pagination, SearchInput, StatCard } from '../../components/ui';
+import { Badge, Button, Card, ConfirmModal, DataTable, PageHeader, Pagination, SearchInput, StatCard } from '../../components/ui';
 import OrderDetailModal from './components/OrderDetailModal';
 import RefundModal from './components/RefundModal';
 import SampleOrderModal from './components/SampleOrderModal';
@@ -54,6 +54,8 @@ const PaymentHistoryPage = () => {
   const [refundOrder, setRefundOrder] = useState(null);
   const [sampleOpen, setSampleOpen] = useState(false);
   const [sampleOrder, setSampleOrder] = useState(null);
+  const [deleteSamplesOpen, setDeleteSamplesOpen] = useState(false);
+  const [deletingSamples, setDeletingSamples] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -220,6 +222,21 @@ const PaymentHistoryPage = () => {
     }
   };
 
+  const handleDeleteSamples = async () => {
+    setDeletingSamples(true);
+    try {
+      const res = await paymentApi.deleteSampleOrders();
+      const count = unwrap(res)?.deletedCount ?? 0;
+      setDeleteSamplesOpen(false);
+      if (notify) notify.success(t('payments.sampleDelete.success', { count }));
+      await reload();
+    } catch (err) {
+      if (notify) notify.error(err?.response?.data?.message || err.message, t('payments.alerts.actionFailed'));
+    } finally {
+      setDeletingSamples(false);
+    }
+  };
+
   const handleCopy = (value) => {
     if (value) navigator.clipboard?.writeText(value);
   };
@@ -283,7 +300,7 @@ const PaymentHistoryPage = () => {
       render: (o) => (
         <div className="tabular-nums">
           <div className="font-medium text-ink">{formatVnd(o.amount)}</div>
-          {o.amount_received && o.amount_received !== o.amount && (
+          {Number(o.amount_received) > 0 && Number(o.amount_received) !== Number(o.amount) && (
             <div className="text-xs text-ink-faint">{t('payments.table.received', { amount: formatVnd(o.amount_received) })}</div>
           )}
         </div>
@@ -327,6 +344,9 @@ const PaymentHistoryPage = () => {
           <>
             <Button icon="download" loading={exporting} onClick={handleExportCsv}>
               {t('payments.exportCsv')}
+            </Button>
+            <Button icon="delete_sweep" onClick={() => setDeleteSamplesOpen(true)}>
+              {t('payments.sampleDelete.button')}
             </Button>
             <Button
               variant="primary"
@@ -454,6 +474,17 @@ const PaymentHistoryPage = () => {
         creating={actionLoading}
         order={sampleOrder}
         onCopy={handleCopy}
+      />
+
+      <ConfirmModal
+        open={deleteSamplesOpen}
+        title={t('payments.sampleDelete.title')}
+        message={t('payments.sampleDelete.message')}
+        confirmText={t('payments.sampleDelete.confirmBtn')}
+        confirmDanger
+        loading={deletingSamples}
+        onConfirm={handleDeleteSamples}
+        onCancel={() => setDeleteSamplesOpen(false)}
       />
     </div>
   );

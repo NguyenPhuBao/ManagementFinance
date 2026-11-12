@@ -848,6 +848,23 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       payosClient.verifyWebhookData = origVerify;
     }
   });
+
+  await t.test('22. Tầng 2: deleteSampleOrders chỉ xóa đơn is_template = true, không dựa vào tiền tố payment_link_id', async () => {
+    const origDeleteMany = prisma.payment_order.deleteMany;
+    let capturedWhere = null;
+    try {
+      prisma.payment_order.deleteMany = async ({ where }) => {
+        capturedWhere = where;
+        return { count: 3 };
+      };
+
+      const result = await paymentRepository.deleteSampleOrders();
+      assert.deepStrictEqual(capturedWhere, { is_template: true });
+      assert.deepStrictEqual(result, { deletedCount: 3 });
+    } finally {
+      prisma.payment_order.deleteMany = origDeleteMany;
+    }
+  });
 });
 
 

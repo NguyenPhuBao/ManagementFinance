@@ -646,6 +646,7 @@ Toàn bộ 7 nội dung kỹ thuật (T1.1 $\rightarrow$ T1.7) cùng phân tích
 4. **Admin Sandbox Mode & Xử Lý Hoàn Tiền (Refund):**
    - Chế độ Sandbox tạo đơn thật với cờ `is_template: true` để quét QR thật từ App ngân hàng.
    - Modal hoàn tiền hỗ trợ upload file ảnh ủy nhiệm chi/biên lai chuyển khoản lưu tại `src/Backend/Assets/Refunds/`.
+   - 2026-11-12: `deleteSampleOrders` (`DELETE /admin/payments/sample`) đổi điều kiện từ tiền tố `payment_link_id = 'sample-link-…'` (quy ước cũ, không còn khớp đơn mẫu tạo qua PayOS thật) sang `is_template = true`; Admin-web có nút "Xóa đơn mẫu" gọi API này. Test `tests/unit/admin.payment.test.js` ca 22.
 
 ---
 

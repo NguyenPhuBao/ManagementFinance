@@ -1560,6 +1560,13 @@ export default {
       scanNotice: 'Scan with a banking app or MoMo. The order updates automatically once paid.',
       created: 'Test order created.',
     },
+    sampleDelete: {
+      button: 'Delete test orders',
+      title: 'Delete test orders',
+      message: 'All test orders will be permanently deleted and cannot be recovered. Real orders are not affected.',
+      confirmBtn: 'Delete',
+      success: 'Deleted {count} test orders.',
+    },
     alerts: {
       newOrder: 'New order #{code}',
       paid: 'Order #{code} paid',
