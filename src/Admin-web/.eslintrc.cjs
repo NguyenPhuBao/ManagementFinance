@@ -11,7 +11,7 @@ module.exports = {
       jsx: true,
     },
   },
-  plugins: ['react'],
+  plugins: ['react', 'react-hooks'],
   rules: {
     'no-undef': 'error',
   },
@@ -19,5 +19,21 @@ module.exports = {
     process: 'readonly',
     React: 'readonly',
   },
+  overrides: [
+    {
+      files: ['src/tests/**'],
+      globals: {
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+      },
+    },
+  ],
   ignorePatterns: ['dist/**', 'node_modules/**'],
 };

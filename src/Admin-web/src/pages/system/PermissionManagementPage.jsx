@@ -88,7 +88,6 @@ const PermissionManagementPage = () => {
 
   useEffect(() => {
     fetchPermissions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Lắng nghe socket realtime
@@ -101,7 +100,6 @@ const PermissionManagementPage = () => {
     return () => {
       socket.off('account.permissions_updated', handlePermissionsUpdated);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket]);
 
   // Danh sách các nhóm phân hệ độc nhất
