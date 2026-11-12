@@ -96,7 +96,7 @@ Nguồn: lời gọi API, sự kiện socket và hàm xử lý trong mã ngày 2
 | AIOps | `getStatus`, `getHistory`, `getIncidents`, `clearIncidents`, `getForensics`, `getQuarantineList`, `quarantineActor`, `getVectorConfig`, `toggleVector`, `setScale`, `calibrate`, `temporaryBlockIp`, `permanentBanIp`, `unblockIp`, `temporaryBlockAccount`, `permanentBanAccount`, `unblockAccount`, `getMaintenanceStatus`, `setMaintenanceStatus` | `admin.anomaly_detected`, `admin.maintenance_changed`, `admin.metrics_stream`, `admin.quarantine_updated`, `admin.security_alert`, `admin.security_blocked`, `admin.vector_config_changed` | đặt quy mô + hiệu chuẩn, chỉ số an ninh, biểu đồ xu hướng (khoảng thời gian có sẵn + tùy chọn), danh sách sự cố + xóa, điều tra (forensics), cách ly thủ công, chặn tạm / cấm vĩnh viễn / gỡ chặn IP và tài khoản, bật / tắt vector, kích hoạt giảm thiểu, làm mới tay, bảng sức khỏe máy chủ + giảm tải |
 | Người dùng | `getUsers`, `updateUserStatus`, `deleteUser`, `getUserById` (hộp chi tiết) | `admin.user_registered`, `admin.user_status_changed` | 4 thẻ số liệu, 5 tab trạng thái (mặc định ẩn "Đã xóa"), tìm kiếm, bộ lọc (gói, trạng thái), phân trang, xem chi tiết (hộp thoại), vô hiệu hóa (bắt buộc lý do), kích hoạt lại (xác nhận), xóa mềm (xác thực PIN, chỉ với tài khoản đã vô hiệu hóa), che số điện thoại, cập nhật realtime |
 | Phân quyền | `getPermissions`, `updatePermissions`, `resetPermissionsDefault` | `account.permissions_updated` | bảng ma trận theo nhóm, lọc, bật / tắt, giới hạn + không giới hạn, chính sách hạ cấp, ngăn phạm vi (drawer), hoàn tác từng hàng, lưu có xác nhận, đặt lại mặc định |
-| Thanh toán | `getOrders`, `getStats`, `getOrderDetail`, `getPackageTypes`, `processRefund`, `confirmUpgrade`, `createSampleOrder`, `deleteSampleOrders` | `payment.order_created`, `payment.order_expired`, `payment.overpaid_confirmation`, `payment.refunded`, `payment.success`, `payment.underpaid_warning` | 4 KPI, lọc (tìm, trạng thái, gói, khoảng ngày) + đặt lại, xem chi tiết, sao chép mã nhận diện, hoàn tiền (khởi tạo + thực hiện), xác nhận nâng cấp, xuất CSV, làm mới, tạo / xóa đơn mẫu, cập nhật realtime |
+| Thanh toán | `getOrders`, `getStats`, `getOrderDetail`, `getPackageTypes`, `processRefund`, `confirmUpgrade`, `createSampleOrder`, `deleteSampleOrders` | `payment.order_created`, `payment.order_expired`, `payment.overpaid_confirmation`, `payment.refunded`, `payment.success`, `payment.underpaid_warning` | 4 KPI, lọc (tìm, trạng thái, gói, khoảng ngày) + đặt lại, xem chi tiết, sao chép mã nhận diện, hoàn tiền (khởi tạo + thực hiện), xác nhận nâng cấp, xuất CSV, tạo đơn thử chờ thanh toán (giao diện cũ không có nút xóa đơn mẫu, xem 8.5), cập nhật realtime |
 | Danh mục | `getCategories`, `createCategory`, `updateCategory`, `deleteCategory`, `restoreCategory`, `verifySecurityAction` | — | thẻ số liệu, tab, tìm + lọc, thêm / sửa (kế thừa từ khóa từ danh mục đã xóa mềm cùng tên), xóa mềm, khôi phục, đặt lại mặc định, chỉnh trong bản nháp rồi lưu một lần bằng PIN |
 | Nhật ký | `getAuditLogs` | `audit_activity`, `connect`, `disconnect` | tìm, lọc trạng thái, khoảng ngày, đặt lại, thông báo có bản ghi mới realtime, phân trang, xuất CSV |
 | Bảo trì & Thông báo | `getMaintenanceStatus`, `setMaintenanceStatus`, `cancelScheduledMaintenance`, `getMaintenanceHistory`, `broadcastToAll`, `getBroadcastHistory` | `admin.maintenance_changed` | 2 tab; bật / tắt bảo trì khẩn cấp có xác nhận, lập lịch (nhiều lịch), hủy lịch, cảnh báo lịch sắp tới (≤ 1 giờ), lịch sử bảo trì; gửi thông báo toàn hệ thống, lịch sử thông báo |
@@ -120,3 +120,56 @@ Bộ test cũ (`src/Admin-web/src/tests/*.test.jsx`, 52 tệp) bị gỡ theo qu
 - Tầng 2: API được gọi đúng tên và tham số; sự kiện socket làm đổi dữ liệu hiển thị.
 - Test mock API, không gọi Backend thật, không ghi CSDL.
 - Mỗi màn hình một tệp `src/tests/<man-hinh>.test.jsx`; thành phần ui một tệp `src/tests/ui.test.jsx`.
+
+## 8. Tiến độ (cập nhật 2026-11-12)
+
+Mức hiện tại: `npm test` 78/78 ca (7 tệp), `npm run lint` 0 lỗi, `npm run build` qua.
+
+### 8.1 Đã xong
+
+| Bước | Commit | Nội dung | Kiểm trên trình duyệt (CSDL cục bộ) |
+|---|---|---|---|
+| G0 Nền | `92d29c61` | Gỡ 52 tệp test cũ; token sáng/tối (`styles/theme.css`, `tailwind.config.js`); 16 thành phần `components/ui`; 5 tệp `components/common` tái xuất từ `ui` | — |
+| G1 Khung | `43ef61df` | Sidebar, Header (trạng thái realtime, chuông, ngôn ngữ, cài đặt, tên admin), banner bảo trì / báo động, xác nhận bảo trì khẩn cấp qua `ConfirmModal` | Sáng, Tối, thu gọn menu, điện thoại |
+| G2.1 Người dùng | `1ce28def` | Trang dựng bằng `ui`; xóa mềm một bước qua PIN; `UserDetailModal` dùng khóa ngôn ngữ; `AlertToast` theo token; gỡ `/users/:id` | Vô hiệu hóa rồi kích hoạt `nckh_h3`: HTTP 200, CSDL đúng |
+| G2.2 Danh mục | `f832176a` | Bản nháp + thanh "N thay đổi chưa lưu"; lưu bằng `SecurityConfirmModal`; lỗi trùng tên hiện trong biểu mẫu | Thêm rồi xóa danh mục thử, lưu bằng PIN thật: CSDL đúng, xóa mềm |
+| G2.3 Thanh toán | `56befb6a` | Tách `components/OrderDetailModal`, `RefundModal` (hai bước: điền rồi PIN), `SampleOrderModal`, `paymentFormat.js`; `axios-client` xuất `baseURL` | Trạng thái rỗng (CSDL chưa có đơn); không bấm tạo đơn thử vì gọi PayOS thật |
+| G2.4 Nhật ký | commit kế sau `56befb6a` | Bộ lọc gửi máy chủ, banner "N hoạt động mới", gộp hai cột thời gian; `audit-tags.util.js` bỏ chú thích, thêm `tone` | 10 bản ghi thật, lọc "Thất bại" đúng |
+
+### 8.2 Lỗi sẵn có đã sửa
+
+1. `vi.js` / `en.js` khai báo khóa `appLayout` hai lần, khối sau đè khối trước (banner báo động luôn hiện chữ tiếng Việt viết cứng).
+2. Menu điện thoại tự mở che kín trang khi tải (dùng chung trạng thái thu gọn của máy tính).
+3. Chữ ligature của biểu tượng lọt vào tên truy cập của nút và nhãn ô nhập.
+4. Xóa người dùng truyền nhầm prop `actionDescription`, nhật ký kiểm toán ghi đối tượng "N/A".
+5. Ảnh minh chứng hoàn tiền trỏ cứng `http://localhost:5000`.
+6. Nhãn gói trong hộp đơn thử luôn là "1 tháng".
+7. Danh mục trùng tên hiện cả thông báo nổi lẫn `window.alert`.
+8. Mũi tên ô chọn đè chữ (đã thêm `pr-9` / `pr-8`).
+
+### 8.3 Quyết định trải nghiệm đã áp (Chủ dự án đã duyệt khuôn trang Người dùng)
+
+- Thẻ số liệu không còn bấm để lọc; lọc qua tab.
+- Thao tác trong bảng là nút biểu tượng có `aria-label`; thao tác chính của trang nằm ở `PageHeader`.
+- Hộp thoại dùng `Modal` / `ConfirmModal` / `SecurityConfirmModal`; không còn lớp phủ chặn toàn màn hình khi xử lý.
+- Trạng thái realtime chỉ hiện ở Header, các trang không lặp lại.
+
+### 8.4 Còn phải làm
+
+| Bước | Tệp chính | Ghi chú |
+|---|---|---|
+| G2.5 Nút "Xóa đơn mẫu" | Backend `modules/payment/payment.repository.js` (`deleteSampleOrders`) + `pages/payments/PaymentHistoryPage.jsx` | xem 8.5 |
+| G3.1 Tổng quan | `pages/dashboard/DashboardPage.jsx` (1.350 dòng) | tách biểu đồ `LineChart`; bỏ `RealtimeStatusBadge` riêng; dùng `tagInfo.tone` thay `bg/text/border` |
+| G3.2 Phân quyền | `pages/system/PermissionManagementPage.jsx` + 4 tệp `pages/system/components/Permission*.jsx` | có chữ lộ kỹ thuật ("PostgreSQL", "Socket.IO", "50ms") |
+| G3.3 Bảo trì & Thông báo | `pages/system/BroadcastPage.jsx` (1.500 dòng) | tách hai tab |
+| G4.1 AIOps | `pages/system/AIOpsPage.jsx` (3.956 dòng) + `components/common/ServerHealthPanel.jsx` | tách theo khối |
+| G4.2 Cài đặt | `components/layout/SettingsModal.jsx` (1.498 dòng) | gồm chế độ Tối |
+| G4.3 Đăng nhập, Quên mật khẩu, Khóa màn hình, Đăng nhập lần đầu | `pages/auth/*`, `components/layout/LockScreenModal.jsx`, `FirstLoginModal.jsx` | |
+| G5 Dọn | `tailwind.config.js`, `index.css` (luật `.dark` cũ, `bento-grid`…), `components/common/*` tái xuất, khóa ngôn ngữ thừa | sau đó cập nhật `Project.md` mục 3.4, `docs/Admin-web/README.md` |
+
+### 8.5 Quyết định của Chủ dự án (2026-11-12)
+
+- Thêm nút "Xóa đơn mẫu" kèm `ConfirmModal` ở trang Thanh toán.
+- Duyệt sửa Backend: `deleteSampleOrders` đang lọc `payment_link_id` bắt đầu bằng `sample-link-` (quy ước cũ), trong khi `createSampleOrder` hiện lấy mã liên kết thật từ PayOS và đánh dấu `is_template = true`, nên lệnh xóa không trúng đơn mẫu mới. Sửa thành lọc `is_template: true`, giữ xóa vật lý (đơn mẫu là dữ liệu thử của admin, `findOrdersByAccount` đã lọc `is_template = false` nên không tới Client-app; `payment_transaction` xóa theo nhờ `onDelete: Cascade`).
+- Rủi ro đã nêu: Backend không hủy liên kết PayOS khi xóa; đơn mẫu hết hạn sau 10 phút.
+- G2.2, G2.3, G2.4 commit riêng từng trang; khối khóa ngôn ngữ của từng trang đi theo commit của trang đó.
