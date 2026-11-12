@@ -383,7 +383,7 @@ const UserListPage = () => {
               data-testid="filter-package"
               value={draftFilter.packageType}
               onChange={(e) => setDraftFilter((prev) => ({ ...prev, packageType: e.target.value }))}
-              className="h-10 cursor-pointer rounded-lg border border-line bg-card px-3 text-sm text-ink focus:border-brand focus:outline-none"
+              className="h-10 cursor-pointer rounded-lg border border-line bg-card px-3 pr-9 text-sm text-ink focus:border-brand focus:outline-none"
             >
               <option value="all">{t('users.filterModal.allPackages')}</option>
               <option value="Basic">{t('users.filterModal.basicPackage')}</option>

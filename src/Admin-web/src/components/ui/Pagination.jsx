@@ -42,7 +42,7 @@ const Pagination = ({
             if (onPageSizeChange) onPageSizeChange(size);
             else go(1);
           }}
-          className="h-9 cursor-pointer rounded-lg border border-line bg-card px-2 text-sm text-ink focus:border-brand focus:outline-none"
+          className="h-9 cursor-pointer rounded-lg border border-line bg-card px-2 pr-8 text-sm text-ink focus:border-brand focus:outline-none"
         >
           {pageSizeOptions.map((opt) => (
             <option key={opt} value={opt}>
