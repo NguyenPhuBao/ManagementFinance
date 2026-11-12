@@ -4,25 +4,37 @@ import useSocket from '../../hooks/useSocket';
 import { useAlertSafe } from '../../store/alert.context';
 import { useSettingsSafe } from '../../store/settings.context';
 import { useLanguageSafe } from '../../store/language.context';
+import { useAuthContext } from '../../store/auth.context';
 import soundService from '../../services/sound.service';
 import SettingsModal from './SettingsModal';
 import LanguageToggle from '../common/LanguageToggle';
+import RealtimeStatusBadge from '../common/RealtimeStatusBadge';
+import { Button, Icon, Spinner, EmptyState } from '../ui';
+
+const LEVELS = {
+  CRITICAL: { icon: 'error', tone: 'bg-danger-soft text-danger' },
+  WARNING: { icon: 'warning', tone: 'bg-warning-soft text-warning' },
+  INFO: { icon: 'info', tone: 'bg-info-soft text-info' },
+};
+
+const levelOf = (level) => LEVELS[String(level || '').toUpperCase()] || LEVELS.INFO;
+
+const formatTime = (value) =>
+  value ? new Date(value).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '';
 
 const Header = ({ onMenuToggle, sidebarCollapsed }) => {
   const alert = useAlertSafe();
-  const settingsCtx = useSettingsSafe();
-  const settings = settingsCtx?.settings;
+  const settings = useSettingsSafe()?.settings;
   const { t } = useLanguageSafe();
-  const [showNotifications, setShowNotifications] = useState(false);
-
+  const { user } = useAuthContext();
+  const socket = useSocket();
+  const dropdownRef = useRef(null);
+  const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const dropdownRef = useRef(null);
-  const socket = useSocket();
 
-  // Tải danh sách cảnh báo admin ban đầu
   const fetchAlerts = async () => {
     try {
       setLoading(true);
@@ -32,7 +44,6 @@ const Header = ({ onMenuToggle, sidebarCollapsed }) => {
         setNotifications(payload.notifications || (Array.isArray(payload) ? payload : []));
         setUnreadCount(typeof payload.unreadCount === 'number' ? payload.unreadCount : 0);
       }
-
     } catch (err) {
       console.error('[Header] Failed to fetch admin alerts', err);
     } finally {
@@ -44,234 +55,178 @@ const Header = ({ onMenuToggle, sidebarCollapsed }) => {
     fetchAlerts();
   }, []);
 
-  // Lắng nghe sự kiện socket realtime admin.notification & admin.security_alert
   useEffect(() => {
-    if (!socket) return;
+    if (!socket) return undefined;
 
-    const handleAdminNotification = (newAlert) => {
-      setNotifications((prev) => [newAlert, ...prev.slice(0, 9)]);
+    const handleAdminNotification = (item) => {
+      setNotifications((prev) => [item, ...prev.slice(0, 9)]);
       setUnreadCount((prev) => prev + 1);
-
-      // Kích hoạt Alert Toast nổi song song với icon chuông
-      if (alert && newAlert?.message) {
-        if (newAlert.level === 'critical') alert.error(newAlert.message, newAlert.title || 'Cảnh Báo Khẩn');
-        else if (newAlert.level === 'warning') alert.warning(newAlert.message, newAlert.title || 'Cảnh Báo Hệ Thống');
-        else alert.info(newAlert.message, newAlert.title || 'Thông Báo');
+      if (alert && item?.message) {
+        if (item.level === 'critical') alert.error(item.message, item.title || t('header.alertCritical'));
+        else if (item.level === 'warning') alert.warning(item.message, item.title || t('header.alertWarning'));
+        else alert.info(item.message, item.title || t('header.alertInfo'));
       }
     };
 
-    const handleSecurityAlert = (alertData) => {
-      if (!alertData) return;
-      const formatted = {
-        id: `aiops-${Date.now()}`,
-        title: `🚨 [AIOps] ${alertData.status}: Threat Score ${alertData.threatScore}/100`,
-        message: alertData.anomalies?.map(a => a.message).join(' | ') || 'Phát hiện rủi ro an ninh/quá tải hệ thống',
-        level: alertData.status === 'CRITICAL' ? 'critical' : 'warning',
-        createdAt: alertData.timestamp || new Date().toISOString(),
-        isRead: false,
-      };
-      setNotifications((prev) => [formatted, ...prev.slice(0, 9)]);
+    const handleSecurityAlert = (data) => {
+      if (!data) return;
+      const message = data.anomalies?.map((a) => a.message).join(' | ') || t('header.securityFallback');
+      const title = `AIOps ${data.status}: ${data.threatScore}/100`;
+      setNotifications((prev) => [
+        {
+          id: `aiops-${Date.now()}`,
+          title,
+          message,
+          level: data.status === 'CRITICAL' ? 'critical' : 'warning',
+          createdAt: data.timestamp || new Date().toISOString(),
+          isRead: false,
+        },
+        ...prev.slice(0, 9),
+      ]);
       setUnreadCount((prev) => prev + 1);
-
-      // Kích hoạt Alert Toast nổi cảnh báo an ninh
-      if (alert) {
-        const alertMsg = alertData.anomalies?.map(a => a.message).join(' | ') || `Threat Score ${alertData.threatScore}/100`;
-        if (alertData.status === 'CRITICAL') {
-          if (settings?.soundEnabled !== false) {
-            soundService.playCriticalAlarm();
-          }
-          alert.error(alertMsg, `🚨 AIOps: ${alertData.status}`);
-        } else {
-          alert.warning(alertMsg, `⚠️ AIOps: ${alertData.status}`);
-        }
+      if (!alert) return;
+      if (data.status === 'CRITICAL') {
+        if (settings?.soundEnabled !== false) soundService.playCriticalAlarm();
+        alert.error(message, title);
+      } else {
+        alert.warning(message, title);
       }
     };
 
     socket.on('admin.notification', handleAdminNotification);
     socket.on('admin.security_alert', handleSecurityAlert);
-
     return () => {
       socket.off('admin.notification', handleAdminNotification);
       socket.off('admin.security_alert', handleSecurityAlert);
     };
   }, [socket, settings?.soundEnabled]);
 
-  // Đóng dropdown khi click ra ngoài
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowNotifications(false);
-      }
+    if (!open) return undefined;
+    const onPointer = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOpen(false);
     };
-    if (showNotifications) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
     };
-  }, [showNotifications]);
+  }, [open]);
 
-  // Đánh dấu 1 thông báo đã đọc
   const handleMarkAsRead = async (item) => {
     if (item.isRead) return;
     try {
       await notificationApi.markAdminAlertAsRead(item.id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n))
-      );
+      setNotifications((prev) => prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n)));
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (err) {
       console.error('[Header] Failed to mark alert as read', err);
     }
   };
 
-  const getLevelBadgeClass = (level) => {
-    switch (level?.toUpperCase()) {
-      case 'CRITICAL':
-        return 'bg-red-100 text-red-700 border-red-200';
-      case 'WARNING':
-        return 'bg-amber-100 text-amber-700 border-amber-200';
-      default:
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-    }
+  const toggleDropdown = () => {
+    if (!open) fetchAlerts();
+    setOpen(!open);
   };
 
-  const getLevelIcon = (level) => {
-    switch (level?.toUpperCase()) {
-      case 'CRITICAL':
-        return 'error';
-      case 'WARNING':
-        return 'warning';
-      default:
-        return 'info';
-    }
-  };
-
-  const shouldShowBadge = settings?.showUnreadBadge !== false && unreadCount > 0;
+  const showBadge = settings?.showUnreadBadge !== false && unreadCount > 0;
+  const displayName = user?.username || user?.fullname || user?.email;
 
   return (
-    <header className={`fixed top-0 right-0 left-0 transition-all duration-300 h-16 bg-surface border-b border-outline-variant flex items-center justify-between px-page-padding z-30 ${
-      sidebarCollapsed ? 'md:left-[76px]' : 'md:left-[260px]'
-    }`}>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onMenuToggle}
-          className="p-1.5 rounded-lg text-on-surface hover:text-primary hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center"
-          title={sidebarCollapsed ? 'Mở rộng thanh điều hướng' : 'Thu nhỏ thanh điều hướng'}
-        >
-          <span className="material-symbols-outlined text-[24px]">
-            {sidebarCollapsed ? 'menu' : 'menu_open'}
-          </span>
-        </button>
-        <div className="font-headline-sm text-headline-sm font-semibold text-on-surface md:hidden">
-          {t('nav.brandTitle')}
-        </div>
-      </div>
+    <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-line bg-card px-4 md:px-6">
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={sidebarCollapsed ? 'menu' : 'menu_open'}
+        aria-label={t('header.toggleMenu', 'Mở/đóng menu')}
+        onClick={onMenuToggle}
+      />
 
-      <div className="flex items-center gap-2 relative" ref={dropdownRef}>
-        {/* Nút Chuông Thông Báo */}
-        <button 
-          className="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low transition-all cursor-pointer active:opacity-80 relative"
-          onClick={() => {
-            setShowNotifications(!showNotifications);
-            if (!showNotifications) fetchAlerts();
-          }}
-          title={t('header.notifications')}
-        >
-          <span className="material-symbols-outlined text-[24px]">notifications</span>
-          {shouldShowBadge && (
-            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm animate-pulse">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </button>
+      <div className="flex items-center gap-2 sm:gap-3">
+        <RealtimeStatusBadge className="hidden sm:inline-flex" />
 
-        {/* Component Chuyển Đổi Ngôn Ngữ Pill [ EN | VI ] */}
-        <LanguageToggle />
+        <div className="relative" ref={dropdownRef}>
+          <button
+            type="button"
+            aria-label={showBadge ? `${t('header.notifications')}, ${t('header.unread', { count: unreadCount })}` : t('header.notifications')}
+            aria-expanded={open}
+            onClick={toggleDropdown}
+            className="relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-muted hover:text-ink"
+          >
+            <Icon name="notifications" />
+            {showBadge && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-xs font-semibold leading-none text-card">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
 
-        {/* Nút Cài đặt Hệ thống */}
-        <button 
-          className="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low transition-all cursor-pointer active:opacity-80"
-          onClick={() => setShowSettings(true)}
-          title={t('header.settings')}
-        >
-          <span className="material-symbols-outlined text-[24px]">settings</span>
-        </button>
-        
-        {/* Dropdown danh sách cảnh báo */}
-        {showNotifications && (
-          <div className="absolute right-0 top-full mt-2 w-80 md:w-96 bg-white rounded-xl shadow-[0_12px_28px_rgba(11,28,48,0.15)] border border-outline-variant z-50 overflow-hidden">
-            <div className="px-4 py-3 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm text-on-surface">{t('header.systemAlerts')}</span>
-                {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">
-                    {unreadCount} {t('header.newBadge')}
-                  </span>
+          {open && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-line bg-card shadow-xl md:w-96">
+              <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+                <span className="text-sm font-semibold text-ink">{t('header.systemAlerts')}</span>
+                <Button variant="ghost" size="sm" icon="refresh" onClick={fetchAlerts}>
+                  {t('header.refreshAlerts')}
+                </Button>
+              </div>
+              <div className="max-h-96 divide-y divide-line overflow-y-auto">
+                {loading && notifications.length === 0 ? (
+                  <div className="flex justify-center py-8 text-brand">
+                    <Spinner />
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <EmptyState icon="notifications_off" title={t('header.systemStableTitle')} description={t('header.systemStableDesc')} />
+                ) : (
+                  notifications.map((item) => {
+                    const level = levelOf(item.level);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleMarkAsRead(item)}
+                        className={`flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted ${
+                          item.isRead ? '' : 'bg-info-soft/40'
+                        }`}
+                      >
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${level.tone}`}>
+                          <Icon name={level.icon} size="sm" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className={`block truncate text-sm ${item.isRead ? 'text-ink-muted' : 'font-semibold text-ink'}`}>
+                            {item.title}
+                          </span>
+                          <span className="mt-0.5 line-clamp-2 block text-xs text-ink-muted">{item.message}</span>
+                          <span className="mt-1 block text-xs text-ink-faint">{formatTime(item.createdAt)}</span>
+                        </span>
+                        {!item.isRead && <span aria-hidden="true" className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-info" />}
+                      </button>
+                    );
+                  })
                 )}
               </div>
-              <button 
-                onClick={fetchAlerts}
-                className="text-xs text-primary hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">refresh</span>
-                {t('header.refreshAlerts')}
-              </button>
             </div>
+          )}
+        </div>
 
-            <div className="max-h-[380px] overflow-y-auto divide-y divide-outline-variant">
-              {loading ? (
-                <div className="p-6 text-center text-secondary text-sm">{t('common.loading')}</div>
-              ) : notifications.length === 0 ? (
-                <div className="p-8 flex flex-col items-center justify-center gap-2 text-center">
-                  <span className="material-symbols-outlined text-secondary text-[36px] opacity-40">notifications_off</span>
-                  <p className="text-secondary text-sm">{t('header.systemStableTitle')}</p>
-                  <p className="text-secondary text-xs opacity-75">{t('header.systemStableDesc')}</p>
-                </div>
-              ) : (
-                notifications.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleMarkAsRead(item)}
-                    className={`p-3.5 hover:bg-surface-container-low transition-colors cursor-pointer flex items-start gap-3 ${
-                      !item.isRead ? 'bg-blue-50/40' : ''
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border ${getLevelBadgeClass(item.level)}`}>
-                      <span className="material-symbols-outlined text-[18px]">
-                        {getLevelIcon(item.level)}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1 mb-0.5">
-                        <p className={`text-xs font-medium truncate ${!item.isRead ? 'text-on-surface font-semibold' : 'text-secondary'}`}>
-                          {item.title}
-                        </p>
-                        {!item.isRead && (
-                          <span className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></span>
-                        )}
-                      </div>
-                      <p className="text-xs text-on-surface-variant line-clamp-2 mb-1">
-                        {item.message}
-                      </p>
-                      <span className="text-[10px] text-secondary">
-                        {item.createdAt ? new Date(item.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : ''}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+        <LanguageToggle />
+
+        <Button variant="ghost" size="sm" icon="settings" aria-label={t('header.settings')} onClick={() => setShowSettings(true)} />
+
+        {displayName && (
+          <div className="hidden items-center gap-2 md:flex">
+            <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold uppercase text-ink-muted">
+              {String(displayName).slice(0, 2)}
+            </span>
+            <span className="max-w-40 truncate text-sm font-medium text-ink">{displayName}</span>
           </div>
         )}
       </div>
 
-      {/* Modal Cài Đặt Hệ Thống */}
-      <SettingsModal 
-        isOpen={showSettings} 
-        onClose={() => setShowSettings(false)} 
-      />
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </header>
   );
 };
