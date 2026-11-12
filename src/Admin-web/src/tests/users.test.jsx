@@ -1,0 +1,157 @@
+import React from 'react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import UserListPage from '../pages/users/UserListPage';
+import adminApi from '../api/admin.api';
+
+const handlers = {};
+const fakeSocket = {
+  on: (event, fn) => {
+    handlers[event] = handlers[event] || new Set();
+    handlers[event].add(fn);
+  },
+  off: (event, fn) => handlers[event] && handlers[event].delete(fn),
+};
+const emit = (event, payload) => act(() => {
+  (handlers[event] || []).forEach((fn) => fn(payload));
+});
+
+vi.mock('../hooks/useSocket', () => ({ default: () => fakeSocket }));
+vi.mock('../api/admin.api', () => ({
+  default: {
+    getUsers: vi.fn(),
+    getUserById: vi.fn(),
+    updateUserStatus: vi.fn(),
+    deleteUser: vi.fn(),
+    verifySecurityAction: vi.fn(),
+  },
+}));
+
+const USERS = [
+  { id: 1, idaccount: 101, fullname: 'Nguyễn Văn An', username: 'an', email: 'a***@mail.test', phone: '0981234567', status: 'Active', type: 'Basic' },
+  { id: 2, idaccount: 102, fullname: 'Trần Thị Bình', username: 'binh', email: 'b***@mail.test', phone: '0912345678', status: 'Inactive', type: 'Premium', reason_inactive: 'Spam' },
+  { id: 3, idaccount: 103, fullname: 'Lê Minh Châu', username: 'chau', email: 'c***@mail.test', phone: '0931234567', status: 'PendingDelete', type: 'Basic', countdown: 12 },
+  { id: 4, idaccount: 104, fullname: 'Phạm Quốc Dũng', username: 'dung', email: 'd***@mail.test', phone: '0941234567', status: 'Deleted', type: 'Basic' },
+];
+
+const row = (name) => screen.getByRole('row', { name: new RegExp(name) });
+const queryRow = (name) => screen.queryByRole('row', { name: new RegExp(name) });
+
+const renderPage = async () => {
+  render(<UserListPage />);
+  await screen.findByRole('row', { name: /Nguyễn Văn An/ });
+};
+
+beforeEach(() => {
+  Object.keys(handlers).forEach((k) => delete handlers[k]);
+  adminApi.getUsers.mockReset().mockResolvedValue({ data: USERS.map((u) => ({ ...u })) });
+  adminApi.getUserById.mockReset().mockResolvedValue({
+    data: { id: 1, fullname: 'Nguyễn Văn An', username: 'an', email: 'a***@mail.test', status: 'Active', type: 'Basic', rolename: 'user' },
+  });
+  adminApi.updateUserStatus.mockReset().mockResolvedValue({ success: true });
+  adminApi.deleteUser.mockReset().mockResolvedValue({ success: true });
+  adminApi.verifySecurityAction.mockReset().mockResolvedValue({ success: true });
+});
+
+describe('Hiển thị', () => {
+  it('có tiêu đề trang, 4 thẻ số liệu đúng số đếm', async () => {
+    await renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'Quản lý người dùng' })).toBeInTheDocument();
+    const card = (label) => screen.getByText(label, { selector: 'div' }).parentElement;
+    expect(card('Tổng người dùng')).toHaveTextContent('4');
+    expect(card('Đang hoạt động')).toHaveTextContent('1');
+    expect(card('Vô hiệu hóa')).toHaveTextContent('1');
+    expect(card('Chờ xóa')).toHaveTextContent('1');
+  });
+
+  it('mặc định ẩn người dùng đã xóa, che số điện thoại, hiện số ngày chờ xóa', async () => {
+    await renderPage();
+    expect(queryRow('Phạm Quốc Dũng')).not.toBeInTheDocument();
+    expect(within(row('Nguyễn Văn An')).getByText('098****567')).toBeInTheDocument();
+    expect(within(row('Lê Minh Châu')).getByText('Chờ xóa (12 ngày)')).toHaveAttribute('data-tone', 'warning');
+    expect(within(row('Lê Minh Châu')).queryByRole('button', { name: 'Xóa' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Lọc và tìm kiếm', () => {
+  it('tab trạng thái lọc danh sách', async () => {
+    await renderPage();
+    const tabs = screen.getByRole('tablist', { name: 'Lọc theo trạng thái' });
+    fireEvent.click(within(tabs).getByRole('tab', { name: /Đã xóa/ }));
+    expect(row('Phạm Quốc Dũng')).toBeInTheDocument();
+    expect(queryRow('Nguyễn Văn An')).not.toBeInTheDocument();
+    fireEvent.click(within(tabs).getByRole('tab', { name: /Tất cả/ }));
+    ['Nguyễn Văn An', 'Trần Thị Bình', 'Lê Minh Châu', 'Phạm Quốc Dũng'].forEach((n) => expect(row(n)).toBeInTheDocument());
+  });
+
+  it('tìm theo tên', async () => {
+    await renderPage();
+    fireEvent.change(screen.getByLabelText('Tìm người dùng'), { target: { value: 'bình' } });
+    expect(row('Trần Thị Bình')).toBeInTheDocument();
+    expect(queryRow('Nguyễn Văn An')).not.toBeInTheDocument();
+  });
+
+  it('bộ lọc theo gói dịch vụ', async () => {
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Bộ lọc' }));
+    const dialog = screen.getByRole('dialog', { name: 'Bộ lọc' });
+    fireEvent.change(within(dialog).getByTestId('filter-package'), { target: { value: 'Premium' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Áp dụng' }));
+    expect(row('Trần Thị Bình')).toBeInTheDocument();
+    expect(queryRow('Nguyễn Văn An')).not.toBeInTheDocument();
+  });
+});
+
+describe('Thao tác trạng thái', () => {
+  it('vô hiệu hóa bắt buộc lý do rồi gọi API với lý do đã nhập', async () => {
+    await renderPage();
+    fireEvent.click(within(row('Nguyễn Văn An')).getByRole('button', { name: 'Vô hiệu hóa' }));
+    const dialog = screen.getByRole('dialog', { name: 'Vô hiệu hóa tài khoản' });
+    const submit = within(dialog).getByRole('button', { name: 'Vô hiệu hóa' });
+    expect(submit).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/Lý do/), { target: { value: ' Spam quảng cáo ' } });
+    fireEvent.click(submit);
+    await waitFor(() =>
+      expect(adminApi.updateUserStatus).toHaveBeenCalledWith(1, { status: 'Inactive', reason_inactive: 'Spam quảng cáo' })
+    );
+    await waitFor(() => expect(within(row('Nguyễn Văn An')).getByText('Vô hiệu hóa')).toHaveAttribute('data-tone', 'neutral'));
+  });
+
+  it('kích hoạt lại qua hộp xác nhận', async () => {
+    await renderPage();
+    fireEvent.click(within(row('Trần Thị Bình')).getByRole('button', { name: 'Kích hoạt' }));
+    const dialog = screen.getByRole('dialog', { name: 'Kích hoạt lại tài khoản?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Kích hoạt' }));
+    await waitFor(() => expect(adminApi.updateUserStatus).toHaveBeenCalledWith(2, { status: 'Active' }));
+    await waitFor(() => expect(within(row('Trần Thị Bình')).getByText('Đang hoạt động')).toBeInTheDocument());
+  });
+
+  it('xóa mềm phải qua xác thực PIN rồi mới gọi deleteUser; người dùng chuyển sang Đã xóa và vẫn hiện', async () => {
+    await renderPage();
+    fireEvent.click(within(row('Trần Thị Bình')).getByRole('button', { name: 'Xóa' }));
+    const dialog = screen.getByRole('dialog', { name: 'Xóa người dùng' });
+    expect(adminApi.deleteUser).not.toHaveBeenCalled();
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Xóa' }));
+    await waitFor(() => expect(adminApi.deleteUser).toHaveBeenCalledWith(2));
+    expect(adminApi.verifySecurityAction).toHaveBeenCalledWith({ pin: '246810', password: '', action: 'DELETE_USER', targetId: '@binh' });
+    await waitFor(() => expect(within(row('Trần Thị Bình')).getByText('Đã xóa')).toHaveAttribute('data-tone', 'danger'));
+  });
+
+  it('xem chi tiết mở hộp thoại và tải người dùng theo id', async () => {
+    await renderPage();
+    fireEvent.click(within(row('Nguyễn Văn An')).getByRole('button', { name: 'Xem chi tiết' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Chi tiết người dùng' });
+    expect(adminApi.getUserById).toHaveBeenCalledWith(1);
+    expect(await within(dialog).findByText('an')).toBeInTheDocument();
+  });
+});
+
+describe('Realtime', () => {
+  it('admin.user_registered thêm người dùng mới; admin.user_status_changed đổi trạng thái', async () => {
+    await renderPage();
+    emit('admin.user_registered', { id: 9, idaccount: 109, fullname: 'Võ Thanh Khoa', username: 'khoa', email: 'k***@mail.test', status: 'Active' });
+    expect(row('Võ Thanh Khoa')).toBeInTheDocument();
+    emit('admin.user_status_changed', { idaccount: 101, status: 'Inactive', reason_inactive: 'Khóa từ máy khác' });
+    expect(within(row('Nguyễn Văn An')).getByText('Vô hiệu hóa')).toBeInTheDocument();
+  });
+});

@@ -1,9 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import adminApi from '../../api/admin.api';
-import { USER_STATUS_LABELS } from '../../utils/constants';
 import { formatDateTime, maskPhone } from '../../utils/format';
+import { useLanguageSafe } from '../../store/language.context';
+import { Badge, EmptyState, Modal, Spinner } from '../ui';
+
+const STATUS_TONE = { active: 'success', inactive: 'neutral', pendingdelete: 'warning', deleted: 'danger' };
+
+const Row = ({ label, children }) => (
+  <div className="flex items-start justify-between gap-4 py-2.5">
+    <dt className="text-sm text-ink-muted">{label}</dt>
+    <dd className="m-0 max-w-[60%] text-right text-sm font-medium text-ink">{children}</dd>
+  </div>
+);
+
+const Section = ({ title, children }) => (
+  <section className="pt-4">
+    <h3 className="m-0 mb-1 text-xs font-semibold uppercase tracking-wide text-ink-faint">{title}</h3>
+    <dl className="m-0 divide-y divide-line">{children}</dl>
+  </section>
+);
 
 const UserDetailModal = ({ userId, onClose }) => {
+  const { t } = useLanguageSafe();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -12,121 +30,64 @@ const UserDetailModal = ({ userId, onClose }) => {
     if (!userId) return;
     setLoading(true);
     setError('');
-    const fetchUser = async () => {
-      try {
-        const res = await adminApi.getUserById(userId);
-        setUser(res.data);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Không tìm thấy người dùng');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUser();
+    adminApi
+      .getUserById(userId)
+      .then((res) => setUser(res.data))
+      .catch((err) => setError(err.response?.data?.message || t('users.detail.notFound')))
+      .finally(() => setLoading(false));
   }, [userId]);
 
+  const status = user?.status?.toLowerCase();
+  const statusText =
+    status === 'pendingdelete' && user?.countdown != null
+      ? t('users.table.pendingDeleteCountdown', { days: user.countdown })
+      : t(`commonStatus.${status}`, user?.status);
+
   return (
-    <div className="fixed inset-0 bg-on-background/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-xl w-full max-w-lg shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest">
-          <h3 className="font-title-lg font-bold m-0 text-on-surface flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">person</span>
-            Chi tiết người dùng
-          </h3>
-          <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low p-1 rounded-full transition-colors cursor-pointer">
-            <span className="material-symbols-outlined">close</span>
-          </button>
+    <Modal open onClose={onClose} title={t('users.detail.title')} size="md">
+      {loading ? (
+        <div className="flex justify-center py-10 text-brand">
+          <Spinner size="lg" />
         </div>
-
-        {/* Body */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
+      ) : error ? (
+        <EmptyState icon="person_off" title={error} />
+      ) : (
+        user && (
+          <div>
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <span className="text-sm text-ink-muted">{t('users.detail.status')}</span>
+              <Badge tone={STATUS_TONE[status] || 'neutral'}>{statusText}</Badge>
             </div>
-          ) : error ? (
-            <div className="text-center py-8">
-              <span className="material-symbols-outlined text-5xl text-outline mb-3">person_off</span>
-              <p className="text-on-surface-variant">{error}</p>
-            </div>
-          ) : user && (
-            <div className="space-y-0">
-              {/* Status badge */}
-              <div className="flex justify-between items-center pb-4 border-b border-outline-variant/50">
-                <span className="font-label-sm text-on-surface-variant uppercase">Trạng thái</span>
-                <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
-                  user.status?.toLowerCase() === 'active' ? 'bg-[#dcfce7] text-[#166534] border border-[#bbf7d0]' :
-                  user.status?.toLowerCase() === 'inactive' ? 'bg-[#f1f5f9] text-[#475569] border border-[#cbd5e1]' :
-                  user.status?.toLowerCase() === 'pendingdelete' ? 'bg-[#fef3c7] text-[#92400e] border border-[#fde68a]' :
-                  user.status?.toLowerCase() === 'deleted' ? 'bg-[#fee2e2] text-[#991b1b] border border-[#fecaca]' :
-                  'bg-surface-container-high text-secondary'
-                }`}>
-                  {user.status?.toLowerCase() === 'pendingdelete' && user.countdown !== null && user.countdown !== undefined
-                    ? `Chờ xóa (${user.countdown} ngày)`
-                    : (USER_STATUS_LABELS[user.status?.toLowerCase()] || user.status)}
-                </span>
-              </div>
-
-              {/* Personal Info */}
-              <div className="pt-4 pb-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-outline mb-3">Thông tin cá nhân</p>
-                <div className="space-y-0">
-                  <RowItem label="ID User" value={user.id} />
-                  <RowItem label="Họ tên" value={user.fullname} />
-                  <RowItem label="Email" value={user.email} />
-                  <RowItem label="Số điện thoại" value={maskPhone(user.phone)} />
-                  <RowItem label="Địa chỉ" value={user.address || '—'} />
-                  <RowItem label="Mã vùng" value={user.country_code || '—'} />
-                </div>
-              </div>
-
-              {/* Account Info */}
-              <div className="pt-4 pb-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-outline mb-3">Thông tin tài khoản</p>
-                <div className="space-y-0">
-                  <RowItem label="Username" value={user.username} />
-                  <RowItem label="Vai trò" value={user.rolename} />
-                  <RowItem label="Gói dịch vụ" value={
-                    <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
-                      (user.type || 'basic').toLowerCase() === 'premium'
-                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                        : 'bg-slate-100 text-slate-800 border border-slate-200'
-                    }`}>
-                      {user.type || 'Basic'}
-                    </span>
-                  } />
-                  {user.status?.toLowerCase() === 'pendingdelete' && (
-                    <RowItem 
-                      label="Thời gian chờ xóa" 
-                      value={`${user.countdown ?? 30} ngày còn lại`} 
-                    />
-                  )}
-                  {user.reason_inactive && (
-                    <RowItem label="Lý do vô hiệu hóa" value={user.reason_inactive} />
-                  )}
-                  {user.delete_at && (
-                    <RowItem 
-                      label={user.status?.toLowerCase() === 'pendingdelete' ? 'Dự kiến xóa' : 'Thời điểm xóa'} 
-                      value={formatDateTime(user.delete_at)} 
-                    />
-                  )}
-                  <RowItem label="Ngày tạo" value={user.created_at ? formatDateTime(user.created_at) : '—'} isLast />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+            <Section title={t('users.detail.personalInfo')}>
+              <Row label={t('users.detail.idUser')}>{user.id}</Row>
+              <Row label={t('users.detail.fullname')}>{user.fullname || '—'}</Row>
+              <Row label={t('users.detail.email')}>{user.email || '—'}</Row>
+              <Row label={t('users.detail.phone')}>{maskPhone(user.phone)}</Row>
+              <Row label={t('users.detail.address')}>{user.address || '—'}</Row>
+              <Row label={t('users.detail.countryCode')}>{user.country_code || '—'}</Row>
+            </Section>
+            <Section title={t('users.detail.accountInfo')}>
+              <Row label={t('users.detail.username')}>{user.username}</Row>
+              <Row label={t('users.detail.role')}>{user.rolename || '—'}</Row>
+              <Row label={t('users.detail.package')}>
+                <Badge tone={(user.type || '').toLowerCase() === 'premium' ? 'warning' : 'neutral'}>{user.type || 'Basic'}</Badge>
+              </Row>
+              {status === 'pendingdelete' && (
+                <Row label={t('users.detail.pendingDays')}>{t('users.detail.pendingDaysValue', { days: user.countdown ?? 30 })}</Row>
+              )}
+              {user.reason_inactive && <Row label={t('users.detail.reasonInactive')}>{user.reason_inactive}</Row>}
+              {user.delete_at && (
+                <Row label={status === 'pendingdelete' ? t('users.detail.scheduledDelete') : t('users.detail.deletedAt')}>
+                  {formatDateTime(user.delete_at)}
+                </Row>
+              )}
+              <Row label={t('users.detail.createdAt')}>{user.created_at ? formatDateTime(user.created_at) : '—'}</Row>
+            </Section>
+          </div>
+        )
+      )}
+    </Modal>
   );
 };
-
-const RowItem = ({ label, value, isLast }) => (
-  <div className={`flex justify-between items-center py-3 ${isLast ? '' : 'border-b border-outline-variant/30'}`}>
-    <span className="text-sm text-on-surface-variant">{label}</span>
-    <span className="text-sm font-semibold text-on-surface text-right max-w-[60%]">{value}</span>
-  </div>
-);
 
 export default UserDetailModal;
