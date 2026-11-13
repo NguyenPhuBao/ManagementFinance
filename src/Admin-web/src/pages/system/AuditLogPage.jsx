@@ -2,23 +2,14 @@ import React, { useState, useEffect, useCallback, useId } from 'react';
 import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
 import TruncateCell from '../../components/common/TruncateCell';
+import RequestCell from '../../components/common/RequestCell';
 import { useLanguageSafe } from '../../store/language.context';
-import { classifyAuditAction } from '../../utils/audit-tags.util';
+import { AUDIT_STATUS_TONE as STATUS_TONE, classifyAuditAction } from '../../utils/audit-tags.util';
 import { exportToCsv } from '../../utils/csv-exporter.util';
 import { formatFullDateTime } from '../../utils/format';
 import { Badge, Button, Card, DataTable, PageHeader, Pagination, SearchInput } from '../../components/ui';
 
-const STATUS_TONE = {
-  Pass: 'success',
-  Fail: 'danger',
-  Rejected: 'danger',
-  Interrupted: 'warning',
-  Accepted: 'success',
-  Processing: 'info',
-  Pending: 'neutral',
-};
 const STATUSES = Object.keys(STATUS_TONE);
-const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 const EMPTY_FILTERS = { search: '', status: '', dateFrom: '', dateTo: '' };
 
 const fieldClass =
@@ -30,18 +21,6 @@ const buildParams = (f) => ({
   ...(f.dateFrom && { startDate: f.dateFrom }),
   ...(f.dateTo && { endDate: `${f.dateTo}T23:59:59` }),
 });
-
-const RequestCell = ({ value }) => {
-  if (!value) return <span className="text-ink-faint">—</span>;
-  const [method, ...rest] = value.trim().split(' ');
-  if (!METHODS.includes(method?.toUpperCase())) return <TruncateCell text={value} className="font-mono text-xs text-ink-muted" />;
-  return (
-    <div className="flex min-w-0 items-center gap-1.5" title={value}>
-      <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-xs font-semibold text-ink">{method.toUpperCase()}</span>
-      <TruncateCell text={rest.join(' ') || value} className="font-mono text-xs text-ink-muted" />
-    </div>
-  );
-};
 
 const AuditLogPage = () => {
   const { t, currentLang } = useLanguageSafe();

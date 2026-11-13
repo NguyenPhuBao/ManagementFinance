@@ -1,3 +1,12 @@
+export const AUDIT_STATUS_TONE = {
+  Pass: 'success',
+  Fail: 'danger',
+  Rejected: 'danger',
+  Interrupted: 'warning',
+  Accepted: 'success',
+  Processing: 'info',
+  Pending: 'neutral',
+};
 
 export const AUDIT_TAGS = {
   AUTH: {

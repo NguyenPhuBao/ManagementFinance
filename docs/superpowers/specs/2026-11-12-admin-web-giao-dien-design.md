@@ -92,7 +92,7 @@ Nguồn: lời gọi API, sự kiện socket và hàm xử lý trong mã ngày 2
 | Khóa màn hình | — | — | mở khóa, đăng xuất |
 | Đăng nhập lần đầu | `firstLoginSetup` | — | thiết lập lần đầu |
 | Cài đặt | `changePassword`, `changePin`, `createAdmin` | `connect`, `disconnect` | đổi mật khẩu, đổi PIN, tạo admin (nhiều bước), chế độ Sáng/Tối, mật độ, âm thanh + nghe thử, thời gian thông báo, nhịp tim, tự khóa + khóa ngay, kiểm tra ping, xóa bộ nhớ đệm, khôi phục mặc định |
-| Tổng quan | `getLoginStats`, `getRecentActivities`, `getRequestStats`, `getSystemHealth`, `getTotalCategories`, `getTotalUsers`, `getUserToTime` | `admin.maintenance_changed`, `admin.metrics_stream`, `audit_activity`, `connect`, `disconnect` | lọc Hôm nay / 7 ngày / 1 tháng / 1 năm, chọn ngày / tháng / năm, 4 KPI, biểu đồ đăng nhập + request (tooltip), hoạt động gần đây cập nhật realtime |
+| Tổng quan | `getLoginStats`, `getRecentActivities`, `getRequestStats`, `getSystemHealth`, `getTotalCategories`, `getTotalUsers`, `getUserToTime` | `admin.metrics_stream`, `audit_activity` (`admin.maintenance_changed` do `ServerHealthPanel` nghe; trạng thái kết nối ở Header) | lọc Hôm nay / 7 ngày / 1 tháng / 1 năm, chọn ngày / tháng / năm, 4 KPI, biểu đồ đăng nhập + request (tooltip), hoạt động gần đây cập nhật realtime |
 | AIOps | `getStatus`, `getHistory`, `getIncidents`, `clearIncidents`, `getForensics`, `getQuarantineList`, `quarantineActor`, `getVectorConfig`, `toggleVector`, `setScale`, `calibrate`, `temporaryBlockIp`, `permanentBanIp`, `unblockIp`, `temporaryBlockAccount`, `permanentBanAccount`, `unblockAccount`, `getMaintenanceStatus`, `setMaintenanceStatus` | `admin.anomaly_detected`, `admin.maintenance_changed`, `admin.metrics_stream`, `admin.quarantine_updated`, `admin.security_alert`, `admin.security_blocked`, `admin.vector_config_changed` | đặt quy mô + hiệu chuẩn, chỉ số an ninh, biểu đồ xu hướng (khoảng thời gian có sẵn + tùy chọn), danh sách sự cố + xóa, điều tra (forensics), cách ly thủ công, chặn tạm / cấm vĩnh viễn / gỡ chặn IP và tài khoản, bật / tắt vector, kích hoạt giảm thiểu, làm mới tay, bảng sức khỏe máy chủ + giảm tải |
 | Người dùng | `getUsers`, `updateUserStatus`, `deleteUser`, `getUserById` (hộp chi tiết) | `admin.user_registered`, `admin.user_status_changed` | 4 thẻ số liệu, 5 tab trạng thái (mặc định ẩn "Đã xóa"), tìm kiếm, bộ lọc (gói, trạng thái), phân trang, xem chi tiết (hộp thoại), vô hiệu hóa (bắt buộc lý do), kích hoạt lại (xác nhận), xóa mềm (xác thực PIN, chỉ với tài khoản đã vô hiệu hóa), che số điện thoại, cập nhật realtime |
 | Phân quyền | `getPermissions`, `updatePermissions`, `resetPermissionsDefault` | `account.permissions_updated` | bảng ma trận theo nhóm, lọc, bật / tắt, giới hạn + không giới hạn, chính sách hạ cấp, ngăn phạm vi (drawer), hoàn tác từng hàng, lưu có xác nhận, đặt lại mặc định |
@@ -123,7 +123,7 @@ Bộ test cũ (`src/Admin-web/src/tests/*.test.jsx`, 52 tệp) bị gỡ theo qu
 
 ## 8. Tiến độ (cập nhật 2026-11-12)
 
-Mức hiện tại: `npm test` 80/80 ca (7 tệp), `npm run lint` 0 lỗi, `npm run build` qua.
+Mức hiện tại: `npm test` 90/90 ca (8 tệp), `npm run lint` 0 lỗi, `npm run build` qua.
 
 ### 8.1 Đã xong
 
@@ -135,7 +135,8 @@ Mức hiện tại: `npm test` 80/80 ca (7 tệp), `npm run lint` 0 lỗi, `npm 
 | G2.2 Danh mục | `f832176a` | Bản nháp + thanh "N thay đổi chưa lưu"; lưu bằng `SecurityConfirmModal`; lỗi trùng tên hiện trong biểu mẫu | Thêm rồi xóa danh mục thử, lưu bằng PIN thật: CSDL đúng, xóa mềm |
 | G2.3 Thanh toán | `56befb6a` | Tách `components/OrderDetailModal`, `RefundModal` (hai bước: điền rồi PIN), `SampleOrderModal`, `paymentFormat.js`; `axios-client` xuất `baseURL` | Trạng thái rỗng (CSDL chưa có đơn); không bấm tạo đơn thử vì gọi PayOS thật |
 | G2.4 Nhật ký | `4ea70c7f` | Bộ lọc gửi máy chủ, banner "N hoạt động mới", gộp hai cột thời gian; `audit-tags.util.js` bỏ chú thích, thêm `tone` | 10 bản ghi thật, lọc "Thất bại" đúng |
-| G2.5 Xóa đơn mẫu | commit kế sau `4ea70c7f` | Backend `deleteSampleOrders` lọc `is_template: true`; nút "Xóa đơn mẫu" + `ConfirmModal`, báo số đơn đã xóa, tải lại bảng và KPI | Chèn tay 2 đơn mẫu (1 đã thanh toán, có giao dịch) + 1 đơn thật: bấm xóa → `DELETE` 200, CSDL còn đúng đơn thật, giao dịch đơn mẫu xóa theo |
+| G2.5 Xóa đơn mẫu | `2ee34db5` | Backend `deleteSampleOrders` lọc `is_template: true`; nút "Xóa đơn mẫu" + `ConfirmModal`, báo số đơn đã xóa, tải lại bảng và KPI | Chèn tay 2 đơn mẫu (1 đã thanh toán, có giao dịch) + 1 đơn thật: bấm xóa → `DELETE` 200, CSDL còn đúng đơn thật, giao dịch đơn mẫu xóa theo |
+| G3.1 Tổng quan | commit kế sau `2ee34db5` | Tách `components/LineChart` (đo bề rộng thật, màu theo token), `PeriodPicker`, `dashboardFormat.js`; `RequestCell` và `AUDIT_STATUS_TONE` chuyển ra dùng chung với Nhật ký; bỏ lớp phủ chặn màn hình, `RealtimeStatusBadge` riêng và hai nghe sự kiện không còn tác dụng (`admin.maintenance_changed` chỉ ghi vào state không hiển thị, `connect`/`disconnect`); bố cục: biểu đồ xếp dọc cạnh sức khỏe máy chủ, bảng hoạt động rộng hết trang có liên kết sang Nhật ký | Hôm nay → 7 ngày → ngày 10/11: API 200 đúng tham số; tooltip, Sáng / Tối, điện thoại không cuộn ngang |
 
 ### 8.2 Lỗi sẵn có đã sửa
 
@@ -161,7 +162,6 @@ Mức hiện tại: `npm test` 80/80 ca (7 tệp), `npm run lint` 0 lỗi, `npm 
 
 | Bước | Tệp chính | Ghi chú |
 |---|---|---|
-| G3.1 Tổng quan | `pages/dashboard/DashboardPage.jsx` (1.350 dòng) | tách biểu đồ `LineChart`; bỏ `RealtimeStatusBadge` riêng; dùng `tagInfo.tone` thay `bg/text/border` |
 | G3.2 Phân quyền | `pages/system/PermissionManagementPage.jsx` + 4 tệp `pages/system/components/Permission*.jsx` | có chữ lộ kỹ thuật ("PostgreSQL", "Socket.IO", "50ms") |
 | G3.3 Bảo trì & Thông báo | `pages/system/BroadcastPage.jsx` (1.500 dòng) | tách hai tab |
 | G4.1 AIOps | `pages/system/AIOpsPage.jsx` (3.956 dòng) + `components/common/ServerHealthPanel.jsx` | tách theo khối |

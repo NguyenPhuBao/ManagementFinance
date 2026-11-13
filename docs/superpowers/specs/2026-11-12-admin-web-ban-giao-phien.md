@@ -17,9 +17,9 @@ Ngày: 2026-11-12. Đọc tệp này đầu tiên khi mở phiên mới, rồi l
 
 ## Trạng thái
 
-- Nhánh `NguyenPhuBao`. Đã commit: G0 `92d29c61`, G1 `43ef61df`, G2.1 `1ce28def`, G2.2 `f832176a`, G2.3 `56befb6a`, G2.4 `4ea70c7f`, G2.5 xóa đơn mẫu (commit kế sau, xem `git log`).
+- Nhánh `NguyenPhuBao`. Đã commit: G0 `92d29c61`, G1 `43ef61df`, G2.1 `1ce28def`, G2.2 `f832176a`, G2.3 `56befb6a`, G2.4 `4ea70c7f`, G2.5 `2ee34db5`, G3.1 Tổng quan (commit kế sau, xem `git log`).
 - Không thuộc việc này, đừng đưa vào commit: `.gitignore`, `CLAUDE.md`, `Project.md`, `docs/AI/*` (sửa dở từ trước), `src/Client-app/*` (tệp sinh tự động của Flutter).
-- Việc kế tiếp: G3.1 Tổng quan → G3.2 Phân quyền → G3.3 Bảo trì & Thông báo → G4 → G5 (bảng ở mục 8.4).
+- Việc kế tiếp: G3.2 Phân quyền → G3.3 Bảo trì & Thông báo → G4 → G5 (bảng ở mục 8.4).
 - Khi cần commit tách từng phần của `vi.js` / `en.js`: mỗi trang là một khối khóa cấp 1 riêng; ghép khối vào chỉ mục bằng `git hash-object -w --path=<tệp>` + `git update-index --cacheinfo`.
 
 ## Quy tắc làm việc đã chốt trong phiên
@@ -38,6 +38,9 @@ Ngày: 2026-11-12. Đọc tệp này đầu tiên khi mở phiên mới, rồi l
 - Thay cả một khối khóa ngôn ngữ: `node scratch/adminweb/splice.js <vi.js|en.js> <tệp khối> <khóa> <khóa kế tiếp>`; khối cuối tệp dùng `splice_last.js`.
 - Không bấm "Tạo đơn thử" ở trang Thanh toán khi kiểm: Backend gọi PayOS thật.
 - Dữ liệu thử còn lại: danh mục "Thử giao diện mới" đã xóa mềm (để nguyên, không xóa vật lý); đơn thật thử `#990000052603` (EXPIRED) chèn tay để đối chứng khi xóa đơn mẫu.
+- Chụp trang Tổng quan (Sáng, Tối, tooltip, bộ chọn ngày, điện thoại): `python scratch/adminweb/chup_dash.py <thư mục ảnh>`.
+- Biểu đồ SVG: vẽ theo bề rộng đo thật (`ResizeObserver`), đừng dùng `viewBox` cố định + `preserveAspectRatio="none"` (chữ co theo khung).
+- `useLanguageSafe` ngoài provider (trong test) trả `t` mới mỗi lần render: đừng đặt `t` vào mảng phụ thuộc của `useEffect` có gọi API.
 - Thử nút "Xóa đơn mẫu" không cần PayOS: `node scratch/adminweb/seed_don_mau.js "<gốc repo>" seed` chèn đơn mẫu thẳng vào `flowmoney_adminweb` (đối số `xem` chỉ in bảng đơn), rồi `python scratch/adminweb/chup_xoa_mau.py <thư mục ảnh>`.
 - Backend chạy `node index.js` (không tự nạp lại): sửa mã Backend thì tắt tiến trình `khoi_dong_adminweb.js` cùng hai tiến trình con rồi bật lại.
 

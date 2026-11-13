@@ -1,1349 +1,331 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import useSocket from '../../hooks/useSocket';
-import { TIME_FILTERS, TIME_FILTER_LABELS, STORAGE_KEYS } from '../../utils/constants';
 import adminApi from '../../api/admin.api';
-import Pagination from '../../components/common/Pagination';
 import ServerHealthPanel from '../../components/common/ServerHealthPanel';
-import { useLanguageSafe } from '../../store/language.context';
-import { classifyAuditAction } from '../../utils/audit-tags.util';
 import TruncateCell from '../../components/common/TruncateCell';
-import RealtimeStatusBadge from '../../components/common/RealtimeStatusBadge';
+import RequestCell from '../../components/common/RequestCell';
+import { useLanguageSafe } from '../../store/language.context';
+import { AUDIT_STATUS_TONE, classifyAuditAction } from '../../utils/audit-tags.util';
+import { Badge, Card, DataTable, PageHeader, Pagination, StatCard, Tabs } from '../../components/ui';
+import LineChart from './components/LineChart';
+import PeriodPicker from './components/PeriodPicker';
+import { formatActivityTime, periodParams, vnToday } from './dashboardFormat';
 
-const STATUS_CONFIG = {
-  Pass: {
-    label: 'Thành công',
-    bg: 'bg-[#dcfce7]',
-    text: 'text-[#166534]',
-    border: 'border-[#86efac]',
-    icon: 'check_circle',
-  },
-  Processing: {
-    label: 'Đang xử lý',
-    bg: 'bg-[#dbeafe]',
-    text: 'text-[#1e40af]',
-    border: 'border-[#93c5fd]',
-    icon: 'sync',
-  },
-  Pending: {
-    label: 'Chờ xử lý',
-    bg: 'bg-[#f3e8ff]',
-    text: 'text-[#6b21a8]',
-    border: 'border-[#d8b4fe]',
-    icon: 'hourglass_empty',
-  },
-  Accepted: {
-    label: 'Đã tiếp nhận',
-    bg: 'bg-[#ccfbf1]',
-    text: 'text-[#115e59]',
-    border: 'border-[#99f6e4]',
-    icon: 'done',
-  },
-  Rejected: {
-    label: 'Bị từ chối',
-    bg: 'bg-[#fee2e2]',
-    text: 'text-[#991b1b]',
-    border: 'border-[#fca5a5]',
-    icon: 'block',
-  },
-  Fail: {
-    label: 'Thất bại',
-    bg: 'bg-[#fef2f2]',
-    text: 'text-[#b91c1c]',
-    border: 'border-[#fecaca]',
-    icon: 'cancel',
-  },
-  Interrupted: {
-    label: 'Ngắt quãng',
-    bg: 'bg-[#fef3c7]',
-    text: 'text-[#92400e]',
-    border: 'border-[#fde68a]',
-    icon: 'warning',
-  },
-};
+const POLL_MS = 10_000;
+const PERIODS = [
+  { key: 'today', label: 'dashboard.filters.today' },
+  { key: '7days', label: 'dashboard.filters.sevenDays' },
+  { key: '1month', label: 'dashboard.filters.oneMonth' },
+  { key: '1year', label: 'dashboard.filters.oneYear' },
+];
+const EMPTY_STATS = { summary: { total: 0, max: 0, avg: 0 }, timeline: [], format: 'hour' };
 
-const getStatusBadge = (status, t) => {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.Pass;
-  const label = t ? t(`commonStatus.${status}`) || cfg.label : cfg.label;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-label-md text-[11px] font-semibold border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-      <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
-      {label}
-    </span>
-  );
-};
+const num = (v) => Number(v || 0).toLocaleString('vi-VN');
 
-const renderRequestBadge = (requestStr) => {
-  if (!requestStr) return <span className="text-outline-variant/80">—</span>;
-  const parts = requestStr.trim().split(' ');
-  const method = parts[0]?.toUpperCase();
-  const path = parts.slice(1).join(' ');
-
-  let badgeColor = 'bg-slate-100 text-slate-700 border-slate-200';
-  if (method === 'GET') badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
-  else if (method === 'POST') badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  else if (method === 'PUT' || method === 'PATCH') badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
-  else if (method === 'DELETE') badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
-
-  if (['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-    return (
-      <div className="flex items-center gap-1.5 min-w-0 font-mono text-xs" title={requestStr}>
-        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border shrink-0 ${badgeColor}`}>
-          {method}
-        </span>
-        <TruncateCell text={path || requestStr} className="text-on-surface-variant font-medium min-w-0" />
-      </div>
-    );
-  }
-
-  return <TruncateCell text={requestStr} className="text-on-surface-variant font-mono text-xs min-w-0" />;
-};
-
-const getVnDateParts = (dateInput) => {
-  if (!dateInput) return null;
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return null;
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-  const parts = formatter.formatToParts(d);
-  const p = {};
-  for (const part of parts) {
-    p[part.type] = part.value;
-  }
-  if (p.hour === '24') p.hour = '00';
-  return p;
-};
-
-const formatActivityTime = (item, t) => {
-  const defaultJustNow = t ? t('dashboard.recentActivities.justNow') : 'Vừa xong';
-  if (!item) return defaultJustNow;
-  const rawTime = item.time_req || item.timeReq;
-  if (!rawTime) return item.time || defaultJustNow;
-
-  const vnParts = getVnDateParts(rawTime);
-  if (!vnParts) return item.time || defaultJustNow;
-
-  const vnNow = getVnDateParts(new Date());
-  const isToday =
-    vnParts.year === vnNow.year &&
-    vnParts.month === vnNow.month &&
-    vnParts.day === vnNow.day;
-
-  if (isToday) {
-    return `${vnParts.hour}:${vnParts.minute}`;
-  }
-  return `${vnParts.hour}:${vnParts.minute} ${vnParts.day}/${vnParts.month}`;
-};
-
-const InteractiveLineChart = ({
-  data = [],
-  gradientId = 'chartGrad',
-  strokeColor = '#2563eb',
-  gradientFrom = '#3b82f6',
-  gradientTo = '#1d4ed8',
-  unit,
-  format = 'day',
-  loading = false,
-  height = 200,
-}) => {
-  const { t } = useLanguageSafe();
-  const [hoverIndex, setHoverIndex] = useState(null);
-  const resolvedUnit = unit || t('dashboard.charts.unitHits', 'lượt');
-
-  if (loading) {
-    return (
-      <div className="w-full flex items-center justify-center" style={{ height: `${height}px` }}>
-        <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
-      </div>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="w-full flex items-center justify-center text-on-surface-variant font-body-sm" style={{ height: `${height}px` }}>
-        {t('dashboard.charts.noData', 'Chưa có dữ liệu thống kê')}
-      </div>
-    );
-  }
-
-  const counts = data.map((d) => d.count);
-  const maxVal = Math.max(...counts, 5);
-  const minVal = 0;
-  const paddingLeft = 50;
-  const paddingRight = 70;
-  const paddingTop = 20;
-  const paddingBottom = 40;
-  const width = 1000;
-  const svgHeight = 280;
-  const drawWidth = width - paddingLeft - paddingRight;
-  const drawHeight = svgHeight - paddingTop - paddingBottom;
-
-  const points = data.map((item, index) => {
-    const x = data.length === 1 ? width / 2 : paddingLeft + (index / (data.length - 1)) * drawWidth;
-    const y = paddingTop + drawHeight - ((item.count - minVal) / (maxVal - minVal)) * drawHeight;
-    return { x, y, label: item.label, count: item.count };
-  });
-
-  // Generate smooth cubic bezier SVG path
-  let pathD = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i];
-    const p1 = points[i + 1];
-    const cp1x = p0.x + (p1.x - p0.x) / 2;
-    const cp1y = p0.y;
-    const cp2x = p0.x + (p1.x - p0.x) / 2;
-    const cp2y = p1.y;
-    pathD += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
-  }
-
-  const areaD = `${pathD} L ${points[points.length - 1].x} ${paddingTop + drawHeight} L ${points[0].x} ${paddingTop + drawHeight} Z`;
-
-  // Determine X-axis ticks and Unit label
-  let xUnit = t('dashboard.charts.xDay', 'Ngày');
-  let xTicks = [];
-
-  const isMonthFormat = format === 'month' || (data.length === 12 && data[0]?.label?.startsWith('Thg'));
-  const isHourFormat = format === 'hour' || (data.length === 24 && data[0]?.label?.includes(':'));
-
-  if (isMonthFormat) {
-    xUnit = t('dashboard.charts.xMonth', 'Tháng');
-    // Đánh số đầy đủ 01 -> 12 cho tất cả 12 tháng
-    xTicks = points.map((pt, idx) => ({
-      x: pt.x,
-      text: (idx + 1).toString().padStart(2, '0'),
-    }));
-  } else if (isHourFormat) {
-    xUnit = t('dashboard.charts.xHour', 'Giờ');
-    // 24 giờ: hiển thị các mốc chẵn 00, 02, 04, ..., 22 và mốc cuối 23
-    xTicks = points
-      .filter((_, idx) => idx % 2 === 0 || idx === points.length - 1)
-      .map((pt) => ({
-        x: pt.x,
-        text: pt.label.split(':')[0] || '',
-      }));
-  } else if (data.length <= 8) {
-    xUnit = t('dashboard.charts.xDay', 'Ngày');
-    // 7 ngày: hiển thị đủ cả 7 ngày
-    xTicks = points.map((pt) => ({
-      x: pt.x,
-      text: pt.label,
-    }));
-  } else {
-    xUnit = t('dashboard.charts.xDay', 'Ngày');
-    // 30 / 31 ngày: hiển thị cách đều các ngày 01, 05, 10, 15, 20, 25, 30
-    xTicks = points
-      .filter((_, idx) => idx % 5 === 0 || idx === points.length - 1)
-      .map((pt) => ({
-        x: pt.x,
-        text: pt.label.split('/')[0] || '',
-      }));
-  }
-
-  const hoveredPoint = hoverIndex !== null && points[hoverIndex] ? points[hoverIndex] : null;
-
-  return (
-    <div className="w-full relative select-none">
-      <div className="w-full relative" style={{ height: `${height}px` }}>
-        <svg
-          width="100%"
-          height="100%"
-          viewBox={`0 0 ${width} ${svgHeight}`}
-          preserveAspectRatio="none"
-          className="overflow-visible"
-          onMouseLeave={() => setHoverIndex(null)}
-        >
-          <defs>
-            <linearGradient id={`${gradientId}-area`} x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={strokeColor} stopOpacity="0.22" />
-              <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
-            </linearGradient>
-            <linearGradient id={`${gradientId}-line`} x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor={gradientFrom} />
-              <stop offset="100%" stopColor={gradientTo} />
-            </linearGradient>
-          </defs>
-
-          {/* Grid lines */}
-          <line x1={paddingLeft} y1={paddingTop} x2={width - paddingRight} y2={paddingTop} stroke="currentColor" className="text-outline-variant/30" strokeWidth="1" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
-          <line x1={paddingLeft} y1={paddingTop + drawHeight / 2} x2={width - paddingRight} y2={paddingTop + drawHeight / 2} stroke="currentColor" className="text-outline-variant/30" strokeWidth="1" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
-          <line x1={paddingLeft} y1={paddingTop + drawHeight} x2={width - paddingRight} y2={paddingTop + drawHeight} stroke="currentColor" className="text-outline-variant/50" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-
-          {/* Y Axis min/max labels inside SVG */}
-          <text x={paddingLeft - 12} y={paddingTop + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">{maxVal.toLocaleString('vi-VN')}</text>
-          <text x={paddingLeft - 12} y={paddingTop + drawHeight / 2 + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">{Math.round(maxVal / 2).toLocaleString('vi-VN')}</text>
-          <text x={paddingLeft - 12} y={paddingTop + drawHeight + 4} textAnchor="end" fill="#64748b" fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">0</text>
-
-          {/* Area fill */}
-          <path d={areaD} fill={`url(#${gradientId}-area)`} />
-
-          {/* Line stroke */}
-          <path d={pathD} fill="none" stroke={`url(#${gradientId}-line)`} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-
-          {/* Data points */}
-          {points.map((pt, idx) => {
-            const isHovered = hoverIndex === idx;
-            return (
-              <g key={idx}>
-                <circle
-                  cx={pt.x}
-                  cy={pt.y}
-                  r="14"
-                  fill="transparent"
-                  className="cursor-pointer"
-                  onMouseEnter={() => setHoverIndex(idx)}
-                />
-                <circle
-                  cx={pt.x}
-                  cy={pt.y}
-                  r={isHovered ? 6 : (data.length <= 12 ? 4 : 2.5)}
-                  fill="white"
-                  stroke={strokeColor}
-                  strokeWidth={isHovered ? 3 : 2}
-                  className="transition-all duration-150 pointer-events-none"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </g>
-            );
-          })}
-
-          {/* X Axis ticks (Aligned exactly with coordinates) */}
-          {xTicks.map((tick, idx) => (
-            <text
-              key={idx}
-              x={tick.x}
-              y={paddingTop + drawHeight + 22}
-              textAnchor="middle"
-              fill="#64748b"
-              fontSize={data.length > 20 ? 11 : 12}
-              fontWeight="500"
-              fontFamily="Inter, sans-serif"
-            >
-              {tick.text}
-            </text>
-          ))}
-
-          {/* X Unit label placed on the right of the X axis */}
-          <text
-            x={width - 5}
-            y={paddingTop + drawHeight + 22}
-            textAnchor="end"
-            fill="#64748b"
-            fontSize="12"
-            fontWeight="600"
-            fontFamily="Inter, sans-serif"
-          >
-            ({xUnit})
-          </text>
-
-          {/* Active Tooltip on SVG */}
-          {hoveredPoint && (
-            <g transform={`translate(${Math.min(Math.max(hoveredPoint.x, 60), width - 60)}, ${Math.max(hoveredPoint.y - 45, 10)})`}>
-              <rect x="-48" y="0" width="96" height="34" rx="6" fill="#0f172a" opacity="0.95" />
-              <text x="0" y="14" fill="#94a3b8" fontSize="10" fontFamily="Inter, sans-serif" textAnchor="middle">{hoveredPoint.label}</text>
-              <text x="0" y="27" fill="#ffffff" fontSize="11" fontWeight="bold" fontFamily="Inter, sans-serif" textAnchor="middle">
-                {hoveredPoint.count.toLocaleString('vi-VN')} {unit}
-              </text>
-            </g>
-          )}
-        </svg>
-      </div>
-    </div>
-  );
-};
-
-const StatCard = ({ icon, title, value, badge, badgeColor, subtext }) => (
-  <div className="bg-white rounded-xl p-5 shadow-sm border border-outline-variant hover:shadow-md transition-shadow relative overflow-hidden group">
-    <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-bl-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
-    <div className="flex items-center justify-between mb-4">
-      <div className="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center">
-        <span className="material-symbols-outlined text-primary text-[24px]">{icon}</span>
-      </div>
-      {badge && (
-        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
-          badgeColor === 'green' ? 'bg-[#dcfce7] text-[#166534]' :
-          badgeColor === 'red' ? 'bg-[#fee2e2] text-[#991b1b]' :
-          badgeColor === 'amber' ? 'bg-[#fef3c7] text-[#92400e]' :
-          'bg-surface-container-high text-secondary'
-        }`}>
-          {badgeColor === 'green' && <span className="material-symbols-outlined text-[14px]">trending_up</span>}
-          {badgeColor === 'red' && <span className="material-symbols-outlined text-[14px]">error</span>}
-          {badgeColor === 'amber' && <span className="material-symbols-outlined text-[14px]">info</span>}
-          {badge}
-        </span>
-      )}
-    </div>
-    <div>
-      <p className="text-on-surface-variant font-label-md mb-1">{title}</p>
-      <h3 className="font-display-sm font-bold text-on-surface m-0 tracking-tight">{value}</h3>
-      {subtext && <p className="text-[11px] text-on-surface-variant/80 mt-1 m-0">{subtext}</p>}
-    </div>
-  </div>
-);
+const toActivity = (item, t) => ({
+  key: item.id ? String(item.id) : `${item.time_req}-${item.action}`,
+  id: item.id,
+  user: item.user || t('dashboard.recentActivities.defaultUser'),
+  action: item.action || t('dashboard.recentActivities.defaultAction'),
+  request: item.request || null,
+  reason: item.reason || null,
+  status: item.status || 'Pass',
+  time: formatActivityTime(item, t),
+  timeReq: item.time_req,
+});
 
 const DashboardPage = () => {
   const socket = useSocket();
   const { t } = useLanguageSafe();
-  const [loading, setLoading] = useState(true);
+  const today = useMemo(() => vnToday(), []);
 
-
-  const now = new Date();
-  const vnNow = getVnDateParts(now) || {
-    year: String(now.getFullYear()),
-    month: String(now.getMonth() + 1).padStart(2, '0'),
-    day: String(now.getDate()).padStart(2, '0'),
-  };
-  const nowYear = parseInt(vnNow.year, 10);
-  const nowMonth = parseInt(vnNow.month, 10);
-  const nowDay = parseInt(vnNow.day, 10);
-
-  // 1. Global Filter State: 'today' (Mặc định) | '7days' | '1month' | '1year' | 'custom'
   const [timeFilter, setTimeFilter] = useState('today');
-  const [customFilter, setCustomFilter] = useState({
-    mode: 'day', // 'day' | 'month' | 'year'
-    date: `${vnNow.year}-${vnNow.month}-${vnNow.day}`,
-    month: nowMonth,
-    year: nowYear,
-    label: `${vnNow.day}/${vnNow.month}/${vnNow.year}`,
-  });
+  const [customFilter, setCustomFilter] = useState(null);
 
-  // Date Picker Modal View State
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [pickerTab, setPickerTab] = useState('day'); // 'day' | 'month' | 'year'
-  const [viewYear, setViewYear] = useState(nowYear);
-  const [viewMonth, setViewMonth] = useState(nowMonth);
-
-  const MONTH_NAMES = [
-    t('dashboard.filters.month1'),
-    t('dashboard.filters.month2'),
-    t('dashboard.filters.month3'),
-    t('dashboard.filters.month4'),
-    t('dashboard.filters.month5'),
-    t('dashboard.filters.month6'),
-    t('dashboard.filters.month7'),
-    t('dashboard.filters.month8'),
-    t('dashboard.filters.month9'),
-    t('dashboard.filters.month10'),
-    t('dashboard.filters.month11'),
-    t('dashboard.filters.month12'),
-  ];
-
-  const isFutureDate = (d, m, y) => {
-    if (y > nowYear) return true;
-    if (y === nowYear && m > nowMonth) return true;
-    if (y === nowYear && m === nowMonth && d > nowDay) return true;
-    return false;
-  };
-
-  const isFutureMonth = (m, y) => {
-    return y > nowYear || (y === nowYear && m > nowMonth);
-  };
-
-  const isFutureYear = (y) => {
-    return y > nowYear;
-  };
-
-  // 2. Data State
   const [totalUsers, setTotalUsers] = useState(null);
   const [totalCategories, setTotalCategories] = useState(null);
   const [newUsers, setNewUsers] = useState({ current: 0, previous: 0, growth: 0 });
+  const [uptime, setUptime] = useState(null);
+  const [uptimeError, setUptimeError] = useState(false);
+  const [loginStats, setLoginStats] = useState(EMPTY_STATS);
+  const [requestStats, setRequestStats] = useState(EMPTY_STATS);
+  const [statsLoading, setStatsLoading] = useState(true);
 
-  // Uptime thực tế từ /admin/system/health
-  const [uptimeData, setUptimeData] = useState(null);
-  const [uptimeStatus, setUptimeStatus] = useState('loading'); // 'loading' | 'success' | 'unsupported' | 'error'
-
-  // Thống kê Biểu đồ (Ăn theo Global Filter)
-  const [loginStats, setLoginStats] = useState({
-    summary: { total: 0, max: 0, avg: 0 },
-    timeline: [],
-    format: 'hour',
-  });
-  const [loadingLogin, setLoadingLogin] = useState(false);
-
-  const [requestStats, setRequestStats] = useState({
-    summary: { total: 0, max: 0, avg: 0 },
-    timeline: [],
-    format: 'hour',
-  });
-  const [loadingRequest, setLoadingRequest] = useState(false);
-
-  // 3. Table Hoạt động người dùng (Trang 1 = mới nhất, phân trang 1 -> 2 -> 3...)
-  const [recentActivities, setRecentActivities] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [activityPage, setActivityPage] = useState(1);
   const [activityLimit, setActivityLimit] = useState(10);
-  const [activityPagination, setActivityPagination] = useState({
-    total: 0,
-    page: 1,
-    limit: 10,
-    totalPages: 1,
-  });
-  const [loadingActivities, setLoadingActivities] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false);
+  const [activityTotal, setActivityTotal] = useState(0);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
 
-  // Bảo trì khẩn cấp toàn hệ thống (đồng bộ với BroadcastPage & CSDL)
-  const [maintenanceStatus, setMaintenanceStatus] = useState({ active: false, reason: '', isEmergency: true });
-
-
-  // Helper tính danh sách số trang thông minh (tối đa 3 trang quanh trang hiện tại + ...)
-  const getPageNumbers = (curr, total) => {
-    if (total <= 5) {
-      return Array.from({ length: total }, (_, i) => i + 1);
-    }
-    if (curr <= 2) {
-      return [1, 2, 3, '...', total];
-    }
-    if (curr >= total - 1) {
-      return [1, '...', total - 2, total - 1, total];
-    }
-    return [1, '...', curr - 1, curr, curr + 1, '...', total];
-  };
-
-  // Static stats (Tổng user & Tổng category) — fetch ngay & polling 10 giây/lần
   useEffect(() => {
-    let isMounted = true;
-    const fetchStaticStats = async () => {
+    let alive = true;
+    const load = async () => {
       try {
-        const [usersRes, catRes] = await Promise.all([
-          adminApi.getTotalUsers(),
-          adminApi.getTotalCategories(),
-        ]);
-        if (!isMounted) return;
-        setTotalUsers(usersRes.data.total);
-        setTotalCategories(catRes.data.total);
+        const [users, categories] = await Promise.all([adminApi.getTotalUsers(), adminApi.getTotalCategories()]);
+        if (!alive) return;
+        setTotalUsers(users.data.total);
+        setTotalCategories(categories.data.total);
       } catch (err) {
-        console.error('Lỗi tải thống kê tổng:', err);
+        console.error('[DASHBOARD] Lỗi tải thống kê tổng:', err);
       }
     };
-    fetchStaticStats();
-    const interval = setInterval(fetchStaticStats, 10_000);
+    load();
+    const timer = setInterval(load, POLL_MS);
     return () => {
-      isMounted = false;
-      clearInterval(interval);
+      alive = false;
+      clearInterval(timer);
     };
   }, []);
 
-  // Uptime — fetch ngay lúc mount và làm mới mỗi 10 giây (Server Health & Resilience)
   useEffect(() => {
-    let isMounted = true;
-    const fetchUptime = async () => {
+    let alive = true;
+    const load = async () => {
       try {
         const res = await adminApi.getSystemHealth();
-        if (!isMounted) return;
+        if (!alive) return;
         const data = res?.data?.data || res?.data;
-        if (data?.uptime) {
-          setUptimeData(data.uptime);
-          setUptimeStatus('success');
-        } else if (typeof data?.uptimePercent === 'number') {
-          setUptimeData(data);
-          setUptimeStatus('success');
-        } else if (data) {
-          setUptimeData({ uptimePercent: 100, uptimeFormatted: 'Đang hoạt động' });
-          setUptimeStatus('success');
-        } else {
-          setUptimeStatus('error');
+        if (!data) {
+          setUptimeError(true);
+          return;
         }
+        setUptime(data.uptime || (typeof data.uptimePercent === 'number' ? data : { uptimePercent: 100 }));
+        setUptimeError(false);
       } catch (err) {
-        if (!isMounted) return;
-        console.warn('[Dashboard] Không thể tải thông tin uptime hệ thống:', err?.message || err);
-        setUptimeStatus((prev) => (prev === 'success' ? 'success' : 'error'));
+        if (alive) setUptimeError(true);
       }
     };
-    fetchUptime();
-    const t = setInterval(fetchUptime, 10_000);
+    load();
+    const timer = setInterval(load, POLL_MS);
     return () => {
-      isMounted = false;
-      clearInterval(t);
+      alive = false;
+      clearInterval(timer);
     };
   }, []);
 
-  // Fetch Dashboard Stats khi Global Filter thay đổi & Polling 10s (Background polling không block UI)
   useEffect(() => {
-    let isMounted = true;
-    let filterParams = {};
-    if (timeFilter === 'custom') {
-      if (customFilter.mode === 'day') {
-        filterParams = { customType: 'date', date: customFilter.date };
-      } else if (customFilter.mode === 'month') {
-        filterParams = { customType: 'month', month: customFilter.month, year: customFilter.year };
-      } else if (customFilter.mode === 'year') {
-        filterParams = { customType: 'year', year: customFilter.year };
-      }
-    } else {
-      filterParams = { period: timeFilter };
-    }
-
-    const fetchAllDashboardData = async (isBackground = false) => {
-      if (!isBackground) {
-        setLoadingLogin(true);
-        setLoadingRequest(true);
-      }
+    let alive = true;
+    const params = periodParams(timeFilter, customFilter);
+    const load = async (background) => {
+      if (!background) setStatsLoading(true);
       try {
-        const [usersTimeRes, loginRes, reqRes] = await Promise.all([
-          adminApi.getUserToTime(filterParams),
-          adminApi.getLoginStats(filterParams),
-          adminApi.getRequestStats(filterParams),
+        const [usersRes, loginRes, requestRes] = await Promise.all([
+          adminApi.getUserToTime(params),
+          adminApi.getLoginStats(params),
+          adminApi.getRequestStats(params),
         ]);
-        if (!isMounted) return;
-        if (usersTimeRes.data) setNewUsers(usersTimeRes.data);
+        if (!alive) return;
+        if (usersRes.data) setNewUsers(usersRes.data);
         if (loginRes.data) setLoginStats(loginRes.data);
-        if (reqRes.data) setRequestStats(reqRes.data);
+        if (requestRes.data) setRequestStats(requestRes.data);
       } catch (err) {
-        console.error('Lỗi tải dữ liệu dashboard theo bộ lọc:', err);
+        console.error('[DASHBOARD] Lỗi tải thống kê theo thời gian:', err);
       } finally {
-        if (!isBackground && isMounted) {
-          setLoadingLogin(false);
-          setLoadingRequest(false);
-          setLoading(false);
-        }
+        if (alive && !background) setStatsLoading(false);
       }
     };
-
-    fetchAllDashboardData(false);
-    const interval = setInterval(() => {
-      fetchAllDashboardData(true);
-    }, 10_000);
-
+    load(false);
+    const timer = setInterval(() => load(true), POLL_MS);
     return () => {
-      isMounted = false;
-      clearInterval(interval);
+      alive = false;
+      clearInterval(timer);
     };
   }, [timeFilter, customFilter]);
 
-  // Fetch Hoạt động người dùng theo phân trang (Trang 1 = mới nhất, sort: 'desc')
-  const fetchActivities = async (targetPage, limit) => {
-    setLoadingActivities(true);
-    try {
-      const pageToFetch = targetPage || activityPage || 1;
-      const res = await adminApi.getRecentActivities({
-        page: pageToFetch,
-        limit: limit || activityLimit,
-        sort: 'desc',
-      });
-
-      if (res.data) {
-        const { items, pagination } = res.data;
-        setRecentActivities((items || []).map(item => ({
-          key: item.id ? String(item.id) : Math.random().toString(),
-          id: item.id,
-          user: item.user || t('dashboard.recentActivities.defaultUser'),
-          action: item.action || t('dashboard.recentActivities.defaultAction'),
-          request: item.request || null,
-          reason: item.reason || null,
-          status: item.status || 'Pass',
-          time: formatActivityTime(item, t),
-          time_req: item.time_req,
-          isNew: false,
-        })));
-
-        setActivityPagination(pagination);
-      }
-    } catch (err) {
-      console.error('Lỗi tải lịch sử hoạt động:', err);
-    } finally {
-      setLoadingActivities(false);
-    }
-  };
-
   useEffect(() => {
-    fetchActivities(activityPage, activityLimit);
+    let alive = true;
+    setActivitiesLoading(true);
+    adminApi
+      .getRecentActivities({ page: activityPage, limit: activityLimit, sort: 'desc' })
+      .then((res) => {
+        if (!alive || !res.data) return;
+        setActivities(res.data.items || []);
+        setActivityTotal(res.data.pagination?.total || 0);
+      })
+      .catch((err) => console.error('[DASHBOARD] Lỗi tải hoạt động gần đây:', err))
+      .finally(() => alive && setActivitiesLoading(false));
+    return () => {
+      alive = false;
+    };
   }, [activityPage, activityLimit]);
 
-  // Lắng nghe Real-time Socket.io qua useSocket hook
   useEffect(() => {
-    if (!socket) {
-      setSocketConnected(false);
-      return;
-    }
-
-    setSocketConnected(socket.connected);
-
-    const onConnect = () => setSocketConnected(true);
-    const onDisconnect = () => setSocketConnected(false);
-
-    const handleAuditActivity = (data) => {
-      const newActivity = {
-        key: data.id ? String(data.id) : Date.now().toString(),
-        id: data.id,
-        user: data.user || t('dashboard.recentActivities.defaultUser'),
-        action: data.action || t('dashboard.recentActivities.defaultAction'),
-        request: data.request || null,
-        reason: data.reason || null,
-        status: data.status || 'Pass',
-        time: formatActivityTime(data, t),
-        time_req: data.time_req,
-        isNew: true,
-      };
-
-      // Tăng tổng số lượng bản ghi
-      setActivityPagination((prev) => {
-        const newTotal = prev.total + 1;
-        const newTotalPages = Math.max(1, Math.ceil(newTotal / prev.limit));
-        return {
-          ...prev,
-          total: newTotal,
-          totalPages: newTotalPages,
-        };
-      });
-
-      // Nếu đang ở Trang 1 (mới nhất), chèn ngay bản ghi mới vào đầu bảng (Real-time Audit Log)
-      setActivityPage((currentPage) => {
-        if (currentPage === 1) {
-          setRecentActivities((prevList) => {
-            const filtered = prevList.filter(item => item.id !== newActivity.id);
-            return [newActivity, ...filtered].slice(0, activityLimit);
-          });
-        }
-        return currentPage;
-      });
-    };
-
-    const handleMaintenanceChanged = (mState) => {
-      if (mState) setMaintenanceStatus(mState);
-    };
-
-    const handleMetricsStream = (data) => {
+    if (!socket) return undefined;
+    const onActivity = (data) => {
       if (!data) return;
-      if (data.uptimeFormatted || typeof data.uptimePercent === 'number') {
-        setUptimeData((prev) => ({
-          ...prev,
-          uptimeFormatted: data.uptimeFormatted,
-          uptimePercent: typeof data.uptimePercent === 'number' ? data.uptimePercent : (prev?.uptimePercent ?? 100),
-          uptimeSeconds: data.uptimeSeconds,
-          downtimeSeconds: data.downtimeSeconds ?? prev?.downtimeSeconds ?? 0,
-        }));
-        setUptimeStatus('success');
-      }
+      setActivityTotal((n) => n + 1);
+      if (activityPage !== 1) return;
+      setActivities((list) => [data, ...list.filter((a) => !data.id || a.id !== data.id)].slice(0, activityLimit));
     };
-
-    socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
-    socket.on('audit_activity', handleAuditActivity);
-    socket.on('admin.maintenance_changed', handleMaintenanceChanged);
-    socket.on('admin.metrics_stream', handleMetricsStream);
-
+    const onMetrics = (data) => {
+      if (!data || (!data.uptimeFormatted && typeof data.uptimePercent !== 'number')) return;
+      setUptime((prev) => ({
+        ...prev,
+        uptimeFormatted: data.uptimeFormatted,
+        uptimePercent: typeof data.uptimePercent === 'number' ? data.uptimePercent : prev?.uptimePercent ?? 100,
+        uptimeSeconds: data.uptimeSeconds,
+        downtimeSeconds: data.downtimeSeconds ?? prev?.downtimeSeconds ?? 0,
+      }));
+      setUptimeError(false);
+    };
+    socket.on('audit_activity', onActivity);
+    socket.on('admin.metrics_stream', onMetrics);
     return () => {
-      socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
-      socket.off('audit_activity', handleAuditActivity);
-      socket.off('admin.maintenance_changed', handleMaintenanceChanged);
-      socket.off('admin.metrics_stream', handleMetricsStream);
+      socket.off('audit_activity', onActivity);
+      socket.off('admin.metrics_stream', onMetrics);
     };
-  }, [socket, activityLimit]);
+  }, [socket, activityPage, activityLimit]);
 
-  // Handlers chọn Date Picker
-  const handleSelectDay = (day) => {
-    if (isFutureDate(day, viewMonth, viewYear)) return;
-    const dayStr = day.toString().padStart(2, '0');
-    const monthStr = viewMonth.toString().padStart(2, '0');
-    setCustomFilter({
-      mode: 'day',
-      date: `${viewYear}-${monthStr}-${dayStr}`,
-      month: viewMonth,
-      year: viewYear,
-      label: `${dayStr}/${monthStr}/${viewYear}`,
-    });
-    setTimeFilter('custom');
-    setShowDatePicker(false);
-  };
-
-  const handleSelectMonth = (month) => {
-    if (isFutureMonth(month, viewYear)) return;
-    const monthStr = month.toString().padStart(2, '0');
-    setCustomFilter({
-      mode: 'month',
-      date: `${viewYear}-${monthStr}-01`,
-      month: month,
-      year: viewYear,
-      label: `Tháng ${month}/${viewYear}`,
-    });
-    setTimeFilter('custom');
-    setShowDatePicker(false);
-  };
-
-  const handleSelectYear = (year) => {
-    if (isFutureYear(year)) return;
-    setCustomFilter({
-      mode: 'year',
-      date: `${year}-01-01`,
-      month: 1,
-      year: year,
-      label: `Năm ${year}`,
-    });
-    setTimeFilter('custom');
-    setShowDatePicker(false);
-  };
-
-  // Calendar calculations for Tab Ngày
-  const daysInViewMonth = new Date(viewYear, viewMonth, 0).getDate();
-  const firstDayOffset = (() => {
-    const d = new Date(viewYear, viewMonth - 1, 1).getDay();
-    return d === 0 ? 6 : d - 1; // 0 = Thứ 2, 6 = CN
+  const uptimeCard = (() => {
+    const pct = typeof uptime?.uptimePercent === 'number' && !Number.isNaN(uptime.uptimePercent) ? uptime.uptimePercent : null;
+    if (pct === null) {
+      return uptimeError
+        ? { value: '—', hint: t('dashboard.kpi.error'), tone: 'danger' }
+        : { value: '—', hint: t('dashboard.kpi.loading'), tone: 'neutral' };
+    }
+    const downSec = Number(uptime?.downtimeSeconds) || 0;
+    const downtime =
+      downSec <= 0
+        ? null
+        : downSec >= 3600
+          ? t('dashboard.kpi.downtimeHours', { n: (downSec / 3600).toFixed(1) })
+          : t('dashboard.kpi.downtimeMinutes', { n: Math.round(downSec / 60) });
+    return {
+      value: `${pct.toFixed(2)}%`,
+      hint:
+        [uptime?.uptimeFormatted && t('dashboard.kpi.runningFor', { time: uptime.uptimeFormatted }), downtime].filter(Boolean).join(' · ') ||
+        t('dashboard.kpi.stable'),
+      tone: pct >= 99 ? 'success' : pct >= 95 ? 'warning' : 'danger',
+    };
   })();
 
-  // Data hiển thị Card
-  const totalUsersDisplay = totalUsers !== null ? totalUsers.toLocaleString('vi-VN') : '—';
-  const totalCategoriesDisplay = totalCategories !== null ? totalCategories.toLocaleString('vi-VN') : '—';
-  const growthSign = newUsers.growth >= 0 ? '+' : '';
-  const growthBadge = `${growthSign}${newUsers.growth}%`;
-  const growthColor = newUsers.growth >= 0 ? 'green' : 'red';
+  const growth = Number(newUsers.growth) || 0;
 
-  // Uptime Card Display Values (Dữ liệu thực tế 100% từ Backend, tự động khấu trừ thời gian bảo trì)
-  const pct = typeof uptimeData?.uptimePercent === 'number' && !isNaN(uptimeData.uptimePercent)
-    ? uptimeData.uptimePercent
-    : null;
+  const chartActions = (stats, withTotal) => (
+    <span className="text-xs text-ink-muted">
+      {t('dashboard.charts.summary', { avg: num(stats.summary?.avg), peak: num(stats.summary?.max) })}
+      {withTotal && ` · ${t('dashboard.charts.total', { n: num(stats.summary?.total) })}`}
+    </span>
+  );
 
-  let uptimeDisplayValue = '—';
-  let uptimeBadge = t('dashboard.kpi.loading', 'Đang tải...');
-  let uptimeBadgeColor = undefined;
-  let uptimeSubtext = undefined;
-
-  if (pct !== null) {
-    uptimeDisplayValue = `${pct.toFixed(2)}%`;
-    uptimeBadge = uptimeData?.uptimeFormatted || t('dashboard.kpi.stable', 'Ổn định');
-    uptimeBadgeColor = pct >= 99.0 ? 'green' : (pct >= 95.0 ? 'amber' : 'red');
-
-    const dtSec = Number(uptimeData?.downtimeSeconds) || 0;
-    if (dtSec > 0) {
-      const dtMin = Math.round(dtSec / 60);
-      const dtHours = (dtSec / 3600).toFixed(1);
-      const dtLabel = dtMin >= 60 ? `${dtHours} giờ` : `${dtMin} phút`;
-      uptimeSubtext = `Đã trừ ${dtLabel} bảo trì`;
-    } else {
-      uptimeSubtext = undefined;
-    }
-  } else if (uptimeStatus === 'loading') {
-    uptimeDisplayValue = '—';
-    uptimeBadge = t('dashboard.kpi.loading', 'Đang tải...');
-    uptimeBadgeColor = undefined;
-  } else if (uptimeStatus === 'error') {
-    uptimeDisplayValue = '—';
-    uptimeBadge = t('dashboard.kpi.error', 'Lỗi kết nối');
-    uptimeBadgeColor = 'red';
-  } else {
-    uptimeDisplayValue = '100.00%';
-    uptimeBadge = t('dashboard.kpi.stable', 'Ổn định');
-    uptimeBadgeColor = 'green';
-    uptimeSubtext = undefined;
-  }
-
-  // Pagination display values (Trang 1: 1 - 5 of 36 items)
-  const currPage = activityPagination.page || 1;
-  const startItem = activityPagination.total > 0 ? (currPage - 1) * activityPagination.limit + 1 : 0;
-  const endItem = Math.min(currPage * activityPagination.limit, activityPagination.total);
-
-  // Filter Button Label
-  const customButtonLabel = timeFilter === 'custom' 
-    ? customFilter.label 
-    : (t('dashboard.filters.monthFormat', { month: nowMonth, year: nowYear }) || `${nowMonth}/${nowYear}`);
+  const columns = [
+    { key: 'time', title: t('dashboard.recentActivities.columns.time'), width: '7rem', render: (a) => <span className="whitespace-nowrap tabular-nums text-ink-muted" title={a.timeReq}>{a.time}</span> },
+    { key: 'user', title: t('dashboard.recentActivities.columns.user'), width: '12rem', render: (a) => <TruncateCell text={a.user} className="font-medium text-ink" /> },
+    {
+      key: 'action',
+      title: t('dashboard.recentActivities.columns.action'),
+      render: (a) => {
+        const { tagInfo, cleanAction } = classifyAuditAction(a.action, a.request);
+        return (
+          <div className="flex min-w-0 flex-col items-start gap-1">
+            <Badge tone={tagInfo.tone}>{tagInfo.label}</Badge>
+            <TruncateCell text={cleanAction} className="text-ink" />
+          </div>
+        );
+      },
+    },
+    { key: 'request', title: t('dashboard.recentActivities.columns.request'), render: (a) => <div className="max-w-xs"><RequestCell value={a.request} /></div> },
+    { key: 'reason', title: t('dashboard.recentActivities.columns.reason'), width: '10rem', render: (a) => <TruncateCell text={a.reason || '—'} className="text-ink-muted" /> },
+    {
+      key: 'status',
+      title: t('dashboard.recentActivities.columns.status'),
+      render: (a) => <Badge tone={AUDIT_STATUS_TONE[a.status] || 'neutral'}>{t(`commonStatus.${a.status}`, a.status)}</Badge>,
+    },
+  ];
 
   return (
-    <>
-    {/* Full-screen Loading Overlay & Operation Blocker when applying filters / loading dashboard data */}
-    {(loadingLogin || loadingRequest || loading) && (
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center pointer-events-auto select-none animate-in fade-in duration-200">
-        <div className="bg-white/95 backdrop-blur-md px-8 py-6 rounded-2xl shadow-2xl border border-outline-variant flex flex-col items-center gap-4 text-center max-w-xs mx-4">
-          <div className="relative flex items-center justify-center">
-            <span className="material-symbols-outlined animate-spin text-primary text-5xl">progress_activity</span>
-          </div>
-          <div className="space-y-1">
-            <h4 className="font-title-md font-bold text-on-surface text-base">
-              {t('dashboard.loadingOverlay.title')}
-            </h4>
-            <p className="font-body-sm text-on-surface-variant text-xs">{t('dashboard.loadingOverlay.wait')}</p>
-          </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title={t('dashboard.title')}
+        description={t('dashboard.subtitle')}
+        actions={
+          <>
+            <Tabs
+              ariaLabel={t('dashboard.filters.label')}
+              value={timeFilter}
+              onChange={(key) => setTimeFilter(key)}
+              items={PERIODS.map((p) => ({ key: p.key, label: t(p.label) }))}
+            />
+            <PeriodPicker
+              now={today}
+              selected={timeFilter === 'custom' ? customFilter : null}
+              onSelect={(filter) => {
+                setCustomFilter(filter);
+                setTimeFilter('custom');
+              }}
+            />
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label={t('dashboard.kpi.totalUsers')} value={totalUsers === null ? '—' : num(totalUsers)} />
+        <StatCard
+          label={t('dashboard.kpi.newUsers')}
+          value={num(newUsers.current)}
+          hint={t('dashboard.kpi.growth', { value: `${growth >= 0 ? '+' : ''}${growth}%` })}
+          hintTone={growth >= 0 ? 'success' : 'danger'}
+        />
+        <StatCard label={t('dashboard.kpi.totalCategories')} value={totalCategories === null ? '—' : num(totalCategories)} />
+        <StatCard label={t('dashboard.kpi.systemUptime')} value={uptimeCard.value} hint={uptimeCard.hint} hintTone={uptimeCard.tone} />
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-4 xl:col-span-2">
+          <Card title={t('dashboard.charts.login')} actions={chartActions(loginStats, false)} padded>
+            <LineChart
+              label={t('dashboard.charts.login')}
+              data={loginStats.timeline || []}
+              unit={t('dashboard.charts.unitHits')}
+              format={loginStats.format || 'day'}
+              loading={statsLoading}
+              tone="brand"
+            />
+          </Card>
+          <Card title={t('dashboard.charts.request')} actions={chartActions(requestStats, true)} padded>
+            <LineChart
+              label={t('dashboard.charts.request')}
+              data={requestStats.timeline || []}
+              unit={t('dashboard.charts.unitReq')}
+              format={requestStats.format || 'day'}
+              loading={statsLoading}
+              tone="info"
+            />
+          </Card>
         </div>
-      </div>
-    )}
-
-    <div className="max-w-[1720px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full relative overflow-hidden">
-      
-      {/* Abstract Background Elements */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/3"></div>
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-secondary/5 rounded-full blur-3xl -z-10 -translate-x-1/3 translate-y-1/3"></div>
-      
-      {/* Header section & Global Filter */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-          <div className="relative">
-              <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight">{t('dashboard.title')}</h1>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
-              {/* Bộ lọc nhanh: Hôm nay, 7 Ngày, 1 Tháng, 1 Năm */}
-              <div className="flex bg-white p-1 rounded-lg border border-outline-variant shadow-sm">
-                  {Object.entries(TIME_FILTER_LABELS).map(([key, label]) => {
-                    const localizedLabel = {
-                      today: t('dashboard.filters.today'),
-                      '7days': t('dashboard.filters.sevenDays'),
-                      '1month': t('dashboard.filters.oneMonth'),
-                      '1year': t('dashboard.filters.oneYear'),
-                    }[key] || label;
-                    return (
-                      <button
-                          key={key}
-                          onClick={() => setTimeFilter(key)}
-                          className={`px-3 py-1.5 rounded-md font-label-md text-[13px] transition-all duration-200 cursor-pointer ${
-                            timeFilter === key ? 'bg-primary text-white font-semibold shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
-                          }`}
-                      >
-                          {localizedLabel}
-                      </button>
-                    );
-                  })}
-              </div>
-
-              {/* Bộ lọc chi tiết: Ngày (dd/mm/yyyy), Tháng (mm/yyyy), Năm (yyyy) */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowDatePicker(!showDatePicker)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg border shadow-sm transition-colors cursor-pointer font-label-md text-[13px] ${
-                    timeFilter === 'custom'
-                      ? 'bg-primary/10 border-primary text-primary font-semibold'
-                      : 'bg-white border-outline-variant text-on-surface hover:border-primary'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-primary text-[18px]">calendar_month</span>
-                  {customButtonLabel}
-                  <span className="material-symbols-outlined text-on-surface-variant text-[16px]">arrow_drop_down</span>
-                </button>
-
-                {/* Custom Date Picker Modal */}
-                {showDatePicker && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowDatePicker(false)} />
-                    <div className="absolute right-0 top-full mt-2 bg-white rounded-xl border border-outline-variant shadow-xl z-50 p-4 w-[310px] animate-in fade-in zoom-in-95 duration-150">
-                      
-                      {/* Mode Selector Tabs: Ngày | Tháng | Năm */}
-                      <div className="flex bg-surface-container-low p-1 rounded-lg mb-3">
-                        <button
-                          onClick={() => setPickerTab('day')}
-                          className={`flex-1 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                            pickerTab === 'day' ? 'bg-white text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
-                          }`}
-                        >
-                          {t('dashboard.filters.byDay')}
-                        </button>
-                        <button
-                          onClick={() => setPickerTab('month')}
-                          className={`flex-1 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                            pickerTab === 'month' ? 'bg-white text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
-                          }`}
-                        >
-                          {t('dashboard.filters.byMonth')}
-                        </button>
-                        <button
-                          onClick={() => setPickerTab('year')}
-                          className={`flex-1 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                            pickerTab === 'year' ? 'bg-white text-primary shadow-xs' : 'text-on-surface-variant hover:text-on-surface'
-                          }`}
-                        >
-                          {t('dashboard.filters.byYear')}
-                        </button>
-                      </div>
-
-                      {/* --- TAB 1: THEO NGÀY --- */}
-                      {pickerTab === 'day' && (
-                        <div>
-                          {/* Navigation Tháng / Năm */}
-                          <div className="flex items-center justify-between mb-2">
-                            <button
-                              onClick={() => {
-                                if (viewMonth === 1) {
-                                  setViewMonth(12);
-                                  setViewYear(v => v - 1);
-                                } else {
-                                  setViewMonth(v => v - 1);
-                                }
-                              }}
-                              className="p-1 rounded hover:bg-surface-container-low text-on-surface-variant cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                            </button>
-                            <span className="font-semibold text-[13px] text-on-surface">
-                              {t('dashboard.filters.monthFormat', { month: viewMonth, year: viewYear })}
-                            </span>
-                            <button
-                              onClick={() => {
-                                if (!isFutureMonth(viewMonth === 12 ? 1 : viewMonth + 1, viewMonth === 12 ? viewYear + 1 : viewYear)) {
-                                  if (viewMonth === 12) {
-                                    setViewMonth(1);
-                                    setViewYear(v => v + 1);
-                                  } else {
-                                    setViewMonth(v => v + 1);
-                                  }
-                                }
-                              }}
-                              disabled={isFutureMonth(viewMonth === 12 ? 1 : viewMonth + 1, viewMonth === 12 ? viewYear + 1 : viewYear)}
-                              className={`p-1 rounded text-on-surface-variant cursor-pointer ${
-                                isFutureMonth(viewMonth === 12 ? 1 : viewMonth + 1, viewMonth === 12 ? viewYear + 1 : viewYear)
-                                  ? 'opacity-30 pointer-events-none'
-                                  : 'hover:bg-surface-container-low'
-                              }`}
-                            >
-                              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                            </button>
-                          </div>
-
-                          {/* Thứ trong tuần */}
-                          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold text-on-surface-variant mb-1">
-                            <span>{t('dashboard.filters.mon')}</span>
-                            <span>{t('dashboard.filters.tue')}</span>
-                            <span>{t('dashboard.filters.wed')}</span>
-                            <span>{t('dashboard.filters.thu')}</span>
-                            <span>{t('dashboard.filters.fri')}</span>
-                            <span>{t('dashboard.filters.sat')}</span>
-                            <span className="text-error">{t('dashboard.filters.sun')}</span>
-                          </div>
-
-                          {/* Grid Ngày */}
-                          <div className="grid grid-cols-7 gap-1">
-                            {Array.from({ length: firstDayOffset }).map((_, i) => (
-                              <div key={`empty-${i}`} className="w-8 h-8" />
-                            ))}
-                            {Array.from({ length: daysInViewMonth }).map((_, i) => {
-                              const day = i + 1;
-                              const isSelected = timeFilter === 'custom' && customFilter.mode === 'day' && customFilter.date === `${viewYear}-${viewMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                              const isToday = day === nowDay && viewMonth === nowMonth && viewYear === nowYear;
-                              const disabled = isFutureDate(day, viewMonth, viewYear);
-
-                              return (
-                                <button
-                                  key={day}
-                                  onClick={() => handleSelectDay(day)}
-                                  disabled={disabled}
-                                  className={`w-8 h-8 text-[12px] font-medium rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
-                                    isSelected
-                                      ? 'bg-primary text-white shadow-xs font-bold'
-                                      : isToday
-                                      ? 'border border-primary text-primary font-bold hover:bg-primary/10'
-                                      : 'hover:bg-surface-container-low text-on-surface'
-                                  } ${disabled ? 'opacity-25 pointer-events-none' : ''}`}
-                                >
-                                  {day}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* --- TAB 2: THEO THÁNG --- */}
-                      {pickerTab === 'month' && (
-                        <div>
-                          <div className="flex items-center justify-between mb-3">
-                            <button
-                              onClick={() => setViewYear(v => v - 1)}
-                              className="p-1 rounded hover:bg-surface-container-low text-on-surface-variant cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                            </button>
-                            <span className="font-semibold text-on-surface text-[14px]">
-                              {t('dashboard.filters.yearFormat', { year: viewYear })}
-                            </span>
-                            <button
-                              onClick={() => {
-                                if (viewYear < nowYear) setViewYear(v => v + 1);
-                              }}
-                              disabled={viewYear >= nowYear}
-                              className={`p-1 rounded text-on-surface-variant cursor-pointer ${viewYear >= nowYear ? 'opacity-30 pointer-events-none' : 'hover:bg-surface-container-low'}`}
-                            >
-                              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-2">
-                            {MONTH_NAMES.map((name, idx) => {
-                              const monthNum = idx + 1;
-                              const isSelected = timeFilter === 'custom' && customFilter.mode === 'month' && customFilter.month === monthNum && customFilter.year === viewYear;
-                              const disabled = isFutureMonth(monthNum, viewYear);
-                              return (
-                                <button
-                                  key={monthNum}
-                                  onClick={() => handleSelectMonth(monthNum)}
-                                  disabled={disabled}
-                                  className={`py-2 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
-                                    isSelected
-                                      ? 'bg-primary text-white shadow-xs font-bold'
-                                      : 'hover:bg-surface-container-low text-on-surface'
-                                  } ${disabled ? 'opacity-25 pointer-events-none' : ''}`}
-                                >
-                                  {name.replace('Tháng ', 'T')}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* --- TAB 3: THEO NĂM --- */}
-                      {pickerTab === 'year' && (
-                        <div>
-                          <div className="text-center font-semibold text-on-surface text-[13px] mb-3">
-                            {t('dashboard.filters.selectYear')}
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {[nowYear - 4, nowYear - 3, nowYear - 2, nowYear - 1, nowYear].map((year) => {
-                              const isSelected = timeFilter === 'custom' && customFilter.mode === 'year' && customFilter.year === year;
-                              return (
-                                <button
-                                  key={year}
-                                  onClick={() => handleSelectYear(year)}
-                                  className={`py-2.5 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${
-                                    isSelected
-                                      ? 'bg-primary text-white shadow-xs font-bold'
-                                      : 'hover:bg-surface-container-low text-on-surface'
-                                  }`}
-                                >
-                                  {year}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                    </div>
-                  </>
-                )}
-              </div>
-          </div>
+        <ServerHealthPanel uptimeData={uptime} />
       </div>
 
-      {/* Stats Grid — Hoàn toàn ăn theo Global Filter */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 relative">
-          {loading && (
-            <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-xl">
-              <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
-            </div>
-          )}
-          <StatCard icon="group" title={t('dashboard.kpi.totalUsers')} value={totalUsersDisplay} />
-          <StatCard icon="category" title={t('dashboard.kpi.totalCategories')} value={totalCategoriesDisplay} />
-          <StatCard
-            icon="timer"
-            title={t('dashboard.kpi.systemUptime')}
-            value={uptimeDisplayValue}
-            badge={uptimeBadge}
-            badgeColor={uptimeBadgeColor}
-            subtext={uptimeSubtext}
-          />
-          <StatCard icon="person_add" title={t('dashboard.kpi.newUsers')} value={newUsers.current.toLocaleString('vi-VN')} badge={growthBadge} badgeColor={growthColor} />
-      </div>
-
-      {/* 1. Hàng 2: Hoạt động gần đây (Trái, 2 cột) + Đo lường Sức khỏe máy chủ (Phải, 1 cột) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        <div className="lg:col-span-2 w-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
-          <div className="p-5 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest">
-              <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-[22px]">history</span>
-                  {t('dashboard.recentActivities.title')}
-              </h2>
-              <div className="flex items-center gap-2">
-                  <RealtimeStatusBadge />
-              </div>
-          </div>
-          
-          <div className="flex-1 overflow-x-auto relative min-h-[220px]">
-              {loadingActivities && (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                  <span className="material-symbols-outlined animate-spin text-primary text-2xl">progress_activity</span>
-                </div>
-              )}
-              <table className="w-full text-left border-collapse table-fixed min-w-[860px]">
-                  <thead>
-                      <tr className="bg-surface-container-low/50">
-                          <th className="w-[16%] min-w-[110px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.user')}</th>
-                          <th className="w-[24%] min-w-[170px] py-3 px-2 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.action')}</th>
-                          <th className="w-[24%] min-w-[140px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.request')}</th>
-                          <th className="w-[16%] min-w-[90px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.reason')}</th>
-                          <th className="w-[10%] min-w-[75px] py-3 px-2 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold truncate">{t('dashboard.recentActivities.columns.status')}</th>
-                          <th className="w-[10%] min-w-[75px] py-3 px-3 font-label-sm text-[11px] text-on-surface-variant uppercase tracking-wider font-semibold text-right truncate">{t('dashboard.recentActivities.columns.time')}</th>
-                      </tr>
-                  </thead>
-                  <tbody className="divide-y divide-outline-variant/50">
-                      {recentActivities.length > 0 ? (
-                        recentActivities.map(activity => (
-                            <tr key={activity.key} className="hover:bg-surface-container-lowest transition-colors group">
-                                <td className="py-3 px-3 overflow-hidden max-w-0">
-                                    <div className="flex items-center gap-2.5 min-w-0" title={activity.user}>
-                                        <div className="w-7 h-7 shrink-0 rounded-full bg-secondary/10 text-secondary flex items-center justify-center font-bold text-xs shadow-xs group-hover:scale-105 transition-transform">
-                                            {(activity.user || 'U').split(' ').pop().charAt(0)}
-                                        </div>
-                                        <TruncateCell text={activity.user} className="font-body-md font-semibold text-on-surface min-w-0" />
-                                    </div>
-                                </td>
-                                <td className="py-3 px-2 text-on-surface-variant font-body-md overflow-hidden max-w-0">
-                                    {(() => {
-                                      const { tagInfo, cleanAction } = classifyAuditAction(activity.action);
-                                      return (
-                                        <div className="flex items-center gap-1.5 min-w-0" title={cleanAction}>
-                                          <span
-                                            className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${tagInfo.bg} ${tagInfo.text} ${tagInfo.border} shrink-0`}
-                                            title={tagInfo.label}
-                                          >
-                                            <span className="material-symbols-outlined text-[11px]">{tagInfo.icon}</span>
-                                            <span>{tagInfo.tag}</span>
-                                          </span>
-                                          <TruncateCell text={cleanAction} className="font-medium text-xs text-on-surface min-w-0" />
-                                        </div>
-                                      );
-                                    })()}
-                                </td>
-                                <td className="py-3 px-3 text-on-surface-variant font-body-sm overflow-hidden max-w-0">
-                                    {renderRequestBadge(activity.request)}
-                                </td>
-                                <td className="py-3 px-3 text-on-surface-variant font-body-sm overflow-hidden max-w-0">
-                                    {activity.reason ? (
-                                      <TruncateCell text={activity.reason} className="text-on-surface-variant/90 min-w-0" />
-                                    ) : (
-                                      <span className="text-outline-variant/80">—</span>
-                                    )}
-                                </td>
-                                <td className="py-3 px-2 whitespace-nowrap overflow-hidden">
-                                    {getStatusBadge(activity.status, t)}
-                                </td>
-                                <td className="py-3 px-3 text-on-surface-variant font-body-sm text-right whitespace-nowrap overflow-hidden" title={activity.time_req || activity.time}>
-                                    <TruncateCell text={activity.time} className="text-right" />
-                                </td>
-                            </tr>
-                        ))
-                      ) : (
-                        <tr>
-                            <td colSpan="6" className="py-8 text-center text-on-surface-variant font-body-md">
-                                {t('dashboard.recentActivities.noActivities')}
-                            </td>
-                        </tr>
-                      )}
-                  </tbody>
-              </table>
-          </div>
-
-          {/* Table Pagination Toolbar */}
-          <Pagination
-            currentPage={currPage}
-            pageSize={activityLimit}
-            total={activityPagination.total}
-            pageSizeOptions={[5, 10, 20, 50]}
-            onPageChange={(page) => setActivityPage(page)}
-            onPageSizeChange={(newLimit) => {
-              setActivityLimit(newLimit);
-              setActivityPage(1);
-            }}
-            itemLabel="items"
-          />
-        </div>
-
-        {/* Box đo lường sức khỏe máy chủ (Nằm ngang hàng với Bảng Hoạt động gần đây) */}
-        <div className="lg:col-span-1 w-full">
-          <ServerHealthPanel uptimeData={uptimeData} />
-        </div>
-      </div>
-
-      {/* 2. Hàng 3: Biểu đồ 1: Tần suất Đăng nhập (1 Hàng riêng, Full-width) */}
-      <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col relative overflow-hidden group">
-          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors duration-500"></div>
-          
-          <div className="flex justify-between items-start mb-4">
-              <div>
-                  <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary text-[22px]">bar_chart</span>
-                      {t('dashboard.charts.login')}
-                  </h2>
-                  <p className="font-body-sm text-on-surface-variant mt-0.5">{t('dashboard.charts.loginSubtitle')}</p>
-              </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                  <RealtimeStatusBadge />
-              </div>
-          </div>
-          
-          <div className="flex-1 flex flex-col justify-center min-h-[220px] mb-4 relative">
-              <InteractiveLineChart
-                data={loginStats.timeline}
-                gradientId="loginChartGrad"
-                strokeColor="#2563eb"
-                gradientFrom="#3b82f6"
-                gradientTo="#1d4ed8"
-                unit={t('dashboard.charts.unitHits')}
-                format={loginStats.format || 'day'}
-                loading={loadingLogin}
-                height={220}
-              />
-          </div>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-2 gap-4 pt-4 border-t border-outline-variant relative z-10">
-              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">{t('dashboard.charts.average')}</p>
-                  <p className="font-title-lg font-bold text-primary m-0">
-                    {(loginStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitHits')}</span>
-                  </p>
-              </div>
-              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">{t('dashboard.charts.peak')}</p>
-                  <p className="font-title-lg font-bold text-on-surface m-0">
-                    {(loginStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitHits')}</span>
-                  </p>
-              </div>
-          </div>
-      </div>
-
-      {/* 3. Hàng 4: Biểu đồ 2: Lưu lượng Request (Đẩy lên 1 box riêng, Full-width, Kích thước độ dài & độ cao chuẩn với Biểu đồ Đăng nhập) */}
-      <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm p-5 md:p-6 flex flex-col relative overflow-hidden group">
-          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-sky-500/5 rounded-full blur-2xl group-hover:bg-sky-500/10 transition-colors duration-500"></div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 relative z-10">
-              <div>
-                  <h2 className="font-title-lg text-title-lg font-bold text-on-surface m-0 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary text-[22px]">ssid_chart</span>
-                      {t('dashboard.charts.request')}
-                  </h2>
-                  <p className="font-body-sm text-on-surface-variant mt-0.5">{t('dashboard.charts.requestSubtitle')}</p>
-              </div>
-              <div className="flex items-center gap-3 self-start sm:self-auto">
-                  <RealtimeStatusBadge />
-              </div>
-          </div>
-          
-          <div className="flex-1 flex flex-col justify-center min-h-[220px] mb-4 relative">
-              <InteractiveLineChart
-                data={requestStats.timeline}
-                gradientId="reqChartGrad"
-                strokeColor="#0284c7"
-                gradientFrom="#38bdf8"
-                gradientTo="#0284c7"
-                unit={t('dashboard.charts.unitReq')}
-                format={requestStats.format || 'day'}
-                loading={loadingRequest}
-                height={220}
-              />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-outline-variant relative z-10">
-              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">{t('dashboard.charts.average')}</p>
-                  <p className="font-title-lg font-bold text-primary m-0">
-                    {(requestStats.summary?.avg || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitReq')}</span>
-                  </p>
-              </div>
-              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">{t('dashboard.charts.peak')}</p>
-                  <p className="font-title-lg font-bold text-on-surface m-0">
-                    {(requestStats.summary?.max || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitReq')}</span>
-                  </p>
-              </div>
-              <div className="bg-surface-container-lowest p-3 rounded-lg text-center border border-outline-variant/30">
-                  <p className="font-label-sm text-on-surface-variant mb-1 uppercase tracking-wider text-[11px]">{t('dashboard.charts.totalRequest')}</p>
-                  <p className="font-title-lg font-bold text-secondary m-0">
-                    {(requestStats.summary?.total || 0).toLocaleString('vi-VN')} <span className="text-[12px] font-normal text-on-surface-variant">{t('dashboard.charts.unitReq')}</span>
-                  </p>
-          </div>
-      </div>
+      <Card
+        title={t('dashboard.recentActivities.title')}
+        actions={
+          <Link to="/audit-logs" className="text-sm font-medium text-brand hover:text-brand-hover">
+            {t('dashboard.recentActivities.viewAll')}
+          </Link>
+        }
+      >
+        <DataTable
+          columns={columns}
+          rows={activities.map((item) => toActivity(item, t))}
+          rowKey="key"
+          loading={activitiesLoading && activities.length === 0}
+          emptyTitle={t('dashboard.recentActivities.noActivities')}
+          minWidth={860}
+        />
+        <Pagination
+          currentPage={activityPage}
+          pageSize={activityLimit}
+          total={activityTotal}
+          pageSizeOptions={[5, 10, 20, 50]}
+          onPageChange={setActivityPage}
+          onPageSizeChange={(size) => {
+            setActivityLimit(size);
+            setActivityPage(1);
+          }}
+          itemLabel={t('dashboard.recentActivities.itemLabel')}
+        />
+      </Card>
     </div>
-    </div>
-    </>
   );
 };
 
