@@ -73,7 +73,8 @@ Giá trị tối định nghĩa cùng tệp (lớp `.dark` trên `<html>`, `sett
 | `DataTable` | cột khai báo, hàng, trạng thái tải, trạng thái rỗng (`EmptyState`), bọc cuộn ngang |
 | `Pagination` | làm lại từ `components/common/Pagination.jsx`, giữ API đang dùng |
 | `Badge` | tông `success` / `warning` / `danger` / `neutral` / `info` |
-| `Modal` | lớp phủ, tiêu đề, thân, chân; đóng bằng Esc và nút đóng; khóa cuộn nền |
+| `Modal` | lớp phủ, tiêu đề, thân, chân; đóng bằng Esc và nút đóng; khóa cuộn nền; `hideClose` ẩn nút đóng, `backdrop="solid"` dùng nền đặc che hẳn trang phía sau (Khóa màn hình, Đăng nhập lần đầu) |
+| `PasswordInput` | ô mật khẩu kèm nút ẩn / hiện có `aria-label`, chuyển tiếp mọi thuộc tính của `input` |
 | `ConfirmModal` | dựng trên `Modal`, thay mọi hộp xác nhận tự dựng |
 | `SecurityConfirmModal` | dựng trên `Modal`, giữ luồng xác thực PIN `verifySecurityAction`; Danh mục dùng lại thay hộp PIN riêng |
 | `Spinner`, `EmptyState` | trạng thái tải / rỗng thống nhất |
@@ -87,7 +88,7 @@ Nguồn: lời gọi API, sự kiện socket và hàm xử lý trong mã ngày 2
 | Màn hình | API | Socket | Thao tác |
 |---|---|---|---|
 | Đăng nhập | `authApi` qua `auth.context` | — | đăng nhập, đổi ngôn ngữ, sang Quên mật khẩu |
-| Quên mật khẩu | (đối chiếu khi làm) | — | gửi yêu cầu khôi phục, đổi ngôn ngữ |
+| Quên mật khẩu | — (trang tĩnh, đối chiếu mã 2026-11-13) | — | xem hướng dẫn liên hệ hỗ trợ, gọi số điện thoại hỗ trợ, về Đăng nhập, đổi ngôn ngữ |
 | Khung (AppLayout, Sidebar, Header) | `getMaintenanceStatus`, `setMaintenanceStatus`, `getStatus`, `getAdminAlerts`, `markAdminAlertAsRead` | `admin.maintenance_changed`, `admin.security_alert`, `admin.security_blocked`, `admin.notification` | 8 mục menu, thu gọn sidebar, đăng xuất, banner bảo trì, giảm thiểu nhanh khi có cảnh báo an ninh, danh sách cảnh báo + đánh dấu đã đọc, trạng thái kết nối realtime, đổi ngôn ngữ, mở Cài đặt |
 | Khóa màn hình | — | — | mở khóa, đăng xuất |
 | Đăng nhập lần đầu | `firstLoginSetup` | — | thiết lập lần đầu |
@@ -121,9 +122,9 @@ Bộ test cũ (`src/Admin-web/src/tests/*.test.jsx`, 52 tệp) bị gỡ theo qu
 - Test mock API, không gọi Backend thật, không ghi CSDL.
 - Mỗi màn hình một tệp `src/tests/<man-hinh>.test.jsx`; thành phần ui một tệp `src/tests/ui.test.jsx`.
 
-## 8. Tiến độ (cập nhật 2026-11-12)
+## 8. Tiến độ (cập nhật 2026-11-13)
 
-Mức hiện tại: `npm test` 106/106 ca (10 tệp), `npm run lint` 0 lỗi, `npm run build` qua.
+Mức hiện tại: `npm test` 141/141 ca (12 tệp), `npm run lint` 0 lỗi, `npm run build` qua.
 
 ### 8.1 Đã xong
 
@@ -138,7 +139,9 @@ Mức hiện tại: `npm test` 106/106 ca (10 tệp), `npm run lint` 0 lỗi, `n
 | G2.5 Xóa đơn mẫu | `2ee34db5` | Backend `deleteSampleOrders` lọc `is_template: true`; nút "Xóa đơn mẫu" + `ConfirmModal`, báo số đơn đã xóa, tải lại bảng và KPI | Chèn tay 2 đơn mẫu (1 đã thanh toán, có giao dịch) + 1 đơn thật: bấm xóa → `DELETE` 200, CSDL còn đúng đơn thật, giao dịch đơn mẫu xóa theo |
 | G3.1 Tổng quan | `abd7b496` | Tách `components/LineChart` (đo bề rộng thật, màu theo token), `PeriodPicker`, `dashboardFormat.js`; `RequestCell` và `AUDIT_STATUS_TONE` chuyển ra dùng chung với Nhật ký; bỏ lớp phủ chặn màn hình, `RealtimeStatusBadge` riêng và hai nghe sự kiện không còn tác dụng (`admin.maintenance_changed` chỉ ghi vào state không hiển thị, `connect`/`disconnect`); bố cục: biểu đồ xếp dọc cạnh sức khỏe máy chủ, bảng hoạt động rộng hết trang có liên kết sang Nhật ký | Hôm nay → 7 ngày → ngày 10/11: API 200 đúng tham số; tooltip, Sáng / Tối, điện thoại không cuộn ngang |
 | G3.2 Phân quyền | `d5a959ef` | Trang + 3 thành phần dựng lại bằng `ui`, thêm `components/permissionFormat.js`; một cách vẽ dòng cho cả chế độ một gói và hai gói (bỏ 3 đoạn mã trùng); hộp phạm vi dùng `Modal`, lưu / đặt lại dùng `ConfirmModal`; bỏ chữ "Trụ 1–4", PostgreSQL, Socket.IO, 50ms; nhãn truy cập tiếng Việt cho mọi ô điều khiển; gỡ `PermissionGroupSection.jsx` (không nơi nào dùng). `Modal` / `ConfirmModal` thêm `testId`, `SearchInput` chuyển tiếp thuộc tính để giữ `data-testid` cũ | Đổi hạn mức 6 → 7 rồi trả 6 trên CSDL cục bộ: `PUT` 200, tải lại đúng; hộp phạm vi, Sáng / Tối, điện thoại không cuộn ngang |
-| G3.3 Bảo trì & Thông báo | commit kế sau `d5a959ef` | Tách `pages/system/broadcast/`: `MaintenanceTab`, `MaintenanceHistory`, `BroadcastTab`, `maintenanceFormat.js`; trang chính giữ trạng thái, banner, socket và hàm `act` dùng chung; hủy lịch qua `ConfirmModal` thay `window.confirm`; bảo trì khẩn cấp qua `SecurityConfirmModal` (sửa prop sai `actionDescription` → `description`); lỗi nhập lịch hiện ngay trong biểu mẫu; thời lượng của lịch đã đặt tính đúng (trước luôn ghi "Chưa diễn ra"); lý do mặc định gửi người dùng bỏ chữ kỹ thuật; `DataTable` thêm `label` | Lên lịch rồi hủy, bật khẩn cấp rồi kết thúc trên CSDL cục bộ: 4 lời gọi 200; Sáng / Tối, điện thoại không cuộn ngang; không bấm gửi thông báo thật |
+| G3.3 Bảo trì & Thông báo | `b4118641` | Tách `pages/system/broadcast/`: `MaintenanceTab`, `MaintenanceHistory`, `BroadcastTab`, `maintenanceFormat.js`; trang chính giữ trạng thái, banner, socket và hàm `act` dùng chung; hủy lịch qua `ConfirmModal` thay `window.confirm`; bảo trì khẩn cấp qua `SecurityConfirmModal` (sửa prop sai `actionDescription` → `description`); lỗi nhập lịch hiện ngay trong biểu mẫu; thời lượng của lịch đã đặt tính đúng (trước luôn ghi "Chưa diễn ra"); lý do mặc định gửi người dùng bỏ chữ kỹ thuật; `DataTable` thêm `label` | Lên lịch rồi hủy, bật khẩn cấp rồi kết thúc trên CSDL cục bộ: 4 lời gọi 200; Sáng / Tối, điện thoại không cuộn ngang; không bấm gửi thông báo thật |
+| G4.2 Cài đặt | `a0c15b0d` | `SettingsModal` dựng trên `Modal` + `Tabs` (5 tab: Giao diện, Thông báo, Kết nối, Bảo mật, Quản trị viên), tách `components/layout/settings/`: `SettingsSections`, `AccountModals` (đổi PIN, đổi mật khẩu), `CreateAdminModal` (3 bước), `settingsUi`; bỏ khung đổi PIN thứ hai nằm sẵn trong tab Bảo mật (nay mở cùng hộp đổi PIN); xóa bộ nhớ đệm và khôi phục mặc định qua `ConfirmModal` thay `window.confirm`; hộp con chỉ dựng khi mở; bỏ chữ kỹ thuật ("Socket.IO", "Cổng 3000" viết cứng, "PostgreSQL Supabase (Tokyo, AWS)", "Bcrypt", số phiên bản giả); `Tabs` thêm `testId` theo mục. 1.498 → 791 dòng | Đổi PIN 246810 → 135790 rồi trả 246810 trên CSDL cục bộ: 2 lời gọi 200; đo độ trễ; Esc ở hộp con chỉ đóng hộp con; Tối gắn `.dark`; điện thoại không cuộn ngang; không cấp admin thật |
+| G4.3 Đăng nhập, Quên mật khẩu, Khóa màn hình, Đăng nhập lần đầu | (chưa commit) | Hai trang auth dùng chung khung `pages/auth/AuthShell` (logo, `LanguageToggle`, thẻ giữa màn hình); bỏ nửa trang minh họa tải ảnh ngoài và chữ "mã hóa 256-bit", "realtime"; Khóa màn hình và Đăng nhập lần đầu dựng trên `Modal` (`hideClose`, `closeDisabled`, `backdrop="solid"`); đăng xuất từ màn hình khóa qua `ConfirmModal` thay `window.confirm`; Đăng nhập lần đầu giữ chặn Esc, 7 lỗi kiểm tra, 6 `data-testid`, bỏ lộ mật khẩu / PIN mặc định trên màn hình; `ui` thêm `PasswordInput`, `Modal` thêm `hideClose`, `backdrop`. Bốn tệp 746 → 441 dòng (kể cả `AuthShell`) | Đăng nhập sai rồi đúng (401, 200); Khóa ngay: token bị xóa, Esc không đóng, mở khóa trống / sai / đúng, hộp xác nhận đăng xuất bấm Hủy; Quên mật khẩu VI / EN, liên kết `tel:`; Đăng nhập lần đầu giả lập cờ bằng chặn phản hồi `/auth/me` trong trình duyệt (CSDL không đổi, chặn mọi lời gọi `first-login-setup`), báo lỗi không khớp; Sáng / Tối; điện thoại không cuộn ngang |
 
 ### 8.2 Lỗi sẵn có đã sửa
 
@@ -152,6 +155,10 @@ Mức hiện tại: `npm test` 106/106 ca (10 tệp), `npm run lint` 0 lỗi, `n
 8. Mũi tên ô chọn đè chữ (đã thêm `pr-9` / `pr-8`).
 9. Backend `deleteSampleOrders` lọc tiền tố `sample-link-` cũ nên không xóa được đơn mẫu tạo qua PayOS thật.
 10. Cột Số tiền ở trang Thanh toán in thừa số "0" khi `amount_received = 0`.
+11. Thẻ "Thời gian hoạt động" ở Tổng quan ghi "Đã trừ 0 phút bảo trì" khi thời gian bảo trì dưới 30 giây (sửa trong G4.2, có test).
+12. Hộp đổi PIN / đổi mật khẩu mở lại còn giữ mật khẩu và PIN lần trước trong chốc lát (lỗi sinh ra lúc làm G4.2, phát hiện khi chạy thật, đã sửa và có test hồi quy).
+13. Khối khóa ngôn ngữ `firstLogin` không có trong `vi.js` / `en.js`: hộp Đăng nhập lần đầu luôn hiện chữ dự phòng tiếng Việt viết cứng, kể cả khi chọn EN (G4.3 thêm khối ở cả hai tệp).
+14. Lớp phủ 50% của `Modal` để lộ số liệu trang phía sau Khóa màn hình (lỗi sinh ra lúc làm G4.3, phát hiện khi chạy thật; thêm `backdrop="solid"`, có test).
 
 ### 8.3 Quyết định trải nghiệm đã áp (Chủ dự án đã duyệt khuôn trang Người dùng)
 
@@ -164,10 +171,8 @@ Mức hiện tại: `npm test` 106/106 ca (10 tệp), `npm run lint` 0 lỗi, `n
 
 | Bước | Tệp chính | Ghi chú |
 |---|---|---|
-| G4.1 AIOps | `pages/system/AIOpsPage.jsx` (3.956 dòng) + `components/common/ServerHealthPanel.jsx` | tách theo khối |
-| G4.2 Cài đặt | `components/layout/SettingsModal.jsx` (1.498 dòng) | gồm chế độ Tối |
-| G4.3 Đăng nhập, Quên mật khẩu, Khóa màn hình, Đăng nhập lần đầu | `pages/auth/*`, `components/layout/LockScreenModal.jsx`, `FirstLoginModal.jsx` | |
-| G5 Dọn | `tailwind.config.js`, `index.css` (luật `.dark` cũ, `bento-grid`…), `components/common/*` tái xuất, khóa ngôn ngữ thừa | sau đó cập nhật `Project.md` mục 3.4, `docs/Admin-web/README.md` |
+| G4.1 AIOps | `pages/system/AIOpsPage.jsx` (3.956 dòng) + `components/common/ServerHealthPanel.jsx` (606) | làm kế tiếp (chờ lệnh Chủ dự án); tách theo khối, chia 2–3 commit; bảng sức khỏe máy chủ hiện còn lệch màu ở chế độ Tối (cả trang Tổng quan) |
+| G5 Dọn | `tailwind.config.js`, `index.css` (luật `.dark` cũ, `bento-grid`…), `components/common/*` tái xuất, khóa ngôn ngữ thừa | sau đó cập nhật `Project.md` mục 3.4, `docs/Admin-web/README.md`; chuyển `Field`, `FormError`, `inputClass` từ `components/layout/settings/settingsUi` sang `components/ui` (trang auth đang mượn) |
 
 ### 8.5 Quyết định của Chủ dự án (2026-11-12)
 
@@ -175,3 +180,4 @@ Mức hiện tại: `npm test` 106/106 ca (10 tệp), `npm run lint` 0 lỗi, `n
 - Duyệt sửa Backend: `deleteSampleOrders` đang lọc `payment_link_id` bắt đầu bằng `sample-link-` (quy ước cũ), trong khi `createSampleOrder` hiện lấy mã liên kết thật từ PayOS và đánh dấu `is_template = true`, nên lệnh xóa không trúng đơn mẫu mới. Sửa thành lọc `is_template: true`, giữ xóa vật lý (đơn mẫu là dữ liệu thử của admin, `findOrdersByAccount` đã lọc `is_template = false` nên không tới Client-app; `payment_transaction` xóa theo nhờ `onDelete: Cascade`).
 - Rủi ro đã nêu: Backend không hủy liên kết PayOS khi xóa; đơn mẫu hết hạn sau 10 phút.
 - G2.2, G2.3, G2.4 commit riêng từng trang; khối khóa ngôn ngữ của từng trang đi theo commit của trang đó.
+- 2026-11-13: thứ tự G4 đổi thành G4.2 → G4.3 → G4.1 (AIOps làm sau cùng). Kế hoạch không có G6.

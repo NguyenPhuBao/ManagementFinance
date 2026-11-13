@@ -16,6 +16,7 @@ import {
   Spinner,
   EmptyState,
   Loading,
+  PasswordInput,
 } from '../components/ui';
 import adminApi from '../api/admin.api';
 
@@ -169,6 +170,38 @@ describe('Modal', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     fireEvent.click(screen.getByRole('button', { name: 'Đóng' }));
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('hideClose ẩn nút đóng; closeDisabled thì Esc và bấm nền không gọi onClose', () => {
+    const onClose = vi.fn();
+    const { container } = render(<Modal open hideClose closeDisabled title="Khóa" onClose={onClose}>nội dung</Modal>);
+    expect(screen.queryByRole('button', { name: 'Đóng' })).not.toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.click(container.firstChild);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('backdrop="solid" dùng nền đặc che hẳn nội dung phía sau', () => {
+    const { container, rerender } = render(<Modal open title="Khóa" onClose={() => {}}>x</Modal>);
+    expect(container.firstChild).toHaveClass('bg-overlay');
+    rerender(<Modal open backdrop="solid" title="Khóa" onClose={() => {}}>x</Modal>);
+    expect(container.firstChild).toHaveClass('bg-canvas');
+    expect(container.firstChild).not.toHaveClass('bg-overlay');
+  });
+});
+
+describe('PasswordInput', () => {
+  it('nút mắt đổi kiểu ô nhập và nhãn truy cập; chuyển tiếp thuộc tính', () => {
+    const onChange = vi.fn();
+    render(<PasswordInput id="pw" value="abc" onChange={onChange} data-testid="pw-input" />);
+    const input = screen.getByTestId('pw-input');
+    expect(input).toHaveAttribute('type', 'password');
+    fireEvent.click(screen.getByRole('button', { name: 'Hiện mật khẩu' }));
+    expect(input).toHaveAttribute('type', 'text');
+    fireEvent.click(screen.getByRole('button', { name: 'Ẩn mật khẩu' }));
+    expect(input).toHaveAttribute('type', 'password');
+    fireEvent.change(input, { target: { value: 'abcd' } });
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 });
 

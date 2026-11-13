@@ -1,6 +1,6 @@
 # Bàn giao phiên: làm lại giao diện Admin-web
 
-Ngày: 2026-11-12. Đọc tệp này đầu tiên khi mở phiên mới, rồi làm theo mục "Bắt đầu phiên mới".
+Ngày: 2026-11-12, cập nhật 2026-11-13. Đọc tệp này đầu tiên khi mở phiên mới, rồi làm theo mục "Bắt đầu phiên mới".
 
 ## Lệnh mở phiên (dán cho Claude)
 
@@ -13,13 +13,15 @@ Ngày: 2026-11-12. Đọc tệp này đầu tiên khi mở phiên mới, rồi l
    - `docs/superpowers/specs/2026-11-12-admin-web-giao-dien-design.md`: hệ thiết kế (mục 3), thành phần (4), danh mục chức năng = chuẩn nghiệm thu (5), quy tắc nội dung (6), kiểm thử (7), **tiến độ (8)**.
    - `docs/superpowers/plans/2026-11-12-admin-web-lam-lai-giao-dien.md`: công thức làm một màn hình, G0–G5.
 2. Kiểm trạng thái: `git log --oneline -5`, `git status --short | grep -v src/Client-app`.
-3. Chạy mức nền trong `src/Admin-web`: `npm test` (mong đợi 78/78), `npm run lint`, `npm run build`.
+3. Chạy mức nền trong `src/Admin-web`: `npm test` (mong đợi 141/141, 12 tệp), `npm run lint`, `npm run build`.
 
 ## Trạng thái
 
-- Nhánh `NguyenPhuBao`. Đã commit: G0 `92d29c61`, G1 `43ef61df`, G2.1 `1ce28def`, G2.2 `f832176a`, G2.3 `56befb6a`, G2.4 `4ea70c7f`, G2.5 `2ee34db5`, G3.1 `abd7b496`, G3.2 `d5a959ef`, G3.3 Bảo trì & Thông báo (commit kế sau, xem `git log`).
+- Nhánh `NguyenPhuBao`. Đã commit: G0 `92d29c61`, G1 `43ef61df`, G2.1 `1ce28def`, G2.2 `f832176a`, G2.3 `56befb6a`, G2.4 `4ea70c7f`, G2.5 `2ee34db5`, G3.1 `abd7b496`, G3.2 `d5a959ef`, G3.3 `b4118641`, G4.2 `a0c15b0d` (hộp Cài đặt, kèm sửa "Đã trừ 0 phút bảo trì" ở Tổng quan).
+- G4.3 đã làm xong, đã kiểm trên trình duyệt, **chưa commit** (chờ lệnh). Tệp thuộc commit G4.3: `pages/auth/{LoginPage,ForgotPasswordPage,AuthShell}.jsx`, `components/layout/{LockScreenModal,FirstLoginModal}.jsx`, `components/ui/{Modal,PasswordInput,index}`, `locales/{vi,en}.js` (khối `lockScreen`, `firstLogin`, `auth`), `tests/{auth,ui}.test.jsx`, hai tài liệu `2026-11-12-admin-web-*.md`.
+- Việc kế tiếp sau commit G4.3: G4.1 AIOps, chờ lệnh Chủ dự án.
 - Không thuộc việc này, đừng đưa vào commit: `.gitignore`, `CLAUDE.md`, `Project.md`, `docs/AI/*` (sửa dở từ trước), `src/Client-app/*` (tệp sinh tự động của Flutter).
-- Việc kế tiếp: G4 → G5 (bảng ở mục 8.4).
+- Việc kế tiếp (Chủ dự án chốt 2026-11-13): G4.3 Đăng nhập, Quên mật khẩu, Khóa màn hình, Đăng nhập lần đầu → G4.1 AIOps (chia 2–3 commit theo khối) → G5. Kế hoạch không có G6.
 - Khi cần commit tách từng phần của `vi.js` / `en.js`: mỗi trang là một khối khóa cấp 1 riêng; ghép khối vào chỉ mục bằng `git hash-object -w --path=<tệp>` + `git update-index --cacheinfo`.
 
 ## Quy tắc làm việc đã chốt trong phiên
@@ -46,6 +48,9 @@ Ngày: 2026-11-12. Đọc tệp này đầu tiên khi mở phiên mới, rồi l
 - Biểu đồ SVG: vẽ theo bề rộng đo thật (`ResizeObserver`), đừng dùng `viewBox` cố định + `preserveAspectRatio="none"` (chữ co theo khung).
 - `useLanguageSafe` ngoài provider (trong test) trả `t` mới mỗi lần render: đừng đặt `t` vào mảng phụ thuộc của `useEffect` có gọi API.
 - Thử nút "Xóa đơn mẫu" không cần PayOS: `node scratch/adminweb/seed_don_mau.js "<gốc repo>" seed` chèn đơn mẫu thẳng vào `flowmoney_adminweb` (đối số `xem` chỉ in bảng đơn), rồi `python scratch/adminweb/chup_xoa_mau.py <thư mục ảnh>`.
+- Chụp hộp Cài đặt và chạy thật: `python scratch/adminweb/chup_settings.py <thư mục ảnh>`. Kịch bản đổi PIN `admin.local` 246810 → 135790 rồi trả về 246810; nếu kịch bản dừng giữa chừng, PIN có thể đang là 135790, đổi lại trước khi dùng. Không bấm "Cấp tài khoản" thật (tạo tài khoản trong CSDL thử, không xóa vật lý được).
+- Chụp bốn màn hình đăng nhập và chạy thật: `python scratch/adminweb/chup_auth.py <thư mục ảnh>` (đăng nhập sai rồi đúng, Khóa ngay rồi mở khóa, hộp xác nhận đăng xuất bấm Hủy, Quên mật khẩu VI / EN, Đăng nhập lần đầu giả lập bằng chặn phản hồi `/auth/me` trong trình duyệt, Sáng / Tối, điện thoại). Kiểm PIN và cờ lần đầu của `admin.local` chỉ đọc: `node scratch/adminweb/check_pin.js "<gốc repo>"`.
+- Quên mật khẩu là trang tĩnh (số điện thoại hỗ trợ), không gửi OTP hay email.
 - Backend chạy `node index.js` (không tự nạp lại): sửa mã Backend thì tắt tiến trình `khoi_dong_adminweb.js` cùng hai tiến trình con rồi bật lại.
 
 ## Bẫy đã gặp
@@ -55,4 +60,9 @@ Ngày: 2026-11-12. Đọc tệp này đầu tiên khi mở phiên mới, rồi l
 - Trang chưa làm lại vẫn lệch màu ở chế độ Tối (dùng token cũ + luật `.dark` cũ trong `index.css`); hết dần khi làm lại từng trang.
 - `Tabs` cho phép `value` không khớp tab nào (ví dụ bộ lọc mặc định của trang Người dùng).
 - `SecurityConfirmModal` tự gọi `verifySecurityAction` rồi mới gọi `onConfirm`; nếu `onConfirm` ném lỗi thì hộp giữ nguyên và hiện lỗi, nên hàm lưu phải ném lỗi khi thất bại.
+- Hộp con có biểu mẫu (đổi PIN, mật khẩu, cấp tài khoản…): chỉ dựng khi mở (`{open && <Hop />}`) để mỗi lần mở là trạng thái mới; đừng xóa trắng bằng `useEffect([open])` vì dữ liệu cũ hiện ra một nhịp và đè lên phần người dùng vừa gõ.
+- Hộp chồng hộp: hộp cha đặt `closeDisabled` khi hộp con đang mở để phím Esc chỉ đóng hộp con.
+- Hộp che trang vì lý do an toàn (Khóa màn hình, Đăng nhập lần đầu) dùng `Modal backdrop="solid"`; lớp phủ mặc định chỉ mờ 50% nên vẫn đọc được số liệu phía sau.
+- Luật cũ `.dark header { background: #0f172a !important }` trong `index.css` đè màu của mọi thẻ `<header>` ở chế độ Tối tới G5; đặt `bg-card` cho thẻ `header` mới để hai chế độ khớp nhau.
+- Đăng nhập lần đầu lấy cờ `is_first_login` từ `/auth/me` mỗi lần tải trang, sửa `localStorage` không giả lập được.
 - Kiểm tra máy móc cuối mỗi tệp: không còn dòng chú thích (`^\s*(//|/\*|\*|\{/\*)`), không mã màu hex, không `text-[..px]`.

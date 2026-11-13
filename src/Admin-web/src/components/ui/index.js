@@ -14,3 +14,4 @@ export { default as Pagination } from './Pagination';
 export { default as Modal } from './Modal';
 export { default as ConfirmModal } from './ConfirmModal';
 export { default as SecurityConfirmModal } from './SecurityConfirmModal';
+export { default as PasswordInput } from './PasswordInput';

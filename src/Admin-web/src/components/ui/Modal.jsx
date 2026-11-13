@@ -9,7 +9,7 @@ const WIDTHS = {
   xl: 'max-w-4xl',
 };
 
-const Modal = ({ open, onClose, title, description, footer, size = 'md', closeDisabled = false, testId, children }) => {
+const Modal = ({ open, onClose, title, description, footer, size = 'md', closeDisabled = false, hideClose = false, backdrop = 'dim', testId, children }) => {
   const { t } = useLanguageSafe();
   const titleId = useId();
 
@@ -31,7 +31,7 @@ const Modal = ({ open, onClose, title, description, footer, size = 'md', closeDi
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4"
+      className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${backdrop === 'solid' ? 'bg-canvas' : 'bg-overlay'}`}
       onClick={closeDisabled ? undefined : onClose}
     >
       <div
@@ -49,14 +49,16 @@ const Modal = ({ open, onClose, title, description, footer, size = 'md', closeDi
             </h2>
             {description && <p className="m-0 mt-1 text-sm text-ink-muted">{description}</p>}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon="close"
-            aria-label={t('common.close', 'Đóng')}
-            disabled={closeDisabled}
-            onClick={onClose}
-          />
+          {!hideClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="close"
+              aria-label={t('common.close', 'Đóng')}
+              disabled={closeDisabled}
+              onClick={onClose}
+            />
+          )}
         </div>
         <div className="overflow-y-auto px-5 py-4 text-sm text-ink">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
