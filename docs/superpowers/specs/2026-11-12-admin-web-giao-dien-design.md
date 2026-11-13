@@ -100,7 +100,7 @@ Nguồn: lời gọi API, sự kiện socket và hàm xử lý trong mã ngày 2
 | Thanh toán | `getOrders`, `getStats`, `getOrderDetail`, `getPackageTypes`, `processRefund`, `confirmUpgrade`, `createSampleOrder`, `deleteSampleOrders` | `payment.order_created`, `payment.success`, `payment.amount_mismatch`, `payment.refund_pending`, `payment.refunded`, `payment.order_expired`, `payment.status_changed`, `payment.order_cancelled` (tên Backend phát vào `admin_room`, đối chiếu mã 2026-11-13; `payment.overpaid_confirmation` / `underpaid_warning` chỉ gửi người dùng) | 4 KPI, lọc (tìm, trạng thái, gói, khoảng ngày) + đặt lại, xem chi tiết, sao chép mã nhận diện, hoàn tiền (khởi tạo + thực hiện), xác nhận nâng cấp, xuất CSV, tạo đơn thử chờ thanh toán, xóa đơn mẫu (có xác nhận, xem 8.5), cập nhật realtime |
 | Danh mục | `getCategories`, `createCategory`, `updateCategory`, `deleteCategory`, `restoreCategory`, `verifySecurityAction` | — | thẻ số liệu, tab, tìm + lọc, thêm / sửa (kế thừa từ khóa từ danh mục đã xóa mềm cùng tên), xóa mềm, khôi phục, đặt lại mặc định, chỉnh trong bản nháp rồi lưu một lần bằng PIN |
 | Nhật ký | `getAuditLogs` | `audit_activity`, `connect`, `disconnect` | tìm, lọc trạng thái, khoảng ngày, đặt lại, thông báo có bản ghi mới realtime, phân trang, xuất CSV |
-| Bảo trì & Thông báo | `getMaintenanceStatus`, `setMaintenanceStatus`, `cancelScheduledMaintenance`, `getMaintenanceHistory`, `broadcastToAll`, `getBroadcastHistory` | `admin.maintenance_changed` | 2 tab; bật / tắt bảo trì khẩn cấp có xác nhận, lập lịch (nhiều lịch), hủy lịch, cảnh báo lịch sắp tới (≤ 1 giờ), lịch sử bảo trì; gửi thông báo toàn hệ thống, lịch sử thông báo |
+| Bảo trì & Thông báo | `getMaintenanceStatus`, `setMaintenanceStatus`, `cancelScheduledMaintenance`, `getMaintenanceHistory`, `broadcastToAll`, `getBroadcastHistory`, `getPolicies`, `publishPolicy` | `admin.maintenance_changed` | 3 tab (Bảo trì, Thông báo, Chính sách); bật / tắt bảo trì khẩn cấp có xác nhận, lập lịch (nhiều lịch), hủy lịch, cảnh báo lịch sắp tới (≤ 1 giờ), lịch sử bảo trì; gửi thông báo toàn hệ thống, lịch sử thông báo; chính sách bảo mật hiện hành + tỉ lệ đồng ý + lịch sử phiên bản, đăng phiên bản mới bằng PIN |
 
 Bỏ: trang `/users/:id` (route, tệp, khóa ngôn ngữ `users.detail.*` chỉ trang này dùng; `UserDetailModal` giữ nguyên chức năng).
 
@@ -124,7 +124,7 @@ Bộ test cũ (`src/Admin-web/src/tests/*.test.jsx`, 52 tệp) bị gỡ theo qu
 
 ## 8. Tiến độ (cập nhật 2026-11-13)
 
-Mức hiện tại: `npm test` 158/158 ca (12 tệp), `npm run lint` 0 lỗi, `npm run build` qua.
+Mức hiện tại: `npm test` 164/164 ca (13 tệp), `npm run lint` 0 lỗi, `npm run build` qua.
 
 ### 8.1 Đã xong
 
@@ -191,3 +191,11 @@ Mức hiện tại: `npm test` 158/158 ca (12 tệp), `npm run lint` 0 lỗi, `n
 - Rủi ro đã nêu: Backend không hủy liên kết PayOS khi xóa; đơn mẫu hết hạn sau 10 phút.
 - G2.2, G2.3, G2.4 commit riêng từng trang; khối khóa ngôn ngữ của từng trang đi theo commit của trang đó.
 - 2026-11-13: thứ tự G4 đổi thành G4.2 → G4.3 → G4.1 (AIOps làm sau cùng). Kế hoạch không có G6.
+
+### 8.7 Chính sách bảo mật theo phiên bản (T3, Chủ dự án duyệt 2026-11-13)
+
+- Nghiệp vụ: người dùng đồng ý một lần cho cả chính sách, không tách dịch vụ, không rút đồng ý; phiên bản mới phải đồng ý lại (Client-app làm sau, Backend chưa chặn). Thời hạn chờ xóa tài khoản giữ 30 ngày, nêu trong chính sách.
+- Backend: migration 49 (`privacy_policy`, `policy_acceptance`, trigger chặn sửa), `modules/policy`, `GET /api/policy/current`, `POST /api/policy/accept`, `GET/POST /api/admin/policies` (đăng cần PIN trong cùng request), `GET /api/admin/getuser/:id/policy`, sự kiện `system.policy_updated`; `scripts/apply_migration_file.js` (áp một tệp migration, bắt buộc `--file`, `--url`). Test `policy.acceptance.2tier.test.js` 12 ca; Backend 902/925 (23 ca đỏ sẵn).
+- Admin-web: tab "Chính sách" ở trang Bảo trì & Thông báo (`pages/system/broadcast/PolicyTab.jsx`), dòng "Chính sách bảo mật" trong hộp chi tiết người dùng. Test `policy.test.jsx` 4 ca + 2 ca ở `users.test.jsx`.
+- Kiểm thật (`flowmoney_adminweb`, cặp 3011 / 5181): đăng v1 bằng PIN (201), danh sách hiện v1 và 0 / 3 → 1 / 3 sau khi `nckh_h1` đồng ý (ghi bằng `policy.service.accept` qua script); hộp chi tiết "Chưa đồng ý v1" → "Đã đồng ý v1"; trigger chặn `UPDATE` cả hai bảng; nhật ký ghi "Đăng chính sách bảo mật v1" và lượt xác thực PIN; Sáng / Tối / điện thoại. Migration 49 **chưa áp Supabase**.
+- Việc Client-app: `docs/superpowers/client-app/CAN-LAM/CHINH_SACH_BAO_MAT.md` (Mục 51), thêm dòng 12 ở `README.md`; sự kiện mới ghi ở `docs/Admin-web/Event-Notification-to-ClientApp.md`.
