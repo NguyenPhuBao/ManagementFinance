@@ -21,6 +21,27 @@ const Section = ({ title, children }) => (
   </section>
 );
 
+const PolicyStatus = ({ userId }) => {
+  const { t } = useLanguageSafe();
+  const [state, setState] = useState(null);
+
+  useEffect(() => {
+    adminApi
+      .getUserPolicy(userId)
+      .then((res) => setState(res?.data || null))
+      .catch(() => setState({ error: true }));
+  }, [userId]);
+
+  if (!state) return <span className="text-ink-faint">…</span>;
+  if (state.error) return <span className="text-ink-faint">—</span>;
+  if (!state.currentVersion) return <span className="text-ink-muted">{t('users.detail.policyNone')}</span>;
+  const latest = state.acceptances?.[0];
+  if (latest && latest.policy_version === state.currentVersion) {
+    return <Badge tone="success">{t('users.detail.policyAccepted', { version: latest.policy_version, time: formatDateTime(latest.accepted_at) })}</Badge>;
+  }
+  return <Badge tone="warning">{t('users.detail.policyPending', { version: state.currentVersion })}</Badge>;
+};
+
 const UserDetailModal = ({ userId, onClose }) => {
   const { t } = useLanguageSafe();
   const [user, setUser] = useState(null);
@@ -84,6 +105,9 @@ const UserDetailModal = ({ userId, onClose }) => {
                 </Row>
               )}
               <Row label={t('users.detail.createdAt')}>{user.created_at ? formatDateTime(user.created_at) : '—'}</Row>
+              <Row label={t('users.detail.policy')}>
+                <PolicyStatus userId={userId} />
+              </Row>
             </Section>
             <UserDevices userId={userId} onPinOpenChange={setPinOpen} />
           </div>

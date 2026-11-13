@@ -25,6 +25,7 @@ vi.mock('../api/admin.api', () => ({
     verifySecurityAction: vi.fn(),
     getUserDevices: vi.fn(),
     revealDeviceIp: vi.fn(),
+    getUserPolicy: vi.fn(),
   },
 }));
 
@@ -60,6 +61,27 @@ beforeEach(() => {
   adminApi.verifySecurityAction.mockReset().mockResolvedValue({ success: true });
   adminApi.getUserDevices.mockReset().mockResolvedValue({ data: DEVICES.map((d) => ({ ...d })) });
   adminApi.revealDeviceIp.mockReset().mockResolvedValue({ data: { ip: '113.161.45.12' } });
+  adminApi.getUserPolicy.mockReset().mockResolvedValue({ data: { currentVersion: 2, acceptances: [{ policy_version: 2, accepted_at: '2026-11-13T02:00:00Z' }] } });
+});
+
+describe('Chính sách bảo mật trong hộp chi tiết', () => {
+  const open = async () => {
+    await renderPage();
+    fireEvent.click(within(row('Nguyễn Văn An')).getByRole('button', { name: 'Xem chi tiết' }));
+    return screen.findByRole('dialog', { name: 'Chi tiết người dùng' });
+  };
+
+  it('đã đồng ý phiên bản hiện hành: hiện Đã đồng ý v2', async () => {
+    const dialog = await open();
+    expect(adminApi.getUserPolicy).toHaveBeenCalledWith(1);
+    expect(await within(dialog).findByText(/Đã đồng ý v2/)).toBeInTheDocument();
+  });
+
+  it('mới đồng ý v1 trong khi hiện hành v2: báo chưa đồng ý v2', async () => {
+    adminApi.getUserPolicy.mockResolvedValue({ data: { currentVersion: 2, acceptances: [{ policy_version: 1, accepted_at: '2026-11-01T02:00:00Z' }] } });
+    const dialog = await open();
+    expect(await within(dialog).findByText('Chưa đồng ý v2')).toBeInTheDocument();
+  });
 });
 
 describe('Thiết bị đăng nhập', () => {

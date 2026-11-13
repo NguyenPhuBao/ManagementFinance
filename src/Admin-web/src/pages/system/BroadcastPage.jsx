@@ -7,6 +7,7 @@ import { formatDateTime } from '../../utils/format';
 import { Badge, Button, ConfirmModal, Icon, PageHeader, Tabs } from '../../components/ui';
 import MaintenanceTab from './broadcast/MaintenanceTab';
 import BroadcastTab from './broadcast/BroadcastTab';
+import PolicyTab from './broadcast/PolicyTab';
 import { scheduledListOf } from './broadcast/maintenanceFormat';
 
 const IDLE = { active: false, isEmergency: false, reason: '', activatedBy: null, activatedAt: null, scheduled: null, scheduledList: [] };
@@ -117,6 +118,7 @@ const BroadcastPage = () => {
                 ),
               },
               { key: 'broadcast', label: t('broadcast.tabBroadcast') },
+              { key: 'policy', label: t('broadcast.tabPolicy') },
             ]}
           />
         }
@@ -158,6 +160,8 @@ const BroadcastPage = () => {
 
       {tab === 'maintenance' ? (
         <MaintenanceTab maintenance={maintenance} busy={busy} act={act} version={version} onRefresh={loadStatus} />
+      ) : tab === 'policy' ? (
+        <PolicyTab />
       ) : (
         <BroadcastTab />
       )}

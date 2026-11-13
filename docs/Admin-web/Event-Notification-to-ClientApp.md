@@ -85,7 +85,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 
 ## 3. BẢNG TỔNG HỢP TOÀN BỘ CÁC SỰ KIỆN & TÍN HIỆU
 
-### 3.1. Nhóm 1: Sự Kiện Thời Gian Thực Gửi Tới Client-App (Socket.IO — 18 Sự Kiện)
+### 3.1. Nhóm 1: Sự Kiện Thời Gian Thực Gửi Tới Client-App (Socket.IO — 19 Sự Kiện)
 
 | STT | Tên Sự Kiện | Kênh / Room | Nguồn Kích Hoạt | Mục Đích Nghiệp Vụ | Mức Độ Ưu Tiên |
 |:---:|---|:---:|---|---|:---:|
@@ -109,6 +109,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 | **18** | `bank_transaction.incoming` | `account_<id>` | Webhook biến động ngân hàng (Legacy) | Thông báo giao dịch (đã dừng module Bank) | 🔇 Legacy |
 | **19** | `household.changed` | `account_<id>` từng thành viên | Đổi thành viên / trạng thái nhà, giải tán | Tín hiệu: gọi lại `/households/me` | 🔇 Im lặng |
 | **20** | `household.invited` | `account_<id>` người được mời | Có lời mời email tới tài khoản | Tín hiệu: gọi lại `/households/invitations` | 🔇 Im lặng |
+| **21** | `system.policy_updated` | Toàn hệ thống (`io.emit`) | Admin đăng phiên bản chính sách bảo mật mới (2026-11-13) | Gọi `GET /api/policy/current`, mở màn đồng ý chính sách nếu `mustAccept` (xem `docs/superpowers/client-app/CAN-LAM/CHINH_SACH_BAO_MAT.md`) | ⚠️ Cao |
 
 ---
 

@@ -4,7 +4,7 @@
 > **Mã tài liệu:** `DOC-CLIENT-APP-CAN-LAM-v1.1`  
 > **Cơ quan ban hành:** Lead BA + Lead FullStack Cao Cấp + Lead QA Architect  
 > **Trạng thái:** 🟢 PO ĐÃ PHÊ DUYỆT ĐỊNH HƯỚNG & YÊU CẦU THỰC THI (Official Source of Truth)  
-> **Ngày cập nhật:** 26/10/2026  
+> **Ngày cập nhật:** 13/11/2026  
 > **Thư mục lưu trữ:** `docs/superpowers/client-app/CAN-LAM/README.md`  
 > **Các tài liệu nguồn liên quan:**
 > - [`docs/superpowers/sync/SYNC_DOCUMENTATION.md`](../../sync/SYNC_DOCUMENTATION.md) (Hợp đồng đồng bộ 6 bảng dữ liệu cốt lõi)
@@ -158,7 +158,7 @@ Nguồn sự thật chi tiết: [`docs/Admin-web/IP-Device-ClientApp.md`](../../
 ### 3.2. Tuyệt Đối KHÔNG Tự Gọi API Bên Thứ Ba Lấy IP
 * ⚠️ **Nguyên tắc sống còn:** Client-app **tuyệt đối KHÔNG** tự gọi các dịch vụ lấy IP công cộng bên ngoài (như `api.ipify.org`, `ipinfo.io`).
 * **Lý do:** Làm chậm ứng dụng, tốn pin, gây lỗi crash khi dịch vụ ngoài timeout, và vi phạm quyền riêng tư.
-* **Cơ chế Backend:** Backend tự động trích xuất địa chỉ IP trực tiếp từ kết nối TCP socket và mặt nạ hóa an toàn (`113.161.xx.xx`) theo đúng Nghị định 13/2023/NĐ-CP trước khi ghi nhận vào CSDL `account_device_history`.
+* **Cơ chế Backend (cập nhật 2026-11-13):** Backend lấy IP từ kết nối (`req.ip`, bỏ qua header `x-forwarded-for` do client gửi), lưu bản che (`113.161.xx.xx`) để hiển thị và IP đầy đủ ở dạng mã hóa (chỉ admin xem bằng PIN, tự xóa sau 365 ngày) vào `account_device_history`, theo Luật Bảo vệ dữ liệu cá nhân 2025. Chi tiết: [`CHINH_SACH_BAO_MAT.md`](./CHINH_SACH_BAO_MAT.md) mục 5.
 
 ---
 
@@ -231,7 +231,8 @@ Trong `src/Client-app/lib/core/api/interceptors/`:
 
 > ⚠️ **LƯU Ý DÀNH RIÊNG CHO ĐỘI NGŨ CLIENT-APP:**  
 > 1. **Mục 50 ([`GIA_DINH_NEN_MONG.md`](./GIA_DINH_NEN_MONG.md) - Tính năng Gia đình Phần 1 Nền móng):** 🟢 **PO ĐÃ PHÊ DUYỆT CHÍNH THỨC TRIỂN KHAI (2026-10-27)**. Đội ngũ Client-app triển khai song song module `features/household/`, nâng cấp SQLite Drift Schema v32 và kết nối 16 REST endpoints đồng bộ theo đặc tả tại [`GIA_DINH_NEN_MONG.md`](./GIA_DINH_NEN_MONG.md).
-> 2. **Module Ngân hàng đối tác (`bank_transaction`):** Đã dừng hoàn toàn theo quyết định ngày 2026-09-18, bỏ qua mọi sự kiện socket liên quan đến bank.
+> 2. **Mục 51 ([`CHINH_SACH_BAO_MAT.md`](./CHINH_SACH_BAO_MAT.md) - Chính sách bảo mật, người dùng đồng ý trước khi dùng app):** Backend + Admin-web đã xong (2026-11-13), Backend chưa chặn người dùng chưa đồng ý. Client-app làm màn hình chính sách, gọi `GET /api/policy/current`, `POST /api/policy/accept`, nghe `system.policy_updated`.
+> 3. **Module Ngân hàng đối tác (`bank_transaction`):** Đã dừng hoàn toàn theo quyết định ngày 2026-09-18, bỏ qua mọi sự kiện socket liên quan đến bank.
 
 ---
 
@@ -252,6 +253,7 @@ Trong `src/Client-app/lib/core/api/interceptors/`:
 | **9** | Chốt chặn 503 Quá tải & 429 Retry | `core/api/interceptors/may_chu_interceptor.dart` | Hiển thị Toast thông báo đếm ngược thử lại | Dừng bão request lặp, bảo vệ hạ tầng | ⏳ Chờ làm |
 | **10**| Chốt chặn 403 AIOps | `core/api/interceptors/may_chu_interceptor.dart` | Hiển thị Dialog cảnh báo an ninh Sentinel | Ngăn spam request khi IP bị đưa vào cách ly | ⏳ Chờ làm |
 | **11**| Bảo lưu SQLite khi 401 | `core/api/interceptors/buoc_dang_xuat.dart` | Đăng xuất về Login kèm Dialog lý do | SQLite local Drift được bảo lưu 100%, không bị DROP table | ⏳ Chờ làm |
+| **12**| Màn hình đồng ý chính sách bảo mật (Mục 51) | `features/policy/` (mới), `core/realtime/realtime_event.dart` | Tài khoản chưa đồng ý bị chặn ở màn chính sách; 409 tải lại phiên bản mới | `policy_acceptance` có đúng 1 dòng (`idaccount`, `policy_version`); `system.policy_updated` mở lại màn chính sách | ⏳ Chờ làm |
 
 ---
 

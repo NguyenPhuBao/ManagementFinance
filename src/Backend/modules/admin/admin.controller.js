@@ -1,5 +1,6 @@
 const adminService = require('./admin.service');
 const deviceHistory = require('../auth/device-history.service');
+const policyService = require('../policy/policy.service');
 const ResponseHandler = require('../../core/response-handler');
 const logger = require('../../core/logger');
 
@@ -14,6 +15,44 @@ const adminController = {
       return ResponseHandler.success(res, devices, 'Thiết bị đăng nhập của người dùng');
     } catch (error) {
       logger.error('getUserDevices failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  async getPolicies(req, res) {
+    try {
+      const data = await policyService.listForAdmin();
+      return ResponseHandler.success(res, data, 'Các phiên bản chính sách bảo mật');
+    } catch (error) {
+      logger.error('getPolicies failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  async publishPolicy(req, res) {
+    try {
+      const { title, content, pin, password } = req.body || {};
+      const draft = await policyService.publish({ title, content }, req.user?.idaccount);
+      await adminService.verifySecurityAction({ pin, password, action: 'PUBLISH_POLICY', targetId: draft.title }, req.user);
+      const created = await policyService.createVersion(draft);
+      req.auditActionName = `Đăng chính sách bảo mật v${created.version}`;
+      return ResponseHandler.success(res, { version: created.version, title: created.title, publishedAt: created.published_at }, 'Đã đăng phiên bản chính sách mới', 201);
+    } catch (error) {
+      if (!error.statusCode || error.statusCode >= 500) logger.error('publishPolicy failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500, null, error.code || null);
+    }
+  },
+
+  async getUserPolicy(req, res) {
+    try {
+      const iduser = parseInt(req.params.id, 10);
+      if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'ID người dùng không hợp lệ');
+      const idaccount = await adminService.resolveAccountId(iduser);
+      if (!idaccount) return ResponseHandler.notFound(res, 'Không tìm thấy người dùng');
+      const data = await policyService.acceptancesForAccount(idaccount);
+      return ResponseHandler.success(res, data, 'Lịch sử đồng ý chính sách');
+    } catch (error) {
+      logger.error('getUserPolicy failed', { error: error.message });
       return ResponseHandler.error(res, error.message, error.statusCode || 500);
     }
   },

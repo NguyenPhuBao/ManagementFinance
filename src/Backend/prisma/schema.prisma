@@ -614,6 +614,34 @@ model aiops_quarantine_incident_link {
 }
 
 /// Bảng lưu vết lịch sử thiết bị và địa chỉ IP người dùng (2.21)
+model privacy_policy {
+  version      Int                 @id @map("version")
+  title        String              @db.VarChar(200) @map("title")
+  content      String              @db.Text @map("content")
+  published_at DateTime            @default(now()) @db.Timestamp(6) @map("published_at")
+  published_by Int?                @map("published_by")
+
+  acceptances  policy_acceptance[]
+
+  @@map("privacy_policy")
+}
+
+model policy_acceptance {
+  id             BigInt         @id @default(autoincrement()) @map("id")
+  idaccount      Int            @map("idaccount")
+  policy_version Int            @map("policy_version")
+  accepted_at    DateTime       @default(now()) @db.Timestamp(6) @map("accepted_at")
+  ip_hash        String?        @db.VarChar(64) @map("ip_hash")
+  device_name    String?        @db.VarChar(150) @map("device_name")
+  user_agent     String?        @db.Text @map("user_agent")
+
+  policy         privacy_policy @relation(fields: [policy_version], references: [version], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([idaccount, policy_version], map: "uq_policy_acceptance_account_version")
+  @@index([policy_version], map: "idx_policy_acceptance_version")
+  @@map("policy_acceptance")
+}
+
 model account_device_history {
   id             BigInt   @id @default(autoincrement()) @map("id")
   idaccount      Int      @map("idaccount")
