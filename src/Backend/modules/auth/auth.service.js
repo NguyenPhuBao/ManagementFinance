@@ -10,6 +10,7 @@ const logger = require("../../core/logger");
 const { encrypt, decrypt } = require("../../utils/crypto.util");
 const { maskIp } = require("../../utils/masking.util");
 const { trackDeviceAccess } = require("./device-history.service");
+const { getClientIp } = require('../../utils/ip-protection.util');
 
 function sanitizeAuditReason(text) {
   if (!text || typeof text !== 'string') return null;
@@ -76,7 +77,7 @@ function generateTokens(payload, idrole) {
 function getDeviceInfo(req) {
   const headers = (req && req.headers) ? req.headers : {};
   const userAgent = headers["user-agent"] || null;
-  const rawIp = (req && req.ip) || (headers['x-forwarded-for']?.split(',')[0]?.trim()) || (req && req.socket?.remoteAddress) || null;
+  const rawIp = getClientIp(req);
   return {
     ip_address: maskIp(rawIp),
     user_agent: userAgent,
@@ -417,7 +418,7 @@ const authService = {
 
     logger.info("User logged in", { username: account.username, idrole: account.idrole });
 
-    const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+    const clientIp = getClientIp(req);
 
     // Tự động đăng ký bảo vệ IP động & gỡ phong tỏa khi đăng nhập thành công với quyền Quản trị viên (Dynamic Admin Session Protection)
     if (account.idrole === 1 || (account.role && String(account.role.rolename || '').toLowerCase() === 'admin')) {

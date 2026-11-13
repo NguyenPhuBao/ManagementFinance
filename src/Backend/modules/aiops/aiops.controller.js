@@ -1,11 +1,12 @@
 const { defaultAIOpsService } = require('./aiops.service');
 const ResponseHandler = require('../../core/response-handler');
 const logger = require('../../core/logger');
+const { getClientIp } = require('../../utils/ip-protection.util');
 
 const aiopsController = {
   getStatus(req, res) {
     try {
-      const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+      const clientIp = getClientIp(req);
       const status = defaultAIOpsService.getStatus();
       const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
       const isClientProtected = defaultAIOpsQuarantine && typeof defaultAIOpsQuarantine.isProtectedIp === 'function'

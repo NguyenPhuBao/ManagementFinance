@@ -23,8 +23,16 @@ vi.mock('../api/admin.api', () => ({
     updateUserStatus: vi.fn(),
     deleteUser: vi.fn(),
     verifySecurityAction: vi.fn(),
+    getUserDevices: vi.fn(),
+    revealDeviceIp: vi.fn(),
   },
 }));
+
+const DEVICES = [
+  { id: '5', device_name: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0', ip_address: '113.161.xx.xx', first_seen_at: '2026-11-10T01:00:00Z', last_active_at: '2026-11-13T02:00:00Z', canRevealIp: true },
+  { id: '4', device_name: 'Samsung Galaxy S24', ip_address: '171.244.xx.xx', first_seen_at: '2024-01-01T00:00:00Z', last_active_at: '2024-02-01T00:00:00Z', canRevealIp: false },
+  { id: '3', device_name: 'Unknown Device', ip_address: '14.162.xx.xx', first_seen_at: '2026-11-01T00:00:00Z', last_active_at: '2026-11-02T00:00:00Z', canRevealIp: true },
+];
 
 const USERS = [
   { id: 1, idaccount: 101, fullname: 'Nguyễn Văn An', username: 'an', email: 'a***@mail.test', phone: '0981234567', status: 'Active', type: 'Basic' },
@@ -50,6 +58,50 @@ beforeEach(() => {
   adminApi.updateUserStatus.mockReset().mockResolvedValue({ success: true });
   adminApi.deleteUser.mockReset().mockResolvedValue({ success: true });
   adminApi.verifySecurityAction.mockReset().mockResolvedValue({ success: true });
+  adminApi.getUserDevices.mockReset().mockResolvedValue({ data: DEVICES.map((d) => ({ ...d })) });
+  adminApi.revealDeviceIp.mockReset().mockResolvedValue({ data: { ip: '113.161.45.12' } });
+});
+
+describe('Thiết bị đăng nhập', () => {
+  const openDetail = async () => {
+    await renderPage();
+    fireEvent.click(within(row('Nguyễn Văn An')).getByRole('button', { name: 'Xem chi tiết' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Chi tiết người dùng' });
+    return within(dialog).findByRole('region', { name: 'Thiết bị đăng nhập' });
+  };
+
+  it('tải thiết bị theo id người dùng; tên thiết bị rút gọn, IP đã che, IP hết hạn thì không có nút xem', async () => {
+    const section = await openDetail();
+    expect(adminApi.getUserDevices).toHaveBeenCalledWith(1);
+    const items = within(section).getAllByRole('listitem');
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('Edge trên Windows');
+    expect(items[0]).toHaveTextContent('113.161.xx.xx');
+    expect(within(items[0]).getByRole('button', { name: 'Xem IP đầy đủ' })).toBeInTheDocument();
+    expect(items[1]).toHaveTextContent('Samsung Galaxy S24');
+    expect(within(items[1]).queryByRole('button', { name: 'Xem IP đầy đủ' })).not.toBeInTheDocument();
+    expect(items[1]).toHaveTextContent('Không còn IP đầy đủ');
+    expect(items[2]).toHaveTextContent('Không rõ thiết bị');
+  });
+
+  it('xem IP: nhập PIN, gửi PIN cùng lời gọi revealDeviceIp, không gọi verifySecurityAction, hiện IP trong dòng', async () => {
+    const section = await openDetail();
+    fireEvent.click(within(within(section).getAllByRole('listitem')[0]).getByRole('button', { name: 'Xem IP đầy đủ' }));
+    const pinDialog = screen.getByRole('dialog', { name: 'Xem IP đầy đủ' });
+    expect(pinDialog).toHaveTextContent('nhật ký');
+    fireEvent.change(within(pinDialog).getByLabelText(/PIN/), { target: { value: '246810' } });
+    fireEvent.click(within(pinDialog).getByRole('button', { name: 'Xem IP' }));
+    await waitFor(() => expect(adminApi.revealDeviceIp).toHaveBeenCalledWith(1, '5', { pin: '246810', password: '' }));
+    expect(adminApi.verifySecurityAction).not.toHaveBeenCalled();
+    expect(await within(section).findByText('113.161.45.12')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Xem IP đầy đủ' })).not.toBeInTheDocument();
+  });
+
+  it('chưa có lượt truy cập thì báo trống', async () => {
+    adminApi.getUserDevices.mockResolvedValue({ data: [] });
+    const section = await openDetail();
+    expect(await within(section).findByText('Chưa có lượt truy cập nào.')).toBeInTheDocument();
+  });
 });
 
 describe('Hiển thị', () => {

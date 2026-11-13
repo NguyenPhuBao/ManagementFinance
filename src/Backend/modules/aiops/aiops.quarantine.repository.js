@@ -1,5 +1,9 @@
 const { pool } = require('../../config/db');
 const logger = require('../../core/logger');
+const { encrypt } = require('../../utils/crypto.util');
+const { revealIp } = require('../../utils/ip-protection.util');
+
+const withPlainIp = (row) => (row && row.raw_ip ? { ...row, raw_ip: revealIp(row.raw_ip) } : row);
 
 /**
  * AIOps Quarantine Repository
@@ -31,7 +35,7 @@ class AIOpsQuarantineRepository {
         "id" VARCHAR(64) PRIMARY KEY,
         "ip_hash" VARCHAR(64) NOT NULL UNIQUE,
         "masked_ip" VARCHAR(45) NOT NULL,
-        "raw_ip" VARCHAR(45) NULL,
+        "raw_ip" TEXT NULL,
         "status" VARCHAR(20) NOT NULL DEFAULT 'TEMPORARY',
         "reason" TEXT NOT NULL,
         "violation_vector" VARCHAR(20) NULL,
@@ -206,7 +210,7 @@ class AIOpsQuarantineRepository {
         ipId,
         ipHash,
         finalMaskedIp,
-        ip,
+        ip ? encrypt(ip) : null,
         ipStatus,
         reason,
         vector,
@@ -493,7 +497,7 @@ class AIOpsQuarantineRepository {
       });
 
       return {
-        ips: sanitizedIps,
+        ips: sanitizedIps.map(withPlainIp),
         accounts: accRes.rows || [],
         links: linkRes.rows || [],
       };
@@ -775,7 +779,7 @@ class AIOpsQuarantineRepository {
     }
     try {
       const res = await this.pool.query(`SELECT * FROM "aiops_ip_quarantine" WHERE "ip_hash" = $1 LIMIT 1;`, [ipHash]);
-      return res.rows[0] || this._fallbackIps.get(ipHash) || null;
+      return withPlainIp(res.rows[0]) || this._fallbackIps.get(ipHash) || null;
     } catch (_) {
       return this._fallbackIps.get(ipHash) || null;
     }

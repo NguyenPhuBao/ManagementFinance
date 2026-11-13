@@ -470,3 +470,10 @@ Tuân thủ nghiêm ngặt **Rule 10 (DB Guard)**: Toàn bộ bảng và cột m
 - `premium_expires_at` (`TIMESTAMP(6)` NULL): Thời điểm hết hạn gói Premium của tài khoản. Quản lý bởi Payment Service và Scheduler hạ cấp tự động 0h00 hàng ngày.
 
 
+
+### 5.5. Bảo vệ địa chỉ IP (Migration 48, 2026-11-13)
+- `account_device_history.ip_encrypted` (`TEXT` NULL): IP đầy đủ mã hóa AES-256-GCM (`enc:iv:tag:data`, khóa `DATA_ENCRYPTION_KEY`).
+- `account_device_history.ip_hash` (`VARCHAR(64)` NULL): HMAC-SHA256 của IP đầy đủ (khóa `BLIND_INDEX_SECRET`), so khớp và tra cứu không cần giải mã. Chỉ mục một phần `idx_device_history_ip_hash` (`WHERE ip_hash IS NOT NULL`), `idx_device_history_ip_retention` trên `last_active_at` (`WHERE ip_encrypted IS NOT NULL`).
+- `account_device_history.ip_address` giữ vai trò bản che để hiển thị.
+- `aiops_ip_quarantine.raw_ip`: đổi `VARCHAR(45)` → `TEXT`, lưu bản mã AES-256-GCM thay cho IP thô.
+- Bản mã và chỉ mục mù bị xóa sau `IP_RETENTION_DAYS` (job `runDailyIpRetentionPurgeTask`). Áp bằng `node scripts/apply_migration_48.js --url=<CSDL>` (bắt buộc chỉ định đích; đích không phải máy cục bộ cần `--xac-nhan-tu-xa`). Chính sách: `Data_Security.md` mục 10.8.

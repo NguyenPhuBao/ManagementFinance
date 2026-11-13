@@ -122,7 +122,7 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
    - **Xác Thực PIN Bảo Mật Cấp 2:** Mọi thao tác khóa tài khoản hoặc xóa mềm người dùng đều kích hoạt `SecurityConfirmModal` yêu cầu nhập đúng mã PIN quản trị viên trước khi thực thi.
 2. **Modal & Trang Chi Tiết Người Dùng (`UserDetailModal.jsx` / `UserDetailPage.jsx`):**
    - Hiển thị ngày tạo tài khoản, ngày cập nhật, gói tài khoản, lý do khóa và số ngày đếm ngược chờ xóa.
-   - **Tab Lịch Sử Thiết Bị & IP Truy Cập (`account_device_history`) *(Kế hoạch)*:** Hiển thị danh sách thiết bị người dùng từng sử dụng kèm tên thiết bị (`deviceName`), địa chỉ IP đã mask (`maskedIp`), User-Agent, thời điểm phát hiện lần đầu (`firstSeenAt`), lần hoạt động cuối (`lastActiveAt`) và badge trạng thái đang hoạt động (xanh trong 15 phút).
+   - **Mục "Thiết bị đăng nhập" (`components/common/UserDevices.jsx`, đã làm 2026-11-13):** 10 lượt truy cập gần nhất từ `GET /api/admin/getuser/:id/devices` (`:id` là `iduser`, Backend đổi sang `idaccount`): tên thiết bị rút gọn (chuỗi trình duyệt → "Edge trên Windows"; Client-app gửi `x-device-name`), IP đã che, lần hoạt động cuối. Nút "Xem IP đầy đủ" mở `SecurityConfirmModal` (thuộc tính `onVerify`), gửi PIN cùng `POST /api/admin/getuser/:id/devices/:deviceId/reveal-ip`; IP chỉ hiện trong lượt xem. Dòng không còn bản mã (trước migration 48 hoặc quá hạn) ghi "Không còn IP đầy đủ". Chính sách lưu IP: `docs/Rule_Project/Data_Security.md` mục 10.8.
 3. **Modal Khóa Tài Khoản Kèm Kiểm Tra Ràng Buộc:**
    - Textarea nhập lý do có đếm ký tự và thông báo lỗi trực tiếp, nút vô hiệu hóa tự động bị khóa khi chưa nhập lý do.
 4. **Cập Nhật Real-Time Không Cần F5:**

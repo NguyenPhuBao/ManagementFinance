@@ -1,71 +1,44 @@
 /**
  * Device History Service
- * Ghi nhận lịch sử Tên thiết bị và Địa chỉ IP mỗi lần người dùng đăng nhập hoặc truy cập app.
- * Quy tắc nghiệp vụ (PO duyệt):
- * - Khi người dùng truy cập app nhưng IP và thiết bị KHÔNG thay đổi -> UPDATE dữ liệu (last_active_at).
- * - Khi IP hoặc Thiết bị thay đổi -> INSERT thêm dòng mới vào CSDL, tuyệt đối không ghi đè, bảo toàn dấu vết.
- * Tuân thủ: Luật An toàn thông tin mạng 2015, Nghị định 13/2023/NĐ-CP (Masked IP), Rule 9 & 10.
+ * Ghi nhận Tên thiết bị và Địa chỉ IP mỗi lần người dùng đăng nhập hoặc truy cập app.
+ * - IP và thiết bị KHÔNG đổi -> UPDATE last_active_at.
+ * - IP (đầy đủ) hoặc thiết bị đổi -> INSERT dòng mới, không ghi đè, giữ dấu vết.
+ * Bảo vệ IP (Data_Security.md mục 10.8): IP lấy từ req.ip (trust proxy), lưu ba dạng
+ * bản che (hiển thị), bản mã AES-256-GCM (chỉ giải khi admin xác thực PIN) và chỉ mục mù HMAC (so khớp, tra cứu).
+ * Bản mã và chỉ mục mù bị xóa khi quá hạn IP_RETENTION_DAYS; bản che giữ cùng dòng lịch sử.
  */
 
 const { prisma } = require('../../config/db');
-const { maskIp } = require('../../utils/masking.util');
+const { getClientIp, protectIp, revealIp } = require('../../utils/ip-protection.util');
 const logger = require('../../core/logger');
 
-// Cache chống dồn request (Throttle Cache) trong vòng 60 giây cho cùng 1 phiên (idaccount:device:ip)
 const accessCache = new Map();
-const THROTTLE_MS = 60 * 1000; // 60 giây
+const THROTTLE_MS = 60 * 1000;
 
-/**
- * Trích xuất thông tin thiết bị và địa chỉ IP từ request
- * @param {object} req 
- * @param {object} customData 
- * @returns {{ deviceName: string, maskedIp: string, userAgent: string|null }}
- */
 function extractClientInfo(req, customData = {}) {
   const headers = req?.headers || {};
 
-  // 1. Tên thiết bị: Ưu tiên x-device-name từ Client-app -> customData -> user-agent -> fallback
   let deviceName = customData.deviceName ||
     headers['x-device-name'] ||
     req?.body?.deviceName ||
     headers['user-agent'] ||
     'Unknown Device';
+  deviceName = String(deviceName).trim().substring(0, 150) || 'Unknown Device';
 
-  deviceName = String(deviceName).trim().substring(0, 150);
-  if (!deviceName) deviceName = 'Unknown Device';
-
-  // 2. Địa chỉ IP: Lấy IP thực -> chuyển qua maskIp (Nghị định 13/2023/NĐ-CP)
-  const rawIp = customData.ipAddress ||
-    headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-    req?.ip ||
-    req?.socket?.remoteAddress ||
-    '127.0.0.1';
-
-  const maskedIp = maskIp(rawIp) || 'xx.xx.xx.xx';
-
-  // 3. User agent
+  const { masked, encrypted, hash } = protectIp(customData.ipAddress || getClientIp(req));
   const userAgent = customData.userAgent || headers['user-agent'] || null;
 
-  return { deviceName, maskedIp, userAgent };
+  return { deviceName, maskedIp: masked || 'xx.xx.xx.xx', ipEncrypted: encrypted, ipHash: hash, userAgent };
 }
 
-/**
- * Ghi nhận hoặc cập nhật lịch sử truy cập thiết bị của người dùng
- * @param {number|string} idaccount 
- * @param {object} req Express request object
- * @param {object} [customData] Dữ liệu tùy biến nếu gọi từ unit test hoặc worker
- * @param {boolean} [options.skipThrottle=false] Bỏ qua bộ lọc throttle (dùng cho Login/Logout/Test)
- * @returns {Promise<{ action: 'UPDATED'|'INSERTED'|'THROTTLED', record: object|null }>}
- */
 async function trackDeviceAccess(idaccount, req = {}, customData = {}, options = {}) {
   const numId = Number(idaccount);
   if (!numId || isNaN(numId)) return null;
 
-  const { deviceName, maskedIp, userAgent } = extractClientInfo(req, customData);
-  const cacheKey = `${numId}:${deviceName}:${maskedIp}`;
+  const { deviceName, maskedIp, ipEncrypted, ipHash, userAgent } = extractClientInfo(req, customData);
+  const cacheKey = `${numId}:${deviceName}:${ipHash || maskedIp}`;
   const now = Date.now();
 
-  // Kiểm tra throttle cache: Nếu cùng thiết bị và cùng IP truy cập trong 60s -> bỏ qua để bảo vệ DB
   if (!options.skipThrottle) {
     const cached = accessCache.get(cacheKey);
     if (cached && now - cached.timestamp < THROTTLE_MS) {
@@ -74,44 +47,41 @@ async function trackDeviceAccess(idaccount, req = {}, customData = {}, options =
   }
 
   try {
-    // 1. Tìm bản ghi gần nhất của tài khoản này
     const latestRecord = await prisma.account_device_history.findFirst({
       where: { idaccount: numId },
       orderBy: { last_active_at: 'desc' },
     });
 
     const isSameDevice = latestRecord && latestRecord.device_name === deviceName;
-    const isSameIp = latestRecord && latestRecord.ip_address === maskedIp;
+    const isSameIp = latestRecord && (latestRecord.ip_hash && ipHash
+      ? latestRecord.ip_hash === ipHash
+      : latestRecord.ip_address === maskedIp);
 
-    // 2. Phân nhánh theo quy tắc PO:
     if (latestRecord && isSameDevice && isSameIp) {
-      // TRƯỜNG HỢP 1: IP và Thiết bị KHÔNG thay đổi -> UPDATE last_active_at
-      const updated = await prisma.account_device_history.update({
-        where: { id: latestRecord.id },
-        data: {
-          last_active_at: new Date(),
-          user_agent: userAgent || latestRecord.user_agent,
-        },
-      });
-
+      const data = { last_active_at: new Date(), user_agent: userAgent || latestRecord.user_agent };
+      if (!latestRecord.ip_encrypted && ipEncrypted) {
+        data.ip_encrypted = ipEncrypted;
+        data.ip_hash = ipHash;
+      }
+      const updated = await prisma.account_device_history.update({ where: { id: latestRecord.id }, data });
       accessCache.set(cacheKey, { timestamp: now, record: updated });
       return { action: 'UPDATED', record: updated };
-    } else {
-      // TRƯỜNG HỢP 2: IP hoặc Thiết bị CÓ thay đổi (hoặc chưa có lịch sử) -> INSERT dòng mới
-      const created = await prisma.account_device_history.create({
-        data: {
-          idaccount: numId,
-          device_name: deviceName,
-          ip_address: maskedIp,
-          user_agent: userAgent,
-          first_seen_at: new Date(),
-          last_active_at: new Date(),
-        },
-      });
-
-      accessCache.set(cacheKey, { timestamp: now, record: created });
-      return { action: 'INSERTED', record: created };
     }
+
+    const created = await prisma.account_device_history.create({
+      data: {
+        idaccount: numId,
+        device_name: deviceName,
+        ip_address: maskedIp,
+        ip_encrypted: ipEncrypted,
+        ip_hash: ipHash,
+        user_agent: userAgent,
+        first_seen_at: new Date(),
+        last_active_at: new Date(),
+      },
+    });
+    accessCache.set(cacheKey, { timestamp: now, record: created });
+    return { action: 'INSERTED', record: created };
   } catch (error) {
     logger.error('Lỗi khi ghi nhận lịch sử thiết bị (trackDeviceAccess):', {
       idaccount: numId,
@@ -123,12 +93,6 @@ async function trackDeviceAccess(idaccount, req = {}, customData = {}, options =
   }
 }
 
-/**
- * Lấy lịch sử truy cập thiết bị của tài khoản (dành cho Admin hoặc Người dùng tự xem)
- * @param {number|string} idaccount 
- * @param {number} limit 
- * @returns {Promise<Array>}
- */
 async function getDeviceHistory(idaccount, limit = 20) {
   const numId = Number(idaccount);
   if (!numId || isNaN(numId)) return [];
@@ -140,9 +104,60 @@ async function getDeviceHistory(idaccount, limit = 20) {
   });
 }
 
-/**
- * Xóa cache (phục vụ test)
- */
+async function listDevicesForAdmin(idaccount, limit = 10) {
+  const numId = Number(idaccount);
+  if (!numId || isNaN(numId)) return [];
+
+  const rows = await prisma.account_device_history.findMany({
+    where: { idaccount: numId },
+    orderBy: { last_active_at: 'desc' },
+    take: limit,
+    select: {
+      id: true,
+      device_name: true,
+      ip_address: true,
+      ip_encrypted: true,
+      user_agent: true,
+      first_seen_at: true,
+      last_active_at: true,
+    },
+  });
+  return rows.map((r) => ({
+    id: String(r.id),
+    device_name: r.device_name,
+    ip_address: r.ip_address,
+    user_agent: r.user_agent || null,
+    first_seen_at: r.first_seen_at,
+    last_active_at: r.last_active_at,
+    canRevealIp: Boolean(r.ip_encrypted),
+  }));
+}
+
+async function revealDeviceIp(idaccount, deviceId) {
+  const numId = Number(idaccount);
+  if (!numId || isNaN(numId)) return null;
+  let id;
+  try {
+    id = BigInt(deviceId);
+  } catch (_) {
+    return null;
+  }
+  const record = await prisma.account_device_history.findFirst({
+    where: { id, idaccount: numId },
+    orderBy: { last_active_at: 'desc' },
+  });
+  return record ? revealIp(record.ip_encrypted) : null;
+}
+
+async function purgeExpiredIpData(retentionDays) {
+  const cutoff = new Date(Date.now() - Number(retentionDays) * 86400000);
+  const result = await prisma.account_device_history.updateMany({
+    where: { last_active_at: { lt: cutoff }, ip_encrypted: { not: null } },
+    data: { ip_encrypted: null, ip_hash: null },
+  });
+  return result?.count || 0;
+}
+
 function clearCache() {
   accessCache.clear();
 }
@@ -151,6 +166,9 @@ module.exports = {
   extractClientInfo,
   trackDeviceAccess,
   getDeviceHistory,
+  listDevicesForAdmin,
+  revealDeviceIp,
+  purgeExpiredIpData,
   clearCache,
   THROTTLE_MS,
 };

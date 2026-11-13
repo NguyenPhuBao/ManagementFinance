@@ -12,6 +12,7 @@ const SecurityConfirmModal = ({
   onClose,
   onConfirm,
   onSuccess,
+  onVerify,
   title,
   confirmText,
   description,
@@ -53,7 +54,9 @@ const SecurityConfirmModal = ({
     setLoading(true);
     setError('');
     try {
-      if (requirePin || pinValue || password.trim()) {
+      if (typeof onVerify === 'function') {
+        await onVerify({ pin: mode === 'pin' ? pinValue : '', password: mode === 'password' ? password : '' });
+      } else if (requirePin || pinValue || password.trim()) {
         await adminApi.verifySecurityAction({
           pin: mode === 'pin' ? pinValue : '',
           password: mode === 'password' ? password : '',

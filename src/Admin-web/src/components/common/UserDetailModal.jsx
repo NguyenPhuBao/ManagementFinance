@@ -3,6 +3,7 @@ import adminApi from '../../api/admin.api';
 import { formatDateTime, maskPhone } from '../../utils/format';
 import { useLanguageSafe } from '../../store/language.context';
 import { Badge, EmptyState, Modal, Spinner } from '../ui';
+import UserDevices from './UserDevices';
 
 const STATUS_TONE = { active: 'success', inactive: 'neutral', pendingdelete: 'warning', deleted: 'danger' };
 
@@ -25,6 +26,7 @@ const UserDetailModal = ({ userId, onClose }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [pinOpen, setPinOpen] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -44,7 +46,7 @@ const UserDetailModal = ({ userId, onClose }) => {
       : t(`commonStatus.${status}`, user?.status);
 
   return (
-    <Modal open onClose={onClose} title={t('users.detail.title')} size="md">
+    <Modal open onClose={onClose} closeDisabled={pinOpen} title={t('users.detail.title')} size="md">
       {loading ? (
         <div className="flex justify-center py-10 text-brand">
           <Spinner size="lg" />
@@ -83,6 +85,7 @@ const UserDetailModal = ({ userId, onClose }) => {
               )}
               <Row label={t('users.detail.createdAt')}>{user.created_at ? formatDateTime(user.created_at) : '—'}</Row>
             </Section>
+            <UserDevices userId={userId} onPinOpenChange={setPinOpen} />
           </div>
         )
       )}

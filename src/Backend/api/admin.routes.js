@@ -54,6 +54,8 @@ router.post('/create-admin', adminController.createAdminAccount);
 // Quản lý người dùng
 router.get('/getuser', adminController.getUsers);
 router.get('/getuser/:id', adminController.getUserDetail);
+router.get('/getuser/:id/devices', adminController.getUserDevices);
+router.post('/getuser/:id/devices/:deviceId/reveal-ip', adminController.revealDeviceIp);
 router.patch('/updatestatus/:id', adminController.updateStatus);
 router.delete('/deleteuser/:id', adminController.deleteUser);
 router.delete('/users/:id', adminController.deleteUser);

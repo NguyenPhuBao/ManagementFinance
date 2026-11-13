@@ -245,6 +245,20 @@ describe('SecurityConfirmModal', () => {
     return { onConfirm, onClose };
   };
 
+  it('onVerify: gửi PIN thẳng cho hàm của nơi gọi thay vì verifySecurityAction; lỗi thì giữ hộp và hiện lỗi', async () => {
+    const onVerify = vi.fn().mockRejectedValueOnce({ response: { data: { message: 'Mã PIN sai' } } }).mockResolvedValueOnce();
+    const { onClose } = setup({ onVerify, onConfirm: undefined });
+    fireEvent.change(screen.getByLabelText(/PIN/), { target: { value: '111111' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Vô hiệu hóa' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Mã PIN sai');
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText(/PIN/), { target: { value: '246810' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Vô hiệu hóa' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(onVerify).toHaveBeenLastCalledWith({ pin: '246810', password: '' });
+    expect(adminApi.verifySecurityAction).not.toHaveBeenCalled();
+  });
+
   it('chưa đủ 6 số PIN thì nút xác nhận bị khóa', () => {
     setup();
     fireEvent.change(screen.getByLabelText(/PIN/), { target: { value: '123' } });

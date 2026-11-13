@@ -99,7 +99,8 @@ describe('AuditLog Middleware & Service Logic Tests', () => {
     req.url = '/api/v1/wallets';
     req.baseUrl = '';
     req.path = '/api/v1/wallets';
-    req.headers = { 'x-forwarded-for': '203.162.0.1, 10.0.0.1' };
+    req.headers = { 'x-forwarded-for': '6.6.6.6' };
+    req.ip = '203.162.0.1';
     req.user = { idaccount: 10, username: 'testuser' };
 
     const res = new EventEmitter();
@@ -112,7 +113,7 @@ describe('AuditLog Middleware & Service Logic Tests', () => {
     setTimeout(() => {
       authService.recordAuditLog = originalRecord;
       assert.ok(recordedData, 'recordAuditLog phải được gọi');
-      assert.equal(recordedData.ip, '203.162.0.1', 'Phải trích xuất client IP đầu tiên từ x-forwarded-for');
+      assert.equal(recordedData.ip, '203.162.0.1', 'IP lấy từ req.ip (trust proxy), bỏ qua x-forwarded-for do client gửi');
       assert.equal(recordedData.idaccount, 10);
       done();
     }, 50);
@@ -163,7 +164,8 @@ describe('AuditLog Middleware & Service Logic Tests', () => {
     req.url = '/api/v1/auth/login';
     req.baseUrl = '';
     req.path = '/api/v1/auth/login';
-    req.headers = { 'x-forwarded-for': '1.2.3.4' };
+    req.headers = {};
+    req.ip = '1.2.3.4';
     req.body = { username: 'unknown_hacker' };
 
     const res = new EventEmitter();
