@@ -938,6 +938,7 @@ export default {
       passwordLabel: 'Mật khẩu',
       forgotPasswordLink: 'Quên mật khẩu?',
       submitBtn: 'Đăng nhập',
+      invalidCredentials: 'Sai tài khoản hoặc mật khẩu.',
       failed: 'Đăng nhập thất bại.',
     },
     forgotPassword: {

@@ -31,7 +31,11 @@ const LoginPage = () => {
       if (resetLockState) resetLockState();
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || err.message || t('auth.login.failed'));
+      setError(
+        err.response?.status === 401
+          ? t('auth.login.invalidCredentials')
+          : err.response?.data?.message || err.message || t('auth.login.failed')
+      );
     } finally {
       setLoading(false);
     }

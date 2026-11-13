@@ -938,6 +938,7 @@ export default {
       passwordLabel: 'Password',
       forgotPasswordLink: 'Forgot password?',
       submitBtn: 'Sign in',
+      invalidCredentials: 'Incorrect username or password.',
       failed: 'Sign-in failed.',
     },
     forgotPassword: {

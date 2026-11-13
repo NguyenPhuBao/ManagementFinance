@@ -24,7 +24,7 @@ vi.mock('../store/alert.context', () => ({ useAlertSafe: () => notify }));
 vi.mock('../api/admin.api', () => ({ default: { firstLoginSetup: vi.fn() } }));
 
 const inRouter = (ui) => render(<MemoryRouter>{ui}</MemoryRouter>);
-const apiError = (message) => Object.assign(new Error('x'), { response: { data: { message } } });
+const apiError = (message, status) => Object.assign(new Error('x'), { response: { status, data: { message } } });
 const LOCKED_USER = { username: 'admin.local', email: 'admin@local.test', fullname: 'Quản Trị' };
 
 beforeEach(() => {
@@ -87,6 +87,19 @@ describe('Đăng nhập', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Đăng nhập' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Sai tài khoản hoặc mật khẩu');
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [401, 'Sai tai khoan hoac mat khau', 'Sai tài khoản hoặc mật khẩu.'],
+    [403, 'Tài khoản đã bị khóa do vi phạm điều khoản', 'Tài khoản đã bị khóa do vi phạm điều khoản'],
+    [503, 'Hệ thống đang bảo trì', 'Hệ thống đang bảo trì'],
+  ])('mã %i: hiện "%s" thành "%s"', async (status, serverMessage, shown) => {
+    authState.login.mockRejectedValue(apiError(serverMessage, status));
+    inRouter(<LoginPage />);
+    fireEvent.change(screen.getByLabelText('Email hoặc tên đăng nhập'), { target: { value: 'a' } });
+    fireEvent.change(screen.getByLabelText('Mật khẩu'), { target: { value: 'b' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng nhập' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(shown);
   });
 
   it('đổi sang EN thì chữ đổi theo', () => {
@@ -167,6 +180,15 @@ describe('Khóa màn hình', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mở khóa' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Mật khẩu sai');
     expect(authState.syncAuthSession).not.toHaveBeenCalled();
+  });
+
+  it('máy chủ trả 401 thì hiện câu của Admin-web thay câu không dấu', async () => {
+    lock();
+    settingsState.unlockScreen.mockRejectedValue(apiError('Sai tai khoan hoac mat khau', 401));
+    render(<LockScreenModal />);
+    fireEvent.change(screen.getByLabelText('Mật khẩu'), { target: { value: 'x' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Mở khóa' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Mật khẩu không đúng.');
   });
 
   it('đăng xuất qua hộp xác nhận: hủy thì giữ phiên, xác nhận thì xóa dữ liệu phiên và gọi logout', async () => {

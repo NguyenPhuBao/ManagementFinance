@@ -61,7 +61,11 @@ const LockScreenModal = () => {
         t('lockScreen.unlockSuccess')
       );
     } catch (err) {
-      setError(err.response?.data?.message || err.message || t('lockScreen.errorWrongPass'));
+      setError(
+        err.response?.status === 401
+          ? t('lockScreen.errorWrongPass')
+          : err.response?.data?.message || err.message || t('lockScreen.errorWrongPass')
+      );
     } finally {
       setLoading(false);
     }
