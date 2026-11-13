@@ -13,10 +13,11 @@ async function verifyDatabase() {
     process.exit(1);
   }
 
-  // Cấu hình client pg với SSL hỗ trợ Supabase
+  // Cấu hình client pg với SSL hỗ trợ Supabase; PostgreSQL trên máy cục bộ không bật SSL
+  const isLocal = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(dbUrl);
   const client = new Client({
     connectionString: dbUrl,
-    ssl: { rejectUnauthorized: false }
+    ssl: isLocal ? false : { rejectUnauthorized: false }
   });
 
   console.log('🔄 Đang kết nối tới PostgreSQL để thẩm tra cấu trúc CSDL...');
@@ -107,6 +108,18 @@ async function verifyDatabase() {
         table: 'payment_transaction',
         name: 'uq_payment_transaction_payos_id',
         expectedClause: 'payos_transaction_id IS NOT NULL'
+      },
+      {
+        // Migration 48: tra cứu IP qua chỉ mục mù
+        table: 'account_device_history',
+        name: 'idx_device_history_ip_hash',
+        expectedClause: '(ip_hash IS NOT NULL)'
+      },
+      {
+        // Migration 48: job xóa IP hết hạn (IP_RETENTION_DAYS)
+        table: 'account_device_history',
+        name: 'idx_device_history_ip_retention',
+        expectedClause: '(ip_encrypted IS NOT NULL)'
       }
     ];
 
@@ -138,7 +151,10 @@ async function verifyDatabase() {
       { name: 'trg_protect_auditlog', table: 'audit_log' },
       { name: 'trg_protect_transaction', table: 'transaction' },
       { name: 'trg_check_phone_encrypted', table: 'user' },
-      { name: 'trg_check_bank_account_encrypted', table: 'bank_account' }
+      { name: 'trg_check_bank_account_encrypted', table: 'bank_account' },
+      // Migration 49: bằng chứng đồng ý chính sách không được sửa
+      { name: 'trg_protect_privacy_policy', table: 'privacy_policy' },
+      { name: 'trg_protect_policy_acceptance', table: 'policy_acceptance' }
     ];
 
     for (const req of requiredTriggers) {

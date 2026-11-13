@@ -293,6 +293,33 @@ describe('Tầng 2: job hằng ngày dọn IP đầy đủ quá hạn', () => {
   });
 });
 
+describe('Tầng 2: hết 30 ngày chờ xóa thì IP đầy đủ của tài khoản bị xóa', () => {
+  it('processFullSoftDelete xóa ip_encrypted, ip_hash của đúng tài khoản trong cùng giao tác, giữ dòng nhật ký (bản che)', async () => {
+    const scheduler = require('../../core/scheduler.service');
+    const calls = [];
+    const tx = new Proxy({}, {
+      get: (_, model) => new Proxy({}, {
+        get: (__, method) => async (args) => { calls.push({ model, method, args }); return { count: 1 }; },
+      }),
+    });
+    const orig = { find: prisma.account.findUnique, tx: prisma.$transaction };
+    prisma.account.findUnique = async () => ({ idaccount: 42, User: null });
+    prisma.$transaction = async (fn) => fn(tx);
+    try {
+      await scheduler.processFullSoftDelete(42);
+      const dev = calls.filter((c) => c.model === 'account_device_history');
+      assert.strictEqual(dev.length, 1, 'phải có đúng một lệnh trên lịch sử thiết bị');
+      assert.strictEqual(dev[0].method, 'updateMany', 'không xóa vật lý dòng nhật ký');
+      assert.strictEqual(dev[0].args.where.idaccount, 42);
+      assert.deepStrictEqual(dev[0].args.data, { ip_encrypted: null, ip_hash: null });
+      assert.ok(!calls.some((c) => c.model === 'policy_acceptance'), 'bằng chứng đồng ý giữ nguyên');
+    } finally {
+      prisma.account.findUnique = orig.find;
+      prisma.$transaction = orig.tx;
+    }
+  });
+});
+
 describe('Tầng 1: không nơi nào tin IP trong header x-forwarded-for do client gửi', () => {
   it('mã Backend (trừ test, node_modules) không đọc header x-forwarded-for; IP lấy qua req.ip (trust proxy)', () => {
     const fs = require('fs');

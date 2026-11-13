@@ -115,6 +115,12 @@ async function processFullSoftDelete(idaccount) {
         update_at: now,
       },
     });
+
+    // 7. Xóa IP đầy đủ (bản mã + chỉ mục mù) trong lịch sử thiết bị; giữ dòng nhật ký với IP đã che (nhật ký tối thiểu 12 tháng)
+    await tx.account_device_history.updateMany({
+      where: { idaccount },
+      data: { ip_encrypted: null, ip_hash: null },
+    });
   });
 
   // Thu hồi cache xác thực bộ nhớ
