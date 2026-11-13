@@ -100,6 +100,7 @@ class ChatbotService {
     onTool,
     turnCostCapMicroUsd,
     contextWindowDays,
+    scopeNote,
   }) {
     const startTime = Date.now();
     const limits = getChatbotLimits();
@@ -118,7 +119,7 @@ class ChatbotService {
       }
 
       // BƯỚC 2: System Prompt. Tri thức tĩnh không chèn sẵn: mô hình tự gọi công cụ tra cứu khi cần.
-      const systemInstruction = buildSystemPrompt(snapshot);
+      const systemInstruction = buildSystemPrompt(snapshot, { scopeNote });
       const safeHistory = sanitizeHistory(history, limits);
 
       // BƯỚC 3: Gọi nhà cung cấp LLM qua Circuit Breaker riêng của chatbot
@@ -309,7 +310,11 @@ class ChatbotService {
         }
         if (typeof onTool === 'function') onTool({ name: call.name, status: 'start' });
         const result = await this.toolsExecutor.executeTool(call.name, args, idaccount, { userName, maxResultChars: limits.maxToolResultChars });
-        if (typeof onTool === 'function') onTool({ name: call.name, status: 'done' });
+        if (typeof onTool === 'function') {
+          // NCKH (v4): sự kiện done của tra cứu mang chẩn đoán truy hồi như bản thực nghiệm (client chỉ đọc name / status, bỏ qua trường lạ).
+          const retrieval = isLookup ? this.toolsExecutor.lastRetrieval : null;
+          onTool(retrieval ? { name: call.name, status: 'done', retrieval } : { name: call.name, status: 'done' });
+        }
         // Chỉ lấy nguồn của đoạn đứng đầu: các đoạn xếp sau có thể lệch chủ đề, gắn vào sẽ thành trích dẫn sai.
         if (isLookup && result?.found) citations.push(result.results[0].citation);
         let content = JSON.stringify(result);

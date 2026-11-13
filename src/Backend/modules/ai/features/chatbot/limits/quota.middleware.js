@@ -29,8 +29,10 @@ function createDailyQuotaMiddleware({ quota, budget = null, permissionRepository
     try {
       if (isAdmin(req.user)) return next();
 
-      // Lớp quy tắc sẽ từ chối câu này mà không gọi LLM (xem controller): không tốn gì nên không trừ lượt của người dùng.
-      if (req.body?.message && !checkScope(req.body.message).allowed) return next();
+      // Câu tiêm lệnh bị chặn thẳng, không gọi LLM (xem controller): không tốn gì nên không trừ lượt. Câu bộ lọc chặn vì
+      // lạc đề thì phải hỏi AI xác nhận (có tốn tiền) nên vẫn qua kiểm ngân sách và giữ chỗ một lượt; controller trả lại
+      // lượt khi AI xác nhận KHÔNG thuộc phạm vi (PO duyệt 2026-11-09).
+      if (req.body?.message && checkScope(req.body.message).code === 'INJECTION') return next();
 
       // Ngân sách chi phí tháng (tiền thật từ `usage`): trần cứng của thiệt hại theo người dùng. Kiểm TRƯỚC hạn mức
       // ngày để yêu cầu bị chặn vì hết ngân sách không bị tính thêm một lượt.

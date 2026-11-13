@@ -6,6 +6,9 @@ const ChatbotService = require('./chatbot.service');
 const ResponseHandler = require('../../../../core/response-handler');
 const logger = require('../../../../core/logger');
 const { checkScope } = require('./scope/scope-guard');
+const { confirmScope } = require('./scope/scope-confirm');
+const { streamDeepseek } = require('./llm/deepseek.provider');
+const { resolveProvider, getDeepseekConfig } = require('./llm/provider.config');
 const { StreamGuard } = require('./limits/stream-guard');
 const { getChatbotLimits } = require('./limits/chatbot.limits');
 const { getUsageBudget, isAdmin } = require('./limits/quota.middleware');
@@ -22,6 +25,24 @@ class ChatbotController {
     const limits = getChatbotLimits();
     this.streamGuard = new StreamGuard({ perUser: limits.maxStreamsPerUser, global: limits.maxStreamsGlobal });
     this.getBudget = getUsageBudget; // tiêm được khi test
+    // Hỏi AI xác nhận phạm vi trước khi loại câu bộ lọc từ khoá chặn (tiêm được khi test)
+    this.scopeConfirmer = (p) => confirmScope({ ...p, llm: streamDeepseek, cfg: resolveProvider() === 'deepseek' ? getDeepseekConfig() : null });
+  }
+
+  /**
+   * Bước 3 (PO duyệt 2026-11-09): bộ lọc từ khoá chặn vì lạc đề thì hỏi AI xác nhận trước khi loại; câu tiêm lệnh chặn thẳng.
+   * @returns {Promise<{allowed: true, scopeNote?: string} | {allowed: false, scope: object}>}
+   */
+  async _checkScope(req, message, signal) {
+    const scope = checkScope(message);
+    if (scope.allowed) return { allowed: true };
+    if (scope.code !== 'OFF_TOPIC') return { allowed: false, scope };
+    let userName = '';
+    try { userName = (await this.chatbotService._getUserName?.(req.user?.idaccount)) || ''; } catch (_) { /* che theo mẫu chung */ }
+    const verdict = await this.scopeConfirmer({ message, userName, onUsage: this._usageRecorder(req), signal });
+    if (verdict?.allowed) return { allowed: true, scopeNote: verdict.reason || '' };
+    logger.info(`[Chatbot Controller] AI xác nhận câu ngoài phạm vi (${scope.code}) của idaccount: ${req.user?.idaccount}`);
+    return { allowed: false, scope };
   }
 
   /** Ghi chi phí thật của từng vòng gọi LLM vào ngân sách tháng của người dùng (quản trị viên không bị tính). */
@@ -90,9 +111,13 @@ class ChatbotController {
     res.on('close', handleDisconnect);
 
     try {
-      // Lớp quy tắc chặn việc ngoài phạm vi TRƯỚC khi tốn token: trả câu từ chối cố định như một lượt bình thường.
-      const scope = checkScope(message);
-      if (!scope.allowed) {
+      // Lớp quy tắc chặn việc ngoài phạm vi; câu bị chặn vì lạc đề được AI xác nhận một lần trước khi loại hẳn.
+      // Loại hẳn: trả câu từ chối cố định như một lượt bình thường và trả lại lượt (chi phí xác nhận vẫn vào ngân sách).
+      const pv = await this._checkScope(req, message, abortController.signal);
+      if (abortController.signal.aborted) return;
+      if (!pv.allowed) {
+        const scope = pv.scope;
+        this._refundTurn(req);
         logger.info(`[SSE Controller] Chặn câu ngoài phạm vi (${scope.code}) của idaccount: ${idaccount}`);
         res.write(`event: delta\ndata: ${JSON.stringify({ text: scope.refusalText, content: scope.refusalText })}\n\n`);
         res.write(`event: done\ndata: ${JSON.stringify({ status: 'completed', scopeRefusal: true, code: scope.code })}\n\n`);
@@ -102,6 +127,7 @@ class ChatbotController {
       }
 
       await this.chatbotService.chatStream({
+        scopeNote: pv.scopeNote,
         message,
         conversationId,
         history,
@@ -154,8 +180,10 @@ class ChatbotController {
     const idaccount = req.user?.idaccount;
     const { message, conversationId, history } = req.body;
 
-    const scope = checkScope(message);
-    if (!scope.allowed) {
+    const pv = await this._checkScope(req, message);
+    if (!pv.allowed) {
+      const scope = pv.scope;
+      this._refundTurn(req);
       return ResponseHandler.success(res, {
         reply: scope.refusalText, text: scope.refusalText, content: scope.refusalText, snapshot: null, conversationId,
       }, 'Phản hồi thành công');
@@ -177,6 +205,7 @@ class ChatbotController {
 
     try {
       await this.chatbotService.chatStream({
+        scopeNote: pv.scopeNote,
         message,
         conversationId,
         history,
