@@ -10,6 +10,7 @@ const Tabs = ({ items, value, onChange, ariaLabel }) => (
           type="button"
           role="tab"
           aria-selected={selected}
+          data-testid={item.testId}
           onClick={() => onChange(item.key)}
           className={`h-8 cursor-pointer rounded-md px-3 text-sm transition-colors ${
             selected ? 'bg-card font-semibold text-ink shadow-sm' : 'font-medium text-ink-muted hover:text-ink'

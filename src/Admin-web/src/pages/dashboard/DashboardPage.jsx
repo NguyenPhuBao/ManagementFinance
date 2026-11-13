@@ -185,7 +185,7 @@ const DashboardPage = () => {
     }
     const downSec = Number(uptime?.downtimeSeconds) || 0;
     const downtime =
-      downSec <= 0
+      downSec < 30
         ? null
         : downSec >= 3600
           ? t('dashboard.kpi.downtimeHours', { n: (downSec / 3600).toFixed(1) })

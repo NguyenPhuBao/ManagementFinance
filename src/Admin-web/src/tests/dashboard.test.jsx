@@ -167,6 +167,14 @@ describe('Phân trang và realtime', () => {
     expect(rows[1]).toHaveTextContent('binh');
   });
 
+  it('thời gian bảo trì dưới nửa phút không ghi "Đã trừ 0 phút"', async () => {
+    await renderPage();
+    emit('admin.metrics_stream', { uptimePercent: 99.99, uptimeFormatted: '2 giờ', downtimeSeconds: 20 });
+    const card = screen.getByText('Thời gian hoạt động', { selector: 'div' }).parentElement;
+    await waitFor(() => expect(card).toHaveTextContent('99.99%'));
+    expect(card).not.toHaveTextContent('Đã trừ 0 phút');
+  });
+
   it('admin.metrics_stream cập nhật thời gian hoạt động', async () => {
     await renderPage();
     emit('admin.metrics_stream', { uptimePercent: 97.5, uptimeFormatted: '2 giờ', downtimeSeconds: 0 });
