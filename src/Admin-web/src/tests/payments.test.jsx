@@ -17,7 +17,10 @@ const emit = (event, payload) => act(() => {
   (handlers[event] || []).forEach((fn) => fn(payload));
 });
 
+const notify = { info: vi.fn(), success: vi.fn(), error: vi.fn(), warning: vi.fn() };
+
 vi.mock('../hooks/useSocket', () => ({ default: () => fakeSocket }));
+vi.mock('../store/alert.context', () => ({ useAlertSafe: () => notify }));
 vi.mock('../utils/csv-exporter.util', () => ({ exportToCsv: vi.fn() }));
 vi.mock('../api/admin.api', () => ({ default: { verifySecurityAction: vi.fn() } }));
 vi.mock('../api/payment.api', () => ({
@@ -209,5 +212,39 @@ describe('Xuất CSV, đơn thử, realtime', () => {
     const before = paymentApi.getOrders.mock.calls.length;
     emit('payment.success', { orderCode: 1003 });
     await waitFor(() => expect(paymentApi.getOrders.mock.calls.length).toBeGreaterThan(before));
+  });
+
+  it.each([
+    ['payment.order_created', { orderCode: 1005 }],
+    ['payment.status_changed', { orderCode: 1002, status: 'EXPIRED' }],
+    ['payment.order_expired', { count: 2 }],
+    ['payment.order_cancelled', { orderCode: 1002, status: 'CANCELLED' }],
+    ['payment.refund_pending', { orderCode: 1004, amount: 70000 }],
+    ['payment.refunded', { orderId: 'd', status: 'REFUNDED' }],
+    ['payment.amount_mismatch', { orderCode: 1004, type: 'OVERPAID' }],
+  ])('sự kiện %s (Backend gửi admin_room) tải lại danh sách và số liệu', async (event, payload) => {
+    await renderPage();
+    const orders = paymentApi.getOrders.mock.calls.length;
+    const stats = paymentApi.getStats.mock.calls.length;
+    emit(event, payload);
+    await waitFor(() => expect(paymentApi.getOrders.mock.calls.length).toBeGreaterThan(orders));
+    expect(paymentApi.getStats.mock.calls.length).toBeGreaterThan(stats);
+  });
+
+  it('chênh lệch số tiền báo đúng loại; cần hoàn tiền có thông báo', async () => {
+    await renderPage();
+    notify.info.mockClear();
+    emit('payment.amount_mismatch', { orderCode: 1004, type: 'OVERPAID' });
+    expect(notify.info).toHaveBeenLastCalledWith('Đơn #1004 chuyển thừa tiền, chờ xác nhận.');
+    emit('payment.amount_mismatch', { orderCode: 1006, type: 'UNDERPAID' });
+    expect(notify.info).toHaveBeenLastCalledWith('Đơn #1006 chuyển thiếu tiền, chuyển sang hoàn tiền.');
+    emit('payment.refund_pending', { orderCode: 1007, amount: 50000 });
+    expect(notify.info).toHaveBeenLastCalledWith('Đơn #1007 cần hoàn tiền.');
+  });
+
+  it('không nghe hai sự kiện chỉ gửi cho người dùng (không bao giờ tới admin)', async () => {
+    await renderPage();
+    expect(handlers['payment.overpaid_confirmation']?.size || 0).toBe(0);
+    expect(handlers['payment.underpaid_warning']?.size || 0).toBe(0);
   });
 });

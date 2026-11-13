@@ -133,16 +133,19 @@ const PaymentHistoryPage = () => {
         info(t('payments.alerts.newOrder', { code: code(data) }));
       },
       'payment.success': onPaymentSuccess,
-      'payment.overpaid_confirmation': (data) => {
+      'payment.amount_mismatch': (data) => {
         reload();
-        if (code(data)) info(t('payments.alerts.overpaid', { code: code(data) }));
+        const key = data?.type === 'UNDERPAID' ? 'underpaid' : 'overpaid';
+        if (code(data)) info(t(`payments.alerts.${key}`, { code: code(data) }));
       },
-      'payment.underpaid_warning': (data) => {
+      'payment.refund_pending': (data) => {
         reload();
-        if (code(data)) info(t('payments.alerts.underpaid', { code: code(data) }));
+        if (code(data)) info(t('payments.alerts.refundPending', { code: code(data) }));
       },
       'payment.refunded': () => reload(),
       'payment.order_expired': () => reload(),
+      'payment.status_changed': () => reload(),
+      'payment.order_cancelled': () => reload(),
     };
     Object.entries(events).forEach(([name, fn]) => socket.on(name, fn));
     return () => Object.entries(events).forEach(([name, fn]) => socket.off(name, fn));

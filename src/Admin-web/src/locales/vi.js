@@ -1437,6 +1437,7 @@ export default {
       paid: 'Đơn #{code} đã thanh toán',
       overpaid: 'Đơn #{code} chuyển thừa tiền, chờ xác nhận.',
       underpaid: 'Đơn #{code} chuyển thiếu tiền, chuyển sang hoàn tiền.',
+      refundPending: 'Đơn #{code} cần hoàn tiền.',
       actionFailed: 'Thao tác thất bại',
     },
   },

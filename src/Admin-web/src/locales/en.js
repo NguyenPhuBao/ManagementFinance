@@ -1437,6 +1437,7 @@ export default {
       paid: 'Order #{code} paid',
       overpaid: 'Order #{code} was overpaid and needs confirmation.',
       underpaid: 'Order #{code} was underpaid and moved to refund.',
+      refundPending: 'Order #{code} needs a refund.',
       actionFailed: 'Action failed',
     },
   },
