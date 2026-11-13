@@ -34,6 +34,13 @@ vi.mock('../api/aiops.api', () => ({
     clearIncidents: vi.fn(),
     quarantineActor: vi.fn(),
     getForensics: vi.fn(),
+    temporaryBlockIp: vi.fn(),
+    permanentBanIp: vi.fn(),
+    unblockIp: vi.fn(),
+    temporaryBlockAccount: vi.fn(),
+    permanentBanAccount: vi.fn(),
+    unblockAccount: vi.fn(),
+    revealQuarantineIp: vi.fn(),
   },
 }));
 vi.mock('../api/admin.api', () => ({
@@ -263,6 +270,222 @@ describe('AIOps — Tầng 2: tác động thật', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Làm mới' }));
     await waitFor(() => expect(aiopsApi.getStatus.mock.calls.length).toBeGreaterThan(before));
     await waitFor(() => expect(aiopsApi.getIncidents.mock.calls.length).toBeGreaterThan(beforeInc));
+  });
+});
+
+const INCIDENTS = [
+  {
+    id: 'i1', code: 'AUTH_BRUTE', vector: 'auth', status: 'ACTIVE', hits: 3, actor_type: 'IP_SOURCE',
+    actor_identity: '203.0.xxx.xxx', actor_hash: 'h-203', username: 'an', metric_current: 30, metric_baseline: 10,
+    metric_unit: 'lần/phút', message: 'Dò mật khẩu liên tục', mitigation_taken: null, first_detected_at: '2026-11-13T04:00:00Z',
+  },
+  {
+    id: 'i2', code: 'RES_CPU', vector: 'resource', status: 'MITIGATED', hits: 1, actor_type: 'SYSTEM_INTERNAL',
+    actor_identity: 'Internal', actor_hash: 'system_core', metric_current: 95, metric_baseline: 85, metric_unit: '%',
+    message: 'CPU cao', mitigation_taken: 'Giảm tải', first_detected_at: '2026-11-13T03:00:00Z',
+  },
+];
+const inHours = (h) => new Date(Date.now() + h * 3600e3).toISOString();
+const QUARANTINE = () => [
+  {
+    id: 'q1', hash: 'h-1', ipHash: 'h-1', maskedIp: '203.0.xxx.xxx', username: 'an', idaccount: 5, vector: 'auth',
+    ipStatus: 'temporary', accountStatus: 'temporary', reason: 'Dò mật khẩu', bannedAt: '2026-11-13T04:00:00Z',
+    ipExpiresAt: inHours(2), accountExpiresAt: inHours(1), hits: 2,
+  },
+  {
+    id: 'q2', hash: 'h-2', ipHash: 'h-2', maskedIp: '198.51.xxx.xxx', username: 'N/A', idaccount: null, vector: 'exploit',
+    ipStatus: 'unlocked', accountStatus: 'unlocked', reason: 'Tiêm mã độc', bannedAt: '2026-11-13T03:00:00Z', hits: 1,
+  },
+];
+const rowOf = (section, text) => within(section).getAllByRole('row').find((r) => r.textContent.includes(text));
+const withData = () => {
+  aiopsApi.getIncidents.mockResolvedValue({ data: { incidents: INCIDENTS, total: 2 } });
+  aiopsApi.getQuarantineList.mockResolvedValue({ data: QUARANTINE() });
+  aiopsApi.getVectorConfig.mockResolvedValue({ data: { auth: true, traffic: true, exploit: true, resource: false } });
+};
+
+describe('AIOps — G4.1c Tầng 1: nhóm rủi ro, sự cố, nguồn bị chặn', () => {
+  beforeEach(withData);
+
+  it('4 thẻ nhóm rủi ro có công tắc phòng vệ; nhóm tắt ghi "Chỉ đo, không tự chặn"', async () => {
+    await renderPage();
+    const vectors = card('Nhóm rủi ro');
+    await waitFor(() => expect(within(vectors).getByRole('switch', { name: 'Phòng vệ nhóm Tài nguyên' })).toHaveAttribute('aria-checked', 'false'));
+    expect(within(vectors).getAllByRole('switch')).toHaveLength(4);
+    expect(within(vectors).getByRole('switch', { name: 'Phòng vệ nhóm Xác thực' })).toHaveAttribute('aria-checked', 'true');
+    expect(within(vectors).getByText('Chỉ đo, không tự chặn')).toBeInTheDocument();
+    await waitFor(() => expect(within(vectors).getByText('Đang chặn 1 nguồn')).toBeInTheDocument());
+  });
+
+  it('bảng sự cố: bộ lọc nhóm / trạng thái, dòng đủ thông tin; sự cố hệ thống không có nút Chặn', async () => {
+    await renderPage();
+    const incidents = card('Sự cố');
+    expect(within(incidents).getByRole('tablist', { name: 'Lọc theo nhóm' })).toBeInTheDocument();
+    expect(within(incidents).getByRole('tablist', { name: 'Lọc theo trạng thái' })).toBeInTheDocument();
+    await waitFor(() => expect(rowOf(incidents, 'Dò mật khẩu liên tục')).toBeTruthy());
+    const r1 = rowOf(incidents, 'Dò mật khẩu liên tục');
+    expect(r1).toHaveTextContent('an');
+    expect(r1).toHaveTextContent('203.0.xxx.xxx');
+    expect(r1).toHaveTextContent('Đang diễn ra');
+    expect(r1).toHaveTextContent('Lặp 3 lần');
+    expect(r1).toHaveTextContent('Vượt 3 lần');
+    expect(within(r1).getByRole('button', { name: 'Chặn' })).toBeInTheDocument();
+    const r2 = rowOf(incidents, 'CPU cao');
+    expect(r2).toHaveTextContent('Hệ thống');
+    expect(r2).toHaveTextContent('Đã giảm thiểu');
+    expect(within(r2).queryByRole('button', { name: 'Chặn' })).not.toBeInTheDocument();
+  });
+
+  it('bảng nguồn bị chặn: nút theo trạng thái IP / tài khoản, thời gian còn lại, lọc theo IP', async () => {
+    await renderPage();
+    const q = card('Nguồn bị chặn');
+    await waitFor(() => expect(rowOf(q, '203.0.xxx.xxx')).toBeTruthy());
+    const r1 = rowOf(q, '203.0.xxx.xxx');
+    for (const name of ['Khóa thêm 4 giờ', 'Mở khóa IP', 'Khóa vĩnh viễn', 'Mở khóa tài khoản', 'Xem IP đầy đủ', 'Hồ sơ điều tra']) {
+      expect(within(r1).getByRole('button', { name })).toBeInTheDocument();
+    }
+    expect(r1).toHaveTextContent(/IP: [12] giờ/);
+    const r2 = rowOf(q, '198.51.xxx.xxx');
+    expect(within(r2).getByRole('button', { name: 'Tạm khóa IP' })).toBeInTheDocument();
+    expect(within(r2).queryByRole('button', { name: 'Tạm khóa tài khoản' })).not.toBeInTheDocument();
+
+    fireEvent.change(within(q).getByLabelText('Lọc theo IP'), { target: { value: '198' } });
+    expect(rowOf(q, '203.0.xxx.xxx')).toBeUndefined();
+    expect(rowOf(q, '198.51.xxx.xxx')).toBeTruthy();
+    fireEvent.click(within(q).getByRole('button', { name: 'Xóa lọc' }));
+    expect(rowOf(q, '203.0.xxx.xxx')).toBeTruthy();
+  });
+
+  it('danh sách rỗng hiện thông báo', async () => {
+    aiopsApi.getIncidents.mockResolvedValue({ data: { incidents: [], total: 0 } });
+    aiopsApi.getQuarantineList.mockResolvedValue({ data: [] });
+    await renderPage();
+    expect(await within(card('Sự cố')).findByText('Chưa có sự cố')).toBeInTheDocument();
+    expect(within(card('Nguồn bị chặn')).getByText('Chưa có nguồn nào bị chặn')).toBeInTheDocument();
+  });
+});
+
+describe('AIOps — G4.1c Tầng 2: thao tác gọi đúng API', () => {
+  beforeEach(() => {
+    withData();
+    aiopsApi.toggleVector.mockReset().mockResolvedValue({ data: { vectorConfig: { auth: false, traffic: true, exploit: true, resource: false } } });
+    aiopsApi.quarantineActor.mockReset().mockResolvedValue({ data: { hash: 'h-203', maskedIp: '203.0.xxx.xxx' } });
+    ['temporaryBlockIp', 'permanentBanIp', 'unblockIp', 'temporaryBlockAccount', 'permanentBanAccount', 'unblockAccount'].forEach((k) => aiopsApi[k].mockReset().mockResolvedValue({}));
+    aiopsApi.revealQuarantineIp.mockReset().mockResolvedValue({ data: { data: { ip: '203.0.113.9' } } });
+    aiopsApi.getForensics.mockReset().mockResolvedValue({ data: { incidents: [{ id: 77, incident_code: 'INC-77', detected_at: '2026-11-13T04:00:00Z', ip_hash: 'h-1abcdef0123', username: 'an', reason: 'Dò mật khẩu' }], total: 1 } });
+  });
+
+  it('tắt phòng vệ một nhóm: hỏi xác nhận rồi gọi toggleVector', async () => {
+    await renderPage();
+    const vectors = card('Nhóm rủi ro');
+    const sw = await within(vectors).findByRole('switch', { name: 'Phòng vệ nhóm Xác thực' });
+    fireEvent.click(sw);
+    const dialog = await screen.findByRole('dialog', { name: 'Tắt phòng vệ nhóm Xác thực?' });
+    expect(aiopsApi.toggleVector).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tắt' }));
+    await waitFor(() => expect(aiopsApi.toggleVector).toHaveBeenCalledWith('auth', false));
+    await waitFor(() => expect(sw).toHaveAttribute('aria-checked', 'false'));
+  });
+
+  it('lọc sự cố theo nhóm, trạng thái và từ khóa gửi đúng tham số', async () => {
+    await renderPage();
+    const incidents = card('Sự cố');
+    fireEvent.click(within(within(incidents).getByRole('tablist', { name: 'Lọc theo nhóm' })).getByRole('tab', { name: 'Khai thác' }));
+    await waitFor(() => expect(aiopsApi.getIncidents.mock.calls.at(-1)[0]).toMatchObject({ vector: 'exploit', page: 1 }));
+    fireEvent.click(within(within(incidents).getByRole('tablist', { name: 'Lọc theo trạng thái' })).getByRole('tab', { name: 'Đang diễn ra' }));
+    await waitFor(() => expect(aiopsApi.getIncidents.mock.calls.at(-1)[0]).toMatchObject({ vector: 'exploit', status: 'ACTIVE' }));
+    fireEvent.change(within(incidents).getByLabelText('Tìm sự cố'), { target: { value: 'an' } });
+    fireEvent.click(within(incidents).getByRole('button', { name: 'Tìm' }));
+    await waitFor(() => expect(aiopsApi.getIncidents.mock.calls.at(-1)[0]).toMatchObject({ search: 'an', page: 1 }));
+  });
+
+  it('chặn nguồn từ sự cố gửi ipHash của sự cố, không gửi IP đầy đủ', async () => {
+    await renderPage();
+    const incidents = card('Sự cố');
+    await waitFor(() => expect(rowOf(incidents, 'Dò mật khẩu liên tục')).toBeTruthy());
+    fireEvent.click(within(rowOf(incidents, 'Dò mật khẩu liên tục')).getByRole('button', { name: 'Chặn' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Chặn nguồn 203.0.xxx.xxx?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Chặn' }));
+    await waitFor(() => expect(aiopsApi.quarantineActor).toHaveBeenCalledWith({
+      hash: 'h-203', ip: null, maskedIp: '203.0.xxx.xxx', vector: 'auth', reason: 'Admin quarantine (AUTH_BRUTE)', durationMinutes: 240,
+    }));
+  });
+
+  it('thao tác IP / tài khoản hỏi xác nhận bằng hộp thoại (không dùng window.confirm) rồi gọi đúng API', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm');
+    await renderPage();
+    const q = card('Nguồn bị chặn');
+    await waitFor(() => expect(rowOf(q, '198.51.xxx.xxx')).toBeTruthy());
+
+    fireEvent.click(within(rowOf(q, '198.51.xxx.xxx')).getByRole('button', { name: 'Tạm khóa IP' }));
+    let dialog = await screen.findByRole('dialog', { name: 'Tạm khóa IP 198.51.xxx.xxx?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tạm khóa' }));
+    await waitFor(() => expect(aiopsApi.temporaryBlockIp).toHaveBeenCalledWith({ ipHash: 'h-2' }));
+
+    fireEvent.click(within(rowOf(q, '203.0.xxx.xxx')).getByRole('button', { name: 'Mở khóa IP' }));
+    dialog = await screen.findByRole('dialog', { name: 'Mở khóa IP 203.0.xxx.xxx?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mở khóa' }));
+    await waitFor(() => expect(aiopsApi.unblockIp).toHaveBeenCalledWith({ ipHash: 'h-1' }));
+
+    fireEvent.click(within(rowOf(q, '203.0.xxx.xxx')).getByRole('button', { name: 'Khóa vĩnh viễn' }));
+    dialog = await screen.findByRole('dialog', { name: 'Khóa vĩnh viễn tài khoản an?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Khóa vĩnh viễn' }));
+    await waitFor(() => expect(aiopsApi.permanentBanAccount).toHaveBeenCalledWith({ username: 'an', idaccount: 5 }));
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it('xem IP đầy đủ phải nhập PIN; IP hiện ngay trong dòng', async () => {
+    await renderPage();
+    const q = card('Nguồn bị chặn');
+    await waitFor(() => expect(rowOf(q, '203.0.xxx.xxx')).toBeTruthy());
+    fireEvent.click(within(rowOf(q, '203.0.xxx.xxx')).getByRole('button', { name: 'Xem IP đầy đủ' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(aiopsApi.revealQuarantineIp).not.toHaveBeenCalled();
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Xem' }));
+    await waitFor(() => expect(aiopsApi.revealQuarantineIp).toHaveBeenCalledWith('h-1', { pin: '246810', password: '' }));
+    await waitFor(() => expect(rowOf(q, '203.0.113.9')).toBeTruthy());
+  });
+
+  it('hồ sơ điều tra tải theo IP, chuyển sang lọc theo tài khoản', async () => {
+    await renderPage();
+    const q = card('Nguồn bị chặn');
+    await waitFor(() => expect(rowOf(q, '203.0.xxx.xxx')).toBeTruthy());
+    fireEvent.click(within(rowOf(q, '203.0.xxx.xxx')).getByRole('button', { name: 'Hồ sơ điều tra' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Hồ sơ điều tra' });
+    await waitFor(() => expect(aiopsApi.getForensics).toHaveBeenCalledWith({ page: 1, limit: 5, ipHash: 'h-1' }));
+    expect(await within(dialog).findByText('INC-77')).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Theo tài khoản' }));
+    await waitFor(() => expect(aiopsApi.getForensics).toHaveBeenLastCalledWith({ page: 1, limit: 5, username: 'an' }));
+  });
+
+  it('tạm khóa thủ công IP và tài khoản gửi đúng thời hạn', async () => {
+    await renderPage();
+    fireEvent.click(within(card('Nguồn bị chặn')).getByRole('button', { name: 'Tạm khóa thủ công' }));
+    let dialog = await screen.findByRole('dialog', { name: 'Tạm khóa thủ công' });
+    fireEvent.change(within(dialog).getByLabelText('Địa chỉ IP'), { target: { value: '198.51.100.7' } });
+    fireEvent.change(within(dialog).getByLabelText('Thời hạn'), { target: { value: '60' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tạm khóa' }));
+    await waitFor(() => expect(aiopsApi.quarantineActor).toHaveBeenCalledWith(expect.objectContaining({ ip: '198.51.100.7', durationMinutes: 60 })));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Tạm khóa thủ công' })).not.toBeInTheDocument());
+
+    fireEvent.click(within(card('Nguồn bị chặn')).getByRole('button', { name: 'Tạm khóa thủ công' }));
+    dialog = await screen.findByRole('dialog', { name: 'Tạm khóa thủ công' });
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Tài khoản' }));
+    fireEvent.change(within(dialog).getByLabelText('Tên đăng nhập hoặc mã tài khoản'), { target: { value: 'binh' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tạm khóa' }));
+    await waitFor(() => expect(aiopsApi.temporaryBlockAccount).toHaveBeenCalledWith({ username: 'binh', durationMinutes: 240 }));
+  });
+
+  it('sự kiện realtime thêm nguồn bị chặn và sự cố mới vào bảng', async () => {
+    await renderPage();
+    await waitFor(() => expect(rowOf(card('Nguồn bị chặn'), '203.0.xxx.xxx')).toBeTruthy());
+    emit('admin.security_blocked', { hash: 'h-3', maskedIp: '192.0.xxx.xxx', reason: 'Tự chặn', bannedAt: '2026-11-13T05:00:00Z', hits: 1 });
+    await waitFor(() => expect(rowOf(card('Nguồn bị chặn'), '192.0.xxx.xxx')).toBeTruthy());
+    emit('admin.anomaly_detected', { ...INCIDENTS[0], id: 'i9', message: 'Quét lỗ hổng mới', vector: 'exploit' });
+    await waitFor(() => expect(rowOf(card('Sự cố'), 'Quét lỗ hổng mới')).toBeTruthy());
   });
 });
 

@@ -5,7 +5,9 @@ import useAIOps from './aiops/useAIOps';
 import ScaleSection from './aiops/ScaleSection';
 import SignalsSection from './aiops/SignalsSection';
 import TrendSection from './aiops/TrendSection';
-import LegacySections from './aiops/LegacySections';
+import VectorSection from './aiops/VectorSection';
+import IncidentsSection from './aiops/IncidentsSection';
+import QuarantineSection from './aiops/QuarantineSection';
 import { CalibrateModal, MitigationModal } from './aiops/AIOpsModals';
 
 const EMPTY_THRESHOLDS = {
@@ -44,8 +46,10 @@ const AIOpsPage = () => {
 
       <ScaleSection ops={ops} />
       <SignalsSection ops={ops} />
+      <VectorSection ops={ops} />
       <TrendSection ops={ops} />
-      <LegacySections ops={ops} />
+      <IncidentsSection ops={ops} />
+      <QuarantineSection ops={ops} />
 
       <CalibrateModal ops={ops} />
       <MitigationModal ops={ops} />
