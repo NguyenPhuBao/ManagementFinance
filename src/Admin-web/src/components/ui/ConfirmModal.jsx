@@ -13,6 +13,8 @@ const ConfirmModal = ({
   cancelText,
   confirmDanger = false,
   loading = false,
+  testId,
+  confirmTestId,
   children,
 }) => {
   const { t } = useLanguageSafe();
@@ -21,6 +23,7 @@ const ConfirmModal = ({
       open={open}
       onClose={onCancel}
       size="sm"
+      testId={testId}
       closeDisabled={loading}
       title={title || t('common.confirmModal.title', 'Xác nhận')}
       footer={
@@ -28,7 +31,7 @@ const ConfirmModal = ({
           <Button onClick={onCancel} disabled={loading}>
             {cancelText || t('common.cancel', 'Hủy bỏ')}
           </Button>
-          <Button variant={confirmDanger ? 'danger' : 'primary'} onClick={onConfirm} loading={loading}>
+          <Button variant={confirmDanger ? 'danger' : 'primary'} onClick={onConfirm} loading={loading} data-testid={confirmTestId}>
             {confirmText || t('common.confirm', 'Xác nhận')}
           </Button>
         </>

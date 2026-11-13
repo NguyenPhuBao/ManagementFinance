@@ -9,7 +9,7 @@ const WIDTHS = {
   xl: 'max-w-4xl',
 };
 
-const Modal = ({ open, onClose, title, description, footer, size = 'md', closeDisabled = false, children }) => {
+const Modal = ({ open, onClose, title, description, footer, size = 'md', closeDisabled = false, testId, children }) => {
   const { t } = useLanguageSafe();
   const titleId = useId();
 
@@ -38,6 +38,7 @@ const Modal = ({ open, onClose, title, description, footer, size = 'md', closeDi
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        data-testid={testId}
         className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl border border-line bg-card shadow-xl ${WIDTHS[size]}`}
         onClick={(e) => e.stopPropagation()}
       >

@@ -1,7 +1,7 @@
 import React, { useId } from 'react';
 import Icon from './Icon';
 
-const SearchInput = ({ label, value, onChange, placeholder, className = '' }) => {
+const SearchInput = ({ label, value, onChange, placeholder, className = '', ...rest }) => {
   const id = useId();
   return (
     <div className={`relative ${className}`}>
@@ -15,6 +15,7 @@ const SearchInput = ({ label, value, onChange, placeholder, className = '' }) =>
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder || label}
+        {...rest}
         className="h-10 w-full rounded-lg border border-line bg-card pl-9 pr-3 text-sm text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
       />
     </div>
