@@ -1,7 +1,7 @@
 const { pool } = require('../../config/db');
 const logger = require('../../core/logger');
 const { encrypt } = require('../../utils/crypto.util');
-const { revealIp } = require('../../utils/ip-protection.util');
+const { revealIp, ipLookupHash } = require('../../utils/ip-protection.util');
 
 const withPlainIp = (row) => (row && row.raw_ip ? { ...row, raw_ip: revealIp(row.raw_ip) } : row);
 
@@ -496,14 +496,37 @@ class AIOpsQuarantineRepository {
         return r;
       });
 
+      const ips = sanitizedIps.map(withPlainIp);
+      const links = linkRes.rows || [];
+      await this._rehashLegacyIps(ips, links);
+
       return {
-        ips: sanitizedIps.map(withPlainIp),
+        ips,
         accounts: accRes.rows || [],
-        links: linkRes.rows || [],
+        links,
       };
     } catch (err) {
       logger.error('[AIOps Quarantine Repo] Lỗi nạp active quarantines từ DB', { error: err.message });
       return { ips: [], accounts: [], links: [] };
+    }
+  }
+
+  async _rehashLegacyIps(ips, links) {
+    for (const row of ips) {
+      if (!row.raw_ip) continue;
+      const oldHash = row.ip_hash;
+      const newHash = ipLookupHash(row.raw_ip);
+      if (!oldHash || oldHash === newHash) continue;
+      try {
+        await this.pool.query(`UPDATE "aiops_ip_quarantine" SET "ip_hash" = $1, "updated_at" = NOW() WHERE "id" = $2;`, [newHash, row.id]);
+        await this.pool.query(`UPDATE "aiops_quarantine_incident_link" SET "ip_hash" = $1 WHERE "ip_hash" = $2;`, [newHash, oldHash]);
+        row.ip_hash = newHash;
+        for (const link of links) {
+          if (link.ip_hash === oldHash) link.ip_hash = newHash;
+        }
+      } catch (err) {
+        logger.warn('[AIOps Quarantine Repo] Không chuyển được giá trị băm IP cũ', { id: row.id, error: err.message });
+      }
     }
   }
 

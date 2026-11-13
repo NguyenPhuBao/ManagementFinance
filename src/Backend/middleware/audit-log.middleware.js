@@ -41,7 +41,7 @@ function auditLogMiddleware(req, res, next) {
         path.includes('/admin/getusertotime') ||
         path.includes('/admin/login-stats') ||
         path.includes('/admin/request-stats') ||
-        path.includes('/admin/aiops') ||
+        (req.method === 'GET' && path.includes('/admin/aiops')) ||
         path.includes('/admin/system/health') ||
         (req.method === 'GET' && path.includes('/admin/system/maintenance')) ||
         path.includes('/admin/maintenance/status') ||

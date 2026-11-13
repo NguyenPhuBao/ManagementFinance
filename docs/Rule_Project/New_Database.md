@@ -476,6 +476,7 @@ Tuân thủ nghiêm ngặt **Rule 10 (DB Guard)**: Toàn bộ bảng và cột m
 - `account_device_history.ip_hash` (`VARCHAR(64)` NULL): HMAC-SHA256 của IP đầy đủ (khóa `BLIND_INDEX_SECRET`), so khớp và tra cứu không cần giải mã. Cả hai cột về NULL khi hết hạn `IP_RETENTION_DAYS` hoặc khi tài khoản hết 30 ngày chờ xóa (`processFullSoftDelete`). Chỉ mục một phần `idx_device_history_ip_hash` (`WHERE ip_hash IS NOT NULL`), `idx_device_history_ip_retention` trên `last_active_at` (`WHERE ip_encrypted IS NOT NULL`).
 - `account_device_history.ip_address` giữ vai trò bản che để hiển thị.
 - `aiops_ip_quarantine.raw_ip`: đổi `VARCHAR(45)` → `TEXT`, lưu bản mã AES-256-GCM thay cho IP thô.
+- `aiops_ip_quarantine.ip_hash`, `aiops_quarantine_incident_link.ip_hash`, `aiops_incident.actor_hash` (từ G4.1, 2026-11-13, không đổi cấu trúc): HMAC-SHA256 64 ký tự khóa `BLIND_INDEX_SECRET` (trước đây SHA-256 muối cố định, cắt 16 ký tự). Dòng cũ có `raw_ip` được tính lại khi Backend nạp danh sách chặn; dòng sự cố cũ giữ giá trị cũ.
 - Bản mã và chỉ mục mù bị xóa sau `IP_RETENTION_DAYS` (job `runDailyIpRetentionPurgeTask`). Áp bằng `node scripts/apply_migration_48.js --url=<CSDL>` (bắt buộc chỉ định đích; đích không phải máy cục bộ cần `--xac-nhan-tu-xa`). Chính sách: `Data_Security.md` mục 10.8.
 
 ### 5.6. Chính sách bảo mật & bằng chứng đồng ý (Migration 49, 2026-11-13)

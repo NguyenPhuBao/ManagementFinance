@@ -101,6 +101,28 @@ const aiopsController = {
     }
   },
 
+  async revealQuarantineIp(req, res) {
+    try {
+      const { hash } = req.params;
+      if (!hash) return ResponseHandler.badRequest(res, 'Tham số không hợp lệ');
+      req.auditActionName = `Xem IP đầy đủ của nguồn bị cô lập (${hash.slice(0, 12)})`;
+      const { pin, password } = req.body || {};
+      const adminService = require('../admin/admin.service');
+      await adminService.verifySecurityAction(
+        { pin, password, action: 'REVEAL_IP', targetId: `aiops-ip#${hash}` },
+        req.user
+      );
+      const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
+      const ip = await defaultAIOpsQuarantine.revealFullIp(hash);
+      if (!ip) return ResponseHandler.notFound(res, 'IP đầy đủ không còn lưu (đã quá thời hạn lưu trữ) hoặc không tồn tại');
+      res.set?.('Cache-Control', 'no-store');
+      return ResponseHandler.success(res, { ip }, 'IP đầy đủ của nguồn bị cô lập');
+    } catch (error) {
+      logger.warn('[AIOpsController] revealQuarantineIp failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
   quarantineActor(req, res) {
     try {
       const { hash, ip, maskedIp, reason, durationMinutes } = req.body;
@@ -120,7 +142,8 @@ const aiopsController = {
         return ResponseHandler.error(res, 'Không thể phong tỏa nguồn request này', 400);
       }
       req.auditActionName = `Phong tỏa IP thủ công (${record.maskedIp || hash})`;
-      return ResponseHandler.success(res, record, `Đã phong tỏa nguồn IP ${record.maskedIp} thành công trong ${Math.round(durationMs / 60000)} phút`);
+      const { ip: _fullIp, ...publicRecord } = record;
+      return ResponseHandler.success(res, publicRecord, `Đã phong tỏa nguồn IP ${record.maskedIp} thành công trong ${Math.round(durationMs / 60000)} phút`);
     } catch (error) {
       logger.error('[AIOpsController] quarantineActor failed', { error: error.message });
       return ResponseHandler.error(res, error.message);

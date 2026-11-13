@@ -6,11 +6,13 @@ const paymentController = require('../modules/payment/payment.controller');
 const { uploadRefundProof } = require('../middleware/upload.middleware');
 const { authenticate } = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
+const { stripRawIpResponse } = require('../middleware/strip-raw-ip.middleware');
 
 // Tất cả admin routes yêu cầu đăng nhập + role admin
 router.use(authenticate, authorize('admin'));
 
 // AIOps Sentinel — Máy học phát hiện xâm nhập & bất thường thời gian thực
+router.use('/aiops', stripRawIpResponse);
 router.get('/aiops/status', aiopsController.getStatus);
 router.get('/aiops/history', aiopsController.getHistory);
 router.get('/aiops/vectors', aiopsController.getVectorConfig);
@@ -23,6 +25,7 @@ router.get('/aiops/quarantine', aiopsController.getQuarantineList);
 router.get('/aiops/quarantine/forensics', aiopsController.getQuarantineForensics);
 router.post('/aiops/quarantine', aiopsController.quarantineActor);
 router.delete('/aiops/quarantine/:hash', aiopsController.unblockQuarantine);
+router.post('/aiops/quarantine/:hash/reveal-ip', aiopsController.revealQuarantineIp);
 router.post('/aiops/quarantine/unblock-ip', aiopsController.unblockIp);
 router.post('/aiops/quarantine/permanent-ip', aiopsController.permanentBanIp);
 router.post('/aiops/quarantine/temporary-ip', aiopsController.temporaryBlockIp);

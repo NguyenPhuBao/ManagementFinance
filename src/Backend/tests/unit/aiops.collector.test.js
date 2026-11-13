@@ -116,7 +116,7 @@ test('AIOps Feature Collector Suite', async (t) => {
     const internalHashes = Array.from(collector._ipHashes);
     assert.strictEqual(internalHashes.length, 1);
     assert.ok(!internalHashes[0].includes('113.161'), 'Raw IP must not be stored in memory');
-    assert.strictEqual(internalHashes[0].length, 16, 'Should store truncated safe hash');
+    assert.strictEqual(internalHashes[0], require('../../utils/crypto.util').hashBlindIndex(sensitiveIp), 'Keyed HMAC blind index (same as device history), not a raw IP');
   });
 
   await t.test('6. Normal expired refresh token (401 without req.tokenReuseDetected) does NOT record token reuse or quarantine IP', () => {
