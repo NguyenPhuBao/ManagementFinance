@@ -4,12 +4,12 @@ import EmptyState from './EmptyState';
 
 const ALIGN = { left: 'text-left', center: 'text-center', right: 'text-right' };
 
-const DataTable = ({ columns, rows, rowKey, loading = false, emptyTitle, emptyDescription, minWidth = 720 }) => {
+const DataTable = ({ columns, rows, rowKey, loading = false, emptyTitle, emptyDescription, minWidth = 720, label }) => {
   const keyOf = (row, index) => (typeof rowKey === 'function' ? rowKey(row, index) : row[rowKey] ?? index);
   const showEmpty = !loading && rows.length === 0;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm" style={{ minWidth }}>
+      <table aria-label={label} className="w-full border-collapse text-sm" style={{ minWidth }}>
         <thead>
           <tr className="bg-muted/60">
             {columns.map((col) => (

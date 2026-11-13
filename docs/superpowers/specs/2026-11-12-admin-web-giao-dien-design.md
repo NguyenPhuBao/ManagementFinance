@@ -123,7 +123,7 @@ Bộ test cũ (`src/Admin-web/src/tests/*.test.jsx`, 52 tệp) bị gỡ theo qu
 
 ## 8. Tiến độ (cập nhật 2026-11-12)
 
-Mức hiện tại: `npm test` 98/98 ca (9 tệp), `npm run lint` 0 lỗi, `npm run build` qua.
+Mức hiện tại: `npm test` 106/106 ca (10 tệp), `npm run lint` 0 lỗi, `npm run build` qua.
 
 ### 8.1 Đã xong
 
@@ -137,7 +137,8 @@ Mức hiện tại: `npm test` 98/98 ca (9 tệp), `npm run lint` 0 lỗi, `npm 
 | G2.4 Nhật ký | `4ea70c7f` | Bộ lọc gửi máy chủ, banner "N hoạt động mới", gộp hai cột thời gian; `audit-tags.util.js` bỏ chú thích, thêm `tone` | 10 bản ghi thật, lọc "Thất bại" đúng |
 | G2.5 Xóa đơn mẫu | `2ee34db5` | Backend `deleteSampleOrders` lọc `is_template: true`; nút "Xóa đơn mẫu" + `ConfirmModal`, báo số đơn đã xóa, tải lại bảng và KPI | Chèn tay 2 đơn mẫu (1 đã thanh toán, có giao dịch) + 1 đơn thật: bấm xóa → `DELETE` 200, CSDL còn đúng đơn thật, giao dịch đơn mẫu xóa theo |
 | G3.1 Tổng quan | `abd7b496` | Tách `components/LineChart` (đo bề rộng thật, màu theo token), `PeriodPicker`, `dashboardFormat.js`; `RequestCell` và `AUDIT_STATUS_TONE` chuyển ra dùng chung với Nhật ký; bỏ lớp phủ chặn màn hình, `RealtimeStatusBadge` riêng và hai nghe sự kiện không còn tác dụng (`admin.maintenance_changed` chỉ ghi vào state không hiển thị, `connect`/`disconnect`); bố cục: biểu đồ xếp dọc cạnh sức khỏe máy chủ, bảng hoạt động rộng hết trang có liên kết sang Nhật ký | Hôm nay → 7 ngày → ngày 10/11: API 200 đúng tham số; tooltip, Sáng / Tối, điện thoại không cuộn ngang |
-| G3.2 Phân quyền | commit kế sau `abd7b496` | Trang + 3 thành phần dựng lại bằng `ui`, thêm `components/permissionFormat.js`; một cách vẽ dòng cho cả chế độ một gói và hai gói (bỏ 3 đoạn mã trùng); hộp phạm vi dùng `Modal`, lưu / đặt lại dùng `ConfirmModal`; bỏ chữ "Trụ 1–4", PostgreSQL, Socket.IO, 50ms; nhãn truy cập tiếng Việt cho mọi ô điều khiển; gỡ `PermissionGroupSection.jsx` (không nơi nào dùng). `Modal` / `ConfirmModal` thêm `testId`, `SearchInput` chuyển tiếp thuộc tính để giữ `data-testid` cũ | Đổi hạn mức 6 → 7 rồi trả 6 trên CSDL cục bộ: `PUT` 200, tải lại đúng; hộp phạm vi, Sáng / Tối, điện thoại không cuộn ngang |
+| G3.2 Phân quyền | `d5a959ef` | Trang + 3 thành phần dựng lại bằng `ui`, thêm `components/permissionFormat.js`; một cách vẽ dòng cho cả chế độ một gói và hai gói (bỏ 3 đoạn mã trùng); hộp phạm vi dùng `Modal`, lưu / đặt lại dùng `ConfirmModal`; bỏ chữ "Trụ 1–4", PostgreSQL, Socket.IO, 50ms; nhãn truy cập tiếng Việt cho mọi ô điều khiển; gỡ `PermissionGroupSection.jsx` (không nơi nào dùng). `Modal` / `ConfirmModal` thêm `testId`, `SearchInput` chuyển tiếp thuộc tính để giữ `data-testid` cũ | Đổi hạn mức 6 → 7 rồi trả 6 trên CSDL cục bộ: `PUT` 200, tải lại đúng; hộp phạm vi, Sáng / Tối, điện thoại không cuộn ngang |
+| G3.3 Bảo trì & Thông báo | commit kế sau `d5a959ef` | Tách `pages/system/broadcast/`: `MaintenanceTab`, `MaintenanceHistory`, `BroadcastTab`, `maintenanceFormat.js`; trang chính giữ trạng thái, banner, socket và hàm `act` dùng chung; hủy lịch qua `ConfirmModal` thay `window.confirm`; bảo trì khẩn cấp qua `SecurityConfirmModal` (sửa prop sai `actionDescription` → `description`); lỗi nhập lịch hiện ngay trong biểu mẫu; thời lượng của lịch đã đặt tính đúng (trước luôn ghi "Chưa diễn ra"); lý do mặc định gửi người dùng bỏ chữ kỹ thuật; `DataTable` thêm `label` | Lên lịch rồi hủy, bật khẩn cấp rồi kết thúc trên CSDL cục bộ: 4 lời gọi 200; Sáng / Tối, điện thoại không cuộn ngang; không bấm gửi thông báo thật |
 
 ### 8.2 Lỗi sẵn có đã sửa
 
@@ -163,7 +164,6 @@ Mức hiện tại: `npm test` 98/98 ca (9 tệp), `npm run lint` 0 lỗi, `npm 
 
 | Bước | Tệp chính | Ghi chú |
 |---|---|---|
-| G3.3 Bảo trì & Thông báo | `pages/system/BroadcastPage.jsx` (1.500 dòng) | tách hai tab |
 | G4.1 AIOps | `pages/system/AIOpsPage.jsx` (3.956 dòng) + `components/common/ServerHealthPanel.jsx` | tách theo khối |
 | G4.2 Cài đặt | `components/layout/SettingsModal.jsx` (1.498 dòng) | gồm chế độ Tối |
 | G4.3 Đăng nhập, Quên mật khẩu, Khóa màn hình, Đăng nhập lần đầu | `pages/auth/*`, `components/layout/LockScreenModal.jsx`, `FirstLoginModal.jsx` | |

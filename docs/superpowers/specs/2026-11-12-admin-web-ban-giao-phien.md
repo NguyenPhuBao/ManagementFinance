@@ -17,9 +17,9 @@ Ngày: 2026-11-12. Đọc tệp này đầu tiên khi mở phiên mới, rồi l
 
 ## Trạng thái
 
-- Nhánh `NguyenPhuBao`. Đã commit: G0 `92d29c61`, G1 `43ef61df`, G2.1 `1ce28def`, G2.2 `f832176a`, G2.3 `56befb6a`, G2.4 `4ea70c7f`, G2.5 `2ee34db5`, G3.1 `abd7b496`, G3.2 Phân quyền (commit kế sau, xem `git log`).
+- Nhánh `NguyenPhuBao`. Đã commit: G0 `92d29c61`, G1 `43ef61df`, G2.1 `1ce28def`, G2.2 `f832176a`, G2.3 `56befb6a`, G2.4 `4ea70c7f`, G2.5 `2ee34db5`, G3.1 `abd7b496`, G3.2 `d5a959ef`, G3.3 Bảo trì & Thông báo (commit kế sau, xem `git log`).
 - Không thuộc việc này, đừng đưa vào commit: `.gitignore`, `CLAUDE.md`, `Project.md`, `docs/AI/*` (sửa dở từ trước), `src/Client-app/*` (tệp sinh tự động của Flutter).
-- Việc kế tiếp: G3.3 Bảo trì & Thông báo → G4 → G5 (bảng ở mục 8.4).
+- Việc kế tiếp: G4 → G5 (bảng ở mục 8.4).
 - Khi cần commit tách từng phần của `vi.js` / `en.js`: mỗi trang là một khối khóa cấp 1 riêng; ghép khối vào chỉ mục bằng `git hash-object -w --path=<tệp>` + `git update-index --cacheinfo`.
 
 ## Quy tắc làm việc đã chốt trong phiên
@@ -41,6 +41,8 @@ Ngày: 2026-11-12. Đọc tệp này đầu tiên khi mở phiên mới, rồi l
 - Chụp trang Tổng quan (Sáng, Tối, tooltip, bộ chọn ngày, điện thoại): `python scratch/adminweb/chup_dash.py <thư mục ảnh>`.
 - Chụp trang Phân quyền và lưu thật (đổi một hạn mức rồi trả lại): `python scratch/adminweb/chup_perm.py <thư mục ảnh>`. Tìm phần tử gây cuộn ngang trên điện thoại: `python scratch/adminweb/do_tran.py <đường dẫn không có / đầu>`.
 - Nhãn `sr-only` trong bảng định vị tuyệt đối: khung cuộn của bảng phải có `relative`, nếu không nhãn thoát ra làm cả trang cuộn ngang.
+- Chụp trang Bảo trì & Thông báo và chạy thật (lên lịch rồi hủy, bật khẩn cấp rồi kết thúc): `python scratch/adminweb/chup_bt.py <thư mục ảnh>`. Bật / tắt khẩn cấp làm Backend tự phát thông báo hệ thống (chỉ tới client đang nối máy chủ cục bộ); không bấm "Gửi thông báo" thật.
+- Khóa `broadcast.banner.emergencyBadge` / `silentBadge` còn được `ServerHealthPanel` dùng, giữ tới G4.1.
 - Biểu đồ SVG: vẽ theo bề rộng đo thật (`ResizeObserver`), đừng dùng `viewBox` cố định + `preserveAspectRatio="none"` (chữ co theo khung).
 - `useLanguageSafe` ngoài provider (trong test) trả `t` mới mỗi lần render: đừng đặt `t` vào mảng phụ thuộc của `useEffect` có gọi API.
 - Thử nút "Xóa đơn mẫu" không cần PayOS: `node scratch/adminweb/seed_don_mau.js "<gốc repo>" seed` chèn đơn mẫu thẳng vào `flowmoney_adminweb` (đối số `xem` chỉ in bảng đơn), rồi `python scratch/adminweb/chup_xoa_mau.py <thư mục ảnh>`.
