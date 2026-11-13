@@ -21,6 +21,7 @@
 4. [Phần III: Tiếp Nhận Sự Kiện Thời Gian Thực & Tín Hiệu Chốt Chặn HTTP (Socket.io & Dio Interceptors)](#4-phần-iii-tiếp-nhận-sự-kiện-thời-gian-thực--tín-hiệu-chốt-chặn-http)
 5. [Phần IV: Điều Khoản Loại Trừ & Giới Hạn Phạm Vi (Scope Boundary)](#5-phần-iv-điều-khoản-loại-trừ--giới-hạn-phạm-vi)
 6. [Bảng Ma Trận & Checklist Nghiệm Thu Từng Hạng Mục (2-Tier Testing Checklist)](#6-bảng-ma-trận--checklist-nghiệm-thu-từng-hạng-mục)
+7. [Đợt cập nhật 13/11/2026: tương thích và việc cần làm](#7-đợt-cập-nhật-backend--admin-web-ngày-13112026-tương-thích-và-việc-cần-làm)
 
 ---
 
@@ -256,5 +257,30 @@ Trong `src/Client-app/lib/core/api/interceptors/`:
 | **12**| Màn hình đồng ý chính sách bảo mật (Mục 51) | `features/policy/` (mới), `core/realtime/realtime_event.dart` | Tài khoản chưa đồng ý bị chặn ở màn chính sách; 409 tải lại phiên bản mới | `policy_acceptance` có đúng 1 dòng (`idaccount`, `policy_version`); `system.policy_updated` mở lại màn chính sách | ⏳ Chờ làm |
 
 ---
+
+## 7. ĐỢT CẬP NHẬT BACKEND + ADMIN-WEB NGÀY 13/11/2026: TƯƠNG THÍCH VÀ VIỆC CẦN LÀM
+
+**Kết luận cho Client-app:** bản Client-app hiện tại **không cần cập nhật** để tiếp tục chạy với Backend mới. Mọi thay đổi chỉ thêm, không đổi tên, không bỏ, không đổi nghĩa API / trường / sự kiện mà app đang dùng; Backend chưa bật chặn nào mới.
+
+**Đã kiểm (2026-11-13, bên Backend):**
+- 35 đường dẫn API mà Client-app gọi (trích từ `lib/`, chỉ đọc) đều còn route tương ứng ở Backend; các đường dẫn còn lại là đường dẫn màn hình của app.
+- Module Sync: hợp đồng `/sync/push`, `/sync/pull` không đổi; 6 bảng đồng bộ đủ cột, gồm `Idhousehold` (migration 40) và `Idfund_pair` (migration 45). Bộ test Backend chạy trên CSDL thật 942/942 ca đạt (gồm Sync Engine, hóa đơn, gia đình); kịch bản nghiệm thu `chay_kiem.js` 50 ca, `chay_kiem_pr174.js` 24 ca, `chay_kiem_gia_dinh_2.js` 36/36 ca đạt.
+- Các bảng mới (`privacy_policy`, `policy_acceptance`) và cột mới (`account_device_history.ip_encrypted`, `ip_hash`) không đi qua `/sync/*`, app không cần bảng SQLite mới.
+- Mã chặn 403 `AIOPS_QUARANTINED`, 503 `MAINTENANCE_MODE`, 401 `ACCOUNT_*` giữ nguyên.
+
+**Thay đổi Backend app nên biết (không bắt buộc sửa):**
+| Thay đổi | Ảnh hưởng tới app |
+|---|---|
+| IP người dùng lấy từ kết nối (`req.ip`), lưu bản che + bản mã hóa, tự xóa sau 365 ngày | Không. App tiếp tục gửi `x-device-name`, `x-platform`; không gửi IP, không gọi dịch vụ ngoài lấy IP (mục 3.2) |
+| API chính sách bảo mật `GET /api/policy/current`, `POST /api/policy/accept`, sự kiện `system.policy_updated` | Tùy chọn cho tới khi Chủ dự án bật chặn; app bỏ qua sự kiện lạ nên không lỗi. Việc cần làm: Mục 51 |
+| Hết 30 ngày chờ xóa, Backend xóa IP đầy đủ của tài khoản trong lịch sử thiết bị | Không |
+| AIOps băm IP bằng khóa bí mật, bỏ API xóa toàn bộ sự cố (chỉ Admin-web) | Không |
+
+**Việc Client-app cần làm (ghi nhận, làm khi tiện):**
+| # | Việc | Tài liệu | Bắt buộc từ khi nào |
+|---|---|---|---|
+| 1 | Màn đồng ý chính sách bảo mật, xử lý `409 POLICY_VERSION_OUTDATED`, nghe `system.policy_updated`, không chặn khi ngoại tuyến | [`CHINH_SACH_BAO_MAT.md`](./CHINH_SACH_BAO_MAT.md) (Mục 51) | Khi Chủ dự án bật `403 POLICY_NOT_ACCEPTED`; sẽ báo trước |
+| 2 | Sửa chú thích lỗi thời "IP che mờ" trong `lib/core/api/ten_thiet_bi.dart` | Mục 51 phần 5 | Không bắt buộc |
+
 
 > 🎯 **Cam kết chất lượng:** Mọi thắc mắc trong quá trình thực hiện, đội ngũ Client-app có thể đối chiếu trực tiếp với các test suite mẫu tại Backend (`src/Backend/tests/unit/sync.engine.v2.test.js` và `Test/test_data_security_encryption_and_masking.js`) để đảm bảo hệ thống đạt độ ổn định tuyệt đối (Zero Regressions).

@@ -31,7 +31,6 @@ vi.mock('../api/aiops.api', () => ({
     setScale: vi.fn(),
     calibrate: vi.fn(),
     toggleVector: vi.fn(),
-    clearIncidents: vi.fn(),
     quarantineActor: vi.fn(),
     getForensics: vi.fn(),
     temporaryBlockIp: vi.fn(),

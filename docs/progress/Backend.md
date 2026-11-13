@@ -723,3 +723,12 @@ Hoàn thành xây dựng và tích hợp trọn vẹn module Quản lý Tài ch�
    - **548 / 548 tests PASS 100%** (79 test suites, Zero Regressions).
    - **13 Partial Indexes + 4 Security Triggers** an toàn tuyệt đối.
    - **Admin-web Build thành công** trong 3.50s với Vite v5.4.
+
+## 26. Bảo Vệ Dữ Liệu Theo Luật 2025, Chính Sách Bảo Mật Theo Phiên Bản & AIOps (2026-11-13)
+
+1. **Bảo vệ IP (phương án B, migration 48, đã áp Supabase):** IP lấy từ kết nối (`getClientIp(req)`, `trust proxy = 1`), lưu bản che + bản mã AES-256-GCM + chỉ mục mù HMAC; `IP_RETENTION_DAYS` mặc định 365, job hằng ngày xóa bản mã quá hạn; admin xem IP đầy đủ phải nhập PIN, mỗi lượt ghi nhật ký. Khóa PIN admin sau 5 lần sai / 15 phút.
+2. **Chính sách bảo mật theo phiên bản (migration 49, đã áp Supabase):** bảng `privacy_policy`, `policy_acceptance` (trigger chặn sửa); `GET /api/policy/current`, `POST /api/policy/accept`; admin đăng phiên bản mới bằng PIN, phát `system.policy_updated`. Backend chưa chặn người dùng chưa đồng ý (Client-app chưa làm màn đồng ý).
+3. **Ẩn danh tài khoản sau 30 ngày** xóa thêm IP đầy đủ trong lịch sử thiết bị; `db:verify-indexes`, `db:verify-encryption` kiểm thêm migration 48/49.
+4. **AIOps (G4.1a):** một hàm băm IP có khóa `ipLookupHash` cho bộ thu thập + lớp chặn (sửa lỗi chặn từ sự cố không có tác dụng); lượt chặn cũ tính lại băm khi nạp; phản hồi `/api/admin/aiops/*` và sự kiện `admin.*` không mang IP đầy đủ; `POST /api/admin/aiops/quarantine/:hash/reveal-ip` (PIN); nhật ký ghi mọi thao tác AIOps trừ `GET`. **Bỏ** `POST /api/admin/aiops/incidents/clear` và hàm xóa toàn bộ `aiops_incident` (Chủ dự án quyết: chức năng được thêm khi chưa có phép, nhật ký sự cố phải giữ).
+5. **Tương thích Client-app:** 35 API app đang gọi đều còn; Sync không đổi hợp đồng; test Backend trên CSDL thật 942/942 đạt; kịch bản nghiệm thu `chay_kiem.js` 50, `chay_kiem_pr174.js` 24, `chay_kiem_gia_dinh_2.js` 36/36 đạt. `chay_kiem_61.js` cập nhật tên `chatbotCircuitBreaker`; ca 61.2 còn giả lập SDK nhà cung cấp AI cũ, cần viết lại theo nhà cung cấp hiện tại (phạm vi chatbot / NCKH).
+6. **Cloud:** Admin-web `vercel.json` chuyển tiếp thêm `/assets/Refunds/*` tới Render để ảnh minh chứng hoàn tiền hiện đúng khi Vercel không đặt `VITE_API_BASE_URL`. Còn mở: ảnh minh chứng lưu trên ổ đĩa Render, mất khi deploy lại.

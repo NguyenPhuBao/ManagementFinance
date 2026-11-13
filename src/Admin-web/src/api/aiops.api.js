@@ -61,7 +61,6 @@ const aiopsApi = {
     const queryString = qs.toString();
     return callAIOps('get', `/admin/aiops/incidents${queryString ? `?${queryString}` : ''}`);
   },
-  clearIncidents: () => callAIOps('post', '/admin/aiops/incidents/clear'),
   quarantineActor: (payload) => callAIOps('post', '/admin/aiops/quarantine', payload),
   temporaryBlockIp: (payload) => callAIOps('post', '/admin/aiops/quarantine/temporary-ip', payload),
   unblockIp: (payload) => callAIOps('post', '/admin/aiops/quarantine/unblock-ip', payload),

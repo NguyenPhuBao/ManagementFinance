@@ -40,7 +40,7 @@ cam('modules/household/household.service.js', {
 
 process.env.GEMINI_API_KEY = 'khoa-gia';
 const ChatbotService = require(path.join(ROOT, 'modules/ai/features/chatbot/chatbot.service'));
-const { CircuitBreaker, geminiCircuitBreaker: cauDao } = require(path.join(ROOT, 'modules/ai/features/chatbot/resilience/circuit-breaker'));
+const { CircuitBreaker, chatbotCircuitBreaker: cauDao } = require(path.join(ROOT, 'modules/ai/features/chatbot/resilience/circuit-breaker'));
 const householdController = require(path.join(ROOT, 'modules/household/household.controller'));
 
 const LOI_HET_GIO = '[GoogleGenerativeAI Error]: Request aborted when fetching https://generativelanguage.googleapis.com/x: This operation was aborted';

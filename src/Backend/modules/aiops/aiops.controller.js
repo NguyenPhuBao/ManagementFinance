@@ -174,10 +174,6 @@ const aiopsController = {
     }
   },
 
-  async clearIncidents(req, res) {
-    return ResponseHandler.error(res, 'Chức năng làm sạch nhật ký đã bị vô hiệu hóa để bảo đảm tính toàn vẹn và bất biến của CSDL an ninh', 403);
-  },
-
   async unblockIp(req, res) {
     try {
       const { ipHash, ip } = req.body;
