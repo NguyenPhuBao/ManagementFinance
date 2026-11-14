@@ -156,7 +156,7 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
   - Bảng `refreshtoken` được làm sạch tự động định kỳ, thu hồi các token hết hạn (`Status = true`).
 - **Đến Mobile App (Client-app):**
   - Cơ chế phân quyền cách ly hoàn toàn người dùng di động khỏi các route quản trị (`/api/admin/*`). Nếu người dùng Client-app thử gọi API Admin, server trả về ngay HTTP 403 mà không tốn tài nguyên xử lý logic.
-  - Khi Admin thực hiện khóa hoặc vô hiệu hóa tài khoản của người dùng từ Admin-web (`PATCH /api/admin/updatestatus/:id`), Backend phát lệnh Socket (`account.disabled` / `account.status_changed`) và thu hồi Refresh Token, cưỡng chế đăng xuất Mobile App tức thời. (Lưu ý: Tuân thủ nguyên tắc bảo mật Zero-Knowledge, Admin tuyệt đối không có quyền can thiệp hay đổi mật khẩu người dùng).
+  - Khi Admin thực hiện khóa hoặc vô hiệu hóa tài khoản của người dùng từ Admin-web (`PATCH /api/admin/updatestatus/:id`), Backend phát lệnh Socket (`account.force_logout` tới thiết bị người dùng, `admin.user_status_changed` tới Admin-web) và thu hồi Refresh Token, cưỡng chế đăng xuất Mobile App tức thời. (Lưu ý: Tuân thủ nguyên tắc bảo mật Zero-Knowledge, Admin tuyệt đối không có quyền can thiệp hay đổi mật khẩu người dùng).
 
 ---
 
@@ -170,7 +170,7 @@ Khi chế độ bảo trì toàn cục được kích hoạt (cắt đứt kết
 | `GET` | `/api/auth/me` | Lấy thông tin tài khoản tươi mới từ CSDL PostgreSQL | Authenticated |
 | `POST` | `/api/auth/logout` | Đăng xuất & Thu hồi Refresh Token | Authenticated |
 | `GET` | `/api/auth/profile` | Lấy thông tin chi tiết tài khoản Admin | Admin (`idrole === 1`) |
-| `POST` | `/api/admin/change-first-login` | Đổi mật khẩu & PIN bắt buộc lần đầu | Admin mới (`is_first_login = true`) |
+| `POST` | `/api/admin/first-login-setup` | Đổi mật khẩu & PIN bắt buộc lần đầu | Admin mới (`is_first_login = true`) |
 | `POST` | `/api/admin/change-pin` | Đổi mã PIN bảo mật Admin 6 số | Admin (`idrole === 1`) |
 | `POST` | `/api/admin/change-password` | Đổi mật khẩu tài khoản Admin | Admin (`idrole === 1`) |
 | `POST` | `/api/admin/create-admin` | Cấp tài khoản Admin mới kèm xác thực PIN | Admin (`idrole === 1`) |

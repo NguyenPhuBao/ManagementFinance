@@ -23,7 +23,6 @@ router.post('/aiops/scale', aiopsController.setScale);
 router.get('/aiops/quarantine', aiopsController.getQuarantineList);
 router.get('/aiops/quarantine/forensics', aiopsController.getQuarantineForensics);
 router.post('/aiops/quarantine', aiopsController.quarantineActor);
-router.delete('/aiops/quarantine/:hash', aiopsController.unblockQuarantine);
 router.post('/aiops/quarantine/:hash/reveal-ip', aiopsController.revealQuarantineIp);
 router.post('/aiops/quarantine/unblock-ip', aiopsController.unblockIp);
 router.post('/aiops/quarantine/permanent-ip', aiopsController.permanentBanIp);
@@ -59,6 +58,13 @@ router.get('/getuser/:id', adminController.getUserDetail);
 router.get('/getuser/:id/devices', adminController.getUserDevices);
 router.post('/getuser/:id/devices/:deviceId/reveal-ip', adminController.revealDeviceIp);
 router.get('/getuser/:id/data-exports', adminController.getUserDataExports);
+
+// Sổ sự cố dữ liệu cá nhân (báo cơ quan trong 72 giờ). Không có route xóa.
+const dataIncidentController = require('../modules/admin/data-incident.controller');
+router.get('/data-incidents', dataIncidentController.list);
+router.post('/data-incidents', dataIncidentController.create);
+router.patch('/data-incidents/:id', dataIncidentController.update);
+router.post('/data-incidents/:id/:action', dataIncidentController.action);
 router.get('/getuser/:id/policy', adminController.getUserPolicy);
 
 // Chính sách bảo mật theo phiên bản
@@ -99,7 +105,6 @@ router.put(
   paymentController.processRefund
 );
 router.post('/payments/orders/:orderCode/confirm-upgrade', paymentController.confirmUpgradeByAdmin);
-router.get('/payments/payos-qr', paymentController.getPayosQr);
 router.post('/payments/sample', paymentController.createSampleOrder);
 router.delete('/payments/sample', paymentController.deleteSampleOrders);
 router.post('/payments/simulate-webhook', paymentController.simulateWebhook);

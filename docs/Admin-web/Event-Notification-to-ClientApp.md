@@ -592,7 +592,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 8. `admin.security_blocked`: Thông báo tường lửa Sentinel vừa phong tỏa một IP vi phạm.
 9. `admin.quarantine_updated`: Báo hiệu danh sách phong tỏa có sự thay đổi.
 10. `admin.anomaly_detected`: AI phát hiện dị thường truy cập của người dùng.
-11. `payment.order_created`, `payment.status_changed`, `payment.order_paid`, `payment.refund_pending`, `payment.amount_mismatch`: Các biến động đơn hàng phục vụ quản lý doanh thu Admin.
+11. `payment.order_created`, `payment.status_changed`, `payment.success`, `payment.refund_pending`, `payment.amount_mismatch`: Các biến động đơn hàng phục vụ quản lý doanh thu Admin.
 12. `audit_activity`: Nhật ký thao tác quản trị ghi nhận vào Audit Log.
 
 ---

@@ -25,6 +25,8 @@ out/
 .env
 .env.local
 .env.*.local
+# Bản sao biến môi trường thật (vd. Cloud.env của Render): không bao giờ đưa lên git
+*.env
 
 # IDE
 .vscode/

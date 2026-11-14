@@ -430,43 +430,6 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
     }
   });
 
-  await t.test('10. Tầng 1: paymentController.getPayosQr trả về HTTP 200 kèm thông tin PayOS', async () => {
-    const origGetPayosQr = paymentService.getOrCreatePayosQr;
-    paymentService.getOrCreatePayosQr = async () => ({
-      orderCode: 123456,
-      amount: 49000,
-      accountNumber: '2512070399999',
-      accountName: 'NGUYEN PHU BAO',
-      checkoutUrl: 'https://pay.payos.vn/web/123456',
-      qrUrl: 'https://img.vietqr.io/image/970422-2512070399999-compact2.png',
-    });
-
-    const req = { query: { amount: '49000' } };
-    let statusCode = null;
-    let jsonBody = null;
-    const res = {
-      status(code) {
-        statusCode = code;
-        return this;
-      },
-      json(data) {
-        jsonBody = data;
-        return this;
-      },
-    };
-
-    try {
-      await paymentController.getPayosQr(req, res, (err) => {
-        if (err) throw err;
-      });
-      assert.strictEqual(statusCode, 200);
-      assert.strictEqual(jsonBody.success, true);
-      assert.strictEqual(jsonBody.data.accountNumber, '2512070399999');
-    } finally {
-      paymentService.getOrCreatePayosQr = origGetPayosQr;
-    }
-  });
-
   await t.test('11. Tầng 2: paymentRepository.findOrCreateOrderByCode tự động khởi tạo đơn đối soát nếu orderCode chưa tồn tại', async () => {
     const testOrderCode = 8899776655;
     const origFind = paymentRepository.findOrderByCode;

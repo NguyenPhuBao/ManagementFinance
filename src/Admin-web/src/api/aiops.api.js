@@ -48,7 +48,6 @@ const aiopsApi = {
   toggleVector: (vector, enabled) => callAIOps('post', '/admin/aiops/vectors/toggle', { vector, enabled }),
   calibrate: (data = {}) => callAIOps('post', '/admin/aiops/calibrate', data),
   getQuarantineList: () => callAIOps('get', '/admin/aiops/quarantine'),
-  unblockQuarantine: (hash) => callAIOps('delete', `/admin/aiops/quarantine/${hash}`),
   revealQuarantineIp: (hash, credentials) => axiosClient.post(`/admin/aiops/quarantine/${hash}/reveal-ip`, credentials),
   setScale: (concurrency) => callAIOps('post', '/admin/aiops/scale', { concurrency }),
   getIncidents: (params = {}) => {

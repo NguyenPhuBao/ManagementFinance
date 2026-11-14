@@ -17,7 +17,6 @@ const notificationApi = {
    * Admin phát thông báo tới tất cả người dùng
    * @param {Object} data - { title, message, level }
    */
-  broadcastNotification: (data) => axiosClient.post('/notifications/broadcast', data),
 
   /**
    * Gửi thông báo broadcast tới toàn bộ user (alias tường minh hơn)

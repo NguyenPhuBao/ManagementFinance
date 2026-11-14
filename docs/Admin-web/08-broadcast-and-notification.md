@@ -38,7 +38,7 @@ sequenceDiagram
     API->>Service: Xử lý phát sóng
     Service->>DB: INSERT INTO broadcast_notification (Lưu lịch sử phát thanh)
     Service->>DB: INSERT INTO notification (Lưu hộp thư người dùng ngoại tuyến)
-    Service->>Socket: io.emit('system_broadcast', payload)
+    Service->>Socket: io.emit('system.broadcast', payload)
     
     Socket-->>Client: Đẩy thông điệp realtime tới mọi thiết bị đang online
     Client->>Client: Hiển thị SnackBar / Banner / Pop-up tương ứng
@@ -46,7 +46,7 @@ sequenceDiagram
     Service->>Socket: emit('admin.notification', { title, level })
     Socket-->>Header: Đẩy vào Chuông thông báo Admin-web (+1 badge)
     
-    UI->>API: Tự động gọi GET /api/notifications/broadcast-history (limit=5)
+    UI->>API: Tự động gọi GET /api/notifications/broadcast/history (limit=5)
     UI->>UI: Cập nhật dòng thông báo mới nhất vào Bảng Lịch Sử Phát Sóng
 ```
 
@@ -98,7 +98,7 @@ Nếu người dùng đang tắt mạng hoặc không mở app tại thời đi�
    - Bộ đếm ký tự thời gian thực cho tiêu đề (`title.length/120`) và nội dung (`message.length/500`).
    - Khung **"Xem trước thông báo hiển thị trên máy người dùng" (Live Preview Box)** tự động đổi màu nền (Đỏ/Vàng/Xanh) phản ánh trung thực trải nghiệm thị giác của người dùng cuối.
 2. **Bảng Lịch Sử Phát Sóng Thông Báo (PostgreSQL Persistence):**
-   - Đọc trực tiếp từ cơ sở dữ liệu thông qua endpoint `/api/notifications/broadcast-history`.
+   - Đọc trực tiếp từ cơ sở dữ liệu thông qua endpoint `/api/notifications/broadcast/history`.
    - **Các cột hiển thị:**
      - `#`: Mã định danh thông báo.
      - `Mức độ`: Badge màu kèm icon trực quan (`INFO` xanh, `WARNING` vàng hổ phách, `CRITICAL` đỏ hồng).
@@ -131,13 +131,13 @@ Nếu người dùng đang tắt mạng hoặc không mở app tại thời đi�
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 |---|---|---|---|
 | `POST` | `/api/notifications/broadcast` | Phát thông báo toàn mạng tới Client-app và lưu CSDL | Admin |
-| `GET` | `/api/notifications/broadcast-history` | Lấy danh sách lịch sử phát sóng thông báo (phân trang 5/page) | Admin |
-| `GET` | `/api/notifications/admin-alerts` | Lấy danh sách thông báo cảnh báo an ninh cho Admin | Admin |
-| `PATCH` | `/api/notifications/admin-alerts/:id/read` | Đánh dấu một cảnh báo an ninh đã đọc | Admin |
+| `GET` | `/api/notifications/broadcast/history` | Lấy danh sách lịch sử phát sóng thông báo (phân trang 5/page) | Admin |
+| `GET` | `/api/notifications/admin` | Lấy danh sách thông báo cảnh báo an ninh cho Admin | Admin |
+| `PATCH` | `/api/notifications/admin/:id/read` | Đánh dấu một cảnh báo an ninh đã đọc | Admin |
 
 ### Socket.io Events
 - **Phát tán tới Client-app (`broadcast`):**
-  - `system_broadcast`: Gửi payload `{ title, message, level, timestamp }` tới toàn bộ thiết bị.
+  - `system.broadcast`: Gửi payload `{ title, message, level, timestamp }` tới toàn bộ thiết bị.
 - **Phát tán tới Admin-web (`admin_room`):**
   - `admin.notification`: Gửi cảnh báo hệ thống vào chuông Header của quản trị viên.
   - `admin.security_alert`: Nhận cảnh báo tấn công an ninh từ module AIOps Sentinel.

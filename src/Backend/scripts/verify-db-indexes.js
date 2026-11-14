@@ -154,7 +154,9 @@ async function verifyDatabase() {
       { name: 'trg_check_bank_account_encrypted', table: 'bank_account' },
       // Migration 49: bằng chứng đồng ý chính sách không được sửa
       { name: 'trg_protect_privacy_policy', table: 'privacy_policy' },
-      { name: 'trg_protect_policy_acceptance', table: 'policy_acceptance' }
+      { name: 'trg_protect_policy_acceptance', table: 'policy_acceptance' },
+      // Migration 51: sổ sự cố dữ liệu là hồ sơ pháp lý, không được xóa
+      { name: 'trg_protect_data_incident', table: 'data_incident' }
     ];
 
     for (const req of requiredTriggers) {

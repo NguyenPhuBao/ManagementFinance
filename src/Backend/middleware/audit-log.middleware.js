@@ -1,6 +1,7 @@
 const authService = require('../modules/auth/auth.service');
 const logger = require('../core/logger');
 const { getClientIp } = require('../utils/ip-protection.util');
+const { maskIp } = require('../utils/masking.util');
 
 /**
  * Middleware ghi nhận yêu cầu từ client vào bảng audit_log song song (non-blocking)
@@ -100,7 +101,7 @@ function auditLogMiddleware(req, res, next) {
               idaccount: null,
               user: identifier || 'Anonymous / Guest',
               username: identifier || 'Guest',
-              ip: clientIp,
+              ip: maskIp(clientIp),
               action: actionName,
               request: apiEndpoint,
               reason: reason || (res.statusCode === 429 ? 'Vượt quá giới hạn tần suất (Rate Limit)' : res.statusCode === 401 ? 'Chưa xác thực' : null),

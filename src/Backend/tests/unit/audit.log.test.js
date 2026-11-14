@@ -181,7 +181,7 @@ describe('AuditLog Middleware & Service Logic Tests', () => {
       assert.ok(emittedData, 'Phải phát Socket event audit_activity');
       assert.equal(emittedData.status, 'Rejected');
       assert.equal(emittedData.username, 'unknown_hacker');
-      assert.equal(emittedData.ip, '1.2.3.4');
+      assert.equal(emittedData.ip, '1.2.xx.xx', 'Admin-web chỉ nhận IP đã che');
       assert.ok(emittedData.timeReq, 'Phải có timeReq');
       done();
     }, 60);
@@ -216,5 +216,24 @@ describe('AuditLog Middleware & Service Logic Tests', () => {
     assert.equal(ban.length, 1, 'cấm vĩnh viễn phải vào nhật ký');
     const poll = await runAiops('GET', '/api/admin/aiops/status');
     assert.equal(poll.length, 0, 'GET polling AIOps không ghi');
+  });
+
+  it('9. recordAuditLog phát audit_activity với IP đã che (người đã đăng nhập)', async () => {
+    const socketModule = require('../../core/socket');
+    const authRepository = require('../../modules/auth/auth.repository');
+    const origEmit = socketModule.emitAuditActivity;
+    const origCreate = authRepository.createAuditLog;
+    let emitted = null;
+    socketModule.emitAuditActivity = (d) => { emitted = d; };
+    authRepository.createAuditLog = async (d) => ({ idlog: 1, ...d, time_req: new Date(), time_res: new Date() });
+    try {
+      await authService.recordAuditLog({ idaccount: 5, request: 'GET /api/sync/pull', action: 'Đồng bộ', req_status: 'Pass', time_req: new Date(), time_res: new Date(), ip: '113.161.45.12' });
+      assert.ok(emitted, 'phải phát audit_activity');
+      assert.equal(emitted.ip, '113.161.xx.xx');
+      assert.ok(!JSON.stringify(emitted).includes('113.161.45.12'));
+    } finally {
+      socketModule.emitAuditActivity = origEmit;
+      authRepository.createAuditLog = origCreate;
+    }
   });
 });

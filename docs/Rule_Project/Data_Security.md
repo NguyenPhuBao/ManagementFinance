@@ -171,6 +171,7 @@ Cập nhật 2026-11-13 theo `Khao_sat_phap_ly_2026-11.md` (nguồn thứ cấp,
 * **OWASP Top 10:**
   * Phòng chống Cryptographic Failures: Mật khẩu băm bằng Argon2id hoặc bcrypt (cost $\ge$ 12); OTP và Refresh Token băm 1 chiều bằng SHA-256; dữ liệu nhạy cảm mã hóa AES-256-GCM với khóa mã hóa quản lý độc lập.
   * Chống dò mã PIN quản trị: sai 5 lần trong 15 phút thì khóa xác thực 15 phút theo tài khoản admin (`verifySecurityAction`).
+  * PIN hệ thống dự phòng (quản trị viên chưa có `pin_hash` riêng) lấy từ `ADMIN_SECURITY_PIN`. Production thiếu biến thì không PIN dự phòng nào khớp (từ 2026-11-14, `systemPinMatches` trong `admin.service.js`); chỉ dev mới dùng mặc định `123456`.
 * **Tham chiếu quốc tế về IP:** IP là dữ liệu cá nhân (phán quyết Breyer C-582/14); xử lý vì an ninh mạng là lợi ích chính đáng nếu cần thiết, tương xứng (GDPR Recital 49).
 
 ## 8. Quy Định Chi Tiết Về Thời Hạn Lưu Trữ Dữ Liệu (Data Retention Policy)
@@ -260,7 +261,7 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
 * **Nguyên tắc phân quyền cách ly (User-scoped Isolation):**
   * Quản trị viên (Admin) chỉ quản lý các danh mục mẫu mặc định của hệ thống (`is_default = true`).
   * Danh mục người dùng (`is_default = false`) thuộc quyền sở hữu riêng tư tuyệt đối của tài khoản tạo lập (`create_by = idaccount`).
-  * Backend API (`/api/admin/categories`) và giao diện Admin-web (`/categories`) bị ép cứng lọc theo `is_default = true, delete_at = null`, gỡ bỏ hoàn toàn logic truy vấn danh mục cá nhân của người dùng.
+  * Backend API (`/api/admin/getcategory`, `addcategory`, `updatecategory/:id`, `deletecategory/:id`, `restorecategory/:id`) và giao diện Admin-web (`/categories`) bị ép cứng lọc theo `is_default = true, delete_at = null`, gỡ bỏ hoàn toàn logic truy vấn danh mục cá nhân của người dùng.
 * **Cơ chế Phòng vệ Chiều sâu (Defense-in-Depth):**
   * **Ẩn danh hóa bắt buộc (Data Masking):** Nếu bất kỳ danh mục người dùng nào vô tình lọt vào API hoặc giao diện Admin, toàn bộ trường thông tin cá nhân (`name`, `keyword`, `created_by`, `created_by_name`) bắt buộc bị thay thế 100% bằng `***` và cắm cờ `is_user_category: true`. Giao diện hiển thị nhãn cảnh báo `[Dữ liệu riêng tư - Đã ẩn danh]` và khóa toàn bộ nút Sửa / Xóa.
   * **Chặn đứng can thiệp (403 Forbidden):** Mọi hành vi sửa (`updateCategory`) hoặc xóa (`deleteCategory`) danh mục của người dùng từ phía Admin đều bị Backend từ chối ngay lập tức với mã lỗi `403 Forbidden` ("Vi phạm quyền riêng tư: Tuyệt đối cấm chỉnh sửa/xóa danh mục của người dùng.").
@@ -328,3 +329,10 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
 * Nội dung: tài khoản, hồ sơ (giải mã), ví, giao dịch, ngân sách, hóa đơn, mục tiêu, danh mục tự tạo, gia đình đang tham gia, đơn thanh toán, thiết bị (IP bản che), các lần đồng ý chính sách, nhật ký lượt gọi máy chủ 12 tháng. Không có: mật khẩu, PIN, token, OTP, IP đầy đủ, dữ liệu điều tra an ninh AIOps. Dữ liệu của thành viên khác trong nhóm gia đình không đưa vào.
 * Tệp hết hạn sau 24 giờ và bị xóa; 1 yêu cầu / 24 giờ; mỗi lượt yêu cầu và tải ghi nhật ký thao tác. Bảng `data_export_request` là bằng chứng đáp ứng trong thời hạn 10 ngày.
 * Phạm vi thu thập: máy chủ chỉ ghi các lượt ứng dụng gọi tới Backend (bảo đảm vận hành, khả năng chịu tải); không thu thập hoạt động cá nhân trong ứng dụng.
+
+### 10.12. Sổ Sự Cố Dữ Liệu Và Hạn Báo 72 Giờ (Migration 51, 2026-11-14)
+
+* Bảng `data_incident`; Admin-web: Nhật ký kiểm toán → "Sự cố dữ liệu". Hạn báo cơ quan chuyên trách = thời điểm phát hiện + 72 giờ, có đồng hồ đếm ngược.
+* Quy tắc ở Backend: báo sau 72 giờ bắt buộc `late_reason`; đóng bắt buộc `root_cause` và (đã báo cơ quan hoặc `report_not_required` + `no_report_reason`), xác thực PIN (`CLOSE_DATA_INCIDENT`); sự cố đã đóng không sửa (409).
+* Trigger `trg_protect_data_incident` chặn DELETE: sổ là hồ sơ pháp lý. Mọi thao tác ghi nhật ký kiểm toán; sự kiện `admin.data_incident_changed` cập nhật màn hình theo thời gian thực.
+* Quy trình: `Quy_trinh_su_co_du_lieu.md`.

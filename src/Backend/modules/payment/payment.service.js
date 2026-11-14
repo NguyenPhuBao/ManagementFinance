@@ -979,13 +979,6 @@ async function getPackageTypes() {
   return paymentRepository.getPackageTypes();
 }
 
-/**
- * Lấy hoặc sinh mã QR từ kênh thanh toán PayOS
- */
-async function getOrCreatePayosQr(options) {
-  return paymentRepository.getOrCreatePayosQr(options);
-}
-
 let _expiryInterval = null;
 
 /**
@@ -1041,7 +1034,6 @@ module.exports = {
   getPackageTypes,
   createSampleOrder,
   deleteSampleOrders,
-  getOrCreatePayosQr,
   initPaymentAutoExpiryJob,
   stopPaymentAutoExpiryJob,
   syncOrderWithPayOS,

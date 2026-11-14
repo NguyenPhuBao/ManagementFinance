@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { STORAGE_KEYS } from '../utils/constants';
 import authApi from '../api/auth.api';
 
-export const DEFAULT_SETTINGS = {
+const DEFAULT_SETTINGS = {
   theme: 'light', // 'light' | 'dark'
   tableDensity: 'comfortable', // 'comfortable' | 'compact'
   soundEnabled: true,

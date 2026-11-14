@@ -659,6 +659,41 @@ model data_export_request {
   @@map("data_export_request")
 }
 
+/// Sổ sự cố dữ liệu cá nhân (migration 51). Hạn báo cơ quan = detected_at + 72 giờ. Trigger chặn DELETE.
+model data_incident {
+  id                    Int       @id @default(autoincrement()) @map("id")
+  code                  String    @unique @db.VarChar(20) @map("code")
+  title                 String    @db.VarChar(200) @map("title")
+  description           String    @db.Text @map("description")
+  source                String    @default("OTHER") @db.VarChar(20) @map("source")
+  detected_at           DateTime  @db.Timestamp(6) @map("detected_at")
+  occurred_at           DateTime? @db.Timestamp(6) @map("occurred_at")
+  data_types            String?   @db.Text @map("data_types")
+  sensitive             Boolean   @default(false) @map("sensitive")
+  affected_users        Int?      @map("affected_users")
+  affected_records      Int?      @map("affected_records")
+  consequences          String?   @db.Text @map("consequences")
+  measures              String?   @db.Text @map("measures")
+  contact               String?   @db.Text @map("contact")
+  status                String    @default("OPEN") @db.VarChar(20) @map("status")
+  contained_at          DateTime? @db.Timestamp(6) @map("contained_at")
+  authority_reported_at DateTime? @db.Timestamp(6) @map("authority_reported_at")
+  authority_report_ref  String?   @db.Text @map("authority_report_ref")
+  late_reason           String?   @db.Text @map("late_reason")
+  report_not_required   Boolean   @default(false) @map("report_not_required")
+  no_report_reason      String?   @db.Text @map("no_report_reason")
+  users_notified_at     DateTime? @db.Timestamp(6) @map("users_notified_at")
+  root_cause            String?   @db.Text @map("root_cause")
+  closed_at             DateTime? @db.Timestamp(6) @map("closed_at")
+  created_by            Int?      @map("created_by")
+  updated_by            Int?      @map("updated_by")
+  created_at            DateTime  @default(now()) @db.Timestamp(6) @map("created_at")
+  updated_at            DateTime  @default(now()) @db.Timestamp(6) @map("updated_at")
+
+  @@index([status, detected_at(sort: Desc)], map: "idx_data_incident_status_detected")
+  @@map("data_incident")
+}
+
 model account_device_history {
   id             BigInt   @id @default(autoincrement()) @map("id")
   idaccount      Int      @map("idaccount")
