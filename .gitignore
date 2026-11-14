@@ -99,6 +99,10 @@ src/Backend/Test/
 
 # Cấu hình cục bộ của AI assistant — không thuộc mã nguồn ứng dụng.
 # Đã từng bị đẩy nhầm lên (commit 5e7018b) rồi phải gỡ ra (0cbb7cd).
-.claude/
-
+.claude/*
+CLAUDE.md
+docs/CLAUDE_REFERENCE.md
 NCKH/*
+# Tệp người dùng tải lên khi chạy kho lưu trữ chế độ local (minh chứng hoàn tiền, bản sao dữ liệu): không commit
+src/Backend/Assets/Storage/
+src/Backend/Assets/Refunds/

@@ -4,7 +4,7 @@
 >
 > *Ngày cập nhật:* 2026-09-10  
 > *Phạm vi áp dụng:* Toàn bộ dự án (`src/Backend`, `src/Admin-web`, `src/Client-app`).  
-> *Căn cứ pháp lý & tiêu chuẩn:* Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân, chuẩn bảo mật dữ liệu thẻ PCI-DSS, khuyến nghị bảo mật OWASP.
+> *Căn cứ pháp lý & tiêu chuẩn:* Luật Bảo vệ dữ liệu cá nhân 2025 (91/2025/QH15) và Nghị định 356/2025/NĐ-CP (thay Nghị định 13/2023/NĐ-CP), Luật An ninh mạng 2025 (116/2025/QH15) và Nghị định 333/2026/NĐ-CP, Nghị định 330/2026/NĐ-CP (xử phạt), chuẩn bảo mật dữ liệu thẻ PCI-DSS, khuyến nghị bảo mật OWASP.
 
 ---
 # Phân loại dữ liệu trong hệ thống tài chính
@@ -39,6 +39,7 @@ Dữ liệu cá nhân nhạy cảm là dữ liệu gắn liền với quyền ri
 - **Dữ liệu sinh trắc học** (vân tay, khuôn mặt, giọng nói, mống mắt...)
 - **Dữ liệu tài chính** — tài khoản ngân hàng, số dư, lịch sử giao dịch, **thông tin tín dụng** (đây là nhóm áp dụng trực tiếp cho ngành tài chính – ngân hàng, quy định riêng tại Điều 27)
 - **Vị trí địa lý** của cá nhân
+- **Lịch sử hoạt động trên không gian mạng**: theo dõi hành vi, sử dụng dịch vụ trực tuyến, lịch sử truy cập (thiết bị, IP) — Nghị định 356/2025/NĐ-CP chuyển nhóm này từ dữ liệu cơ bản sang nhạy cảm
 - Dữ liệu về **tội phạm, vi phạm pháp luật**
 - Dữ liệu cá nhân **là bí mật nhà nước** — phải mã hóa/giải mã theo pháp luật về bảo vệ bí mật nhà nước và cơ yếu
 
@@ -141,36 +142,36 @@ Nhóm này không chỉ nhạy cảm với khách hàng mà còn **quyết đị
 
 ## 7. Khung Pháp Lý Bắt Buộc Áp Dụng Cho Dự Án
 
-Hệ thống **ManagementFinance** bắt buộc tuân thủ 100% các văn bản quy phạm pháp luật của Nhà nước Việt Nam và các chuẩn mực an toàn thông tin quốc tế sau đây:
+Cập nhật 2026-11-13 theo `Khao_sat_phap_ly_2026-11.md` (nguồn thứ cấp, mức xác minh ghi từng dòng; sẽ đối chiếu văn bản gốc khi có bản PDF). Nghị định 13/2023/NĐ-CP, Luật An ninh mạng 2018, Luật An toàn thông tin mạng 2015 và Nghị định 53/2022/NĐ-CP **đã bị thay**, không dùng làm căn cứ mới.
 
-### 7.1. Nghị định số 13/2023/NĐ-CP — Bảo vệ dữ liệu cá nhân (PDPD)
-* **Quyền của chủ thể dữ liệu (Điều 9):**
-  * **Quyền được biết & đồng ý:** Người dùng phải được thông báo rõ ràng về loại dữ liệu thu thập, mục đích xử lý trước khi bấm đăng ký.
-  * **Quyền rút lại sự đồng ý & Quyền yêu cầu xóa dữ liệu ("Right to be forgotten"):** Người dùng có quyền yêu cầu xóa toàn bộ thông tin cá nhân khỏi hệ thống.
-  * **Quyền hạn chế xử lý dữ liệu:** Người dùng có quyền tạm khóa dữ liệu (trạng thái `PendingDelete`).
-* **Nguyên tắc xử lý dữ liệu cá nhân nhạy cảm (Điều 13, Điều 26, Điều 27):**
-  * Thông tin tài khoản ngân hàng, biến động số dư và thói quen tài chính được định danh là **dữ liệu cá nhân nhạy cảm**.
-  * Bắt buộc phải áp dụng các biện pháp kỹ thuật: **Mã hóa khi lưu trữ (at-rest)**, **Mã hóa khi truyền tải (in-transit)**, **Kiểm soát truy cập nghiêm ngặt (Access Control)** và **Ghi nhật ký xử lý (Audit Logging)**.
-* **Chế tài xử phạt:** Vi phạm quy định về bảo vệ dữ liệu cá nhân có thể bị xử phạt hành chính đến 5% tổng doanh thu hoặc xử lý hình sự theo Điều 288 Bộ luật Hình sự.
+### 7.1. Luật Bảo vệ dữ liệu cá nhân 2025 (Luật 91/2025/QH15) & Nghị định 356/2025/NĐ-CP (hiệu lực 01/01/2026)
+* **Phân loại:** lịch sử hoạt động trên không gian mạng (lượt truy cập, thiết bị, IP), thông tin tài khoản và lịch sử giao dịch là **dữ liệu nhạy cảm**. Với FlowMoney: `account_device_history`, `refreshtoken`, `audit_log` (hành vi người dùng), `transaction`, `wallet`, `budget`, `bill`, `goal`, `bank_account`, `payment_order` xếp nhóm nhạy cảm (mục 2).
+* **Thông báo & đồng ý (đã làm 2026-11-13, mục 10.10):** người dùng đọc chính sách bảo mật (loại dữ liệu, mục đích, thời hạn lưu, việc dữ liệu nhạy cảm đang được xử lý, nơi lưu, quyền) và **đồng ý một lần cho cả chính sách** trước khi dùng app (Chủ dự án chốt: không tách theo dịch vụ, không có rút đồng ý); phiên bản mới thì đồng ý lại. Hệ thống **lưu bằng chứng đồng ý** (ai, phiên bản, thời điểm, chỉ mục mù IP, thiết bị) để chứng minh khi có tranh chấp.
+* **Thời hạn xóa tài khoản (Chủ dự án chốt 2026-11-13):** giữ 30 ngày chờ xóa (`PendingDelete`, người dùng hủy được), nêu rõ trong chính sách bảo mật mà người dùng đồng ý.
+* **Quyền của chủ thể và thời hạn trả lời:** rút đồng ý / hạn chế / phản đối 2 ngày làm việc; xem, sửa, nhận bản sao dữ liệu 10 ngày; ngừng xử lý 15 ngày; xóa 20 ngày (30 ngày nếu có bên xử lý); được gia hạn một lần có giải thích.
+* **Biện pháp bảo vệ dữ liệu nhạy cảm:** giới hạn quyền truy cập, quy trình xử lý, mã hóa khi lưu và khi truyền, ghi nhật ký truy cập (mục 10).
+* **Sự cố:** thông báo cơ quan chuyên trách **chậm nhất 72 giờ** kể từ khi phát hiện vi phạm có thể gây tổn hại (Điều 23). Quy trình: `Quy_trinh_su_co_du_lieu.md`.
+* **Đánh giá tác động:** lập hồ sơ đánh giá tác động xử lý dữ liệu cá nhân, gửi cơ quan chuyên trách trong **60 ngày** kể từ ngày bắt đầu xử lý, cập nhật khi thay đổi (Điều 21, 22). Bản nháp: `Ho_so_danh_gia_tac_dong.md`.
+* **Chế tài (Nghị định 330/2026/NĐ-CP, hiệu lực 19/8/2026):** tổ chức tối đa 3 tỷ đồng (cá nhân một nửa); mua bán dữ liệu 2–10 lần khoản thu; chuyển dữ liệu xuyên biên giới tới 5% doanh thu năm trước; không thông báo cơ quan chuyên trách 20–40 triệu đồng.
 
-### 7.2. Nghị định số 53/2022/NĐ-CP & Luật An ninh mạng 2018
-* **Lưu trữ dữ liệu tại Việt Nam (Điều 26):** Dữ liệu về thông tin cá nhân người sử dụng dịch vụ tại Việt Nam, dữ liệu do người sử dụng dịch vụ tại Việt Nam tạo ra (tài khoản, thời gian sử dụng, thông tin thẻ tín dụng, địa chỉ IP, nhật ký truy cập) phải được lưu trữ trên máy chủ đặt tại lãnh thổ Việt Nam.
-* **Thời hạn lưu trữ nhật ký hệ thống:** Nhật ký hoạt động, nhật ký hệ thống, nhật ký kiểm toán (`Audit_log`) bắt buộc phải được lưu trữ **tối thiểu 12 tháng** để phục vụ công tác thanh tra, điều tra an ninh thông tin khi có yêu cầu từ cơ quan có thẩm quyền.
+### 7.2. Luật An ninh mạng 2025 (Luật 116/2025/QH15, hiệu lực 01/7/2026) & Nghị định 333/2026/NĐ-CP (hiệu lực 19/8/2026)
+* **Nhật ký hệ thống:** đủ thông tin xác định phiên kết nối, lưu **tối thiểu 12 tháng**. Áp cho `audit_log` (12 tháng) và IP đầy đủ ở lịch sử thiết bị (`IP_RETENTION_DAYS` = 365, mục 10.8).
+* **Lưu trữ dữ liệu tại Việt Nam (Điều 19):** theo bài phân tích, nghĩa vụ lưu tối thiểu 24 tháng chỉ phát sinh có điều kiện với doanh nghiệp nước ngoài khi có quyết định của Bộ trưởng Bộ Công an. Nghĩa vụ với doanh nghiệp trong nước **chưa xác minh**. Hiện CSDL đặt tại Supabase (AWS Tokyo): ghi là hạn chế, chờ đối chiếu văn bản gốc.
+* **Xác thực người dùng (Điều 16):** đăng ký tài khoản số xác thực bằng số điện thoại di động Việt Nam hoặc số định danh cá nhân. Đối tượng áp dụng **chưa xác minh**; FlowMoney hiện xác thực bằng email OTP.
 
-### 7.3. Luật Kế toán 2015 (Luật số 88/2015/QH13) & Nghị định 174/2016/NĐ-CP
-* **Thời hạn lưu trữ chứng từ kế toán, dữ liệu tài chính:**
-  * **Tối thiểu 5 năm:** Đối với tài liệu kế toán dùng cho quản lý, điều hành nội bộ của đơn vị (chứng từ giao dịch thu/chi thông thường, hóa đơn phát sinh thường nhật).
-  * **Tối thiểu 10 năm:** Đối với chứng từ kế toán sử dụng trực tiếp để ghi sổ kế toán và lập báo cáo tài chính, báo cáo quyết toán.
-* **Áp dụng cho ManagementFinance:** Bảng `transaction`, `bank_account`, `wallet`, `bill`, `budget` chứa các bản ghi lịch sử tài chính của người dùng phải được bảo toàn tính toàn vẹn và có chính sách lưu trữ tối thiểu 5 năm trước khi áp dụng quy trình ẩn danh hóa hoàn toàn hoặc thanh lọc.
+### 7.3. Lưu giữ dữ liệu tài chính người dùng (chính sách hệ thống)
+* Chủ dự án quyết định (2026-11-13) giữ `transaction`, `bank_account`, `wallet`, `bill`, `budget` tối thiểu **5 năm** trước khi ẩn danh hóa hoặc thanh lọc, kể cả sau khi tài khoản bị xóa.
+* Lưu ý căn cứ: Luật Kế toán 2015 (Luật 88/2015/QH13) điều chỉnh sổ sách của đơn vị kế toán; sổ thu chi cá nhân người dùng tự ghi không trực tiếp thuộc phạm vi này. Vì vậy đây là chính sách lưu giữ của hệ thống, phải được **nêu rõ trong thông báo xử lý dữ liệu** (mục đích, thời hạn) để người dùng biết khi đồng ý và khi yêu cầu xóa. Dữ liệu thanh toán gói dịch vụ (`payment_order`, `payment_transaction`) lưu theo nghĩa vụ chứng từ của bên bán.
 
 ### 7.4. Tiêu Chuẩn Quốc Tế PCI-DSS v4.0 & Khuyến Nghị OWASP Top 10
 * **PCI-DSS (Payment Card Industry Data Security Standard):**
   * Yêu cầu 3: Bảo vệ dữ liệu chủ thẻ lưu trữ. Cấm tuyệt đối lưu trữ mã bảo mật CVV/CVC, mã PIN sau khi ủy quyền giao dịch.
   * Số tài khoản ngân hàng / số thẻ (PAN) phải được che bớt (masking) khi hiển thị (chỉ hiển thị 4 số cuối: `**** **** **** 1234`) và mã hóa AES-256 khi lưu trong CSDL.
+  * Yêu cầu 10: nhật ký ghi nguồn gốc sự kiện; IP lấy từ nguồn tin cậy (`req.ip` sau `trust proxy`), không lấy header client tự gửi.
 * **OWASP Top 10:**
   * Phòng chống Cryptographic Failures: Mật khẩu băm bằng Argon2id hoặc bcrypt (cost $\ge$ 12); OTP và Refresh Token băm 1 chiều bằng SHA-256; dữ liệu nhạy cảm mã hóa AES-256-GCM với khóa mã hóa quản lý độc lập.
-
----
+  * Chống dò mã PIN quản trị: sai 5 lần trong 15 phút thì khóa xác thực 15 phút theo tài khoản admin (`verifySecurityAction`).
+* **Tham chiếu quốc tế về IP:** IP là dữ liệu cá nhân (phán quyết Breyer C-582/14); xử lý vì an ninh mạng là lợi ích chính đáng nếu cần thiết, tương xứng (GDPR Recital 49).
 
 ## 8. Quy Định Chi Tiết Về Thời Hạn Lưu Trữ Dữ Liệu (Data Retention Policy)
 
@@ -178,10 +179,11 @@ Bảng quy định thời hạn lưu trữ chi tiết cho từng nhóm dữ li�
 
 | Nhóm dữ liệu | Bảng CSDL liên quan | Thời hạn lưu trữ tối thiểu | Thời hạn lưu trữ tối đa | Căn cứ pháp lý & Tiêu chuẩn | Xử lý khi hết hạn |
 |---|---|---|---|---|---|
-| **Xác thực tạm thời (OTP)** | `otp_code` | 10 phút (hiệu lực mã) | **24 giờ** kể từ khi tạo | OWASP Session & Storage Limitation (NĐ 13/2023 Điều 13) | **Purge tự động** (xóa vật lý khỏi CSDL) hàng ngày |
-| **Phiên đăng nhập & Token** | `refreshtoken` | Theo thời hạn hiệu lực Token (7 - 30 ngày) | **30 ngày** sau khi hết hạn hoặc bị thu hồi (`Status = TRUE`) | OWASP Session Management, NĐ 53/2022, Luật BV DLCN 2025 | **Zero Raw IP**: Lưu IP đã che mờ (`a.b.xx.xx`). **Purge tự động** bản ghi token hết hạn > 30 ngày |
-| **Nhật ký kiểm toán (Audit)** | `auditlog` | **12 tháng** | **24 - 36 tháng** | Nghị định 53/2022/NĐ-CP (Điều 26) | Sau 12 tháng: Nén xuất kho lạnh (Cold Storage/Archive) hoặc xóa dữ liệu hết hạn điều tra |
-| **Định danh & Tài khoản** | `account`, `User` | Trong suốt thời gian tài khoản hoạt động (`Active`) | Khi người dùng yêu cầu xóa: **30 ngày ân hạn (`PendingDelete`)** $\rightarrow$ Chuyển `Deleted` | Nghị định 13/2023/NĐ-CP (Điều 9 - Quyền xóa dữ liệu) | Sau 30 ngày: Ẩn danh hóa thông tin cá nhân (Email, Phone, Address, Họ tên) hoặc xóa mềm triệt để |
+| **Xác thực tạm thời (OTP)** | `otp_code` | 10 phút (hiệu lực mã) | **24 giờ** kể từ khi tạo | OWASP Session & Storage Limitation (Luật 91/2025: lưu theo mục đích) | **Purge tự động** (xóa vật lý khỏi CSDL) hàng ngày |
+| **Phiên đăng nhập & Token** | `refreshtoken` | Theo thời hạn hiệu lực Token (7 - 30 ngày) | **30 ngày** sau khi hết hạn hoặc bị thu hồi (`Status = TRUE`) | OWASP Session Management, Luật BV DLCN 2025 | Lưu IP đã che mờ (IP đầy đủ chỉ ở lịch sử thiết bị, mục 10.8) (`a.b.xx.xx`). **Purge tự động** bản ghi token hết hạn > 30 ngày |
+| **Nhật ký kiểm toán (Audit)** | `auditlog` | **12 tháng** | **24 - 36 tháng** | Luật An ninh mạng 2025, Nghị định 333/2026/NĐ-CP (nhật ký ≥ 12 tháng) | Sau 12 tháng: Nén xuất kho lạnh (Cold Storage/Archive) hoặc xóa dữ liệu hết hạn điều tra |
+| **Lịch sử thiết bị & IP (nhạy cảm)** | `account_device_history`, `aiops_ip_quarantine.raw_ip` | IP đầy đủ (bản mã + chỉ mục mù): **12 tháng** | **365 ngày** (`IP_RETENTION_DAYS`) kể từ hoạt động cuối; bản che giữ theo vòng đời tài khoản | Luật 91/2025, Nghị định 356/2025, Nghị định 333/2026 | **Purge tự động** 0h00 (`runDailyIpRetentionPurgeTask`): xóa `ip_encrypted`, `ip_hash`, `raw_ip` |
+| **Định danh & Tài khoản** | `account`, `User` | Trong suốt thời gian tài khoản hoạt động (`Active`) | Khi người dùng yêu cầu xóa: **30 ngày ân hạn (`PendingDelete`)** $\rightarrow$ Chuyển `Deleted` | Luật 91/2025 (quyền xóa); Nghị định 356/2025 Điều 5: trả lời yêu cầu xóa trong 20 ngày; Chủ dự án giữ 30 ngày ân hạn (2026-11-13), ghi trong chính sách người dùng đồng ý | Sau 30 ngày: Ẩn danh hóa thông tin cá nhân (Email, Phone, Address, Họ tên); xóa IP đầy đủ (`ip_encrypted`, `ip_hash`) trong `account_device_history`, giữ dòng nhật ký với IP đã che; giữ nguyên `policy_acceptance` làm bằng chứng đồng ý (`processFullSoftDelete`, 2026-11-13) |
 | **Giao dịch tài chính cốt lõi** | `transaction` | **5 năm** kể từ ngày phát sinh giao dịch | Vô thời hạn (hoặc theo yêu cầu người dùng) | Luật Kế toán 2015 (Điều 41) & Nghị định 174/2016/NĐ-CP | Sau 5 năm: Được phép nén lưu trữ ngoại tuyến (Cold Archive) hoặc ẩn danh hóa nếu tài khoản đã xóa |
 | **Tài sản & Số dư** | `bank_account`, `wallet` | Trong suốt vòng đời tài khoản | Tối thiểu **5 năm** sau khi ví/liên kết bị xóa mềm | Luật Kế toán 2015 | Giữ bản ghi tham chiếu lịch sử giao dịch (không xóa vật lý làm hỏng toàn vẹn sổ cái) |
 | **Kế hoạch & Định mức** | `budget`, `bill`, `goal` | Đến khi kết thúc chu kỳ ngân sách / hóa đơn / mục tiêu | Tối thiểu **3 - 5 năm** phục vụ báo cáo phân tích | Best Practice Quản lý Tài chính | Cho phép xóa mềm hoặc lưu trữ lịch sử báo cáo tổng hợp |
@@ -191,7 +193,7 @@ Bảng quy định thời hạn lưu trữ chi tiết cho từng nhóm dữ li�
 
 ## 9. Quy Trình Kỹ Thuật Thanh Lọc & Hủy Dữ Liệu (Data Sanitization & Deletion Workflow)
 
-Nhằm đảm bảo tính toàn vẹn tham chiếu (Referential Integrity) của cơ sở dữ liệu mà vẫn tuyệt đối tuân thủ quyền xóa dữ liệu của người dùng theo Nghị định 13/2023/NĐ-CP:
+Nhằm đảm bảo tính toàn vẹn tham chiếu (Referential Integrity) của cơ sở dữ liệu mà vẫn tuyệt đối tuân thủ quyền xóa dữ liệu của người dùng theo Luật Bảo vệ dữ liệu cá nhân 2025 và Nghị định 356/2025/NĐ-CP:
 
 ```mermaid
 flowchart TD
@@ -254,7 +256,7 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
 * Winston Logger tích hợp format tự động phát hiện và che giấu các trường nhạy cảm (`balance`, `password`, `token`, `otp`, `code_hash`, `cvv`, `refreshtoken`).
 
 ### 10.7. Bảo Vệ Tuyệt Đối Quyền Riêng Tư Danh Mục Chi Tiêu Của Người Dùng (User Category Privacy & Isolation)
-* **Cơ sở pháp lý:** Điều 9, Điều 13, Điều 26 Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân 2025 (Luật số 91/2025/QH15 - Điều 27). Danh mục chi tiêu tùy chỉnh của cá nhân chứa đựng trực tiếp thói quen sinh hoạt, đời sống riêng tư, mức chi trả và lối sống của người dùng, thuộc nhóm dữ liệu cá nhân nhạy cảm cần được bảo vệ đặc biệt.
+* **Cơ sở pháp lý:** Luật Bảo vệ dữ liệu cá nhân 2025 và Nghị định 356/2025/NĐ-CP (thay Nghị định 13/2023/NĐ-CP) (Luật số 91/2025/QH15 - Điều 27). Danh mục chi tiêu tùy chỉnh của cá nhân chứa đựng trực tiếp thói quen sinh hoạt, đời sống riêng tư, mức chi trả và lối sống của người dùng, thuộc nhóm dữ liệu cá nhân nhạy cảm cần được bảo vệ đặc biệt.
 * **Nguyên tắc phân quyền cách ly (User-scoped Isolation):**
   * Quản trị viên (Admin) chỉ quản lý các danh mục mẫu mặc định của hệ thống (`is_default = true`).
   * Danh mục người dùng (`is_default = false`) thuộc quyền sở hữu riêng tư tuyệt đối của tài khoản tạo lập (`create_by = idaccount`).
@@ -266,22 +268,23 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
   * Khi tài khoản người dùng ở trạng thái `PendingDelete` (thời hạn ân hạn 30 ngày), danh mục cá nhân vẫn được bảo lưu cục bộ để người dùng có thể khôi phục nếu hủy yêu cầu.
   * Khi hết 30 ngày và chuyển sang trạng thái `Deleted` (quy trình thanh lọc triệt để): Các danh mục cá nhân liên kết với tài khoản sẽ được xóa mềm (`Delete_at = NOW()`) hoặc ẩn danh hóa hoàn toàn, đảm bảo cắt đứt mọi liên kết định danh cá nhân mà vẫn bảo toàn tính toàn vẹn tham chiếu của các giao dịch lịch sử theo Luật Kế toán.
 
-### 10.8. Triệt Tiêu Địa Chỉ IP Thô & Bảo Vệ Quyền Riêng Tư Theo Thiết Kế (Zero Raw IP & Privacy by Design in RefreshToken)
-* **Cơ sở pháp lý & Rủi ro tái định danh:**
-  * Theo Luật Bảo vệ dữ liệu cá nhân 2025 (Luật số 91/2025/QH15) và Nghị định 13/2023/NĐ-CP (Điều 3, Điều 17), địa chỉ IP khi được lưu kèm với mã định danh tài khoản (`Idaccount`) có thể trở thành **dữ liệu cá nhân** có khả năng truy ngược chính xác đến cá nhân và vị trí địa lý của thiết bị nếu dữ liệu bị rò rỉ hoặc bị liên kết chéo với nhà mạng (ISP).
-  * Đồng thời, Luật An ninh mạng 2018 (Điều 26) và Nghị định 53/2022/NĐ-CP yêu cầu hệ thống phải lưu vết thông tin phiên đăng nhập để kịp thời phát hiện các hành vi xâm nhập, chiếm đoạt tài khoản trái phép.
-* **Giải Pháp Kiến Trúc "Zero Raw IP" (Phương Án A Đã Áp Dụng):**
-  * **Che mờ tại nguồn (Masking at Application Ingress):** Tuyệt đối không lưu địa chỉ IP thô (`raw IP`) của người dùng vào bất kỳ bảng CSDL nào. Tại hàm `getDeviceInfo(req)` trong `src/Backend/modules/auth/auth.service.js`, IP từ client (`req.ip` hoặc header `x-forwarded-for`) ngay lập tức được xử lý qua hàm `maskIp(rawIp)` trong `src/Backend/utils/masking.util.js`.
-  * **Quy chuẩn Masking:**
-    * IPv4: Che mờ 2 byte cuối của dải mạng subnet (`113.161.45.67` $\rightarrow$ `113.161.xx.xx`).
-    * IPv6: Giữ nguyên 2 nhóm đầu và che mờ toàn bộ các nhóm sau (`2001:0db8:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx`).
-  * **Làm sạch CSDL Sản Xuất:**
-    * Đã thực thi Migration CSDL `17_mask_refreshtoken_ip_address.sql` đồng bộ trực tiếp lên Cloud Supabase PostgreSQL (AWS Tokyo), sử dụng hàm `REGEXP_REPLACE` chuẩn hóa 100% các bản ghi IP lịch sử trong bảng `refreshtoken` thành `a.b.xx.xx`.
-  * **Thực trạng toàn hệ thống CSDL ManagementFinance:**
-    * Bảng `refreshtoken`: Chỉ lưu IP đã che mờ (`a.b.xx.xx`).
-    * Bảng `aiops_incident`: Chỉ lưu IP đã che mờ (`a.b.xx.xx`) kèm chuỗi băm 1 chiều SHA-256 (`actor_hash`).
-    * Bảng `audit_log`: Không lưu trường địa chỉ IP.
-    * $\rightarrow$ **100% CSDL không còn bất kỳ trường dữ liệu nào lưu địa chỉ IP thô của người dùng**, triệt tiêu triệt để rủi ro vi phạm pháp luật và bảo đảm quyền riêng tư tuyệt đối (Privacy by Design).
+### 10.8. Bảo Vệ Địa Chỉ IP: Che Để Hiển Thị, Mã Hóa Để Điều Tra (Phương án B, 2026-11-13)
+* **Cơ sở pháp lý:**
+  * IP gắn với tài khoản là dữ liệu cá nhân; lịch sử truy cập, thiết bị, IP thuộc nhóm dữ liệu phản ánh hoạt động trên không gian mạng, được Nghị định 356/2025/NĐ-CP xếp là **dữ liệu nhạy cảm** (Luật Bảo vệ dữ liệu cá nhân 2025 – Luật 91/2025/QH15). Thu thập được phép khi có mục đích rõ ràng (bảo mật, chống chiếm đoạt tài khoản, điều tra sự cố), có thông báo cho người dùng, có thời hạn lưu và biện pháp bảo vệ.
+  * Luật An ninh mạng 2025 (Luật 116/2025/QH15, hiệu lực 01/7/2026, thay Luật An ninh mạng 2018 và Luật An toàn thông tin mạng 2015) và Nghị định 333/2026/NĐ-CP yêu cầu nhật ký đủ thông tin xác định phiên kết nối, lưu tối thiểu 12 tháng. Khảo sát và mức xác minh: `Khao_sat_phap_ly_2026-11.md`.
+  * Vì vậy hệ thống không xóa bỏ IP đầy đủ (phương án "Zero Raw IP" cũ không đáp ứng được yêu cầu điều tra) mà lưu ở dạng không đọc được nếu không có khóa và quyền.
+* **Cách lưu (migration `48_protect_ip_addresses.sql`):**
+  * IP lấy từ `req.ip` (Express `trust proxy = 1`), không lấy giá trị đầu của header `x-forwarded-for` vì client tự gửi được.
+  * Bảng `account_device_history` lưu ba dạng: `ip_address` bản che (`113.161.xx.xx`, chỉ để hiển thị); `ip_encrypted` IP đầy đủ mã hóa AES-256-GCM bằng `DATA_ENCRYPTION_KEY`; `ip_hash` HMAC-SHA256 bằng `BLIND_INDEX_SECRET` để so khớp và tra cứu mà không giải mã. Đổi IP đầy đủ (kể cả cùng dải `/16`) ghi dòng lịch sử mới.
+  * Bảng `aiops_ip_quarantine.raw_ip`: lưu bản mã AES-256-GCM (`enc:...`), giải mã khi nạp vào bộ lọc chặn. Việc chặn so theo `ip_hash`.
+  * Từ G4.1 (2026-11-13): toàn bộ AIOps (bộ thu thập, lớp chặn, sự cố) băm IP bằng một hàm chung `ipLookupHash` = HMAC-SHA256 khóa `BLIND_INDEX_SECRET`, trùng chỉ mục mù của lịch sử thiết bị (tra chéo được). Lượt chặn cũ (băm kiểu cũ) được tính lại từ `raw_ip` khi nạp danh sách chặn. Sửa kèm lỗi chặn từ sự cố không có tác dụng (bộ thu thập từng dùng muối ngẫu nhiên riêng).
+  * Phản hồi `/api/admin/aiops/*` và các sự kiện `admin.security_alert`, `admin.anomaly_detected`, `admin.metrics_stream` bỏ mọi khóa `rawIp` / `raw_ip`; Admin-web chỉ nhận bản che. Xem IP đầy đủ của nguồn bị cô lập: `POST /api/admin/aiops/quarantine/:hash/reveal-ip`, bắt buộc PIN (`REVEAL_IP`), ghi nhật ký không chứa IP. Nhật ký thao tác trước đây bỏ qua mọi đường `/admin/aiops`; từ G4.1 chỉ bỏ các lệnh `GET` (hỏi trạng thái định kỳ), còn chặn / cấm / gỡ chặn / xem IP của admin đều được ghi.
+  * Bảng `refreshtoken`, `aiops_incident`: chỉ lưu bản che như trước. `audit_log` không có cột IP.
+* **Xem IP đầy đủ:** chỉ admin, tại hộp chi tiết người dùng (Admin-web) → mục "Thiết bị đăng nhập" → "Xem IP đầy đủ". API `POST /api/admin/getuser/:id/devices/:deviceId/reveal-ip` nhận PIN (hoặc mật khẩu) trong cùng request và tự kiểm bằng `verifySecurityAction`; mỗi lượt (cả nhập sai) ghi vào `audit_log` tên hành động "Xem IP đầy đủ (người dùng #…, thiết bị #…)", không ghi IP. Phản hồi đặt `Cache-Control: no-store`; giao diện chỉ hiện IP trong phiên xem, không lưu lại.
+* **Thời hạn lưu:** job hằng ngày `runDailyIpRetentionPurgeTask` xóa `ip_encrypted`, `ip_hash` và `raw_ip` có hoạt động cuối quá `IP_RETENTION_DAYS` (mặc định **365 ngày**, Chủ dự án chốt 2026-11-13: đủ mức tối thiểu 12 tháng của nhật ký theo Nghị định 333/2026, giữ ít nhất có thể). Bản che và dòng lịch sử được giữ.
+* **Khóa:** mất `DATA_ENCRYPTION_KEY` thì không giải được IP đã lưu; đổi `BLIND_INDEX_SECRET` thì `ip_hash` cũ không còn khớp (chỉ làm phát sinh thêm dòng lịch sử, không hỏng dữ liệu).
+* **Nguồn IP:** toàn Backend lấy IP qua `getClientIp(req)` (`req.ip`); test rào chắn `ip.protection.2tier.test.js` đỏ nếu có mã đọc lại header `x-forwarded-for` (sửa 2026-11-13: `audit-log.middleware`, `auth.controller`, `auth.service` — kể cả IP admin được AIOps bảo vệ khi đăng nhập —, `aiops.controller`).
+* **Đã đóng (G4.1, 2026-11-13):** muối viết cứng của `hashIp` được thay bằng khóa bí mật `BLIND_INDEX_SECRET`.
 
 ### 10.9. Chuẩn Hóa Dung Lượng Lưu Trữ Các Cột Hash & IP (Overflow Guard - 256/512 Ký Tự)
 * **Bối cảnh & Nguy cơ tràn dữ liệu (Length Overflow):**
@@ -301,3 +304,27 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
 
 
 
+
+
+### 10.9b. Lưu Trữ Tệp Người Dùng Tải Lên (Supabase Storage, 2026-11-13)
+
+* Minh chứng hoàn tiền (và bản sao dữ liệu cá nhân, mục 10.11 khi hoàn thành) lưu ở Supabase Storage, bucket **riêng tư** `refund-proofs`, `data-exports`; không ghi ổ đĩa máy chủ ứng dụng.
+* Không có đường dẫn công khai: Backend ký đường dẫn tạm (minh chứng: 10 phút cho admin). Khóa `SUPABASE_SERVICE_ROLE_KEY` chỉ ở Backend.
+* Tệp tải lên được kiểm loại theo nội dung (JPG / PNG / WEBP / PDF), tối đa 5 MB.
+* Dữ liệu nằm cùng nhà cung cấp và khu vực với CSDL (Supabase, châu Á), nên không mở thêm bên xử lý mới so với chính sách v1.
+
+### 10.10. Chính Sách Bảo Mật Theo Phiên Bản & Bằng Chứng Đồng Ý (Migration 49, 2026-11-13)
+* **Căn cứ:** Luật Bảo vệ dữ liệu cá nhân 2025; Nghị định 356/2025/NĐ-CP Điều 6 (bên kiểm soát lưu bằng chứng đồng ý, chứng minh khi tranh chấp).
+* **CSDL:** `privacy_policy` (mỗi phiên bản một dòng: `version`, `title`, `content`, `published_at`, `published_by`) và `policy_acceptance` (`idaccount`, `policy_version`, `accepted_at`, `ip_hash` HMAC, `device_name`, `user_agent`; duy nhất theo `idaccount` + `policy_version`). Trigger `trg_protect_privacy_policy`, `trg_protect_policy_acceptance` chặn `UPDATE`: nội dung đã đăng và bằng chứng đã ghi không sửa được. Không lưu IP.
+* **Admin:** Admin-web → Bảo trì & Thông báo → Chính sách: xem phiên bản hiện hành, tỉ lệ người dùng đã đồng ý, lịch sử phiên bản; đăng phiên bản mới phải nhập PIN trong cùng request (`POST /api/admin/policies`), ghi nhật ký "Đăng chính sách bảo mật vN", phát `system.policy_updated` tới mọi client. Hộp chi tiết người dùng hiện "Đã đồng ý vN" / "Chưa đồng ý vN".
+* **Người dùng:** `GET /api/policy/current` (chính sách hiện hành, phiên bản đã đồng ý, `mustAccept`), `POST /api/policy/accept` (409 `POLICY_VERSION_OUTDATED` khi đã có phiên bản mới). Backend **chưa chặn** người dùng chưa đồng ý; Client-app làm màn đồng ý theo `docs/superpowers/client-app/CAN-LAM/CHINH_SACH_BAO_MAT.md`.
+* **Văn bản:** nguồn phiên bản 1 ở `Chinh_sach_bao_mat_v1.md` (không ghi tên nhà cung cấp AI; email hỗ trợ tạm thời phubao12as@gmail.com). Đổi nội dung thì tạo tệp phiên bản mới rồi đăng.
+* **Lưu giữ:** bằng chứng giữ theo bản ghi tài khoản (tài khoản chỉ xóa mềm nên bằng chứng còn nguyên để đối chứng).
+
+
+### 10.11. Quyền Nhận Bản Sao Dữ Liệu Cá Nhân (Migration 50, 2026-11-14)
+
+* Người dùng yêu cầu trong app (`POST /api/account/data-export`); Backend tạo tệp nền, lưu Supabase Storage bucket riêng tư `data-exports`, gửi email báo sẵn sàng **không kèm đường dẫn**; tải trong app khi đã đăng nhập (`GET /api/account/data-export/:id/download?format=json|csv`), chỉ chủ tài khoản.
+* Nội dung: tài khoản, hồ sơ (giải mã), ví, giao dịch, ngân sách, hóa đơn, mục tiêu, danh mục tự tạo, gia đình đang tham gia, đơn thanh toán, thiết bị (IP bản che), các lần đồng ý chính sách, nhật ký lượt gọi máy chủ 12 tháng. Không có: mật khẩu, PIN, token, OTP, IP đầy đủ, dữ liệu điều tra an ninh AIOps. Dữ liệu của thành viên khác trong nhóm gia đình không đưa vào.
+* Tệp hết hạn sau 24 giờ và bị xóa; 1 yêu cầu / 24 giờ; mỗi lượt yêu cầu và tải ghi nhật ký thao tác. Bảng `data_export_request` là bằng chứng đáp ứng trong thời hạn 10 ngày.
+* Phạm vi thu thập: máy chủ chỉ ghi các lượt ứng dụng gọi tới Backend (bảo đảm vận hành, khả năng chịu tải); không thu thập hoạt động cá nhân trong ứng dụng.

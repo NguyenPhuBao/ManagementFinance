@@ -104,7 +104,7 @@ Toàn bộ dữ liệu đơn hàng được lưu tại bảng `payment_order` v�
 | `refunded_at` | `TIMESTAMP(6)`| `NULLABLE` | Thời điểm Admin thực hiện hoàn tiền cho khách. |
 | `refunded_amount`| `DECIMAL(15,2)`| `NULLABLE` | Số tiền thực tế Admin đã hoàn trả. |
 | `refund_reason` | `TEXT` | `NULLABLE` | Lý do hoàn trả: *"Do người dùng từ chối nâng cấp gói"* hoặc *"Số tiền thanh toán không hợp lệ"*. |
-| `refund_proof` | `TEXT` | `NULLABLE` | Minh chứng hoàn tiền (Đường dẫn tĩnh `/assets/Refunds/...` hoặc URL ảnh chụp ủy nhiệm chi / biên lai chuyển khoản ngân hàng). |
+| `refund_proof` | `TEXT` | `NULLABLE` | Minh chứng hoàn tiền (khóa kho lưu trữ `sb://refund-proofs/{orderId}/{uuid}.{ext}` từ 2026-11-13; API admin trả đường dẫn tạm 10 phút) hoặc URL ảnh chụp ủy nhiệm chi / biên lai chuyển khoản ngân hàng). |
 
 ### 3.2. Bảng `payment_transaction` (Nhật ký đối soát Webhook ngân hàng)
 
@@ -179,12 +179,13 @@ stateDiagram-v2
    - **Cột Đơn hàng & Badge `[Mẫu]`:** Các đơn hàng thử nghiệm mang cờ `is_template: true` được gắn badge nhận diện `[Mẫu]` màu hổ phách bên cạnh mã đơn.
    - **Checkbox "Loại bỏ mẫu":** Nằm trên thanh công cụ lọc; khi tích chọn, loại bỏ hoàn toàn các đơn mẫu (`is_template: false`) khỏi cả bảng dữ liệu và 4 thẻ thống kê doanh thu KPI.
    - **Bộ lọc ngày (Từ ngày - Đến ngày):** Lọc chính xác theo ngày tạo đơn (`created_at`).
+   - **Nút "Xóa đơn mẫu" (2026-11-12):** Nằm ở đầu trang, mở hộp xác nhận; xác nhận thì gọi `DELETE /admin/payments/sample`, Backend xóa vật lý mọi đơn `is_template = true` (giao dịch đi kèm xóa theo nhờ `ON DELETE CASCADE`), trả `{ deletedCount }`; trang báo số đơn đã xóa và tải lại bảng cùng thẻ KPI. Đơn thật (`is_template = false`) không bị ảnh hưởng; Client-app không thấy đơn mẫu vì `findOrdersByAccount` lọc `is_template = false`. Backend không hủy liên kết PayOS của đơn đã xóa (đơn mẫu tự hết hạn sau 10 phút).
 3. **Trang Quản lý & Thực hiện Hoàn tiền (Refund Processing):**
    - Nút "Hoàn tiền" trên từng dòng: Luôn hiển thị ở cột Thao tác, sáng rõ và tương tác được đối với các đơn `REFUND_PENDING`; tự động làm mờ và vô hiệu hóa (disabled) với các trạng thái khác.
    - **Modal Hoàn tiền & Lưu trữ Minh chứng:**
      - Cho phép Admin nhập số tiền hoàn trả thực tế, lý do hoàn trả, và trực tiếp upload file ảnh minh chứng (Ủy nhiệm chi / Biên lai chuyển khoản ngân hàng).
-     - File ảnh được lưu trữ an toàn tại thư mục tĩnh `src/Backend/Assets/Refunds` với đường dẫn public `/assets/Refunds/{filename}`.
-     - Sau khi xác nhận hoàn tiền: CSDL cập nhật `status = 'REFUNDED'`, `refunded_at = now()`, `refunded_amount`, `refund_proof = '/assets/Refunds/...'`, và phát sự kiện Socket.IO thông báo cho Client-app.
+     - Từ 2026-11-13: tệp (JPG / PNG / WEBP / PDF, tối đa 5 MB, kiểm loại theo nội dung) được giữ trong bộ nhớ rồi đẩy lên Supabase Storage, bucket riêng tư `refund-proofs`; không ghi ổ đĩa Render. Admin xem qua đường dẫn tạm 10 phút (`core/storage`). Dev / test không có khóa Supabase thì lưu ở `src/Backend/Assets/Storage`.
+     - Sau khi xác nhận hoàn tiền: CSDL cập nhật `status = 'REFUNDED'`, `refunded_at = now()`, `refunded_amount`, `refund_proof = 'sb://refund-proofs/...'`, và phát sự kiện Socket.IO thông báo cho Client-app.
    - **Modal Chi tiết Đơn hàng & Đối soát:**
      - Tích hợp khung hiển thị mã **VietQR (MB Bank)** sắc nét kèm thông tin tài khoản và nút mở cổng PayOS Checkout.
      - **Đồng hồ đếm ngược thời gian còn lại (10 phút)** đếm lùi theo từng giây cho các đơn hàng `PENDING`.

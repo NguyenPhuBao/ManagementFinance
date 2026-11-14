@@ -67,7 +67,8 @@ Các điểm này thuộc phạm vi cải thiện của backend, ghi nhận đ�
 
 ### B3. Việc cần làm ở ứng dụng và tài liệu
 - Văn bản đồng ý hiện trong `ai_chat` ghi chung "dịch vụ AI đám mây" và không nêu nước ngoài. Cần thay bằng liên kết tới Phần A và nút xác nhận.
-- Trang **Cài đặt AI** (`ai_edge/`) còn ghi "Google Gemini", sai so với nhà cung cấp hiện tại.
+- Quy ước hiển thị: giao diện, thông báo và văn bản đồng ý trong ứng dụng không ghi tên nhà cung cấp hay mô hình, chỉ ghi chung "dịch vụ AI đám mây". Việc công bố nhà cung cấp và nơi đặt máy chủ do quản trị viên thực hiện qua Phần A. Không ghi sai bản chất (không gọi là "AI trên máy" khi xử lý trên đám mây).
+- Trang **Cài đặt AI** (`ai_edge/`) ghi "Google Gemini": đã xác nhận 2026-11-08 là đúng, vì dòng này nói về AI trên máy (dùng mô hình Gemma), không phải trợ lý online. Không cần sửa.
 - Backend gửi nguyên `scopes` của ma trận quyền xuống client qua `/subscription-info` (client không đọc), trong đó khóa `model` của `ai_assistant` từng ghi tên mô hình. Migration 47 đổi thành nhãn trung tính `cloud`; chưa áp.
 - Tài liệu `docs/Admin-web/10-ai-copilot-and-financial-health.md` và `docs/AI/ChatbotAI.md` còn mô tả chatbot trên Admin-web và endpoint snapshot đã gỡ.
 - Nếu đổi nhà cung cấp mô hình, phải cập nhật lại toàn bộ Phần A và xin xác nhận lại.

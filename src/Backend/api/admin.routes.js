@@ -6,23 +6,25 @@ const paymentController = require('../modules/payment/payment.controller');
 const { uploadRefundProof } = require('../middleware/upload.middleware');
 const { authenticate } = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
+const { stripRawIpResponse } = require('../middleware/strip-raw-ip.middleware');
 
 // Tất cả admin routes yêu cầu đăng nhập + role admin
 router.use(authenticate, authorize('admin'));
 
 // AIOps Sentinel — Máy học phát hiện xâm nhập & bất thường thời gian thực
+router.use('/aiops', stripRawIpResponse);
 router.get('/aiops/status', aiopsController.getStatus);
 router.get('/aiops/history', aiopsController.getHistory);
 router.get('/aiops/vectors', aiopsController.getVectorConfig);
 router.post('/aiops/vectors/toggle', aiopsController.toggleVector);
 router.get('/aiops/incidents', aiopsController.getIncidents);
-router.post('/aiops/incidents/clear', aiopsController.clearIncidents);
 router.post('/aiops/calibrate', aiopsController.calibrate);
 router.post('/aiops/scale', aiopsController.setScale);
 router.get('/aiops/quarantine', aiopsController.getQuarantineList);
 router.get('/aiops/quarantine/forensics', aiopsController.getQuarantineForensics);
 router.post('/aiops/quarantine', aiopsController.quarantineActor);
 router.delete('/aiops/quarantine/:hash', aiopsController.unblockQuarantine);
+router.post('/aiops/quarantine/:hash/reveal-ip', aiopsController.revealQuarantineIp);
 router.post('/aiops/quarantine/unblock-ip', aiopsController.unblockIp);
 router.post('/aiops/quarantine/permanent-ip', aiopsController.permanentBanIp);
 router.post('/aiops/quarantine/temporary-ip', aiopsController.temporaryBlockIp);
@@ -54,6 +56,14 @@ router.post('/create-admin', adminController.createAdminAccount);
 // Quản lý người dùng
 router.get('/getuser', adminController.getUsers);
 router.get('/getuser/:id', adminController.getUserDetail);
+router.get('/getuser/:id/devices', adminController.getUserDevices);
+router.post('/getuser/:id/devices/:deviceId/reveal-ip', adminController.revealDeviceIp);
+router.get('/getuser/:id/data-exports', adminController.getUserDataExports);
+router.get('/getuser/:id/policy', adminController.getUserPolicy);
+
+// Chính sách bảo mật theo phiên bản
+router.get('/policies', adminController.getPolicies);
+router.post('/policies', adminController.publishPolicy);
 router.patch('/updatestatus/:id', adminController.updateStatus);
 router.delete('/deleteuser/:id', adminController.deleteUser);
 router.delete('/users/:id', adminController.deleteUser);

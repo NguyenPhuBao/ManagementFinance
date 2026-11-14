@@ -115,6 +115,12 @@ async function processFullSoftDelete(idaccount) {
         update_at: now,
       },
     });
+
+    // 7. Xóa IP đầy đủ (bản mã + chỉ mục mù) trong lịch sử thiết bị; giữ dòng nhật ký với IP đã che (nhật ký tối thiểu 12 tháng)
+    await tx.account_device_history.updateMany({
+      where: { idaccount },
+      data: { ip_encrypted: null, ip_hash: null },
+    });
   });
 
   // Thu hồi cache xác thực bộ nhớ
@@ -253,6 +259,36 @@ async function runDailyRefreshTokenPurgeTask() {
 }
 
 /**
+ * Xóa IP đầy đủ (bản mã + chỉ mục mù ở lịch sử thiết bị, raw_ip ở bảng cách ly AIOps) quá IP_RETENTION_DAYS.
+ * Bản che và dòng lịch sử được giữ. Việc chặn IP dùng ip_hash nên không bị ảnh hưởng.
+ * @returns {Promise<{ devices: number, quarantine: number }>}
+ */
+async function runDailyIpRetentionPurgeTask() {
+  const { getRetentionDays } = require('../utils/ip-protection.util');
+  const { purgeExpiredIpData } = require('../modules/auth/device-history.service');
+  const days = getRetentionDays();
+  const cutoff = new Date(Date.now() - days * 86400000);
+  const devices = await purgeExpiredIpData(days);
+  const quarantine = await prisma.aiops_ip_quarantine.updateMany({
+    where: { updated_at: { lt: cutoff }, raw_ip: { not: null } },
+    data: { raw_ip: null },
+  });
+  logger.info(`Đã xóa IP đầy đủ quá ${days} ngày: ${devices} dòng lịch sử thiết bị, ${quarantine.count} bản ghi cách ly`);
+  return { devices, quarantine: quarantine.count };
+}
+
+/**
+ * Xóa tệp bản sao dữ liệu cá nhân đã quá hạn 24 giờ (giữ dòng yêu cầu làm bằng chứng)
+ * @returns {Promise<number>} số yêu cầu đã dọn
+ */
+async function runDailyDataExportPurgeTask() {
+  const { purgeExpired } = require('../modules/account/data-export.service');
+  const count = await purgeExpired();
+  logger.info(`Đã xóa tệp của ${count} bản sao dữ liệu hết hạn`);
+  return count;
+}
+
+/**
  * Tác vụ kiểm tra vòng đời gói cước Premium chạy mỗi ngày vào 00:00:00 UTC+7:
  * 1. Cảnh báo trước 3 ngày cho tài khoản sắp hết hạn
  * 2. Hạ cấp các tài khoản đã quá hạn về Basic và phát sự kiện thông báo
@@ -365,6 +401,18 @@ async function runDailyMaintenanceRoutine() {
   } catch (err) {
     logger.error('Lỗi trong runDailyPremiumExpirationTask:', { error: err.message });
   }
+
+  try {
+    await runDailyIpRetentionPurgeTask();
+  } catch (err) {
+    logger.error('Lỗi trong runDailyIpRetentionPurgeTask:', { error: err.message });
+  }
+
+  try {
+    await runDailyDataExportPurgeTask();
+  } catch (err) {
+    logger.error('Lỗi trong runDailyDataExportPurgeTask:', { error: err.message });
+  }
   logger.info('=== HOÀN TẤT CHU TRÌNH BẢO TRÌ HÀNG NGÀY ===');
 }
 
@@ -422,6 +470,8 @@ module.exports = {
   runDailyOtpPurgeTask,
   runDailyRefreshTokenPurgeTask,
   runDailyPremiumExpirationTask,
+  runDailyIpRetentionPurgeTask,
+  runDailyDataExportPurgeTask,
   runDailyMaintenanceRoutine,
   processFullSoftDelete,
   initScheduler,

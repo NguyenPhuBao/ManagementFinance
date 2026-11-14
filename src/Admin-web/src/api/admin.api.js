@@ -15,6 +15,12 @@ const adminApi = {
   // Users
   getUsers: () => axiosClient.get('/admin/getuser'),
   getUserById: (id) => axiosClient.get(`/admin/getuser/${id}`),
+  getUserDevices: (id) => axiosClient.get(`/admin/getuser/${id}/devices`),
+  revealDeviceIp: (id, deviceId, credentials) => axiosClient.post(`/admin/getuser/${id}/devices/${deviceId}/reveal-ip`, credentials),
+  getUserPolicy: (id) => axiosClient.get(`/admin/getuser/${id}/policy`),
+  getUserDataExports: (id) => axiosClient.get(`/admin/getuser/${id}/data-exports`),
+  getPolicies: () => axiosClient.get('/admin/policies'),
+  publishPolicy: (data) => axiosClient.post('/admin/policies', data),
   updateUserStatus: (id, data) => axiosClient.patch(`/admin/updatestatus/${id}`, data),
   deleteUser: (id) => axiosClient.delete(`/admin/deleteuser/${id}`),
 

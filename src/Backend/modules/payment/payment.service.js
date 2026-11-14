@@ -581,12 +581,13 @@ async function processOrderRefund(orderId, { refundedAmount, refundProof, refund
   try {
     const { emitToAccount, getIO } = require('../../core/socket');
     if (result.idaccount) {
+      const { resolveUrl } = require('../../core/storage');
       emitToAccount(result.idaccount, 'payment.refunded', {
         orderId,
         refundedAmount: Number(refundedAmount),
         refundedAt: result.refunded_at || new Date(),
         refundReason,
-        refundProof,
+        refundProof: await resolveUrl(refundProof, 3600),
       });
     }
     const io = getIO();
@@ -893,15 +894,25 @@ async function getSubscriptionInfo(idaccount) {
  * @param {object} options 
  */
 async function getOrderHistory(idaccount, options) {
-  return paymentRepository.findOrdersByAccount(idaccount, options);
+  const result = await paymentRepository.findOrdersByAccount(idaccount, options);
+  if (!Array.isArray(result?.items)) return result;
+  return { ...result, items: await Promise.all(result.items.map(withProofUrl)) };
 }
 
 /**
  * Lấy danh sách đơn hàng cho Admin kèm bộ lọc và phân trang
  * @param {object} options
  */
+async function withProofUrl(order) {
+  if (!order || !order.refund_proof) return order;
+  const { resolveUrl } = require('../../core/storage');
+  return { ...order, refund_proof: await resolveUrl(order.refund_proof, 600) };
+}
+
 async function getOrdersForAdmin(options) {
-  return paymentRepository.findOrdersForAdmin(options);
+  const result = await paymentRepository.findOrdersForAdmin(options);
+  if (!Array.isArray(result?.items)) return result;
+  return { ...result, items: await Promise.all(result.items.map(withProofUrl)) };
 }
 
 /**
@@ -926,7 +937,7 @@ async function getOrderDetailForAdmin(orderId) {
   if (order.status === 'PENDING') {
     order = await syncOrderWithPayOS(order);
   }
-  return order;
+  return withProofUrl(order);
 }
 
 /**

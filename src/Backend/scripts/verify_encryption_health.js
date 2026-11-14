@@ -10,6 +10,8 @@
  * - bill.note
  * - budget.note
  * - goal.note
+ * - account_device_history.ip_encrypted (migration 48)
+ * - aiops_ip_quarantine.raw_ip (migration 48: phải là bản mã, IP thô tính là lỗi)
  * 
  * Kiểm tra: Mọi chuỗi enc:... đều phải giải mã thành công bằng DATA_ENCRYPTION_KEY hiện tại.
  * Trả về Exit Code: 0 nếu 100% bản ghi an toàn; 1 nếu có bản ghi bị lỗi giải mã.
@@ -152,6 +154,37 @@ async function verifyEncryptionHealth() {
     }
   }
   console.log(`  [bill/budget/goal] Mã hóa: ${billEnc + budgetEnc + goalEnc} | Lỗi giải mã: ${billErr + budgetErr + goalErr}`);
+
+  // 6. IP đầy đủ (migration 48): lịch sử thiết bị và bảng cách ly AIOps
+  const checkIpColumn = (rows, table, field, idKey) => {
+    let enc = 0, err = 0;
+    for (const r of rows) {
+      const v = r[field];
+      if (!v) continue;
+      if (!isEncrypted(v)) {
+        // IP thô còn sót (ví dụ ghi bởi bản mã nguồn trước phương án B)
+        totalErrors++; err++;
+        errorDetails.push({ table, id: String(r[idKey]), field, error: 'IP chưa mã hóa' });
+        continue;
+      }
+      totalEncrypted++; enc++;
+      try {
+        decrypt(v, { table, id: String(r[idKey]), field });
+      } catch (e) {
+        totalErrors++; err++;
+        errorDetails.push({ table, id: String(r[idKey]), field, error: e.message });
+      }
+    }
+    console.log(`  [${table}.${field}] Mã hóa: ${enc} | Lỗi: ${err}`);
+  };
+  checkIpColumn(
+    await prisma.account_device_history.findMany({ where: { ip_encrypted: { not: null } }, select: { id: true, ip_encrypted: true } }),
+    'account_device_history', 'ip_encrypted', 'id'
+  );
+  checkIpColumn(
+    await prisma.aiops_ip_quarantine.findMany({ where: { raw_ip: { not: null } }, select: { id: true, raw_ip: true } }),
+    'aiops_ip_quarantine', 'raw_ip', 'id'
+  );
 
   console.log('-----------------------------------------------------------');
   console.log(`📊 TỔNG KẾT: ${totalEncrypted} trường dữ liệu mã hóa được kiểm tra.`);

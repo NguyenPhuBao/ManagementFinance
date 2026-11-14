@@ -1,6 +1,7 @@
 const authService = require('./auth.service');
 const ResponseHandler = require('../../core/response-handler');
 const logger = require('../../core/logger');
+const { getClientIp } = require('../../utils/ip-protection.util');
 
 const authController = {
   async sendRegisterOtp(req, res) {
@@ -103,7 +104,7 @@ const authController = {
 
   async me(req, res) {
     try {
-      const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+      const clientIp = getClientIp(req);
       const account = await authService.getAccountById(req.user.idaccount);
 
       const email = account?.User?.email || account?.email || '';
@@ -128,7 +129,7 @@ const authController = {
 
   async logout(req, res) {
     try {
-      const clientIp = req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || req.socket?.remoteAddress;
+      const clientIp = getClientIp(req);
       if (req.user && (req.user.idrole === 1 || String(req.user.rolename || '').toLowerCase() === 'admin')) {
         try {
           const { defaultAIOpsQuarantine } = require('../aiops/aiops.quarantine');

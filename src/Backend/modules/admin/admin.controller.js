@@ -1,8 +1,99 @@
 const adminService = require('./admin.service');
+const deviceHistory = require('../auth/device-history.service');
+const policyService = require('../policy/policy.service');
 const ResponseHandler = require('../../core/response-handler');
 const logger = require('../../core/logger');
 
 const adminController = {
+  async getUserDevices(req, res) {
+    try {
+      const iduser = parseInt(req.params.id, 10);
+      if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'ID người dùng không hợp lệ');
+      const idaccount = await adminService.resolveAccountId(iduser);
+      if (!idaccount) return ResponseHandler.notFound(res, 'Không tìm thấy người dùng');
+      const devices = await deviceHistory.listDevicesForAdmin(idaccount, 10);
+      return ResponseHandler.success(res, devices, 'Thiết bị đăng nhập của người dùng');
+    } catch (error) {
+      logger.error('getUserDevices failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  async getPolicies(req, res) {
+    try {
+      const data = await policyService.listForAdmin();
+      return ResponseHandler.success(res, data, 'Các phiên bản chính sách bảo mật');
+    } catch (error) {
+      logger.error('getPolicies failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  async publishPolicy(req, res) {
+    try {
+      const { title, content, pin, password } = req.body || {};
+      const draft = await policyService.publish({ title, content }, req.user?.idaccount);
+      await adminService.verifySecurityAction({ pin, password, action: 'PUBLISH_POLICY', targetId: draft.title }, req.user);
+      const created = await policyService.createVersion(draft);
+      req.auditActionName = `Đăng chính sách bảo mật v${created.version}`;
+      return ResponseHandler.success(res, { version: created.version, title: created.title, publishedAt: created.published_at }, 'Đã đăng phiên bản chính sách mới', 201);
+    } catch (error) {
+      if (!error.statusCode || error.statusCode >= 500) logger.error('publishPolicy failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500, null, error.code || null);
+    }
+  },
+
+  async getUserPolicy(req, res) {
+    try {
+      const iduser = parseInt(req.params.id, 10);
+      if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'ID người dùng không hợp lệ');
+      const idaccount = await adminService.resolveAccountId(iduser);
+      if (!idaccount) return ResponseHandler.notFound(res, 'Không tìm thấy người dùng');
+      const data = await policyService.acceptancesForAccount(idaccount);
+      return ResponseHandler.success(res, data, 'Lịch sử đồng ý chính sách');
+    } catch (error) {
+      logger.error('getUserPolicy failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  async getUserDataExports(req, res) {
+    try {
+      const iduser = parseInt(req.params.id, 10);
+      if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'Tham số không hợp lệ');
+      const idaccount = await adminService.resolveAccountId(iduser);
+      if (!idaccount) return ResponseHandler.notFound(res, 'Không tìm thấy người dùng');
+      const { listForAdmin } = require('../account/data-export.service');
+      return ResponseHandler.success(res, await listForAdmin(idaccount), 'Yêu cầu bản sao dữ liệu');
+    } catch (error) {
+      logger.error('getUserDataExports failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
+  async revealDeviceIp(req, res) {
+    try {
+      const iduser = parseInt(req.params.id, 10);
+      const { deviceId } = req.params;
+      if (isNaN(iduser) || !deviceId) return ResponseHandler.badRequest(res, 'Tham số không hợp lệ');
+      req.auditActionName = `Xem IP đầy đủ (người dùng #${iduser}, thiết bị #${deviceId})`;
+      const idaccount = await adminService.resolveAccountId(iduser);
+      if (!idaccount) return ResponseHandler.notFound(res, 'Không tìm thấy người dùng');
+      const { pin, password } = req.body || {};
+      await adminService.verifySecurityAction(
+        { pin, password, action: 'REVEAL_IP', targetId: `user#${iduser}/device#${deviceId}` },
+        req.user
+      );
+      const ip = await deviceHistory.revealDeviceIp(idaccount, deviceId);
+      if (!ip) return ResponseHandler.notFound(res, 'IP đầy đủ không còn lưu (đã quá thời hạn lưu trữ) hoặc không tồn tại');
+      res.set?.('Cache-Control', 'no-store');
+      return ResponseHandler.success(res, { ip }, 'IP đầy đủ của thiết bị');
+    } catch (error) {
+      logger.warn('revealDeviceIp failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
   async totalUsers(req, res) {
     try {
       const result = await adminService.getTotalUsers();

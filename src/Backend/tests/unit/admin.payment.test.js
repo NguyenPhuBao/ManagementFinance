@@ -551,8 +551,11 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
     }
   });
 
-  await t.test('15. Tầng 1 & 2: processRefund tiếp nhận file upload minh chứng và lưu đường dẫn /assets/Refunds', async () => {
+  await t.test('15. Tầng 1 & 2: processRefund tiếp nhận file upload minh chứng và lưu vào kho lưu trữ (bucket refund-proofs)', async () => {
     const origProcessOrderRefund = paymentService.processOrderRefund;
+    const storageMod = require('../../core/storage');
+    const tmpDir = require('fs').mkdtempSync(require('path').join(require('os').tmpdir(), 'fm-refund15-'));
+    storageMod.setStorageForTest(storageMod.createStorage({ env: { STORAGE_LOCAL_DIR: tmpDir } }));
     let capturedData = null;
     try {
       paymentService.processOrderRefund = async (orderId, data) => {
@@ -563,7 +566,7 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       const req = {
         params: { id: 'ord-ref-999' },
         body: { refundedAmount: 20000, refundReason: 'Chuyển thiếu tiền' },
-        file: { filename: 'refund-proof-123.png' },
+        file: { buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]), originalname: 'refund-proof-123.png', mimetype: 'image/png' },
       };
       let statusCode = null;
       let jsonBody = null;
@@ -585,9 +588,11 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       assert.strictEqual(statusCode, 200);
       assert.strictEqual(jsonBody.success, true);
       assert.strictEqual(capturedData.orderId, 'ord-ref-999');
-      assert.strictEqual(capturedData.refundProof, '/assets/Refunds/refund-proof-123.png');
+      assert.match(capturedData.refundProof, /^local:\/\/refund-proofs\/ord-ref-999\/[a-f0-9-]+\.png$/);
     } finally {
       paymentService.processOrderRefund = origProcessOrderRefund;
+      storageMod.setStorageForTest(null);
+      require('fs').rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
@@ -846,6 +851,23 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       paymentRepository.updateOrderPaymentStatus = origUpdateStatus;
       paymentRepository.activatePremiumSubscription = origActivate;
       payosClient.verifyWebhookData = origVerify;
+    }
+  });
+
+  await t.test('22. Tầng 2: deleteSampleOrders chỉ xóa đơn is_template = true, không dựa vào tiền tố payment_link_id', async () => {
+    const origDeleteMany = prisma.payment_order.deleteMany;
+    let capturedWhere = null;
+    try {
+      prisma.payment_order.deleteMany = async ({ where }) => {
+        capturedWhere = where;
+        return { count: 3 };
+      };
+
+      const result = await paymentRepository.deleteSampleOrders();
+      assert.deepStrictEqual(capturedWhere, { is_template: true });
+      assert.deepStrictEqual(result, { deletedCount: 3 });
+    } finally {
+      prisma.payment_order.deleteMany = origDeleteMany;
     }
   });
 });

@@ -490,7 +490,11 @@ Nhằm phục vụ phân tích xu hướng dài hạn (1h, 24h, 7 ngày, 30 ngà
 | `POST` | `/api/admin/aiops/scale` | Thiết lập số người dùng đồng thời kỳ vọng (CCU) | Admin |
 | `POST` | `/api/admin/aiops/calibrate` | Tái hiệu chuẩn đường chuẩn máy học | Admin |
 | `GET` | `/api/admin/aiops/incidents` | Lấy danh sách nhật ký sự cố CSDL có phân trang và bộ lọc | Admin |
-| `POST` | `/api/admin/aiops/incidents/clear` | Làm sạch toàn bộ nhật ký sự cố trong CSDL (phục vụ nghiệm thu) | Admin |
+| `POST` | `/api/admin/aiops/quarantine/:hash/reveal-ip` | Xem IP đầy đủ của nguồn bị cô lập; bắt buộc PIN (`REVEAL_IP`), ghi nhật ký không chứa IP (G4.1a, 2026-11-13) | Admin |
+
+Đã bỏ (2026-11-13, Chủ dự án quyết): `POST /api/admin/aiops/incidents/clear` (xóa toàn bộ nhật ký sự cố). Nhật ký sự cố là dữ liệu điều tra an ninh, giữ tối thiểu 12 tháng; không có đường xóa hàng loạt từ Admin-web hay API.
+
+**Bảo vệ IP trong AIOps (G4.1a, 2026-11-13):** bộ thu thập, lớp chặn và sự cố băm IP bằng một hàm chung `ipLookupHash` (HMAC-SHA256, khóa `BLIND_INDEX_SECRET`), trùng chỉ mục mù của lịch sử thiết bị. Phản hồi `/api/admin/aiops/*` và các sự kiện `admin.*` không mang IP đầy đủ (`rawIp` / `raw_ip` bị lọc); Admin-web chỉ thấy bản che. Nhật ký thao tác ghi mọi lệnh không phải `GET` của AIOps. Chi tiết: `docs/Rule_Project/Data_Security.md` mục 10.8.
 
 ### Socket.io Events
 - **Phát tán tới Admin-web (`admin_room`):**

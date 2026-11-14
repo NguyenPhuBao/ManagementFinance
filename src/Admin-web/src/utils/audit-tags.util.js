@@ -1,12 +1,17 @@
-/**
- * Audit Log Tag Classification Utility
- * Phân loại hoạt động hệ thống & nhật ký kiểm toán thành các nhãn phân loại:
- * [AUTH], [PAYMENT], [USER], [SYSTEM], [AIOPS], [CATEGORY], [API]
- */
+export const AUDIT_STATUS_TONE = {
+  Pass: 'success',
+  Fail: 'danger',
+  Rejected: 'danger',
+  Interrupted: 'warning',
+  Accepted: 'success',
+  Processing: 'info',
+  Pending: 'neutral',
+};
 
 export const AUDIT_TAGS = {
   AUTH: {
     key: 'AUTH',
+    tone: 'info',
     tag: '[AUTH]',
     label: 'Xác thực',
     bg: 'bg-blue-50',
@@ -16,6 +21,7 @@ export const AUDIT_TAGS = {
   },
   PAYMENT: {
     key: 'PAYMENT',
+    tone: 'success',
     tag: '[PAYMENT]',
     label: 'Thanh toán',
     bg: 'bg-emerald-50',
@@ -25,6 +31,7 @@ export const AUDIT_TAGS = {
   },
   USER: {
     key: 'USER',
+    tone: 'neutral',
     tag: '[USER]',
     label: 'Người dùng',
     bg: 'bg-purple-50',
@@ -34,6 +41,7 @@ export const AUDIT_TAGS = {
   },
   SYSTEM: {
     key: 'SYSTEM',
+    tone: 'warning',
     tag: '[SYSTEM]',
     label: 'Hệ thống',
     bg: 'bg-amber-50',
@@ -43,6 +51,7 @@ export const AUDIT_TAGS = {
   },
   AIOPS: {
     key: 'AIOPS',
+    tone: 'danger',
     tag: '[AIOPS]',
     label: 'An ninh',
     bg: 'bg-rose-50',
@@ -52,6 +61,7 @@ export const AUDIT_TAGS = {
   },
   CATEGORY: {
     key: 'CATEGORY',
+    tone: 'info',
     tag: '[CATEGORY]',
     label: 'Danh mục',
     bg: 'bg-teal-50',
@@ -61,6 +71,7 @@ export const AUDIT_TAGS = {
   },
   API: {
     key: 'API',
+    tone: 'neutral',
     tag: '[API]',
     label: 'API',
     bg: 'bg-slate-100',
@@ -70,18 +81,11 @@ export const AUDIT_TAGS = {
   },
 };
 
-/**
- * Bộ từ điển ánh xạ thông minh chuyển đổi từ chuỗi API Endpoint (hoặc mã thô) sang câu nghiệp vụ tiếng Việt
- * Đảm bảo 100% cột Hành động luôn hiển thị tiếng Việt rõ ràng, thân thiện cho người quản trị.
- * @param {string} raw - Chuỗi hành động thô hoặc endpoint
- * @returns {string|null} - Câu mô tả tiếng Việt chuẩn hóa, hoặc null nếu không khớp
- */
 export const translateApiToActionName = (raw) => {
   if (!raw || typeof raw !== 'string') return null;
   const str = raw.trim();
   const lower = str.toLowerCase();
 
-  // Kiểm tra nếu chuỗi chứa dấu hiệu của một API route hoặc HTTP method
   const isApiLike =
     /^(get|post|put|patch|delete|options|head)\s+/i.test(str) ||
     lower.includes('/api/') ||
@@ -93,7 +97,6 @@ export const translateApiToActionName = (raw) => {
 
   const m = (/^(GET|POST|PUT|PATCH|DELETE)/i.exec(str)?.[0] || 'GET').toUpperCase();
 
-  // 1. Nhóm Thanh Toán & Gói Cước (Payments & PayOS)
   if (lower.includes('/payment') || lower.includes('/payos') || lower.includes('thanh toán')) {
     if (lower.includes('/create-order') || lower.includes('/create-payment')) return 'Tạo đơn hàng thanh toán gói cước';
     if (lower.includes('/order-status')) return 'Tra cứu trạng thái đơn hàng';
@@ -110,7 +113,6 @@ export const translateApiToActionName = (raw) => {
     return 'Giao dịch thanh toán gói cước';
   }
 
-  // 2. Nhóm Xác Thực & Tài Khoản (Auth)
   if (lower.includes('/auth/')) {
     if (lower.includes('/login')) return 'Đăng nhập hệ thống';
     if (lower.includes('/register')) return 'Đăng ký tài khoản';
@@ -123,7 +125,6 @@ export const translateApiToActionName = (raw) => {
     if (lower.includes('/profile')) return m === 'PUT' ? 'Cập nhật hồ sơ cá nhân' : 'Xem thông tin cá nhân';
   }
 
-  // 3. Nhóm Quản Trị Hệ Thống & Bảo Mật (Admin Security & System)
   if (lower.includes('/admin/')) {
     if (lower.includes('/verify-security-action')) return 'Xác thực mã PIN bảo mật';
     if (lower.includes('/change-pin')) return 'Đổi mã PIN quản trị viên';
@@ -145,7 +146,6 @@ export const translateApiToActionName = (raw) => {
     if (lower.includes('/getcategory') || lower.includes('/categories')) return 'Lấy danh sách danh mục';
   }
 
-  // 4. Nhóm AIOps Sentinel & An Ninh
   if (lower.includes('/aiops/')) {
     if (lower.includes('/quarantine/permanent-ip')) return 'Khóa vĩnh viễn IP nguy hại';
     if (lower.includes('/quarantine/temporary-ip')) return 'Tạm khóa IP nghi vấn';
@@ -161,7 +161,6 @@ export const translateApiToActionName = (raw) => {
     if (lower.includes('/status') || lower.includes('/history')) return 'Giám sát an ninh AIOps';
   }
 
-  // 5. Nhóm Đồng Bộ & Ngân Hàng
   if (lower.includes('/sync/')) {
     if (lower.includes('/push')) return 'Đồng bộ dữ liệu (Push)';
     if (lower.includes('/pull')) return 'Tải dữ liệu đồng bộ (Pull)';
@@ -174,14 +173,12 @@ export const translateApiToActionName = (raw) => {
     if (lower.includes('/connect') || lower.includes('/link')) return 'Liên kết tài khoản ngân hàng';
   }
 
-  // 6. Nhóm AI Trợ Lý & Phân Loại
   if (lower.includes('/ai/')) {
     if (lower.includes('/chatbot/reset') || lower.includes('/chat/reset')) return 'Làm mới hội thoại AI';
     if (lower.includes('/chat')) return 'Hỏi đáp trợ lý tài chính AI';
     if (lower.includes('/classify')) return 'Phân loại giao dịch AI';
   }
 
-  // 7. Nhóm Nghiệp Vụ Tài Chính Khách Hàng (Transactions, Wallets, Budgets)
   if (lower.includes('/transactions')) {
     if (m === 'POST') return 'Ghi nhận giao dịch tài chính';
     if (m === 'PUT' || m === 'PATCH') return 'Cập nhật giao dịch tài chính';
@@ -202,7 +199,6 @@ export const translateApiToActionName = (raw) => {
   }
   if (lower.includes('/reports')) return 'Xem báo cáo phân tích tài chính';
 
-  // Fallback thân thiện nếu là endpoint khác chưa liệt kê
   if (m === 'GET') return 'Truy vấn dữ liệu hệ thống';
   if (m === 'POST') return 'Thực hiện thao tác tạo mới';
   if (m === 'PUT' || m === 'PATCH') return 'Thực hiện cập nhật dữ liệu';
@@ -211,13 +207,6 @@ export const translateApiToActionName = (raw) => {
   return 'Yêu cầu API hệ thống';
 };
 
-/**
- * Phân loại action name / path để lấy nhãn phân loại chuẩn hóa
- * Tự động chuyển đổi các chuỗi API thô sang câu tiếng Việt mô tả nghiệp vụ
- * @param {string} actionText - Chuỗi mô tả hành động hoặc endpoint
- * @param {string} [requestFallback] - Chuỗi endpoint dự phòng nếu action rỗng
- * @returns {{ tagInfo: object, cleanAction: string }}
- */
 export const classifyAuditAction = (actionText, requestFallback = '') => {
   const effectiveText = (actionText && typeof actionText === 'string' && actionText.trim()) ||
     (requestFallback && typeof requestFallback === 'string' && requestFallback.trim()) ||
@@ -229,7 +218,6 @@ export const classifyAuditAction = (actionText, requestFallback = '') => {
 
   const trimmed = effectiveText.trim();
 
-  // 1. Kiểm tra nếu action đã có sẵn thẻ [TAG] ở đầu
   const bracketMatch = trimmed.match(/^\[([A-Z0-9_-]+)\]\s*(.*)$/);
   if (bracketMatch) {
     const rawTagKey = bracketMatch[1].toUpperCase();
@@ -241,13 +229,10 @@ export const classifyAuditAction = (actionText, requestFallback = '') => {
     }
   }
 
-  // 2. Dịch chuỗi API thô sang tiếng Việt nếu phát hiện chuỗi API
   const translatedAction = translateApiToActionName(trimmed);
   const cleanAction = translatedAction || trimmed;
   const lower = (trimmed + ' ' + (translatedAction || '')).toLowerCase();
 
-  // 3. Nhận diện nhãn theo từ khóa nghiệp vụ
-  // AIOps & An ninh
   if (
     lower.includes('aiops') ||
     lower.includes('sentinel') ||
@@ -262,7 +247,6 @@ export const classifyAuditAction = (actionText, requestFallback = '') => {
     return { tagInfo: AUDIT_TAGS.AIOPS, cleanAction };
   }
 
-  // Payment & Gói cước
   if (
     lower.includes('thanh toán') ||
     lower.includes('payment') ||
@@ -276,7 +260,6 @@ export const classifyAuditAction = (actionText, requestFallback = '') => {
     return { tagInfo: AUDIT_TAGS.PAYMENT, cleanAction };
   }
 
-  // Auth & Xác thực
   if (
     lower.includes('đăng nhập') ||
     lower.includes('login') ||
@@ -294,7 +277,6 @@ export const classifyAuditAction = (actionText, requestFallback = '') => {
     return { tagInfo: AUDIT_TAGS.AUTH, cleanAction };
   }
 
-  // User & Tài khoản người dùng
   if (
     lower.includes('người dùng') ||
     lower.includes('user') ||
@@ -309,12 +291,10 @@ export const classifyAuditAction = (actionText, requestFallback = '') => {
     return { tagInfo: AUDIT_TAGS.USER, cleanAction };
   }
 
-  // Category & Danh mục
   if (lower.includes('danh mục') || lower.includes('category')) {
     return { tagInfo: AUDIT_TAGS.CATEGORY, cleanAction };
   }
 
-  // System & Bảo trì & Phân quyền
   if (
     lower.includes('bảo trì') ||
     lower.includes('maintenance') ||
@@ -329,6 +309,5 @@ export const classifyAuditAction = (actionText, requestFallback = '') => {
     return { tagInfo: AUDIT_TAGS.SYSTEM, cleanAction };
   }
 
-  // Mặc định là API
   return { tagInfo: AUDIT_TAGS.API, cleanAction };
 };

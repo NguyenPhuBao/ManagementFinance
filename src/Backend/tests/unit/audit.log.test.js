@@ -99,7 +99,8 @@ describe('AuditLog Middleware & Service Logic Tests', () => {
     req.url = '/api/v1/wallets';
     req.baseUrl = '';
     req.path = '/api/v1/wallets';
-    req.headers = { 'x-forwarded-for': '203.162.0.1, 10.0.0.1' };
+    req.headers = { 'x-forwarded-for': '6.6.6.6' };
+    req.ip = '203.162.0.1';
     req.user = { idaccount: 10, username: 'testuser' };
 
     const res = new EventEmitter();
@@ -112,7 +113,7 @@ describe('AuditLog Middleware & Service Logic Tests', () => {
     setTimeout(() => {
       authService.recordAuditLog = originalRecord;
       assert.ok(recordedData, 'recordAuditLog phải được gọi');
-      assert.equal(recordedData.ip, '203.162.0.1', 'Phải trích xuất client IP đầu tiên từ x-forwarded-for');
+      assert.equal(recordedData.ip, '203.162.0.1', 'IP lấy từ req.ip (trust proxy), bỏ qua x-forwarded-for do client gửi');
       assert.equal(recordedData.idaccount, 10);
       done();
     }, 50);
@@ -163,7 +164,8 @@ describe('AuditLog Middleware & Service Logic Tests', () => {
     req.url = '/api/v1/auth/login';
     req.baseUrl = '';
     req.path = '/api/v1/auth/login';
-    req.headers = { 'x-forwarded-for': '1.2.3.4' };
+    req.headers = {};
+    req.ip = '1.2.3.4';
     req.body = { username: 'unknown_hacker' };
 
     const res = new EventEmitter();
@@ -184,6 +186,35 @@ describe('AuditLog Middleware & Service Logic Tests', () => {
       done();
     }, 60);
   });
+
+  const runAiops = (method, path, actionName) => new Promise((resolve) => {
+    const calls = [];
+    const originalRecord = authService.recordAuditLog;
+    authService.recordAuditLog = async (...args) => { calls.push(args); };
+    const req = new EventEmitter();
+    req.method = method;
+    req.url = path;
+    req.baseUrl = '';
+    req.path = path;
+    req.user = { idaccount: 1 };
+    if (actionName) req.auditActionName = actionName;
+    const res = new EventEmitter();
+    res.statusCode = 200;
+    res.writableEnded = true;
+    auditLogMiddleware(req, res, () => {});
+    res.emit('finish');
+    setTimeout(() => { authService.recordAuditLog = originalRecord; resolve(calls); }, 50);
+  });
+
+  it('8. Thao tác AIOps của admin (POST / DELETE) được ghi nhật ký, kể cả xem IP đầy đủ; GET polling AIOps vẫn bỏ qua', async () => {
+    const reveal = await runAiops('POST', '/api/admin/aiops/quarantine/abc/reveal-ip', 'Xem IP đầy đủ của nguồn bị cô lập (abc)');
+    assert.equal(reveal.length, 1, 'xem IP đầy đủ phải vào nhật ký');
+    assert.ok(JSON.stringify(reveal[0]).includes('Xem IP đầy đủ'), 'đúng tên hành động');
+    const unblock = await runAiops('DELETE', '/api/admin/aiops/quarantine/abc');
+    assert.equal(unblock.length, 1, 'gỡ chặn phải vào nhật ký');
+    const ban = await runAiops('POST', '/api/admin/aiops/quarantine/permanent-account');
+    assert.equal(ban.length, 1, 'cấm vĩnh viễn phải vào nhật ký');
+    const poll = await runAiops('GET', '/api/admin/aiops/status');
+    assert.equal(poll.length, 0, 'GET polling AIOps không ghi');
+  });
 });
-
-

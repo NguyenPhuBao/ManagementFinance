@@ -1,237 +1,145 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useId } from 'react';
 import adminApi from '../../api/admin.api';
-import Pagination from '../../components/common/Pagination';
 import useSocket from '../../hooks/useSocket';
+import TruncateCell from '../../components/common/TruncateCell';
+import RequestCell from '../../components/common/RequestCell';
 import { useLanguageSafe } from '../../store/language.context';
-import { classifyAuditAction } from '../../utils/audit-tags.util';
+import { AUDIT_STATUS_TONE as STATUS_TONE, classifyAuditAction } from '../../utils/audit-tags.util';
 import { exportToCsv } from '../../utils/csv-exporter.util';
 import { formatFullDateTime } from '../../utils/format';
-import TruncateCell from '../../components/common/TruncateCell';
+import { Badge, Button, Card, DataTable, PageHeader, Pagination, SearchInput } from '../../components/ui';
 
-const STATUS_CONFIG = {
-  Pass: { bg: 'bg-[#dcfce7]', text: 'text-[#166534]', border: 'border-[#86efac]' },
-  Fail: { bg: 'bg-[#fef2f2]', text: 'text-[#b91c1c]', border: 'border-[#fecaca]' },
-  Rejected: { bg: 'bg-[#fee2e2]', text: 'text-[#991b1b]', border: 'border-[#fca5a5]' },
-  Interrupted: { bg: 'bg-[#fef9c3]', text: 'text-[#854d0e]', border: 'border-[#fef08a]' },
-  Accepted: { bg: 'bg-[#ccfbf1]', text: 'text-[#115e59]', border: 'border-[#99f6e4]' },
-  Processing: { bg: 'bg-[#dbeafe]', text: 'text-[#1e40af]', border: 'border-[#93c5fd]' },
-  Pending: { bg: 'bg-[#f3e8ff]', text: 'text-[#6b21a8]', border: 'border-[#d8b4fe]' },
-};
+const STATUSES = Object.keys(STATUS_TONE);
+const EMPTY_FILTERS = { search: '', status: '', dateFrom: '', dateTo: '' };
 
-const STATUSES = ['', 'Pass', 'Fail', 'Rejected', 'Interrupted', 'Accepted', 'Processing', 'Pending'];
+const fieldClass =
+  'h-10 rounded-lg border border-line bg-card px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
 
-const renderRequestBadge = (requestStr) => {
-  if (!requestStr) return <span className="text-slate-400">—</span>;
-  const parts = requestStr.trim().split(' ');
-  const method = parts[0]?.toUpperCase();
-  const path = parts.slice(1).join(' ');
-
-  let badgeColor = 'bg-slate-100 text-slate-700 border-slate-200';
-  if (method === 'GET') badgeColor = 'bg-blue-50 text-blue-700 border-blue-200';
-  else if (method === 'POST') badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  else if (method === 'PUT' || method === 'PATCH') badgeColor = 'bg-amber-50 text-amber-700 border-amber-200';
-  else if (method === 'DELETE') badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
-
-  if (['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-    return (
-      <div className="flex items-center gap-1.5 min-w-0 font-mono text-[11px]" title={requestStr}>
-        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border shrink-0 ${badgeColor}`}>
-          {method}
-        </span>
-        <TruncateCell text={path || requestStr} className="text-on-surface-variant font-medium min-w-0 font-mono text-[11px]" />
-      </div>
-    );
-  }
-
-  return <TruncateCell text={requestStr} className="text-on-surface-variant font-mono text-[11px] min-w-0" />;
-};
+const buildParams = (f) => ({
+  ...(f.search.trim() && { search: f.search.trim() }),
+  ...(f.status && { status: f.status }),
+  ...(f.dateFrom && { startDate: f.dateFrom }),
+  ...(f.dateTo && { endDate: `${f.dateTo}T23:59:59` }),
+});
 
 const AuditLogPage = () => {
   const { t, currentLang } = useLanguageSafe();
+  const socket = useSocket();
+  const ids = useId();
+
   const [logs, setLogs] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [search, setSearch] = useState('');
-
-
-  const [statusFilter, setStatusFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [newLogsCount, setNewLogsCount] = useState(0);
-
-  const socket = useSocket();
-  const [socketConnected, setSocketConnected] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const loadLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {
-        page,
-        limit: pageSize,
-        ...(search.trim() && { search: search.trim() }),
-        ...(statusFilter && { status: statusFilter }),
-        ...(dateFrom && { startDate: dateFrom }),
-        ...(dateTo && { endDate: dateTo + 'T23:59:59' }),
-      };
-      const res = await adminApi.getAuditLogs(params);
+      const res = await adminApi.getAuditLogs({ page, limit: pageSize, ...buildParams(filters) });
       const d = res.data?.data || res.data;
       setLogs(d.items || []);
       setTotal(d.total || 0);
-    } catch (e) {
-      console.error('Failed to load audit logs:', e);
+    } catch (err) {
+      console.error('Failed to load audit logs:', err);
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter, dateFrom, dateTo]);
+  }, [page, pageSize, filters]);
 
   useEffect(() => {
     loadLogs();
   }, [loadLogs]);
 
   useEffect(() => {
-    setPage(1);
-  }, [search, statusFilter, dateFrom, dateTo]);
-
-  // Lắng nghe Real-time Socket.io cho Audit Log Page
-  useEffect(() => {
-    if (!socket) {
-      setSocketConnected(false);
-      return;
-    }
-
-    setSocketConnected(socket.connected);
-
-    const onConnect = () => setSocketConnected(true);
-    const onDisconnect = () => setSocketConnected(false);
-
+    if (!socket) return undefined;
     const handleRealtimeLog = (data) => {
-      const incomingId = data.id || data.idlog || Date.now();
-      const timeReq = data.timeReq || data.time_req || new Date().toISOString();
-      const timeRes = data.timeRes || data.time_res || new Date().toISOString();
-      const reqStatus = data.status || data.req_status || 'Pass';
-      const actionName = data.action || data.request || t('auditLogs.defaultAction');
-      const requestEndpoint = data.request || data.action || '';
-      const uname = data.username || data.user || t('auditLogs.defaultUser');
+      const id = data.id || data.idlog || Date.now();
+      const status = data.status || data.req_status || 'Pass';
+      const action = data.action || data.request || t('auditLogs.defaultAction');
+      const request = data.request || data.action || '';
+      const username = data.username || data.user || t('auditLogs.defaultUser');
+      const now = new Date().toISOString();
+      const q = filters.search.trim().toLowerCase();
+      const matches =
+        (!filters.status || status === filters.status) &&
+        (!q || [action, request, username].some((v) => v.toLowerCase().includes(q)));
 
-      const newLog = {
-        id: incomingId,
-        idlog: incomingId,
-        idaccount: data.idaccount,
-        username: uname,
-        account: {
-          username: uname,
-          User: { fullname: data.user || null },
-        },
-        action: actionName,
-        request: requestEndpoint,
-        req_status: reqStatus,
-        reason: data.reason || null,
-        timeReq,
-        timeRes,
-        time_req: timeReq,
-        time_res: timeRes,
-        ip: data.ip || '127.0.0.1',
-      };
-
-      // Kiểm tra xem log mới có khớp với bộ lọc hiện tại hay không
-      const matchesStatus = !statusFilter || reqStatus === statusFilter;
-      const matchesSearch =
-        !search.trim() ||
-        actionName.toLowerCase().includes(search.trim().toLowerCase()) ||
-        requestEndpoint.toLowerCase().includes(search.trim().toLowerCase()) ||
-        uname.toLowerCase().includes(search.trim().toLowerCase());
-
-      const canPrepend = page === 1 && matchesStatus && matchesSearch && !dateFrom && !dateTo;
-
-      if (canPrepend) {
-        setLogs((prev) => {
-          const filtered = prev.filter((item) => (item.id || item.idlog) !== incomingId);
-          return [newLog, ...filtered].slice(0, pageSize);
-        });
+      if (page === 1 && matches && !filters.dateFrom && !filters.dateTo) {
+        const entry = {
+          id,
+          idaccount: data.idaccount,
+          username,
+          account: { username, User: { fullname: data.user || null } },
+          action,
+          request,
+          req_status: status,
+          reason: data.reason || null,
+          time_req: data.timeReq || data.time_req || now,
+          time_res: data.timeRes || data.time_res || now,
+          ip: data.ip || '',
+        };
+        setLogs((prev) => [entry, ...prev.filter((item) => (item.id || item.idlog) !== id)].slice(0, pageSize));
         setTotal((prev) => prev + 1);
       } else {
         setNewLogsCount((prev) => prev + 1);
       }
     };
-
-    socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
     socket.on('audit_activity', handleRealtimeLog);
+    return () => socket.off('audit_activity', handleRealtimeLog);
+  }, [socket, page, pageSize, filters, t]);
 
-    return () => {
-      socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
-      socket.off('audit_activity', handleRealtimeLog);
-    };
-  }, [socket, page, pageSize, search, statusFilter, dateFrom, dateTo, t]);
-
-  const fmt = (dt) => {
-    if (!dt) return '—';
-    return new Date(dt).toLocaleString(currentLang === 'en' ? 'en-US' : 'vi-VN', {
-      timeZone: 'Asia/Ho_Chi_Minh',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
+  const setFilter = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
   };
 
-  const [exporting, setExporting] = useState(false);
+  const fmt = (dt) =>
+    dt
+      ? new Date(dt).toLocaleString(currentLang === 'en' ? 'en-US' : 'vi-VN', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      : '—';
+
+  const showNewLogs = () => {
+    setNewLogsCount(0);
+    if (page === 1) loadLogs();
+    else setPage(1);
+  };
 
   const handleExportCsv = async () => {
+    setExporting(true);
     try {
-      setExporting(true);
-      const params = {
-        page: 1,
-        limit: Math.min(total || 500, 1000),
-        ...(search.trim() && { search: search.trim() }),
-        ...(statusFilter && { status: statusFilter }),
-        ...(dateFrom && { startDate: dateFrom }),
-        ...(dateTo && { endDate: dateTo + 'T23:59:59' }),
-      };
-      const res = await adminApi.getAuditLogs(params);
+      const res = await adminApi.getAuditLogs({ page: 1, limit: Math.min(total || 500, 1000), ...buildParams(filters) });
       const d = res.data?.data || res.data;
-      const exportItems = d.items && d.items.length > 0 ? d.items : logs;
-
-      const headers = [
-        'Mã Log',
-        'Thời gian gửi',
-        'Tài khoản Quản trị',
-        'Họ và tên',
-        'Phân loại',
-        'Hành động',
-        'Yêu cầu API',
-        'Trạng thái',
-        'Địa chỉ IP',
-        'Lý do / Phản hồi',
-      ];
-
-      const rows = exportItems.map((log) => {
-        const actionText = log.action || log.request || '';
-        const { tagInfo, cleanAction } = classifyAuditAction(actionText, log.request);
-        const logId = log.id || log.idlog || '';
-        const time = formatFullDateTime(log.time_req || log.timeReq);
-        const username = log.account?.username || log.username || 'System';
-        const fullname = log.account?.User?.fullname || '';
-        const tagLabel = tagInfo?.tag || '[API]';
-        const request = log.request || '';
-        const status = log.req_status || '';
-        const ip = log.ip || '';
-        const reason = log.reason || '';
-
-        return [logId, time, username, fullname, tagLabel, cleanAction, request, status, ip, reason];
-      });
-
-      const now = new Date();
-      const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+      const items = d.items?.length ? d.items : logs;
       exportToCsv({
-        filename: `audit_logs_${dateStr}.csv`,
-        headers,
-        rows,
+        filename: `audit_logs_${new Date().toISOString().slice(0, 10)}.csv`,
+        headers: ['Mã Log', 'Thời gian gửi', 'Tài khoản Quản trị', 'Họ và tên', 'Phân loại', 'Hành động', 'Yêu cầu API', 'Trạng thái', 'Địa chỉ IP', 'Lý do / Phản hồi'],
+        rows: items.map((log) => {
+          const { tagInfo, cleanAction } = classifyAuditAction(log.action || log.request || '', log.request);
+          return [
+            log.id || log.idlog || '',
+            formatFullDateTime(log.time_req || log.timeReq),
+            log.account?.username || log.username || 'System',
+            log.account?.User?.fullname || '',
+            tagInfo.label,
+            cleanAction,
+            log.request || '',
+            log.req_status || '',
+            log.ip || '',
+            log.reason || '',
+          ];
+        }),
       });
     } catch (err) {
       console.error('Export CSV audit logs failed:', err);
@@ -240,290 +148,127 @@ const AuditLogPage = () => {
     }
   };
 
-  const handleResetFilters = () => {
-    setSearch('');
-    setStatusFilter('');
-    setDateFrom('');
-    setDateTo('');
-    setPage(1);
-    setNewLogsCount(0);
-  };
+  const columns = [
+    { key: 'id', title: t('auditLogs.colId'), render: (log) => <span className="font-mono text-ink-muted">{log.id || log.idlog}</span> },
+    {
+      key: 'account',
+      title: t('auditLogs.colAccount'),
+      render: (log) => (
+        <div className="min-w-0">
+          <TruncateCell text={log.username || log.account?.username || '—'} className="font-medium text-ink" />
+          <div className="flex items-center gap-2 whitespace-nowrap text-xs text-ink-faint">
+            {log.idaccount && <span>UID {log.idaccount}</span>}
+            {(log.ip || log.ip_address) && <span className="font-mono">{log.ip || log.ip_address}</span>}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'action',
+      title: t('auditLogs.colAction'),
+      width: '22%',
+      render: (log) => {
+        const { tagInfo, cleanAction } = classifyAuditAction(log.action || log.request, log.request);
+        return (
+          <div className="flex min-w-0 flex-col items-start gap-1">
+            <Badge tone={tagInfo.tone}>{tagInfo.label}</Badge>
+            <TruncateCell text={cleanAction} className="text-ink" />
+          </div>
+        );
+      },
+    },
+    { key: 'request', title: t('auditLogs.colRequest'), width: '20%', render: (log) => <RequestCell value={log.request} /> },
+    {
+      key: 'status',
+      title: t('auditLogs.colStatus'),
+      render: (log) => <Badge tone={STATUS_TONE[log.req_status] || 'neutral'}>{t(`auditLogs.statuses.${log.req_status}`, log.req_status)}</Badge>,
+    },
+    { key: 'reason', title: t('auditLogs.colReason'), width: '14%', render: (log) => <TruncateCell text={log.reason || '—'} className="text-ink-muted" /> },
+    {
+      key: 'time',
+      title: t('auditLogs.colTime'),
+      render: (log) => (
+        <div className="whitespace-nowrap">
+          <div className="text-ink">{fmt(log.time_req || log.timeReq)}</div>
+          <div className="text-xs text-ink-faint">{t('auditLogs.respondedAt', { time: fmt(log.time_res || log.timeRes) })}</div>
+        </div>
+      ),
+    },
+  ];
+
+  const filtersActive = JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS);
 
   return (
-    <div className="max-w-[1720px] mx-auto w-full p-4 md:p-6 space-y-6 bg-surface-bright min-h-full">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <h1 className="font-display-md text-display-md font-bold text-on-surface m-0 tracking-tight">
-            {t('auditLogs.title')}
-          </h1>
-          {socketConnected ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#dcfce7] text-[#166534] font-label-md text-xs font-semibold border border-[#86efac]">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#166534] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#166534]"></span>
-              </span>
-              {t('auditLogs.realtime')}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 font-label-md text-xs font-medium border border-amber-200" title={t('auditLogs.connectingTitle')}>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-              {t('auditLogs.connecting')}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            id="btn-export-audit-csv"
-            type="button"
-            onClick={handleExportCsv}
-            disabled={exporting}
-            className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 border border-outline-variant bg-white hover:bg-slate-50 rounded-lg px-3 py-2 transition-colors cursor-pointer shadow-xs disabled:opacity-50 font-medium"
-            title={t('auditLogs.exportCsvTitle', 'Xuất toàn bộ nhật ký ra định dạng CSV phục vụ kiểm toán')}
-          >
-            <span className={`material-symbols-outlined text-[16px] text-emerald-600 ${exporting ? 'animate-spin' : ''}`}>
-              {exporting ? 'sync' : 'download'}
-            </span>
-            <span>{exporting ? t('common.exporting', 'Đang xuất...') : t('auditLogs.exportCsvBtn', 'Xuất CSV')}</span>
-          </button>
-          <button
-            id="btn-refresh-audit"
-            onClick={loadLogs}
-            className="flex items-center gap-1.5 text-xs text-white bg-primary hover:bg-primary/90 rounded-lg px-3.5 py-2 font-medium transition-colors cursor-pointer shadow-sm"
-          >
-            <span className="material-symbols-outlined text-[16px]">refresh</span>
-            {t('auditLogs.refreshBtn')}
-          </button>
-        </div>
-      </div>
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title={t('auditLogs.title')}
+        description={t('auditLogs.subtitle')}
+        actions={
+          <>
+            <Button icon="download" loading={exporting} onClick={handleExportCsv}>
+              {t('auditLogs.exportCsvBtn')}
+            </Button>
+            <Button icon="refresh" onClick={loadLogs}>
+              {t('auditLogs.refreshBtn')}
+            </Button>
+          </>
+        }
+      />
 
-      {/* Filter Toolbar */}
-      <div className="bg-white rounded-xl border border-outline-variant shadow-2xs p-3.5 flex flex-wrap items-center gap-2.5">
-        {/* 1. Thanh tìm kiếm */}
-        <div className="relative flex-1 min-w-[220px]">
-          <span className="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">search</span>
-          <input
-            type="text"
-            placeholder={t('auditLogs.searchPlaceholder')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-outline-variant rounded-lg pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-on-surface bg-white"
-          />
-        </div>
-
-        {/* 2. LOV Trạng thái (thu nhỏ) */}
-        <div className="w-36 sm:w-44 shrink-0">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full border border-outline-variant rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-on-surface bg-white cursor-pointer truncate"
-          >
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s ? t('auditLogs.statusPrefix', { status: t('auditLogs.statuses.' + s) || s }) : t('auditLogs.allStatuses')}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* 3. Khoảng ngày Từ - Đến gộp chung vào 1 container mềm mại */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-slate-50/70 text-xs text-on-surface-variant shrink-0">
-          <span className="material-symbols-outlined text-[16px] text-slate-400 shrink-0">calendar_month</span>
-          <span className="text-[11px] whitespace-nowrap font-medium text-slate-500">{t('auditLogs.dateFrom')}</span>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="bg-transparent text-xs text-on-surface focus:outline-none cursor-pointer p-0 border-0"
-          />
-          <span className="text-slate-300 text-xs px-0.5">→</span>
-          <span className="text-[11px] whitespace-nowrap font-medium text-slate-500">{t('auditLogs.dateTo')}</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="bg-transparent text-xs text-on-surface focus:outline-none cursor-pointer p-0 border-0"
-          />
-          {(dateFrom || dateTo) && (
-            <button
-              type="button"
-              onClick={() => {
-                setDateFrom('');
-                setDateTo('');
-              }}
-              title={t('common.clear', 'Xóa')}
-              className="text-slate-400 hover:text-slate-600 p-0.5 ml-0.5 transition-colors cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[14px]">close</span>
-            </button>
-          )}
-        </div>
-
-        {/* 4. Nút Đặt lại nằm ở góc phải ngoài cùng */}
-        <div className="ml-auto shrink-0">
-          <button
-            id="btn-reset-audit-filters"
-            type="button"
-            onClick={handleResetFilters}
-            className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 border border-outline-variant bg-white hover:bg-slate-50 rounded-lg px-3 py-2 transition-colors cursor-pointer shadow-2xs font-medium"
-            title={t('auditLogs.resetTitle')}
-          >
-            <span className="material-symbols-outlined text-[16px] text-slate-500">filter_alt_off</span>
-            <span>{t('auditLogs.resetBtn')}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Real-time New Logs Alert Banner */}
       {newLogsCount > 0 && (
-        <div
-          data-testid="new-logs-banner"
-          className="bg-primary/10 border border-primary/30 text-primary rounded-xl p-3 px-4 flex items-center justify-between shadow-2xs animate-fadeIn transition-all"
-        >
-          <div className="flex items-center gap-2.5 text-xs font-semibold">
-            <span className="material-symbols-outlined text-[20px] animate-pulse">notifications_active</span>
-            <span>{t('auditLogs.newLogsBanner', { count: newLogsCount })}</span>
-          </div>
-          <button
-            data-testid="btn-view-new-logs"
-            onClick={() => {
-              setNewLogsCount(0);
-              handleResetFilters();
-              loadLogs();
-            }}
-            className="text-xs bg-primary text-white font-medium px-3.5 py-1.5 rounded-lg hover:bg-primary/90 transition-colors shadow-sm cursor-pointer flex items-center gap-1"
-          >
-            <span className="material-symbols-outlined text-[15px]">autorenew</span>
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-info-soft px-4 py-3 text-sm text-info">
+          <span>{t('auditLogs.newLogsBanner', { count: newLogsCount })}</span>
+          <Button size="sm" variant="ghost" onClick={showNewLogs}>
             {t('auditLogs.viewNewLogs')}
-          </button>
+          </Button>
         </div>
       )}
 
-      {/* Table Card */}
-      <div className="w-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col relative">
-        <div className="overflow-x-auto min-h-[300px]">
-          <table className="w-full text-left border-collapse text-xs min-w-[1050px]">
-            <thead>
-              <tr className="bg-surface-container-low/60 border-b border-outline-variant">
-                <th className="w-16 py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
-                  {t('auditLogs.colId')}
-                </th>
-                <th className="w-[16%] min-w-[130px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
-                  {t('auditLogs.colAccount')}
-                </th>
-                <th className="w-[18%] min-w-[160px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
-                  {t('auditLogs.colAction')}
-                </th>
-                <th className="w-[18%] min-w-[160px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
-                  {t('auditLogs.colRequest')}
-                </th>
-                <th className="w-[10%] min-w-[90px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] text-center">
-                  {t('auditLogs.colStatus')}
-                </th>
-                <th className="w-[16%] min-w-[130px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px]">
-                  {t('auditLogs.colReason')}
-                </th>
-                <th className="w-[11%] min-w-[110px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">
-                  {t('auditLogs.colTimeReq')}
-                </th>
-                <th className="w-[11%] min-w-[110px] py-3.5 px-4 font-semibold text-on-surface-variant uppercase tracking-wider text-[11px] whitespace-nowrap">
-                  {t('auditLogs.colTimeRes')}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/40">
-              {loading ? (
-                <tr>
-                  <td colSpan={8} className="py-16 text-center text-on-surface-variant">
-                    <span className="material-symbols-outlined animate-spin text-primary text-3xl block mx-auto mb-2">progress_activity</span>
-                    {t('auditLogs.loading')}
-                  </td>
-                </tr>
-              ) : logs.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-16 text-center text-on-surface-variant">
-                    <span className="material-symbols-outlined text-4xl text-gray-300 block mx-auto mb-2">content_paste_off</span>
-                    {t('auditLogs.empty')}
-                  </td>
-                </tr>
-              ) : (
-                logs.map((log) => {
-                  const cfg = STATUS_CONFIG[log.req_status] || { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' };
-                  const displayId = log.id || log.idlog;
-                  return (
-                    <tr key={displayId} className="hover:bg-surface-container-lowest transition-colors">
-                      <td className="py-3 px-4 text-on-surface-variant font-mono font-medium">#{displayId}</td>
-                      <td className="py-3 px-4 overflow-hidden">
-                        <div className="font-semibold text-on-surface flex items-center gap-1.5 min-w-0">
-                          <span className="material-symbols-outlined text-[15px] text-slate-400 shrink-0">account_circle</span>
-                          <TruncateCell text={log.username || log.account?.username || '—'} className="min-w-0" />
-                        </div>
-                        <div className="text-[11px] text-on-surface-variant flex items-center gap-1.5 mt-0.5 font-mono">
-                          <span>UID: {log.idaccount}</span>
-                          <span className="text-slate-300">•</span>
-                          <span className="inline-flex items-center gap-0.5 bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200" title={t('auditLogs.ipTitle')}>
-                            <span className="material-symbols-outlined text-[11px] text-slate-400">router</span>
-                            <span>{log.ip || log.ip_address || '127.0.0.1'}</span>
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-on-surface overflow-hidden">
-                        {(() => {
-                          const actionText = log.action || log.request;
-                          const { tagInfo, cleanAction } = classifyAuditAction(actionText, log.request);
-                          return (
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span
-                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${tagInfo.bg} ${tagInfo.text} ${tagInfo.border} shrink-0`}
-                                title={tagInfo.label}
-                              >
-                                <span className="material-symbols-outlined text-[11px]">{tagInfo.icon}</span>
-                                <span>{tagInfo.tag}</span>
-                              </span>
-                              <TruncateCell text={cleanAction} className="font-medium text-xs text-on-surface min-w-0" />
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="py-3 px-4 text-on-surface-variant overflow-hidden">
-                        {renderRequestBadge(log.request)}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-                          {t('auditLogs.statuses.' + log.req_status) || log.req_status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-on-surface-variant overflow-hidden">
-                        <TruncateCell text={log.reason || '—'} />
-                      </td>
-                      <td className="py-3 px-4 text-on-surface-variant whitespace-nowrap font-mono text-[11px]">
-                        {fmt(log.timeReq || log.time_req)}
-                      </td>
-                      <td className="py-3 px-4 text-on-surface-variant whitespace-nowrap font-mono text-[11px]">
-                        {fmt(log.timeRes || log.time_res)}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+      <Card>
+        <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3 text-sm">
+          <SearchInput
+            label={t('auditLogs.searchLabel')}
+            placeholder={t('auditLogs.searchPlaceholder')}
+            value={filters.search}
+            onChange={(v) => setFilter('search', v)}
+            className="w-full sm:w-72"
+          />
+          <label htmlFor={`${ids}-status`} className="sr-only">
+            {t('auditLogs.statusLabel')}
+          </label>
+          <select id={`${ids}-status`} value={filters.status} onChange={(e) => setFilter('status', e.target.value)} className={`${fieldClass} cursor-pointer pr-9`}>
+            <option value="">{t('auditLogs.allStatuses')}</option>
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {t(`auditLogs.statuses.${s}`)}
+              </option>
+            ))}
+          </select>
+          <label className="flex items-center gap-2 text-ink-muted">
+            {t('auditLogs.dateFrom')}
+            <input type="date" value={filters.dateFrom} onChange={(e) => setFilter('dateFrom', e.target.value)} className={fieldClass} />
+          </label>
+          <label className="flex items-center gap-2 text-ink-muted">
+            {t('auditLogs.dateTo')}
+            <input type="date" value={filters.dateTo} onChange={(e) => setFilter('dateTo', e.target.value)} className={fieldClass} />
+          </label>
+          <Button variant="ghost" size="sm" icon="filter_alt_off" disabled={!filtersActive} onClick={() => { setFilters(EMPTY_FILTERS); setPage(1); }}>
+            {t('auditLogs.resetBtn')}
+          </Button>
         </div>
-
-        {/* Pagination Toolbar */}
+        <DataTable columns={columns} rows={logs} rowKey={(log) => log.id || log.idlog} loading={loading && logs.length === 0} emptyTitle={t('auditLogs.emptyTitle')} minWidth={980} />
         <Pagination
           currentPage={page}
           pageSize={pageSize}
           total={total}
-          pageSizeOptions={[10, 20, 50, 100, 200]}
-          onPageChange={(p) => setPage(p)}
-          onPageSizeChange={(newSize) => {
-            setPageSize(newSize);
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
             setPage(1);
           }}
           itemLabel={t('auditLogs.itemLabel')}
         />
-      </div>
+      </Card>
     </div>
   );
 };

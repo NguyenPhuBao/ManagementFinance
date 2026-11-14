@@ -339,7 +339,7 @@ function emitMaintenanceChanged(maintenanceStatus) {
 function emitSystemMetricsStream(metrics) {
   if (!io) return;
   try {
-    io.to('admin_room').emit('admin.metrics_stream', metrics);
+    io.to('admin_room').emit('admin.metrics_stream', require('../utils/ip-protection.util').stripRawIp(metrics));
   } catch (error) {
     logger.error('[Socket] Failed to emit admin.metrics_stream', { error: error.message });
   }

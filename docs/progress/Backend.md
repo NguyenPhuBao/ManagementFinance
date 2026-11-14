@@ -646,6 +646,7 @@ Toàn bộ 7 nội dung kỹ thuật (T1.1 $\rightarrow$ T1.7) cùng phân tích
 4. **Admin Sandbox Mode & Xử Lý Hoàn Tiền (Refund):**
    - Chế độ Sandbox tạo đơn thật với cờ `is_template: true` để quét QR thật từ App ngân hàng.
    - Modal hoàn tiền hỗ trợ upload file ảnh ủy nhiệm chi/biên lai chuyển khoản lưu tại `src/Backend/Assets/Refunds/`.
+   - 2026-11-12: `deleteSampleOrders` (`DELETE /admin/payments/sample`) đổi điều kiện từ tiền tố `payment_link_id = 'sample-link-…'` (quy ước cũ, không còn khớp đơn mẫu tạo qua PayOS thật) sang `is_template = true`; Admin-web có nút "Xóa đơn mẫu" gọi API này. Test `tests/unit/admin.payment.test.js` ca 22.
 
 ---
 
@@ -722,3 +723,14 @@ Hoàn thành xây dựng và tích hợp trọn vẹn module Quản lý Tài ch�
    - **548 / 548 tests PASS 100%** (79 test suites, Zero Regressions).
    - **13 Partial Indexes + 4 Security Triggers** an toàn tuyệt đối.
    - **Admin-web Build thành công** trong 3.50s với Vite v5.4.
+
+## 26. Bảo Vệ Dữ Liệu Theo Luật 2025, Chính Sách Bảo Mật Theo Phiên Bản & AIOps (2026-11-13)
+
+1. **Bảo vệ IP (phương án B, migration 48, đã áp Supabase):** IP lấy từ kết nối (`getClientIp(req)`, `trust proxy = 1`), lưu bản che + bản mã AES-256-GCM + chỉ mục mù HMAC; `IP_RETENTION_DAYS` mặc định 365, job hằng ngày xóa bản mã quá hạn; admin xem IP đầy đủ phải nhập PIN, mỗi lượt ghi nhật ký. Khóa PIN admin sau 5 lần sai / 15 phút.
+2. **Chính sách bảo mật theo phiên bản (migration 49, đã áp Supabase):** bảng `privacy_policy`, `policy_acceptance` (trigger chặn sửa); `GET /api/policy/current`, `POST /api/policy/accept`; admin đăng phiên bản mới bằng PIN, phát `system.policy_updated`. Backend chưa chặn người dùng chưa đồng ý (Client-app chưa làm màn đồng ý).
+3. **Ẩn danh tài khoản sau 30 ngày** xóa thêm IP đầy đủ trong lịch sử thiết bị; `db:verify-indexes`, `db:verify-encryption` kiểm thêm migration 48/49.
+4. **AIOps (G4.1a):** một hàm băm IP có khóa `ipLookupHash` cho bộ thu thập + lớp chặn (sửa lỗi chặn từ sự cố không có tác dụng); lượt chặn cũ tính lại băm khi nạp; phản hồi `/api/admin/aiops/*` và sự kiện `admin.*` không mang IP đầy đủ; `POST /api/admin/aiops/quarantine/:hash/reveal-ip` (PIN); nhật ký ghi mọi thao tác AIOps trừ `GET`. **Bỏ** `POST /api/admin/aiops/incidents/clear` và hàm xóa toàn bộ `aiops_incident` (Chủ dự án quyết: chức năng được thêm khi chưa có phép, nhật ký sự cố phải giữ).
+5. **Tương thích Client-app:** 35 API app đang gọi đều còn; Sync không đổi hợp đồng; test Backend trên CSDL thật 942/942 đạt; kịch bản nghiệm thu `chay_kiem.js` 50, `chay_kiem_pr174.js` 24, `chay_kiem_gia_dinh_2.js` 36/36 đạt. `chay_kiem_61.js` viết lại theo DeepSeek (giả lập `fetch` ném `TimeoutError` / `AbortError`, khóa và địa chỉ giả, chặn mọi lượt gọi ra mạng): 6/6 đạt.
+6. **Cloud:** Admin-web `vercel.json` chuyển tiếp thêm `/assets/Refunds/*` tới Render để ảnh minh chứng hoàn tiền hiện đúng khi Vercel không đặt `VITE_API_BASE_URL`. Ảnh minh chứng chuyển sang Supabase Storage (bucket riêng tư `refund-proofs`, `core/storage`, đường dẫn tạm 10 phút; dev / test lưu `Assets/Storage`); luật `/assets/Refunds` trong `vercel.json` đã gỡ.
+7. **Kho lưu trữ (kế hoạch A, 2026-11-14):** `core/storage` (Supabase Storage qua REST, chế độ local cho dev / test), minh chứng hoàn tiền lưu bucket riêng tư `refund-proofs`, kiểm loại tệp theo nội dung, đường dẫn tạm 10 phút; `scripts/setup_storage_buckets.js`.
+8. **Bản sao dữ liệu cá nhân (kế hoạch B, migration 50):** `/api/account/data-export` (yêu cầu, trạng thái, tải JSON / CSV), tạo tệp nền, email không kèm đường dẫn, sự kiện `account.data_export_ready`, giới hạn 1 lần / 24 giờ, job dọn tệp hết hạn; Admin-web hiện trạng thái trong chi tiết người dùng. Việc Client-app: `client-app/CAN-LAM/BAN_SAO_DU_LIEU.md` (Mục 52).

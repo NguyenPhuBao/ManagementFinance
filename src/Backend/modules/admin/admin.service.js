@@ -1,4 +1,25 @@
 const adminRepository = require('./admin.repository');
+
+const PIN_MAX_FAILURES = 5;
+const PIN_WINDOW_MS = 15 * 60 * 1000;
+const pinAttempts = new Map();
+
+function pinLockedUntil(idaccount) {
+  const rec = pinAttempts.get(idaccount);
+  if (!rec) return 0;
+  if (rec.lockedUntil && rec.lockedUntil > Date.now()) return rec.lockedUntil;
+  if (rec.lockedUntil || Date.now() - rec.firstAt > PIN_WINDOW_MS) pinAttempts.delete(idaccount);
+  return 0;
+}
+
+function recordPinFailure(idaccount) {
+  const now = Date.now();
+  const rec = pinAttempts.get(idaccount);
+  const next = rec && now - rec.firstAt <= PIN_WINDOW_MS ? { ...rec, count: rec.count + 1 } : { count: 1, firstAt: now, lockedUntil: 0 };
+  if (next.count >= PIN_MAX_FAILURES) next.lockedUntil = now + PIN_WINDOW_MS;
+  pinAttempts.set(idaccount, next);
+  return next;
+}
 const permissionRepository = require('../payment/permission.repository');
 const os = require('os');
 const { defaultEventLoopMonitor } = require('../../core/resilience/event-loop-monitor');
@@ -182,6 +203,15 @@ const adminService = {
       created_at: u.create_at,
       updated_at: u.account ? (u.account.update_at || u.update_at) : u.update_at,
     }));
+  },
+
+  _resetPinAttempts() {
+    pinAttempts.clear();
+  },
+
+  async resolveAccountId(iduser) {
+    const u = await adminRepository.getUserById(iduser);
+    return u?.account?.idaccount ?? null;
   },
 
   async getUserDetail(iduser) {
@@ -959,6 +989,15 @@ const adminService = {
       throw err;
     }
 
+    const actorId = currentUser?.idaccount || 0;
+    const lockedUntil = pinLockedUntil(actorId);
+    if (lockedUntil) {
+      const minutes = Math.ceil((lockedUntil - Date.now()) / 60000);
+      const err = new Error(`Nhập sai mã PIN / mật khẩu quá nhiều lần. Thử lại sau ${minutes} phút.`);
+      err.statusCode = 429;
+      throw err;
+    }
+
     const bcrypt = require('bcryptjs');
     let isPinValid = false;
     let isPasswordValid = false;
@@ -979,10 +1018,28 @@ const adminService = {
     }
 
     if (!isPinValid && !isPasswordValid) {
+      const rec = recordPinFailure(actorId);
+      if (rec.lockedUntil) {
+        try {
+          const { prisma } = require('../../config/db');
+          await prisma.auditlog.create({
+            data: {
+              idaccount: actorId || 1,
+              request: 'POST /api/admin/verify-security-action',
+              action: `[SECURITY] Khóa xác thực PIN 15 phút sau ${rec.count} lần sai (${action || 'CRITICAL_ACTION'})`,
+              req_status: 'Rejected',
+              reason: 'Vượt giới hạn nhập sai mã PIN / mật khẩu',
+              time_req: new Date(),
+              time_res: new Date(),
+            },
+          });
+        } catch (_) {}
+      }
       const err = new Error('Mã PIN hoặc mật khẩu quản trị viên không chính xác!');
       err.statusCode = 400;
       throw err;
     }
+    pinAttempts.delete(actorId);
 
     // Ghi nhận Audit Log xác thực an toàn với đầy đủ Request (API) và Action (Nghiệp vụ)
     try {

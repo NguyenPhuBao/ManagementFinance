@@ -539,7 +539,7 @@ model aiops_ip_quarantine {
   id                  String                              @id @db.VarChar(64) @map("id")
   ip_hash             String                              @unique @db.VarChar(64) @map("ip_hash")
   masked_ip           String                              @db.VarChar(45) @map("masked_ip")
-  raw_ip              String?                             @db.VarChar(45) @map("raw_ip")
+  raw_ip              String?                             @db.Text @map("raw_ip")
   status              String                              @default("TEMPORARY") @db.VarChar(20) @map("status")
   reason              String                              @db.Text @map("reason")
   violation_vector    String?                             @db.VarChar(20) @map("violation_vector")
@@ -614,11 +614,58 @@ model aiops_quarantine_incident_link {
 }
 
 /// Bảng lưu vết lịch sử thiết bị và địa chỉ IP người dùng (2.21)
+model privacy_policy {
+  version      Int                 @id @map("version")
+  title        String              @db.VarChar(200) @map("title")
+  content      String              @db.Text @map("content")
+  published_at DateTime            @default(now()) @db.Timestamp(6) @map("published_at")
+  published_by Int?                @map("published_by")
+
+  acceptances  policy_acceptance[]
+
+  @@map("privacy_policy")
+}
+
+model policy_acceptance {
+  id             BigInt         @id @default(autoincrement()) @map("id")
+  idaccount      Int            @map("idaccount")
+  policy_version Int            @map("policy_version")
+  accepted_at    DateTime       @default(now()) @db.Timestamp(6) @map("accepted_at")
+  ip_hash        String?        @db.VarChar(64) @map("ip_hash")
+  device_name    String?        @db.VarChar(150) @map("device_name")
+  user_agent     String?        @db.Text @map("user_agent")
+
+  policy         privacy_policy @relation(fields: [policy_version], references: [version], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([idaccount, policy_version], map: "uq_policy_acceptance_account_version")
+  @@index([policy_version], map: "idx_policy_acceptance_version")
+  @@map("policy_acceptance")
+}
+
+/// Yêu cầu bản sao dữ liệu cá nhân (migration 50). Tệp ở Supabase Storage bucket data-exports, hết hạn 24 giờ.
+model data_export_request {
+  id            String    @id @db.VarChar(36) @map("id")
+  idaccount     Int       @map("idaccount")
+  status        String    @default("PROCESSING") @db.VarChar(20) @map("status")
+  json_ref      String?   @db.Text @map("json_ref")
+  csv_ref       String?   @db.Text @map("csv_ref")
+  requested_at  DateTime  @default(now()) @db.Timestamp(6) @map("requested_at")
+  ready_at      DateTime? @db.Timestamp(6) @map("ready_at")
+  expires_at    DateTime? @db.Timestamp(6) @map("expires_at")
+  email_sent_at DateTime? @db.Timestamp(6) @map("email_sent_at")
+  error         String?   @db.Text @map("error")
+
+  @@index([idaccount, requested_at(sort: Desc)], map: "idx_data_export_account_time")
+  @@map("data_export_request")
+}
+
 model account_device_history {
   id             BigInt   @id @default(autoincrement()) @map("id")
   idaccount      Int      @map("idaccount")
   device_name    String   @db.VarChar(150) @map("device_name")
   ip_address     String   @db.VarChar(256) @map("ip_address")
+  ip_encrypted   String?  @db.Text @map("ip_encrypted")
+  ip_hash        String?  @db.VarChar(64) @map("ip_hash")
   user_agent     String?  @db.Text @map("user_agent")
   first_seen_at  DateTime @default(now()) @db.Timestamp(6) @map("first_seen_at")
   last_active_at DateTime @default(now()) @db.Timestamp(6) @map("last_active_at")

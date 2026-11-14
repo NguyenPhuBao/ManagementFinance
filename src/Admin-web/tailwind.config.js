@@ -8,6 +8,18 @@ export default {
   theme: {
     extend: {
       "colors": {
+        "canvas": "var(--ui-canvas)",
+        "card": "var(--ui-card)",
+        "muted": "var(--ui-muted)",
+        "line": "var(--ui-line)",
+        "ink": { "DEFAULT": "var(--ui-ink)", "muted": "var(--ui-ink-muted)", "faint": "var(--ui-ink-faint)" },
+        "brand": { "DEFAULT": "var(--ui-brand)", "hover": "var(--ui-brand-hover)", "soft": "var(--ui-brand-soft)", "on": "var(--ui-on-brand)" },
+        "success": { "DEFAULT": "var(--ui-success)", "soft": "var(--ui-success-soft)" },
+        "warning": { "DEFAULT": "var(--ui-warning)", "soft": "var(--ui-warning-soft)" },
+        "danger": { "DEFAULT": "var(--ui-danger)", "hover": "var(--ui-danger-hover)", "soft": "var(--ui-danger-soft)" },
+        "quiet": { "DEFAULT": "var(--ui-quiet)", "soft": "var(--ui-quiet-soft)" },
+        "info": { "DEFAULT": "var(--ui-info)", "soft": "var(--ui-info-soft)" },
+        "overlay": "var(--ui-overlay)",
         "on-secondary-fixed-variant": "#3f465c",
         "on-background": "#0b1c30",
         "on-primary-fixed": "#002113",

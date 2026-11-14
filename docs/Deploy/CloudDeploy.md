@@ -87,6 +87,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 3. **Áp dụng Lược đồ CSDL:**
    - Chạy các script từ `database/1_schema.sql` đến `database/14_fix_grab_keyword_category.sql` qua Supabase SQL Editor.
    - ⚠️ **Cảnh báo:** Tuyệt đối không chạy `prisma migrate dev` trên Supabase để tránh mất mệnh đề `WHERE` của 5 Partial Unique Indexes.
+4. **Tạo bucket Storage (một lần):** từ `src/Backend`, với `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` trong môi trường: `node scripts/setup_storage_buckets.js --xac-nhan-tu-xa` (lũy đẳng; tạo `refund-proofs` 5 MB ảnh / PDF và `data-exports` 20 MB JSON / CSV, đều riêng tư). Gói Free: 1 GB lưu trữ, 5 GB băng thông / tháng; vượt hạn mức không tính tiền nhưng có thể bị hạn chế cả tổ chức.
 
 ---
 
@@ -149,6 +150,15 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    # Cổng 5432 (Direct Connection) phục vụ migrations và scripts
    DIRECT_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres
    PG_POOL_MAX=20
+
+   # ========================================================
+   # 2b. KHO LƯU TRỮ TỆP (SUPABASE STORAGE, từ 2026-11-13)
+   # ========================================================
+   # Minh chứng hoàn tiền và bản sao dữ liệu cá nhân lưu ở bucket riêng tư (refund-proofs, data-exports).
+   # Lấy ở Supabase Dashboard → Project Settings → API. SERVICE_ROLE_KEY là khóa toàn quyền: chỉ đặt ở Render.
+   # Thiếu hai biến này thì tệp ghi vào ổ đĩa Render và MẤT sau mỗi lần deploy (log báo lỗi lúc khởi động).
+   SUPABASE_URL=https://[PROJECT-REF].supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=[SERVICE_ROLE_KEY]
 
    # ========================================================
    # 3. MESSAGE BROKER & IN-MEMORY CACHE (UPSTASH REDIS TLS)

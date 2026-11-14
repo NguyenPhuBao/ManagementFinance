@@ -49,6 +49,7 @@ const aiopsApi = {
   calibrate: (data = {}) => callAIOps('post', '/admin/aiops/calibrate', data),
   getQuarantineList: () => callAIOps('get', '/admin/aiops/quarantine'),
   unblockQuarantine: (hash) => callAIOps('delete', `/admin/aiops/quarantine/${hash}`),
+  revealQuarantineIp: (hash, credentials) => axiosClient.post(`/admin/aiops/quarantine/${hash}/reveal-ip`, credentials),
   setScale: (concurrency) => callAIOps('post', '/admin/aiops/scale', { concurrency }),
   getIncidents: (params = {}) => {
     const qs = new URLSearchParams();
@@ -60,7 +61,6 @@ const aiopsApi = {
     const queryString = qs.toString();
     return callAIOps('get', `/admin/aiops/incidents${queryString ? `?${queryString}` : ''}`);
   },
-  clearIncidents: () => callAIOps('post', '/admin/aiops/incidents/clear'),
   quarantineActor: (payload) => callAIOps('post', '/admin/aiops/quarantine', payload),
   temporaryBlockIp: (payload) => callAIOps('post', '/admin/aiops/quarantine/temporary-ip', payload),
   unblockIp: (payload) => callAIOps('post', '/admin/aiops/quarantine/unblock-ip', payload),
