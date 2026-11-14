@@ -69,7 +69,7 @@ describe('Tầng 2: chế độ local ghi, đọc, ký đường dẫn, xóa th�
 });
 
 describe('Tầng 2: chế độ supabase gọi đúng REST API của Storage', () => {
-  const env = { SUPABASE_URL: 'https://demo.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'service-key-bi-mat' };
+  const env = { SUPABASE_URL: 'https://demo.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'eyJhbGciOi.khoa-cu-bi-mat' };
   const makeHttp = () => {
     const calls = [];
     const http = async (cfg) => {
@@ -89,10 +89,21 @@ describe('Tầng 2: chế độ supabase gọi đúng REST API của Storage', (
     const c = calls[0];
     assert.strictEqual(c.method, 'post');
     assert.strictEqual(c.url, 'https://demo.supabase.co/storage/v1/object/refund-proofs/don-1/abc.png');
-    assert.strictEqual(c.headers.Authorization, 'Bearer service-key-bi-mat');
+    assert.strictEqual(c.headers.Authorization, 'Bearer eyJhbGciOi.khoa-cu-bi-mat');
     assert.strictEqual(c.headers['Content-Type'], 'image/png');
     assert.strictEqual(c.headers['x-upsert'], 'false');
     assert.strictEqual(c.data, PNG);
+  });
+
+  it('khóa dạng mới sb_secret_: chỉ gửi header apikey, không gửi Authorization Bearer (khóa không phải JWT)', async () => {
+    const { http, calls } = makeHttp();
+    const s = storageMod.createStorage({ env: { ...env, SUPABASE_SERVICE_ROLE_KEY: 'sb_secret_khoa-moi' }, http });
+    await s.put({ bucket: 'refund-proofs', key: 'don-1/abc.png', buffer: PNG, contentType: 'image/png' });
+    await s.signedUrl('sb://refund-proofs/don-1/abc.png', 60);
+    for (const c of calls) {
+      assert.strictEqual(c.headers.apikey, 'sb_secret_khoa-moi');
+      assert.ok(!('Authorization' in c.headers), 'không gửi Authorization với khóa sb_secret_');
+    }
   });
 
   it('signedUrl ký với thời hạn yêu cầu, trả đường dẫn tuyệt đối, không chứa khóa dịch vụ', async () => {
@@ -102,7 +113,7 @@ describe('Tầng 2: chế độ supabase gọi đúng REST API của Storage', (
     assert.strictEqual(calls[0].url, 'https://demo.supabase.co/storage/v1/object/sign/refund-proofs/don-1/abc.png');
     assert.deepStrictEqual(calls[0].data, { expiresIn: 600 });
     assert.strictEqual(url, 'https://demo.supabase.co/storage/v1/object/sign/refund-proofs/don-1/abc.png?token=TK');
-    assert.ok(!url.includes('service-key-bi-mat'));
+    assert.ok(!url.includes('khoa-cu-bi-mat'));
   });
 
   it('download đọc nhị phân; remove xóa đúng khóa; ensureBucket tạo bucket riêng tư', async () => {

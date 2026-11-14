@@ -155,7 +155,8 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    # 2b. KHO LƯU TRỮ TỆP (SUPABASE STORAGE, từ 2026-11-13)
    # ========================================================
    # Minh chứng hoàn tiền và bản sao dữ liệu cá nhân lưu ở bucket riêng tư (refund-proofs, data-exports).
-   # Lấy ở Supabase Dashboard → Project Settings → API. SERVICE_ROLE_KEY là khóa toàn quyền: chỉ đặt ở Render.
+   # Lấy ở Supabase Dashboard → Project Settings → API Keys: khóa Secret (sb_secret_...) hoặc khóa service_role cũ (eyJ...). Khóa toàn quyền: chỉ đặt ở Render.
+   # Khóa sb_secret_ chỉ được gửi ở header apikey (không phải JWT); core/storage tự chọn header theo dạng khóa.
    # Thiếu hai biến này thì tệp ghi vào ổ đĩa Render và MẤT sau mỗi lần deploy (log báo lỗi lúc khởi động).
    SUPABASE_URL=https://[PROJECT-REF].supabase.co
    SUPABASE_SERVICE_ROLE_KEY=[SERVICE_ROLE_KEY]
