@@ -14,6 +14,7 @@ Quy trình thanh toán gói cước Premium qua cổng **PayOS** và ngân hàng
 3. **Minh bạch & Xử lý sai lệch số tiền (Overpayment / Underpayment):** Phân định rạch ròi giữa số tiền cần thanh toán (`amount`) và số tiền thực nhận (`amount_received`). Có kịch bản tự động xử lý khi khách chuyển thừa hoặc chuyển thiếu.
 4. **Cơ chế Đối soát Tức thời (Just-in-Time Sync - JIT Sync):** Khi mạng lag hoặc Webhook bị trễ, Client-app hoặc Admin-web chỉ cần gọi `GET /api/payment/order-status/:orderCode`, Backend sẽ chủ động truy vấn cổng PayOS và tự động kích hoạt gói ngay lập tức nếu tiền đã vào, loại bỏ hoàn toàn việc người dùng bị treo ở màn hình chờ.
 5. **Vết kiểm toán & Bảo vệ pháp lý (Audit Trail):** Lưu giữ đầy đủ thông tin giao dịch, minh chứng hoàn trả (Ủy nhiệm chi / Biên lai), phục vụ công tác thanh tra tài chính và điều tra pháp lý theo Nghị định 13/2023/NĐ-CP và `Data_Security.md`.
+6. **Trang kết quả sau khi thanh toán trên trình duyệt (2026-11-14):** `PAYOS_RETURN_URL` / `PAYOS_CANCEL_URL` trỏ `https://management-finance-gamma.vercel.app/payment/success` và `/payment/cancel`. Đây là trang công khai của Admin-web (không cần đăng nhập, không gọi API): đọc `status`, `cancel`, `orderCode` PayOS gắn vào đường dẫn và báo thành công / đang xác nhận / đã hủy, hướng dẫn người dùng quay lại ứng dụng. Trang chỉ để thông báo; gói vẫn kích hoạt theo webhook và JIT Sync ở mục 4.
 6. **Bảo vệ Idempotency Tuyệt Đối:** Chặn xử lý lặp lại và dừng ngay nếu đơn hàng đã ở các trạng thái kết thúc `['PAID', 'REFUNDED', 'CANCELLED']`.
 
 ---

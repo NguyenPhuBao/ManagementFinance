@@ -124,7 +124,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 > [!TIP]
 > **Lưu ý Cài đặt Phụ thuộc Mới (AI Chatbot & Resilience):**  
 > Khi clone hoặc kéo mã nguồn mới nhất từ Git, lập trình viên môi trường cục bộ cũng như Render cần đảm bảo chạy `npm install` tại thư mục `src/Backend` để cài đặt đầy đủ các gói phụ thuộc mới:
-> - `@google/generative-ai`: SDK Google Gemini 3.8 Flash (cấu hình linh hoạt qua biến môi trường GEMINI_MODEL)
+> - `@google/generative-ai`: SDK Google Gemini 3.5 Flash (cấu hình linh hoạt qua biến môi trường GEMINI_MODEL)
 > - `ioredis`: Kết nối Redis phục vụ Rate Limiter Token-Bucket & Snapshot Cache
 > - `express-rate-limit`: Bảo vệ các route API cơ bản
 
@@ -200,7 +200,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    # 7. MẠNG, CORS & ĐIỀU TIẾT TẢI (NETWORK & RATE LIMITING)
    # ========================================================
    # Khai báo chính xác domain Vercel của Admin-web và domain local
-   CORS_ORIGIN=https://management-finance-gamma.vercel.app,https://managementfinance-admin.vercel.app,http://localhost:5173,http://localhost:3000
+   CORS_ORIGIN=https://management-finance-gamma.vercel.app
    RATE_LIMIT_ENABLED=true
    RATE_LIMIT_WINDOW_MS=900000
    RATE_LIMIT_MAX=1000
@@ -209,7 +209,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    # 8. TRÍ TUỆ NHÂN TẠO GOOGLE GEMINI (AI OCR & CLASSIFICATION)
    # ========================================================
    GEMINI_API_KEY=[API_KEY_GOOGLE_AI_STUDIO]
-   GEMINI_MODEL=gemini-3.8-flash
+   GEMINI_MODEL=gemini-3.5-flash
    # Chatbot AI dùng nhà cung cấp riêng: có DEEPSEEK_API_KEY thì dùng DeepSeek, không có thì giữ Gemini (OCR, phân loại vẫn dùng GEMINI_*)
    DEEPSEEK_API_KEY=[API_KEY_DEEPSEEK]
 
@@ -434,7 +434,7 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
 
 ### 6.4. Nâng Cấp Hạn Ngạch Google Gemini API Sang Gói Pay-As-You-Go
 - **Hiện trạng Free Tier:** Dùng API Key miễn phí (Google AI Studio Free Tier) bị chặn cứng ở trần **$15\text{ RPM}$**, chỉ cho phép tối đa $2 - 3\text{ người chat cùng 1 lúc}$.
-- **Nâng cấp Mở rộng:** Gắn thẻ thanh toán doanh nghiệp vào dự án Google Cloud Console để mở khóa hạn ngạch cho model `gemini-3.8-flash`:
+- **Nâng cấp Mở rộng:** Gắn thẻ thanh toán doanh nghiệp vào dự án Google Cloud Console để mở khóa hạn ngạch cho model `gemini-3.5-flash`:
   - **$2.000\text{ RPM}$ (Requests Per Minute)** và **$4.000.000\text{ TPM}$ (Tokens Per Minute)**.
   - Đảm bảo phục vụ mượt mà từ **$30 - 50\text{ người dùng chat đồng thời}$** cùng một thời điểm.
 

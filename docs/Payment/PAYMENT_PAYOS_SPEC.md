@@ -156,8 +156,8 @@ Cần bổ sung các biến sau vào `.env`:
 PAYOS_CLIENT_ID=your_client_id
 PAYOS_API_KEY=your_api_key
 PAYOS_CHECKSUM_KEY=your_checksum_key
-PAYOS_RETURN_URL=https://management-finance.app/payment/success
-PAYOS_CANCEL_URL=https://management-finance.app/payment/cancel
+PAYOS_RETURN_URL=https://management-finance-gamma.vercel.app/payment/success
+PAYOS_CANCEL_URL=https://management-finance-gamma.vercel.app/payment/cancel
 PREMIUM_PRICE_VND=49000
 ```
 

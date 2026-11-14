@@ -135,7 +135,7 @@ ModuleName/
 
 > **Lưu ý**: SMS parsing chạy **offline trên Mobile** (không qua backend). Sync xử lý **đồng bộ qua REST API** (`/api/sync/push`), không cần queue.
 
-- **Redis**: Cache dữ liệu truy cập nhiều (danh mục, tỉ giá) + broker cho BullMQ + Token-Bucket Rate Limiter (15 req/m) & Snapshot Cache (TTL 120s) cho AI Chatbot (Gemini 3.8 Flash).
+- **Redis**: Cache dữ liệu truy cập nhiều (danh mục, tỉ giá) + broker cho BullMQ + Token-Bucket Rate Limiter (15 req/m) & Snapshot Cache (TTL 120s) cho AI Chatbot (DeepSeek; OCR và phân loại dùng Gemini 3.5 Flash).
 > 🆕 **2026-10-16 (Redis Provider Switcher)**: Hệ thống tích hợp bộ phân giải kết nối đa nhà cung cấp `src/Backend/config/redis.resolver.js` qua biến môi trường `REDIS_PROVIDER` (`railway` | `upstash` | `local`). Mặc định kích hoạt `railway` (`REDIS_RAILWAY_URL`) để vận hành BullMQ 24/7 không giới hạn số lượng lệnh request (Unlimited Commands), đồng thời vẫn bảo toàn `REDIS_UPSTASH_URL` trong `.env` để có thể chuyển đổi tức thì khi cần kiểm thử.
 > **Lưu ý cài đặt Backend**: Khi kéo mã nguồn mới nhất từ Git, cần chạy `npm install` tại thư mục `src/Backend` để cài đặt đầy đủ các gói: `@google/generative-ai`, `ioredis`, `express-rate-limit`. Kiểm tra kết nối Redis bằng lệnh: `npm run redis:test`.
 
@@ -429,7 +429,7 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 | **Kiểm thử** | Vitest + Testing Library (`src/tests/`, hai tầng), ESLint 8 |
 
 #### 3.4.1 Cấu trúc & Nguyên tắc thiết kế Frontend
-- **Trang (`src/pages/`):** Tổng quan (`dashboard`), Giám sát an ninh (`system/AIOpsPage.jsx` + `system/aiops/`), Người dùng (`users`), Phân quyền (`system/PermissionManagementPage.jsx`), Thanh toán (`payments`), Danh mục (`categories`), Nhật ký kiểm toán (`system/AuditLogPage.jsx` + `system/audit/`: tab Sự cố dữ liệu), Bảo trì & Thông báo (`system/BroadcastPage.jsx` + `system/broadcast/`: Bảo trì, Thông báo, Chính sách); Đăng nhập, Quên mật khẩu (`auth`). Menu giữ 8 mục.
+- **Trang (`src/pages/`):** Tổng quan (`dashboard`), Giám sát an ninh (`system/AIOpsPage.jsx` + `system/aiops/`), Người dùng (`users`), Phân quyền (`system/PermissionManagementPage.jsx`), Thanh toán (`payments`), Danh mục (`categories`), Nhật ký kiểm toán (`system/AuditLogPage.jsx` + `system/audit/`: tab Sự cố dữ liệu), Bảo trì & Thông báo (`system/BroadcastPage.jsx` + `system/broadcast/`: Bảo trì, Thông báo, Chính sách); Đăng nhập, Quên mật khẩu (`auth`); trang công khai Kết quả thanh toán `/payment/success`, `/payment/cancel` (`payment/PaymentResultPage.jsx`, đích `PAYOS_RETURN_URL` / `PAYOS_CANCEL_URL`). Menu giữ 8 mục.
 - **Khung (`src/components/layout/`):** `AppLayout`, `Sidebar`, `Header`, `SettingsModal` (+ `settings/`), `LockScreenModal`, `FirstLoginModal`.
 - **Nguyên tắc:** trang dài tách khối vào thư mục con của trang; màu chỉ dùng token (không mã hex trong JSX), không cỡ chữ `text-[..px]`; chữ hiển thị lấy từ `locales`; mọi thao tác nhạy cảm qua hộp xác nhận hoặc PIN; Admin-web chỉ nhận IP đã che (xem IP đầy đủ phải nhập PIN).
 - **Đặc tả và tiến độ làm lại giao diện:** `docs/superpowers/specs/2026-11-12-admin-web-giao-dien-design.md` (mục 5 là danh mục chức năng phải giữ).
@@ -602,6 +602,7 @@ src/Admin-web/
 │   ├── hooks/        useAuth, useSocket, usePagination
 │   ├── pages/
 │   │   ├── auth/        LoginPage, ForgotPasswordPage, AuthShell
+│   │   ├── payment/     PaymentResultPage (công khai, trang PayOS trả về)
 │   │   ├── dashboard/   DashboardPage
 │   │   ├── users/       UserListPage
 │   │   ├── payments/    PaymentHistoryPage
@@ -614,7 +615,7 @@ src/Admin-web/
 │   ├── services/     sound.service.js
 │   ├── styles/       theme.css (token --ui-*)
 │   ├── utils/        constants, format, string, csv-exporter, device-label, audit-tags
-│   ├── tests/        Vitest + Testing Library (15 tệp)
+│   ├── tests/        Vitest + Testing Library (16 tệp)
 │   ├── App.jsx, main.jsx, index.css
 ├── tailwind.config.js, vite.config.js, vercel.json, package.json
 ```
@@ -1676,9 +1677,9 @@ Kiến trúc đã được thiết kế lại tối giản, bảo mật và tư�
 | STT | Tên Chức Năng | Nơi Triển Khai | Trách Nhiệm Kỹ Thuật & Cơ Chế Phối Hợp | Trạng Thái |
 |:---:|---|:---:|---|:---:|
 | **1** | **Tự Động Phân Loại Giao Dịch** *(Transaction Classification)* | **Client-app** (T1)<br>+<br>**Backend** (T3) | • **Client-app:** Xử lý Tầng 1 (Keyword qua `CategorySuggestionEngine`) chạy cục bộ trên Drift SQLite v27. T2 không đưa lên client (đo sai 2/3).<br>• **Backend:** Giữ tầng sâu nhất (Tầng 3 - Cloud LLM Gemini Flash Few-Shot Reasoning), có lọc PII Masking. Phía Client-app hiện phân loại tại chỗ, không bắt buộc gọi Backend. | 🟢 **T1 chạy ở Client-app** (`CategorySuggestionEngine`)<br>• T2 không đưa lên client<br>• T3 sẵn sàng ở Backend |
-| **2** | **Quét Hóa Đơn & Biên Lai** *(Smart Receipt OCR)* | **Client-app** (chụp/xác nhận)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Chụp ảnh, hiển thị và cho người dùng chỉnh sửa/xác nhận phương án ghi nhận.<br>• **Backend:** Giữ tầng sâu nhất dùng Gemini 3.8 Flash Multimodal để bóc tách ảnh phức tạp qua `POST /api/ai/ocr/parse`. | ⬜ **Client-app chưa làm** (lộ trình bước 6)<br>• Backend đã có `POST /api/ai/ocr/parse` |
+| **2** | **Quét Hóa Đơn & Biên Lai** *(Smart Receipt OCR)* | **Client-app** (chụp/xác nhận)<br>+<br>**Backend** (tầng sâu) | • **Client-app:** Chụp ảnh, hiển thị và cho người dùng chỉnh sửa/xác nhận phương án ghi nhận.<br>• **Backend:** Giữ tầng sâu nhất dùng Gemini 3.5 Flash Multimodal để bóc tách ảnh phức tạp qua `POST /api/ai/ocr/parse`. | ⬜ **Client-app chưa làm** (lộ trình bước 6)<br>• Backend đã có `POST /api/ai/ocr/parse` |
 | **3** | **Khử Trùng Lặp Giao Dịch** *(Transaction Deduplication)* | **Client-app** (trên máy)<br>+<br>**Backend** (OCR) | • **Client-app:** Gộp trùng tin biến động số dư đọc trên máy — thông báo app ngân hàng/ví điện tử (**MB Bank**, **MoMo**, **ZaloPay** - không đọc SMS) qua `NotificationListenerService` — cùng **ảnh biên lai người dùng chủ động chia sẻ** (bóc tách chữ qua ML Kit 100% on-device), và nhắc khi sổ đã có khoản cùng số tiền trong ngày. Kênh liên kết ngân hàng (Module Bank) và SMS server đã dừng hoàn toàn, không liên quan đến cơ chế chia sẻ biên lai cục bộ.<br>• **Backend:** Giữ mã `dedup.service.js` phục vụ OCR nội bộ. | 🟢 **Đã hoàn thành (Client-app, 2026-09-30 & 2026-10-02)**<br>*(Nghiệm thu trên máy thật)*<br>• Backend đã có cho OCR |
-| **4** | **Trợ Lý Tài Chính Thông Minh** *(AI Financial Copilot / Chatbot)* | **Backend** (chính)<br>+<br>**Client-app** (offline) | • **Backend:** Trợ lý trực tuyến (Gemini 3.8 Flash + Token-Bucket Limiter + Snapshot Cache + Circuit Breaker + Dual-Phase Privacy Shield). Tuyệt đối không index dữ liệu người dùng lên vector DB.<br>• **Client-app:** Đã có trợ lý hỏi đáp chạy trên máy (Gemma 4 E2B + 9 tool chỉ đọc trên SQLite, dùng được khi mất mạng; xem chức năng 10). | 🟢 **Đã hoàn thành (Backend + Admin-web)**<br>*(Chi tiết tại `ChatbotAI.md`)* |
+| **4** | **Trợ Lý Tài Chính Thông Minh** *(AI Financial Copilot / Chatbot)* | **Backend** (chính)<br>+<br>**Client-app** (offline) | • **Backend:** Trợ lý trực tuyến (DeepSeek, Gemini 3.5 Flash dự phòng + Token-Bucket Limiter + Snapshot Cache + Circuit Breaker + Dual-Phase Privacy Shield). Tuyệt đối không index dữ liệu người dùng lên vector DB.<br>• **Client-app:** Đã có trợ lý hỏi đáp chạy trên máy (Gemma 4 E2B + 9 tool chỉ đọc trên SQLite, dùng được khi mất mạng; xem chức năng 10). | 🟢 **Đã hoàn thành (Backend + Admin-web)**<br>*(Chi tiết tại `ChatbotAI.md`)* |
 | **5** | **Dự Báo Chi Tiêu & Dòng Tiền** *(Cashflow Forecasting)* | **Client-app** (100%) | Chạy 100% tại Client-app (`du_bao_dong_tien.dart`). Dự báo số dư 30 ngày tới từ `Bills` và `Goals`. | 🟢 **Đã hoàn thành** *(Client-app)* |
 | **6** | **Gợi Ý Thiết Lập Ngân Sách Thông Minh** *(Smart Budget)* | **Client-app** (100%) | Chạy 100% tại Client-app (`BudgetRepository.suggestAmount`). Tính toán tại chỗ theo cửa sổ cuộn linh hoạt $\le 90$ ngày từ lịch sử chi tiêu. | 🟢 **Đã hoàn thành** *(Client-app)* |
 | **7** | **Đánh Giá Sức Khỏe Tài Chính & Lời Khuyên** *(Health Score & Insights)* | **Backend** (100%) | **Chốt Lối A (Backend tự tính):** Backend tự tính toán *Anonymized Financial Health Snapshot* từ CSDL PostgreSQL sẵn có (scoped `idaccount`), tính điểm FHS và cơ cấu 50/30/20, lưu đệm Redis TTL 120s. Cung cấp qua API `GET /api/ai/chatbot/snapshot` (đã gỡ 2026-11-07). | 🟢 **Đã hoàn thành (Backend + Admin-web)** |
@@ -2424,7 +2425,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Module OCR đóng vai trò Tầng Thị Giác Máy Tính (Vision & Extraction Layer): Nhận diện hình ảnh chứng từ, bóc tách cấu trúc, tự phục hồi dữ liệu thị giác (Self-Healing), gán nhãn Provider (`'ORC'` | `'BankSync'` | `'SMS'`), trích xuất mã `bank_tran_id` chống trùng, chuyển giao cho Classify phân loại 2 cấp, đóng gói DTO và phát sự kiện Realtime Notification lên Client-app.
   - Xây dựng tích hợp hệ thống Notification: EventBus publish sự kiện `ocr.completed`, Socket.io `emitOcrCompleted` gửi thông báo trực tiếp vào phòng riêng `account_<idaccount>`.
 - **Tập Tin Triển Khai**:
-  - `src/Backend/modules/ai/features/ocr/pipeline/vision.extractor.js`: Trích xuất đa phương thức bằng Gemini 3.8 Flash Multimodal REST API (`inlineData` Base64) với Structured JSON Output. Hỗ trợ 3 loại chứng từ (`RECEIPT`, `BANK_TRANSFER`, `SMS_BANKING`).
+  - `src/Backend/modules/ai/features/ocr/pipeline/vision.extractor.js`: Trích xuất đa phương thức bằng Gemini 3.5 Flash Multimodal REST API (`inlineData` Base64) với Structured JSON Output. Hỗ trợ 3 loại chứng từ (`RECEIPT`, `BANK_TRANSFER`, `SMS_BANKING`).
   - `src/Backend/modules/ai/features/ocr/ocr.service.js`: Triển khai Self-Healing (cộng dồn `items` khi thiếu `total_amount`, fallback ngày giờ), bắt lỗi HTTP 422 `OCR_PARSE_FAILED` khi ảnh mờ, gán Provider, điều phối gọi `classifyExtractedReceipt`, đóng gói DTO theo 3 kịch bản chuẩn và phát sự kiện `ocr.completed`.
   - `src/Backend/modules/ai/features/ocr/ocr.controller.js` & `ocr.routes.js`: Định tuyến API `POST /api/ai/ocr/parse`.
   - `src/Backend/api/ai.routes.js`: Mount router `/ocr`.
@@ -2761,7 +2762,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **Nguyên tắc thực thi:**
   1. **Không xóa bỏ chức năng/code đã có:** Giữ nguyên trạng toàn bộ mã nguồn `src/Backend/modules/bank/`, `src/Backend/workers/bank.worker.js`, các bảng migration CSDL liên quan đến `bank_account`, và tài liệu kỹ thuật đã viết.
   2. **Loại khỏi phạm vi sắp tới:** Trong phạm vi xây dựng và hoàn thiện hệ thống sắp tới, Module Bank sẽ **không còn nằm trong lộ trình triển khai, kiểm thử hay đánh giá nghiệm thu**.
-  3. **Tập trung luồng tự động hóa thay thế:** Luồng thu thập và tạo giao dịch tự động của ứng dụng sẽ tập trung tối đa vào **Module OCR (Gemini 3.8 Flash đọc hóa đơn/biên lai chuyển khoản)** và **Cơ chế ghi nhận giao dịch từ SMS / Nhập tay**.
+  3. **Tập trung luồng tự động hóa thay thế:** Luồng thu thập và tạo giao dịch tự động của ứng dụng sẽ tập trung tối đa vào **Module OCR (Gemini 3.5 Flash đọc hóa đơn/biên lai chuyển khoản)** và **Cơ chế ghi nhận giao dịch từ SMS / Nhập tay**.
 
 ### 11.41. Chuẩn Hóa Thuật Ngữ Edge AI, Kiến Trúc Cloud AI & Bảo Mật Dữ Liệu Phân Tầng (2026-09-22)
 - **Thống nhất tên gọi Edge AI:**
@@ -2787,7 +2788,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Backend đóng vai trò AI Gateway giữ bí mật `GEMINI_API_KEY` (không đưa lên mobile) và chỉ đảm nhận các chức năng thuần AI và gọi Cloud LLM.
 - **Bảng phân định phạm vi & trạng thái 10 chức năng AI:**
   1. **Tự động phân loại giao dịch:** Client-app xử lý T1 (Keyword qua `CategorySuggestionEngine`) trên SQLite v27; T2 không đưa lên mobile; Backend giữ tầng sâu nhất (T3 - Gemini Flash reasoning có PII Masking) $\rightarrow$ 🟢 *T1 chạy ở Client-app • T3 có ở Backend, Client chưa gọi*.
-  2. **Quét hóa đơn & biên lai (Smart Receipt OCR):** Client-app chưa làm (lộ trình bước 6); Backend đã có `POST /api/ai/ocr/parse` gọi Gemini 3.8 Flash Multimodal $\rightarrow$ ⬜ *Client-app chưa làm*.
+  2. **Quét hóa đơn & biên lai (Smart Receipt OCR):** Client-app chưa làm (lộ trình bước 6); Backend đã có `POST /api/ai/ocr/parse` gọi Gemini 3.5 Flash Multimodal $\rightarrow$ ⬜ *Client-app chưa làm*.
   3. **Khử trùng lặp giao dịch (Deduplication Engine):** Client-app xử lý gộp trùng tin biến động số dư đọc trên máy (thông báo app ngân hàng/ví điện tử MB Bank, MoMo, ZaloPay - không đọc SMS) và ảnh biên lai người dùng chủ động chia sẻ (bóc tách ML Kit 100% on-device), nhắc khi sổ đã có khoản cùng số tiền trong ngày; chống quét trùng biên lai đi kèm spec OCR phía Client. Kênh ngân hàng và SMS server vẫn dừng. Backend giữ `dedup.service.js` phục vụ OCR nội bộ $\rightarrow$ 🟢 *Đã hoàn thành (Client-app, 2026-09-30 & 2026-10-02)* • Backend đã có cho OCR.
   4. **Trợ lý tài chính thông minh (AI Financial Copilot / Chatbot):** Backend xây dựng hoàn tất theo `ChatbotAI.md` (Dual-Phase Privacy Shield + On-Demand Function-Calling + Hybrid Static RAG + SSE Stream) và giao diện Admin-web Copilot $\rightarrow$ 🟢 *Đã hoàn thành (Backend + Admin-web)*.
   5. **Dự báo chi tiêu & dòng tiền (Cashflow Forecasting):** Đẩy qua Client-app (`du_bao_dong_tien.dart` 30 ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
@@ -2803,7 +2804,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 ### 11.43. Triển Khai Hoàn Thiện Chức Năng Chatbot AI (AI Financial Copilot) & Sức Khỏe Tài Chính FHS Tại Backend & Admin-Web (2026-09-26)
 - **Tài liệu nguồn sự thật:** [`docs/AI/ChatbotAI.md`](docs/AI/ChatbotAI.md), [`docs/superpowers/plans/2026-09-26-chatbot-ai-backend-admin-implementation.md`](docs/superpowers/plans/2026-09-26-chatbot-ai-backend-admin-implementation.md).
 - **1. Triển khai Backend Core (Kiến trúc Zero Database Migration - An toàn tuyệt đối 100% CSDL):**
-  - **SDK Gemini:** Cài đặt và tích hợp `@google/generative-ai` (sử dụng model linh hoạt `process.env.GEMINI_MODEL || 'gemini-3.8-flash'`).
+  - **SDK Gemini:** Cài đặt và tích hợp `@google/generative-ai` (sử dụng model linh hoạt `process.env.GEMINI_MODEL || 'gemini-3.5-flash'`).
   - **Dual-Phase Privacy Shield (`pii.masker.js`):** Tự động phát hiện và che giấu toàn diện thông tin cá nhân PII (số điện thoại `[SĐT]`, số tài khoản ngân hàng `[STK]`, số thẻ thanh toán quốc tế `[SỐ_THẺ]` theo thuật toán Luhn, email `[EMAIL]`). Toàn bộ số liệu tài chính trong Snapshot và Tools trước khi gửi lên Cloud LLM đều được làm mờ (anonymize) và che giấu ghi chú giao dịch.
   - **Snapshot Engine & Đánh giá Sức khỏe Tài chính FHS (`financial.snapshot.service.js`):**
     + Triển khai theo Lối A (Backend tự tính toán từ PostgreSQL hiện có không cần di chuyển dữ liệu).

@@ -157,7 +157,7 @@ Mọi module và chức năng của Admin-web bắt buộc phải có bài kiể
    - Kiểm tra tính bền vững của dữ liệu trong CSDL hoặc LocalStorage.
    - Kiểm tra thay đổi trạng thái Root DOM (`document.documentElement`).
    - Kiểm tra API được gọi đúng tên, tham số, payload; sự kiện socket làm đổi dữ liệu hiển thị.
-- **Hiện trạng (2026-11-14):** `src/Admin-web/src/tests/` có 15 tệp test viết lại theo giao diện mới (vitest + Testing Library, mock API, không gọi Backend thật), 202 ca.
+- **Hiện trạng (2026-11-14):** `src/Admin-web/src/tests/` có 16 tệp test viết lại theo giao diện mới (vitest + Testing Library, mock API, không gọi Backend thật), 208 ca.
    - Kiểm tra các side-effects (Socket broadcast, Web Audio alarm, Toast timeout).
 
 ---
