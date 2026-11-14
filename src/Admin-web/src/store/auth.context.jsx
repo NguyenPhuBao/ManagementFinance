@@ -170,8 +170,4 @@ export const useAuthContext = () => {
   return context;
 };
 
-export const useAuthSafe = () => {
-  return useContext(AuthContext) || {};
-};
-
 export default AuthContext;

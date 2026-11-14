@@ -23,7 +23,6 @@ const paymentApi = {
    * Lấy thông tin mã QR trực tiếp từ kênh thanh toán PayOS
    * @param {object} params
    */
-  getPayosQr: (params = {}) => axiosClient.get('/admin/payments/payos-qr', { params }),
 
   /**
    * Tạo đơn hàng mẫu thử nghiệm kèm mã QR

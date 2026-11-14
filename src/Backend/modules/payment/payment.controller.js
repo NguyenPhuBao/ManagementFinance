@@ -177,24 +177,6 @@ async function deleteSampleOrders(req, res, next) {
 }
 
 /**
- * Lấy hoặc sinh mã QR từ kênh PayOS
- */
-async function getPayosQr(req, res, next) {
-  try {
-    const { amount, packageType, persistOrder } = req.query;
-    const qrData = await paymentService.getOrCreatePayosQr({
-      amount,
-      packageType,
-      persistOrder: persistOrder === 'true', // Mặc định FALSE: Không tự ý sinh pending order rác khi mở modal
-      idaccount: req.user?.idaccount,
-    });
-    return ResponseHandler.success(res, qrData, 'Lấy mã QR PayOS thành công');
-  } catch (error) {
-    return next(error);
-  }
-}
-
-/**
  * Người dùng xác nhận hoặc từ chối nâng cấp gói khi chuyển thừa tiền
  */
 async function confirmUpgrade(req, res, next) {
@@ -328,7 +310,6 @@ module.exports = {
   getPackageTypes,
   createSampleOrder,
   deleteSampleOrders,
-  getPayosQr,
 };
 
 

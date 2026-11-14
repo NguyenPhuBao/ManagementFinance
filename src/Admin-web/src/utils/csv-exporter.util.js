@@ -9,7 +9,7 @@
  * @param {*} val 
  * @returns {string}
  */
-export function escapeCsvCell(val) {
+function escapeCsvCell(val) {
   if (val === null || val === undefined) return '""';
   const str = String(val);
   // Nếu chứa dấu phẩy, dấu nháy kép, hoặc xuống dòng thì bọc trong nháy kép và nhân đôi dấu nháy

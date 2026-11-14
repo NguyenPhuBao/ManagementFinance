@@ -8,7 +8,7 @@ export const AUDIT_STATUS_TONE = {
   Pending: 'neutral',
 };
 
-export const AUDIT_TAGS = {
+const AUDIT_TAGS = {
   AUTH: {
     key: 'AUTH',
     tone: 'info',
@@ -81,7 +81,7 @@ export const AUDIT_TAGS = {
   },
 };
 
-export const translateApiToActionName = (raw) => {
+const translateApiToActionName = (raw) => {
   if (!raw || typeof raw !== 'string') return null;
   const str = raw.trim();
   const lower = str.toLowerCase();

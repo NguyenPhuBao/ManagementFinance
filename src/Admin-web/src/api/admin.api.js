@@ -7,7 +7,6 @@ const adminApi = {
   getUserToTime: (params) => axiosClient.get('/admin/getusertotime', { params: typeof params === 'object' ? params : { period: params } }),
 
   // Dashboard (các API khác sẽ bổ sung sau)
-  getDashboardStats: (timeFilter) => axiosClient.get('/admin/dashboard', { params: { period: timeFilter } }),
   getRecentActivities: (params) => axiosClient.get('/auth/recent-activities', { params }),
   getLoginStats: (params) => axiosClient.get('/admin/login-stats', { params }),
   getRequestStats: (params) => axiosClient.get('/admin/request-stats', { params }),
@@ -34,7 +33,6 @@ const adminApi = {
   updateCategory: (id, data) => axiosClient.put(`/admin/updatecategory/${id}`, data),
   deleteCategory: (id) => axiosClient.delete(`/admin/deletecategory/${id}`),
   restoreCategory: (id) => axiosClient.patch(`/admin/restorecategory/${id}`),
-  syncCategories: () => axiosClient.post('/admin/categories/sync'),
 
   // System Health & Maintenance
   getSystemHealth: () => axiosClient.get('/admin/system/health'),

@@ -85,22 +85,6 @@ const aiopsController = {
     }
   },
 
-  unblockQuarantine(req, res) {
-    try {
-      const { hash } = req.params;
-      const { defaultAIOpsQuarantine } = require('./aiops.quarantine');
-      const unblocked = defaultAIOpsQuarantine.unblock(hash);
-      if (!unblocked) {
-        return ResponseHandler.notFound(res, 'Không tìm thấy nguồn IP tương ứng trong danh sách cô lập');
-      }
-      req.auditActionName = `Gỡ chặn IP cô lập (${hash})`;
-      return ResponseHandler.success(res, { hash, unblocked: true }, 'Đã gỡ chặn nguồn IP thành công');
-    } catch (error) {
-      logger.error('[AIOpsController] unblockQuarantine failed', { error: error.message });
-      return ResponseHandler.error(res, error.message);
-    }
-  },
-
   async revealQuarantineIp(req, res) {
     try {
       const { hash } = req.params;

@@ -8,7 +8,7 @@ const VN_PARTS = new Intl.DateTimeFormat('en-US', {
   hour12: false,
 });
 
-export const vnDateParts = (input) => {
+const vnDateParts = (input) => {
   if (!input) return null;
   const d = new Date(input);
   if (Number.isNaN(d.getTime())) return null;

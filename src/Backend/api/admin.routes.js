@@ -23,7 +23,6 @@ router.post('/aiops/scale', aiopsController.setScale);
 router.get('/aiops/quarantine', aiopsController.getQuarantineList);
 router.get('/aiops/quarantine/forensics', aiopsController.getQuarantineForensics);
 router.post('/aiops/quarantine', aiopsController.quarantineActor);
-router.delete('/aiops/quarantine/:hash', aiopsController.unblockQuarantine);
 router.post('/aiops/quarantine/:hash/reveal-ip', aiopsController.revealQuarantineIp);
 router.post('/aiops/quarantine/unblock-ip', aiopsController.unblockIp);
 router.post('/aiops/quarantine/permanent-ip', aiopsController.permanentBanIp);
@@ -106,7 +105,6 @@ router.put(
   paymentController.processRefund
 );
 router.post('/payments/orders/:orderCode/confirm-upgrade', paymentController.confirmUpgradeByAdmin);
-router.get('/payments/payos-qr', paymentController.getPayosQr);
 router.post('/payments/sample', paymentController.createSampleOrder);
 router.delete('/payments/sample', paymentController.deleteSampleOrders);
 router.post('/payments/simulate-webhook', paymentController.simulateWebhook);

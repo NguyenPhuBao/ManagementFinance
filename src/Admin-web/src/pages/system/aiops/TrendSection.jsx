@@ -10,7 +10,7 @@ const TOP = 20;
 const BASE = 155;
 const SPAN = BASE - TOP;
 
-export const SERIES = [
+const SERIES = [
   { key: 'auth', tone: 'text-warning' },
   { key: 'traffic', tone: 'text-info' },
   { key: 'exploit', tone: 'text-danger' },

@@ -14,7 +14,7 @@ export const scheduledListOf = (maintenance) => {
 
 export const scheduleId = (s) => s.id || s.recordId;
 
-export const formatSeconds = (sec) => {
+const formatSeconds = (sec) => {
   if (sec < 60) return `${sec}s`;
   const min = Math.floor(sec / 60);
   if (min < 60) return `${min}m ${sec % 60}s`;
