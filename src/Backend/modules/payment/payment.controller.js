@@ -255,9 +255,20 @@ async function processRefund(req, res, next) {
       return ResponseHandler.badRequest(res, 'Số tiền hoàn trả là bắt buộc');
     }
 
-    // Nếu có file upload từ multer, lưu đường dẫn tương đối phục vụ static
     if (req.file) {
-      refundProof = `/assets/Refunds/${req.file.filename}`;
+      const storage = require('../../core/storage');
+      const type = storage.detectFileType(req.file.buffer);
+      if (!type) {
+        return ResponseHandler.badRequest(res, 'Minh chứng phải là ảnh JPG, PNG, WEBP hoặc tệp PDF');
+      }
+      const { randomUUID } = require('crypto');
+      const folder = String(id).replace(/[^A-Za-z0-9-]/g, '').slice(0, 64) || 'don';
+      refundProof = await storage.getStorage().put({
+        bucket: storage.BUCKETS.REFUND_PROOFS,
+        key: `${folder}/${randomUUID()}.${type.ext}`,
+        buffer: req.file.buffer,
+        contentType: type.mime,
+      });
     }
 
     const result = await paymentService.processOrderRefund(id, {

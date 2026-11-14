@@ -1,5 +1,7 @@
-// Kịch bản nghiệm thu đơn 61 (61.1, 61.2, 61.3, 61.4). KHÔNG cần CSDL, KHÔNG gọi Gemini, KHÔNG gửi thư:
-// config/db, SDK Gemini và household.service đều bị thay bằng bản giả ngay trong tiến trình này.
+// Kịch bản nghiệm thu đơn 61 (61.1, 61.2, 61.3, 61.4). KHÔNG cần CSDL, KHÔNG gọi dịch vụ AI, KHÔNG gửi thư.
+// Chatbot dùng DeepSeek (OpenAI-compatible, gọi bằng fetch). config/db, fetch toàn cục và household.service
+// bị thay bằng bản giả trong tiến trình này; khóa và địa chỉ DeepSeek là giá trị giả nên không có lượt gọi ra mạng.
+// Cập nhật 2026-11-13: bản cũ giả lập SDK Gemini, không còn tác dụng sau khi chatbot chuyển sang DeepSeek.
 // Cách chạy (từ src/Backend):
 //   node ../../docs/superpowers/backend/CAN-LAM/KIEM-THU/chay_kiem_61.js . kq_61.txt
 // Dòng cuối phải là "6 đạt / 6 ca". Có ca hỏng thì mã thoát 1.
@@ -15,20 +17,14 @@ const cam = (rel, exportsObj) => {
 };
 cam('config/db.js', { prisma: { user: { findFirst: async () => ({ fullname: 'Nguoi Thu' }) } }, pool: {} });
 
-let loiGemini = null;
-class GeminiGia {
-  getGenerativeModel() {
-    return {
-      startChat: () => ({
-        sendMessageStream: async () => {
-          throw loiGemini;
-        },
-      }),
-    };
-  }
-}
-const duongSdk = require.resolve('@google/generative-ai', { paths: [ROOT] });
-require.cache[duongSdk] = { id: duongSdk, filename: duongSdk, loaded: true, exports: { GoogleGenerativeAI: GeminiGia }, children: [], paths: [] };
+let loiMang = null;
+let soLuotFetch = 0;
+const DIA_CHI_GIA = 'http://127.0.0.1:9/deepseek-gia';
+globalThis.fetch = async (url) => {
+  soLuotFetch += 1;
+  if (!String(url).startsWith(DIA_CHI_GIA)) throw new Error(`fetch tới địa chỉ thật: ${url}`);
+  throw loiMang;
+};
 
 const daMoi = [];
 cam('modules/household/household.service.js', {
@@ -38,12 +34,15 @@ cam('modules/household/household.service.js', {
   },
 });
 
-process.env.GEMINI_API_KEY = 'khoa-gia';
+process.env.CHATBOT_LLM_PROVIDER = 'deepseek';
+process.env.DEEPSEEK_API_KEY = 'khoa-gia';
+process.env.DEEPSEEK_BASE_URL = DIA_CHI_GIA;
 const ChatbotService = require(path.join(ROOT, 'modules/ai/features/chatbot/chatbot.service'));
 const { CircuitBreaker, chatbotCircuitBreaker: cauDao } = require(path.join(ROOT, 'modules/ai/features/chatbot/resilience/circuit-breaker'));
 const householdController = require(path.join(ROOT, 'modules/household/household.controller'));
 
-const LOI_HET_GIO = '[GoogleGenerativeAI Error]: Request aborted when fetching https://generativelanguage.googleapis.com/x: This operation was aborted';
+const loiHetGio = () => Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' });
+const loiNguoiDungDung = () => Object.assign(new Error('This operation was aborted'), { name: 'AbortError' });
 
 const datLaiCauDao = () => {
   cauDao.state = 'CLOSED';
@@ -55,7 +54,7 @@ const datLaiCauDao = () => {
 async function hoi(signal) {
   const dv = new ChatbotService();
   dv.snapshotService = { generateSnapshot: async () => null };
-  dv._streamFallbackResponse = async (_m, _s, _c, onDone, reason) => onDone({ fallback: true, reason });
+  dv._fallback = ({ reason, onDone }) => onDone({ fallback: true, reason });
   let done = null;
   await dv.chatStream({ message: 'cau hoi', history: [], idaccount: 1, signal, onChunk: () => {}, onMeta: () => {}, onDone: (d) => { done = d; } });
   return done;
@@ -71,22 +70,24 @@ async function moi(email) {
 }
 
 const CA = [
-  ['61.2 Gemini hết giờ 60 s (signal client chưa ngắt): phải có done kèm fallback, luồng không được treo', async () => {
+  ['61.2 DeepSeek hết giờ (signal client chưa ngắt): phải có done kèm fallback, luồng không được treo', async () => {
     datLaiCauDao();
-    loiGemini = new Error(LOI_HET_GIO);
+    loiMang = loiHetGio();
+    const truoc = soLuotFetch;
     const done = await hoi(new AbortController().signal);
+    if (soLuotFetch === truoc) throw new Error('không gọi tới lớp DeepSeek: kịch bản không đi qua đường thật');
     if (!done) throw new Error('không gọi onDone: client treo tới khi tự bỏ');
     if (done.fallback !== true) throw new Error(`done không có fallback: ${JSON.stringify(done)}`);
   }],
-  ['61.2 Gemini hết giờ vẫn được cầu dao đếm là một lỗi', async () => {
+  ['61.2 DeepSeek hết giờ vẫn được cầu dao đếm là một lỗi', async () => {
     datLaiCauDao();
-    loiGemini = new Error(LOI_HET_GIO);
+    loiMang = loiHetGio();
     await hoi(new AbortController().signal);
     if (cauDao.failureCount !== 1) throw new Error(`failureCount = ${cauDao.failureCount}, phải là 1`);
   }],
   ['61.3 Người dùng Dừng 6 lần: cầu dao vẫn CLOSED, bộ đếm 0, không gọi onDone', async () => {
     datLaiCauDao();
-    loiGemini = new Error(LOI_HET_GIO);
+    loiMang = loiNguoiDungDung();
     for (let i = 0; i < 6; i++) {
       const ac = new AbortController();
       ac.abort();
@@ -99,7 +100,7 @@ const CA = [
   ['61.3 Người dùng Dừng lúc đang thăm dò HALF-OPEN: không quay lại OPEN', async () => {
     datLaiCauDao();
     cauDao.state = 'HALF-OPEN';
-    loiGemini = new Error(LOI_HET_GIO);
+    loiMang = loiNguoiDungDung();
     const ac = new AbortController();
     ac.abort();
     await hoi(ac.signal);

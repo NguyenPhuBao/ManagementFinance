@@ -103,3 +103,6 @@ src/Backend/Test/
 CLAUDE.md
 docs/CLAUDE_REFERENCE.md
 NCKH/*
+# Tệp người dùng tải lên khi chạy kho lưu trữ chế độ local (minh chứng hoàn tiền, bản sao dữ liệu): không commit
+src/Backend/Assets/Storage/
+src/Backend/Assets/Refunds/

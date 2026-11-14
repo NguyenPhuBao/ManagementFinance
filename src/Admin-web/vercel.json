@@ -5,10 +5,6 @@
       "destination": "https://managementfinance.onrender.com/api/$1"
     },
     {
-      "source": "/assets/Refunds/(.*)",
-      "destination": "https://managementfinance.onrender.com/assets/Refunds/$1"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
