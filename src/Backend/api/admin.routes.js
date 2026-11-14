@@ -59,6 +59,13 @@ router.get('/getuser/:id', adminController.getUserDetail);
 router.get('/getuser/:id/devices', adminController.getUserDevices);
 router.post('/getuser/:id/devices/:deviceId/reveal-ip', adminController.revealDeviceIp);
 router.get('/getuser/:id/data-exports', adminController.getUserDataExports);
+
+// Sổ sự cố dữ liệu cá nhân (báo cơ quan trong 72 giờ). Không có route xóa.
+const dataIncidentController = require('../modules/admin/data-incident.controller');
+router.get('/data-incidents', dataIncidentController.list);
+router.post('/data-incidents', dataIncidentController.create);
+router.patch('/data-incidents/:id', dataIncidentController.update);
+router.post('/data-incidents/:id/:action', dataIncidentController.action);
 router.get('/getuser/:id/policy', adminController.getUserPolicy);
 
 // Chính sách bảo mật theo phiên bản

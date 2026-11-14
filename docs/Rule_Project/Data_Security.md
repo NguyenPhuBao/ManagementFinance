@@ -328,3 +328,10 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
 * Nội dung: tài khoản, hồ sơ (giải mã), ví, giao dịch, ngân sách, hóa đơn, mục tiêu, danh mục tự tạo, gia đình đang tham gia, đơn thanh toán, thiết bị (IP bản che), các lần đồng ý chính sách, nhật ký lượt gọi máy chủ 12 tháng. Không có: mật khẩu, PIN, token, OTP, IP đầy đủ, dữ liệu điều tra an ninh AIOps. Dữ liệu của thành viên khác trong nhóm gia đình không đưa vào.
 * Tệp hết hạn sau 24 giờ và bị xóa; 1 yêu cầu / 24 giờ; mỗi lượt yêu cầu và tải ghi nhật ký thao tác. Bảng `data_export_request` là bằng chứng đáp ứng trong thời hạn 10 ngày.
 * Phạm vi thu thập: máy chủ chỉ ghi các lượt ứng dụng gọi tới Backend (bảo đảm vận hành, khả năng chịu tải); không thu thập hoạt động cá nhân trong ứng dụng.
+
+### 10.12. Sổ Sự Cố Dữ Liệu Và Hạn Báo 72 Giờ (Migration 51, 2026-11-14)
+
+* Bảng `data_incident`; Admin-web: Nhật ký kiểm toán → "Sự cố dữ liệu". Hạn báo cơ quan chuyên trách = thời điểm phát hiện + 72 giờ, có đồng hồ đếm ngược.
+* Quy tắc ở Backend: báo sau 72 giờ bắt buộc `late_reason`; đóng bắt buộc `root_cause` và (đã báo cơ quan hoặc `report_not_required` + `no_report_reason`), xác thực PIN (`CLOSE_DATA_INCIDENT`); sự cố đã đóng không sửa (409).
+* Trigger `trg_protect_data_incident` chặn DELETE: sổ là hồ sơ pháp lý. Mọi thao tác ghi nhật ký kiểm toán; sự kiện `admin.data_incident_changed` cập nhật màn hình theo thời gian thực.
+* Quy trình: `Quy_trinh_su_co_du_lieu.md`.

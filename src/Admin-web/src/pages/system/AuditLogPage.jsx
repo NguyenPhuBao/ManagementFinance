@@ -7,7 +7,8 @@ import { useLanguageSafe } from '../../store/language.context';
 import { AUDIT_STATUS_TONE as STATUS_TONE, classifyAuditAction } from '../../utils/audit-tags.util';
 import { exportToCsv } from '../../utils/csv-exporter.util';
 import { formatFullDateTime } from '../../utils/format';
-import { Badge, Button, Card, DataTable, PageHeader, Pagination, SearchInput } from '../../components/ui';
+import { Badge, Button, Card, DataTable, PageHeader, Pagination, SearchInput, Tabs } from '../../components/ui';
+import DataIncidentsTab from './audit/DataIncidentsTab';
 
 const STATUSES = Object.keys(STATUS_TONE);
 const EMPTY_FILTERS = { search: '', status: '', dateFrom: '', dateTo: '' };
@@ -26,6 +27,7 @@ const AuditLogPage = () => {
   const { t, currentLang } = useLanguageSafe();
   const socket = useSocket();
   const ids = useId();
+  const [tab, setTab] = useState('logs');
 
   const [logs, setLogs] = useState([]);
   const [total, setTotal] = useState(0);
@@ -204,6 +206,7 @@ const AuditLogPage = () => {
         title={t('auditLogs.title')}
         description={t('auditLogs.subtitle')}
         actions={
+          tab === 'logs' && (
           <>
             <Button icon="download" loading={exporting} onClick={handleExportCsv}>
               {t('auditLogs.exportCsvBtn')}
@@ -212,9 +215,26 @@ const AuditLogPage = () => {
               {t('auditLogs.refreshBtn')}
             </Button>
           </>
+          )
         }
       />
 
+      <div>
+        <Tabs
+          ariaLabel={t('auditLogs.tabsLabel')}
+          items={[
+            { key: 'logs', label: t('auditLogs.tabLogs') },
+            { key: 'incidents', label: t('auditLogs.tabIncidents') },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
+      </div>
+
+      {tab === 'incidents' ? (
+        <DataIncidentsTab />
+      ) : (
+      <>
       {newLogsCount > 0 && (
         <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-info-soft px-4 py-3 text-sm text-info">
           <span>{t('auditLogs.newLogsBanner', { count: newLogsCount })}</span>
@@ -269,6 +289,8 @@ const AuditLogPage = () => {
           itemLabel={t('auditLogs.itemLabel')}
         />
       </Card>
+      </>
+      )}
     </div>
   );
 };

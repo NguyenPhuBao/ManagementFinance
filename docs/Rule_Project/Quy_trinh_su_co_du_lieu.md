@@ -34,10 +34,8 @@ Nếu chưa đủ thông tin trước hạn 72 giờ: gửi thông báo ban đ�
 
 - Nhật ký kiểm toán (Admin-web → Nhật ký) và lịch sử AIOps (sự cố, cách ly, điều tra) để dựng lại diễn biến.
 - Lượt "Xem IP đầy đủ" đều có trong nhật ký (`Xem IP đầy đủ (người dùng #…, thiết bị #…)`), dùng để phát hiện truy cập bất thường vào dữ liệu nhạy cảm.
-- Màn hình "Sự cố dữ liệu" có đồng hồ 72 giờ ở Admin-web: kế hoạch T4, chưa có. Trong lúc chờ, ghi sổ sự cố bằng tài liệu này.
+- **Sổ sự cố trên Admin-web** (từ 2026-11-14): Nhật ký kiểm toán → tab "Sự cố dữ liệu". Mỗi sự cố có đồng hồ đếm ngược tới hạn T0 + 72 giờ (đổi màu khi còn dưới 24 giờ và khi quá hạn); ghi nhận các bước ngăn chặn, báo cơ quan (báo sau 72 giờ bắt buộc ghi lý do), báo người dùng, đóng (bắt buộc nguyên nhân gốc, đã báo cơ quan hoặc lý do không cần báo, xác thực PIN). Sổ không xóa được; sự cố đã đóng không sửa được; mọi thao tác vào nhật ký kiểm toán.
 
 ## 5. Sổ sự cố
 
-| Mã | T0 | Mô tả | Dữ liệu / số người | Đã báo cơ quan (giờ) | Đã báo người dùng | Đóng |
-|---|---|---|---|---|---|---|
-| (chưa có) | | | | | | |
+Sổ sự cố nằm trong hệ thống (bảng `data_incident`, migration 51), xem và cập nhật ở Admin-web như mục 4. Không ghi sổ bằng tài liệu này nữa.
