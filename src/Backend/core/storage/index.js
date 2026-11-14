@@ -76,7 +76,7 @@ function createLocalStorage(env) {
 function createSupabaseStorage(env, http) {
   const baseUrl = `${clean(env.SUPABASE_URL).replace(/\/+$/, '')}/storage/v1`;
   const serviceKey = clean(env.SUPABASE_SERVICE_ROLE_KEY);
-  const auth = { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey };
+  const auth = serviceKey.startsWith('eyJ') ? { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey } : { apikey: serviceKey };
   const objectPath = (bucket, key) => `${bucket}/${key.split('/').map(encodeURIComponent).join('/')}`;
   return {
     driver: 'supabase',
