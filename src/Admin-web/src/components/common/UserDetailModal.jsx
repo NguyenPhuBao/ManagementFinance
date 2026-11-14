@@ -21,6 +21,30 @@ const Section = ({ title, children }) => (
   </section>
 );
 
+const EXPORT_TONE = { PROCESSING: 'info', READY: 'success', EXPIRED: 'neutral', FAILED: 'danger' };
+
+const DataExportStatus = ({ userId }) => {
+  const { t } = useLanguageSafe();
+  const [state, setState] = useState(null);
+
+  useEffect(() => {
+    adminApi
+      .getUserDataExports(userId)
+      .then((res) => setState({ list: Array.isArray(res?.data) ? res.data : [] }))
+      .catch(() => setState({ error: true }));
+  }, [userId]);
+
+  if (!state) return <span className="text-ink-faint">…</span>;
+  if (state.error) return <span className="text-ink-faint">—</span>;
+  const latest = state.list[0];
+  if (!latest) return <span className="text-ink-muted">{t('users.detail.exportNone')}</span>;
+  const label =
+    latest.status === 'READY'
+      ? t('users.detail.exportReady', { time: formatDateTime(latest.expiresAt) })
+      : t(`users.detail.export${latest.status.charAt(0)}${latest.status.slice(1).toLowerCase()}`, { time: formatDateTime(latest.requestedAt) });
+  return <Badge tone={EXPORT_TONE[latest.status] || 'neutral'}>{label}</Badge>;
+};
+
 const PolicyStatus = ({ userId }) => {
   const { t } = useLanguageSafe();
   const [state, setState] = useState(null);
@@ -107,6 +131,9 @@ const UserDetailModal = ({ userId, onClose }) => {
               <Row label={t('users.detail.createdAt')}>{user.created_at ? formatDateTime(user.created_at) : '—'}</Row>
               <Row label={t('users.detail.policy')}>
                 <PolicyStatus userId={userId} />
+              </Row>
+              <Row label={t('users.detail.dataExport')}>
+                <DataExportStatus userId={userId} />
               </Row>
             </Section>
             <UserDevices userId={userId} onPinOpenChange={setPinOpen} />

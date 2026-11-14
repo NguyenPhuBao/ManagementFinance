@@ -306,6 +306,13 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
 
 
 
+### 10.9b. Lưu Trữ Tệp Người Dùng Tải Lên (Supabase Storage, 2026-11-13)
+
+* Minh chứng hoàn tiền (và bản sao dữ liệu cá nhân, mục 10.11 khi hoàn thành) lưu ở Supabase Storage, bucket **riêng tư** `refund-proofs`, `data-exports`; không ghi ổ đĩa máy chủ ứng dụng.
+* Không có đường dẫn công khai: Backend ký đường dẫn tạm (minh chứng: 10 phút cho admin). Khóa `SUPABASE_SERVICE_ROLE_KEY` chỉ ở Backend.
+* Tệp tải lên được kiểm loại theo nội dung (JPG / PNG / WEBP / PDF), tối đa 5 MB.
+* Dữ liệu nằm cùng nhà cung cấp và khu vực với CSDL (Supabase, châu Á), nên không mở thêm bên xử lý mới so với chính sách v1.
+
 ### 10.10. Chính Sách Bảo Mật Theo Phiên Bản & Bằng Chứng Đồng Ý (Migration 49, 2026-11-13)
 * **Căn cứ:** Luật Bảo vệ dữ liệu cá nhân 2025; Nghị định 356/2025/NĐ-CP Điều 6 (bên kiểm soát lưu bằng chứng đồng ý, chứng minh khi tranh chấp).
 * **CSDL:** `privacy_policy` (mỗi phiên bản một dòng: `version`, `title`, `content`, `published_at`, `published_by`) và `policy_acceptance` (`idaccount`, `policy_version`, `accepted_at`, `ip_hash` HMAC, `device_name`, `user_agent`; duy nhất theo `idaccount` + `policy_version`). Trigger `trg_protect_privacy_policy`, `trg_protect_policy_acceptance` chặn `UPDATE`: nội dung đã đăng và bằng chứng đã ghi không sửa được. Không lưu IP.
@@ -314,3 +321,10 @@ Các biện pháp dưới đây đã có trong mã; bốn trigger ở 10.1 có t
 * **Văn bản:** nguồn phiên bản 1 ở `Chinh_sach_bao_mat_v1.md` (không ghi tên nhà cung cấp AI; email hỗ trợ tạm thời phubao12as@gmail.com). Đổi nội dung thì tạo tệp phiên bản mới rồi đăng.
 * **Lưu giữ:** bằng chứng giữ theo bản ghi tài khoản (tài khoản chỉ xóa mềm nên bằng chứng còn nguyên để đối chứng).
 
+
+### 10.11. Quyền Nhận Bản Sao Dữ Liệu Cá Nhân (Migration 50, 2026-11-14)
+
+* Người dùng yêu cầu trong app (`POST /api/account/data-export`); Backend tạo tệp nền, lưu Supabase Storage bucket riêng tư `data-exports`, gửi email báo sẵn sàng **không kèm đường dẫn**; tải trong app khi đã đăng nhập (`GET /api/account/data-export/:id/download?format=json|csv`), chỉ chủ tài khoản.
+* Nội dung: tài khoản, hồ sơ (giải mã), ví, giao dịch, ngân sách, hóa đơn, mục tiêu, danh mục tự tạo, gia đình đang tham gia, đơn thanh toán, thiết bị (IP bản che), các lần đồng ý chính sách, nhật ký lượt gọi máy chủ 12 tháng. Không có: mật khẩu, PIN, token, OTP, IP đầy đủ, dữ liệu điều tra an ninh AIOps. Dữ liệu của thành viên khác trong nhóm gia đình không đưa vào.
+* Tệp hết hạn sau 24 giờ và bị xóa; 1 yêu cầu / 24 giờ; mỗi lượt yêu cầu và tải ghi nhật ký thao tác. Bảng `data_export_request` là bằng chứng đáp ứng trong thời hạn 10 ngày.
+* Phạm vi thu thập: máy chủ chỉ ghi các lượt ứng dụng gọi tới Backend (bảo đảm vận hành, khả năng chịu tải); không thu thập hoạt động cá nhân trong ứng dụng.

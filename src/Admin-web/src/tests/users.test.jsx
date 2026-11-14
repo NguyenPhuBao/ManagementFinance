@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import { cleanup, render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import UserListPage from '../pages/users/UserListPage';
 import adminApi from '../api/admin.api';
 
@@ -26,6 +26,7 @@ vi.mock('../api/admin.api', () => ({
     getUserDevices: vi.fn(),
     revealDeviceIp: vi.fn(),
     getUserPolicy: vi.fn(),
+    getUserDataExports: vi.fn(),
   },
 }));
 
@@ -62,6 +63,7 @@ beforeEach(() => {
   adminApi.getUserDevices.mockReset().mockResolvedValue({ data: DEVICES.map((d) => ({ ...d })) });
   adminApi.revealDeviceIp.mockReset().mockResolvedValue({ data: { ip: '113.161.45.12' } });
   adminApi.getUserPolicy.mockReset().mockResolvedValue({ data: { currentVersion: 2, acceptances: [{ policy_version: 2, accepted_at: '2026-11-13T02:00:00Z' }] } });
+  adminApi.getUserDataExports.mockReset().mockResolvedValue({ data: [] });
 });
 
 describe('Chính sách bảo mật trong hộp chi tiết', () => {
@@ -81,6 +83,30 @@ describe('Chính sách bảo mật trong hộp chi tiết', () => {
     adminApi.getUserPolicy.mockResolvedValue({ data: { currentVersion: 2, acceptances: [{ policy_version: 1, accepted_at: '2026-11-01T02:00:00Z' }] } });
     const dialog = await open();
     expect(await within(dialog).findByText('Chưa đồng ý v2')).toBeInTheDocument();
+  });
+});
+
+describe('Bản sao dữ liệu trong hộp chi tiết', () => {
+  const open = async () => {
+    await renderPage();
+    fireEvent.click(within(row('Nguyễn Văn An')).getByRole('button', { name: 'Xem chi tiết' }));
+    return screen.findByRole('dialog', { name: 'Chi tiết người dùng' });
+  };
+
+  it('chưa có yêu cầu: hiện Chưa yêu cầu; tải theo id người dùng', async () => {
+    const dialog = await open();
+    expect(adminApi.getUserDataExports).toHaveBeenCalledWith(1);
+    expect(await within(dialog).findByText('Chưa yêu cầu')).toBeInTheDocument();
+  });
+
+  it('yêu cầu gần nhất sẵn sàng: hiện hạn tải; lỗi thì báo Tạo lỗi', async () => {
+    adminApi.getUserDataExports.mockResolvedValue({ data: [{ id: 'a', status: 'READY', requestedAt: '2026-11-14T01:00:00Z', expiresAt: '2026-11-15T01:00:00Z' }] });
+    let dialog = await open();
+    expect(await within(dialog).findByText(/^Sẵn sàng tới /)).toBeInTheDocument();
+    cleanup();
+    adminApi.getUserDataExports.mockResolvedValue({ data: [{ id: 'b', status: 'FAILED', requestedAt: '2026-11-14T01:00:00Z' }] });
+    dialog = await open();
+    expect(await within(dialog).findByText('Tạo lỗi')).toBeInTheDocument();
   });
 });
 

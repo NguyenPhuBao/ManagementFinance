@@ -58,6 +58,7 @@ router.get('/getuser', adminController.getUsers);
 router.get('/getuser/:id', adminController.getUserDetail);
 router.get('/getuser/:id/devices', adminController.getUserDevices);
 router.post('/getuser/:id/devices/:deviceId/reveal-ip', adminController.revealDeviceIp);
+router.get('/getuser/:id/data-exports', adminController.getUserDataExports);
 router.get('/getuser/:id/policy', adminController.getUserPolicy);
 
 // Chính sách bảo mật theo phiên bản

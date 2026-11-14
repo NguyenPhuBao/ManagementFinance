@@ -278,6 +278,17 @@ async function runDailyIpRetentionPurgeTask() {
 }
 
 /**
+ * Xóa tệp bản sao dữ liệu cá nhân đã quá hạn 24 giờ (giữ dòng yêu cầu làm bằng chứng)
+ * @returns {Promise<number>} số yêu cầu đã dọn
+ */
+async function runDailyDataExportPurgeTask() {
+  const { purgeExpired } = require('../modules/account/data-export.service');
+  const count = await purgeExpired();
+  logger.info(`Đã xóa tệp của ${count} bản sao dữ liệu hết hạn`);
+  return count;
+}
+
+/**
  * Tác vụ kiểm tra vòng đời gói cước Premium chạy mỗi ngày vào 00:00:00 UTC+7:
  * 1. Cảnh báo trước 3 ngày cho tài khoản sắp hết hạn
  * 2. Hạ cấp các tài khoản đã quá hạn về Basic và phát sự kiện thông báo
@@ -396,6 +407,12 @@ async function runDailyMaintenanceRoutine() {
   } catch (err) {
     logger.error('Lỗi trong runDailyIpRetentionPurgeTask:', { error: err.message });
   }
+
+  try {
+    await runDailyDataExportPurgeTask();
+  } catch (err) {
+    logger.error('Lỗi trong runDailyDataExportPurgeTask:', { error: err.message });
+  }
   logger.info('=== HOÀN TẤT CHU TRÌNH BẢO TRÌ HÀNG NGÀY ===');
 }
 
@@ -454,6 +471,7 @@ module.exports = {
   runDailyRefreshTokenPurgeTask,
   runDailyPremiumExpirationTask,
   runDailyIpRetentionPurgeTask,
+  runDailyDataExportPurgeTask,
   runDailyMaintenanceRoutine,
   processFullSoftDelete,
   initScheduler,

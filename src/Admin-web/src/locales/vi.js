@@ -547,6 +547,12 @@ export default {
       policyNone: 'Chưa có chính sách',
       policyAccepted: 'Đã đồng ý v{version} · {time}',
       policyPending: 'Chưa đồng ý v{version}',
+      dataExport: 'Bản sao dữ liệu',
+      exportNone: 'Chưa yêu cầu',
+      exportProcessing: 'Đang tạo (yêu cầu {time})',
+      exportReady: 'Sẵn sàng tới {time}',
+      exportExpired: 'Đã hết hạn (yêu cầu {time})',
+      exportFailed: 'Tạo lỗi',
       devices: {
         title: 'Thiết bị đăng nhập',
         empty: 'Chưa có lượt truy cập nào.',

@@ -255,6 +255,7 @@ Trong `src/Client-app/lib/core/api/interceptors/`:
 | **10**| Chốt chặn 403 AIOps | `core/api/interceptors/may_chu_interceptor.dart` | Hiển thị Dialog cảnh báo an ninh Sentinel | Ngăn spam request khi IP bị đưa vào cách ly | ⏳ Chờ làm |
 | **11**| Bảo lưu SQLite khi 401 | `core/api/interceptors/buoc_dang_xuat.dart` | Đăng xuất về Login kèm Dialog lý do | SQLite local Drift được bảo lưu 100%, không bị DROP table | ⏳ Chờ làm |
 | **12**| Màn hình đồng ý chính sách bảo mật (Mục 51) | `features/policy/` (mới), `core/realtime/realtime_event.dart` | Tài khoản chưa đồng ý bị chặn ở màn chính sách; 409 tải lại phiên bản mới | `policy_acceptance` có đúng 1 dòng (`idaccount`, `policy_version`); `system.policy_updated` mở lại màn chính sách | ⏳ Chờ làm |
+| **13**| Nhận bản sao dữ liệu cá nhân (Mục 52, **bắt buộc**) | `features/profile/` (Cài đặt → Dữ liệu của tôi), `core/realtime/realtime_event.dart` | Nút yêu cầu, trạng thái, 2 nút tải JSON / CSV; 429 hiện thời gian chờ | `data_export_request` có 1 dòng `READY`; tệp tải về đúng nội dung; CSV mở bằng Excel đúng dấu | ⏳ Chờ làm |
 
 ---
 
@@ -281,6 +282,7 @@ Trong `src/Client-app/lib/core/api/interceptors/`:
 |---|---|---|---|
 | 1 | Màn đồng ý chính sách bảo mật, xử lý `409 POLICY_VERSION_OUTDATED`, nghe `system.policy_updated`, không chặn khi ngoại tuyến | [`CHINH_SACH_BAO_MAT.md`](./CHINH_SACH_BAO_MAT.md) (Mục 51) | Khi Chủ dự án bật `403 POLICY_NOT_ACCEPTED`; sẽ báo trước |
 | 2 | Sửa chú thích lỗi thời "IP che mờ" trong `lib/core/api/ten_thiet_bi.dart` | Mục 51 phần 5 | Không bắt buộc |
+| 3 | Nhận bản sao dữ liệu cá nhân: nút trong Cài đặt, trạng thái, tải JSON / CSV khi đã đăng nhập, nghe `account.data_export_ready` | [`BAN_SAO_DU_LIEU.md`](./BAN_SAO_DU_LIEU.md) (Mục 52) | **Bắt buộc** (Chủ dự án chốt 2026-11-14); app chưa làm vẫn chạy, chỉ thiếu nút |
 
 
 > 🎯 **Cam kết chất lượng:** Mọi thắc mắc trong quá trình thực hiện, đội ngũ Client-app có thể đối chiếu trực tiếp với các test suite mẫu tại Backend (`src/Backend/tests/unit/sync.engine.v2.test.js` và `Test/test_data_security_encryption_and_masking.js`) để đảm bảo hệ thống đạt độ ổn định tuyệt đối (Zero Regressions).

@@ -57,6 +57,20 @@ const adminController = {
     }
   },
 
+  async getUserDataExports(req, res) {
+    try {
+      const iduser = parseInt(req.params.id, 10);
+      if (isNaN(iduser)) return ResponseHandler.badRequest(res, 'Tham số không hợp lệ');
+      const idaccount = await adminService.resolveAccountId(iduser);
+      if (!idaccount) return ResponseHandler.notFound(res, 'Không tìm thấy người dùng');
+      const { listForAdmin } = require('../account/data-export.service');
+      return ResponseHandler.success(res, await listForAdmin(idaccount), 'Yêu cầu bản sao dữ liệu');
+    } catch (error) {
+      logger.error('getUserDataExports failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
   async revealDeviceIp(req, res) {
     try {
       const iduser = parseInt(req.params.id, 10);

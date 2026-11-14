@@ -547,6 +547,12 @@ export default {
       policyNone: 'No policy yet',
       policyAccepted: 'Accepted v{version} · {time}',
       policyPending: 'Not accepted v{version}',
+      dataExport: 'Data copy',
+      exportNone: 'Not requested',
+      exportProcessing: 'Preparing (requested {time})',
+      exportReady: 'Available until {time}',
+      exportExpired: 'Expired (requested {time})',
+      exportFailed: 'Failed',
       devices: {
         title: 'Sign-in devices',
         empty: 'No sign-ins yet.',

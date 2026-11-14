@@ -483,3 +483,7 @@ Tuân thủ nghiêm ngặt **Rule 10 (DB Guard)**: Toàn bộ bảng và cột m
 - `privacy_policy`: `version` (`INTEGER` PK, > 0), `title` (`VARCHAR(200)`), `content` (`TEXT`), `published_at`, `published_by` (FK `account.Idaccount`, `ON DELETE SET NULL`). Phiên bản lớn nhất là hiện hành.
 - `policy_acceptance`: `id` (`BIGSERIAL`), `idaccount` (FK, `ON DELETE CASCADE`), `policy_version` (FK `privacy_policy.version`, `RESTRICT`), `accepted_at`, `ip_hash` (`VARCHAR(64)`), `device_name` (`VARCHAR(150)`), `user_agent`; `UNIQUE (idaccount, policy_version)`; chỉ mục `idx_policy_acceptance_version`.
 - Trigger `protect_policy_immutability` chặn `UPDATE` trên cả hai bảng. Áp bằng `node scripts/apply_migration_file.js --file=49_privacy_policy_acceptance.sql --url=<CSDL>` (đích ngoài máy cục bộ cần `--xac-nhan-tu-xa`). Chính sách: `Data_Security.md` mục 10.10.
+
+### 5.7. Yêu cầu bản sao dữ liệu cá nhân (Migration 50, 2026-11-14)
+- `data_export_request`: `id` (`VARCHAR(36)` PK, UUID), `idaccount` (FK `account`, `ON DELETE CASCADE`), `status` (`PROCESSING` / `READY` / `EXPIRED` / `FAILED`, CHECK `ck_data_export_status`), `json_ref`, `csv_ref` (khóa Supabase Storage `sb://data-exports/{idaccount}/{id}.json|csv`), `requested_at`, `ready_at`, `expires_at` (+24 giờ), `email_sent_at`, `error`.
+- Chỉ mục `idx_data_export_account_time` (`idaccount`, `requested_at DESC`), `idx_data_export_expiry` (`expires_at` WHERE `status = 'READY'`). Job hằng ngày xóa tệp hết hạn và chuyển `EXPIRED`; dòng giữ lại làm bằng chứng đã đáp ứng yêu cầu. Không đi qua `/sync/*`.
