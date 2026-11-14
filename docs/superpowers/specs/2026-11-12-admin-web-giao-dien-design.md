@@ -187,7 +187,7 @@ Mức hiện tại: `npm test` 164/164 ca (13 tệp), `npm run lint` 0 lỗi, `n
 
 | Bước | Tệp chính | Ghi chú |
 |---|---|---|
-| G5 Dọn | `tailwind.config.js`, `index.css` (luật `.dark` cũ, `bento-grid`…), `components/common/*` tái xuất, khóa ngôn ngữ thừa | sau đó cập nhật `Project.md` mục 3.4, `docs/Admin-web/README.md`; chuyển `Field`, `FormError`, `inputClass` từ `components/layout/settings/settingsUi` sang `components/ui` (trang auth đang mượn) |
+| G5 Dọn | `tailwind.config.js`, `index.css` (luật `.dark` cũ, `bento-grid`…), `components/common/*` tái xuất, khóa ngôn ngữ thừa | tài liệu đã đồng bộ 2026-11-14 (`Project.md` 3.4, `docs/Admin-web/README.md`, `04`, `06`, `09`); danh mục dọn mã đếm thật ở kế hoạch mục G5; chuyển `Field`, `FormError`, `inputClass` từ `components/layout/settings/settingsUi` sang `components/ui` (trang auth đang mượn) |
 
 ### 8.5 Quyết định của Chủ dự án (2026-11-12)
 

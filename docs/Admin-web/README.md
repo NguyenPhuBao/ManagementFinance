@@ -136,25 +136,13 @@ Toàn bộ các chức năng trong thư mục tài liệu này tuân thủ 100% 
 
 ## ⚙️ 5. TRUNG TÂM CÀI ĐẶT HỆ THỐNG & QUẢN TRỊ VIÊN (SETTINGS CENTER)
 
-Tích hợp trực tiếp trên Header thanh điều hướng (`Header.jsx`), nằm ngay bên phải icon Thông báo hệ thống (🔔):
-- **Biểu tượng (Icon):** ⚙️ Material Symbol `settings` (title: *"Cài đặt hệ thống"*).
-- **Hộp thoại Cài Đặt (`SettingsModal.jsx`):** Thiết kế Tabbed Modal bo góc chuẩn Enterprise với 5 tab nghiệp vụ hoàn chỉnh:
-  1. **Giao diện (Appearance):** Lựa chọn Chủ đề Giao diện (Sáng / Tối / Tự động theo OS), Mật độ hiển thị bảng (Rộng rãi / Tiêu chuẩn / Tối ưu thu gọn Compact).
-  2. **Cảnh báo & Âm thanh (Alerts & Sound):** Bật/tắt âm thanh cảnh báo khi có sự cố khẩn cấp (`soundAlarm`), Thời lượng hiển thị Toast thông báo (3s / 5s / 8s / 10s), Bật/tắt huy hiệu đếm chưa đọc trên icon chuông.
-  3. **Realtime & Socket.io:** Trạng thái kết nối Socket `admin_room` trực tiếp, cấu hình chu kỳ lấy mẫu nhịp tim AIOps Sentinel (1s / 3s / 5s), nút Kiểm tra độ trễ (Ping Test đo ms thực tế).
-  4. **Bảo mật & Phiên làm việc (Security & Session):** Tự động khóa màn hình Admin sau thời gian rảnh rỗi (5 / 15 / 30 phút), nút Xóa bộ nhớ đệm trình duyệt cục bộ (Local Storage Cache Reset) an toàn, hiển thị Thông tin phiên bản & Môi trường runtime.
-  5. **Quản trị viên (Admin Management):**
-     - **Cấp tài khoản quản trị viên mới:** Thiết kế Grid 2 cột cân đối (`max-w-lg`) gồm 6 trường thông tin chuẩn hóa:
-       - `Username` (*): Tên đăng nhập (chữ thường, số, dấu gạch dưới).
-       - `Email` (*): Địa chỉ email liên hệ quản trị.
-       - `FullName` (*): Họ và tên đầy đủ của quản trị viên.
-       - `Phone` (*): Số điện thoại liên hệ (được mã hóa AES-256-GCM bảo mật).
-       - `Address`: Địa chỉ cư trú (tùy chọn, được mã hóa an toàn).
-       - `Country Code`: Mã vùng quốc gia (tùy chọn, mặc định `+84`, tối đa 4 ký tự).
-       - Tự động gán mật khẩu tạm thời và mã PIN bảo mật cấp 2 tạm thời cho quản trị viên mới.
-     - **Thay đổi mật khẩu đăng nhập cá nhân:** Yêu cầu mật khẩu cũ + kiểm tra độ mạnh mật khẩu mới.
-     - **Thay đổi mã PIN bảo mật cấp 2:** Yêu cầu mã PIN cũ 6 chữ số, tự động mã hóa SHA-256 trước khi gửi API.
-- **Lưu trữ Cục bộ & CSDL:** Cấu hình cá nhân lưu `localStorage` với tiền tố `admin_settings_*`; thông tin bảo mật và tài khoản lưu trữ đồng bộ vào CSDL PostgreSQL qua API `admin.api.js`.
+Mở từ nút bánh răng trên Header. Hộp thoại `components/layout/SettingsModal.jsx` (phần con ở `components/layout/settings/`) có 5 tab (đối chiếu mã 2026-11-14):
+1. **Giao diện:** chủ đề Sáng / Tối (gắn lớp `.dark` lên `<html>`), mật độ bảng Rộng rãi / Gọn.
+2. **Thông báo:** bật / tắt âm thanh cảnh báo và nghe thử, thời gian hiện thông báo 3 / 4,5 / 7 / 10 giây, bật / tắt huy hiệu số chưa đọc.
+3. **Kết nối:** trạng thái kết nối realtime, chu kỳ nhịp tim số liệu 1 / 3 / 5 / 10 giây, kiểm tra độ trễ.
+4. **Bảo mật:** tự khóa màn hình sau 15 / 30 / 60 phút hoặc tắt, khóa ngay, xóa bộ nhớ đệm, khôi phục mặc định.
+5. **Quản trị viên:** đổi mật khẩu, đổi PIN (mật khẩu / PIN gửi qua HTTPS, Backend băm và kiểm), cấp tài khoản quản trị viên mới (`CreateAdminModal`, nhiều bước).
+- **Lưu trữ cục bộ:** cài đặt cá nhân lưu một khóa `localStorage` `admin_system_settings` (mặc định: Sáng, Rộng rãi, có âm thanh, 4,5 giây, có huy hiệu, nhịp 3 giây, tự khóa 30 phút); trạng thái thu gọn menu lưu `admin_sidebar_collapsed`. Mật khẩu, PIN và tài khoản quản trị lưu ở CSDL qua `admin.api.js`.
 
 ---
 
@@ -168,18 +156,15 @@ Mọi module và chức năng của Admin-web bắt buộc phải có bài kiể
    - *"Nếu thao tác được trên giao diện nhưng không tạo ra tác động thực sự đến hệ thống như mong muốn thì bài test BẮT BUỘC ĐÁNH RỚT."*
    - Kiểm tra tính bền vững của dữ liệu trong CSDL hoặc LocalStorage.
    - Kiểm tra thay đổi trạng thái Root DOM (`document.documentElement`).
-   - Kiểm tra API call gửi đúng payload mã hóa (`AES-256-GCM`) và nhận response thật.
+   - Kiểm tra API được gọi đúng tên, tham số, payload; sự kiện socket làm đổi dữ liệu hiển thị.
+- **Hiện trạng (2026-11-14):** `src/Admin-web/src/tests/` có 15 tệp test viết lại theo giao diện mới (vitest + Testing Library, mock API, không gọi Backend thật), 202 ca.
    - Kiểm tra các side-effects (Socket broadcast, Web Audio alarm, Toast timeout).
 
 ---
 
 ## 🖥️ 7. THIẾT KẾ FLUID RESPONSIVE & ĐA TỶ LỆ MÀN HÌNH
 
-Hệ thống giao diện Admin-web được xây dựng theo chuẩn **Fluid Responsive Architecture** đảm bảo trải nghiệm hiển thị hoàn hảo trên mọi kích thước màn hình và tỷ lệ zoom:
-- **Tương thích Zoom 50% - 200%:** Thiết kế sử dụng các đơn vị co giãn linh hoạt và CSS Grid/Flexbox tự co giãn, không bị tràn layout hay gãy cột khi quản trị viên phóng to hoặc thu nhỏ trình duyệt.
-- **Sidebar Mini-Mode Thu Gọn (76px vs 260px):**
-  - Chế độ mở rộng: Độ rộng 260px hiển thị đầy đủ icon, nhãn tiếng Việt và huy hiệu số lượng.
-  - Chế độ thu gọn: Độ rộng 76px với icon trung tâm tinh gọn, tự động bung tooltip giải thích khi rê chuột qua, tối đa hóa không gian quan sát dữ liệu trên các màn hình nhỏ (Laptop 13-14 inch).
-- **Khung chứa Dữ liệu Siêu Rộng (Max Container Fluid `max-w-[1720px]`):**
-  - Đảm bảo tận dụng tối đa bề ngang trên màn hình Full HD (1920x1080), 2K và 4K mà không bị ép hẹp vào giữa, mang lại tầm nhìn bao quát cho các biểu đồ hạ tầng và bảng dữ liệu chuyên sâu.
-
+- **Bố cục:** `AppLayout` gồm `Sidebar` (8 mục menu) và `Header`; nội dung trang nằm trong khung `max-w-screen-2xl` (1.536px) căn giữa.
+- **Sidebar:** rộng 240px (`w-60`), thu gọn còn 72px trên máy tính (nhãn ẩn, chỉ còn biểu tượng); trên điện thoại là ngăn kéo trượt, mặc định đóng.
+- **Màn hẹp:** bảng dữ liệu cuộn ngang trong khung riêng (`DataTable` có `minWidth`), trang không cuộn ngang ở bề rộng 390px (đã kiểm bằng trình duyệt cho từng màn hình đã làm lại).
+- **Chủ đề:** màu lấy từ token `--ui-*` trong `src/styles/theme.css` (cả `:root` và `.dark`), dùng qua lớp Tailwind `bg-card`, `text-ink`, `border-line`, `bg-brand`…

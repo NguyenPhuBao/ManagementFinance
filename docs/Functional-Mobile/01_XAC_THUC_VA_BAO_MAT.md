@@ -31,7 +31,7 @@
 4. Client chuyển hướng sang màn hình `/register/verify-otp`.
 5. Người dùng nhập đủ 6 chữ số:
    - Hệ thống tự động submit mà không cần bấm nút phụ.
-   - Gửi `POST /api/auth/verify-registration-otp`.
+   - Gửi `POST /api/auth/register/verify-otp`.
    - Nếu đúng: Server trả về Access Token + Refresh Token $\rightarrow$ Client lưu SecureStorage và điều hướng thẳng vào `/home`.
    - Đếm ngược 60 giây trước khi cho phép bấm nút "Gửi lại mã OTP".
 
@@ -52,13 +52,13 @@
 
 ### 2.4. Vòng đời Xóa tài khoản (PendingDelete 30 Ngày Ân Hạn)
 Tuân thủ Nghị định 13/2023/NĐ-CP và chính sách Google Play Store / Apple Store:
-1. **Yêu cầu xóa:** Người dùng nhập mật khẩu xác nhận tại `/settings/delete-account` $\rightarrow$ Gửi `POST /api/auth/request-delete-account`.
+1. **Yêu cầu xóa:** Người dùng nhập mật khẩu xác nhận tại `/settings/delete-account` $\rightarrow$ Gửi `DELETE /api/auth/account`.
 2. **Trạng thái PendingDelete:**
    - Tài khoản được chuyển sang trạng thái chờ xóa với thời gian ân hạn 30 ngày (`deletionCountdown = 30`).
    - Trên đỉnh Trang chủ xuất hiện thẻ cảnh báo màu cam [`the_cho_xoa_trang_chu.dart`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/src/Client-app/lib/features/home/presentation/widgets/the_cho_xoa_trang_chu.dart) thông báo rõ số ngày còn lại.
 3. **Hủy xóa tài khoản (Phục hồi tức thì):**
    - Trong vòng 30 ngày, người dùng bấm nút "Hủy xóa tài khoản" ngay trên thẻ trang chủ hoặc trong cài đặt.
-   - Gửi `POST /api/auth/cancel-delete-account`.
+   - Gửi `POST /api/auth/cancel-delete`.
    - Trạng thái tài khoản lập tức phục hồi về `Active`, thẻ cảnh báo biến mất.
 4. **Hết hạn 30 ngày:** Backend tự động ẩn danh hóa (Anonymization Soft-Delete) và thanh lọc dữ liệu.
 
@@ -68,7 +68,7 @@ Tuân thủ Nghị định 13/2023/NĐ-CP và chính sách Google Play Store / A
 
 - **JWT Refresh Token Rotation:**
   - Token hết hạn sau 15 phút.
-  - Bộ chặn `AuthInterceptor` tự động bắt mã lỗi `401 Unauthorized` $\rightarrow$ tự động gọi `POST /api/auth/refresh-token` ngầm $\rightarrow$ cập nhật Access Token mới và gửi lại request ban đầu mà người dùng không hề bị gián đoạn thao tác.
+  - Bộ chặn `AuthInterceptor` tự động bắt mã lỗi `401 Unauthorized` $\rightarrow$ tự động gọi `POST /api/auth/refresh` ngầm $\rightarrow$ cập nhật Access Token mới và gửi lại request ban đầu mà người dùng không hề bị gián đoạn thao tác.
 - **Che bớt thông tin nhạy cảm:**
   - Ẩn/hiện mật khẩu bằng icon con mắt.
   - Không in mật khẩu hoặc token ra console log.

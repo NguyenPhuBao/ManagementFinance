@@ -67,6 +67,16 @@ Test `src/tests/layout.test.jsx`: 8 mục menu đúng đường dẫn, mục đa
 - Cập nhật `Project.md` mục 3.4 (Admin-web), `docs/Admin-web/README.md`, `docs/progress/Backend.md` hoặc tệp tiến độ Admin-web tương ứng.
 - AC cuối: `npm test` xanh toàn bộ, `npm run lint` 0 lỗi, `npm run build` qua; Chủ dự án duyệt trên trình duyệt từng màn hình.
 
+**Danh mục dọn theo khảo sát 2026-11-14** (đếm bằng script, chưa sửa mã):
+- Tài liệu: đã đồng bộ `Project.md` 3.4, `docs/Admin-web/README.md` (cài đặt, test, bố cục), `04` (§6, API thiết bị / chính sách / bản sao), `06` (§6 có tab Sự cố dữ liệu, API sổ sự cố, IP đã che), `09` (§6 theo giao diện G4.1, bảng API đúng route thật).
+- `tailwind.config.js`: 47 token màu cũ; chỉ 10 còn dùng, và chỉ trong `src/index.css` → xóa cùng luật CSS dùng chúng.
+- `src/index.css`: 3 lớp không còn nơi dùng (`keyword-scrollbar`, `table-responsive-container`, `responsive-table-wrapper`); luật `.dark header` cũ.
+- `components/common/` tái xuất: `ConfirmModal`, `EmptyState`, `Pagination`, `SecurityConfirmModal` không còn nơi import → xóa; `Loading` còn 1 nơi (`router/ProtectedRoute.jsx`) → đổi import sang `components/ui` rồi xóa.
+- Chú thích còn ở 18 tệp (236 dòng; nhiều nhất `api/payment.api.js`, `store/settings.context.jsx`); hex còn ở `utils/format.js` (8); `text-[..px]` 0; `style={{` 6 tệp đều là giá trị động (giữ).
+- Khóa ngôn ngữ: vi / en cùng 1.208 khóa; khoảng 34 khóa có thể không dùng (31 ở `common`) → kiểm tay khóa ghép động trước khi xóa.
+- ✅ Đã dọn 2026-11-14: hàm API không nơi gọi (`getDashboardStats`, `syncCategories`, `unblockQuarantine`, `broadcastNotification`, `getPayosQr`), `api/sync.api.js`, `hooks/usePagination.js`, 5 tệp tái xuất ở `components/common/`, `useAuthSafe`, `useLanguage`, 9 hằng số và 6 hàm định dạng không dùng; route Backend `DELETE /aiops/quarantine/:hash`, `GET /payments/payos-qr`.
+- Đặc tả 8.4: chuyển `Field`, `FormError`, `inputClass` từ `components/layout/settings/settingsUi` sang `components/ui`.
+
 ## Rủi ro và cách lùi
 
 | Rủi ro | Cách xử lý |

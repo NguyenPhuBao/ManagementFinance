@@ -3,7 +3,7 @@
 > **Mã chức năng:** `ADMIN-FEAT-04`  
 > **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
-> - Frontend: `src/Admin-web/src/pages/users/UserListPage.jsx`, `UserDetailPage.jsx`, `src/Admin-web/src/components/common/UserDetailModal.jsx`, `SecurityConfirmModal.jsx`  
+> - Frontend: `src/Admin-web/src/pages/users/UserListPage.jsx`, `src/Admin-web/src/components/common/UserDetailModal.jsx`, `UserDevices.jsx`, `src/Admin-web/src/components/ui/SecurityConfirmModal.jsx` (trang `/users/:id` đã bỏ ở G2.1)  
 > - Backend: `src/Backend/modules/admin/admin.service.js`, `admin.repository.js`, `admin.controller.js`, `src/Backend/utils/masking.util.js`, `src/Backend/utils/content-filter.util.js`  
 
 ---
@@ -106,28 +106,13 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
 
 ---
 
-## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN
+## 🧩 6. TÍNH NĂNG ĐI KÈM TRÊN GIAO DIỆN (cập nhật 2026-11-14 theo mã)
 
-1. **Giao Diện Quản Lý Người Dùng Enterprise AIOps Bento (`UserListPage.jsx`):**
-   - **Hero Header Bar:** Tích hợp icon nhận diện tròn gradient, huy hiệu Realtime Sync xanh lá nhấp nháy, nút Refresh tức thì.
-   - **Bento Stats KPI:** 4 thẻ KPI bo góc `rounded-2xl` tổng hợp tức thời: Tổng người dùng, Đang hoạt động, Bị vô hiệu hóa, Chờ xóa 30 ngày, Đã xóa mềm (hỗ trợ click trực tiếp để chuyển nhanh bộ lọc).
-   - **Thanh Điều Khiển Pill Tabs:** Lọc nhanh trạng thái người dùng dạng viên thuốc (`Tất Cả`, `Hoạt Động`, `Vô Hiệu Hóa`, `Chờ Xóa`, `Đã Xóa`) kèm số lượng badge thời gian thực.
-   - **Bảng Dữ Liệu Hiện Đại:** Bo góc mềm `rounded-2xl`, avatar người dùng sinh động, badges trạng thái pastel chuẩn màu:
-     - `Active`: `bg-emerald-50 text-emerald-700 border-emerald-200/80`
-     - `Inactive`: `bg-slate-100 text-slate-700 border-slate-200`
-     - `PendingDelete`: `bg-amber-50 text-amber-800 border-amber-200/80`
-     - `Deleted`: `bg-rose-50 text-rose-700 border-rose-200/80`
-   - **Bộ Lọc Nâng Cao:** Hỗ trợ tìm kiếm realtime đa trường (Họ tên, Email, SĐT, Username) và lọc theo gói cước chuẩn hóa (`Tất Cả`, `Basic`, `Premium`).
-   - **Phân Trang Tiêu Chuẩn:** Tùy chọn 5, 10, 20 hoặc 50 người dùng/trang với bộ điều hướng linh hoạt `Pagination`.
-   - **Xác Thực PIN Bảo Mật Cấp 2:** Mọi thao tác khóa tài khoản hoặc xóa mềm người dùng đều kích hoạt `SecurityConfirmModal` yêu cầu nhập đúng mã PIN quản trị viên trước khi thực thi.
-2. **Modal & Trang Chi Tiết Người Dùng (`UserDetailModal.jsx` / `UserDetailPage.jsx`):**
-   - Hiển thị ngày tạo tài khoản, ngày cập nhật, gói tài khoản, lý do khóa và số ngày đếm ngược chờ xóa.
-   - **Mục "Thiết bị đăng nhập" (`components/common/UserDevices.jsx`, đã làm 2026-11-13):** 10 lượt truy cập gần nhất từ `GET /api/admin/getuser/:id/devices` (`:id` là `iduser`, Backend đổi sang `idaccount`): tên thiết bị rút gọn (chuỗi trình duyệt → "Edge trên Windows"; Client-app gửi `x-device-name`), IP đã che, lần hoạt động cuối. Nút "Xem IP đầy đủ" mở `SecurityConfirmModal` (thuộc tính `onVerify`), gửi PIN cùng `POST /api/admin/getuser/:id/devices/:deviceId/reveal-ip`; IP chỉ hiện trong lượt xem. Dòng không còn bản mã (trước migration 48 hoặc quá hạn) ghi "Không còn IP đầy đủ". Chính sách lưu IP: `docs/Rule_Project/Data_Security.md` mục 10.8.
-3. **Modal Khóa Tài Khoản Kèm Kiểm Tra Ràng Buộc:**
-   - Textarea nhập lý do có đếm ký tự và thông báo lỗi trực tiếp, nút vô hiệu hóa tự động bị khóa khi chưa nhập lý do.
-4. **Cập Nhật Real-Time Không Cần F5:**
-   - Nhận sự kiện `admin.user_registered`: Tự động chèn người dùng mới lên đầu bảng với hiệu ứng hiển thị nổi bật và phát sinh Alert Toast.
-   - Nhận sự kiện `admin.user_status_changed`: Cập nhật lại Badge màu và số ngày countdown của dòng đó ngay lập tức.
+1. **Danh sách người dùng (`UserListPage.jsx`):** 4 thẻ số liệu; 5 tab trạng thái (mặc định ẩn "Đã xóa"); tìm kiếm; bộ lọc gói và trạng thái; phân trang; số điện thoại đã che; cập nhật realtime. Vô hiệu hóa bắt buộc lý do; kích hoạt lại có xác nhận; xóa mềm phải xác thực PIN và chỉ áp cho tài khoản đã vô hiệu hóa.
+2. **Hộp chi tiết người dùng (`UserDetailModal.jsx`):** ngày tạo, gói, trạng thái, lý do khóa, ngày chờ xóa; dòng **Chính sách bảo mật** ("Đã đồng ý vN · thời gian" hoặc "Chưa đồng ý vN", `GET /api/admin/getuser/:id/policy`); dòng **Bản sao dữ liệu** (trạng thái yêu cầu gần nhất: chưa yêu cầu / đang tạo / sẵn sàng tới … / đã hết hạn / tạo lỗi, `GET /api/admin/getuser/:id/data-exports`).
+3. **Thiết bị đăng nhập (`components/common/UserDevices.jsx`):** 10 lượt truy cập gần nhất, tên thiết bị rút gọn, IP đã che; "Xem IP đầy đủ" bắt buộc PIN trong cùng request và ghi nhật ký; IP đầy đủ quá 365 ngày đã bị xóa nên không còn nút xem.
+4. **Cập nhật realtime:** `admin.user_registered` chèn người dùng mới; `admin.user_status_changed` cập nhật trạng thái và số ngày chờ xóa.
+5. **Kiểm thử:** `src/Admin-web/src/tests/users.test.jsx` (17 ca).
 
 ---
 
@@ -153,7 +138,10 @@ Nhằm đảm bảo quản trị viên không thể thu thập hoặc làm rò r
 | `GET` | `/api/admin/getuser/:id` | Lấy chi tiết thông tin tài khoản và người dùng | Admin |
 | `PATCH` | `/api/admin/updatestatus/:id` | Khóa hoặc mở khóa tài khoản người dùng | Admin |
 | `DELETE` | `/api/admin/deleteuser/:id` | Xóa mềm tài khoản an toàn 5 bước | Admin |
-| `GET` | `/api/admin/accounts/:idaccount/devices` | Lấy danh sách lịch sử thiết bị & IP người dùng *(Kế hoạch)* | Admin |
+| `GET` | `/api/admin/getuser/:id/devices` | 10 lượt truy cập gần nhất (IP đã che) | Admin |
+| `POST` | `/api/admin/getuser/:id/devices/:deviceId/reveal-ip` | Xem IP đầy đủ, bắt buộc PIN (`REVEAL_IP`), ghi nhật ký | Admin |
+| `GET` | `/api/admin/getuser/:id/policy` | Phiên bản chính sách hiện hành và các lần đồng ý | Admin |
+| `GET` | `/api/admin/getuser/:id/data-exports` | 5 yêu cầu bản sao dữ liệu gần nhất | Admin |
 
 ### Socket.io Events
 - **Lắng nghe (`Client -> Server`):**

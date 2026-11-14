@@ -77,7 +77,9 @@ Hệ thống có **2 trợ lý AI song hành** phục vụ người dùng linh h
   - `429 Too Many Requests`: Vượt hạn mức 15 req/phút $\rightarrow$ Hiện thông báo: *"Bạn đang gửi yêu cầu quá nhanh (giới hạn 15 tin nhắn/phút), vui lòng thử lại sau giây lát"*.
   - `Circuit Breaker & Fallback Notice`: Khi Gemini API lỗi hoặc Circuit Breaker mở, Backend gửi trực tiếp thông báo hệ thống minh bạch (tuyệt đối không bịa số liệu giả), đồng thời Client-app có thể gợi ý chuyển sang Trợ lý AI Offline (`Gemma 4 E2B`).
 
-### 2.2. API Lấy Bản Chụp Sức Khỏe Tài Chính (Financial Health Snapshot)
+### 2.2. API Lấy Bản Chụp Sức Khỏe Tài Chính (Financial Health Snapshot) — ĐÃ GỠ 2026-11-07
+
+> Route này không còn trên Backend (xem `docs/AI/ChatbotAI.md`). Snapshot chỉ tính nội bộ để đưa vào ngữ cảnh chatbot. Client-app không gọi route này; phần dưới giữ làm tham khảo cấu trúc dữ liệu.
 
 - **Method & URL:** `GET /api/ai/chatbot/snapshot`
 - **Headers:** `Authorization: Bearer <ACCESS_TOKEN>`

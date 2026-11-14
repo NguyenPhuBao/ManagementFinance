@@ -360,7 +360,7 @@ Phần này đặc tả chi tiết toàn bộ các quy tắc ràng buộc, chố
   * Admin cũng được phép tạo mới danh mục hệ thống trùng tên với danh mục người dùng đã tồn tại từ trước.
 
 ### 1.3. Bảo vệ & Ràng buộc quản trị Danh mục Hệ thống (System Category Protection & Privacy Isolation)
-* **Phạm vi thẩm quyền của Admin:** Quản trị viên (Admin) chỉ có thẩm quyền quản lý các **danh mục mẫu mặc định của hệ thống** (`is_default = true`). Giao diện Admin-web (`/categories`) và Backend API Admin (`/api/admin/categories`) bắt buộc áp dụng bộ lọc cứng `is_default = true, delete_at = null`, gỡ bỏ mọi quyền truy cập/xem danh mục cá nhân của người dùng.
+* **Phạm vi thẩm quyền của Admin:** Quản trị viên (Admin) chỉ có thẩm quyền quản lý các **danh mục mẫu mặc định của hệ thống** (`is_default = true`). Giao diện Admin-web (`/categories`) và Backend API Admin (`/api/admin/getcategory`, `addcategory`, `updatecategory/:id`, `deletecategory/:id`, `restorecategory/:id`) bắt buộc áp dụng bộ lọc cứng `is_default = true, delete_at = null`, gỡ bỏ mọi quyền truy cập/xem danh mục cá nhân của người dùng.
 * **Bảo vệ quyền riêng tư người dùng (User Privacy & Anti-Tampering):**
   * Danh mục tùy chỉnh do người dùng tạo (`is_default = false`) phản ánh trực tiếp thói quen sinh hoạt và thông tin tài chính cá nhân, là dữ liệu cá nhân nhạy cảm được bảo vệ theo Nghị định 13/2023/NĐ-CP và Luật Bảo vệ dữ liệu cá nhân 2025.
   * Tuyệt đối **CẤM Admin xem, chỉnh sửa hoặc xóa danh mục của người dùng**.
@@ -587,7 +587,7 @@ Bộ máy chống trùng lặp giao dịch (Deduplication Engine) vận hành th
 
 ### 9.1. Giao thức Sync 2 Chiều
 * **Push (`POST /api/sync/push`):** Client gửi mảng thay đổi cục bộ lên server.
-* **Pull (`GET /api/sync/pull` hoặc `POST /api/sync/pull`):** Client lấy các bản ghi có `update_at > last_sync_time`.
+* **Pull (`GET /api/sync/pull`):** Client lấy các bản ghi có `update_at > last_sync_time`.
 
 ### 9.2. Quy tắc giải quyết xung đột (Conflict Resolution)
 * Áp dụng nguyên tắc **"Last Write Wins" (LWW)** dựa trên mốc thời gian cập nhật `update_at`.

@@ -173,6 +173,8 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    DATA_ENCRYPTION_KEY=[CHUỖI_HEX_64_KÝ_TỰ_SINH_BỞI_CRYPTO]
    # BẮT BUỘC Ở PRODUCTION: Chuỗi bí mật dùng cho HMAC-SHA256 Blind Index
    BLIND_INDEX_SECRET=[CHUỖI_BẢO_MẬT_NGẪU_NHIÊN_32_KÝ_TỰ]
+   # Số ngày giữ IP đầy đủ (bản mã + chỉ mục mù); quá hạn job 0h00 xóa (Data_Security.md 10.8). Mặc định 365.
+   IP_RETENTION_DAYS=365
 
    # ========================================================
    # 5. XÁC THỰC BẢO MẬT JWT (TOKEN PAIR & EXPIRATION)
@@ -187,6 +189,8 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    # ========================================================
    # 6. ĐẶC QUYỀN QUẢN TRỊ & GIÁM SÁT AN NINH (ADMIN FAST-LANE)
    # ========================================================
+   # PIN hệ thống cho quản trị viên chưa có PIN riêng. BẮT BUỘC: production thiếu biến này thì mọi PIN dự phòng bị từ chối (từ 2026-11-14)
+   ADMIN_SECURITY_PIN=[PIN_6_SỐ_KHÔNG_DÙNG_123456]
    # Khóa cứu hộ đặc quyền x-emergency-admin-key (Bypass Rate Limiter)
    ADMIN_EMERGENCY_KEY=[SECRET_EMERGENCY_ADMIN_KEY_2026]
    # Email nhận thông báo đỏ khi AIOps Sentinel phát hiện tấn công mức CRITICAL
@@ -206,10 +210,18 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    # ========================================================
    GEMINI_API_KEY=[API_KEY_GOOGLE_AI_STUDIO]
    GEMINI_MODEL=gemini-3.8-flash
+   # Chatbot AI dùng nhà cung cấp riêng: có DEEPSEEK_API_KEY thì dùng DeepSeek, không có thì giữ Gemini (OCR, phân loại vẫn dùng GEMINI_*)
+   DEEPSEEK_API_KEY=[API_KEY_DEEPSEEK]
 
    # ========================================================
-   # 9. DỊCH VỤ EMAIL HỆ THỐNG (GMAIL SMTP / SENDGRID)
+   # 9. DỊCH VỤ EMAIL HỆ THỐNG (BREVO → RESEND → SMTP)
    # ========================================================
+   # core/email.service.js thử lần lượt: Brevo (có BREVO_API_KEY) → Resend (có RESEND_API_KEY) → SMTP (có SMTP_USER).
+   BREVO_API_KEY=[API_KEY_BREVO]
+   BREVO_SENDER_EMAIL=[EMAIL_GUI_DA_XAC_MINH_TREN_BREVO]
+   BREVO_SENDER_NAME=FlowMoney
+   # RESEND_API_KEY=[API_KEY_RESEND]
+   # RESEND_FROM=FlowMoney <no-reply@ten-mien-da-xac-minh>
    SMTP_HOST=smtp.gmail.com
    SMTP_PORT=587
    SMTP_USER=[EMAIL_GUI_OTP@GMAIL.COM]

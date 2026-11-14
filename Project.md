@@ -141,19 +141,20 @@ ModuleName/
 
 #### 3.2.4 Database — PostgreSQL (PersonFinance)
 
-- **ORM**: Prisma
-- **Host**: `localhost:5432`
-- **User**: `postgres`
+- **ORM**: Prisma (`src/Backend/prisma/schema.prisma`, 30 model, đếm 2026-11-14)
+- **Môi trường**: Production và CSDL dùng chung là Supabase (PostgreSQL); dev / test dùng PostgreSQL cục bộ (CSDL thử riêng, đặt qua `TEST_DATABASE_URL`).
 - **Schema**: `public`
-- Quản lý schema qua **migration** (Prisma) + **SQL script** (`database/`)
-- Script khởi tạo: `database/)1_CSDL_Admin.sql` + `database/)2_create_refreshtoken_table.sql` + `database/)3_Update_Sync.sql` + `database/)4_Convert_Category_UUID.sql`
+- Quản lý schema bằng **tệp SQL lũy đẳng** `src/Backend/database/N_*.sql` (hiện tới `51_data_incident.sql`); cấu trúc bảng hiện hành mô tả ở `docs/Rule_Project/New_Database.md` (nguồn sự thật hơn các sơ đồ trong mục này).
 
-> **Quy trình thay đổi CSDL (Quy định mới cập nhật 2026-08-18):**
-> 1. Vẫn bắt buộc tạo file `.sql` trong `database/` trước để làm bản tường minh dự phòng (phục vụ restore nếu CSDL hư hại).
-> 2. Cập nhật file `prisma/schema.prisma` tương ứng với thay đổi.
-> 3. Chạy lệnh `npx prisma migrate dev` để Prisma tự động so sánh, tạo file migration và áp dụng trực tiếp xuống PostgreSQL.
+> **Quy trình thay đổi CSDL (DB Guard, thay quy định 2026-08-18):**
+> 1. Viết DDL vào `database/N_*.sql` lũy đẳng (kiểm trùng số `N` trước).
+> 2. Áp bằng script có kiểm soát `scripts/apply_migration_file.js` (Supabase chỉ áp khi Chủ dự án xác nhận).
+> 3. Cập nhật `prisma/schema.prisma` → `npm run prisma:generate` → `npm run db:verify-indexes`.
+> 4. **Cấm** `prisma migrate dev` / `prisma db push` trên Supabase / Production: Prisma không giữ partial index và trigger pháp lý (`scripts/db-guard.js` chặn).
 >
 > **Quy tắc bắt buộc khác**: Khi có sự thay đổi CSDL, luôn phải cập nhật Module Sync theo CSDL mới - theo template Sync đã có & đang dùng.
+
+> Sơ đồ và mô tả bảng dưới đây là bản thiết kế 2026-08; các bảng thêm sau (gia đình, thanh toán, AIOps, `account_device_history`, `privacy_policy`, `policy_acceptance`, `data_export_request`, `data_incident`…) xem `docs/Rule_Project/New_Database.md`.
 
 ##### Sơ đồ quan hệ (11 bảng — cập nhật 2026-08-12)
 
@@ -383,9 +384,9 @@ Role (1) ──▶ Account (N) ──▶ User (1)
   - `GET /api/notifications/unread-count` — Đếm số thông báo người dùng chưa đọc
   - `PATCH /api/notifications/:id/read` — Đánh dấu thông báo đã đọc
   - `POST /api/notifications/read-all` — Đánh dấu tất cả thông báo đã đọc
-  - `GET /api/notifications/admin/alerts` — Lấy cảnh báo hệ thống cho Admin-web
-  - `PATCH /api/notifications/admin/alerts/:id/read` — Đánh dấu cảnh báo Admin đã đọc
-  - `POST /api/notifications/admin/broadcast` — Admin phát thông báo toàn hệ thống
+  - `GET /api/notifications/admin` — Lấy cảnh báo hệ thống cho Admin-web
+  - `PATCH /api/notifications/admin/:id/read` — Đánh dấu cảnh báo Admin đã đọc
+  - `POST /api/notifications/broadcast` — Admin phát thông báo toàn hệ thống (lịch sử: `GET /api/notifications/broadcast/history`)
 - **Tài liệu chi tiết**:
   - Backend: [`docs/Notification/Notification_Backend.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Notification/Notification_Backend.md)
   - Admin-web: [`docs/Notification/Notification_Admin-web.md`](file:///d:/Tai_Lieu_IUH/Tailieu_Nam5_HK1/DoAnTotNghiep/Personal_Finance_Management/docs/Notification/Notification_Admin-web.md)
@@ -412,19 +413,26 @@ Role (1) ──▶ Account (N) ──▶ User (1)
 
 ### 3.4 Kiến Trúc Admin-web (ReactJS + Vite)
 
+Đối chiếu `src/Admin-web` ngày 2026-11-14.
+
 | Đặc điểm | Công nghệ |
 |----------|-----------|
-| **SPA Routing** | React Router DOM v6 |
-| **API calls** | Axios → REST endpoints của backend |
-| **Real-time** | Socket.IO-client → lắng nghe sự kiện (user mới, job thất bại) |
-| **UI Components** | Tailwind CSS v4 (Sử dụng native HTML elements, hoàn toàn không dùng UI Framework như Ant Design) |
-| **Authentication** | JWT, lưu token trong localStorage và React Context |
+| **Khung** | React 18, Vite 5 (SPA), triển khai Vercel (`vercel.json` chuyển `/api/*` tới Render) |
+| **Điều hướng** | React Router DOM 6 (`src/router/routes.jsx`, `ProtectedRoute`) |
+| **Gọi API** | Axios (`src/api/*.api.js`, `axios-client.js` tự làm mới token), `VITE_API_BASE_URL` |
+| **Realtime** | socket.io-client 4, phòng `admin_room` (`store/socket.context.jsx`, `hooks/useSocket.js`) |
+| **Giao diện** | Tailwind CSS 4 (`@tailwindcss/postcss`, `@config` trỏ `tailwind.config.js`), token màu `--ui-*` trong `src/styles/theme.css` (Sáng / Tối), không dùng thư viện UI ngoài |
+| **Thành phần dùng chung** | `src/components/ui/`: Icon, Button, PageHeader, StatCard, Card, Badge, Tabs, SearchInput, Spinner, EmptyState, Loading, DataTable, Pagination, Modal, ConfirmModal, SecurityConfirmModal, PasswordInput |
+| **Trạng thái** | React Context: `auth`, `settings`, `language`, `alert`, `socket` (`src/store/`) |
+| **Ngôn ngữ** | Tiếng Việt / Tiếng Anh (`src/locales/vi.js`, `en.js`, cùng bộ khóa) |
+| **Xác thực** | JWT access + refresh lưu `localStorage`; khóa màn hình, đăng nhập lần đầu; thao tác nhạy cảm xác thực PIN (`SecurityConfirmModal`) |
+| **Kiểm thử** | Vitest + Testing Library (`src/tests/`, hai tầng), ESLint 8 |
 
 #### 3.4.1 Cấu trúc & Nguyên tắc thiết kế Frontend
-- **Tối ưu hóa UI/UX**: Loại bỏ hoàn toàn `antd` và các thư viện UI component framework. Giao diện được xây dựng bằng pure HTML tags kết hợp Tailwind CSS utility classes để tối ưu performance, rút gọn bundle size và đạt tính tùy biến cao nhất.
-- **Tailwind CSS v4**: Tích hợp thông qua `@tailwindcss/postcss`. File cấu hình `tailwind.config.js` được giữ lại qua `@config` directive trong `index.css` để định nghĩa custom design tokens (mã màu, spacing, typography).
-- **Responsive & Layout**: Sử dụng CSS Grid/Flexbox kết hợp các class tiện ích của Tailwind. Bố cục chính gồm `AppLayout` bao bọc `Sidebar` (menu điều hướng) và `Header` (hiển thị thông tin auth/actions).
-- **State Management**: Sử dụng React Context (`AuthContext`) cho global state (thông tin user, trạng thái đăng nhập) và local state (`useState`, `useEffect`) cho các logic UI nội bộ tại từng trang (chẳng hạn: Filter Modal, Table Search, Data Fetching).
+- **Trang (`src/pages/`):** Tổng quan (`dashboard`), Giám sát an ninh (`system/AIOpsPage.jsx` + `system/aiops/`), Người dùng (`users`), Phân quyền (`system/PermissionManagementPage.jsx`), Thanh toán (`payments`), Danh mục (`categories`), Nhật ký kiểm toán (`system/AuditLogPage.jsx` + `system/audit/`: tab Sự cố dữ liệu), Bảo trì & Thông báo (`system/BroadcastPage.jsx` + `system/broadcast/`: Bảo trì, Thông báo, Chính sách); Đăng nhập, Quên mật khẩu (`auth`). Menu giữ 8 mục.
+- **Khung (`src/components/layout/`):** `AppLayout`, `Sidebar`, `Header`, `SettingsModal` (+ `settings/`), `LockScreenModal`, `FirstLoginModal`.
+- **Nguyên tắc:** trang dài tách khối vào thư mục con của trang; màu chỉ dùng token (không mã hex trong JSX), không cỡ chữ `text-[..px]`; chữ hiển thị lấy từ `locales`; mọi thao tác nhạy cảm qua hộp xác nhận hoặc PIN; Admin-web chỉ nhận IP đã che (xem IP đầy đủ phải nhập PIN).
+- **Đặc tả và tiến độ làm lại giao diện:** `docs/superpowers/specs/2026-11-12-admin-web-giao-dien-design.md` (mục 5 là danh mục chức năng phải giữ).
 
 ### 3.5 Luồng Dữ Liệu Điển Hình
 
@@ -579,36 +587,36 @@ ManagementFinance/
 
 ### 4.2 Admin-web — React SPA (Vite + Tailwind CSS)
 
+Cây thư mục đối chiếu ngày 2026-11-14:
+
 ```
-src/
-└── Admin-web/
-    ├── src/
-    │   ├── api/                          # Axios client + API modules
-    │   │   ├── axios-client.js
-    │   │   ├── auth.api.js
-    │   │   ├── admin.api.js
-    │   │   ├── notification.api.js
-    │   │   └── sync.api.js
-    │   ├── components/
-    │   │   ├── layout/  (AppLayout, Sidebar, Header)
-    │   │   └── common/  (Loading, EmptyState, ConfirmModal, Pagination, ServerHealthPanel, SecurityConfirmModal, TruncateCell)
-    │   ├── hooks/       (useAuth, useSocket, usePagination)
-    │   ├── pages/
-    │   │   ├── auth/       (LoginPage, ForgotPasswordPage)
-    │   │   ├── dashboard/  (DashboardPage)
-    │   │   ├── users/      (UserListPage, UserDetailPage)
-    │   │   ├── categories/ (CategoryPage)
-    │   │   └── system/     (AuditLogPage, BroadcastPage)
-    │   ├── router/      (index, ProtectedRoute, routes)
-    │   ├── store/       (auth.context)
-    │   ├── styles/      (theme.css)
-    │   ├── utils/       (constants, format)
-    │   ├── App.jsx
-    │   ├── main.jsx
-    │   └── index.css
-    ├── index.html
-    ├── vite.config.js
-    └── package.json
+src/Admin-web/
+├── src/
+│   ├── api/          axios-client, admin, aiops, auth, notification, payment, sync (*.api.js)
+│   ├── components/
+│   │   ├── ui/       Icon, Button, PageHeader, StatCard, Card, Badge, Tabs, SearchInput, Spinner, EmptyState,
+│   │   │             Loading, DataTable, Pagination, Modal, ConfirmModal, SecurityConfirmModal, PasswordInput
+│   │   ├── layout/   AppLayout, Sidebar, Header, SettingsModal (+ settings/), LockScreenModal, FirstLoginModal
+│   │   └── common/   ServerHealthPanel, UserDetailModal, UserDevices, AlertToast, LanguageToggle,
+│   │                 RealtimeStatusBadge, RequestCell, TruncateCell (+ tệp tái xuất cũ, dọn ở G5)
+│   ├── hooks/        useAuth, useSocket, usePagination
+│   ├── pages/
+│   │   ├── auth/        LoginPage, ForgotPasswordPage, AuthShell
+│   │   ├── dashboard/   DashboardPage
+│   │   ├── users/       UserListPage
+│   │   ├── payments/    PaymentHistoryPage
+│   │   ├── categories/  CategoryPage
+│   │   └── system/      AIOpsPage (+ aiops/), AuditLogPage (+ audit/), BroadcastPage (+ broadcast/),
+│   │                    PermissionManagementPage (+ components/)
+│   ├── router/       index, routes, ProtectedRoute
+│   ├── store/        auth, settings, language, alert, socket (*.context.jsx)
+│   ├── locales/      vi.js, en.js
+│   ├── services/     sound.service.js
+│   ├── styles/       theme.css (token --ui-*)
+│   ├── utils/        constants, format, string, csv-exporter, device-label, audit-tags
+│   ├── tests/        Vitest + Testing Library (15 tệp)
+│   ├── App.jsx, main.jsx, index.css
+├── tailwind.config.js, vite.config.js, vercel.json, package.json
 ```
 
 #### 📌 4.2.1. Quy Chuẩn Bảng Dữ Liệu Quản Trị Enterprise (Data Tables Standard)
@@ -1673,7 +1681,7 @@ Kiến trúc đã được thiết kế lại tối giản, bảo mật và tư�
 | **4** | **Trợ Lý Tài Chính Thông Minh** *(AI Financial Copilot / Chatbot)* | **Backend** (chính)<br>+<br>**Client-app** (offline) | • **Backend:** Trợ lý trực tuyến (Gemini 3.8 Flash + Token-Bucket Limiter + Snapshot Cache + Circuit Breaker + Dual-Phase Privacy Shield). Tuyệt đối không index dữ liệu người dùng lên vector DB.<br>• **Client-app:** Đã có trợ lý hỏi đáp chạy trên máy (Gemma 4 E2B + 9 tool chỉ đọc trên SQLite, dùng được khi mất mạng; xem chức năng 10). | 🟢 **Đã hoàn thành (Backend + Admin-web)**<br>*(Chi tiết tại `ChatbotAI.md`)* |
 | **5** | **Dự Báo Chi Tiêu & Dòng Tiền** *(Cashflow Forecasting)* | **Client-app** (100%) | Chạy 100% tại Client-app (`du_bao_dong_tien.dart`). Dự báo số dư 30 ngày tới từ `Bills` và `Goals`. | 🟢 **Đã hoàn thành** *(Client-app)* |
 | **6** | **Gợi Ý Thiết Lập Ngân Sách Thông Minh** *(Smart Budget)* | **Client-app** (100%) | Chạy 100% tại Client-app (`BudgetRepository.suggestAmount`). Tính toán tại chỗ theo cửa sổ cuộn linh hoạt $\le 90$ ngày từ lịch sử chi tiêu. | 🟢 **Đã hoàn thành** *(Client-app)* |
-| **7** | **Đánh Giá Sức Khỏe Tài Chính & Lời Khuyên** *(Health Score & Insights)* | **Backend** (100%) | **Chốt Lối A (Backend tự tính):** Backend tự tính toán *Anonymized Financial Health Snapshot* từ CSDL PostgreSQL sẵn có (scoped `idaccount`), tính điểm FHS và cơ cấu 50/30/20, lưu đệm Redis TTL 120s. Cung cấp qua API `GET /api/ai/chatbot/snapshot`. | 🟢 **Đã hoàn thành (Backend + Admin-web)** |
+| **7** | **Đánh Giá Sức Khỏe Tài Chính & Lời Khuyên** *(Health Score & Insights)* | **Backend** (100%) | **Chốt Lối A (Backend tự tính):** Backend tự tính toán *Anonymized Financial Health Snapshot* từ CSDL PostgreSQL sẵn có (scoped `idaccount`), tính điểm FHS và cơ cấu 50/30/20, lưu đệm Redis TTL 120s. Cung cấp qua API `GET /api/ai/chatbot/snapshot` (đã gỡ 2026-11-07). | 🟢 **Đã hoàn thành (Backend + Admin-web)** |
 | **8** | **Phát Hiện Chi Tiêu Bất Thường** *(Anomaly Detection)* | **Client-app** (100%) | Chạy 100% tại Client-app. Phát hiện chi tiêu đột biến qua ngưỡng người dùng đặt `nguongChiLon` và bộ luật `notification_rules.dart`. | 🟢 **Đã hoàn thành** *(Client-app)* |
 | **9** | **Đề Xuất Điều Chỉnh Ngân Sách** *(Budget Rebalancing)* | **Client-app** (100%) | Hệ chuyên gia tính toán Essentiality Score, lựa chọn nguồn bù Donor C1–C7, chạy 100% offline trên SQLite v27 (`tai_phan_bo.dart`, `updateBudget`). | 🟢 **Đã hoàn thành** *(Client-app)* |
 | **10**| **AI Edge (Edge AI / On-Device SLM)** | **Client-app** (100%) | Mô hình Gemma 4 E2B (~2.41GB, engine LiteRT-LM qua `flutter_gemma`) chạy trên máy `arm64-v8a` (GPU/CPU canary). Mô hình phục vụ màn Trợ lý AI (offline, gọi 9 tool chỉ đọc). Các khối Nhận xét và đề xuất ngân sách dùng mẫu câu (lối B). Mô hình không huấn luyện trên dữ liệu người dùng. | 🟢 **Đang chạy tại Client-app** *(9 tool chỉ đọc offline)* |
@@ -1903,7 +1911,6 @@ modules/ai/
 | `POST` | `/api/admin/addcategory` | JWT | `admin` | Thêm mới danh mục mặc định |
 | `PUT` | `/api/admin/updatecategory/:id` | JWT | `admin` | Cập nhật thông tin danh mục mặc định |
 | `DELETE` | `/api/admin/deletecategory/:id` | JWT | `admin` | Xóa mềm danh mục mặc định (`delete_at = now`) |
-| `POST` | `/api/admin/categories/sync` | JWT | `admin` | Đồng bộ danh mục mặc định |
 
 #### 8.7.2. Cơ chế Bộ lọc Thời gian Toàn cục (Global Filter Context)
 - **Tập trung hóa:** Thay vì mỗi biểu đồ có bộ lọc riêng lẻ, Dashboard của Admin-web sử dụng một bộ lọc toàn cục duy nhất tại Header để điều phối dữ liệu cho tất cả các thẻ Card và Biểu đồ.
@@ -2221,7 +2228,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - **Frontend**: Khóa hàm submit ngay khi phát hiện `processing.isProcessing = true`.
   - **Backend**: Trong `admin.service.js`, chỉ kiểm tra trùng lặp tên + phân loại danh mục (`insensitive mode`) đối với các danh mục mặc định hệ thống (`is_default: true`). Đối với danh mục tùy chỉnh của người dùng (`is_default: false`), hệ thống cho phép trùng tên để người dùng khác nhau có thể tạo danh mục tự do theo nhu cầu cá nhân.
 - **Bảo Vệ Quyền Riêng Tư & Cách Ly Tuyệt Đối Danh Mục Người Dùng (Nghị định 13/2023 & Luật PDP 2025)**:
-  - **Phạm vi quản trị của Admin**: Trang quản lý danh mục (`/categories`) và API Admin (`/api/admin/categories`, `/api/admin/getcategory`) chỉ quản trị danh mục mặc định của hệ thống (`is_default: true, delete_at: null`). Gỡ bỏ hoàn toàn việc truy vấn, lọc hoặc hiển thị danh mục cá nhân của người dùng.
+  - **Phạm vi quản trị của Admin**: Trang quản lý danh mục (`/categories`) và API Admin (`/api/admin/getcategory`, `addcategory`, `updatecategory/:id`, `deletecategory/:id`, `restorecategory/:id`) chỉ quản trị danh mục mặc định của hệ thống (`is_default: true, delete_at: null`). Gỡ bỏ hoàn toàn việc truy vấn, lọc hoặc hiển thị danh mục cá nhân của người dùng.
   - **Cơ chế Phòng vệ Chiều sâu (Defense-in-Depth)**:
     - *Masking dữ liệu cá nhân*: Nếu có danh mục người dùng (`is_default = false`) lọt vào Admin API, toàn bộ thông tin nhận diện (`name`, `keyword`, `created_by`, `created_by_name`) bắt buộc bị che mờ bằng `***` và cắm cờ `is_user_category: true`. Frontend hiển thị nhãn `[Dữ liệu riêng tư - Đã ẩn danh]` và khóa các thao tác Sửa/Xóa.
     - *Chặn đứng can thiệp trái phép*: Cấm tuyệt đối Admin sửa (`updateCategory`) hoặc xóa (`deleteCategory`) danh mục người dùng $\rightarrow$ Backend ném lỗi **HTTP 403 Forbidden**.
@@ -2455,7 +2462,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Khi lưu theo nhóm danh mục (`option_grouped`), nếu nhiều giao dịch con cùng chung `bank_tran_id = invoice_no` sẽ gây lỗi vi phạm CSDL.
   - Đã triển khai: Backend Classify tự động gán hậu tố phân nhóm `bank_tran_id = ${baseBankTranId}_grp_${idx + 1}` kèm `provider = 'ORC'`, bộ Deduplication đối soát cả mã gốc lẫn tiền tố `${code}_grp_`, bảo đảm tính toàn vẹn 100%.
 - **Chuẩn Hóa Quy Trình Đa Nền Tảng (Online vs. Offline)**:
-  - *Luồng Online:* Chụp ảnh $\rightarrow$ Backend Gemini LLM Vision $\rightarrow$ Deduplication $\rightarrow$ Classify 2 cấp độ $\rightarrow$ Trả DTO & Realtime Socket $\rightarrow$ Client Review $\rightarrow$ Lưu SQLite $\rightarrow$ Đồng bộ qua `POST /api/sync/batch`.
+  - *Luồng Online:* Chụp ảnh $\rightarrow$ Backend Gemini LLM Vision $\rightarrow$ Deduplication $\rightarrow$ Classify 2 cấp độ $\rightarrow$ Trả DTO & Realtime Socket $\rightarrow$ Client Review $\rightarrow$ Lưu SQLite $\rightarrow$ Đồng bộ qua `POST /api/sync/push`.
   - *Luồng Offline:* Chụp ảnh $\rightarrow$ On-Device OCR (ML Kit / Tesseract) $\rightarrow$ Local Deduplication SQLite $\rightarrow$ Offline Keyword Matcher SQLite $\rightarrow$ Gom nhóm danh mục $\rightarrow$ Client Review $\rightarrow$ Lưu SQLite $\rightarrow$ Chờ đồng bộ khi có Internet.
 - **Xử Lý Chuyển Đổi Mạng Đột Ngột & Vòng Đời Dữ Liệu (Data Lifecycle in Stateless Architecture)**:
   - *Đang Offline có mạng bất ngờ:* Giữ nguyên hoàn tất luồng Offline (State Consistency).
@@ -2785,7 +2792,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   4. **Trợ lý tài chính thông minh (AI Financial Copilot / Chatbot):** Backend xây dựng hoàn tất theo `ChatbotAI.md` (Dual-Phase Privacy Shield + On-Demand Function-Calling + Hybrid Static RAG + SSE Stream) và giao diện Admin-web Copilot $\rightarrow$ 🟢 *Đã hoàn thành (Backend + Admin-web)*.
   5. **Dự báo chi tiêu & dòng tiền (Cashflow Forecasting):** Đẩy qua Client-app (`du_bao_dong_tien.dart` 30 ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
   6. **Gợi ý thiết lập ngân sách thông minh (Smart Budget):** Đẩy qua Client-app (`suggestAmount` cửa sổ $\le 90$ ngày) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
-  7. **Đánh giá sức khỏe tài chính & Đưa ra lời khuyên (Health Score & Insights):** Chốt Lối A (Backend tự tính toán chỉ số FHS thang điểm 100, quy tắc 50/30/20, quỹ khẩn cấp từ PostgreSQL, cấp qua API `GET /api/ai/chatbot/financial-health` và nhúng thẳng vào Snapshot của Chatbot) $\rightarrow$ 🟢 *Đã hoàn thành (Backend + Admin-web)*.
+  7. **Đánh giá sức khỏe tài chính & Đưa ra lời khuyên (Health Score & Insights):** Chốt Lối A (Backend tự tính toán chỉ số FHS thang điểm 100, quy tắc 50/30/20, quỹ khẩn cấp từ PostgreSQL, nhúng thẳng vào Snapshot của Chatbot; API riêng `/snapshot`, `/financial-health` đã gỡ 2026-11-07) $\rightarrow$ 🟢 *Đã hoàn thành (Backend + Admin-web)*.
   8. **Phát hiện chi tiêu bất thường (Spending Anomaly Detection):** Đẩy qua Client-app (ngưỡng `nguongChiLon` & `notification_rules.dart`) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
   9. **Đề xuất điều chỉnh ngân sách (Budget Rebalancing):** Chức năng mới xây dựng hoàn toàn tại Client-app (hệ chuyên gia Donor C1–C7 trên SQLite v27) $\rightarrow$ 🟢 *Đã hoàn thành (Client-app)*.
   10. **AI Edge (Edge AI / On-Device SLM):** Chạy mô hình Gemma 4 E2B trên thiết bị phục vụ màn Trợ lý AI (offline, 9 tool chỉ đọc trên SQLite v27) $\rightarrow$ 🟢 *Đang chạy tại Client-app*.
@@ -2816,7 +2823,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
     + Cơ chế Graceful Fallback (`_streamFallbackResponse`): Phân tích số liệu tài chính cục bộ tự động khi đường truyền Gemini API gặp sự cố hoặc hết hạn mức, người dùng luôn nhận được câu trả lời tài chính thực tế.
     + Bắt gọn sự kiện ngắt kết nối `req.on('close')` để hủy tác vụ Gemini tức thì, tiết kiệm tài nguyên.
   - **Định tuyến & Giới hạn tải (`chatbot.routes.js`):**
-    + Gắn tại `/api/ai/chatbot` với 4 endpoint: `POST /chat/stream` (SSE streaming + Redis Token-Bucket Limiter 15 req/phút), `GET /snapshot` (lấy FHS Snapshot với Redis Cache 120s, alias `/financial-health`), `POST /chat` (JSON fallback), và `POST /reset` (Làm mới phiên hội thoại).
+    + Gắn tại `/api/ai/chatbot` với 3 endpoint: `POST /chat/stream` (SSE streaming + Redis Token-Bucket Limiter), `POST /chat` (JSON fallback), và `POST /reset` (Làm mới phiên hội thoại). `GET /snapshot` (alias `/financial-health`) đã gỡ 2026-11-07; snapshot FHS vẫn tính nội bộ (lưu đệm Redis 120s) để đưa vào ngữ cảnh.
 - **2. Triển khai Frontend Admin-web (Trợ lý Copilot AI & Kiểm thử trực quan):**
   - **API Client SSE Stream (`src/Admin-web/src/api/chatbot.api.js`):** Sử dụng `ReadableStream.getReader()` và `TextDecoder` đọc và bóc tách các event `meta`, `delta`, `done` mượt mà.
   - **Giao diện người dùng Copilot (`src/Admin-web/src/pages/ai/`):**
@@ -2936,7 +2943,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
 - **2. Tầng Thu Thập & Chuẩn Hóa Chỉ Số (Feature Collector):**
   - `src/Backend/modules/aiops/feature.collector.js`: Chu kỳ trích xuất sliding window 10 giây.
   - Thu thập 12 chỉ số động: `requestsPerMin`, `errorRate4xx`, `errorRate5xx`, `failedLogins`, `tokenReuseAttacks`, `malformedRequests`, `eventLoopLagMs`, `cpuPercent`, `ramPercent`, `dbPoolActive`, `loadSheddingCount`, `distinctIpsCount`.
-  - **Tuân thủ Data Security & Pháp luật:** 100% Zero PII. Địa chỉ IP được băm HMAC/SHA-256 rút gọn 16 ký tự (`_hashIp`), tuyệt đối không lưu trữ IP thô trong memory hoặc log.
+  - **Tuân thủ Data Security & Pháp luật:** 100% Zero PII. Địa chỉ IP được băm HMAC-SHA256 64 ký tự bằng khóa `BLIND_INDEX_SECRET` (`ipLookupHash`, từ G4.1a 2026-11-13; trước đó SHA-256 muối cố định cắt 16 ký tự), không lưu IP thô trong memory hoặc log.
 - **3. Tầng Điều Phối & Báo Động Realtime (AIOps Service & APIs):**
   - `src/Backend/modules/aiops/aiops.service.js`: Duy trì bộ đệm trượt 60 mẫu gần nhất (10 phút) phục vụ trực quan hóa dữ liệu.
   - Tự động phát sự kiện Socket.io `admin.security_alert` vào room `admin_room` khi Threat Score $\ge 70$.
@@ -2973,7 +2980,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Phát sự kiện Socket.io `admin.security_blocked` tới room `admin_room` ngay thời khắc 1 nguồn bị chặn.
   - Cung cấp 2 REST endpoints cho Admin:
     + `GET /api/admin/aiops/quarantine`: Lấy danh sách toàn bộ các nguồn IP đang bị cô lập (đã mask 2 octet cuối để tuân thủ `Data_Security.md`).
-    + `DELETE /api/admin/aiops/quarantine/:hash`: Mở khóa / gỡ chặn thủ công cho IP.
+    + `DELETE /api/admin/aiops/quarantine/:hash`: Mở khóa / gỡ chặn thủ công cho IP (đã bỏ 2026-11-14, dùng `unblock-ip`).
 - **4. Giao Diện Admin-Web Phản Ứng Tức Thì:**
   - `AppLayout.jsx`: Hiển thị Toast cảnh báo nổi bật góc màn hình `🛡️ [AIOps Đã Chặn Đứng Nguồn Tấn Công] IP ... | Lý do: ...` khi phát hiện tấn công.
   - `AIOpsPage.jsx`: Bổ sung bảng **Danh Sách Nguồn Đang Bị Cô Lập (Active Quarantine Blacklist)** kèm đếm thời gian còn lại, số lần vi phạm (Hits) và nút **"Gỡ Chặn (Unblock)"**.
@@ -3694,7 +3701,7 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - Nâng cấp `src/Admin-web/src/pages/system/PermissionManagementPage.jsx`:
     + Bổ sung icon và nhãn tiếng Việt chi tiết cho toàn bộ 17 tính năng và 4 nhóm nghiệp vụ.
     + Nhập số cho các tính năng `LIMIT` (0 = vô hiệu hóa, bỏ trống = không giới hạn), toggle checkbox cho các tính năng `TOGGLE`.
-    + Lưu ma trận quyền hàng loạt qua API `PUT /api/admin/permissions/matrix` và nhận phản hồi tức thời.
+    + Lưu ma trận quyền hàng loạt qua API `PUT /api/admin/permissions` và nhận phản hồi tức thời.
   - **Kiểm thử Admin-web:** Vitest **60/60 tests PASS 100%**, Vite build production thành công trong 3.72s.
 - **5. Client-App Flutter — Đồng Bộ Nhẹ & Ràng Buộc Thời Gian Thực:**
   - **Real-Time Event Mapping (`realtime_event.dart`):**
@@ -4156,7 +4163,7 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - `src/Backend/modules/payment/payment.service.js`:
     + `handlePayOSWebhook`: Thẩm tra chữ ký HMAC-SHA256, kiểm tra idempotency, tự động fallback gọi `findOrCreateOrderByCode` khi nhận giao dịch hợp lệ, băm SHA-256 payload, cập nhật trạng thái `PAID` và ghi nhận nhật ký vào `payment_transaction`.
   - `src/Backend/api/admin.routes.js`:
-    + `GET /api/admin/payments/payos-qr`: Cung cấp mã VietQR thật từ kênh PayOS.
+    + `GET /api/admin/payments/payos-qr`: Cung cấp mã VietQR thật từ kênh PayOS (đã bỏ 2026-11-14, không màn hình nào gọi).
     + `POST /api/admin/payments/sample` & `DELETE /api/admin/payments/sample`: Quản trị đơn mẫu thử nghiệm.
   - `src/Admin-web/src/pages/payments/PaymentHistoryPage.jsx`:
     + **Modal Mã QR mẫu (Kênh PayOS):** Hiển thị mã VietQR thật với tài khoản MB Bank, các mức tiền kiểm thử (49k, 129k, 499k, 2k test), nút tạo đơn PENDING / PAID và dọn dẹp dữ liệu mẫu.
@@ -4200,8 +4207,8 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
     + Triển khai `simulateWebhook(orderCode, amountReceived)`: Phục vụ Sandbox kiểm thử nhanh.
   - Endpoints mới:
     + `POST /api/payment/confirm-upgrade` (User token)
-    + `POST /api/payment/simulate-webhook` (Internal/Sandbox)
-    + `POST /api/admin/payments/orders/:id/refund` (Admin token)
+    + `POST /api/admin/payments/simulate-webhook` (Internal/Sandbox, Admin token)
+    + `PUT /api/admin/payments/orders/:id/refund` (Admin token)
 - **Thực thi Kỹ thuật Admin-web:**
   - `src/Admin-web/src/pages/payments/PaymentHistoryPage.jsx`:
     + **Sandbox Giả Lập Client-app ("Thử nghiệm QR"):** Hiển thị mã nhận diện 6 ký tự, đồng hồ đếm ngược 10 phút, 3 nút kiểm thử biến động số dư giả lập (49k đủ tiền, 70k thừa tiền, 20k thiếu tiền). Lắng nghe Socket.IO thời gian thực khi đơn đổi trạng thái. Khi nhận thông báo thừa tiền, hiển thị hộp thoại xác nhận ngay tại Sandbox để Admin đóng vai người dùng xác nhận bù ngày hoặc yêu cầu hoàn tiền.
@@ -4348,10 +4355,10 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
      - Client validation trên `CategoryPage.jsx` chỉ cảnh báo chặn trùng nếu danh mục cùng tên + cùng loại đang còn hoạt động (`!c.isDeleted`).
   5. **Tái Hiệu Chuẩn Baseline AIOps Động Từ Đo Lường Máy Chủ Thực Tế:**
      - Sửa `anomaly.detector.js` và `aiops.service.js`: Hàm `calibrate()` nạp trực tiếp mẫu đo lường phần cứng thực tế hiện tại (`sample.cpuPercent`, `sample.ramPercent`, `sample.eventLoopLagMs`, `sample.requestsPerMin`) từ `hardwareCollector.getSample()`.
-     - Ứng dụng thuật toán EWMA cập nhật động baseline theo tải thực tế của máy chủ, đánh giá lại Threat Score ngay tức thì và phát sóng socket `aiops.metrics`.
+     - Ứng dụng thuật toán EWMA cập nhật động baseline theo tải thực tế của máy chủ, đánh giá lại Threat Score ngay tức thì và phát sóng socket `admin.metrics_stream`.
   6. **Phân Định 2 Cột Riêng Biệt (Action & API Request) Cho Nhật Ký Kiểm Toán & Dashboard:**
      - Thêm cột `"Action" VARCHAR(255)` vào bảng `audit_log` (Migration 33) phân định rõ:
-       - `request`: Phương thức HTTP và endpoint API (ví dụ: `POST /api/auth/login`, `GET /api/categories`).
+       - `request`: Phương thức HTTP và endpoint API (ví dụ: `POST /api/auth/login`, `GET /api/sync/default-categories`).
        - `action`: Hành động thực tế người dùng/quản trị viên (ví dụ: `Đăng nhập hệ thống`, `Tạo danh mục hệ thống`, `Xác thực hành động chí mạng`).
      - Bảng Hoạt Động Gần Đây tại `DashboardPage.jsx`: Tách thành 6 cột chuẩn (`NGƯỜI DÙNG` | `HÀNH ĐỘNG` | `YÊU CẦU API` | `LÝ DO` | `TRẠNG THÁI` | `THỜI GIAN`), cột API hiển thị badge phương thức HTTP (GET/POST/PUT/DELETE) trực quan.
      - Bảng Nhật Ký Kiểm Toán tại `AuditLogPage.jsx`: Tách thành 8 cột riêng biệt có cả `Hành động` nghiệp vụ và `Yêu cầu API`.
@@ -4549,7 +4556,7 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
      - Cập nhật cờ xóa mềm: `delete_at = new Date()`, `update_at = new Date()`, `server_update_at = new Date()`, bảo toàn 100% trường `keyword`, `is_group`, `icon`, `color`.
   2. **Logic Khôi Phục Backend (`admin.service.js`, `admin.repository.js`, `admin.controller.js`, `admin.routes.js`):**
      - Trong `addCategory`: Khi phát hiện danh mục đã xóa mềm (`softDeleted`) cùng tên và cùng loại phân loại (`classify`), hệ thống tiến hành khôi phục (`delete_at = null`, `server_update_at = new Date()`). Nếu Admin không nhập từ khóa mới (`data.keyword` để trống hoặc rỗng), hệ thống **bắt buộc giữ nguyên `softDeleted.keyword` cũ**, tuyệt đối không ghi đè `null` làm hỏng bộ nhận diện AI/OCR.
-     - Bổ sung endpoint chuyên biệt: `PATCH /api/v1/admin/restorecategory/:id` và `POST /api/v1/admin/restorecategory/:id` gọi qua `adminService.restoreCategory(id)` và `adminRepository.restoreCategory(id)` khôi phục danh mục theo ID an toàn, bảo vệ quyền riêng tư người dùng (chỉ khôi phục danh mục hệ thống `is_default: true`).
+     - Bổ sung endpoint chuyên biệt: `PATCH /api/admin/restorecategory/:id` và `POST /api/admin/restorecategory/:id` gọi qua `adminService.restoreCategory(id)` và `adminRepository.restoreCategory(id)` khôi phục danh mục theo ID an toàn, bảo vệ quyền riêng tư người dùng (chỉ khôi phục danh mục hệ thống `is_default: true`).
   3. **Nâng Cấp Giao Diện Quản Trị Danh Mục (`CategoryPage.jsx` & Locales):**
      - **Kế thừa bộ từ khóa:** Khi Admin thêm mới danh mục cùng tên với danh mục đã xóa mềm, form tự động kế thừa bộ từ khóa AI cũ của danh mục đó nếu ô từ khóa để trống.
      - **Nút Khôi phục trực tiếp:** Bổ sung nút "Khôi phục" (Icon `settings_backup_restore`) tại cột Thao tác trên hàng của danh mục đã xóa mềm. Khi click, danh mục chuyển sang trạng thái hoạt động với badge `Đã khôi phục (nháp)`, đưa vào Staged Changes (`stagedChanges.restored`) và đồng bộ an toàn qua mã PIN Quản trị viên.

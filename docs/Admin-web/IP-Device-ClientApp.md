@@ -138,7 +138,8 @@ CREATE INDEX IF NOT EXISTS "idx_device_history_ip" ON "account_device_history" (
 * `id` (`BIGSERIAL`): Khóa chính tự tăng, hỗ trợ mở rộng hàng chục triệu bản ghi lịch sử.
 * `idaccount` (`INT`): Mã định danh tài khoản người dùng, tham chiếu tới `account.Idaccount`.
 * `device_name` (`VARCHAR(150)`): Tên thiết bị được chuẩn hóa từ Client-app (Ví dụ: `"Samsung Galaxy S24 (Android 14)"`).
-* `ip_address` (`VARCHAR(256)`): Địa chỉ IP đã che bớt 2 byte cuối (Ví dụ: `"113.161.xx.xx"`).
+* `ip_address` (`VARCHAR(256)`): Địa chỉ IP đã che bớt 2 byte cuối (Ví dụ: `"113.161.xx.xx"`), chỉ để hiển thị.
+* `ip_encrypted`, `ip_hash` (migration 48, 2026-11-12): IP đầy đủ mã hóa AES-256-GCM và chỉ mục mù HMAC-SHA256 để tra cứu; IP đầy đủ bị xóa sau `IP_RETENTION_DAYS` (mặc định 365 ngày) và khi tài khoản bị ẩn danh. Chi tiết: `docs/Rule_Project/Data_Security.md` mục 10.
 * `user_agent` (`TEXT`): Chuỗi định danh User-Agent của phiên bản ứng dụng và Webview.
 * `first_seen_at` (`TIMESTAMP(6)`): Thời điểm đầu tiên phát hiện thiết bị và IP này kết nối tới hệ thống (giờ chuẩn quốc tế UTC).
 * `last_active_at` (`TIMESTAMP(6)`): Thời điểm gần nhất thiết bị và IP này gửi request thao tác trên hệ thống. Dùng để sắp xếp hiển thị thiết bị đang hoạt động trên Admin-web.
@@ -217,9 +218,9 @@ class DeviceTracking extends Table {
 
 ---
 
-## 6. ĐẶC TẢ CÁC API ENDPOINTS BACKEND PHỤC VỤ ADMIN-WEB (KẾ HOẠCH)
+## 6. ĐẶC TẢ CÁC API ENDPOINTS BACKEND PHỤC VỤ ADMIN-WEB
 
-> ⚠️ **Lưu ý hiện trạng:** Hai route `GET /api/admin/accounts/:idaccount/devices` và `GET /api/admin/devices/recent-access` hiện ở trạng thái **kế hoạch triển khai**. Phía Backend hiện tập trung hoàn tất tầng ghi nhận dữ liệu (Write layer) vào `account_device_history` và bảo vệ dữ liệu theo chuẩn Nghị định 13.
+> **Hiện trạng (đối chiếu mã 2026-11-14):** đã có `GET /api/admin/getuser/:id/devices` (10 lượt truy cập gần nhất, IP đã che) và `POST /api/admin/getuser/:id/devices/:deviceId/reveal-ip` (xem IP đầy đủ, bắt buộc PIN trong cùng request, ghi nhật ký). Admin-web hiển thị ở hộp chi tiết người dùng (`components/common/UserDevices.jsx`). Hai route thiết kế ban đầu dưới đây (`/api/admin/accounts/:idaccount/devices`, `/api/admin/devices/recent-access`) không được làm; giữ mục 6.1–6.2 làm tham khảo thiết kế.
 
 ### 6.1. Lấy Lịch Sử Thiết Bị Của Một Tài Khoản (Kế hoạch)
 * **Endpoint:** `GET /api/admin/accounts/:idaccount/devices`

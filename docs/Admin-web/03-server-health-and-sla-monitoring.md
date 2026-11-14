@@ -171,8 +171,10 @@ Khối bảo trì tự động đổi diện mạo dựa trên cờ `isEmergency
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 |---|---|---|---|
 | `GET` | `/api/admin/system/health` | Lấy chi tiết thông số phần cứng, uptime SLA, và DB pool | Admin |
-| `GET` | `/api/admin/maintenance/status` | Lấy trạng thái bảo trì độc lập hiện tại | Public / Admin |
-| `POST` | `/api/admin/maintenance/toggle` | Bật/tắt bảo trì khẩn cấp (yêu cầu mã PIN) | Super Admin / Admin |
+| `GET` | `/api/admin/system/maintenance` | Trạng thái bảo trì hiện tại và lịch đã hẹn | Admin |
+| `POST` | `/api/admin/system/maintenance` | Bật / tắt bảo trì khẩn cấp hoặc hẹn lịch bảo trì | Admin |
+| `DELETE` | `/api/admin/system/maintenance/schedule[/:id]` | Hủy lịch bảo trì đã hẹn | Admin |
+| `GET` | `/api/admin/system/maintenance/history` | Lịch sử bảo trì | Admin |
 
 ### Socket.io Events
 - **Nhận từ Server (`admin_room`):**

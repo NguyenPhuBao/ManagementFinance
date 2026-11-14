@@ -234,7 +234,7 @@ const webhookData = payOS.webhooks.verify(req.body);
   }
   ```
 
-### 5.2. `GET /api/payment/orders/:orderCode/status` (Just-in-Time Sync)
+### 5.2. `GET /api/payment/order-status/:orderCode` (Just-in-Time Sync)
 - **Mô tả:** Kiểm tra trạng thái đơn hàng kết hợp **Cơ chế Tự động Đối soát Tức thời (Just-in-Time Sync - JIT Sync)**.
 - **Bảo mật:** Yêu cầu JWT Token (`authenticate`).
 - **Cơ chế JIT Sync:**
