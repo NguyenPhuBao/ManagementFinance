@@ -12,6 +12,15 @@ function pinLockedUntil(idaccount) {
   return 0;
 }
 
+// PIN hệ thống chỉ dùng cho quản trị viên chưa có pin_hash riêng.
+// Production bắt buộc đặt ADMIN_SECURITY_PIN; thiếu thì không PIN nào khớp (không rơi về mặc định).
+function systemPinMatches(input) {
+  const configured = (process.env.ADMIN_SECURITY_PIN || '').trim();
+  const systemPin = configured || (process.env.NODE_ENV === 'production' ? '' : '123456');
+  if (!systemPin) return false;
+  return String(input || '').trim() === systemPin;
+}
+
 function recordPinFailure(idaccount) {
   const now = Date.now();
   const rec = pinAttempts.get(idaccount);
@@ -1008,8 +1017,7 @@ const adminService = {
       if (account?.pin_hash) {
         isPinValid = await bcrypt.compare(trimmedPin, account.pin_hash);
       } else {
-        const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
-        isPinValid = trimmedPin === systemPin.trim();
+        isPinValid = systemPinMatches(trimmedPin);
       }
     }
 
@@ -1211,8 +1219,7 @@ const adminService = {
     if (account.pin_hash) {
       isOldPinValid = await bcrypt.compare(oldPin ? oldPin.trim() : '', account.pin_hash);
     } else {
-      const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
-      isOldPinValid = (oldPin ? oldPin.trim() : '') === systemPin.trim();
+      isOldPinValid = systemPinMatches(oldPin);
     }
 
     if (!isOldPinValid) {
@@ -1310,8 +1317,7 @@ const adminService = {
     if (account.pin_hash) {
       isPinValid = await bcrypt.compare(securityPin, account.pin_hash);
     } else {
-      const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
-      isPinValid = securityPin === systemPin.trim();
+      isPinValid = systemPinMatches(securityPin);
     }
 
     if (!isPinValid) {
@@ -1409,8 +1415,7 @@ const adminService = {
     if (creatorAccount.pin_hash) {
       isPinValid = await bcrypt.compare(pin.trim(), creatorAccount.pin_hash);
     } else {
-      const systemPin = process.env.ADMIN_SECURITY_PIN || '123456';
-      isPinValid = pin.trim() === systemPin.trim();
+      isPinValid = systemPinMatches(pin);
     }
 
     if (!isPinValid) {

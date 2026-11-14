@@ -929,7 +929,6 @@ const authService = {
       if (p.includes('/webhook')) return 'Webhook tiếp nhận thanh toán PayOS';
       if (p.includes('/confirm-upgrade')) return 'Xác nhận nâng cấp gói cước';
       if (p.includes('/stats')) return 'Thống kê doanh thu thanh toán';
-      if (p.includes('/payos-qr')) return 'Tạo mã QR thanh toán PayOS';
       if (p.includes('/simulate-webhook')) return 'Mô phỏng Webhook thanh toán';
       return 'Giao dịch thanh toán gói cước';
     }
@@ -999,7 +998,7 @@ const authService = {
         idaccount: data.idaccount,
         user: data.userDetails?.fullname || data.userDetails?.username || `User #${data.idaccount}`,
         username: data.userDetails?.username || null,
-        ip: data.ip || '127.0.0.1',
+        ip: require('../../utils/masking.util').maskIp(data.ip || '127.0.0.1'),
         action: data.action || data.request,
         request: data.request,
         reason: data.reason || null,
