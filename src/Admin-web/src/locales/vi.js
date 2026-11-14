@@ -1039,6 +1039,13 @@ export default {
     },
   },
 
+  paymentResult: {
+    paid: { title: 'Thanh toán thành công', body: 'FlowMoney đã nhận được thanh toán. Gói của bạn sẽ được kích hoạt trong giây lát.' },
+    pending: { title: 'Đang xác nhận thanh toán', body: 'Giao dịch đang được ngân hàng xử lý. Gói sẽ tự kích hoạt khi thanh toán hoàn tất.' },
+    cancelled: { title: 'Đã hủy thanh toán', body: 'Bạn đã hủy giao dịch, tài khoản không bị trừ tiền.' },
+    orderCode: 'Mã đơn',
+    backToApp: 'Bạn có thể đóng trang này và quay lại ứng dụng FlowMoney.',
+  },
   auth: {
     login: {
       title: 'Đăng nhập',

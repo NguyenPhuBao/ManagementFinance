@@ -1039,6 +1039,13 @@ export default {
     },
   },
 
+  paymentResult: {
+    paid: { title: 'Payment successful', body: 'FlowMoney has received your payment. Your plan will be activated shortly.' },
+    pending: { title: 'Confirming payment', body: 'Your bank is still processing the transaction. Your plan will activate automatically once it completes.' },
+    cancelled: { title: 'Payment cancelled', body: 'You cancelled the transaction and were not charged.' },
+    orderCode: 'Order code',
+    backToApp: 'You can close this page and return to the FlowMoney app.',
+  },
   auth: {
     login: {
       title: 'Sign in',

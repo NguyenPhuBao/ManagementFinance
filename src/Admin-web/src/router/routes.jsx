@@ -8,6 +8,7 @@ import BroadcastPage from '../pages/system/BroadcastPage';
 import AIOpsPage from '../pages/system/AIOpsPage';
 import PermissionManagementPage from '../pages/system/PermissionManagementPage';
 import PaymentHistoryPage from '../pages/payments/PaymentHistoryPage';
+import PaymentResultPage from '../pages/payment/PaymentResultPage';
 
 const routes = [
   {
@@ -18,6 +19,16 @@ const routes = [
   {
     path: '/forgot-password',
     element: <ForgotPasswordPage />,
+    public: true,
+  },
+  {
+    path: '/payment/success',
+    element: <PaymentResultPage outcome="success" />,
+    public: true,
+  },
+  {
+    path: '/payment/cancel',
+    element: <PaymentResultPage outcome="cancel" />,
     public: true,
   },
   {

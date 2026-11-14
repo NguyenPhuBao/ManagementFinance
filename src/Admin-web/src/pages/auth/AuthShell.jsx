@@ -2,7 +2,7 @@ import React from 'react';
 import LanguageToggle from '../../components/common/LanguageToggle';
 import { useLanguageSafe } from '../../store/language.context';
 
-const AuthShell = ({ title, description, children, footer }) => {
+const AuthShell = ({ title, description, children, footer, brand }) => {
   const { t } = useLanguageSafe();
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
@@ -11,7 +11,7 @@ const AuthShell = ({ title, description, children, footer }) => {
           <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-sm font-bold text-brand-on">
             F
           </span>
-          <span className="text-base font-bold text-ink">{t('nav.brandTitle', 'FlowMoney Admin')}</span>
+          <span className="text-base font-bold text-ink">{brand || t('nav.brandTitle', 'FlowMoney Admin')}</span>
         </div>
         <LanguageToggle />
       </header>
