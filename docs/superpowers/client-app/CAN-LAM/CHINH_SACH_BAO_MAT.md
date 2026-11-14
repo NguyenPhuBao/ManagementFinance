@@ -1,7 +1,7 @@
 # Mục 51 — Chính sách bảo mật: người dùng đồng ý trước khi dùng app
 
 > Người nhận: thành viên Client-app. Người giao: Backend / Admin-web (NPBao). Ngày: 2026-11-13.
-> Trạng thái: Backend và Admin-web **đã xong** (chưa deploy Render). Client-app **chưa bắt buộc** làm ngay; Backend hiện **chưa chặn** người dùng chưa đồng ý.
+> Trạng thái: Backend và Admin-web **đã xong** (chưa deploy Render). Client-app **bắt buộc làm** (Chủ dự án chốt 2026-11-14). Backend hiện **chưa chặn** người dùng chưa đồng ý; sẽ bật `403 POLICY_NOT_ACCEPTED` sau khi app làm xong (báo trước), nên app cũ vẫn chạy trong thời gian chờ.
 > Căn cứ: Luật Bảo vệ dữ liệu cá nhân 2025, Nghị định 356/2025/NĐ-CP (lưu bằng chứng đồng ý). Chi tiết: `docs/Rule_Project/Data_Security.md` mục 7.1, `docs/Rule_Project/Khao_sat_phap_ly_2026-11.md`.
 
 ## 1. Nghiệp vụ (Chủ dự án chốt 2026-11-13)
@@ -60,4 +60,4 @@ Phát tới mọi client khi admin đăng phiên bản mới. Payload: `{ "versi
 ## 5. Ghi chú liên quan: IP và thiết bị (đổi từ 2026-11-13)
 
 - Backend nay lưu IP đầy đủ ở dạng **mã hóa** (chỉ admin xem được, phải nhập PIN, mỗi lần xem ghi nhật ký) cùng bản che `113.161.xx.xx`; IP lấy từ kết nối, app **không** cần gửi IP và **không** gọi dịch vụ ngoài để lấy IP (giữ như mục 3.2 của `README.md`). IP đầy đủ tự xóa sau 365 ngày.
-- Chú thích trong `lib/core/api/ten_thiet_bi.dart` ghi Backend lưu "IP che mờ": đã lỗi thời, nhờ cập nhật khi tiện.
+- **Bắt buộc** (Chủ dự án chốt 2026-11-14): chú thích trong `lib/core/api/ten_thiet_bi.dart` ghi Backend lưu "IP che mờ" đã lỗi thời. Sửa thành: Backend lưu IP đã che (`113.161.xx.xx`) và IP đầy đủ dạng mã hóa (chỉ admin xem, phải nhập PIN, mỗi lần xem ghi nhật ký, tự xóa sau 365 ngày); app chỉ gửi `x-device-name`, không gửi IP.

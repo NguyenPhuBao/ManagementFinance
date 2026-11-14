@@ -4,7 +4,7 @@
 > **Mã tài liệu:** `DOC-CLIENT-APP-CAN-LAM-v1.1`  
 > **Cơ quan ban hành:** Lead BA + Lead FullStack Cao Cấp + Lead QA Architect  
 > **Trạng thái:** 🟢 PO ĐÃ PHÊ DUYỆT ĐỊNH HƯỚNG & YÊU CẦU THỰC THI (Official Source of Truth)  
-> **Ngày cập nhật:** 13/11/2026  
+> **Ngày cập nhật:** 14/11/2026  
 > **Thư mục lưu trữ:** `docs/superpowers/client-app/CAN-LAM/README.md`  
 > **Các tài liệu nguồn liên quan:**
 > - [`docs/superpowers/sync/SYNC_DOCUMENTATION.md`](../../sync/SYNC_DOCUMENTATION.md) (Hợp đồng đồng bộ 6 bảng dữ liệu cốt lõi)
@@ -47,6 +47,8 @@
 │                                │ Mời Email & Mã 8 ký tự; 6 mã lỗi sync │
 └────────────────────────────────┴───────────────────────────────────────┘
 ```
+
+> **Bổ sung 2026-11:** nhóm 5 — chính sách bảo mật, người dùng đồng ý trước khi dùng app, kèm sửa chú thích `ten_thiet_bi.dart` (Mục 51, [`CHINH_SACH_BAO_MAT.md`](./CHINH_SACH_BAO_MAT.md)); nhóm 6 — bản sao dữ liệu cá nhân (Mục 52, [`BAN_SAO_DU_LIEU.md`](./BAN_SAO_DU_LIEU.md)). **Cả 3 việc đều bắt buộc** (Chủ dự án chốt 2026-11-14). Tổng hợp tương thích và việc cần làm: mục 7.
 
 ---
 
@@ -232,8 +234,9 @@ Trong `src/Client-app/lib/core/api/interceptors/`:
 
 > ⚠️ **LƯU Ý DÀNH RIÊNG CHO ĐỘI NGŨ CLIENT-APP:**  
 > 1. **Mục 50 ([`GIA_DINH_NEN_MONG.md`](./GIA_DINH_NEN_MONG.md) - Tính năng Gia đình Phần 1 Nền móng):** 🟢 **PO ĐÃ PHÊ DUYỆT CHÍNH THỨC TRIỂN KHAI (2026-10-27)**. Đội ngũ Client-app triển khai song song module `features/household/`, nâng cấp SQLite Drift Schema v32 và kết nối 16 REST endpoints đồng bộ theo đặc tả tại [`GIA_DINH_NEN_MONG.md`](./GIA_DINH_NEN_MONG.md).
-> 2. **Mục 51 ([`CHINH_SACH_BAO_MAT.md`](./CHINH_SACH_BAO_MAT.md) - Chính sách bảo mật, người dùng đồng ý trước khi dùng app):** Backend + Admin-web đã xong (2026-11-13), Backend chưa chặn người dùng chưa đồng ý. Client-app làm màn hình chính sách, gọi `GET /api/policy/current`, `POST /api/policy/accept`, nghe `system.policy_updated`.
-> 3. **Module Ngân hàng đối tác (`bank_transaction`):** Đã dừng hoàn toàn theo quyết định ngày 2026-09-18, bỏ qua mọi sự kiện socket liên quan đến bank.
+> 2. **Mục 51 ([`CHINH_SACH_BAO_MAT.md`](./CHINH_SACH_BAO_MAT.md) - Chính sách bảo mật, người dùng đồng ý trước khi dùng app):** Backend + Admin-web đã xong (2026-11-13). Client-app **bắt buộc làm** (Chủ dự án chốt 2026-11-14). Backend chưa bật chặn người dùng chưa đồng ý; sẽ bật `403 POLICY_NOT_ACCEPTED` sau khi app làm xong (báo trước). Client-app làm màn hình chính sách, gọi `GET /api/policy/current`, `POST /api/policy/accept`, nghe `system.policy_updated`.
+> 3. **Mục 52 ([`BAN_SAO_DU_LIEU.md`](./BAN_SAO_DU_LIEU.md) - Bản sao dữ liệu cá nhân):** Backend + Admin-web đã xong (2026-11-14). Client-app **bắt buộc làm** (Chủ dự án chốt 2026-11-14): nút yêu cầu trong Cài đặt, trạng thái, tải JSON / CSV khi đã đăng nhập. App chưa làm vẫn chạy, chỉ thiếu nút.  
+> 4. **Module Ngân hàng đối tác (`bank_transaction`):** Đã dừng hoàn toàn theo quyết định ngày 2026-09-18, bỏ qua mọi sự kiện socket liên quan đến bank.
 
 ---
 
@@ -254,34 +257,37 @@ Trong `src/Client-app/lib/core/api/interceptors/`:
 | **9** | Chốt chặn 503 Quá tải & 429 Retry | `core/api/interceptors/may_chu_interceptor.dart` | Hiển thị Toast thông báo đếm ngược thử lại | Dừng bão request lặp, bảo vệ hạ tầng | ⏳ Chờ làm |
 | **10**| Chốt chặn 403 AIOps | `core/api/interceptors/may_chu_interceptor.dart` | Hiển thị Dialog cảnh báo an ninh Sentinel | Ngăn spam request khi IP bị đưa vào cách ly | ⏳ Chờ làm |
 | **11**| Bảo lưu SQLite khi 401 | `core/api/interceptors/buoc_dang_xuat.dart` | Đăng xuất về Login kèm Dialog lý do | SQLite local Drift được bảo lưu 100%, không bị DROP table | ⏳ Chờ làm |
-| **12**| Màn hình đồng ý chính sách bảo mật (Mục 51) | `features/policy/` (mới), `core/realtime/realtime_event.dart` | Tài khoản chưa đồng ý bị chặn ở màn chính sách; 409 tải lại phiên bản mới | `policy_acceptance` có đúng 1 dòng (`idaccount`, `policy_version`); `system.policy_updated` mở lại màn chính sách | ⏳ Chờ làm |
+| **12**| Màn hình đồng ý chính sách bảo mật (Mục 51, **bắt buộc**) | `features/policy/` (mới), `core/realtime/realtime_event.dart` | Tài khoản chưa đồng ý bị chặn ở màn chính sách; 409 tải lại phiên bản mới | `policy_acceptance` có đúng 1 dòng (`idaccount`, `policy_version`); `system.policy_updated` mở lại màn chính sách | ⏳ Chờ làm |
 | **13**| Nhận bản sao dữ liệu cá nhân (Mục 52, **bắt buộc**) | `features/profile/` (Cài đặt → Dữ liệu của tôi), `core/realtime/realtime_event.dart` | Nút yêu cầu, trạng thái, 2 nút tải JSON / CSV; 429 hiện thời gian chờ | `data_export_request` có 1 dòng `READY`; tệp tải về đúng nội dung; CSV mở bằng Excel đúng dấu | ⏳ Chờ làm |
+| **14**| Sửa chú thích lỗi thời "IP che mờ" (Mục 51 phần 5, **bắt buộc**) | `lib/core/api/ten_thiet_bi.dart` | — | Chú thích ghi đúng: Backend lưu IP đã che + IP đầy đủ mã hóa (admin xem bằng PIN, tự xóa sau 365 ngày); app chỉ gửi `x-device-name`, không gửi IP | ⏳ Chờ làm |
 
 ---
 
-## 7. ĐỢT CẬP NHẬT BACKEND + ADMIN-WEB NGÀY 13/11/2026: TƯƠNG THÍCH VÀ VIỆC CẦN LÀM
+## 7. ĐỢT CẬP NHẬT BACKEND + ADMIN-WEB NGÀY 13–14/11/2026: TƯƠNG THÍCH VÀ VIỆC CẦN LÀM
 
-**Kết luận cho Client-app:** bản Client-app hiện tại **không cần cập nhật** để tiếp tục chạy với Backend mới. Mọi thay đổi chỉ thêm, không đổi tên, không bỏ, không đổi nghĩa API / trường / sự kiện mà app đang dùng; Backend chưa bật chặn nào mới.
+**Kết luận cho Client-app:** bản Client-app hiện tại **vẫn chạy bình thường** với Backend mới, không có gì bị vỡ: mọi thay đổi chỉ thêm, không đổi tên, không bỏ, không đổi nghĩa API / trường / sự kiện mà app đang dùng; Backend chưa bật chặn nào mới. Tuy vậy có **3 việc bắt buộc phải làm** (Chủ dự án chốt 2026-11-14): Mục 51 (đồng ý chính sách bảo mật), Mục 52 (bản sao dữ liệu cá nhân), sửa chú thích lỗi thời trong `ten_thiet_bi.dart`.
 
 **Đã kiểm (2026-11-13, bên Backend):**
 - 35 đường dẫn API mà Client-app gọi (trích từ `lib/`, chỉ đọc) đều còn route tương ứng ở Backend; các đường dẫn còn lại là đường dẫn màn hình của app.
 - Module Sync: hợp đồng `/sync/push`, `/sync/pull` không đổi; 6 bảng đồng bộ đủ cột, gồm `Idhousehold` (migration 40) và `Idfund_pair` (migration 45). Bộ test Backend chạy trên CSDL thật 942/942 ca đạt (gồm Sync Engine, hóa đơn, gia đình); kịch bản nghiệm thu `chay_kiem.js` 50 ca, `chay_kiem_pr174.js` 24 ca, `chay_kiem_gia_dinh_2.js` 36/36 ca đạt.
-- Các bảng mới (`privacy_policy`, `policy_acceptance`) và cột mới (`account_device_history.ip_encrypted`, `ip_hash`) không đi qua `/sync/*`, app không cần bảng SQLite mới.
+- Các bảng mới (`privacy_policy`, `policy_acceptance`, `data_export_request`) và cột mới (`account_device_history.ip_encrypted`, `ip_hash`) không đi qua `/sync/*`, app không cần bảng SQLite mới.
 - Mã chặn 403 `AIOPS_QUARANTINED`, 503 `MAINTENANCE_MODE`, 401 `ACCOUNT_*` giữ nguyên.
 
 **Thay đổi Backend app nên biết (không bắt buộc sửa):**
 | Thay đổi | Ảnh hưởng tới app |
 |---|---|
 | IP người dùng lấy từ kết nối (`req.ip`), lưu bản che + bản mã hóa, tự xóa sau 365 ngày | Không. App tiếp tục gửi `x-device-name`, `x-platform`; không gửi IP, không gọi dịch vụ ngoài lấy IP (mục 3.2) |
-| API chính sách bảo mật `GET /api/policy/current`, `POST /api/policy/accept`, sự kiện `system.policy_updated` | Tùy chọn cho tới khi Chủ dự án bật chặn; app bỏ qua sự kiện lạ nên không lỗi. Việc cần làm: Mục 51 |
+| API chính sách bảo mật `GET /api/policy/current`, `POST /api/policy/accept`, sự kiện `system.policy_updated` | App cũ bỏ qua sự kiện lạ nên không lỗi. **Bắt buộc làm**: Mục 51 (Backend sẽ bật chặn sau khi app làm xong) |
 | Hết 30 ngày chờ xóa, Backend xóa IP đầy đủ của tài khoản trong lịch sử thiết bị | Không |
 | AIOps băm IP bằng khóa bí mật, bỏ API xóa toàn bộ sự cố (chỉ Admin-web) | Không |
+| Minh chứng hoàn tiền lưu kho riêng tư (Supabase Storage): trường `refund_proof` trong `GET /api/payment/history` và `refundProof` trong sự kiện `payment.refunded` nay là **đường dẫn tạm** (hết hạn sau 10 phút / 1 giờ) thay cho đường dẫn tĩnh `/assets/Refunds/...` | Không (app hiện không dùng hai trường này). Nếu sau này hiển thị ảnh: dùng ngay, hết hạn thì gọi lại `GET /api/payment/history` để lấy đường dẫn mới, không lưu đường dẫn vào SQLite |
+| API bản sao dữ liệu `POST /api/account/data-export`, `GET /latest`, `GET /:id/download`, sự kiện `account.data_export_ready` | App cũ không gọi nên không ảnh hưởng. **Bắt buộc làm**: Mục 52 |
 
-**Việc Client-app cần làm (ghi nhận, làm khi tiện):**
+**Việc Client-app cần làm (mức bắt buộc ghi ở cột cuối):**
 | # | Việc | Tài liệu | Bắt buộc từ khi nào |
 |---|---|---|---|
-| 1 | Màn đồng ý chính sách bảo mật, xử lý `409 POLICY_VERSION_OUTDATED`, nghe `system.policy_updated`, không chặn khi ngoại tuyến | [`CHINH_SACH_BAO_MAT.md`](./CHINH_SACH_BAO_MAT.md) (Mục 51) | Khi Chủ dự án bật `403 POLICY_NOT_ACCEPTED`; sẽ báo trước |
-| 2 | Sửa chú thích lỗi thời "IP che mờ" trong `lib/core/api/ten_thiet_bi.dart` | Mục 51 phần 5 | Không bắt buộc |
+| 1 | Màn đồng ý chính sách bảo mật, xử lý `409 POLICY_VERSION_OUTDATED`, nghe `system.policy_updated`, không chặn khi ngoại tuyến | [`CHINH_SACH_BAO_MAT.md`](./CHINH_SACH_BAO_MAT.md) (Mục 51) | **Bắt buộc** (Chủ dự án chốt 2026-11-14); Backend bật `403 POLICY_NOT_ACCEPTED` sau khi app làm xong, sẽ báo trước |
+| 2 | Sửa chú thích lỗi thời "IP che mờ" trong `lib/core/api/ten_thiet_bi.dart` | Mục 51 phần 5 | **Bắt buộc** (Chủ dự án chốt 2026-11-14) |
 | 3 | Nhận bản sao dữ liệu cá nhân: nút trong Cài đặt, trạng thái, tải JSON / CSV khi đã đăng nhập, nghe `account.data_export_ready` | [`BAN_SAO_DU_LIEU.md`](./BAN_SAO_DU_LIEU.md) (Mục 52) | **Bắt buộc** (Chủ dự án chốt 2026-11-14); app chưa làm vẫn chạy, chỉ thiếu nút |
 
 
