@@ -223,6 +223,12 @@ Thư mục nay **66** tệp + mục lục (đếm bằng máy 2026-10-28, sau kh
 
 ---
 
+## 4l. Đóng ngày 2026-11-16 (đưa chức năng gia đình ra thật)
+
+| Tài liệu | Đóng bằng cách nào |
+|---|---|
+| [DUA_GIA_DINH_RA_THAT.md](./DUA_GIA_DINH_RA_THAT.md) | Trước đây là `CAN-LAM/VIEC_BACKEND_CON_LAI.md`. Cả 6 bước có kết quả ở bảng trả lời cuối tệp: khoá mã hoá trên Render khớp `98e9e026`, `database/45`, `46` đã áp Supabase, PR #179 gộp `main` (`435fe36a`), dòng log `DATA_KEY_FP` đã gỡ khỏi `src/Backend/index.js` (soát lại bằng mã 2026-11-16) |
+
 ## 5. Hai chỗ dễ đọc nhầm
 
 - **"Đã xong" nói về phía backend, không phải phía client.** Ví dụ đang mở (đo
