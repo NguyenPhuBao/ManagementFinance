@@ -132,7 +132,7 @@ describe('Sự cố dữ liệu — Tầng 2: thao tác gọi đúng API', () =>
     fireEvent.change(within(pin).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(pin).getByRole('button', { name: 'Đóng sự cố' }));
     await waitFor(() => expect(adminApi.dataIncidentAction).toHaveBeenCalledWith(1, 'close', {
-      rootCause: 'Cấu hình sai quyền bucket', reportNotRequired: true, noReportReason: 'Dữ liệu đã mã hóa', pin: '246810', password: '',
+      rootCause: 'Cấu hình sai quyền bucket', reportNotRequired: true, noReportReason: 'Dữ liệu đã mã hóa', pin: '246810',
     }));
   });
 

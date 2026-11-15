@@ -156,7 +156,11 @@ async function verifyDatabase() {
       { name: 'trg_protect_privacy_policy', table: 'privacy_policy' },
       { name: 'trg_protect_policy_acceptance', table: 'policy_acceptance' },
       // Migration 51: sổ sự cố dữ liệu là hồ sơ pháp lý, không được xóa
-      { name: 'trg_protect_data_incident', table: 'data_incident' }
+      { name: 'trg_protect_data_incident', table: 'data_incident' },
+      // Migration 53: sổ giao dịch thanh toán và đơn thanh toán là chứng từ, cấm xoá / sửa
+      { name: 'trg_protect_payment_transaction', table: 'payment_transaction' },
+      { name: 'trg_protect_payment_webhook_log', table: 'payment_webhook_log' },
+      { name: 'trg_protect_payment_order', table: 'payment_order' }
     ];
 
     for (const req of requiredTriggers) {

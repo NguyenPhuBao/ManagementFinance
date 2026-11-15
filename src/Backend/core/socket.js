@@ -307,11 +307,19 @@ function emitUserStatusChanged(statusData) {
  * Phát sự kiện thay đổi danh mục (thêm, sửa, xóa) tới admin_room
  * @param {Object} categoryData 
  */
+/**
+ * Danh mục hệ thống đổi (thêm / sửa / xoá mềm / khôi phục từ Admin-web).
+ * - `admin.category_updated` tới admin_room: Admin-web cập nhật bảng.
+ * - `sync.completed` tới MỌI socket: Client-app không có sự kiện riêng cho danh mục; tên này client đã nghe và
+ *   hiểu là "server có dữ liệu mới" ⇒ kéo /sync/pull ngay, im lặng, không đọc payload. Danh mục hệ thống dùng
+ *   chung cho mọi tài khoản nên phát tới tất cả. Payload không mang dữ liệu danh mục.
+ */
 function emitCategoryUpdated(categoryData) {
   if (!io) return;
   try {
     io.to('admin_room').emit('admin.category_updated', categoryData);
-    logger.info('[Socket] Emitted admin.category_updated to admin_room', { action: categoryData.action });
+    io.emit('sync.completed', { source: 'system_category', at: new Date().toISOString() });
+    logger.info('[Socket] Emitted admin.category_updated to admin_room + sync.completed to all clients', { action: categoryData.action });
   } catch (error) {
     logger.error('[Socket] Failed to emit admin.category_updated', { error: error.message });
   }

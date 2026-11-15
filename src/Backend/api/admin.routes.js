@@ -106,9 +106,9 @@ router.put(
   paymentController.processRefund
 );
 router.post('/payments/orders/:orderCode/confirm-upgrade', paymentController.confirmUpgradeByAdmin);
+router.get('/payments/sample/quota', paymentController.getSampleQuota);
 router.post('/payments/sample', paymentController.createSampleOrder);
 router.delete('/payments/sample', paymentController.deleteSampleOrders);
-router.post('/payments/simulate-webhook', paymentController.simulateWebhook);
 
 module.exports = router;
 

@@ -934,11 +934,12 @@ const adminService = {
   },
 
   /**
-   * Xác thực mã PIN hoặc mật khẩu quản trị viên cho các hành động chí mạng (Re-authentication)
+   * Xác thực thao tác nhạy cảm CHỈ bằng mã PIN quản trị. Mật khẩu không được chấp nhận (trường `password`
+   * gửi lên bị bỏ qua): lộ mật khẩu đăng nhập vẫn không đủ để thay đổi hệ thống.
    */
-  async verifySecurityAction({ pin, password, action, targetId } = {}, currentUser = null) {
-    if (!pin && !password) {
-      const err = new Error('Vui lòng cung cấp mã PIN bảo mật hoặc mật khẩu quản trị viên');
+  async verifySecurityAction({ pin, action, targetId } = {}, currentUser = null) {
+    if (!pin || typeof pin !== 'string' || !pin.trim()) {
+      const err = new Error('Vui lòng nhập mã PIN bảo mật quản trị viên');
       err.statusCode = 400;
       throw err;
     }
@@ -947,30 +948,23 @@ const adminService = {
     const lockedUntil = pinLockedUntil(actorId);
     if (lockedUntil) {
       const minutes = Math.ceil((lockedUntil - Date.now()) / 60000);
-      const err = new Error(`Nhập sai mã PIN / mật khẩu quá nhiều lần. Thử lại sau ${minutes} phút.`);
+      const err = new Error(`Nhập sai mã PIN quá nhiều lần. Thử lại sau ${minutes} phút.`);
       err.statusCode = 429;
       throw err;
     }
 
     const bcrypt = require('bcryptjs');
     let isPinValid = false;
-    let isPasswordValid = false;
     const account = currentUser?.idaccount ? await adminRepository.getAccountById(currentUser.idaccount) : null;
 
-    if (pin && typeof pin === 'string') {
-      const trimmedPin = pin.trim();
-      if (account?.pin_hash) {
-        isPinValid = await bcrypt.compare(trimmedPin, account.pin_hash);
-      } else {
-        isPinValid = systemPinMatches(trimmedPin);
-      }
+    const trimmedPin = pin.trim();
+    if (account?.pin_hash) {
+      isPinValid = await bcrypt.compare(trimmedPin, account.pin_hash);
+    } else {
+      isPinValid = systemPinMatches(trimmedPin);
     }
 
-    if (!isPinValid && password && account?.password) {
-      isPasswordValid = await bcrypt.compare(password, account.password);
-    }
-
-    if (!isPinValid && !isPasswordValid) {
+    if (!isPinValid) {
       const rec = recordPinFailure(actorId);
       if (rec.lockedUntil) {
         try {
@@ -981,14 +975,14 @@ const adminService = {
               request: 'POST /api/admin/verify-security-action',
               action: `[SECURITY] Khóa xác thực PIN 15 phút sau ${rec.count} lần sai (${action || 'CRITICAL_ACTION'})`,
               req_status: 'Rejected',
-              reason: 'Vượt giới hạn nhập sai mã PIN / mật khẩu',
+              reason: 'Vượt giới hạn nhập sai mã PIN',
               time_req: new Date(),
               time_res: new Date(),
             },
           });
         } catch (_) {}
       }
-      const err = new Error('Mã PIN hoặc mật khẩu quản trị viên không chính xác!');
+      const err = new Error('Mã PIN quản trị viên không chính xác!');
       err.statusCode = 400;
       throw err;
     }
@@ -1003,7 +997,7 @@ const adminService = {
           request: 'POST /api/admin/verify-security-action',
           action: `[SECURITY] Xác thực hành động chí mạng: ${action || 'CRITICAL_ACTION'} (Mục tiêu: ${targetId || 'N/A'})`,
           req_status: 'Pass',
-          reason: `Phương thức: ${isPinValid ? 'Mã PIN cá nhân' : 'Mật khẩu'}`,
+          reason: account?.pin_hash ? 'Phương thức: Mã PIN cá nhân' : 'Phương thức: Mã PIN hệ thống',
           time_req: new Date(),
           time_res: new Date(),
         },

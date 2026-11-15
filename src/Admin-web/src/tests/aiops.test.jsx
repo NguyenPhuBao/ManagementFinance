@@ -444,7 +444,7 @@ describe('AIOps — G4.1c Tầng 2: thao tác gọi đúng API', () => {
     expect(aiopsApi.revealQuarantineIp).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Xem' }));
-    await waitFor(() => expect(aiopsApi.revealQuarantineIp).toHaveBeenCalledWith('h-1', { pin: '246810', password: '' }));
+    await waitFor(() => expect(aiopsApi.revealQuarantineIp).toHaveBeenCalledWith('h-1', { pin: '246810' }));
     await waitFor(() => expect(rowOf(q, '203.0.113.9')).toBeTruthy());
   });
 

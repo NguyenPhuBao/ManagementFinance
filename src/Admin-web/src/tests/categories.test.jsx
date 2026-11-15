@@ -179,7 +179,7 @@ describe('Lưu bằng PIN', () => {
     await syncWithPin('246810');
 
     await waitFor(() => expect(adminApi.deleteCategory).toHaveBeenCalledWith(3));
-    expect(adminApi.verifySecurityAction).toHaveBeenCalledWith({ pin: '246810', password: '', action: 'SYNC_CATEGORIES', targetId: 'SYSTEM_CATEGORIES' });
+    expect(adminApi.verifySecurityAction).toHaveBeenCalledWith({ pin: '246810', action: 'SYNC_CATEGORIES', targetId: 'SYSTEM_CATEGORIES' });
     expect(adminApi.createCategory).toHaveBeenCalledWith({ name: 'Mua sắm', classify: 'Chi', is_default: true, keyword: null });
     expect(adminApi.updateCategory).toHaveBeenCalledWith(2, { name: 'Lương', classify: 'Thu', is_default: true, keyword: 'luong, thuong' });
     expect(adminApi.restoreCategory).toHaveBeenCalledWith(4);

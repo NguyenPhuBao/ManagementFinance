@@ -99,7 +99,7 @@ async function getOrderHistory(req, res, next) {
  */
 async function getOrdersForAdmin(req, res, next) {
   try {
-    const { page, limit, search, status, packageType, fromDate, toDate, excludeTemplate } = req.query;
+    const { page, limit, search, status, packageType, fromDate, toDate, excludeTemplate, includeHidden } = req.query;
     const result = await paymentService.getOrdersForAdmin({
       page,
       limit,
@@ -109,6 +109,7 @@ async function getOrdersForAdmin(req, res, next) {
       fromDate,
       toDate,
       excludeTemplate,
+      includeHidden,
     });
     return ResponseHandler.success(res, result, 'Lấy danh sách đơn hàng thành công');
   } catch (error) {
@@ -146,31 +147,41 @@ async function getOrderDetailForAdmin(req, res, next) {
 }
 
 /**
- * Tạo đơn hàng mẫu thử nghiệm (kèm hoặc không kèm đối soát Webhook)
+ * Tạo đơn thử nghiệm. Body chỉ nhận `{ pin }`: số tiền (2.000 đ), trạng thái, tài khoản đều do Backend quyết định.
  */
 async function createSampleOrder(req, res, next) {
   try {
-    const { packageType, amount, status, simulateWebhook, idaccount } = req.body || {};
-    const order = await paymentService.createSampleOrder({
-      packageType,
-      amount,
-      status,
-      simulateWebhook,
-      idaccount,
-    });
+    const { pin } = req.body || {};
+    try {
+      const adminService = require('../admin/admin.service');
+      await adminService.verifySecurityAction({ pin, action: 'CREATE_SAMPLE_ORDER', targetId: 'PAYMENT_SAMPLE' }, req.user);
+    } catch (pinErr) {
+      return ResponseHandler.error(res, pinErr.message, pinErr.statusCode || 400);
+    }
+    const order = await paymentService.createSampleOrder(req.user);
     return ResponseHandler.success(res, order, 'Tạo đơn hàng mẫu thử nghiệm thành công', 201);
+  } catch (error) {
+    if (error.code === 'SAMPLE_DAILY_LIMIT') return ResponseHandler.error(res, error.message, 429, null, error.code);
+    return next(error);
+  }
+}
+
+/** Hạn mức đơn thử nghiệm hôm nay: { used, limit, amount } */
+async function getSampleQuota(req, res, next) {
+  try {
+    return ResponseHandler.success(res, await paymentService.getSampleQuota(), 'Hạn mức đơn thử nghiệm hôm nay');
   } catch (error) {
     return next(error);
   }
 }
 
 /**
- * Xóa các đơn hàng mẫu thử nghiệm
+ * Ẩn đơn thử nghiệm khỏi danh sách (giữ đường dẫn DELETE cũ). Không xoá dòng nào.
  */
 async function deleteSampleOrders(req, res, next) {
   try {
-    const result = await paymentService.deleteSampleOrders();
-    return ResponseHandler.success(res, result, 'Xóa các đơn hàng mẫu thành công');
+    const result = await paymentService.hideSampleOrders(req.user);
+    return ResponseHandler.success(res, result, 'Đã ẩn các đơn thử nghiệm khỏi danh sách (đơn vẫn được lưu)');
   } catch (error) {
     return next(error);
   }
@@ -232,9 +243,22 @@ async function confirmUpgradeByAdmin(req, res, next) {
 async function processRefund(req, res, next) {
   try {
     const { id } = req.params;
-    let { refundedAmount, refundProof, refundReason, refundedAt } = req.body;
+    const body = req.body || {};
+    // Tên trường cũ (snake_case) từ Admin-web bản trước vẫn nhận
+    let refundProof = body.refundProof || body.refund_proof;
+    const refundedAmount = body.refundedAmount ?? body.refunded_amount;
+    const refundReason = body.refundReason ?? body.refund_reason;
+    const refundedAt = body.refundedAt ?? body.refunded_at;
+    const bankReference = body.bankReference ?? body.bank_reference;
     if (!refundedAmount) {
       return ResponseHandler.badRequest(res, 'Số tiền hoàn trả là bắt buộc');
+    }
+    // Hoàn tiền là thao tác chuyển tiền ra: bắt buộc PIN quản trị ngay trong lời gọi này (không tin bước xác thực riêng ở giao diện)
+    try {
+      const adminService = require('../admin/admin.service');
+      await adminService.verifySecurityAction({ pin: body.pin, action: 'REFUND_ORDER', targetId: id }, req.user);
+    } catch (pinErr) {
+      return ResponseHandler.error(res, pinErr.message, pinErr.statusCode || 400);
     }
 
     if (req.file) {
@@ -258,26 +282,10 @@ async function processRefund(req, res, next) {
       refundProof,
       refundReason,
       refundedAt,
-    });
+      bankReference,
+    }, req.user);
     return ResponseHandler.success(res, result, 'Cập nhật hoàn tiền thành công');
   } catch (error) {
-    return next(error);
-  }
-}
-
-/**
- * Admin giả lập Webhook cho chế độ Sandbox Roleplay
- */
-async function simulateWebhook(req, res, next) {
-  try {
-    const { orderCode, simulateType } = req.body;
-    if (!orderCode) {
-      return ResponseHandler.badRequest(res, 'Mã đơn hàng orderCode là bắt buộc');
-    }
-    const result = await paymentService.simulateWebhook({ orderCode, simulateType });
-    return ResponseHandler.success(res, result, 'Giả lập giao dịch Webhook thành công');
-  } catch (error) {
-    if (error.statusCode === 404) return ResponseHandler.notFound(res, error.message);
     return next(error);
   }
 }
@@ -300,7 +308,6 @@ module.exports = {
   confirmUpgrade,
   confirmUpgradeByAdmin,
   processRefund,
-  simulateWebhook,
   getOrderStatus,
   getSubscriptionInfo,
   getOrderHistory,
@@ -310,6 +317,7 @@ module.exports = {
   getPackageTypes,
   createSampleOrder,
   deleteSampleOrders,
+  getSampleQuota,
 };
 
 

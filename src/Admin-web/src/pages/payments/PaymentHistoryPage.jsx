@@ -26,6 +26,21 @@ const buildParams = (f) => ({
 });
 
 const unwrap = (res) => res?.data?.data || res?.data || res;
+const num = (v) => Number(v || 0).toLocaleString('vi-VN');
+
+/** Hai cột nhỏ dưới số tổng của thẻ: phần từ đơn người dùng và phần từ đơn thử nghiệm. */
+const SplitLine = ({ t, user, test }) => (
+  <div className="grid grid-cols-2 gap-2 border-t border-line pt-1.5 text-xs">
+    <div className="flex flex-col">
+      <span className="text-ink-faint">{t('payments.stats.fromUser')}</span>
+      <span className="font-semibold tabular-nums text-ink">{user}</span>
+    </div>
+    <div className="flex flex-col">
+      <span className="text-ink-faint">{t('payments.stats.fromTest')}</span>
+      <span className="font-semibold tabular-nums text-warning">{test}</span>
+    </div>
+  </div>
+);
 const isOk = (res) => Boolean(res?.success || res?.data?.success);
 
 const timestamp = () => {
@@ -54,6 +69,7 @@ const PaymentHistoryPage = () => {
   const [refundOrder, setRefundOrder] = useState(null);
   const [sampleOpen, setSampleOpen] = useState(false);
   const [sampleOrder, setSampleOrder] = useState(null);
+  const [sampleQuota, setSampleQuota] = useState(null);
   const [deleteSamplesOpen, setDeleteSamplesOpen] = useState(false);
   const [deletingSamples, setDeletingSamples] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -64,13 +80,13 @@ const PaymentHistoryPage = () => {
   const loadStats = useCallback(async () => {
     try {
       const data = unwrap(
+        // Thống kê luôn gồm cả đơn thử nghiệm (tách riêng trong thẻ); tỷ lệ thành công Backend chỉ tính đơn user
         await paymentApi.getStats({
           ...(filters.fromDate && { fromDate: filters.fromDate }),
           ...(filters.toDate && { toDate: filters.toDate }),
-          excludeTemplate: 'true',
         })
       );
-      if (data && data.totalOrders !== undefined) setStats(data);
+      if (data && (data.orders || data.totalOrders !== undefined)) setStats(data);
     } catch (err) {
       console.error('[PAYMENT_PAGE] Lỗi khi tải thống kê:', err);
     }
@@ -198,10 +214,19 @@ const PaymentHistoryPage = () => {
     await reload();
   };
 
-  const handleCreateSample = async (amount) => {
+  const loadSampleQuota = async () => {
+    try {
+      setSampleQuota(unwrap(await paymentApi.getSampleQuota()) || null);
+    } catch (_) {
+      setSampleQuota(null);
+    }
+  };
+
+  // Gọi từ hộp PIN: lỗi (sai PIN, hết hạn mức) được ném lại để hộp PIN hiện lỗi và giữ nguyên
+  const handleCreateSample = async (pin) => {
     setActionLoading(true);
     try {
-      const res = await paymentApi.createSampleOrder({ simulateWebhook: false, status: 'PENDING', packageType: 'Premium', amount });
+      const res = await paymentApi.createSampleOrder({ pin });
       const data = unwrap(res);
       if (isOk(res) || data?.order_code) {
         setSampleOrder({
@@ -218,10 +243,9 @@ const PaymentHistoryPage = () => {
         if (notify) notify.success(t('payments.sample.created'));
         await reload();
       }
-    } catch (err) {
-      if (notify) notify.error(err?.response?.data?.message || err.message, t('payments.alerts.actionFailed'));
     } finally {
       setActionLoading(false);
+      loadSampleQuota();
     }
   };
 
@@ -229,7 +253,7 @@ const PaymentHistoryPage = () => {
     setDeletingSamples(true);
     try {
       const res = await paymentApi.deleteSampleOrders();
-      const count = unwrap(res)?.deletedCount ?? 0;
+      const count = unwrap(res)?.hiddenCount ?? 0;
       setDeleteSamplesOpen(false);
       if (notify) notify.success(t('payments.sampleDelete.success', { count }));
       await reload();
@@ -247,13 +271,15 @@ const PaymentHistoryPage = () => {
   const handleExportCsv = async () => {
     setExporting(true);
     try {
-      const data = unwrap(await paymentApi.getOrders({ page: 1, limit: Math.min(total || 500, 1000), ...buildParams(filters) }));
+      // includeHidden: xuất cả đơn mẫu đã ẩn — tiền thật nhận qua đơn thử nghiệm không được biến mất khỏi báo cáo
+      const data = unwrap(await paymentApi.getOrders({ page: 1, limit: Math.min(total || 500, 1000), ...buildParams(filters), includeHidden: 'true' }));
       const items = data.items?.length ? data.items : data.orders?.length ? data.orders : orders;
       exportToCsv({
         filename: `payment_history_${timestamp()}.csv`,
-        headers: ['Mã Đơn hàng', 'Mã GD Cổng', 'Khách hàng', 'Gói cước', 'Số tiền (VNĐ)', 'Cổng TT', 'Trạng thái', 'Ngày tạo', 'Ngày thanh toán', 'Ghi chú / Hoàn tiền'],
+        headers: ['Mã Đơn hàng', 'Loại đơn', 'Mã GD Cổng', 'Khách hàng', 'Gói cước', 'Số tiền (VNĐ)', 'Cổng TT', 'Trạng thái', 'Ngày tạo', 'Ngày thanh toán', 'Ghi chú / Hoàn tiền'],
         rows: items.map((o) => [
           o.order_code || o.idorder || '',
+          o.is_template ? 'Thử nghiệm' : 'Người dùng',
           o.transaction_id || '',
           o.user?.fullname || o.user?.name || o.account?.username || 'Khách vãng lai',
           o.package_name || o.package_type || 'Gói dịch vụ',
@@ -348,7 +374,7 @@ const PaymentHistoryPage = () => {
             <Button icon="download" loading={exporting} onClick={handleExportCsv}>
               {t('payments.exportCsv')}
             </Button>
-            <Button icon="delete_sweep" onClick={() => setDeleteSamplesOpen(true)}>
+            <Button icon="visibility_off" onClick={() => setDeleteSamplesOpen(true)}>
               {t('payments.sampleDelete.button')}
             </Button>
             <Button
@@ -356,7 +382,9 @@ const PaymentHistoryPage = () => {
               icon="qr_code_2"
               onClick={() => {
                 setSampleOrder(null);
+                setSampleQuota(null);
                 setSampleOpen(true);
+                loadSampleQuota();
               }}
             >
               {t('payments.sampleBtn')}
@@ -366,10 +394,22 @@ const PaymentHistoryPage = () => {
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label={t('payments.stats.totalRevenue')} value={stats ? formatVnd(stats.totalRevenue) : '—'} hint={t('payments.stats.excludesSamples')} />
-        <StatCard label={t('payments.stats.totalOrders')} value={stats ? Number(stats.totalOrders).toLocaleString('vi-VN') : '—'} />
-        <StatCard label={t('payments.stats.paidOrders')} value={stats ? Number(stats.paidOrders).toLocaleString('vi-VN') : '—'} />
-        <StatCard label={t('payments.stats.successRate')} value={stats ? `${stats.successRate}%` : '—'} />
+        <StatCard
+          label={t('payments.stats.totalRevenue')}
+          value={stats?.revenue ? formatVnd(stats.revenue.total) : '—'}
+          action={stats?.revenue && <SplitLine t={t} user={formatVnd(stats.revenue.user)} test={formatVnd(stats.revenue.template)} />}
+        />
+        <StatCard
+          label={t('payments.stats.totalOrders')}
+          value={stats?.orders ? num(stats.orders.total) : '—'}
+          action={stats?.orders && <SplitLine t={t} user={num(stats.orders.user)} test={num(stats.orders.template)} />}
+        />
+        <StatCard
+          label={t('payments.stats.paidOrders')}
+          value={stats?.paid ? num(stats.paid.total) : '—'}
+          action={stats?.paid && <SplitLine t={t} user={num(stats.paid.user)} test={num(stats.paid.template)} />}
+        />
+        <StatCard label={t('payments.stats.successRate')} value={stats ? `${stats.successRate}%` : '—'} hint={t('payments.stats.userOnly')} />
       </div>
 
       <Card>
@@ -477,6 +517,7 @@ const PaymentHistoryPage = () => {
         creating={actionLoading}
         order={sampleOrder}
         onCopy={handleCopy}
+        quota={sampleQuota}
       />
 
       <ConfirmModal
@@ -484,7 +525,6 @@ const PaymentHistoryPage = () => {
         title={t('payments.sampleDelete.title')}
         message={t('payments.sampleDelete.message')}
         confirmText={t('payments.sampleDelete.confirmBtn')}
-        confirmDanger
         loading={deletingSamples}
         onConfirm={handleDeleteSamples}
         onCancel={() => setDeleteSamplesOpen(false)}

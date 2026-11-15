@@ -143,11 +143,16 @@ describe('Tầng 2: hoàn tiền lưu minh chứng vào kho, admin nhận đư�
     storageMod.setStorageForTest(storageMod.createStorage({ env: { STORAGE_LOCAL_DIR: dir } }));
     orig.process = paymentService.processOrderRefund;
     orig.detail = paymentRepository.getOrderDetailForAdmin;
+    // Hoàn tiền bắt buộc PIN (kiểm riêng ở payment.ledger.flow.integration); nhóm này chỉ kiểm lưu minh chứng
+    const adminService = require('../../modules/admin/admin.service');
+    orig.verify = adminService.verifySecurityAction;
+    adminService.verifySecurityAction = async () => ({ verified: true });
   });
   afterEach(() => {
     storageMod.setStorageForTest(null);
     paymentService.processOrderRefund = orig.process;
     paymentRepository.getOrderDetailForAdmin = orig.detail;
+    require('../../modules/admin/admin.service').verifySecurityAction = orig.verify;
     fs.rmSync(dir, { recursive: true, force: true });
   });
 

@@ -294,10 +294,14 @@ const adminRepository = {
     });
   },
 
+  /**
+   * Mọi lượt gọi đăng nhập (Pass / Fail / Rejected / Interrupted) trong khoảng, phục vụ biểu đồ "Đăng nhập".
+   * Middleware audit-log ghi Request = "POST /api/auth/login" cho mỗi lượt gọi API đăng nhập.
+   */
   async getLoginLogsByRange(startDate, endDate) {
     return prisma.auditlog.findMany({
       where: {
-        request: { contains: 'Đăng nhập' },
+        request: { equals: 'POST /api/auth/login' },
         time_req: {
           gte: startDate,
           lte: endDate,

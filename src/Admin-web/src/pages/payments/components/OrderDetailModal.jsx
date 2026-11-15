@@ -217,28 +217,50 @@ const OrderDetailModal = ({ open, loading, order, onClose, onExpired, onConfirmU
             {!order.payment_transaction?.length ? (
               <p className="m-0 rounded-lg border border-line p-3 text-center text-sm text-ink-muted">{t('payments.detail.noTransactions')}</p>
             ) : (
-              order.payment_transaction.map((tx) => (
-                <div key={tx.id} className="flex flex-col gap-1.5 rounded-lg border border-line p-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-ink">{tx.bank_code || 'VietQR'}</span>
-                    <span className="font-semibold tabular-nums text-success">{formatVnd(tx.amount)}</span>
+              order.payment_transaction.map((tx) => {
+                const out = tx.direction === 'OUT';
+                const sender = [tx.counter_account_bank_name || tx.bank_code, tx.counter_account_number].filter(Boolean).join(' ');
+                return (
+                  <div key={tx.id} data-testid="ledger-row" className="flex flex-col gap-1.5 rounded-lg border border-line p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge tone={out ? 'warning' : 'success'}>{out ? t('payments.detail.dirOut') : t('payments.detail.dirIn')}</Badge>
+                      <span className={`font-semibold tabular-nums ${out ? 'text-warning' : 'text-success'}`}>
+                        {out ? '−' : '+'}
+                        {formatVnd(tx.amount)}
+                      </span>
+                    </div>
+                    <div className="grid gap-1 text-ink-muted sm:grid-cols-2">
+                      <span className="sm:col-span-2">
+                        {t('payments.detail.txId')}: <span className="font-mono text-ink">{tx.payos_transaction_id || '—'}</span>
+                      </span>
+                      <span>
+                        {t('payments.detail.txTime')}: {formatDate(tx.transaction_time)}
+                      </span>
+                      <span>
+                        {t('payments.detail.txSource')}: {t(`payments.detail.source.${tx.source || 'WEBHOOK'}`)}
+                      </span>
+                      {!out && tx.receiving_account_number && (
+                        <span>
+                          {t('payments.detail.receivingAccount')}: <span className="font-mono text-ink">{tx.receiving_account_number}</span>
+                        </span>
+                      )}
+                      {!out && sender && (
+                        <span>
+                          {t('payments.detail.sender')}: <span className="text-ink">{sender}</span>
+                        </span>
+                      )}
+                      {!out && (
+                        <span className="flex items-center gap-1.5 sm:col-span-2">
+                          {t('payments.detail.signature')}:
+                          <Badge tone={tx.signature_verified ? 'success' : 'neutral'}>
+                            {tx.signature_verified ? t('payments.detail.sigVerified') : t('payments.detail.sigApi')}
+                          </Badge>
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="grid gap-1 text-ink-muted sm:grid-cols-2">
-                    <span>
-                      {t('payments.detail.txId')}: <span className="font-mono text-ink">{tx.payos_transaction_id || '—'}</span>
-                    </span>
-                    <span>
-                      {t('payments.detail.txTime')}: {formatDate(tx.transaction_time)}
-                    </span>
-                    <span className="flex items-center gap-1.5 sm:col-span-2">
-                      {t('payments.detail.signature')}:
-                      <Badge tone={tx.signature_verified ? 'success' : 'danger'}>
-                        {tx.signature_verified ? t('payments.detail.sigVerified') : t('payments.detail.sigUnverified')}
-                      </Badge>
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </section>
         </div>

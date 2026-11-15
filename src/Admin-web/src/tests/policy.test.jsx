@@ -73,7 +73,7 @@ describe('Tab Chính sách', () => {
     fireEvent.change(within(pin).getByLabelText(/PIN/), { target: { value: '246810' } });
     const loadsBefore = adminApi.getPolicies.mock.calls.length;
     fireEvent.click(within(pin).getByRole('button', { name: 'Đăng' }));
-    await waitFor(() => expect(adminApi.publishPolicy).toHaveBeenCalledWith({ title: 'Chính sách v3', content: 'Nội dung v3', pin: '246810', password: '' }));
+    await waitFor(() => expect(adminApi.publishPolicy).toHaveBeenCalledWith({ title: 'Chính sách v3', content: 'Nội dung v3', pin: '246810' }));
     expect(adminApi.verifySecurityAction).not.toHaveBeenCalled();
     await waitFor(() => expect(adminApi.getPolicies.mock.calls.length).toBeGreaterThan(loadsBefore));
     expect(screen.queryByRole('dialog', { name: 'Xác nhận đăng chính sách' })).not.toBeInTheDocument();
