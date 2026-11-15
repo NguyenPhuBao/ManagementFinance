@@ -60,7 +60,7 @@ beforeEach(() => {
   adminApi.cancelScheduledMaintenance.mockReset().mockResolvedValue({ data: { ...IDLE } });
   adminApi.getMaintenanceHistory.mockReset().mockResolvedValue({ data: { data: HISTORY, pagination: { total: 3, totalPages: 1 } } });
   adminApi.verifySecurityAction.mockReset().mockResolvedValue({ success: true });
-  notificationApi.broadcastToAll.mockReset().mockResolvedValue({ data: { success: true } });
+  notificationApi.broadcastToAll.mockReset().mockResolvedValue({ success: true, data: { id: 'u1', deliveredCount: 3 } });
   notificationApi.getBroadcastHistory.mockReset().mockResolvedValue({
     data: { data: [{ id: 9, level: 'warning', title: 'Bảo trì cuối tuần', message: 'Hệ thống tạm dừng', sender_username: 'admin', created_at: iso(NOW - H) }], pagination: { total: 1 } },
   });
@@ -138,24 +138,28 @@ describe('Tab Bảo trì', () => {
     await waitFor(() => expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({ active: true, reason: 'Sự cố', isEmergency: true }));
   });
 
-  it('lịch đã đặt: hiện danh sách, hủy qua hộp xác nhận; lịch còn dưới 1 giờ hiện cảnh báo', async () => {
+  it('không còn bảng "Lịch đã đặt"; lịch còn dưới 1 giờ vẫn hiện cảnh báo; hủy lịch qua bảng Lịch sử bảo trì', async () => {
     adminApi.getMaintenanceStatus.mockResolvedValue({
       data: {
         ...IDLE,
         scheduledList: [
           { id: 7, scheduledAt: iso(NOW + 0.5 * H), scheduledEndAt: iso(NOW + 1.5 * H), reason: 'Sao lưu', createdBy: 'admin' },
-          { id: 8, scheduledAt: iso(NOW + 5 * H), reason: 'Nâng cấp', createdBy: 'admin' },
+          { id: 42, scheduledAt: iso(NOW + 5 * H), reason: 'Nâng cấp xa', createdBy: 'admin' },
         ],
       },
     });
     await renderPage();
-    expect(await screen.findByText('Bảo trì bắt đầu sau 30 phút')).toBeInTheDocument();
-    const list = screen.getByRole('table', { name: 'Lịch đã đặt' });
-    const row = within(list).getByRole('row', { name: /Nâng cấp/ });
+    const banner = (await screen.findByText('Bảo trì bắt đầu sau 30 phút')).closest('div.rounded-xl');
+    // Băng cảnh báo chỉ báo tin: lịch dưới 3 giờ máy chủ không cho hủy nên không có nút hủy
+    expect(within(banner).queryByRole('button', { name: 'Hủy lịch' })).not.toBeInTheDocument();
+    expect(within(banner).getByText(/Sao lưu/)).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Lịch đã đặt' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Lịch đã đặt/)).not.toBeInTheDocument();
+    const row = screen.getByRole('row', { name: /Nâng cấp xa/ });
     fireEvent.click(within(row).getByRole('button', { name: 'Hủy lịch' }));
     const dialog = screen.getByRole('dialog', { name: 'Hủy lịch bảo trì' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Hủy lịch' }));
-    await waitFor(() => expect(adminApi.cancelScheduledMaintenance).toHaveBeenCalledWith(8));
+    await waitFor(() => expect(adminApi.cancelScheduledMaintenance).toHaveBeenCalledWith(42));
   });
 
   it('lịch sử: lọc loại gửi lên máy chủ; chỉ cho hủy lịch còn từ 3 giờ', async () => {
@@ -195,8 +199,24 @@ describe('Tab Thông báo', () => {
     expect(screen.getByRole('region', { name: 'Xem trước' })).toHaveTextContent('Phiên bản mới');
     fireEvent.click(send);
     await waitFor(() => expect(notificationApi.broadcastToAll).toHaveBeenCalledWith({ title: 'Chào', message: 'Phiên bản mới', level: 'warning' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Đã gửi thông báo');
+    // Máy chủ chỉ gửi tới thiết bị đang kết nối: báo đúng số thiết bị, không nói "mọi người dùng"
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent('Đã gửi tới 3 thiết bị đang kết nối');
+    expect(status).not.toHaveTextContent('mọi người dùng');
     expect(screen.getByLabelText('Tiêu đề')).toHaveValue('');
     expect(notificationApi.getBroadcastHistory).toHaveBeenCalledTimes(2);
+  });
+
+  it('không có thiết bị nào đang kết nối: cảnh báo tin không tới ai ngay lúc này', async () => {
+    notificationApi.broadcastToAll.mockResolvedValue({ success: true, data: { id: 'u1', deliveredCount: 0 } });
+    await renderPage();
+    fireEvent.click(screen.getByRole('tab', { name: 'Thông báo' }));
+    await screen.findByText('Bảo trì cuối tuần');
+    fireEvent.change(screen.getByLabelText('Tiêu đề'), { target: { value: 'Chào' } });
+    fireEvent.change(screen.getByLabelText('Nội dung'), { target: { value: 'Tin thử' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Gửi thông báo' }));
+    const status = (await screen.findByText(/Không có thiết bị nào đang kết nối/)).closest('[role="status"]');
+    expect(status).toHaveAttribute('data-tone', 'warning');
+    expect(notificationApi.broadcastToAll).toHaveBeenCalledTimes(1);
   });
 });

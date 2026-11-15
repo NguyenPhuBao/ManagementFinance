@@ -1,11 +1,10 @@
 import React, { useEffect, useId, useState } from 'react';
 import adminApi from '../../../api/admin.api';
-import TruncateCell from '../../../components/common/TruncateCell';
 import { useLanguageSafe } from '../../../store/language.context';
 import { formatDateTime } from '../../../utils/format';
-import { Button, Card, ConfirmModal, DataTable, Icon, SecurityConfirmModal } from '../../../components/ui';
+import { Button, Card, ConfirmModal, Icon, SecurityConfirmModal } from '../../../components/ui';
 import MaintenanceHistory from './MaintenanceHistory';
-import { HOUR, MIN_LEAD_HOURS, plannedDuration, scheduleId, scheduledListOf, toLocalInput } from './maintenanceFormat';
+import { HOUR, MIN_LEAD_HOURS, scheduledListOf, toLocalInput } from './maintenanceFormat';
 
 const fieldClass =
   'h-10 w-full rounded-lg border border-line bg-card px-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20';
@@ -95,41 +94,19 @@ const MaintenanceTab = ({ maintenance, busy, act, version, onRefresh }) => {
   const nearestIn = nearest ? new Date(nearest.scheduledAt).getTime() - now : 0;
   const showImminent = Boolean(nearest) && !maintenance.active && nearestIn > 0 && nearestIn <= HOUR;
 
-  const scheduleColumns = [
-    { key: 'start', title: t('broadcast.schedule.colStart'), render: (s) => <span className="whitespace-nowrap font-medium text-ink">{formatDateTime(s.scheduledAt)}</span> },
-    { key: 'end', title: t('broadcast.schedule.colEnd'), render: (s) => <span className="whitespace-nowrap text-ink-muted">{s.scheduledEndAt ? formatDateTime(s.scheduledEndAt) : '—'}</span> },
-    { key: 'duration', title: t('broadcast.schedule.colDuration'), render: (s) => <span className="font-mono text-xs">{plannedDuration(s.scheduledAt, s.scheduledEndAt)}</span> },
-    { key: 'reason', title: t('broadcast.schedule.colReason'), width: '30%', render: (s) => <TruncateCell text={s.reason || '—'} className="text-ink" /> },
-    { key: 'by', title: t('broadcast.schedule.colBy'), render: (s) => <span className="text-ink-muted">{s.createdBy || 'admin'}</span> },
-    {
-      key: 'actions',
-      title: t('broadcast.history.colActions'),
-      align: 'right',
-      render: (s) => (
-        <Button size="sm" variant="danger-ghost" icon="event_busy" className="whitespace-nowrap" disabled={busy} onClick={() => setCancelId(scheduleId(s))}>
-          {t('broadcast.schedule.cancelBtn')}
-        </Button>
-      ),
-    },
-  ];
-
   return (
     <div className="flex flex-col gap-5">
       {showImminent && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning bg-warning-soft px-5 py-4">
-          <div className="flex min-w-0 items-start gap-3">
-            <Icon name="timer" className="mt-0.5 text-warning" />
-            <div className="min-w-0">
-              <p className="m-0 font-semibold text-ink">{t('broadcast.schedule.imminent', { minutes: Math.max(1, Math.ceil(nearestIn / 60000)) })}</p>
-              <p className="m-0 mt-0.5 text-sm text-ink-muted">
-                {formatDateTime(nearest.scheduledAt)}
-                {nearest.reason ? ` · ${nearest.reason}` : ''}
-              </p>
-            </div>
+        // Chỉ báo tin: lịch còn dưới 3 giờ máy chủ không cho hủy
+        <div className="flex items-start gap-3 rounded-xl border border-warning bg-warning-soft px-5 py-4">
+          <Icon name="timer" className="mt-0.5 text-warning" />
+          <div className="min-w-0">
+            <p className="m-0 font-semibold text-ink">{t('broadcast.schedule.imminent', { minutes: Math.max(1, Math.ceil(nearestIn / 60000)) })}</p>
+            <p className="m-0 mt-0.5 text-sm text-ink-muted">
+              {formatDateTime(nearest.scheduledAt)}
+              {nearest.reason ? ` · ${nearest.reason}` : ''}
+            </p>
           </div>
-          <Button size="sm" variant="danger-ghost" icon="event_busy" className="whitespace-nowrap" disabled={busy} onClick={() => setCancelId(scheduleId(nearest))}>
-            {t('broadcast.schedule.cancelBtn')}
-          </Button>
         </div>
       )}
 
@@ -236,12 +213,6 @@ const MaintenanceTab = ({ maintenance, busy, act, version, onRefresh }) => {
           </div>
         </form>
       </Card>
-
-      {schedules.length > 0 && (
-        <Card title={t('broadcast.schedule.listTitle', { count: schedules.length })}>
-          <DataTable label={t('broadcast.schedule.listLabel')} columns={scheduleColumns} rows={schedules} rowKey={(s, i) => scheduleId(s) || i} minWidth={760} />
-        </Card>
-      )}
 
       <MaintenanceHistory version={version} now={now} busy={busy} onCancel={setCancelId} />
 

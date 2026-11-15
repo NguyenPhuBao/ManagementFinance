@@ -240,8 +240,9 @@ const notificationService = {
       logger.warn('[Notification Service] Không thể gọi broadcast.repository', { error: repoErr.message });
     }
 
-    this.getSocket().emitSystemBroadcast(broadcastPayload);
-    return broadcastPayload;
+    // deliveredCount chỉ trả cho admin (không nằm trong gói tin phát tới app)
+    const deliveredCount = Number(this.getSocket().emitSystemBroadcast(broadcastPayload)) || 0;
+    return { ...broadcastPayload, deliveredCount };
   },
 
   /**
