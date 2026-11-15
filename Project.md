@@ -3716,6 +3716,11 @@ Bắt buộc phải cấu hình đầy đủ các biến môi trường thiết 
   - **Kiểm thử Client-app:** Toàn bộ **116/116 tests** trong `test/features/premium/` và **80/80 tests** trong `test/features/ai_chat/` PASS 100%.
 - **6. Kết Luận & Nguồn Sự Thật:** Toàn bộ hệ thống quản lý phân quyền tính năng động theo loại tài khoản đã hoàn tất 100%, bảo đảm tính nhất quán, bảo mật (chặn 2 đầu Client & Backend) và cập nhật thời gian thực tức thời.
 
+### 11.75. Bảo Trì Bền Vững Qua Khởi Động Lại & Độ Khả Dụng Theo Kỳ (2026-11-15)
+- **Bảo trì:** `maintenance_history` là nguồn sự thật; khởi động thì khoá người dùng tới khi đọc được CSDL (fail-closed), khôi phục phiên `ONGOING` và lịch `SCHEDULED` (`core/resilience/maintenance.manager.js`). Chi tiết: `docs/Admin-web/07-maintenance-and-resilience.md` mục 2.2.
+- **Độ khả dụng:** bảng `server_session` (migration 52), `GET /api/admin/system/availability` theo tháng / quý / năm; "Chạy liên tục" = `process.uptime()`, không trừ bảo trì. Admin-web: thẻ "Độ khả dụng · Tháng MM/YYYY" + hộp chọn kỳ (`pages/dashboard/components/AvailabilityModal.jsx`). Chi tiết: `docs/Admin-web/03-server-health-and-sla-monitoring.md` mục 3.1.
+- Kế hoạch: `docs/superpowers/plans/2026-11-15-bao-tri-ben-vung-va-do-kha-dung.md`. Tiến độ: `docs/progress/Backend.md` mục 26.16.
+
 ---
 
 ## 16. Quy Chuẩn Kiểm Thử Spec-Driven, Test-First & Kiểm Thử 2 Tầng (Rule 11)
