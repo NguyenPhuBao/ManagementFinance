@@ -5,7 +5,7 @@ import TruncateCell from '../../components/common/TruncateCell';
 import { useLanguageSafe } from '../../store/language.context';
 import { useAlertSafe } from '../../store/alert.context';
 import { exportToCsv } from '../../utils/csv-exporter.util';
-import { Badge, Button, Card, ConfirmModal, DataTable, PageHeader, Pagination, SearchInput, StatCard } from '../../components/ui';
+import { Badge, Button, Card, DataTable, PageHeader, Pagination, SearchInput, StatCard } from '../../components/ui';
 import OrderDetailModal from './components/OrderDetailModal';
 import RefundModal from './components/RefundModal';
 import SampleOrderModal from './components/SampleOrderModal';
@@ -29,14 +29,14 @@ const unwrap = (res) => res?.data?.data || res?.data || res;
 const num = (v) => Number(v || 0).toLocaleString('vi-VN');
 
 /** Hai cột nhỏ dưới số tổng của thẻ: phần từ đơn người dùng và phần từ đơn thử nghiệm. */
-const SplitLine = ({ t, user, test }) => (
+const SplitLine = ({ t, user, test, prefix }) => (
   <div className="grid grid-cols-2 gap-2 border-t border-line pt-1.5 text-xs">
     <div className="flex flex-col">
-      <span className="text-ink-faint">{t('payments.stats.fromUser')}</span>
+      <span className="text-ink-faint">{prefix ? `${prefix} · ` : ''}{t('payments.stats.fromUser')}</span>
       <span className="font-semibold tabular-nums text-ink">{user}</span>
     </div>
     <div className="flex flex-col">
-      <span className="text-ink-faint">{t('payments.stats.fromTest')}</span>
+      <span className="text-ink-faint">{prefix ? `${prefix} · ` : ''}{t('payments.stats.fromTest')}</span>
       <span className="font-semibold tabular-nums text-warning">{test}</span>
     </div>
   </div>
@@ -70,8 +70,6 @@ const PaymentHistoryPage = () => {
   const [sampleOpen, setSampleOpen] = useState(false);
   const [sampleOrder, setSampleOrder] = useState(null);
   const [sampleQuota, setSampleQuota] = useState(null);
-  const [deleteSamplesOpen, setDeleteSamplesOpen] = useState(false);
-  const [deletingSamples, setDeletingSamples] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -249,21 +247,6 @@ const PaymentHistoryPage = () => {
     }
   };
 
-  const handleDeleteSamples = async () => {
-    setDeletingSamples(true);
-    try {
-      const res = await paymentApi.deleteSampleOrders();
-      const count = unwrap(res)?.hiddenCount ?? 0;
-      setDeleteSamplesOpen(false);
-      if (notify) notify.success(t('payments.sampleDelete.success', { count }));
-      await reload();
-    } catch (err) {
-      if (notify) notify.error(err?.response?.data?.message || err.message, t('payments.alerts.actionFailed'));
-    } finally {
-      setDeletingSamples(false);
-    }
-  };
-
   const handleCopy = (value) => {
     if (value) navigator.clipboard?.writeText(value);
   };
@@ -374,9 +357,6 @@ const PaymentHistoryPage = () => {
             <Button icon="download" loading={exporting} onClick={handleExportCsv}>
               {t('payments.exportCsv')}
             </Button>
-            <Button icon="visibility_off" onClick={() => setDeleteSamplesOpen(true)}>
-              {t('payments.sampleDelete.button')}
-            </Button>
             <Button
               variant="primary"
               icon="qr_code_2"
@@ -409,7 +389,32 @@ const PaymentHistoryPage = () => {
           value={stats?.paid ? num(stats.paid.total) : '—'}
           action={stats?.paid && <SplitLine t={t} user={num(stats.paid.user)} test={num(stats.paid.template)} />}
         />
-        <StatCard label={t('payments.stats.successRate')} value={stats ? `${stats.successRate}%` : '—'} hint={t('payments.stats.userOnly')} />
+        <StatCard
+          label={t('payments.stats.refundPending')}
+          value={
+            stats?.refundPending ? (
+              <div data-testid="refund-pending" className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col">
+                  <span>{num(stats.refundPending.user)}</span>
+                  <span className="text-xs font-normal text-ink-faint">{t('payments.stats.fromUser')}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-warning">{num(stats.refundPending.template)}</span>
+                  <span className="text-xs font-normal text-ink-faint">{t('payments.stats.fromTest')}</span>
+                </div>
+              </div>
+            ) : (
+              '—'
+            )
+          }
+          action={
+            stats?.refunded && (
+              <div data-testid="refund-done">
+                <SplitLine t={t} prefix={t('payments.stats.refundedPrefix')} user={num(stats.refunded.user)} test={num(stats.refunded.template)} />
+              </div>
+            )
+          }
+        />
       </div>
 
       <Card>
@@ -518,16 +523,6 @@ const PaymentHistoryPage = () => {
         order={sampleOrder}
         onCopy={handleCopy}
         quota={sampleQuota}
-      />
-
-      <ConfirmModal
-        open={deleteSamplesOpen}
-        title={t('payments.sampleDelete.title')}
-        message={t('payments.sampleDelete.message')}
-        confirmText={t('payments.sampleDelete.confirmBtn')}
-        loading={deletingSamples}
-        onConfirm={handleDeleteSamples}
-        onCancel={() => setDeleteSamplesOpen(false)}
       />
     </div>
   );

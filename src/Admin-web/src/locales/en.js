@@ -1358,10 +1358,10 @@ export default {
       totalRevenue: 'Revenue',
       totalOrders: 'Total orders',
       paidOrders: 'Paid',
-      successRate: 'Success rate',
+      refundPending: 'Pending refunds',
+      refundedPrefix: 'Refunded',
       fromUser: 'From users',
       fromTest: 'Test',
-      userOnly: 'User orders only',
     },
     status: {
       PAID: 'Paid',
@@ -1500,13 +1500,6 @@ export default {
       expired: 'The test order has expired. Create a new one to continue.',
       scanNotice: 'Scan with a banking app or MoMo. The order updates automatically once paid.',
       created: 'Test order created.',
-    },
-    sampleDelete: {
-      button: 'Hide test orders',
-      title: 'Hide test orders',
-      message: 'Test orders will be hidden from the list. They stay stored in the system and still count in statistics and CSV exports.',
-      confirmBtn: 'Hide',
-      success: 'Hid {count} test orders.',
     },
     alerts: {
       newOrder: 'New order #{code}',

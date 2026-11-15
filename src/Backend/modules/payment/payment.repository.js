@@ -708,7 +708,7 @@ async function findOrdersForAdmin({
  */
 /**
  * Thống kê thanh toán cho Admin. Tiền thật nhận qua đơn thử nghiệm VẪN vào báo cáo, nhưng tách riêng:
- * revenue / orders / paid = { total, user, template }; successRate chỉ tính đơn của người dùng.
+ * revenue / orders / paid / refundPending / refunded = { total, user, template }; successRate chỉ tính đơn của người dùng.
  * Đơn đã ẩn vẫn được tính. Khoá cũ (totalRevenue, totalOrders, paidOrders…) giữ nghĩa "đơn người dùng" để tương thích.
  */
 async function getPaymentSummaryStats({ fromDate, toDate } = {}) {
@@ -732,16 +732,19 @@ async function getPaymentSummaryStats({ fromDate, toDate } = {}) {
   };
   const group = async (isTemplate) => {
     const where = { ...base, is_template: isTemplate };
-    const [total, paid, pending, cancelled, expired, revenue] = await Promise.all([
+    const [total, paid, pending, cancelled, expired, refundPending, refunded, revenue] = await Promise.all([
       prisma.payment_order.count({ where }),
       prisma.payment_order.count({ where: { ...where, status: 'PAID' } }),
       prisma.payment_order.count({ where: { ...where, status: 'PENDING' } }),
       prisma.payment_order.count({ where: { ...where, status: 'CANCELLED' } }),
       prisma.payment_order.count({ where: { ...where, status: 'EXPIRED' } }),
+      prisma.payment_order.count({ where: { ...where, status: 'REFUND_PENDING' } }),
+      prisma.payment_order.count({ where: { ...where, status: 'REFUNDED' } }),
       prisma.payment_order.aggregate({ where: { ...where, status: 'PAID' }, _sum: { amount: true } }),
     ]);
-    return { total, paid, pending, cancelled, expired, revenue: money(revenue) };
+    return { total, paid, pending, cancelled, expired, refundPending, refunded, revenue: money(revenue) };
   };
+  const split = (key) => ({ total: user[key] + template[key], user: user[key], template: template[key] });
   const [user, template] = await Promise.all([group(false), group(true)]);
   const successRate = user.total > 0 ? Number(((user.paid / user.total) * 100).toFixed(2)) : 0;
 
@@ -749,6 +752,8 @@ async function getPaymentSummaryStats({ fromDate, toDate } = {}) {
     revenue: { total: user.revenue + template.revenue, user: user.revenue, template: template.revenue },
     orders: { total: user.total + template.total, user: user.total, template: template.total },
     paid: { total: user.paid + template.paid, user: user.paid, template: template.paid },
+    refundPending: split('refundPending'),
+    refunded: split('refunded'),
     successRate,
     // Khoá cũ: số liệu đơn người dùng
     totalRevenue: user.revenue,
@@ -1007,17 +1012,6 @@ async function getSampleQuota(now = new Date()) {
 }
 
 /**
- * Ẩn đơn mẫu khỏi danh sách admin. KHÔNG xoá dòng nào (đơn là chứng từ, CSDL chặn xoá).
- */
-async function hideSampleOrders(adminId) {
-  const r = await prisma.payment_order.updateMany({
-    where: { is_template: true, hidden_at: null },
-    data: { hidden_at: new Date(), hidden_by: adminId ? Number(adminId) : null },
-  });
-  return { hiddenCount: r.count };
-}
-
-/**
  * Lấy danh sách các gói cước từ CSDL (account_type_permission)
  */
 async function getPackageTypes() {
@@ -1060,7 +1054,6 @@ module.exports = {
   getPackageTypes,
   createSampleOrderLocked,
   getSampleQuota,
-  hideSampleOrders,
   SAMPLE_AMOUNT,
   SAMPLE_DAILY_LIMIT,
   getOrCreatePayosQr,

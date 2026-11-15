@@ -32,7 +32,6 @@ vi.mock('../api/payment.api', () => ({
     processRefund: vi.fn(),
     confirmUpgrade: vi.fn(),
     createSampleOrder: vi.fn(),
-    deleteSampleOrders: vi.fn(),
     getSampleQuota: vi.fn(),
   },
 }));
@@ -61,6 +60,8 @@ beforeEach(() => {
       revenue: { total: 100000, user: 98000, template: 2000 },
       orders: { total: 6, user: 4, template: 2 },
       paid: { total: 2, user: 1, template: 1 },
+      refundPending: { total: 3, user: 2, template: 1 },
+      refunded: { total: 5, user: 4, template: 1 },
       successRate: 25,
       totalRevenue: 98000,
       totalOrders: 4,
@@ -78,13 +79,12 @@ beforeEach(() => {
     success: true,
     data: { order_code: 2001, qr_url: 'https://qr.test/2001.png', recognition_code: 'QWE789', amount: 2000, bank_info: { bankName: 'MB', accountNumber: '0123', accountName: 'FLOWMONEY' } },
   });
-  paymentApi.deleteSampleOrders.mockReset().mockResolvedValue({ success: true, data: { hiddenCount: 3 } });
   adminApi.verifySecurityAction.mockReset().mockResolvedValue({ success: true });
   exportToCsv.mockReset();
 });
 
 describe('Hiển thị', () => {
-  it('A1. Thẻ số liệu: tổng ở trên, dưới tách "Từ user · Thử nghiệm"; tỷ lệ thành công chỉ tính đơn user', async () => {
+  it('A1. Thẻ số liệu: tổng ở trên, dưới tách "Từ user · Thử nghiệm"; thẻ Đơn chờ hoàn tách chờ hoàn / đã hoàn', async () => {
     await renderPage();
     expect(paymentApi.getStats).toHaveBeenCalledWith({});
     expect(paymentApi.getOrders).toHaveBeenCalledWith({ page: 1, limit: 10 });
@@ -99,8 +99,12 @@ describe('Hiển thị', () => {
     expect(card('Đã thanh toán')).toHaveTextContent('2');
     expect(card('Đã thanh toán')).toHaveTextContent('Từ user1');
     expect(card('Đã thanh toán')).toHaveTextContent('Thử nghiệm1');
-    expect(card('Tỷ lệ thành công')).toHaveTextContent('25%');
-    expect(card('Tỷ lệ thành công')).toHaveTextContent('Chỉ tính đơn user');
+    expect(screen.queryByText('Tỷ lệ thành công')).not.toBeInTheDocument();
+    // Thẻ "Đơn chờ hoàn": trên là chờ hoàn (user · thử nghiệm), dưới là đã hoàn (user · thử nghiệm)
+    const refund = card('Đơn chờ hoàn');
+    expect(within(refund).getByTestId('refund-pending')).toHaveTextContent('2Từ user1Thử nghiệm');
+    expect(within(refund).getByTestId('refund-done')).toHaveTextContent('Đã hoàn · Từ user4');
+    expect(within(refund).getByTestId('refund-done')).toHaveTextContent('Đã hoàn · Thử nghiệm1');
   });
 
   it('trạng thái hiển thị đúng; đơn chờ đã quá hạn hiện Hết hạn; đơn mẫu có nhãn Mẫu', async () => {
@@ -258,28 +262,21 @@ describe('Xuất CSV, đơn thử, realtime', () => {
     expect(within(dialog).getByRole('button', { name: 'Tạo đơn chờ thanh toán' })).toBeDisabled();
   });
 
-  it('A4. Ẩn đơn mẫu: hộp xác nhận ghi rõ đơn vẫn được lưu; bấm Hủy thì không gọi API', async () => {
+  it('A4. Ẩn đơn mẫu chỉ qua checkbox bộ lọc: không còn nút "Ẩn các đơn mẫu" ở đầu trang; bật thì đơn mẫu biến khỏi bảng, tắt thì hiện lại', async () => {
+    paymentApi.getOrders.mockImplementation((params) => {
+      const items = ORDERS.filter((o) => !(params.excludeTemplate === 'true' && o.is_template)).map((o) => ({ ...o }));
+      return Promise.resolve({ data: { items, total: items.length } });
+    });
     await renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Ẩn các đơn mẫu' }));
-    const dialog = screen.getByRole('dialog', { name: 'Ẩn các đơn mẫu' });
-    expect(within(dialog).getByText(/vẫn được lưu/)).toBeInTheDocument();
-    expect(within(dialog).queryByText(/xóa vĩnh viễn|không khôi phục/)).not.toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Hủy bỏ' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(paymentApi.deleteSampleOrders).not.toHaveBeenCalled();
-  });
-
-  it('A4. Ẩn đơn mẫu: xác nhận gọi API một lần, đóng hộp rồi tải lại danh sách và số liệu', async () => {
-    await renderPage();
-    const ordersBefore = paymentApi.getOrders.mock.calls.length;
-    const statsBefore = paymentApi.getStats.mock.calls.length;
-    fireEvent.click(screen.getByRole('button', { name: 'Ẩn các đơn mẫu' }));
-    const dialog = screen.getByRole('dialog', { name: 'Ẩn các đơn mẫu' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Ẩn' }));
-    await waitFor(() => expect(paymentApi.deleteSampleOrders).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
-    expect(paymentApi.getOrders.mock.calls.length).toBeGreaterThan(ordersBefore);
-    expect(paymentApi.getStats.mock.calls.length).toBeGreaterThan(statsBefore);
+    expect(screen.queryByRole('button', { name: 'Ẩn các đơn mẫu' })).not.toBeInTheDocument();
+    expect(row(1003)).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Ẩn đơn mẫu'));
+    await waitFor(() => expect(lastOrdersCall()).toEqual({ page: 1, limit: 10, excludeTemplate: 'true' }));
+    await waitFor(() => expect(screen.queryByRole('row', { name: /#1003/ })).not.toBeInTheDocument());
+    expect(row(1001)).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Ẩn đơn mẫu'));
+    await waitFor(() => expect(lastOrdersCall()).toEqual({ page: 1, limit: 10 }));
+    expect(await screen.findByRole('row', { name: /#1003/ })).toBeInTheDocument();
   });
 
   it('sự kiện payment.success tải lại danh sách và số liệu', async () => {

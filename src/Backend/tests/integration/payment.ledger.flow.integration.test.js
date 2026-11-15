@@ -108,15 +108,16 @@ describe('Luồng tiền: đơn mẫu, webhook, hoàn tiền, thống kê', () =
       assert.equal(quota.used, 0);
     });
 
-    it('P8. Ẩn đơn mẫu: không xoá dòng nào; danh sách mặc định không hiện; thống kê vẫn tính', async () => {
+    it('P8. Đơn mẫu đã ẩn từ trước (hidden_at, API ẩn đã gỡ): danh sách mặc định không hiện; xuất CSV và thống kê vẫn tính; excludeTemplate lọc hết đơn mẫu', async () => {
       const total = (await pool.query('SELECT count(*)::int n FROM "payment_order" WHERE "is_template" = TRUE')).rows[0].n;
-      const r = await call(paymentController.deleteSampleOrders, { user: admin });
-      assert.equal(r.statusCode, 200);
-      assert.equal((await pool.query('SELECT count(*)::int n FROM "payment_order" WHERE "is_template" = TRUE')).rows[0].n, total);
-      assert.equal((await pool.query('SELECT count(*)::int n FROM "payment_order" WHERE "is_template" = TRUE AND "hidden_at" IS NULL')).rows[0].n, 0);
+      const hidden = (await pool.query(`UPDATE "payment_order" SET "hidden_at" = now() WHERE "id" = (SELECT "id" FROM "payment_order" WHERE "is_template" = TRUE AND "hidden_at" IS NULL LIMIT 1) RETURNING "order_code"`)).rows[0]
+        || (await pool.query('SELECT "order_code" FROM "payment_order" WHERE "is_template" = TRUE AND "hidden_at" IS NOT NULL LIMIT 1')).rows[0];
+      assert.ok(hidden, 'CSDL thử phải có ít nhất một đơn mẫu');
       const list = await call(paymentController.getOrdersForAdmin, { query: { limit: 100 }, user: admin });
       const items = list.body.data.items || list.body.data.orders || [];
-      assert.ok(items.every((o) => !o.is_template));
+      assert.ok(!items.some((o) => String(o.order_code) === String(hidden.order_code)), 'đơn mẫu đã ẩn không hiện');
+      const noTemplate = await call(paymentController.getOrdersForAdmin, { query: { limit: 100, excludeTemplate: 'true' }, user: admin });
+      assert.ok((noTemplate.body.data.items || noTemplate.body.data.orders).every((o) => !o.is_template));
       const csv = await call(paymentController.getOrdersForAdmin, { query: { limit: 100, includeHidden: 'true' }, user: admin });
       assert.ok((csv.body.data.items || csv.body.data.orders).some((o) => o.is_template), 'xuất CSV vẫn có đơn mẫu đã ẩn');
       const stats = (await call(paymentController.getPaymentStatsForAdmin, { query: {}, user: admin })).body.data;
@@ -242,6 +243,15 @@ describe('Luồng tiền: đơn mẫu, webhook, hoàn tiền, thống kê', () =
       assert.deepEqual(s.paid, { total: u.p + t.p, user: u.p, template: t.p });
       assert.deepEqual(s.revenue, { total: u.r + t.r, user: u.r, template: t.r });
       assert.equal(s.successRate, u.n ? Number(((u.p / u.n) * 100).toFixed(2)) : 0);
+      const byStatus = async (status, tpl) => (await pool.query(`SELECT count(*)::int n FROM "payment_order" WHERE "status" = $1 AND "is_template" = $2`, [status, tpl])).rows[0].n;
+      const [rpU, rpT, rdU, rdT] = await Promise.all([byStatus('REFUND_PENDING', false), byStatus('REFUND_PENDING', true), byStatus('REFUNDED', false), byStatus('REFUNDED', true)]);
+      assert.deepEqual(s.refundPending, { total: rpU + rpT, user: rpU, template: rpT });
+      assert.deepEqual(s.refunded, { total: rdU + rdT, user: rdU, template: rdT });
+    });
+
+    it('Đã gỡ DELETE /payments/sample', () => {
+      const router = require('../../api/admin.routes');
+      assert.ok(!router.stack.some((l) => l.route && l.route.path === '/payments/sample' && l.route.methods.delete));
     });
 
     it('P18. Không còn API giả lập webhook', () => {

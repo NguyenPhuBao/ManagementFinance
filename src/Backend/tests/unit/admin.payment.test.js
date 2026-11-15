@@ -668,9 +668,11 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
     const origAggregate = prisma.payment_order.aggregate;
 
     // Đơn người dùng: 5 đơn, 4 đã trả, 196.000 đ; đơn thử nghiệm: 2 đơn, 1 đã trả, 2.000 đ
+    // Chờ hoàn: user 2, thử nghiệm 1; đã hoàn: user 3, thử nghiệm 0
+    const BY_STATUS = { false: { PAID: 4, REFUND_PENDING: 2, REFUNDED: 3 }, true: { PAID: 1, REFUND_PENDING: 1, REFUNDED: 0 } };
     prisma.payment_order.count = async ({ where }) => {
-      if (where.is_template) return where.status === 'PAID' ? 1 : (where.status ? 0 : 2);
-      return where.status === 'PAID' ? 4 : (where.status ? 0 : 5);
+      if (!where.status) return where.is_template ? 2 : 5;
+      return BY_STATUS[Boolean(where.is_template)][where.status] || 0;
     };
     prisma.payment_order.aggregate = async ({ where }) => ({
       _sum: { amount: { toNumber: () => (where.is_template ? 2000 : 196000) } },
@@ -681,6 +683,8 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
       assert.deepStrictEqual(stats.revenue, { total: 198000, user: 196000, template: 2000 });
       assert.deepStrictEqual(stats.orders, { total: 7, user: 5, template: 2 });
       assert.deepStrictEqual(stats.paid, { total: 5, user: 4, template: 1 });
+      assert.deepStrictEqual(stats.refundPending, { total: 3, user: 2, template: 1 });
+      assert.deepStrictEqual(stats.refunded, { total: 3, user: 3, template: 0 });
       assert.strictEqual(stats.successRate, 80, 'tỷ lệ thành công chỉ tính đơn người dùng');
       assert.strictEqual(stats.totalRevenue, 196000);
     } finally {
@@ -807,29 +811,14 @@ test('Admin Payment Management & Reconciliation Suite', async (t) => {
     }
   });
 
-  await t.test('22. Tầng 2: hideSampleOrders chỉ ẩn đơn mẫu chưa ẩn, không xoá dòng nào (migration 53)', async () => {
-    const origUpdateMany = prisma.payment_order.updateMany;
-    const origDeleteMany = prisma.payment_order.deleteMany;
-    let captured = null;
-    let deleted = false;
-    try {
-      prisma.payment_order.updateMany = async (args) => {
-        captured = args;
-        return { count: 3 };
-      };
-      prisma.payment_order.deleteMany = async () => { deleted = true; return { count: 0 }; };
-
-      const result = await paymentRepository.hideSampleOrders(7);
-      assert.deepStrictEqual(captured.where, { is_template: true, hidden_at: null });
-      assert.ok(captured.data.hidden_at instanceof Date);
-      assert.strictEqual(captured.data.hidden_by, 7);
-      assert.deepStrictEqual(result, { hiddenCount: 3 });
-      assert.strictEqual(deleted, false);
-      assert.strictEqual(paymentRepository.deleteSampleOrders, undefined);
-    } finally {
-      prisma.payment_order.updateMany = origUpdateMany;
-      prisma.payment_order.deleteMany = origDeleteMany;
-    }
+  await t.test('22. Đã gỡ API ẩn đơn mẫu hàng loạt (DELETE /admin/payments/sample): Admin-web ẩn đơn mẫu bằng bộ lọc excludeTemplate', async () => {
+    const router = require('../../api/admin.routes');
+    const deleteSample = router.stack.filter((l) => l.route && l.route.path === '/payments/sample' && l.route.methods.delete);
+    assert.strictEqual(deleteSample.length, 0, 'không còn route DELETE /payments/sample');
+    assert.strictEqual(paymentController.deleteSampleOrders, undefined);
+    assert.strictEqual(paymentService.hideSampleOrders, undefined);
+    assert.strictEqual(paymentRepository.hideSampleOrders, undefined);
+    assert.strictEqual(paymentRepository.deleteSampleOrders, undefined);
   });
 });
 

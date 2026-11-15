@@ -1358,10 +1358,10 @@ export default {
       totalRevenue: 'Doanh thu',
       totalOrders: 'Tổng đơn hàng',
       paidOrders: 'Đã thanh toán',
-      successRate: 'Tỷ lệ thành công',
+      refundPending: 'Đơn chờ hoàn',
+      refundedPrefix: 'Đã hoàn',
       fromUser: 'Từ user',
       fromTest: 'Thử nghiệm',
-      userOnly: 'Chỉ tính đơn user',
     },
     status: {
       PAID: 'Đã thanh toán',
@@ -1500,13 +1500,6 @@ export default {
       expired: 'Đơn thử đã hết hạn. Tạo đơn mới để tiếp tục.',
       scanNotice: 'Quét bằng ứng dụng ngân hàng hoặc MoMo. Trạng thái đơn tự cập nhật khi thanh toán xong.',
       created: 'Đã tạo đơn thử.',
-    },
-    sampleDelete: {
-      button: 'Ẩn các đơn mẫu',
-      title: 'Ẩn các đơn mẫu',
-      message: 'Các đơn mẫu sẽ được ẩn khỏi danh sách. Đơn vẫn được lưu trong hệ thống và vẫn tính trong số liệu, xuất CSV.',
-      confirmBtn: 'Ẩn',
-      success: 'Đã ẩn {count} đơn mẫu.',
     },
     alerts: {
       newOrder: 'Đơn hàng mới #{code}',
