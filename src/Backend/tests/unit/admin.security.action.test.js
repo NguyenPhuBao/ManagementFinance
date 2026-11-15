@@ -16,7 +16,7 @@ describe('adminService.verifySecurityAction', () => {
       },
       (err) => {
         assert.strictEqual(err.statusCode, 400);
-        assert.ok(err.message.includes('Vui lòng cung cấp mã PIN'));
+        assert.ok(err.message.includes('Vui lòng nhập mã PIN'));
         return true;
       }
     );

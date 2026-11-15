@@ -255,7 +255,7 @@ describe('SecurityConfirmModal', () => {
     fireEvent.change(screen.getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(screen.getByRole('button', { name: 'Vô hiệu hóa' }));
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
-    expect(onVerify).toHaveBeenLastCalledWith({ pin: '246810', password: '' });
+    expect(onVerify).toHaveBeenLastCalledWith({ pin: '246810' });
     expect(adminApi.verifySecurityAction).not.toHaveBeenCalled();
   });
 
@@ -273,7 +273,6 @@ describe('SecurityConfirmModal', () => {
     await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1));
     expect(adminApi.verifySecurityAction).toHaveBeenCalledWith({
       pin: '123456',
-      password: '',
       action: 'USER_INACTIVATE',
       targetId: 'user-42',
     });
@@ -290,14 +289,20 @@ describe('SecurityConfirmModal', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('chuyển sang mật khẩu thì gửi mật khẩu thay PIN', async () => {
+  it('chỉ xác nhận bằng mã PIN: không có lựa chọn dùng mật khẩu, không có ô mật khẩu', () => {
+    setup();
+    expect(screen.queryByRole('button', { name: /mật khẩu/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Mật khẩu/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/PIN/)).toBeInTheDocument();
+  });
+
+  it('dữ liệu gửi đi không mang trường mật khẩu', async () => {
     adminApi.verifySecurityAction.mockResolvedValue({ success: true });
     const { onConfirm } = setup();
-    fireEvent.click(screen.getByRole('button', { name: /mật khẩu/i }));
-    fireEvent.change(screen.getByLabelText(/Mật khẩu/), { target: { value: 'Secret#1' } });
+    fireEvent.change(screen.getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(screen.getByRole('button', { name: 'Vô hiệu hóa' }));
     await waitFor(() => expect(onConfirm).toHaveBeenCalled());
-    expect(adminApi.verifySecurityAction).toHaveBeenCalledWith(expect.objectContaining({ pin: '', password: 'Secret#1' }));
+    expect(adminApi.verifySecurityAction.mock.calls[0][0]).not.toHaveProperty('password');
   });
 });
 

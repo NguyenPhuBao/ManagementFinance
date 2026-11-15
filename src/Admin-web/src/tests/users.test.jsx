@@ -139,7 +139,7 @@ describe('Thiết bị đăng nhập', () => {
     expect(pinDialog).toHaveTextContent('nhật ký');
     fireEvent.change(within(pinDialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(pinDialog).getByRole('button', { name: 'Xem IP' }));
-    await waitFor(() => expect(adminApi.revealDeviceIp).toHaveBeenCalledWith(1, '5', { pin: '246810', password: '' }));
+    await waitFor(() => expect(adminApi.revealDeviceIp).toHaveBeenCalledWith(1, '5', { pin: '246810' }));
     expect(adminApi.verifySecurityAction).not.toHaveBeenCalled();
     expect(await within(section).findByText('113.161.45.12')).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: 'Xem IP đầy đủ' })).not.toBeInTheDocument();
@@ -233,7 +233,7 @@ describe('Thao tác trạng thái', () => {
     fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Xóa' }));
     await waitFor(() => expect(adminApi.deleteUser).toHaveBeenCalledWith(2));
-    expect(adminApi.verifySecurityAction).toHaveBeenCalledWith({ pin: '246810', password: '', action: 'DELETE_USER', targetId: '@binh' });
+    expect(adminApi.verifySecurityAction).toHaveBeenCalledWith({ pin: '246810', action: 'DELETE_USER', targetId: '@binh' });
     await waitFor(() => expect(within(row('Trần Thị Bình')).getByText('Đã xóa')).toHaveAttribute('data-tone', 'danger'));
   });
 
