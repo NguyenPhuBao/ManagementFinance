@@ -43,12 +43,6 @@ function normalizeCategoryName(name) {
 }
 
 /**
- * Thời điểm server khởi động — ghi nhận 1 lần khi module được load.
- * Bền vững trong suốt vòng đời process (dev lẫn production).
- */
-const SERVER_START_TIME = new Date();
-
-/**
  * Chuyển số giây thành chuỗi mô tả thân thiện.
  * Ví dụ: 90061 → "1 ngày 1 giờ 1 phút"
  * @param {number} totalSeconds
@@ -63,75 +57,40 @@ function formatUptimeDuration(totalSeconds) {
   if (days > 0) parts.push(`${days} ngày`);
   if (hours > 0) parts.push(`${hours} giờ`);
   if (minutes > 0) parts.push(`${minutes} phút`);
-  if (parts.length === 0) parts.push('Vừa khởi động');
+  if (parts.length === 0) parts.push('dưới 1 phút');
   return parts.join(' ');
 }
 
 /**
- * Tính % uptime theo chuẩn SLA 30 ngày (Chuẩn SLA Công nghiệp được PO phê duyệt):
- * - Khấu trừ toàn bộ thời gian hệ thống bảo trì (cả Khẩn cấp EMERGENCY lẫn Theo lịch SCHEDULED).
-/**
- * Tính toán tỷ lệ Uptime hệ thống thực tế theo chỉ đạo PO:
- * - Tổng thời gian: Tính từ lúc máy chủ bắt đầu chạy (SERVER_START_TIME) đến thời điểm hiện tại.
- * - Thời gian chạy thực tế = Tổng thời gian - Thời gian bảo trì.
- * - Tỷ lệ % Uptime = (Thời gian chạy thực tế / Tổng thời gian) * 100.
- * - Tự động cập nhật lại liên tục kể cả khi đang trong phiên bảo trì.
- * @param {number} uptimeSeconds - Số giây tiến trình process nodejs hoặc tổng thời gian
- * @returns {Promise<{ uptimePercent: number, uptimeSeconds: number, totalSeconds: number, rawUptimeSeconds: number, downtimeSeconds: number, emergencyDowntimeSec: number, startedAt: string }>}
+ * Thông tin thời gian chạy cho health và luồng metrics (kế hoạch 2026-11-15, Q3, Q9).
+ * - Chạy liên tục = Bây giờ − Lúc tiến trình khởi động (process.uptime()), KHÔNG trừ bảo trì.
+ * - availability: độ khả dụng tháng hiện tại (bền vững qua khởi động lại), lưu đệm 60 giây.
+ * - Khoá cũ giữ tạm với nghĩa mới, gỡ ở đợt sau: uptimeSeconds / totalSeconds / rawUptimeSeconds / uptimeFormatted
+ *   = chạy liên tục; uptimePercent = availability.percent; downtimeSeconds = bảo trì + gián đoạn trong tháng.
  */
-async function calcUptimePercent(uptimeSeconds = 0) {
-  // Tổng thời gian từ lúc bắt đầu chạy
-  const totalElapsedSec = typeof uptimeSeconds === 'number' && uptimeSeconds > 0
-    ? Math.floor(uptimeSeconds)
-    : Math.max(1, Math.floor((Date.now() - SERVER_START_TIME.getTime()) / 1000));
-
-  let totalDowntimeSec = 0;
-
-  try {
-    const { defaultMaintenanceRepository } = require('./maintenance.repository');
-    if (defaultMaintenanceRepository) {
-      const sinceDate = SERVER_START_TIME;
-      if (typeof defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds === 'function') {
-        totalDowntimeSec = await defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds(sinceDate);
-      } else if (typeof defaultMaintenanceRepository.getEmergencyDowntimeSeconds === 'function') {
-        totalDowntimeSec = await defaultMaintenanceRepository.getEmergencyDowntimeSeconds(sinceDate);
-      }
-    }
-  } catch (_) {}
-
-  // Nếu hiện tại hệ thống đang trong phiên bảo trì chưa kết thúc (active = true), cộng thêm thời gian đang diễn ra
-  try {
-    if (defaultMaintenanceManager && typeof defaultMaintenanceManager.isMaintenanceActive === 'function' && defaultMaintenanceManager.isMaintenanceActive()) {
-      if (defaultMaintenanceManager.activatedAt) {
-        const ongoingSec = Math.max(0, Math.floor((Date.now() - new Date(defaultMaintenanceManager.activatedAt).getTime()) / 1000));
-        totalDowntimeSec += ongoingSec;
-      }
-    } else if (defaultMaintenanceManager && defaultMaintenanceManager.getStatus) {
-      const status = defaultMaintenanceManager.getStatus();
-      if (status && status.active && status.activatedAt) {
-        const ongoingSec = Math.max(0, Math.floor((Date.now() - new Date(status.activatedAt).getTime()) / 1000));
-        totalDowntimeSec += ongoingSec;
-      }
-    }
-  } catch (_) {}
-
-  // Khấu trừ an toàn: Downtime không được vượt quá Tổng thời gian
-  const safeDowntime = Math.max(0, Math.min(totalDowntimeSec, totalElapsedSec));
-  // Thời gian chạy thực tế của hệ thống
-  const runningSec = Math.max(0, totalElapsedSec - safeDowntime);
-
-  // Tỷ lệ % Uptime thực tế = (Thời gian chạy thực tế / Tổng thời gian) * 100
-  const rawPercent = totalElapsedSec > 0 ? (runningSec / totalElapsedSec) * 100 : 100;
-  const percent = parseFloat(Math.min(100, Math.max(0, rawPercent)).toFixed(2));
+async function buildUptimeInfo() {
+  const runningSeconds = Math.floor(process.uptime());
+  const runningFormatted = formatUptimeDuration(runningSeconds);
+  const startedAt = new Date(Date.now() - runningSeconds * 1000).toISOString();
+  const status = defaultMaintenanceManager.getStatus();
+  const { getCurrentMonthAvailability } = require('./availability.service');
+  const availability = await getCurrentMonthAvailability({ maintenanceKey: `${status.active}|${status.activatedAt || ''}` });
+  let version = null;
+  try { version = require('../../core/resilience/server-session').getDefaultServerSession().getInfo().version; } catch (_) {}
 
   return {
-    uptimePercent: percent,
-    uptimeSeconds: runningSec,
-    totalSeconds: totalElapsedSec,
-    rawUptimeSeconds: totalElapsedSec,
-    downtimeSeconds: safeDowntime,
-    emergencyDowntimeSec: safeDowntime,
-    startedAt: SERVER_START_TIME.toISOString(),
+    runningSeconds,
+    runningFormatted,
+    startedAt,
+    version,
+    availability,
+    uptimeSeconds: runningSeconds,
+    totalSeconds: runningSeconds,
+    rawUptimeSeconds: runningSeconds,
+    uptimeFormatted: runningFormatted,
+    totalFormatted: runningFormatted,
+    uptimePercent: availability.percent,
+    downtimeSeconds: availability.downtimeSeconds,
   };
 }
 
@@ -798,12 +757,7 @@ const adminService = {
     const maintStatus = defaultMaintenanceManager.getStatus();
     const { getLoadSheddingCount } = require('../../middleware/load-shedding.middleware');
 
-    const rawUptimeSeconds = Math.floor(process.uptime());
-    const uptimeResult = await calcUptimePercent(rawUptimeSeconds);
-    const uptimeSeconds = uptimeResult.uptimeSeconds;
-    const totalSeconds = uptimeResult.totalSeconds;
-    const uptimePercent = uptimeResult.uptimePercent;
-    const downtimeSeconds = uptimeResult.downtimeSeconds;
+    const uptime = await buildUptimeInfo();
 
     return {
       environment,
@@ -832,16 +786,7 @@ const adminService = {
         activatedAt: maintStatus.activatedAt,
       },
       loadShedding: { shedCount24h: typeof getLoadSheddingCount === 'function' ? getLoadSheddingCount() : 0 },
-      uptime: {
-        uptimeSeconds,
-        totalSeconds,
-        rawUptimeSeconds,
-        uptimeFormatted: formatUptimeDuration(uptimeSeconds),
-        totalFormatted: formatUptimeDuration(totalSeconds),
-        startedAt: SERVER_START_TIME.toISOString(),
-        uptimePercent,
-        downtimeSeconds,
-      },
+      uptime,
       timestamp: new Date().toISOString(),
     };
   },
@@ -1693,6 +1638,6 @@ function resolveFilterContext(params) {
 }
 
 adminService.formatUptimeDuration = formatUptimeDuration;
-adminService.calcUptimePercent = calcUptimePercent;
+adminService.buildUptimeInfo = buildUptimeInfo;
 
 module.exports = adminService;

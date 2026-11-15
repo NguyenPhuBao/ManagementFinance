@@ -694,6 +694,22 @@ model data_incident {
   @@map("data_incident")
 }
 
+/// Phiên chạy của tiến trình Backend (migration 52), phục vụ độ khả dụng theo kỳ.
+/// end_reason: GRACEFUL (tắt có chủ đích) | UNKNOWN (sập, đóng ở lần khởi động sau). Truy cập bằng pg thô.
+/// Chỉ mục một phần idx_server_session_open (WHERE ended_at IS NULL) nằm trong tệp SQL, Prisma không biểu diễn được.
+model server_session {
+  id           BigInt    @id @default(autoincrement()) @map("id")
+  instance_id  String    @db.VarChar(100) @map("instance_id")
+  version      String?   @db.VarChar(64) @map("version")
+  started_at   DateTime  @default(now()) @db.Timestamptz(6) @map("started_at")
+  last_seen_at DateTime  @default(now()) @db.Timestamptz(6) @map("last_seen_at")
+  ended_at     DateTime? @db.Timestamptz(6) @map("ended_at")
+  end_reason   String?   @db.VarChar(20) @map("end_reason")
+
+  @@index([started_at], map: "idx_server_session_started_at")
+  @@map("server_session")
+}
+
 model account_device_history {
   id             BigInt   @id @default(autoincrement()) @map("id")
   idaccount      Int      @map("idaccount")

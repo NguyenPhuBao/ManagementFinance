@@ -304,6 +304,41 @@ class MaintenanceRepository {
   }
 
   /**
+   * Đọc trạng thái cần khôi phục lúc khởi động. KHÔNG rơi về bộ nhớ: lỗi CSDL thì ném,
+   * để MaintenanceManager giữ khoá và thử lại (fail-closed).
+   * @returns {Promise<{ongoing: object[], scheduled: object[]}>}
+   */
+  async loadRestoreState() {
+    if (!this.pool || typeof this.pool.query !== 'function') {
+      throw new Error('NO_DB_POOL');
+    }
+    const ongoing = await this.pool.query(
+      `SELECT * FROM "maintenance_history" WHERE "status" = 'ONGOING' ORDER BY "started_at" DESC;`
+    );
+    const scheduled = await this.pool.query(
+      `SELECT * FROM "maintenance_history" WHERE "status" = 'SCHEDULED' ORDER BY "started_at" ASC;`
+    );
+    return { ongoing: ongoing.rows || [], scheduled: scheduled.rows || [] };
+  }
+
+  /**
+   * Đóng một bản ghi theo id, tính thời lượng thực tế. Lỗi CSDL thì ném (dùng trong khôi phục).
+   */
+  async closeRecord(id, { status = 'COMPLETED', ended_at } = {}) {
+    const endedAtIso = new Date(ended_at).toISOString();
+    const res = await this.pool.query(
+      `UPDATE "maintenance_history"
+       SET "status" = $1,
+           "ended_at" = $2,
+           "actual_duration_seconds" = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM ($2::timestamptz - "started_at")))::integer)
+       WHERE "id" = $3
+       RETURNING *;`,
+      [status, endedAtIso, id]
+    );
+    return res.rows[0] || null;
+  }
+
+  /**
    * Lấy danh sách tất cả các lịch bảo trì đang chờ thực hiện (status = 'SCHEDULED')
    */
   async getActiveScheduledRecords() {
@@ -398,54 +433,6 @@ class MaintenanceRepository {
         totalPages: Math.ceil(total / l) || 1,
       },
     };
-  }
-
-  /**
-   * Tính tổng số giây hệ thống bị gián đoạn do Bảo trì (cả Khẩn cấp và Định kỳ theo lịch)
-   * Phục vụ tính toán SLA và Uptime hoạt động thực tế chính xác (PO approved).
-   * @param {Date} sinceDate
-   * @returns {Promise<number>}
-   */
-  async getTotalMaintenanceDowntimeSeconds(sinceDate = null) {
-    const since = sinceDate instanceof Date ? sinceDate : new Date(Date.now() - 30 * 24 * 3600 * 1000);
-    const sinceIso = since.toISOString();
-
-    if (this.pool && typeof this.pool.query === 'function') {
-      try {
-        const query = `
-          SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE("ended_at", NOW()) - "started_at"))), 0) AS total_sec
-          FROM "maintenance_history"
-          WHERE "status" IN ('COMPLETED', 'ONGOING')
-            AND "started_at" >= $1;
-        `;
-        const res = await this.pool.query(query, [sinceIso]);
-        const sec = parseFloat(res.rows[0]?.total_sec || 0);
-        return Math.max(0, Math.floor(sec));
-      } catch (err) {
-        logger.warn('[Maintenance Repository] getTotalMaintenanceDowntimeSeconds DB error, fallback to memory', { error: err.message });
-      }
-    }
-
-    // Memory fallback
-    let totalSec = 0;
-    const sinceTime = since.getTime();
-    for (const item of this._inMemoryFallback) {
-      if (item.status === 'COMPLETED' || item.status === 'ONGOING') {
-        const start = new Date(item.started_at).getTime();
-        if (start >= sinceTime) {
-          const end = item.ended_at ? new Date(item.ended_at).getTime() : Date.now();
-          totalSec += Math.max(0, Math.floor((end - start) / 1000));
-        }
-      }
-    }
-    return totalSec;
-  }
-
-  /**
-   * Alias tương thích ngược cho getEmergencyDowntimeSeconds
-   */
-  async getEmergencyDowntimeSeconds(sinceDate = null) {
-    return this.getTotalMaintenanceDowntimeSeconds(sinceDate);
   }
 
   /**

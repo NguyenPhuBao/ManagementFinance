@@ -45,6 +45,7 @@ router.delete('/system/maintenance/schedule', adminController.cancelScheduledMai
 router.delete('/system/maintenance/schedule/:id', adminController.cancelScheduledMaintenance);
 router.get('/system/maintenance/history', adminController.getMaintenanceHistory);
 router.get('/system/health', adminController.getSystemHealth);
+router.get('/system/availability', adminController.getAvailability);
 router.get('/audit-logs', adminController.getAuditLogs);
 router.post('/verify-security-action', adminController.verifySecurityAction);
 router.post('/change-pin', adminController.changeAdminPin);

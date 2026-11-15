@@ -332,40 +332,6 @@ describe('Admin Security Refinement Suite (Backend)', () => {
     });
   });
 
-  describe('calcUptimePercent (PO Formula)', () => {
-    it('should return 100% when there is no maintenance downtime', async () => {
-      const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
-      const origGet = defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds;
-      defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds = async () => 0;
-
-      try {
-        // Giả lập hệ thống chạy 2 tiếng (7200s), không bảo trì
-        const result = await adminService.calcUptimePercent(7200);
-        assert.strictEqual(result.uptimePercent, 100);
-        assert.strictEqual(result.uptimeSeconds, 7200);
-        assert.strictEqual(result.totalSeconds, 7200);
-        assert.strictEqual(result.downtimeSeconds, 0);
-      } finally {
-        defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds = origGet;
-      }
-    });
-
-    it('should return exactly 80% when running 4h out of 5h total with 1h downtime (PO Example)', async () => {
-      const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
-      const origGet = defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds;
-      // 1 giờ bảo trì = 3600 giây
-      defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds = async () => 3600;
-
-      try {
-        // Tổng thời gian = 5 tiếng (18000s)
-        const result = await adminService.calcUptimePercent(18000);
-        assert.strictEqual(result.uptimePercent, 80);
-        assert.strictEqual(result.uptimeSeconds, 14400); // 4 tiếng chạy thực tế
-        assert.strictEqual(result.totalSeconds, 18000);  // 5 tiếng tổng thời gian
-        assert.strictEqual(result.downtimeSeconds, 3600);
-      } finally {
-        defaultMaintenanceRepository.getTotalMaintenanceDowntimeSeconds = origGet;
-      }
-    });
-  });
+  // calcUptimePercent (tính từ lần khởi động) đã thay bằng độ khả dụng theo kỳ (2026-11-15):
+  // xem tests/unit/admin.availability.test.js và admin.uptime.running.test.js.
 });

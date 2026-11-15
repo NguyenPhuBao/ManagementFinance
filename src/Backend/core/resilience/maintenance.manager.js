@@ -24,6 +24,9 @@ class MaintenanceManager {
     this._autoEndTimer = null;
     this.redis = options.redis || null;
     this.notificationService = options.notificationService || null;
+    // Chưa đọc được trạng thái bảo trì từ CSDL lúc khởi động: khoá người dùng (fail-closed).
+    this.restorePending = false;
+    this._emitOverride = options.emitMaintenanceChanged || null;
 
     const isRunningInTest = Boolean(
       process.env.NODE_ENV === 'test' ||
@@ -37,12 +40,152 @@ class MaintenanceManager {
       cancelScheduledRecord: async () => ({ id: 999 }),
       completeOngoingRecord: async () => ({ id: 999 }),
       getActiveScheduledRecords: async () => ([]),
+      loadRestoreState: async () => ({ ongoing: [], scheduled: [] }),
+      closeRecord: async () => ({ id: 999 }),
       getHistory: async () => ({ data: [], pagination: { total: 0 } }),
     } : null);
   }
 
+  /** Người dùng thường có bị chặn không: đang bảo trì, hoặc chưa đọc được trạng thái từ CSDL. */
   isMaintenanceActive() {
-    return this.active;
+    return this.active || this.restorePending;
+  }
+
+  _emitChanged() {
+    try {
+      if (this._emitOverride) return this._emitOverride(this.getStatus());
+      const { emitMaintenanceChanged } = require('../socket');
+      emitMaintenanceChanged(this.getStatus());
+    } catch (_) {}
+  }
+
+  /** Gọi trước khi máy chủ nhận yêu cầu: khoá người dùng cho tới khi khôi phục xong. */
+  beginRestore() {
+    this.restorePending = true;
+  }
+
+  /**
+   * Đọc CSDL tới khi thành công (thử lại mỗi `retryMs`), trong lúc đó giữ khoá.
+   * @returns {Promise<object>} kết quả của lần khôi phục thành công
+   */
+  startRestoreLoop({ retryMs = 5000 } = {}) {
+    this.beginRestore();
+    return new Promise((resolve) => {
+      const attempt = async () => {
+        try {
+          resolve(await this.restoreFromDatabase());
+        } catch (err) {
+          logger.warn('[MAINTENANCE] Chưa đọc được trạng thái bảo trì từ CSDL, giữ khoá và thử lại', { error: err.message });
+          const t = setTimeout(attempt, retryMs);
+          if (t && typeof t.unref === 'function') t.unref();
+        }
+      };
+      attempt();
+    });
+  }
+
+  /**
+   * Khôi phục bảo trì từ CSDL (nguồn sự thật) sau khi khởi động / deploy.
+   * Ném lỗi nếu không đọc được CSDL (người gọi giữ khoá và thử lại).
+   */
+  async restoreFromDatabase() {
+    const repo = this.repository || require('../../modules/admin/maintenance.repository').defaultMaintenanceRepository;
+    const { ongoing = [], scheduled = [] } = await repo.loadRestoreState();
+    const now = Date.now();
+    const result = { restoredId: null, closed: [], cancelled: [], rearmed: [], activated: [] };
+
+    // 1. Phiên ONGOING: giữ bản mới nhất, đóng các bản cũ (dữ liệu lỗi).
+    const sorted = [...ongoing].sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+    const [latest, ...stale] = sorted;
+    for (const row of stale) {
+      await repo.closeRecord(row.id, { status: 'COMPLETED', ended_at: latest.started_at });
+      result.closed.push(row.id);
+    }
+    if (latest) {
+      const endMs = latest.scheduled_end_at ? new Date(latest.scheduled_end_at).getTime() : null;
+      if (endMs !== null && endMs <= now) {
+        await repo.closeRecord(latest.id, { status: 'COMPLETED', ended_at: latest.scheduled_end_at });
+        result.closed.push(latest.id);
+      } else {
+        const type = latest.type || 'EMERGENCY';
+        this.active = true;
+        this.isEmergency = type === 'EMERGENCY';
+        this.isUpgrade = type === 'UPGRADE';
+        this.reason = latest.reason || this.reason;
+        this.activatedBy = latest.activated_by || null;
+        this.activatedAt = new Date(latest.started_at).toISOString();
+        if (endMs !== null) this._armAutoEnd(latest.scheduled_end_at, this.isUpgrade);
+        result.restoredId = latest.id;
+        logger.warn('[MAINTENANCE] Khôi phục phiên bảo trì từ CSDL sau khởi động', { id: latest.id, type });
+      }
+    }
+
+    // 2. Lịch hẹn SCHEDULED.
+    for (const row of scheduled) {
+      const startMs = new Date(row.started_at).getTime();
+      const endMs = row.scheduled_end_at ? new Date(row.scheduled_end_at).getTime() : null;
+      if (endMs !== null && endMs <= now) {
+        await repo.cancelScheduledRecord({ id: row.id, reason: 'Lỡ lịch do máy chủ không chạy trong khung giờ hẹn' });
+        result.cancelled.push(row.id);
+        continue;
+      }
+      const item = this._scheduleItemFromRecord(row);
+      if (startMs <= now) {
+        await this.activateScheduledItem(item);
+        result.activated.push(row.id);
+      } else {
+        this._armScheduleItem(item, startMs - now);
+        result.rearmed.push(row.id);
+      }
+    }
+
+    this.restorePending = false;
+    this._emitChanged();
+    logger.info('[MAINTENANCE] Hoàn tất khôi phục trạng thái bảo trì từ CSDL', result);
+    return result;
+  }
+
+  _scheduleItemFromRecord(row) {
+    const type = row.type || 'SCHEDULED';
+    return {
+      id: row.id,
+      recordId: row.id,
+      scheduledAt: new Date(row.started_at).toISOString(),
+      scheduledEndAt: row.scheduled_end_at ? new Date(row.scheduled_end_at).toISOString() : null,
+      reason: row.reason,
+      isEmergency: false,
+      isUpgrade: type === 'UPGRADE',
+      type,
+      createdBy: row.activated_by,
+      createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+      _timer: null,
+    };
+  }
+
+  _armScheduleItem(schedItem, delayMs) {
+    schedItem._timer = setTimeout(async () => {
+      await this.activateScheduledItem(schedItem);
+    }, delayMs);
+    if (schedItem._timer && typeof schedItem._timer.unref === 'function') {
+      schedItem._timer.unref();
+    }
+    this.scheduledList.push(schedItem);
+    this.scheduledList.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+    this.scheduled = this.getNearestSchedule();
+  }
+
+  _armAutoEnd(endIso, isUpgrade) {
+    const endDelayMs = new Date(endIso).getTime() - Date.now();
+    if (!(endDelayMs > 0)) return;
+    if (this._autoEndTimer) clearTimeout(this._autoEndTimer);
+    this._autoEndTimer = setTimeout(() => {
+      logger.info('[MAINTENANCE] Đến giờ kết thúc hẹn trước: Tự động khôi phục hệ thống');
+      this._autoEndTimer = null;
+      this.setMaintenance(false, isUpgrade ? 'Hết thời gian nâng cấp hệ thống theo lịch hẹn' : 'Hết thời gian bảo trì định kỳ theo lịch hẹn', 'Hệ thống tự động');
+    }, endDelayMs);
+    if (this._autoEndTimer && typeof this._autoEndTimer.unref === 'function') {
+      this._autoEndTimer.unref();
+    }
   }
 
   isEmergencyMode() {
@@ -426,9 +569,9 @@ class MaintenanceManager {
         activeMaintenanceReason: this.reason,
       });
       try {
-        const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
+        const repo = this.repository || require('../../modules/admin/maintenance.repository').defaultMaintenanceRepository;
         if (sched.recordId) {
-          await defaultMaintenanceRepository.cancelScheduledRecord({
+          await repo.cancelScheduledRecord({
             id: sched.recordId,
             reason: 'Bị hủy do trùng vào thời gian bảo trì khác đang diễn ra',
           });
@@ -441,9 +584,9 @@ class MaintenanceManager {
 
     // Cập nhật CSDL sang ONGOING
     try {
-      const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
+      const repo = this.repository || require('../../modules/admin/maintenance.repository').defaultMaintenanceRepository;
       if (sched.recordId) {
-        await defaultMaintenanceRepository.updateRecordStatus(sched.recordId, {
+        await repo.updateRecordStatus(sched.recordId, {
           status: 'ONGOING',
           started_at: new Date(),
         });
@@ -463,19 +606,7 @@ class MaintenanceManager {
     });
 
     // Nếu có thời điểm kết thúc đã hẹn, thiết lập timer tự động kết thúc
-    if (sched.scheduledEndAt) {
-      const endDelayMs = new Date(sched.scheduledEndAt).getTime() - Date.now();
-      if (endDelayMs > 0) {
-        this._autoEndTimer = setTimeout(() => {
-          logger.info('[MAINTENANCE] Đến giờ kết thúc hẹn trước: Tự động khôi phục hệ thống');
-          this._autoEndTimer = null;
-          this.setMaintenance(false, isUpgrade ? 'Hết thời gian nâng cấp hệ thống theo lịch hẹn' : 'Hết thời gian bảo trì định kỳ theo lịch hẹn', 'Hệ thống tự động');
-        }, endDelayMs);
-        if (this._autoEndTimer && typeof this._autoEndTimer.unref === 'function') {
-          this._autoEndTimer.unref();
-        }
-      }
-    }
+    if (sched.scheduledEndAt) this._armAutoEnd(sched.scheduledEndAt, isUpgrade);
   }
 
   scheduleMaintenance({ scheduledAt, scheduledEndAt, reason, isEmergency = false, isUpgrade = false, type = null, createdBy = 'admin' }) {
@@ -552,17 +683,7 @@ class MaintenanceManager {
       _timer: null,
     };
 
-    schedItem._timer = setTimeout(async () => {
-      await this.activateScheduledItem(schedItem);
-    }, delayMs);
-
-    if (schedItem._timer && typeof schedItem._timer.unref === 'function') {
-      schedItem._timer.unref();
-    }
-
-    this.scheduledList.push(schedItem);
-    this.scheduledList.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-    this.scheduled = this.getNearestSchedule();
+    this._armScheduleItem(schedItem, delayMs);
 
     // PO YÊU CẦU: Lưu ngay vào CSDL PostgreSQL với trạng thái SCHEDULED (hoặc mock repository trong unit test)
     try {
@@ -665,6 +786,7 @@ class MaintenanceManager {
   getStatus() {
     return {
       active: this.active,
+      restorePending: Boolean(this.restorePending),
       isEmergency: this.isEmergency,
       isUpgrade: Boolean(this.isUpgrade),
       type: this.isUpgrade ? 'UPGRADE' : (this.isEmergency ? 'EMERGENCY' : 'SCHEDULED'),
