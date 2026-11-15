@@ -113,9 +113,10 @@ const ServerHealthPanel = ({ uptimeData }) => {
         environment: data.environment || prev?.environment,
         uptime: {
           ...(prev?.uptime || {}),
-          uptimeFormatted: data.uptimeFormatted || prev?.uptime?.uptimeFormatted,
-          uptimePercent: typeof data.uptimePercent === 'number' ? data.uptimePercent : prev?.uptime?.uptimePercent ?? 100,
-          downtimeSeconds: typeof data.downtimeSeconds === 'number' ? data.downtimeSeconds : prev?.uptime?.downtimeSeconds ?? 0,
+          runningFormatted: data.runningFormatted ?? prev?.uptime?.runningFormatted,
+          startedAt: data.startedAt ?? prev?.uptime?.startedAt,
+          version: data.version ?? prev?.uptime?.version,
+          availability: data.availability ?? prev?.uptime?.availability,
         },
         cpu: { percent: data.cpuPercent, cores: data.cpuCores ?? prev?.cpu?.cores },
         ram: {
@@ -169,8 +170,7 @@ const ServerHealthPanel = ({ uptimeData }) => {
   const pool = health?.dbPool;
   const shed = health?.loadShedding;
   const uptime = uptimeData || health?.uptime;
-  const uptimePct = Number(uptime?.uptimePercent ?? 0);
-  const downtimeSec = Number(uptime?.downtimeSeconds ?? 0);
+  const availPct = typeof uptime?.availability?.percent === 'number' ? uptime.availability.percent : null;
   const ramPct = ram?.totalMb ? (ram.usedMb / ram.totalMb) * 100 : ram?.percent ?? 0;
   const critical = lag > 100 || (cpu?.percent ?? 0) > 85 || ramPct > 85;
   const active = Boolean(maintenance.active);
@@ -202,16 +202,14 @@ const ServerHealthPanel = ({ uptimeData }) => {
           </div>
 
           <div className="flex flex-col gap-1.5 rounded-lg bg-muted p-3">
-            <Row label={t('serverHealth.uptime')} value={uptime ? `${uptimePct.toFixed(2)}%` : '--'} valueClass={TEXT[uptimePct >= 99.5 ? 'success' : uptimePct >= 95 ? 'warning' : 'danger']} />
-            {downtimeSec > 0 && (
-              <Row
-                label={t('serverHealth.downtime')}
-                value={downtimeSec >= 3600 ? t('serverHealth.hours', { n: (downtimeSec / 3600).toFixed(1) }) : t('serverHealth.minutes', { n: Math.ceil(downtimeSec / 60) })}
-                valueClass="text-warning"
-              />
-            )}
-            {uptime?.uptimeFormatted && <Row label={t('serverHealth.runtime')} value={uptime.uptimeFormatted} />}
+            <Row
+              label={t('serverHealth.availability')}
+              value={availPct === null ? '--' : `${availPct.toFixed(2)}%`}
+              valueClass={availPct === null ? 'text-ink' : TEXT[availPct >= 99.5 ? 'success' : availPct >= 95 ? 'warning' : 'danger']}
+            />
+            {uptime?.runningFormatted && <Row label={t('serverHealth.runtime')} value={uptime.runningFormatted} />}
             {uptime?.startedAt && <Row label={t('serverHealth.startedAt')} value={formatStart(uptime.startedAt)} />}
+            {uptime?.version && <Row label={t('serverHealth.version')} value={uptime.version} />}
           </div>
 
           {pool && (

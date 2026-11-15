@@ -347,6 +347,21 @@ const adminController = {
     }
   },
 
+  /** Độ khả dụng theo kỳ: ?period=month&year=2026&month=11 | period=quarter&quarter=4 | period=year */
+  async getAvailability(req, res) {
+    try {
+      const { getAvailability } = require('./availability.service');
+      const result = await getAvailability(req.query || {});
+      return ResponseHandler.success(res, result, 'Độ khả dụng hệ thống theo kỳ');
+    } catch (error) {
+      if (error.statusCode === 400) {
+        return ResponseHandler.error(res, error.message, 400, null, error.code);
+      }
+      logger.error('getAvailability failed', { error: error.message });
+      return ResponseHandler.error(res, error.message);
+    }
+  },
+
   async getSystemHealth(req, res) {
     try {
       const result = await adminService.getSystemHealth();

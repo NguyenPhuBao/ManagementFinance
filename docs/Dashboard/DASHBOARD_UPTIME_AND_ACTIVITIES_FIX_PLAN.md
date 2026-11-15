@@ -1,4 +1,5 @@
 # 📋 KẾ HOẠCH CHI TIẾT SỬA LỖI TỒN ĐỌNG TRANG DASHBOARD (UPTIME CARD & BẢNG HOẠT ĐỘNG GẦN ĐÂY)
+> **Đã thay thế (2026-11-15), phần Uptime:** `calcUptimePercent` và `getTotalMaintenanceDowntimeSeconds` đã gỡ; xem `docs/Admin-web/03-server-health-and-sla-monitoring.md` mục 3.1 (độ khả dụng theo kỳ + chạy liên tục). Tệp này giữ làm lịch sử.
 > **Tài liệu nguồn sự thật phục vụ thực thi:** `docs/Dashboard/DASHBOARD_UPTIME_AND_ACTIVITIES_FIX_PLAN.md`  
 > **Ngày lập:** 2026-10-22  
 > **Tác giả:** AI Assistant (Lead BA + Lead FullStack + Lead Tester)  

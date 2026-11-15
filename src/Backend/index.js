@@ -20,6 +20,9 @@ async function bootstrap() {
     const httpServer = http.createServer(app);
     initSocket(httpServer);
 
+    // 1b. Khoá người dùng cho tới khi đọc được trạng thái bảo trì từ CSDL (fail-closed).
+    require('./core/resilience/maintenance.manager').defaultMaintenanceManager.beginRestore();
+
     // 2. Mở cổng HTTP Server NGAY LẬP TỨC để Render / Cloud Port Scanner phát hiện thành công trong < 100ms
     const port = config.port;
     const host = config.host || '0.0.0.0';
@@ -84,9 +87,13 @@ async function bootstrap() {
     const { defaultMaintenanceManager } = require('./core/resilience/maintenance.manager');
     const { defaultSystemHardwareMonitor } = require('./core/resilience/system-hardware-monitor');
     const { defaultMaintenanceRepository } = require('./modules/admin/maintenance.repository');
+    // Ghi phiên chạy (server_session) để tính độ khả dụng theo kỳ, bền vững qua khởi động lại.
+    require('./core/resilience/server-session').getDefaultServerSession().start();
+
+    // CSDL là nguồn sự thật: khôi phục phiên bảo trì / lịch hẹn, thử lại tới khi đọc được.
     defaultMaintenanceRepository.initTable()
-      .then(() => defaultMaintenanceManager.reconcileStateWithDatabase())
-      .catch((err) => logger.warn('[Maintenance] Lỗi khởi tạo/đối soát bảo trì ban đầu:', err.message));
+      .catch(() => {})
+      .then(() => defaultMaintenanceManager.startRestoreLoop());
     const os = require('os');
 
     const metricsInterval = setInterval(async () => {
@@ -97,30 +104,8 @@ async function bootstrap() {
         }
         const aiopsStatus = defaultAIOpsService.getStatus() || {};
         const lastSample = aiopsStatus.sample || {};
-        const rawUptimeSec = Math.floor(process.uptime());
-        let activeUptimeSec = rawUptimeSec;
-        let totalElapsedSec = rawUptimeSec;
-        let uptimePercent = 100;
-        let uptimeFormatted = `${rawUptimeSec}s`;
-        let downtimeSec = 0;
-        let startedAtStr = new Date(Date.now() - rawUptimeSec * 1000).toISOString();
-
-        try {
-          const adminService = require('./modules/admin/admin.service');
-          if (adminService && typeof adminService.calcUptimePercent === 'function') {
-            const uptimeData = await adminService.calcUptimePercent(rawUptimeSec);
-            activeUptimeSec = uptimeData.uptimeSeconds;
-            totalElapsedSec = uptimeData.totalSeconds ?? rawUptimeSec;
-            uptimePercent = uptimeData.uptimePercent;
-            downtimeSec = uptimeData.downtimeSeconds ?? 0;
-            startedAtStr = uptimeData.startedAt || startedAtStr;
-            uptimeFormatted = adminService.formatUptimeDuration(activeUptimeSec);
-          }
-        } catch (_) {
-          const hours = Math.floor(rawUptimeSec / 3600);
-          const minutes = Math.floor((rawUptimeSec % 3600) / 60);
-          uptimeFormatted = hours > 0 ? `${hours} giờ ${minutes} phút` : `${minutes} phút`;
-        }
+        // Chạy liên tục (không trừ bảo trì) + độ khả dụng tháng hiện tại (đệm 60 giây, không truy vấn CSDL mỗi 3 giây)
+        const uptime = await require('./modules/admin/admin.service').buildUptimeInfo();
 
         const hwMetrics = defaultSystemHardwareMonitor.getMetrics();
         const memRssMb = hwMetrics.ram.rssMb;
@@ -131,13 +116,18 @@ async function bootstrap() {
         const cpuPct = hwMetrics.cpu.percent;
 
         const payload = {
-          uptimeSeconds: activeUptimeSec,
-          totalSeconds: totalElapsedSec,
-          rawUptimeSeconds: rawUptimeSec,
-          uptimePercent,
-          uptimeFormatted,
-          downtimeSeconds: downtimeSec,
-          startedAt: startedAtStr,
+          runningSeconds: uptime.runningSeconds,
+          runningFormatted: uptime.runningFormatted,
+          version: uptime.version,
+          availability: uptime.availability,
+          // Khoá cũ, nghĩa mới (gỡ ở đợt sau): chạy liên tục / độ khả dụng tháng
+          uptimeSeconds: uptime.uptimeSeconds,
+          totalSeconds: uptime.totalSeconds,
+          rawUptimeSeconds: uptime.rawUptimeSeconds,
+          uptimePercent: uptime.uptimePercent,
+          uptimeFormatted: uptime.uptimeFormatted,
+          downtimeSeconds: uptime.downtimeSeconds,
+          startedAt: uptime.startedAt,
           eventLoopLagMs: defaultEventLoopMonitor.getLag(),
           cpuPercent: cpuPct,
           cpuCores: hwMetrics.cpu.cores,
@@ -172,9 +162,18 @@ async function bootstrap() {
   }
 }
 
+// Đóng phiên chạy GRACEFUL (tắt có chủ đích), chặn tối đa 2 giây để không treo việc tắt máy.
+async function closeServerSession() {
+  try {
+    const tracker = require('./core/resilience/server-session').getDefaultServerSession();
+    await Promise.race([tracker.stop(), new Promise((r) => setTimeout(r, 2000))]);
+  } catch (_) {}
+}
+
 // Graceful shutdown
 process.on('SIGINT', async () => {
   logger.info('Shutting down gracefully...');
+  await closeServerSession();
   const { defaultAIOpsService } = require('./modules/aiops/aiops.service');
   defaultAIOpsService.stop();
   const { prisma } = require('./config/db');
@@ -186,6 +185,7 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down...');
+  await closeServerSession();
   const { defaultAIOpsService } = require('./modules/aiops/aiops.service');
   defaultAIOpsService.stop();
   const { prisma } = require('./config/db');

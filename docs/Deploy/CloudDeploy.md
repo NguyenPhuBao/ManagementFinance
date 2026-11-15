@@ -303,7 +303,8 @@ Lập trình viên commit & push code lên nhánh chính (GitHub)
    - `VITE_SOCKET_URL`: `https://managementfinance.onrender.com` (Bắt buộc cho WebSockets/Socket.IO kết nối trực tiếp đến Render vì Vercel rewrites không hỗ trợ giao thức Upgrade WebSocket).
 
 4. **Lưu ý về Hiệu Năng Gói Free Render:**
-   - **Hiện tượng ngủ đông (Spin-down):** Sau 15 phút không hoạt động, Render tắt container. Lần truy cập tiếp theo mất 30–50s để khởi động lại.
+   - **Hiện tượng ngủ đông (Spin-down):** Sau 15 phút không hoạt động, Render tắt container. Lần truy cập tiếp theo mất 30–50s để khởi động lại. Khi Render cho ngủ hoặc deploy, tiến trình nhận SIGTERM và ghi phiên chạy `GRACEFUL` (bảng `server_session`, migration 52); khoảng nghỉ đó hiện ở Admin-web là "Tắt có chủ đích", không trừ vào độ khả dụng. Sập không kịp ghi thì tính là gián đoạn ngoài dự kiến.
+   - **Khởi động lại giữa phiên bảo trì:** máy chủ đọc `maintenance_history` và khoá lại nếu phiên còn hiệu lực; trong lúc chưa đọc được CSDL, người dùng nhận 503 "Hệ thống đang khởi động" (health check vẫn 200). Rủi ro đã chấp nhận: tắt bảo trì đúng lúc CSDL sập rồi máy chủ khởi động lại trước khi ghi bù thì bảo trì bật lại; tắt lại trên Admin-web.
    - **Tài nguyên 0.1 CPU & 512MB RAM:** Tránh mở đồng thời quá nhiều tab Admin-web cùng lúc để không bị bóp nghẽn CPU.
    - **CORS thông minh:** Backend đã hỗ trợ bộ lọc tự động nhận diện domain `management-finance*.vercel.app` và `managementfinance*.vercel.app`.
 
