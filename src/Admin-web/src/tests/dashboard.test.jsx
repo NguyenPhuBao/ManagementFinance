@@ -28,6 +28,7 @@ vi.mock('../api/admin.api', () => ({
     getLoginStats: vi.fn(),
     getRequestStats: vi.fn(),
     getRecentActivities: vi.fn(),
+    getAvailability: vi.fn(),
   },
 }));
 
@@ -53,7 +54,9 @@ beforeEach(() => {
   Object.keys(handlers).forEach((k) => delete handlers[k]);
   adminApi.getTotalUsers.mockReset().mockResolvedValue({ data: { total: 1248 } });
   adminApi.getTotalCategories.mockReset().mockResolvedValue({ data: { total: 42 } });
-  adminApi.getSystemHealth.mockReset().mockResolvedValue({ data: { data: { uptime: { uptimePercent: 99.98, uptimeFormatted: '3 ngày', downtimeSeconds: 600 } } } });
+  adminApi.getSystemHealth.mockReset().mockResolvedValue({
+    data: { data: { uptime: { runningFormatted: '3 ngày', startedAt: '2026-11-09T05:00:00Z', availability: { period: 'month', year: 2026, month: 11, percent: 99.98 } } } },
+  });
   adminApi.getUserToTime.mockReset().mockResolvedValue({ data: { current: 39, previous: 35, growth: 12 } });
   adminApi.getLoginStats.mockReset().mockResolvedValue({
     data: { summary: { total: 20, max: 12, avg: 4 }, timeline: [{ label: '08:00', count: 12 }, { label: '09:00', count: 8 }], format: 'hour' },
@@ -84,15 +87,24 @@ describe('Hiển thị', () => {
     expect(screen.getByTestId('server-health')).toBeInTheDocument();
   });
 
-  it('bốn thẻ số liệu: tổng người dùng, người dùng mới kèm tăng trưởng, danh mục, thời gian hoạt động đã trừ bảo trì', async () => {
+  it('bốn thẻ số liệu: tổng người dùng, người dùng mới kèm tăng trưởng, danh mục, độ khả dụng tháng hiện tại kèm chạy liên tục (A1)', async () => {
     await renderPage();
     const card = (label) => screen.getByText(label, { selector: 'div' }).parentElement;
     await waitFor(() => expect(card('Tổng người dùng')).toHaveTextContent('1.248'));
     expect(card('Người dùng mới')).toHaveTextContent('39');
     expect(card('Người dùng mới')).toHaveTextContent('+12% so với kỳ trước');
     expect(card('Tổng danh mục')).toHaveTextContent('42');
-    await waitFor(() => expect(card('Thời gian hoạt động')).toHaveTextContent('99.98%'));
-    expect(card('Thời gian hoạt động')).toHaveTextContent('Đã trừ 10 phút bảo trì');
+    await waitFor(() => expect(card('Độ khả dụng · Tháng 11/2026')).toHaveTextContent('99.98%'));
+    expect(card('Độ khả dụng · Tháng 11/2026')).toHaveTextContent('Chạy liên tục 3 ngày');
+    expect(within(card('Độ khả dụng · Tháng 11/2026')).getByRole('button', { name: 'Xem chi tiết' })).toBeInTheDocument();
+  });
+
+  it('chưa có dữ liệu phiên chạy thì thẻ ghi "Chưa có dữ liệu" (A1)', async () => {
+    adminApi.getSystemHealth.mockResolvedValue({ data: { data: { uptime: { runningFormatted: '5 phút', availability: { period: 'month', year: 2026, month: 11, percent: null } } } } });
+    await renderPage();
+    const card = screen.getByText('Độ khả dụng · Tháng 11/2026', { selector: 'div' }).parentElement;
+    await waitFor(() => expect(card).toHaveTextContent('Chưa có dữ liệu'));
+    expect(card).toHaveTextContent('Chạy liên tục 5 phút');
   });
 
   it('hai biểu đồ có trung bình, cao nhất, tổng yêu cầu; rê chuột lên điểm hiện chú thích', async () => {
@@ -167,18 +179,80 @@ describe('Phân trang và realtime', () => {
     expect(rows[1]).toHaveTextContent('binh');
   });
 
-  it('thời gian bảo trì dưới nửa phút không ghi "Đã trừ 0 phút"', async () => {
+  it('admin.metrics_stream cập nhật độ khả dụng và chạy liên tục (A4)', async () => {
     await renderPage();
-    emit('admin.metrics_stream', { uptimePercent: 99.99, uptimeFormatted: '2 giờ', downtimeSeconds: 20 });
-    const card = screen.getByText('Thời gian hoạt động', { selector: 'div' }).parentElement;
-    await waitFor(() => expect(card).toHaveTextContent('99.99%'));
-    expect(card).not.toHaveTextContent('Đã trừ 0 phút');
+    emit('admin.metrics_stream', { runningFormatted: '2 giờ', availability: { period: 'month', year: 2026, month: 11, percent: 97.5 } });
+    const card = screen.getByText('Độ khả dụng · Tháng 11/2026', { selector: 'div' }).parentElement;
+    await waitFor(() => expect(card).toHaveTextContent('97.50%'));
+    expect(card).toHaveTextContent('Chạy liên tục 2 giờ');
+  });
+});
+
+describe('Chi tiết độ khả dụng theo kỳ', () => {
+  const AVAIL = (over = {}) => ({
+    data: {
+      data: {
+        period: 'month', year: 2026, month: 11, quarter: null, label: '11/2026', trackingAvailable: true,
+        percent: 99.5, measuredSeconds: 432000, coverageFrom: '2026-11-09T17:00:00.000Z',
+        plannedMaintenanceSeconds: 1800, emergencyMaintenanceSeconds: 300, unplannedSeconds: 60, plannedStopSeconds: 120,
+        buckets: [{ label: '1', start: '2026-10-31T17:00:00.000Z', end: '2026-11-01T17:00:00.000Z', percent: null }, { label: '10', start: 'a', end: 'b', percent: 99.1 }],
+        incidents: [{ kind: 'EMERGENCY', start: '2026-11-11T02:00:00.000Z', end: '2026-11-11T02:05:00.000Z', durationSeconds: 300, reason: 'Sửa CSDL' }],
+        availableYears: [2026, 2025],
+        ...over,
+      },
+    },
   });
 
-  it('admin.metrics_stream cập nhật thời gian hoạt động', async () => {
+  beforeEach(() => {
+    adminApi.getAvailability.mockReset().mockResolvedValue(AVAIL());
+  });
+
+  const openDetail = async () => {
     await renderPage();
-    emit('admin.metrics_stream', { uptimePercent: 97.5, uptimeFormatted: '2 giờ', downtimeSeconds: 0 });
-    const card = screen.getByText('Thời gian hoạt động', { selector: 'div' }).parentElement;
-    await waitFor(() => expect(card).toHaveTextContent('97.50%'));
+    const card = screen.getByText('Độ khả dụng · Tháng 11/2026', { selector: 'div' }).parentElement;
+    fireEvent.click(await within(card).findByRole('button', { name: 'Xem chi tiết' }));
+    return screen.findByRole('dialog', { name: 'Độ khả dụng hệ thống' });
+  };
+
+  it('A2. Mở chi tiết: mặc định Tháng hiện tại; chuyển Quý / Năm đổi đúng ô chọn', async () => {
+    const dialog = await openDetail();
+    const kinds = within(dialog).getByRole('tablist', { name: 'Loại kỳ' });
+    expect(within(kinds).getByRole('tab', { name: 'Tháng' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(dialog).getByLabelText('Chọn tháng')).toHaveValue('11');
+    expect(within(dialog).getByLabelText('Chọn năm')).toHaveValue('2026');
+
+    fireEvent.click(within(kinds).getByRole('tab', { name: 'Quý' }));
+    expect(within(dialog).queryByLabelText('Chọn tháng')).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Chọn quý')).toHaveValue('4');
+
+    fireEvent.click(within(kinds).getByRole('tab', { name: 'Năm' }));
+    expect(within(dialog).queryByLabelText('Chọn quý')).not.toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Chọn năm')).toBeInTheDocument();
+  });
+
+  it('A3. Gọi API đúng tham số theo kỳ chọn; hiện %, "Dữ liệu từ", chia nhỏ và sự cố', async () => {
+    const dialog = await openDetail();
+    await waitFor(() => expect(adminApi.getAvailability).toHaveBeenCalledWith({ period: 'month', year: 2026, month: 11 }));
+    expect(await within(dialog).findByText('99.50%')).toBeInTheDocument();
+    expect(within(dialog).getByText('Dữ liệu từ 10/11/2026')).toBeInTheDocument();
+    const line = (label) => within(dialog).getByText(label, { selector: 'span.text-ink-muted' }).parentElement;
+    expect(line('Bảo trì có kế hoạch')).toHaveTextContent('30 phút');
+    expect(line('Bảo trì khẩn cấp')).toHaveTextContent('5 phút');
+    expect(line('Gián đoạn ngoài dự kiến')).toHaveTextContent('1 phút');
+    expect(line('Tắt có chủ đích (không trừ)')).toHaveTextContent('2 phút');
+    expect(within(dialog).getByRole('row', { name: /Sửa CSDL/ })).toHaveTextContent('09:00 11/11/2026');
+
+    adminApi.getAvailability.mockResolvedValue(AVAIL({ period: 'quarter', quarter: 4, percent: 98.25 }));
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Quý' }));
+    fireEvent.change(within(dialog).getByLabelText('Chọn năm'), { target: { value: '2025' } });
+    await waitFor(() => expect(adminApi.getAvailability).toHaveBeenLastCalledWith({ period: 'quarter', year: 2025, quarter: 4 }));
+    expect(await within(dialog).findByText('98.25%')).toBeInTheDocument();
+  });
+
+  it('A3b. Kỳ chưa có dữ liệu thì ghi rõ, không hiện 100%', async () => {
+    adminApi.getAvailability.mockResolvedValue(AVAIL({ percent: null, measuredSeconds: 0, coverageFrom: null, incidents: [] }));
+    const dialog = await openDetail();
+    expect(await within(dialog).findByText('Chưa có dữ liệu cho kỳ này')).toBeInTheDocument();
+    expect(within(dialog).queryByText('100.00%')).not.toBeInTheDocument();
   });
 });

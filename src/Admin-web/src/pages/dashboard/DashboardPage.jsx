@@ -10,6 +10,7 @@ import { AUDIT_STATUS_TONE, classifyAuditAction } from '../../utils/audit-tags.u
 import { Badge, Card, DataTable, PageHeader, Pagination, StatCard, Tabs } from '../../components/ui';
 import LineChart from './components/LineChart';
 import PeriodPicker from './components/PeriodPicker';
+import AvailabilityModal, { availabilityTone } from './components/AvailabilityModal';
 import { formatActivityTime, periodParams, vnToday } from './dashboardFormat';
 
 const POLL_MS = 10_000;
@@ -48,6 +49,7 @@ const DashboardPage = () => {
   const [newUsers, setNewUsers] = useState({ current: 0, previous: 0, growth: 0 });
   const [uptime, setUptime] = useState(null);
   const [uptimeError, setUptimeError] = useState(false);
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const [loginStats, setLoginStats] = useState(EMPTY_STATS);
   const [requestStats, setRequestStats] = useState(EMPTY_STATS);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -89,7 +91,7 @@ const DashboardPage = () => {
           setUptimeError(true);
           return;
         }
-        setUptime(data.uptime || (typeof data.uptimePercent === 'number' ? data : { uptimePercent: 100 }));
+        setUptime(data.uptime || null);
         setUptimeError(false);
       } catch (err) {
         if (alive) setUptimeError(true);
@@ -158,13 +160,13 @@ const DashboardPage = () => {
       setActivities((list) => [data, ...list.filter((a) => !data.id || a.id !== data.id)].slice(0, activityLimit));
     };
     const onMetrics = (data) => {
-      if (!data || (!data.uptimeFormatted && typeof data.uptimePercent !== 'number')) return;
+      if (!data || (!data.runningFormatted && !data.availability)) return;
       setUptime((prev) => ({
         ...prev,
-        uptimeFormatted: data.uptimeFormatted,
-        uptimePercent: typeof data.uptimePercent === 'number' ? data.uptimePercent : prev?.uptimePercent ?? 100,
-        uptimeSeconds: data.uptimeSeconds,
-        downtimeSeconds: data.downtimeSeconds ?? prev?.downtimeSeconds ?? 0,
+        runningFormatted: data.runningFormatted ?? prev?.runningFormatted,
+        startedAt: data.startedAt ?? prev?.startedAt,
+        version: data.version ?? prev?.version,
+        availability: data.availability ?? prev?.availability,
       }));
       setUptimeError(false);
     };
@@ -176,27 +178,20 @@ const DashboardPage = () => {
     };
   }, [socket, activityPage, activityLimit]);
 
-  const uptimeCard = (() => {
-    const pct = typeof uptime?.uptimePercent === 'number' && !Number.isNaN(uptime.uptimePercent) ? uptime.uptimePercent : null;
-    if (pct === null) {
+  // Thẻ "Độ khả dụng · Tháng MM/YYYY": độ khả dụng tháng hiện tại (bền vững) + chạy liên tục (từ lần khởi động gần nhất)
+  const avail = uptime?.availability;
+  const availYear = avail?.year || today.year;
+  const availMonth = avail?.month || today.month;
+  const availabilityCard = (() => {
+    const running = uptime?.runningFormatted ? t('dashboard.kpi.runningContinuous', { time: uptime.runningFormatted }) : null;
+    if (!uptime) {
       return uptimeError
         ? { value: '—', hint: t('dashboard.kpi.error'), tone: 'danger' }
         : { value: '—', hint: t('dashboard.kpi.loading'), tone: 'neutral' };
     }
-    const downSec = Number(uptime?.downtimeSeconds) || 0;
-    const downtime =
-      downSec < 30
-        ? null
-        : downSec >= 3600
-          ? t('dashboard.kpi.downtimeHours', { n: (downSec / 3600).toFixed(1) })
-          : t('dashboard.kpi.downtimeMinutes', { n: Math.round(downSec / 60) });
-    return {
-      value: `${pct.toFixed(2)}%`,
-      hint:
-        [uptime?.uptimeFormatted && t('dashboard.kpi.runningFor', { time: uptime.uptimeFormatted }), downtime].filter(Boolean).join(' · ') ||
-        t('dashboard.kpi.stable'),
-      tone: pct >= 99 ? 'success' : pct >= 95 ? 'warning' : 'danger',
-    };
+    const pct = typeof avail?.percent === 'number' ? avail.percent : null;
+    if (pct === null) return { value: t('dashboard.kpi.noData'), hint: running, tone: 'neutral' };
+    return { value: `${pct.toFixed(2)}%`, hint: running, tone: availabilityTone(pct) };
   })();
 
   const growth = Number(newUsers.growth) || 0;
@@ -267,7 +262,17 @@ const DashboardPage = () => {
           hintTone={growth >= 0 ? 'success' : 'danger'}
         />
         <StatCard label={t('dashboard.kpi.totalCategories')} value={totalCategories === null ? '—' : num(totalCategories)} />
-        <StatCard label={t('dashboard.kpi.systemUptime')} value={uptimeCard.value} hint={uptimeCard.hint} hintTone={uptimeCard.tone} />
+        <StatCard
+          label={t('dashboard.kpi.availability', { period: `${String(availMonth).padStart(2, '0')}/${availYear}` })}
+          value={availabilityCard.value}
+          hint={availabilityCard.hint}
+          hintTone={availabilityCard.tone}
+          action={
+            <button type="button" className="cursor-pointer text-xs font-medium text-brand hover:text-brand-hover" onClick={() => setAvailabilityOpen(true)}>
+              {t('dashboard.kpi.viewDetail')} <span aria-hidden="true">›</span>
+            </button>
+          }
+        />
       </div>
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-3">
@@ -295,6 +300,10 @@ const DashboardPage = () => {
         </div>
         <ServerHealthPanel uptimeData={uptime} />
       </div>
+
+      {availabilityOpen && (
+        <AvailabilityModal open onClose={() => setAvailabilityOpen(false)} initialYear={availYear} initialMonth={availMonth} />
+      )}
 
       <Card
         title={t('dashboard.recentActivities.title')}

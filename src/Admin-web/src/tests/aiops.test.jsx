@@ -495,7 +495,7 @@ describe('Sức khỏe máy chủ (ServerHealthPanel)', () => {
         cpu: { percent: 35, cores: 4 },
         ram: { percent: 50, usedMb: 1024, totalMb: 2048 },
         eventLoop: { lagMs: 8 },
-        uptime: { uptimePercent: 99.9, uptimeFormatted: '2 ngày' },
+        uptime: { runningFormatted: '2 ngày', version: 'abc123def456', availability: { period: 'month', year: 2026, month: 11, percent: 99.9 } },
         dbPool: { clientActive: 3, clientLimit: 16, adminActive: 1, adminReserved: 4 },
         loadShedding: { shedCount24h: 0 },
       },
@@ -520,7 +520,9 @@ describe('Sức khỏe máy chủ (ServerHealthPanel)', () => {
     expect(await screen.findByText('CPU')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'CPU' })).toHaveAttribute('aria-valuenow', '35');
     expect(screen.getByRole('progressbar', { name: 'RAM' })).toHaveAttribute('aria-valuenow', '50');
-    expect(screen.getByText('99.90%')).toBeInTheDocument();
+    expect(screen.getByText('Độ khả dụng (tháng)').parentElement).toHaveTextContent('99.90%');
+    expect(screen.getByText('Chạy liên tục').parentElement).toHaveTextContent('2 ngày');
+    expect(screen.getByText('Phiên bản').parentElement).toHaveTextContent('abc123def456');
     expect(screen.getByText('3/16')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('switch', { name: 'Bảo trì khẩn cấp' }));

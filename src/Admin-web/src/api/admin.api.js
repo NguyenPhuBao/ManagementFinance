@@ -36,6 +36,8 @@ const adminApi = {
 
   // System Health & Maintenance
   getSystemHealth: () => axiosClient.get('/admin/system/health'),
+  // Độ khả dụng theo kỳ: { period: 'month'|'quarter'|'year', year, month?, quarter? }
+  getAvailability: (params) => axiosClient.get('/admin/system/availability', { params }),
   getMaintenanceStatus: () => axiosClient.get('/admin/system/maintenance'),
   setMaintenanceStatus: (data) => axiosClient.post('/admin/system/maintenance', data),
   cancelScheduledMaintenance: (id) => (id ? axiosClient.delete(`/admin/system/maintenance/schedule/${id}`) : axiosClient.delete('/admin/system/maintenance/schedule')),
