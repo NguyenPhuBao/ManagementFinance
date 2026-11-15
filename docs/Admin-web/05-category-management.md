@@ -151,6 +151,7 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
   - Giảm tải kết nối WebSocket duy trì không cần thiết cho màn hình danh mục.
 - **Đến Mobile App (Client-app):**
   - Khi người dùng đăng ký mới hoặc cài lại ứng dụng, Mobile App gọi `GET /api/sync/pull` để kéo danh sách các danh mục `is_default = true` mới nhất này vào CSDL SQLite nội bộ trên điện thoại.
+  - **Thay đổi tới máy ngay:** mỗi lần Admin thêm, sửa, xóa mềm hoặc khôi phục danh mục hệ thống, Backend phát `sync.completed` tới mọi máy đang kết nối; Client-app nghe tên sự kiện này và kéo `/api/sync/pull` ngay (im lặng). Bản ghi trả về mang `delete_at`: có giá trị thì app khóa danh mục, `null` (vừa khôi phục) thì app mở lại. Máy đang offline nhận thay đổi ở lần đồng bộ kế tiếp (mở app, đổi mạng hoặc chu kỳ 15 phút).
   - Các giao dịch mới tạo trên điện thoại sẽ tự động gợi ý danh mục dựa trên bộ từ khóa `keyword` mà Admin đã cấu hình.
 
 ---
@@ -167,5 +168,5 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
 | `PATCH` / `POST` | `/api/admin/restorecategory/:id` | Khôi phục danh mục đã xóa mềm (yêu cầu mã PIN) | Admin |
 
 ### Phương Thức Đồng Bộ (Sync Strategy)
-- **Cơ chế:** Kéo thủ công qua nút "Làm mới" (Manual Pull via REST API).
-- **Socket.io:** Đã loại bỏ hoàn toàn listener tại giao diện Quản lý Danh mục theo quyết định tối ưu hóa tài nguyên của PO.
+- **Admin-web:** kéo thủ công qua nút "Làm mới" (Manual Pull via REST API); màn Quản lý Danh mục không nghe socket.
+- **Mobile App:** Backend phát `admin.category_updated` tới `admin_room` và `sync.completed` tới mọi socket sau mỗi thao tác thêm / sửa / xóa mềm / khôi phục (`emitCategoryUpdated`, `core/socket.js`); app kéo `/api/sync/pull` ngay khi nhận.

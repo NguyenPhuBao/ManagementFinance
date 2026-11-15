@@ -13,7 +13,7 @@
 **Giám Sát Sức Khỏe Máy Chủ & Đo Lường Uptime Hệ Thống** là bảng chỉ số hạ tầng thời gian thực cung cấp cho quản trị viên cái nhìn trực diện về trạng thái vận hành của máy chủ Node.js và CSDL PostgreSQL. 
 
 Điểm nổi bật của chức năng này:
-1. **Độ khả dụng theo kỳ và Chạy liên tục (từ 2026-11-15, mục 3.1):** độ khả dụng tính theo tháng / quý / năm, bền vững qua khởi động lại, trừ bảo trì và gián đoạn ngoài dự kiến; "Chạy liên tục" đếm từ lần khởi động gần nhất, không trừ bảo trì.
+1. **Độ khả dụng theo kỳ và Chạy liên tục (mục 3.1):** độ khả dụng tính theo tháng / quý / năm, không mất khi máy chủ khởi động lại, trừ bảo trì và gián đoạn ngoài dự kiến; "Chạy liên tục" đếm từ lần khởi động gần nhất, không trừ bảo trì.
 2. **Loại bỏ dòng chữ cũ:** Không còn sử dụng dòng chữ cố định "Chuẩn SLA 30 ngày (Không gián đoạn)".
 3. **Đồng bộ nguồn dữ liệu duy nhất:** Cả Card Uptime tại Dashboard và UptimeWidget trong Tab Sức khỏe hệ thống đều sử dụng chung một nguồn dữ liệu `uptimeData` được phân phát từ Backend.
 4. **Giám sát phần cứng chính xác theo môi trường (Hardware Metric Calibration):** Tự động phân biệt giữa môi trường Cloud Container (cgroup_v2 quota) và Host vật lý, tính toán CPU delta ticks thay vì cumulative ticks, tránh hiện tượng RAM 0/100 MB ảo.
@@ -65,28 +65,15 @@ graph TD
 
 ## 📐 3. CÁC CHỈ SỐ, CÔNG THỨC & CÁCH TÍNH TOÁN
 
-### 3.1. Hai chỉ số: Độ khả dụng theo kỳ và Chạy liên tục (thay công thức cũ từ 2026-11-15)
+### 3.1. Độ Khả Dụng & Chạy Liên Tục
+Panel Sức khỏe máy chủ dùng chung số liệu với thẻ "Độ khả dụng" của dashboard. Công thức, nguồn số liệu phiên chạy (`server_session`) và hộp chọn kỳ: xem `02-dashboard-and-analytics.md` mục 3.5 và mục 6.
 
-Công thức cũ (`T_tổng = now − SERVER_START_TIME`) mất số liệu mỗi lần khởi động lại và không thấy được thời gian máy chủ sập. Từ 2026-11-15 tách thành hai chỉ số (kế hoạch `docs/superpowers/plans/2026-11-15-bao-tri-ben-vung-va-do-kha-dung.md`):
-
-**a) Độ khả dụng (%) theo kỳ lịch** (tháng / quý / năm, giờ Việt Nam), bền vững qua khởi động lại:
-
-$$\text{Độ khả dụng} = \frac{T_{\text{đo được}} - T_{\text{bảo trì}} - T_{\text{gián đoạn}}}{T_{\text{đo được}}} \times 100$$
-
-- $T_{\text{đo được}}$: cửa sổ $[\max(\text{đầu kỳ}, \text{phiên chạy đầu tiên}),\ \min(\text{cuối kỳ}, \text{bây giờ})]$. Bằng 0 (kỳ trước khi bắt đầu đo, kỳ tương lai) thì không tính, giao diện ghi "Chưa có dữ liệu". Giao diện ghi "Dữ liệu từ …" khi kỳ bắt đầu trước lúc có dữ liệu.
-- $T_{\text{bảo trì}}$: phiên `COMPLETED` / `ONGOING` của `maintenance_history` giao với cửa sổ. **Có trừ** vì bảo trì chặn khách hàng. Chia *khẩn cấp* (`EMERGENCY`) và *có kế hoạch* (`SCHEDULED`, `ROUTINE`, `UPGRADE`); chồng nhau thì tính cho khẩn cấp.
-- $T_{\text{gián đoạn}}$ (ngoài dự kiến): khoảng không có phiên chạy nào, sau một phiên không đóng kịp (sập, mất nhịp quá 3 phút). Trừ phần trùng bảo trì.
-- *Tắt có chủ đích*: khoảng không có phiên chạy sau một phiên đóng êm (`GRACEFUL`: deploy, Render cho ngủ). Hiện riêng, **không trừ**.
-- Nguồn phiên chạy: bảng `server_session` (migration 52). Mỗi lần khởi động chèn một phiên, mỗi 60 giây ghi nhịp `last_seen_at`, nhận SIGTERM/SIGINT thì đóng `GRACEFUL`. Phiên còn mở của chính máy đó (hoặc của máy khác mà mất nhịp quá 3 phút) được đóng `UNKNOWN` ở lần khởi động sau. Sai số: sập giữa hai nhịp mất tối đa 60 giây; SIGKILL không kịp ghi bị tính là gián đoạn (nghiêng về thận trọng).
-- Ví dụ: tháng 30 ngày, đo đủ, bảo trì 1 giờ ⇒ $(2.592.000 - 3.600) ÷ 2.592.000 × 100 = 99{,}86\%$.
-
-**b) Chạy liên tục** = $\text{bây giờ} - \text{lúc tiến trình khởi động}$ (`process.uptime()`), **không trừ bảo trì**, đếm lại từ 0 mỗi lần khởi động. Dùng để theo dõi độ ổn định của bản đang chạy kể từ lần deploy gần nhất; kèm "Khởi động lúc" và "Phiên bản" (12 ký tự đầu của `RENDER_GIT_COMMIT` nếu có).
-
-**API & luồng dữ liệu:**
-- `GET /api/admin/system/availability?period=month&year=2026&month=11` (hoặc `period=quarter&quarter=4`, `period=year`): trả %, các phần chia nhỏ, `buckets` (tháng theo ngày; quý, năm theo tháng), danh sách sự cố, `availableYears`. Tham số sai ⇒ 400 `INVALID_PERIOD`. Chưa có bảng `server_session` ⇒ `trackingAvailable: false`, % là `null`.
-- `GET /system/health` và `admin.metrics_stream` mang `runningSeconds`, `runningFormatted`, `startedAt`, `version`, `availability` (tháng hiện tại, đệm 60 giây, tính lại ngay khi bảo trì đổi trạng thái; luồng 3 giây không truy vấn CSDL).
-- Khoá cũ giữ tạm với nghĩa mới, gỡ ở đợt sau: `uptimeSeconds` / `totalSeconds` / `uptimeFormatted` = chạy liên tục; `uptimePercent` = độ khả dụng tháng hiện tại (có thể `null`); `downtimeSeconds` = bảo trì + gián đoạn trong tháng.
-- Admin-web: thẻ dashboard "Độ khả dụng · Tháng MM/YYYY" kèm "Chạy liên tục …" và nút "Xem chi tiết" mở hộp chi tiết có bộ chọn Tháng (1–12 + năm) / Quý (Q1–Q4 + năm) / Năm. Bộ chọn này độc lập với bộ lọc "Hôm nay / 7 ngày / 1 tháng / 1 năm" (kỳ lịch khác khoảng trượt).
+- **Độ khả dụng (tháng):** % độ khả dụng tháng hiện tại theo giờ Việt Nam, tính từ CSDL nên không mất khi máy chủ khởi động lại; trừ bảo trì và gián đoạn ngoài dự kiến, không trừ khoảng tắt có chủ đích (deploy, Render cho ngủ). Chưa có số liệu ⇒ `--`.
+- **Chạy liên tục** $= \text{bây giờ} - \text{lúc tiến trình khởi động}$ (`process.uptime()`), không trừ bảo trì, về 0 mỗi lần khởi động.
+- **Khởi động lúc:** thời điểm tiến trình bắt đầu chạy.
+- **Phiên bản:** 12 ký tự đầu của `RENDER_GIT_COMMIT`; chỉ hiện khi máy chủ có biến này.
+- `GET /api/admin/system/health` (khối `uptime`) và `admin.metrics_stream` mang `runningSeconds`, `runningFormatted`, `startedAt`, `version`, `availability`. Độ khả dụng tháng được lưu đệm 60 giây và tính lại ngay khi trạng thái bảo trì đổi, nên luồng 3 giây không truy vấn CSDL mỗi lần.
+- Các khoá `uptimeSeconds`, `totalSeconds`, `uptimeFormatted` mang giá trị chạy liên tục; `uptimePercent` là độ khả dụng tháng hiện tại (có thể `null`); `downtimeSeconds` là bảo trì + gián đoạn trong tháng. Nhóm khoá này giữ lại cho tương thích và sẽ gỡ.
 
 ### 3.2. Định Dạng Chuỗi Thời Gian Hoạt Động (`formatUptimeDuration`)
 Chuyển đổi số giây thực tế `process.uptime()` thành định dạng tiếng Việt tự nhiên (dưới 1 phút ghi `dưới 1 phút`):

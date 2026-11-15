@@ -3,8 +3,8 @@
 > **Mã chức năng:** `ADMIN-FEAT-07`  
 > **Phiên bản tài liệu:** `v2.6` (Cập nhật ngày 23/10/2026)  
 > **Module phụ trách:**  
-> - Frontend: `src/Admin-web/src/pages/system/BroadcastPage.jsx` (Tab 1), `src/Admin-web/src/components/common/ServerHealthPanel.jsx`  
-> - Backend: `src/Backend/core/resilience/maintenance.manager.js`, `src/Backend/middleware/maintenance.middleware.js`, `src/Backend/api/admin.routes.js`  
+> - Frontend: `src/Admin-web/src/pages/system/BroadcastPage.jsx` (Tab 1: `broadcast/MaintenanceTab.jsx`, `broadcast/MaintenanceHistory.jsx`), `src/Admin-web/src/components/common/ServerHealthPanel.jsx`  
+> - Backend: `src/Backend/core/resilience/maintenance.manager.js`, `src/Backend/modules/admin/maintenance.repository.js`, `src/Backend/middleware/maintenance.middleware.js`, `src/Backend/index.js` (khôi phục khi khởi động), `src/Backend/api/admin.routes.js`  
 
 ---
 
@@ -12,18 +12,19 @@
 
 Chức năng **Quản Trị Chế Độ Bảo Trì & Cứu Hộ Khẩn Cấp** là công tắc ngắt mạch trung tâm (Circuit Breaker) của toàn bộ nền tảng. Khi hệ thống cần nâng cấp phiên bản, thực hiện migrate cơ sở dữ liệu lớn hoặc đối mặt với sự cố an ninh nghiêm trọng, chức năng này cho phép quản trị viên cách ly an toàn máy chủ khỏi lưu lượng người dùng di động.
 
-Hệ thống được xây dựng trên nền tảng **Kiến trúc Zero-Coupling & Cứu hộ Bất biến**:
-1. **Kiến trúc Độc Lập Hoàn Toàn Khỏi CSDL (Zero-Coupling Out-of-Band Gatekeeper):** Trạng thái bảo trì được quản lý trực tiếp bằng biến In-Memory và Redis với độ trễ $O(1) < 0.05\text{ms}$. Ngay cả khi CSDL PostgreSQL gặp sự cố sập hoàn toàn, Admin vẫn có thể bật/tắt bảo trì bình thường.
-2. **Bộ Đệm Ngoại Tuyến (Outbox Buffer `_pendingDbSyncQueue`):** Mọi lệnh thay đổi trạng thái khi CSDL offline được xếp vào hàng đợi bộ đệm để ghi bù ngay khi kết nối CSDL phục hồi.
-3. **CSDL là nguồn sự thật khi khởi động (từ 2026-11-15, mục 2.2):** sau mỗi lần khởi động / deploy, máy chủ đọc `maintenance_history` và khoá lại nếu phiên bảo trì gần nhất còn hiệu lực; lịch hẹn được nạp lại. Bước "Ghost Maintenance Killer" (đóng mọi phiên `ONGOING` vì RAM đang tắt) **không còn chạy lúc khởi động**; hàm `reconcileWithDatabase` vẫn còn trong repository nhưng không có nơi gọi.
+Cơ chế bảo trì gồm hai lớp: lớp **chặn yêu cầu** chạy trong bộ nhớ của máy chủ (nhanh, không phụ thuộc CSDL khi đang chạy) và lớp **lưu trạng thái** trong CSDL (nguồn sự thật, dùng để khôi phục sau mỗi lần khởi động):
+1. **Chặn yêu cầu bằng trạng thái trong bộ nhớ:** cờ bảo trì nằm trong `MaintenanceManager` (RAM), middleware kiểm cờ này với mỗi yêu cầu, không truy vấn CSDL. Khi CSDL sập, admin vẫn bật / tắt bảo trì được.
+2. **Bộ Đệm Ngoại Tuyến (Outbox Buffer `_pendingDbSyncQueue`):** thao tác ghi `maintenance_history` lỗi do CSDL offline được xếp vào hàng đợi trong RAM; vòng phát chỉ số 3 giây/lần kiểm hàng đợi và ghi bù khi CSDL hoạt động lại.
+3. **CSDL là nguồn sự thật khi khởi động (mục 2.2):** sau mỗi lần khởi động / deploy, máy chủ khoá người dùng cho tới khi đọc được `maintenance_history`; phiên bảo trì còn hiệu lực được khoá lại đúng như trước, lịch hẹn được nạp lại. Máy chủ không tự tắt bảo trì khi khởi động.
 4. **Phân Định Rõ Ràng Hai Loại Hình Bảo Trì (PO Mandatory):**
    - **Bảo trì khẩn cấp (`isEmergency: true`):** Tiêu đề chuẩn PO: **"HỆ THỐNG ĐANG BẢO TRÌ KHẨN CẤP"**, giao diện tông đỏ `rose`, badge `[KHẨN CẤP]`, tự động phát broadcast cấp độ `critical` tới toàn bộ người dùng.
    - **Bảo trì theo lịch (`isEmergency: false`):** Tiêu đề chuẩn PO: **"HỆ THỐNG ĐANG BẢO TRÌ"** (tuyệt đối không hiển thị từ "khẩn cấp"), giao diện tông cam `amber`, badge `[THEO LỊCH]`, broadcast cấp độ `warning`.
    - **Lưu trữ thời lượng thực tế (Migration 36 - `actual_duration_seconds`):** Bổ sung cột `actual_duration_seconds` trong bảng `maintenance_history` để ghi nhận chính xác từng giây thời gian gián đoạn thực tế khi kết thúc phiên. Đối với phiên đang diễn ra (`ONGOING`), giao diện tích hợp Live Timer đếm thời lượng thực tế theo thời gian thực ($T_{\text{hiện tại}} - T_{\text{bắt đầu}}$).
-5. **Ràng Buộc Thời Gian Lập Lịch Khắt Khe (PO Rule - Cập nhật 23/10/2026):**
-   - Bắt buộc lập lịch trước thời điểm kích hoạt ít nhất **3 tiếng** (`scheduledAt >= now + 3h`).
-   - Mỗi phiên bảo trì theo lịch phải cách nhau ít nhất **12 tiếng** (`Math.abs(start_b - start_a) >= 12h`).
-   - Hủy lịch bảo trì: Chỉ cho phép hủy khi còn cách thời điểm bắt đầu tối thiểu **3 tiếng** (`hoursUntilStart >= 3`). Dưới 3 tiếng hiển thị badge `< 3h`.
+5. **Ràng Buộc Thời Gian Lập Lịch:**
+   - Bắt buộc lập lịch trước thời điểm kích hoạt ít nhất **3 tiếng** (`scheduledAt >= now + 3h`, kiểm ở cả Admin-web và Backend).
+   - Thời điểm kết thúc (nếu có) phải sau thời điểm bắt đầu.
+   - Lịch mới không được trùng khung giờ với lịch đã có, và khoảng cách giữa lúc kết thúc lịch này với lúc bắt đầu lịch kia ít nhất **12 tiếng** (lịch không có giờ kết thúc thì tính kết thúc = bắt đầu).
+   - Hủy lịch bảo trì: Admin-web chỉ cho bấm hủy khi còn cách thời điểm bắt đầu tối thiểu **3 tiếng**; dưới 3 tiếng nút bị khóa, hiện `< 3h`.
 6. **Cảnh Báo Lịch Bảo Trì Sắp Diễn Ra (Imminent Maintenance Warning):**
    - Card/Banner cảnh báo "LỊCH BẢO TRÌ SẮP DIỄN RA" **CHỈ HIỂN THỊ KHI CÒN $\le 1$ TIẾNG** trước thời điểm bắt đầu.
    - Nếu còn xa hơn 1 tiếng (> 1h), **ẨN HOÀN TOÀN** card này.
@@ -31,7 +32,7 @@ Hệ thống được xây dựng trên nền tảng **Kiến trúc Zero-Couplin
 7. **Đa Lịch Bảo Trì (Multi-Schedule Management):**
    - Form lập lịch bảo trì định kỳ luôn luôn hiện diện và sẵn sàng tiếp nhận lịch mới.
    - Bảng danh sách các lịch bảo trì đã hẹn hiển thị chi tiết (bắt đầu, kết thúc, thời lượng, lý do, người tạo) kèm nút hủy riêng biệt theo ID (`DELETE /api/admin/system/maintenance/schedule/:id`).
-8. **Đặc quyền Cứu hộ Khẩn cấp (Emergency Override):** Duy nhất **Bảo trì khẩn cấp** có quyền kích hoạt đè khi hệ thống đang trong phiên bảo trì thông thường nhằm xử lý ngay lập tức các tình huống rủi ro bảo mật hoặc thảm họa máy chủ. Kích hoạt khẩn cấp bảo toàn các lịch hẹn tương lai.
+8. **Đặc quyền Cứu hộ Khẩn cấp (Emergency Override):** Duy nhất **Bảo trì khẩn cấp** có quyền kích hoạt đè khi hệ thống đang trong phiên bảo trì thông thường (phiên đang mở trong CSDL chuyển sang loại `EMERGENCY`, gửi thông báo khẩn cấp). Đang bảo trì khẩn cấp thì không bật thêm được. Khi bật khẩn cấp, các lịch hẹn trùng khung giờ khẩn cấp (từ lúc bật tới giờ kết thúc hẹn, mặc định 2 tiếng nếu không hẹn) bị hủy tự động; lịch ngoài khung giữ nguyên. Lịch tới giờ mà hệ thống đang có bảo trì khác cũng bị hủy.
 
 ---
 
@@ -48,14 +49,19 @@ graph TD
         A6[Khóa Công Tắc tại Dashboard - SafeMaintenanceLink]
     end
 
-    subgraph "Động Cơ Bảo Trì Zero-Coupling (maintenance.manager.js)"
-        B1[Cập nhật tức thì In-Memory RAM & Redis]
+    subgraph "Động Cơ Bảo Trì (maintenance.manager.js)"
+        B1[Cập nhật tức thì trạng thái trong RAM]
         B2{CSDL PostgreSQL Sẵn Sàng?}
         B3[Ghi trực tiếp vào bảng maintenance_history]
         B4[Xếp lệnh vào Outbox Buffer: _pendingDbSyncQueue]
-        B5[DB Reconnect Listener: Kích hoạt reconcileWithDatabase]
-        B6[Ghost Maintenance Killer: Chốt COMPLETED các bản ghi ONGOING mồ côi]
-        B7[Flush Outbox: Đẩy toàn bộ hàng đợi vào CSDL]
+        B7[Vòng 3 giây: CSDL sống lại thì ghi bù hàng đợi]
+    end
+
+    subgraph "Khởi Động / Deploy (index.js)"
+        R1[Khoá người dùng trước khi mở cổng]
+        R2[Đọc maintenance_history, thử lại mỗi 5 giây]
+        R3[Khôi phục phiên ONGOING, nạp lại lịch SCHEDULED]
+        R4[Mở khoá chờ, phát maintenance_changed]
     end
 
     subgraph "Kênh Thông Báo & Phân Phối (Realtime Hub)"
@@ -73,43 +79,36 @@ graph TD
     B2 -- "Online" --> B3
     B2 -- "Offline / Lỗi kết nối" --> B4
 
-    B5 --> B6 --> B7
+    B4 --> B7 --> B3
+    R1 --> R2 --> R3 --> R4 --> S1 & S2
+    R3 --> B1
 
     B1 --> S1 & S2 & S3
 ```
 
-### 2.1. Kiến Trúc Failover & Ghost Maintenance Killer Chi Tiết
-Khi cơ sở dữ liệu bị mất kết nối hoặc quá tải:
-1. **Giai đoạn CSDL Ngoại Tuyến (Offline Phase):**
-   - Quản trị viên thực hiện bật hoặc tắt bảo trì trên Admin-web.
-   - `MaintenanceManager` lập tức cập nhật biến In-Memory và Redis, phát tán Socket.io tới Client-app và Admin-web.
-   - Request API trả về thành công ngay lập tức ($< 5\text{ms}$), không bị treo chờ CSDL.
-   - Thao tác cập nhật lịch sử được đẩy vào hàng đợi bộ nhớ `_pendingDbSyncQueue = [{ action: 'TOGGLE', active, reason, time }]`.
-2. **Giai đoạn CSDL Hồi Phục (Self-Healing & Reconciliation Phase):**
-   - Cơ chế giám sát CSDL phát hiện kết nối PostgreSQL đã hoạt động trở lại và gọi `reconcileWithDatabase()`.
-   - **Thực thi Ghost Maintenance Killer:**
-     ```javascript
-     if (!this.state.active) {
-       // Nếu bộ nhớ xác nhận đã tắt bảo trì, đóng ngay mọi bản ghi còn mở trong CSDL
-       await prisma.maintenance_history.updateMany({
-         where: { status: 'ONGOING' },
-         data: { status: 'COMPLETED', end_time: new Date() }
-       });
-     }
-     ```
-   - **Xả hàng đợi Outbox (`flushPendingDbSyncQueue`):** Duyệt tuần tự các lệnh trong hàng đợi `_pendingDbSyncQueue` và đồng bộ an toàn vào bảng `maintenance_history`.
+### 2.1. Khi CSDL mất kết nối trong lúc máy chủ đang chạy
+1. **Giai đoạn CSDL ngoại tuyến:**
+   - Quản trị viên vẫn bật hoặc tắt bảo trì trên Admin-web bình thường.
+   - `MaintenanceManager` cập nhật trạng thái trong RAM ngay, phát `system.maintenance_changed` / `admin.maintenance_changed`; API trả kết quả ngay, không chờ CSDL.
+   - Thao tác ghi `maintenance_history` bị lỗi được lưu vào bản sao trong bộ nhớ và xếp vào `_pendingDbSyncQueue` (các loại `CREATE_RECORD`, `COMPLETE_ONGOING`, `UPDATE_TO_EMERGENCY`).
+2. **Giai đoạn CSDL hồi phục:**
+   - Vòng phát chỉ số máy chủ (3 giây/lần) kiểm hàng đợi; còn việc tồn thì gọi `flushPendingQueue()` ghi bù lần lượt vào `maintenance_history`, ghi được thì xoá khỏi hàng đợi.
 
-> Ghi chú 2026-11-15: đoạn mã minh hoạ "Ghost Maintenance Killer" ở trên là thiết kế cũ, không còn chạy lúc khởi động (xem 2.2).
+### 2.2. Khi máy chủ khởi động hoặc deploy
+CSDL là nguồn sự thật của trạng thái bảo trì. Mã: `MaintenanceManager.beginRestore / startRestoreLoop / restoreFromDatabase`, `MaintenanceRepository.loadRestoreState / closeRecord`.
 
-### 2.2. Khôi phục bảo trì khi khởi động (2026-11-15)
-
-Kế hoạch: `docs/superpowers/plans/2026-11-15-bao-tri-ben-vung-va-do-kha-dung.md`. Mã: `MaintenanceManager.beginRestore / startRestoreLoop / restoreFromDatabase` (`core/resilience/maintenance.manager.js`), `MaintenanceRepository.loadRestoreState / closeRecord`.
-
-1. **Khoá trước khi mở cổng (fail-closed):** `index.js` gọi `beginRestore()` trước `listen`. Trong lúc chưa đọc được CSDL, middleware trả 503 `MAINTENANCE_MODE` ("Hệ thống đang khởi động…") cho người dùng thường; `/health`, admin và `POST /auth/login` vẫn qua. Trạng thái chờ chỉ ở RAM: không ghi `maintenance_history`, không gửi thông báo đẩy, không tính vào độ khả dụng. CSDL lỗi thì thử lại mỗi 5 giây, giữ khoá tới khi đọc được.
-2. **Phiên `ONGOING`:** giữ bản mới nhất (bản cũ hơn, nếu có, đóng `COMPLETED` tại lúc bản mới bắt đầu). Đã quá `scheduled_end_at` ⇒ đóng `COMPLETED` tại `scheduled_end_at`. Còn hiệu lực ⇒ khoá lại với đúng loại, lý do, người bật, **giờ bắt đầu gốc**; không tạo bản ghi mới, không gửi thông báo đẩy trùng; đặt lại hẹn giờ tự kết thúc nếu có.
-3. **Lịch `SCHEDULED`:** đã lỡ cả khung giờ ⇒ `CANCELLED` ("Lỡ lịch do máy chủ không chạy trong khung giờ hẹn"); đang trong khung ⇒ kích hoạt ngay (đang có bảo trì khác thì huỷ, như luật cũ); tương lai ⇒ nạp lại vào danh sách lịch kèm hẹn giờ.
-4. Xong thì phát `system.maintenance_changed` / `admin.maintenance_changed` một lần để client đang thấy 503 cập nhật lại. Hợp đồng với Client-app không đổi (cùng mã 503, cùng tên sự kiện; `getStatus()` có thêm trường `restorePending`, client bỏ qua trường lạ).
-5. **Rủi ro đã chấp nhận:** admin tắt bảo trì đúng lúc CSDL sập, lệnh đóng phiên còn nằm ở `_pendingDbSyncQueue` (RAM), rồi máy chủ khởi động lại trước khi ghi bù ⇒ bảo trì bật lại; admin thấy trên Admin-web và tắt lại.
+1. **Khoá trước khi mở cổng:** `index.js` gọi `beginRestore()` trước khi máy chủ nhận yêu cầu. Trong lúc chưa đọc được CSDL, người dùng thường nhận 503 `MAINTENANCE_MODE` với thông điệp "Hệ thống đang khởi động. Quý khách vui lòng thử lại sau ít phút!"; đăng nhập của người dùng thường cũng bị từ chối 503. `/health`, yêu cầu của admin và `POST /auth/login` (để admin đăng nhập) vẫn đi qua. Trạng thái chờ này chỉ ở RAM: không ghi `maintenance_history`, không gửi thông báo đẩy, không phát sự kiện socket, không tính vào độ khả dụng.
+2. **Đọc CSDL:** lấy mọi phiên `ONGOING` và lịch `SCHEDULED`. Đọc lỗi thì giữ khoá và thử lại sau mỗi 5 giây cho tới khi đọc được.
+3. **Phiên `ONGOING`:**
+   - Có nhiều phiên (dữ liệu lỗi) ⇒ giữ phiên bắt đầu muộn nhất; các phiên còn lại đóng `COMPLETED` tại lúc phiên giữ lại bắt đầu.
+   - Phiên đã quá giờ kết thúc hẹn (`scheduled_end_at`) ⇒ đóng `COMPLETED` tại đúng giờ hẹn, tính `actual_duration_seconds`; hệ thống không bị khoá.
+   - Phiên còn hiệu lực ⇒ khoá lại với đúng loại (`EMERGENCY` / `UPGRADE` / còn lại là thông thường), lý do, người bật và **giờ bắt đầu gốc**; không tạo bản ghi mới, không gửi thông báo đẩy lặp lại; có giờ kết thúc hẹn thì đặt hẹn giờ tự mở cho phần còn lại.
+4. **Lịch `SCHEDULED`:**
+   - Đã qua giờ kết thúc hẹn ⇒ `CANCELLED`, lý do "Lỡ lịch do máy chủ không chạy trong khung giờ hẹn".
+   - Đang trong khung giờ ⇒ kích hoạt ngay như khi tới giờ hẹn; nếu đang có bảo trì khác (vd. vừa khôi phục ở bước 3) thì lịch bị hủy.
+   - Ở tương lai ⇒ nạp lại vào danh sách lịch (giữ `recordId`) kèm hẹn giờ kích hoạt.
+5. **Mở khoá chờ:** thoát trạng thái chờ, phát `system.maintenance_changed` và `admin.maintenance_changed` một lần để client đang thấy 503 cập nhật lại.
+6. **Rủi ro đã chấp nhận:** admin tắt bảo trì đúng lúc CSDL sập (lệnh đóng phiên còn trong `_pendingDbSyncQueue`), rồi máy chủ khởi động lại trước khi ghi bù ⇒ CSDL vẫn ghi phiên `ONGOING` nên bảo trì bật lại; admin thấy trên Admin-web và tắt lại.
 
 ---
 
@@ -118,20 +117,21 @@ Kế hoạch: `docs/superpowers/plans/2026-11-15-bao-tri-ben-vung-va-do-kha-dung
 | Thuộc tính / Header | Giá trị | Mục đích & Ý nghĩa |
 |---|---|---|
 | **HTTP Status Code** | `503 Service Unavailable` | Báo cho Client và Web Crawler biết server tạm thời bảo trì, không bị đánh tụt SEO. |
-| **Header `Retry-After`** | `3600` (giây) | Hướng dẫn client thời gian quay lại thử lại. |
-| **Error Code Payload** | `MAINTENANCE_MODE` | Mã chuẩn hóa cho Client-app bắt exception. |
-| **Redis Cache Key** | `system:maintenance:status` | Lưu trữ bền bỉ phân tán trên Redis cluster. |
+| **Header `Retry-After`** | `60` (giây) | Hướng dẫn client thời gian quay lại thử lại. |
+| **Error Code Payload** | `MAINTENANCE_MODE` | Mã chuẩn hóa cho Client-app bắt exception. Thân phản hồi gồm `message` (lý do bảo trì, hoặc "Hệ thống đang khởi động…" khi đang chờ khôi phục), `isEmergency`, `activatedAt`. |
 | **Outbox Buffer** | `_pendingDbSyncQueue` | Mảng In-Memory đệm các thao tác CSDL khi Postgres bị ngắt kết nối. |
-| **Scheduled Timer** | `setTimeout().unref()` | Non-blocking timer, không gây treo tiến trình Node.js khi shutdown. |
-| **Database Table** | `maintenance_history` | Bảng lưu trữ nhật ký vĩnh viễn trên PostgreSQL Supabase. |
+| **Scheduled Timer** | `setTimeout().unref()` | Non-blocking timer, không gây treo tiến trình Node.js khi shutdown. Hẹn giờ mất khi tiến trình dừng và được đặt lại từ CSDL lúc khởi động (mục 2.2). |
+| **Restore Retry** | 5 giây | Chu kỳ thử đọc lại CSDL khi khởi động. |
+| **Database Table** | `maintenance_history` | Nguồn sự thật của phiên bảo trì và lịch hẹn: `status` = `SCHEDULED` / `ONGOING` / `COMPLETED` / `CANCELLED`; `type` = `EMERGENCY` / `SCHEDULED` / `ROUTINE` / `UPGRADE`. |
+| **Trường trạng thái `restorePending`** | `true` / `false` | Có trong `getStatus()`; `true` khi máy chủ đang chờ đọc CSDL lúc khởi động. |
 
 ---
 
 ## ⛔ 4. CÁC GIỚI HẠN & NGUYÊN TẮC AN TOÀN
 
 1. **Chặn thời gian trong quá khứ:** Form lên lịch bảo trì tự động kiểm tra thời điểm hẹn. Nếu thời gian chọn nhỏ hơn thời điểm hiện tại (`targetDate <= Date.now()`), hệ thống từ chối với lỗi HTTP 400.
-2. **Miễn trừ Route kiểm tra sức khỏe:** Route `/health`, `/health/admin` luôn mở 100% để bộ cân bằng tải (Load Balancer / Kubernetes / Render) không hiểu nhầm container đã chết mà restart liên tục.
-3. **Khôi phục sau khởi động lại:** trạng thái bảo trì và lịch hẹn nạp lại từ CSDL (mục 2.2). Không có `hydrateFromRedis()`; đoạn ghi Redis trong `maintenance.manager.js` hiện không chạy vì không được truyền kết nối Redis (đối chiếu mã 2026-11-15).
+2. **Miễn trừ Route kiểm tra sức khỏe:** Route `/health` và `/health/*` luôn mở, kể cả lúc đang bảo trì hay đang chờ khôi phục, để Render không hiểu nhầm máy chủ đã chết mà khởi động lại liên tục.
+3. **Khôi phục sau khởi động lại:** trạng thái bảo trì và lịch hẹn nạp lại từ `maintenance_history` (mục 2.2); chưa đọc được CSDL thì khoá người dùng.
 4. **Bảo vệ công tắc tại Dashboard:** Khóa công tắc tại `ServerHealthPanel` khi đang active để ngăn ngừa click tắt nhầm ngoài ý muốn, chỉ cho phép điều khiển tắt tại trang Broadcast có Modal xác nhận.
 
 ---
@@ -139,7 +139,7 @@ Kế hoạch: `docs/superpowers/plans/2026-11-15-bao-tri-ben-vung-va-do-kha-dung
 ## 💼 5. CÔNG DỤNG & GIÁ TRỊ NGHIỆP VỤ
 
 - **Bảo toàn dữ liệu tài chính tuyệt đối:** Ngắt toàn bộ lưu lượng ghi từ ứng dụng di động khi thực hiện migration database, bảo vệ số dư và giao dịch không bao giờ bị corrupt.
-- **Khả năng tự phục hồi (Self-Healing Resiliency):** Không phụ thuộc vào trạng thái của database, tự động đối soát và triệt tiêu bản ghi ma khi hạ tầng phục hồi.
+- **Khả năng tự phục hồi (Self-Healing Resiliency):** Đang chạy thì bật / tắt bảo trì không phụ thuộc CSDL, thao tác lỗi được ghi bù khi CSDL sống lại; khởi động lại hoặc deploy giữa phiên bảo trì không làm mất bảo trì hay lịch hẹn.
 - **Minh bạch và chuẩn mực:** Toàn bộ lịch sử bảo trì lưu vết chi tiết người thực hiện, thời gian bắt đầu, thời gian kết thúc, thời lượng và lý do.
 
 ---
@@ -169,10 +169,12 @@ Kế hoạch: `docs/superpowers/plans/2026-11-15-bao-tri-ben-vung-va-do-kha-dung
 ## 📱 7. ẢNH HƯỞNG ĐẾN HỆ THỐNG & MOBILE APP (CLIENT-APP)
 
 - **Đến Backend:**
-  - Middleware kiểm tra cờ `active` bằng biến In-Memory tốc độ $O(1)$ ($< 0.05\text{ms}$), không tốn tài nguyên DB.
+  - Middleware kiểm cờ bảo trì (đang bảo trì hoặc đang chờ khôi phục) bằng biến trong RAM, không truy vấn CSDL.
+  - Mỗi lần khởi động đọc `maintenance_history` một lần (thường dưới 1 giây khi CSDL bình thường).
 - **Đến Mobile App (Client-app):**
   - **Khi bật bảo trì:** Ứng dụng nhận sự kiện Socket, hiển thị ngay màn hình khóa bảo trì toàn phần, ngăn người dùng thực hiện giao dịch ghi. Người dùng vẫn xem được dữ liệu offline trong máy (Offline-first Drift SQLite).
   - **Khi tắt bảo trì:** Ứng dụng tự động kết nối lại, mở khóa các tính năng và đồng bộ hóa các giao dịch đang chờ trong SQLite lên máy chủ.
+  - **Khi máy chủ khởi động lại:** ứng dụng có thể nhận 503 `MAINTENANCE_MODE` trong lúc máy chủ chờ đọc CSDL (thông điệp "Hệ thống đang khởi động"); xong thì nhận `system.maintenance_changed` với trạng thái thật. Nếu đang có phiên bảo trì, ứng dụng tiếp tục bị khoá như trước khi khởi động lại.
 
 ---
 
@@ -182,8 +184,7 @@ Kế hoạch: `docs/superpowers/plans/2026-11-15-bao-tri-ben-vung-va-do-kha-dung
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 |---|---|---|---|
 | `GET` | `/api/admin/system/maintenance` | Lấy chi tiết trạng thái bảo trì & danh sách lịch hẹn (`scheduledList`) | Admin |
-| `POST` | `/api/admin/system/maintenance` | Bật/Tắt bảo trì khẩn cấp tức thì hoặc đặt lịch bảo trì mới | Admin |
-| `POST` | `/api/admin/system/maintenance/schedule` | Lên lịch hẹn bảo trì tự động | Admin |
+| `POST` | `/api/admin/system/maintenance` | Bật/Tắt bảo trì tức thì (`active`, `reason`, `isEmergency`), hoặc đặt lịch bảo trì mới khi gửi `scheduledAt` (kèm `scheduledEndAt`, `reason`) | Admin |
 | `DELETE` | `/api/admin/system/maintenance/schedule` | Hủy bỏ lịch bảo trì gần nhất | Admin |
 | `DELETE` | `/api/admin/system/maintenance/schedule/:id` | Hủy bỏ lịch bảo trì theo ID cụ thể | Admin |
 | `GET` | `/api/admin/system/maintenance/history` | Lấy danh sách lịch sử các phiên bảo trì (có phân trang, bộ lọc) | Admin |
