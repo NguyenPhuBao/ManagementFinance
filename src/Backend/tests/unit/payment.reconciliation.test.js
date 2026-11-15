@@ -268,27 +268,39 @@ test('Payment Reconciliation & Refund Suite (2-Tier Testing)', async (t) => {
   });
 
   await t.test('7. [Tier 2] processOrderRefund() cập nhật REFUNDED kèm minh chứng và số tiền', async () => {
+    // Hoàn tiền thủ công (migration 53): đơn phải đã nhận tiền; admin tự nhập số tiền, mã GD, ngày hoàn, minh chứng.
     let refundRecorded = null;
-    const origProcessRefund = paymentRepository.processRefund;
+    const { prisma } = require('../../config/db');
+    const orig = { processRefund: paymentRepository.processRefund, findOrderById: paymentRepository.findOrderById, findFirst: prisma.payment_transaction.findFirst, audit: prisma.auditlog.create };
+    paymentRepository.findOrderById = async () => ({ id: 'order-uuid-test', idaccount: 12, order_code: 777, status: 'REFUND_PENDING', amount_received: 49000, created_at: new Date(Date.now() - 3 * 86400000) });
+    prisma.payment_transaction.findFirst = async () => null;
+    prisma.auditlog.create = async () => ({});
     paymentRepository.processRefund = async (params) => {
       refundRecorded = params;
       return params;
     };
+    const refundedAt = new Date(Date.now() - 86400000).toISOString();
 
     try {
       const res = await paymentService.processOrderRefund('order-uuid-test', {
         refundedAmount: 20000,
         refundProof: 'https://supabase.co/storage/proof123.jpg',
         refundReason: 'Hoàn trả chuyển thiếu tiền sau khi trừ phí',
-      });
+        refundedAt,
+        bankReference: 'FT-HOAN-777',
+      }, { idaccount: 1 });
 
       assert.strictEqual(res.success, true);
       assert.strictEqual(refundRecorded.orderId, 'order-uuid-test');
       assert.strictEqual(refundRecorded.refundedAmount, 20000);
       assert.strictEqual(refundRecorded.refundProof, 'https://supabase.co/storage/proof123.jpg');
-      assert.ok(refundRecorded.refundedAt instanceof Date);
+      assert.strictEqual(refundRecorded.bankReference, 'FT-HOAN-777');
+      assert.strictEqual(refundRecorded.refundedAt.toISOString(), refundedAt, 'ngày hoàn do admin nhập được giữ nguyên');
     } finally {
-      paymentRepository.processRefund = origProcessRefund;
+      paymentRepository.processRefund = orig.processRefund;
+      paymentRepository.findOrderById = orig.findOrderById;
+      prisma.payment_transaction.findFirst = orig.findFirst;
+      prisma.auditlog.create = orig.audit;
     }
   });
 

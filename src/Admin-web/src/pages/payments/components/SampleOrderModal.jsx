@@ -1,18 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
-import { Badge, Button, Icon, Modal } from '../../../components/ui';
+import { Badge, Button, Icon, Modal, SecurityConfirmModal } from '../../../components/ui';
 import { formatCountdown, formatVnd } from '../paymentFormat';
 
-const AMOUNTS = [
-  { value: 2000, key: 'amount2k', months: 1 },
-  { value: 49000, key: 'amountMonth', months: 1 },
-  { value: 270000, key: 'amount6Months', months: 6 },
-];
-
-const SampleOrderModal = ({ open, onClose, onCreate, creating, order, onCopy }) => {
+/**
+ * Đơn thử nghiệm: một mức tiền cố định do Backend quyết định (2.000 ₫), hạn mức chung toàn hệ thống mỗi ngày,
+ * bắt buộc PIN. onCreate(pin) gửi PIN cùng lời gọi tạo đơn.
+ */
+const SampleOrderModal = ({ open, onClose, onCreate, creating, order, onCopy, quota }) => {
   const { t } = useLanguageSafe();
-  const [amount, setAmount] = useState(49000);
   const [seconds, setSeconds] = useState(600);
+  const [pinOpen, setPinOpen] = useState(false);
 
   useEffect(() => {
     setSeconds(600);
@@ -21,11 +19,18 @@ const SampleOrderModal = ({ open, onClose, onCreate, creating, order, onCopy }) 
     return () => clearInterval(timer);
   }, [open, order]);
 
-  const plan = AMOUNTS.find((a) => a.value === (order?.amount || amount)) || AMOUNTS[1];
+  useEffect(() => {
+    if (!open) setPinOpen(false);
+  }, [open]);
+
+  const amount = quota?.amount || 2000;
+  const left = quota ? Math.max(0, quota.limit - quota.used) : null;
+  const exhausted = left === 0;
 
   return (
+    <>
     <Modal
-      open={open}
+      open={open && !pinOpen}
       onClose={onClose}
       size="lg"
       title={t('payments.sample.title')}
@@ -34,25 +39,18 @@ const SampleOrderModal = ({ open, onClose, onCreate, creating, order, onCopy }) 
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="m-0 mb-2 text-sm font-medium text-ink">{t('payments.sample.amountLabel')}</p>
-            <div className="flex flex-wrap gap-2">
-              {AMOUNTS.map((a) => (
-                <button
-                  key={a.value}
-                  type="button"
-                  aria-pressed={amount === a.value}
-                  onClick={() => setAmount(a.value)}
-                  className={`h-9 cursor-pointer rounded-lg border px-3 text-sm transition-colors ${
-                    amount === a.value ? 'border-brand bg-brand-soft font-semibold text-brand' : 'border-line bg-card text-ink hover:bg-muted'
-                  }`}
-                >
-                  {t(`payments.sample.${a.key}`)}
-                </button>
-              ))}
-            </div>
+          <div className="flex flex-col gap-1">
+            <p className="m-0 text-sm font-medium text-ink">{t('payments.sample.amountLabel')}</p>
+            <p className="m-0 text-base font-semibold tabular-nums text-brand">{t('payments.sample.amountFixed', { amount: formatVnd(amount) })}</p>
+            {quota && (
+              <p className={`m-0 text-xs ${exhausted ? 'text-danger' : 'text-ink-muted'}`}>
+                {exhausted
+                  ? t('payments.sample.quotaOut', { limit: quota.limit })
+                  : t('payments.sample.quotaLeft', { left, limit: quota.limit })}
+              </p>
+            )}
           </div>
-          <Button variant="primary" icon="qr_code_2" loading={creating} onClick={() => onCreate(amount)}>
+          <Button variant="primary" icon="qr_code_2" loading={creating} disabled={exhausted} onClick={() => setPinOpen(true)}>
             {t('payments.sample.createBtn')}
           </Button>
         </div>
@@ -92,7 +90,6 @@ const SampleOrderModal = ({ open, onClose, onCreate, creating, order, onCopy }) 
                   [t('payments.detail.bank'), order.bankName || '—'],
                   [t('payments.detail.accountNo'), order.accountNumber || '—'],
                   [t('payments.detail.accountName'), order.accountName || '—'],
-                  [t('payments.detail.packageType'), `Premium · ${plan.months === 6 ? t('payments.package.sixMonths') : t('payments.package.month')}`],
                   [t('payments.detail.amount'), formatVnd(order.amount || amount)],
                   [t('payments.detail.transferContent'), order.description || '—'],
                   [t('payments.detail.status'), <Badge key="s" tone="warning">{t('payments.status.PENDING')}</Badge>],
@@ -109,6 +106,17 @@ const SampleOrderModal = ({ open, onClose, onCreate, creating, order, onCopy }) 
         )}
       </div>
     </Modal>
+
+    <SecurityConfirmModal
+      isOpen={open && pinOpen}
+      onClose={() => setPinOpen(false)}
+      title={t('payments.sample.pinTitle')}
+      description={t('payments.sample.pinDescription', { amount: formatVnd(amount) })}
+      confirmText={t('payments.sample.pinConfirm')}
+      actionType="CREATE_SAMPLE_ORDER"
+      onVerify={({ pin }) => onCreate(pin)}
+    />
+    </>
   );
 };
 

@@ -464,6 +464,9 @@ model payment_order {
   refund_reason       String?               @db.Text @map("refund_reason")
   refund_proof        String?               @db.Text @map("refund_proof")
   is_template         Boolean               @default(false) @map("is_template")
+  /// Ẩn đơn mẫu khỏi danh sách admin (migration 53). Đơn không bao giờ bị xoá; trigger chặn DELETE và sửa trường gốc.
+  hidden_at           DateTime?             @db.Timestamp(6) @map("hidden_at")
+  hidden_by           Int?                  @map("hidden_by")
 
   account             account               @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_order_account")
   payment_transaction payment_transaction[]
@@ -476,18 +479,37 @@ model payment_order {
   @@map("payment_order")
 }
 
-/// Bảng nhật ký giao dịch đối soát Webhook PayOS (2.15)
+/// Sổ giao dịch thanh toán (2.15, migration 53): mỗi dòng là một lần tiền vào (IN, PayOS) hoặc ra (OUT, admin hoàn tiền).
+/// Bất biến: trigger trg_protect_payment_transaction cấm UPDATE / DELETE. Mã giao dịch ngân hàng bắt buộc, duy nhất.
 model payment_transaction {
-  id                   String        @id @db.VarChar(36) @map("id")
-  order_id             String        @db.VarChar(36) @map("order_id")
-  idaccount            Int           @map("idaccount")
-  payos_transaction_id String?       @db.VarChar(100) @map("payos_transaction_id")
-  amount               Decimal       @db.Decimal(15, 2) @map("amount")
-  bank_code            String?       @db.VarChar(50) @map("bank_code")
-  transaction_time     DateTime      @default(now()) @db.Timestamp(6) @map("transaction_time")
-  signature_verified   Boolean       @default(true) @map("signature_verified")
-  raw_webhook_hash     String?       @db.VarChar(256) @map("raw_webhook_hash")
-  created_at           DateTime      @default(now()) @db.Timestamp(6) @map("created_at")
+  id                        String        @id @db.VarChar(36) @map("id")
+  order_id                  String        @db.VarChar(36) @map("order_id")
+  idaccount                 Int           @map("idaccount")
+  /// Mã giao dịch ngân hàng (PayOS `reference` / mã chuyển khoản hoàn tiền). Không bao giờ là mã đơn.
+  /// Duy nhất nhờ chỉ mục một phần uq_payment_transaction_payos_id (SQL; Prisma không biểu diễn được).
+  payos_transaction_id      String        @db.VarChar(100) @map("payos_transaction_id")
+  amount                    Decimal       @db.Decimal(15, 2) @map("amount")
+  bank_code                 String?       @db.VarChar(50) @map("bank_code")
+  transaction_time          DateTime      @default(now()) @db.Timestamp(6) @map("transaction_time")
+  signature_verified        Boolean       @default(true) @map("signature_verified")
+  raw_webhook_hash          String?       @db.VarChar(256) @map("raw_webhook_hash")
+  created_at                DateTime      @default(now()) @db.Timestamp(6) @map("created_at")
+  direction                 String        @default("IN") @db.VarChar(3) @map("direction")
+  source                    String?       @db.VarChar(12) @map("source")
+  receiving_account_number  String?       @db.VarChar(50) @map("receiving_account_number")
+  payment_link_id           String?       @db.VarChar(64) @map("payment_link_id")
+  transfer_description      String?       @db.VarChar(255) @map("transfer_description")
+  currency                  String?       @db.VarChar(10) @map("currency")
+  counter_account_bank_id   String?       @db.VarChar(20) @map("counter_account_bank_id")
+  counter_account_bank_name String?       @db.VarChar(255) @map("counter_account_bank_name")
+  /// Mã hoá AES-256-GCM (dữ liệu cá nhân)
+  counter_account_name      String?       @db.VarChar(512) @map("counter_account_name")
+  /// Mã hoá AES-256-GCM (dữ liệu cá nhân)
+  counter_account_number    String?       @db.VarChar(512) @map("counter_account_number")
+  /// Webhook gốc có chữ ký / phản hồi API PayOS, mã hoá AES-256-GCM
+  raw_payload               String?       @map("raw_payload")
+  created_by                Int?          @map("created_by")
+  proof                     String?       @map("proof")
 
   order                payment_order @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_transaction_order")
   account              account       @relation(fields: [idaccount], references: [idaccount], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_transaction_account")
@@ -495,6 +517,23 @@ model payment_transaction {
   @@index([order_id], map: "idx_payment_transaction_order")
   @@index([idaccount], map: "idx_payment_transaction_account")
   @@map("payment_transaction")
+}
+
+/// Nhật ký mọi webhook PayOS có chữ ký hợp lệ (migration 53). Append-only: trigger cấm UPDATE / DELETE.
+model payment_webhook_log {
+  id              BigInt   @id @default(autoincrement()) @map("id")
+  received_at     DateTime @default(dbgenerated("(now() AT TIME ZONE 'UTC'::text)")) @db.Timestamp(6) @map("received_at")
+  order_code      BigInt?  @map("order_code")
+  reference       String?  @db.VarChar(100) @map("reference")
+  amount          Decimal? @db.Decimal(15, 2) @map("amount")
+  signature_valid Boolean  @map("signature_valid")
+  handled_as      String?  @db.VarChar(40) @map("handled_as")
+  /// Payload webhook gốc, mã hoá AES-256-GCM
+  payload         String   @map("payload")
+
+  @@index([order_code], map: "idx_payment_webhook_log_order_code")
+  @@index([received_at], map: "idx_payment_webhook_log_received_at")
+  @@map("payment_webhook_log")
 }
 
 /// Bảng danh mục chức năng hệ thống (2.16)
