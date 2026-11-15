@@ -34,12 +34,20 @@ const RealtimeStatusBadge = ({ connected: propConnected, className = '' }) => {
       connect: () => setStatus('connected'),
       disconnect: () => setStatus('disconnected'),
       connect_error: () => setStatus('disconnected'),
-      reconnect_attempt: () => setStatus('connecting'),
-      reconnect_failed: () => setStatus('disconnected'),
       error: () => setStatus('disconnected'),
     };
+    // socket.io v3+: sự kiện thử kết nối lại phát trên bộ quản lý kết nối (socket.io), không phát trên socket
+    const manager = socket.io;
+    const managerEvents = {
+      reconnect_attempt: () => setStatus('connecting'),
+      reconnect_failed: () => setStatus('disconnected'),
+    };
     Object.entries(events).forEach(([name, fn]) => socket.on(name, fn));
-    return () => Object.entries(events).forEach(([name, fn]) => socket.off(name, fn));
+    if (manager?.on) Object.entries(managerEvents).forEach(([name, fn]) => manager.on(name, fn));
+    return () => {
+      Object.entries(events).forEach(([name, fn]) => socket.off(name, fn));
+      if (manager?.off) Object.entries(managerEvents).forEach(([name, fn]) => manager.off(name, fn));
+    };
   }, [socket, propConnected, contextConnected]);
 
   useEffect(() => {
