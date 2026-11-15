@@ -58,12 +58,26 @@ const PolicyStatus = ({ userId }) => {
 
   if (!state) return <span className="text-ink-faint">…</span>;
   if (state.error) return <span className="text-ink-faint">—</span>;
-  if (!state.currentVersion) return <span className="text-ink-muted">{t('users.detail.policyNone')}</span>;
-  const latest = state.acceptances?.[0];
-  if (latest && latest.policy_version === state.currentVersion) {
-    return <Badge tone="success">{t('users.detail.policyAccepted', { version: latest.policy_version, time: formatDateTime(latest.accepted_at) })}</Badge>;
-  }
-  return <Badge tone="warning">{t('users.detail.policyPending', { version: state.currentVersion })}</Badge>;
+  const active = state.activePolicies || [];
+  if (active.length === 0) return <span className="text-ink-muted">{t('users.detail.policyNone')}</span>;
+  // Mỗi chính sách đang dùng: đã đồng ý đúng phiên bản đang dùng (mã nội bộ `version`) hay chưa
+  const acceptedAt = new Map((state.acceptances || []).map((a) => [a.policy_version, a.accepted_at]));
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {active.map((p) => {
+        const name = `${p.title} v${p.docVersion}`;
+        return acceptedAt.has(p.version) ? (
+          <Badge key={p.version} tone="success">
+            {t('users.detail.policyAccepted', { policy: name, time: formatDateTime(acceptedAt.get(p.version)) })}
+          </Badge>
+        ) : (
+          <Badge key={p.version} tone="warning">
+            {t('users.detail.policyPending', { policy: name })}
+          </Badge>
+        );
+      })}
+    </div>
+  );
 };
 
 const UserDetailModal = ({ userId, onClose }) => {

@@ -73,16 +73,31 @@ describe('Chính sách bảo mật trong hộp chi tiết', () => {
     return screen.findByRole('dialog', { name: 'Chi tiết người dùng' });
   };
 
-  it('đã đồng ý phiên bản hiện hành: hiện Đã đồng ý v2', async () => {
+  it('nhiều chính sách đang dùng: từng chính sách hiện Đã đồng ý / Chưa đồng ý theo đúng phiên bản đang dùng', async () => {
+    adminApi.getUserPolicy.mockResolvedValue({
+      data: {
+        currentVersion: 5,
+        activePolicies: [
+          { version: 5, policyId: 1, docVersion: 2, title: 'Điều khoản' },
+          { version: 3, policyId: 2, docVersion: 1, title: 'Bảo mật' },
+        ],
+        // Đã đồng ý Điều khoản v2 (mã 5) và Bảo mật bản cũ (mã 2), chưa đồng ý Bảo mật v1 đang dùng (mã 3)
+        acceptances: [
+          { policy_version: 5, title: 'Điều khoản', doc_version: 2, accepted_at: '2026-11-13T02:00:00Z' },
+          { policy_version: 2, title: 'Bảo mật cũ', doc_version: 1, accepted_at: '2026-11-01T02:00:00Z' },
+        ],
+      },
+    });
     const dialog = await open();
     expect(adminApi.getUserPolicy).toHaveBeenCalledWith(1);
-    expect(await within(dialog).findByText(/Đã đồng ý v2/)).toBeInTheDocument();
+    expect(await within(dialog).findByText(/Điều khoản v2: Đã đồng ý/)).toHaveAttribute('data-tone', 'success');
+    expect(within(dialog).getByText('Bảo mật v1: Chưa đồng ý')).toHaveAttribute('data-tone', 'warning');
   });
 
-  it('mới đồng ý v1 trong khi hiện hành v2: báo chưa đồng ý v2', async () => {
-    adminApi.getUserPolicy.mockResolvedValue({ data: { currentVersion: 2, acceptances: [{ policy_version: 1, accepted_at: '2026-11-01T02:00:00Z' }] } });
+  it('không có chính sách đang dùng: hiện Chưa có chính sách', async () => {
+    adminApi.getUserPolicy.mockResolvedValue({ data: { currentVersion: null, activePolicies: [], acceptances: [] } });
     const dialog = await open();
-    expect(await within(dialog).findByText('Chưa đồng ý v2')).toBeInTheDocument();
+    expect(await within(dialog).findByText('Chưa có chính sách')).toBeInTheDocument();
   });
 });
 
