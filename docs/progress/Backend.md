@@ -647,6 +647,7 @@ Toàn bộ 7 nội dung kỹ thuật (T1.1 $\rightarrow$ T1.7) cùng phân tích
    - Chế độ Sandbox tạo đơn thật với cờ `is_template: true` để quét QR thật từ App ngân hàng.
    - Modal hoàn tiền hỗ trợ upload file ảnh ủy nhiệm chi/biên lai chuyển khoản lưu tại `src/Backend/Assets/Refunds/`.
    - 2026-11-12: `deleteSampleOrders` (`DELETE /admin/payments/sample`) đổi điều kiện từ tiền tố `payment_link_id = 'sample-link-…'` (quy ước cũ, không còn khớp đơn mẫu tạo qua PayOS thật) sang `is_template = true`; Admin-web có nút "Xóa đơn mẫu" gọi API này. Test `tests/unit/admin.payment.test.js` ca 22.
+   - 2026-11-15: gỡ `DELETE /admin/payments/sample` (controller `deleteSampleOrders`, service / repository `hideSampleOrders`); Admin-web ẩn đơn mẫu bằng bộ lọc `excludeTemplate`. Cột `hidden_at` giữ nguyên, đơn đã ẩn trước đó vẫn không hiện ở danh sách mặc định. `GET /admin/payments/stats` thêm `refundPending` / `refunded` = `{ total, user, template }` (đơn `REFUND_PENDING` / `REFUNDED`) cho thẻ "Đơn chờ hoàn". Test: unit ca 19, 22; integration `payment.ledger.flow` P8, P19.
 
 ---
 

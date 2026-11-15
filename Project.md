@@ -4165,7 +4165,7 @@ Mọi bài test khi viết mới hoặc sửa đổi bắt buộc phải bao qu�
   - `src/Backend/modules/payment/payment.repository.js`:
     + `getOrCreatePayosQr`: Tạo liên kết thanh toán và mã VietQR chuẩn Napas qua kênh PayOS (MB Bank `2512070399999`, NGUYEN PHU BAO). Hỗ trợ cờ `persistOrder: true` lưu đơn `PENDING` vào Supabase để sẵn sàng đối soát khi webhook từ PayOS Cloud trả về.
     + `findOrCreateOrderByCode`: Tự động khởi tạo đơn đối soát từ Webhook PayOS hợp lệ nếu đơn chưa có sẵn trong CSDL, đảm bảo không bao giờ thất thoát tiền đã thanh toán của người dùng.
-    + `createSampleOrder` & `deleteSampleOrders`: Cho phép tạo và dọn dẹp các đơn hàng mẫu để kiểm thử quy trình đối soát.
+    + `createSampleOrder`: Cho phép tạo đơn hàng mẫu để kiểm thử quy trình đối soát. API ẩn đơn mẫu hàng loạt (`deleteSampleOrders`, `DELETE /admin/payments/sample`) đã gỡ ngày 2026-11-15; ẩn đơn mẫu trên bảng dùng checkbox "Ẩn đơn mẫu" (`excludeTemplate`).
   - `src/Backend/modules/payment/payment.service.js`:
     + `handlePayOSWebhook`: Thẩm tra chữ ký HMAC-SHA256, kiểm tra idempotency, tự động fallback gọi `findOrCreateOrderByCode` khi nhận giao dịch hợp lệ, băm SHA-256 payload, cập nhật trạng thái `PAID` và ghi nhận nhật ký vào `payment_transaction`.
   - `src/Backend/api/admin.routes.js`:

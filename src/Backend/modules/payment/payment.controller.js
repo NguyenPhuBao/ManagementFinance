@@ -176,18 +176,6 @@ async function getSampleQuota(req, res, next) {
 }
 
 /**
- * Ẩn đơn thử nghiệm khỏi danh sách (giữ đường dẫn DELETE cũ). Không xoá dòng nào.
- */
-async function deleteSampleOrders(req, res, next) {
-  try {
-    const result = await paymentService.hideSampleOrders(req.user);
-    return ResponseHandler.success(res, result, 'Đã ẩn các đơn thử nghiệm khỏi danh sách (đơn vẫn được lưu)');
-  } catch (error) {
-    return next(error);
-  }
-}
-
-/**
  * Người dùng xác nhận hoặc từ chối nâng cấp gói khi chuyển thừa tiền
  */
 async function confirmUpgrade(req, res, next) {
@@ -316,7 +304,6 @@ module.exports = {
   getOrderDetailForAdmin,
   getPackageTypes,
   createSampleOrder,
-  deleteSampleOrders,
   getSampleQuota,
 };
 

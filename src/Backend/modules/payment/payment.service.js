@@ -1021,13 +1021,6 @@ async function createSampleOrder(admin) {
   return result;
 }
 
-/**
- * Ẩn đơn thử nghiệm khỏi danh sách (không xoá: đơn là chứng từ, CSDL chặn xoá).
- */
-async function hideSampleOrders(admin) {
-  return paymentRepository.hideSampleOrders(admin?.idaccount);
-}
-
 /** Hạn mức đơn thử nghiệm trong ngày (giờ Việt Nam). */
 async function getSampleQuota(now = new Date()) {
   return paymentRepository.getSampleQuota(now);
@@ -1093,7 +1086,6 @@ module.exports = {
   getOrderDetailForAdmin,
   getPackageTypes,
   createSampleOrder,
-  hideSampleOrders,
   getSampleQuota,
   initPaymentAutoExpiryJob,
   stopPaymentAutoExpiryJob,

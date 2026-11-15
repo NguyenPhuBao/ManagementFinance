@@ -34,11 +34,6 @@ const paymentApi = {
   getSampleQuota: () => axiosClient.get('/admin/payments/sample/quota'),
 
   /**
-   * Ẩn các đơn thử nghiệm khỏi danh sách (đơn vẫn được lưu trong CSDL)
-   */
-  deleteSampleOrders: () => axiosClient.delete('/admin/payments/sample'),
-
-  /**
    * Người dùng xác nhận hoặc từ chối kích hoạt gói khi chuyển thừa tiền
    * @param {object} data { orderCode, accept }
    */
