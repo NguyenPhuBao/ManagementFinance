@@ -24,6 +24,8 @@ const adminApi = {
   dataIncidentAction: (id, action, body) => axiosClient.post(`/admin/data-incidents/${id}/${action}`, body),
   getPolicies: () => axiosClient.get('/admin/policies'),
   publishPolicy: (data) => axiosClient.post('/admin/policies', data),
+  /** Ngừng / kích hoạt một phiên bản chính sách: { status: 'ACTIVE' | 'INACTIVE', pin } */
+  setPolicyStatus: (version, data) => axiosClient.patch(`/admin/policies/${version}/status`, data),
   updateUserStatus: (id, data) => axiosClient.patch(`/admin/updatestatus/${id}`, data),
   deleteUser: (id) => axiosClient.delete(`/admin/deleteuser/${id}`),
 

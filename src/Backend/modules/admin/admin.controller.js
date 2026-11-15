@@ -29,16 +29,34 @@ const adminController = {
     }
   },
 
+  /** Thêm chính sách: `documentId` = phiên bản mới của chính sách có sẵn; không có thì `title` là chính sách mới. Tạo ở trạng thái Ngừng sử dụng. */
   async publishPolicy(req, res) {
     try {
-      const { title, content, pin, password } = req.body || {};
-      const draft = await policyService.publish({ title, content }, req.user?.idaccount);
-      await adminService.verifySecurityAction({ pin, password, action: 'PUBLISH_POLICY', targetId: draft.title }, req.user);
+      const { documentId, title, content, pin, password } = req.body || {};
+      const draft = await policyService.publish({ documentId, title, content }, req.user?.idaccount);
+      await adminService.verifySecurityAction({ pin, password, action: 'PUBLISH_POLICY', targetId: draft.title || String(draft.documentId) }, req.user);
       const created = await policyService.createVersion(draft);
-      req.auditActionName = `Đăng chính sách bảo mật v${created.version}`;
-      return ResponseHandler.success(res, { version: created.version, title: created.title, publishedAt: created.published_at }, 'Đã đăng phiên bản chính sách mới', 201);
+      req.auditActionName = `Thêm chính sách ${policyService.label(created)} (Ngừng sử dụng)`;
+      return ResponseHandler.success(res, policyService.toPublic(created), 'Đã thêm chính sách', 201);
     } catch (error) {
       if (!error.statusCode || error.statusCode >= 500) logger.error('publishPolicy failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500, null, error.code || null);
+    }
+  },
+
+  /** Ngừng / kích hoạt một phiên bản chính sách; bắt buộc PIN. */
+  async setPolicyStatus(req, res) {
+    try {
+      const version = parseInt(req.params.id, 10);
+      if (isNaN(version)) return ResponseHandler.badRequest(res, 'Mã chính sách không hợp lệ');
+      const { status, pin, password } = req.body || {};
+      policyService.assertStatus(status);
+      await adminService.verifySecurityAction({ pin, password, action: 'CHANGE_POLICY_STATUS', targetId: String(version) }, req.user);
+      const updated = await policyService.setStatus({ version, status, actorId: req.user?.idaccount });
+      req.auditActionName = `${status === 'ACTIVE' ? 'Kích hoạt' : 'Ngừng'} chính sách ${policyService.label(updated)}`;
+      return ResponseHandler.success(res, policyService.toPublic(updated), status === 'ACTIVE' ? 'Đã kích hoạt chính sách' : 'Đã ngừng chính sách');
+    } catch (error) {
+      if (!error.statusCode || error.statusCode >= 500) logger.error('setPolicyStatus failed', { error: error.message });
       return ResponseHandler.error(res, error.message, error.statusCode || 500, null, error.code || null);
     }
   },

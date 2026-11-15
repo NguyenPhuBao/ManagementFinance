@@ -4,7 +4,7 @@
 
 | Tệp | Là gì |
 |---|---|
-| `VIEC_BACKEND_CON_LAI.md` | 6 bước đưa chức năng gia đình ra thật, bảng trả lời |
+| `VIEC_BACKEND_CON_LAI.md` | Đơn còn mở và bảng trả lời (hiện không còn đơn mở; đợt gia đình đã chuyển sang `../DA-XONG/DUA_GIA_DINH_RA_THAT.md`) |
 | `KIEM-THU/chay_kiem_gia_dinh_2.js` | Kịch bản 36 ca của gia đình đợt 1A, 1B, 2; cần CSDL thử có `database/45`, `46` |
 | `KIEM-THU/chay_kiem.js` | Kịch bản 50 ca của gia đình phần 1 (`npm run verify:household`) |
 | `KIEM-THU/chay_kiem_pr174.js` | Kịch bản 24 ca, cần CSDL thử |

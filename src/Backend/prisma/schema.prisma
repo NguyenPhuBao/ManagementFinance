@@ -653,15 +653,38 @@ model aiops_quarantine_incident_link {
 }
 
 /// Bảng lưu vết lịch sử thiết bị và địa chỉ IP người dùng (2.21)
+/// Một chính sách (migration 54); các phiên bản nằm ở privacy_policy
+model policy_document {
+  id         Int              @id @default(autoincrement()) @map("id")
+  title      String           @unique(map: "uq_policy_document_title") @db.VarChar(200) @map("title")
+  created_at DateTime         @default(now()) @db.Timestamp(6) @map("created_at")
+  created_by Int?             @map("created_by")
+
+  versions   privacy_policy[]
+
+  @@map("policy_document")
+}
+
+/// Phiên bản chính sách. `version` là mã nội bộ (policy_acceptance tham chiếu); số hiển thị là `doc_version`.
+/// Nội dung đã đăng không sửa (trigger trg_protect_privacy_policy); chỉ đổi status ACTIVE / INACTIVE.
+/// Index có điều kiện uq_privacy_policy_one_active (document_id) WHERE status = 'ACTIVE' nằm ở migration 54 (Prisma không biểu diễn được).
 model privacy_policy {
-  version      Int                 @id @map("version")
-  title        String              @db.VarChar(200) @map("title")
-  content      String              @db.Text @map("content")
-  published_at DateTime            @default(now()) @db.Timestamp(6) @map("published_at")
-  published_by Int?                @map("published_by")
+  version           Int                 @id @map("version")
+  title             String              @db.VarChar(200) @map("title")
+  content           String              @db.Text @map("content")
+  published_at      DateTime            @default(now()) @db.Timestamp(6) @map("published_at")
+  published_by      Int?                @map("published_by")
+  document_id       Int                 @map("document_id")
+  doc_version       Int                 @map("doc_version")
+  status            String              @default("INACTIVE") @db.VarChar(10) @map("status")
+  status_changed_at DateTime?           @db.Timestamp(6) @map("status_changed_at")
+  status_changed_by Int?                @map("status_changed_by")
 
-  acceptances  policy_acceptance[]
+  document          policy_document     @relation(fields: [document_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_privacy_policy_document")
+  acceptances       policy_acceptance[]
 
+  @@unique([document_id, doc_version], map: "uq_privacy_policy_document_version")
+  @@index([status], map: "idx_privacy_policy_status")
   @@map("privacy_policy")
 }
 

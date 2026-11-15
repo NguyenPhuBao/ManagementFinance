@@ -16,6 +16,7 @@ const PREVIEW_TONE = {
   warning: 'border-warning bg-warning-soft',
   critical: 'border-danger bg-danger-soft',
 };
+const RESULT_TONE = { success: 'text-success', warning: 'text-warning', danger: 'text-danger' };
 const TITLE_MAX = 120;
 const MESSAGE_MAX = 500;
 
@@ -68,9 +69,18 @@ const BroadcastTab = () => {
     setSending(true);
     setResult(null);
     try {
-      await notificationApi.broadcastToAll({ title: title.trim(), message: message.trim(), level });
-      setResult({ ok: true, text: t('broadcast.send.success') });
-      if (notify) notify.success(t('broadcast.send.success'));
+      const res = await notificationApi.broadcastToAll({ title: title.trim(), message: message.trim(), level });
+      // Máy chủ chỉ gửi tới thiết bị đang kết nối lúc này; tin không được gửi bù cho thiết bị đang tắt / chạy nền
+      const count = Number((res?.data || res)?.deliveredCount) || 0;
+      if (count > 0) {
+        const text = t('broadcast.send.successCount', { count });
+        setResult({ ok: true, tone: 'success', text });
+        if (notify) notify.success(text);
+      } else {
+        const text = t('broadcast.send.noDevice');
+        setResult({ ok: true, tone: 'warning', text });
+        if (notify) notify.warning(text);
+      }
       setTitle('');
       setMessage('');
       setLevel('info');
@@ -180,7 +190,7 @@ const BroadcastTab = () => {
           )}
 
           {result && (
-            <p role="status" className={`m-0 text-sm ${result.ok ? 'text-success' : 'text-danger'}`}>
+            <p role="status" data-tone={result.tone || 'danger'} className={`m-0 text-sm ${RESULT_TONE[result.tone] || 'text-danger'}`}>
               {result.text}
             </p>
           )}

@@ -6,9 +6,9 @@
 
 ## 1. Nghiệp vụ (Chủ dự án chốt 2026-11-13)
 
-- Admin đăng chính sách theo phiên bản ở Admin-web (Bảo trì & Thông báo → Chính sách). Phiên bản mới nhất là hiện hành; nội dung đã đăng không sửa được.
-- Người dùng xem chính sách khi đăng nhập lần đầu và **phải đồng ý mới dùng được app**. Đồng ý **một lần cho cả chính sách**, không tách theo từng dịch vụ, **không có rút đồng ý**.
-- Khi admin đăng phiên bản mới, người dùng phải đồng ý phiên bản mới mới được dùng tiếp.
+- **Cập nhật 2026-11-15:** có thể có **nhiều chính sách song song** (ví dụ "Chính sách bảo mật", "Điều khoản sử dụng"). Mỗi chính sách có nhiều phiên bản, tối đa **một phiên bản đang sử dụng**. Admin thêm, ngừng, kích hoạt ở Admin-web (Bảo trì & Thông báo → Chính sách); nội dung đã đăng không sửa được.
+- Người dùng **phải đồng ý mọi chính sách đang sử dụng** mới dùng được app. Đồng ý từng chính sách một lần cho phiên bản đang dùng, **không có rút đồng ý**.
+- Khi admin kích hoạt một phiên bản mới (hoặc một chính sách mới), người dùng phải đồng ý bản đó mới được dùng tiếp. Chính sách bị ngừng thì không còn phải đồng ý.
 - Không đồng ý: đăng xuất (không xóa dữ liệu SQLite, theo quy tắc bảo lưu dữ liệu khi đăng xuất).
 
 ## 2. Hợp đồng API (đã có ở Backend)
@@ -20,33 +20,39 @@ Mọi request gửi `Authorization: Bearer <access token>` như các API khác. 
 {
   "success": true,
   "data": {
-    "policy": { "version": 1, "title": "…", "content": "…(văn bản thuần, xuống dòng bằng \\n)…", "publishedAt": "2026-11-13T03:28:08.632Z" },
-    "acceptedVersion": null,
-    "acceptedAt": null,
+    "policies": [
+      { "version": 3, "policyId": 1, "docVersion": 2, "title": "Chính sách bảo mật", "content": "…(văn bản thuần, xuống dòng bằng \\n)…", "status": "ACTIVE", "publishedAt": "2026-11-15T03:28:08.632Z", "accepted": true, "acceptedAt": "2026-11-15T04:00:00.000Z" },
+      { "version": 2, "policyId": 2, "docVersion": 1, "title": "Điều khoản sử dụng", "content": "…", "status": "ACTIVE", "publishedAt": "2026-11-14T03:28:08.632Z", "accepted": false, "acceptedAt": null }
+    ],
+    "policy": { "version": 2, "policyId": 2, "docVersion": 1, "title": "Điều khoản sử dụng", "content": "…", "status": "ACTIVE", "publishedAt": "…" },
+    "acceptedVersion": 3,
+    "acceptedAt": "2026-11-15T04:00:00.000Z",
     "mustAccept": true
   }
 }
 ```
-- `policy: null` và `mustAccept: false` khi admin chưa đăng chính sách nào: cho dùng app bình thường.
-- `mustAccept: true` khi người dùng chưa đồng ý phiên bản hiện hành.
+- **`policies`** (thêm 2026-11-15): mọi chính sách đang sử dụng. `version` là **mã để gửi khi đồng ý** (không phải số hiển thị); hiển thị dùng `title` + `v{docVersion}`. `accepted` cho biết người dùng đã đồng ý bản này chưa.
+- `mustAccept: true` khi còn ít nhất một mục trong `policies` có `accepted: false`. App hiện **từng** chính sách chưa đồng ý (lần lượt hoặc gộp một màn có nhiều mục) và gửi đồng ý cho từng `version`.
+- `policy` giữ cho tương thích: chính sách đang dùng đầu tiên mà người dùng chưa đồng ý (đã đồng ý hết thì là bản đang dùng mới nhất). App mới nên dùng `policies`.
+- `policies: []`, `policy: null`, `mustAccept: false` khi không có chính sách nào đang sử dụng: cho dùng app bình thường.
 
 ### `POST /api/policy/accept`
-Body: `{ "version": 1 }` (đúng `policy.version` vừa hiện cho người dùng).
-- `201`: ghi nhận lần đầu; `200`: đã đồng ý phiên bản này trước đó. `data` trả lại cùng dạng `GET /current` (lúc này `mustAccept: false`).
-- `409` `code: "POLICY_VERSION_OUTDATED"`: admin vừa đăng phiên bản mới trong lúc người dùng đang đọc → gọi lại `GET /current`, hiện phiên bản mới.
-- `404` `code: "POLICY_NOT_FOUND"`: chưa có chính sách → cho dùng app.
+Body: `{ "version": 2 }` (đúng `version` của chính sách vừa hiện cho người dùng). Nhiều chính sách thì gọi một lần cho mỗi chính sách.
+- `201`: ghi nhận lần đầu; `200`: đã đồng ý phiên bản này trước đó. `data` trả lại cùng dạng `GET /current` (`mustAccept: false` khi đã đồng ý hết).
+- `409` `code: "POLICY_VERSION_OUTDATED"`: bản này vừa bị admin ngừng sử dụng trong lúc người dùng đang đọc → gọi lại `GET /current`, hiện danh sách mới.
+- `404` `code: "POLICY_NOT_FOUND"`: không có chính sách nào đang sử dụng → cho dùng app.
 - `400` `code: "POLICY_VERSION_REQUIRED"`: thiếu / sai `version`.
 - Backend lưu kèm: thời điểm, chỉ mục mù IP (không lưu IP), header `x-device-name`, `user-agent`. App nên tiếp tục gửi `x-device-name` (mục 3.1 của `README.md`).
 
 ### Sự kiện Socket.io `system.policy_updated`
-Phát tới mọi client khi admin đăng phiên bản mới. Payload: `{ "version": 2, "title": "…", "publishedAt": "…" }`. Client chỉ cần dựa vào tên sự kiện: nhận được thì gọi `GET /api/policy/current`.
+Phát tới mọi client khi admin **kích hoạt hoặc ngừng** một phiên bản (từ 2026-11-15; thêm phiên bản mới không phát vì bản mới ở trạng thái ngừng). Payload: `{ "version": 2, "title": "…", "status": "ACTIVE" }`. Client chỉ cần dựa vào tên sự kiện: nhận được thì gọi `GET /api/policy/current`.
 
 ## 3. Việc Client-app cần làm
 
 | # | Việc | Gợi ý vị trí | Nghiệm thu |
 |---|---|---|---|
 | 1 | Sau đăng nhập và mỗi lần mở app khi có mạng: gọi `GET /api/policy/current`; `mustAccept` thì mở màn hình chính sách toàn màn hình, chặn các màn khác | luồng sau đăng nhập / khởi động | Tài khoản chưa đồng ý không vào được Trang chủ |
-| 2 | Màn hình chính sách: hiện `title`, `content` (cuộn được), nút "Đồng ý" và "Không đồng ý". Đồng ý → `POST /api/policy/accept` với `version`; Không đồng ý → đăng xuất, giữ SQLite | `features/` mới (ví dụ `features/policy/`) | Đồng ý xong vào app; Backend có 1 dòng `policy_acceptance` đúng `idaccount`, `policy_version` |
+| 2 | Màn hình chính sách: với **mỗi** mục `policies` có `accepted: false`, hiện `title` + `v{docVersion}`, `content` (cuộn được), nút "Đồng ý" và "Không đồng ý". Đồng ý → `POST /api/policy/accept` với `version` của mục đó; đồng ý hết mới vào app. Không đồng ý → đăng xuất, giữ SQLite | `features/` mới (ví dụ `features/policy/`) | Đồng ý xong vào app; Backend có 1 dòng `policy_acceptance` đúng `idaccount`, `policy_version` |
 | 3 | Xử lý `409 POLICY_VERSION_OUTDATED`: tải lại và hiện phiên bản mới | interceptor hoặc màn chính sách | Không kẹt vòng lặp, không hiện lỗi thô |
 | 4 | Thêm sự kiện `system.policy_updated` vào `RealtimeEvent` (ví dụ `chinhSachMoi`), nhận được thì gọi lại bước 1 | `core/realtime/realtime_event.dart` | Admin đăng phiên bản mới → app đang mở hiện màn chính sách |
 | 5 | Ngoại tuyến (offline-first): không gọi được Backend thì **không chặn** người dùng; kiểm lại khi có mạng. Có thể lưu `acceptedVersion` cục bộ để tránh nháy màn hình | lưu cục bộ (SecureStorage / SQLite) | Mất mạng vẫn dùng app được |

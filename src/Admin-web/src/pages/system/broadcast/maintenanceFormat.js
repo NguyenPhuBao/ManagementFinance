@@ -12,8 +12,6 @@ export const scheduledListOf = (maintenance) => {
   return maintenance?.scheduled ? [maintenance.scheduled] : [];
 };
 
-export const scheduleId = (s) => s.id || s.recordId;
-
 const formatSeconds = (sec) => {
   if (sec < 60) return `${sec}s`;
   const min = Math.floor(sec / 60);
@@ -43,6 +41,3 @@ export const durationText = (row, now, t) => {
   }
   return formatSeconds(secondsBetween(start, end));
 };
-
-export const plannedDuration = (startIso, endIso) =>
-  startIso && endIso ? formatSeconds(secondsBetween(new Date(startIso).getTime(), new Date(endIso).getTime())) : '—';

@@ -81,6 +81,14 @@ graph TD
    ```
 3. Các sự kiện quản trị nhạy cảm (`admin.*`) **chỉ được phát tới `admin_room`**, tuyệt đối không phát ra ngoài phòng công cộng.
 
+### 2.2. Kết nối lại khi token hết hạn hoặc mạng đứt (2026-11-15, `src/Admin-web/src/store/socket.context.jsx`)
+Token truy cập của admin chỉ sống 15 phút, nên một trang để yên lâu rồi bị đứt kết nối (Render khởi động lại, mạng chập chờn) sẽ bắt tay lại bằng token đã hết hạn. Máy chủ từ chối ở bước bắt tay thì socket.io **không tự thử lại**, nên trước bản này trang kẹt ở "Mất kết nối" tới khi tải lại.
+- `auth` là **hàm**: socket.io gọi lại mỗi lần (kết nối lại) nên luôn gửi token mới nhất trong `localStorage`.
+- `connect_error` mang `Authentication error`: token trong trình duyệt đã đổi (API vừa làm mới) ⇒ `connect()` ngay; còn `Token expired` ⇒ gọi `refreshAccessToken()` (dùng chung với interceptor 401 của `axios-client.js`, gọi đồng thời chỉ một yêu cầu `/auth/refresh`) rồi `connect()`. Chỉ làm mới một lần cho tới khi nối được; không làm mới khi màn hình đang khoá.
+- Không giới hạn số lần thử lại (chờ 2 s, tăng dần tới 10 s); trình duyệt báo có mạng (`online`) hoặc quay lại tab ⇒ nối lại ngay.
+- Huy hiệu trạng thái nghe `reconnect_attempt` / `reconnect_failed` trên bộ quản lý kết nối `socket.io` (socket.io v3+ không phát hai sự kiện này trên socket).
+- Test: `src/Admin-web/src/tests/realtime.test.jsx`.
+
 ---
 
 ## 📑 3. BẢNG TRA CỨU TOÀN BỘ 13 SỰ KIỆN REAL-TIME CỦA HỆ THỐNG

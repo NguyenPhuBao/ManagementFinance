@@ -248,16 +248,35 @@ function emitAdminNotification(notificationData) {
  * Phát thông báo Broadcast toàn hệ thống tới tất cả các client đang kết nối
  * @param {Object} broadcastData 
  */
+/**
+ * Số socket người dùng (không tính admin, idrole = 1) trong danh sách socket đang nối của tiến trình này.
+ * @param {Map<string, import('socket.io').Socket>} sockets
+ */
+function countUserSockets(sockets) {
+  let n = 0;
+  for (const s of sockets.values()) {
+    if (s.data?.idaccount && Number(s.data.idrole) !== 1) n += 1;
+  }
+  return n;
+}
+
+/**
+ * Phát tin tới mọi socket đang nối. Chỉ thiết bị đang kết nối lúc này nhận được (không có đẩy / nhận bù).
+ * @returns {number} số thiết bị người dùng đang kết nối khi phát (0 nếu chưa khởi tạo / lỗi)
+ */
 function emitSystemBroadcast(broadcastData) {
   if (!io) {
     logger.warn('[Socket] Attempted to emit system broadcast before Socket.io initialized');
-    return;
+    return 0;
   }
   try {
     io.emit('system.broadcast', broadcastData);
-    logger.info('[Socket] Emitted system.broadcast to all connected clients', { title: broadcastData.title });
+    const deliveredCount = countUserSockets(io.of('/').sockets);
+    logger.info('[Socket] Emitted system.broadcast to all connected clients', { title: broadcastData.title, deliveredCount });
+    return deliveredCount;
   } catch (error) {
     logger.error('[Socket] Failed to emit system broadcast', { error: error.message });
+    return 0;
   }
 }
 
@@ -417,6 +436,7 @@ module.exports = {
   emitSyncCompleted,
   emitAdminNotification,
   emitSystemBroadcast,
+  countUserSockets,
   emitUserRegistered,
   emitUserLoggedIn,
   emitUserStatusChanged,

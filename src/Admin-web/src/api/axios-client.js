@@ -33,19 +33,39 @@ axiosClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Queue for handling multiple concurrent requests when token is refreshing
-let isRefreshing = false;
-let failedQueue = [];
+// Một lượt làm mới token dùng chung cho mọi nơi gọi cùng lúc (API 401 và socket bị từ chối vì token hết hạn)
+let refreshPromise = null;
 
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-  failedQueue = [];
+/**
+ * Đổi refresh token lấy access token mới, lưu vào trình duyệt và trả access token mới.
+ * Gọi đồng thời nhiều lần chỉ gửi một yêu cầu /auth/refresh.
+ */
+export const refreshAccessToken = () => {
+  if (refreshPromise) return refreshPromise;
+  const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+  if (!refreshToken) return Promise.reject(new Error('Missing refresh token'));
+
+  // Dùng instance axios độc lập để tránh bị lặp vô hạn interceptor
+  refreshPromise = axios
+    .post(`${baseURL}/auth/refresh`, { refreshToken }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-client-platform': 'admin-web',
+      },
+    })
+    .then((res) => {
+      const data = res.data?.data || res.data;
+      const newAccessToken = data?.accessToken;
+      if (!newAccessToken) throw new Error('Refresh token did not return accessToken');
+      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, newAccessToken);
+      if (data?.refreshToken) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refreshToken);
+      axiosClient.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+      return newAccessToken;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+  return refreshPromise;
 };
 
 const handleLogoutRedirect = () => {
@@ -94,53 +114,16 @@ axiosClient.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      if (isRefreshing) {
-        // Nếu đang trong tiến trình làm mới token, đưa request vào hàng đợi chờ token mới
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return axiosClient(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
 
       try {
-        // Dùng instance axios độc lập để tránh bị lặp vô hạn interceptor
-        const res = await axios.post(`${baseURL}/auth/refresh`, { refreshToken }, {
-          headers: {
-            'Content-Type': 'application/json',
-            'x-client-platform': 'admin-web',
-          },
-        });
-        const data = res.data?.data || res.data;
-        const newAccessToken = data?.accessToken;
-        const newRefreshToken = data?.refreshToken;
-
-        if (!newAccessToken) {
-          throw new Error('Refresh token did not return accessToken');
-        }
-
-        localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, newAccessToken);
-        if (newRefreshToken) {
-          localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
-        }
-
-        axiosClient.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+        // Các request 401 đồng thời dùng chung một lượt làm mới
+        const newAccessToken = await refreshAccessToken();
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-        processQueue(null, newAccessToken);
         return axiosClient(originalRequest);
       } catch (refreshErr) {
-        processQueue(refreshErr, null);
         handleLogoutRedirect();
         return Promise.reject(refreshErr);
-      } finally {
-        isRefreshing = false;
       }
     }
 

@@ -31,7 +31,7 @@ Cơ chế bảo trì gồm hai lớp: lớp **chặn yêu cầu** chạy trong b
    - Khi kích hoạt Card cảnh báo: **TUYỆT ĐỐI KHÔNG ĐƯỢC LÀM MẤT FORM LẬP LỊCH BẢO TRÌ ĐỊNH KỲ**.
 7. **Đa Lịch Bảo Trì (Multi-Schedule Management):**
    - Form lập lịch bảo trì định kỳ luôn luôn hiện diện và sẵn sàng tiếp nhận lịch mới.
-   - Bảng danh sách các lịch bảo trì đã hẹn hiển thị chi tiết (bắt đầu, kết thúc, thời lượng, lý do, người tạo) kèm nút hủy riêng biệt theo ID (`DELETE /api/admin/system/maintenance/schedule/:id`).
+   - Lịch đã hẹn hiện trong bảng **Lịch sử bảo trì** (trạng thái "Đã lên lịch") kèm nút hủy theo ID (`DELETE /api/admin/system/maintenance/schedule/:id`). Bảng riêng "Lịch đã đặt" đã bỏ ngày 2026-11-15 vì trùng thông tin; lịch còn dưới 1 giờ vẫn hiện băng cảnh báo phía trên.
 8. **Đặc quyền Cứu hộ Khẩn cấp (Emergency Override):** Duy nhất **Bảo trì khẩn cấp** có quyền kích hoạt đè khi hệ thống đang trong phiên bảo trì thông thường (phiên đang mở trong CSDL chuyển sang loại `EMERGENCY`, gửi thông báo khẩn cấp). Đang bảo trì khẩn cấp thì không bật thêm được. Khi bật khẩn cấp, các lịch hẹn trùng khung giờ khẩn cấp (từ lúc bật tới giờ kết thúc hẹn, mặc định 2 tiếng nếu không hẹn) bị hủy tự động; lịch ngoài khung giữ nguyên. Lịch tới giờ mà hệ thống đang có bảo trì khác cũng bị hủy.
 
 ---

@@ -45,7 +45,7 @@ async function collect(idaccount) {
     prisma.household_member.findMany({ where: { idaccount: id }, include: { household: { select: { name: true } } } }),
     prisma.payment_order.findMany({ where: { idaccount: id, is_template: false }, orderBy: { created_at: 'desc' } }),
     prisma.account_device_history.findMany({ where: { idaccount: id }, orderBy: { last_active_at: 'desc' } }),
-    prisma.policy_acceptance.findMany({ where: { idaccount: id }, orderBy: { accepted_at: 'asc' } }),
+    prisma.policy_acceptance.findMany({ where: { idaccount: id }, orderBy: { accepted_at: 'asc' }, include: { policy: { include: { document: true } } } }),
     prisma.auditlog.findMany({
       where: { idaccount: id, time_req: { gte: new Date(Date.now() - ACTIVITY_DAYS * DAY_MS) } },
       orderBy: { time_req: 'desc' },
@@ -95,7 +95,12 @@ async function collect(idaccount) {
       refund_reason: o.refund_reason,
     })),
     devices: devices.map((d) => ({ device: d.device_name, ip: d.ip_address, userAgent: d.user_agent, firstSeenAt: d.first_seen_at, lastActiveAt: d.last_active_at })),
-    policyAcceptances: acceptances.map((a) => ({ version: a.policy_version, acceptedAt: a.accepted_at, device: a.device_name })),
+    policyAcceptances: acceptances.map((a) => ({
+      policy: a.policy?.document?.title || a.policy?.title || null,
+      version: a.policy?.doc_version ?? a.policy_version,
+      acceptedAt: a.accepted_at,
+      device: a.device_name,
+    })),
     serverActivity: activity.map((a) => ({ time: a.time_req, request: a.request, action: a.action, status: a.req_status, reason: a.reason })),
   };
 }
