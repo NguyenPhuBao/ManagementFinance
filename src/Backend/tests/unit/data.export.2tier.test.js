@@ -63,7 +63,7 @@ beforeEach(() => {
   } : null));
   patch(prisma.user, 'findUnique', async () => ({ fullname: 'Nguyễn An', email: 'an.nguyen@gmail.com', phone: encrypt('0901234567'), address: encrypt('12 Lê Lợi'), country_code: 'VN' }));
   patch(prisma.account_device_history, 'findMany', async () => [{ id: 1n, device_name: 'Pixel 8', ip_address: '113.161.xx.xx', ip_encrypted: 'enc:bi-mat', ip_hash: 'hash-bi-mat', user_agent: 'okhttp', first_seen_at: new Date(), last_active_at: new Date() }]);
-  patch(prisma.policy_acceptance, 'findMany', async () => [{ policy_version: 1, accepted_at: new Date(), ip_hash: 'hash-bi-mat', device_name: 'Pixel 8' }]);
+  patch(prisma.policy_acceptance, 'findMany', async () => [{ policy_version: 1, accepted_at: new Date(), ip_hash: 'hash-bi-mat', device_name: 'Pixel 8', policy: { title: 'Điều khoản', doc_version: 2, document: { title: 'Điều khoản' } } }]);
   patch(prisma.household_member, 'findMany', async () => [{ role: 'Owner', joined_at: new Date(), left_at: null, household: { name: 'Nhà An' } }]);
   patch(prisma.payment_order, 'findMany', async () => [{ id: 'o1', order_code: 123n, package_type: 'PREMIUM_1M', amount: '49000', status: 'PAID', created_at: new Date(), checkout_url: 'https://pay', qr_url: 'qr' }]);
   patch(prisma.auditlog, 'findMany', async (args) => { auditQuery = args; return [{ time_req: new Date(), request: 'POST /api/sync/push', action: 'Đồng bộ', req_status: 'Pass', reason: null }]; });
@@ -99,6 +99,9 @@ describe('Tầng 1: nội dung bản sao dữ liệu', () => {
       assert.ok(!json.includes(secret), `lộ ${secret}`);
     }
     assert.strictEqual(data.payments[0].order_code, '123');
+    // Đồng ý chính sách: có tên chính sách và phiên bản trong chính sách (migration 54)
+    assert.strictEqual(data.policyAcceptances[0].policy, 'Điều khoản');
+    assert.strictEqual(data.policyAcceptances[0].version, 2);
   });
 
   it('nhật ký chỉ gồm lượt gọi máy chủ 12 tháng gần nhất; phần giới thiệu nói rõ không thu thập hoạt động trong app', async () => {

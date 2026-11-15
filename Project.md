@@ -144,7 +144,7 @@ ModuleName/
 - **ORM**: Prisma (`src/Backend/prisma/schema.prisma`, 30 model, đếm 2026-11-14)
 - **Môi trường**: Production và CSDL dùng chung là Supabase (PostgreSQL); dev / test dùng PostgreSQL cục bộ (CSDL thử riêng, đặt qua `TEST_DATABASE_URL`).
 - **Schema**: `public`
-- Quản lý schema bằng **tệp SQL lũy đẳng** `src/Backend/database/N_*.sql` (hiện tới `51_data_incident.sql`); cấu trúc bảng hiện hành mô tả ở `docs/Rule_Project/New_Database.md` (nguồn sự thật hơn các sơ đồ trong mục này).
+- Quản lý schema bằng **tệp SQL lũy đẳng** `src/Backend/database/N_*.sql` (hiện tới `54_policy_documents_status.sql`); cấu trúc bảng hiện hành mô tả ở `docs/Rule_Project/New_Database.md` (nguồn sự thật hơn các sơ đồ trong mục này).
 
 > **Quy trình thay đổi CSDL (DB Guard, thay quy định 2026-08-18):**
 > 1. Viết DDL vào `database/N_*.sql` lũy đẳng (kiểm trùng số `N` trước).

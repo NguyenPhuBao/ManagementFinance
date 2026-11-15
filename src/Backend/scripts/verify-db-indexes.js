@@ -120,6 +120,12 @@ async function verifyDatabase() {
         table: 'account_device_history',
         name: 'idx_device_history_ip_retention',
         expectedClause: '(ip_encrypted IS NOT NULL)'
+      },
+      {
+        // Migration 54: mỗi chính sách tối đa một phiên bản Đang sử dụng
+        table: 'privacy_policy',
+        name: 'uq_privacy_policy_one_active',
+        expectedClause: "WHERE ((status)::text = 'ACTIVE'::text)"
       }
     ];
 
