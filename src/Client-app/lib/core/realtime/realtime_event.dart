@@ -1,4 +1,4 @@
-/// Tám giá trị (mười bốn tên) sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
+/// Chín giá trị (mười lăm tên — đếm 2026-11-16) sự kiện thời gian thực client còn quan tâm, trong số những sự kiện
 /// backend phát tới room `account_<idaccount>` (riêng `emitPermissionsUpdated` — `account.permissions_updated` /
 /// `account.upgraded` — phát tới MỌI socket; riêng `household.changed` — [nhaDoi] — phát tới cả room `household_<id>` lẫn
 /// room tài khoản của từng thành viên, từ PR #170).
@@ -77,6 +77,10 @@ enum RealtimeEvent {
   /// mời bằng email mà email ấy đã có tài khoản (`createEmailInvite` → `emitToAccount`). **Tín hiệu**: không đọc payload,
   /// `NhaRepository` gọi lại `/households/invitations`. Im, không kéo đồng bộ.
   loiMoiNha,
+
+  /// `account.data_export_ready` — bản sao dữ liệu cá nhân sẵn sàng (đơn client-app mục 52, phát vào phòng tài khoản).
+  /// **Tín hiệu**: trang "Dữ liệu của tôi" đang mở đọc lại `GET /account/data-export/latest`; im, không kéo đồng bộ.
+  banSaoDuLieuSanSang,
 }
 
 /// Dịch tên sự kiện của backend sang enum. Tên lạ trả `null` — backend thêm sự
@@ -108,6 +112,8 @@ RealtimeEvent? realtimeEventFromName(String name) {
       return RealtimeEvent.nhaDoi;
     case 'household.invited':
       return RealtimeEvent.loiMoiNha;
+    case 'account.data_export_ready':
+      return RealtimeEvent.banSaoDuLieuSanSang;
     default:
       return null;
   }
@@ -125,7 +131,8 @@ extension RealtimeEventX on RealtimeEvent {
       this != RealtimeEvent.taiKhoanHaCap &&
       this != RealtimeEvent.donThanhToanDoi &&
       this != RealtimeEvent.nhaDoi &&
-      this != RealtimeEvent.loiMoiNha;
+      this != RealtimeEvent.loiMoiNha &&
+      this != RealtimeEvent.banSaoDuLieuSanSang;
 
   /// Câu hiện trên toast. Hằng số, cố ý không nêu số liệu.
   ///
@@ -148,6 +155,8 @@ extension RealtimeEventX on RealtimeEvent {
       case RealtimeEvent.nhaDoi:
         return null;
       case RealtimeEvent.loiMoiNha:
+        return null;
+      case RealtimeEvent.banSaoDuLieuSanSang:
         return null;
     }
   }
