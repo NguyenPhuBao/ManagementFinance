@@ -619,7 +619,7 @@ src/Backend/
 
 ## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-16)
 
-### 📦 Bản sao dữ liệu cá nhân — trang "Dữ liệu của tôi" (2026-11-16 phiên 49, `2a7a2afd..8cdfe74c`, mã xong, CHƯA đo đường thật)
+### 📦 Bản sao dữ liệu cá nhân — trang "Dữ liệu của tôi" (2026-11-16 phiên 49, `2a7a2afd..8cdfe74c`, mã xong, ✅ đo máy ảo + backend local ĐẠT)
 
 Đơn `client-app/CAN-LAM/BAN_SAO_DU_LIEU.md` (README mục 13 = đơn 52). Spec `docs/superpowers/specs/2026-11-16-ban-sao-du-lieu-ca-nhan-design.md`
 (mục 8 = 7 chỗ mã khác spec). Thi công inline theo kế hoạch 8 task.
@@ -636,11 +636,19 @@ src/Backend/
   đọc lại `GET …/latest`; quay lại app (`AppLifecycleListener.onResume`) cũng đọc lại.
 - **Test:** `flutter test` **9610 / 11 skip** (+34), analyze **20** (= mức nền), đo 2026-11-16. Ca 320 dp thử bản sai (bỏ `Expanded`) thấy đỏ.
 - **Stitch:** `generate_screen_from_text` trả `timeout`, không gọi lại; `list_screens` vẫn 170 màn — chưa có màn để đối chiếu.
-- **Chưa đo:** máy ảo lượt đầu hỏng vì APK debug dựng KHÔNG `--dart-define=API_BASE_URL` → mặc định Render (bẫy PR #180) → tài khoản 10
-  (chỉ có ở `PersonFinance`) bị từ chối → app đăng xuất (SQLite giữ). Người dùng 2026-11-16: dữ liệu Render đã xoá hết, **chỉ kiểm thử
-  local**. Đường local cần: áp `database/50_data_export_request.sql` lên `PersonFinance`, `prisma generate` trong worktree (client đang
-  sinh chưa có bảng ấy), chạy backend worktree bằng `.env` của thư mục chính + ghi đè `DATABASE_URL` / `DIRECT_URL` / `DATA_ENCRYPTION_KEY`
-  / `STORAGE_DRIVER=local`, dựng APK với `--dart-define=API_BASE_URL=http://10.0.2.2:3000/api`, đăng nhập lại tài khoản 10.
+- **Đo máy ảo `FlowMoney_16G` + backend local (2026-11-16, ĐẠT):** người dùng: dữ liệu Render đã xoá, chỉ kiểm thử local. Lượt đầu hỏng
+  do mình: APK debug dựng KHÔNG `--dart-define=API_BASE_URL` → mặc định Render (bẫy PR #180) → tài khoản 10 bị từ chối → app đăng xuất
+  (SQLite giữ, đăng nhập lại `dat` = tài khoản 10 thấy dữ liệu cũ). Chuẩn bị (người dùng cho phép đích danh): sao lưu
+  `D:\FlowMoney-saoluu\PersonFinance-truoc-47-54-2026-11-16.dump` (chụp sau khi đã áp 50), áp `database/47`–`54` lên `PersonFinance`
+  (53 xoá 0 hàng mẫu; dò mọi model Prisma sau đó: 0 lệch), `prisma generate` trong worktree, backend worktree chạy
+  `DOTENV_CONFIG_PATH=<.env thư mục chính> node -r dotenv/config index.js` + ghi đè `DATABASE_URL` / `DIRECT_URL` / `DATA_ENCRYPTION_KEY`
+  dev / `STORAGE_DRIVER=local` (log `PostgreSQL connected {"database":"PersonFinance"…}`), APK `--dart-define=API_BASE_URL=http://10.0.2.2:3000/api`.
+  Kết quả: dòng thứ tư hiện ở Cá nhân · trang *Chưa yêu cầu* · bấm → 202 + toast *"Đã gửi tới email ta***@gmail.com…"* · socket
+  `account.data_export_ready` tự chuyển trang sang *Sẵn sàng* (*"Tải được tới 18:59 17/11"*, đúng +24 giờ) · email thật gửi qua Brevo
+  (người dùng chọn giữ) · tải CSV → *"Đã lưu Tải về/flowmoney-giao-dich-20261116.csv"*, JSON cũng vào Tải về, cỡ tệp khớp byte phản hồi
+  (13.638 / 687.487), CSV giữ BOM + `sep=;`, JSON hợp lệ (meta · account · profile · wallets · transactions · budgets · bills · goals ·
+  categories · households…), 0 chuỗi `enc:` · Back về Cá nhân. Chưa đo bằng giao diện: 429 (nút yêu cầu ẩn khi đang *Sẵn sàng*), 410 hết
+  hạn, đường chia sẻ khi máy không có `MediaStore` — đều có ca test.
 - Cùng phiên: hộp xác nhận đăng xuất thôi hứa *"đăng nhập offline"* → *"Đăng nhập lại cần có kết nối mạng."* (`5ef9bce1`, người dùng báo).
 
 ### 🏠 Ví chung chọn được ở form Thêm giao dịch thường + khoản nhà ở Trang chủ / Sổ (2026-11-16, `fa72e860..`, mã xong, CHƯA đo máy thật)
