@@ -112,8 +112,9 @@ export default {
 
   settings: {
     title: 'Cài đặt',
-    subtitle: 'Giao diện, thông báo, bảo mật và tài khoản quản trị.',
+    subtitle: 'Giao diện, thông báo, bảo mật và tài khoản quản trị. Cài đặt lưu riêng cho tài khoản của bạn.',
     done: 'Xong',
+    syncFailed: 'Chưa lưu được lên máy chủ. Cài đặt vẫn áp dụng trên máy này.',
     tabs: {
       general: 'Giao diện',
       notifications: 'Thông báo',

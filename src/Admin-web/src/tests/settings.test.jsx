@@ -20,9 +20,10 @@ vi.mock('../store/auth.context', () => ({
   useAuthContext: () => ({ user: { Username: 'admin.local', Role: 'Admin', Email: 'admin@local.test' } }),
 }));
 vi.mock('../services/sound.service', () => ({ default: { playCriticalAlarm: vi.fn() } }));
-vi.mock('../api/admin.api', () => ({ default: { changePin: vi.fn(), changePassword: vi.fn(), createAdmin: vi.fn() } }));
+vi.mock('../api/admin.api', () => ({ default: { changePin: vi.fn(), changePassword: vi.fn(), createAdmin: vi.fn(), getMySettings: vi.fn(), updateMySettings: vi.fn() } }));
 
-const saved = () => JSON.parse(localStorage.getItem('admin_system_settings') || '{}');
+// Cài đặt riêng từng tài khoản (2026-11-16): bản sao trong trình duyệt theo khoá của tài khoản đang đăng nhập (#5)
+const saved = () => JSON.parse(localStorage.getItem('admin_system_settings:5') || '{}');
 const onClose = vi.fn();
 
 const renderModal = () =>
@@ -38,6 +39,10 @@ const dialogNamed = (name) => screen.getByRole('dialog', { name });
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
+  localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({ idaccount: 5, username: 'admin.local' }));
+  localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, 'tok');
+  adminApi.getMySettings.mockReset().mockReturnValue(new Promise(() => {}));
+  adminApi.updateMySettings.mockReset().mockResolvedValue({ data: { success: true } });
   document.documentElement.classList.remove('dark');
   onClose.mockReset();
   soundService.playCriticalAlarm.mockReset();
@@ -194,6 +199,19 @@ describe('Quản trị viên', () => {
     expect(within(dialog).getAllByText('123456')).toHaveLength(2);
     fireEvent.click(within(dialog).getByTestId('btn-finish-create-admin'));
     expect(screen.queryByRole('dialog', { name: 'Cấp tài khoản quản trị' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Lưu theo tài khoản', () => {
+  it('đổi tự khóa gửi lên máy chủ; máy chủ lỗi thì chân hộp báo chưa lưu được, cài đặt vẫn áp dụng', async () => {
+    adminApi.updateMySettings.mockRejectedValue(new Error('Network Error'));
+    renderModal();
+    expect(screen.getByText(/Cài đặt lưu riêng cho tài khoản của bạn/)).toBeInTheDocument();
+    openTab('Bảo mật');
+    fireEvent.change(screen.getByLabelText('Tự khóa sau'), { target: { value: '15' } });
+    expect(saved().autoLockMinutes).toBe(15);
+    await waitFor(() => expect(adminApi.updateMySettings).toHaveBeenCalledWith({ autoLockMinutes: 15 }));
+    expect(await screen.findByText('Chưa lưu được lên máy chủ. Cài đặt vẫn áp dụng trên máy này.')).toBeInTheDocument();
   });
 });
 

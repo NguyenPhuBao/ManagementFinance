@@ -499,3 +499,8 @@ Tuân thủ nghiêm ngặt **Rule 10 (DB Guard)**: Toàn bộ bảng và cột m
 ### 5.8. Sổ sự cố dữ liệu cá nhân (Migration 51, 2026-11-14)
 - `data_incident`: `id` (`SERIAL`), `code` (`SC-YYYY-NNN`, UNIQUE), `title`, `description`, `source` (`AIOPS` / `AUDIT_LOG` / `USER_REPORT` / `PROCESSOR` / `OTHER`), `detected_at` (T0), `occurred_at`, `data_types`, `sensitive`, `affected_users`, `affected_records`, `consequences`, `measures`, `contact`, `status` (`OPEN` / `CONTAINED` / `REPORTED` / `CLOSED`), `contained_at`, `authority_reported_at`, `authority_report_ref`, `late_reason`, `report_not_required`, `no_report_reason`, `users_notified_at`, `root_cause`, `closed_at`, `created_by` / `updated_by` (FK `account`, `ON DELETE SET NULL`), `created_at`, `updated_at`.
 - CHECK `ck_data_incident_status`, `ck_data_incident_source`; chỉ mục `idx_data_incident_status_detected`; trigger `trg_protect_data_incident` (`protect_data_incident_delete`) chặn DELETE. Không đi qua `/sync/*`.
+
+### 5.9. Cài đặt cá nhân của tài khoản quản trị (Migration 55, 2026-11-16)
+- `admin_preference`: `idaccount` (`INTEGER`, khoá chính, FK `fk_admin_preference_account` → `account.Idaccount`, `ON DELETE CASCADE`), `settings` (`JSONB`, mặc định `{}`, CHECK `ck_admin_preference_settings_object`: phải là đối tượng), `updated_at` (`TIMESTAMPTZ`).
+- Chỉ 7 khoá, Backend kiểm khoá và giá trị (`admin-preference.service.js`): `theme` (light/dark), `tableDensity` (comfortable/compact), `soundEnabled`, `toastDuration` (3000/4500/7000/10000), `showUnreadBadge`, `metricsInterval` (1/3/5/10), `autoLockMinutes` (0/15/30/60).
+- API `GET` / `PUT /api/admin/me/settings` (idaccount lấy từ token). Prisma không khai báo quan hệ với `account` (model `account` giữ nguyên). Không đi qua `/sync/*`.

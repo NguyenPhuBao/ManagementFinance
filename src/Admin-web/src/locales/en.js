@@ -112,8 +112,9 @@ export default {
 
   settings: {
     title: 'Settings',
-    subtitle: 'Appearance, notifications, security and admin accounts.',
+    subtitle: 'Appearance, notifications, security and admin accounts. Settings are saved for your account only.',
     done: 'Done',
+    syncFailed: 'Not saved to the server yet. Settings still apply on this device.',
     tabs: {
       general: 'Appearance',
       notifications: 'Notifications',

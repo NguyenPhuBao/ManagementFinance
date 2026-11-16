@@ -57,6 +57,9 @@ const adminApi = {
 
   // Security Action Re-authentication & PIN / Password / Admin Management
   verifySecurityAction: (data) => axiosClient.post('/admin/verify-security-action', data),
+  // Cài đặt cá nhân của chính tài khoản đang đăng nhập (máy chủ lấy idaccount từ token)
+  getMySettings: () => axiosClient.get('/admin/me/settings'),
+  updateMySettings: (settings) => axiosClient.put('/admin/me/settings', settings),
   changePin: (data) => axiosClient.post('/admin/change-pin', data),
   changePassword: (data) => axiosClient.post('/admin/change-password', data),
   firstLoginSetup: (data) => axiosClient.post('/admin/first-login-setup', data),

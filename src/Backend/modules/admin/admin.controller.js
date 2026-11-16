@@ -1,6 +1,7 @@
 const adminService = require('./admin.service');
 const deviceHistory = require('../auth/device-history.service');
 const policyService = require('../policy/policy.service');
+const preferenceService = require('./admin-preference.service');
 const ResponseHandler = require('../../core/response-handler');
 const logger = require('../../core/logger');
 
@@ -25,6 +26,27 @@ const adminController = {
       return ResponseHandler.success(res, devices, 'Thiết bị đăng nhập của người dùng');
     } catch (error) {
       logger.error('getUserDevices failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  /** Cài đặt cá nhân của CHÍNH tài khoản đang đăng nhập (idaccount từ token, không nhận từ body). */
+  async getMySettings(req, res) {
+    try {
+      const data = await preferenceService.get(req.user.idaccount);
+      return ResponseHandler.success(res, data, 'Cài đặt của tài khoản');
+    } catch (error) {
+      logger.error('getMySettings failed', { error: error.message });
+      return ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  },
+
+  async updateMySettings(req, res) {
+    try {
+      const data = await preferenceService.update(req.user.idaccount, req.body);
+      return ResponseHandler.success(res, data, 'Đã lưu cài đặt của tài khoản');
+    } catch (error) {
+      if (error.statusCode !== 400) logger.error('updateMySettings failed', { error: error.message });
       return ResponseHandler.error(res, error.message, error.statusCode || 500);
     }
   },

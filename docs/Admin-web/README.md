@@ -142,7 +142,7 @@ Mở từ nút bánh răng trên Header. Hộp thoại `components/layout/Settin
 3. **Kết nối:** trạng thái kết nối realtime, chu kỳ nhịp tim số liệu 1 / 3 / 5 / 10 giây, kiểm tra độ trễ.
 4. **Bảo mật:** tự khóa màn hình sau 15 / 30 / 60 phút hoặc tắt, khóa ngay, xóa bộ nhớ đệm, khôi phục mặc định.
 5. **Quản trị viên:** đổi mật khẩu, đổi PIN (mật khẩu / PIN gửi qua HTTPS, Backend băm và kiểm), cấp tài khoản quản trị viên mới (`CreateAdminModal`, nhiều bước).
-- **Lưu trữ cục bộ:** cài đặt cá nhân lưu một khóa `localStorage` `admin_system_settings` (mặc định: Sáng, Rộng rãi, có âm thanh, 4,5 giây, có huy hiệu, nhịp 3 giây, tự khóa 30 phút); trạng thái thu gọn menu lưu `admin_sidebar_collapsed`. Mật khẩu, PIN và tài khoản quản trị lưu ở CSDL qua `admin.api.js`.
+- **Cài đặt riêng từng tài khoản (từ 2026-11-16):** 7 cài đặt của hộp Cài đặt (giao diện, mật độ, âm thanh, thời gian thông báo, huy hiệu, nhịp cập nhật, tự khóa; mặc định: Sáng, Rộng rãi, có âm thanh, 4,5 giây, có huy hiệu, nhịp 3 giây, tự khóa 30 phút) lưu trên máy chủ theo tài khoản (bảng `admin_preference`, `GET`/`PUT /api/admin/me/settings`); trình duyệt giữ bản sao theo khóa `admin_system_settings:<idaccount>` để áp ngay khi tải trang và quyết tự khóa trước khi máy chủ trả lời. Đăng xuất thì về mặc định; khóa chung cũ `admin_system_settings` được chuyển lên máy chủ một lần rồi xóa. Lưu lên máy chủ lỗi thì chân hộp Cài đặt báo, cài đặt vẫn áp dụng trên máy. Ngôn ngữ và trạng thái thu gọn menu (`admin_sidebar_collapsed`) vẫn lưu theo trình duyệt. Mật khẩu, PIN và tài khoản quản trị lưu ở CSDL qua `admin.api.js`.
 
 ---
 
