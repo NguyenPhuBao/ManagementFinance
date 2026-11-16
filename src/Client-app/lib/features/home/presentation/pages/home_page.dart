@@ -27,6 +27,8 @@ import '../../../goal/data/models/goal_entity.dart';
 import '../../../goal/data/repositories/goal_repository.dart';
 import '../../../../shared/widgets/notification_bell.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../transaction/data/khoan_nha_cho_so_nguon.dart';
+import '../../../transaction/presentation/widgets/nhan_nha_nho.dart';
 import '../../../transaction/data/models/transaction_entity.dart';
 import '../../../transaction/data/repositories/transaction_repository.dart';
 import '../../../wallet/data/repositories/wallet_repository.dart';
@@ -166,6 +168,13 @@ class HomePage extends StatelessWidget {
                   final categoryStream = (currentUserId != null)
                       ? sl<CategoryManagementRepository>().watchAll(accountId: currentUserId)
                       : Stream<List<CategoryEntity>>.value(const []);
+                  // "Giao dịch gần đây" kèm khoản nhà TÔI ghi (spec 2026-11-16) — thu chi tháng vẫn đọc `txStream` (chỉ riêng).
+                  final ganDayStream = (currentUserId != null)
+                      ? sl<TransactionRepository>().watchAllKemNha(currentUserId)
+                      : Stream<List<TransactionEntity>>.value(const []);
+                  final traNhaStream = currentUserId != null && sl.isRegistered<KhoanNhaChoSoNguon>()
+                      ? sl<KhoanNhaChoSoNguon>().traTen(currentUserId)
+                      : Stream<TraTenNha>.value(TraTenNha.rong);
 
                   return StreamBuilder<List<TransactionEntity>>(
                     stream: txStream,
@@ -187,13 +196,22 @@ class HomePage extends StatelessWidget {
                             builder: (_, wallets) =>
                                 StreamBuilder<List<CategoryEntity>>(
                               stream: categoryStream,
-                              builder: (_, categories) =>
-                                  _buildRecentTransactions(
-                                context,
-                                transactions.take(5).toList(),
-                                TransactionLookup(
-                                  wallets: wallets.data ?? const [],
-                                  categories: categories.data ?? const [],
+                              builder: (_, categories) => StreamBuilder<TraTenNha>(
+                                stream: traNhaStream,
+                                builder: (_, traNha) => StreamBuilder<List<TransactionEntity>>(
+                                  stream: ganDayStream,
+                                  builder: (_, ganDay) {
+                                    final nha = traNha.data ?? TraTenNha.rong;
+                                    return _buildRecentTransactions(
+                                      context,
+                                      (ganDay.data ?? const <TransactionEntity>[]).take(5).toList(),
+                                      TransactionLookup(
+                                        wallets: [...?wallets.data, ...nha.vi],
+                                        categories: [...?categories.data, ...nha.danhMuc],
+                                        tenNha: nha.tenTheoId,
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                             ),
@@ -387,11 +405,10 @@ class HomePage extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary)),
                 const SizedBox(height: 2),
-                Text(subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style:
-                        const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                DongPhuGiaoDich(
+                    chu: subtitle,
+                    tenNha: content.nhanNha,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               ],
             ),
           ),
