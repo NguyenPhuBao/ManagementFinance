@@ -109,7 +109,7 @@ Client-app tương tác với máy chủ thông qua 2 kênh độc lập nhưng 
 | **18** | `bank_transaction.incoming` | `account_<id>` | Webhook biến động ngân hàng (Legacy) | Thông báo giao dịch (đã dừng module Bank) | 🔇 Legacy |
 | **19** | `household.changed` | `account_<id>` từng thành viên | Đổi thành viên / trạng thái nhà, giải tán | Tín hiệu: gọi lại `/households/me` | 🔇 Im lặng |
 | **20** | `household.invited` | `account_<id>` người được mời | Có lời mời email tới tài khoản | Tín hiệu: gọi lại `/households/invitations` | 🔇 Im lặng |
-| **21** | `system.policy_updated` | Toàn hệ thống (`io.emit`) | Admin kích hoạt hoặc ngừng một phiên bản chính sách (2026-11-15; trước đó: đăng phiên bản mới). Payload `{ version, title, status }` | Gọi `GET /api/policy/current`, mở màn đồng ý chính sách nếu `mustAccept` (xem `docs/superpowers/client-app/CAN-LAM/CHINH_SACH_BAO_MAT.md`) | ⚠️ Cao |
+| **21** | `system.policy_updated` | Toàn hệ thống (`io.emit`) | Admin kích hoạt hoặc ngừng một phiên bản chính sách (2026-11-15; trước đó: đăng phiên bản mới). Payload `{ version, title, status }` | Gọi `GET /api/policy/current`, mở màn đồng ý chính sách nếu `mustAccept` (xem `docs/superpowers/client-app/CAN-LAM/CHINH_SACH_BAO_MAT.md`) | ⚠️ Cao (2026-11-16: Admin-web ẩn quản lý chính sách nên sự kiện không còn phát; Client-app không cần nghe) |
 | **22** | `account.data_export_ready` | `account_<id>` | Bản sao dữ liệu cá nhân đã tạo xong (2026-11-14) | Gọi `GET /api/account/data-export/latest`, hiện 2 nút tải JSON / CSV (xem `docs/superpowers/client-app/CAN-LAM/BAN_SAO_DU_LIEU.md`) | Trung bình |
 
 ---

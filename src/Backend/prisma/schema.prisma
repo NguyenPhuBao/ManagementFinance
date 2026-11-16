@@ -759,6 +759,15 @@ model data_incident {
 /// Phiên chạy của tiến trình Backend (migration 52), phục vụ độ khả dụng theo kỳ.
 /// end_reason: GRACEFUL (tắt có chủ đích) | UNKNOWN (sập, đóng ở lần khởi động sau). Truy cập bằng pg thô.
 /// Chỉ mục một phần idx_server_session_open (WHERE ended_at IS NULL) nằm trong tệp SQL, Prisma không biểu diễn được.
+/// Cài đặt cá nhân của từng tài khoản quản trị (migration 55). Khoá ngoại tới account khai báo trong SQL.
+model admin_preference {
+  idaccount  Int      @id @map("idaccount")
+  settings   Json     @default("{}") @db.JsonB @map("settings")
+  updated_at DateTime @default(now()) @db.Timestamptz(6) @map("updated_at")
+
+  @@map("admin_preference")
+}
+
 model server_session {
   id           BigInt    @id @default(autoincrement()) @map("id")
   instance_id  String    @db.VarChar(100) @map("instance_id")

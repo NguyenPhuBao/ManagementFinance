@@ -4,11 +4,14 @@ import useSocket from '../../hooks/useSocket';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 import { formatDateTime } from '../../utils/format';
-import { Badge, Button, ConfirmModal, Icon, PageHeader, Tabs } from '../../components/ui';
+import { Badge, Button, Icon, PageHeader, SecurityConfirmModal, Tabs } from '../../components/ui';
 import MaintenanceTab from './broadcast/MaintenanceTab';
 import BroadcastTab from './broadcast/BroadcastTab';
 import PolicyTab from './broadcast/PolicyTab';
 import { scheduledListOf } from './broadcast/maintenanceFormat';
+
+// Tạm ẩn tab Chính sách (2026-11-16): chính sách viết cứng phía Client-app. Giữ PolicyTab để bật lại sau.
+const SHOW_POLICY_TAB = false;
 
 const IDLE = { active: false, isEmergency: false, reason: '', activatedBy: null, activatedAt: null, scheduled: null, scheduledList: [] };
 const unwrap = (res) => res?.data || res;
@@ -60,8 +63,9 @@ const BroadcastPage = () => {
     return () => socket.off('admin.maintenance_changed', onChanged);
   }, [socket]);
 
+  // rethrow: lỗi ném lại cho hộp PIN hiện (kể cả PIN sai), không báo lỗi riêng.
   const act = useCallback(
-    async (call, successText, failText) => {
+    async (call, successText, failText, { rethrow = false } = {}) => {
       initiator.current = true;
       setBusy(true);
       try {
@@ -72,6 +76,7 @@ const BroadcastPage = () => {
         return true;
       } catch (err) {
         initiator.current = false;
+        if (rethrow) throw err;
         if (notify) notify.error(err?.response?.data?.message || failText, t('broadcast.feedback.errorTitle'));
         return false;
       } finally {
@@ -81,19 +86,19 @@ const BroadcastPage = () => {
     [notify, t]
   );
 
-  const stopMaintenance = async () => {
-    setConfirmStop(false);
-    await act(
+  const stopMaintenance = (credentials) =>
+    act(
       () =>
         adminApi.setMaintenanceStatus({
           active: false,
           reason: (maintenance.reason || '').trim() || t('broadcast.defaults.emergencyReason'),
           isEmergency: true,
+          ...credentials,
         }),
       t('broadcast.feedback.ended'),
-      t('broadcast.feedback.failed')
+      t('broadcast.feedback.failed'),
+      { rethrow: true }
     );
-  };
 
   const dot = maintenance.active ? (maintenance.isEmergency ? 'bg-danger' : 'bg-warning') : scheduledListOf(maintenance).length ? 'bg-info' : null;
 
@@ -118,7 +123,7 @@ const BroadcastPage = () => {
                 ),
               },
               { key: 'broadcast', label: t('broadcast.tabBroadcast') },
-              { key: 'policy', label: t('broadcast.tabPolicy') },
+              ...(SHOW_POLICY_TAB ? [{ key: 'policy', label: t('broadcast.tabPolicy') }] : []),
             ]}
           />
         }
@@ -160,20 +165,19 @@ const BroadcastPage = () => {
 
       {tab === 'maintenance' ? (
         <MaintenanceTab maintenance={maintenance} busy={busy} act={act} version={version} onRefresh={loadStatus} />
-      ) : tab === 'policy' ? (
+      ) : SHOW_POLICY_TAB && tab === 'policy' ? (
         <PolicyTab />
       ) : (
         <BroadcastTab />
       )}
 
-      <ConfirmModal
-        open={confirmStop}
+      <SecurityConfirmModal
+        isOpen={confirmStop}
+        onClose={() => setConfirmStop(false)}
         title={t('broadcast.stopModal.title')}
-        message={t('broadcast.stopModal.message')}
+        description={t('broadcast.stopModal.message')}
         confirmText={t('broadcast.stopModal.confirm')}
-        loading={busy}
-        onConfirm={stopMaintenance}
-        onCancel={() => setConfirmStop(false)}
+        onVerify={stopMaintenance}
       />
     </div>
   );

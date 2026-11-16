@@ -48,6 +48,8 @@ router.get('/system/health', adminController.getSystemHealth);
 router.get('/system/availability', adminController.getAvailability);
 router.get('/audit-logs', adminController.getAuditLogs);
 router.post('/verify-security-action', adminController.verifySecurityAction);
+router.get('/me/settings', adminController.getMySettings);
+router.put('/me/settings', adminController.updateMySettings);
 router.post('/change-pin', adminController.changeAdminPin);
 router.post('/first-login-setup', adminController.firstLoginSetup);
 router.post('/change-password', adminController.changeAdminPassword);

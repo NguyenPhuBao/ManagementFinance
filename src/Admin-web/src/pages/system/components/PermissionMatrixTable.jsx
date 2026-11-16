@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { useLanguageSafe } from '../../../store/language.context';
 import { Badge, Button, Card, Icon } from '../../../components/ui';
-import { POLICIES, defaultPermission, isChanged, scopeSummary } from './permissionFormat';
+import { FIXED_LIMITS, defaultPermission, downgradeBehavior, isChanged } from './permissionFormat';
 
-const COLS = ['w-[26%]', 'w-[9%]', 'w-[10%]', 'w-[15%]', 'w-[17%]', 'w-[17%]', 'w-[6%]'];
+const COLS = ['w-[30%]', 'w-[10%]', 'w-[12%]', 'w-[20%]', 'w-[22%]', 'w-[6%]'];
 
 const fieldClass =
   'h-9 rounded-lg border border-line bg-card px-2 text-sm text-ink focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:bg-muted disabled:text-ink-faint';
 
-const PermissionMatrixTable = ({ groupName, features, plans, draft, original, onPatch, onOpenScope, onUndo }) => {
+const PermissionMatrixTable = ({ groupName, features, plans, draft, original, onPatch, onUndo }) => {
   const { t } = useLanguageSafe();
   const [open, setOpen] = useState(true);
 
@@ -17,6 +17,7 @@ const PermissionMatrixTable = ({ groupName, features, plans, draft, original, on
     const changed = isChanged(value, original[plan]?.[f.id] || value);
     const isLimit = f.type === 'LIMIT';
     const unlimited = isLimit && value.limit_value === null;
+    const fixed = FIXED_LIMITS.includes(f.id);
     const names = { name: f.name, plan };
     return {
       changed,
@@ -26,13 +27,17 @@ const PermissionMatrixTable = ({ groupName, features, plans, draft, original, on
             <Badge tone={plan === 'Premium' ? 'success' : 'neutral'}>{plan}</Badge>
           </td>
           <td className="px-4 py-2.5">
-            <label className="inline-flex cursor-pointer items-center gap-2 whitespace-nowrap">
+            <label
+              className={`inline-flex items-center gap-2 whitespace-nowrap ${fixed ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+              title={fixed ? t('permissions.table.fixedHint') : undefined}
+            >
               <input
                 type="checkbox"
                 aria-label={t('permissions.aria.access', names)}
                 checked={Boolean(value.is_enabled)}
-                onChange={(e) => onPatch(plan, f.id, { is_enabled: e.target.checked })}
-                className="h-4 w-4 cursor-pointer accent-brand"
+                disabled={fixed}
+                onChange={(e) => !fixed && onPatch(plan, f.id, { is_enabled: e.target.checked })}
+                className="h-4 w-4 cursor-pointer accent-brand disabled:cursor-not-allowed"
               />
               <span className={value.is_enabled ? 'font-medium text-success' : 'text-ink-faint'}>
                 {value.is_enabled ? t('permissions.table.on') : t('permissions.table.off')}
@@ -47,7 +52,7 @@ const PermissionMatrixTable = ({ groupName, features, plans, draft, original, on
                   min="0"
                   max="999"
                   aria-label={t('permissions.aria.limit', names)}
-                  disabled={!value.is_enabled || unlimited}
+                  disabled={!value.is_enabled || unlimited || fixed}
                   value={value.limit_value ?? ''}
                   placeholder={unlimited ? '∞' : '0'}
                   onChange={(e) => {
@@ -60,47 +65,27 @@ const PermissionMatrixTable = ({ groupName, features, plans, draft, original, on
                   <input
                     type="checkbox"
                     aria-label={t('permissions.aria.unlimited', names)}
-                    disabled={!value.is_enabled}
+                    disabled={!value.is_enabled || fixed}
                     checked={unlimited}
                     onChange={(e) => onPatch(plan, f.id, { limit_value: e.target.checked ? null : 0 })}
                     className="h-4 w-4 cursor-pointer accent-brand"
                   />
                   <span aria-hidden="true">∞</span>
                 </label>
+                {fixed && (
+                  <span className="text-xs text-ink-faint" title={t('permissions.table.fixedHint')}>
+                    {t('permissions.table.fixed')}
+                  </span>
+                )}
               </div>
             ) : (
               <span className="text-ink-faint">—</span>
             )}
           </td>
           <td className="px-4 py-2.5">
-            <div className="flex min-w-0 items-center gap-1">
-              <span className="max-w-40 truncate rounded bg-muted px-2 py-0.5 font-mono text-xs text-ink-muted" title={JSON.stringify(value.scope_config || {})}>
-                {scopeSummary(value.scope_config, t)}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="edit"
-                data-testid={`btn-config-scope-${f.id}-${plan}`}
-                aria-label={t('permissions.aria.scope', names)}
-                onClick={() => onOpenScope(f, plan)}
-              />
-            </div>
-          </td>
-          <td className="px-4 py-2.5">
-            <select
-              aria-label={t('permissions.aria.policy', names)}
-              value={value.downgrade_policy || 'BLOCK_CREATE'}
-              disabled={!value.is_enabled}
-              onChange={(e) => onPatch(plan, f.id, { downgrade_policy: e.target.value })}
-              className={`${fieldClass} w-full cursor-pointer pr-8`}
-            >
-              {POLICIES.map((p) => (
-                <option key={p} value={p}>
-                  {t(`permissions.policies.${p}`)}
-                </option>
-              ))}
-            </select>
+            <span data-testid={`policy-${f.id}-${plan}`} className="text-sm text-ink-muted">
+              {t(`permissions.downgrade.${downgradeBehavior(f)}`)}
+            </span>
           </td>
           <td className="px-2 py-2.5 text-right">
             {changed && <Button variant="ghost" size="sm" icon="undo" aria-label={t('permissions.aria.undo', names)} onClick={() => onUndo(f.id, plan)} />}
@@ -138,8 +123,7 @@ const PermissionMatrixTable = ({ groupName, features, plans, draft, original, on
                 <th scope="col" className="px-4 py-3">{t('permissions.table.plan')}</th>
                 <th scope="col" className="px-4 py-3">{t('permissions.table.access')}</th>
                 <th scope="col" className="px-4 py-3">{t('permissions.table.limit')}</th>
-                <th scope="col" className="px-4 py-3">{t('permissions.table.scope')}</th>
-                <th scope="col" className="px-4 py-3">{t('permissions.table.policy')}</th>
+                <th scope="col" className="px-4 py-3" title={t('permissions.table.policyHint')}>{t('permissions.table.policy')}</th>
                 <th scope="col" className="px-2 py-3">
                   <span className="sr-only">{t('permissions.table.actions')}</span>
                 </th>

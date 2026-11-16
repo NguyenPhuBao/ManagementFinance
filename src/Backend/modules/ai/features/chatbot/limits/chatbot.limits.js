@@ -11,6 +11,14 @@ function positiveNumber(envName, fallback) {
   return Number.isFinite(raw) && raw > 0 ? raw : fallback;
 }
 
+/** Số nguyên >= 0 từ biến môi trường; không đặt hoặc hỏng thì `null` (để tầng gọi rơi về CSDL / mặc định). */
+function optionalNonNegative(envName) {
+  const raw = process.env[envName];
+  if (raw === undefined || String(raw).trim() === '') return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+
 function getChatbotLimits() {
   return Object.freeze({
     // — Mỗi yêu cầu —
@@ -31,6 +39,16 @@ function getChatbotLimits() {
     llmTimeoutMs: positiveNumber('AI_LLM_TIMEOUT_MS', 60000),
     // — Mỗi người dùng / toàn hệ thống —
     dailyPromptsDefault: positiveNumber('AI_DAILY_PROMPTS_DEFAULT', 20),
+    // Theo gói, thắng `scope_config` trong CSDL khi có đặt (chốt 2026-11-16: cột Phạm vi ẩn khỏi Admin-web,
+    // chỉnh giới hạn chatbot bằng biến môi trường). Không đặt → giữ số trong CSDL như trước.
+    dailyPromptsByType: Object.freeze({
+      Basic: optionalNonNegative('AI_DAILY_PROMPTS_BASIC'),
+      Premium: optionalNonNegative('AI_DAILY_PROMPTS_PREMIUM'),
+    }),
+    contextWindowDaysByType: Object.freeze({
+      Basic: optionalNonNegative('AI_CONTEXT_WINDOW_DAYS_BASIC'),
+      Premium: optionalNonNegative('AI_CONTEXT_WINDOW_DAYS_PREMIUM'),
+    }),
     // Ngân sách chi phí AI mỗi người dùng mỗi tháng, micro-USD (800000 = 0.80 USD ≈ 42% giá Premium 49.000đ; PO nâng từ 0.40 ngày 2026-11-08).
     monthlyBudgetMicroUsd: positiveNumber('AI_MONTHLY_BUDGET_MICRO_USD', 800000),
     maxStreamsPerUser: positiveNumber('AI_MAX_STREAMS_PER_USER', 1),

@@ -3,10 +3,9 @@ import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
 import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
-import { Button, Card, ConfirmModal, EmptyState, PageHeader, Spinner } from '../../components/ui';
+import { Button, Card, EmptyState, PageHeader, SecurityConfirmModal, Spinner } from '../../components/ui';
 import PermissionFilterToolbar from './components/PermissionFilterToolbar';
 import PermissionMatrixTable from './components/PermissionMatrixTable';
-import PermissionScopeDrawer from './components/PermissionScopeDrawer';
 import { PLANS, groupLabel, isChanged } from './components/permissionFormat';
 
 const EMPTY = { Basic: {}, Premium: {} };
@@ -26,11 +25,8 @@ const PermissionManagementPage = () => {
   const [selectedGroup, setSelectedGroup] = useState('ALL');
   const [viewMode, setViewMode] = useState('ALL');
   const [onlyDirty, setOnlyDirty] = useState(false);
-  const [scopeTarget, setScopeTarget] = useState(null);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [resetting, setResetting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,13 +69,16 @@ const PermissionManagementPage = () => {
               feature_id: f.id,
               is_enabled: d.is_enabled,
               limit_value: d.limit_value,
-              scope_config: d.scope_config,
-              downgrade_policy: d.downgrade_policy,
             };
           })
       ),
     [features, draft, original]
   );
+
+  // Ô "Chỉ xem dòng đã sửa" chỉ hiện khi còn dòng đã sửa: hết dòng thì tắt bộ lọc, kẻo mọi phân hệ bị ẩn mà không còn chỗ tắt.
+  useEffect(() => {
+    if (onlyDirty && dirtyItems.length === 0) setOnlyDirty(false);
+  }, [onlyDirty, dirtyItems.length]);
 
   const visibleGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -110,33 +109,15 @@ const PermissionManagementPage = () => {
     [original]
   );
 
-  const save = async () => {
-    if (dirtyItems.length === 0) return;
-    setSaving(true);
-    try {
-      await adminApi.updatePermissions(dirtyItems);
-      setConfirmSave(false);
-      if (notify) notify.success(t('permissions.feedback.saved', { count: dirtyItems.length }));
-      await load();
-    } catch (err) {
-      if (notify) notify.error(errorMessage(err, t('permissions.feedback.saveError')), t('permissions.feedback.errorTitle'));
-    } finally {
-      setSaving(false);
-    }
+  // Lỗi (kể cả PIN sai) hiện ngay trong hộp PIN; thành công mới báo và tải lại.
+  const saved = async () => {
+    if (notify) notify.success(t('permissions.feedback.saved', { count: dirtyItems.length }));
+    await load();
   };
 
-  const resetDefault = async () => {
-    setResetting(true);
-    try {
-      await adminApi.resetPermissionsDefault();
-      setConfirmReset(false);
-      if (notify) notify.success(t('permissions.feedback.reset'));
-      await load();
-    } catch (err) {
-      if (notify) notify.error(errorMessage(err, t('permissions.feedback.resetError')), t('permissions.feedback.errorTitle'));
-    } finally {
-      setResetting(false);
-    }
+  const resetDone = async () => {
+    if (notify) notify.success(t('permissions.feedback.reset'));
+    await load();
   };
 
   const plans = viewMode === 'ALL' ? PLANS : [viewMode];
@@ -148,7 +129,7 @@ const PermissionManagementPage = () => {
         description={t('permissions.subtitle')}
         actions={
           <>
-            <Button icon="restart_alt" data-testid="btn-reset-default" disabled={loading || saving} onClick={() => setConfirmReset(true)}>
+            <Button icon="restart_alt" data-testid="btn-reset-default" disabled={loading} onClick={() => setConfirmReset(true)}>
               {t('permissions.resetBtn')}
             </Button>
             <Button
@@ -156,7 +137,6 @@ const PermissionManagementPage = () => {
               icon="save"
               data-testid="btn-save-permissions"
               disabled={dirtyItems.length === 0 || loading}
-              loading={saving}
               onClick={() => setConfirmSave(true)}
             >
               {dirtyItems.length > 0 ? t('permissions.saveBtnCount', { count: dirtyItems.length }) : t('permissions.saveBtn')}
@@ -200,43 +180,30 @@ const PermissionManagementPage = () => {
             draft={draft}
             original={original}
             onPatch={patch}
-            onOpenScope={(feature, plan) => setScopeTarget({ feature, plan })}
             onUndo={undo}
           />
         ))
       )}
 
-      <PermissionScopeDrawer
-        feature={scopeTarget?.feature || null}
-        plan={scopeTarget?.plan}
-        initialScope={scopeTarget ? draft[scopeTarget.plan]?.[scopeTarget.feature.id]?.scope_config : undefined}
-        onApply={(scope) => patch(scopeTarget.plan, scopeTarget.feature.id, { scope_config: scope })}
-        onClose={() => setScopeTarget(null)}
-      />
-
-      <ConfirmModal
-        open={confirmSave}
-        testId="modal-confirm-save"
-        confirmTestId="btn-confirm-save"
+      <SecurityConfirmModal
+        isOpen={confirmSave}
+        onClose={() => setConfirmSave(false)}
         title={t('permissions.saveModal.title')}
-        message={t('permissions.saveModal.message', { count: dirtyItems.length })}
+        description={t('permissions.saveModal.message', { count: dirtyItems.length })}
         confirmText={t('permissions.saveModal.confirm')}
-        loading={saving}
-        onConfirm={save}
-        onCancel={() => setConfirmSave(false)}
+        onVerify={(credentials) => adminApi.updatePermissions(dirtyItems, credentials)}
+        onConfirm={saved}
       />
 
-      <ConfirmModal
-        open={confirmReset}
-        testId="modal-confirm-reset"
-        confirmTestId="btn-confirm-reset"
+      <SecurityConfirmModal
+        isOpen={confirmReset}
+        onClose={() => setConfirmReset(false)}
         title={t('permissions.resetModal.title')}
-        message={t('permissions.resetModal.message')}
+        description={t('permissions.resetModal.message')}
         confirmText={t('permissions.resetModal.confirm')}
-        confirmDanger
-        loading={resetting}
-        onConfirm={resetDefault}
-        onCancel={() => setConfirmReset(false)}
+        dangerLevel="critical"
+        onVerify={(credentials) => adminApi.resetPermissionsDefault(credentials)}
+        onConfirm={resetDone}
       />
     </div>
   );

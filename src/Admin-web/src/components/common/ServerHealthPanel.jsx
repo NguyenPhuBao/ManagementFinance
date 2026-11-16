@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import adminApi from '../../api/admin.api';
 import useSocket from '../../hooks/useSocket';
-import { useAlertSafe } from '../../store/alert.context';
 import { useLanguageSafe } from '../../store/language.context';
 import { Badge, Button, Icon, SecurityConfirmModal, Spinner } from '../ui';
 
@@ -53,7 +52,6 @@ const formatStart = (iso) =>
 
 const ServerHealthPanel = ({ uptimeData }) => {
   const { t } = useLanguageSafe();
-  const notify = useAlertSafe();
   const reasonId = useId();
   const [health, setHealth] = useState(null);
   const [healthError, setHealthError] = useState(false);
@@ -61,7 +59,6 @@ const ServerHealthPanel = ({ uptimeData }) => {
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState(false);
-  const [toggling, setToggling] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
 
   const fetchMaintenance = useCallback(async () => {
@@ -149,17 +146,12 @@ const ServerHealthPanel = ({ uptimeData }) => {
     setPinOpen(true);
   };
 
-  const activate = async () => {
-    setToggling(true);
-    try {
-      await adminApi.setMaintenanceStatus({ active: true, reason: reason.trim(), isEmergency: true });
-      setMaintenance((prev) => ({ ...prev, active: true, isEmergency: true, reason: reason.trim(), activatedAt: new Date().toISOString() }));
-      await fetchMaintenance();
-    } catch (err) {
-      if (notify) notify.error(err?.response?.data?.message || err?.message || t('serverHealth.toggleFailed'));
-    } finally {
-      setToggling(false);
-    }
+  // PIN gửi kèm lệnh (máy chủ kiểm); lỗi, kể cả PIN sai, hiện trong hộp PIN.
+  const activate = (credentials) => adminApi.setMaintenanceStatus({ active: true, reason: reason.trim(), isEmergency: true, ...credentials });
+
+  const activated = async () => {
+    setMaintenance((prev) => ({ ...prev, active: true, isEmergency: true, reason: reason.trim(), activatedAt: new Date().toISOString() }));
+    await fetchMaintenance();
   };
 
   const env = health?.environment;
@@ -238,7 +230,7 @@ const ServerHealthPanel = ({ uptimeData }) => {
             aria-checked={active}
             aria-labelledby={`${reasonId}-switch`}
             onClick={handleToggle}
-            disabled={active || toggling || maintenanceLoading}
+            disabled={active || maintenanceLoading}
             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${active ? 'bg-danger' : 'bg-line'}`}
           >
             <span className={`inline-block h-5 w-5 rounded-full bg-card shadow transition-transform ${active ? 'translate-x-5' : 'translate-x-0.5'}`} />
@@ -291,12 +283,12 @@ const ServerHealthPanel = ({ uptimeData }) => {
       <SecurityConfirmModal
         isOpen={pinOpen}
         onClose={() => setPinOpen(false)}
-        actionType="EMERGENCY_MAINTENANCE"
         dangerLevel="critical"
         title={t('serverHealth.pinTitle')}
         description={t('serverHealth.pinDesc')}
         confirmText={t('serverHealth.pinConfirm')}
-        onConfirm={activate}
+        onVerify={activate}
+        onConfirm={activated}
       />
     </section>
   );

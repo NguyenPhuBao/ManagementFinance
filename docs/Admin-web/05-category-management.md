@@ -140,7 +140,7 @@ Mỗi danh mục hệ thống chứa các trường dữ liệu quan trọng ph�
 5. **Nút Khôi Phục Danh Mục Trực Tiếp & Staged Changes PIN Guard:**
    - Tại cột Thao tác của các hàng danh mục đã bị xóa mềm, hệ thống trang bị nút **"Khôi phục"** (Icon `settings_backup_restore`).
    - Khi bấm, danh mục chuyển sang trạng thái nháp phục hồi với badge `Đã khôi phục (nháp)`, đưa vào danh sách thay đổi tạm lưu (`stagedChanges.restored`).
-   - Khi Admin nhấn "Lưu thay đổi", hệ thống hiển thị popup `SecurityConfirmModal` bắt buộc xác thực mã PIN quản trị viên trước khi phát lệnh khôi phục xuống cơ sở dữ liệu.
+   - Khi Admin nhấn "Lưu thay đổi", hệ thống hiển thị popup `SecurityConfirmModal` bắt buộc nhập mã PIN quản trị viên. Từ 2026-11-16 PIN được gửi kèm **từng** lệnh thêm / sửa / khôi phục / xóa và Backend kiểm (`SYNC_CATEGORIES`); PIN sai thì lệnh đầu tiên bị từ chối, không lệnh nào được áp, lỗi hiện trong hộp PIN. Mỗi lệnh ghi một dòng xác thực `[SECURITY]` trong nhật ký.
 
 ---
 

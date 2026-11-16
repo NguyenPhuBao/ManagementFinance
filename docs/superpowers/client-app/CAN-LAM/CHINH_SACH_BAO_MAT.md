@@ -1,7 +1,17 @@
 # Mục 51 — Chính sách bảo mật: người dùng đồng ý trước khi dùng app
 
+> ## ⚠️ ĐỔI HƯỚNG 2026-11-16 (Chủ dự án chốt): chính sách viết cứng phía Client-app
+>
+> - **Client-app không cần làm mục 2–4 dưới đây** (không gọi `GET /api/policy/current`, `POST /api/policy/accept`, không nghe `system.policy_updated`, không làm màn đồng ý theo API). Nội dung chính sách và cách người dùng đồng ý do Client-app **tự viết cứng** trong app.
+> - Backend và Admin-web **tạm không quản lý chính sách**: Admin-web ẩn tab Chính sách (Bảo trì & Thông báo) và bỏ dòng "Chính sách bảo mật" trong chi tiết người dùng. API và bảng CSDL ở Backend **giữ nguyên** (không xóa, có thể dùng lại sau), nhưng không còn ai đăng hay kích hoạt chính sách nên `system.policy_updated` sẽ không phát.
+> - Backend **sẽ không bật** `403 POLICY_NOT_ACCEPTED` (mục 4 hủy).
+> - **Vẫn bắt buộc:** mục 5 (sửa chú thích "IP che mờ" trong `lib/core/api/ten_thiet_bi.dart`), vì không liên quan tới chính sách.
+> - Đã kiểm (chỉ đọc, 2026-11-16): `src/Client-app/lib` chưa gọi API chính sách nào, nên đổi hướng này không làm app phải gỡ gì.
+>
+> Phần dưới giữ lại làm lịch sử thiết kế, phòng khi quay lại quản lý chính sách từ Backend.
+
 > Người nhận: thành viên Client-app. Người giao: Backend / Admin-web (NPBao). Ngày: 2026-11-13.
-> Trạng thái: Backend và Admin-web **đã xong** (chưa deploy Render). Client-app **bắt buộc làm** (Chủ dự án chốt 2026-11-14). Backend hiện **chưa chặn** người dùng chưa đồng ý; sẽ bật `403 POLICY_NOT_ACCEPTED` sau khi app làm xong (báo trước), nên app cũ vẫn chạy trong thời gian chờ.
+> Trạng thái cũ (trước 2026-11-16, **đã thay bằng khung đổi hướng ở trên**): Backend và Admin-web **đã xong** (chưa deploy Render). Client-app **bắt buộc làm** (Chủ dự án chốt 2026-11-14). Backend hiện **chưa chặn** người dùng chưa đồng ý; sẽ bật `403 POLICY_NOT_ACCEPTED` sau khi app làm xong (báo trước), nên app cũ vẫn chạy trong thời gian chờ.
 > Căn cứ: Luật Bảo vệ dữ liệu cá nhân 2025, Nghị định 356/2025/NĐ-CP (lưu bằng chứng đồng ý). Chi tiết: `docs/Rule_Project/Data_Security.md` mục 7.1, `docs/Rule_Project/Khao_sat_phap_ly_2026-11.md`.
 
 ## 1. Nghiệp vụ (Chủ dự án chốt 2026-11-13)

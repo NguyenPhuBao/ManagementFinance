@@ -97,12 +97,15 @@ describe('Sidebar', () => {
     await waitFor(() => expect(notificationApi.getAdminAlerts).toHaveBeenCalled());
   });
 
-  it('thu gọn menu: nhớ lựa chọn và ẩn chữ, vẫn giữ tên truy cập của liên kết', async () => {
+  it('thanh bên không còn nút Thu gọn menu; thu gọn bằng nút menu trên đầu trang, nhớ lựa chọn, giữ tên truy cập của liên kết', async () => {
     renderLayout();
-    fireEvent.click(screen.getByRole('button', { name: 'Thu gọn menu' }));
+    expect(screen.queryByRole('button', { name: 'Thu gọn menu' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Thu gọn menu')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Mở/đóng menu' }));
     expect(localStorage.getItem('admin_sidebar_collapsed')).toBe('true');
-    expect(screen.getByRole('button', { name: 'Mở rộng menu' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mở rộng menu' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Quản lý người dùng' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Đăng xuất' })).toBeInTheDocument();
     await waitFor(() => expect(notificationApi.getAdminAlerts).toHaveBeenCalled());
   });
 
@@ -190,7 +193,7 @@ describe('Banner bảo trì và báo động', () => {
     expect(screen.getByText('Đã kết thúc bảo trì')).toBeInTheDocument();
   });
 
-  it('máy chủ nguy cơ quá tải: hiện báo động; bật bảo trì khẩn cấp phải qua hộp xác nhận rồi mới gọi API', async () => {
+  it('máy chủ nguy cơ quá tải: hiện báo động; bật bảo trì khẩn cấp bắt buộc PIN, PIN gửi kèm lệnh', async () => {
     aiopsApi.getStatus.mockResolvedValue({ data: { recommendedAction: 'EMERGENCY_MAINTENANCE', vectorScores: { resource: 92 } } });
     renderLayout();
     const alertBox = await screen.findByRole('alert');
@@ -198,9 +201,11 @@ describe('Banner bảo trì và báo động', () => {
     fireEvent.click(within(alertBox).getByRole('button', { name: 'Bật bảo trì khẩn cấp' }));
     expect(adminApi.setMaintenanceStatus).not.toHaveBeenCalled();
     const dialog = screen.getByRole('dialog', { name: 'Bật bảo trì khẩn cấp?' });
+    expect(within(dialog).getByRole('button', { name: 'Bật bảo trì' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Bật bảo trì' }));
     await waitFor(() =>
-      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({ active: true, reason: expect.any(String), isEmergency: true })
+      expect(adminApi.setMaintenanceStatus).toHaveBeenCalledWith({ active: true, reason: expect.any(String), isEmergency: true, pin: '246810' })
     );
     expect(await screen.findByText('Đã bật bảo trì khẩn cấp')).toBeInTheDocument();
   });

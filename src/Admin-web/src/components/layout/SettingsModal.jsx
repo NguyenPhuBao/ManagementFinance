@@ -31,7 +31,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const notify = useAlertSafe();
   const socket = useSocket();
   const user = useCurrentAdmin();
-  const { settings, updateSetting, resetSettings, lockScreen, pingLatency, isPinging, testPingLatency, safeClearCache, getStorageUsageKb } = useSettings();
+  const { settings, updateSetting, resetSettings, settingsSyncFailed, lockScreen, pingLatency, isPinging, testPingLatency, safeClearCache, getStorageUsageKb } = useSettings();
   const [tab, setTab] = useState('general');
   const [dialog, setDialog] = useState(null);
 
@@ -71,6 +71,11 @@ const SettingsModal = ({ isOpen, onClose }) => {
             <Button variant="ghost" icon="restart_alt" onClick={() => setDialog('reset')}>
               {t('settings.reset.button')}
             </Button>
+            {settingsSyncFailed && (
+              <span role="status" className="text-xs text-warning">
+                {t('settings.syncFailed')}
+              </span>
+            )}
             <Button variant="primary" onClick={onClose}>
               {t('settings.done')}
             </Button>

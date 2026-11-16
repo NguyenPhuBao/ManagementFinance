@@ -25,7 +25,7 @@ vi.mock('../api/admin.api', () => ({
     verifySecurityAction: vi.fn(),
     getUserDevices: vi.fn(),
     revealDeviceIp: vi.fn(),
-    getUserPolicy: vi.fn(),
+    getUserPolicy: vi.fn(), // đã bỏ khỏi admin.api; giữ trong mock để chắc hộp chi tiết không gọi
     getUserDataExports: vi.fn(),
   },
 }));
@@ -62,42 +62,23 @@ beforeEach(() => {
   adminApi.verifySecurityAction.mockReset().mockResolvedValue({ success: true });
   adminApi.getUserDevices.mockReset().mockResolvedValue({ data: DEVICES.map((d) => ({ ...d })) });
   adminApi.revealDeviceIp.mockReset().mockResolvedValue({ data: { ip: '113.161.45.12' } });
-  adminApi.getUserPolicy.mockReset().mockResolvedValue({ data: { currentVersion: 2, acceptances: [{ policy_version: 2, accepted_at: '2026-11-13T02:00:00Z' }] } });
   adminApi.getUserDataExports.mockReset().mockResolvedValue({ data: [] });
 });
 
-describe('Chính sách bảo mật trong hộp chi tiết', () => {
+describe('Hộp chi tiết không hiện chính sách', () => {
   const open = async () => {
     await renderPage();
     fireEvent.click(within(row('Nguyễn Văn An')).getByRole('button', { name: 'Xem chi tiết' }));
     return screen.findByRole('dialog', { name: 'Chi tiết người dùng' });
   };
 
-  it('nhiều chính sách đang dùng: từng chính sách hiện Đã đồng ý / Chưa đồng ý theo đúng phiên bản đang dùng', async () => {
-    adminApi.getUserPolicy.mockResolvedValue({
-      data: {
-        currentVersion: 5,
-        activePolicies: [
-          { version: 5, policyId: 1, docVersion: 2, title: 'Điều khoản' },
-          { version: 3, policyId: 2, docVersion: 1, title: 'Bảo mật' },
-        ],
-        // Đã đồng ý Điều khoản v2 (mã 5) và Bảo mật bản cũ (mã 2), chưa đồng ý Bảo mật v1 đang dùng (mã 3)
-        acceptances: [
-          { policy_version: 5, title: 'Điều khoản', doc_version: 2, accepted_at: '2026-11-13T02:00:00Z' },
-          { policy_version: 2, title: 'Bảo mật cũ', doc_version: 1, accepted_at: '2026-11-01T02:00:00Z' },
-        ],
-      },
-    });
+  // 2026-11-16: chính sách viết cứng phía Client-app, Admin-web không quản lý → bỏ dòng Chính sách bảo mật
+  it('không còn dòng Chính sách bảo mật và không gọi API chính sách', async () => {
     const dialog = await open();
-    expect(adminApi.getUserPolicy).toHaveBeenCalledWith(1);
-    expect(await within(dialog).findByText(/Điều khoản v2: Đã đồng ý/)).toHaveAttribute('data-tone', 'success');
-    expect(within(dialog).getByText('Bảo mật v1: Chưa đồng ý')).toHaveAttribute('data-tone', 'warning');
-  });
-
-  it('không có chính sách đang dùng: hiện Chưa có chính sách', async () => {
-    adminApi.getUserPolicy.mockResolvedValue({ data: { currentVersion: null, activePolicies: [], acceptances: [] } });
-    const dialog = await open();
-    expect(await within(dialog).findByText('Chưa có chính sách')).toBeInTheDocument();
+    expect(await within(dialog).findByText('Bản sao dữ liệu')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Chính sách bảo mật')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/Đã đồng ý|Chưa đồng ý|Chưa có chính sách/)).not.toBeInTheDocument();
+    expect(adminApi.getUserPolicy).not.toHaveBeenCalled();
   });
 });
 
@@ -217,7 +198,7 @@ describe('Lọc và tìm kiếm', () => {
 });
 
 describe('Thao tác trạng thái', () => {
-  it('vô hiệu hóa bắt buộc lý do rồi gọi API với lý do đã nhập', async () => {
+  it('vô hiệu hóa: bắt buộc lý do, rồi nhập PIN; PIN gửi kèm lệnh; huỷ PIN thì quay lại, lý do còn nguyên', async () => {
     await renderPage();
     fireEvent.click(within(row('Nguyễn Văn An')).getByRole('button', { name: 'Vô hiệu hóa' }));
     const dialog = screen.getByRole('dialog', { name: 'Vô hiệu hóa tài khoản' });
@@ -225,18 +206,30 @@ describe('Thao tác trạng thái', () => {
     expect(submit).toBeDisabled();
     fireEvent.change(within(dialog).getByLabelText(/Lý do/), { target: { value: ' Spam quảng cáo ' } });
     fireEvent.click(submit);
+    let pin = screen.getByRole('dialog', { name: 'Vô hiệu hóa tài khoản' });
+    expect(within(pin).getByText(/Spam quảng cáo/)).toBeInTheDocument();
+    fireEvent.click(within(pin).getByRole('button', { name: 'Hủy bỏ' }));
+    expect(screen.getByLabelText(/Lý do/)).toHaveValue(' Spam quảng cáo ');
+    expect(adminApi.updateUserStatus).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Vô hiệu hóa tài khoản' })).getByRole('button', { name: 'Vô hiệu hóa' }));
+    pin = screen.getByRole('dialog', { name: 'Vô hiệu hóa tài khoản' });
+    fireEvent.change(within(pin).getByLabelText(/PIN/), { target: { value: '246810' } });
+    fireEvent.click(within(pin).getByRole('button', { name: 'Vô hiệu hóa' }));
     await waitFor(() =>
-      expect(adminApi.updateUserStatus).toHaveBeenCalledWith(1, { status: 'Inactive', reason_inactive: 'Spam quảng cáo' })
+      expect(adminApi.updateUserStatus).toHaveBeenCalledWith(1, { status: 'Inactive', reason_inactive: 'Spam quảng cáo', pin: '246810' })
     );
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     await waitFor(() => expect(within(row('Nguyễn Văn An')).getByText('Vô hiệu hóa')).toHaveAttribute('data-tone', 'neutral'));
   });
 
-  it('kích hoạt lại qua hộp xác nhận', async () => {
+  it('kích hoạt lại phải nhập PIN; PIN gửi kèm lệnh kích hoạt', async () => {
     await renderPage();
     fireEvent.click(within(row('Trần Thị Bình')).getByRole('button', { name: 'Kích hoạt' }));
     const dialog = screen.getByRole('dialog', { name: 'Kích hoạt lại tài khoản?' });
+    expect(within(dialog).getByRole('button', { name: 'Kích hoạt' })).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Kích hoạt' }));
-    await waitFor(() => expect(adminApi.updateUserStatus).toHaveBeenCalledWith(2, { status: 'Active' }));
+    await waitFor(() => expect(adminApi.updateUserStatus).toHaveBeenCalledWith(2, { status: 'Active', pin: '246810' }));
     await waitFor(() => expect(within(row('Trần Thị Bình')).getByText('Đang hoạt động')).toBeInTheDocument());
   });
 
@@ -247,9 +240,20 @@ describe('Thao tác trạng thái', () => {
     expect(adminApi.deleteUser).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '246810' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Xóa' }));
-    await waitFor(() => expect(adminApi.deleteUser).toHaveBeenCalledWith(2));
-    expect(adminApi.verifySecurityAction).toHaveBeenCalledWith({ pin: '246810', action: 'DELETE_USER', targetId: '@binh' });
+    await waitFor(() => expect(adminApi.deleteUser).toHaveBeenCalledWith(2, { pin: '246810' }));
+    expect(adminApi.verifySecurityAction).not.toHaveBeenCalled();
     await waitFor(() => expect(within(row('Trần Thị Bình')).getByText('Đã xóa')).toHaveAttribute('data-tone', 'danger'));
+  });
+
+  it('PIN sai khi xoá: hộp PIN hiện lỗi máy chủ, người dùng giữ nguyên trạng thái', async () => {
+    adminApi.deleteUser.mockRejectedValue({ response: { data: { message: 'Mã PIN quản trị viên không chính xác!' } } });
+    await renderPage();
+    fireEvent.click(within(row('Trần Thị Bình')).getByRole('button', { name: 'Xóa' }));
+    const dialog = screen.getByRole('dialog', { name: 'Xóa người dùng' });
+    fireEvent.change(within(dialog).getByLabelText(/PIN/), { target: { value: '111111' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Xóa' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Mã PIN quản trị viên không chính xác!');
+    expect(within(row('Trần Thị Bình')).queryByText('Đã xóa')).not.toBeInTheDocument();
   });
 
   it('xem chi tiết mở hộp thoại và tải người dùng theo id', async () => {

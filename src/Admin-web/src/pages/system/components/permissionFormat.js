@@ -1,6 +1,24 @@
 export const PLANS = ['Basic', 'Premium'];
 
-export const POLICIES = ['BLOCK_CREATE', 'LOCK_FEATURE', 'READ_ONLY', 'GRACE_PERIOD_3D', 'FALLBACK_DEFAULT'];
+/**
+ * Cách ứng dụng di động xử lý khi người dùng bị hạ gói (chốt 2026-11-16: app viết cứng, Admin-web chỉ hiện, không chỉnh).
+ * Nguồn: Client-app `features/premium/domain/quyen_tinh_nang.dart` (9 mã không bao giờ khoá) và `tran_goi.dart`
+ * (vượt hạn mức chỉ chặn tạo thêm); gia đình do Backend chuyển nhà sang chỉ xem khi chủ nhà hết Premium.
+ */
+const NEVER_LOCK = [
+  'transaction_management', 'offline_first_sync', 'vietqr_payment', 'account_deletion', 'biometric_auth',
+  'payment_history', 'ai_model_management', 'offline_login', 'financial_health_fhs',
+];
+const HOUSEHOLD_READ_ONLY = ['household', 'household_members', 'household_wallets'];
+
+/** Hạn mức Backend viết cứng (gia đình: 6 thành viên, 10 ví chung): khoá ô Truy cập, số và ∞ (Backend bỏ qua khi lưu). */
+export const FIXED_LIMITS = ['household_members', 'household_wallets'];
+
+export const downgradeBehavior = (feature) => {
+  if (NEVER_LOCK.includes(feature.id)) return 'neverLock';
+  if (HOUSEHOLD_READ_ONLY.includes(feature.id)) return 'householdReadOnly';
+  return feature.type === 'LIMIT' ? 'blockCreate' : 'lockFeature';
+};
 
 const GROUP_KEYS = {
   'Tài nguyên': 'resources',
@@ -30,29 +48,8 @@ export const groupLabel = (group, t) => {
 export const defaultPermission = (feature, plan) => ({
   is_enabled: true,
   limit_value: feature.type === 'LIMIT' && plan === 'Basic' ? 3 : null,
-  downgrade_policy: feature.default_downgrade_policy || 'BLOCK_CREATE',
-  scope_config: {},
 });
 
+/** Chỉ quyền truy cập và hạn mức chỉnh được; phạm vi và chính sách hạ cấp không hiện / không gửi (chốt 2026-11-16). */
 export const isChanged = (draft, orig) =>
-  Boolean(draft && orig) &&
-  (draft.is_enabled !== orig.is_enabled ||
-    draft.limit_value !== orig.limit_value ||
-    draft.downgrade_policy !== orig.downgrade_policy ||
-    JSON.stringify(draft.scope_config || {}) !== JSON.stringify(orig.scope_config || {}));
-
-export const scopeSummary = (scope, t) => {
-  if (!scope || typeof scope !== 'object' || Object.keys(scope).length === 0) return t('permissions.scope.default');
-  const parts = [];
-  if (scope.allowed_formats) {
-    parts.push((Array.isArray(scope.allowed_formats) ? scope.allowed_formats.join(', ') : String(scope.allowed_formats)).toUpperCase());
-  }
-  if (scope.forecast_days) parts.push(`${scope.forecast_days}d`);
-  if (scope.max_image_size_mb) parts.push(`${scope.max_image_size_mb}MB`);
-  if (scope.daily_scans) parts.push(`${scope.daily_scans}/d`);
-  if (scope.model_type) parts.push(String(scope.model_type));
-  if (scope.rule) parts.push(String(scope.rule));
-  if (parts.length) return parts.join(' · ');
-  const values = Object.values(scope).map((v) => (typeof v === 'object' ? '…' : String(v)));
-  return values.slice(0, 2).join(' · ') || t('permissions.scope.custom');
-};
+  Boolean(draft && orig) && (draft.is_enabled !== orig.is_enabled || draft.limit_value !== orig.limit_value);

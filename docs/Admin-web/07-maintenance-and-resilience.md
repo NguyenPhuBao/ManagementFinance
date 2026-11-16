@@ -22,6 +22,17 @@ Cơ chế bảo trì gồm hai lớp: lớp **chặn yêu cầu** chạy trong b
    - **Lưu trữ thời lượng thực tế (Migration 36 - `actual_duration_seconds`):** Bổ sung cột `actual_duration_seconds` trong bảng `maintenance_history` để ghi nhận chính xác từng giây thời gian gián đoạn thực tế khi kết thúc phiên. Đối với phiên đang diễn ra (`ONGOING`), giao diện tích hợp Live Timer đếm thời lượng thực tế theo thời gian thực ($T_{\text{hiện tại}} - T_{\text{bắt đầu}}$).
 5. **Ràng Buộc Thời Gian Lập Lịch:**
    - Bắt buộc lập lịch trước thời điểm kích hoạt ít nhất **3 tiếng** (`scheduledAt >= now + 3h`, kiểm ở cả Admin-web và Backend).
+   - Thời điểm bắt đầu không được xa quá **14 ngày** (`scheduledAt <= now + 14 ngày`, từ 2026-11-16, kiểm ở cả Admin-web và Backend: `MAX_LEAD_TIME_MS` trong `maintenance.manager.js`, `MAX_LEAD_DAYS` trong `maintenanceFormat.js`). Lý do: hẹn giờ `setTimeout` của Node tối đa khoảng 24,8 ngày; vượt mức đó hẹn giờ chạy ngay và hệ thống vào bảo trì lập tức (đã tái hiện ngày 2026-11-16 với lịch 30 ngày trên CSDL thử).
+   - Một phiên bảo trì kéo dài tối đa **7 ngày** (từ 2026-11-16, `MAX_SESSION_MS` / `MAX_SESSION_DAYS`):
+     + Lịch có giờ kết thúc: giờ kết thúc cách giờ bắt đầu quá 7 ngày thì bị chặn ở cả Admin-web và Backend ("Một phiên bảo trì kéo dài tối đa 7 ngày!").
+     + Mọi phiên không có giờ kết thúc (khẩn cấp bật tay, theo lịch không nhập giờ kết thúc, bật từ AIOps / băng cảnh báo / `ServerHealthPanel`) tự kết thúc sau 7 ngày kể từ lúc bật, lý do ghi "Hết thời hạn tối đa 7 ngày của phiên bảo trì". Hộp xác nhận bảo trì khẩn cấp báo trước điều này.
+     + Khẩn cấp đè lên phiên theo lịch: hạn của phiên khẩn cấp là 7 ngày kể từ lúc bật khẩn cấp, không theo giờ kết thúc của lịch cũ (trước đây giờ kết thúc của lịch có thể tắt luôn phiên khẩn cấp).
+   - **Bảo trì khẩn cấp và các phiên theo lịch (chốt 2026-11-16):** mục đích là tránh xung đột khi kích hoạt bảo trì: trong một khung thời gian chỉ có **duy nhất một phiên bảo trì** đang diễn ra, và bảo trì khẩn cấp luôn được ưu tiên. Vì vậy phiên theo lịch bị ngắt dù chưa tới giờ kết thúc.
+     + Bật khẩn cấp khi đang chạy một phiên theo lịch: phiên theo lịch bị **hủy** (bản ghi chuyển `CANCELLED`, ghi thời lượng đã chạy), phiên khẩn cấp là **bản ghi `EMERGENCY` riêng** bắt đầu từ lúc bật. Bản ghi cũ đóng xong mới tạo bản ghi mới. Trước đây bản ghi theo lịch bị đổi loại thành khẩn cấp.
+     + Bật khẩn cấp **không** hủy ngay lịch nào đang chờ (trước đây hủy ngay các lịch rơi vào khung giả định 2 giờ). Khẩn cấp chạy tới đâu kiểm tra tới đó: tới giờ bắt đầu của một lịch mà khẩn cấp còn chạy thì lịch đó bị hủy lúc ấy (`activateScheduledItem`); lịch bắt đầu sau khi khẩn cấp đã tắt thì chạy bình thường.
+     + Test: `tests/unit/maintenance.emergency.overlap.test.js` (4 ca, đồng hồ giả).
+     + Khởi động lại máy chủ giữa phiên không có giờ kết thúc: hạn tính từ lúc phiên bắt đầu (`started_at` + 7 ngày); đã quá hạn thì đóng phiên với giờ kết thúc là mốc 7 ngày.
+     + Lý do: hẹn giờ tự kết thúc cũng dùng `setTimeout`, phiên dài hơn ~24,8 ngày làm hẹn giờ chạy ngay. Test: `tests/unit/maintenance.max.duration.test.js` (8 ca, đồng hồ giả).
    - Thời điểm kết thúc (nếu có) phải sau thời điểm bắt đầu.
    - Lịch mới không được trùng khung giờ với lịch đã có, và khoảng cách giữa lúc kết thúc lịch này với lúc bắt đầu lịch kia ít nhất **12 tiếng** (lịch không có giờ kết thúc thì tính kết thúc = bắt đầu).
    - Hủy lịch bảo trì: Admin-web chỉ cho bấm hủy khi còn cách thời điểm bắt đầu tối thiểu **3 tiếng**; dưới 3 tiếng nút bị khóa, hiện `< 3h`.
@@ -150,6 +161,8 @@ CSDL là nguồn sự thật của trạng thái bảo trì. Mã: `MaintenanceMa
    - Khi kích hoạt bảo trì khẩn cấp: Modal xác nhận yêu cầu nhập mã PIN bảo mật cấp 2. Banner hiển thị tông đỏ `rose`, badge `[KHẨN CẤP]`, tiêu đề: **"HỆ THỐNG ĐANG BẢO TRÌ KHẨN CẤP"**.
    - Khi bảo trì theo lịch kích hoạt: Banner hiển thị tông cam `amber`, badge `[THEO LỊCH]`, tiêu đề chuẩn PO: **"HỆ THỐNG ĐANG BẢO TRÌ"**.
    - Khi tắt bảo trì: Modal xác nhận cảnh báo hệ thống sắp mở lại kết nối cho toàn bộ người dùng Client-app.
+   - **PIN bắt buộc, máy chủ kiểm (từ 2026-11-16):** lên lịch, bật khẩn cấp, kết thúc bảo trì (`POST /api/admin/system/maintenance`) và hủy lịch (`DELETE /api/admin/system/maintenance/schedule[/:id]`) đều phải gửi `pin` kèm lệnh; thiếu / sai PIN trả 400, khóa sau 5 lần sai trả 429. Áp dụng cho mọi nơi bật bảo trì: trang Bảo trì & Thông báo, băng cảnh báo quá tải (`AppLayout`), hộp giảm thiểu của AIOps, `ServerHealthPanel`. Thêm / ngừng / kích hoạt chính sách cũng bắt buộc PIN (`PUBLISH_POLICY`, `CHANGE_POLICY_STATUS`).
+   - **Tab Chính sách tạm ẩn (2026-11-16):** chính sách được viết cứng phía Client-app, Backend và Admin-web tạm không quản lý chính sách. Trang chỉ còn hai tab Bảo trì và Thông báo; `PolicyTab.jsx`, API `/api/admin/policies` và bảng CSDL giữ nguyên để bật lại bằng cờ `SHOW_POLICY_TAB` trong `BroadcastPage.jsx`.
 2. **Cảnh Báo Lịch Bảo Trì Sắp Diễn Ra (Chỉ hiển thị khi $\le 1$ tiếng):**
    - Card/Banner cảnh báo tông cam viền amber nhấp nháy hiển thị số phút đếm ngược.
    - **Tuyệt đối không làm mất form lập lịch bảo trì định kỳ**.
@@ -160,7 +173,10 @@ CSDL là nguồn sự thật của trạng thái bảo trì. Mã: `MaintenanceMa
    - **Bảng Danh Sách Lịch Bảo Trì Đã Lên Lịch (Upcoming Schedules):** Hiển thị danh sách các phiên bảo trì định kỳ đã đặt, kèm nút **"Hủy"** riêng cho từng dòng theo ID.
 4. **Bảng Lịch Sử Các Phiên Bảo Trì Hệ Thống (PostgreSQL Persistence):**
    - Lưu trữ vĩnh viễn trong bảng `maintenance_history`.
-   - Các cột hiển thị (9 cột): `#`, `Loại bảo trì` (Khẩn cấp / Định kỳ), `Người kích hoạt`, `Lý do / Thông điệp`, `Thời điểm bắt đầu`, `Thời điểm kết thúc`, `Thời lượng`, `Trạng thái` (Đang diễn ra, Đã lên lịch, Đã hoàn thành, Đã hủy), `Thao tác`.
+   - Các cột hiển thị (10 cột, từ 2026-11-16): `#`, `Loại bảo trì` (Khẩn cấp / Định kỳ), `Người kích hoạt`, `Lý do / Thông điệp`, `Bắt đầu`, `Kết thúc dự kiến`, `Kết thúc thực tế`, `Thời lượng`, `Trạng thái` (Đang diễn ra, Đã lên lịch, Đã hoàn thành, Đã hủy), `Thao tác`. Ô thời gian ghi ngày một dòng, giờ một dòng.
+   - **Kết thúc dự kiến và Kết thúc thực tế là hai mốc khác nhau** (trước đây gộp chung một cột "Kết thúc", lịch hủy chỉ còn giờ hủy và mất giờ dự kiến):
+     + `Kết thúc dự kiến` = `scheduled_end_at` (giờ đã hẹn khi lên lịch); không hẹn thì `—`.
+     + `Kết thúc thực tế` = `ended_at` (giờ phiên thật sự dừng, kể cả bị bảo trì khẩn cấp ngắt giữa chừng); lịch bị hủy khi chưa chạy ghi "Hủy lúc" + giờ hủy; phiên đang chạy ghi "Đang diễn ra"; lịch chưa tới giờ ghi `—`.
    - **Cột Thao Tác (Action Column):** Hiển thị nút **"Hủy"** đối với các phiên bảo trì định kỳ đã lên lịch (`SCHEDULED`) còn trước giờ bắt đầu tối thiểu 3 tiếng. Nếu dưới 3 tiếng, nút bị khóa (`< 3h`) nhằm ngăn chặn việc hủy sát giờ gây bất ổn hệ thống.
    - Bộ phân trang chuẩn mực (`Pagination.jsx`) mặc định 5 bản ghi/trang (hỗ trợ chọn 5, 10, 20, 50 phiên/trang).
 

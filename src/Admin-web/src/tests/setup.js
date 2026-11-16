@@ -30,6 +30,11 @@ const localStorageMock = (() => {
     clear: () => {
       store = {};
     },
+    // Như trình duyệt thật: duyệt khoá bằng length + key(i)
+    get length() {
+      return Object.keys(store).length;
+    },
+    key: (i) => Object.keys(store)[i] ?? null,
   };
 })();
 

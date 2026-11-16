@@ -68,6 +68,35 @@ describe('Maintenance Manager Schedule Rules (3h lead time & 12h gap constraints
     assert.ok(manager.getScheduledList().length >= 1);
   });
 
+  // 2026-11-16: lịch xa hơn ~24,8 ngày làm hẹn giờ của Node tràn và bảo trì bật NGAY. Chủ dự án chốt: chỉ cho đặt trong 14 ngày tới.
+  it('FAIL khi thời điểm bắt đầu xa hơn 14 ngày; không tạo lịch, hệ thống không vào bảo trì', async () => {
+    const now = Date.now();
+    for (const days of [14 + 1 / 1440, 30]) {
+      assert.throws(() => {
+        manager.scheduleMaintenance({
+          scheduledAt: new Date(now + days * 24 * 3600 * 1000).toISOString(),
+          reason: `Bảo trì ${days} ngày nữa`,
+          createdBy: 'admin',
+        });
+      }, /14 ngày/);
+    }
+    assert.strictEqual(manager.getScheduledList().length, 0);
+    await new Promise((r) => setTimeout(r, 20));
+    assert.strictEqual(manager.active, false);
+  });
+
+  it('PASS khi thời điểm bắt đầu vừa trong 14 ngày; hệ thống chưa vào bảo trì', async () => {
+    const now = Date.now();
+    manager.scheduleMaintenance({
+      scheduledAt: new Date(now + 14 * 24 * 3600 * 1000 - 60000).toISOString(),
+      reason: 'Bảo trì gần 14 ngày nữa',
+      createdBy: 'admin',
+    });
+    assert.strictEqual(manager.getScheduledList().length, 1);
+    await new Promise((r) => setTimeout(r, 20));
+    assert.strictEqual(manager.active, false);
+  });
+
   it('FAIL khi đặt lịch thứ 2 cách lịch thứ nhất dưới 12 tiếng', () => {
     const now = Date.now();
     // Lịch 1: Từ now + 3h đến now + 5h

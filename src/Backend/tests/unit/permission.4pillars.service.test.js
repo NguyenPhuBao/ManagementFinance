@@ -128,7 +128,7 @@ test('Permission 4 Pillars Unit Suite', async (t) => {
     }
   });
 
-  await t.test('4. adminService.updatePermissionsMatrix() truyền tải đầy đủ 4 trụ cột cho repository', async () => {
+  await t.test('4. adminService.updatePermissionsMatrix() truyền trụ cột 1-3 cho repository; trụ cột 4 (downgrade_policy) bỏ qua từ 2026-11-16 vì app viết cứng cách hạ cấp', async () => {
     const origUpdate = permissionRepository.updatePermission;
     const captured = [];
     permissionRepository.updatePermission = async (type, featId, payload) => {
@@ -153,7 +153,7 @@ test('Permission 4 Pillars Unit Suite', async (t) => {
       assert.strictEqual(captured[0].featId, 'export_reports');
       assert.strictEqual(captured[0].payload.is_enabled, true);
       assert.deepStrictEqual(captured[0].payload.scope_config, { formats: ['PDF'] });
-      assert.strictEqual(captured[0].payload.downgrade_policy, 'LOCK_FEATURE');
+      assert.strictEqual(captured[0].payload.downgrade_policy, undefined);
     } finally {
       permissionRepository.updatePermission = origUpdate;
     }

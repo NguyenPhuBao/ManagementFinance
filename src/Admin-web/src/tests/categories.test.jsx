@@ -129,7 +129,7 @@ describe('Bản nháp', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Thêm vào bản nháp' }));
     await syncWithPin();
     await waitFor(() =>
-      expect(adminApi.createCategory).toHaveBeenCalledWith({ name: 'Cà phê', classify: 'Chi', is_default: true, keyword: 'cafe, highlands' })
+      expect(adminApi.createCategory).toHaveBeenCalledWith({ name: 'Cà phê', classify: 'Chi', is_default: true, keyword: 'cafe, highlands', pin: '246810' })
     );
   });
 
@@ -156,7 +156,7 @@ describe('Bản nháp', () => {
 });
 
 describe('Lưu bằng PIN', () => {
-  it('xác thực PIN rồi gửi đủ thêm / sửa / khôi phục / xóa, sau đó tải lại', async () => {
+  it('PIN gửi kèm từng lệnh thêm / sửa / khôi phục / xóa (máy chủ kiểm), sau đó tải lại', async () => {
     await renderPage();
     const add = openAdd();
     fireEvent.change(within(add).getByLabelText('Tên danh mục'), { target: { value: 'Mua sắm' } });
@@ -178,11 +178,11 @@ describe('Lưu bằng PIN', () => {
     expect(screen.getByText('4 thay đổi chưa lưu')).toBeInTheDocument();
     await syncWithPin('246810');
 
-    await waitFor(() => expect(adminApi.deleteCategory).toHaveBeenCalledWith(3));
-    expect(adminApi.verifySecurityAction).toHaveBeenCalledWith({ pin: '246810', action: 'SYNC_CATEGORIES', targetId: 'SYSTEM_CATEGORIES' });
-    expect(adminApi.createCategory).toHaveBeenCalledWith({ name: 'Mua sắm', classify: 'Chi', is_default: true, keyword: null });
-    expect(adminApi.updateCategory).toHaveBeenCalledWith(2, { name: 'Lương', classify: 'Thu', is_default: true, keyword: 'luong, thuong' });
-    expect(adminApi.restoreCategory).toHaveBeenCalledWith(4);
+    await waitFor(() => expect(adminApi.deleteCategory).toHaveBeenCalledWith(3, { pin: '246810' }));
+    expect(adminApi.verifySecurityAction).not.toHaveBeenCalled();
+    expect(adminApi.createCategory).toHaveBeenCalledWith({ name: 'Mua sắm', classify: 'Chi', is_default: true, keyword: null, pin: '246810' });
+    expect(adminApi.updateCategory).toHaveBeenCalledWith(2, { name: 'Lương', classify: 'Thu', is_default: true, keyword: 'luong, thuong', pin: '246810' });
+    expect(adminApi.restoreCategory).toHaveBeenCalledWith(4, { pin: '246810' });
     await waitFor(() => expect(adminApi.getCategories).toHaveBeenCalledTimes(2));
   });
 
@@ -195,5 +195,20 @@ describe('Lưu bằng PIN', () => {
     const dialog = await syncWithPin();
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Tên danh mục đã tồn tại');
     expect(screen.getByText('1 thay đổi chưa lưu')).toBeInTheDocument();
+  });
+
+  it('PIN sai: lệnh đầu tiên bị máy chủ từ chối, không gửi lệnh nào khác, hộp PIN hiện lỗi', async () => {
+    adminApi.createCategory.mockRejectedValue({ response: { data: { message: 'Mã PIN quản trị viên không chính xác!' } } });
+    await renderPage();
+    const add = openAdd();
+    fireEvent.change(within(add).getByLabelText('Tên danh mục'), { target: { value: 'Mua sắm' } });
+    fireEvent.click(within(add).getByRole('button', { name: 'Thêm vào bản nháp' }));
+    fireEvent.click(within(row('Lương')).getByRole('button', { name: 'Xóa' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Xóa danh mục?' })).getByRole('button', { name: 'Xóa' }));
+    const dialog = await syncWithPin('111111');
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Mã PIN quản trị viên không chính xác!');
+    expect(adminApi.createCategory).toHaveBeenCalledTimes(1);
+    expect(adminApi.deleteCategory).not.toHaveBeenCalled();
+    expect(screen.getByText('2 thay đổi chưa lưu')).toBeInTheDocument();
   });
 });
