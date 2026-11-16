@@ -615,7 +615,30 @@ src/Backend/
 
 ---
 
-## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-02)
+## 14. Trạng thái hiện tại (cập nhật cuối 2026-11-16)
+
+### 🏠 Ví chung chọn được ở form Thêm giao dịch thường + khoản nhà ở Trang chủ / Sổ (2026-11-16, `fa72e860..`, mã xong, CHƯA đo máy thật)
+
+Người dùng mở lại chốt mã cho việc này (*"đừng bắt user vào mục gia đình mới thanh toán được"*). Spec
+`docs/superpowers/specs/2026-11-16-vi-chung-trong-form-giao-dich-design.md` (bảy quyết định người dùng chọn ở mục 1). **Đảo quyết định
+#5** của `docs/Family/02A` mục 4 (đã sửa tài liệu).
+
+- **Form `/add`:** bộ chọn ví có nhóm *"VÍ CHUNG · tên nhà"* (chỉ Chủ / Thành viên, nhà hoạt động, form tạo mới thường, không ở đoạn
+  Chuyển khoản). Chọn ví chung → form đổi TẠI CHỖ sang chế độ nhà (`ThemGiaoDichState.nhaDangGhi`, nguồn `ThemGiaoDichNguonNha`,
+  danh mục ghép theo tên — `ghepDanhMucTheoTen`, bộ chọn danh mục `/add/nha-category`); chọn lại ví riêng là về như cũ; chạm Chuyển
+  khoản là về ví riêng chọn sẵn. Ví chung ở danh sách RIÊNG (`viChung`), không vào `state.vi` → Nhập nhanh / giọng nói / ví chọn sẵn
+  không chọn trúng. Lưu mang `idhousehold`; mất quyền lúc Lưu thì báo, không ghi, GIỮ form (chỉ `/nha/khoan` mới đóng). Cổng
+  `ViChungChoFormNguon` (`transaction/data`) + hàm thật `napNhomViChung` (`household/application`), nối DI. Cubit 1.199 / trần 1.200
+  — phép dựng state ở `doi_che_do_nha.dart`.
+- **Trang chủ / Sổ:** danh sách đọc `watchAllKemNha` / `watchKhoangKemNha` (riêng + khoản nhà TÔI ghi, bỏ nửa NHÀ của cặp góp / rút);
+  dòng nhà có viên `NhanNhaNho`, tên ví / danh mục tra qua cổng `KhoanNhaChoSoNguon`. **Không cộng vào tổng**: `summarizeTransactions`
+  bỏ hàng có `idhousehold`; thu chi tháng Trang chủ, Phân tích, Ngân sách vẫn chỉ riêng (người dùng chọn sau ví dụ đếm trùng: góp quỹ
+  đã là khoản chi riêng). Bấm dòng nhà ở Sổ: được sửa → `/nha/khoan`, không → sheet chỉ xem (`cauKhoa`); xoá (sheet lẫn vuốt) đi
+  đường của nhà sau kiểm vai, không bao giờ `DeleteTransactionEvent`.
+- Quét 37: hai hàm `*KemNha` qua được nhờ vế `idhousehold.isNull() | …` — ghi rõ ở docstring quét là chỗ CỐ Ý mở.
+- `flutter test` **9573 / 11 skip** (mốc trước đợt trên nhánh này: 9520 / 11), `flutter analyze` 20 issue / 0 error.
+- Giao diện dựng theo mô tả gửi Stitch (hai lượt `generate_screen_from_text` báo timeout, chưa thấy màn) — người dùng chọn làm trước,
+  chỉnh sau khi màn hiện. **Chưa đo trên Realme** (cần tài khoản trong nhà có ví chung, backend Render).
 
 ### 🧪 Đo trên Render: thanh toán thật + gia đình hai máy (2026-11-02 phiên 37, `a80d779c`, 0 tệp mã đổi)
 

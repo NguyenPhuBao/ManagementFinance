@@ -6,6 +6,11 @@
 /// `equals(`). Thiếu là hàng của nhà — tôi tạo, hoặc chủ nhà tạo mang `idaccount` của chủ — hiện ở Trang chủ, Sổ, Phân
 /// tích, Ngân sách, và tổng cá nhân lẫn tiền của nhà, im lặng.
 ///
+/// ⚠️ Chỗ CỐ Ý mở (spec 2026-11-16, người dùng chốt): `TransactionDao.watchAllKemNha` / `watchKhoangKemNha` trả cả khoản nhà
+/// TÔI ghi cho DANH SÁCH Trang chủ / Sổ. Hai hàm qua được quét vì có vế `idhousehold.isNull() | …` — giới hạn "không thấy VỊ
+/// TRÍ của vế ràng nhà" bên dưới là chính lý do chúng xanh. Mọi tổng vẫn đọc `watchAll` / `watchKhoang`; `summarizeTransactions`
+/// bỏ hàng có `idhousehold`.
+///
 /// Đơn vị quét là **câu lệnh** (giữa hai dấu `;`) trong từng thành viên lớp: một hàm có hai truy vấn mà chỉ một câu ràng
 /// thì câu kia vẫn đỏ. Phần sau `//` của mỗi dòng bị bỏ trước khi quét. Miễn trừ theo `tệp#thành viên`, mỗi mục một lý do.
 ///
