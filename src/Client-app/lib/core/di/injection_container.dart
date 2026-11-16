@@ -57,6 +57,7 @@ import '../../features/ai_edge/data/datasources/nguon_ly_do_thoat.dart';
 import '../../features/transaction/data/vi_theo_nguon_store.dart';
 import '../../features/transaction/data/cap_gop_quy_nguon.dart';
 import '../../features/transaction/data/vi_chung_cho_form_nguon.dart';
+import '../../features/transaction/data/khoan_nha_cho_so_nguon.dart';
 import '../../features/transaction/data/hoa_don_da_xoa_nguon.dart';
 import '../../features/transaction/domain/doc_tin_bien_dong.dart';
 import '../../features/ai_edge/data/mo_hinh_tai_ve.dart';
@@ -89,6 +90,7 @@ import '../../features/household/application/doc_cap_gop_quy.dart';
 import '../../features/household/application/gop_quy_conflict_resolver.dart';
 import '../../features/household/application/gop_quy_service.dart';
 import '../../features/household/application/nhom_vi_chung_cho_form.dart';
+import '../../features/household/application/khoan_nha_cho_so.dart';
 import '../../features/household/application/thao_tac_khoan_nha.dart';
 import '../../features/household/data/repositories/du_lieu_nha_repository_impl.dart';
 import '../../features/household/data/them_giao_dich_nguon_nha.dart';
@@ -682,6 +684,27 @@ Future<void> setupDependencies({bool cheDoNen = false}) async {
         viChung: (id) => sl<DuLieuNhaRepository>().viChungChoForm(id),
         nguon: (id) => sl<ThemGiaoDichNguonNha>(param1: ThamSoNguonNha(idNha: id)),
       )));
+  // Sổ / Trang chủ hiện khoản nhà TÔI ghi (spec 2026-11-16): tra tên ví chung + danh mục nhà, quyền sửa / xoá từ Sổ. Nhà
+  // hiện tại phát TRƯỚC (`theoDoi` chỉ phát khi đổi), sau khi kho nạp (G92).
+  sl.registerLazySingleton<KhoanNhaChoSoNguon>(() => KhoanNhaChoSoNguon(
+        traTen: (id) => theoDoiTraTenNha(
+          nha: () async* {
+            final n = sl<NhaRepository>();
+            await n.choNapKho();
+            yield n.hienTai;
+            yield* n.theoDoi;
+          }(),
+          viChung: sl<DuLieuNhaRepository>().theoDoiViChung,
+          danhMuc: sl<DuLieuNhaRepository>().theoDoiBangTraDanhMuc,
+          idaccount: id,
+        ),
+        quyen: (t) async {
+          final n = sl<NhaRepository>();
+          await n.choNapKho();
+          return quyenKhoanNhaTuSo(t, nha: n.hienTai, idToi: n.idaccount);
+        },
+        xoa: (t) => sl<ThaoTacKhoanNha>().xoa(t),
+      ));
   // Giữ hai nửa góp / rút khớp nhau. `batDauNghe` gọi MỘT lần qua `noiBoNgheKetQuaDay`. Tài khoản phiên lấy cùng nguồn với
   // `SoDuViService` (`GoiRepository.idaccount`): lượt nền chưa đặt tài khoản thì `null` và resolver không gỡ gì.
   sl.registerLazySingleton<GopQuyConflictResolver>(() => GopQuyConflictResolver(
