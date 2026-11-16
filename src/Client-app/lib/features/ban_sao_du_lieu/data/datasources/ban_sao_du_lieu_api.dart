@@ -2,7 +2,10 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import '../../domain/loi_ban_sao.dart';
 import '../models/yeu_cau_ban_sao.dart';
+
+export '../../domain/loi_ban_sao.dart';
 
 /// Ba API bản sao dữ liệu cá nhân (`/api/account/data-export…`, đơn client-app mục 52). Bọc sau interface để
 /// repository / cubit test bằng bản giả. `idaccount` không gửi — backend lấy từ JWT (`AuthInterceptor`).
@@ -15,19 +18,6 @@ abstract class BanSaoDuLieuApi {
 
   /// `GET /account/data-export/:id/download?format=json|csv` — bytes nguyên.
   Future<TepTaiVe> taiTep(String id, String dinhDang);
-}
-
-enum LoaiLoiBanSao { daGioiHan, hetHan, chuaXong, khongCo, matMang, khac }
-
-class LoiBanSao implements Exception {
-  const LoiBanSao(this.loai, {this.choThem});
-  final LoaiLoiBanSao loai;
-
-  /// Chỉ với [LoaiLoiBanSao.daGioiHan]: `Retry-After` (giây); thiếu / rác → `null`.
-  final Duration? choThem;
-
-  @override
-  String toString() => 'LoiBanSao($loai)';
 }
 
 class TepTaiVe {

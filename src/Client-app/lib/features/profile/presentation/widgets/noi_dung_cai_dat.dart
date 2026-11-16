@@ -107,6 +107,12 @@ class NoiDungCaiDat extends StatelessWidget {
             trangThai: const _NhanKhoaApp(),
             onTap: () => context.push('/settings/khoa-app'),
           ),
+          const Divider(height: 1, color: AppColors.outlineVariant),
+          _mucHanhDong(
+            icon: Icons.folder_shared_outlined,
+            title: 'Dữ liệu của tôi',
+            onTap: () => context.push('/settings/du-lieu-cua-toi'),
+          ),
           // Hai mục "Bảo mật 2 yếu tố (MFA)" và "Đồng bộ dữ liệu Cloud" đã gỡ
           // 2026-09-19: cả hai là `onTap: () {}` với công tắc luôn bật và dấu
           // tick luôn xanh — hứa hai tính năng không tồn tại. Đồng bộ thì app

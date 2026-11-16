@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/realtime/realtime_event.dart';
-import '../../data/datasources/ban_sao_du_lieu_api.dart';
 import '../../data/repositories/ban_sao_du_lieu_repository.dart';
+import '../../domain/loi_ban_sao.dart';
 import '../../domain/trang_thai_ban_sao.dart';
 import 'du_lieu_cua_toi_state.dart';
 
@@ -45,7 +45,8 @@ class DuLieuCuaToiCubit extends Cubit<DuLieuCuaToiState> {
     } catch (e) {
       if (isClosed) return null;
       emit(state.copyWith(dangGui: false));
-      final loi = loiBanSaoTu(e);
+      // Repository luôn ném LoiBanSao cho lỗi API (`loiBanSaoTu` ở datasource); thứ khác → khac.
+      final loi = e is LoiBanSao ? e : const LoiBanSao(LoaiLoiBanSao.khac);
       switch (loi.loai) {
         case LoaiLoiBanSao.daGioiHan:
           unawaited(nap());
