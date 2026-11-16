@@ -12,6 +12,9 @@ const logger = require('../logger');
 
 /** Lịch bảo trì chỉ được đặt trong 14 ngày tới (dưới giới hạn ~24,8 ngày của setTimeout). */
 const MAX_LEAD_TIME_MS = 14 * 24 * 3600 * 1000;
+/** Một phiên bảo trì kéo dài tối đa 7 ngày; phiên không có giờ kết thúc tự kết thúc khi đủ 7 ngày (chốt 2026-11-16). */
+const MAX_SESSION_MS = 7 * 24 * 3600 * 1000;
+const MAX_SESSION_END_REASON = 'Hết thời hạn tối đa 7 ngày của phiên bảo trì';
 
 class MaintenanceManager {
   constructor(options = {}) {
@@ -105,9 +108,12 @@ class MaintenanceManager {
       result.closed.push(row.id);
     }
     if (latest) {
-      const endMs = latest.scheduled_end_at ? new Date(latest.scheduled_end_at).getTime() : null;
-      if (endMs !== null && endMs <= now) {
-        await repo.closeRecord(latest.id, { status: 'COMPLETED', ended_at: latest.scheduled_end_at });
+      const hasEnd = Boolean(latest.scheduled_end_at);
+      const endMs = hasEnd
+        ? new Date(latest.scheduled_end_at).getTime()
+        : new Date(latest.started_at).getTime() + MAX_SESSION_MS;
+      if (endMs <= now) {
+        await repo.closeRecord(latest.id, { status: 'COMPLETED', ended_at: new Date(endMs).toISOString() });
         result.closed.push(latest.id);
       } else {
         const type = latest.type || 'EMERGENCY';
@@ -117,7 +123,7 @@ class MaintenanceManager {
         this.reason = latest.reason || this.reason;
         this.activatedBy = latest.activated_by || null;
         this.activatedAt = new Date(latest.started_at).toISOString();
-        if (endMs !== null) this._armAutoEnd(latest.scheduled_end_at, this.isUpgrade);
+        this._armAutoEnd(new Date(endMs).toISOString(), this.isUpgrade, hasEnd ? null : MAX_SESSION_END_REASON);
         result.restoredId = latest.id;
         logger.warn('[MAINTENANCE] Khôi phục phiên bảo trì từ CSDL sau khởi động', { id: latest.id, type });
       }
@@ -177,14 +183,14 @@ class MaintenanceManager {
     this.scheduled = this.getNearestSchedule();
   }
 
-  _armAutoEnd(endIso, isUpgrade) {
+  _armAutoEnd(endIso, isUpgrade, endReason = null) {
     const endDelayMs = new Date(endIso).getTime() - Date.now();
     if (!(endDelayMs > 0)) return;
     if (this._autoEndTimer) clearTimeout(this._autoEndTimer);
     this._autoEndTimer = setTimeout(() => {
       logger.info('[MAINTENANCE] Đến giờ kết thúc hẹn trước: Tự động khôi phục hệ thống');
       this._autoEndTimer = null;
-      this.setMaintenance(false, isUpgrade ? 'Hết thời gian nâng cấp hệ thống theo lịch hẹn' : 'Hết thời gian bảo trì định kỳ theo lịch hẹn', 'Hệ thống tự động');
+      this.setMaintenance(false, endReason || (isUpgrade ? 'Hết thời gian nâng cấp hệ thống theo lịch hẹn' : 'Hết thời gian bảo trì định kỳ theo lịch hẹn'), 'Hệ thống tự động');
     }, endDelayMs);
     if (this._autoEndTimer && typeof this._autoEndTimer.unref === 'function') {
       this._autoEndTimer.unref();
@@ -254,64 +260,6 @@ class MaintenanceManager {
     }
   }
 
-  _cancelConflictingSchedules(emergencyStartIso = new Date().toISOString(), emergencyEndIso = null, reason = 'Tự động hủy do trùng khung thời gian bảo trì khẩn cấp') {
-    if (!Array.isArray(this.scheduledList) || this.scheduledList.length === 0) return [];
-    
-    const emergencyStartMs = new Date(emergencyStartIso).getTime();
-    // Nếu có emergencyEndIso cụ thể, dùng nó. Nếu không, khung thời gian khẩn cấp được tính là 2 giờ kể từ khi kích hoạt
-    const emergencyEndMs = emergencyEndIso 
-      ? new Date(emergencyEndIso).getTime() 
-      : emergencyStartMs + (2 * 3600 * 1000);
-
-    const cancelledRecords = [];
-    const remainingSchedules = [];
-
-    for (const sched of this.scheduledList) {
-      const schedStartMs = new Date(sched.scheduledAt).getTime();
-      const schedEndMs = sched.scheduledEndAt 
-        ? new Date(sched.scheduledEndAt).getTime() 
-        : schedStartMs + (2 * 3600 * 1000);
-
-      // Kiểm tra có dính thời gian vào khung bảo trì khẩn cấp hay không:
-      const isOverlapping = schedStartMs < emergencyEndMs && schedEndMs > emergencyStartMs;
-
-      if (isOverlapping) {
-        if (sched._timer) {
-          clearTimeout(sched._timer);
-          sched._timer = null;
-        }
-        cancelledRecords.push(sched);
-        try {
-          const repo = this.repository || require('../../modules/admin/maintenance.repository').defaultMaintenanceRepository;
-          if (sched.recordId) {
-            repo.cancelScheduledRecord({
-              id: sched.recordId,
-              reason,
-            }).catch((err) => {
-              logger.warn('[MAINTENANCE] Lỗi CSDL khi tự động hủy lịch dính thời gian khẩn cấp', { error: err.message });
-            });
-          }
-        } catch (repoErr) {
-          logger.warn('[MAINTENANCE] Không thể gọi maintenance repository khi tự động hủy lịch', { error: repoErr.message });
-        }
-      } else {
-        remainingSchedules.push(sched);
-      }
-    }
-
-    this.scheduledList = remainingSchedules;
-    this.scheduled = remainingSchedules[0] || null;
-    if (this._scheduledTimer && !this.scheduled) {
-      clearTimeout(this._scheduledTimer);
-      this._scheduledTimer = null;
-    }
-
-    if (cancelledRecords.length > 0) {
-      logger.info(`[MAINTENANCE] Đã tự động hủy ${cancelledRecords.length} lịch bảo trì định kỳ do dính vào khung bảo trì khẩn cấp.`);
-    }
-    return cancelledRecords;
-  }
-
   setMaintenance(active, reason = null, activatedBy = 'system', options = {}) {
     const isActivating = Boolean(active);
     // MẶC ĐỊNH BẢO TRÌ TỨC THÌ LUÔN LÀ BẢO TRÌ KHẨN CẤP (PO Policy)
@@ -327,6 +275,8 @@ class MaintenanceManager {
         if (reason) this.reason = reason;
         this.activatedBy = activatedBy;
         this.activatedAt = new Date().toISOString();
+        // Khẩn cấp không có giờ kết thúc: bỏ giờ kết thúc của lịch cũ, tự kết thúc sau 7 ngày kể từ lúc bật khẩn cấp
+        this._armAutoEnd(new Date(Date.now() + MAX_SESSION_MS).toISOString(), false, MAX_SESSION_END_REASON);
 
         logger.warn(`[MAINTENANCE] NÂNG CẤP phiên bảo trì lên [KHẨN CẤP]`, {
           reason: this.reason,
@@ -335,18 +285,24 @@ class MaintenanceManager {
           activatedAt: this.activatedAt,
         });
 
-        // PO POLICY: Tự động hủy các lịch bảo trì định kỳ bị dính khung thời gian bảo trì khẩn cấp
-        this._cancelConflictingSchedules(this.activatedAt, options.scheduled_end_at || options.scheduledEndAt, 'Tự động hủy do kích hoạt bảo trì khẩn cấp đè lên');
-
-        // Cập nhật CSDL trạng thái ONGOING sang EMERGENCY
+        // Chốt 2026-11-16: phiên theo lịch đang chạy bị HỦY, khẩn cấp là bản ghi riêng.
+        // Lịch còn chờ không hủy ở đây: tới giờ bắt đầu mà khẩn cấp còn chạy thì activateScheduledItem mới hủy.
+        // Đóng phiên cũ XONG rồi mới tạo bản ghi khẩn cấp, kẻo lệnh đóng (theo status ONGOING) đóng luôn bản ghi mới.
         try {
-          const { defaultMaintenanceRepository } = require('../../modules/admin/maintenance.repository');
-          defaultMaintenanceRepository.updateOngoingToEmergency({
+          const repo = this.repository || require('../../modules/admin/maintenance.repository').defaultMaintenanceRepository;
+          const emergencyRecord = {
+            type: 'EMERGENCY',
             reason: this.reason,
             activated_by: this.activatedBy,
-          }).catch((err) => {
-            logger.warn('[MAINTENANCE] Lỗi cập nhật nâng cấp CSDL sang EMERGENCY', { error: err.message });
-          });
+            started_at: this.activatedAt,
+            scheduled_end_at: null,
+            status: 'ONGOING',
+          };
+          repo.completeOngoingRecord({ ended_at: new Date(this.activatedAt), status: 'CANCELLED' })
+            .then(() => repo.createRecord(emergencyRecord))
+            .catch((err) => {
+              logger.warn('[MAINTENANCE] Lỗi CSDL khi hủy phiên theo lịch và tạo phiên khẩn cấp', { error: err.message });
+            });
         } catch (repoErr) {
           logger.warn('[MAINTENANCE] Không thể gọi maintenance repository khi nâng cấp khẩn cấp', { error: repoErr.message });
         }
@@ -400,6 +356,9 @@ class MaintenanceManager {
       this.activatedAt = new Date().toISOString();
       this.isEmergency = isEmergency;
       this.isUpgrade = isUpgrade;
+      const plannedEnd = options.scheduled_end_at || options.scheduledEndAt;
+      if (plannedEnd) this._armAutoEnd(plannedEnd, isUpgrade);
+      else this._armAutoEnd(new Date(Date.now() + MAX_SESSION_MS).toISOString(), isUpgrade, MAX_SESSION_END_REASON);
 
       logger.warn(`[MAINTENANCE] BẬT chế độ [${isUpgrade ? 'NÂNG CẤP HỆ THỐNG' : (this.isEmergency ? 'KHẨN CẤP' : 'THÔNG THƯỜNG')}]`, {
         reason: this.reason,
@@ -408,11 +367,6 @@ class MaintenanceManager {
         activatedBy: this.activatedBy,
         activatedAt: this.activatedAt,
       });
-
-      if (this.isEmergency) {
-        // PO POLICY: Tự động hủy các lịch bảo trì định kỳ bị dính khung thời gian bảo trì khẩn cấp
-        this._cancelConflictingSchedules(this.activatedAt, options.scheduled_end_at || options.scheduledEndAt, 'Tự động hủy do hệ thống chuyển sang chế độ bảo trì khẩn cấp');
-      }
 
       // Lưu lịch sử bảo trì vào CSDL PostgreSQL (nếu chưa được lưu từ bước lên lịch SCHEDULED)
       if (!options.skipCreateRecord) {
@@ -646,6 +600,9 @@ class MaintenanceManager {
       targetEndDate = new Date(scheduledEndAt);
       if (isNaN(targetEndDate.getTime()) || targetEndDate.getTime() <= targetDate.getTime()) {
         throw new Error('Thời điểm kết thúc bảo trì phải sau thời điểm bắt đầu bảo trì!');
+      }
+      if (targetEndDate.getTime() - targetDate.getTime() > MAX_SESSION_MS) {
+        throw new Error('Một phiên bảo trì kéo dài tối đa 7 ngày!');
       }
     }
 
